@@ -100,6 +100,29 @@ type Linter struct {
 	rules    []Rule
 }
 
+// projectRootFromBaseDir derives the project root from a LinterOptions.BaseDir.
+// BaseDir is the SPEC search directory: the CLI's detectBaseDir returns
+// <root>/.moai/specs when that directory exists and <root> otherwise, so the
+// root is recovered by stripping a trailing ".moai/specs" segment pair.
+func projectRootFromBaseDir(baseDir string) string {
+	if baseDir == "" {
+		return "."
+	}
+	parent, last := filepath.Split(filepath.Clean(baseDir))
+	if last != "specs" {
+		return baseDir
+	}
+	grandparent, moai := filepath.Split(filepath.Clean(parent))
+	if moai != ".moai" {
+		return baseDir
+	}
+	root := filepath.Clean(grandparent)
+	if root == "" {
+		return "."
+	}
+	return root
+}
+
 // NewLinter creates a new Linter instance
 // Loads zone registry if options.RegistryPath is specified
 func NewLinter(opts LinterOptions) *Linter {
@@ -119,11 +142,17 @@ func NewLinter(opts LinterOptions) *Linter {
 	}
 
 	// HaikuResidualRule scans the project tree (not a SPEC document), so it
-	// needs the project root. Default to "." matching discoverSPECs behavior.
-	haikuBaseDir := opts.BaseDir
-	if haikuBaseDir == "" {
-		haikuBaseDir = "."
-	}
+	// needs the project root, while opts.BaseDir is the SPEC search directory —
+	// the CLI supplies <root>/.moai/specs whenever that directory exists. Strip
+	// that trailing pair so every caller lands on the project root; any other
+	// BaseDir is already the root. Empty defaults to "." matching discoverSPECs.
+	haikuBaseDir := projectRootFromBaseDir(opts.BaseDir)
+
+	// Tier artifact-set table (card t1121): each SPEC's project root is derived
+	// from its own spec.md path (BaseDir is only the fallback), and that root's
+	// spec-workflow.md is read once and cached per root for this Linter. The
+	// cache is shared by the per-SPEC rule and its corpus-warning companion.
+	tierTable := &tierArtifactTable{fallbackRoot: lintProjectRoot(opts.BaseDir)}
 
 	l.rules = []Rule{
 		&EARSModalityRule{},
@@ -184,7 +213,15 @@ func NewLinter(opts LinterOptions) *Linter {
 		// map demotes ERRORS, so the entry would be inert for a warning, and an
 		// inert entry in a policy map reads as intent. AC-SSF-010 guards it.
 		&SyncSHASlotFormatRule{},
+		// TierArtifactMissingRule — card t1121. Per-SPEC: checks the SPEC dir
+		// against the artifact set its `tier:` requires, read at lint time from
+		// spec-workflow.md § SPEC Complexity Tier. Warning only; lint.skip and
+		// era demotion apply. Not in eraDemotableCodes (warnings never reach it).
+		&TierArtifactMissingRule{table: tierTable},
 		// cross-SPEC rules
+		// TierArtifactTableRule — card t1121. One corpus warning when the
+		// spec-workflow.md Tier table is present but unparseable.
+		&TierArtifactTableRule{table: tierTable},
 		&DependencyCycleRule{},
 		&DuplicateSPECIDRule{},
 		// HaikuResidualRule — cross-SPEC HARD gate (NOT skip-able; CheckAll

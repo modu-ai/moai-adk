@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // agentEmitEmbedCheckName is the doctor check identifier (also the value
@@ -290,6 +291,9 @@ func compareEmission(committed []string, extractedRoot string) (compared int, di
 		if readErr != nil {
 			return compared, differing, uncompared, fmt.Errorf("read committed %s: %w", base, readErr)
 		}
+		// The deployer rewrites Claude-tree references in Codex role files,
+		// so compare against the committed bytes as the deployer writes them.
+		want = template.NormalizeCodexRoleForDeploy(want)
 		compared++
 		if !bytes.Equal(got, want) {
 			differing = append(differing, base)
@@ -343,7 +347,9 @@ func extractEmissionViaInit(binPath string) (string, func(), error) {
 	}
 
 	target := filepath.Join(base, "extract")
-	cmd := exec.Command(execPath, "init", target, "--non-interactive")
+	// A default init deploys only the Claude tree; `--llm both` also deploys
+	// the Codex surfaces, which is where the emitted role files land.
+	cmd := exec.Command(execPath, "init", target, "--non-interactive", "--llm", "both")
 	cmd.Dir = base
 	// AGENTEMIT_UPDATE is the regeneration switch of the emitter's golden
 	// path. It has no role here, but scrubbing it keeps this check's verdict

@@ -68,19 +68,120 @@ import (
 // attribution ONLY and never reaches a severity decision.
 var reqBareWidePattern = regexp.MustCompile(`^\**(REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\d+)\s*\**\s*(?:\([^)]*\)\s*\**\s*)?(?:—|:)\s*(.*)$`)
 
-// parseREQsBareForm returns one REQEntry per unindented, marker-less line that
-// reqBareWidePattern admits as a definition, in document order, with Line as a
-// 1-based index into body.
+// Two-line bare form — card t1120.
+//
+// The separator requirement above left one corpus shape uncollected: a header
+// line carrying ONLY the ID (and optionally its classifier), with the statement
+// on the next line —
+//
+//	**REQ-ROUTE-001 (Event-Driven)**
+//	**When** the user calls …, the system **shall** …
+//
+// — 565 headers across 29 spec.md files (t1104 §5, re-measured for t1120). Every
+// one is bold, and every one is followed by a plain, unindented statement line.
+//
+// reqBareHeaderPattern is deliberately separate from reqBareWidePattern so that
+// the single-line pattern keeps refusing separator-less lines
+// (TestParseREQsBare_RequiresASeparator). It is narrower than the single-line
+// pattern in one way: the opening `**` is REQUIRED. A lone unbolded ID line at
+// column zero is what a wrapped prose paragraph produces, and the corpus holds
+// no unbolded header, so the bold costs nothing and closes that hole.
+//
+// The next line is the statement only when it is a plain paragraph line:
+// non-empty, unindented, not a list item (bulleted or numbered), table row,
+// heading, blockquote, code fence, thematic break or HTML line, and not itself
+// a REQ header or bare definition. Anything else means the header labels
+// nothing collectable, and it is skipped rather than guessed at. None of the
+// 565 corpus statement lines starts with any excluded shape. A statement
+// that opens with bold (`**When** …`) is NOT a `* ` bullet and is accepted.
+//
+// A statement wrapped over several lines is joined into one Text by
+// joinStatementContinuation (card t1138), as for the single-line form.
+var reqBareHeaderPattern = regexp.MustCompile(`^\*\*(REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\d+)(?:\*\*)?\s*(?:\([^)]*\))?\s*(?:\*\*)?\s*$`)
+
+// reqOrderedListPattern matches a numbered list item ("1. ", "12. ", "1) ").
+var reqOrderedListPattern = regexp.MustCompile(`^\d+[.)] `)
+
+// isTwoLineStatement reports whether next can be the statement line under a
+// two-line bare header.
+func isTwoLineStatement(next string) bool {
+	if strings.TrimSpace(next) == "" || next[0] == ' ' || next[0] == '\t' {
+		return false
+	}
+	for _, p := range []string{"- ", "* ", "+ ", "|", "#", ">", "```", "~~~", "---", "<"} {
+		if strings.HasPrefix(next, p) {
+			return false
+		}
+	}
+	if reqOrderedListPattern.MatchString(next) {
+		return false
+	}
+	return !reqBareHeaderPattern.MatchString(next) && !reqBareWidePattern.MatchString(next)
+}
+
+// joinStatementContinuation returns first followed by every continuation line of
+// the same paragraph, starting at lines[next], joined with single spaces — card
+// t1138 (t1120 audit finding F1).
+//
+// Taking one physical line as Text truncated every wrapped statement, and where
+// the SHALL token sat on a later line the modality judge reported a defect the
+// author never wrote: 8 advisory false positives among the 565 two-line headers
+// alone. The heading collector already joins its paragraph
+// (firstParagraphBelowHeading); this gives the bare and list collectors the same
+// property.
+//
+// A continuation line is a line isTwoLineStatement accepts: a plain paragraph
+// line, never blank and never a list item, table row, heading, blockquote, code
+// fence, thematic break, HTML line or another REQ definition. The first line that
+// fails ends the paragraph. When indented is true (a list item) the line is
+// judged after its indentation is stripped, so an indented wrapped line
+// continues the item while an indented sub-bullet or fence still ends it; an
+// unindented plain line continues it as a markdown lazy continuation. When
+// indented is false (a bare definition) an indented line ends the paragraph.
+//
+// When first is non-empty, joining only appends after it, so the leading text
+// the modality judge keys its prefix on is unchanged. When first is empty (an ID
+// line whose separator carries no text), the first continuation line becomes the
+// prefix instead — that is the statement the author wrote, and it is the point
+// of the join. Entries the narrow pattern also collects are exempt from joining
+// altogether (parseREQsWithProvenance), because they gate.
+func joinStatementContinuation(first string, lines []string, next int, indented bool) string {
+	var parts []string
+	if t := strings.TrimSpace(first); t != "" {
+		parts = append(parts, t)
+	}
+	for ; next < len(lines); next++ {
+		line := lines[next]
+		if indented {
+			line = strings.TrimSpace(line)
+		}
+		if !isTwoLineStatement(line) {
+			break
+		}
+		parts = append(parts, strings.TrimSpace(line))
+	}
+	return strings.Join(parts, " ")
+}
+
+// parseREQsBareForm returns one REQEntry per unindented, marker-less definition,
+// in document order, with Line as a 1-based index into body. A single-line
+// definition carries its statement after the separator; a two-line definition
+// carries it on the line after the header, and Line points at the header.
 func parseREQsBareForm(body string) []REQEntry {
 	var reqs []REQEntry
-	for i, line := range strings.Split(body, "\n") {
-		matches := reqBareWidePattern.FindStringSubmatch(line)
-		if len(matches) < 3 {
+	lines := strings.Split(body, "\n")
+	for i, line := range lines {
+		id, text := "", ""
+		if matches := reqBareWidePattern.FindStringSubmatch(line); len(matches) >= 3 {
+			id, text = matches[1], joinStatementContinuation(matches[2], lines, i+1, false)
+		} else if m := reqBareHeaderPattern.FindStringSubmatch(line); m != nil && i+1 < len(lines) && isTwoLineStatement(lines[i+1]) {
+			id, text = m[1], joinStatementContinuation(lines[i+1], lines, i+2, false)
+		} else {
 			continue
 		}
 		reqs = append(reqs, REQEntry{
-			ID:      matches[1],
-			Text:    strings.TrimSpace(matches[2]),
+			ID:      id,
+			Text:    text,
 			Line:    i + 1,
 			Widened: true,
 			Source:  REQSourceBare,

@@ -185,6 +185,7 @@ Never add files directly to the local project directories without also adding th
 scripts/ci-watch/              # Dev-only: CI watch loop scripts (5) — not distributed
 scripts/ci-autofix/            # Dev-only: CI auto-fix scripts (4) — not distributed
 scripts/jev/                   # Dev-only: TypeSafe(Jev) 로컬 전용 도구 (§29) — 템플릿 미러 없음, 사용자 프로젝트로 배포되지 않음
+scripts/ac-baseline/           # Dev-only: 커밋타임 AC-snapshot 가드(check-staged.sh·install-hook.sh) — git config 기반 pre-commit 훅으로 develop 병합 후 리드가 1회 설치, 템플릿 미러 없음, 사용자 프로젝트로 배포되지 않음 (SPEC-ACSNAPSHOT-COMMIT-GUARD-001)
 ~/.moai/.env.typesafe          # Dev-only: TypeSafe API 키 (저장소 밖, chmod 600). settings/config/템플릿에 넣지 않는다 (§29)
 .claude/skills/hns-workflow-ci-loop/                       # Dev-only: CI watch+autofix skill (removed from template; mirror kept). §2.3에 따라 moai-workflow-ci-loop → hns-* 로 이동(2026-08-15): `.claude/skills/moai*` 글롭이 매 update마다 삭제했음
 .claude/rules/local/ci-watch-protocol.md                     # Dev-only: governs scripts/ci-watch (removed from template; mirror kept)
@@ -207,7 +208,7 @@ CLAUDE.local.md                # This file
 
 ### [HARD] §2.3 moai update는 관리 대상 뿌리 안의 로컬 전용 파일을 통째로 삭제한다
 
-**요지 — 본문 전량은 `.moai/docs/update-local-file-survival.md` 로 이관됐다(card t750).** `CleanMoaiManagedPaths`(`internal/cli/update/deploy/deploy.go:107`)가 템플릿 재배포 **전에** 관리 대상 뿌리(`.claude/settings.json` · `.claude/{commands,agents,hooks}/moai` · `.claude/skills/moai*` 글롭 · `.claude/rules/moai` · `.claude/output-styles/moai` · `.moai/config`)를 통째로 삭제하고 임베드 템플릿에 있는 것만 다시 깐다. **보호 목록 설정은 존재하지 않고**, `Updated N files` 요약에 삭제는 나타나지 않는다. **[HARD] 새 로컬 전용 파일은 위 뿌리 밖에 둔다** — 용도별 배치 표(룰·스킬·ast-grep·하네스)는 이관 문서에 있다. **[HARD] update 후엔 매번** ① 삭제 검증(`git status --porcelain | grep '^ D'` — 0이어야 정상)과 ② `git-strategy.yaml` git-flow 키 재적용을 실행한다 — 명령과 실측 근거는 이관 문서에.
+**요지 — 본문 전량은 `.moai/docs/update-local-file-survival.md` 로 이관됐다(card t750).** `CleanMoaiManagedPaths`(`internal/cli/update/deploy/deploy.go:107`)가 템플릿 재배포 **전에** 관리 대상 뿌리(`.claude/settings.json` · `.claude/{commands,agents,hooks}/moai` · `.claude/skills/moai*` 글롭 · `.claude/rules/moai` · `.claude/output-styles/moai` · `.moai/config`)를 통째로 삭제하고 임베드 템플릿에 있는 것만 다시 깐다. **보호 목록 설정은 존재하지 않고**, `Updated N files` 요약에 삭제는 나타나지 않는다. **[HARD] 새 로컬 전용 파일은 위 뿌리 밖에 둔다** — 용도별 배치 표(룰·스킬·ast-grep·하네스)는 이관 문서에 있다. **[HARD] update 후엔 매번** ① 삭제 검증(`git status --porcelain | grep '^ D'` — 0이어야 정상)과 ② `git-strategy.yaml` git-flow 키 **+ `worktree_base_branch: develop`** 재적용을 실행한다(후자를 빼면 `moai worktree new` 가 카드 트리를 develop 이 아니라 main 에서 판다 — 2026-09-24 6건, card t1159). 재적용은 `--source=develop` 이다(`HEAD`=main 에는 그 키가 없다) — 명령과 실측 근거는 이관 문서에.
 
 ### [HARD] settings.local.json Separation
 

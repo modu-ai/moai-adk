@@ -39,7 +39,8 @@ INSERT INTO resume_handoffs(status,schema_version,saved_at,body,body_sha256,clai
 		}
 	})
 	var version string
-	if err := f.DB.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != "2" {
+	// The v1 chain now runs v1→v2→v3: the owner-identity columns are the v3 step.
+	if err := f.DB.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != "3" {
 		t.Fatalf("version=%q err=%v", version, err)
 	}
 	var expiry sql.NullString

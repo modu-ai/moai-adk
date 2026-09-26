@@ -760,7 +760,6 @@ Claude Code 下部に表示されるステータスバーを設定します。
 |------|-----|------|
 | `ENABLE_TOOL_SEARCH` | `"1"`, `"auto"`, `"auto:N"`, `"true"`, `"false"` | ツール検索の制御 (MoAI デフォルト値: `"1"`) |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | 自動圧縮トリガーの百分率 (デフォルト値: ~95%) |
-| `CLAUDE_CODE_ENABLE_TELEMETRY` | `"1"` | OpenTelemetry データ収集の有効化 |
 | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | バックグラウンド作業の無効化 |
 | `DISABLE_AUTOUPDATER` | `"1"` | 自動アップデートの無効化 |
 | `HTTP_PROXY` | URL | HTTP プロキシサーバー |

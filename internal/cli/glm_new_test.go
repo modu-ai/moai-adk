@@ -597,6 +597,12 @@ func TestCharacterize_GLM_AutoModeRejected(t *testing.T) {
 	if !strings.Contains(err.Error(), "auto mode is not available with GLM") {
 		t.Errorf("error message should mention auto mode limitation, got: %v", err)
 	}
+	if !strings.Contains(buf.String(), "supported Claude model") || strings.Contains(buf.String(), "4.6") {
+		t.Errorf("stderr should describe current eligibility without a model version, got: %s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "use 'moai cc --permission-mode auto' instead") {
+		t.Errorf("stderr should preserve the moai cc hint, got: %s", buf.String())
+	}
 }
 
 // TestCharacterize_GLM_AutoModeEqualsSyntaxRejected verifies the --permission-mode=auto
@@ -623,6 +629,9 @@ func TestCharacterize_GLM_AutoModeEqualsSyntaxRejected(t *testing.T) {
 	}
 	if called {
 		t.Error("unifiedLaunchFunc must NOT be called when --permission-mode=auto is requested")
+	}
+	if !strings.Contains(buf.String(), "supported Claude model") || strings.Contains(buf.String(), "4.6") {
+		t.Errorf("stderr should describe current eligibility without a model version, got: %s", buf.String())
 	}
 }
 

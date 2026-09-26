@@ -82,7 +82,7 @@ shift+tab 이전 • enter 다음
   이 프로필로 실행하는 Claude 세션의 추론 깊이입니다. xhigh/max는 이를 지원하는 
   모델(Opus 5.5, Sonnet 5, Opus 4.7 이상)이 필요합니다. 에이전트별 추론 강도는  
   에이전트 모델 정책에서 정해집니다.                                            
-    (model policy, else Claude Code default: medium on Opus 5.5)                
+    (모델 정책, 없으면 Claude Code 기본값: Opus 5.5는 medium)                   
     low - 가장 빠름, 간략한 추론                                                
     medium - 균형 (권장)                                                        
   ▸ high - 심층 추론                                                            

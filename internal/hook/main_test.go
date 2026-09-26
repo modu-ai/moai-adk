@@ -24,9 +24,12 @@
 package hook
 
 import (
+	"os"
 	"testing"
 
 	"go.uber.org/goleak"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // TestMain enables goroutine leak detection across all internal/hook tests.
@@ -42,7 +45,15 @@ import (
 // / the slog handler. The inline-sync path eliminates the goroutine entirely.
 // session_start_parallel_test.go opts back into async=true per-test to keep
 // the production async path covered.
+//
+// Finally it clears CLAUDE_PROJECT_DIR for the whole binary. The write-side
+// resolver (resolveProjectRoot) prefers that variable over input.CWD, so a
+// `go test` launched from inside a Claude Code session — which exports it —
+// would otherwise send every parallel test's write to the real project tree
+// instead of its temp dir (card t1165). Tests that need a value set it with
+// t.Setenv, which restores this cleared state afterwards.
 func TestMain(m *testing.M) {
+	_ = os.Unsetenv(config.EnvClaudeProjectDir)
 	deferredScanSeamMu.Lock()
 	deferredScansAsync = false
 	deferredScanSeamMu.Unlock()

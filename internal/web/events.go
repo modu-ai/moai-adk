@@ -12,6 +12,7 @@ package web
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -135,6 +136,8 @@ func (h *Hub) Watch(root string, stop <-chan struct{}) error {
 	defer retry.Stop()
 
 	pending := map[string]bool{}
+	// WAL files whose creation must be re-checked when the debounce fires.
+	walProbe := map[string]bool{}
 	timer := time.NewTimer(time.Hour)
 	if !timer.Stop() {
 		<-timer.C
@@ -163,11 +166,23 @@ func (h *Hub) Watch(root string, stop <-chan struct{}) error {
 			// index, not committed card data; an empty WAL's lifecycle is not
 			// a change either. WAL writes remain observable while a writer
 			// holds its connection and the main database has not checkpointed.
+			//
+			// kqueue (darwin) attaches a watch to a new file only after the
+			// directory scan that reports its creation, while SQLite writes a
+			// fresh WAL's frames microseconds after creating it. A writer that
+			// then keeps its connection open never writes again, so its only
+			// Write can land before the watch exists. A WAL creation is
+			// therefore re-checked at debounce: a reader leaves it empty, a
+			// committed write does not.
 			switch filepath.Base(ev.Name) {
 			case "backlog.db-shm":
 				continue
 			case "backlog.db-wal":
 				if !ev.Has(fsnotify.Write) {
+					if ev.Has(fsnotify.Create) {
+						walProbe[ev.Name] = true
+						timer.Reset(debounce)
+					}
 					continue
 				}
 			}
@@ -176,6 +191,14 @@ func (h *Hub) Watch(root string, stop <-chan struct{}) error {
 				timer.Reset(debounce)
 			}
 		case <-timer.C:
+			for wal := range walProbe {
+				if info, err := os.Stat(wal); err == nil && info.Size() > 0 {
+					if name := eventFor(pathEvent, wal); name != "" {
+						pending[name] = true
+					}
+				}
+				delete(walProbe, wal)
+			}
 			for name := range pending {
 				h.Publish(name)
 				delete(pending, name)

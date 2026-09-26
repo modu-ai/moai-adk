@@ -72,6 +72,22 @@ type fireProbeReport struct {
 
 	P6PopoverAfterSwapFired bool `json:"p6_popover_after_swap_fired"`
 
+	// card t1108 — the real boost swap, its afterSettle wait, and the
+	// REQ-AFG-016 premise self-check, leg by leg.
+	P5SwapClicked          bool            `json:"p5_swap_clicked"`
+	P5SettleWait           string          `json:"p5_settle_wait"`
+	P5SettleElapsedMs      *float64        `json:"p5_settle_elapsed_ms"`
+	P5SettleDelayMs        *float64        `json:"p5_settle_delay_ms"`
+	P5SwapPremise          map[string]bool `json:"p5_swap_premise"`
+	P5SwapPremiseFalseLegs []string        `json:"p5_swap_premise_false_legs"`
+	CPUThrottleRate        float64         `json:"cpu_throttle_rate"`
+	// card t1167 — written only when the settle wait ended "document
+	// replaced": did the navigated document finish loading within the bound?
+	P5ReplacedDocumentReady *bool `json:"p5_replaced_document_ready"`
+	// Written only by the late-listener fixture copy: did the DOM condition
+	// confirm the swap before the listeners were attached?
+	MutantSwapConfirmedByDOM *bool `json:"mutant_swap_confirmed_by_dom"`
+
 	// card t1106 — the driven/excluded accounting REQ-AFG-014 (1) requires of
 	// every run, and the sandbox-serving entry's observations.
 	ReductionDeclared bool     `json:"reduction_declared"`
@@ -149,14 +165,28 @@ func requireFireGuardPrereqs(t *testing.T) (chromePath string) {
 	if err != nil {
 		t.Skipf("%v — install Google Chrome (or point MOAI_BROWSER_GUARD_CHROME at a chrome binary) to run the app.js fire guard", err)
 	}
-	python3, err := exec.LookPath("python3")
-	if err != nil {
-		t.Skipf("python3 not found in PATH — it executes the committed appjs_fire_probe.py; install python3 to run the app.js fire guard")
-	}
+	python3 := requirePython3(t)
 	if out, err := exec.Command(python3, "-c", "import websockets").CombinedOutput(); err != nil {
 		t.Skipf("python3 lacks the websockets module (%s) — the probe speaks CDP over websockets; pip install websockets (version pinned in the test-browser CI job) to run the app.js fire guard", strings.TrimSpace(string(out)))
 	}
 	return chromePath
+}
+
+// requirePython3 resolves the interpreter that executes the committed
+// appjs_fire_probe.py, and skips — naming the missing prerequisite — when it
+// is absent from PATH. Every test that shells out to the probe calls this
+// first, gated or not: without it an absent interpreter surfaces as a
+// t.Fatalf whose message accuses the committed manifest ("--lint-manifest
+// rejected the committed manifest"), which reads as a real defect on a
+// machine that simply has no python3. A missing prerequisite is "not measured
+// here", never a failure of the thing under test.
+func requirePython3(t *testing.T) (python3 string) {
+	t.Helper()
+	python3, err := exec.LookPath("python3")
+	if err != nil {
+		t.Skipf("python3 not found in PATH — it executes the committed appjs_fire_probe.py; install python3 to run the app.js fire guard")
+	}
+	return python3
 }
 
 // findChrome locates a chrome binary: MOAI_BROWSER_GUARD_CHROME first, then
@@ -363,6 +393,7 @@ func fireGuardOutputTail(b *bytes.Buffer) string {
 // run carries its own report.
 func runFireGuardProbe(t *testing.T, scriptPath, cdpPort, baseURL, label string, extra ...string) (int, fireProbeReport) {
 	t.Helper()
+	requirePython3(t)
 	port := strings.TrimPrefix(strings.TrimPrefix(baseURL, "http://"), "https://")
 	if host, p, err := net.SplitHostPort(port); err == nil && host == "127.0.0.1" {
 		port = p
@@ -469,10 +500,43 @@ func TestAppJsHandlersFireRuntime(t *testing.T) {
 	if len(report.P7LoadReferenceErrors) != 0 {
 		t.Errorf("load ReferenceErrors on /specs: %v", report.P7LoadReferenceErrors)
 	}
-	// (c) an indicator exercised after the hx-boost swap (REQ-AFG-007).
+	// (c) an indicator exercised after the hx-boost swap (REQ-AFG-007) — and
+	// the swap must be a real one: all four REQ-AFG-016 premise legs true in
+	// the report (card t1108). A post-swap flip after a full navigation is not
+	// re-wiring, so the indicator alone does not satisfy (c).
 	if !report.P6PopoverAfterSwapFired {
 		t.Error("no indicator fired after the hx-boost swap (p6_popover_after_swap_fired=false) — REQ-AFG-007 requires a post-swap indicator")
 	}
+	for _, problem := range fireSwapPremiseProblems(report) {
+		t.Errorf("(c) the swap is not a proven real swap: %s", problem)
+	}
+}
+
+// fireSwapPremiseLegs are the four REQ-AFG-016 legs, named as the probe
+// reports them (PREMISE_LEGS in testdata/appjs_fire_probe.py).
+var fireSwapPremiseLegs = []string{"a_boost_ancestor", "b_same_document", "c_swap_events", "d_swap_inserted_trigger"}
+
+// fireSwapPremiseProblems lists every way a report fails to prove a real swap:
+// a leg missing from the report, a leg that is false, a non-empty false-leg
+// list, or a settle wait that did not observe the event. Empty means proven.
+func fireSwapPremiseProblems(r fireProbeReport) []string {
+	var problems []string
+	for _, leg := range fireSwapPremiseLegs {
+		v, ok := r.P5SwapPremise[leg]
+		switch {
+		case !ok:
+			problems = append(problems, fmt.Sprintf("premise leg %s is absent from the report", leg))
+		case !v:
+			problems = append(problems, fmt.Sprintf("premise leg %s is false", leg))
+		}
+	}
+	if len(r.P5SwapPremiseFalseLegs) != 0 {
+		problems = append(problems, fmt.Sprintf("p5_swap_premise_false_legs=%v", r.P5SwapPremiseFalseLegs))
+	}
+	if r.P5SettleWait != "observed" {
+		problems = append(problems, fmt.Sprintf("p5_settle_wait=%q (want observed)", r.P5SettleWait))
+	}
+	return problems
 }
 
 // TestAppJsHandlersFireSelectorMiss is AC-AFG-004's green path: a manifest
@@ -546,6 +610,7 @@ func fireGuardProbePath(t *testing.T) string {
 // every `go test` of the package, with no browser and no server.
 func TestAppJsFireSandboxPairing(t *testing.T) {
 	t.Parallel()
+	requirePython3(t)
 	probe := fireGuardProbePath(t)
 
 	// (a) forward: the committed manifest satisfies the rule.
@@ -624,6 +689,7 @@ func TestAppJsFireSandboxPairing(t *testing.T) {
 //
 // Ungated: routing is a wiring property, so it needs no browser.
 func TestAppJsFireSandboxRouting(t *testing.T) {
+	requirePython3(t)
 	primaryBase, primaryRoot := startFireGuardServerAt(t, findRepoRoot(t))
 	sandboxBase, sandboxRoot := startFireGuardSandboxServer(t)
 
@@ -833,6 +899,7 @@ func TestAppJsFireValidationRejectNoWrites(t *testing.T) {
 // instead of leaving a frozen number behind.
 func fireManifestFamilies(t *testing.T) (unmarked, marked []string) {
 	t.Helper()
+	requirePython3(t)
 	out, err := exec.Command("python3", fireGuardProbePath(t),
 		"--print-routing", "--base-url", "http://primary.invalid", "--sandbox-base-url", "http://sandbox.invalid").Output()
 	if err != nil {
@@ -885,6 +952,7 @@ func slicesEqual(a, b []string) bool {
 // so an unreachable port is enough to reach it.
 func TestAppJsFireReductionDeclaration(t *testing.T) {
 	t.Parallel()
+	requirePython3(t)
 	_, marked := fireManifestFamilies(t)
 	if len(marked) == 0 {
 		t.Skip("no sandbox-serving entry in the manifest — this contract has nothing to bind; recorded as not measured, not as a pass")

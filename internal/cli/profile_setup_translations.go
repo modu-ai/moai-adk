@@ -43,10 +43,16 @@ type profileSetupText struct {
 	ModelFable1M       string
 	ModelHaiku         string
 	ModelOpusPlan      string
-	// Effort level selector. The empty option label is NOT a
-	// field here — it is single-sourced from settings.EmptyLabelFor("effort_level")
-	// so the wizard and the web console render the identical label. Same for the
-	// model / development_mode / git_convention empty options.
+	// Effort level selector. EffortLevelEmpty is the localized empty option,
+	// resolved through the schema's opt.runtime_default key (schemaOptionBridge)
+	// — the same key the web console localizes. It is left blank for en, which
+	// falls back to settings.EmptyLabelFor("effort_level") so the en label stays
+	// single-sourced from the schema. Every localized value must state
+	// settings.RuntimeDefaultEffort and settings.RuntimeDefaultEffortModel
+	// (TestEffortEmptyLabelCarriesRuntimeDefaultFact). The model /
+	// development_mode / git_convention empty options have no field here and
+	// render the schema label on every locale.
+	EffortLevelEmpty  string
 	EffortLevelTitle  string
 	EffortLevelDesc   string
 	EffortLevelLow    string
@@ -266,6 +272,7 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelFable1M:          "fable[1m] (Fable 5 + 1M 컨텍스트)",
 		ModelHaiku:            "haiku (Haiku 4.5, 최고 속도)",
 		ModelOpusPlan:         "opusplan (Opus 기획, Sonnet 코딩)",
+		EffortLevelEmpty:      "(모델 정책, 없으면 Claude Code 기본값: Opus 5.5는 medium)",
 		EffortLevelTitle:      "세션 추론 강도",
 		EffortLevelDesc:       "이 프로필로 실행하는 Claude 세션의 추론 깊이입니다. xhigh/max는 이를 지원하는 모델(Opus 5.5, Sonnet 5, Opus 4.7 이상)이 필요합니다. 에이전트별 추론 강도는 에이전트 모델 정책에서 정해집니다.",
 		EffortLevelLow:        "low - 가장 빠름, 간략한 추론",
@@ -361,6 +368,7 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelFable1M:          "fable[1m] (Fable 5 + 1Mコンテキスト)",
 		ModelHaiku:            "haiku (Haiku 4.5、最速)",
 		ModelOpusPlan:         "opusplan (Opus設計、Sonnetコーディング)",
+		EffortLevelEmpty:      "(モデルポリシー、未設定なら Claude Code 既定値: Opus 5.5 は medium)",
 		EffortLevelTitle:      "セッション推論レベル",
 		EffortLevelDesc:       "このプロファイルで起動する Claude セッションの推論深度です。xhigh/max は対応モデル（Opus 5.5、Sonnet 5、Opus 4.7 以降）が必要です。エージェントごとの推論強度はエージェントモデルポリシーで決まります。",
 		EffortLevelLow:        "low - 最速、簡易推論",
@@ -456,6 +464,7 @@ var profileSetupTexts = map[string]profileSetupText{
 		ModelFable1M:          "fable[1m] (Fable 5 + 1M 上下文)",
 		ModelHaiku:            "haiku (Haiku 4.5，最快)",
 		ModelOpusPlan:         "opusplan (Opus规划，Sonnet编码)",
+		EffortLevelEmpty:      "(模型策略，未设置则用 Claude Code 默认值: Opus 5.5 为 medium)",
 		EffortLevelTitle:      "会话推理强度",
 		EffortLevelDesc:       "使用此配置文件启动的 Claude 会话的推理深度。xhigh/max 需要支持它们的模型（Opus 5.5、Sonnet 5、Opus 4.7 及以上）。各代理的推理强度由代理模型策略决定。",
 		EffortLevelLow:        "low - 最快，简略推理",

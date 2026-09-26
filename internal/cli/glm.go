@@ -316,7 +316,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// Auto mode is not available with third-party providers (GLM/Z.AI).
 	// Validate before launch to give a clear error instead of a cryptic Claude Code rejection.
 	if containsPermissionMode(filteredArgs, "auto") {
-		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "auto mode requires Claude Sonnet 4.6 or Opus 4.6 running on Anthropic's API")
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "auto mode requires a supported Claude model; GLM models are not supported (see Claude Code permission-modes docs)")
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "use 'moai cc --permission-mode auto' instead")
 		return fmt.Errorf("auto mode is not available with GLM (third-party provider)")
 	}

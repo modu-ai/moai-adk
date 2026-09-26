@@ -338,8 +338,7 @@ func parseStatusDiffLine(line, sign string) (string, bool) {
 	if !strings.HasPrefix(rest, "status:") {
 		return "", false
 	}
-	value := strings.TrimSpace(strings.TrimPrefix(rest, "status:"))
-	return value, true
+	return NormalizeStatusValue(strings.TrimPrefix(rest, "status:")), true
 }
 
 // hasOwnershipSkipOptOut는 SPEC frontmatter의 `lint.skip:` 목록에

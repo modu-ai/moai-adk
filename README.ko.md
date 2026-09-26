@@ -77,7 +77,7 @@ moai cc -f worker-3           # 워커 하나, 번호를 직접 지정
 moai glm -f worker            # …GLM 백엔드로 띄운 워커 하나
 ```
 
-워커는 `-f worker`(다음 빈 번호로 자동 합류) 또는 `-f worker-<n>`(정확히 그 번호)로 하나씩 늘린다. 두 형태 모두 워커 이름을 이미 정하므로 `--name`/`-n`을 함께 주면 에러다. `-f worker-<n>`으로 직접 고른 번호가 살아 있는 레거시 워커(`agent-<n>`/`lane-<n>`)와 겹치면 이름을 대며 거부되고, `-f worker`의 자동 배정은 거부되지 않되 건너뛴 레거시 번호를 이름 붙여 알려 준다. 번호는 살아 있는 세션이 쥔 것만 건너뛴다 — 죽은 워커의 claim은 더 이상 그 번호를 막지 않지만(직접 고른 번호는 바로 재사용 가능), `-f worker` 자동 배정은 항상 최고 번호+1만 받으므로 중간 빈 번호를 채우지는 않는다. 워커 소유권은 `~/.moai/db/<project-key>/factory/factory.db`에 기록한다. 기점 디렉터리가 임시 디렉터리면(절대 `MOAI_HOME` 오버라이드 없음) 프로젝트 로컬 `<base>/.moai/db/<project-key>/factory/` 아래에 기록한다 — 백로그 큐와 같은 예외다. 기존 `.moai/state/factory/workers.json`은 한 번만 가져오고 롤백 증거로만 남긴다. 워커 하나가 동시에 돌리는 `Agent()` 서브에이전트는 최대 10개이고, 쓰기를 맡는 스폰은 각자의 워크트리로 격리한다. 워커를 한꺼번에 켜지 말고 첫 워커를 먼저 올려 실제로 출력이 나오는 것을 확인한 뒤 나머지를 띄운다. 카드는 워커에 쪼개어 넣지 않는다. `-k`는 그대로 세 역할짜리 칸반 체인을 돌린다. 한 번의 실행에 진입 토큰은 하나뿐이라 `-k`와 `-f`를 함께 쓰면 에러다. CG는 폐기되었다. `moai migrate cg`로 이전 선택지를 먼저 확인한다.
+워커는 `-f worker`(다음 빈 번호로 자동 합류) 또는 `-f worker-<n>`(정확히 그 번호)로 하나씩 늘린다. 두 형태 모두 워커 이름을 이미 정하므로 `--name`/`-n`을 함께 주면 에러다. `-f worker-<n>`으로 직접 고른 번호가 살아 있는 레거시 워커(`agent-<n>`/`lane-<n>`)와 겹치면 이름을 대며 거부되고, `-f worker`의 자동 배정은 거부되지 않되 건너뛴 레거시 번호를 이름 붙여 알려 준다. 번호는 살아 있는 세션이 쥔 것만 건너뛴다 — 죽은 워커의 claim은 더 이상 그 번호를 막지 않지만(직접 고른 번호는 바로 재사용 가능), `-f worker` 자동 배정은 항상 최고 번호+1만 받으므로 중간 빈 번호를 채우지는 않는다. 워커 소유권은 `~/.moai/db/<project-key>/factory/factory.db`에 기록한다. 기점 디렉터리가 임시 디렉터리면(절대 `MOAI_HOME` 오버라이드 없음) 프로젝트 로컬 `<base>/.moai/db/<project-key>/factory/` 아래에 기록한다 — 백로그 큐와 같은 예외다. 기존 `.moai/state/factory/workers.json`은 한 번만 가져오고 롤백 증거로만 남긴다. 워커 하나가 동시에 돌리는 `Agent()` 서브에이전트는 최대 10개이고, 쓰기를 맡는 스폰은 각자의 워크트리로 격리한다. 워커를 한꺼번에 켜지 말고 첫 워커를 먼저 올려 실제로 출력이 나오는 것을 확인한 뒤 나머지를 띄운다. 카드는 워커에 쪼개어 넣지 않는다. `-k`는 그대로 세 역할짜리 칸반 체인을 돌린다. 한 번의 실행에 진입 토큰은 하나뿐이라 `-k`와 `-f`를 함께 쓰면 에러다. CG는 폐기되었다. `moai migrate cg`로 이전 선택지를 먼저 확인한다. 팩토리 런은 이제 자기를 소유한 세션의 프로세스 신원을 기록한다. 리드가 죽은 런은 다음 워커가 합류하는 시점에 자동으로 회수되므로 합류가 `AMBIGUOUS_FACTORY`에서 막히지 않는다. `moai factory runs`는 모든 런을 소유자 생존 여부와 함께 보여주고, `moai factory runs --retire <run-id>`는 지목한 런 하나를 손으로 회수한다. 소유자가 실제로 죽지 않았으면 거절한다.
 
 > 자세히: [칸반 모드 — 팩토리 모드](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
 
@@ -349,14 +349,14 @@ claude        # 또는 moai cc — 프로젝트 안에서 Claude Code 실행
 
 ### MCP 서버
 
-`moai init`은 기본으로 **정확히 하나**의 활성 MCP 엔트리를 깐다 — 자체 `moai mcp-server`(로컬 stdio 서버)다. 이 서버가 여섯 그룹으로 묶인 21개 MoAI 도구를 Claude Code에 노출한다. 문서에 기록되었지만 비활성인 네 엔트리(`context7`, `chrome-devtools`, `playwright`, `ast-grep`)는 `moai mcp add <이름>`으로 켠다. `moai mcp add|remove|list` CLI가 atomic-RWM seam으로 엔트리를 관리하므로, 사용자가 `.mcp.json`을 직접 손편집할 일은 없다.
+`moai init`은 기본으로 **정확히 하나**의 활성 MCP 엔트리를 깐다 — 자체 `moai mcp-server`(로컬 stdio 서버)다. 이 서버가 MoAI 도구들을 Claude Code에 노출한다. 아래 표는 주요 그룹만 싣는다 — 전체 목록은 [MCP 서버 가이드](https://adk.mo.ai.kr/ko/guides/mcp-server)에 있고, 도구 수와 목록의 기준은 설치된 바이너리가 `tools/list`로 돌려주는 목록이다. 문서에 기록되었지만 비활성인 네 엔트리(`context7`, `chrome-devtools`, `playwright`, `ast-grep`)는 `moai mcp add <이름>`으로 켠다. `moai mcp add|remove|list` CLI가 atomic-RWM seam으로 엔트리를 관리하므로, 사용자가 `.mcp.json`을 직접 손편집할 일은 없다.
 
 | 그룹 | 도구 | 목적 |
 |------|------|------|
 | SPEC 라이프사이클 | `spec_progress`, `spec_audit`, `spec_drift` | 시대 분류 + 드리프트 감지 |
 | 검증 | `verify_snapshot`, `verify_trend` | 키별 증거 스냅샷 |
 | 골 + 세션 | `goal_arm`, `goal_status`, `session_list` | 자율 루프 + 다중 세션 조율 |
-| 교차 모델 감사 | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | 다중 감사자 수렴 |
+| 교차 모델 감사 | `audit_multi`, `claude_audit`, `codex_audit`, `glm_audit`, `audit_cache` | 다중 감사자 수렴 |
 | codex 위임 | `codex_task`, `codex_setup`, `codex_job_*` | 백그라운드 교차 모델 작업 |
 | GLM 위임 | `glm_task`, `glm_job_status`, `glm_job_result`, `glm_job_cancel` | GLM(z.ai) 백그라운드 작업 위임 |
 

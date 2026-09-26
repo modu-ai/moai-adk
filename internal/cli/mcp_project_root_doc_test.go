@@ -29,6 +29,55 @@ var projectRootDocFiles = []string{
 	"../../internal/template/templates/.claude/rules/moai/core/moai-mcp-tools.md",
 }
 
+// The docs site repeats the project_root tool inventory in four languages.
+// Keep each list tied to tools/list rather than a hand-maintained count.
+var docsSiteProjectRootLine = regexp.MustCompile(`(?m)^## [^\n]*project_root[^\n]*\n\n([^\n]+)`)
+
+func TestDocsSiteProjectRootMatchesServer(t *testing.T) {
+	declared := toolsDeclaringProjectRoot(t)
+	locales := map[string]string{
+		"en": "Thirteen tools",
+		"ko": "13개 도구",
+		"ja": "13個のツール",
+		"zh": "13 个工具",
+	}
+	for locale, countPhrase := range locales {
+		t.Run(locale, func(t *testing.T) {
+			path := "../../docs-site/content/" + locale + "/guides/mcp-server.md"
+			body, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			match := docsSiteProjectRootLine.FindStringSubmatch(string(body))
+			if match == nil {
+				t.Fatal("project_root opening paragraph missing")
+			}
+			line := match[1]
+			if !strings.Contains(line, countPhrase) {
+				t.Errorf("count phrase %q missing from %s", countPhrase, line)
+			}
+			_, list, found := strings.Cut(line, ":")
+			if !found {
+				_, list, found = strings.Cut(line, "：")
+			}
+			if !found {
+				t.Fatal("tool list separator missing")
+			}
+			list = strings.SplitN(list, ".", 2)[0]
+			list = strings.SplitN(list, "。", 2)[0]
+			matches := projectRootDocToolName.FindAllStringSubmatch(list, -1)
+			var named []string
+			for _, match := range matches {
+				named = append(named, match[1])
+			}
+			sort.Strings(named)
+			if strings.Join(named, ",") != strings.Join(declared, ",") {
+				t.Errorf("docs list %v; tools/list declares %v", named, declared)
+			}
+		})
+	}
+}
+
 // projectRootDocSentence captures the enumerating sentence and its count word.
 var projectRootDocSentence = regexp.MustCompile(
 	`(?m)^(\w+) tools accept an optional ` + "`project_root`" + ` string:((?s).*?)\. It names the tree`)

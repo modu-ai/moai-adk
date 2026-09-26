@@ -17,9 +17,14 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -84,9 +89,12 @@ provision the entry (M4).`,
 }
 
 // runMCPServer builds the moai MCP server and serves it over stdio (blocking,
-// until the stdio stream closes). REQ-MCP-001. ServeStdio owns its context
-// internally (derived from os signals); there is no ctx to thread here.
+// until the stdio stream closes). REQ-MCP-001.
 func runMCPServer() error {
+	return runMCPServerWithIO(os.Stdin, os.Stdout)
+}
+
+func runMCPServerWithIO(stdin io.Reader, stdout io.Writer) error {
 	projectDir := resolveProjectDir()
 	admissionLock, lockErr := homestate.AcquireAdmissionLock(projectDir)
 	if lockErr != nil {
@@ -107,9 +115,48 @@ func runMCPServer() error {
 		return fmt.Errorf("register MCP runtime before serving: %w", err)
 	}
 	s := newMoaiMCPServer()
-	// ServeStdio blocks until the stdin stream closes; the goal.go blocking-RunE
-	// pattern. opts remain extensible (error logger, etc.) without API churn.
-	return server.ServeStdio(s)
+	defer stopCodexBackgroundJobs()
+	// ServeStdio waits for in-flight tool workers on EOF before cancelling its
+	// internal context. A worker stalled in an app-server handshake would keep
+	// that wait (and our shutdown cleanup) blocked. Cancel on EOF before waiting.
+	signalCtx, stopSignals := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stopSignals()
+	ctx, cancel := context.WithCancel(signalCtx)
+	defer cancel()
+	reader := &mcpEOFReader{Reader: stdin, cancel: cancel}
+	err := server.NewStdioServer(s).Listen(ctx, reader, stdout)
+	if reader.eof.Load() && errors.Is(err, context.Canceled) {
+		return nil // EOF is normal MCP shutdown, not a command failure.
+	}
+	return err
+}
+
+// mcpEOFReader forwards every byte unchanged and ends the request context when
+// the host closes stdin, including while a tool handler is still running.
+type mcpEOFReader struct {
+	io.Reader
+	cancel     context.CancelFunc
+	eof        atomic.Bool
+	pendingEOF atomic.Bool
+}
+
+func (r *mcpEOFReader) Read(p []byte) (int, error) {
+	if r.pendingEOF.Swap(false) {
+		r.eof.Store(true)
+		r.cancel()
+		return 0, io.EOF
+	}
+	n, err := r.Reader.Read(p)
+	if err == io.EOF {
+		if n > 0 {
+			// Process the final bytes before ending an in-flight tool request.
+			r.pendingEOF.Store(true)
+			return n, nil
+		}
+		r.eof.Store(true)
+		r.cancel()
+	}
+	return n, err
 }
 
 // newMoaiMCPServer constructs the MCP server instance, advertises the moai
@@ -366,6 +413,15 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithString(codexJobIDArg, mcp.Required(), mcp.Description("The job id returned by a background codex_task.")),
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleCodexJobCancel)
+
+	// --- Codex read-only role launcher (codex_role_audit start/status/result) ---
+	//
+	// The MCP route to the same launcher core as `moai codex audit`: a read-only
+	// contract role runs as one top-level read-only codex exec process in the
+	// background, so the host's tool timeout never cuts an audit short.
+	for _, rt := range codexRoleAuditTools() {
+		add(rt.tool.Name, rt.tool, rt.handler)
+	}
 
 	// --- GLM task delegation + job lifecycle ---
 	//

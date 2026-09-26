@@ -19,12 +19,13 @@ type ToolDef struct {
 	// console's per-tool enablement key is derived from
 	// (mcp.tools.<name>.enabled).
 	Name string
-	// WriteCapable is true for the eleven tools whose handler may mutate state
-	// (goal_arm, verify_snapshot, codex_task, codex_job_cancel, glm_task,
-	// glm_job_cancel, codex_audit, audit_multi, plus the session-messaging
-	// broker's three mutating tools at the catalog tail) and false for the
-	// nineteen read-only tools (including the three graph code-query
-	// additions, SPEC-V3R6-GRAPH-FRESHNESS-001 M5). The console renders this
+	// WriteCapable is true for the tools whose handler may mutate state
+	// (goal_arm, verify_snapshot, codex_task, codex_job_cancel,
+	// codex_role_audit, glm_task, glm_job_cancel, codex_audit, audit_multi,
+	// the session-messaging broker's three mutating tools, and the factory
+	// message family's three) and false for the read-only tools (including the
+	// graph code-query additions, SPEC-V3R6-GRAPH-FRESHNESS-001 M5). The exact
+	// split is pinned by internal/mcp TestMoaiMCPTools_WriteCapableSet. The console renders this
 	// distinction (REQ-C-3 / AC-C-003); M1 carries it so the declaration is
 	// complete.
 	//
@@ -66,6 +67,11 @@ var moaiMCPTools = []ToolDef{
 	{Name: "codex_job_status", WriteCapable: false},
 	{Name: "codex_job_result", WriteCapable: false},
 	{Name: "codex_job_cancel", WriteCapable: true},
+	// Codex read-only role launcher: start writes a verdict and a launch
+	// record under the caller's .moai/reports/; status and result only read.
+	{Name: "codex_role_audit", WriteCapable: true},
+	{Name: "codex_role_audit_status", WriteCapable: false},
+	{Name: "codex_role_audit_result", WriteCapable: false},
 	{Name: "glm_task", WriteCapable: true},
 	{Name: "glm_job_status", WriteCapable: false},
 	{Name: "glm_job_result", WriteCapable: false},

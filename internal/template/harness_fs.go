@@ -145,6 +145,14 @@ func (h *harnessFS) sharedSource(name string) (string, bool) {
 	return "", false
 }
 
+// NormalizeCodexRoleForDeploy returns the bytes the deployer writes for a
+// committed Codex role file (.codex/agents/**/*.toml): the same reference
+// normalization Open applies on that path. Callers comparing a deployed role
+// file against its committed source use it to compare like with like.
+func NormalizeCodexRoleForDeploy(data []byte) []byte {
+	return normalizeHarnessReferences(data)
+}
+
 func normalizeHarnessReferences(data []byte) []byte {
 	text := string(data)
 	text = strings.ReplaceAll(text, ".claude/skills/moai/workflows/", ".moai/workflows/")

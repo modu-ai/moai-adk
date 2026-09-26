@@ -90,6 +90,15 @@ type InitOptions struct {
 	Harness string // llm.harness axis; "gpt" suppresses claude-surface writes
 
 	MCPProvision bool // moai MCP server provisioning (default-on per SPEC-MCP-DEFAULT-ON-001)
+
+	// AfterTemplateDeploy, when non-nil, runs once immediately after a
+	// successful template deployment and BEFORE any section patch (report
+	// format, Page-3 wizard answers, workflow toggles) touches the deployed
+	// files. The CLI uses it to record the pure template render as the next
+	// update's merge BASE (card t1139); a snapshot taken after the patches
+	// records the wizard's answers as BASE and the next update resets them to
+	// the template default. Not called on the no-deployer fallback path.
+	AfterTemplateDeploy func(projectRoot string)
 }
 
 // InitResult summarizes the outcome of project initialization.
@@ -219,6 +228,9 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 			// dropping the result here would lose that notice.
 			i.logger.Error("template deployment failed", "error", err)
 			return result, fmt.Errorf("template deployment: %w", err)
+		}
+		if opts.AfterTemplateDeploy != nil {
+			opts.AfterTemplateDeploy(opts.ProjectRoot)
 		}
 	} else {
 		// Fallback: generate config files directly when no deployer is available

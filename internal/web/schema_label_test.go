@@ -23,7 +23,7 @@ func TestSchemaEmptyLabelParity(t *testing.T) {
 	// carry an empty option.
 	cases := map[string]string{
 		"model":            settings.EmptyLabelFor("model"),            // "(project default)"
-		"effort_level":     settings.EmptyLabelFor("effort_level"),     // "(runtime default)"
+		"effort_level":     settings.EmptyLabelFor("effort_level"),     // names the model-policy and Claude Code default fallbacks
 		"development_mode": settings.EmptyLabelFor("development_mode"), // "(project default)"
 	}
 	for field, label := range cases {
@@ -162,6 +162,28 @@ func TestEffortEmptyLabelNamesBothFallbacks(t *testing.T) {
 		for _, want := range []string{"model policy", "Claude Code default"} {
 			if !strings.Contains(label, want) {
 				t.Errorf("%s effort empty label %q does not name %q", surface, label, want)
+			}
+		}
+	}
+}
+
+// TestRuntimeDefaultI18nCarriesEffortFact is the console half of the
+// runtime-default drift guard (the wizard half is
+// TestEffortEmptyLabelCarriesRuntimeDefaultFact in internal/cli): every
+// locale's opt.runtime_default entry in i18n.js states the Claude Code default
+// effort and the model it applies to, taken from the settings constants.
+// i18n.js cannot import Go constants, so when the default model or effort
+// changes, the constant edit makes this test name every entry that still
+// carries the old fact.
+func TestRuntimeDefaultI18nCarriesEffortFact(t *testing.T) {
+	entries := regexp.MustCompile(`"opt\.runtime_default": "([^"]*)"`).FindAllStringSubmatch(readEmbeddedAsset(t, "i18n.js"), -1)
+	if len(entries) != 4 {
+		t.Fatalf("i18n.js carries %d opt.runtime_default entries, want 4 (en/ko/ja/zh)", len(entries))
+	}
+	for _, entry := range entries {
+		for _, want := range []string{settings.RuntimeDefaultEffort, settings.RuntimeDefaultEffortModel} {
+			if !strings.Contains(entry[1], want) {
+				t.Errorf("opt.runtime_default %q does not carry %q", entry[1], want)
 			}
 		}
 	}

@@ -171,6 +171,37 @@ plan_complete_at: 2026-09-23
 - **재발 방지.** 서브에이전트에 지시를 추가할 때는 ① spawn 프롬프트에 싣거나 ② 보내기 전에 종료하고 새로 띄우거나, 둘 중 하나만 한다. 그리고 후속 전송 전에 "이 에이전트가 대기 중인가"만이 아니라 **"지금 이 트리를 읽고 있는 다른 주체가 있는가"** 를 함께 묻는다 — 감사·리뷰·검증 패스가 열려 있으면 안전한 후속은 없다. spawn 이후 도착한 지시는 **다음 spawn 의 프롬프트**로 간다. 이후 이 카드의 모든 에이전트(`manager-spec` ×3, `plan-auditor` ×2)는 보고 직후 종료하고 그 이름으로 메시지를 보내지 않았다.
 - 당대 기록 정본: `.moai/reports/t1106/incident-audit-window-write.md`. 교훈은 레인 메모리의 기존 항목에 **3번째 발생**으로 갱신했다(신규 파일 아님) — 그 항목의 종전 "how to apply" 가 이 경우엔 틀린 답을 준다는 정정을 함께 실었다.
 
+### 개정 2 plan-phase (card t1108, 2026-09-23)
+
+plan_status: audit-ready
+plan_complete_at: 2026-09-23
+
+**Claim** — 0.2.0 개정이 run-phase 까지 develop 에 착지한 상태(sync 미완, `status: in-progress` 유지)에서 이 SPEC 을 0.3.0 으로 한 번 더 개정했다. 범위는 다음과 같다. REQ-AFG-007 문언 개정(실제 hx-boost 스왑 + `htmx:afterSettle` 이벤트 대기, 개정 전 문언은 조문 안에 보존), REQ-AFG-016 신설(스왑 자기확인 네 다리), AC-AFG-014·015·016 신설, AC-AFG-001 (c)·AC-AFG-006·AC-AFG-013 문언 보강, §B.1·§B.2 해석의 날짜 붙은 사후 정정이다. 스왑 항목 id 는 `swap_todo_nav` → `swap_boosted_tab` 로 바꾼다. REQ 16건·AC 16건으로, Tier M 상한과 같다.
+
+**Evidence** — 전부 이 트리(`.claude/worktrees/t1108`, branch `WT-popover-swap-flake`, HEAD `52a486635`, tree `895ad8954`)에서 2026-09-23 측정했다. 4요소 원문은 acceptance.md §B2.2 장부 E11~E16 에 있다:
+
+- `go test ./internal/web/ -run 'AppJsFirePostSwapSettleWait' -v -count=1` → `ok … 0.564s [no tests to run]`, exit `0` (E11)
+- `go test ./internal/web/ -run 'AppJsFireSwapPremise' -v -count=1` → `ok … 0.353s [no tests to run]`, exit `0` (E12)
+- `go test ./internal/web/ -list 'AppJsHandlersFire'` → 2개(`TestAppJsHandlersFireRuntime`, `TestAppJsHandlersFireSelectorMiss`), exit `0` (E13)
+- `go test ./internal/web/ -list 'AppJs.*Fire'` → 8개, 제출 계열 2개 포함, exit `0` (E14)
+- `grep -n 'htmx:afterSettle' internal/web/testdata/appjs_fire_probe.py` → `544:` 주석 1행, exit `0` (E15)
+- `grep -n "run 'AppJsHandlersFire'" .github/workflows/ci.yml` → `672:`, exit `0`; `grep -c -- '--primary-entries-only' .github/workflows/ci.yml` → `3` (E16)
+- `python3 internal/web/testdata/appjs_fire_probe.py --lint-manifest` → `LINT OK: 9 entries + 7 exclusions cover 13 inventory groups; …; post-swap entry present`, exit `0` (spec.md §B.7.6)
+- 원인 측정은 판정서 `.moai/reports/t1108/verdict.md`(tree `0c70186fd`)와 드라이버 표면 측정 `.moai/reports/t1108/logs/gate-inprocess.log`(HEAD `52a486635`)를 **읽어서** 인용했고, 이 plan-phase 에서 다시 돌리지 않았다
+
+**Baseline-attribution** — 위 명령은 전부 이 실행에서 이 트리를 대상으로 쟀다. 판정서 §2~§4 의 측정은 다른 트리(`0c70186fd`)에서 저장소 밖 스크래치 스크립트로 한 것이므로, 이 SPEC 은 그 수치를 판정서의 관측으로만 인용하고 이 트리의 측정으로 옮겨 적지 않았다. 판정서의 탐침 줄 번호는 t1106 병합 전 좌표라서, 이 트리에서 다시 읽은 좌표(`:531-551`·`:768`·`:789`)로 바꿔 썼다.
+
+**Gaps** — (1) 실제 boost 스왑 경로에서 URL 폴링판의 실패율은 측정되지 않았다. AC-014 는 리드 결정(B1)의 고정 순서를 따른다. 먼저 CPU 스로틀 12배 **단독**으로 재고, 거기서 돌연변이 판이 적색이면 그것으로 판정한다. 적색이 아닐 때에만 settle 지연 증폭을 **두 판에 똑같이** 걸되, 증폭이 먹혔다는 관측(`htmx:afterSettle` 까지의 시간 증가)이 함께 있어야 하고, 같은 조건에서 정상 판 10/10 발화·돌연변이 판 10/10 적색을 보여야 한다. 판정서에는 증폭 적용 여부와 값을 기록한다. 증폭을 써도 적색이 아니면 blocker 로 되돌린다. (2) REQ-AFG-016 (d)(스왑이 트리거를 새로 만든다)는 **추론**이다. (3) 개정 2 plan-audit 은 아직 실행되지 않았다. (4) 리드 배차문이 `?tab=` 근거로 댄 `app.go:287`·`screens.go:50` 은 `profile` 을 읽는 줄이었다. `tab` 은 `handlers.go:263` 에서 읽으며, spec.md §B.7.5 에 정정해 적었다.
+
+**Residual-risk** — 스왑 창 `p5_swap_referenceerrors` 의 의미가 로드 시점 예외에서 스왑 중 예외로 바뀐다(plan.md §F). 선택 집합이 넓어져 CI `-timeout 10m` 을 넘을 수 있다. 이 상한 조정은 이 카드 범위 안이다(리드 결정 B3). AC-016 이 병합 트리에서 같은 10분 상한으로 먼저 재고, 넘을 때에만 그린 단계 한 줄(`ci.yml:672`)의 `-timeout` 을 측정 소요 시간 + 여유로 올린다. 그때는 측정 명령과 소요 시간을 판정서와 커밋 메시지에 인용한다. 다른 단계의 상한은 건드리지 않는다.
+
+### 개정 2 plan-audit 이력 (card t1108)
+
+| iter | 판정 | 내용 |
+|---|---|---|
+| 1 | FAIL 0.84 (Tier M 역치 0.80) | 대상 `926dc8842`, 보고서 `.moai/reports/t1108/plan-audit.md`. 차단급 D1: REQ-AFG-016 다리 (c)(d) 를 적색으로 만드는 AC 가 없었다. 그 밖에 D2~D9 |
+| (수리) | — | D1: AC-AFG-015 에 다리별 역방향 고정물 5종((i) 정상 / (ii) 전체 이동 (a)(b)(c) 거짓 / (iii) 리스너 클릭 뒤 (c) 단독 / (iv) 표지 스왑 뒤 (d) 단독 / (v) 다리 단독 합성 보고서 4종, 무게이트 `TestAppJsFireSwapPremiseLegs`). D2: AC-014 돌연변이를 M1(`/settings` 경로 폴링)·M2(대기 제거)로 정의하고, 만료 대기 적색을 (d) 로 추가. D3: 분기 술어 10/10 고정, 증폭 효과 관측 필수화. D4: job `timeout-minutes: 20` 초과 시 blocker. D5: 한계로 기록. D6·D7: REQ-AFG-007 (3) exit 1·지목 대상, 형식 표기. D8: `app.go:288`. D9: AC-016 매핑. REQ·AC 신설 0건. E17(`go test ./internal/web/ -run 'AppJsFireSwapPremiseLegs' -v -count=1` → `[no tests to run]`, exit 0, 트리 `926dc8842`)을 장부에 추가 |
+
 ## §E.2 Run-phase Evidence
 
 run-phase 측정 전체는 worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1060`, branch `WT-appjs-handler-guard` 위에서 2026-09-22 이번 run 실행 중 수행됐다(각 측정 시점 HEAD는 항목별로 병기). 바이너리는 이 트리에서 빌드해 경로로 호출했다(`go build -o /tmp/t1060-run/moai ./cmd/moai` — §2.2 도구 출처).
@@ -387,6 +418,126 @@ job 설계 비고: `test-browser` 는 EOF 에 덧붙는 유일한 판정면이�
 
 **두 서면을 섞지 않는 방식:** 제출 계열(AC-010·011)과 실루트 계열(AC-001)은 **서로 다른 실행**이고, 어느 쪽 초록도 상대의 집합을 대신 주장하지 않는다. 실루트 실행은 축소를 적극 선언하고 운전 8건·제외 1건을 보고서에 남긴다(M7-11). 선언 없는 부재는 exit 2 다(M7-12).
 
+### M8 — 탐침: 실제 boost 스왑 + afterSettle 대기 + 스왑 자기확인 (card t1108, base `894b7b0a5` 위 M8 커밋)
+
+개정 2 run 은 worktree `.claude/worktrees/t1108`, branch `WT-popover-swap-flake` 에서 2026-09-23 에 수행됐다. 위 기록(M1~M7)은 고치지 않았다. 바꾼 파일은 `internal/web/testdata/appjs_fire_probe.py` 하나다(드라이버·`ci.yml`·SPEC 본문 불변).
+
+변경 요지: 스왑 항목 `swap_todo_nav` → `swap_boosted_tab`(`page: "/settings"`, 선택자 `#settings-form a[href="/settings?tab=audit"]`). 5단계는 **한 번의 평가 안에서** 문서 표지(`window.__fireSwap`)·`htmx:afterSwap`/`htmx:afterSettle` 리스너·옛 트리거 표지(`data-fire-old-trigger`)를 심은 뒤 클릭한다. 대기는 그 리스너가 푸는 promise 를 `awaitPromise` 로 기다리는 `wait_after_settle`(상한 `SETTLE_WAIT_BOUND_MS = 8000`, 만료 시 `"expired"` 반환 — `poll` 을 쓰지 않는다). `location.pathname` 폴링은 제거했다. 다리 (a)는 클릭 시점, (b)(c)(d)는 6단계 행사 직전에 읽어 `p5_swap_premise` 에 다리별로 싣는다. `p6_popover_after_swap_fired` 는 패널 전환(`p6_panel_flip_observed`) **그리고** settle 관측 **그리고** 거짓 다리 0 일 때만 참이다. 판정: 거짓 다리 → 스왑 항목 `swap premise not met: <다리>`; settle 만료 → `popover_after_swap` 「afterSettle wait expired」. `popover_after_swap` 의 selector-matched-nothing 판정 줄(패널 기준)은 바이트 불변(`git diff -U0` 에 그 줄 0건).
+
+| # | 측정 | 명령 | 관측 결과 | exit |
+|---|---|---|---|---|
+| M8-1 | 문법 | `python3 -m py_compile internal/web/testdata/appjs_fire_probe.py` | 출력 없음 | 0 |
+| M8-2 | 매니페스트 자기검증 | `python3 internal/web/testdata/appjs_fire_probe.py --lint-manifest` | `LINT OK: 9 entries + 7 exclusions cover 13 inventory groups; … post-swap entry present` — `INVENTORY_TOTAL` 불변(13) | 0 |
+| M8-3 | 옛 id·옛 선택자 잔존 | `git grep -n -e 'swap_todo_nav' -e 'a\[href="/todo"\]' -- internal/ .github/` | 출력 없음 | 1 (0행) |
+| M8-4 | 비게이트 무회귀 | `go test ./internal/web/ -run 'AppJs' -count=1 -v` | PASS 9건(`FireSandboxRouting`·`FireManifestInventoryCount`·`FireReductionDeclaration`·`FireSandboxPairing`(+하위 3) 등), SKIP 4건(`HandlersFireRuntime`·`HandlersFireSelectorMiss`·`FireValidationRejectPaints`·`FireValidationRejectNoWrites` — 게이트 미설정), `ok … 2.748s` | 0 |
+| M8-5 | 게이트 전체 사이클 | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJs.*Fire' -count=1 -timeout 8m -v` | 8건 전부 PASS, `ok … 148.057s`. 런타임 보고서: `p5_settle_wait: "observed"`, `p5_url_after_swap: "/settings?tab=audit"`, `p5_swap_premise` 네 다리 모두 `true`, `p6_popover_after_swap_fired: true`, `failures: []`, `"exit": 0` | 0 |
+| M8-6 | 역방향 스모크 ① 전체 이동(`a[href="/todo"]` 1회용 사본, 임시 게이트 테스트 — 실행 후 삭제) | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'TestT1108M8Smoke' -count=1 -timeout 5m -v` | exit 1(기계결함 exit 2 아님). 거짓 다리 `a_boost_ancestor, b_same_document, c_swap_events`, `d_swap_inserted_trigger: true`. `p5_settle_wait: "document replaced"`. 패널은 전환됐으나(`p6_panel_flip_observed: true`) `p6_popover_after_swap_fired: false` | 1 (적색 관측) |
+| M8-7 | 역방향 스모크 ② 만료 강제(상한 1ms 사본, 같은 실행) | 같은 명령 | exit 1. `popover_after_swap` 사유 `afterSettle wait expired`, 스왑 항목 `swap premise not met: c_swap_events, d_swap_inserted_trigger`(스왑 응답 전에 읽음 — 옛 트리거가 살아 있음을 (d)가 잡음) | 1 (적색 관측) |
+
+**M9 로 넘기는 것:** 스로틀 12배 반복·M1/M2 돌연변이(AC-AFG-014), 다리별 역방향 고정물 네 판·합성 보고서(AC-AFG-015), 드라이버 (c) 단언의 다리 결속(AC-AFG-001 (c)). M8-6·M8-7 은 적색 방향이 exit 2 로 새지 않는지만 본 선행 스모크이며 AC 판정 근거가 아니다.
+
+### M9 — 드라이버: 스로틀 반복 + 돌연변이 판 + 자기확인 양방향 (card t1108, base `d102a9b2d` 위 M9 커밋)
+
+같은 worktree·branch 에서 2026-09-23 에 수행했다. `ci.yml` 은 건드리지 않았다(M10 몫). 바꾼 파일은 셋이다.
+
+- `internal/web/appjs_fire_swap_test.go`(신설) — `TestAppJsFirePostSwapSettleWait`·`TestAppJsFireSwapPremise`·`TestAppJsFireSwapPremiseLegs`. 고정물은 전부 커밋된 탐침의 일회용 사본이고 `t.TempDir()` 아래에만 쓴다. 사본은 정확한 앵커 치환으로 만들며, 앵커가 0회나 2회 이상이면 실행 전에 실패한다(아무것도 바꾸지 못한 고정물이 결과로 읽히지 않게).
+- `internal/web/appjs_fire_guard_test.go` — 보고서 구조체에 스왑 필드를 더하고, `TestAppJsHandlersFireRuntime` 의 (c) 단언에 네 다리를 묶었다(`fireSwapPremiseProblems`: 다리 부재·거짓·거짓 다리 목록 비어 있지 않음·settle 미관측 중 하나라도 있으면 적색).
+- `internal/web/testdata/appjs_fire_probe.py` — 옵션 셋(`--cpu-throttle`: 탐침 탭에 `Emulation.setCPUThrottlingRate`, 탭을 닫으면 끝난다 / `--settle-delay-ms`: `htmx.config.defaultSettleDelay` 설정 후 값을 페이지에서 되읽어 보고 / `--judge-report <file>`: 보고서 JSON 을 읽어 판정만 한다), 클릭→`htmx:afterSettle` 시간(`p5_settle_elapsed_ms`, 페이지 시계), 다리 규칙을 헬퍼 둘(`premise_false_legs`·`post_swap_fired`)로 빼서 라이브 실행과 `--judge-report` 가 **같은 규칙**을 쓰게 했다. `SETTLE_WAIT_BOUND_MS = 8000` 불변, `popover_after_swap` 의 selector-matched-nothing 판정 줄 불변(`git diff -U0` 에 0건).
+- **범위 인접 변경 1건 — 리드 확인 요청.** 기계결함 사전 점검의 요청 경로를 `"/"` → `"/settings"` 로 바꿨다(5초 상한 불변). 근거: 개발 실행 m9-settle-dev1 이 마지막 늦은 리스너 실행에서 `{"error": "primary server unreachable: timed out"}`(exit 2)로 떨어졌다. 같은 트리를 실바이너리로 서빙해 잰 값은 `/` 가 1.54~3.77초, `/settings` 가 0.03~0.08초(각 5회, load average 65)다. `/` 는 서빙 트리 전체를 모으는 개요 화면이라 부하 아래서 생존 확인이 부하 측정으로 변한다. 두 시나리오가 처음 싣는 쪽이 `/settings` 다. 되돌릴 경우 이 변경만 빼면 된다.
+
+**AC-AFG-014 — 측정 순서 1단계(스로틀 12배 단독)로 판정됐다. 증폭은 적용하지 않았다(미적용).** M1·M2 가 각각 10/10 적색이었으므로 2단계로 가지 않았다.
+
+| 판 | 조건 | 발화(exit 0 + 스왑 뒤 발화 + 네 다리 참 + settle 관측) | 적색(exit 1 + 스왑 뒤 비발화) | 그 밖 | 클릭→afterSettle 중앙값 |
+|---|---|---|---|---|---|
+| 정상 | 스로틀 12배, 증폭 없음 | **10/10** | 0/10 | 0 | 511.9 ms (n=10, 474.9~545.0) |
+| M1 경로 폴링 | 같음 | 0/10 | **10/10** | 0 | 기록 없음(이벤트 전에 읽음) |
+| M2 대기 제거 | 같음 | 0/10 | **10/10** | 0 | 기록 없음 |
+
+적색 사유 분포:
+
+| 판 | 사유(보고서 원문, 항목: 사유) | 횟수 |
+|---|---|---|
+| M1 | `popover_after_swap: not judged as fired: swap premise not met (c_swap_events, d_swap_inserted_trigger)` + `swap_boosted_tab: swap premise not met: c_swap_events, d_swap_inserted_trigger` | 10 |
+| M2 | 위와 같음 (c·d 거짓 — 스왑 응답 전에 옛 트리거를 읽음) | 9 |
+| M2 | `popover_after_swap: not judged as fired: swap premise not met (c_swap_events)` + `swap_boosted_tab: swap premise not met: c_swap_events` (d 참 — 바디는 이미 교체됐으나 afterSettle 전) | 1 |
+
+M2 의 c 단독 1회는 대기의 필요성이 「옛 트리거가 살아 있다」만이 아님을 보인다 — 새 트리거가 들어온 뒤에도 settle 전이면 재결합이 아직이다. 두 돌연변이 모두 `indicator did not fire` 경로로는 적색이 나지 않았고, 전부 자기확인 다리로 적색이 났다.
+
+AC-AFG-014 (d) 만료 대기(늦은 리스너 사본, 스로틀 12배): `exit 1`, `mutant_swap_confirmed_by_dom: true`, `p5_settle_wait: "expired"`, `p5_settle_wait_detail: "htmx:afterSettle not observed within 8000 ms"`, `p6_popover_after_swap_fired: false`, 사유 `popover_after_swap: afterSettle wait expired` + `swap_boosted_tab: swap premise not met: c_swap_events`.
+
+**AC-AFG-015** (`TestAppJsFireSwapPremise`, 스로틀 없음):
+
+| 판 | exit | 네 다리 (a/b/c/d) | 거짓 다리 목록 | settle | 스왑 뒤 발화 |
+|---|---|---|---|---|---|
+| (i) 커밋된 탐침 | 0 | 참/참/참/참 | `[]` | observed | true |
+| (ii) `a[href="/todo"]` 사본 | 1 | 거짓/거짓/거짓/참 | `[a_boost_ancestor b_same_document c_swap_events]` | document replaced | false |
+| (iii) 늦은 리스너(DOM 조건으로 스왑 확인 + 2초 고정 대기 뒤 부착) | 1 | 참/참/거짓/참 | `[c_swap_events]` | expired | false |
+| (iv) 옛 트리거 표지를 스왑 뒤 노드에 | 1 | 참/참/참/거짓 | `[d_swap_inserted_trigger]` | observed | false |
+
+(v) `TestAppJsFireSwapPremiseLegs`(무게이트): 전부 참인 대조 보고서 exit 0, 한 다리만 거짓인 합성 보고서 넷은 각각 exit 1 이고 그 다리만 지목한다(하위 테스트 4건 PASS). 규칙 역방향 확인: 스크래치 사본에서 `premise_false_legs` 가 `c_swap_events` 를 무시하게 고친 판은 c 단독 거짓 보고서에 **exit 0** 을 냈다(커밋된 판은 exit 1) — `c_swap_events` 하위 테스트가 그 돌연변이를 적색으로 잡는다.
+
+**AC-AFG-002 0→1→0 재측정(개정 2 매니페스트, 실바이너리 `moai web`, ci.yml 레드 단계와 같은 순서):** `PRE exit=0` → `MUTATED removed@727 inserted@552` (`MUTATE exit=0`) → `POST-MUTATE exit=1` → `RESTORED_BYTE_IDENTICAL (cmp exit 0)` → `POST-RESTORE exit=0`. 적색 보고서의 `stampRefreshed` 등장 4회(레드 단계 grep 은 계속 걸린다). 옛 관측(M3-4)과의 대조:
+
+| 지표 | M3-4 (개정 전, 전체 이동) | M9 (개정 2, 실제 boost 스왑) |
+|---|---|---|
+| 무너진 지표 | `glm_reveal`·`copy_button` | `glm_reveal`·`copy_button` — 같음 |
+| `p6_popover_after_swap_fired` | true | true — 같음 (자기확인 네 다리도 참, settle observed) |
+| ReferenceError 창 | load·swap (M3 기록 원문) | `p1_load` 1건 + `p7_load` 1건, **`p5_swap` 0건** |
+
+무너지는 쪽은 스왑 창이다. 전체 이동이던 개정 전에는 새 문서가 `app.js` 를 다시 실행해 로드 시점 예외가 스왑 창에 찍혔다. 실제 스왑에서는 그 창이 비고, 대신 `/specs` 재로드 창(p7)이 예외를 받는다. plan.md §F 「`p5_swap_referenceerrors` 창의 의미 변화」가 추론으로 적어 둔 것이 관측됐다.
+
+| # | 측정 | 명령 | 관측 결과 | exit |
+|---|---|---|---|---|
+| M9-1 | 게이트 전체 사이클(판정) | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJs.*Fire' -count=1 -timeout 20m -v` | 11건 전부 `--- PASS`, `--- SKIP` 0건, `ok … 752.411s`. `TestAppJsFirePostSwapSettleWait (516.01s)`, `TestAppJsFireSwapPremise (55.56s)`, `TestAppJsHandlersFireRuntime (24.44s)`. 측정 시점 load average 66 | 0 |
+| M9-2 | 무게이트 무회귀 | `go test ./internal/web/ -run 'AppJs' -count=1` | `ok … 4.683s` | 0 |
+| M9-3 | 정적 검사 | `go vet ./internal/web/` / `golangci-lint run ./internal/web/...` / `ruff check internal/web/testdata/appjs_fire_probe.py` | 출력 없음 / `0 issues.` / `All checks passed!` | 0/0/0 |
+| M9-4 | 매니페스트 자기검증 | `python3 internal/web/testdata/appjs_fire_probe.py --lint-manifest` | `LINT OK: 9 entries + 7 exclusions cover 13 inventory groups; …` | 0 |
+| M9-5 | AC-AFG-002 재측정 | 위 순서(로그 `.moai/reports/t1108/logs/m9-ac002.log`) | 0→1→0, 복원 byte 동일, 종료 뒤 `git status --short` 에 `app.js` 없음 | 0/1/0 |
+
+**M10 에 넘기는 수치:** 게이트 선택 집합의 벽시계는 **752.4초**로 CI 그린 단계의 `-timeout 10m`(600초)을 넘는다. 단 이 값은 load average 66 인 개발 기계의 값이다. 병합 트리에서 `-timeout 10m` 으로 먼저 재는 것은 M10.2 몫이다. 가장 큰 몫은 `TestAppJsFirePostSwapSettleWait`(516초, 탐침 31회)다.
+
+**개발 실행 기록(판정 근거 아님):** m9-settle-dev1 에서 1단계 결과는 같았다(정상 10/10, 중앙값 402.2 ms / M1·M2 각 10/10 적색, 사유 전부 c·d). 이 실행은 (d) 늦은 리스너 실행이 사전 점검 시간 초과(exit 2)로 FAIL 했고, 위 사전 점검 변경의 근거가 됐다. m9-premise-dev1 은 AC-AFG-015 네 판을 M9-1 과 같은 결과로 통과했다.
+
+### M10 — CI 선택자 확장 + 병합 트리 측정 (card t1108, base `d80132034`) — **BLOCKED (M10.3, 20분 job 상한 안에 안 들어감)**
+
+같은 worktree·branch 에서 2026-09-23 에 수행했다. **커밋하지 않았다.** 워킹 트리에는 M10.1 의 한 줄(`ci.yml:672` `-run 'AppJsHandlersFire'` → `-run 'AppJs.*Fire'`, `-timeout 10m` 그대로)만 미커밋으로 남아 있다.
+
+| # | 측정 | 명령 | 관측 결과 | exit |
+|---|---|---|---|---|
+| M10-1 | AC-016 (a)(b) | `grep -nF "run 'AppJs.*Fire'" .github/workflows/ci.yml` / `grep -c -- '--primary-entries-only' .github/workflows/ci.yml` | `672: … -run 'AppJs.*Fire' -v -count=1 -timeout 10m` / `3` | 0/0 |
+| M10-2 | AC-016 (c), CI 와 같은 상한 | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJs.*Fire' -v -count=1 -timeout 10m` (로그 `logs/m10-gated-10m.log`) | `panic: test timed out after 10m0s` / `running tests: TestAppJsFirePostSwapSettleWait (7m16s)` / `FAIL … 600.676s`. 앞선 5건 PASS(Runtime 20.12s·SelectorMiss 46.78s·SandboxRouting 1.29s·ValidationRejectPaints 42.96s·NoWrites 52.84s). 시작 load 45.7 | 1 |
+| M10-3 | B3 상한 상향 시험(15m) | 같은 명령 `-timeout 15m` (로그 `logs/m10-gated-raised.log`) | `panic: test timed out after 15m0s` / `running tests: TestAppJsFirePostSwapSettleWait (12m53s)` / `FAIL … 900.542s`. `--- SKIP` 0건. 시작 load 8.0, 종료 load 63.0 | 1 |
+| M10-4 | AC-006 | `git diff --numstat 3e35fbacf -- .github/workflows/ci.yml` / `git diff 3e35fbacf -- .github/workflows/ci.yml \| grep -c '^-[^-]'` / `grep -n -E '^  [a-z0-9-]+:'` 양쪽 | `187	0` / `0` / 기존 8개 job 키 행번호·순서 base 와 동일(44 detect … 544 constitution-check), 추가 `605: test-browser:` 뿐 | 0 |
+| M10-5 | 무게이트 | `go test ./internal/web/ -run 'AppJs' -count=1` | `ok … 2.661s` | 0 |
+| M10-6 | YAML | `python3 -c 'import yaml;…safe_load(open(".github/workflows/ci.yml"))'` / `actionlint .github/workflows/ci.yml` | `yaml ok; jobs: [… 8개 …, 'test-browser']` / 출력 없음 | 0/0 |
+
+**막힌 이유 — `TestAppJsFirePostSwapSettleWait` 의 소요 시간이 분기에 따라 두 배가 된다.** M10-3 에서 1단계 M1 이 `fired 2/10 | red 8/10` 로 10/10 적색을 채우지 못해, 설계대로(`appjs_fire_swap_test.go:280-292`) 2단계 증폭(`amplification=1000ms`)으로 넘어갔다. 1단계는 탐침 31회(M9: 516.01s), 2단계는 같은 세 판 30회를 더한다. 15분 판은 2단계 M2 도중에 끊겼다(로그의 탐침 줄 62 대 M9 45).
+
+적합 산술(측정값만 사용): M9 비율 516.01s / 31회 ≈ 16.6s/회 → 2단계 경로 ≈ 61회 ≈ 1015s, 나머지 테스트 752.4 − 516.0 ≈ 236s → 그린 단계 ≈ 1250s ≈ 20.8분. job 의 나머지(설정+Chrome+lint ≈ 21s, 레드 ≈ 27s ≈ 0.8분)를 더하면 ≈ 21.6분 > `timeout-minutes: 20`. CI 가 로컬보다 약 0.9배 빠르다고 가정해도(옛 그린 단계 CI 63s 대 로컬 67~73s) ≈ 1125s + 48s ≈ 19.6분으로 여유가 없다. 1단계만 도는 경로는 들어가지만(M9 752.4s), 어느 경로를 탈지는 M1 경합 결과에 달려 있어 상한을 그 경로에 맞출 수 없다. 리드 결정 B3·plan M10.3 에 따라 job 상한은 올리지 않고 멈춘다. 15m 상향은 되돌렸다.
+
+**미측정:** 2단계 경로의 완주 소요 시간(두 판 모두 상한에 끊김), CI 러너에서의 분포. 두 판 모두 부하 45~63 의 개발 기계 값이다.
+
+### M10 재개 — 개정 3(CI 는 2단계부터) 구현 + CI 모드 측정 (card t1108, 2026-09-24)
+
+리드 결정 (b) → SPEC 개정 3 `db240a026`. 구현: `internal/web/appjs_fire_swap_test.go` 에 스위치 `MOAI_BROWSER_GUARD_SETTLE_STAGE2`(정확히 `1` 일 때만 `ci-stage2`)와 무게이트 테스트 `TestAppJsFireSettleStartPath` 를 더했다. CI 경로는 증폭 없는 정상 판 10회(효과 기준선)만 남기고 증폭 없는 M1·M2 를 건너뛴 뒤 2단계(1000 ms)에서 판정한다. `ci.yml` 그린 단계에 스위치 env 한 행, `-run 'AppJs.*Fire'`, `-timeout 17m`.
+
+기록 주체: 구현 에이전트가 첫 CI 모드 측정 도중 사용량 한도(429)로 끊겨, 이후 측정·기록·커밋은 오케스트레이터가 직접 했다.
+
+| ID | 명령 (모두 `MOAI_BROWSER_GUARD=1 MOAI_BROWSER_GUARD_SETTLE_STAGE2=1 go test ./internal/web/ -run 'AppJs.*Fire' -v -count=1`) | 결과 | 시작→종료 load(1분) | exit |
+|---|---|---|---|---|
+| M10-7 | `-timeout 10m` (`logs/m10b-ci-10m.log`) | `panic: test timed out after 10m0s`, `TestAppJsFirePostSwapSettleWait (8m2s)`, `FAIL … 600.515s` | 57.75 → 13.01 | 1 |
+| M10-8 | 상한 미상(에이전트 판, `logs/m10b-ci-measure.log`) | `ok … 744.632s`, PASS 19 · SKIP 0 | 17.68 → 21.35 | 0 |
+| M10-9 | `-timeout 15m` (`logs/m10b-ci-15m.log`) | `ok … 818.927s`, PASS 19 · SKIP 0 — 상한까지 81 s 뿐이라 더 올림 | 6.70 → 13.59 | 0 |
+| M10-10 | `-timeout 17m` (`logs/m10b-ci-17m.log`, **판정 판**) | `ok … 766.926s`, PASS 19 · SKIP 0, `path=ci-stage2 … ="1" (set=true)` | 16.70 → 10.46 | 0 |
+
+M10-10 의 AC-AFG-014 (CI 2단계 경로): 정상 판 증폭 없음 `fired 10/10`(median 376.2 ms), 증폭 `fired 10/10`(median 1307.4 ms > 376.2), M1 `red 10/10`(사유 ×10 `c_swap_events, d_swap_inserted_trigger`), M2 `red 10/10`(같은 사유 ×10). (d) 만료 사본 단언 포함 테스트 PASS. AC-AFG-015 (iii) `false_legs=[c_swap_events] settle=expired`.
+
+여유(측정값): job 상한 1200 s − (그린 단계 최대 관측 818.9 s + 나머지 ≈ 48 s) = **333 s**; 판정 판 기준 1200 − (766.9 + 48) = 385 s. 테스트 상한 1020 s 대 최대 관측 818.9 s = 201 s(25 %). 상한이 끝까지 차도 1020 + 48 = 1068 s < 1200 s (132 s). 나머지 48 s 는 CI run 35822558948 job 107057337181 의 단계 시각(설정+Chrome+lint ≈ 21 s, 레드 ≈ 27 s).
+
+그 밖: `go vet ./internal/web/` 출력 없음 · `golangci-lint run ./internal/web/...` `0 issues.` · `go test ./internal/web/ -run 'AppJs' -count=1` `ok … 2.086s` · ruff `All checks passed!` · `gofmt -l internal/web/` 출력 없음 · YAML `safe_load` 성공(job 9개: 기존 8 + `test-browser`) · AC-006: `git diff --numstat 3e35fbacf -- .github/workflows/ci.yml` → `188	0`, 삭제 행 `0`, 기존 8개 job 키 행번호·순서 불변 · `--primary-entries-only` `3`.
+
+**Gap:** `actionlint .github/workflows/ci.yml` 는 워크트리 가드가 거부해 이번 트리에서 재지 못했다(직전 10m 판에서는 exit 0). 모든 측정은 부하가 걸린 개발 기계 값이며 CI 러너 소요는 리드 일괄 push 뒤 `test-browser` 로그로 확인한다(M10.5).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-09-22
@@ -435,6 +586,47 @@ carried_debt:
   - `exit 2` 를 Then 절로 재는 AC 없음 — M7-12/13 이 보고서 출력 층에서 교차 확인했으나 AC 층의 공백은 그대로다
   - D-Δ1(§A 서사의 AC-AFG-009 REQ 매핑 미공시), N2(REQ-AFG-010 job-coverage 절반) 미해소
 
+### 개정분 Run-phase Audit-Ready Signal (card t1108, 개정 3)
+
+run_complete_at: 2026-09-24
+run_commit_sha: 21bbfabfb
+run_base_sha: 894b7b0a5
+run_status: PASS
+ac_pass_count: AC-AFG-014(CI 2단계 경로) PASS — M10-10 판정 판에서 정상/M1/M2 세 판 전부 관측 출력으로 확인(§E.2 M10 재개 표); AC-AFG-015 (iii) `false_legs=[c_swap_events] settle=expired` PASS; AC-AFG-016 (a)(b)(c) 전부 PASS(M10-1/M10-2 계열 재측정 — 최종 판은 `-timeout 17m` `logs/m10b-ci-17m.log`)
+ac_fail_count: 0
+what_changed: M8 이 탐침을 실제 htmx boost 스왑 + `htmx:afterSettle` 대기로 바꿔 `popover_after_swap` 간헐 실패의 원인을 제거했다(구 탐침은 스왑을 전혀 수행하지 않고 고정 지연만 기다렸다). M9 가 스로틀 반복(12배)·M1/M2 돌연변이·다리별 역방향 판을 추가했다. M10 은 CI 선택자를 `AppJsHandlersFire` → `AppJs.*Fire` 로 넓히려다 `TestAppJsFirePostSwapSettleWait` 의 게이트 전체 사이클이 CI `-timeout 10m`/`20m` job 상한을 초과하는 것을 발견해 BLOCKED 로 멈췄고(M10.3), 리드 결정 (b) 로 SPEC 개정 3(`db240a026`)을 거쳐 CI 전용 스위치 `MOAI_BROWSER_GUARD_SETTLE_STAGE2`(정확히 `"1"` 일 때만 2단계부터 시작, `0d3c07d31`)를 신설한 뒤 `ci.yml` 그린 단계를 `-run 'AppJs.*Fire' -timeout 17m` + 스위치 env 로 갱신했다(`21bbfabfb`, 본 run_commit_sha)
+preserve_list_post_run_count: `internal/web/appjs_fire_swap_test.go` 신설(M8) + 스위치·신규 무게이트 테스트 추가(M10 재개) · `internal/web/testdata/appjs_fire_probe.py` boost 스왑 지원 확장(M8) · `.github/workflows/ci.yml` 그린 단계 3줄 변경(`-run` 패턴, 신규 env, `-timeout`)뿐 — 기존 8개 job 키의 행번호·순서는 base 대비 불변(M10-4/M10-6 재측정) · `internal/web/assets/app.js` 무변경(제품 소스 손대지 않음)
+new_warnings_or_lints_introduced: 0 — `go vet ./internal/web/` 출력 없음, `golangci-lint run ./internal/web/...` → `0 issues.`, `ruff check internal/web/testdata/appjs_fire_probe.py` → `All checks passed!` (M9-3); `python3 -c 'import yaml;…safe_load(...)'` 로 `ci.yml` 파싱 성공, `actionlint` 는 직전 10m 판에서 exit 0 확인(본 판은 워크트리 가드가 거부해 재측정 안 함 — Gap, §E.2 M10 재개 표 하단)
+cross_platform_build:
+  darwin: `go build ./...` 미재측정 이번 개정분에서는 별도 실행 안 함(§E.3 base 항목의 darwin exit 0 이 유효 — Go 소스 변경은 테스트 파일 1개뿐)
+  windows: 미측정 — syscall·build tag 없음(§E.3 base 판단과 동일), CI 매트릭스 판정은 push 뒤 CI 몫
+total_run_phase_files: 4 — `internal/web/appjs_fire_swap_test.go`(신설, M8+M9+M10 재개 누적), `internal/web/testdata/appjs_fire_probe.py`(boost 스왑 지원), `.github/workflows/ci.yml`(그린 단계 3줄), `.moai/specs/SPEC-APPJS-FIRE-GUARD-001/{spec,plan,progress}.md`(개정 3 서술 + M8~M10 기록)
+l44_pre_commit_fetch: 미실행 — 레인 규율상 이 워크트리는 push 하지 않으며, 커밋 직전 `git rev-parse --short HEAD` + `git branch --show-current` 재독만 수행했다
+l44_post_push_fetch: 해당 없음 — push 없음(리드 일괄)
+m1_to_mN_commit_strategy: 마일스톤당 1커밋 — `d102a9b2d`(M8) → `d80132034`(M9) → `fe16e8fa1`(M10 BLOCKED 기록) → `db240a026`(SPEC 개정 3) → `0d3c07d31`(개정 3 스위치 구현) → `21bbfabfb`(ci.yml 최종). 전 커밋 본문에 card t1108 명기. push·PR 없음(레인 규율 — 리드 일괄)
+status_transition: 없음 — `status: in-progress` 는 이미 설정돼 있었다. `implemented`/`completed` 로의 전진은 manager-docs(sync-phase) 소관이라 이 run에서는 건드리지 않았다
+unmeasured:
+  - `test-browser` CI job 의 러너 실측(개정 3 반영본) — push 뒤 CI 몫이며 여기서 돌리지 않았다
+  - windows/linux 크로스 빌드
+  - `actionlint .github/workflows/ci.yml` 최종본 재측정 — 워크트리 가드 거부(§E.2 M10 재개 Gap)
+  - 전체 스위트(`go test ./...`) — 로컬 금지(§4.1), 판정은 CI 몫
+carried_debt:
+  - 위 §E.3 base 섹션의 carried_debt(§C DoD N-5, exit-2-as-Then AC 부재, D-Δ1, N2)는 이 개정으로 해소되지 않았다 — 그대로 이월
+
+### 정정 (sync-audit F3, card t1108) — 원문 보존, 아래 덧붙임
+
+- 위 `total_run_phase_files: 4` 항목은 실제로 바뀐 파일 수와 어긋난다. `git diff --name-only 894b7b0a5 HEAD` 는 이 개정에서 9개 경로를 보인다: `.github/workflows/ci.yml`, `.moai/specs/SPEC-APPJS-FIRE-GUARD-001/{acceptance,plan,progress,spec}.md`, `CHANGELOG.md`, `internal/web/appjs_fire_guard_test.go`, `internal/web/appjs_fire_swap_test.go`, `internal/web/testdata/appjs_fire_probe.py`. 나열에서 빠진 것은 `internal/web/appjs_fire_guard_test.go`(M2 기존 파일, `d80132034`(M9)에서 재변경)와 `.moai/specs/SPEC-APPJS-FIRE-GUARD-001/acceptance.md`(`db240a026`, 개정 3 이 AC-AFG-014/015/016 을 추가)다.
+- `preserve_list_post_run_count` 의 「`internal/web/appjs_fire_swap_test.go` 신설(M8)」은 신설 시점이 틀렸다. `git log --diff-filter=A -- internal/web/appjs_fire_swap_test.go` → `d80132034`(M9). M8(`d102a9b2d`)은 이 파일을 아직 만들지 않았다.
+
+### 정정 (sync-audit F9, card t1108) — 위 F3 정정문 자체의 오류, 원문 보존·아래 덧붙임
+
+- 바로 위 F3 정정문의 괄호 안 「`db240a026`, 개정 3 이 AC-AFG-014/015/016 을 추가」는 틀렸다. AC-AFG-014/015/016 을 처음 넣은 것은 개정 2 커밋 `1e2c64057` 이다(`git log --oneline -S 'AC-AFG-014' -- .moai/specs/SPEC-APPJS-FIRE-GUARD-001/acceptance.md` 의 최고참 행이 `1e2c64057`이고, 이 커밋은 base `894b7b0a5`의 조상이다 — `git merge-base --is-ancestor` exit 0). `db240a026`이 `acceptance.md`에 실제로 한 일은 AC-AFG-014 에 로컬 B1 경로 / CI 2단계 경로 두 갈래 서술을 넣고 AC-AFG-016 세 번째 명령에 스위치를 붙인 것이며, 그 커밋의 diff 에는 `AC-AFG-014`/`015`/`016` 식별자 자체를 신설하는 줄이 없다. 인용한 SHA 가 `acceptance.md`를 건드린다는 점은 맞았지만, 건드린 내용의 서술이 틀렸다.
+- `total_run_phase_files` 의 run-phase 기준 파일 수는 **8**이다(`CHANGELOG.md`는 sync 커밋 `28f691617`에서만 바뀐 sync-phase 파일이라 run-phase 기준에서 제외).
+
+### 정정 (sync-audit F12, card t1108) — 위 §E.3 개정분 `what_changed` 필드의 오류, 원문 보존·아래 덧붙임
+
+- 위 `what_changed` 필드의 「구 탐침은 스왑을 전혀 수행하지 않고 고정 지연만 기다렸다」는 부정확하다. 실제로 구 탐침은 `a[href="/todo"]`(boost 조상 없는 전체 페이지 네비게이션)를 클릭한 뒤 `location.pathname`을 `timeout=8.0`으로 폴링했다 — 고정 지연 대기가 아니라 URL 변화를 조건으로 한 폴링이었다(CHANGELOG.md 의 같은 부정확함은 F2 ①로 이미 정정됨; 근거: `git show d102a9b2d -- internal/web/testdata/appjs_fire_probe.py` 의 제거 줄).
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
@@ -457,6 +649,33 @@ mx_validation:
   reason: run-phase 신규 파일은 Go 테스트 파일 1개 + Python testdata 스크립트 2개 + ci.yml EOF 덧붙임 — 신규 exported 함수·고 fan_in·위험 패턴 해당 0건 (@MX 스캔 3개 신규 파일 0적중; 제품 소스·assets 무변경은 §E.3 preserve_list)
 sync_phase_scope_note: writable set honored exactly — progress.md §E.4 + spec.md frontmatter(status+updated)만 수정; §E.1–§E.3, spec/plan/acceptance 본문, CHANGELOG.md, internal/web/** 소스 전부 미수정
 ```
+
+### 개정분 Sync-phase Audit-Ready Signal (card t1108, 개정 3 재-close)
+
+```yaml
+sync_complete_at: 2026-09-24
+sync_commit_sha: pending-backfill-sync   # 본 sync 커밋 자기 해시 — 후속 커밋에서 backfill (커밋은 자기 해시를 인용할 수 없다)
+sync_status: complete
+frontmatter_status_transitions:
+  in-progress: 2026-09-23   # 1e2c64057 (개정 2 plan-phase, card t1108) — 이전 completed→in-progress 재개는 card t1106 개정에서 이미 있었고, 이번 sync는 개정 3(db240a026)이 얹힌 뒤의 재-close다
+  implemented: 2026-09-24   # 본 sync 커밋(merged transition)
+  completed: 2026-09-24     # 본 sync 커밋(merged transition)
+changelog_entry_added: yes   # CHANGELOG.md [Unreleased] → ### Fixed 최상단 1건 추가
+ac_count_check: acceptance.md 고유 AC 식별자 16건(AC-AFG-001..016, grep -oE 'AC-AFG-[0-9]+' | sort -u | wc -l) — 이 sync 는 개정 3 이 새로 확정한 AC-AFG-014/015/016 세 건의 CI green-path PASS 를 §E.3 개정분 신호로 기록한다(§E.3 위 절 참조); 상속 AC-AFG-001..013 은 손대지 않음
+total_sync_phase_files: 4   # progress.md(§E.3 개정분 + §E.4 개정분), spec.md(frontmatter status+updated), CHANGELOG.md([Unreleased] ### Fixed 1건)
+canary_compliance_check: not-applicable  # 이 SPEC 은 장래 정책을 정의하지 않는다 — 브라우저 발화 가드 인프라 납품이 전부
+b12_self_test_a_pre_emission_grep: 1 hit — grep -c 'SPEC-APPJS-FIRE-GUARD-001' CHANGELOG.md, **이번 커밋이 작성한 바로 그 엔트리 1건**(중복 아님; 사전 상태는 0, 본 sync가 최초 emission)
+b12_self_test_b_ac_count_match: 16 == 16 (pass) — acceptance.md 고유 식별자 16건, 위 ac_count_check 진술과 일치
+b12_self_test_c_file_path_verification: pass — CHANGELOG 엔트리가 인용하는 경로 `.github/workflows/ci.yml`(`ls` 확인) 1개뿐, 코드 경로 인용 없음
+mx_validation:
+  status: no-op
+  reason: 이 sync-phase 에서 변경된 파일은 progress.md·spec.md(frontmatter)·CHANGELOG.md 뿐 — 신규 exported 함수·고 fan_in·위험 패턴 해당 0건. run-phase(§E.3 개정분)의 @MX 스캔은 이미 0적중으로 완료됨
+sync_phase_scope_note: writable set — progress.md(§E.3 개정분 + 본 §E.4 개정분) + spec.md frontmatter(status: in-progress → completed, updated 불변 2026-09-24 유지) + CHANGELOG.md([Unreleased] 1건 추가). spec/plan/acceptance 본문, internal/web/**, .github/workflows/ci.yml 소스 전부 미수정(run-phase에서 이미 완료)
+```
+
+### 정정 (sync-audit F4, card t1108) — 원문 보존, 아래 덧붙임
+
+- 위 `total_sync_phase_files: 4` 는 실측과 어긋난다. `git show --stat 28f691617`(본 sync 커밋)은 3파일만 보인다: `CHANGELOG.md`, `.moai/specs/SPEC-APPJS-FIRE-GUARD-001/progress.md`, `.moai/specs/SPEC-APPJS-FIRE-GUARD-001/spec.md`. `progress.md` 를 §E.3 개정분과 §E.4 개정분 두 절로 나눠 센 것이 4 로 부풀렸다 — 실제 파일 수는 **3**이다.
 
 ## §F Phase 4 Mode Selection
 

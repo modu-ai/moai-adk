@@ -88,22 +88,34 @@ func classifyToken(man Manifest, token string) (class string, ok bool) {
 // name, description, developer_instructions, mcp_servers (conditional),
 // model_reasoning_effort (conditional), sandbox_mode (conditional).
 // Every validation error names the source .md file and the offending value.
-func renderTOML(doc AgentDoc, man Manifest, hasMCP bool) ([]byte, error) {
+// The second return value is the emitted sandbox_mode ("" when not emitted).
+//
+// A role with a Codex-only addendum in the manifest gets that text appended
+// after its verbatim body; the neutral .md is never touched.
+func renderTOML(doc AgentDoc, man Manifest, hasMCP bool) ([]byte, string, error) {
 	if !basicStringSafe(doc.Name) {
-		return nil, fmt.Errorf("%s: agent name %q is not representable as a TOML basic string", doc.File, doc.Name)
+		return nil, "", fmt.Errorf("%s: agent name %q is not representable as a TOML basic string", doc.File, doc.Name)
 	}
 	desc, err := literalString(doc.File, "description", doc.Description)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	body, err := literalString(doc.File, "developer_instructions (body)", string(doc.Body))
+	addendum, hasAddendum := man.CodexRoleAddenda[doc.Name]
+	instructions := string(doc.Body)
+	if hasAddendum {
+		instructions += "\n" + strings.TrimRight(addendum, "\n") + "\n"
+	}
+	body, err := literalString(doc.File, "developer_instructions (body)", instructions)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	var b strings.Builder
 	b.WriteString(tomlHeader + "\n")
 	fmt.Fprintf(&b, "# Neutral source: .claude/agents/moai/%s (body carried verbatim).\n", doc.File)
+	if hasAddendum {
+		b.WriteString("# Codex-only addendum appended after the verbatim body (mapping manifest).\n")
+	}
 	fmt.Fprintf(&b, "name = %q\n", doc.Name)
 	b.WriteString("description = " + desc + "\n")
 	b.WriteString("developer_instructions = " + body + "\n")
@@ -111,14 +123,15 @@ func renderTOML(doc AgentDoc, man Manifest, hasMCP bool) ([]byte, error) {
 	if fc, ok := man.Fields["model_reasoning_effort"]; ok && fc.Emit {
 		mapped, found := fc.Map[doc.Effort]
 		if !found {
-			return nil, fmt.Errorf("%s: effort value %q is not in the manifest's measured model_reasoning_effort enumeration — refusing to guess (silent-ignore hazard)", doc.File, doc.Effort)
+			return nil, "", fmt.Errorf("%s: effort value %q is not in the manifest's measured model_reasoning_effort enumeration — refusing to guess (silent-ignore hazard)", doc.File, doc.Effort)
 		}
 		if !basicStringSafe(mapped) {
-			return nil, fmt.Errorf("%s: mapped effort %q is not representable as a TOML basic string", doc.File, mapped)
+			return nil, "", fmt.Errorf("%s: mapped effort %q is not representable as a TOML basic string", doc.File, mapped)
 		}
 		fmt.Fprintf(&b, "model_reasoning_effort = %q\n", mapped)
 	}
 
+	emittedSandbox := ""
 	if fc, ok := man.Fields["sandbox_mode"]; ok && fc.Emit {
 		mode := fc.Value
 		if override, ok := fc.RoleValues[doc.Name]; ok {
@@ -132,19 +145,23 @@ func renderTOML(doc AgentDoc, man Manifest, hasMCP bool) ([]byte, error) {
 			}
 		}
 		if !measured {
-			return nil, fmt.Errorf("%s: role %q sandbox_mode %q is outside the measured value set", doc.File, doc.Name, mode)
+			return nil, "", fmt.Errorf("%s: role %q sandbox_mode %q is outside the measured value set", doc.File, doc.Name, mode)
 		}
 		if !basicStringSafe(mode) {
-			return nil, fmt.Errorf("manifest sandbox_mode value %q is not representable as a TOML basic string", mode)
+			return nil, "", fmt.Errorf("manifest sandbox_mode value %q is not representable as a TOML basic string", mode)
 		}
-		if mode == "read-only" {
+		// A read-only role carrying a write tool is refused, unless the
+		// manifest gives it a Codex-only addendum: that addendum moves the
+		// write to the parent (the role returns its text instead).
+		if mode == "read-only" && !hasAddendum {
 			for _, tool := range doc.Tools {
 				if tool == "Write" || tool == "Edit" {
-					return nil, fmt.Errorf("%s: read-only role %q carries write tool %q", doc.File, doc.Name, tool)
+					return nil, "", fmt.Errorf("%s: read-only role %q carries write tool %q", doc.File, doc.Name, tool)
 				}
 			}
 		}
 		fmt.Fprintf(&b, "sandbox_mode = %q\n", mode)
+		emittedSandbox = mode
 	}
 
 	// MCP server grant LAST, as a TOML table: sections must follow all root
@@ -154,10 +171,10 @@ func renderTOML(doc AgentDoc, man Manifest, hasMCP bool) ([]byte, error) {
 	if hasMCP {
 		grant := man.MCPServerGrant
 		if grant == nil {
-			return nil, fmt.Errorf("%s: agent carries moai-mcp tools but manifest has no mcp_server_grant", doc.File)
+			return nil, "", fmt.Errorf("%s: agent carries moai-mcp tools but manifest has no mcp_server_grant", doc.File)
 		}
 		if !basicStringSafe(grant.Server) || !basicStringSafe(grant.Command) {
-			return nil, fmt.Errorf("%s: mcp_server_grant names are not representable as TOML basic strings", doc.File)
+			return nil, "", fmt.Errorf("%s: mcp_server_grant names are not representable as TOML basic strings", doc.File)
 		}
 		fmt.Fprintf(&b, "[mcp_servers.%s]\ncommand = %q\nargs = [", grant.Server, grant.Command)
 		for i, a := range grant.Args {
@@ -165,12 +182,12 @@ func renderTOML(doc AgentDoc, man Manifest, hasMCP bool) ([]byte, error) {
 				b.WriteString(", ")
 			}
 			if !basicStringSafe(a) {
-				return nil, fmt.Errorf("%s: mcp_server_grant arg %q is not representable as a TOML basic string", doc.File, a)
+				return nil, "", fmt.Errorf("%s: mcp_server_grant arg %q is not representable as a TOML basic string", doc.File, a)
 			}
 			fmt.Fprintf(&b, "%q", a)
 		}
 		b.WriteString("]\n")
 	}
 
-	return []byte(b.String()), nil
+	return []byte(b.String()), emittedSandbox, nil
 }

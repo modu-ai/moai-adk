@@ -174,6 +174,16 @@ func TestResolveBacklogCounts_UnreadableIsUnavailableNotZero(t *testing.T) {
 // load the machine is under lands on both and largely cancels. The absolute
 // distributions are logged either way, because the differential is the gate
 // but the absolute numbers are what a reader wants to see.
+//
+// Interleaving cancels load that lands on both arms; it cannot cancel cost that
+// only one arm pays. Under the race detector inside the concurrent `./...` suite
+// the database arm pays exactly that kind of cost: CI run 35979038201 measured a
+// 0.4ms added median but a database max of 451ms against a JSON max of 16ms, and
+// with 41 samples the p95 is the third-highest, so three stalls on one arm fail
+// the ceiling (card t1174). C-2 fixes the budget on the development machine, and
+// the non-race Test job in the same run was green. The measurement therefore
+// still runs and is logged under -race, but the budget is enforced only in a
+// non-race build; the skip is reported, not a silent pass.
 func TestResolveBacklogCounts_LatencyBudget(t *testing.T) {
 	if testing.Short() {
 		t.Skip("latency measurement skipped under -short")
@@ -239,6 +249,10 @@ func TestResolveBacklogCounts_LatencyBudget(t *testing.T) {
 		jsonSamples[mid], jsonSamples[p95i], jsonSamples[len(jsonSamples)-1],
 		addedMedian, addedP95)
 
+	if raceEnabled {
+		t.Skip("latency budget not enforced under -race: the detector's per-arm stalls " +
+			"are not cancelled by interleaving; the non-race build enforces C-2")
+	}
 	if addedMedian > 10*time.Millisecond {
 		t.Errorf("added median %v exceeds the 10ms budget (C-2)", addedMedian)
 	}

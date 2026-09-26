@@ -77,7 +77,7 @@ moai cc -f worker-3           # ワーカー 1 人、番号を直接指定
 moai glm -f worker            # …GLM バックエンドのワーカーも同じ形
 ```
 
-ワーカーは `moai cc -f worker`（次の空き番号に自動合流）または `moai cc -f worker-<n>`（その番号ちょうど）で 1 人ずつ増やす。どちらの形もワーカー名を既に決めているので、`--name`/`-n` を併せて渡すとエラーになる。直接指定した番号が生存中のレガシーワーカー（`agent-<n>`/`lane-<n>`）と重なると名前を挙げて拒否され、`-f worker` の自動割り当ては拒否されず、飛ばしたレガシー番号を名前付きで知らせる。それ以外では番号は生きているセッションが握っているものだけを飛ばす — 死んだワーカーの claim はその番号をもう塞がないが（直接指定すればすぐ再利用できる）、`-f worker` の自動割り当ては常に生存中の最高番号+1を取るだけで、途中の空き番号は埋めない。ワーカーの所有権は `~/.moai/db/<project-key>/factory/factory.db` に記録される。起点ディレクトリが一時ディレクトリなら（絶対 `MOAI_HOME` オーバーライドなし）プロジェクトローカルの `<base>/.moai/db/<project-key>/factory/` の下に記録される — バックログキューと同じ例外だ。従来の `.moai/state/factory/workers.json` は一度だけ取り込まれ、ロールバック用の証跡として残る。1 人のワーカーは最大 10 個の `Agent()` サブエージェントを同時に走らせ、書き込みを担うスポーンはそれぞれの worktree に隔離される。ワーカーを一度に全部立ち上げてはいけない — まず最初の 1 人を上げ、実際に出力が出ているのを確かめてから残りを活性化する。カードがワーカーをまたいで分割されることはない。`-k` は 3 役割のカンバンチェーンを回すトークンのままで、1 回の起動に進入トークンは 1 つだけだから `-k` と `-f` の併用はエラーになる。廃止された `moai cg` は移行案内を表示して終了する。
+ワーカーは `moai cc -f worker`（次の空き番号に自動合流）または `moai cc -f worker-<n>`（その番号ちょうど）で 1 人ずつ増やす。どちらの形もワーカー名を既に決めているので、`--name`/`-n` を併せて渡すとエラーになる。直接指定した番号が生存中のレガシーワーカー（`agent-<n>`/`lane-<n>`）と重なると名前を挙げて拒否され、`-f worker` の自動割り当ては拒否されず、飛ばしたレガシー番号を名前付きで知らせる。それ以外では番号は生きているセッションが握っているものだけを飛ばす — 死んだワーカーの claim はその番号をもう塞がないが（直接指定すればすぐ再利用できる）、`-f worker` の自動割り当ては常に生存中の最高番号+1を取るだけで、途中の空き番号は埋めない。ワーカーの所有権は `~/.moai/db/<project-key>/factory/factory.db` に記録される。起点ディレクトリが一時ディレクトリなら（絶対 `MOAI_HOME` オーバーライドなし）プロジェクトローカルの `<base>/.moai/db/<project-key>/factory/` の下に記録される — バックログキューと同じ例外だ。従来の `.moai/state/factory/workers.json` は一度だけ取り込まれ、ロールバック用の証跡として残る。1 人のワーカーは最大 10 個の `Agent()` サブエージェントを同時に走らせ、書き込みを担うスポーンはそれぞれの worktree に隔離される。ワーカーを一度に全部立ち上げてはいけない — まず最初の 1 人を上げ、実際に出力が出ているのを確かめてから残りを活性化する。カードがワーカーをまたいで分割されることはない。`-k` は 3 役割のカンバンチェーンを回すトークンのままで、1 回の起動に進入トークンは 1 つだけだから `-k` と `-f` の併用はエラーになる。廃止された `moai cg` は移行案内を表示して終了する。 ファクトリ run は自分を所有するセッションのプロセス識別を記録するようになった。リードが死んだ run は次にワーカーが参加した時点で自動的に retire されるので、その参加が `AMBIGUOUS_FACTORY` で止まることはない。`moai factory runs` は全 run を所有者の生死とともに一覧し、`moai factory runs --retire <run-id>` は指定した run を手で retire する。所有者が実際に死んでいなければ拒否される。
 
 > 詳しくは: [カンバンモード — ファクトリーモード](https://adk.mo.ai.kr/ja/advanced/kanban-mode)
 
@@ -350,14 +350,14 @@ claude        # または moai cc — プロジェクト内で Claude Code を�
 
 ### MCP サーバー
 
-`moai init` はデフォルトで**ちょうど 1 つ**の有効な MCP エントリを用意する — 自前の `moai mcp-server`（ローカル stdio サーバー）だ。このサーバーが 6 グループにまとめた 21 個の MoAI ツールを Claude Code に公開する。ドキュメントに記載された非活性の 4 エントリ（`context7`・`chrome-devtools`・`playwright`・`ast-grep`）は `moai mcp add <名前>` で有効化する。`moai mcp add|remove|list` CLI が atomic-RWM seam でエントリを管理するため、ユーザーが `.mcp.json` を手で編集する必要はない。
+`moai init` はデフォルトで**ちょうど 1 つ**の有効な MCP エントリを用意する — 自前の `moai mcp-server`（ローカル stdio サーバー）だ。このサーバーが MoAI のツール群を Claude Code に公開する。下の表は主要なグループだけを載せる — 全一覧は [MCP サーバーガイド](https://adk.mo.ai.kr/ja/guides/mcp-server) にあり、ツール数と一覧の基準はインストールされたバイナリが `tools/list` で返す一覧だ。ドキュメントに記載された非活性の 4 エントリ（`context7`・`chrome-devtools`・`playwright`・`ast-grep`）は `moai mcp add <名前>` で有効化する。`moai mcp add|remove|list` CLI が atomic-RWM seam でエントリを管理するため、ユーザーが `.mcp.json` を手で編集する必要はない。
 
 | グループ | ツール | 目的 |
 |------|------|------|
 | SPEC ライフサイクル | `spec_progress`, `spec_audit`, `spec_drift` | 時代分類 + ドリフト検出 |
 | 検証 | `verify_snapshot`, `verify_trend` | キー別証拠スナップショット |
 | ゴール + セッション | `goal_arm`, `goal_status`, `session_list` | 自律ループ + マルチセッション調整 |
-| クロスモデル監査 | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | 多監査者収束 |
+| クロスモデル監査 | `audit_multi`, `claude_audit`, `codex_audit`, `glm_audit`, `audit_cache` | 多監査者収束 |
 | codex 委譲 | `codex_task`, `codex_setup`, `codex_job_*` | バックグラウンド・クロスモデル作業 |
 | GLM 委譲 | `glm_task`, `glm_job_status`, `glm_job_result`, `glm_job_cancel` | GLM(z.ai)へのバックグラウンド作業委譲 |
 

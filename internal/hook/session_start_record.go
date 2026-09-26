@@ -70,6 +70,13 @@ func writeKanbanSessionRecord(input *HookInput) {
 	if root == "" {
 		return
 	}
+	// Same guard as the write-side resolver (resolveProjectRoot): the record
+	// write creates <root>/.moai/state/..., so a root that is not already a
+	// MoAI root — CWD standing in for an absent ProjectDir from a subdirectory
+	// — would grow a stray tree (card t1165).
+	if _, err := os.Stat(filepath.Join(root, ".moai")); err != nil {
+		return
+	}
 
 	role, lane, ok := kanbanRoleFromEnv()
 	if !ok {

@@ -126,12 +126,30 @@ func (r *HaikuResidualRule) scanWorkflowRouting(base string) []Finding {
 	return findings
 }
 
-// scanValidRoutingModels implements surface 4: grep-equivalent scan of
-// internal/config/model_routing.go for the quoted key "haiku", excluding
-// _test.go files (X1 exempt).
+// scanValidRoutingModels implements surface 4: a scan of the single file
+// REQ-AA2-012 enumerates for this surface — internal/config/model_routing.go,
+// which holds the validRoutingModels map. AC-AA2-012's own verification greps
+// exactly that file, so the scan names it directly rather than walking the
+// internal/config directory: every sibling production file there is outside
+// surface 4. Naming one non-test file also keeps X1 structurally satisfied —
+// model_routing_test.go is unreachable from this surface. A missing file is
+// silent, as on every other surface.
 func (r *HaikuResidualRule) scanValidRoutingModels(base string) []Finding {
-	dir := filepath.Join(base, "internal", "config")
-	return scanFilesForHaiku([]string{dir}, ".go", true)
+	path := filepath.Join(base, "internal", "config", "model_routing.go")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	if !strings.Contains(string(data), "haiku") {
+		return nil
+	}
+	return []Finding{{
+		File:     path,
+		Line:     1,
+		Severity: SeverityWarning,
+		Code:     r.Code(),
+		Message:  "residual haiku reference found (REQ-AA2-012 No-Haiku policy); replace with sonnet/low or remove the reference",
+	}}
 }
 
 // scanFilesForHaiku walks the given directories, reads files matching the

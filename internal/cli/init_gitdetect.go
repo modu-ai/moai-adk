@@ -3,6 +3,8 @@ package cli
 import (
 	"os/exec"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // Git mode / provider values resolved by detection. These mirror the closed
@@ -21,7 +23,9 @@ const (
 // gitRemoteListFunc lists the configured remote names for a directory.
 // Overridable in tests.
 var gitRemoteListFunc = func(dir string) (string, error) {
-	out, err := exec.Command("git", "-C", dir, "remote").Output()
+	cmd := exec.Command("git", "-C", dir, "remote")
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank -C
+	out, err := cmd.Output()
 	if err != nil {
 		return "", err
 	}
@@ -31,7 +35,9 @@ var gitRemoteListFunc = func(dir string) (string, error) {
 // gitOriginURLFunc resolves the origin remote URL for a directory.
 // Overridable in tests.
 var gitOriginURLFunc = func(dir string) (string, error) {
-	out, err := exec.Command("git", "-C", dir, "remote", "get-url", "origin").Output()
+	cmd := exec.Command("git", "-C", dir, "remote", "get-url", "origin")
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank -C
+	out, err := cmd.Output()
 	if err != nil {
 		return "", err
 	}

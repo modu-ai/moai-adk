@@ -504,6 +504,12 @@ func buildAutoUpdateFunc() hook.AutoUpdateFunc {
 			return &hook.AutoUpdateResult{Updated: false}, nil
 		}
 
+		// Honor the same opt-out `moai update` reads (shouldSkipBinaryUpdate):
+		// a pinned binary must not be replaced mid-session (GitHub #1714).
+		if os.Getenv(config.EnvSkipBinaryUpdate) == "1" {
+			return &hook.AutoUpdateResult{Updated: false}, nil
+		}
+
 		// Check cache first
 		cache := update.NewCache("", 0)
 		if entry := cache.Get(currentVersion); entry != nil {

@@ -4,6 +4,51 @@
 
 ---
 
+## §A000 개정 결정 3(card t1108, 2026-09-24) — CI 는 `TestAppJsFirePostSwapSettleWait` 를 2단계에서 시작한다 (run-phase 중 개정)
+
+> 이 절은 card t1108 개정 3 이다. run-phase M10 이 막힌 뒤 리드가 고른 안 (b)(2026-09-24 기록)를 반영한다. §A00·§A0·§A~§D 는 원문 그대로 둔다.
+
+**결정.** CI 그린 단계에서 `TestAppJsFirePostSwapSettleWait` 는 AC-AFG-014 측정 순서의 1단계(CPU 스로틀 12배 단독)를 건너뛰고 **2단계에서 바로 시작한다.** 2단계는 세 판(정상·M1·M2)에 똑같이 건 고정 settle 지연 증폭 1000 ms 와, 필수인 증폭 효과 관측이다. 1단계는 **로컬 전용**으로 남는다. 로컬 기본 동작은 B1 순서(1단계 → 필요할 때만 2단계) 그대로다.
+
+**스위치.** 환경 변수 `MOAI_BROWSER_GUARD_SETTLE_STAGE2` 하나다. 값이 정확히 `1` 일 때만 CI 모드로 돌고, 미설정·빈 값·그 밖의 값은 모두 B1 순서다. 이 변수는 `.github/workflows/ci.yml` `test-browser` job 의 **그린 단계 `env:`** 에만 둔다 — 다른 단계, 다른 job, workflow 전역 `env:` 에는 두지 않는다. 테스트는 이 변수를 읽고, 어느 경로(`local-b1` / `ci-stage2`)로 돌았는지와 변수의 원문 값을 로그 한 줄로 남긴다.
+
+**CI 모드가 보이는 것.** 2단계의 판정 조건을 줄이지 않는다. 증폭 효과 관측의 기준선인 **증폭 없는 정상 판 10회**는 CI 모드에서도 돈다(오늘은 1단계 정상 판이 그 기준선을 댄다, `appjs_fire_swap_test.go:288`). CI 모드에서 빠지는 것은 증폭 없는 M1·M2 측정뿐이다. 따라서 예상 탐침 호출 수는 약 10 + 30 + 1(만료 사본) = 41회다 — 이 수는 **추론**이고, 실측은 M10.2 가 한다.
+
+**근거(측정값 — progress.md §E.2 M10 BLOCKED, `.moai/reports/t1108/logs/m10-gated-raised.log`).**
+
+- `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJs.*Fire' -v -count=1 -timeout 15m` → `panic: test timed out after 15m0s`, `FAIL … 900.542s`. 이 실행에서 1단계 M1 은 `fired 2/10 | red 8/10` 였다. M9(`logs/m9-gated.log`)에서는 같은 1단계 M1 이 10/10 적색이었다. **1단계 자체가 결정적이지 않다** — 어느 경로를 탈지가 경합에 달려 있어 상한을 한 경로에 맞출 수 없다.
+- 그 실행은 설계대로 2단계(증폭 1000 ms: 정상 판 발화 10/10, M1 적색 10/10)로 넘어갔다. 2단계로 넘어가는 경로는 탐침 호출을 대략 두 배(31 → 약 61회)로 늘린다. 측정값만으로 낸 산술은 job 전체 약 21.6분으로 job 상한 `timeout-minutes: 20`(`ci.yml:608`)을 넘는다. `-timeout 10m` 판은 600.676초에 panic 했다(`logs/m10-gated-10m.log`).
+- M10.3 은 job 상한을 올리는 것을 금한다.
+
+**되돌림 비용.** 스위치는 ci.yml 의 한 행과 테스트의 분기 하나다. 이 결정을 뒤집으면 두 곳만 되돌리면 되지만, 그때는 위 시간 문제가 다시 선다.
+
+## §A00 개정 결정 2(card t1108) — 스왑 뒤 지표는 실제 boost 스왑과 `htmx:afterSettle` 이벤트 뒤에만 (개정 2 에서 가장 되돌리기 비싼 결정)
+
+> 이 절은 card t1108 개정 2 다. §A0(t1106)과 §A~§D(원판)는 한 글자도 바뀌지 않았다. 근거가 되는 실측은 spec.md §B.7 이다.
+
+**문제:** REQ-AFG-007 은 「스왑 뒤 재바인딩」을 재라고 한다. 그러나 매니페스트가 행사한 것은 boost 조상이 없는 `/todo` 링크의 **전체 이동**이었고, 탐침은 URL 만 기다린 채 새 문서의 초기화보다 먼저 클릭할 수 있었다. 이 결정이 뒤집히면 탐침 5·6단계, 매니페스트 두 항목, 판정 규칙이 함께 뒤집힌다.
+
+**데이터 모델에 미치는 변화(가장 먼저 검토돼야 할 것):**
+
+| 항목 | 개정 전 | 개정 후 |
+|---|---|---|
+| 스왑 항목 id | `swap_todo_nav` | `swap_boosted_tab` (이름 변경 — 파급은 M8.6) |
+| 스왑 항목 `page` | `"/"` — 실제 행사는 `/settings` 위에서 일어났다(spec.md §B.7.1) | `"/settings"` |
+| 스왑 항목 `selector` | `a[href="/todo"]` (boost 조상 없음) | `/settings` 설정 폼 안의 boost 링크. 측정된 후보는 `/settings?tab=audit`(spec.md §B.7.4). 문자열은 run-phase 소관 |
+| 스왑 항목 판정 | URL 이 `/todo` 가 됐는가 | REQ-AFG-016 자기확인 네 다리가 모두 참인가 |
+| 스왑 뒤 항목 id | `popover_after_swap` | 유지 |
+| 스왑 뒤 항목 `page` | `"/todo"` | `"/settings"` |
+| 스왑 뒤 대기 | `location.pathname` 폴링 | `htmx:afterSettle` 이벤트(리스너는 클릭 전에 등록) |
+| `line_group` | 스왑 `None`, 스왑 뒤 `73` | 불변 — `INVENTORY_TOTAL = 13` 불변(spec.md §B.7.6) |
+| 효과 종별 | 스왑 `swap`, 스왑 뒤 `visibility` | 불변 — 탭 클릭은 GET 조회라 비영속 계열에 머문다(spec.md §B.7.5) |
+| 보고서 키 | `p5_*`·`p6_*` | 불변 — 드라이버 JSON 태그(`appjs_fire_guard_test.go:70`·`:73`)가 고정한다 |
+
+**채택:** 리드가 정한 방향 (a) 다. REQ-AFG-007 의 의도를 유지하고, 스왑 자기확인(REQ-AFG-016)을 더해 전제가 조용히 재발하지 않게 한다. 채택·기각의 근거 전문은 spec.md §C 「채택(개정 2)」이다.
+
+**대기 설계의 요지.** 리스너는 클릭 **전에** 같은 문서에 붙인다. `app.js` 는 로드 시점에 자기 `htmx:afterSettle` 리스너를 등록하고, 탐침은 그보다 늦게 등록한다. 같은 이벤트의 리스너는 등록 순서대로 실행되므로 `initConsole` 의 재결합이 탐침의 해제보다 먼저 돈다. 이 순서는 계약이 아니라 관찰에 기댄 설계이므로 §F 에 위험으로 적는다. 대기 상한은 부재를 이름 붙은 적색으로 바꾸는 장치다. 상한 만료를 통과로 읽는 경로는 없다.
+
+**기각:** (b) 옛 링크를 두고 `DOMContentLoaded` 뒤를 기다린다 — 스왑 뒤 재바인딩을 어떤 단계도 재지 않게 된다 / 제품에 boost 된 `/todo` 링크를 만든다 — 가드를 위해 제품을 바꾸는 역순이다 / 고정 시간 대기 — 부하에 다시 깨진다 / 자기확인 없이 링크만 바꾼다 — 재발 경로가 남는다.
+
 ## §A0 개정 결정(card t1106) — 제출을 행사하는 유일한 조건: 사본 + 무쓰기 단언 (이 개정에서 가장 되돌리기 비싼 결정)
 
 > 이 절은 card t1106 개정분이다. §A~§D(원판 결정)는 한 글자도 바뀌지 않았다.
@@ -132,6 +177,39 @@ restore → cmp byte-동일 → git status 청결 → build(원본) → probe �
 7. 드라이버 상단 주석의 REQ-AFG-012 「wiring point」 문단을 **실행된 지시문**으로 갱신 — 무엇이 사본 서버 위에서 돌고 무엇이 실루트 서버 위에서 도는지 명시. 같은 주석에 **§F 7 한계 축(두 서버 서면의 등가를 주장하지 않는다)과 앵커 토큰 `two-surfaces`** 를 싣는다(AC-AFG-008; card t1106 iter-2, D3 수리 — 종전에는 §F 7 이 어느 마일스톤의 주석 작업에도 배정되지 않았다)
 8. `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJsHandlersFireRuntime'` 재측정 — 판정 집합은 **실루트 계열 8항목**이고 서빙 루트는 `findRepoRoot` 로 불변이다. 제출 항목은 이 사이클에 **들어오지 않는다** — 그 판정은 M7.4(`TestAppJsFireValidationRejectPaints`, AC-AFG-010)가 별도 실행으로 진다. 두 계열을 가르는 기제는 REQ-AFG-014 (1) 의 **적극적 축소 선언**이며, 이 실행은 그 선언을 달고 돈다(사본 base 의 부재로 대신하지 않는다 — 선언 없는 부재는 exit 2). 이 실행의 보고서는 운전 8항목과 **선언으로 제외된 표식 항목의 이름**을 함께 담아야 한다. 판정: AC-AFG-001 (a) + AC-AFG-013 (c) + `go test ./internal/web/ -count=1` 무회귀 (card t1106 iter-2, D1 수리 — 종전 문언은 AC-AFG-001 (a) 와 같은 집합을 이름하지 않았다)
 
+### M8 — 탐침: 실제 boost 스왑 + afterSettle 대기 + 스왑 자기확인 (card t1108, Priority High)
+
+1. 5단계를 `/settings` 위 boost 링크 클릭으로 바꾼다. 매니페스트 스왑 항목의 `page`·`selector`·`check` 를 새 정의로 바꾼다(§A00 표)
+2. 클릭 **전에** 같은 문서에 `htmx:afterSwap`·`htmx:afterSettle` 리스너와 문서 표지를 심고, 옛 트리거 노드에 표지를 단다(REQ-AFG-016 (b)(d))
+3. 스왑 뒤 대기를 `htmx:afterSettle` 이벤트로 바꾼다. `location.pathname` 폴링과 고정 대기 증량을 없앤다. 상한 만료는 exit 1 이며 스왑 뒤 항목(`popover_after_swap`)을 사유 「afterSettle 대기 만료」로 지목한다. 같은 실행에서 자기확인 (c) 도 거짓이면 스왑 항목도 함께 지목한다(REQ-AFG-007 (3)). 새 대기는 오늘의 `poll`(`:434-443`)이 쓰는 「만료 시 현재값을 돌려주고 진행」 의미론을 재사용하지 않는다
+4. 자기확인 네 다리를 보고서에 다리별로 싣는다. 한 다리라도 거짓이면 exit 1 로 실패하고, 스왑 항목과 거짓 다리를 사유로 보고하며, 스왑 뒤 지표를 발화로 판정하지 않는다(REQ-AFG-016)
+5. 6단계의 `page` 를 `/settings` 로 바꾸고, 주석(`:543-544`)을 실제 대기와 맞춘다
+6. **id 변경 `swap_todo_nav` → `swap_boosted_tab` 의 파급 — 전수 열거**(`git grep -n -e 'swap_todo_nav' -e 'popover_after_swap' -e 'p5_swap' -- . ':!.moai/reports'` 로 HEAD `52a486635` 에서 셌다):
+   - 바꾸는 곳 — `internal/web/testdata/appjs_fire_probe.py`: `:172`(매니페스트 id), `:198`(`validation_reject_banner` 주석이 옛 id 를 비유로 쓴다), `:531`(5단계 주석), `:768`(`by_id` 키 — 판정식도 `== "/todo"` 에서 자기확인으로 바뀐다), `:788`(`selector_found` 키)
+   - 바뀌지 않는 곳, 참조 0건 — 드라이버 `internal/web/appjs_fire_guard_test.go`(참조하는 것은 보고서 키 `p5_swap_referenceerrors`·`p6_popover_after_swap_fired` 뿐, `:70`·`:73`·`:474`), `.github/workflows/ci.yml`(레드 단계는 `stampRefreshed` 만 grep 한다), `--lint-manifest` 규칙(`post_swap` 필드와 효과 종별로 판정하고 id 를 보지 않는다, `:341-342`), SelectorMiss 픽스처(`[data-copy]` → `copy_button` 만 변조, `appjs_fire_guard_test.go:493-512`)
+   - 이력 문서, 원문 유지 — spec.md §B.6.4·§C(t1106) 개정 결정, plan.md §A0, acceptance.md AC-AFG-013 근거 문단(주석을 달았다), progress.md §E.2(run-phase 증거 — manager-spec 수정 금지), `.moai/reports/**`
+7. `popover_after_swap` 의 「selector matched nothing」 판정(`:789`, 패널 기준)은 **바꾸지 않는다** — spec.md §E 관찰
+
+### M9 — 드라이버: 스로틀 반복 + 돌연변이 판 + 자기확인 양방향 (card t1108, Priority High)
+
+1. `TestAppJsFirePostSwapSettleWait` — 게이트된 in-process 실루트 표면에서 탭 한정 CPU 스로틀 12배를 걸고 세 판을 각각 10회 돌린다. 세 판은 정상 판, M1(대기를 `location.pathname == "/settings"` 폴링으로 되돌린 사본 — 스왑 대상 경로라 settle 전에 이미 참이다), M2(afterSettle 대기를 제거한 사본)이다. 측정 순서는 리드 결정(B1)으로 고정돼 있고, 분기 술어는 숫자로 정했다(iter-1 D3). ① 스로틀 12배 **단독**으로 재서 M1·M2 가 **각각 10/10 적색**일 때에만 그것으로 판정한다(정상 판 10/10 이면 통과). ② 그 밖의 모든 결과(부분 적색 포함)는 settle 지연 증폭을 **세 판에 똑같이** 건다. 증폭 효과 관측은 필수다 — 클릭부터 `htmx:afterSettle` 까지의 시간을 증폭 없이 10회, 증폭하고 10회 재서 둘 다 기록하고, 증폭 쪽 중앙값이 더 커야 한다. 그 조건에서 정상 판 10/10 발화와 M1·M2 각각 10/10 적색을 보인다. ③ 판정서에 증폭 적용 여부와 값을 적는다. 돌연변이의 적색 판별식은 「exit 1 + `popover_after_swap` 비발화」이고, 판정서에 M1·M2 각각의 적색 사유 분포를 기록한다(iter-2 N2). 같은 테스트가 AC-AFG-014 (d) 의 만료 대기 적색(`htmx:afterSettle` 이 지나간 뒤에야 리스너를 붙이는 사본에서 exit 1 + `popover_after_swap` 지목)도 관측한다
+   - **CI 시작 규칙(개정 3, §A000).** `MOAI_BROWSER_GUARD_SETTLE_STAGE2=1` 이면 ① 을 건너뛰고 ② 에서 시작한다. 이때도 증폭 효과 관측의 기준선인 증폭 없는 정상 판 10회를 먼저 재고, 그 뒤 증폭 1000 ms 를 세 판에 똑같이 걸어 각 10회 잰다. 판정 조건은 ② 와 같다(효과 관측 중앙값 증가 + 정상 판 10/10 발화 + M1·M2 각각 10/10 적색 + 사유 분포 + (d) 만료 사본). 변수가 없거나 `1` 이 아니면 B1 순서 그대로다. 어느 경로로 돌았는지와 변수 원문 값을 로그 한 줄로 남긴다
+2. `TestAppJsFireSwapPremise` — 게이트된 네 실행을 한다. (i) 커밋된 탐침은 네 다리가 참이고 exit 0 이다. (ii) `a[href="/todo"]` 사본은 (a)(b)(c) 각각 거짓, (d) 참, exit 1 이다. (iii) 스왑 완료를 DOM 조건(또는 사본 안의 고정 대기)으로 먼저 확인하고 `htmx:afterSettle` 이 지나간 뒤에야 리스너를 붙이는 사본은 (c) 만 거짓이고 exit 1 이다(iter-2 N1 — 클릭 직후에 붙이면 이벤트를 관측할 수 있어 쓰지 않는다). (iv) 옛 트리거 표지를 스왑 뒤 노드에 다는 사본은 (d) 만 거짓이고 exit 1 이다. 각 실행은 거짓 다리를 이름으로 지목해야 한다. 사본 방식은 `TestAppJsHandlersFireSelectorMiss` 와 같다(AC-AFG-015 (i)~(iv))
+2a. `TestAppJsFireSwapPremiseLegs` — 브라우저 없이 항상 돈다. 탐침의 판정 규칙에 네 다리 중 정확히 한 다리만 거짓인 합성 보고서 네 개를 넣고, 각각 exit 1 과 그 다리만의 지목을 관측한다. 합성 보고서를 넣는 인터페이스는 이 마일스톤이 정한다(AC-AFG-015 (v))
+3. `TestAppJsHandlersFireRuntime` 의 (c) 단언에 자기확인 네 다리를 묶는다(AC-AFG-001 (c) 개정 문언)
+4. 스로틀·돌연변이 사본·Chrome 탭의 수명은 `t.Cleanup`·`t.TempDir()` 에만 맡긴다(REQ-AFG-006)
+5. 세 테스트 이름(`TestAppJsFirePostSwapSettleWait`·`TestAppJsFireSwapPremise`·`TestAppJsFireSwapPremiseLegs`)은 `AppJs.*Fire` 에 걸리게 짓는다 — M10 의 CI 선택자가 이 이름으로 고른다
+6. AC-AFG-002 의 0→1→0 레드 사이클을 개정 2 매니페스트로 **다시 측정**하고, 돌연변이 아래 어느 지표가 무너지는지를 옛 관측과 대조해 기록한다
+
+### M10 — CI 선택자 확장 + 병합 트리 측정 (card t1108, Priority Medium)
+
+1. `.github/workflows/ci.yml:672` 의 `-run 'AppJsHandlersFire'` 를 `-run 'AppJs.*Fire'` 로 바꾸고, **같은 그린 단계의 `env:`** 에 `MOAI_BROWSER_GUARD_SETTLE_STAGE2: "1"` 한 행을 더한다(개정 3, §A000). 이 변수는 그린 단계 밖 어디에도 두지 않는다. `--primary-entries-only` 3곳(734/745/767)은 그대로 둔다 — 개정 3 뒤에도 `grep -c -- '--primary-entries-only' .github/workflows/ci.yml` → `3` 이어야 한다
+2. 병합 트리에서 AC-AFG-016 의 세 명령을 **CI 모드로**(`MOAI_BROWSER_GUARD=1 MOAI_BROWSER_GUARD_SETTLE_STAGE2=1`) **먼저 `-timeout 10m` 으로** 실행한다. 선택된 테스트 전부 `--- PASS`, `--- SKIP` 0건. `TestAppJsFirePostSwapSettleWait` 로그가 `ci-stage2` 경로를 댔는지 확인한다. 판정서에 **수치로** 기록한다: 벽시계 소요 시간(`go test` 의 `ok … <초>`), 시작·종료 load average(`uptime`), 그리고 job 상한 20분 대비 여유 — 여유 = 1200초 − (그린 단계 소요 + job 의 나머지 단계 소요). job 의 나머지 단계 소요는 M10 BLOCKED 기록의 측정값(설정+Chrome+lint ≈ 21초, 레드 ≈ 27초)을 쓰고, 출처를 함께 적는다
+3. 10분을 넘으면(리드 결정 B3, 이 카드 범위 안) 그린 단계의 `-timeout` **만** 측정 소요 시간 + 여유로 올리고, 올린 값으로 CI 모드에서 다시 잰다(소요 시간·load average·20분 대비 여유를 2단계와 같은 형식으로 다시 기록). 측정 명령과 측정 소요 시간을 판정서와 커밋 메시지 둘 다에 인용한다. 다른 단계의 상한은 건드리지 않는다. 올린 값이 job 상한 `timeout-minutes: 20`(`ci.yml:608`) 안에 들어가지 않으면 job 상한을 올리지 말고 run-phase 를 멈춰 blocker 로 보고한다(iter-1 D4)
+3a. **커밋 조건(개정 3).** 워킹 트리에 미커밋으로 남아 있는 `-run` 한 줄은, CI 모드의 새 소요 시간이 위 상한 안에 든다는 측정이 판정서에 기록된 **뒤에만** 커밋한다. 그 전에는 커밋하지 않는다. 스위치 행과 `-run` 행은 같은 커밋에 싣는다
+4. AC-AFG-006 재측정 — base `3e35fbacf` 대비 삭제 0, 기존 job 8개 목록·순서 불변
+5. 리드의 일괄 push 뒤 `test-browser` 로그에서 같은 테스트 이름을 읽어 기록한다(레인은 push 하지 않는다)
+
 ## §F 위험
 
 | 위험 | 성질 | 완화 |
@@ -148,6 +226,15 @@ restore → cmp byte-동일 → git status 청결 → build(원본) → probe �
 | paint 술식이 「노드 존재」로 약화되는 것 | 조용한 공허 | AC-AFG-010 의 돌연변이 프로브 — 배너를 `hidden` 으로 렌더하는 합성 변이가 통과하면 채택 불가 |
 | 무쓰기 비교 창이 너무 넓어 읽기-경로 부수효과를 잡는 것 | 간헐 적색 | 스냅샷을 제출 직전·거부 렌더 직후로 한정(§A0); 제외 경로는 사유와 함께 열거 |
 | 사본 구성이 부족해 `/settings` 가 거부 경로에 도달하지 못하는 것 | 시끄러움 — red | M7 이 최소 구성 집합을 측정으로 확정; 도달 실패는 exit 2(기계결함)로 분류돼 제품 결함과 갈린다 |
+| 실제 스왑 경로에서 대기 없는 판(M1·M2)이 스로틀만으로는 실패하지 않는 것 (card t1108) | 조용함 — 대기의 필요성을 보이지 못한 초록 | AC-AFG-014 의 고정 순서(리드 결정 B1, iter-1 D3): 스로틀 12배 단독에서 M1·M2 가 각각 10/10 적색일 때에만 그것으로 판정한다. 그 밖에는 세 판에 똑같이 건 증폭과 필수 효과 관측(afterSettle 도달 시간 증폭 전후 중앙값)을 쓴다. 증폭 적용 여부·값은 판정서에 기록한다. 그래도 적색이 아니면 blocker |
+| 무관한 settle 이 대기를 풀고 자기확인 (c) 를 참으로 만드는 것 (card t1108, iter-1 D5) | 조용함 — 이 클릭의 스왑이 아닌 settle 을 잰 초록 | 알려진 한계로 기록만 한다. 이벤트가 이 클릭의 요청에서 나왔는지는 판정하지 않는다. 같은 문서 안 실시간 갱신 경로(`app.js:686-695`)가 원천이며, 오늘 `/settings` 에는 실시간 영역이 없다(`grep -c 'data-live=' internal/web/root.templ` → `0`). 설정 화면에 실시간 영역이 생기는 변경은 이 가드의 전제를 다시 재야 한다 |
+| 스왑이 프로필 트리거를 교체하지 않아 옛 핸들러가 살아남는 것 (card t1108) | 조용함 — 재바인딩이 아니라 옛 결합을 잰 초록 | REQ-AFG-016 (d). 정상 판에서 (d) 가 거짓이면 다리를 빼지 않고 blocker 로 보고한다 |
+| `htmx:afterSettle` 리스너 실행 순서 — 탐침의 해제가 `initConsole` 의 재결합보다 먼저 도는 것 (card t1108) | 간헐 적색 | 탐침 리스너는 `app.js` 보다 늦게 등록되므로 등록 순서상 뒤에 돈다(§A00). 이 순서가 깨지면 AC-AFG-014 정상 판이 적색으로 드러낸다 |
+| `p5_swap_referenceerrors` 창의 의미 변화 (card t1108) | 조용함 — 창 이름은 그대로인데 재는 것이 달라진다 | 개정 전 이 창은 전체 이동 중, 즉 새 문서가 `app.js` 를 다시 실행하며 던진 **로드 시점** 예외를 모았다. 개정 후에는 실제 스왑 중에 난 예외를 모은다. boost 스왑은 `defer` 로 로드된 `app.js` 를 다시 실행하지 않으므로, 로드 시점 예외는 이 창에 다시 찍히지 않는다(추론 — 미관측). 로드 시점 예외는 여전히 `p1_load_referenceerrors`·`p7_load_referenceerrors` 가 잡는다. 레드 단계의 `stampRefreshed` 가 어느 창에 찍히는지는 M9.6 의 재측정으로 관측한다 |
+| 선택 집합이 커져 CI `-timeout 10m` 을 넘는 것 (card t1108) | 시끄러움 — job red | AC-AFG-016 이 로컬 병합 트리에서 같은 상한으로 먼저 잰다. 넘으면 그린 단계 한 줄의 `-timeout` 만 측정값 + 여유로 올리고 근거를 판정서·커밋 메시지에 인용한다(리드 결정 B3, M10.3) |
+| 1단계 결과가 실행마다 달라 CI 소요 시간이 두 배로 갈리는 것 (card t1108 개정 3) | 시끄러움 — job 상한 초과 | CI 는 `MOAI_BROWSER_GUARD_SETTLE_STAGE2=1` 로 2단계에서 시작한다(§A000). 경로가 하나로 고정되므로 M10.2 가 그 경로의 소요 시간을 잴 수 있다. 로컬 1단계의 비결정성은 남는다 — 로컬 B1 경로의 소요 시간은 여전히 어느 가지를 타는지에 달려 있다 |
+| 스위치가 그린 단계 밖으로 새는 것 (card t1108 개정 3) | 조용함 — 로컬 실행이 1단계를 건너뜀 | 변수는 그린 단계 `env:` 에만 둔다(M10.1). 테스트가 경로와 변수 원문 값을 로그에 남기므로 판정서가 어느 경로였는지 인용할 수 있다 |
+| 스왑 링크 후보(`?tab=audit`)가 탭 구성 변경으로 사라지는 것 (card t1108) | 시끄러움 — red | 셀렉터 생존 검사(REQ-AFG-004)와 자기확인 (a) 가 이름 붙은 적색으로 드러낸다 |
 
 ## §G 안티패턴 — 하지 않을 것
 
@@ -166,6 +253,13 @@ restore → cmp byte-동일 → git status 청결 → build(원본) → probe �
 - `INVENTORY_TOTAL` 을 올려 신설 항목을 맞추려는 것 — 신설 항목은 app.js 등록 지점이 아니다(spec.md §B.6.4)
 - 신규 러너·별도 브라우저 하네스를 만드는 것 — card t1106 명시 금지
 - 무쓰기 비교에서 경로를 사유 없이 빼는 것 — 단언이 조용히 공허해진다
+- 스왑 뒤 대기를 URL 변경 폴링이나 고정 시간으로 두는 것 — REQ-AFG-007 (2) (card t1108)
+- `htmx:afterSettle` 리스너를 클릭 **뒤에** 붙이는 것 — 이벤트를 놓치고, 그 누락이 시간 초과로 위장한다
+- 스왑 자기확인이 적색일 때 스왑 뒤 지표를 발화로 세는 것 — REQ-AFG-016
+- 정상 판에서 자기확인 (d) 가 거짓으로 나왔다고 다리를 빼는 것 — 재바인딩 전제가 이 항목으로는 성립하지 않는다는 신호이므로 blocker 다
+- CI 를 넓히면서 `--primary-entries-only` 를 지우는 것 — t1106 F1 이 되살아난다
+- 보고서 키 `p5_*`·`p6_*` 이름을 바꾸는 것 — 드라이버 JSON 태그가 깨진다
+- 가드를 통과시키려고 제품에 boost 된 `/todo` 링크를 만드는 것 — 순서가 뒤집혔다
 
 ## §H 교차 참조
 
@@ -176,3 +270,6 @@ restore → cmp byte-동일 → git status 청결 → build(원본) → probe �
 - `spec.md` §B.6 — 개정분(card t1106)이 딛고 선 실측(t1105 수리의 검증면, 오늘의 허용목록·드라이버 배선, 인벤토리 불변, 세 빈 스윕)
 - `spec.md` §C 개정 결정 — 두 절반이 함께여야 하는 이유와 기각안
 - `internal/web/handlers.go` — `handleSave` 검증 거부 블록(card t1105 수리 지점)
+- `spec.md` §B.7 — 개정 2(card t1108)가 딛고 선 실측(전체 이동, 초기화 전 클릭, boost 링크 인벤토리, 드라이버 표면의 실제 스왑, CI 선택자)
+- `spec.md` §C 「채택(개정 2)」 — 방향 (a) 와 자기확인 채택의 근거
+- `.moai/reports/t1108/verdict.md` — 원인 확정 판정서(좌표는 t1106 병합 전 트리 기준)

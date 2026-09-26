@@ -96,6 +96,7 @@ func TestRunSync_WithProvider(t *testing.T) {
 // --- Tests for runRemove ---
 
 func TestRunRemove_Success(t *testing.T) {
+	stubReadableEmptyLockList(t)
 	origProvider := WorktreeProvider
 	defer func() { WorktreeProvider = origProvider }()
 
@@ -136,6 +137,7 @@ func TestRunRemove_Success(t *testing.T) {
 }
 
 func TestRunRemove_Error(t *testing.T) {
+	stubReadableEmptyLockList(t)
 	origProvider := WorktreeProvider
 	defer func() { WorktreeProvider = origProvider }()
 

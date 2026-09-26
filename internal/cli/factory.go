@@ -264,8 +264,14 @@ func recordFactoryRunStart(root, runID, backend, specID string) (err error) {
 		return err
 	}
 	defer closeFactoryInto(&err, db, "factory state")
+	// The owner stamp written here is the RECORDING process, and it is correct
+	// only for the instant it describes. On a replace-shaped door (syscall.Exec)
+	// this process IS the session and the stamp stays correct; on the spawn and
+	// pane shapes the launcher restamps to the session identity via
+	// stampFactoryRunOwner once that identity exists (REQ-002b).
 	return db.RecordRun(context.Background(), homestate.FactoryRun{
 		RunID: runID, Backend: backend, ManifestJSON: "{}",
+		LeadPID: os.Getpid(), LeadProcessStart: homestate.CurrentProcessFingerprint(),
 	})
 }
 

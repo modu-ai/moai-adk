@@ -68,6 +68,18 @@ const (
 	// so extractThreadID reads both (codex-cli 0.146.1 generate-json-schema).
 	codexMethodThreadResume = "thread/resume"
 
+	// codexMethodThreadFork copies an EXISTING thread's stored history into a
+	// new thread. ThreadForkParams requires {threadId} and accepts cwd; the
+	// response carries {cwd, thread:{id, forkedFromId, cwd}} (codex-cli 0.155.1
+	// generate-json-schema). The lane handoff uses it to relocate an idle
+	// headless lane into its card worktree (SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
+	// REQ-FLH-007).
+	codexMethodThreadFork = "thread/fork"
+
+	// codexNotifyThreadStarted is the server→client notification that a
+	// thread/start or thread/fork created a thread; its params carry {thread}.
+	codexNotifyThreadStarted = "thread/started"
+
 	// codexMethodTurnInterrupt cancels an in-flight turn. Its params are
 	// {threadId, turnId} with BOTH required (M0 probe, progress.md §E.2 (a)) —
 	// which is why the job record carries a turnId at all (REQ-CX2-003), and why
@@ -736,14 +748,8 @@ func openCodexSessionResolved(ctx context.Context, binaryPath string, params map
 	}
 
 	// 1. initialize handshake (mandatory; clientInfo {name,version} required).
-	const initID = 1
-	if err := writeCodexRequest(conn, initID, codexMethodInitialize, map[string]any{
-		"clientInfo": map[string]any{"name": codexClientName, "version": codexClientVersion},
-	}); err != nil {
-		return nil, codexHandshakeFailure(conn, "codex initialize write failed: "+err.Error(), err)
-	}
-	if _, err := awaitCodexResponse(conn, initID, ctx); err != nil {
-		return nil, codexHandshakeFailure(conn, "codex initialize rejected: "+err.Error(), err)
+	if err := codexInitialize(ctx, conn); err != nil {
+		return nil, err
 	}
 
 	// 2. thread/start (or thread/resume) → obtain threadId (required by
@@ -775,6 +781,106 @@ func openCodexSessionResolved(ctx context.Context, binaryPath string, params map
 	}
 
 	return &codexSessionHandle{conn: conn, threadID: threadID, nextID: threadIDReq + 1, resolveME: resolve}, nil
+}
+
+// codexInitialize runs the mandatory initialize handshake (request id 1). On
+// failure it closes the half-open connection and returns a codexSessionError
+// carrying the fail-open summary.
+func codexInitialize(ctx context.Context, conn codexConn) error {
+	const initID = 1
+	if err := writeCodexRequest(conn, initID, codexMethodInitialize, map[string]any{
+		"clientInfo": map[string]any{"name": codexClientName, "version": codexClientVersion},
+	}); err != nil {
+		return codexHandshakeFailure(conn, "codex initialize write failed: "+err.Error(), err)
+	}
+	if _, err := awaitCodexResponse(conn, initID, ctx); err != nil {
+		return codexHandshakeFailure(conn, "codex initialize rejected: "+err.Error(), err)
+	}
+	return nil
+}
+
+// codexThreadRelocation is what the app-server returned for a headless lane
+// relocation: the method issued, the new thread id, its lineage, the cwd the
+// server reports, and whether thread/started was observed for that thread.
+type codexThreadRelocation struct {
+	Method, SourceThreadID, RequestCwd  string
+	ThreadID, ForkedFromID, ResponseCwd string
+	ThreadStarted                       bool
+}
+
+// runCodexThreadRelocation opens an app-server session on the existing
+// transport, completes initialize, and issues exactly one relocation request:
+// thread/fork {threadId, cwd} when a source thread with stored history exists,
+// thread/start {cwd} otherwise. It then waits for thread/started of the
+// returned thread. It never issues turn/start or turn/steer, so no model turn
+// is created to manufacture binding evidence (REQ-FLH-007).
+//
+// @MX:WARN: [AUTO] spawns a codex app-server subprocess whose reader goroutine ends only on EOF or ctx
+// @MX:REASON: an unbounded ctx would leave the child and its reader alive; callers pass a deadline and conn.close bounds teardown
+// @MX:SPEC: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
+func runCodexThreadRelocation(ctx context.Context, binaryPath, sourceThreadID, cwd string) (codexThreadRelocation, error) {
+	rel := codexThreadRelocation{Method: codexMethodThreadStart, SourceThreadID: sourceThreadID, RequestCwd: cwd}
+	params := map[string]any{"cwd": cwd}
+	if sourceThreadID != "" {
+		rel.Method = codexMethodThreadFork
+		params["threadId"] = sourceThreadID
+	}
+	conn, err := codexSession.start(ctx, binaryPath, []string{codexAppServerSubcmd})
+	if err != nil {
+		return rel, fmt.Errorf("codex session start: %w", err)
+	}
+	if err := codexInitialize(ctx, conn); err != nil {
+		return rel, err // codexInitialize already closed conn
+	}
+	defer func() { _ = conn.close() }()
+
+	const relocateID = 2
+	if err := writeCodexRequest(conn, relocateID, rel.Method, params); err != nil {
+		return rel, err
+	}
+	started := map[string]bool{}
+	observe := func(msg rpcMessage) {
+		if msg.Method == codexNotifyThreadStarted {
+			started[extractThreadID(msg.Params)] = true
+		}
+	}
+	resp, err := awaitCodexResponseObserving(conn, relocateID, ctx, observe)
+	if err != nil {
+		return rel, err
+	}
+	var doc struct {
+		Cwd    string `json:"cwd"`
+		Thread struct {
+			ID           string `json:"id"`
+			ForkedFromID string `json:"forkedFromId"`
+			Cwd          string `json:"cwd"`
+		} `json:"thread"`
+	}
+	if err := json.Unmarshal(resp.Result, &doc); err != nil {
+		return rel, fmt.Errorf("codex %s result: %w", rel.Method, err)
+	}
+	rel.ThreadID, rel.ForkedFromID, rel.ResponseCwd = doc.Thread.ID, doc.Thread.ForkedFromID, doc.Cwd
+	if rel.ThreadID == "" {
+		return rel, fmt.Errorf("codex %s returned no thread id", rel.Method)
+	}
+	if doc.Thread.Cwd != "" && doc.Thread.Cwd != doc.Cwd {
+		return rel, fmt.Errorf("codex %s reported cwd %q and thread cwd %q", rel.Method, doc.Cwd, doc.Thread.Cwd)
+	}
+	for !started[rel.ThreadID] {
+		if err := ctx.Err(); err != nil {
+			return rel, err
+		}
+		line, ok := conn.recv()
+		if !ok {
+			return rel, fmt.Errorf("codex stdout closed before %s for thread %s", codexNotifyThreadStarted, rel.ThreadID)
+		}
+		var msg rpcMessage
+		if json.Unmarshal([]byte(line), &msg) == nil {
+			observe(msg)
+		}
+	}
+	rel.ThreadStarted = true
+	return rel, nil
 }
 
 // close tears the session's subprocess down (stdin close, bounded wait, kill).
@@ -982,6 +1088,13 @@ func writeCodexRequest(conn codexConn, id int, method string, params map[string]
 // surfacing a JSON-RPC error arm verbatim (the #1421 invariant). Notification
 // lines (no id) and lines for other ids are consumed and discarded.
 func awaitCodexResponse(conn codexConn, wantID int, ctx context.Context) (rpcMessage, error) {
+	return awaitCodexResponseObserving(conn, wantID, ctx, nil)
+}
+
+// awaitCodexResponseObserving is awaitCodexResponse that also hands every
+// parsed line without a matching id — notifications included — to observe, so
+// a caller can see a notification that arrives before the response.
+func awaitCodexResponseObserving(conn codexConn, wantID int, ctx context.Context, observe func(rpcMessage)) (rpcMessage, error) {
 	for {
 		if err := ctx.Err(); err != nil {
 			return rpcMessage{}, err
@@ -995,6 +1108,9 @@ func awaitCodexResponse(conn codexConn, wantID int, ctx context.Context) (rpcMes
 			continue // unparseable line (stray stderr leak / noise) — skip
 		}
 		if !codexIDMatches(msg.ID, wantID) {
+			if observe != nil {
+				observe(msg)
+			}
 			continue // a notification or a different request's response
 		}
 		if msg.Error != nil {

@@ -23,10 +23,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/execerr"
 	"github.com/modu-ai/moai-adk/internal/hook"
+	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
 )
 
@@ -790,4 +792,98 @@ func loadSessionWorktreeConfig(cmd *cobra.Command) *config.Config {
 		return nil
 	}
 	return cfg
+}
+
+// worktreeWriterAnchoredSentinel prefixes every concurrent-writer refusal, so
+// a caller can match the refusal without parsing its prose.
+const worktreeWriterAnchoredSentinel = "WORKTREE_WRITER_ANCHORED"
+
+// readWorktreeLock reads the git worktree lock of tree from git's own
+// porcelain. A tree git does not list has no lock opinion (zero LockInfo); a
+// listing that cannot be read is an error, never "unlocked".
+func readWorktreeLock(tree string) (session.LockInfo, error) {
+	out, err := exec.Command("git", "-C", tree, "worktree", "list", "--porcelain").Output()
+	if err != nil {
+		return session.LockInfo{}, fmt.Errorf("git worktree list --porcelain: %s", execerr.StatusDetail(err))
+	}
+	want := canonicalTreePath(tree)
+	for path, info := range session.ParseWorktreeLocks(string(out)) {
+		if canonicalTreePath(path) == want {
+			return info, nil
+		}
+	}
+	return session.LockInfo{}, nil
+}
+
+// canonicalTreePath resolves symlinks (macOS /var -> /private/var) so a path
+// the caller spelled and the path git reports compare equal.
+func canonicalTreePath(p string) string {
+	if resolved, err := filepath.EvalSymlinks(p); err == nil {
+		return filepath.Clean(resolved)
+	}
+	return filepath.Clean(p)
+}
+
+// @MX:ANCHOR: [AUTO] the concurrent-writer refusal shared by moai codex -w and moai cc -w
+// @MX:REASON: both launchers decide "is someone else writing this tree" here; a
+// second copy would let the two launchers disagree about the same lock.
+// @MX:SPEC: SPEC-DUAL-HARNESS-RECOVERY-001
+//
+// worktreeWriterRefusal returns a refusal when tree is anchored by a live or
+// undetermined session other than this process, and nil otherwise. It only
+// READS: the lock, the branch, and the working files are never touched, so a
+// refused launch leaves the tree exactly as it found it. The decision is the
+// shared lock-and-registry one, fail-closed: an unreadable lock state refuses.
+func worktreeWriterRefusal(tree string) error {
+	lock, err := readWorktreeLock(tree)
+	if err != nil {
+		return fmt.Errorf("%s: cannot read the worktree lock state of %s (source: lock, holder: undetermined): %v; refusing to launch a second writer",
+			worktreeWriterAnchoredSentinel, tree, err)
+	}
+	if pid, ok := session.LockReasonPID(lock.Reason); lock.Locked && ok && pid == os.Getpid() {
+		return nil // this process already holds the tree
+	}
+	now := time.Now()
+	verdict := session.AnchorDecision(tree, lock, now)
+	if !verdict.Anchored {
+		return nil
+	}
+	holder := lock.Reason
+	if verdict.Source == session.AnchorSourceRegistry {
+		var holders []string
+		for _, e := range session.LiveAnchoredSessions(tree, now) {
+			holders = append(holders, fmt.Sprintf("session %s pid %d", e.SessionID, e.PID))
+		}
+		holder = strings.Join(holders, ", ")
+	}
+	if holder == "" {
+		holder = "no reason recorded"
+	}
+	return fmt.Errorf("%s: %s is anchored by another session - %s (source: %s, holder: %s); refusing to launch a second writer. Close that session first, or choose another worktree",
+		worktreeWriterAnchoredSentinel, tree, verdict.Detail, verdict.Source, holder)
+}
+
+// ccWorktreeWriterPrecheck applies the concurrent-writer refusal to `moai cc
+// -w <tree>` when the tree already exists. It never writes a lock: Claude
+// Code writes its own at EnterWorktree, and a lock written here would anchor
+// the tree to a launcher that is about to be replaced.
+func ccWorktreeWriterPrecheck(args []string) error {
+	value, ok := worktreeFlagValue(args)
+	if !ok || value == "" {
+		return nil // bare -w creates a fresh tree; nothing to share yet
+	}
+	tree := value
+	if !filepath.IsAbs(tree) {
+		root, err := findProjectRootFn()
+		if err != nil || root == "" {
+			if root, err = os.Getwd(); err != nil {
+				return nil
+			}
+		}
+		tree = filepath.Join(root, sessionWorktreeSubdir, value)
+	}
+	if info, err := os.Stat(tree); err != nil || !info.IsDir() {
+		return nil // Claude Code creates it; there is no writer to collide with
+	}
+	return worktreeWriterRefusal(tree)
 }

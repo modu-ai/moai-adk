@@ -337,30 +337,33 @@ This mechanism→context-cost ladder is a *cross-mechanism* cost axis. It runs p
 
 Per-agent default effort levels for the Opus 4.7+ / 4.8 substrate. The `effort` frontmatter field overrides the session effort level and is scoped to a single agent run; `xhigh` and `max` require Opus 4.7 or later. For the substrate-level effort policy (defaults, when to raise/lower), see `.claude/rules/moai/core/moai-constitution.md` § Opus 5.5 Prompt Philosophy.
 
-### Retained Agents (10 — active, spawnable)
+### Retained Agents (13 — 12 MoAI-custom + `Explore`; active, spawnable)
 
 The values below are the **medium (default) profile column** of the `llm.profiles` matrix, which the shipped frontmatter mirrors. Because the `Agent` tool has no `effort` parameter, this frontmatter value is the effective effort on the standard sub-agent path — it is load-bearing, not documentation.
 
 | Agent | Default effort (medium column) | Rationale |
 |-------|-------------------------------|-----------|
-| `manager-spec` | high | plan-phase GEARS/EARS authoring; the `high` profile holds it at Opus `high` |
-| `manager-develop` | medium | run-phase implementation; **this cell is the matrix anchor** — the `high` profile raises it to `max` |
-| `manager-design` | medium | design pipeline; the `high` profile raises this to Opus `high` |
-| `manager-docs` | low | sync-phase documentation + frontmatter transitions (mechanical doc sync) |
-| `manager-git` | low | git operations, PR creation, Tier-L routing (fast bash execution) |
-| `plan-auditor` | high | adversarial plan audit, bias prevention; the `high` profile holds it at Opus `high` |
-| `sync-auditor` | medium | skeptical 4-dimension quality scoring; `high` profile raises to Opus `high` |
-| `super-advisor` | high | on-demand high-reasoning consultation; rare invocation justifies the depth, and the `high` profile raises it to Opus `max` |
-| `builder-harness` | medium | artifact scaffolding (agents/skills/plugins/hooks) |
+| `manager-spec` | medium | plan-phase GEARS/EARS authoring; every profile holds it at Opus `medium` |
+| `manager-develop` | medium | run-phase implementation; **this cell is the matrix anchor** — every profile holds it at Opus `medium` |
+| `manager-design` | high | design pipeline; the `low` profile lowers this to Opus `medium` |
+| `manager-docs` | low | sync-phase documentation + frontmatter transitions (mechanical doc sync); Sonnet `low` in every profile |
+| `manager-git` | low | git operations, PR creation, Tier-L routing (fast bash execution); Sonnet `low` in every profile |
+| `manager-lead` | high | Tier L hierarchical-team coordination and `-k`/`-f` lead dispatch; the `low` profile lowers this to Opus `medium` |
+| `plan-auditor` | high | adversarial plan audit, bias prevention; the `low` profile lowers this to Opus `medium` |
+| `sync-auditor` | high | skeptical 4-dimension quality scoring; the `low` profile lowers this to Opus `medium` |
+| `super-advisor` | high | on-demand high-reasoning consultation; rare invocation justifies the depth, and every profile holds it at Opus `high` |
+| `mission-governor` | high | GTD auto-mission decision role; every profile holds it at Opus `high` |
+| `builder-harness` | medium | artifact scaffolding (agents/skills/plugins/hooks); the `high` profile raises this to Opus `high`, the `low` profile lowers it to Opus `low` |
+| `e2e-tester` | low | E2E journey scripting and execution; the `high` profile raises this to Opus `medium`, the `low` profile moves it to Sonnet `low` |
 | `Explore` (Anthropic built-in) | low (call-time) | read-only codebase exploration. Explore has NO agent file, so neither the frontmatter channel nor an `effort` parameter can carry this value — it is stated at call time in the spawn prompt alongside the search-breadth qualifier. Raise to `medium` when asking for a `very thorough` sweep. |
 
-The per-profile model+effort variation is the `llm.profiles` matrix (11 agents × {high, medium, low} = 33 cells; Go SSOT `template.DefaultProfileMatrix`) — see `.claude/rules/moai/development/model-policy.md` § Per-Agent Profile Resolver. The former "(FIXED) across all tiers" markers on `manager-design` and `super-advisor` are retired: every agent now varies with the profile, and both agents' rows remain monotone (`high >= medium >= low`). Deployments that want maximum reasoning depth set `llm.profile: high`, which raises the reasoning rows to Opus `high` and the two rarest-invocation rows (`manager-develop`, `super-advisor`) to Opus `max`. No column uses `xhigh`: on Opus it scores the same as `high` at materially higher cost.
+The per-profile model+effort variation is the `llm.profiles` matrix (13 rows — 12 agents plus `Explore` — × {high, medium, low} = 39 cells; Go SSOT `template.DefaultProfileMatrix`) — see `.claude/rules/moai/development/model-policy.md` § Per-Agent Profile Resolver. The former "(FIXED) across all tiers" markers on `manager-design` and `super-advisor` are retired: every agent now varies with the profile, and both agents' rows remain monotone (`high >= medium >= low`). Deployments that want the deepest profile set `llm.profile: high`, which differs from `medium` only on `builder-harness` (`medium` → `high`) and `e2e-tester` (Opus `low` → `medium`). No column uses `max` or `xhigh`: on Opus `xhigh` scores the same as `high` at materially higher cost.
 
 Generated harness specialists are NOT in this table: they are model-uniform (`opus`) with effort drawn from `llm.harness_agents` — see `.claude/rules/moai/development/model-policy.md` § Harness-Agent Model Policy.
 
 ### Archived Agents (legacy reference — MUST NOT be spawned)
 
-The following agents were retired during the catalog consolidation (10 retained + 12 archived — see `archived-agent-rejection.md` §C for the canonical 12-row migration table) and are listed here for historical traceability only. They MUST NOT be spawned; route their former work per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C migration table.
+The following agents were retired during the catalog consolidation (the catalog now retains the 13 agents above; 12 were archived — see `archived-agent-rejection.md` §C for the canonical 12-row migration table) and are listed here for historical traceability only. They MUST NOT be spawned; route their former work per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C migration table.
 
 | Archived agent | Former role | Successor routing |
 |----------------|-------------|-------------------|

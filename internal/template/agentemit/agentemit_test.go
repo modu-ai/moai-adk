@@ -298,7 +298,15 @@ func TestEmitAllSandboxPerMeasuredSet(t *testing.T) {
 	}
 
 	// Ship-omitted fallback face: an unconfirmed manifest variant omits the key.
+	// While a permission contract is present, the sandbox restriction is
+	// enforced through this very field, so omitting it must fail emission
+	// rather than drop the restriction silently.
 	man.Fields["sandbox_mode"].Emit = false
+	if _, err := agentemit.EmitAll(fullFixtureSet(), "agents", man); err == nil || !strings.Contains(err.Error(), "permission contract") {
+		t.Fatalf("omitting sandbox_mode under a permission contract must fail, got %v", err)
+	}
+	// An unconfirmed variant carries no contract either; then the key is omitted.
+	man.PermissionContract = nil
 	pub, err = agentemit.EmitAll(fullFixtureSet(), "agents", man)
 	if err != nil {
 		t.Fatalf("EmitAll (omit variant): %v", err)

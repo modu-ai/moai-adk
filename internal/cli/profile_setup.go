@@ -136,7 +136,9 @@ func normalizeModelLegacy1M(m string) string {
 // (settings.EmptyLabelFor) is prepended. It is per-call-site rather than derived
 // from the schema because permission_mode declares an empty label for the web
 // console but the wizard has never offered one (it defaults to acceptEdits and
-// normalizes that back to "" on save).
+// normalizes that back to "" on save). The empty option's label is resolved
+// through schemaOptionBridge by the field's EmptyLabelKey when the locale
+// carries a translation for it, and is the schema's EmptyLabel otherwise.
 //
 // The list is version neutral ({Label, Value}, design.md §3): the absorbed v2
 // profile wizard takes it as wizard.Option arguments.
@@ -147,6 +149,11 @@ func schemaSelectOptions(t profileSetupText, field string, withEmpty bool) []wiz
 	opts := make([]wizard.Option, 0, len(defs)+1)
 	if withEmpty {
 		if empty := settings.EmptyLabelFor(field); empty != "" {
+			if resolve, ok := schemaOptionBridge[settings.EmptyLabelKeyFor(field)]; ok {
+				if localized := resolve(t); localized != "" {
+					empty = localized
+				}
+			}
 			opts = append(opts, wizard.Option{Label: empty, Value: ""})
 		}
 	}

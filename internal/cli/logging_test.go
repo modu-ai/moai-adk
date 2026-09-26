@@ -56,23 +56,45 @@ func TestResolveLogLevel(t *testing.T) {
 // global logger: a slog.Handler does not expose its writer, so routing the
 // assertion through slog.SetDefault would only prove that *a* handler was
 // installed, not *which* one. Not parallel — subtests call t.Setenv.
+//
+// The three hook cases assert a *hookSink rather than io.Discard (AC-HDS-015).
+// They previously expected io.Discard, and SPEC-HOOK-DIAG-SINK-001 REQ-HDS-001
+// deliberately inverts that expectation: the hook path now writes to a file
+// sink. This is a contract change, not a regression — the carve-out these cases
+// exist to protect is that neither standard stream is reachable, and that is
+// what they still assert.
+//
+// The three case NAMES still read "discards" and are now inaccurate. They are
+// kept deliberately: AC-HDS-015 pins them, so that deleting a case to make the
+// suite green is mechanically visible. Renaming them is a later decision, not a
+// tidy-up to make here.
+//
+// A *hookSink cannot be compared by pointer identity: resolveLoggingDecision
+// constructs a fresh one per call, by design (each invocation resolves its own
+// root). The hook cases therefore assert the TYPE plus the three destinations
+// that must never appear.
 func TestLoggingHandlerSelection(t *testing.T) {
 	cases := []struct {
-		name     string
-		env      string
-		args     []string
-		wantDest io.Writer
+		name string
+		env  string
+		args []string
+		// wantDest is compared by identity and applies to non-hook cases only;
+		// it is nil exactly when wantHookSink is set.
+		wantDest     io.Writer
+		wantHookSink bool
 	}{
-		{"hook_discards", "", []string{"hook", "pre-tool"}, io.Discard},
-		{"doctor_writes_stderr", "", []string{"doctor"}, os.Stderr},
-		{"astgrep_writes_stderr", "", []string{"ast-grep", "."}, os.Stderr},
-		{"update_writes_stderr", "", []string{"update"}, os.Stderr},
-		{"hook_behind_a_flag_discards", "", []string{"--verbose", "hook", "stop"}, io.Discard},
+		{name: "hook_discards", args: []string{"hook", "pre-tool"}, wantHookSink: true},
+		{name: "doctor_writes_stderr", args: []string{"doctor"}, wantDest: os.Stderr},
+		{name: "astgrep_writes_stderr", args: []string{"ast-grep", "."}, wantDest: os.Stderr},
+		{name: "update_writes_stderr", args: []string{"update"}, wantDest: os.Stderr},
+		{name: "hook_behind_a_flag_discards", args: []string{"--verbose", "hook", "stop"}, wantHookSink: true},
 		// D-3: MOAI_LOG_LEVEL does not re-open the hook path. The hook contract
 		// is that stdout carries structured JSON and stderr belongs to the
-		// Claude Code runtime, so log records stay discarded regardless.
-		{"hook_ignores_log_level_env", "debug", []string{"hook", "session-start"}, io.Discard},
-		{"bare_invocation_writes_stderr", "", []string{}, os.Stderr},
+		// Claude Code runtime, so the variable moves the LEVEL and never the
+		// destination (REQ-HDS-002, REQ-HDS-005). That is the assertion this
+		// case exists for, and it survives the destination change intact.
+		{name: "hook_ignores_log_level_env", env: "debug", args: []string{"hook", "session-start"}, wantHookSink: true},
+		{name: "bare_invocation_writes_stderr", args: []string{}, wantDest: os.Stderr},
 	}
 
 	for _, tc := range cases {
@@ -80,9 +102,25 @@ func TestLoggingHandlerSelection(t *testing.T) {
 			t.Setenv(config.EnvLogLevel, tc.env)
 
 			got := resolveLoggingDecision(tc.args)
-			if got.dest != tc.wantDest {
-				t.Errorf("resolveLoggingDecision(%q).dest = %T(%v), want %T(%v)",
-					tc.args, got.dest, got.dest, tc.wantDest, tc.wantDest)
+
+			if !tc.wantHookSink {
+				if got.dest != tc.wantDest {
+					t.Errorf("resolveLoggingDecision(%q).dest = %T(%v), want %T(%v)",
+						tc.args, got.dest, got.dest, tc.wantDest, tc.wantDest)
+				}
+				return
+			}
+
+			if _, ok := got.dest.(*hookSink); !ok {
+				t.Errorf("resolveLoggingDecision(%q).dest = %T, want *cli.hookSink "+
+					"(the hook path writes to the file sink — REQ-HDS-001)", tc.args, got.dest)
+			}
+			// The carve-out itself: MOAI_LOG_LEVEL=%q must not open a standard
+			// stream, and the records must not be thrown away either.
+			if got.dest == os.Stdout || got.dest == os.Stderr || got.dest == io.Discard {
+				t.Errorf("resolveLoggingDecision(%q).dest with %s=%q resolved to %T(%v); "+
+					"the hook path must reach neither standard stream nor io.Discard "+
+					"(REQ-HDS-002)", tc.args, config.EnvLogLevel, tc.env, got.dest, got.dest)
 			}
 		})
 	}

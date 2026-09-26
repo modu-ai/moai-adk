@@ -321,6 +321,41 @@ func TestAgentEmitEmbed_DriftFailsAndNamesPath(t *testing.T) {
 	}
 }
 
+// TestAgentEmitEmbed_DeployNormalizationIsNotDrift pins the comparison
+// basis: the deployer rewrites Claude-tree references in Codex role files
+// (e.g. `.claude/skills/` -> `.agents/skills/`), so the committed bytes are
+// compared after that same normalization. A normalized-equal pair passes; a
+// difference that survives normalization still fails.
+func TestAgentEmitEmbed_DeployNormalizationIsNotDrift(t *testing.T) {
+	root := newEmbedFixtureRoot(t, "manager-docs.toml", "builder-harness.toml")
+	dir := filepath.Join(root, filepath.FromSlash(committedEmissionRelDir))
+	for n, body := range map[string]string{
+		"manager-docs.toml":    "see .claude/skills/x/SKILL.md and .claude/rules/moai/core/a.md\n",
+		"builder-harness.toml": "see .claude/skills/y/SKILL.md\n",
+	} {
+		if err := os.WriteFile(filepath.Join(dir, n), []byte(body), 0o644); err != nil {
+			t.Fatalf("write committed %s: %v", n, err)
+		}
+	}
+	writeFakeBinary(t, root)
+	extracted := newExtractedDir(t, map[string]string{
+		"manager-docs.toml":    "see .agents/skills/x/SKILL.md and .moai/policies/core/a.md\n",
+		"builder-harness.toml": "see .agents/skills/y/SKILL.md\n# stale\n",
+	})
+
+	c := checkAgentEmitEmbedAgainst(root, "", staticExtractor(extracted), false)
+
+	if c.Status != uikit.CheckFail {
+		t.Fatalf("status = %q, want fail (builder-harness.toml differs after normalization)", c.Status)
+	}
+	if !strings.Contains(c.Message+c.Detail, "builder-harness.toml") {
+		t.Errorf("output = %q / %q, want it to name builder-harness.toml", c.Message, c.Detail)
+	}
+	if strings.Contains(c.Message, "manager-docs.toml") {
+		t.Errorf("message = %q, a normalization-only difference must not read as drift", c.Message)
+	}
+}
+
 // TestAgentEmitEmbed_PartialExtractionFails: an extraction that yields only a
 // subset of the committed set must NOT pass by comparing that subset. This is
 // the cardinality gate — the analogue of golden_test.go's `count != 11`.
@@ -710,5 +745,34 @@ func TestAgentEmitEmbed_HomeOnlyReadsAsNotAProject(t *testing.T) {
 	}
 	if !strings.Contains(c.Message, "not a MoAI project root") {
 		t.Errorf("message = %q, want the not-a-project phrasing — a home-owned ~/.moai must not read as a project", c.Message)
+	}
+}
+
+// TestExtractEmissionViaInit_RequestsCodexDeployment pins the extraction
+// argv: a default `moai init` deploys only the Claude tree, so the extraction
+// must ask for the Codex surfaces explicitly (`--llm both`) or it finds no
+// emitted role files to compare. The stand-in deploys the emission layout
+// only when that flag pair is present.
+func TestExtractEmissionViaInit_RequestsCodexDeployment(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell stand-in binary is POSIX-only")
+	}
+	bin := filepath.Join(t.TempDir(), "moai")
+	script := "#!/bin/sh\ntarget=\"$2\"\nwant=0\nprev=\"\"\n" +
+		"for a in \"$@\"; do if [ \"$prev\" = \"--llm\" ] && [ \"$a\" = \"both\" ]; then want=1; fi; prev=\"$a\"; done\n" +
+		"if [ \"$want\" = 1 ]; then mkdir -p \"$target/" + deployedEmissionRelDir + "\"; " +
+		"printf 'x' > \"$target/" + deployedEmissionRelDir + "/manager-git.toml\"; fi\n"
+	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
+		t.Fatalf("write stand-in binary: %v", err)
+	}
+	dir, cleanup, err := extractEmissionViaInit(bin)
+	if cleanup != nil {
+		defer cleanup()
+	}
+	if err != nil {
+		t.Fatalf("extractEmissionViaInit: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(deployedEmissionRelDir), "manager-git.toml")); err != nil {
+		t.Errorf("extraction did not request the Codex deployment (--llm both): %v", err)
 	}
 }

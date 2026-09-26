@@ -329,7 +329,7 @@ func parseStatusFromYAML(lines []string) (string, bool) {
 		if inFrontmatter && strings.HasPrefix(line, "status:") {
 			parts := strings.SplitN(line, ":", 2)
 			if len(parts) == 2 {
-				return strings.TrimSpace(parts[1]), true
+				return NormalizeStatusValue(parts[1]), true
 			}
 		}
 	}

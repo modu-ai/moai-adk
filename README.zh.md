@@ -77,7 +77,7 @@ moai cc -f worker-3           # 一名工作者，直接指定编号
 moai glm -f worker            # ……GLM 后端上的一名工作者
 ```
 
-用 `moai cc -f worker`（自动加入下一个空号）或 `moai cc -f worker-<n>`（精确那个编号）一名一名地加工作者。两种写法都已经指定了工作者名，再给 `--name`/`-n` 会报错。直接指定的编号若与存活的旧式工作者（`agent-<n>`/`lane-<n>`）相撞，会被点名拒绝；`-f worker` 的自动分配不会被拒绝，只会点名告知跳过了哪些旧式编号。除此之外，只有活着的会话占用的编号才会被跳过 —— 工作者死了，占用不再挡住那个编号（直接指定的编号可以立刻重用），但 `-f worker` 的自动分配总是取存活最高编号 +1，不会回填中间的空号。工作者归属记录在 `~/.moai/db/<project-key>/factory/factory.db` 中 —— 启动目录是临时目录时（没有绝对 `MOAI_HOME` 覆盖）则记录在项目本地的 `<base>/.moai/db/<project-key>/factory/` 下，与 backlog 队列同一例外；旧的 `.moai/state/factory/workers.json` 只导入一次，之后仅作为回滚凭据保留。一名工作者最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。千万不要一次把所有工作者全开 —— 先起第一名，确认它真的开始产出，再激活其余。卡片绝不会被拆到多名工作者上。`-k` 依旧驱动三角色的看板链；一次启动只能带一个进入标记，所以 `-k` 与 `-f` 同时给出会报错，已停用的 `moai cg` 会显示迁移提示并退出。
+用 `moai cc -f worker`（自动加入下一个空号）或 `moai cc -f worker-<n>`（精确那个编号）一名一名地加工作者。两种写法都已经指定了工作者名，再给 `--name`/`-n` 会报错。直接指定的编号若与存活的旧式工作者（`agent-<n>`/`lane-<n>`）相撞，会被点名拒绝；`-f worker` 的自动分配不会被拒绝，只会点名告知跳过了哪些旧式编号。除此之外，只有活着的会话占用的编号才会被跳过 —— 工作者死了，占用不再挡住那个编号（直接指定的编号可以立刻重用），但 `-f worker` 的自动分配总是取存活最高编号 +1，不会回填中间的空号。工作者归属记录在 `~/.moai/db/<project-key>/factory/factory.db` 中 —— 启动目录是临时目录时（没有绝对 `MOAI_HOME` 覆盖）则记录在项目本地的 `<base>/.moai/db/<project-key>/factory/` 下，与 backlog 队列同一例外；旧的 `.moai/state/factory/workers.json` 只导入一次，之后仅作为回滚凭据保留。一名工作者最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。千万不要一次把所有工作者全开 —— 先起第一名，确认它真的开始产出，再激活其余。卡片绝不会被拆到多名工作者上。`-k` 依旧驱动三角色的看板链；一次启动只能带一个进入标记，所以 `-k` 与 `-f` 同时给出会报错，已停用的 `moai cg` 会显示迁移提示并退出。 工厂 run 现在会记录持有它的会话的进程标识，因此 lead 已经死掉的 run 会在下一个 worker 加入时自动退役，那次加入不再卡在 `AMBIGUOUS_FACTORY` 上。`moai factory runs` 列出每个 run 及其属主的存活状态，`moai factory runs --retire <run-id>` 手动退役指定的 run，属主没有真正死掉就会被拒绝。
 
 > 详见：[看板模式 —— 工厂模式](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
 
@@ -349,14 +349,14 @@ claude        # 或者 moai cc —— 在项目里运行 Claude Code
 
 ### MCP 服务器
 
-`moai init` 默认恰好准备**一个**启用的 MCP 条目 —— 自带的 `moai mcp-server`（本地 stdio 服务器）。它向 Claude Code 暴露分成六组的 21 个 MoAI 工具。四个已记载但未启用的条目（`context7`、`chrome-devtools`、`playwright`、`ast-grep`）用 `moai mcp add <名称>` 打开。`moai mcp add|remove|list` CLI 通过 atomic-RWM seam 管理条目，用户无需手改 `.mcp.json`。
+`moai init` 默认恰好准备**一个**启用的 MCP 条目 —— 自带的 `moai mcp-server`（本地 stdio 服务器）。它向 Claude Code 暴露 MoAI 工具。下表只列出主要分组 —— 完整列表见 [MCP 服务器指南](https://adk.mo.ai.kr/zh/guides/mcp-server)，工具数量与列表以已安装二进制通过 `tools/list` 返回的列表为准。四个已记载但未启用的条目（`context7`、`chrome-devtools`、`playwright`、`ast-grep`）用 `moai mcp add <名称>` 打开。`moai mcp add|remove|list` CLI 通过 atomic-RWM seam 管理条目，用户无需手改 `.mcp.json`。
 
 | 组 | 工具 | 用途 |
 |------|------|------|
 | SPEC 生命周期 | `spec_progress`, `spec_audit`, `spec_drift` | 时代分类 + 漂移检测 |
 | 验证 | `verify_snapshot`, `verify_trend` | 按键的证照快照 |
 | 目标 + 会话 | `goal_arm`, `goal_status`, `session_list` | 自主循环 + 多会话协调 |
-| 跨模型审计 | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | 多审计者收敛 |
+| 跨模型审计 | `audit_multi`, `claude_audit`, `codex_audit`, `glm_audit`, `audit_cache` | 多审计者收敛 |
 | codex 委派 | `codex_task`, `codex_setup`, `codex_job_*` | 后台跨模型作业 |
 | GLM 委派 | `glm_task`, `glm_job_status`, `glm_job_result`, `glm_job_cancel` | GLM（z.ai）后台作业委派 |
 

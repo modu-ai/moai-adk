@@ -31,6 +31,15 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
+// hookRuntimeLogFileName is the base name of the `moai hook` path's log sink.
+//
+// The full project-relative path constant lives in internal/cli
+// (hookRuntimeLogRelPath) next to the writer that opens it; this package cannot
+// import that one — internal/cli imports internal/hook, not the reverse — and
+// pruning only ever needs the base name, since it walks logsDir by entry name
+// exactly as it does for agentModelAuditFileName.
+const hookRuntimeLogFileName = "hook-runtime.log"
+
 // PruneStats summarizes a single SessionEnd pruning run for observability.
 type PruneStats struct {
 	// TraceZeroBytePruned counts zero-byte trace-*.jsonl files removed.
@@ -42,6 +51,11 @@ type PruneStats struct {
 	// otherwise — the file is either under threshold, absent, or the current
 	// write target).
 	TaskMetricsAged int
+	// HookRuntimeLogAged is 1 when a stale hook-runtime.log was removed (0
+	// otherwise). The `moai hook` path appends to this sink on every admitted
+	// record, so the file grows for the lifetime of the project without an
+	// age-out of its own (SPEC-HOOK-DIAG-SINK-001 REQ-HDS-009).
+	HookRuntimeLogAged int
 	// AgentModelAuditAged is 1 when a stale agent-model-audit.jsonl was removed
 	// (0 otherwise). The guard appends one row per Agent spawn, so the file
 	// grows for the lifetime of the project without an age-out.
@@ -60,7 +74,11 @@ type PruneStats struct {
 //     preserved, regardless of age or size (EC-3 — never prune the active trace).
 //   - task-metrics.jsonl older than retentionDays → removed (documented
 //     write-only disposition; the writer is dormant).
-//   - all other files under logsDir → untouched (scope is trace + task-metrics).
+//   - hook-runtime.log older than DefaultHookRuntimeLogRetentionDays → removed
+//     (SPEC-HOOK-DIAG-SINK-001 REQ-HDS-009 — the sink is folded into this
+//     retention machinery rather than given a mechanism of its own).
+//   - all other files under logsDir → untouched (scope is trace, task-metrics,
+//     agent-model-audit, hook-runtime).
 //   - logsDir absent or unreadable → silent no-op, zero stats (EC-2).
 //
 // now is injected so tests are deterministic; production passes time.Now().
@@ -75,6 +93,9 @@ func PruneObservationLogs(logsDir, currentSessionID string, retentionDays int, n
 		retentionDays = config.DefaultTraceRetentionDays
 	}
 	cutoff := now.AddDate(0, 0, -retentionDays)
+	// The sink ages on its own named threshold (REQ-HDS-010), not on the
+	// caller's retentionDays — the two artifacts age for different reasons.
+	sinkCutoff := now.AddDate(0, 0, -config.DefaultHookRuntimeLogRetentionDays)
 
 	for _, e := range entries {
 		if e.IsDir() {
@@ -131,6 +152,20 @@ func PruneObservationLogs(logsDir, currentSessionID string, retentionDays int, n
 			continue
 		}
 
+		if name == hookRuntimeLogFileName {
+			path := filepath.Join(logsDir, name)
+			if info.ModTime().Before(sinkCutoff) {
+				if rmErr := os.Remove(path); rmErr != nil {
+					slog.Warn("prune_logs: failed to remove aged hook-runtime log",
+						"path", path, "error", rmErr)
+					stats.Skipped++
+				} else {
+					stats.HookRuntimeLogAged++
+				}
+			}
+			continue
+		}
+
 		if name == agentModelAuditFileName {
 			path := filepath.Join(logsDir, name)
 			if info.ModTime().Before(cutoff) {
@@ -144,12 +179,13 @@ func PruneObservationLogs(logsDir, currentSessionID string, retentionDays int, n
 			}
 		}
 	}
-	if stats.TraceZeroBytePruned+stats.TraceAgedPruned+stats.TaskMetricsAged+stats.AgentModelAuditAged > 0 {
+	if stats.TraceZeroBytePruned+stats.TraceAgedPruned+stats.TaskMetricsAged+stats.AgentModelAuditAged+stats.HookRuntimeLogAged > 0 {
 		slog.Info("prune_logs: SessionEnd observation-log pruning complete",
 			"trace_zero_byte_pruned", stats.TraceZeroBytePruned,
 			"trace_aged_pruned", stats.TraceAgedPruned,
 			"task_metrics_aged", stats.TaskMetricsAged,
 			"agent_model_audit_aged", stats.AgentModelAuditAged,
+			"hook_runtime_log_aged", stats.HookRuntimeLogAged,
 			"skipped", stats.Skipped,
 		)
 	}

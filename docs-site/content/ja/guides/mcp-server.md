@@ -2,12 +2,12 @@
 title: MCP サーバー
 weight: 12
 draft: false
-description: "MoAI-ADK が自身で提供する moai mcp-server（stdio ローカル MCP サーバー）のプロビジョニング、21 ツールカタログ、認証、遅延ロード方針を整理します。"
+description: "MoAI-ADK が自身で提供する moai mcp-server（stdio ローカル MCP サーバー）のプロビジョニング、ツールカタログ、認証、遅延ロード方針を整理します。"
 ---
 
 # MCP サーバー
 
-MoAI-ADK は Claude Code の MCP エコシステムの上に乗り、さらにその上に**独自の MCP サーバー**を1つ載せます。バイナリ1つ（`moai mcp-server`）が stdio ローカルサーバーとして動作し、SPEC ライフサイクル監査、検証スナップショット、ゴールエンジン、クロスモデル監査、codex·GLM 委任など、MoAI-ADK 固有の21個のツールを Claude Code ランタイムに公開します。
+MoAI-ADK は Claude Code の MCP エコシステムの上に乗り、さらにその上に**独自の MCP サーバー**を1つ載せます。バイナリ1つ（`moai mcp-server`）が stdio ローカルサーバーとして動作し、SPEC ライフサイクル監査、検証スナップショット、ゴールエンジン、クロスモデル監査、codex·GLM 委任など、MoAI-ADK 固有のツールを Claude Code ランタイムに公開します。
 
 {{< callout type="info" title="2つのMCP文書の関係" >}}
 [**Claude Code 一般 MCP**](/ja/claude-code/extensibility/mcp)はプラットフォーム自身の MCP（Model Context Protocol）統合を扱います — USB ポートの比喩、サーバー登録、転送タイプ、`/mcp` コマンド、OAuth 認証、遅延ロードの原理。
@@ -29,14 +29,14 @@ Claude Code の MCP エコシステムと MoAI の独自 MCP サーバーは、�
 flowchart TD
     CC["Claude Code ランタイム<br/>(ツール権限 · 遅延ロード · 承認)"]
     CMCP["一般 MCP サーバー<br/>(context7, chrome-devtools, …)"]
-    MMCP["moai mcp-server<br/>(MoAI 自身 · 21 ツール)"]
+    MMCP["moai mcp-server<br/>(MoAI 自身のツール)"]
     CC --> CMCP
     CC --> MMCP
     MMCP --> TOOLS["SPEC lifecycle · 検証 · ゴール · 監査 · codex/GLM 委任"]
     CMCP --> EXT["外部ツール (ライブラリ文書 · ブラウザ自動化 · …)"]
 ```
 
-ここでの要点は、「MoAI は MCP をプロビジョニングしない」という主張が**半分だけの真実**だという点です。外部 MCP サーバー（context7, playwright など）をデフォルトでプロビジョニングしないのは正しいです。しかし MoAI 自身のサーバー1つは `moai init` の時点で default-on で入ります。このサーバーこそが、MoAI の21ツールカタログが Claude Code に届く通路です。
+ここでの要点は、「MoAI は MCP をプロビジョニングしない」という主張が**半分だけの真実**だという点です。外部 MCP サーバー（context7, playwright など）をデフォルトでプロビジョニングしないのは正しいです。しかし MoAI 自身のサーバー1つは `moai init` の時点で default-on で入ります。このサーバーこそが、MoAI のツールカタログが Claude Code に届く通路です。
 
 ## .mcp.json プロビジョニング
 
@@ -95,7 +95,7 @@ flowchart TD
 
 ## `project_root` 入力 — 呼び出し側が自分のツリーを指名する
 
-6つのツールがオプションの文字列 `project_root` を受け取ります：`spec_progress`、`spec_audit`、`spec_drift`、`codex_audit`、`glm_audit`、`audit_multi`。この呼び出しが対象とするツリーを指す値で、渡す値は呼び出し側自身の `git rev-parse --show-toplevel` の結果です。
+13個のツールがオプションの文字列 `project_root` を受け取ります：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`claude_audit`、`glm_audit`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_trace_calls`、`graph_shortest_path`。この呼び出しが対象とするツリーを指す値で、渡す値は呼び出し側自身の `git rev-parse --show-toplevel` の結果です。
 
 ワークツリーの中で作業するエージェントは、必ずこれを渡さなければなりません。利便性のための機能ではありません。サーバーには自力で答えを導く手段がないからです。MCP サーバーは長命なサブプロセスなので、作業ディレクトリがワークツリーの切り替えに追従できず、代わりに参照する環境変数は、セッションがワークツリーで作業していても**プロジェクト**ルート — つまり primary チェックアウト — を指します。ワークツリーでこれを省くと、呼び出しは primary チェックアウトを対象に動作し、カードのブランチにしか存在しない SPEC は監査者が読むカタログに入りません。欠落として報告もされません。ただ存在しないだけです。
 
@@ -113,9 +113,9 @@ flowchart TD
 
 バージョンに関する注意：すでに起動しているサーバーは、その下のバイナリを差し替えても再起動するまで以前の動作を保ちます — サブプロセスは自ら読み直しません。呼び出し側が確認できるのは、`ListTools` の応答に `project_root` が現れるかどうかです。
 
-## 21-ツールカタログ
+## ツールカタログ
 
-`moai mcp-server` が公開する21個のツールは6つのグループに分かれます。呼び出し時点ではすべて `mcp__moai__` 接頭辞が付きます。
+`moai mcp-server` が公開するツールを系統ごとに以下にまとめます。呼び出し時点ではすべて `mcp__moai__` 接頭辞が付きます。このページはツール数を記載しません。ツール数と一覧の基準は、インストールされたバイナリが `tools/list` で返す一覧であり、それをまとめた文書が `.claude/rules/moai/core/moai-mcp-tools.md` です。これらとこのページが食い違う場合は、そちらに従ってください。
 
 ### SPEC ライフサイクル
 
@@ -151,6 +151,7 @@ manager-develop が run-phase の自己検証（継ぎ目 §E）で使い、sync
 | ツール | 目的 | 消費エージェント | CLI 等価物 |
 |------|------|---------------|------------|
 | `mcp__moai__audit_multi` | 多重監査者収束（claude + codex + glm） | plan-auditor, sync-auditor | — （MCP 専用の収束エントリポイント） |
+| `mcp__moai__claude_audit` | Claude サブスクリプションバックエンドによる単独監査（`claude -p`、読み取り専用の隔離、構造化出力） | plan-auditor, sync-auditor。GPT・GLM セッションでは `audit_multi` が自動で呼び出す | — |
 | `mcp__moai__codex_audit` | codex バックエンド単一監査（ネイティブ/敵対的） | plan-auditor, sync-auditor | — |
 | `mcp__moai__glm_audit` | GLM (z.ai) バックエンド単一監査 | plan-auditor, sync-auditor | — |
 | `mcp__moai__audit_cache` | plan-audit PASS キャッシュ（compute_hash / lookup / store、プロセス間共有） | sync-auditor | `moai audit cache` |
@@ -169,6 +170,16 @@ manager-develop が run-phase の自己検証（継ぎ目 §E）で使い、sync
 
 codex 委任ツール群は super-advisor に配線されています — 随時の高推論相談エージェントがバックグラウンドのクロスモデル委譲の自然な消費者だからです。`codex_task` でジョブを委譲し、`codex_job_status` / `codex_job_result` で完了をポーリングし、`codex_job_cancel` で中断します。codex は選択的（optional）です — 欠落や利用不可なら fail-open な `inconclusive` を返し、hard error ではありません。
 
+### codex 読み取り専用ロール
+
+| ツール | 目的 | 利用エージェント | CLI 等価物 |
+|--------|------|------------------|------------|
+| `mcp__moai__codex_role_audit` | 読み取り専用ロールを1つ、最上位の `codex exec` プロセスとして起動（読み取り専用サンドボックス、MCP サーバーはすべて無効）。ジョブ ID をすぐに返す | Codex レーンのオーケストレーター | — |
+| `mcp__moai__codex_role_audit_status` | ロールジョブの状態と時刻を読む | Codex レーンのオーケストレーター | — |
+| `mcp__moai__codex_role_audit_result` | 終了したロールジョブの終了コード、返却テキストまたは判定書のパス、起動記録のパスを読む | Codex レーンのオーケストレーター | — |
+
+Codex レーンは `plan-auditor` や `sync-auditor` などの読み取り専用ロールを、`spawn_agent` ではなくこのツール群で起動します。レーンのシェル内でネストした `codex exec` はモデルに到達できないため、CLI 等価物はありません。ジョブはサーバープロセス内に存在し、プロセスの終了とともに終わります。
+
 ### GLM 委任（バックグラウンドジョブ）
 
 | ツール | 目的 | 消費エージェント | CLI 等価物 |
@@ -179,6 +190,46 @@ codex 委任ツール群は super-advisor に配線されています — 随時
 | `mcp__moai__glm_job_cancel` | 実行中のバックグラウンド GLM ジョブの中断 | super-advisor | — |
 
 GLM 委任ツール群は codex 委任と同じ形で super-advisor に配線されています。`glm_task` は `background` が偽なら完了したテキストをそのまま返し、真なら即座にジョブ ID を返します(以降は `glm_job_status`·`glm_job_result`·`glm_job_cancel` で観察・中断)。応答トークン上限は `max_tokens` で上書きでき、既定の上限値はサーバー側で定められています。バックグラウンドジョブはサーバープロセスの中で生きるため、プロセスが終われば一緒に終わります。GLM も選択的です — キーがないか z.ai に届かなければ構造化された fail-open 結果を返すだけで、ツールエラーではありません。
+
+### コードクエリ
+
+| ツール | 目的 | 利用エージェント | CLI 等価物 |
+|--------|------|------------------|------------|
+| `mcp__moai__graph_file_api` | ソースファイル1つの公開宣言をシグネチャ付きで列挙（本体は含まない） | すべてのエージェント | — |
+| `mcp__moai__graph_find_code` | シンボルの呼び出し箇所と呼び出し元をコード由来のエッジ層から検索（エッジごとに解決信頼度付き） | すべてのエージェント | — |
+| `mcp__moai__graph_trace_calls` | シンボルから呼び出し元・呼び出し先の方向へ、指定した深さまで呼び出しエッジをたどる | すべてのエージェント | — |
+| `mcp__moai__graph_shortest_path` | 2つのシンボル間の最短呼び出し経路（最大8ホップ、ホップごとに行番号と信頼度） | すべてのエージェント | — |
+
+すべての回答には、計算の基準となったツリーのルートとコミットが付きます。エッジ層は `moai graph build` が生成する `edges.jsonl` です。
+
+### 判断（ゲート付き、表示専用）
+
+| ツール | 目的 | 利用エージェント | CLI 等価物 |
+|--------|------|------------------|------------|
+| `mcp__moai__jev_ask` | 与えた状態1つについて型の決まった質問を投げ、確率付きの回答を受け取る | 配布時の既定値（`workflow.jev.enabled: false`）では利用不可 | — （MCP 専用） |
+
+ツール自体は常に登録されますが、ゲートがオフのときはリクエストを組み立てず、ネットワークも呼び出しません。回答は人が読む参考シグナルにすぎず、完了判定・マージ承認・キュー変更・ゲート入力には使いません。
+
+### ファクトリーメッセージング
+
+| ツール | 目的 | 利用エージェント | CLI 等価物 |
+|--------|------|------------------|------------|
+| `mcp__moai__factory_msg_send` | 論理レーンの現在のエンドポイントへ、冪等なエンベロープを1つ書き込む | 帰属したファクトリーのリード・ワーカーセッション | — （MCP 専用） |
+| `mcp__moai__factory_msg_list` | 自分のエンドポイントのメタデータを最大16件占有（占有リースの作成・更新、本文なし） | 帰属したファクトリーのリード・ワーカーセッション | — （MCP 専用） |
+| `mcp__moai__factory_msg_body` | 占有済みのメッセージ本文を1つ読む（本文は信頼できないピアデータとして返る） | 帰属したファクトリーのリード・ワーカーセッション | — （MCP 専用） |
+| `mcp__moai__factory_msg_receipt` | 占有の処分を記録してから、メッセージを確認済みにする | 帰属したファクトリーのリード・ワーカーセッション | — （MCP 専用） |
+| `mcp__moai__factory_msg_status` | メッセージを占有せずに、ブローカーの件数とレーンの運用状態を読む | ファクトリーのリード・ワーカー | — （MCP 専用） |
+
+### セッションメッセージング（Claude ↔ Codex）
+
+| ツール | 目的 | 利用エージェント | CLI 等価物 |
+|--------|------|------------------|------------|
+| `mcp__moai__session_msg_register` | このセッション（種類: claude または codex、名前）をローカルのメッセージブローカーに登録。同じ種類・名前なら同じ ID を返す | すべての Claude・Codex セッション | — |
+| `mcp__moai__session_msg_list` | 登録済みブローカーエージェントの一覧（ID、名前、種類、接続状態、未処理件数） | すべての Claude・Codex セッション | — |
+| `mcp__moai__session_msg_send` | 登録済みの別エージェントのメールボックスへ、短く自己完結した事実メッセージを送る | すべての Claude・Codex セッション | — |
+| `mcp__moai__session_msg_poll` | 自分のメールボックスの未処理メッセージを取得し（少なくとも1回の配信）、処理済み ID を確認済みにする | すべての Claude・Codex セッション | — |
+
+Codex セッションにはネイティブのピアメッセージング実行環境がないため、このブローカーが唯一の経路です。Claude セッション同士ではネイティブの `SendMessage` 経路を推奨します。配信はポーリング方式のため、送信は記録であって配信の保証ではありません。
 
 ### MCP-over-CLI 規則
 

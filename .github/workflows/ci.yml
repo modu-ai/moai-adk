@@ -163,6 +163,17 @@ jobs:
           fi
           echo "PASS: $(sg --version)"
 
+      # internal/web's app.js data-loss guards shell out to the committed
+      # testdata/appjs_fire_probe.py, and requirePython3 (appjs_fire_guard_test.go)
+      # SKIPS when python3 is absent from PATH — measured: all three of
+      # TestAppJsFireSandboxPairing / SandboxRouting / ReductionDeclaration skip and
+      # the package still reports `ok`, so a runner that loses python3 empties the
+      # guards while this job stays green. Same shape, same reason as the `sg` check
+      # above: fail loudly here rather than pass on an unmeasured guard.
+      - name: Verify python3 is present (app.js data-loss guards skip without it)
+        shell: bash
+        run: python3 --version
+
       - name: Run go vet
         run: go vet ./...
 
@@ -668,8 +679,9 @@ jobs:
       - name: Green phase — gated driver tests (in-process surface)
         env:
           MOAI_BROWSER_GUARD: "1"
+          MOAI_BROWSER_GUARD_SETTLE_STAGE2: "1"
         shell: bash
-        run: go test ./internal/web/ -run 'AppJsHandlersFire' -v -count=1 -timeout 10m
+        run: go test ./internal/web/ -run 'AppJs.*Fire' -v -count=1 -timeout 17m
 
       - name: Red phase — mutation cycle (0 → 1 → 0, real-binary surface)
         shell: bash

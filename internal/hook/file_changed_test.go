@@ -169,7 +169,7 @@ func TestFileChanged_AsyncReturn_Under100ms(t *testing.T) {
 func TestFileChanged_SideEffectsCompleted(t *testing.T) {
 	t.Parallel()
 
-	tempDir := t.TempDir()
+	tempDir := newMoaiProjectRoot(t)
 	path := filepath.Join(tempDir, "tagged.go")
 	if err := os.WriteFile(path, []byte("// @MX:ANCHOR: side\n// @MX:REASON: test\npackage main\nfunc main(){}\n"), 0644); err != nil {
 		t.Fatalf("write: %v", err)
@@ -287,8 +287,8 @@ func percentileMillis(durations []time.Duration, p float64) float64 {
 func TestRunMXScan_RejectsUncontainedFilePath(t *testing.T) {
 	t.Parallel()
 
-	projectRoot := t.TempDir() // root A — input.CWD
-	outsideDir := t.TempDir()  // dir B — 루트 밖 공격자 파일 위치
+	projectRoot := newMoaiProjectRoot(t) // root A — input.CWD
+	outsideDir := t.TempDir()            // dir B — 루트 밖 공격자 파일 위치
 
 	// 루트 밖에 유효한 MX 태그를 가진 .go 파일을 둔다.
 	outsideFile := filepath.Join(outsideDir, "secret.go")
@@ -324,8 +324,8 @@ func TestRunMXScan_RejectsUncontainedFilePath(t *testing.T) {
 // GREEN(fix 후): 사이드카 대상이 해소된 신뢰 루트(A) 밖 → slog.Warn + early return → C에 미생성.
 func TestRunMXScan_RejectsUncontainedSidecarCWD(t *testing.T) {
 	// CLAUDE_PROJECT_DIR을 설정하므로 비병렬(t.Setenv) — 환경변수 오염 방지.
-	trustedRoot := t.TempDir() // 신뢰 루트 A (CLAUDE_PROJECT_DIR)
-	attackerCWD := t.TempDir() // 공격자 CWD C (루트 밖)
+	trustedRoot := newMoaiProjectRoot(t) // 신뢰 루트 A (CLAUDE_PROJECT_DIR)
+	attackerCWD := t.TempDir()           // 공격자 CWD C (루트 밖)
 
 	t.Setenv("CLAUDE_PROJECT_DIR", trustedRoot)
 
@@ -359,7 +359,7 @@ func TestRunMXScan_RejectsUncontainedSidecarCWD(t *testing.T) {
 func TestRunMXScan_AllowsInProjectPath(t *testing.T) {
 	t.Parallel()
 
-	projectRoot := t.TempDir()
+	projectRoot := newMoaiProjectRoot(t)
 	inRootFile := filepath.Join(projectRoot, "tagged.go")
 	if err := os.WriteFile(inRootFile, []byte("// @MX:ANCHOR: keep\n// @MX:REASON: regression\npackage main\nfunc main(){}\n"), 0644); err != nil {
 		t.Fatalf("write in-root file: %v", err)
@@ -399,8 +399,8 @@ func TestRunMXScan_AllowsInProjectPath(t *testing.T) {
 func TestRunMXScan_RejectsSymlinkInRootEscapingTarget(t *testing.T) {
 	t.Parallel()
 
-	projectRoot := t.TempDir() // root A — input.CWD
-	outsideDir := t.TempDir()  // dir B — 루트 밖 secret 위치
+	projectRoot := newMoaiProjectRoot(t) // root A — input.CWD
+	outsideDir := t.TempDir()            // dir B — 루트 밖 secret 위치
 
 	// 루트 밖에 고유한 MX 태그를 가진 secret .go 파일.
 	const secretTag = "sec4-004-secret-tag"

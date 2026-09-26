@@ -109,7 +109,9 @@ func TestSessionStartBannerBackfill(t *testing.T) {
 // TestSessionStartBannerNoContext verifies that with no chain ledger, the
 // banner returns empty string (fail-open, no crash).
 func TestSessionStartBannerNoContext(t *testing.T) {
-	dir := t.TempDir()
+	// A MoAI root with no ledger, so the empty banner comes from the missing
+	// ledger rather than from the .moai/ guard (card t1165).
+	dir := newMoaiProjectRoot(t)
 	_ = os.Unsetenv(config.EnvChainNodeID)
 
 	banner := chainLineageBanner(dir, "/tmp/nonexistent", "")

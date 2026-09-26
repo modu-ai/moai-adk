@@ -18,19 +18,19 @@ reimplement them. Rationale and the layer vocabulary:
 
 | Model class | Window | Handoff threshold | Absolute ceiling |
 |-------------|--------|-------------------|------------------|
-| Opus 5.5 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
-| Opus 4.8 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
+| Opus 5.5 on the Anthropic API (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
+| Opus 4.8 on the Anthropic API (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | GLM-5.3 via `moai glm`/`moai cg` (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Fable (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Sonnet 5 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
-| Sonnet 4.5 / Opus 4.5 and earlier (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
+| 200K sessions — Sonnet 4.6 / Opus 4.6 without `[1m]`; Opus 4.8+ running with a 200K window (e.g. on Bedrock / Google Cloud / Foundry); any native-1M model under `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`; `sonnet` behind an LLM gateway (non-Anthropic `ANTHROPIC_BASE_URL`) unless `sonnet[1m]` is selected; Sonnet 4.5 / Opus 4.5 and earlier | 200,000 tokens | **90%** | ~180,000 tokens |
 | Haiku (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
 
-The model-specific threshold is the operational ceiling — beyond it, plan for a `/clear` before the next non-trivial action. Both this rule and `session-handoff.md` Trigger #1 read from this same table.
+A session that matches both a 1M row and the 200K-sessions row takes the 200K row: the window the session actually runs with sets the threshold, not the model name. The model-specific threshold is the operational ceiling — beyond it, plan for a `/clear` before the next non-trivial action. Both this rule and `session-handoff.md` Trigger #1 read from this same table.
 
 ### GLM-5.3 context window (Issue #653)
 
-GLM-5.3 (z.ai, served via `moai glm` / `moai cg` GLM panes) is a genuine 1M-context model; operate it at the **50% (~500K)** handoff threshold, the same class as Opus 5.5 / Opus 4.8 (1M). Do NOT treat a `moai glm` session as a 200K session.
+GLM-5.3 (z.ai, served via `moai glm` / `moai cg` GLM panes) is a genuine 1M-context model; operate it at the **50% (~500K)** handoff threshold, the same class as Opus 5.5 / Opus 4.8 on the Anthropic API (1M). Do NOT treat a `moai glm` session as a 200K session.
 
 Caveat (Issue #653): Claude Code reports `context_window_size` based on the Claude slot (Opus=1M, Sonnet/Haiku=200K) regardless of provider, so raw telemetry (`effectiveWindow`) may show ~180K under GLM. This is an upstream misreport. MoAI corrects it: the statusline gauge uses `MOAI_STATUSLINE_CONTEXT_SIZE` and Claude Code auto-compact uses `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, both resolved from the `glmContextWindows` table in `internal/statusline/memory.go` (glm-5.3 → 1,000,000) or the `llm.glm.context_windows` override. Trust the MoAI statusline CW%, not raw `effectiveWindow`.
 

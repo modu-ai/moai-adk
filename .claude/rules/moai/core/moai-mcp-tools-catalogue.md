@@ -1,5 +1,5 @@
 ---
-description: "Detail companion for moai-mcp-tools.md — the full 36-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
+description: "Detail companion for moai-mcp-tools.md — the full 39-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
 paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moai/*.md"
 ---
 
@@ -7,11 +7,11 @@ paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moa
 
 > Detail companion of `moai-mcp-tools.md` (the always-loaded stub). The stub owns the
 > MCP-over-CLI preference rule, the family index, and the unwired-by-design note. This file owns
-> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 36 tools.
+> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 39 tools.
 > Load it when wiring a tool into an agent's `tools:` list, or when choosing between an MCP tool
 > and its Bash equivalent for a specific capability.
 
-## Tool catalogue (36 tools)
+## Tool catalogue (39 tools)
 
 ### SPEC lifecycle
 
@@ -95,6 +95,23 @@ via `codex_job_status`/`codex_job_result`, and cancels via `codex_job_cancel`.
 `codex_setup` probes whether codex is available before delegating. codex is
 OPTIONAL: a missing or unavailable codex yields a fail-open `inconclusive`, never
 a hard error.
+
+### Codex read-only roles (background jobs)
+
+| Tool | Purpose | Consumer | CLI equivalent |
+|------|---------|----------|----------------|
+| `mcp__moai__codex_role_audit` | Start a read-only contract role as one top-level `codex exec` process (read-only sandbox, every MCP server disabled); returns a job id at once | Codex lane orchestrator | none — a Codex lane's shell cannot reach the model from a nested `codex exec` |
+| `mcp__moai__codex_role_audit_status` | Read a role job's state and timestamps | Codex lane orchestrator | — |
+| `mcp__moai__codex_role_audit_result` | Read a finished role job's exit code, returned text or verdict path, and launch record path | Codex lane orchestrator | — |
+
+On Codex, `spawn_agent` gives a subagent the parent session's sandbox, so a
+read-only role started that way could write. This family starts it as its own
+top-level read-only process in the caller's worktree instead. `worktree_root` is
+required and must be the worktree the server started in; `out`, when given, must
+stay under that worktree's `.moai/reports/` and is written with exactly the
+returned text. Each launched audit leaves a launch record under
+`.moai/reports/codex-audit/`. Jobs live in the server process and do not survive
+its exit.
 
 ### GLM delegation (background jobs)
 

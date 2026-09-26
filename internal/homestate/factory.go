@@ -17,7 +17,7 @@ import (
 	sqlite3 "modernc.org/sqlite/lib"
 )
 
-const factorySchemaVersion = 2
+const factorySchemaVersion = 3
 
 const factoryDDL = `
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS runs (
   lead_backend TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL,
   manifest_json TEXT NOT NULL DEFAULT '{}',
+  lead_pid INTEGER NOT NULL DEFAULT 0,
+  lead_process_start TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -184,7 +186,13 @@ func OpenFactoryPath(path string) (*FactoryDB, error) {
 	if err == nil && version == "1" {
 		err = migrateFactoryV1ToV2(ctx, db)
 		if err == nil {
-			version = strconv.Itoa(factorySchemaVersion)
+			version = "2"
+		}
+	}
+	if err == nil && version == "2" {
+		err = migrateFactoryV2ToV3(ctx, db)
+		if err == nil {
+			version = "3"
 		}
 	}
 	if err == nil && version != strconv.Itoa(factorySchemaVersion) {
@@ -268,6 +276,73 @@ func migrateFactoryV1ToV2(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 	return tx.Commit()
+}
+
+// migrateFactoryV2ToV3 adds the run-owner identity columns, following the
+// shape migrateFactoryV1ToV2 already establishes: the ALTER TABLEs inside one
+// transaction, then the meta.schema_version update.
+//
+// The defaults are what keep every pre-existing row legible rather than
+// broken: lead_pid = 0 is the sentinel that routes a legacy row to the
+// role='lead' peer fallback, so migration and prevention are one mechanism.
+func migrateFactoryV2ToV3(ctx context.Context, db *sql.DB) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	// factoryDDL runs before the version check, so on a database whose `runs`
+	// table did not exist the DDL has already created it in the v3 shape. Add
+	// only the columns that are actually missing.
+	existing, err := factoryRunColumns(ctx, tx)
+	if err != nil {
+		return err
+	}
+	for column, stmt := range map[string]string{
+		"lead_pid":           `ALTER TABLE runs ADD COLUMN lead_pid INTEGER NOT NULL DEFAULT 0`,
+		"lead_process_start": `ALTER TABLE runs ADD COLUMN lead_process_start TEXT NOT NULL DEFAULT ''`,
+	} {
+		if existing[column] {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx, stmt); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE meta SET value='3' WHERE key='schema_version' AND value='2'`); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func factoryRunColumns(ctx context.Context, tx *sql.Tx) (_ map[string]bool, err error) {
+	rows, err := tx.QueryContext(ctx, `PRAGMA table_info(runs)`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if cerr := rows.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
+	columns := map[string]bool{}
+	for rows.Next() {
+		var (
+			cid        int
+			name, typ  string
+			notNull    int
+			defaultVal sql.NullString
+			pk         int
+		)
+		if err := rows.Scan(&cid, &name, &typ, &notNull, &defaultVal, &pk); err != nil {
+			return nil, err
+		}
+		columns[name] = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return columns, nil
 }
 
 func secureFactoryArtifacts(path string) error {

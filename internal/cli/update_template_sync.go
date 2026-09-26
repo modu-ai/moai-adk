@@ -320,6 +320,11 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// renders, so the project's git mode is read here, while the file exists.
 	// Without it every render falls back to the template default (manual).
 	gitMode := config.LoadGitMode(projectRoot)
+	// Cards t1139 / t1147: the same holds for the user-owned values the other
+	// section files render (names, languages, development mode, git provider).
+	// A value the render cannot carry verbatim falls back to the default (see
+	// loadUpdateUserValues for when the merge then keeps it).
+	userValues := loadUpdateUserValues(projectRoot)
 
 	// Define deployment steps
 	steps := []struct {
@@ -365,6 +370,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					template.WithVersion(version.GetVersion()),
 					template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
 					template.WithGitMode(gitMode),
+					userValues,
 				)
 
 				// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces
@@ -446,6 +452,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					template.WithVersion(version.GetVersion()),
 					template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
 					template.WithGitMode(gitMode),
+					userValues,
 				)
 
 				if deployErr := deployWithMirrorNotice(ctx, deployer, projectRoot, mgr, tmplCtx, errOut); deployErr != nil {
@@ -463,6 +470,14 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// while a newly added server still arrives — an update that
 				// looks successful and is half-applied.
 				backup.StageDeployedMCPSnapshot(projectRoot, mgr, errOut)
+				// Card t1139: record the section render this deploy wrote as the
+				// next update's merge BASE — here, before Restore Settings writes
+				// the user's values over it. A snapshot taken after the restore
+				// records the user's own values as BASE, and the next merge reads
+				// every carried customization as "unchanged" and drops it.
+				// This run's BASE was already copied into the backup, so the
+				// write cannot affect the merge below. Best-effort non-blocking.
+				writeTemplateSnapshotBestEffort(projectRoot, errOut)
 				pl.Done("Templates deployed")
 				return nil
 			},
@@ -637,10 +652,6 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				if deletedCount > 0 {
 					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), deletedCount)
 				}
-				// SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001 (REQ-TBS-002, Decision
-				// D4 trigger #2): capture the post-restore on-disk config so the
-				// next update has a rendered BASE. Best-effort non-blocking.
-				writeTemplateSnapshotBestEffort(projectRoot, out)
 			}
 			// Merge .gitignore: preserve user-added patterns via EntryMerge
 			if len(gitignoreBackup) > 0 {
@@ -698,6 +709,9 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		}
 	}
 	renderUpdateOutcome(out, len(analysis.Files), detail, configBackupPath, th)
+	// REQ-DHR-007: a .codex/ template the target harness profile (or this
+	// version) no longer ships is reported and left in place, never deleted.
+	reportUndeployedCodexTemplates(errOut, projectRoot, mgr.Manifest().Files, restoredSet)
 	report.EmitHooksReviewGuidance(out)
 
 	_, _ = fmt.Fprintln(out)

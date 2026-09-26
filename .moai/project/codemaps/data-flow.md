@@ -1,5 +1,29 @@
 # 데이터 흐름
 
+**현재 갱신 — t1187, `origin/develop` `a8a9b9376` (2026-09-25).**
+앵커 `bd71c59e4` 뒤 끝점 변경 41개 비테스트 Go 파일을 확인했다.
+이번 판에서 아래 두 경로를 보강했다.
+
+### Codex 읽기 전용 감사
+
+`moai codex audit`와 MCP `codex_role_audit`는
+`internal/cli/codex_audit_launch.go`의 `prepareCodexAudit`으로 합류한다.
+호출자의 워크트리·역할·보고서 경로·지시문 길이를 검사한 뒤
+`codex exec -s read-only` 별도 프로세스를 시작한다. MCP 경로는
+`codex_audit_mcp.go`의 서버 메모리 job 표에 ID를 두고 즉시 반환한다.
+`codex_role_audit_status`·`codex_role_audit_result`가 실행 결과와
+기록 경로를 읽는다. 런처가 결과 원문과 시작 기록을 쓴다.
+
+### Factory 런 은퇴
+
+`internal/factorymsg/factory_run_retire.go`가 등록된 lead peer의 PID와
+프로세스 시작 지문을 이전 런의 fallback 신원으로 건넨다.
+`internal/homestate/factory_run_retire.go`는 소유자를 분류하고,
+정상적인 신원이 없는 런에 대해서는 부팅 시각보다 모든 기록 활동이
+이전인지 확인한다. `OwnerDead`가 양성으로 확인된 런만 `retired`로
+바꾸고 `run.retired` 이벤트에 증거 근거를 남긴다. 살아 있음 또는
+판정 불명확 상태는 은퇴시키지 않는다.
+
 > `/moai codemaps`로 생성됐습니다. 시스템 동작의 대부분을 실어 나르는 경로를
 > 끝에서 끝까지 따라갑니다.
 
