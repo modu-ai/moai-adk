@@ -36,6 +36,17 @@ func clearFactoryTestEnv(t *testing.T) {
 	}
 }
 
+// requireFactoryLaunchDisabled asserts the premise clearFactoryTestEnv exists
+// to establish: the ambient environment no longer turns the factory launch
+// path on. If factoryLaunchEnabled ever gates on a key the helper does not
+// clear, this fails loudly instead of letting callers pass vacuously.
+func requireFactoryLaunchDisabled(t *testing.T) {
+	t.Helper()
+	if factoryLaunchEnabled(os.Environ()) {
+		t.Fatal("factory launch still enabled after clearFactoryTestEnv; the helper no longer covers factoryLaunchEnabled's gate")
+	}
+}
+
 // TestParseKanbanFlagUnifiedEntry is the v1.2.0 truth table: ONE -k token
 // selects either shape — bare/-k SPEC-ID is the kanban chain, a numeric
 // positional (or a worker-shape --name with no positional) is the factory.

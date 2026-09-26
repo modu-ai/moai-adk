@@ -1,0 +1,12 @@
+--- FAIL: TestSettingsTemplatePowerShellDenyParity (0.00s)
+    --- FAIL: TestSettingsTemplatePowerShellDenyParity/darwin (0.00s)
+        settings_powershell_deny_test.go:186: Bash deny has neither a PowerShell counterpart nor an exclusion: Bash(git clean -fdx:*)
+    --- FAIL: TestSettingsTemplatePowerShellDenyParity/linux (0.00s)
+        settings_powershell_deny_test.go:186: Bash deny has neither a PowerShell counterpart nor an exclusion: Bash(git clean -fdx:*)
+    --- FAIL: TestSettingsTemplatePowerShellDenyParity/windows (0.00s)
+        settings_powershell_deny_test.go:186: Bash deny has neither a PowerShell counterpart nor an exclusion: Bash(git clean -fdx:*)
+--- FAIL: TestSettingsTemplatePowerShellDenyNoOverBlock (0.00s)
+    settings_powershell_deny_test.go:194: destructive command git clean -fdx is not blocked by any PowerShell deny
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.369s
+FAIL
