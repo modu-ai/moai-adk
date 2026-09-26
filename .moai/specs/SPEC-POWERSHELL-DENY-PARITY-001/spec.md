@@ -2,7 +2,7 @@
 id: SPEC-POWERSHELL-DENY-PARITY-001
 title: "PowerShell deny-rule parity for Bash denies outside the built-in removal protection"
 version: "0.2.1"
-status: draft
+status: in-progress
 created: 2026-09-26
 updated: 2026-09-26
 author: manager-spec
