@@ -6,11 +6,15 @@ FAILED        example.com/censusfix/alpha  TestAlphaFails
   === RUN   TestAlphaFails
       alpha_test.go:10: expected 7, got 3
   --- FAIL: TestAlphaFails (0.00s)
+FAILED        example.com/censusfix/alpha  TestAlphaFailsToo
+      alpha_test.go:30: want nil error
 FAILED PKG    example.com/censusfix/gamma
   exit status 1
   FAIL	example.com/censusfix/gamma	0.393s
 NOTHING RAN   example.com/censusfix/beta
 SKIPPED TEST  example.com/censusfix/alpha  TestAlphaSkips
-=== totals: packages=4 passed=1 skipped=1 nothing-ran=1 failed=1 build-failed=1 ===
+SKIPPED TEST  example.com/censusfix/epsilon  TestEpsilonSkips
+SKIPPED TEST  example.com/censusfix/epsilon  TestEpsilonSkipsToo
+=== totals: packages=5 passed=3 skipped=3 nothing-ran=1 failed=2 build-failed=1 ===
 ::notice title=AC snapshot absent::.moai/specs/SPEC-FIXTURE-001/acceptance.md: COUNT 3 (matched by the AC corpus glob but absent from the AC snapshot - reported, not failed)
 ::notice title=AC snapshot absent::.moai/specs/SPEC-FIXTURE-100%25/acceptance.md: HALT AC-FIXTURE-001 AC-FIXTURE-002 (matched by the AC corpus glob but absent from the AC snapshot - reported, not failed)
