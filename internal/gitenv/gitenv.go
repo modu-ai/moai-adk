@@ -73,9 +73,12 @@ var RepoScopingVars = []string{
 // behaviour this function exists to prevent. A caller that assigns the result
 // to cmd.Env therefore never re-creates the defect by passing nothing.
 //
-// On Windows names are matched case-insensitively: environment names there are
-// case-insensitive, so a child reads Git_Dir as GIT_DIR (os/exec de-duplicates
-// Env the same way). Elsewhere a differently-cased name is a different
+// On Windows names are matched case-insensitively. The CRT documents getenv as
+// case-insensitive there, os/exec de-duplicates Env the same way, and Git for
+// Windows resolves variables through GetEnvironmentVariableW (compat/mingw.c),
+// so a child can read Git_Dir as GIT_DIR. That last step is read from source,
+// not observed; if it does not hold, folding only removes a variable the child
+// would have ignored. Elsewhere a differently-cased name is a different
 // variable and is kept.
 func Scrub(env []string) []string {
 	return scrub(env, runtime.GOOS == "windows")
