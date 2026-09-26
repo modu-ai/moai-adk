@@ -321,7 +321,7 @@ head -4 internal/template/templates/.claude/rules/moai/workflow/skill-routing.md
 git show <판정-ref>:internal/template/templates/<지목된-경로> > /dev/null 2>&1   # exit≠0 이면 부재 → G4 성립
 ```
 
-`<판정-ref>` 는 그 판정이 겨눈 커밋이며, 이 실행에서는 `HEAD`(= 이 카드의 최종 커밋)다. 작업 디렉터리의 파일 존재로 판정하면, **두 사본을 한 글자도 고치지 않았는데** 후속 카드가 그 `.md` 를 템플릿 트리에 추가하는 순간 같은 hunk 가 PERMITTED → UNCLASSIFIED 로 뒤집히고, 삭제하면 반대로 뒤집힌다. 기계적 MUST-PASS AC 가 시간에 따라 답을 바꾸는 것은 재현 가능성의 포기다.
+`<판정-ref>` 는 **그 판정이 겨눈 커밋의 SHA** 이며, 판정문이 그 SHA 를 적는다. `HEAD` 나 브랜치 이름을 적지 않는다 — 그것들은 움직이는 주소이므로 같은 문장이 나중에 다른 커밋을 가리키게 되고, 이 클래스가 없애려던 비결정성이 ref 이름 쪽으로 되돌아온다. §AC-ALD2-003.4 의 이번 실행 분할 census 는 `f0893dc36` 에서 측정됐다. 작업 디렉터리의 파일 존재로 판정하면, **두 사본을 한 글자도 고치지 않았는데** 후속 카드가 그 `.md` 를 템플릿 트리에 추가하는 순간 같은 hunk 가 PERMITTED → UNCLASSIFIED 로 뒤집히고, 삭제하면 반대로 뒤집힌다. 기계적 MUST-PASS AC 가 시간에 따라 답을 바꾸는 것은 재현 가능성의 포기다.
 
 #### §AC-ALD2-003.3 승계된 분기(inherited divergence) 취급
 
