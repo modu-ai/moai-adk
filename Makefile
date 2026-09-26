@@ -101,13 +101,13 @@ verify-local-install: ## Verify installed binary identity and version (BIN=<buil
 		"$(COMMIT)"
 
 test: templ-generate ## Run tests with race detection
-	go test -race -coverprofile=coverage.out -covermode=atomic ./...
+	go test -race -coverprofile=coverage.out -covermode=atomic -timeout 60m ./... # -timeout 60m = D1 derivation (SPEC-CLI-TEST-TIMEOUT-001; baseline .moai/reports/t1253/measure-meta.txt)
 
 test-verbose: templ-generate ## Run tests with verbose output
-	go test -race -v -coverprofile=coverage.out -covermode=atomic ./...
+	go test -race -v -coverprofile=coverage.out -covermode=atomic -timeout 60m ./... # -timeout 60m = D1 derivation (SPEC-CLI-TEST-TIMEOUT-001; baseline .moai/reports/t1253/measure-meta.txt)
 
 test-codex-live: ## Observe the codex live axis (opt-in; needs a codex binary and spends real codex/z.ai quota — CI never runs this; see internal/cli/codex_live_axis_declaration_test.go)
-	MOAI_CODEX_LIVE_PROBE=1 MOAI_AUDIT_PIN_LIVE=1 go test ./internal/cli/ -run 'Live' -v -count=1
+	MOAI_CODEX_LIVE_PROBE=1 MOAI_AUDIT_PIN_LIVE=1 go test -timeout 10m ./internal/cli/ -run 'Live' -v -count=1 # -timeout 10m = D3 explicit pin (SPEC-CLI-TEST-TIMEOUT-001; baseline .moai/reports/t1253/measure-meta.txt)
 
 coverage: test ## Show test coverage report
 	go tool cover -html=coverage.out -o coverage.html
@@ -191,6 +191,6 @@ lint-fast: ## Run golangci-lint --fast (preflight gate)
 	@golangci-lint run --fast || (echo "preflight: lint-fast FAIL"; exit 1)
 
 test-race-short: ## Run go test -race -short (preflight gate)
-	@go test -race -short ./... || (echo "preflight: test-race-short FAIL"; exit 1)
+	@go test -race -short -timeout 60m ./... || (echo "preflight: test-race-short FAIL"; exit 1) # -timeout 60m = D1 derivation (SPEC-CLI-TEST-TIMEOUT-001; baseline .moai/reports/t1253/measure-meta.txt; -short subset unmeasured — spec.md §C.3)
 
 .DEFAULT_GOAL := help
