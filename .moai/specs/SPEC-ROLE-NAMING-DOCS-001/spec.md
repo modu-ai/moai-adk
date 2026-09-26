@@ -1,7 +1,7 @@
 ---
 id: SPEC-ROLE-NAMING-DOCS-001
 title: "Role naming — unify Kanban/Factory role vocabulary to leader · lane in the document layer"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -20,6 +20,7 @@ related_specs: [SPEC-FACTORY-WORKER-NAMING-001, SPEC-KANBAN-RENAME-001, SPEC-LAN
 
 ## HISTORY
 
+- **v0.4.0** (2026-09-26) — manager-spec — plan-audit iter-2 (FAIL 0.88, `.moai/reports/plan-audit/SPEC-ROLE-NAMING-DOCS-001-iter2.md`) N1–N5 fixed. N1: `echoes.py` patterns are now locale-symmetric per concept and a cross-locale mirror pass lists all four copies of any docs-site echo line (148 lines, 60 files; catches `moai-todo.md`:143 and `factory-mode.md`:113 in every locale). N2: AC-RND-004's `-f` extraction is restricted to lane-join forms in `moai cc` / `moai glm` launch contexts, with a ledger "other meaning" exception, citing the code-layer row "`-f <label>` / `--name <label>` (lane)" at `d0770b9cc`. N3: Agent Teams and cg qualifiers aligned with code-layer D10 ("team lead", "CG leader"). N4: `anchors.py` counts same-file references. N5: spacing before `### B.6`.
 - **v0.3.0** (2026-09-26) — manager-spec — plan-audit iter-1 (FAIL 0.81, `.moai/reports/plan-audit/SPEC-ROLE-NAMING-DOCS-001-iter1.md`) defects D1–D9 fixed. D1: operator decision (lane window) — the self-promoting lane performs every pre-dispatch obligation itself and reports to the leader first; REQ-RND-018 now names the actor per obligation, covering L31/L33/L37/L39/L41/L49/L266 of `kanban-dispatch.md` (line numbers at `e62c3e183`, template copy). D2: echo set closed by measurement with `raw/scripts/echoes.py` (124 lines, 51 files, all four locales). D3: three leader senses with qualifiers in four locales; plain English and identifiers excluded. D4–D9: ko-first docs order, HARD-count rule split, anchor-scan invocation, `-f` form check, GEARS labels (REQ-RND-017 split into REQ-RND-017/025), `git add -f` for the ledger. D10: no action. Requirements and criteria 24 → 25.
 - **v0.2.0** (2026-09-26) — manager-spec — operator answers Q1–Q7 recorded (research.md §F, progress.md §E.1). Q1/Q3/Q4/Q5 were answered in the leader window, Q2/Q6/Q7 in the lane window. Changes: `lane` is canonical with no legacy alias (REQ-RND-004, REQ-RND-017); Kanban companions stay companions (REQ-RND-022); the two HARD clauses on promotion and production become amendment targets (REQ-RND-018..020); `manager-lead` keeps its name (REQ-RND-011); leader-homonym qualification (REQ-RND-021); fixed locale lexicon incl. zh 主导 / 泳道 (REQ-RND-013); foreman · deputy · coordinator get auxiliary-role definitions (REQ-RND-023). The gate now names the code-layer SPEC `SPEC-ROLE-NAMING-CODE-001`. Requirements 20 → 24, criteria 20 → 24.
 - **v0.1.0** (2026-09-26) — manager-spec — initial plan-phase draft for card t1257 (Tier L, class C). Measurements taken in worktree `.claude/worktrees/t1257` at HEAD `e62c3e183`; the inventory is `.moai/reports/t1257/inventory.md`.
@@ -72,6 +73,7 @@ The in-scope surfaces, measured in the inventory: 376 files carrying at least on
 
 - **REQ-RND-016** (Event-driven): **When** a document edit would change a string that a Go test reads and asserts (inventory §7), the run phase shall halt that edit with a blocker report routing the test change to the code-layer card, and this SPEC shall not edit any `.go` file.
 - **REQ-RND-017** (Unwanted): The document layer shall not describe `worker`, `worker-<n>`, `-f worker`, `agent`, `agent-<n>`, `-f agent`, or any other former spelling as an accepted, deprecated, or legacy alias, and the run phase shall not rewrite released CHANGELOG entries, other SPECs' records under `.moai/specs/**`, or HISTORY sections.
+
 ### B.6 HARD-clause amendments (Q3)
 
 - **REQ-RND-018** (Ubiquitous): The pre-dispatch clauses of `kanban-dispatch.md` (template and local) shall be amended as follows:
@@ -81,7 +83,7 @@ The in-scope surfaces, measured in the inventory: 376 files carrying at least on
   - (d) The paragraph attached to the promotion clause that ends "What stays forbidden is unchanged…" (L33) shall be amended so it keeps every prohibition on the leader and does not forbid a lane's self-promotion of an already-queued card.
   - (e) The Factory Mode paragraph "the lead routes each card WHOLE to a free lane" (L266) shall name both ways a lane receives a card: the leader's dispatch, or the lane's own self-promotion.
 - **REQ-RND-019** (Ubiquitous): The `[HARD]` clause "The lead is the queue's sole producer" shall keep its meaning — the leader is the queue's sole producer on operator request, plus the standing-source exception — with only the role noun renamed; no production right shall be granted to a lane.
-- **REQ-RND-020** (Event-driven): **When** a clause of REQ-RND-018 or REQ-RND-019 is amended, every echo of it shall be amended in the same commit; the echo set is closed by measurement — every line printed by `python3 .moai/reports/t1257/raw/scripts/echoes.py` (plan-time output `raw/q3-clause-echoes.tsv`: 124 lines in 51 files across `.claude`, `internal/template/templates`, docs-site en/ko/ja/zh, the four READMEs, and `internal/cli/todo.go`) plus every further line the same command prints when re-run at run time — and each such line shall carry a ledger row marked "amended", "consistent with the amended clause", or "other meaning"; lines in `internal/cli/todo.go` are routed to the code-layer card per REQ-RND-016.
+- **REQ-RND-020** (Event-driven): **When** a clause of REQ-RND-018 or REQ-RND-019 is amended, every echo of it shall be amended in the same commit; the echo set is closed by measurement — every line printed by `python3 .moai/reports/t1257/raw/scripts/echoes.py` (plan-time output `raw/q3-clause-echoes.tsv`: 148 lines in 60 files across `.claude`, `internal/template/templates`, docs-site en/ko/ja/zh, the four READMEs, and `internal/cli/todo.go`; every concept pattern exists in all four locales, and a cross-locale mirror pass lists the same line of all four copies of a docs-site page whenever any one copy is a hit) plus every further line the same command prints when re-run at run time — and each such line shall carry a ledger row marked "amended", "consistent with the amended clause", or "other meaning"; lines in `internal/cli/todo.go` are routed to the code-layer card per REQ-RND-016.
 
 ### B.7 Qualification and auxiliary roles
 
@@ -90,8 +92,10 @@ The in-scope surfaces, measured in the inventory: 376 files carrying at least on
   | Sense | en | ko | ja | zh |
   |---|---|---|---|---|
   | Kanban/Factory leader | factory leader | 팩토리 리더 | ファクトリーリーダー | 工厂主导 |
-  | Agent Teams team lead | team lead (or team leader) | 팀 리더 | チームリーダー | 团队队长 |
-  | `moai cg` leader pane | cg leader pane | cg 리더 패인 | cg リーダーペイン | cg 领队窗格 |
+  | Agent Teams team lead | team lead | 팀 리더 | チームリーダー | 团队队长 |
+  | `moai cg` leader | CG leader | CG 리더 | CG リーダー | CG 领队 |
+
+  The en forms "team lead" and "CG leader" are the code-layer spellings of `SPEC-ROLE-NAMING-CODE-001` design.md D10 (`d0770b9cc`); the ko/ja/zh forms localize them (research.md §F.3). The REQ-RND-002 gate compares these two spellings against the code-layer D10 row as landed.
 - **REQ-RND-022** (Ubiquitous): The Kanban per-column companion sessions (plan / run / sync) shall keep the name companion and shall not be renamed lane; only Factory card-carrying sessions are lanes.
 - **REQ-RND-023** (Ubiquitous): `foreman`, `deputy`, and `coordinator` shall keep their names, and each definition site of each term shall carry one line defining it as an auxiliary role of the leader.
 

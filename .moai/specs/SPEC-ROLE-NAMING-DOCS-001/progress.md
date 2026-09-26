@@ -5,13 +5,13 @@
 ```yaml
 plan_status: audit-ready
 spec_id: SPEC-ROLE-NAMING-DOCS-001
-spec_version: 0.3.0
+spec_version: 0.4.0
 card: t1257
 tier: L
 artifacts: [spec.md, plan.md, acceptance.md, design.md, research.md, progress.md]
 requirements: 25
 acceptance_criteria: 25
-plan_audit_history: "iter-1 FAIL 0.81 (.moai/reports/plan-audit/SPEC-ROLE-NAMING-DOCS-001-iter1.md); D1-D9 fixed in v0.3.0, D10 no action"
+plan_audit_history: "iter-1 FAIL 0.81 (.moai/reports/plan-audit/SPEC-ROLE-NAMING-DOCS-001-iter1.md); D1-D9 fixed in v0.3.0, D10 no action. iter-2 FAIL 0.88 (.moai/reports/plan-audit/SPEC-ROLE-NAMING-DOCS-001-iter2.md); N1-N5 fixed in v0.4.0"
 measured_at: "worktree .claude/worktrees/t1257, branch WT-role-naming-docs, base e62c3e183"
 inventory: .moai/reports/t1257/inventory.md
 gate: "substitution milestones M3-M6 blocked until SPEC-ROLE-NAMING-CODE-001 (t1256) is on develop at implemented/completed with a term table listing no accepted legacy spelling (REQ-RND-002)"
@@ -33,7 +33,7 @@ Relayed to this lane by the coordinator on 2026-09-26. Q1/Q3/Q4/Q5 answered by t
 | Q6 | ko 리더 / 레인; ja リーダー / レーン; zh 主导 (主导会话) / 泳道; zh role-sense 主导·主控·领导·负责人 unify to 主导. |
 | Q7 | foreman, deputy, coordinator keep their names; one-line "leader's auxiliary role" definition at each definition site. |
 | iter-1 D1 | A self-promoting lane performs every pre-dispatch obligation itself — PR/landed cross-check (L37), completed-SPEC cross-check (L39), confirm/withdraw surfacing (L41), class A/B/C assignment (L49) — and reports results to the leader before starting work; clause subject becomes "the dispatching party (the leader, or a lane that promoted the card itself)". |
-| iter-1 D3 | Three qualifiers: factory leader / team lead(er) / cg leader pane; ko 팩토리 리더 / 팀 리더 / cg 리더 패인; ja ファクトリーリーダー / チームリーダー / cg リーダーペイン; zh 工厂主导 / 团队队长 / cg 领队窗格 (rationale research.md §F.3). Plain-English "lead" and identifiers excluded. |
+| iter-1 D3 / iter-2 N3 | Three qualifiers, aligned at v0.4.0 with code-layer D10 (`d0770b9cc`): factory leader / team lead / CG leader; ko 팩토리 리더 / 팀 리더 / CG 리더; ja ファクトリーリーダー / チームリーダー / CG リーダー; zh 工厂主导 / 团队队长 / CG 领队 (rationale research.md §F.3). Plain-English "lead" and identifiers excluded. |
 
 ## §E.2 Run-phase Evidence
 

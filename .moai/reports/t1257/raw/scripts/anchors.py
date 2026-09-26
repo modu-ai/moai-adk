@@ -1,11 +1,15 @@
-"""For every token-bearing heading, count cross-file references to it.
+"""For every token-bearing heading, count references to it.
 
 A reference is either `§ <heading text>` / `§<heading text>` (prose anchor
 convention used across .claude/rules) or a markdown slug link `#<slug>`.
 Scans git-tracked .md/.tmpl/.go/.toml/.yaml files (Go included: tests pin
-anchors). Read-only.
+anchors). Same-file references are counted too (v0.3.0 skipped them; plan
+audit iter-2 N4): a heading line carries neither `§ <text>` nor `#<slug>`, so
+the heading itself is never counted as its own reference. Read-only.
 """
-import re, sys, os, collections
+import os
+import re
+import sys
 SP, OUT = sys.argv[1], sys.argv[2]
 files = [f for f in open(os.path.join(SP, 'files.txt')).read().split()
          if f.endswith(('.md', '.tmpl', '.go', '.toml', '.yaml', '.yml'))]
@@ -28,8 +32,6 @@ for line in open(os.path.join(OUT, 'headings.tsv')).read().split('\n')[1:]:
     refs = []
     for f, t in texts.items():
         n = len(sect.findall(t)) + (len(slug_rx.findall(t)) if slug_rx and len(slug) > 3 else 0)
-        if f == path:
-            continue
         if n:
             refs.append('%s:%d' % (f, n))
     rows.append((path, ln, toks, title_core, len(refs), ' '.join(sorted(refs))[:1500]))

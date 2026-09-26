@@ -1,6 +1,6 @@
 # Design — SPEC-ROLE-NAMING-DOCS-001
 
-Version 0.3.0 · 2026-09-26 · manager-spec · card t1257
+Version 0.4.0 · 2026-09-26 · manager-spec · card t1257
 
 Each decision records the rejected alternative. Measurements behind them are in research.md and `.moai/reports/t1257/inventory.md`; operator answers are in research.md §F.
 
@@ -30,7 +30,7 @@ Each decision records the rejected alternative. Measurements behind them are in 
 
 ## D5 — Qualify the leader homonym instead of avoiding it (Q5)
 
-- **Decision**: both usages stay; the first occurrence of each of three senses in a file carries a qualifier — factory leader / team lead(er) / cg leader pane in en, ko, ja, zh as tabled in REQ-RND-021; plain-English "lead" and identifiers are excluded; the glossary adds one disambiguation line (REQ-RND-014). ja / zh reuse the terms docs-site already uses for the non-factory senses (research.md §F.3), and zh keeps 主导 exclusively for the factory leader.
+- **Decision**: both usages stay; the first occurrence of each of three senses in a file carries a qualifier — factory leader / team lead / CG leader in en, localized in ko, ja, zh as tabled in REQ-RND-021, the latter two matching the code-layer spellings of `SPEC-ROLE-NAMING-CODE-001` D10 so CLI output and docs name each sense one way; plain-English "lead" and identifiers are excluded; the glossary adds one disambiguation line (REQ-RND-014). ja / zh reuse the terms docs-site already uses for the non-factory senses (research.md §F.3), and zh keeps 主导 exclusively for the factory leader.
 - **Rejected**: qualifying every occurrence (noise that readers learn to skip) and qualifying none (two unrelated leaders in `CLAUDE.md` §15 and `kanban-dispatch.md`).
 
 ## D6 — Two HARD clauses are amended, precisely; everything else keeps its meaning (Q3)

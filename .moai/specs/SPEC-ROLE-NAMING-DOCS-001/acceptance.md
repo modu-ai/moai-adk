@@ -1,6 +1,6 @@
 # Acceptance — SPEC-ROLE-NAMING-DOCS-001
 
-Version 0.3.0 · 2026-09-26 · manager-spec · card t1257
+Version 0.4.0 · 2026-09-26 · manager-spec · card t1257
 
 All commands run in the card worktree against the edited tree unless stated. `$R` is `.moai/reports/t1257`; `$SP` is a scratch directory holding `files.txt` from `git ls-files`; `<plan-commit>` is the commit that carries this SPEC's final plan version.
 
@@ -28,7 +28,7 @@ All commands run in the card worktree against the edited tree unless stated. `$R
 
 - **Given** the edited tree
 - **When** `grep -rnE -- '-f (worker|agent)\b|\b(worker|agent)-<n>|\b(worker|agent)-[0-9]+\b' <in-scope doc surfaces>` runs
-- **Then** it prints only lines the ledger marks "kept" as another meaning (none describing a Factory session); and every form printed by `grep -rhoE -- '-f [a-z]+(-<n>|-[0-9]+)?' <in-scope doc surfaces> | sort -u` appears in the join-token or numbered-label row of the `SPEC-ROLE-NAMING-CODE-001` design.md §3 term table read from develop at the gate HEAD (`git show develop:.moai/specs/SPEC-ROLE-NAMING-CODE-001/design.md`), with the extracted list and the matched rows recorded in progress.md.
+- **Then** it prints only lines the ledger marks "kept" as another meaning (none describing a Factory session); and the lane-join forms used in launch contexts — extracted only from `moai cc` / `moai glm` invocations by `grep -rhoE -- 'moai (cc|glm)( -[a-z-]+( [A-Za-z0-9<>._/-]+)?)* (-f|--name) [a-z]+(-<n>|-[0-9]+)?' <in-scope doc surfaces>`, so shell `test -f`, `curl -f`, and prose such as "the -f factory lead" are not extracted — each appear in the `` `-f <role>` join token `` or the `` `-f <label>` / `--name <label>` (lane) `` row of the `SPEC-ROLE-NAMING-CODE-001` design.md §2 compatibility matrix (row titles as at `d0770b9cc`), read from develop at the gate HEAD (`git show develop:.moai/specs/SPEC-ROLE-NAMING-CODE-001/design.md`); any extracted match the ledger marks "other meaning" is exempt; the extracted list and matched rows are recorded in progress.md. Plan-time baseline of the extraction (this tree, `f3f22b2f9`): `-f worker` ×43, `-f worker-<n>` ×3, `-f worker-3` ×8 — all Factory lane-join forms, so the RED state today is the pre-rename spelling, not a false positive.
 
 ### AC-RND-005 — Other meanings untouched
 
@@ -52,7 +52,7 @@ All commands run in the card worktree against the edited tree unless stated. `$R
 
 - **Given** the edited tree
 - **When** (1) `git ls-files > $SP/files.txt` is taken on the edited tree, the plan-time `$R/raw/headings.tsv` is copied into `$R/raw-anchor-check/`, and `python3 $R/raw/scripts/anchors.py $SP $R/raw-anchor-check` runs; and (2) the section-reference scan of inventory §6.2 is re-run on the edited tree
-- **Then** (1) in `$R/raw-anchor-check/anchors.tsv`, every heading the ledger marks as renamed shows `ref_files` = 0 for its old text; and (2) every `§ <text>` reference containing a role word resolves to an existing heading or bold paragraph (including `§ Lane spawn authority`).
+- **Then** (1) in `$R/raw-anchor-check/anchors.tsv` (the script counts same-file references as well as cross-file ones since v0.4.0), every heading the ledger marks as renamed shows `ref_files` = 0 for its old text; and (2) every `§ <text>` reference containing a role word resolves to an existing heading or bold paragraph (including `§ Lane spawn authority`).
 
 ### AC-RND-009 — Template-First and build
 
@@ -127,15 +127,15 @@ All commands run in the card worktree against the edited tree unless stated. `$R
 
 ### AC-RND-020 — Echoes amended together
 
-- **Given** the plan-time echo list `$R/raw/q3-clause-echoes.tsv` (124 lines, 51 files, produced by `python3 .moai/reports/t1257/raw/scripts/echoes.py`)
+- **Given** the plan-time echo list `$R/raw/q3-clause-echoes.tsv` (148 lines, 60 files, produced by `python3 .moai/reports/t1257/raw/scripts/echoes.py`; locale-symmetric patterns plus the cross-locale `mirror` pass)
 - **When** the same command is re-run on the edited tree into `$R/raw-final/q3-clause-echoes.tsv`
-- **Then** every plan-time line and every re-run line has a ledger row marked "amended", "consistent with the amended clause", or "other meaning" (the `internal/cli/todo.go` rows marked "routed to code layer"); every "amended" row changed in one commit; no remaining re-run line states that only the operator promotes or that a lane never picks a card; and no touched file lost a `[HARD]` marker.
+- **Then** for every docs-site page path and line number present in either list, all four locale copies of that line appear in the list (checked by grouping rows by page path and line: each group has exactly the rows en, ko, ja, zh); every plan-time line and every re-run line has a ledger row marked "amended", "consistent with the amended clause", or "other meaning" (the `internal/cli/todo.go` rows marked "routed to code layer"); every "amended" row changed in one commit; no remaining re-run line states that only the operator promotes or that a lane never picks a card; and no touched file lost a `[HARD]` marker.
 
 ### AC-RND-021 — Leader homonym qualified at first occurrence
 
 - **Given** every in-scope file whose ledger rows classify an occurrence of leader / lead as one of the three role senses of REQ-RND-021 (plain-English uses and identifiers such as `manager-lead` excluded)
 - **When** the first line of each sense in each file is located from the ledger
-- **Then** that line contains the sense's qualifier in the file's locale exactly as tabled in REQ-RND-021 — factory leader / team lead(er) / cg leader pane; 팩토리 리더 / 팀 리더 / cg 리더 패인; ファクトリーリーダー / チームリーダー / cg リーダーペイン; 工厂主导 / 团队队长 / cg 领队窗格.
+- **Then** that line contains the sense's qualifier in the file's locale exactly as tabled in REQ-RND-021 — factory leader / team lead / CG leader; 팩토리 리더 / 팀 리더 / CG 리더; ファクトリーリーダー / チームリーダー / CG リーダー; 工厂主导 / 团队队长 / CG 领队.
 
 ### AC-RND-022 — Kanban companions stay companions
 

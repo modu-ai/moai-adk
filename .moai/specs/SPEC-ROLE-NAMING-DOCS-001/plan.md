@@ -1,12 +1,12 @@
 # Plan — SPEC-ROLE-NAMING-DOCS-001
 
-Version 0.3.0 · 2026-09-26 · manager-spec · card t1257
+Version 0.4.0 · 2026-09-26 · manager-spec · card t1257
 
 Milestones are ordered by decision reversibility: the HARD-clause amendment and the vocabulary come first; mechanical substitution and verification come last. The operator decisions are recorded (research.md §F). Every substitution milestone (M3–M6) stays gated by REQ-RND-002 and halts per REQ-RND-003 until `SPEC-ROLE-NAMING-CODE-001` is confirmed on develop.
 
 ## §A Context
 
-- Inventory: `.moai/reports/t1257/inventory.md`. Q1 alias lines: `raw/q1-legacy-alias-lines.txt`. Q3 clause echoes: `raw/q3-clause-echoes.tsv`, produced by `python3 .moai/reports/t1257/raw/scripts/echoes.py` (124 lines, 51 files at plan time; re-run at M3).
+- Inventory: `.moai/reports/t1257/inventory.md`. Q1 alias lines: `raw/q1-legacy-alias-lines.txt`. Q3 clause echoes: `raw/q3-clause-echoes.tsv`, produced by `python3 .moai/reports/t1257/raw/scripts/echoes.py` (148 lines, 60 files at plan time, locale-symmetric with a cross-locale mirror pass; re-run at M3).
 - The code emits `worker-N` today (SPEC-FACTORY-WORKER-NAMING-001). The t1256 draft (`6fe67c674`) still lists legacy spellings as accepted; the operator answer removes them and t1256's table is expected to be revised (research.md §F.1).
 
 ## §B Known Issues
@@ -98,7 +98,7 @@ Templates first, then local, then `make build`, then `make agents-emit`:
 | Risk | Signal | Mitigation |
 |---|---|---|
 | t1256 keeps legacy aliases | Code-layer table still lists "accepted" spellings | Gate fails (REQ-RND-002); documents never describe them |
-| Two meanings of "leader" | Readers conflate cg leader pane with the factory leader | First-occurrence qualifier + glossary line (REQ-RND-021/014) |
+| Two meanings of "leader" | Readers conflate the CG leader with the factory leader | First-occurrence qualifier + glossary line (REQ-RND-021/014) |
 | HARD drift beyond Q3 | A non-target clause changes meaning in a rename diff | Marker counts + ledger (REQ-RND-007) |
 | Echo missed | Some echo still says only the operator promotes | Q3 grep + page-path counterparts + Korean local echo (REQ-RND-020) |
 | Broken anchors | `§ Lane spawn authority`, `gitflow-lane-protocol.md` §6 heading | Anchor scan both ways (REQ-RND-008) |
