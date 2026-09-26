@@ -389,4 +389,56 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	600.633s (패키지 전체 10분 �
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+### 정정 — run-phase §E.2/§E.3의 환경변수 귀속을 넓혀 확정한다
+
+§E.2/§E.3이 기록한 `TestCodexSpawn_RealAssemblyThroughStubTmux` 실패 원인은 방향은 맞았으나 목록이 **불완전**했다 — `MOAI_KANBAN_BACKEND`·`MOAI_FACTORY_WORKER`·`MOAI_FACTORY_WORKERS` 셋만으로는 부분 정리마다 서로 다른 diff로 계속 실패한다. 실제로는 이 레인 세션이 주입한 **여덟 개** `MOAI_*` 변수 전부를 조립된 tmux 명령이 흡수한다. sync 단계에서 재확인한 명령과 관측:
+
+```
+$ unset MOAI_KANBAN_BACKEND MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS MOAI_AUTONOMY_TIER MOAI_CONFIG_SOURCE MOAI_KANBAN_SETTINGS_INJECTED MOAI_LAUNCH_PROVIDER MOAI_PROFILE_LEASE_TOKEN && go test ./internal/cli -run '^TestCodexSpawn_RealAssemblyThroughStubTmux$' -count=1 -timeout=60s
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.926s
+```
+
+여덟 변수를 **한 호출**에서 함께 scrub할 때만 통과한다 — 각 Bash 호출은 새 프로세스이므로 `unset`을 별도 호출로 내면 다음 명령에 이어지지 않는다(scrub과 명령은 한 컴파운드 invocation으로 함께 이동해야 한다). 이 카드의 결함이 아니라는 판정(§E.3)은 그대로 유지된다 — 정정 대상은 **원인 자체가 아니라 변수 목록의 완전성**이다: 이 카드의 신규 파일(`codex_role_*`)은 이 실패 어디에도 등장하지 않고, 이 실패는 세션 환경변수 주입이 만든 레인 전용 현상이다.
+
+### rules-budget 조건 확인 — 비해당
+
+```
+$ git diff --name-only 0356e8117..HEAD | grep -E '^(\.claude/rules/|CLAUDE\.md|AGENTS\.md|internal/template/templates/\.claude/rules/|internal/template/templates/CLAUDE\.md|internal/template/templates/AGENTS\.md)'
+(무출력, exit 1 — 매치 없음)
+```
+
+이 카드는 `.claude/rules/**`·`CLAUDE.md`·`AGENTS.md`(로컬·템플릿 미러 포함) 어느 쪽도 접촉하지 않았다 — **감시 경로 미접촉, 예산 검사(`TestAlwaysLoadedTokenBudget`·`TestCodexContractByteCeiling`) 비해당.** §E.2가 같은 결론을 냈고 이 sync 단계에서 재확인했다.
+
+### 잔여·부채는 그대로 보존 (요약, 전문은 §E.1/spec.md/plan.md/acceptance.md 해당 절)
+
+- `AC-RLP-009` — 스테일 산출물 재사용은 닫혔고(변이① `false`), 고의 위조는 닫히지 않는다(변이② `true`, exit 0). 네 단계의 AND 접속은 절차이지 기계가 아니다. `spec.md` §C, Residual-risk 5.
+- D15 — 호출자 층 후처리 결합은 이 카드 축소 후에도 잔여다(`spec.md` §C.5).
+- `moai spec lint` 도구 귀속 gap — 설치본 `v3.2.0-rc.16`(build 2026-09-25)과 이 트리 HEAD(`0356e8117`/이후)의 조상 관계 미측정(VCI §2.2).
+- `REQ-RLP-009`·`REQ-RLP-013` — 이 카드에 기계 판정식 없음. 충족 여부는 plan-audit·sync-audit의 읽기가 판정한다(§A.1) — 이번 sync-audit이 그 읽기를 수행한다.
+- `lint.skip`은 어디에도 추가하지 않았다 — `REQ-RLP-009`·`013`의 `CoverageIncomplete` 경고 둘은 참인 경고로 남는다(iter-5 G2).
+
+### 후속 카드 후보 — 발행하지 않음, 기록만
+
+카드 발행은 큐 변경이며 운영자 승인 뒤 리드가 수행한다. sync 단계는 §E.1이 이미 적은 세 후보(§F.1 LIVE 14회+`REQ-RLP-006/008`, §F.2 `REQ-RLP-009/013` 검증 위임 성문화, §F.3 선고정 조상 판정 알고리즘 — 여섯 케이스는 `.moai/reports/t1171/plan-audit-iter3.md` §4에 있음, 다시 쓰지 말고 물려받을 것)를 그대로 유지한다. `moai gtd add`를 호출하지 않았다.
+
+### 사용자 표면 문서(CHANGELOG/README/docs-site) — 추가하지 않음
+
+이 SPEC은 `internal/cli`의 내부 판별식(`codexRoleLoadPredicate` 등, 테스트 전용 헬퍼 포함)을 계약 중립화하는 작업이며, 사용자가 관측 가능한 CLI 동작·플래그·출력·설정 표면을 바꾸지 않는다(§B.6 계약 중립성이 이 자체를 인수 기준으로 판정한다 — `AC-RLP-004` PASS). CHANGELOG `[Unreleased]`·README·docs-site 어디에도 항목을 추가하지 않았다.
+
+```yaml
+sync_complete_at: 2026-09-26
+sync_commit_sha: "pending-backfill-sync"  # 이 커밋 자신의 SHA는 커밋 전에 알 수 없다 — 후속 백필 커밋에서 실제 SHA로 교체(spec-frontmatter-schema.md D3 예외)
+sync_status: complete
+b12_self_test_a: not_applicable   # CHANGELOG 항목을 내지 않았으므로 pre-emission grep 대상 자체가 없다 — pass를 자칭하지 않는다(VCI: 관측되지 않은 검사를 pass로 적지 않는다)
+b12_self_test_b: not_applicable   # AC count match 검사는 emission을 전제한다. 참고: acceptance.md 내 distinct AC-ID 토큰은 7개(001·002·003·004·006·008·009; 010·011은 삭제, 005·007은 RETIRED 표식)
+b12_self_test_c: not_applicable   # 파일 경로 검증도 emission을 전제한다 — CHANGELOG 미변경
+changelog_entry_position: "N/A — 사용자 표면 변경 없음(§B.6 계약 중립성 AC-RLP-004 PASS 근거)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+  plan_md: "stateless (status 필드 없음, 스키마 §39-47) — updated: 2026-09-26 유지"
+  acceptance_md: "stateless (status 필드 없음, 스키마 §39-47) — updated: 2026-09-26 유지"
+  progress_md: "N/A — frontmatter 자체가 없음(§E 본문 섹션으로 진행 기록)"
+canary_compliance_check:
+  route_a_sibling_dirs_untouched: true  # git diff 0356e8117..HEAD -- SPEC-DUAL-HARNESS-RECOVERY-001/ SPEC-CODEX-AUDIT-READONLY-001/ → 무출력
+  ac_dhr_012_ac_dhr_023_permanently_unmet: true  # spec.md §C.6 그대로 유지, 이 카드가 해소하지 않음
+```

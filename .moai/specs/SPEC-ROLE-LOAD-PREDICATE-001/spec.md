@@ -2,7 +2,7 @@
 id: SPEC-ROLE-LOAD-PREDICATE-001
 title: "Codex 역할 로드 판별식의 계약 중립화 (승계 노선)"
 version: "0.5.0"
-status: in-progress
+status: completed
 created: 2026-09-26
 updated: 2026-09-26
 author: manager-spec
