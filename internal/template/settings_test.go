@@ -85,14 +85,15 @@ func TestSettingsTemplateDenyWildcardSyntax(t *testing.T) {
 			present := make(map[string]bool, len(settings.Permissions.Deny))
 			for _, rule := range settings.Permissions.Deny {
 				present[rule] = true
-				if strings.HasPrefix(rule, "Bash(") && strings.HasSuffix(rule, ":*)") &&
+				shell := strings.HasPrefix(rule, "Bash(") || strings.HasPrefix(rule, "PowerShell(")
+				if shell && strings.HasSuffix(rule, ":*)") &&
 					strings.Contains(strings.TrimSuffix(rule, ":*)"), "*") {
-					t.Errorf("Bash deny rule mixes wildcard with legacy prefix syntax: %q", rule)
+					t.Errorf("shell deny rule mixes wildcard with legacy prefix syntax: %q", rule)
 				}
 				// Claude Code does not unescape "\:"; the backslash is matched
 				// literally, so a real "C:/" command never matches the rule.
-				if strings.HasPrefix(rule, "Bash(") && strings.Contains(rule, "\\:") {
-					t.Errorf("Bash deny rule escapes ':' and cannot match a real drive path: %q", rule)
+				if shell && strings.Contains(rule, "\\:") {
+					t.Errorf("shell deny rule escapes ':' and cannot match a real drive path: %q", rule)
 				}
 			}
 			for _, rule := range want {

@@ -1,0 +1,5 @@
+ok  	github.com/modu-ai/moai-adk/internal/template	104.979s
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.259s
+ok  	github.com/modu-ai/moai-adk/internal/template/commandemit	0.096s
+?   	github.com/modu-ai/moai-adk/internal/template/scripts	[no test files]
+ok  	github.com/modu-ai/moai-adk/internal/config/toolpolicy	0.217s
