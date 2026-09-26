@@ -781,6 +781,78 @@ Under rule P every live leg is **NOT_RUN** — not PASS. The live bodies have ne
 their logic (trigger attempts, evidence reads, the resume flow, the timeout ladder) is compiled
 (`go vet` on darwin and `GOOS=windows`) but unverified.
 
+### M2h — coverage and verdict aggregation (2026-09-26)
+
+Base HEAD `92a4ac964` (M2g). Measured on Darwin arm64, go1.26.8.
+
+**What was built.**
+
+- `internal/template/obligations.yaml`, embedded (`//go:embed`) and loaded by
+  `LoadObligationRegistry`: the whole catalog (Q1) — **43 rows**: 33 M2 obligations (the eight
+  Stop members, the inventory, no-`.claude/` dependency, the Stop-chain live leg, decision
+  preservation and the four adapted events with their live legs, goal
+  continuation/cancellation/budget/override, receipts, budgets, the timeout ceiling, isolation),
+  the 4 non-Stop multi-handler chains as `unverified:` (spec.md §F), and 6 M1 standing-policy rows
+  as `blocked:M1` (design report §06/§19: standing, scoped, workflow references, host isolation,
+  enforced boundary, render determinism). The Claude interrupt source is `UNSUPPORTED:` on the
+  two Interrupt rows. Every row's `check` names a test that exists; the M1 rows and the chain rows
+  point at `TestStandingPolicyParity` / `TestNonStopChainsRecordedUnverified`, which assert those
+  rows stay blocked / unverified and aggregate below PASS until the owning work replaces them.
+- The production path resolver (`SourceResolver`, `IndexCLICommands`): a `moai …` path resolves
+  when every command word before the first flag is a cobra `Use:` word or a table-driven hook
+  subcommand in the non-test `internal/cli` sources; any other path must name a file or directory
+  in the template tree. Static lookup only — nothing is executed.
+- `parity_verdict.go`: `AggregateParityVerdict` (per obligation, the weakest of the path markers,
+  the check's go-test action, and the verdict record; PASS only with action `pass`, record `PASS`,
+  all five attribution fields, and evidence level `effect-verified`; an empty registry is not
+  PASS) and `ReadGoTestActions` (rule P over a `go test -json` stream: a skip or fail in a test or
+  any subtest outranks its pass; a test with no record is absent, i.e. an empty run).
+
+**RED**
+
+- Compile: `obligation_registry_test.go:19:37: undefined: SourceResolver` …
+  `undefined: IndexCLICommands` … `undefined: LoadObligationRegistry` …
+  `undefined: AggregateParityVerdict` … `undefined: VerdictUnverified` → build failed. The
+  registry/resolver code written ahead of this test was removed (`obligations.go` restored from
+  HEAD) before the test was written, then put back.
+- Runtime (aggregate and reader as stubs that return PASS / nothing):
+  `obligation_registry_test.go:211: skip: aggregate read PASS` (and the other 14 injections);
+  `obligation_registry_test.go:227: the whole-catalog registry aggregated PASS with no evidence`;
+  `obligation_registry_test.go:254: TestC = "", want "fail"` (and TestA/B/D) → FAIL.
+
+**GREEN**
+
+`go test -json -count=1 -run 'TestObligationCoverage|TestNonStopChainsRecordedUnverified|TestStandingPolicyParity|TestParityVerdictAggregate|TestReadGoTestActions' ./internal/template/`
+→ `43 pass`; no `skip`, no `fail` (the M2a schema tests included).
+
+**AC legs**
+
+- AC-HPR-018 (`TestObligationCoverage*`, `./internal/template/`): the embedded registry has no
+  coverage violation against the real command set, template tree, and test index; in-test
+  mutations on the first row — remove its Codex path, remove its check, point the check at a
+  missing test, point the Codex path at an unregistered command — each yield exactly one violation
+  naming `stop-chain-inventory`. PASS.
+- AC-HPR-019 (`TestParityVerdictAggregate`): a fully effect-verified, attributed registry reads
+  PASS; each injection keeps obligation `a` and the aggregate below PASS — skip → NOT_RUN, empty
+  run → NOT_RUN, go-test fail → FAIL, NOT_RUN record → NOT_RUN, a `pass` action paired with a
+  NOT_RUN record → NOT_RUN, UNSUPPORTED record or path → UNSUPPORTED, `blocked:` path → BLOCKED,
+  `unverified:` path → UNVERIFIED, a Stop gate the §D3.8 cap recorded `unverified` → UNVERIFIED,
+  a missing attribution field or no record → UNATTRIBUTED, config-existence-only (`registered`)
+  or `fired` evidence → INSUFFICIENT_EVIDENCE, obligation absent from the evidence → NOT_RUN. The
+  embedded registry with no evidence is not PASS. PASS.
+
+**Mutations (source, each applied, observed red, reverted from the kept copy)**
+
+1. The aggregate treats a NOT_RUN record as a pass (`case VerdictPass, VerdictNotRun:`) →
+   `obligation_registry_test.go:233: NOT_RUN record: aggregate read PASS`;
+   `obligation_registry_test.go:233: pass action with a NOT_RUN record: aggregate read PASS` → FAIL.
+2. The resolver accepts any command word (`if false && !r.Commands[w]`) →
+   `obligation_registry_test.go:88: want one violation for stop-chain-inventory mentioning "does not resolve", got []` → FAIL.
+
+**The aggregate for this SPEC is not PASS, and cannot be from this SPEC alone**: 6 rows are
+`blocked:M1`, 4 are `unverified`, 2 carry a Claude `UNSUPPORTED` marker, the 9 live-leg checks
+skip (NOT_RUN), and no row yet has an effect-verified, attributed verdict record.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
