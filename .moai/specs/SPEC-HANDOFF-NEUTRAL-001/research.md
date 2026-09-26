@@ -64,7 +64,9 @@ config.toml 키 기준(관측일 2026-09-26):
 
 플래그: `--stdin`/`--body`, `--spec`, `--phase`, `--session`, `--lang`, `--ultrathink`, `--ultracode`, `--goal` (handoff.go:115-123). `--ultrathink`/`--ultracode`/`--goal`는 "restoration guidance only" — 본문이 아니라 복원 안내 메타데이터.
 
-`PendingRecord` (internal/hook/handoff/pending.go:53-67): `SchemaVersion`, `SpecID`, `Phase`, `SavedAt`, `SavedBySession`, `ConversationLanguage`, `Directives{Ultrathink, Ultracode, Goal}`, `EmbeddedGoal`, `Body`. — **저장 파일(.moai/state/handoff/pending.json)과 CLI는 하네스 무관**이다. moai CLI가 쓰는 파일이지 Claude Code가 쓰는 파일이 아니다. 편향은 저장이 아니라 소비에 있다.
+`PendingRecord` (internal/hook/handoff/pending.go:53-67): `SchemaVersion`, `SpecID`, `Phase`, `SavedAt`, `SavedBySession`, `ConversationLanguage`, `Directives{Ultrathink, Ultracode, Goal}`, `EmbeddedGoal`, `Body`.
+
+**저장 매체는 factory.db다 (plan-audit 1차 결함 정정, 2026-09-26 실측).** `SavePending`은 `homestate.OpenFactory(projectDir)`로 SQLite(factory.db)를 열어 `db.SaveResume`로 쓰고(pending.go:84-113), 저장 직후 legacy `pending.json`을 **삭제**한다("retire legacy pending.json", pending.go:108-112). 소비도 파일 rename이 아니라 상태 전이다 — `resume_handoffs` 테이블의 status CHECK(`pending/claimed/consumed/failed/expired/cleared`, homestate/factory.go:70), `ClaimPendingResume`가 claimed로, 인젝터 완료가 consumed로(`consumed_at` 기록, homestate/handoff.go:211-220). **소비된 row는 삭제되지 않고 보존된다.** `ReadPending`은 DB row 우선, legacy pending.json은 읽기 전용 호환(pending.go:154-189). — **저장 매체(factory.db·moai CLI)와 payload는 하네스 무관**이다. moai CLI가 쓰는 매체이지 Claude Code가 쓰는 것이 아니다. 편향은 저장이 아니라 소비에 있다.
 
 ### C.2 주입 — Claude Code SessionStart 전용 (internal/hook/handoff_inject_render.go)
 

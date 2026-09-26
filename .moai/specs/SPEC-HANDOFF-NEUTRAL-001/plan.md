@@ -5,16 +5,18 @@
 ## §A 마일스톤 분해 (M1)
 
 ### M1.1 — RED 선관측 (테스트 먼저)
-- AC-HN-001..007 테스트 작성 → `unset … && go test …` FAIL 출력 관측 → `.moai/reports/t1273/red-*.txt` 저장.
-- 판정 패키지: `internal/cli/` (show), `internal/worktree/` (시딩 — 실제 함수 소재는 이 시점에 확정해 acceptance 표에 회기).
+- AC-HN-001..007(+4b) 테스트 작성 → `unset … && go test …` FAIL 출력 관측 → `.moai/reports/t1273/red-*.txt` 저장 (첫 줄 = 관측 시점 HEAD SHA).
+- **Fixture 계약**: 저장소는 factory.db이므로 fixture는 `SavePending` 호출/homestate 세팅으로 만든다 — legacy `pending.json` fixture는 호환 분기 검증(AC-HN-004b)에만.
+- 판정 패키지: `internal/cli/` (show), 워크트리 생성 패키지 (시딩 — 실제 materializer 소재는 이 시점에 실측 확정해 acceptance 표에 회기).
 
 ### M1.2 — `moai handoff show` (P3)
-- `internal/cli/handoff.go`: `newHandoffShowCmd` — pending→consumed 폴백, Body verbatim, `--json`, 4-로케일 헤더.
-- 재사용: `internal/hook/handoff` 패키지의 읽기 함수(pending/consumed 열거 — 이미 존재하는 로직, 신규 복제 금지), `handoffLocaleStrings` 관례.
-- 무상태 계약: 이 동사는 어떤 write도 하지 않는다.
+- `internal/homestate/handoff.go`: 소비 이력 최신 조회 함수 1개(status='consumed', consumed_at DESC) — 폴백 소스.
+- `internal/cli/handoff.go`: `newHandoffShowCmd` — `ReadPending`(DB pending row) → 소비 이력 최신 폴백, Body verbatim, `--json`, 4-로케일 헤더.
+- 재사용: `internal/hook/handoff`의 `ReadPending`·`handoffLocaleStrings` 관례 (신규 복제 금지).
+- 무상태 계약: 이 동사는 상태 전이·write를 일으키지 않는다.
 
 ### M1.3 — 워크트리 시딩 (P1 전제 1)
-- materializer(`moai worktree new` 트리 생성 경로)에서 `.codex/hooks.json` 시딩 — `update_codex_wiring.go` 생성 로직 재사용(함수 추출이 필요하면 최소 범위).
+- materializer(`moai worktree new` 트리 생성 경로)에서 `.codex/hooks.json` 시딩 — **`internal/codexwiring`(wire.go)의 생성 로직 재사용**. `internal/cli/update_codex_wiring.go`는 "creates nothing" 존재 게이트라 생성 로직 소재가 아니다(1차 감사 정정).
 - 런처 진입 보완: `moai cc -w`/`moai codex -w` 해석 경로에서 부재 시 같은 시딩.
 - 멱등·fail-open (REQ-HN-005/006/007).
 

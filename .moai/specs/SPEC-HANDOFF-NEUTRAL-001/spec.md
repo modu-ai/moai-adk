@@ -18,7 +18,7 @@ tier: L
 
 ## §1 배경·문제
 
-세션 핸드오프(`moai handoff save` → `.moai/state/handoff/pending.json` → SessionStart 자동 주입)는 Claude Code 하네스에만 소비 경로가 묶여 있다. Codex 세션은 저장된 인계를 발견·소비할 방법이 없어, 교차 인계(Claude→Codex)에서 6블록 텍스트가 사용자의 수동 복사에만 의존한다. 실측(research §C): 저장 파일·CLI는 이미 하네스 중립이나 **소비가 편향** — handoff 표면 Codex 참조 0건, `--harness codex` 어댑터는 존재하나 `additionalContextEvents`가 UserPromptSubmit만 담아 SessionStart 채널을 버리고, 프로젝트 `.codex/hooks.json` 배선은 untracked라 **워크트리 Codex 세션에는 moai 훅이 로드되지도 않는다**.
+세션 핸드오프(`moai handoff save` → factory.db `resume_handoffs`(SQLite, 상태머신 pending→claimed→consumed) → SessionStart 자동 주입)는 Claude Code 하네스에만 소비 경로가 묶여 있다. Codex 세션은 저장된 인계를 발견·소비할 방법이 없어, 교차 인계(Claude→Codex)에서 6블록 텍스트가 사용자의 수동 복사에만 의존한다. 실측(research §C): 저장 매체·CLI는 이미 하네스 중립이나 **소비가 편향** — handoff 표면 Codex 참조 0건, `--harness codex` 어댑터는 존재하나 `additionalContextEvents`가 UserPromptSubmit만 담아 SessionStart 채널을 버리고, 프로젝트 `.codex/hooks.json` 배선은 untracked 런타임 생성물이라 **워크트리 Codex 세션에는 moai 훅이 로드되지도 않는다**.
 
 ## §2 용어
 
@@ -32,10 +32,10 @@ tier: L
 ### M1 — 이 카드의 run 범위
 
 #### REQ-HN-001 (When) — handoff show 재출력
-WHEN 사용자가 `moai handoff show [--project-dir <path>]`를 호출하면, 시스템은 미소비 `pending.json`을 우선 소스로, 없으면 `consumed/` 최신 항목을 소스로 저장된 6블록 Body를 **바이트 그대로** stdout에 재출력한다. 둘 다 없으면 exit 1과 "저장된 핸드오프 없음" 안내를 낸다.
+WHEN 사용자가 `moai handoff show [--project-dir <path>]`를 호출하면, 시스템은 factory.db의 미소개 pending row(`ReadPending`)를 우선 소스로, 없으면 소비 이력(`status='consumed'` 최신, `consumed_at` 내림차순)을 소스로 저장된 6블록 Body를 **바이트 그대로** stdout에 재출력한다. 둘 다 없으면 exit 1과 "저장된 핸드오프 없음" 안내를 낸다.
 
 #### REQ-HN-002 (Ubiquitous) — show 무상태
-`moai handoff show`는 어떤 경우에도 pending.json을 소비·이름변경·수정하지 않는다. 호출 반복은 항상 같은 출력을 낸다 (auto-inject 흐름과의 동시 실행 안전).
+`moai handoff show`는 어떤 경우에도 row의 상태 전이·수정을 일으키지 않는다(읽기 전용). 호출 반복은 항상 같은 출력을 낸다 (auto-inject 흐름과의 동시 실행 안전).
 
 #### REQ-HN-003 (When) — --json 기계 판독
 WHEN `--json` 플래그가 주어지면, 시스템은 PendingRecord 전체를 JSON으로 stdout에 낸다 (출처 pending/consumed 포함).
@@ -44,7 +44,7 @@ WHEN `--json` 플래그가 주어지면, 시스템은 PendingRecord 전체를 JS
 사람 판독 출력의 헤더(출처·spec·phase·언어·저장시각·소비 여부)는 저장된 `ConversationLanguage`(ko/en/ja/zh)를 따라 현지화한다. 6블록 본문은 현지화하지 않는다.
 
 #### REQ-HN-005 (When) — materializer 시딩
-WHEN `moai worktree new`가 새 워크트리를 생성하면, 시스템은 그 트리에 `.codex/hooks.json`을 moai 소유 항목만 담아 시딩한다 (`update_codex_wiring.go` 생성 로직 재사용). 파일이 이미 있으면 **건드리지 않는다** (사용자 소유 항목 보존).
+WHEN `moai worktree new`가 새 워크트리를 생성하면, 시스템은 그 트리에 `.codex/hooks.json`을 moai 소유 항목만 담아 시딩한다 (`internal/codexwiring` wire.go의 생성 로직 재사용). 파일이 이미 있으면 **건드리지 않는다** (사용자 소유 항목 보존).
 
 #### REQ-HN-006 (When) — 런처 진입 보완
 WHEN `moai cc -w`/`moai codex -w`가 기존 워크트리에 진입할 때 `.codex/hooks.json`이 부재하면, 시스템은 REQ-HN-005와 같은 멱등 시딩으로 채운다.
