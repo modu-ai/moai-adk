@@ -41,6 +41,16 @@
   the next step is the orchestrator's escalation choice (PASS-with-debt, scope
   reduction, or an explicit extension), not an automatic re-audit. Both Kickoff
   decisions remain pending.
+- 2026-09-26 · plan-audit iter-3 (card t1203; operator-authorized extension
+  beyond the Tier M ceiling of 2): PASS-WITH-DEBT 0.89, report
+  `.moai/reports/t1203/plan-audit-iter3.md`. Debt carried: N7 (P10 does not
+  decide "prose states FAIL"; mutants M3/M4 pass P1..P11) — to be fixed before
+  the first commit of the run's second milestone; N8, N9, N10 (minor).
+- 2026-09-26 · §C candidate selection (operator, lane question channel): all
+  four candidates — (a), (b), (c), (d) — selected.
+- 2026-09-26 · Implementation Kickoff Approval: HELD by the operator. The run
+  phase has NOT started; `status` stays `draft`.
+- REQ-CPS-010 decision: keep — reason: the operator judged the #1718 adversarial outcome (`inconclusive` with an empty findings list for a body whose prose states FAIL) acceptable — source: operator answer via the card t1203 lane question channel on 2026-09-26, recorded in this progress.md §E.1
 
 ## §E.2 Run-phase Evidence
 
