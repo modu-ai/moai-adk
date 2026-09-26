@@ -148,6 +148,19 @@ func TestEnsureProjectLayoutNeverWritesIntoGitDir(t *testing.T) {
 			runFixtureGit(t, "-C", repo, "config", "core.worktree", repo)
 			return wa, meta
 		}},
+		// A root INSIDE a git directory is left as-is by CanonicalProjectRoot,
+		// so the layout decision must catch it too (t1221 delta audit N1).
+		{"inside_plain_git_dir", func(t *testing.T) (string, string) {
+			repo := filepath.Join(resolvedTemp(t), "plain")
+			runFixtureGit(t, "init", "--initial-branch=main", repo)
+			refs := filepath.Join(repo, ".git", "refs")
+			return refs, refs
+		}},
+		{"inside_bare", func(t *testing.T) (string, string) {
+			bare, _, _ := bareFixture(t)
+			refs := filepath.Join(bare, "refs")
+			return refs, refs
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -177,7 +190,15 @@ func TestEnsureProjectLayoutNeverWritesIntoGitDir(t *testing.T) {
 			if err != nil {
 				t.Fatalf("SearchDBPath: %v", err)
 			}
-			for _, p := range []string{filepath.Join(runDir, "locks"), filepath.Dir(searchPath)} {
+			moaiHome, err := paths.MoaiHome()
+			if err != nil {
+				t.Fatalf("MoaiHome: %v", err)
+			}
+			for _, p := range []string{
+				filepath.Join(runDir, "locks"),
+				filepath.Dir(searchPath),
+				filepath.Join(moaiHome, "claude-profiles"), // EnsureHomeLayout ran
+			} {
 				if _, err := os.Stat(p); err != nil {
 					t.Fatalf("home layout dir %s not created: %v", p, err)
 				}

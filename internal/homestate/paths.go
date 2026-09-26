@@ -161,14 +161,20 @@ func rootLayout(canonical string) bool {
 	return !explicitMoaiHome() && insideTempRoots(canonical) && !isGitDir(canonical)
 }
 
-// isGitDir reports whether dir is itself a git directory (a --separate-git-dir
-// metadata dir, a bare repository, .git/modules/<name>), not a work tree. It
-// compares git's own gitdir for dir against dir: `--is-inside-git-dir` would
-// answer false wherever core.worktree is set, which a submodule's git
-// directory always carries (t1221 re-audit F1).
+// isGitDir reports whether dir is a git directory (a --separate-git-dir
+// metadata dir, a bare repository, .git/modules/<name>) or lies inside one,
+// rather than in a work tree. Two answers are combined because each misses a
+// case the other catches: `--absolute-git-dir` equal to dir recognises a git
+// directory that carries core.worktree, where `--is-inside-git-dir` says false
+// (a submodule's always does; t1221 re-audit F1), while `--is-inside-git-dir`
+// recognises a path below a git directory, such as .git/refs (delta audit N1).
 func isGitDir(dir string) bool {
-	out, err := scrubbedGit(dir, "rev-parse", "--absolute-git-dir").Output()
-	return err == nil && sameDir(strings.TrimSpace(string(out)), dir)
+	out, err := scrubbedGit(dir, "rev-parse", "--absolute-git-dir", "--is-inside-git-dir").Output()
+	if err != nil {
+		return false
+	}
+	gitDir, inside, _ := strings.Cut(strings.TrimSpace(string(out)), "\n")
+	return sameDir(gitDir, dir) || strings.TrimSpace(inside) == "true"
 }
 
 // sameDir reports whether a and b name the same directory once cleaned and
