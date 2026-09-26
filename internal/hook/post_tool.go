@@ -47,6 +47,10 @@ type postToolHandler struct {
 	// REQ-LL-003: PostTool hook emits diagnostics to both systemMessage and this channel.
 	// If nil, channel emission is skipped (no-op).
 	feedbackCh *loop.FeedbackChannel
+	// escalationCfg is the configuration the escalation detector reads; when
+	// nil the detector reads cfg. Kept separate from cfg so wiring the
+	// detector does not change lint_as_instruction's nil-cfg default.
+	escalationCfg ConfigProvider
 }
 
 // NewPostToolHandler creates a new PostToolUse event handler.
@@ -143,6 +147,14 @@ func (h *postToolHandler) EventType() EventType {
 // injects a systemMessage when lint_as_instruction is enabled (REQ-LAI-001).
 // Always returns Decision "allow" (observation only).
 func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
+	// Contract-mode escalation detector: records only, returns nothing, and
+	// is inert (no file read) unless workflow.autonomy.mode is contract.
+	escCfg := h.escalationCfg
+	if escCfg == nil {
+		escCfg = h.cfg
+	}
+	observeEscalation(escCfg, string(EventPostToolUse), input)
+
 	slog.Debug("collecting post-tool metrics",
 		"tool_name", input.ToolName,
 		"session_id", input.SessionID,
