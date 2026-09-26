@@ -62,9 +62,15 @@ func resolveClaudeStatePath(getenv func(string) string, home string) string {
 type claudeStateFile struct {
 	MCPServers               map[string]json.RawMessage `json:"mcpServers"`
 	ClaudeAIMCPEverConnected []string                   `json:"claudeAiMcpEverConnected"`
-	Projects                 map[string]struct {
-		DisabledMCPServers []string `json:"disabledMcpServers"`
-	} `json:"projects"`
+	Projects                 map[string]claudeProjectEntry `json:"projects"`
+}
+
+// claudeProjectEntry is the per-project slice of the state file this check
+// reads. DisabledMcpjsonServers lists .mcp.json servers the user rejected in
+// the approval prompt — Claude Code does not load those.
+type claudeProjectEntry struct {
+	DisabledMCPServers     []string `json:"disabledMcpServers"`
+	DisabledMcpjsonServers []string `json:"disabledMcpjsonServers"`
 }
 
 // normalizeMCPProviderKey lowercases and keeps only [a-z0-9], so `context7`,
@@ -82,7 +88,7 @@ func normalizeMCPProviderKey(name string) string {
 // @MX:NOTE: [AUTO] Matches local MCP servers against claude.ai connectors by normalized name; the state file is an undocumented Claude Code internal, so every read failure degrades to OK.
 // checkMCPProviderDuplicates warns when a local MCP server and a claude.ai
 // connector resolve to the same normalized name and neither side is disabled
-// for this project.
+// or approval-rejected for this project.
 func checkMCPProviderDuplicates(projectRoot string, verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: mcpProviderDuplicatesCheckName, Status: uikit.CheckOK}
 
@@ -120,7 +126,13 @@ func checkMCPProviderDuplicates(projectRoot string, verbose bool) DiagnosticChec
 	add(userScope, "user scope")
 
 	disabled := map[string]bool{}
-	for _, name := range projectDisabledMCPServers(state, projectRoot) {
+	entry, _ := projectStateEntry(state, projectRoot)
+	for _, name := range entry.DisabledMCPServers {
+		disabled[name] = true
+	}
+	// A .mcp.json server rejected in the approval prompt is not loaded, so it
+	// cannot duplicate a connector; treat rejection like a disabled server.
+	for _, name := range entry.DisabledMcpjsonServers {
 		disabled[name] = true
 	}
 
@@ -162,21 +174,21 @@ func checkMCPProviderDuplicates(projectRoot string, verbose bool) DiagnosticChec
 	return check
 }
 
-// projectDisabledMCPServers returns the disabledMcpServers list recorded for
-// projectRoot. The state file keys projects by absolute path; the symlink-
-// resolved form is tried as a fallback. A missing entry yields nil.
-func projectDisabledMCPServers(state claudeStateFile, projectRoot string) []string {
+// projectStateEntry returns the state-file entry recorded for projectRoot.
+// The state file keys projects by absolute path; the symlink-resolved form is
+// tried as a fallback. A missing entry yields false.
+func projectStateEntry(state claudeStateFile, projectRoot string) (claudeProjectEntry, bool) {
 	abs, err := filepath.Abs(projectRoot)
 	if err != nil {
 		abs = projectRoot
 	}
 	if p, ok := state.Projects[abs]; ok {
-		return p.DisabledMCPServers
+		return p, true
 	}
 	if real, err := filepath.EvalSymlinks(abs); err == nil {
 		if p, ok := state.Projects[real]; ok {
-			return p.DisabledMCPServers
+			return p, true
 		}
 	}
-	return nil
+	return claudeProjectEntry{}, false
 }

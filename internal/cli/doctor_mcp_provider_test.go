@@ -56,6 +56,18 @@ func providerState(t *testing.T, projectRoot, disabled string) string {
 	return `{"claudeAiMcpEverConnected":["claude.ai Context7","claude.ai Notion"],"projects":` + projects + `}`
 }
 
+// providerStateWithProject builds a state file whose project entry for
+// projectRoot carries the given raw JSON fields (e.g. mcpServers or the
+// disabledMcpjsonServers approval list).
+func providerStateWithProject(t *testing.T, projectRoot, fields string) string {
+	t.Helper()
+	abs, err := filepath.Abs(projectRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return `{"claudeAiMcpEverConnected":["claude.ai Context7","claude.ai Notion"],"projects":{"` + abs + `":{` + fields + `}}}`
+}
+
 func TestCheckMCPProviderDuplicates_MatchWarns(t *testing.T) {
 	root, state := setupMCPProviderFixture(t)
 	writeMCPProviderFile(t, filepath.Join(root, ".mcp.json"), providerProjectMCP)
@@ -148,6 +160,28 @@ func TestCheckMCPProviderDuplicates_MalformedStateFileOK(t *testing.T) {
 	check := checkMCPProviderDuplicates(root, false)
 	if check.Status != uikit.CheckOK {
 		t.Errorf("Status = %q, want ok; msg=%s", check.Status, check.Message)
+	}
+}
+
+func TestCheckMCPProviderDuplicates_RejectedMcpjsonServerSuppresses(t *testing.T) {
+	root, state := setupMCPProviderFixture(t)
+	writeMCPProviderFile(t, filepath.Join(root, ".mcp.json"), providerProjectMCP)
+	writeMCPProviderFile(t, state, providerStateWithProject(t, root, `"disabledMcpjsonServers":["context7"]`))
+
+	check := checkMCPProviderDuplicates(root, false)
+	if check.Status != uikit.CheckOK {
+		t.Errorf("Status = %q, want ok (context7 was rejected in .mcp.json approval); msg=%s", check.Status, check.Message)
+	}
+}
+
+func TestCheckMCPProviderDuplicates_McpjsonRejectionIsPerName(t *testing.T) {
+	root, state := setupMCPProviderFixture(t)
+	writeMCPProviderFile(t, filepath.Join(root, ".mcp.json"), providerProjectMCP)
+	writeMCPProviderFile(t, state, providerStateWithProject(t, root, `"disabledMcpjsonServers":["playwright"]`))
+
+	check := checkMCPProviderDuplicates(root, false)
+	if check.Status != uikit.CheckWarn {
+		t.Errorf("Status = %q, want warn (only playwright was rejected, context7 stays); msg=%s", check.Status, check.Message)
 	}
 }
 
