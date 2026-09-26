@@ -6,30 +6,35 @@ first, mechanical wiring last. No time estimates; priority labels only.
 ## §A — Context
 
 - Base: `develop` at `ca1d5dc43`; worktree `.claude/worktrees/t1235`, branch `WT-escalation-detector`.
-- Tier L (9 detection classes across PreToolUse, PostToolUse and checkpoint surfaces, a new
+- Tier L (ten detection classes across PreToolUse, PostToolUse, Stop and checkpoint surfaces, a
   record layer, config, template default; expected > 15 files).
 - Run-phase entry gate: card t1234 (A1, contract schema) merged into `develop`. Plan may proceed
   in parallel; run may not (card text).
-- Measured premises: `research.md` §B. Proposed mechanics: `design.md`.
+- Measured premises: `research.md` §B. Proposed mechanics: `design.md`. Lead rulings of 09-26:
+  spec.md §H.
 
 ## §B — Known issues carried into run
 
 - **B-1** Queue store forbids a fourth state (`backlog_schema_freeze_test.go:3-5,70`); the
-  needs-decision marking must not touch it.
+  needs-decision marking lives only in escalation records.
 - **B-2** `graph.FileAPI` is working-tree only and CGO/grammar-dependent (`codequery.go:65-95`).
 - **B-3** `harness.escalation` is a homonym (`internal/config/types.go:1199-1243`); do not reuse.
 - **B-4** `MOAI_AUTONOMY_TIER` stays untouched (`internal/config/envkeys.go:139-148`).
-- **B-5** Hook bind budget: no subprocess on the per-tool-call path; git reads only at checkpoints.
+- **B-5** Hook bind budget: no subprocess on the per-tool-call path; HEAD read from ref files;
+  class 4 only at the on-demand checkpoint (spec.md C4).
 - **B-6** Changing any `acceptance.md` requires `./internal/spec` in the re-measure scope (AC
   snapshot guard).
+- **B-7** The destructive denylist returns early at `internal/hook/pre_tool.go:505-517` under an
+  `@MX:ANCHOR` forbidding a conditional return above it; the class 6 call sits above it and never
+  returns (design.md §C.3).
 
 ## §C — Pre-flight (run phase)
 
 1. `git merge-base --is-ancestor <A1 merge commit> HEAD` → exit 0 (A1 present).
-2. Re-check every 「A1 plan-audit 통과본으로 재확인」 requirement against the plan-audit-passed A1
-   schema (spec.md §F lists each field as drafted at `8f77d9a33`); if a field is renamed or
-   missing, or an open item O1-O9 resolved differently, stop and return a blocker to the
-   orchestrator for a mid-run spec amendment.
+2. Re-check **every row of spec.md §F.1** and every open item O1-O10 and request R1-R4 against the
+   plan-audit-passed A1 schema — not only the tagged requirements, so an A1 change to an
+   untagged consumer is not skipped. If a field is renamed or missing, or an item resolved
+   differently, stop and return a blocker to the orchestrator for a mid-run spec amendment.
 3. Capture the AC-AE-001 golden baseline in its own commit before any detector code.
 
 ## §D — Constraints
@@ -40,39 +45,41 @@ first, mechanical wiring last. No time estimates; priority labels only.
 
 ## §E — Self-verification (per milestone)
 
-E1 AC matrix with command + verbatim output + HEAD; E2 cross-platform build; E3 coverage;
-E4 subagent-boundary grep; E5 lint delta; E8 RED output before GREEN.
+E1 AC matrix with command + verbatim output + HEAD, each AC by its named test and package
+(acceptance.md §A); E2 cross-platform build; E3 coverage; E4 subagent-boundary grep; E5 lint
+delta; E8 RED output before GREEN.
 
 ## §F — Milestones
 
-### M1 — Record layer and activation gate (Priority High, most change-prone)
+### M1 — Record layer, resolver, and activation gate (Priority High, most change-prone)
 
-- Decide the escalation record location and the needs-decision derivation (design.md §A; open
-  question Q1). Read `workflow.autonomy.mode` through A1's config reader (inert under `guided`);
-  add only the `escalation.new_api_detector` key.
-- ACs: AC-AE-001, AC-AE-002.
+- Record location and schema (spec.md §I, lead ruling 4); the contract resolver as one isolated
+  function (lead ruling 2, design.md §C.8); read `workflow.autonomy.mode` through A1's reader
+  (inert under `guided`); add only `escalation.new_api_detector`.
+- ACs: AC-AE-001, AC-AE-002, AC-AE-018 (location and schema half).
 
-### M2 — Report writer, dedup, fault handling, acceptance-change
+### M2 — Record writer, dedup, fault handling, acceptance-change, first-resolution invalidity
 
-- Report shape (design.md §D), occurrence counting, `not-armed` / `not-checked` audit lines,
-  queue-untouched guarantee, class 1.
-- ACs: AC-AE-003, AC-AE-005, AC-AE-006, AC-AE-007, AC-AE-019, AC-AE-020, AC-AE-021.
+- Writer, occurrence counting, `not-armed` / `not-checked` / warning audit lines, detector state
+  file, class 1.
+- ACs: AC-AE-004, AC-AE-005, AC-AE-018, AC-AE-019, AC-AE-020, AC-AE-025.
 
 ### M3 — Path and command classes (PreToolUse / PostToolUse)
 
-- Classes 2a, 2b, 3 wired on the hook paths without altering existing decisions.
-- ACs: AC-AE-008, AC-AE-009, AC-AE-010.
+- Classes 2a, 2b (frozen union), 3 with post-signing immutability and exemptions, unreadable
+  field handling.
+- ACs: AC-AE-006, AC-AE-007, AC-AE-008, AC-AE-009, AC-AE-024.
 
 ### M4 — New-architecture/API detector (Priority Medium, heuristic)
 
-- Base-blob extraction route, package / exported-decl / CLI-verb / MCP-tool / config-key diff,
-  `off` switch, not-observed labelling for unsupported extraction.
-- ACs: AC-AE-011, AC-AE-012, AC-AE-013.
+- Card base resolution, base-blob extraction, per-language sub-kinds, `off` switch, not-observed
+  labelling.
+- ACs: AC-AE-010, AC-AE-011, AC-AE-012, AC-AE-023.
 
-### M5 — Evidence, irreversible action, operational trips, escalate_on gating
+### M5 — Evidence, irreversible action, operational trips, contract-void
 
-- Classes 5, 6, 7, 8, 9 and invalid-contract handling (REQ-AE-020).
-- ACs: AC-AE-004, AC-AE-014, AC-AE-015, AC-AE-016, AC-AE-017, AC-AE-018, AC-AE-022.
+- Classes 5, 6, 7, 8, 9, 10; the never-alters-tool-call sweep across all classes.
+- ACs: AC-AE-003, AC-AE-013, AC-AE-014, AC-AE-015, AC-AE-016, AC-AE-017, AC-AE-021, AC-AE-022.
 
 ### M6 — Template default and documentation (mechanical)
 
@@ -83,24 +90,25 @@ E4 subagent-boundary grep; E5 lint delta; E8 RED output before GREEN.
 
 | Risk | Mitigation |
 |---|---|
-| A1 plan-audit changes the `8f77d9a33` draft | Tagged requirements + spec.md §F open items + pre-flight step 2 |
-| PreToolUse latency under contract mode | Pure in-memory checks on the hot path; checkpoints for heavy work |
+| A1 plan-audit changes the `8f77d9a33` draft or declines R1-R4 | spec.md §F.1 full-row re-check in pre-flight step 2 |
+| PreToolUse latency under contract mode | In-memory checks and ref-file reads only on the hot path (C4) |
 | Class 4 false positives on refactors that move declarations | Report lists additions only by kind; sync-audit remains the backstop (C6) |
 | Class 6 regex misses an obfuscated push | Reported as residual risk; blocking belongs to A3 |
-| Invariant commands never run → never checked | Recorded known limit (design.md §C.2) |
+| Invariant commands never run → never checked | Reported as not-observed (REQ-AE-019, O10) |
+| Card id not resolvable → records land under the SPEC-ID fallback | Q9 below |
 
 ## §H — Open questions (for the lead)
 
-- **Q1** Where does the needs-decision record live — card evidence area, or the A1/F1 shared
-  record layer? Blocks M1.
-- **Q2** Is a new CLI verb for on-demand checkpoints acceptable, given it is itself a class-4 event?
-- **Q3** [RESOLVED by the A1 draft `8f77d9a33`] A1 ships the AC counter Go port and verify's
-  measured values; class 1 consumes them (spec.md §F O7).
-- **Q4** Sync-audit retry ceiling source — no config key was located; is it the same tier map?
+- **Q1** [RESOLVED — lead ruling 09-26 #4] record at `.moai/reports/<card>/escalations/<ts>.json`.
+- **Q2** Is a new CLI verb for on-demand checkpoints acceptable, given it is itself a class-4
+  event? Class 4 runs only there (C4).
+- **Q3** [RESOLVED by the A1 draft `8f77d9a33`] class 1 consumes A1's verify.
+- **Q4** [RESOLVED — lead ruling 09-26 #5] `budget.audit_retries` for both audits.
 - **Q5** Does "recorded CI failure" have an existing on-disk producer, or is class 5's CI limb
   expected to stay not-observed until one exists?
-- **Q6** A signed contract that turns `signed-invalid` mid-run for a non-acceptance reason
-  (e.g. `contract_digest_mismatch`) is specified as not-armed (REQ-AE-020). Should it instead
-  trip an escalation? The design-source ("change => contract void") leans that way, but no
-  class token covers it and adding one would be a seventh `escalate_on` token owned by A1.
-- **Q7** Which file set does the A1 `frozen-files` invariant resolve to (spec.md §F O2)?
+- **Q6** [RESOLVED — lead ruling 09-26 #1b] `contract-void` operational escalation.
+- **Q7** [RESOLVED — lead ruling 09-26 #6] `frozen-files` union.
+- **Q8** [RESOLVED — lead ruling 09-26 #2] resolver from the worktree root.
+- **Q9** Where does the detector read the card id from? No source exists in the SPEC directory
+  today; until one is named, records use the `<SPEC-ID>` fallback path with `card_id:
+  "unresolved"` (REQ-AE-015).
