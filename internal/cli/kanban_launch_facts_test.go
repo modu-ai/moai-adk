@@ -15,6 +15,9 @@ import (
 // The fixture root is created and populated by the test, so this listing is
 // reproducible in a way the live directory is not.
 func TestLauncherWritesNoKanbanRecord(t *testing.T) {
+	// Queue state is staged under a temp project root; drop the TestMain
+	// MOAI_HOME sandbox so it resolves project-locally (card t1229).
+	t.Setenv(config.EnvHome, "")
 	root := t.TempDir()
 	recordDir := kanban.StateDirForRoot(root)
 	if err := os.MkdirAll(recordDir, 0o755); err != nil {

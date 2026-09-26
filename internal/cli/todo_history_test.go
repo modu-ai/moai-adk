@@ -26,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
@@ -580,6 +581,9 @@ func TestLiveReadersUnchangedByHistoryVerb(t *testing.T) {
 // AC-TAQ-010 — the verb writes nothing: every file under the queue's state
 // directory hashes the same before and after, and no lock artifact remains.
 func TestTodoHistoryLeavesStorageByteIdentical(t *testing.T) {
+	// Queue state is staged under a temp project root; drop the TestMain
+	// MOAI_HOME sandbox so it resolves project-locally (card t1229).
+	t.Setenv(config.EnvHome, "")
 	root, store := todoFixture(t)
 	seedHistoryFatesQueue(t)
 

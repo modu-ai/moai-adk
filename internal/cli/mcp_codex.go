@@ -698,6 +698,13 @@ func (h *codexSessionHandle) effortResolver() func(map[string]any) config.ModelE
 type codexSessionError struct {
 	summary string
 	cause   error
+
+	// threadRequestSent is true when the failure happened AFTER the thread
+	// request (thread/start or thread/resume) was written — the thread ack was
+	// rejected or carried no id. codex_task reads it to report the thread it
+	// asked to resume on exactly those failures and not on ones that ended
+	// before the request was sent (SPEC-CODEX-RESUME-SCOPE-001 REQ-CRS-001).
+	threadRequestSent bool
 }
 
 func (e *codexSessionError) Error() string { return e.cause.Error() }
@@ -708,6 +715,21 @@ func (e *codexSessionError) Unwrap() error { return e.cause }
 func codexHandshakeFailure(conn codexConn, summary string, cause error) error {
 	_ = conn.close()
 	return &codexSessionError{summary: summary, cause: cause}
+}
+
+// codexThreadRequestFailure is codexHandshakeFailure for a failure after the
+// thread request was written: it marks the error so a caller can tell the
+// request reached codex.
+func codexThreadRequestFailure(conn codexConn, summary string, cause error) error {
+	_ = conn.close()
+	return &codexSessionError{summary: summary, cause: cause, threadRequestSent: true}
+}
+
+// codexThreadRequestWasSent reports whether err is a session failure that
+// happened after the thread request was written.
+func codexThreadRequestWasSent(err error) bool {
+	var sErr *codexSessionError
+	return errors.As(err, &sErr) && sErr.threadRequestSent
 }
 
 // openCodexSession spawns a codex app-server subprocess and completes the
@@ -772,11 +794,11 @@ func openCodexSessionResolved(ctx context.Context, binaryPath string, params map
 	}
 	thrResp, err := awaitCodexResponse(conn, threadIDReq, ctx)
 	if err != nil {
-		return nil, codexHandshakeFailure(conn, "codex "+threadMethod+" rejected: "+err.Error(), err)
+		return nil, codexThreadRequestFailure(conn, "codex "+threadMethod+" rejected: "+err.Error(), err)
 	}
 	threadID := extractThreadID(thrResp.Result)
 	if threadID == "" {
-		return nil, codexHandshakeFailure(conn, "codex "+threadMethod+" returned no thread id",
+		return nil, codexThreadRequestFailure(conn, "codex "+threadMethod+" returned no thread id",
 			errors.New("codex "+threadMethod+": no thread id in result"))
 	}
 
@@ -1861,7 +1883,18 @@ func applyGateUnmet(out ReviewOutput, projectDir string) ReviewOutput {
 	if out.Verdict != VerdictInconclusive {
 		return out
 	}
-	if workflowAuditPins(projectDir).Gates.Codex != config.AuditGateRequired {
+	// A config-orphaned worktree takes the gate from its primary checkout, and
+	// fails closed when that primary cannot be identified
+	// (SPEC-MCP-WORKTREE-UNTRACKED-001 REQ-MWU-011/012); every other tree reads
+	// its own workflow.yaml exactly as before.
+	gates, assumedNote := resolveAuditGates(projectDir)
+	if gates.Codex != config.AuditGateRequired {
+		return out
+	}
+	if assumedNote != "" {
+		out.GateUnmet = assumedNote + ", and this audit returned no verdict (fail-open inconclusive)"
+		out.Verdict = "fail"
+		out.Summary = "required gate unmet (" + assumedNote + "): " + out.Summary
 		return out
 	}
 	out.GateUnmet = "workflow.audit.gates.codex is `required`, but this audit returned no verdict (fail-open inconclusive)"

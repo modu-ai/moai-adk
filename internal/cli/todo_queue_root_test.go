@@ -16,6 +16,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
@@ -142,6 +143,9 @@ func TestResolveTodoQueueRoot_SubdirectoryResolvesToRepoRoot(t *testing.T) {
 // launch context with no git metadata keeps one queue under
 // ~/.moai/db/<project-key>/todo/, keyed deterministically from the directory.
 func TestResolveTodoQueueRoot_FallbackNoGit(t *testing.T) {
+	// The home fallback is stubbed to a temp dir; drop the TestMain MOAI_HOME
+	// sandbox so resolution takes that fallback (card t1229).
+	t.Setenv(config.EnvHome, "")
 	dir := t.TempDir() // deliberately NOT a git repository
 	t.Setenv("CLAUDE_PROJECT_DIR", dir)
 
@@ -199,6 +203,9 @@ func TestResolveTodoQueueRoot_FallbackNoGit(t *testing.T) {
 // ADOPTED — same items, same states — never shadowed behind an empty
 // home-based queue.
 func TestTodoQueue_FallbackAdoptsExistingLocalQueue(t *testing.T) {
+	// The home fallback is stubbed to a temp dir; drop the TestMain MOAI_HOME
+	// sandbox so resolution takes that fallback (card t1229).
+	t.Setenv(config.EnvHome, "")
 	dir := t.TempDir() // deliberately NOT a git repository
 	t.Setenv("CLAUDE_PROJECT_DIR", dir)
 
@@ -432,6 +439,9 @@ func TestTodoQueue_WorktreeSeesPrimaryQueue(t *testing.T) {
 // the guard leaves true for an unrelated reason, so PASS alone cannot separate
 // the two states. assertQueueSeamHeard is the positive assertion that does.
 func TestTodoQueueRootGuard_SilentOnHomeFallbackFixture_NonTemp(t *testing.T) {
+	// The home fallback is stubbed to a temp dir; drop the TestMain MOAI_HOME
+	// sandbox so resolution takes that fallback (card t1229).
+	t.Setenv(config.EnvHome, "")
 	dir := t.TempDir() // not a git repository -> fallback branch
 	t.Setenv("CLAUDE_PROJECT_DIR", dir)
 

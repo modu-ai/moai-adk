@@ -26,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
@@ -217,6 +218,9 @@ func assertComposedUpgradeSideEffects(t *testing.T, legacyDir, currentDir, legac
 // (last_seq high-water mark), AC-QUP-002 (relocation + sentinel), AC-QUP-003
 // (legacy document quarantined, not destroyed), AC-QUP-004 (SQLite artifact).
 func TestTodoComposedUpgrade_FromLegacyV312Layout(t *testing.T) {
+	// Queue state is staged under a temp project root; drop the TestMain
+	// MOAI_HOME sandbox so it resolves project-locally (card t1229).
+	t.Setenv(config.EnvHome, "")
 	root := composedUpgradeFixture(t)
 	legacyDir, currentDir := seedLegacyV312Layout(t, root, f1LegacyBacklogJSON, false)
 
@@ -289,6 +293,9 @@ const f2ForwardCompatibleJSON = `{"version":1,"last_seq":4,"items":[` +
 // composed upgrade from the LEGACY directory. See f2ForwardCompatibleJSON for
 // why this state is not reachable for a real v3.1.2 user.
 func TestTodoComposedUpgrade_ForwardCompatibleFieldsSurvive(t *testing.T) {
+	// Queue state is staged under a temp project root; drop the TestMain
+	// MOAI_HOME sandbox so it resolves project-locally (card t1229).
+	t.Setenv(config.EnvHome, "")
 	root := composedUpgradeFixture(t)
 	legacyDir, currentDir := seedLegacyV312Layout(t, root, f2ForwardCompatibleJSON, false)
 

@@ -9,6 +9,12 @@ import (
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
+// UnattestedBaseMarker is the file SaveTemplateBase leaves in the BASE
+// directory when it replaced an unattested snapshot with the embedded
+// defaults. RestoreMoaiConfigRetained reads it to report the values the merge
+// kept over the current template (card t1216).
+const UnattestedBaseMarker = "unattested-snapshot"
+
 // SaveTemplateBase populates destDir/sections/ with the bytes that RestoreMoaiConfig
 // will later read as the 3-way merge BASE. It prefers the rendered snapshot
 // (Decision D2, REQ-TBS-006) and falls back to SaveTemplateDefaults
@@ -24,10 +30,27 @@ import (
 // The function is NON-breaking: SaveTemplateDefaults and its existing test
 // callers stay intact; this is the new entry point BackupMoaiConfig uses.
 func SaveTemplateBase(destDir, projectRoot string) error {
+	// Two updates within one second share a backup directory (the timestamp
+	// has second granularity), so a marker an earlier run left must not
+	// outlive the BASE it described.
+	if err := os.Remove(filepath.Join(destDir, UnattestedBaseMarker)); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("save template base: clear marker: %w", err)
+	}
 	if !HasSnapshot(projectRoot) {
 		// Fallback: today's embedded-raw BASE. Identical to the pre-SPEC path,
 		// so existing SaveTemplateDefaults tests double as fallback tests.
 		return SaveTemplateDefaults(destDir)
+	}
+	if snapshotUnattested(projectRoot) {
+		// Card t1216: an unattested snapshot takes the same fallback. It may
+		// hold the user's own values (written after a restore), and a BASE
+		// equal to a user value reads that value as unchanged and drops it;
+		// the embedded BASE can only err toward keeping a value. The marker
+		// tells the restore to list the kept values once.
+		if err := SaveTemplateDefaults(destDir); err != nil {
+			return err
+		}
+		return os.WriteFile(filepath.Join(destDir, UnattestedBaseMarker), nil, defs.FilePerm)
 	}
 
 	srcSections := filepath.Join(SnapshotDir(projectRoot), "sections")
