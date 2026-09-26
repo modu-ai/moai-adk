@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -397,6 +398,151 @@ func TestWSR006_ReviewGateRootMatrix(t *testing.T) {
 	})
 }
 
+// wsrNoidVariants runs fn once per F-noid variant: (a) git absent from PATH,
+// (b) W's admin HEAD deleted. W carries an empty .moai in both.
+func wsrNoidVariants(t *testing.T, workflowYAML string, fn func(t *testing.T, fx untrackedFixture)) {
+	t.Helper()
+	t.Run("admin HEAD deleted", func(t *testing.T) {
+		fx := newWSRFixture(t, workflowYAML)
+		wsrNoidAdminHead(t, fx)
+		fn(t, fx)
+	})
+	t.Run("no git", func(t *testing.T) {
+		fx := newWSRFixture(t, workflowYAML)
+		mustMkdir(t, filepath.Join(fx.W, ".moai"))
+		noGitPath(t)
+		fn(t, fx)
+	})
+}
+
+// wsrToolText calls a handler and returns (isError, text).
+func wsrToolText(t *testing.T, handler func(context.Context, mcpReq) (*mcpRes, error), args map[string]any) (bool, string) {
+	t.Helper()
+	res, err := handler(context.Background(), newToolRequest(args))
+	if err != nil {
+		t.Fatalf("handler hard error: %v", err)
+	}
+	blob, _ := json.Marshal(res) // text and structured content both
+	return res.IsError, string(blob)
+}
+
+// AC-WSR-003: with W's primary unidentifiable no state write falls back to
+// another root: the verify tools error, the audits keep their verdicts and
+// carry a notice naming the skipped write and cause, and nothing is written.
+func TestWSR003_PrimaryUnidentifiedNoFallback(t *testing.T) {
+	wsrNoidVariants(t, wsrWorkflowF, func(t *testing.T, fx untrackedFixture) {
+		for name, h := range map[string]func(context.Context, mcpReq) (*mcpRes, error){
+			"verify_snapshot": handleVerifySnapshot, "verify_trend": handleVerifyTrend,
+		} {
+			isErr, text := wsrToolText(t, h, map[string]any{"project_root": fx.W, "key": "k1", "command": "c"})
+			if !isErr || !strings.Contains(text, "primary checkout") || !strings.Contains(text, "could not be identified") {
+				t.Errorf("%s: want a tool error naming the unidentifiable primary checkout, got isError=%v %s", name, isErr, text)
+			}
+		}
+		wsrStubCodexPass(t)
+		out, _ := wsrCodexAudit(t, fx.W)
+		if out.Verdict != "pass" {
+			t.Errorf("codex_audit verdict = %q, want the seam's pass", out.Verdict)
+		}
+		r, text := wsrAuditMulti(t, fx.W, "S", map[string]string{BackendClaude: "fail", BackendCodex: "pass"})
+		if r.OverallVerdict != overallVerdictFail {
+			t.Errorf("audit_multi overall = %q, want fail", r.OverallVerdict)
+		}
+		for name, notice := range map[string]string{"codex_audit": out.StateNotice, "audit_multi": r.StateNotice} {
+			if !strings.Contains(notice, "receipt") || !strings.Contains(notice, "could not be identified") {
+				t.Errorf("%s: want a notice naming the skipped receipt write and the cause, got %q", name, notice)
+			}
+		}
+		if !strings.Contains(r.StateNotice, "convergence") {
+			t.Errorf("audit_multi notice must name the skipped convergence write, got %q (%s)", r.StateNotice, text)
+		}
+		for _, root := range []string{fx.P, fx.W} {
+			if n := len(wsrJSONFiles(t, filepath.Join(root, ".moai", "state", "audit-receipts", "receipts"))); n != 0 {
+				t.Errorf("no receipt may exist under %s, found %d", root, n)
+			}
+			if n := len(wsrConvergenceFiles(t, root, "S")); n != 0 {
+				t.Errorf("no convergence result may exist under %s, found %d", root, n)
+			}
+		}
+		wsrAssertEmptyMoai(t, fx.W)
+	})
+}
+
+// AC-WSR-004: a root that is not config-orphaned — P, a tracked-.moai
+// worktree WT, a bare non-git B — keeps every path it uses today, with and
+// without git on PATH.
+func TestWSR004_OtherRootsUnchanged(t *testing.T) {
+	for _, withGit := range []bool{true, false} {
+		fx := newWSRFixture(t, wsrWorkflowF)
+		_, wt := newTrackedFixture(t)
+		b := wtCanonTempDir(t)
+		mustMkdir(t, filepath.Join(b, ".moai"))
+		wsrStubCodexPass(t)
+		if !withGit {
+			noGitPath(t)
+		}
+		for _, root := range []string{fx.P, wt, b} {
+			out, _ := wsrCodexAudit(t, root)
+			rcpts := wsrJSONFiles(t, filepath.Join(root, ".moai", "state", "audit-receipts", "receipts"))
+			if len(rcpts) != 1 {
+				t.Errorf("git=%v %s: want the receipt under its own store, got %v", withGit, root, rcpts)
+			}
+			_ = out
+			wsrAuditMulti(t, root, "S", map[string]string{BackendClaude: "pass", BackendCodex: "pass"})
+			if _, err := os.Stat(filepath.Join(root, ".moai", "state", "audit-multi", "S.json")); err != nil {
+				t.Errorf("git=%v %s: convergence result not at the base path: %v", withGit, root, err)
+			}
+			if isErr, text := wsrToolText(t, handleVerifySnapshot, map[string]any{"project_root": root, "key": "h:d", "command": "c"}); isErr {
+				t.Errorf("git=%v %s: verify_snapshot record failed: %s", withGit, root, text)
+			} else if _, err := os.Stat(verify.SnapshotPath(root, "h:d")); err != nil {
+				t.Errorf("git=%v %s: snapshot not at the base path: %v", withGit, root, err)
+			}
+		}
+	}
+}
+
+// AC-WSR-005: verify_snapshot/verify_trend and `moai verify record|check` on W
+// all use P's store, and agree.
+func TestWSR005_VerifyToolsAndCLIAgree(t *testing.T) {
+	fx := newWSRFixture(t, wtWorkflowNoGate)
+	wtWriteFile(t, filepath.Join(fx.W, "tracked.txt"), "uncommitted change in W\n")
+	key, err := verify.Key(context.Background(), fx.W)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if isErr, text := wsrToolText(t, handleVerifySnapshot, map[string]any{"project_root": fx.W, "key": key, "command": "c1"}); isErr {
+		t.Fatalf("verify_snapshot record: %s", text)
+	}
+	run := func(args ...string) (string, error) {
+		cmd := newVerifyCmd()
+		var out strings.Builder
+		cmd.SetOut(&out)
+		cmd.SetErr(&out)
+		cmd.SetArgs(append([]string{"--project-root", fx.W}, args...))
+		err := cmd.Execute()
+		return out.String(), err
+	}
+	if out, err := run("record", "--check-id", "c2", "--command", "c2"); err != nil {
+		t.Fatalf("moai verify record: %v (%s)", err, out)
+	}
+	snaps := wsrJSONFiles(t, filepath.Join(fx.P, ".moai", "state", "verify", "snapshots"))
+	if len(snaps) != 1 {
+		t.Errorf("want exactly one snapshot under P, got %v", snaps)
+	}
+	for name, h := range map[string]func(context.Context, mcpReq) (*mcpRes, error){
+		"verify_snapshot": handleVerifySnapshot, "verify_trend": handleVerifyTrend,
+	} {
+		_, text := wsrToolText(t, h, map[string]any{"project_root": fx.W, "key": key})
+		if !strings.Contains(text, `"c1"`) && !strings.Contains(text, "c1") || !strings.Contains(text, "c2") {
+			t.Errorf("%s load on W must return c1 and c2, got %s", name, text)
+		}
+	}
+	if out, err := run("check"); err != nil || !strings.Contains(out, `"fresh": true`) {
+		t.Errorf("moai verify check on W must report the snapshot present and fresh, got err=%v %s", err, out)
+	}
+	wsrAssertNoMoai(t, fx.W)
+}
+
 // AC-WSR-010: on W the catalogue tools answer over the union of W's and P's
 // .moai/specs, and every record and finding names its source.
 func TestWSR010_UnionCatalogue(t *testing.T) {
@@ -472,6 +618,211 @@ func decodeTool(t *testing.T, handler func(context.Context, mcpReq) (*mcpRes, er
 	}
 	if err := json.Unmarshal(blob, v); err != nil {
 		t.Fatalf("decode: %v (%s)", err, blob)
+	}
+}
+
+// AC-WSR-011: a SPEC ID present in both catalogues is reported once, from the
+// worktree, and the shadowed primary copy is named.
+func TestWSR011_SameSpecInBoth(t *testing.T) {
+	fx := newWSRFixture(t, wtWorkflowNoGate)
+	wtWriteFile(t, filepath.Join(fx.W, ".moai", "specs", "SPEC-DUP-001", "spec.md"), wsrSpecBody("SPEC-DUP-001", "draft"))
+	wtWriteFile(t, filepath.Join(fx.P, ".moai", "specs", "SPEC-DUP-001", "spec.md"), wsrSpecBody("SPEC-DUP-001", "completed"))
+	namesShadow := func(body map[string]any) bool {
+		list, _ := body["shadowed"].([]any)
+		for _, s := range list {
+			if m, ok := s.(map[string]any); ok && m["spec_id"] == "SPEC-DUP-001" && m["source"] == "primary" {
+				return true
+			}
+		}
+		return false
+	}
+
+	var progress map[string]any
+	decodeTool(t, handleSpecProgress, map[string]any{"project_root": fx.W}, &progress)
+	dup := 0
+	for _, s := range progress["specs"].([]any) {
+		rec := s.(map[string]any)
+		if wsrSpecIDOfPath(rec["Path"]) != "SPEC-DUP-001" {
+			continue
+		}
+		dup++
+		fm, _ := rec["Frontmatter"].(map[string]any)
+		if fm["Status"] != "draft" || rec["source"] != "worktree" {
+			t.Errorf("spec_progress SPEC-DUP-001: want status draft source worktree, got status=%v source=%v", fm["Status"], rec["source"])
+		}
+	}
+	if dup != 1 || progress["count"] != float64(2) {
+		t.Errorf("spec_progress: want SPEC-DUP-001 once and count 2, got %d and count %v", dup, progress["count"])
+	}
+	if !namesShadow(progress) {
+		t.Errorf("spec_progress must name the shadowed primary copy, got %v", progress["shadowed"])
+	}
+	for name, h := range map[string]func(context.Context, mcpReq) (*mcpRes, error){
+		"spec_drift": handleSpecDrift, "spec_audit": handleSpecAudit,
+	} {
+		var body map[string]any
+		decodeTool(t, h, map[string]any{"project_root": fx.W}, &body)
+		if body["total_specs"] != float64(2) {
+			t.Errorf("%s total_specs = %v, want 2", name, body["total_specs"])
+		}
+		for _, f := range body["drift_findings"].([]any) {
+			m := f.(map[string]any)
+			if m["spec_id"] == "SPEC-DUP-001" && m["source"] != "worktree" {
+				t.Errorf("%s: SPEC-DUP-001 finding must come from the worktree only, got source %v", name, m["source"])
+			}
+		}
+		if !namesShadow(body) {
+			t.Errorf("%s must name the shadowed primary copy, got %v", name, body["shadowed"])
+		}
+	}
+}
+
+// AC-WSR-012: with the primary unidentifiable the catalogue tools answer over
+// the worktree only and say, in _root, that the primary catalogue was not read.
+func TestWSR012_PrimaryUnidentifiedOnRead(t *testing.T) {
+	wsrNoidVariants(t, wtWorkflowNoGate, func(t *testing.T, fx untrackedFixture) {
+		wtWriteFile(t, filepath.Join(fx.W, ".moai", "specs", "SPEC-WTL-001", "spec.md"), wsrSpecBody("SPEC-WTL-001", "draft"))
+		states := func(body map[string]any) bool {
+			root, _ := body["_root"].(map[string]any)
+			s, _ := root["primary_catalogue"].(string)
+			return strings.Contains(s, "not read") && strings.Contains(s, "could not be identified")
+		}
+		var progress map[string]any
+		decodeTool(t, handleSpecProgress, map[string]any{"project_root": fx.W}, &progress)
+		if progress["count"] != float64(1) || !states(progress) {
+			t.Errorf("spec_progress: want count 1 and a primary-not-read statement, got count=%v _root=%v", progress["count"], progress["_root"])
+		}
+		for name, h := range map[string]func(context.Context, mcpReq) (*mcpRes, error){
+			"spec_drift": handleSpecDrift, "spec_audit": handleSpecAudit,
+		} {
+			var body map[string]any
+			decodeTool(t, h, map[string]any{"project_root": fx.W}, &body)
+			if body["total_specs"] != float64(1) || !states(body) {
+				t.Errorf("%s: want total_specs 1 and a primary-not-read statement, got %v _root=%v", name, body["total_specs"], body["_root"])
+			}
+		}
+	})
+}
+
+// baseFallbackWarning is the _root.warning text of the base tree, verbatim.
+func baseFallbackWarning(source string) string {
+	return "project_root not passed — resolved from " + source +
+		", which froze at server spawn; a session that moved worktrees is reading another tree; " +
+		"pass project_root = git rev-parse --show-toplevel"
+}
+
+// AC-WSR-013: on W every _root lists the sources read, the worktree warning
+// no longer says the answer came from the worktree tree, and the fallback
+// warning keeps its key and text.
+func TestWSR013_RootProvenance(t *testing.T) {
+	fx := newWSRFixture(t, wtWorkflowNoGate)
+	sourcesOf := func(body map[string]any) map[string]string {
+		root, _ := body["_root"].(map[string]any)
+		out := map[string]string{}
+		list, _ := root["sources"].([]any)
+		for _, s := range list {
+			m, _ := s.(map[string]any)
+			src, _ := m["source"].(string)
+			dir, _ := m["dir"].(string)
+			out[src] = dir
+		}
+		return out
+	}
+	for name, h := range map[string]func(context.Context, mcpReq) (*mcpRes, error){
+		"spec_progress": handleSpecProgress, "spec_audit": handleSpecAudit, "spec_drift": handleSpecDrift,
+		"verify_snapshot": handleVerifySnapshot, "verify_trend": handleVerifyTrend,
+	} {
+		var body map[string]any
+		decodeTool(t, h, map[string]any{"project_root": fx.W, "key": "h:d"}, &body)
+		src := sourcesOf(body)
+		if strings.HasPrefix(name, "spec_") {
+			if src["worktree"] != fx.W || src["primary"] != fx.P {
+				t.Errorf("%s: _root.sources must list worktree W and primary P, got %v", name, src)
+			}
+		} else if src["store"] != fx.P {
+			t.Errorf("%s: _root.sources must list the store root P, got %v", name, src)
+		}
+		root, _ := body["_root"].(map[string]any)
+		if w, _ := root["worktree_warning"].(string); w == "" || strings.Contains(w, "read from the worktree tree") {
+			t.Errorf("%s: worktree_warning must be present and no longer say it was read from the worktree tree, got %q", name, w)
+		}
+	}
+	t.Setenv("CLAUDE_PROJECT_DIR", fx.W)
+	var body map[string]any
+	decodeTool(t, handleSpecProgress, map[string]any{}, &body)
+	root, _ := body["_root"].(map[string]any)
+	if root["warning"] != baseFallbackWarning("env:CLAUDE_PROJECT_DIR") {
+		t.Errorf("fallback _root.warning changed: %v", root["warning"])
+	}
+}
+
+// wsrRepoRoot returns the repository root from the package directory.
+func wsrRepoRoot(t *testing.T) string {
+	t.Helper()
+	abs, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return abs
+}
+
+// AC-WSR-015: the rule section, its template mirror, the shared project_root
+// description, and the tool descriptions state the new behaviour.
+func TestWSR015_Documentation(t *testing.T) {
+	repo := wsrRepoRoot(t)
+	rel := filepath.Join(".claude", "rules", "moai", "core", "moai-mcp-tools-catalogue.md")
+	local, err := os.ReadFile(filepath.Join(repo, rel))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mirror, err := os.ReadFile(filepath.Join(repo, "internal", "template", "templates", rel))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(local) != string(mirror) {
+		t.Errorf("rule file and template mirror differ")
+	}
+	sectionStart := strings.Index(string(local), "## Linked worktrees of a repository that keeps `.moai` untracked")
+	if sectionStart < 0 {
+		t.Fatal("catalogue section heading not found")
+	}
+	section := string(local)[sectionStart:]
+	for _, want := range []string{"primary checkout's `.moai/state`", "tree identity", "union", "receipt guard"} {
+		if !strings.Contains(section, want) {
+			t.Errorf("catalogue section lacks %q", want)
+		}
+	}
+	if strings.Contains(section, "still read from the accepted tree") {
+		t.Errorf("catalogue section still says state and catalogue are read from the accepted tree")
+	}
+	for _, pat := range []string{`SPEC-[A-Z]`, `\bt[0-9]{2,5}\b`, `20[0-9]{2}-[0-9]{2}-[0-9]{2}`} {
+		if regexp.MustCompile(pat).Match(mirror) {
+			t.Errorf("template copy matches forbidden pattern %s", pat)
+		}
+	}
+	if strings.Contains(projectRootDescCommon, "still read from the accepted tree") {
+		t.Errorf("projectRootDescCommon still says state is read from the accepted tree")
+	}
+	srv := newMoaiMCPServer()
+	desc := func(name string) string {
+		tool := srv.GetTool(name)
+		if tool == nil {
+			t.Fatalf("%s not registered", name)
+		}
+		return tool.Tool.Description
+	}
+	for _, name := range []string{"spec_progress", "spec_drift", "spec_audit"} {
+		if d := desc(name); !strings.Contains(d, "primary checkout") || !strings.Contains(d, "union") {
+			t.Errorf("%s description lacks the union catalogue statement: %s", name, d)
+		}
+	}
+	for _, name := range []string{"verify_snapshot", "verify_trend", "codex_audit", auditMultiToolName} {
+		if d := desc(name); !strings.Contains(d, "primary checkout") || !strings.Contains(d, ".moai/state") {
+			t.Errorf("%s description lacks the primary-checkout state statement: %s", name, d)
+		}
+	}
+	if d := desc("codex_audit"); strings.Contains(d, "that refusal is not guaranteed") {
+		t.Errorf("codex_audit description still says the refusal is not guaranteed")
 	}
 }
 

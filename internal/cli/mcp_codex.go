@@ -332,6 +332,13 @@ type ReviewOutput struct {
 	// commits. Empty on every other verdict, so the advisory speaks only when
 	// the binary really is running code the tree has moved past (REQ-ABI-006).
 	BuildLag string `json:"build_lag,omitempty"`
+
+	// StateNotice names a state write this call skipped and why — set only
+	// when a config-orphaned worktree's primary checkout could not be
+	// identified, so the receipt had no store to go to
+	// (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-004). The verdict is unchanged.
+	// Additive + omitempty.
+	StateNotice string `json:"state_notice,omitempty"`
 }
 
 // AuditProvenance is backend-supplied evidence about how a review was made.
@@ -1836,7 +1843,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		// goes silently unmet (the review never ran at all).
 		out := applyGateUnmet(inconclusiveReview("codex binary not found in PATH"), root)
 		out.BuildCommit, out.BuildLag = buildCommit, buildLag
-		out.AuditReceipt = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)
+		out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)
 		return codexReviewToolResult(out), nil
 	}
 	notifyMCPProgress(ctx, token, 0.1, "codex 바이너리 확인 — 리뷰 요청 준비 중...")
@@ -1859,7 +1866,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	out, _ := codexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
 	out = applyGateUnmet(out, root)
 	out.BuildCommit, out.BuildLag = buildCommit, buildLag
-	out.AuditReceipt = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)
+	out.AuditReceipt, out.StateNotice = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)
 	notifyMCPProgress(ctx, token, 0.9, "codex 응답 수신 — 결과 조립 중...")
 	return codexReviewToolResult(out), nil
 }

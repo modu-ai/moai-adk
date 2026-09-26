@@ -43,6 +43,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -161,6 +162,19 @@ type ConvergenceResult struct {
 	// (REQ-ABI-007).
 	BuildCommit string `json:"build_commit,omitempty"`
 	BuildLag    string `json:"build_lag,omitempty"`
+
+	// TreeRoot is the canonical tree this result was produced for. The result
+	// of a config-orphaned worktree is kept in its primary checkout's store
+	// beside the primary's own and every sibling worktree's, and a result of
+	// one tree never replaces another's (SPEC-WORKTREE-STATE-ROOT-001
+	// REQ-WSR-003). Additive + omitempty.
+	TreeRoot string `json:"tree_root,omitempty"`
+
+	// StateNotice names a state write this call skipped and why — set only
+	// when a config-orphaned worktree's primary checkout could not be
+	// identified, so there was no store to write to (REQ-WSR-004). The verdict
+	// itself is unchanged. Additive + omitempty.
+	StateNotice string `json:"state_notice,omitempty"`
 }
 
 // ─── convergence algorithm (design.md §3) ───
@@ -757,17 +771,32 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// skipped codex is not evidence that a codex audit ran, and recording one
 	// would let an auditor cite it as if it were. Runs BEFORE persist so the
 	// state file carries the same id the caller receives.
+	var notices []string
 	if codexVerdict, participated := codexParticipation(verdicts); participated {
-		result.AuditReceipt = recordAuditReceipt(auditreceipt.ToolAuditMulti, cfg.ProjectRoot, codexVerdict, result.GateUnmet)
+		var notice string
+		result.AuditReceipt, notice = recordAuditReceipt(auditreceipt.ToolAuditMulti, cfg.ProjectRoot, codexVerdict, result.GateUnmet)
+		if notice != "" {
+			notices = append(notices, notice)
+		}
 	}
 
 	// ── DQ-1: persist to .moai/state/audit-multi/<session>.json ──
 	// Best-effort: a write failure is logged via the returned error but MUST NOT
 	// block the flow (fail-open). The convergence result is valid regardless of
-	// whether the state file landed.
-	if cfg.SessionID != "" {
-		_ = persistConvergenceResult(result, cfg.SessionID, cfg.ProjectRoot)
+	// whether the state file landed. A named tree's result carries its identity
+	// (REQ-WSR-003); a config-orphaned worktree whose primary cannot be
+	// identified has no store, so the write is skipped and the result says so
+	// (REQ-WSR-004).
+	if cfg.ProjectRoot != "" {
+		result.TreeRoot = cfg.ProjectRoot
 	}
+	if cfg.SessionID != "" {
+		var unresolved *auditreceipt.UnresolvedStoreError
+		if err := persistConvergenceResult(result, cfg.SessionID, cfg.ProjectRoot); errors.As(err, &unresolved) {
+			notices = append(notices, "convergence result for session "+cfg.SessionID+" not persisted: "+err.Error())
+		}
+	}
+	result.StateNotice = strings.Join(notices, " | ")
 	return result
 }
 
@@ -900,8 +929,27 @@ func workflowAuditGates(projectRoot string) (config.AuditGates, string) {
 // gate never looks — and mixed several worktrees' verdicts into one directory.
 // Empty ⇒ the package-level convergenceStateDir, so an unaware caller and the
 // existing tests that override that variable see no change.
+//
+// A config-orphaned worktree's result goes to its primary checkout's store
+// under a tree-qualified name (<session>--tree-<key>.json), so the results of
+// the primary and of every sibling worktree for one session coexist rather
+// than replace one another (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-002/003). Every
+// other root writes <session>.json under itself exactly as before. A worktree
+// whose primary cannot be identified returns *auditreceipt.UnresolvedStoreError
+// and writes nothing.
 func persistConvergenceResult(r ConvergenceResult, sessionID, projectRoot string) error {
-	dir := filepath.Join(convergenceStateDirFor(projectRoot), "audit-multi")
+	stateDir, name := convergenceStateDirFor(projectRoot), sessionID+".json"
+	if root := strings.TrimSpace(projectRoot); root != "" {
+		store, err := auditreceipt.StoreRoot(root)
+		if err != nil {
+			return err
+		}
+		stateDir = filepath.Join(store, ".moai", "state")
+		if store != root {
+			name = sessionID + "--" + auditreceipt.TreeKey(root) + ".json"
+		}
+	}
+	dir := filepath.Join(stateDir, "audit-multi")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("convergence state dir: %w", err)
 	}
@@ -909,7 +957,7 @@ func persistConvergenceResult(r ConvergenceResult, sessionID, projectRoot string
 	if err != nil {
 		return fmt.Errorf("convergence state marshal: %w", err)
 	}
-	path := filepath.Join(dir, sessionID+".json")
+	path := filepath.Join(dir, name)
 	if err := os.WriteFile(path, b, 0o644); err != nil {
 		return fmt.Errorf("convergence state write: %w", err)
 	}
