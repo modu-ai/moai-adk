@@ -57,6 +57,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/profile"
 )
@@ -345,6 +347,13 @@ func requireNotRealHome(t *testing.T, home string) {
 // selectors that match no tests, where a named guard test would be filtered
 // out and pass vacuously.
 func TestMain(m *testing.M) {
+	restoreMoaiHome := sandboxMoaiHome()
+	// Git fixtures must not inherit a hook's or lane's repository (GH #1691).
+	if err := gitenv.ScrubProcess(); err != nil {
+		restoreMoaiHome()
+		fmt.Fprintf(os.Stderr, "TestMain: %v\n", err)
+		os.Exit(1)
+	}
 	restoreProfileBaseDir := sandboxProfileBaseDir()
 	restoreUserHomeDir := sandboxUserHomeDir()
 	restoreReceiptRoot := sandboxAuditReceiptFallbackRoot()
@@ -379,7 +388,38 @@ func TestMain(m *testing.M) {
 	restoreReceiptRoot()
 	restoreUserHomeDir()
 	restoreProfileBaseDir()
+	restoreMoaiHome()
 	os.Exit(code)
+}
+
+// moaiHomeSandboxEnv marks a process whose MOAI_HOME was already sandboxed by
+// this package's TestMain (card t1229).
+const moaiHomeSandboxEnv = "MOAI_CLI_TEST_MOAI_HOME_SANDBOX"
+
+// sandboxMoaiHome points MOAI_HOME at a directory owned by this test binary
+// and clears the two variables a lane session exports into its children.
+//
+// Tests here drive the SessionStart hook in-process and as a `moai hook`
+// subprocess. That hook enriches the profile-lease row named by
+// MOAI_PROFILE_LEASE_TOKEN (or inserts one when CLAUDE_CONFIG_DIR is set) in
+// the database under MOAI_HOME, so a run launched from a lane session rewrote
+// that lane's live lease with a test session id and a pid that exits with the
+// run (card t1229). A re-executed helper inherits the marker and keeps the
+// MOAI_HOME its parent test chose.
+func sandboxMoaiHome() func() {
+	_ = os.Unsetenv("MOAI_PROFILE_LEASE_TOKEN")
+	_ = os.Unsetenv(config.EnvClaudeConfigDir)
+	if os.Getenv(moaiHomeSandboxEnv) != "" {
+		return func() {}
+	}
+	dir, err := os.MkdirTemp("", "moai-cli-moai-home-")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "TestMain: create MOAI_HOME sandbox: %v\n", err)
+		os.Exit(1)
+	}
+	_ = os.Setenv(config.EnvHome, dir)
+	_ = os.Setenv(moaiHomeSandboxEnv, dir)
+	return func() { _ = os.RemoveAll(dir) }
 }
 
 // sandboxAuditReceiptFallbackRoot points the audit-receipt store's fallback

@@ -56,7 +56,7 @@ func recordAuditReceipt(tool, projectRoot, codexVerdict, gateUnmet string) strin
 		slog.Warn("audit receipt not recorded", "tool", tool, "tree_root", root, "error", err)
 		return ""
 	}
-	if !auditreceipt.CodexGateRequired(root) {
+	if !receiptCodexGateRequired(root) {
 		return ""
 	}
 	return id

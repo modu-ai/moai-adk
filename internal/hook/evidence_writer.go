@@ -177,11 +177,12 @@ func appendZeroExecutionAdvisory(systemMessage, command string) string {
 	return systemMessage + "\n" + advisory
 }
 
-// maybeZeroExecutionAdvisory surfaces a zero-execution Bash test call on the
-// PostToolUse return payload. Advisory only: it never sets Decision, and a
-// non-Bash or non-test event returns the message untouched.
+// maybeZeroExecutionAdvisory surfaces a zero-execution shell (Bash or
+// PowerShell) test call on the PostToolUse return payload. Advisory only: it
+// never sets Decision, and a non-shell or non-test event returns the message
+// untouched.
 func maybeZeroExecutionAdvisory(input *HookInput, systemMessage string) string {
-	if input == nil || input.ToolName != "Bash" {
+	if input == nil || !IsShellTool(input.ToolName) {
 		return systemMessage
 	}
 	rec, ok := buildEvidenceRecord(input) // pure — no write, no side effect.
@@ -465,10 +466,13 @@ func buildEvidenceRecord(input *HookInput) (telemetry.UsageRecord, bool) {
 		AgentType: input.AgentType,
 	}
 
-	switch input.ToolName {
-	case "Bash":
+	switch {
+	case IsShellTool(input.ToolName):
+		// Bash and PowerShell share the {command} input shape; an unrecognized
+		// tool_response yields no pass/fail signal (buildBashRecord's
+		// graceful-degradation branch), never a fabricated pass.
 		return buildBashRecord(input, rec)
-	case "Edit", "Write":
+	case input.ToolName == "Edit", input.ToolName == "Write":
 		return buildFileRecord(input, rec)
 	default:
 		return telemetry.UsageRecord{}, false
@@ -639,15 +643,16 @@ func extractTestPackage(command string) string {
 // the full Bash payload; routing it through here restores reachability without
 // editing settings.json or the template it is rendered from.
 //
-// Scoped to Bash on purpose. Write and Edit are already covered by
-// handle-post-tool.sh, so recording them here as well would write two telemetry
-// records for one tool call. A non-Bash input is a silent no-op rather than an
-// error, so the caller needs no tool-name branch of its own.
+// Scoped to the shell tools (Bash and PowerShell, IsShellTool) on purpose.
+// Write and Edit are already covered by handle-post-tool.sh, so recording them
+// here as well would write two telemetry records for one tool call. A
+// non-shell input is a silent no-op rather than an error, so the caller needs
+// no tool-name branch of its own.
 //
 // Best-effort and fail-open, matching logEvidence: errors are logged, never
 // returned, and the observing hook is never blocked.
 func LogBashEvidence(input *HookInput) {
-	if input == nil || input.ToolName != "Bash" {
+	if input == nil || !IsShellTool(input.ToolName) {
 		return
 	}
 	logEvidence(input)
