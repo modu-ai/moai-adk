@@ -31,6 +31,7 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // TestMain enables goroutine leak detection across all internal/hook tests.
@@ -67,6 +68,11 @@ func TestMain(m *testing.M) {
 	_ = os.Unsetenv(config.EnvClaudeProjectDir)
 	_ = os.Unsetenv("MOAI_PROFILE_LEASE_TOKEN")
 	_ = os.Unsetenv(config.EnvClaudeConfigDir)
+	// Git fixtures must not inherit a hook's or lane's repository (GH #1691).
+	if err := gitenv.ScrubProcess(); err != nil {
+		fmt.Fprintf(os.Stderr, "TestMain: %v\n", err)
+		os.Exit(1)
+	}
 	moaiHome := ""
 	if os.Getenv(moaiHomeSandboxEnv) == "" {
 		dir, err := os.MkdirTemp("", "moai-hook-test-home-")

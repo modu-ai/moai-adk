@@ -51,6 +51,11 @@ func TestConfigOrphanedWorktree_PrimaryGateEnforced(t *testing.T) {
 	fx := newUntrackedFixture(t, wtWorkflowCodexRequired)
 
 	for round, label := range []string{"first call", "after W/.moai/state exists"} {
+		if round == 1 {
+			// SPEC-WORKTREE-STATE-ROOT-001 AC-WSR-004 (i): the audits no longer
+			// write under W, so the second round creates W/.moai/state itself.
+			mustMkdir(t, filepath.Join(fx.W, ".moai", "state"))
+		}
 		out := codexAuditOn(t, fx.W)
 		assertGateFail(t, "codex_audit "+label, out, true)
 		r := multiAuditOn(t, fx.W)
@@ -59,8 +64,8 @@ func TestConfigOrphanedWorktree_PrimaryGateEnforced(t *testing.T) {
 				label, r.OverallVerdict, r.GateUnmet)
 		}
 		if round == 0 {
-			if info, err := os.Stat(filepath.Join(fx.W, ".moai", "state")); err != nil || !info.IsDir() {
-				t.Fatalf("premise: the first codex_audit call should have created W/.moai/state (err=%v)", err)
+			if _, err := os.Stat(filepath.Join(fx.W, ".moai")); !os.IsNotExist(err) {
+				t.Fatalf("premise: W/.moai must not exist after the first call (stat err=%v)", err)
 			}
 		}
 	}
