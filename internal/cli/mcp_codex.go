@@ -1889,16 +1889,41 @@ func describeSignalDivergence(signals []codexVerdictSignal, adopted string) stri
 	return "codex signals diverged: " + strings.Join(parts, ", ") + "; adopted " + adopted
 }
 
+// codexAdversarialVerdictFormat and codexAdversarialFindingFormat are the
+// output format the adversarial request pins (SPEC-CODEX-PARSER-SHAPE-001
+// candidate (d)).
+const (
+	codexAdversarialVerdictFormat = "Verdict: <pass|fail|inconclusive>"
+	codexAdversarialFindingFormat = "- [P1] <message> — <path>:<line>"
+)
+
 // codexAdversarialReviewPrompt builds the adversarial-review prompt text the
 // adversarial mode sends to codex turn/start (design.md §3 M2 / report §3.4).
 // Generic + focused: a red-team security + correctness review of the change.
+//
+// The request pins its output format (SPEC-CODEX-PARSER-SHAPE-001 candidate
+// (d)): without one, a target project's own instructions shape the reply, and
+// GitHub #1718 observed bodies whose verdict and findings no recognizer read.
+// The pinned lines are the shapes codexStatedVerdict and codexFindingLine
+// accept; TestCodexAdversarialFormat_IsRecognized keeps the two in step.
+// Whether live codex honours the pin against project instructions is not
+// established by anything in this tree — only a recorded live observation
+// (AC-CPS-014) can show that. The parser's handling of a body that ignores the
+// pin is unchanged.
 func codexAdversarialReviewPrompt(focus string) string {
 	prompt := "Perform an adversarial code review of the proposed change. " +
 		"Hunt for security flaws (injection, auth bypass, secret leakage, unsafe " +
 		"destructive operations), correctness bugs (edge cases, error handling, " +
 		"concurrency), and scope creep. Report concrete findings with severity, " +
 		"file/line, confidence, and a recommendation. If the change is sound, " +
-		"return verdict pass with an empty findings list."
+		"return verdict pass with an empty findings list. " +
+		"Use exactly this output format so the review can be parsed: the first line " +
+		"of your response is `" + codexAdversarialVerdictFormat + "` — one of " +
+		"`Verdict: pass`, `Verdict: fail`, or `Verdict: inconclusive` — with no " +
+		"greeting or other text before it; then each finding on its own line as `" +
+		codexAdversarialFindingFormat + "`, with the severity tag P0 to P3 in " +
+		"brackets, and any further detail, confidence, or recommendation on indented " +
+		"lines below it. Do not put findings in a table."
 	if focus != "" {
 		prompt += " Focus area: " + focus + "."
 	}
