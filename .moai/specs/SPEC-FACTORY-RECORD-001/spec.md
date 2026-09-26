@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-RECORD-001
 title: "Harness-neutral factory F1 — card record layer and version-checked card state machine"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -24,6 +24,7 @@ related_specs: [SPEC-FACTORY-RUN-RETIRE-001, SPEC-FACTORY-MODE-001, SPEC-FACTORY
 |---------|------|--------|--------|
 | 0.1.0 | 2026-09-26 | manager-spec | Initial plan-phase draft (card t1239, FACTORY-F1). Baseline: worktree `.claude/worktrees/t1239`, branch `WT-factory-record-state`, base develop `553e224f3`. Operator decisions of 2026-09-26 recorded in §C. |
 | 0.2.0 | 2026-09-26 | manager-spec | Plan-audit iteration 1 (FAIL 0.71, `.moai/reports/t1239/plan-audit.md`) revision. D1: `kickoff` is a lease-released decision-pending state, approval returns the card to `assigned` with stage `run` (REQ-FR-018/019). D2: the resume edge is split into six concrete stage-guarded edges; AC-005 carries a fixed edge count (65). D3: `pushed → ci-green` and `ci-green → done` are reserved and refused in F1 (REQ-FR-006). D4: `unblock` (REQ-FR-020) and `failed` (REQ-FR-015) get their own requirements and AC-017. D5: AC-024 / AC-025 cover both dispatch paths. D6: the auditor verdict-line producer is a requirement of this SPEC (REQ-FR-011, AC-020, milestone M3b). D7: some compound requirements merged or split within the 25 ceiling. D8/D9: abandon of a plain card and an AC-002 mutation line added. Lead updates: A1 re-read at `de8aee456` (v0.5.1); contract pointer extended with a store-event locator into `$MOAI_HOME/db/<project-key>/contract/` (lead decision R10). REQ and AC renumbered; 25 REQ, 25 AC. |
+| 0.2.1 | 2026-09-26 | manager-spec | Plan-audit iteration 2 (PASS-WITH-DEBT 0.94, `.moai/reports/t1239/plan-audit-iter2.md`) debt notes, no REQ or AC count change: research.md R16 records the existing `AUDIT-VERDICT:` chat-message line (`internal/auditreceipt`, SPEC-CODEX-AUDIT-GATE-AXES-001) and corrects R13; verdict-file-only guardrail added to design.md, plan.md M3b, and AC-020 (D10); rationale for excluding `blocked` from T21 (D11); forward note that computing `contract_event` belongs to A3/F3 (D12). Lead decisions of the same day recorded: all ten plan.md §C defaults adopted; decision 5 strengthened in REQ-FR-025 (readable unavailable-record log, reported by `status`, and a `record.drift` event on the next successful write; AC-024 / AC-025); decision 10 cites A3 at `710530d67`; A1 re-pinned to `8a7cb0e22` (v0.5.2, F1 shape unchanged). |
 
 ## §A. Background and Motivation
 
@@ -46,8 +47,10 @@ The pieces exist but are not connected (measured in `research.md`):
   report, not card completion authority" (`todo_runtime.go:14`).
 - `moai factory` has no `status`, `assign`, or `decide` subcommand; an unknown subcommand prints help
   and exits 0 (measured, `research.md` § R9).
-- No auditor emits a machine-readable verdict line today (`research.md` § R13), so an evidence gate
-  that reads verdicts needs its producer built in the same SPEC.
+- Auditors end their final chat message with a machine-readable `AUDIT-VERDICT:` line
+  (`research.md` § R16), but no auditor writes a machine-readable verdict line into the exported
+  verdict **file** (§ R13), so an evidence gate that reads verdict files needs its producer built in
+  the same SPEC.
 
 F1 is the first of three cards. It delivers the record layer only: the schema, the state machine, the
 transition API with its evidence gates, the lease, the auditor verdict-line producer the gates need,
@@ -183,7 +186,12 @@ CI verdict reader) consume it.
   — the queue dispatch (`internal/cli/gtd.go`) and the auto-mission dispatch (`internal/cli/goal.go`) —
   it shall also record the card in the factory record as `assigned` to that lane through the transition
   API, while the lane-visible dispatch, the message delivery, and the existing queue runtime report
-  remain as they are today, and a factory-record write failure shall not fail the dispatch.
+  remain as they are today; a factory-record write failure shall not fail the dispatch, and shall be
+  recorded both as a `FACTORY_RECORD_UNAVAILABLE` line on stderr and as an entry (time, run, card,
+  lane, error) in a readable log under the project's factory state directory, which
+  `moai factory status` shall report; and the next successful factory-record write for that run shall
+  append one `record.drift` event per unreconciled entry, naming the dispatched card and lane and the
+  factory record's actual state for that card (or its absence), and then mark the entry reconciled.
 
 ## §C. Operator decisions (2026-09-26) and how F1 applies them
 
@@ -194,7 +202,7 @@ CI verdict reader) consume it.
   teaches `-f [N]` (`factory.go:202-203`). Both are launcher work and belong to F2 (plan.md §C.1).
 - **In autonomous mode the local merge is automatic.** The actor that performs it is the F3
   controller; F1 supplies the `merge-ready → merging → merged-local` edges and their evidence gate.
-- **The Kickoff decider.** A1 v0.5.1 (`de8aee456`) records the operator's re-decision: the decider set
+- **The Kickoff decider.** A1 v0.5.1 (read at `8a7cb0e22`, v0.5.2) records the operator's re-decision: the decider set
   is `human | llm | llm+jev`. The Decider interface and the non-human deciders are F3. F1 records the
   decider field and accepts only `human` (REQ-FR-019), so no non-human approval can reach the record
   before F3 defines how it is evidenced. A Kickoff wait is a human wait, so `kickoff` holds no lease
@@ -247,5 +255,9 @@ CI verdict reader) consume it.
 - **`pushed` is a dead end in F1.** With `pushed → ci-green` reserved, a card with a remote stops at
   `pushed` until F3 lands, leaving only `needs-decision` and `abandoned` as exits. This is intentional:
   an F1 reader for CI evidence would be an unverified claim.
+- **The unavailable-record log shares a directory with factory.db.** A failure that makes the whole
+  factory state directory unwritable also prevents the log entry; then the stderr line is the only
+  record, and the next successful write has nothing to reconcile. `status` and the drift event cover
+  the common case (the database write fails, the directory is fine), not that one.
 - **The contract pointer is not verified.** A stale or fabricated pointer is readable by `status`; A1's
   `moai contract verify` and the A3 store are the authorities.

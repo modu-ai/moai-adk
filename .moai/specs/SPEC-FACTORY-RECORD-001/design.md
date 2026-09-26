@@ -65,7 +65,7 @@ key='schema_version' AND value='3'`, all in one transaction, appended to the exi
 
 ## The contract pointer (lead decision R10)
 
-The pointer carries A1's three stable fields (A1 design.md § F1 Reference Shape at `de8aee456`) plus
+The pointer carries A1's three stable fields (A1 design.md § F1 Reference Shape at `8a7cb0e22`, unchanged since `de8aee456`) plus
 `contract_event`, which names the one line in the moai-owned contract store that recorded the signing.
 The store directory resolves as `ProjectDir(root)/contract`, which is `$MOAI_HOME/db/<project-key>/contract/`
 under the default layout — the sibling of `factory/` and `todo/`. F1:
@@ -77,7 +77,13 @@ under the default layout — the sibling of `factory/` and `todo/`. F1:
 
 A reader that wants to know whether a pointer is current runs `moai contract verify` (A1) and, once A3
 lands, looks the event up in the store. The store's file name inside `contract/` is A3's choice
-(its draft names `receipts.jsonl`, research.md R12); the locator is independent of it.
+(at `710530d67` the signing events live in `events.jsonl`, receipts in `receipts.jsonl`, research.md R12); the locator names a line of `events.jsonl` and is independent of the file name.
+
+**Forward note (plan-audit iteration 2, D12):** F1 only stores and format-checks `contract_event`; it
+never computes it. Computing the line hash belongs to whoever writes the signing event and wires the
+optional fourth `--contract-ref` value — the A3 signer (which appends the store line) or the F3
+controller (which links a signed contract to a card). That SPEC must state the exact bytes hashed
+(the stored line without its trailing newline is the natural choice) so readers can recompute it.
 
 ## States
 
@@ -144,6 +150,11 @@ T19 and T20 are reserved: listed so the machine is complete, refused in F1 (REQ-
 | T27 | lease-holding except `merging`, lease expired | `assigned` | automatic, before any other transition (REQ-FR-013) | expiry passed |
 | T28 | `merging`, lease expired | `blocked` | automatic (REQ-FR-014) | expiry passed |
 
+T21 excludes `blocked` (as well as `kickoff` and `needs-decision`) from its sources on purpose: a
+`blocked` card is already waiting on an operator decision (`unblock` or `abandon`), so routing it to a
+second decision-pending state would create two pending decisions for one card with no rule for which
+one wins.
+
 ### Requested-edge count (the number AC-005 asserts)
 
 T1 creates a row and T27/T28 are automatic, so none is a requested (from, to) pair among the 19
@@ -209,6 +220,11 @@ The E-VERDICT gate is inert unless auditors write the two lines, so the producer
 The line format carries no project-specific content (no SPEC ID, date, or SHA literal), so it satisfies
 template neutrality.
 
+**Guardrail (research.md R16):** the `verdict:` / `audited_sha:` lines are verdict-FILE content only —
+their instruction goes in the file-export part of each auditor's output format, never near or after the
+existing `AUDIT-VERDICT:` chat-message instruction (`### [HARD] Cite your audit receipt`), which must
+remain the auditor's last instruction so `ParseVerdictLine` keeps finding it as the last non-empty line.
+
 ## Atomic transition contract
 
 ```
@@ -250,8 +266,23 @@ machine interface F2/F3 read.
 `gtd.go:249` (queue dispatch) and `goal.go:864` (auto-mission dispatch) each call
 `kanban.RecordFactoryCardAssignment` (queue runtime report). After that call succeeds, the same dispatch
 records T1+T2 in factory.db for `(runID, cardID, lane)`. The queue runtime write, the idempotency
-readback, and the message delivery are unchanged. A factory.db failure is printed to stderr with a
-`FACTORY_RECORD_UNAVAILABLE` prefix and does not fail the dispatch (plan.md §C.5).
+readback, and the message delivery are unchanged. A factory.db failure does not fail the dispatch
+(plan.md §C.5, lead condition) and leaves three traces:
+
+1. a `FACTORY_RECORD_UNAVAILABLE` line on stderr;
+2. one JSON line appended to `ProjectDir/factory/record-unavailable.jsonl` (the same directory as
+   factory.db, outside the database so it survives a database write failure):
+   `{at, run_id, card_id, lane, error, reconciled: false}`;
+3. `moai factory status` reads that file (read-only) and reports every entry with
+   `reconciled: false`, in text and in JSON.
+
+Reconciliation: at the start of the next successful transition-API write for the same run, the store
+reads the unreconciled entries for that run and, inside the same transaction as that write, appends one
+`record.drift` event per entry with payload `{card_id, lane, dispatched_at, factory_state}` —
+`factory_state` is the card's current state in factory.db, or `absent`. After the transaction commits,
+each entry is rewritten with `reconciled: true` (write-to-temp and rename). An entry already reconciled
+never produces a second event. If the directory itself is unwritable, only trace 1 exists — a residual
+risk stated in `spec.md` §E.
 
 `todo.go:1008` (`recordFactoryCardState`, e.g. unpick) stays queue-report-only in F1: lane stage
 reporting moves in F2.

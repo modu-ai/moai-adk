@@ -277,7 +277,17 @@ cannot be adopted as RED; it proves F1 did not break it.
   `audit-artifact-convention.md`, Then each of the twelve runs prints a count of at least 1; `make agents-emit-check` exits 0
   and the two emitted `.toml` files contain `audited_sha`; the template-neutrality guard test passes; and
   a verdict file written exactly as the instruction's example (with `audited_sha` set to a fixture card's
-  `evidence_sha`) is accepted by the E-VERDICT reader for `plan-audit → kickoff`.
+  `evidence_sha`) is accepted by the E-VERDICT reader for `plan-audit → kickoff`; and, as a regression
+  guard on the existing `AUDIT-VERDICT:` last-non-empty-line convention of SPEC-CODEX-AUDIT-GATE-AXES-001
+  (research.md R16), checked with that SPEC's own reader `ParseVerdictLine`
+  (`internal/auditreceipt/store.go:325`): (i) in each of the four agent files the
+  `### [HARD] Cite your audit receipt` block still carries the `AUDIT-VERDICT:` literal and no
+  `verdict:` / `audited_sha:` instruction appears after that block; (ii) a test that builds an
+  auditor final message exactly as the edited instructions direct — report body, then the
+  `AUDIT-VERDICT: PASS spec=<fixture> receipts=none` line last — gets `ok == true` from
+  `ParseVerdictLine`, while the same message with a `verdict: PASS` line appended after it gets
+  `ok == false` (the failure the guardrail prevents, observed once); and (iii)
+  `go test ./internal/auditreceipt -run TestParseVerdictLine -count=1` still prints `--- PASS`.
 
 - **AC-021** (maps REQ-FR-022) Given the queue schema guard, When
   `go test ./internal/kanban -run 'TestBacklogDowngrade_PreChangeBinaryStillServes' -count=1` runs, Then
@@ -304,16 +314,25 @@ cannot be adopted as RED; it proves F1 did not break it.
   written before the change that records the queue runtime row and the command output of the queue
   dispatch path (`moai gtd` dispatch, `gtd.go`), When that path assigns card `d1` to lane `worker-2`,
   Then factory.db holds `d1` in `assigned` with owner `worker-2`, and the queue runtime row and the
-  command output equal the characterized ones; When factory.db is made unwritable, Then the dispatch still
-  succeeds, the queue runtime row is still written, and stderr carries a `FACTORY_RECORD_UNAVAILABLE`
-  line.
+  command output equal the characterized ones; When the factory-record write for card `d3` is made to
+  fail by a test seam that injects a write error (not by file permissions, which the store re-applies on
+  open), Then the dispatch still succeeds, the queue runtime row is still written, stderr carries a
+  `FACTORY_RECORD_UNAVAILABLE` line, the unavailable-record log under the factory state directory holds
+  one entry naming `d3`, `worker-2`, the run, and the error, and `moai factory status` (text and JSON)
+  reports that unreconciled entry; When the seam is removed and a further factory-record write
+  succeeds for the same run, Then exactly one `record.drift` event names `d3`, `worker-2`, and the factory
+  record's state for `d3` (absent), the log entry reads reconciled, `status` no longer reports it, and a
+  second successful write appends no further `record.drift` event for `d3`.
 
 - **AC-025** (maps REQ-FR-025) Given a fixture auto mission whose next operation is a dispatch of card
   `d2` to lane `worker-3` (the `goal.go` owner-adapter path), and a characterization test of that path
   written before the change, When the operation executes, Then factory.db holds `d2` in `assigned` with
   owner `worker-3`, the queue runtime row and the mission operation receipt equal the characterized ones;
-  When factory.db is made unwritable, Then the operation still completes, the queue runtime row is still
-  written, and stderr carries a `FACTORY_RECORD_UNAVAILABLE` line.
+  When the factory-record write for a second dispatched card `d4` is made to fail by the same injected
+  write error, Then the operation still completes, the queue runtime row is still written, stderr
+  carries a `FACTORY_RECORD_UNAVAILABLE` line, the unavailable-record log holds an entry naming `d4`
+  and `worker-3`, and the next successful write for that run appends one `record.drift` event naming
+  `d4` and marks the entry reconciled.
 
 ## §D.1 Mutation criteria
 
@@ -331,6 +350,11 @@ cannot be adopted as RED; it proves F1 did not break it.
 - Returning `merging` to `assigned` on expiry makes AC-012 fail.
 - Writing a queue item row from `assign` makes AC-021 fail.
 - Wiring only one dispatch path makes AC-024 or AC-025 fail.
+- Reporting a factory-record failure only on stderr (no log entry), or never emitting `record.drift`
+  on the next successful write, makes AC-024 and AC-025 fail; emitting it on every write makes AC-024's
+  "no further event" clause fail.
+- Appending any line after the `AUDIT-VERDICT:` instruction in an auditor's final message makes
+  AC-020 clause (ii) fail.
 
 ## §D.2 Severity
 
