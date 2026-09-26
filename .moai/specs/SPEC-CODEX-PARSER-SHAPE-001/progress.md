@@ -250,7 +250,7 @@ m1_to_mN_commit_strategy: one commit per milestone step, no push, no amend
 
 ```yaml
 sync_complete_at: 2026-09-26
-sync_commit_sha: pending-backfill-sync   # placeholder per the D3 backfill exemption; real SHA backfilled in the following commit
+sync_commit_sha: 2012431e2   # backfilled per the D3 placeholder exemption — the sync commit carrying the 3-phase close (short SHA, same form as §E.3 run_commit_sha; branch WT-codex-parser-shape)
 sync_status: complete — CHANGELOG entry emitted under [Unreleased] ### Added (newest-first); no README / docs-site surface states the codex review verdict-synthesis semantics or the removed native-default-pass behavior (sweep: 4 README locales + docs-site codex surfaces — 0 rows), so CHANGELOG is the only doc change; spec.md frontmatter status in-progress → completed on the sync commit (updated: already 2026-09-26, value unchanged)
 b12_self_test_a: pass — grep -c 'SPEC-CODEX-PARSER-SHAPE-001' CHANGELOG.md → 0 before emission (no duplicate entry)
 b12_self_test_b: pass — acceptance.md live AC identifiers = 16 (AC-CPS-001..016, zero reserved-token exclusions); CHANGELOG entry states 16 criteria, 11 measured PASS, AC-CPS-014 / AC-CPS-016 explicitly NOT measured (deferred, regression-guard class) — no live observation claimed as passed
