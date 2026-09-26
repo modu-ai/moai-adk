@@ -15,7 +15,7 @@
 
 | AC | REQ | 등급 | 판정 명령 (단일 호출) | 기대 출력 | red 근거 (관측 예정) |
 |---|---|---|---|---|---|
-| AC-HN-001 | 001 | R | `go test ./internal/cli/ -count=1 -run 'TestHandoffShow_(PendingSource\|ConsumedFallback\|NoHandoffErrors)' -v` | 3 케이스 전부 `--- PASS`. PendingSource=SavePending 세팅 후 Body verbatim 출력, ConsumedFallback=claimed→consumed 전이 후 재출력, NoHandoff=빈 DB에서 exit 1+안내 | 최초 작성 시 `newHandoffShowCmd` 부재 컴파일 실패 또는 FAIL — 구현 전 출력을 그대로 채택 |
+| AC-HN-001 | 001 | R | 명령 **L1** (아래 evidence ledger) | 3 케이스 전부 `--- PASS`. PendingSource=SavePending 세팅 후 Body verbatim 출력, ConsumedFallback=claimed→consumed 전이 후 재출력, NoHandoff=빈 DB에서 exit 1+안내 | 최초 작성 시 `newHandoffShowCmd` 부재 컴파일 실패 또는 FAIL — 구현 전 출력을 그대로 채택 |
 | AC-HN-002 | 002 | R | `go test ./internal/cli/ -count=1 -run 'TestHandoffShow_DoesNotMutateState' -v` | PASS — show 2회 호출 후 row의 status·consumed_at·Body 불변 (DB 재열람 대조) | 동일 |
 | AC-HN-003 | 003 | R | `go test ./internal/cli/ -count=1 -run 'TestHandoffShow_JSONOutput' -v` | PASS — JSON에 body·spec·phase·출처(pending/consumed) 포함 | 동일 |
 | AC-HN-004 | 004 | R | `go test ./internal/cli/ -count=1 -run 'TestHandoffShow_LocaleHeader' -v` | PASS — 저장 언어(ko·en)별 헤더 분기, 본문 미변경 | 동일 |
@@ -25,9 +25,25 @@
 | AC-HN-007 | 007 | R | `go test ./internal/cli/ -count=1 -run 'TestNew_SeedFailureFailOpen' -v` | PASS — 시딩 강제 실패(경로 오염)에도 워크트리 생성 성공 + stderr 진단 | 동일 |
 | AC-HN-008 | 008 | R (조건부) | `go test ./internal/codexadapter/ -count=1 -run 'TestMapOutput_SessionStartAdditionalContext' -v` | 관문 (b) 통과 시에만 테스트가 작성되고 PASS | 관문 (b) 기각 시 본 AC는 REQ-HN-008과 함께 기각 종결 (기각 사유 기록, 테스트 미작성) |
 | AC-HN-009 | 009 | G | (LIVE 절차 — design §C) 관문당 관측 출력을 `.moai/reports/t1273/live-*.txt` | 관문 (a) moai 훅 발화 관측 / (b) 마커 도달 또는 부재 / (c) 길이·강등 여부 — 각각 관측 기록 | 쿼터 회복(9/28 14:37) 전 실행 불가 — 외부 의존이므로 regression-guard |
-| AC-HN-010 | 010 | R (보존) | `go test ./internal/cli/ ./internal/hook/ ./internal/codexadapter/ -count=1 -run 'TestHandoffSave_(WritesJSONNotMarkdown\|Schema\|Stdin\|RequiresBody)\|TestHandoffClear\|TestHandoffCmdRegistered\|TestRenderHandoffContext\|TestMapOutput' -v` | 열거한 **실존** 테스트 전부 PASS — M1이 save 표면·렌더 형식·어댑터 매핑을 건드리지 않았음. 주석(재심사 R1): `TestMapOutput` 패턴은 관문 (b) 채택 전까지 이 트리에서 0건 스윕이다 — 기각 분기에서는 이 패턴을 제외한 나머지가 "전부"의 판정 집합이고, 채택 분기에서는 AC-HN-008 테스트가 이를 채운다 | red 없음(보존 AC) — 구현 후에도 변함없이 통과함이 green 판정 |
+| AC-HN-010 | 010 | R (보존) | 명령 **L2** (아래 evidence ledger) | 열거한 **실존** 테스트 전부 PASS — M1이 save 표면·렌더 형식·어댑터 매핑을 건드리지 않았음. 주석(재심사 R1): `TestMapOutput` 패턴은 관문 (b) 채택 전까지 이 트리에서 0건 스윕이다 — 기각 분기에서는 이 패턴을 제외한 나머지가 "전부"의 판정 집합이고, 채택 분기에서는 AC-HN-008 테스트가 이를 채운다 | red 없음(보존 AC) — 구현 후에도 변함없이 통과함이 green 판정 |
 | AC-HN-011 | 011 | R | `grep -c "moai handoff save" .moai/specs/SPEC-HANDOFF-NEUTRAL-001/design.md` | ≥ 1 — 방향 중립(Codex→Claude save 경로) 문서화가 design §D3에 존재 | red 없음(문서 AC) — 본 문서가 이미 조건을 충족하면 run-phase에서 위반 시에만 red |
 | AC-HN-012 | (형식) | R | `go vet ./internal/cli/ ./internal/codexadapter/ ./internal/homestate/ && gofmt -l internal/cli/handoff.go internal/codexadapter/output.go` | vet exit 0, gofmt 빈 목록 | red 없음(형식 게이트) |
+
+## 판정 명령 원문 (evidence ledger)
+
+> 표 셀은 셸 메타문자를 훼손한다(verification-completeness §2.1 — alternation `|`가 표 경계로 파싱돼 `\|` 리터럴로 남으면 go test 정규식에서 **0건 스윕 + ok** 공허 초록이 난다; run-phase에서 manager-develop가 실측으로 적발). 복합 셀렉터를 쓰는 판정 명령은 이 fenced ledger가 캐리어다 — 표 셀은 L-참조만 담는.
+
+**L1** (AC-HN-001):
+
+```bash
+unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_KANBAN_BACKEND MOAI_FACTORY_WORKERS && go test ./internal/cli/ -count=1 -run 'TestHandoffShow_(PendingSource|ConsumedFallback|NoHandoffErrors)' -v
+```
+
+**L2** (AC-HN-010; `TestMapOutput` 후보는 관문 (b) 채택 전까지 제외 — AC 행 주석 참조):
+
+```bash
+unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_KANBAN_BACKEND MOAI_FACTORY_WORKERS && go test ./internal/cli/ ./internal/hook/ -count=1 -run 'TestHandoffSave_(WritesJSONNotMarkdown|Schema|Stdin|RequiresBody)|TestHandoffClear|TestHandoffCmdRegistered|TestRenderHandoffContext' -v
+```
 
 ## 채택 순서 계약
 
