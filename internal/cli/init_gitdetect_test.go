@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // gitDetectInitRepo creates a git repository in a fresh temp dir and returns its path.
@@ -21,7 +22,9 @@ import (
 func gitDetectInitRepo(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	if err := exec.Command("git", "-C", dir, "init").Run(); err != nil {
+	cmd := exec.Command("git", "-C", dir, "init")
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank -C
+	if err := cmd.Run(); err != nil {
 		t.Skipf("git init unavailable: %v", err)
 	}
 	return dir
@@ -30,7 +33,9 @@ func gitDetectInitRepo(t *testing.T) string {
 // gitAddRemote registers a remote on the repository at dir.
 func gitAddRemote(t *testing.T, dir, name, url string) {
 	t.Helper()
-	if err := exec.Command("git", "-C", dir, "remote", "add", name, url).Run(); err != nil {
+	cmd := exec.Command("git", "-C", dir, "remote", "add", name, url)
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank -C
+	if err := cmd.Run(); err != nil {
 		t.Fatalf("git remote add %s %s: %v", name, url, err)
 	}
 }
