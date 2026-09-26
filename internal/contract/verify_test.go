@@ -64,7 +64,7 @@ func TestVerify_UnsignedDraft(t *testing.T) {
 func TestVerify_UnsignedDraftStillNeedsOtherSections(t *testing.T) {
 	draft := renderFixture(fixtureOpts{omit: map[string]bool{SectionActions: true}})
 	r := Verify(fixtureInputs([]byte(draft)))
-	want := []string{ReasonSchemaInvalid, ReasonUnsigned}
+	want := []string{ReasonActionsEmpty, ReasonSchemaInvalid, ReasonUnsigned}
 	if !slices.Equal(r.Reasons, want) {
 		t.Errorf("reasons = %v, want %v", r.Reasons, want)
 	}
@@ -111,7 +111,10 @@ func TestVerify_ReasonsSortedAndDeduplicated(t *testing.T) {
 	body := renderFixture(fixtureOpts{schemaVersion: 2, specID: "SPEC-OTHER-001",
 		omit: map[string]bool{SectionActions: true, SectionReview: true}})
 	r := Verify(fixtureInputs(signFixture(body)))
-	want := []string{ReasonSchemaInvalid, ReasonSpecIDMismatch}
+	// SPEC-OTHER-001's write globs do not cover the directory's own
+	// .moai/specs/SPEC-FIXTURE-001/contract.yaml, hence ownership_invalid.
+	want := []string{ReasonActionsEmpty, ReasonOwnershipInvalid, ReasonSchemaInvalid,
+		ReasonSecondReviewMissing, ReasonSpecIDMismatch}
 	if !slices.Equal(r.Reasons, want) {
 		t.Errorf("reasons = %v, want %v", r.Reasons, want)
 	}

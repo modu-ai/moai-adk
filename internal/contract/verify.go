@@ -15,6 +15,8 @@ type Policy struct {
 	SecondReview string // required | advisory | off
 	PushDevelop  bool   // workflow.autonomy.contract.push_develop
 	Mode         string // guided | contract
+	// BudgetDefault is workflow.autonomy.escalation.budget_default.
+	BudgetDefault Budget
 }
 
 // Inputs is everything Verify needs, supplied by the caller. LoadDir fills
@@ -52,8 +54,40 @@ type Report struct {
 	// (acceptance binding measured, budget filled). Not computed in M1:
 	// it needs the acceptance measurement and the budget default.
 	SignableContractSHA256 string `json:"signable_contract_sha256"`
+
+	Acceptance        ReportAcceptance `json:"acceptance"`
+	Actions           []string         `json:"actions"`
+	PushRequiresLease bool             `json:"push_requires_lease"`
+	Terminal          bool             `json:"terminal"`
+	EffectiveNever    []string         `json:"effective_never"`
+	Scratch           []string         `json:"scratch"`
+	FrozenFiles       []string         `json:"frozen_files"`
+	SecondReview      string           `json:"second_review"`
+	Mode              string           `json:"mode"`
+	Budget            *Budget          `json:"budget"`
+	Signature         *SignatureView   `json:"signature"`
 	// Contract is the decoded contract (nil when decoding failed).
 	Contract *Contract `json:"-"`
+}
+
+// ReportAcceptance is the recorded and measured acceptance binding.
+type ReportAcceptance struct {
+	SHA256          *string `json:"sha256"`
+	MeasuredSHA256  string  `json:"measured_sha256"`
+	ACCount         *int    `json:"ac_count"`
+	MeasuredACCount int     `json:"measured_ac_count"`
+}
+
+// SignatureView is the signature as show --json reports it.
+type SignatureView struct {
+	SignerKind string   `json:"signer_kind"`
+	Operator   Operator `json:"operator"`
+	SignedAt   string   `json:"signed_at"`
+	HeadSHA    string   `json:"head_sha"`
+	Method     string   `json:"method"`
+	Receipt    *Receipt `json:"receipt"`
+	BatchID    string   `json:"batch_id"`
+	Supersedes string   `json:"supersedes"`
 }
 
 var (

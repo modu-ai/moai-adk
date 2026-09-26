@@ -125,8 +125,11 @@ func TestAC_CONTRACT_001(t *testing.T) {
 
 // TestAC_CONTRACT_002 — required sections (REQ-CONTRACT-002).
 func TestAC_CONTRACT_002(t *testing.T) {
-	// The section-specific code design.md § Field rules assigns to each
-	// section; either it or schema_invalid satisfies the AC.
+	// The code design.md § Field rules assigns to each missing section. A
+	// missing section always yields schema_invalid (required-section rule);
+	// where the field rules give the section its own code, that code must be
+	// reported too, so the section-specific rule is proven to run on an absent
+	// section rather than being masked by schema_invalid.
 	sectionCode := map[string]string{
 		SectionAcceptance: ReasonSchemaInvalid,
 		SectionInvariants: ReasonInvariantUnresolved,
@@ -135,7 +138,7 @@ func TestAC_CONTRACT_002(t *testing.T) {
 		SectionActions:    ReasonActionsEmpty,
 		SectionReobserve:  ReasonReobserveIncomplete,
 		SectionReview:     ReasonSecondReviewMissing,
-		SectionBudget:     ReasonBudgetInvalid,
+		SectionBudget:     ReasonSchemaInvalid,
 		SectionEscalateOn: ReasonEscalateOnIncomplete,
 		SectionPlanAudit:  ReasonPlanAuditNotPassing,
 	}
@@ -153,8 +156,11 @@ func TestAC_CONTRACT_002(t *testing.T) {
 			if r.Valid {
 				t.Fatalf("contract missing %q verified valid (reasons=%v)", s, r.Reasons)
 			}
-			if !slices.Contains(r.Reasons, ReasonSchemaInvalid) && !slices.Contains(r.Reasons, sectionCode[s]) {
-				t.Errorf("missing %q: reasons=%v, want %s or %s", s, r.Reasons, ReasonSchemaInvalid, sectionCode[s])
+			if !slices.Contains(r.Reasons, ReasonSchemaInvalid) {
+				t.Errorf("missing %q: reasons=%v, want %s", s, r.Reasons, ReasonSchemaInvalid)
+			}
+			if !slices.Contains(r.Reasons, sectionCode[s]) {
+				t.Errorf("missing %q: reasons=%v, want the section code %s", s, r.Reasons, sectionCode[s])
 			}
 		})
 	}
