@@ -311,14 +311,27 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 			return plan, fmt.Errorf("%w: leased card stage %q does not resume into %s", ErrIllegalTransition, cur.Stage, req.To)
 		}
 	case guardEntry:
-		sha, path := strings.TrimSpace(req.SHA), strings.TrimSpace(req.ArtifactPath)
-		if sha == "" || path == "" {
-			return plan, fmt.Errorf("%w: audit entry requires a commit SHA and an artifact path", ErrEvidence)
+		path := strings.TrimSpace(req.ArtifactPath)
+		full, err := verifyAuditEntry(ctx, cur.WorktreePath, req.SHA, path)
+		if err != nil {
+			return plan, err
 		}
-		plan.next.EvidenceSHA = sha
+		plan.next.EvidenceSHA = full
 		plan.next.EvidencePath = path
-		plan.evidence["sha"], plan.evidence["artifact_path"] = sha, path
+		plan.evidence["sha"], plan.evidence["artifact_path"] = full, path
 	case guardVerdictAny, guardVerdictPass:
+		phase := "plan-audit"
+		if cur.State == CardSyncAudit {
+			phase = "sync-audit"
+		}
+		v, err := readAuditVerdict(cur.WorktreePath, cur.CardID, phase, cur.EvidenceSHA)
+		if err != nil {
+			return plan, err
+		}
+		if edge.guard == guardVerdictPass && v.Verdict != "PASS" && v.Verdict != "PASS-WITH-DEBT" {
+			return plan, fmt.Errorf("%w: verdict file %s reads %s", ErrEvidence, v.Path, v.Verdict)
+		}
+		plan.evidence["verdict_file"], plan.evidence["verdict"], plan.evidence["audited_sha"] = v.Path, v.Verdict, v.AuditedSHA
 		if edge.guard == guardVerdictPass && req.To == CardKickoff {
 			plan.next.DecisionGate = DecisionGateKickoff
 			plan.next.DecisionResume = CardRun
@@ -352,16 +365,20 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 			return plan, fmt.Errorf("%w: F1 accepts only decider %q, got %q", ErrDecider, DeciderHuman, req.Decider)
 		}
 	case guardCommit:
-		sha := strings.TrimSpace(req.SHA)
-		if sha == "" {
-			return plan, fmt.Errorf("%w: run → sync requires a commit SHA", ErrEvidence)
+		full, err := verifyCommitAtHead(ctx, cur.WorktreePath, req.SHA)
+		if err != nil {
+			return plan, err
 		}
-		plan.next.EvidenceSHA = sha
-		plan.evidence["sha"] = sha
+		plan.next.EvidenceSHA = full
+		plan.evidence["sha"] = full
 	case guardLeaseValid, guardNone:
 	case guardMerge:
-		plan.next.MergeSHA = strings.TrimSpace(req.MergeSHA)
-		plan.next.RemeasurePath = strings.TrimSpace(req.RemeasurePath)
+		ev, err := verifyMerge(ctx, cur.WorktreePath, req.MergeSHA, req.RemeasurePath, req.IntegrationBranch)
+		if err != nil {
+			return plan, err
+		}
+		plan.next.MergeSHA, plan.next.MergeTree, plan.next.RemeasurePath = ev.SHA, ev.Tree, ev.RemeasurePath
+		plan.evidence["merge_sha"], plan.evidence["merge_tree"], plan.evidence["remeasure_path"] = ev.SHA, ev.Tree, ev.RemeasurePath
 	case guardPush, guardNoRemote:
 		if req.Decider != DeciderHuman {
 			return plan, fmt.Errorf("%w: F1 accepts only decider %q, got %q", ErrDecider, DeciderHuman, req.Decider)
@@ -375,8 +392,15 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 				return plan, fmt.Errorf("%w: merged-local → done is refused while a remote is configured", ErrIllegalTransition)
 			}
 			plan.note = "no remote — no CI verdict"
-		} else if !remote {
-			return plan, fmt.Errorf("%w: merged-local → pushed requires a configured remote", ErrIllegalTransition)
+		} else {
+			if !remote {
+				return plan, fmt.Errorf("%w: merged-local → pushed requires a configured remote", ErrIllegalTransition)
+			}
+			ref, err := verifyPushed(ctx, cur.WorktreePath, cur.MergeSHA, req.IntegrationBranch)
+			if err != nil {
+				return plan, err
+			}
+			plan.evidence["merge_sha"], plan.evidence["remote_ref"] = cur.MergeSHA, ref
 		}
 		plan.next.Decider, plan.next.DecidedAt = DeciderHuman, nowText
 	case guardQuestion:
