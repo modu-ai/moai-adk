@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUTONOMY-CLOSURE-001
 title: "Contract-based autonomy A4 — closure report, second-review record, human verdict, and stop before push (moai contract report)"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -22,7 +22,8 @@ related_specs: [SPEC-AUDIT-PARTICIPANT-COUNT-001, SPEC-CODEX-AUDIT-GATE-AXES-001
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
-| 0.1.0 | 2026-09-26 | manager-spec | Initial plan-phase draft (card t1237, AUTONOMY-A4). Consumes the A1 contract schema at the tip of branch `WT-contract-schema` (read at `67a2f55cb`, SPEC-AUTONOMY-CONTRACT-001 v0.5.0; v0.5.1 pending) and the A2 escalation record format at commit `8c9ee29b7` (SPEC-AUTONOMY-ESCALATION-001 v0.3.0 §I). Lead amendment 2026-09-26: the stop before push when the second review was not performed is owned here. Operator re-decision relayed by lead: kickoff decider is `llm` (default) or `llm+jev`; the Kickoff section is tolerant of the decider value set (REQ-CLOSURE-010). |
+| 0.1.0 | 2026-09-26 | manager-spec | Initial plan-phase draft (card t1237, AUTONOMY-A4). A1 read at `67a2f55cb` (v0.5.0), A2 escalation record format at `8c9ee29b7` (v0.3.0 §I). Lead amendment 2026-09-26: the stop before push when the second review was not performed is owned here. |
+| 0.2.0 | 2026-09-26 | manager-spec | Plan-audit iteration 1 (FAIL 0.77) repairs D1-D18. A1 re-pinned to `65e0a9167` (v0.5.1): v0.5.1 receipt fields and `outcome` (D2), card taken from the signed contract `card` field (D3, D4). Push range taken from the pushed source ref with a fail-closed classifier (D5); one evidence-currency rule shared by the second review and the closure report (D6, D16); second-review record binds its reviewed scope (D7); command invariants never render as passed without evidence (D8); one card evidence home for writers and readers (D9); acceptance criteria cut to 25 (D10); plan-audit discovery covers both report streams (D11); residual-risk and guided-mode wording fixed (D13, D18); `audit_multi` card failure paths defined (D17); template markers named (D14). Lead decisions 2026-09-26 on OQ-1 and OQ-2 folded in (D1). |
 
 ## §A. User Story
 
@@ -32,7 +33,7 @@ has evidence, whether any invariant or ownership boundary was crossed, what new 
 what the implementing agent concluded, what a second, different model concluded, and what was not
 checked at all, so that I can accept, reject, or send the contract back for amendment without
 reading the diff; and I want a push of the integration branch to stop mechanically when the second
-review my contract requires was not performed.
+review my contract requires was not performed or failed.
 
 A4 is the closing step of the contract-autonomy epic. A1 defines the contract and its signature; A2
 detects contract departures and writes escalation records; A3 rewires the gates. A4 reads all of
@@ -46,20 +47,23 @@ In scope:
 - `moai contract report <card-id>`: a one-page closure report rendered as Markdown plus a JSON twin,
   derived only from files and git.
 - The second-review record: `audit_multi` gains an optional card argument; when given, the server
-  appends a record binding the review to the card, the audited HEAD, and the signed contract digest.
+  appends a record binding the review to the card, the audited commit, the reviewed scope, and the
+  signed contract digest.
 - `moai contract verdict <card-id> <accept|reject|amend-contract>`: the human verdict, recorded
   only on a human path.
 - Push readiness: a PreToolUse guard on pushes of the integration branch under contract mode, and
   `moai contract push-check` exposing the same evaluation with stable reason codes and exit codes.
 - Plan-audit verdict binding to a report file, rendered in the closure report (A1 Forward Note —
   Verdict Binding).
-- Auditor instruction text so that a contract-mode second review passes the card argument.
+- Auditor instruction text so that a contract-mode second review passes the card argument and runs
+  after the last commit that changes the card's governed paths.
 
 ### Out of Scope — Contract schema, signing, and revocation (A1, A3)
 
-- The `contract.yaml` schema, `moai contract sign|show|verify`, the kickoff receipt format and its
-  validator are A1. A4 reads them; it adds no contract field.
-- `moai contract revoke`, moai-issued kickoff receipts, and the moai-owned signing-event store are A3.
+- The `contract.yaml` schema (including its required `card` field), `moai contract sign|show|verify`,
+  the kickoff receipt format and its validator are A1. A4 reads them; it adds no contract field.
+- `moai contract revoke`, moai-issued kickoff receipts, the cross-check outcome rules, and the
+  moai-owned signing-event store are A3.
 
 ### Out of Scope — Escalation detection and push serialization (A2, A2b)
 
@@ -100,14 +104,19 @@ In scope:
 2. **Second verdict** — a different model reviews the same contract through `audit_multi` (codex or
    GLM backend). A Claude backend entry never counts as the second verdict.
 3. **Human verdict** — the operator reviews the closure report, not the diff, and records one of
-   `accept`, `reject`, or `amend-contract`.
+   `accept`, `reject`, or `amend-contract`. In autonomous mode the human review is post-hoc: the
+   absence of a verdict does not hold a push, and reversal runs through `reject` or revocation.
 
-### §C.2 Operator decision A-Q3 and the lead amendment
+### §C.2 Operator decision A-Q3, the lead amendment, and the lead decisions on push blocking
 
 A second-model review is required by default (`workflow.autonomy.contract.second_review: required`,
-A1 configuration). When it has not been performed, the run stops before push. The lead amendment of
+A1 configuration). When it has not been performed, the run stops before push; the lead amendment of
 2026-09-26 assigns that stop to this card. Where both codex and GLM are unavailable, the second
 review is recorded as not performed; it is never silently skipped.
+
+Lead decisions of 2026-09-26 (plan.md §H, OQ-1): under `required`, a second review that was
+performed and returned `fail` also blocks the push, under its own reason code; a latest recorded
+human verdict of `reject` or `amend-contract` blocks the push; no recorded human verdict does not.
 
 ### §C.3 `push-develop` activation
 
@@ -117,46 +126,64 @@ from that landing on, every observed push of the integration branch under contra
 evaluated. A4 adds no configuration key that disables the guard; the only switches are
 `workflow.autonomy.mode` and `workflow.autonomy.contract.second_review`.
 
-### §C.4 Where A4's files live, and why not `verdict.md`
+### §C.4 File names, and why not `verdict.md`
 
-The lead design names `.moai/reports/<card>/verdict.md` as the closure report location. In this
-tree that name is already the lead's hand-authored final verdict, the evidence path the kanban
-protocol fixes per card (381 files measured, `research.md` §B.6). A generated report written there
-would overwrite a human-authored record. A4 therefore writes `closure-report.md` and
-`closure-report.json` beside it and never touches `verdict.md` (confirmation requested,
-`plan.md` § Open Questions OQ-2).
+The lead design names `.moai/reports/<card>/verdict.md` as the closure report location. That name is
+already the lead's hand-authored final verdict, the evidence path the kanban protocol fixes per card
+(381 files measured, `research.md` §B.6). Lead decision 2026-09-26 (plan.md §H, OQ-2): A4 writes
+`closure-report.md` and `closure-report.json` beside it and never touches `verdict.md`.
 
-The kickoff receipt is read from the location A1 fixes, `.moai/specs/<SPEC-ID>/kickoff-receipt.json`
-(A1 design § Kickoff Receipt), not from `.moai/reports/<card>/`.
+The kickoff receipt is read from the location A1 fixes, `.moai/specs/<SPEC-ID>/kickoff-receipt.json`.
 
 ### §C.5 Everything is derived; nothing is claimed
 
 Every state the report renders, and every readiness decision, is computed by Go code from files and
 git. No agent-supplied flag, message, or return value is an input. A missing input renders as
-`not observed` or `not recorded` and is listed under "Not performed" — never as agreement, never as
-a pass, and never omitted.
+`not observed` or `not recorded` and is listed under Not Performed — never as agreement, never as a
+pass, and never omitted.
 
 ### §C.6 Guided mode
 
 The distributed template keeps `mode: guided`. Under `guided`, no existing command, hook output, or
-MCP tool output changes. The new commands (`report`, `verdict`, `push-check`) are additive and
+MCP tool output changes, except the PreToolUse deny of `moai contract verdict` (REQ-CLOSURE-021),
+which applies in every mode. The new commands (`report`, `verdict`, `push-check`) are additive and
 available in every mode; the push guard is inert under `guided`.
+
+### §C.7 Definitions used by the requirements
+
+- **Card of a contract** — the value of the contract's signed `card` field (A1 v0.5.1). A4 never
+  derives a contract's card from the queue store.
+- **Card evidence home** of card `C` — the linked worktree whose directory base name equals `C`, or
+  the primary checkout when no such worktree exists. **Card evidence directory** —
+  `<card evidence home>/.moai/reports/C/`. Every A4 writer writes there and every A4 reader reads
+  there, whatever tree the command runs from; A2's escalation records and plan-audit reports are read
+  from the same home.
+- **Governed paths** of a contract — the paths matched by its `ownership.write` globs, excluding
+  every path under `.moai/specs/<SPEC-ID>/`. Rationale: that SPEC's `contract.yaml` and
+  `acceptance.md` are immutable after signing (A1 effective `never`) and are covered separately by
+  the contract digest; its other files (`progress.md` evidence, `spec.md` status and SHA backfill)
+  are lifecycle records the sync commit writes after the review.
+- **Currency rule** — evidence recorded at commit `R` is **current** for commit `P` when `R` is `P`
+  or an ancestor of `P` and no non-merge commit in `R..P` changes a governed path. The report uses the
+  card evidence home's HEAD as `P`; the push readiness evaluator uses the pushed source commit.
 
 ## §D. Requirements (GEARS)
 
 ### D.1 Closure report
 
 - **REQ-CLOSURE-001** (Event-driven) — When `moai contract report <card-id>` runs, the report
-  generator shall resolve the card's SPEC ID from the queue store, build the report for that SPEC's
-  contract at the current HEAD, write `closure-report.md` and `closure-report.json` atomically under
-  `.moai/reports/<card-id>/` of the current tree, print the Markdown path, and exit 0; when the card
-  is unknown, the card has no SPEC ID, or the SPEC has no `contract.yaml`, it shall write nothing and
-  exit 2 naming the missing input.
+  generator shall resolve the card's SPEC ID from the queue store, require that the SPEC's contract
+  names the same card in its `card` field, build the report at the card evidence home's HEAD, write
+  `closure-report.md` and `closure-report.json` atomically into the card evidence directory whatever
+  tree the command runs from, print the Markdown path, and exit 0; when the card is unknown, the card
+  has no SPEC ID, the SPEC has no `contract.yaml`, or the contract names a different card, it shall
+  write nothing and exit 2 naming the cause.
 - **REQ-CLOSURE-002** (Ubiquitous) — The closure report shall carry, in this order, the sections
   Summary, Kickoff, Contract Reconciliation, Invariants, Ownership, New APIs, Escalations, First
   Verdict, Second Verdict, Plan-Audit Binding, Not Performed, Residual Risk, and Human Verdict; the
-  Markdown and JSON forms shall carry the same values; and the JSON form shall carry a
-  `schema_version` of 1.
+  Markdown and JSON forms shall carry the same values; the JSON form shall carry a `schema_version`
+  of 1; and two builds over the same files and HEAD shall produce byte-identical JSON apart from the
+  `generated_at` field.
 - **REQ-CLOSURE-003** (Ubiquitous) — The report generator shall derive every rendered state from
   files and git only, and shall render every input it could not read or measure as `not observed` or
   `not recorded` and list it under Not Performed, never as a pass and never by omitting the row.
@@ -168,10 +195,11 @@ available in every mode; the push guard is inert under `guided`.
   beside the measured ones together with the A1 verify state and reason codes.
 - **REQ-CLOSURE-005** (Ubiquitous) — The Invariants section shall list every contract invariant with
   its kind and one result: `violation recorded (open)` or `violation recorded (resolved)` when an
-  `invariant-violation` escalation record points at that invariant; `not observed` for a
-  `constitution:` invariant, for an invariant an escalation record lists as not observed, and for any
-  invariant while the escalation detector was not armed for the contract in force; otherwise
-  `no violation recorded`.
+  `invariant-violation` escalation record names that invariant; for a `frozen-files` invariant
+  without such a record, `no violation recorded` while the escalation detector was armed for the
+  contract in force and not disarmed, and `not observed` otherwise; and `not observed` for every
+  `constitution:` invariant and for every command-kind invariant without such a record, because no
+  file records that a command invariant ran and passed.
 - **REQ-CLOSURE-006** (Ubiquitous) — The Ownership section shall list every `ownership-move`
   escalation record of the card and shall state the ownership-violation count as a number only while
   the escalation detector was armed for the contract in force and not disarmed; otherwise it shall
@@ -190,78 +218,99 @@ available in every mode; the push guard is inert under `guided`.
   or `not recorded` for each absent field, and shall flag a mismatch when the reported pass and fail
   counts do not sum to the measured AC count.
 - **REQ-CLOSURE-010** (Ubiquitous) — The Kickoff section shall show the signature method and signer
-  kind and, for a receipt signature, the configured decider as the receipt records it, every recorded
-  answer with its decider, answer, and confidence (including a Jev attempt recorded outside the
-  decision list), whether a fallback happened with its recorded reason, and the A1 verify status of
-  the receipt. The section shall display any decider token and any number of answers verbatim, shall
-  ignore receipt fields it does not know, and shall state `missing` where the signature method is
-  `receipt` and the receipt file is absent. Receipt content shall be displayed only and shall not be
-  an input to any readiness decision.
-- **REQ-CLOSURE-011** (Ubiquitous) — The Plan-Audit Binding section shall state `bound` when a
-  plan-audit report file — the one named by the kickoff receipt's `inputs.plan_audit_report` with a
-  matching SHA-256, otherwise the highest-numbered `.moai/reports/plan-audit/<SPEC-ID>-review-<n>.md`
-  — ends with an audit verdict line naming this SPEC and a verdict equal to the contract's
-  `plan_audit.verdict`; `mismatch` when such a line names a different verdict or the receipt-named
-  file's hash differs; and `self-reported` when no such file or line exists.
+  kind and, for a receipt signature, the receipt's `requested_decider`, `effective_decider`,
+  `fallback.applied` and `fallback.reason`, the `llm_answer` and `jev_answer` each with answer and
+  confidence, the recorded `outcome`, and the A1 verify status of the receipt. The section shall
+  display any decider token verbatim, shall list any receipt field it does not recognize under Not
+  Performed rather than drop it, and shall state `missing` where the signature method is `receipt` and
+  the receipt file is absent. Receipt content shall be displayed only and shall not be an input to any
+  readiness decision.
+- **REQ-CLOSURE-011** (Ubiquitous) — The Plan-Audit Binding section shall search, in the card
+  evidence home, first the file named by the kickoff receipt's `inputs.plan_audit_report`, then the
+  highest-iteration `plan-audit*.md` in the card evidence directory, then the highest-numbered
+  `.moai/reports/plan-audit/<SPEC-ID>-review-<n>.md`, and shall state `bound` when the first file found
+  ends with an audit verdict line naming this SPEC and a verdict equal to the contract's
+  `plan_audit.verdict`; `mismatch` when that line names a different verdict or the receipt-named
+  file's hash differs from the receipt; and `self-reported` when no file or no verdict line exists.
 
 ### D.2 Second review
 
 - **REQ-CLOSURE-012** (Event-driven) — When `audit_multi` is called with a `card_id` argument, the
-  MCP server shall append one second-review record to
-  `<project_root>/.moai/reports/<card-id>/second-review.jsonl` carrying the card ID, the card's SPEC
-  ID, the signed contract digest (empty when the contract is absent or unsigned), the HEAD of the
-  audited tree, each backend's name, gate, and verdict, the participant count, the disagreement flag,
-  the audit receipt ID, the build commit, and the recording time; and when the argument is absent,
-  the tool's output and side effects shall be byte-identical to the pre-change behavior.
+  MCP server shall append one second-review record to the card evidence directory's
+  `second-review.jsonl` carrying the card argument, the SPEC ID and contract card the queue store and
+  contract yield (empty when either is absent), the signed contract digest (empty when absent or
+  unsigned), the audited commit, the requested `target`, the reviewed scope (base commit, head commit,
+  changed-file count, diff digest), each backend's name, gate, and verdict, the participant count, the
+  disagreement flag, the audit receipt ID, the build commit, and the recording time; when the append
+  fails, the returned result shall carry a non-empty `second_review_record_error`; and when the
+  argument is absent, the tool's output and side effects shall be byte-identical to the pre-change
+  behavior.
 - **REQ-CLOSURE-013** (Ubiquitous) — The report generator and the push readiness evaluator shall
-  treat the second review as performed for a given HEAD and contract digest only when the latest
-  second-review record whose HEAD and contract digest equal them carries at least one codex or GLM
-  backend verdict of `pass` or `fail`; the second-review verdict shall be `fail` when any such backend
-  verdict is `fail` and `pass` otherwise; every other state shall be `not performed` with exactly one
-  cause from `no-record`, `stale-head`, `contract-changed`, `no-second-model`, or `unbound`.
+  select, from the card's second-review records, the most recently recorded one that passes every
+  filter in this order — bound (card argument equals the contract card, SPEC ID and contract digest
+  non-empty), same contract (digest equals the current signed digest), scope covered (`target` is
+  `baseBranch`, the scope's head equals the audited commit, and at least one file changed), second
+  model (at least one codex or GLM verdict of `pass` or `fail`), and in history (audited commit is the
+  evaluation commit or its ancestor) — and shall report the second review as `performed` with verdict
+  `fail` when any counted backend verdict is `fail` and `pass` otherwise, then apply the currency rule
+  (§C.7) and report `stale` when it fails; when no record passes, the state shall be `not performed`
+  with the cause named by the first filter that removed the last remaining record (`no-record`,
+  `unbound`, `contract-changed`, `scope-not-covered`, `no-second-model`, `not-in-history`).
 - **REQ-CLOSURE-014** (Ubiquitous) — The Second Verdict section shall show the second-review state,
   each counted backend and its verdict, the contract's `review.second_model`, whether the performing
-  backend differs from it, and the effective `second_review` policy; where the state is not performed,
-  the section shall render the literal text `NOT PERFORMED` followed by the cause.
+  backend differs from it, and the effective `second_review` policy; it shall render the literal text
+  `NOT PERFORMED` followed by the cause for a not-performed state, `STALE` followed by the superseding
+  commit for a stale state, and `FAILED` for a performed review with verdict `fail`.
 
 ### D.3 Stop before push
 
 - **REQ-CLOSURE-015** (Capability gate + event) — Where `workflow.autonomy.mode` is `contract`, when a
-  Bash tool call pushes the integration branch, the PreToolUse hook shall evaluate push readiness for
-  every signed contract of a non-terminal SPEC that lists `push-develop` and whose SPEC directory or
-  `ownership.write` paths are changed by a non-merge commit in the range from the remote integration
-  ref to the local HEAD, and shall deny the call with a reason beginning `CLOSURE_PUSH_STOP:` followed
-  by the sorted, de-duplicated readiness codes when any contract is not ready.
+  Bash tool call contains a `git push` whose destination is or may be the integration branch, the
+  PreToolUse hook shall take the push range from the remote-tracking integration ref to the pushed
+  source commit, read candidate contracts from the source commit's tree, evaluate push readiness for
+  every signed contract of a non-terminal SPEC that lists `push-develop` and whose governed paths or
+  SPEC directory are changed by a non-merge commit in that range, and deny the call with a reason
+  beginning `CLOSURE_PUSH_STOP:` followed by the sorted, de-duplicated readiness codes when any
+  contract is not ready.
 - **REQ-CLOSURE-016** (Ubiquitous) — The push readiness evaluator shall report a contract not ready
-  with every applicable code from the closed set: `contract_invalid` (A1 verify is not
-  `signed-valid`), `closure_report_missing` (no closure report JSON for the card), and, where
-  `second_review` is `required`, `second_review_not_performed`, `second_review_stale` (performed for a
-  HEAD that a later in-range non-merge commit touching the contract's paths superseded), and
-  `second_review_failed`; plus the human-verdict codes fixed by `plan.md` § Open Questions OQ-1.
-- **REQ-CLOSURE-017** (Event-detected) — When, under contract mode, the push range, the card of an
-  in-range contract, or that card's evidence directory cannot be determined, the push readiness
-  evaluator shall report `push_check_undetermined` and the hook shall deny the push; it shall never
-  allow a push on an undetermined result.
+  with every applicable code from exactly this set: `contract_invalid` (A1 verify is not
+  `signed-valid`); `closure_report_missing` (no closure report JSON in the card evidence directory);
+  `closure_report_stale` (the closure report's recorded HEAD fails the currency rule for the pushed
+  source commit); `human_verdict_reject` and `human_verdict_amend_contract` (the latest recorded human
+  verdict is `reject` or `amend-contract`, whether current or stale); `push_check_undetermined`
+  (REQ-CLOSURE-017); and, where `second_review` is `required`, `second_review_not_performed`
+  (REQ-CLOSURE-013 state `not performed`), `second_review_stale` (state `stale`), and
+  `second_review_failed` (state `performed` with verdict `fail`). No recorded human verdict shall not
+  produce a code.
+- **REQ-CLOSURE-017** (Event-detected) — When, under contract mode, a `git push` destination cannot be
+  proven different from the integration branch (a bare `git push` without a resolvable upstream,
+  `--all`, `--mirror`, a refspec with an unresolvable source, a push inside `sh -c`, command
+  substitution, or a variable), or when the push range, a contract's card evidence home, or its
+  evidence files cannot be determined, or a git call times out, the push readiness evaluator shall
+  report `push_check_undetermined` and the hook shall deny the push; it shall never allow a push on an
+  undetermined result.
 - **REQ-CLOSURE-018** (Capability gate) — Where `second_review` is `advisory` or `off`, the push
   readiness evaluator shall not report a second-review code; under `advisory` the report shall still
-  render `NOT PERFORMED` with a warning line, and under `off` the Second Verdict section shall state
-  `not required`.
-- **REQ-CLOSURE-019** (Event-driven) — When `moai contract push-check` runs, it shall perform the same
-  evaluation as the hook for the current tree's push range and exit 0 when every in-range contract is
-  ready, 1 when any is not ready (printing each SPEC ID with its codes), and 2 on a usage or I/O
-  error; under `guided` it shall print one line stating that the check is inactive and exit 0.
+  render the second-review state with a warning line, and under `off` the Second Verdict section shall
+  state `not required`.
+- **REQ-CLOSURE-019** (Event-driven) — When `moai contract push-check [<remote> <refspec>...]` runs, it
+  shall perform the same evaluation as the hook for the given push (or, without arguments, for a push
+  of the local integration branch to its upstream) and exit 0 when every in-range contract is ready, 1
+  when any is not ready (printing each SPEC ID with its codes), and 2 on a usage or I/O error; under
+  `guided` it shall print one line stating that the check is inactive and exit 0.
 
 ### D.4 Human verdict
 
 - **REQ-CLOSURE-020** (Event-driven) — When `moai contract verdict <card-id> <accept|reject|amend-contract>`
   runs, the verdict recorder shall refuse without writing (exit 1) when an agent-environment marker
-  from A1's closed marker set is present, when standard input is not an interactive terminal, when
-  the typed confirmation differs from the displayed token, or when the card has no closure report;
-  otherwise it shall append one record to `.moai/reports/<card-id>/closure-verdict.jsonl` carrying
-  the verdict, an optional note, the operator name and email from git configuration, the UTC
-  recording time, the SHA-256 of the current `closure-report.json`, and the method `interactive-tty`.
-- **REQ-CLOSURE-021** (Unwanted) — The PreToolUse hook shall not allow a Bash tool call that invokes
-  `moai contract verdict`; it shall deny it in every mode with a reason beginning
+  from A1's closed marker set is present, when standard input is not an interactive terminal, when the
+  typed confirmation differs from the displayed token, or when the card evidence directory holds no
+  closure report; otherwise it shall append one record to the card evidence directory's
+  `closure-verdict.jsonl` carrying the verdict, an optional note, the operator name and email from git
+  configuration, the UTC recording time, the SHA-256 of the current `closure-report.json`, and the
+  method `interactive-tty`.
+- **REQ-CLOSURE-021** (Unwanted) — The PreToolUse hook shall not allow a Bash tool call whose command
+  text invokes `moai contract verdict`; it shall deny it in every mode with a reason beginning
   `CLOSURE_VERDICT_HUMAN_ONLY:`. The report generator, the push readiness evaluator, and the MCP
   server shall not write `closure-verdict.jsonl`.
 - **REQ-CLOSURE-022** (Ubiquitous) — The Human Verdict section shall show the latest recorded verdict
@@ -274,21 +323,21 @@ available in every mode; the push guard is inert under `guided`.
   unrecognized, or `guided`, the PreToolUse hook shall run no push readiness evaluation and spawn no
   subprocess for it, so that its output for every tool call other than `moai contract verdict` is
   byte-identical to the pre-change behavior.
-- **REQ-CLOSURE-024** (Ubiquitous) — The report generator, the push readiness evaluator, and the
-  verdict recorder shall read a card's evidence files from `.moai/reports/<card-id>/` of the card's
-  worktree first and of the primary checkout second, per file, and the report shall show the source
-  path of each evidence file it read.
-- **REQ-CLOSURE-025** (Ubiquitous) — Template content added by this SPEC — auditor instructions
-  directing a contract-mode second review to pass the card argument, and command help text — shall
-  contain no SPEC ID, card identifier, date, operator-decision identifier, or commit SHA, and shall
-  favor no programming language.
+- **REQ-CLOSURE-024** (Ubiquitous) — Every A4 writer (report pair, second-review record, human verdict
+  record) and every A4 reader (report generator, push readiness evaluator, verdict recorder) shall
+  resolve the card evidence directory by the single rule of §C.7, and the report shall show the path
+  of every evidence file it read.
+- **REQ-CLOSURE-025** (Ubiquitous) — Template content added by this SPEC — auditor instructions,
+  placed between the literal lines `<!-- moai:closure-second-review:start -->` and
+  `<!-- moai:closure-second-review:end -->`, directing a contract-mode second review to pass the card
+  argument with target `baseBranch` after the last commit that changes the card's governed paths —
+  shall contain no SPEC ID, card identifier, date, operator-decision identifier, or commit SHA, and
+  shall favor no programming language.
 
 ## §E. Non-Functional Constraints
 
-- The report is deterministic: two runs over the same files and HEAD produce byte-identical JSON
-  except the `generated_at` field.
-- The push guard runs only under contract mode and only for a push of the integration branch; its
-  git work is bounded by a timeout, and a timeout is `push_check_undetermined` (REQ-CLOSURE-017).
+- The push guard runs only under contract mode and only for a push whose destination is or may be the
+  integration branch; its git work is bounded by a timeout, and a timeout is `push_check_undetermined`.
 - Every file A4 writes is written atomically (report pair) or appended with a single write per line
   (`.jsonl` records).
 - A4 imports A1's verification core for every contract fact and A2's record reader for every
@@ -298,28 +347,33 @@ available in every mode; the push guard is inert under `guided`.
 
 - A1 (SPEC-AUTONOMY-CONTRACT-001) and A2 (SPEC-AUTONOMY-ESCALATION-001) land on the integration
   branch before this SPEC's run phase; A2b (card t1245) exposes a push-command classifier, or A4
-  carries its own (plan.md §B).
+  carries its own (design.md §C.1).
 - `progress.md` keeps the §E.2 AC matrix row shape `| <AC-ID> | <status> | <evidence> |` and the §E.3
   fenced YAML block, as measured in this tree (research.md §B.5).
 - Plan-audit reports keep the `AUDIT-VERDICT:` last-line format the audit receipt store parses.
 
 ## §G. References
 
-- `design.md` — report layout, record shapes, readiness algorithm, evidence resolution, package
-  layout.
+- `design.md` — report layout, record shapes, readiness algorithm, push classifier, package layout.
 - `research.md` — measured codebase facts and the dependency snapshot.
-- `plan.md` — milestones, risks, open questions. `acceptance.md` — acceptance criteria.
+- `plan.md` — milestones, risks, resolved decisions. `acceptance.md` — acceptance criteria.
 
 ## §H. Residual Risk
 
 - **Local files can be forged.** Anyone who can write the working tree can hand-write a
-  second-review record, a closure report, or a verdict line. A4 ensures that forgery leaves the same
-  traces A1 accepts (git history, the audit receipt store for codex participation) and that a
-  missing record stops the push; it does not prove a record's author.
+  second-review record, a closure report, or a verdict line. A4 ensures that a missing record stops
+  the push and that forgery leaves the traces A1 accepts (git history; the audit receipt store for
+  codex participation); it does not prove a record's author.
+- **The verdict-command deny is a convenience guard.** It is a string match on the Bash command, and
+  a wrapper (`sh -c`, variable indirection, a script file) evades it. The enforcement of "only a human
+  records a verdict" is the terminal and agent-marker check of REQ-CLOSURE-020.
+- **A record states what was requested.** `target: baseBranch` records the review the caller asked
+  for; a backend that interprets the target differently is not detected by A4.
 - **Only Bash-tool pushes are observed.** A terminal push, a push through another shell tool, or a
-  push with hooks disabled is not stopped by the PreToolUse guard (this repository sets
+  push with git hooks disabled is not stopped by the PreToolUse guard (this repository sets
   `core.hooksPath` to `/dev/null`, research.md §B.8).
-- **Staleness is path-based.** A later commit that touches a contract's paths makes its second review
-  stale even when another card made the commit; this errs toward stopping.
+- **Currency is path-based.** Another card's commit that changes a path in this contract's governed
+  paths makes this contract's review and report stale; this errs toward stopping, and the remedy is a
+  fresh second review and report.
 - **Class-4 comparison is a heuristic** (A2 C6); an empty New APIs list is evidence of no detected
   addition, not of no addition.

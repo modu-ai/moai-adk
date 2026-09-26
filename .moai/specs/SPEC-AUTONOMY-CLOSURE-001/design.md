@@ -1,15 +1,16 @@
 # design.md — SPEC-AUTONOMY-CLOSURE-001
 
 > Tier L design. Decisions most likely to change come first (record shapes, then the readiness
-> rule, then layout and wiring). spec.md states observable behavior; everything here is the proposal
-> the run phase implements. Contract facts come from A1 (SPEC-AUTONOMY-CONTRACT-001, branch
-> `WT-contract-schema`, read at `67a2f55cb`); escalation facts from A2 (SPEC-AUTONOMY-ESCALATION-001
-> §I, read at `8c9ee29b7`). Neither schema is copied here.
+> rule, then the push classifier, then layout and wiring). spec.md states observable behavior; this
+> file is the proposal the run phase implements. Contract facts come from A1
+> (SPEC-AUTONOMY-CONTRACT-001 v0.5.1, read at `65e0a9167` on branch `WT-contract-schema`); escalation
+> facts from A2 (SPEC-AUTONOMY-ESCALATION-001 v0.3.0 §I, read at `8c9ee29b7`). Neither schema is
+> copied here.
 
 ## §A. Records A4 owns
 
-A4 introduces three files per card, all under `.moai/reports/<card-id>/` (gitignored, local-only;
-research.md §B.7). None of them is `verdict.md`, which stays the lead's hand-authored file.
+All three live in the **card evidence directory** `<card evidence home>/.moai/reports/<card-id>/`
+(spec.md §C.7; gitignored, research.md §B.7). None of them is `verdict.md`.
 
 | File | Writer | Shape |
 |---|---|---|
@@ -17,15 +18,19 @@ research.md §B.7). None of them is `verdict.md`, which stays the lead's hand-au
 | `closure-report.md` / `closure-report.json` | `moai contract report` | rewritten atomically as a pair |
 | `closure-verdict.jsonl` | `moai contract verdict` (human path only) | append-only, one JSON object per line |
 
-### §A.1 Second-review record (`second-review.jsonl`, one line)
+### §A.1 Second-review record (one line)
 
 ```json
 {
   "schema_version": 1,
-  "card": "t1234",
+  "card": "c1",
+  "contract_card": "c1",
   "spec_id": "SPEC-EXAMPLE-001",
-  "contract_sha256": "<signature.contract_sha256, or \"\" when absent/unsigned>",
+  "contract_sha256": "<signature.contract_sha256, or \"\">",
   "head_sha": "<HEAD of project_root at audit time>",
+  "target": "baseBranch",
+  "scope": { "base_sha": "<merge-base with the integration branch>", "head_sha": "<same as head_sha>",
+             "changed_files": 7, "diff_sha256": "<SHA-256 of git diff base..head>" },
   "backends": [
     { "backend": "claude", "gate": "required", "verdict": "pass" },
     { "backend": "codex",  "gate": "required", "verdict": "fail" },
@@ -39,20 +44,22 @@ research.md §B.7). None of them is `verdict.md`, which stays the lead's hand-au
 }
 ```
 
-Field sources: `backends[]`, `participant_count`, `disagreement_flag`, `audit_receipt`, and
-`build_commit` are copied from the `ConvergenceResult` the handler already assembles
-(research.md §B.2); `spec_id` from the queue store; `contract_sha256` from A1 `Verify` on that SPEC;
-`head_sha` from the audited tree. `disagreement_flag` keeps its nullable third state (`null`).
+Sources: `backends[]`, `participant_count`, `disagreement_flag` (nullable, kept as `null`),
+`audit_receipt`, `build_commit` come from the `ConvergenceResult` the handler already builds
+(research.md §B.2); `spec_id` from the queue store (card → SPEC); `contract_card` and
+`contract_sha256` from A1 `Verify` on that SPEC; `head_sha` and `scope` from git in `project_root`.
 
-### §A.2 Human verdict record (`closure-verdict.jsonl`, one line)
+Failure paths (spec.md REQ-CLOSURE-012): unknown card or card without SPEC → record written with
+`spec_id: ""` (the reader classifies it `unbound`); contract absent → `contract_card: ""`,
+`contract_sha256: ""`; git failure → `scope` fields empty (reader: `scope-not-covered`); append failure
+→ result gains `second_review_record_error: "<cause>"`. The audit result itself is never altered.
+
+### §A.2 Human verdict record (one line)
 
 ```json
 {
-  "schema_version": 1,
-  "card": "t1234",
-  "spec_id": "SPEC-EXAMPLE-001",
-  "verdict": "accept",
-  "note": "",
+  "schema_version": 1, "card": "c1", "spec_id": "SPEC-EXAMPLE-001",
+  "verdict": "accept", "note": "",
   "operator": { "name": "Jane Doe", "email": "jane@example.com" },
   "recorded_at": "2026-09-26T09:00:00Z",
   "report_sha256": "<SHA-256 of closure-report.json raw bytes at recording>",
@@ -62,7 +69,7 @@ Field sources: `backends[]`, `participant_count`, `disagreement_flag`, `audit_re
 
 `verdict` ∈ `accept | reject | amend-contract`. The latest line wins; earlier lines stay as history.
 
-### §A.3 Closure report JSON (`closure-report.json`)
+### §A.3 Closure report JSON
 
 Top-level keys in the fixed section order of REQ-CLOSURE-002:
 
@@ -73,164 +80,160 @@ first_verdict, second_verdict, plan_audit_binding, not_performed[], residual_ris
 human_verdict, sources{}
 ```
 
-`sources` maps each evidence file role (`progress`, `acceptance`, `contract`, `receipt`,
-`second_review`, `human_verdict`, `escalation_dir`, `plan_audit_report`) to the path actually read,
-or `""` when not found (REQ-CLOSURE-024). The Markdown file renders the same values as headings in
-the same order; the renderer takes the JSON model as its only input, so the two cannot diverge.
+`head_sha` is the card evidence home's HEAD at build time; the push evaluator applies the currency
+rule to it (`closure_report_stale`). `sources` maps each evidence role to the path read, or `""`. The
+Markdown renderer takes the JSON model as its only input.
 
 ## §B. Not-performed catalogue
 
-Each entry in `not_performed[]` is `{ "item": <token>, "detail": <text> }`. Closed token set:
+`not_performed[]` entries are `{ "item": <token>, "detail": <text> }`. Closed token set:
 
 | Token | Raised when |
 |---|---|
-| `progress-missing` | no `progress.md` for the SPEC |
+| `progress-missing` | no `progress.md` |
 | `ac-not-reported` | a live AC ID has no §E.2 row |
-| `first-verdict-missing` | §E.3 block absent or a field absent |
-| `second-review-not-performed` | REQ-CLOSURE-013 state is not performed |
-| `receipt-missing` | signature method `receipt` and no receipt file |
-| `plan-audit-self-reported` | binding state `self-reported` |
-| `plan-audit-mismatch` | binding state `mismatch` |
+| `first-verdict-missing` | §E.3 block or one of its fields absent |
+| `second-review-not-performed` | REQ-CLOSURE-013 state `not performed` |
+| `second-review-stale` | REQ-CLOSURE-013 state `stale` |
+| `receipt-missing` | method `receipt` and no receipt file |
+| `receipt-field-unrecognized` | a receipt field the display decoder does not know |
+| `plan-audit-self-reported` / `plan-audit-mismatch` | binding states |
 | `escalation-unreadable` | an escalation record failed to parse |
-| `escalation-detector-not-armed` | A2 card state file absent or not armed for the contract in force |
+| `escalation-detector-not-armed` | A2 card state file absent, disarmed, or bound to another contract |
 | `invariant-not-observed` | an invariant result is `not observed` |
 | `new-api-comparison-unavailable` | the class-4 comparison could not run |
-| `human-verdict-none` | no verdict recorded |
-| `human-verdict-stale` | latest verdict bound to a different report hash |
+| `human-verdict-none` / `human-verdict-stale` | verdict states |
 
 ## §C. Push readiness
 
-### §C.1 Which pushes are evaluated
+### §C.1 Push classification (fail-closed)
 
-Only under `workflow.autonomy.mode: contract`, only for a Bash tool call classified as a push of the
-integration branch. The integration branch is `config.LoadGitFlowDevelopBranch(projectRoot)`
-(research.md §B.9). Classification reuses A2b's push-command classifier when it is exported at run
-time; otherwise A4 ships a minimal classifier: `git push` whose explicit refspec destination is the
-integration branch, or a bare `git push` / `git push <remote>` while the checked-out branch is the
-integration branch.
+Evaluated only under `mode: contract`, on the Bash command text. Integration branch
+`I = config.LoadGitFlowDevelopBranch(root)` (research.md §B.9); the tree is the `-C <path>` argument
+when present, else the tool call's working directory. Reuse A2b's classifier if it is exported at run
+time; otherwise A4's:
+
+| Form | Destination / source | Result |
+|---|---|---|
+| `git [-C p] [-c k=v] push <remote> <src>:<dst>` (optional leading `+`) | dst normalized (`refs/heads/X` → `X`); src = named ref, `HEAD`, or SHA | evaluate when dst = `I` |
+| `git push <remote> <name>` / `+<name>` / `refs/heads/<name>` | dst = src = `<name>` | evaluate when name = `I` |
+| `git push` / `git push <remote>` | dst = upstream of the tree's current branch | evaluate when upstream branch = `I`; unresolvable upstream → undetermined |
+| `--all`, `--mirror` | may include `I` | evaluate with src = local `I` when it exists; otherwise undetermined |
+| `--tags`, `--delete`, refspec with dst ≠ `I` | not an integration push | not evaluated (A2 class 6 still reports) |
+| `git push` inside `sh -c`, `bash -c`, `$(…)`, backticks, `eval`, or with a `$VAR` operand | cannot be proven | undetermined |
+
+Undetermined → `push_check_undetermined` → deny.
 
 ### §C.2 Which contracts are in the push
 
-1. Range: `<remote>/<integration>..HEAD`, non-merge commits only (`git log --no-merges --name-only`).
-2. Candidate SPECs: every `.moai/specs/<ID>/contract.yaml` at HEAD whose A1 state is signed (valid or
-   invalid) and whose SPEC is not terminal (A1 derived `terminal`).
-3. A candidate is **in the push** when a range commit changes a path under `.moai/specs/<ID>/` or a
-   path matched by its `ownership.write` globs (A1 glob semantics), and its `actions` list contains
-   `push-develop`.
+1. Source commit `S` = the resolved source of the classified refspec, in the tree of §C.1.
+2. Range `<remote>/I..S` (non-merge commits, `git log --no-merges --name-only`). A missing
+   remote-tracking ref → undetermined.
+3. Candidates: every `.moai/specs/<ID>/contract.yaml` **in the tree of `S`** (`git show S:<path>`,
+   passed to A1 `Verify` as inputs), signed, SPEC not terminal, `actions` containing `push-develop`.
+4. In the push: a range commit changes a governed path of the contract or a path under
+   `.moai/specs/<ID>/`.
 
-### §C.3 Card of a SPEC and its evidence directory
+### §C.3 Card evidence home
 
-Card IDs for a SPEC come from the queue store (`spec_id` reverse lookup). Evidence directory per
-card, per file, first hit wins (REQ-CLOSURE-024):
+For a contract's signed `card` value `C`: `git worktree list --porcelain` in the tree of §C.1; the
+entry whose directory base name equals `C` is the home; none → the primary checkout (parent of
+`git rev-parse --git-common-dir`). The same rule serves `moai contract report`, `moai contract verdict`,
+and the `audit_multi` record writer. Unreadable worktree list → undetermined.
 
-1. `<card worktree>/.moai/reports/<card-id>/` — the worktree whose directory base name equals the
-   card ID in `git worktree list --porcelain`.
-2. `<primary checkout>/.moai/reports/<card-id>/` — the primary checkout is the parent of
-   `git rev-parse --git-common-dir`.
+### §C.4 Readiness per in-push contract
 
-No card, or several cards with none carrying evidence, is `push_check_undetermined`.
-
-### §C.4 Readiness rule per in-push contract
-
-Evaluated in full; every applicable code is collected, sorted, de-duplicated.
+Collected in full, sorted, de-duplicated:
 
 | Code | Condition |
 |---|---|
 | `contract_invalid` | A1 `Verify` state ≠ `signed-valid` |
-| `closure_report_missing` | no `closure-report.json` found for the card |
-| `second_review_not_performed` | policy `required` and REQ-CLOSURE-013 state is not performed, causes `no-record`, `no-second-model`, `unbound`, or `contract-changed` |
-| `second_review_stale` | policy `required`, a performed record exists, but a range commit after its `head_sha` changes the contract's paths (cause `stale-head`) |
-| `second_review_failed` | policy `required` and the performed verdict is `fail` |
-| `human_verdict_reject` / `human_verdict_amend_contract` | per OQ-1 (plan.md); proposed default: latest recorded verdict is `reject` / `amend-contract`, current or stale |
-| `push_check_undetermined` | range, card, or evidence cannot be determined; git timeout |
+| `closure_report_missing` | no `closure-report.json` in the card evidence directory |
+| `closure_report_stale` | report `head_sha` fails the currency rule for `S` |
+| `human_verdict_reject` / `human_verdict_amend_contract` | latest verdict line is `reject` / `amend-contract` (current or stale) |
+| `second_review_not_performed` | policy `required`, REQ-CLOSURE-013 state `not performed` (evaluation commit `S`) |
+| `second_review_stale` | policy `required`, state `stale` |
+| `second_review_failed` | policy `required`, state `performed` with verdict `fail` |
+| `push_check_undetermined` | §C.1-§C.3 undetermined, or a git call timed out |
 
-A push is ready when no in-push contract carries a code. A range with no in-push contract is ready
-(nothing A4 governs).
+A range with no in-push contract is ready. A push is ready when no in-push contract carries a code.
 
 ### §C.5 Surfaces
 
 | Surface | Ready | Not ready | Error |
 |---|---|---|---|
-| PreToolUse hook | allow (fall through to the remaining guards) | deny, reason `CLOSURE_PUSH_STOP: <SPEC-ID>=<code>[,<code>]…[; …]` | deny, `push_check_undetermined` |
-| `moai contract push-check` | exit 0, one line `ready` | exit 1, one line per SPEC with codes | exit 2 usage / I/O |
-| `moai contract push-check` under `guided` | exit 0, one line `inactive (mode guided)` | — | — |
+| PreToolUse hook | fall through to remaining guards | deny `CLOSURE_PUSH_STOP: <SPEC-ID>=<code>[,<code>]…[; …]` | deny with `push_check_undetermined` |
+| `moai contract push-check` | exit 0, `ready` | exit 1, one line per SPEC with codes | exit 2 |
+| `moai contract push-check` under `guided` | exit 0, `inactive (mode guided)` | — | — |
 
-## §D. Human verdict path
+## §D. Second-review selection (REQ-CLOSURE-013)
 
-`moai contract verdict <card-id> <accept|reject|amend-contract> [--note <text>]`:
+```
+records := decode(second-review.jsonl)             // unknown schema_version → skipped, listed
+for filter in [bound, same-contract, scope-covered, second-model, in-history]:
+    kept := records passing filter
+    if kept is empty: return not-performed(cause = filter's cause)   // no-record if records empty at start
+    records = kept
+r := latest(records by recorded_at)
+verdict := fail if any counted codex/glm verdict == fail else pass
+if not current(r.head_sha, P): return stale(superseding commit)
+return performed(verdict)
+```
 
-1. Refuse `agent_marker` when any variable of A1's closed marker set is non-empty (A1 design
-   § Agent-Environment Markers; imported, not copied).
-2. Refuse `not_tty` when standard input is not a terminal.
-3. Refuse `report_missing` when no `closure-report.json` is found for the card.
-4. Print the report summary (card, SPEC, second-review state, open escalation count, report hash
-   prefix) and the confirmation token `<verdict> <card-id>`; refuse `confirmation_mismatch` on a
-   different line.
-5. Refuse `git_identity_missing` when `user.name` or `user.email` is empty.
-6. Append one §A.2 line; exit 0.
+`P` is the report HEAD (report) or `S` (push). Currency and "in history" share one ancestry check.
 
-Refusals exit 1 and write nothing; usage errors exit 2. The PreToolUse deny
-(`CLOSURE_VERDICT_HUMAN_ONLY:`) is the agent-side protection, placed beside A2b's deny on
-`moai contract sign` when that exists, otherwise as its own check after `checkBashCommand`.
+## §E. Human verdict path
 
-## §E. Hook placement
+`moai contract verdict <card-id> <accept|reject|amend-contract> [--note <text>]`: refuse
+`agent_marker` (A1 marker set, imported), `not_tty`, `report_missing`, `confirmation_mismatch`
+(token `<verdict> <card-id>`), `git_identity_missing`; else append §A.2. Refusals exit 1, usage 2.
+The PreToolUse deny `CLOSURE_VERDICT_HUMAN_ONLY:` is a convenience guard (spec.md §H).
 
-`internal/hook/pre_tool.go:507` calls `checkBashCommand` under an `@MX:ANCHOR` that forbids any
-conditional return above it (research.md §B.8). Both A4 checks run **after** it, next to the branch
-guard (`pre_tool.go:534`):
+## §F. Hook placement
 
-1. `moai contract verdict` deny — string match on the Bash command; every mode; no I/O.
-2. Push readiness — first statement is the mode check against the already-loaded configuration;
-   under `guided` it returns before any file read or subprocess (REQ-CLOSURE-023). Git work runs
-   with a bounded timeout.
+`internal/hook/pre_tool.go:507` calls `checkBashCommand` under an `@MX:ANCHOR` forbidding a
+conditional return above it. Both A4 checks run after it, beside the branch guard (`:534`): the verdict
+deny (string match, every mode, no I/O), then push readiness (mode check first against the loaded
+configuration; under `guided` it returns before any file read or subprocess).
 
-## §F. Report assembly
+## §G. Report assembly and template markers
 
 | Section | Inputs | Library |
 |---|---|---|
 | Summary | card, SPEC, HEAD, mode, policy, A1 verify state | A1 `contract.Verify` |
-| Kickoff | contract `signature`, receipt file (lenient decode) | own lenient decoder; A1 verify status |
-| Reconciliation | `acceptance.md` live IDs; `progress.md` §E.2 rows | A1 counter semantics for IDs; own row parser |
-| Invariants | contract `invariants`; A2 records; A2 card state file | A2 record reader |
-| Ownership | A2 `ownership-move` records; card state file | A2 record reader |
+| Kickoff | contract `signature`; receipt (display decoder for v0.5.1 fields: `requested_decider`, `effective_decider`, `fallback{applied,reason}`, `llm_answer`, `jev_answer`, `outcome`) | own display decoder; A1 verify status |
+| Reconciliation | `acceptance.md` live IDs; `progress.md` §E.2 rows | A1 counter semantics; own row parser |
+| Invariants / Ownership / Escalations | A2 records; A2 card state file | A2 record reader |
 | New APIs | A2 class-4 comparison (read-only); A2 class-4 records | A2 detector function |
-| Escalations | `.moai/reports/<card-id>/escalation/*.md` | A2 record reader |
 | First Verdict | `progress.md` §E.3 fenced YAML | own parser |
-| Second Verdict | `second-review.jsonl` | §A.1 decoder |
-| Plan-Audit Binding | receipt `inputs.plan_audit_report`; plan-audit report files | `auditreceipt.ParseVerdictLine` |
+| Second Verdict | `second-review.jsonl` | §D |
+| Plan-Audit Binding | receipt input path; `plan-audit*.md`; `plan-audit/<SPEC-ID>-review-<n>.md` | `auditreceipt.ParseVerdictLine` |
 | Human Verdict | `closure-verdict.jsonl` | §A.2 decoder |
 
-The receipt is decoded leniently for display (unknown fields ignored, any decider token, any number
-of decisions) because A1's validator is strict and the decider value set is still moving
-(research.md §C.1). The A1 verify result states whether the receipt is valid; the report never
-re-validates it.
+The display decoder maps unknown fields to `receipt-field-unrecognized` entries instead of dropping
+them. Template auditor text sits between the literal lines
+`<!-- moai:closure-second-review:start -->` and `<!-- moai:closure-second-review:end -->` in the
+`moai-ref-cross-model-audit` skill and the `sync-auditor` agent (template and local copies).
 
-## §G. Package layout
+## §H. Package layout
 
-- `internal/closure/` — report model (§A.3), section builders, Markdown renderer, record decoders
-  (§A.1, §A.2), not-performed catalogue, readiness evaluator (§C.4) as a pure function over injected
-  inputs. Imports `internal/contract` (A1 core) and A2's record reader; imports no `internal/hook`.
-- `internal/closure/gitio/` — range listing, worktree listing, HEAD reads; the only subprocess user,
-  behind an interface the pure core receives.
-- `internal/cli/contract_report.go`, `contract_verdict.go`, `contract_pushcheck.go` — subcommands on
-  A1's `contract` command.
-- `internal/cli/mcp_audit_multi.go`, `internal/cli/mcp_server.go` — optional `card_id` argument and
-  the record append after the existing convergence persistence.
-- `internal/hook/pre_tool.go` — the two checks of §E.
-- Template + local mirrors — `moai-ref-cross-model-audit` skill and `sync-auditor` agent text;
-  `make agents-emit` regenerates the Codex agent copy.
+- `internal/closure/` — model (§A.3), section builders, Markdown renderer, record decoders (§A.1,
+  §A.2), not-performed catalogue, selection (§D), readiness evaluator (§C.4) as pure functions over
+  injected inputs. Imports `internal/contract` and A2's record reader; never `internal/hook`.
+- `internal/closure/gitio/` — push classifier helpers, range listing, worktree listing, blob reads;
+  the only subprocess user, behind an interface.
+- `internal/cli/contract_report.go`, `contract_verdict.go`, `contract_pushcheck.go`.
+- `internal/cli/mcp_audit_multi.go`, `mcp_server.go`, `mcp_convergence.go` — `card_id` argument and
+  record append after the existing persistence step.
+- `internal/hook/pre_tool.go`, `internal/hook/closure_push.go` — the two checks of §F.
+- Template + local mirrors of the skill and agent text; `make agents-emit`.
 
-## §H. Alternatives considered
+## §I. Alternatives considered
 
-- **Write the report to `verdict.md`** (lead design wording) — rejected: overwrites the lead's
-  hand-authored verdict files (research.md §B.6); OQ-2 asks for confirmation.
-- **Amend A1's contract schema with a `second_review_performed` field** — rejected: the contract is
-  signed and immutable during a run (A1 effective `never`); a run-time record is the only place a
-  post-signing fact can live.
-- **Read `.moai/state/audit-multi/<session>.json`** — rejected as the sole source: it is keyed by
-  session, written only when a session id is passed, and carries no card, SPEC, or HEAD
-  (research.md §B.2).
-- **Gate in the git `pre-push` hook** — rejected as the primary layer: this repository disables git
-  hooks (`core.hooksPath=/dev/null`) and the hook has a documented bypass variable; kept available
-  for manual use through `moai contract push-check`.
+- **`verdict.md` as the report file** — rejected by lead decision (OQ-2).
+- **Amend A1's schema with a performed flag** — rejected: the contract is immutable after signing.
+- **Range from `HEAD`** — rejected (plan-audit D5): a push of the integration branch issued from a tree
+  on another branch evaluated the wrong range and passed.
+- **Exact HEAD equality for review currency** — rejected (D6): the pushed integration commit is a
+  `--no-ff` merge and never equals the card commit that was reviewed.
 - **Allow on an undetermined push** — rejected: A-Q3 forbids silently skipping the stop.

@@ -3,14 +3,15 @@
 ## §E.1 Plan-phase Audit-Ready Signal
 
 ```yaml
+plan_audit_iter1: "FAIL 0.77 — repaired D1-D18 in v0.2.0"
 plan_complete_at: "2026-09-26"
-plan_status: draft-awaiting-plan-audit
+plan_status: draft-awaiting-plan-audit-iter2
 tier: L
 artifacts: [spec.md, plan.md, acceptance.md, design.md, research.md, progress.md]
 requirement_count: 25
-ac_count: 26
-open_questions: [OQ-1, OQ-2]
-a1_baseline: "WT-contract-schema tip, read at 67a2f55cb"
+ac_count: 25
+open_questions: []   # OQ-1, OQ-2 resolved by lead decision 2026-09-26 (plan.md §H)
+a1_baseline: "WT-contract-schema, v0.5.1 at 65e0a9167"
 a2_baseline: "8c9ee29b7"
 ```
 

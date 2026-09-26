@@ -8,15 +8,12 @@ Line numbers are anchors at that base and drift.
 
 | Dependency | Source read | Exact SHA read | In this tree? |
 |---|---|---|---|
-| A1 — SPEC-AUTONOMY-CONTRACT-001 | tip of branch `WT-contract-schema` (`git rev-parse --short WT-contract-schema` → `67a2f55cb`), `design.md` / `spec.md` / `acceptance.md` via `git show 67a2f55cb:<path>` | `67a2f55cb` (spec v0.5.0) | no — `git merge-base --is-ancestor 6d98ca466 HEAD` → not ancestor; `ls internal/contract` → absent |
-| A1 M1 code | `git ls-tree -r --name-only WT-contract-schema -- internal/contract` | `67a2f55cb` | no |
-| A2 — SPEC-AUTONOMY-ESCALATION-001 | `git show 8c9ee29b7:.moai/specs/SPEC-AUTONOMY-ESCALATION-001/{spec,design}.md` | `8c9ee29b7` (spec v0.3.0) | no — `git merge-base --is-ancestor 8c9ee29b7 HEAD` → not ancestor |
-| A3 — card t1236 | not read (not in this tree) | — | no |
+| A1 — SPEC-AUTONOMY-CONTRACT-001 v0.5.1 | `git show 65e0a9167:.moai/specs/SPEC-AUTONOMY-CONTRACT-001/{design,spec,acceptance}.md` (v0.5.1 per `sed -n 4p` of spec.md → `version: "0.5.1"`) | `65e0a9167` | no — `ls internal/contract` → absent |
+| A1 branch tip at iteration 2 | `git rev-parse --short WT-contract-schema` → `086dfb2fd`; `git diff --stat 65e0a9167 086dfb2fd -- .moai/specs/SPEC-AUTONOMY-CONTRACT-001` → empty (the tip adds M4 code only) | — | no |
+| A2 — SPEC-AUTONOMY-ESCALATION-001 v0.3.0 | `git show 8c9ee29b7:.moai/specs/SPEC-AUTONOMY-ESCALATION-001/{spec,design}.md` | `8c9ee29b7` | no — `git merge-base --is-ancestor 8c9ee29b7 HEAD` → not ancestor |
+| A3 — card t1236 | not read | — | no |
 
-Lead notice (2026-09-26): A1 moves to v0.5.1 at the tip of `WT-contract-schema`. At the moment of
-reading the tip was still `67a2f55cb` (v0.5.0). Run phase re-reads the tip and re-checks §C.1.
-
-A1 M1 exported surface used by A4 (read from `67a2f55cb`): `contract.Verify(Inputs) Report`
+A1 exported surface used by A4, re-measured at `65e0a9167`: `contract.Verify(Inputs) Report`
 (`internal/contract/verify.go:73`), states `unsigned | signed-valid | signed-invalid`
 (`verify.go:7-9`), `contract.LoadDir(specDir)` (`internal/contract/load.go:40`),
 `contract.ResolveSpecDir(projectRoot, specID)` (`load.go:24`).
@@ -25,7 +22,7 @@ A1 M1 exported surface used by A4 (read from `67a2f55cb`): `contract.Verify(Inpu
 
 ### §B.1 SPEC ID collision
 
-`ls .moai/specs | grep -i CLOSURE` and `git ls-tree -r --name-only 67a2f55cb -- .moai/specs | grep CLOSURE`
+`ls .moai/specs | grep -i CLOSURE` and `git ls-tree -r --name-only 65e0a9167 -- .moai/specs | grep CLOSURE`
 list only `SPEC-HARNESS-LOOP-CLOSURE-001` and `SPEC-BACKLOG-JSON-DISCLOSURE-001`.
 `SPEC-AUTONOMY-CLOSURE-001` is free; the ID regex check printed `PASS`.
 
@@ -56,7 +53,11 @@ against `^AUDIT-VERDICT: (PASS|PASS-WITH-DEBT|FAIL) spec=(SPEC…) receipts=(…
 The plan-auditor and sync-auditor agent definitions require that line as the final line
 (`.claude/agents/moai/plan-auditor.md:222`, `.claude/agents/moai/sync-auditor.md:183`). Plan-audit
 reports live at `.moai/reports/plan-audit/<SPEC-ID>-review-<n>.md` (`ls .moai/reports/plan-audit`).
-A4 uses this parser for the plan-audit binding (REQ-CLOSURE-011).
+A second stream exists: the plan-phase review files `plan-audit.md` / `plan-audit-iter<N>.md` under
+`.moai/reports/<card-id>/` (`.claude/rules/moai/workflow/spec-workflow.md` § Report Persistence).
+Measured in this worktree: `ls .moai/reports/plan-audit | grep -c -- -review-` → `3`;
+`ls .moai/reports/*/plan-audit*.md | wc -l` → `9`. A4 uses this parser for the plan-audit binding and
+searches both streams (REQ-CLOSURE-011).
 
 ### §B.4 Verify evidence store is not durable
 
@@ -83,10 +84,13 @@ card evidence path: `internal/template/templates/.claude/rules/moai/workflow/kan
 ### §B.7 Reports are local-only
 
 `git check-ignore -v .moai/reports/t1237/closure-report.md` → `.gitignore:235:.moai/reports/*`; the
-same rule covers `second-review.json*`, `closure-verdict.json*`, and `verdict.md`; only
-`.moai/reports/plan-audit/` is re-included (`.gitignore:251-252`). Evidence therefore lives in each
-worktree's own `.moai/reports/`, not in git; a push from the integration worktree cannot read a card
-worktree's reports by path unless it resolves that worktree (design.md §C.3).
+same rule covers `second-review.jsonl`, `closure-verdict.jsonl`, and `verdict.md`. The plan-audit
+directory is re-included only for its scaffold: `.gitignore:251-253` re-includes the directory,
+ignores `.moai/reports/plan-audit/*`, and re-includes `.gitkeep`; `git check-ignore -v
+.moai/reports/plan-audit/SPEC-X-001-review-1.md` → `.gitignore:317:.moai/reports/plan-audit/*.md`.
+Plan-audit reports are therefore local-only per worktree too. Every A4 input lives in some tree's
+own `.moai/reports/`, which is why spec.md §C.7 fixes one card evidence home for writers and readers,
+and why the plan-audit search (REQ-CLOSURE-011) runs in that home.
 
 ### §B.8 Hooks and push
 
@@ -115,28 +119,34 @@ dropped` (`:61-65`). A card → SPEC lookup and the reverse SPEC → card lookup
 (`codex_contract.go:3-7`), not a `contract` cobra command; `grep '"contract"' internal/cli/*.go`
 found no existing `contract` command. A1 adds `internal/cli/contract.go`; A4 adds subcommands to it.
 
-## §C. Divergences recorded (not blockers)
+## §C. A1 v0.5.1 deltas A4 consumes
 
-### §C.1 Kickoff decider value set is moving
+Read at `65e0a9167` (`git diff 67a2f55cb 65e0a9167 -- .moai/specs/SPEC-AUTONOMY-CONTRACT-001` plus the
+§ Kickoff Receipt and § Card Field sections of `design.md`):
 
-- A1 at `67a2f55cb` (v0.5.0): single decider `human | llm | jev`, Jev-to-LLM fallback recorded as
-  `requested_decider`, `signer`, `fallback_reason`, `jev_attempt`; `decisions` holds exactly one entry.
-- Operator re-decision relayed by the lead after that commit: decider is `llm` (default) or
-  `llm+jev` (cross-check); no Jev-alone; the report shows the decider, each answer (llm / jev), and
-  whether a fallback happened with its reason. A1 v0.5.1 is expected to carry it.
-- A4 therefore decodes the receipt leniently for display and hard-codes no decider value set
-  (REQ-CLOSURE-010, design.md §F). Validity comes from A1 verify, not from A4.
+- **Required `card` field** — top-level, matches `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`, inside the digest
+  and the seal, reported by `show --json`, reason `card_invalid` (design.md:22, :124, :146-163). A4
+  takes a contract's card from it (spec.md §C.7) instead of a queue reverse lookup.
+- **Receipt shape** — `requested_decider` and `effective_decider` ∈ `llm | llm+jev`;
+  `fallback: {applied, reason}` with reasons `jev_disabled`, `jev_low_confidence`,
+  `jev_malformed_response`, `jev_call_failed`, `jev_key_missing`; `llm_answer` always present;
+  `jev_answer` present exactly when `effective_decider` is `llm+jev`; `outcome` ∈
+  `approve | reject | human` (design.md § Kickoff Receipt, field rules 1-9). REQ-CLOSURE-010 displays
+  these fields and the outcome.
+- **Decider set** — `signer_kind` ∈ `human | llm | llm+jev` (design.md:79); a configured
+  `kickoff.decider: jev` is the configuration error `kickoff_decider_jev_sole` (design.md:302, :532).
+  A4 displays any token verbatim and hard-codes no set.
+- **Kickoff receipt location** — `.moai/specs/<SPEC-ID>/kickoff-receipt.json` (A1 fixes it; the lead
+  design's `.moai/reports/<card>/` path is not used).
 
-### §C.2 Kickoff receipt location
+## §C.1 A2 surface relevant to invariant honesty
 
-The lead design names `.moai/reports/<card>/kickoff-receipt.json`; A1 fixes
-`.moai/specs/<SPEC-ID>/kickoff-receipt.json` (A1 design § Kickoff Receipt, `--receipt` must resolve to
-it). A4 reads the A1 location.
-
-### §C.3 Closure report location
-
-The lead design names `.moai/reports/<card>/verdict.md`; §B.6 shows that name is taken. A4 writes
-`closure-report.{md,json}` (plan.md OQ-2).
+A2 writes an escalation record only on a trip (A2 spec §I, REQ-AE-018, REQ-AE-020); an unexecuted
+command invariant is labeled not-observed at the checkpoint without a record (REQ-AE-022, design.md
+§C.2); the card state file holds the contract observation, the disarm flag, budget counters, and the
+failure-fingerprint history, not invariant executions (design.md §C.6). No A2 file records that a
+command invariant ran and passed, so REQ-CLOSURE-005 renders such invariants `not observed` unless a
+violation record exists.
 
 ## §D. Reuse analysis
 
@@ -155,4 +165,4 @@ The lead design names `.moai/reports/<card>/verdict.md`; §B.6 shows that name i
 - Confirm A2 exports its record reader and a read-only class-4 comparison; if not, New APIs renders
   `not observed` and the dependency is reported (plan.md §B R2).
 - Confirm A2b exports a push-command classifier; if not, A4 ships the minimal one (design.md §C.1).
-- Re-read the A1 tip for v0.5.1 receipt field names before M3 (the lenient decoder tolerates both).
+- Diff the landed A1 `design.md` § Kickoff Receipt and § Card Field against `65e0a9167` before M1.
