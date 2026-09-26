@@ -487,6 +487,11 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
+	// Restore provenance an earlier `init --force` recorded as user_created
+	// (t1214). Before the sync so the deploy sees the healed entries, and
+	// before its version-match early return so an up-to-date project heals too.
+	healManifestBestEffort(".", out, cmd.ErrOrStderr())
+
 	// Legacy skills are archived inside the template sync, before its managed
 	// cleanup removes .claude/skills/moai*; a skipped sync archives nothing,
 	// which keeps REQ-UAC-004.
