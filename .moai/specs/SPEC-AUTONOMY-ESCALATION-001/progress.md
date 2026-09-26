@@ -15,8 +15,8 @@
   rules are A3's); R10 closed — card state and detector audit log move to
   `$MOAI_HOME/db/<project-key>/contract/`. Counts unchanged.
 - v0.4.2: plan-audit iteration 4 (FAIL 0.83) Q3-Q5 and m2 repaired; lead ruling 09-26 (5)
-  folded in (Q1, Q2): one audit log per card, authoritative for arming. §F re-pinned to A1 v0.5.1
-  `65e0a9167`; R8, R9, R10 closed. Requirements 23, criteria 25.
+  folded in (Q1, Q2): one audit log per card, authoritative for arming. §F pinned to A1 v0.5.2
+  `25283ebf8` (single pin); R8, R9, R10 closed. Requirements 23, criteria 25.
 - v0.3.0: plan-audit iteration 2 (FAIL 0.82) repaired; lead rulings 09-26 (2) folded in
   (spec.md §H): two-layer resolver, contract-void before resolution, Markdown record with YAML
   frontmatter and revoke kinds; A1 request R7 added. The v0.2.1 A3 preconditions, their

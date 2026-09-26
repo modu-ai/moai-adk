@@ -30,7 +30,7 @@ first, mechanical wiring last. No time estimates; priority labels only.
 - **B-7** The destructive denylist returns early at `internal/hook/pre_tool.go:505-517` under an
   `@MX:ANCHOR` forbidding a conditional return above it; the class 6 call sits above it and never
   returns (design.md §C.3).
-- **B-8** The resolver depends on the contract's `card` field, which A1 defines at `65e0a9167`
+- **B-8** The resolver depends on the contract's `card` field, which A1 defines at `25283ebf8`
   (R9 closed); a contract whose `card` does not match the worktree name resolves not-armed,
   observably. The queue `spec_id` is deliberately not a fallback (lead ruling 09-26 (3) #1).
 
@@ -40,7 +40,7 @@ first, mechanical wiring last. No time estimates; priority labels only.
 2. Re-check **every row of spec.md §F.1**, every open item, and requests R1-R4 and R7-R9 against
    the A1 that landed — not only the tagged requirements — and confirm the contract store path
    (`$MOAI_HOME/db/<project-key>/contract/`, R10 closed) against A3's signing-event store. If a
-   field is renamed or missing, or an item resolved differently from the `65e0a9167` pin (in
+   field is renamed or missing, or an item resolved differently from the `25283ebf8` pin (in
    particular the `card` field name and pattern),
    stop and return
    a blocker to the orchestrator for a mid-run spec amendment.
@@ -131,5 +131,4 @@ delta; E8 RED output before GREEN.
 - **Q8** [RESOLVED — lead ruling 09-26 #2, resolution input replaced by (3) #1].
 - **Q9** [RESOLVED — lead ruling 09-26 (3) #1: the worktree directory name is the card id; the
   contract's `card` field, not the queue, links it to a SPEC].
-- **Q10** [RESOLVED — R8 and R9 closed at A1 `65e0a9167`; R10 closed by lead ruling 09-26 (4) #2.
-  Two stale "A2" sentences remain in A1 (`spec.md:178`, `design.md:241`) as an A1-lane item.]
+- **Q10** [RESOLVED — R8 and R9 closed at A1 `25283ebf8`; R10 closed by lead ruling 09-26 (4) #2.]

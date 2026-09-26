@@ -26,7 +26,7 @@ pinned trees — which is why every criterion below is RED-now. L2 is quoted
 from the RED observation; L2+ shows the quoted form fires.
 
 **Contract fixtures and the `card` field.** Criteria whose fixtures carry a `card:` field use the
-field A1 defines at `65e0a9167` (`design.md:22`, `:124`, § Card Field `:148-163`; spec.md §F.2 R9,
+field A1 defines at `25283ebf8` (`design.md:22`, `:124`, § Card Field `:146-163`; spec.md §F.2 R9,
 closed). M1 pre-flight re-checks the field name and pattern against the A1 that lands.
 
 **Test naming (binding).** Each criterion names the Go test that verifies it and its package;
@@ -149,4 +149,4 @@ renumbering is recorded in the commits that made it (`8c9ee29b7`, `fe118c4d1`).
 - Subagent boundary: no `AskUserQuestion` reference in the detector package outside tests.
 - Template neutrality: any added template text contains no card id, SPEC id, internal date, or SHA.
 - Coverage of the detector package is at least 85%.
-- Every row of spec.md §F.1 and every criterion tagged 「A1 plan-audit 통과본으로 재확인」 is re-checked against the A1 that lands (pinned here at `65e0a9167`, v0.5.1) before M2; R8, R9, and R10 are closed at that pin.
+- Every row of spec.md §F.1 and every criterion tagged 「A1 plan-audit 통과본으로 재확인」 is re-checked against the A1 that lands (pinned here at `25283ebf8`, v0.5.2) before M2; R8, R9, and R10 are closed at that pin.
