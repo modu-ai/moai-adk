@@ -2,7 +2,7 @@
 id: SPEC-SPEC-LINT-VACUOUS-ASSERT-001
 title: "Vacuous test-assertion lint rule: move the prose-grep acceptance judgment into internal/spec"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-09-26
 updated: 2026-09-26
 author: manager-spec

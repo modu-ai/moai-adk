@@ -67,4 +67,17 @@ debts_discharged: [N1, N2, N3, N4]
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-26
+sync_commit_sha: pending-backfill-sync
+sync_status: audit-ready
+frontmatter_status_transitions.spec_md: "in-progress -> implemented -> completed (single sync commit)"
+frontmatter_status_transitions.stateless_artifacts: "plan.md, acceptance.md carry no status field (Artifact Statelessness)"
+b12_self_test_a: "grep -c 'SPEC-SPEC-LINT-VACUOUS-ASSERT-001' CHANGELOG.md -> 0 before emission"
+b12_self_test_b: "distinct AC ids in acceptance.md = 14 (AC-VTA-001..014, no [RETIRED]/[REF] markers); CHANGELOG entry states 14"
+b12_self_test_c: "ls internal/spec/lint_vacuous_assertion.go internal/spec/lint_vacuous_assertion_test.go internal/spec/lint.go .moai/spec-lint-baseline.json -> all exist"
+changelog_entry_position: "[Unreleased] ### Added, first entry"
+docs_site_readme: "not touched — grep for DuplicateAcceptanceID|MovingRefUnpinned under docs-site/ and README* returned no file (rc=1), so no page lists spec-lint rules"
+mx_tags: "no new exported API outside the Rule interface methods; rule file carries its own header NOTE; no tag changes in sync"
+ownership_deviation_for_auditor: "run commit 171634ee7 edited spec.md/acceptance.md body (REQ-VTA-009 rationale, §B.1, AC-001/002/006 conditions for debts N1-N4) with HISTORY entries — manager-develop body edit outside the ownership matrix; recorded, not repaired by sync"
+```
