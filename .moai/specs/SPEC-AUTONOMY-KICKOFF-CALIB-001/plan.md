@@ -1,0 +1,68 @@
+# plan.md — SPEC-AUTONOMY-KICKOFF-CALIB-001 (v0.1.0)
+
+이 카드는 측정 설계 카드다. M1–M2 는 플랜 페이즈에서 이미 끝났고, M3–M5 는 run-phase 에서 실행한다(지연 — REQ-CALIB-009 전제). 구현 순서가 곧 측정의 논리 순서다: 도구 → 모집단 → 대조 → 판사 → 판정.
+
+## §A. 마일스톤
+
+### M1 — 참조 정독과 실측 프루브 (플랜 페이즈, 완료)
+
+- A1 0.5.2(`25283ebf8`) §C.8·REQ-CONTRACT-019 — 결정자 값 집합, `jev_min_confidence` 정의와 기본 0.50.
+- A3 0.3.3 §A 표(A5 배정)·REQ-GR-010(R1–R5)·REQ-GR-013·025 — 이 값의 소비처와 원칙 개정 연동.
+- `CLAUDE.local.md` §29 전문(684–745행)·§30 전문(746–850행) — 재측정 대상과 재실험 금지.
+- `.moai/reports/t943/verdict.md` 서두 — 5섹션 판정서 형식과 상수 기준선 구조.
+- 추출 술어 실측 프루브 실행(본 카드 귀속, 2026-09-26): `.moai/reports/t1244/probe/kickoff_extract_probe.py` → `probe_output_20260926.txt`. 결과: 후보 148·응답 짝 148/148·세션 87·오류 0. 산출물: research.md §3.
+
+### M2 — 프로토콜 사전 등록 (플랜 페이즈, 완료)
+
+- spec.md §C REQ-CALIB-001~010 저작 — 술어·라벨·한국어 원문·대조 두 팔·기준선·판정 기준·상한·전제·t943 규율.
+- acceptance.md AC-CALIB-001~010 — [PLAN]/[RUN] 두 층 분리.
+
+### M3 — 모집단 추출과 스냅샷 (run-phase)
+
+- 프루브 스크립트를 `.moai/reports/t1244/extract/` 로 확장해 1단계·2단계 술어 전부 적용(REQ-CALIB-001).
+- 스윕: 양쪽 코퍼스 루트, 스냅샷 일자·스윕 명령을 run-record.md 에 기록.
+- 산출: 라운드 레코드 JSONL(필드는 REQ-CALIB-001), `excluded_unanswered`·`excluded_ambiguous` 집계와 원문 보존.
+
+### M4 — 대조 두 팔과 판사 배치 (run-phase)
+
+- 파이프라인 대조: 20라운드 손검증 표본 → 20/20(REQ-CALIB-004). 실패 시 수리 후 재시작, 이전 판사 출력 무효.
+- 판사 대조: 응답-포함 항목 5건(REQ-CALIB-005).
+- 상한 선언을 run-record.md 에 적고(REQ-CALIB-008) 그 다음에 본 측정 배치 실행 — 순서 어김 없음.
+
+### M5 — 기준선·밴드 분석과 판정서 (run-phase)
+
+- always-approve·always-hold 산출(REQ-CALIB-006, 질문·카드 단위 각각).
+- 밴드 분석과 REQ-CALIB-007 기준 적용 — 채택(최저 자격 t) 또는 기각.
+- `.moai/reports/t1244/verdict.md` 작성 — 5섹션 형식, 판사 수치는 상시 기준선 옆에.
+- develop 병합은 레인 창 관례(git-flow 통합 체인)를 따른다.
+
+## §B. 판사 후보 상세
+
+- 1차: Jev — `ask.sh` noul 1문항 프로브. 경로 `/Users/goos/MoAI/moai-adk-go/scripts/jev/ask.sh`(primary 체크아웃, git 미추적 — 2026-09-26 `git ls-files` 카운트 0 실측). 입력: 질문 원문 + 과업 지시문, 출력 기대: 라벨 4값 + confidence [0,1].
+- 과업 지시문은 한국어로 쓰고(REQ-CALIB-003), 판사 원시 응답을 `runs/`에 그대로 남긴다 — 가공 재구성은 분석 단계에서도 하지 않는다(가공본 재독은 독립 검증이 아니라는 교훈).
+- 대체 판사: 같은 프로토콜이면 무엇이든 — REQ-CALIB-004~007 이 그대로 적용된다. 판사 교체는 판정 기준 변경이 아니다.
+
+## §C. run-phase 전제 (지연 사유 포함)
+
+1. **A1 병합 확인** — `git merge-base --is-ancestor e4ea8eb05 HEAD; echo $?` → 0. (2026-09-26 본 워크트리 관측: 이미 0. 리드 디스패치는 미병합으로 서술했으나 관측이 앞선다 — 어느 쪽이든 명령이 판정한다.)
+2. **운영자 Implementation Kickoff Approval** — 레인 창에서 운영자가 직접 승인한다. 이 SPEC 이 자동으로 run 에 들어가지 않는다.
+3. A3(t1236) 병합은 전제가 **아니다** — A3 는 A5 를 기다리지 않고(A3 §A 표), 측정은 세션 전사본만 읽는다.
+4. `scripts/jev/` 부재 또는 키 부재는 측정 불가 판정서로 닫는 경로다(REQ-CALIB-008 fail-open) — 전제 미충족으로 run 을 막는 것과 다른 갈래다.
+
+## §D. 리스크와 처분
+
+| 리스크 | 처분 |
+|---|---|
+| 전사본 보존 기간 안에 모집단이 줄어든다 | 스냅샷 일자 기록이 의무(REQ-CALIB-001); 오래된 세션일수록 잘렸을 가능성을 판정서 Gaps 에 적는다 |
+| 2단계 술어의 `excluded_ambiguous`가 커진다 | 건수와 원문을 통째 보존하고 임의 판단으로 줄이지 않는다 — 모집단 과소 계상은 판정서에 드러난다 |
+| 판사 fail-open 전파 | 전 항목 미측정 → 측정 불가 판정서(REQ-CALIB-008) — 부분 점수로 이어가지 않는다 |
+| 복합 응답의 카드 귀속 실패 | 질문 단위가 1차 기준(REQ-CALIB-002·NC-2) — 카드 단위는 보조 보고 |
+
+## §E. 마일스톤-REQ 대응
+
+| 마일스톤 | 묶는 REQ |
+|---|---|
+| M1·M2 (플랜) | REQ-CALIB-001(프루브)·002~010(본문 등록) |
+| M3 | REQ-CALIB-001 |
+| M4 | REQ-CALIB-003·004·005·008 |
+| M5 | REQ-CALIB-002(보고)·006·007·009·010 |
