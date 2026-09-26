@@ -732,6 +732,55 @@ Stop — still open, and still bounded only by the host.
    `budget_termination_test.go:62: a turn ceiling exit wrote status "satisfied"` → FAIL. After the
    revert, a diff of `internal/goal/evaluate.go` against HEAD printed nothing.
 
+### M2g — live legs, built but not run (2026-09-26)
+
+Base HEAD `c60af4998` (M2f). **No live Codex or Claude run was made** (Q5).
+
+**What was built** (`internal/cli/parity_live_test.go`, nine tests, gated by `MOAI_PARITY_LIVE=1`):
+`TestLiveStopChainGoalContinuation` (AC-HPR-004), `TestLiveCodexNeedsInputOutcome` (007),
+`TestLiveHookFaultOutcome` (008 live), `TestLiveCodexCompactFires` (009 live),
+`TestLiveCodexPermissionRequestFires` (010 live), `TestLiveCodexInterruptFires` (011 live),
+`TestLiveCodexGoalContinueUntilMet` (012 live), `TestLiveHarnessIsolation` (020),
+`TestLiveCodexStopTimeoutCeiling` (021). Shared harness: the gate (switch, `codex` / `claude`
+binaries, a login at `~/.codex/auth.json`); a temporary `CODEX_HOME` holding a copy of the login
+(`isolatedCodexHome`, reused from the t1100 live harness); a scratch project under the OS temp dir
+with `.codex/hooks.json` rendered by `RenderHooks` and a `moai` built from this tree
+(`buildLiveMoai`) first on `PATH`; the operator's `~/.codex/config.toml` and `hooks.json` hashed
+before and compared at cleanup; a budget of 10 host turns / 45 min and a 5-minute outer bound per
+turn; every host process group reaped through `liveProcs`. Goal state is keyed by session, and a
+Codex session id is known only after its first Stop, so the Codex goal legs run one turn, read the
+session id from the Stop-chain record, arm the goal for it, and continue with `codex exec resume`;
+the Claude leg arms first and passes `claude -p --session-id`.
+
+**Rule 8 discipline.** Every refusal writes a verdict record (`NOT_RUN`, with the attempted
+command, the observed output, commit, tree digest, `claude --version`, `codex --version`,
+`GOOS GOARCH`) to `MOAI_PARITY_VERDICT_DIR` (or the test's temp dir) and calls `t.Skipf`. A live
+leg never returns normally without its trigger: AC-HPR-007 has no in-tree handler that emits `ask`
+on demand, and the AC-HPR-010 deny leg needs a tool input carrying the updated-input marker, which
+a real approval request does not produce — both record `NOT_RUN` with that reason even when the
+switch is on.
+
+**Axis declaration.** `codex_live_axis_declaration_test.go` declares `parity_live_test.go`
+(switches `MOAI_PARITY_LIVE`, `codexBinaryName`; 9 tests), and its live-file detector now also
+matches the `"MOAI_PARITY_LIVE"` literal.
+
+**AC-HPR-020 detector, offline.** `parityIsolationViolations` is exercised without a host by
+`TestParityIsolationDetector`, including the AC's two mutations: a Codex process without the
+temporary `CODEX_HOME` is flagged, and a run whose working directory is the repository root is
+flagged on both counts (outside the temp dir, inside the repository).
+
+**Run once without the switch (the NOT_RUN evidence)**
+
+`go test -json -count=1 -timeout 20m -run 'TestLive(StopChainGoalContinuation|CodexNeedsInputOutcome|HookFaultOutcome|CodexCompactFires|CodexPermissionRequestFires|CodexInterruptFires|CodexGoalContinueUntilMet|HarnessIsolation|CodexStopTimeoutCeiling)$|TestParityIsolationDetector|TestCodexLiveAxis' ./internal/cli/`
+→ `skip` for all nine live tests; `pass` for `TestParityIsolationDetector` and the three
+`TestCodexLiveAxis_*` guards; no `fail`. Verbatim skip line (AC-HPR-008, the others differ only in
+the AC id and the attempted command):
+``parity_live_test.go:392: NOT_RUN (AC-HPR-008): attempted: codex exec asking for `touch marker-<fault>` with a PreToolUse handler that faults (timeout, exit 1, unparseable, exit 2); observed: MOAI_PARITY_LIVE is not set to 1 (operator decision Q5: no live run in this SPEC); record: …/TestLiveHookFaultOutcome.json``
+
+Under rule P every live leg is **NOT_RUN** — not PASS. The live bodies have never executed, so
+their logic (trigger attempts, evidence reads, the resume flow, the timeout ladder) is compiled
+(`go vet` on darwin and `GOOS=windows`) but unverified.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
