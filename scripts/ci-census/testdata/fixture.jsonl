@@ -10,6 +10,10 @@
 {"Time":"2026-08-29T00:00:00.000006+09:00","Action":"fail","Package":"example.com/censusfix/delta","Elapsed":0,"FailedBuild":"example.com/censusfix/delta"}
 {"Time":"2026-08-29T00:00:00.000007+09:00","Action":"run","Package":"example.com/censusfix/alpha","Test":"TestAlphaPasses"}
 {"Time":"2026-08-29T00:00:00.000008+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaPasses","Output":"=== RUN   TestAlphaPasses\n"}
+{"Time":"2026-08-29T00:00:00.000008+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaPasses","Output":"    alpha_test.go:20: AC corpus: 2 file(s) matched by the glob but absent from the snapshot - reported, not failed (spec.md 3.5 rule 4)\n"}
+{"Time":"2026-08-29T00:00:00.000008+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaPasses","Output":"    alpha_test.go:22:   absent-from-snapshot .moai/specs/SPEC-FIXTURE-001/acceptance.md: COUNT 3\n"}
+{"Time":"2026-08-29T00:00:00.000008+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaPasses","Output":"    alpha_test.go:22:   absent-from-snapshot .moai/specs/SPEC-FIXTURE-100%/acceptance.md: HALT AC-FIXTURE-001 AC-FIXTURE-002\n"}
+{"Time":"2026-08-29T00:00:00.000008+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaPasses","Output":"    alpha_test.go:22:   absent-from-snapshot .moai/specs/SPEC-FIXTURE-001/acceptance.md: COUNT 3\r\n"}
 {"Time":"2026-08-29T00:00:00.000009+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaPasses","Output":"--- PASS: TestAlphaPasses (0.00s)\n"}
 {"Time":"2026-08-29T00:00:00.000010+09:00","Action":"pass","Package":"example.com/censusfix/alpha","Test":"TestAlphaPasses","Elapsed":0}
 {"Time":"2026-08-29T00:00:00.000011+09:00","Action":"run","Package":"example.com/censusfix/alpha","Test":"TestAlphaSkips"}
