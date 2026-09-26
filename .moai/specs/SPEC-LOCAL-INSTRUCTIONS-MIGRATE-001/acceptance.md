@@ -52,18 +52,27 @@ when it matches nothing, so a criterion invoking a test names the test's **symbo
 ### D.1 Codex read order and fallback
 
 **AC-IFU-011** — Given a fixture project carrying only `CLAUDE.local.md`, When the launcher
-assembles `developer_instructions`, Then the assembled value contains that file's content
-AND a deprecation advisory naming `moai migrate local-instructions`, AND the provenance
-preamble contains the literal string `CLAUDE.local.md` rather than a substituted name.
-Verified by
+runs, Then that file's content reaches the launch AND a deprecation advisory naming
+`moai migrate local-instructions` is emitted on the launcher's diagnostic stream — **not** inside
+the `developer_instructions` payload (design.md §B). Verified by
 
 ```
-go test ./internal/cli/ -run '^TestCodexLocalInstructions_FallbackAdvisory$|^TestCodexLocalInstructions_DualFileMatrix$' -v
+go test ./internal/cli/ -run '^TestCodexLocalInstructions_FallbackAdvisory$' -v
 ```
 
-whose output must contain **both** `--- PASS: TestCodexLocalInstructions_FallbackAdvisory ` and
-`--- PASS: TestCodexLocalInstructions_DualFileMatrix `, and must not contain `no tests to run`.
-(REQ-IFU-007, REQ-IFU-008)
+whose output must contain `--- PASS: TestCodexLocalInstructions_FallbackAdvisory ` and must not
+contain `no tests to run`. (REQ-IFU-007)
+
+**AC-IFU-029** — Given the same fixture, When the launcher assembles `developer_instructions`,
+Then the provenance preamble contains the literal string `CLAUDE.local.md` rather than a
+substituted or normalized name. Verified by
+
+```
+go test ./internal/cli/ -run '^TestCodexLocalInstructions_DualFileMatrix$' -v
+```
+
+whose output must contain `--- PASS: TestCodexLocalInstructions_DualFileMatrix ` and must not
+contain `no tests to run`. (REQ-IFU-008)
 
 > **[HARD] v0.1.1 repair — the transferred pattern was vacuous.** The criterion arrived with
 > `-run '^TestCodexLocalInstructions'`, head-anchored only, asserting `--- PASS:
@@ -89,23 +98,24 @@ whose output must contain **both** `--- PASS: TestCodexLocalInstructions_Fallbac
 > saying which half failed. Naming one test per half is a partial mitigation and is noted as an
 > input to the unfold decision, not as the unfold.
 
-> **Recorded debt — this criterion decides two distinct outcomes under one verdict.** A
-> failure does not say which of them occurred: (a) the deprecation advisory is missing, so
-> the user is never told to migrate; or (b) the provenance preamble names the wrong file.
-> These are different defects at different severities. **A wrong preamble filename makes
-> the fallback invisible in exactly the situation the advisory exists to surface, and that
-> is the quieter and more dangerous of the two this criterion hides.**
+> **Debt discharged at v0.2.0 — the fold is undone.** The note this replaces recorded that the
+> criterion decided two outcomes under one verdict: (a) the advisory is missing, so the user is
+> never told to migrate; (b) the provenance preamble names the wrong file. It stated the merge
+> was a **budget compromise at the Tier L 25/25 ceiling, not tidiness**, and asked that the split
+> be decided by whoever owned the scope.
 >
-> Were the Tier L criterion ceiling not binding, this would split into one criterion for
-> fallback content + advisory (REQ-IFU-007) and one for the preamble literal filename
-> (REQ-IFU-008) — one per requirement, as the traceability table would prefer. The merge is
-> a budget compromise at 25/25, not tidiness. Recorded here so the split decision is made by
-> whoever owns the scope rather than absorbed silently.
+> That owner is card t1259 and the stated reason is gone: this SPEC carries 10 criteria against a
+> Tier L ceiling of 25. The criteria are split one per requirement — `AC-IFU-011` for
+> `REQ-IFU-007`, `AC-IFU-029` for `REQ-IFU-008` — which is what the traceability table prefers
+> and which makes a failure say which of the two defects occurred. The quieter one the note
+> singled out (a wrong preamble filename makes the fallback invisible in exactly the situation
+> the advisory exists to surface) now has a verdict of its own.
 >
-> **Carve annotation (v0.1.0, not part of the original debt note).** The scope owner is now
-> card t1259, and the ceiling named above no longer binds — this SPEC is Tier M and carries 7
-> criteria against a ceiling of 16. The decision the note asked for is therefore available and
-> unspent.
+> **The v0.1.1 anchoring repair is preserved through the split.** Each criterion keeps a
+> both-end-anchored `-run` pattern and asserts the PASS line with Go's trailing space.
+> `TestCodexLocalInstructions_FallbackAdvisory` still does not exist and this SPEC still requires
+> its creation; `TestCodexLocalInstructions_DualFileMatrix` exists and already asserts
+> `<!-- source: CLAUDE.local.md -->`.
 
 ### D.2 Migration
 
@@ -117,47 +127,68 @@ longer exists at the project root, and a copy exists under the backup directory.
 
 **AC-IFU-014** — Given a fixture project with BOTH local files present, When
 `moai migrate local-instructions` runs, Then it exits non-zero without modifying either
-file, naming the coexistence as the refusal reason. (REQ-IFU-010)
+file (sha256 of each captured before and after and compared), naming the coexistence as the
+refusal reason. (REQ-IFU-010b)
 
-**AC-IFU-015** — Given a fixture project with `CLAUDE.local.md` present, When `moai update`
-runs and then `moai doctor` runs, Then both exit `0`, `CLAUDE.local.md` is byte-identical
-across the whole sequence (sha256 captured before and after), and each command's stdout
-contains the migration advisory. (REQ-IFU-011, REQ-IFU-012)
+**AC-IFU-015** — [BLOCKING] Given a fixture project with `CLAUDE.local.md` present, When
+`moai update` runs and then `moai doctor` runs, Then both exit `0` and `CLAUDE.local.md` is
+byte-identical across the whole sequence — sha256 captured before the first command and after
+the last, and the two digests compared. (REQ-IFU-011)
 
-> **Recorded debt — this criterion decides three distinct outcomes under one verdict.** A
-> failure does not say which: (a) `moai update` mutated the local file; (b) `moai update`
-> lacks the advisory; (c) `moai doctor` lacks the advisory. (a) is a data-integrity failure
-> — the user's own instruction file was altered by a command that must not touch it —
-> while (b) and (c) are UX failures. Folding a data-integrity outcome in with two UX
-> outcomes is the part worth objecting to.
+**AC-IFU-030** — Given the same fixture and the same sequence, When each command's stdout is
+read, Then **each** of the two contains the migration advisory naming
+`moai migrate local-instructions`. A criterion satisfied by one of the two is a fail: the
+parity across both commands is the assertion. (REQ-IFU-012)
+
+> **Debt discharged at v0.2.0 — the fold is undone, and the data-integrity half is promoted.**
+> The note this replaces recorded three outcomes under one verdict: (a) `moai update` mutated the
+> user's own instruction file; (b) `moai update` lacks the advisory; (c) `moai doctor` lacks the
+> advisory. It objected specifically to **folding a data-integrity outcome in with two UX
+> outcomes**, and recorded the merge as a budget compromise.
 >
-> Were the ceiling not binding, this would split into the sha256 immutability assertion
-> (REQ-IFU-011) and the advisory-parity assertion across both commands (REQ-IFU-012).
-> Recorded as budget compromise, not tidiness.
+> The ceiling no longer binds, so the split is taken along exactly the line the note drew:
+> `AC-IFU-015` keeps the sha256 immutability assertion alone (`REQ-IFU-011`), and `AC-IFU-030`
+> carries the advisory parity across both commands (`REQ-IFU-012`). Outcome (a) is now separable
+> from (b) and (c) at the verdict, which is what the objection asked for.
 >
-> **Carve annotation (v0.1.0, not part of the original debt note).** As with `AC-IFU-011`, the
-> ceiling named above no longer binds here; the unfold is available and is t1259's call.
+> **`AC-IFU-015` is promoted to blocking** (§D.1). The carve left this open and it resolves with
+> the unfold rather than against it: while the criterion was a bundle, promoting it would have
+> made two UX outcomes block a milestone boundary, which is why the parent's table left it
+> non-blocking. Unfolded, the blocking half is exactly the data-integrity one — a command that
+> must not touch a user-authored file altering it — and no other blocking criterion in this SPEC
+> covers that outcome. `AC-IFU-030` stays non-blocking; a missing advisory is recoverable, a
+> mutated file is not.
 
 ### D.3 This repository's own migration
 
-**AC-IFU-007** — Given this repository's migrated local file, When
-`wc -m < AGENTS.local.md` runs, Then the value is `< 40000`; and When the pre-migration
-canonical copy is measured with `git show origin/develop:CLAUDE.local.md | wc -m`, Then the
-**before** and **after** values are both recorded and the reduction is at least **4,382**
-characters. (REQ-IFU-021)
+**AC-IFU-007** — Given this repository's migrated local file, When `wc -m < AGENTS.local.md`
+runs, Then the value is **at most 39,999**; and When the pre-migration canonical copy is
+measured **at the milestone** with `git show origin/develop:CLAUDE.local.md | wc -m`, Then both
+the **before** and the **after** value are recorded with the command that produced each, and the
+reduction reported is their difference. No absolute before-value or reduction floor is asserted
+here — see the v0.2.0 note. (REQ-IFU-021)
 
-> **v0.1.1 repair — the two clauses were jointly unsatisfiable at the stated bound.** The
-> reduction floor read "at least 4,381", and from the measured before-value of 44,381 a reduction
-> of exactly 4,381 lands on 40,000, which fails `< 40000`. They are simultaneously satisfiable
-> only at a reduction of 4,382 or more: 44,381 − 4,382 = 39,999. The floor is now 4,382, and the
-> **same off-by-one is repaired in `REQ-IFU-021` (spec.md), which carried it too** — the audit
-> named only this file, and a `<`-boundary slip travels with the sentence that states it.
+> **[HARD] v0.2.0 — the fixed floor is withdrawn, because the number it was fixed to moved.**
+> v0.1.1 repaired an off-by-one in a reduction floor ("at least 4,381" → "4,382") derived from a
+> measured before-value of 44,381. Re-measured in this worktree, 2026-09-26:
+> `git show origin/develop:CLAUDE.local.md | wc -m` → **44,740**, and
+> `git show develop:CLAUDE.local.md | wc -m` agrees. The before-value had moved by 359
+> characters, which makes the repaired floor wrong in the other direction — it would now be
+> satisfiable by a migration that lands at 40,358 and fails the cap.
 >
-> The floor is kept rather than dropped, even though `after < 40000` already implies it: it is
-> the clause a reader checks the arithmetic against, so stating it makes the boundary auditable
-> instead of inferred. Both bounds were re-checked against every other numeric clause in this
-> SPEC — the remaining ones (`AC-IFU-023`'s locale-count equality, `AC-IFU-013`'s exit `0`) carry
-> no `<`/`<=` boundary, so this was the only instance of the shape.
+> The class of defect is not arithmetic. `CLAUDE.local.md` is a live maintainer document that
+> sibling cards keep editing, so **any** absolute figure written into a criterion about it is
+> stale by construction, and an arithmetic repair to a stale constant makes it look authoritative.
+> The criterion therefore asserts only the bound that does not drift — `after <= 39,999` — and
+> requires the before-value to be **measured at the milestone** rather than read from here.
+>
+> The recording obligation is unchanged and is the load-bearing part: both values, each with its
+> command. That is what stops the criterion being discharged by measuring an already-compliant
+> copy (§F anti-pattern). What is dropped is only the predicted floor, which added no failure
+> mode the `<= 39,999` bound does not already catch.
+>
+> Re-checked across every other numeric clause in this SPEC: `AC-IFU-023`'s locale-count equality
+> and `AC-IFU-013`'s exit `0` carry no drifting constant, so this was the only instance.
 
 > **D3 repair, applied at the carve.** The criterion previously asserted only the post-state
 > (`< 40000`) against an unnamed copy. Two things made that dischargeable without doing the
@@ -180,23 +211,53 @@ each within a sentence marking it as a retired filename. (REQ-IFU-022)
 
 ### D.4 Documentation
 
-**AC-IFU-023** — Given the docs-site, When `grep -lc 'AGENTS.local.md'` is run against each
-of the six named pages in `docs-site/content/{ko,en,ja,zh}/`, Then all four locales report a
-match for every page, and the per-page `## ` section count is equal across the four
-locales. (REQ-IFU-020)
+**AC-IFU-023** — Given the docs-site, When `grep -c 'AGENTS.local.md'` is run against each of
+the 24 files `docs-site/content/{ko,en,ja,zh}/<page>` for the six `<page>` **paths** named in
+`REQ-IFU-020`, Then every one of the 24 reports a non-zero count, and the per-page `^## `
+section count is equal across the four locales. All 24 paths are asserted to exist before the
+grep runs — a missing file must fail the criterion rather than be skipped. (REQ-IFU-020)
+
+> **[HARD] v0.2.0 — the criterion named a page that resolves to two files, and a directory that
+> holds none.** Measured 2026-09-26 in this worktree: the six stems were cited against
+> `docs-site/content/{ko,en,ja,zh}/`, which is **not** where any of them live — every page sits
+> one or two directories deeper (`advanced/`, `getting-started/`, `cli-reference/`,
+> `claude-code/context-memory/`), so a literal reading of the old glob matches nothing and the
+> criterion passes vacuously on an empty set.
+>
+> Worse, `memory` resolved to **two** files per locale — `cli-reference/memory.md` and
+> `claude-code/context-memory/memory.md` — and the criterion named neither. They are different
+> pages: `grep -c 'CLAUDE.local.md\|CLAUDE.md'` reports **0** for `ko/cli-reference/memory.md`
+> (the `moai memory` CLI reference) and **28** for `ko/claude-code/context-memory/memory.md`
+> (the Claude Code memory-file concept page). The three-file instruction structure belongs to
+> the latter, which is the one `REQ-IFU-020` now names by path.
+
+**AC-IFU-031** — Given the whole change on its PR head, When CI completes, Then every required
+check reports success, and the run includes both `go test ./internal/cli/...` and the docs-site
+build. The verdict is read from the PR head's own run — a local pass, or a run against an
+earlier head, does not discharge it. (REQ-IFU-007 … REQ-IFU-012, REQ-IFU-020 … REQ-IFU-022)
+
+> **Authored at v0.2.0.** The carve recorded that this SPEC had no whole-change assertion of its
+> own, the parent's `AC-IFU-025 [REF]` having stayed with the parent because it asserts that
+> SPEC's always-loaded budget clause. This one asserts nothing about a budget: it is the
+> cross-milestone integration check, and it is the only criterion here whose evidence comes from
+> a clean environment rather than the lane's machine. Its requirement citation is deliberately
+> the full set — it is a whole-change criterion, and §D.2 treats it as covering none of them
+> individually.
 
 ---
 
 ## §D.1 Severity
 
-Transferred verbatim from the parent SPEC's severity table, restricted to the criteria that
-came with them: **blocking** — `AC-IFU-013`, `AC-IFU-014`. All others are must-fix before close
-but do not block a milestone boundary.
+**Blocking** — `AC-IFU-013`, `AC-IFU-014`, `AC-IFU-015`. Each carries a data-integrity outcome:
+the migration losing content, the verb choosing between two user-authored files, or `moai update`
+altering one. All others are must-fix before close but do not block a milestone boundary.
 
-> **Open for t1259.** `AC-IFU-011` and `AC-IFU-015` were non-blocking in the parent SPEC's
-> table. `AC-IFU-015` now carries a data-integrity outcome (`moai update` mutating a user's own
-> file) that no blocking criterion in this SPEC covers, so whether it should be promoted is a
-> plan-phase judgment this carve does not take. Recorded rather than silently decided.
+> **v0.2.0 — `AC-IFU-015` promoted, and the carve's open question closed.** The parent's table
+> left it non-blocking, correctly, while it bundled one data-integrity outcome with two UX ones.
+> Unfolded (§D.2 note under `AC-IFU-030`), the blocking half is exactly the data-integrity
+> assertion and nothing else travels with it. `AC-IFU-029`, `AC-IFU-030`, and `AC-IFU-031`
+> inherit the non-blocking severity of the criteria they were split from or, for `AC-IFU-031`,
+> take it as a close-gate rather than a milestone gate.
 
 ## §D.2 Traceability
 
@@ -207,14 +268,24 @@ text.
 | REQ | Covered by |
 |---|---|
 | REQ-IFU-007 | AC-IFU-011 |
-| REQ-IFU-008 | AC-IFU-011 |
+| REQ-IFU-008 | AC-IFU-029 |
 | REQ-IFU-009 | AC-IFU-013 |
-| REQ-IFU-010 | AC-IFU-013, AC-IFU-014 |
+| REQ-IFU-010a | AC-IFU-013 |
+| REQ-IFU-010b | AC-IFU-014 |
 | REQ-IFU-011 | AC-IFU-015 |
-| REQ-IFU-012 | AC-IFU-015 |
+| REQ-IFU-012 | AC-IFU-030 |
 | REQ-IFU-020 | AC-IFU-023 |
 | REQ-IFU-021 | AC-IFU-007 |
 | REQ-IFU-022 | AC-IFU-024 |
+
+Every requirement is covered by exactly one criterion, and every criterion covers exactly one
+requirement — the one-to-one the two unfolds at v0.2.0 produced. `AC-IFU-031` is deliberately
+absent from this table: it is the whole-change CI criterion and cites the full requirement set,
+so counting it as coverage would let it stand in for a missing per-requirement criterion.
+
+`REQ-IFU-010`'s two sub-clauses appear as separate rows because they have different correct
+outcomes and therefore different criteria (spec.md §C.2, design.md §A). The verification command
+below matches on the three-digit id, so both rows fold to `REQ-IFU-010` on its left-hand side.
 
 Verification command, re-run at close rather than remembered:
 
@@ -229,14 +300,13 @@ here.
 
 ## §D.3 Definition of Done
 
-> **[HARD] Provisional — t1259 completes this section.** The transferred criteria are all
-> present and their traceability closes, but a Definition of Done also needs this SPEC's own
-> whole-change CI assertion (the parent's `AC-IFU-025 [REF]` stayed with the parent, since it asserts
-> that SPEC's always-loaded budget clause), and the operator-gate wording for the
-> repository-own migration. Both are plan-phase work this carve does not perform.
+All ten criteria pass. Every deployed-file criterion is verified separately against both mirrors
+with separate exit codes. Every test-invoking criterion's `--- PASS: <TestName> ` line is
+captured rather than its exit code alone. The §D.2 verification command is run at close and its
+empty output recorded. `AC-IFU-007`'s before-and-after character counts are both recorded with
+the commands that produced them, the before-value measured at the milestone rather than read
+from this document. `AC-IFU-031` is read from the PR head's own CI run.
 
-What is settled: all criteria pass; every deployed-file criterion verified separately against
-both mirrors; every test-invoking criterion's `--- PASS: <TestName>` line captured rather than
-its exit code alone; the §D.2 verification command run and its empty output recorded; and
-`AC-IFU-007`'s before-and-after character counts both recorded with the commands that produced
-them.
+**The operator gate on the repository's own migration (M3) is discharged in the lane, by the
+operator, before that milestone starts** — not inferred from the earlier milestones having gone
+well, and not from this document. The lane records the confirmation with the turn it arrived in.
