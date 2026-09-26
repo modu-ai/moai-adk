@@ -42,6 +42,7 @@ rather than something inferred.
 |---|---|---|
 | Session in a worktree | `project_root: <git rev-parse --show-toplevel>` | the call acts on that tree |
 | Session in the primary checkout | nothing | resolves exactly as it always has |
+| Linked worktree of a repository that does not track `.moai` (the worktree has no `.moai` of its own) | `project_root: <git rev-parse --show-toplevel>` | accepted when git lists it as a worktree of a primary checkout that has `.moai`; the call acts on the worktree |
 | Path that is not a MoAI project root | — | the call is REJECTED with an error naming the path |
 
 The rejection is deliberate and is not a rough edge. A silent fallback to the
@@ -54,6 +55,19 @@ call acts on the real directory rather than on whichever spelling reached it, an
 a later containment check cannot be walked through by pointing a link at a tree
 outside the boundary. A path that cannot be canonicalized is rejected on the same
 terms as any other unusable one.
+
+A **linked worktree of a repository that keeps `.moai` untracked** has no `.moai`
+of its own, yet it is still accepted: the path must be the top level of a
+worktree that `git worktree list` registers, and the repository's primary
+checkout must have `.moai`. Anything else — a subdirectory, an unregistered or
+prunable worktree, an ambiguous layout such as a separate git directory, or git
+being unavailable — is rejected. On such a worktree without its own workflow
+config, the explicit audit gate (`workflow.audit.gates`) is read from the
+primary checkout, and it is treated as `required` when the primary cannot be
+identified. Other configuration, the SPEC catalogue, and state are still read
+from the accepted tree, so catalogue and state answers there carry a
+`_root.worktree_warning` that an empty result may only mean `.moai` is not
+tracked.
 
 For `audit_multi` the root reaches every backend in the fan-out: Claude and GLM
 use it to collect the diff sent to their isolated reviewer, while codex receives
