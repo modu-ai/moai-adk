@@ -80,7 +80,7 @@ Verification command for every TestHMP row: `go test -count=1 ./internal/hook/ .
 | AC-HMP-009 | PASS | TestHMPUnclassifiedBranchGuard: `iex "git switch probe"`, `Start-Process git …`, `pwsh -EncodedCommand <b64 "git status">`, `powershell -enc <b64>` → allowed, exactly one `powershell-unclassified` line in `.moai/logs/branch-guard-audit.log`, reason field contains `unclassifiable`, no decoded payload in the line; Bash `eval "git switch probe"` → allowed, no line; `& git switch probe` → deny; linked worktree → no line; `iex terraform destroy` → deny from the destructive list. TestHMPUnclassifiedIntegrationLock: `iex "git merge --no-ff WT-x"`, `pwsh -enc <b64>` → allowed, one line in `.moai/logs/integration-lock-audit.log`; unheld window → no line; Bash eval control → no log file |
 | AC-HMP-010 | PASS | TestHMPEvidenceParity: PowerShell `go test ./x/...` record equals Bash (ok, pass, fail, outcome, zero-execution); response shapes `{"result": 7}`, `[1, 2]`, `42` record no pass; zero-execution advisory identical. TestHMPEvidenceWritePaths: LogBashEvidence and the post-tool handler each write one record for PowerShell as for Bash. TestHMPHarnessObservePowerShellEvidence (CLI site 10) |
 | AC-HMP-011 | PASS | TestHMPTestIsolation → `TestHMP functions checked: 23`, 0 violations; every TestHMP* calls `hmpIsolateHome` (helper body verified to contain `t.Setenv("MOAI_HOME", t.TempDir())` in all three packages); positive control `TestHMPBad` with `t.Parallel()` → 2 violations on 1 function |
-| AC-HMP-012 | INCONCLUSIVE | Arms A and B ran (orchestrator, outside the worktree session — see § LIVE arms A/B) and every arm-A/arm-B observable is present: arm A no hook line, arm B PowerShell payload captured and its keys recorded. Arm C (branch-guard denial through the branch binary) was not run, so the validity condition "`binary-version.txt` exists with the branch HEAD SHA" does not hold → INCONCLUSIVE, not PASS. No FAIL observable |
+| AC-HMP-012 | PASS | Arms A, B, C run by the orchestrator outside the worktree session (§ LIVE arms A/B, § LIVE arm C). Arm A: PowerShell call executed, no hook line. Arm B: PowerShell payload captured, keys recorded. Arm C: `binary-version.txt` carries `-g3a4b623a6` (branch HEAD), the PowerShell `git switch -c probe` was denied with `BRANCH_GUARD_VIOLATION: git switch in primary checkout …`, and `git branch --list probe` was empty. All validity conditions hold (two of them — pwsh 7+ on PATH and `MOAI_BRANCH_GUARD_EXEMPT` unset — as reported by the orchestrator, not lane-observed) |
 | AC-HMP-013 | PASS | TestHMPWrapperRiskWarningBashOnly (rendered template and local copy): PowerShell `a \| b \| c \| d \| e \| f \| g` → no `[moai:bash-risk]` on stderr or in the log; Bash control → warning present. TestHMPWrapperScopeComment: both copies contain `matchers "Write\|Edit\|Bash" and "PowerShell"` |
 
 ### LIVE arms A/B (REQ-HMP-015 / REQ-HMP-016)
@@ -102,6 +102,26 @@ Lane reading of the files (`jq` over each):
 
 **REQ-HMP-016 evaluation.** Payload recorded: `tool_name` `PowerShell`, `tool_input` keys `command, description` (string `command` present), `tool_response` keys `interrupted, isImage, stderr, stdout` — identical to the Bash shape the evidence writer already decodes (`textKeys` = stdout, stderr, …; no `exit_code`, so pass/fail comes from the output-text heuristic, as for Bash). The implementation reads match with no change needed: `extractBashCommand` / `extractBranchStateCommand` / `extractIntegrationCommand` read `tool_input.command`; `bashToolInput` decodes `command`; `buildBashRecord` reads `tool_response` via `decodeToolResponse`. Pinned by `TestHMPLiveWireFormat` (`internal/hook/hmp_live_wireformat_test.go`), which runs the observed key set and value shapes through `NewProtocol().ReadInput` and asserts the pre-tool deny and a passing evidence record; a mutant making `IsShellTool` Bash-only turns it red (`hmp_live_wireformat_test.go:40: decoded tool_name "PowerShell" is not a shell tool`), reverted afterwards. The ordering clause is **not** met: the capture postdates the M3 conversions, which rested on the REQ-HMP-009 fail-safe design as plan M0 permits for an INCONCLUSIVE arm B; the capture now confirms that design's assumed shape. The live path for REQ-HMP-006/011 is established at payload-shape level (observed payload → real decoder → guard/evidence), not by a live run of a guard decision.
 
+### LIVE arm C (REQ-HMP-015 — branch guard through the branch binary)
+
+Run by the orchestrator outside the worktree session. Reported setup: `make build` at HEAD `3a4b623a6`; scratch git repo as a primary checkout with `workflow.yaml` `branch_guard.enabled: true`; PreToolUse matcher `PowerShell` → `bash -c 'moai version > binary-version.txt; exec bash <rendered handle-pre-tool.sh>'`; PATH with the branch `bin/` first, `MOAI_HOME=<arm>/moai-home`, `MOAI_HOOK_STDERR_LOG` inside `<arm>/.moai/logs`, `MOAI_BRANCH_GUARD_EXEMPT` removed with `env -u`, `CLAUDE_CODE_USE_POWERSHELL_TOOL=1`; `claude -p 'git switch -c probe' --tools PowerShell --permission-mode bypassPermissions --max-turns 3` under `timeout 180`, foreground, no `--safe-mode`; process exit 0; `git branch --list probe` printed nothing. These setup items, the exit status, and the branch listing are the orchestrator's report; the lane did not observe them.
+
+Files (gitignored, machine-local) at `.moai/reports/t1224/live/C/`, hashed by the lane with `shasum -a 256`:
+
+```
+d7a4f1ee6241711dc9cc613af5eb2f9fac404b764e8eac795b0220ba53cf7dc5  binary-version.txt
+0e9bd1419e528684637819c7d0cfd75fe33ddde3eb694d3be9aa378f1fc56129  run.jsonl
+d55308dd50c7005ff987c4cc2033f37bae9eadc79bbb0b62e1f10c437920dfa3  settings.json
+```
+
+Lane reading of the files:
+
+- `binary-version.txt` → ` moai_cp/20260925_122548   moai_cp/20260925_122548-226-g3a4b623a6   built 2026-09-26T04:35:41Z` — the `-g<sha>` suffix equals the branch HEAD the binary was built from (`3a4b623a6`), so the hook ran this branch's binary, not the installed one.
+- `settings.json` `.hooks.PreToolUse` → a single block with `"matcher":"PowerShell"` pointing at the `moai version` + rendered wrapper command above.
+- `run.jsonl`: `system/init` tools `["PowerShell"]`; `result` `{"subtype":"success","num_turns":2,"is_error":false}`; the model's call `{"name":"PowerShell","input":{"command":"git switch -c probe",…}}`; its `tool_result` `is_error: true` with content beginning `PreToolUse:PowerShell hook error: BRANCH_GUARD_VIOLATION: git switch in primary checkout (use a worktree; the manager-git identity and MOAI_BRANCH_GUARD_EXEMPT …`; the final result text states the hook blocked the command before git ran. `grep -c BRANCH_GUARD_VIOLATION run.jsonl` → `3` lines (`grep -o … | wc -l` → 4 occurrences; the orchestrator reported 3).
+
+**Verdict (plan M5 outcomes).** Every validity condition holds and every expected observable is present for arms A, B and C: AC-HMP-012 **PASS**.
+
 ### Quality gates (HEAD `2006d3cd3` unless noted)
 
 - `go test -count=1 ./internal/hook/...` → exit 0 (`ok …/internal/hook 443.090s` plus all 10 sub-packages ok) — run on the M1–M4 working tree before commit.
@@ -115,7 +135,7 @@ Lane reading of the files (`jq` over each):
 
 ### Gaps
 
-- **Worktree-isolation guard refusals (the LIVE measurements).** Verbatim: `pwsh -NoProfile -NonInteractive -Command '$PSVersionTable…'` → "this command runs pwsh in a plain command; what it reads or is handed as shell text cannot be shown not to run git. Refusing to run it"; `cd <scratch>/A && CLAUDE_CODE_USE_POWERSHELL_TOOL=1 timeout 180 claude -p … --tools PowerShell …` → "this command runs claude with the text PowerShell in a plain command, so what it runs cannot be shown not to be git. Refusing to run it". Not worked around (no script file, no subshell). Arms A and B were later run by the orchestrator outside the session (§ LIVE arms A/B). Still not run: arm C, and the pwsh `-EncodedCommand` spelling measurement (no direct pwsh call was made); the encoded-command detector accepts `-e`, `-ec`, and every prefix of `EncodedCommand` from `-en`, with `-`, `--`, or `/`, on the documented alias set rather than a measured one (over-matching costs one audit line, never a deny).
+- **Worktree-isolation guard refusals (the LIVE measurements).** Verbatim: `pwsh -NoProfile -NonInteractive -Command '$PSVersionTable…'` → "this command runs pwsh in a plain command; what it reads or is handed as shell text cannot be shown not to run git. Refusing to run it"; `cd <scratch>/A && CLAUDE_CODE_USE_POWERSHELL_TOOL=1 timeout 180 claude -p … --tools PowerShell …` → "this command runs claude with the text PowerShell in a plain command, so what it runs cannot be shown not to be git. Refusing to run it". Not worked around (no script file, no subshell). Arms A, B and C were later run by the orchestrator outside the session (§ LIVE arms A/B, § LIVE arm C). Still not run: the pwsh `-EncodedCommand` spelling measurement (no direct pwsh call was made); the encoded-command detector accepts `-e`, `-ec`, and every prefix of `EncodedCommand` from `-en`, with `-`, `--`, or `/`, on the documented alias set rather than a measured one (over-matching costs one audit line, never a deny).
 - **Recipe deviation noted for the lead.** The dispatched recipe carried `--safe-mode`; `claude --help` states it starts "with all customizations (CLAUDE.md, skills, installed plugins, hooks, …) disabled", which would make every arm vacuous for a hook measurement. The prepared arms follow plan M5 and omit it. The orchestrator's arm A/B runs were made without it.
 - Package-level coverage of `internal/hook` and `internal/cli` was not measured this run (the full `internal/hook` suite alone takes ~7 minutes).
 - The full `internal/hook/...` and `internal/template/...` runs and `make build` were taken on the working tree before the commits; HEAD differs from that tree only by the `gofmt` whitespace fix in `hmp_source_guard_test.go` and the `spec.md` status line, and the TestHMP set plus lint were re-run on HEAD.
@@ -131,11 +151,11 @@ Lane reading of the files (`jq` over each):
 ```yaml
 run_complete_at: 2026-09-26
 run_commit_sha: 2006d3cd3
-run_status: complete-with-live-inconclusive
-ac_pass_count: 12
+run_status: complete
+ac_pass_count: 13
 ac_fail_count: 0
-ac_inconclusive: [AC-HMP-012]  # arms A/B observables present; arm C not run
-live_arms: {A: observed-no-hook, B: payload-captured, C: not-run}
+ac_inconclusive: []
+live_arms: {A: observed-no-hook, B: payload-captured, C: denied-BRANCH_GUARD_VIOLATION-binary-3a4b623a6}
 req_hmp_016: payload-recorded; shape matches implementation reads (TestHMPLiveWireFormat); ordering clause not met
 preserve_list_post_run_count: "agent_model_matcher_test.go untouched; PostToolUse matcher and permissions untouched"
 l44_pre_commit_fetch: "not run — lanes do not push; local develop absorbed at 553e224f3"
