@@ -51,7 +51,7 @@ func escapeGuardMutate(t *testing.T) (yamlPath, settingsPath, escaped string) {
 	return yamlPath, settingsPath, `Bash(rm -rf C\:/:*)`
 }
 
-// escapedColonSpecifiers returns every Bash specifier in the policy at path
+// escapedColonSpecifiers returns every Bash or PowerShell specifier in the policy at path
 // whose pattern contains `\:`. Claude Code matches that backslash literally,
 // so such a rule never denies a real drive path such as "C:/". Env-gated
 // entries are included: they are still rules that a build can emit.
@@ -63,7 +63,7 @@ func escapedColonSpecifiers(t *testing.T, path string) []string {
 	}
 	var found []string
 	for _, e := range doc.Entries {
-		if e.Tool == "Bash" && strings.Contains(e.ArgsPattern, `\:`) {
+		if (e.Tool == "Bash" || e.Tool == "PowerShell") && strings.Contains(e.ArgsPattern, `\:`) {
 			found = append(found, e.SettingsSpecifier())
 		}
 	}
@@ -76,7 +76,7 @@ func escapedColonSpecifiers(t *testing.T, path string) []string {
 func TestToolPolicyEscapeGuard_CommittedPolicy(t *testing.T) {
 	yamlPath, _ := driftCommittedPaths(t)
 	if found := escapedColonSpecifiers(t, yamlPath); len(found) > 0 {
-		t.Errorf("tool-policy.yaml Bash rules escape ':' and cannot match a real drive path: %q", found)
+		t.Errorf("tool-policy.yaml Bash/PowerShell rules escape ':' and cannot match a real drive path: %q", found)
 	}
 }
 
@@ -109,5 +109,30 @@ func TestToolPolicyEscapeGuard_DriftCheckAloneMissesIt(t *testing.T) {
 	}
 	if !strings.Contains(string(settings), strings.ReplaceAll(escaped, `\`, `\\`)) {
 		t.Fatalf("regenerated settings do not carry %q", escaped)
+	}
+}
+
+// TestToolPolicyEscapeGuard_DetectsPowerShellMutation proves the source-layer
+// guard also covers the PowerShell namespace: an escaped colon in a
+// PowerShell rule is as dead as one in a Bash rule.
+func TestToolPolicyEscapeGuard_DetectsPowerShellMutation(t *testing.T) {
+	committedYAML, committedSettings := driftCommittedPaths(t)
+	yamlPath, _ := driftCopyCommitted(t, committedYAML, committedSettings)
+	body, err := os.ReadFile(yamlPath)
+	if err != nil {
+		t.Fatalf("read yaml copy: %v", err)
+	}
+	entry := "  - tool: \"PowerShell\"\n" +
+		"    args_pattern: \"rm -rf C\\\\:/:*\"\n" +
+		"    risk_tier: irreversible\n" +
+		"    decision: deny\n" +
+		"    owner_agent: orchestrator\n" +
+		"    audit: \"escape guard mutation\"\n"
+	driftWriteFixture(t, filepath.Dir(yamlPath), filepath.Base(yamlPath), string(body)+entry)
+
+	want := `PowerShell(rm -rf C\:/:*)`
+	found := escapedColonSpecifiers(t, yamlPath)
+	if len(found) != 1 || found[0] != want {
+		t.Errorf("guard on the mutated policy = %q, want exactly [%q]", found, want)
 	}
 }

@@ -289,6 +289,26 @@ func defaultCodexSpawnPaneIdentity(paneID string) (int, string, error) {
 	}
 }
 
+// codexSpawnForwardedEnv lists the variables buildCodexSpawnCommand copies
+// from this process onto the tmux command line when they are set. Tests that
+// assert the exact command pin each of them, so a lane session's exports
+// cannot change the expected string.
+var codexSpawnForwardedEnv = []string{
+	config.EnvHome,
+	config.EnvMoaiKanbanID,
+	config.EnvMoaiKanbanBackend,
+	// The rest of the kanban launch facts (moai codex -k): a tmux window
+	// inherits the server's environment, not this process's.
+	config.EnvMoaiKanban,
+	config.EnvMoaiKanbanSpec,
+	config.EnvMoaiKanbanLabel,
+	config.EnvMoaiKanbanLeadAddr,
+	config.EnvMoaiKanbanLeadName,
+	config.EnvMoaiFactoryWorker,
+	config.EnvMoaiFactoryWorkers,
+	config.EnvClaudeProjectDir,
+}
+
 // buildCodexSpawnCommand renders the shell command string for the new tmux
 // window: the resolved CODEX_HOME as a command-scoped assignment, then the
 // codex binary and its argv tail, every token quoted.
@@ -307,21 +327,7 @@ func buildCodexSpawnCommand(program string, args []string) string {
 	// Codex must bind through its own process identity, never a foreign Claude
 	// UUID or an outer launcher's PID.
 	parts = append(parts, config.EnvClaudeCodeSessionID+"=", config.EnvMoaiSessionPID+"=")
-	for _, key := range []string{
-		config.EnvHome,
-		config.EnvMoaiKanbanID,
-		config.EnvMoaiKanbanBackend,
-		// The rest of the kanban launch facts (moai codex -k): a tmux window
-		// inherits the server's environment, not this process's.
-		config.EnvMoaiKanban,
-		config.EnvMoaiKanbanSpec,
-		config.EnvMoaiKanbanLabel,
-		config.EnvMoaiKanbanLeadAddr,
-		config.EnvMoaiKanbanLeadName,
-		config.EnvMoaiFactoryWorker,
-		config.EnvMoaiFactoryWorkers,
-		config.EnvClaudeProjectDir,
-	} {
+	for _, key := range codexSpawnForwardedEnv {
 		if value := os.Getenv(key); value != "" {
 			parts = append(parts, key+"="+shellQuote(value))
 		}

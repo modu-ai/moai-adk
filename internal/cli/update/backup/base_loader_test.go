@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
@@ -190,33 +189,11 @@ func TestSaveTemplateBase_SnapshotMkdirFails(t *testing.T) {
 	}
 }
 
-// TestSaveTemplateBase_SnapshotCopyError covers SaveTemplateBase's
-// per-file copy error path (a snapshot source file that is unreadable).
-func TestSaveTemplateBase_SnapshotCopyError(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("chmod-based unreadability does not deny access on Windows; os.ReadFile still succeeds and the copy-error branch is never reached")
-	}
-	if os.Geteuid() == 0 {
-		t.Skip("chmod-based unreadability is ineffective when running as root")
-	}
-	t.Parallel()
-	projectRoot := t.TempDir()
-	writeSections(t, projectRoot, map[string]string{"system.yaml": "version: \"3.0.1\"\n"})
-	if err := WriteSnapshot(projectRoot); err != nil {
-		t.Fatalf("WriteSnapshot: %v", err)
-	}
-	// Make a snapshot source unreadable so SaveTemplateBase's os.ReadFile fails.
-	bad := filepath.Join(SnapshotDir(projectRoot), "sections", "system.yaml")
-	if err := os.Chmod(bad, 0); err != nil {
-		t.Fatalf("chmod: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(bad, 0o644) })
-
-	destDir := t.TempDir()
-	if err := SaveTemplateBase(destDir, projectRoot); err == nil {
-		t.Fatalf("SaveTemplateBase must error when a snapshot file cannot be read")
-	}
-}
+// TestSaveTemplateBase_SnapshotCopyError was removed by card t1216
+// (sync-audit F1): an unreadable snapshot file now fails the attestation
+// digest first, so SaveTemplateBase falls back to the embedded defaults
+// instead of erroring half-copied. The inverted expectation lives in
+// TestSaveTemplateBase_UnreadableSnapshotFallsBack (snapshot_attest_test.go).
 
 // TestSaveTemplateBase_SnapshotDirMissing covers the degenerate case: the
 // snapshot marker (sections dir) exists but the actual snapshot root path

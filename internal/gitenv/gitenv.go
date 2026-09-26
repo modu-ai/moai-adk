@@ -33,6 +33,7 @@ package gitenv
 
 import (
 	"os"
+	"runtime"
 	"strings"
 )
 
@@ -71,7 +72,22 @@ var RepoScopingVars = []string{
 // reads a nil Env as "inherit the parent's environment", which is exactly the
 // behaviour this function exists to prevent. A caller that assigns the result
 // to cmd.Env therefore never re-creates the defect by passing nothing.
+//
+// On Windows names are matched case-insensitively. The CRT documents getenv as
+// case-insensitive there, os/exec de-duplicates Env the same way, and Git for
+// Windows resolves variables through GetEnvironmentVariableW (compat/mingw.c),
+// so a child can read Git_Dir as GIT_DIR. That last step is read from source,
+// not observed; if it does not hold, folding only removes a variable the child
+// would have ignored. Elsewhere a differently-cased name is a different
+// variable and is kept.
 func Scrub(env []string) []string {
+	return scrub(env, runtime.GOOS == "windows")
+}
+
+// scrub is Scrub with the case rule as a parameter, so both rules are testable
+// on any host. RepoScopingVars is all upper case, so folding means comparing
+// the upper-cased name.
+func scrub(env []string, foldCase bool) []string {
 	drop := make(map[string]struct{}, len(RepoScopingVars))
 	for _, name := range RepoScopingVars {
 		drop[name] = struct{}{}
@@ -84,6 +100,9 @@ func Scrub(env []string) []string {
 			// Not a NAME=VALUE pair; pass it through rather than guess.
 			out = append(out, kv)
 			continue
+		}
+		if foldCase {
+			name = strings.ToUpper(name)
 		}
 		if _, dropped := drop[name]; dropped {
 			continue

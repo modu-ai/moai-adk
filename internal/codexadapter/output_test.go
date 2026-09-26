@@ -270,25 +270,41 @@ func TestPreToolUseAllowDegradationRecordedNotSilent(t *testing.T) {
 	}
 }
 
-// TestPreToolUseAskDropped — card t590.
+// TestPreToolUseAskBecomesFailClosedDeny — formerly TestPreToolUseAskDropped
+// (card t590), inverted in SPEC-DUAL-HARNESS-HOOK-PARITY-001 M2c as an
+// intentional amendment (plan.md M2c row, research.md §R1.13).
 //
-// Codex always rejects permissionDecision:ask on PreToolUse. Dropping it maps
-// to no-opinion, which under Codex means the normal approval flow decides —
-// the same semantics ask carries on Claude Code.
-func TestPreToolUseAskDropped(t *testing.T) {
+// Codex always rejects permissionDecision:ask on PreToolUse. Card t590 dropped
+// it to the no-opinion `{}`, which Codex can resolve as allow under a
+// non-prompting approval policy — the loosening REQ-HPR-007 forbids. ask and
+// defer both mean "a human must decide" (needs_input), which on Codex is a
+// fail-closed deny naming the required input, announced through one discard
+// record (operator decision Q2).
+func TestPreToolUseAskBecomesFailClosedDeny(t *testing.T) {
 	t.Parallel()
 
-	in := []byte(`{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"confirm?"}}`)
-	out, discards, err := MapOutput(hook.EventPreToolUse, in)
-	if err != nil {
-		t.Fatalf("MapOutput error = %v", err)
-	}
+	for _, decision := range []string{"ask", "defer"} {
+		in := []byte(`{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"` + decision + `","permissionDecisionReason":"confirm?"}}`)
+		out, discards, err := MapOutput(hook.EventPreToolUse, in)
+		if err != nil {
+			t.Fatalf("%s: MapOutput error = %v", decision, err)
+		}
 
-	if got := decode(t, out); len(got) != 0 {
-		t.Errorf("output = %s, want empty object", out)
-	}
-	if len(discards) != 1 {
-		t.Fatalf("discards = %d, want 1", len(discards))
+		got := decode(t, out)
+		hso, ok := got["hookSpecificOutput"].(map[string]any)
+		if !ok {
+			t.Fatalf("%s: output = %s, want a hookSpecificOutput deny, not the no-opinion object", decision, out)
+		}
+		if hso["permissionDecision"] != "deny" {
+			t.Errorf("%s: permissionDecision = %v, want deny", decision, hso["permissionDecision"])
+		}
+		reason, _ := hso["permissionDecisionReason"].(string)
+		if !strings.Contains(reason, RequiredInputUserApproval) || !strings.Contains(reason, "confirm?") {
+			t.Errorf("%s: reason = %q, want it to name %q and keep the handler reason", decision, reason, RequiredInputUserApproval)
+		}
+		if len(discards) != 1 {
+			t.Fatalf("%s: discards = %d, want 1", decision, len(discards))
+		}
 	}
 }
 
