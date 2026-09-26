@@ -54,7 +54,7 @@ primary 체크아웃이 `main` 에 체크아웃돼 있는 동안 `git status` �
 1. Work in internal/template/templates/
 2. Run `make build` to regenerate embedded files
 3. Test in local project
-4. Git commit from local root
+4. Git commit from the card worktree — never from the primary checkout (AGENTS.md §2·§3)
 ```
 
 ### [CRITICAL] moai CLI vs /moai Slash Command
@@ -391,11 +391,11 @@ Never use `filepath.Join(cwd, userPath)` when `userPath` can be absolute.
 
 ### Go Test Execution Rules
 
-- [HARD] After fixing ANY test, run the AFFECTED packages (`go test -timeout 30m ./internal/<pkg>/...`; `-timeout 30m` = D2 derivation — 1.61x headroom over the measured local single-package worst case 1118.093s, baseline `.moai/reports/t1253/measure-meta.txt`, SPEC-CLI-TEST-TIMEOUT-001), then push and read CI for the full-suite verdict — see §4. Do NOT run `go test ./...` locally: parallel lanes doing so drove load to 413 and stalled the machine (2026-08-15)
+- [HARD] After fixing ANY test, run the AFFECTED packages only and let CI give the full-suite verdict — the command, its `-timeout` derivation, and the no-local-full-suite rule live in §4 Before Commit (single source, not restated here)
 - Do not declare success after fixing only the initially failing tests
-- Run `go test -count=1 ./...` to disable test caching when debugging flaky tests
-- Run `go test -race ./...` for concurrency safety on any code touching goroutines or channels
-- Run `go vet ./...` before committing to catch static analysis issues
+- Run `go test -count=1 ./internal/<pkg>/...` to disable test caching when debugging flaky tests
+- Run `go test -race ./internal/<pkg>/...` for concurrency safety on any code touching goroutines or channels
+- Run `go vet ./internal/<pkg>/...` on the changed packages before committing
 
 ---
 
@@ -529,7 +529,7 @@ MoAI-ADK를 사용하다 버그나 개선이 필요한 부분을 발견하는 �
 
 `moai cc`/`moai glm` 커맨드 플로우는 실제 settings 파일을 수정하므로 dev project에서 절대 실행 금지.
 
-- Unit tests: dev project (`go test ./...`), `t.TempDir()` 내 파일만
+- Unit tests: dev project, 변경 패키지만(`go test ./internal/<pkg>/...` — 로컬 전체 스위트 금지, §4), `t.TempDir()` 내 파일만
 - Integration tests: `/tmp/test-project`에서 `claude -p`로 실행
 - Auth token: `loadGLMKey()` (reads `~/.moai/.env.glm`), 없으면 `t.Skip()`
 - 금지: `t.Setenv("HOME", tmpDir)` (병렬 테스트 오염), 하드코딩 fake key
