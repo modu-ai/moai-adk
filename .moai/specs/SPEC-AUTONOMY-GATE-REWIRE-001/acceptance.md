@@ -1,4 +1,4 @@
-# acceptance.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.0)
+# acceptance.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.1)
 
 모든 AC 는 Given-When-Then 이며 명령과 기대 출력으로 판정한다. 명령은 워크트리 세션 가드를 통과하도록 **한 줄짜리 단순 명령**만 쓴다 — `git` 을 `$( )`·`<( )`·heredoc 안에 두지 않는다. `git` 이 필요한 검사는 Go 테스트 안에서 실행하고, 기준 ref 는 환경 변수 `MOAI_GR_BASE`(= `progress.md §E.2` 에 기록된 `BASE` SHA)로 넘긴다. 브랜치 이름을 기준으로 쓰지 않는다.
 
@@ -18,7 +18,7 @@ MOAI_GR_BASE=<BASE> go test ./internal/template/ -run 'TestContractModeGuidedPre
 
 기대: `--- PASS: TestContractModeGuidedPreservation`. 이 AC 는 **블록 밖 텍스트의 보존**만 판정한다 — guided 세션이 블록을 읽는 증가는 AC-GR-010 이 묶는다.
 
-### AC-GR-002 — 로컬↔템플릿 동등과 승계 분기 불변 (REQ-GR-024)
+### AC-GR-002 — 로컬↔템플릿 동등과 승계 분기 불변 (REQ-GR-023)
 
 - **Given** 편집 대상 파일 쌍과 신규 SSOT
 - **When** 두 사본의 블록을 추출하고, 걷어낸 두 사본의 차이를 기준 ref 두 사본의 차이와 비교한다
@@ -30,7 +30,7 @@ MOAI_GR_BASE=<BASE> go test ./internal/template/ -run 'TestContractModeLocalTemp
 
 기대: 두 테스트 `--- PASS`.
 
-### AC-GR-003 — 변경 집합이 허용 목록 안 (REQ-GR-025)
+### AC-GR-003 — 변경 집합이 허용 목록 안 (REQ-GR-024)
 
 - **Given** `design.md §2` 의 허용 목록
 - **When** `BASE` 대비 변경된 파일 목록을 읽는다
@@ -59,7 +59,7 @@ MOAI_GR_BASE=<BASE> go test ./internal/template/ -run 'TestContractModeEmitterSi
 
 - **Given** 신규 SSOT
 - **When** `design.md §3` 의 절 제목 10개를 찾고, `§5.1` 표의 토큰을 **그 절 안에서만** 찾는다(파일 전체 검색이 아니다)
-- **Then** 절 10개가 있고 각 절의 토큰이 모두 그 절에 있다. 「Equivalence clause」 절에 `llm+jev` 가 없다(사람 서명 한정, D4). 「Autonomous Kickoff」 절의 토큰 검사는 전용 블록 `contract-autonomous-kickoff` 가 있을 때만 수행하고, 없으면 그 절에 `llm+jev` 리터럴이 없음을 검사한다
+- **Then** 절 10개가 있고 각 절의 토큰이 모두 그 절에 있다. 「Equivalence clause」 절에 `llm+jev`·`signer_kind: llm` 이 없다(사람 서명 한정, D4). 「Autonomous Kickoff」 절의 토큰 검사는 전용 블록 `contract-autonomous-kickoff` 가 있을 때만 수행하고, 없으면 그 절에 `llm+jev` 리터럴이 없음을 검사한다
 
 ```bash
 go test ./internal/template/ -run 'TestContractModeSSOTSections' -count=1 -v
@@ -91,7 +91,7 @@ go test ./internal/template/ -run 'TestContractModeLifecycleEvidence' -count=1 -
 
 기대: `--- PASS`.
 
-### AC-GR-008 — 블록 가드 (REQ-GR-001·024)
+### AC-GR-008 — 블록 가드 (REQ-GR-001·023)
 
 - **Given** `internal/template/contract_mode_blocks_test.go`
 - **When** 불량 픽스처(짝 불일치 / evolvable 구간 안의 블록 / SPEC ID·카드 id·날짜를 담은 블록 / 문자 상한 초과 블록 / 검사 대상 블록 0개)로 먼저 실행하고, 이어 실제 템플릿 트리로 실행한다
@@ -103,7 +103,7 @@ go test ./internal/template/ -run 'TestContractModeBlocksWellFormed' -count=1 -v
 
 기대: `--- PASS`. 불량 픽스처의 `--- FAIL` 원문은 RED 증거로 `progress.md §E.2` 에 남긴다.
 
-### AC-GR-009 — 템플릿 중립성 (REQ-GR-024)
+### AC-GR-009 — 템플릿 중립성 (REQ-GR-023)
 
 - **Given** 템플릿 트리의 모든 블록, 템플릿 SSOT, 템플릿 `moai-mcp-tools*.md`·`workflow.yaml` 의 개정 문장
 - **When** 금지 클래스를 찾고 기존 중립성 테스트를 실행한다
@@ -137,7 +137,7 @@ MOAI_GR_BASE=<BASE> go test ./internal/template/ -run 'TestContractModeAlwaysLoa
 go test ./internal/template/ -run 'TestContractModeBlockCondition' -count=1 -v
 ```
 
-기대: `--- PASS`. 설정 키는 A1 0.4.1 (6d98ca466) REQ-CONTRACT-015.
+기대: `--- PASS`. 설정 키는 A1 0.5.1 (65e0a9167) REQ-CONTRACT-015.
 
 ### AC-GR-012 — plan-audit FAIL 자동 수리 상한 (REQ-GR-015)
 
@@ -149,7 +149,7 @@ go test ./internal/template/ -run 'TestContractModeBlockCondition' -count=1 -v
 go test ./internal/template/ -run 'TestContractModeAuditRetryBlocks' -count=1 -v
 ```
 
-기대: `--- PASS`. 키 이름은 A1 0.4.1 (6d98ca466) § Configuration.
+기대: `--- PASS`. 키 이름은 A1 0.5.1 (65e0a9167) § Configuration.
 
 ### AC-GR-013 — sync 확인 질문 제거와 실패 결정점 (REQ-GR-016)
 
@@ -173,7 +173,7 @@ go test ./internal/template/ -run 'TestContractModeSyncBlocks' -count=1 -v
 go test ./internal/template/ -run 'TestContractModeSigningBlocks' -count=1 -v
 ```
 
-기대: `--- PASS`. 명령 이름은 A1 0.4.1 (6d98ca466) REQ-CONTRACT-010 과 이 SPEC 의 kickoff-check.
+기대: `--- PASS`. 명령 이름은 A1 0.5.1 (65e0a9167) REQ-CONTRACT-010 과 이 SPEC 의 kickoff-check.
 
 ### AC-GR-015 — 빌드와 범위 테스트 (전 REQ 공통)
 
@@ -191,81 +191,81 @@ go test ./internal/cli/ -run 'TestContract(Decide|KickoffCheck|Revoke)' -count=1
 
 ### AC-GR-016 — kickoff-check 판정 (REQ-GR-007)
 
-- **Given** 임시 저장소 픽스처 6종: (1) 사람 서명 + 저장소 `sign-human` 사건, (2) 에이전트가 쓴 영수증 파일로 한 `llm+jev` 서명(저장소에 `decide` 사건 없음), (3) `signer_kind: jev` 서명, (4) `signer_kind: llm` 서명, (5) 저장소 `decide approve` 와 일치하는 `llm+jev` 서명 + 활성 상수 `false`, (6) (5) + 그 뒤 `revoke` 사건
-- **When** `moai contract kickoff-check <SPEC-ID> --card <card> --json` 을 실행한다
-- **Then** (1) exit 0; (2) exit 1 `receipt-not-issued`; (3)·(4) exit 1 `decider-not-permitted`; (5) exit 1 `autonomous-kickoff-inactive`; (6) exit 1(revoke 사유). 어느 경우에도 파일이 생기거나 바뀌지 않는다
+- **Given** 임시 저장소 픽스처 11종: (1) 사람 서명 + `events.jsonl` `sign-human` 사건, (2) 에이전트가 쓴 영수증 파일로 한 `llm` 서명(`receipts.jsonl` 에 없음), (3) `receipts.jsonl` 의 `outcome: approve` 영수증(`effective_decider: llm`)과 일치하는 `llm` 서명 + 활성, (4) 같은 조건의 `llm+jev` 영수증(R1)과 `llm+jev` 서명 + 활성, (5) 대체 영수증(`requested_decider: llm+jev` → `effective_decider: llm`)과 일치하는 `llm` 서명 + 활성, (6) `signer_kind: jev` 서명, (7) (3) + 비활성, (8) (3) + 그 뒤 `revoke` 사건, (9) `events.jsonl` 에 서명 사건이 없는 사람 서명, (10) 설정 결정자가 `llm` 인데 영수증의 `requested_decider` 가 `llm+jev`, (11) `--card` 가 계약 `card` 필드와 다름
+- **When** `moai contract kickoff-check <SPEC-ID> --card <card> --json` 을 실행한다(활성 여부는 판정 함수의 인자로 주입)
+- **Then** (1)·(3)·(4)·(5) exit 0; (2) exit 1 `receipt-not-issued`; (6) exit 1 `decider-not-permitted`; (7) exit 1 `autonomous-kickoff-inactive`; (8) exit 1 `revoked`; (9) exit 1 `signature-not-recorded`; (10) exit 1 `decider-mismatch`; (11) exit 1 `card-mismatch`. 어느 경우에도 파일이 생기거나 바뀌지 않는다
 
 ```bash
 go test ./internal/contract/kickoff/ -run 'TestKickoffCheck' -count=1 -v
 ```
 
-기대: 하위 테스트 6개 `--- PASS`. RED 는 kickoff-check 구현 전 이 테스트의 `--- FAIL` 원문. 서명 필드는 A1 0.4.1 (6d98ca466) design § Contract Schema.
+기대: 하위 테스트 11개 `--- PASS`. RED 는 kickoff-check 구현 전 이 테스트의 `--- FAIL` 원문. 서명 필드와 `signer_kind` 값 집합(`human | llm | llm+jev`), `card` 필드는 A1 0.5.1 (65e0a9167) design § Contract Schema·§ Card Field.
 
-### AC-GR-017 — 활성 순서 (REQ-GR-008)
+### AC-GR-017 — 활성 순서와 원칙 개정 연동 (REQ-GR-008·013·025)
 
-- **Given** 이 브랜치의 이력과 활성 상수 `autonomousKickoffEnabled`
-- **When** 순서 테스트를 실행한다
-- **Then** 상수가 `false` 이면 테스트가 「inactive」를 `t.Log` 로 출력하고, 동시에 결정자 쌍 서명이 거절됨을 확인해 통과한다(공허 통과 아님). 상수가 `true` 이면 그 값을 넣은 커밋이 (i) `internal/contract/revoke` 를 처음 추가한 커밋, (ii) `internal/contract/receipt` 를 처음 추가한 커밋, (iii) `SPEC-JEV-CORE-001` 의 개정 표지를 넣은 커밋, (iv) A1 합의 규칙 0번을 해제한 커밋 각각의 **엄격한 후손**(같은 커밋 아님)이어야 통과한다. 픽스처 저장소에서 상수를 조건 커밋과 같은 커밋에 둔 경우 FAIL 을 관측한다
+- **Given** 이 브랜치의 이력, 상수 `autonomousKickoffEnabled`·`jevDoctrineAmended`, `SPEC-JEV-CORE-001` 과 세 원칙 위치의 개정 표지, A1 서명기의 임시 규칙(`effective_decider: llm+jev` → `receipt_requires_human`)
+- **When** 순서 테스트와 연동 테스트를 실행한다
+- **Then** 순서: `autonomousKickoffEnabled = false` 이면 그 상태를 `t.Log` 로 출력하고 `llm`·`llm+jev` 서명이 거절됨을 확인해 통과하고(공허 통과 아님), `true` 이면 그 값을 넣은 커밋이 (i) `internal/contract/revoke` 를 처음 추가한 커밋과 (ii) `internal/contract/receipt` 를 처음 추가한 커밋의 **엄격한 후손**(같은 커밋 아님)이어야 통과한다. 연동: 트리에서 세 표지 — 원칙 개정 표지(추적되는 네 위치 전부), `jevDoctrineAmended = true`, 서명기 임시 규칙의 부재 — 가 모두 있거나 모두 없어야 하고, 이력에서 셋이 **처음 나타나는 커밋이 같아야** 한다. 모두 없으면 Jev 가 답한 `llm+jev` 결정이 `human` 이고 A1 서명기가 그 영수증을 `receipt_requires_human` 으로 거절함을 확인해 통과한다. 픽스처 저장소 네 개 — 상수를 조건 커밋과 같은 커밋에 둔 것, 개정 표지만 있는 커밋, 임시 규칙 해제만 있는 커밋, `jevDoctrineAmended = true` 만 있는 커밋 — 에서 FAIL 을 관측한다
 
 ```bash
-go test ./internal/contract/kickoff/ -run 'TestAutonomousKickoffActivationOrder' -count=1 -v
+go test ./internal/contract/kickoff/ -run 'TestAutonomousKickoffActivationOrder|TestJevAmendmentLinkage' -count=1 -v
 ```
 
-기대: `--- PASS`. A1 영수증 경로·A2 두 가드·Frozen 문단 개정(`design.md §7.1` 3·4·6행)은 이 테스트가 보지 않는다 — 그 셋은 M8 착수 전 리드가 develop 에서 확인하고 `progress.md` 에 근거를 적는다.
+기대: 두 테스트 `--- PASS`. A1 영수증 경로·A2b 가드·Frozen 문단 개정(`design.md §7.1` 3·4·6행)은 이 테스트가 보지 않는다 — 그 셋은 M8 착수 전 리드가 develop 에서 확인하고 `progress.md` 에 근거를 적는다. 임시 규칙과 그 해제 요구는 A1 0.5.1 (65e0a9167) spec §C.8, REQ-CONTRACT-024.
 
 ### AC-GR-018 — decide 전제조건 (REQ-GR-009)
 
 - **Given** (a)~(f) 를 하나씩 깬 픽스처 6종, (a) 의 `Overall Score:` 줄에 괄호 주석이 붙은 픽스처, 모두 성립하는 픽스처, Jev 생성 횟수를 세는 이음매
 - **When** decide 를 실행한다
-- **Then** 깬 7종은 `outcome: human`·`reason: precondition:<x>`·Jev 생성 0회, 성립 픽스처만 Jev 를 1회 생성한다. (a) 는 `.moai/reports/<card>/` 의 가장 높은 N 파일을 고르고 그 경로·해시를 영수증 `inputs.plan_audit_report` 에 기록한다
+- **Then** 깬 7종은 `outcome: human`·`reason: precondition:<x>`·Jev 생성 0회, 성립 픽스처(결정자 `llm+jev`, `llm` approve)만 Jev 를 1회 생성한다. (a) 는 `.moai/reports/<card>/` 의 가장 높은 N 파일을 고르고 그 경로·해시를 영수증 `inputs.plan_audit_report` 에 기록한다
 
 ```bash
 go test ./internal/contract/kickoff/ -run 'TestDecidePreconditions' -count=1 -v
 ```
 
-기대: 하위 테스트 8개 `--- PASS`. 영수증 형식·`frozen-files` 정의는 A1 0.4.1 (6d98ca466); 열린 에스컬레이션 판독은 **[A2 개정본으로 재확인]**.
+기대: 하위 테스트 8개 `--- PASS`. 영수증 형식·`frozen-files` 정의는 A1 0.5.1 (65e0a9167); 열린 에스컬레이션 판독은 **[A2 개정본으로 재확인]**.
 
-### AC-GR-019 — 합의 규칙과 작성자 배제 (REQ-GR-010)
+### AC-GR-019 — 결과 도출 규칙 R1·R3·R4·R5 와 작성자 배제 (REQ-GR-010)
 
-- **Given** 주 LLM {approve, reject, escalate} × Jev {approve, reject, escalate, 신뢰도 0.49, disabled, no-credential, unreachable} × `on_disagree` {human, reject}, 그리고 결정자 `manager-spec` / 세션 식별자 일치 / 트레일러 일치 판단
+- **Given** 규칙·갈래마다 하나씩인 테스트: R1 모두 승인(`llm` approve + Jev approve), R1 모두 거절(`llm` reject + Jev reject), R1 불일치(`llm` approve + Jev reject·escalate, `llm` reject + Jev approve) — 셋 모두 `jevDoctrineAmended = true`; R3(`llm` approve + Jev approve, `jevDoctrineAmended = false`); R4(설정 결정자 `llm`, `llm` approve·reject·escalate); R5(설정 결정자 `jev`); 작성자 배제(결정자 `manager-spec` / 세션 식별자 일치 / 트레일러 일치). Jev 는 스텁 이음매이고 생성 횟수를 센다
 - **When** decide 를 실행한다
-- **Then** 결과가 A1 합의 규칙 validator 의 결과와 칸마다 같다 — 에스컬레이션이 있는 칸은 `on_disagree` 와 무관하게 늘 `human`, `on_disagree` 는 거절 칸에만 작용, 개정 전에는 Jev 가 있는 모든 칸이 `human`. 작성자 판단 세 경우는 `author-decider-conflict` 다. 저장소 줄에 신고 신원과 moai 측 세션 식별자가 함께 있다
+- **Then** R1 모두 승인 → `outcome: approve`; R1 모두 거절 → `reject`; R1 불일치 → `human`·`cross-check-disagree`; R3 → `human`·`jev-doctrine-not-amended`; R4 → `approve`·`reject`·`human` 이고 Jev 생성 0회; R5 → exit 2·`decider-jev-refused`·저장소 줄 수 불변·Jev 생성 0회; 작성자 배제 세 경우 → `human`·`author-decider-conflict`. 영수증의 `outcome`·`requested_decider`·`effective_decider`·`fallback.applied: false` 가 결과와 일치하고, `events.jsonl` 의 `decide` 사건에 적용한 규칙과 신고 신원·moai 측 세션 식별자가 함께 있다
 
 ```bash
-go test ./internal/contract/kickoff/ -run 'TestDecideAgreement|TestDecideAuthorExclusion' -count=1 -v
+go test ./internal/contract/kickoff/ -run 'TestDecideRuleCrossCheckAgree|TestDecideRuleCrossCheckBothReject|TestDecideRuleCrossCheckDisagree|TestDecideRuleJevBeforeAmendment|TestDecideRuleLLMAlone|TestDecideRuleJevAloneRefused|TestDecideAuthorExclusion' -count=1 -v
 ```
 
-기대: 두 테스트 `--- PASS`. 규칙은 A1 0.4.1 (6d98ca466) design § Agreement Rule 이 정본이며 이 테스트는 A1 validator 를 직접 호출해 대조한다.
+기대: 일곱 테스트 각각 `--- PASS`. RED 는 decide 구현 전 일곱 테스트 각각의 `--- FAIL` 원문이다 — 규칙·갈래마다 따로 관측한다. 규칙은 이 SPEC 이 소유하며 A1 validator 를 대조 기준으로 쓰지 않는다(A1 은 기록된 `outcome` 의 일관성만 본다 — A1 0.5.1 (65e0a9167) design § Kickoff Receipt 필드 규칙 9).
 
-### AC-GR-020 — decide 의 exit 코드와 부작용 (REQ-GR-011)
+### AC-GR-020 — decide 의 이름·입력·출력 위치와 부작용 (REQ-GR-011)
 
-- **Given** 워크트리·브랜치·원격 ref·`backlog.db`·`contract.yaml`·SPEC 문서가 있는 임시 git 저장소와 격리된 `MOAI_HOME`
-- **When** 정상 입력 / 형식 오류 판단 파일 / 변조된 저장소로 `moai contract decide` 를 실행한다
-- **Then** exit 0 / 2 / 1. exit 1·2 에서 저장소 줄 수 불변. 모든 경우 `backlog.db` 바이트, `git for-each-ref` 출력, 워크트리 목록, `contract.yaml`, SPEC 문서가 전후 동일하고, 새 파일은 정상 입력의 `.moai/specs/<SPEC-ID>/kickoff-receipt.json` 하나뿐이며, LLM 호출 이음매 기록이 0이다
+- **Given** 워크트리·브랜치·원격 ref·`backlog.db`·`contract.yaml`(`card: <card>`)·SPEC 문서가 있는 임시 git 저장소와 `t.TempDir()` 를 가리키는 `MOAI_HOME`
+- **When** `moai contract decide --help` 를 읽고, 정상 입력 / `<card>` 가 계약 `card` 와 다른 입력 / 형식 오류 판단 파일 / 변조된 저장소로 `moai contract decide <card> --spec <SPEC-ID> --judgement <file>` 을 실행한다
+- **Then** 도움말에 동사 `decide`, 위치 인자 `<card>`, `--spec`·`--judgement`·`--json` 이 있다. exit 0 / 2(`card-mismatch`) / 2 / 1. 정상 입력에서 `MOAI_HOME/db/<project-key>/contract/receipts.jsonl` 과 `events.jsonl` 이 각각 정확히 한 줄 늘고, `.moai/specs/<SPEC-ID>/kickoff-receipt.json` 이 새 영수증 줄의 본문과 바이트 동일하다. exit 1·2 에서 두 파일의 줄 수 불변. 모든 경우 `backlog.db` 바이트, `git for-each-ref` 출력, 워크트리 목록, `contract.yaml`, SPEC 문서가 전후 동일하고, 작업 트리의 새 파일은 정상 입력의 `kickoff-receipt.json` 하나뿐이며, LLM 호출 이음매 기록이 0이다
 
 ```bash
 go test ./internal/cli/ -run 'TestContractDecide' -count=1 -v
 ```
 
-기대: `--- PASS`. 영수증 경로는 A1 0.4.1 (6d98ca466) design § Kickoff Receipt.
+기대: `--- PASS`. 동사 이름은 가칭이며 이름이 바뀌면 이 AC 의 명령과 도움말 검사도 함께 바뀐다. 영수증 고정 경로와 `card` 필드는 A1 0.5.1 (65e0a9167) design § Kickoff Receipt·§ Card Field, 저장소 디렉터리는 리드 결정 R10.
 
-### AC-GR-021 — 사건 저장소: 모든 서명 사건과 변조 흔적 (REQ-GR-012)
+### AC-GR-021 — 저장소: 모든 서명 사건과 변조 흔적 (REQ-GR-012)
 
-- **Given** 격리된 `MOAI_HOME` 과 사건 종류 다섯(`sign-human`, `sign-receipt`, `reseal`, `decide`, `revoke`)을 각각 일으키는 픽스처
-- **When** 각 사건을 일으키고, (i) 체인을 검증하고, (ii) 가운데 줄 한 바이트를 바꿔 검증하고, (iii) 마지막 `sign-human` 줄을 지우고 kickoff-check 를 실행하고, (iv) 마지막 `revoke` 줄을 지우고 decide 를 다시 실행하고, (v) 저장소 추가를 실패시키는 이음매로 사람 서명을 시도한다
-- **Then** 사건마다 정확히 한 줄이 추가되고; (i) 통과; (ii) 깨진 줄 번호와 함께 실패; (iii) `signature-not-recorded`; (iv) revoke 가 쓴 에스컬레이션 기록이 남아 전제조건 (e)로 `outcome: human`; (v) 서명 파일이 쓰이지 않는다. 저장소 경로는 `MOAI_HOME` 아래이며 작업 트리 밖이다
+- **Given** `t.TempDir()` 를 가리키는 `MOAI_HOME` 과 사건 종류 다섯(`sign-human`, `sign-receipt`, `reseal`, `decide`, `revoke`)을 각각 일으키는 픽스처
+- **When** 각 사건을 일으키고, (i) 두 파일의 체인을 검증하고, (ii) `events.jsonl` 가운데 줄 한 바이트를 바꿔 검증하고, (iii) 마지막 `sign-human` 줄을 지우고 kickoff-check 를 실행하고, (iv) 마지막 `revoke` 줄을 지우고 decide 를 다시 실행하고, (v) 저장소 추가를 실패시키는 이음매로 사람 서명을 시도하고, (vi) 규칙 R2 대체로 decide 를 실행한다
+- **Then** 사건마다 `events.jsonl` 에 정확히 한 줄이 추가되고(`decide` 는 `receipts.jsonl` 에도 한 줄); (i) 통과; (ii) 깨진 줄 번호와 함께 실패; (iii) `signature-not-recorded`; (iv) revoke 가 쓴 에스컬레이션 기록이 남아 전제조건 (e)로 `outcome: human`; (v) 서명 파일이 쓰이지 않는다; (vi) 그 영수증 줄에 `requested_decider: llm+jev`·`effective_decider: llm`·`fallback{applied: true, reason}` 이 있다. 두 파일은 `MOAI_HOME` 아래 `db/<project-key>/contract/`(리드 결정 R10)에 있고 작업 트리 밖이다
 
 ```bash
 go test ./internal/contract/receipt/ ./internal/contract/sign/ -run 'TestEventStore|TestSignRecordsEvent' -count=1 -v
 ```
 
-기대: `--- PASS`. 이 AC 는 변조 **흔적**만 판정한다 — 저장소와 에스컬레이션 기록을 함께 지우는 행위는 막지 못하며 판정하지 않는다. 서명기 개정 지점은 A1 0.4.1 §C.6 이 A3 에 넘긴 요구다.
+기대: `--- PASS`. 이 AC 는 변조 **흔적**만 판정한다 — 저장소와 에스컬레이션 기록을 함께 지우는 행위는 막지 못하며 판정하지 않는다. 서명기 개정 지점은 A1 0.5.1 §C.6 이 A3 에 넘긴 요구다.
 
 ### AC-GR-022 — Jev 원칙 개정 (REQ-GR-013)
 
 - **Given** 개정 대상 다섯 위치
 - **When** 개정 문장과 표지를 확인한다
-- **Then** `SPEC-JEV-CORE-001/spec.md` 의 REQ-JEVC-012 에 `[AMENDED 2026-09-26` 표지가 있고 HISTORY 에 운영자 결정 「Kickoff 는 LLM·Jev 도 할 수 있게」를 인용한 행이 있으며 `status: completed` 가 유지되고; `moai-mcp-tools.md`·`moai-mcp-tools-catalogue.md`(로컬·템플릿)의 `jev_ask` 행과 `workflow.yaml`(로컬·템플릿) `jev:` 주석이 contract 모드 Kickoff 예외를 한 곳만 명시하고 다른 금지 대상(완료 판정·병합 승인·큐 변경)을 그대로 담으며; `CLAUDE.local.md §29` 개정은 운영자 확인 기록이 `progress.md` 에 있을 때만 존재한다
+- **Then** `SPEC-JEV-CORE-001/spec.md` 의 REQ-JEVC-012 에 `[AMENDED 2026-09-26` 표지가 있고 HISTORY 에 운영자 결정 「Kickoff 는 LLM·Jev 도 할 수 있게」와 2026-09-26 재결정(Jev 단독 없음, 교차 확인만)을 인용한 행이 있으며 `status: completed` 가 유지되고; `moai-mcp-tools.md`·`moai-mcp-tools-catalogue.md`(로컬·템플릿)의 `jev_ask` 행과 `workflow.yaml`(로컬·템플릿) `jev:` 주석이 「contract 모드 Kickoff 의 `llm+jev` 교차 확인에서 두 번째 신호로 쓰일 때」 예외 한 곳만 명시하고 Jev 단독 결정과 다른 금지 대상(완료 판정·병합 승인·큐 변경)을 그대로 담으며; `CLAUDE.local.md §29` 개정은 운영자 확인 기록이 `progress.md` 에 있을 때만 존재한다
 
 ```bash
 go test ./internal/template/ -run 'TestJevDoctrineAmendment' -count=1 -v
@@ -276,9 +276,9 @@ moai spec lint SPEC-JEV-CORE-001
 
 ### AC-GR-023 — revoke 동작과 멱등 (REQ-GR-022·018)
 
-- **Given** 사람 서명 계약 / `llm+jev` 서명 계약 / 이미 revoke 된 계약 / 미서명 계약 / 변조된 저장소
+- **Given** 사람 서명 계약 / `llm` 영수증 서명 계약 / 이미 revoke 된 계약 / 미서명 계약 / 변조된 저장소 / `<card>` 가 계약 `card` 필드와 다른 호출
 - **When** `moai contract revoke <card> --spec <SPEC-ID>` 를 실행한다
-- **Then** exit 0(저장소 +1, 에스컬레이션 기록 정확히 1건, 종류 `revoke`) / 0(같음) / 0(쓰기 0) / 1(쓰기 0) / 2(쓰기 0). 테스트는 A2 가 제공하는 판독 함수(또는 형식 검증기)로 그 기록을 읽어 열린 기록 1건으로 판정한다
+- **Then** exit 0(저장소 +1, 에스컬레이션 기록 정확히 1건, 종류 `revoke`) / 0(같음) / 0(쓰기 0) / 1(쓰기 0) / 2(쓰기 0) / 2(쓰기 0). 테스트는 A2 가 제공하는 판독 함수(또는 형식 검증기)로 그 기록을 읽어 열린 기록 1건으로 판정한다
 
 ```bash
 go test ./internal/contract/revoke/ ./internal/cli/ -run 'TestRevoke|TestContractRevoke' -count=1 -v
@@ -286,7 +286,7 @@ go test ./internal/contract/revoke/ ./internal/cli/ -run 'TestRevoke|TestContrac
 
 기대: `--- PASS`. 기록 경로·YAML 머리·`revoke` 종류는 **[A2 개정본으로 재확인]**.
 
-### AC-GR-024 — revoke 가 하지 않는 일 (REQ-GR-023)
+### AC-GR-024 — revoke 가 하지 않는 일 (REQ-GR-022)
 
 - **Given** 워크트리 1개·브랜치 2개·원격 ref·`backlog.db` 가 있는 임시 git 저장소와 git 실행 이음매
 - **When** revoke 를 실행한다
@@ -297,6 +297,18 @@ go test ./internal/contract/revoke/ -run 'TestRevokeLeavesRepositoryUntouched' -
 ```
 
 기대: `--- PASS`.
+
+### AC-GR-025 — 규칙 R2: Jev 쪽 실패의 `llm` 단독 대체와 기록 (REQ-GR-010·012)
+
+- **Given** 설정 결정자 `llm+jev`, `jevDoctrineAmended = true`, `t.TempDir()` 를 가리키는 `MOAI_HOME`, 그리고 Jev 실패 원인별 픽스처 5종 — 도달 불가(호출 실패), 자격 증명 없음, `workflow.jev.enabled: false`, 형식이 깨진 응답, 신뢰도 0.49(`jev_min_confidence` 0.50) — 각각을 `llm` approve 판단과 `llm` reject 판단으로
+- **When** decide 를 실행한다
+- **Then** 열 경우 모두 결과가 `llm` 단독 R4 로 도출되어(approve → `approve`, reject → `reject`) 두 번째 신호 없이 결정되고, 영수증 파일과 `receipts.jsonl` 줄 양쪽에 `requested_decider: llm+jev`·`effective_decider: llm`·`fallback.applied: true`·원인에 맞는 `fallback.reason`(`jev_call_failed`·`jev_key_missing`·`jev_disabled`·`jev_malformed_response`·`jev_low_confidence`)이 있고 `jev_answer` 가 없다. 신뢰도 0.49 경우의 원시 응답은 `receipts.jsonl` 줄에 남는다
+
+```bash
+go test ./internal/contract/kickoff/ -run 'TestDecideJevFallback' -count=1 -v
+```
+
+기대: 하위 테스트 10개(원인 5 × `llm` approve·reject) `--- PASS`. RED 는 원인별 하위 테스트 각각의 `--- FAIL` 원문. 대체 사유의 닫힌 집합과 영수증 필드는 A1 0.5.1 (65e0a9167) design § Kickoff Receipt 필드 규칙 4·5·6.
 
 ## §B. 증거 원장 — RED-now 셀
 
@@ -311,7 +323,7 @@ go test ./internal/contract/revoke/ -run 'TestRevokeLeavesRepositoryUntouched' -
 | EV-5 | 001 (판정식 반증) | 스크래치 파일에 걷어내기 적용 후 `cmp` — 복원 사례와 블록 밖 한 단어 변이 사례 | `STRIP-RESTORES`; `mutant cmp exit=1` | 0 / 1 | AC-GR-001 은 불변 가드라 RED-now 대신 변이로 반증 능력을 확인했다 |
 | EV-6 | 003 | `moai constitution validate` | `constitution validate: OK — no drift or violations detected (97 of 101 entries checked)` | 0 | 불변 가드 기준선 |
 | EV-7 | 015, 016, 020, 023 | `moai contract revoke --help` | `ERROR Unknown command "contract" for "moai". Try --help for usage.` (공백 정리) | 1 | `contract` 명령 자체가 없다 — A1 이 만들고 이 SPEC 이 하위 명령을 더한다 |
-| EV-8 | 016~021, 023, 024 | `ls internal/contract` | `ls: internal/contract: No such file or directory` (stderr) | 1 | 패키지가 없다. 녹색 경로는 A1 병합 후 M6·M7 |
+| EV-8 | 016~021, 023~025 | `ls internal/contract` | `ls: internal/contract: No such file or directory` (stderr) | 1 | 패키지가 없다. 녹색 경로는 A1 병합 후 M6·M7 |
 
 AC-GR-001·002·003·009·010 은 불변 가드 또는 상한 검사라 녹색이 기본이다 — 반증 능력은 각 Go 테스트의 불량 픽스처로 run phase 에서 관측한다(AC-GR-008 과 같은 방식).
 
@@ -319,7 +331,7 @@ AC-GR-001·002·003·009·010 은 불변 가드 또는 상한 검사라 녹색�
 
 ### §C.1 MUST-PASS
 
-AC-GR-001, 002, 003, 004, 006, 008, 009, 015, 016, 017, 018, 019, 020, 021, 023, 024.
+AC-GR-001, 002, 003, 004, 006, 008, 009, 015, 016, 017, 018, 019, 020, 021, 023, 024, 025.
 
 ### §C.2 추적성
 
@@ -334,10 +346,10 @@ AC-GR-001, 002, 003, 004, 006, 008, 009, 015, 016, 017, 018, 019, 020, 021, 023,
 | REQ-GR-007 | AC-GR-016 |
 | REQ-GR-008 | AC-GR-017, AC-GR-005 |
 | REQ-GR-009 | AC-GR-018 |
-| REQ-GR-010 | AC-GR-019, AC-GR-005 |
+| REQ-GR-010 | AC-GR-019, AC-GR-025, AC-GR-005 |
 | REQ-GR-011 | AC-GR-020 |
-| REQ-GR-012 | AC-GR-021 |
-| REQ-GR-013 | AC-GR-022 |
+| REQ-GR-012 | AC-GR-021, AC-GR-025 |
+| REQ-GR-013 | AC-GR-022, AC-GR-017 |
 | REQ-GR-014 | AC-GR-005 (+ 검토) |
 | REQ-GR-015 | AC-GR-012 |
 | REQ-GR-016 | AC-GR-013, AC-GR-005 |
@@ -346,10 +358,10 @@ AC-GR-001, 002, 003, 004, 006, 008, 009, 015, 016, 017, 018, 019, 020, 021, 023,
 | REQ-GR-019 | AC-GR-006 |
 | REQ-GR-020 | AC-GR-007 |
 | REQ-GR-021 | AC-GR-005 (+ 검토) |
-| REQ-GR-022 | AC-GR-023 |
-| REQ-GR-023 | AC-GR-024 |
-| REQ-GR-024 | AC-GR-002, AC-GR-008, AC-GR-009 |
-| REQ-GR-025 | AC-GR-003, AC-GR-010 |
+| REQ-GR-022 | AC-GR-023, AC-GR-024 |
+| REQ-GR-023 | AC-GR-002, AC-GR-008, AC-GR-009 |
+| REQ-GR-024 | AC-GR-003, AC-GR-010 |
+| REQ-GR-025 | AC-GR-017 |
 
 요구사항 25개 전부가 하나 이상의 AC 에 매핑된다.
 
@@ -357,12 +369,12 @@ AC-GR-001, 002, 003, 004, 006, 008, 009, 015, 016, 017, 018, 019, 020, 021, 023,
 
 - 블록 문장이 정확히 무엇을 지시하는지는 절 단위 토큰 존재로만 부분 판정한다(REQ-GR-014·021). 의미는 plan-auditor·sync-auditor 가 판정한다.
 - guided 세션의 모델이 contract 블록을 무시한다는 것 — 텍스트 보존과 문자 상한만 판정한다.
-- `design.md §7.1` 3·4·6행(A1 영수증 경로, A2 두 가드, Frozen 문단 개정)의 착지 — M8 착수 전 리드가 확인한다(AC-GR-017 기대 참조).
+- `design.md §7.1` 3·4·6행(A1 영수증 경로, A2b 두 가드, Frozen 문단 개정)의 착지 — M8 착수 전 리드가 확인한다(AC-GR-017 기대 참조).
 
 ### §C.4 완료 정의
 
 - MUST-PASS 전부 PASS, 나머지 AC PASS 또는 사유가 적힌 PASS-WITH-DEBT.
 - `plan.md §B` 의 기본값 두 건(D-2·D-4)에 운영자의 변경 지시가 없거나, 있으면 반영됨.
-- **[A2 개정본으로 재확인]** 항목이 M0 에서 A2 개정본과 대조됨.
+- **[A2 개정본으로 재확인]**·**[A2b SPEC 으로 재확인]** 항목과 A1 0.5.1 인용이 M0 에서 각 병합본과 대조됨.
 - `progress.md §E.2` 에 `BASE` SHA, 재측정 원장, AC 표가 원문 증거와 함께 있음.
 - AC 수를 제자리에서 바꾸는 개정은 AC 스냅숏 재생성을 같은 커밋에 싣는다(`plan.md §D`).
