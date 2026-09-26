@@ -283,6 +283,66 @@ follow_up_candidates:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-26
+sync_commit_sha: pending-backfill-sync   # 이 커밋 자신은 자기 해시를 인용할 수 없다 — run_commit_sha 와 같은 사유(§E.3)
+sync_status: implemented                 # completed 로 올리지 않는다 — 아래 "상태 전이를 implemented 에서 멈춘 이유" 항 참조
+b12_self_test_a: not-applicable          # 이 카드는 CHANGELOG 항목을 내지 않는다 — 아래 CHANGELOG 판단 항 참조
+b12_self_test_b: not-applicable
+b12_self_test_c: not-applicable
+changelog_entry_position: none
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented"   # version 0.9.0 → 0.9.1, updated 2026-09-26
+  plan_md: unchanged                      # frontmatter 없음(§E.1 확인)
+  acceptance_md: unchanged                # frontmatter 없음
+  progress_md: this-file                  # §E.4 자체가 이 절
+canary_compliance_check: not-applicable   # 이 SPEC 은 미래를 향한 정책을 스스로 시험하는 SPEC 이 아니다
+model_deviation:
+  agent: manager-docs
+  resolved_model: opus                    # 활성 모델 프로파일이 manager-docs 에 결정하는 값
+  model_used: sonnet                      # 이 스폰이 실제로 돈 모델(claude-sonnet-5)
+  scope: this-spawn-only                  # 프로파일 자체는 건드리지 않았다 — 아래 참조
+  reason: >
+    opus 주간 한도가 2026-10-01 12:00 KST 까지 소진됐고, 같은 과업의 이전 opus 스폰이
+    실행 중 중단됐다. 리드가 되돌릴 수 있는 가장 좁은 경로로 이 편차를 선택했다.
+  profile_unchanged: true                 # `.moai/config/sections/delegation.yaml` / model-policy 미변경 — 의도적 선택
+  profile_unchanged_rationale: >
+    프로파일을 고치는 것은 모든 향후 manager-docs 스폰에 이 편차를 영구화한다.
+    건드리지 않고 이 스폰 한 건만 편차로 기록하는 쪽이, 한도가 풀린 뒤 정상 경로로
+    복귀하는 것을 자동으로 만든다 — 되돌리기 위해 다시 고칠 것이 없다.
+  auditor_obligation: >
+    sync-phase 감사는 이 기록의 밀도와 판단이 opus 없이도 Tier L 이 요구하는 수준에
+    닿았는지를 판정한다. 닿지 못했다고 판정하면, 한도 해소 후 opus 로 이 sync 기록을
+    다시 쓴다 — completed 전이가 여기서 유보되는 것과 같은 이유다.
+```
+
+### 재측정 — 이 실행이 직접 쟀다 (2026-09-26, HEAD `c1727f93d`)
+
+| 항목 | 명령 | 결과 | §E.3 대비 |
+|---|---|---|---|
+| 18파일 `wc -m` 합계 | `acceptance.md §AC-ALD2-001.2` 명령 그대로(18경로, `skill-routing.md` 포함) | `197897 total` | 불변 |
+| 구속 조항 동결 해시 | `acceptance.md §AC-ALD2-002` 명령 그대로(16경로) | `d97b33d960c9801d4ec145ca263ed788425b337f43c585594c8d527c1318c6c3`, 170줄 | 불변 |
+| AC 수 | `grep -c '^### AC-ALD2-' acceptance.md` | `9` | 불변 |
+| `internal/spec` 테스트 | `go test ./internal/spec/...` | `ok` (cached) | — |
+| SPEC lint | `./bin/moai spec lint .moai/specs/SPEC-ALWAYS-LOADED-DIET-002` | `✓ No findings` | — |
+| 템플릿 미러 변경 수 | `git diff --name-only a0b78213d HEAD -- 'internal/template/templates/*' \| wc -l` | `40` | §E.3 관측치와 일치, 이 실행이 재확인 |
+
+### 상태 전이를 `implemented` 에서 멈춘 이유 — 리드 판정, 결함 아님
+
+**`completed` 로 올리지 않는다.** 원래 위임문은 "레코드는 편차 아래서도 쓸 수 있으나 완료 판정은 다른 축"이라는 조건부 허용을 줬고, 작업 중 리드가 이를 **필수 조건으로 확정**했다. 근거: sync 레코드는 편차를 적어 두면 사후에 검증 가능하지만, `completed` 는 **완료 판정 그 자체**이고 그 판정을 같은 편차 아래서 내리면 판정의 근거 자체가 편차에 오염된다. 그래서 `completed` 는 opus 주간 한도가 풀린 뒤(2026-10-01 12:00 KST 이후) 도는 sync-phase 감사를 게이트로 둔다.
+
+**이 절만 읽어도 왜 여기서 멈췄는지 알 수 있어야 한다** — 그래서 위 `model_deviation` 블록과 이 문단을 나란히 둔다. `implemented` 는 결함의 증거가 아니라, 리드가 내린 명시적 결정의 기록이다.
+
+### CHANGELOG / README / docs-site 판단
+
+이 카드는 사용자에게 보이는 동작을 바꾸지 않았고 Go 코드를 0 라인 건드렸다(§E.3 `go_files_changed: 0`). 그러나 **템플릿 미러 40개**가 바뀌어(위 재측정 표) 배포 표면이 움직였다 — 이 사실은 CHANGELOG 항목의 근거가 아니라 아래 Residual-risk 항목의 근거다. `moai init`/`moai update` 로 이 룰 파일들을 받는 사용자 프로젝트의 always-loaded 표면이 줄어들지만, 그 변화는 **동작(behavior)이 아니라 지시문 본문**이므로 CHANGELOG 가 서술하는 "무엇이 달라졌는가"의 대상이 아니라고 판단한다. README·docs-site 도 마찬가지로 판단 근거가 없다 — 이 카드가 서술하는 어떤 커맨드나 기능도 README/docs-site 표면에 없다. 세 표면 모두 항목을 내지 않는다.
+
+### Residual-risk — sync-phase 감사에게
+
+1. **템플릿 미러 40개 변경 — 배포 표면 축, 도그푸드 전용이 아니다.** `internal/template/templates/.claude/rules/moai/**` 하위 40개 파일이 이 카드로 바뀌었다(재측정 위). 이 표면은 `moai init`/`moai update` 를 통해 사용자 프로젝트로 나간다. 감사는 로컬 트리(`.claude/rules/moai/`)만이 아니라 **배포 표면**을 함께 판정해야 한다 — 특히 §E.3 가 이미 기록한 C1↔C2 의도된 분기(`0acfa28e1` 미러 수리 이후 상태)가 이 40개 파일에서 그대로 유지되는지.
+2. **모델 편차의 스코프.** 이 sync 기록 자체가 `sonnet` 위에서 쓰였다(`model_deviation` 블록). 프로파일은 변경하지 않았으므로 다음 manager-docs 스폰은 정상적으로 opus 를 요청한다 — 이 편차가 후속 카드로 전파되지 않는다.
+3. **§E.3 이 이미 넘긴 잔여**: `A_adm`(허용 재배치 풀) 미측정, self-keyed `paths:` 2건(선존, 이 카드가 만들지 않음), AC-ALD2-006 Then 둘째 절 미확립 2건. 이 카드는 이 셋 중 어느 것도 새로 닫지 않았다 — sync phase 는 run-phase 잔여를 상속만 한다.
+4. **D15 (verdict.md 마일스톤 분해 오차 20)** — `.moai/reports/t1175/verdict.md` 는 수정하지 않았다. 이 기록이 그 파일의 오차를 대신 정정하지 않는다는 점을 남긴다.
+5. **`f0893dc36` 의 커밋 경계 결함** — 문서 수리 커밋 안에 구현 편집(템플릿 미러의 공백 줄 제거) 1건이 섞여, 미러 수리와 SPEC 산출물 변경이 커밋 경계로 분리되지 않는다. 수리하지 않고 기록만 한다(스코프 이탈 방지).
 
 🗿 MoAI
