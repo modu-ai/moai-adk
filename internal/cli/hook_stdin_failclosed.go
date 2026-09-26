@@ -64,7 +64,7 @@ func stdinParseFailClosedReason() string {
 	return "fail-closed: " + stdinParseFailureCause + " (" + stdinParseFailClosedDocID + ")"
 }
 
-// @MX:WARN: [AUTO] a Stop that fails to parse is blocked under Claude on every turn — the loop is bounded only by the host's Stop block cap, which is assumed from repository doctrine and unmeasured; under Codex the same Stop is exempt because Codex was measured with no cap
+// @MX:WARN: [AUTO] a Stop that fails to parse is blocked under Claude on every turn — the loop is bounded only by the host's Stop block cap, measured on Claude Code 2.1.283 to end the turn after 8 consecutive JSON decision:block exits (same as exit 2) at the default cap, but raised to 200 by the launcher for kanban/factory sessions (launcher_blockcap_infinite.go); under Codex the same Stop is exempt because Codex was measured with no cap
 // @MX:REASON: [AUTO] REQ-HSF-009 — a parse failure hides stop_hook_active, so no in-process guard can end a Stop loop; the Codex exemption is decided only by codexadapter.HostLacksStopBlockCap
 // answerStdinParseFailure answers a hook invocation whose stdin could not be
 // parsed, without dispatching. label names the invocation in the stderr
