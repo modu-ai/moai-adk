@@ -1883,7 +1883,18 @@ func applyGateUnmet(out ReviewOutput, projectDir string) ReviewOutput {
 	if out.Verdict != VerdictInconclusive {
 		return out
 	}
-	if workflowAuditPins(projectDir).Gates.Codex != config.AuditGateRequired {
+	// A config-orphaned worktree takes the gate from its primary checkout, and
+	// fails closed when that primary cannot be identified
+	// (SPEC-MCP-WORKTREE-UNTRACKED-001 REQ-MWU-011/012); every other tree reads
+	// its own workflow.yaml exactly as before.
+	gates, assumedNote := resolveAuditGates(projectDir)
+	if gates.Codex != config.AuditGateRequired {
+		return out
+	}
+	if assumedNote != "" {
+		out.GateUnmet = assumedNote + ", and this audit returned no verdict (fail-open inconclusive)"
+		out.Verdict = "fail"
+		out.Summary = "required gate unmet (" + assumedNote + "): " + out.Summary
 		return out
 	}
 	out.GateUnmet = "workflow.audit.gates.codex is `required`, but this audit returned no verdict (fail-open inconclusive)"
