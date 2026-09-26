@@ -489,7 +489,7 @@ grep -rn "<제거된 절 제목>" --include='*.md' . | grep -v '^\./\.moai/specs
 
 ### AC-ALD2-006 — companion `paths:` 가 domain-keyed
 
-**Given** 이 SPEC 이 수정한 각 companion 파일에 대해,
+**Given** 이 SPEC 이 **한 절을 옮겨 넣은** 각 companion 파일에 대해,
 **When** 그 `paths:` 값을 읽을 때,
 **Then** 값이 부모 stub 경로 **하나만** 담고 있지 않다 — 그 companion 이 다루는 작업이 건드리는 도메인 경로를 함께 담는다.
 
@@ -499,6 +499,76 @@ grep -m1 '^paths:' .claude/rules/moai/<companion>.md
 
 FAIL 예(self-keyed): `paths: ".claude/rules/moai/workflow/kanban-dispatch.md"` — 부모 룰을 **편집할 때만** 로드되므로 그 룰이 지배하는 작업 세션에는 도달하지 않는다.
 PASS 선례: `goal-directive-detail.md` (유일한 domain-keyed 선례).
+
+#### §AC-ALD2-006.1 이 기준은 **측정되어 FAIL 한 뒤에** 좁혀졌다 — 순서를 먼저 적는다
+
+**이 절은 순서대로 읽어야 한다. 측정이 먼저였고, 좁힘이 나중이다.** 그 순서가 이 개정의 위험 자체이므로 숨기지 않는다.
+
+1. **측정과 FAIL.** run phase 기록 종결 실행이 이 카드가 수정한 companion 전수에 `grep -m1 '^paths:'` 를 돌려 self-keyed **2건**을 관측하고, 종전 Given 문언대로 **FAIL** 로 적었다 — `progress.md §E.3` 의 AC 매트릭스 `AC-ALD2-006` 행과 그 아래 `### AC-ALD2-006 FAIL` 절, 그리고 blocker `BLK-ALD2-006`.
+   - `core/verification-claim-integrity-detail.md` — `paths: "**/verification-claim-integrity*.md"`
+   - `workflow/session-handoff-examples.md` — `paths: "**/session-handoff.md"`
+2. **그 FAIL 을 계기로 대조했을 때 드러난 것**: 이 AC 의 Given 이 자기 REQ 의 When 보다 **넓다**. 아래 §AC-ALD2-006.2 가 두 문언을 나란히 놓는다.
+3. **그리고 이 개정이 Given 을 REQ 의 When 에 맞춰 좁혔다.** 기록은 지우지 않는다 — `progress.md` 의 FAIL 기록과 blocker 는 이 카드가 닫힐 때까지 그대로 남고, 이 절이 그것을 가리킨다.
+
+[HARD] **이 절은 좁힘이 옳다고 주장하지 않는다.** 판정은 sync phase 감사의 것이다 — 아래 두 절은 감사가 「REQ 에 근거한 수리」와 「결과에 맞춘 재단」을 스스로 가르는 데 필요한 것만 제시한다. 감사가 후자로 판정하면 이 좁힘은 되돌려지고 두 `paths:` 값이 이 카드 안에서 고쳐진다(리드 판정 2026-09-26).
+
+**[개정 — 리드 판정 2026-09-26] 종전 Given 을 축자 보존한다.**
+
+- 종전 Given: **Given** 이 SPEC 이 **수정한** 각 companion 파일에 대해,
+- 폐기 사유(한 줄): 발동 조건이 「수정」이어서 **REQ-ALD2-004 의 When(「옮겨질 때」)이 발화하지 않은 파일까지** 판정 대상에 넣었다.
+- 같은 결함 모양을 AC-ALD2-003 이 iter6 **D16** 에서 이미 한 번 좁혔다(`card-created` 한정어). 그때는 승계 hunk 가, 여기서는 옮김이 없던 파일이 대상에 들어와 있었다.
+
+#### §AC-ALD2-006.2 좁힘의 근거 — REQ 의 When 과 AC 의 Given 을 나란히 놓는다
+
+| 층 | 문언 | 발동 조건 |
+|---|---|---|
+| `spec.md` REQ-ALD2-004 | 「**When** 한 절이 stub 에서 companion 으로 **옮겨질 때**, the companion shall `paths:` 를 domain-keyed 로 선언한다」 | 절의 **이동** |
+| 종전 AC-ALD2-006 Given | 「이 SPEC 이 **수정한** 각 companion 파일」 | 파일의 **수정** |
+
+수정은 이동을 포함하므로 종전 Given 은 REQ 의 When 을 **진부분집합으로 포함한다** — 즉 이 AC 는 쓰인 날부터 자기 REQ 보다 넓었다. `§D.2` 추적성 표가 `REQ-ALD2-004 → AC-ALD2-006` 을 일대일로 적고 있으므로, 넓은 쪽은 추적성 표가 주장하는 대응을 초과해 판정한다.
+
+[HARD] **이 불일치는 측정보다 앞서 존재했다 — 그 사실이 감사가 재단과 수리를 가르는 자리다.** 두 문언 모두 이 카드의 **plan phase** 산출물이며(`spec.md` REQ-ALD2-004 은 0.1.0 부터 문구 불변, AC-ALD2-006 Given 도 이 개정 전까지 불변), 측정은 run phase 기록 종결 시점이다. 감사가 이것을 직접 확인하는 명령:
+
+```bash
+git log --oneline -L '/REQ-ALD2-004/,+1:.moai/specs/SPEC-ALWAYS-LOADED-DIET-002/spec.md'
+git log --oneline -- .moai/specs/SPEC-ALWAYS-LOADED-DIET-002/acceptance.md
+```
+
+#### §AC-ALD2-006.3 감사가 재실행할 수 있는 증거 — 두 파일에 무엇을 했는가
+
+[HARD] **두 파일에 대해 REQ-ALD2-004 의 When 은 발화하지 않았다.** 이 카드는 두 파일에 절을 옮겨 넣지 않았고 **각각 한 줄의 앵커 수리**만 했다. 판정 ref 는 `13e6adb1b`(이 개정 직전 HEAD), 기준선 ref 는 `172ef22eb`.
+
+```bash
+git diff --stat 172ef22eb 13e6adb1b -- \
+  .claude/rules/moai/core/verification-claim-integrity-detail.md \
+  .claude/rules/moai/workflow/session-handoff-examples.md
+# 이 실행의 출력: 두 파일 각 `2 +-` (2 files changed, 2 insertions(+), 2 deletions(-))
+```
+
+이 실행에서 관측한 두 수리의 내용: `verification-claim-integrity-detail.md` 는 교차참조 대상을 `agent-common-protocol.md` → `agent-common-protocol-reference.md` 로, `session-handoff-examples.md` 는 `session-handoff.md` → `session-handoff-format.md` 로 바꾼 것뿐이다. 둘 다 이 카드가 만든 분리로 **목적지가 옮겨간 앵커를 따라간 것**이며, 절의 유입이 아니다.
+
+그리고 두 `paths:` 값은 **기준선에서 바이트 동일**하다 — 이 카드가 만든 값이 아니다.
+
+```bash
+git show 172ef22eb:.claude/rules/moai/core/verification-claim-integrity-detail.md | grep -m1 '^paths:'
+grep -m1 '^paths:' .claude/rules/moai/core/verification-claim-integrity-detail.md
+# 이 실행의 출력: 두 줄 모두 `paths: "**/verification-claim-integrity*.md"`
+git show 172ef22eb:.claude/rules/moai/workflow/session-handoff-examples.md | grep -m1 '^paths:'
+grep -m1 '^paths:' .claude/rules/moai/workflow/session-handoff-examples.md
+# 이 실행의 출력: 두 줄 모두 `paths: "**/session-handoff.md"`
+```
+
+**좁힌 Given 이 공허해지지 않는다는 것도 함께 적는다** — 대상이 비면 기준은 무엇으로도 통과한다. 이 실행에서 `git diff --numstat 172ef22eb 13e6adb1b -- .claude/rules/moai/` 를 읽어 센 결과, 절의 유입으로 순증한 companion 은 **11개**다: `agent-common-protocol-reference`(117/1) · `askuser-protocol-reference`(81/1) · `session-handoff-format`(67/0, 신규) · `context-window-management-detail`(51/0) · `cross-session-messaging-detail`(51/0) · `kanban-dispatch-mechanics`(47/0, 신규) · `moai-mcp-tools-catalogue`(45/0) · `main-checkout-branch-guard-detail`(38/0) · `native-idiom-and-register-detail`(28/0) · `skill-routing-detail`(13/0) · `goal-directive-detail`(10/0). 좁힌 뒤에도 그 11개가 판정 대상으로 남는다. 반대쪽 끝에서 `1/1` 인 companion 넷(`verification-claim-integrity-detail` · `session-handoff-examples` · `cache-aware-execution-reference` · `kanban-dispatch-detail`)은 유입이 없다 — 앞 둘이 이 절이 다루는 두 파일이다.
+
+재측정은 run phase 소유자의 다음 실행이며 **이 개정 커밋은 재측정을 담지 않는다**(`verification-claim-integrity.md §2.3` — 순서는 커밋 그래프만이 증언한다).
+
+#### §AC-ALD2-006.4 Gap — self-keyed 2건은 선존 결함이며 후속 후보로 남는다
+
+[HARD] **이 좁힘은 두 `paths:` 값을 고치지 않고, 그 값이 괜찮다고도 말하지 않는다.** 둘은 판정 대상에서 내려오지만 결함으로 남는다.
+
+- 실제 귀결: self-keyed companion 은 **부모 룰을 편집할 때만** 로드되므로, 그 부모 룰이 지배하는 **작업 세션에는 도달하지 않는다.** `verification-claim-integrity-detail.md` 는 증거 보고를 작성하는 턴에, `session-handoff-examples.md` 는 핸드오프 블록을 렌더하는 턴에 각각 로드되어야 하는데, 현재 값으로는 그 턴에 도달하지 않는다.
+- 발행은 이 에이전트의 소관이 아니다 — 운영자와 리드가 정한다. 여기서는 후속 후보로 이름만 남긴다.
+- 같은 후속이 `design.md` 가 열거한 self-keyed 목적지 전체와 함께 다뤄질 수 있다. 그 열거는 이 카드 시점에 self-keyed **5개**를 셌고, 이 실행에서 `grep -m1 '^paths:'` 로 다시 읽으면 **3개가 domain-keyed 로 넓혀져 있다**: `agent-common-protocol-reference`(절 유입 117/1) · `askuser-protocol-reference`(81/1) · `cache-aware-execution-reference`(**유입 1/1 — 넓힌 줄이 그 한 줄이며, 절은 옮겨 들어오지 않았다**). 즉 넓힘은 좁힌 Given 이 요구하는 범위보다 **넓게** 수행됐고, 남은 2개가 위 둘이다.
 
 ---
 
@@ -569,7 +639,7 @@ find .claude/rules/moai -name '*.md' -exec wc -m {} + \
 | REQ-ALD2-001 | AC-ALD2-001 (**측정·기록만** — 「150,000 미만」의 충족은 검증하지 않는다. `A_adm` 미측정 때문이며, 미달은 채무로 기록된다. `spec.md` REQ-ALD2-001 의 개정 2 주석과 §AC-ALD2-001.3) |
 | REQ-ALD2-002 | AC-ALD2-002 |
 | REQ-ALD2-003 | AC-ALD2-002 |
-| REQ-ALD2-004 | AC-ALD2-006 |
+| REQ-ALD2-004 | AC-ALD2-006 (**발동 조건이 정렬됐다** — AC 의 Given 이 「수정한」에서 「한 절을 옮겨 넣은」으로 좁혀져 REQ 의 When(「옮겨질 때」)과 같아졌다. 좁힘의 경위·근거·Gap 은 `§AC-ALD2-006.1`~`.4`; 좁혀도 대상은 companion 11개로 비지 않는다) |
 | REQ-ALD2-005 | AC-ALD2-007 |
 | REQ-ALD2-006 | AC-ALD2-008 |
 | REQ-ALD2-007 | AC-ALD2-003 (개정 2 로 **양쪽 문구가 정렬됐다** — REQ 는 「만든 구조 변경의 미러 + 남는 분기는 허용 클래스로 설명」, AC 는 그것을 card-created hunk 분류로 판정한다. 종전에는 REQ 가 `diff` 0 을 요구하고 AC 가 그것을 검증하지 않았다) |
