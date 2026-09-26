@@ -93,6 +93,33 @@ func TestResolvedEvidenceRecordReopensOnlyOnNewEvidence(t *testing.T) {
 	})
 }
 
+// Re-audit N1: the class 7 audit_retries count is re-derived from the audit
+// files at every commit. A resolved budget record re-opens only when the
+// per-kind count actually rises; an unchanged count at the next commit is not
+// a new observation. A higher count still re-trips as -2.
+func TestResolvedAuditRetriesBudgetReopensOnlyOnHigherCount(t *testing.T) {
+	isolateStore(t)
+	w := armedWith(t, "t9001", budgetEdit("40", "0"), "")
+	s := contractSettings(t, w)
+	w.Write(".moai/reports/t9001/plan-audit-iter1.md", "Verdict: PASS\n")
+	w.Write(".moai/reports/t9001/plan-audit-iter2.md", "Verdict: PASS\n")
+	commitCheckpoint(s, w)
+	if n := openCount(t, w, escalation.ClassBudgetExceeded); n != 1 {
+		t.Fatalf("budget_open=%d after the first checkpoint, want 1 (records %v)", n, records(t, w))
+	}
+	resolveAll(t, w, escalation.ClassBudgetExceeded)
+	commitCheckpoint(s, w)
+	if n := openCount(t, w, escalation.ClassBudgetExceeded); n != 0 {
+		t.Errorf("open_after_resolve_and_recommit=%d, want 0 (records %v)", n, records(t, w))
+	}
+	// A genuinely higher count: a third iteration of the same kind.
+	w.Write(".moai/reports/t9001/plan-audit-iter3.md", "Verdict: PASS\n")
+	commitCheckpoint(s, w)
+	if !anySuffix(records(t, w), "-2.md") || openCount(t, w, escalation.ClassBudgetExceeded) != 1 {
+		t.Errorf("higher count did not re-trip as -2: %v", records(t, w))
+	}
+}
+
 // anySuffix reports whether any name ends with suffix.
 func anySuffix(names []string, suffix string) bool {
 	for _, n := range names {

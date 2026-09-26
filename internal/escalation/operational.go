@@ -293,7 +293,14 @@ func (r *run) classAuditCap() {
 	}
 	slices.Sort(kinds)
 	for _, k := range kinds {
-		r.budgetTrip("audit_retries", perKind[k]-1, retries, ref)
+		// The count is re-derived from files at every commit; only a count
+		// not yet observed for this kind is new evidence (re-audit N1).
+		observed := perKind[k] - 1
+		if observed <= retries || !r.freshEvidence(ClassBudgetExceeded,
+			Fingerprint(ClassBudgetExceeded, "audit_retries"), "kind:"+k, []byte(strconv.Itoa(observed))) {
+			continue
+		}
+		r.budgetTrip("audit_retries", observed, retries, ref)
 	}
 }
 
