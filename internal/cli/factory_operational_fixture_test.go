@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -147,12 +148,15 @@ func TestFactoryOperationalFixtureUsesProductionInit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Codex UserPromptSubmit process boundary: %v: %s", err, hookOut)
 	}
-	if !bytes.Contains(hookOut, []byte("factory messaging bound")) {
-		t.Fatalf("Codex UserPromptSubmit did not run built binding path: %s", hookOut)
+	// A --harness codex hook is a Codex session's, never a Claude lane's: across
+	// the real process boundary it binds no factory peer even though its
+	// environment carries a lead lane's identity and a launch-pending lead
+	// endpoint is waiting (SPEC-CODEX-FACTORY-RETIRE-001 REQ-CFR-022).
+	if bytes.Contains(hookOut, []byte("factory messaging bound")) {
+		t.Fatalf("Codex UserPromptSubmit bound a factory peer: %s", hookOut)
 	}
-	bound, err := store.ResolveLane(context.Background(), "lead")
-	if err != nil || bound.SessionUUID != "01a0c977-bdb7-7013-81e2-3bc3a96269c3" {
-		t.Fatalf("process-boundary bind=%+v err=%v output=%s", bound, err, hookOut)
+	if _, err := store.ResolveLane(context.Background(), "lead"); !errors.Is(err, factorymsg.ErrEndpointLaunchPending) {
+		t.Fatalf("lead endpoint after the codex hook = %v, want still launch-pending; output=%s", err, hookOut)
 	}
 }
 

@@ -250,9 +250,36 @@ func enterSelectedFactoryRun(root, explicit string, requireActive bool) (func(),
 	if err != nil {
 		return func() {}, err
 	}
+	if err := refuseCodexLedRun(root, runID); err != nil {
+		return func() {}, err
+	}
 	restore := captureEnvState(config.EnvMoaiKanbanID)
 	_ = os.Setenv(config.EnvMoaiKanbanID, runID)
 	return restore, nil
+}
+
+// refuseCodexLedRun refuses a selected run whose recorded lead backend is
+// codex (SPEC-CODEX-FACTORY-RETIRE-001 REQ-CFR-010). The codex factory path is
+// retired, so such a run is left over from before the retirement: joining it
+// would make a worker of a lead that no longer exists, and adopting it with a
+// claude lead would re-own it silently. It runs before any registry claim or
+// run-row write; every other backend passes unchanged (REQ-CFR-011).
+func refuseCodexLedRun(root, runID string) (err error) {
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return err
+	}
+	defer closeFactoryInto(&err, db, "factory state")
+	var backend string
+	if err := db.DB.QueryRowContext(context.Background(), `SELECT lead_backend FROM runs WHERE run_id=?`, runID).Scan(&backend); err != nil {
+		return fmt.Errorf("read factory run %s lead backend: %w", runID, err)
+	}
+	if backend != BackendCodex {
+		return nil
+	}
+	return fmt.Errorf("%s: factory run %s is led by %s, and the codex factory path is retired; "+
+		"it cannot be joined or adopted — retire it with 'moai factory runs --retire %s', then start a new run with 'moai cc -f' or 'moai glm -f'",
+		factoryUnsupportedBackendSentinel, runID, BackendCodex, runID)
 }
 
 func recordFactoryRunStart(root, runID, backend, specID string) (err error) {
