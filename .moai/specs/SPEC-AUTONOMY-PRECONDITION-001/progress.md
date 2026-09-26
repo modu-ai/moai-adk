@@ -201,6 +201,145 @@ fixture-based and fully exercisable without the resolver (acceptance.md §G:
 fixture-expressible because the real derivation folds the field into the
 action's presence (`internal/contract/derived.go` `fillDerived`).
 
+### M2 — Contract-sign and contract-decide guard (REQ-AP-003, REQ-AP-004, REQ-AP-005, REQ-AP-009 .. REQ-AP-013; design.md §C)
+
+Implemented in `internal/hook/contract_sign_guard.go` (+
+`contract_sign_guard_test.go`, `contract_sign_guard_units_test.go`;
+call-site wiring added to `internal/hook/pre_tool.go` PreToolUse after the
+push-serializer block; one exclusion row added to
+`internal/hook/hmp_source_guard_test.go` `hmpGoLiteralExclusions`). Constants
+in `internal/config/envkeys.go` (`EnvFactoryRole`, `FactoryRoleWorker`,
+REQ-AP-012); REQ-AP-013 pins in `internal/cli/factory_role_pin_test.go` and
+`internal/kanban/factory_label_pin_test.go`. Measured 2026-09-26 by the M2
+run lane, branch `WT-push-serialize-sign` (M2 commits follow `7fa7c9bb1`).
+
+Milestone-internal order held: the REQ-AP-012 constants landed before the
+role-scoped rule and its tests read them (plan.md §F M2); the value is
+`worker` (operator-confirmed), and the retired alias `agent` is rejected by
+construction (equality against the constant) and asserted by the AC-AP-018
+alias limbs.
+
+- **E8 — RED evidence (verbatim, captured BEFORE any implementation existed):**
+
+  ```
+  $ go test ./internal/config/ -run TestFactoryRoleEnvConstant
+  internal/config/envkeys_factory_role_test.go:27:5: undefined: EnvFactoryRole
+  internal/config/envkeys_factory_role_test.go:28:44: undefined: EnvFactoryRole
+  internal/config/envkeys_factory_role_test.go:30:5: undefined: FactoryRoleWorker
+  internal/config/envkeys_factory_role_test.go:32:4: undefined: FactoryRoleWorker
+  FAIL    github.com/modu-ai/moai-adk/internal/config [build failed]
+  $ go test ./internal/cli/ -run TestFactoryRoleTokenPinsGuardConstant
+  internal/cli/factory_role_pin_test.go:24:38: undefined: config.FactoryRoleWorker
+  ... (4 rows) ...
+  FAIL    github.com/modu-ai/moai-adk/internal/cli [build failed]
+  $ go test ./internal/kanban/ -run TestFactoryLabelPrefixPinsGuardConstant
+  internal/kanban/factory_label_pin_test.go:22:22: undefined: config.FactoryRoleWorker
+  ... (4 rows) ...
+  FAIL    github.com/modu-ai/moai-adk/internal/kanban [build failed]
+  $ go test ./internal/hook/ -run 'TestContractSign|TestContractRole'
+  internal/hook/contract_sign_guard_test.go:74:23: undefined: checkContractSign
+  internal/hook/contract_sign_guard_test.go:80:73: undefined: contractSignViolationPrefix
+  ... (12+ rows) ...
+  FAIL    github.com/modu-ai/moai-adk/internal/hook [build failed]
+  ```
+
+  The named AC tests were written first; the API and constants they name did
+  not exist. (AC-AP-018's pin assertions pass at birth by design — their
+  RED-now was the plan-phase absence of the assertion itself; the
+  discriminator is the mutation probe below.)
+
+- **E1 — AC matrix** (commands: `go test ./internal/hook/ -run
+  'TestContractSign|TestContractRole' -v`; `go test ./internal/config/ -run
+  TestFactoryRoleEnvConstant`; `go test ./internal/cli/ -run
+  TestFactoryRoleTokenPinsGuardConstant`; `go test ./internal/kanban/ -run
+  TestFactoryLabelPrefixPinsGuardConstant` — this run, this tree):
+
+  | AC | Test | Result |
+  |----|------|--------|
+  | AC-AP-005 | `TestContractSignAgentInvocationDenied` (11 shapes, count limb) | `--- PASS: TestContractSignAgentInvocationDenied (0.00s)` |
+  | AC-AP-006 | `TestContractSignPositiveControlsAllowed` (5 controls + armed deny) | `--- PASS: TestContractSignPositiveControlsAllowed (0.00s)` |
+  | AC-AP-007 | `TestContractSignUnclassifiedDeniedClosed` (4 shapes + `unclassified` token) | `--- PASS: TestContractSignUnclassifiedDeniedClosed (0.00s)` |
+  | AC-AP-008 | `TestContractSignDeniedBeforeVerbExists` (stub precondition FIRST, then sign + decide denies) | `--- PASS: TestContractSignDeniedBeforeVerbExists (0.24s)` |
+  | AC-AP-015 | `TestContractRoleScopedDenyUnderWorkerMarker` (6 shapes, eval `unclassified`) | `--- PASS: TestContractRoleScopedDenyUnderWorkerMarker (0.00s)` |
+  | AC-AP-016 | `TestContractRoleScopedAllowWithoutWorkerMarker` (2 runs × 6 allows + 2 armed human-path denies) | `--- PASS: TestContractRoleScopedAllowWithoutWorkerMarker (0.00s)` |
+  | AC-AP-017 | `TestFactoryRoleEnvConstant` (constants + literal-free hook + env-read closure) | `ok github.com/modu-ai/moai-adk/internal/config` |
+  | AC-AP-018 | `TestFactoryRoleTokenPinsGuardConstant` / `TestFactoryLabelPrefixPinsGuardConstant` (each asserts equality with its carrier AND inequality with every retired alias) | `ok internal/cli` · `ok internal/kanban` |
+  | AC-AP-009 | `TestContractSignWrapperBypassesDenied` (8 wrappers, resolved-program limb) | `--- PASS: TestContractSignWrapperBypassesDenied (0.00s)` |
+  | AC-AP-010 | `TestContractSignUnknownWrapperFailsClosed` (chrt → unclassified deny) | `--- PASS: TestContractSignUnknownWrapperFailsClosed (0.00s)` |
+
+- **AC-AP-010 mutation limb — OBSERVED (run-phase requirement, acceptance.md
+  §C):** the unknown-wrapper branch of `classifyContractWords` was removed
+  (mutant applied to the working tree), and the flip was observed:
+
+  ```
+  --- PASS: TestContractSignWrapperBypassesDenied (0.00s)
+      contract_sign_guard_test.go:323: chrt 0 moai contract sign: decision = "" reason = "", want the deny sentinel
+  --- FAIL: TestContractSignUnknownWrapperFailsClosed (0.00s)
+  ```
+
+  The chrt case flipped denied → allowed while the closed-list wrapper cases
+  stayed denied (AC-AP-009 green) — the criterion is not satisfied by the
+  closed list alone. Original restored; full suite re-run green after
+  restoration.
+
+- **E2 — builds:** `go build ./...` → exit 0 (`BUILD_OK`);
+  `GOOS=windows GOARCH=amd64 go build ./...` → exit 0 (`BUILD_OK_WINDOWS`) —
+  re-measured after all M2 edits.
+- **E3 — coverage:** `internal/hook` FULL suite →
+  `ok github.com/modu-ai/moai-adk/internal/hook 261.692s coverage: 85.8% of
+  statements` (≥85%). The new guard file per-function
+  (`-coverprofile` over the guard + units tests): every function ≥85.2%,
+  18-function average 93.8% (`checkContractSign` 100%,
+  `classifyContractWords` 85.2%, wrapper skippers 87.5-90%). `internal/config`
+  package coverage 82.8% — PRE-EXISTING baseline, not moved by this change:
+  the M2 diff to `envkeys.go` adds two constants (zero executable
+  statements), and the pin/package tests added no production code. Recorded
+  as an attributed Gap against the 85% package gate, not a PASS.
+- **E4 — subagent boundary:** `grep -rn 'AskUserQuestion|/mcp__askuser'
+  internal/hook/contract_sign_guard.go contract_sign_guard_test.go
+  contract_sign_guard_units_test.go internal/config/envkeys.go
+  internal/cli/factory_role_pin_test.go internal/kanban/factory_label_pin_test.go`
+  → 0 rows. The pre-existing `pre_tool.go` `AskUserQuestion` observer rows
+  (HEAD lines 27/32/713) are untouched by the +21-line wiring insertion.
+- **E5 — lint:** `golangci-lint run --timeout=2m` → `0 issues.` — identical
+  to the pre-change baseline measured in pre-flight. One test-time defect was
+  caught and fixed during the milestone: the full `internal/hook` suite
+  initially FAILED `TestHMPSourceGuardGoLiterals` (the guard's `bash` is a
+  shell program name inside parsed command text, not a `tool_name` branch);
+  resolved through the HMP guard's own `hmpGoLiteralExclusions` extension
+  point with a stated reason — no production change, no exclusion weakening
+  beyond the one designed row.
+- **E6 — commits:** two M2 commits follow `7fa7c9bb1` on
+  `WT-push-serialize-sign` (constants+pins; guard+tests+wiring), plus the
+  §E.2 evidence commit carrying this section. No push (lane mode: push is the
+  lead's).
+- **E7 — blockers:** none. Notes below.
+
+**Design notes (recorded per design.md §E).**
+
+1. **`script -c CMD` is a `-c` payload, not a skipped option.** design.md
+   §C.3 lists `-c CMD` among script's own options, but skipping it outright
+   would silently DROP the command string (a false allow — the wrong
+   direction for §C). The guard parses CMD as a one-level `-c` payload, the
+   fail-closed reading of the same row; `script -q /dev/null moai contract
+   sign` (the AC-AP-009 fixture) follows the operand path as designed.
+2. **Unknown `--signer` values fail closed.** design.md §C.2 step 6 is
+   exhaustive over `human` / `llm` / `llm+jev`; a signer value outside A1's
+   closed decider set cannot be shown to be off the agent paths, so it is
+   denied with the unclassified mark (design.md §C.6 direction).
+3. **The wired guard is ACTIVE in production for the human path.** Unlike M1
+   (whose activation waits on the contract resolver), the human-path deny has
+   no external precondition: it denies from the moment this commit is
+   present. The role-gated half remains nominal until card t1240 stamps
+   `MOAI_FACTORY_ROLE` — spec.md §F O5 / §E C7 carry that residual; nothing
+   here compensates for it.
+4. **`internal/cli` suite timeout (load, not defect).** The first
+   `go test ./internal/cli/` run panicked with
+   `test timed out after 10m0s` and ZERO individual test failures — the
+   package's known contention profile (gitflow lane protocol §8). Re-run
+   under a slot lease with `-timeout 22m` → `ok ... 1015.058s`, zero
+   failures. The verdict surface remains CI.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
