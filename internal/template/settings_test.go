@@ -60,12 +60,16 @@ func TestSettingsTemplateDenyWildcardSyntax(t *testing.T) {
 	want := []string{
 		"Bash(rm -rf /\\* *)",
 		"Bash(rm -rf ~/\\* *)",
-		"Bash(rm -rf C\\:/\\* *)",
+		"Bash(rm -rf C:/:*)",
+		"Bash(rm -rf C:/\\* *)",
+		"Bash(del /S /Q C:/:*)",
+		"Bash(rmdir /S /Q C:/:*)",
+		"Bash(Remove-Item -Recurse -Force C:/:*)",
 	}
 	widened := []string{
 		"Bash(rm -rf /*)",
 		"Bash(rm -rf ~/*)",
-		"Bash(rm -rf C\\:/*)",
+		"Bash(rm -rf C:/*)",
 	}
 	for _, platform := range []string{"darwin", "linux", "windows"} {
 		t.Run(platform, func(t *testing.T) {
@@ -84,6 +88,11 @@ func TestSettingsTemplateDenyWildcardSyntax(t *testing.T) {
 				if strings.HasPrefix(rule, "Bash(") && strings.HasSuffix(rule, ":*)") &&
 					strings.Contains(strings.TrimSuffix(rule, ":*)"), "*") {
 					t.Errorf("Bash deny rule mixes wildcard with legacy prefix syntax: %q", rule)
+				}
+				// Claude Code does not unescape "\:"; the backslash is matched
+				// literally, so a real "C:/" command never matches the rule.
+				if strings.HasPrefix(rule, "Bash(") && strings.Contains(rule, "\\:") {
+					t.Errorf("Bash deny rule escapes ':' and cannot match a real drive path: %q", rule)
 				}
 			}
 			for _, rule := range want {
