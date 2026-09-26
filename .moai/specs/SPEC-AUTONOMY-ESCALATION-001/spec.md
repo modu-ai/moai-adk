@@ -2,7 +2,7 @@
 id: SPEC-AUTONOMY-ESCALATION-001
 title: "Contract-mode escalation detector: mechanical detection of the six escalate_on classes plus operational trips, reported as an escalation record without blocking or mutating the queue"
 version: "0.4.3"
-status: draft
+status: in-progress
 created: 2026-09-26
 updated: 2026-09-26
 author: manager-spec
