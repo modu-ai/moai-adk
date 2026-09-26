@@ -78,6 +78,58 @@ exercises the hook path); resolver audit lines are returned, not persisted (the 
 M2); an unreadable `card` field is a warning, not a claimant; an out-of-set `new_api_detector`
 falls back to `graph` with a warning; config cache schema bumped 7 → 8.
 
+### M2 — Record writer, state file, fault handling, acceptance-change, first observation (cycle tdd)
+
+Commit: `f56e9c28d`. Same env-scrub prefix on every command. Raw outputs:
+`.moai/reports/t1235/run-m2/` (gitignored). `acceptance.md` unchanged, so `./internal/spec` was
+not in scope.
+
+| AC | Test (package) | Command | Actual output | HEAD | Status |
+|---|---|---|---|---|---|
+| AC-AE-005 | `TestFaultIsNotChecked` (`internal/escalation`) | `go test -count=1 ./internal/escalation -run '^(TestFaultIsNotChecked\|TestAcceptanceChangeTrips\|TestRecordPathAndQueueUntouched\|TestRecordFrontmatterParses\|TestRecordDedupAndRetripAfterResolve)$' -v` | `--- PASS: TestFaultIsNotChecked (0.01s)` | `f56e9c28d` | PASS (skipped on Windows: file modes) |
+| AC-AE-006 | `TestAcceptanceChangeTrips` (`internal/escalation`) | same invocation | `--- PASS: TestAcceptanceChangeTrips (0.09s)` | `f56e9c28d` | PASS |
+| AC-AE-021 | `TestRecordPathAndQueueUntouched` (`internal/escalation`) | same invocation | `--- PASS: TestRecordPathAndQueueUntouched (0.05s)` | `f56e9c28d` | PASS (now through `WriteRecord`) |
+| AC-AE-022 | `TestRecordFrontmatterParses` (`internal/escalation`) | same invocation | `--- PASS: TestRecordFrontmatterParses (0.01s)` | `f56e9c28d` | PASS |
+| AC-AE-023 | `TestRecordDedupAndRetripAfterResolve` (`internal/escalation`) | same invocation | `--- PASS: TestRecordDedupAndRetripAfterResolve (0.00s)` / `ok github.com/modu-ai/moai-adk/internal/escalation 0.521s` | `f56e9c28d` | PASS |
+| AC-AE-025 | `TestFirstObservationVerifiedAtPreToolUse` (`internal/hook`) | `go test -count=1 ./internal/hook -run '^(TestFirstObservationVerifiedAtPreToolUse\|TestEscalationGuidedGolden)$' -v` | `--- PASS: TestFirstObservationVerifiedAtPreToolUse (0.32s)` | `f56e9c28d` | PASS (subprocess clause measured as "no process beyond the guided baseline"; see decisions) |
+| AC-AE-001 | `TestEscalationGuidedGolden` (`internal/hook`) | same invocation | `--- PASS: TestEscalationGuidedGolden (0.41s)` / `ok github.com/modu-ai/moai-adk/internal/hook 1.606s` | `f56e9c28d` | PASS, golden file unchanged since `b1e2d163e` |
+
+AC-AE-001 is now a live guard: with `Active` mutated to return true, the run failed —
+`escalation_guided_golden_test.go:150: escalation directory present: …/db/t9001-74c053d1/contract/escalation`
+(exit 1); file restored before commit.
+
+RED before GREEN (E8): compile RED `internal/escalation/detector_test.go:30:67: undefined: escalation.CardLog`,
+`internal/hook/escalation_first_observation_test.go:47:10: undefined: WithEscalationConfig` (exit 1);
+hook assertion RED with the package implemented but not wired —
+`escalation_first_observation_test.go:123: log = [], want one not-armed and one warning carrying plan_audit_not_passing`,
+`:136: records = [], want one budget-exceeded`, `:165: card not armed on first observation: []`,
+`--- FAIL: TestFirstObservationVerifiedAtPreToolUse` (exit 1).
+
+Other E-items at `f56e9c28d` tree:
+- E2: `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `GOOS=darwin GOARCH=arm64 go build ./...` exit 0; `GOOS=linux GOARCH=amd64 go build ./...` exit 0.
+- E3: `go test -count=1 -race -cover ./internal/escalation/` → `coverage: 85.5% of statements`;
+  `go test -count=1 -cover ./internal/hook/` (whole package, under `moai slot` lease `go-test-hook`) → `ok … 267.668s coverage: 86.1% of statements`.
+- Neighbours: `./internal/homestate/` ok, `./internal/config/` ok, `internal/kanban` `TestTodoHistoryAddsNoSchemaChange` PASS, 15 targeted `internal/cli` hook/deps tests PASS.
+- E4: `grep -rn "AskUserQuestion\|mcp__askuser" internal/escalation/ internal/hook/escalation_observe.go` exit 1.
+- E5: `golangci-lint run --new-from-rev=be8e03897 ./internal/escalation/... ./internal/hook/... ./internal/homestate/... ./internal/cli/...` → `0 issues.`
+
+M2 decisions (SPEC/plan-recommended options; none user-visible under the default `guided`):
+- AC-AE-025 "no subprocess started by the hook process": existing PreToolUse Write steps already
+  start git (guided baseline measured: 2 invocations), so the literal clause is red for reasons
+  this SPEC does not touch. Measured instead as zero invocations added by the detector (contract
+  count − guided count = 0) plus a direct `escalation.Observe` call starting none (C4/B-5 intent).
+- AC-AE-025 (a) and (b) need class 7 and class 3 before M5/M3: M2 ships the operations
+  dimension of class 7 and the inside-root class 3 predicate (exempting `.moai/reports/<card>/`,
+  `.moai/state/`, `ownership.scratch`); outside-root writes, the contract-store rule, and the
+  remaining exemptions stay M3.
+- AC-AE-006 needs a `detection-disarmed` record: M2 implements disarm for `contract-absent` and
+  `signature-invalid`; `terminal-status`, `card-mismatch`, `state-tamper` stay M5.
+- Contract store resolved from `.git` files without git; separate/bare/submodule layouts are a
+  fault (nothing arms). `homestate.ProjectKeyForCanonicalRoot` added so the key formula is shared.
+- Production PostToolUse had no config provider; `WithEscalationConfig` supplies one without
+  changing the handler's `lint_as_instruction` nil-config default (one line in `internal/cli/deps.go`).
+- Q5: class 5 is M5; no CI producer is consumed in M2.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
