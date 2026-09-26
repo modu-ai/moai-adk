@@ -34,6 +34,43 @@ var hookCmd = &cobra.Command{
 	Long:    "Execute Claude Code hook event handlers. Called by Claude Code settings.json hook configuration.",
 }
 
+// hookEventSubcommands maps each `moai hook <subcommand>` that dispatches
+// through runHookEvent to the event it handles. It is package-level so tests
+// can derive the observation-event set from the same table the dispatcher is
+// built from rather than restating it.
+var hookEventSubcommands = []struct {
+	use   string
+	short string
+	event hook.EventType
+}{
+	{"session-start", "Handle session start event", hook.EventSessionStart},
+	{"pre-tool", "Handle pre-tool-use event", hook.EventPreToolUse},
+	{"post-tool", "Handle post-tool-use event", hook.EventPostToolUse},
+	{"session-end", "Handle session end event", hook.EventSessionEnd},
+	{"stop", "Handle stop event", hook.EventStop},
+	{"compact", "Handle pre-compact event", hook.EventPreCompact},
+	{"post-tool-failure", "Handle post-tool-use failure event", hook.EventPostToolUseFailure},
+	{"notification", "Handle notification event", hook.EventNotification},
+	{"subagent-start", "Handle subagent start event", hook.EventSubagentStart},
+	{"user-prompt-submit", "Handle user prompt submit event", hook.EventUserPromptSubmit},
+	{"permission-request", "Handle permission request event", hook.EventPermissionRequest},
+	{"teammate-idle", "Handle teammate idle event", hook.EventTeammateIdle},
+	{"task-completed", "Handle task completed event", hook.EventTaskCompleted},
+	{"subagent-stop", "Handle subagent stop event", hook.EventSubagentStop},
+	{"worktree-create", "Handle worktree create event", hook.EventWorktreeCreate},
+	{"worktree-remove", "Handle worktree remove event", hook.EventWorktreeRemove},
+	{"post-compact", "Handle post-compact event", hook.EventPostCompact},
+	{"instructions-loaded", "Handle instructions loaded event", hook.EventInstructionsLoaded},
+	{"stop-failure", "Handle stop failure event", hook.EventStopFailure},
+	{"config-change", "Handle config change event", hook.EventConfigChange},
+	{"task-created", "Handle task created event", hook.EventTaskCreated},
+	{"cwd-changed", "Handle cwd changed event", hook.EventCwdChanged},
+	{"file-changed", "Handle file changed event", hook.EventFileChanged},
+	{"elicitation", "Handle MCP elicitation event", hook.EventElicitation},
+	{"elicitation-result", "Handle MCP elicitation result event", hook.EventElicitationResult},
+	{"permission-denied", "Handle permission denied event", hook.EventPermissionDenied},
+}
+
 func init() {
 	rootCmd.AddCommand(hookCmd)
 
@@ -44,39 +81,8 @@ func init() {
 	// behavior byte-for-byte.
 	hookCmd.PersistentFlags().String("harness", "", "Harness mode: claude (default) or codex (adapts dispatcher output through the codex hook adapter)")
 
-	// Register all hook subcommands
-	hookSubcommands := []struct {
-		use   string
-		short string
-		event hook.EventType
-	}{
-		{"session-start", "Handle session start event", hook.EventSessionStart},
-		{"pre-tool", "Handle pre-tool-use event", hook.EventPreToolUse},
-		{"post-tool", "Handle post-tool-use event", hook.EventPostToolUse},
-		{"session-end", "Handle session end event", hook.EventSessionEnd},
-		{"stop", "Handle stop event", hook.EventStop},
-		{"compact", "Handle pre-compact event", hook.EventPreCompact},
-		{"post-tool-failure", "Handle post-tool-use failure event", hook.EventPostToolUseFailure},
-		{"notification", "Handle notification event", hook.EventNotification},
-		{"subagent-start", "Handle subagent start event", hook.EventSubagentStart},
-		{"user-prompt-submit", "Handle user prompt submit event", hook.EventUserPromptSubmit},
-		{"permission-request", "Handle permission request event", hook.EventPermissionRequest},
-		{"teammate-idle", "Handle teammate idle event", hook.EventTeammateIdle},
-		{"task-completed", "Handle task completed event", hook.EventTaskCompleted},
-		{"subagent-stop", "Handle subagent stop event", hook.EventSubagentStop},
-		{"worktree-create", "Handle worktree create event", hook.EventWorktreeCreate},
-		{"worktree-remove", "Handle worktree remove event", hook.EventWorktreeRemove},
-		{"post-compact", "Handle post-compact event", hook.EventPostCompact},
-		{"instructions-loaded", "Handle instructions loaded event", hook.EventInstructionsLoaded},
-		{"stop-failure", "Handle stop failure event", hook.EventStopFailure},
-		{"config-change", "Handle config change event", hook.EventConfigChange},
-		{"task-created", "Handle task created event", hook.EventTaskCreated},
-		{"cwd-changed", "Handle cwd changed event", hook.EventCwdChanged},
-		{"file-changed", "Handle file changed event", hook.EventFileChanged},
-		{"elicitation", "Handle MCP elicitation event", hook.EventElicitation},
-		{"elicitation-result", "Handle MCP elicitation result event", hook.EventElicitationResult},
-		{"permission-denied", "Handle permission denied event", hook.EventPermissionDenied},
-	}
+	// Register all hook subcommands (the table is hookEventSubcommands).
+	hookSubcommands := hookEventSubcommands
 
 	for _, sub := range hookSubcommands {
 		event := sub.event // capture for closure
@@ -269,14 +275,25 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 		return fmt.Errorf("hook system not initialized")
 	}
 
-	input, err := deps.HookProtocol.ReadInput(os.Stdin)
+	// SPEC-CODEX-WIRING-001 (REQ-CW-007): the --harness codex runtime mode.
+	// Invalid values fail loud BEFORE any dispatch work — and, since
+	// SPEC-HOOK-STDIN-FAILCLOSED-001 REQ-HSF-005, before stdin is read, so a
+	// parse failure below always knows which harness it answers for.
+	harnessCodex, herr := harnessModeIsCodex(cmd)
+	if herr != nil {
+		return herr
+	}
+
+	stdin := &stdinByteCounter{r: os.Stdin}
+	input, err := deps.HookProtocol.ReadInput(stdin)
 	if err != nil {
-		// Malformed/truncated stdin JSON must NEVER fail the hook pipeline:
-		// a cobra error would print usage noise and exit 1, and the tool the
-		// hook observes would surface a spurious hook failure. Warn on stderr,
-		// emit the event's safe default output ({}), and exit 0.
-		_, _ = fmt.Fprintf(os.Stderr, "moai hook %s: invalid stdin JSON (%v); emitting default output\n", event, err)
-		return writeHookOutput(event, nil, &hook.HookOutput{})
+		// Malformed/truncated stdin JSON must NEVER fail the hook pipeline
+		// with usage noise and exit 1. An observation event keeps its safe
+		// default output; a decision-bearing event is denied fail-closed,
+		// because {} there lets every guard be skipped (SPEC-HOOK-STDIN-FAILCLOSED-001).
+		return answerStdinParseFailure(string(event), event, harnessCodex, stdin.n, err, func() error {
+			return writeHookOutput(event, nil, &hook.HookOutput{})
+		})
 	}
 
 	// Inject event name from CLI subcommand when Claude Code omits it.
@@ -284,15 +301,10 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 		input.HookEventName = string(event)
 	}
 
-	// SPEC-CODEX-WIRING-001 (REQ-CW-007): the --harness codex runtime mode.
-	// Invalid values fail loud BEFORE any dispatch work; codex mode then
-	// cross-checks the payload's hook_event_name against this subcommand via
-	// codexadapter.Resolve — a mismatch is the generated table and the runtime
-	// command disagreeing, and is refused with a diagnostic (nonzero exit).
-	harnessCodex, herr := harnessModeIsCodex(cmd)
-	if herr != nil {
-		return herr
-	}
+	// Codex mode cross-checks the payload's hook_event_name against this
+	// subcommand via codexadapter.Resolve — a mismatch is the generated table
+	// and the runtime command disagreeing, and is refused with a diagnostic
+	// (nonzero exit).
 	if harnessCodex {
 		if verr := validateCodexHarnessEvent(event, input); verr != nil {
 			return verr
@@ -457,32 +469,28 @@ func runAgentHook(cmd *cobra.Command, args []string) error {
 
 	action := args[0]
 
-	// Read hook input from stdin
-	input, err := deps.HookProtocol.ReadInput(os.Stdin)
-	if err != nil {
-		// Same graceful degradation as runHookEvent: warn + default output + exit 0.
-		_, _ = fmt.Fprintf(os.Stderr, "moai hook agent %s: invalid stdin JSON (%v); emitting default output\n", action, err)
-		if writeErr := deps.HookProtocol.WriteOutput(os.Stdout, &hook.HookOutput{}); writeErr != nil {
-			return fmt.Errorf("write hook output: %w", writeErr)
-		}
-		return nil
+	// The action's event and the harness mode need no stdin, so both are
+	// decided before it is read: an invalid --harness is refused on every
+	// action, and a parse failure knows what it answers for
+	// (SPEC-HOOK-STDIN-FAILCLOSED-001 REQ-HSF-005/014).
+	event := agentActionEvent(action)
+	harnessCodex, herr := harnessModeIsCodex(cmd)
+	if herr != nil {
+		return herr
 	}
 
-	// Determine the event type based on the action suffix
-	// PreToolUse: *-validation, *-pre-transformation, *-pre-implementation
-	// PostToolUse: *-verification, *-post-transformation, *-post-implementation
-	// SubagentStop: *-completion
-	var event hook.EventType
-	switch {
-	case endsWithAny(action, "-validation", "-pre-transformation", "-pre-implementation"):
-		event = hook.EventPreToolUse
-	case endsWithAny(action, "-verification", "-post-transformation", "-post-implementation"):
-		event = hook.EventPostToolUse
-	case endsWith(action, "-completion"):
-		event = hook.EventSubagentStop
-	default:
-		// Default to PreToolUse for unknown actions
-		event = hook.EventPreToolUse
+	// Read hook input from stdin
+	stdin := &stdinByteCounter{r: os.Stdin}
+	input, err := deps.HookProtocol.ReadInput(stdin)
+	if err != nil {
+		// Same handling as runHookEvent: a decision-mapped action is denied
+		// fail-closed; an observation-mapped action keeps the default output.
+		return answerStdinParseFailure("agent "+action, event, harnessCodex, stdin.n, err, func() error {
+			if writeErr := deps.HookProtocol.WriteOutput(os.Stdout, &hook.HookOutput{}); writeErr != nil {
+				return fmt.Errorf("write hook output: %w", writeErr)
+			}
+			return nil
+		})
 	}
 
 	ctx, cancel := context.WithTimeout(cmd.Context(), config.DefaultHookDispatcherTimeout)
@@ -510,6 +518,26 @@ func runAgentHook(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// agentActionEvent maps an agent hook action to the event it dispatches as,
+// by suffix. It needs no stdin, so it can run before the payload is read.
+//
+//	PreToolUse:   *-validation, *-pre-transformation, *-pre-implementation
+//	PostToolUse:  *-verification, *-post-transformation, *-post-implementation
+//	SubagentStop: *-completion
+func agentActionEvent(action string) hook.EventType {
+	switch {
+	case endsWithAny(action, "-validation", "-pre-transformation", "-pre-implementation"):
+		return hook.EventPreToolUse
+	case endsWithAny(action, "-verification", "-post-transformation", "-post-implementation"):
+		return hook.EventPostToolUse
+	case endsWith(action, "-completion"):
+		return hook.EventSubagentStop
+	default:
+		// Default to PreToolUse for unknown actions
+		return hook.EventPreToolUse
+	}
 }
 
 // endsWith checks if a string ends with any of the given suffixes.

@@ -26,8 +26,8 @@ func IsDecisionBearing(ev hook.EventType) bool {
 	return false
 }
 
-// @MX:ANCHOR: [AUTO] TranslateCodex is the single Codex rendering of a normalized decision — MapOutput (PreToolUse ask/defer) and the CLI fault path both route through it
-// @MX:REASON: [AUTO] fan_in=3 (normalizePreToolUseDecision, cli writeCodexFailClosed, AC-HPR-006/022 tests); a change here changes what every Codex deny, needs_input, and fault looks like to the host
+// @MX:ANCHOR: [AUTO] TranslateCodex is the single Codex rendering of a normalized decision — MapOutput (PreToolUse ask/defer), the CLI fault path, and the CLI stdin parse-failure path all route through it
+// @MX:REASON: [AUTO] fan_in=4 (normalizePreToolUseDecision, cli writeCodexFailClosed, cli writeFailClosedDeny, AC-HPR-006/022 tests); a change here changes what every Codex deny, needs_input, fault, and parse-failure deny looks like to the host
 // @MX:WARN: [AUTO] fail-closed boundary — returning the no-opinion {} or an allow for deny / needs_input / fatal_error lets Codex proceed under a non-prompting approval policy (REQ-HPR-007)
 // @MX:REASON: [AUTO] card t590 degraded ask to {} for parser compatibility; that loosening is exactly what this function exists to prevent (operator decision Q2)
 // @MX:SPEC: SPEC-DUAL-HARNESS-HOOK-PARITY-001
