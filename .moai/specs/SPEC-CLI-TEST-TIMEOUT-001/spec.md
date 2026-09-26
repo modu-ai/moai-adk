@@ -2,7 +2,7 @@
 id: SPEC-CLI-TEST-TIMEOUT-001
 title: "Explicit go test timeouts on every sanctioned local test entry point"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-26
 updated: 2026-09-26
 author: GOOS

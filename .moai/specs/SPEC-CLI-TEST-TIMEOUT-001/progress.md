@@ -149,4 +149,36 @@ slot_lease: go-test-heavy acquired (worker-66, session 09210812-6e27-462b-80ff-2
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: complete
+sync_complete_at: 2026-09-26
+sync_commit_sha: pending-backfill-sync
+sync_status_note: 3-phase close rides the single sync commit (in-progress -> implemented ->
+  completed merged close); real SHA backfilled in the follow-up commit per the D3 placeholder
+  exemption (spec-frontmatter-schema.md).
+changelog_entry: NO-ENTRY
+changelog_rationale: >
+  B12 pre-emission grep `grep -c 'SPEC-CLI-TEST-TIMEOUT-001' CHANGELOG.md` returned 0 (no
+  duplicate risk). Decision: NO-ENTRY — the card changes dev-tooling only (contributor-facing
+  Makefile test targets, maintainer-only CLAUDE.local.md recipe lines, dev-only ci-mirror
+  script); no product code, no user-facing template content, no docs-site surface. Precedent:
+  card t1244 dev-only change recorded NO-ENTRY.
+readme_docs_site: N/A — no user-facing surface changed (Makefile, CLAUDE.local.md,
+  scripts/ci-mirror/lib/go.sh, SPEC dir only).
+mx_codemap: no new exported symbols — zero .go files changed (verified via
+  `git diff --stat b4f798dcc..HEAD`, no .go path in the changed set); no MX action required.
+frontmatter_status_transitions:
+  in_progress_to_completed: applied
+  updated_refreshed: 2026-09-26
+  commit: this sync commit (placeholder pending-backfill-sync)
+b12_self_test_a: pre-emission grep count 0 (no duplicate entry in CHANGELOG)
+b12_self_test_b: skipped — NO-ENTRY decision; no AC-count-bearing entry emitted
+b12_self_test_c: file path verification n/a — no CHANGELOG paths claimed
+canary_compliance_check:
+  changelog_decision_recorded: true
+  placeholder_backfill_pending: true
+sync_evidence:
+  - .moai/specs/SPEC-CLI-TEST-TIMEOUT-001/progress.md §E.2 (9/9 AC PASS)
+  - .moai/reports/t1253/red-evidence.txt
+  - .moai/reports/t1253/measure-meta.txt
+```
