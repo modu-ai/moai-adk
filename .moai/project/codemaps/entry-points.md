@@ -115,6 +115,11 @@ root.go Execute()
 초기화 뒤의 유일한 이후 경로는 `moai web` 설정 화면입니다. 답은 `internal/settings`의 같은
 `ApplySchemaEdits` seam으로 영속화됩니다(§ `data-flow.md` L).
 
+**t1238 판에서 `moai contract` 명령 트리가 더했다** — `internal/cli/contract.go`의 `init()`이
+`rootCmd.AddCommand(newContractCmd())`로 등록하며, 서브커맨드는 `verify <SPEC-ID>`·`show <SPEC-ID>`·
+`sign <SPEC-ID>...` 셋이다. 판정은 전부 `internal/contract`(검증 코어)와 `internal/contract/sign`(서명기)이
+내리고 CLI는 결과를 출력과 종료 코드(0 / 1 / 2)로만 옮긴다. 위 `AddCommand` 수치는 이 판에서 다시 세지 않았다.
+
 **합성 루트**: `internal/cli/deps.go` — `type Dependencies` + `InitDependencies()`.
 Config · Git(Repository/Branch/Worktree) · HookRegistry · HookProtocol · UpdateChecker/Orchestrator ·
 LoopController · Logger · PerfTiming을 조립하고 전역 변수 `deps *Dependencies`로 노출합니다.
