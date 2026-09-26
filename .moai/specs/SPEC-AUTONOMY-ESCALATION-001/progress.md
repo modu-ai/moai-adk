@@ -304,6 +304,46 @@ M6 decisions:
   refuses `moai escalation` in the autonomy block.
 - The inventory header "Total entries: 977" was already stale before M6 (1005 entries); left unchanged (out of scope).
 
+### Addendum — post-sync-audit fixes F2, F1, F10 (lead ruling on `.moai/reports/t1235/sync-audit.md`)
+
+Base `222f91b36`. Commits: `b21474d3f` (F2), `11f14fe21` (F1), `b7c8c97c8` (F10). Same env-scrub prefix.
+
+- **F2 — credentials in class 6/8 commands.** RED (pass-through `MaskCommand` stub):
+  `redact_test.go:58: secret written to: [record irreversible-action-….md]` and
+  `redact_test.go:80: secret written to: [record same-diagnostic-repeat-….md state file]` (×3), exit 1.
+  The state file leaked through the class 8 streak key (raw command); the card log did not.
+  Fix: `MaskCommand` (URL userinfo, Authorization values, token/password-style assignments and
+  flags, known token prefixes) applied where class 6/8 derive the command and before the class 8
+  diagnostic key. GREEN: `--- PASS: TestCommandCredentialsAreMasked`, `--- PASS: TestMaskCommandIsStable`.
+  Diagnosis check: a mutant leaving the diagnostic unmasked first PASSED — the diagnostic key rewrites
+  digit runs, so the literal secret never survived intact; the probe was tightened to the digit-free
+  core and the mutant then failed (`secret written to: [state file record same-diagnostic-repeat-….md]`).
+- **F1 — resolved class 5/9 records reopening.** AC-AE-023 governs the writer on a trip ("a third time
+  after the record has been set to `status: resolved` … writes `<class>-<fingerprint>-2.md`"); it does not
+  make an unchanged evidence file a new observation, so the fix does not conflict with it. RED:
+  `evidence_retrip_test.go:64: open_after_resolve_and_recommit=1, want 0` (class 9) and `:86` (class 5), exit 1.
+  Fix: `CardState.ConsumedEvidence` (class:fingerprint:file:content-digest, kept across re-arming);
+  classes 5 and 9 trip only on unconsumed evidence. The writer is unchanged. GREEN:
+  `--- PASS: TestResolvedEvidenceRecordReopensOnlyOnNewEvidence`, with `TestRecordDedupAndRetripAfterResolve`,
+  `TestAuditFailAtRetryCapTrips`, `TestContradictoryEvidenceTrips`, `TestStateTamperJudgedFromCardLog` PASS.
+  Diagnosis check: a mutant dropping the digest from the key failed the new-evidence assertion
+  (`new evidence did not re-trip as -2`), so the gate keys on evidence change.
+- **F10** — CHANGELOG now names PreToolUse, PostToolUse, PostToolUseFailure, and Stop (call sites:
+  `pre_tool.go:419`, `post_tool.go:156`, `post_tool_failure.go:85`, `stop.go:42`).
+
+Verification at `b7c8c97c8`: `go test -count=1 -race -cover ./internal/escalation/...` → 50 top-level
+`--- PASS`, 0 FAIL, `ok … 10.412s coverage: 88.5%`; hook subset (`TestEscalationGuidedGolden`,
+`TestFirstObservationVerifiedAtPreToolUse`, `TestFrozenFileUnionTrips`, `TestInvariantFailureReachesDetectorFromHooks`,
+`TestIrreversibleActionTrips`, `TestDetectorNeverAltersToolCall`) all PASS, `ok … internal/hook 3.887s`;
+`golangci-lint run --new-from-rev=222f91b36 ./internal/escalation/... ./internal/hook/...` → `0 issues.`;
+builds windows/amd64, linux/amd64, darwin/arm64 exit 0.
+
+Debt recorded, no code change (lead ruling): F3 (`.moai/reports/<card>/escalation/` inside the class 3
+exemption — spec amendment), F4 (Windows process-local lock), F5 (recover registered late), F6 (whole-log
+chain per call), F7 (state replaced before its log entry), F8 (empty `write` return before `effective_never`),
+F9 (Q2 — no production caller of `Checkpoint`), F11 (sync commit lacks `Authored-By-Agent`), F12
+(PostToolUseFailure passes `PostToolUse` as hook name, by design).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
