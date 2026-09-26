@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 )
 
@@ -42,6 +43,9 @@ type LogEntry struct {
 	// disarmed
 	Reason      string `json:"reason,omitempty"`
 	Fingerprint string `json:"fingerprint,omitempty"`
+	// Accounted lists the evidence of arming a state-tamper judgment
+	// consumed, so the same evidence is not judged again.
+	Accounted []string `json:"accounted,omitempty"`
 	// not-armed, not-checked, warning
 	Class   string   `json:"class,omitempty"`
 	Cause   string   `json:"cause,omitempty"`
@@ -62,6 +66,14 @@ type CardLog struct {
 	ChainIntact bool
 	// lastLine is the raw last line, the input of the next prev.
 	lastLine []byte
+	// lines counts the non-empty lines read or appended.
+	lines int
+	// lastBreak is the index of the last line that broke the chain, -1 when
+	// none; lastTamper is the line index of the last state-tamper disarmed
+	// entry, -1 when none. A break before lastTamper has been judged.
+	lastBreak, lastTamper int
+	// missingNewline is true when the file does not end in a newline.
+	missingNewline bool
 }
 
 // Armed reports whether the log shows the card armed: its most recent armed
@@ -79,6 +91,37 @@ func (l CardLog) Armed() bool {
 	return armed
 }
 
+// unaccountedBreak reports a chain break no later state-tamper disarmed entry
+// has judged, and the line it is on.
+func (l CardLog) unaccountedBreak() (int, bool) {
+	return l.lastBreak, l.lastBreak >= 0 && l.lastBreak > l.lastTamper
+}
+
+// latest returns the latest entry of kind.
+func (l CardLog) latest(kind string) (LogEntry, bool) {
+	for i := len(l.Entries) - 1; i >= 0; i-- {
+		if l.Entries[i].Kind == kind {
+			return l.Entries[i], true
+		}
+	}
+	return LogEntry{}, false
+}
+
+// accounts reports whether the log accounts for an evidence id: an armed
+// entry for a contract digest ("sha:<digest>"), or a disarmed entry carrying
+// the fingerprint ("fp:<fp>") or listing the id as accounted.
+func (l CardLog) accounts(id string) bool {
+	for _, e := range l.Entries {
+		switch {
+		case e.Kind == LineArmed && "sha:"+e.ContractSHA256 == id:
+			return true
+		case e.Kind == LineDisarmed && ("fp:"+e.Fingerprint == id || slices.Contains(e.Accounted, id)):
+			return true
+		}
+	}
+	return false
+}
+
 // SHA256Hex returns the lowercase-hex SHA-256 of b.
 func SHA256Hex(b []byte) string {
 	sum := sha256.Sum256(b)
@@ -89,14 +132,15 @@ func SHA256Hex(b []byte) string {
 // an empty, intact log. Only an I/O error is returned as an error; a broken
 // chain is reported through ChainIntact.
 func ReadCardLog(path string) (CardLog, error) {
+	lg := CardLog{ChainIntact: true, lastBreak: -1, lastTamper: -1}
 	data, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
-		return CardLog{ChainIntact: true}, nil
+		return lg, nil
 	}
 	if err != nil {
 		return CardLog{}, fmt.Errorf("escalation: read card log: %w", err)
 	}
-	lg := CardLog{ChainIntact: true}
+	lg.missingNewline = len(data) > 0 && data[len(data)-1] != '\n'
 	prev := ""
 	for _, line := range bytes.Split(data, []byte("\n")) {
 		if len(line) == 0 {
@@ -105,16 +149,27 @@ func ReadCardLog(path string) (CardLog, error) {
 		var e LogEntry
 		if err := json.Unmarshal(line, &e); err != nil {
 			lg.ChainIntact = false
+			lg.lastBreak = lg.lines
 		} else {
 			if e.Prev != prev {
 				lg.ChainIntact = false
+				lg.lastBreak = lg.lines
 			}
-			lg.Entries = append(lg.Entries, e)
+			lg.addEntry(e)
 		}
 		prev = SHA256Hex(line)
 		lg.lastLine = append([]byte(nil), line...)
+		lg.lines++
 	}
 	return lg, nil
+}
+
+// addEntry records a parsed entry at the current line index.
+func (l *CardLog) addEntry(e LogEntry) {
+	l.Entries = append(l.Entries, e)
+	if e.Kind == LineDisarmed && e.Reason == DisarmStateTamper {
+		l.lastTamper = l.lines
+	}
 }
 
 // AppendLog appends one entry to the card log at path, chaining it to the
@@ -147,14 +202,20 @@ func appendAfter(path string, lg *CardLog, e LogEntry, now time.Time) error {
 	if err != nil {
 		return fmt.Errorf("escalation: open card log: %w", err)
 	}
-	if _, err := f.Write(append(line, '\n')); err != nil {
+	out := append(line, '\n')
+	if lg.missingNewline {
+		out = append([]byte{'\n'}, out...)
+		lg.missingNewline = false
+	}
+	if _, err := f.Write(out); err != nil {
 		_ = f.Close()
 		return fmt.Errorf("escalation: append card log: %w", err)
 	}
 	if err := f.Close(); err != nil {
 		return fmt.Errorf("escalation: close card log: %w", err)
 	}
-	lg.Entries = append(lg.Entries, e)
+	lg.addEntry(e)
 	lg.lastLine = line
+	lg.lines++
 	return nil
 }

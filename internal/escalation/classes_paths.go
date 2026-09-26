@@ -184,12 +184,12 @@ func (r *run) classInvariantCommand() {
 // checkpoint could not complete (REQ-AE-022): constitution: invariants,
 // command invariants no call executed since the previous checkpoint, and
 // unreadable ownership. The executed set then starts over.
-func (r *run) checkpointNotObserved() {
+func (r *run) checkpointNotObserved(extra []string) {
 	a := r.st.Armed
 	if a == nil {
 		return
 	}
-	var items []string
+	items := slices.Clone(extra)
 	for _, inv := range a.Invariants {
 		if strings.HasPrefix(inv, invariantConstitutionPrefix) {
 			items = append(items, inv)

@@ -82,7 +82,7 @@ func (h *postToolUseFailureHandler) Handle(ctx context.Context, input *HookInput
 	// Contract-mode escalation detector: a failed call is an operation whose
 	// failure the invariant-command class reads. Records only; inert unless
 	// workflow.autonomy.mode is contract.
-	observeEscalationResult(h.escalationCfg, string(EventPostToolUse), input, true)
+	observeEscalationWith(h.escalationCfg, string(EventPostToolUse), input, escalationOptions{failed: true})
 
 	category := h.classifyError(input)
 	message := h.formatMessage(category, input)

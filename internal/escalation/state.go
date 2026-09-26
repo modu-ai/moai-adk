@@ -46,8 +46,13 @@ type Arming struct {
 	Scratch        []string        `json:"scratch"`
 	Write          []string        `json:"write"`
 	Invariants     []string        `json:"invariants"`
+	Actions        []string        `json:"actions"`
+	SecondModel    string          `json:"second_model"`
 	Budget         contract.Budget `json:"budget"`
 	ArmedAt        string          `json:"armed_at"`
+	// DisarmReasons are the disarm reasons observed for this arming once it
+	// ended; a new reason increments its record, a repeated one does not.
+	DisarmReasons []string `json:"disarm_reasons,omitempty"`
 }
 
 // VerifyCache is one cached verify result.
@@ -61,9 +66,37 @@ type VerifyCache struct {
 // their classes in a later milestone).
 type Counters struct {
 	Operations int `json:"operations"`
+	Turns      int `json:"turns"`
+	// Streaks tracks class 8: per normalized command, the current failure
+	// fingerprint and how many consecutive failures carried it.
+	Streaks map[string]Streak `json:"streaks,omitempty"`
 	// ExecutedInvariants are the command-kind invariants a tool call executed
 	// since the previous commit checkpoint (REQ-AE-022).
 	ExecutedInvariants []string `json:"executed_invariants,omitempty"`
+}
+
+// Streak is one command's consecutive-failure run (class 8).
+type Streak struct {
+	Fingerprint string `json:"fingerprint"`
+	Count       int    `json:"count"`
+}
+
+// readCardStateRaw reads the card state file and its bytes; ok is false when
+// it is absent.
+func readCardStateRaw(path string) (CardState, []byte, bool, error) {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return CardState{}, nil, false, nil
+	}
+	if err != nil {
+		return CardState{}, nil, false, fmt.Errorf("escalation: read card state: %w", err)
+	}
+	var st CardState
+	if err := json.Unmarshal(data, &st); err != nil {
+		// Undecodable bytes are still present: the digest check judges them.
+		return CardState{}, data, true, nil
+	}
+	return st, data, true, nil
 }
 
 // ReadCardState reads the card state file; ok is false when it is absent.

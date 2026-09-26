@@ -113,6 +113,34 @@ func (w *Worktree) Git(args ...string) string {
 	return out.String()
 }
 
+// NewLinkedWorktree adds a linked git worktree named card next to the
+// primary checkout p (which must be a NewGitWorktree with at least one
+// commit), on a new branch WT-<card>. Both share one project key, so their
+// cards share one contract store.
+func NewLinkedWorktree(t testing.TB, p *Worktree, card string) *Worktree {
+	t.Helper()
+	w := &Worktree{t: t, Root: filepath.Join(filepath.Dir(p.Root), card), Card: card}
+	p.Git("worktree", "add", "-q", "-b", "WT-"+card, w.Root)
+	return w
+}
+
+// Resign removes the contract's signature block, applies edit to the
+// remaining text, and signs it again — the way an operator re-signs after
+// changing a signed field.
+func (w *Worktree) Resign(id string, edit func(string) string) {
+	w.t.Helper()
+	rel := ".moai/specs/" + id + "/" + contract.ContractFile
+	text := string(w.Read(rel))
+	if i := strings.Index(text, "\nsignature:"); i >= 0 {
+		text = text[:i+1]
+	}
+	if edit != nil {
+		text = edit(text)
+	}
+	w.Write(rel, text)
+	w.sign(id)
+}
+
 // Commit stages everything and commits with message msg.
 func (w *Worktree) Commit(msg string) {
 	w.t.Helper()

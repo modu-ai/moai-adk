@@ -248,7 +248,7 @@ func InitDependencies() {
 	// additionalContext alongside the other SessionStart handlers' output.
 	deps.HookRegistry.Register(hook.NewSessionStartCompactHandler())
 
-	deps.HookRegistry.Register(hook.NewStopHandler())
+	deps.HookRegistry.Register(hook.WithEscalationConfig(hook.NewStopHandler(), deps.Config))
 	// Build security policy: defaults + extra patterns from security.yaml (REQ-SEC-003).
 	secPolicy := hook.DefaultSecurityPolicy()
 	secPolicy.MergeExtraPatterns(security.LoadExtraSecurityConfig(cwd))

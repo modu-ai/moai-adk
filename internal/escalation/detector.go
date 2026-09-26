@@ -1,9 +1,7 @@
 package escalation
 
 import (
-	"errors"
 	"fmt"
-	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -15,7 +13,6 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/contract"
-	"github.com/modu-ai/moai-adk/internal/spec"
 )
 
 // Hook points the detector observes.
@@ -67,7 +64,16 @@ type Event struct {
 	// one; "" means undetermined, and an outside-root write that only the
 	// scratchpad could have covered is then listed not-observed (REQ-AE-013).
 	ScratchpadDir string
+	// Diagnostic is the failure text of a failed call (first line of the
+	// error or stderr), the diagnostic key of class 8's fingerprint.
+	Diagnostic string
+	// Denylisted is true when the existing destructive-command denylist
+	// denies the shell command (reused by the hook, never copied here).
+	Denylisted bool
 }
+
+// HookStop is a Stop hook event: one turn for class 7.
+const HookStop = "Stop"
 
 // Observe runs the escalation detector for one hook event. It never denies,
 // asks, or alters the tool call and returns nothing the caller could branch
@@ -137,7 +143,7 @@ func observeInto(s config.AutonomySettings, ev Event, now time.Time, checkpoint 
 
 // detect is the ordered detector body (design.md §C.6).
 func (r *run) detect() {
-	st, _, err := ReadCardState(r.files.State)
+	st, stBytes, stExists, err := readCardStateRaw(r.files.State)
 	if err != nil {
 		r.notChecked("state", err.Error())
 		return
@@ -147,14 +153,18 @@ func (r *run) detect() {
 	}
 	r.st = st
 
-	if r.lg.Armed() {
-		if r.st.Armed == nil {
-			// The state-tamper judgment arrives with class 10.
-			r.notChecked("disarm-check", "card log shows the card armed but the state file carries no arming")
-			return
+	// Steps 1-6: every way an armed card stops being armed is judged before
+	// resolution, and at most one disarm is written per event.
+	if details, accounted := r.tamperCheck(stExists, stBytes); len(details) > 0 {
+		r.judgeTamper(details, accounted)
+	} else if r.lg.Armed() {
+		if reason, detail := r.armedDisarmReason(); reason != "" {
+			r.disarm(reason, detail)
 		}
-		r.checkArmed()
+	} else if r.st.LastArming != nil {
+		r.lastArmingReasons()
 	}
+	// Step 7: resolution for an unarmed card.
 	if !r.lg.Armed() {
 		res, err := Resolve(r.ev.CWD, r.verifyEnv())
 		if err != nil {
@@ -174,56 +184,32 @@ func (r *run) detect() {
 		r.classFrozenFile(w)
 		r.classOwnershipMove(w)
 	}
+	if r.lg.Armed() && r.ev.Hook == HookPreToolUse && isShellTool(r.ev.ToolName) {
+		r.classIrreversibleAction()
+	}
 	if r.lg.Armed() && r.ev.Hook == HookPostToolUse && isShellTool(r.ev.ToolName) {
 		r.classInvariantCommand()
 		if r.isCommitCheckpoint() {
-			r.checkpointNotObserved()
+			r.checkpointNotObserved(r.classContradictoryEvidence())
 		}
 	}
 	if r.lg.Armed() && r.ev.Hook == HookCheckpoint && r.checkpoint != nil {
 		r.classNewAPI()
 	}
+	// Operational classes 7-9 stay active whether or not the card is armed.
+	if r.ev.Hook == HookPostToolUse && isShellTool(r.ev.ToolName) {
+		r.classSameDiagnostic()
+		if r.isCommitCheckpoint() {
+			r.classAuditCap()
+		}
+	}
 	if r.ev.Hook == HookPostToolUse && (isWriteTool(r.ev.ToolName) || isShellTool(r.ev.ToolName)) {
 		r.classBudgetOperations()
 	}
+	if r.ev.Hook == HookStop {
+		r.classBudgetTurns()
+	}
 	r.saveState()
-}
-
-// checkArmed evaluates the disarm reasons this milestone observes and class 1.
-// Verify runs fresh at a commit checkpoint, and on other hooks only when the
-// contract bytes differ from the cached digest (spec.md C4).
-func (r *run) checkArmed() {
-	a := r.st.Armed
-	data, err := os.ReadFile(a.ContractPath)
-	if errors.Is(err, fs.ErrNotExist) {
-		r.disarm(DisarmContractAbsent, "the armed contract "+a.ContractPath+" is gone")
-		return
-	}
-	if err != nil {
-		r.notChecked("disarm-check", err.Error())
-		return
-	}
-	digest := SHA256Hex(data)
-	cache := r.st.VerifyCache
-	if !r.isCommitCheckpoint() && r.ev.Hook != HookCheckpoint && cache != nil && cache.ContractDigest == digest {
-		if cache.State != contract.StateSignedValid {
-			r.disarm(DisarmSignatureInvalid, "cached verify: "+strings.Join(cache.Reasons, ", "))
-		}
-		return
-	}
-	dir := filepath.Dir(a.ContractPath)
-	status, _ := spec.ParseStatus(dir)
-	rep, err := verifySpec(dir, status, r.verifyEnv())
-	if err != nil {
-		r.notChecked("verify", err.Error())
-		return
-	}
-	r.st.VerifyCache = &VerifyCache{ContractDigest: digest, State: rep.State, Reasons: slices.Clone(rep.Reasons)}
-	r.dirty = true
-	r.classAcceptanceChange(rep, data)
-	if rep.State != contract.StateSignedValid {
-		r.disarm(DisarmSignatureInvalid, "verify "+rep.State+": "+strings.Join(rep.Reasons, ", "))
-	}
 }
 
 // classAcceptanceChange trips class 1 when verify reports any acceptance
@@ -325,6 +311,10 @@ func (r *run) arm(res Resolution) {
 	}
 	if rep.Contract != nil {
 		a.Invariants = slices.Clone(rep.Contract.Invariants)
+		a.Actions = slices.Clone(rep.Contract.Actions)
+		if rep.Contract.Review != nil {
+			a.SecondModel = rep.Contract.Review.SecondModel
+		}
 	}
 	if rep.Budget != nil {
 		a.Budget = *rep.Budget
@@ -353,6 +343,7 @@ func (r *run) disarm(reason, detail string) {
 		},
 	}, a.SpecID)
 	r.appendLog(LogEntry{Kind: LineDisarmed, Card: r.card, Spec: a.SpecID, Reason: reason, Fingerprint: fp})
+	a.DisarmReasons = append(a.DisarmReasons, reason)
 	r.st.LastArming = a
 	r.st.Armed = nil
 	r.st.VerifyCache = nil
