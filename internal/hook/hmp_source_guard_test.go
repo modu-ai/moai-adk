@@ -29,8 +29,16 @@ import (
 const hmpPredicateFile = "internal/hook/shell_tool.go"
 
 // hmpGoLiteralExclusions lists "<file>:<literal>" hits allowed outside the
-// predicate file, with the reason. Empty: every Bash branch uses IsShellTool.
-var hmpGoLiteralExclusions = map[string]string{}
+// predicate file, with the reason.
+var hmpGoLiteralExclusions = map[string]string{
+	// The contract-sign guard's `bash` is a shell PROGRAM name inside parsed
+	// command text (design.md §C.2 step 5: one level of `sh|bash|zsh -c`
+	// indirection), not a tool_name branch — the guard routes every command
+	// through IsShellTool at its call site, so a PowerShell-carried command
+	// takes the same parse. REQ-HMP-013 targets tool_name branches; this hit
+	// is command-text parsing.
+	"internal/hook/contract_sign_guard.go:bash": "sh|bash|zsh -c indirection parses command TEXT, not tool_name; IsShellTool governs the call site (pre_tool.go)",
+}
 
 // hmpWrapperExclusions lists wrapper lines that match tool_name "Bash" without
 // PowerShell on purpose, keyed "<file>|<line substring>", with the reason.
