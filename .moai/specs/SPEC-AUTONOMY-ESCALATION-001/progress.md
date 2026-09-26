@@ -380,4 +380,32 @@ Sync-audit carry items:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-26
+sync_commit_sha: pending-backfill    # backfilled once this commit's own SHA is known
+sync_status: audit-ready-with-open-items
+b12_self_test_a: 0        # grep -c 'SPEC-AUTONOMY-ESCALATION-001' CHANGELOG.md before emission
+b12_self_test_b: 25       # grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l
+b12_self_test_c: pass     # every path cited in the CHANGELOG entry verified with ls (below)
+changelog_entry_position: "[Unreleased] > Added, first entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented"
+  plan_md: "unchanged (frontmatter field not touched)"
+  acceptance_md: "unchanged (frontmatter field not touched)"
+  progress_md: "N/A (this file; §E.4 authored in this commit)"
+canary_compliance_check: not-applicable   # this SPEC defines no forward-looking canary policy of its own
+```
+
+Open items carried to the sync-audit and to follow-up work (not resolved here, per manager-docs' CHANGELOG-only
+authoring boundary):
+
+- **AC-AE-012 PARTIAL** — clause (c) (a recorded CI verdict) is not-observed: no on-disk CI-verdict producer exists
+  in this codebase. Follow-up card: **t1268**.
+- **Q2 unresolved** — the on-demand new-API checkpoint's invocation surface (a possible new CLI verb) was never
+  answered by the operator; only the detection library landed, with no production caller. This is a genuine
+  operator decision, not something manager-docs can resolve during sync.
+- No docs-site page was touched: neither `spec.md` nor `acceptance.md` names a docs-site requirement for this
+  SPEC, and the shipped `workflow.yaml` comment (landed in M6, `027a84f68`) already documents the new key and its
+  pending-invocation caveat for template users. `docs-site/content/ko/cli-reference/contract.md` mentions
+  `escalate_on` generically but was not modified — a change there is optional editorial follow-up, not a gap this
+  SPEC's acceptance criteria require.
