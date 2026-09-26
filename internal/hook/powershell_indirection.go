@@ -27,15 +27,20 @@ import (
 )
 
 // integrationLockAuditRelPath is the integration lock's audit log, relative to
-// the handler's project root. It holds only unclassifiable-command lines; the
-// guard's other fail-open paths keep writing their stderr advisories.
+// the handler's project root. While a live foreign hold exists it records
+// EVERY unclassifiable PowerShell command observed, whether or not it is
+// merge-shaped (measured forms: `iex "git status"` and
+// `Start-Process git -ArgumentList 'log'` are both logged and both allowed —
+// SPEC-HOOK-GUARD-POWERSHELL-FORMS-001 REQ-HGF-009); the guard's other
+// fail-open paths keep writing their stderr advisories.
 const integrationLockAuditRelPath = ".moai/logs/integration-lock-audit.log"
 
 // Construct names recorded in an unclassifiable audit line.
 const (
-	constructEncodedCommand   = "encoded-command"
-	constructInvokeExpression = "invoke-expression"
-	constructStartProcess     = "start-process"
+	constructEncodedCommand    = "encoded-command"
+	constructInvokeExpression  = "invoke-expression"
+	constructStartProcess      = "start-process"
+	constructDynamicResolution = "dynamic-resolution"
 )
 
 // unclassifiedEvent tags the audit line and unclassifiedReason is its reason
@@ -52,12 +57,24 @@ var gitWordPattern = regexp.MustCompile(`(?i)\bgit\b`)
 // "&" is PowerShell's call operator, not a separator, so it is kept.
 var commandSegmentSeparators = regexp.MustCompile(`&&|\|\||[;|\n]`)
 
+// callOperatorSubexpression matches a PowerShell call operator in command
+// position followed directly by a parenthesized subexpression — the
+// executable is resolved at RUNTIME (REQ-HGF-005, the measured form is
+// `& (Get-Command git) switch probe`). Matched on the quote-collapsed text,
+// so a `& (` carried inside quoted prose never fires it.
+var callOperatorSubexpression = regexp.MustCompile(`(?:^|[(;&|][ \t]*|\n[ \t]*)&[ \t]*\(`)
+
 // powerShellIndirection returns the name of an indirection construct in a
 // PowerShell command that runs git out of the guards' sight, or "" when there
 // is none. Constructs are matched on the quote-collapsed text, so a construct
 // named inside a string argument (Write-Output "pwsh -enc …") does not count;
 // the git operand of Invoke-Expression / Start-Process is matched on the raw
 // text, because it usually sits inside the quoted string being executed.
+//
+// The dynamic-resolution construct (REQ-HGF-005) covers a call operator whose
+// target is a parenthesized subexpression: the resolved executable is a
+// runtime fact, so the call is allowed with one audit line rather than
+// judged — the same treatment encoded commands get.
 func powerShellIndirection(command string) string {
 	scanned := strings.ToLower(substituteQuotedArguments(command))
 	for _, segment := range commandSegmentSeparators.Split(scanned, -1) {
@@ -72,9 +89,15 @@ func powerShellIndirection(command string) string {
 		switch strings.TrimLeft(tok, "({&") {
 		case "iex", "invoke-expression":
 			return constructInvokeExpression
-		case "start-process":
+		// saps and start are documented Start-Process aliases (REQ-HGF-006);
+		// the git-word gate above still bounds their over-match — no git,
+		// no line.
+		case "start-process", "saps", "start":
 			return constructStartProcess
 		}
+	}
+	if callOperatorSubexpression.MatchString(scanned) {
+		return constructDynamicResolution
 	}
 	return ""
 }
@@ -112,8 +135,19 @@ func isPowerShellExecutable(tok string) bool {
 	return base == "pwsh" || base == "powershell"
 }
 
-// powerShellParameterName strips a parameter prefix (-, --, or /) and any
-// attached ":value", returning the lower-cased name.
+// unicodeDashPrefixes are the Unicode dash characters a parameter may wear.
+// pwsh's own acceptance is measured for U+2013 (–enc accepted, progress.md
+// §E.2); U+2014 and U+2010 join the same normalization under this file's
+// err-wide over-match policy — an over-match costs one audit line and never
+// a deny, so normalizing the unmeasured siblings is the documented superset
+// REQ-HGF-011 allows.
+var unicodeDashPrefixes = []string{"–", "—", "‐"} // U+2013, U+2014, U+2010
+
+// powerShellParameterName strips a parameter prefix (-, --, /, or a Unicode
+// dash) and any attached ":value", returning the lower-cased name. The
+// attached ":value" form is cut even though pwsh itself rejects
+// `-enc:<payload>` as a script-file argument (M0 row 12): the cut is
+// prefix-agnostic and over-matching costs one audit line, never a deny.
 func powerShellParameterName(arg string) (string, bool) {
 	var name string
 	switch {
@@ -122,10 +156,18 @@ func powerShellParameterName(arg string) (string, bool) {
 	case strings.HasPrefix(arg, "-"), strings.HasPrefix(arg, "/"):
 		name = arg[1:]
 	default:
-		return "", false
+		for _, d := range unicodeDashPrefixes {
+			if strings.HasPrefix(arg, d) {
+				name = arg[len(d):]
+				break
+			}
+		}
+		if name == "" {
+			return "", false
+		}
 	}
 	name, _, _ = strings.Cut(name, ":")
-	return name, name != ""
+	return strings.ToLower(name), name != ""
 }
 
 // isEncodedCommandParameter matches the documented aliases -e and -ec and any

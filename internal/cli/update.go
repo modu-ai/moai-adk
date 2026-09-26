@@ -487,6 +487,11 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
+	// Restore provenance an earlier `init --force` recorded as user_created
+	// (t1214). Before the sync so the deploy sees the healed entries, and
+	// before its version-match early return so an up-to-date project heals too.
+	healManifestBestEffort(".", out, cmd.ErrOrStderr())
+
 	// Legacy skills are archived inside the template sync, before its managed
 	// cleanup removes .claude/skills/moai*; a skipped sync archives nothing,
 	// which keeps REQ-UAC-004.
@@ -567,6 +572,12 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if err := profile.SyncToProjectConfig(".", prefs); err != nil {
 			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Profile sync", "failed", err.Error(), &th))
 		}
+		// card t1275: the profile sync rewrites .moai/config/sections/*.yaml
+		// after the template sync already tracked its render — re-record the
+		// section hashes so the manifest matches the disk this update leaves
+		// behind (a stale hash here is what froze four files user_modified on
+		// the next `init --force`).
+		retrackSectionFiles(".", cmd.ErrOrStderr())
 	}
 
 	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-016): when --profile is given,
