@@ -131,7 +131,7 @@ DoD 伴随守卫（SPEC-AUTONOMY-ESCALATION-001 只读）：同 merge-base 范�
 ```yaml
 run_complete_at: 2026-09-26
 run_status: complete
-run_commit_sha: pending-backfill-run
+run_commit_sha: 712918744
 ac_pass_count: 8
 ac_fail_count: 0
 preserve_list_post_run_count: 0
