@@ -535,125 +535,37 @@ plainly — trading a real defect for a hidden one.
 
 ```
 $ AC counter → 10 ;  grep -c '^\*\*AC-IFU-' → 10          (agree; COUNT unmoved)
-$ diff <(grep -o 'REQ-IFU-[0-9]\{3\}' acceptance.md | sort -u) \
-       <(grep -o '^- \*\*REQ-IFU-[0-9]\{3\}' spec.md | grep -o 'REQ-IFU-[0-9]\{3\}' | sort -u)
-  (empty output, exit 0)
-$ moai spec lint SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001 → ✓ No findings, exit 0
-```
-
-No criterion was added or removed, so no baseline cascade applies (this SPEC remains an
-absent-from-snapshot, report-only row).
-
-### Gaps — carried forward, NOT closed by assertion
-
-- **Whether the Vercel project deploys `develop` at all — unread.** The build command and git
-  integration are in-repo and measured; which branches trigger a deployment is project-side
-  configuration, absent from this tree. This is the premise a re-sited build clause would have
-  needed, and the reason dropping was the sound close.
-- **Both external readings decay silently.** Branch protection and Vercel project settings are
-  mutable outside this repository, and nothing in the tree changes when they move. The two figures
-  recorded in `AC-IFU-031`'s notes (`develop` unprotected; Vercel builds conditionally) are pinned
-  to `0d7c7e44e` and are to be **re-read at close**, not cited from there.
-- **Full `internal/cli` state unrun.** Only the two named selectors were run, per affected-packages
-  discipline.
-- Parent-SPEC M2 and t1175 landing states — measured unmet at `a9e5f9d5a`; unchanged.
-
-**Tree divergence, second occurrence — reported, not absorbed.** `HEAD` moved `28476f1a9` →
-`0d7c7e44e` mid-repair. Inspected before staging: one file,
-`.moai/reports/t1259/d3-ci-surface.md`, disjoint from the three artifacts staged here; the writer is
-the orchestrator closing the two gaps iter2 recorded. Its content contradicted a claim I had already
-written, which is why the correction above exists — the divergence check is what caught it.
-
-### plan-audit iter3 (scoped) — FAIL 0.88, the audit ceiling; all sites repaired (v0.2.3)
-
-Report: `.moai/reports/t1259/plan-audit-iter3.md` at `8d73a2a88`. N1 and the whole D3 reasoning were
-confirmed repaired — every factual claim in the new `AC-IFU-031` body reproduced, no stale
-"unmeasured" survived, and dropping rather than re-siting was called correct for the reason given.
-The N1 self-correction was judged to improve on the instruction that prompted it: the audit had also
-written "two exit codes", which the measurement falsifies.
-
-**The FAIL is that the D3 repair stopped at the criterion body.** `grep -rn "PR head"` found four
-live normative sites neither repair reached, so `acceptance.md` §D.3 and `plan.md` §D/§E gave close
-instructions contradicting the criterion they govern — and `plan.md` agreed with the superseded
-wording. Third appearance of one defect, which is what made it blocking rather than a wording nit.
-The lesson is the one the defect keeps teaching in a new place each round: **repairing a criterion
-is not repairing the SPEC.** A criterion is cited from the sections that decide when it is read, and
-those sections do not update themselves.
-
-All four repaired to name the `origin/develop` head carrying this lane's merge SHA:
-
-| Site | Was | Now |
-|---|---|---|
-| `acceptance.md` §D.3 | "`AC-IFU-031` is read from the PR head's own CI run" | develop head + merge SHA, with "not from a PR head" and why |
-| `plan.md` §D Close | "whole-change CI on the PR head" | develop head, plus the no-PR consequence spelled out |
-| `plan.md` §E | "The full-suite verdict is CI's, on the PR head" | the `test` job of `ci.yml` on the develop head |
-| `plan.md` §E close note | "read from the PR head's CI run" | records the v0.2.1 re-siting as history rather than restating it |
-
-**§D.3 gained the four close-time duties the earlier repairs established but never propagated.** Each
-existed only inside the note of the criterion that produced it, which means the close would not have
-performed any of them: the `no tests to run` marker read (N1's finding — the PASS line alone is
-necessary, not sufficient); a **named home** for recording the docs-i18n log reading (`progress.md`
-§E.4 — the criterion asks that the check *ran and was read*, and an unrecorded reading is
-indistinguishable from none); the close-time **re-read** of the two decaying external readings
-(`develop`'s protection state, Vercel's build configuration — both mutable outside this repo, both
-pinned to `0d7c7e44e` as evidence of what was true then); and a handover pointer for the docs-parity
-residual.
-
-**The docs-parity residual gets a pointer, not a new owner** — per the audit's explicit judgment,
-which I take as correct: `AC-IFU-023` is a real gate (24 greps, existence checks, equal-delta, all
-decidable) even though it runs in the lane, so writing the residual in IS sufficient for this SPEC's
-slice. The general condition already has an owner — **`SPEC-V3R3-DOCS-PARITY-001`**, named in
-`docs-i18n-check.yml:74` as the Phase 2 strict-flip route. Requiring this card to own that flip would
-be the scope creep refused twice already.
-
-**N2 — both figures re-measured here, both were wrong, both corrected.**
-
-```
-$ grep -n 'strict=false' .github/workflows/docs-i18n-check.yml
-75:            echo "strict=false" >> "$GITHUB_OUTPUT"      # the push branch
-78:            echo "strict=false" >> "$GITHUB_OUTPUT"      # the PR/else branch
-$ ls -1 .github/workflows/ | grep -c ''          # 19 files (an earlier `wc -l` counted . and ..)
-19
-```
-
-Cited `:71-74` was the elif head plus comments, not the assignment; `:75` is the line. And 20 → 19.
-Neither touches a pass condition, and both are exactly the class of error this SPEC has spent three
-iterations being right about — a miscited line number in a document whose whole argument is that
-cited evidence must resolve.
-
-### The close condition, and one property of it worth stating
-
-In place of a fourth audit the close condition is mechanical: `grep -rn "PR head"` over this
-directory returning only past-tense historical hits, plus a read of the amended §D.3. Measured after
-these repairs — **nine hits, zero of them live normative assertions**:
-
-| Site | Why it is not a live assertion |
-|---|---|
-| `spec.md:24`, `spec.md:26` | HISTORY rows describing the v0.2.1 and v0.2.3 repairs |
-| `spec.md:37` | states the close condition itself — see the note below |
-| `plan.md:162` | past tense: the wording "proved to name something this regime never produces" |
-| `progress.md:106` | the v0.2.0 authoring record, explicitly marked **both superseded** |
-| `progress.md:249` | quotes the old text inside the v0.2.1 repair record |
-| `acceptance.md:436`, `:437` | the v0.2.1 repair note, quoting the superseded wording |
-| `acceptance.md:515` | a **negation** — "not from a PR head" — in the amended §D.3 |
-
-[HARD] **The close-condition grep can never return empty, and that is not a miss.** `spec.md:37`
-states the condition, so it contains the search string by construction; a reader expecting zero hits
-would read a correctly-closed SPEC as failing. The condition is therefore "no live normative hit",
-judged per line against the table above — not "no output". Recording this because a check whose
-passing state is misread as failure gets worked around, and the workaround here would be to obfuscate
-the string in the one sentence that has to state it plainly.
-
-### Verification after these repairs
-
-```
-$ AC counter → 10 ;  grep -c '^\*\*AC-IFU-' → 10          (agree; COUNT unmoved)
 $ traceability diff → empty output, exit 0
 $ moai spec lint SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001 → ✓ No findings, exit 0
 ```
 
 No criterion added or removed, so no baseline cascade (this SPEC remains an absent-from-snapshot,
 report-only row).
+
+### A defect I introduced in the iter3 repair, found by the lead's own close grep (v0.2.4)
+
+`da0df2113` shipped `progress.md` with the entire iter3 block **duplicated** — 113 lines, including
+a second copy of the iter2 verification section and, worse, a surviving copy of the very
+brittle-count table that block had just replaced. So the file simultaneously said "the count is a
+trap, use the class table" and carried the counted table underneath it.
+
+**Cause, stated precisely because the shape is reusable.** The edit was
+`s = s[:a] + new + s[b:]` with `a = s.index(<start>)` and `b = s.index(<end>)`. The end marker
+(`### Verification after these repairs`) was not unique — the iter2 block already had one, earlier
+in the file — so `b` resolved *before* `a`, and the splice re-emitted everything between them
+instead of removing the span. `str.index` returns the first match and reports no error when the
+result is nonsensical; a span replacement whose two anchors are not both unique is not a
+replacement, it is a duplication with no diagnostic.
+
+**How it was caught, and what that says about the close predicate.** Not by review and not by the
+no-regression trio — the AC counter, the traceability diff, and `moai spec lint` were all green over
+a file containing 113 duplicated lines, because none of them reads prose structure. It surfaced when
+the lead's close grep ran and returned line numbers in the 500s and 600s for text that should exist
+once. **The close predicate found a defect it was not designed to detect**, which is an argument for
+running it as written rather than trusting the summary of it.
+
+**Guard for the next span edit**: assert both anchors are unique (`s.count(marker) == 1`) and that
+`a < b`, before splicing. Applied by hand here; worth remembering rather than re-deriving.
 
 ## §E.2 Run-phase Evidence
 
