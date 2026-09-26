@@ -178,6 +178,9 @@ func init() {
 	// SPEC-V3R2-RT-004: register state subcommand
 	rootCmd.AddCommand(newStateCmd())
 
+	// SPEC-CI-VERDICT-PRODUCER-001: register the CI verdict producer verb
+	rootCmd.AddCommand(newCIVerdictCmd(defaultGhRunner))
+
 	// kanban t86: register tokens subcommand (per-pool token accounting seed)
 	rootCmd.AddCommand(newTokensCmd())
 
