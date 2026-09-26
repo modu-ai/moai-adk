@@ -179,6 +179,22 @@ workflow:
     # reaches the switch through `moai web` or by editing this key by hand.
     jev:
         enabled: false
+    # autonomy: how a SPEC's autonomous-execution contract is signed and bounded.
+    # An absent key takes the default shown here; an unrecognized value for
+    # mode, second_review, decider, or jev_min_confidence falls back to the
+    # stricter default (guided, required, human, 0.50) with a warning naming
+    # the key.
+    autonomy:
+        mode: guided              # guided | contract
+        contract:
+            batch_sign: false       # sign several SPECs with one confirmation
+            second_review: required # required | advisory | off
+            push_develop: false     # allow the push-develop action in contracts
+        kickoff:
+            # decider: human | llm | llm+jev   (omitted: human in guided, llm in contract)
+            jev_min_confidence: 0.50
+        escalation:
+            budget_default: { turns: 60, operations: 40, audit_retries: 2 }
     # workflow_agents: dynamic-workflow purpose taxonomy -> {model, effort}
     # DEFAULTS. This block is the SSOT for workflow agent() model/effort
     # defaults; per-script literals in .claude/workflows/*.js override it.
