@@ -140,6 +140,8 @@ Claude Code는 셸 명령을 별도의 PowerShell 도구로 실행하기도 합�
 | `kill -9` | Windows의 PowerShell에서 `kill`은 `Stop-Process`의 별칭이라, `kill -9`로 적은 규칙이 아예 매칭되지 않을 수 있습니다 |
 | `TRUNCATE` | PowerShell 규칙은 대소문자를 가리지 않고 매칭하므로, 평범한 파일 유틸리티 `truncate`까지 막아 버립니다 |
 
+내장 보호 장치 가운데 `cmd`로 실행한 `rd`·`del`이 루트, 홈 디렉터리, 와일드카드 대상을 지우지 못하게 막는 검사는 Claude Code v2.1.283 이상에서만 동작하며, Claude Code를 실행하는 환경에 `CLAUDE_CODE_DISABLE_POWERSHELL_CMD_RM_DENY=1`을 설정하면 꺼집니다(`Remove-Item`의 시스템 경로 거부는 그대로 유지됩니다). macOS나 Linux에서 `pwsh`로 네이티브 `rm`을 실행하는 경우는 문서화된 내장 보호 범위에 들어 있지 않습니다.
+
 팀에서 PowerShell 도구를 쓴다면, 셸 명령용 deny 규칙을 직접 추가할 때 짝이 되는 `PowerShell(...)` 규칙도 함께 넣어 두세요.
 
 ## Step 3: settings.json과 settings.local.json 나누기

@@ -338,6 +338,8 @@ Claude Code 还可以通过单独的 PowerShell 工具执行 shell 命令（在�
 | `kill -9` | 在 Windows 的 PowerShell 中，`kill` 是 `Stop-Process` 的别名，写成 `kill -9` 的规则可能永远匹配不到 |
 | `TRUNCATE` | PowerShell 规则不区分大小写，会连普通的文件工具 `truncate` 一并拦截 |
 
+内置保护中阻止经由 `cmd` 运行的 `rd`、`del` 删除根目录、主目录或通配符目标的检查，需要 Claude Code v2.1.283 或更高版本；若在启动 Claude Code 的环境中设置 `CLAUDE_CODE_DISABLE_POWERSHELL_CMD_RM_DENY=1`，该检查即被关闭（`Remove-Item` 删除系统路径的拒绝仍然有效）。在 macOS 或 Linux 上通过 `pwsh` 运行原生 `rm`，不在文档所述的内置保护范围之内。
+
 如果团队使用 PowerShell 工具，在自行添加 shell 命令的 deny 规则时，请同时添加对应的 `PowerShell(...)` 规则。
 
 ### additionalDirectories

@@ -150,7 +150,7 @@ m1_to_mN_commit_strategy: "C1 M1 evidence + status; C2 guard + rules + docs + ru
 
 ```yaml
 sync_complete_at: 2026-09-26
-sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; backfilled in a following commit
+sync_commit_sha: 7017309f0   # backfilled; the sync commit could not cite its own hash
 sync_status: complete
 card: t1211
 run_commits: [49c0fe453, d601647e0, 6b8279daf]
@@ -167,6 +167,8 @@ lead_remeasure_before_sync:
   - "go test ./internal/template/ -run TestSettingsTemplate -count=1 -> ok"
   - "make tool-policy-drift-check -> exit 0"
 ```
+
+**Addendum (sync-audit follow-up).** `679cbbb26` applied sync-audit findings F1/F2 (YAML-to-template PowerShell deny parity guard); this commit applies F3/F4/F5 (docs-site built-in protection caveat in 4 locales, CHANGELOG row-count and guard wording, this `sync_commit_sha` backfill).
 
 **Deviation recorded for sync-audit judgment (REQ-PSD-013).** REQ-PSD-013 expected `moai tool-policy build` to regenerate the template. That command deliberately skips the git_mode-conditional template (`settings.json.tmpl`), so the 36 template rows were written by script from the same list the YAML SSOT carries. Equivalence is shown by a measured set comparison plus the closed-world guard `internal/template/settings_powershell_deny_test.go`, not by the generator. The auditor judges whether this satisfies REQ-PSD-013 or needs a follow-up.
 

@@ -338,6 +338,8 @@ Three kinds of Bash deny rules intentionally have no PowerShell counterpart:
 | `kill -9` | In PowerShell on Windows, `kill` is an alias of `Stop-Process`, so a rule written as `kill -9` may never match |
 | `TRUNCATE` | PowerShell rules match case-insensitively, so it would also block the ordinary `truncate` file utility |
 
+The part of the built-in protection that stops `rd` and `del` run through `cmd` from removing root, home, or wildcard targets requires Claude Code v2.1.283 or later, and is turned off when `CLAUDE_CODE_DISABLE_POWERSHELL_CMD_RM_DENY=1` is set in the environment that launches Claude Code (the `Remove-Item` system-path deny stays in place). Native `rm` run from `pwsh` on macOS or Linux is outside the documented built-in protection.
+
 If your team uses the PowerShell tool, add a matching `PowerShell(...)` rule whenever you add your own deny rule for a shell command.
 
 ### additionalDirectories

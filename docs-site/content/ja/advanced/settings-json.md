@@ -338,6 +338,8 @@ Claude Code は、シェルコマンドを別の PowerShell ツールで実行�
 | `kill -9` | Windows の PowerShell では `kill` が `Stop-Process` のエイリアスなので、`kill -9` と書いたルールは一致しない可能性がある |
 | `TRUNCATE` | PowerShell のルールは大文字と小文字を区別せずに照合されるため、通常のファイルユーティリティ `truncate` まで遮断してしまう |
 
+組み込み保護のうち、`cmd` 経由で実行した `rd` や `del` によるルート・ホームディレクトリ・ワイルドカード対象の削除を止める検査は Claude Code v2.1.283 以降でのみ働き、Claude Code を起動する環境で `CLAUDE_CODE_DISABLE_POWERSHELL_CMD_RM_DENY=1` を設定すると無効になります（`Remove-Item` によるシステムパス削除の拒否はそのまま残ります）。macOS や Linux で `pwsh` からネイティブの `rm` を実行する場合は、文書化された組み込み保護の対象外です。
+
 チームで PowerShell ツールを使う場合、シェルコマンドの deny ルールを独自に追加するときは、対応する `PowerShell(...)` ルールも併せて追加してください。
 
 ### additionalDirectories
