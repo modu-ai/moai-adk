@@ -223,7 +223,7 @@ m1_to_mN_commit_strategy: "per-milestone commits, unpushed (e065ef1e9, a086e87bd
 
 ```yaml
 sync_complete_at: 2026-09-26
-sync_commit_sha: pending-backfill
+sync_commit_sha: b105bc1a8
 sync_status: audit-ready
 b12_self_test_a: "grep -c 'SPEC-WORKTREE-STATE-ROOT-001' CHANGELOG.md → 0 before emission"
 b12_self_test_b: "live AC ids in acceptance.md = 16 (AC-WSR-001..016; AC-MWU-015/016 are [REF] citations of the predecessor SPEC, excluded); CHANGELOG cites 16"
