@@ -181,6 +181,41 @@ M3 decisions:
   REQ-AE-023: "on `unsigned` it shall append a `not-armed` line"; AC-AE-003: "each writes exactly
   one `not-armed` line" per processed call. Behavior left per-call; carried as a sync-audit item.
 
+### M4 — New-architecture/API detector (cycle tdd)
+
+Commit: `263d3e685`. Same env-scrub prefix. Raw outputs: `.moai/reports/t1235/run-m4/` (gitignored).
+`acceptance.md` unchanged.
+
+| AC | Test (package) | Command | Actual output | HEAD | Status |
+|---|---|---|---|---|---|
+| AC-AE-011 | `TestNewAPIAdditionsTrip` and `TestNewAPINotObservedCases` (`internal/escalation`) | `go test -count=1 ./internal/escalation -run '^(TestNewAPIAdditionsTrip\|TestNewAPINotObservedCases)$' -v` | `--- PASS: TestNewAPIAdditionsTrip (4.04s)`, `--- PASS: TestNewAPINotObservedCases (1.12s)`, `ok github.com/modu-ai/moai-adk/internal/escalation 5.657s` | `263d3e685` | PASS (library level; no CLI surface) |
+
+Python fixture (c) both branches observed: with CGO `python main: observed as exported declaration=true, listed not-observed=false`;
+with `CGO_ENABLED=0 go test … -run 'TestNewAPIAdditionsTrip|TestNewAPINotObservedCases' -v` →
+`python main: observed as exported declaration=false, listed not-observed=true`, both tests PASS.
+
+RED before GREEN (E8): compile RED `newapi_test.go:62:17: undefined: escalation.AdditionExportedDecl`,
+`:81:22: undefined: escalation.Checkpoint` (exit 1); assertion RED against stubs
+`newapi_test.go:88: additions = [], want exported-declaration Added` (and the four other kinds),
+`:148: not_observed = [], want the card base`, `:165: not_observed = [], want "cli-verb (python)"` (exit 1).
+
+Other E-items at `263d3e685` tree:
+- E2: `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `GOOS=darwin GOARCH=arm64 go build ./...` exit 0; `GOOS=linux GOARCH=amd64 go build ./...` exit 0; `CGO_ENABLED=0 go vet ./internal/escalation/` exit 0.
+- E3: `go test -count=1 -race -cover ./internal/escalation/` → `coverage: 87.2% of statements`; hook regression subset (`TestEscalationGuidedGolden`, `TestFirstObservationVerifiedAtPreToolUse`, `TestFrozenFileUnionTrips`, `TestInvariantFailureReachesDetectorFromHooks`) PASS.
+- E4: `grep -rn "AskUserQuestion\|mcp__askuser" internal/escalation/` exit 1.
+- E5: `golangci-lint run --new-from-rev=1bdd2ebad ./internal/escalation/...` → `0 issues.`
+
+M4 decisions and the open item:
+- Q2 (CLI verb) is NOT mandated: REQ-AE-009 and AC-AE-011 name only "the on-demand checkpoint";
+  design.md §C.1 calls `moai escalation check` "a proposed CLI verb (open question Q2)". No verb was
+  added. `escalation.Checkpoint` is the checkpoint body with no production caller until the operator
+  decides the surface — returned to the orchestrator as a blocker.
+- Card base: configured develop branch (git-flow), otherwise `origin/HEAD`, then `main`, `master`.
+- Go declarations use `go/parser` (no CGO dependency); other languages use the navigator extractor
+  (`astx.Extract`), unsupported → not-observed. One record per addition (design.md §C.10 fingerprint:
+  kind + qualified name). Only added/modified source files count; a new package is a directory with
+  source added at HEAD and no file at base.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
