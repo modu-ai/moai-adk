@@ -478,6 +478,16 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// This run's BASE was already copied into the backup, so the
 				// write cannot affect the merge below. Best-effort non-blocking.
 				writeTemplateSnapshotBestEffort(projectRoot, errOut)
+				// card t1275: Deploy tracks every written file in the in-memory
+				// manifest, but nothing in the update flow persisted it (init's
+				// initializer calls Save; update never did) — so the on-disk
+				// manifest kept pre-update hashes and the next `init --force`
+				// reclassified every content-changed file user_modified. Persist
+				// the deploy's tracking here, before the merge/restore steps
+				// rewrite their files (those retrack separately below).
+				if saveErr := mgr.Save(); saveErr != nil {
+					_, _ = fmt.Fprintf(errOut, "  manifest save after deploy: %v\n", saveErr)
+				}
 				pl.Done("Templates deployed")
 				return nil
 			},
@@ -648,6 +658,11 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 						_, _ = fmt.Fprintf(out, "  %s llm.harness re-assert warning: %v\n", uikit.SymWarning(), err)
 					}
 				}
+				// card t1275: RestoreMoaiConfigRetained + ApplyHarness just
+				// rewrote .moai/config/sections/*.yaml on top of the deployed
+				// render — re-record those hashes so the manifest matches what
+				// this update actually left on disk.
+				retrackSectionFiles(projectRoot, errOut)
 				deletedCount := backup.CleanupOldBackups(projectRoot, 5)
 				if deletedCount > 0 {
 					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), deletedCount)
@@ -669,6 +684,15 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			// flow that deployed (plan.md D4 ③, M-07d).
 			if err := mergeUserFilesSettlingSnapshot(projectRoot, mergeableBackups, out, errOut); err != nil {
 				_, _ = fmt.Fprintf(out, "  %s File merge warning: %v\n", uikit.SymWarning(), err)
+			}
+			// card t1275: the 3-way merge rewrote the mergeable set
+			// (.claude/settings.json, .moai/status_line.sh, .mcp.json, ...)
+			// after the deploy already tracked the fresh render — re-record
+			// the merged result for exactly those paths. user-owned files are
+			// filtered out inside retrackManifestFiles, so a file the user
+			// alone changed keeps its drift and still reads user_modified.
+			if retrackErr := retrackManifestFiles(projectRoot, mgr, errOut, collectMergeableFiles(projectRoot)); retrackErr != nil {
+				_, _ = fmt.Fprintf(errOut, "  manifest retrack (mergeable set): %v\n", retrackErr)
 			}
 		default:
 			// Execute normal step under the recovery guard: a failure after the
