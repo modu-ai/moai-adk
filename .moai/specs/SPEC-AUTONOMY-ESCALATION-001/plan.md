@@ -56,32 +56,39 @@ delta; E8 RED output before GREEN.
 - Record location and schema (spec.md §I, lead ruling 4); the contract resolver as one isolated
   function (lead ruling 2, design.md §C.8); read `workflow.autonomy.mode` through A1's reader
   (inert under `guided`); add only `escalation.new_api_detector`.
-- ACs: AC-AE-001, AC-AE-002, AC-AE-018 (location and schema half).
+- ACs: AC-AE-001, AC-AE-002, AC-AE-017 (location and schema half).
 
 ### M2 — Record writer, dedup, fault handling, acceptance-change, first-resolution invalidity
 
 - Writer, occurrence counting, `not-armed` / `not-checked` / warning audit lines, detector state
   file, class 1.
-- ACs: AC-AE-004, AC-AE-005, AC-AE-018, AC-AE-019, AC-AE-020, AC-AE-025.
+- ACs: AC-AE-004, AC-AE-005, AC-AE-017, AC-AE-018, AC-AE-021.
 
 ### M3 — Path and command classes (PreToolUse / PostToolUse)
 
 - Classes 2a, 2b (frozen union), 3 with post-signing immutability and exemptions, unreadable
   field handling.
-- ACs: AC-AE-006, AC-AE-007, AC-AE-008, AC-AE-009, AC-AE-024.
+- ACs: AC-AE-006, AC-AE-007, AC-AE-008, AC-AE-009, AC-AE-020.
 
 ### M4 — New-architecture/API detector (Priority Medium, heuristic)
 
 - Card base resolution, base-blob extraction, per-language sub-kinds, `off` switch, not-observed
   labelling.
-- ACs: AC-AE-010, AC-AE-011, AC-AE-012, AC-AE-023.
+- ACs: AC-AE-010, AC-AE-011.
 
 ### M5 — Evidence, irreversible action, operational trips, contract-void
 
 - Classes 5, 6, 7, 8, 9, 10; the never-alters-tool-call sweep across all classes.
-- ACs: AC-AE-003, AC-AE-013, AC-AE-014, AC-AE-015, AC-AE-016, AC-AE-017, AC-AE-021, AC-AE-022.
+- ACs: AC-AE-003, AC-AE-012, AC-AE-013, AC-AE-014, AC-AE-015, AC-AE-016, AC-AE-019.
 
-### M6 — Template default and documentation (mechanical)
+### M6 — A3 preconditions: push serializer and contract-sign guard (distinct components)
+
+- Push serializer on the `push-develop` slot lease (REQ-AE-024, design.md §G.1); contract-sign
+  guard with the bypass-shape matcher and fail-closed rule (REQ-AE-025, design.md §G.2). Neither
+  touches the detector's record path. AC-AE-025 stays RED until A1 defines the receipt path (R5).
+- ACs: AC-AE-022, AC-AE-023, AC-AE-024, AC-AE-025.
+
+### M7 — Template default and documentation (mechanical)
 
 - Template `workflow.yaml` gains `autonomy.escalation.new_api_detector: graph` under the block
   A1 introduces (A1 owns `mode: guided` and `budget_default`); `make build`.
@@ -96,6 +103,9 @@ delta; E8 RED output before GREEN.
 | Class 6 regex misses an obfuscated push | Reported as residual risk; blocking belongs to A3 |
 | Invariant commands never run → never checked | Reported as not-observed (REQ-AE-019, O10) |
 | Card id not resolvable → records land under the SPEC-ID fallback | Q9 below |
+| Sign guard fail-closed rule blocks a legitimate command carrying both words | Deny only when structure is unclassifiable; classified non-sign invocations (e.g. `echo`, `moai contract show`) pass (AC-AE-024) |
+| A1 declines R5 → no receipt path | AC-AE-025 stays RED and M6 cannot close; surface to the lead rather than weaken the guard |
+| SPEC at both Tier L ceilings (25/25) | Further scope goes to a separate SPEC |
 
 ## §H — Open questions (for the lead)
 

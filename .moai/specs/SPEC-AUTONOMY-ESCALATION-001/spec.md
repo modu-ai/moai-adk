@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUTONOMY-ESCALATION-001
 title: "Contract-mode escalation detector: mechanical detection of the six escalate_on classes plus operational trips, reported as an escalation record without blocking or mutating the queue"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -42,6 +42,12 @@ related_specs: [SPEC-AUTONOMY-TIERS-001, SPEC-ACSNAPSHOT-COMMIT-GUARD-001]
   `budget.audit_retries` for both audits (REQ-AE-014, Q4), and the `frozen-files` union
   (REQ-AE-007, Q7). Requirements 20 → 23, criteria 22 → 25 (renumbered, mapping in
   acceptance.md §A).
+- **2026-09-26** — v0.2.1, same iteration-2 revision. The lead assigned two items left unowned
+  by the A1 second audit to this SPEC, both marked **A3 precondition** and kept distinct from the
+  escalation detector (§D.5, §J): push serialization for `push-develop` (REQ-AE-024) and a deny
+  on agent-invoked `moai contract sign` (REQ-AE-025). Requirements 23 → 25 and criteria stay at
+  25 by merging four criteria (mapping in acceptance.md §A); the SPEC now sits at both Tier L
+  ceilings, so any further scope should go to a separate SPEC.
 
 ## §B — Problem
 
@@ -102,7 +108,8 @@ nothing observable changes.
 
 ## §D — Requirements (GEARS)
 
-23 requirements. Requirements whose predicate reads a `contract.yaml` field, an A1 verify
+25 requirements (REQ-AE-001 … REQ-AE-023 for the escalation detector, REQ-AE-024 and
+REQ-AE-025 for the two A3 preconditions). Requirements whose predicate reads a `contract.yaml` field, an A1 verify
 result, or an A1-owned configuration key carry the tag 「A1 plan-audit 통과본으로 재확인」;
 every such field is listed once, in §F, against the A1 draft at `8f77d9a33`.
 
@@ -247,6 +254,33 @@ first.
   codes, and shall keep operational classes 7-9 active against
   `workflow.autonomy.escalation.budget_default`. 「A1 plan-audit 통과본으로 재확인」
 
+### D.5 — A3 preconditions (distinct from the escalation detector)
+
+These two components deny tool calls, which the escalation detector never does (REQ-AE-003).
+They are separate components that share only the contract resolver (REQ-AE-002); neither writes
+an escalation record. Mechanics: design.md §G.
+
+- **REQ-AE-024** (A3 precondition; Capability gate + event) — Where `workflow.autonomy.mode` is
+  `contract` and the resolved contract's `actions` contains `push-develop`, when a Bash tool call
+  is a push of `develop`, the push serializer shall admit it only if the `push-develop` slot lease
+  (the record `moai slot` maintains) is free, expired, stale, or held by the calling session —
+  acquiring it for the calling session on admission — and shall otherwise deny it with a reason
+  prefixed `PUSH_SERIALIZATION_VIOLATION:` naming the live holder, as a wait rather than an
+  escalation; it shall release the lease when the admitted push exits non-zero, hold it
+  otherwise until the holder releases it after reading the CI result for the pushed head or the
+  declared bound elapses, and fail open (allow plus an audit line) when the lease record cannot
+  be read. 「A1 plan-audit 통과본으로 재확인」
+- **REQ-AE-025** (A3 precondition; Ubiquitous) — The contract-sign guard shall deny, regardless
+  of `workflow.autonomy.mode`, every Bash tool call that invokes `moai contract sign`, with a
+  reason prefixed `CONTRACT_SIGN_AGENT_VIOLATION:`, recognizing the invocation through shell
+  quoting, leading environment assignments, the `env` / `command` / `exec` / `nohup` prefixes,
+  any path to an executable named `moai`, and one level of `sh -c` / `bash -c` / `zsh -c`;
+  when a command carries the words `contract` and `sign` but its structure cannot be classified
+  (command substitution, a variable in program position, `eval`, or nesting deeper than one
+  level) the guard shall deny it (fail closed); and where A1 defines a moai-issued receipt path
+  for non-interactive signing, the guard shall allow an invocation on that path.
+  「A1 plan-audit 통과본으로 재확인」
+
 ## §E — Constraints
 
 - **C1 — Default preserves today.** `workflow.autonomy.mode` and
@@ -260,8 +294,10 @@ first.
   (`internal/config/types.go:1199-1243`) already names harness-level escalation
   (minimal→thorough). The keys read here live under `workflow.autonomy.escalation` and the two
   are never merged.
-- **C3 — Detection only.** No existing gate is rewired, weakened, or strengthened; the
-  destructive denylist, deny rules, and branch guard keep deciding exactly as they do now.
+- **C3 — Detection only, except two assigned A3 preconditions.** No existing gate is rewired,
+  weakened, or strengthened; the destructive denylist, deny rules, and branch guard keep deciding
+  exactly as they do now. The only new denials are the two A3 preconditions (REQ-AE-024,
+  REQ-AE-025), assigned to this SPEC by the lead because A3 depends on them.
 - **C4 — Hook budget.** Under `contract` mode, detector work on the PreToolUse path is
   in-memory path and string matching bounded by the existing hook bind budget; the HEAD commit
   REQ-AE-016 records on that path is read from the repository's HEAD and ref files, never
@@ -295,7 +331,8 @@ version before run-phase M2, and so is every row of §F.1 whether or not a tag c
 | `ownership.write[]`, `ownership.never[]` | REQ-AE-007, REQ-AE-008, REQ-AE-021 |
 | `ownership.scratch[]` (requested, R2 — not in the draft) | REQ-AE-022 |
 | `review.second_model` (`codex` / `glm` / `none`) | REQ-AE-010 |
-| `actions[]` closed vocabulary; `push-develop` token | REQ-AE-011 |
+| `actions[]` closed vocabulary; `push-develop` token; `push_requires_window` (R6) | REQ-AE-011, REQ-AE-024 |
+| receipt path for non-interactive signing (requested, R5 — not in the draft) | REQ-AE-025 |
 | `budget.turns`, `budget.operations`, `budget.audit_retries` | REQ-AE-012, REQ-AE-014 |
 | `escalate_on[]` six tokens (used as the record's tripped-line token) | REQ-AE-016 |
 | `workflow.autonomy.mode`, `workflow.autonomy.escalation.budget_default` (A1 § Configuration) | REQ-AE-001, REQ-AE-012, REQ-AE-020 |
@@ -344,6 +381,14 @@ Requests to A1 that follow from the lead rulings of 09-26 (§H):
 - **R4 — `frozen-files` definition.** A1 defines the token as the union of the constitution zone
   registry's Frozen-zone target files, the hook's `frozenInstructionFiles`, and the contract's
   `ownership.never`. Consumed by REQ-AE-007.
+- **R5 — Receipt path for non-interactive signing.** The `8f77d9a33` draft has no receipt path:
+  `sign` refuses a non-terminal stdin and `interactive-tty` is its only method (draft lines
+  80, 189, 194; the word "receipt" does not occur in the copy). A1 defines the moai-issued
+  receipt path and how a guard recognizes it. Consumed by REQ-AE-025; until it exists, the
+  guard denies every `moai contract sign` invocation.
+- **R6 — Which window `push_requires_window` means.** The draft says `push-develop` "implies
+  `push_requires_window`" without naming the mechanism. This SPEC implements it as the
+  `push-develop` slot lease (REQ-AE-024); A1 confirms or names another. Consumed by REQ-AE-024.
 
 Also depends on A1 landing on `develop` before run-phase begins (card text: "plan 은 병행 가능,
 run 은 A1 develop 병합 뒤").
@@ -352,8 +397,12 @@ run 은 A1 develop 병합 뒤").
 
 ### Out of Scope — rewiring or adding gates
 
-- Turning any trip into a deny, an ask, or a block (that is track A3).
+- Turning any escalation trip into a deny, an ask, or a block (that is track A3); the two A3
+  preconditions of §D.5 are the only denials this SPEC adds.
 - Adding a plain-push-to-`main` or `git tag` deny rule; class 6 reports the attempt only.
+- Detecting a `moai contract sign` reached through a script file, an alias, or a build-and-run
+  of the source tree; those invocations are not visible in the Bash command string (A1's
+  terminal-only signing remains the backstop, §J).
 
 ### Out of Scope — the closure report
 
@@ -419,3 +468,30 @@ fingerprint suffix so two trips in one second do not collide.
 | `status` | string | `open` when written; changing it is a human act outside this SPEC |
 
 A card is needs-decision exactly when one of its records has `status: open` (REQ-AE-015).
+
+## §J — A3 preconditions (lead assignment 09-26)
+
+Two items from the A1 second audit had no owner; the lead assigned them here because A3 (gate
+rewiring) cannot start without them. They are **A3 preconditions**, not escalation classes: they
+deny, they never write escalation records, and they are tested separately (acceptance.md §G).
+
+| Item | Why A3 needs it | Requirement | Reuse |
+|---|---|---|---|
+| Push serialization | Back-to-back pushes of `develop` cancel the in-flight CI run of the earlier push, so its verdict never arrives. | REQ-AE-024 | `moai slot` lease record, liveness, bound, and takeover rules (`.claude/rules/moai/workflow/resource-slot-lease.md`; `internal/cli/slot.go`, `internal/hook/slot_lease_guard.go`) |
+| Agent-invoked signing denied | A contract signed by the agent it binds is no contract. | REQ-AE-025 | The quoted-span and command-extraction helpers the branch and integration guards already use (`internal/hook/branch_guard.go:197`, `internal/hook/integration_lock_guard.go:122`) |
+
+Bypass shapes for REQ-AE-025 and the matcher's answer to each:
+
+| Shape | Example | Matcher |
+|---|---|---|
+| Quoting | `'moai' contract "sign"` | caught (shell-word unquoting) |
+| Environment prefix | `FOO=1 moai contract sign`, `env FOO=1 moai contract sign` | caught |
+| Wrapper prefix | `command moai …`, `exec moai …`, `nohup moai …` | caught |
+| Path to the binary | `~/go/bin/moai contract sign`, `./bin/moai contract sign` | caught (basename `moai`) |
+| One-level shell | `sh -c 'moai contract sign'`, `bash -c …`, `zsh -c …` | caught (the `-c` string is parsed once) |
+| Global flags before the verb | `moai --no-color contract sign` | caught (flags skipped before `contract`) |
+| Command substitution, variable as program, `eval`, deeper nesting | `$(which moai) contract sign`, `$M contract sign`, `eval "moai contract sign"` | not classified → **denied (fail closed)** when the words `contract` and `sign` both occur |
+| Script file, alias, `go run ./cmd/moai contract sign` | — | not visible or not classified; script and alias invisible (Out of Scope), `go run` form denied by the fail-closed rule because both words occur |
+
+A1's own `sign` refuses a non-terminal stdin, and an agent's Bash call has none, so this guard is
+defense in depth rather than the only barrier.

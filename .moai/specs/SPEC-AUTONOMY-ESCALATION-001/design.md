@@ -126,6 +126,52 @@ worktree↔card record replace it later without touching the class detectors.
 - **Resolve the SPEC from the branch name** — rejected by lead ruling 09-26 #2; `WT-<slug>`
   branches do not carry the card or SPEC.
 
+## §G — A3 preconditions (lead assignment 09-26; separate from the detector)
+
+### G.1 Push serializer (REQ-AE-024)
+
+- **Resource.** The existing slot lease, resource name `push-develop` (a valid slot resource
+  name), record at `.moai/state/slot-leases/push-develop.json` in the primary checkout, root
+  resolved by `kanban.ResolveSlotLeaseRoot` — the same record `moai slot status --resource
+  push-develop` reads. No new record format, lock, or verb.
+- **Activation.** Only under `autonomy.mode: contract` with `push-develop` in the resolved
+  contract's `actions`. It does not depend on `workflow.slot_lease.enabled`, which keeps gating
+  the generic slot guard only.
+- **Matcher.** A Bash command whose program is `git`, subcommand `push`, and whose refspec
+  targets `develop` (with the same quote handling as `checkSlotLease`).
+- **Admit.** Free, expired (declared bound elapsed), stale (owning session gone), or held by the
+  calling session → admit and write the lease for the calling session with bound
+  `workflow.slot_lease.default_max_duration`; a takeover names the displaced holder (the slot
+  lease's existing rule).
+- **Deny.** Held by a different live session within its bound → deny with
+  `PUSH_SERIALIZATION_VIOLATION: push-develop held by <holder>`. The agent waits and retries;
+  no escalation record is written, because serialization is expected traffic, not a contract
+  breach.
+- **Release.** PostToolUse on the admitted push: a non-zero exit releases immediately (nothing is
+  in flight). Otherwise the holder releases with `moai slot release --resource push-develop`
+  after reading the CI result for the pushed head; a forgotten release costs at most the bound.
+- **Fail direction.** Unreadable record, unresolvable root, unknown caller → allow plus an audit
+  line (the slot guard's fail-open), because an overlapping push costs one cancelled CI run
+  while a stuck deny halts the lane.
+
+### G.2 Contract-sign guard (REQ-AE-025)
+
+- **Placement.** A PreToolUse Bash check independent of `workflow.autonomy.mode`, placed with the
+  other deny guards and called before the class 6 detector.
+- **Parse.** Split the command into shell words with quote removal (not quoted-span scrubbing,
+  which would erase `'moai'`); strip leading `NAME=value` assignments and the `env`, `command`,
+  `exec`, `nohup` prefixes; take the program word's basename; skip global flags; match
+  `moai` + `contract` + `sign`. For `sh|bash|zsh -c <string>`, parse `<string>` once more.
+- **Unclassifiable.** Command substitution, a variable in program position, `eval`, or nesting
+  beyond one `-c` level, when the words `contract` and `sign` both occur → deny (fail closed),
+  reason marked unclassified. A classified invocation whose program is not `moai` (e.g.
+  `echo "moai contract sign"`) passes.
+- **Receipt path.** Allowed only in the form A1 defines (R5). Until A1 defines it, no
+  `moai contract sign` form is allowed.
+- **Why fail closed here and fail open in G.1.** A wrongly allowed signature voids the contract
+  model; a wrongly denied sign costs the operator one terminal command, which is where signing
+  belongs anyway.
+
 ## §F — Proposed package
 
 Detector logic in `internal/escalation` (resolver, class detectors, record writer, state file);
