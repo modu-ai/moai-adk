@@ -13,7 +13,7 @@ func TestIsTerminalFileRejectsDevNull(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open %s: %v", os.DevNull, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if isTerminalFile(f) {
 		t.Fatalf("isTerminalFile(%s) = true, want false", os.DevNull)
 	}
@@ -24,8 +24,8 @@ func TestIsTerminalFileRejectsPipe(t *testing.T) {
 	if err != nil {
 		t.Fatalf("pipe: %v", err)
 	}
-	defer r.Close()
-	defer w.Close()
+	defer func() { _ = r.Close() }()
+	defer func() { _ = w.Close() }()
 	if isTerminalFile(r) {
 		t.Fatal("isTerminalFile(pipe) = true, want false")
 	}
