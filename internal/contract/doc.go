@@ -28,6 +28,7 @@
 //	DigestBytes(raw []byte) (string, error)        // Decode + Digest
 //	Verify(in Inputs) Report                       // pure evaluation; never errors
 //	ValidSpecID(id string) bool                    // SpecIDPattern match
+//	ValidCard(card string) bool                    // CardPattern match
 //	ResolveSpecDir(projectRoot, specID string) (string, error)
 //	LoadDir(specDir string) (Inputs, error)        // reads contract.yaml (+ acceptance.md, receipt)
 //	ReasonCodes() []string / IsReasonCode(string) bool  // closed reason-code set
@@ -35,8 +36,9 @@
 //	AcceptanceHash(raw []byte) string              // lowercase-hex SHA-256 of normalized bytes
 //	CountAC(normalized []byte) (ACCountResult, error)  // Go port of the MOAI-AC-COUNTER awk program
 //
-// Constants: the 23 Reason* codes, State* values, Section* names,
-// ContractFile / AcceptanceFile / ReceiptFile, SchemaVersion, SpecIDPattern.
+// Constants: the 24 Reason* codes, State* values, Section* names,
+// ContractFile / AcceptanceFile / ReceiptFile, SchemaVersion, SpecIDPattern,
+// CardPattern.
 // Sentinel errors: ErrSchemaInvalid, ErrContractMissing,
 // ErrPathEscapesSpecDir, ErrInvalidSpecID, ErrACPrefixInvalid. LoadDir errors are I/O errors
 // (the CLI maps them to exit 2), never reasons.
@@ -51,6 +53,8 @@
 //   - schema_version != 1 → schema_invalid.
 //   - spec_id different from Inputs.SpecID, or failing SpecIDPattern →
 //     spec_id_mismatch.
+//   - card missing, empty, or not matching CardPattern → card_invalid (a
+//     collected reason, not schema_invalid). Report.Card carries the value.
 //   - A missing required section (RequiredSections; a key whose value is
 //     YAML null counts as missing) → schema_invalid.
 //     Design choice for `budget`: an unsigned draft may omit it, because

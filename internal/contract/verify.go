@@ -56,7 +56,15 @@ type Report struct {
 	Contract *Contract `json:"-"`
 }
 
-var specIDRe = regexp.MustCompile(SpecIDPattern)
+var (
+	specIDRe = regexp.MustCompile(SpecIDPattern)
+	cardRe   = regexp.MustCompile(CardPattern)
+)
+
+// ValidCard reports whether card matches CardPattern.
+func ValidCard(card string) bool {
+	return cardRe.MatchString(card)
+}
 
 // ValidSpecID reports whether id matches SpecIDPattern.
 func ValidSpecID(id string) bool {
@@ -86,6 +94,7 @@ func Verify(in Inputs) Report {
 	}
 	r.Contract = c
 	r.SchemaVersion = c.SchemaVersion
+	r.Card = c.Card
 	signed := c.Signature != nil
 
 	reasons := reasonSet{}
@@ -94,6 +103,10 @@ func Verify(in Inputs) Report {
 	}
 	if c.SpecID != in.SpecID || !ValidSpecID(c.SpecID) {
 		reasons.add(ReasonSpecIDMismatch)
+	}
+	if !ValidCard(c.Card) {
+		// Missing, empty, or not one path segment (design.md § Card Field).
+		reasons.add(ReasonCardInvalid)
 	}
 	for _, s := range c.MissingSections() {
 		// An unsigned draft may omit budget; sign fills it before signing.

@@ -10,18 +10,21 @@ package contract
 // Budget, Signature) or are tracked through the decode-time presence set
 // (Ownership.Scratch), so "absent" is distinguishable from a zero value.
 type Contract struct {
-	SchemaVersion int         `yaml:"schema_version" json:"schema_version"`
-	SpecID        string      `yaml:"spec_id" json:"spec_id"`
-	Acceptance    *Acceptance `yaml:"acceptance" json:"acceptance"`
-	Invariants    []string    `yaml:"invariants" json:"invariants"`
-	Ownership     *Ownership  `yaml:"ownership" json:"ownership"`
-	Approach      string      `yaml:"approach" json:"approach"`
-	Actions       []string    `yaml:"actions" json:"actions"`
-	Reobserve     []string    `yaml:"reobserve" json:"reobserve"`
-	Review        *Review     `yaml:"review" json:"review"`
-	Budget        *Budget     `yaml:"budget,omitempty" json:"budget"`
-	EscalateOn    []string    `yaml:"escalate_on" json:"escalate_on"`
-	PlanAudit     *PlanAudit  `yaml:"plan_audit" json:"plan_audit"`
+	SchemaVersion int    `yaml:"schema_version" json:"schema_version"`
+	SpecID        string `yaml:"spec_id" json:"spec_id"`
+	// Card names the card the contract belongs to (design.md § Card Field).
+	// Required; it is part of the body and therefore of the digest.
+	Card       string      `yaml:"card" json:"card"`
+	Acceptance *Acceptance `yaml:"acceptance" json:"acceptance"`
+	Invariants []string    `yaml:"invariants" json:"invariants"`
+	Ownership  *Ownership  `yaml:"ownership" json:"ownership"`
+	Approach   string      `yaml:"approach" json:"approach"`
+	Actions    []string    `yaml:"actions" json:"actions"`
+	Reobserve  []string    `yaml:"reobserve" json:"reobserve"`
+	Review     *Review     `yaml:"review" json:"review"`
+	Budget     *Budget     `yaml:"budget,omitempty" json:"budget"`
+	EscalateOn []string    `yaml:"escalate_on" json:"escalate_on"`
+	PlanAudit  *PlanAudit  `yaml:"plan_audit" json:"plan_audit"`
 	// Signature is written only by `moai contract sign` and is excluded from
 	// the digest (Digest drops it before marshaling).
 	Signature *Signature `yaml:"signature,omitempty" json:"signature,omitempty"`
@@ -147,6 +150,10 @@ const (
 	AcceptanceFile = "acceptance.md"
 	ReceiptFile    = "kickoff-receipt.json"
 )
+
+// CardPattern is the card-id pattern of design.md § Card Field: exactly one
+// path segment (no "/", no "."), starting alphanumeric, at most 64 characters.
+const CardPattern = `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`
 
 // SchemaVersion is the only schema_version this package accepts.
 const SchemaVersion = 1

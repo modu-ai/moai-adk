@@ -53,6 +53,7 @@ var reasonCodes = []string{
 	ReasonReobserveIncomplete,
 	ReasonPlanAuditNotPassing,
 	ReasonReceiptMismatch,
+	ReasonCardInvalid,
 	ReasonSignatureSealMismatch,
 	ReasonSignatureInconsistent,
 	ReasonSignatureAcceptanceMismatch,
