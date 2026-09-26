@@ -353,6 +353,7 @@ func TestRunAgentHook_DefaultAction(t *testing.T) {
 }
 
 func TestRunAgentHook_ReadInputError(t *testing.T) {
+	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
@@ -368,12 +369,18 @@ func TestRunAgentHook_ReadInputError(t *testing.T) {
 	for _, cmd := range hookCmd.Commands() {
 		if cmd.Name() == "agent" {
 			cmd.SetContext(context.Background())
-			err := cmd.RunE(cmd, []string{"test-validation"})
-			// runAgentHook gracefully degrades on ReadInput failure:
-			// warn to stderr + emit default output + exit 0 (no error returned).
-			// See internal/cli/hook.go runAgentHook "Same graceful degradation as runHookEvent".
+			var err error
+			stdout := captureStdoutDuring(t, func() { err = cmd.RunE(cmd, []string{"test-validation"}) })
+			// test-validation maps to PreToolUse, a decision-bearing event: a
+			// ReadInput failure is answered with a fail-closed deny on exit 0
+			// (SPEC-HOOK-STDIN-FAILCLOSED-001 REQ-HSF-014), not the default
+			// output. Observation-mapped actions keep the default output
+			// (TestStdinFailClosed_AgentObservationActionsPreserved).
 			if err != nil {
-				t.Errorf("should gracefully degrade on ReadInput failure (default emit + exit 0), got err: %v", err)
+				t.Errorf("a ReadInput failure must exit 0, got err: %v", err)
+			}
+			if reason, ok := denyReason(hook.EventPreToolUse, stdout); !ok || reason != expectedFailClosedReason() {
+				t.Errorf("stdout = %q, want the PreToolUse fail-closed deny", stdout)
 			}
 			return
 		}
