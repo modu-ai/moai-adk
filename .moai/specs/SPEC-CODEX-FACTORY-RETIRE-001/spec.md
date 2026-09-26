@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-FACTORY-RETIRE-001
 title: "Retire the interactive-TUI codex factory path (moai codex -k / -f)"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -26,6 +26,12 @@ related_specs: [SPEC-DUAL-HARNESS-RECOVERY-001, SPEC-FACTORY-MIXED-HOOK-001, SPE
   re-measured on this tree (`553e224f3`, branch `WT-codex-factory-retire`); the
   design's coordinates came from develop `35ab8cff3`. Divergences are recorded in
   `research.md` §R2 and summarized in §A.3.
+- 2026-09-26 · v0.2.0 · manager-spec · plan-audit iter-1 FAIL (0.71) revision:
+  build-tag statement (REQ-016), full-source schema guard (REQ-015), codex-hook peer
+  refusal (REQ-022), M5 no-confirmation prohibition (REQ-023), posture-key rationale
+  (REQ-009), develop-parent budget baseline (REQ-021), pinned absence evidence,
+  scoped design guarantee plus a known-limitation exclusion, extended supersession
+  list; ACs revised per `.moai/reports/plan-audit/SPEC-CODEX-FACTORY-RETIRE-001-review-1.md`.
 
 ## §0 Governing principle [HARD]
 
@@ -71,9 +77,10 @@ one `factory.db`. Retiring first leaves F2 a clean refusal to replace.
 
 ### A.3 Where the measured code contradicts the design
 
-1. **`codex queue --thread` wake is not in this tree.** `git grep -c
-   factoryQueueCodexMessage HEAD` and `git grep -c 'to.Backend == "codex"' HEAD`
-   both exit 1 (no match). The symbol exists only in the uncommitted develop-worktree
+1. **`codex queue --thread` wake is not in this tree.** Pinned to `553e224f3` and
+   scoped to code (`.moai/specs` excluded, because this SPEC's own body names the
+   symbol): `git grep -c factoryQueueCodexMessage 553e224f3 -- internal cmd pkg` and
+   `git grep -c 'to.Backend == "codex"' 553e224f3 -- internal` both exit 1 (no match). The symbol exists only in the uncommitted develop-worktree
    copy the lead reported. The REMOVE item reduces to the foreign-file disposition
    (REQ-CFR-019).
 2. **The handoff CLI is already unreachable.** Removing it withdraws no
@@ -140,7 +147,11 @@ config, docs), not by net growth.
   run owner, or clear a run owner.
 - **REQ-CFR-009** — The environment defense shall preserve every other inherited
   variable, the resolved `CODEX_HOME`, and the existing removal of
-  `CLAUDE_CODE_SESSION_ID` and `MOAI_SESSION_PID`.
+  `CLAUDE_CODE_SESSION_ID` and `MOAI_SESSION_PID`. The posture keys
+  `MOAI_AUTONOMY_TIER` and `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` are deliberately
+  preserved: neither carries a factory identity (the launch gate
+  `factoryLaunchEnabled` and the hook peer registration read only identity keys), and
+  an operator-set autonomy tier is an explicit choice this SPEC does not override.
 
 ### B.3 Codex-run join refusal (Milestone M1)
 
@@ -165,13 +176,17 @@ config, docs), not by net growth.
   API, schema), the `factory_msg_*` MCP tools, the hook factory-message and
   interactive-bind path, and `moai factory handoff abandon-lane` / `recover-resume` /
   `moai factory runs`.
-- **REQ-CFR-015** — The factory state schema shall not change: the set of
-  `CREATE TABLE` statements under `internal/factorymsg` and `internal/homestate` shall
-  be byte-identical before and after.
+- **REQ-CFR-015** — The factory state schema shall not change: the production sources
+  of `internal/factorymsg` and `internal/homestate` — every `CREATE TABLE` body,
+  `ALTER TABLE`, and index statement, including `runs.lead_backend` — shall be
+  byte-identical before and after.
 - **REQ-CFR-016** — The kept codex surfaces shall behave unchanged: bare `moai codex`,
   `cli`, `status`, `app`, `--spawn`, `-w` (including its anchor lock and the POSIX
   in-place `syscall.Exec`), `--` passthrough, `moai codex audit`, `codex_role_audit*`,
-  `codex_audit`, `codex_task`, and `session_msg_*`.
+  `codex_audit`, `codex_task`, and `session_msg_*`. `syscall.Exec` stays in
+  `codex_direct_posix.go` under `//go:build !windows`, with `codex_direct_windows.go`
+  under `//go:build windows`; this SPEC adds no new `syscall` use and keeps that
+  build-tag split.
 - **REQ-CFR-017** — Tests that exercise shared code shall survive the deletion of their
   host files, running under the same names in a kept file.
 
@@ -183,14 +198,25 @@ config, docs), not by net growth.
   and template), and the docs-site `codex-dual-harness.md` and `mcp-server.md` pages in
   all four locales (ko canonical, then en/ja/zh in the same change).
 - **REQ-CFR-019** — When the lead confirms the merge-window disposition, the foreign
-  uncommitted files in the develop worktree shall be preserved as a patch under
-  `.moai/reports/t1242/` before any of them is reverted or removed.
+  uncommitted files in the develop worktree shall be preserved as a patch at
+  `.moai/reports/t1242/foreign-6.patch` in the **primary checkout** (not the develop
+  worktree, not the card worktree) before any of them is reverted or removed.
 - **REQ-CFR-020** — The codex wiring generator shall not alter the `env_vars`
   allowlist of the generated `[mcp_servers.moai]` table, so existing projects do not
   start reporting `.codex/config.toml` drift.
 - **REQ-CFR-021** — The always-loaded instruction surface shall not grow: the change
   shall leave `TestAlwaysLoadedTokenBudget` passing on the merge tree with a measured
-  surface no larger than the merge base's.
+  surface no larger than that of the merge commit's develop parent, both measured in
+  the same run.
+
+### B.6 Codex hook peer refusal and merge-window gate (Milestones M1, M5)
+
+- **REQ-CFR-022** — When a MoAI hook runs under `--harness codex`, the hook shall not
+  register, bind, or rotate a factory peer, whatever lane keys its environment carries;
+  the same hook without `--harness codex` shall keep registering exactly as before.
+- **REQ-CFR-023** — The run lane shall not modify, revert, move, or remove any path in
+  the develop worktree before the lead's confirmation of the M5 disposition is recorded
+  in `progress.md` §E.2.
 
 ## §C Decisions recorded here (not deferred)
 
@@ -211,7 +237,7 @@ config, docs), not by net growth.
 
 ## §D Acceptance criteria
 
-Enumerated in `acceptance.md` (AC-CFR-001 … AC-CFR-024).
+Enumerated in `acceptance.md` (AC-CFR-001 … AC-CFR-025).
 
 ## §E Exclusions
 
@@ -232,6 +258,20 @@ Enumerated in `acceptance.md` (AC-CFR-001 … AC-CFR-024).
 - `AGENTS.md` line 26 states `moai codex -w` "never creates" a tree, while
   `resolveOrCreateCodexWorktreeDir` creates one. This SPEC only removes the word
   "lanes" from that row; the create/no-create wording is reported, not fixed.
-- Completed SPECs that describe `moai codex -k`/`-f` (SPEC-FACTORY-MIXED-HOOK-001,
-  SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001, SPEC-DUAL-HARNESS-RECOVERY-001) are not
-  rewritten; their supersession marking belongs to the sync phase.
+- Completed SPECs that describe `moai codex -k`/`-f` or the codex `-f` local-instruction
+  shapes (SPEC-FACTORY-MIXED-HOOK-001, SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001,
+  SPEC-DUAL-HARNESS-RECOVERY-001, SPEC-CODEX-LOCALMD-001, SPEC-FACTORY-RUN-RETIRE-001)
+  are not rewritten; their supersession marking and the codemaps regeneration
+  (`.moai/project/codemaps/modules.md:71` describes the `moai codex -f` entry) belong
+  to the sync phase.
+
+### Out of Scope — codex processes not launched through `moai codex` (known limitation)
+
+- A `codex` binary started directly in a Claude lane terminal (not through the
+  `moai codex` launcher) inherits the lane environment. REQ-CFR-006/007 do not reach it.
+  REQ-CFR-022 closes its hook path (`--harness codex` hooks register no peer), but its
+  `moai mcp-server` still receives the lane keys through `env_vars` (D1). Whether the
+  `factory_msg_*` tools then attribute to the lane is unmeasured; they require a
+  registered peer matching the caller's owner process, which this SPEC leaves absent.
+  Follow-up card suggested: measure and, if needed, refuse lane attribution in the MCP
+  server for a codex-owned caller.

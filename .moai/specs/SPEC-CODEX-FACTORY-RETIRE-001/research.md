@@ -32,9 +32,13 @@ from develop `35ab8cff3`; where they diverge, §R2 says so.
 ## R2 Divergences from the design
 
 1. **`factoryQueueCodexMessage` / the `to.Backend == "codex"` branch are absent** from
-   the committed tree. Evidence: `git grep -c 'factoryQueueCodexMessage' HEAD -- .` →
-   exit 1; `git grep -c 'to.Backend == "codex"' HEAD -- internal` → exit 1;
-   `git grep -c 'queue --thread' HEAD -- internal` → exit 1;
+   the committed tree. Evidence, pinned to `553e224f3` and scoped to code so this
+   SPEC's own body (which names the symbol) is not swept:
+   `git grep -c factoryQueueCodexMessage 553e224f3 -- internal cmd pkg` → exit 1;
+   `git grep -c 'to.Backend == "codex"' 553e224f3 -- internal` → exit 1;
+   `git grep -c 'queue --thread' 553e224f3 -- internal` → exit 1. (An unpinned
+   `git grep … HEAD -- .` on a later HEAD matches the SPEC artifacts themselves and
+   is not evidence of presence in code — plan-audit iter-1 D9.)
    `internal/cli/mcp_factory_push_live_test.go` does not exist here;
    `internal/cli/mcp_factory_msg.go` here is 147 lines with no codex branch. The
    symbol lives only in the develop worktree's uncommitted copy (lead report). The
@@ -49,7 +53,8 @@ from develop `35ab8cff3`; where they diverge, §R2 says so.
 4. **`manager-lead` Role B has no codex-factory wording** in C1
    (`.claude/agents/moai/manager-lead.md`), C2
    (`internal/template/templates/.claude/agents/moai/manager-lead.md`) or C3
-   (`.codex/agents/moai/manager-lead.toml`). The only "Codex" line (C2 `:46`) is the
+   (`internal/template/templates/.codex/agents/moai/manager-lead.toml`; there is no
+   root `.codex/agents/` directory). The only "Codex" line (C2 `:46`, C3 `:39`) is the
    harness note on `subagent-spawn`, which stays. No agent edit, no `make agents-emit`.
 5. **Handoff CLI has no production caller** (§R3), so removing it withdraws no command.
 6. **Docs coordinates:** `docs-site/content/{ko,en,ja,zh}/advanced/codex-dual-harness.md:33`
@@ -121,6 +126,32 @@ files only unless noted.
   lesson applies to the new env test: the factory gate is conjunctive (`KANBAN_ID`
   AND a worker key), so a single-key mutant does not flip it — assert the eleven keys
   individually, not only the gate.
+
+- **Abandon-lane fixture depth (plan-audit iter-1 D5):** `TestFactoryLaneHandoffOperatorAbandon`
+  (`factory_handoff_abandon_test.go:93`, 4 subtests) snapshots the real target
+  worktree and branch through `targetSnapshot` (`:75-87`) and asserts they are
+  preserved. The worktree and branch are created inside `wtReady`
+  (`factory_lane_handoff_switch_test.go:133-140`) by `prepareLaneHandoff`. It also uses
+  `f.storedHandoff`, `f.brokerDB`, `count`, `endpointRow`, `target` and `handoffGit`.
+  A Store-API-only rebuild would create no target tree, making the preservation
+  assertion vacuous. The rebuilt fixture must materialize the target worktree and
+  branch itself (git, via the existing `handoffGit` helper) before marking the
+  handoff `WT_READY`.
+- **Pinned test names for kept surfaces (plan-audit iter-1 D4/D16):**
+  `TestWorktreeLaunchRejectsConcurrentWriter`, `TestCodexWorktreeAnchorLockAndBase`,
+  `TestCodexSpawnAnchorsToPanePID` (`codex_worktree_anchor_test.go`);
+  `TestCodexLaunchVerb_StatusStaysTheReadout` (`codex_launch_verb_test.go`);
+  `TestCodexLocalInstructions_DirectSpawnAndAppSharePrefix`
+  (`codex_local_instructions_test.go`); `TestCodexTask_ForegroundReturnsOutput`
+  (`codex_task_test.go`); `TestSessionMsgSendPollAckHandlers` (`mcp_session_msg_test.go`);
+  `TestCodexRoleLoadNegativeControl` (`codex_role_load_control_test.go`). Each was
+  located with `grep -rl "func <name>(" internal/cli` on this tree.
+- **Codex hook path (plan-audit iter-1 D7):** `registerFactoryHookPeer`
+  (`internal/hook/factory_messages.go:53-116`) reads `MOAI_KANBAN_ID` and
+  `MOAI_FACTORY_WORKER(S)` only; `HookInput` carries no harness field. The harness is
+  known only at the CLI boundary (`harnessModeIsCodex`, `internal/cli/hook_harness_codex.go:27-39`).
+  Whether a directly started `codex` in a Claude lane actually overwrites the lane's
+  slot was not run (code-path reading only).
 
 ## R5 Budget and generated-artifact measurements
 

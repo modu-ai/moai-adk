@@ -27,11 +27,26 @@ Two options were weighed.
 | Option | Effect | Rejected because |
 |---|---|---|
 | Keep the codex launch-pending call, guard it with "only when this process entered -f" | codex never self-registers | The Codex child still inherits the lane identity, and its own hooks (`--harness codex`) and its `moai mcp-server` (via `env_vars`) would attribute to the Claude lane's run |
-| Scrub the eleven lane keys from every codex child (chosen) | No codex process can present a lane identity | — |
+| Scrub the eleven lane keys from every codex child the `moai codex` launcher starts (chosen) | No codex process launched **through `moai codex`** can present a lane identity | — |
 
-Scrubbing covers the three downstream readers at once: the launcher's own
-registration, the Codex hooks, and the MCP server subprocess. It also makes D1
-(keeping `env_vars`) safe: the forwarded keys are empty.
+For a codex child started by the `moai codex` launcher, scrubbing covers the three
+downstream readers at once: the launcher's own registration, the Codex hooks, and
+the MCP server subprocess. It also makes D1 (keeping `env_vars`) safe **on that
+path**: the forwarded keys are empty.
+
+The guarantee is scoped to the launcher path. Two readers sit outside it:
+
+| Reader | Why the scrub does not reach it | Covered by |
+|---|---|---|
+| A `codex` binary started directly in a Claude lane terminal | Not launched by `moai codex`; it inherits the lane env as-is | Partly — its hooks are covered by REQ-CFR-022 below; its MCP server is the known limitation in spec.md §E |
+| The codex hook `registerFactoryHookPeer` (`internal/hook/factory_messages.go:53-116`, called from `session_start.go` / `user_prompt_submit.go`) | Harness-agnostic: it reads only `MOAI_KANBAN_ID` + `MOAI_FACTORY_WORKER(S)` and never asks which harness invoked it | REQ-CFR-022: under `--harness codex` the hook registers, binds, and rotates no factory peer |
+
+REQ-CFR-022 is small because the harness is already known at the CLI boundary
+(`harnessModeIsCodex`, `internal/cli/hook_harness_codex.go:27-39`); the hook
+package itself has no harness field, so the refusal is made where the harness is
+known, before the handler runs. The Claude path (no `--harness codex`) is left
+byte-for-byte as is. F2's headless worker will need to revisit this refusal if it
+chooses hook-based peer registration.
 
 ## 3. Join refusal placement
 

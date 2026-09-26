@@ -22,9 +22,15 @@ See `spec.md` §A and `research.md` §R1-R4. Base tree `553e224f3`.
 
 ## §C Pre-flight (run phase)
 
-1. Absorb local `develop`; record `git rev-parse --short HEAD` as the run base.
+The run lane records its measurements in `progress.md` §E.2 (the run lane may write
+that section; it may not edit this plan body):
+
+1. Absorb local `develop`; record `git rev-parse --short HEAD` as `run_base:` in
+   `progress.md` §E.2. Every `<base>` in `acceptance.md` means this value.
 2. Re-run `go test ./internal/config -run 'TestAlwaysLoadedTokenBudget$' -count=1 -v`
-   and record the surface/headroom figure on the run base (M4 compares against it).
+   on the run base and record the surface figure as `budget_base:` in §E.2 (context
+   only; AC-CFR-022's verdict compares against the merge commit's develop parent,
+   re-measured in the same run).
 3. Re-run the R3 caller greps; a new production caller of a symbol slated for removal
    stops the milestone that removes it.
 
@@ -66,9 +72,16 @@ Highest change likelihood: this is the only operator-visible behavior the SPEC a
    `codexDirectAnchorPID`, and the `-w` anchor path.
 5. `enterSelectedFactoryRun` (or the cc/glm call sites): after the run is resolved,
    refuse when its `runs.lead_backend` is `codex` (REQ-CFR-010/011). Use the existing
-   `"codex"` constant rather than a new literal where one is reachable.
+   `"codex"` constant rather than a new literal where one is reachable. Read the
+   column from `internal/cli` through the already-exported `homestate.OpenFactory(...).DB`
+   handle — **no production change to `internal/homestate` or `internal/factorymsg`**,
+   which AC-CFR-017 guards byte-for-byte.
+6. Codex hook peer refusal (REQ-CFR-022): at the CLI boundary where `--harness codex`
+   is already parsed (`harnessModeIsCodex`), keep the factory peer registration from
+   seeing a lane identity (e.g. run the handler with the eleven lane keys unset for
+   that process). The Claude path (no flag) is unchanged.
 
-ACs: AC-CFR-001..010.
+ACs: AC-CFR-001..010, AC-CFR-025.
 
 ### M2 — dead entry code and test moves (Priority Medium)
 
@@ -88,9 +101,15 @@ ACs: AC-CFR-011..015.
 
 ### M3 — lane handoff CLI and codex relocation (Priority Medium)
 
-1. Move `laneHandoffFixture` (and the helpers `factory_handoff_abandon_test.go` uses)
-   into a kept test file; rebuild `wtReady` on the `factorymsg` Store API. Run the
-   abandon-lane tests green **before** deleting anything.
+1. Move `laneHandoffFixture` and every helper `factory_handoff_abandon_test.go` uses
+   (`wtReady`, `storedHandoff`, `brokerDB`, `count`, `endpointRow`, `target`,
+   `handoffGit`, `targetSnapshot`) into a kept test file. Rebuild `wtReady` so it
+   **still materializes a real target worktree and branch** (git through `handoffGit`)
+   and then drives the handoff to `WT_READY` through the `factorymsg` Store API
+   (`ReserveHandoff`, `MarkHandoffWTReady`, `MarkHandoffSwitchPending*`). The fixture
+   asserts, before any abandon call, that the target path exists and the target
+   branch ref resolves. Run the abandon-lane tests green **before** deleting anything,
+   and run the AC-CFR-020 mutant once (fixture without the worktree step → test FAILs).
 2. Delete `factory_lane_handoff.go`, `_switch.go`, `_bind.go`, `_recover.go` and their
    eight test files.
 3. Delete `codexThreadRelocation`, `runCodexThreadRelocation` from `mcp_codex.go`, the
@@ -99,7 +118,7 @@ ACs: AC-CFR-011..015.
 4. Keep `internal/hook/factory_handoff_bind.go`, the `factorymsg` handoff API, and every
    `CREATE TABLE` (D3, REQ-CFR-014/015).
 
-ACs: AC-CFR-016..018.
+ACs: AC-CFR-016..018, AC-CFR-020.
 
 ### M4 — docs, rules, AGENTS.md, token budget (Priority Low)
 
@@ -111,15 +130,17 @@ ACs: AC-CFR-016..018.
 3. docs-site, ko first then en/ja/zh: `advanced/codex-dual-harness.md:33` drop the `-f`
    launch shape; `guides/mcp-server.md:180-184` replace the lane-orchestrator column value
    and the lane sentence with the Codex-session wording.
-4. Run `TestAlwaysLoadedTokenBudget` on the merge tree and record the figure beside the
-   §C.2 base figure.
+   The en sentence "inside a lane's shell" and the zh "泳道 shell" go with it.
+4. Run `TestAlwaysLoadedTokenBudget` on the merge tree and on the merge commit's develop
+   parent in the same run; record both figures in `progress.md` §E.2.
 
-ACs: AC-CFR-019..023.
+ACs: AC-CFR-019, AC-CFR-021..023.
 
 ### M5 — merge-window step: foreign-file disposition (lead-gated)
 
 Executed only after the lead explicitly confirms, inside the lead's integration window.
-This agent and the run lane never touch `.claude/worktrees/develop` before that.
+This agent and the run lane never touch `.claude/worktrees/develop` before that
+(REQ-CFR-023).
 
 The six paths, as provided by the lead (research §R6):
 
@@ -130,15 +151,26 @@ The six paths, as provided by the lead (research §R6):
 - `reports/factory-cross-host-push-20260924.md` (untracked)
 - `reports/factory-cross-host-push-20260924.html` (untracked)
 
-Steps (in the develop worktree, by explicit pathspec only):
+Steps (by explicit pathspec only; the patch and reports land in the **primary
+checkout's** `.moai/reports/t1242/`, which is gitignored):
 
-1. Re-read `git status --porcelain` there; stop if the set differs from the six above.
-2. Preserve: write the diff of the three modified files plus the untracked test as
-   `.moai/reports/t1242/foreign-6.patch` (untracked content included, e.g. via
-   `git diff --no-index` for the new file); record its sha256.
-3. Revert the three modified files to `HEAD` and remove the untracked test, by pathspec.
-4. Move the two reports into `.moai/reports/t1242/`.
-5. Re-read `git status --porcelain`: none of the six paths remain.
+0. Record the lead's confirmation in `progress.md` §E.2 as
+   `m5_lead_confirmation: <ISO-8601 timestamp> <message or dispatch reference>`. No
+   later step runs without this line.
+1. `moai integration acquire --name <lane> --card t1242`.
+2. Confirm no live writer holds the develop worktree (`moai session list --json`
+   filtered to its cwd; liveness-probe each pid; a live or indeterminate entry stops
+   the step and is reported to the lead).
+3. `EnterWorktree(.claude/worktrees/develop)` — never `git -C` from another tree.
+4. Re-read `git status --porcelain` there; stop if the set differs from the six above.
+5. Preserve: write the diff of the three modified files plus the untracked test to
+   `<primary>/.moai/reports/t1242/foreign-6.patch` (untracked content included, e.g.
+   `git diff --no-index /dev/null <file>`); record its sha256 in `progress.md` §E.2
+   after the confirmation line.
+6. Revert the three modified files to `HEAD` and remove the untracked test, by pathspec.
+7. Move the two reports into `<primary>/.moai/reports/t1242/`.
+8. Re-read `git status --porcelain`: none of the six paths remain.
+9. `ExitWorktree`, then `moai integration release`.
 
 AC: AC-CFR-024.
 
@@ -167,6 +199,10 @@ AC: AC-CFR-024.
 ## §I Cross-references
 
 - `spec.md` §C decisions D1-D4; `design.md`; `research.md`.
-- Sync phase (manager-docs): mark SPEC-FACTORY-MIXED-HOOK-001 and
-  SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001 with `partially_superseded_by:
-  [SPEC-CODEX-FACTORY-RETIRE-001]`; CHANGELOG entry.
+- Sync phase (manager-docs): mark SPEC-FACTORY-MIXED-HOOK-001,
+  SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001, SPEC-DUAL-HARNESS-RECOVERY-001,
+  SPEC-CODEX-LOCALMD-001 and SPEC-FACTORY-RUN-RETIRE-001 with `partially_superseded_by:
+  [SPEC-CODEX-FACTORY-RETIRE-001]`; regenerate codemaps (`.moai/project/codemaps/modules.md:71`
+  describes the retired `moai codex -f` entry); CHANGELOG entry.
+- Follow-up card to suggest at sync: measure whether a directly started `codex`'s MCP
+  server can attribute to a Claude lane (spec.md §E known limitation).
