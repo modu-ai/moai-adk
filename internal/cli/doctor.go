@@ -204,6 +204,9 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		{"MoAI Version", checkMoAIVersion},
 		{"Binary Freshness", checkBinaryFreshness},
 		{"MCP Scope Duplicates", func(v bool) DiagnosticCheck { return checkMCPScopeDuplicates(cwd, v) }},
+		// Card t1250: a local server and a claude.ai connector of the same
+		// provider escape name-based dedup and load the tools twice.
+		{mcpProviderDuplicatesCheckName, func(v bool) DiagnosticCheck { return checkMCPProviderDuplicates(cwd, v) }},
 		{mcpServerVersionCheckName, func(v bool) DiagnosticCheck { return checkMCPServerVersion(cwd, v) }},
 		// SPEC-AGENT-EMIT-LINEAGE-001 REQ-AEL-004: embed-axis judgment point.
 		// Applicable only in a tree carrying the committed emission set — a
