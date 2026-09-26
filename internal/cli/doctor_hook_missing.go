@@ -59,6 +59,6 @@ func checkHookMissingLog(projectRoot string, verbose bool) DiagnosticCheck {
 
 	check.Status = uikit.CheckWarn
 	check.Message = fmt.Sprintf("%d hook-missing entries; latest: %s", len(lines), filepath.Base(script))
-	check.Detail = fmt.Sprintf("Hook wrappers fired while their handle-*.sh script was absent (update redeploy window). %d of %d entries have no timestamp (date substitution failed).", timestampless, len(lines))
+	check.Detail = fmt.Sprintf("Hook wrappers fired while their handle-*.sh script was absent (e.g. during an update redeploy window). %d of %d entries have no timestamp (date substitution failed).", timestampless, len(lines))
 	return check
 }
