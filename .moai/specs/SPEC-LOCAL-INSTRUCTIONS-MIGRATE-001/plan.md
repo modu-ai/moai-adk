@@ -137,19 +137,31 @@ stem-based grep while leaving the documented structure untouched.
 
 ### Close
 
-`AC-IFU-031` (whole-change CI on the PR head) is read after all four milestones land. It is a
-close gate, not a milestone gate.
+`AC-IFU-031` (whole-change CI on the `origin/develop` head carrying this lane's merge SHA) is read
+after all four milestones land. It is a close gate, not a milestone gate. **This lane opens no PR**
+— §C's "the lane does not push" and the git-flow lane protocol together mean the only PR in this
+regime is `release/vX.Y.Z` → `main`, whose head carries many cards and cannot attribute a verdict to
+this one.
 ## §E Self-verification
 
 Per-milestone: the affected packages only (`go test ./internal/<pkg>/...`), never
-`go test ./...` locally. The full-suite verdict is CI's, on the PR head, in a clean environment.
+`go test ./...` locally. The full-suite verdict is CI's, in a clean environment, on the
+`origin/develop` head carrying this lane's merge — the `test` job of `.github/workflows/ci.yml`,
+which runs `go test ./...`.
+
+[HARD] Every test-invoking verification is read on **two** signals: its `--- PASS: <TestName> ` line
+AND the absence of `no tests to run` from the same output. `go test` exits `0` and prints `PASS` on
+a selector matching nothing, so neither the exit code nor the PASS line alone distinguishes a
+passing run from one that tested nothing.
 
 At close: the `acceptance.md` §D.2 traceability diff command, plus a separate re-run of every
 two-mirror criterion.
 
-Closed at v0.2.0: this SPEC now carries its own whole-change assertion, `AC-IFU-031`, read from
-the PR head's CI run. The parent's `AC-IFU-025` stayed with the parent because it asserts that
-SPEC's always-loaded budget clause, which this SPEC does not own.
+Closed at v0.2.0: this SPEC carries its own whole-change assertion, `AC-IFU-031`. Its evidence
+source was re-sited at v0.2.1 onto the `origin/develop` run carrying this lane's merge SHA, after
+the original "PR head" wording proved to name something this regime never produces. The parent's
+`AC-IFU-025` stayed with the parent because it asserts that SPEC's always-loaded budget clause,
+which this SPEC does not own.
 
 ## §F Anti-patterns
 

@@ -394,7 +394,7 @@ The verdict is read from those runs, identified by the head SHA — a local pass
 
 > **[HARD] The docs-site build clause is DROPPED, not re-sited, and this is deliberate.** No
 > workflow in this repository builds the docs-site: `grep -rn 'hugo\|vercel' .github/workflows/`
-> returns nothing (exit 1) across all 20 workflow files; `docs-i18n-check.yml` has no build step;
+> returns nothing (exit 1) across all 19 workflow files; `docs-i18n-check.yml` has no build step;
 > `ci.yml`'s `build` job builds the Go binary. Docs-site publishing is Vercel — a different system
 > with its own head.
 >
@@ -507,11 +507,39 @@ here.
 ## §D.3 Definition of Done
 
 All ten criteria pass. Every deployed-file criterion is verified separately against both mirrors
-with separate exit codes. Every test-invoking criterion's `--- PASS: <TestName> ` line is
-captured rather than its exit code alone. The §D.2 verification command is run at close and its
-empty output recorded. `AC-IFU-007`'s before-and-after character counts are both recorded with
-the commands that produced them, the before-value measured at the milestone rather than read
-from this document. `AC-IFU-031` is read from the PR head's own CI run.
+with separate exit codes. The §D.2 verification command is run at close and its empty output
+recorded. `AC-IFU-007`'s before-and-after character counts are both recorded with the commands that
+produced them, the before-value measured at the milestone rather than read from this document.
+
+**`AC-IFU-031` is read from the CI runs for the `origin/develop` head carrying this lane's merge
+SHA** — not from a PR head. This lane opens no PR: under the git-flow lane protocol only
+`release/vX.Y.Z` PRs to `main`, and that head carries many cards. See the criterion body for what
+is read there and at what weight.
+
+Four close-time duties, each established by a repair and each needing a home outside the criterion
+that produced it — a duty recorded only inside a criterion's own note is a duty the close will not
+perform:
+
+1. **Every test-invoking criterion is read on two signals, not one.** Its `--- PASS: <TestName> `
+   line is captured, **and** its output is confirmed NOT to contain `no tests to run`. The exit code
+   alone is insufficient and so is the PASS line alone: `go test` exits `0` and prints `PASS` on a
+   selector matching nothing, so the marker is what distinguishes a passing run from one that tested
+   nothing (measured — `AC-IFU-029` v0.2.2 note).
+2. **The `docs i18n parity check` log is read and its reading recorded** in `progress.md` §E.4 at
+   close — the run's conclusion, its drift counts, and the fact that it is advisory. `AC-IFU-031`
+   requires that the check *ran and was read*, never that it passed; a reading with no record is
+   indistinguishable from no reading.
+3. **The two decaying external readings are re-read at close, not cited.** `develop`'s protection
+   state and Vercel's docs-site build configuration are both mutable outside this repository and
+   nothing in the tree changes when they move. The values pinned in `AC-IFU-031`'s notes are pinned
+   to `0d7c7e44e` and are evidence of what was true then. Re-measure both; where either has moved,
+   the criterion's wording is re-read before the close proceeds.
+4. **The docs-parity residual is restated at close, not quietly inherited.** M4 lands 24 locale
+   files whose content no *blocking* check inspects (`AC-IFU-023` is the gate, and it runs in the
+   lane). The general condition has an owner already — **`SPEC-V3R3-DOCS-PARITY-001`**, named in
+   `docs-i18n-check.yml:74` as the Phase 2 strict-flip route. This SPEC does not own that flip and
+   does not take it on; the close names the pointer so the residual is handed over rather than
+   dropped.
 
 **The operator gate on the repository's own migration (M3) is discharged in the lane, by the
 operator, before that milestone starts** — not inferred from the earlier milestones having gone
