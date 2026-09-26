@@ -30,6 +30,10 @@ type CardState struct {
 	// the contract file's byte digest.
 	VerifyCache *VerifyCache `json:"verify_cache,omitempty"`
 	Counters    Counters     `json:"counters"`
+	// ConsumedEvidence lists the evidence files classes 5 and 9 have already
+	// tripped on, as class:fingerprint:file:content-digest. Evidence files
+	// outlive an arming, so this is kept across re-arming (unlike Counters).
+	ConsumedEvidence []string `json:"consumed_evidence,omitempty"`
 }
 
 // Arming is the snapshot recorded when a card arms (REQ-AE-023).

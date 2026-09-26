@@ -223,6 +223,7 @@ type auditVerdict struct {
 	iteration int
 	verdict   string
 	name      string
+	data      []byte
 }
 
 // auditVerdicts reads the card's plan-audit and sync-audit verdict files
@@ -250,7 +251,7 @@ func (r *run) auditVerdicts() []auditVerdict {
 		if vm := auditVerdictRe.FindStringSubmatch(string(data)); vm != nil {
 			v = strings.ToUpper(vm[1])
 		}
-		out = append(out, auditVerdict{kind: m[1], iteration: iter, verdict: v, name: e.Name()})
+		out = append(out, auditVerdict{kind: m[1], iteration: iter, verdict: v, name: e.Name(), data: data})
 	}
 	return out
 }
@@ -271,9 +272,13 @@ func (r *run) classAuditCap() {
 		if v.verdict != "FAIL" || v.iteration < retries+1 {
 			continue
 		}
+		fp := Fingerprint(ClassAuditFailAtRetryCap, v.kind)
+		if !r.freshEvidence(ClassAuditFailAtRetryCap, fp, v.name, v.data) {
+			continue
+		}
 		r.writeRecordSpec(Record{
 			Kind: KindOperational, Class: ClassAuditFailAtRetryCap,
-			Fingerprint: Fingerprint(ClassAuditFailAtRetryCap, v.kind),
+			Fingerprint: fp,
 			ContractRef: ref,
 			Observation: fmt.Sprintf("%s records FAIL at iteration %d; budget.audit_retries is %d", v.name, v.iteration, retries),
 			Options: []string{
@@ -325,17 +330,34 @@ func (r *run) classContradictoryEvidence() []string {
 		case c.DisagreementFlag == nil:
 			notObs = append(notObs, "audit_multi disagreement_flag (null) in "+name)
 		case *c.DisagreementFlag:
-			r.contradiction(name, "audit_multi disagreement_flag", "disagreement_flag is true in "+name,
+			r.contradiction(name, data, "audit_multi disagreement_flag", "disagreement_flag is true in "+name,
 				contractRef(ContractItemLine(cdata, ClassContradictoryEvidence, "escalate_on"), cdata, "escalate_on"))
 		}
 		if first, second, ok := secondModelSplit(c, a.SecondModel); ok {
-			r.contradiction(name, first.Backend+"|"+second.Backend,
+			r.contradiction(name, data, first.Backend+"|"+second.Backend,
 				fmt.Sprintf("%s says %s but the contract's second model %s says %s (%s)",
 					first.Backend, first.Verdict, second.Backend, second.Verdict, name),
 				contractRef(ContractLine(cdata, "review", "second_model"), cdata, "review"))
 		}
 	}
 	return notObs
+}
+
+// freshEvidence reports whether this evidence file content has not yet
+// tripped the class's fingerprint, and marks it consumed. Classes 5 and 9
+// re-read persistent files at every commit; only changed evidence is a new
+// observation, so a resolved record re-opens only on new evidence while a
+// new file or new content still re-trips (REQ-AE-020, AC-AE-023).
+//
+// @MX:NOTE: [AUTO] sync-audit F1 — without this gate a resolved class 5/9 record re-opened at every later commit with no new evidence
+func (r *run) freshEvidence(class, fingerprint, file string, data []byte) bool {
+	key := class + ":" + fingerprint + ":" + file + ":" + SHA256Hex(data)
+	if slices.Contains(r.st.ConsumedEvidence, key) {
+		return false
+	}
+	r.st.ConsumedEvidence = append(r.st.ConsumedEvidence, key)
+	r.dirty = true
+	return true
 }
 
 // secondModelSplit finds the first verdict and the second model's verdict
@@ -359,11 +381,16 @@ func secondModelSplit(c convergenceFile, second string) (first, sec struct{ Back
 	return first, sec, haveFirst && haveSecond && first.Verdict != sec.Verdict
 }
 
-// contradiction writes one contradictory-evidence record.
-func (r *run) contradiction(source, pair, observation, ref string) {
+// contradiction writes one contradictory-evidence record, unless this exact
+// evidence file content has already tripped it.
+func (r *run) contradiction(source string, data []byte, pair, observation, ref string) {
+	fp := Fingerprint(ClassContradictoryEvidence, source, pair)
+	if !r.freshEvidence(ClassContradictoryEvidence, fp, source, data) {
+		return
+	}
 	r.writeRecord(Record{
 		Kind: KindContract, Class: ClassContradictoryEvidence, EscalateOn: ClassContradictoryEvidence,
-		Fingerprint: Fingerprint(ClassContradictoryEvidence, source, pair),
+		Fingerprint: fp,
 		ContractRef: ref, Observation: observation,
 		Options: []string{
 			"Resolve the disagreement before continuing (re-run the dissenting review)",
