@@ -24,9 +24,13 @@ import (
 // The function is NON-breaking: SaveTemplateDefaults and its existing test
 // callers stay intact; this is the new entry point BackupMoaiConfig uses.
 func SaveTemplateBase(destDir, projectRoot string) error {
-	if !HasSnapshot(projectRoot) {
+	if !HasSnapshot(projectRoot) || snapshotUnattested(projectRoot) {
 		// Fallback: today's embedded-raw BASE. Identical to the pre-SPEC path,
 		// so existing SaveTemplateDefaults tests double as fallback tests.
+		// Card t1216: an unattested snapshot takes the same path. It may hold
+		// the user's own values (written after a restore), and a BASE equal to
+		// a user value reads that value as unchanged and drops it; the
+		// embedded BASE can only err toward keeping a value.
 		return SaveTemplateDefaults(destDir)
 	}
 
