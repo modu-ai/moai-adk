@@ -34,7 +34,49 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — Record path, resolver, activation gate (cycle tdd)
+
+Commits: `b1e2d163e` (plan §C step 3: AC-AE-001 golden captured before any detector code),
+`b712799ea` (M1 code + tests, spec.md `draft → in-progress`). Package as proposed:
+`internal/escalation` (no rename). Pre-flight §C steps 1-2 were run by the orchestrator before
+this delegation (A1 merge `b1a62fb2b` is an ancestor; §F.1 rows match the landed A1).
+
+Every command below ran as one invocation prefixed with
+`unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_FACTORY MOAI_FACTORY_RUN MOAI_FACTORY_SLOT GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE &&`.
+Raw outputs: `.moai/reports/t1235/run-m1/` (gitignored, card worktree).
+
+| AC | Test (package) | Command | Actual output | HEAD | Status |
+|---|---|---|---|---|---|
+| AC-AE-001 | `TestEscalationGuidedGolden` (`internal/hook`) | `go test -count=1 ./internal/hook -run '^TestEscalationGuidedGolden$' -v` | `--- PASS: TestEscalationGuidedGolden (0.37s)` / `ok github.com/modu-ai/moai-adk/internal/hook 0.732s` | `b712799ea` | PASS |
+| AC-AE-002 | `TestResolveContractByCardField` (`internal/escalation`) | `go test -count=1 ./internal/escalation -run '^(TestResolveContractByCardField\|TestResolverNotArmedCases\|TestRecordPathAndQueueUntouched)$' -v` | `--- PASS: TestResolveContractByCardField (0.04s)` | `b712799ea` | PASS |
+| AC-AE-003 | `TestResolverNotArmedCases` (`internal/escalation`) | same invocation | `--- PASS: TestResolverNotArmedCases (0.08s)` | `b712799ea` | PASS |
+| AC-AE-021 (path half) | `TestRecordPathAndQueueUntouched` (`internal/escalation`) | same invocation | `--- PASS: TestRecordPathAndQueueUntouched (0.05s)` / `ok github.com/modu-ai/moai-adk/internal/escalation 0.523s` | `b712799ea` | PASS (path half; writer is M2) |
+| AC-AE-021 (freeze clause) | `TestTodoHistoryAddsNoSchemaChange` (`internal/kanban`) | `go test -count=1 ./internal/kanban/ -run '^TestTodoHistoryAddsNoSchemaChange$' -v` | `--- PASS: TestTodoHistoryAddsNoSchemaChange (0.02s)` | `b712799ea` tree (run before commit, same bytes) | PASS |
+
+Golden mutant control (AC-AE-001 comparator fires): one golden line edited to
+`"pre-bash-ls","output":{"systemMessage":"mutant"}` → `--- FAIL: TestEscalationGuidedGolden`,
+`escalation_guided_golden_test.go:193: event 3 differs from golden`, exit 1; file restored.
+
+RED before GREEN (E8), tests written first, then zero-value stubs, then implementation:
+- compile RED: `internal/config/autonomy_escalation_test.go:23:9: s.NewAPIDetector undefined` /
+  `internal/escalation: no non-test Go files` (exit 1).
+- assertion RED against stubs: `gate_test.go:25: Active(mode "contract") = false, want true`;
+  `record_test.go:75: fingerprint "" is not 16 lowercase hex characters`;
+  `resolver_test.go:106: baseline: armed=false spec="", want armed against SPEC-A-001 (lines [])`;
+  `--- FAIL: TestResolveAutonomy_NewAPIDetector`, `--- FAIL: TestAutonomy_CacheSchemaBumpedForNewAPIDetector` (exit 1).
+
+Other E-items at `b712799ea` tree:
+- E2: `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `GOOS=darwin GOARCH=arm64 go build ./...` exit 0; `GOOS=linux GOARCH=amd64 go build ./...` exit 0.
+- E3: `go test -count=1 -cover ./internal/escalation/` → `coverage: 91.4% of statements`;
+  `go test -count=1 -cover ./internal/config/` → `ok … coverage: 82.8% of statements` (package-wide; baseline before M1 not measured).
+- E4: `grep -rn "AskUserQuestion\|mcp__askuser" internal/escalation/` exit 1 (0 lines); control on `internal/hook/pre_tool.go` exit 0.
+- E5: `golangci-lint run --new-from-rev=3ea951b0f ./internal/escalation/... ./internal/config/... ./internal/hook/...` → `0 issues.`; `go vet` on the three packages exit 0.
+
+M1 decisions taken from the SPEC/plan (no user decision needed): no hook wiring in M1 (the gate
+and resolver land as library code; M2 wires them with the writer and audit log, where AC-AE-025
+exercises the hook path); resolver audit lines are returned, not persisted (the per-card log is
+M2); an unreadable `card` field is a warning, not a claimant; an out-of-set `new_api_detector`
+falls back to `graph` with a warning; config cache schema bumped 7 → 8.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
