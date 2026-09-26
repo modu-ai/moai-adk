@@ -13,16 +13,23 @@ three-dot diff `git diff --exit-code develop...HEAD -- P`, evaluated on the card
 **before** it is merged into develop (after any absorption of develop). Three-dot diff
 compares HEAD with `merge-base(develop, HEAD)`, so commits other cards landed on develop
 never enter the range, while the card's own commits and its absorb-merge resolution do.
-It is never measured as `git diff <literal SHA>`. Controls measured on this tree
-(HEAD `b82332ea2`→`621050a0d` lineage, local develop `c630de892` which is 6 non-merge
-commits past the plan base `553e224f3`):
-- foreign-commit exclusion: `git diff --exit-code --stat 553e224f3 develop -- internal/cli`
-  exits 1 (19 files changed by other cards), while
-  `git log --no-merges --name-only --format= develop..HEAD -- internal/cli` prints 0
-  lines — the literal-base form would be polluted, the card-scoped form is not;
-- card-commit detection: `git diff --exit-code --stat develop...HEAD -- .moai/specs/SPEC-CODEX-FACTORY-RETIRE-001`
-  exits 1 (the card's own commits touch that path), so the same command fires on a path
-  the card does change.
+It is never measured as `git diff <literal SHA>`. Controls are pinned to fixed SHAs —
+the historical absorb merge `e48f290da` (card WT-worktree-moai-root absorbing develop
+`acc1c2289`; fork point `35ab8cff3`), whose tree does not move:
+- scope: `git diff --name-only 35ab8cff3 e48f290da` lists 43 files (card + absorbed
+  foreign changes), while `git diff --name-only acc1c2289...e48f290da` lists 21 (the
+  card's own contribution);
+- foreign-commit exclusion: `git diff --exit-code --quiet 35ab8cff3 e48f290da -- internal/homestate`
+  exits 1 (another card changed that path), while
+  `git diff --exit-code --quiet acc1c2289...e48f290da -- internal/homestate` exits 0 —
+  the literal-base form is polluted, the card-scoped form is not;
+- card-commit detection: `git diff --exit-code --quiet acc1c2289...e48f290da -- internal/cli/mcp_worktree_root.go`
+  exits 1 — the same form fires on a path the card did change.
+
+The same property was also observed live on this card's tree (develop `c630de892`,
+6 non-merge commits past `553e224f3`: literal base 19 foreign `internal/cli` files vs
+card range 0), but live develop figures drift as other cards land; only the exit-code
+property above is load-bearing, not any live count.
 
 After the merge the range is empty by construction; post-merge evidence is tree identity
 (`git rev-parse <merge>^{tree}` equal to the re-measured tree), not this guard.
@@ -357,6 +364,14 @@ the lead-authored confirmation file and the lead's own read of the develop workt
 
 ## §D.3 Definition of Done
 
-All 25 ACs pass on the merge tree with evidence recorded in `progress.md` §E.2; CI on
-the develop push that carries the merge is green; the sync phase has marked the five
-partially superseded SPECs and regenerated codemaps (plan.md §I).
+All 25 ACs pass with evidence recorded in `progress.md` §E.2; CI on the develop push
+that carries the merge is green; the sync phase has marked the five partially
+superseded SPECs and regenerated codemaps (plan.md §I).
+
+The card-scoped guards (`develop...HEAD`, used by AC-017, AC-019's locale listing,
+AC-021, AC-023) are judged **pre-merge**, on the card branch after its last absorption
+of develop. On the merge tree they are **not re-run** — after the merge the range is
+empty and the guard would pass vacuously. Their verdict is carried to the merge tree by
+tree identity: `git rev-parse <merge>^{tree}` equals `git rev-parse <absorbed WT tip>^{tree}`,
+where the absorbed WT tip is the card commit the guards were judged on. Every other AC
+is judged on the merge tree itself.

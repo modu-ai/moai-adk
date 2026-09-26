@@ -14,7 +14,16 @@ artifacts: [spec.md, plan.md, acceptance.md, design.md, research.md, progress.md
 requirements: 23
 acceptance_criteria: 25
 open_clarification_markers: 0
-plan_audit_history: ["iter-1 FAIL 0.71 -> revised in v0.2.0", "iter-2 FAIL 0.83 -> revised in v0.3.0 (final allowed iteration)"]
+plan_audit_history:
+  - "iter-1 FAIL 0.71 -> revised in v0.2.0"
+  - "iter-2 FAIL 0.83 -> revised in v0.3.0"
+  - "iter-3 PASS 0.91 (.moai/reports/plan-audit/SPEC-CODEX-FACTORY-RETIRE-001-review-3.md)"
+plan_audit_verdict: PASS
+implementation_kickoff:
+  approved: true
+  approved_by: operator (relayed by the lead, verbatim "승인 · 반자율")
+  recorded_at: 2026-09-26T06:22:15Z   # time the approval reached this agent, not the operator's click time
+  progression_mode: semi-autonomous   # pause after each of M1-M4 for operator review; M5 only in the merge window after lead confirmation
 status: draft
 ```
 
