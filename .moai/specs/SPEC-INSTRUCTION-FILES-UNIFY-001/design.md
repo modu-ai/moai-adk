@@ -1,5 +1,12 @@
 # SPEC-INSTRUCTION-FILES-UNIFY-001 — design
 
+> **Scope note (v0.3.0).** The migration verb, the Codex fallback advisory, the
+> `moai update` / `moai doctor` advisories, the docs-site rewrite, and this repository's own
+> `CLAUDE.local.md` migration moved to `SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001` (card t1259).
+> This document's §C read-order analysis and §D budget analysis are shared context both SPECs
+> read; the sections are kept here intact rather than duplicated, and §C.1 of plan.md names
+> the one function the two SPECs both edit.
+
 ## §A The decision this design still has to make
 
 The operator-approved design document settled the three-file structure. One question inside
@@ -50,7 +57,10 @@ it explicitly:
 - **This SPEC must not make the duplicate worse.** Adding `AGENTS.local.md` alongside a
   still-present `CLAUDE.local.md` would give a worktree session up to four local-instruction
   loads. That is what the no-coexistence invariant (REQ-IFU-010) prevents, and it is the
-  reason that invariant is blocking rather than cosmetic.
+  reason that invariant is blocking rather than cosmetic. **As of v0.3.0 that invariant is
+  `SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001`'s** (card t1259) — the obligation is unchanged and its
+  criteria travelled with it; this SPEC's dependency on it is a cross-SPEC one, recorded in
+  plan.md §C.1.
 - **If M1 confirms the mechanism, the finding is handed to t1219** with its evidence, and
   this SPEC's worktree leg stays contingent on t1219's resolution rather than claiming it.
 
@@ -100,6 +110,10 @@ assert once it disposes of the duplicate, and this SPEC's criterion set is close
 
 This is a scope boundary, not a capacity workaround. It would hold at any criterion count.
 
+**And the transfer is itself asserted.** The obligation used to rest on prose in three files
+plus the run-phase agent remembering it; acceptance.md §D.3 now carries it as a conditional
+Definition-of-Done item requiring the handoff be recorded in `progress.md` §E.2.
+
 ---
 
 ## §B The import-resolution gate
@@ -121,9 +135,9 @@ failure mode is silent truncation.
 
 ## §C Read-order change (Codex), and the constants it touches
 
-`internal/cli/codex_launcher.go:125` iterates
+The local-instruction loop in `internal/cli/codex_launcher.go` ranges over
 `[]string{codexClaudeLocalName, codexLocalInstructionName}` — `CLAUDE.local.md` first. Both
-constants already exist at `codex_contract.go:33-34`, and the contract comment already
+constants already exist in `codex_contract.go`, and the contract comment already
 calls `AGENTS.local.md` the Codex-only local input. The change is the iteration order plus
 a deprecation advisory on the fallback branch (REQ-IFU-006, REQ-IFU-007).
 
@@ -134,10 +148,10 @@ invisible in exactly the situation the advisory exists to surface.
 Two further constants in the same file are touched by the new structure and are named here
 so they are not discovered late:
 
-- `codexLinkAgentsDirective` (`codex_contract.go:38`) — the `@AGENTS.md` link the contract
+- `codexLinkAgentsDirective` (`codex_contract.go`) — the `@AGENTS.md` link the contract
   writes into `CLAUDE.md`. Under REQ-IFU-002 the link block becomes two imports around a
   mechanism layer, so what this constant represents changes.
-- `codexCreatedAgentsBody` / `codexCreatedClaudeBody` (`codex_contract.go:46-47`) — the
+- `codexCreatedAgentsBody` / `codexCreatedClaudeBody` (`codex_contract.go`) — the
   stub bodies created when a file is missing. `codexCreatedClaudeBody` currently emits the
   single `@AGENTS.md` link; it must emit the new two-import shape or the created stub will
   not satisfy AC-IFU-002.
@@ -152,11 +166,23 @@ They are different limits with different owners and must never be conflated:
 
 | Ceiling | Value | Owner | Scope |
 |---|---|---|---|
-| Per-file contract ceiling | 24,576 B | `CodexContractByteCeiling`, `internal/config/token_budget_guard.go:101` | one contract document |
+| Per-file contract ceiling | 24,576 B | `CodexContractByteCeiling`, declared in `internal/config/token_budget_guard.go` | one contract document |
 | Nested-sum discovery budget | 32,768 B | Codex's measured `project_doc_max_bytes` default | the sum of every file Codex discovers by filename in the chain |
 
 Both get their own criterion (AC-IFU-005, AC-IFU-006). The approved design document
 mentions only the first.
+
+A **third** limit sits alongside them and is neither: the always-loaded instruction surface
+guarded by `TestAlwaysLoadedTokenBudget` (`internal/config/token_budget_guard_test.go`). Root
+`AGENTS.md` is inside that surface, and this SPEC moves the total from two directions
+(REQ-IFU-002 thins `CLAUDE.md`; REQ-IFU-018 may fold template-only sections in), while card
+t1175 concurrently retunes the same budget. Neither ceiling above would catch an overrun
+there, so `AC-IFU-025` asserts that guard by name.
+
+[HARD] A criterion invoking any of the three asserts `--- PASS: <symbol>` under `-v`, never
+exit `0` alone: `go test -run` exits `0` when its pattern matches nothing. The plan-audit of
+`1140bcd1d` found the nested-sum guard — the sole enforcement of REQ-IFU-025 — named as
+`TestNestedChainBudget`, a pattern matching no test, and therefore unable to fail.
 
 **[HARD] Raising `project_doc_max_bytes` is not an available remedy.** Per REQ-AMC-018, the
 project-scope override takes effect only once the user registers `trust_level = "trusted"`,
@@ -184,7 +210,11 @@ and not re-derived:
 - `contractDocuments` follows the mirror to its renamed path, so the 24,576-byte per-file
   ceiling still binds. The nested-sum guard deliberately names no path and walks for the
   filename Codex keys on.
-- Root and mirror are edited together and diverge by **46 intentional lines**.
+- Root and mirror are edited together and **diverge intentionally**. The t925-era figure of 46
+  lines does not reproduce against this tree: measured 2026-09-26 against base develop
+  `553e224f3`, `diff AGENTS.md internal/template/templates/AGENTS.md.tmpl` reports 57
+  template-only (`^>`) and 17 root-only (`^<`) lines. Retired rather than carried forward; what
+  it supports holds at any value (spec.md §C.4).
 
 **Therefore REQ-IFU-018 ("reconcile root and template onto one shape") reconciles the
 SECTION SET, never the filename.** Restoring the mirror to a Codex-discovered name reverses
@@ -195,7 +225,7 @@ is precisely a later reader tidying up an extension that looks accidental. The i
 held by REQ-IFU-024 and mechanically by AC-IFU-004 — prose alone would not have stopped the
 original defect either.
 
-Note also that the 46-line intentional divergence means AC-IFU-008 compares the `## `
+Note also that the intentional divergence means AC-IFU-008 compares the `## `
 section set, not file content. A byte-level diff would fail by design.
 
 ### D.3 Unmeasured: does Codex discover `AGENTS.local.md`?
@@ -221,7 +251,7 @@ presence, making truncation observable rather than inferred from the absence of 
 
 Two existing assertions encode the pre-unification rule and invert together:
 
-- `codex_contract_link_test.go:202` asserts `executing @AGENTS.local.md imports = 0`. Under
+- `codex_contract_link_test.go`'s link assertion currently states `executing @AGENTS.local.md imports = 0`. Under
   REQ-IFU-002 the deployed `CLAUDE.md` imports it, so the assertion becomes: `CLAUDE.md`
   imports `AGENTS.local.md`; `AGENTS.md` does not. **The `AGENTS.md`-side half is
   load-bearing and must not be dropped** — the neutral contract importing a local file

@@ -3,37 +3,59 @@
 ## §A Context
 
 Card t1243, worktree `.claude/worktrees/t1243`, branch `WT-instruction-files`, base
-develop `553e224f3`. Tier L, class C. Plan phase only; the run phase is blocked (§C).
+develop `553e224f3`. Tier L, class C. Plan phase only; the run phase is blocked (§B).
+
+Scope as of v0.3.0: this SPEC carries 16 requirements and 20 criteria — the contract, the
+budget ceilings, the template-mirror invariant, and the guard/learner surfaces. The nine
+requirements touching a user-owned file are `SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001`'s (card
+**t1259**), and §C.1 below states the one place the two SPECs touch the same function.
 
 ## §B Blocking dependencies and baseline
 
 **[HARD] t1175 (rules diet) must land on develop before the run phase starts.** t1175 is
 rewriting the always-loaded rule tree, which is the same surface this SPEC's `AGENTS.md`
 reconciliation touches. Running both concurrently produces a merge whose combined state
-neither card measured.
+neither card measured. `AC-IFU-025`'s always-loaded clause is what turns a collision between
+the two into a red test rather than a silent overrun.
 
 **The baseline is re-measured after t1175 lands.** Every figure in research.md §B was read
 against `553e224f3` and is attributed to that tree only. After t1175 lands, the byte counts,
-section counts, and line numbers are re-read before any milestone begins — they are the
+section counts, and symbol locations are re-read before any milestone begins — they are the
 inputs to REQ-IFU-018 and REQ-IFU-019, and a carried-over figure would make the cap check
 unattributed.
 
-`origin/develop` has already moved 8 commits ahead of this worktree's base (card t1229,
-test isolation). No scope overlap was observed. Absorption happens at the integration
-window, not now.
+**Source locations are cited by symbol, not by line.** `origin/develop` is roughly 93 commits
+ahead of this worktree's base and has already moved one cited location: card t1224
+(PowerShell deny parity) shifted `frozenInstructionFiles` by two lines while leaving the
+symbol intact. Any line number in these artifacts is illustrative of 2026-09-26 against
+`553e224f3`; the symbol is the address. Absorption happens at the integration window, not now.
 
-## §C Sequencing risk — SPEC A
+## §C Sequencing risks
+
+### C.1 The sibling SPEC — one shared function
+
+`SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001` holds the Codex `CLAUDE.local.md` fallback branch and
+its deprecation advisory (REQ-IFU-007, REQ-IFU-008). Both SPECs therefore edit the launcher's
+local-instruction loop — the `for` range over `codexClaudeLocalName` /
+`codexLocalInstructionName` in `internal/cli/codex_launcher.go`. This SPEC changes the
+**iteration order**; the sibling adds the **advisory on the fallback branch**.
+
+The two edits are compatible but not independent, so they are ordered rather than parallel:
+this SPEC's M2 lands the order change first, and the sibling's advisory work builds on the
+reordered loop. Running both lanes concurrently against that one function is the case to
+avoid, and the lead's dispatch decision is what prevents it.
+
+### C.2 SPEC A
 
 The approved design names SPEC A (codex factory retirement) as overlapping this work at
 `AGENTS.md` §3 and §8, and recommends A landing first with B absorbing it. **SPEC A does
 not exist as a card.** Neither order is assumed here:
 
-- If A lands first, M4 (the `AGENTS.md` body rewrite) absorbs its §3/§8 changes and the
+- If A lands first, M3 (the `AGENTS.md` body rewrite) absorbs its §3/§8 changes and the
   reconciliation is done once.
-- If B lands first, A rewrites §3/§8 again on top of the reconciled body, and the `-f`
+- If this SPEC lands first, A rewrites §3/§8 again on top of the reconciled body, and the `-f`
   removal from §8 that this SPEC performs may be re-touched.
-- If they land concurrently, the §3/§8 region conflicts. This is the case to avoid, and
-  the lead's dispatch decision is what prevents it.
+- If they land concurrently, the §3/§8 region conflicts.
 
 Surfacing this is the plan's job; choosing is the lead's.
 
@@ -42,7 +64,9 @@ Surfacing this is the plan's job; choosing is the lead's.
 - **Template-First.** `internal/template/templates/` changes first, then `make build`, then
   the root copies. Never the reverse.
 - **Two mirrors, two commands.** Every deployed-file check runs against both paths with
-  separate exit codes (design.md §E).
+  separate exit codes (design.md §F).
+- **Every test assertion carries `-v` and a `--- PASS:` read.** Exit `0` alone is not evidence
+  a test ran (acceptance.md preamble).
 - **No sweep-staging.** Explicit pathspec only; `git status --short` re-read immediately
   before staging.
 - **The lane does not push.** Integration is a lead-granted window; push is the lead's
@@ -50,9 +74,8 @@ Surfacing this is the plan's job; choosing is the lead's.
 
 ## §E Milestones
 
-Ordered by decision-reversibility: the unsettled design decision first, then the mechanical
-code changes, then the body rewrite that depends on the decision, then documentation, and
-this repository's own migration last.
+Ordered by decision-reversibility: the unsettled design decisions first, then the mechanical
+code changes, then the body rewrite that depends on both.
 
 ### M1 — settle the two unmeasured questions (measurement, no code)
 
@@ -67,44 +90,44 @@ not serve as a premise — this measurement is what settles it. Method mirrors t
 whole point: the tree is created by a real `git worktree add`, so `.git` in it is a file
 rather than a directory. Outcome routes per design.md §A.5.
 
-If discovery IS confirmed, the finding is handed to card **t1219** with its evidence — the
-mechanism that carries local instructions into a worktree is the same one that double-loads
-them (design.md §A.3). This SPEC does not resolve the duplicate.
+If discovery IS confirmed, the finding is handed to card **t1219** with its evidence, and
+**the handoff itself is recorded** — acceptance.md §D.3 carries it as a conditional Definition
+of Done item, so it is not left to memory. This SPEC does not resolve the duplicate.
 
 **M1b — Codex discovery of `AGENTS.local.md` (AC-IFU-022).** Answers research.md Q5. The
 criterion cannot be "run Codex and see that it works": the failure mode is silent tail
-truncation, so a passing session proves nothing. Tail sentinels in both `AGENTS.md` and
-`AGENTS.local.md` make truncation observable. A `LOCAL_HEAD` hit blocks — it means the
-content is counted twice and the design's budget arithmetic is wrong.
+truncation, so a passing session proves nothing. Four sentinels — head and tail in both
+`AGENTS.md` and `AGENTS.local.md` — make truncation observable, and `CONTRACT_HEAD` is the
+**positive control**: its absence means the render failed and no other branch may be read. A
+`LOCAL_HEAD` hit blocks — it means the content is counted twice and the design's budget
+arithmetic is wrong.
 
 Gate: M2 does not start until both measurements' evidence is on disk. M1a's outcome does not
 gate M2 (design.md §A.5: every branch leaves the primary-checkout shape unchanged); M1b's
-does, because a positive result changes the byte budget M4 has to fit inside.
+does, because a positive result changes the byte budget M3 has to fit inside.
 
 ### M2 — Codex read order, guard set, learner target
 
 Three independent, mechanically small changes, each with its test:
 
-- `codex_launcher.go:125` iteration order + fallback advisory (REQ-IFU-006, -007, -008).
-- `pre_tool.go:1231` frozen set gains two basenames (REQ-IFU-013).
-- `curator/dispatch.go:43` Tier-3 path (REQ-IFU-014).
+- `codex_launcher.go` local-instruction loop: **iteration order only** (REQ-IFU-006). The
+  fallback advisory on the same branch is the sibling SPEC's (§C.1) and is not written here.
+- `pre_tool.go` `frozenInstructionFiles` gains two basenames (REQ-IFU-013). The set matches on
+  basename, so two strings suffice — no path normalization is implied.
+- `curator/dispatch.go` Tier-3 path (REQ-IFU-014).
 
-Invert `codex_contract_link_test.go:202` and the `codex_local_instructions_test.go`
-read-order assertions here, not later — leaving them for M4 would put the tree red across
-two milestones.
+**A new test is written here, not assumed:** nothing in `internal/hook` currently guards
+`frozenInstructionFiles` (verified 2026-09-26 — see acceptance.md `AC-IFU-016`), so M2 creates
+`TestFrozenInstructionFiles` with one sub-case per entry. Adding the two basenames without it
+would leave the guard set unguarded.
 
-### M3 — the migration verb and the advisories
+Invert the `codex_contract_link_test.go` `@AGENTS.local.md`-imports assertion and the
+`codex_local_instructions_test.go` read-order assertions here, not later — leaving them for
+M3 would put the tree red across two milestones.
 
-`moai migrate local-instructions` (REQ-IFU-009, -010), the `moai update` advisory
-(REQ-IFU-011), and the `moai doctor` advisory (REQ-IFU-012). The no-coexistence invariant
-is the load-bearing part: Claude reads `CLAUDE.local.md` on its own, so leaving the original
-in place double-loads the same content.
+### M3 — the `AGENTS.md` body rewrite and the `CLAUDE.md` thinning
 
-Model the verb on `migrate_agency_*` — the existing precedent for a move-plus-backup verb.
-
-### M4 — the `AGENTS.md` body rewrite and the `CLAUDE.md` thinning
-
-Depends on M1 (the worktree paragraph the body must state) and on the §C sequencing
+Depends on M1 (the worktree paragraph the body must state) and on the §C.2 sequencing
 decision.
 
 - Reconcile root (8 sections) against template (12) onto one **section set** (REQ-IFU-018);
@@ -115,38 +138,23 @@ decision.
   failure: chain sum 33,738 / 32,768, the mirror's last section dropped and the preceding
   one cut mid table row, no warning, exit 0. Reconciliation means the section set, never the
   name (design.md §D.2, AC-IFU-004).
-- Content is NOT reconciled: the two mirrors diverge by 46 intentional lines, so the check
-  is a section-set diff (AC-IFU-008), not a byte diff.
-- Update the touched contract constants: `codexLinkAgentsDirective` and
-  `codexCreatedClaudeBody` (`codex_contract.go:38`, `:46-47`) — the created stub must emit
-  the new two-import shape or it will not satisfy AC-IFU-002 (design.md §C).
+- Content is NOT reconciled: the two mirrors diverge intentionally — measured 2026-09-26
+  against `553e224f3` as 57 template-only and 17 root-only lines — so the check is a
+  section-set diff (AC-IFU-008), not a byte diff.
+- Update the touched contract constants in `internal/cli/codex_contract.go`:
+  `codexLinkAgentsDirective`, and `codexCreatedClaudeBody` / `codexCreatedAgentsBody` — the
+  created stub must emit the new two-import shape or it will not satisfy AC-IFU-002
+  (design.md §C).
 - Correct the budget statement (REQ-IFU-017); keep the truncation statement.
 - Drop `-f` from §8; fix the §3 "Codex lanes" / `-w` inconsistency.
 - Thin `CLAUDE.md` to import + mechanism layer + import (REQ-IFU-002).
 - Add the C5 neutrality allowlist change (REQ-IFU-015).
-- `make build`, then both mirrors, then **both** ceiling checks: per-file 24,576
-  (AC-IFU-005) and nested-sum 32,768 (AC-IFU-006). They are different limits with different
-  owners and neither substitutes for the other. Raising `project_doc_max_bytes` is not an
-  available remedy — the override is silently ignored until the user is `trusted`, and a
-  distributed user's first session is untrusted by construction.
-
-### M5 — docs-site, four locales
-
-Six pages × four locales (REQ-IFU-020). Korean is the canonical source per the project's
-i18n rules; en/ja/zh derive. Same-PR obligation applies — all four locales or none.
-
-### M6 — this repository's own migration (operator-gated)
-
-**[HARD] Proceeds only after explicit operator confirmation in this lane.** It is the
-riskiest step: 61,908 bytes of live maintainer doctrine, git-tracked despite being
-gitignored, moving to a file under 40,000 characters with operational procedure split into
-`.moai/docs/`.
-
-- Split procedure out, leave rules behind (REQ-IFU-021).
-- Rewrite §0 to name `AGENTS.local.md` (REQ-IFU-022) — §0 is the discriminator for which
-  copy is canonical, and it names the filename directly.
-- Verify M1's answer actually holds for this repository's own worktrees before relying on
-  it; the lanes read this file.
+- `make build`, then both mirrors, then **three** budget checks, all with `--- PASS:` reads:
+  per-file 24,576 (AC-IFU-005), nested-sum 32,768 (AC-IFU-006), and the always-loaded surface
+  (AC-IFU-025). They are three different limits with three different owners and none
+  substitutes for another. Raising `project_doc_max_bytes` is not an available remedy — the
+  override is silently ignored until the user is `trusted`, and a distributed user's first
+  session is untrusted by construction.
 
 ## §F Self-verification
 
@@ -154,31 +162,42 @@ Per-milestone: the affected packages only (`go test ./internal/<pkg>/...`), neve
 `go test ./...` locally. The full-suite verdict is CI's, on the PR head, in a clean
 environment.
 
-At close: AC-IFU-024 plus a separate re-run of every two-mirror criterion.
+At close: the acceptance.md §D.2 traceability diff command, plus a separate re-run of every
+two-mirror criterion.
 
 ## §G Anti-patterns
 
 - Grepping one mirror and reporting the tree clean.
 - Reading the presence of `@AGENTS.local.md` in `CLAUDE.md` as evidence the import
-  resolved. M0-1 forbids this; AC-IFU-020 is the correct assertion.
+  resolved. M0-1 forbids this; **AC-IFU-019** is the correct assertion — it asserts the
+  sentinel arrived. `AC-IFU-020` deliberately asserts only that the *literal line survives*
+  when the target is absent, which is the directive-presence check this bullet forbids using
+  as resolution evidence; the v0.2.0 draft cited it here and would have routed the
+  implementer to the wrong assertion at exactly the moment it was warning them off it.
+- Reading a `go test` exit code as evidence the test ran. `-run` on a pattern matching nothing
+  exits `0` and prints `no tests to run`; five criteria in the v0.2.0 draft passed that way.
+- Guessing a test's name from its subject. Three of those five named a guard that already
+  existed under a different symbol.
 - Re-running M1a or M1b until it produces the convenient answer.
+- Reading `AC-IFU-022`'s decision rule without its positive control. A render that captured
+  nothing resolves to "`LOCAL_HEAD` absent" and looks like the benign answer.
 - Treating the M0 P7 line-3 observation as settled. It is a synthetic-fixture observation
   and AC-IFU-021 exists because it is not evidence for either answer.
 - "Tidying up" the `.tmpl` suffix on the template mirror, or adding a file named `AGENTS.md`
   under `internal/template/templates/`. This is the exact shape of the defect t925 fixed,
   and prose did not stop it the first time — AC-IFU-004 does.
-- Reading a completed Codex session as evidence the instructions loaded whole. Tail
-  truncation is silent; only the tail sentinel decides.
 - Resolving the worktree duplicate-load here. It is t1219's, and this SPEC's obligation is
-  only not to make it worse (REQ-IFU-010).
-- Letting `moai update` do the migration "since it is already touching the tree".
-- Starting M6 without the operator's confirmation because the earlier milestones went well.
+  only not to make it worse.
+- Writing the sibling SPEC's fallback advisory into the launcher loop while reordering it
+  (§C.1), or citing a source line number as an address rather than a symbol (§B).
 
 ## §H Cross-references
 
+- `.moai/specs/SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001/` — the sibling SPEC (card t1259).
 - `.moai/reports/t1243/m0/verdict.md` — the measurement this plan's M1 extends.
+- `.moai/reports/t1243/plan-audit-iter1.md` — the audit of `1140bcd1d` that v0.3.0 answers.
 - design.md §A — the option analysis M1 resolves.
 - design.md §D.2 — the `.tmpl` invariant and the t925 measurement behind it.
 - design.md §A.3 / card **t1219** item (1) — the worktree duplicate load, scoped out.
-- `internal/config/token_budget_guard.go:101` — `CodexContractByteCeiling`.
+- `internal/config/token_budget_guard.go` — `CodexContractByteCeiling`.
 - `.moai/docs/gitflow-integration-chain.md` — the integration window this lane uses.

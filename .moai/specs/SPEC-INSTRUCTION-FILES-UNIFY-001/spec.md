@@ -1,15 +1,16 @@
 ---
 id: SPEC-INSTRUCTION-FILES-UNIFY-001
-title: Instruction-file unification — AGENTS.md as the harness-neutral contract
-version: 0.2.0
+title: "Instruction-file unification — AGENTS.md as the harness-neutral contract"
+version: "0.3.0"
 status: draft
 priority: P1
 phase: "v3.3.0 target"
 created: 2026-09-26
 updated: 2026-09-26
 author: manager-spec
-category: harness
-tags: [instruction-files, codex, claude, template, migration]
+module: "internal/cli, internal/config, internal/hook, internal/harness/curator, internal/template/templates"
+lifecycle: spec-anchored
+tags: "instruction-files, codex, claude, template, contract, guards"
 tier: L
 ---
 
@@ -19,6 +20,14 @@ tier: L
 |---------|------|--------|
 | 0.1.0 | 2026-09-26 | Initial plan-phase draft. Encodes the operator-approved design decision 2 (lead report 2026-09-26) plus the M0 measurement results recorded at `.moai/reports/t1243/m0/verdict.md`. |
 | 0.2.0 | 2026-09-26 | Lead directives 1 and 2 applied: the ancestor-discovery observation is labelled unconfirmed and may not serve as a premise; the `.tmpl` invariant (card t925) and the nested-sum 32,768-byte budget added as REQ-IFU-024 / REQ-IFU-025; worktree duplicate-load scoped out to t1219. |
+| 0.3.0 | 2026-09-26 | **B1/B2 carve, by operator decision.** The nine requirements `REQ-IFU-007~012` and `REQ-IFU-020~022` — everything touching a user-owned file — transferred verbatim to `SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001` (card t1259 owns its plan phase). This SPEC retains 16: `REQ-IFU-001~006`, `013~019`, `023~025`. **The carve's cause is arithmetic, not the recorded debt:** the plan-audit of commit `1140bcd1d` found `REQ-IFU-001` and `REQ-IFU-005` covered by no criterion, the fix needs two new criteria, and the SPEC stood at the Tier L ceiling of 25/25 with no tier above L. Also applied from that audit: frontmatter repaired to the canonical 12-field schema (MP-3), five vacuously-passable `go test -run` patterns repaired and given positive indicators (D1), two new criteria added for the uncovered requirements (D2), `AC-IFU-022`'s positive control defined (D5), the `AGENTS.md` mirror-divergence figure re-measured (D4), `plan.md` §G's mis-citation corrected (D6), and §C reordered so requirement ids ascend in document order (D8). |
+
+> **[HARD] The id gaps in this SPEC are the carve's footprint, not an error.** `REQ-IFU-007~012`
+> and `REQ-IFU-020~022` are absent here because they live in
+> `SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001`, and the criteria that covered them went with them. The
+> ids were deliberately NOT renumbered: a non-contiguous sequence is far cheaper than breaking
+> every cross-reference, the traceability table, and the audit history that already cites these
+> ids by name. A later reader who "fixes" the gaps breaks all three.
 
 ---
 
@@ -33,8 +42,8 @@ contradictory ownership:
 - `CLAUDE.md` — deployed, read by Claude Code, already importing `@AGENTS.md`, but still
   carrying a second inline layer of contract material.
 - `CLAUDE.local.md` — user-owned, gitignored, read by Claude Code through
-  ancestor-directory discovery. In this repository it is 61,908 bytes and git-tracked
-  despite being gitignored.
+  ancestor-directory discovery. In this repository it is git-tracked despite being
+  gitignored.
 - `AGENTS.local.md` — already named in `internal/cli/codex_contract.go` as the Codex-side
   local instruction input, injected through the launcher's `developer_instructions` key,
   and already present in both `.gitignore` copies. It is not yet the primary read path
@@ -43,8 +52,10 @@ contradictory ownership:
 The consequence is that a maintainer editing "the contract" must decide which of four
 files to edit, and a Codex session and a Claude session do not read the same set.
 
-This SPEC unifies the surface onto three files with one owner each, and retires
-`CLAUDE.local.md` after a one-minor-release transition window.
+This SPEC establishes the three-file structure and the guards that hold it. The user-owned
+half of the transition — the Codex fallback advisory, the migration verb, the `moai update` /
+`moai doctor` advisories, the docs-site rewrite, and this repository's own migration — is
+`SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001`.
 
 ---
 
@@ -78,24 +89,8 @@ harnesses read.
   no launcher change in `moai cc`, bare `claude`, or `moai glm`.
 - **REQ-IFU-006** — When the `moai codex` launcher assembles `developer_instructions`, it
   shall read `AGENTS.local.md` ahead of `CLAUDE.local.md`.
-- **REQ-IFU-007** — Where only `CLAUDE.local.md` exists, the `moai codex` launcher shall
-  read it as a fallback and shall emit a deprecation advisory naming the migration command.
-- **REQ-IFU-008** — The Codex provenance preamble shall name the literal filename of the
-  file it actually read, never a normalized or substituted name.
 
-### C.3 Migration
-
-- **REQ-IFU-009** — The system shall provide an explicit migration verb
-  (`moai migrate local-instructions`) that moves `CLAUDE.local.md` content to
-  `AGENTS.local.md` and relocates the original to a backup directory.
-- **REQ-IFU-010** — `AGENTS.local.md` and `CLAUDE.local.md` shall not coexist as live read
-  paths; the migration verb shall leave exactly one of the two in place.
-- **REQ-IFU-011** — `moai update` shall not move, rename, or delete either local
-  instruction file; where both exist, it shall emit an advisory only.
-- **REQ-IFU-012** — `moai doctor` shall report the same advisory as `moai update` when both
-  local instruction files exist or when only `CLAUDE.local.md` exists.
-
-### C.4 Guard and learner surfaces
+### C.3 Guard and learner surfaces
 
 - **REQ-IFU-013** — The harness-learner frozen-instruction set shall include
   `AGENTS.md` and `AGENTS.local.md` in addition to the existing `CLAUDE.md` and
@@ -105,7 +100,7 @@ harnesses read.
 - **REQ-IFU-015** — Where a template file is scanned for neutrality, `AGENTS.local.md` shall
   be an allowed reference and `CLAUDE.local.md` shall remain forbidden.
 
-### C.5 Contract body
+### C.4 Contract body
 
 - **REQ-IFU-016** — The deployed `AGENTS.md` body shall be harness-neutral: it shall carry
   no clause whose applicability is restricted to one harness.
@@ -115,9 +110,29 @@ harnesses read.
 - **REQ-IFU-018** — The root `AGENTS.md` and `internal/template/templates/AGENTS.md.tmpl`
   shall carry the same `## ` section set after reconciliation. Reconciliation applies to the
   section set only, never to the filename (REQ-IFU-024) and never to file content — the two
-  mirrors diverge by 46 intentional lines.
+  mirrors diverge intentionally (§C.4 note below).
 - **REQ-IFU-019** — Each deployed contract document shall not exceed the per-file ceiling of
-  24,576 bytes (`CodexContractByteCeiling`, `internal/config/token_budget_guard.go:101`).
+  24,576 bytes (`CodexContractByteCeiling`, declared in
+  `internal/config/token_budget_guard.go`).
+
+> **The intentional mirror divergence, attributed.** Measured in this worktree against base
+> develop `553e224f3` on 2026-09-26:
+> `diff AGENTS.md internal/template/templates/AGENTS.md.tmpl` reports **57 template-only lines
+> (`^>`) and 17 root-only lines (`^<`)**. The figure of "46 intentional lines" carried in the
+> v0.2.0 draft was a card-t925-era number (2026-09-18) and does not reproduce against this
+> tree; it is retired rather than carried forward. What the figure supports is unchanged at any
+> value: the mirrors differ by design, so `AC-IFU-008` compares the `## ` section set and a
+> content-level diff would fail by construction.
+
+### C.5 Verification of import resolution
+
+- **REQ-IFU-023** — The system shall carry a mechanical check that the `@AGENTS.local.md`
+  import in a deployed `CLAUDE.md` actually resolved, rather than inferring resolution from
+  the absence of an error. (M0-1: an unresolved import is silently skipped — exit 0, empty
+  stderr.)
+
+### C.6 The template-mirror filename and the nested budget
+
 - **REQ-IFU-024** — The template mirror of the contract shall retain a filename Codex does
   not discover (`AGENTS.md.tmpl`); the system shall not place a file named `AGENTS.md` under
   `internal/template/templates/`. Reversing card t925 reintroduces a measured silent
@@ -129,33 +144,32 @@ harnesses read.
   `trust_level = "trusted"`, and a distributed user's first session is untrusted by
   construction.
 
-### C.6 Documentation and this repository
-
-- **REQ-IFU-020** — The docs-site pages `claude-md-guide`, `codex-dual-harness`,
-  `harness-learning`, `memory`, `quickstart`, and `update` shall describe the three-file
-  structure in all four locales (ko, en, ja, zh).
-- **REQ-IFU-021** — This repository's own `CLAUDE.local.md` shall migrate to
-  `AGENTS.local.md` at under 40,000 characters, with operational procedure relocated to
-  `.moai/docs/`.
-- **REQ-IFU-022** — The migrated `AGENTS.local.md` §0 shall name `AGENTS.local.md` as the
-  file whose canonical copy it discriminates.
-
-### C.7 Verification of import resolution
-
-- **REQ-IFU-023** — The system shall carry a mechanical check that the `@AGENTS.local.md`
-  import in a deployed `CLAUDE.md` actually resolved, rather than inferring resolution from
-  the absence of an error. (M0-1: an unresolved import is silently skipped — exit 0, empty
-  stderr.)
-
 Every check discharging REQ-IFU-019, REQ-IFU-023, and REQ-IFU-025 shall carry a positive
 indicator. Where the failure mode is silent truncation or a silent skip, the absence of an
 error is not evidence of success.
+
+> **[HARD] "A positive indicator" binds a `go test -run` invocation too.** Go exits `0` when
+> `-run` matches no test, printing `no tests to run` — so a criterion naming a pattern that
+> matches nothing passes vacuously. Every criterion in `acceptance.md` that invokes a test
+> therefore names the test's **symbol** (never a prefix guess), runs with `-v`, and asserts
+> `--- PASS: <TestName>` appears in the output. The plan-audit of commit `1140bcd1d` found
+> five criteria failing exactly this way, three of which named a guard that already existed
+> under a different name.
 
 ---
 
 ## §D Out of Scope
 
 This SPEC deliberately does not build the following.
+
+### Out of Scope — the user-owned-file half of the transition
+
+- The Codex `CLAUDE.local.md` fallback branch and its deprecation advisory, the
+  `moai migrate local-instructions` verb, the no-coexistence invariant, the `moai update` and
+  `moai doctor` advisories, the six docs-site pages in four locales, and this repository's own
+  `CLAUDE.local.md` migration. All nine requirements and their criteria transferred verbatim
+  to **`SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001`** (card **t1259**) at v0.3.0. They are not
+  cancelled and not weakened — they are owned elsewhere.
 
 ### Out of Scope — instruction-file mechanisms
 
@@ -168,24 +182,22 @@ This SPEC deliberately does not build the following.
 ### Out of Scope — automation
 
 - Automatic renaming of `CLAUDE.local.md` by `moai update`, `moai init`, or any hook.
-  Migration is an explicit operator-invoked verb only.
+  Migration is an explicit operator-invoked verb only, and it belongs to the sibling SPEC.
 - Automatic restoration or repair of a modified local instruction file.
 
 ### Out of Scope — the worktree duplicate-load
 
 - Deduplicating the local-instruction load in a worktree session. Open card **t1219 item (1)**
-  already covers it (a worktree session loading two copies of `CLAUDE.local.md` — worktree
-  44.4k chars, primary 39.3k chars, differing content, roughly 30k extra tokens). If the M1
-  re-measurement confirms ancestor discovery, the mechanism that would carry local
-  instructions into a worktree is the same mechanism that double-loads them; that finding is
-  handed to t1219 with its evidence rather than resolved here.
-- What this SPEC does owe is not making the duplicate worse: REQ-IFU-010's no-coexistence
-  invariant is what keeps a worktree session from carrying up to four local-instruction loads.
+  already covers it (a worktree session loading two copies of `CLAUDE.local.md`, differing
+  content, roughly 30k extra tokens). If the M1 re-measurement confirms ancestor discovery,
+  the mechanism that would carry local instructions into a worktree is the same mechanism
+  that double-loads them; that finding is handed to t1219 with its evidence rather than
+  resolved here.
 
 ### Out of Scope — adjacent work
 
 - SPEC A (codex factory retirement). It overlaps this SPEC at `AGENTS.md` §3 and §8 and is
-  sequenced separately; see plan.md §Risks.
+  sequenced separately; see plan.md §C.
 - Rewriting the substance of any contract clause. This SPEC relocates and reconciles
   clauses; it does not re-decide them.
 - Codex-side measurement of `developer_instructions` behavior beyond what the existing
@@ -195,7 +207,10 @@ This SPEC deliberately does not build the following.
 
 ## §E Cross-references
 
+- `SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001` — the sibling SPEC holding the nine transferred
+  requirements (card t1259).
 - `.moai/reports/t1243/m0/verdict.md` — the M0 measurement this SPEC's design rests on.
+- `.moai/reports/t1243/plan-audit-iter1.md` — the audit of commit `1140bcd1d` that v0.3.0 answers.
 - `internal/cli/codex_contract.go`, `internal/cli/codex_launcher.go` — read order.
 - `internal/hook/pre_tool.go` `frozenInstructionFiles` — the guard set.
 - `internal/harness/curator/dispatch.go` — the Tier-3 target.

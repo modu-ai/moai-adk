@@ -1,5 +1,15 @@
 # SPEC-INSTRUCTION-FILES-UNIFY-001 — research
 
+> **Scope note (v0.3.0).** The migration verb, the Codex fallback advisory, the `moai update` /
+> `moai doctor` advisories, the docs-site rewrite, and this repository's own `CLAUDE.local.md`
+> migration moved to `SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001` (card t1259). This survey is shared
+> context both SPECs read and is kept intact rather than duplicated.
+>
+> **Source locations are cited by symbol.** `origin/develop` is roughly 93 commits ahead of this
+> worktree's base and has already moved one of them (card t1224 shifted `frozenInstructionFiles`
+> by two lines while leaving the symbol intact). Every figure below is attributed to base develop
+> `553e224f3` on 2026-09-26 and is re-measured after t1175 lands (plan.md §B).
+
 ## §A Measured facts (M0)
 
 The full evidence-bearing record is `.moai/reports/t1243/m0/verdict.md`, produced against
@@ -32,19 +42,19 @@ Read-only observations made while authoring this SPEC.
 |---|---|
 | `AGENTS.md` (root) | 16,441 bytes, 8 `##` sections |
 | `internal/template/templates/AGENTS.md.tmpl` | 19,177 bytes, 12 `##` sections — the four extra are Hook Event Coverage, Configuration Map, moai CLI Verbs, Status Line Tokens. **The `.tmpl` suffix is an invariant, not an accident** — see §C.2 |
-| `internal/config/token_budget_guard.go:101` | `CodexContractByteCeiling = 24576`, the per-file ceiling; `contractDocuments` follows the mirror to its renamed path |
+| `internal/config/token_budget_guard.go` — `CodexContractByteCeiling` | `CodexContractByteCeiling = 24576`, the per-file ceiling; `contractDocuments` follows the mirror to its renamed path |
 | `CLAUDE.md` (root) and template | 19,553 bytes, byte-identical sizes; already carries `@AGENTS.md` |
-| `CLAUDE.local.md` | 61,908 bytes, git-tracked despite `.gitignore:276` listing it |
-| `AGENTS.local.md` | absent from the tree; already gitignored at `.gitignore:275` and `internal/template/templates/.gitignore:174` |
-| `internal/cli/codex_contract.go:33-34` | both constants already exist; the comment already calls `AGENTS.local.md` the Codex-only local input |
-| `internal/cli/codex_launcher.go:125` | iterates `{codexClaudeLocalName, codexLocalInstructionName}` — `CLAUDE.local.md` first |
-| `internal/hook/pre_tool.go:1231` | `frozenInstructionFiles = []string{"CLAUDE.md", "CLAUDE.local.md"}`; basename match |
-| `internal/harness/curator/dispatch.go:43` | Tier 3 → `CLAUDE.local.md`, append-only, `BlockTypeLearnedLocal` |
-| `internal/cli/codex_contract_link_test.go:202` | asserts `executing @AGENTS.local.md imports = 0` |
+| `CLAUDE.local.md` | 61,908 bytes / 44,381 characters on `develop` (the copy its own §0.1 declares canonical), git-tracked despite being listed in `.gitignore` |
+| `AGENTS.local.md` | absent from the tree; already gitignored in both `.gitignore` and `internal/template/templates/.gitignore` |
+| `internal/cli/codex_contract.go` — `codexClaudeLocalName` / `codexLocalInstructionName` | both constants already exist; the comment already calls `AGENTS.local.md` the Codex-only local input |
+| `internal/cli/codex_launcher.go` — local-instruction loop | iterates `{codexClaudeLocalName, codexLocalInstructionName}` — `CLAUDE.local.md` first |
+| `internal/hook/pre_tool.go` — `frozenInstructionFiles` | `frozenInstructionFiles = []string{"CLAUDE.md", "CLAUDE.local.md"}`; basename match |
+| `internal/harness/curator/dispatch.go` — Tier-3 entry | Tier 3 → `CLAUDE.local.md`, append-only, `BlockTypeLearnedLocal` |
+| `internal/cli/codex_contract_link_test.go` — the `@AGENTS.local.md` imports assertion | asserts `executing @AGENTS.local.md imports = 0` |
 | `internal/cli/` migrate verbs | only `migrate_agency_*`; no `migrate local-instructions` exists |
 | `docs-site/content/` | four locale trees: `en`, `ja`, `ko`, `zh` |
 
-Two consequences worth naming:
+Three consequences worth naming:
 
 1. **Much of the Codex side is already built.** The constant, the gitignore entries, and
    the contract's own framing of `AGENTS.local.md` are in place. REQ-IFU-006 is an
@@ -88,8 +98,10 @@ Prior measurement, taken as established:
   config carries only `project_doc_max_bytes` and `fallback_filenames`. Renaming was the
   only available lever.
 - The deployer strips the `.tmpl` suffix, so a user project still receives `AGENTS.md`.
-- Root and mirror are edited together and **diverge by 46 intentional lines** — which is
-  why AC-IFU-008 compares section sets rather than content.
+- Root and mirror are edited together and **diverge intentionally** — which is why AC-IFU-008
+  compares section sets rather than content. The t925-era figure of 46 lines is retired: it does
+  not reproduce against this tree (measured 2026-09-26 against `553e224f3` — 57 template-only,
+  17 root-only lines; spec.md §C.4).
 
 ### C.3 From card t1219 item (1) — the worktree duplicate load
 
