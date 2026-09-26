@@ -109,7 +109,26 @@ $ grep -c '^### plan-audit iter3 (scoped)' progress.md  → 1     (was 2)
 $ grep -c '^### Verification after these repairs' progress.md → 2  (was 3 — iter2 and iter3, one each)
 ```
 
-The class table referenced by `spec.md:38` survives the de-duplication (2 matching rows present).
+The class table referenced by `spec.md:38` survives the de-duplication — `progress.md:513`, the
+four-class version, resolving correctly.
+
+**The two copies were not byte-identical, and that mattered.** Two sampled windows matched, which is
+why the duplication read as a clean doubling, but they diverged at the end: the first copy carried
+the corrected four-class table, the second carried the **old per-line "nine hits" table that copy
+had just replaced**. Deleting the wrong one would have silently reinstated the brittle count — the
+very thing v0.2.3 removed — by way of the repair meant to clean up after it, and the predicate would
+have stayed green throughout. The first copy was kept. Verified by the lane at `5271f009f`:
+
+```
+$ grep -c '| Site | Why it is not a live assertion |' progress.md   → 0   (old table absent)
+$ grep -n 'Class | Where it occurs'                    progress.md   → 513 (four-class table present)
+```
+
+The de-duplication's line arithmetic also closes with nothing unexplained. The 140-line gap between
+`wc -l` 580 and `sort -u` 440 is 109 blank lines, 21 code fences, and ten single-repeat lines — the
+two `### Verification after these repairs` headings (iter2 and iter3 each have one), two
+`_<pending run-phase>_` placeholders, a table rule, and six lines of verification command and output
+text that iter2 and iter3 genuinely both ran.
 
 ## 5. Amended §D.3 Definition of Done — verbatim at `5271f009f`
 
