@@ -167,7 +167,28 @@ HARD clauses in scope (grep `\[HARD\]`):
 | `model-policy.md:110` | GLM allowlist reconciliation | none — kept |
 | `cache-aware-execution.md:27` (directive 10) | mid-session model/effort switch busts the cache | none — kept (main session) |
 
-docs-site: 48 files across four locales match the pattern set (en carries more pages than ko/ja/zh).
+HARD inventory with an effort/model-inclusive pattern (plan-audit iter-1 D2), at `d6992e3a0`:
+`grep -rnE '\[HARD\].*(effort|model)' .claude/rules` → 17 lines. In scope: agent-common-protocol.md:161,
+model-policy.md:34/93/110/245, cache-aware-execution.md:27 (directive 10, cites the removed
+section), dynamic-workflows.md:124 ("the script author SHALL set `effort` explicitly…"). Out of
+scope (main-session or unrelated): skill-authoring.md:187 (triggers), cache-aware-execution.md:19
+(@-mention), context-window-management.md:17/67/72/81 (model-specific thresholds),
+cross-session-messaging.md:89, repo-local-pr-policy.md:10, session-handoff-examples.md:303/304.
+`grep -cE 'dynamic-workflows|cache-aware-execution|model-policy' .claude/rules/moai/core/zone-registry.md` → 0.
+
+Stale non-HARD sentences (D15): settings-management.md:21 ("MoAI resolves per-spawn models
+through its own model pipeline"), agent-authoring.md:165 (`Agent(... model: "haiku")`),
+archived-agent-rejection.md:86-91 (`Agent(general-purpose, model: …)` rows).
+
+Prose-instruction grep for AC-AMI-007(c), RED-now at `d6992e3a0`:
+`grep -rnE '(set|pass|inject)[^.]{0,40}\b(effort|model)\b[^.]{0,80}(explicit|per spawn|per-spawn|agent\(\))' .claude/rules .claude/skills internal/template/templates/.claude`
+→ 6 hits in 3 file pairs: agent-common-protocol.md, settings-management.md, dynamic-workflows.md.
+
+docs-site (re-measured, plan-audit iter-1 D9/D10): the first pattern's `[Pp]er-[Ss]pawn` token
+over-matched unrelated per-spawn specialisation prose. Narrowed pattern plus the Q3 keys and the
+deprecated flags:
+`grep -rlE -- 'model profile|profile matrix|agent_overrides|harness_agents|agent_model_guard|[Pp]er-[Ss]pawn [Mm]odel|agent-model-audit|workflow_agents|model_routing|performance_tier|--model-policy|moai (init|update)[^|]{0,60}--profile' docs-site/content | wc -l`
+→ **52** (en 14, ko 14, ja 12, zh 12). Without the Q3 keys and flags the narrowed pattern gives 40.
 
 ## §G. Always-loaded budget baseline
 
@@ -189,9 +210,60 @@ Intersection with this SPEC's text touch set — **21 paths**:
 
 t1175 also edits `CLAUDE.md` (root and template) and `AGENTS.md`; this SPEC does not (0 hits).
 
+Superseded at run entry by the mechanical gate of §I; the figures below are the plan-time snapshot.
+
 `git diff --name-only d6992e3a0...WT-role-naming-docs` (card t1257, HEAD `ffc83b3b1`): 25 paths,
 all under `.moai/reports/t1257/` and `.moai/specs/SPEC-ROLE-NAMING-DOCS-001/` — **0 overlap
 today**. Its planned run surface (`.moai/reports/t1257/raw/per-file-class.tsv`, 377 paths)
 intersects this SPEC's touch set in **90 paths**: 57 agent/rule/skill/codex/config paths and 33
 docs-site pages. That branch is plan-only, so the overlap is re-measured at this SPEC's run
 entry (REQ-AMI-002).
+
+## §I. Committed touch set and the run-entry gate (plan-audit iter-1 D5)
+
+The touch set is a committed file produced by a committed, read-only script:
+
+- Generator: `.moai/reports/t1246/touch-set.sh` (greps only; frontmatter hits, codex toml,
+  doctrine/docs pattern, Go/templ symbol pattern, workflow scripts, harness manifests, and an
+  explicit list for files no pattern reaches).
+- Output: `.moai/reports/t1246/touch-set.txt` — `sh .moai/reports/t1246/touch-set.sh > .moai/reports/t1246/touch-set.txt`
+  → exit 0, **238** paths at `d6992e3a0` (22 `.claude/agents`, 2 `.claude/commands`,
+  12 `.claude/rules`, 7 `.claude/skills`, 5 `.claude/workflows`, 52 `docs-site/content`,
+  22 `internal/cli`, 10 `internal/config`, 10 `internal/harness`, 6 `internal/hook`,
+  5 `internal/settings`, 2 `internal/spec`, 52 `internal/template`, 26 `internal/web`, plus the
+  explicit entries).
+
+`<merge-base>` is defined as `git merge-base HEAD WT-role-naming-docs` → `e62c3e183` on
+2026-09-26 (branch tip `024b95f77`). Gate as run today:
+`git diff --name-only e62c3e183 WT-role-naming-docs | sort | comm -12 - .moai/reports/t1246/touch-set.txt | wc -l` → **0**.
+
+t1175 predicate: `git merge-base --is-ancestor WT-rules-diet develop` → exit **1** on 2026-09-26
+(not merged; the gate holds).
+
+## §J. Update merge and main-session persistence (plan-audit iter-1 D3/D4)
+
+Merge behaviour for keys absent from the new template:
+
+- `internal/cli/update/backup/node_merge.go:374` — "Second pass: old-only keys (absent from the
+  new template). REQ-UYP-006 retains ALL of them".
+- `internal/cli/update/backup/merge.go:78` — "key only in old → absent from new template →
+  retain + report (REQ-UYP-006/007)".
+- Post-merge strip precedent: `stripRetiredV2DenyEntries` called at `internal/cli/update.go:388`
+  and `internal/cli/update_clean_install.go:554`.
+
+So the merge never drops the removed keys; the explicit strip step (design D14) is required for
+every row of design §C.
+
+Where the model policy is persisted and read:
+
+| Surface | Writer (measured) | Reader (measured) |
+|---|---|---|
+| `llm.yaml performance_tier` | `init.go:984-993` via `resolveModelPolicy` (`--model-policy`, `--high`, `--medium-alias`, `--low`, `init.go:422-436`) or the init wizard `ModelPolicy`; `ApplyPerformanceTier` | web agentfm, agentlint, schemaform, `EffectiveProfile` alias — all subagent-side |
+| `llm.yaml profile` | `init.go:995-1012`, `update.go:647-660`, `update_wizard.go:307-310` (`ApplyProfile`) | profile matrix resolver — subagent-side |
+| system.yaml `moai.model_policy` | `update_wizard.go:332` | none: `grep -rnE 'model_policy' --include=*.go internal cmd pkg` shows no reader of this key |
+| preference profile `~/.moai/claude-profiles/<name>/preferences.yaml` `model_policy` | `profile_setup.go:425` `WritePreferences`, `moai web` | `launcher.go:763` and `launch_effort_settings.go:68` via `resolveLaunchEffort` → `MapModelPolicyToEffort` — **main session** |
+
+`TemplateContext.WithModelPolicy` (`template/context.go:260`) has no non-test caller and no
+template file references `.ModelPolicy` (`grep -rln '\.ModelPolicy' internal/template/templates` → 0).
+Conclusion: the init/update flags and the init/update wizard question reach only subagent-side
+keys; the main-session policy lives in the preference profile and is untouched.
