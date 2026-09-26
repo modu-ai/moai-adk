@@ -174,7 +174,7 @@ m1_to_mN_commit_strategy: "one commit per milestone (M1 RED / M2 / M3 / M4 / M5)
 
 ```yaml
 sync_complete_at: 2026-09-26
-sync_commit_sha: "pending-backfill-sync"   # D3 backfill window — placeholder in the sync commit, real SHA backfilled in the following commit
+sync_commit_sha: "d0e23d31f"   # backfilled from the pending-backfill-sync placeholder (D3 backfill window); sync commit = d0e23d31f
 sync_status: "complete — docs surfaces assessed, 3-phase close committed"
 b12_self_test_a: "CHANGELOG pre-emission grep '<SPEC-ID>' = 0 matches (exit 1) — safe to emit"
 b12_self_test_b: "AC identifiers in acceptance.md = 14 distinct (AC-HGF-001..014); CHANGELOG entry cites 14"
