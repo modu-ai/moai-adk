@@ -619,7 +619,7 @@ load discipline).
 
 ```yaml
 sync_complete_at: 2026-09-26
-sync_commit_sha: "pending-backfill-sync"   # D3 placeholder — backfilled in the following commit
+sync_commit_sha: "9a5046071"   # backfilled in the following commit (D3 exemption)
 sync_status: complete
 b12_self_test_a: 0        # grep -c 'SPEC-AUTONOMY-PRECONDITION-001' CHANGELOG.md before emission
 b12_self_test_b: 16       # live AC count from acceptance.md (AC-AP-001..010, 013..018; 011/012 retired, AC-AE-025 referenced-only) — CHANGELOG entry cites 16
