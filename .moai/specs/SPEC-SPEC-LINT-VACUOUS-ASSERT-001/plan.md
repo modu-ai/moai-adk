@@ -36,11 +36,40 @@ Options weighed against the lead's constraint that a finding must turn the exist
 | error | red on landing for every active finding; errors are never absorbable by the baseline | — | rejected |
 | advisory | green on landing | the baseline gate never counts advisory, so no document can ever turn CI red — REQ-VTA-013 unsatisfiable | rejected |
 | warning + audited rebaseline (REQ-SLGS-008) | record roughly the estimated active count (up to ~457) | every active SPEC that later reaches `completed` lowers the count while the recorded ceiling stays put (the file is never rewritten implicitly), so each closure hands out permanent headroom for new violations | rejected |
-| **warning, non-advisory only for SPECs created on/after a cutoff** | gated population at landing is the SPECs created on the landing date; REQ-VTA-014 requires it to be 0 | recorded count stays absent (= 0); any new violation in a new SPEC is an increase → red | **chosen** |
+| **warning, non-advisory only for SPECs created on/after a cutoff** | gated population at landing is 0 by construction, because the cutoff is chosen strictly later than every existing `created` | recorded count stays absent (= 0); any new violation in a new SPEC is an increase → red | **chosen** |
 
-Consequences accepted: legacy active SPECs keep their findings as advisory (visible, not gated);
-a backdated `created:` would evade the gate — that edit is visible in review and is recorded as
-residual risk, not defended in code.
+**Cutoff selection rule (plan-audit iter-1 D3).** An earlier draft set the cutoff to the
+registering commit's date. The audit measured that at 2026-09-26 two draft SPECs owned by other
+cards (created that day, non-terminal, quoting the defect inside blockquotes as documentation)
+would become gated and turn the landing commit red — and the only fix would have been editing
+another card's SPEC. The rule is now: **cutoff = the day after the newest `created` value over
+every `.moai/specs/*/spec.md` in the registering tree.** Plan-time measurement in this worktree
+(`e464fd5d0`), with the throwaway approximator's date column:
+
+```
+$ grep -h -m1 "^created:" .moai/specs/*/spec.md | sed 's/created: *//; s/"//g' | sort | uniq -c | tail -4
+   5 2026-09-23
+   4 2026-09-24
+   2 2026-09-25
+  14 2026-09-26
+$ grep -h -m1 -E "^created:" .moai/specs/*/spec.md | sed 's/created: *//; s/"//g' | awk '$0>="2026-09-27"' | wc -l
+       0
+```
+
+So a cutoff of 2026-09-27 gates zero existing SPECs. The same measurement found 947 `spec.md`
+files of which 946 carry a well-formed `created`; the one exception
+(`SPEC-V3R5-INIT-WIZARD-EXPANSION-001`, legacy `created_at:` alias, status `implemented`,
+grandfathered era) is why a missing `created` maps to advisory (REQ-VTA-009). M4 re-measures at
+the registering tree; if newer SPECs have landed by then, the cutoff moves with them.
+
+Consequences accepted:
+
+- Legacy active SPECs keep their findings as advisory (visible, not gated).
+- A backdated `created:` would evade the gate — visible in review; residual risk.
+- **Pre-cutoff SPECs that are still active can gain new vacuous criteria after landing and are
+  never gated** (plan-audit iter-1 D9) — e.g. an in-flight SPEC whose run phase or follow-up card
+  edits its acceptance criteria. Those findings appear as advisory only.
+- SPECs created later on the cutoff-minus-one day (after the measurement) are not gated.
 
 ### §B.2 DD-1 — detection axes
 
@@ -62,7 +91,11 @@ of the decision record is resolved because the detector no longer lives in the d
 
 `lint.skip: [VacuousTestAssertion]` in frontmatter is the only escape. A SPEC that must quote a
 defective example (for instance an audit of this class) uses it or moves the example into a Go
-test fixture.
+test fixture. Measured cost (plan-audit iter-1 D3): 2 of the 4 non-terminal SPECs created on
+2026-09-26 quote the defect as documentation, and for such a SPEC whole-code `lint.skip` also
+silences its real criteria. Accepted as a trade because the cutoff keeps every existing SPEC
+advisory; if new SPECs show the need repeatedly, a reasoned per-line marker becomes a follow-up
+card rather than a change here.
 
 ## §C Pre-flight (run-phase entry)
 
@@ -91,14 +124,19 @@ Every AC result goes to `.moai/reports/t1269/verdict.md` as command + verbatim o
 - **M2 — Gating (Priority High).** Cutoff constant + pinning test; advisory/non-advisory split;
   `lint.skip` suppression; confirm era/terminal demotion still applies.
 - **M3 — End-to-end CI path (Priority High).** Commit fixture trees
-  `internal/spec/testdata/vacuous_assert_e2e/{red,green}/` (each a minimal project root with one
-  SPEC carrying `era: V3R6`, `status: draft`, `created` on/after the cutoff, and a
-  `baseline.json` without a `VacuousTestAssertion` entry; the two trees differ by exactly one
-  line, blockquoted in `red`). Build the binary from the tree under test and run the CI
-  invocation from each fixture root (AC-VTA-009).
-- **M4 — Corpus landing measurement (Priority Medium).** Register the rule, set the cutoff to the
-  registering commit's date, run the real-corpus baseline gate and the JSON census; any gated
-  finding on a same-day SPEC is fixed (it is a real instance) before landing.
+  `internal/spec/testdata/vacuous_assert_e2e/{red,green}/`, each a minimal project root holding
+  one SPEC `SPEC-FIXTURE-VTA-001` (testdata-only id; never under the repository's
+  `.moai/specs/`) with `era: V3R6`, `status: draft`, `created` on or after the cutoff, and
+  `.moai/spec-lint-baseline.json` without a `VacuousTestAssertion` entry (plan-time check:
+  `git check-ignore` exits 1 on both planned fixture paths — not ignored). The two trees differ
+  by exactly one line, blockquoted in `red`. Run `go run ../../../../../cmd/moai spec lint
+  --baseline .moai/spec-lint-baseline.json` from each fixture root (AC-VTA-009) — the CI argument
+  vector verbatim, the relative package path being the only difference.
+- **M4 — Corpus landing measurement (Priority Medium).** Measure the newest `created` over the
+  registering tree, set the cutoff to the following day, register the rule, then run the
+  real-corpus baseline gate, the newest-created check, and the JSON census (AC-VTA-010). **No
+  other card's SPEC is edited** under any outcome; if the gate is not green, the cutoff rule was
+  applied wrongly, and that is what gets fixed.
 - **M5 — Mechanical finish (Priority Low).** Mutation probes, coverage, `go vet`,
   `golangci-lint`, `@MX:NOTE` on the rule type.
 
@@ -109,13 +147,17 @@ Every AC result goes to `.moai/reports/t1269/verdict.md` as command + verbatim o
 - Using `go test -run` prefixes in this SPEC's own criteria.
 - Rebaselining to absorb the corpus instead of the cutoff (DD-3).
 - Declaring M3 done from a unit test: the CI command must be executed.
+- Checking the grouped form as "starts with `^(`, ends with `)$`" without paren matching (D4).
+- Accepting the regex word boundary as a delimiter (D2).
+- Editing another card's SPEC to make the landing gate green (D3).
 
 ## §H Risks
 
 | Risk | Mitigation |
 |---|---|
 | Fixture SPEC trips other rules (Tier artifacts, frontmatter), making the red arm red for the wrong reason | the green arm must exit 0; the arms differ by one line, so the red exit is attributable |
-| Same-day SPECs carry gated findings at landing | M4 measures and fixes; REQ-VTA-014 |
+| A SPEC created between the M4 measurement and the registering commit is gated at landing | M4 measures on the registering tree itself; AC-VTA-010 re-checks newest `created` < cutoff |
+| Base-relative checks fail because `develop` absorption brings other cards' `.github/` or `go.mod` edits | AC-VTA-010/012 diff from `git merge-base HEAD develop`, recomputed at verification time |
 | Markdown-table pipe escape misread | explicit conformant and detection table rows in AC-VTA-003 |
 | CI lint step runtime (measured 527-571s in the workflow comment) grows | three file reads per SPEC, no process spawn; M4 records the lint wall time before/after |
 

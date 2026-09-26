@@ -12,8 +12,9 @@ baseline_head: e464fd5d0
 req_count: 14
 ac_count: 14
 run_evidence_target: .moai/reports/t1269/verdict.md
-severity_rollout: "warning; non-advisory only for SPECs created on/after a pinned cutoff (plan.md §B.1)"
+severity_rollout: "warning; non-advisory only for SPECs created on/after a pinned cutoff = day after newest existing created (plan.md §B.1)"
 estimate_not_measurement: "plan.md §B.1 corpus figures are a throwaway-script estimate; AC-VTA-010 records the measured count"
+audit_history: "iter-1 FAIL 0.82 (.moai/reports/t1269/plan-audit-iter1.md); v0.2.0 repairs D1-D10 and D11-D16"
 ```
 
 ## §E.2 Run-phase Evidence
