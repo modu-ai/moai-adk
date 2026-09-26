@@ -84,6 +84,9 @@ const (
 	DefaultAutonomyBudgetTurns        = 60
 	DefaultAutonomyBudgetOperations   = 40
 	DefaultAutonomyBudgetAuditRetries = 2
+	// DefaultAutonomyNewAPIDetector is workflow.autonomy.escalation.new_api_detector
+	// when absent (SPEC-AUTONOMY-ESCALATION-001).
+	DefaultAutonomyNewAPIDetector = AutonomyNewAPIDetectorGraph
 
 	DefaultPlanTokens = 30000
 	DefaultRunTokens  = 180000

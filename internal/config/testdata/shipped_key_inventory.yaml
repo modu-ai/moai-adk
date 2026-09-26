@@ -2607,6 +2607,9 @@
 - path: "workflow.autonomy.escalation.budget_default.turns"
   class: W
   evidence: reader
+- path: "workflow.autonomy.escalation.new_api_detector"
+  class: W
+  evidence: reader
 - path: "workflow.autonomy.kickoff.jev_min_confidence"
   class: W
   evidence: reader

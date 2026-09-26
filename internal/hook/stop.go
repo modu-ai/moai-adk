@@ -11,7 +11,11 @@ import (
 // stopHandler processes Stop events.
 // It performs graceful shutdown, saves in-progress work state, and preserves
 // loop controller (Ralph) state (REQ-HOOK-035). Always returns "allow".
-type stopHandler struct{}
+type stopHandler struct {
+	// escalationCfg is the configuration the escalation detector reads; nil
+	// leaves the detector inert (see WithEscalationConfig).
+	escalationCfg ConfigProvider
+}
 
 // NewStopHandler creates a new Stop event handler.
 func NewStopHandler() Handler {
@@ -33,6 +37,10 @@ func (h *stopHandler) EventType() EventType {
 //
 // Errors are non-blocking: the handler logs warnings and returns empty output.
 func (h *stopHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
+	// Contract-mode escalation detector: one turn for class 7. Records only;
+	// inert unless workflow.autonomy.mode is contract.
+	observeEscalation(h.escalationCfg, string(EventStop), input)
+
 	slog.Info("stop requested",
 		"session_id", input.SessionID,
 		"stop_hook_active", input.StopHookActive,

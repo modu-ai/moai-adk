@@ -35,6 +35,7 @@
 │    ok      Hook Delivery          skipped — no .claude/settings.json in this project                                                                   │
 │    ok      Hook opt-in:           disabled                                                                                                             │
 │    warn    Slash Commands         .claude/commands/ not found — slash commands unavailable                                                             │
+│    ok      Settings DefaultMode   no ignored defaultMode override in project/local settings                                                            │
 │    warn    Skills Allowlist       .claude/skills/ not found                                                                                            │
 │    warn    MX Tag Config          .moai/config/sections/mx.yaml not found — MX annotation thresholds use defaults                                      │
 │    warn    Worktree State         .moai/state/ not found — worktree checkpoint storage unavailable                                                     │
@@ -45,8 +46,8 @@
 │    warn    Glamour Cache          glamour not integrated                                                                                               │
 │    ok      Codex Wiring           not wired (claude-only project) — skipped                                                                            │
 │    ok      Jev                    disabled (workflow.jev.enabled: false) — no request constructed, no network call                                     │
-│    6 ok, 9 warn, 0 fail                                                                                                                                │
+│    7 ok, 9 warn, 0 fail                                                                                                                                │
 │                                                                                                                                                        │
-│  [Pass 22]  [Warn 12]  [Fail 0]                                                                                                                        │
+│  [Pass 23]  [Warn 12]  [Fail 0]                                                                                                                        │
 │                                                                                                                                                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
