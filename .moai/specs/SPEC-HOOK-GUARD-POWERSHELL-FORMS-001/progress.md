@@ -110,7 +110,7 @@ Commits (branch `WT-powershell-guard-debt`, each carries `Authored-By-Agent: man
 | `e03260744` | M2-REFACTOR | staticcheck QF1002: tagged switch in `splitPSTokens` |
 | `72c2cdc4d` | M5 | REQ-HGF-009: integration-lock audit comment states the measured scope. REQ-HGF-011: `powerShellParameterName` accepts U+2013 (measured) + U+2014/U+2010 (documented superset, over-match rationale at the declaration); `-enc:<B64>` stays a harmless over-match, not required (M0 row 12) |
 
-**Final GREEN (battery)**: `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1 ./internal/hook/ -run TestBranchGuardPSForms` → exit 0, `ok github.com/modu-ai/moai-adk/internal/hook` — **41 subtests, 0 FAIL** (this run, HEAD `72c2cdc4d`): 18 former-RED legs flipped, 23 controls/legit legs never moved.
+**Final GREEN (battery)**: `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1 ./internal/hook/ -run TestBranchGuardPSForms` → exit 0, `ok github.com/modu-ai/moai-adk/internal/hook` — **40 subtests, 0 FAIL** (18 disguise legs RED at base + 22 controls; re-counted from `go test -v` subtest lines, 40 PASS / 0 FAIL, this run at HEAD `ce40bc9ce`): the 18 former-RED legs flipped, the 22 controls/legit legs never moved.
 
 **Full hook package suite** (same env-scrub, `go test -count=1 ./internal/hook/`): exit 0, `ok … 264.553s` — pre-existing `TestBranchGuard*`/`TestHMP*` families unbroken (run under slot lease `internal-hook-suite`).
 
@@ -139,7 +139,7 @@ Commits (branch `WT-powershell-guard-debt`, each carries `Authored-By-Agent: man
 | AC-HGF-007 | PASS | E-12 RED → `dl/deny/ps-iex` deny (E-13 reason family); `iex "git status"` + `iex $c` D2 legs unchanged |
 | AC-HGF-008 | PASS | E-14 RED → `dl/deny/ps-start-process` deny; `Start-Process notepad` allow |
 | AC-HGF-009 | PASS | E-11 RED → `dl/deny/bash-eval` deny; `eval "echo hi"` / `eval "$(printf …)"` / `eval "$ENV:X"` allow |
-| AC-HGF-010 | PASS | Battery green with non-zero swept count (41 subtests); REQ-HGF-014 isolation carried (hmpIsolateHome per-test, no t.Parallel, t.TempDir only) |
+| AC-HGF-010 | PASS | Battery green with non-zero swept count (40 subtests = 18 disguise legs + 22 controls); REQ-HGF-014 isolation carried (hmpIsolateHome per-test, no t.Parallel, t.TempDir only) |
 | AC-HGF-011 | PASS | Comment verbatim above; E-15/E-16 behavior unchanged |
 | AC-HGF-012 | PASS | M0 table in §E.2; detector conformance per REQ-HGF-011 pin (U+2013 measured-accepted → detected; `-enc:<B64>` measured-rejected → not required) |
 | AC-HGF-013 | PASS | `injection/newline-keeps-one-line` subtest green (1 line, newline escaped inside the quoted field) |
