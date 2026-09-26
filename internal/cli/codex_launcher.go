@@ -407,7 +407,7 @@ func resolveCodexWorktreeDir(projectRoot, value string) (string, error) {
 
 	path := value
 	if filepath.IsAbs(path) {
-		if err := resolveWorktreeL2Path([]string{"--worktree", value}); err != nil {
+		if err := resolveWorktreeL2Path([]string{"--worktree", value}, os.Stderr); err != nil {
 			return "", err
 		}
 	} else {
@@ -464,6 +464,9 @@ func resolveOrCreateCodexWorktreeDir(projectRoot, value string) (string, bool, e
 		if !info.IsDir() {
 			return "", false, fmt.Errorf("worktree path %s is not a directory", path)
 		}
+		// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-006: launcher-entry backfill for an
+		// existing tree (idempotent, fail-open).
+		seedWorktreeEntryHooks(path, os.Stderr)
 		return path, false, nil
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return "", false, fmt.Errorf("inspect worktree path: %w", err)
@@ -485,6 +488,10 @@ func resolveOrCreateCodexWorktreeDir(projectRoot, value string) (string, bool, e
 	if err := codexWorktreeBaseCheck(path, baseCommit, base); err != nil {
 		return "", true, err
 	}
+	// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-005: this creation path bypasses the
+	// session-worktree materializer, so the MoAI-owned .codex/hooks.json seed
+	// is applied here too (fail-open — creation already succeeded).
+	sessionWorktreeSeedCodexHooks(path, os.Stderr)
 	return path, true, nil
 }
 

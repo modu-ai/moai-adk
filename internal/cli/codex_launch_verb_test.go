@@ -25,6 +25,7 @@ package cli
 // forking a second cross-launcher file.
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -430,7 +431,7 @@ func TestCodexLaunchVerb_WorktreeCreation(t *testing.T) {
 		// go through resolveWorktreeL2Path, so the texts are compared rather
 		// than restated. The launcher writes it to stderr and returns a bare
 		// exit code, the way every other diagnostic on this surface does.
-		ccErr := resolveWorktreeL2Path([]string{"--worktree", outside})
+		ccErr := resolveWorktreeL2Path([]string{"--worktree", outside}, io.Discard)
 		if ccErr == nil {
 			t.Fatal("resolveWorktreeL2Path accepted the out-of-prefix path (fixture broken)")
 		}

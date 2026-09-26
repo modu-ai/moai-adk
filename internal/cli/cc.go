@@ -265,7 +265,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	// clear error (AC-WES-010c) and L2 (~/.moai/worktrees/) paths are accepted
 	// (AC-WES-010a). normalizeWorktreeFlag remains the owner of short-name
 	// token normalization (AC-WES-010b).
-	if err := resolveWorktreeL2Path(filteredArgs); err != nil {
+	if err := resolveWorktreeL2Path(filteredArgs, cmd.ErrOrStderr()); err != nil {
 		return err
 	}
 	// Card t295: `-w <name> --branch <existing>` materializes the worktree at
