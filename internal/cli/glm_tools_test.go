@@ -37,6 +37,10 @@ func setupToolsTestHome(t *testing.T) (homeDir string) {
 	userHomeDirFn = func() (string, error) { return tmpDir, nil }
 	t.Cleanup(func() { userHomeDirFn = origFn })
 
+	// Pin MOAI_HOME to this home's .moai: the TestMain sandbox is shared, and a
+	// key another test saved there would otherwise satisfy this test (card t1229).
+	t.Setenv(config.EnvHome, filepath.Join(tmpDir, ".moai"))
+
 	return tmpDir
 }
 
