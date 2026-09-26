@@ -1,0 +1,11 @@
+{"name":"pre-write-outside-ownership","output":{}}
+{"name":"pre-edit-inside-ownership","output":{}}
+{"name":"pre-write-outside-root","output":{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Path traversal detected: file is outside project directory"}}}
+{"name":"pre-bash-ls","output":{}}
+{"name":"pre-bash-push-main","output":{}}
+{"name":"pre-bash-tag","output":{}}
+{"name":"pre-bash-denylisted","output":{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Dangerous command blocked: removal of protected path \"/\""}}}
+{"name":"post-write","output":{"hookSpecificOutput":{"hookEventName":"PostToolUse"}}}
+{"name":"post-edit","output":{"hookSpecificOutput":{"hookEventName":"PostToolUse"}}}
+{"name":"post-bash-failing-test","output":{"hookSpecificOutput":{"hookEventName":"PostToolUse"}}}
+{"name":"post-bash-ls","output":{"hookSpecificOutput":{"hookEventName":"PostToolUse"}}}
