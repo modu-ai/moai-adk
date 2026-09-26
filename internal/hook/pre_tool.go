@@ -447,8 +447,10 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 	// nowhere at all.
 	var gateNotice string
 
-	// Handle Bash commands
-	if input.ToolName == "Bash" && len(input.ToolInput) > 0 {
+	// Handle shell commands (Bash and PowerShell — IsShellTool). The deny/ask
+	// lists stay deny-on-positive-match for both tools: PowerShell text that
+	// the POSIX quote collapse misreads can under-match, never newly deny.
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 {
 		command := h.extractBashCommand(input.ToolInput)
 
 		// F5 mechanical: --no-verify bypass defense (SPEC-PRETOOL-GATE-MOVE-001
@@ -531,7 +533,7 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 	// any git-context uncertainty (REQ-WBG-012). The exemption logic
 	// (MOAI_BRANCH_GUARD_EXEMPT + manager-git identity) is unchanged and is
 	// consulted only on the enabled path (REQ-6 backward compat).
-	if input.ToolName == "Bash" && len(input.ToolInput) > 0 && h.branchGuardEnabled() {
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 && h.branchGuardEnabled() {
 		if decision, reason := checkBranchState(input, h.projectRoot()); decision == DecisionDeny {
 			slog.Warn("branch guard denied",
 				"tool_name", input.ToolName,
@@ -549,7 +551,7 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 	// Workflow.IntegrationLock.Enabled (default false): on the disabled path
 	// the lock record is never read. Fails OPEN on every uncertainty; a deny
 	// requires positive evidence that a DIFFERENT, LIVE session holds it.
-	if input.ToolName == "Bash" && len(input.ToolInput) > 0 && h.integrationLockEnabled() {
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 && h.integrationLockEnabled() {
 		if decision, reason := checkIntegrationLock(input, h.projectRoot()); decision == DecisionDeny {
 			slog.Warn("integration lock denied",
 				"tool_name", input.ToolName,
@@ -566,7 +568,7 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 	// Gated by Workflow.SlotLease.Enabled (default false): on the disabled
 	// path neither the project root, the patterns, nor any lease record is
 	// touched. Fails OPEN on every uncertainty.
-	if input.ToolName == "Bash" && len(input.ToolInput) > 0 {
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 {
 		if slotCfg, enabled := h.slotLeaseConfig(); enabled {
 			if decision, reason := checkSlotLease(input, h.projectRoot(), slotCfg, os.Stderr); decision == DecisionDeny {
 				slog.Warn("slot lease denied",
