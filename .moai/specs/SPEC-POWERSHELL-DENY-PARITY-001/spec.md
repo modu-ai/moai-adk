@@ -1,7 +1,7 @@
 ---
 id: SPEC-POWERSHELL-DENY-PARITY-001
 title: "PowerShell deny-rule parity for Bash denies outside the built-in removal protection"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -21,6 +21,7 @@ related_specs: [SPEC-V3R6-TOOL-POLICY-SSOT-001]
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 0.1.0 | 2026-09-26 | manager-spec | Initial draft for card t1211. Measurement-first design: run-phase M1 decides whether the gap exists before any rule is added. |
+| 0.2.1 | 2026-09-26 | manager-spec | Plan-audit iter-2 conditional PASS 0.89 follow-up (N1-N5): one turn-cap rule (hitting `--max-turns` or the 180 s timeout is INCONCLUSIVE), fresh scratch project per arm, `TRUNCATE` sub-choice under D1, glued trailing `*` in the matcher model, built-in alias coverage marked as inference. |
 | 0.2.0 | 2026-09-26 | manager-spec | Plan-audit iter-1 FAIL 0.66 revision (D1-D15). Premise corrected with Claude Code's built-in PowerShell removal protection; scope reframed to the residual Bash denies it does not cover; measurement re-aimed at a residual command with tool restriction, source isolation, and a full validity/outcome table; REQs and ACs split by branch; parity guard made closed-world. |
 
 ## §A Background
@@ -40,7 +41,7 @@ Per `https://code.claude.com/docs/en/permission-modes` § Critical paths › Rem
 - "The system-paths case also applies to `rd`, `rmdir`, `del`, and `erase` when Claude runs them through `cmd` ... This `cmd` check requires Claude Code v2.1.283 or later." It can be turned off with `CLAUDE_CODE_DISABLE_POWERSHELL_CMD_RM_DENY=1`; "`Remove-Item` on a system path stays denied either way."
 - The same page, § bypassPermissions: "The Remove-Item in PowerShell denies also apply in this mode."
 
-Consequence: the 9 filesystem-root `Bash(...)` denies of the template (`rm -rf /`, `rm -rf /*`, `rm -rf ~`, `rm -rf ~/*`, `rm -rf C:/`, `rm -rf C:/*`, `del /S /Q C:/`, `rmdir /S /Q C:/`, `Remove-Item -Recurse -Force C:/`) are already enforced on the PowerShell path for `Remove-Item` (and its canonicalized aliases) and for `cmd`-run `rd`/`rmdir`/`del`/`erase`. A PowerShell mirror of those 9 rows adds no enforcement for the documented cases. One case is not documented either way: a native `rm` binary run from `pwsh` on macOS/Linux (where `rm` need not be a `Remove-Item` alias). That case is recorded as a Gap, not measured (measuring it would require a destructive root removal).
+Consequence: the 9 filesystem-root `Bash(...)` denies of the template (`rm -rf /`, `rm -rf /*`, `rm -rf ~`, `rm -rf ~/*`, `rm -rf C:/`, `rm -rf C:/*`, `del /S /Q C:/`, `rmdir /S /Q C:/`, `Remove-Item -Recurse -Force C:/`) are already enforced on the PowerShell path for `Remove-Item` (and — inferred, not documented for the built-in check: its canonicalized aliases; recorded as a Gap alongside native `rm`) and for `cmd`-run `rd`/`rmdir`/`del`/`erase`. A PowerShell mirror of those 9 rows adds no enforcement for the documented cases. One case is not documented either way: a native `rm` binary run from `pwsh` on macOS/Linux (where `rm` need not be a `Remove-Item` alias). That case is recorded as a Gap, not measured (measuring it would require a destructive root removal).
 
 ### A.3 The residual gap
 
@@ -69,7 +70,7 @@ Two delivery branches exist. **Branch P** (parity) applies when M1 confirms the 
 - **REQ-PSD-002** — The measurement shall run in a scratch project outside the repository, with only the scratch project's setting source loaded, with hooks and other customizations disabled, with the PowerShell tool as the only available built-in tool, under caps declared before execution (at most one run per arm, at most 3 model turns, at most 180 s wall clock per arm, no retries), and with every spawned process bounded by an external timeout.
 - **REQ-PSD-003** — Where Claude Code offers a mechanical (model-free) way to evaluate a permission rule against a command, the measurement shall use it in preference to a model-driven session.
 - **REQ-PSD-004** — When PowerShell 7 or later is not on `PATH` at measurement time, the run-phase shall stop and return a blocker report without running any arm.
-- **REQ-PSD-005** — When any validity condition of the measurement does not hold (the deny-path control arm does not show a denial with the target surviving, the no-rule control arm does not show the command executing through the PowerShell tool, the session's tool list is not the PowerShell tool alone, the recorded tool call is not a PowerShell call, or a cap is reached), the run-phase shall stop, return a blocker report, and select neither branch.
+- **REQ-PSD-005** — When any validity condition of the measurement does not hold (the deny-path control arm does not show a denial with the target surviving, the no-rule control arm does not show the command executing through the PowerShell tool, the session's tool list is not the PowerShell tool alone, the recorded tool call is not a PowerShell call, or an arm hits the declared `--max-turns` cap or the 180 s wall-clock timeout), the run-phase shall stop, return a blocker report, and select neither branch.
 - **REQ-PSD-006** — When the measurement is valid and the residual `Bash(...)` deny does not block the PowerShell command, the run-phase shall take Branch P.
 - **REQ-PSD-007** — When the measurement is valid and the residual `Bash(...)` deny blocks the PowerShell command with a recorded denial, the run-phase shall take Branch N, shall not add any `PowerShell(...)` rule or rule-parity test, and shall deliver the recorded §E.2 evidence together with the documentation note of REQ-PSD-016.
 - **REQ-PSD-008** — The run-phase shall record, as an observation that selects no branch, whether the built-in wildcard removal deny of §A.2 fires for a `Remove-Item` whose target is a wildcard inside the scratch project.

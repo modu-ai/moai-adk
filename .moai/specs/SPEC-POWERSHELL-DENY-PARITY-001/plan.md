@@ -27,6 +27,8 @@ Ordered by decision reversibility: the measurement that decides whether anything
 
 **Scratch project** (OS temp dir, outside the repo): a `git init` repository with `.claude/settings.json` committed (so it is tracked and `git clean` cannot remove it) and one untracked file `victim.txt` (the observable), plus `victim-dir/keep.txt` for arm D.
 
+**One fresh scratch project per arm.** Each arm runs in its own scratch project, freshly created from the same recipe with that arm's `permissions.deny` committed, so one arm's `git clean -fdx` or `Remove-Item` cannot consume another arm's observables (`victim.txt`, `victim-dir/`). No project is reused across arms; each arm's pre-run existence of `victim.txt` and `victim-dir/keep.txt` is recorded in §E.2.
+
 **Invocation (every arm):**
 
 ```
@@ -58,7 +60,7 @@ Recorded per arm: exit code; `system/init` tools list; each PowerShell `tool_use
 | V3 | In arms A–C, a `PowerShell` `tool_use` whose command contains `git clean -fdx` is recorded |
 | V4 | Arm B: a denial is recorded for that `PowerShell` `tool_use` AND `victim.txt` survives |
 | V5 | Arm C: no denial for that `tool_use` AND `victim.txt` is deleted |
-| V6 | No arm hit `timeout` or exceeded 3 turns |
+| V6 | No arm hit the declared `--max-turns 3` cap or the 180 s `timeout` (exit 124); hitting either is INCONCLUSIVE (REQ-PSD-005), even when a denial or execution was recorded before the cap |
 
 **Outcome table (arm A, given V1–V6):**
 
@@ -88,12 +90,12 @@ Counterparts copy the Bash rule text verbatim into the `PowerShell(...)` namespa
 
 ### §C.3 Benign sample and matcher model (REQ-PSD-012)
 
-The over-block test models only the documented semantics: `:*` ≡ trailing ` *`; a trailing ` *` matches the bare prefix or the prefix followed by a space and anything; a non-trailing `*` matches any character sequence; comparison is case-insensitive (PowerShell). It does **not** model alias canonicalization or compound-command splitting; samples that depend on either are listed as a Gap, not asserted.
+The over-block test models only the documented semantics: `:*` ≡ trailing ` *`; a trailing ` *` matches the bare prefix or the prefix followed by a space and anything; a non-trailing `*` matches any character sequence; a trailing `*` not preceded by a space (glued to text, e.g. `--hard*`, `--force*`) matches any character sequence, including empty; comparison is case-insensitive (PowerShell). It does **not** model alias canonicalization or compound-command splitting; samples that depend on either are listed as a Gap, not asserted.
 
 - **Benign (must NOT match any `PowerShell(...)` deny):** `Remove-Item ./build -Recurse -Force`, `Get-ChildItem C:/`, `git push origin HEAD`, `git clean -n`, `git status`, `Format-Table`, `truncate -s 0 app.log`, `redis-cli GET key`.
 - **Known-deny controls (MUST match):** `git push --force origin main`, `git clean -fdx`, `git -C repo reset --hard HEAD`, `Format-Volume -DriveLetter D`, `redis-cli FLUSHALL`, `psql -c DROP TABLE t`.
 
-`truncate -s 0 app.log` is deliberate: case-insensitive matching makes a `PowerShell(TRUNCATE:*)` counterpart match the lowercase `truncate` utility, which the Bash rule was not written to block. The run-phase resolves it by excluding that row (reason `case-fold over-block`) or by recording operator acceptance; it may not silently pass.
+`truncate -s 0 app.log` is deliberate: case-insensitive matching makes a `PowerShell(TRUNCATE:*)` counterpart match the lowercase `truncate` utility, which the Bash rule was not written to block. The operator resolves it at Kickoff through the D1 `TRUNCATE` sub-choice (ship with accepted over-block, or exclude with reason `case-fold over-block`); it may not silently pass.
 
 The test proves it can fail: a mutation that replaces the matcher with an always-false function must turn the known-deny controls red (observed once, recorded in §E.2).
 
@@ -143,6 +145,7 @@ The test reads the rendered template deny list and a mapping declared in the tes
   - (b) Windows-relevant residual: git 14 + disk 3 + database 10 = 27 counterparts. Excludes the 11 system/process rows, which leaves macOS/Linux opt-in `pwsh` sessions without `dd`/`mkfs`/`chmod`/`shutdown` denies.
   - (c) Git only: 14 counterparts. Smallest change; leaves disk-format and database denies absent on PowerShell.
   - (d) (a) plus the 9 filesystem rows as defense-in-depth. For the documented cases it adds nothing beyond the built-in; its only possible effect is on the undocumented native-`rm`-from-`pwsh` case (§B) and on a future change to the built-in, and neither effect is measured.
+  - Sub-choice (applies to (a), (b), and (d)): **ship** the `PowerShell(TRUNCATE:*)` counterpart and accept the case-fold over-block of the lowercase `truncate` utility (§C.3), or **exclude** it with reason `case-fold over-block` (the chosen option's counterpart count drops by one, e.g. (a) 37 → 36, (b) 27 → 26).
 - **D2 (lead / run-phase)** — Pattern shape for any `Remove-Item` rows, only under D1 (d); space-suffix syntax only (§C.2).
 - **D3 (operator issues the card; lead proposes)** — Hook matcher `Write|Edit|Bash` → `Write|Edit|Bash|PowerShell` as a separate card, citing tools-reference ("matching `Bash` alone is not enough").
 - **D4 (operator, at Kickoff)** — Accept Branch N as a valid close: no rule change, no Go guard, deliverable = §E.2 evidence + 4-locale docs note.
