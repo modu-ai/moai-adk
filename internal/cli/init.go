@@ -1090,6 +1090,16 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// the init result.
 	flushUpdateNotice(p)
 
+	// card t1277: every post-deploy rewrite above (WritePhase1Configs patching
+	// lsp/quality/design, ApplyProfile/ApplyPerformanceTier/ApplyHarness
+	// rewriting llm.yaml) happens AFTER the deploy tracked the rendered
+	// sections, so the manifest saves the pre-answer hashes and the next
+	// init --force reads the drifted files as user edits. Re-record the
+	// section hashes here — the LAST writer wins, so one retrack at the tail
+	// covers the whole family. template_managed-only filtering keeps
+	// user-owned entries untouched (two-way invariant).
+	retrackSectionFiles(opts.ProjectRoot, cmd.ErrOrStderr())
+
 	// The template snapshot is written by opts.AfterTemplateDeploy (set before
 	// executor.Execute), not here: by this point the section files carry the
 	// wizard answers, and a snapshot of them is not a template render (t1139).
