@@ -655,6 +655,13 @@ func checkBranchState(input *HookInput, projectDir string) (decision string, rea
 	}
 	suffix, matched := matchBranchStateCommand(command)
 	if !matched {
+		// D2 (SPEC-HOOK-MATCHER-POWERSHELL-001 REQ-HMP-010): a PowerShell
+		// indirection the pattern scan cannot see is allowed, and recorded.
+		if isPowerShellTool(input.ToolName) {
+			if construct := powerShellIndirection(command); construct != "" {
+				recordBranchGuardUnclassified(input, projectDir, command, construct)
+			}
+		}
 		return "", ""
 	}
 	if isExemptAgent(input) {
@@ -684,7 +691,28 @@ func checkBranchState(input *HookInput, projectDir string) (decision string, rea
 	return DecisionDeny, reason
 }
 
-// extractBranchStateCommand parses the command string from Bash tool input
+// recordBranchGuardUnclassified appends one unclassifiable-command line for a
+// PowerShell call the guard could not classify — but only where a classified
+// command would have been judged at all: the agent is not exempt and the
+// command's cwd is the primary checkout. An uncertain git context takes the
+// existing fail-open advisory instead. The call is allowed on every path.
+func recordBranchGuardUnclassified(input *HookInput, projectDir, command, construct string) {
+	if isExemptAgent(input) {
+		return
+	}
+	gitContextCwd := resolveProjectRootFromInputOrEnv(input, "branch_guard")
+	isPrimary, err := isPrimaryCheckout(gitContextCwd)
+	if err != nil {
+		appendBranchGuardAdvisory(input, projectDir, command, err, gitContextCwd)
+		return
+	}
+	if !isPrimary {
+		return
+	}
+	appendUnclassifiedAudit(projectDir, branchGuardAuditRelPath, input, construct, command, gitContextCwd)
+}
+
+// extractBranchStateCommand parses the command string from shell tool input
 // JSON. Returns "" when the input is not parseable or lacks a command field.
 func extractBranchStateCommand(toolInput json.RawMessage) string {
 	var parsed map[string]any
