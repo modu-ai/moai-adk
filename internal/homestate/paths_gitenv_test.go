@@ -36,12 +36,22 @@ func TestCanonicalProjectRootIgnoresInheritedGitDir(t *testing.T) {
 		t.Fatalf("resolve victim: %v", err)
 	}
 
-	for _, tc := range []struct{ name, dir string }{
-		{"victim_primary", victimRepo},
-		{"victim_linked_worktree", victimWorktree},
+	for _, tc := range []struct {
+		name, dir string
+		workTree  bool
+	}{
+		{"victim_primary", victimRepo, false},
+		{"victim_linked_worktree", victimWorktree, false},
+		// With GIT_WORK_TREE inherited as well, `rev-parse --show-toplevel`
+		// (the GitDir == CommonDir branch) no longer lands on -C by accident.
+		{"victim_primary_with_work_tree", victimRepo, true},
+		{"victim_linked_worktree_with_work_tree", victimWorktree, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("GIT_DIR", callerWorktreeGitDir)
+			if tc.workTree {
+				t.Setenv("GIT_WORK_TREE", callerWorktree)
+			}
 			if got := homestate.CanonicalProjectRoot(tc.dir); got != filepath.Clean(want) {
 				t.Fatalf("CanonicalProjectRoot(%s) = %q under an inherited GIT_DIR, want %q", tc.name, got, want)
 			}
