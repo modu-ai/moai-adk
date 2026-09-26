@@ -200,7 +200,7 @@ own comment to A1, the wording of REQ-AE-001 to A2 (spec.md §H.5).
 SPEC-AUTONOMY-ESCALATION-001 REQ-AE-001 promises that nothing changes under `guided`. This guard
 denies under `guided` too, because a contract signed by an agent is worthless in any mode. The
 contradiction is resolved in **wording, not behavior**: the promise is scoped to the escalation
-detector, and both the template comment and the rule text say the sign deny is mode-independent
+detector, and both the rule file and its template mirror say the sign deny is mode-independent
 (REQ-AP-010, AC-AP-013) — on the surfaces §C.6a names. Weakening the guard to preserve the sentence
 would trade a real protection for a phrasing.
 

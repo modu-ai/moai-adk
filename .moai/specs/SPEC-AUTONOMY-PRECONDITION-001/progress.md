@@ -119,6 +119,13 @@ Stated explicitly so a later reader does not read the section above as exhaustiv
   refs only, so whether either is retired or superseded is **unverified** rather than verified absent.
 - **Go build, tests and lint.** Not run — plan phase adds no code.
 
+### F8 disposition — 2026-09-26 (plan-audit iter-2)
+
+F8's premise expired positively: the acceptance.md §H DoD gate command names `./internal/contract/...`,
+which did not exist at plan time but exists in this tree since the A1 absorb (merge `e0a471d1e`).
+The existing hedge in acceptance.md ("or the package the projection lands in") stands; no text
+change is required, and package confirmation is deferred to run milestone M4.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

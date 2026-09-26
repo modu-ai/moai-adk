@@ -141,8 +141,10 @@ until A3 — so no criterion here asserts that any autonomy was granted.
     falling through to the classified path would pass the deny limb and fail the token limb.
   - Test: `TestContractSignUnclassifiedDeniedClosed` in `internal/hook`.
   - RED-now: no fail-closed path exists. Green path: M2.
-- **AC-AP-008** (maps REQ-AP-004; spec.md §C.2, §C.3) — **Given** an installed binary for which
-  `moai contract --help` exits non-zero with `Unknown command "contract"`, **When**
+- **AC-AP-008** (maps REQ-AP-004; spec.md §C.2, §C.3) — **Given** a stub `moai` binary placed on the
+  PATH the guard resolves, for which `moai contract --help` exits non-zero with
+  `Unknown command "contract"` (a test fixture — the repository's real binary carries the
+  `contract` verb since A1 landed, so only a fixture can hold this precondition), **When**
   `moai contract sign SPEC-X-001` is processed in a session with no role marker, and
   `moai contract decide SPEC-X-001` is processed in a session whose `MOAI_FACTORY_ROLE` is `worker`,
   **Then** each is denied with `CONTRACT_SIGN_AGENT_VIOLATION:` — the denial does not depend on the

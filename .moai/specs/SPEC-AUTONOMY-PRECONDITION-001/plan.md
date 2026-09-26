@@ -45,7 +45,10 @@ one reuse projection; they share the contract resolver and nothing else.
    **changed** by then: `moai contract sign` exists once A1 lands (§C.2). The template autonomy
    block is **not** on this list — D1's closure re-pointed `AC-AP-013` at the `paths:`-scoped rule
    file and template mirror *this change* creates (§C.10), so no criterion waits on A1's block. A
-   changed row is a premise update recorded in progress.md, not a silent adjustment.
+   changed row is a premise update recorded in progress.md, not a silent adjustment. AC-AP-008's
+   Given is fixture-based (a stub `moai` binary on the PATH the guard resolves), so the criterion is
+   installation-independent now that A1 has landed — the real binary exiting 0 on
+   `moai contract --help` is the expected post-A1 state, not a failure.
 3. Confirm `moai contract show --json` exists and emits `push_requires_lease` — the contact point
    A1 declares at `25283ebf8:…/spec.md:410`. Both were measured **absent** at `553e224f3`
    (spec.md §C.6). Where A1 renamed or dropped either, stop and report rather than inventing a
