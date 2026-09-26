@@ -1,7 +1,7 @@
 ---
 id: SPEC-MCP-WORKTREE-UNTRACKED-001
 title: "Accept a linked worktree as project_root when the repository keeps .moai/ out of git"
-version: "0.6.0"
+version: "0.7.0"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -28,6 +28,7 @@ tags: "mcp, worktree, project-root, untracked-moai, audit, validator"
 | 0.4.0 | 2026-09-26 | manager-spec (t1202) | Delta plan-audit (FAIL 0.86, blocked by D27). Closes the silent audit-gate weakening in this SPEC: the `workflow.audit.gates` read of a linked worktree lacking its own workflow config comes from the primary checkout, fail-closed when the primary cannot be resolved (REQ-MWU-011/012). Tree-operation and gate conditions are keyed on durable properties, not on the acceptance branch (D29). Lead decision D30 = B: catalogue/state tools on a config-orphaned root carry a `_root` warning (REQ-MWU-013). Added the no-subprocess and documentation checks (D28, D31); tree-operation git environment recorded as out of scope (D33). |
 | 0.5.0 | 2026-09-26 | manager-spec (t1202) | Delta-2 plan-audit (FAIL 0.87, blocked by D34). "Config-orphaned" now requires positive, git-free evidence of a linked worktree top level (`<root>/.git` file pointing into `<common-dir>/worktrees/`); fail-closed (REQ-MWU-012) applies only to such roots, and every other root keeps today's gate behaviour with no git inspection (D34, D35). Warning moved to a distinct `_root.worktree_warning` field (D36); `spec_audit` always carries `_root` (D41); gate routing pinned to MCP call sites, `CodexGateRequired` unchanged (D43); `codex_audit` tool description added to REQ-MWU-010 (D39). ACs widened, count unchanged (D37, D38, D42). |
 | 0.6.0 | 2026-09-26 | manager-spec (t1202) | Delta-3 plan-audit (FAIL 0.90, blocked by D44/D45). Config-orphaned predicate adds the `commondir` file and the canonical `gitdir` back-reference to `<root>/.git`, with relative paths resolved against the holding directory (D45, D46). AC-MWU-015 widened with separate-git-dir primary, ordinary and `worktrees`-path submodules, and a non-zero-exit orphaned root; fixture P's gate content and git-config isolation pinned (D44, D46, D49). Fail-closed `gate_unmet` names its cause (D48); `codex_audit` description drops the refusal promise on worktrees (D47). AC count unchanged. |
+| 0.7.0 | 2026-09-26 | manager-spec (t1202) | Delta-4 plan-audit (FAIL 0.92, D50/D51 on the safety axis). Predicate condition 4 (admin-dir `gitdir` back-reference) removed — it could only push a root toward fail-open, e.g. a hand-moved worktree; forged-`.git` reasoning restated without it (D50). AC-MWU-014 widened with a hand-moved worktree and a relative-path worktree evaluated from an unrelated working directory, both `fail` (D50, D51). AC count unchanged. |
 
 ## §1 Problem
 
@@ -251,7 +252,7 @@ see §6; what stays in scope for them is the REQ-MWU-013 warning.
 
 A **config-orphaned root** is a tool root that has no
 `.moai/config/sections/workflow.yaml` and that carries **positive evidence of
-being a linked worktree top level**. All four must hold:
+being a linked worktree top level**. All three must hold:
 
 1. `<root>/.git` is a regular file with a `gitdir:` line;
 2. that path — resolved against `<root>` (the directory holding the `.git` file)
@@ -259,19 +260,26 @@ being a linked worktree top level**. All four must hold:
    existing directory whose parent directory is named `worktrees` (the
    `<common-dir>/worktrees/<name>` layout git writes for a linked worktree);
 3. that directory contains a `commondir` file (git writes one for every linked
-   worktree's admin directory, not for a submodule's git directory);
-4. that directory's `gitdir` file — resolved against that directory when
-   relative — names a path that, in symlink-canonical form, equals the canonical
-   `<root>/.git`.
+   worktree's admin directory, not for a submodule's git directory).
 
-The determination reads these three files and runs no git subprocess, so it does
-not depend on git being installed, on locale, or on git's error text. Condition 3
-and 4 exclude a submodule whose path happens to contain a `worktrees` component,
-and a `.git` file forged to point at another repository's admin directory. Every other
+The determination reads two files (`<root>/.git` and the admin directory's
+`commondir`) and runs no git subprocess, so it does not depend on git being
+installed, on locale, or on git's error text. Condition 3 excludes a submodule
+whose path happens to contain a `worktrees` component. The predicate deliberately
+does **not** check that the admin directory's `gitdir` file points back at
+`<root>/.git`: such a check could only move a root from config-orphaned to not
+config-orphaned — that is, toward today's fail-open gate — and it would do so for
+a legitimate worktree moved by hand (git still works there and identifies the
+primary, while the stale back-reference would disqualify it). A forged `.git`
+file pointing at another repository's admin directory cannot weaken the gate
+without that check either: the root becomes config-orphaned, so REQ-MWU-012 either
+reads the gate of the primary git identifies for it or, if git cannot identify
+one, treats the gate as `required`; the forger could equally write a
+`workflow.yaml` into the root, so the forgery grants no new capability. Every other
 shape is **not** config-orphaned and gets no evidence: a `.git` directory (a
 primary checkout), no `.git` at all (a subdirectory or a non-repository), a
 `.git` file pointing at a submodule git directory (no `commondir`, whatever its
-path), or a `.git` file failing any of conditions 1–4. The property is durable: a state write that
+path), or a `.git` file failing any of conditions 1–3. The property is durable: a state write that
 later creates other paths under the root's `.moai` (for example an audit
 receipt) does not change it, so every condition below keys on this property and
 never on which validator branch accepted the root.
@@ -311,9 +319,9 @@ never on which validator branch accepted the root.
 
 - The reject-never-fall-back contract of the `project_root` input is binding.
 - The validator runs a git subprocess only on the no-`.moai` branch; the
-  existing branch gains no subprocess. The config-orphan determination reads three
-  files (`<root>/.git`, the admin directory's `commondir` and `gitdir`) and runs
-  no subprocess; the gate read runs scrubbed git inspections
+  existing branch gains no subprocess. The config-orphan determination reads two
+  files (`<root>/.git` and the admin directory's `commondir`) and runs no
+  subprocess; the gate read runs scrubbed git inspections
   (REQ-MWU-006, `LC_ALL=C`) only for a config-orphaned root. The REQ-MWU-013
   warning needs the determination only, never a git inspection.
 - Template text stays neutral across the 16 supported programming languages and

@@ -153,9 +153,8 @@ Still for the operator:
 ### M4b — Priority High — Config-orphan predicate, gate read, warning
 
 - Shared config-orphan predicate (reads `<root>/.git`, then the admin
-  directory's `commondir` and `gitdir`, resolving relative paths against the
-  directory holding each file and comparing the back-reference to `<root>/.git`
-  in canonical form; no subprocess) used
+  directory's `commondir`, resolving a relative `gitdir:` against the directory
+  holding the `.git` file; no back-reference check, no subprocess) used
   by the three §3.1 gate reads (REQ-MWU-011/012) and by the catalogue/state
   `_root.worktree_warning` (REQ-MWU-013). Primary identification (scrubbed git,
   `LC_ALL=C`, exit status and output shape only) runs only for config-orphaned
@@ -193,7 +192,9 @@ Still for the operator:
   checkout, subdirectory, submodule) — those keep today's behaviour.
 - Classifying "not a repository" from git's (localized) message text.
 - Deciding worktree evidence from the `gitdir:` path string alone (a submodule
-  at `…/worktrees/<x>` matches); require `commondir` and the back-reference.
+  at `…/worktrees/<x>` matches); require `commondir`.
+- Adding an admin-dir `gitdir` back-reference check: it can only disqualify a
+  worktree (e.g. one moved by hand) and so only weakens the gate.
 - Resolving a relative `gitdir:` against the process working directory.
 - Writing the worktree warning into the existing `_root.warning` key.
 - Calling an unscrubbed git helper.

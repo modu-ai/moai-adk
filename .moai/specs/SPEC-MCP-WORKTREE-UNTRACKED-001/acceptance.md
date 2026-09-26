@@ -142,6 +142,14 @@ exercises relative `gitdir:` paths it creates them explicitly.
   names codex;
   and When both calls are repeated after the first `codex_audit` call has created
   `W/.moai/state/` (the receipt write), Then the same results hold.
+  The same `codex_audit` call also returns verdict `fail` with a non-empty
+  `gate_unmet` for two further roots built from the same `P`, each with a bare
+  `.moai/` placed in it: (a) `W′`, a linked worktree moved by hand with `mv`
+  (no `git worktree move`), so its admin directory's `gitdir` file still names the
+  old path; and (b) `W_R`, a linked worktree whose `.git` file carries a relative
+  `gitdir:` (created with `git worktree add --relative-paths`, or with the `.git`
+  file written relative by hand), evaluated while the test process's working
+  directory is an unrelated `t.TempDir()` that is not `W_R`'s parent.
 
 - **AC-MWU-015 (fail-closed only with worktree evidence; every other root unchanged; REQ-MWU-012).**
   Given a codex seam that produces no verdict in every case below, and — for this
@@ -190,9 +198,12 @@ exercises relative `gitdir:` paths it creates them explicitly.
   config-orphaned depends only on its own `workflow.yaml` and its `.git` file
   (REQ-MWU-011..013).
 - A subdirectory of a worktree, any submodule root (its git directory has no
-  `commondir`, whatever its path), a `.git` file whose admin directory does not
-  point back at `<root>/.git`, and any root with a `.git` directory are never
+  `commondir`, whatever its path), and any root with a `.git` directory are never
   config-orphaned, so their gate reads are unchanged and run no git inspection.
+- A `.git` file forged to point at another repository's admin directory makes the
+  root config-orphaned; the gate then comes from the primary git identifies for it
+  or, if git cannot identify one, is treated as `required` (REQ-MWU-012). The
+  forgery cannot weaken the gate.
 - A bare primary or submodule-internal git dir is rejected by the validator
   (REQ-MWU-004); only a config-orphaned root whose primary cannot be identified
   makes the gate read fail closed (REQ-MWU-012).

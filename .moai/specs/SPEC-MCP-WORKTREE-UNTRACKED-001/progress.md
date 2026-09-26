@@ -8,7 +8,7 @@ Card: t1202 | Branch: WT-worktree-moai-root | Base: origin/develop `df526c9a9` |
 plan_status: audit-ready
 plan_complete_at: 2026-09-26
 tier: M
-spec_version: "0.6.0"
+spec_version: "0.7.0"
 artifacts: [spec.md, plan.md, acceptance.md, progress.md]
 spec_id_check: "Bash regex PASS on SPEC-MCP-WORKTREE-UNTRACKED-001; ID absent from .moai/specs (count 0)"
 baseline_tree: df526c9a9
@@ -18,9 +18,20 @@ plan_audit_iter2: ".moai/reports/t1202/plan-audit-iter2.md — FAIL 0.78; lead d
 plan_audit_delta: ".moai/reports/t1202/plan-audit-delta.md — FAIL 0.86 (blocked by D27)"
 plan_audit_delta2: ".moai/reports/t1202/plan-audit-delta2.md — FAIL 0.87 (blocked by D34)"
 plan_audit_delta3: ".moai/reports/t1202/plan-audit-delta3.md — FAIL 0.90 (blocked by D44/D45)"
+plan_audit_delta4: ".moai/reports/t1202/plan-audit-delta4.md — FAIL 0.92 (blocked by D50/D51)"
 deferred_to: t1213
 recommendation: "design (a) alone; operator decides at Kickoff (plan.md §C, 2 open decisions)"
 ```
+
+### Delta-4 audit map (spec v0.6.0 → v0.7.0)
+
+Source: `.moai/reports/t1202/plan-audit-delta4.md` (FAIL 0.92; D44/D45 measured closed; D50/D51 blocking on the safety axis).
+
+| Item | Change |
+|---|---|
+| D50 | spec §4.4 condition 4 (admin-dir `gitdir` back-reference) removed; predicate is conditions 1–3 plus the relative-path base rule; two file reads (spec §4.4, §5, plan M4b). Forged-`.git` reasoning restated without condition 4: the root becomes config-orphaned, so REQ-MWU-012 reads the primary git identifies or fails closed — no weakening (spec §4.4, acceptance §D.1). AC-MWU-014 widened: hand-moved `W′` → `fail` + `gate_unmet`. The superseded delta-3 D45 row below remains as history. |
+| D51 | AC-MWU-014 widened: relative-path worktree `W_R` evaluated from an unrelated working directory → `fail` + `gate_unmet`. |
+| AC budget | Unchanged at 16; both variants added inside AC-MWU-014. |
 
 ### Delta-3 audit map (spec v0.5.0 → v0.6.0)
 
