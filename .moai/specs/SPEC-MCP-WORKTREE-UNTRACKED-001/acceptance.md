@@ -8,6 +8,12 @@ a `.moai/` directory present in `P` (including
 `.moai/specs/`), one commit, and a linked worktree `W` made with
 `git worktree add`. `W` therefore has no `.moai`, and is config-orphaned.
 
+Git-configuration isolation (every fixture in this file): each test runs git
+with `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM` pointed at empty files under
+`t.TempDir()` (or `GIT_CONFIG_NOSYSTEM=1`), so user or machine settings such as
+`worktree.useRelativePaths` cannot change fixture layout. Where a criterion
+exercises relative `gitdir:` paths it creates them explicitly.
+
 ## §D AC Matrix
 
 ### Acceptance and rejection
@@ -117,7 +123,8 @@ a `.moai/` directory present in `P` (including
   primary checkout, and (c) that other configuration, the catalogue, and state
   are read from the accepted tree; the `codex_audit` tool description (and any
   other tool description naming the source of `workflow.audit.gates`) states
-  (b) and no longer says the gate comes only from "the reviewed tree"; and the
+  (b), no longer says the gate comes only from "the reviewed tree", and does not
+  promise that an uncorroborated PASS is refused on such a worktree; and the
   neutrality guards pass with no SPEC ID, card id, or date in the template copy.
 
 ### Audit gate and catalogue warning
@@ -137,19 +144,29 @@ a `.moai/` directory present in `P` (including
   `W/.moai/state/` (the receipt write), Then the same results hold.
 
 - **AC-MWU-015 (fail-closed only with worktree evidence; every other root unchanged; REQ-MWU-012).**
-  Given a codex seam that produces no verdict in every case below:
-  (i) Given the AC-MWU-006 `--separate-git-dir` repository with a linked worktree
-  `W3` into which a bare `.moai/` directory (no `workflow.yaml`) has been placed,
-  so that `project_root = W3` is accepted through REQ-MWU-001, When
-  `codex_audit` is called with `project_root = W3`, Then the result is verdict
-  `fail` with a non-empty `gate_unmet`; and with a `PATH` from which git cannot
-  be found, the same call on fixture F's `W` (after a bare `.moai/` is placed in
-  it) also returns `fail` with a non-empty `gate_unmet`.
-  (ii) Given each of the following roots with a bare `.moai/` and no
-  `workflow.yaml` — the AC-MWU-012 non-git directory; a git repository's primary
-  checkout; and that primary checkout run again with a `PATH` from which git
-  cannot be found — When `codex_audit` is called on it, Then the result is the
-  fail-open `inconclusive` it returns today, with no `gate_unmet`.
+  Given a codex seam that produces no verdict in every case below, and — for this
+  criterion — a fixture F whose `P/.moai/config/sections/workflow.yaml` declares
+  **no** codex gate (so a `fail` can come only from the fail-closed path, never
+  from reading P's gate):
+  (i) fail-closed on config-orphaned roots. Given each of: the AC-MWU-006
+  `--separate-git-dir` repository's linked worktree `W3` with a bare `.moai/`
+  placed in it (ambiguous layout); fixture F's `W` with a bare `.moai/` and a
+  `PATH` from which git cannot be found (git unavailable); and fixture F's `W`
+  with a bare `.moai/` after the `HEAD` file inside its admin directory
+  `P/.git/worktrees/<W>/` is deleted while `commondir` and `gitdir` stay intact
+  (the scrubbed git inspection exits non-zero) — When `codex_audit` is called on
+  it, Then the result is verdict `fail` with a non-empty `gate_unmet` stating
+  that the gate was assumed `required` because the primary checkout could not be
+  identified.
+  (ii) today's behaviour on every other root. Given each of the following roots
+  with a bare `.moai/` and no `workflow.yaml` — the AC-MWU-012 non-git directory;
+  a git repository's primary checkout; that primary checkout run again with a
+  `PATH` from which git cannot be found; the AC-MWU-006 `--separate-git-dir`
+  primary itself; an ordinary submodule root (its `.git` file points into the
+  superproject's `.git/modules/<name>`); and a submodule checked out at a path
+  whose parent component is named `worktrees` (for example `vendor/worktrees/lib`)
+  — When `codex_audit` is called on it, Then the result is the fail-open
+  `inconclusive` it returns today, with no `gate_unmet`.
 
 - **AC-MWU-016 (catalogue/state warning; REQ-MWU-013).**
   Given fixture F,
@@ -172,9 +189,10 @@ a `.moai/` directory present in `P` (including
   by a state write) takes the REQ-MWU-001 branch, as it does today; whether it is
   config-orphaned depends only on its own `workflow.yaml` and its `.git` file
   (REQ-MWU-011..013).
-- A subdirectory of a worktree, a submodule root (`.git` file under `modules/`),
-  and any root with a `.git` directory are never config-orphaned, so their gate
-  reads are unchanged and run no git inspection.
+- A subdirectory of a worktree, any submodule root (its git directory has no
+  `commondir`, whatever its path), a `.git` file whose admin directory does not
+  point back at `<root>/.git`, and any root with a `.git` directory are never
+  config-orphaned, so their gate reads are unchanged and run no git inspection.
 - A bare primary or submodule-internal git dir is rejected by the validator
   (REQ-MWU-004); only a config-orphaned root whose primary cannot be identified
   makes the gate read fail closed (REQ-MWU-012).

@@ -8,7 +8,7 @@ Card: t1202 | Branch: WT-worktree-moai-root | Base: origin/develop `df526c9a9` |
 plan_status: audit-ready
 plan_complete_at: 2026-09-26
 tier: M
-spec_version: "0.5.0"
+spec_version: "0.6.0"
 artifacts: [spec.md, plan.md, acceptance.md, progress.md]
 spec_id_check: "Bash regex PASS on SPEC-MCP-WORKTREE-UNTRACKED-001; ID absent from .moai/specs (count 0)"
 baseline_tree: df526c9a9
@@ -17,9 +17,24 @@ plan_audit_iter1: ".moai/reports/t1202/plan-audit.md — FAIL 0.62"
 plan_audit_iter2: ".moai/reports/t1202/plan-audit-iter2.md — FAIL 0.78; lead decision: option B (scope reduction)"
 plan_audit_delta: ".moai/reports/t1202/plan-audit-delta.md — FAIL 0.86 (blocked by D27)"
 plan_audit_delta2: ".moai/reports/t1202/plan-audit-delta2.md — FAIL 0.87 (blocked by D34)"
+plan_audit_delta3: ".moai/reports/t1202/plan-audit-delta3.md — FAIL 0.90 (blocked by D44/D45)"
 deferred_to: t1213
 recommendation: "design (a) alone; operator decides at Kickoff (plan.md §C, 2 open decisions)"
 ```
+
+### Delta-3 audit map (spec v0.5.0 → v0.6.0)
+
+Source: `.moai/reports/t1202/plan-audit-delta3.md` (FAIL 0.90, blocked by D44/D45).
+
+| Item | Change |
+|---|---|
+| D45 | spec §4.4 predicate now has four conditions: `.git` file with `gitdir:`; target directory exists with parent `worktrees`; target contains `commondir`; target's `gitdir` file canonically equals `<root>/.git`. Three file reads, no subprocess. Excludes submodules at `…/worktrees/<x>` and forged `.git` files. |
+| D46 | Relative `gitdir:` resolved against the directory holding the file, never the process cwd (spec §4.4). acceptance.md header: every fixture isolates global/system git config. |
+| D44 | AC-MWU-015 widened (count unchanged): (i) adds a non-zero-exit orphaned root (admin-dir `HEAD` removed); (ii) adds the separate-git-dir primary itself, an ordinary submodule root, and a submodule at a `worktrees`-component path. |
+| D49 | AC-MWU-015 pins fixture P's workflow.yaml to declare no codex gate, so `fail` can only come from fail-closed. |
+| D48 | REQ-MWU-012: fail-closed `gate_unmet` states the gate was assumed `required` because the primary could not be identified; AC-MWU-015(i) asserts it. |
+| D47 | REQ-MWU-010 + AC-MWU-013: the `codex_audit` description must not promise refusal of an uncorroborated PASS on such a worktree. |
+| §5 | Constraint text updated to three file reads. |
 
 ### Delta-2 audit map (spec v0.4.0 → v0.5.0)
 
