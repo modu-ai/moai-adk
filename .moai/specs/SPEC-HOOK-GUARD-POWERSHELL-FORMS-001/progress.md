@@ -172,4 +172,46 @@ m1_to_mN_commit_strategy: "one commit per milestone (M1 RED / M2 / M3 / M4 / M5)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-26
+sync_commit_sha: "pending-backfill-sync"   # D3 backfill window — placeholder in the sync commit, real SHA backfilled in the following commit
+sync_status: "complete — docs surfaces assessed, 3-phase close committed"
+b12_self_test_a: "CHANGELOG pre-emission grep '<SPEC-ID>' = 0 matches (exit 1) — safe to emit"
+b12_self_test_b: "AC identifiers in acceptance.md = 14 distinct (AC-HGF-001..014); CHANGELOG entry cites 14"
+b12_self_test_c: "all claimed paths verified by ls: internal/hook/{branch_guard.go, powershell_indirection.go, pre_tool.go, branch_guard_psforms_test.go}"
+changelog_entry_position: "Unreleased → Added, first bullet (above SPEC-CODEX-PARSER-SHAPE-001)"
+frontmatter_status_transitions: "spec.md in-progress → completed (merged 3-phase close, single sync commit); updated: 2026-09-26 unchanged"
+canary_compliance_check: "template tree UNTOUCHED — AC-HGF-014 recompute (merge-base develop HEAD = 19b5321c1; pathspec internal/template/ + .claude/ diff = 0 files; bare-range control 8 files)"
+mx_tag_validation: "pre-existing @MX:ANCHOR/@MX:NOTE/@MX:REASON tags in branch_guard.go / pre_tool.go intact (grep observed this run); new helpers are unexported with 1-2 call sites each (fan_in < 3, no ANCHOR threshold crossed); no tag debt introduced"
+```
+
+### Docs-surface assessment (sync-phase)
+
+| Surface | Verdict | Reason (measured this run) |
+|---|---|---|
+| CHANGELOG.md | **changed** | new entry under Unreleased → Added — user-visible guard behavior change; follows the t1224/t1211 sibling shape and the file's Keep-a-Changelog structure |
+| README.md / README.ko.md | no change needed | the 4 PowerShell mentions per file are install/platform-support rows (lines 268/270/335/710 in README.md); guard behavior is not documented there |
+| docs-site (ko/en/ja/zh) | no change needed | `hooks-guide.md` documents the t1224 PowerShell matcher registration only; no sentence it carries becomes false — this SPEC adds form classification the guide never enumerated. No new pages invented (dispatch constraint) |
+| internal/template/ + .claude/ | UNTOUCHED | AC-HGF-014 (above) |
+
+### E-17 sync-phase confirmation (acceptance.md E-17 line-range drift resolved)
+
+acceptance.md E-17 cites `sed -n '29,32p' internal/hook/powershell_indirection.go` against tree `19b5321c1` (the pre-fix 3-line comment). After the F4 fix the comment occupies lines **29-34**. Re-verified verbatim at HEAD `2cb4511b2` (this run):
+
+```
+// integrationLockAuditRelPath is the integration lock's audit log, relative to
+// the handler's project root. While a live foreign hold exists it records
+// EVERY unclassifiable PowerShell command observed, whether or not it is
+// merge-shaped (measured forms: `iex "git status"` and
+// `Start-Process git -ArgumentList 'log'` are both logged and both allowed —
+// SPEC-HOOK-GUARD-POWERSHELL-FORMS-001 REQ-HGF-009); the guard's other
+// fail-open paths keep writing their stderr advisories.
+```
+
+The scope claim E-17 intended — "non-merge commands are also logged" — is stated verbatim by lines 31-32 ("EVERY unclassifiable PowerShell command observed, whether or not it is merge-shaped"). This fulfills AC-HGF-011's green path ("the comment states the measured scope"). acceptance.md body NOT modified (forbidden surface); this §E.4 record is the confirmation of record.
+
+### Run-agent reported gaps — sync-phase disposition (sync-auditor reading list)
+
+1. **U+2014/U+2010 documented superset** — stays a gap by design: REQ-HGF-011 is satisfied via its documented-superset branch (over-match costs one audit line, never a deny; rationale recorded at the `isEncodedCommandParameter` declaration). No sync action.
+2. **Boundary grep baseline row** — §E.2 E4: 1 match at `internal/hook/pre_tool.go:695`, present verbatim in the card base `15e75fbcc`; NEW matches 0. The baseline row is that pre-existing `observeQuestionChannel` observer. No sync action.
+3. **E-17 drift** — resolved above (line range 29→34, text re-verified verbatim).
