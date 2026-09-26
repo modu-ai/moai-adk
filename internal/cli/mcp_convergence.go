@@ -429,7 +429,8 @@ func collectFailOpen(vs []PerBackendVerdict) []string {
 // describeRequiredFails names the required backends that FAILED, for the
 // AC-AMM-007 "residual_risk_note records which backend(s) failed" requirement.
 // Used in the no-split case (all required agree on fail) where disagreement_flag
-// is false but the Verification Matrix still needs to name the failures.
+// is false but the Verification Matrix still needs to name the failures, and as
+// the leading reason of a split that includes a required FAIL (describeDisagreement).
 func describeRequiredFails(fails []PerBackendVerdict) string {
 	names := make([]string, 0, len(fails))
 	for _, v := range fails {
@@ -455,6 +456,10 @@ func collectSynthesisNotes(vs []PerBackendVerdict) []string {
 	return out
 }
 
+// advisoryDisagreementQualifier marks a disagreement note whose split does not
+// change the verdict. Any later step that fails the verdict must remove it.
+const advisoryDisagreementQualifier = " (advisory, NOT a block)"
+
 func describeDisagreement(vs []PerBackendVerdict) string {
 	var passList, failList []string
 	for _, v := range vs {
@@ -470,8 +475,15 @@ func describeDisagreement(vs []PerBackendVerdict) string {
 		// required pass. Surface a generic note rather than an empty one.
 		return "cross-model disagreement detected; see per_backend_verdicts for details"
 	}
-	return fmt.Sprintf("cross-model disagreement (advisory, NOT a block): pass=[%s] fail=[%s]",
-		strings.Join(passList, ", "), strings.Join(failList, ", "))
+	// A split that includes a required FAIL fails the overall verdict, and the
+	// multi-review gate blocks on it — the wording must say so. Only a split with
+	// no required FAIL is advisory.
+	if requiredFails := filterVerdict(filterRequired(vs), "fail"); len(requiredFails) > 0 {
+		return fmt.Sprintf("%s; cross-model disagreement: pass=[%s] fail=[%s]",
+			describeRequiredFails(requiredFails), strings.Join(passList, ", "), strings.Join(failList, ", "))
+	}
+	return fmt.Sprintf("cross-model disagreement%s: pass=[%s] fail=[%s]",
+		advisoryDisagreementQualifier, strings.Join(passList, ", "), strings.Join(failList, ", "))
 }
 
 // ─── fan-out: errgroup parallel invocation of the active backends ───
@@ -867,7 +879,9 @@ func enforceRequiredGateUnmet(r ConvergenceResult, verdicts []PerBackendVerdict,
 	r.GateUnmet = strings.Join(unmet, ",")
 	note := "required gate unmet (explicitly configured required, no verdict): " + strings.Join(unmet, ", ")
 	if r.ResidualRiskNote != "" {
-		note += " | " + r.ResidualRiskNote
+		// The verdict now fails, so a disagreement written as advisory is no
+		// longer "not a block" — keep the split, drop the qualifier.
+		note += " | " + strings.Replace(r.ResidualRiskNote, advisoryDisagreementQualifier, "", 1)
 	}
 	r.ResidualRiskNote = note
 	return r
