@@ -74,10 +74,17 @@ config.toml 키 기준(관측일 2026-09-26):
 
 ### C.3 Codex 배포면 부재 (실측)
 
-- `internal/template/templates/.codex/` — `agents/`(agentemit이 방출하는 .toml)만 존재. handoff 저장·주입 인프라 없음. "handoff" 문자열 등장은 manager-lead.toml·manager-design.toml 본문 언급뿐(에이전트 지시 텍스트).
+- `internal/template/templates/.codex/` — `agents/`(agentemit이 방출하는 .toml)만 존재. **템플릿 배포판에는** handoff 저장·주입 인프라가 없다. "handoff" 문자열 등장은 manager-lead.toml·manager-design.toml 본문 언급뿐(에이전트 지시 텍스트). 단, 로컬 런타임 생성 배선은 이미 존재한다(§C.4).
 - AGENTS.md는 템플릿 루트에 `AGENTS.md.tmpl`(19,177 bytes, 렌더링 필요)로 배포된다 — M3 배치 논의의 현 물성.
 
-### C.4 세션-메시징 브로커와의 관계 (계층 구분)
+### C.4 Codex 훅 배선·어댑터는 이미 부분 존재 (실측 — 카드 가정보다 앞선 상태)
+
+- primary 체크아웃의 `.codex/hooks.json` (**untracked** — 워크트리 t1273 체크아웃에는 없음 = develop 트리에 없음 = 런타임 생성)에 `moai hook session-start --harness codex` 배선이 존재한다. 운영자 `~/.codex/config.toml`의 `[hooks.state]`에 `session_start` 실행 기록이 있다.
+- `--harness codex` 어댑터가 이미 구현돼 있다: `internal/cli/hook_harness_codex.go` (SPEC-CODEX-WIRING-001 M3) + `internal/codexadapter/` — MoAI 훅 출력을 Codex 형식으로 재작성 (continue:false→decision:block, 이벤트별 systemMessage→additionalContext).
+- **정확한 갭**: `internal/codexadapter/output.go:84-88`의 `additionalContextEvents` 집합은 `UserPromptSubmit` **하나뿐** — 주석이 명시한다: "Only UserPromptSubmit was measured delivering it." 반면 handoff 인젝터는 `EventSessionStart`에 등록된다 (`internal/hook/handoff_inject.go:41`). 즉 Codex 경로에서 인젝터가 내놓는 additionalContext는 **버려진다** (어댑터가 매핑하지 않음). P1의 실체는 새 배선 구축이 아니라 **SessionStart 채널의 전달 실측 + 매핑 집합 추가**다.
+- **환경 관측 (2026-09-26, codex exec 1회)**: 이 워크트리에서 `codex exec` 최소 호출이 `hook: SessionStart` ×3 발화 + `hook: SessionStart Completed` ×3를 관측했다 — Codex CLI가 SessionStart 훅을 실제로 실행한다는 1차 확인 (관문 a). 어떤 훅 핸들러였는지(글로벌 ~/.codex/hooks.json 추정)는 미확정.
+
+### C.5 세션-메시징 브로커와의 관계 (계층 구분)
 
 Codex↔Claude 실시간 메시징은 이미 `mcp__moai__session_msg_*` 브로커(cross-session-messaging.md § Codex broker path)가 담당한다. 그러나 그것은 **살아 있는 세션끼리의 넛지** 채널이고, 핸드오프는 **세션 경계를 넘는 상태 이전**이다 — 세션이 죽은 뒤에도 소비돼야 하므로 pending.json 같은 디스크 매체가 필요하다. 두 계층은 보완 관계이며 이 카드는 후자만 다룬다.
 
@@ -105,7 +112,12 @@ Codex↔Claude 실시간 메시징은 이미 `mcp__moai__session_msg_*` 브로�
 | **P3 — AGENTS.md 소비 계약 + `moai handoff show`** | AGENTS.md(.tmpl)에 "세션 시작 시 pending.json 확인" 절차 2-3줄 추가; `moai handoff show`가 저장본을 붙여넣기 가능한 형태로 재출력 | 하네스 중립(파일+텍스트); AGENTS.md는 Codex가 **항상** 읽는 문서(32KiB 예산 내); 즉시 구현 가능; fail-open 정합 | 자동 주입이 아님 — 모델이 절차를 따르는 간접 주입. AGENTS.md 예산 소비(M3 t1243 조정 필요) | M1 병행 권고 — P1과 배타가 아님 |
 | **P4 — codex resume (같은 하네스 내 연속성)** | Codex→Codex 세션 재개 | Codex 쪽 연속성 보완 | **크로스가 아님** — Claude 세션을 재개할 수 없으므로 카드의 교차 인계 축이 아님 | 범위 밖 표시(카드 범위와 구분 기록) |
 
-**LIVE 검증 설계 입력 (카드 [HARD] — 상한 선언 후 실행)**: P1 타당성은 세 관문으로 좁힌다 — (a) 이 환경의 Codex가 `features.hooks`+SessionStart를 실제로 발화하는가, (b) additionalContext가 세션에 도달하는가, (c) 2500 토큰 한계에서 6블록 실측 길이(≈600-900 토큰 예상)가 강등 없이 통과하는가. Codex 사용량 한도(9/28 14:37) 이내에서, 상한은 관문당 실행 3회·벽시계 30분을 선언한다(교훈: LIVE 측정은 상한 선언 후 — feedback_live_measurement_needs_declared_caps).
+**LIVE 검증 설계 입력 (카드 [HARD] — 상한 선언 후 실행)**: P1 타당성은 세 관문으로 좁힌다 — (a) 이 환경의 Codex가 `features.hooks`+SessionStart를 실제로 발화하는가, (b) additionalContext가 세션에 도달하는가, (c) 2500 토큰 한계에서 6블록 실측 길이(≈600-900 토큰 예상)가 강등 없이 통과하는가. 상한은 관문당 실행 3회·벽시계 30분을 선언한다(교훈: LIVE 측정은 상한 선언 후 — feedback_live_measurement_needs_declared_caps).
+
+**관문 상태 (2026-09-26 갱신 — 리드 조건①에 따른 쿼터 선확인 결과)**:
+- **쿼터 차단 확인**: `codex exec` 최소 호출 1회가 `You've hit your usage limit... try again at Sep 28th, 2026 2:37 PM`를 반환 (t1203 레인 실측과 동일). 관문 (b)(c)는 **9/28 14:37 이후**로 연기하고, 그동안 design.md는 리드 지시대로 **"P1 조건부(관문 통과 시) + P3 기본"** 구조로 진행한다.
+- **관문 (a) 1차 통과**: 같은 호출에서 `hook: SessionStart` ×3 발화·`Completed` 관측 — SessionStart 훅 실행은 이 환경 사실이다. (모델 응답은 쿼터로 차단돼 (b) 관측은 불가했다.)
+- 관문 (b)가 P1의 핵심 잔여 위험이다: UserPromptSubmit만 어댑터 측정돼 있고(§C.4) SessionStart 채널은 미측정 — Codex가 SessionStart의 additionalContext를 소비하는지가 additionalContextEvents 집합 확장의 전제.
 
 ---
 
@@ -119,6 +131,7 @@ Codex↔Claude 실시간 메시징은 이미 `mcp__moai__session_msg_*` 브로�
 | F-4 | Codex `project_doc_max_bytes` 기본값 32KiB | **미확인(수치)** — GitHub 이슈 보조 출처만; F-3 표에는 키 존재만 명시. LIVE 검증(`codex exec` 등으로 실측) 전까지 근거로 인용 금지 | 2026-09-26 |
 | F-5 | https://www.anthropic.com/engineering/harness-design-long-running-apps | **검증됨** (webReader 직접 판독) | 2026-09-26 |
 | F-6 | `codex resume` CLI 문법(예: `--last`) | **부분 검증** — developers.openai.com에 전용 페이지 없음(검색 1차); F-3의 `tui.resume_cwd` 키로 resume/fork 존재만 1차 확인. 문법 상세는 GitHub 저장소 문서 보조 출처 | 2026-09-26 |
+| F-7 | 환경 실험 관측 — `codex exec` 최소 호출 1회 (session 01a0dd57, 워크트리 t1273 cwd) | **실험 관측** — 쿼터 차단 메시지(9/28 14:37) + SessionStart 훅 3회 발화·Completed + UserPromptSubmit 발화 관측. 훅 핸들러의 정체(글로벌 hooks.json 소속 여부)는 미확정 | 2026-09-26 |
 
 `developers.openai.com/codex/guides/agents`는 2회 시도 모두 500 오류 — AGENTS.md 가이드 공식 페이지는 미확인으로 둔다(이 카드는 config-reference 관측으로 충분).
 
