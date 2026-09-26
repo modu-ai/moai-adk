@@ -51,7 +51,7 @@ related_specs: [SPEC-AUTONOMY-CONTRACT-001, SPEC-AUTONOMY-ESCALATION-001, SPEC-A
   inline exemption marker stating why (§H.1, §I).
   (b) **The deny is no longer one rule but three** (§C.3, §C.7, REQ-AP-003 / REQ-AP-011): the human
   signing path is refused on every tool call, while the non-interactive sign path and `decide` are
-  refused only from a session whose `MOAI_FACTORY_ROLE` is `agent`. The reason is concrete and was
+  refused only from a session whose `MOAI_FACTORY_ROLE` is `worker`. The reason is concrete and was
   the lead's: `decide` is a path the **lead session's own LLM** invokes as a tool call when the
   decider is `llm` or `llm+jev`, so an outright deny of every tool call would block a legitimate
   path. An outright deny is therefore *not* strictly stronger, as v0.1.1 claimed — it is wrong.
@@ -183,8 +183,8 @@ against the text actually quoted here, and would cite one statement that did not
   | Invocation | Refused where | Requirement |
   |---|---|---|
   | `moai contract sign` on the **human** path (no `--signer`, or `--signer human`) | **every** tool call, in every session, no exemption | REQ-AP-003 |
-  | `moai contract sign --signer llm` / `--signer llm+jev` (the non-interactive path) | only a session whose `MOAI_FACTORY_ROLE` is `agent` | REQ-AP-011 |
-  | `moai contract decide` | only a session whose `MOAI_FACTORY_ROLE` is `agent` | REQ-AP-011 |
+  | `moai contract sign --signer llm` / `--signer llm+jev` (the non-interactive path) | only a session whose `MOAI_FACTORY_ROLE` is `worker` | REQ-AP-011 |
+  | `moai contract decide` | only a session whose `MOAI_FACTORY_ROLE` is `worker` | REQ-AP-011 |
 
   A session carrying **no** marker — a human-launched session, or the lead — is **allowed** to
   `decide`. The tool-call boundary is the right discriminator for the human path only, because human
@@ -274,14 +274,15 @@ rather than parsing `contract.yaml` directly, and states that A1 is its producer
   constants in `internal/config/envkeys.go` as part of this SPEC's own change**, so the guard reads a
   constant that exists in the tree it ships in, and the role-scoped criteria (AC-AP-015, AC-AP-016)
   turn green with the variable set by the test alone. No dependency on card t1240 remains.
-- **What the value spelling collides with, measured.** The lead named the value `agent`. In
+- **The value spelling, measured and then decided.** An earlier ruling named the value `agent`. In
   `internal/cli/factory.go` the live CLI role token is `worker` (`:59`
   `factoryWorkerRoleToken = "worker"`) and **`agent` is its retired pre-rename spelling** (`:64`
-  `factoryLegacyAgentRoleToken = "agent"`). The two namespaces are separate — one is a CLI argument,
-  the other an environment variable this SPEC introduces — so `agent` is adopted as ruled. The
-  collision is recorded because it has a concrete failure mode: **if card t1240 stamps the variable
-  with `worker`, REQ-AP-011's deny never fires and AC-AP-016's allow arm passes anyway.** §F O5
-  carries it for the lead, and it is named in §F as a residual risk rather than resolved here.
+  `factoryLegacyAgentRoleToken = "agent"`, kept as a parsing alias that prints a deprecation hint).
+  The failure mode of keying on the retired spelling was concrete: **if card t1240 stamps the live
+  spelling, a guard keyed on `agent` never fires and AC-AP-016's allow arm passes anyway** — green
+  criteria over zero protection. The operator therefore resolved §F O5 to **`worker`**, the canonical
+  spelling, and only `worker` is accepted; `agent` is not. The value carried to card t1240 is
+  `worker` (§G).
 - **The environment an agent can unset.** A1 `:155-156` records that "an agent can unset environment
   variables". REQ-AP-011's gate is therefore **nominal in production** — in both directions: until
   t1240 stamps the marker nothing is denied, and after it does, an agent that unsets the variable is
@@ -423,7 +424,7 @@ predicate that activates them and a reader must be able to tell which one denied
   by construction not the signature the contract model requires, and the boundary is the one signal an
   agent cannot unset. 「A1 plan-audit 통과본으로 재확인」
 - **REQ-AP-011** (Capability gate) — Where the calling session's environment sets
-  `MOAI_FACTORY_ROLE` (REQ-AP-012) to the value `agent`, the guard shall deny every Bash tool call
+  `MOAI_FACTORY_ROLE` (REQ-AP-012) to the value `worker`, the guard shall deny every Bash tool call
   that invokes `moai contract sign` on the **non-interactive path** (`--signer llm` or
   `--signer llm+jev`, A1 `:462`) or that invokes `moai contract decide`, with a reason prefixed
   `CONTRACT_SIGN_AGENT_VIOLATION:` and recognized through the same shapes REQ-AP-003 enumerates; and
@@ -433,7 +434,8 @@ predicate that activates them and a reader must be able to tell which one denied
   that denied it would deny the caller the epic depends on.
 - **REQ-AP-012** (Ubiquitous) — This SPEC shall define the role marker's name and value as exported
   constants in `internal/config/envkeys.go` — the variable name exactly `MOAI_FACTORY_ROLE` and the
-  agent-role value exactly `agent` — and the guard and its tests shall read those constants rather
+  role value exactly `worker` — the canonical CLI role spelling; the retired alias `agent` is **not**
+  accepted — and the guard and its tests shall read those constants rather
   than a repeated literal. No other card is a precondition of REQ-AP-011 being evaluable: a session
   that sets no such variable makes no role claim, and the tests set it themselves.
 - **REQ-AP-004** (Unwanted) — When a command carries the word `contract` together with `sign` or
@@ -548,20 +550,19 @@ it. No entry gates a criterion's evaluability.
   open. The verb is still unimplemented in this tree, which the shape-based deny does not need
   (AC-AP-008).
 - **O2** [RESOLVED as to scope; one residual exposure recorded, not open.] The lead's three-way
-  ruling is adopted in full (§C.3): the boundary for the human path, the `MOAI_FACTORY_ROLE=agent`
+  ruling is adopted in full (§C.3): the boundary for the human path, the `MOAI_FACTORY_ROLE=worker`
   role gate for the non-interactive path and `decide`, and an allow for a session carrying no marker.
   The role distinction the earlier O2 asked about is therefore named and owned — this SPEC defines the
   variable (REQ-AP-012). What remains is not a question but a **residual exposure** recorded in §E C7:
   the role gate is nominal in production until t1240 stamps the marker, and unset-able afterwards.
-- **O5** [OPEN — one lead confirmation, and it has a concrete failure mode.] The ruled value is
-  `agent`. In `internal/cli/factory.go` the live role token is `worker` (`:59`) and `agent` is its
-  **retired** pre-rename spelling (`:64`). The namespaces are separate, so `agent` is implemented as
-  ruled — but **if card t1240 stamps `MOAI_FACTORY_ROLE=worker`, REQ-AP-011 denies nothing and
-  AC-AP-016's allow arm still passes**, so the guard would read as healthy while protecting nothing.
-  Closed by the lead either confirming `agent` and carrying that value to t1240, or naming `worker`
-  (or both values) — at which point REQ-AP-012's value constant and AC-AP-015's fixture change with
-  it. Recorded rather than decided here because the value must agree with a card this SPEC does not
-  own.
+- **O5** [RESOLVED — operator ruling at the Kickoff gate: the value is `worker`.] What the question
+  was: an earlier ruling named `agent`, and in `internal/cli/factory.go` `worker` (`:59`) is the live
+  role token while `agent` (`:64`) is its **retired** pre-rename spelling, kept only as a parsing
+  alias. Keying the guard on the retired spelling had a concrete failure mode — **if card t1240
+  stamps the live spelling, REQ-AP-011 denies nothing and AC-AP-016's allow arm still passes**, so the
+  guard would read as healthy while protecting nothing. The operator closed it on exactly that ground:
+  the canonical spelling `worker` is the accepted value, and `agent` is not accepted. REQ-AP-012's
+  value constant, AC-AP-015's fixture, and the value card t1240 must stamp (§G) all read `worker`.
 - **O3** Whether the audit line of REQ-AP-002 shares a sink with the existing
   branch-guard audit log (`.moai/logs/branch-guard-audit.log`) or takes its own. Design default:
   its own, named in `design.md`; a shared sink is acceptable if the lead prefers one file.
@@ -611,7 +612,9 @@ it. No entry gates a criterion's evaluability.
   per A1 `:144-147` (C4).
 - **Stamping `MOAI_FACTORY_ROLE` on a real session** — card t1240. This SPEC defines the constants
   (REQ-AP-012) so its criteria are evaluable now; it does not wire the variable into any launcher, and
-  §E C7 records what that leaves un-protected in production.
+  §E C7 records what that leaves un-protected in production. **The value t1240 must stamp is `worker`**
+  (§F O5, operator ruling) — the canonical CLI role spelling; stamping the retired alias `agent` would
+  leave REQ-AP-011 denying nothing while every criterion here still passes.
 - The **documentation surfaces this SPEC does not own**: the template autonomy block's own comment
   (A1, REQ-CONTRACT-016) and the wording of SPEC-AUTONOMY-ESCALATION-001 REQ-AE-001 (A2). §C.10
   measures both absent and §H.5 records the transfer.

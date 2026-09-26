@@ -93,9 +93,10 @@ base `develop` at `553e224f3`.
   re-used, and the three new ids continue the numbering rather than filling the 011-012 gap.
 - Premises measured against `553e224f3` and re-measured at `eee5f635e`; the premises that did not hold
   are recorded as absent rather than assumed (spec.md §C.2, §C.3, §C.6, §C.7, §C.10).
-- Open items: O3 (audit sink) and **O5** (the `MOAI_FACTORY_ROLE` value spelling — `agent` is the
-  retired CLI role token, `worker` is the live one) remain open; O1, O2 and O4 are resolved. Neither
-  open item blocks a criterion's evaluability.
+- Open items: O3 (audit sink) remains open; O1, O2, O4 and **O5** are resolved. O5 closed by operator
+  ruling — the `MOAI_FACTORY_ROLE` value is **`worker`**, the canonical CLI role spelling, not the
+  retired alias `agent`; card t1240 must stamp `worker`. The open item does not block a criterion's
+  evaluability.
 - Dependency picture after v0.1.2: **no milestone depends on another track.** M2 and M3 depend on
   nothing outside this SPEC; M1 and M4 consume A1's `show --json` as a **fixture**, which is the
   correct evaluation basis per spec.md §E C4, not a wait.

@@ -141,7 +141,7 @@ until A3 — so no criterion here asserts that any autonomy was granted.
 - **AC-AP-008** (maps REQ-AP-004; spec.md §C.2, §C.3) — **Given** an installed binary for which
   `moai contract --help` exits non-zero with `Unknown command "contract"`, **When**
   `moai contract sign SPEC-X-001` is processed in a session with no role marker, and
-  `moai contract decide SPEC-X-001` is processed in a session whose `MOAI_FACTORY_ROLE` is `agent`,
+  `moai contract decide SPEC-X-001` is processed in a session whose `MOAI_FACTORY_ROLE` is `worker`,
   **Then** each is denied with `CONTRACT_SIGN_AGENT_VIOLATION:` — the denial does not depend on the
   verb being implemented, and the test asserts the unimplemented precondition before asserting the
   deny, so the case cannot pass vacuously by the command simply failing. This is the criterion that
@@ -155,7 +155,7 @@ until A3 — so no criterion here asserts that any autonomy was granted.
 ## §B.1 — Role-scoped deny: the non-interactive sign path and `decide` (REQ-AP-011, REQ-AP-012)
 
 - **AC-AP-015** (maps REQ-AP-011) — **Given** a session whose environment sets `MOAI_FACTORY_ROLE` to
-  `agent` (set by the test itself, per REQ-AP-012) and any value of `workflow.autonomy.mode`, **When**
+  `worker` (set by the test itself, per REQ-AP-012) and any value of `workflow.autonomy.mode`, **When**
   each of `moai contract sign --signer llm --receipt /tmp/r.json`,
   `moai contract sign --signer llm+jev --receipt /tmp/r.json`, `moai contract decide SPEC-X-001`,
   `'moai' contract "decide"`, `sudo moai contract decide`, and `eval "moai contract decide"` is
@@ -164,12 +164,12 @@ until A3 — so no criterion here asserts that any autonomy was granted.
   `unclassified`, and the count of denied cases equals the count supplied.
   - Discriminator: produced denies in a marked session. A guard that ignores the marker allows all six
     and fails immediately.
-  - Test: `TestContractRoleScopedDenyUnderAgentMarker` in `internal/hook`.
+  - Test: `TestContractRoleScopedDenyUnderWorkerMarker` in `internal/hook`.
   - RED-now: neither the guard nor the `MOAI_FACTORY_ROLE` constant exists —
     `grep -rn 'MOAI_FACTORY_ROLE' internal cmd pkg` returns 0 rows (spec.md §C.7). Green path: M2.
 - **AC-AP-016** (maps REQ-AP-011) — **Given** the AC-AP-015 command set, **When** it is processed
   twice — once in a session where `MOAI_FACTORY_ROLE` is **unset**, and once where it is set to a value
-  other than `agent` — **Then** in both runs every one of those calls is allowed with hook output
+  other than `worker` — **Then** in both runs every one of those calls is allowed with hook output
   byte-identical to the no-guard baseline and no audit line written; **and in the same test**
   `moai contract sign SPEC-X-001` and `moai contract sign --signer human SPEC-X-001` are denied with
   the `CONTRACT_SIGN_AGENT_VIOLATION:` sentinel in both runs.
@@ -180,12 +180,12 @@ until A3 — so no criterion here asserts that any autonomy was granted.
     `AC-AP-002` and `AC-AP-006`.
   - This criterion is the one that would have caught the withdrawn outright deny: under v0.1.1's rule
     every call here was denied, so the lead's own `decide` path was denied (spec.md §C.3).
-  - Test: `TestContractRoleScopedAllowWithoutAgentMarker` in `internal/hook`.
+  - Test: `TestContractRoleScopedAllowWithoutWorkerMarker` in `internal/hook`.
   - RED-now: the guard does not exist, so no allow can be shown to survive it. Green path: M2.
 - **AC-AP-017** (maps REQ-AP-012, REQ-AP-009) — **Given** the pre-change tree, in which
   `grep -rn 'MOAI_FACTORY_ROLE' internal cmd pkg` returns exactly 0 rows, **When** the change lands,
   **Then** `internal/config` exports a name constant whose value is exactly the string
-  `MOAI_FACTORY_ROLE` and a role-value constant whose value is exactly the string `agent`; the guard
+  `MOAI_FACTORY_ROLE` and a role-value constant whose value is exactly the string `worker`; the guard
   and its tests reference those constants and not a repeated literal (asserted by
   `grep -c '"MOAI_FACTORY_ROLE"' internal/hook` returning 0); **and** the guard reads no environment
   variable outside the closed set {this constant} ∪ {`CLAUDECODE`, `CLAUDE_CODE_SESSION_ID`} — A1's
@@ -198,10 +198,12 @@ until A3 — so no criterion here asserts that any autonomy was granted.
   - Test: `TestFactoryRoleEnvConstant` in `internal/config` plus the literal-free grep in
     `internal/hook`.
   - RED-now: neither constant exists. Green path: M2.
-  - Recorded with it, not asserted by it: the value `agent` is the **retired** spelling of the CLI role
-    token, whose live spelling is `worker` (`internal/cli/factory.go:59`, `:64`). If card t1240 stamps
-    `worker`, this criterion still passes while REQ-AP-011 denies nothing in production — spec.md §F O5
-    and §E C7 carry that, and no criterion here claims otherwise.
+  - Recorded with it, not asserted by it: `worker` is the **canonical** CLI role spelling
+    (`internal/cli/factory.go:59`); `agent` (`:64`) is its retired pre-rename alias and is **not** an
+    accepted value here — the operator resolved spec.md §F O5 to `worker` for exactly that reason. This
+    criterion still does not measure what card t1240 stamps: if t1240 stamps anything other than
+    `worker`, it passes while REQ-AP-011 denies nothing in production — spec.md §F O5 and §E C7 carry
+    that, and no criterion here claims otherwise.
 
 ## §C — Wrapper coverage (REQ-AP-005; finding N4)
 

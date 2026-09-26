@@ -129,8 +129,8 @@ because the command would have failed anyway.
 | Invocation | Predicate | Rule | Rationale |
 |---|---|---|---|
 | `sign`, human path (no `--signer`, `--signer human`) | the tool-call boundary | REQ-AP-003 | human signing happens at a terminal; the boundary is unset-able by nobody |
-| `sign --signer llm` / `llm+jev` | `MOAI_FACTORY_ROLE == agent` | REQ-AP-011 | A1 leaves this path ungated by any marker (`25283ebf8:…/design.md:419-421`), and it has an automated caller by design |
-| `decide` | `MOAI_FACTORY_ROLE == agent` | REQ-AP-011 | the lead's own LLM invokes it as a tool call; a boundary deny would deny the lead |
+| `sign --signer llm` / `llm+jev` | `MOAI_FACTORY_ROLE == worker` | REQ-AP-011 | A1 leaves this path ungated by any marker (`25283ebf8:…/design.md:419-421`), and it has an automated caller by design |
+| `decide` | `MOAI_FACTORY_ROLE == worker` | REQ-AP-011 | the lead's own LLM invokes it as a tool call; a boundary deny would deny the lead |
 
 `MOAI_FACTORY_ROLE` does not exist in this tree, which is why v0.1.1 avoided it. That is solved by
 **defining it here** (REQ-AP-012) rather than by substituting a predicate: the tests set the variable
@@ -263,7 +263,7 @@ the package.
 | `moai contract show --json` may not exist or may rename the field when M1 is reached | Absent field or command → inactive (AC-AP-002 (d)); pre-flight re-measures and stops on a rename (plan.md §C step 3) |
 | No track defines `decide`, so its deny is untested against a real verb | The deny is shape-based and evaluable now (AC-AP-008); when a track defines the verb, its own criteria confirm reachability |
 | A full keyless re-seal of a contract | A1's residual risk, restated here only because this guard does not close it either |
-| `MOAI_FACTORY_ROLE` is never stamped, or is stamped with a different value | REQ-AP-011 denies nothing in production. Recorded, not compensated for: the protection that does not depend on the marker is REQ-AP-003 (the human path, keyed on the boundary). The value-spelling hazard is concrete — `agent` is the **retired** CLI role spelling, `worker` is the live one (`internal/cli/factory.go:59`, `:64`) — and sits with the lead as spec.md §F O5 |
+| `MOAI_FACTORY_ROLE` is never stamped, or is stamped with a different value | REQ-AP-011 denies nothing in production. Recorded, not compensated for: the protection that does not depend on the marker is REQ-AP-003 (the human path, keyed on the boundary). The value-spelling hazard is closed at the spelling: the accepted value is `worker`, the **live** CLI role spelling (`internal/cli/factory.go:59`), not the retired alias `agent` (`:64`) — operator ruling, spec.md §F O5 |
 | An agent unsets `MOAI_FACTORY_ROLE` before invoking `decide` | Accepted and recorded (A1 `:155-156` says an agent can unset a variable). The boundary-keyed human-path deny is unaffected; a role-keyed rule cannot be made unset-proof, and pretending otherwise would be the claim this table exists to avoid |
 | A harness populates the hook process's environment differently from the session's | **Unmeasured.** The guard reads the calling session's environment at PreToolUse, so a wrapper's own env stripping (`sudo`, `env -i`) is irrelevant — but whether every harness propagates identically was not measured. Recorded as a Gap in progress.md §E.1 rather than assumed either way |
 | A1's drafted mission mapping changes after this SPEC adopted it | The three corrections of §C.11 are measured against `internal/mission` source, not against A1's prose, so they survive a prose change. A changed *field source* is a pre-flight re-measure (plan.md §C) |

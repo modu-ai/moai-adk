@@ -65,8 +65,8 @@ one reuse projection; they share the contract resolver and nothing else.
    (`internal/mission/contract.go:55-61`). A change in either is a premise update, not a silent
    adjustment of the mapping.
 7. Re-measure `grep -rn 'MOAI_FACTORY_ROLE' internal cmd pkg`. It was **0 rows** at `eee5f635e`. A
-   non-zero count means card t1240 landed first — read what value it stamps before implementing
-   REQ-AP-012's value constant (spec.md §F O5).
+   non-zero count means card t1240 landed first — confirm it stamps `worker`, the resolved value, and
+   report a mismatch rather than changing REQ-AP-012's value constant (spec.md §F O5).
 4. Capture the `golangci-lint run` baseline on this tree, so "no new issue" in acceptance.md §H is
    attributable.
 
@@ -191,8 +191,10 @@ count, plus the cross-platform build. The full gate list is acceptance.md §H.
   「A1 plan-audit 통과본으로 재확인」 dependency tag. Mirrored in spec.md §F O4.
 - **O4** Audit-line sink — its own file, or shared with `.moai/logs/branch-guard-audit.log`
   (spec.md §F O3).
-- **O5** [OPEN — one confirmation, with a concrete failure mode.] The `MOAI_FACTORY_ROLE` value: the
-  lead ruled `agent`, which is the **retired** spelling of the CLI role token whose live spelling is
-  `worker` (`internal/cli/factory.go:59`, `:64`). Implemented as ruled; if card t1240 stamps `worker`,
-  REQ-AP-011 protects nothing while every criterion still passes. Confirm the value and carry it to
-  t1240 (spec.md §F O5).
+- **O5** [RESOLVED — operator ruling: the value is `worker`.] What the problem was: an earlier ruling
+  named `agent`, which is the **retired** spelling of the CLI role token (`internal/cli/factory.go:64`,
+  a parsing alias) whose canonical spelling is `worker` (`:59`). A guard keyed on the retired spelling
+  would have protected nothing the moment card t1240 stamped the live one — and **every criterion would
+  still have passed**, which is why the spelling was worth a ruling rather than a default. Accepted
+  value: `worker` only; `agent` is not accepted. Forward note: **card t1240 must stamp `worker`**
+  (spec.md §F O5, §G).
