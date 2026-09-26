@@ -82,7 +82,7 @@ config.toml 키 기준(관측일 2026-09-26):
 - primary 체크아웃의 `.codex/hooks.json` (**untracked** — 워크트리 t1273 체크아웃에는 없음 = develop 트리에 없음 = 런타임 생성)에 `moai hook session-start --harness codex` 배선이 존재한다. 운영자 `~/.codex/config.toml`의 `[hooks.state]`에 `session_start` 실행 기록이 있다.
 - `--harness codex` 어댑터가 이미 구현돼 있다: `internal/cli/hook_harness_codex.go` (SPEC-CODEX-WIRING-001 M3) + `internal/codexadapter/` — MoAI 훅 출력을 Codex 형식으로 재작성 (continue:false→decision:block, 이벤트별 systemMessage→additionalContext).
 - **정확한 갭**: `internal/codexadapter/output.go:84-88`의 `additionalContextEvents` 집합은 `UserPromptSubmit` **하나뿐** — 주석이 명시한다: "Only UserPromptSubmit was measured delivering it." 반면 handoff 인젝터는 `EventSessionStart`에 등록된다 (`internal/hook/handoff_inject.go:41`). 즉 Codex 경로에서 인젝터가 내놓는 additionalContext는 **버려진다** (어댑터가 매핑하지 않음). P1의 실체는 새 배선 구축이 아니라 **SessionStart 채널의 전달 실측 + 매핑 집합 추가**다.
-- **환경 관측 (2026-09-26, codex exec 1회)**: 이 워크트리에서 `codex exec` 최소 호출이 `hook: SessionStart` ×3 발화 + `hook: SessionStart Completed` ×3를 관측했다 — Codex CLI가 SessionStart 훅을 실제로 실행한다는 1차 확인 (관문 a). 어떤 훅 핸들러였는지(글로벌 ~/.codex/hooks.json 추정)는 미확정.
+- **환경 관측 (2026-09-26, codex exec 1회)**: 이 워크트리에서 `codex exec` 최소 호출이 `hook: SessionStart` ×3 발화 + `hook: SessionStart Completed` ×3를 관측했다 — Codex CLI가 SessionStart 훅을 실제로 실행한다는 1차 확인 (관문 a). 사후 판정: 발화한 핸들러는 글로벌 `~/.codex/hooks.json` 소속 운영자 외부 훅 2개(orca·luvus)이며 moai 훅은 아니었다 — 워크트리에 `.codex/hooks.json`이 없어 moai 프로젝트 훅이 로드되지 않았다. moai 관점 상태 변화는 없다(pending.json 부재·consumed 미변동·세션 레지스트리 기록 없음).
 
 ### C.5 세션-메시징 브로커와의 관계 (계층 구분)
 
@@ -131,7 +131,7 @@ Codex↔Claude 실시간 메시징은 이미 `mcp__moai__session_msg_*` 브로�
 | F-4 | Codex `project_doc_max_bytes` 기본값 32KiB | **미확인(수치)** — GitHub 이슈 보조 출처만; F-3 표에는 키 존재만 명시. LIVE 검증(`codex exec` 등으로 실측) 전까지 근거로 인용 금지 | 2026-09-26 |
 | F-5 | https://www.anthropic.com/engineering/harness-design-long-running-apps | **검증됨** (webReader 직접 판독) | 2026-09-26 |
 | F-6 | `codex resume` CLI 문법(예: `--last`) | **부분 검증** — developers.openai.com에 전용 페이지 없음(검색 1차); F-3의 `tui.resume_cwd` 키로 resume/fork 존재만 1차 확인. 문법 상세는 GitHub 저장소 문서 보조 출처 | 2026-09-26 |
-| F-7 | 환경 실험 관측 — `codex exec` 최소 호출 1회 (session 01a0dd57, 워크트리 t1273 cwd) | **실험 관측** — 쿼터 차단 메시지(9/28 14:37) + SessionStart 훅 3회 발화·Completed + UserPromptSubmit 발화 관측. 훅 핸들러의 정체(글로벌 hooks.json 소속 여부)는 미확정 | 2026-09-26 |
+| F-7 | 환경 실험 관측 — `codex exec` 최소 호출 1회 (session 01a0dd57, 워크트리 t1273 cwd) | **실험 관측** — 쿼터 차단 메시지(9/28 14:37) + SessionStart 훅 발화·Completed 관측. **사후 판정**: 발화한 SessionStart 핸들러는 글로벌 `~/.codex/hooks.json` 소속 운영자 외부 훅 2개(orca codex-hook.sh·luvus-agent-hook.sh)이지 moai 훅이 아니다 — 워크트리 t1273에는 `.codex/hooks.json`이 없어 moai 프로젝트 훅은 로드되지 않았다. 상태 변화 없음: 워크트리·primary 모두 `pending.json` 부재(소매 없음), `consumed/` 미변동, moai 세션 레지스트리 기록 없음(moai 훅 미실행) | 2026-09-26 |
 
 `developers.openai.com/codex/guides/agents`는 2회 시도 모두 500 오류 — AGENTS.md 가이드 공식 페이지는 미확인으로 둔다(이 카드는 config-reference 관측으로 충분).
 
