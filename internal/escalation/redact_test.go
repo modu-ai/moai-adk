@@ -10,8 +10,9 @@ import (
 	"github.com/modu-ai/moai-adk/internal/escalation/escalationtest"
 )
 
-// fakeSecret is a credential-shaped string that must never reach disk.
-const fakeSecret = "ghp_FAKEFAKEFAKEFAKE0123456789abcdef"
+// fakeSecret is a credential-shaped string that must never reach disk. The
+// vendor prefix is concatenated so no scanner-triggering literal is committed.
+const fakeSecret = "gh" + "p_" + "FAKEFAKEFAKEFAKE0123456789abcdef"
 
 // fakeSecretCore is the digit-free part of fakeSecret. The class 8
 // diagnostic key rewrites digit runs, so a leaked secret can reach disk
@@ -107,6 +108,35 @@ func TestAuthorizedPushNotMisclassifiedByMask(t *testing.T) {
 			}
 			if l := leakedSurfaces(t, w, fakeSecretCore); len(l) != 0 {
 				t.Errorf("secret written to: %v", l)
+			}
+		})
+	}
+}
+
+// Re-audit N4: one case per credential shape the mask missed. Every fake
+// value is obviously fake; vendor prefixes are concatenated at compile time.
+func TestMaskCommandCoversCredentialShapes(t *testing.T) {
+	const pw = "FAKEPASSWORDVALUE"
+	const core = "FAKEFAKEFAKEFAKE"
+	cases := []struct {
+		name, cmd, secret, keep string
+	}{
+		{"mysql-attached-p", "mysql -uroot -p" + pw + " db", pw, " db"},
+		{"curl-u", "curl -u alice:" + pw + " https://api.example.com", pw, "alice"},
+		{"docker-login-p", "docker login -p " + pw + " registry.example.com", pw, "registry.example.com"},
+		{"json-password", `curl -d '{"password":"` + pw + `"}' https://api.example.com`, pw, `"password"`},
+		{"anthropic-prefix", "echo " + "sk" + "-ant-" + core + core, core, "echo"},
+		{"aws-access-key-id", "aws s3 ls " + "AK" + "IA" + core, core, "aws s3 ls"},
+		{"underscore-key-assignment", "ANTHROPIC_KEY=" + pw + " ./run", pw, "./run"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := escalation.MaskCommand(tc.cmd)
+			if strings.Contains(got, tc.secret) || !strings.Contains(got, "***") {
+				t.Errorf("MaskCommand(%q) = %q, secret not masked", tc.cmd, got)
+			}
+			if !strings.Contains(got, tc.keep) {
+				t.Errorf("MaskCommand(%q) = %q, lost the non-secret part %q", tc.cmd, got, tc.keep)
 			}
 		})
 	}
