@@ -456,6 +456,13 @@ func describeDisagreement(vs []PerBackendVerdict) string {
 		// required pass. Surface a generic note rather than an empty one.
 		return "cross-model disagreement detected; see per_backend_verdicts for details"
 	}
+	// A split that includes a required FAIL fails the overall verdict, and the
+	// multi-review gate blocks on it — the wording must say so. Only a split with
+	// no required FAIL is advisory.
+	if requiredFails := filterVerdict(filterRequired(vs), "fail"); len(requiredFails) > 0 {
+		return fmt.Sprintf("%s; cross-model disagreement: pass=[%s] fail=[%s]",
+			describeRequiredFails(requiredFails), strings.Join(passList, ", "), strings.Join(failList, ", "))
+	}
 	return fmt.Sprintf("cross-model disagreement (advisory, NOT a block): pass=[%s] fail=[%s]",
 		strings.Join(passList, ", "), strings.Join(failList, ", "))
 }
