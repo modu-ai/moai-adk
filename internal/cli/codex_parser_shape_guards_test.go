@@ -8,14 +8,23 @@ import "testing"
 // mutation (see progress.md §E.2), not by a RED run.
 
 // codexV9CleanNativeBody is the clean native review: codex found nothing to
-// block on and said so in prose.
-const codexV9CleanNativeBody = "The change introduces no identifiable correctness or blocking issues."
+// block on and said so by stating the pinned verdict line. Since M4
+// (REQ-CPS-005 as amended) the way a native review states "nothing to block
+// on" IS the pinned form — the pre-M4 prose shape this constant carried is
+// the no-signal class AC-CPS-004 downgrades (AC-CPS-008's scope note), so the
+// guard's fixture bodies state the line the request asks for.
+const codexV9CleanNativeBody = "Verdict: pass\n\nThe change introduces no identifiable correctness or blocking issues."
 
 // TestGuard_CleanNativeReviewStaysPass is AC-CPS-008 / REQ-CPS-009: none of the
 // widened recognizers and neither the contradiction report may make a genuinely
-// clean native review loud.
+// clean native review loud. The assertion — pass/0 with no contradiction — is
+// unchanged since M3; the bodies were moved to the pinned form by M4.
 func TestGuard_CleanNativeReviewStaysPass(t *testing.T) {
-	for _, body := range []string{codexV9CleanNativeBody, "clean change, no findings", "Looks good to me."} {
+	for _, body := range []string{
+		codexV9CleanNativeBody,
+		"Verdict: pass\nclean change, no findings",
+		"Looks good to me.\n\nVerdict: pass",
+	} {
 		out := synthesizeReviewOutput(body, codexMethodReviewStart)
 		if out.Verdict != "pass" || len(out.Findings) != 0 || out.Contradiction != "" {
 			t.Errorf("clean native body %q: got %s/%d contradiction=%q, want pass/0 with no contradiction",

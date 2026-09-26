@@ -800,6 +800,13 @@ func openCodexSessionResolved(ctx context.Context, binaryPath string, params map
 	if cwd, ok := params["cwd"].(string); ok && cwd != "" {
 		threadParams["cwd"] = cwd
 	}
+	// The session-level instruction carrier (SPEC-CODEX-PARSER-SHAPE-001 M4):
+	// whatever the review path stashes here reaches the thread every turn of
+	// this session runs on. Only the native review path populates it — see
+	// codexReviewSessionParams.
+	if instr, ok := params["developerInstructions"].(string); ok && instr != "" {
+		threadParams["developerInstructions"] = instr
+	}
 	if me := resolve(params); me.Model != "" {
 		threadParams["model"] = me.Model
 	}
@@ -1096,8 +1103,34 @@ func runCodexAuditReviewRPC(ctx context.Context, binaryPath, method string, para
 	return runCodexReviewRPCResolved(ctx, binaryPath, method, params, resolveCodexAuditModelEffort)
 }
 
+// codexReviewSessionParams returns the session-open params for a review path,
+// carrying the native format pin (SPEC-CODEX-PARSER-SHAPE-001 M4, REQ-CPS-005
+// as amended) when the review is native. ReviewStartParams declares only
+// {delivery, target, threadId} (measured, codex-cli 0.157.0
+// generate-json-schema) — no prompt, no instructions field — so exactly as the
+// session model does (REQ-CX2-002: "for the review path the thread is the
+// only place a model can reach codex"), the format instruction rides the
+// thread the review opens, as ThreadStartParams.developerInstructions
+// (measured string|null, same schema). The pin is additive and does NOT
+// change which changes the request asks codex to review: the target and its
+// variant are untouched, and the custom-substitution route the SPEC forbids
+// is not taken. The adversarial path pins its own format in the turn prompt
+// (codexAdversarialReviewPrompt) and carries no native pin; the caller's map
+// is not mutated.
+func codexReviewSessionParams(method string, params map[string]any) map[string]any {
+	if method != codexMethodReviewStart {
+		return params
+	}
+	out := make(map[string]any, len(params)+1)
+	for k, v := range params {
+		out[k] = v
+	}
+	out["developerInstructions"] = codexNativeReviewFormatPin
+	return out
+}
+
 func runCodexReviewRPCResolved(ctx context.Context, binaryPath, method string, params map[string]any, resolve func(map[string]any) config.ModelEffort) (ReviewOutput, error) {
-	sess, err := openCodexSessionResolved(ctx, binaryPath, params, "", resolve)
+	sess, err := openCodexSessionResolved(ctx, binaryPath, codexReviewSessionParams(method, params), "", resolve)
 	if err != nil {
 		var sErr *codexSessionError
 		if errors.As(err, &sErr) {
@@ -1686,20 +1719,27 @@ func adoptConservativeVerdict(signals []codexVerdictSignal) string {
 // codexUnrecognizedVerdict is the value adopted when a review body matches NO
 // known signal — the governing decision of SPEC-CODEX-VERDICT-SYNTH-001 §0.
 //
-// Native review mode (review/start) keeps "pass": a bullet-less body there is
-// codex saying it found nothing to block on, which is an observation and must be
-// reported as one. Adversarial mode (turn/start) sends a prompt that specifies no
-// output format at all, so an unrecognized body there means nothing was observed
-// — and "we could not tell" is inconclusive, never a pass. Any other method is
-// treated as unknown and takes the conservative value.
+// Both review modes now report "inconclusive" for an unrecognized body
+// (SPEC-CODEX-PARSER-SHAPE-001 M4, AC-CPS-004): each request pins an output
+// format — adversarial in the turn prompt (candidate (d),
+// codexAdversarialReviewPrompt), native on the thread it opens (candidate (b),
+// codexReviewSessionParams) — so a body matching no recognized signal means
+// the pin was not followed or the shape was never produced, and neither state
+// is evidence of a clean review. A genuinely clean review states `Verdict:
+// pass` in the pinned form, which codexStatedVerdict reads before this
+// fall-through is ever reached (REQ-CPS-009, expressed through the pin);
+// codexReviewTextIsBlank already short-circuits absence before the
+// synthesizer (REQ-CBR-004). The native "pass" default this function carried
+// before M4 — a bullet-less body read as codex saying nothing blocks — was
+// the silent pass #1718-adjacent bodies laundered reviews through, and is
+// what candidate (b) removes.
 //
-// This is deliberately NOT keyed on which formats are currently recognized.
-// Adding a recognizer must never require touching this function; that coupling is
-// how a single CLI version's output conventions became the gate's verdict.
+// This is deliberately NOT keyed on which formats are currently recognized,
+// and on NOTHING in the prose — no token (the word "fail", a severity word, a
+// greeting) may key the downgrade. Adding a recognizer must never require
+// touching this function; that coupling is how a single CLI version's output
+// conventions became the gate's verdict.
 func codexUnrecognizedVerdict(method string) string {
-	if method == codexMethodReviewStart {
-		return "pass"
-	}
 	return VerdictInconclusive
 }
 
@@ -1896,6 +1936,26 @@ const (
 	codexAdversarialVerdictFormat = "Verdict: <pass|fail|inconclusive>"
 	codexAdversarialFindingFormat = "- [P1] <message> — <path>:<line>"
 )
+
+// codexNativeReviewFormatPin is the output-format instruction the native
+// review request carries (SPEC-CODEX-PARSER-SHAPE-001 candidate (b),
+// REQ-CPS-005 as amended). The mechanism is the (d) family applied to the
+// native request: once the request names the format, `Verdict: pass` is a
+// recognized signal (codexStatedVerdict already reads it), so the pinned
+// clean review never reaches the fall-through, and a body carrying no
+// recognized signal — the pin unfollowed — is downgraded to inconclusive
+// instead of a silent pass. It is built FROM the adversarial pin constants,
+// so both requests ask for one format and the pinned lines are exactly the
+// shapes codexStatedVerdict and codexFindingLine accept
+// (TestCodexNativeFormatPin_SharesConstantsWithBuilder keeps that true).
+// Whether live codex honours the pin is not established by this tree — only a
+// recorded live observation (AC-CPS-016) can show that.
+const codexNativeReviewFormatPin = "Use exactly this output format so the review can be parsed: " +
+	"the first line of your response is `" + codexAdversarialVerdictFormat + "` — one of " +
+	"`Verdict: pass`, `Verdict: fail`, or `Verdict: inconclusive` — with no greeting or " +
+	"other text before it; then each finding on its own line as `" + codexAdversarialFindingFormat +
+	"`, with the severity tag P0 to P3 in brackets, and any further detail, confidence, or " +
+	"recommendation on indented lines below it. Do not put findings in a table."
 
 // codexAdversarialReviewPrompt builds the adversarial-review prompt text the
 // adversarial mode sends to codex turn/start (design.md §3 M2 / report §3.4).

@@ -41,15 +41,18 @@ type codex1718Synthesis struct {
 // codex1718Expected is the synthesis table TestCodex1718Fixtures asserts,
 // row for row.
 //
-// History, kept because the table changed meaning once: the commit that
-// introduced these fixtures asserted the PRE-change outputs — the values E-1718
-// recorded for the raw bodies (S1 and S2 inconclusive/0 on turn/start and
-// pass/0 on review/start, S2p fail/0 on both) — which closed AC-CPS-011's
-// fidelity check. Candidate (a) then widened the recognizers, and the rows
-// below are the post-(a) expectation (AC-CPS-012): every S-fixture yields fail
-// with its declared finding count on both paths. N1 and N2 are unchanged from
-// the pre-change baseline — a widening that reads either as a stated verdict
-// fails this table.
+// History, kept because the table has changed meaning twice. The commit that
+// introduced these fixtures asserted the PRE-change outputs — the values
+// E-1718 recorded for the raw bodies (S1 and S2 inconclusive/0 on turn/start
+// and pass/0 on review/start, S2p fail/0 on both) — which closed AC-CPS-011's
+// fidelity check. Candidate (a) then widened the recognizers, and the S rows
+// moved to the post-(a) expectation (AC-CPS-012): every S-fixture yields fail
+// with its declared finding count on both paths. M4 (candidate (b),
+// AC-CPS-004) moved the N1/N2 review/start rows a second time: the native
+// request now pins its output format, so a no-signal body — which both N
+// fixtures are — is downgraded from the silent pass/0 the pre-M4 table
+// asserted to inconclusive/0. A widening that reads either as a stated
+// verdict still fails this table.
 var codex1718Expected = []codex1718Synthesis{
 	{"S1.txt", codexMethodTurnStart, "fail", codex1718S1DeclaredFindings},
 	{"S1.txt", codexMethodReviewStart, "fail", codex1718S1DeclaredFindings},
@@ -58,9 +61,9 @@ var codex1718Expected = []codex1718Synthesis{
 	{"S2p.txt", codexMethodTurnStart, "fail", codex1718S2DeclaredFindings},
 	{"S2p.txt", codexMethodReviewStart, "fail", codex1718S2DeclaredFindings},
 	{"N1.txt", codexMethodTurnStart, VerdictInconclusive, 0},
-	{"N1.txt", codexMethodReviewStart, "pass", 0},
+	{"N1.txt", codexMethodReviewStart, VerdictInconclusive, 0},
 	{"N2.txt", codexMethodTurnStart, VerdictInconclusive, 0},
-	{"N2.txt", codexMethodReviewStart, "pass", 0},
+	{"N2.txt", codexMethodReviewStart, VerdictInconclusive, 0},
 }
 
 func readCodex1718Fixture(t *testing.T, name string) string {
