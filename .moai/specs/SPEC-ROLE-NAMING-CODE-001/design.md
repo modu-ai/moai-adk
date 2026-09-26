@@ -1,7 +1,7 @@
 ---
 id: SPEC-ROLE-NAMING-CODE-001
 title: "Design — role naming unification (code + CLI)"
-version: "0.2.0"
+version: "0.3.0"
 created: 2026-09-26
 ---
 
@@ -12,13 +12,13 @@ created: 2026-09-26
 | # | Decision | Chosen | Rejected alternative | Why |
 |---|---|---|---|---|
 | D1 | Role nouns | `leader`, `lane` | keep `lead`/`worker` | Operator directive t1256. CJK notices already say 리더/레인, リーダー/レーン, 主导/泳道 — only the English text and the CLI tokens disagree (census §4.2) |
-| D2 | Legacy CLI spellings | **reject** `-f worker`, `-f agent`, `worker-<n>`, `agent-<n>`, `lead`, `lead-<suffix>`: one error line naming the canonical form, non-zero exit, nothing written | keep-alias + hint (v0.1.0) | Operator decision O0 (2026-09-26): aliases removed immediately, no deprecation path. `lead` falls under the same "no compatibility aliases" rule — a leader-derived extension, flagged for Kickoff confirmation (plan.md §B O0) |
+| D2 | Legacy CLI spellings | **reject** `-f worker`, `-f agent`, `worker-<n>`, `agent-<n>`, `lead`, `lead-<suffix>`: one error line naming the canonical form, non-zero exit, nothing written | keep-alias + hint (v0.1.0) | Operator decision O0 (2026-09-26): aliases removed immediately, no deprecation path. `lead` falls under the same "no compatibility aliases" rule — confirmed by the operator in the lane window on 2026-09-26 (plan.md §B O0) |
 | D3 | Environment variable names | **keep** the four names; no second name | dual-name window; hard rename | A single retained name is not an alias, so "no aliases" does not force a rename. A dual-name window IS an alias mechanism and O0 excludes it. A hard rename breaks card t1242's REQ-CFR-006/007/020 (names enumerated, allowlist frozen) and the `env_vars` line already in users' `.codex/config.toml`. Values follow the new vocabulary (`lane-<n>`, `leader[-…]`) |
-| D4 | Persisted role/slot/label values | **write-new, recognize-new-only, never rewrite**; a live legacy record in the same run triggers the run-boundary refusal (REQ-RNC-022); a dead one is stale; history is displayed verbatim | write-current / read-both (v0.1.0); one-shot migration | Read-both is a read-side alias and contradicts O0. A migration would rewrite live identity (a session still named `worker-3` would see its row say `lane-3`) and historical provenance. The run boundary turns the one real transition — a run started by the old binary — into a visible relaunch instead of a silent mapping |
+| D4 | Persisted role/slot/label values | **write-new, recognize-new-only, never rewrite**; a live legacy record of the same factory run triggers the run-boundary refusal (REQ-RNC-022); a legacy role declaration and a live legacy kanban registry entry follow REQ-RNC-025; a dead one is stale; history is displayed verbatim; the retire step works on a legacy-only run (REQ-RNC-024) | write-current / read-both (v0.1.0); one-shot migration | Read-both is a read-side alias and contradicts O0. A migration would rewrite live identity (a session still named `worker-3` would see its row say `lane-3`) and historical provenance. The run boundary turns the one real transition — a run started by the old binary — into a visible relaunch instead of a silent mapping |
 | D5 | Schema | frozen | rename tables/columns | Same direction as t1242 REQ-CFR-015; a rename needs a migration for zero user-visible gain |
 | D6 | Session labels | new sessions write `lane-<n>` and `leader[-…]` | keep `worker-<n>`/`lead` labels | Labels are what the operator sees in `ListAgents`, the session list, and SendMessage addresses — they are the notation |
-| D7 | Factory role marker value | `lane`; guard recognizes `lane` only | guard set {`lane`,`worker`,`agent`} (v0.1.0) | No aliases. No fail-open window: the only stamper is card t1240, ordered after this SPEC, so no production session ever carries `worker`; t1245's REQ-AP-013 equality assertion (value = `-f` token = label prefix) keeps stamp and guard on one definition |
-| D8 | Go identifiers | rename role-sense identifiers; last milestone | strings only | Identifiers naming a retired noun re-seed the old vocabulary in every future diff. Mechanical, compiler-checked, so it goes last. Still open as O7 |
+| D7 | Factory role marker value and its coupling | `lane`; guard recognizes `lane` only; value, `-f` token, and lane-label prefix held equal by t1245's REQ-AP-013 **equality assertion** — the one coupling mechanism; stamp and compare sites pass the value constant | guard set {`lane`,`worker`,`agent`} (v0.1.0); requiring the three carriers to reference one shared definition | No aliases. No fail-open window: the only stamper is card t1240, ordered after this SPEC, so no production session ever carries `worker`. The shared-definition alternative is rejected: t1245 chose the assertion because `internal/config` cannot import `internal/cli`, and two coupling rules for one value would be two things to keep in step |
+| D8 | Go identifiers | rename role-sense identifiers; last milestone; env name constants keep their names with a comment saying why | strings only | Operator decision O7 (lane window, 2026-09-26). Identifiers naming a retired noun re-seed the old vocabulary in every future diff. Mechanical, compiler-checked, so it goes last |
 | D9 | `manager-lead` | untouched | rename | Operator decision Q4 |
 | D10 | Homonyms (CG-mode leader, Agent Teams lead) | qualifier next to the noun in user-facing text (`CG leader`, `team lead`); identifiers and fields untouched | rename | Operator decision Q5 |
 | D11 | Lane self-dispatch up to promotion | no enforcement change — the pick path has no role guard today; only the `todo next` help text changes (REQ-RNC-021) | add a lane-allow branch | Operator decision Q3. Measured: `internal/cli/todo.go` pick path (`newTodoNextCmd`) reads no role declaration; the board write guard (`requireLeadRole`, `internal/kanban/board_store.go:190`) governs board columns, not the queue, and stays leader-only. The documented HARD promotion clause is t1257's |
@@ -33,7 +33,10 @@ created: 2026-09-26
 | leader label | `leader`, `leader-<n>`, `leader-<run-id>` | `lead`, `lead-<suffix>` | refused, error names `leader[-…]` | `leads.json` key = `leader[-…]` |
 | broker `peers.role` / `peers.slot` | `leader`/`leader`, `lane`/`lane-<n>` | old rows `lead`, `worker`, `worker-<n>` | live in own run → REQ-RNC-022 refusal; dead → stale | new values only |
 | broker `to_slot` input | `leader`, `lane-<n>` | `lead`, `worker-<n>`, `agent-<n>`, `worker`, `agent` | error naming the canonical slot, nothing delivered | — |
-| role declaration `role` | `leader`, `lane` | `lead` | live → REQ-RNC-022; board write refused (fails closed) | new values only |
+| board role declaration `role` | `leader`, `lane` | `lead` | REQ-RNC-025: board write refused (fails closed) | new values only |
+| session record `role` (SessionStart) | `leader`, `lane` | `lead` | REQ-RNC-025: stale-run notice; the writer leaves the existing record byte-identical | new values only |
+| kanban `leads.json` entry | `leader[-…]` | live `lead[-…]` | REQ-RNC-025: one notice, entry untouched, launch proceeds as `leader` (no run id; never-block kept) | new values only |
+| run-retire owner lookup (legacy row, `lead_pid = 0`) | `leader` peer | `lead` peer | REQ-RNC-024: peer process identity read as identity evidence only; retire succeeds once dead | — |
 | factory card owner | `leader`, `lane-<n>` | historical `lead`, `worker-<n>` | displayed verbatim, never rewritten | new values only |
 | env var names | unchanged | — | — | — |
 | env var values | `leader[-…]`, `lane-<n>` | — | — | — |
@@ -43,7 +46,7 @@ Label-identity note: a label is the session's name, so a lane launched after the
 
 Persisted-data impact (stated explicitly, REQ-RNC-022):
 
-- **Mid-run binary reinstall** now requires retiring the running factory or kanban run and relaunching it. A leader session declared `lead` loses board write access (the sole-writer refusal names the relaunch step); a new lane cannot join a run whose live claims or peers are in the old vocabulary.
+- **Mid-run binary reinstall** now requires retiring the running factory or kanban run and relaunching it. A leader session declared `lead` loses board write access (the sole-writer refusal names the relaunch step); a new lane cannot join a factory run whose live claims or peers are in the old vocabulary. The retire step is `moai factory runs --retire <run-id>` after the run's sessions have exited; REQ-RNC-024 keeps it working on a run whose leader peer is recorded only as `lead`.
 - **Downgrade** across this change also requires a relaunch: a pre-change binary does not recognize `leader` or broker role `lane`.
 - **Existing state files** keep every old row; nothing is rewritten. Dead old rows age out through the existing stale-record paths. Factory card history keeps the owner names that were true at the time.
 
@@ -67,8 +70,11 @@ Terms that are NOT the role and must not be translated or replaced by t1257 eith
 - The CLI role token pair (`internal/cli/factory.go:59`, `:64`) becomes one canonical `lane`; the single hint site (`legacyFactorySpellingHint`) becomes the rejection-message site.
 - The broker's legacy-slot matcher (`internal/factorymsg/store.go:400-411`) that probes `worker-%d`/`agent-%d`/`lane-%d` is reduced to `lane-%d`; legacy slot inputs return an error naming the canonical slot.
 - The leader label constant is also the persisted role value today (`kanban.RoleLead = "lead"`, used by `LeadLabel()` and by the board write guard). Under D4 both become `leader`, so they stay one value — the split v0.1.0 needed is gone. The risk moves to the stale-record path: a `lead` declaration must produce a sole-writer refusal whose message names the relaunch step (plan.md R1).
+- The SessionStart role-declaration writer (`internal/hook/session_start_record.go`) re-derives the role from the environment on every fire (`kanbanRoleFromEnv` returns `kanban.RoleLead` whenever `MOAI_FACTORY_WORKERS` or `MOAI_KANBAN` is set) and writes it with `kanban.WriteBestEffort`. It writes the session **record** (`internal/kanban/record.go`), a different artifact from the board role declaration the board write guard reads (`internal/kanban/role.go`). It is a writer, not only a reader: after a reinstall, an old leader session's next SessionStart would overwrite its `lead` record with `leader`, adopting it. REQ-RNC-025 makes it consult the launch label and the existing record first and leave a legacy record byte-identical.
+- The run-retire owner lookup falls back, for a run row with `lead_pid = 0`, to the run's `role='lead'` broker peer (`internal/homestate/factory_run_retire.go:181-194` calling `internal/factorymsg/factory_run_retire.go` `LeadPeerIdentity`); no identity means `OwnerIndeterminate`, and `retirable` accepts only `OwnerDead`. After the rename the fallback reads the `leader` peer, and REQ-RNC-024 has it also read a `lead` peer's pid and process start — identity evidence only — so a legacy-only run stays retirable.
+- Kanban run membership is not defined by a run id (`leads.json` holds names and liveness only, and `resolveLeadName` never blocks, `internal/cli/kanban.go:376-390`), so the launch-refusal half of the run boundary applies to factory runs only; kanban enforces the boundary on the legacy session's own declaration (REQ-RNC-025).
 - `internal/web` matches declared roles against a list that includes `lead`; it becomes `leader`, and a `lead` match is rendered as a legacy run.
-- The role-marker value constant (t1245) flips to `lane`; t1245's equality assertion then binds token, prefix, and marker to one spelling.
+- The role-marker value constant (t1245) flips to `lane`; t1245's equality assertion then holds token, prefix, and marker equal — the assertion, not a shared definition, is the coupling (D7).
 
 ## §5 Rejected: rename env vars with a dual-name window
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-ROLE-NAMING-CODE-001
 title: "Research — role naming unification (code + CLI)"
-version: "0.2.0"
+version: "0.3.0"
 created: 2026-09-26
 ---
 
@@ -43,9 +43,10 @@ The label rename is therefore a prefix swap plus hint text. The leader side has 
 | Store | Role-bearing items | Source |
 |---|---|---|
 | factory.db | table `workers` (label, pid…); `runs.lead_session_id/lead_backend/lead_pid/lead_process_start`; meta `legacy_workers_imported` | `internal/homestate/factory.go:24-40,302-303,397,430` |
-| broker DB | `peers.role` ∈ {lead, worker}, `peers.slot` ∈ {lead, worker-<n>}; `WHERE role='lead'` in run retire | `hook/factory_messages.go:59-61`, `cli/factory_launch_pending.go:47-49`, `factorymsg/factory_run_retire.go:33` |
+| broker DB | `peers.role` ∈ {lead, worker}, `peers.slot` ∈ {lead, worker-<n>}; `WHERE role='lead'` in the run-retire legacy-row fallback (consulted when `runs.lead_pid = 0`; no identity → `OwnerIndeterminate`, and only `OwnerDead` is retirable, `homestate/factory_run_retire.go:141,181-194`) | `hook/factory_messages.go:59-61`, `cli/factory_launch_pending.go:47-49`, `factorymsg/factory_run_retire.go:33` |
 | broker DB | `lane_*` tables ×7, `dispatches.lane_slot` | already lane — no change |
-| role declarations | `role` ∈ {lead, lane, plan, run, sync}; `lane` int field | `kanban/role.go:35,46`, `record.go:112` |
+| board role declarations (`RoleDeclaration`, under the board directory's `roles/`) | `role` ∈ {lead, lane, plan, run, sync}; read by the board write guard (`ResolveDeclaredRole` → `requireLeadRole`, `kanban/board_store.go:190-199`); `grep -rn 'DeclareRole\b' internal cmd --include='*.go'` without `_test.go` finds no production caller outside `role.go` | `kanban/role.go:35,46,56,77,118` |
+| session records (`Record`, written by SessionStart) | `role` re-derived from the environment on every SessionStart fire (`kanbanRoleFromEnv`) and written best-effort — a writer, not only a reader; read by the web view model | `kanban/record.go:57,112,150,228`; `hook/session_start_record.go:105,131-143`; `web/viewmodel_ops.go` |
 | registries | `leads.json` (kanban leader names), `workers.json` (legacy import only) | `cli/kanban.go:373`, `kanban/factory_slots.go:66,176` |
 | factory cards | owner = lane label or `lead` | `cli/todo.go:1001-1003` |
 
