@@ -148,7 +148,6 @@ by something narrower.
 - **Silent write race.** Messaging a peer about a shared path and then writing it anyway, without isolation, because the peer answered.
 - **Broadcast noise.** Messaging every listed session rather than the one whose work is affected.
 
-
 ## The stopped-teammate registry
 
 The PreToolUse refusal named in `cross-session-messaging.md` § Rules reads one file per session:
