@@ -154,4 +154,24 @@ Residual-risk：
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase (manager-docs)_
+```yaml
+sync_complete_at: 2026-09-26
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-CI-VERDICT-PRODUCER-001' CHANGELOG.md = 0 (pre-emission) — no duplicate"
+b12_self_test_b: "acceptance.md distinct AC = 8 (AC-CV-001..008; AC-AE-012 is an external cross-reference, not counted); CHANGELOG entry references 8 AC-CV criteria — match"
+b12_self_test_c: "all paths in CHANGELOG entry verified via ls/grep: internal/civerdict/, internal/cli/ci_verdict.go, internal/verify/localpass.go, internal/escalation/operational.go"
+changelog_entry_position: "Added, first entry of [Unreleased]"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (merged 3-phase close, single sync commit)"
+  plan_md: n/a (no frontmatter status field)
+  acceptance_md: n/a (no frontmatter status field)
+  progress_md: n/a (progress carries §E.4 signal, not frontmatter status)
+  updated_field: "2026-09-26 (unchanged — sync same day)"
+canary_compliance_check:
+  spec_body_untouched: true
+  forbidden_files_touched: false
+  mx_delta: "1 @MX:NOTE added on internal/escalation/operational.go ciLimb (public-behavior seam); existing [AUTO] tags on civerdict.go / ci_verdict.go / localpass.go left as-is"
+```
+
+Docs surfaces: README "CLI command table (17 frequently used)" deliberately NOT extended — the table is a curated frequently-used subset and `moai ci-verdict` is a niche evidence verb; the docs-site CLI-reference page (49-command count) lives in a separate repository and is flagged to the lead for the next release sweep.
