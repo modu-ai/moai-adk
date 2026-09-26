@@ -34,7 +34,7 @@
 - F2 [Low] `internal/cli/contract.go:55-57` 주석이 "stdinIsTerminalFn 은 널 장치를 통과시킨다"고 적어 이번 수리로 거짓이 됨. **수리함**(주석만).
 - F6 [Low] 로그 파일들은 gitignore 대상이라 커밋되지 않음 — 결정 줄은 이 판정서에 인용해 둠.
 - F7 [Info] 한 줄 래퍼 `stdinIsTerminal` 커버리지 0% — 판정 본체 `isTerminalFile` 은 100%.
-- 재감사는 돌리지 않았다. F1 은 위 명령으로 리드가 같은 SHA 에서 다시 잴 수 있다.
+- 재감사 생략(리드 판단): `sync-audit.md` 186행이 "F1 을 수리하면 재감사는 F1 한 건(`golangci-lint run ./internal/cli/` 0건 확인)으로 범위를 좁혀도 된다"고 정했고, 레인이 그 명령으로 `0 issues.` 를 관측했다. 로컬 lint 는 v2.10.1, CI 는 v2.1.6 이므로 최종 판정은 CI 다.
 
 ## 미확인 형제 후보 (범위 밖 — 후속 카드 여부는 리드 판단)
 같은 `os.ModeCharDevice` 판정식이 남아 있는 곳. 판정식이 `/dev/null` 에 true 를 낸다는 것만 확인했고, 명령을 끝까지 돌려 결함을 확인하지는 않았다.
