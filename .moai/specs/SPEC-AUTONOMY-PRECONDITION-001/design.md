@@ -232,7 +232,7 @@ would trade a real protection for a phrasing.
   | `RecoveryConditions` | `["sign --resign after acceptance change"]` | — |
   | `RevocationBehavior` | `"stop-before-next-action"` | — |
   | `PolicyVersion` | `"contract-v1"` | — |
-  | **`Approved`** | the contract's signature state (`signed-valid` → true) | **absent from A1's draft.** `contractComplete` requires it (`internal/mission/contract.go:60`), so a projection built from the drafted 13 rows alone is refused `incomplete_contract` and every verdict fails closed |
+  | **`Approved`** | the contract's signature state (`signed-valid` → true) | **absent from A1's draft.** `contractComplete` requires it (`internal/mission/contract.go:60`), so a projection built from the drafted 12 rows alone is refused `incomplete_contract` and every verdict fails closed |
   | *(not projected)* | `card` (A1 REQ-CONTRACT-001) | enumerated as **deliberately not projected** — a bare unmapped-field rule would fail every contract on it, since `card` is required and has no mission counterpart |
 
   `mission_contract_sha256` is not recorded — A1 `:85` keeps the contract digest as the sole tamper

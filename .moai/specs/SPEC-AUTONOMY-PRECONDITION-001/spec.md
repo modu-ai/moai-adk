@@ -106,9 +106,13 @@ was read as `git show 25283ebf8:.moai/specs/SPEC-AUTONOMY-CONTRACT-001/spec.md`,
 than the v0.5.1 (`65e0a9167`) the dispatch named**, for two measured reasons: v0.5.2 is the newer
 commit on the same history and is the revision that *corrected the mission-projection owner and the
 sign-deny attribution to A2b* — the very statements this SPEC cites — and the sibling A2 SPEC already
-pins there (`78a95ee03`, "pin A1 citations to v0.5.2 25283ebf8"). The v0.5.1→v0.5.2 diff shifts every
-line after 30 by one, so a v0.5.1 pin would carry line numbers that are off by one against the text
-actually quoted here.
+pins there (`78a95ee03`, "pin A1 citations to v0.5.2 25283ebf8"). The v0.5.1→v0.5.2 diff shifts
+later lines **non-uniformly**, which is why a v0.5.1 pin cannot be rescued by a constant offset:
+measured by locating each v0.5.2 line verbatim in the v0.5.1 blob, the `### Out of Scope —
+Mission-validator projection` heading moves `78 → 79` (**+1**) while `:329`, `:410` and `:462` each
+move by **+3**, and `:231` — the interim-A1-rule line — has **no v0.5.1 counterpart at all**. The
+file grows 520 → 524 lines. A v0.5.1 pin would therefore carry line numbers off by a varying amount
+against the text actually quoted here, and would cite one statement that did not yet exist.
 
 ### C.1 `moai slot` and the `push-develop` lease — **EXISTS (the resource does not yet)**
 
@@ -207,8 +211,11 @@ receipt-path invocation is *allowed* could only turn green once A3 implements is
 the shape of finding **N5**, the defect that caused this split. Repeating it here would make t1245
 uncompletable in the same way. Therefore:
 
-- No receipt-path allowance is specified. The guard denies **every** `sign` / `decide` invocation
-  outright and recognizes no exemption (REQ-AP-003, REQ-AP-004).
+- No receipt-path allowance is specified, and the guard grants **no** exemption — it never reads
+  `--receipt`. Every **human-path** `sign` invocation is denied whatever a `--receipt` argument says
+  (REQ-AP-003). The non-interactive path and `decide` are gated on the role marker rather than on a
+  receipt (REQ-AP-011): `--signer` selects which rule applies, and `--receipt` travels through as an
+  opaque argument the guard does not inspect.
 - The transferred criterion `AC-AE-025` is **not carried**; it is recorded in §H as excluded, owned
   by A3 (t1236), reason N5. This is a lead decision, so it is not an open clarification.
 - The guard consequently depends on no A1 or A3 interface at all — a strictly smaller surface than
@@ -340,14 +347,14 @@ A1 v0.5.2 assigns the projection to this SPEC and supplies a draft. `25283ebf8:�
 >   Mission Projection.
 > - A1 records no `mission_contract_sha256`; the contract digest is the sole tamper authority.
 
-The drafted 13-row mapping is at `25283ebf8:…/design.md:470-494`. **This SPEC adopts it** — it maps
+The drafted 12-row mapping is at `25283ebf8:…/design.md:470-494`. **This SPEC adopts it** — it maps
 onto the real `mission.MissionContract` field set — **with three corrections, each measured in this
 tree rather than inferred:**
 
 1. **The table is one field short, and the missing field is the one that decides admission.**
-   `mission.MissionContract` has **14** fields (`internal/mission/contract.go:32-46`); the drafted
-   table covers 13 and omits `Approved bool`. `contractComplete` (`:55-61`) requires
-   `c.Approved` true, so a projection built from the 13 drafted rows alone is rejected by the sealer
+   `mission.MissionContract` has **13** fields (`internal/mission/contract.go:32-46`); the drafted
+   table covers 12 and omits `Approved bool`. `contractComplete` (`:55-61`) requires
+   `c.Approved` true, so a projection built from the 12 drafted rows alone is rejected by the sealer
    as `incomplete_contract` (`internal/mission/contract.go:82`) and **every** verdict fails closed.
    REQ-AP-008 therefore requires the projection to set `Approved` from the contract's signature
    state, and AC-AP-014 asserts a signed-valid fixture reaches a verdict at all.

@@ -57,7 +57,9 @@ base `develop` at `553e224f3`.
 - **v0.1.2 revisions** (iter-1 audit delta + three lead rulings): citations re-pinned to `d8926ff9a`
   (transferred text) and `25283ebf8` (A1 v0.5.2, superseding the v0.5.1 `65e0a9167` the dispatch named
   — v0.5.2 is the revision that corrected the mission-projection and sign-deny attributions to A2b,
-  the statements this SPEC cites, and the v0.5.1→v0.5.2 diff shifts every line after 30 by one);
+  the statements this SPEC cites, and the v0.5.1→v0.5.2 diff shifts later lines non-uniformly — +1 at
+  the § Out of Scope heading, +3 at `:329` / `:410` / `:462`, and `:231` added with no v0.5.1
+  counterpart, 520 → 524 lines — so no constant offset rescues a stale pin);
   the outright deny split into three rules (REQ-AP-003 boundary-keyed human path; REQ-AP-011 role-keyed
   non-interactive path and `decide`; a no-marker session allowed to `decide`); REQ-AP-012 defining the
   marker constants so the role gate is evaluable without card t1240; REQ-AP-010 narrowed to a rule file

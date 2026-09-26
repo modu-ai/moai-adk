@@ -41,10 +41,11 @@ one reuse projection; they share the contract resolver and nothing else.
 
 1. Re-read branch and HEAD (`git -C <tree> rev-parse --short HEAD`, `git -C <tree> branch --show-current`)
    and confirm `WT-push-serialize-sign` on a tree descended from `553e224f3`.
-2. Re-measure every spec.md §C row against the tree at run-phase start. Two rows are expected to
-   have **changed** by then: `moai contract sign` exists once A1 lands (§C.2), and the template
-   autonomy block exists once A1 lands (AC-AP-013). A changed row is a premise update recorded in
-   progress.md, not a silent adjustment.
+2. Re-measure every spec.md §C row against the tree at run-phase start. One row is expected to have
+   **changed** by then: `moai contract sign` exists once A1 lands (§C.2). The template autonomy
+   block is **not** on this list — D1's closure re-pointed `AC-AP-013` at the `paths:`-scoped rule
+   file and template mirror *this change* creates (§C.10), so no criterion waits on A1's block. A
+   changed row is a premise update recorded in progress.md, not a silent adjustment.
 3. Confirm `moai contract show --json` exists and emits `push_requires_lease` — the contact point
    A1 declares at `25283ebf8:…/spec.md:410`. Both were measured **absent** at `553e224f3`
    (spec.md §C.6). Where A1 renamed or dropped either, stop and report rather than inventing a
@@ -54,8 +55,10 @@ one reuse projection; they share the contract resolver and nothing else.
    `:155-156`, `:329`, `:410`, `:462`, and `design.md:416-426`, `design.md:470-494`). A moved
    statement is a premise update recorded in progress.md, and the pin in the SPEC body is then
    advanced with the quotation re-read, never silently re-pointed. **A1 advanced twice while this SPEC
-   was in plan phase** (v0.5.0 → v0.5.1 → v0.5.2), and the v0.5.1→v0.5.2 diff shifted every line after
-   30 by one — so this step is not ceremony.
+   was in plan phase** (v0.5.0 → v0.5.1 → v0.5.2), and the v0.5.1→v0.5.2 diff shifted later lines
+   **non-uniformly** (+1 at the § Out of Scope heading, +3 at `:329` / `:410` / `:462`, and `:231`
+   added with no v0.5.1 counterpart; 520 → 524 lines) — so a constant offset would not rescue a
+   stale pin, and this step is not ceremony.
 6. Confirm the two `internal/mission` facts the projection is written against still hold:
    `targetInsideScope` is exact-or-prefix (`internal/mission/policy.go:112-118`) and
    `contractComplete` still requires `Approved` and `MaxOperations > 0`
@@ -126,7 +129,7 @@ count, plus the cross-platform build. The full gate list is acceptance.md §H.
 ### M4 — Mission-validator projection (mapping, now that A1 has drafted it)
 
 - REQ-AP-008; design.md §D, spec.md §C.11.
-- One-way projection over A1's adopted 13-row mapping plus the three corrections: populate `Approved`
+- One-way projection over A1's adopted 12-row mapping plus the three corrections: populate `Approved`
   and a positive `MaxOperations`; translate a trailing `/**` to a prefix and fail closed on an
   inner-wildcard glob; carry an enumerated deliberately-not-projected list with `card` on it. Fail
   closed on any other unmapped field; mission's exported surface untouched.
@@ -170,13 +173,16 @@ count, plus the cross-platform build. The full gate list is acceptance.md §H.
 
 ## §I — Open questions for the lead
 
-- **O1** [RESOLVED — `decide` is in scope, denied outright.] Recorded without blocking: **no track
-  defines a `decide` verb** (spec.md §C.3). Name its owner when one exists; until then AC-AP-008
-  keeps the deny evaluable.
-- **O2** [PARTIALLY RESOLVED — the outright-deny scope is adopted in full.] Still open: whether a
-  **role** distinction (lead vs lane) is wanted. `MOAI_FACTORY_ROLE` does not exist, so the
-  predicate is the tool-call boundary, which denies in every session and therefore covers the
-  ruling (spec.md §C.7). Confirm, or name the distinction and its owner.
+- **O1** [RESOLVED] — disposition at spec.md §F O1, which is the single canonical copy: `decide` is in
+  scope, gated by the role-scoped rule REQ-AP-011, and owned by **A3 (card t1236)**. Read it there
+  rather than here; a second copy is what let the v0.1.1 wording ("denied outright", "owner
+  unidentified") survive the ruling that superseded it.
+- **O2** [RESOLVED as to scope] — disposition at spec.md §F O2, likewise canonical: the lead's
+  three-way split is adopted in full (§C.3) — the tool-call boundary for the human path, the role
+  marker for the non-interactive path and `decide`, and an **allow** for a session carrying no
+  marker. The marker's name and value constants are defined by **this SPEC** in
+  `internal/config/envkeys.go` (REQ-AP-012), so nothing here waits on card t1240. What remains is a
+  residual exposure, not a question (§E C7).
 - **O3** [RESOLVED — lead ruling 2026-09-26.] SPEC body register stays **English**. The first dispatch
   asked for Korean prose *and* for matching the sibling SPEC's register, and the sibling
   (SPEC-AUTONOMY-ESCALATION-001) is English technical prose; the lead resolved the contradiction in
