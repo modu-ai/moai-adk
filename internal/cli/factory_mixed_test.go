@@ -16,6 +16,23 @@ import (
 )
 
 func TestFactoryLauncherRegistersLaunchPendingPeers(t *testing.T) {
+	checkFactoryLauncherRegistersLaunchPendingPeers(t)
+}
+
+// TestFactoryLauncherRegistersLaunchPendingPeersUnderLaneEnv exports a lane's
+// launch variables before the same check: its final os.Environ() launch must
+// still read as non-factory (card t1222).
+func TestFactoryLauncherRegistersLaunchPendingPeersUnderLaneEnv(t *testing.T) {
+	t.Setenv(config.EnvMoaiKanbanID, "run-t1222-probe")
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-7")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
+	checkFactoryLauncherRegistersLaunchPendingPeers(t)
+}
+
+func checkFactoryLauncherRegistersLaunchPendingPeers(t *testing.T) {
+	t.Helper()
+	// The final launch passes os.Environ() and expects a non-factory result.
+	clearFactoryTestEnv(t)
 	t.Setenv("MOAI_HOME", t.TempDir())
 	root := t.TempDir()
 	run := "run-launch-pending"

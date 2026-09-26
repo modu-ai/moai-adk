@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // execHelperEnv gates the helper below. It is deliberately checked FIRST in the
@@ -45,6 +47,29 @@ func TestSessionPIDStampExecHelper(t *testing.T) {
 // It spawns exactly one bounded child, which immediately execs a shell — there
 // is no recursion into the suite and no background load.
 func TestExecOrSpawnClaude_StampsLiveSessionPID(t *testing.T) {
+	checkExecStampsLiveSessionPID(t)
+}
+
+// TestExecOrSpawnClaude_StampsLiveSessionPIDUnderLaneEnv runs the same check
+// with a factory lane's launch variables exported. The child inherits the
+// parent's environment, so unless the check pins those variables the child
+// takes the factory launch-pending path — against the real broker in a real
+// lane (card t1222). MOAI_HOME is redirected first so this test itself can
+// never reach a live broker.
+func TestExecOrSpawnClaude_StampsLiveSessionPIDUnderLaneEnv(t *testing.T) {
+	t.Setenv(config.EnvHome, t.TempDir())
+	t.Setenv(config.EnvMoaiKanbanID, "run-t1222-probe")
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-7")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
+	checkExecStampsLiveSessionPID(t)
+}
+
+func checkExecStampsLiveSessionPID(t *testing.T) {
+	t.Helper()
+	// The child inherits os.Environ(); clearing the factory launch variables
+	// here keeps it off the launch-pending path that would write a peer into
+	// whatever broker MOAI_HOME names.
+	clearFactoryTestEnv(t)
 	if _, err := os.Stat("/bin/sh"); err != nil {
 		t.Skipf("/bin/sh unavailable: %v", err)
 	}
