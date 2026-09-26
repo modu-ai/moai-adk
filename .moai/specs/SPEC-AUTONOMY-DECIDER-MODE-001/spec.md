@@ -2,7 +2,7 @@
 id: SPEC-AUTONOMY-DECIDER-MODE-001
 title: "Contract-mode kickoff decider default measurement — llm vs llm+jev on a discriminable population (card t1261, AUTONOMY-A5b)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-26
 updated: 2026-09-26
 author: manager-spec
