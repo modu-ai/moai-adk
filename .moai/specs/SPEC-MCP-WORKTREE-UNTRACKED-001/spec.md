@@ -2,7 +2,7 @@
 id: SPEC-MCP-WORKTREE-UNTRACKED-001
 title: "Accept a linked worktree as project_root when the repository keeps .moai/ out of git"
 version: "0.7.0"
-status: draft
+status: in-progress
 created: 2026-09-26
 updated: 2026-09-26
 author: manager-spec (card t1202)

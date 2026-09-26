@@ -117,11 +117,132 @@ Source: `.moai/reports/t1202/plan-audit-delta2.md` (FAIL 0.87, blocked by D34; D
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run base: `e29000671` (origin/develop merged in). Commits: RED `f1d578b72`, fix
+`2d3bd5061`, rule doc `01d16be19`. All tests below ran against HEAD `01d16be19`
+unless marked otherwise; fixtures use `t.TempDir()` with `GIT_CONFIG_GLOBAL` /
+`GIT_CONFIG_SYSTEM` pointed at an empty file plus `GIT_CONFIG_NOSYSTEM=1`.
+
+M1 re-verification after the develop merge: the validator's rejection site is
+still the `.moai` stat at the end of `validateProjectRoot`
+(`internal/cli/mcp_project_root.go`); the three gate readers are unchanged —
+`applyGateUnmet` (`mcp_codex.go`), `workflowAuditGates` → `enforceRequiredGateUnmet`
+(`mcp_convergence.go`), `recordAuditReceipt` → `auditreceipt.CodexGateRequired`
+(`mcp_audit_receipt.go`). `spec_audit` still returned no `_root`.
+
+### RED-first (AC-MWU-001)
+
+| Predicate | Command | Observed |
+|---|---|---|
+| (i) ancestry | `git merge-base --is-ancestor f1d578b72 2d3bd5061; echo $?` | `is-ancestor exit=0` |
+| (ii) `_test.go` only | `git show --name-only --format= f1d578b72` | `internal/cli/mcp_project_root_worktree_test.go` |
+| (iii) RED tree fails with the rejection | `go test ./internal/cli/ -run 'TestValidateProjectRoot_AcceptsLinkedWorktreeOfUntrackedMoai$' -count=1` on tree `e29000671` + the RED test file (= tree of `f1d578b72`, run before that commit) | `exit=1`; `mcp_project_root_worktree_test.go:120: validateProjectRoot(W) rejected a linked worktree: project_root ".../W" has no .moai directory, so it is not a MoAI project root`; `FAIL github.com/modu-ai/moai-adk/internal/cli 1.117s` (a test failure, not a build failure) |
+
+### AC matrix
+
+Command for every row unless noted: `go test ./internal/cli/ -run 'TestValidateProjectRoot_AcceptsLinkedWorktreeOfUntrackedMoai|TestLinkedWorktree_|TestValidateProjectRoot_BareMoaiNeedsNoGit|TestConfigOrphanedWorktree_|TestSpecAudit_RootBlockKeepsExistingFields' -count=1 -v` → `exit=0`, `ok github.com/modu-ai/moai-adk/internal/cli 5.449s`.
+
+| AC | Test | Deciding output | Status |
+|---|---|---|---|
+| 001 | `TestValidateProjectRoot_AcceptsLinkedWorktreeOfUntrackedMoai` | `--- PASS (0.19s)` + RED table above | PASS |
+| 002 | `TestLinkedWorktree_TreeOperationsTargetTheWorktree` (diff has W's change only; codex session sent `"cwd":"<W>"`) | `--- PASS (0.44s)` | PASS |
+| 003 | `TestLinkedWorktree_RejectsUnrelatedDirectory` | `--- PASS (0.04s)` | PASS |
+| 004 | `TestLinkedWorktree_RejectsNonMoaiPrimarySelfAndSubdirectory` | `--- PASS (0.37s)`; logged: `…: its primary checkout …/Q has no .moai directory`; `…: it is the repository's primary checkout, which has no .moai directory`; `…: it is not the top level of a worktree (a subdirectory of …/W)` | PASS |
+| 005 | `TestLinkedWorktree_RejectsUnregisteredWorktree` | `--- PASS (0.09s)`; logged: `git could not inspect it as a worktree (not a git repository, an unregistered or unreadable worktree, or git unavailable)` | PASS |
+| 006 | `TestLinkedWorktree_RejectsSeparateGitDirLayout` | `--- PASS (0.13s)`; logged: `ambiguous repository layout (separate git dir, submodule, or bare repository)` | PASS |
+| 007 | `TestLinkedWorktree_SymlinkCanonicalization` | `--- PASS (0.19s)` | PASS |
+| 008 | `TestLinkedWorktree_IgnoresInheritedGitEnvironment` (non-parallel, `GIT_DIR`/`GIT_WORK_TREE` = P) | `--- PASS (0.19s)` | PASS |
+| 009 | `TestLinkedWorktree_FailsClosedWithoutGit` (PATH emptied, premise asserted) | `--- PASS (0.07s)` | PASS |
+| 010 | `TestLinkedWorktree_DanglingSiblingDoesNotRejectW` | `--- PASS (0.29s)` | PASS |
+| 011 | `TestLinkedWorktree_GraphNeverFromPrimary` (positive control: P's query returns `svc.go`) | `--- PASS (0.22s)` | PASS |
+| 012 | `TestValidateProjectRoot_BareMoaiNeedsNoGit` (normal run, then PATH emptied + `GIT_DIR` nonexistent) | `--- PASS (0.00s)` | PASS |
+| 013 | existing tests: package run (below); docs: `diff .claude/rules/moai/core/moai-mcp-tools.md internal/template/templates/.claude/rules/moai/core/moai-mcp-tools.md; echo $?` → `diff exit=0`; neutrality: `grep -nE "SPEC-[A-Z]\|\bt[0-9]{3,4}\b\|20[0-9]{2}-[0-9]{2}-[0-9]{2}" <template copy>` → no match (`exit=1`); `go test ./internal/template/ -run 'TestTemplateNeutralityAudit\|TestTemplateNoInternalContentLeak\|TestMCPTemplateNeutral' -count=1 -v` → `--- PASS: TestTemplateNoInternalContentLeak`, `--- PASS: TestTemplateNeutralityAudit`, `ok … 0.899s`; descriptions: `TestLinkedWorktree_DescriptionsStateTheGateSource` → `--- PASS (0.00s)` | PASS |
+| 014 | `TestConfigOrphanedWorktree_PrimaryGateEnforced` — codex_audit `fail` + `gate_unmet` + `audit_receipt`, audit_multi `overall fail` + `gate_unmet` naming codex, both before and after `W/.moai/state` exists; `hand-moved_worktree`; `relative-path_worktree_from_an_unrelated_cwd` | `--- PASS (1.12s)`, `--- PASS: …/hand-moved_worktree (0.17s)`, `--- PASS: …/relative-path_worktree_from_an_unrelated_cwd (0.17s)` | PASS |
+| 015 | (i) `TestConfigOrphanedWorktree_FailsClosedWhenPrimaryUnidentified` (P declares no codex gate); (ii) `TestConfigOrphanedWorktree_OtherRootsKeepFailOpen` | (i) `--- PASS (0.40s)` with three subtests PASS; logged `gate_unmet="workflow.audit.gates.codex assumed \`required\` because the primary checkout of this worktree could not be identified, and this audit returned no verdict (fail-open inconclusive)"`; (ii) `--- PASS (0.44s)` | PASS |
+| 016 | `TestConfigOrphanedWorktree_CatalogueWarning`; `TestSpecAudit_RootBlockKeepsExistingFields` | `--- PASS (0.63s)`; `--- PASS (0.00s)` | PASS |
+
+### Package runs (quality gate §D.2)
+
+| Check | Command | Observed |
+|---|---|---|
+| internal/cli package (one run, under slot lease `internal-cli-suite`, HEAD `01d16be19`) | `go test ./internal/cli/ -count=1 -timeout 25m` | `ok github.com/modu-ai/moai-adk/internal/cli 1173.600s`, `exit=0` |
+| internal/template | `go test ./internal/template/... -count=1` (after `make build`) | `ok …/internal/template 60.879s`, `ok …/agentemit`, `ok …/commandemit`, `exit=0` |
+| vet | `go vet ./internal/cli/` | `vet=0`, no output |
+| lint | `golangci-lint run ./internal/cli/...` | `0 issues.`, `exit=0` |
+| build | `make build` | `exit=0` |
+| SPEC lint | `./bin/moai spec lint SPEC-MCP-WORKTREE-UNTRACKED-001` (binary built by `make build` at `f1d578b72`-dirty, i.e. this card's working tree; spec-lint code not touched by this card) | `✓ No findings — all SPEC documents are valid` |
+
+Package-wide runs were deliberately **not repeated**: after the single
+internal/cli run above, the lead reported that full-package runs of
+`./internal/cli` and `./internal/hook` write test rows into the real
+`~/.moai` profile-leases.db (known leak, fixed on another card not yet on
+develop). Further verification was narrowed with `-run`; rows already written
+by that one run were left in place as instructed. An earlier unleased
+internal/cli run started by this lane was stopped by its own recorded PIDs
+before completion when the slot convention was noticed; it produced no verdict.
+
+Coverage of the new file (narrowed run, `-coverprofile`): `scrubbedGitEnv`
+100.0%, `runScrubbedGit` 100.0%, `singleGitPath` 75.0%,
+`parseWorktreePorcelain` 88.0%, `identifyPrimaryCheckout` 76.2%,
+`validateLinkedWorktreeRoot` 83.3%, `isConfigOrphanedRoot` 85.2%,
+`resolveAuditGates` 100.0%, `receiptCodexGateRequired` 100.0%,
+`withRootBlock` 80.0%.
+
+### Run-phase mandatory checks (verdict.md)
+
+**RUN-MUST-1 — cwd-resolution mutant.** `isConfigOrphanedRoot` temporarily
+changed to `gitdir, _ = filepath.Abs(gitdir)` for a relative `gitdir:`; a
+temporary probe test evaluated the same relative-path worktree from a
+**sibling** cwd. Command: `go test ./internal/cli/ -run 'TestConfigOrphanedWorktree_PrimaryGateEnforced|TestMutantProbe_RelativeWorktreeFromSiblingCwd' -count=1 -v` → `exit=1`:
+
+```
+mcp_project_root_worktree_gate_test.go:102: relative-path W_R: want verdict fail with gate_unmet, got verdict="inconclusive" gate_unmet="" summary="codex unavailable: codex binary not found in PATH"
+--- FAIL: TestConfigOrphanedWorktree_PrimaryGateEnforced (0.99s)
+    --- PASS: TestConfigOrphanedWorktree_PrimaryGateEnforced/hand-moved_worktree (0.17s)
+    --- FAIL: TestConfigOrphanedWorktree_PrimaryGateEnforced/relative-path_worktree_from_an_unrelated_cwd (0.03s)
+zz_mutant_sibling_test.go:24: sibling cwd=…/002/X rel=../P/.git/worktrees/WR resolves-from-cwd err=<nil>
+--- PASS: TestMutantProbe_RelativeWorktreeFromSiblingCwd (0.25s)
+```
+
+AC-MWU-014(b) kills the mutant; the sibling-cwd fixture does not (the relative
+path resolves from there), which is why the criterion asserts non-resolution
+before the call. Mutant reverted, probe file deleted (never committed).
+
+**RUN-MUST-2 — back-reference mutant.** `isConfigOrphanedRoot` temporarily
+required the admin directory's `gitdir` file to canonically equal
+`<root>/.git`. Command: `go test ./internal/cli/ -run 'TestConfigOrphanedWorktree_PrimaryGateEnforced' -count=1 -v` → `exit=1`:
+
+```
+mcp_project_root_worktree_gate_test.go:81: hand-moved W′: want verdict fail with gate_unmet, got verdict="inconclusive" gate_unmet="" summary="codex unavailable: codex binary not found in PATH"
+mcp_project_root_worktree_gate_test.go:102: relative-path W_R: want verdict fail with gate_unmet, got verdict="inconclusive" gate_unmet="" summary="codex unavailable: codex binary not found in PATH"
+    --- FAIL: TestConfigOrphanedWorktree_PrimaryGateEnforced/hand-moved_worktree (0.05s)
+```
+
+AC-MWU-014(a) kills the mutant. Reverted; the post-revert run of
+`TestConfigOrphanedWorktree_|TestMutantProbe_` returned `exit=0` with every
+subtest PASS.
+
+**Unmeasured premises, now observed** (logged by the committed tests):
+- Submodule git dir has no `commondir`: `premise observed: …/super/.git/modules/sub has no commondir` and `…/super/.git/modules/vendor/worktrees/lib has no commondir`.
+- Deleting the admin-dir `HEAD` makes git exit non-zero: `premise observed: git rev-parse after admin HEAD deletion: exit status 128`.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-26
+run_commit_sha: 01d16be19
+run_status: complete
+ac_pass_count: 16
+ac_fail_count: 0
+red_commit: f1d578b72
+fix_commit: 2d3bd5061
+docs_commit: 01d16be19
+new_warnings_or_lints_introduced: 0
+cross_platform_build: "darwin only (local); windows/linux left to CI"
+total_run_phase_files: 11
+m1_to_mN_commit_strategy: "RED test-only commit, then fix+tests, then rule docs, then SPEC status/evidence"
+package_wide_runs: "internal/cli once (pre-constraint); not repeated per lead instruction (profile-leases.db leak)"
+deferred_to: t1213
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
