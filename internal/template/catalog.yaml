@@ -117,7 +117,7 @@ catalog:
             - name: sync-auditor
               tier: core
               path: templates/.claude/agents/moai/sync-auditor.md
-              hash: 81b60051724d9ff9d930077fd9df16d14f449ee20b770b62f3bf6f6d18412932
+              hash: 92ae216d96e2d6402ee7f1dbee837d22dd0bd88b9e1c4494022d0b9f684ea42e
               version: 1.0.0
             - name: manager-develop
               tier: core
@@ -147,7 +147,7 @@ catalog:
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/moai/plan-auditor.md
-              hash: 696a1e749129896ac0cb55de11aa33ad48049c39fb255aeb2aa38dfc6f54e95e
+              hash: af72de70f09bdb9486135500f7f558ddf1dadaceff9d3e220535dfb50434ca51
               version: 1.0.0
             - name: super-advisor
               tier: core
