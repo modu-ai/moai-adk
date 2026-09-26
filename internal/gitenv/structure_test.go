@@ -11,10 +11,27 @@ import (
 	"testing"
 )
 
-// fixtureExec matches a test that starts the git binary by name. A package
-// with such a test spawns git children, and every one of them inherits the
-// test binary's environment.
-var fixtureExec = regexp.MustCompile(`exec\.Command(Context)?\([^)]*"git"`)
+// fixtureExec matches the shapes by which a test starts the git binary. A
+// package with such a test spawns git children, and every one of them
+// inherits the test binary's environment. Three shapes are recognised: a
+// direct exec.Command(…"git"…) call, "git" passed as a later argument to a
+// helper (runOrFail(t, dir, "git", …)), and a path resolved with
+// exec.LookPath("git") and started afterwards.
+var fixtureExec = []*regexp.Regexp{
+	regexp.MustCompile(`exec\.Command(Context)?\([^)]*"git"`),
+	regexp.MustCompile(`,\s*"git"\s*[,)]`),
+	regexp.MustCompile(`LookPath\(\s*"git"\s*\)`),
+}
+
+// execsGitFixture reports whether b contains any of the fixtureExec shapes.
+func execsGitFixture(b []byte) bool {
+	for _, re := range fixtureExec {
+		if re.Match(b) {
+			return true
+		}
+	}
+	return false
+}
 
 // scrubCall is the TestMain line that removes the inherited repository.
 var scrubCall = regexp.MustCompile(`gitenv\.ScrubProcess\(\)`)
@@ -31,7 +48,7 @@ func scanTestDir(dir string) (execsGit, scrubbed bool, err error) {
 		if err != nil {
 			return false, false, err
 		}
-		if fixtureExec.Match(b) {
+		if execsGitFixture(b) {
 			execsGit = true
 		}
 		if strings.Contains(string(b), "func TestMain(") && scrubCall.Match(b) {
@@ -105,8 +122,11 @@ func TestFixturePackagesScrubProcess(t *testing.T) {
 
 	// Premise: the scan found the packages it exists to guard. A detector that
 	// matched nothing would pass this test for every tree.
-	if !slices.Contains(fixturePkgs, "internal/binlag") {
-		t.Fatalf("scan did not find internal/binlag among git-fixture packages (found %d: %v); the detector is blind", len(fixturePkgs), fixturePkgs)
+	// One package per recognised shape: direct call, helper argument, LookPath.
+	for _, want := range []string{"internal/binlag", "internal/worktree", "internal/mission"} {
+		if !slices.Contains(fixturePkgs, want) {
+			t.Fatalf("scan did not find %s among git-fixture packages (found %d: %v); the detector is blind to its shape", want, len(fixturePkgs), fixturePkgs)
+		}
 	}
 	for _, pkg := range missing {
 		t.Errorf("%s: tests start git but no TestMain calls gitenv.ScrubProcess()", pkg)
@@ -129,6 +149,23 @@ func TestScanTestDir_Detects(t *testing.T) {
 	}
 	if !execsGit || scrubbed {
 		t.Fatalf("unscrubbed fixture: execsGit=%v scrubbed=%v, want true false", execsGit, scrubbed)
+	}
+
+	// The two indirect shapes a direct-call regex misses: "git" handed to a
+	// helper, and a LookPath result started later. Each alone must read as a
+	// git fixture.
+	g := "\"g" + "it\""
+	for name, body := range map[string]string{
+		"helper":   "package p\n\nfunc f() { runOrFail(t, dir, " + g + ", \"init\") }\n",
+		"lookpath": "package p\n\nimport \"os/exec\"\n\nfunc f() { _, _ = exec.LookPath(" + g + ") }\n",
+	} {
+		shapeDir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(shapeDir, "a_test.go"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if execsGit, _, err := scanTestDir(shapeDir); err != nil || !execsGit {
+			t.Fatalf("%s shape: execsGit=%v err=%v, want true", name, execsGit, err)
+		}
 	}
 
 	mainFile := "package p\n\nfunc TestMain(m *testing.M) { _ = gitenv.ScrubProcess() }\n"
