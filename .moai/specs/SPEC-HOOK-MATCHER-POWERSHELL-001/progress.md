@@ -170,4 +170,22 @@ m1_to_mN_commit_strategy: "3 feature commits (M1, M2-M3, M4) after one develop-a
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-26
+sync_commit_sha: pending-backfill  # a commit cannot cite its own hash
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-HOOK-MATCHER-POWERSHELL-001' CHANGELOG.md -> 0 before emission"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l -> 13; entry cites AC-HMP-001..013 (13)"
+b12_self_test_c: "ls on every path the entry names -> all exist"
+changelog_entry_position: "[Unreleased] / ### Added, first bullet"
+frontmatter_status_transitions:
+  spec.md: "in-progress -> completed (updated already 2026-09-26)"
+  plan.md: "no status field — no transition"
+  acceptance.md: "no status field — no transition"
+docs_sync:
+  docs_site: "docs-site/content/{ko,en,ja,zh}/advanced/hooks-guide.md — PowerShell PreToolUse block in the default hooks example, matcher-table row, explanatory paragraph"
+  hugo_build: "not run — CI judges"
+  readme: "no hook-matcher content (grep 'Write|Edit|Bash' README*.md -> no match)"
+mx_tags:
+  IsShellTool: "@MX:ANCHOR present (added in run); fan_in measured 10 non-test call sites in 4 files (pre_tool.go 4, post_tool.go 2, evidence_writer.go 3, internal/cli/hook.go 1) — ANCHOR warranted, no change"
+```
