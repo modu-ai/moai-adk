@@ -2,13 +2,23 @@
 
 Every criterion is binary: it names fixtures, the processed call, and an observable outcome. The
 `RED-now` note records why the criterion fails today; `Green path` names the milestone that turns
-it green. No criterion here depends on work this SPEC does not own — A1's R5 and R6 are answered
-(spec.md §C.4, §C.5), which is the defect (finding N5) that caused the split.
+it green.
+
+**No criterion here depends on work this SPEC does not own** — the defect (finding N5) that caused
+the split. R6 is answered (spec.md §C.5) and R5 was resolved by *removing* scope: receipt issuance is
+A3's, so the receipt-path criteria are excluded rather than carried (spec.md §C.4, §H.4).
+`AC-AP-011` and `AC-AP-012` were retired at v0.1.1 and their ids are **not** re-used; the gap in the
+numbering is deliberate. Twelve criteria: AC-AP-001..010, AC-AP-013, AC-AP-014.
+
+Every criterion is evaluated against fixtures. Per A1's required ordering (spec.md §E C4) the
+`push-develop` action is not activated until A4 lands, and a signed contract confers no autonomy
+until A3 — so no criterion here asserts that any autonomy was granted.
 
 ## §A — Push serializer (REQ-AP-001, REQ-AP-002, REQ-AP-007)
 
-- **AC-AP-001** (maps REQ-AP-001) — **Given** `workflow.autonomy.mode: contract`, a resolved
-  contract whose `actions` contains `push-develop` with `push_requires_lease: true`, and two live
+- **AC-AP-001** (maps REQ-AP-001) — **Given** `workflow.autonomy.mode: contract`, a
+  `moai contract show --json` fixture reporting `actions` containing `push-develop` with
+  `push_requires_lease: true`, and two live
   sessions A and B, **When** A's `git push origin develop` is processed at PreToolUse and then B's
   `git push origin develop` is processed while A holds the `push-develop` lease within its bound,
   **Then** A's call is allowed with its hook output byte-identical to the no-guard baseline and the
@@ -18,10 +28,12 @@ it green. No criterion here depends on work this SPEC does not own — A1's R5 a
   - RED-now: no push serializer and no `PUSH_SERIALIZATION_VIOLATION` sentinel exist
     (spec.md §C.1). Green path: M1.
 - **AC-AP-002** (maps REQ-AP-001, REQ-AP-007) — **Given** the AC-AP-001 two-session setup,
-  **When** the same two pushes are processed in each of three off conditions — (a)
+  **When** the same two pushes are processed in each of four off conditions — (a)
   `workflow.autonomy.mode: guided`, (b) mode `contract` with a contract whose `actions` omits
-  `push-develop`, and (c) mode `contract` with `push-develop` present but
-  `push_requires_lease: false` — **Then** in every condition both pushes are allowed, no
+  `push-develop`, (c) mode `contract` with `push-develop` present but
+  `push_requires_lease: false`, and (d) mode `contract` with the `show --json` field absent
+  altogether (the state of the tree until A1 supplies it, spec.md §C.6) — **Then** in every
+  condition both pushes are allowed, no
   `push-develop` lease record is written, and no escalation record is written by either call.
   - Test: `TestPushSerializationInactiveWhenNotArmed` in `internal/hook`.
   - RED-now: the guard does not exist, so its inactivity cannot be asserted against it.
@@ -42,13 +54,18 @@ it green. No criterion here depends on work this SPEC does not own — A1's R5 a
 
 ## §B — Contract-sign guard: recognition and fail-closed (REQ-AP-003, REQ-AP-004)
 
-- **AC-AP-005** (maps REQ-AP-003) — **Given** any value of `workflow.autonomy.mode`, **When** each
-  of `moai contract sign SPEC-X-001`, `'moai' contract "sign"`, `FOO=1 moai contract sign`,
-  `env FOO=1 moai contract sign`, `command moai contract sign`, `exec moai contract sign`,
-  `~/go/bin/moai contract sign`, `./bin/moai contract sign`, `moai --no-color contract sign`, and
-  `sh -c 'moai contract sign'` is processed at PreToolUse, **Then** each is denied with a reason
-  whose first token is `CONTRACT_SIGN_AGENT_VIOLATION:`, and the count of denied cases equals the
-  count of cases supplied (no case silently skipped).
+- **AC-AP-005** (maps REQ-AP-003, REQ-AP-009) — **Given** any value of `workflow.autonomy.mode` and
+  a session with **no** `MOAI_FACTORY_ROLE` set in its environment (the only state that exists —
+  spec.md §C.7), **When** each of `moai contract sign SPEC-X-001`, `'moai' contract "sign"`,
+  `FOO=1 moai contract sign`, `env FOO=1 moai contract sign`, `command moai contract sign`,
+  `exec moai contract sign`, `~/go/bin/moai contract sign`, `./bin/moai contract sign`,
+  `moai --no-color contract sign`, `sh -c 'moai contract sign'`, `moai contract decide SPEC-X-001`,
+  `'moai' contract "decide"`, and `sudo moai contract decide` is processed at PreToolUse, **Then**
+  each is denied with a reason whose first token is `CONTRACT_SIGN_AGENT_VIOLATION:`, and the count
+  of denied cases equals the count of cases supplied (no case silently skipped).
+  - The absent-variable Given is load-bearing, not decoration: it fixes that the deny does **not**
+    read `MOAI_FACTORY_ROLE`, so a guard that gated on that variable would fail this criterion
+    rather than pass it vacuously.
   - Test: `TestContractSignAgentInvocationDenied` in `internal/hook`.
   - RED-now: no sign guard and no `CONTRACT_SIGN_AGENT_VIOLATION` sentinel exist
     (spec.md §C.2). Green path: M2.
@@ -60,17 +77,19 @@ it green. No criterion here depends on work this SPEC does not own — A1's R5 a
   - Test: `TestContractSignPositiveControlsAllowed` in `internal/hook`.
   - RED-now: the guard does not exist, so no control can be shown to survive it. Green path: M2.
 - **AC-AP-007** (maps REQ-AP-004) — **Given** any value of `workflow.autonomy.mode`, **When** each
-  of `$(which moai) contract sign`, `$M contract sign`, `eval "moai contract sign"`, and
-  `sh -c 'bash -c "moai contract sign"'` is processed, **Then** each is denied with a reason
-  starting `CONTRACT_SIGN_AGENT_VIOLATION:` and carrying the literal token `unclassified`.
+  of `$(which moai) contract sign`, `$M contract sign`, `eval "moai contract sign"`,
+  `sh -c 'bash -c "moai contract sign"'`, and `eval "moai contract decide"` is processed, **Then**
+  each is denied with a reason starting `CONTRACT_SIGN_AGENT_VIOLATION:` and carrying the literal
+  token `unclassified`.
   - Test: `TestContractSignUnclassifiedDeniedClosed` in `internal/hook`.
   - RED-now: no fail-closed path exists. Green path: M2.
-- **AC-AP-008** (maps REQ-AP-004; spec.md §C.2) — **Given** an installed binary for which
+- **AC-AP-008** (maps REQ-AP-004; spec.md §C.2, §C.3) — **Given** an installed binary for which
   `moai contract --help` exits non-zero with `Unknown command "contract"`, **When**
-  `moai contract sign SPEC-X-001` is processed at PreToolUse, **Then** it is denied with
-  `CONTRACT_SIGN_AGENT_VIOLATION:` — the denial does not depend on the verb being implemented, and
-  the test asserts the unimplemented precondition before asserting the deny, so the case cannot
-  pass vacuously by the command simply failing.
+  `moai contract sign SPEC-X-001` and `moai contract decide SPEC-X-001` are processed at PreToolUse,
+  **Then** each is denied with `CONTRACT_SIGN_AGENT_VIOLATION:` — the denial does not depend on the
+  verb being implemented, and the test asserts the unimplemented precondition before asserting the
+  deny, so the case cannot pass vacuously by the command simply failing. This is the criterion that
+  makes the `decide` deny evaluable today, while no track has defined the verb (spec.md §F O1).
   - Test: `TestContractSignDeniedBeforeVerbExists` in `internal/hook`.
   - RED-now: the guard does not exist. Green path: M2.
 
@@ -93,27 +112,16 @@ it green. No criterion here depends on work this SPEC does not own — A1's R5 a
   - Test: `TestContractSignUnknownWrapperFailsClosed` in `internal/hook`.
   - RED-now: neither the list nor its unknown-wrapper branch exists. Green path: M2.
 
-## §D — Receipt path (REQ-AP-006; A1's answered R5)
+## §D — No receipt exemption (REQ-AP-003; the withdrawn REQ-AP-006)
 
-- **AC-AP-011** (maps REQ-AP-006) — **Given** a SPEC directory containing
-  `.moai/specs/SPEC-X-001/kickoff-receipt.json`, **When**
-  `moai contract sign SPEC-X-001 --signer llm+jev --receipt .moai/specs/SPEC-X-001/kickoff-receipt.json`
-  is processed, **Then** it is allowed and exactly one audit line naming that receipt path is
-  written; **and** when the same command is processed with the receipt file absent, and separately
-  with `--receipt` resolving to a path other than the fixed name, **Then** both are denied with
-  `CONTRACT_SIGN_AGENT_VIOLATION:`.
-  - Test: `TestContractSignReceiptPathAllowed` in `internal/hook`.
-  - RED-now: no receipt branch exists. **Not** blocked on A1: the path shape is defined at
-    `WT-contract-schema:.moai/specs/SPEC-AUTONOMY-CONTRACT-001/design.md` § Kickoff Receipt
-    (spec.md §C.4). Green path: M2.
-- **AC-AP-012** (maps REQ-AP-006) — **Given** a present, well-formed receipt file whose *contents*
-  are forged (a `contract_sha256` that matches nothing), **When** the receipt-path invocation is
-  processed, **Then** the guard allows it and writes no validation verdict of its own — the
-  content verdict belongs to A1's validator (REQ-CONTRACT-023) — and the test asserts the absence
-  of any guard-emitted validation outcome, so the guard is shown not to have silently taken on
-  A1's job.
-  - Test: `TestContractSignGuardDoesNotValidateReceipt` in `internal/hook`.
-  - RED-now: no receipt branch exists. Green path: M2.
+`AC-AP-011` and `AC-AP-012` (receipt path allowed / forged receipt) are **retired**, and the
+transferred `AC-AE-025` is **not carried** — receipt issuance is A3's (spec.md §C.4, §H.4). Their
+ids are not re-used.
+
+The positive obligation that replaces them is already carried by **AC-AP-005**, whose fixture set
+contains no exempt form: since REQ-AP-003 grants no exemption, the absence of a receipt branch is
+asserted by the deny being unconditional rather than by a criterion of its own. A run-phase
+implementation that adds a receipt exemption would fail AC-AP-005 on the exempted shape.
 
 ## §E — Documentation of the mode-independent deny (REQ-AP-010; finding N8)
 
@@ -153,11 +161,14 @@ Every requirement has at least one criterion and every criterion maps one requir
 | REQ-AP-003 | AC-AP-005, AC-AP-006 |
 | REQ-AP-004 | AC-AP-007, AC-AP-008, AC-AP-010 |
 | REQ-AP-005 | AC-AP-009, AC-AP-010 |
-| REQ-AP-006 | AC-AP-011, AC-AP-012 |
+| REQ-AP-006 | **withdrawn at v0.1.1** — no criteria; id retired, not re-used |
 | REQ-AP-007 | AC-AP-001, AC-AP-002 |
 | REQ-AP-008 | AC-AP-014 |
-| REQ-AP-009 | AC-AP-005 (the tool-call boundary case), AC-AP-013 |
+| REQ-AP-009 | AC-AP-005 (the absent-variable Given), AC-AP-013 |
 | REQ-AP-010 | AC-AP-013 |
+
+Nine live requirements, twelve criteria. Every live requirement has ≥1 criterion; every criterion
+maps exactly one requirement. `AC-AP-011` / `AC-AP-012` retired with REQ-AP-006.
 
 ## §H — Quality gates and Definition of Done
 
@@ -170,4 +181,5 @@ Every requirement has at least one criterion and every criterion maps one requir
 - Template neutrality: the changed template text carries no card id, SPEC id, internal date, or
   SHA (AC-AP-013 second limb).
 - No escalation record is written by either component on any tested path (AC-AP-002).
+- No receipt exemption exists in the guard's code path (the negative limb of AC-AP-005).
 - `internal/mission`'s exported surface is unchanged (AC-AP-014 second limb).

@@ -3,7 +3,11 @@
 > Two independent deny components plus one reuse projection. They share the contract resolver
 > (SPEC-AUTONOMY-ESCALATION-001 REQ-AE-002) and nothing else. Mechanics carried from
 > `WT-escalation-detector~1:.moai/specs/SPEC-AUTONOMY-ESCALATION-001/design.md` §G, with the N4
-> wrapper rows and the answered R5/R6 folded in.
+> wrapper rows folded in, R6 applied (`push_requires_lease`, read from `show --json`), and R5
+> applied as a **scope removal** — no receipt exemption (§C.5).
+>
+> Every A1 citation here is pinned to commit **`67a2f55cb`** (A1 SPEC v0.5.0), not to the moving
+> branch.
 
 ## §A — Why this is a design decision and not a mechanical change
 
@@ -26,8 +30,13 @@ Two questions have more than one defensible answer, which is what makes this car
   resolves it. No new record format, lock, or verb. `moai slot status --resource push-develop`
   reads the same record a lane would read by hand.
 - **Activation.** Only under `workflow.autonomy.mode: contract` **and** `push-develop` present in
-  the resolved contract's `actions` **and** `push_requires_lease: true` in that contract's
-  `show --json` projection (A1 REQ-CONTRACT-018, spec.md §C.5). It does **not** depend on
+  `actions` **and** `push_requires_lease: true`, all three read from **`moai contract show --json`**
+  — A1's declared contact point for exactly this purpose (`67a2f55cb:…/spec.md:382`: "the verifier
+  shall expose this as a derived `push_requires_lease: true` field in `show --json` output for A2b
+  to enforce"). Reading the JSON rather than parsing `contract.yaml` keeps the derivation A1's, so a
+  schema change reaches this guard through A1's projection instead of through a second parser.
+  Measured: that command does not exist yet (spec.md §C.6) — A1 supplies it. Absent field or absent
+  command → inactive, which is AC-AP-002 condition (d). It does **not** depend on
   `workflow.slot_lease.enabled`, which keeps gating the generic slot guard only.
 - **Matcher.** A Bash command whose program is `git`, whose subcommand is `push`, and whose refspec
   targets `develop`, with the same quote handling `checkSlotLease` already applies
@@ -62,7 +71,7 @@ genuinely needed, A1's closed set (`CLAUDECODE`, `CLAUDE_CODE_SESSION_ID`) is re
 2. Strip leading `NAME=value` assignments.
 3. Strip prefix wrappers from the closed list of §C.3, skipping each wrapper's own options.
 4. Take the program word's **basename**; skip global flags before the verb; match
-   `moai` + `contract` + `sign`.
+   `moai` + `contract` + (`sign` | `decide`).
 5. For `sh|bash|zsh -c <string>`, parse `<string>` once more. Exactly one level.
 
 ### C.3 Prefix-wrapper set (finding N4)
@@ -89,27 +98,42 @@ likely to be mis-skipped, which is why the operand column is explicit.
 ### C.4 Unclassifiable → deny (fail closed)
 
 Command substitution, a variable in program position, `eval`, an unknown wrapper, or nesting beyond
-one `-c` level — when the words `contract` and `sign` both occur → deny, reason marked
+one `-c` level — when `contract` occurs together with `sign` or `decide` → deny, reason marked
 `unclassified`. A *classified* invocation whose program is not `moai` (`echo "moai contract sign"`,
 `git commit -m "sign the contract"`) is allowed.
 
-The deny does not depend on the verb existing in the installed binary (spec.md §C.2): the point is
-that the verb is agent-unreachable from the moment A1 lands it. AC-AP-008 asserts the
-unimplemented precondition first so the case cannot pass merely because the command would have
-failed anyway.
+The deny does not depend on the verb existing in the installed binary (spec.md §C.2, §C.3): the
+point is that the verb is agent-unreachable from the moment any track lands it. This matters
+doubly for `decide`, which **no track currently defines** — the guard is forward-looking by
+construction. AC-AP-008 asserts the unimplemented precondition first so the case cannot pass merely
+because the command would have failed anyway.
 
-### C.5 Receipt path (R5, answered)
+### C.4a The predicate is the boundary, not a role variable
 
-A1 fixes the receipt at `.moai/specs/<SPEC-ID>/kickoff-receipt.json` and requires `--receipt` to
-resolve to it; path selection is by `--signer` (`llm | jev | llm+jev` → receipt path). The guard
-therefore allows exactly: `--signer` naming one of those three **and** `--receipt` resolving to the
-fixed name **and** the file present. Anything else on the sign verb is denied. The guard does not
-read the receipt's contents — A1's validator owns that (REQ-CONTRACT-023), and AC-AP-012 asserts
-the guard emits no validation verdict of its own.
+The lead's ruling is an outright deny for agent-role sessions. `MOAI_FACTORY_ROLE` does not exist
+(spec.md §C.7), so the guard does not read it — it denies on **every** Bash tool call, which covers
+the ruling completely rather than partially: an agent can unset a variable (A1 says so at
+`67a2f55cb:…/spec.md:149-150`) and cannot unset the tool-call boundary. AC-AP-005's Given pins the
+variable as absent, so an implementation that gated on it fails rather than passes empty.
 
-Note the live fact, not a blocker: A1 §C.8 routes **any** Jev decision to a human
-(`receipt_requires_human`), so no `jev` / `llm+jev` receipt can actually sign in A1. The guard's
-allowance is a correct shape over a path that A3 makes usable.
+### C.5 No receipt exemption (R5, resolved by removing scope)
+
+The guard recognizes **no** receipt path and grants **no** exemption. Every `sign` / `decide`
+invocation is denied, whatever `--signer` or `--receipt` say.
+
+This is a deliberate narrowing, decided by the lead, and it makes the guard *simpler and more
+testable* rather than less capable:
+
+- Receipt **issuance** is A3's (`67a2f55cb:…/spec.md:85`). A criterion asserting a receipt
+  invocation is allowed could only turn green after A3 — the shape of finding **N5**, which is why
+  this card exists at all. An exemption here would re-create the uncompletable SPEC.
+- With no exemption, the guard has **no dependency on any A1 or A3 interface**: it reads a command
+  line and answers. Nothing in §C needs A1 to land.
+- The absence is asserted by AC-AP-005's fixture set carrying no exempt form, so an implementation
+  that quietly adds a receipt branch fails that criterion rather than passing unnoticed.
+
+A1's own §C.8 records that any Jev decision routes to a human (`receipt_requires_human`), so no
+`jev` / `llm+jev` receipt can sign in A1 either. Nothing is lost by the narrowing today.
 
 ### C.6 Fail directions are opposite on purpose
 
@@ -157,5 +181,7 @@ the package.
 | A script file, alias, or shell function hides the sign invocation | Out of scope (spec.md §G) — the hook sees a path, not contents. `go run ./cmd/moai contract sign` is caught by the fail-closed rule only because both words occur |
 | A wrapper outside the §C.3 list is added to a lane's habits | It is denied as unclassified, so the failure mode is a false deny, not a false allow — the direction this guard should err in |
 | The holder never releases the `push-develop` lease | Bounded by `workflow.slot_lease.default_max_duration`; the cost is one wait, not a permanent stall |
-| The receipt path is currently unusable (A1 §C.8) | Stated, not worked around. Whether a receipt can sign is A3's question |
+| Non-interactive signing has no path while this guard denies unconditionally | Accepted: signing belongs at an operator terminal, and A3 owns receipt issuance. If A3 needs an exemption it amends this SPEC's REQ-AP-003 rather than adding an unowned branch here |
+| `moai contract show --json` may not exist or may rename the field when M1 is reached | Absent field or command → inactive (AC-AP-002 (d)); pre-flight re-measures and stops on a rename (plan.md §C step 3) |
+| No track defines `decide`, so its deny is untested against a real verb | The deny is shape-based and evaluable now (AC-AP-008); when a track defines the verb, its own criteria confirm reachability |
 | A full keyless re-seal of a contract | A1's residual risk, restated here only because this guard does not close it either |

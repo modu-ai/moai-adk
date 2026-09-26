@@ -19,10 +19,13 @@ one reuse projection; they share the contract resolver and nothing else.
 - Finding **N8** — the sign deny contradicted the "nothing changes under `guided`" promise. Resolved
   in wording, not by weakening the guard (REQ-AP-010, design.md §C.7).
 - Finding **N5** — the receipt criterion could only turn green after work this SPEC does not own.
-  **Closed**: A1's R5 and R6 are both answered (spec.md §C.4, §C.5), so no criterion here is
-  conditional.
-- Criterion id re-use on the t1235 branch — this SPEC uses its own namespace; the provenance table
-  is spec.md §H.
+  **Closed, and by removal rather than by an answer**: receipt issuance is A3's, so the
+  receipt-path allowance and its two criteria are withdrawn (spec.md §C.4, §H.2, §H.4). R6 is
+  answered separately (spec.md §C.5). No criterion here is conditional.
+- Criterion id re-use on the t1235 branch, and this SPEC's own retirement of `REQ-AP-006` /
+  `AC-AP-011` / `AC-AP-012` — recorded as an ID-reuse record in spec.md §H.1-H.2, in the form A1
+  uses for the same hazard. No retired id is re-used.
+- All A1 citations are pinned to commit `67a2f55cb`, not to the moving branch.
 
 ## §C — Pre-flight (before M1)
 
@@ -32,8 +35,14 @@ one reuse projection; they share the contract resolver and nothing else.
    have **changed** by then: `moai contract sign` exists once A1 lands (§C.2), and the template
    autonomy block exists once A1 lands (AC-AP-013). A changed row is a premise update recorded in
    progress.md, not a silent adjustment.
-3. Confirm A1's `push_requires_lease` field is present in its `show --json` projection; where A1
-   renamed or dropped it, stop and report rather than inventing a substitute.
+3. Confirm `moai contract show --json` exists and emits `push_requires_lease` — the contact point
+   A1 declares at `67a2f55cb:…/spec.md:382`. Both were measured **absent** at `553e224f3`
+   (spec.md §C.6). Where A1 renamed or dropped either, stop and report rather than inventing a
+   substitute or falling back to parsing `contract.yaml`.
+5. Re-read A1 at whatever commit is then current and confirm the four coordinates this SPEC pins at
+   `67a2f55cb` still say what §C quotes (`:71`, `:85`, `:121-125`, `:134-140`, `:382`). A moved
+   statement is a premise update recorded in progress.md, and the pin in the SPEC body is then
+   advanced with the quotation re-read, never silently re-pointed.
 4. Capture the `golangci-lint run` baseline on this tree, so "no new issue" in acceptance.md §H is
    attributable.
 
@@ -57,14 +66,19 @@ count, plus the cross-platform build. The full gate list is acceptance.md §H.
   deny / release / reclaim, fail-open.
 - ACs: AC-AP-001, AC-AP-002, AC-AP-003, AC-AP-004.
 - First because it touches a record other sessions read, so a wrong shape here is the most
-  expensive to unwind.
+  expensive to unwind. It is, however, the milestone that **does** depend on A1's `show --json`
+  (pre-flight step 3); where A1 has not landed it, run M2 first — the order is a
+  reversibility preference, not a dependency.
 
 ### M2 — Contract-sign guard (the parsing decision)
 
-- REQ-AP-003, REQ-AP-004, REQ-AP-005, REQ-AP-006, REQ-AP-009; design.md §C.
-- Quote-removing word split, assignment and wrapper stripping, basename match, one-level `-c`,
-  fail-closed unclassified branch, receipt-path allowance.
-- ACs: AC-AP-005 .. AC-AP-012.
+- REQ-AP-003, REQ-AP-004, REQ-AP-005, REQ-AP-009; design.md §C. (REQ-AP-006 withdrawn.)
+- Quote-removing word split, assignment and wrapper stripping, basename match, `sign` **and**
+  `decide` verbs, one-level `-c`, fail-closed unclassified branch. **No receipt branch** — the deny
+  is unconditional (design.md §C.5).
+- ACs: AC-AP-005 .. AC-AP-010.
+- This milestone depends on **nothing from A1**: it reads a command line and answers, so it can be
+  implemented and closed while A1 is still in flight.
 - Second because the matcher's shape is the card's other genuine design decision, and every later
   step assumes it.
 
@@ -100,7 +114,8 @@ count, plus the cross-platform build. The full gate list is acceptance.md §H.
 
 | Risk | Mitigation |
 |---|---|
-| A1 renames or drops `push_requires_lease` | Pre-flight step 3 re-checks it; a change stops M1 and is reported |
+| A1 renames or drops `push_requires_lease`, or `show --json` does not arrive | Pre-flight step 3 re-checks both; absent → the serializer is inactive (AC-AP-002 (d)), which is a correct state, not a silent hole. M2 proceeds regardless |
+| A pinned A1 quotation moves at a later A1 revision | Pre-flight step 5 re-reads all five coordinates; a move is a recorded premise update, never a silent re-point |
 | A1's autonomy template block has not landed when M3 is reached | M3 waits and reports; it does not create A1's block |
 | A wrapper list that looks complete but skips options wrongly | design.md §C.3 states each wrapper's own options; AC-AP-009 asserts the resolved program is named |
 | The receipt path stays unusable through A3 | Stated as residual risk (design.md §F), not designed around |
@@ -108,14 +123,16 @@ count, plus the cross-platform build. The full gate list is acceptance.md §H.
 
 ## §I — Open questions for the lead
 
-- **O1** `moai contract decide` — named in the dispatch, exists nowhere, and no track creates it.
-  Currently out of scope (spec.md §G). Confirm, or name the owner.
-- **O2** `MOAI_FACTORY_ROLE` — does not exist. The guard denies at the tool-call boundary instead,
-  which is role-independent and stronger. Confirm that this is the whole intent, or name the
-  role distinction wanted (spec.md §C.6, O2).
-- **O3** SPEC body register — the dispatch asked for Korean prose *and* for matching the sibling
-  SPEC's register. The sibling (SPEC-AUTONOMY-ESCALATION-001) is written in **English** technical
-  prose with Korean only in the 「A1 plan-audit 통과본으로 재확인」 dependency tag. This SPEC matched
-  the measured sibling register; say the word and it is rewritten in Korean.
+- **O1** [RESOLVED — `decide` is in scope, denied outright.] Recorded without blocking: **no track
+  defines a `decide` verb** (spec.md §C.3). Name its owner when one exists; until then AC-AP-008
+  keeps the deny evaluable.
+- **O2** [PARTIALLY RESOLVED — the outright-deny scope is adopted in full.] Still open: whether a
+  **role** distinction (lead vs lane) is wanted. `MOAI_FACTORY_ROLE` does not exist, so the
+  predicate is the tool-call boundary, which denies in every session and therefore covers the
+  ruling (spec.md §C.7). Confirm, or name the distinction and its owner.
+- **O3** SPEC body register — the first dispatch asked for Korean prose *and* for matching the
+  sibling SPEC's register. The sibling (SPEC-AUTONOMY-ESCALATION-001) is written in **English**
+  technical prose with Korean only in the 「A1 plan-audit 통과본으로 재확인」 dependency tag. This SPEC
+  matched the measured sibling register. Unchanged by the two corrections, and still open.
 - **O4** Audit-line sink — its own file, or shared with `.moai/logs/branch-guard-audit.log`
-  (spec.md O4).
+  (spec.md §F O3).
