@@ -199,6 +199,9 @@ type transitionPlan struct {
 	kind     string
 	evidence map[string]string
 	note     string
+	// keepColumns leaves every column but state and version as they were
+	// (the operator abandon, which records nothing else about the card).
+	keepColumns bool
 }
 
 // Transition applies one requested card transition as a single transaction:
@@ -226,6 +229,14 @@ func (f *FactoryDB) Transition(ctx context.Context, req TransitionRequest) (Card
 		if err != nil {
 			return nil, err
 		}
+		// An expired lease is returned before any other transition (T27/T28),
+		// whatever the request asked for and whatever version it carried.
+		if cur.LeaseExpired(now) {
+			if err := applyLeaseExpiry(ctx, tx, cur, now); err != nil {
+				return nil, err
+			}
+			return nil, commitThen(fmt.Errorf("%w: card %s lease held by %q expired at %s", ErrLeaseExpired, cur.CardID, cur.LeaseHolder, cur.LeaseExpiresAt))
+		}
 		// The version compare comes first: a caller whose read is stale has no
 		// standing to be told anything about the current state's edges.
 		if cur.Version != req.ExpectedVersion {
@@ -240,7 +251,7 @@ func (f *FactoryDB) Transition(ctx context.Context, req TransitionRequest) (Card
 			}
 			next := cur
 			next.State = CardAbandoned
-			result, err = commitTransition(ctx, tx, cur, transitionPlan{next: next, kind: "card.transition"}, req, now)
+			result, err = commitTransition(ctx, tx, cur, transitionPlan{next: next, kind: "card.transition", keepColumns: true}, req, now)
 			return nil, err
 		}
 		if isReservedEdge(cur.State, req.To) {
@@ -280,16 +291,106 @@ func (f *FactoryDB) withCardTx(ctx context.Context, _ string, fn func(tx *sql.Tx
 	}
 	defer func() { _ = tx.Rollback() }()
 	after, err := fn(tx)
-	if err != nil {
+	var keep *committedRefusal
+	if err != nil && !errors.As(err, &keep) {
 		return err
 	}
-	if err := tx.Commit(); err != nil {
-		return err
+	if cerr := tx.Commit(); cerr != nil {
+		return cerr
 	}
 	if after != nil {
 		after()
 	}
+	if keep != nil {
+		return keep.err
+	}
 	return nil
+}
+
+// committedRefusal marks a refusal whose transaction still commits — the
+// lease-expiry return is written, and the request that found it is refused.
+type committedRefusal struct{ err error }
+
+func (c *committedRefusal) Error() string { return c.err.Error() }
+func (c *committedRefusal) Unwrap() error { return c.err }
+
+func commitThen(err error) error { return &committedRefusal{err: err} }
+
+// applyLeaseExpiry is T27/T28: an expired lease-holding card returns to
+// `assigned` (holder cleared; stage, worktree, and evidence kept), or to
+// `blocked` when it expired mid-merge. It reads and writes the record only —
+// never the card's worktree.
+func applyLeaseExpiry(ctx context.Context, tx *sql.Tx, cur Card, now time.Time) error {
+	next := cur
+	next.State = CardAssigned
+	payload := map[string]any{"card_id": cur.CardID, "from": cur.State, "holder": cur.LeaseHolder, "expired_at": cur.LeaseExpiresAt}
+	if cur.State == CardMerging {
+		next.State = CardBlocked
+		payload["interrupted"] = "merge"
+		payload["merge_sha"] = cur.MergeSHA
+	}
+	next.LeaseHolder, next.LeaseExpiresAt = "", ""
+	next.Version = cur.Version + 1
+	next.UpdatedAt = now.Format(time.RFC3339Nano)
+	payload["to"], payload["version"] = next.State, next.Version
+	if err := updateCardRow(ctx, tx, next, cur.Version); err != nil {
+		return err
+	}
+	return appendEvent(ctx, tx, cur.RunID, "lease.expired", payload, now)
+}
+
+// holderGuards are the edges only the current lease holder may request.
+var holderGuards = map[edgeGuard]bool{
+	guardStageResume: true, guardEntry: true, guardVerdictAny: true, guardVerdictPass: true,
+	guardCommit: true, guardLeaseValid: true, guardNone: true, guardMerge: true, guardFail: true,
+}
+
+// RenewLease extends the holder's lease on a lease-holding card and refreshes
+// the roster heartbeat. A renewal by any other label is refused with no
+// change; an already-expired lease is returned first (T27/T28). Renewal does
+// not change the card's state, so it does not advance the version.
+func (f *FactoryDB) RenewLease(ctx context.Context, runID, cardID, label string, now time.Time) (Card, error) {
+	if now.IsZero() {
+		now = time.Now()
+	}
+	now = now.UTC()
+	var result Card
+	err := f.withCardTx(ctx, runID, func(tx *sql.Tx) (func(), error) {
+		cur, err := loadCard(ctx, tx, runID, cardID)
+		if err != nil {
+			return nil, err
+		}
+		if cur.LeaseExpired(now) {
+			if err := applyLeaseExpiry(ctx, tx, cur, now); err != nil {
+				return nil, err
+			}
+			return nil, commitThen(fmt.Errorf("%w: card %s lease expired at %s", ErrLeaseExpired, cur.CardID, cur.LeaseExpiresAt))
+		}
+		if !IsLeaseHoldingState(cur.State) || cur.LeaseHolder == "" || strings.TrimSpace(label) != cur.LeaseHolder {
+			return nil, fmt.Errorf("%w: %q does not hold the lease on card %s", ErrLeaseHolder, label, cur.CardID)
+		}
+		next := cur
+		next.HeartbeatAt = now.Format(time.RFC3339Nano)
+		next.LeaseExpiresAt = now.Add(FactoryLeaseDuration).Format(time.RFC3339Nano)
+		next.UpdatedAt = next.HeartbeatAt
+		res, err := tx.ExecContext(ctx, `UPDATE cards SET heartbeat_at=?,lease_expires_at=?,updated_at=? WHERE run_id=? AND card_id=? AND version=?`,
+			next.HeartbeatAt, next.LeaseExpiresAt, next.UpdatedAt, cur.RunID, cur.CardID, cur.Version)
+		if err != nil {
+			return nil, err
+		}
+		if n, err := res.RowsAffected(); err != nil || n == 0 {
+			return nil, fmt.Errorf("%w: card %s changed under the renewal", ErrStaleVersion, cur.CardID)
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE workers SET heartbeat_at=? WHERE label=?`, next.HeartbeatAt, label); err != nil {
+			return nil, err
+		}
+		result = next
+		return nil, nil
+	})
+	if err != nil {
+		return Card{}, err
+	}
+	return result, nil
 }
 
 // planTransition checks the edge's guard and computes the new row.
@@ -298,6 +399,9 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 	next.State = req.To
 	plan := transitionPlan{next: next, kind: "card.transition", evidence: map[string]string{}}
 	nowText := now.Format(time.RFC3339Nano)
+	if holderGuards[edge.guard] && (cur.LeaseHolder == "" || strings.TrimSpace(req.Actor) != cur.LeaseHolder) {
+		return plan, fmt.Errorf("%w: %s → %s is the lease holder's edge; %q does not hold the lease (holder %q)", ErrLeaseHolder, cur.State, req.To, req.Actor, cur.LeaseHolder)
+	}
 	switch edge.guard {
 	case guardAssign:
 		owner := strings.TrimSpace(req.Owner)
@@ -306,6 +410,20 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 		}
 		plan.next.OwnerLabel = owner
 	case guardLeaseAcquire:
+		label := strings.TrimSpace(req.Actor)
+		var registered int
+		if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM workers WHERE label=?`, label).Scan(&registered); err != nil {
+			return plan, err
+		}
+		if label == "" || registered == 0 || label != cur.OwnerLabel {
+			return plan, fmt.Errorf("%w: %q is not the registered owner %q of card %s", ErrLeaseHolder, label, cur.OwnerLabel, cur.CardID)
+		}
+		plan.next.LeaseHolder = label
+		plan.next.HeartbeatAt = nowText
+		plan.next.LeaseExpiresAt = now.Add(FactoryLeaseDuration).Format(time.RFC3339Nano)
+		if _, err := tx.ExecContext(ctx, `UPDATE workers SET heartbeat_at=? WHERE label=?`, nowText, label); err != nil {
+			return plan, err
+		}
 	case guardStageResume:
 		if !stageAdmits(cur.Stage, req.To) {
 			return plan, fmt.Errorf("%w: leased card stage %q does not resume into %s", ErrIllegalTransition, cur.Stage, req.To)
@@ -364,6 +482,7 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 		if req.Decider != DeciderHuman {
 			return plan, fmt.Errorf("%w: F1 accepts only decider %q, got %q", ErrDecider, DeciderHuman, req.Decider)
 		}
+		plan.keepColumns = true
 	case guardCommit:
 		full, err := verifyCommitAtHead(ctx, cur.WorktreePath, req.SHA)
 		if err != nil {
@@ -412,7 +531,11 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 		plan.next.DecisionQuestion = q
 		plan.next.DecisionResume = cur.State
 	case guardFail:
-		plan.next.FailureReason = strings.TrimSpace(req.Reason)
+		reason := strings.TrimSpace(req.Reason)
+		if reason == "" {
+			return plan, fmt.Errorf("%w: moving a card to failed requires a reason", ErrInvalidCardInput)
+		}
+		plan.next.FailureReason = reason
 	default:
 		return plan, fmt.Errorf("%w: edge %s has no guard", ErrIllegalTransition, edge.id)
 	}
@@ -438,6 +561,12 @@ func commitTransition(ctx context.Context, tx *sql.Tx, cur Card, plan transition
 	next := plan.next
 	if isResumableStage(next.State) {
 		next.Stage = next.State
+	}
+	// Leaving the lease-holding states releases the lease (REQ-FR-015,
+	// REQ-FR-018): decision-pending, post-merge, paused, and failed cards hold
+	// none. The operator abandon records nothing but the state.
+	if !IsLeaseHoldingState(next.State) && !plan.keepColumns {
+		next.LeaseHolder, next.LeaseExpiresAt = "", ""
 	}
 	next.Version = cur.Version + 1
 	next.UpdatedAt = now.Format(time.RFC3339Nano)

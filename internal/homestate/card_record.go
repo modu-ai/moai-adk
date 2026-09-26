@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // Card states of the F1 factory state machine. The set is closed: a row whose
@@ -73,6 +75,10 @@ func IsLeaseHoldingState(s string) bool { return slices.Contains(leaseHoldingSta
 func IsTerminalCardState(s string) bool { return slices.Contains(terminalStates, s) }
 
 func isResumableStage(s string) bool { return slices.Contains(resumableStages, s) }
+
+// FactoryLeaseDuration is how long a card lease lasts past its last
+// heartbeat (config.DefaultFactoryLeaseDuration; no YAML key in F1).
+var FactoryLeaseDuration = config.DefaultFactoryLeaseDuration
 
 // ErrCardNotFound reports that no card record exists for the run and card id.
 var ErrCardNotFound = errors.New("factory card not found")
