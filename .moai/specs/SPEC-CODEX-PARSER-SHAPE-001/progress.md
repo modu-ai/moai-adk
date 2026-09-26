@@ -110,23 +110,26 @@ the same; ctrlA `fail`/1 both; ctrlB `fail`/0 both — identical to E-1718.
 | `ce1df7f6f` | M2 (a) | greeting-prefixed / localized verdict recognizers; bold-severity table-row and bullet findings |
 | `83046be7c` | M2 (d) | adversarial prompt pins the output format |
 | `54fe08135` | M3 | preserved-behaviour guards |
+| `4bea753cb` | v0.2.4 (manager-spec) | candidate (b) mechanism authored; AC-CPS-004/008 amended; AC-CPS-016 added |
+| `861e08912` | M4 (b) | native format pin (`codexReviewSessionParams` → `developerInstructions`), native fall-through → `inconclusive`, pin recognition tests, stale no-signal-native-pass witnesses updated to the amended expectation |
 
 **AC matrix.**
 
 | AC | Status | Command | Observed |
 |---|---|---|---|
-| AC-CPS-004 (b) | **BLOCKED** | — | No disambiguation mechanism is specified by the SPEC; (b) not implemented. Blocker report returned to the orchestrator |
-| AC-CPS-005 (c) | PASS | `go test -count=1 -v -run 'Contradiction' ./internal/cli/` at `562126b1f` | V8 body flagged on both paths; predicate table incl. the unmet-gate control; end-to-end control through `applyGateUnmet` not flagged — `ok` |
-| AC-CPS-006 (a) | PASS | `-run 'TestCodex1718\|TestCodexWidened'` at `ce1df7f6f` | exact count + severity/message/file/line for S1 (3), S2 and S2p (1) on both paths; partial drift → 2 and 0 survivors, exact count fails; `codex_findings_parse_test.go` (V1) unchanged and passing |
-| AC-CPS-007 | PASS | `git diff e26633699 -- internal/cli/codex_findings_parse_test.go \| wc -l` | `0` |
-| AC-CPS-008 | PASS | `-run TestGuard_` | clean native bodies stay `pass`/0, no contradiction; mutant "drop the verdict term from the predicate" makes the guard fail |
-| AC-CPS-009 | PASS (keep) | `-run TestGuard_` | N1, N2 and the unrecognized AC-CVS-001 corpus members stay `inconclusive`; mutant "unrecognized adversarial → pass" makes the guard fail |
-| AC-CPS-010 | PASS | `git diff e26633699 -- internal/cli/mcp_codex.go \| grep -cE '^[+-].*(NextSteps\|next_steps)'` | `0` (same form on `Contradiction` → `8`, so the probe fires); NextSteps guard + mutant "NextSteps nil" fails it |
-| AC-CPS-011 | PASS | `go test -count=1 -v -run '^TestCodex1718Fixtures$' ./internal/cli/` at `6a89f3d83` | exit 0, `--- PASS: TestCodex1718Fixtures`, ten SYNTH lines matching E-1718 row for row (S1/S2 `inconclusive`/0 + `pass`/0; S2p `fail`/0 both; N1/N2 `inconclusive`/0 + `pass`/0). Ledger P1–P11 all at their pass conditions; sanitization grep empty exit 1, firing control prints the inserted line exit 0 (`ac011-ledger.log`) |
-| AC-CPS-012 | PASS | same selector at `ce1df7f6f` | S1 `fail`/3, S2 `fail`/1, S2p `fail`/1 on both paths with exact content; N1/N2 unchanged; partial drift fails the exact count. RED before GREEN in `red-a.log` |
-| AC-CPS-013 | PASS at `562126b1f`; see note | `-run 'Contradiction'` at `562126b1f` | S2p flagged on both paths; S1/S2 not flagged (`inconclusive`/0, `pass`/0). **Note:** (c) alone leaves the #1718 shapes at `inconclusive`/0 (turn/start) and `pass`/0 (review/start). With (a) also selected, S2p yields `fail`/1 from `ce1df7f6f` on, so on HEAD it is no longer contradictory — the criterion's first clause is not true on the final tree; wording change routed to manager-spec |
+| AC-CPS-004 (b) | **PASS** | `go test -count=1 -run 'TestCodexNative' ./internal/cli/` at `861e08912`; RED-now re-executed on `4bea753cb` (output identical to the `0ff644530` cell) → `m4-rednow.log` | All three Then clauses hold: (1) `TestCodexNativePinnedPassStaysPass` — pinned `Verdict: pass` body → `pass`/0, no contradiction; (2) `TestCodexNativeNoSignalBodyYieldsInconclusive` — three no-signal bodies → `inconclusive` (RED on the pre-GREEN tree: `Verdict = "pass", want "inconclusive"`, `m4-red.log`); (3) `TestCodex1718Fixtures` S1/S2/S2p rows unchanged (`fail`/3, `fail`/1, `fail`/1 on both paths). Pin carrier: `TestCodexNativeRequest_CarriesFormatPin` — native `thread/start` carries `developerInstructions` with the pin; `review/start` params stay schema-clean; adversarial `thread/start` carries none. Mutants M-A and M-B both executed live and killed (`m4-mutants.log`: M-A pinned-pass guard FAIL `got inconclusive/0, want pass/0`; M-B the no-signal bodies avoiding the word fail FAIL `Verdict = "pass", want "inconclusive"`). RED captured before GREEN in two stages: `undefined: codexNativeReviewFormatPin` build failure, then the carrier+downgrade assertion failures |
+| AC-CPS-005 (c) | PASS | `go test -count=1 -v -run 'Contradiction' ./internal/cli/` at `562126b1f` (M2); re-run on HEAD `861e08912` → `m4-ac013.log`, 4/4 PASS | V8 body flagged on both paths; predicate table incl. the unmet-gate control; end-to-end control through `applyGateUnmet` not flagged — `ok` |
+| AC-CPS-006 (a) | PASS | `-run 'TestCodex1718\|TestCodexWidened'` at `ce1df7f6f` (M2); re-run on HEAD `861e08912` → `ok` | exact count + severity/message/file/line for S1 (3), S2 and S2p (1) on both paths; partial drift → 2 and 0 survivors, exact count fails; `codex_findings_parse_test.go` (V1) unchanged and passing |
+| AC-CPS-007 | PASS | `git diff 4bea753cb -- internal/cli/codex_findings_parse_test.go \| wc -l` (M4); `git diff e26633699 …` was `0` at M2/M3 | `0` |
+| AC-CPS-008 | PASS | `-run TestGuard_` (M3; re-run on HEAD `861e08912` → `ok`) | guard fixture bodies state the pinned `Verdict: pass` line (scope note, v0.2.4); assertion unchanged — `pass`/0, no contradiction. M3 mutant "drop the verdict term from the predicate" made the guard fail (`guard-mutants.log`); M4's mutant M-A re-proved it live on the new bodies |
+| AC-CPS-009 | PASS (keep) | `-run TestGuard_` (M3; re-run on HEAD → `ok`) | N1, N2 and the unrecognized AC-CVS-001 corpus members stay `inconclusive` on the adversarial path — unchanged by M4 (the downgrade now also covers native, which is AC-CPS-004's point, not a change to this handling) |
+| AC-CPS-010 | PASS | `git diff 4bea753cb -- internal/cli/mcp_codex.go \| grep -cE '^[+-].*(NextSteps\|next_steps)'` (M4) → `0`; M2 form `git diff e26633699 …` was `0` (probe on `Contradiction` → `8`) | `0` |
+| AC-CPS-011 | PASS | `go test -count=1 -v -run '^TestCodex1718Fixtures$' ./internal/cli/` at `6a89f3d83` (M2); structural properties + P10 mutants re-run on HEAD → `ok` (`m4-green.log`, `m4-blast2.log`) | exit 0, ten SYNTH rows (pre-M4 values at the time); ledger P1–P11 at their pass conditions (`ac011-ledger.log`) |
+| AC-CPS-012 | PASS | same selector at `ce1df7f6f` (M2); re-run on HEAD → `ok`, S rows unchanged in verdict and findings (`m4-green.log`) | S1 `fail`/3, S2 `fail`/1, S2p `fail`/1 on both paths with exact content. RED before GREEN in `red-a.log`. **M4 before/after rows:** N1/N2 review/start `pass`/0 (before, `m4-rednow.log`) → `inconclusive`/0 (after, `m4-green.log`); turn/start rows unchanged |
+| AC-CPS-013 | PASS (remeasured on HEAD under the v0.2.3 re-anchored wording) | `-run 'Contradiction'` on HEAD `861e08912` → `m4-ac013.log`, `--- PASS` ×4, exit 0 | `TestSynthesizeReviewOutput_V8ContradictionIsReported` holds: the V8-shaped body is reported self-contradictory on both paths; the S2p-at-`562126b1f` clause stands as recorded at M2. The M4 downgrade does not touch it — a V8 body states a blocking verdict, which `codexStatedVerdict` reads before any fall-through |
 | AC-CPS-014 (d) | **NOT MEASURED** | — | requires a live codex call the operator has not authorized; no live call was made |
-| AC-CPS-015 | PASS | checks 1–4 | check 1 `1`/exit 0; D = `802ac54d2c17a6dc9afd07dfa44832389cdba944`; R = `6a89f3d8304ab37dc57a84b9ca17fe81062499c8`; `git merge-base --is-ancestor D R` exit 0; D ≠ R. Authorship remains reviewable, not mechanically proven |
+| AC-CPS-015 | PASS | checks 1–4 (M1) | check 1 `1`/exit 0; D = `802ac54d2c17a6dc9afd07dfa44832389cdba944`; R = `6a89f3d8304ab37dc57a84b9ca17fe81062499c8`; `git merge-base --is-ancestor D R` exit 0; D ≠ R. Authorship remains reviewable, not mechanically proven |
+| AC-CPS-016 (b, live) | **NOT MEASURED — pending its own operator authorization** | — | the in-tree half (AC-CPS-004) holds; the live native observation this criterion requires is a separate call from the authorized AC-CPS-014 adversarial call. External quota blocks until 2026-09-28 14:37 AND the acceptance.md Authorization clause requires its own operator grant; no live call was made |
 
 **RED evidence (captured before each GREEN).** (c): build failure
 (`undefined: flagVerdictFindingsContradiction`), then with a no-op stub
@@ -137,7 +140,47 @@ the same; ctrlA `fail`/1 both; ctrlB `fail`/0 both — identical to E-1718.
 mutation instead (`guard-mutants.log`); recognizer narrowness was shown the same
 way — relaxing the comma adjacency or the 판정 statement form fails N2 and the
 negative cases, and admitting a hyphen after the bold severity word fails the
-`**High-level**` negative (`recognizer-mutants.log`).
+`**High-level**` negative (`recognizer-mutants.log`). M4: stage 1 build failure
+(`undefined: codexNativeReviewFormatPin`), stage 2 — with only the pin constant
+present — the carrier and downgrade assertion failures
+(`native thread/start params carry no developerInstructions: map[]`;
+`no-signal native body "I walked the diff and moved on.": Verdict = "pass",
+want "inconclusive"` ×3) while the constants-sharing, recognition and
+pinned-pass controls passed (`m4-red.log`).
+
+**M4 pre-flight and feasibility (tree `4bea753cb`).** `go build ./...` exit 0;
+`GOOS=windows GOARCH=amd64 go build ./...` exit 0;
+`golangci-lint run --timeout=2m ./internal/cli/...` → `0 issues.`; the AC-CPS-004
+RED-now command re-executed — `N1.txt review/start verdict=pass findings=0` and
+the same for N2, turn/start rows `inconclusive` (`m4-rednow.log`), identical to
+the amended cell's `0ff644530` output. **Carrier established, blocker path
+cleared:** the review/start request itself has no instruction field
+(`ReviewStartParams` = {delivery: ReviewDelivery|null (inline/detached — not an
+instruction carrier), target, threadId}, measured on codex-cli 0.157.0
+`codex app-server generate-json-schema`, `/tmp/codex-schema-m4/`), and the
+target's `custom` variant is the forbidden substitution — so the pin rides the
+session-level destination the review path already uses for the model
+(REQ-CX2-002 precedent): `ThreadStartParams.developerInstructions` (measured
+`string|null`, same schema run), populated by `codexReviewSessionParams` when
+the method is `review/start` and forwarded by `openCodexSessionResolved`. The
+review target and its variant are untouched; whether live codex honours a
+thread-level pin is AC-CPS-016's live burden and is established by nothing
+here.
+
+**M4 stale-witness updates (within AC-CPS-004's scope).** Thirteen tests plus
+four scripted-body tests asserted the pre-(b) native default this milestone
+removes (unrecognized native body → `pass`), measured via the affected-family
+selector before update (`m4-blast.log`, 13 `--- FAIL`) and after (`m4-blast2.log`,
+`ok`): the fixture table's N1/N2 review/start rows (plan.md M4 step 4, before/
+after rows recorded), AC-CPS-008's guard bodies stating the pin with the
+assertion unchanged, AC-CVS-003's native arm and the mode-split witness
+(renamed with the supersession recorded in their doc comments), the t551
+AC-CBR-008 bound (deliberately lifted by v0.2.4; the pre-M4 value it had pinned
+remains cited at `.moai/reports/t551/probe-synthesizer-20260908.txt`), the
+characterization row, `realCleanReview` (now the pinned-pass form a real clean
+review states under the pin), and the scripted native bodies of the audit-gate,
+session-reuse and dispatch tests. `codex_findings_parse_test.go` is untouched
+(AC-CPS-007: diff 0).
 
 **Offline observations beyond the ACs (local, tree `ce1df7f6f`+).** The raw
 #1718 bodies now synthesize `fail`/3 (body1) and `fail`/1 (body2) on both paths
@@ -159,17 +202,39 @@ after each of (c), (a), (d). Full `go test -count=1 -cover ./internal/cli/`
 `TestDoctorCmd_Execution`; zero `--- FAIL` lines) — a timeout, not a failure;
 package-level coverage was therefore not measured.
 
+**Quality (M4, tree `861e08912`).** `go build ./...` exit 0 (`darwin_ok`);
+`GOOS=windows GOARCH=amd64 go build ./...` exit 0 (`windows_ok`);
+`golangci-lint run --timeout=2m ./internal/cli/...` → `0 issues.` (baseline 0;
+one transient ST1018 from a literal U+200B written during test editing was
+repaired to the escape form before commit). Parser/audit regression selector
+`-run 'Codex|Synthesize|Review|Verdict|Convergence|Audit'` → `ok`, exit 0
+(`m4-regress2.log`; the first pass surfaced the four scripted-body stale
+witnesses named above, all fixed, none semantic). Selector-scoped coverage with
+the M4 tests added
+(`-run 'TestCodex1718|TestCodexWidened|Contradiction|TestCodexAdversarial|TestCodexNative|TestGuard_|TestSynthesizeReviewOutput|Verdict'`):
+`codexReviewSessionParams` 100.0%, `codexUnrecognizedVerdict` 100.0%,
+`synthesizeReviewOutput` 100.0%; `openCodexSessionResolved` 71.4% and
+`runCodexReviewRPCResolved` 55.6% — the M4-touched lines in both (the
+`developerInstructions` forwarding, the session-params injection) are on the
+covered success path asserted by `TestCodexNativeRequest_CarriesFormatPin`; the
+uncovered arms are pre-existing error paths this milestone does not touch
+(`m4-coverage.log` + cover profile). E4 subagent boundary, scoped as in M2/M3
+(`grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/mcp_codex*.go
+internal/cli/codex_*.go | grep -v '_test.go' | grep -v '//'`): 0. Package-wide
+raw grep shows 18 pre-existing doc/help-text mentions in files M4 does not
+touch (`harness.go`, `agentlint`, …) — baseline, unchanged.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-09-26
-run_commit_sha: 54fe08135
-run_status: partial — (a) (c) (d) implemented; (b) blocked pending an operator decision
-ac_pass_count: 10   # 005 006 007 008 009 010 011 012 015, plus 013 at 562126b1f
+run_commit_sha: 861e08912
+run_status: partial — (a) (b) (c) (d) all implemented; AC-CPS-014 / AC-CPS-016 live observations pending their operator authorizations
+ac_pass_count: 11   # 004 005 006 007 008 009 010 011 012 013 (remeasured on HEAD per v0.2.3 re-anchoring) 015
 ac_fail_count: 0
-ac_blocked: [AC-CPS-004]
-ac_not_measured: [AC-CPS-014]
-ac_wording_change_needed: [AC-CPS-013]
+ac_blocked: []
+ac_not_measured: [AC-CPS-014, AC-CPS-016]
+ac_wording_change_needed: []
 preserve_list_post_run_count: n/a (no PRESERVE list declared)
 l44_pre_commit_fetch: not run (lanes do not push; lead batch-pushes develop)
 l44_post_push_fetch: not applicable (no push)
@@ -177,7 +242,7 @@ new_warnings_or_lints_introduced: 0
 cross_platform_build:
   darwin: exit 0
   windows_amd64: exit 0
-total_run_phase_files: 13
+total_run_phase_files: 27
 m1_to_mN_commit_strategy: one commit per milestone step, no push, no amend
 ```
 
