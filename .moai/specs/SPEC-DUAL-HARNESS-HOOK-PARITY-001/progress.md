@@ -1044,3 +1044,11 @@ coverage:   # M2i, no pre-change baseline except verify (M2b: 81.0% → 84.6%)
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## Resume point (2026-09-26)
+
+- State: run phase complete (M2a–M2i), §E.3 filled at d96189e42 (19 PASS / 0 FAIL / 3 NOT_RUN: AC-HPR-004, 007, 021; live legs of 008–012 and 020 NOT_RUN). SPEC status still in-progress. Branch unpushed; develop absorbed at f75957505 (local develop 4dcd4d8d4); lane's local develop has since advanced (origin/develop 35ab8cff3).
+- Blocker: sync (manager-docs) stopped because spec.md §E / acceptance.md §G require the live-certification follow-up card id in both §E.4 and the CHANGELOG entry; the card is awaiting operator issuance via the lead.
+- Remaining order: (1) receive follow-up card id → (2) sync via manager-docs (§E.4 + CHANGELOG [Unreleased] partial live-uncertified entry + spec.md status completed, single commit; sync_commit_sha recorded in a follow-up line) → (3) sync-audit via sync-auditor, verdict at .moai/reports/t1099/ → (4) request merge window from lead; on grant absorb local develop and remeasure on the merged tree (internal/cli hook tests isolated per card t1229 note; hook.go touched only at :96–114, check overlap with t1152's regions :278–307/:472–493/:523–542).
+- Coverage request for sync-audit: measure internal/goal (78.0%) and internal/template (82.8%) before vs after this card (baseline at merge-base of the branch with develop), record as debt if not a regression.
+- Lead notes: codex was removed from factory/kanban by operator decision; no live leg depends on codex factory/lane (acceptance.md has 0 factory/lane/kanban hits; parity_live_test.go legs need a single codex session + ~/.codex/auth.json only).
