@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
@@ -287,8 +288,10 @@ func BackupExistingProject(root string) (string, error) {
 // provenance: without it every one of them reads as untracked and is recorded
 // user_created and skipped. A template_managed file whose content no longer
 // matches its recorded hash was edited by the user and is reclassified
-// user_modified, so the redeploy leaves it alone. A missing or invalid backup
-// manifest carries nothing.
+// user_modified, so the redeploy leaves it alone; so is one that is not a
+// regular file or cannot be read, since it cannot be shown unedited. Keys
+// outside the project root are carried unread. A missing or unloadable backup
+// manifest carries nothing, so --force still runs as it did without one.
 func CarryManifestForward(root, backupDir string) error {
 	if backupDir == "" {
 		return nil
@@ -313,22 +316,38 @@ func CarryManifestForward(root, backupDir string) error {
 
 	mgr := manifest.NewManager()
 	if _, err := mgr.Load(root); err != nil {
-		return fmt.Errorf("load carried manifest: %w", err)
-	}
-	changes, err := mgr.DetectChanges()
-	if err != nil {
-		return fmt.Errorf("detect edits since last deploy: %w", err)
+		// Valid JSON that is not a manifest: carry nothing, and remove what
+		// Load and the copy left behind so the deploy starts from none.
+		_ = os.Remove(filepath.Join(moaiDir, defs.ManifestJSON))
+		_ = os.Remove(filepath.Join(moaiDir, defs.ManifestJSON+".corrupt"))
+		return nil
 	}
 	files := mgr.Manifest().Files
-	for _, c := range changes {
-		entry := files[c.Path]
-		// An empty NewHash is a deleted file: the redeploy restores it.
-		if c.NewHash == "" || entry.Provenance != manifest.TemplateManaged {
+	for rel, entry := range files {
+		if entry.Provenance != manifest.TemplateManaged {
+			continue
+		}
+		clean := filepath.Clean(filepath.FromSlash(rel))
+		if filepath.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+			continue
+		}
+		path := filepath.Join(root, clean)
+		info, err := os.Lstat(path)
+		if errors.Is(err, os.ErrNotExist) {
+			continue // deleted: the redeploy restores it
+		}
+		current := ""
+		if err == nil && info.Mode().IsRegular() {
+			current, _ = manifest.HashFile(path)
+		}
+		if current == entry.CurrentHash {
 			continue
 		}
 		entry.Provenance = manifest.UserModified
-		entry.CurrentHash = c.NewHash
-		files[c.Path] = entry
+		if current != "" {
+			entry.CurrentHash = current
+		}
+		files[rel] = entry
 	}
 	return mgr.Save()
 }

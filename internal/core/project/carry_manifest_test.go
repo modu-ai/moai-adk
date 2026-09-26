@@ -42,6 +42,62 @@ func TestCarryManifestForward(t *testing.T) {
 		}
 	})
 
+	t.Run("structurally invalid backed-up manifest carries nothing", func(t *testing.T) {
+		for _, body := range []string{"[]", `"x"`, `{"files": 5}`} {
+			root, backup := t.TempDir(), t.TempDir()
+			writeFile(t, backup, "manifest.json", body)
+			if err := CarryManifestForward(root, backup); err != nil {
+				t.Fatalf("%s: %v", body, err)
+			}
+			entries, _ := os.ReadDir(filepath.Join(root, ".moai"))
+			if len(entries) != 0 {
+				t.Errorf("%s: left behind in .moai/: %v", body, entries)
+			}
+		}
+	})
+
+	t.Run("unreadable and out-of-root entries never abort the carry", func(t *testing.T) {
+		parent := t.TempDir()
+		root := filepath.Join(parent, "proj")
+		mkDir(t, root, "dir-at-file-path")
+		writeFile(t, parent, "outside.md", "outside, changed\n")
+
+		deployed := manifest.HashBytes([]byte("as deployed\n"))
+		mgr := manifest.NewManager()
+		if _, err := mgr.Load(root); err != nil {
+			t.Fatal(err)
+		}
+		files := mgr.Manifest().Files
+		entry := manifest.FileEntry{Provenance: manifest.TemplateManaged, TemplateHash: deployed, DeployedHash: deployed, CurrentHash: deployed}
+		files["dir-at-file-path"] = entry
+		files["../outside.md"] = entry
+		if err := mgr.Save(); err != nil {
+			t.Fatal(err)
+		}
+		backup, err := BackupExistingProject(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := CarryManifestForward(root, backup); err != nil {
+			t.Fatalf("carry aborted: %v", err)
+		}
+		after := manifest.NewManager()
+		if _, err := after.Load(root); err != nil {
+			t.Fatal(err)
+		}
+		// A path that is not a regular file cannot be proven unedited, so it
+		// is never overwritten.
+		if e, _ := after.GetEntry("dir-at-file-path"); e == nil || e.Provenance != manifest.UserModified {
+			t.Errorf("dir-at-file-path = %+v, want user_modified", e)
+		}
+		// A key outside the project root is not read at all: its provenance
+		// is carried unchanged even though the file behind it differs.
+		if e, _ := after.GetEntry("../outside.md"); e == nil || e.Provenance != manifest.TemplateManaged {
+			t.Errorf("../outside.md = %+v, want carried unchanged", e)
+		}
+	})
+
 	t.Run("reclassifies only edited template files", func(t *testing.T) {
 		root := t.TempDir()
 		writeFile(t, root, "kept.md", "as deployed\n")
