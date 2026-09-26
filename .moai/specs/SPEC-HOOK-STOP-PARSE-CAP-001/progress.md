@@ -8,6 +8,8 @@
 - 산출물: spec.md, plan.md, acceptance.md, progress.md (Tier M)
 - SPEC ID 형식 검사: `[[ "$ID" =~ ^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$ ]]` → `PASS`. 사전 부재: `ls .moai/specs/SPEC-HOOK-STOP-PARSE-CAP-001` → `No such file or directory`
 - 0.2.0 수리(plan-audit 1차 FAIL 0.79 → 리드 판정 2026-09-26 반영): REQ 15개, AC 16개(차단 14, 회귀 가드 2)
+- 0.2.1 수리(plan-audit 2차 FAIL 0.73, `.moai/reports/t1272/plan-audit-iter2.md`): 차단 결함 N1~N4 만 반영했다. 설계와 N5~N8 은 건드리지 않았다. REQ·AC 개수 변화 없음
+- 3차 plan-audit 예외: 다음 3차 감사는 Tier M 반복 상한(2회)을 넘는 **1회 한정 예외**다. 리드가 2026-09-26 승인했으며, 감사 범위는 N1~N4 의 수리가 맞는지로 한정한다
 - 미해결 표식: 없음 — 만료 시간은 리드 판정으로 60분 확정(plan.md §B.1)
 - 같은 카드에서 선행 SPEC-HOOK-STDIN-FAILCLOSED-001 을 0.4.3 으로 정정했다(F6, AC-SPC-014). 수리 라운드에서 그 plan.md M1 의 「미측정 독트린」 지시문에 정정 주석을 달았다(D6)
 - 측정하지 않은 것: 9회 연속 파싱 실패 Stop 의 현재 동작(1회 실행 + 코드 판독으로 추론), 실제 프로세스 트리(설정·래퍼 파일 판독만), 훅 프로세스 환경의 `CLAUDE_CODE_SESSION_ID` 존재(AC-SPC-016 이 run-phase 에서 잰다), `/clear` 뒤 세션 id 변화(M5c), Windows 에서의 조상 탐색, in-process 팀원의 Stop 발생 경로

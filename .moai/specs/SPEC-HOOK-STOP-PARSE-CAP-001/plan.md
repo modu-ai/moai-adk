@@ -47,7 +47,7 @@ run-phase 착수 시 다음을 다시 재고 progress.md §E.2 에 남긴다.
 3. `internal/template/templates/.claude/settings.json.tmpl` 의 Stop 항목과 `internal/template/templates/.claude/hooks/moai/handle-stop.sh.tmpl` 이 여전히 셸 래퍼 + `exec moai hook stop` 모양인지 기록한다. 대체 경로는 래퍼 셸을 건너뛰므로 이것은 blocker 가 아니라 M5b 설계의 입력이다. 다만 래퍼가 셸이 아닌 프로그램으로 바뀌었으면 spec.md §F 「셸이 아닌 래퍼」 행이 현실이 되므로 보고한다.
 4. 셈 기록 위치: `<프로젝트 루트>/.moai/state/stop-parse-cap/<64자 16진>.json`(§B.2 의 이름 규칙). 프로젝트 루트는 기존 영속 기록과 같은 `resolveHookProjectRoot()` 로 정한다. `.moai/state/` 는 런타임 관리 영역이며 저장소에 커밋되지 않는다 — plan 시점 확인: `git check-ignore -v .moai/state/stop-parse-cap/x.json` → `.gitignore:398:.moai/state/	.moai/state/stop-parse-cap/x.json`. 착수 시 다시 확인한다.
 5. 열쇠 보강 선택지(요구 아님, 프로세스 열쇠에만 해당): `homestate.ProbeProcessIdentity(pid)` 가 돌려주는 프로세스 지문을 셈 기록에 함께 적고, 지문이 다르면 기록을 없는 것으로 본다. PID 재사용 시 해제 상태를 이어받는 위험(spec.md §F 첫 행)을 줄이지만 매 파싱 실패 Stop 마다 프로세스 조회 비용이 든다. 채택 여부는 run-phase 가 비용을 재고 정하며, 채택하면 AC-SPC-006 의 대조(해제 상태 이어받기)를 지문 일치 조건 아래로 옮기는 D-NEW-1 개정이 필요하다.
-6. 합성 프로세스 트리 시험(AC-SPC-007 (iii))의 이음매: `session.ResolveOwnerPID` 의 조상 표 이음매(`procInfo`, `pidIsAlive`)는 비공개다. run-phase 는 **실제 해석의 조상 탐색이 합성 표 위에서 돌도록** 이음매를 연다 — 예: `internal/session` 에 조상 표를 인자로 받는 해석 변형을 두고 `ResolveOwnerPID` 가 그것을 부르게 하거나, 테스트 전용 공개 설정 함수를 둔다. 어느 쪽이든 `ResolveOwnerPID` 의 동작은 바꾸지 않으며(기존 `session_pid_test.go` 통과), 해석 결과를 상수로 돌려주는 가짜 해석기로 시험을 대신하지 않는다 — 그렇게 하면 원시 부모 pid 변이(AC-SPC-007 필수 RED)를 잡지 못한다.
+6. 합성 프로세스 트리 시험(AC-SPC-007 (iii))의 이음매: `session.ResolveOwnerPID` 의 조상 표 이음매(`procInfo`, `pidIsAlive`)는 비공개다. run-phase 는 **실제 해석의 조상 탐색이 합성 표 위에서 돌도록** 이음매를 연다 — 예: `internal/session` 에 조상 표를 인자로 받는 해석 변형을 두고 `ResolveOwnerPID` 가 그것을 부르게 하거나, 테스트 전용 공개 설정 함수를 둔다. 어느 쪽이든 `ResolveOwnerPID` 의 동작은 바꾸지 않으며(기존 `session_pid_test.go` 통과), 해석 결과를 상수로 돌려주는 가짜 해석기로 시험을 대신하지 않는다 — 그렇게 하면 래퍼 셸을 건너뛰지 않는 이음매 안 변이(AC-SPC-007 (iii) 필수 RED)를 잡지 못한다. 원시 `os.Getppid()` 변이는 주입된 표를 읽지 않으므로 이 시험으로는 잡히지 않고, AC-SPC-007 (iii) 의 두 파일 대상 `grep -c 'os.Getppid'` 정적 검사가 잡는다.
 
 ---
 
@@ -110,7 +110,7 @@ run-phase 완료 보고는 acceptance.md 의 AC 별로 명령·출력 원문·�
 | M5b — 파손 stdin 루프 A(`CAP=200`)·B(unset) (AC-SPC-015 (i)(ii)) | 2 | 각 `--max-turns 30` | 각 `timeout -k 10 300` | 없음 |
 | M5c — `/clear` 전후 세션 id (AC-SPC-015 (iii)) | 대화형 1 세션, 프롬프트 최대 3개(`/clear` 제외) | 프롬프트당 1턴 | 세션 전체 10분 | 없음 |
 
-- **M5a** — `claude -p "reply with ok" --max-turns 2`, 유효 stdin 통과. Stop 이 한 번 이상 불린다. 측정 로그의 존재 여부와, moai 가 stderr 로그에 남긴 열쇠 종류가 AC-SPC-016 의 판정 자료다. 이 측정은 run-phase 완료를 막는다(리드 판정 D3 의 [HARD]).
+- **M5a** — 한 번의 복합 호출로 실행한다: `unset CLAUDE_CODE_SESSION_ID MOAI_SESSION_PID && timeout -k 10 120 claude -p "reply with ok" --max-turns 2 --model haiku --output-format json > <증거 경로>/m5a-result.json`. 레인 세션 안의 Bash 는 두 변수를 바깥 세션 값으로 갖고 있으므로(plan-audit 2차 N1 측정), 따로 부른 `unset` 은 다음 호출에 닿지 않는다 — 정리와 실행이 같은 호출이어야 한다. 유효 stdin 통과, Stop 이 한 번 이상 불린다. 판정 자료는 대리 스크립트 측정 로그의 상태·값과, 같은 실행의 결과 JSON `session_id` 다(AC-SPC-016). `set-nonempty` 값이 그 `session_id` 와 같아야 통과이고, 존재만으로는 통과가 아니다. 이 측정은 run-phase 완료를 막는다(리드 판정 D3 의 [HARD]).
 - **M5b** — 기대: 두 팔 모두 파싱 실패 Stop 이 9번째에서 `{}` 를 받고 턴이 끝난다. 관측 항목(차단 아님): 새 사유 문구를 받은 모델의 훅·설정 편집 시도 횟수.
 - **M5c** — `-p` 는 `/clear` 를 한 대화 안에서 재현하지 못하므로 운영자가 대화형으로 돈다: 프롬프트 1 → Stop 관측 → `/clear` → 프롬프트 2 → Stop 관측. 두 Stop 의 측정 로그에서 세션 id 가 바뀌었는지 기록한다. 기대(의도): 바뀐다 → 셈이 이월되지 않는다. 바뀌지 않으면 spec.md §F 「`/clear` 뒤의 이월」이 확인된 잔여 위험이 된다.
 - M5b·M5c 는 모델 사용량과 운영자 시간에 달려 있으므로 막혀도 M1~M4 의 완료를 막지 않는다(Gap 보고). M5a 가 막히면 Gap 이 아니라 blocker 로 리드에게 보고한다.
