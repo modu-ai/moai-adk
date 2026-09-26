@@ -26,7 +26,7 @@ citations metric=positive-cited-path-absence value=0 threshold=0 verdict=fresh
 Fold/Omission 판정 검사 (codemaps.md Phase 4 스크립트): `COLLECTED: fold=37 omission=29`, UNCOVERED·FOLD-PROSE·GAP 0줄.
 
 ## 기준 귀속
-두 측정 모두 이 워크트리(`.claude/worktrees/t1238`)에서 이번 실행에 잰 값이다. 카드 본문의 43 은 이전 develop 기준 값이고, 이 트리에서는 그 사이 병합분이 더해져 77 이었다.
+두 측정 모두 이 워크트리(`.claude/worktrees/t1238`)에서 이번 실행에 잰 값이다. CI 는 `d6992e3a0` 에서 43, 레인은 `38148d891` 에서 77 을 쟀다 — 그 사이 병합된 t1234 의 신규 패키지(`internal/contract` 계열)가 차이로 읽힌다(리드 판독). 병합 창에서 develop 흡수는 no-op(`38148d891` 그대로)이었고, 병합 전 트리 재측정도 codemaps value=0 fresh.
 
 ## 변경
 `.moai/project/codemaps/` 4개 파일 (+33/−13): modules.md (`internal/contract` 계열 신설 행, cli 클러스터 수치·설명 갱신), dependencies.md (contract fan-in 행), entry-points.md (`moai contract verify|show|sign`), overview.md (레이어 표). provenance.json 재스탬프.
