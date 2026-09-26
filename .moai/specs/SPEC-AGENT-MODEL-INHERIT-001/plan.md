@@ -8,7 +8,7 @@ created: 2026-09-26
 
 ## §A Context
 
-Tier **L**: ≥3 milestones and well over 10 files (touch set 271 paths,
+Tier **L**: ≥3 milestones and well over 10 files (touch set 272 paths,
 research.md §I). The decisions most likely to change — retention seams, the migration strip
 step, the main-session persistence boundary — are fixed in M1. Code removal then runs
 **consumer-first**: every milestone deletes the last consumers of a symbol before, or in the same
@@ -59,9 +59,10 @@ registry row and re-pointing `profile-matrix-order` (design §F); codex/GLM task
 pin > backend default, removing those `ResolveAgentModelEffort` consumers and their test
 references (D5); the strip step at its three hosts (D14 a/b/c) with the retained-key filter and
 the update-report lines, tested per design §C row including the version-matched, user-cancel
-and clean-reinstall rows. Test seams: `runTemplateSyncWithProgress` returns a skip reason
-(`none` / `versionMatch` / `userCancel`), and `confirmViaPreview` is reached through a
-package-level function variable the cancel test replaces (D14). Nothing is deleted yet except the re-pointed call sites.
+and clean-reinstall rows. Host (b) tells a version match from a user cancel by
+re-evaluating the sync's version-match predicate — the `(skipped bool, err error)` contract of
+`runTemplateSyncWithProgress` stays (REQ-UMH-003); test seam: `confirmViaPreview` is reached
+through a package-level function variable the cancel test replaces (D14). Nothing is deleted yet except the re-pointed call sites.
 
 ### M2 — Web console removal (Priority High)
 REQ-AMI-011. Delete the agentfm tab, handlers, app seams, templ blocks (regenerate
@@ -74,7 +75,8 @@ rosterguard sites `v4manifest-agent-tiers`, `v4manifest-tier-test`, `web-agentfm
 `web-agentfm-display-rank-test`, `web-i18n-agent-descriptions` and the `web-agentfm-subset-count`
 exemption leave in the same milestone (design §F), together with the `agentfm.*` /
 `fieldDesc.agentfm.*` / `agentdesc.*` keys in `internal/web/assets/i18n.js` and the `agentdesc.`
-exemption in `i18n_untranslated_allowlist_test.go`. M1 characterisation tests stay green.
+exemption in `i18n_untranslated_allowlist_test.go`, dropping the empty-registry assertion in
+`i18n_governance_test.go:437-439` (`TestI18nKeyCoverageReverse`) in the same commit. M1 characterisation tests stay green.
 
 ### M3 — Hook guard removal (Priority High)
 REQ-AMI-009, REQ-AMI-010. Delete `agent_model_guard.go` and its test, `pre_tool.go` wiring,
@@ -87,7 +89,8 @@ REQ-AMI-005, REQ-AMI-008 (command), REQ-AMI-015, REQ-AMI-016. Delete `moai model
 root registration); reduce `--profile` / `--model-policy` / `--high` / `--medium-alias` /
 `--low` to deprecation warnings (D10/D13); drop the agent model-policy question from the
 init/update wizards (`wizard/questions.go`, `wizard/wizard.go:484`, and the wizard tests that name it —
-the `grep -lE 'model_policy' internal/cli/wizard/*_test.go` list in the touch set; operator Q7) and the `update_wizard` `ApplyProfile` + system.yaml `model_policy` write;
+the `grep -lE 'model_policy' internal/cli/wizard/*_test.go` list in the touch set, and the question's
+translations `wizard/translations.go:89-91` (ko), `:179-181` (ja), `:269-271` (zh); operator Q7) and the `update_wizard` `ApplyProfile` + system.yaml `model_policy` write;
 rewrite the retained `moai profile setup` `model_policy` and `effort_level` wording to main-session
 terms in four locales (design H24, 20 lines); retire agentlint LR-03/LR-12 and the routing checks in `workflow_lint.go` /
 `sentinels.go` (and dispose of the `agentlint-section-marker` exemption if its comment goes); retire
@@ -151,6 +154,7 @@ never after the milestone that deletes the symbol.
 | `LLMConfig.{Profile,Profiles,HarnessAgents,AgentOverrides,PerformanceTier}` / `EffectiveProfile` | web M2 · cli/glm.go, cli/model.go, agentlint M4 · template M5 | M5 |
 | `WorkflowAgents` / `ModelRouting*` | settings schema M2 · agentlint, spec haiku lint M4 | M5 |
 | agent frontmatter `effort:` | agentlint LR-03 M4 · emitter manifest M6 (same commit as strip) | M6 |
+| `config.IsValidProfile` | cli/update.go:55,657 and cli/init.go:363,370 — removed with the flag reduction M4 | M5 |
 | rosterguard registry sites (design §F) | sites leave with their surface: M1 re-point, M2 web/v4manifest/i18n, M5 matrix/config/retainedAgentNames/shipped inventory/llm.yaml/project docs, M7 model-policy | same milestone |
 
 **Test files.** `go vet` compiles `_test.go`, so the rule above binds tests too: **each milestone

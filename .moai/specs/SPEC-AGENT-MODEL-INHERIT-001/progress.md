@@ -5,7 +5,7 @@
 - Card: t1246. Branch `WT-agent-model-inherit`, base develop `d6992e3a0`. Tier L.
 - Artifacts: spec.md, plan.md, acceptance.md, design.md, research.md, progress.md; run-entry touch set `.moai/reports/t1246/touch-set.{sh,txt}`.
 - Inventory measured 2026-09-26 (research.md). Budget baseline: 77539 / 77600 tokens, headroom 61.
-- Run gate: `git merge-base --is-ancestor WT-rules-diet develop` exit 0 (REQ-AMI-001; exit 1 on 2026-09-26); t1257 overlap re-measured at run entry (REQ-AMI-002; C-collated intersection 0 at `024b95f77`, touch set 271 paths).
+- Run gate: `git merge-base --is-ancestor WT-rules-diet develop` exit 0 (REQ-AMI-001; exit 1 on 2026-09-26); t1257 overlap re-measured at run entry (REQ-AMI-002; C-collated intersection 0 at `024b95f77`, touch set 272 paths).
 - Operator questions — RESOLVED 2026-09-26 (answered by the operator in the lane window, relayed by the coordinator):
   - Q1 — web console: delete the agent-settings tab entirely (UI + API). → REQ-AMI-011, design D7.
   - Q2 — leftover user config keys: `moai update` removes them and lists them in the update report. → REQ-AMI-014, design D8/D14.

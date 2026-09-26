@@ -34,6 +34,7 @@ G='ResolveAgentModelEffort|ResolveHarnessAgentModelEffort|DefaultProfileMatrix|P
     internal/web/assets/i18n.js internal/web/i18n_untranslated_allowlist_test.go \
     internal/cli/update_template_sync.go internal/cli/update_clean_install.go \
     docs-site/content/ja/multi-llm/_index.md docs-site/content/zh/multi-llm/_index.md \
-    internal/cli/wizard/wizard.go
+    internal/cli/wizard/wizard.go \
+    internal/web/i18n_governance_test.go
   grep -lE 'model_policy' internal/cli/wizard/*_test.go
 } | grep -vE '^\.claude/(agent-memory|worktrees)/|/testdata/codex-rollouts' | LC_ALL=C sort -u

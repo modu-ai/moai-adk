@@ -254,12 +254,12 @@ The touch set is a committed file produced by a committed, read-only script:
   doctrine/docs pattern, Go/templ symbol pattern, workflow scripts, harness manifests, and an
   explicit list for files no pattern reaches).
 - Output: `.moai/reports/t1246/touch-set.txt` — `sh .moai/reports/t1246/touch-set.sh > .moai/reports/t1246/touch-set.txt`
-  → exit 0, **271** paths (revision after plan-audit iter-3; iter-2 revision had 252, iter-1 238).
+  → exit 0, **272** paths (revision after plan-audit iter-4; iter-3 271, iter-2 252, iter-1 238).
   `cut -d/ -f1-2 touch-set.txt | LC_ALL=C sort | uniq -c`: 22 `.claude/agents`, 2 `.claude/commands`,
   1 `.claude/hooks`, 12 `.claude/rules`, 8 `.claude/skills`, 5 `.claude/workflows`, 1 `.moai/docs`,
   2 `.moai/project`, 1 `CHANGELOG.md`, 62 `docs-site/content`, 38 `internal/cli`, 12 `internal/config`,
   10 `internal/harness`, 6 `internal/hook`, 5 `internal/settings`, 2 `internal/spec`,
-  54 `internal/template`, 28 `internal/web`.
+  54 `internal/template`, 29 `internal/web`.
 - Collation: the script sorts with `LC_ALL=C`; `LC_ALL=C sort -c touch-set.txt` → exit 0. The gate
   must therefore run `LC_ALL=C sort` and `LC_ALL=C comm -12`.
 
@@ -308,6 +308,14 @@ Update ordering (plan-audit iter-2 N1), measured in `internal/cli/update.go` and
   project (`update.go:~405-424`, `runCleanReinstall`).
 - Seams: `runTemplateSyncWithProgress` returns `(true, nil)` for both the version match (:773-776) and
   the user cancel (:795-799); `confirmViaPreview` (:849) is a plain function (no test seam today).
+  The `(skipped bool, err error)` signature is pinned: `update_mirror_heal_test.go:337-339` fails if it
+  changes ("lost its (skipped bool, err error) contract (C-2 / REQ-UMH-003)") and `update_codex_wiring_test.go:85`
+  locates `if syncSkipped {`. Host (b) therefore re-evaluates the version-match predicate
+  (`packageVersion == projectVersion && !forceUpdate`, update_template_sync.go:771-773) instead of changing
+  the return type.
+- i18n exemption registry: `i18nEnExemptPrefixes` (`i18n_untranslated_allowlist_test.go:264-269`) has one
+  member, `agentdesc.`; `TestI18nKeyCoverageReverse` (`i18n_governance_test.go:423`) errors "en-exempt prefix
+  registry is empty" at :437-439 when it has none.
 
 Hence design D14's three hosts: inside "Restore Settings" between :620 and :638 (filtering the
 strip's keys out of the retained list), inside the `syncSkipped` branch for the version-match reason

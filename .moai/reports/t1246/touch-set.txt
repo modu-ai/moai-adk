@@ -256,6 +256,7 @@ internal/web/fieldsets_states_test.go
 internal/web/fieldsets_templ.go
 internal/web/g3_profile_matrix_test.go
 internal/web/handlers.go
+internal/web/i18n_governance_test.go
 internal/web/i18n_untranslated_allowlist_test.go
 internal/web/m5_agentfm_test.go
 internal/web/main_test.go
