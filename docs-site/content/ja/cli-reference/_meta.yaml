@@ -49,3 +49,5 @@ tokens:
   title: "moai tokens トークン会計"
 memory:
   title: "moai memory メモリ管理"
+contract:
+  title: "moai contract 自律実行契約"

@@ -531,6 +531,13 @@ type WorkflowConfig struct {
 	// internal/template/templates/.
 	Jev WorkflowJevConfig `yaml:"jev"`
 
+	// Autonomy mirrors workflow.autonomy.* — the contract-signing surface
+	// (SPEC-AUTONOMY-CONTRACT-001 REQ-CONTRACT-015). Read through
+	// ResolveAutonomy, never directly: the resolver owns the absent-key
+	// defaults, the fail-safe fallback for out-of-set values, and the
+	// mode-derived kickoff decider.
+	Autonomy AutonomyConfig `yaml:"autonomy"`
+
 	// Codex gates the codex audit backend + the Stop-hook review gate
 	// (SPEC-MOAI-MCP-SERVER-001 M2). The ReviewGate sub-block is the opt-in
 	// toggle for `moai hook codex-review-gate` — it ships default-OFF (C6);
@@ -821,6 +828,43 @@ type SubagentWriteGuardConfig struct {
 // could be aimed somewhere else.
 type WorkflowJevConfig struct {
 	Enabled bool `yaml:"enabled"`
+}
+
+// AutonomyConfig mirrors workflow.autonomy.* (SPEC-AUTONOMY-CONTRACT-001
+// REQ-CONTRACT-015). String fields treat "" as absent. The numeric fields are
+// pointers so an absent key (nil) is distinguishable from an explicit zero;
+// ResolveAutonomy applies the defaults.go values for nil.
+type AutonomyConfig struct {
+	Mode       string                   `yaml:"mode"`
+	Contract   AutonomyContractConfig   `yaml:"contract"`
+	Kickoff    AutonomyKickoffConfig    `yaml:"kickoff"`
+	Escalation AutonomyEscalationConfig `yaml:"escalation"`
+}
+
+// AutonomyContractConfig mirrors workflow.autonomy.contract.*.
+type AutonomyContractConfig struct {
+	BatchSign    bool   `yaml:"batch_sign"`
+	SecondReview string `yaml:"second_review"`
+	PushDevelop  bool   `yaml:"push_develop"`
+}
+
+// AutonomyKickoffConfig mirrors workflow.autonomy.kickoff.*. Decider has no
+// stored default: absent or empty derives from the effective mode.
+type AutonomyKickoffConfig struct {
+	Decider          string   `yaml:"decider"`
+	JevMinConfidence *float64 `yaml:"jev_min_confidence"`
+}
+
+// AutonomyEscalationConfig mirrors workflow.autonomy.escalation.*.
+type AutonomyEscalationConfig struct {
+	BudgetDefault AutonomyBudgetConfig `yaml:"budget_default"`
+}
+
+// AutonomyBudgetConfig mirrors workflow.autonomy.escalation.budget_default.*.
+type AutonomyBudgetConfig struct {
+	Turns        *int `yaml:"turns"`
+	Operations   *int `yaml:"operations"`
+	AuditRetries *int `yaml:"audit_retries"`
 }
 
 // CodexConfig mirrors workflow.codex.* — the codex audit backend + review-gate
