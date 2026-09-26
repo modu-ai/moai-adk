@@ -50,6 +50,27 @@ func TestConvergenceNoteMatchesBlockDecision(t *testing.T) {
 			wantNotIn:   []string{"required-backend FAIL"},
 		},
 	}
+	// Gate-unmet path: an explicitly-required backend returned no verdict, so
+	// enforceRequiredGateUnmet flips overall to fail after converge() wrote an
+	// advisory note. The flipped result must not still say "NOT a block".
+	t.Run("required gate unmet flips advisory note", func(t *testing.T) {
+		verdicts := []PerBackendVerdict{
+			{Backend: BackendClaude, Gate: config.AuditGateRequired, Verdict: "pass"},
+			{Backend: BackendCodex, Gate: config.AuditGateRequired, Verdict: VerdictInconclusive},
+			{Backend: BackendGLM, Gate: config.AuditGateAdvisory, Verdict: "fail"},
+		}
+		r := enforceRequiredGateUnmet(converge(verdicts), verdicts, config.AuditGates{Codex: config.AuditGateRequired})
+		if r.OverallVerdict != overallVerdictFail {
+			t.Fatalf("overall_verdict = %q, want %q", r.OverallVerdict, overallVerdictFail)
+		}
+		if !strings.Contains(r.ResidualRiskNote, "required gate unmet") {
+			t.Errorf("residual_risk_note = %q, want the unmet gate named", r.ResidualRiskNote)
+		}
+		if strings.Contains(r.ResidualRiskNote, "NOT a block") {
+			t.Errorf("residual_risk_note = %q, must not contain %q on a failing verdict", r.ResidualRiskNote, "NOT a block")
+		}
+	})
+
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			r := converge(tc.verdicts)
