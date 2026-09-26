@@ -19,6 +19,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // ─── Test helpers ──────────────────────────────────────────────────────────
@@ -964,6 +966,9 @@ func TestGLMToolsDisableCmd_NothingToDisable(t *testing.T) {
 // runGLMToolsEnable calls loadGLMKey(), which first checks the MOAI_TEST_GLM_KEY env.
 // Test isolation: set MOAI_TEST_GLM_KEY to an empty string + override HOME to a tmpDir without .env.glm.
 func TestGLMToolsEnableCmd_NoToken(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	t.Setenv("HOME", t.TempDir())     // make loadGLMKey()'s getGLMEnvPath() see an empty DIR
 	t.Setenv("MOAI_TEST_GLM_KEY", "") // clear loadGLMKey()'s test-key env
 	defer makeNodeOK(t)()
@@ -1201,6 +1206,9 @@ func TestAutoEnableMCPServer_OptOut(t *testing.T) {
 
 func TestAutoEnableMCPServer_NoToken(t *testing.T) {
 	homeDir := setupToolsTestHome(t)
+	// HOME is not a temp dir here, so point MOAI_HOME at this test's empty home
+	// instead of the shared TestMain sandbox, where other tests save a key (card t1229).
+	t.Setenv(config.EnvHome, homeDir)
 	claudeJSONPath := setupClaudeJSON(t, homeDir, nil)
 
 	autoEnableMCPServer()
