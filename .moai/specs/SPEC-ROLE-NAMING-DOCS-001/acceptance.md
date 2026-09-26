@@ -1,6 +1,6 @@
 # Acceptance — SPEC-ROLE-NAMING-DOCS-001
 
-Version 0.2.0 · 2026-09-26 · manager-spec · card t1257
+Version 0.3.0 · 2026-09-26 · manager-spec · card t1257
 
 All commands run in the card worktree against the edited tree unless stated. `$R` is `.moai/reports/t1257`; `$SP` is a scratch directory holding `files.txt` from `git ls-files`; `<plan-commit>` is the commit that carries this SPEC's final plan version.
 
@@ -28,7 +28,7 @@ All commands run in the card worktree against the edited tree unless stated. `$R
 
 - **Given** the edited tree
 - **When** `grep -rnE -- '-f (worker|agent)\b|\b(worker|agent)-<n>|\b(worker|agent)-[0-9]+\b' <in-scope doc surfaces>` runs
-- **Then** it prints only lines the ledger marks "kept" as another meaning (none describing a Factory session), and every `-f` form in the docs is accepted by the CLI at the gate HEAD.
+- **Then** it prints only lines the ledger marks "kept" as another meaning (none describing a Factory session); and every form printed by `grep -rhoE -- '-f [a-z]+(-<n>|-[0-9]+)?' <in-scope doc surfaces> | sort -u` appears in the join-token or numbered-label row of the `SPEC-ROLE-NAMING-CODE-001` design.md §3 term table read from develop at the gate HEAD (`git show develop:.moai/specs/SPEC-ROLE-NAMING-CODE-001/design.md`), with the extracted list and the matched rows recorded in progress.md.
 
 ### AC-RND-005 — Other meanings untouched
 
@@ -40,19 +40,19 @@ All commands run in the card worktree against the edited tree unless stated. `$R
 
 - **Given** the final diff
 - **When** the changed lines of `git diff <plan-commit>..HEAD --unified=0` that carry a role token are joined against the ledger by path and line
-- **Then** every such line has a ledger row, and the ledger is committed under `$R/`.
+- **Then** every such line has a ledger row, and `git ls-files $R/` lists the ledger and every re-run output cited as evidence (they were added with `git add -f`, since `.moai/reports/*` is gitignored).
 
 ### AC-RND-007 — Non-target HARD clauses preserved
 
 - **Given** every file touched by M4–M6
 - **When** `grep -c '\[HARD\]' <file>` runs on the plan commit and on HEAD
-- **Then** the counts are equal for every file, and each touched `[HARD]` line outside the two amendment targets has a ledger row stating "subject noun only".
+- **Then** the counts are equal for every file that carries no amendment target of REQ-RND-018 to REQ-RND-020, not less than the plan-commit count for every file that carries one (e.g., both copies of `kanban-dispatch.md`, 38 markers each at `e62c3e183`), and each touched `[HARD]` line outside the amendment targets has a ledger row stating "subject noun only".
 
 ### AC-RND-008 — No dangling anchors
 
 - **Given** the edited tree
-- **When** the section-reference scan of inventory §6.2 and `$R/raw/scripts/anchors.py` are re-run
-- **Then** every `§ <text>` reference containing a role word resolves to an existing heading or bold paragraph, and no reference names an anchor text that exists only at the plan commit.
+- **When** (1) `git ls-files > $SP/files.txt` is taken on the edited tree, the plan-time `$R/raw/headings.tsv` is copied into `$R/raw-anchor-check/`, and `python3 $R/raw/scripts/anchors.py $SP $R/raw-anchor-check` runs; and (2) the section-reference scan of inventory §6.2 is re-run on the edited tree
+- **Then** (1) in `$R/raw-anchor-check/anchors.tsv`, every heading the ledger marks as renamed shows `ref_files` = 0 for its old text; and (2) every `§ <text>` reference containing a role word resolves to an existing heading or bold paragraph (including `§ Lane spawn authority`).
 
 ### AC-RND-009 — Template-First and build
 
@@ -108,11 +108,16 @@ All commands run in the card worktree against the edited tree unless stated. `$R
 - **When** `grep -rnE -- '-f (agent|worker)\b|(agent|worker)-<n>|legacy label|legacy (agent|lane|worker)|deprecated alias' <in-scope doc surfaces>` runs (`lane-<n>` and `-f lane` are canonical and are not matched), and `git diff --name-only <plan-commit>..HEAD -- CHANGELOG.md '.moai/specs/**'` runs
 - **Then** the first prints nothing describing a Factory session spelling, and the second lists only this SPEC's own directory.
 
-### AC-RND-018 — Promotion clause amended precisely
+### AC-RND-018 — Pre-dispatch clauses name the actor per obligation
 
-- **Given** `kanban-dispatch.md` in the template and local copies
-- **When** the amended promotion clause is read
-- **Then** it names exactly two promoters (the operator, and a lane promoting an already-queued card to itself), still states that the leader never promotes on its own initiative, still carries its `[HARD]` marker, and the self-promoted card remains bound by the pre-dispatch PR cross-check and the evidence-reading rule.
+- **Given** `kanban-dispatch.md` in the template and local copies, and the ledger rows for the clauses at `e62c3e183` lines L31, L33, L37, L39, L41, L49, L266
+- **When** each amended clause is read, and `grep -c 'the dispatching party (the leader, or a lane that promoted the card itself)' <copy>` runs on each copy
+- **Then**, per copy:
+  - the promotion clause (ledger row L31) names exactly two promoters — the operator, and a lane promoting an already-queued card to itself — still states that the leader never promotes on its own initiative, and still carries its `[HARD]` marker;
+  - the grep prints at least 4, and the phrase is the grammatical subject of each of the four obligations: the PR/landed cross-check (row L37), the completed-SPEC cross-check (row L39), surfacing an open PR or landed card for the operator to confirm or withdraw (row L41), and the A/B/C class assignment (row L49);
+  - one sentence states that a lane that promoted a card itself performs those four obligations itself and reports each result to the leader before starting work;
+  - the "What stays forbidden" paragraph (row L33) keeps every prohibition on the leader and contains no sentence forbidding a lane's self-promotion of an already-queued card;
+  - the Factory Mode paragraph (row L266) names both the leader's dispatch and the lane's self-promotion as ways a lane receives a card.
 
 ### AC-RND-019 — Production clause meaning unchanged
 
@@ -122,15 +127,15 @@ All commands run in the card worktree against the edited tree unless stated. `$R
 
 ### AC-RND-020 — Echoes amended together
 
-- **Given** `$R/raw/q3-clause-echoes.txt` (27 document lines in 14 files at plan time), their ko/ja/zh docs-site counterparts, and `.claude/rules/local/gitflow-lane-protocol.md` §6
-- **When** each listed line's file is read at HEAD
-- **Then** each echo agrees with the amended clauses of AC-RND-018 and AC-RND-019, all were changed in one commit, and no touched file lost a `[HARD]` marker.
+- **Given** the plan-time echo list `$R/raw/q3-clause-echoes.tsv` (124 lines, 51 files, produced by `python3 .moai/reports/t1257/raw/scripts/echoes.py`)
+- **When** the same command is re-run on the edited tree into `$R/raw-final/q3-clause-echoes.tsv`
+- **Then** every plan-time line and every re-run line has a ledger row marked "amended", "consistent with the amended clause", or "other meaning" (the `internal/cli/todo.go` rows marked "routed to code layer"); every "amended" row changed in one commit; no remaining re-run line states that only the operator promotes or that a lane never picks a card; and no touched file lost a `[HARD]` marker.
 
 ### AC-RND-021 — Leader homonym qualified at first occurrence
 
-- **Given** every in-scope file that uses leader or lead in any sense after M4–M6
-- **When** the first occurrence of each sense in the file is read
-- **Then** it carries the qualifier — en "factory leader" / "team lead(er)", ko 팩토리 리더 / 팀 리더, ja and zh per the pair recorded in progress.md.
+- **Given** every in-scope file whose ledger rows classify an occurrence of leader / lead as one of the three role senses of REQ-RND-021 (plain-English uses and identifiers such as `manager-lead` excluded)
+- **When** the first line of each sense in each file is located from the ledger
+- **Then** that line contains the sense's qualifier in the file's locale exactly as tabled in REQ-RND-021 — factory leader / team lead(er) / cg leader pane; 팩토리 리더 / 팀 리더 / cg 리더 패인; ファクトリーリーダー / チームリーダー / cg リーダーペイン; 工厂主导 / 团队队长 / cg 领队窗格.
 
 ### AC-RND-022 — Kanban companions stay companions
 
@@ -149,6 +154,12 @@ All commands run in the card worktree against the edited tree unless stated. `$R
 - **Given** the edited tree
 - **When** `git ls-files > $SP/files.txt && python3 $R/raw/scripts/inv.py $SP $R/raw-final` runs
 - **Then** the `role`-class counts of `lead` and of Factory-sense `worker` on the in-scope surfaces equal the ledger rows marked "kept" for those classes, and the AC-RND-017 grep prints nothing.
+
+### AC-RND-025 — Alias-disclosure lines removed or rewritten
+
+- **Given** the 42 plan-time lines of `$R/raw/q1-legacy-alias-lines.txt`
+- **When** each line's file is read at HEAD and the ledger row for each line is located
+- **Then** each row is marked "removed" or "rewritten to canonical", no row is marked "kept", and every rewritten line naming `lane-<n>` presents it as the current form with no legacy or deprecated wording.
 
 ## §B Traceability
 
@@ -178,6 +189,7 @@ All commands run in the card worktree against the edited tree unless stated. `$R
 | REQ-RND-022 | AC-RND-022 |
 | REQ-RND-023 | AC-RND-023 |
 | REQ-RND-024 | AC-RND-024 |
+| REQ-RND-025 | AC-RND-025 |
 
 ## §C Edge Cases
 
@@ -189,7 +201,7 @@ All commands run in the card worktree against the edited tree unless stated. `$R
 
 ## §D Quality Gates and Definition of Done
 
-- All 24 criteria PASS with the command and verbatim output in progress.md §E.2.
+- All 25 criteria PASS with the command and verbatim output in progress.md §E.2.
 - `make build`, `make agents-emit-check`, `make embed-check` exit 0; `go test ./internal/template/... ./internal/kanban/...` passes; hugo build warning-free.
 - plan-auditor PASS at the Tier L threshold (0.85) before run.
 - Merge to develop through the integration window; the leader pushes.

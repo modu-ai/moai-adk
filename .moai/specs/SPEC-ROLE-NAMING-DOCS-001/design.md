@@ -1,6 +1,6 @@
 # Design — SPEC-ROLE-NAMING-DOCS-001
 
-Version 0.2.0 · 2026-09-26 · manager-spec · card t1257
+Version 0.3.0 · 2026-09-26 · manager-spec · card t1257
 
 Each decision records the rejected alternative. Measurements behind them are in research.md and `.moai/reports/t1257/inventory.md`; operator answers are in research.md §F.
 
@@ -30,13 +30,13 @@ Each decision records the rejected alternative. Measurements behind them are in 
 
 ## D5 — Qualify the leader homonym instead of avoiding it (Q5)
 
-- **Decision**: both usages stay; the first occurrence of each sense in a file carries a qualifier — en "factory leader" / "team lead(er)", ko 팩토리 리더 / 팀 리더 (REQ-RND-021); the glossary adds one disambiguation line (REQ-RND-014).
+- **Decision**: both usages stay; the first occurrence of each of three senses in a file carries a qualifier — factory leader / team lead(er) / cg leader pane in en, ko, ja, zh as tabled in REQ-RND-021; plain-English "lead" and identifiers are excluded; the glossary adds one disambiguation line (REQ-RND-014). ja / zh reuse the terms docs-site already uses for the non-factory senses (research.md §F.3), and zh keeps 主导 exclusively for the factory leader.
 - **Rejected**: qualifying every occurrence (noise that readers learn to skip) and qualifying none (two unrelated leaders in `CLAUDE.md` §15 and `kanban-dispatch.md`).
 
 ## D6 — Two HARD clauses are amended, precisely; everything else keeps its meaning (Q3)
 
-- **Decision**: "Promotion is the operator's act, always" is amended to name exactly two promoters — the operator, and a lane promoting an already-queued card to itself — while keeping every obligation on a promoted card and the prohibition on leader-initiated promotion (REQ-RND-018). "The lead is the queue's sole producer" keeps its meaning with only the noun renamed (REQ-RND-019). All echoes move in the same commit and no `[HARD]` marker is lost (REQ-RND-020). All other HARD clauses change only their role noun (REQ-RND-007).
-- **Rejected**: (a) a silent wording change folded into the rename diff — reviewers read a naming diff as mechanical, which is exactly where an invariant change goes unseen; (b) a separate model-change SPEC — the operator scoped the change to promotion and asked for it here, so a split would leave the directive half-implemented.
+- **Decision**: "Promotion is the operator's act, always" is amended to name exactly two promoters — the operator, and a lane promoting an already-queued card to itself — keeping the prohibition on leader-initiated promotion. Every pre-dispatch obligation (PR/landed cross-check, completed-SPEC cross-check, confirm/withdraw surfacing, class assignment) takes the subject "the dispatching party (the leader, or a lane that promoted the card itself)"; a self-promoting lane performs them itself and reports to the leader before starting work (operator decision, research.md §F.3). The "What stays forbidden" paragraph and the Factory routing paragraph are reconciled with self-promotion (REQ-RND-018). "The lead is the queue's sole producer" keeps its meaning with only the noun renamed (REQ-RND-019). All echoes move in the same commit and no `[HARD]` marker is lost (REQ-RND-020). All other HARD clauses change only their role noun (REQ-RND-007).
+- **Rejected**: (a) a silent wording change folded into the rename diff — reviewers read a naming diff as mechanical, which is exactly where an invariant change goes unseen; (b) a separate model-change SPEC — the operator scoped the change to promotion and asked for it here, so a split would leave the directive half-implemented; (c) the leader keeps the cross-checks for a self-promoted card — not chosen: the operator decided the self-promoting lane performs them and reports to the leader (research.md §F.3).
 
 ## D7 — Fixed per-locale lexicon (Q6)
 
