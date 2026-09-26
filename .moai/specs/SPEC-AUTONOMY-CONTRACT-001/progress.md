@@ -51,7 +51,7 @@ Peer cross-validation (read-only agent, not an author; logs .moai/state/verify/t
 
 ```yaml
 sync_complete_at: 2026-09-26
-sync_commit_sha: pending-backfill
+sync_commit_sha: f4e3d07314207d437abc0d0eeeec336e43cbf95a
 sync_status: audit-ready
 b12_self_test_a: "grep -c 'SPEC-AUTONOMY-CONTRACT-001' CHANGELOG.md -> 0 before emission"
 b12_self_test_b: "distinct AC ids in acceptance.md = 25; CHANGELOG entry cites 25 (AC-CONTRACT-001..025)"
