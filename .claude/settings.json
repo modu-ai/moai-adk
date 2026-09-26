@@ -418,7 +418,6 @@
     "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1"
   },
   "permissions": {
-    "defaultMode": "bypassPermissions",
     "allow": [
       "Agent",
           "AskUserQuestion",

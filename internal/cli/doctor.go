@@ -237,6 +237,10 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		{"Hook Delivery", func(v bool) DiagnosticCheck { return checkHookDelivery(cwd, v) }},
 		{"Hook opt-in:", func(v bool) DiagnosticCheck { return checkHookOptIn(cwd, v) }},
 		{"Slash Commands", func(v bool) DiagnosticCheck { return checkSlashCommands(cwd, v) }},
+		// Card t1247: project/local defaultMode="bypassPermissions" is dead
+		// configuration — Claude Code only grants bypass from policy/user/flag
+		// scope, so the value warns on every session start and grants nothing.
+		{settingsDefaultModeCheckName, func(v bool) DiagnosticCheck { return checkSettingsDefaultMode(cwd, v) }},
 		{"Skills Allowlist", func(v bool) DiagnosticCheck { return checkSkillsAllowlist(cwd, v) }},
 		{"MX Tag Config", func(v bool) DiagnosticCheck { return checkMXTagConfig(cwd, v) }},
 		{"Worktree State", func(v bool) DiagnosticCheck { return checkWorktreeState(cwd, v) }},
@@ -305,6 +309,9 @@ var claudeSurfaceCheckNames = map[string]bool{
 	"Slash Commands":        true,
 	"Skills Allowlist":      true,
 	"Constitution Registry": true,
+	// Card t1247: reads .claude/settings.json + settings.local.json — a
+	// claude-only surface, downgraded on codex-only projects (REQ-IH-011).
+	settingsDefaultModeCheckName: true,
 }
 
 // claudeSurfaceDowngradedMessage is the explicit INFO line a codex-only
