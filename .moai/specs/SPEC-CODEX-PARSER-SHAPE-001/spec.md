@@ -2,7 +2,7 @@
 id: SPEC-CODEX-PARSER-SHAPE-001
 title: "codex review parser — output-shape coupling and its silent failure"
 version: "0.2.2"
-status: draft
+status: in-progress
 created: 2026-09-20
 updated: 2026-09-26
 author: manager-spec

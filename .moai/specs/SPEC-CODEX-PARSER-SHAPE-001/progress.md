@@ -63,3 +63,15 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+- Decision: **serial**
+- Inputs: Tier M; one package (`internal/cli`) plus its `testdata/codex-1718/`
+  fixtures and this SPEC's progress record; coding-heavy; one domain (the codex
+  review parser).
+- Rationale: coding-heavy single-package work — the milestones edit the same
+  file (`internal/cli/mcp_codex.go`) in sequence and each depends on the
+  previous commit's test state (Anthropic coding-task parallelism caveat), so
+  parallel writers would contend for one file with no independent unit to give
+  each.
