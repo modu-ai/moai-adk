@@ -199,3 +199,50 @@ func mustJSON(t *testing.T, r civerdict.Record) []byte {
 	}
 	return data
 }
+
+// Error-path coverage: unwritable record directory fails Save loudly; a
+// directory standing in for the record file / a subdirectory in the record
+// dir is unreadable for Load / reported by LoadAll — never silent success.
+func TestErrorPaths(t *testing.T) {
+	t.Run("save-readonly-dir", func(t *testing.T) {
+		root := t.TempDir()
+		dir := filepath.Join(root, ".moai", "state", "ci-verdicts")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(dir, 0o555); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+		if err := civerdict.Save(root, fixture()); err == nil {
+			t.Error("Save succeeded into a read-only record directory")
+		}
+	})
+	t.Run("load-directory-as-file", func(t *testing.T) {
+		root := t.TempDir()
+		dir := filepath.Join(root, ".moai", "state", "ci-verdicts")
+		if err := os.MkdirAll(filepath.Join(dir, fixture().HeadSHA+".json"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := civerdict.Load(root, fixture().HeadSHA); err == nil {
+			t.Error("Load treated a directory record as readable")
+		}
+	})
+	t.Run("loadall-directory-entry", func(t *testing.T) {
+		root := t.TempDir()
+		dir := filepath.Join(root, ".moai", "state", "ci-verdicts")
+		if err := os.MkdirAll(filepath.Join(dir, "sub.json"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		loaded, unreadable := civerdict.LoadAll(root)
+		if len(loaded) != 0 || len(unreadable) != 1 || unreadable[0] != "sub.json" {
+			t.Errorf("loaded=%v unreadable=%v, want sub.json reported", loaded, unreadable)
+		}
+	})
+	t.Run("parse-input-schema-invalid", func(t *testing.T) {
+		in := `{"head_sha":"0123456789abcdef0123456789abcdef01234567","conclusion":"banana","observed_at":"2026-09-26T12:00:00Z"}`
+		if _, err := civerdict.ParseInput([]byte(in)); err == nil {
+			t.Error("ParseInput accepted an out-of-vocabulary conclusion")
+		}
+	})
+}

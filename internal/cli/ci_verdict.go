@@ -126,24 +126,24 @@ func runCIVerdictFetch(c *cobra.Command, runner ghRunner, root, head, producer s
 	out, err := runner("run", "list", "--commit", head, "--limit", "1", "--json", "conclusion,databaseId")
 	if err != nil {
 		if errors.Is(err, exec.ErrNotFound) {
-			fmt.Fprintln(c.OutOrStdout(), "ci-verdict: gh not found — cannot observe CI for head "+head+"; no record written")
+			_, _ = fmt.Fprintln(c.OutOrStdout(), "ci-verdict: gh not found — cannot observe CI for head "+head+"; no record written")
 			return nil
 		}
-		fmt.Fprintln(c.OutOrStdout(), "ci-verdict: gh query failed for head "+head+": "+err.Error()+"; no record written")
+		_, _ = fmt.Fprintln(c.OutOrStdout(), "ci-verdict: gh query failed for head "+head+": "+err.Error()+"; no record written")
 		return nil
 	}
 	var runs []ghRun
 	if err := json.Unmarshal(out, &runs); err != nil {
-		fmt.Fprintln(c.OutOrStdout(), "ci-verdict: gh output unparseable for head "+head+"; no record written")
+		_, _ = fmt.Fprintln(c.OutOrStdout(), "ci-verdict: gh output unparseable for head "+head+"; no record written")
 		return nil
 	}
 	if len(runs) == 0 {
-		fmt.Fprintln(c.OutOrStdout(), "ci-verdict: no CI run found for head "+head+"; no record written")
+		_, _ = fmt.Fprintln(c.OutOrStdout(), "ci-verdict: no CI run found for head "+head+"; no record written")
 		return nil
 	}
 	conclusion, ok := mapGHConclusion(runs[0].Conclusion)
 	if !ok {
-		fmt.Fprintln(c.OutOrStdout(), "ci-verdict: gh reported unrecognized conclusion \""+runs[0].Conclusion+"\" for head "+head+"; no record written")
+		_, _ = fmt.Fprintln(c.OutOrStdout(), "ci-verdict: gh reported unrecognized conclusion \""+runs[0].Conclusion+"\" for head "+head+"; no record written")
 		return nil
 	}
 	return saveCIVerdict(c, root, civerdict.Record{
@@ -177,6 +177,6 @@ func saveCIVerdict(c *cobra.Command, root string, rec civerdict.Record) error {
 	if err := civerdict.Save(root, rec); err != nil {
 		return fmt.Errorf("ci-verdict: %w", err)
 	}
-	fmt.Fprintln(c.OutOrStdout(), "ci-verdict: recorded "+rec.Conclusion+" for head "+rec.HeadSHA+" at "+civerdict.Path(root, rec.HeadSHA))
+	_, _ = fmt.Fprintln(c.OutOrStdout(), "ci-verdict: recorded "+rec.Conclusion+" for head "+rec.HeadSHA+" at "+civerdict.Path(root, rec.HeadSHA))
 	return nil
 }
