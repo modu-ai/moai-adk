@@ -148,4 +148,39 @@ m1_to_mN_commit_strategy: "C1 M1 evidence + status; C2 guard + rules + docs + ru
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-26
+sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; backfilled in a following commit
+sync_status: complete
+card: t1211
+run_commits: [49c0fe453, d601647e0, 6b8279daf]
+evidence:
+  m1_measurement: .moai/reports/t1211/m1/     # arms A/B/C/D + VOID-stray-root (jsonl + settings + err)
+  run: .moai/reports/t1211/run/               # red/green, mutants (a/b/c/d, matcher-false, truncate-shipped), drift, lint, vet, make-build, scoped-tests, cli-toolpolicy
+b12_self_test_a: "grep -c 'SPEC-POWERSHELL-DENY-PARITY-001' CHANGELOG.md -> 0 (pre-emission)"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l -> 14 (AC-PSD-001..014; CHANGELOG entry cites 14: 13 PASS + AC-PSD-014 N/A branch P)"
+b12_self_test_c: "ls on every path cited in the CHANGELOG entry -> all exist"
+changelog_entry_position: "[Unreleased] ### Added, first entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (status only; updated already 2026-09-26)"
+lead_remeasure_before_sync:
+  - "go test ./internal/template/ -run TestSettingsTemplate -count=1 -> ok"
+  - "make tool-policy-drift-check -> exit 0"
+```
+
+**Deviation recorded for sync-audit judgment (REQ-PSD-013).** REQ-PSD-013 expected `moai tool-policy build` to regenerate the template. That command deliberately skips the git_mode-conditional template (`settings.json.tmpl`), so the 36 template rows were written by script from the same list the YAML SSOT carries. Equivalence is shown by a measured set comparison plus the closed-world guard `internal/template/settings_powershell_deny_test.go`, not by the generator. The auditor judges whether this satisfies REQ-PSD-013 or needs a follow-up.
+
+**Operator decisions carried into this close.**
+- D1: mirror set = the 37 residual Bash denies minus TRUNCATE → **36 PowerShell rows**.
+- TRUNCATE excluded from the mirror.
+- D4: accepted.
+- D3 (PowerShell hook matchers still `Write|Edit|Bash`) → deferred to card **t1224**.
+
+**Gaps (not observed).**
+- Arm D: the built-in wildcard deny was not observed (the model refused before the tool call).
+- Native `rm` under `pwsh` on a system path: not measured.
+- `kill -9` alias-form exclusion: not measured.
+- All measurement ran on macOS with the opt-in PowerShell tool; transfer to Windows is extrapolated.
+- Full test suite not run locally; the verdict is CI on the lead's develop push.
+
+**Residual risk.** Template and YAML stay in step through the guard and the set equality, not through the generator; hook-level guards still do not see PowerShell commands until t1224 lands.
