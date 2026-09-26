@@ -210,6 +210,45 @@ B6(카드 배차·선택)은 4값 라벨 공간과 wrong-automation 이 정의�
 카드 후보로 리드에게 상신한다. 본 판정은 첫 판사 호출 전 언제든 새 criteria 커밋으로 뒤집을
 수 있다(되돌리기 비용 없음).
 
+### M1 — 계측기·스크럽 게이트·상한 선언 (2026-09-26, HEAD 786e7a419 기준)
+
+**criteria_commit backfill (REQ-DM-014(a))**: `criteria_commit: 786e7a419` — M0 핀 커밋(`fix(SPEC-AUTONOMY-DECIDER-MODE-001): M0 population census and pin`).
+검증(본 워크트리, 2026-09-26 측정): `git cat-file -e 786e7a419^{commit}` → exit 0; `git merge-base --is-ancestor 786e7a419 HEAD` → exit 0. 첫 판사 호출(M2)은 본 기록과 이 검증보다 **뒤**여야 하고 그 사실이 M2 런 레코드에 시간 비교로 다시 기록된다(REQ-DM-013 선언 후 호출 순서).
+
+**계측기 목록** (전부 `.moai/reports/t1261/` 아래 미추적 — REQ-DM-015 레이아웃, t1244 선례): `scrub_scan.py`(REQ-DM-012 스캐너), `scrub_positive_control.py`(양성 대조 러너), `construct.py`(REQ-DM-004 생성자), `inspect_bases.py`(베이스 프로파일링), `jev_judge.py`(REQ-DM-008 Jev 계측기 — M1 에서 dry 검증만), `llm_parse.py`(llm 팔 응답 파서), `batch.json`(120항목), `llm_payloads/*.txt`(120파일), `llm_manifest.json`, `controls_selected.json`(9건), `pilot_selected.json`(20건), `scan_log_m1.jsonl`(120행). M0 센서스 계측기(census/)는 원시 증거 사슬로 **수정 없이 보존**.
+
+**스크럽 게이트 (REQ-DM-012)** — deny 4 클래스 + PII 하한: (1) 키 형태 sk-/ghp_/gho_/AKIA/PEM/.env KEY=VALUE, (2) settings.local 계열(tmux pane id·bearer·토큰형), (3) 절대 경로(/Users/, /home/, /private/, /tmp/, /var/folders/, /(usr|etc|opt|Library)/) **+ `~/` 확장 추가**(t1244 집합 대비 강화 — 패턴 추가는 스크럽 강화이지 criteria 변경 아님), (4) PII 하한(주민번호·전화·이메일·카드번호). fail-closed: 적중 시 exit 1로 전송 경로 차단 — 벗겨 보내기 없음, 호출부는 exit 0만 전송.
+
+**양성 대조 (첫 전송에 선행 — 요구 8/8)**: `python3 scrub_positive_control.py` → 8종 더미 비밀(key_sk·key_ghp·key_aws·key_pem·path_users·pii_email·pii_phone_kr·pii_resident_kr) 전부 발화 — `scrub_positive_control: FIRED 8/8, clean_control: OK, passed: true`, exit 0. 더미 값은 파일에 리터럴로 두지 않고 런타임 조립(가짜 값, 로컬 전용, 전송 없음). 클린 대조군(게이트 질문 형태 표본) `scan=clean exit=0`. 관측 시각 **2026-09-26T20:51:27+09:00** — M2 첫 전송에 선행.
+
+**생성자 (REQ-DM-004)** — 69개 C-A 베이스(센서스 `census/rounds.jsonl`, 읽기 전용)에서:
+- clean 60 = 원래 approve 였던 60개 베이스를 그대로(운영자 응답 제거) — 지상진실 approve 가 원래 결정과 일치해 성립.
+- defect 60 = 60개 **서로 다른** 베이스(비승인 9개 전부 + 승인 베이스 중 시드 샘플 51), 6클래스 × 10. 결함 베이스 상호 중복 0(기계 검사 통과). clean∩defect 베이스 겹침 51은 120 > 69 산술로 강제 — 항목 텍스트는 결함 주입으로 서로 달라 판정독립성 유지, 겹침 수치는 판정서 Residual-risk 로 이전.
+- 지상진실 맵 사전 고정 준수: (i)필수 섹션 누락→hold, (ii)범위 위반→modify, (iii)전제 위반→hold, (iv)증거 위조 주장→hold, (v)AC 수 불일치→modify, (vi)AC 상호 모순→hold → **approve 60 / hold 40 / modify 20 / 120** (기계 검사: 항목 120, 클래스별 정확히 10, 라벨 분포 정확히 60/40/20, defect 베이스 중복 0 — 전부 통과, exit 0).
+- 상수 기준선 재측정(구성 기록에서): always-approve 60/120 = **50.00%**, always-hold 40/120 = **33.33%** — M0 커밋값과 일치.
+- 주입 변형 분포: (ii)3종, (iii)3종, (iv)3종, (v)n∈{3,4,5}, (vi)2종 시드 배분; 클래스 (i) 10건 전부 `i_omit_evidence`(증거 문장 제거형 — 10베이스 전부 다문장 적격으로 확인, 선택지-생략 변형 불필요).
+- 스크럽 스캔: 생성 페이로드 120건 전부 `clean`(scan_log_m1.jsonl 120행, hit 0).
+- 결정론: 고정 시드 20260926. `construct.py --verify` → 재빌드 sha256 `71147dbc1af2f0c0b7c5b5b6c170e26e26ca6e4aff1dc3e218a8b27170f173b3` **match=True ok=True, exit 0** — 배치 바이트 핀.
+- 파일럿/대조 선정(첫 판사 호출 전, 고정 시드, 기록 완료): 대조 9건 = clean 시드 3 + 결함 클래스별 1씩(6) — 지상진실 라벨 전부 커버(controls_selected.json). 파일럿 20건 = clean 10 + defect 10, 대조 제외 집합에서 시드 선출(pilot_selected.json; REQ-DM-004 n=20, 난이도 진단 전용 — 본 배치 통계에 병합 금지).
+
+**Jev 계측기 (REQ-DM-008)** — `jev_judge.py`: 직접 POST choice 질문 + **필수 criteria 맵 포함**(2026-09-26 ask.sh criteria-누락 422 결함의 수리 형태 — 엔드포인트 api.typesafe.ai/v1/systemone·키 ~/.moai/.env.typesafe·모델 jev-latest 동일), state/instructions 분리, 원시 응답 JSON 호출별 runs/ 보존, `probabilities` 본원·`confidence` 보조 파서(REQ-DM-006). **M1 에서 호출 없음**: `--dry-run`으로 파일럿 항목 t1261-027 요청을 구성·검증 → `errors: []`, criteria 4라벨+설명 존재, state/instructions 분리 확인, 네트워크 호출 0, exit 0. 전송 경로는 M2 전용으로 존재하며 M1 에서 미호출.
+
+**llm 팔 아티팩트 (REQ-DM-009)** — 1차 풀 GLM(z.ai) `glm_task`용: `llm_payloads/` 항목당 완결 프롬프트 120파일(4값 라벨 정의 + [상태] 페이로드 + JSON 응답 형식 {label, confidence, rationale} — **confidence 본원**; 결함 분류학 미노출 중립 지시), `llm_manifest.json`(controls/pilot/main 배치 순서·파일·지상진실), `llm_parse.py` 파서 — `--selftest` 합성 표본 8건: 유효 3형(평문·펜스·산문 감싸짐) 전부 파싱, 불량 5형(잘못된 라벨·confidence 누락·범위 이탈·rationale 누락·비JSON) 전부 기각 — **PASS, exit 0**. glm_task 호출 자체는 M2 레인 오케스트레이터 몫.
+
+**세 상한 선언 (REQ-DM-013 — 첫 판사 호출 전 선언)**:
+- turn_cap: 2/항목(초기 1 + 형식 불량 재시도 1; llm+jev 팔의 Jev 단계는 같은 팔 상한 안에 산입)
+- call_cap: **2 × (120 + 9 + 20) = 298회/팔-배치**(REQ-DM-013 공식의 커밋 배치 크기 구체화 — 본배치 120 + 대조 9 + 파일럿 20)
+- wall_clock_cap: PT8H/배치
+- batches: 대조 패스(9, 양팔) + 파일럿 배치(20, 양팔 동일 프로토콜) + 팔별 1차 본배치(llm 120 / llm+jev 120, payload_id 집합 동일 — AC-DM-015); 사전 선언 보충 배치(Opus 창)는 각자 자기 첫 호출 전 자기 상한 별도 선언
+- declared_at: **2026-09-26T20:51:27+09:00** (declared_by: manager-develop, card t1261)
+- 상한 도달 시: 측정된 것으로 판정서 작성 — 상한 연장·재측정 없음(REQ-DM-013; t1244 선례). 계측기 수리는 t1244 규칙(수리→재시작→이전 출력 무효→무효 행 별도 보존).
+
+**M2 실행 순서(설계 — 레인 오케스트레이터 집행)**: ① criteria_commit 재검증(`git cat-file -e` + is-ancestor + 시간 비교) → ② 전송 페이로드 전부 재스캔(fail-closed) → ③ 판사 대조 9건 × 양팔(llm: GLM / llm+jev: GLM+Jev) — 어느 팔이든 실패 시 양팔 무효 규칙 → ④ 파일럿 20건 × 양팔(난이도 진단; 천장/바닥 퇴화 시 본배치 전 새 criteria 커밋으로 구성 개정, 아니면 진행) → ⑤ 본배치 120건 × 양팔(payload_id 집합 동일 기계 검증) → ⑥ 상한·스캔 행·호출 시각 실시간 기록 → ⑦ M3 분석(McNemar 불일치쌍 정확 이항, 기준선 병기, wrong-automation, 밴드 (a)(b)(c), REQ-DM-007 매핑). GLM 모델 식별자(`glm-5.3`)는 첫 호출 시점에 실측 재확인(드리프트 시 계측기 수리 규칙).
+
+**Gaps (M1)**: 베이스 페이로드는 센서스가 기록한 프로젝션(question_head + 헤더 + 선택지 라벨)이 원문 전체인지 행별 단절 여부는 센서스 추출기가 결정 — 핀된 표현 자체가 이 프로젝션이므로 본 카드 기준선은 이것; clean/defect 베이스 겹침 51(산술 강제, 항목 텍스트 상이) → 판정서 Residual-risk; 스크럽 패턴 집합은 하한(패턴 밖 비밀 형태 통과 가능) → 판정서 Residual-risk; 배치 바이트 핀은 센서스 코퍼스 바이트 + 본 코드 + 시드의 함수(잘리는 코퍼스이므로 sha256 재현 조건 명시); 파일럿 20건의 라벨 스프레드(approve 10/hold 7/modify 3)는 층화 규칙의 산물.
+
+**Residual-risk (M1)**: 주입 결함이 템플릿 형태라 판사가 템플릿을 패턴 매칭하면 인위적으로 잘 나올 수 있음 — 파일럿이 이 난이도를 먼저 진단(REQ-DM-004 파일럿 규칙이 존재한 이유); (i) 증거-제거형 10건이 전부 동일 변형으로 성립(적격 베이스가 충분해 변형 편중) — 클래스 내 다양성은 (ii)-(vi)의 다변형과 비대칭; judge-tool fail-open 시 미측정 기록과 measurement-impossible 경로는 M2 기록이 소유.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
