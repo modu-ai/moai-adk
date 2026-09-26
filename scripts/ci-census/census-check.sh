@@ -7,7 +7,7 @@
 # census logic verifiable WITHOUT a CI run: the census is the thing that
 # turns a CI artifact into evidence, so it must itself carry evidence.
 #
-# The fixture deliberately contains all eight shapes the census must
+# The fixture deliberately contains all nine shapes the census must
 # distinguish:
 #
 #   1. a test that called t.Skip           -> SKIPPED TEST
@@ -26,6 +26,11 @@
 #      skips in epsilon, two failures in alpha) -> the passed, skipped, and
 #      failed totals count (package, test) pairs; counting packages instead
 #      prints a smaller number
+#   9. a second failing package (zeta) whose passing, skipped, and failing
+#      tests reuse alpha's test names, its events interleaved between alpha's
+#      as a parallel run emits them -> counting test names without the
+#      package also prints a smaller number, and dropping the sort before the
+#      FAILED and SKIPPED TEST rows prints them out of order
 #
 # Shapes 1 and 2 are the pair REQ-CTO-006 requires be detected by a SINGLE
 # Action=="skip" pass and labelled apart by the presence of the Test field.
