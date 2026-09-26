@@ -731,10 +731,11 @@ func NumeralExemptions() []NumeralExempt {
 		"OBSERVED, not adjudicated: the same sentence's live tail (\"since grown to 11\") is itself stale, " +
 		"and the adopted noun class does not reach it — no noun follows that numeral."
 
-	const t1171Fixture = "HISTORICAL CITATION: a captured test fixture — a byte-frozen copy of an emitted codex agent " +
+	const t1171Fixture = "HISTORICAL CITATION: a captured test fixture — a copy of an emitted codex agent " +
 		"definition or a recorded codex session, quoting roster counts as they stood at capture (the 17→8 " +
 		"consolidation sentence; \"13 retained agents\" in the recorded session). " +
-		"Editing it would invalidate the capture; the live sources are exempted above on their own rows."
+		"Only machine-local paths were rewritten to neutral placeholders; the roster wording is kept as " +
+		"captured, and editing it would invalidate the capture. The live sources are exempted above on their own rows."
 
 	return []NumeralExempt{
 		// ── Historical citations ───────────────────────────────────────────

@@ -55,7 +55,7 @@ func TestCodexAudit_RequiredGateUnmetRecordedOnInconclusive(t *testing.T) {
 func TestCodexAudit_RequiredGateSatisfiedByRealVerdict(t *testing.T) {
 	root := newProbeProject(t, "SPEC-GATESAT-902")
 	writeCodexAuditGate(t, root, config.AuditGateRequired)
-	withCodexSession(t, codexSessionScript("clean change, no findings"))
+	withCodexSession(t, codexSessionScript(realCleanReview))
 
 	res := callToolCodexAudit(t, map[string]any{"project_root": root})
 	if res.IsError {

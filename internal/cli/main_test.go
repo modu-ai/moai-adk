@@ -58,6 +58,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/profile"
 )
@@ -347,6 +348,12 @@ func requireNotRealHome(t *testing.T, home string) {
 // out and pass vacuously.
 func TestMain(m *testing.M) {
 	restoreMoaiHome := sandboxMoaiHome()
+	// Git fixtures must not inherit a hook's or lane's repository (GH #1691).
+	if err := gitenv.ScrubProcess(); err != nil {
+		restoreMoaiHome()
+		fmt.Fprintf(os.Stderr, "TestMain: %v\n", err)
+		os.Exit(1)
+	}
 	restoreProfileBaseDir := sandboxProfileBaseDir()
 	restoreUserHomeDir := sandboxUserHomeDir()
 	restoreReceiptRoot := sandboxAuditReceiptFallbackRoot()
