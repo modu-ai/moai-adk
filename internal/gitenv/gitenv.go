@@ -32,6 +32,7 @@
 package gitenv
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 	"strings"
@@ -120,4 +121,31 @@ func scrub(env []string, foldCase bool) []string {
 // git of its own.
 func Env() []string {
 	return Scrub(os.Environ())
+}
+
+// ScrubProcess removes every RepoScopingVars entry from the current process's
+// own environment, using the same name rule as Scrub.
+//
+// It exists for a package's TestMain. A test binary run inside a git hook, or
+// from a session whose environment carries GIT_DIR / GIT_WORK_TREE, hands those
+// to every git fixture it spawns, and the fixture then writes into the caller's
+// repository instead of its temp directory (GH #1691). Scrubbing the process
+// once, before m.Run, reaches every child the package starts — including
+// call sites added later — where assigning Env() at each call site reaches only
+// the sites someone remembered.
+//
+// Production code keeps using Env: a long-lived process must not mutate its
+// own environment on behalf of one child.
+func ScrubProcess() error {
+	foldCase := runtime.GOOS == "windows"
+	for _, kv := range os.Environ() {
+		name, _, ok := strings.Cut(kv, "=")
+		if !ok || len(scrub([]string{kv}, foldCase)) != 0 {
+			continue
+		}
+		if err := os.Unsetenv(name); err != nil {
+			return fmt.Errorf("gitenv: unset %s: %w", name, err)
+		}
+	}
+	return nil
 }
