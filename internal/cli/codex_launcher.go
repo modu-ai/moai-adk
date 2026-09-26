@@ -289,14 +289,6 @@ func defaultCodexSpawnPaneIdentity(paneID string) (int, string, error) {
 	}
 }
 
-// buildCodexSpawnCommand renders the shell command string for the new tmux
-// window: the resolved CODEX_HOME as a command-scoped assignment, then the
-// codex binary and its argv tail, every token quoted.
-//
-// The assignment is what makes the two launch paths agree. A tmux window
-// inherits the tmux SERVER's environment, not this process's, so without it
-// the new window could resolve a different CODEX_HOME than the direct path
-// put on its child.
 // codexSpawnForwardedEnv lists the variables buildCodexSpawnCommand copies
 // from this process onto the tmux command line when they are set. Tests that
 // assert the exact command pin each of them, so a lane session's exports
@@ -317,6 +309,14 @@ var codexSpawnForwardedEnv = []string{
 	config.EnvClaudeProjectDir,
 }
 
+// buildCodexSpawnCommand renders the shell command string for the new tmux
+// window: the resolved CODEX_HOME as a command-scoped assignment, then the
+// codex binary and its argv tail, every token quoted.
+//
+// The assignment is what makes the two launch paths agree. A tmux window
+// inherits the tmux SERVER's environment, not this process's, so without it
+// the new window could resolve a different CODEX_HOME than the direct path
+// put on its child.
 func buildCodexSpawnCommand(program string, args []string) string {
 	parts := make([]string, 0, len(args)+10)
 	// resolveCodexHomeDir's second result is the source label, not an error.
