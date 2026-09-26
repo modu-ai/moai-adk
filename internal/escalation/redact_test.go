@@ -1,0 +1,102 @@
+package escalation_test
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/escalation"
+	"github.com/modu-ai/moai-adk/internal/escalation/escalationtest"
+)
+
+// fakeSecret is a credential-shaped string that must never reach disk.
+const fakeSecret = "ghp_FAKEFAKEFAKEFAKE0123456789abcdef"
+
+// fakeSecretCore is the digit-free part of fakeSecret. The class 8
+// diagnostic key rewrites digit runs, so a leaked secret can reach disk
+// changed; probing for the core still catches it.
+const fakeSecretCore = "FAKEFAKEFAKEFAKE"
+
+// leakedSurfaces names every file the detector writes for the card — the
+// escalation records, the card log, and the card state file — that contains
+// the secret.
+func leakedSurfaces(t *testing.T, w *escalationtest.Worktree, secret string) []string {
+	t.Helper()
+	paths := map[string]string{}
+	dir := escalation.RecordDir(w.Root, w.Card)
+	entries, _ := os.ReadDir(dir)
+	for _, e := range entries {
+		paths["record "+e.Name()] = filepath.Join(dir, e.Name())
+	}
+	files, err := escalation.CardFilesFor(w.Root, w.Card)
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths["card log"], paths["state file"] = files.Log, files.State
+	var leaked []string
+	for name, p := range paths {
+		data, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatalf("read %s: %v", p, err)
+		}
+		if strings.Contains(string(data), secret) {
+			leaked = append(leaked, name)
+		}
+	}
+	return leaked
+}
+
+// Class 6 and class 8 records name the observed command. A credential in the
+// command (URL userinfo, an Authorization header, a token=/password=
+// assignment) is masked before anything is written, and the class still trips.
+func TestCommandCredentialsAreMasked(t *testing.T) {
+	t.Run("class6-url-userinfo", func(t *testing.T) {
+		isolateStore(t)
+		w := armedWith(t, "t9001", nil, "")
+		escalation.Observe(contractSettings(t, w), escalation.Event{Hook: escalation.HookPreToolUse, CWD: w.Root,
+			ToolName: "Bash", Command: "git push https://user:" + fakeSecret + "@github.com/o/r.git main"})
+		if rs, _ := recordsOfClass(t, w, escalation.ClassIrreversibleAction); len(rs) != 1 {
+			t.Fatalf("class 6 did not trip: %d records", len(rs))
+		}
+		if l := leakedSurfaces(t, w, fakeSecretCore); len(l) != 0 {
+			t.Errorf("secret written to: %v", l)
+		}
+	})
+	cmds := map[string]string{
+		"header":   "curl -H 'Authorization: Bearer " + fakeSecret + "' https://api.example.com/x",
+		"token":    "deploy --token=" + fakeSecret + " now",
+		"password": "PASSWORD=" + fakeSecret + " ./run.sh",
+	}
+	for name, cmd := range cmds {
+		t.Run("class8-"+name, func(t *testing.T) {
+			isolateStore(t)
+			w := armedWith(t, "t9001", nil, "")
+			for i := 0; i < 3; i++ {
+				// The diagnostic echoes the credential too; the key must stay
+				// stable across attempts so the streak still reaches 3.
+				postBash(t, w, cmd, true, "error: auth failed for token="+fakeSecret+" after 1"+strings.Repeat("0", i)+"ms")
+			}
+			rs, _ := recordsOfClass(t, w, escalation.ClassSameDiagnosticRepeat)
+			if len(rs) != 1 {
+				t.Fatalf("class 8 did not trip: %d records", len(rs))
+			}
+			if l := leakedSurfaces(t, w, fakeSecretCore); len(l) != 0 {
+				t.Errorf("secret written to: %v", l)
+			}
+		})
+	}
+}
+
+// Masking is deterministic: two different secrets in the same position give
+// the same masked command, so a streak keyed on it is not split.
+func TestMaskCommandIsStable(t *testing.T) {
+	a := escalation.MaskCommand("git push https://u:" + fakeSecret + "@h/r.git")
+	b := escalation.MaskCommand("git push https://u:other-secret-value@h/r.git")
+	if a != b || strings.Contains(a, fakeSecret) {
+		t.Errorf("masked forms differ or leak: %q vs %q", a, b)
+	}
+	if got := escalation.MaskCommand("go test ./..."); got != "go test ./..." {
+		t.Errorf("a command without credentials changed: %q", got)
+	}
+}

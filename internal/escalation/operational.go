@@ -45,7 +45,7 @@ var (
 // It only records; the existing denylist still decides the call.
 func (r *run) classIrreversibleAction() {
 	a := r.st.Armed
-	cmd := strings.TrimSpace(whitespaceRe.ReplaceAllString(r.ev.Command, " "))
+	cmd := MaskCommand(strings.TrimSpace(whitespaceRe.ReplaceAllString(r.ev.Command, " ")))
 	if cmd == "" {
 		return
 	}
@@ -125,7 +125,7 @@ func pushWhy(args []string, developAuthorized bool) string {
 // consecutive failing attempts of a command with no success in between
 // (REQ-AE-015). Operational: counted whether or not the card is armed.
 func (r *run) classSameDiagnostic() {
-	cmd := strings.TrimSpace(whitespaceRe.ReplaceAllString(r.ev.Command, " "))
+	cmd := MaskCommand(strings.TrimSpace(whitespaceRe.ReplaceAllString(r.ev.Command, " ")))
 	if cmd == "" {
 		return
 	}
@@ -139,7 +139,8 @@ func (r *run) classSameDiagnostic() {
 		}
 		return
 	}
-	fp := cmd + "\x00" + diagnosticKey(r.ev.Diagnostic)
+	diag := diagnosticKey(MaskCommand(r.ev.Diagnostic))
+	fp := cmd + "\x00" + diag
 	s := r.st.Counters.Streaks[cmd]
 	if s.Fingerprint == fp {
 		s.Count++
@@ -156,7 +157,7 @@ func (r *run) classSameDiagnostic() {
 		Fingerprint: Fingerprint(ClassSameDiagnosticRepeat, fp),
 		ContractRef: ruleSameDiagnostic,
 		Observation: fmt.Sprintf("`%s` failed %d consecutive times with the same diagnostic: %s",
-			cmd, s.Count, orNone(diagnosticKey(r.ev.Diagnostic))),
+			cmd, s.Count, orNone(diag)),
 		Options: []string{
 			"Stop retrying and ask for a second opinion on the diagnosis",
 			"Change approach before the next attempt",
