@@ -295,6 +295,9 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 			problems = append(problems, plainCodexFinding(fmt.Sprintf("%s missing (wiring active but the MCP registration is gone)", codexwiring.ConfigRelPath)))
 		} else {
 			status := codexwiring.InspectMCPTable(cfgRaw)
+			if status.FactoryApprovalLeak {
+				problems = append(problems, plainCodexFinding("[mcp_servers.moai] has legacy project-wide Factory tool approval; remove its tools override so ordinary Codex sessions still request approval"))
+			}
 			switch {
 			case !status.Present:
 				problems = append(problems, plainCodexFinding("[mcp_servers.moai] table missing from config.toml"))

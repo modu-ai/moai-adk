@@ -16,6 +16,31 @@ import (
 
 var factoryProbeProcessIdentity = homestate.ProbeProcessIdentity
 
+// Factory message results must expose the data in both MCP channels. Codex
+// code-mode callers often print only TextContent, and a bare "tool: ok" loses
+// the claim token needed to read and receipt a message.
+func factoryMsgResult(tool string, data any) *mcp.CallToolResult {
+	r, err := mcp.NewToolResultJSON(data)
+	if err != nil {
+		return toolErr(tool, err)
+	}
+	return r
+}
+
+func notifyFactoryRecipient(ctx context.Context, to factorymsg.Peer, env factorymsg.Envelope) (string, string) {
+	if env.Duplicate {
+		return "duplicate", ""
+	}
+	start, state := homestate.ProbeProcessIdentity(to.PID)
+	if state != homestate.ProcessIdentityLive || start != to.ProcessStart {
+		return "offline", "recipient process is no longer live"
+	}
+	// The launcher owns the live host input. Its broker pump claims this
+	// envelope and starts an App Server or stream-json turn; a send result
+	// confirms storage, never delivery into a model turn.
+	return "managed-poll", ""
+}
+
 func currentFactoryPeer(ctx context.Context, s *factorymsg.Store) (factorymsg.Peer, error) {
 	if id, source, ok := resolveCurrentSessionID(); ok && sessionIDSourceIsAuthoritative(source) {
 		return s.Peer(ctx, id)
@@ -59,11 +84,19 @@ func handleFactoryMsgSend(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	if e != nil {
 		return toolErr("factory_msg_send", e), nil
 	}
+	if from.Backend != "codex" && to.Backend != "codex" {
+		return toolErr("factory_msg_send", errors.New("Claude Code Factory peers use native SendMessage; the MoAI broker is for runs with a Codex endpoint")), nil
+	}
 	env, e := s.Send(ctx, factorymsg.SendRequest{From: from, To: to, Kind: req.GetString("kind", ""), IdempotencyKey: req.GetString("idempotency_key", ""), TaskRef: req.GetString("task_ref", ""), CorrelationID: req.GetString("correlation_id", ""), ExpectedTaskRevision: int64(req.GetInt("expected_task_revision", 0)), CurrentTaskRevision: int64(req.GetInt("current_task_revision", 0)), TTL: time.Duration(req.GetInt("ttl_seconds", 3600)) * time.Second, Payload: []byte(req.GetString("body", ""))})
 	if e != nil {
 		return toolErr("factory_msg_send", e), nil
 	}
-	return toolJSON("factory_msg_send", env), nil
+	notification, notificationError := notifyFactoryRecipient(ctx, to, env)
+	return factoryMsgResult("factory_msg_send", struct {
+		factorymsg.Envelope
+		Notification      string `json:"notification"`
+		NotificationError string `json:"notification_error,omitempty"`
+	}{env, notification, notificationError}), nil
 }
 func handleFactoryMsgList(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	s, e := factoryStore(req)
@@ -79,7 +112,10 @@ func handleFactoryMsgList(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	if e != nil {
 		return toolErr("factory_msg_list", e), nil
 	}
-	return toolJSON("factory_msg_list", map[string]any{"messages": claims, "body_lookup": "factory_msg_body"}), nil
+	if claims == nil {
+		claims = []factorymsg.Claim{}
+	}
+	return factoryMsgResult("factory_msg_list", map[string]any{"messages": claims, "body_lookup": "factory_msg_body"}), nil
 }
 func handleFactoryMsgBody(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	s, e := factoryStore(req)
@@ -95,7 +131,7 @@ func handleFactoryMsgBody(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	if e != nil {
 		return toolErr("factory_msg_body", e), nil
 	}
-	return toolJSON("factory_msg_body", map[string]any{"message_id": req.GetString("message_id", ""), "body": string(body), "trust": "untrusted peer data"}), nil
+	return factoryMsgResult("factory_msg_body", map[string]any{"message_id": req.GetString("message_id", ""), "body": string(body), "trust": "untrusted peer data"}), nil
 }
 func handleFactoryMsgReceipt(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	s, e := factoryStore(req)
@@ -114,7 +150,7 @@ func handleFactoryMsgReceipt(ctx context.Context, req mcp.CallToolRequest) (*mcp
 	if e != nil {
 		return toolErr("factory_msg_receipt", e), nil
 	}
-	return toolJSON("factory_msg_receipt", map[string]any{"message_id": id, "acknowledged": true}), nil
+	return factoryMsgResult("factory_msg_receipt", map[string]any{"message_id": id, "acknowledged": true}), nil
 }
 func handleFactoryMsgStatus(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	run := req.GetString("run_id", "")
@@ -134,7 +170,7 @@ func handleFactoryMsgStatus(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 	if e != nil {
 		return toolErr("factory_msg_status", e), nil
 	}
-	return toolJSON("factory_msg_status", st), nil
+	return factoryMsgResult("factory_msg_status", st), nil
 }
 
 // closeFactoryToolStore closes a broker handle after a tool call has produced

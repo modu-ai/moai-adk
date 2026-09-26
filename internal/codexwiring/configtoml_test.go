@@ -30,6 +30,9 @@ func TestEnsureMCPTableCreatesWhenAbsent(t *testing.T) {
 		t.Errorf("exactly one [mcp_servers.moai] table expected, got %d:\n%s",
 			strings.Count(body, "[mcp_servers.moai]"), out)
 	}
+	if strings.Contains(body, `approval_mode = "approve"`) {
+		t.Fatalf("ordinary Codex sessions must not inherit Factory approval: %s", body)
+	}
 }
 
 // TestEnsureMCPTableNoToolEnumeration verifies the capability-based approval

@@ -21,8 +21,8 @@ const (
 	mcpServerEnvVarsValue = `["MOAI_HOME", "MOAI_KANBAN_ID", "MOAI_SESSION_PID", "MOAI_KANBAN_BACKEND", "MOAI_FACTORY_WORKER", "MOAI_FACTORY_WORKERS", "CLAUDE_PROJECT_DIR", "CLAUDE_CODE_SESSION_ID"]`
 	// mcpApprovalMode is the capability-based approval mode: `writes` prompts
 	// for tools NOT marked read-only (MCP ReadOnlyHint annotation) — the
-	// approval set therefore rides on server annotations, never on tool-name
-	// enumeration (spec §A.4).
+	// approval set normally rides on server annotations. Factory approval is
+	// supplied only to processes launched by the Factory runtime.
 	mcpApprovalMode = "writes"
 )
 
@@ -86,7 +86,8 @@ var (
 // ensured. Create-if-absent ONLY (plan D2): an existing table is user-owned
 // and byte-invariant — divergence from the canonical shape is the doctor's to
 // report, never the writer's to repair (REQ-CW-004/005). The table carries no
-// tool-name enumeration: the approval policy rides on server annotations.
+// enabled/disabled tool allowlists. Factory-specific approval is a launcher
+// override, never a project-wide setting.
 func EnsureMCPTable(content []byte) []byte {
 	body := string(content)
 	if tablePresent(body, mcpMoaiTableRe) {
@@ -164,9 +165,14 @@ type MCPTableStatus struct {
 	// Canonical reports whether the table carries exactly the canonical
 	// command/args/approval assignments.
 	Canonical bool
+	// FactoryApprovalLeak reports the former generated project-wide approval
+	// override. It also affects ordinary Codex sessions using this project.
+	FactoryApprovalLeak bool
 }
 
-// canonicalMCPAssignments are the four assignments EnsureMCPTable writes.
+const legacyFactoryApprovalLine = `tools = { factory_msg_send = { approval_mode = "approve" }, factory_msg_receipt = { approval_mode = "approve" } }`
+
+// canonicalMCPAssignments are the assignments EnsureMCPTable writes.
 var canonicalMCPAssignments = []string{
 	"command = \"" + mcpServerCommandValue + "\"",
 	"args = [\"" + mcpServerArgValue + "\"]",
@@ -192,13 +198,16 @@ func InspectMCPTable(content []byte) MCPTableStatus {
 			if anyTableRe.MatchString(lines[j]) {
 				break
 			}
+			if strings.TrimSpace(lines[j]) == legacyFactoryApprovalLine {
+				status.FactoryApprovalLeak = true
+			}
 			for _, want := range canonicalMCPAssignments {
 				if strings.TrimSpace(lines[j]) == want {
 					seen++
 				}
 			}
 		}
-		if seen != len(canonicalMCPAssignments) {
+		if seen != len(canonicalMCPAssignments) || status.FactoryApprovalLeak {
 			status.Canonical = false
 		}
 		return status

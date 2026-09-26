@@ -52,6 +52,114 @@ func TestFactoryMCPIdentityAttribution(t *testing.T) {
 	}
 }
 
+func TestFactoryMsgSendStoresCodexInboxWithoutPeerBody(t *testing.T) {
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root, run := t.TempDir(), "push-probe"
+	c := operationalStatusClient(t, root, run)
+	s, err := factorymsg.Open(root, run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	base := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "glm", Role: "lead", Slot: "lead", SessionUUID: "lead-session", Generation: 1, PID: os.Getpid(), ProcessStart: homestate.CurrentProcessFingerprint()}
+	if _, err := s.RegisterPeer(context.Background(), base); err != nil {
+		t.Fatal(err)
+	}
+	worker := base
+	worker.Backend, worker.Role, worker.Slot, worker.SessionUUID = "codex", "worker", "worker-1", "worker-session"
+	if _, err := s.RegisterPeer(context.Background(), worker); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(config.EnvClaudeCodeSessionID, base.SessionUUID)
+	args := map[string]any{"run_id": run, "to_slot": worker.Slot, "kind": factorymsg.KindStatusRequest, "idempotency_key": "push-once", "task_ref": "t1", "correlation_id": "push-probe", "body": "SECRET_PEER_BODY", "ttl_seconds": 120}
+	request := mcp.CallToolRequest{Params: mcp.CallToolParams{Name: "factory_msg_send", Arguments: args}}
+	for i := 0; i < 2; i++ {
+		res, err := c.CallTool(context.Background(), request)
+		if err != nil || res.IsError {
+			t.Fatalf("send %d: result=%+v err=%v", i, res, err)
+		}
+	}
+	t.Setenv(config.EnvClaudeCodeSessionID, worker.SessionUUID)
+	list, err := c.CallTool(context.Background(), mcp.CallToolRequest{Params: mcp.CallToolParams{Name: "factory_msg_list", Arguments: map[string]any{"run_id": run}}})
+	if err != nil || list.IsError || len(list.Content) == 0 {
+		t.Fatalf("list=%+v err=%v", list, err)
+	}
+	textBlock, ok := list.Content[0].(mcp.TextContent)
+	if !ok {
+		t.Fatalf("list content type=%T", list.Content[0])
+	}
+	var inbox struct {
+		Messages []struct{ ID, ClaimToken string }
+	}
+	if err := json.Unmarshal([]byte(textBlock.Text), &inbox); err != nil || len(inbox.Messages) != 1 || inbox.Messages[0].ID == "" || inbox.Messages[0].ClaimToken == "" || strings.Contains(textBlock.Text, "SECRET_PEER_BODY") {
+		t.Fatalf("list text=%q err=%v", textBlock.Text, err)
+	}
+	claim := inbox.Messages[0]
+	body, err := c.CallTool(context.Background(), mcp.CallToolRequest{Params: mcp.CallToolParams{Name: "factory_msg_body", Arguments: map[string]any{"run_id": run, "message_id": claim.ID, "claim_token": claim.ClaimToken}}})
+	if err != nil || body.IsError || len(body.Content) == 0 {
+		t.Fatalf("body=%+v err=%v", body, err)
+	}
+	if part, ok := body.Content[0].(mcp.TextContent); !ok || !strings.Contains(part.Text, "SECRET_PEER_BODY") {
+		t.Fatalf("body text=%+v", body.Content)
+	}
+	ack, err := c.CallTool(context.Background(), mcp.CallToolRequest{Params: mcp.CallToolParams{Name: "factory_msg_receipt", Arguments: map[string]any{"run_id": run, "message_id": claim.ID, "claim_token": claim.ClaimToken, "disposition": factorymsg.DispositionAccepted}}})
+	if err != nil || ack.IsError {
+		t.Fatalf("receipt=%+v err=%v", ack, err)
+	}
+	status, err := s.Status(context.Background())
+	if err != nil || status.Acknowledged != 1 {
+		t.Fatalf("broker status=%+v err=%v", status, err)
+	}
+}
+
+func TestFactoryMsgNotifyReportsDeliveryBoundary(t *testing.T) {
+	env := factorymsg.Envelope{ID: "msg", RunID: "run"}
+	peer := factorymsg.Peer{Backend: "glm", SessionUUID: "claude-session", PID: os.Getpid(), ProcessStart: homestate.CurrentProcessFingerprint()}
+	if state, detail := notifyFactoryRecipient(context.Background(), peer, env); state != "managed-poll" || detail != "" {
+		t.Fatalf("Claude notification = (%q, %q)", state, detail)
+	}
+	peer.Backend = "codex"
+	peer.PID = -1
+	if state, detail := notifyFactoryRecipient(context.Background(), peer, env); state != "offline" || detail == "" {
+		t.Fatalf("dead Codex notification = (%q, %q)", state, detail)
+	}
+	env.Duplicate = true
+	if state, detail := notifyFactoryRecipient(context.Background(), peer, env); state != "duplicate" || detail != "" {
+		t.Fatalf("duplicate notification = (%q, %q)", state, detail)
+	}
+}
+
+func TestFactoryMsgSendRejectsClaudeOnlyRun(t *testing.T) {
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root, run := t.TempDir(), "native-only"
+	c := operationalStatusClient(t, root, run)
+	s, err := factorymsg.Open(root, run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	base := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "claude", Role: "lead", Slot: "lead", SessionUUID: "native-lead", Generation: 1, PID: os.Getpid(), ProcessStart: homestate.CurrentProcessFingerprint()}
+	if _, err := s.RegisterPeer(context.Background(), base); err != nil {
+		t.Fatal(err)
+	}
+	agent := base
+	agent.Backend, agent.Role, agent.Slot, agent.SessionUUID = "glm", "agent", "agent-1", "native-agent"
+	if _, err := s.RegisterPeer(context.Background(), agent); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(config.EnvClaudeCodeSessionID, base.SessionUUID)
+	res, err := c.CallTool(context.Background(), mcp.CallToolRequest{Params: mcp.CallToolParams{Name: "factory_msg_send", Arguments: map[string]any{
+		"run_id": run, "to_slot": agent.Slot, "kind": factorymsg.KindStatusRequest, "idempotency_key": "native-only", "task_ref": "t1", "correlation_id": "native-only", "body": "native only",
+	}}})
+	if err != nil || !res.IsError {
+		t.Fatalf("send result=%+v err=%v", res, err)
+	}
+	status, err := s.Status(context.Background())
+	if err != nil || status.Pending != 0 || status.Capability != "native-claude" {
+		t.Fatalf("status=%+v err=%v", status, err)
+	}
+}
+
 func operationalStatusClient(t *testing.T, root, run string) *client.Client {
 	t.Helper()
 	t.Setenv(config.EnvClaudeProjectDir, root)

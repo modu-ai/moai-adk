@@ -46,7 +46,7 @@ func registerFactoryLaunchPending(ctx context.Context, root string, env []string
 	}
 	role, slot := "lead", "lead"
 	if worker != "" {
-		role, slot = "worker", worker
+		role, slot = "agent", worker
 	}
 	backend := strings.TrimSpace(launchEnvValue(env, config.EnvMoaiKanbanBackend))
 	if backend == "" {

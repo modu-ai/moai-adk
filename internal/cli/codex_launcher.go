@@ -650,6 +650,9 @@ var codexCmd = &cobra.Command{
 		"  moai codex cli        the same launch, named explicitly\n" +
 		"  moai codex status     print the readiness readout (starts nothing)\n" +
 		"  moai codex app        launch the Codex desktop app (codex app)\n" +
+		"  moai codex -f        start a Factory lead\n" +
+		"  moai codex -f agent  join the active Factory run as the next agent-n\n" +
+		"  moai codex -f agent-2 --factory-run <id>  join a named run\n" +
 		"  -w [worktree]         re-enter or create a worktree from the remote\n" +
 		"                        default branch; omit name to generate one\n" +
 		"  --spawn               open the launch in a new tmux window\n" +
@@ -667,7 +670,10 @@ var codexCmd = &cobra.Command{
 		"  moai codex -w feat-login\n" +
 		"\n" +
 		"  # Launch the desktop app in a new tmux window\n" +
-		"  moai codex app --spawn",
+		"  moai codex app --spawn\n" +
+		"\n" +
+		"  # Join a Factory run with an automatically numbered agent\n" +
+		"  moai codex -f agent --factory-run <id>",
 	GroupID:            "launch",
 	DisableFlagParsing: true,
 	SilenceErrors:      true,
@@ -721,6 +727,21 @@ func runCodex(cmd *cobra.Command, args []string) error {
 	if kerr != nil {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), kerr.Error())
 		return &exitCodeError{code: 1}
+	}
+	if spawn && (factoryLead || factoryRole != "" || factoryLane != "") {
+		// Let the pane's MoAI process own the broker endpoint and App Server.
+		// Claiming a slot here would race the pane and leave a dead owner.
+		if err := checkSpawnPrereqs(); err != nil {
+			return err
+		}
+		program, err := os.Executable()
+		if err != nil {
+			return err
+		}
+		if err := codexSpawnLaunchFn(launchProjectRoot(), program, append([]string{"codex"}, args...)); err != nil {
+			return fmt.Errorf("spawn managed Factory Codex: %w", err)
+		}
+		return nil
 	}
 	var factoryRestore func()
 	if factoryLead || factoryRole != "" || factoryLane != "" {
@@ -846,6 +867,14 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 	}
 	childArgs := append(localArgs, codexChildArgs(kind, tail)...)
 	req := codexLaunchRequest{Program: binaryPath, Args: childArgs, Dir: dir}
+	if factoryLaunchEnabled(os.Environ()) && !spawn {
+		if worktree.present {
+			if err := codexWorktreeAnchorLock(dir, codexDirectAnchorPID(), homestate.CurrentProcessFingerprint()); err != nil {
+				return err
+			}
+		}
+		return runManagedFactoryCodex(req)
+	}
 	if spawn {
 		if worktree.present {
 			// The process that becomes Codex is the pane's; it exists only

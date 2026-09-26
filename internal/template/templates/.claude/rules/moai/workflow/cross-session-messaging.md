@@ -139,6 +139,10 @@ works but a send never arrives is being blocked by something narrower.
 
 A Codex peer is unreachable by the channel above — a Codex session has no Claude Code runtime — and rides the moai MCP broker instead (`session_msg_register` / `session_msg_list` / `session_msg_send` / `session_msg_poll`, poll-based, symmetric for both session kinds). **Every rule above extends to it unchanged**, and a Codex reader never loads this rules tree: the tool descriptions carry the discipline for that side. Tool surface, the per-clause broker reading, and the MCP-server restart caveat: `cross-session-messaging-detail.md` § The Codex broker path.
 
+Factory Mode uses a separate `factory_msg_*` broker when a lead/agent pair includes Codex. The managed host launchers poll inbound envelopes and start a turn in the live host session. A send proves storage; a receipt proves handling. Claude Code to Claude Code Factory pairs use native `SendMessage` on macOS, Linux, WSL 2, and native Windows where the documented version and settings gates pass. Permission prompts can still pause either host.
+
+For unattended Codex Factory exchange, the project's `[mcp_servers.moai]` config grants `approval_mode = "approve"` only to `factory_msg_send` and `factory_msg_receipt`; other MCP tools retain `default_tools_approval_mode = "writes"`. MoAI's config writer preserves an existing user-owned table, so a project created before this setting needs its MoAI MCP table reviewed before unattended dispatch. An `auto` approval-mode value did not suppress a live receipt prompt in the measured Codex CLI 0.156.1 session.
+
 ## Cross-references
 
 - `.claude/rules/moai/core/agent-common-protocol.md` — Pre-Spawn / Pre-Edit Sync Check, the detection layer this composes with

@@ -136,7 +136,7 @@ func TestKanbanNoticePreservesProtocolTokensInEveryLocale(t *testing.T) {
 				"moai cc -k --name sync",
 				"moai glm -k --name",
 				"`judge`",
-				"`worker-N`",
+				"`agent-N`",
 				"/tmp/moai-socket-kanban/tjpzpl",
 				"SPEC-FOO-001",
 				"`moai todo`",

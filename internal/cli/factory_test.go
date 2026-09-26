@@ -265,14 +265,14 @@ func TestParseLauncherEntryMerge(t *testing.T) {
 
 	t.Run("-f N is retired post-N-removal", func(t *testing.T) {
 		t.Parallel()
-		if _, err := parseLauncherEntry([]string{"-f", "4"}); err == nil || !strings.Contains(err.Error(), "worker role token") {
+		if _, err := parseLauncherEntry([]string{"-f", "4"}); err == nil || !strings.Contains(err.Error(), "agent role token") {
 			t.Errorf("parseLauncherEntry(-f 4) = %v, want the retired-count error", err)
 		}
 	})
 
 	t.Run("-f worker-n desugars to the lane form with unknown count", func(t *testing.T) {
 		t.Parallel()
-		p, err := parseLauncherEntry([]string{"-f", "worker-2", "-b"})
+		p, err := parseLauncherEntry([]string{"-f", "agent-2", "-b"})
 		if err != nil {
 			t.Fatalf("parseLauncherEntry(-f worker-2): %v", err)
 		}
@@ -280,17 +280,33 @@ func TestParseLauncherEntryMerge(t *testing.T) {
 			t.Errorf("-f worker-2 = (factory %v, workers %d), want (true, 0 unknown)", p.FactoryEnabled, p.FactoryWorkers)
 		}
 		label, ok := parseFactoryLaneLabel(p.Rest)
-		if !ok || label != "worker-2" {
+		if !ok || label != "agent-2" {
 			t.Errorf("desugared rest %v carries label (%q, %v), want worker-2", p.Rest, label, ok)
 		}
-		if !slices.Equal(p.Rest, []string{"-b", "--name", "worker-2"}) {
+		if !slices.Equal(p.Rest, []string{"-b", "--name", "agent-2"}) {
 			t.Errorf("desugared rest = %v, want [-b --name worker-2]", p.Rest)
+		}
+	})
+
+	t.Run("agent name stays before Claude passthrough", func(t *testing.T) {
+		t.Parallel()
+		for _, role := range []string{"agent", "agent-2"} {
+			p, err := parseLauncherEntry([]string{"-f", role, "--factory-run", "tlw7ov", "--", "--model", "glm-5.3"})
+			if err != nil {
+				t.Fatalf("parseLauncherEntry(%s): %v", role, err)
+			}
+			if label, ok := parseFactoryLaneLabel(p.Rest); !ok || !strings.HasPrefix(label, "agent-") {
+				t.Fatalf("rest %v lost agent role before --", p.Rest)
+			}
+			if i := slices.Index(p.Rest, "--"); i < 2 || p.Rest[i-2] != "--name" || !slices.Equal(p.Rest[i+1:], []string{"--model", "glm-5.3"}) {
+				t.Fatalf("rest %v moved passthrough or hid agent name", p.Rest)
+			}
 		}
 	})
 
 	t.Run("-f N --name worker-i is retired with the count form", func(t *testing.T) {
 		t.Parallel()
-		if _, err := parseLauncherEntry([]string{"-f", "5", "--name", "worker-2"}); err == nil || !strings.Contains(err.Error(), "worker role token") {
+		if _, err := parseLauncherEntry([]string{"-f", "5", "--name", "worker-2"}); err == nil || !strings.Contains(err.Error(), "agent role token") {
 			t.Errorf("parseLauncherEntry(-f 5 --name worker-2) = %v, want the retired-count error", err)
 		}
 	})
@@ -311,7 +327,7 @@ func TestParseLauncherEntryMerge(t *testing.T) {
 		for _, args := range [][]string{
 			{"-f", "agent", "-k"},
 			{"-f", "-k", "SPEC-X-001"},
-			{"--factory=worker-2", "-k", "3"},
+			{"--factory=agent-2", "-k", "3"},
 		} {
 			if _, err := parseLauncherEntry(args); err == nil || !strings.Contains(err.Error(), "at most one") {
 				t.Errorf("parseLauncherEntry(%v) = %v, want the one-entry-token conflict", args, err)
@@ -321,8 +337,8 @@ func TestParseLauncherEntryMerge(t *testing.T) {
 
 	t.Run("-f worker-n plus an operator --name is a conflict", func(t *testing.T) {
 		t.Parallel()
-		if _, err := parseLauncherEntry([]string{"-f", "worker-2", "--name", "worker-3"}); err == nil ||
-			!strings.Contains(err.Error(), "already names the worker") {
+		if _, err := parseLauncherEntry([]string{"-f", "agent-2", "--name", "agent-3"}); err == nil ||
+			!strings.Contains(err.Error(), "already names the agent") {
 			t.Errorf("parseLauncherEntry(-f worker-2 --name worker-3) = %v, want the naming conflict", err)
 		}
 	})
@@ -515,12 +531,12 @@ func TestEnterFactoryWorkerModeUnknownCount(t *testing.T) {
 func TestResolveFactoryWorkerName(t *testing.T) {
 	t.Run("free name is kept and registered", func(t *testing.T) {
 		root := t.TempDir()
-		if got, err := resolveFactoryWorkerName(root, "worker-1", false, nil); err != nil || got != "worker-1" {
-			t.Fatalf("free name = %q, want worker-1", got)
+		if got, err := resolveFactoryWorkerName(root, "agent-1", false, nil); err != nil || got != "agent-1" {
+			t.Fatalf("free name = %q, want agent-1", got)
 		}
 		reg := loadFactoryRegistry(factoryRegistryPath(root))
-		if e, ok := reg["worker-1"]; !ok || e.PID != os.Getpid() {
-			t.Errorf("worker-1 not registered to this pid: %+v", reg)
+		if e, ok := reg["agent-1"]; !ok || e.PID != os.Getpid() {
+			t.Errorf("agent-1 not registered to this pid: %+v", reg)
 		}
 	})
 
@@ -528,8 +544,8 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 		root := t.TempDir()
 		// Simulate two live holders: worker-2 and worker-3.
 		reg := map[string]factoryWorkerEntry{
-			"worker-2": {PID: 11100},
-			"worker-3": {PID: 11101},
+			"agent-2": {PID: 11100},
+			"agent-3": {PID: 11101},
 		}
 		if err := saveFactoryRegistry(factoryRegistryPath(root), reg); err != nil {
 			t.Fatalf("seed registry: %v", err)
@@ -539,14 +555,14 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 		defer func() { factoryProcessAlive = probe }()
 
 		var notes bytes.Buffer
-		got, err := resolveFactoryWorkerName(root, "worker-2", false, &notes)
+		got, err := resolveFactoryWorkerName(root, "agent-2", false, &notes)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got != "worker-4" {
-			t.Fatalf("bumped name = %q, want worker-4 (2 and 3 are live)", got)
+		if got != "agent-4" {
+			t.Fatalf("bumped name = %q, want agent-4 (2 and 3 are live)", got)
 		}
-		if !strings.Contains(notes.String(), "worker-4") {
+		if !strings.Contains(notes.String(), "agent-4") {
 			t.Errorf("operator note missing the final name: %q", notes.String())
 		}
 	})
@@ -554,7 +570,7 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 	t.Run("dead claim frees the name and is pruned", func(t *testing.T) {
 		root := t.TempDir()
 		if err := saveFactoryRegistry(factoryRegistryPath(root), map[string]factoryWorkerEntry{
-			"worker-2": {PID: 11100},
+			"agent-2": {PID: 11100},
 		}); err != nil {
 			t.Fatalf("seed registry: %v", err)
 		}
@@ -562,15 +578,15 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 		factoryProcessAlive = func(int) bool { return false }
 		defer func() { factoryProcessAlive = probe }()
 
-		got, err := resolveFactoryWorkerName(root, "worker-2", false, nil)
+		got, err := resolveFactoryWorkerName(root, "agent-2", false, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got != "worker-2" {
+		if got != "agent-2" {
 			t.Fatalf("dead claim should free the name, got %q", got)
 		}
 		reg := loadFactoryRegistry(factoryRegistryPath(root))
-		if e, ok := reg["worker-2"]; !ok || e.PID != os.Getpid() {
+		if e, ok := reg["agent-2"]; !ok || e.PID != os.Getpid() {
 			t.Errorf("worker-2 should be re-registered to this pid after pruning: %+v", reg)
 		}
 	})

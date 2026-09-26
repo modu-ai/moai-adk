@@ -28,6 +28,14 @@ func TestInspectMCPTableCanonical(t *testing.T) {
 	}
 }
 
+func TestInspectMCPTableFindsLegacyFactoryApproval(t *testing.T) {
+	in := append(EnsureMCPTable(nil), []byte(legacyFactoryApprovalLine+"\n")...)
+	got := InspectMCPTable(in)
+	if !got.FactoryApprovalLeak || got.Canonical {
+		t.Fatalf("legacy project-wide Factory approval must be reported: %+v", got)
+	}
+}
+
 // TestInspectMCPTableDrifted verifies the inspector flags a user-modified
 // table (drift is the doctor's to report; the writer never repairs it).
 func TestInspectMCPTableDrifted(t *testing.T) {

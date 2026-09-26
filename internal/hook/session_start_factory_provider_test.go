@@ -31,11 +31,11 @@ func TestFactoryLeadProviderLaunchLines(t *testing.T) {
 						launch = append(launch, line)
 					}
 				}
-				want := "moai " + tc.want + " -f worker-1\nmoai " + tc.want + " -f worker-2"
+				want := "moai " + tc.want + " -f agent-1\nmoai " + tc.want + " -f agent-2"
 				if strings.Join(launch, "\n") != want {
 					t.Errorf("launch lines = %q; want %q", strings.Join(launch, "\n"), want)
 				}
-				if !strings.Contains(notice, "`moai "+tc.want+" -f worker-<n>`") {
+				if !strings.Contains(notice, "`moai "+tc.want+" -f agent-<n>`") {
 					t.Error("same-provider incremental entry missing")
 				}
 				if strings.Contains(notice, "marker") || strings.Contains(notice, "%!") {

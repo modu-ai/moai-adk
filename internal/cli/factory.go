@@ -53,51 +53,36 @@ const (
 	factoryFlagLong  = "--factory"
 	factoryFlagShort = "-f"
 
-	// factoryWorkerRoleToken is the `-f worker` role value: join the running
-	// factory as the next free worker-<n> — the symmetric form across the
-	// cc/glm/codex launchers.
-	factoryWorkerRoleToken = "worker"
-
-	// factoryLegacyAgentRoleToken is the pre-rename spelling of the role
-	// token. It still parses (keep-alias) and behaves exactly like `-f
-	// worker`; the launch prints a deprecation hint naming the new form.
-	factoryLegacyAgentRoleToken = "agent"
+	// factoryWorkerRoleToken is the public agent role value on every launcher.
+	factoryWorkerRoleToken = "agent"
 )
 
 // factoryFlagUsageError names every accepted -f shape. It is the error text
 // for an invalid SUPPLIED value and the reference the help texts paraphrase.
-// The numeric count form was REMOVED (N is unnecessary — workers join via the
-// role token). Only the worker-axis spellings are taught here; the legacy
-// `agent` / `lane-<n>` spellings still parse and print their own hint.
+// The numeric count form was removed; agents join via the role token.
 const factoryFlagUsageError = "-f/--factory takes no argument (the factory lead), " +
-	"the worker role token (e.g. -f worker) that joins this session to a running factory as the next free worker, " +
-	"or a worker label (e.g. -f worker-2) that launches exactly that one worker"
+	"the agent role token (e.g. -f agent) that joins this session to a running factory as the next free agent, " +
+	"or an agent label (e.g. -f agent-2) that launches exactly that one agent"
 
 // factoryFlagParse is the -f/--factory entry parse (t118). ONE flag token,
 // three shapes:
 //
-//	-f                → the factory lead, one worker (DefaultFactoryLeadWorkers)
-//	-f worker         → join the running factory as the next free worker-<n>
-//	-f worker-<n>     → exactly one additional worker, worker n — the
-//	                    incremental form; the run's count is not carried, and
-//	                    a count of 0 ("unknown") flows into the worker env
-//
-// Legacy spellings (keep-alias): `-f agent` parses as `-f worker`, and `-f
-// lane-<n>` as `-f worker-<n>`; the launch prints a deprecation hint.
+//	-f                → the factory lead, one agent (DefaultFactoryLeadWorkers)
+//	-f agent          → join the running factory as the next free agent-<n>
+//	-f agent-<n>      → exactly one additional agent; the run count remains unknown
 //
 // The factory carries no SPEC identifier (that is the kanban chain's -k
 // SPEC-ID shape), so a SUPPLIED value that is neither the role token nor a
 // worker label is an error — there is no second interpretation to silently
 // fall into, and hiding the typo would be worse than naming it.
 type factoryFlagParse struct {
-	Enabled          bool     // -f present (any shape)
-	Workers          int      // always 0 post-N-removal; kept for the merge contract
-	WorkerNumber     int      // n of `-f worker-<n>` (or legacy `-f lane-<n>`); 0 otherwise
-	WorkerLabel      string   // the worker label exactly as typed (`worker-3`, or legacy `lane-3`)
-	WorkerRole       bool     // `-f worker` (or legacy `-f agent`): join as the next free worker
-	LegacyAgentToken bool     // the role token was typed as the legacy `agent`
-	RunID            string   // explicit --factory-run selector (MoAI-owned, pre--- only)
-	Rest             []string // args with -f and its consumed value removed
+	Enabled      bool     // -f present (any shape)
+	Workers      int      // always 0 post-N-removal; kept for the merge contract
+	WorkerNumber int      // n of `-f agent-<n>`; 0 otherwise
+	WorkerLabel  string   // the agent label exactly as typed
+	WorkerRole   bool     // `-f agent`: join as the next free agent
+	RunID        string   // explicit --factory-run selector (MoAI-owned, pre--- only)
+	Rest         []string // args with -f and its consumed value removed
 }
 
 // parseFactoryFlag extracts --factory / -f and its optional value from args.
@@ -152,12 +137,11 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 		if !hasValue {
 			continue
 		}
-		if value == factoryWorkerRoleToken || value == factoryLegacyAgentRoleToken {
+		if value == factoryWorkerRoleToken {
 			p.WorkerRole = true
-			p.LegacyAgentToken = value == factoryLegacyAgentRoleToken
 			continue
 		}
-		if n, ok := kanban.SplitFactoryLaneLabel(value); ok {
+		if n, ok := kanban.SplitFactoryAgentLabel(value); ok {
 			p.WorkerNumber = n
 			p.WorkerLabel = value
 			continue
@@ -177,7 +161,7 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 //
 //   - `-f [N]` sets FactoryEnabled with Workers (N, or
 //     DefaultFactoryLeadWorkers when omitted);
-//   - `-f worker-<n>` sets FactoryEnabled and appends `--name worker-<n>`
+//   - `-f agent-<n>` sets FactoryEnabled and appends `--name agent-<n>`
 //     to Rest, desugaring into the existing worker branch (registry bump,
 //     replaceNamedLabel, settings injection, per-worker agent cap) so the
 //     new form and the `-k N --name worker-<i>` form share one
@@ -185,7 +169,7 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 //     incrementally carries 0 ("unknown"), which the worker notice degrades
 //     from. A -f worker-label form plus an operator-supplied --name is a
 //     conflict error: the flag value already named the worker.
-//   - `-f worker` appends the next free worker label the same way.
+//   - `-f agent` appends the next free agent label the same way.
 func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
 	entry, err := parseKanbanFlag(args)
 	if err != nil {
@@ -212,34 +196,42 @@ func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
 	switch {
 	case fp.WorkerRole:
 		if operatorSuppliedName(fp.Rest) {
-			return entry, fmt.Errorf("-f worker already names the role; drop the --name/-n flag (got args %v)", fp.Rest)
+			return entry, fmt.Errorf("-f agent already names the role; drop the --name/-n flag (got args %v)", fp.Rest)
 		}
-		// Desugar into the next free worker label so the bump/liveness rules
-		// and the lead's dispatch address stay one implementation. The
-		// legacy `-f agent` spelling desugars into the legacy agent label,
-		// which the claim canonicalizes to worker-<n> and reports as
-		// deprecated (resolveFactoryWorkerName is the one hint site).
+		// Desugar into the next free agent label so the bump/liveness rules
+		// and the lead's dispatch address stay one implementation.
 		next := kanban.NextFactoryWorkerNumber(loadFactoryRegistry(factoryRegistryPath(launchProjectRoot())), factoryProcessAlive)
-		label := kanban.FactoryLaneLabel(next)
-		if fp.LegacyAgentToken {
-			label = kanban.FactoryAgentLabel(next)
-		}
-		entry.Rest = append(entry.Rest, nameFlagLong, label)
+		label := kanban.FactoryAgentLabel(next)
+		entry.Rest = appendFactorySessionName(entry.Rest, label)
 		entry.FactoryAutoNumber = true
 	case fp.WorkerNumber > 0:
 		if operatorSuppliedName(fp.Rest) {
-			return entry, fmt.Errorf("-f worker-<n> already names the worker; drop the --name/-n flag (got args %v)", fp.Rest)
+			return entry, fmt.Errorf("-f agent-<n> already names the agent; drop the --name/-n flag (got args %v)", fp.Rest)
 		}
 		// The label travels as typed: a legacy `lane-<n>` is canonicalized
 		// (with its deprecation hint) at the claim, exactly like a typed
 		// --name lane-<n>.
-		entry.Rest = append(entry.Rest, nameFlagLong, fp.WorkerLabel)
+		entry.Rest = appendFactorySessionName(entry.Rest, fp.WorkerLabel)
 	default:
-		// Bare -f: the factory lead. Workers join via -f worker / -f
-		// worker-<n>; the numeric count form is retired.
+		// Bare -f: the factory lead. Agents join via -f agent / -f
+		// agent-<n>; the numeric count form is retired.
 		entry.FactoryWorkers = config.DefaultFactoryLeadWorkers
 	}
 	return entry, nil
+}
+
+// A desugared session name belongs to the launcher options. A following
+// "--" starts Claude's passthrough tail and must not hide the agent name.
+func appendFactorySessionName(args []string, label string) []string {
+	for i, arg := range args {
+		if arg == "--" {
+			out := make([]string, 0, len(args)+2)
+			out = append(out, args[:i]...)
+			out = append(out, nameFlagLong, label)
+			return append(out, args[i:]...)
+		}
+	}
+	return append(args, nameFlagLong, label)
 }
 
 func enterSelectedFactoryRun(root, explicit string, requireActive bool) (func(), error) {
@@ -328,14 +320,13 @@ func resolveFactoryBranch(factoryEnabled, isLane bool) factoryBranch {
 	}
 }
 
-// parseFactoryLaneLabel reports the worker label in args, if any — the
-// canonical `worker-<n>` or a legacy `lane-<n>` / `agent-<n>` spelling (the
-// `-f worker` desugared name flows through the same --name channel the
-// incremental worker form uses).
+// parseFactoryLaneLabel reports an agent label in args, if any. Persisted
+// worker-<n> and lane-<n> labels remain recognizable for compatibility.
+// The `-f agent` desugared name uses the same --name channel.
 // It matches only the worker SHAPES (kanban.SplitFactoryLaneLabel /
 // kanban.SplitFactoryAgentLabel), for the same reason parseCompanionLabel
 // matches only the companion shape: treating every named session as a
-// worker would silently change launch behavior for unrelated work.
+// agent would silently change launch behavior for unrelated work.
 func parseFactoryLaneLabel(args []string) (label string, ok bool) {
 	return parseNamedLabel(args, func(candidate string) bool {
 		if _, isLane := kanban.SplitFactoryLaneLabel(candidate); isLane {
@@ -457,19 +448,18 @@ func resolveFactoryWorkerName(root, label string, auto bool, notes io.Writer) (s
 	if errors.As(err, &collision) {
 		// Legacy agent-/lane- labels share the worker number space; an
 		// operator-typed number held by one is refused by name, never moved.
-		return "", fmt.Errorf("claim factory worker %s: %s (a live session launched under the legacy spelling; "+
-			"legacy agent-<n> and lane-<n> labels share the worker number space) — "+
-			"pick another number with -f worker-<n>, or use -f worker to take the next free one", label, collision)
+		return "", fmt.Errorf("claim factory agent %s: %s (a live legacy label holds this number) — "+
+			"pick another number with -f agent-<n>, or use -f agent to take the next free one", label, collision)
 	}
 	if err != nil {
-		return "", fmt.Errorf("claim factory worker %s: %w", label, err)
+		return "", fmt.Errorf("claim factory agent %s: %w", label, err)
 	}
 	final := claim.Label
 	if notes == nil {
 		return final, nil
 	}
 	if len(claim.SkippedLegacy) > 0 {
-		_, _ = fmt.Fprintf(notes, "factory: skipped number(s) held by legacy label(s) %s — legacy agent-<n> and lane-<n> labels share the worker number space; launching as %s\n",
+		_, _ = fmt.Fprintf(notes, "factory: skipped number(s) held by legacy label(s) %s — these labels share the agent number space; launching as %s\n",
 			strings.Join(claim.SkippedLegacy, ", "), final)
 	}
 	// Both notes are best-effort operator guidance; the SessionStart worker
@@ -488,10 +478,10 @@ func resolveFactoryWorkerName(root, label string, auto bool, notes io.Writer) (s
 // spellings keep working (keep-alias); the hint is how they retire without a
 // silent break.
 func legacyFactorySpellingHint(label string) string {
-	if _, isAgent := kanban.SplitFactoryAgentLabel(label); isAgent {
-		return "`-f agent` (and the agent-<n> label) is a deprecated spelling — use `-f worker`"
+	if strings.HasPrefix(label, "worker-") {
+		return "the worker-<n> label is retired — use `-f agent-<n>`"
 	}
-	return "`-f lane-<n>` / `--name lane-<n>` is a deprecated spelling — use `-f worker-<n>`"
+	return "the lane-<n> label is retired — use `-f agent-<n>`"
 }
 
 // replaceNamedLabel returns args with the first `--name` / `-n` value equal
