@@ -93,6 +93,25 @@ func init() {
 		hookCmd.AddCommand(cmd)
 	}
 
+	// Codex-only subcommands (SPEC-DUAL-HARNESS-HOOK-PARITY-001 M2e, design.md
+	// §D7). They carry no internal/hook event type, so they bypass the event
+	// dispatcher; each refuses to run outside --harness codex.
+	codexOnlySubcommands := []struct {
+		use   string
+		short string
+		run   func(*cobra.Command, []string) error
+	}{
+		{"interrupt", "Handle the Codex Interrupt event (records a user cancellation; --harness codex only)", runHookInterrupt},
+	}
+	for _, sub := range codexOnlySubcommands {
+		hookCmd.AddCommand(&cobra.Command{
+			Use:          sub.use,
+			Short:        sub.short,
+			SilenceUsage: true,
+			RunE:         sub.run,
+		})
+	}
+
 	// Add "list" subcommand
 	hookCmd.AddCommand(&cobra.Command{
 		Use:   "list",

@@ -521,6 +521,135 @@ control that it did not skip)
   machine or in CI.
 - No live Codex run (Q5): whether Codex honours the merged Stop output end-to-end stays unmeasured.
 
+### Merge repair before M2e (2026-09-26)
+
+HEAD `f75957505` (a clean textual merge of local develop `4dcd4d8d4`) did not compile:
+`go vet ./internal/cli/` → `tailString` called with `[]byte` at `codex_audit_live_test.go:305`,
+`codex_role_live_test.go:173/240/282`, `factory_live_test.go:486`. develop's
+`live_harness_test.go:439` (`d31be8ae4`, card t1100) defines `tailString(b []byte, n int)`; this
+branch's `codex_sync_gate.go:381` (`b82562b92`) defined `tailString(s string, n int)`. Commit
+`eb23c7aa2` renames the production helper `tailOfString`; the test helper keeps its name.
+
+- `go vet ./internal/cli/ ./internal/codexadapter/ ./internal/codexwiring/` → exit 0, no output;
+  `GOOS=windows go vet ./internal/cli/` → exit 0; `GOOS=linux go vet ./internal/cli/` → exit 0.
+  The live tests carry `//go:build !windows` / `darwin || linux` / `windows`, so the three GOOS
+  runs cover every tag.
+- `go test -count=1 ./internal/codexadapter/ ./internal/codexwiring/` →
+  `ok … codexadapter 0.580s`, `ok … codexwiring 0.938s`.
+- `go test -count=1 -timeout 30m ./internal/cli/` (whole package, started on the repaired tree
+  before any M2e edit) → **inconclusive, not a pass**: `panic: test timed out after 30m0s`
+  (load 34–80 on the shared machine), with three `--- FAIL` lines, none from the rename:
+  `TestCodexSpawn_RealAssemblyThroughStubTmux` (the session's inherited
+  `MOAI_KANBAN_BACKEND=claude MOAI_FACTORY_WORKER=agent-43 MOAI_FACTORY_WORKERS=0` leaked into the
+  asserted tmux command — an unscrubbed environment), and
+  `TestDoctorExitCode_CodexCleanStaysZero` / `…AdvisoryOnlyStaysZero` (they `go build` the live
+  tree, which M2e edits were changing mid-run: `undefined: isPermissionRequestDeny`). The
+  whole-package verdict is left to the final regression run and CI.
+
+### M2e — event adaptation (2026-09-26)
+
+Measured on Darwin arm64, go1.26.8, against the working tree on top of `eb23c7aa2`. The machine
+was shared with other lanes (load 32–80). A diff-stat of `internal/hook`, `.claude/hooks`, and
+`internal/template/templates/.claude/hooks` against HEAD printed nothing, and
+`grep -rn EventInterrupt internal/hook/*.go` printed nothing (Q6 / HOOK-ADAPTER REQ-7 kept).
+
+**What changed.** All twelve `EventTable` rows are adapted: PreCompact (`compact`), PostCompact
+(`post-compact`), PermissionRequest (`permission-request`), and Interrupt with the new Codex-only
+dispatcher arg `interrupt`. `moai hook interrupt` (`hook_codex_interrupt.go`) refuses to run
+without `--harness codex`, cross-checks the payload event, refuses a missing or path-shaped
+`session_id`, appends one record to `.moai/state/codex-interrupt/<session>.jsonl`
+(session, transcript path, recorded-at, goal status before, goal `created_at`), and turns that
+session's **armed** goal `cancelled` (any other status is recorded, never overwritten). A
+PermissionRequest deny from the shared handler is rendered through `TranslateCodex`, so its reason
+reaches Codex in `decision.message` (the Claude shape keeps it in `systemMessage`, a key Codex
+ignores). `RenderHooks` needed no change: it derives from the table and now installs the
+Interrupt handler.
+
+**Decisions recorded**
+
+- **D3 (given):** PreCompact, PostCompact, and PermissionRequest get **no** stderr class;
+  `TestExcludedEventsHaveNoClass` is unchanged and passes.
+- **PermissionRequest with no opinion stays no opinion on Codex.** The shared handler returns no
+  decision unless the tool input carries the updated-input marker; on Claude that leaves Claude's
+  own permission flow in front of the user. The Codex path passes the same `{}` through, which
+  hands the request to Codex's own approval flow. It is not normalized to `needs_input` (which
+  would deny every Codex approval request fail-closed). Basis: REQ-HPR-011 ("the same permission
+  decision logic as for Claude"). How Codex resolves `{}` on PermissionRequest is unmeasured
+  (research.md H1 family) — carried as residual risk, not claimed.
+- **PostCompact memo delivery on Codex.** The restore runs the same handler; its
+  `systemMessage` has no measured Codex delivery channel on PostCompact, so the adapter drops it
+  **with** a discard record (`key=systemMessage`, content length). The golden asserts the restored
+  memo equals the saved memo and that the record exists. Whether the restored text reaches the
+  Codex model is a live question (AC-HPR-009 live leg, NOT_RUN).
+- **Subcommand count re-measured on the merged tree:** a build of `eb23c7aa2` (exported with
+  `git archive` to a scratch directory) lists 43 `moai hook` subcommands in `hook --help`, with no
+  `interrupt`; the working-tree build lists 44, and the only difference between the two name
+  lists is `> interrupt`. 43 → 44, as plan.md:77 predicted.
+
+**Intentional amendments (plan.md:77, exactly the listed set)**
+
+| Test | Amendment |
+|---|---|
+| `codexadapter/events_test.go` `TestAdaptedRowCount` | `wantAdapted` 8 → 12 |
+| `events_test.go` `TestEventTableMapping` | the four rows flip to adapted; Interrupt carries `interrupt` |
+| `events_test.go` `TestResolveRecognizedButUnadapted` | rewritten as `TestResolveFormerlyUnadaptedNowResolve` (the four names resolve) |
+| `events_test.go` `TestResolveInterruptNoCounterpart` | rewritten as `TestResolveInterruptResolvesToInterrupt` |
+| `codexwiring/hooks_test.go` `TestRenderHooks_InterruptNeverInstalled` | inverted as `TestRenderHooks_InterruptInstalled` (handler rendered once; a user Interrupt entry still preserved) |
+| `cli/hook_harness_codex_test.go` `TestHarnessCodexUnadaptedSubcommandRejected` | rewritten as `TestHarnessCodexCompactSubcommandAccepted` — no shipped event stays unadapted, so it cannot be retargeted |
+| `cli/hook_test.go` `TestHookCmd_SubcommandCount`, `cli/hook_pre_push_test.go` `TestHookCmd_PrePushSubcommandCount` | 43 → 44, comment line naming this SPEC |
+| `cli/hook_e2e_test.go` `TestHookValidEventTypes_AllHaveSubcommands` | `interrupt` joins `utilitySubcmds` with a comment |
+
+The refusal path the rewritten Resolve tests guarded is kept covered by a new
+`TestResolveUnadaptedRowIsRefused` over an explicit table (`resolveIn`). Not an amendment: the
+design-§D6 consumer inventory `TestGoalStatusConsumersHandleCancelled` failed as designed on the
+new producer (`unlisted goal-status site internal/cli/hook_codex_interrupt.go|recordCodexInterrupt
+references Goal.Status,StatusArmed,StatusCancelled`, and `…|type interruptRecord references
+Status`); the two rows were added to its table — design §D6 names this producer.
+`TestDispatcherArgsExist` (not amended) now checks `interrupt` and passes: the subcommand is
+registered with a `{"interrupt", "Handle …"}` literal.
+
+**RED**
+
+- codexadapter/codexwiring, the amended tests against the pre-change `events.go` (the edited
+  `events.go` set aside for the run, a `resolveIn` shim appended):
+  `events_test.go:84: adapted rows = 8, want 12`;
+  `events_test.go:63: PreCompact: adapted = false, want true` (and PostCompact, PermissionRequest);
+  `events_test.go:60: Interrupt: dispatcher arg = "", want "interrupt"`;
+  `events_test.go:151: Resolve(Interrupt) error = codex hook event recognized but not adapted: "Interrupt" (no MoAI dispatcher counterpart; …), want "interrupt"`;
+  `hooks_test.go:91: Interrupt event key not rendered into hooks.json — the adapted row must be installed` → FAIL.
+  Provenance: the tests were edited first, but the `events.go` edit was written before this RED
+  run and set aside for it; the RED is real, the ordering is test-then-code-then-RED.
+- cli, with `moai hook interrupt` registered as a no-op stub:
+  `codex_event_adaptation_test.go:180: PermissionRequest: deny carries no reason; Codex rejects a blank-reason deny: {"hookSpecificOutput":{"decision":{"behavior":"deny"},"hookEventName":"PermissionRequest"}}`;
+  `codex_event_adaptation_test.go:238: cancellation records = [] (err <nil>), want exactly one`;
+  `codex_event_adaptation_test.go:275: moai hook interrupt must refuse the Claude harness: Interrupt has no Claude-side counterpart` → FAIL.
+  `TestCodexCompactCheckpointRoundTrip` passed at this point because the rows were already
+  adapted; its detection is shown by mutation 1.
+
+**GREEN**
+
+- `go test -json -count=1 ./internal/codexadapter/ ./internal/codexwiring/` → `72` pass records
+  (codexadapter) and `157` (codexwiring); no `skip`, no `fail`; both packages `pass`.
+- `go test -json -count=1 -timeout 20m -run 'TestCodexCompactCheckpointRoundTrip|TestCodexPermissionRequestDenyPreserved|TestCodexInterruptRecordsCancellation|TestHarnessCodex|TestHookCmd_SubcommandCount|TestHookCmd_PrePushSubcommandCount|TestHookValidEventTypes_AllHaveSubcommands|TestHookFaultInjection|TestGoalCancelled' ./internal/cli/`
+  → `42 pass`; no `skip`, no `fail`.
+- `go test -count=1 ./internal/goal/` (after the two inventory rows) → `ok … goal 3.639s`.
+
+**Mutations (each applied, observed red, reverted)**
+
+1. PreCompact/PostCompact rows back to `false` (AC-HPR-009 "leave the rows unadapted") →
+   `codex_event_adaptation_test.go:114: moai hook compact --harness codex: codex harness: rejecting payload: codex hook event recognized but not adapted: "PreCompact" …` → FAIL.
+2. PermissionRequest deny routed past the translation (`isPermissionRequestDeny(…) && false`,
+   AC-HPR-010 "a pass-through that drops the handler's deny") →
+   `codex_event_adaptation_test.go:180: PermissionRequest: deny carries no reason; …` → FAIL.
+3. The cancellation record written empty (AC-HPR-011 "skip writing the cancellation record") →
+   `codex_event_adaptation_test.go:238: cancellation records = [] (err parse interrupt record: unexpected end of JSON input), want exactly one` → FAIL.
+
+**AC legs**: AC-HPR-009 golden (`TestCodexCompactCheckpointRoundTrip`) PASS; AC-HPR-010 golden
+(`TestCodexPermissionRequestDenyPreserved`: marker deny with reason, no-opinion stays no-opinion,
+a handler fault on the real subcommand is fail-closed) PASS; AC-HPR-011 unit
+(`TestCodexInterruptRecordsCancellation`, incl. the `grep -rn EventInterrupt internal/hook`
+invariant as a subtest) PASS. The live legs are M2g (NOT_RUN).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
