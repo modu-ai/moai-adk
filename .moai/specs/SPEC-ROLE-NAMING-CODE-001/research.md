@@ -1,7 +1,7 @@
 ---
 id: SPEC-ROLE-NAMING-CODE-001
 title: "Research — role naming unification (code + CLI)"
-version: "0.3.0"
+version: "0.3.1"
 created: 2026-09-26
 ---
 

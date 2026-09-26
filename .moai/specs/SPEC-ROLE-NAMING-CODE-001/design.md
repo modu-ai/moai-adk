@@ -1,7 +1,7 @@
 ---
 id: SPEC-ROLE-NAMING-CODE-001
 title: "Design — role naming unification (code + CLI)"
-version: "0.3.0"
+version: "0.3.1"
 created: 2026-09-26
 ---
 
@@ -46,7 +46,7 @@ Label-identity note: a label is the session's name, so a lane launched after the
 
 Persisted-data impact (stated explicitly, REQ-RNC-022):
 
-- **Mid-run binary reinstall** now requires retiring the running factory or kanban run and relaunching it. A leader session declared `lead` loses board write access (the sole-writer refusal names the relaunch step); a new lane cannot join a factory run whose live claims or peers are in the old vocabulary. The retire step is `moai factory runs --retire <run-id>` after the run's sessions have exited; REQ-RNC-024 keeps it working on a run whose leader peer is recorded only as `lead`.
+- **Mid-run binary reinstall** now requires retiring the running factory or kanban run and relaunching it. A leader session declared `lead` loses board write access (the sole-writer refusal names the legacy role; board role declarations have no production writer today, so this binds the guard only); a new lane cannot join a factory run whose live claims or peers are in the old vocabulary. The retire step is `moai factory runs --retire <run-id>` after the run's sessions have exited; REQ-RNC-024 keeps it working on a run whose leader peer is recorded only as `lead`.
 - **Downgrade** across this change also requires a relaunch: a pre-change binary does not recognize `leader` or broker role `lane`.
 - **Existing state files** keep every old row; nothing is rewritten. Dead old rows age out through the existing stale-record paths. Factory card history keeps the owner names that were true at the time.
 
@@ -69,7 +69,7 @@ Terms that are NOT the role and must not be translated or replaced by t1257 eith
 - The prefix change lives where the canonical factory label prefix and the two legacy prefixes are defined (`internal/kanban/bootstrap.go` near :247-253): canonical becomes `lane`; the legacy prefixes stop being accepted input and survive only as detection values for the stale-record rule (REQ-RNC-022). The number-space sharing that let a legacy claim hold its number is replaced by that refusal.
 - The CLI role token pair (`internal/cli/factory.go:59`, `:64`) becomes one canonical `lane`; the single hint site (`legacyFactorySpellingHint`) becomes the rejection-message site.
 - The broker's legacy-slot matcher (`internal/factorymsg/store.go:400-411`) that probes `worker-%d`/`agent-%d`/`lane-%d` is reduced to `lane-%d`; legacy slot inputs return an error naming the canonical slot.
-- The leader label constant is also the persisted role value today (`kanban.RoleLead = "lead"`, used by `LeadLabel()` and by the board write guard). Under D4 both become `leader`, so they stay one value — the split v0.1.0 needed is gone. The risk moves to the stale-record path: a `lead` declaration must produce a sole-writer refusal whose message names the relaunch step (plan.md R1).
+- The leader label constant is also the persisted role value today (`kanban.RoleLead = "lead"`, used by `LeadLabel()` and by the board write guard). Under D4 both become `leader`, so they stay one value — the split v0.1.0 needed is gone. The risk moves to the stale-record path: a `lead` declaration must produce a sole-writer refusal whose message names the legacy role `lead` (plan.md R1; the guard has no production caller today).
 - The SessionStart role-declaration writer (`internal/hook/session_start_record.go`) re-derives the role from the environment on every fire (`kanbanRoleFromEnv` returns `kanban.RoleLead` whenever `MOAI_FACTORY_WORKERS` or `MOAI_KANBAN` is set) and writes it with `kanban.WriteBestEffort`. It writes the session **record** (`internal/kanban/record.go`), a different artifact from the board role declaration the board write guard reads (`internal/kanban/role.go`). It is a writer, not only a reader: after a reinstall, an old leader session's next SessionStart would overwrite its `lead` record with `leader`, adopting it. REQ-RNC-025 makes it consult the launch label and the existing record first and leave a legacy record byte-identical.
 - The run-retire owner lookup falls back, for a run row with `lead_pid = 0`, to the run's `role='lead'` broker peer (`internal/homestate/factory_run_retire.go:181-194` calling `internal/factorymsg/factory_run_retire.go` `LeadPeerIdentity`); no identity means `OwnerIndeterminate`, and `retirable` accepts only `OwnerDead`. After the rename the fallback reads the `leader` peer, and REQ-RNC-024 has it also read a `lead` peer's pid and process start — identity evidence only — so a legacy-only run stays retirable.
 - Kanban run membership is not defined by a run id (`leads.json` holds names and liveness only, and `resolveLeadName` never blocks, `internal/cli/kanban.go:376-390`), so the launch-refusal half of the run boundary applies to factory runs only; kanban enforces the boundary on the legacy session's own declaration (REQ-RNC-025).

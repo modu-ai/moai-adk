@@ -1,7 +1,7 @@
 ---
 id: SPEC-ROLE-NAMING-CODE-001
 title: "Plan — role naming unification (code + CLI)"
-version: "0.3.0"
+version: "0.3.1"
 created: 2026-09-26
 ---
 
@@ -99,7 +99,7 @@ The decisions with the widest blast radius (O2 run boundary, legacy retire, the 
 
 | # | Risk | Mitigation |
 |---|---|---|
-| R1 | The leader role value moves from `lead` to `leader` in the board write guard, the role reader, the SessionStart role writer, and the run-retire owner lookup at once; a missed reader leaves the new leader unable to write the board (sole-writer refusal on every write), and a missed writer silently adopts old sessions | M1 first; characterization tests on the board guard, role reader, and SessionStart writer before the change; AC-RNC-008 exercises a `leader` declaration through the readers, AC-RNC-025 proves the writer leaves a legacy declaration byte-identical |
+| R1 | The leader role value moves from `lead` to `leader` in the board write guard, the role reader, the SessionStart role writer, and the run-retire owner lookup at once; a missed SessionStart reader or writer silently adopts or mislabels old sessions, and a missed run-retire lookup leaves a run unretirable. The board write guard is unwired in production today (measured at `5102a69e9`, production `.go` files only: `DeclareRole` 0 callers; its reader `ResolveDeclaredRole` is called only at `internal/kanban/board_store.go:191` inside `requireLeadRole`; `WriteBoardState` is called only at `internal/kanban/board_store.go:363` inside `TransitionIntoRunOpts`, which is called only at `internal/kanban/board_store.go:344` inside `TransitionIntoRun`, which has 0 callers; `RecoverBoard` 0 callers), so a missed board-guard reader has no production symptom and is covered at package level | M1 first; characterization tests on the board guard, role reader, and SessionStart writer before the change; AC-RNC-008 exercises a test-written `leader` declaration through the board guard and the other readers, AC-RNC-025 proves the SessionStart writer leaves a legacy session record byte-identical |
 | R2 | Stamp/guard value drift on the role marker → guard silently denies nothing | REQ-RNC-012 binds the value through t1245's equality assertion plus constant-only stamp/compare sites; AC-RNC-014 asserts the `lane` deny, a red run of the assertion, and names every stamp/compare site |
 | R3 | t1193 overlaps six files (`internal/cli/factory.go`, `internal/factorymsg/store.go`, `internal/hook/factory_messages.go`, `internal/hook/session_start_factory.go`, `internal/cli/codex_launcher.go`, `internal/codexwiring/configtoml.go`) and adds 49 lines of worker/lead vocabulary; it is out of the ordering pending the operator's decision | Pre-flight re-checks t1193's status (§C.2, AC-RNC-015); if it lands first, this run absorbs and converts its vocabulary; if it is live and unlanded, report to the leader before editing the overlap files |
 | R4 | Mid-run binary reinstall — a routine act in this repository — now breaks a running factory or kanban run until it is relaunched (REQ-RNC-022, -025, O2) | The refusal names the run and the relaunch step; REQ-RNC-024 makes the named retire step work on a legacy-only run; the leader schedules the develop push that carries this change between runs |

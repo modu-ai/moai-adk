@@ -20,7 +20,17 @@
   - design.md D2/D4/D7/D8 and §2/§4 updated; research.md §3 splits board role declarations from session records (D8).
   - Evidence hygiene: stray nested copy `.moai/reports/t1256/.moai/` removed (D17). No auditor helper scripts (`recount.py`, `sample.py`) found untracked in the worktree.
   - REQ count 25 · AC count 25 (AC-RNC-001..025, contiguous) — both at the Tier L ceiling of 25, neither over; every REQ maps to ≥1 AC (acceptance.md §C).
-- Status: ready for plan-audit iteration 2
+- Plan-audit iteration 2: FAIL 0.845 (`.moai/reports/t1256/plan-audit-iter2.md`, audited at `5102a69e9`) — blocking N1 (AC-RNC-008 required a role-declaration write no production path performs) + optional N2–N8.
+- v0.3.1 revision (2026-09-26), no REQ or AC added (both stay at 25):
+  - N1 (blocking): measured at `5102a69e9` over production `.go` files — `DeclareRole` 0 callers; `ResolveDeclaredRole` called only at `internal/kanban/board_store.go:191`; `WriteBoardState` only at `board_store.go:363` (inside `TransitionIntoRunOpts`), which is called only at `board_store.go:344` (inside `TransitionIntoRun`), which has 0 callers; `RecoverBoard` 0. AC-RNC-008 drops the declaration from the launch-written records and verifies the read side with a test-written `DeclareRole` declaration; REQ-RNC-025 / AC-RNC-025 board clause names the legacy role `lead` instead of a relaunch remedy and states it governs guard behavior only; plan R1 rewritten with the measured call chain; design.md §2/§4 wording aligned. No launcher declaration write added.
+  - N2: AC-RNC-008 lists each record with its expected value in a table.
+  - N3: `lead` matched case-insensitively (`(?i)\blead\b`) in REQ-RNC-018 and the acceptance word-boundary rule (current-tree measurement: case-insensitive and case-sensitive string-literal counts both 29, so no existing `Lead`/`LEAD` hit). The `MOAI_*` exclusion cannot produce a match under word-boundary semantics (`_` is a word character — `perl -ne 'print if /\blead\b/i'` prints nothing for `MOAI_KANBAN_LEAD_ADDR`), so AC-RNC-018's control is now paired: token-only string passes, the same token plus a free-standing `lead` fails (a real hit); a `Lead` sentence-start mutation added.
+  - N4: AC-RNC-023 population command strips Go comments (`sed -E 's#[[:space:]]+//.*$##'` then re-grep); reproduced at `5102a69e9` → 2 rows (`internal/cli/factory.go:544`, `internal/cli/kanban.go:711`), the `internal/statusline/types.go:250` comment row gone.
+  - N5: REQ-RNC-022 states an empty-`run_id` legacy claim belongs to no run, is not refused, is not recognized as a lane, and is stale once dead.
+  - N6: AC-RNC-019 adds the M5 census re-run recording remaining identifier-internal role-sense rows, each tagged with its exclusion, untagged count 0.
+  - N7: allowlist entries bound to file + exact literal; line numbers are recorded only (REQ-RNC-018, AC-RNC-018).
+  - N8: AC-RNC-025 SessionStart case split into (a) label trigger with no record and (b) record trigger with a `leader` label.
+- Status: ready for plan-audit iteration 3 (final)
 
 ## §E.2 Run-phase Evidence
 
