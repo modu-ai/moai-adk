@@ -57,8 +57,12 @@ func TestSynthesizeReviewOutput_VerdictLineDirections(t *testing.T) {
 		{"stated inconclusive, no bullets", "Verdict: inconclusive — could not determine from the material shown.", "inconclusive"},
 		{"stated pass but bullets present", "Verdict: pass\n- [P1] secret at vuln.go:7", "fail"},
 		{"no verdict line, bullets", "- [P2] minor style issue", "fail"},
-		{"no verdict line, clean", "The change introduces no blocking issues.", "pass"},
-		{"the word verdict in prose only", "I could not reach a verdict on the caching layer.", "pass"},
+		// SPEC-CODEX-PARSER-SHAPE-001 M4 (AC-CPS-004): a body carrying no
+		// recognized signal is downgraded — the downgrade is keyed on the
+		// absence of a recognized signal and on nothing in the prose, so even
+		// the word "verdict" in prose keys nothing.
+		{"no verdict line, clean", "The change introduces no blocking issues.", "inconclusive"},
+		{"the word verdict in prose only", "I could not reach a verdict on the caching layer.", "inconclusive"},
 	}
 	for _, c := range cases {
 		if got := synthesizeReviewOutput(c.text, codexMethodReviewStart).Verdict; got != c.want {

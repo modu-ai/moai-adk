@@ -1,0 +1,2 @@
+Verdict on the retry path is hard to call; the flaky test may fail again under load.
+The change otherwise reads cleanly.
