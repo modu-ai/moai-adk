@@ -619,6 +619,22 @@ $ gofmt -l <변경 Go 파일 9개>
 
 충돌 탐침(텍스트 수준): `git merge-tree --write-tree --name-only HEAD e7e3b3813`(t1099 M2d 끝) → 트리 `3708a2db6…` 만 출력(충돌 파일 없음). `git merge-tree --write-tree --name-only HEAD e722a1493`(t1099 현재 tip) → 트리 `76cf7e22d…` 만 출력. 병합 트리의 `hook.go` 에서 `harnessModeIsCodex` 선언은 진입점마다 1회(`:301`, `:506`), `newCodexStopChain` 분기(`:371`)는 파싱 성공 뒤에 있다. 병합 트리의 컴파일·테스트는 하지 않았다(Gap).
 
+#### sync-audit D1 수리 (2026-09-26, 커밋 `ed1759b65`, 기준 HEAD `5bc61698c`)
+
+결함(`.moai/reports/t1152/sync-audit.md` D1/F1): 사유가 해석 규칙이 없는 `moai-doc:hook-stdin-fail-closed` 를 가리켰고, 문서에 템플릿 미러가 없어 사용자 프로젝트에 배포되지 않았다. 리드 결정: 이 카드에서 수리.
+
+- 상수 `stdinParseFailClosedDocID` 를 `.moai/docs/hook-stdin-fail-closed.md` 로 바꿨다. AC-HSF-001(e4) 의 틀 `"fail-closed: " + (e2) + " (" + (e3) + ")"` 은 그대로라 AC 문언 변경 없음.
+  - 이전 사유: `fail-closed: hook stdin could not be parsed as JSON (moai-doc:hook-stdin-fail-closed)`
+  - 새 사유: `fail-closed: hook stdin could not be parsed as JSON (.moai/docs/hook-stdin-fail-closed.md)`
+- 문서를 `internal/template/templates/.moai/docs/hook-stdin-fail-closed.md` 에 미러했다. 로컬 사본과 바이트 동일(`cmp` exit 0)이며 템플릿 중립(아래 grep 0행).
+- 새 테스트 `TestStdinFailClosed_DocPointerIsDeployed`: 상수를 리터럴 경로로 고정하고, 임베드 템플릿에 그 경로의 파일이 있는지 단언한다. 기존 기대 사유는 두 상수로 조립되므로 상수 교체만으로는 보이지 않는다 — 이 테스트가 RED 를 만든다.
+- RED(구현 전): `go test -count=1 -run DocPointerIsDeployed ./internal/cli/` → `--- FAIL` 3건 — `document pointer = "moai-doc:hook-stdin-fail-closed", want the deployed path ".moai/docs/hook-stdin-fail-closed.md"`, 사유 불일치, `embedded templates lack .moai/docs/hook-stdin-fail-closed.md: ... file does not exist`.
+- GREEN: `-run StdinFailClosed` → `ok ... 2.678s`.
+- 필수 RED 변이 재적용(사유 끝에 ` — update moai or turn hooks off`): `test_exit=1`, `(e4)` 실패 16줄, `(e1)(e2)(e3)(e5)` 실패 0줄, 실패 테스트 4개(Claude·Codex·HarnessDecidedBeforeStdin·AgentDecisionActions). 첫 줄: `(e4) reason = "fail-closed: hook stdin could not be parsed as JSON (.moai/docs/hook-stdin-fail-closed.md) — update moai or turn hooks off", want exactly "...(.moai/docs/hook-stdin-fail-closed.md)"`. 복원 후 `cmp` 백업 대비 exit 0.
+- 중립 grep(템플릿 사본, 카드·SPEC·REQ·AC·날짜·SHA·macOS 경로·CLAUDE.local·`moai-doc:`·언어명): 출력 0행, `grep_exit=1`. 양성 대조: 같은 패턴이 합성 행에서 10개 토큰 모두 적중. `TestTemplateNoInternalContentLeak` 양성 대조: 템플릿 사본에 SPEC ID 행을 임시 삽입 → exit 1 (`class=C1-spec-id-prefix`), 복원 후 로컬 사본과 `cmp` exit 0.
+- `make build` exit 0(`catalog.yaml` 변경 없음). `go test -count=1 ./internal/template/...` 3 패키지 ok. `-run` StdinFailClosed / HookFaultInjection / RunAgentHook / RunHookEvent 모두 ok, `./internal/codexadapter/...` ok, gofmt·vet 무출력, `golangci-lint run ./internal/cli/` `0 issues.`
+- 남은 참조: `CHANGELOG.md` 의 이 SPEC 항목과 이 문서 위쪽 기록(구현·변이 절)이 옛 `moai-doc:` 표기를 담는다. 위쪽은 당시 관측이라 고치지 않았고, CHANGELOG 는 manager-docs 소유라 손대지 않았다(Gap — 리드 처분).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
