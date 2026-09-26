@@ -33,9 +33,10 @@ const integrationLockAuditRelPath = ".moai/logs/integration-lock-audit.log"
 
 // Construct names recorded in an unclassifiable audit line.
 const (
-	constructEncodedCommand   = "encoded-command"
-	constructInvokeExpression = "invoke-expression"
-	constructStartProcess     = "start-process"
+	constructEncodedCommand    = "encoded-command"
+	constructInvokeExpression  = "invoke-expression"
+	constructStartProcess      = "start-process"
+	constructDynamicResolution = "dynamic-resolution" // wired by REQ-HGF-005 (M3)
 )
 
 // unclassifiedEvent tags the audit line and unclassifiedReason is its reason

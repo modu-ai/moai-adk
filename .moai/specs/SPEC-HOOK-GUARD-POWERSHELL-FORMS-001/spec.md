@@ -2,7 +2,7 @@
 id: SPEC-HOOK-GUARD-POWERSHELL-FORMS-001
 title: "Classify the PowerShell tool-call forms the shell guards pass without record (t1224 debts F1-F5)"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-09-26
 updated: 2026-09-26
 author: manager-spec
