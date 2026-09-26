@@ -382,7 +382,9 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithString("prompt", mcp.Required(), mcp.Description("The task to give codex.")),
 		mcp.WithBoolean("background", mcp.Description("Run the turn in the background and return a job id immediately. Background jobs live inside this server process and do not survive its exit.")),
 		mcp.WithBoolean("write", mcp.Description("Request that codex be allowed to modify the working tree. Honored only when the project has opted in (workflow.codex.task.allow_write: true); otherwise the turn runs read-only and the result states the refusal.")),
-		mcp.WithBoolean("resume_last", mcp.Description("Continue the most recently recorded codex thread for this project instead of opening a new one. When no thread is recorded, a new one is opened and the result says so.")),
+		mcp.WithBoolean("resume_last", mcp.Description("Continue a recorded codex thread instead of opening a new one. With work_key, only records carrying that work_key are considered. Without a selector, the call resumes the thread only when exactly one thread is recorded; when more than one thread is recorded it is refused (error_code resume_ambiguous) with candidates to pass back as thread_id or work_key. When no thread is recorded, a new one is opened and the result says so.")),
+		mcp.WithString("thread_id", mcp.Description("Resume exactly this codex thread. Limited to threads recorded in this project's codex job registry; any other id is refused (error_code thread_not_recorded) without starting codex. Takes precedence over resume_last and work_key.")),
+		mcp.WithString("work_key", mcp.Description("Caller-chosen work-item key (for example a card id), up to 128 bytes. Recorded on background jobs, and scopes resume_last to records carrying this work_key, so parallel work items do not resume each other's threads.")),
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleCodexTask)
 
