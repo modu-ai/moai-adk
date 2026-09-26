@@ -604,6 +604,26 @@ func TestPRMergeCleanupRefusesAnchoredCodexTree(t *testing.T) {
 // becomes Codex is the pane's, so the lock takes the pane pid, and a lock that
 // cannot be placed closes the pane rather than leaving an unanchored writer.
 func TestCodexSpawnAnchorsToPanePID(t *testing.T) {
+	checkCodexSpawnAnchorsToPanePID(t)
+}
+
+// TestCodexSpawnAnchorsToPanePIDUnderLaneEnv exports a lane's launch
+// variables before the same check; the spawn must not take the factory
+// launch-pending path the test never set up (card t1222).
+func TestCodexSpawnAnchorsToPanePIDUnderLaneEnv(t *testing.T) {
+	t.Setenv(config.EnvHome, t.TempDir())
+	t.Setenv(config.EnvMoaiKanbanID, "run-t1222-probe")
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-7")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
+	checkCodexSpawnAnchorsToPanePID(t)
+}
+
+func checkCodexSpawnAnchorsToPanePID(t *testing.T) {
+	t.Helper()
+	// defaultCodexSpawnLaunch reads os.Environ(); without this a lane's run id
+	// routes the spawn into factory launch-pending registration.
+	clearFactoryTestEnv(t)
+	requireFactoryLaunchDisabled(t)
 	oldSpawn, oldIdentity, oldCleanup, oldAnchor := tmuxSpawnFn, codexSpawnPaneIdentityFn, codexSpawnCleanupPaneFn, codexSpawnAnchorFn
 	t.Cleanup(func() {
 		tmuxSpawnFn, codexSpawnPaneIdentityFn, codexSpawnCleanupPaneFn, codexSpawnAnchorFn = oldSpawn, oldIdentity, oldCleanup, oldAnchor
