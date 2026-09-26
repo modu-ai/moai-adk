@@ -276,7 +276,7 @@ func TestAC_CONTRACT_014(t *testing.T) {
 		snap := p.Snapshot()
 		res := runContract(t, p, contractRun{tty: false, env: map[string]string{}, stdin: signtest.SpecID + "\n"},
 			"sign", signtest.SpecID)
-		assertRefusal(t, res, contract.RefuseNotTTY)
+		assertContractRefusal(t, res, contract.RefuseNotTTY)
 		if !strings.Contains(res.stdout, "interactive terminal") {
 			t.Errorf("the output must state that signing requires an interactive terminal\n%s", res)
 		}
@@ -296,7 +296,7 @@ func TestAC_CONTRACT_014(t *testing.T) {
 		t.Cleanup(func() { os.Stdin = origStdin; _ = devNull.Close() })
 		snap := p.Snapshot()
 		res := runContract(t, p, contractRun{realTTY: true, env: map[string]string{}}, "sign", signtest.SpecID)
-		assertRefusal(t, res, contract.RefuseNotTTY)
+		assertContractRefusal(t, res, contract.RefuseNotTTY)
 		if !strings.Contains(res.stdout, "interactive terminal") {
 			t.Errorf("the output must state that signing requires an interactive terminal\n%s", res)
 		}
@@ -317,7 +317,7 @@ func TestAC_CONTRACT_014(t *testing.T) {
 		t.Cleanup(func() { os.Stdin = origStdin; _ = r.Close() })
 		snap := p.Snapshot()
 		res := runContract(t, p, contractRun{realTTY: true, env: map[string]string{}}, "sign", signtest.SpecID)
-		assertRefusal(t, res, contract.RefuseNotTTY)
+		assertContractRefusal(t, res, contract.RefuseNotTTY)
 		if !strings.Contains(res.stdout, "interactive terminal") {
 			t.Errorf("the output must state that signing requires an interactive terminal\n%s", res)
 		}
@@ -328,7 +328,7 @@ func TestAC_CONTRACT_014(t *testing.T) {
 		writeValidReceipt(t, p, nil)
 		snap := p.Snapshot()
 		res := runContract(t, p, contractRun{env: map[string]string{}}, receiptArgs("llm")...)
-		assertRefusal(t, res, contract.RefuseModeNotContract)
+		assertContractRefusal(t, res, contract.RefuseModeNotContract)
 		p.AssertUnchanged(t, snap)
 	})
 	t.Run("receipt path, mode contract, TTY seam false", func(t *testing.T) {
@@ -344,8 +344,8 @@ func TestAC_CONTRACT_014(t *testing.T) {
 	})
 }
 
-// assertRefusal checks exit 1 and the printed refusal code.
-func assertRefusal(t *testing.T, res contractResult, code string) {
+// assertContractRefusal checks exit 1 and the printed refusal code.
+func assertContractRefusal(t *testing.T, res contractResult, code string) {
 	t.Helper()
 	if res.code != 1 {
 		t.Errorf("want exit 1 (refused %s)\n%s", code, res)
@@ -361,7 +361,7 @@ func TestAC_CONTRACT_015(t *testing.T) {
 		p := newContractProject(t, cfgGuided)
 		snap := p.Snapshot()
 		res := runContract(t, p, humanRun("SPEC-WRONG-001"), "sign", signtest.SpecID)
-		assertRefusal(t, res, contract.RefuseConfirmationMismatch)
+		assertContractRefusal(t, res, contract.RefuseConfirmationMismatch)
 		p.AssertUnchanged(t, snap)
 
 		signHuman(t, p)
@@ -513,7 +513,7 @@ func TestAC_CONTRACT_017(t *testing.T) {
 		p := threeDrafts(t, cfgGuided)
 		snap := p.Snapshot()
 		res := runContract(t, p, humanRun("sign 2 contracts"), "sign", ids[0], ids[1])
-		assertRefusal(t, res, contract.RefuseBatchDisabled)
+		assertContractRefusal(t, res, contract.RefuseBatchDisabled)
 		if res.reads != 0 {
 			t.Errorf("no prompt may be read (reads=%d)", res.reads)
 		}
@@ -524,7 +524,7 @@ func TestAC_CONTRACT_017(t *testing.T) {
 		snap := p.Snapshot()
 		res := runContract(t, p, contractRun{env: map[string]string{}},
 			"sign", ids[0], ids[1], "--signer", "llm", "--receipt", signtest.ReceiptRel())
-		assertRefusal(t, res, contract.RefuseBatchNonHuman)
+		assertContractRefusal(t, res, contract.RefuseBatchNonHuman)
 		p.AssertUnchanged(t, snap)
 	})
 }
@@ -684,7 +684,7 @@ func TestAC_CONTRACT_024(t *testing.T) {
 
 		snap := p.Snapshot()
 		res := runContract(t, p, humanRun(signtest.SpecID), "sign", signtest.SpecID)
-		assertRefusal(t, res, contract.RefuseAlreadySigned)
+		assertContractRefusal(t, res, contract.RefuseAlreadySigned)
 		p.AssertUnchanged(t, snap)
 
 		res = runContract(t, p, humanRun(signtest.SpecID), "sign", "--resign", signtest.SpecID)
@@ -711,7 +711,7 @@ func TestAC_CONTRACT_024(t *testing.T) {
 		snap := p.Snapshot()
 		res := runContract(t, p, contractRun{tty: false, env: map[string]string{}, stdin: signtest.SpecID + "\n"},
 			"sign", "--resign", signtest.SpecID)
-		assertRefusal(t, res, contract.RefuseNotTTY)
+		assertContractRefusal(t, res, contract.RefuseNotTTY)
 		p.AssertUnchanged(t, snap)
 	})
 	t.Run("resign refuses a contract body edited after signing", func(t *testing.T) {
@@ -728,7 +728,7 @@ func TestAC_CONTRACT_024(t *testing.T) {
 
 		snap := p.Snapshot()
 		res := runContract(t, p, humanRun(signtest.SpecID), "sign", "--resign", signtest.SpecID)
-		assertRefusal(t, res, contract.RefuseVerifyFailed)
+		assertContractRefusal(t, res, contract.RefuseVerifyFailed)
 		if !strings.Contains(res.stdout, contract.ReasonContractDigestMismatch) {
 			t.Errorf("the refusal must name %s\n%s", contract.ReasonContractDigestMismatch, res)
 		}
@@ -742,7 +742,7 @@ func TestAC_CONTRACT_024(t *testing.T) {
 		p := newContractProject(t, cfgGuided)
 		snap := p.Snapshot()
 		res := runContract(t, p, humanRun(signtest.SpecID), "sign", "--resign", signtest.SpecID)
-		assertRefusal(t, res, contract.RefuseNotSigned)
+		assertContractRefusal(t, res, contract.RefuseNotSigned)
 		p.AssertUnchanged(t, snap)
 	})
 }
@@ -758,7 +758,7 @@ func TestAC_CONTRACT_025(t *testing.T) {
 			p := newContractProject(t, cfgGuided)
 			snap := p.Snapshot()
 			res := runContract(t, p, contractRun{tty: true, env: env, stdin: signtest.SpecID + "\n"}, "sign", signtest.SpecID)
-			assertRefusal(t, res, contract.RefuseAgentMarker)
+			assertContractRefusal(t, res, contract.RefuseAgentMarker)
 			if !strings.Contains(res.stdout, name) {
 				t.Errorf("the output must name the detected variable %s\n%s", name, res)
 			}
