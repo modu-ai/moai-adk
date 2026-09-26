@@ -52,9 +52,9 @@ const (
 var contractGetenvFn = os.Getenv
 
 // contractStdinIsTerminalFn is the human-path terminal check. It asks the
-// terminal driver (term.IsTerminal) instead of reusing stdinIsTerminalFn,
-// whose os.ModeCharDevice test accepts the null device: `sign </dev/null`
-// must refuse with not_tty (REQ-CONTRACT-010). Tests replace it.
+// terminal driver (term.IsTerminal), so `sign </dev/null` refuses with
+// not_tty (REQ-CONTRACT-010). Kept separate from stdinIsTerminalFn so each
+// command's tests can replace its own hook.
 var contractStdinIsTerminalFn = func() bool { return term.IsTerminal(int(os.Stdin.Fd())) }
 
 // newContractLineReader returns the confirmation reader over the command's
