@@ -623,6 +623,7 @@ func checkCodexSpawnAnchorsToPanePID(t *testing.T) {
 	// defaultCodexSpawnLaunch reads os.Environ(); without this a lane's run id
 	// routes the spawn into factory launch-pending registration.
 	clearFactoryTestEnv(t)
+	requireFactoryLaunchDisabled(t)
 	oldSpawn, oldIdentity, oldCleanup, oldAnchor := tmuxSpawnFn, codexSpawnPaneIdentityFn, codexSpawnCleanupPaneFn, codexSpawnAnchorFn
 	t.Cleanup(func() {
 		tmuxSpawnFn, codexSpawnPaneIdentityFn, codexSpawnCleanupPaneFn, codexSpawnAnchorFn = oldSpawn, oldIdentity, oldCleanup, oldAnchor

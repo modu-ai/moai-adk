@@ -33,6 +33,7 @@ func checkFactoryLauncherRegistersLaunchPendingPeers(t *testing.T) {
 	t.Helper()
 	// The final launch passes os.Environ() and expects a non-factory result.
 	clearFactoryTestEnv(t)
+	requireFactoryLaunchDisabled(t)
 	t.Setenv("MOAI_HOME", t.TempDir())
 	root := t.TempDir()
 	run := "run-launch-pending"

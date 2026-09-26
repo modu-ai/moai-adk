@@ -70,6 +70,7 @@ func checkExecStampsLiveSessionPID(t *testing.T) {
 	// here keeps it off the launch-pending path that would write a peer into
 	// whatever broker MOAI_HOME names.
 	clearFactoryTestEnv(t)
+	requireFactoryLaunchDisabled(t)
 	if _, err := os.Stat("/bin/sh"); err != nil {
 		t.Skipf("/bin/sh unavailable: %v", err)
 	}
