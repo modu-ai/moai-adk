@@ -16,6 +16,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
@@ -28,6 +29,9 @@ import (
 // replaced; one that printed only "refused" would leave the operator unable to
 // find their cards.
 func TestTempOriginGuidance_NamesRootsAndContinues(t *testing.T) {
+	// The home fallback is stubbed to a temp dir; drop the TestMain MOAI_HOME
+	// sandbox so resolution takes that fallback (card t1229).
+	t.Setenv(config.EnvHome, "")
 	dir := t.TempDir() // not a git repository, and a temporary origin by location
 	t.Setenv("CLAUDE_PROJECT_DIR", dir)
 
