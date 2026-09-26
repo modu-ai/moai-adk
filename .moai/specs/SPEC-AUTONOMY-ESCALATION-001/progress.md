@@ -344,6 +344,39 @@ chain per call), F7 (state replaced before its log entry), F8 (empty `write` ret
 F9 (Q2 — no production caller of `Checkpoint`), F11 (sync commit lacks `Authored-By-Agent`), F12
 (PostToolUseFailure passes `PostToolUse` as hook name, by design).
 
+### Addendum 2 — re-audit fixes N1, N2, N4 (+N7) (`.moai/reports/t1235/sync-audit-rerun.md`, pinned `7dbd81588`)
+
+Commits: `19b138c60` (N1), `f06de71c9` (N2), `4d93b46c1` (N4, N7). Same env-scrub prefix.
+
+- **N1 — class 7 `audit_retries` budget reopening.** RED:
+  `evidence_retrip_test.go:113: open_after_resolve_and_recommit=1, want 0 (records [budget-exceeded-10723a1185de3c70-2.md budget-exceeded-10723a1185de3c70.md])`.
+  Fix: the audit_retries trip is gated on class + kind + observed per-kind count through `freshEvidence`;
+  turns and operations unchanged. GREEN: `--- PASS: TestResolvedAuditRetriesBudgetReopensOnlyOnHigherCount`
+  (resolve → recommit → 0 open; a third iteration re-trips as -2). Challenge: a mutant keying on kind only
+  failed `higher count did not re-trip as -2`.
+- **N2 — class 6 classified the masked command.** RED:
+  ``redact_test.go:106: authorized push tripped class 6: Bash `git push origin WT-token-rotation:***` pushes WT-token-rotation:***``.
+  Fix: classify the raw command; mask only the rendered observation and the hashed fingerprint. GREEN:
+  `--- PASS: TestAuthorizedPushNotMisclassifiedByMask` (0 records, 0 leaks, including an authorized push with a
+  URL credential). Challenge: a mutant rendering the raw command failed the class 6 leak test
+  (`secret written to: [record irreversible-action-….md]`).
+- **N4 + N7 — mask coverage.** RED: all seven cases of `TestMaskCommandCoversCredentialShapes` failed, among them
+  `MaskCommand("mysql -uroot -pFAKEPASSWORDVALUE db") = "mysql -uroot -pFAKEPASSWORDVALUE ***"`. Fix: new rules for
+  mysql-family `-p<secret>` (ordered before the flag rule, which read the attached value as a credential-named
+  flag and masked the next argument), `-u user:pass`, `login -p <secret>`, JSON credential fields, `*_KEY=`, and
+  `sk-`/`sk-ant-`/`AKIA`/`ASIA` prefixes; godoc states the list is best-effort. Fixtures concatenate vendor
+  prefixes (N7). GREEN: `--- PASS: TestMaskCommandCoversCredentialShapes`. Challenge: moving the mysql rule after
+  the flag rule failed with `"mysql -uroot -p*** ***", lost the non-secret part " db"`.
+
+Verification at `4d93b46c1`: `go test -count=1 -race -cover ./internal/escalation/...` → 53 top-level PASS, 0 FAIL,
+`ok … 8.940s coverage: 88.5%`; hook escalation subset incl. `TestEscalationGuidedGolden` all PASS, `ok … internal/hook 2.625s`;
+`golangci-lint run --new-from-rev=7dbd81588 ./internal/escalation/... ./internal/hook/...` → `0 issues.`; builds
+windows/amd64, linux/amd64, darwin/arm64 exit 0.
+
+Debt recorded, no code change: N3 (a deleted open class 5/9 record stays gone until the evidence changes —
+widens the F3 surface; fold into the F3 amendment), N5 (`freshEvidence` marks evidence consumed before the
+write, so a failed `WriteRecord` loses the trip), N6 (`ConsumedEvidence` unbounded, O(n) lookup, never pruned).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
