@@ -143,6 +143,7 @@ func TestFR_AC005_TransitionTableEdgeCount(t *testing.T) {
 			}
 		}
 	}
+	t.Logf("requested pairs: %d accepted, %d refused, %d total; production table rows: %d", len(accepted), refused, len(accepted)+refused, len(TransitionEdges()))
 	if len(accepted) != 65 || refused != 296 {
 		t.Fatalf("accepted %d / refused %d, want 65 / 296", len(accepted), refused)
 	}
