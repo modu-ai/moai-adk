@@ -101,7 +101,7 @@ func TestFactoryOperationalFixtureUsesProductionInit(t *testing.T) {
 	}
 
 	run := "run-codex-hook-process-boundary"
-	if err := recordFactoryRunStart(root, run, "codex", ""); err != nil {
+	if err := recordFactoryRunStart(root, run, "claude", ""); err != nil {
 		t.Fatal(err)
 	}
 	start := homestate.CurrentProcessFingerprint()
@@ -111,7 +111,7 @@ func TestFactoryOperationalFixtureUsesProductionInit(t *testing.T) {
 	}
 	closeOnCleanup(t, "factory message broker", store)
 	if _, err := store.RegisterLaunchPending(context.Background(), factorymsg.Peer{
-		ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex",
+		ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "claude",
 		Role: "lead", Slot: "lead", PID: os.Getpid(), ProcessStart: start,
 	}); err != nil {
 		t.Fatal(err)
@@ -127,7 +127,7 @@ func TestFactoryOperationalFixtureUsesProductionInit(t *testing.T) {
 	}
 	hookEnv = append(hookEnv,
 		config.EnvMoaiKanbanID+"="+run,
-		config.EnvMoaiKanbanBackend+"=codex",
+		config.EnvMoaiKanbanBackend+"=claude",
 		config.EnvMoaiFactoryWorker+"=",
 		config.EnvMoaiFactoryWorkers+"=1",
 		config.EnvMoaiSessionPID+"="+fmt.Sprint(os.Getpid()),

@@ -55,7 +55,7 @@ const (
 
 	// factoryWorkerRoleToken is the `-f worker` role value: join the running
 	// factory as the next free worker-<n> — the symmetric form across the
-	// cc/glm/codex launchers.
+	// cc/glm launchers.
 	factoryWorkerRoleToken = "worker"
 
 	// factoryLegacyAgentRoleToken is the pre-rename spelling of the role
@@ -300,30 +300,6 @@ func recordFactoryRunStart(root, runID, backend, specID string) (err error) {
 		RunID: runID, Backend: backend, ManifestJSON: "{}",
 		LeadPID: os.Getpid(), LeadProcessStart: homestate.CurrentProcessFingerprint(),
 	})
-}
-
-func stripFactoryRunFlag(head []string) ([]string, string, error) {
-	rest := make([]string, 0, len(head))
-	runID := ""
-	for i := 0; i < len(head); i++ {
-		a := head[i]
-		switch {
-		case a == "--factory-run":
-			if i+1 >= len(head) {
-				return nil, "", fmt.Errorf("--factory-run requires a run id")
-			}
-			i++
-			runID = head[i]
-		case strings.HasPrefix(a, "--factory-run="):
-			runID = strings.TrimPrefix(a, "--factory-run=")
-		default:
-			rest = append(rest, a)
-		}
-	}
-	if strings.TrimSpace(runID) == "" && len(rest) != len(head) {
-		return nil, "", fmt.Errorf("--factory-run requires a run id")
-	}
-	return rest, runID, nil
 }
 
 // factoryBranch enumerates the dispatch outcomes, mirroring kanbanBranch.

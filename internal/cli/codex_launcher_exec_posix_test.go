@@ -127,32 +127,24 @@ func TestCodexDirectPOSIXExecRegistersNoFactoryPeer(t *testing.T) {
 	}
 }
 
-func codexPOSIXFailureFixture(t *testing.T, run string) (string, []string) {
+// codexPOSIXFailureFixture returns a project root and a child env under an
+// isolated MOAI_HOME. It carries no lane identity: the codex direct launch
+// writes no factory state on any path (SPEC-CODEX-FACTORY-RETIRE-001), so the
+// failure cells below measure the launch itself.
+func codexPOSIXFailureFixture(t *testing.T) (string, []string) {
 	t.Helper()
 	home := t.TempDir()
 	root := t.TempDir()
 	t.Setenv("MOAI_HOME", home)
-	if err := recordFactoryRunStart(root, run, "codex", ""); err != nil {
-		t.Fatal(err)
-	}
-	env := make([]string, 0, len(os.Environ())+6)
+	env := make([]string, 0, len(os.Environ())+1)
 	for _, item := range os.Environ() {
 		key, _, _ := strings.Cut(item, "=")
-		switch key {
-		case "MOAI_HOME", config.EnvMoaiSessionPID, config.EnvMoaiKanbanID, config.EnvMoaiKanbanBackend, config.EnvMoaiFactoryWorkers, config.EnvMoaiFactoryWorker, config.EnvClaudeProjectDir:
+		if key == "MOAI_HOME" || key == config.EnvMoaiSessionPID {
 			continue
 		}
 		env = append(env, item)
 	}
-	env = append(env,
-		"MOAI_HOME="+home,
-		config.EnvMoaiKanbanID+"="+run,
-		config.EnvMoaiKanbanBackend+"=codex",
-		config.EnvMoaiFactoryWorkers+"=1",
-		config.EnvMoaiFactoryWorker+"=",
-		config.EnvClaudeProjectDir+"="+root,
-	)
-	return root, env
+	return root, append(env, "MOAI_HOME="+home)
 }
 
 func TestCodexDirectPOSIXRejectsIncompleteCommand(t *testing.T) {
@@ -163,24 +155,24 @@ func TestCodexDirectPOSIXRejectsIncompleteCommand(t *testing.T) {
 	}
 }
 
-func TestCodexDirectPOSIXChdirFailureDoesNotRegisterPending(t *testing.T) {
-	root, env := codexPOSIXFailureFixture(t, "run-chdir-failure")
+func TestCodexDirectPOSIXChdirFailureIsReported(t *testing.T) {
+	root, env := codexPOSIXFailureFixture(t)
+	before, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
 	cmd := exec.Command("/definitely/not/executed")
 	cmd.Dir, cmd.Env = filepath.Join(root, "missing"), env
 	if err := defaultCodexDirectLaunch(cmd); err == nil || !strings.Contains(err.Error(), "enter Codex launch directory") {
 		t.Fatalf("error=%v", err)
 	}
-	path, err := factorymsg.BrokerPath(root, "run-chdir-failure")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		t.Fatalf("chdir failure created broker state: %v", err)
+	if after, _ := os.Getwd(); after != before {
+		t.Fatalf("a failed chdir moved the process to %q", after)
 	}
 }
 
-func TestCodexDirectPOSIXExecFailureRollsBackExactPending(t *testing.T) {
-	root, env := codexPOSIXFailureFixture(t, "run-exec-failure")
+func TestCodexDirectPOSIXExecFailureIsReported(t *testing.T) {
+	root, env := codexPOSIXFailureFixture(t)
 	before, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -188,19 +180,7 @@ func TestCodexDirectPOSIXExecFailureRollsBackExactPending(t *testing.T) {
 	defer func() { _ = os.Chdir(before) }()
 	cmd := exec.Command(filepath.Join(root, "missing-codex"))
 	cmd.Dir, cmd.Env = root, env
-	if err := defaultCodexDirectLaunch(cmd); err == nil {
-		t.Fatal("exec failure returned nil")
-	}
-	s, err := factorymsg.Open(root, "run-exec-failure")
-	if err != nil {
-		t.Fatal(err)
-	}
-	closeOnCleanup(t, "factory message broker", s)
-	status, err := s.Status(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(status.Lanes) != 0 {
-		t.Fatalf("exec failure left pending rows: %+v", status.Lanes)
+	if err := defaultCodexDirectLaunch(cmd); err == nil || !strings.Contains(err.Error(), "exec Codex") {
+		t.Fatalf("error=%v, want the exec failure", err)
 	}
 }

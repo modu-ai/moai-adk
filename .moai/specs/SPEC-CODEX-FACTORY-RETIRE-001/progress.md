@@ -113,6 +113,49 @@ Tests changed in M1 because M1 removes their subject (listed for M2's accounting
 `TestCodexSpawn_RealAssembly*` expect the eleven `KEY=` blanks; the `-f` forms dropped from
 `TestCodexLocalInstructions_AllFunnelsPreserveInputs`.
 
+### M2 — dead entry code and test moves (base `9f53ac65f`, M1 commit)
+
+Evidence files (card worktree, gitignored): `.moai/reports/t1242/m2-{targeted,ac013-014,m1regress-1,m1regress-2,cli-full}.txt`.
+
+RED-now at M2 start (tree `9f53ac65f`):
+- AC-CFR-011: `grep -rnwE '<AC-011 pattern>' internal cmd pkg --include='*.go' | wc -l` → `31` (want 0);
+  `ls internal/cli/codex_kanban.go internal/cli/codex_factory.go` → both listed, rc=0.
+- AC-CFR-014: `ls internal/cli/codex_factory_test.go` → listed, rc=0.
+- Lint carry-over from M1: 5 `unused` (codex_kanban.go ×4, `stripFactoryRunFlag`).
+
+Order kept (plan §G): `TestNextFactoryWorkerNumber` + `NextFactoryWorkerNumberForTest` moved into
+`factory_worker_naming_test.go` and run green (`--- PASS: TestNextFactoryWorkerNumber`) before
+`codex_factory_test.go` / `codex_factory_helper_test.go` were deleted.
+
+Changes: deleted `codex_factory.go`, `codex_kanban.go`, `codex_factory_test.go`,
+`codex_factory_helper_test.go`; removed `stripFactoryRunFlag` (plan M2.5 re-grep: 0 callers);
+removed `TestStripCodexFactoryFlagWorkerVocabulary`; codex LIVE cases removed from
+`factory_live_test.go` (6 funcs) and the two `moai codex -f` operational live proofs from
+`factory_operational_live_test.go` together with the 10 helpers + one struct field only they used
+(each flagged by `unused` after the removal); POSIX failure fixture carries no lane identity
+(`TestCodexDirectPOSIX{ChdirFailure,ExecFailure}IsReported`); fixtures switched to claude/glm in
+`factory_mixed_test.go` (4 values) and `factory_operational_fixture_test.go` (3 values).
+M3 files (`factory_lane_handoff*.go`, `factory_handoff_abandon_test.go`) untouched.
+
+| AC | Status | Command | Actual output |
+|----|--------|---------|---------------|
+| AC-CFR-011 | PASS | `grep -rnwE 'stripCodexKanbanFlag\|applyCodexKanbanEntry\|codexKanbanEntry\|codexKanbanUsageDiag\|stripCodexFactoryFlag\|applyCodexFactoryEntry\|codexFactoryBackend' internal cmd pkg --include='*.go'`; `ls internal/cli/codex_kanban.go internal/cli/codex_factory.go`; control `git grep -nwE '<same>' 553e224f3 -- internal \| wc -l` | grep 0 lines rc=1; ls "No such file or directory" ×2 rc=1; control `39` |
+| AC-CFR-012 | PASS | `grep -nE 'registerFactoryLaunchPending\|…\|stripFactoryRunFlag' codex_launcher.go codex_direct_posix.go codex_direct_windows.go`; `grep -c registerFactoryLaunchPending internal/cli/launch_exec_posix.go` | 0 lines rc=1; `1` |
+| AC-CFR-013 | PASS | nine-name `go test ./internal/cli -run '^(…)$' -count=1 -v`; `grep -c 'syscall.Exec'`; `head -1` | 9 × `--- PASS`, `ok`; `2`; `//go:build !windows` / `//go:build windows` |
+| AC-CFR-014 | PASS | `go test ./internal/cli -run '^TestNextFactoryWorkerNumber$' -count=1 -v`; `ls internal/cli/codex_factory_test.go` | `--- PASS: TestNextFactoryWorkerNumber`; "No such file or directory" rc=1 |
+| AC-CFR-015 | PASS | `go build ./...`; `GOOS=windows GOARCH=amd64 go build ./...`; `GOOS=linux go build ./...` | rc=0 ×3 |
+
+M1 regression (same tree): all M1 AC tests `--- PASS` (m2-m1regress-1/2.txt).
+Package: `go test ./internal/cli/ -count=1 -timeout 38m` → `ok  github.com/modu-ai/moai-adk/internal/cli  1121.582s`
+(under `moai slot` `go-test-heavy`, acquired after the prior holder released; no RESIDUE line).
+Lint (darwin): `golangci-lint run --timeout=5m ./internal/cli/...` → `0 issues.` (M1's 5 unused gone).
+`GOOS=windows golangci-lint …` → 4 issues (`mcp_claude_process_windows.go` errcheck ×2,
+`web_port.go` `moaiProcessName` unused, `factory_launch_pending.go` `rollbackFactoryLaunchPending`
+unused); none in files M2 changed; the last one's only callers on develop were already POSIX-only
+(`git grep -n 'rollbackFactoryLaunchPending(' develop -- internal` → `codex_direct_posix.go`,
+`launch_exec_posix.go`), so it was unused on windows before this card. The windows lint baseline
+itself was not measured on develop (gap).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
