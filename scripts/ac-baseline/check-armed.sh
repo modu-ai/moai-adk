@@ -45,9 +45,17 @@ git rev-parse --git-dir >/dev/null 2>&1 || {
 if [ -z "$(git config --get "hook.$name.event" 2>/dev/null)" ]; then
 	warn "NOT ARMED: git config hook.$name.event is unset — run scripts/ac-baseline/install-hook.sh"
 fi
-got=$(git config --get "hook.$name.command" 2>/dev/null)
+# The trailing x keeps $(...) from stripping trailing newlines, so the
+# comparison below sees every byte of the value (t1206, t1197 F1). Both sides
+# end in exactly the one newline git config and sed each print.
+got=$(git config --get "hook.$name.command" 2>/dev/null; echo x)
+got=${got%x}
 top=$(git rev-parse --show-toplevel 2>/dev/null)
-if [ -z "$got" ]; then
+# An empty value comes back as that one newline alone; drop it before the
+# emptiness test so an empty command still reads as unset (t1206 audit D1).
+nl='
+'
+if [ -z "${got%"$nl"}" ]; then
 	warn "NOT ARMED: git config hook.$name.command is unset — run scripts/ac-baseline/install-hook.sh"
 elif [ -n "$top" ]; then
 	# 1b. Byte identity with what the installer in this tree writes (t1197, t1150
@@ -58,7 +66,8 @@ elif [ -n "$top" ]; then
 	#     single-quoted literal with no embedded quote, which install-hook.sh
 	#     keeps so this one sed can read it. Skipped without a work tree (bare
 	#     repository, cwd inside .git), exactly as step 3 is.
-	want=$(sed -n "s/^cmd='\(.*\)'\$/\1/p" "$top/$installer" 2>/dev/null)
+	want=$(sed -n "s/^cmd='\(.*\)'\$/\1/p" "$top/$installer" 2>/dev/null; echo x)
+	want=${want%x}
 	if [ -z "$want" ]; then
 		warn "cannot read the expected hook command from $installer — cannot confirm hook.$name.command is current"
 	elif [ "$got" != "$want" ]; then
