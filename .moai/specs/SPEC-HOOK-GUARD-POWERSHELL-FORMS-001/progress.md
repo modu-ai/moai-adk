@@ -97,9 +97,78 @@ Representative verbatim failure detail (form families F1a/F2/F3/dl; the remainin
 
 M2-M5 flip these 18 to their target verdicts; the 22 stay green through every change.
 
+### M2-M5 — implementation and GREEN close (2026-09-26)
+
+Commits (branch `WT-powershell-guard-debt`, each carries `Authored-By-Agent: manager-develop`):
+
+| Commit | Milestone | Content |
+|---|---|---|
+| `f25c3f84e` | M1 | RED battery `branch_guard_psforms_test.go` + SPEC `draft → in-progress` + M0 record |
+| `d557f71a0` | M2 | REQ-HGF-001..004: `normalizeGitExeSuffix`, `substituteCallOperatorTargets` (git-naming targets only), `substituteCommandBackticks`, `extractPowerShellCommandPayload` (full pipeline within the payload); `powerShellParameterName` now returns the lower-cased name its doc comment promised |
+| `b1700a18e` | M3 | REQ-HGF-005/006: `constructDynamicResolution` (`& (…) ` call-position subexpression → allow + 1 line); `saps`/`start` join the start-process construct set behind the existing git-word gate |
+| `d70d2ad47` | M4 | REQ-HGF-007: `extractLiteralIndirectionOperand` (eval / iex / Invoke-Expression / Start-Process incl. aliases) scans the literal quoted operand against the existing compiled deny list with the bare-form reason; `$`-carrying operands are found-but-empty (fail open) |
+| `e03260744` | M2-REFACTOR | staticcheck QF1002: tagged switch in `splitPSTokens` |
+| `72c2cdc4d` | M5 | REQ-HGF-009: integration-lock audit comment states the measured scope. REQ-HGF-011: `powerShellParameterName` accepts U+2013 (measured) + U+2014/U+2010 (documented superset, over-match rationale at the declaration); `-enc:<B64>` stays a harmless over-match, not required (M0 row 12) |
+
+**Final GREEN (battery)**: `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1 ./internal/hook/ -run TestBranchGuardPSForms` → exit 0, `ok github.com/modu-ai/moai-adk/internal/hook` — **41 subtests, 0 FAIL** (this run, HEAD `72c2cdc4d`): 18 former-RED legs flipped, 23 controls/legit legs never moved.
+
+**Full hook package suite** (same env-scrub, `go test -count=1 ./internal/hook/`): exit 0, `ok … 264.553s` — pre-existing `TestBranchGuard*`/`TestHMP*` families unbroken (run under slot lease `internal-hook-suite`).
+
+**F4 comment verbatim (AC-HGF-011 evidence)** (`sed -n '29,34p' internal/hook/powershell_indirection.go` at `72c2cdc4d`):
+
+```
+// integrationLockAuditRelPath is the integration lock's audit log, relative to
+// the handler's project root. While a live foreign hold exists it records
+// EVERY unclassifiable PowerShell command observed, whether or not it is
+// merge-shaped (measured forms: `iex "git status"` and
+// `Start-Process git -ArgumentList 'log'` are both logged and both allowed —
+// SPEC-HOOK-GUARD-POWERSHELL-FORMS-001 REQ-HGF-009); the guard's other
+// fail-open paths keep writing their stderr advisories.
+```
+
+**E1 — AC matrix (14/14 PASS)**:
+
+| AC | Verdict | Evidence |
+|---|---|---|
+| AC-HGF-001 | PASS | E-01 RED → battery `f1a/deny/*` green; `f1a/allow/exe-status` still allow |
+| AC-HGF-002 | PASS | E-02/E-03 RED → `f1b/deny/*` green; quoted-prose leg stays allow |
+| AC-HGF-003 | PASS | E-04 RED → `f1c/deny/*` green; single-quoted literal stays allow |
+| AC-HGF-004 | PASS | E-05/E-06 RED → `f2/deny/*` green; nested-quote mutant stays allow; `cmd /c` control unchanged |
+| AC-HGF-005 | PASS | E-07 (0 lines) → `f3/demote/*`: allow + exactly 1 `dynamic-resolution` line; no-git-word leg 0 lines |
+| AC-HGF-006 | PASS | E-08 (0 lines) → `alias/saps-logs` +1 `start-process` line; `saps notepad` 0 lines |
+| AC-HGF-007 | PASS | E-12 RED → `dl/deny/ps-iex` deny (E-13 reason family); `iex "git status"` + `iex $c` D2 legs unchanged |
+| AC-HGF-008 | PASS | E-14 RED → `dl/deny/ps-start-process` deny; `Start-Process notepad` allow |
+| AC-HGF-009 | PASS | E-11 RED → `dl/deny/bash-eval` deny; `eval "echo hi"` / `eval "$(printf …)"` / `eval "$ENV:X"` allow |
+| AC-HGF-010 | PASS | Battery green with non-zero swept count (41 subtests); REQ-HGF-014 isolation carried (hmpIsolateHome per-test, no t.Parallel, t.TempDir only) |
+| AC-HGF-011 | PASS | Comment verbatim above; E-15/E-16 behavior unchanged |
+| AC-HGF-012 | PASS | M0 table in §E.2; detector conformance per REQ-HGF-011 pin (U+2013 measured-accepted → detected; `-enc:<B64>` measured-rejected → not required) |
+| AC-HGF-013 | PASS | `injection/newline-keeps-one-line` subtest green (1 line, newline escaped inside the quoted field) |
+| AC-HGF-014 | PASS | CARD_BASE recompute `git merge-base develop HEAD` = `19b5321c1`; pathspec diff `internal/template/ .claude/` = **0 files**; non-vacuous control same range without pathspec = **8 files** (4 SPEC artifacts + 3 Go sources + 1 test file) |
+
+**E2 — cross-platform build** (this run, HEAD `72c2cdc4d`): `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+**E4 — subagent boundary grep**: 1 match, `internal/hook/pre_tool.go:695` (`observeQuestionChannel` observer) — present verbatim in the card base `15e75fbcc`; **NEW matches: 0**.
+**E5 — lint**: `golangci-lint run --timeout=2m internal/hook/...` → `0 issues.` (the one NEW issue found mid-run, staticcheck QF1002 on `splitPSTokens`, fixed in `e03260744`). `go vet ./internal/hook/...` exit 0.
+**E3 — coverage**: `go test -count=1 -cover ./internal/hook/` → exit 0, `coverage: 86.1% of statements` (quality.yaml target 85).
+**E6 — push state**: 6 commits on `WT-powershell-guard-debt`, NOT pushed (lane rule: develop push is the lead's batch act). Worktree kept — this branch is the only copy until the lead merges.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-26
+run_commit_sha: "72c2cdc4d"
+run_status: "complete — all 14 ACs PASS; release-blocking matrix green"
+ac_pass_count: 14
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # internal/template/ and .claude/ diff = 0 over the card range (AC-HGF-014)
+l44_pre_commit_fetch: "not-run — worktree-isolated card branch; develop absorption belongs to the integration-window holder"
+l44_post_push_fetch: "not-applicable — lane does not push; lead batch-pushes develop"
+new_warnings_or_lints_introduced: 0   # one transient QF1002 was introduced and fixed within the run (e03260744)
+cross_platform_build:
+  native: "exit 0"
+  windows_amd64: "exit 0"
+total_run_phase_files: 4   # branch_guard.go, powershell_indirection.go, pre_tool.go, branch_guard_psforms_test.go
+m1_to_mN_commit_strategy: "one commit per milestone (M1 RED / M2 / M3 / M4 / M5) + one REFACTOR style commit"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
