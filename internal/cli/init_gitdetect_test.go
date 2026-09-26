@@ -22,12 +22,19 @@ import (
 func gitDetectInitRepo(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
+	gitInitAt(t, dir)
+	return dir
+}
+
+// gitInitAt runs `git init` in an existing directory. Every fixture `git init`
+// in this file goes through here so the scrub below cannot be missed.
+func gitInitAt(t *testing.T, dir string) {
+	t.Helper()
 	cmd := exec.Command("git", "-C", dir, "init")
 	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank -C
 	if err := cmd.Run(); err != nil {
 		t.Skipf("git init unavailable: %v", err)
 	}
-	return dir
 }
 
 // gitAddRemote registers a remote on the repository at dir.
@@ -271,9 +278,7 @@ func TestInitGitDetectionFillsConfig(t *testing.T) {
 	if err := os.MkdirAll(projectDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	if err := exec.Command("git", "-C", projectDir, "init").Run(); err != nil {
-		t.Skipf("git init unavailable: %v", err)
-	}
+	gitInitAt(t, projectDir)
 	gitAddRemote(t, projectDir, "origin", "https://github.com/modu-ai/moai-adk.git")
 
 	cmd := newInitTestCmd()

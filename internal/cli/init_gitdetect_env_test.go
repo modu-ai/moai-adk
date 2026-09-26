@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -20,12 +21,28 @@ func scrubbedGit(t *testing.T, dir string, args ...string) {
 	}
 }
 
-// victimRemotes reads remote.* entries straight from a config file, bypassing
-// any GIT_DIR the process carries.
+// victimConfig queries a config file directly, bypassing any GIT_DIR the
+// process carries. Exit 1 means "no match" and yields ""; any other failure is
+// fatal, so an unreadable config can never pass as an untouched one.
+func victimConfig(t *testing.T, configPath string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", append([]string{"config", "--file", configPath}, args...)...)
+	cmd.Env = gitenv.Env() // keep an inherited GIT_DIR out of repository setup
+	out, err := cmd.Output()
+	if err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
+			return ""
+		}
+		t.Fatalf("git config --file %s %v: %v", configPath, args, err)
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// victimRemotes reads remote.* entries straight from a config file.
 func victimRemotes(t *testing.T, configPath string) string {
 	t.Helper()
-	out, _ := exec.Command("git", "config", "--file", configPath, "--get-regexp", `^remote\.`).Output()
-	return strings.TrimSpace(string(out))
+	return victimConfig(t, configPath, "--get-regexp", `^remote\.`)
 }
 
 // TestDetectGitConfig_IgnoresInheritedGitDir reproduces card t1204: with
@@ -35,7 +52,7 @@ func victimRemotes(t *testing.T, configPath string) string {
 func TestDetectGitConfig_IgnoresInheritedGitDir(t *testing.T) {
 	victim := t.TempDir()
 	scrubbedGit(t, victim, "init")
-	victimConfig := filepath.Join(victim, ".git", "config")
+	victimConfigPath := filepath.Join(victim, ".git", "config")
 
 	// Read shape: a repository built before the variables are set.
 	prebuilt := t.TempDir()
@@ -53,10 +70,40 @@ func TestDetectGitConfig_IgnoresInheritedGitDir(t *testing.T) {
 	dir := gitDetectInitRepo(t)
 	gitAddRemote(t, dir, "upstream", "https://gitlab.com/group/proj.git")
 
-	if got := victimRemotes(t, victimConfig); got != "" {
+	if got := victimRemotes(t, victimConfigPath); got != "" {
 		t.Errorf("write shape: victim repo gained remotes:\n%s", got)
 	}
 	if mode, provider := detectGitConfig(dir); mode != "personal" || provider != "github" {
 		t.Errorf("write shape: detectGitConfig(dir) = (%q, %q), want (personal, github)", mode, provider)
+	}
+}
+
+// TestGitInitAt_IgnoresInheritedWorktreeGitDir covers the third shape from
+// card t1204 (the TestInitGitDetectionFillsConfig fixture path): when the
+// inherited GIT_DIR names a linked worktree's per-worktree gitdir, an unscrubbed
+// `git -C <dir> init` re-initializes that gitdir and writes core.bare=true into
+// the SHARED config, leaving the main repository unusable.
+func TestGitInitAt_IgnoresInheritedWorktreeGitDir(t *testing.T) {
+	mainRepo := t.TempDir()
+	scrubbedGit(t, mainRepo, "init")
+	scrubbedGit(t, mainRepo, "-c", "user.name=t1204", "-c", "user.email=t1204@example.invalid",
+		"commit", "--allow-empty", "--no-verify", "-m", "init")
+	linked := filepath.Join(t.TempDir(), "wt")
+	scrubbedGit(t, mainRepo, "worktree", "add", "--detach", linked)
+
+	sharedConfig := filepath.Join(mainRepo, ".git", "config")
+	if got := victimConfig(t, sharedConfig, "--get", "core.bare"); got != "false" {
+		t.Fatalf("premise: core.bare before = %q, want \"false\"", got)
+	}
+
+	t.Setenv("GIT_DIR", filepath.Join(mainRepo, ".git", "worktrees", "wt"))
+
+	gitInitAt(t, t.TempDir())
+
+	if got := victimConfig(t, sharedConfig, "--get", "core.bare"); got == "true" {
+		t.Errorf("shared config gained core.bare=true — gitInitAt re-initialized the inherited worktree gitdir")
+	}
+	if got := victimRemotes(t, sharedConfig); got != "" {
+		t.Errorf("shared config gained remotes:\n%s", got)
 	}
 }
