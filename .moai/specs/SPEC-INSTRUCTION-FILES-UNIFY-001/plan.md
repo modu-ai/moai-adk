@@ -146,7 +146,27 @@ decision.
   created stub must emit the new two-import shape or it will not satisfy AC-IFU-002
   (design.md §C).
 - Correct the budget statement (REQ-IFU-017); keep the truncation statement.
-- Drop `-f` from §8; fix the §3 "Codex lanes" / `-w` inconsistency.
+- **Neutralize the harness-restricted clauses in §1-§7 (REQ-IFU-018, second clause), and add the
+  test `TestCodexContractLink_LocalImportMatrix` (REQ-IFU-002, `AC-IFU-012`).** Measured 2026-09-26
+  against `553e224f3`, each mirror carries exactly **one** offending paragraph: §3's worktree-entry
+  clause, which names `moai cc -w <name>` / `--spawn` with no Codex counterpart. The fix is to name
+  **both** launchers in that clause — not to delete the Claude one, since a clause naming both
+  harnesses is neutral, and a count-to-zero rule would have failed a correct implementation. Then
+  drop `-f` from §8 and fix the §3 "Codex lanes" / `-w` inconsistency. The new test asserts both
+  import directions (`AGENTS.local.md` in `CLAUDE.md` = 1, in `AGENTS.md` = 0) in one symbol; the
+  existing test's `CLAUDE.md` assertion covers a different directive (`@AGENTS.md`), so this is new
+  coverage rather than a rename.
+
+  > Added at v0.3.2. The plan-audit of `4eb5405dc` found `REQ-IFU-016` named by **no** milestone
+  > task and tested by no criterion — the only one of the 16 requirements absent from both `plan.md`
+  > and `design.md`. The requirement is now retired and its substance absorbed as `REQ-IFU-018`'s
+  > second clause (spec.md §C.4), so this task is the owner it previously lacked.
+  >
+  > [HARD] **This task has no criterion, and that is recorded rather than hidden.** No criterion
+  > measures a clause, so closing it means recording the offending paragraph's before/after text in
+  > `progress.md` §E.2 — named debt item 1 in `acceptance.md` §D.3.1. Do not report it discharged on
+  > `AC-IFU-003`'s import count: that is a declared proxy and says nothing about clause wording.
+
 - Thin `CLAUDE.md` to import + mechanism layer + import (REQ-IFU-002).
 - Add the C5 neutrality allowlist change (REQ-IFU-015).
 - `make build`, then both mirrors, then **three** budget checks, all with `--- PASS:` reads:
@@ -166,8 +186,37 @@ Per-milestone: the affected packages only (`go test ./internal/<pkg>/...`), neve
 `go test ./...` locally. The full-suite verdict is CI's, on the PR head, in a clean
 environment.
 
+[HARD] **Any criterion added or edited during the run phase is anchored by hand.** The mechanical
+judge for that class is **card t1269** (`VacuousAssertionRule`) and it has not landed, so nothing
+will catch an unanchored `-run` pattern or an undelimited `--- PASS:` line in the interim —
+acceptance.md §D.3.1 item 2. Apply the head-block rule by reading it, not by running a check.
+
 At close: the acceptance.md §D.2 traceability diff command, plus a separate re-run of every
 two-mirror criterion.
+
+**[HARD] At close, additionally: the exhaustive noun-comparison pass** (acceptance.md §D.3). This is
+a run-phase task, not a review nicety, and it is scoped inside this SPEC rather than deferred as
+debt. For each of the 15 requirements, open **every** criterion citing it and record in
+`progress.md` §E.2 one row per pair: requirement id, criterion id, the noun the requirement
+constrains, the noun the criterion measures, and the verdict (`match`, or `proxy` with the
+criterion's own stated reason).
+
+[HARD] **The pair list is the deliverable; a statement that the pass ran is not.** The task is
+discharged by that table and by nothing else, and it is written so a later reader can tell a
+completed pass from an unstarted one without asking whoever ran it: a declared pair total above the
+table, a row count equal to it, every one of the 15 requirement ids present in the id column (a
+requirement cited by nothing gets a row reading `no citing criterion`, never an absent row), and
+every `proxy` verdict quoting the criterion's own stated reason. A mismatches-only table does not
+discharge it — "no mismatches over 23 pairs" and "no mismatches over the 4 pairs I got to" read
+identically. Full obligation: acceptance.md §D.3.
+
+The family this pass closes — a citation that is faithful while the noun underneath it differs — is
+currently a **sample and not an enumeration**: iter-1 enumerated five instances of its sibling
+vacuity class, iter-2 found four more survivors after that repair, and iter-3 did not state whether
+it read every pair. An unmechanizable class of unknown size carried as debt is exactly the shape that
+survived three audits, which is why this pass stayed in scope rather than being deferred. The pass is
+finite: 15 requirements, one open per citing criterion. Anything tree-dependent in a proxy's
+reasoning is measured, not argued.
 
 ## §G Anti-patterns
 

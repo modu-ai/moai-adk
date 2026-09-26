@@ -15,21 +15,25 @@ when it matches nothing, so a criterion invoking a test names the test's **symbo
 > with `TestFoo`, and the asserted `--- PASS: TestFoo` is satisfied as a **substring** of
 > `--- PASS: TestFoo_Bar (0.00s)`. So every `-run` pattern here is anchored at both ends
 > (`'^TestFoo$'`, or an alternation of both-end-anchored symbols) and every asserted line carries
-> the single space Go prints after the test name (`` `--- PASS: TestFoo ` ``). The enumeration
-> commands, recorded instead of a fix list — run from `.moai/specs/`, **each must return nothing**
-> (`grep` exit 1):
+> the single space Go prints after the test name (`` `--- PASS: TestFoo ` ``).
 >
-> ```
-> grep -nE "^[^>].*-run '" SPEC-*/*.md | grep -vE "\$'"
-> grep -hE '^[^>]' SPEC-*/*.md | grep -oE '\-\-\- PASS: [A-Za-z_0-9]+.' | grep -vE ' $'
-> ```
+> **[HARD] The class is judged by a `moai spec lint` rule, not by a command written here.** Two
+> successive attempts to record the class check as a prose `grep` pipeline were themselves defective
+> — the third plan-audit of the parent SPEC identified the cause as structural rather than as two
+> authoring mistakes: a command living as text inside a document cannot record that it ran, cannot
+> carry a positive control, keeps its scope inside the command rather than in its declaration, and
+> sits in the same file it inspects. Pattern judgment therefore moves to **card t1269** —
+> `VacuousAssertionRule` in `internal/spec/lint_vacuous_assertion.go`, registered in the rule slice
+> in `internal/spec/lint.go`, whose `Check` receives one document at a time.
 >
-> The `^[^>]` filter scopes the sweep to assertion clauses and excludes blockquote lines, where
-> repair notes quote the old defective pattern verbatim — including this one. Without it the
-> commands flag their own documentation and the check can never pass. Measured 2026-09-26: both
-> return nothing. `AC-IFU-011` arrived carrying this defect (see its note) — a criterion
-> transferred verbatim carries its defects verbatim too.
->
+> [HARD] **The claim is forward-looking and t1269 has not landed.** What is claimed is that a SPEC's
+> criteria **will** pass that rule once t1269 lands — not that any check runs against this file
+> today. Until then the anchoring rule above is an authoring obligation enforced by review, not
+> mechanically, and this block must not be read as citing a live check. The parent SPEC's
+> `acceptance.md` head block is the canonical statement and its §D.3.1 carries the accounting;
+> the prose commands this block used to carry are transferred to t1269, not deleted.
+> `AC-IFU-011` arrived carrying the head-only defect (see its note) — a criterion transferred
+> verbatim carries its defects verbatim too.
 > **The general defect is wider than `go test`**: any assertion satisfiable by something other
 > than the thing under test is vacuous. When writing a criterion, ask not "does this pass when
 > the work is done" but "can this pass when it is **not**".

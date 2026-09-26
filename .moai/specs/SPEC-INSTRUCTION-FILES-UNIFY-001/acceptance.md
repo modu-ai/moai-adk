@@ -27,24 +27,37 @@ a **positive indicator**. The absence of an error is never the passing condition
 > the delimiter Go prints after the test name — a single space, written as
 > `` `--- PASS: TestFoo ` `` — so no longer symbol can satisfy it.
 >
-> **The rule binds the class, not a list.** The plan-audit of commit `653e5357295cfbb2eb3831a982871b6a9b90a00c`
-> found this defect surviving in `AC-IFU-010`, `AC-IFU-012`, `AC-IFU-016` and `AC-IFU-025` here
-> and in `AC-IFU-011 [REF]` of the sibling SPEC, *after* the five instances the prior audit enumerated
-> had been repaired — the repair reached the instances and not the generator. The enumeration
-> commands are therefore recorded rather than the fix list. Run from `.moai/specs/`, over both
-> SPECs' artifacts; **each must return nothing** (`grep` exit 1):
+> **[HARD] The class is judged by a `moai spec lint` rule, not by a command written here.**
+> The plan-audit of commit `653e5357295cfbb2eb3831a982871b6a9b90a00c` found this defect surviving
+> in `AC-IFU-010`, `AC-IFU-012`, `AC-IFU-016` and `AC-IFU-025` here and in `AC-IFU-011 [REF]` of
+> the sibling SPEC, *after* the five instances the prior audit enumerated had been repaired — the
+> repair reached the instances and not the generator. Two successive attempts to record the
+> generator as a prose `grep` pipeline then failed in their own right, and the third audit
+> identified the cause as structural rather than as two authoring mistakes: a command living as
+> text inside a document cannot record that it ran, cannot carry a positive control, keeps its
+> scope inside the command rather than in its declaration, and sits in the same file it inspects.
 >
-> ```
-> grep -nE "^[^>].*-run '" SPEC-*/*.md | grep -vE "\$'"
-> grep -hE '^[^>]' SPEC-*/*.md | grep -oE '\-\-\- PASS: [A-Za-z_0-9]+.' | grep -vE ' $'
-> ```
+> Pattern judgment therefore leaves prose, and the medium moves to **card t1269** — the
+> `VacuousAssertionRule` in `internal/spec/lint_vacuous_assertion.go`, registered in the rule slice
+> in `internal/spec/lint.go`, with two-arm fixtures. A `Rule` there receives one `*SPECDoc` per
+> `Check`, so the whole-tree scope defect that sank the prose form is structurally impossible,
+> and the rule runs in CI via `.github/workflows/spec-lint.yml`. (The prose glob reached every SPEC
+> directory in the tree — `ls -d .moai/specs/SPEC-*/ | wc -l` → 938 at time of writing, a count that
+> drifts with every SPEC added — where the declaration named two.)
 >
-> The `^[^>]` filter is load-bearing, not cosmetic: it scopes the sweep to **assertion clauses**
-> and excludes blockquote lines, which is where every repair note quotes the old defective
-> pattern verbatim — including this note. Without it the commands report their own documentation
-> as a defect and the check can never pass, which is worse than having no check. Measured
-> 2026-09-26 on this commit: both return nothing.
+> [HARD] **The claim below is forward-looking, and t1269 has not landed.** What this SPEC claims is
+> that **its criteria will pass that rule once t1269 lands** — not that they pass a check today. No
+> such check runs against this file at present, and reading this block as citing a live one is the
+> same unobserved-claim shape the removal of the two prose commands exists to remove. Until t1269
+> lands, the anchoring rule above is a `[HARD]` authoring obligation on whoever writes a criterion
+> here, enforced by review rather than mechanically.
 >
+> **Where the removed material went.** The eleven lines that stood here — two `grep` pipelines and
+> their explanatory block — are not deleted; they are **transferred to t1269**, which reimplements
+> their intent as a rule that can record that it ran, carry a two-arm fixture, declare its scope
+> outside the pattern, and live in a file other than the one it inspects. §D.3.1 carries the
+> accounting, and the Definition-of-Done item that required the two commands to be re-run at close
+> went with them (its obligation is t1269's CI job, not a close step here).
 > **The general defect is wider than `go test`.** Any assertion satisfiable by something other
 > than the thing under test is vacuous: a `grep -c` whose pattern also matches this SPEC's own
 > prose, a count satisfied by an unrelated file, a `--- PASS:` satisfied by a sibling. When
@@ -75,7 +88,17 @@ than the `@AGENTS.local.md` line number. (REQ-IFU-002)
 **AC-IFU-003** — Given the deployed contract in both mirrors, When
 `grep -c '^@' AGENTS.md internal/template/templates/AGENTS.md.tmpl` runs, Then each reports
 `0` — the neutral contract imports nothing, and in particular imports no local file into
-Codex's discovered chain. (REQ-IFU-016)
+Codex's discovered chain. (REQ-IFU-018)
+
+> **[HARD] This is a declared proxy on the neutrality clause, not its assertion.** `REQ-IFU-018`'s
+> second clause constrains **clauses**; this criterion counts **imports**. It is retained because an
+> import of a harness-specific local file (`@CLAUDE.local.md`) would itself be a harness-restricted
+> construction, so a zero import count is a **necessary** condition of clause neutrality — but it is
+> not sufficient, and it is already satisfied before any work (measured 2026-09-26 on this commit:
+> `0` / `0`). **No criterion here positively asserts clause-level neutrality.** That gap is a named
+> debt item in §D.3; it is stated rather than papered over, because the declared-proxy note is what
+> keeps the §D.2 row honest and a proxy read as coverage is exactly the defect the retirement of
+> `REQ-IFU-016` was meant to close. `REQ-IFU-018`'s section-set clause is asserted by `AC-IFU-008`.
 
 **AC-IFU-026** — Deployment of the contract itself. Given a fixture project created by
 `moai init`, When `ls AGENTS.md` runs in it and then `sha256sum AGENTS.md` is captured, and
@@ -232,14 +255,40 @@ and `--- PASS: TestCodexLocalInstructions_DualFileMatrix `, and must not contain
 **AC-IFU-012** — Given the updated link test, When
 
 ```
-go test ./internal/cli/ -run '^TestCodexContractLinkCreation$' -v
+go test ./internal/cli/ -run '^TestCodexContractLinkCreation$|^TestCodexContractLink_LocalImportMatrix$' -v
 ```
 
-runs, Then its output contains `--- PASS: TestCodexContractLinkCreation `, does not contain
-`no tests to run`, and the test asserts **both** of: executing imports of `AGENTS.local.md` in
-`CLAUDE.md` = 1, and executing imports of `AGENTS.local.md` in `AGENTS.md` = 0. Both halves are
-asserted; dropping the `AGENTS.md` half would permit the neutral contract to pull a local file
-into the discovered chain. (REQ-IFU-002, REQ-IFU-016)
+runs, Then its output contains **both** `--- PASS: TestCodexContractLinkCreation ` and
+`--- PASS: TestCodexContractLink_LocalImportMatrix `, and does not contain `no tests to run`. The
+second symbol is the decision rule for the half that requires work: `TestCodexContractLink_LocalImportMatrix`
+is a test **M3 creates**, and it asserts both directions in one place — executing imports of
+`AGENTS.local.md` in `CLAUDE.md` = 1, and executing imports of `AGENTS.local.md` in `AGENTS.md` = 0.
+Dropping the `AGENTS.md` direction would permit the neutral contract to pull a local file into
+Codex's discovered chain; dropping the `CLAUDE.md` direction would leave the import unreached.
+(REQ-IFU-002)
+
+> **[HARD] v0.3.2 repair — a blocking criterion dischargeable by an already-green command.** The
+> prior form named only `TestCodexContractLinkCreation` and then stated in prose that "the test
+> asserts both of" the two directions. The first half is already true: measured 2026-09-26 on this
+> commit, `go test ./internal/cli/ -run '^TestCodexContractLinkCreation$' -v | grep -c -- '--- PASS: TestCodexContractLinkCreation '`
+> → **1**. The second half is a claim about test *content* with no invocation deciding it, and the
+> `CLAUDE.md` direction is genuinely absent from the test as it stands: read at this commit,
+> `internal/cli/codex_contract_link_test.go` asserts `codexTestExecImports(…codexClaudeRelPath, codexLinkAgentsDirective)`
+> — that is `@AGENTS.md` in `CLAUDE.md`, a **different directive** — alongside the `AGENTS.md`
+> direction of this criterion. So the criterion could be reported discharged on a green command
+> while the work it names was undone.
+>
+> The repair follows `AC-IFU-010`'s pattern one criterion earlier: name a `$`-anchored symbol the
+> implementation must create and assert its delimited `--- PASS:` line, so the criterion cannot go
+> green until the assertion exists. Confirmed absent at this commit:
+> `grep -rc 'func TestCodexContractLink_LocalImportMatrix' --include='*_test.go' .` → **0
+> declarations**, so the criterion fails correctly against the unimplemented tree today.
+>
+> The citation also dropped `REQ-IFU-016`. This criterion measures import counts, which is not the
+> noun that requirement constrained (clauses); the requirement itself is now retired, its substance
+> absorbed as a clause of `REQ-IFU-018` (spec.md §C.4). Removing a citation the criterion does not
+> earn is part of the same repair — a citation that survives without substance is what let
+> `REQ-IFU-016` read as covered while nothing tested it.
 
 > **[HARD] v0.3.1 repair — vacuous pattern, and one asserted half does not exist yet.** The
 > pattern was `'^TestCodexContractLink'`, head-anchored only; no symbol
@@ -463,6 +512,28 @@ requirement in its own text. The v0.2.0 table claimed two mappings (`001→015`,
 the cited criteria contradicted, and closed with a coverage claim nothing had verified — an
 unobserved coverage claim under `verification-claim-integrity.md` §1.1 surface 3.
 
+[HARD] **A row holds only if the citation matches AND the nouns match.** Naming the requirement id
+in the criterion's body is necessary and is not sufficient. A row is valid only when the **observable
+noun the criterion measures** is the noun the cited requirement **constrains** — or, where the
+criterion measures a proxy, when the criterion's own body states why the proxy establishes the
+requirement (`AC-IFU-003`'s declared-proxy note is the model — and note that it defers to no positive
+assertion, which is why it names that absence rather than implying coverage).
+
+Without this clause the derivation rule asks only whether the citation exists, so a table can be
+citation-faithful and substance-empty — and the more faithfully the rule is followed, the more
+legitimate that silence looks. The plan-audit of `4eb5405dc` found exactly that: `REQ-IFU-016`
+constrained *clauses* while both citing criteria measured *import counts*, so the requirement was
+tested by nothing while every mechanical check in this SPEC passed. The set-difference command below
+cannot see this shape — the citation is present — which is why the clause is `[HARD]` rather than
+delegated to a command.
+
+**The enumeration method, recorded so a later reader can re-run it rather than re-derive it.** For
+each requirement: write down the observable noun it constrains; write down the noun each citing
+criterion actually measures; where they differ it is a proxy; for a proxy, test **both** implications
+— *would a correct implementation satisfy the criterion*, and *would satisfying the criterion
+establish the requirement* — and measure anything tree-dependent rather than reasoning about it.
+This pass is a close obligation (§D.3) and is what the row-by-row re-derivation means.
+
 [HARD] **Derivation is one-way, and the table is never the record.** The criterion bodies are
 authoritative; this table is their projection. On any disagreement between a row and the cited
 criterion's own citation line, the **body wins** — the repair is to re-derive the row from the
@@ -489,9 +560,8 @@ is a necessary check on set membership and nothing more.
 | REQ-IFU-013 | AC-IFU-016 |
 | REQ-IFU-014 | AC-IFU-017 |
 | REQ-IFU-015 | AC-IFU-018 |
-| REQ-IFU-016 | AC-IFU-003, AC-IFU-012 |
 | REQ-IFU-017 | AC-IFU-009 |
-| REQ-IFU-018 | AC-IFU-008 |
+| REQ-IFU-018 | AC-IFU-008 (section set), AC-IFU-003 (declared proxy on the neutrality clause) |
 | REQ-IFU-019 | AC-IFU-005 |
 | REQ-IFU-023 | AC-IFU-019, AC-IFU-021 |
 | REQ-IFU-024 | AC-IFU-004 |
@@ -517,15 +587,38 @@ its exit code alone; the §D.2 verification command run and its empty output rec
 green on the PR head; and AC-IFU-021 and AC-IFU-022 recorded in `progress.md` §E.2 with
 command and verbatim output **whichever way they come out**.
 
-Two further close items, both added at v0.3.1 because a guard that is not re-run at close is a
-guard that held once:
+Close items below are what a guard that held once does not discharge.
 
-- **The anchoring sweep re-run** — both enumeration commands from the `[HARD]` block at the top
-  of this file, over **both** SPECs' artifacts, with their output recorded. A criterion added or
-  edited during the run phase is exactly where this class comes back.
-- **The §D.2 table re-derived row by row** from each cited criterion's own citation line, and
-  the fact that it was re-derived (not merely diffed) recorded. The verification command does not
-  check pairing; this step is what does.
+- **The §D.2 table re-derived row by row, with the noun comparison recorded pair by pair.** For
+  each of the 15 requirements, open **every** criterion citing it and write down, as a row in
+  `progress.md` §E.2: the requirement id, the criterion id, the observable noun the requirement
+  constrains, the noun the criterion measures, and the verdict — `match`, or `proxy` with the
+  criterion's own stated reason. Re-derive each table row from the criterion's own citation line
+  while doing it, and record that it was re-derived rather than diffed.
+
+  [HARD] **The pair list is the artifact; "the pass was done" is not.** This item is discharged by a
+  table in `progress.md` §E.2 and by nothing else. A reader must be able to tell a completed pass
+  from an unstarted one without asking the agent that ran it, so the table carries:
+
+  - **one row per (requirement, criterion) pair** — every pair, including the ones that matched;
+  - a **declared pair total** stated above the table, and a row count that equals it, so
+    completeness is checkable by arithmetic rather than taken on trust;
+  - all **15** requirement ids present in the id column — a requirement cited by no criterion is a
+    row reading `no citing criterion`, never an absent row, because an absent row and an unread
+    requirement look identical;
+  - for every `proxy` verdict, the criterion's own stated reason **quoted**, not summarized.
+
+  A summary sentence with no table does not discharge this item, and neither does a table of
+  mismatches only: "no mismatches over 23 pairs" and "no mismatches over the 4 pairs I got to" are
+  the same sentence. This is the same failure shape as `4eb5405dc`'s recorded "both return nothing",
+  written while the commands had never been run — a claim no reader could check.
+
+  The obligation exists because hand enumeration of this class has already proved incomplete twice in
+  this document — iter-1 enumerated five instances of the vacuity class, iter-2 found four more
+  survivors after that repair, and iter-3 did not state whether it read every pair. That is why this
+  pass stayed inside the SPEC's scope instead of becoming debt: an unmechanizable class of unknown
+  size carried as debt is precisely what survived three audits. The §D.2 verification command checks
+  neither pairing nor nouns; this step is the only thing that does.
 
 Conditional item — **if `AC-IFU-021` confirms ancestor discovery for `AGENTS.local.md` in a
 real linked worktree**, the finding and its verbatim evidence are handed to card **t1219**,
@@ -533,6 +626,49 @@ and the handoff is recorded in `progress.md` §E.2 naming what was transferred a
 Without this item the obligation rested on prose in three files and on the run-phase agent
 remembering it (plan-audit D7); design.md §A.5's confirmed branch requires the transfer, so
 Done requires evidence the transfer happened.
+
+### §D.3.1 Named debt and deferrals
+
+This SPEC closes its plan phase at the three-iteration plan-audit cap by operator-approved scope
+reduction plus debt (spec.md HISTORY v0.3.2). [HARD] Debt is named item by item; a debt list whose
+members are not named is not a debt list, it is a disclaimer.
+
+**Debt carried into the run phase (inside this SPEC's scope, not verified by a criterion):**
+
+1. **No criterion positively asserts clause-level harness neutrality.** `REQ-IFU-018`'s neutrality
+   clause is asserted by `AC-IFU-008` on its section-set half and by `AC-IFU-003` as a declared
+   proxy on the neutrality half; nothing measures a clause. The work is owned — `plan.md` M3 names
+   the one offending paragraph — and the verification is not. A run-phase agent closing M3 records
+   the before/after text of that paragraph in `progress.md` §E.2 in place of a criterion's output.
+2. **The anchoring rule is enforced by review until t1269's rule lands.** The head
+   block of this file states this plainly rather than implying a live check. A criterion added or
+   edited during the run phase is exactly where the class returns, and nothing mechanical will
+   catch it in the interim.
+
+**Deferred to card t1270 (out of this SPEC's plan scope; coordinates recorded here so t1270 can
+pick them up without re-deriving them):**
+
+3. **D21 (t1270) — `AC-IFU-009` asserts the removal of the superseded budget sentence and not the presence
+   of its replacement.** `REQ-IFU-017`'s first half ("shall state that the budget is charged
+   against project instruction files only") is satisfiable by deleting the old sentence and writing
+   nothing. The repair is a third clause greping both mirrors for the replacement phrasing; the
+   existing `grep -c 'truncat'` clause discharges the requirement's **second** half, not its first.
+4. **D22 (t1270) — three criteria narrower than the requirement they cite.** `AC-IFU-020` asserts
+   `moai init` where `REQ-IFU-004` names `init` **and** `update`, and `update` is the likelier
+   regression surface because it re-deploys over an existing tree. `AC-IFU-027` asserts the
+   `AGENTS.local.md` sentinel where `REQ-IFU-005` names both `AGENTS.md` **and**
+   `AGENTS.local.md` reached; the two travel different imports, so one establishes nothing about
+   the other, and separating them needs a second sentinel. `REQ-IFU-023` says the system "shall
+   **carry** a mechanical check", which reads as a durable automated guard, while `AC-IFU-019` and
+   `AC-IFU-021` are one-off headless `claude -p` measurements — a narrowing of the requirement is
+   the likely resolution, since a `claude -p` probe needs a live model and cannot run in CI.
+5. **The `moai spec lint` anchoring rule itself — card t1269.** `VacuousAssertionRule` in
+   `internal/spec/lint_vacuous_assertion.go`, registered in the rule slice in
+   `internal/spec/lint.go`, with two-arm fixtures — one arm carrying a conformant criterion that
+   must pass, one carrying each unanchored shape that must be caught. [HARD] **t1269 has not landed,
+   so item 2 above holds until it does.** This entry is also the destination of record for the two
+   removed `grep` pipelines and the Definition-of-Done item that required them: the removals are
+   transfers to t1269, and a reader who finds those eleven lines gone should arrive here.
 
 ## §D.4 Forward-looking checks
 

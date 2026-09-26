@@ -225,8 +225,9 @@ and not re-derived:
   it supports holds at any value (spec.md §C.4).
 
 **Therefore REQ-IFU-018 ("reconcile root and template onto one shape") reconciles the
-SECTION SET, never the filename.** Restoring the mirror to a Codex-discovered name reverses
-t925 and reintroduces the silent mid-table-row truncation.
+SECTION SET and the clause-level harness neutrality of the reconciled body — the substance
+absorbed from the retired REQ-IFU-016 — but never the filename.** Restoring the mirror to a
+Codex-discovered name reverses t925 and reintroduces the silent mid-table-row truncation.
 
 This is stated explicitly rather than left implicit because the failure it guards against
 is precisely a later reader tidying up an extension that looks accidental. The invariant is

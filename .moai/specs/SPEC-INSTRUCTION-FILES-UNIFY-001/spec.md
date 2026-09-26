@@ -1,7 +1,7 @@
 ---
 id: SPEC-INSTRUCTION-FILES-UNIFY-001
 title: "Instruction-file unification — AGENTS.md as the harness-neutral contract"
-version: "0.3.1"
+version: "0.3.2"
 status: draft
 priority: P1
 phase: "v3.3.0 target"
@@ -22,6 +22,8 @@ tier: L
 | 0.2.0 | 2026-09-26 | Lead directives 1 and 2 applied: the ancestor-discovery observation is labelled unconfirmed and may not serve as a premise; the `.tmpl` invariant (card t925) and the nested-sum 32,768-byte budget added as REQ-IFU-024 / REQ-IFU-025; worktree duplicate-load scoped out to t1219. |
 | 0.3.0 | 2026-09-26 | **B1/B2 carve, by operator decision.** The nine requirements `REQ-IFU-007~012` and `REQ-IFU-020~022` — everything touching a user-owned file — transferred verbatim to `SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001` (card t1259 owns its plan phase). This SPEC retains 16: `REQ-IFU-001~006`, `013~019`, `023~025`. **The carve's cause is arithmetic, not the recorded debt:** the plan-audit of commit `1140bcd1d` found `REQ-IFU-001` and `REQ-IFU-005` covered by no criterion, the fix needs two new criteria, and the SPEC stood at the Tier L ceiling of 25/25 with no tier above L. Also applied from that audit: frontmatter repaired to the canonical 12-field schema (MP-3), five vacuously-passable `go test -run` patterns repaired and given positive indicators (D1), two new criteria added for the uncovered requirements (D2), `AC-IFU-022`'s positive control defined (D5), the `AGENTS.md` mirror-divergence figure re-measured (D4), `plan.md` §G's mis-citation corrected (D6), and §C reordered so requirement ids ascend in document order (D8). |
 | 0.3.1 | 2026-09-26 | **Plan-audit iter-2 repairs (subject `653e53572`, PASS-WITH-DEBT 0.853 with two blocking defects).** D9 (critical): the D1 vacuity class survived in `AC-IFU-010` and `AC-IFU-012`, both blocking, both passing against the unimplemented tree by prefix-substring accident; repaired as a **class** — both-end pattern anchoring plus a trailing-space delimiter on every asserted `--- PASS:` line, the rule stated at the head of `acceptance.md` with a passable enumeration command, and applied additionally to `AC-IFU-016`, `AC-IFU-025`, and the sibling SPEC's `AC-IFU-011`. `AC-IFU-010` additionally had the wrong assertion (it required `BETA` absent, i.e. exclusive precedence, where `REQ-IFU-006` and design.md §C specify read **order**); corrected to ordering. D12 (major): three sibling-SPEC `AC-` tokens in prose made the AC-count guard read 23 live criteria against 20 declared — marked `[REF]`, counter now reports 20. D10 stale `M4` citation → `M3`. D11 design.md §C annotated so `REQ-IFU-007`/`008` read as the sibling's. D13 plan.md M3 now names the package-scoped always-loaded invocation. Also: §D.2 derivation made one-way and the set-diff command's blindness to row pairing stated; two close items added. |
+
+| 0.3.2 | 2026-09-26 | **Plan-audit iter-3 (subject `4eb5405dc`, FAIL 0.863) — closed by operator-approved scope reduction, not by a fourth iteration.** The SPEC stood at the three-iteration plan-audit cap (`spec-workflow.md`), where only PASS-with-debt, scope reduction, or an explicit operator override remains; the operator chose scope reduction followed by named debt, on a super-advisor prescription. **The prescription's finding:** D1 → D9 → D15 were not three authoring mistakes but one structure. A `grep` pipeline living as text inside a document cannot record that it ran, cannot carry a positive control, keeps its scope inside the command rather than in its declaration, and sits in the same file it inspects — four deficits that produced the three recurrences. **Pattern judgment therefore leaves prose**: the two enumeration commands and the Definition-of-Done item requiring them are removed, and `acceptance.md`'s head block now claims only that this SPEC's criteria pass a new `moai spec lint` rule, stating plainly that the claim is forward-looking and that the rule has not landed. **The removals are transfers, not deletions, and both destinations are named by id:** the two commands and the Definition-of-Done item requiring them go to **t1269** (`VacuousAssertionRule` in `internal/spec/lint_vacuous_assertion.go`, registered in the `internal/spec/lint.go` rule slice, with two-arm fixtures), and the deferred D21/D22 coordinates go to **t1270** — both accounted for in `acceptance.md` §D.3.1, so a reader who finds the eleven lines gone can see where they went. The reuse premise was verified rather than assumed: `internal/spec/lint.go`'s `Rule` interface takes one `*SPECDoc` per `Check`, so the whole-tree scope defect is structurally impossible there — the prose glob reached every SPEC directory in the tree (`ls -d .moai/specs/SPEC-*/ | wc -l` → 938 at time of writing, a count that drifts with every SPEC added) where the declaration named two — and `.github/workflows/spec-lint.yml` is a live CI job. The unsatisfiable DoD item is removed rather than carried as debt — an obligation that cannot be met is an open defect. **`REQ-IFU-016` retired** (16 → 15): zero lines in `plan.md` and `design.md`, no owning task, and two citing criteria measuring a different noun; its substance is absorbed as a clause of `REQ-IFU-018`'s reconciliation requirement, and the absent positive verifier is a named debt item rather than an inferred gap. `AC-IFU-028` retires with it (criteria 21 → 20). **Kept inside the SPEC, not as debt:** the exhaustive requirement-by-criterion noun comparison, because the D18 family is a *sample* and not an enumeration — hand enumeration of this class has already proved incomplete twice here — now a close obligation that records which pairs were read, with §D.2's derivation rule extended so a row holds only when the citation matches AND the nouns match (or a declared proxy states why). **Repaired in place:** D19 (`AC-IFU-012` given a decision rule naming `TestCodexContractLink_LocalImportMatrix`, a symbol M3 creates — 0 declarations today) and D20 (the anchoring rule's weaker `spec.md` §C copy raised to the `acceptance.md` strength; the rule itself was correct, only its enforcing form failed). **Deferred to card t1270:** D21 (`AC-IFU-009` lacks a positive grep for the replacement budget sentence) and D22 (`AC-IFU-020` asserts `moai init` but not `moai update`; `AC-IFU-027` asserts the `AGENTS.local.md` leg but not the `AGENTS.md` leg; `REQ-IFU-023` reads broader than its criteria can deliver). |
 
 > **[HARD] The id gaps in this SPEC are the carve's footprint, not an error.** `REQ-IFU-007~012`
 > and `REQ-IFU-020~022` are absent here because they live in
@@ -103,15 +105,32 @@ harnesses read.
 
 ### C.4 Contract body
 
-- **REQ-IFU-016** — The deployed `AGENTS.md` body shall be harness-neutral: it shall carry
-  no clause whose applicability is restricted to one harness.
 - **REQ-IFU-017** — The `AGENTS.md` preamble shall state that the instruction budget is
   charged against project instruction files only, and shall retain the statement that
   overflow is truncated silently from the tail.
 - **REQ-IFU-018** — The root `AGENTS.md` and `internal/template/templates/AGENTS.md.tmpl`
   shall carry the same `## ` section set after reconciliation. Reconciliation applies to the
   section set only, never to the filename (REQ-IFU-024) and never to file content — the two
-  mirrors diverge intentionally (§C.4 note below).
+  mirrors diverge intentionally (§C.4 note below). Reconciliation shall additionally leave the
+  reconciled body **harness-neutral**: no clause in §1-§7 of either mirror shall have its
+  applicability restricted to one harness.
+
+> **[HARD] `REQ-IFU-016` is retired, and its substance is the second sentence above.** It formerly
+> stood here as a requirement of its own ("the deployed `AGENTS.md` body shall be harness-neutral").
+> The plan-audit of `4eb5405dc` observed that it had **zero** lines in `plan.md` and `design.md` —
+> the only one of the sixteen absent from both — no owning milestone task, and two citing criteria
+> that measured *import counts* where it constrained *clauses*. A requirement with neither an owner
+> nor a verifier is the cheapest thing in this SPEC to remove, so it is removed rather than given a
+> criterion at the tier ceiling. **The neutrality obligation itself is not withdrawn**: it is now a
+> clause of the reconciliation requirement that already owns the contract body, which is where the
+> work to satisfy it actually lives (`plan.md` M3). Requirements go 16 → 15, and the id is not
+> reused — the gap is this retirement's footprint, the same convention the carve's gaps follow.
+>
+> [HARD] What the retirement does **not** buy is a verifier. `AC-IFU-008` asserts the section-set
+> half of this requirement; `AC-IFU-003` is a declared proxy on the neutrality half (a zero import
+> count is necessary and not sufficient). No criterion positively asserts clause-level neutrality,
+> and that is a **named debt item** in `acceptance.md` §D.3 rather than an omission a reader must
+> infer.
 - **REQ-IFU-019** — Each deployed contract document shall not exceed the per-file ceiling of
   24,576 bytes (`CodexContractByteCeiling`, declared in
   `internal/config/token_budget_guard.go`).
@@ -156,6 +175,29 @@ error is not evidence of success.
 > `--- PASS: <TestName>` appears in the output. The plan-audit of commit `1140bcd1d` found
 > five criteria failing exactly this way, three of which named a guard that already existed
 > under a different name.
+>
+> **Naming the symbol is necessary and was not sufficient, so two further clauses bind here too.**
+> A head-only anchor (`'^TestFoo'`) matches every sibling whose name merely *starts* with `TestFoo`,
+> and the asserted string `--- PASS: TestFoo` is then satisfied as a **substring** of
+> `--- PASS: TestFoo_Bar (0.00s)`. So every `-run` pattern is anchored at **both** ends
+> (`'^TestFoo$'`, or an alternation whose every branch is anchored at both ends), and every asserted
+> `--- PASS:` line carries the single space Go prints after the test name — written
+> `` `--- PASS: TestFoo ` `` — so no longer symbol can satisfy it.
+>
+> **`acceptance.md`'s `[HARD]` block at the top of the file is the single statement of this rule.**
+> This block is kept in step with it deliberately: the plan-audit of `4eb5405dc` found the two copies
+> at different strengths, with the weaker one here — a run-phase author adding a criterion while
+> reading this file would have received the superseded form. A rule stated in two places at two
+> strengths is the one-mirror defect this SPEC exists to prevent, applied to its own rule statement.
+>
+> [HARD] **The rule is correct; the form that tried to enforce it was not.** Two attempts to record
+> a prose `grep` pipeline as the class check were themselves defective, so pattern judgment moves to
+> **card t1269** — `VacuousAssertionRule` in `internal/spec/lint_vacuous_assertion.go`, registered in
+> the rule slice in `internal/spec/lint.go`, with two-arm fixtures. Nothing above is weakened by that
+> move: the both-end anchor and the trailing-space delimiter bind every criterion exactly as written.
+> **t1269 has not landed**, so until it does the obligation is enforced by review rather than
+> mechanically, and `acceptance.md` says so at the point a reader meets it — the claim there is
+> forward-looking and must not be read as citing a live check.
 
 ---
 

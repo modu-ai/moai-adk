@@ -40,6 +40,30 @@
     the parent.
   - The parent SPEC's `research.md` Q4 (whether the launcher's fallback branch has a diagnostic
     surface for the advisory) is unanswered and is M1's first task.
+- **Inherited blocking defect, found by the plan-audit of `4eb5405dc` (2026-09-26) and left open
+  for t1259 — `AC-IFU-014` would fail a correct implementation of `REQ-IFU-010`.** The requirement
+  commands **resolution** ("leave exactly one of the two in place"); the criterion commands
+  **refusal**. The two are incompatible in the case that matters: refusing when both files exist
+  leaves **both** in place, so a correct implementation of the criterion violates the requirement,
+  and a correct implementation of the requirement fails the criterion. This is the same inversion
+  the parent SPEC's `AC-IFU-010` carried at `1140bcd1d` — a criterion that cannot be satisfied by
+  correct work — and it is recorded here rather than repaired because this SPEC's plan phase is
+  t1259's, not the parent card's.
+
+  The auditor's judgment, carried forward as input and not as a decision: **refusal is the better
+  design and the requirement is the thing to fix.** Silently picking one of two files a user
+  authored is a data-integrity hazard; refusing and telling the user is the safe behaviour. The
+  shape proposed is a `Where` guard limiting "leave exactly one" to the **unambiguous** case (one
+  of the two present), plus a **separate** clause requiring refusal when both coexist — two
+  clauses, because they are two different situations with two different correct outcomes. t1259
+  owns the decision; nothing here presumes it.
+
+  **Re-measured, not carried on the audit's word** (2026-09-26, tree `4eb5405dc` plus uncommitted
+  plan edits): `spec.md` `REQ-IFU-010` reads "shall leave exactly one of the two in place" and
+  `acceptance.md` `AC-IFU-014` reads "exits non-zero **without modifying either file**". Both bodies
+  are where the audit said, and the contradiction reproduces on their current text — refusing leaves
+  two live read paths, which is what the requirement forbids. The auditor's *design* judgment above
+  remains a judgment; the contradiction itself is now observed.
 - **Sequencing constraint carried from the carve:** `SPEC-INSTRUCTION-FILES-UNIFY-001` M2 must
   land before this SPEC's M1, because both edit the local-instruction loop in
   `internal/cli/codex_launcher.go` — that SPEC changes its iteration order, this one adds the
