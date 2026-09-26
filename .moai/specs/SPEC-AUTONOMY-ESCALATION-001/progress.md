@@ -269,9 +269,114 @@ M5 decisions:
   (design.md §C.6 step 7), starting a new episode.
 - Class 8 diagnostic key: first non-empty failure line (excluding "Exit code"), digits normalized.
 
+### M6 — Template default and documentation (cycle tdd)
+
+Commit: `027a84f68`. Same env-scrub prefix. Raw outputs: `.moai/reports/t1235/run-m6/` (gitignored).
+`acceptance.md` unchanged. No `.claude/agents/moai/*.md` under the template was edited, so `make agents-emit`
+was not run. The local dogfood `.moai/config/sections/workflow.yaml` was left untouched.
+
+| Item | Test (package) | Command | Actual output | HEAD | Status |
+|---|---|---|---|---|---|
+| Template ships `new_api_detector: graph` explicitly, resolves warning-free, autonomy block neutral | `TestTemplateAutonomyEscalationNewAPIDetector` (`internal/template`) | `go test -count=1 -v -run 'TestTemplateAutonomyEscalationNewAPIDetector\|TestAC_CONTRACT_020\|TestTemplateNoInternalContentLeak\|TestTemplateLearnedWorkflowBlockNeutral\|TestMCPNeutralityTemplateShape\|TestTemplateNeutralityAuditC8Preserve\|TestTemplateNeutralityAudit$\|TestLanguageNeutrality' ./internal/template/` | `--- PASS: TestTemplateAutonomyEscalationNewAPIDetector (0.00s)` | `027a84f68` | PASS |
+| A1 template defaults unchanged | `TestAC_CONTRACT_020` (`internal/template`) | same invocation | `--- PASS: TestAC_CONTRACT_020 (0.00s)` | `027a84f68` | PASS |
+| Template neutrality (CI-guard pair + 16-language) | `TestTemplateNeutralityAudit`, `TestTemplateNoInternalContentLeak`, `TestTemplateNeutralityAuditC8Preserve`, `TestTemplateLearnedWorkflowBlockNeutral`, `TestMCPNeutralityTemplateShape`, `TestLanguageNeutrality` | same invocation | all six `--- PASS`; `ok github.com/modu-ai/moai-adk/internal/template 1.369s` | `027a84f68` | PASS |
+| Shipped key has a reader | `TestShippedConfigKeysHaveReaders` (`internal/config`) | `go test -count=1 -run 'TestShippedConfigKeysHaveReaders' -v ./internal/config/` | `--- PASS: TestShippedConfigKeysHaveReaders (1.47s)` / `ok github.com/modu-ai/moai-adk/internal/config 1.778s` | `027a84f68` | PASS |
+
+RED before GREEN (E8): `autonomy_escalation_template_test.go:39: workflow.autonomy.escalation.new_api_detector = <nil>, want graph written explicitly`
+(exit 1), captured before the template edit. After the edit, `internal/config` failed once with
+`1 shipped config key(s) are NOT in the triage inventory`; fixed by the inventory entry (class W, evidence reader).
+
+Other E-items at the `027a84f68` tree (template/config tests run on the same bytes before the commit, E1 re-run after):
+- `make build` exit 0; `catalog.yaml` unchanged in git.
+- E2: `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `GOOS=darwin GOARCH=arm64 go build ./...` exit 0; `GOOS=linux GOARCH=amd64 go build ./...` exit 0.
+- E3: `go test -count=1 -cover ./internal/template/...` → template `ok … 62.396s coverage: 82.0%`, agentemit `88.5%`, commandemit `90.0%`
+  (package-wide; the template package's pre-M6 figure was not measured, so no delta is claimed).
+- E5: `golangci-lint run --new-from-rev=ad7a2404b ./internal/template/... ./internal/config/...` → `0 issues.`
+- `internal/cli` whole package (slot lease `go-test-cli`): first run `go test -count=1 ./internal/cli/` hit the go
+  default 10m test timeout with zero `--- FAIL` lines (`panic: test timed out after 10m0s`, running
+  `TestT1013_PremiseTargetDivergesFromBackup (2s)`, host load ~10-13 with another lane's heavy suite); rerun
+  `go test -count=1 -timeout 22m ./internal/cli/` → `ok github.com/modu-ai/moai-adk/internal/cli 1010.350s`, exit 0.
+  The rerun started before the commit on the same Go/template bytes; only progress.md changed after.
+
+M6 decisions:
+- The template comment names `graph | off`, what each does, and that the check runs "at an on-demand checkpoint whose
+  invocation surface is pending, never inside a tool-call hook". No CLI verb is named (Q2 open); the new test
+  refuses `moai escalation` in the autonomy block.
+- The inventory header "Total entries: 977" was already stale before M6 (1005 entries); left unchanged (out of scope).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-26
+run_commit_sha: 027a84f68            # last code commit (M6); this §E.3 lands in the following docs commit
+run_status: audit-ready-with-open-items
+ac_total: 25
+ac_pass_count: 24
+ac_partial_count: 1                  # AC-AE-012: (a)(b)(d)(e) PASS, (c) blocked
+ac_fail_count: 0
+new_warnings_or_lints_introduced: 0  # golangci-lint --new-from-rev per milestone, all "0 issues."
+cross_platform_build:
+  windows_amd64: exit 0
+  darwin_arm64: exit 0
+  linux_amd64: exit 0
+total_run_phase_files: 58            # git diff --name-only b4f798dcc..HEAD (card base = merge-base with develop), incl. plan-phase files
+m1_to_mN_commit_strategy: one code commit + one progress.md evidence commit per milestone, on WT-escalation-detector, unpushed
+run_commits: [b1e2d163e, b712799ea, be8e03897, f56e9c28d, 7ec8e9e12, dc76e9f55, 1bdd2ebad, 263d3e685, 13a94c311, 51088d547, ad7a2404b, 027a84f68]
+l44_pre_commit_fetch: not-run        # lane does not push (lead batch push)
+l44_post_push_fetch: not-applicable
+spec_status: in-progress             # in-progress -> implemented is manager-docs' transition
+```
+
+AC matrix across milestones (evidence rows in §E.2):
+
+| AC | Milestone | Test | Status |
+|---|---|---|---|
+| AC-AE-001 | M1 (golden), live guard from M2 | `TestEscalationGuidedGolden` | PASS |
+| AC-AE-002 | M1 | `TestResolveContractByCardField` | PASS |
+| AC-AE-003 | M1 | `TestResolverNotArmedCases` | PASS |
+| AC-AE-004 | M5 | `TestDetectorNeverAltersToolCall` | PASS |
+| AC-AE-005 | M2 | `TestFaultIsNotChecked` | PASS (skipped on Windows) |
+| AC-AE-006 | M2 | `TestAcceptanceChangeTrips` | PASS |
+| AC-AE-007 | M3 | `TestInvariantCommandFailureTrips` | PASS |
+| AC-AE-008 | M3 | `TestFrozenFileUnionTrips` | PASS (harness-learner deny clause: no such test exists) |
+| AC-AE-009 | M3 | `TestOwnershipMoveTrips` | PASS |
+| AC-AE-010 | M3 | `TestOwnershipExemptionsAndOutsideRoot` | PASS |
+| AC-AE-011 | M4 | `TestNewAPIAdditionsTrip`, `TestNewAPINotObservedCases` | PASS (library level; no production caller) |
+| AC-AE-012 | M5 | `TestContradictoryEvidenceTrips` | PARTIAL — (c) BLOCKED: no on-disk CI verdict producer |
+| AC-AE-013 | M5 | `TestIrreversibleActionTrips` | PASS |
+| AC-AE-014 | M5 | `TestBudgetExceededTrips` | PASS |
+| AC-AE-015 | M5 | `TestSameDiagnosticRepeatTrips`, `TestAuditFailAtRetryCapTrips` | PASS |
+| AC-AE-016 | M5 | `TestDisarmContractLossWritesOneRecord` | PASS |
+| AC-AE-017 | M5 | `TestDisarmTransitions` | PASS |
+| AC-AE-018 | M5 | `TestStateTamperJudgedFromCardLog` | PASS |
+| AC-AE-019 | M5 | `TestOtherCardLogDoesNotAffectThisCard`, `TestSameCardConcurrentHooksKeepChain` | PASS |
+| AC-AE-020 | M5 | `TestMissingCardLogReading` | PASS |
+| AC-AE-021 | M1 (path + freeze), M2 (writer) | `TestRecordPathAndQueueUntouched`, `TestTodoHistoryAddsNoSchemaChange` | PASS |
+| AC-AE-022 | M2 | `TestRecordFrontmatterParses` | PASS |
+| AC-AE-023 | M2 | `TestRecordDedupAndRetripAfterResolve` | PASS |
+| AC-AE-024 | M3 | `TestUnreadableContractFieldIsNotObserved` | PASS (premise reinterpreted, see M3 decisions) |
+| AC-AE-025 | M2 | `TestFirstObservationVerifiedAtPreToolUse` | PASS (subprocess clause measured as zero added invocations) |
+
+Open item (operator decision):
+- **Q2 — invocation surface of the on-demand checkpoint.** `escalation.Checkpoint` (class 4, new
+  architecture/API) has no production caller. REQ-AE-009 and AC-AE-011 name only "the on-demand checkpoint";
+  design.md §C.1 calls `moai escalation check` a proposed verb, and plan.md lists Q2 as "Is a new CLI verb
+  for on-demand checkpoints acceptable, given it is itself a class-4 event?". The option set was returned to the
+  lead in the M4 blocker report; the template documents the surface as pending.
+
+Sync-audit carry items:
+1. **Per-call not-armed lines.** One `not-armed` line per processed hook call, not per state change
+   (REQ-AE-002, REQ-AE-023, AC-AE-003 as written). Log growth on long unarmed sessions is unbounded by design.
+2. **Outside-worktree writes not observed.** No runtime field or environment variable supplies the session
+   scratchpad root, so an outside-root write no other root covers is listed not-observed, never tripped (REQ-AE-013).
+3. **Two unidentified baseline git calls.** PreToolUse Write in guided mode already starts git twice; which
+   steps start them was not identified. AC-AE-025 was measured as zero invocations added by the detector.
+4. **Windows.** The per-card lock rides `internal/lockfile`, which on Windows is a process-local mutex, so two
+   hook processes of the same card are not serialized there; `TestFaultIsNotChecked`,
+   `TestResolverUnreadableContractIsError`, and the AC-AE-025 signed-valid git trap are skipped there.
+5. **Harness-learner deny untested.** AC-AE-008's "existing harness-learner deny tests still pass" has no test
+   to run: none in `internal/hook` names it; whole `internal/hook` and `internal/harness` passed.
+6. **AC-AE-012(c) blocked** (listed above): the CI limb is not-observed at every commit checkpoint.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
