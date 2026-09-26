@@ -651,9 +651,10 @@ func TestRunVersionBranch_NonTTYProceeds(t *testing.T) {
 	// Execute chain, so that context is nil and context.WithTimeout panics
 	// the moment the test actually reaches the install step — previously
 	// masked by the vacuous /dev/null-is-a-TTY skip. Inject a real context
-	// and restore the (nil) previous one so the global is untouched.
+	// and restore the previous one so the global is untouched.
+	prev := updateCmd.Context()
 	updateCmd.SetContext(t.Context())
-	t.Cleanup(func() { updateCmd.SetContext(nil) })
+	t.Cleanup(func() { updateCmd.SetContext(prev) })
 
 	// card t1271: without --binary, runVersionBranch re-execs the freshly
 	// installed binary (REQ-UVF-014). versionInstallBinaryPath points at a
