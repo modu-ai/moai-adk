@@ -572,6 +572,16 @@ Hooks 在 `.claude/settings.json` 文件的 `hooks` 部分进行配置。
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -642,6 +652,9 @@ Hooks 在 `.claude/settings.json` 文件的 `hooks` 部分进行配置。
 | `"Write"` | 仅匹配 Write 工具 |
 | `"Write\|Edit"` | 匹配 Write 或 Edit 工具 |
 | `"Bash"` | 仅匹配 Bash 工具 |
+| `"PowerShell"` | 仅匹配 PowerShell 工具 |
+
+MoAI-ADK 在 `PreToolUse` 下为 `handle-pre-tool.sh` 注册了两处：一处使用 `Write|Edit|Bash` 匹配器，另一处使用单独的 `PowerShell` 匹配器。Claude Code 也可以通过 PowerShell 工具（`CLAUDE_CODE_USE_POWERSHELL_TOOL=1`）执行 shell 命令，而 `Bash` 匹配器不会对该工具的调用触发。两个匹配器并存，危险命令拦截、分支保护、集成窗口锁等 shell 命令守卫才能无论经由哪个工具都同样生效。`PostToolUse` 匹配器保持不变。
 
 ## 自定义 Hook 编写方法
 

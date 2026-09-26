@@ -293,6 +293,9 @@ func TestEscapeDotenvValue_SpecialCharacters(t *testing.T) {
 }
 
 func TestSaveGLMKey_Success(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -340,6 +343,9 @@ func TestSaveGLMKey_SpecialCharacters(t *testing.T) {
 }
 
 func TestSaveGLMKey_EmptyKey(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
