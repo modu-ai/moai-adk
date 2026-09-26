@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // The header shapes below are asserted against REAL git output from fixture
@@ -19,7 +21,7 @@ func gitFixture(t *testing.T, dir string, args ...string) string {
 	t.Helper()
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(),
+	cmd.Env = append(gitenv.Env(),
 		"GIT_TERMINAL_PROMPT=0",
 		"LC_ALL=C",
 		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@example.invalid",

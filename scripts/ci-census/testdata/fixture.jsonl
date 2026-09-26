@@ -16,6 +16,20 @@
 {"Time":"2026-08-29T00:00:00.000008+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaPasses","Output":"    alpha_test.go:22:   absent-from-snapshot .moai/specs/SPEC-FIXTURE-001/acceptance.md: COUNT 3\r\n"}
 {"Time":"2026-08-29T00:00:00.000009+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaPasses","Output":"--- PASS: TestAlphaPasses (0.00s)\n"}
 {"Time":"2026-08-29T00:00:00.000010+09:00","Action":"pass","Package":"example.com/censusfix/alpha","Test":"TestAlphaPasses","Elapsed":0}
+{"Time":"2026-08-29T00:00:00.000010+09:00","Action":"start","Package":"example.com/censusfix/zeta"}
+{"Time":"2026-08-29T00:00:00.000010+09:00","Action":"run","Package":"example.com/censusfix/zeta","Test":"TestAlphaSkips"}
+{"Time":"2026-08-29T00:00:00.000010+09:00","Action":"output","Package":"example.com/censusfix/zeta","Test":"TestAlphaSkips","Output":"=== RUN   TestAlphaSkips\n"}
+{"Time":"2026-08-29T00:00:00.000010+09:00","Action":"output","Package":"example.com/censusfix/zeta","Test":"TestAlphaSkips","Output":"--- SKIP: TestAlphaSkips (0.00s)\n"}
+{"Time":"2026-08-29T00:00:00.000010+09:00","Action":"skip","Package":"example.com/censusfix/zeta","Test":"TestAlphaSkips","Elapsed":0}
+{"Time":"2026-08-29T00:00:00.000010+09:00","Action":"run","Package":"example.com/censusfix/zeta","Test":"TestAlphaFails"}
+{"Time":"2026-08-29T00:00:00.000010+09:00","Action":"output","Package":"example.com/censusfix/zeta","Test":"TestAlphaFails","Output":"=== RUN   TestAlphaFails\n"}
+{"Time":"2026-08-29T00:00:00.000010+09:00","Action":"output","Package":"example.com/censusfix/zeta","Test":"TestAlphaFails","Output":"    zeta_test.go:12: expected ok, got timeout\n"}
+{"Time":"2026-08-29T00:00:00.000010+09:00","Action":"output","Package":"example.com/censusfix/zeta","Test":"TestAlphaFails","Output":"--- FAIL: TestAlphaFails (0.00s)\n"}
+{"Time":"2026-08-29T00:00:00.000010+09:00","Action":"fail","Package":"example.com/censusfix/zeta","Test":"TestAlphaFails","Elapsed":0}
+{"Time":"2026-08-29T00:00:00.000010+09:00","Action":"run","Package":"example.com/censusfix/zeta","Test":"TestAlphaPasses"}
+{"Time":"2026-08-29T00:00:00.000010+09:00","Action":"output","Package":"example.com/censusfix/zeta","Test":"TestAlphaPasses","Output":"=== RUN   TestAlphaPasses\n"}
+{"Time":"2026-08-29T00:00:00.000010+09:00","Action":"output","Package":"example.com/censusfix/zeta","Test":"TestAlphaPasses","Output":"--- PASS: TestAlphaPasses (0.00s)\n"}
+{"Time":"2026-08-29T00:00:00.000010+09:00","Action":"pass","Package":"example.com/censusfix/zeta","Test":"TestAlphaPasses","Elapsed":0}
 {"Time":"2026-08-29T00:00:00.000011+09:00","Action":"run","Package":"example.com/censusfix/alpha","Test":"TestAlphaSkips"}
 {"Time":"2026-08-29T00:00:00.000012+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaSkips","Output":"=== RUN   TestAlphaSkips\n"}
 {"Time":"2026-08-29T00:00:00.000013+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaSkips","Output":"    alpha_test.go:7: environment not available\n"}
@@ -26,6 +40,9 @@
 {"Time":"2026-08-29T00:00:00.000018+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaFails","Output":"    alpha_test.go:10: expected 7, got 3\n"}
 {"Time":"2026-08-29T00:00:00.000019+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaFails","Output":"--- FAIL: TestAlphaFails (0.00s)\n"}
 {"Time":"2026-08-29T00:00:00.000020+09:00","Action":"fail","Package":"example.com/censusfix/alpha","Test":"TestAlphaFails","Elapsed":0}
+{"Time":"2026-08-29T00:00:00.000020+09:00","Action":"run","Package":"example.com/censusfix/alpha","Test":"TestAlphaFailsToo"}
+{"Time":"2026-08-29T00:00:00.000020+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaFailsToo","Output":"    alpha_test.go:30: want nil error\n"}
+{"Time":"2026-08-29T00:00:00.000020+09:00","Action":"fail","Package":"example.com/censusfix/alpha","Test":"TestAlphaFailsToo","Elapsed":0}
 {"Time":"2026-08-29T00:00:00.000021+09:00","Action":"output","Package":"example.com/censusfix/alpha","Output":"FAIL\n"}
 {"Time":"2026-08-29T00:00:00.000022+09:00","Action":"output","Package":"example.com/censusfix/alpha","Output":"FAIL\texample.com/censusfix/alpha\t0.341s\n"}
 {"Time":"2026-08-29T00:00:00.000023+09:00","Action":"fail","Package":"example.com/censusfix/alpha","Elapsed":0.341}
@@ -40,5 +57,12 @@
 {"Time":"2026-08-29T00:00:00.000032+09:00","Action":"run","Package":"example.com/censusfix/epsilon","Test":"TestEpsilonSkips"}
 {"Time":"2026-08-29T00:00:00.000033+09:00","Action":"output","Package":"example.com/censusfix/epsilon","Test":"TestEpsilonSkips","Output":"--- SKIP: TestEpsilonSkips (0.00s)\n"}
 {"Time":"2026-08-29T00:00:00.000034+09:00","Action":"skip","Package":"example.com/censusfix/epsilon","Test":"TestEpsilonSkips","Elapsed":0}
+{"Time":"2026-08-29T00:00:00.000034+09:00","Action":"run","Package":"example.com/censusfix/epsilon","Test":"TestEpsilonPassesToo"}
+{"Time":"2026-08-29T00:00:00.000034+09:00","Action":"pass","Package":"example.com/censusfix/epsilon","Test":"TestEpsilonPassesToo","Elapsed":0}
+{"Time":"2026-08-29T00:00:00.000034+09:00","Action":"run","Package":"example.com/censusfix/epsilon","Test":"TestEpsilonSkipsToo"}
+{"Time":"2026-08-29T00:00:00.000034+09:00","Action":"skip","Package":"example.com/censusfix/epsilon","Test":"TestEpsilonSkipsToo","Elapsed":0}
 {"Time":"2026-08-29T00:00:00.000035+09:00","Action":"output","Package":"example.com/censusfix/epsilon","Output":"ok  \texample.com/censusfix/epsilon\t0.120s\n"}
 {"Time":"2026-08-29T00:00:00.000036+09:00","Action":"pass","Package":"example.com/censusfix/epsilon","Elapsed":0.12}
+{"Time":"2026-08-29T00:00:00.000037+09:00","Action":"output","Package":"example.com/censusfix/zeta","Output":"FAIL\n"}
+{"Time":"2026-08-29T00:00:00.000038+09:00","Action":"output","Package":"example.com/censusfix/zeta","Output":"FAIL\texample.com/censusfix/zeta\t0.210s\n"}
+{"Time":"2026-08-29T00:00:00.000039+09:00","Action":"fail","Package":"example.com/censusfix/zeta","Elapsed":0.21}
