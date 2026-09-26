@@ -942,7 +942,104 @@ the top of `writeHookOutputCodex` plus two new functions at the end of the file)
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+Summary of §E.2; every figure below is carried from the §E.2 entry named beside it, not
+re-measured for this signal (no test was run when this section was written). Written against
+HEAD `4f5b74496` on `WT-dual-harness-parity-rebuild`.
+
+```yaml
+run_complete_at: 2026-09-26
+run_commit_sha: 4f5b74496   # last run-phase commit (M2i); this §E.3 commit follows it
+run_status: complete — closing as partial (live-uncertified) per operator decision Q5
+spec_status: in-progress    # spec.md unchanged; the close belongs to manager-docs (sync)
+ac_total: 22                # AC-HPR-001..022
+ac_pass_count: 19           # every unit/golden AC and every unit/golden leg PASS under rule P
+ac_fail_count: 0
+ac_not_run_count: 3         # live-only ACs: AC-HPR-004, 007, 021 (Q5)
+ac_breakdown:
+  unit_golden_only_pass: [001, 002, 003, 005, 006, 013, 014, 015, 016, 017, 018, 019, 022]
+  golden_pass_live_not_run: [008, 009, 010, 011, 012, 020]   # 020 = offline detector leg PASS
+  live_only_not_run: [004, 007, 021]
+ac_evidence_map:
+  AC-HPR-001: M2d (TestStopChainInventoryMatchesClaudeTemplate)
+  AC-HPR-002: M2d (TestStopChainEffectParityGolden, 15 mutations)
+  AC-HPR-003: M2d (TestStopChainGPTProfileNoClaudeDependency)
+  AC-HPR-004: M2g live, NOT_RUN
+  AC-HPR-005: M2d (TestStopChainAdvisoryFailureRecorded; Codex leg only)
+  AC-HPR-006: M2a table leg + M2c real path
+  AC-HPR-007: M2g live, NOT_RUN (no in-tree handler emits ask on demand)
+  AC-HPR-008: M2c unit (TestHookFaultInjection) + M2g live NOT_RUN
+  AC-HPR-009: M2e golden (TestCodexCompactCheckpointRoundTrip) + M2g live NOT_RUN
+  AC-HPR-010: M2e golden (TestCodexPermissionRequestDenyPreserved) + M2g live NOT_RUN
+  AC-HPR-011: M2e unit (TestCodexInterruptRecordsCancellation) + M2g live NOT_RUN
+  AC-HPR-012: M2f golden (TestCodexGoalContinueUntilMet) + M2g live NOT_RUN
+  AC-HPR-013: M2a consumer + readers legs, M2f precedence leg (TestGoalCancellationPrecedence)
+  AC-HPR-014: M2f (TestGoalBudgetTerminationNotSuccess, TestCodexGoalBudgetTerminationRecorded)
+  AC-HPR-015: M2f (TestGoalHostOverrideNotSuccess)
+  AC-HPR-016: M2b declaration + sum leg, M2d timing leg (TestStopChainMemberCostWithinBudget)
+  AC-HPR-017: M2b (TestCheckReceipt*)
+  AC-HPR-018: M2a schema leg, M2h whole-catalog registry (TestObligationCoverage*)
+  AC-HPR-019: M2h (TestParityVerdictAggregate, TestReadGoTestActions)
+  AC-HPR-020: M2g offline detector (TestParityIsolationDetector) PASS; live leg NOT_RUN
+  AC-HPR-021: M2g live, NOT_RUN (StopTimeoutCodexMax = 0 stays unmeasured)
+  AC-HPR-022: M2c (TestNeedsInputVisibleDeny)
+aggregate_parity_verdict: not PASS (M2h) — 6 rows blocked:M1, 4 unverified, 2 Claude UNSUPPORTED,
+  9 live-leg checks NOT_RUN, no row with an effect-verified attributed record
+ac_id_count_reconciliation: >
+  grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u → 26 identifiers. 22 are the
+  acceptance criteria AC-HPR-001..022. The other 4 — AC-HOOK-01, AC-HOOK-02, AC-GOAL-01,
+  AC-POL-01 — are the design-report §19 acceptance-family headings that group them (acceptance.md
+  §A line 6-7 and the §D `###` headings at lines 78/100/109/129): AC-HOOK-01 → 001..005,
+  AC-HOOK-02 → 006..011, AC-GOAL-01 → 012..015, AC-POL-01 → 018..019. They carry no
+  Given-When-Then of their own and are not counted as criteria.
+preserve_list_post_run_count: 0   # internal/hook, .claude/hooks, template hooks: diff-stat empty
+                                  # (M2e; M2i f75957505..e722a1493); Q6 / HOOK-ADAPTER REQ-7 kept
+l44_pre_commit_fetch: not-applicable (worktree lane; no push per gitflow lane protocol — lead batch-pushes)
+l44_post_push_fetch: not-applicable (no push by this lane)
+new_warnings_or_lints_introduced: 0 (M2i: golangci-lint on cli/codexadapter/codexwiring/goal/template → 0 issues; go vet exit 0)
+cross_platform_build:   # M2i
+  native_darwin: exit 0 (make build; go vet on the six changed packages)
+  windows_amd64: exit 0 (GOOS=windows GOARCH=amd64 go build ./...; go vet cli/codexadapter/goal/template)
+  linux: exit 0 (GOOS=linux go vet ./internal/cli/)
+total_run_phase_files: 57   # git log --first-parent --no-merges --name-only --format= 9e92fbb88..HEAD | sort -u (at 4f5b74496; develop merge excluded)
+m1_to_mN_commit_strategy: >
+  per-milestone implementation commits, each followed by an evidence commit where recorded;
+  entry 137690caf (draft → in-progress). M2a ce15e08b8..683c881e3; M2b 1be628d9f..e52b85518;
+  M2c 6a3e745d5..fabc33812; M2d fe4fd9d4d..e7e3b3813; develop merge f75957505 + repair
+  eb23c7aa2; M2e 1fd697bd0; M2f c60af4998; M2g 92a4ac964; M2h e722a1493; M2i 4f5b74496.
+  Nothing pushed.
+coverage:   # M2i, no pre-change baseline except verify (M2b: 81.0% → 84.6%)
+  codexadapter: 88.4%
+  codexwiring: 86.2%
+  verify: 84.6%
+  goal: 78.0%       # below 85; no production code changed here by this SPEC; no baseline, no delta claimed
+  template: 82.8%   # below 85; no baseline, no delta claimed
+  cli: not measured (whole-package coverage run not done)
+```
+
+**Gaps** (carried from §E.2, not re-observed here)
+
+- **`internal/cli` whole-package verdict is left to CI.** No single-invocation run is green: the
+  scrubbed run was stopped at 5180 pass / 0 fail (partial), and the `MOAI_HOME`-isolated form
+  failed 49 top-level tests unrelated to this SPEC (36 passed in the scrubbed run; the other 13
+  pass with `MOAI_HOME` unset — 17 pass, 0 fail). Every SPEC test passed in the isolated run (M2i).
+- All live legs NOT_RUN (Q5): AC-HPR-004, 007, 021, and the live legs of 008–012 and 020. Their
+  bodies compile (`go vet` darwin and windows) but have never executed.
+- AC-HPR-008 / 006 / 022 (M2c): RED-first output was lost with the writing agent; the evidence
+  is post-hoc mutation evidence, which shows detection, not test-first ordering.
+- AC-HPR-005 Claude leg has no MoAI failure record (Claude Code reports its own hook error).
+- `~/.moai/run/profile-leases.db` exposure from the non-isolated `internal/cli` runs was not
+  measured (M2i).
+
+**Residual risk**
+
+- The goal member stays outside the §D3.8 cap. The stagnation guard ends a stuck goal as
+  `ceiling-exit` / `terminated` only when each evaluation saves; a goal member cut off on every
+  Stop continues every Stop, bounded only by the host (M2d, M2f).
+- `{}` on PermissionRequest is handed to Codex's own approval flow; how Codex resolves it is
+  unmeasured (M2e). PostCompact memo delivery to the Codex model is unmeasured (M2e).
+- Malformed hook **stdin** on a decision-bearing Codex event still writes `{}` on exit 0 — split
+  to a separate card by operator decision (M2c, M2d).
+- Stop budgets were timed on a shared machine (load 38–48); they bound nothing in CI (M2d).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
