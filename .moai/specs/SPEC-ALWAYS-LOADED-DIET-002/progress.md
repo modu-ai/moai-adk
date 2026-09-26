@@ -346,3 +346,37 @@ model_deviation:
 5. **`f0893dc36` 의 커밋 경계 결함** — 문서 수리 커밋 안에 구현 편집(템플릿 미러의 공백 줄 제거) 1건이 섞여, 미러 수리와 SPEC 산출물 변경이 커밋 경계로 분리되지 않는다. 수리하지 않고 기록만 한다(스코프 이탈 방지).
 
 🗿 MoAI
+
+---
+
+## 재개 지점 (2026-09-26 기록, 10/1 이후 이어받는 사람을 위해)
+
+### 지금 상태
+
+| 항목 | 값 |
+|---|---|
+| 워크트리 | `.claude/worktrees/t1175` (L1, 유일본 — **폐기 금지**) |
+| 브랜치 / HEAD | `WT-rules-diet` / `f385b6255` |
+| develop 대비 미푸시 커밋 | 23 (`git rev-list --count develop..HEAD`, 이 기록 시점) |
+| SPEC 상태 | `spec.md` `status: implemented`, version `0.9.1` — **`completed` 아님** |
+| 왜 멈췄나 | opus 주간 한도 소진(해제 2026-10-01 12:00 KST). 완료 판정을 sonnet 편차 아래서 내리지 않는다는 리드 판정 — 본문 「상태 전이를 `implemented` 에서 멈춘 이유」 절 참조 |
+
+### 남은 순서 (이 순서대로)
+
+1. **로컬 develop 흡수** — 창을 받은 뒤 이 워크트리에서 `git merge develop`. 흡수 **전에** 로컬 develop 이 최신인지 먼저 판정한다(`.claude/rules/local/gitflow-lane-protocol.md` §11).
+2. **병합 트리에서 재측정** — 흡수가 기준 파일 자체를 움직일 수 있으므로 병합 전 수치를 병합 후 근거로 재사용하지 않는다. 최소 3건:
+   - 18파일 `wc -m` 합계 (`acceptance.md §AC-ALD2-001.2` 명령 그대로) — 이 기록 시점 값 `197897 total`
+   - 구속 조항 동결 해시 (`acceptance.md §AC-ALD2-002` 명령 그대로) — 이 기록 시점 `d97b33d960c9801d4ec145ca263ed788425b337f43c585594c8d527c1318c6c3`, 170줄
+   - `go test ./internal/spec/...` · `./bin/moai spec lint .moai/specs/SPEC-ALWAYS-LOADED-DIET-002`
+3. **opus 로 sync-audit** — Tier L sync-phase 감사. 이것이 `implemented → completed` 전이의 게이트다.
+4. **병합 창** — `moai integration acquire --name <lane> --card t1175` → `EnterWorktree(.claude/worktrees/develop)` → `git merge --no-ff WT-rules-diet` → `moai integration release` → `ExitWorktree keep` → 리드에게 로컬 병합 SHA 보고. **push 는 리드 일괄.**
+
+### 미결 사항 (감사가 판정할 것)
+
+1. **AC-ALD2-006 Given 좁힘의 정당성** — `cb8466d09` 이 Given 을 REQ-ALD2-004 의 When(「한 절이 옮겨질 때」)에 맞춰 좁혔고, 그 아래서 재측정해 PASS 를 얻었다. 종전 FAIL 기록은 §E.2 `### AC-ALD2-006 FAIL` 에 지우지 않고 보존돼 있다. **좁힘이 기준을 산출물에 맞춰 재단한 것인지 아닌지가 감사 판정 사항**이다. 판정 ref `cb8466d09`, 기준선 `172ef22eb`.
+2. **AC-ALD2-008 사후 재도출 결과의 수용 여부** — 종전 「재도출 불가 → UNVERIFIED」를 철회하고 사후에 쟀다(11/11 통과, 최소 여유 `+176`). 절 경계를 제목 레벨로 자른 선택과 `## Cross-references` 크레딧 과대 계상 가능성이 §E.3 Gaps 에 적혀 있다 — 두 건을 0 으로 두고 다시 봐도 통과한다는 것도 같은 자리에 있다.
+3. **상속 잔여 3건** (이 카드가 닫지 않았다): `A_adm` 미측정 · self-keyed `paths:` 2건(선존) · AC-ALD2-006 Then 둘째 절 미확립 2건.
+4. **템플릿 미러 40개** — 배포 표면이 움직였다. 감사는 로컬 `.claude/rules/moai/` 만이 아니라 `internal/template/templates/.claude/rules/moai/**` 를 함께 판정한다.
+5. **sync 기록 자체가 sonnet 위에서 쓰였다** — §E.4 `model_deviation` 블록. 감사가 「Tier L 수준에 닿지 못했다」고 판정하면 한도 해제 후 opus 로 이 sync 기록을 다시 쓴다.
+
+🗿 MoAI
