@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-MATCHER-POWERSHELL-001
 title: "Run the shell-command guard hooks for the PowerShell tool, not only for Bash"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -22,6 +22,7 @@ related_specs: [SPEC-POWERSHELL-DENY-PARITY-001, SPEC-DUAL-HARNESS-HOOK-PARITY-0
 |---|---|---|---|
 | 0.1.0 | 2026-09-26 | manager-spec | Initial draft for card t1224 (origin: t1211 / SPEC-POWERSHELL-DENY-PARITY-001 open decision D3, "hook matcher coverage of the PowerShell tool"). Per-site classification of every Bash tool-name branch; unclassifiable-command policy, collision points with t1099 / t1152, and isolated hook-test environment added per lead instruction. |
 | 0.2.0 | 2026-09-26 | manager-spec | Plan-audit iter-1 FAIL 0.77 (`.moai/reports/plan-audit/SPEC-HOOK-MATCHER-POWERSHELL-001-review-1.md`) resolved. D1: shell wrapper added as site 14 (class b), REQ-HMP-002 redefined to the wrapper (its former local-copy/rebuild content folded into REQ-HMP-001), REQ-HMP-013 extended to `.sh`/`.sh.tmpl`, new operator decision D6. D2: REQ-HMP-009 rewritten against the landed fail-closed dispatcher (t1152 completed on develop), §C collision text refreshed. D4: hook identity defined as the script path in REQ-HMP-012. D6: `-EncodedCommand` is unclassifiable regardless of payload (REQ-HMP-010). D7: t1211 transcript evidence cited in §A.1; payload capture moved ahead of M3. D11: source guard widened to any `"bash"` literal. D12: slot-lease indirection behaviour stated. D14: SPEC locations noted. REQ count unchanged (16). |
+| 0.2.1 | 2026-09-26 | manager-spec | Plan-audit iter-2 PASS 0.87 (`.moai/reports/plan-audit/SPEC-HOOK-MATCHER-POWERSHELL-001-review-2.md`) blocking minors resolved. N1: REQ-HMP-005 scoped to non-test source files (matches REQ-HMP-013(i)). N2: AC-HMP-012 payload-record Then made conditional on arm B capturing a payload; INCONCLUSIVE arm B lets M1–M3 proceed under REQ-HMP-009 fail-safe handling (plan M0/M3 aligned). N3: REQ-HMP-010 encoded-command trigger defined structurally (any argument pwsh resolves to `-EncodedCommand`, prefix abbreviations included); listed spellings become examples; M0 measures the accepted spellings with pwsh. Optional N4 (synthetic fixture for mutant m2) and N5 (integration-lock log root) applied. REQ count unchanged (16). |
 
 ## §A Background
 
@@ -84,7 +85,7 @@ Every consumer of the hook payload branches on the literal tool name `Bash` — 
 ### B.2 Shared shell-tool predicate
 
 - **REQ-HMP-004** — The hook package shall decide whether a tool call is a shell-command call through one shared predicate that answers true for exactly the tool names `Bash` and `PowerShell`, and every Go site of §A.3 classified (a) shall use it.
-- **REQ-HMP-005** — The hook package and the hook CLI shall not carry a string literal equal to `bash` in any letter case outside that shared predicate, except entries on the declared exclusion list of REQ-HMP-013.
+- **REQ-HMP-005** — The hook package and the hook CLI shall not carry, in non-test source files, a string literal equal to `bash` in any letter case outside that shared predicate, except entries on the declared exclusion list of REQ-HMP-013.
 
 ### B.3 Guard behavior on PowerShell calls
 
@@ -92,7 +93,7 @@ Every consumer of the hook payload branches on the literal tool name `Bash` — 
 - **REQ-HMP-007** — Where the branch guard is enabled, when a PowerShell command matches a branch-state pattern in the primary checkout and the agent is not exempt, the pre-tool hook shall deny it with the same `BRANCH_GUARD_VIOLATION:` reason as the Bash path.
 - **REQ-HMP-008** — Where the integration lock or the slot lease is enabled, when a PowerShell command matches the guarded pattern while another live session holds the record, the pre-tool hook shall deny it with the same reason as the Bash path.
 - **REQ-HMP-009** — When a PreToolUse or PostToolUse payload has a parseable envelope, `tool_name` `PowerShell`, and a `tool_input` that is not a JSON object or has no string `command` field, the pre-tool and post-tool hooks shall not panic and shall return the same output as for the payload that differs only by `tool_name` `Bash`. The delivery shall not change the fail-closed answer that SPEC-HOOK-STDIN-FAILCLOSED-001 (REQ-HSF-001) gives an unparseable decision-event stdin; that answer is tool-independent, because the dispatcher rejects the stdin before any tool name is read.
-- **REQ-HMP-010** — When a PowerShell command contains an indirection construct that the existing branch-guard or integration-lock parser does not classify (the set is fixed by the plan M0 measurement over: call operator `& git …`, `Invoke-Expression` / `iex` with an argument naming `git`, `Start-Process` naming `git`, and any `pwsh` / `powershell` invocation carrying `-EncodedCommand` or its short forms `-enc`, `-ec`, `-e` in any letter case), the branch guard and the integration lock shall apply the unclassifiable-command policy selected at decision D2. An encoded-command argument is unclassifiable regardless of its payload and shall not be decoded. The destructive deny list shall keep its deny-on-positive-match behavior regardless of D2, and the slot lease shall keep its existing behaviour (§A.3 site 4).
+- **REQ-HMP-010** — When a PowerShell command contains an indirection construct that the existing branch-guard or integration-lock parser does not classify (the set is fixed by the plan M0 measurement over: call operator `& git …`, `Invoke-Expression` / `iex` with an argument naming `git`, `Start-Process` naming `git`, and any `pwsh` / `powershell` invocation carrying an argument that PowerShell resolves to the `-EncodedCommand` parameter, including unambiguous prefix abbreviations — `-EncodedCommand`, `-enc`, `-ec`, `-e` in any letter case are examples, not the complete set; the accepted spellings are measured with pwsh in plan M0), the branch guard and the integration lock shall apply the unclassifiable-command policy selected at decision D2. An encoded-command argument is unclassifiable regardless of its payload and shall not be decoded. The destructive deny list shall keep its deny-on-positive-match behavior regardless of D2, and the slot lease shall keep its existing behaviour (§A.3 site 4).
 
 ### B.4 Evidence path
 

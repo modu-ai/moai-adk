@@ -17,7 +17,7 @@ Verification layer. Each criterion is binary. Test commands run in the env-scrub
 | AC-HMP-009 | REQ-HMP-010 | Indirection tests pass under the D2 outcome on both guards; encoded command not decoded; destructive deny list unaffected by D2 |
 | AC-HMP-010 | REQ-HMP-011 | Evidence record kind matches Bash for a PowerShell `go test` payload; unrecognized response shape records no pass |
 | AC-HMP-011 | REQ-HMP-014 | Static check: every `TestHMP*` test and every listed modified test calls `t.Setenv("MOAI_HOME", …)` and no `t.Parallel`; positive control fails the check; swept count ≥ 1 |
-| AC-HMP-012 | REQ-HMP-015, REQ-HMP-016 | `.moai/reports/t1224/live/` holds 3 arm outputs; payload keys recorded before M1; verdict records PASS, FAIL (blocker), or INCONCLUSIVE with the failed condition |
+| AC-HMP-012 | REQ-HMP-015, REQ-HMP-016 | `.moai/reports/t1224/live/` holds 3 arm outputs; payload keys recorded before M1 when arm B captured a payload; verdict records PASS, FAIL (blocker), or INCONCLUSIVE with the failed condition |
 | AC-HMP-013 | REQ-HMP-002 | Wrapper test: PowerShell payload above the soft cap produces the warning per D6; Bash control unchanged; comment names the delivered matcher |
 
 ## Scenarios
@@ -43,7 +43,7 @@ When the parity test runs
 Then it fails naming `PreToolUse` and `.claude/hooks/moai/handle-pre-tool.sh`
 And after M1 it passes
 And when the PowerShell registration is removed again it fails
-And when `PowerShell` is instead added to a different PreToolUse script's matcher while `handle-pre-tool.sh` lacks it, it fails
+And when, on a synthetic settings fixture carrying a second PreToolUse script, `PowerShell` is added to that script's matcher while `handle-pre-tool.sh` lacks it, it fails
 
 ### AC-HMP-004 — No scattered Bash literal
 
@@ -117,7 +117,7 @@ And a positive-control fixture source containing a `TestHMP` function without th
 
 Given the caps declared in plan M5 and three fresh scratch directories outside the repository
 When arms A and B run once each in M0 and arm C runs once in M5, all in the foreground
-Then the arm B payload's `tool_name`, `tool_input` keys, and `tool_response` keys are recorded in the evidence file before M1 begins
+Then when arm B captured a payload, its `tool_name`, `tool_input` keys, and `tool_response` keys are recorded in the evidence file before M1 begins; when arm B is INCONCLUSIVE, that is recorded and M1–M3 proceed under the REQ-HMP-009 fail-safe design with no live-path claim for REQ-HMP-006/011
 And if every validity condition holds (including arm C's `binary-version.txt` SHA equal to the branch HEAD the binary was built from) and arm A shows no hook line, arm B shows ≥ 1 PowerShell payload, and arm C shows a `BRANCH_GUARD_VIOLATION:` denial with no `probe` branch — the verdict records PASS
 Or if every validity condition holds and any of those observables is absent or contradicted — the verdict records FAIL naming the arm and observable, and a blocker report is returned
 Or if a validity condition fails — the verdict records INCONCLUSIVE naming that condition, with no LIVE claim made
@@ -135,7 +135,7 @@ And the wrapper's matcher-scope comment names the matcher delivered by REQ-HMP-0
 - `tool_name` casing: the predicate is exact-match (`PowerShell`), matching the vendor tool name; `powershell` is not a shell tool.
 - PowerShell `2>&1` / pipeline to `Select-Object` after `go test`: evidence classification keys on the command prefix; a suffix does not change the kind.
 - Compound PowerShell `git fetch; git switch main`: `;` is a separator in the existing splitter → branch guard sees `git switch`.
-- `-e` short form: matched only as an argument of a `pwsh` / `powershell` invocation, never as a bare token elsewhere.
+- Encoded-command spellings: any argument of a `pwsh` / `powershell` invocation that pwsh resolves to `-EncodedCommand` (set measured in plan M0; `-e` is one example), never a bare token elsewhere.
 
 ## Quality Gates
 
