@@ -38,7 +38,7 @@ unanchored subtest level, and **two sibling groups joined by a top-level pipe**,
 group, matching longer names at either end) each yield exactly one finding; conformant arm —
 the single anchored name, the grouped alternation form, the per-branch alternation form,
 per-level anchored subtests, the empty-match form, a leading `(?i)` flag group before an anchored
-name, a double-quoted pattern with a backslash-escaped closing dollar, and a double-quoted
+name, a `(?i)` flag group at the head of an anchored subtest level, a double-quoted pattern with a backslash-escaped closing dollar, and a double-quoted
 pattern with a plain closing dollar each yield zero findings.
 Maps: REQ-VTA-003, REQ-VTA-004.
 
@@ -56,7 +56,11 @@ directly by `(` yields one finding; a subtest name containing a hyphen that ends
 single quote yields one finding whose reported name includes the hyphenated component;
 conformant arm — the name followed by a space, by a tab, by `\s`, and by `[[:space:]]` each
 yield zero findings, and so do the whitespace-delimited subtest names
-`--- PASS: TestX/fail-open_path (` and `--- PASS: TestX/spec-workflow.md (`.
+`--- PASS: TestX/fail-open_path (` and `--- PASS: TestX/spec-workflow.md (`, a subtest name
+followed by `[[:space:]]` (`--- PASS: TestX/case[[:space:]]`), and a subtest name carrying a
+regex-escaped dot followed by a space (`--- PASS: TestX/spec-workflow\.md `). On a markdown
+table row, the `(PASS|FAIL)` prefix written with a markdown-escaped pipe is recognized: an
+undelimited name after it yields one finding and a space-delimited one yields zero.
 Maps: REQ-VTA-005.
 
 ### AC-VTA-003 — Markdown context, including blockquotes
@@ -96,11 +100,12 @@ Maps: REQ-VTA-002, REQ-VTA-007, REQ-VTA-008.
 ### AC-VTA-006 — Gate cutoff split, pinning, and fixture date
 
 **Given** the same defective document with `created` one day before the cutoff, equal to the
-cutoff, after the cutoff, and missing **When**
+cutoff, after the cutoff, missing, and present but malformed (a single-digit month, and non-date
+text) **When**
 `go test ./internal/spec/ -run '^TestVacuousAssertionRule_GateCutoff$' -v` runs **Then** it
 exits 0 with `--- PASS: TestVacuousAssertionRule_GateCutoff (` present; findings are
-non-advisory warnings for the equal and after cases and advisory for the day-before and missing
-cases; the test asserts the cutoff constant's literal value, so changing it without editing the
+non-advisory warnings for the equal, after, and malformed cases and advisory for the day-before
+and missing cases; the test asserts the cutoff constant's literal value, so changing it without editing the
 test turns the test red; and the test reads the `created` value of the committed red fixture
 (AC-VTA-009) and asserts it is on or after the cutoff, so a later cutoff move cannot silently
 turn the end-to-end proof advisory.

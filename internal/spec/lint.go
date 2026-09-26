@@ -201,6 +201,13 @@ func NewLinter(opts LinterOptions) *Linter {
 		// Severity is warning only (spec.md §D.5) and the code is deliberately
 		// NOT in eraDemotableCodes.
 		&MovingRefUnpinnedRule{},
+		// VacuousTestAssertionRule — SPEC-SPEC-LINT-VACUOUS-ASSERT-001 (card
+		// t1269). Per-SPEC: reads its SPEC's own spec.md / plan.md /
+		// acceptance.md via filepath.Dir(doc.Path), so lint.skip and era
+		// demotion both apply. Warning only; non-advisory only for SPECs created
+		// on or after vacuousGateCutoff. Deliberately NOT in eraDemotableCodes
+		// (that map demotes errors only).
+		&VacuousTestAssertionRule{},
 		// SyncSHASlotFormatRule — SPEC-SYNC-SHA-SLOT-FORMAT-001 M3, REQ-SSF-004.
 		// Per-SPEC (not cross-SPEC): it reads the SPEC's own sibling progress.md
 		// via filepath.Dir(doc.Path), so lint.skip and era demotion both apply.

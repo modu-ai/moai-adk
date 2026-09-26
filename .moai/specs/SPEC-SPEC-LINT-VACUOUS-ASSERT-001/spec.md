@@ -2,7 +2,7 @@
 id: SPEC-SPEC-LINT-VACUOUS-ASSERT-001
 title: "Vacuous test-assertion lint rule: move the prose-grep acceptance judgment into internal/spec"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-09-26
 updated: 2026-09-26
 author: manager-spec
@@ -31,6 +31,12 @@ related_specs: [SPEC-SPECLINT-GATE-SIGNAL-001, SPEC-MOVING-REF-GUARD-001, SPEC-I
   invocation form from each fixture root (D7) and asserts the increase line (D8); pre-cutoff
   amendment gap disclosed (D9); AC-010/012 measured against the merge base at verification time
   (D10); optional D11-D16 addressed.
+- 2026-09-26 — run-phase amendment (manager-develop, card t1269; no version bump) — plan-audit
+  iter-2 debts discharged: a subtest name followed by `[[:space:]]` or containing a
+  regex-escaped dot is read whole, so both are conformant (N1); a flag group is stripped per
+  subtest level (N2); the table-row pipe reading also applies to the outcome prefixes (N3); a
+  present but malformed `created` fails closed as non-advisory, REQ-VTA-009 rationale amended
+  (N4). Arms added to AC-VTA-001, AC-VTA-002 and AC-VTA-006; the AC count is unchanged.
 
 ## §A Background and Problem Statement
 
@@ -104,9 +110,9 @@ anyone (decision record, Gaps). This SPEC requires it measured (REQ-VTA-013).
   pipe is read as a pipe (markdown escaping, not regex escaping).
 - **Top-level** — outside any parenthesized group and any `[...]` character class, and not
   backslash-escaped. `|` and `/` inside a group, inside a class, or escaped are not separators.
-- **Anchored** — a leading RE2 flag group of the form `(?letters)` is removed first. The pattern
-  is then split on top-level `/` into subtest levels, and each level on top-level `|` into
-  branches (a level with no top-level `|` is one branch). The pattern is anchored when every
+- **Anchored** — the pattern is split on top-level `/` into subtest levels; a leading RE2 flag
+  group of the form `(?letters)` is removed from the head of each level; each level is then
+  split on top-level `|` into branches (a level with no top-level `|` is one branch). The pattern is anchored when every
   level is one of:
   1. **Grouped form** — the level is `^(` + inner + `)$`, where the `(` at the second character
      is closed by the `)` at the second-to-last character under paren matching that skips
@@ -119,8 +125,11 @@ anyone (decision record, Gaps). This SPEC requires it measured (REQ-VTA-013).
   `--- (PASS|FAIL): `, `--- (FAIL|PASS): ` followed by a non-empty test name. A test name is a
   Go identifier (a letter or underscore, then letters, digits, underscores) optionally followed
   by `/`-separated subtest components; a subtest component is one or more characters other than
-  whitespace, single quote, double quote, backtick, backslash, and `(`. This admits the `-`,
-  `.`, `#`, `=`, `+` and non-ASCII characters Go keeps in subtest names.
+  whitespace, single quote, double quote, backtick, and `(`, ending where a delimiter begins.
+  A backslash escape other than `\s` (for example a regex-escaped dot) belongs to the
+  component, and `\s` and `[[:space:]]` end it. This admits the `-`, `.`, `#`, `=`, `+`, `[`
+  and non-ASCII characters Go keeps in subtest names. On a markdown table row, a
+  backslash-escaped pipe inside a prefix is read as a pipe, as for run patterns.
 - **Delimited** — an outcome assertion whose name is immediately followed by a whitespace
   delimiter: a space, a tab, `\s`, or `[[:space:]]`. Nothing else is a delimiter: the regex
   word boundary is NOT one, because it holds between a parent name and the `/` of a passing
@@ -162,11 +171,14 @@ anyone (decision record, Gaps). This SPEC requires it measured (REQ-VTA-013).
   conformant form to use instead.
 - REQ-VTA-009 — Where a SPEC's `created` frontmatter date is on or after the gate cutoff, the
   rule shall emit its findings as non-advisory warnings; where the date is earlier, the rule
-  shall emit them as advisory warnings. A missing or unparseable `created` value shall be treated
-  as earlier than the cutoff (advisory): on a modern-era SPEC that absence is already an error
-  from `FrontmatterSchemaRule`, so gating it here adds no signal, and the one corpus SPEC lacking
-  a parseable `created` (a legacy `created_at:` alias, measured at plan time) must not become
-  gated at landing. The existing era and terminal-status demotion shall apply unchanged on top of
+  shall emit them as advisory warnings. A missing `created` value shall be treated as earlier
+  than the cutoff (advisory): on a modern-era SPEC that absence is already an error from
+  `FrontmatterSchemaRule`, so gating it here adds no signal, and the one corpus SPEC lacking a
+  `created` (a legacy `created_at:` alias, measured at plan time) must not become gated at
+  landing. A present `created` value that does not parse as a `YYYY-MM-DD` date shall be treated
+  as on or after the cutoff (non-advisory, failing closed): `FrontmatterSchemaRule` checks
+  presence only, so advisory treatment would make a malformed date an evasion path (measured
+  at run time: 0 malformed values in the corpus). The existing era and terminal-status demotion shall apply unchanged on top of
   this.
 - REQ-VTA-010 — The gate cutoff shall be a single named constant whose value a unit test pins,
   so that moving the cutoff requires editing the pinning test in the same change.
@@ -212,7 +224,7 @@ traceability the linter reads; every detection axis has a detection arm and a co
 - AC-VTA-003: Given both arms placed in fenced, inline, table, prose, blockquote and nested-blockquote contexts, When the markdown-context test runs, Then every defective instance fires and every conformant one is silent (maps REQ-VTA-006, REQ-VTA-004)
 - AC-VTA-004: Given the t1243 iter-3 probe shapes, When the D15 regression test runs, Then the dollar-quote sequence elsewhere on a line never makes a pattern conformant (maps REQ-VTA-003, REQ-VTA-004)
 - AC-VTA-005: Given defective lines in scanned, unscanned and sibling-directory artifacts, When the scope test runs, Then exactly the three scanned artifacts report with correct line numbers and shell expansions are not judged (maps REQ-VTA-002, REQ-VTA-007, REQ-VTA-008)
-- AC-VTA-006: Given created dates around the cutoff, When the cutoff test runs, Then only on-or-after findings are non-advisory, the cutoff literal is pinned, and the red fixture's created is on or after the cutoff (maps REQ-VTA-009, REQ-VTA-010)
+- AC-VTA-006: Given created dates around the cutoff, When the cutoff test runs, Then only on-or-after and malformed-date findings are non-advisory, the cutoff literal is pinned, and the red fixture's created is on or after the cutoff (maps REQ-VTA-009, REQ-VTA-010)
 - AC-VTA-007: Given a defective document with and without lint.skip, and a defective line carrying a trailing HTML comment, When the linter runs, Then only lint.skip suppresses (maps REQ-VTA-011)
 - AC-VTA-008: Given NewLinter, When the registration test runs, Then exactly one VacuousTestAssertion rule is registered and its findings are warnings with axis, text and conformant form (maps REQ-VTA-001, REQ-VTA-008, REQ-VTA-014)
 - AC-VTA-009: Given committed red and green fixture trees, When the CI spec lint baseline invocation runs from each, Then red exits non-zero with only the VacuousTestAssertion increase line under the exceeded verdict and green exits 0 (maps REQ-VTA-013)
