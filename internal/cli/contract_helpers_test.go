@@ -67,7 +67,7 @@ type contractRun struct {
 	tty   bool              // TTY seam value
 	env   map[string]string // the whole environment the command sees (nil: empty)
 	stdin string            // the command's input stream
-	// realTTY leaves stdinIsTerminalFn untouched (the real stdin check).
+	// realTTY leaves contractStdinIsTerminalFn untouched (the real stdin check).
 	realTTY bool
 }
 
@@ -85,15 +85,15 @@ func (r contractResult) String() string {
 // runContract executes `moai contract <args...>` in p.
 func runContract(t *testing.T, p *signtest.Project, o contractRun, args ...string) contractResult {
 	t.Helper()
-	origRoot, origTTY, origEnv, origReader := findProjectRootFn, stdinIsTerminalFn, contractGetenvFn, newContractLineReader
+	origRoot, origTTY, origEnv, origReader := findProjectRootFn, contractStdinIsTerminalFn, contractGetenvFn, newContractLineReader
 	t.Cleanup(func() {
-		findProjectRootFn, stdinIsTerminalFn, contractGetenvFn, newContractLineReader = origRoot, origTTY, origEnv, origReader
+		findProjectRootFn, contractStdinIsTerminalFn, contractGetenvFn, newContractLineReader = origRoot, origTTY, origEnv, origReader
 	})
 	root := p.Root
 	findProjectRootFn = func() (string, error) { return root, nil }
 	if !o.realTTY {
 		tty := o.tty
-		stdinIsTerminalFn = func() bool { return tty }
+		contractStdinIsTerminalFn = func() bool { return tty }
 	}
 	env := o.env
 	contractGetenvFn = func(k string) string { return env[k] }

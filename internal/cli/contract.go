@@ -30,6 +30,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 	"gopkg.in/yaml.v3"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -49,6 +50,12 @@ const (
 // agent-environment markers and the registry override). Tests replace it so
 // the runtime's own environment never leaks into a fixture run.
 var contractGetenvFn = os.Getenv
+
+// contractStdinIsTerminalFn is the human-path terminal check. It asks the
+// terminal driver (term.IsTerminal) instead of reusing stdinIsTerminalFn,
+// whose os.ModeCharDevice test accepts the null device: `sign </dev/null`
+// must refuse with not_tty (REQ-CONTRACT-010). Tests replace it.
+var contractStdinIsTerminalFn = func() bool { return term.IsTerminal(int(os.Stdin.Fd())) }
 
 // newContractLineReader returns the confirmation reader over the command's
 // input stream: one line per call, without the terminator. A final line
@@ -399,7 +406,7 @@ func runContractSign(cmd *cobra.Command, ids []string, f contractSignFlags) erro
 		AgentMarkers:        contractAgentMarkers(),
 	}
 	seams := sign.Seams{
-		IsTTY:    func() bool { return stdinIsTerminalFn() },
+		IsTTY:    func() bool { return contractStdinIsTerminalFn() },
 		Getenv:   contractGetenvFn,
 		ReadLine: newContractLineReader(cmd.InOrStdin()),
 		Out:      cmd.OutOrStdout(),

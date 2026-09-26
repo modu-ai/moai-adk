@@ -347,6 +347,13 @@ func prepare(opts Options, id string) (*target, *refusal, error) {
 		}
 	}
 
+	if opts.Resign {
+		receiptPath := opts.Signer != "" && opts.Signer != SignerHuman
+		if r := resignTamper(in, id, receiptPath); r != nil {
+			return nil, r, nil
+		}
+	}
+
 	want := contract.Canonical(*c)
 	want.Signature = nil
 	edit := bodyEdit{sha: t.sha, count: t.count, bind: in.AcceptancePresent}
@@ -393,6 +400,41 @@ func prepare(opts Options, id string) (*target, *refusal, error) {
 	}
 	t.perm = info.Mode().Perm()
 	return t, nil, nil
+}
+
+// resignReplaceable is the set of verify reasons a re-sign may replace: the
+// acceptance binding it re-measures (REQ-CONTRACT-012, REQ-CONTRACT-022).
+var resignReplaceable = []string{
+	contract.ReasonUnsigned,
+	contract.ReasonAcceptanceHashMismatch,
+	contract.ReasonACCountMismatch,
+	contract.ReasonSignatureAcceptanceMismatch,
+}
+
+// resignTamper verifies the signed contract as it stands on disk. Any reason
+// outside resignReplaceable — a body edited after signing, a broken seal, an
+// inconsistent signature — refuses verify_failed, so --resign cannot launder
+// a detected change into a fresh signature. On the receipt path the new
+// receipt already sits at the fixed receipt path, so receipt_mismatch against
+// the old signature is expected there; the new receipt is validated against
+// the signable digest before anything is written (REQ-CONTRACT-023).
+func resignTamper(in contract.Inputs, id string, receiptPath bool) *refusal {
+	var reasons []string
+	for _, r := range contract.Verify(in).Reasons {
+		if receiptPath && r == contract.ReasonReceiptMismatch {
+			continue
+		}
+		if !slices.Contains(resignReplaceable, r) {
+			reasons = append(reasons, r)
+		}
+	}
+	if len(reasons) == 0 {
+		return nil
+	}
+	r := refuse(contract.RefuseVerifyFailed, id,
+		"the signed contract fails verify beyond the acceptance binding: %s", strings.Join(reasons, ", "))
+	r.reasons = reasons
+	return r
 }
 
 // confirm prints the human-path summary and reads the one confirmation line.

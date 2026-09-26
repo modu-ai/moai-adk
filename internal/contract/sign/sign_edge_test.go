@@ -229,3 +229,30 @@ func TestSign_ResignOnReceiptPath(t *testing.T) {
 	}
 	assertSignedValid(t, p, signtest.SpecID, opts)
 }
+
+// TestSign_ResignRefusesTamperedBodyOnReceiptPath: the receipt path tolerates
+// receipt_mismatch against the old signature, but not a body edited after
+// signing — a fresh receipt over the edited body must not re-approve it.
+func TestSign_ResignRefusesTamperedBodyOnReceiptPath(t *testing.T) {
+	p := signtest.New(t)
+	opts := p.ReceiptOptions("llm", "llm")
+	p.WriteReceipt(p.Receipt(opts, nil))
+	seams, rec := signtest.Seams(false, noMarkers)
+	mustSign(t, opts, seams, rec)
+
+	rel := signtest.SpecRel(signtest.SpecID, contract.ContractFile)
+	body := string(p.ReadFile(rel))
+	const line = "    - \"internal/fixture/**\"\n"
+	tampered := strings.Replace(body, line, line+"    - \"internal/widened/**\"\n", 1)
+	if tampered == body {
+		t.Fatalf("fixture has no ownership.write line %q to edit", line)
+	}
+	p.WriteFile(rel, tampered)
+	opts.Resign = true
+	p.WriteReceipt(p.Receipt(opts, nil))
+	seams, rec = signtest.Seams(false, noMarkers)
+	assertRefuses(t, p, opts, seams, rec, contract.RefuseVerifyFailed)
+	if !strings.Contains(rec.Out.String(), contract.ReasonContractDigestMismatch) {
+		t.Errorf("the refusal must name %s:\n%s", contract.ReasonContractDigestMismatch, rec.Out.String())
+	}
+}

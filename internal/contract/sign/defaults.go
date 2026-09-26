@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/term"
+
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
 )
 
@@ -52,10 +54,12 @@ func withDefaults(s Seams) Seams {
 	return s
 }
 
-// stdinIsTerminal reports whether standard input is a character device.
+// stdinIsTerminal reports whether standard input is an interactive terminal.
+// It asks the terminal driver rather than testing os.ModeCharDevice: the null
+// device is a character device but not a terminal, and `</dev/null` must be
+// refused with not_tty (REQ-CONTRACT-010).
 func stdinIsTerminal() bool {
-	info, err := os.Stdin.Stat()
-	return err == nil && info.Mode()&os.ModeCharDevice != 0
+	return term.IsTerminal(int(os.Stdin.Fd()))
 }
 
 // stdinLineReader reads one line of standard input per call, without the
