@@ -408,6 +408,11 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 		if owner == "" {
 			return plan, fmt.Errorf("%w: assigning a card requires an owner label", ErrInvalidCardInput)
 		}
+		if cur.HintAfter != "" {
+			if err := predecessorMerged(ctx, tx, cur.HintAfter); err != nil {
+				return plan, err
+			}
+		}
 		plan.next.OwnerLabel = owner
 	case guardLeaseAcquire:
 		label := strings.TrimSpace(req.Actor)
@@ -595,6 +600,7 @@ func commitTransition(ctx context.Context, tx *sql.Tx, cur Card, plan transition
 }
 
 func updateCardRow(ctx context.Context, tx *sql.Tx, c Card, expected int64) error {
+	// SQL: the concatenated fragment is a compile-time constant; every value goes through a ? placeholder.
 	res, err := tx.ExecContext(ctx, `UPDATE cards SET owner_label=?,state=?,version=?,evidence_path=?,updated_at=?,`+
 		`stage=?,lease_holder=?,lease_expires_at=?,heartbeat_at=?,decision_gate=?,decision_question=?,decision_resume=?,`+
 		`decider=?,decided_at=?,failure_reason=?,hint_prefer=?,hint_after=?,spec_id=?,worktree_path=?,evidence_sha=?,`+

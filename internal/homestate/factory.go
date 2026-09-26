@@ -344,8 +344,8 @@ func migrateFactoryV2ToV3(ctx context.Context, db *sql.DB) error {
 }
 
 // migrateFactoryV3ToV4 adds the F1 card-record columns (card state machine,
-// lease, decision, hints, evidence, contract pointer). Every column is
-// `TEXT NOT NULL DEFAULT ''`, so no backfill is needed and every v3 row stays
+// lease, decision, hints, evidence, contract pointer). Every column is TEXT
+// NOT NULL with an empty-string default, so no backfill is needed and every v3 row stays
 // valid; a row whose state lies outside the F1 state set is classified as
 // legacy by the transition API rather than rewritten here.
 func migrateFactoryV3ToV4(ctx context.Context, db *sql.DB) error {
@@ -362,6 +362,7 @@ func migrateFactoryV3ToV4(ctx context.Context, db *sql.DB) error {
 		if existing[column] {
 			continue
 		}
+		// SQL: column comes from the constant cardF1Columns list, never from input.
 		if _, err := tx.ExecContext(ctx, `ALTER TABLE cards ADD COLUMN `+column+` TEXT NOT NULL DEFAULT ''`); err != nil {
 			return err
 		}
@@ -387,6 +388,7 @@ func factoryRunColumns(ctx context.Context, tx *sql.Tx) (map[string]bool, error)
 }
 
 func factoryTableColumns(ctx context.Context, tx *sql.Tx, table string) (_ map[string]bool, err error) {
+	// SQL: table is an internal constant ("runs", "cards"), never input.
 	rows, err := tx.QueryContext(ctx, `PRAGMA table_info(`+table+`)`)
 	if err != nil {
 		return nil, err

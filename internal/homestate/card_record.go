@@ -156,6 +156,7 @@ type queryRower interface {
 }
 
 func loadCard(ctx context.Context, q queryRower, runID, cardID string) (Card, error) {
+	// SQL: the concatenated fragment is a compile-time constant; every value goes through a ? placeholder.
 	c, err := scanCard(q.QueryRowContext(ctx, `SELECT `+cardSelectColumns+` FROM cards WHERE run_id=? AND card_id=?`, runID, cardID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return Card{}, ErrCardNotFound
@@ -171,6 +172,7 @@ func (f *FactoryDB) LoadCard(ctx context.Context, runID, cardID string) (Card, e
 // ListCards reads every card record of runID, or of every run when runID is
 // empty, ordered by run and card id. It never writes.
 func (f *FactoryDB) ListCards(ctx context.Context, runID string) (_ []Card, err error) {
+	// SQL: the concatenated fragment is a compile-time constant; every value goes through a ? placeholder.
 	query := `SELECT ` + cardSelectColumns + ` FROM cards`
 	var args []any
 	if strings.TrimSpace(runID) != "" {

@@ -120,6 +120,7 @@ func frSeedV3(t *testing.T) string {
 
 func frTableColumns(t *testing.T, db *sql.DB, table string) []string {
 	t.Helper()
+	// SQL: table is a test-literal table name, never input.
 	rows, err := db.Query(`PRAGMA table_info(` + table + `)`)
 	if err != nil {
 		t.Fatalf("table_info(%s): %v", table, err)
@@ -146,6 +147,7 @@ func frTableColumns(t *testing.T, db *sql.DB, table string) []string {
 // so a byte-level before/after comparison is one string comparison.
 func frDump(t *testing.T, db *sql.DB, table string, columns []string) []string {
 	t.Helper()
+	// SQL: table and columns are test-literal names, never input.
 	rows, err := db.Query(`SELECT ` + strings.Join(columns, ",") + ` FROM ` + table + ` ORDER BY 1,2`)
 	if err != nil {
 		t.Fatalf("dump %s: %v", table, err)

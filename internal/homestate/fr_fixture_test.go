@@ -122,6 +122,7 @@ func frPlace(t *testing.T, db *FactoryDB, c Card) {
 	if c.UpdatedAt == "" {
 		c.UpdatedAt = "2026-09-26T00:00:00Z"
 	}
+	// SQL: the concatenated fragment is a compile-time constant; every value goes through a ? placeholder.
 	_, err := db.DB.Exec(`INSERT INTO cards(`+cardSelectColumns+`) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		c.RunID, c.CardID, c.OwnerLabel, c.State, c.Version, c.EvidencePath, c.UpdatedAt,
 		c.Stage, c.LeaseHolder, c.LeaseExpiresAt, c.HeartbeatAt, c.DecisionGate, c.DecisionQuestion, c.DecisionResume,
