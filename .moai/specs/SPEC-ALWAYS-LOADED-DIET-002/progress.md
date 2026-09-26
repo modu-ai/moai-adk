@@ -285,7 +285,7 @@ follow_up_candidates:
 
 ```yaml
 sync_complete_at: 2026-09-26
-sync_commit_sha: pending-backfill-sync   # 이 커밋 자신은 자기 해시를 인용할 수 없다 — run_commit_sha 와 같은 사유(§E.3)
+sync_commit_sha: 5bfa134ca               # 그 커밋 자신은 자기 해시를 인용할 수 없어 `pending-backfill-sync` 였고, 이 backfill 커밋이 채웠다
 sync_status: implemented                 # completed 로 올리지 않는다 — 아래 "상태 전이를 implemented 에서 멈춘 이유" 항 참조
 b12_self_test_a: not-applicable          # 이 카드는 CHANGELOG 항목을 내지 않는다 — 아래 CHANGELOG 판단 항 참조
 b12_self_test_b: not-applicable
