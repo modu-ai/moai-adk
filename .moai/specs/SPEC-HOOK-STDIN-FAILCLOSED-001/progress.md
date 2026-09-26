@@ -461,9 +461,187 @@ e_agent_bogus_malformed | rc=0 | stdout(3B)={}  | stderr=moai hook agent x-valid
 - depth 대조군의 `ReadInput` 수준 측정(acceptance.md §0)은 구현 테스트에서 한다. 여기서는 CLI 수준(깊이 9000 이 파싱되어 디스패치됨)만 봤다.
 - codex-cli 0.157.0 에서의 Q2 재측정(위 §F.1 3(a)).
 
+### 구현 (M1~M4, 2026-09-26)
+
+- 기준선 커밋 `9b6296a63`(위 두 절) → 구현 커밋 `53ec0d5a8`. 기준선이 수리보다 앞선 커밋에 있다(`verification-claim-integrity.md` §2.3).
+- 변경 파일: `internal/codexadapter/stop_cap.go`(술어 `HostLacksStopBlockCap`, 신규), `internal/codexadapter/stop_cap_test.go`(신규), `internal/codexadapter/translate.go`(`@MX:ANCHOR` fan_in 3→4 주석만), `internal/cli/hook_stdin_failclosed.go`(신규 — 공유 파싱 실패 처리 `answerStdinParseFailure`, 작성기 `writeFailClosedDeny`, 사유·기록 키 상수, stdin 바이트 계수기), `internal/cli/hook.go`, `internal/cli/hook_stdin_failclosed_test.go`·`hook_stdin_failclosed_ast_test.go`(신규), `internal/cli/hook_protocol_fix_test.go`·`misc_coverage_test.go`(acceptance.md §D 갱신 대상 둘). `internal/hook/**` 변경 없음.
+- 설계 결정:
+  - **`writeCodexFailClosed` 는 손대지 않았다.** plan.md M1 이 허용한 「파싱 실패 전용 작성기」 경로를 택했다 — 새 `writeFailClosedDeny` 가 Codex 는 `TranslateCodex`, Claude 는 `Lookup(HarnessClaude, ev, DecisionFatalError)` + `Render` 로 렌더링한다. 이유: `hook-fault` 키 호출부의 동작을 바이트 단위로 보존하고, t1099 소유 파일(`hook_codex_failclosed.go`)의 diff 를 0으로 둬 병합 위험을 줄인다. 대가: 기록·stdout 쓰기 약 15줄이 두 작성기에 겹친다.
+  - 술어 이름은 `HostLacksStopBlockCap(h Harness, ev hook.EventType) bool` — (Codex, Stop) 에만 참.
+  - 사유 상수: `stdinParseFailureCause = "hook stdin could not be parsed as JSON"`, `stdinParseFailClosedDocID = "moai-doc:hook-stdin-fail-closed"`. 사유 = `"fail-closed: " + cause + " (" + docID + ")"`. 운영자 문서 본문은 sync-phase 몫(spec.md §D).
+  - 기록 키: 파싱 실패 fail-closed `stdin-parse-fail-closed`, Codex Stop 면제 `stdin-parse-exempt` (둘 다 `hook-fault` 와 다름). 기록면은 Q7 권장대로 `codexadapter.RecordDiscards`(`.moai/logs/codex-adapter.jsonl`) 하나를 두 하네스가 쓴다.
+  - 하위 명령 표를 `init` 안 지역 변수에서 패키지 변수 `hookEventSubcommands` 로 옮겼다 — 테스트가 관측 이벤트 22개를 손으로 적지 않고 디스패처와 같은 표에서 계산하기 위함(acceptance.md §0).
+  - `runAgentHook` 의 action → 이벤트 매핑을 함수 `agentActionEvent` 로 추출해 stdin 앞으로 옮겼다(내용 불변).
+
+#### RED (구현 전, 행동 테스트)
+
+측정 트리: HEAD `9b6296a63` + 미커밋 구조 준비(표 이동, `agentActionEvent` 추출, 상수 파일, 테스트 파일). 파싱 실패 분기는 수리 전 그대로였다. 명령: `unset MOAI_KANBAN_BACKEND MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS && go test -count=1 -run StdinFailClosed ./internal/cli/` → exit 1.
+
+```
+--- FAIL: TestStdinFailClosed_ClaudeDecisionEvents (0.11s)
+--- FAIL: TestStdinFailClosed_CodexDecisionEvents (0.08s)
+--- FAIL: TestStdinFailClosed_ObservedDecisionSetMatchesTheSource (0.02s)
+--- FAIL: TestStdinFailClosed_HarnessDecidedBeforeStdin (0.00s)
+--- FAIL: TestStdinFailClosed_StopIgnoresStopHookActive (0.00s)
+--- FAIL: TestStdinFailClosed_CodexStopExempt (0.02s)
+--- FAIL: TestStdinFailClosed_AgentDecisionActions (0.18s)
+--- FAIL: TestStdinFailClosed_AgentRejectsBogusHarness (0.02s)
+--- FAIL: TestStdinFailClosed_AgentObservationActionsPreserved (0.33s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.863s
+```
+
+실패 사유(중복 제거):
+
+```
+hook_stdin_failclosed_test.go:439: stdout = "{}", want a fail-closed deny (neither empty nor {})
+hook_stdin_failclosed_test.go:472: stdout = "{}", want a fail-closed deny (neither empty nor {})
+hook_stdin_failclosed_test.go:508: claude: observed fail-closed set map[], want map[PermissionRequest:true PreToolUse:true Stop:true UserPromptSubmit:true]
+hook_stdin_failclosed_test.go:522: RunE = <nil>, want an invalid --harness value error
+hook_stdin_failclosed_test.go:591: claude Stop stdout = "{}\n", want decision:block regardless of stop_hook_active
+hook_stdin_failclosed_test.go:631: (c) no exemption stderr line:
+hook_stdin_failclosed_test.go:695: (c) stdout = {}
+hook_stdin_failclosed_test.go:712: bogus+malformed RunE = <nil>, want an invalid --harness value error
+hook_stdin_failclosed_test.go:731: RunE = <nil>, want an invalid --harness value error
+hook_stdin_failclosed_test.go:779: x-verification bogus RunE = <nil>, want an invalid --harness value error
+```
+
+녹색으로 남은 것: `TestStdinFailClosed_ObservationEventsPreserved`(특성 기준 — 수리 전에도 녹색이어야 한다)와 `TestStdinFailClosed_DepthControl`. `AgentObservationActionsPreserved` 는 보존 32경우가 아니라 `--harness bogus` 새 거부 단언(`:779`)에서만 실패했다. 술어 테스트: 스텁(`return false`)에서 `go test -count=1 -run TestHostLacksStopBlockCap ./internal/codexadapter/` → `stop_cap_test.go:24: exempt pairs = [], want exactly [codex/Stop]`, `FAIL`. AST 테스트는 구현 뒤에 썼으므로 수리 전 RED 가 없다 — 대신 아래 변이 (c2)·(c4)·(c5)·(c6) 이 RED 를 관측한다.
+
+#### GREEN (구현 커밋 `53ec0d5a8` 의 트리 — 커밋 전 워킹 트리에서 측정, 이후 코드 변경 없음)
+
+```
+$ unset MOAI_KANBAN_BACKEND MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS && go test -count=1 -v -coverprofile=<scratch>/cover_stdin.out -run StdinFailClosed ./internal/cli/
+--- PASS: TestStdinFailClosed_SingleDecisionListAST (0.09s)
+--- PASS: TestStdinFailClosed_ASTCheckerDetectsItsTargets (0.00s)
+--- PASS: TestStdinFailClosed_ClaudeDecisionEvents (0.10s)
+--- PASS: TestStdinFailClosed_CodexDecisionEvents (0.09s)
+--- PASS: TestStdinFailClosed_ObservedDecisionSetMatchesTheSource (0.06s)
+--- PASS: TestStdinFailClosed_HarnessDecidedBeforeStdin (0.00s)
+--- PASS: TestStdinFailClosed_ObservationEventsPreserved (1.23s)
+--- PASS: TestStdinFailClosed_StopIgnoresStopHookActive (0.01s)
+--- PASS: TestStdinFailClosed_CodexStopExempt (0.05s)
+--- PASS: TestStdinFailClosed_AgentDecisionActions (0.34s)
+--- PASS: TestStdinFailClosed_AgentRejectsBogusHarness (0.02s)
+--- PASS: TestStdinFailClosed_AgentObservationActionsPreserved (0.22s)
+--- PASS: TestStdinFailClosed_DepthControl (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.856s	coverage: 5.8% of statements
+```
+
+`=== RUN` 293행(최상위 13 + 하위 280: Claude 16, Codex 12, 관측 176, Codex Stop 4, agent 결정 32, bogus 8, agent 관측 32). 위 표의 시간은 마지막 실행의 값이다(최종 실행 `final_stdin.txt`, exit 0, `=== RUN` 293).
+
+```
+$ unset MOAI_KANBAN_BACKEND MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS && go test -count=1 -v -run Hook ./internal/cli/
+ok  	github.com/modu-ai/moai-adk/internal/cli	61.235s      (=== RUN 214, --- FAIL 0)
+--- PASS: TestRunAgentHook_AllActionSuffixes (0.00s)
+--- PASS: TestRunHookEvent_ReadInputError (0.00s)
+--- PASS: TestHookFaultInjection (0.01s)
+--- PASS: TestRunHookEvent_MalformedStdinGraceful (0.00s)
+--- PASS: TestRunAgentHook_ReadInputError (0.00s)
+```
+
+(마지막 다섯 줄은 같은 명령의 앞선 실행 `run_hook.txt` 에서 발췌 — 코드는 그 뒤 `translate.go` 주석 한 줄만 바뀌었다. 최종 실행은 `--- FAIL` 0건.)
+
+```
+$ unset MOAI_KANBAN_BACKEND MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS && go test -count=1 -run Codex ./internal/cli/
+ok  	github.com/modu-ai/moai-adk/internal/cli	144.411s
+$ go test -count=1 -cover ./internal/codexadapter/...
+ok  	github.com/modu-ai/moai-adk/internal/codexadapter	0.570s	coverage: 88.4% of statements
+```
+
+(`-run Codex` 는 변이 실행 전·`translate.go` 주석 변경 전에 돌렸다. 변이 뒤 파일 복원은 `cmp` 로 바이트 일치를 확인했다.)
+
+#### 필수 RED 변이 (각각 적용 → 관측 → 복원, 복원 후 `cmp` 바이트 일치 확인)
+
+러너: `<scratch>/mut/run.sh <변이> <-run 필터> ./internal/cli/`(또는 codexadapter), 변이 정의 `<scratch>/mut/apply.py`.
+
+| 변이 | 요구 출처 | 결과(원문 발췌) |
+|---|---|---|
+| 사유 끝에 ` — update moai or turn hooks off` 덧붙임 | AC-HSF-001 (0.4.1) | `test_exit=1`; `hook_stdin_failclosed_test.go:447: (e4) reason = "fail-closed: hook stdin could not be parsed as JSON (moai-doc:hook-stdin-fail-closed) — update moai or turn hooks off", want exactly …` (같은 실행에서 (d) 바이트 비교도 실패) |
+| (c1) `IsDecisionBearing` 결과를 `false` 로 | AC-HSF-003 | `:508: claude: observed fail-closed set map[], want map[PermissionRequest:true PreToolUse:true Stop:true UserPromptSubmit:true]` |
+| (c2) 여러 줄 `switch` 중복 목록 삽입 | AC-HSF-003 | `hook_stdin_failclosed_ast_test.go:419: (b2) hook_stdin_failclosed.go:139:2: switch case lists lists EventPreToolUse,EventStop` |
+| (c3) 면제 술어 건너뛰기 | AC-HSF-003 | `:508: codex: observed fail-closed set map[PermissionRequest:true PreToolUse:true Stop:true UserPromptSubmit:true], want map[PermissionRequest:true PreToolUse:true UserPromptSubmit:true]` |
+| (c4) `runAgentHook` 을 `event == hook.EventPreToolUse` 한 번 비교로(행동은 같게) | AC-HSF-003 | `-run StdinFailClosed` 전체에서 **`SingleDecisionListAST` 만** FAIL: `(b1) runAgentHook: decision-event comparison in the parse-failure scope: == EventPreToolUse` / `(b1) runAgentHook: no codexadapter.IsDecisionBearing result selects a branch …` |
+| (c5) `_ = codexadapter.IsDecisionBearing(event)` + 관측 식별자 부정 조건으로 분기 | AC-HSF-003 | 역시 `SingleDecisionListAST` 만 FAIL: `(b1) runAgentHook: no codexadapter.IsDecisionBearing result selects a branch in the parse-failure scope` |
+| (c6) 공유 처리 함수에 `if os.Getenv("MOAI_T1152_MUTANT") != "" { 기본 출력 }` | AC-HSF-003 | `SingleDecisionListAST` 만 FAIL: `(b3) hook_stdin_failclosed.go:79:5: os.Getenv in the parse-failure path` |
+| stdin 계수기가 페이로드 앞 256바이트를 stderr 에 씀 | AC-HSF-007 | `:448: stderr carries the {depth,malformed,oversize,truncated} canary — payload leaked` (네 형태 모두) |
+| 술어를 늘 거짓으로 | AC-HSF-011 | `:621: (b) stdout = "{\"decision\":\"block\",\"reason\":\"MoAI Stop hook failed, so the call was denied fail-closed: …` — (b) 에서 `t.Fatalf` 로 멈춰 (c) 는 이 실행에서 따로 보고되지 않았다 |
+| (1) 관측 매핑에도 fail-closed 적용 | AC-HSF-013 | `:756: RunE = fail-closed for PostToolUse: no claude fatal_error translation row, want nil` (PostToolUse·SubagentStop × 두 하네스) |
+| (2) `--harness` 판독을 결정 매핑 action 에서만 | AC-HSF-013 | `-run StdinFailClosed` 에서 `AgentRejectsBogusHarness`·`AgentObservationActionsPreserved` 만 FAIL(`AgentDecisionActions` 는 통과): `:779: x-verification bogus RunE = <nil>, want an invalid --harness value error` |
+| N16 — `runAgentHook` 경로의 판정 결과 반전(`!` 제거) | Kickoff 판정 (c) | `:695: (c) stdout = {}` — AC-HSF-012 RED |
+
+N15(`--harness bogus` 거부를 agent action 8개 모두에 단언)는 `TestStdinFailClosed_AgentRejectsBogusHarness` 가 닫는다 — 수리 전 RED(`:731`), 수리 후 8개 모두 PASS.
+
+#### AC 판정표
+
+| AC | 판정 | 결정 근거(이 실행, 트리 `53ec0d5a8`) |
+|---|---|---|
+| AC-HSF-001 | PASS | `TestStdinFailClosed_ClaudeDecisionEvents` 16경우 PASS — (a) nil, (b) 디스패치 0, (c) 단일 JSON, (d) `Render(ev, Lookup(HarnessClaude…).Outcome, 기대 사유)` 바이트 일치, (e1)~(e5) — 기대 사유는 테스트가 두 상수와 고정 틀로 조립. 필수 변이 RED 관측 |
+| AC-HSF-002 | PASS | `TestStdinFailClosed_CodexDecisionEvents` 12경우 PASS — `TranslateCodex(ev, DecisionFatalError, 기대 사유)` 바이트 일치. PermissionRequest 포함(파싱 실패가 Codex 이벤트 검증보다 앞선다) |
+| AC-HSF-003 | PASS | (a) `ObservedDecisionSetMatchesTheSource` PASS(두 하네스 집합을 원천에서 계산), (b1)(b2)(b3) `SingleDecisionListAST` PASS, 검사기 자체의 탐지력 `ASTCheckerDetectsItsTargets` PASS, 변이 (c1)~(c6) RED 관측 |
+| AC-HSF-004 | PASS | `HarnessDecidedBeforeStdin` — bogus+malformed: `invalid --harness value`, 파싱 경고 없음, `ReadInput` 0회; codex+malformed: Codex 형태 |
+| AC-HSF-005 | PASS | `ObservationEventsPreserved` 176경우 PASS — stderr 경고 정확히 한 줄, stdout `{}\n`(worktree 둘 0 B), 기록 0건. 수리 전 기준선(위 표)과 같은 바이트 |
+| AC-HSF-007 | PASS | fail-closed 28경우(`Claude/CodexDecisionEvents`)와 agent 32경우(`AgentDecisionActions`)에서 `assertFailClosedObservability` — stderr 줄(이벤트·`harness <mode>`·원인·fail-closed), 기록 1건(키 `stdin-parse-fail-closed`, `content_length` = 관측 바이트 수, oversize 는 `5<<20`), 카나리 부재. 필수 변이 RED |
+| AC-HSF-008 | PASS | `StopIgnoresStopHookActive` PASS(두 하네스 × `stop_hook_active` true/false). `grep -n '@MX:WARN' internal/cli/hook_stdin_failclosed.go` → `64:// @MX:WARN: [AUTO] a Stop that fails to parse is blocked under Claude on every turn — … assumed from repository doctrine and unmeasured; …`. plan.md §B.1 Q2 에 판정·증거 경로 있음. codex-cli 버전 기록은 위 §F.1 3(a)(0.157.0). 추적 항목 Q8(Claude JSON block 상한)은 **미측정이며 사유를 기록한다**: 라이브 `claude -p` 실행이 필요하고 이번 위임에 turn·벽시계 상한 승인이 없다(AC 는 「측정 결과 또는 미측정 사유」를 요구) |
+| AC-HSF-009 | PASS | 위 「spec.md §F.1 의 2」 — 명령, 빈 출력, 양성 대조, blob 대조, (a)~(e) 모두 「동일」 |
+| AC-HSF-011 | PASS | `CodexStopExempt` 4경우 PASS — `{}`, 면제 stderr 줄(`no Stop block cap`), 기록 1건(키 `stdin-parse-exempt`), 카나리 부재, `--harness` 없으면 block. 술어 선언부 주석에 Q2 증거 경로·codex-cli 0.156.1·관측 범위·재검토 지점(`internal/codexadapter/stop_cap.go`). 필수 변이 RED((b) 관측) |
+| AC-HSF-012 | PASS | `AgentDecisionActions` 32경우 + bogus+malformed(`ReadInput` 0회) + `AgentRejectsBogusHarness`(유효 stdin, 8 action) PASS. N16 변이 RED |
+| AC-HSF-013 | PASS | `AgentObservationActionsPreserved` 32경우 보존 + `x-verification`·`x-completion` bogus 거부(`ReadInput` 0회). 변이 (1)·(2) RED |
+| AC-HSF-GATE | PASS(범위 한정) | 아래 품질 게이트. acceptance.md 가 적은 `-run 'Hook\|Stdin\|FailClosed\|AgentHook'` 결합 정규식 대신 단어 필터 `Hook`·`StdinFailClosed`·`Codex` 를 따로 돌렸다(`=== RUN` 214 / 293 / 비-v 실행) — 선택 범위는 합집합으로 같거나 넓다 |
+
+#### 품질 게이트 (이 실행)
+
+```
+$ go build ./... ; echo build_exit=$?
+build_exit=0
+$ GOOS=windows GOARCH=amd64 go build ./... ; echo winbuild_exit=$?
+winbuild_exit=0
+$ go vet ./internal/cli/ ./internal/codexadapter/ ; echo vet_exit=$?
+vet_exit=0
+$ golangci-lint run ./internal/cli/... ./internal/codexadapter/... ; echo lint_exit=$?
+0 issues.
+lint_exit=0
+$ gofmt -l <변경 Go 파일 9개>
+(출력 없음)
+```
+
+커버리지: `internal/codexadapter` 88.4%(패키지 전체). `internal/cli/hook_stdin_failclosed.go` 파일 단위 32문 중 28문 = 87.5%(`-run StdinFailClosed` 프로필에서 계산; 미커버는 렌더·쓰기·기록 실패 분기). `internal/cli` 패키지 전체 커버리지는 필터 실행이라 의미가 없다(5.8%) — 전 패키지 판정은 CI 몫.
+
+#### `internal/cli/hook.go` 편집 범위 (t1099 M2d 충돌 위험 판단용)
+
+`git diff -U0 5fcc615a9 53ec0d5a8 -- internal/cli/hook.go` 의 새 파일 기준 줄:
+
+- `:37-73` — 하위 명령 표를 패키지 변수 `hookEventSubcommands` 로 이동(추가), `init` 안 `:84-85` 가 그것을 참조(삭제 33줄 → 2줄).
+- `:278-288` — `runHookEvent` 에서 `harnessModeIsCodex` 를 `ReadInput` 앞으로, stdin 계수기.
+- `:290-296` — `runHookEvent` 파싱 실패 분기 → `answerStdinParseFailure`.
+- `:304-307` — 종전 하네스 판독 자리(주석만 남김). `validateCodexHarnessEvent` 호출과 그 아래 디스패치 경로(M2d 가 바꾸는 `Dispatch` 호출 주변)는 **건드리지 않았다.**
+- `:472-493` — `runAgentHook` 에서 매핑·하네스 판독을 stdin 앞으로, 파싱 실패 분기.
+- `:523-542` — `agentActionEvent` 추가.
+
+충돌 탐침(텍스트 수준): `git merge-tree --write-tree --name-only HEAD e7e3b3813`(t1099 M2d 끝) → 트리 `3708a2db6…` 만 출력(충돌 파일 없음). `git merge-tree --write-tree --name-only HEAD e722a1493`(t1099 현재 tip) → 트리 `76cf7e22d…` 만 출력. 병합 트리의 `hook.go` 에서 `harnessModeIsCodex` 선언은 진입점마다 1회(`:301`, `:506`), `newCodexStopChain` 분기(`:371`)는 파싱 성공 뒤에 있다. 병합 트리의 컴파일·테스트는 하지 않았다(Gap).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-26
+run_commit_sha: 53ec0d5a8
+run_status: audit-ready
+baseline_commit_sha: 9b6296a63
+ac_pass_count: 11
+ac_fail_count: 0
+preserve_list_post_run_count: "internal/hook diff 0; writeCodexFailClosed/hook-fault unchanged"
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  darwin: pass
+  windows_amd64: pass
+total_run_phase_files: 11
+m1_to_mN_commit_strategy: "baseline commit (9b6296a63) then one implementation commit (53ec0d5a8) for M1-M4"
+pushed: false
+open_gaps:
+  - "codex-cli 0.157.0 != Q2 version 0.156.1; Q2 re-measure (live) not run"
+  - "Q8 Claude JSON block cap not measured"
+  - "merged tree with t1099 tip not compiled"
+  - "internal/cli full package suite not run (CI)"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
