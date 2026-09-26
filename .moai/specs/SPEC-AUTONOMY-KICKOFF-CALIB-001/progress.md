@@ -61,7 +61,7 @@
 - AC 정합: acceptance.md AC 14건(AC-CALIB-001..014, sync 재측정) — CHANGELOG 항목이 없으므로 정산(reconcile) 대상 없음
 - frontmatter: status draft → completed — terminal 전환을 본 sync 커밋이 담는다 (3페이즈 close 관례상 최종 전환은 sync 커밋 몫. draft→in-progress 가 run 커밋에 실리지 않은 경위는 §E.3 Deviations 행 — 결과 상태는 관례와 동일). `updated:` 는 당일이라 값 불변
 - b12 self-test: ① diff 비-SPEC 파일 수 = 0 (직접 재측정) ② CHANGELOG 매치 수 = 0 (직접 재측정) ③ acceptance.md AC 유니크 수 = 14 (직접 재측정) ④ spec lint — 아래 행
-- spec lint: `moai spec lint SPEC-AUTONOMY-KICKOFF-CALIB-001` → "✓ No findings — all SPEC documents are valid", exit 0 (frontmatter 전환 직후 본 트리에서 실행)
+- spec lint: ①편집 직후 `moai spec lint SPEC-AUTONOMY-KICKOFF-CALIB-001` → "✓ No findings — all SPEC documents are valid", exit 0 (전환 커밋 전 — 전환이 아직 git 이력에 없어 전이 규칙 미발화) ②전환 커밋(`2e871e222`) 착지 뒤 재실행 → 0 error, 1 WARNING `StatusTransitionInvalid` — status transition "draft" → "completed" is not a canonical lifecycle edge (commit `2e871e222`), exit 0 유지. §E.3 에 기록된 편차(run 페이즈가 draft→in-progress 전환을 실지 않음)의 기계적 반영이며 정준 2단 경로(draft→in-progress→…→completed)와 달라진 결과 상태는 동일 — sync-audit 이 이 경위를 함께 읽도록 본 행이 기록 역할
 - 산출물: SPEC 아티팩트 5파일 + 런 증거 `.moai/reports/t1244/`(untracked — verdict.md 5-섹션·run-record.md·extract/·runs/·judge_control.jsonl·judge_main.jsonl·scrub_scan.py·judge_batch.py). 트리 변경 없음 — 커밋 대상 아님
 - Gaps: 런 증거 파일의 내용 정합은 §E.2/§E.3 가 담당하며 sync 는 존재 확인만 수행 — 내용 재감사는 sync-audit 몫. 그 외 sync 관측면(diff·CHANGELOG·AC 수·lint·frontmatter)은 전부 관측됨
 - Next: sync-audit → 리드 develop 병합 창 (병합 후 push 는 리드 일괄)
