@@ -296,6 +296,13 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 		})
 	}
 
+	// A Claude Stop that parsed ends a run of parse-failure Stops, so its
+	// counting record is deleted before dispatch (SPEC-HOOK-STOP-PARSE-CAP-001
+	// REQ-SPC-005). No other event touches the count (REQ-SPC-006).
+	if !harnessCodex && event == hook.EventStop {
+		resetStopParseCap()
+	}
+
 	// Inject event name from CLI subcommand when Claude Code omits it.
 	if input.HookEventName == "" || input.HookEventName == "unknown" {
 		input.HookEventName = string(event)
