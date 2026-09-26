@@ -12,7 +12,7 @@ creates. It is repaired by moving the surface (spec.md §C.10, §H.5), not by so
 R6 is answered (spec.md §C.5) and R5 was resolved by *removing* scope: receipt issuance is
 A3's, so the receipt-path criteria are excluded rather than carried (spec.md §C.4, §H.4).
 `AC-AP-011 [RETIRED]` and `AC-AP-012 [RETIRED]` were retired at v0.1.1 and their ids are **not**
-re-used; the gap in the numbering is deliberate. Fifteen criteria: AC-AP-001..010, AC-AP-013..017.
+re-used; the gap in the numbering is deliberate. Sixteen criteria: AC-AP-001..010, AC-AP-013..018.
 
 **Every criterion carries a limb that goes RED when the guard is absent or fails open**, and the limb
 is named in the criterion rather than left to the reader. The pattern is `AC-AP-008`'s: assert
@@ -26,8 +26,11 @@ The `[RETIRED]` and `[REF]` tokens above and below are the AC-counter's reserved
 decoration, and their **placement inside the code span is load-bearing**: the marker must sit
 adjacent to the identifier with only spaces or tabs between, and a closing backtick breaks that
 adjacency — the token goes **inside** the code span, not after it. Measured with the canonical
-counter on this file at v0.1.2: `live=15 excluded=3 ambiguous=0`, exit 0 — 15 live criteria, 3 excluded
-(2 retired here, 1 referenced from another SPEC).
+counter on this file at v0.1.3: `live=16 excluded=3 ambiguous=0`, exit 0 — 16 live criteria, 3 excluded
+(2 retired here, 1 referenced from another SPEC). This SPEC is **absent** from the AC-count corpus
+snapshot (`.moai/reports/t338/ac-count-baseline.txt`), which the staged-commit guard treats as
+`unrecorded (report only)` rather than as a mismatch, so the 15 → 16 change needs no snapshot
+regeneration in this commit — measured, not assumed.
 
 Marking only *some* occurrences of an identifier is worse than marking none: the counter resolves
 per identifier and halts with `AMBIGUOUS` rather than emitting a count, so every occurrence of a
@@ -205,6 +208,36 @@ until A3 — so no criterion here asserts that any autonomy was granted.
     `worker`, it passes while REQ-AP-011 denies nothing in production — spec.md §F O5 and §E C7 carry
     that, and no criterion here claims otherwise.
 
+- **AC-AP-018** (maps REQ-AP-013) — **Given** the post-change tree, **When** the two pinning
+  assertions run, **Then** the role-value constant `internal/config` exports (REQ-AP-012) is asserted
+  equal to the live CLI role token read **in** `internal/cli` (the non-legacy role-token constant of
+  `factory.go`) **and** equal to the worker-label prefix read **in** `internal/kanban` (the text of
+  `FactoryLaneLabel(1)` before its first `-`), each assertion residing in the package that owns its
+  carrier so that no new import edge and no export is introduced; **and in the same two test files**
+  each assertion additionally fails if that constant equals any retired alias of its carrier
+  (`internal/cli`'s legacy role token; `internal/kanban`'s two legacy prefixes).
+  - Discriminator: three single-sided renames, each of which must turn a test RED — (a) the
+    `internal/config` value constant changed while both carriers are left alone, (b) the CLI role token
+    changed while the constant is left alone, (c) the label prefix changed while the other two are left
+    alone. What makes this more than a tautology is that each assertion compares **two distinct
+    constants in two distinct packages**, so it cannot pass by comparing a value to itself; and the
+    retired-alias limb is what stops a rename that merely swaps the live and legacy spellings — the
+    exact shape that made the earlier `agent` keying pass while protecting nothing — from passing here.
+  - Test: `TestFactoryRoleTokenPinsGuardConstant` in `internal/cli` and
+    `TestFactoryLabelPrefixPinsGuardConstant` in `internal/kanban`.
+  - RED-now: neither the value constant nor either assertion exists —
+    `grep -rn 'MOAI_FACTORY_ROLE' internal cmd pkg` returns 0 rows (spec.md §C.7). **The assertion
+    itself is first OBSERVED at run-phase M2**; nothing in this criterion has been measured at
+    plan-phase, and the three RED mutations above are stated as the discriminator to be exercised at M2,
+    not as runs that happened. Green path: M2.
+  - Measured now, and the reason the two-carrier form is required rather than one: at develop
+    `553e224f3` the two carriers each read `worker` **independently** —
+    `internal/cli/factory.go:59` and `internal/kanban/bootstrap.go:247` — so a criterion naming only one
+    of them would pass while the other drifted.
+  - Recorded with it, not asserted by it: this criterion does not measure what card t1240 stamps, and
+    it does not decide the spelling. The spelling follows card t1256 (spec.md §F O6); what this
+    criterion guarantees is that when it changes, a one-sided change is RED rather than silently green.
+
 ## §C — Wrapper coverage (REQ-AP-005; finding N4)
 
 - **AC-AP-009** (maps REQ-AP-005) — **Given** any value of `workflow.autonomy.mode`, **When** each
@@ -340,13 +373,14 @@ because no such column existed.
 | REQ-AP-010 | AC-AP-013 | a `paths:`-scoped rule file and its template mirror | **this SPEC** — retargeted at v0.1.2; v0.1.1 read A1's template block (spec.md §C.10, §H.5) |
 | REQ-AP-011 | AC-AP-015, AC-AP-016 | the guard's decision with and without the role marker | this SPEC (the guard) + REQ-AP-012 (the marker constant) |
 | REQ-AP-012 | AC-AP-017 | the exported constants in `internal/config/envkeys.go` | this SPEC — which is what removes the dependency on card t1240 |
+| REQ-AP-013 | AC-AP-018 | the role-value constant in `internal/config`, the CLI role token in `internal/cli`, and the worker-label prefix in `internal/kanban` | this SPEC (the assertions); all three carriers already exist — `internal/cli/factory.go:59`, `internal/kanban/bootstrap.go:247`, measured at develop `553e224f3` |
 
 `AC-AP-017` maps two requirements and is listed under both, which is the one place a criterion carries
 a second mapping: REQ-AP-012's limb is the constants' existence, REQ-AP-009's is the closed env-read
 set. They are separate limbs of one test rather than two criteria, because both are assertions about
 the same enumerated call sites.
 
-**Eleven live requirements, fifteen criteria.** Every live requirement has ≥1 criterion; every
+**Twelve live requirements, sixteen criteria.** Every live requirement has ≥1 criterion; every
 criterion maps at least one requirement (three map two, named above); the set difference is empty in
 both directions — no live requirement without a criterion, no criterion without a live requirement.
 `AC-AP-011 [RETIRED]` / `AC-AP-012 [RETIRED]` retired with REQ-AP-006.

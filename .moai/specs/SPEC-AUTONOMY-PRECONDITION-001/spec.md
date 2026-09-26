@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUTONOMY-PRECONDITION-001
 title: "A3 preconditions: serialize develop pushes behind the push-develop slot lease, deny the human contract-signing path at the tool-call boundary, deny the non-interactive sign path and decide from agent-role sessions, and project the contract onto the mission validator"
-version: "0.1.2"
+version: "0.1.3"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -65,6 +65,18 @@ related_specs: [SPEC-AUTONOMY-CONTRACT-001, SPEC-AUTONOMY-ESCALATION-001, SPEC-A
   adopted with three measured corrections.
   (f) **§H was rebuilt by reading `d8926ff9a`** rather than reconstructed from a summary, which is
   what produced its three mis-attributions.
+- **2026-09-26** — v0.1.3. One structural change: **the role value is no longer pinned by a
+  ruling, it is pinned by an assertion** (REQ-AP-013, AC-AP-018). The value has now been renamed
+  twice under this card — `agent`, then `worker` when `agent` turned out to be the retired spelling —
+  and the operator has since decided to rename the factory role vocabulary again, to `lane`, under
+  card **t1256**. The failure each rename risks is the same one and it is silent: a guard keyed on a
+  dead spelling denies nothing **while every criterion still passes**. So this revision does not chase
+  the string. It requires the guard's expected value to be pinned to the same vocabulary the launcher
+  stamps from, by an equality assertion that goes RED when a rename touches one side only; §F O6
+  records that the literal spelling now follows t1256 rather than being decided here. Nothing else
+  changes: the value stays `worker` in this document, because `worker` is what develop `553e224f3`
+  carries and renaming it is t1256's work, not this SPEC's.
+
 - **2026-09-26** — v0.1.1 after two lead corrections. (a) **Citation base re-pinned** to A1
   SPEC v0.5.0 at commit **`67a2f55cb`**; every A1 citation in this document is pinned to that SHA
   <!-- moving-ref-ok: the subject is the citation rule this revision applied, so the branch name is what the sentence is about rather than a coordinate anything is read from -->
@@ -438,6 +450,29 @@ predicate that activates them and a reader must be able to tell which one denied
   accepted — and the guard and its tests shall read those constants rather
   than a repeated literal. No other card is a precondition of REQ-AP-011 being evaluable: a session
   that sets no such variable makes no role claim, and the tests set it themselves.
+- **REQ-AP-013** (Ubiquitous) — The role value the guard expects shall not be an independent
+  literal: the role-value constant REQ-AP-012 defines shall be **pinned to the canonical factory role
+  vocabulary** — both of its two carriers, the role **token** the launcher parses from `-f <value>`
+  (`internal/cli/factory.go`, the live token; its retired alias excluded) and the worker-label
+  **prefix** the session-label producer emits (`internal/kanban/bootstrap.go`, the prefix of
+  `FactoryLaneLabel`; its two retired aliases excluded) — by a mandatory equality assertion that
+  **fails when either side is renamed without the other**. Both carriers are named because they are
+  two constants, not one: an assertion naming only the token would pass while the prefix drifted, and
+  the reverse. The guard, its tests, the value constant, and both carriers shall therefore carry one
+  spelling or the build shall be RED, and no requirement, criterion, or test shall restate that
+  spelling as a literal in place of the constant.
+  - **Why an assertion and not a reference.** Deriving the value by referring to the carrier constant
+    is **not available**: `internal/cli` imports `internal/config` (`factory.go:38`), so
+    `internal/config` — where REQ-AP-012 puts the constant — cannot import `internal/cli` back without
+    an import cycle, and both carriers are unexported besides. The pinning is therefore an assertion
+    **inside each carrier's own package**, where the unexported constant is readable and `internal/config`
+    is already importable: one assertion in `internal/cli`, one in `internal/kanban`, no new import
+    edge, no export, no shared package. This is stated rather than left implicit because "derive from
+    the same source" and "assert equal to the same source" differ in what they guarantee — the
+    assertion guarantees the failure, not the derivation, and the failure is what this requirement is
+    for. Whether a later card prefers a shared home for the role vocabulary is a design question, not
+    a precondition of this requirement.
+
 - **REQ-AP-004** (Unwanted) — When a command carries the word `contract` together with `sign` or
   `decide` but its structure cannot be classified — command substitution, a variable in program
   position, `eval`, an unenumerated wrapper, or nesting deeper than one `-c` level — the guard shall
@@ -563,6 +598,19 @@ it. No entry gates a criterion's evaluability.
   guard would read as healthy while protecting nothing. The operator closed it on exactly that ground:
   the canonical spelling `worker` is the accepted value, and `agent` is not accepted. REQ-AP-012's
   value constant, AC-AP-015's fixture, and the value card t1240 must stamp (§G) all read `worker`.
+- **O6** [DEFERRED to card **t1256**'s SPEC by design — deferred, not undecided.] The literal
+  spelling of the role value. **Current state, measured:** `worker`, and it is carried independently by
+  two constants at develop `553e224f3` — `internal/cli/factory.go:59` (`factoryWorkerRoleToken`, the
+  role token) and `internal/kanban/bootstrap.go:247` (`factoryLaneRole`, the label prefix). Card t1256
+  renames that vocabulary to `lane`, which is the **older** spelling returning rather than a new one:
+  `origin/main` — an ancestor of develop, so simply behind it — still carries `factoryLaneRole = "lane"`
+  and no role-token constant at all, so a reader who greps `main`, finds `lane`, and concludes the
+  rename has already landed would be reading a stale tree rather than a completed change. This SPEC
+  therefore fixes the **binding** (REQ-AP-013, AC-AP-018) and not the string: whatever t1256 makes
+  canonical, the guard's constant follows it or the build is RED. What would close O6: t1256's SPEC
+  naming the canonical value. No criterion here waits on it — every occurrence of `worker` in this
+  document is the current measurement, not a ruling t1256 must honour.
+
 - **O3** Whether the audit line of REQ-AP-002 shares a sink with the existing
   branch-guard audit log (`.moai/logs/branch-guard-audit.log`) or takes its own. Design default:
   its own, named in `design.md`; a shared sink is acceptable if the lead prefers one file.
@@ -675,8 +723,9 @@ out of step at the time and is two revisions stale now — which is the reason t
 of it can only refer to the withdrawn meaning. The criteria `AC-AP-011` and `AC-AP-012`, which
 mapped it, were removed at the same revision and their ids are likewise retired, not renumbered
 into other criteria. No id retired here is re-used by v0.1.2's three new requirements
-(REQ-AP-011, REQ-AP-012) or three new criteria (AC-AP-015, AC-AP-016, AC-AP-017), which continue the
-numbering instead of filling the gap.
+(REQ-AP-011, REQ-AP-012) or three new criteria (AC-AP-015, AC-AP-016, AC-AP-017), nor by v0.1.3's one
+new requirement (REQ-AP-013) and one new criterion (AC-AP-018), all of which continue the numbering
+instead of filling the gap.
 
 ### H.3 Provenance of carried items
 
@@ -689,6 +738,7 @@ Source ids are the **v0.2.1 meanings at `d8926ff9a`** (H.1, first row), read fro
 | REQ-AP-011, REQ-AP-012 | — (lead ruling 09-26 (3)) | new: the role-scoped deny of the non-interactive path and `decide`, and the marker constants that make it evaluable. Not a revival of REQ-AP-006 (H.2) |
 | REQ-AP-005 | — (finding N4) | new requirement; the finding had no requirement |
 | REQ-AP-010 | — (finding N8) | new requirement; narrowed at v0.1.2 to a surface this SPEC creates (§C.10) |
+| REQ-AP-013, AC-AP-018 | — (lead ruling 09-26, rename-immunity) | new at v0.1.3: pin the role value to both carriers of the canonical vocabulary by an equality assertion, so the pending t1256 rename cannot leave the guard keyed on a dead spelling (§F O6) |
 | REQ-AP-008 | O9 / N7, and A1 R8 (`25283ebf8:…/design.md:470-494`) | the projection item, which had no owner; A1's drafted mapping adopted with the three corrections of §C.11 |
 | AC-AP-001, AC-AP-002 | AC-AE-022 | split: deny path, and the unaffected-first-push / off-condition controls |
 | AC-AP-003, AC-AP-004 | AC-AE-023 | split: release, and stale/expired reclaim + fail-open |
