@@ -149,7 +149,10 @@ exercises relative `gitdir:` paths it creates them explicitly.
   old path; and (b) `W_R`, a linked worktree whose `.git` file carries a relative
   `gitdir:` (created with `git worktree add --relative-paths`, or with the `.git`
   file written relative by hand), evaluated while the test process's working
-  directory is an unrelated `t.TempDir()` that is not `W_R`'s parent.
+  directory is one from which `W_R`'s relative `gitdir:` path does **not**
+  resolve to an existing directory — the test asserts this before the call
+  (for example a directory nested two levels below a fresh `t.TempDir()`; a
+  sibling `t.TempDir()` does not qualify, since there the path can resolve).
 
 - **AC-MWU-015 (fail-closed only with worktree evidence; every other root unchanged; REQ-MWU-012).**
   Given a codex seam that produces no verdict in every case below, and — for this
