@@ -51,35 +51,47 @@ func TestSynthesizeReviewOutput_UnknownMethodIsConservative(t *testing.T) {
 	}
 }
 
-// TestSynthesizeReviewOutput_NativeCleanReviewStaysPass is AC-CVS-003.
+// TestSynthesizeReviewOutput_NativeNoSignalBodyInconclusive supersedes
+// AC-CVS-003.
 //
-// The native review path's bullet-less body is codex SAYING there is nothing to
-// block on — a real observation. Reporting it as inconclusive would make it
-// indistinguishable from codex failing to reach a verdict at all, and would mix
-// it into the convergence layer's fail-open fallback.
-func TestSynthesizeReviewOutput_NativeCleanReviewStaysPass(t *testing.T) {
+// AC-CVS-003 read the native path's bullet-less body as codex SAYING there is
+// nothing to block on — the observation that justified the native "pass"
+// default. SPEC-CODEX-PARSER-SHAPE-001 M4 (AC-CPS-004) revises exactly that
+// reading: byte-level indistinguishability (verdict.md §E4) means a body
+// alone cannot carry that observation, so the native request now pins an
+// output format (REQ-CPS-005 as amended) and a body carrying no recognized
+// signal is downgraded to inconclusive. A genuinely clean review states the
+// pinned `Verdict: pass` line — TestCodexNativePinnedPassStaysPass witnesses
+// that class; runTurn still short-circuits a blank body before the
+// synthesizer (REQ-CBR-004), so this unit-level empty-body row documents the
+// synthesizer's own contract only.
+func TestSynthesizeReviewOutput_NativeNoSignalBodyInconclusive(t *testing.T) {
 	cases := map[string]string{
-		"clean review prose": "The change introduces no blocking issues.",
-		"empty body":         "",
+		"no-signal review prose": "The change introduces no blocking issues.",
+		"empty body":             "",
 	}
 	for name, body := range cases {
-		if got := synthesizeReviewOutput(body, codexMethodReviewStart).Verdict; got != "pass" {
-			t.Errorf("%s: native Verdict = %q, want \"pass\"", name, got)
+		if got := synthesizeReviewOutput(body, codexMethodReviewStart).Verdict; got != VerdictInconclusive {
+			t.Errorf("%s: native Verdict = %q, want %q", name, got, VerdictInconclusive)
 		}
 	}
 }
 
-// TestSynthesizeReviewOutput_ModeSplitsTheSameBody is the wiring witness
-// (acceptance.md AC-CVS-003, which names C5 as the mode-wiring witness). C5 is
-// chosen over the empty body because the empty body never reaches the
-// synthesizer in production — runTurn short-circuits it. One body, two modes,
-// two verdicts: that is what proves the mode split is actually wired rather
-// than declared.
-func TestSynthesizeReviewOutput_ModeSplitsTheSameBody(t *testing.T) {
+// TestSynthesizeReviewOutput_UnrecognizedBodyInconclusiveOnBothPaths supersedes
+// the mode-split wiring witness (acceptance.md AC-CVS-003, which named C5).
+// C5 still never reaches the synthesizer in production as a blank body, but
+// since M4 the two paths no longer split on an unrecognized body — both report
+// inconclusive. The split that REMAINS is in the requests, not the
+// synthesizer: each path pins an output format of its own (native:
+// TestCodexNativeRequest_CarriesFormatPin; adversarial:
+// TestCodexAdversarialPrompt_PinsOutputFormat), and bodies following either
+// pin are recognized on both paths (TestCodexAdversarialFormat_IsRecognized,
+// TestCodexNativeFormat_IsRecognized).
+func TestSynthesizeReviewOutput_UnrecognizedBodyInconclusiveOnBothPaths(t *testing.T) {
 	const c5 = "I walked the diff and moved on."
 
-	if got := synthesizeReviewOutput(c5, codexMethodReviewStart).Verdict; got != "pass" {
-		t.Errorf("native: Verdict = %q, want \"pass\"", got)
+	if got := synthesizeReviewOutput(c5, codexMethodReviewStart).Verdict; got != VerdictInconclusive {
+		t.Errorf("native: Verdict = %q, want %q", got, VerdictInconclusive)
 	}
 	if got := synthesizeReviewOutput(c5, codexMethodTurnStart).Verdict; got != VerdictInconclusive {
 		t.Errorf("adversarial: Verdict = %q, want %q", got, VerdictInconclusive)
