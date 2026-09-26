@@ -156,6 +156,49 @@ unused); none in files M2 changed; the last one's only callers on develop were a
 `launch_exec_posix.go`), so it was unused on windows before this card. The windows lint baseline
 itself was not measured on develop (gap).
 
+### M3 — lane handoff CLI and codex relocation (base `5333a9e4d`, M2 commit)
+
+Evidence files (card worktree, gitignored): `.moai/reports/t1242/m3-{mutant-conditional-guards,mutant-unconditional,hook-factory,cli-full,regress}.txt`.
+
+Pre-flight §C.3 re-grep on `5333a9e4d`: every symbol slated for removal
+(`prepareLaneHandoff`, `switchLaneHandoff{Interactive,Headless}`, `bindLaneHandoffHeadless`,
+`recoverLaneHandoff`, `codexThreadRelocation`, `runCodexThreadRelocation`, `laneHandoffAppServer`,
+`DefaultCodexHandoffRelocationTimeout`, `codexMethodThreadFork`, `codexNotifyThreadStarted`) had
+production hits only in the four handoff files, `mcp_codex.go` and `config/defaults.go` — no new
+production caller, M3 proceeds.
+
+Order kept (plan §G): the fixture moved to `factory_handoff_fixture_test.go` (states driven by
+`ReserveHandoff` / `MarkHandoffWTReady`; the target is a real `git worktree add -b WT-lane-handoff`
+on the develop pin) and `TestFactoryLaneHandoffOperatorAbandon` ran green on it, with the eight old
+handoff test files removed but all production handoff files still present. Only then were the four
+production files deleted.
+
+AC-CFR-020 two-cell evidence (E8), mutant = `wtReady` without the `materializeTarget` step:
+- conditional guards (the arrival shape, `if pathExists(target)`): mutant run → all 5 subtests
+  `--- PASS`, `ok` — a missing target passed vacuously (m3-mutant-conditional-guards.txt);
+- unconditional assertions (after M3): the same mutant → `go test` rc=1, verbatim
+  `factory_handoff_abandon_test.go:139: target worktree …/repo/.claude/worktrees/t1082 does not exist`
+  for WT_READY, SWITCH_PENDING_INTERACTIVE, SWITCH_PENDING_HEADLESS (`--- FAIL` ×3), RESERVED
+  `--- PASS` (m3-mutant-unconditional.txt). Mutant reverted; fixture back to green.
+
+Also: `mcp_build_identity_test.go` sweep baseline drops the `factory_lane_handoff_recover.go:212`
+coordinate (file deleted); `TestAuditLagUsesBinlagSeam` `--- PASS`.
+
+| AC | Status | Command | Actual output |
+|----|--------|---------|---------------|
+| AC-CFR-016 | PASS | `grep -rnwE '<AC-016 pattern>' internal cmd pkg --include='*.go'`; `ls internal/cli/factory_lane_handoff*.go`; control `git grep -nwE '<same>' 553e224f3 -- internal \| wc -l` | 0 lines rc=1; "no matches found" rc=1; control `98` |
+| AC-CFR-017 | PASS | `git diff --exit-code develop...HEAD -- internal/factorymsg internal/homestate ':!*_test.go'` (+ working tree) | rc=0 / rc=0 |
+| AC-CFR-018 | PASS | `go test ./internal/factorymsg ./internal/kanban -count=1 -v`; `MOAI_HOME=<scratch> go test ./internal/hook -run 'Factory' -count=1 -v`; cli three-name run; `<bin> factory handoff abandon-lane --help` | `ok` ×2, 579 `--- PASS`; hook `ok … 128.713s`, `--- PASS: TestFactoryLaneHandoffInteractiveStateMachine`, 34 top-level PASS, no `[no tests to run]`; cli 3 × `--- PASS`; help rc=0 |
+| AC-CFR-020 | PASS | `go test ./internal/cli -run '^TestFactoryLaneHandoffOperatorAbandon$' -count=1 -v` | `ok`; PASS for RESERVED, WT_READY, SWITCH_PENDING_INTERACTIVE, SWITCH_PENDING_HEADLESS and the pre-existing `no_handoff_on_slot` (5 subtest lines — the AC's "four" counts the four handoff states; the fifth subtest was kept, not removed); mutant above |
+
+Package: `go test ./internal/cli/ -count=1 -timeout 40m` → `ok  github.com/modu-ai/moai-adk/internal/cli  1200.345s`
+(under `moai slot` `go-test-heavy`; no RESIDUE line). `go test ./internal/config -count=1` → `ok`.
+M1+M2 regression (m3-regress-1..3.txt): every M1/M2 AC test plus the nine AC-CFR-013 names `--- PASS`.
+Builds: darwin / linux / `GOOS=windows GOARCH=amd64` rc=0; `go vet ./internal/cli ./internal/config` rc=0 (darwin, windows).
+Lint: `golangci-lint run --timeout=5m ./internal/cli/... ./internal/config/...` → `0 issues.`;
+`GOOS=windows …` → the same 4 pre-existing issues as M2 (none in an M3 file).
+Mutant script kept as evidence: `.moai/reports/t1242/m3-mutant.py.txt`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
