@@ -4,8 +4,9 @@
 // server and once as a claude.ai connector?
 //
 // Claude Code deduplicates MCP servers only by identical name. A local server
-// named `foo` (project .mcp.json, global ~/.claude/.mcp.json, or user scope)
-// and a claude.ai connector named `claude.ai Foo` have different names and
+// named `foo` (project .mcp.json, global ~/.claude/.mcp.json, user scope, or
+// the project's local scope in the state file) and a claude.ai connector
+// named `claude.ai Foo` have different names and
 // different tool prefixes, so both tool sets load and every tool listing is
 // paid twice in context. "MCP Scope Duplicates" cannot see this because it
 // compares identical names across the two .mcp.json files only.
@@ -60,17 +61,19 @@ func resolveClaudeStatePath(getenv func(string) string, home string) string {
 
 // claudeStateFile is the subset of the Claude Code state file this check reads.
 type claudeStateFile struct {
-	MCPServers               map[string]json.RawMessage `json:"mcpServers"`
-	ClaudeAIMCPEverConnected []string                   `json:"claudeAiMcpEverConnected"`
+	MCPServers               map[string]json.RawMessage    `json:"mcpServers"`
+	ClaudeAIMCPEverConnected []string                      `json:"claudeAiMcpEverConnected"`
 	Projects                 map[string]claudeProjectEntry `json:"projects"`
 }
 
 // claudeProjectEntry is the per-project slice of the state file this check
 // reads. DisabledMcpjsonServers lists .mcp.json servers the user rejected in
-// the approval prompt — Claude Code does not load those.
+// the approval prompt — Claude Code does not load those. MCPServers holds the
+// project's local-scope servers (the default scope of `claude mcp add`).
 type claudeProjectEntry struct {
-	DisabledMCPServers     []string `json:"disabledMcpServers"`
-	DisabledMcpjsonServers []string `json:"disabledMcpjsonServers"`
+	DisabledMCPServers     []string                   `json:"disabledMcpServers"`
+	DisabledMcpjsonServers []string                   `json:"disabledMcpjsonServers"`
+	MCPServers             map[string]json.RawMessage `json:"mcpServers"`
 }
 
 // normalizeMCPProviderKey lowercases and keeps only [a-z0-9], so `context7`,
@@ -119,6 +122,12 @@ func checkMCPProviderDuplicates(projectRoot string, verbose bool) DiagnosticChec
 	}
 	add(parseMCPJSON(filepath.Join(projectRoot, ".mcp.json")), ".mcp.json")
 	add(parseMCPJSON(mcpProviderGlobalMCPPath()), "~/.claude/.mcp.json")
+	entry, _ := projectStateEntry(state, projectRoot)
+	localScope := make(map[string]struct{}, len(entry.MCPServers))
+	for name := range entry.MCPServers {
+		localScope[name] = struct{}{}
+	}
+	add(localScope, "local scope")
 	userScope := make(map[string]struct{}, len(state.MCPServers))
 	for name := range state.MCPServers {
 		userScope[name] = struct{}{}
@@ -126,7 +135,6 @@ func checkMCPProviderDuplicates(projectRoot string, verbose bool) DiagnosticChec
 	add(userScope, "user scope")
 
 	disabled := map[string]bool{}
-	entry, _ := projectStateEntry(state, projectRoot)
 	for _, name := range entry.DisabledMCPServers {
 		disabled[name] = true
 	}

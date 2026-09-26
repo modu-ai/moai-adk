@@ -185,6 +185,30 @@ func TestCheckMCPProviderDuplicates_McpjsonRejectionIsPerName(t *testing.T) {
 	}
 }
 
+func TestCheckMCPProviderDuplicates_LocalScopeServerMatches(t *testing.T) {
+	root, state := setupMCPProviderFixture(t)
+	writeMCPProviderFile(t, state, providerStateWithProject(t, root, `"mcpServers":{"context7":{"command":"npx"}}`))
+
+	check := checkMCPProviderDuplicates(root, false)
+	if check.Status != uikit.CheckWarn {
+		t.Fatalf("Status = %q, want warn; msg=%s", check.Status, check.Message)
+	}
+	if !strings.Contains(check.Message, "context7 (local scope) + claude.ai Context7") {
+		t.Errorf("Message = %q, want the local-scope context7 pair", check.Message)
+	}
+}
+
+func TestCheckMCPProviderDuplicates_LocalScopeDisabledSuppresses(t *testing.T) {
+	root, state := setupMCPProviderFixture(t)
+	writeMCPProviderFile(t, state, providerStateWithProject(t, root,
+		`"mcpServers":{"context7":{"command":"npx"}},"disabledMcpServers":["context7"]`))
+
+	check := checkMCPProviderDuplicates(root, false)
+	if check.Status != uikit.CheckOK {
+		t.Errorf("Status = %q, want ok; msg=%s", check.Status, check.Message)
+	}
+}
+
 func TestCheckMCPProviderDuplicates_NonMatchingNamesOK(t *testing.T) {
 	root, state := setupMCPProviderFixture(t)
 	writeMCPProviderFile(t, filepath.Join(root, ".mcp.json"),
