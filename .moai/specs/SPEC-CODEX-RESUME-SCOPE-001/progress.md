@@ -72,7 +72,7 @@ m1_to_mN_commit_strategy: "M1 구현+테스트+status 전이 1커밋, progress �
 
 ```yaml
 sync_complete_at: 2026-09-26
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash
+sync_commit_sha: 2e0555175   # backfilled after the sync commit landed
 sync_status: complete
 b12_self_test_a: "grep -c SPEC-CODEX-RESUME-SCOPE-001 CHANGELOG.md -> 0 before emission"
 b12_self_test_b: "distinct AC ids in acceptance.md = 15; CHANGELOG entry cites AC-CRS-001..015 (15)"
