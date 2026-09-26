@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-MODEL-INHERIT-001
 title: "Subagents inherit the main session's model and effort — remove per-agent model/effort assignment"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -22,6 +22,7 @@ related_specs: [SPEC-MODEL-PROFILE-MATRIX-001, SPEC-MODEL-PROFILE-MATRIX-002, SP
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-09-26 | manager-spec | Initial draft for card t1246 (operator decision 2026-09-26). Inventory measured at develop `d6992e3a0` (research.md). Run is gated on card t1175 merging to develop. |
 | 0.2.0 | 2026-09-26 | manager-spec | Operator answers Q1–Q6 folded in (progress.md §E.1). The former run-entry halt requirement was folded into the first two requirements to hold the Tier L ceiling. |
+| 0.4.0 | 2026-09-26 | manager-spec | plan-audit iter-2 (FAIL 0.82, `.moai/reports/plan-audit/SPEC-AGENT-MODEL-INHERIT-001-review-2.md`) N1–N9 addressed: strip-step host re-measured and moved after backup+merge on the normal path, with its own backup on the version-matched path (REQ-AMI-014, design D14); rosterguard registry sites bound to removed surfaces assigned per milestone (design D4, plan §G); the local verify-judge effort channel inventoried (design H22) and made visible to AC-AMI-007; test-file consumers added to plan §G; AC-AMI-006 lints the fixture path explicitly; touch set C-collated and extended (research §I); docs residue, agent-authoring residue and profile-setup wording added. Operator decision recorded: the init/update wizard agent model-policy question is deleted (progress.md §E.1 Q7). Counts unchanged: 25 REQ / 25 AC. |
 | 0.3.0 | 2026-09-26 | manager-spec | plan-audit iter-1 (FAIL 0.76, `.moai/reports/plan-audit/SPEC-AGENT-MODEL-INHERIT-001-review-1.md`) D1–D16 addressed. Requirements renumbered to a contiguous REQ-AMI-001..025 (the ids formerly 004..026 are now 003..025; the folded run-entry halt stays inside 001/002). Merge premise corrected from measured `node_merge.go` behaviour (design §C); main-session persistence surface named and the `--model-policy` family made consistent with Q4 (REQ-AMI-015/016, design D13); run-entry touch set committed as a file (research §I); milestones re-sequenced consumer-first so every boundary compiles (plan §F/§G); the dynamic-workflows `[HARD]` clause and stale non-HARD sentences added to design §D; docs-site page set re-measured with a narrowed pattern plus the Q3 keys (52 pages); four live matrix SPECs named with a supersession sentence (§C). |
 
 ---
@@ -52,7 +53,7 @@ mapping, and migrates existing user projects on `moai update`.
 ### B.1 Run entry
 
 - **REQ-AMI-001** (Event-driven): **When** the run phase starts, it shall first evaluate `git merge-base --is-ancestor WT-rules-diet develop` and, on exit 0, absorb develop into this branch and re-measure every inventory count in research.md §B–§J against the absorbed tree before editing any file; **when** that command exits non-zero (card t1175 not merged), it shall halt with a blocker report and edit nothing.
-- **REQ-AMI-002** (Event-driven): **When** the run phase starts, it shall regenerate the touch set with `sh .moai/reports/t1246/touch-set.sh`, compute `git diff --name-only $(git merge-base HEAD WT-role-naming-docs) WT-role-naming-docs`, record both lists and their `comm -12` intersection in progress.md; **when** that intersection is non-empty, the run phase shall halt with a blocker report naming the files and shall edit nothing.
+- **REQ-AMI-002** (Event-driven): **When** the run phase starts, it shall regenerate the touch set with `sh .moai/reports/t1246/touch-set.sh`, compute `git diff --name-only $(git merge-base HEAD WT-role-naming-docs) WT-role-naming-docs`, record both lists and their `LC_ALL=C comm -12` intersection (both lists C-collated) in progress.md; **when** that intersection is non-empty, the run phase shall halt with a blocker report naming the files and shall edit nothing.
 
 ### B.2 Agent definitions
 
@@ -63,7 +64,7 @@ mapping, and migrates existing user projects on `moai update`.
 
 ### B.3 Spawn-time assignment
 
-- **REQ-AMI-007** (Ubiquitous): MoAI doctrine (rules, skills, output styles) shall not instruct the orchestrator or any agent to pass or set a `model` or `effort` value when spawning a subagent, and the dynamic-workflow scripts under `.claude/workflows/` (template and local) shall pass no `model` or `effort` option to `agent()`.
+- **REQ-AMI-007** (Ubiquitous): MoAI doctrine (rules, skills, output styles) shall not instruct the orchestrator or any agent to pass or set a `model` or `effort` value when spawning a subagent, and the dynamic-workflow scripts under `.claude/workflows/` (template and local) shall pass no `model` or `effort` option to `agent()` and accept no effort-carrying argument such as `judge_effort`.
 - **REQ-AMI-008** (Ubiquitous): The `moai` binary shall not provide a per-agent model/effort resolver, a `moai model profile` command, or a per-agent profile matrix.
 - **REQ-AMI-009** (Ubiquitous): The PreToolUse hook shall not observe, audit, advise on, or deny subagent spawns on the basis of their model, and shall not write `.moai/logs/agent-model-audit.jsonl`.
 - **REQ-AMI-010** (Where): **Where** a project's `workflow.yaml` still carries `workflow.agent_model_guard`, loading the configuration shall succeed and the key shall have no effect.
@@ -76,7 +77,7 @@ mapping, and migrates existing user projects on `moai update`.
 ### B.5 Configuration and migration
 
 - **REQ-AMI-013** (Ubiquitous): The template `llm.yaml` shall not carry the `profile`, `profiles`, `harness_agents`, `agent_overrides`, or `performance_tier` keys, the template `workflow.yaml` shall not carry the `workflow_agents`, `model_routing`, or `model_routing_profiles` keys, and neither shall carry their explanatory comment blocks.
-- **REQ-AMI-014** (Event-driven): **When** `moai update` runs on a project whose `llm.yaml` or `workflow.yaml` carries any of the keys in REQ-AMI-013, or whose `workflow.yaml` carries `agent_model_guard`, the update shall, after the configuration merge, remove each such key from the user's file in an explicit strip step, keep the original in the pre-update backup, and list every removed key in the update report — including keys the 3-way merge retained.
+- **REQ-AMI-014** (Event-driven): **When** `moai update` runs on a project whose `llm.yaml` or `workflow.yaml` carries any of the keys in REQ-AMI-013, or whose `workflow.yaml` carries `agent_model_guard`, the update shall remove each such key from the user's file in an explicit strip step that runs after the configuration backup and, where a merge runs, after the configuration merge; the backup shall hold the original keys; every removed key shall appear once in the update report as removed (not as retained); the step shall also run on a version-matched update that skips the template sync, taking its own backup first, and shall not run when the user cancels the merge.
 - **REQ-AMI-015** (Event-driven): **When** `moai init` or `moai update` runs, it shall write neither `llm.profile` nor `llm.performance_tier`, shall not ask the agent model-policy wizard question, and shall leave the main-session model policy exactly where it is persisted today — the preference profile `~/.moai/claude-profiles/<name>/preferences.yaml` key `model_policy`, written by `moai profile setup` and `moai web`.
 - **REQ-AMI-016** (Event-driven): **When** a user passes `--profile`, `--model-policy`, `--high`, `--medium-alias`, or `--low` to `moai init` or `--profile` to `moai update`, the command shall accept the flag, shall emit a deprecation warning stating that subagents now inherit the main session's model and effort and naming `moai profile setup` for the main-session policy, shall complete otherwise unchanged, and shall write neither `llm.profile` nor `llm.performance_tier`.
 
@@ -85,7 +86,7 @@ mapping, and migrates existing user projects on `moai update`.
 - **REQ-AMI-017** (Ubiquitous): The main-session model and effort (`moai cc --model`, the preference-profile `model_policy` and `effort_level`, the launcher-injected effort from `resolveLaunchEffort`) shall resolve exactly as before this SPEC.
 - **REQ-AMI-018** (Ubiquitous): The GLM model alias mapping (`llm.glm.models`) and the session-global GLM reasoning state shall resolve exactly as before this SPEC.
 - **REQ-AMI-019** (Ubiquitous): The cross-model audit pins `workflow.audit.{claude,codex,glm}` shall keep precedence over any default; when no pin is set, the codex and GLM tools shall fall back to their backend default model.
-- **REQ-AMI-020** (Ubiquitous): The retained-agent roster consumed by `internal/harness/rosterguard` and by configuration validation shall have exactly one source of truth that carries no model or effort value.
+- **REQ-AMI-020** (Ubiquitous): The retained-agent roster consumed by `internal/harness/rosterguard` and by configuration validation shall have exactly one source of truth that carries no model or effort value, and every rosterguard registry site anchored on a surface this SPEC removes or rewrites shall be removed or re-pointed in the milestone that removes or rewrites that surface.
 
 ### B.7 Doctrine and build discipline
 
@@ -93,7 +94,7 @@ mapping, and migrates existing user projects on `moai update`.
 - **REQ-AMI-022** (Ubiquitous): Every change to a file with a template mirror shall be made first under `internal/template/templates/`, then in the local copy, with `make build` after the template edits; local-only files (`.claude/agents/harness/*`, `hns-*` skills, dev-only workflows) shall be edited locally only.
 - **REQ-AMI-023** (Ubiquitous): Template edits shall pass the template-neutrality guard — no SPEC IDs, card IDs, internal dates, or single-programming-language bias introduced under `internal/template/templates/**`.
 - **REQ-AMI-024** (Ubiquitous): `TestAlwaysLoadedTokenBudget` shall pass after the change, and progress.md shall record its before and after headroom.
-- **REQ-AMI-025** (Ubiquitous): The docs-site pages matched by the research.md §F docs pattern (52 pages across four locales at `d6992e3a0`, re-measured at run entry) shall be rewritten or removed in one change set, every removed page's URL shall carry a redirect, and the four locales shall keep section parity.
+- **REQ-AMI-025** (Ubiquitous): The docs-site pages in the touch set (60 at `d6992e3a0`: the 52 matched by the research.md §F docs pattern plus the 8 listed explicitly in research.md §I, re-measured at run entry) shall be rewritten or removed in one change set, every removed page's URL shall carry a redirect, and the four locales shall keep section parity.
 
 ## §C Dependencies and superseded work
 

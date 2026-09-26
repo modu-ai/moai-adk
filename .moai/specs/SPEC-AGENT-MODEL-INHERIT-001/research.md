@@ -190,6 +190,28 @@ deprecated flags:
 `grep -rlE -- 'model profile|profile matrix|agent_overrides|harness_agents|agent_model_guard|[Pp]er-[Ss]pawn [Mm]odel|agent-model-audit|workflow_agents|model_routing|performance_tier|--model-policy|moai (init|update)[^|]{0,60}--profile' docs-site/content | wc -l`
 → **52** (en 14, ko 14, ja 12, zh 12). Without the Q3 keys and flags the narrowed pattern gives 40.
 
+Docs residue outside that pattern (plan-audit iter-2 N7), added to the touch set explicitly:
+`docs-site/content/{en,ja,ko,zh}/advanced/harness-v4-builder.md` (generated specialists shown with
+`model:`/`effort:`, e.g. en:70), `docs-site/content/{en,ko}/cost-optimization/_index.md`,
+`docs-site/content/en/multi-llm/_index.md` ("the per-agent model (and effort) assignment table"),
+`docs-site/content/ko/claude-code/foundations/features-overview.md` — 8 pages. `claude-code/agentic/sub-agents.md`
+hits are Claude Code feature examples and stay out of scope.
+
+Local verify-judge effort channel (plan-audit iter-2 N3), local-only (no template mirror):
+`.claude/rules/moai/workflow/verify-judge-effort-contract.md:8-9`, `.claude/workflows/sync-audit-4dim.js:201-208`
+(`args.judge_effort` → `JUDGE_EFFORT` → `effort:` on four `agent()` calls), `.claude/hooks/tests/test-judge-effort-contract.sh`.
+`grep -rlE 'judge_effort|JUDGE_EFFORT' .claude internal/template/templates/.claude` (worktree mirrors excluded) → exactly those
+3 files; the template `sync-audit-4dim.js` carries none. `\b(effort|model)\b` cannot see `judge_effort` (`_` is a
+word character), hence AC-AMI-007(d). A `\b`-free variant of the (c) regex was tried and rejected: the
+shell's `grep` (ugrep) aborts it with "exceeds complexity limits".
+
+agent-authoring residue (N8): `agent-authoring.md:219` ("Control reasoning depth with `effort` …") and
+`:333` (cross-reference to dynamic-workflows § Purpose-driven model+effort selection), both trees.
+
+Profile-setup wording (N9): `internal/cli/wizard/translations.go:444/456/468/480` and
+`internal/cli/profile_setup_translations.go:165/260` label the retained `model_policy` preference
+"Agent model policy — … assigning optimal models to each agent".
+
 ## §G. Always-loaded budget baseline
 
 `go test -count=1 -run TestAlwaysLoadedTokenBudget -v ./internal/config/` at `d6992e3a0`:
@@ -227,15 +249,18 @@ The touch set is a committed file produced by a committed, read-only script:
   doctrine/docs pattern, Go/templ symbol pattern, workflow scripts, harness manifests, and an
   explicit list for files no pattern reaches).
 - Output: `.moai/reports/t1246/touch-set.txt` — `sh .moai/reports/t1246/touch-set.sh > .moai/reports/t1246/touch-set.txt`
-  → exit 0, **238** paths at `d6992e3a0` (22 `.claude/agents`, 2 `.claude/commands`,
-  12 `.claude/rules`, 7 `.claude/skills`, 5 `.claude/workflows`, 52 `docs-site/content`,
-  22 `internal/cli`, 10 `internal/config`, 10 `internal/harness`, 6 `internal/hook`,
-  5 `internal/settings`, 2 `internal/spec`, 52 `internal/template`, 26 `internal/web`, plus the
-  explicit entries).
+  → exit 0, **252** paths at `d6992e3a0` (revision after plan-audit iter-2; iter-1 revision had 238).
+  `cut -d/ -f1-2 touch-set.txt | LC_ALL=C sort | uniq -c`: 22 `.claude/agents`, 2 `.claude/commands`,
+  1 `.claude/hooks`, 12 `.claude/rules`, 8 `.claude/skills`, 5 `.claude/workflows`, 1 `.moai/docs`,
+  2 `.moai/project`, 1 `CHANGELOG.md`, 60 `docs-site/content`, 24 `internal/cli`, 11 `internal/config`,
+  10 `internal/harness`, 6 `internal/hook`, 5 `internal/settings`, 2 `internal/spec`,
+  54 `internal/template`, 26 `internal/web`.
+- Collation: the script sorts with `LC_ALL=C`; `LC_ALL=C sort -c touch-set.txt` → exit 0. The gate
+  must therefore run `LC_ALL=C sort` and `LC_ALL=C comm -12`.
 
 `<merge-base>` is defined as `git merge-base HEAD WT-role-naming-docs` → `e62c3e183` on
 2026-09-26 (branch tip `024b95f77`). Gate as run today:
-`git diff --name-only e62c3e183 WT-role-naming-docs | sort | comm -12 - .moai/reports/t1246/touch-set.txt | wc -l` → **0**.
+`git diff --name-only e62c3e183 WT-role-naming-docs | LC_ALL=C sort | LC_ALL=C comm -12 - .moai/reports/t1246/touch-set.txt | wc -l` → **0**.
 
 t1175 predicate: `git merge-base --is-ancestor WT-rules-diet develop` → exit **1** on 2026-09-26
 (not merged; the gate holds).
@@ -254,6 +279,27 @@ Merge behaviour for keys absent from the new template:
 So the merge never drops the removed keys; the explicit strip step (design D14) is required for
 every row of design §C.
 
+Update ordering (plan-audit iter-2 N1), measured in `internal/cli/update.go` and
+`internal/cli/update_template_sync.go`:
+
+- `update.go:388` `stripRetiredV2DenyEntries` — comment :377-381: "after the --binary / --dry-run
+  early-returns … but BEFORE the version-match short-circuit". It runs before any backup or merge,
+  so it is **not** a valid host for a key strip whose backup must hold the originals.
+- `update.go:493` `runTemplateSyncWithProgress` → `update_template_sync.go:773-776` returns `true`
+  on a version match (no backup, no merge); `:795-799` returns the same `true` when the user cancels
+  the merge prompt; otherwise `runTemplateSyncWithReporter`.
+- Inside the sync: "Backup" step `BackupMoaiConfig` (:539, backup dir `.moai-backups/<timestamp>`,
+  `defs.BackupsDir`), then "Restore Settings" (:610-638): `RestoreMoaiConfigRetained` (:620) returns
+  the retained-key refs, `renderRetainedKeyAdvisory` (:638) prints them.
+- `update.go:524-533` `if syncSkipped { … return nil }` — everything after it ("Post-sync steps")
+  never runs on a version-matched update.
+- Clean-install path: `update_clean_install.go:511` `RestoreMoaiConfig`, then `:554`
+  `stripRetiredV2DenyEntries` — post-merge.
+
+Hence design D14's three hosts: inside "Restore Settings" between :620 and :638 (filtering the
+strip's keys out of the retained list), inside the `syncSkipped` branch for the version-match reason
+only (own backup first), and the clean-install site.
+
 Where the model policy is persisted and read:
 
 | Surface | Writer (measured) | Reader (measured) |
@@ -267,3 +313,23 @@ Where the model policy is persisted and read:
 template file references `.ModelPolicy` (`grep -rln '\.ModelPolicy' internal/template/templates` → 0).
 Conclusion: the init/update flags and the init/update wizard question reach only subagent-side
 keys; the main-session policy lives in the preference profile and is untouched.
+
+## §K. Rosterguard registry sites bound to removed surfaces (plan-audit iter-2 N2)
+
+`grep -nE 'ID: +"|Path: +"' internal/harness/rosterguard/registry.go` at `d6992e3a0`, filtered to
+paths this SPEC removes or rewrites: `profile-matrix-order` (:23) and `profile-matrix-group-membership`
+(:35) → `internal/template/profile_matrix.go`; `config-retained-agent-names` (:48) → `internal/config/profile.go`;
+`profile-matrix-test-expectations` (:91); `v4manifest-agent-tiers` (:107) and `v4manifest-tier-test` (:116);
+`shipped-key-inventory` (:203) → `internal/config/testdata/shipped_key_inventory.yaml`; `template-llm-yaml`
+(:210); `product-md-profile-matrix-size` (:239, CountPattern `(\d+) retained agents x 3 model tiers`)
+→ `.moai/project/product.md:149`; `tech-md-profile-matrix-size` (:254) → `.moai/project/tech.md:17`;
+`web-agentfm-display-rank` (:358) and `-test` (:371); `model-policy-profile-matrix-size` (:432) and
+`-mirror` (:440); numeral exemptions `agentlint-section-marker` (:817) and `web-agentfm-subset-count` (:822).
+Sites on files this SPEC touches but whose anchors it does not remove: `agent-authoring-catalog` (:164,
+BlockStart `### Retained MoAI-custom Agents (` — agent-authoring.md:130, a different section from the
+calibration matrix), `docs-truth-catalog` (:217), `manager-design-catalog-citation` (:575),
+`manager-docs-then-8` / `manager-spec-then-8` (:736-737).
+
+Failure modes if a site outlives its anchor: `check.go:77` "block anchor … not found … (the anchor moved
+or the block was deleted)"; `check.go:168` CountPattern "matched %d times …, want exactly 1".
+Disposition per site and milestone: design.md §F.
