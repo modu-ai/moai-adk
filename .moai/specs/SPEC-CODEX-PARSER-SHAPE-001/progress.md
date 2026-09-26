@@ -27,6 +27,13 @@
   question (keep as written, or revise — spec.md §C.1, REQ-CPS-013); neither is
   taken here. The plan-audit verdict from before this amendment does not cover
   it; a fresh plan-audit is due.
+- 2026-09-26 · v0.2.1 repair (card t1203): plan-audit iter-1
+  (`.moai/reports/t1203/plan-audit.md`, FAIL 0.75) defects D1–D14 addressed in
+  wording and structure only — no new measurement, no candidate chosen. REQ 15 /
+  AC 15, unchanged. The REQ-CPS-010 question is now posed as "is the #1718
+  adversarial outcome acceptable?" and excludes no candidate under either answer
+  (spec.md §C.1). Both Kickoff decisions remain pending. Next: delta plan-audit
+  (iter-2, the last under the Tier M ceiling) limited to D1–D14.
 
 ## §E.2 Run-phase Evidence
 

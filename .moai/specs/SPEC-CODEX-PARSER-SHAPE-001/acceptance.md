@@ -8,6 +8,12 @@
 > and the REQ-CPS-010 decision (AC-CPS-015) trace to
 > `.moai/reports/t1203/verdict.md` (tree `df526c9a9`), cited as `t1203 §N`. The
 > same rule binds it.
+>
+> v0.2.1 (card t1203): repair of plan-audit iter-1 defects D1–D14
+> (`.moai/reports/t1203/plan-audit.md`). The criterion count is unchanged (15).
+> RED-now cells added or re-pinned in v0.2.1 were measured on tree `77b01ef4b`;
+> at measurement time the working tree differed from that commit only in
+> `spec.md` and `plan.md` of this SPEC, which none of those commands reads.
 
 ## §A Gating criteria — satisfied BEFORE run-phase entry
 
@@ -72,29 +78,62 @@ A one-line "same as before" with no body recorded leaves AC-CPS-002 OPEN.
 **Then** candidates (a), (b), (c), and (d) are all present with their measured
 coverage, no one of them has been adopted as the implementation plan, and where
 the plan orders them, it states that the ordering criterion is measured
-failure-shape coverage (verdict.md §E3, §A2; t1203 §1) and nothing else.
+failure-shape coverage (verdict.md §E3, §A2, §A5; t1203 §1) and nothing else,
+names its unit (the failure shape, not the body instance), and applies the same
+test — the candidate's remedy executed on the shape — to all four candidates, so
+that the order follows from the stated counts without further judgement.
 
-### AC-CPS-015 — the REQ-CPS-010 question is decided by the operator and recorded
+A plan that orders the candidates without naming the unit, or that counts a
+shape for one candidate by a weaker test than for another, fails this criterion.
 
-**Given** the plan-phase artifacts present the REQ-CPS-010 conflict (spec.md
-§C.1) with its two options — keep REQ-CPS-010 as written, or revise it,
+### AC-CPS-015 — the REQ-CPS-010 question is answered by the operator and recorded
+
+**Given** the plan-phase artifacts present the §C.1 question — whether the #1718
+adversarial outcome, `inconclusive` with an empty findings list for a body whose
+prose states FAIL, is acceptable — with its two answers (keep REQ-CPS-010 as
+written, or revise it) and with what each candidate changes on the adversarial
+path,
 **When** the Implementation Kickoff Approval gate is passed,
-**Then** `progress.md` carries a line beginning `- REQ-CPS-010 decision:` naming
-the option the operator chose and the reason given, and that line exists before
-the first run-phase commit of any candidate that changes adversarial-path
-behaviour ((d), or an (a) widening for the #1718 shapes).
+**Then** `progress.md` carries exactly one line of the form
+`- REQ-CPS-010 decision: <keep|revise> — reason: <the operator's stated reason> — source: <where the Kickoff answer is recorded>`,
+and the commit that introduced that line is a strict ancestor of the SPEC's first
+run-phase commit — the commit that writes `status: in-progress` into `spec.md`.
 
-A plan-side or agent-side resolution — a line written without the operator's
-choice behind it, or a candidate implemented on the adversarial path before the
-line exists — fails this criterion.
+A plan-side or agent-side answer — a line written without the operator's answer
+behind it, or a run-phase commit that precedes the line — fails this criterion.
+Neither answer excludes a candidate (spec.md §C.1).
 
-- **RED-now.** Command
-  `grep -c '^- REQ-CPS-010 decision:' .moai/specs/SPEC-CODEX-PARSER-SHAPE-001/progress.md`;
-  stdout `0`; exit code `1`; measured on the working tree of this amendment
-  (parent `e0eab2c68`), where §E.1 records the decision as pending and names no
-  option. Red for the stated reason: no decision has been taken.
-- **Green path.** M1 (Kickoff) — the operator's answer is recorded; the same
-  command then prints `1` with exit `0`.
+**Mechanical checks** (paths relative to the repository root; `P` =
+`.moai/specs/SPEC-CODEX-PARSER-SHAPE-001/progress.md`, `S` =
+`.moai/specs/SPEC-CODEX-PARSER-SHAPE-001/spec.md`):
+
+1. Format — `grep -cE '^- REQ-CPS-010 decision: (keep|revise) — reason: .+ — source: .+$' P`
+   prints `1`, exit `0`.
+2. Introducing commit — `git log --format=%H -S'- REQ-CPS-010 decision:' -- P`;
+   the last (oldest) line of its output is `D`.
+3. First run-phase commit — `git log --format=%H -G'^status: in-progress$' -- S`;
+   the last (oldest) line of its output is `R`.
+4. Order — `git merge-base --is-ancestor D R` exits `0`, and `D` ≠ `R`.
+
+**What no check decides.** Whether the line reflects the operator's own answer
+is not mechanically decidable: no command separates a line typed on the
+operator's answer from one an agent wrote without it. The `source` field makes
+the claim reviewable — a reader can open the named record and compare — not
+decidable. The run-phase record states this rather than reporting the format
+check as proof of authorship.
+
+- **RED-now** (tree `77b01ef4b`; `progress.md` unmodified from that commit at
+  measurement time).
+  - Check 1: stdout `0`; exit `1`.
+  - Check 2: stdout empty; exit `0`. The empty output is absence, not a blind
+    probe: the same form with `-S'2026-09-26 · v0.2.0 amendment'` on the same
+    path printed `686b75ebb`, exit `0`.
+  - Red for the stated reason: no answer has been given; §E.1 records the
+    question as pending. The v0.2.1 commit adds no decision line, so the RED
+    holds on it too.
+- **Green path.** M1 (Kickoff) — the operator's answer is recorded; check 1 then
+  prints `1` with exit `0`, and checks 2–4 are run at the first run-phase commit
+  and their outputs recorded in `progress.md` §E.2.
 
 ## §C Behavioural criteria — conditional on the selected candidate
 
@@ -173,57 +212,121 @@ recorded as not-applicable with the selection as the reason. None of them may be
 satisfied by the raw #1718 bodies: those carry another project's absolute paths
 and content and are never committed (REQ-CPS-014).
 
-**The shared RED-now observation (evidence ledger E-1718).** Every criterion
-below cites this ledger entry as its RED-now cell.
+**The shared target observation (evidence ledger E-1718).** AC-CPS-012 and
+AC-CPS-013 cite this entry as their RED-now cell until AC-CPS-011 closes;
+AC-CPS-011 cites it as the output its reductions must reproduce.
 
 ```
 id:       E-1718
 command:  go test -count=1 -v -run '^TestT1203Probe$' ./internal/cli/
 tree:     df526c9a9
 exit:     0
-stdout (verbatim lines, t1203 repro/probe.log; ctrlA lines summarized below):
+stdout (verbatim and complete — t1203 repro/probe.log):
+=== RUN   TestT1203Probe
 PROBE body1 turn/start verdict=inconclusive findings=0 note="" findingsJSON=[]
 PROBE body1 review/start verdict=pass findings=0 note="" findingsJSON=[]
 PROBE body2 turn/start verdict=inconclusive findings=0 note="" findingsJSON=[]
 PROBE body2 review/start verdict=pass findings=0 note="" findingsJSON=[]
+PROBE ctrlA turn/start verdict=fail findings=1 note="" findingsJSON=[{"severity":"P1","title":"broken check — a/b.go:3","body":"broken check — a/b.go:3","file":"a/b.go","line":3,"confidence":0,"recommendation":""}]
+PROBE ctrlA review/start verdict=fail findings=1 note="" findingsJSON=[{"severity":"P1","title":"broken check — a/b.go:3","body":"broken check — a/b.go:3","file":"a/b.go","line":3,"confidence":0,"recommendation":""}]
 PROBE ctrlB turn/start verdict=fail findings=0 note="" findingsJSON=[]
 PROBE ctrlB review/start verdict=fail findings=0 note="" findingsJSON=[]
-positive control: ctrlA turn/start and review/start both verdict=fail findings=1
+--- PASS: TestT1203Probe (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.756s
 ```
 
 [HARD] **Disposition of E-1718.** The probe that produced it was a temporary test
 file deleted after measurement, reading bodies from a session scratch path
-(t1203 §1). It therefore cannot be re-executed on the current tree as written, so
-per verification-completeness §2.1 the criteria below are **regression-guard, not
-release-blocking**, and none is recorded as a pass on the strength of E-1718.
-AC-CPS-011 exists to end that state: once the sanitized reductions are committed
-and observed red on the pre-implementation tree, that observation replaces E-1718
-as the RED-now cell of AC-CPS-012 and AC-CPS-013.
+(t1203 §1). It therefore cannot be re-executed on the current tree as written,
+so per verification-completeness §2.1 no criterion that rests on it as its RED
+is release-blocking, and none is recorded as a pass on the strength of E-1718.
+
+**Guard classification, before and after AC-CPS-011 closes.** AC-CPS-011 exists
+to end the undecidable state; its closure is the transition point.
+
+| Criterion | Before AC-CPS-011 closes | After AC-CPS-011 closes |
+|---|---|---|
+| AC-CPS-011 | **release-blocking** where #1718 is claimed — its own RED-now (fixtures absent) is a single-invocation command re-executable on the current tree | closed |
+| AC-CPS-012 | regression-guard — RED-now is E-1718, not re-executable | **release-blocking** — its RED-now becomes AC-CPS-011's recorded closure observation (command, verbatim stdout, exit code, tree SHA) on the pre-change tree |
+| AC-CPS-013 | regression-guard — same reason | **release-blocking** — same replacement |
+| AC-CPS-014 | regression-guard — RED-now is the population observation, not re-executable | **unchanged: regression-guard.** Its RED cannot be re-executed and AC-CPS-011's fixtures do not replace it, because (d) acts on live codex output, not on fixtures. It is recorded with its live observation, never used as a release gate, and never recorded as a pass on the population figures |
 
 ### AC-CPS-011 — the sanitized reductions reproduce the measured raw output
 
 **Given** a candidate is claimed to address #1718,
-**When** sanitized reductions of both #1718 shapes are committed as fixtures — S1
-(persona greeting opening the verdict line, a localized verdict label, findings in
-a markdown table with bold severity words) and S2 (persona greeting followed by a
-bold `verdict: fail`, findings as bold severity-word bullets carrying a
-`[path:line](<…>)` link) — carrying no absolute user path and no content of the
-originating project, plus S2′ (S2 with the greeting prefix removed, the ctrlB
-analogue),
-**Then**, on the parser **before** any candidate change, S1 and S2 each yield
-`inconclusive` with `findings=0` on turn/start and `pass` with `findings=0` on
-review/start, and S2′ yields `fail` with `findings=0` on both paths — the outputs
-E-1718 recorded for body1, body2, and ctrlB — recorded verbatim with the tree SHA.
+**When** five fixture files are committed under `internal/cli/testdata/codex-1718/`
+— the address is fixed here so every check below has a target; moving it
+requires amending this criterion —
+- `S1.txt` — sanitized reduction of body1: a greeting opens the verdict line, the
+  verdict label is localized (`판정`), findings are a markdown table with bold
+  severity words;
+- `S2.txt` — sanitized reduction of body2: a greeting is followed by a bold
+  `verdict: fail`, findings are bold severity-word bullets carrying a
+  `[path:line](<…>)` link;
+- `S2p.txt` — S2′, the ctrlB analogue: `S2.txt` with the greeting prefix of line 1
+  (the text up to and including the first `, `) removed and nothing else changed;
+- `N1.txt`, `N2.txt` — negative fixtures for AC-CPS-012: prose that mentions a
+  verdict and uses `fail` or `pass` as an ordinary word on the same line without
+  stating a verdict — in N1 the mention opens the line, in N2 it follows a
+  greeting mid-line,
+
+**Then** all of the following hold, each checked by the single-invocation
+command given and recorded verbatim (command, stdout, exit code) with the tree
+SHA:
+
+1. **Fidelity.** On the parser **before** any candidate change, the fixture test
+   synthesizes each file on turn/start and review/start: S1 and S2 each yield
+   `inconclusive` with `findings=0` on turn/start and `pass` with `findings=0` on
+   review/start, and S2′ yields `fail` with `findings=0` on both paths — the
+   outputs E-1718 recorded for body1, body2, and ctrlB. N1 and N2 are
+   synthesized and their outputs recorded, with no expected value: they are the
+   pre-change baseline AC-CPS-012 compares against.
+2. **Structural properties** — so that a reduction with the right outputs but
+   none of the #1718 shape cannot pass. `F` = `internal/cli/testdata/codex-1718`.
+
+   | # | Property | Files | Command | Pass condition |
+   |---|---|---|---|---|
+   | P1 | a greeting precedes the verdict on line 1 | S1, S2 | `grep -nE '^[^[:space:]*#\|>-][^,]*, .*(판정\|[Vv]erdict)' F/<file>` | stdout's first line begins `1:`; exit `0` |
+   | P2 | no verdict label opens any line | S1, S2 | `grep -cE '^[[:space:]]*(\*\*)?([Vv]erdict\|판정)' F/<file>` | stdout `0`; exit `1` |
+   | P3 | the label is localized, not English | S1 | `grep -c '판정' F/S1.txt`, then `grep -ci 'verdict' F/S1.txt` | first ≥ `1`, exit `0`; second `0`, exit `1` |
+   | P4 | findings are table rows with a bold severity word | S1 | `grep -cE '^\|[^\|]*\*\*(Critical\|High\|Medium\|Low)\*\*[^\|]*\|' F/S1.txt` | equals S1's declared finding count, and that count is ≥ `2` |
+   | P5 | findings are bold severity-word bullets with a `[path:line](<…>)` link | S2 | `grep -cE '^- \*\*(Critical\|High\|Medium\|Low) · \[[^]]+:[0-9]+\]\(<[^>]+>\)' F/S2.txt` | equals S2's declared finding count, and that count is ≥ `1` |
+   | P6 | no bracketed-severity bullet anywhere | all five | `grep -cE '^- \[P[0-9]\]' F/<file>` | stdout `0`; exit `1` |
+   | P7 | S2′ differs from S2 only on line 1 | S2, S2p | `diff F/S2.txt F/S2p.txt` | the only hunk header is `1c1`; exit `1`; and the fixture test asserts line 1 of S2p equals line 1 of S2 with its greeting prefix removed |
+   | P8 | negatives mention a verdict and an ordinary `fail`/`pass` on one line, state none | N1, N2 | `grep -cE '[Vv]erdict[^:]* (fail\|pass)' F/<file>`, then `grep -cE '[Vv]erdict[[:space:]]*[:：]\|판정' F/<file>` | first ≥ `1`, exit `0`; second `0`, exit `1` |
+   | P9 | placement of the mention | N1 / N2 | `grep -cE '^[Vv]erdict' F/N1.txt` / `grep -cE '^[^[:space:]][^,]*, .*[Vv]erdict' F/N2.txt` | each ≥ `1`, exit `0` |
+
+   (In the table `\|` stands for a literal `|` in the regex; the recorded command
+   uses a bare `|`.) A declared finding count is the count the fixture test
+   asserts for that file; P4 and P5 tie the structure to that assertion, so a
+   one-line prose fixture fails them.
+3. **Sanitization** — the fixtures carry no absolute user path and no content of
+   the originating project. Command:
+   `grep -rniE '(/Users/|/home/|/private/|/var/folders/|[A-Za-z]:\\Users|cowork|SKILL\.md|test-cases\.yaml|oai-mem-citation|구스|오뽜|영실)' internal/cli/testdata/codex-1718/`
+   — stdout empty; exit `1`. The forbidden list is: absolute user-home and
+   temporary path prefixes (`/Users/`, `/home/`, `/private/`, `/var/folders/`,
+   a drive-letter `\Users`); the originating project's name (`cowork`); the
+   originating files the #1718 findings cite (`SKILL.md`, `test-cases.yaml`); the
+   codex memory-citation tag the raw bodies carry (`oai-mem-citation`); and the
+   persona tokens quoted in t1203 §2. The check must also be observed firing:
+   the same command run against a scratch copy of the directory with one
+   forbidden token inserted prints the matching line, exit `0` — recorded
+   alongside, so an empty result is shown to be absence and not a blind pattern.
 
 A reduction that does not reproduce its raw body's measured output is not a
 reduction of that shape, and no candidate claim may rest on it.
 
-- **RED-now.** E-1718 (the raw bodies' output the reductions must match). The
-  reductions themselves are not yet measured; their own first observation is the
-  green path below.
-- **Green path.** M2 first step, before any recognizer or prompt change: the
-  fixture test is committed and its pre-change output is recorded; this AC closes
-  when that output matches E-1718 row for row.
+- **RED-now.** Command `ls internal/cli/testdata/codex-1718`; stdout empty
+  (stderr `ls: internal/cli/testdata/codex-1718: No such file or directory`);
+  exit `1`; tree `77b01ef4b`. Red for the stated reason: no fixture has been
+  committed, so none of checks 1–3 has a target. This observation is of this
+  criterion, not of the target values it must reproduce (those are E-1718).
+- **Green path.** M2 first step, before any recognizer or prompt change: the five
+  fixtures and the fixture test are committed; checks 1–3 are run on that commit
+  and recorded; this AC closes when check 1 matches E-1718 row for row and
+  checks 2–3 meet their pass conditions. That recorded run becomes the RED-now of
+  AC-CPS-012 and AC-CPS-013 (§C.1 guard classification).
 
 ### AC-CPS-012 — candidate (a) on the #1718 shapes: exact verdict, count, and content
 
@@ -236,14 +339,25 @@ content (AC-CPS-006); and a prose sentence that mentions a verdict without
 stating one is still not read as a verdict (the narrowness contract in
 `codexStatedVerdict`'s comment).
 
+**Negative case (mandatory).** The negative fixtures N1 (mention at line head)
+and N2 (mention after a greeting, mid-line) of AC-CPS-011 — each carrying the word
+`verdict` and an ordinary `fail` or `pass` on one line, with no verdict stated,
+as AC-CPS-011's P8 and P9 check — yield, after the (a) change, exactly the
+verdict and findings count they yielded before it (AC-CPS-011 check 1). A
+widening that reads either as a stated verdict fails this criterion. The two
+placements are both required because an anchor relaxed to admit a greeting
+prefix is exactly what would newly accept N2.
+
 **Partial-drift case (mandatory).** When one finding of S1 or S2 is rewritten
 into a shape the widened recognizers do not accept, the exact-count assertion
 fails; it does not pass on the surviving subset (§A.5, AC-CPS-006).
 
-- **RED-now.** E-1718: the raw counterparts of S1/S2 yield `inconclusive`/0 and
-  `pass`/0, that of S2′ yields `fail`/0 — red against a `fail`/N expectation
-  because neither the greeting-prefixed verdict nor the table / bold-severity
-  findings are recognized (t1203 §2).
+- **RED-now.** Until AC-CPS-011 closes: E-1718 — the raw counterparts of S1/S2
+  yield `inconclusive`/0 and `pass`/0, that of S2′ yields `fail`/0 — red against
+  a `fail`/N expectation because neither the greeting-prefixed verdict nor the
+  table / bold-severity findings are recognized (t1203 §2); regression-guard.
+  From AC-CPS-011's closure: that closure observation on the pre-change tree
+  (§C.1 guard classification); release-blocking.
 - **Green path.** M2 under (a): the three recognizer changes of spec.md §C (#1718
   table) turn the fixture test green; each is measured, none inherited from the
   numbered-list result (plan.md §F M1).
@@ -261,15 +375,16 @@ because no blocking verdict survives on them; and the run-phase record states th
 The second half is load-bearing: it keeps (c)'s ctrlB coverage from being
 reported as #1718 coverage (plan.md §G anti-pattern 6).
 
-- **RED-now.** E-1718: ctrlB yields `fail`/0 on both paths with nothing marking
-  it contradictory — red because (c) does not exist yet.
+- **RED-now.** Until AC-CPS-011 closes: E-1718 — ctrlB yields `fail`/0 on both
+  paths with nothing marking it contradictory — red because (c) does not exist
+  yet; regression-guard. From AC-CPS-011's closure: the S2′ row of that closure
+  observation (§C.1 guard classification); release-blocking.
 - **Green path.** M2 under (c): the contradiction report appears on S2′ and only
   there; the AC-CPS-005 control case still holds.
 
 ### AC-CPS-014 — candidate (d): the pinned format is observed in live output
 
-**Given** candidate (d) is selected and REQ-CPS-010 has been revised
-(AC-CPS-015),
+**Given** candidate (d) is selected and the AC-CPS-015 decision line exists,
 **When** a live adversarial codex review is invoked through the moai MCP path
 against a target known to produce findings, under project instructions that
 previously produced an unrecognized shape,
@@ -277,6 +392,14 @@ previously produced an unrecognized shape,
 tree, and the codex CLI version, and its synthesized output carries a verdict
 other than the unrecognized-body fall-through and a findings list whose exact
 count matches the findings stated in that body.
+
+**Where the record lives.** The verbatim body goes to
+`.moai/reports/<run-card-id>/ac-cps-014-live-body.md` — a gitignored path (the
+repository ignores `.moai/reports/*`), because a body produced under another
+project's instructions carries that project's content (spec.md §E). The committed
+record — `progress.md` §E.2 — carries the invocation, the tree SHA, the codex CLI
+version, the sha256 of the verbatim body file, the synthesized verdict and
+findings count, and the path above; it never carries the body text.
 
 [HARD] **What cannot satisfy this criterion** — the same exclusions as
 AC-CPS-001: a fixture, any test compiled from the tree, reading the prompt text,
@@ -287,7 +410,10 @@ codex's own live output can show it worked.
   codex-gate final bodies, turn/start gave `inconclusive`/0 for 138, and no run
   produced a parsed finding (0 of 284). Recorded in t1203 `repro/pop.log`
   (tree `df526c9a9`, exit 0); same disposition as E-1718 — the probe is not in
-  the tree. Which path each session took is a Gap (spec.md §A.6).
+  the tree — so this criterion is regression-guard before and after AC-CPS-011
+  closes (§C.1 guard classification). Which path each session took, and whether
+  each body is byte-identical to the `reviewText` the parser received, are Gaps
+  (spec.md §A.6).
 - **Green path.** M2 under (d), then one live call recorded as above.
 
 ## §D Preserved-behaviour criteria — apply whichever candidate is selected
@@ -317,12 +443,15 @@ nothing to block on,
 **Given** any candidate has been implemented,
 **When** the adversarial path receives a body matching no recognized signal,
 **Then** it returns `inconclusive`, as it did before the change (verdict.md §E3)
-— no candidate adds or removes work on that path.
+— the handling of a body that no recognizer accepts is unchanged. (A candidate
+may change which bodies are recognized; that is not a change to this handling —
+spec.md §C.1.)
 
-**Scope (v0.2.0).** This criterion applies as written only if the operator keeps
-REQ-CPS-010 at the AC-CPS-015 decision. If REQ-CPS-010 is revised, this criterion
+**Scope (v0.2.0; re-stated v0.2.1).** This criterion applies as written when the
+operator's AC-CPS-015 answer is `keep`. If the answer is `revise`, this criterion
 is re-authored at that decision together with the revised requirement; it is not
-pre-written here, and it is not silently dropped.
+pre-written here, and it is not silently dropped. Neither answer excludes a
+candidate.
 
 ### AC-CPS-010 — the closed axis stays closed
 
@@ -348,8 +477,8 @@ behaviour card t1052 closed.
 | REQ-CPS-010 (adversarial unchanged) | AC-CPS-009 |
 | REQ-CPS-011 (`next_steps` closed) | AC-CPS-010 |
 | REQ-CPS-012 (candidate (d) format pin, live-observed) | AC-CPS-014 |
-| REQ-CPS-013 (REQ-CPS-010 conflict is the operator's decision) | AC-CPS-015 |
-| REQ-CPS-014 (#1718 claims rest on sanitized, fidelity-checked reductions) | AC-CPS-011, AC-CPS-012, AC-CPS-013 |
+| REQ-CPS-013 (the §C.1 question — is the #1718 outcome acceptable — is the operator's) | AC-CPS-015 |
+| REQ-CPS-014 (#1718 claims rest on sanitized, fidelity-checked reductions) | AC-CPS-011 (fidelity, structural properties, sanitization check), AC-CPS-012, AC-CPS-013 |
 
 ## §E Edge cases
 
@@ -375,6 +504,14 @@ behaviour card t1052 closed.
 - **A #1718 reduction reproduces only one of the two paths.** AC-CPS-011 stays
   OPEN for that reduction. Its raw body was measured on both paths (t1203 §1),
   and a half-faithful reduction cannot stand in for it.
+- **A reduction reproduces both outputs but fails a structural property check.**
+  AC-CPS-011 stays OPEN. Matching outputs is necessary, not sufficient: the
+  checks exist because a one-line prose body with no recognized signal falls
+  through to body1's outputs as well — deduced from the spec.md §A.2
+  fall-through, not measured (plan-audit D4).
+- **The sanitization command prints nothing and its firing control was not run.**
+  AC-CPS-011 stays OPEN: an empty result without the control is unmeasured, not
+  clean.
 - **The population is re-measured and the distribution differs.** Record the new
   figures with their tree; do not overwrite the t1203 figures, which remain the
   observation of their day.
@@ -391,11 +528,17 @@ behaviour card t1052 closed.
 
 - [ ] AC-CPS-001 and AC-CPS-002 satisfied and recorded, BEFORE Kickoff approval
 - [ ] AC-CPS-003 satisfied — candidates presented, not pre-selected
-- [ ] AC-CPS-015 satisfied — the REQ-CPS-010 decision recorded before any
-      adversarial-affecting candidate is implemented
-- [ ] Selected candidate's criterion (AC-CPS-004 / 005 / 006 / 014) satisfied;
-      where #1718 is claimed, AC-CPS-011 and the matching AC-CPS-012 / 013 as
-      well; the unselected ones recorded as not-applicable with the selection as
+- [ ] AC-CPS-015 satisfied — the REQ-CPS-010 answer recorded, and its
+      introducing commit an ancestor of the first run-phase commit (checks 1–4);
+      authorship recorded as reviewable, not as mechanically proven
+- [ ] Selected candidate's criterion (AC-CPS-004 / 005 / 006) satisfied
+- [ ] Where #1718 is claimed: AC-CPS-011 satisfied (release-blocking), and then
+      the matching AC-CPS-012 / 013 satisfied as release-blocking criteria on the
+      RED-now AC-CPS-011's closure supplied (§C.1 guard classification)
+- [ ] Where (d) is selected: AC-CPS-014's live observation recorded at the
+      paths it names — as a regression-guard, not a release gate, and not
+      recorded as a pass on the population figures
+- [ ] The unselected criteria recorded as not-applicable with the selection as
       the reason
 - [ ] AC-CPS-007 through AC-CPS-010 satisfied
 - [ ] Every claim in the run-phase evidence traces to a command run in this tree
