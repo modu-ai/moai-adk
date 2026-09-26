@@ -597,6 +597,51 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		}
 	}
 
+	// Push serializer (SPEC-AUTONOMY-PRECONDITION-001 REQ-AP-001/002/007,
+	// design.md §B). Sits after the generic slot-lease guard: that one refuses
+	// any configured heavy command under an opt-in flag, this one serializes
+	// pushes of `develop` behind the push-develop slot lease when a signed
+	// contract carries the action with push_requires_lease — reading the
+	// activation triple from the `moai contract show --json` document, NOT
+	// from workflow.slot_lease.enabled. Inactive until the contract resolver
+	// (SPEC-AUTONOMY-ESCALATION-001 REQ-AE-002) is wired into
+	// pushShowJSONLoader; on the inactive path no record is read and no audit
+	// line is written. Fails OPEN on every uncertainty; a deny requires a
+	// live, unexpired foreign holder, and writes no escalation record.
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 {
+		if show := pushSerializerShow(h.projectRoot()); show != nil {
+			if decision, reason := checkPushSerializer(input, h.projectRoot(), show, pushSerializerBound(h.projectRoot()), os.Stderr); decision == DecisionDeny {
+				slog.Warn("push serializer denied",
+					"tool_name", input.ToolName,
+					"session_id", input.SessionID,
+					"reason", reason,
+				)
+				return NewDenyOutput(reason), nil
+			}
+		}
+	}
+
+	// Contract-sign and contract-decide guard (SPEC-AUTONOMY-PRECONDITION-001
+	// REQ-AP-003/004/005/009/011/012, design.md §C). Independent of
+	// workflow.autonomy.mode: the human-path `moai contract sign` deny is
+	// unconditional in every session (signing happens at an operator
+	// terminal); the non-interactive sign path and `moai contract decide`
+	// are gated on the session's MOAI_FACTORY_ROLE role marker. Fails
+	// CLOSED: a wrongly allowed signature voids the contract model, while a
+	// wrongly denied sign costs the operator one terminal command. Reads no
+	// project state and no record; an allowed call leaves the hook output
+	// byte-identical to the no-guard baseline and writes no audit line.
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 {
+		if decision, reason := checkContractSign(input); decision == DecisionDeny {
+			slog.Warn("contract sign guard denied",
+				"tool_name", input.ToolName,
+				"session_id", input.SessionID,
+				"reason", reason,
+			)
+			return NewDenyOutput(reason), nil
+		}
+	}
+
 	// Handle Write and Edit tools
 	if (input.ToolName == "Write" || input.ToolName == "Edit") && len(input.ToolInput) > 0 {
 		// Harness-learner FROZEN zone guard (Vision §3.4, W3 first implementer).
