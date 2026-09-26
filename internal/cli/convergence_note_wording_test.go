@@ -66,6 +66,9 @@ func TestConvergenceNoteMatchesBlockDecision(t *testing.T) {
 		if !strings.Contains(r.ResidualRiskNote, "required gate unmet") {
 			t.Errorf("residual_risk_note = %q, want the unmet gate named", r.ResidualRiskNote)
 		}
+		if !strings.Contains(r.ResidualRiskNote, "cross-model disagreement: pass=[claude(required)] fail=[glm(advisory)]") {
+			t.Errorf("residual_risk_note = %q, want the split kept without the qualifier", r.ResidualRiskNote)
+		}
 		if strings.Contains(r.ResidualRiskNote, "NOT a block") {
 			t.Errorf("residual_risk_note = %q, must not contain %q on a failing verdict", r.ResidualRiskNote, "NOT a block")
 		}

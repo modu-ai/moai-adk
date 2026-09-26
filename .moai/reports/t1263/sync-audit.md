@@ -107,3 +107,122 @@ exit=1
 - F1·F2의 인접 경로에서 Stop 사유가 여전히 불완전하거나 혼동을 줄 수 있다. 차단 동작 자체는 옳고 문구만의 문제다.
 - F3 때문에 P3 경로의 문구 회귀는 현재 테스트로 잡히지 않는다.
 - 노트 문자열을 파싱하는 외부 소비자(스크립트·대시보드)가 `cross-model disagreement (advisory` 접두를 키로 쓰고 있었다면 분할 사례에서 매칭이 바뀐다. 저장소 안에서는 그런 소비자를 찾지 못했다.
+
+## 재감사 (F2 한정, a0b3f1ece)
+
+- 범위: `git diff 0062a1e7d a0b3f1ece` 만 본다(`internal/cli/mcp_convergence.go` +9/−3, `internal/cli/convergence_note_wording_test.go` +21). F1과 이 diff 밖의 것은 다시 감사하지 않았다.
+- 일자: 2026-09-26, 감사자: sync-auditor (소스 읽기 전용)
+
+### F2 판정: 닫힘
+
+수정 내용은 두 가지다. `describeDisagreement` 의 advisory 문구를 상수 `advisoryDisagreementQualifier` (`" (advisory, NOT a block)"`)로 뽑았고, `enforceRequiredGateUnmet` 가 overall을 fail로 뒤집을 때 앞선 노트에서 그 상수를 첫 번째 한 번 지운다(`strings.Replace(…, 1)`). 분할 내용 자체는 남고, 게이트 라벨 `glm(advisory)` 이 목록에 그대로 있어 어느 백엔드가 advisory였는지도 잃지 않는다.
+
+**`enforceRequiredGateUnmet` 가 받을 수 있는 노트 모양 전부에서 확인했다.** 호출자는 `runMultiAudit` 한 곳(`mcp_convergence.go:762`)이고 입력은 곧바로 앞의 `converge(verdicts)` 결과다. 그 사이에 노트를 고치는 코드는 없다. 오버레이로 프로브 테스트를 주입해 각 모양의 전·후를 관측했다(트리 무변경).
+
+| 모양 | 전 (overall, 상수 출현 수) | 후 (overall, 상수 출현 수) | 앞선 노트 내용 보존 |
+|---|---|---|---|
+| advisory 전용 분할 | pass, 1 | fail, 0 | 보존 |
+| advisory 분할 + synthesis note 2건 | pass, 1 | fail, 0 | 보존 (synthesis 절 원문 유지) |
+| 빈 노트 | pass, 0 | fail, 0 | 해당 없음 — `" \| "` 없이 미충족 절만 |
+| required 분할 (상수 없음) | fail, 0 | fail, 0 | 바이트 그대로 |
+| 일반 불일치 문구 (synthesis만) | pass, 0 | fail, 0 | 바이트 그대로 |
+
+**상수가 두 번 나올 수 있는가 — 없다.** `describeDisagreement` 는 `converge` 한 번에 한 번만 불리고 노트의 맨 앞에 온다(`mcp_convergence.go:278-292`). 뒤에 붙는 것은 synthesis note뿐인데, 비테스트 코드에서 그 값을 만드는 곳은 `describeSignalDivergence`(`mcp_codex.go:1758-1771`) 하나이고 형식이 `"codex signals diverged: <source>=<verdict>, …; adopted <verdict>"` 로 고정돼 상수를 담을 수 없다. 따라서 첫 번째 한 번만 지우는 `Replace(…, 1)` 로 충분하고, 그 한 번은 늘 `describeDisagreement` 가 쓴 자리다. 프로브에서도 모든 모양의 출현 수가 0 또는 1이었다.
+
+**남은 발신처.** 비테스트 Go 코드에서 `NOT a block` 을 담은 것은 상수 선언(`mcp_convergence.go:447`)과 `converge` doc 주석의 case 4 설명(`:179`)뿐이다. 주석은 `converge` 단독 동작으로서는 사실이고, 바로 아래 `:185-188` 이 `enforceRequiredGateUnmet` 가 결과를 덮을 수 있음을 밝힌다. 노트를 내보내는 경로는 이제 상수 하나를 거친다.
+
+### 새 서브테스트의 RED/GREEN
+
+`required gate unmet flips advisory note` 는 상수가 아니라 리터럴 `"NOT a block"` 으로 단언하므로, 상수 이름이나 값을 바꾸는 회귀도 잡는다. `0062a1e7d` 의 `mcp_convergence.go` 로 오버레이하면 이 서브테스트만 실패하고 나머지 세 서브테스트는 통과한다 — 테스트가 이 수정 하나를 가른다는 뜻이다.
+
+### 발견 사항 (재감사 diff 한정)
+
+- **F6** [Low] [optional] `internal/cli/convergence_note_wording_test.go:56-72` — 새 서브테스트는 미충족 절이 있고 `NOT a block` 이 없음만 단언한다. 앞선 노트를 통째로 버리는 회귀(예: `note += ""`)도 통과한다. 이번 수정의 목적은 "분할은 남기고 문구만 뺀다"이므로 그 절반은 고정되지 않았다. 신뢰도: 높음(단언 목록을 읽어 확인, 변이 실행은 하지 않음). — Required fix: `wantIn` 에 `"cross-model disagreement: pass=[claude(required)] fail=[glm(advisory)]"` 한 줄을 추가한다.
+
+blocking 발견 사항은 없다.
+
+### 갱신된 점수와 판정
+
+| 차원 | 이전 | 재감사 후 | 근거 |
+|---|---|---|---|
+| Functionality (40%) | 90 | 93 | P7(F2) 해소, 5개 노트 모양 전부 관측. F1은 재감사하지 않았으므로 감점 유지 |
+| Security (25%) | 100 | 100 | 변경은 상수 추출과 문자열 치환 하나. 입력 표면 없음 |
+| Craft (20%) | 85 | 85 | RED 재현 확인(+), F6 신규(−). F3·F4는 이 범위에서 재확인하지 않았다 |
+| Consistency (15%) | 92 | 92 | 상수 도입이 문구 단일 출처를 만든다. 기존 서식과 같다 |
+
+가중 점수 **93.0**, 조화 평균 **92.2**.
+
+**종합 판정: PASS-WITH-DEBT** — must-pass(Functionality·Security) 통과, F2 닫힘. 부채로 남는 것은 이번 재감사가 다루지 않은 F1(직전 보고 기준 미해소)과 optional F6이다.
+
+### Claim / Evidence / Baseline / Gaps / Residual-risk
+
+**Claim**
+1. F2가 닫혔다 — 명시 required 게이트 미충족으로 fail로 뒤집힌 결과의 노트에 `NOT a block` 이 남지 않는다.
+2. 상수는 노트에 많아야 한 번 나오므로 `Replace(…, 1)` 로 빠짐없이 지워진다.
+3. 새 서브테스트는 `0062a1e7d` 소스에서 실패하고 HEAD에서 통과한다.
+4. 비테스트 코드에서 이 문구를 노트로 내보내는 곳은 상수 하나뿐이다.
+
+**Evidence** (이 실행, 이 트리에서 관측한 원문)
+
+```
+$ unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED GIT_DIR GIT_WORK_TREE && go test -count=1 -run 'TestConvergence|Convergence|Disagree|RequiredGate|GateUnmet|MultiReview|AuditMulti|Participant|Divergence' ./internal/cli/
+ok  	github.com/modu-ai/moai-adk/internal/cli	3.431s
+exit=0
+
+$ unset … && go vet ./internal/cli/
+exit=0
+(출력 0바이트)
+```
+
+RED 재현(`git show 0062a1e7d:internal/cli/mcp_convergence.go` 를 scratchpad로 꺼내 `-overlay` 로 대체):
+
+```
+=== RUN   TestConvergenceNoteMatchesBlockDecision/required_gate_unmet_flips_advisory_note
+    convergence_note_wording_test.go:70: residual_risk_note = "required gate unmet (explicitly configured required, no verdict): codex | cross-model disagreement (advisory, NOT a block): pass=[claude(required)] fail=[glm(advisory)]", must not contain "NOT a block" on a failing verdict
+--- FAIL: TestConvergenceNoteMatchesBlockDecision (0.00s)
+    --- FAIL: TestConvergenceNoteMatchesBlockDecision/required_gate_unmet_flips_advisory_note (0.00s)
+    --- PASS: TestConvergenceNoteMatchesBlockDecision/required_split_blocks (0.00s)
+    --- PASS: TestConvergenceNoteMatchesBlockDecision/required_fail_against_advisory_pass_blocks (0.00s)
+    --- PASS: TestConvergenceNoteMatchesBlockDecision/advisory-only_conflict_does_not_block (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.595s
+exit=1
+```
+
+노트 모양 프로브(HEAD, 오버레이로 `zz_f2_probe_test.go` 추가, `-run 'TestZZF2ProbeNoteShapes|TestConvergenceNoteMatchesBlockDecision' -v`):
+
+```
+[advisory-only split]
+  before(overall=pass, qualifierCount=1): "cross-model disagreement (advisory, NOT a block): pass=[claude(required)] fail=[glm(advisory)]"
+  after (overall=fail, qualifierCount=0): "required gate unmet (explicitly configured required, no verdict): codex | cross-model disagreement: pass=[claude(required)] fail=[glm(advisory)]"
+[advisory split + synthesis notes]
+  before(overall=pass, qualifierCount=1): "cross-model disagreement (advisory, NOT a block): pass=[claude(required)] fail=[glm(advisory)] | claude: claude signals diverged: a=pass, b=fail; adopted pass | codex: codex signals diverged: x=pass, y=fail; adopted inconclusive"
+  after (overall=fail, qualifierCount=0): "required gate unmet (explicitly configured required, no verdict): codex | cross-model disagreement: pass=[claude(required)] fail=[glm(advisory)] | claude: claude signals diverged: a=pass, b=fail; adopted pass | codex: codex signals diverged: x=pass, y=fail; adopted inconclusive"
+[empty note]
+  before(overall=pass, qualifierCount=0): ""
+  after (overall=fail, qualifierCount=0): "required gate unmet (explicitly configured required, no verdict): codex"
+[required split (no qualifier)]
+  before(overall=fail, qualifierCount=0): "required-backend FAIL: glm; cross-model disagreement: pass=[claude(required)] fail=[glm(required)]"
+  after (overall=fail, qualifierCount=0): "required gate unmet (explicitly configured required, no verdict): codex | required-backend FAIL: glm; cross-model disagreement: pass=[claude(required)] fail=[glm(required)]"
+[generic disagreement (synthesis only)]
+  before(overall=pass, qualifierCount=0): "cross-model disagreement detected; see per_backend_verdicts for details | claude: claude signals diverged: a=pass, b=fail; adopted pass"
+  after (overall=fail, qualifierCount=0): "required gate unmet (explicitly configured required, no verdict): codex | cross-model disagreement detected; see per_backend_verdicts for details | claude: claude signals diverged: a=pass, b=fail; adopted pass"
+--- PASS: TestZZF2ProbeNoteShapes (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.905s
+exit=0
+```
+
+남은 발신처(`grep -rn 'advisory, NOT\|NOT a block' internal pkg cmd`, 템플릿 제외) — 비테스트 적중은 `internal/cli/mcp_convergence.go:179`(doc 주석)과 `:447`(상수 선언) 두 줄뿐이다.
+
+**Baseline-attribution**: HEAD `a0b3f1ece` (브랜치 `WT-review-gate-wording`, 측정 시점 `git status --short` 출력 없음), 비교 기준 `0062a1e7d`. 모든 go 명령은 워크트리 `.claude/worktrees/t1263` 에서 env 스크럽과 한 복합 호출로 실행했다. 옛 소스·오버레이 JSON·프로브 테스트는 세션 scratchpad(`…/scratchpad/f2/`)에만 있고 트리에는 쓰지 않았다. 이 절을 덧붙인 것이 이 재감사가 트리에 남긴 유일한 변경이다.
+
+**Gaps**
+- F1, 그리고 직전 보고의 F3·F4·F5가 `0062a1e7d` 에서 처리됐는지는 재확인하지 않았다(지시 범위 밖).
+- `runMultiAudit` 의 `gateAssumedNote` 접두(`mcp_convergence.go:763-765`)가 붙는 경로는 프로브하지 않았다. 그 접두는 치환 뒤에 앞에 붙으므로 이번 수정과 상호작용하지 않는다고 코드로만 판단했다.
+- F6 는 단언 목록을 읽어 판단했고 변이 테스트로 재현하지 않았다.
+- `./internal/cli/` 전체 스위트, `golangci-lint`, darwin 외 플랫폼은 돌리지 않았다(판정은 develop CI 몫).
+- 교차 모델 감사(`audit_multi`)는 호출하지 않았다 — 한 함수의 문자열 치환에 대한 범위 한정 재감사이고, 동작은 프로브로 직접 관측했다.
+
+**Residual-risk**
+- 앞으로 synthesis note를 만드는 새 생산자가 자유 텍스트를 싣게 되면, 상수가 두 번 나오거나 synthesis 쪽 문구가 대신 지워질 수 있다. 지금은 생산자가 하나이고 형식이 고정돼 있다.
+- F6 때문에 "분할 내용 보존" 쪽 회귀는 현재 테스트로 잡히지 않는다.
+- 노트 문자열을 키로 쓰는 외부 소비자가 있다면 fail 결과에서 `(advisory, NOT a block)` 이 사라지는 것이 매칭을 바꾼다. 저장소 안에서는 그런 소비자를 찾지 못했다(직전 보고와 같다).

@@ -29,3 +29,11 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	0.791s
 ## 잔여 위험 / 후속 (기존 결함, 이 카드 범위 밖)
 - sync-audit F1: 분할 없는 필수 FAIL 에 synthesis note 가 붙으면 노트가 실패 백엔드 이름 없이 `cross-model disagreement detected…` 로 나온다.
 - sync-audit F2: `enforceRequiredGateUnmet` 가 overall 을 fail 로 뒤집어도 뒤에 `(advisory, NOT a block)` 이 남는다.
+
+## 추가 (리드 지시 — 감사 F2 를 이 카드에서 닫음)
+- 원인: `enforceRequiredGateUnmet` 가 overall 을 fail 로 뒤집은 뒤 앞선 노트를 그대로 붙여 "(advisory, NOT a block)" 이 남았다.
+- 재현: 서브테스트 `required gate unmet flips advisory note` 가 `0062a1e7d` 에서 RED (`… | cross-model disagreement (advisory, NOT a block): pass=[claude(required)] fail=[glm(advisory)]`).
+- 수리 `a0b3f1ece`: 문구를 상수 `advisoryDisagreementQualifier` 로 묶고 뒤집을 때 제거(분할 내용은 유지). 재감사 F6 반영 — 분할 유지 단언 추가.
+- 한정 재감사(F2): 닫힘, PASS-WITH-DEBT 93.0 (조화 92.2) — sync-audit.md 「재감사 (F2 한정, a0b3f1ece)」.
+- 검증: `go test -count=1 -run 'TestConvergence|Convergence|Disagree|RequiredGate|GateUnmet|MultiReview|AuditMulti|Participant|Divergence' ./internal/cli/` → ok · `golangci-lint` 0 · windows build 0.
+- 남은 부채: 감사 F1 (리드 후속 후보).
