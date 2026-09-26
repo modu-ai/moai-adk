@@ -27,8 +27,12 @@ import (
 )
 
 // integrationLockAuditRelPath is the integration lock's audit log, relative to
-// the handler's project root. It holds only unclassifiable-command lines; the
-// guard's other fail-open paths keep writing their stderr advisories.
+// the handler's project root. While a live foreign hold exists it records
+// EVERY unclassifiable PowerShell command observed, whether or not it is
+// merge-shaped (measured forms: `iex "git status"` and
+// `Start-Process git -ArgumentList 'log'` are both logged and both allowed —
+// SPEC-HOOK-GUARD-POWERSHELL-FORMS-001 REQ-HGF-009); the guard's other
+// fail-open paths keep writing their stderr advisories.
 const integrationLockAuditRelPath = ".moai/logs/integration-lock-audit.log"
 
 // Construct names recorded in an unclassifiable audit line.
@@ -131,8 +135,19 @@ func isPowerShellExecutable(tok string) bool {
 	return base == "pwsh" || base == "powershell"
 }
 
-// powerShellParameterName strips a parameter prefix (-, --, or /) and any
-// attached ":value", returning the lower-cased name.
+// unicodeDashPrefixes are the Unicode dash characters a parameter may wear.
+// pwsh's own acceptance is measured for U+2013 (–enc accepted, progress.md
+// §E.2); U+2014 and U+2010 join the same normalization under this file's
+// err-wide over-match policy — an over-match costs one audit line and never
+// a deny, so normalizing the unmeasured siblings is the documented superset
+// REQ-HGF-011 allows.
+var unicodeDashPrefixes = []string{"–", "—", "‐"} // U+2013, U+2014, U+2010
+
+// powerShellParameterName strips a parameter prefix (-, --, /, or a Unicode
+// dash) and any attached ":value", returning the lower-cased name. The
+// attached ":value" form is cut even though pwsh itself rejects
+// `-enc:<payload>` as a script-file argument (M0 row 12): the cut is
+// prefix-agnostic and over-matching costs one audit line, never a deny.
 func powerShellParameterName(arg string) (string, bool) {
 	var name string
 	switch {
@@ -141,7 +156,15 @@ func powerShellParameterName(arg string) (string, bool) {
 	case strings.HasPrefix(arg, "-"), strings.HasPrefix(arg, "/"):
 		name = arg[1:]
 	default:
-		return "", false
+		for _, d := range unicodeDashPrefixes {
+			if strings.HasPrefix(arg, d) {
+				name = arg[len(d):]
+				break
+			}
+		}
+		if name == "" {
+			return "", false
+		}
 	}
 	name, _, _ = strings.Cut(name, ":")
 	return strings.ToLower(name), name != ""
