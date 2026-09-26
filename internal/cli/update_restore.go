@@ -64,6 +64,13 @@ func runUpdateRestore(projectRoot, backupDir string, out io.Writer) error {
 	// it. No template is deployed here, so the snapshot the last deploy wrote
 	// stays the most recent render and is left as it is.
 
+	// Card t1276 F3: the restore rewrote .moai/config/sections/*.yaml from the
+	// backup, while the failed run's deploy step may already have saved a
+	// manifest carrying the NEW hashes — re-record the restored content so the
+	// manifest matches the tree and the restored files are not frozen
+	// user_modified on the next init --force.
+	retrackSectionFiles(projectRoot, out)
+
 	_, _ = fmt.Fprintf(out, "Restored .moai/config from %s\n", absBackup)
 	return nil
 }

@@ -10,6 +10,7 @@ package cli
 // preserved, user-owned entries untouched, absent files skipped.
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -178,5 +179,110 @@ func TestRetrackSectionFilesCoversSectionDirectory(t *testing.T) {
 	}
 	if entry.CurrentHash != current {
 		t.Errorf("CurrentHash = %q, want on-disk %q", entry.CurrentHash, current)
+	}
+}
+
+// --- card t1276 F2: skill-mirror repair retracks the published files it restores.
+
+func TestRepairSkillMirrorRetracksPublished(t *testing.T) {
+	root := mirrorHealDeployedProject(t)
+
+	// Pick the lexicographically first published artifact the deploy produced.
+	published := embeddedPublishedSKILLs(t)
+	var rel string
+	for r := range published {
+		if rel == "" || r < rel {
+			rel = r
+		}
+	}
+	if rel == "" {
+		t.Skip("embedded template set carries no published skills")
+	}
+
+	// Simulate a stale manifest hash for that path (the pre-t1275 state any
+	// real project can carry), then delete the file so the repair restores it.
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	if _, ok := mgr.GetEntry(rel); !ok {
+		t.Fatalf("fixture precondition: %s not tracked by the deploy", rel)
+	}
+	files := mgr.Manifest().Files
+	entry := files[rel]
+	entry.CurrentHash = "sha256:stale-pre-t1275"
+	files[rel] = entry
+	if err := mgr.Save(); err != nil {
+		t.Fatalf("poison manifest: %v", err)
+	}
+
+	if err := os.Remove(filepath.Join(root, filepath.FromSlash(rel))); err != nil {
+		t.Fatalf("delete published skill: %v", err)
+	}
+
+	runRepairAt(t, root)
+
+	path := filepath.Join(root, filepath.FromSlash(rel))
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("repair did not restore %s: %v", rel, err)
+	}
+	reloaded := manifest.NewManager()
+	if _, err := reloaded.Load(root); err != nil {
+		t.Fatalf("reload manifest: %v", err)
+	}
+	got, ok := reloaded.GetEntry(rel)
+	if !ok {
+		t.Fatal("entry vanished from the manifest")
+	}
+	if got.Provenance != manifest.TemplateManaged {
+		t.Errorf("provenance = %q, want template_managed", got.Provenance)
+	}
+	current, err := manifest.HashFile(path)
+	if err != nil {
+		t.Fatalf("hash restored file: %v", err)
+	}
+	if got.CurrentHash != current {
+		t.Errorf("CurrentHash = %q after repair, want the restored on-disk %q — mirror repair must retrack what it restores (t1276 F2)", got.CurrentHash, current)
+	}
+}
+
+// --- card t1276 F3: the user-invocable restore entry point retracks the
+// sections it rewrote from the backup.
+
+func TestRunUpdateRestoreRetracksSections(t *testing.T) {
+	root, backupDir := newRestoreFixture(t)
+
+	// Reproduce the failure window: a run whose deploy saved the NEW hashes,
+	// then the restore puts the backup's older content back on disk.
+	sections := filepath.Join(root, ".moai", "config", "sections", "user.yaml")
+	if err := os.WriteFile(sections, []byte("user:\n  name: new-version-value\n"), 0o644); err != nil {
+		t.Fatalf("rewrite section: %v", err)
+	}
+	mgr := retrackFixture(t, root)
+	if err := mgr.Track(".moai/config/sections/user.yaml", manifest.TemplateManaged, "sha256:tpl"); err != nil {
+		t.Fatalf("track v2: %v", err)
+	}
+	if err := mgr.Save(); err != nil {
+		t.Fatalf("save v2 manifest: %v", err)
+	}
+
+	if err := runUpdateRestore(root, backupDir, io.Discard); err != nil {
+		t.Fatalf("restore: %v", err)
+	}
+
+	reloaded := manifest.NewManager()
+	if _, err := reloaded.Load(root); err != nil {
+		t.Fatalf("reload manifest: %v", err)
+	}
+	entry, ok := reloaded.GetEntry(".moai/config/sections/user.yaml")
+	if !ok {
+		t.Fatal("entry missing after restore")
+	}
+	current, err := manifest.HashFile(sections)
+	if err != nil {
+		t.Fatalf("hash restored section: %v", err)
+	}
+	if entry.CurrentHash != current {
+		t.Errorf("CurrentHash = %q after restore, want the restored on-disk %q — restore must retrack what it rewrote (t1276 F3)", entry.CurrentHash, current)
 	}
 }

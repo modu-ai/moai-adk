@@ -65,6 +65,19 @@ func retrackManifestFiles(projectRoot string, mgr manifest.Manager, errOut io.Wr
 	return mgr.Save()
 }
 
+// retrackPaths is the self-loading form of retrackManifestFiles for call
+// sites that do not already hold a manifest manager (the post-sync steps and
+// the best-effort repair paths). Same contract: only template_managed entries
+// with an existing manifest record are re-recorded.
+func retrackPaths(projectRoot string, errOut io.Writer, rels []string) error {
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(projectRoot); err != nil {
+		// No loadable manifest means nothing to retrack against.
+		return nil
+	}
+	return retrackManifestFiles(projectRoot, mgr, errOut, rels)
+}
+
 // retrackSectionFiles retracks every .moai/config/sections/*.yaml the project
 // currently carries. The Restore Settings step rewrites that directory, and
 // profile.SyncToProjectConfig rewrites a subset of it afterwards — both after
