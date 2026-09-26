@@ -134,6 +134,33 @@ _<pending run-phase>_
 
 _<pending run-phase>_
 
+## §F Phase 4 Mode Selection
+
+Recorded by the lane orchestrator (worker-62) before the first run-phase spawn, 2026-09-26.
+
+Input parameters: tier M · scope ~12 files across internal/cli, internal/hook (+tests), a new
+`.claude/rules` file + template mirror, internal/mission projection, docs · domains 4 (Go cli/hook
+guard, rules+template, mission projection, docs) · language mix Go + markdown + shell · concurrency
+benefit LOW (coding-heavy; milestone dependencies M1→M2→M3, M4 reads A1's landed surface) ·
+agent-team prereqs: not requested.
+
+| Mode | Selected | Rationale |
+|------|----------|-----------|
+| direct | no | multi-file Go implementation, far beyond typo/single-line |
+| serial | **yes** | coding-heavy work per Anthropic's coding-task parallelism caveat; single-writer-per-tree bars parallel write spawns here; M2's guard tests build on M1's lease record, M3 documents M2's deny |
+| fanout | no | write collision risk in one tree (one writer per working tree); not research |
+| sweep | no | new-code semantic work, not a ≥30-file single uniform mechanical transform |
+
+Decision: serial — one manager-develop spawn per milestone (M1→M4), orchestrator verifies evidence
+between spawns.
+
+Justification: the milestones are sequentially dependent and touch shared packages
+(internal/hook guard tests assert against M1's serializer lease record), so parallel write spawns
+would collide on one tree. Serial also matches the single-spawn guidance for coding tasks. Kickoff
+cleared via operator policy 2026-09-26 (recorded in .moai/reports/t1245/verdict.md §12); run-phase
+autonomy armed as `ac_converge` with the SPEC-scoped DoD gate (not `go test ./...`, per repo-local
+load discipline).
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
