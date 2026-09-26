@@ -559,7 +559,34 @@ re-diff: `diff baseline after` → empty, "mission surface IDENTICAL".
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_status: audit-ready
+run_complete_at: 2026-09-26
+run_commit_sha: "9c45a6095"
+
+DoD gate (measured by the lane orchestrator, this run, tree `9c45a6095`):
+
+```
+$ go test ./internal/hook/... ./internal/config/... ./internal/contract/... ./internal/mission/... -count=1 -v
+→ exit 0, 2442 --- PASS, 0 --- FAIL, all 17 packages ok (log: /tmp/t1245-dod-gate.txt, 425s longest package)
+$ GOOS=windows GOARCH=amd64 go build ./...   → exit 0
+$ golangci-lint run --timeout=2m             → 0 issues. (baseline equal)
+$ git status --porcelain                     → empty (clean tree, HEAD 9c45a6095)
+```
+
+**Attribution note (verification-claim-integrity §2):** this section is
+authored on orchestrator-provided gate evidence — the DoD gate commands and
+outputs above were measured by the lane orchestrator, not re-executed by
+manager-develop; manager-develop's own M4 measurements are in §E.2 above.
+
+Milestone summary:
+
+| Milestone | Subject | Commits |
+|---|---|---|
+| M1 | push serializer | `6e831c5a0`, `7fa7c9bb1` |
+| M2 | contract-sign guard | `deee2cacf`, `c5e2895a2`, `81f351c6f` |
+| M3 | role constants + carrier pins, rule file + mirror | `7d766dcd1`, `d0d915f3f` |
+| M4 | mission-validator projection | `21506ceb0`, `9c45a6095` |
+
 
 ## §F Phase 4 Mode Selection
 
