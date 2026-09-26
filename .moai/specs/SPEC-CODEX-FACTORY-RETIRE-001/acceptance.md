@@ -368,8 +368,8 @@ All 25 ACs pass with evidence recorded in `progress.md` §E.2; CI on the develop
 that carries the merge is green; the sync phase has marked the five partially
 superseded SPECs and regenerated codemaps (plan.md §I).
 
-The card-scoped guards (`develop...HEAD`, used by AC-017, AC-019's locale listing,
-AC-021, AC-023) are judged **pre-merge**, on the card branch after its last absorption
+The card-scoped guards (`develop...HEAD`, used by AC-CFR-017, the locale listing in
+AC-CFR-019, AC-CFR-021 and AC-CFR-023) are judged **pre-merge**, on the card branch after its last absorption
 of develop. On the merge tree they are **not re-run** — after the merge the range is
 empty and the guard would pass vacuously. Their verdict is carried to the merge tree by
 tree identity: `git rev-parse <merge>^{tree}` equals `git rev-parse <absorbed WT tip>^{tree}`,
