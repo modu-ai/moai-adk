@@ -17,11 +17,11 @@ event (`PostToolUse`, `SessionStart`, etc.) that is still correct — no guard
 was going to act on the payload anyway, so a default output changes nothing.
 
 For a **decision** event — `PreToolUse`, `PermissionRequest`, `Stop`,
-`UserPromptSubmit` — a default output of `{}` reads to the host as "no
-opinion," which on an unconfirmed permission mode is equivalent to an
-approval. A hook whose stdin fails to parse on one of these four events now
-denies instead, still at exit 0, still without cobra usage noise or a fake
-tool failure.
+`UserPromptSubmit` — a default output of `{}` means the hook expresses no
+opinion, so the host's normal permission flow decides instead — which, in a
+mode that does not prompt, lets the call through. A hook whose stdin fails to
+parse on one of these four events now denies instead, still at exit 0, still
+without cobra usage noise or a fake tool failure.
 
 Codex's `Stop` event is exempt from this fail-closed behavior and keeps the
 default-output path, because the Codex host has no bound on how many
@@ -60,9 +60,9 @@ one of:
    documented here.
 
 If you see this denial only occasionally and updating clears it, no further
-action is needed — an occasional truncated or malformed payload from a
-model-constructed tool call is expected and is exactly the case this
-behavior exists to catch.
+action is needed — the most plausible model-driven cause is a tool call
+whose input exceeds the 5 MiB read limit, and catching that case is exactly
+what this behavior exists to do.
 
 ## Why fail-closed, in one line
 

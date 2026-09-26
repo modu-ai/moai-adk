@@ -711,5 +711,5 @@ frontmatter_status_transitions:
   spec_md: "in-progress -> completed"
 canary_compliance_check:
   template_mirror_required: false
-  rationale: "internal/docs/hook-stdin-fail-closed.md has no template mirror in this tree; sibling .moai/docs/hook-development.md likewise has none"
+  rationale: "at sync_commit_sha bfed76aef, .moai/docs/hook-stdin-fail-closed.md had no template mirror in this tree; sibling .moai/docs/hook-development.md likewise has none. Superseded by commit ed1759b65 (sync-audit D1/F1 fix, card t1152), which added internal/template/templates/.moai/docs/hook-stdin-fail-closed.md as a byte-identical mirror."
 ```
