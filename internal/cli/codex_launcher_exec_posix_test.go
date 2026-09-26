@@ -98,6 +98,10 @@ func TestCodexDirectPOSIXExecPreservesFactoryOwner(t *testing.T) {
 		config.EnvClaudeProjectDir+"="+root,
 		"T1074_CODEX_EXEC_ROOT="+root,
 		"T1074_CODEX_EXEC_ROLE=launcher",
+		// The child re-executes this binary, so its TestMain runs again: pin
+		// the composed factory family or the t1252 ambient clear empties
+		// MOAI_KANBAN_ID before the helper role reads it (factory_test.go).
+		factoryEnvPinnedEnv+"=1",
 	)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
