@@ -76,11 +76,22 @@ func validateCodexHarnessEvent(event hook.EventType, input *hook.HookInput) erro
 func writeHookOutputCodex(event hook.EventType, output *hook.HookOutput) error {
 	var raw bytes.Buffer
 	if err := deps.HookProtocol.WriteOutput(&raw, output); err != nil {
-		return fmt.Errorf("serialize hook output for codex mapping: %w", err)
+		err = fmt.Errorf("serialize hook output for codex mapping: %w", err)
+		if codexadapter.IsDecisionBearing(event) && (output == nil || output.ExitCode != 2) {
+			return writeCodexFailClosed(event, err)
+		}
+		return err
 	}
 	mapped, discards, err := codexadapter.MapOutput(event, raw.Bytes())
 	if err != nil {
-		return fmt.Errorf("map hook output for codex: %w", err)
+		err = fmt.Errorf("map hook output for codex: %w", err)
+		// Unparseable output on a decision-bearing event is a fault, answered
+		// fail-closed (SPEC-DUAL-HARNESS-HOOK-PARITY-001 M2c, REQ-HPR-009).
+		// Under exit 2 the exit code already carries the block.
+		if codexadapter.IsDecisionBearing(event) && (output == nil || output.ExitCode != 2) {
+			return writeCodexFailClosed(event, err)
+		}
+		return err
 	}
 
 	// hookBlocked mirrors RecordDiscards' own contract: when the underlying
