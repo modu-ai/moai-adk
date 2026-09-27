@@ -69,7 +69,7 @@ Record the transcript's current line count as `cutoff_line: N` (`wc -l < <transc
 
 1. Wait until t1175 has landed on develop; then absorb develop into this branch.
    - The t1175 landing commit is **not** written down by the lane. AC-SMM-022 derives it at check time: it is the second parent of the develop merge commit whose subject merges `WT-rules-diet` into develop.
-   - At v0.4.0 no such merge exists (`git merge-base --is-ancestor WT-rules-diet develop` exit 1).
+   - At v0.4.0 no such merge existed (`git merge-base --is-ancestor WT-rules-diet develop` exit 1). **Correction 2026-09-27:** it now exists as merge commit `7fe658815` on develop. This branch has not absorbed it yet, and must not until develop CI is green again.
 2. Check t1257 (`WT-role-naming-docs`, waiting on t1256) the same way.
    - When its merge commit exists on develop, absorb it too.
    - When it does not, record `t1257_status: not-landed` and `t1257_notified: yes`, after telling the lead that t1257 must rebase on this change.

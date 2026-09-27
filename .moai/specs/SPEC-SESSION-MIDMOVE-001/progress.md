@@ -22,3 +22,15 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## HOLD (2026-09-27, lead decision b1)
+
+Plan closed as draft + HOLD. Do NOT enter run on this SPEC as written.
+
+Reasons (.moai/reports/t1279/plan-audit-delta.md, auditor-model claude-opus-5-5[1m], FAIL 0.83):
+- D2: the P3 continuity measurement design cannot hold. A real /clear always opens a new transcript file (369/369 observed), so "same transcript contains the /clear row" is satisfied only by compact rows.
+- D1: regression. AC-002 rejects gaps that REQ-005 permits.
+- D3 (ND8): forbidden probe flags pass AC-007 via brace expansion or `-p <flag>`.
+- D4: AC-022 does not check that the develop merge commit is an ancestor.
+
+State at hold: t1175 has landed on develop (merge 7fe658815), and this branch has NOT absorbed it. develop CI was red (t1175 regression under repair) at hold time, so absorption was deliberately skipped.

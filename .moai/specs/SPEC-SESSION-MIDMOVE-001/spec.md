@@ -245,7 +245,7 @@ Each decision point is resolved at the Implementation Kickoff Approval gate and 
 
 ### DP-3 — Ordering against t1175 and t1257 (settled; now a gate)
 
-- `WT-rules-diet` (t1175) is not an ancestor of this branch. Its tip was `3a48485af` at plan time, `4989ea6b0` at v0.3.0, and `8fb81c948` at v0.4.0, so the tip moves. `git merge-base --is-ancestor WT-rules-diet develop` exits `1` at v0.4.0 (not landed). AC-SMM-022 therefore derives the landing commit from the develop merge commit rather than from the branch name.
+- `WT-rules-diet` (t1175) is not an ancestor of this branch. Its tip was `3a48485af` at plan time, `4989ea6b0` at v0.3.0, and `8fb81c948` at v0.4.0, so the tip moves. `git merge-base --is-ancestor WT-rules-diet develop` exits `1` at v0.4.0 (not landed). **Correction 2026-09-27:** t1175 has since landed on develop as merge commit `7fe658815`, and this branch has not absorbed it. AC-SMM-022 therefore derives the landing commit from the develop merge commit rather than from the branch name.
 - Its diff rewrites the kanban dispatch rule and `AGENTS.md`, and adds `kanban-dispatch-mechanics.md`. At `4989ea6b0` it keeps the line that REQ-SMM-010 replaces verbatim in both copies, and still has 38 `[HARD]` lines (research.md §R10).
 - t1257 (naming-unification docs, waiting on t1256) edits the same file.
 

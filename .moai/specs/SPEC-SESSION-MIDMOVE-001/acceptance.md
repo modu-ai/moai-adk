@@ -65,7 +65,7 @@ DS=.moai/specs/SPEC-SESSION-MIDMOVE-001/design.md
   - **t1257**, block (c):
     - when `t1257.txt` has `1` line, read `M1257 T1257` from it; the message grep prints at least `1` and the `is-ancestor` call prints `rc=0`;
     - when it has `0` lines, the two `$E` greps print `1` and `1` (not-landed, lead notified).
-  - **RED-now**, recorded honestly: `t1175.txt` has `0` lines, because t1175 has not landed on develop (`git merge-base --is-ancestor WT-rules-diet develop` exit `1`, research.md §R11).
+  - **RED-now**, recorded honestly. At the §R11 measurement (HEAD `bce7248ff`), `t1175.txt` had `0` lines because t1175 had not yet landed. **Correction 2026-09-27:** t1175 has since landed on develop as merge commit `7fe658815` (`git merge-base --is-ancestor 7fe658815 develop` exit `0`). This branch has not absorbed it (`… 7fe658815 HEAD` exit `1`), so the gate stays RED for that reason.
   ```bash
   # (a) derivation
   git log develop --merges --format='%H %P %s' > "$S/develop-merges.txt"
