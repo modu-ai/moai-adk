@@ -77,9 +77,9 @@ shift+tab 戻る • enter 次へ
   セッションの既定の推論強度を決めます。サブエージェントはセッションのモデルと推
   論強度をそのまま引き継ぎます。                                                
                                                                                 
-  ▸ High - セッションの推論強度 high                                            
-    Medium - セッションの推論強度 medium                                        
-    Low - セッションの推論強度 low                                              
+  ▸ High - Opus 5.5 (high~medium) + Sonnet (low, docs/single-shot rows)         
+    Medium - Opus 5.5 (high~low) + Sonnet (low, docs/single-shot rows)          
+    Low - Opus 5.5 (high~low) + Sonnet (low, docs/e2e/single-shot rows)         
   セッション推論レベル                                                          
   このプロファイルで起動する Claude セッションの推論深度です。xhigh/max         
   は対応モデル（Opus 5.5、Sonnet 5、Opus 4.7                                    

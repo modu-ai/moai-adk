@@ -76,9 +76,9 @@ shift+tab 返回 • enter 下一步
   未单独选择推理强度时，决定使用此配置文件启动的 Claude                         
   会话的默认推理强度。子代理沿用会话的模型与推理强度。                          
                                                                                 
-  ▸ High - 会话推理强度 high                                                    
-    Medium - 会话推理强度 medium                                                
-    Low - 会话推理强度 low                                                      
+  ▸ High - Opus 5.5 (high~medium) + Sonnet (low, docs/single-shot rows)         
+    Medium - Opus 5.5 (high~low) + Sonnet (low, docs/single-shot rows)          
+    Low - Opus 5.5 (high~low) + Sonnet (low, docs/e2e/single-shot rows)         
   会话推理强度                                                                  
   使用此配置文件启动的 Claude 会话的推理深度。xhigh/max 需要支持它们的模型（Opus
   5.5、Sonnet 5、Opus 4.7 及以上）。子代理沿用此会话的推理强度。                
