@@ -46,6 +46,34 @@ Baseline-attribution: all five rows measured in this run, in this tree, at HEAD 
 
 Milestone evidence follows as each milestone lands.
 
+### M1 — Record shapes and the report model (commit `158c3be69`)
+
+RED (`go test -count=1 ./internal/closure/`, before implementation, HEAD `5bc8a0296`, this run):
+
+```
+internal/closure/model_test.go:12:7: undefined: NewReport
+internal/closure/model_test.go:81:12: undefined: NotPerformedTokens
+internal/closure/model_test.go:99:6: undefined: IsNotPerformedToken
+internal/closure/model_test.go:112:20: undefined: NotPerformedProgressMissing
+internal/closure/receipt_view_test.go:21:21: undefined: DecodeKickoffReceipt
+FAIL	github.com/modu-ai/moai-adk/internal/closure [build failed]
+```
+
+GREEN (`go test -count=1 -v ./internal/closure/`): 14 tests PASS — `ok github.com/modu-ai/moai-adk/internal/closure 0.251s`. Files: `model.go` (fixed key order per REQ-CLOSURE-002, closed 15-token not-performed catalogue, CountValue), `records.go` (strict schema_version decoders; unknown-schema/malformed lines skipped AND listed), `receipt_view.go` (v0.5.1 display decoder over A1 `contract.KickoffReceipt`; unknown fields listed, never dropped).
+
+### M2 — Readiness rule and reason codes (commit pending)
+
+RED (`go test -count=1 ./internal/closure/ -run 'TestAC_CLOSURE_013|TestAC_CLOSURE_016|TestAC_CLOSURE_018|…'`, before implementation, this run):
+
+```
+internal/closure/readiness_test.go:13:68: undefined: CommitPaths
+internal/closure/readiness_test.go:92:66: undefined: SecondReviewState
+internal/closure/readiness_test.go:93:10: undefined: SelectSecondReview
+FAIL	github.com/modu-ai/moai-adk/internal/closure [build failed]
+```
+
+GREEN (`go test -count=1 ./internal/closure/`): `ok github.com/modu-ai/moai-adk/internal/closure 0.086s` — 29 tests incl. `TestAC_CLOSURE_013` (11 subtests: all six not-performed causes, performed pass/fail, stale with superseding commit, sync-commit non-staling, filter-order survivor), `TestAC_CLOSURE_016` (nine-code closed set + per-code fixtures + failed≠not-performed + accept/none ready + sorted dedup), `TestAC_CLOSURE_018` (advisory/off → no code), currency-undetermined honesty (`CurrencyUndetermined` flag → `push_check_undetermined`), substitute-backend flag. Files: `readiness.go` (`GitFacts` injection, `SelectSecondReview` §D filters, `EvaluateReadiness` closed nine-code set, currency rule over `contract.MatchGlob`).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
