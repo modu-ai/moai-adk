@@ -8,8 +8,6 @@ description: |
   Match intent language-independently — do not require literal keyword matches.
   NOT for: writing code itself (delegated to leaf workers / lanes), Tier S/M single-milestone runs (orchestrator-direct serial is simpler), acting as the Agent Teams static layer (separate explicit-request experimental surface; `MODE_TEAM_UNAVAILABLE` is documented history), or invoking the orchestrator-exclusive user-question tool (return blocker reports; the orchestrator owns the user channel).
 tools: Read, Write, Edit, Bash, Grep, Glob, Agent, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__session_list, mcp__moai__goal_status, SendMessage, ListAgents
-model: inherit
-effort: high
 color: violet
 permissionMode: bypassPermissions
 memory: project

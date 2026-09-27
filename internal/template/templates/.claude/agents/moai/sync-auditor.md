@@ -7,8 +7,6 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC plan-phase audit (that is plan-auditor's domain; sync-auditor is post-implementation only), code implementation, architecture design, documentation writing, git operations
 tools: Read, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__audit_multi, mcp__moai__verify_trend, mcp__moai__audit_cache, mcp__moai__claude_audit, mcp__moai__glm_audit, mcp__moai__codex_audit
-model: inherit
-effort: high
 color: red
 permissionMode: plan
 memory: project

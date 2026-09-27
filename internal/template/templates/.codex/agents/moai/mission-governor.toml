@@ -42,5 +42,4 @@ executor owns schema validation and rejects any unrecognized or stale output.
 
 On Codex this role is started by the launcher, the moai MCP tool `codex_role_audit`, as one top-level `codex exec` process with the read-only sandbox and every MCP server disabled; it is never started through `spawn_agent`. Your writes are denied, and the MCP tools named above are unavailable in this process, so read the repository directly. Return your complete result as your final response; when the parent named a destination file, the launcher writes that file with exactly the returned text.
 '''
-model_reasoning_effort = "high"
 sandbox_mode = "read-only"

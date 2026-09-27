@@ -11,8 +11,6 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: gate verdicts (plan-auditor/sync-auditor own binding PASS/FAIL judgment); NOT for: implementation (use manager-develop); NOT for: SPEC body authoring (use manager-spec)
 tools: Read, Grep, Glob, Bash, WebFetch, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, mcp__moai__spec_audit, mcp__moai__verify_trend, mcp__moai__codex_task, mcp__moai__codex_setup, mcp__moai__codex_job_status, mcp__moai__codex_job_result, mcp__moai__codex_job_cancel, mcp__moai__glm_task, mcp__moai__glm_job_status, mcp__moai__glm_job_result, mcp__moai__glm_job_cancel
-model: inherit
-effort: high
 color: yellow
 permissionMode: plan
 memory: project

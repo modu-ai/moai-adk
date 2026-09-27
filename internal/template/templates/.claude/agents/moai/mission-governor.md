@@ -7,8 +7,6 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: writing files, shell or Git execution, queue mutation, dispatch, merge, approval, or PASS/FAIL audit verdicts
 tools: Read, Grep, Glob, Skill
-model: inherit
-effort: high
 color: purple
 permissionMode: plan
 memory: project

@@ -203,5 +203,4 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 - **Re-delegation template**: `.claude/rules/moai/development/manager-develop-prompt-template.md` § 1 (Section A-E).
 - **Agent catalog**: `CLAUDE.md` § 4 (13 retained agents — manager-design is row 6 of the Selection Decision Tree).
 '''
-model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"

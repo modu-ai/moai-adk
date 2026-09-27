@@ -161,5 +161,4 @@ one-line "Model/effort escalation" cross-reference at body tail — see
 ```
 
 '''
-model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"

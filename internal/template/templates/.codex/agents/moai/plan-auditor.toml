@@ -749,7 +749,6 @@ When the project sets `audit_model: multi`, or a GPT/GLM main session needs a Cl
 
 On Codex this role is started by the launcher, the moai MCP tool `codex_role_audit`, as one top-level `codex exec` process with the read-only sandbox and every MCP server disabled; it is never started through `spawn_agent`. Your writes are denied, and the MCP tools named above are unavailable in this process, so read the repository directly. On Codex this addendum overrides the Export mandate above: where that mandate says to write the verdict or report file in the same turn, and calls an audit without a written file incomplete, read it as follows instead. Do not write the verdict or report file yourself, and do not treat a refused write as a failure of the audit. Return the complete verdict or report text as your final response, including the path the file belongs at; the launcher writes the verdict or report file with exactly the returned text, at the destination the parent named when it started you. The audit is complete when that text is returned. Everything else the Export mandate requires still binds the returned text: its destination path, its minimum content, and the forbidden destination.
 '''
-model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 [mcp_servers.moai]
 command = "moai"
