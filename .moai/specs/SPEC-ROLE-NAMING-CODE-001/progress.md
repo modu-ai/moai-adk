@@ -174,11 +174,11 @@ Every new refusal test captured verbatim pre-implementation: `.moai/reports/t125
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-- run_status: M1 complete (kanban / hook / factorymsg / homestate / web / config / codexwiring scoped suites green; full `internal/cli` suite green on attempt 2; lint 0 issues; both builds exit 0)
+- run_status: M2 complete (M1 + M2 of the code milestones; M3 notices/locales/web/doctor, M4 marker flip, M5 identifier rename remain) — cli full suite green with coverage (`ok ... 992.586s coverage: 84.0%`), kanban green (86.4%), hook/factorymsg/homestate/config/codexwiring/web scoped suites green, lint 0 issues (golangci v2.1.6), both builds exit 0
 - run_complete_at: 2026-09-27
-- run_commit_sha: 672e9645a
-- RED evidence: `.moai/reports/t1256/raw/red-m1.txt` (verbatim pre-implementation failures: 5 assertion REDs in internal/cli + compile-RED for the new kanban/hook/factorymsg APIs)
-- coverage: kanban 86.4 (base 86.5) · hook 86.6 (base 86.6) · factorymsg 81.5 (base 81.5) · web 74.7 (base 74.7) · cli 84.0 (base 미측정 — Gap, §E.2)
+- run_commit_sha: 579fa393a
+- RED evidence: M2 `.moai/reports/t1256/raw/red-m2.txt` (27 verbatim pre-implementation refusal failures); M1 `.moai/reports/t1256/raw/red-m1.txt` (5 assertion REDs in internal/cli + compile-RED for the new kanban/hook/factorymsg APIs)
+- coverage: kanban 86.4 (base 86.5) · hook 86.6 (base 86.6) · factorymsg 81.5 (base 81.5) · web 74.7 (base 74.7) · cli 84.0 (M2 re-measured, equal to M1; merge-base 미측정 — Gap, §E.2)
 - notes:
   - M1 transient: the t1245 AC-AP-018 kanban pin limb (`internal/kanban/factory_label_pin_test.go`) is pinned to the M1 state — prefix `lane`, legacy prefixes detection-only — and carries an M4 tripwire; the full three-way equality (marker value == CLI token == prefix) is restored at M4 when `config.FactoryRoleWorker` flips to `lane` (constant untouched by M1 per delegation §C).
   - `-f worker` / `-f agent` role tokens still PARSE at M1 (minimal compile adaptation; desugars to canonical `lane-<n>` labels) — their dedicated rejection wording is M2 (REQ-RNC-003/-005/-007). Legacy LABELS on the input path are already refused by the claim naming the canonical `lane-<n>`.
