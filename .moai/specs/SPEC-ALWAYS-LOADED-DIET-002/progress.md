@@ -285,7 +285,7 @@ follow_up_candidates:
 
 ```yaml
 sync_complete_at: 2026-09-27             # 종결 sync. 1차 sync(2026-09-26, 5bfa134ca, implemented 에서 정지)는 아래 「1차 sync 기록」으로 보존
-sync_commit_sha: pending-backfill-sync   # 종결 sync 커밋은 자기 해시를 인용할 수 없다 — 1차와 같은 방식으로 뒤따르는 backfill 커밋이 채운다
+sync_commit_sha: 295c5d59a               # 종결 sync 커밋은 자기 해시를 인용할 수 없어 `pending-backfill-sync` 였고, 이 backfill 커밋이 채웠다
 sync_commit_sha_first_pass: 5bfa134ca    # 1차 sync(implemented 에서 정지)
 sync_status: completed                   # 2026-09-27 종결 — 아래 「종결 sync (2026-09-27)」 절 참조
 frontmatter_status_transitions_final:
