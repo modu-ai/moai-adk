@@ -1043,7 +1043,38 @@ coverage:   # M2i, no pre-change baseline except verify (M2b: 81.0% → 84.6%)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_complete_at: 2026-09-27
+sync_commit_sha: pending-backfill-sync   # placeholder (D3) — the real SHA of the single sync commit is backfilled in the immediately following commit
+sync_status: completed — **partial (live-uncertified)**, per operator decision Q5 (2026-09-23): no live Claude Code or Codex leg runs in this SPEC
+
+**Aggregate parity verdict (quoted verbatim from §E.3):**
+
+> aggregate_parity_verdict: not PASS (M2h) — 6 rows blocked:M1, 4 unverified, 2 Claude UNSUPPORTED,
+> 9 live-leg checks NOT_RUN, no row with an effect-verified attributed record
+
+**9 NOT_RUN live legs** — live-only AC-HPR-004, 007, 021, plus the live legs of AC-HPR-008, 009, 010, 011, 012, 020. Fresh skip evidence on THIS tree at ccd8f4f87 (this run, without `MOAI_PARITY_LIVE`): 9 tests SKIP with structured NOT_RUN records at `internal/cli/parity_live_test.go:343,376,392,419,440,454,481,503,520` — each names its AC, the attempted command, and the Q5 reason. Representative record (observed this run):
+
+```
+parity_live_test.go:343: NOT_RUN (AC-HPR-004): attempted: codex exec (+ resume) / claude -p --session-id on a scratch project with an armed unmet goal `test -f done.flag`; observed: MOAI_PARITY_LIVE is not set to 1 (operator decision Q5: no live run in this SPEC); record: /var/folders/.../TestLiveStopChainGoalContinuation.json
+--- SKIP: TestLiveStopChainGoalContinuation (0.17s)
+```
+
+**Live certification follow-up:** card **t1280** (lead-issued 2026-09-27, "[리드 발행 09-27 · t1099 후속 · Tier M · 클래스 C] SPEC-DUAL-HARNESS-HOOK-PARITY-001 의 LIVE 인증 ...", verified queued in the backlog DB). t1280 owns the 9 live legs above; this SPEC does not certify them.
+
+**Tree state at close:** local develop absorbed before sync (merge 60aac422e, 535 commits) plus two merge repairs that are part of this card's own history: aaf77724c (drop duplicate `sinkRecords` helper colliding with t1272's) and ccd8f4f87 (pin the clean-review fixture to the post-#1718 shape).
+
+**Lane remeasure block (this run, this tree at ccd8f4f87):**
+
+- `go vet` on internal/{cli,codexadapter,codexwiring,template,verify,goal,hook,spec} → exit 0 (after repair aaf77724c)
+- `golangci-lint run` (v2.1.6, the CI version) on the same 8 packages → `0 issues.` exit 0
+- `moai spec lint SPEC-DUAL-HARNESS-HOOK-PARITY-001 --baseline .moai/spec-lint-baseline.json` → "✓ No findings — all SPEC documents are valid", baseline OK (TierArtifactMissing 4→0 improvement)
+- `go test -count=1` → ok: codexadapter 0.586s, codexwiring 0.893s, verify 3.644s, spec 125.161s, hook 334.322s
+- `go test -count=1` targeted cli batch (80 card tests, selector verified non-empty via `go test -list`) → 79 PASS / 1 SKIP (live-gated, by design) / 0 FAIL, exit 0, 61.555s
+- Coverage (same-methodology pair, this run): internal/goal 78.0% vs baseline 77.9% at merge-base 4dcd4d8d4 (+0.1pp); internal/template 82.8% vs 81.4% (+1.4pp) — no regression; both still below the 85% target, recorded as debt as before
+- Builds: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0
+- Whole-package internal/cli verdict remains CI's (lane discipline: no local full cli suite)
+
+**B12 / durable-marker notes:** acceptance.md live identifiers = 22 (AC-HPR-001..022; AC-HOOK-01/02, AC-GOAL-01, AC-POL-01 are design-report family headings, per §E.3 ac_id_count_reconciliation). Plan-phase durable markers verified present at close (read-only): the `live-uncertified` token in spec.md frontmatter `tags` and the spec.md HISTORY line "2026-09-23 v0.4.0 (closure mode)". Sync-phase half of the marker: this §E.4 plus the CHANGELOG entry saying "partial (live-uncertified)" and naming t1280. No README/docs-site obligation exists for this SPEC.
 
 ## Resume point (2026-09-26)
 
