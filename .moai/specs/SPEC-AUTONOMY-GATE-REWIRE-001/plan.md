@@ -1,4 +1,4 @@
-# plan.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.4)
+# plan.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.5)
 
 ## §A. 맥락
 
@@ -7,7 +7,7 @@
 - v0.3.4: run M0(`progress.md §E.2`, BASE `7fe658815`)이 멈춘 재앵커 blocker 다섯 건을 리드 결정 B1~B5(2026-09-27)로 제자리 수리(§K). 코드·템플릿·`SPEC-JEV-CORE-001`·`CLAUDE.local.md` 는 건드리지 않았다.
 - 산출물: `spec.md`, `plan.md`, `acceptance.md`, `design.md`, `research.md`, `progress.md` (Tier L).
 - 개발 방식: 문서 층(추가형 블록 + Jev 원칙 개정) + Go 코드(kickoff-check·decide·revoke·사건 저장소·A1 서명기 사건 추가) + Go 가드 테스트. 모두 TDD — RED 를 먼저 관측한다(`design.md §12`).
-- A1 기준: 0.5.2 `25283ebf8`(이력 `65e0a9167`; 스키마: 결정자 값 집합·파생 기본값·영수증 필드·구조 검증·`card` 필드). A2b(t1245): push 직렬화·에이전트발 `sign` 차단·팩토리 에이전트 세션의 `decide` 거절. A2 기준: 리드가 전달한 최종 형식(A2 개정본 대기, 현재 커밋 `d8926ff9a` 는 철회된 형식 — `research.md §10.1`).
+- A1 기준: 0.5.2 `25283ebf8`(이력 `65e0a9167`; 스키마: 결정자 값 집합·파생 기본값·영수증 필드·구조 검증·`card` 필드). A2b(t1245): push 직렬화·에이전트발 `sign` 차단·팩토리 에이전트 세션의 `decide` 거절. A2 기준: 0.4.3 (`status: implemented`, BASE `7fe658815`) — 기록 경로·YAML 머리·`revoke` 종류를 M0 에서 대조했다. A2 는 revoke 기록을 `status: resolved` 로 두고 needs-decision 으로 세지 않으므로 재개 차단은 A3 revoke 판독기가 맡는다(`design.md §10`). 옛 커밋 `d8926ff9a` 의 JSON 형식은 철회된 이력이다(`research.md §10.1`).
 
 ## §B. 결정 기록 (미해결 질문 0건)
 
@@ -33,7 +33,7 @@ v0.2.0 의 NC-1~NC-9 는 모두 닫혔다. 본문 정본은 `spec.md §B` 「본
 run phase 진입 조건 (모두 필요):
 
 1. **t1234 (A1, `SPEC-AUTONOMY-CONTRACT-001`) develop 병합.** 확인: `moai contract verify --help` exit 0. 병합본이 A1 0.5.2(`25283ebf8`) 이상의 스키마(`human`·`llm`·`llm+jev` 값 집합, 대체 영수증 필드, `card` 필드)를 담아야 한다 — 아니면 M7 의 영수증 쓰기를 보류하고 리드에게 보고.
-2. **t1235 (A2, `SPEC-AUTONOMY-ESCALATION-001`) develop 병합** (리드 결정). 에스컬레이션 기록의 **최종 형식**(`escalation/<class>-<fingerprint>.md` + YAML 머리 + `revoke` 종류)이 A2 개정본에 들어 있어야 한다 — 현재 커밋 `d8926ff9a` 의 JSON 형식이면 M6 을 보류하고 리드에게 보고.
+2. **t1235 (A2, `SPEC-AUTONOMY-ESCALATION-001`) develop 병합** (리드 결정). **충족 확인됨(M0, 2026-09-27)**: A2 0.4.3 이 develop 에 병합돼 있고, 기록 형식(`escalation/<class>-<fingerprint>.md` + YAML 머리 + `revoke` 종류)이 A2 spec §I·§I.1·§I.2 와 `internal/escalation/record.go` 에 있다(`research.md §10.6`).
 3. **t1245 (A2b) develop 병합** (리드 결정 2026-09-26) — push 직렬화 강제, 에이전트발 대화형 `sign` 차단, `MOAI_FACTORY_ROLE=agent` 세션의 `decide` 거절.
 4. **t1175 (`SPEC-ALWAYS-LOADED-DIET-002`) develop 병합 후 이 브랜치에 흡수.**
 
@@ -56,7 +56,7 @@ Push 단계(REQ-GR-021)와 자율 Kickoff 활성(M8)에만 걸리는 추가 조�
 - 로컬·템플릿은 같은 커밋에서 함께 편집한다.
 - 블록·SSOT·템플릿 개정 문장에 내부 토큰 금지(REQ-GR-023).
 - Go 테스트는 `t.TempDir()` 와 격리된 `MOAI_HOME` 만 쓴다. Jev 는 스텁 이음매로만, 네트워크 금지.
-- 검증은 범위 한정: `go test ./internal/template/... ./internal/contract/...`, `go test ./internal/cli/ -run 'TestContract(Decide|KickoffCheck|Revoke)'`, 헌법 DRIFT 비증가(`TestContractModeConstitutionDriftNotIncreased`, AC-GR-003 — `BASE` 에서 이미 exit 1·DRIFT 9건이므로 exit 0 을 요구하지 않는다), `moai spec lint`. `go test ./...` 로컬 실행 금지.
+- 검증은 범위 한정: `go test ./internal/template/... ./internal/contract/...`, `go test ./internal/cli/ -run '^TestContract(Decide|KickoffCheck|Revoke)$'`, 헌법 DRIFT 비증가(`TestContractModeConstitutionDriftNotIncreased`, AC-GR-003 — `BASE` 에서 이미 exit 1·DRIFT 9건이므로 exit 0 을 요구하지 않는다), `moai spec lint`. `go test ./...` 로컬 실행 금지.
 - AC 명령은 한 줄 단순 명령 — `git` 을 서브셸·프로세스 치환·heredoc 안에 두지 않는다(감사 D12).
 - `acceptance.md` 의 AC 수를 제자리에서 바꾸는 개정은 AC 스냅숏 재생성을 같은 커밋에 싣는다(감사 D24, `.moai/docs/ac-count-baseline-refresh.md §2`). 새 `acceptance.md` 추가 자체는 방아쇠가 아니다.
 - `.claude/agents/**` 무수정이므로 `make agents-emit` 불필요.
@@ -72,7 +72,7 @@ acceptance.md 의 AC 전부를 PASS/FAIL 표로, 명령·원문 출력·exit 코
 
 - §C 전제 확인 → develop 흡수 → `BASE` 기록.
 - `research.md §1` 계수를 `BASE` 에서 재실행. E/R/H 분류가 바뀌면 blocker 로 manager-spec 재위임.
-- A1 병합본과 0.5.2(`25283ebf8`) 인용 항목을, A2 병합본과 **[A2 개정본으로 재확인]** 항목을, A2b 병합본과 **[A2b SPEC 으로 재확인]** 항목을 대조. 차이는 blocker.
+- A1 병합본과 0.5.2(`25283ebf8`) 인용 항목을, A2 병합본과 A2 0.4.3 인용 항목을, A2b 병합본과 **[A2b SPEC 으로 재확인]** 항목을 대조. 차이는 blocker.
 - 절 제목 앵커가 t1175 이후에도 있는지 확인.
 - **M0 결과(2026-09-27, `progress.md §E.2`)**: 멈춤 규칙 발동 → blocker 다섯 건 → 리드 결정 B1~B5 → v0.3.4 재앵커(§K). 재위임 뒤 M0 은 §K 의 재측정 명령으로 새 앵커를 다시 확인하고 M1 로 넘어간다 — E/R/H 분류와 skill 앵커(행 6~14)는 바뀌지 않았다.
 
@@ -209,7 +209,23 @@ run M0(manager-develop, `progress.md §E.2`, BASE `7fe658815`)이 멈춤 규칙�
 | B1 `askuser-protocol.md` 「The Five Exceptions」 이동(t1175 → `askuser-protocol-reference.md:229`) | `contract-ambiguity` 블록을 `askuser-protocol.md` 의 `## Ambiguity Triggers and Exceptions` 스텁 문단(206·208행) 뒤, `## Free-form Circumvention Prohibition`(210행) 앞으로. reference 파일은 편집 대상 아님 | `design.md §2` 3행, M3 |
 | B2 `moai-mcp-tools.md` 에 `jev_ask` 행 없음 | 개정 위치를 `moai-mcp-tools-catalogue.md` 138행(도구 표)·216행(계열 요약)으로 교체, `moai-mcp-tools.md` +300자 상시 예산 삭제(상시 상한 1,800 → 1,500자), 카탈로그는 always-loaded 아님 — 행당 300자·사본당 600자 조건부 예산 | REQ-GR-013·025, `spec.md §B` D-6, `design.md §2` 15·16행·§4·§11·§11.2, AC-GR-009·010·022, §B NC-6 |
 | B3 A2 revoke 기록은 `status: resolved`, `NeedsDecision` 에 안 잡힘 | 선택지 (a): A2 불변, A3 revoke 판독기가 `kind: revoke`·`card`·`spec`·`class`·`fingerprint`(= `Fingerprint(class, 현재 seal)`)로 차단 판정, `status` 무시, 오류는 차단. 경계 문장 「A2 는 revoke 를 해결됨으로 기록 — A3 의 재개 차단은 A3 판독기의 책임」 | REQ-GR-007·009 (e)·012·020·022, `design.md §9`·`§10`·`§12`, AC-GR-018·023 |
-| B4 A1 서명기 단계 (1) 이 `sign/` 이 아니라 `internal/contract/receipt.go` `ReceiptOutcome`(208~232행) | 허용 목록 23행에 `receipt.go`·`receipt_test.go`·`doc.go`(47행 주석) 추가, 조건화는 그 자리에서(`sign/` 에 규칙 중복 없음), `sign/sign.go` 는 값 전달만 | REQ-GR-025, `design.md §2` 23행·§7.1, AC-GR-017, M7 |
+| B4 A1 서명기 단계 (1) 이 `sign/` 이 아니라 `internal/contract/receipt.go` `ReceiptOutcome`(208~232행) | 허용 목록 23행에 `receipt.go`·`receipt_test.go`·`doc.go`(47행 주석과 135~141행 `# Kickoff receipt` 문단 — v0.3.5 D52) 추가, 조건화는 그 자리에서(`sign/` 에 규칙 중복 없음), `sign/sign.go` 는 값 전달만 | REQ-GR-025, `design.md §2` 23행·§7.1, AC-GR-017, M7 |
 | B5 `moai constitution validate` 가 BASE 에서 exit 1·DRIFT 9건(CONST-V3R2-013~017·033·049·152·153 — 범위 밖, 리드 별도 카드) | AC-GR-003 기대를 「BASE 대비 DRIFT 가 늘지 않음(수 ≤, id 집합 ⊆)」으로, 판정은 `TestContractModeConstitutionDriftNotIncreased`(`git archive $MOAI_GR_BASE` 대 현재 트리), 기준선 셀 EV-6 을 `7fe658815` 로 고정 | AC-GR-003, `acceptance.md §B`·§B.2, `design.md §5`, §D·M10 |
 
 요구사항 25개·AC 25개 그대로(새 id 없음) — AC 수가 바뀌지 않으므로 AC 스냅숏 재생성 의무는 생기지 않는다(`.moai/docs/ac-count-baseline-refresh.md §2`). 재위임된 M0 은 위 앵커를 한 번 더 재측정한 뒤 M1 로 넘어간다.
+
+## §L. 감사 결함 처분 (plan-audit iter-5 델타, `.moai/reports/t1236/plan-audit-5.md`, 감사 대상 `f40824c82`)
+
+| 결함 | 처분 | 어디서 |
+|---|---|---|
+| D47 AC-GR-003 이 DRIFT 한 범주만·건너뛰기 변수에 공허 통과 | **수리** — 비-OK 전 sentinel 의 `(sentinel, id)` 부분집합 + `drift/missing/unregistered_count` 이하, `MOAI_CONSTITUTION_SKIP_VALIDATE` 제거·`Skipped == false`·BASE DRIFT id = EV-6 9개 전제 단언, 반증 하위 테스트에 미등록 `[HARD]` 줄 추가, 판정 명령은 `go test` 하나(`moai constitution validate` 는 참고용으로 명시) | AC-GR-003, `design.md §5` |
+| D48 판독기 소비 경로 미검증 | **수리** — AC-GR-016 픽스처 (17)(저장소 revoke 사건 없음 + `kind: revoke` 기록만 → `revoked`), AC-GR-018 (e) 두 변형(열린 `kind: contract` / resolved revoke 기록만 → `precondition:e`). 판독기를 부르지 않는 변이가 둘 다에서 FAIL. 하위 테스트 17·13 | AC-GR-016·018, `design.md §12` |
+| D49 `internal/cli/contract.go` 허용 목록 누락 | **수리** — 24행에 추가(516행 하위 명령 등록, 389~414행 옵션·이음매 조립), 편집 범위를 두 곳으로 한정 | `design.md §2` 24행 |
+| D50 EV-6 원문이 렌더링본 | **수리** — 캡처한 stdout 파일의 줄을 바이트 그대로(Go JSON 인코더의 `\u003c`·`\u003e` 이스케이프) 복원, 주석 정정 | `acceptance.md §B.2` |
+| D51 옛 A2 표지 잔존 | **수리** — plan §A·§C 2·M0, acceptance 완료 정의를 A2 0.4.3 기준으로 | `plan.md`, `acceptance.md §C.4` |
+| D52 `doc.go` 범위 충돌 | **수리** — 47행과 135~141행 `# Kickoff receipt` 문단 | `design.md §2` 23행, §K B4 행 |
+| D53 REQ-GR-009 추적 | **수리** — 추적표에 AC-GR-023 추가 | `acceptance.md §C.2` |
+| D54 디렉터리 부재의 판정 모호 | **수리** — 부재 = 기록 0건(해제, `filepath.Glob` 과 같음), 있는 파일의 읽기·파싱 실패만 차단; AC-GR-023 (r0) | REQ-GR-022, `design.md §10`, AC-GR-023 |
+| D55 비고정 `-run` 정규식 | **수리** — AC·plan 의 모든 `-run` 을 `^…$`/`^(…)$` 로 고정, 접두 선택이던 AC-GR-009 는 정확한 이름 넷으로 전개, AC-GR-001 기대 줄에 이름 뒤 공백 구분자 | `acceptance.md` 전 AC 명령, `plan.md §D` |
+
+요구사항 25개·AC 25개 그대로 — AC 스냅숏 재생성 의무 없음.

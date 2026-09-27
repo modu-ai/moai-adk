@@ -1,4 +1,4 @@
-# design.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.4)
+# design.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.5)
 
 A1 기준: 0.5.2 (`25283ebf8`) — 스키마(결정자 값 집합, 파생 기본값, 영수증 필드, 구조 검증, `card` 필드)는 A1, 결정 규칙은 A3. A2 기준: 0.4.3 (`status: implemented`, BASE `7fe658815`) — 기록 경로·YAML 머리·`revoke` 종류를 M0 에서 대조했다. A2 는 revoke 기록을 `status: resolved` 로 두고 needs-decision 으로 세지 않으므로 재개 차단은 A3 revoke 판독기가 맡는다(§10). A2b(t1245): push 직렬화·에이전트발 `sign` 차단·팩토리 에이전트 세션의 `decide` 거절(리드 결정 2026-09-26).
 
@@ -55,8 +55,8 @@ Where `workflow.autonomy.mode: contract` — <지시>. See `.claude/rules/moai/w
 | 20 | `internal/contract/receipt/` (신규) + 테스트 | 사건 저장소·체인·검증 | 012 | — |
 | 21 | `internal/contract/kickoff/` (신규) + 테스트 | 전제조건·결정 규칙 R1~R5·decide·kickoff-check·활성 판정·연동 상수 | 007~011·025 | — |
 | 22 | `internal/contract/revoke/` (신규) + 테스트 | revoke | 022 | — |
-| 23 | `internal/contract/sign/` (A1 패키지) + 테스트, 그리고 `internal/contract/receipt.go`(A1 패키지 `contract` 의 `ReceiptOutcome` — BASE `7fe658815` 기준 주석 208행·함수 216~232행) + `internal/contract/receipt_test.go` + `internal/contract/doc.go`(47행 시그니처 목록 주석만) | 서명·재봉인 직후 `events.jsonl` 사건 추가(주입 가능한 저장소 이음매), 실패 시 서명 파일 미기록 — 요구는 A1 0.5.2 (25283ebf8) §C.6 이 A3 에 넘김, 추가 지점은 A3 소관. **모든 서명 테스트는 `t.TempDir()` 를 가리키는 `MOAI_HOME` 을 쓰도록 바꾼다**(실제 홈에 쓰지 않음). 서명기 단계 (1)(임시 규칙)은 `ReceiptOutcome` 의 첫 분기(`EffectiveDecider == DeciderLLMJev` → `RefuseReceiptRequiresHuman`)이므로 **그 자리에서** doctrine 플래그를 인자(주입 가능한 이음매)로 받게 조건화하고 호출부 `sign/sign.go`(BASE 519행)가 그 값을 넘기며 CLI 가 상수 `jevDoctrineAmended` 를 넘긴다(M7, 상수 거짓이라 동작 불변). `sign/` 에 같은 규칙을 다시 두지 않는다. A1 의 AC-CONTRACT-016 [REF] (t) 테스트 행 — `sign/ac_contract_016_test.go` 의 `t_llm_jev_both_approve_interim_rule` 와 `receipt_test.go` 의 `TestValidateKickoffReceipt_AC016`·`TestReceiptOutcome` 의 (t) 경우 — 을 A3 의 대체 테스트로 교체(AC-GR-017) | 012·025 |
-| 24 | `internal/cli/contract_decide.go`, `contract_kickoff_check.go`, `contract_revoke.go` + 테스트 | A1 `contract` Cobra 명령에 하위 명령 추가 | 007·011·022 | — |
+| 23 | `internal/contract/sign/` (A1 패키지) + 테스트, 그리고 `internal/contract/receipt.go`(A1 패키지 `contract` 의 `ReceiptOutcome` — BASE `7fe658815` 기준 주석 208행·함수 216~232행) + `internal/contract/receipt_test.go` + `internal/contract/doc.go`(주석만 — 47행 시그니처 목록과 135~141행 `# Kickoff receipt` 문단. 141행 이전의 「ReceiptOutcome then applies the interim A1 rule …」 서술은 조건화 뒤 조건부 서술로 고친다) | 서명·재봉인 직후 `events.jsonl` 사건 추가(주입 가능한 저장소 이음매), 실패 시 서명 파일 미기록 — 요구는 A1 0.5.2 (25283ebf8) §C.6 이 A3 에 넘김, 추가 지점은 A3 소관. **모든 서명 테스트는 `t.TempDir()` 를 가리키는 `MOAI_HOME` 을 쓰도록 바꾼다**(실제 홈에 쓰지 않음). 서명기 단계 (1)(임시 규칙)은 `ReceiptOutcome` 의 첫 분기(`EffectiveDecider == DeciderLLMJev` → `RefuseReceiptRequiresHuman`)이므로 **그 자리에서** doctrine 플래그를 인자(주입 가능한 이음매)로 받게 조건화하고 호출부 `sign/sign.go`(BASE 519행)가 그 값을 넘기며 CLI 가 상수 `jevDoctrineAmended` 를 넘긴다(M7, 상수 거짓이라 동작 불변). `sign/` 에 같은 규칙을 다시 두지 않는다. A1 의 AC-CONTRACT-016 [REF] (t) 테스트 행 — `sign/ac_contract_016_test.go` 의 `t_llm_jev_both_approve_interim_rule` 와 `receipt_test.go` 의 `TestValidateKickoffReceipt_AC016`·`TestReceiptOutcome` 의 (t) 경우 — 을 A3 의 대체 테스트로 교체(AC-GR-017) | 012·025 |
+| 24 | `internal/cli/contract_decide.go`, `contract_kickoff_check.go`, `contract_revoke.go` + 테스트, 그리고 `internal/cli/contract.go`(A1 파일 — BASE `7fe658815` 기준 `newContractCmd` 의 하위 명령 등록 516행 `cmd.AddCommand(verifyCmd, showCmd, signCmd)`, 서명 옵션·이음매 조립 389~414행 `sign.Options{…}`·`sign.Seams{…}`·`sign.Sign(opts, seams)`) | A1 `contract` Cobra 명령에 하위 명령 추가. `contract.go` 의 편집은 **그 두 곳으로만** 한정한다 — 516행에 세 하위 명령 등록, 389~414행에 doctrine 플래그(`jevDoctrineAmended`)와 사건 저장소 이음매 전달. 그 밖의 `contract.go` 줄은 바꾸지 않는다 | 007·011·022·012·025 | — |
 | 25 | `internal/template/contract_mode_blocks_test.go`, `contract_mode_guided_test.go` (신규, 템플릿 사본 없음) | 가드·보존·동등·변경 집합 | 002·023·024 | — |
 | 26 | `.moai/specs/SPEC-AUTONOMY-GATE-REWIRE-001/**` | 진행 기록 | — | — |
 
@@ -111,7 +111,7 @@ AC 명령은 워크트리 세션 가드에 막히지 않도록 `go test` 한 줄
 | `TestContractModeGuidedPreservation` | `contract_mode_guided_test.go` | 예 | 행 2~14 × 2 사본: 걷어낸 결과가 `git show $BASE:<path>` 와 바이트 동일 |
 | `TestContractModeInheritedDivergence` | 같은 파일 | 예 | 걷어낸 로컬·템플릿 쌍의 차이 = 기준 ref 쌍의 차이 |
 | `TestContractModeChangeSetAllowlist` | 같은 파일 | 예 | `git diff --name-only $BASE` ⊆ §2 허용 목록 |
-| `TestContractModeConstitutionDriftNotIncreased` | 같은 파일 | 예 | `git archive $BASE` 를 `t.TempDir()` 에 풀고, 그 트리와 현재 트리에 `internal/constitution` 의 `Validate`(`moai constitution validate` 와 같은 구현)를 각각 실행해 DRIFT 항목을 모은다. 현재 트리의 DRIFT 수 ≤ BASE 의 DRIFT 수이고 현재 트리의 DRIFT id 집합 ⊆ BASE 의 집합이어야 통과(BASE 에 이미 있는 DRIFT 는 이 SPEC 범위 밖 — 리드가 별도 카드 발행). 두 집합을 `t.Log` 로 출력. 반증 하위 테스트: 현재 트리 사본에서 등록 조항 하나를 지운 픽스처로 비교가 FAIL 함을 관측 |
+| `TestContractModeConstitutionDriftNotIncreased` | 같은 파일 | 예 | `git archive $BASE` 를 `t.TempDir()` 에 풀고, 그 트리와 현재 트리에 `internal/constitution` 의 `Validate`(`moai constitution validate` 와 같은 구현)를 각각 실행해 상태가 OK 가 아닌 **모든 범주**의 `(sentinel, id)` 쌍을 모은다. 현재 트리의 집합 ⊆ BASE 의 집합이고 `drift_count`·`missing_count`·`unregistered_count` 가 각각 BASE 이하여야 통과(BASE 에 이미 있는 DRIFT 9건은 이 SPEC 범위 밖 — 리드가 별도 카드 발행). 전제 단언: `MOAI_CONSTITUTION_SKIP_VALIDATE` 를 지운 상태에서 두 결과 모두 `Skipped == false`, BASE 쪽 DRIFT id 집합 = EV-6 의 9개, BASE `missing_count`·`unregistered_count` = 0. 두 집합을 `t.Log` 로 출력. 반증 하위 테스트 두 개: 등록 조항 하나를 지운 사본(DRIFT +1), always-loaded 파일에 미등록 `[HARD]` 줄을 넣은 사본(`ZONE_UNREGISTERED` +1) — 둘 다 비교가 FAIL 함을 관측(AC-GR-003) |
 | `TestContractModeAlwaysLoadedBudget` | 같은 파일 | 예 | §4 표의 상시 증가 상한과 카탈로그 조건부 상한 |
 | `TestContractModeEmitterSites` | 같은 파일 | 예 | `BASE` 에서 Kickoff 를 담은 파일 집합 = E ∪ R ∪ H ∪ 로컬 전용, E 의 각 파일에 블록 ≥ 1 |
 
@@ -262,7 +262,8 @@ A3 가 만드는 동사다 — A1 의 동사는 `show`·`verify`·`sign` 뿐이�
 | 차단 판정 | 기록 하나라도 `kind == "revoke"` 이고 `card`·`spec` 이 대상과 같으며 `fingerprint == escalation.Fingerprint(<그 기록의 class>, <현재 서명의 seal>)` 이면 차단 |
 | 보지 않는 필드 | `status`(A2 가 늘 `resolved` 로 쓰므로), `decider`, `occurrences` |
 | 풀리는 조건 | 새 서명(사람 대화형 또는 새 영수증) — seal 이 달라져 지문이 맞지 않는다 |
-| 오류 | 디렉터리 목록·읽기·파싱 실패는 차단으로 판정(조용한 「차단 없음」 금지) |
+| 디렉터리 부재 | 에스컬레이션 디렉터리가 없으면 기록 0건 — 해제이며 오류가 아니다(A2 `NeedsDecision` 의 `filepath.Glob` 과 같은 의미. `os.ReadDir` 로 구현하면 `fs.ErrNotExist` 를 0건으로 처리) |
+| 오류 | 있는 디렉터리의 목록 실패, 있는 기록 파일의 읽기·파싱 실패는 차단으로 판정(조용한 「차단 없음」 금지) |
 | 쓰는 곳 | 전제조건 (e)(A2 `NeedsDecision` 과 함께), kickoff-check 사유 `revoked`(저장소 revoke 사건과 함께), revoke 의 멱등 판정, 오케스트레이터의 단계 경계 확인(kickoff-check 경유) |
 
 이 판독 규칙은 AC-GR-023 이 고정한다. 옛 판(v0.3.3 이전)이 인용한 A2 커밋 `d8926ff9a` 의 `escalations/<timestamp>.json` 은 리드가 철회한 형식이다(`research.md §10.1`, 이력).
@@ -308,8 +309,8 @@ A3 가 만드는 동사다 — A1 의 동사는 `show`·`verify`·`sign` 뿐이�
 |---|---|---|
 | 사건 저장소 | 중간 줄 변조, 마지막 서명 줄 삭제 | 변조 → 검증 실패; 삭제 → kickoff-check `signature-not-recorded` |
 | 서명 사건 기록 | 사람·영수증 서명, 재봉인 각각 | 각각 정확히 한 줄 추가; 추가 실패 주입 시 서명 파일 미기록 |
-| kickoff-check | (1)~(11) 기존 + (12) 저장소 `reject` 영수증 + 일치 서명 / (13) 저장소 `human` 영수증 + 일치 서명 / (14) 봉인 불일치 서명 / (15) 미서명 계약 / (16) `effective_decider: llm` 영수증 + `signer_kind: llm+jev` 서명 | (12)(13) `receipt-not-approved` / (14)(15) `not-signed-valid`(verify 상태 동봉) / (16) `decider-mismatch` |
-| decide 전제조건 | (a)~(f) 각각, (a) 점수 줄에 괄호 주석 | `human`, Jev 생성 0회 |
+| kickoff-check | (1)~(11) 기존 + (12) 저장소 `reject` 영수증 + 일치 서명 / (13) 저장소 `human` 영수증 + 일치 서명 / (14) 봉인 불일치 서명 / (15) 미서명 계약 / (16) `effective_decider: llm` 영수증 + `signer_kind: llm+jev` 서명 / (17) 저장소 revoke 사건 없이 `kind: revoke` 에스컬레이션 기록(현재 seal 지문)만 | (12)(13) `receipt-not-approved` / (14)(15) `not-signed-valid`(verify 상태 동봉) / (16) `decider-mismatch` / (17) `revoked` — 판독기를 부르지 않는 변이는 exit 0 으로 FAIL |
+| decide 전제조건 | (a)~(f) 각각, (a) 점수 줄에 괄호 주석, (e) 의 두 변형(열린 `kind: contract` 기록 / `status: resolved` revoke 기록만) | `human`, `precondition:e` 는 두 변형 모두, Jev 생성 0회 — A2 `NeedsDecision` 만 보는 변이는 revoke 변형에서 FAIL |
 | R1 교차 확인 일치 | `llm` approve + Jev approve, `jevDoctrineAmended = true` | `approve` |
 | R1 교차 확인 모두 거절 | `llm` reject + Jev reject, `jevDoctrineAmended = true` | `reject` |
 | R1 교차 확인 불일치 | `llm` approve + Jev reject / escalate, `llm` reject + Jev approve, `llm` escalate + Jev approve, `llm` reject + Jev escalate, `jevDoctrineAmended = true` | `human`, `cross-check-disagree` |
@@ -321,7 +322,7 @@ A3 가 만드는 동사다 — A1 의 동사는 `show`·`verify`·`sign` 뿐이�
 | decide 이름·입력·출력 | `moai contract decide --help`, `<card>` ≠ 계약 `card`, 정상 입력 | 도움말에 동사 `decide`·`<card>`·`--spec`·`--judgement`·`--json`; `card-mismatch` exit 2; `receipts.jsonl`·`events.jsonl` 각 +1줄, `kickoff-receipt.json` 이 영수증 줄 본문과 바이트 동일 |
 | decide 부작용 | 임시 git 저장소 + `backlog.db` | `backlog.db`·ref·워크트리 목록·`contract.yaml` 바이트 동일, 작업 트리의 새 파일은 영수증 하나 |
 | revoke | 사람 서명 계약 / `llm` 영수증 서명 계약 / 반복 / 미서명 | 0(+1 사건 +1 기록) / 0 / 0(쓰기 0) / 1 |
-| revoke 판독기 | revoke 가 쓴 기록 / 같은 기록인데 새 서명(다른 seal) / `kind: revoke` 이나 지문이 현재 seal 과 다른 기록 / `status: open` 으로 바꾼 revoke 기록 / 머리가 깨진 기록 / `kind: contract`·`status: open` 기록 | 차단 / 해제 / 해제 / 차단(`status` 무시) / 차단(오류는 차단) / A3 판독기는 해제·A2 `NeedsDecision` 은 참 — 그리고 revoke 기록에 대해 A2 `NeedsDecision` 은 거짓(A2 불변) |
+| revoke 판독기 | (디렉터리 부재 → 해제·오류 없음) / revoke 가 쓴 기록 / 같은 기록인데 새 서명(다른 seal) / `kind: revoke` 이나 지문이 현재 seal 과 다른 기록 / `status: open` 으로 바꾼 revoke 기록 / 머리가 깨진 기록 / `kind: contract`·`status: open` 기록 | 차단 / 해제 / 해제 / 차단(`status` 무시) / 차단(오류는 차단) / A3 판독기는 해제·A2 `NeedsDecision` 은 참 — 그리고 revoke 기록에 대해 A2 `NeedsDecision` 은 거짓(A2 불변) |
 | revoke 금지 사항 | 워크트리·브랜치·원격·`backlog.db` 픽스처 | 전후 동일, git 실행 이음매에 push·branch -d·worktree remove 0회 |
 | 활성 순서 | 상수 `true` 를 조건 커밋과 같은 커밋에 둔 픽스처 저장소 | 순서 테스트 FAIL(엄격한 후손 아님) |
 | 연동 | 개정 표지만 있는 커밋 / `jevDoctrineAmended = true` 만 있는 커밋 / §29 만 빠진 커밋 / 임시 규칙 단계가 삭제된 head(상수 참) / 모두 한 커밋 | 앞의 넷 FAIL(넷째는 `TestSignInterimRuleFollowsDoctrine` 의 거짓 주입 경우가 FAIL), 마지막 PASS |
