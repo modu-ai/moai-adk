@@ -102,13 +102,13 @@ root.go Execute()
      골라 제거하고, 증명 못 하는 부분은 사유와 함께 그대로 남긴다(`internal/codexwiring/unwire.go`).
      `--dry-run`은 아무것도 쓰지 않고 계획만 출력한다. `moai update`는 disable 이후
      다시 wiring하지 않으며, 재활성화는 `moai tool enable codex`(기존 verb) 몫이다.
-2. **자기 파일의 `init()`에서 스스로 등록** — `AddCommand`를 호출하는 파일이 **70개**입니다
+2. **자기 파일의 `init()`에서 스스로 등록** — `AddCommand`를 호출하는 파일이 **73개**입니다
    (`grep -rl "AddCommand" internal/cli --include='*.go' | grep -v _test`).
    `hook.go`, `todo.go`, `kanban.go`, `glm.go`, `cc.go`, `update.go`, `doctor.go`, `spec.go`,
    `gate.go`, `graph.go`, `goal.go`, `integration.go` 등이 이 방식이고, 앞선 판 사이에
    `gtd.go`(`NewGTDCommand()` — todo 명령 트리를 감싸 `Use`만 `gtd`로 바꾼 두 번째 이름)와
    `slot.go`(`moai slot` — 무거운 실행용 세션 간 자원 임대)가 더해진 바 있습니다.
-   비테스트 `AddCommand(` 호출은 모두 **227회**, 그중 `rootCmd.AddCommand(`는 **67회**입니다(t1278 판 재측정 — 사이 판들의 누적을 한 번에 반영했다. 신규 verb `moai ci-verdict` 는 `root.go` 의 `newCIVerdictCmd(defaultGhRunner)` 로 tools 그룹에 등록된다)
+   비테스트 `AddCommand(` 호출은 모두 **236회**, 그중 `rootCmd.AddCommand(`는 **66회**입니다(t1237 판 재측정 — 이 카드 몫은 `contract_report.go` +1파일·+1호출뿐이고(셋의 A4 서브커맨드를 한 `c.AddCommand(` 로 등록), 나머지 이동은 흡수된 develop 커밋 몫으로 개별 귀속하지 않았다. 신규 verb `moai ci-verdict` 는 `root.go` 의 `newCIVerdictCmd(defaultGhRunner)` 로 tools 그룹에 등록된다)
    (card t1083 재측정 2026-09-22 — Consumer B 등록 철수 -1. 카운팅 명령:
    `find internal/cli -name '*.go' -not -name '*_test.go' -print0 | xargs -0 grep -h 'AddCommand(' | wc -l`;
    같은 파이프에 `rootCmd\.AddCommand(` 패턴 = 65. 이 판 앞의 238회는 테스트 파일까지 선 값으로 정정).
@@ -123,6 +123,15 @@ root.go Execute()
 `rootCmd.AddCommand(newContractCmd())`로 등록하며, 서브커맨드는 `verify <SPEC-ID>`·`show <SPEC-ID>`·
 `sign <SPEC-ID>...` 셋이다. 판정은 전부 `internal/contract`(검증 코어)와 `internal/contract/sign`(서명기)이
 내리고 CLI는 결과를 출력과 종료 코드(0 / 1 / 2)로만 옮긴다. 위 `AddCommand` 수치는 이 판에서 다시 세지 않았다.
+
+**t1237 판에서 `moai contract`에 서브커맨드 셋이 더했다**(card t1237, SPEC-AUTONOMY-CLOSURE-001) —
+`report <card-id>`(카드 마감 보고서 쌍 `closure-report.{md,json}` 을 카드 증거 디렉터리에 원자 쓰기; 모든
+섹션 값은 파일과 git에서 끌오고 빠진 입력은 통과가 아니라 「not observed/not recorded」 로 렌더된다. 거부는
+exit 2), `verdict <card-id> <accept|reject|amend-contract>`(인간 전용 — 에이전트 마커·비TTY·타이핑 확인
+불일치·보고서 없음·git 신원 없음은 전부 기록 없이 exit 1; 훅이 모든 모드에서 에이전트 호출을 거부한다),
+`push-check [<remote> <refspec>]`(훅과 같은 push 준비도 평가의 수동 표면 — 0 ready/inactive, 1 미준비·
+`push_check_undetermined`, 2 사용법). 셋은 `contract_report.go`의 `init()`이 파일명 순 package init 으로
+A1의 `contract` 트리에 붙는다(A1 파일 무변경).
 
 **합성 루트**: `internal/cli/deps.go` — `type Dependencies` + `InitDependencies()`.
 Config · Git(Repository/Branch/Worktree) · HookRegistry · HookProtocol · UpdateChecker/Orchestrator ·
@@ -224,6 +233,15 @@ Info 이므로 여전히 아무 곳에도 쓰이지 않습니다 — 그래서 �
 agent-stop-audit 선례대록대로 침묵하고 계속합니다.
 
 **t1278 판에서 더해진 네 seam** — ① 계약 서명 가드(`internal/hook/contract_sign_guard.go`, card t1245): 도구 호출 경로에서 `moai contract sign`·`decide` 를 차단한다(센티넬 `CONTRACT_SIGN_AGENT_VIOLATION:`). 인간 경로는 무조건 거부, `--signer llm|llm+jev` 비대화형 경로와 `decide` 는 `MOAI_FACTORY_ROLE=worker` 세션에서만 거부하며, 판별 불가호출은 fail-closed. ② push-develop 직렬화(`internal/hook/push_serializer.go`, card t1245): 계약 triple(계약 모드 ∧ `push-develop` ∧ `push_requires_lease`)이 활성일 때 develop push 는 `moai slot` 의 `push-develop` 임대를 요구한다(센티넬 `PUSH_SERIALIZATION_VIOLATION:`; PostToolUse 가 실패한 push 의 임대를 돌려준다). ③ Stop 파싱 실패 상한(`internal/cli/hook_stop_parse_cap.go`, card t1271): 셈 키별 8연속 파싱 실패 Stop 의 9번째를 무의견으로 답한다(기록 `.moai/state/stop-parse-cap/`, 60분 만료). ④ PowerShell 가드 형태 분류(card t1255, SPEC-HOOK-GUARD-POWERSHELL-FORMS-001): 브랜치 상태 스캔이 `.exe` 접미·호출연산자 인용 대상·백틱 분리·`pwsh -Command` 페이로드를 정규화해 기존 query-vs-mutate 판정으로 거부하고, 동적 해석(`Get-Command`)·`saps`/`start` 별칭·유니코드 대시 `-EncodedCommand` 철자는 감사선 1행(`unclassifiable`)으로 격하한다. 인용 산문(`Write-Output 'git switch'`)은 데이터로 남아 허용된다.
+
+**t1237 판에서 더해진 둘**(card t1237, SPEC-AUTONOMY-CLOSURE-001, `internal/hook/closure_push.go`) —
+⑤ `checkContractVerdict`: 모든 모드에서 `moai contract verdict` 도구 호출을 문자열 매치로 거부한다(센티넬
+`CLOSURE_VERDICT_HUMAN_ONLY:` — I/O 없는 편의 가드고 집행은 verdict 명령 자체의 대화형 터미널 확인이
+담당한다). ⑥ `checkClosurePush`: 계약 모드에서 통합 브랜치로의 push(혹은 그럴 가능성이 있는 push)를
+평가해 미준비 계약이 하나라도 있으면 거부한다(센티넬 `CLOSURE_PUSH_STOP:` + `SPEC=코드들`). 모드 검사가
+함수의 첫 문장이라 guided 에서는 파일 읽기·서브프로세스 전에 반환해 훅 출력이 바이트 동일하게 유지되고,
+`--all`/`--mirror`·명령 치환·래퍼 셸·변수 피연산자·풀 수 없는 목적지는 전부 `push_check_undetermined` —
+undetermined 는 허용이 아니라 거부다(fail-closed).
 
 ---
 

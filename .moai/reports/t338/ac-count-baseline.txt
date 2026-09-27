@@ -39,6 +39,7 @@
 .moai/specs/SPEC-AUDIT-PARTICIPANT-COUNT-001/acceptance.md  COUNT 8  live=8 excluded=0 ambiguous=0
 .moai/specs/SPEC-AUDIT-SNAPSHOT-001/acceptance.md  COUNT 7  live=7 excluded=0 ambiguous=0
 .moai/specs/SPEC-AUT-PERMMODES-001/acceptance.md  COUNT 12  live=12 excluded=0 ambiguous=0
+.moai/specs/SPEC-AUTONOMY-CLOSURE-001/acceptance.md  COUNT 25  live=25 excluded=0 ambiguous=0
 .moai/specs/SPEC-AUTONOMY-CONTRACT-001/acceptance.md  COUNT 25  live=25 excluded=0 ambiguous=0
 .moai/specs/SPEC-AUTONOMY-ESCALATION-001/acceptance.md  COUNT 25  live=25 excluded=0 ambiguous=0
 .moai/specs/SPEC-AUTONOMY-KICKOFF-CALIB-001/acceptance.md  COUNT 14  live=14 excluded=0 ambiguous=0
