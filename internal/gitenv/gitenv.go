@@ -32,7 +32,9 @@
 package gitenv
 
 import (
+	"fmt"
 	"os"
+	"runtime"
 	"strings"
 )
 
@@ -71,7 +73,22 @@ var RepoScopingVars = []string{
 // reads a nil Env as "inherit the parent's environment", which is exactly the
 // behaviour this function exists to prevent. A caller that assigns the result
 // to cmd.Env therefore never re-creates the defect by passing nothing.
+//
+// On Windows names are matched case-insensitively. The CRT documents getenv as
+// case-insensitive there, os/exec de-duplicates Env the same way, and Git for
+// Windows resolves variables through GetEnvironmentVariableW (compat/mingw.c),
+// so a child can read Git_Dir as GIT_DIR. That last step is read from source,
+// not observed; if it does not hold, folding only removes a variable the child
+// would have ignored. Elsewhere a differently-cased name is a different
+// variable and is kept.
 func Scrub(env []string) []string {
+	return scrub(env, runtime.GOOS == "windows")
+}
+
+// scrub is Scrub with the case rule as a parameter, so both rules are testable
+// on any host. RepoScopingVars is all upper case, so folding means comparing
+// the upper-cased name.
+func scrub(env []string, foldCase bool) []string {
 	drop := make(map[string]struct{}, len(RepoScopingVars))
 	for _, name := range RepoScopingVars {
 		drop[name] = struct{}{}
@@ -84,6 +101,9 @@ func Scrub(env []string) []string {
 			// Not a NAME=VALUE pair; pass it through rather than guess.
 			out = append(out, kv)
 			continue
+		}
+		if foldCase {
+			name = strings.ToUpper(name)
 		}
 		if _, dropped := drop[name]; dropped {
 			continue
@@ -101,4 +121,31 @@ func Scrub(env []string) []string {
 // git of its own.
 func Env() []string {
 	return Scrub(os.Environ())
+}
+
+// ScrubProcess removes every RepoScopingVars entry from the current process's
+// own environment, using the same name rule as Scrub.
+//
+// It exists for a package's TestMain. A test binary run inside a git hook, or
+// from a session whose environment carries GIT_DIR / GIT_WORK_TREE, hands those
+// to every git fixture it spawns, and the fixture then writes into the caller's
+// repository instead of its temp directory (GH #1691). Scrubbing the process
+// once, before m.Run, reaches every child the package starts — including
+// call sites added later — where assigning Env() at each call site reaches only
+// the sites someone remembered.
+//
+// Production code keeps using Env: a long-lived process must not mutate its
+// own environment on behalf of one child.
+func ScrubProcess() error {
+	foldCase := runtime.GOOS == "windows"
+	for _, kv := range os.Environ() {
+		name, _, ok := strings.Cut(kv, "=")
+		if !ok || len(scrub([]string{kv}, foldCase)) != 0 {
+			continue
+		}
+		if err := os.Unsetenv(name); err != nil {
+			return fmt.Errorf("gitenv: unset %s: %w", name, err)
+		}
+	}
+	return nil
 }

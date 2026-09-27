@@ -69,6 +69,25 @@ else
   fail "t459: advisory silent after rotation — 40 archived stubs unreported; output: $OUT"
 fi
 
+# t1249: stdout is SessionStart hook context — every notice must stay off it.
+# Streams are captured SEPARATELY; merging them (2>&1) cannot see a stdout leak.
+bash "$SCRIPT" --inbox "$FIXTURE/absent.jsonl" --state-dir "$STATE" --threshold 25 \
+  >"$FIXTURE/abs.out" 2>"$FIXTURE/abs.err" || true
+if [[ ! -s "$FIXTURE/abs.out" ]] && grep -q "inbox absent" "$FIXTURE/abs.err"; then
+  pass "t1249: inbox-absent notice on stderr, stdout empty"
+else
+  fail "t1249: inbox-absent leaked to stdout; stdout: $(cat "$FIXTURE/abs.out") stderr: $(cat "$FIXTURE/abs.err")"
+fi
+printf '{"event_key":"x"}\n%.0s' {1..40} > "$INBOX"
+echo '{"offset":0}' > "$STATE/drain-offset.json"
+bash "$SCRIPT" --inbox "$INBOX" --state-dir "$STATE" --threshold 25 \
+  >"$FIXTURE/ovf.out" 2>"$FIXTURE/ovf.err" || true
+if [[ ! -s "$FIXTURE/ovf.out" ]] && grep -q "lsel-backlog: 40 unread stubs" "$FIXTURE/ovf.err"; then
+  pass "t1249: overflow reminder on stderr, stdout empty"
+else
+  fail "t1249: overflow reminder leaked to stdout; stdout: $(cat "$FIXTURE/ovf.out")"
+fi
+
 if [[ "$FAIL" -ne 0 ]]; then exit 1; fi
 log "backlog_check_test: PASS"
 exit 0

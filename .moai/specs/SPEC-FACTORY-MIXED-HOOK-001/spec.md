@@ -12,6 +12,7 @@ module: "internal/factorymsg"
 lifecycle: spec-anchored
 card: t1074
 tags: "factory,codex,claude,hooks,messaging,receipt"
+partially_superseded_by: [SPEC-CODEX-FACTORY-RETIRE-001]
 ---
 
 # SPEC-FACTORY-MIXED-HOOK-001

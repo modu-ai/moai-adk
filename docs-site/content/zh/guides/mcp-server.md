@@ -105,9 +105,12 @@ flowchart TD
 |------|--------|------|
 | worktree 中的会话 | `project_root: <git rev-parse --show-toplevel>` | 调用作用于该树 |
 | primary 检出中的会话 | 不传 | 与以往完全一致地解析 |
+| 不用 git 跟踪 `.moai` 的仓库的链接 worktree(worktree 自身没有 `.moai`) | `project_root: <git rev-parse --show-toplevel>` | 若 git 将其登记为某个带 `.moai` 的 primary 检出的 worktree，则予以接受，调用作用于该 worktree |
 | 并非 MoAI 项目根的路径 | — | 调用被**拒绝**，错误信息中写明该路径 |
 
 拒绝是刻意的设计，而不是毛边。若悄悄回退到默认值，就会把打错自己 worktree 路径的调用方送回去审计 primary 检出，还告诉它成功了——正是这个参数要防止的那种失败。
+
+如果仓库把 `.moai` 放在 git 之外，链接 worktree 里就没有 `.moai`，但仍会被接受。条件有两个：路径必须是 `git worktree list` 中登记的 worktree 的顶层目录，且仓库的 primary 检出中有 `.moai`。子目录、未登记或可清理(prunable)的 worktree、独立 git 目录这类结构不明确的布局，以及无法使用 git 的环境，都会被拒绝。这类 worktree 若没有自己的 workflow 配置，显式审计关卡(`workflow.audit.gates`)从 primary 检出读取；无法确定 primary 时，关卡按 `required` 处理，也就是说缺少判定时结果是失败而不是通过。SPEC 目录(`spec_progress`、`spec_drift`、`spec_audit`)基于 worktree 与 primary 检出两边 `.moai/specs` 的并集作答，每条记录和发现项都标明来源(`worktree` 或 `primary`)；同一 SPEC ID 两边都有时，只按 worktree 那份计一次，并在响应中指出被遮蔽的 primary 副本。审计回执、审计者启动标记与拒绝记录、`audit_multi` 收敛判定、`verify_snapshot` 快照等状态保存在 primary 检出的 `.moai/state` 中，并附上 worktree 自己的树标识，因此多棵树共用一个存储也不会互相覆盖记录；实际读取了哪些来源，由 `_root.worktree_warning` 和 `_root.sources` 说明。无法确定 primary 检出时，状态写入不会改写到别处，而是直接报错(尽力而为的写入会被跳过，并以通知说明)；目录只读取 worktree，并在 `_root` 中写明未读取 primary 的原因。此时审计关卡按 `required` 处理，所以即使仓库从未启用该关卡，从这个 worktree 发起的阶段入口派生也会被拒绝；要解除，可让 primary 变得可识别，或在 worktree 中放置它自己的 `.moai/config/sections/workflow.yaml`。
 
 在 `audit_multi` 中，根会到达 fan-out 的**两个**后端：codex 把它作为执行审查的工作目录，GLM 路径则用它从那棵树上取出要发往 z.ai 的 diff。传这个值，才能让两份第二意见针对同一棵树——不传，它们可能看的是不同的树。
 
@@ -174,11 +177,11 @@ codex 委托工具族连线到 super-advisor——因为按需高推理咨询智
 
 | 工具 | 用途 | 使用方 | CLI 等价 |
 |------|------|--------|----------|
-| `mcp__moai__codex_role_audit` | 以顶层 `codex exec` 进程启动一个只读角色（只读沙箱，禁用全部 MCP 服务器），立即返回任务 ID | Codex 泳道编排器 | — |
-| `mcp__moai__codex_role_audit_status` | 读取角色任务的状态与时间戳 | Codex 泳道编排器 | — |
-| `mcp__moai__codex_role_audit_result` | 读取已结束角色任务的退出码、返回文本或判定书路径，以及启动记录路径 | Codex 泳道编排器 | — |
+| `mcp__moai__codex_role_audit` | 以顶层 `codex exec` 进程启动一个只读角色（只读沙箱，禁用全部 MCP 服务器），立即返回任务 ID | Codex 会话 | — |
+| `mcp__moai__codex_role_audit_status` | 读取角色任务的状态与时间戳 | Codex 会话 | — |
+| `mcp__moai__codex_role_audit_result` | 读取已结束角色任务的退出码、返回文本或判定书路径，以及启动记录路径 | Codex 会话 | — |
 
-Codex 泳道通过这组工具而不是 `spawn_agent` 启动 `plan-auditor`、`sync-auditor` 等只读角色。泳道 shell 中嵌套的 `codex exec` 无法访问模型，因此没有 CLI 等价物。任务存在于服务器进程中，随进程结束而结束。
+Codex 会话通过这组工具而不是 `spawn_agent` 启动 `plan-auditor`、`sync-auditor` 等只读角色。Codex 会话的 shell 中嵌套的 `codex exec` 无法访问模型，因此没有 CLI 等价物。任务存在于服务器进程中，随进程结束而结束。
 
 ### GLM 委托（后台任务）
 

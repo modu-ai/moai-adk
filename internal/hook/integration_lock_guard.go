@@ -67,8 +67,18 @@ func checkIntegrationLock(input *HookInput, projectRoot string) (decision string
 	// `echo 'git merge ...'` names the command without running it, and denying
 	// it would be a false positive on a string. Measured — the first cut of
 	// this guard did deny exactly that.
+	// unclassified names a PowerShell indirection construct the merge pattern
+	// cannot see through (D2, SPEC-HOOK-MATCHER-POWERSHELL-001 REQ-HMP-010).
+	// Such a call is never denied; where a classified merge would have been
+	// denied, it is recorded in the integration-lock audit log instead.
+	unclassified := ""
 	if !integrationMergePattern.MatchString(substituteQuotedArguments(command)) {
-		return "", ""
+		if !isPowerShellTool(input.ToolName) {
+			return "", ""
+		}
+		if unclassified = powerShellIndirection(command); unclassified == "" {
+			return "", ""
+		}
 	}
 
 	lock, err := kanban.ReadIntegrationLock(projectRoot)
@@ -96,6 +106,10 @@ func checkIntegrationLock(input *HookInput, projectRoot string) (decision string
 		fmt.Fprintf(os.Stderr, "[moai:integration-lock] advisory: holder %s (pid %d) is gone; allowing — reclaim with `moai integration acquire`\n", lock.SessionID, lock.PID)
 		return "", ""
 	}
+	if unclassified != "" {
+		appendUnclassifiedAudit(projectRoot, integrationLockAuditRelPath, input, unclassified, command, input.CWD)
+		return "", ""
+	}
 
 	reason = fmt.Sprintf("%s: the release integration window is held by %s (pid %d) since %s on %s. Wait for its completion report, or take it over deliberately with `moai integration acquire --force`.",
 		integrationLockViolationPrefix, holderLabelOf(lock), lock.PID, lock.AcquiredAt, lock.Branch)
@@ -117,7 +131,7 @@ func holderLabelOf(lock *kanban.IntegrationLock) string {
 	return "unknown"
 }
 
-// extractIntegrationCommand pulls the command string out of Bash tool input.
+// extractIntegrationCommand pulls the command string out of shell tool input.
 // Returns "" when the payload is not parseable or carries no command.
 func extractIntegrationCommand(toolInput json.RawMessage) string {
 	var parsed map[string]any

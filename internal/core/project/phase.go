@@ -187,6 +187,9 @@ func (pe *PhaseExecutor) phaseValidate(opts InitOptions) error {
 				return fmt.Errorf("backup for force reinit: %w", backupErr)
 			}
 			pe.logger.Info("backed up existing project", "path", backupPath)
+			if err := CarryManifestForward(opts.ProjectRoot, backupPath); err != nil {
+				return fmt.Errorf("carry manifest for force reinit: %w", err)
+			}
 		} else {
 			return fmt.Errorf("%w", ErrProjectExists)
 		}

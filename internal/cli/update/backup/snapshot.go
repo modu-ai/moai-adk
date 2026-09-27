@@ -1,10 +1,13 @@
 package backup
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
@@ -107,7 +110,74 @@ func WriteSnapshot(projectRoot string) error {
 	if walkErr != nil {
 		return fmt.Errorf("snapshot: walk config sections: %w", walkErr)
 	}
+	// Card t1216: attest the tree just written, so SaveTemplateBase can tell
+	// this deploy-time snapshot from one written after a restore.
+	return AttestSnapshot(projectRoot)
+}
+
+// AttestSnapshot records the digest of the snapshot's current sections/ tree,
+// declaring it a deploy-time render that SaveTemplateBase may use as BASE.
+// WriteSnapshot calls it; nothing that writes the snapshot after a restore may.
+func AttestSnapshot(projectRoot string) error {
+	sum, err := snapshotSectionsDigest(projectRoot)
+	if err != nil {
+		return fmt.Errorf("snapshot: digest sections: %w", err)
+	}
+	if err := os.WriteFile(snapshotAttestPath(projectRoot), []byte(sum+"\n"), defs.FilePerm); err != nil {
+		return fmt.Errorf("snapshot: write attestation: %w", err)
+	}
 	return nil
+}
+
+// snapshotAttestPath is the file WriteSnapshot records the sections digest in.
+// It sits beside sections/, so neither the BASE copy nor the restore walk sees it.
+func snapshotAttestPath(projectRoot string) string {
+	return filepath.Join(SnapshotDir(projectRoot), "sections.sha256")
+}
+
+// snapshotSectionsDigest hashes every file under the snapshot's sections/
+// tree: relative path, length, and bytes, in lexical walk order.
+func snapshotSectionsDigest(projectRoot string) (string, error) {
+	root := filepath.Join(SnapshotDir(projectRoot), "sections")
+	h := sha256.New()
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		rel, relErr := filepath.Rel(root, path)
+		if relErr != nil {
+			return relErr
+		}
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		_, _ = fmt.Fprintf(h, "%s\x00%d\x00", filepath.ToSlash(rel), len(data))
+		_, _ = h.Write(data)
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// snapshotUnattested reports whether the snapshot's sections/ tree is NOT the
+// one the last WriteSnapshot call attested: no attestation (left by a binary
+// that predates it) or a tree rewritten since (an older binary run after a
+// newer one). A tree whose digest cannot be computed counts as unattested too:
+// copying it anyway would stop at the unreadable file and leave a partial
+// BASE, which is the loss this gate exists to prevent (card t1216 sync-audit
+// F1).
+//
+// @MX:NOTE: [AUTO] trust gate for the merge BASE (card t1216) — binaries before card t1139 wrote the snapshot AFTER the restore, so it holds user values; a BASE equal to a user value makes the 3-way merge replace that value with the template default
+func snapshotUnattested(projectRoot string) bool {
+	want, err := os.ReadFile(snapshotAttestPath(projectRoot))
+	if err != nil {
+		return true
+	}
+	got, err := snapshotSectionsDigest(projectRoot)
+	return err != nil || strings.TrimSpace(string(want)) != got
 }
 
 // HasSnapshot reports whether a usable snapshot exists: true iff

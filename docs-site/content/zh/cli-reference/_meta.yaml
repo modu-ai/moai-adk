@@ -49,3 +49,5 @@ tokens:
   title: "moai tokens 令牌记账"
 memory:
   title: "moai memory 记忆维护"
+contract:
+  title: "moai contract 自主执行契约"

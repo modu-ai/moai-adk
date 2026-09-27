@@ -255,6 +255,11 @@ func TestUpdateForce_TemplateChangedKeyStillPropagates(t *testing.T) {
 			t.Fatalf("write %s: %v", p, err)
 		}
 	}
+	// Card t1216: the patched snapshot stands for the previous version's
+	// deploy-time render, which that version's WriteSnapshot attested.
+	if err := backup.AttestSnapshot(root); err != nil {
+		t.Fatalf("attest snapshot: %v", err)
+	}
 
 	runForcedTemplateSyncAt(t, root)
 	if got := sectionValue(t, sectionsFile(root, "lsp.yaml"), "lsp", "delegate_to_astgrep", "rules_dir"); got != currentTemplateValue {

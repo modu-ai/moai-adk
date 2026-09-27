@@ -43,6 +43,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -161,6 +162,19 @@ type ConvergenceResult struct {
 	// (REQ-ABI-007).
 	BuildCommit string `json:"build_commit,omitempty"`
 	BuildLag    string `json:"build_lag,omitempty"`
+
+	// TreeRoot is the canonical tree this result was produced for. The result
+	// of a config-orphaned worktree is kept in its primary checkout's store
+	// beside the primary's own and every sibling worktree's, and a result of
+	// one tree never replaces another's (SPEC-WORKTREE-STATE-ROOT-001
+	// REQ-WSR-003). Additive + omitempty.
+	TreeRoot string `json:"tree_root,omitempty"`
+
+	// StateNotice names a state write this call skipped and why — set only
+	// when a config-orphaned worktree's primary checkout could not be
+	// identified, so there was no store to write to (REQ-WSR-004). The verdict
+	// itself is unchanged. Additive + omitempty.
+	StateNotice string `json:"state_notice,omitempty"`
 }
 
 // ─── convergence algorithm (design.md §3) ───
@@ -415,7 +429,8 @@ func collectFailOpen(vs []PerBackendVerdict) []string {
 // describeRequiredFails names the required backends that FAILED, for the
 // AC-AMM-007 "residual_risk_note records which backend(s) failed" requirement.
 // Used in the no-split case (all required agree on fail) where disagreement_flag
-// is false but the Verification Matrix still needs to name the failures.
+// is false but the Verification Matrix still needs to name the failures, and as
+// the leading reason of a split that includes a required FAIL (describeDisagreement).
 func describeRequiredFails(fails []PerBackendVerdict) string {
 	names := make([]string, 0, len(fails))
 	for _, v := range fails {
@@ -441,6 +456,10 @@ func collectSynthesisNotes(vs []PerBackendVerdict) []string {
 	return out
 }
 
+// advisoryDisagreementQualifier marks a disagreement note whose split does not
+// change the verdict. Any later step that fails the verdict must remove it.
+const advisoryDisagreementQualifier = " (advisory, NOT a block)"
+
 func describeDisagreement(vs []PerBackendVerdict) string {
 	var passList, failList []string
 	for _, v := range vs {
@@ -456,8 +475,15 @@ func describeDisagreement(vs []PerBackendVerdict) string {
 		// required pass. Surface a generic note rather than an empty one.
 		return "cross-model disagreement detected; see per_backend_verdicts for details"
 	}
-	return fmt.Sprintf("cross-model disagreement (advisory, NOT a block): pass=[%s] fail=[%s]",
-		strings.Join(passList, ", "), strings.Join(failList, ", "))
+	// A split that includes a required FAIL fails the overall verdict, and the
+	// multi-review gate blocks on it — the wording must say so. Only a split with
+	// no required FAIL is advisory.
+	if requiredFails := filterVerdict(filterRequired(vs), "fail"); len(requiredFails) > 0 {
+		return fmt.Sprintf("%s; cross-model disagreement: pass=[%s] fail=[%s]",
+			describeRequiredFails(requiredFails), strings.Join(passList, ", "), strings.Join(failList, ", "))
+	}
+	return fmt.Sprintf("cross-model disagreement%s: pass=[%s] fail=[%s]",
+		advisoryDisagreementQualifier, strings.Join(passList, ", "), strings.Join(failList, ", "))
 }
 
 // ─── fan-out: errgroup parallel invocation of the active backends ───
@@ -740,7 +766,7 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// engine's distributed default (codex required) is not an opt-in. Runs
 	// BEFORE persist so the state file the multi-review-gate Stop hook reads
 	// carries the enforced verdict.
-	enforcementGates := workflowAuditGates(cfg.ProjectRoot)
+	enforcementGates, gateAssumedNote := workflowAuditGates(cfg.ProjectRoot)
 	// The actual Claude backend is a default-required independent audit. Unlike
 	// the legacy optional backends, an unavailable required Claude review must
 	// not fall through to a caller-supplied or secondary-model verdict.
@@ -748,23 +774,41 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		enforcementGates.Claude = config.AuditGateRequired
 	}
 	result = enforceRequiredGateUnmet(result, verdicts, enforcementGates)
+	if gateAssumedNote != "" && result.GateUnmet != "" {
+		result.ResidualRiskNote = gateAssumedNote + " | " + result.ResidualRiskNote
+	}
 
 	// ── audit receipt (SPEC-CODEX-AUDIT-GATE-AXES-001 axis (b)) ──
 	// A receipt is recorded only when codex actually took part: a fan-out that
 	// skipped codex is not evidence that a codex audit ran, and recording one
 	// would let an auditor cite it as if it were. Runs BEFORE persist so the
 	// state file carries the same id the caller receives.
+	var notices []string
 	if codexVerdict, participated := codexParticipation(verdicts); participated {
-		result.AuditReceipt = recordAuditReceipt(auditreceipt.ToolAuditMulti, cfg.ProjectRoot, codexVerdict, result.GateUnmet)
+		var notice string
+		result.AuditReceipt, notice = recordAuditReceipt(auditreceipt.ToolAuditMulti, cfg.ProjectRoot, codexVerdict, result.GateUnmet)
+		if notice != "" {
+			notices = append(notices, notice)
+		}
 	}
 
 	// ── DQ-1: persist to .moai/state/audit-multi/<session>.json ──
 	// Best-effort: a write failure is logged via the returned error but MUST NOT
 	// block the flow (fail-open). The convergence result is valid regardless of
-	// whether the state file landed.
-	if cfg.SessionID != "" {
-		_ = persistConvergenceResult(result, cfg.SessionID, cfg.ProjectRoot)
+	// whether the state file landed. A named tree's result carries its identity
+	// (REQ-WSR-003); a config-orphaned worktree whose primary cannot be
+	// identified has no store, so the write is skipped and the result says so
+	// (REQ-WSR-004).
+	if cfg.ProjectRoot != "" {
+		result.TreeRoot = cfg.ProjectRoot
 	}
+	if cfg.SessionID != "" {
+		var unresolved *auditreceipt.UnresolvedStoreError
+		if err := persistConvergenceResult(result, cfg.SessionID, cfg.ProjectRoot); errors.As(err, &unresolved) {
+			notices = append(notices, "convergence result for session "+cfg.SessionID+" not persisted: "+err.Error())
+		}
+	}
+	result.StateNotice = strings.Join(notices, " | ")
 	return result
 }
 
@@ -835,7 +879,9 @@ func enforceRequiredGateUnmet(r ConvergenceResult, verdicts []PerBackendVerdict,
 	r.GateUnmet = strings.Join(unmet, ",")
 	note := "required gate unmet (explicitly configured required, no verdict): " + strings.Join(unmet, ", ")
 	if r.ResidualRiskNote != "" {
-		note += " | " + r.ResidualRiskNote
+		// The verdict now fails, so a disagreement written as advisory is no
+		// longer "not a block" — keep the split, drop the qualifier.
+		note += " | " + strings.Replace(r.ResidualRiskNote, advisoryDisagreementQualifier, "", 1)
 	}
 	r.ResidualRiskNote = note
 	return r
@@ -867,15 +913,20 @@ func explicitGateFor(gates config.AuditGates, backend string) string {
 // performGLMAudit uses. Absent file, unreadable file, and parse errors all
 // yield zero gates — the enforcement fails OPEN on config trouble, so a broken
 // workflow.yaml can never invent a block.
-func workflowAuditGates(projectRoot string) config.AuditGates {
+//
+// A config-orphaned worktree root takes the gate from its primary checkout;
+// when that primary cannot be identified the codex gate is assumed `required`
+// and the second return value says so (SPEC-MCP-WORKTREE-UNTRACKED-001
+// REQ-MWU-011/012). Every other root keeps the behaviour above.
+func workflowAuditGates(projectRoot string) (config.AuditGates, string) {
 	root := strings.TrimSpace(projectRoot)
 	if root == "" {
 		root = resolveProjectDir()
 	}
 	if root == "" {
-		return config.AuditGates{}
+		return config.AuditGates{}, ""
 	}
-	return workflowAuditPins(root).Gates
+	return resolveAuditGates(root)
 }
 
 // ─── DQ-1: state-file persistence ───
@@ -892,8 +943,27 @@ func workflowAuditGates(projectRoot string) config.AuditGates {
 // gate never looks — and mixed several worktrees' verdicts into one directory.
 // Empty ⇒ the package-level convergenceStateDir, so an unaware caller and the
 // existing tests that override that variable see no change.
+//
+// A config-orphaned worktree's result goes to its primary checkout's store
+// under a tree-qualified name (<session>--tree-<key>.json), so the results of
+// the primary and of every sibling worktree for one session coexist rather
+// than replace one another (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-002/003). Every
+// other root writes <session>.json under itself exactly as before. A worktree
+// whose primary cannot be identified returns *auditreceipt.UnresolvedStoreError
+// and writes nothing.
 func persistConvergenceResult(r ConvergenceResult, sessionID, projectRoot string) error {
-	dir := filepath.Join(convergenceStateDirFor(projectRoot), "audit-multi")
+	stateDir, name := convergenceStateDirFor(projectRoot), sessionID+".json"
+	if root := strings.TrimSpace(projectRoot); root != "" {
+		store, err := auditreceipt.StoreRoot(root)
+		if err != nil {
+			return err
+		}
+		stateDir = filepath.Join(store, ".moai", "state")
+		if store != root {
+			name = sessionID + "--" + auditreceipt.TreeKey(root) + ".json"
+		}
+	}
+	dir := filepath.Join(stateDir, "audit-multi")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("convergence state dir: %w", err)
 	}
@@ -901,7 +971,7 @@ func persistConvergenceResult(r ConvergenceResult, sessionID, projectRoot string
 	if err != nil {
 		return fmt.Errorf("convergence state marshal: %w", err)
 	}
-	path := filepath.Join(dir, sessionID+".json")
+	path := filepath.Join(dir, name)
 	if err := os.WriteFile(path, b, 0o644); err != nil {
 		return fmt.Errorf("convergence state write: %w", err)
 	}

@@ -105,9 +105,12 @@ flowchart TD
 |------|---------|------|
 | 워크트리 세션 | `project_root: <git rev-parse --show-toplevel>` | 그 트리를 대상으로 동작 |
 | primary 체크아웃 세션 | 넘기지 않음 | 종전과 똑같이 해석 |
+| `.moai`를 git으로 추적하지 않는 저장소의 연결 워크트리(워크트리에 `.moai`가 없음) | `project_root: <git rev-parse --show-toplevel>` | git이 `.moai`가 있는 primary 체크아웃의 워크트리로 등록해 두었으면 받아들이고, 호출은 그 워크트리를 대상으로 동작 |
 | MoAI 프로젝트 루트가 아닌 경로 | — | 경로 이름을 밝히며 호출을 **거부** |
 
 거부는 의도된 설계이지 거친 모서리가 아닙니다. 조용히 기본값으로 되돌아간다면, 자기 워크트리 경로를 오타 낸 호출자를 primary 체크아웃 감사로 되돌려 보내면서 성공했다고 알려주게 됩니다. 이 파라미터가 막으려던 실패 그 자체입니다.
+
+`.moai`를 git 밖에 두는 저장소라면 연결 워크트리에는 `.moai`가 없지만, 그래도 받아들입니다. 조건은 두 가지입니다. 경로가 `git worktree list`에 등록된 워크트리의 최상위여야 하고, 저장소의 primary 체크아웃에 `.moai`가 있어야 합니다. 하위 디렉터리, 등록되지 않았거나 정리 대상(prunable)인 워크트리, 별도 git 디렉터리처럼 구조가 모호한 경우, git을 쓸 수 없는 환경은 거부합니다. 이런 워크트리에 자체 workflow 설정이 없으면 명시적 감사 게이트(`workflow.audit.gates`)는 primary 체크아웃에서 읽고, primary를 특정할 수 없으면 게이트를 `required`로 간주합니다. 판정이 없으면 통과가 아니라 실패로 처리된다는 뜻입니다. SPEC 카탈로그(`spec_progress`, `spec_drift`, `spec_audit`)는 워크트리와 primary 체크아웃의 `.moai/specs`를 합쳐서 답하고, 각 레코드와 발견 항목에 출처(`worktree` 또는 `primary`)를 붙입니다. 같은 SPEC ID가 양쪽에 있으면 워크트리 사본을 한 번만 세고, 가려진 primary 사본은 응답에 따로 밝힙니다. 감사 영수증, 감사자 시작 표식과 거부 기록, `audit_multi` 수렴 판정, `verify_snapshot` 스냅숏 같은 상태는 primary 체크아웃의 `.moai/state`에 두되 워크트리 자신의 트리 식별자를 붙여 기록하므로, 여러 트리가 한 저장소를 함께 써도 서로의 기록을 덮어쓰지 않습니다. 실제로 읽은 출처는 `_root.worktree_warning`과 `_root.sources`에 나옵니다. primary 체크아웃을 특정할 수 없으면 상태 기록을 다른 곳으로 돌리지 않고 오류로 처리하며(베스트에포트 기록은 건너뛰고 그 사실을 알림으로 남김), 카탈로그는 워크트리만 읽고 primary를 읽지 못한 이유를 `_root`에 적습니다. 이때 감사 게이트를 `required`로 간주하므로, 게이트를 켜지 않은 저장소에서도 그 워크트리에서 시작하는 단계 진입 스폰이 거부됩니다. 풀려면 primary를 특정할 수 있게 하거나, 워크트리에 자체 `.moai/config/sections/workflow.yaml`을 둡니다.
 
 `audit_multi`에서는 루트가 fan-out의 **두 백엔드 모두**에 닿습니다. codex는 리뷰를 수행할 작업 디렉터리로 받고, GLM 경로는 z.ai에 보낼 diff를 그 트리에서 뜨는 데 씁니다. 이 값을 넘기는 것이 두 제2 의견을 같은 트리에 대한 것으로 묶어 줍니다 — 넘기지 않으면 서로 다른 트리를 볼 수 있습니다.
 
@@ -174,11 +177,11 @@ codex 위임 도구군은 super-advisor에 배선되어 있습니다 — 수시 
 
 | 도구 | 목적 | 소비 에이전트 | CLI 등가물 |
 |------|------|---------------|------------|
-| `mcp__moai__codex_role_audit` | 읽기 전용 역할 하나를 최상위 `codex exec` 프로세스로 기동 (읽기 전용 샌드박스, MCP 서버 전부 비활성). 작업 ID를 곧바로 돌려줌 | Codex 레인 오케스트레이터 | — |
-| `mcp__moai__codex_role_audit_status` | 역할 작업의 상태와 시각 읽기 | Codex 레인 오케스트레이터 | — |
-| `mcp__moai__codex_role_audit_result` | 끝난 역할 작업의 종료 코드, 반환 텍스트 또는 판정서 경로, 기동 기록 경로 읽기 | Codex 레인 오케스트레이터 | — |
+| `mcp__moai__codex_role_audit` | 읽기 전용 역할 하나를 최상위 `codex exec` 프로세스로 기동 (읽기 전용 샌드박스, MCP 서버 전부 비활성). 작업 ID를 곧바로 돌려줌 | Codex 세션 | — |
+| `mcp__moai__codex_role_audit_status` | 역할 작업의 상태와 시각 읽기 | Codex 세션 | — |
+| `mcp__moai__codex_role_audit_result` | 끝난 역할 작업의 종료 코드, 반환 텍스트 또는 판정서 경로, 기동 기록 경로 읽기 | Codex 세션 | — |
 
-Codex 레인은 `plan-auditor`, `sync-auditor` 같은 읽기 전용 역할을 `spawn_agent`가 아니라 이 도구군으로 띄웁니다. 레인 셸 안에서 중첩된 `codex exec`는 모델에 닿지 못하기 때문에 CLI 등가물이 없습니다. 작업은 서버 프로세스 안에 살므로 프로세스가 끝나면 함께 끝납니다.
+Codex 세션은 `plan-auditor`, `sync-auditor` 같은 읽기 전용 역할을 `spawn_agent`가 아니라 이 도구군으로 띄웁니다. Codex 셸 안에서 중첩된 `codex exec`는 모델에 닿지 못하기 때문에 CLI 등가물이 없습니다. 작업은 서버 프로세스 안에 살므로 프로세스가 끝나면 함께 끝납니다.
 
 ### GLM 위임 (백그라운드 작업)
 

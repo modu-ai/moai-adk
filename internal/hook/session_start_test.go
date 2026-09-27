@@ -269,6 +269,9 @@ func TestSessionStartHandler_Handle(t *testing.T) {
 
 func TestEnsureGLMCredentials(t *testing.T) {
 	t.Setenv(config.EnvMoaiLaunchProvider, "")
+	// .env.glm is staged under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	// Not parallel: subtests use t.Setenv which requires non-parallel parent
 
 	t.Run("no settings file", func(t *testing.T) {

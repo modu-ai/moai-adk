@@ -114,8 +114,7 @@ type codexContractRequest struct {
 // defaultCodexPromptCapable reports whether stdin can carry an interactive
 // answer. It lives INSIDE the seam so the gate itself stays stdin-blind.
 func defaultCodexPromptCapable() bool {
-	fi, err := os.Stdin.Stat()
-	return err == nil && fi.Mode()&os.ModeCharDevice != 0
+	return isTerminalFile(os.Stdin)
 }
 
 // defaultCodexOfferPrompt prints the offer naming the state and the remedy,

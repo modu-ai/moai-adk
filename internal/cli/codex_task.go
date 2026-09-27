@@ -2,8 +2,11 @@
 //
 // codex_task.go owns the task-delegation surface: it drives a codex turn with
 // the caller's prompt (REQ-CX2-006), gates the writing sandbox behind an
-// explicit project opt-in (REQ-CX2-007), and can continue the last recorded
-// thread instead of opening a new one (REQ-CX2-008). It sits ON TOP of the
+// explicit project opt-in (REQ-CX2-007), and can continue a recorded thread
+// instead of opening a new one (REQ-CX2-008, scoped by
+// SPEC-CODEX-RESUME-SCOPE-001: an explicit thread_id or work_key selects the
+// thread, and a selector-less resume_last is refused when more than one thread
+// is recorded rather than guessing by recency). It sits ON TOP of the
 // session client (mcp_codex.go) and the job registry (codex_jobs.go); it writes
 // no transport and no second client (plan.md §F AP-1).
 //
@@ -32,7 +35,10 @@ package cli
 import (
 	"context"
 	"errors"
+	"strconv"
+	"strings"
 	"sync"
+	"unicode"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
@@ -59,6 +65,48 @@ const (
 	codexTaskNoPriorThreadNote = "resume_last was requested but no prior thread is recorded for this project; " +
 		"a new thread was opened."
 )
+
+// Resume selection (SPEC-CODEX-RESUME-SCOPE-001). resume_basis names WHICH rule
+// chose the thread that was sent; error_code names why a call was refused.
+const (
+	codexResumeBasisThreadID   = "thread_id"
+	codexResumeBasisWorkKey    = "work_key"
+	codexResumeBasisSoleThread = "sole_thread"
+
+	codexTaskErrThreadNotRecorded = "thread_not_recorded"
+	codexTaskErrResumeAmbiguous   = "resume_ambiguous"
+	codexTaskErrInvalidWorkKey    = "invalid_work_key"
+
+	// codexTaskWorkKeyMaxBytes bounds a work_key (REQ-CRS-005): it is stored in
+	// every record and returned in every ambiguity refusal.
+	codexTaskWorkKeyMaxBytes = 128
+
+	// codexTaskMaxCandidates bounds the candidate list of a resume_ambiguous
+	// refusal (REQ-CRS-006); candidate_total still reports the full count.
+	codexTaskMaxCandidates = 10
+)
+
+// codexTaskNoWorkKeyThreadNote states that a work_key matched no recorded
+// thread, so a new one was opened (REQ-CRS-004).
+func codexTaskNoWorkKeyThreadNote(workKey string) string {
+	return "resume_last was requested with work_key " + strconv.Quote(workKey) +
+		" but no prior thread is recorded for that work_key; a new thread was opened."
+}
+
+// validCodexWorkKey reports whether a supplied work_key is usable
+// (REQ-CRS-005): non-empty after trimming, at most codexTaskWorkKeyMaxBytes, and
+// free of control characters.
+func validCodexWorkKey(key string) bool {
+	if strings.TrimSpace(key) == "" || len(key) > codexTaskWorkKeyMaxBytes {
+		return false
+	}
+	for _, r := range key {
+		if unicode.IsControl(r) {
+			return false
+		}
+	}
+	return true
+}
 
 // codexTaskTimeoutMessage names the bound that ended a turn (REQ-CX2-017). It
 // reads the duration at call time rather than baking it in, so a shortened
@@ -175,10 +223,35 @@ type CodexTaskResult struct {
 	// ResumedThread reports whether a previously-recorded thread was continued.
 	ResumedThread bool `json:"resumed_thread"`
 
+	// ResumeThreadID is the thread id SENT in thread/resume and ResumeBasis the
+	// rule that chose it (thread_id / work_key / sole_thread). Both are set once
+	// the request is written — so a rejected resume still names what was asked —
+	// and absent when no thread/resume was sent (SPEC-CODEX-RESUME-SCOPE-001
+	// REQ-CRS-001). ThreadID above stays the id codex RETURNED; the two differ
+	// exactly when ResumedThread is false despite a resume.
+	ResumeThreadID string `json:"resume_thread_id,omitempty"`
+	ResumeBasis    string `json:"resume_basis,omitempty"`
+
+	// UnusedSelectors lists supplied selector inputs that did not decide the
+	// thread because thread_id took precedence (REQ-CRS-008).
+	UnusedSelectors []string `json:"unused_selectors,omitempty"`
+
 	// Note carries the human-readable statements REQ-CX2-007 / REQ-CX2-008
 	// require; Error names a failure the tool absorbed rather than raised.
 	Note  string `json:"note,omitempty"`
 	Error string `json:"error,omitempty"`
+
+	// ErrorCode is the machine-readable code of a refusal (REQ-CRS-010):
+	// thread_not_recorded, invalid_work_key, or resume_ambiguous. A refusal is a
+	// structured result with status failed, never an MCP tool error.
+	ErrorCode string `json:"error_code,omitempty"`
+
+	// CandidateTotal and Candidates describe a resume_ambiguous refusal: the
+	// number of distinct recorded threads and the newest of them, each carrying
+	// the selector values (thread_id, work_key) the next call can pass
+	// (REQ-CRS-006).
+	CandidateTotal int                    `json:"candidate_total,omitempty"`
+	Candidates     []codexThreadCandidate `json:"candidates,omitempty"`
 }
 
 // codexLiveJobSessions holds the session handle of every RUNNING background job,
@@ -222,6 +295,9 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	background := req.GetBool("background", false)
 	writeRequested := req.GetBool("write", false)
 	resumeLast := req.GetBool("resume_last", false)
+	threadID := req.GetString("thread_id", "")
+	workKey := req.GetString("work_key", "")
+	_, workKeySupplied := req.GetArguments()["work_key"]
 	token := extractProgressToken(req)
 	notifyMCPProgress(ctx, token, 0, "codex task 시작 — 프롬프트 접수")
 
@@ -251,14 +327,55 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 
 	registry := newCodexJobRegistry(projectDir)
 
-	// resume_last continues the last recorded thread instead of opening a new
-	// one. When nothing is recorded, a new thread is opened AND said so.
-	resumeThreadID := ""
-	if resumeLast {
-		if id, ok := registry.latestThreadID(); ok {
-			resumeThreadID = id
+	// Every refusal below is decided BEFORE the session opens, so a refused call
+	// starts no codex process (REQ-CRS-003/005/006).
+	if workKeySupplied && !validCodexWorkKey(workKey) {
+		return codexTaskRefusal(result, codexTaskErrInvalidWorkKey,
+			"work_key must be non-empty after trimming, at most "+strconv.Itoa(codexTaskWorkKeyMaxBytes)+
+				" bytes, and free of control characters"), nil
+	}
+	workKey = strings.TrimSpace(workKey)
+
+	resumeThreadID, resumeBasis := "", ""
+	switch {
+	case threadID != "":
+		// An explicit thread wins over every other selector (REQ-CRS-008), but
+		// only a thread THIS project recorded may be resumed (REQ-CRS-003).
+		if !registry.hasThread(threadID) {
+			return codexTaskRefusal(result, codexTaskErrThreadNotRecorded,
+				"thread_id "+strconv.Quote(threadID)+" is not recorded in this project's codex job registry"), nil
+		}
+		resumeThreadID, resumeBasis = threadID, codexResumeBasisThreadID
+		if resumeLast {
+			result.UnusedSelectors = append(result.UnusedSelectors, "resume_last")
+		}
+		if workKeySupplied {
+			result.UnusedSelectors = append(result.UnusedSelectors, "work_key")
+		}
+	case resumeLast && workKeySupplied:
+		// work_key scopes resume_last to this work item's records (REQ-CRS-004).
+		if id, ok := registry.latestThreadForWorkKey(workKey); ok {
+			resumeThreadID, resumeBasis = id, codexResumeBasisWorkKey
 		} else {
+			result.Note = appendCodexNote(result.Note, codexTaskNoWorkKeyThreadNote(workKey))
+		}
+	case resumeLast:
+		// No selector: resume only when the choice is not a guess. One distinct
+		// thread is resumed as before (REQ-CRS-007); several are refused with the
+		// candidates the caller can select from (REQ-CRS-006) — recency across
+		// work items is never the deciding rule (REQ-CRS-002).
+		threads := registry.recordedThreads()
+		switch len(threads) {
+		case 0:
 			result.Note = appendCodexNote(result.Note, codexTaskNoPriorThreadNote)
+		case 1:
+			resumeThreadID, resumeBasis = threads[0].ThreadID, codexResumeBasisSoleThread
+		default:
+			result.CandidateTotal = len(threads)
+			result.Candidates = threads[:min(len(threads), codexTaskMaxCandidates)]
+			return codexTaskRefusal(result, codexTaskErrResumeAmbiguous,
+				"resume_last matched "+strconv.Itoa(len(threads))+" recorded threads; "+
+					"pass thread_id or work_key from candidates to choose one"), nil
 		}
 	}
 
@@ -286,6 +403,11 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 
 	notifyMCPProgress(ctx, token, 0.2, "codex 세션 오픈 중...")
 	session, err := openCodexSessionOn(sessionCtx, binaryPath, turnParams, resumeThreadID)
+	// Report the resume once its request was written, including when codex then
+	// rejected it; a failure before the write reports none (REQ-CRS-001).
+	if resumeThreadID != "" && (err == nil || codexThreadRequestWasSent(err)) {
+		result.ResumeThreadID, result.ResumeBasis = resumeThreadID, resumeBasis
+	}
 	if background && !untieRequest() && err == nil {
 		// The request ended before hand-off; the session is already being torn
 		// down, so report that instead of starting a job on a dead session.
@@ -333,6 +455,7 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		PID:            session.pid(),
 		Mode:           codexTaskMode,
 		RequestSummary: prompt,
+		WorkKey:        workKey, // recorded whichever selector decided (REQ-CRS-005)
 	})
 	if err != nil {
 		_ = session.close()
@@ -414,6 +537,17 @@ func codexBackgroundDeadlineResult(ctx context.Context, out ReviewOutput, runErr
 		runErr = errors.New(out.Summary)
 	}
 	return out, runErr
+}
+
+// codexTaskRefusal shapes a refusal as REQ-CRS-010 requires: a structured
+// result with status failed and the refusal's code, NOT an MCP tool error. The
+// caller can act on it — pick a candidate, fix the input — so it is an answer,
+// not a failed call.
+func codexTaskRefusal(result CodexTaskResult, code, message string) *mcp.CallToolResult {
+	result.Status = codexJobStatusFailed
+	result.ErrorCode = code
+	result.Error = message
+	return toolJSON(codexTaskToolName, result)
 }
 
 // appendCodexNote joins two result notes, keeping both statements rather than

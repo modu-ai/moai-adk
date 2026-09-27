@@ -41,6 +41,9 @@
 #   NOTHING RAN   <package>
 #   SKIPPED TEST  <package>  <test>
 #   === totals: packages=N passed=N skipped=N nothing-ran=N failed=N build-failed=N ===
+#   ::notice title=AC snapshot absent::<acceptance.md>: <report> (...)
+#                                                (one per AC corpus file absent
+#                                                 from the AC snapshot)
 #
 #   Failures come first because a red run is the case the census exists for.
 #   Rows within a class are sorted, so the output is deterministic.
@@ -152,3 +155,18 @@ failed=$(count 'select(.Action=="fail" and (.Test // null) != null) | "\(.Packag
 build_failed_total=$(count 'select(.Action=="build-fail") | .ImportPath')
 
 echo "=== totals: packages=$packages passed=$passed skipped=$skipped nothing-ran=$nothing_ran failed=$failed build-failed=$build_failed_total ==="
+
+# --- AC snapshot absent report (REQ-ACD-006) ------------------------------
+# The AC corpus test reports a SPEC missing from the AC snapshot with t.Logf
+# and does not fail, by contract. A passing test's output appears nowhere in
+# this census, so the report was invisible in CI; re-raise each line as a
+# GitHub ::notice (an annotation, never a failure). A log line can still end in
+# a carriage return, so CRs are dropped before de-duplication (a CRLF copy of a
+# line would otherwise survive sort -u and render broken); '%' is the
+# workflow-command escape character and is encoded.
+jq -r 'select(.Action=="output" and ((.Output // "") | contains("absent-from-snapshot "))) | .Output' "$stream" |
+	tr -d '\r' | sed -n 's/.*absent-from-snapshot //p' | sort -u |
+	while IFS= read -r ln; do
+		[ -z "$ln" ] && continue
+		echo "::notice title=AC snapshot absent::$(printf '%s' "$ln" | sed 's/%/%25/g') (matched by the AC corpus glob but absent from the AC snapshot - reported, not failed)"
+	done
