@@ -130,6 +130,9 @@ func TestStopChainAdvisoryFailureRecorded(t *testing.T) {
 	baseRes := base.run(ctx)
 
 	failing := chain()
+	// Member 5 below ignores its context and is cut off at 50ms, so its
+	// goroutine outlives run(). Join it before this test returns (card t1099).
+	defer failing.waitOrphans()
 	failing.budgetFor = func(n int) time.Duration {
 		if n == 5 {
 			return 50 * time.Millisecond
@@ -176,6 +179,11 @@ func TestStopChainAdvisoryFailureRecorded(t *testing.T) {
 func TestStopChainGateCutOffNeverAllows(t *testing.T) {
 	f := newTimingFixture(t)
 	c := newCodexStopChain(f.root, stopInput("timing-s", false))
+	// Members 2/3/6/7 are cut off below, so their goroutines outlive run()
+	// by design. Join them before this test returns: an orphan still reading
+	// the package-level seams races with the next test's fixture setup —
+	// the intermittent CI Race failure this wait closes (card t1099).
+	defer c.waitOrphans()
 	c.member1 = allowMember1
 	c.budgetFor = func(n int) time.Duration {
 		switch n {

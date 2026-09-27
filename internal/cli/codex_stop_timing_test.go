@@ -125,6 +125,10 @@ func TestStopChainMemberCostWithinBudget(t *testing.T) {
 		}
 		start := time.Now()
 		c.run(context.Background())
+		// Under load a member can still exceed its declared budget, cutting
+		// off and orphaning its goroutine; join it before the next iteration
+		// re-arms the goal (card t1099).
+		c.waitOrphans()
 		if d := time.Since(start); d > chainMax {
 			chainMax = d
 		}
