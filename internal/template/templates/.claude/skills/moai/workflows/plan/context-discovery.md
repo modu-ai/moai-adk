@@ -71,26 +71,25 @@ If score is 1-3: Preload `ToolSearch(query: "select:AskUserQuestion")`, then use
 
 **Next phase:** Read `workflows/plan/clarity-interview.md` to continue with Phase 4 Deep Interview Loop.
 
-## Plan HTML Report Emission (moved from spec-assembly.md, verbatim)
+## spec-compact.md Auto-Generation (moved from spec-assembly.md, verbatim)
 
-#### Step 2.3.3a: Plan HTML Report Emission
+### spec-compact.md Auto-Generation
 
-**After** the plan-auditor PASS verdict lands and **before** any further plan→run
-boundary work, the orchestrator emits a single self-contained plan HTML report
-that enriches the review surface for the Implementation Kickoff Approval gate.
+After all SPEC files are created, auto-generate `.moai/specs/SPEC-{ID}/spec-compact.md`:
 
-1. Execute the CLI verb: `moai plan render-html {SPEC-ID}` — the `moai` binary resolves `<root>/.moai/specs/{SPEC-ID}/` and the most recent `<root>/.moai/reports/plan-audit/{SPEC-ID}-review-{N}.md`, parses the review markdown (verdict / score / must-pass / defects) with fail-open, derives the 8-field autonomy contract deterministically from SPEC artifacts, and writes a self-contained report to `<root>/.moai/reports/plan-html/{SPEC-ID}-plan.html` (exit 0 on success; non-zero + stderr when the SPEC directory is absent). The renderer is fail-open on a missing or unparseable review file — the report is still written with the "audit verdict unavailable" placeholder and exit 0.
-2. Write the output to `.moai/reports/plan-html/{SPEC-ID}-plan.html` (gitignored directory; create it if absent).
-3. Surface the resulting HTML path to the orchestrator as additive prose context in the SAME turn the Implementation Kickoff Approval `AskUserQuestion` fires (see `orchestration-mode-selection.md` §E). The path is a pointer, NOT the report content — do NOT inline the HTML into the gate option text.
+Extract from spec.md:
+- All REQ-XXX requirements (GEARS-notation entries — EARS legacy form accepted for pre-v3 SPECs until 2026-11-22)
+- All acceptance criteria (Given/When/Then scenarios)
+- Files to modify list
+- Exclusions (What NOT to Build) section
 
-[HARD] The Implementation Kickoff Approval `AskUserQuestion` gate stays MANDATORY
-and score-independent. The plan HTML report
-ENRICHES the review surface (inline prose → rich HTML); it does NOT replace the
-gate, does NOT auto-bypass it, and does NOT relax its three canonical options
-(run-phase entry / further review / abort) or the `(권장)` first-option label (withheld under `recommendation_mode: pull`; the gate itself is unchanged). A
-plan-auditor PASS or a high skip-eligible score does NOT substitute for the gate.
-This emission step is additive only (AP-4).
+Exclude: Overview, technical approach, research references, annotation history.
 
-Fail-open: if the renderer is unavailable or the review file is absent, the
-emission step is skipped silently — the plan-phase pipeline is NOT blocked. The
-plan HTML report is enrichment, not a gate.
+Purpose: Run phase loads spec-compact.md (~30% token savings) instead of full spec.md.
+Fallback: If generation fails, Run phase uses full spec.md.
+
+Quality constraints:
+- Requirement modules limited to 5 or fewer per SPEC
+- Acceptance criteria minimum 2 Given/When/Then scenarios
+- Technical terms and function names remain in English
+- Exclusions section MUST contain at least 1 entry

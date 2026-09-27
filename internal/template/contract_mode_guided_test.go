@@ -105,9 +105,9 @@ var grRelocations = []grRelocation{
 	},
 	{
 		src:       ".claude/skills/moai/workflows/plan/spec-assembly.md",
-		pointer:   "#### Step 2.3.3a: Plan HTML Report Emission — Read `workflows/plan/context-discovery.md` § Step 2.3.3a.",
+		pointer:   "### spec-compact.md Auto-Generation — Read `workflows/plan/context-discovery.md` § spec-compact.md Auto-Generation.",
 		dst:       ".claude/skills/moai/workflows/plan/context-discovery.md",
-		dstHeader: "## Plan HTML Report Emission (moved from spec-assembly.md, verbatim)",
+		dstHeader: "## spec-compact.md Auto-Generation (moved from spec-assembly.md, verbatim)",
 	},
 }
 
