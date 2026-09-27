@@ -418,7 +418,7 @@ blockers_for_manager_spec:
 
 ```yaml
 sync_complete_at: 2026-09-27T14:41:17Z
-sync_commit_sha: pending-backfill-sync   # backfilled in the follow-up commit (f385b6255 convention)
+sync_commit_sha: 4c6a7fa57               # backfilled from pending-backfill-sync (f385b6255 convention)
 sync_status: complete-pending-ci         # AC-IFU-025's CI clause is still unobserved
 b12_self_test_a: "grep -c 'SPEC-INSTRUCTION-FILES-UNIFY-001' CHANGELOG.md -> 0 before emission (no duplicate)"
 b12_self_test_b: "live AC ids = 20 (grep -oE '^\\*\\*AC-IFU-[0-9]+\\*\\*' acceptance.md | sort -u | wc -l -> 20; the bare-token regex returns 24 because AC-IFU-011/013/014/015 appear only as [REF] citations to SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001)"
