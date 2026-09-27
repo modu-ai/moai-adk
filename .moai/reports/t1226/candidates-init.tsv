@@ -1,0 +1,412 @@
+file	section	gross	chars	mech	bind	gov	c1	c2	c3	c4	dest	verdict	reason	evidence
+CLAUDE.md	MoAI Execution Directive	28	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+CLAUDE.md	0. Standing Contract (imported)	352	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+CLAUDE.md	1. Core Identity	237	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+CLAUDE.md	HARD Rules (Mandatory)	852	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+CLAUDE.md	2. Request Processing Pipeline	998	159	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/6eb87bae8f.md
+CLAUDE.md	3. Command Reference	25	-	M1	0	N	Y	N	NA	NA	-	REJECT	citation-breaks	.moai/reports/t1226/evidence/rejects.md
+CLAUDE.md	Unified Skill: /moai	248	54	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/596abf6c43.md
+CLAUDE.md	4. Agent Catalog	21	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+CLAUDE.md	Selection Decision Tree	1806	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+CLAUDE.md	Selection Decision Tree ¶1	627	50	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/d2d341b2d8.md
+CLAUDE.md	Selection Decision Tree ¶3	4	4	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/e9d4d91871.md
+CLAUDE.md	5. SPEC-Based Workflow	608	73	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/479b14e2fa.md
+CLAUDE.md	6. Quality Gates	275	69	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/7e91d35dd0.md
+CLAUDE.md	7. Safe Development Protocol	2540	456	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/99603ec7e5.md
+CLAUDE.md	8. User Interaction Architecture	1091	-	none	2	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+CLAUDE.md	8. User Interaction Architecture ¶3	255	92	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/72ebc68231.md
+CLAUDE.md	8. User Interaction Architecture ¶4	363	83	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/419bdf3e18.md
+CLAUDE.md	8. User Interaction Architecture ¶5	4	4	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/49e3d9cb0c.md
+CLAUDE.md	9. Configuration Reference	618	43	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/76d239d67d.md
+CLAUDE.md	10. Web Search Protocol	166	18	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/68d5662d42.md
+CLAUDE.md	11. Error Handling	23	-	M1	0	N	Y	N	NA	NA	-	REJECT	citation-breaks	.moai/reports/t1226/evidence/rejects.md
+CLAUDE.md	12. MCP Servers & Deep Analysis Modes	42	-	M1	0	N	Y	N	NA	NA	-	REJECT	citation-breaks	.moai/reports/t1226/evidence/rejects.md
+CLAUDE.md	13. Progressive Disclosure System	742	86	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/6d006cb551.md
+CLAUDE.md	14. Parallel Execution Safeguards	1503	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+CLAUDE.md	14. Parallel Execution Safeguards ¶2	4	4	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/06fef0317f.md
+CLAUDE.md	15. Agent Teams (Re-allowed, experimental)	520	56	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/3eb9e63090.md
+CLAUDE.md	16. Context Search Protocol	627	67	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/fd61604a21.md
+CLAUDE.md	17. Troubleshooting	638	24	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/9542b4ef94.md
+CLAUDE.md	MOAI:LEARNED-WORKFLOW	79	-	M2	0	N	Y	NA	NA	NA	-	UNTRIED	untried:machine-marker	.moai/reports/t1226/evidence/untried.md
+AGENTS.md	AGENTS.md — standing contract for agents in this repository	3623	-	M2	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+AGENTS.md	1. Evidence and verification claims	1312	-	none	2	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+AGENTS.md	1. Evidence and verification claims ¶3	353	60	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/bc3f91f487.md
+AGENTS.md	1. Evidence and verification claims ¶4	4	4	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/87f3cd6e29.md
+AGENTS.md	2. Git, branches, and the shared checkout	2306	342	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/6f1889ee2d.md
+AGENTS.md	3. Worktrees	2081	271	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/94c5fe61a9.md
+AGENTS.md	4. How verification is run	1494	259	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/cc4bbc4b06.md
+AGENTS.md	5. Core behaviors	2607	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+AGENTS.md	5. Core behaviors ¶1	175	42	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/b7bf6fa939.md
+AGENTS.md	5. Core behaviors ¶2	196	18	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/2022c51d3e.md
+AGENTS.md	5. Core behaviors ¶3	353	23	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/af56630478.md
+AGENTS.md	5. Core behaviors ¶5	522	169	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/85a47cae8a.md
+AGENTS.md	5. Core behaviors ¶6	387	70	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/bfa8c583ea.md
+AGENTS.md	5. Core behaviors ¶7	4	4	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/caf0291562.md
+AGENTS.md	6. Output, language, and format	1589	-	none	2	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+AGENTS.md	6. Output, language, and format ¶1	137	26	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/62e6f23b42.md
+AGENTS.md	6. Output, language, and format ¶4	69	0	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/5fca33d468.md
+AGENTS.md	6. Output, language, and format ¶5	176	77	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/4b139d09f5.md
+AGENTS.md	6. Output, language, and format ¶6	200	12	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/b5f323882c.md
+AGENTS.md	6. Output, language, and format ¶7	4	4	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/6324ebc165.md
+AGENTS.md	7. Tools and command output	1679	374	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/97a20d0c86.md
+AGENTS.md	8. Harness-local instructions	568	28	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/9ae1bddeda.md
+AGENTS.md	9. Hook Event Coverage	377	33	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/9e2a5e2697.md
+AGENTS.md	10. Configuration Map	248	33	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/b38e959cdd.md
+AGENTS.md	11. moai CLI Verbs	1027	92	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/9a5e7ecaf1.md
+AGENTS.md	12. Status Line Tokens	189	7	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/c8d645df39.md
+.moai/config/sections/user.yaml	(전체)	204	-	none	0	N	Y	NA	NA	NA	-	REJECT	config-data	.moai/reports/t1226/evidence/config-data.md
+.moai/config/sections/language.yaml	(전체)	1279	-	none	0	N	Y	NA	NA	NA	-	REJECT	config-data	.moai/reports/t1226/evidence/config-data.md
+.claude/rules/moai/core/agent-common-protocol.md	(서문)	190	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Agent Common Protocol	929	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	User Interaction Boundary	133	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Subagent Prohibitions	1429	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/agent-common-protocol.md	Subagent Prohibitions ¶2	384	94	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/20b0c2dd38.md
+.claude/rules/moai/core/agent-common-protocol.md	Subagent Prohibitions ¶3	172	172	M1	0	N	Y	Y	Y	Y	core/agent-common-protocol-reference.md	ADMIT	-	.moai/reports/t1226/evidence/m1/init/d15fb01d17.md
+.claude/rules/moai/core/agent-common-protocol.md	Subagent Prohibitions ¶4	718	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Hook Invocation Surface	2103	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/agent-common-protocol.md	Hook Invocation Surface ¶1	641	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Hook Invocation Surface ¶2	45	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Hook Invocation Surface ¶4	430	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Hook Invocation Surface ¶5	27	0	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/87a5e82d71.md
+.claude/rules/moai/core/agent-common-protocol.md	Hook Invocation Surface ¶6	224	14	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/7ad6ad9138.md
+.claude/rules/moai/core/agent-common-protocol.md	Hook Invocation Surface ¶7	31	0	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/50c5825a74.md
+.claude/rules/moai/core/agent-common-protocol.md	Hook Invocation Surface ¶8	457	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Blocker Report Format	514	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/agent-common-protocol.md	Blocker Report Format ¶2	371	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Ledger Closure	1500	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/agent-common-protocol.md	Ledger Closure ¶1	273	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Ledger Closure ¶3	865	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Ledger Closure ¶4	136	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Language Handling	679	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/agent-common-protocol.md	Language Handling ¶2	556	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Output Format	350	-	none	2	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/agent-common-protocol.md	MCP Fallback Strategy	507	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/agent-common-protocol.md	MCP Fallback Strategy ¶2	197	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Agent Invocation Pattern	272	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/agent-common-protocol.md	Per-Spawn Model Injection	1162	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/agent-common-protocol.md	Per-Spawn Model Injection ¶2	568	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Per-Spawn Model Injection ¶3	208	208	M1	0	N	Y	Y	Y	Y	core/agent-common-protocol-reference.md	ADMIT	-	.moai/reports/t1226/evidence/m1/init/558e9a93f2.md
+.claude/rules/moai/core/agent-common-protocol.md	Background Agent Execution	1695	-	none	2	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/agent-common-protocol.md	Background Agent Execution ¶2	723	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Tool Usage Guidelines	129	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/agent-common-protocol.md	Parallel Execution	339	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/agent-common-protocol.md	Verbatim batch, output contracts, and CLI idioms	2192	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/agent-common-protocol.md	Verbatim batch, output contracts, and CLI idioms ¶1	240	42	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/a3ee7c2185.md
+.claude/rules/moai/core/agent-common-protocol.md	Verbatim batch, output contracts, and CLI idioms ¶2	77	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Pre-Spawn Sync Check (Multi-Session Race Mitigation)	3250	-	none	4	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/agent-common-protocol.md	Pre-Spawn Sync Check (Multi-Session Race Mitigation) ¶2	36	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Pre-Spawn Sync Check (Multi-Session Race Mitigation) ¶4	542	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Pre-Spawn Sync Check (Multi-Session Race Mitigation) ¶6	40	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Pre-Spawn Sync Check (Multi-Session Race Mitigation) ¶8	47	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Pre-Spawn Sync Check (Multi-Session Race Mitigation) ¶9	296	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Pre-Spawn Sync Check (Multi-Session Race Mitigation) ¶10	237	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Pre-Spawn Sync Check (Multi-Session Race Mitigation) ¶11	142	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Pre-Spawn Sync Check (Multi-Session Race Mitigation) ¶12	336	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation)	2929	-	none	2	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation) ¶2	41	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation) ¶3	50	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation) ¶4	353	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation) ¶5	395	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation) ¶6	81	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation) ¶7	463	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation) ¶8	294	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation) ¶9	111	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation) ¶10	27	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation) ¶12	208	208	M1	0	N	Y	Y	Y	Y	core/agent-common-protocol-reference.md	ADMIT	-	.moai/reports/t1226/evidence/m1/init/d1cbf5c314.md
+.claude/rules/moai/core/agent-common-protocol.md	Time Estimation	251	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/askuser-protocol.md	(서문)	166	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	AskUserQuestion Protocol — Canonical Reference	1259	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	Channel Monopoly	1091	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/askuser-protocol.md	Channel Monopoly ¶2	282	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	Channel Monopoly ¶3	284	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	Channel Monopoly ¶4	235	235	M1	0	N	Y	Y	Y	Y	core/askuser-protocol-reference.md	ADMIT	-	.moai/reports/t1226/evidence/m1/init/6f299e5146.md
+.claude/rules/moai/core/askuser-protocol.md	Channel Monopoly ¶5	4	4	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/451a4f5171.md
+.claude/rules/moai/core/askuser-protocol.md	ToolSearch Preload Procedure	224	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	Mandatory Preload Step	165	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/askuser-protocol.md	Mandatory Preload Step ¶2	52	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	Socratic Interview Structure	367	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	Structural Constraints (all mandatory)	1389	-	none	4	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/askuser-protocol.md	Structural Constraints (all mandatory) ¶2	224	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	Structural Constraints (all mandatory) ¶3	4	4	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/6213782a43.md
+.claude/rules/moai/core/askuser-protocol.md	Option Description Standards	1025	-	none	3	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/askuser-protocol.md	Option Description Standards ¶4	4	4	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/183d22b244.md
+.claude/rules/moai/core/askuser-protocol.md	Recommendation Placement Principles	1433	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	Recommendation mode	1434	-	none	2	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/askuser-protocol.md	Recommendation mode ¶1	255	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	Recommendation mode ¶2	94	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	Recommendation mode ¶4	203	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	Recommendation mode ¶5	353	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	On-request emission	437	-	none	2	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/askuser-protocol.md	The three adopted conditions	524	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/askuser-protocol.md	The three adopted conditions ¶1	42	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	Preview Field Standards	518	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/askuser-protocol.md	Report-Before-Ask Gate	665	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/askuser-protocol.md	Requested-Deliverable Primacy (user requirement analysis first)	1011	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/askuser-protocol.md	Requested-Deliverable Primacy (user requirement analysis first) ¶2	392	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	Report Completeness Criteria (all mandatory)	755	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/askuser-protocol.md	Preview-as-Report Substitution (named anti-pattern)	413	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/askuser-protocol.md	Report-Promise Fulfillment	396	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/askuser-protocol.md	Exceptions (gate does not apply)	448	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	Orchestrator–Subagent Boundary	107	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	Orchestrator Obligations	493	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/askuser-protocol.md	Subagent Prohibitions	403	-	none	3	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/askuser-protocol.md	Blocker Report Format / Re-delegation Procedure	247	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	Ambiguity Triggers and Exceptions	224	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	Free-form Circumvention Prohibition	1117	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/askuser-protocol.md	Free-form Circumvention Prohibition ¶2	411	411	M1	0	N	Y	Y	Y	Y	core/askuser-protocol-reference.md	ADMIT	-	.moai/reports/t1226/evidence/m1/init/1882886d03.md
+.claude/rules/moai/core/askuser-protocol.md	Free-form Circumvention Prohibition ¶3	331	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	Free-form Circumvention Prohibition ¶4	195	195	M1	0	N	Y	Y	Y	Y	core/askuser-protocol-reference.md	ADMIT	-	.moai/reports/t1226/evidence/m1/init/f38db2092a.md
+.claude/rules/moai/core/askuser-protocol.md	Completion-Report Next-Step Discipline	1513	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/askuser-protocol.md	Completion-Report Next-Step Discipline ¶2	50	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	Completion-Report Next-Step Discipline ¶3	343	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/askuser-protocol.md	Completion-Report Next-Step Discipline ¶4	238	61	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/9b76cde035.md
+.claude/rules/moai/core/askuser-protocol.md	Completion-Report Next-Step Discipline ¶5	441	441	M1	0	N	Y	Y	Y	Y	core/askuser-protocol-reference.md	ADMIT	-	.moai/reports/t1226/evidence/m1/init/58b4cd9872.md
+.claude/rules/moai/core/askuser-protocol.md	Non-ASCII Tool-Call Encoding	860	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/askuser-protocol.md	Non-ASCII Tool-Call Encoding ¶2	456	456	M1	0	N	Y	Y	Y	Y	core/askuser-protocol-reference.md	ADMIT	-	.moai/reports/t1226/evidence/m1/init/c5f01c8a79.md
+.claude/rules/moai/core/moai-constitution.md	MoAI Constitution	90	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/moai-constitution.md	MoAI Orchestrator	1083	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/moai-constitution.md	MoAI Orchestrator ¶1	115	0	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/9e3a3170dc.md
+.claude/rules/moai/core/moai-constitution.md	Response Language	660	-	none	2	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/moai-constitution.md	Parallel Execution	1415	245	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/8541ad8f7a.md
+.claude/rules/moai/core/moai-constitution.md	Opus 5.5 Prompt Philosophy	1811	-	none	2	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/moai-constitution.md	Opus 5.5 Prompt Philosophy ¶1	155	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-constitution.md	Opus 5.5 Prompt Philosophy ¶3	180	14	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/2c8c217017.md
+.claude/rules/moai/core/moai-constitution.md	Output Format	241	59	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/d6694827fa.md
+.claude/rules/moai/core/moai-constitution.md	Worktree Isolation	503	149	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/5d3d4a91b2.md
+.claude/rules/moai/core/moai-constitution.md	Quality Gates	678	79	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/f3c5a64646.md
+.claude/rules/moai/core/moai-constitution.md	MX Tag Quality Gates	589	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/moai-constitution.md	MX Tag Quality Gates ¶1	57	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-constitution.md	URL Verification	475	69	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/dcea92d6bc.md
+.claude/rules/moai/core/moai-constitution.md	Tool Selection Priority	391	126	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/3bd5757831.md
+.claude/rules/moai/core/moai-constitution.md	Error Handling Protocol	241	79	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/4f4787dcf7.md
+.claude/rules/moai/core/moai-constitution.md	Security Boundaries	252	94	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/a0ea7b4688.md
+.claude/rules/moai/core/moai-constitution.md	Lessons Protocol	2609	-	none	2	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/moai-constitution.md	Lessons Protocol ¶1	86	0	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/9bef45970c.md
+.claude/rules/moai/core/moai-constitution.md	Lessons Protocol ¶3	221	48	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/aacb4bf5d8.md
+.claude/rules/moai/core/moai-constitution.md	Agent Core Behaviors	205	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-constitution.md	1. Surface Assumptions [ZONE:Evolvable] [HARD]	518	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/moai-constitution.md	1. Surface Assumptions [ZONE:Evolvable] [HARD] ¶1	170	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-constitution.md	1. Surface Assumptions [ZONE:Evolvable] [HARD] ¶2	155	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-constitution.md	1. Surface Assumptions [ZONE:Evolvable] [HARD] ¶3	138	25	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/71bb725611.md
+.claude/rules/moai/core/moai-constitution.md	2. Manage Confusion Actively [ZONE:Evolvable] [HARD]	461	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/moai-constitution.md	2. Manage Confusion Actively [ZONE:Evolvable] [HARD] ¶1	138	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-constitution.md	2. Manage Confusion Actively [ZONE:Evolvable] [HARD] ¶2	146	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-constitution.md	2. Manage Confusion Actively [ZONE:Evolvable] [HARD] ¶3	116	19	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/7978f96451.md
+.claude/rules/moai/core/moai-constitution.md	3. Push Back When Warranted [ZONE:Evolvable] [HARD]	549	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/moai-constitution.md	3. Push Back When Warranted [ZONE:Evolvable] [HARD] ¶1	93	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-constitution.md	3. Push Back When Warranted [ZONE:Evolvable] [HARD] ¶2	326	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-constitution.md	3. Push Back When Warranted [ZONE:Evolvable] [HARD] ¶3	70	0	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/88ffe4eb79.md
+.claude/rules/moai/core/moai-constitution.md	4. Enforce Simplicity [ZONE:Evolvable] [HARD]	1894	-	none	2	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/moai-constitution.md	4. Enforce Simplicity [ZONE:Evolvable] [HARD] ¶1	412	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-constitution.md	4. Enforce Simplicity [ZONE:Evolvable] [HARD] ¶2	94	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-constitution.md	4. Enforce Simplicity [ZONE:Evolvable] [HARD] ¶3	377	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-constitution.md	4. Enforce Simplicity [ZONE:Evolvable] [HARD] ¶4	201	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-constitution.md	4. Enforce Simplicity [ZONE:Evolvable] [HARD] ¶6	149	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-constitution.md	5. Maintain Scope Discipline [ZONE:Evolvable] [HARD]	672	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/moai-constitution.md	5. Maintain Scope Discipline [ZONE:Evolvable] [HARD] ¶1	95	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-constitution.md	5. Maintain Scope Discipline [ZONE:Evolvable] [HARD] ¶2	249	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-constitution.md	5. Maintain Scope Discipline [ZONE:Evolvable] [HARD] ¶3	267	73	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/35d848c89c.md
+.claude/rules/moai/core/moai-constitution.md	6. Verify, Don't Assume [ZONE:Evolvable] [HARD]	613	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/moai-constitution.md	6. Verify, Don't Assume [ZONE:Evolvable] [HARD] ¶1	79	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-constitution.md	6. Verify, Don't Assume [ZONE:Evolvable] [HARD] ¶2	182	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-constitution.md	6. Verify, Don't Assume [ZONE:Evolvable] [HARD] ¶3	297	50	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/3ad44944db.md
+.claude/rules/moai/core/moai-mcp-tools.md	moai-mcp Tool Catalogue	499	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-mcp-tools.md	MCP-over-CLI rule	463	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-mcp-tools.md	The `project_root` input — name your own tree	2402	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/moai-mcp-tools.md	The `project_root` input — name your own tree ¶1	323	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-mcp-tools.md	The `project_root` input — name your own tree ¶3	81	81	M1	0	N	Y	Y	Y	Y	core/moai-mcp-tools-catalogue.md	ADMIT	-	.moai/reports/t1226/evidence/m1/init/c62742d8d1.md
+.claude/rules/moai/core/moai-mcp-tools.md	The `project_root` input — name your own tree ¶4	343	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/moai-mcp-tools.md	The `project_root` input — name your own tree ¶5	228	228	M1	0	N	Y	Y	Y	Y	core/moai-mcp-tools-catalogue.md	ADMIT	-	.moai/reports/t1226/evidence/m1/init/d056678364.md
+.claude/rules/moai/core/moai-mcp-tools.md	The `project_root` input — name your own tree ¶6	291	291	M1	0	N	Y	Y	Y	Y	core/moai-mcp-tools-catalogue.md	ADMIT	-	.moai/reports/t1226/evidence/m1/init/01af341e94.md
+.claude/rules/moai/core/moai-mcp-tools.md	The `project_root` input — name your own tree ¶7	161	12	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/11d5905c02.md
+.claude/rules/moai/core/moai-mcp-tools.md	The `project_root` input — name your own tree ¶8	267	267	M1	0	N	Y	Y	Y	Y	core/moai-mcp-tools-catalogue.md	ADMIT	-	.moai/reports/t1226/evidence/m1/init/5ce02c9db4.md
+.claude/rules/moai/core/moai-mcp-tools.md	Cross-reference	477	47	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/c5b452f7d9.md
+.claude/rules/moai/core/native-idiom-and-register.md	Native-Idiom & Register Policy (Non-English Locales)	287	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/native-idiom-and-register.md	The Invariant	856	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/native-idiom-and-register.md	The Invariant ¶2	180	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/native-idiom-and-register.md	The Invariant ¶3	238	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/native-idiom-and-register.md	Mechanism — when to invoke humanize	464	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/native-idiom-and-register.md	Cross-references	637	110	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/9867c8b46b.md
+.claude/rules/moai/core/verification-claim-integrity.md	Verification-Claim Integrity	636	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	1. The Invariant — no unobserved-claim (verification, defect, OR premise)	2110	-	none	2	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/verification-claim-integrity.md	1. The Invariant — no unobserved-claim (verification, defect, OR premise) ¶2	62	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	1. The Invariant — no unobserved-claim (verification, defect, OR premise) ¶3	317	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	1. The Invariant — no unobserved-claim (verification, defect, OR premise) ¶4	327	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	1. The Invariant — no unobserved-claim (verification, defect, OR premise) ¶6	238	34	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/fe2173aaef.md
+.claude/rules/moai/core/verification-claim-integrity.md	1. The Invariant — no unobserved-claim (verification, defect, OR premise) ¶7	212	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	1.1 Binding scope — ALL FOUR surfaces	2548	-	none	3	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/verification-claim-integrity.md	1.1 Binding scope — ALL FOUR surfaces ¶1	114	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	1.1 Binding scope — ALL FOUR surfaces ¶5	787	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	2. Baseline-Integrity Attribution / baseline 무결성 귀속	1028	-	none	3	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/verification-claim-integrity.md	2. Baseline-Integrity Attribution / baseline 무결성 귀속 ¶3	39	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	2. Baseline-Integrity Attribution / baseline 무결성 귀속 ¶4	149	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	2.1 Moving-ref attribution — the anchor-or-subject predicate	2942	-	none	4	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/verification-claim-integrity.md	2.1 Moving-ref attribution — the anchor-or-subject predicate ¶2	449	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	2.1 Moving-ref attribution — the anchor-or-subject predicate ¶4	54	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	2.1 Moving-ref attribution — the anchor-or-subject predicate ¶6	35	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	2.2 Tool-provenance attribution — which build judged the tree	2099	-	none	2	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/verification-claim-integrity.md	2.2 Tool-provenance attribution — which build judged the tree ¶2	437	125	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/9fab2ef2d9.md
+.claude/rules/moai/core/verification-claim-integrity.md	2.2 Tool-provenance attribution — which build judged the tree ¶4	260	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	2.2 Tool-provenance attribution — which build judged the tree ¶5	195	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	2.2 Tool-provenance attribution — which build judged the tree ¶6	285	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	2.2 Tool-provenance attribution — which build judged the tree ¶7	350	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	2.3 Ordering attribution — the commit graph is the only sequencing witness	1245	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/verification-claim-integrity.md	3. The 5-Section Evidence-Bearing Report Format	1506	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/verification-claim-integrity.md	3. The 5-Section Evidence-Bearing Report Format ¶2	29	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	3. The 5-Section Evidence-Bearing Report Format ¶3	647	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	3. The 5-Section Evidence-Bearing Report Format ¶4	396	129	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/0c310f4d65.md
+.claude/rules/moai/core/verification-claim-integrity.md	3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution	1761	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/core/verification-claim-integrity.md	3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution ¶2	221	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution ¶3	411	46	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/63d88ec3bf.md
+.claude/rules/moai/core/verification-claim-integrity.md	3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution ¶4	61	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution ¶5	549	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/core/verification-claim-integrity.md	3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution ¶6	4	4	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/9c70a21476.md
+.claude/rules/moai/core/verification-claim-integrity.md	3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution ¶7	159	0	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/d42b2fe55a.md
+.claude/rules/moai/workflow/cache-aware-execution.md	Cache-Aware Execution	865	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/cache-aware-execution.md	Directives	4040	-	none	5	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/cache-aware-execution.md	Directives ¶1	397	44	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/96909717b0.md
+.claude/rules/moai/workflow/cache-aware-execution.md	Directives ¶2	426	65	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/c33f7a3c02.md
+.claude/rules/moai/workflow/cache-aware-execution.md	Directives ¶3	482	79	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/24e645dc1c.md
+.claude/rules/moai/workflow/cache-aware-execution.md	Directives ¶4	499	86	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/89c897d7ef.md
+.claude/rules/moai/workflow/cache-aware-execution.md	Directives ¶5	355	66	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/c42775ef07.md
+.claude/rules/moai/workflow/cache-aware-execution.md	Non-goals	436	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/cache-aware-execution.md	Cross-references	566	49	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/b5ce927f05.md
+.claude/rules/moai/workflow/context-window-management.md	Context Window Management	113	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/context-window-management.md	Context Window Targets	1612	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/context-window-management.md	Context Window Targets ¶2	959	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/context-window-management.md	Context Window Targets ¶3	368	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/context-window-management.md	User Responsibilities	746	-	none	3	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/context-window-management.md	User Responsibilities ¶1	115	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/context-window-management.md	Orchestrator Responsibilities	1770	-	none	3	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/context-window-management.md	Orchestrator Responsibilities ¶4	34	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/context-window-management.md	Detection Heuristics	1804	591	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/99347713b2.md
+.claude/rules/moai/workflow/context-window-management.md	Applies To	119	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/context-window-management.md	Cross-references	988	172	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/087152aefa.md
+.claude/rules/moai/workflow/cross-session-messaging.md	Cross-Session Messaging	541	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/cross-session-messaging.md	What the channel is	1460	289	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/557b056f81.md
+.claude/rules/moai/workflow/cross-session-messaging.md	Availability constraints	735	163	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/37996714f9.md
+.claude/rules/moai/workflow/cross-session-messaging.md	Rules	4424	-	none	4	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/cross-session-messaging.md	Rules ¶5	810	177	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/79676f4ec5.md
+.claude/rules/moai/workflow/cross-session-messaging.md	Rules ¶6	809	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/cross-session-messaging.md	Rules ¶7	388	42	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/b690c826b0.md
+.claude/rules/moai/workflow/cross-session-messaging.md	Rules ¶8	524	87	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/73abc43ab4.md
+.claude/rules/moai/workflow/cross-session-messaging.md	Rules ¶9	230	53	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/2f992b8d08.md
+.claude/rules/moai/workflow/cross-session-messaging.md	A send result has three shapes, and none of them says "read"	2055	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/cross-session-messaging.md	A send result has three shapes, and none of them says "read" ¶2	632	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/cross-session-messaging.md	A send result has three shapes, and none of them says "read" ¶3	346	346	M1	0	N	Y	Y	Y	Y	workflow/cross-session-messaging-detail.md	ADMIT	-	.moai/reports/t1226/evidence/m1/init/e6c74c2817.md
+.claude/rules/moai/workflow/cross-session-messaging.md	A send result has three shapes, and none of them says "read" ¶4	204	14	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/a89a3f7d23.md
+.claude/rules/moai/workflow/cross-session-messaging.md	A send result has three shapes, and none of them says "read" ¶5	543	78	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/d679c32a29.md
+.claude/rules/moai/workflow/cross-session-messaging.md	An idle notice is a scheduling hint	1087	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/cross-session-messaging.md	An idle notice is a scheduling hint ¶1	277	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/cross-session-messaging.md	An idle notice is a scheduling hint ¶3	180	180	M1	0	N	Y	Y	Y	Y	workflow/cross-session-messaging-detail.md	ADMIT	-	.moai/reports/t1226/evidence/m1/init/1d8e297d12.md
+.claude/rules/moai/workflow/cross-session-messaging.md	Codex broker path (session messaging tools)	336	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/cross-session-messaging.md	Cross-references	818	93	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/aa9720d39e.md
+.claude/rules/moai/workflow/goal-directive.md	Goal Directive (`/moai goal`) — Autonomous Continuation	580	59	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/96c9f8ee16.md
+.claude/rules/moai/workflow/goal-directive.md	What It Is	1876	334	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/89b9cc2443.md
+.claude/rules/moai/workflow/goal-directive.md	Goal-Presentation Timing	1452	330	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/a606d6f42d.md
+.claude/rules/moai/workflow/goal-directive.md	Hard Preconditions for Every Recommendation	960	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/goal-directive.md	Cross-references	760	46	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/b945d119bf.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Kanban Dispatch Protocol	1308	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Kanban Dispatch Protocol ¶1	181	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Kanban Dispatch Protocol ¶2	194	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Kanban Dispatch Protocol ¶4	546	83	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/fae8c0fef1.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Scope — when this rule is live	1310	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Entry into the board is an operator act	4526	-	none	7	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Entry into the board is an operator act ¶1	184	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Entry into the board is an operator act ¶5	331	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Report milestones ↔ queue cards	579	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Card classes — not every card needs every column	1990	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Card classes — not every card needs every column ¶1	483	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Card classes — not every card needs every column ¶3	169	32	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/79adde9ae5.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Card classes — not every card needs every column ¶4	408	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Card classes — not every card needs every column ¶5	409	57	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/9215a5d14f.md
+.claude/rules/moai/workflow/kanban-dispatch.md	The dispatch cycle	23	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	The delegation channel is the queue	1694	-	none	2	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/kanban-dispatch.md	The delegation channel is the queue ¶2	316	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Dispatch language	607	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Dispatch language ¶2	211	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Dispatch format	2051	-	none	2	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Dispatch format ¶2	157	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Deputy dispatch surface	1869	-	none	5	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Deputy dispatch surface ¶6	204	33	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/e33a3d5eb0.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Completion is read, never trusted	1205	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Completion is read, never trusted ¶2	408	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Completion is read, never trusted ¶3	279	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Completion is read, never trusted ¶4	297	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	CodeRabbit is not read from `gh pr checks`	989	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/kanban-dispatch.md	CodeRabbit is not read from `gh pr checks` ¶2	120	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	CodeRabbit is not read from `gh pr checks` ¶3	171	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	CodeRabbit is not read from `gh pr checks` ¶4	94	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	CodeRabbit is not read from `gh pr checks` ¶5	262	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	The `/clear` handoff between phases	874	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/kanban-dispatch.md	The `/clear` handoff between phases ¶2	143	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	The `/clear` handoff between phases ¶3	206	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Isolation is provisioned by MoAI, then entered through a launcher	6381	-	none	9	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Isolation is provisioned by MoAI, then entered through a launcher ¶2	642	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Isolation is provisioned by MoAI, then entered through a launcher ¶3	260	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Isolation is provisioned by MoAI, then entered through a launcher ¶8	196	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Isolation is provisioned by MoAI, then entered through a launcher ¶10	188	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Isolation is provisioned by MoAI, then entered through a launcher ¶12	294	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Isolation is provisioned by MoAI, then entered through a launcher ¶13	171	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Isolation is provisioned by MoAI, then entered through a launcher ¶15	266	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Isolation is provisioned by MoAI, then entered through a launcher ¶16	403	39	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/814c5c50d3.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Verification load is lane-local	1100	-	none	2	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Verification load is lane-local ¶3	203	25	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/2805cfb181.md
+.claude/rules/moai/workflow/kanban-dispatch.md	The env-isolated verification form	1912	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/kanban-dispatch.md	The env-isolated verification form ¶2	132	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	The env-isolated verification form ¶3	349	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	The env-isolated verification form ¶4	278	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	The env-isolated verification form ¶5	362	362	M1	0	N	Y	Y	Y	Y	workflow/kanban-dispatch-mechanics.md	ADMIT	-	.moai/reports/t1226/evidence/m1/init/e0612d0eba.md
+.claude/rules/moai/workflow/kanban-dispatch.md	The env-isolated verification form ¶6	349	349	M1	0	N	Y	Y	Y	Y	workflow/kanban-dispatch-mechanics.md	ADMIT	-	.moai/reports/t1226/evidence/m1/init/e3ef17aa9c.md
+.claude/rules/moai/workflow/kanban-dispatch.md	The env-isolated verification form ¶7	276	66	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/251b666de5.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Integration into the release branch is self-served	3939	-	none	4	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Integration into the release branch is self-served ¶2	210	210	M1	0	N	Y	Y	Y	Y	workflow/kanban-dispatch-mechanics.md	ADMIT	-	.moai/reports/t1226/evidence/m1/init/760a4e5917.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Integration into the release branch is self-served ¶3	1114	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Integration into the release branch is self-served ¶7	72	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Factory Mode — the card travels whole	1475	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Boundaries — what this protocol does not do	499	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/kanban-dispatch.md	Cross-references	570	28	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/4521fe6eda.md
+.claude/rules/moai/workflow/main-checkout-branch-guard.md	Main-Checkout Branch Guard	526	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/main-checkout-branch-guard.md	Rules	1296	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/main-checkout-branch-guard.md	Rules ¶2	664	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/main-checkout-branch-guard.md	Rules ¶3	52	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/main-checkout-branch-guard.md	Rules ¶4	433	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/main-checkout-branch-guard.md	Staleness Rule	528	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/main-checkout-branch-guard.md	Staleness Rule ¶2	65	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/main-checkout-branch-guard.md	Staleness Rule ¶3	234	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/main-checkout-branch-guard.md	Detecting Concurrent Sessions	521	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/main-checkout-branch-guard.md	Detecting Concurrent Sessions ¶2	170	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/main-checkout-branch-guard.md	Mechanical Enforcement	2267	409	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/a30a162e1f.md
+.claude/rules/moai/workflow/main-checkout-branch-guard.md	Cross-references	598	60	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/70e17e7cb9.md
+.claude/rules/moai/workflow/session-handoff.md	Session Handoff Protocol	1009	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/session-handoff.md	When To Generate (5 Triggers)	1208	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/session-handoff.md	When To Generate (5 Triggers) ¶2	867	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/session-handoff.md	When To Generate (5 Triggers) ¶3	185	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/session-handoff.md	Emission-Time Save Obligation (auto-resume wiring)	1858	-	none	2	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/session-handoff.md	Emission-Time Save Obligation (auto-resume wiring) ¶3	336	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/session-handoff.md	Canonical Format (Verbatim Spec)	1359	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/session-handoff.md	Canonical Format (Verbatim Spec) ¶2	991	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/session-handoff.md	Field-by-Field Specification	2859	-	none	2	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/session-handoff.md	Field-by-Field Specification ¶1	281	31	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/c04816b381.md
+.claude/rules/moai/workflow/session-handoff.md	Auto-Injected Resume Flow (mode=auto)	436	13	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/5b05c43908.md
+.claude/rules/moai/workflow/session-handoff.md	Invariants (both modes)	835	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/session-handoff.md	Auto-Memory Integration (Mandatory)	1384	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/session-handoff.md	Auto-Memory Integration (Mandatory) ¶2	1171	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/session-handoff.md	Auto-Memory Integration (Mandatory) ¶3	84	0	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/9f6285cb64.md
+.claude/rules/moai/workflow/session-handoff.md	Output Surface (User-Facing)	1631	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/session-handoff.md	Output Surface (User-Facing) ¶2	710	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/session-handoff.md	Output Surface (User-Facing) ¶3	374	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/session-handoff.md	Worktree-Anchored Resume Pattern	721	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/session-handoff.md	Diet Constraints	701	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/session-handoff.md	Diet Constraints ¶2	342	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/session-handoff.md	V0 Abort Gate Doctrine	339	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/session-handoff.md	Cross-references	1558	135	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/5c02764555.md
+.claude/rules/moai/workflow/skill-routing.md	(서문)	162	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/skill-routing.md	Skill Routing Protocol	181	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/skill-routing.md	1. Orchestrator Obligation	892	-	none	1	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/skill-routing.md	1. Orchestrator Obligation ¶2	55	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/skill-routing.md	1. Orchestrator Obligation ¶3	382	382	M1	0	N	Y	Y	Y	Y	workflow/skill-routing-detail.md	ADMIT	-	.moai/reports/t1226/evidence/m1/init/127ae79a83.md
+.claude/rules/moai/workflow/skill-routing.md	1. Orchestrator Obligation ¶4	117	-	none	0	b	N	NA	NA	NA	-	REJECT	narrows-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/skill-routing.md	§1.1 — Orchestrator-Direct Skill Routing (non-spawn)	3001	-	none	4	N	N	NA	NA	NA	-	REJECT	bind>0	.moai/reports/t1226/evidence/bind-init.md
+.claude/rules/moai/workflow/skill-routing.md	§1.1 — Orchestrator-Direct Skill Routing (non-spawn) ¶2	781	-	none	0	a	N	NA	NA	NA	-	REJECT	governs-scope	.moai/reports/t1226/evidence/rejects.md
+.claude/rules/moai/workflow/skill-routing.md	4. Cross-references	730	102	M2	0	N	Y	NA	NA	NA	-	ADMIT	-	.moai/reports/t1226/evidence/m2/init/fbf5a03d38.md
