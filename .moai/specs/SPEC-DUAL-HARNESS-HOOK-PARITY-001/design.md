@@ -219,6 +219,16 @@ consecutive-`unmeasured` cap (§D3.8): at the cap the stop is allowed and the ga
 `unverified`, which no verdict reads as PASS. The goal member keeps its own turn ceiling and is not
 under the cap.
 
+> **t1280 amendment (2026-09-28, follow-up card F4).** The turn ceiling bounds only evaluations
+> that complete and save: a goal member cut off at its internal budget on every Stop — or whose
+> receipt never appears — never advances the ceiling and would continue forever, bounded only by
+> the host. From t1280 the goal member's `unmeasured` continuations (receipt absent, or the member
+> cut off) count toward the same §D3.8 consecutive-`unmeasured` cap as the gates; at the cap the
+> stop is allowed and the goal is recorded `unverified`, never `satisfied`. This completes the
+> §D3.4 mapping row's wording ("neither `unmeasured` nor `unmet` may allow the stop below the
+> Codex-only §D3.8 cap"); a *measured* evaluation (met, unmet, cancelled, budget-terminated) still
+> resets the count and is bounded by the goal's own turn ceiling, as before.
+
 **Member 1's factory-continuation path (plan-audit iter-2 N4; iter-3 A2).** `stop.go:80–81` returns
 a `decision: block` when the factory batch asks the lane to keep working. That step is bounded by
 its own deadline, `factoryHookInspectionDeadline = 200 * time.Millisecond`
