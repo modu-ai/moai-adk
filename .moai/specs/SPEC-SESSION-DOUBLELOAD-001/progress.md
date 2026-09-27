@@ -19,3 +19,7 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## HOLD (2026-09-27, operator decision)
+
+Plan-audit iter-2 FAIL 0.68 at the Tier M cap. Core premise refuted (N2): sessions started inside an L1 worktree also load the primary CLAUDE.local.md (see .moai/reports/t1219/verdict.md correction). Do NOT enter run on this SPEC as written. Operator chose scope reduction: card t1219 lands only the CLAUDE.local.md fixes and the corrected verdict; the double-load fix is re-planned under a new card.
