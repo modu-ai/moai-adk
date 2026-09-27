@@ -101,17 +101,18 @@ func TestOptionLabelsStayEnglish(t *testing.T) {
 }
 
 // TestEffortGoUnboundWording verifies G3-6: the stale "(declarative — not read by
-// the runtime)" caption is reworded in all 4 locales (post-G3-1 the per-agent
-// model/effort IS runtime-bound via the profile matrix, so the old caption is
-// misleading), and the templ server-side baseline renders the new ENGLISH string.
+// the runtime)" caption is reworded in all 4 locales, and the templ server-side
+// baseline renders the new ENGLISH string. The wording names the backend-only
+// scope because subagents inherit the session effort (no per-agent matrix
+// remains, SPEC-AGENT-MODEL-INHERIT-001).
 func TestEffortGoUnboundWording(t *testing.T) {
 	dict := readEmbeddedAsset(t, "i18n.js")
 
 	for _, want := range []string{
-		`"hint.effort.go_unbound": "Resolved from the performance tier above — per-agent edits save as overrides."`,
-		`"hint.effort.go_unbound": "위의 성능 티어에서 결정됩니다. 개별 편집은 override로 저장됩니다."`,
-		`"hint.effort.go_unbound": "上のパフォーマンスティアで決まります。個別の編集はオーバーライドとして保存されます。"`,
-		`"hint.effort.go_unbound": "由上方的性能层级决定；单独修改会保存为覆盖项。"`,
+		`"hint.effort.go_unbound": "Applies to this backend only. MoAI subagents inherit the session's effort."`,
+		`"hint.effort.go_unbound": "이 백엔드에만 적용됩니다. MoAI 서브에이전트는 세션의 추론 강도를 그대로 따릅니다."`,
+		`"hint.effort.go_unbound": "このバックエンドにのみ適用されます。MoAI のサブエージェントはセッションの推論の強さを引き継ぎます。"`,
+		`"hint.effort.go_unbound": "仅对该后端生效。MoAI 子代理沿用会话的推理强度。"`,
 	} {
 		if !strings.Contains(dict, want) {
 			t.Errorf("i18n.js missing reworded hint.effort.go_unbound entry: %s", want)
@@ -128,7 +129,7 @@ func TestEffortGoUnboundWording(t *testing.T) {
 	// row that also rendered it is gone; schemaSelectRow is the remaining call
 	// site (asserted at the source level — no live `.effort` FieldDef today).
 	src := readGoSource(t, "fieldsets.templ")
-	if n := strings.Count(src, `data-i18n="hint.effort.go_unbound">Resolved from the performance tier above — per-agent edits save as overrides.`); n != 1 {
+	if n := strings.Count(src, `data-i18n="hint.effort.go_unbound">Applies to this backend only. MoAI subagents inherit the session's effort.`); n != 1 {
 		t.Errorf("fieldsets.templ has %d reworded hint.effort.go_unbound baselines, want 1 (schemaSelectRow)", n)
 	}
 }

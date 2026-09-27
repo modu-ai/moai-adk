@@ -961,115 +961,55 @@ This agent uses budget_tokens: 5000 which is prohibited for Opus 4.7.`
 	}
 }
 
-// TestAuthoringDocHasEffortMatrix tests that agent-authoring.md contains the effort matrix
-// This is a RED test - it will FAIL until M2 adds the matrix table
-func TestAuthoringDocHasEffortMatrix(t *testing.T) {
+// readRuleDoc reads a rule document from the worktree or the main project
+// path, skipping the test when neither exists.
+func readRuleDoc(t *testing.T, rel ...string) string {
+	t.Helper()
 	cwd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("failed to get cwd: %v", err)
 	}
-
-	// Try both worktree and main project paths
-	authoringDocPaths := []string{
-		filepath.Join(cwd, ".claude", "rules", "moai", "development", "agent-authoring.md"),
-		filepath.Join(cwd, "..", "..", "..", ".claude", "rules", "moai", "development", "agent-authoring.md"),
+	candidates := []string{
+		filepath.Join(append([]string{cwd}, rel...)...),
+		filepath.Join(append([]string{cwd, "..", "..", ".."}, rel...)...),
 	}
-
-	var content []byte
-	var docPath string
-	for _, path := range authoringDocPaths {
+	for _, path := range candidates {
 		if data, err := os.ReadFile(path); err == nil {
-			content = data
-			docPath = path
-			break
+			t.Logf("Checked %s", path)
+			return string(data)
 		}
 	}
-
-	if len(content) == 0 {
-		t.Skip("agent-authoring.md not found - will test after M2 implementation")
-		return
-	}
-
-	contentStr := string(content)
-
-	// Check for the section heading
-	if !strings.Contains(contentStr, "## Effort-Level Calibration Matrix") {
-		t.Error("agent-authoring.md should contain '## Effort-Level Calibration Matrix' section")
-	}
-
-	// Check for the canonical 8-retained-agent matrix table (7 MoAI-custom + Explore).
-	// Archived agents (manager-strategy/quality/brain/project, expert-*, researcher, etc.)
-	// are NOT expected here — they appear only in the Archived Agents reference table.
-	expectedAgents := []string{
-		"manager-spec", "manager-develop", "manager-docs", "manager-git",
-		"plan-auditor", "sync-auditor", "builder-harness",
-		"Explore",
-	}
-
-	missingAgents := []string{}
-	for _, agent := range expectedAgents {
-		if !strings.Contains(contentStr, agent) {
-			missingAgents = append(missingAgents, agent)
-		}
-	}
-
-	if len(missingAgents) > 0 {
-		t.Errorf("agent-authoring.md effort matrix missing agents: %v", missingAgents)
-	}
-
-	// Check for effort level values
-	expectedEfforts := []string{"xhigh", "high", "medium"}
-	for _, effort := range expectedEfforts {
-		if !strings.Contains(contentStr, effort) {
-			t.Errorf("agent-authoring.md should contain effort level: %s", effort)
-		}
-	}
-
-	t.Logf("Checked agent-authoring.md at: %s", docPath)
+	t.Skipf("%s not found", filepath.Join(rel...))
+	return ""
 }
 
-// TestConstitutionCrossReference tests that moai-constitution.md cross-references the matrix
-// This is a RED test - it will FAIL until M2 adds the cross-reference
-func TestConstitutionCrossReference(t *testing.T) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("failed to get cwd: %v", err)
+// TestAuthoringDocHasNoEffortMatrix asserts the per-agent effort matrix left
+// agent-authoring.md (SPEC-AGENT-MODEL-INHERIT-001 H7) and that the document
+// states the inheritance rule in its place.
+func TestAuthoringDocHasNoEffortMatrix(t *testing.T) {
+	content := readRuleDoc(t, ".claude", "rules", "moai", "development", "agent-authoring.md")
+
+	if strings.Contains(content, "## Effort-Level Calibration Matrix") {
+		t.Error("agent-authoring.md still carries the retired '## Effort-Level Calibration Matrix' section")
 	}
-
-	// Try both worktree and main project paths
-	constitutionDocPaths := []string{
-		filepath.Join(cwd, ".claude", "rules", "moai", "core", "moai-constitution.md"),
-		filepath.Join(cwd, "..", "..", "..", ".claude", "rules", "moai", "core", "moai-constitution.md"),
+	const rule = "MoAI agent definitions omit both `model` and `effort`"
+	if !strings.Contains(content, rule) {
+		t.Errorf("agent-authoring.md should state the inheritance rule %q", rule)
 	}
+}
 
-	var content []byte
-	var docPath string
-	for _, path := range constitutionDocPaths {
-		if data, err := os.ReadFile(path); err == nil {
-			content = data
-			docPath = path
-			break
-		}
+// TestConstitutionHasNoPerAgentEffortPointer asserts the constitution no
+// longer points at the retired per-agent effort matrix (H8) and still carries
+// the prompt-philosophy section that routes effort by role.
+func TestConstitutionHasNoPerAgentEffortPointer(t *testing.T) {
+	content := readRuleDoc(t, ".claude", "rules", "moai", "core", "moai-constitution.md")
+
+	if strings.Contains(content, "Effort-Level Calibration Matrix") {
+		t.Error("moai-constitution.md still points at the retired Effort-Level Calibration Matrix")
 	}
-
-	if len(content) == 0 {
-		t.Skip("moai-constitution.md not found - will test after M2 implementation")
-		return
+	if !strings.Contains(content, "Prompt Philosophy") {
+		t.Error("moai-constitution.md should keep its Prompt Philosophy section")
 	}
-
-	contentStr := string(content)
-
-	// Check for cross-reference to agent-authoring.md
-	if !strings.Contains(contentStr, "agent-authoring.md") {
-		t.Error("moai-constitution.md should cross-reference agent-authoring.md for effort matrix")
-	}
-
-	// Check for Opus 4.7 section mentioning effort level selection
-	if !strings.Contains(contentStr, "Opus 4.7") && !strings.Contains(contentStr, "Prompt Philosophy") {
-		t.Error("moai-constitution.md should have Opus 4.7 Prompt Philosophy section")
-	}
-
-	t.Logf("Checked moai-constitution.md at: %s", docPath)
 }
 
 // TestCheckDeadHooks tests LR-04 dead hook detection via direct AgentFrontmatter struct

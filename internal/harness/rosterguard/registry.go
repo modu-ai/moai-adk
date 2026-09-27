@@ -354,59 +354,9 @@ func Registry() []Site {
 		// twin. Deriving would cost a reviewer one row instead of two and would
 		// blind the guard to a repair landing on only one copy of a pair — the
 		// case recorded a few rows above, firing.
-		// The two rows below carried three declarations written against a
-		// sentence that t1127/t1131/t1140 replaced, and all three had to go
-		// together (card t1141). The document is the party that became CORRECT:
-		// it now reads "13 rows — 12 agents plus `Explore` — × 3 columns = 39
-		// cells", and 13 is what template.ProfileMatrixAgents() carries — the
-		// set CheckSite actually compares against (delegationmap's
-		// retainedCatalog and CLAUDE.md §4 agree, as cross-checks). The
-		// registry was the stale party.
-		//
-		// What each dropped declaration had asserted, and why it is now false:
-		//
-		//   KnownStale (DeclaredCount 11) — the recorded staleness is REPAIRED.
-		//   Leaving the marker is not the safe side: check.go fires on a marker
-		//   whose declared value no longer matches the site, so a resolved
-		//   staleness left behind reads as a fresh drift.
-		//
-		//   SweepUnreachable ("names no agents") — the file now mentions twelve
-		//   of the thirteen roster names, so the sweep reaches it and the
-		//   exemption asserts something measurably untrue.
-		//
-		// The names are NOT replaced by a membership assertion, which is what
-		// the sweep's own message suggests. The reason is a NAMING system, not
-		// an omission — the tier table's effort-baseline cell does partition the
-		// whole roster, but it writes six of the thirteen in shorthand
-		// (`design`, `lead`, `harness`, `e2e`, `docs`, `git`) beside seven
-		// canonical names. NamesIn bounds a name by non-identifier characters,
-		// and `-` is one of them, so `lead` never satisfies `manager-lead`.
-		// A membership claim keyed on canonical names would therefore report
-		// four agents that ARE in the table as absent, and silencing that would
-		// mean either four fabricated KnownStale gaps or expanding the
-		// document's shorthand to suit the test.
-		//
-		// NumeralUnreachable is added rather than widening the numeral layer:
-		// the new sentence counts "rows" and plain "agents", neither of which is
-		// in rosterNounRe's noun class, so the layer cannot reach this claim
-		// without a vocabulary change that would move every other file's breadth
-		// set too.
-		{
-			ID:                 "model-policy-profile-matrix-size",
-			NumeralUnreachable: "the count noun is `rows` (and `agents` unqualified), outside the numeral layer's noun class",
-			Path:               ".claude/rules/moai/development/model-policy.md",
-			Axis:               AxisRetainedRoster,
-			Claims:             ClaimCount,
-			CountPattern:       `\((\d+) rows — \d+ agents plus`,
-		},
-		{
-			ID:                 "model-policy-profile-matrix-size-mirror",
-			NumeralUnreachable: "same noun class miss; template mirror of the row above",
-			Path:               "internal/template/templates/.claude/rules/moai/development/model-policy.md",
-			Axis:               AxisRetainedRoster,
-			Claims:             ClaimCount,
-			CountPattern:       `\((\d+) rows — \d+ agents plus`,
-		},
+		// The two model-policy.md matrix-size rows (and their mirror) left
+		// with the per-agent profile matrix section they measured
+		// (SPEC-AGENT-MODEL-INHERIT-001 H5).
 		{
 			ID:               "foundation-core-skill-catalog-size",
 			SweepUnreachable: "count-only claim: a module-index sentence citing the catalog size",

@@ -247,14 +247,6 @@ The persistence-layer analogue is `session-handoff.md` Block 3-4 preconditions; 
 - **(c) TeammateIdle exit-2 task closure.** When the TeammateIdle hook rejects a task's completion via exit-2 ("keep working"), the rejected task's TaskList entry MUST NOT be left in an open state without a reassignment owner. The orchestrator re-assigns the task (spawn a new teammate, re-delegate to the same teammate with a refined prompt, or close it as obsolete with a synthetic closing note). This binds the orchestrator's TaskList hygiene, not the hook's exit-2 emission. The parent-abort propagation that book1 ch07 names — cleanup handlers registered to avoid orphan tasks — is the source for this clause.
 - **(d) Cross-references.** book1 ch04 (账本闭环 — the ledger-closure invariant); book1 ch07 (parent-abort propagates to forked children; agents are observable lifecycle objects via SubagentStart/SubagentStop hooks, exit-code-2 stderr feedback); `.claude/rules/moai/workflow/session-handoff.md` Block 3-4 preconditions (the persistence-layer analogue across `/clear`); and the ledger-closing artifact's truthfulness bound — `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 1 (orchestrator self-report): the artifact MUST be a real summary, not a fabricated "success".
 
-## Per-Spawn Model Injection rationale
-
-> Relocated from `agent-common-protocol.md` § Per-Spawn Model Injection to keep the always-loaded file within its size budget. The [HARD] rule and the four operative bullets remain inline there.
-
-Omitting the `model` argument is not neutral. Nearly every agent definition carries `model: inherit`, so a spawn without an explicit model silently runs the agent on the parent session's model rather than its profiled one. The profile is still computed — nothing reports that it was never applied, which is why the rule is stated in the always-loaded file rather than left to the detailed policy file that only loads while agent files are being edited.
-
-Full profile matrix, precedence order, and channel table: `.claude/rules/moai/development/model-policy.md`.
-
 ## Background Agent Execution rationale
 
 > Relocated from `agent-common-protocol.md` § Background Agent Execution to keep the always-loaded file within its size budget. The [HARD] default alignment and the four spawning rules remain inline there.
@@ -293,7 +285,7 @@ Entry conditions (exhaustive):
 | **E3 — second-opinion request** | Orchestrator uncertainty: < 80% confidence in the next delegation step | ambiguous blocker-report; re-spawn vs user-escalation |
 | **E4 — loop-deadlock** | `/moai loop` or `/moai fix` ceiling-exit per the loop-verdict contract | auto-fix iterations exhausted without green CI |
 
-On trigger: spawn `Agent(general-purpose)` with the super-advisor role profile (Opus + xhigh at max/medium tier; Sonnet + xhigh at low tier — GLM-backed sessions fall back to the session model), receive the prescription, then re-seed the executor or escalate to the user via `AskUserQuestion`. Agent file: `.claude/agents/moai/super-advisor.md`.
+On trigger: spawn `Agent(general-purpose)` with the super-advisor role profile (it inherits the session's model and effort), receive the prescription, then re-seed the executor or escalate to the user via `AskUserQuestion`. Agent file: `.claude/agents/moai/super-advisor.md`.
 
 ## Hook Invocation Surface — per-row table
 

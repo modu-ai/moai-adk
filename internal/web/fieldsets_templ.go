@@ -1833,8 +1833,8 @@ func boolSegment(name string, checked bool) templ.Component {
 }
 
 // schemaSelectRow — 닫힌 옵션 select. EmptyLabel이 있으면 빈 옵션을 렌더한다.
-// effort 필드에는 선언적 힌트를 덧붙인다 — Go 런타임이 행동적으로 바인딩하지
-// 않는 값임을 알린다. baseline 텍스트는 영어다: 하드코딩된 한국어는 JS 미실행
+// effort 필드(감사 백엔드 핀)에는 그 백엔드에만 적용된다는 힌트를 덧붙인다 —
+// MoAI 서브에이전트는 세션 effort를 상속한다. baseline 텍스트는 영어다: 하드코딩된 한국어는 JS 미실행
 // 렌더에서 모든 로케일에 한국어를 노출했다.
 func schemaSelectRow(f settings.FieldDef, value string, errs map[string]string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -1896,7 +1896,7 @@ func schemaSelectRow(f settings.FieldDef, value string, errs map[string]string) 
 			return templ_7745c5c3_Err
 		}
 		if strings.HasSuffix(f.Name, ".effort") {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 132, "<p class=\"field__help\" data-i18n=\"hint.effort.go_unbound\">Resolved from the performance tier above — per-agent edits save as overrides.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 132, "<p class=\"field__help\" data-i18n=\"hint.effort.go_unbound\">Applies to this backend only. MoAI subagents inherit the session's effort.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -203,7 +203,7 @@ window.MOAI_I18N = {
     "f.crosssession.dialog_expiry.opt.10m": "10 minutes",
     "f.crosssession.dialog_expiry.opt.never": "Never",
     "f.crosssession.dialog_expiry.opt.empty": "Unset (5m default)",
-    "hint.effort.go_unbound": "Resolved from the performance tier above — per-agent edits save as overrides.",
+    "hint.effort.go_unbound": "Applies to this backend only. MoAI subagents inherit the session's effort.",
     "hint.effort.haiku_na": "Effort N/A for Haiku",
     // SPEC section keys — 10-section expansion (generic schema fieldsets).
     "count.fields": "field(s)",
@@ -1074,7 +1074,7 @@ window.MOAI_I18N = {
     "f.crosssession.dialog_expiry.opt.10m": "10분",
     "f.crosssession.dialog_expiry.opt.never": "만료 없음",
     "f.crosssession.dialog_expiry.opt.empty": "미설정 (기본 5분)",
-    "hint.effort.go_unbound": "위의 성능 티어에서 결정됩니다. 개별 편집은 override로 저장됩니다.",
+    "hint.effort.go_unbound": "이 백엔드에만 적용됩니다. MoAI 서브에이전트는 세션의 추론 강도를 그대로 따릅니다.",
     "hint.effort.haiku_na": "Haiku는 추론 강도 미적용",
     // SPEC section keys — 10-section expansion (generic schema fieldsets).
     "count.fields": "개 필드",
@@ -1829,7 +1829,7 @@ window.MOAI_I18N = {
     "f.crosssession.dialog_expiry.opt.10m": "10分",
     "f.crosssession.dialog_expiry.opt.never": "期限なし",
     "f.crosssession.dialog_expiry.opt.empty": "未設定 (既定 5分)",
-    "hint.effort.go_unbound": "上のパフォーマンスティアで決まります。個別の編集はオーバーライドとして保存されます。",
+    "hint.effort.go_unbound": "このバックエンドにのみ適用されます。MoAI のサブエージェントはセッションの推論の強さを引き継ぎます。",
     "hint.effort.haiku_na": "Haikuは推論強度が非対応",
     // SPEC section keys — 10-section expansion (generic schema fieldsets).
     "count.fields": "項目",
@@ -2584,7 +2584,7 @@ window.MOAI_I18N = {
     "f.crosssession.dialog_expiry.opt.10m": "10 分钟",
     "f.crosssession.dialog_expiry.opt.never": "不过期",
     "f.crosssession.dialog_expiry.opt.empty": "未设置（默认 5 分钟）",
-    "hint.effort.go_unbound": "由上方的性能层级决定；单独修改会保存为覆盖项。",
+    "hint.effort.go_unbound": "仅对该后端生效。MoAI 子代理沿用会话的推理强度。",
     "hint.effort.haiku_na": "Haiku 不适用推理强度",
     // SPEC section keys — 10-section expansion (generic schema fieldsets).
     "count.fields": "个字段",

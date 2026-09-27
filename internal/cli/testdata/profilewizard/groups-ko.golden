@@ -77,9 +77,9 @@ shift+tab 이전 • enter 다음
   추론 강도를 정합니다. 서브에이전트는 세션의 모델과 추론 강도를 그대로         
   따릅니다.                                                                     
                                                                                 
-  ▸ High - Opus 5.5 (high~medium) + Sonnet (low, docs/single-shot rows)         
-    Medium - Opus 5.5 (high~low) + Sonnet (low, docs/single-shot rows)          
-    Low - Opus 5.5 (high~low) + Sonnet (low, docs/e2e/single-shot rows)         
+  ▸ High - 세션 추론 강도 high                                                  
+    Medium - 세션 추론 강도 medium                                              
+    Low - 세션 추론 강도 low                                                    
   세션 추론 강도                                                                
   이 프로필로 실행하는 Claude 세션의 추론 깊이입니다. xhigh/max는 이를 지원하는 
   모델(Opus 5.5, Sonnet 5, Opus 4.7 이상)이 필요합니다. 서브에이전트는 이 세션의
@@ -88,7 +88,7 @@ shift+tab 이전 • enter 다음
     low - 가장 빠름, 간략한 추론                                                
     medium - 균형 (권장)                                                        
   ▸ high - 심층 추론                                                            
-    xhigh - 확장 추론 (세션 전용, 에이전트 매트릭스는 high 사용)                
+    xhigh - 확장 추론                                                           
     max - 최대 추론                                                             
   권한 모드                                                                     
   Claude가 작업 수행 전 권한을 요청하는 방식을 제어합니다.                      
