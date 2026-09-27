@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-SELF-DISPATCH-001
 title: "Design — self-dispatching lane (Factory F2)"
-version: "0.3.0"
+version: "0.4.0"
 created: 2026-09-27
 ---
 
@@ -125,3 +125,12 @@ launcher go through t1256's REQ-RNC-003/-005/-007 producer.
 
 The sync phase records `partially_superseded_by: [SPEC-FACTORY-SELF-DISPATCH-001]` on that SPEC
 (plan.md §F M7).
+
+### §7.1 Superseded clause of SPEC-AUTONOMY-PRECONDITION-001
+
+| Clause | Effect of this SPEC |
+|---|---|
+| REQ-AP-011 | Widened in the deny direction only: the role gate on `sign --signer llm`/`llm+jev` and `decide` also denies where the lane label is set or `MOAI_KANBAN_BACKEND=gpt` (lane refusal, REQ-SD-015/017). The allow direction and the leader's own `decide` path are unchanged — a session carrying none of the three lane variables is allowed exactly as before |
+
+The sync phase also records `partially_superseded_by: [SPEC-FACTORY-SELF-DISPATCH-001]` on
+SPEC-AUTONOMY-PRECONDITION-001 (plan.md §F M7).

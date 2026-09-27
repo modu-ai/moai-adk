@@ -48,6 +48,10 @@ them. None is open.
 - **B9 — Pre-dispatch cross-check** (plan-audit D12, O9): `next` prints the leased card's PR and landed
   state through the `moai todo pr` reader; the next-card rule states that lane promotion is
   operator-authorized.
+- **B11 — Open decisions OD-1 and OD-2** (leader instruction after plan-audit iteration 3): lane queue
+  promotion and Claude-lane self-integration are **not** settled by this plan. The leader decides each
+  at run Kickoff (spec.md §D); REQ-SD-008/-013/-015/-019/-023 are conditional on them. No default is
+  presumed.
 - **B10 — `--wait` bound and no-card status**: exit status 3 for no card; the wait interval and bound are
   fixed defaults with a flag to change the bound; exact values recorded in progress.md at run.
 
@@ -106,6 +110,7 @@ paths its committed spec/plan/research/design/acceptance name.
 | `internal/cli/integration.go` | read only (target resolution reused by `complete`) | No |
 | `internal/cli/mcp_server.go` + new `mcp_factory_card.go`, `mcp_todo.go` | six tools with `project_root` | No |
 | `internal/hook/session_start.go` | wire the rule | No |
+| `internal/hook/contract_sign_guard.go` | role gate reads lane refusal (REQ-SD-017; widens SPEC-AUTONOMY-PRECONDITION-001 REQ-AP-011 in the deny direction) | No |
 | `internal/cli/launch_exec_posix.go`, `launch_exec_windows.go` | supervising form for relaunch | No |
 | `internal/homestate/card_*.go` | at most a selection query helper | No |
 
@@ -150,7 +155,7 @@ REQ-SD-019, -020. ACs: AC-SD-019, -020.
 
 ### M7 — Invariants, vocabulary, lifecycle records (Priority Low)
 REQ-SD-001, -018, -021, -022. Sync phase adds `partially_superseded_by` on
-SPEC-CODEX-FACTORY-RETIRE-001 (manager-spec by re-delegation). ACs: AC-SD-001, -018, -021, -022.
+SPEC-CODEX-FACTORY-RETIRE-001 and SPEC-AUTONOMY-PRECONDITION-001 (manager-spec by re-delegation). ACs: AC-SD-001, -018, -021, -022.
 
 ## §G Risks
 

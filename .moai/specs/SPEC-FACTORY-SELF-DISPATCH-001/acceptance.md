@@ -121,7 +121,7 @@ REQ-SD-025, AC-SD-025 ↔ REQ-SD-023). The matrix above is authoritative.
   unowned picked card plus an older queued card; (c) only a card assigned to `lane-2`; (d) no picked card
   and two queued cards; (e) an empty queue; **When** `lane-1` runs `moai factory next`, **Then** (a) the
   assigned card is leased and the other stays `picked`; (b) the picked card is leased and the queued card
-  stays `queued`; (c) nothing is leased and the exit status is 3; (d) the older queued card becomes
+  stays `queued`; (c) nothing is leased and the exit status is 3; (d) with OD-1 permitting promotion, the older queued card becomes
   `picked` in the queue and `leased` in the record and the newer stays `queued`; (e) stdout says no card
   is available and the exit status is 3. In (a), (b), (d) stdout carries the card id, its stage, its
   worktree name, and a PR/landed line equal to what `moai todo pr <id>` prints for that card.
@@ -159,7 +159,7 @@ REQ-SD-025, AC-SD-025 ↔ REQ-SD-023). The matrix above is authoritative.
 - Verify: `go test ./internal/cli -run '^TestSD_AC012_StageAppliesEdgeAndRenews$' -count=1 -v`
 
 ### AC-SD-013 — Claude `complete` through the integration worktree
-- **Given** the §B fixture and a Claude lane holding the integration window, with the card's branch merged
+- **Given** OD-2 permitting self-integration, the §B fixture, and a Claude lane holding the integration window, with the card's branch merged
   `--no-ff` into `develop` inside `.claude/worktrees/develop` and a re-measure file naming the merge commit,
   **When** the lane runs `complete`, **Then** the card is `merged-local` with that merge SHA recorded and
   the window is still held by the lane (release is the lane's next step, not part of `complete`);
@@ -168,7 +168,9 @@ REQ-SD-025, AC-SD-025 ↔ REQ-SD-023). The matrix above is authoritative.
   unchanged; **Given** a github-flow fixture (no configured integration branch) where the lane acquired
   the window from its card worktree without `--branch`, so the window's branch source is `caller` and
   its branch is the card's own `WT-` branch, **Then** `complete` refuses naming `--branch` and the card
-  never reaches `merged-local`.
+  never reaches `merged-local`; **Given** a window acquired with `--branch <the card's own WT- branch>`
+  (branch source `flag`, tree = the card worktree), **Then** `complete` refuses and the card row is
+  unchanged.
 - Verify: `go test ./internal/cli -run '^TestSD_AC013_ClaudeCompleteViaIntegrationWorktree$' -count=1 -v`
 
 ### AC-SD-014 — MCP ↔ CLI equivalence and `project_root`
@@ -207,6 +209,11 @@ REQ-SD-025, AC-SD-025 ↔ REQ-SD-023). The matrix above is authoritative.
   production files that stamp or compare the marker finds the name and value only through the
   `internal/config` constants.
 - Verify: `go test ./internal/cli -run '^TestSD_AC017_StampedMarkerArmsContractGuard$' -count=1 -v`
+- **Given** a label-only environment and, separately, a Codex MCP environment, **When** the guard
+  classifies `moai contract sign SPEC-X --signer llm` under each, **Then** it denies in both; **Given** an
+  environment carrying none of the role marker, the lane label, or `MOAI_KANBAN_BACKEND=gpt`, **Then** the
+  same call is allowed.
+- Verify: `go test ./internal/hook -run '^TestSD_AC017_WidenedRoleGateDenyAndAllow$' -count=1 -v`
 
 ### AC-SD-018 — parent checkout untouched
 - **Given** the §B fixture (parent on `main`), **When** the full lane cycle of AC-SD-006 ends, **Then** in
@@ -221,7 +228,8 @@ REQ-SD-025, AC-SD-025 ↔ REQ-SD-023). The matrix above is authoritative.
   tools together with its CLI equivalent, and states that lane queue promotion is operator-authorized;
   **Given** a lane environment with `MOAI_KANBAN_BACKEND=gpt` and `MOAI_KANBAN_CARD=t9`, **When**
   SessionStart runs with source `startup`, **Then** additionalContext carries the owned-card rule naming
-  `t9` and the current worktree, and contains neither `factory next` nor `factory_next`; **Given** a leader environment and an
+  `t9` and the current worktree, names `moai factory stage` and `moai factory complete`, and contains
+  neither `factory next`, `factory_next`, nor any other MCP tool name of REQ-SD-014; **Given** a leader environment and an
   environment with no factory keys, **Then** no next-card rule is present for either source.
 - Verify: `go test ./internal/hook -run '^TestSD_AC019_NextCardRuleInjection$' -count=1 -v`
 
