@@ -33,7 +33,7 @@ func TestGarbageCollectStaleTeams_KeepsLiveTeamWithOldDirMtime(t *testing.T) {
 	}
 	// Freshly written config owned by a DIFFERENT, still-running session.
 	configPath := filepath.Join(liveTeamDir, "config.json")
-	if err := os.WriteFile(configPath, []byte(`{"leaderSessionId":"other-live-session"}`), 0o644); err != nil {
+	if err := os.WriteFile(configPath, []byte(`{"leadSessionId":"other-live-session"}`), 0o644); err != nil {
 		t.Fatalf("write live config: %v", err)
 	}
 
@@ -81,7 +81,7 @@ func TestGarbageCollectStaleTeams_StillCollectsFullyQuietTeam(t *testing.T) {
 		t.Fatalf("create dead team dir: %v", err)
 	}
 	configPath := filepath.Join(deadTeamDir, "config.json")
-	if err := os.WriteFile(configPath, []byte(`{"leaderSessionId":"long-gone-session"}`), 0o644); err != nil {
+	if err := os.WriteFile(configPath, []byte(`{"leadSessionId":"long-gone-session"}`), 0o644); err != nil {
 		t.Fatalf("write dead config: %v", err)
 	}
 	deadTaskDir := filepath.Join(tasksDir, "dead-team")

@@ -86,7 +86,7 @@ func TestCleanupCurrentSessionTeam(t *testing.T) {
 	tests := []struct {
 		name      string
 		sessionID string
-		teams     map[string]string // teamName -> leaderSessionId
+		teams     map[string]string // teamName -> leadSessionId
 		wantGone  []string          // team dirs that should be removed
 		wantKept  []string          // team dirs that should remain
 	}{
@@ -724,7 +724,7 @@ func TestCleanupCurrentSessionTeam_AlsoRemovesTaskDir(t *testing.T) {
 	tests := []struct {
 		name         string
 		sessionID    string
-		teams        map[string]string // teamName -> leaderSessionId
+		teams        map[string]string // teamName -> leadSessionId
 		wantTeamGone []string          // team directories that should be removed
 		wantTeamKept []string          // team directories that should be kept
 		wantTaskGone []string          // task directories that should be removed
