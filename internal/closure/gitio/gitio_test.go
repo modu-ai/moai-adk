@@ -132,6 +132,67 @@ func TestWorktreeListAndCommonDir(t *testing.T) {
 	}
 }
 
+// TestBlobAndPathsUnder pins the tree-read helpers.
+func TestBlobAndPathsUnder(t *testing.T) {
+	dir := newRepo(t)
+	head, err := Head(dir)
+	if err != nil {
+		t.Fatalf("head: %v", err)
+	}
+	data, err := Blob(dir, head, "a.txt")
+	if err != nil || string(data) != "a\n" {
+		t.Fatalf("blob = %q err %v", data, err)
+	}
+	if _, err := Blob(dir, head, "missing.txt"); err == nil {
+		t.Fatalf("missing blob succeeded")
+	}
+	paths, err := PathsUnder(dir, head, "")
+	if err != nil || len(paths) != 2 {
+		t.Fatalf("paths = %v err %v, want two files", paths, err)
+	}
+	if _, err := PathsUnder(dir, head, "no-such-dir"); err != nil {
+		t.Fatalf("paths under empty dir: %v", err)
+	}
+}
+
+// TestCurrentAndUpstreamBranch pins the branch readers (upstream empty when
+// unconfigured).
+func TestCurrentAndUpstreamBranch(t *testing.T) {
+	dir := newRepo(t)
+	branch, err := CurrentBranch(dir)
+	if err != nil || branch != "main" {
+		t.Fatalf("branch = %q err %v, want main", branch, err)
+	}
+	up, err := UpstreamBranch(dir, "main")
+	if err != nil || up != "" {
+		t.Fatalf("upstream = %q err %v, want empty", up, err)
+	}
+}
+
+// TestDiffAndChangedFileCount pins the diff helpers.
+func TestDiffAndChangedFileCount(t *testing.T) {
+	dir := newRepo(t)
+	one, _ := ResolveRef(dir, "HEAD~1")
+	head, _ := Head(dir)
+	diff, err := Diff(dir, one, head)
+	if err != nil || !strings.Contains(diff, "b.txt") {
+		t.Fatalf("diff = %q err %v", diff, err)
+	}
+	n, err := ChangedFileCount(dir, one, head)
+	if err != nil || n != 1 {
+		t.Fatalf("changed files = %d err %v, want 1", n, err)
+	}
+	if n, _ := ChangedFileCount(dir, head, head); n != 0 {
+		t.Fatalf("identical revs changed = %d, want 0", n)
+	}
+	if _, err := Run(dir, "rev-parse", "--verify", "definitely-not-a-ref"); err == nil {
+		t.Fatalf("bad rev succeeded")
+	}
+	if !isSHA(head) || isSHA("not-a-sha") {
+		t.Fatalf("isSHA discrimination")
+	}
+}
+
 // TestTimeoutIsError pins the bounded-git-work property: a timeout surfaces
 // as an error, which the readiness evaluator maps to push_check_undetermined.
 func TestTimeoutIsError(t *testing.T) {

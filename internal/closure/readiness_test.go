@@ -83,10 +83,8 @@ func recAt(head, recordedAt string, opts ...recOpt) SecondReviewRecord {
 
 func withCard(card string) recOpt   { return func(r *SecondReviewRecord) { r.Card = card } }
 func withDigest(d string) recOpt    { return func(r *SecondReviewRecord) { r.ContractSHA256 = d } }
-func withSpec(id string) recOpt     { return func(r *SecondReviewRecord) { r.SpecID = id } }
 func withTarget(t string) recOpt    { return func(r *SecondReviewRecord) { r.Target = t } }
 func withChangedFiles(n int) recOpt { return func(r *SecondReviewRecord) { r.Scope.ChangedFiles = n } }
-func withScopeHead(h string) recOpt { return func(r *SecondReviewRecord) { r.Scope.HeadSHA = h } }
 func withBackends(bs ...SecondReviewBackend) recOpt {
 	return func(r *SecondReviewRecord) { r.Backends = bs }
 }
@@ -228,11 +226,10 @@ func TestAC_CLOSURE_013(t *testing.T) {
 
 	t.Run("latest is by recorded_at", func(t *testing.T) {
 		a := recAt(P, "2026-09-26T08:00:00Z", recordedAt("2026-09-26T08:00:00Z"))
-		b := recAt(P, "2026-09-26T09:00:00Z", recordedAt("2026-09-26T09:00:00Z"))
-		// Order the slice oldest-first; the latest recorded_at must win. Give
-		// the newer one a failing verdict so the pick is observable.
-		b = recAt(P, "2026-09-26T09:00:00Z", withBackends(
-			SecondReviewBackend{Backend: "codex", Gate: "required", Verdict: "fail"}))
+		// The later-recorded record wins; give it a failing verdict so the
+		// pick is observable.
+		b := recAt(P, "2026-09-26T09:00:00Z", recordedAt("2026-09-26T09:00:00Z"),
+			withBackends(SecondReviewBackend{Backend: "codex", Gate: "required", Verdict: "fail"}))
 		st := selectFor([]SecondReviewRecord{a, b}, fakeFacts(map[string][]string{P: {P}}, nil))
 		if st.Verdict != "fail" {
 			t.Fatalf("verdict=%q, want fail (the later-recorded record wins)", st.Verdict)

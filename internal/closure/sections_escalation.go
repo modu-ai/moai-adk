@@ -112,20 +112,16 @@ func buildNewAPIs(r *Report, in BuildInput) {
 	// The read-only comparison at report time. nil seam or an error renders
 	// "not observed" (R2: A2's comparison is unexported; a follow-up card
 	// exports it — the escalation directory is never written).
-	switch {
-	case in.NewAPICompare == nil:
+	if in.NewAPICompare == nil {
 		sec.Observed = false
 		r.AddNotPerformed(NotPerformedNewAPIComparisonUnavailable, "the class-4 comparison is not available in this build")
-	default:
-		adds, err := in.NewAPICompare()
-		if err != nil {
-			sec.Observed = false
-			r.AddNotPerformed(NotPerformedNewAPIComparisonUnavailable, "the class-4 comparison could not run: "+err.Error())
-		} else {
-			sec.Observed = true
-			for _, a := range adds {
-				sec.Additions = append(sec.Additions, AdditionView{Kind: a.Kind, Name: a.Name, Path: a.Path})
-			}
+	} else if adds, err := in.NewAPICompare(); err != nil {
+		sec.Observed = false
+		r.AddNotPerformed(NotPerformedNewAPIComparisonUnavailable, "the class-4 comparison could not run: "+err.Error())
+	} else {
+		sec.Observed = true
+		for _, a := range adds {
+			sec.Additions = append(sec.Additions, AdditionView{Kind: a.Kind, Name: a.Name, Path: a.Path})
 		}
 	}
 	r.NewAPIs = sec

@@ -172,9 +172,12 @@ func appendJSONL(path string, line []byte) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	_, err = f.Write(append(line, '\n'))
-	return err
+	_, writeErr := f.Write(append(line, '\n'))
+	closeErr := f.Close()
+	if writeErr != nil {
+		return writeErr
+	}
+	return closeErr
 }
 
 // newContractVerdictCmd builds the `verdict` subcommand.

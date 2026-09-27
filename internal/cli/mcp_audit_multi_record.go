@@ -113,9 +113,13 @@ func appendSecondReviewRecord(cfg MultiAuditConfig, result ConvergenceResult) er
 	if err != nil {
 		return fmt.Errorf("open %s: %w", closure.SecondReviewFile, err)
 	}
-	defer f.Close()
-	if _, err := f.Write(append(line, '\n')); err != nil {
-		return fmt.Errorf("append %s: %w", closure.SecondReviewFile, err)
+	_, writeErr := f.Write(append(line, '\n'))
+	closeErr := f.Close()
+	if writeErr != nil {
+		return fmt.Errorf("append %s: %w", closure.SecondReviewFile, writeErr)
+	}
+	if closeErr != nil {
+		return fmt.Errorf("close %s: %w", closure.SecondReviewFile, closeErr)
 	}
 	return nil
 }
