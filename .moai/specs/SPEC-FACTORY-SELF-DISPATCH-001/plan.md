@@ -114,6 +114,7 @@ paths its committed spec/plan/research/design/acceptance name.
 | `.claude/rules/moai/workflow/kanban-dispatch.md` | self-dispatch-lane exception to "Promotion is the operator's act, always" (REQ-SD-015; OD-1) | No |
 | `internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` | same text, byte-identical twin; template-neutrality rules apply (REQ-SD-015) | No |
 | `CLAUDE.local.md` §4.1 | self-dispatch-lane exception to "the lane does not take the merge window itself" (REQ-SD-015; OD-2); local-only, no template mirror | No |
+| `.claude/rules/local/gitflow-lane-protocol.md` §6 | same self-dispatch-lane merge-window exception, plus the `moai factory next` leasing exception to "a lane does not pick a card" (REQ-SD-015; OD-1, OD-2); local-only, no template mirror | No |
 | `internal/hook/contract_sign_guard.go` | role gate reads lane refusal (REQ-SD-017; widens SPEC-AUTONOMY-PRECONDITION-001 REQ-AP-011 in the deny direction) | No |
 | `internal/cli/launch_exec_posix.go`, `launch_exec_windows.go` | supervising form for relaunch | No |
 | `internal/homestate/card_*.go` | at most a selection query helper | No |
@@ -159,7 +160,7 @@ REQ-SD-019, -020. ACs: AC-SD-019, -020.
 
 ### M7 — Invariants, vocabulary, lifecycle records (Priority Low)
 REQ-SD-001, -018, -021, -022, and the REQ-SD-015 doctrine amendments (kanban-dispatch.md + template
-twin, `CLAUDE.local.md` §4.1; rebuild with `make build` after the template edit). Sync phase adds `partially_superseded_by` on
+twin, `CLAUDE.local.md` §4.1, `gitflow-lane-protocol.md` §6; rebuild with `make build` after the template edit). Sync phase adds `partially_superseded_by` on
 SPEC-CODEX-FACTORY-RETIRE-001 and SPEC-AUTONOMY-PRECONDITION-001 (manager-spec by re-delegation). ACs: AC-SD-001, -018, -021, -022.
 
 ## §G Risks
@@ -172,7 +173,7 @@ SPEC-CODEX-FACTORY-RETIRE-001 and SPEC-AUTONOMY-PRECONDITION-001 (manager-spec b
 | R4 | Queue promotion and the pre-dispatch cross-check contradict documented HARD clauses until t1257 | spec.md §E.2 hand-off list; `next` prints PR/landed state |
 | R5 | Codex `merge-ready` cards need an integrator | REQ-SD-025 stops the livelock; integration is F3's |
 | R6 | Interactive Codex flag spelling differs from `-C` | §C.5 measures it before M5 |
-| R7 | Local-repo overrides (`CLAUDE.local.md` §4.1, `gitflow-lane-protocol.md` §6) contradict REQ-SD-008/-023 here | spec.md §E.1; operator decision before F2 runs in this repository |
+| R7 | Local-repo rules (`CLAUDE.local.md` §4.1, `gitflow-lane-protocol.md` §6) contradict REQ-SD-008/-023 until amended | Both are REQ-SD-015 run/sync deliverables, verified by AC-SD-015 |
 
 ## §H Cross-references
 

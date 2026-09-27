@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-SELF-DISPATCH-001
 title: "Design — self-dispatching lane (Factory F2)"
-version: "0.5.0"
+version: "0.5.1"
 created: 2026-09-27
 ---
 

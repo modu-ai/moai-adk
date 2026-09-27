@@ -197,11 +197,12 @@ REQ-SD-025, AC-SD-025 ↔ REQ-SD-023). The matrix above is authoritative.
 - **Given** the run/sync deliverable of REQ-SD-015, **When** the three doctrine files are read, **Then**
   `.claude/rules/moai/workflow/kanban-dispatch.md` and its template twin are byte-identical, each carries
   a self-dispatch-lane exception naming `moai factory next` next to the "Promotion is the operator's act"
-  clause, and `CLAUDE.local.md` §4.1 carries the self-dispatch-lane merge-window exception; each of the
-  three states that other queue mutations and `moai contract sign` stay forbidden to a lane; the template
+  clause, `CLAUDE.local.md` §4.1 carries the self-dispatch-lane merge-window exception, and
+  `.claude/rules/local/gitflow-lane-protocol.md` §6 carries the same merge-window exception plus the
+  `moai factory next` leasing exception; each of the four states that other queue mutations and `moai contract sign` stay forbidden to a lane; the template
   twin passes the template-neutrality guard.
 - Verify: `cmp .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` exits 0
-- Verify: `grep -c 'self-dispatch lane' .claude/rules/moai/workflow/kanban-dispatch.md CLAUDE.local.md` prints a count of at least 1 for each file
+- Verify: `grep -c 'self-dispatch lane' .claude/rules/moai/workflow/kanban-dispatch.md CLAUDE.local.md .claude/rules/local/gitflow-lane-protocol.md` prints a count of at least 1 for each file
 - Verify: `go test ./internal/template -run '^TestTemplateNeutralityAudit$' -count=1 -v` (`internal/template/template_neutrality_audit_test.go:335`)
 
 ### AC-SD-016 — lane cannot decide
