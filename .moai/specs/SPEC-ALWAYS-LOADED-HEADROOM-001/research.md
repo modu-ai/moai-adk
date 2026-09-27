@@ -24,7 +24,25 @@ AC-ALD2-002 파이프라인 전문을 이 트리에서 재실행: `d97b33d960c98
 
 ## §3. 절 분할 스크립트의 소재
 
-`design.md §4.0` 이 인용한 `/tmp/claude-501/sec.py` 는 plan 단계 확인 시점에 존재했다(`ls`: 1,661 bytes, 2026-09-25 13:29). 대상 16파일 목록, 판정식 `\[HARD\]|MUST|shall `, fence 추적, 최대 제목 수준 인자를 담는다. 커밋된 사본은 없다 — M2 에서 `.moai/reports/t1226/` 로 옮긴다.
+`design.md §4.0` 이 인용한 `/tmp/claude-501/sec.py` 는 plan 단계 확인 시점에 존재했다(`ls`: 1,661 bytes, 2026-09-25 13:29). 대상 16파일 목록, 판정식 `\[HARD\]|MUST|shall `, fence 추적, 최대 제목 수준 인자를 담는다.
+
+v0.2.0(plan-audit D13): plan 단계에서 사본을 `.moai/reports/t1226/sec.py` 로 커밋했다. 해시 대조 출력:
+
+```
+$ shasum -a 256 /tmp/claude-501/sec.py .moai/reports/t1226/sec.py
+d0e61541367abb06a170bd36b6376e51d51882380ca9f899f0d2934016a78547  /tmp/claude-501/sec.py
+d0e61541367abb06a170bd36b6376e51d51882380ca9f899f0d2934016a78547  .moai/reports/t1226/sec.py
+```
+
+감사자 실측값과도 같다. 한계(plan-audit D19): 스크립트는 16개 마크다운만 다루고 첫 제목 앞의 서문을 절로 세지 않으며 yaml 두 개를 보지 않는다. 후보 열거는 이를 보완한 `candidates.py`(run 단계 M3)가 맡고, `sec.py` 는 `P절` 재조정 재현에만 쓴다.
+
+## §5. `moai init` 의 홈 쓰기와 격리 경로 (plan-audit D2)
+
+- `internal/cli/init_home_guard_test.go:6-13` — runInit 이 닿는 홈 경로: user-scope settings splice(`userHomeDirFn`), profile ledger(`profile.BaseDirOverride`), `MOAI_HOME`, 셸 rc 작성기(HOME 을 직접 해석). `prepareSafeInitHome` 이 앞 셋을 `t.TempDir()` 로 돌리고 셸 rc seam 을 스파이로 바꾼다.
+- `internal/cli/init.go:923` — `userHomeDirFn()` 아래 `~/.claude/settings.json` 에 user-scope 쓰기.
+- `internal/core/project/initializer.go:673` — `ConfigureShellEnvFn = defaultConfigureShellEnv`(실제 rc 파일 작성).
+- `internal/cli/init_deploy_exit_test.go:50` — `runInitWithFlags(t, root, extra)` 가 `initCmd.RunE` 를 비대화형으로 구동하는 기존 헬퍼.
+- `moai init --help`(이 트리에서 빌드한 바이너리): 전역 쓰기를 건너뛰는 플래그 없음. `--root`, `--name`, `--llm`, `--all`(기본은 slim) 존재.
 
 ## §4. 카드 본문과 선행 SPEC 의 조건 명칭 차이
 
