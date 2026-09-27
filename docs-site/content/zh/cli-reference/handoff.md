@@ -4,7 +4,7 @@ weight: 68
 draft: false
 ---
 
-`moai handoff` 管理 auto-resume 交接 pending 记录。它保存或清除跨会话边界(`/clear`)继续工作所需的 paste-ready resume 正文。保存的记录在设置 `handoff.mode: auto` 时会在下一次会话开始时自动注入。消费路径与 harness 无关:Codex 会话同样消费这些记录,进入 worktree 时会播种 `.codex/hooks.json`,moai 钩子在那里也会加载。
+`moai handoff` 管理 auto-resume 交接 pending 记录。它保存或清除跨会话边界(`/clear`)继续工作所需的 paste-ready resume 正文。保存的记录在设置 `handoff.mode: auto` 时会在下一次会话开始时自动注入。`moai handoff show` 是与 harness 无关的重打印路径:无论用哪个 harness 打开会话,都原样显示记录正文。存储与消费的管道在代码层面与 harness 无关(REQ-HN-011)——由 Codex 派生的进程保存记录、再由 Claude clear-source 会话消费它的流程,已在隔离环境中 LIVE 复现。进入 worktree 时会播种 `.codex/hooks.json`;Codex 是否加载项目本地的钩子取决于项目信任设置,对播种后的 worktree 尚未做过 LIVE 验证。Codex 适配器将 SessionStart 的 `systemMessage` 映射到 `additionalContext`,在已有上下文时采用追加方式。
 
 ## 子命令
 

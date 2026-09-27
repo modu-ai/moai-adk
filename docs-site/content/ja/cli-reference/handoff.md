@@ -4,7 +4,7 @@ weight: 68
 draft: false
 ---
 
-`moai handoff` は auto-resume ハンドオフの pending レコードを管理します。セッション境界 (`/clear`) を越えて作業を継続するための paste-ready resume 本文を保存または消去します。保存されたレコードは `handoff.mode: auto` 設定時に次のセッション開始時に自動注入されます。消費経路はハーネス中立です。Codex セッションも同じレコードを消費でき、ワークツリーへ入ると `.codex/hooks.json` がシードされ、そちらでも moai フックが読み込まれます。
+`moai handoff` は auto-resume ハンドオフの pending レコードを管理します。セッション境界 (`/clear`) を越えて作業を継続するための paste-ready resume 本文を保存または消去します。保存されたレコードは `handoff.mode: auto` 設定時に次のセッション開始時に自動注入されます。`moai handoff show` はハーネス中立の再表示経路です。どのハーネスでセッションを開いても、レコードの本文をそのまま表示します。保存・消費の配管はコードレベルでハーネス中立です(REQ-HN-011)— Codex が起動したプロセスがレコードを保存し、Claude の clear-source セッションがそれを消費する流れは、隔離環境で LIVE 再現されています。ワークツリーへ入ると `.codex/hooks.json` がシードされますが、Codex がプロジェクトローカルのフックを読み込むかどうかはプロジェクトの信頼設定に依存し、シードされたワークツリーに対する LIVE 検証は行われていません。Codex アダプターは SessionStart の `systemMessage` を `additionalContext` に写し、コンテキストが既にあれば追記します。
 
 ## サブコマンド
 
