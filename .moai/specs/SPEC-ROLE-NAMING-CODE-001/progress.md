@@ -258,12 +258,80 @@ Verbatim pre-implementation failures captured in `.moai/reports/t1256/raw/`: `re
 
 
 
+_M4 (card t1256, branch `WT-role-naming-code`). Attribution: every row names the command, its verbatim output, and the HEAD SHA it was measured on. Measured against the tree at `fa833ab4c` (M3 tip) + the uncommitted M4 working set; the M4 implementation commit lands on top of `fa833ab4c`._
+
+### M4 pre-flight (delegation §C)
+
+- `git rev-parse --short HEAD` → `fa833ab4c` (expected `fa833ab4c` — match); branch `WT-role-naming-code`; working tree clean at delegation start.
+- Marker production stamp/compare sites (`grep -rn 'EnvFactoryRole' internal cmd pkg --include='*.go' | grep -v _test` on `fa833ab4c`):
+  - `internal/config/envkeys.go:323` — `EnvFactoryRole = "MOAI_FACTORY_ROLE"` (name-constant definition; no stamp, no compare)
+  - `internal/config/envkeys.go:332` — `FactoryRoleWorker = "worker"` (value-constant definition — M4's flip target, renamed `FactoryRoleLane = "lane"`)
+  - `internal/hook/contract_sign_guard.go:132` — the sole COMPARE site: `os.Getenv(config.EnvFactoryRole) == config.FactoryRoleWorker` (passes the constants — no string literal)
+  - NO production STAMP site exists — t1240 owns stamping and has not landed (REQ-RNC-012's no-production-stamp clause is satisfied by absence: the grep names only the three sites above).
+
+### M4 scope delivered
+
+- Value flip + identifier rename (REQ-RNC-012, O7): `FactoryRoleWorker = "worker"` → `FactoryRoleLane = "lane"` (internal/config/envkeys.go); every tree reference updated to pass the constant — guard compare (internal/hook/contract_sign_guard.go:133), guard tests (Setenv sites), config pin test, CLI and kanban carrier pins. No site passes a string literal for the marker value (grep over the guard file for `"MOAI_FACTORY_ROLE"`/`"lane"`/`"worker"` literals → 0 rows; the AC-AP-017 closed-set test re-enforces the name side on every run).
+- Guard deny semantics flip with the value (t1245 REQ-AP-011): marker == `lane` → denied; `worker`/`agent`/other/unset → allowed (no explicit worker/agent handling added — the equality check alone is the mechanism).
+- Three-way equality restored (REQ-AP-013, AC-AP-018): CLI limb asserts `factoryLaneRoleToken == config.FactoryRoleLane`; kanban limb asserts `prefix(FactoryLaneLabel(1)) == config.FactoryRoleLane`; both reference the constant (no hardcoded `lane` in the equality limbs — the exact-literal pins stay as separate drift guards); the M1 tripwires (kanban anti-equality limb, cli M2-state comment) removed.
+- Guard behavior tests extended (AC-RNC-014): allow-arm runs table gained `{"marker legacy worker", "worker"}` and `{"marker legacy agent", "agent"}`; the two scoped deny/allow tests renamed `…UnderWorkerMarker`/`…WithoutWorkerMarker` → `…UnderLaneMarker`/`…WithoutLaneMarker` (their names encoded the old marker value).
+- One accurate comment on the constants (REQ-RNC-019 preview): `EnvFactoryRole` carries "name is kept under REQ-RNC-011; the value it marks follows the leader/lane vocabulary"; full comment/identifier sweep stays M5.
+
+### M4 builds and static checks (E2/E4/E5)
+
+- **E2 builds** — `go build ./...` → exit 0 (BUILD_OK); `GOOS=windows GOARCH=amd64 go build ./...` → exit 0 (WIN_BUILD_OK) (this run, tree `fa833ab4c` + M4 working set).
+- **E4 subagent-boundary** — `git diff b59a5d69c -- internal/config internal/hook internal/cli internal/kanban | grep -n 'AskUserQuestion\|mcp__askuser' | grep -v _test | wc -l` → **0**.
+- **E5 lint** — `golangci-lint run ./internal/config/... ./internal/hook/... ./internal/cli/... ./internal/kanban/...` → exit 0, `0 issues.` (golangci v2.1.6, the CI판 버전).
+
+### M4 test evidence (scoped runs, this tree)
+
+| Package | Command | Verbatim verdict |
+|---|---|---|
+| internal/hook (full, slot held) | `go test -cover -timeout 35m ./internal/hook/ -count=1` | `ok github.com/modu-ai/moai-adk/internal/hook 305.030s coverage: 86.6% of statements` (`.moai/reports/t1256/raw/m4-hook-full-post.txt`) |
+| internal/config (full) | `go test -cover ./internal/config/ -count=1` | `ok ... internal/config 3.027s coverage: 82.8% of statements` |
+| internal/cli (targeted, no slot) | `go test ./internal/cli/ -run 'TestFactoryRoleTokenPinsGuardConstant\|TestFactoryEntryRefusesLegacyRoleTokens\|TestFactoryEntryRefusesLegacyLaneLabels' -count=1 -v` | `PASS` / `ok ... internal/cli 0.979s` (`.moai/reports/t1256/raw/m4-cli-targeted.txt`) |
+| internal/kanban (targeted) | `go test ./internal/kanban/ -run 'TestFactoryLabelPrefixPinsGuardConstant\|TestSplitFactoryLaneLabelCanonicalOnly\|TestLegacyFactoryLabelDetection' -count=1 -v` | 3× `--- PASS` / `ok ... internal/kanban 0.410s` |
+
+Slot discipline: `moai slot acquire --resource go-test-cli-hook --max-duration 2400s` held across the post-change hook full suite and the merge-base coverage pair; explicitly released (not expired).
+
+### M4 RED evidence (E8)
+
+Verbatim, in `.moai/reports/t1256/raw/`:
+
+1. `red-m4-guard-pre.txt` — the new AC-RNC-014 allow-rows run BEFORE the value flip (the deny test temporarily pointed at the not-yet-renamed constant): `--- FAIL: TestContractRoleScopedAllowWithoutLaneMarker` with subtest `--- FAIL: TestContractRoleScopedAllowWithoutLaneMarker/marker_legacy_worker` — a `worker`-marked session was denied with the full `CONTRACT_SIGN_AGENT_VIOLATION:` sentinel, want allow. (`marker_legacy_agent` passed pre-flip: `agent` never equaled the old constant.) The deny-side test passed in both stages (equality with the constant flips with it).
+2. `red-m4-one-carrier-mutation.txt` — AC-RNC-014's recorded one-carrier mutation red: `factoryLaneRoleToken` temporarily mutated `lane` → `worker` (exactly one of the three carriers), `go test ./internal/cli/ -run TestFactoryRoleTokenPinsGuardConstant -count=1 -v` → `--- FAIL: TestFactoryRoleTokenPinsGuardConstant` with verbatim `factory_role_pin_test.go:31: -f role token "worker" != guard value constant "lane" — the REQ-AP-013 equality (marker value == -f token, SPEC-ROLE-NAMING-CODE-001 REQ-RNC-012) regressed`. Mutation reverted immediately after capture (`git diff internal/cli/factory.go` → empty).
+
+### AC binary matrix (E1, M4 rows)
+
+| AC | Status | Evidence (command → observed) |
+|---|---|---|
+| AC-RNC-014 (marker constant == `lane`) | PASS | `go test ./internal/config/ -run TestFactoryRole -count=1 -v` → `--- PASS: TestFactoryRoleEnvConstant` (pins `FactoryRoleLane == "lane"` exact-literal; `EnvFactoryRole == "MOAI_FACTORY_ROLE"` unchanged) |
+| AC-RNC-014 (equality assertion, three carriers `lane`) | PASS | cli: `TestFactoryRoleTokenPinsGuardConstant` PASS (token == constant); kanban: `TestFactoryLabelPrefixPinsGuardConstant` PASS (prefix == constant); config: `TestFactoryRoleEnvConstant` PASS (constant == `lane`) — transitive three-way equality, each limb referencing the constant |
+| AC-RNC-014 (one-carrier mutation red run) | PASS (recorded) | `.moai/reports/t1256/raw/red-m4-one-carrier-mutation.txt` — verbatim failure quoted above (E8 item 2) |
+| AC-RNC-014 (guard deny/allow table) | PASS | `go test ./internal/hook/ -run 'TestContractRoleScoped\|TestContractSignDeniedBeforeVerbExists' -count=1` → `ok` — deny arm: marker == `config.FactoryRoleLane` (`lane`) → `CONTRACT_SIGN_AGENT_VIOLATION:` deny on the non-interactive sign path and every decide shape (6/6 cases, incl. sudo/eval); allow arm: unset, `lead`, `worker`, `agent` → allowed (4/4 runs), human-path armed control denied in every run |
+| AC-RNC-014 (every stamp/compare site passes the constant, no literal) | PASS | Site list above (pre-flight section): 1 compare site (guard :133) passing `config.EnvFactoryRole` + `config.FactoryRoleLane`; 0 stamp sites exist; guard-file literal grep → 0 rows; AC-AP-017 closed-set test green |
+| AC-RNC-014 (where-clause: variable exists) | N/A clause | The `Where it does not exist` branch (record "value `lane` handed to t1245") does not apply — the variable constant exists, so the main branch above is the operative one |
+
+### Coverage (E3, M4)
+
+| Package | M4 tip | merge-base (`b59a5d69c`) | Delta |
+|---|---|---|---|
+| internal/hook | 86.6% | 86.6% (base run in `/tmp/t1256-m4base`, `ok ... 308.224s coverage: 86.6%`) | equal |
+| internal/config | 82.8% | 82.8% (base figure computed despite one failing test — Gap below) | equal |
+
+**Gaps (E3):** the merge-base config run in `/tmp/t1256-m4base` had `TestShippedConfigKeysHaveReaders` FAIL with `git ls-files failed: exit status 128` — a measurement artifact of the git-archive extraction having no `.git` (the test shells out to git); the coverage statement `coverage: 82.8%` was still computed and is comparable (same artifact class as M1's `/tmp` kanban gap note). No config or hook coverage regression: both figures equal to merge-base.
+
+### M4 notes
+
+- Do NOT touch list honored: neither SPEC's spec.md/plan.md/acceptance.md bodies edited (t1245's SPEC text still names `worker` — its amendment is t1245's, reported by the lane); CHANGELOG/codemaps untouched; no doctor check added; M5's comment/identifier sweep NOT started beyond this constant.
+- `gofmt -l` over the four touched packages flags `internal/cli/factory_test.go` — pre-existing drift in a file M4 does not touch (unmodified in `git status`); left alone per scope discipline.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-- run_status: M3 complete (M1 + M2 + M3 of the code milestones; M4 marker flip, M5 identifier rename remain) — cli full suite green with coverage (`ok ... 1064.433s coverage: 84.0%`), hook full suite green (351.118s; cover 86.6%), kanban green (86.4%), web green (74.7%), statusline green, lint 0 issues (golangci v2.1.6), both builds exit 0
-- run_complete_at: 2026-09-27
-- run_commit_sha: f0ebcc82b
-- RED evidence: M3 `.moai/reports/t1256/raw/red-m3-{hook,web,cli}.txt` (11 verbatim pre-implementation failures across the notice-table, legacy-leader view-model, doctor, and homonym tests); M2 `.moai/reports/t1256/raw/red-m2.txt` (27 verbatim pre-implementation refusal failures); M1 `.moai/reports/t1256/raw/red-m1.txt` (5 assertion REDs in internal/cli + compile-RED for the new kanban/hook/factorymsg APIs)
+- run_status: M4 complete (M1 + M2 + M3 + M4 of the code milestones; M5 identifier/comment sweep remains) — cli targeted selectors green, hook full suite green with coverage (`ok ... 305.030s coverage: 86.6%`), config green (82.8%), kanban targeted green, lint 0 issues (golangci v2.1.6), both builds exit 0
+- run_complete_at: 2026-09-28
+- run_commit_sha: 035053638
+- RED evidence: M4 `.moai/reports/t1256/raw/red-m4-guard-pre.txt` (`marker_legacy_worker` allow-row denied pre-flip) + `red-m4-one-carrier-mutation.txt` (the AC-RNC-014 recorded mutation red, verbatim); M3 `.moai/reports/t1256/raw/red-m3-{hook,web,cli}.txt` (11 verbatim pre-implementation failures across the notice-table, legacy-leader view-model, doctor, and homonym tests); M2 `.moai/reports/t1256/raw/red-m2.txt` (27 verbatim pre-implementation refusal failures); M1 `.moai/reports/t1256/raw/red-m1.txt` (5 assertion REDs in internal/cli + compile-RED for the new kanban/hook/factorymsg APIs)
 - coverage: kanban 86.4 (base 86.5) · hook 86.6 (base 86.6) · factorymsg 81.5 (base 81.5) · web 74.7 (base 74.7) · cli 84.0 (equal to M1/M2; merge-base 미측정 — Gap, §E.2)
 - notes:
   - M1 transient: the t1245 AC-AP-018 kanban pin limb (`internal/kanban/factory_label_pin_test.go`) is pinned to the M1 state — prefix `lane`, legacy prefixes detection-only — and carries an M4 tripwire; the full three-way equality (marker value == CLI token == prefix) is restored at M4 when `config.FactoryRoleWorker` flips to `lane` (constant untouched by M1 per delegation §C).
