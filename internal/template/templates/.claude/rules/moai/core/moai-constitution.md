@@ -34,7 +34,7 @@ Rules:
 - For team mode: spawn teammates directly with the Agent tool's `name` parameter (the team forms implicitly on first spawn — one team per session, no setup step)
 - Team agents share TaskList for work coordination; sub-agents return results directly
 - Spawn multiple subagents in the same turn when fanning out across independent items or files; do not spawn a subagent for work completable directly in a single response
-- Three orchestration primitives exist — **sub-agents**, **Agent Teams**, and **dynamic workflows** — chosen by who holds the plan. For coding-heavy work prefer sequential sub-agents; reserve workflow-scale fan-out for genuinely parallel high-volume tasks. What each primitive does with intermediate results: `moai-constitution-detail.md` § Parallel Execution; `.claude/rules/moai/workflow/dynamic-workflows.md`.
+- Three orchestration primitives exist — **sub-agents**, **Agent Teams**, and **dynamic workflows** — chosen by who holds the plan. For coding-heavy work prefer sequential sub-agents; reserve workflow-scale fan-out for genuinely parallel high-volume tasks. What each primitive does with intermediate results: `.claude/rules/moai/workflow/dynamic-workflows.md`.
 
 ## Opus 5.5 Prompt Philosophy
 
