@@ -405,3 +405,11 @@ SPEC은 제품 코드를 만지지 않았다. primary 반출과 develop 병합·
 `sync_commit_sha` 슬롯은 인정된 중간 상태(D3 window)에 있다 — 이는 규약상 결함이 아니나,
 backfill이 누락되면 감사가 슬롯을 읽을 수 없다.
 
+**sync-audit (독립 감사)**: 2026-09-27 sync-auditor — **PASS-WITH-DEBT 95.8/100**
+(하버몬; Functionality 100 · Security 100 · Craft 85 · Consistency 100, must-pass 전부 통과).
+측정 전 수치를 감사자가 독립 재계산해 판정서와 일치 확인, raw 재파싱 240/240 재현,
+[RUN] AC 검증 명령 5건 재실행 재현, criteria 계보·frozen four 동결·운영자 승인 트레일 실측.
+Minor 3건(optional): F1 wrong-auto 분모 정의 격(REQ-DM-006 문자 40분모 vs 공표 60분모 — 양쪽
+정의에서 결론 불변) · F2 run-record 「voided 22 dispatches」 합산 표기(voided 5 + diagnostic 17) ·
+F3 플립 3건 출처 등록명(voided → 실제 diagnostic). 상세: `.moai/reports/t1261/sync-audit.md`.
+
