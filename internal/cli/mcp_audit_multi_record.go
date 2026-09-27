@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/closure"
@@ -24,6 +25,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/spec"
 )
 
+// secondReviewCardRe compiles contract.CardPattern once: the card id is a
+// trust-boundary input (the MCP caller supplies it) that is joined into
+// filesystem paths below.
+var secondReviewCardRe = regexp.MustCompile(contract.CardPattern)
+
 // appendSecondReviewRecord builds and appends the record (design.md §A.1).
 // target is the review target the caller REQUESTED, recorded verbatim —
 // only a baseBranch review proves baseBranch coverage (REQ-CLOSURE-013),
@@ -32,6 +38,13 @@ import (
 // unbound); absent contract → contract_card/digest ""; git scope failure →
 // empty scope fields; append failure → the returned error.
 func appendSecondReviewRecord(cfg MultiAuditConfig, result ConvergenceResult, target string) error {
+	// Validate the card id BEFORE any path construction: a traversal id
+	// must not escape the evidence home (REQ-CLOSURE-012 records, not
+	// writes). The failure rides the returned error — the audit result
+	// itself is never altered.
+	if !secondReviewCardRe.MatchString(cfg.CardID) {
+		return fmt.Errorf("invalid card_id %q: must match %s", cfg.CardID, contract.CardPattern)
+	}
 	root := cfg.ProjectRoot
 	if root == "" {
 		root = resolveProjectDir()

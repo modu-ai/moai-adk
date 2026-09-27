@@ -262,3 +262,30 @@ func TestAC_CLOSURE_012_TargetRecorded(t *testing.T) {
 		})
 	}
 }
+
+// TestAC_CLOSURE_012_PathTraversalCardID — a card_id is a trust-boundary
+// input (the MCP caller supplies it) that is joined into filesystem paths:
+// it is validated against contract.CardPattern before any path is built, so
+// a traversal id produces second_review_record_error and writes nothing
+// outside the evidence home.
+func TestAC_CLOSURE_012_PathTraversalCardID(t *testing.T) {
+	f := closuretest.New(t)
+	fixtureSeams(t, f)
+	queueWithCards(t, f, map[string]string{"c1": closuretest.SpecID})
+	recordBackends(t)
+
+	result := runMultiAudit(context.Background(), ReviewOutput{}, "baseBranch", "", MultiAuditConfig{
+		ProjectRoot: f.CardDir,
+		CardID:      "../../../../tmp/zzt1237",
+	}, nil)
+	if result.SecondReviewRecordError == "" {
+		t.Fatalf("second_review_record_error empty, want the invalid card_id rejection")
+	}
+	escaped := filepath.Join(f.Root, ".moai", "reports", "../../../../tmp/zzt1237")
+	if _, err := os.Stat(escaped); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("traversal directory %s was created: %v", escaped, err)
+	}
+	if _, err := os.Stat(filepath.Join(escaped, closure.SecondReviewFile)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("second-review.jsonl was written outside the evidence home")
+	}
+}
