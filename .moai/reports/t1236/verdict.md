@@ -221,3 +221,19 @@ RED (expected) extra:
 - 자율 Kickoff 경로는 꺼져 있어 실제 사용 환경에서 한 번도 돌지 않았다. 켜는 시점에 새 결함이 드러날 수 있다.
 - 체인 저장소와 에스컬레이션 기록을 함께 지우는 행위자는 막지 못한다(design D21).
 - 허용 목록이 sync 산출물을 받도록 넓어졌다. 이후 같은 경로에 무관한 변경이 들어와도 이 가드는 잡지 못한다.
+
+## sync-audit 결과와 F1 처리 (2026-09-28)
+
+- 감사: `.moai/reports/t1236/sync-audit.md` (첫 줄 `auditor-model: claude-opus-5-5[1m]`). 판정 FAIL, 원인은 blocking 결함 F1 한 건이다. Functionality 90, Security 85는 통과했고 가중 조화평균은 82.7이다. 감사관은 F1만 고치면 PASS-WITH-DEBT라고 판단했다.
+- F1: `CHANGELOG.md:12`가 새 SSOT를 "always-loaded"로 적었으나, 실제 파일은 `paths:` 범위로 한정돼 있다(`contract-autonomy.md:3`). 이를 "path-scoped"로 고쳤다.
+  - 수정 전 증거: 감사 보고서의 F1 항목.
+  - 수정 후 증거: `grep -n 'always-loaded SSOT' CHANGELOG.md` → 출력 없음, exit 1. `grep -c 'path-scoped SSOT \`.claude/rules/moai/workflow/contract-autonomy.md\`' CHANGELOG.md` → `1`.
+- F1 이후 레인이 재감사를 돌리지 않았다. F1 해소는 위 grep 증거로만 확인했고, 최종 판정은 리드에게 맡긴다.
+- 선택 결함(부채로 남김):
+  - F2: `receipt/store.go:147`의 prev 링크 검사를 무력화한 변이가 살아남았다(원본 동작은 정상). 회귀 테스트가 필요하며 receipt 커버리지 부채와 겹친다.
+  - F3·F4: 자율 킥오프 활성화 전 정리 과제다. F3은 decide가 세 번에 나눠 쓰는 문제와 ErrIntegrity가 감싸기에서 사라지는 문제, F4는 kickoff-check가 decide 사건을 대조하지 않는 문제다.
+  - F5: 서명기 `gitEnv()` 스크럽 범위가 좁다. BASE부터 있던 결함이다.
+  - F6: kickoff-check·decide가 카드 id를 `ValidCard`로 검증하지 않는다.
+  - F7: 이 판정서의 sync 검증 절에는 출력 원문이 없다. `--baseline` lint는 레인이 커밋된 트리 `1f0a99279`에서 다시 돌려 exit 0, `baseline: OK`를 얻었다.
+  - F8: design §11.1의 승인 기록이 낡았다.
+  - F9: BASE 참조 가드 6개는 `MOAI_GR_BASE`가 없으면 SKIP되므로 CI와 병합 이후에는 돌지 않는다.
