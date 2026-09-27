@@ -94,11 +94,17 @@ to the primary checkout and would lock out legitimate worktree flows.
 - **Fail-open.** The deny fires only on positive evidence — primary checkout confirmed, a
   branch-state pattern matched, agent not exempt. Any uncertainty falls through to allow and
   appends to `.moai/logs/branch-guard-audit.log`.
-- **Exemptions are unreachable from a tool-spawned subagent.** Both axes work, but neither value
-  reaches one: `AgentType` is populated only for a main-thread `claude --agent manager-git` launch,
-  and `MOAI_BRANCH_GUARD_EXEMPT=1` is read from the hook process's own environment, which is spawned
-  before the guarded command runs. Exporting it inside that command is a no-op. Reading a
-  `BRANCH_GUARD_VIOLATION` as "the exemption is broken" is a misdiagnosis — use a worktree instead.
+- **The identity exemption IS reachable from a spawned agent** — measured, not inferred
+  (SPEC-BRANCHGUARD-EXEMPT-REACH-001, 2026-09-27). Claude Code populates `agent_type` on PreToolUse
+  for an agent spawned through the Agent tool, in the same snake_case spelling `HookInput` decodes,
+  and the value is the spawn name verbatim rather than a catalog name. An agent spawned under the
+  name `manager-git` therefore passes the guard in the primary checkout. The exemption was
+  deliberately left un-narrowed, because narrowing it may withdraw a path that is live today, so
+  this is a bypass that **exists** — never route around the guard through it; use a worktree.
+- **The sentinel axis is a separate question, and this measurement did not re-test it.**
+  `MOAI_BRANCH_GUARD_EXEMPT=1` is read from the hook process's own environment, and that process is
+  spawned before the guarded command runs, so exporting it inside that command is a no-op. Reading a
+  `BRANCH_GUARD_VIOLATION` as "the exemption is broken" remains a misdiagnosis — use a worktree.
 
 Pattern set, the primary-vs-worktree discriminant, quoted-span scan scope, and the originating SPEC
 IDs: `main-checkout-branch-guard-detail.md` § Mechanical enforcement.
