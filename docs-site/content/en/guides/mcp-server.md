@@ -177,11 +177,11 @@ The codex delegation family is wired into super-advisor — because the on-deman
 
 | Tool | Purpose | Consumer | CLI equivalent |
 |------|---------|----------|----------------|
-| `mcp__moai__codex_role_audit` | Start one read-only role as a top-level `codex exec` process (read-only sandbox, every MCP server disabled); returns a job id at once | Codex lane orchestrator | — |
-| `mcp__moai__codex_role_audit_status` | Read a role job's state and timestamps | Codex lane orchestrator | — |
-| `mcp__moai__codex_role_audit_result` | Read a finished role job's exit code, returned text or verdict path, and launch record path | Codex lane orchestrator | — |
+| `mcp__moai__codex_role_audit` | Start one read-only role as a top-level `codex exec` process (read-only sandbox, every MCP server disabled); returns a job id at once | Codex session | — |
+| `mcp__moai__codex_role_audit_status` | Read a role job's state and timestamps | Codex session | — |
+| `mcp__moai__codex_role_audit_result` | Read a finished role job's exit code, returned text or verdict path, and launch record path | Codex session | — |
 
-A Codex lane starts read-only roles such as `plan-auditor` and `sync-auditor` through this family rather than through `spawn_agent`. There is no CLI equivalent, because a nested `codex exec` inside a lane's shell cannot reach the model. Jobs live in the server process and end with it.
+A Codex session starts read-only roles such as `plan-auditor` and `sync-auditor` through this family rather than through `spawn_agent`. There is no CLI equivalent, because a nested `codex exec` inside a Codex session's shell cannot reach the model. Jobs live in the server process and end with it.
 
 ### GLM delegation (background jobs)
 

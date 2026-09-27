@@ -177,11 +177,11 @@ codex 委任ツール群は super-advisor に配線されています — 随時
 
 | ツール | 目的 | 利用エージェント | CLI 等価物 |
 |--------|------|------------------|------------|
-| `mcp__moai__codex_role_audit` | 読み取り専用ロールを1つ、最上位の `codex exec` プロセスとして起動（読み取り専用サンドボックス、MCP サーバーはすべて無効）。ジョブ ID をすぐに返す | Codex レーンのオーケストレーター | — |
-| `mcp__moai__codex_role_audit_status` | ロールジョブの状態と時刻を読む | Codex レーンのオーケストレーター | — |
-| `mcp__moai__codex_role_audit_result` | 終了したロールジョブの終了コード、返却テキストまたは判定書のパス、起動記録のパスを読む | Codex レーンのオーケストレーター | — |
+| `mcp__moai__codex_role_audit` | 読み取り専用ロールを1つ、最上位の `codex exec` プロセスとして起動（読み取り専用サンドボックス、MCP サーバーはすべて無効）。ジョブ ID をすぐに返す | Codex セッション | — |
+| `mcp__moai__codex_role_audit_status` | ロールジョブの状態と時刻を読む | Codex セッション | — |
+| `mcp__moai__codex_role_audit_result` | 終了したロールジョブの終了コード、返却テキストまたは判定書のパス、起動記録のパスを読む | Codex セッション | — |
 
-Codex レーンは `plan-auditor` や `sync-auditor` などの読み取り専用ロールを、`spawn_agent` ではなくこのツール群で起動します。レーンのシェル内でネストした `codex exec` はモデルに到達できないため、CLI 等価物はありません。ジョブはサーバープロセス内に存在し、プロセスの終了とともに終わります。
+Codex セッションは `plan-auditor` や `sync-auditor` などの読み取り専用ロールを、`spawn_agent` ではなくこのツール群で起動します。Codex セッションのシェル内でネストした `codex exec` はモデルに到達できないため、CLI 等価物はありません。ジョブはサーバープロセス内に存在し、プロセスの終了とともに終わります。
 
 ### GLM 委任（バックグラウンドジョブ）
 

@@ -177,11 +177,11 @@ codex 위임 도구군은 super-advisor에 배선되어 있습니다 — 수시 
 
 | 도구 | 목적 | 소비 에이전트 | CLI 등가물 |
 |------|------|---------------|------------|
-| `mcp__moai__codex_role_audit` | 읽기 전용 역할 하나를 최상위 `codex exec` 프로세스로 기동 (읽기 전용 샌드박스, MCP 서버 전부 비활성). 작업 ID를 곧바로 돌려줌 | Codex 레인 오케스트레이터 | — |
-| `mcp__moai__codex_role_audit_status` | 역할 작업의 상태와 시각 읽기 | Codex 레인 오케스트레이터 | — |
-| `mcp__moai__codex_role_audit_result` | 끝난 역할 작업의 종료 코드, 반환 텍스트 또는 판정서 경로, 기동 기록 경로 읽기 | Codex 레인 오케스트레이터 | — |
+| `mcp__moai__codex_role_audit` | 읽기 전용 역할 하나를 최상위 `codex exec` 프로세스로 기동 (읽기 전용 샌드박스, MCP 서버 전부 비활성). 작업 ID를 곧바로 돌려줌 | Codex 세션 | — |
+| `mcp__moai__codex_role_audit_status` | 역할 작업의 상태와 시각 읽기 | Codex 세션 | — |
+| `mcp__moai__codex_role_audit_result` | 끝난 역할 작업의 종료 코드, 반환 텍스트 또는 판정서 경로, 기동 기록 경로 읽기 | Codex 세션 | — |
 
-Codex 레인은 `plan-auditor`, `sync-auditor` 같은 읽기 전용 역할을 `spawn_agent`가 아니라 이 도구군으로 띄웁니다. 레인 셸 안에서 중첩된 `codex exec`는 모델에 닿지 못하기 때문에 CLI 등가물이 없습니다. 작업은 서버 프로세스 안에 살므로 프로세스가 끝나면 함께 끝납니다.
+Codex 세션은 `plan-auditor`, `sync-auditor` 같은 읽기 전용 역할을 `spawn_agent`가 아니라 이 도구군으로 띄웁니다. Codex 셸 안에서 중첩된 `codex exec`는 모델에 닿지 못하기 때문에 CLI 등가물이 없습니다. 작업은 서버 프로세스 안에 살므로 프로세스가 끝나면 함께 끝납니다.
 
 ### GLM 위임 (백그라운드 작업)
 
