@@ -162,6 +162,12 @@ Debt list — recorded as debt per the lead's disposition (all Low/optional in a
 - **F11** [Low] New APIs stay `not observed` (plan.md R2 disposition: A2's `newAPIAdditions` is unexported) — follow-up card material.
 - **F12** [Low] README 4-locale carries no `moai contract` verbs — manager-docs scope.
 - **F13** [Low] AC-012's top-level test count grew by 2 (`TargetRecorded`, `PathTraversalCardID`; family now 6) against the acceptance.md one-top-level-test convention — the same accepted deviation class the audit recorded.
+- **r2 re-audit (2026-09-27, lead-side Opus `claude-opus-5-5[1m]`, HEAD `6602e6cd4`): PASS-WITH-DEBT 84.5** — F1–F5 all resolved (prior probes re-run; mutant m3 re-run plus 12 new mutants: 12 killed, the 1 survivor is an equivalent mutant). New non-blocking findings, recorded as debt per the lead's disposition:
+- **N1** [Medium] residual unevaluated integration-push forms — `git --git-dir .git push …`, `git --work-tree . push …`, single remote with `-o/--push-option`, `"+develop"` (leading `+` stripped before quote removal) — `closure_push.go:258-267, :276-285` (r2 E3). Auditor strongly recommends fixing before `autonomy.mode: contract` is enabled.
+- **N2** [Medium] text-only `git … push` mentions are denied (`echo "git push later"`, `grep -rn "git push"`, heredoc bodies) — `closure_push.go:236-240`; deny is the safe direction, hence non-blocking; candidate fix: the already-present `mvdan.cc/sh/v3` parser.
+- **N3** [Low] card-id validation compiles `contract.CardPattern` separately — reuse `contract.ValidCard` (`verify.go:103`) per the reuse ladder.
+- **N4** [Low] `gitio.Head` `@MX:REASON` caller wording double-counts `mcp_audit_multi_record.go` ("plus the record scope"); actual non-test callers: `contract_report.go:124`, `mcp_audit_multi_record.go:89`, `closuretest.go:145`/`:217` — anchor condition still met (4 call sites).
+- Auditor recommendation, card candidate held by the lead: one follow-up card for **N1·N2·F7 before `autonomy.mode: contract` is enabled**.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
