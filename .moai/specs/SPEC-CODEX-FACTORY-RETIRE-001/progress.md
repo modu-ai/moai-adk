@@ -232,4 +232,82 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: implemented   # NOT completed — see rationale below
+sync_complete_at: 2026-09-27T04:08:45Z
+sync_commit_sha: pending-backfill-sync
+changelog_entry_position: "CHANGELOG.md [Unreleased] > ### Added, first entry (inserted before SPEC-POWERSHELL-DENY-PARITY-001)"
+b12_self_test_a: "grep -c 'SPEC-CODEX-FACTORY-RETIRE-001' CHANGELOG.md (before write) -> 0 -> PASS"
+b12_self_test_b: "grep -oE 'AC-CFR-[0-9]+' acceptance.md | sort -u | wc -l -> 25; CHANGELOG entry states '25 acceptance criteria AC-CFR-001..025' -> PASS (count match)"
+b12_self_test_c: "ls .moai/reports/t1242/{m1,m2-*,m3-*,m4-*} + ls .moai/project/codemaps/modules.md -> all exist -> PASS"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented (NOT completed)"
+  plan_md: "no status: field (stateless per spec-frontmatter-schema.md Artifact Statelessness)"
+  acceptance_md: "no status: field (stateless)"
+canary_compliance_check:
+  applicable: false
+  reason: "This SPEC does not define a forward-looking policy that its own sync tests"
+```
+
+**Why `implemented`, not `completed`.** `plan.md` §I dispatches M5 (foreign-file
+preservation in the develop worktree, AC-CFR-024) as an in-scope sync-phase
+milestone — it is part of this SPEC's own Definition of Done (`acceptance.md`
+§D.3), not a follow-up card. M5 has NOT been executed by this sync commit: no
+`.moai/reports/t1242/m5-lead-confirm.md` exists, so AC-CFR-024 is unresolved.
+Per the Status Transition Ownership Matrix (`spec-frontmatter-schema.md`), the
+`implemented → completed` transition is available to manager-docs, but taking
+it here would assert a Definition of Done this commit did not satisfy — an
+unobserved completion claim (`verification-claim-integrity.md` §1.1 surface 1).
+`spec.md` frontmatter `status:` is transitioned `in-progress → implemented`;
+`updated:` is refreshed to this sync commit's date. A follow-up sync commit
+(after the lead's M5 confirmation lands) closes `implemented → completed`.
+
+**AC-CFR-020 discrepancy (sync-phase note for the auditor).** `progress.md`
+§E.2 M3 evidence records `TestFactoryLaneHandoffOperatorAbandon` printing
+**5** `--- PASS` subtest lines against `acceptance.md`'s AC text, which states
+the assertion applies to "four" handoff states (WT_READY, SWITCH_PENDING_INTERACTIVE,
+SWITCH_PENDING_HEADLESS, plus RESERVED exempted from the existence check). The
+fifth subtest, `no_handoff_on_slot`, is a pre-existing case the M3 rebuild kept
+rather than removed (`progress.md` §E.2 M3 section, "the existing `no_handoff_on_slot`" —
+verbatim). This is not scope creep introduced by this SPEC; it predates card
+t1242 and is surfaced here only because the AC text's literal "four" does not
+match the observed test-output line count.
+
+**Partial-supersession annotation — deferred, not performed.** `plan.md` §I
+directs the sync phase to mark `SPEC-FACTORY-MIXED-HOOK-001`,
+`SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001`, `SPEC-DUAL-HARNESS-RECOVERY-001`,
+`SPEC-CODEX-LOCALMD-001`, and `SPEC-FACTORY-RUN-RETIRE-001` with
+`partially_superseded_by: [SPEC-CODEX-FACTORY-RETIRE-001]`. This was NOT
+performed: `partially_superseded_by:` is a new frontmatter field on five
+**other, already-completed** SPECs' `spec.md` files, and the Status Transition
+Ownership Matrix scopes manager-docs's allowed frontmatter edits to
+`status:`/`updated:` on the SPEC it is itself closing — it does not grant a
+general license to add new frontmatter fields to unrelated completed SPECs.
+Recorded here as a **follow-up for manager-spec** rather than performed
+directly, consistent with the Forbidden ownership crossings clause's
+blocker-report discipline. No card is opened for this follow-up by this
+commit; the lead may issue one.
+
+**M5 status (regression-guard, not release-blocking per AC-CFR-024's own
+classification).** Not performed by this sync commit. `.moai/reports/t1242/m5-lead-confirm.md`
+does not exist; the develop worktree at `.claude/worktrees/develop` was not
+touched by this session. Blocked on an operator decision relayed through the
+lead, per the delegating instruction.
+
+**Codemaps regeneration.** `.moai/project/codemaps/modules.md` lines 71 and 73
+(the `codex*` and `factory*`/`handoff*`/`profile*` cluster rows) were edited
+in place to drop references to the files this card deleted (`codex_factory.go`,
+`codex_kanban.go`, `factory_lane_handoff{,_switch,_bind,_recover}.go`) and to
+narrate the deletion with the current file counts (`codex*` 21→20;
+`factory*`/`handoff*`/`profile*` 14→10, sub-counted 4+1+5). This is a targeted
+edit of the two affected rows, not a full codemaps re-scan.
+
+### Gaps (this sync commit)
+
+- `§E.3 Run-phase Audit-Ready Signal` above is still `_<pending run-phase>_` —
+  that section is manager-develop's, not manager-docs's, and M5 (part of the
+  run-phase scope per plan.md) has not landed, so it is correctly still open.
+- `run_commit_sha` / any run-phase-owned field is not backfilled by this commit.
+- AC-CFR-022 (always-loaded budget on the merge tree, comparing `<merge>` vs
+  `<merge>^1`) was not re-measured by this sync commit — it is defined against
+  the develop merge commit, which does not exist yet on this branch.
