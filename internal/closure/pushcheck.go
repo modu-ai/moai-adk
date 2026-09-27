@@ -69,6 +69,11 @@ type PushEvalResult struct {
 	Undetermined bool
 	Cause        string
 	Results      []PushContractResult
+	// Evaluated names, sorted, the candidate contracts the evaluator actually
+	// ran readiness for — the seam AC-CLOSURE-015's "the evaluation seam
+	// records SPEC-FIXTURE-001 only" reads. An out-of-range contract never
+	// appears here.
+	Evaluated []string
 }
 
 // UndeterminedPush is the fail-closed result for an unprovable push.
@@ -101,6 +106,7 @@ func EvaluatePush(seam PushGitSeam, in PushEvalInput) PushEvalResult {
 	specIDs := contractSpecIDs(paths)
 
 	var results []PushContractResult
+	evaluated := []string{}
 	for _, specID := range specIDs {
 		ownPrefix := ".moai/specs/" + specID
 		ownEdit := slices.ContainsFunc(rangePaths, func(p string) bool {
@@ -171,8 +177,9 @@ func EvaluatePush(seam PushGitSeam, in PushEvalInput) PushEvalResult {
 		if len(codes) > 0 {
 			results = append(results, PushContractResult{SpecID: specID, Codes: codes})
 		}
+		evaluated = append(evaluated, specID)
 	}
-	return PushEvalResult{Results: results}
+	return PushEvalResult{Results: results, Evaluated: evaluated}
 }
 
 // verifyAt runs A1's Verify over the contract bytes read from S's tree.
