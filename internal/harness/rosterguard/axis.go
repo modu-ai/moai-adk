@@ -61,7 +61,7 @@ type Axis string
 const (
 	// AxisRetainedRoster is the CLAUDE.md section 4 retained roster — every
 	// retained agent including the Anthropic built-in Explore. The canonical
-	// membership is template.ProfileMatrixAgents().
+	// membership is template.RetainedAgents().
 	AxisRetainedRoster Axis = "retained-roster"
 
 	// AxisDefinitionFiles is the population of .claude/agents/moai/*.md

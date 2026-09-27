@@ -20,16 +20,29 @@ func Registry() []Site {
 	return []Site{
 		// ── The canonical source ───────────────────────────────────────────
 		{
+			ID:         "retained-agent-roster",
+			Path:       "internal/template/retained_agents.go",
+			Axis:       AxisRetainedRoster,
+			Claims:     ClaimMembership,
+			BlockStart: "var retainedAgentRoster = []string{",
+			BlockEnd:   "}",
+			Note: "The canonical roster, exposed as template.RetainedAgents(). It " +
+				"carries names only — no model or effort — so it outlives the " +
+				"per-agent profile matrix. Asserted against the accessor rather than " +
+				"assumed equal to it, so a defensive-copy or ordering change in the " +
+				"accessor cannot silently decouple the two.",
+		},
+		{
 			ID:         "profile-matrix-order",
 			Path:       "internal/template/profile_matrix.go",
 			Axis:       AxisRetainedRoster,
 			Claims:     ClaimMembership,
 			BlockStart: "var profileMatrixAgentOrder = []string{",
 			BlockEnd:   "}",
-			Note: "The canonical roster, exposed as template.ProfileMatrixAgents(). " +
-				"Asserted against the accessor rather than assumed equal to it, so a " +
-				"defensive-copy or ordering change in the accessor cannot silently " +
-				"decouple the two.",
+			Note: "The profile matrix display order, exposed as " +
+				"template.ProfileMatrixAgents(). No longer the canonical source: it " +
+				"is asserted against template.RetainedAgents() and leaves together " +
+				"with the matrix.",
 		},
 		{
 			ID:         "profile-matrix-group-membership",
