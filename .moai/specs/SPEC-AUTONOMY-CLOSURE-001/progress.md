@@ -74,6 +74,14 @@ FAIL	github.com/modu-ai/moai-adk/internal/closure [build failed]
 
 GREEN (`go test -count=1 ./internal/closure/`): `ok github.com/modu-ai/moai-adk/internal/closure 0.086s` — 29 tests incl. `TestAC_CLOSURE_013` (11 subtests: all six not-performed causes, performed pass/fail, stale with superseding commit, sync-commit non-staling, filter-order survivor), `TestAC_CLOSURE_016` (nine-code closed set + per-code fixtures + failed≠not-performed + accept/none ready + sorted dedup), `TestAC_CLOSURE_018` (advisory/off → no code), currency-undetermined honesty (`CurrencyUndetermined` flag → `push_check_undetermined`), substitute-backend flag. Files: `readiness.go` (`GitFacts` injection, `SelectSecondReview` §D filters, `EvaluateReadiness` closed nine-code set, currency rule over `contract.MatchGlob`).
 
+### M3 — Report builder and renderer (commit pending)
+
+RED (`go test -count=1 ./internal/closure/ -run 'TestAC_CLOSURE_00[2-9]'`, before implementation): `sign refused: verify_failed` on an intentionally incomplete draft contract — the fixture signing seam exercised before any builder existed; builders did not compile.
+
+GREEN (`go test -count=1 ./internal/closure/...`): `ok ... internal/closure 19.316s` + `ok ... internal/closure/gitio 2.650s`. `go test -cover`: closure **88.9%** (≥85 target), gitio 68.6% (thin subprocess wrapper; M6 raises it). Files: `gitio/gitio.go` (bounded-timeout git subprocess: Head/IsAncestor with errors.As exit-1 discrimination/NonMergeCommits/WorktreeList/CommonDir/CurrentBranch/UpstreamBranch), `evidence.go` (§C.7 card evidence home with symlink canonicalization, evidence paths, canonical report hash, §E.2 row + §E.3 YAML parsers, REQ-CLOSURE-011 plan-audit search, `LoadA2Records` via A2's `ParseRecord`), `build.go` (BuildInput, Build assembly, atomic pair write via `atomicfile`), `sections_{core,escalation,review}.go` (12 section builders per design.md §G), `render_md.go` (Markdown from the JSON model only). AC tests landed: 002 (order+parity+determinism), 003 (missing→listed), 004 (reconciliation), 005 (invariants, armed/disarmed), 006 (ownership counts), 007 (New APIs seam + escalation-dir byte-identity), 008 (escalations + needs-decision), 009 (first verdict + mismatch), 010 (five receipt fixtures via `signtest`), 011 (both plan-audit streams), 014 (NOT PERFORMED/STALE/FAILED/substitute renders), 022 (verdict current/stale/latest-line).
+
+§31 design decision — **canonical report hash**: `CanonicalReportHash` = SHA-256 of the report JSON with `generated_at` masked to "". Both the verdict recorder (M4) and the Human Verdict currency check use it; hashing raw file bytes instead would stale every verdict on the next rebuild, violating REQ-CLOSURE-002 determinism. `CountValue.UnmarshalJSON` added so the file round-trips through the struct (prerequisite of the same property).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

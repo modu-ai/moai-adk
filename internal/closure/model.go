@@ -201,6 +201,21 @@ func (c CountValue) Text() string {
 	return string(b)
 }
 
+// UnmarshalJSON is the inverse of MarshalJSON, so a report file round-trips
+// through the struct (the canonical hash re-marshals a parsed file).
+func (c *CountValue) UnmarshalJSON(data []byte) error {
+	if string(data) == `"not observed"` {
+		*c = CountValue{}
+		return nil
+	}
+	var n int
+	if err := json.Unmarshal(data, &n); err != nil {
+		return err
+	}
+	*c = CountValue{Observed: true, N: n}
+	return nil
+}
+
 // AdditionView is one new architecture or API addition (REQ-CLOSURE-007).
 type AdditionView struct {
 	Kind string `json:"kind"`

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/closure/gitio"
 	"github.com/modu-ai/moai-adk/internal/contract"
 )
 
@@ -49,11 +50,10 @@ const (
 	PolicyOff      = "off"
 )
 
-// CommitPaths is one non-merge commit and the repo-relative paths it changed.
-type CommitPaths struct {
-	SHA   string
-	Paths []string
-}
+// CommitPaths is one non-merge commit and the repo-relative paths it
+// changed. It is gitio.CommitPaths: the pure evaluator and the subprocess
+// layer share one type so no adapter can drop a field.
+type CommitPaths = gitio.CommitPaths
 
 // GitFacts is what the in-history filter and the currency rule need from git,
 // injected so the evaluator stays pure. The production implementation lives in
