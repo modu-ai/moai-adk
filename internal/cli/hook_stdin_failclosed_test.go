@@ -196,12 +196,15 @@ func subcommandFor(t *testing.T, ev hook.EventType) string {
 	return ""
 }
 
-// expectedFailClosedReason assembles the reason from the two constants and
-// the fixed frame of acceptance.md AC-HSF-001(e4). It deliberately does not
-// call the implementation's own reason builder.
-func expectedFailClosedReason() string {
-	return "fail-closed: " + stdinParseFailureCause + " (" + stdinParseFailClosedDocID + ")"
-}
+// expectedClaudeFailClosedReason and expectedCodexFailClosedReason are the
+// two harness reasons, each its own literal (SPEC-HOOK-STOP-PARSE-CAP-001
+// acceptance.md §D): the Claude reason is REQ-SPC-010's text, the Codex reason
+// is unchanged (REQ-SPC-009). Neither is built by a shared helper, so a change
+// to one harness's reason cannot move the other's expectation with it, and
+// neither calls the implementation's own reason builder.
+func expectedClaudeFailClosedReason() string { return claudeFailClosedReasonLiteral }
+
+func expectedCodexFailClosedReason() string { return codexFailClosedReasonLiteral }
 
 func expectedClaudeFailClosed(t *testing.T, ev hook.EventType) string {
 	t.Helper()
@@ -209,7 +212,7 @@ func expectedClaudeFailClosed(t *testing.T, ev hook.EventType) string {
 	if !ok {
 		t.Fatalf("no Claude fatal_error row for %s", ev)
 	}
-	out, err := codexadapter.Render(ev, row.Outcome, expectedFailClosedReason())
+	out, err := codexadapter.Render(ev, row.Outcome, expectedClaudeFailClosedReason())
 	if err != nil {
 		t.Fatalf("render %s: %v", ev, err)
 	}
@@ -218,7 +221,7 @@ func expectedClaudeFailClosed(t *testing.T, ev hook.EventType) string {
 
 func expectedCodexFailClosed(t *testing.T, ev hook.EventType) string {
 	t.Helper()
-	out, _, err := codexadapter.TranslateCodex(ev, codexadapter.DecisionFatalError, expectedFailClosedReason())
+	out, _, err := codexadapter.TranslateCodex(ev, codexadapter.DecisionFatalError, expectedCodexFailClosedReason())
 	if err != nil {
 		t.Fatalf("translate %s: %v", ev, err)
 	}
@@ -378,8 +381,8 @@ func assertReasonShape(t *testing.T, reason string, forms []brokenStdin) {
 	if !strings.Contains(reason, stdinParseFailClosedDocID) {
 		t.Errorf("(e3) reason lacks the document identifier: %q", reason)
 	}
-	if reason != expectedFailClosedReason() {
-		t.Errorf("(e4) reason = %q, want exactly %q", reason, expectedFailClosedReason())
+	if reason != expectedClaudeFailClosedReason() {
+		t.Errorf("(e4) reason = %q, want exactly %q", reason, expectedClaudeFailClosedReason())
 	}
 	for _, f := range forms {
 		if strings.Contains(reason, f.canary) {
@@ -812,9 +815,13 @@ func TestStdinFailClosed_DocPointerIsDeployed(t *testing.T) {
 	if stdinParseFailClosedDocID != stdinFailClosedDocPath {
 		t.Errorf("document pointer = %q, want the deployed path %q", stdinParseFailClosedDocID, stdinFailClosedDocPath)
 	}
-	want := "fail-closed: hook stdin could not be parsed as JSON (" + stdinFailClosedDocPath + ")"
-	if got := expectedFailClosedReason(); got != want {
-		t.Errorf("assembled reason = %q, want %q", got, want)
+	wantCodex := "fail-closed: hook stdin could not be parsed as JSON (" + stdinFailClosedDocPath + ")"
+	if got := expectedCodexFailClosedReason(); got != wantCodex {
+		t.Errorf("Codex reason = %q, want %q", got, wantCodex)
+	}
+	wantClaude := "fail-closed: hook stdin could not be parsed as JSON. Do not edit hook scripts or settings files to get past this; stop and tell a human operator (" + stdinFailClosedDocPath + ")"
+	if got := expectedClaudeFailClosedReason(); got != wantClaude {
+		t.Errorf("Claude reason = %q, want %q", got, wantClaude)
 	}
 
 	fsys, err := template.EmbeddedTemplates()

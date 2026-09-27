@@ -124,7 +124,7 @@ func TestRunHookEvent_MalformedStdinGraceful(t *testing.T) {
 	if dec.More() {
 		t.Errorf("stdout carries more than one JSON value: %q", trimmed)
 	}
-	if reason, ok := denyReason(hook.EventPreToolUse, trimmed); !ok || reason != expectedFailClosedReason() {
+	if reason, ok := denyReason(hook.EventPreToolUse, trimmed); !ok || reason != expectedClaudeFailClosedReason() {
 		t.Errorf("stdout = %q, want the PreToolUse fail-closed deny", trimmed)
 	}
 }

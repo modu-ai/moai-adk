@@ -203,6 +203,15 @@ var namesAddedAfterBaseline = map[string]bool{
 	// jevCheckName — SPEC-JEV-CORE-001 (card t1020), the Jev readiness
 	// diagnostic. Registered through a constant, so it is listed bare.
 	"jevCheckName": true,
+	// mcpProviderDuplicatesCheckName — card t1250, the local-server vs
+	// claude.ai-connector overlap diagnostic. Registered through a constant.
+	"mcpProviderDuplicatesCheckName": true,
+	// settingsDefaultModeCheckName — card t1247, the ignored
+	// defaultMode=bypassPermissions diagnostic. Registered through a constant.
+	"settingsDefaultModeCheckName": true,
+	// hookMissingLogCheckName — card t1251, the "Hook Missing Log" skipped-hook
+	// diagnostic. Registered through a constant, hence bare.
+	"hookMissingLogCheckName": true,
 }
 
 // TestBinaryLag_AllowlistKeysAreLiveNames asserts that every key of

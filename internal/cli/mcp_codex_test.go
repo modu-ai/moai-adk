@@ -181,7 +181,7 @@ func TestReviewOutputSchemaShape(t *testing.T) {
 // app-server JSON-RPC session whose third request is the review/start method,
 // and surfaces the synthesized pass verdict through the review-output schema.
 func TestCodexAudit_NativeDispatchesReviewStart(t *testing.T) {
-	sess := withCodexSession(t, codexSessionScript("clean change, no findings"))
+	sess := withCodexSession(t, codexSessionScript(realCleanReview))
 
 	res, err := handleCodexAudit(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{Arguments: map[string]any{

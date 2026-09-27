@@ -110,6 +110,10 @@ func captureDoctorCmd(t *testing.T) (string, string) {
 	// (SPEC-V3R6-MOAI-CLEAN-HOME-001 REQ-MCH-008 hermeticity discipline).
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("MOAI_HOME", "")
+	// Scrub CLAUDE_CONFIG_DIR so the MCP Provider Duplicates check (card
+	// t1250) resolves its state file under the pinned empty HOME instead of
+	// a real Claude Code profile directory.
+	t.Setenv(config.EnvClaudeConfigDir, "")
 	// Scrub the backend env so the Shared Flag Slot check (card t702) reports
 	// its first-party baseline on every machine. A development shell running
 	// under a third-party backend (moai glm injects ANTHROPIC_BASE_URL) would

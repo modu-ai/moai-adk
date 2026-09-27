@@ -15,6 +15,7 @@ tier: L
 card: t1107
 amendment_of: SPEC-FACTORY-RUN-RETIRE-001
 related_specs: [SPEC-FACTORY-MIXED-HOOK-001, SPEC-FACTORY-WORKER-NAMING-001, SPEC-FACTORY-MODE-001]
+partially_superseded_by: [SPEC-CODEX-FACTORY-RETIRE-001]
 ---
 
 # SPEC-FACTORY-RUN-RETIRE-001 — Factory run retirement

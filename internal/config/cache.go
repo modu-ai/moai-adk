@@ -30,7 +30,12 @@ import (
 // schema 5 over DIFFERENT struct shapes (the Jev field vs the
 // SubagentWriteGuard field), so a cache written under either parent's struct
 // must not be served as valid for the merged struct.
-const configCacheSchemaVersion = 6
+// Bumped to 7 when WorkflowConfig gained Autonomy (workflow.autonomy.*): an
+// older cache would serve a zero Autonomy block over a workflow.yaml that sets
+// batch_sign or push_develop.
+// Bumped to 8 when the autonomy escalation block gained new_api_detector
+// (SPEC-AUTONOMY-ESCALATION-001), for the same field-addition reason.
+const configCacheSchemaVersion = 8
 
 // cacheFileName is the fixed cache file name under the state directory.
 // Fixed name ensures predictable gitignore and cleanup (REQ-PERF-009).

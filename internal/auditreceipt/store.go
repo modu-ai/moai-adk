@@ -19,6 +19,7 @@ package auditreceipt
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -127,6 +128,12 @@ type Rejection struct {
 	CitedReceipts []string  `json:"cited_receipts,omitempty"`
 	RejectedAt    time.Time `json:"rejected_at"`
 	ReentryWarned bool      `json:"reentry_warned"`
+	// TreeRoot is the canonical tree the refusal was recorded for. A store
+	// shared by a primary checkout and its config-orphaned worktrees holds
+	// refusals of several trees, and each tree lists and clears only its own
+	// (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-003). A record without it was
+	// written before that change and belongs to the store root's own tree.
+	TreeRoot string `json:"tree_root,omitempty"`
 }
 
 // VerdictLine is a parsed auditor verdict line.
@@ -309,6 +316,97 @@ func ClearRejectionsForRole(treeRoot, agentType string) error {
 	prefix := sanitizeKey(agentType) + "--"
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasPrefix(e.Name(), prefix) {
+			continue
+		}
+		if err := os.Remove(filepath.Join(dir, e.Name())); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("remove rejection %s: %w", e.Name(), err)
+		}
+	}
+	return nil
+}
+
+// TreeKey is the short, stable file-name component that separates records of
+// different trees kept in one store. It is derived from the canonical tree path
+// and never from anything an agent supplies.
+func TreeKey(treeRoot string) string {
+	sum := sha256.Sum256([]byte(treeRoot))
+	return "tree-" + hex.EncodeToString(sum[:])[:12]
+}
+
+// ownTree reports whether a record whose tree identity is recorded (possibly
+// empty, for a record written before tree identity existed) belongs to
+// treeRoot in the store at storeRoot.
+func ownTree(recorded, storeRoot, treeRoot string) bool {
+	if recorded == "" {
+		recorded = storeRoot
+	}
+	return recorded == treeRoot
+}
+
+// rejectionPathIn returns the rejection file for one tree in a store. A tree
+// that is the store's own keeps the pre-existing name, so a root that is not a
+// config-orphaned worktree reads and writes exactly the paths it always has.
+func rejectionPathIn(storeRoot, treeRoot, agentType, specID string) string {
+	name := rejectionFileName(agentType, specID)
+	if treeRoot != "" && treeRoot != storeRoot {
+		name = strings.TrimSuffix(name, ".json") + "--" + TreeKey(treeRoot) + ".json"
+	}
+	return filepath.Join(StateDir(storeRoot), rejectionsRel, name)
+}
+
+// WriteRejectionIn stores (or replaces) the rejection record for one auditor
+// role, SPEC and tree (r.TreeRoot) in the store at storeRoot. Records of
+// different trees never replace one another.
+func WriteRejectionIn(storeRoot string, r *Rejection) error {
+	if r.RejectedAt.IsZero() {
+		r.RejectedAt = Now()
+	}
+	return writeJSON(rejectionPathIn(storeRoot, r.TreeRoot, r.AgentType, r.SpecID), r)
+}
+
+// ReadRejectionIn loads the rejection record of one tree.
+func ReadRejectionIn(storeRoot, treeRoot, agentType, specID string) (Rejection, error) {
+	var r Rejection
+	err := readJSON(rejectionPathIn(storeRoot, treeRoot, agentType, specID), &r)
+	return r, err
+}
+
+// ListRejectionsForTree returns the outstanding rejections of one tree in a
+// store. An unreadable record is an ERROR, as in ListRejections: a record
+// nobody can read cannot be attributed to another tree.
+func ListRejectionsForTree(storeRoot, treeRoot string) ([]Rejection, error) {
+	all, err := ListRejections(storeRoot)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Rejection, 0, len(all))
+	for _, r := range all {
+		if ownTree(r.TreeRoot, storeRoot, treeRoot) {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+// ClearRejectionsForRoleInTree removes the rejection records of one auditor
+// role that belong to one tree. Another tree's refusals are never cleared by a
+// PASS proven here; a record that cannot be read is left in place.
+func ClearRejectionsForRoleInTree(storeRoot, treeRoot, agentType string) error {
+	dir := filepath.Join(StateDir(storeRoot), rejectionsRel)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read rejections dir %s: %w", dir, err)
+	}
+	prefix := sanitizeKey(agentType) + "--"
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasPrefix(e.Name(), prefix) || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		var r Rejection
+		if err := readJSON(filepath.Join(dir, e.Name()), &r); err != nil || !ownTree(r.TreeRoot, storeRoot, treeRoot) {
 			continue
 		}
 		if err := os.Remove(filepath.Join(dir, e.Name())); err != nil && !os.IsNotExist(err) {
