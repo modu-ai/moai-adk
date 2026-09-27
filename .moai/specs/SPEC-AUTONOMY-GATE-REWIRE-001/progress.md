@@ -34,6 +34,52 @@
 - Always-loaded sizes at BASE (`LC_ALL=en_US.UTF-8 wc -m`): CLAUDE.md 14039, askuser-protocol.md 18684, goal-directive.md 5628, moai-mcp-tools.md 3841; orchestration-mode-selection.md 37140.
 - Disposition: M0 stop rule fired (cited anchors gone + A2/A1 differences). No M1+ work started; blocker report returned to the orchestrator for manager-spec re-delegation.
 
+### M0 (resumed, v0.3.6 at `33d21cbfe`)
+
+- Re-delegated after B1-B5 were fixed in the SPEC. Anchors of v0.3.4 (`askuser-protocol.md` stub paragraph before `## Free-form Circumvention Prohibition`; catalogue rows) confirmed present on this tree. BASE unchanged: `MOAI_GR_BASE=7fe658815` (read from the environment by every base test; never pinned in code except the BASE-derived sets listed as debt below).
+- BASE caveat (lead, 2026-09-27): BASE is the pre-t1175-repair tree. BASE-derived artifacts committed by this run — regenerate on absorb: (1) `grBaseDriftIDs` in `internal/template/contract_mode_guided_test.go` (the EV-6 nine DRIFT ids, asserted as the base premise), (2) `grKickoffClasses` in the same file (research §1.2 E/R/H/L classification of the 33 base Kickoff documents).
+
+### M9 RED — observed before any block existed
+
+- How obtained: the two guard files were written first and run on the working tree while it still had zero contract-mode blocks and no SSOT (before M1-M5 edits were made); the blocks were inserted only after this run. Not a revert — the working tree was genuinely pre-block at that moment. Raw log: `.moai/state/verify/t1236/m9-red.txt` (gitignored evidence dir).
+- Command: `MOAI_GR_BASE=7fe658815 go test ./internal/template/ -run '^(TestContractModeBlocksWellFormed|…|TestContractModeEmitterSites)$' -count=1 -v` → exit 1.
+- Verbatim excerpt:
+
+```text
+    contract_mode_blocks_test.go:365: template tree carries zero contract-mode blocks — the guard swept nothing
+--- FAIL: TestContractModeBlocksWellFormed (0.03s)
+    --- FAIL: TestContractModeBlocksWellFormed/template-tree (0.03s)
+--- FAIL: TestContractModeLocalTemplateParity (0.00s)
+    --- FAIL: TestContractModeSSOTSections/ssot (0.00s)
+    --- FAIL: TestContractModeLifecycleOrder/tree (0.00s)
+    --- FAIL: TestContractModeLifecycleEvidence/ssot (0.00s)
+    contract_mode_blocks_test.go:692: no blocks found — empty sweep
+    --- FAIL: TestContractModeBlockCondition/tree (0.00s)
+    --- FAIL: TestContractModeAuditRetryBlocks/tree (0.00s)
+    --- FAIL: TestContractModeSyncBlocks/tree (0.00s)
+    --- FAIL: TestContractModeSigningBlocks/tree (0.00s)
+    contract_mode_guided_test.go:121: no block was stripped — empty sweep
+    --- FAIL: TestContractModeGuidedPreservation/tree (1.93s)
+    contract_mode_guided_test.go:616: emitter CLAUDE.md carries no contract-mode block
+--- FAIL: TestContractModeEmitterSites (0.18s)
+FAIL	github.com/modu-ai/moai-adk/internal/template	19.431s
+```
+
+- Falsifier subtests (known-bad fixtures) all FAILED the checker as required in the same run, e.g. `--- PASS: TestContractModeBlocksWellFormed/falsifier/forbidden-internal-token`, and AC-GR-003's two falsifiers:
+
+```text
+    contract_mode_guided_test.go:452: removed CONST-V3R2-001: drift 10 → findings [new constitution finding not present at the base: DRIFT CONST-V3R2-001 drift_count 10 > base 9]
+    contract_mode_guided_test.go:465: observed: [.claude/rules/moai/core/askuser-protocol.md: unregistered [HARD] line not present at the base: "[HARD] Probe-only unregistered rule inserted by the falsifier."]
+```
+
+- Invariant guards green at RED time by design (no change yet): InheritedDivergence, ChangeSetAllowlist, ConstitutionDriftNotIncreased, AlwaysLoadedBudget.
+
+### M1-M5 — SSOT and blocks
+
+- M1: `contract-autonomy.md` (local + template, byte-identical). M2-M5: 20 blocks across 13 documents × 2 copies (ids per design.md §2).
+- Cascade: `internal/template/catalog.yaml` moai-skill whole-tree hash regenerated (`go run ./internal/template/scripts/gen-catalog-hashes.go --all`, 1 line) — required by `TestManifestHashFormat`/`TestCatalogHashCoversSkillSubfiles`; not on design.md §2 allowlist, admitted in the allowlist test as a mechanical cascade (deviation reported to lead).
+- GREEN: `.moai/state/verify/t1236/m9-green1.txt` — all 15 guard tests `--- PASS`; `go test ./internal/template/ -count=1` → `ok … 71.294s`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
