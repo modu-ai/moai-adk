@@ -102,11 +102,77 @@ exit=0
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+run 레인: manager-develop (cycle_type=tdd — 하네스 테스트 1개, 나머지는 측정). 서빙 모델 관측값과 방법은 판정서 첫 줄. 판정서 `.moai/reports/t1226/verdict.md`, AC 일괄 검증 원문 `.moai/reports/t1226/ac-verify.md`(스크립트 `ac-run.sh`, 출력 `ac-run.out`). `$SCRATCH` 는 세션 임시 디렉터리.
+
+### 판정 결과
+
+| 표면 | total | A_adm | R | U | T_min | 판정 |
+|---|---:|---:|---:|---:|---:|---|
+| S_init (18) | 203,413 | 14,201 | 477 | 79 | 189,689 | STRUCTURALLY-INFEASIBLE-UNDER-FREEZE |
+| S_init (17) | 198,447 | 13,717 | 454 | 79 | 185,184 | STRUCTURALLY-INFEASIBLE-UNDER-FREEZE |
+| S_live (18) | 199,111 | 13,716 | 477 | 79 | 185,872 | STRUCTURALLY-INFEASIBLE-UNDER-FREEZE |
+
+`P절 재조정: (공표값)`, `J_includes_kanban_scope = yes`, `F(172ef22eb) = 171695`(서술값). 동결 해제 상신 절차(탐욕 집합 24절·구속 줄 27개·새로 허용 40,838자 → `T_min` 148,851)와 `RECOMMEND:` 줄은 판정서에 있다. 해제 결정은 운영자 몫이며 리드가 `AskUserQuestion` 으로 올린다.
+
+### AC 매트릭스 (이 run, 이 트리 — 코드 기준 `05d79c8b2`)
+
+| AC | Status | 검증 명령 | 실제 출력(핵심) |
+|---|---|---|---|
+| AC-ALH-001 | PASS | acceptance.md AC-ALH-001 6줄 | `1` `1` `2` `1` `0` `0` |
+| AC-ALH-002 | PASS | charmap·build_head·count_set 검사, 18경로 PIN, BH 재측정 | `UTF-8`, `1 1 1`, `PIN-live-OK`, `PIN-init-OK`, `199111 total`, `203413 total`, `_미측정` `0 0` |
+| AC-ALH-003 | PASS | 키 재생성·분할·행 규칙·DEBT-1~3·목적지 | `KEYS-{init,live}-OK`, `SPLIT-{init,live}-OK`, ROWS/OVERLAP/DESTIN/M1P/NETNEG/EVID/DEST 전부 `BAD=0`/`MISSING=0` |
+| AC-ALH-004 | PASS | 두 트리 해시 재실행 + M2 증거 루프 | `93de7321…4477`, `d97b33d9…c6c3`, `2`, `HASH-BAD=0` |
+| AC-ALH-005 | PASS | sec.py sha256, 선택 줄, /tmp 인용 | `d0e61541…78547`, `1 1 1`, 파일 존재, `0 0` |
+| AC-ALH-006 | PASS | `calc` 재계산, 쌍 대조 | `CHECK-init=OK` `CHECK-live=OK` `CHECK-init_17=OK` `PAIRS-init=OK` `PAIRS-live=OK` |
+| AC-ALH-007 | PASS | 토큰 재계산, 상신 절 | `TOKEN-live=OK` `TOKEN-init_17=OK` `TOKEN-init=OK`, `4`, `1`, `0` |
+| AC-ALH-008 | PASS | `git log --first-parent --no-merges 7fe658815..HEAD -- <36경로> \| wc -l` | `0` |
+| AC-ALH-009 | PASS | harness-run.txt·해시·commands.log | PASS `1`, SKIP `0`, `05d79c8b…` = build_head, `8776d7b5…` = harness_sha256, `prepareSafeInitHome` `2`, `LOG-OK`, `0` |
+| AC-ALH-010 | PASS (형태 2) | 형태 1/2 줄 | 형태 1 전부 `0`; `runtime_observed = no` `1`, `count_set_init = 18` `1`, 17집합 `6`, `verdict_init_17` `1` |
+
+### TDD 증거
+
+- RED(E8): `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_DISTRIBUTE_ALL && go test ./internal/cli/ -run '^TestHeadroomInitSurfaceExport$' -count=1 -v -args -headroom-export=$SCRATCH/red-surface` → `init_headroom_export_test.go:94: export: copyHeadroomTree: not implemented` / `--- FAIL: TestHeadroomInitSurfaceExport (0.52s)` / `FAIL github.com/modu-ai/moai-adk/internal/cli 1.318s`. 원문 `.moai/reports/t1226/harness-red.txt`.
+- GREEN: 같은 명령(`-headroom-export=$SCRATCH/init-surface`)을 `05d79c8b2` 에서 → `--- PASS: TestHeadroomInitSurfaceExport (0.54s)` / `ok github.com/modu-ai/moai-adk/internal/cli 1.302s`. 원문 `.moai/reports/t1226/harness-run.txt`. AC 재현 시 재실행 → `--- PASS … (0.65s)` / `ok … 1.472s`.
+- REFACTOR: 불필요로 판단 — 복사 함수 하나와 측정 로그뿐이다.
+- 제품 코드 변경 없음(테스트 파일 1개). 커버리지 목표는 제품 코드 대상이라 해당 없음.
+
+### 품질 게이트
+
+- `golangci-lint version` → v2.1.6(CI 판). `golangci-lint run ./internal/cli/...` → `0 issues.` exit 0.
+- `go vet ./internal/cli/` → exit 0. `gofmt -l internal/cli/init_headroom_export_test.go` → 빈 출력.
+- `go build -o $SCRATCH/moai-run ./cmd/moai` → exit 0. `$SCRATCH/moai-run spec lint --strict SPEC-ALWAYS-LOADED-HEADROOM-001` → `0 error(s), 0 warning(s)`, exit 0 (INFO `OwnershipTransitionUnmeasured` 1건 — 최초 plan 커밋 `10281a857` 대상, plan 단계부터 수용된 항목).
+
+### 선택 채무 처분 (plan-audit 3회차 N5·N6·N9)
+
+- N5 포인터 원문 대조: 커밋된 포인터 원문 6개의 `wc -m` 이 `pointers-<s>.tsv` 와 같다(`23 64 68 87 89 146`, `ac-verify.md`). `net-negative` 행 없음.
+- N6 흡수 병합 내부 편집: 이 run 은 develop 을 흡수하지 않았다(병합 커밋 0) — 해당 없음.
+- N9 상위 경로 지시문: 런타임 관측 요청문에 「상위 경로에 `CLAUDE.md`·`.claude/` 가 없는 빈 디렉터리」 조건을 넣었다(판정서 Gaps).
+
+### Gaps (요약 — 전문은 판정서)
+
+런타임 계수 집합 미관측(형태 2, 리드 요청문 판정서에 수록), 탐욕 해제 집합의 포인터 재유입 미산입, U2 수율 미측정, M2 의미 보존의 기계 검사 없음, `MOAI:LEARNED-WORKFLOW` 79자 UNTRIED, `c3` 는 선례 기반.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-27
+run_commit_sha: pending-backfill-run
+run_status: audit-ready
+ac_pass_count: 10
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # 18 계수 파일 + 미러 수정 커밋 수 (AC-ALH-008)
+l44_pre_commit_fetch: "git fetch origin develop → develop c501bd1da, card 3 behind / 7 ahead at run start; not absorbed"
+l44_post_push_fetch: not-applicable   # 레인은 push 하지 않는다
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  darwin: "go build ./cmd/moai exit 0"
+  windows: "GOOS=windows GOARCH=amd64 go vet ./internal/cli/ exit 0 (테스트 파일 포함 컴파일); 실행은 CI 매트릭스가 판정"
+total_run_phase_files: "internal/cli/init_headroom_export_test.go + .moai/reports/t1226/** + SPEC status/progress"
+m1_to_mN_commit_strategy: "logical-unit commits on WT-always-loaded-headroom (harness test → measurements → verdict/AC); no push, no merge"
+verdict_init: STRUCTURALLY-INFEASIBLE-UNDER-FREEZE
+verdict_live: STRUCTURALLY-INFEASIBLE-UNDER-FREEZE
+operator_gate_pending: "동결 해제 여부 — 리드가 AskUserQuestion 으로 상신"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

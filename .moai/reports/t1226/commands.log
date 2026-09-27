@@ -25,3 +25,17 @@ python3 .moai/reports/t1226/build.py --surface init ... --hash 93de7321ea747c584
 python3 .moai/reports/t1226/build.py --surface live ... --hash d97b33d960c9801d4ec145ca263ed788425b337f43c585594c8d527c1318c6c3
 python3 .moai/reports/t1226/unfreeze.py candidates-init.tsv 189689 > .moai/reports/t1226/unfreeze-init.txt
 python3 .moai/reports/t1226/psection.py > .moai/reports/t1226/evidence/p-section.txt
+git commit -F $SCRATCH/msg2.txt   # -> a28bfb824 ; git commit -F $SCRATCH/msg3.txt   # -> 12cc40ed6
+bash $SCRATCH/sens.sh   # awk sums over candidates-{init,live}.tsv (no git)
+git diff --quiet 7fe658815eb0d4110b9acadad56e5a85bee3ed3f 05d79c8b27b1aacfc56946672e5187b0fcabf96e -- CLAUDE.md AGENTS.md .moai/config/sections/user.yaml .moai/config/sections/language.yaml .claude/rules/moai/core .claude/rules/moai/workflow internal/template/templates   # exit 0
+git merge-base --is-ancestor 7fe658815eb0d4110b9acadad56e5a85bee3ed3f HEAD   # exit 0
+git diff --quiet 05d79c8b27b1aacfc56946672e5187b0fcabf96e HEAD -- internal cmd pkg go.mod go.sum   # exit 0
+rm -rf $SCRATCH/init-surface $SCRATCH/live
+unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_DISTRIBUTE_ALL && go test ./internal/cli/ -run '^TestHeadroomInitSurfaceExport$' -count=1 -v -args -headroom-export=$SCRATCH/init-surface > $SCRATCH/rerun.txt 2>&1   # AC reproduction, PASS
+mkdir -p $SCRATCH/live ; git archive 05d79c8b27b1aacfc56946672e5187b0fcabf96e CLAUDE.md AGENTS.md .moai/config/sections .claude/rules/moai | tar -x -C $SCRATCH/live
+SCRATCH=$SCRATCH bash .moai/reports/t1226/ac-run.sh > .moai/reports/t1226/ac-run.out   # non-git AC checks
+git log --first-parent --no-merges --format=%H 7fe658815..HEAD -- <36 paths> | wc -l   # 0
+git ls-files 'internal/cli/*headroom*_test.go' ; shasum -a 256 internal/cli/init_headroom_export_test.go ; grep -c prepareSafeInitHome internal/cli/init_headroom_export_test.go
+go build -o $SCRATCH/moai-run ./cmd/moai ; $SCRATCH/moai-run spec lint --strict SPEC-ALWAYS-LOADED-HEADROOM-001   # 0 error(s), 0 warning(s)
+golangci-lint run ./internal/cli/... > $SCRATCH/lint-final.txt 2>&1   # 0 issues., exit 0
+GOOS=windows GOARCH=amd64 go vet ./internal/cli/ > $SCRATCH/vet-win.txt 2>&1   # exit 0
