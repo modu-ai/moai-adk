@@ -90,9 +90,77 @@ RED (`go test -count=1 ./internal/cli/ -run 'TestAC_CLOSURE_001|…'`, before im
 
 GREEN (`go test -count=1 ./internal/cli/ -run 'TestAC_CLOSURE_001|TestAC_CLOSURE_019|TestAC_CLOSURE_020|TestAC_CLOSURE_024'`): `ok github.com/modu-ai/moai-adk/internal/cli 13.774s` — AC-001 (pair written at the c1 evidence dir; c2/c3/c4/c5 each exit 2 naming the cause; nothing created under any `.moai/reports`), AC-019 (ready/not-ready naming SPEC+codes/refspec/--all undetermined/missing remote ref undetermined/unknown flag 2/guided inactive), AC-020 (four refusals exit 1 with no file + success line with operator/method/report_sha256 = canonical hash), AC-024 (evidence lands only in the c1 worktree from both trees; sources name the home; removed worktree → primary). `go build ./...` + `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
 
+### M6 — Hook wiring (commit `9f38b7593`)
+
+RED (`go test -count=1 ./internal/hook/ -run 'TestAC_CLOSURE'`, before implementation): build failure — `checkContractVerdict`/`checkClosurePush` undefined.
+
+GREEN: `ok github.com/modu-ai/moai-adk/internal/hook` — AC-015 (five push forms each deny `CLOSURE_PUSH_STOP:` with `SPEC-FIXTURE-001=` + `second_review_not_performed`; performed pass clears; completed-in-pushed-commit still a candidate; `git push origin WT-feature` leaves the evaluation seam at 0; out-of-range SPEC-002 not evaluated while ready c1 is; another card's SPEC-directory edit re-admits SPEC-002 with `closure_report_missing` + `second_review_not_performed`), AC-017 (--all/--mirror/sh -c/`$BR`/`$( )`/bare push without upstream/missing remote ref → `push_check_undetermined`), AC-021 (verdict deny under guided AND contract; no closure-verdict writes outside the human path — grep guard over the cli package), AC-023 (guided/absent/bogus mode → no A4 decision, zero evaluations, Handle output byte-identical to `NewSafeDefaultOutput`).
+
+### M7 — Auditor instructions and mirrors (commit `f2a8783cd`)
+
+Marker blocks between `<!-- moai:closure-second-review:start/end -->` in the template and local copies of the skill and the sync-auditor agent (card argument + target baseBranch + after the last governed-path commit); `make agents-emit` regenerated `templates/.codex/agents/moai/sync-auditor.toml`; `make build` re-embedded. Neutrality regexes (`SPEC-[A-Z]`, `\bt[0-9]{3,5}\b`, dates, `A-Q[0-9]`, 9-40 hex): 0 matches over the block content.
+
+### Run-phase commit list (branch `WT-completion-report`)
+
+| Commit | Content |
+|---|---|
+| `5bc8a0296` | pre-flight evidence + draft→in-progress |
+| `158c3be69` | M1 record shapes and report model |
+| `5d079fb28` | M2 readiness rule and reason codes |
+| `47bfdbeb8` | M3 report builder and renderer |
+| `c55208625` | M4 CLI surfaces |
+| `8bd821972` | M5 audit_multi second-review record |
+| `9f38b7593` | M6 hook wiring |
+| `f2a8783cd` | M7 auditor instructions and mirrors |
+| `e51c87002` | AC-025 named test |
+| `8c746ccc9` | in-package push evaluation coverage |
+| `6611fcae5` | lint findings over the A4 packages |
+
+### Self-verification (all commands run in this worktree at HEAD `6611fcae5`)
+
+| Item | Command | Result |
+|---|---|---|
+| E1 | `go test -v -count=1 -run '^TestAC_CLOSURE_(…\|…)$'` per package | closure 15/15 PASS, cli 5/5 PASS, hook 4/4 PASS, template 1 subtest PASS (`TestAC_CLOSURE_025`) — **25/25**, zero `--- FAIL`, zero `[no tests to run]` |
+| E2 | `go build ./...`; `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 both (build=0, win=0) |
+| E3 | `go test -cover ./internal/closure/...` | closure **88.6%**, gitio **88.1%** (≥85); `closuretest` 0.0% — test-support package by convention (the escalationtest precedent), exercised by the closure/cli/hook test suites |
+| E4 | `golangci-lint run ./internal/closure/... ./internal/cli/... ./internal/hook/... ./internal/template/...` (golangci-lint **v2.1.6**, the CI judge) | **0 issues**. NEW findings during the run: 7 (2 errcheck `f.Close`, 2 unused test helpers, 1 ineffassign, 2 staticcheck QF) — all fixed in `6611fcae5`; baseline of the touched packages was clean pre-SPEC |
+| E5 | `make agents-emit-check` | exit 0 |
+| E6 | `moai spec lint SPEC-AUTONOMY-CLOSURE-001` | exit 0, "No findings — all SPEC documents are valid" |
+| E7 | RED evidence | per-milestone verbatim captured above (M1 build-failure output, M2 undefined symbols, M4/M5 undefined symbols, M6 undefined checks) |
+| E8 | blockers | none — no §31 decision required operator input beyond the choices recorded above |
+
+Boundary greps: `grep -rn 'AskUserQuestion' internal/closure internal/hook internal/cli/contract_*` non-test → 1 hit, the pre-existing blocklist line in `pre_tool.go` (denies the tool; predates this SPEC). `grep -rn "Retired\|superseded" internal/closure …` → only this SPEC's own STALE rendering strings. `verdict.md` is written by no code path (the constant catalogue deliberately omits it).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_commit_sha: "6611fcae5"
+run_complete_at: "2026-09-27"
+ac_pass_count: 25
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: "n/a (worktree lane, no push — lead batch-pushes develop)"
+l44_post_push_fetch: "n/a (same)"
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  darwin: pass
+  windows: pass
+total_run_phase_files: "internal/closure (16 files incl. gitio + closuretest), internal/cli (5), internal/hook (3), internal/template (4 + regenerated toml/catalog)"
+m1_to_m7_commit_strategy: "per-milestone conventional commits with t1237 in every subject, no amend, no push"
+milestones:
+  - {id: M1, commit: "158c3be69", subject: "record shapes and report model"}
+  - {id: M2, commit: "5d079fb28", subject: "readiness rule and reason codes"}
+  - {id: M3, commit: "47bfdbeb8", subject: "report builder and renderer"}
+  - {id: M4, commit: "c55208625", subject: "CLI surfaces"}
+  - {id: M5, commit: "8bd821972", subject: "audit_multi second-review record"}
+  - {id: M6, commit: "9f38b7593", subject: "hook wiring"}
+  - {id: M7, commit: "f2a8783cd", subject: "auditor instructions and mirrors"}
+follow_up_cards:
+  - "export a read-only class-4 comparison from internal/escalation (newAPIAdditions) so the closure report's New APIs section can run the live comparison (R2 disposition)"
+known_debt:
+  - "canonical report hash (generated_at-masked SHA-256) is a §31 design decision recorded in §E.2 M3 — reconciled against REQ-CLOSURE-002 determinism; flagged for sync-auditor review"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
