@@ -166,7 +166,7 @@ known_debt:
 
 ```yaml
 sync_complete_at: 2026-09-27
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "77508c33a"
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-AUTONOMY-CLOSURE-001' CHANGELOG.md = 0 (pre-emission) — no duplicate entry"
 b12_self_test_b: "acceptance.md distinct AC = 25 (AC-CLOSURE-001..025, zero [RETIRED]/[REF] markers — all live); CHANGELOG entry references 25 AC-CLOSURE criteria — match"
