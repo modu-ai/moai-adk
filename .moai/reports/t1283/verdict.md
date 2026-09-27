@@ -252,6 +252,47 @@ FAIL(`present in the LOCAL copy but ABSENT from the template mirror`), 로컬에
 
 ---
 
+## 병합 트리 재측정 (통합 창 7순위 — agent-48)
+
+창을 `moai integration acquire --name agent-48 --card t1283` 로 잡고, 로컬 develop `1971f5501`
+(t1175 수리·t1261·t1265·t1279·t1099·t1282 포함)을 흡수했다. 흡수 전 HEAD `418a2da40` → 흡수 후
+**`ea9cefac0`**, 충돌 0.
+
+리드가 이 흡수에 `.claude/rules` 변경(t1175 수리, t1099, t1282 의 plan-auditor 문단)이 들어 있어 등록한
+detail 쌍의 net 값이 움직일 수 있다고 지목했다. 실제로 하나가 움직였고, 네 쌍 모두 허용치 안이다:
+
+| 등록 쌍 | 흡수 전 | 흡수 후 | 허용 |
+|---|---|---|---|
+| `core/moai-constitution-detail.md` | 1 | **1** | 4 |
+| `core/verification-claim-integrity-detail.md` | 0 | **1** ← 움직임 | 4 |
+| `workflow/cross-session-messaging-detail.md` | 0 | **0** | 4 |
+| `workflow/main-checkout-branch-guard-detail.md` | 0 | **0** | 4 |
+
+`verification-claim-integrity-detail.md` 가 `0 → 1` 로 올랐다(12 local-only / 11 template-only /
+~11 reword pairs). 리드가 예상한 영향이 실측으로 확인된 것이며, 여유폭은 3행 남는다.
+
+**이 표가 잔여 위험을 구체화한다.** 판정서가 「여유폭」을 추상적으로 적어 뒀는데, 한 번의 흡수가 한 쌍의
+net 을 1 올렸다. 같은 크기의 흡수가 네 번 겹치면 그 쌍은 허용치에 닿는다 — 가드의 의도대로 그때 적색이
+되지만, 다음 사람이 「왜 갑자기」로 읽지 않도록 이 움직임의 크기를 여기에 남긴다.
+
+### 재측정 결과 — 전항목 초록
+
+| 측정 | 결과 |
+|---|---|
+| `go test ./internal/template/ -run TestSanitizedPairParity -count=1` | **exit 0** (14 서브테스트 PASS) |
+| `go test ./internal/template/... -count=1` | **exit 0** — `template` 73.936s · `agentemit` 0.409s · `commandemit` 0.283s |
+| `gofmt -l internal/` | **0행** |
+| `golangci-lint run ./internal/template/...` (v2.1.6, CI 판) | **0 issues** |
+
+### Baseline-attribution
+
+- 트리 `.claude/worktrees/t1283` · 브랜치 `WT-detail-parity-registry` · 흡수 후 HEAD **`ea9cefac0`** ·
+  흡수원 로컬 develop `1971f5501`
+- 위 두 표의 모든 값은 **이번 실행에서 병합 트리에 대해** 낸 명령의 결과다. 흡수 전 값은 비교를 위해
+  병기한 것이며 흡수 후 판정의 근거로 쓰지 않는다.
+
+---
+
 ## resume-pointer
 
 - **이월(리드 전언, t1259 run 착수 첫 일)**: Claude 2.1.283 은 `AGENTS.local.md` 를 primary 에서도 발견하지
