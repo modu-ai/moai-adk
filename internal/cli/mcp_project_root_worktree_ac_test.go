@@ -292,12 +292,14 @@ func TestLinkedWorktree_GraphNeverFromPrimary(t *testing.T) {
 
 // AC-MWU-013 (description half): the shared project_root text and the
 // codex_audit description state the linked-worktree acceptance and where the
-// audit gate comes from, without promising the receipt refusal on a worktree.
+// audit gate comes from. Edited by SPEC-WORKTREE-STATE-ROOT-001 AC-WSR-004
+// (ii): the two phrases REQ-WSR-016 removes are replaced by the new state and
+// receipt-guard statements.
 func TestLinkedWorktree_DescriptionsStateTheGateSource(t *testing.T) {
 	for _, want := range []string{
 		"linked worktree",
 		"audit gate (workflow.audit.gates) is read from the primary checkout",
-		"still read from the accepted tree",
+		"state is kept in the primary checkout's .moai/state",
 	} {
 		if !strings.Contains(projectRootDescCommon, want) {
 			t.Errorf("projectRootDescCommon lacks %q", want)
@@ -312,7 +314,7 @@ func TestLinkedWorktree_DescriptionsStateTheGateSource(t *testing.T) {
 	if strings.Contains(desc, "where the reviewed tree explicitly sets") {
 		t.Errorf("codex_audit description still says the gate comes only from the reviewed tree: %s", desc)
 	}
-	for _, want := range []string{"takes it from the primary checkout", "that refusal is not guaranteed"} {
+	for _, want := range []string{"takes it from the primary checkout", "hook-side receipt guard"} {
 		if !strings.Contains(desc, want) {
 			t.Errorf("codex_audit description lacks %q: %s", want, desc)
 		}

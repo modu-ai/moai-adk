@@ -63,7 +63,14 @@ func codexMultiItemScript(items ...string) []string {
 		`{"method":"turn/completed","params":{"threadId":"tid-fake","turn":{"id":"trn","status":"completed"}}}`)
 }
 
-const realCleanReview = "The change introduces no blocking issues."
+// realCleanReview is the canonical REAL clean review body — a completed
+// review whose content must survive collection and synthesis. Since
+// SPEC-CODEX-PARSER-SHAPE-001 M4 the native review request pins its output
+// format (REQ-CPS-005 as amended), so a genuinely clean native review states
+// the pinned verdict line; its pre-M4 prose form ("The change introduces no
+// blocking issues.", measured live on the unpinned convention) is the
+// no-signal class AC-CPS-004 downgrades to inconclusive.
+const realCleanReview = "Verdict: pass\n\nThe change introduces no blocking issues."
 
 // blankFixtures are the bodies acceptance.md AC-CBR-001 enumerates: three that
 // carry only whitespace, and the exactly-empty body that already returned
@@ -258,22 +265,44 @@ func TestCodexBlankReview_ZeroWidthBodyDoesNotSynthesizePass(t *testing.T) {
 	}
 }
 
-// TestCodexBlankReview_ZeroWidthInsideRealReviewStillPasses is the over-repair
-// control, mirroring AC-CBR-002: a real clean review carrying a leading U+200B is
-// still a completed review and reaches the same verdict. The Summary is asserted
-// by containment only, because the discriminator never alters a body and a
-// leading format character is not whitespace.
-func TestCodexBlankReview_ZeroWidthInsideRealReviewStillPasses(t *testing.T) {
+// TestCodexBlankReview_ZeroWidthInsideRealReviewNotDiscarded is the
+// over-repair control, mirroring AC-CBR-002, updated for the M4 pin
+// (SPEC-CODEX-PARSER-SHAPE-001): a real clean review carrying a U+200B is
+// still a completed review — the discriminator must never discard its
+// content. Two placements, two outcomes, and both are the point: the
+// zero-width character BEFORE the pinned first line breaks the pin
+// (codexStatedVerdict is line-head anchored by measurement — the greeting
+// hazard), so the body carries no recognized signal and is downgraded, while
+// the content still survives in the Summary verbatim; the zero-width
+// character AFTER the pinned line leaves the pin readable, and the review
+// still passes. The Summary is asserted by containment only, because the
+// discriminator never alters a body and a leading format character is not
+// whitespace.
+func TestCodexBlankReview_ZeroWidthInsideRealReviewNotDiscarded(t *testing.T) {
 	body := "\u200b" + realCleanReview
 	out, err := runCodexTurnWithLines(t, codexSessionScript(body))
 	if err != nil {
 		t.Fatalf("a completed clean review must not error: %v", err)
 	}
-	if out.Verdict != "pass" {
-		t.Errorf("verdict = %q, want pass for %q — a real review containing a zero-width character must not be discarded as blank", out.Verdict, body)
+	if out.Verdict != VerdictInconclusive {
+		t.Errorf("verdict = %q, want %q for %q — a format character ahead of the pinned first line breaks the pin", out.Verdict, VerdictInconclusive, body)
 	}
 	if !strings.Contains(out.Summary, realCleanReview) {
 		t.Errorf("summary = %q, want it to carry the review prose %q", out.Summary, realCleanReview)
+	}
+
+	// The pin-intact placement: a zero-width character AFTER the pinned first
+	// line leaves the verdict readable, and the real review still passes.
+	preserved := realCleanReview + "\n\u200b"
+	out, err = runCodexTurnWithLines(t, codexSessionScript(preserved))
+	if err != nil {
+		t.Fatalf("a completed clean review must not error: %v", err)
+	}
+	if out.Verdict != "pass" {
+		t.Errorf("verdict = %q, want pass for %q — a real review containing a zero-width character must not be discarded as blank", out.Verdict, preserved)
+	}
+	if out.Summary != preserved {
+		t.Errorf("summary = %q, want the review body verbatim %q", out.Summary, preserved)
 	}
 }
 
@@ -427,25 +456,32 @@ func TestCodexBlankReview_AC007_RequiredGateAnnotatesBlankOutput(t *testing.T) {
 
 // --- AC-CBR-008 (the repair does not widen into the mode-keyed policy) ---
 
-// TestCodexBlankReview_AC008_NonBlankUnrecognizedBodyUnchanged: a body that is
-// PRESENT but matches no known verdict signal keeps the native review mode's
-// documented `pass` default. Covers REQ-CBR-007. This is the criterion that
-// stops the repair from widening into codexUnrecognizedVerdict's policy — only
-// ABSENCE is reclassified. Green BOTH before and after the repair; its
-// pre-repair value is recorded in
-// .moai/reports/t551/probe-synthesizer-20260908.txt (prose-no-signal
-// verdict="pass").
-func TestCodexBlankReview_AC008_NonBlankUnrecognizedBodyUnchanged(t *testing.T) {
+// TestCodexBlankReview_AC008_NonBlankUnrecognizedBodyDowngraded: a body that
+// is PRESENT but matches no known verdict signal. Covers REQ-CBR-007 as
+// SUPERSEDED by SPEC-CODEX-PARSER-SHAPE-001 M4 (AC-CPS-004): the native
+// request now pins its output format, so a no-signal body — the pin unfollowed
+// — is downgraded from the silent `pass` t551's policy produced to
+// `inconclusive`, on the native path too. The t551 bound this test pinned
+// ("only ABSENCE is reclassified") was deliberate for that repair and is
+// deliberately lifted by the later SPEC; the pre-M4 value of this assertion is
+// recorded in .moai/reports/t551/probe-synthesizer-20260908.txt
+// (prose-no-signal verdict="pass") and in AC-CPS-004's RED-now cell.
+func TestCodexBlankReview_AC008_NonBlankUnrecognizedBodyDowngraded(t *testing.T) {
 	const prose = "I looked at the diff."
-	if got := synthesizeReviewOutput(prose, codexMethodReviewStart).Verdict; got != "pass" {
-		t.Errorf("synthesize(%q, review/start).Verdict = %q, want pass — the mode-keyed default for a PRESENT unrecognized body is deliberate and documented", prose, got)
+	if got := synthesizeReviewOutput(prose, codexMethodReviewStart).Verdict; got != VerdictInconclusive {
+		t.Errorf("synthesize(%q, review/start).Verdict = %q, want %q — a no-signal body states nothing recognizable, which is not evidence of a clean review", prose, got, VerdictInconclusive)
 	}
 	out, err := runCodexTurnWithLines(t, codexSessionScript(prose))
 	if err != nil {
 		t.Fatalf("a present body is a completed review: %v", err)
 	}
-	if out.Verdict != "pass" {
-		t.Errorf("end-to-end verdict = %q, want pass", out.Verdict)
+	if out.Verdict != VerdictInconclusive {
+		t.Errorf("end-to-end verdict = %q, want %q", out.Verdict, VerdictInconclusive)
+	}
+	// The content survives the downgrade: the Summary carries the verbatim
+	// text, so what was lost from the verdict is not lost from the output.
+	if out.Summary != prose {
+		t.Errorf("summary = %q, want the review prose verbatim %q", out.Summary, prose)
 	}
 }
 

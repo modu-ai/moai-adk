@@ -81,7 +81,7 @@ The tool returns a `ConvergenceResult`:
   "overall_verdict": "fail",
   "disagreement_flag": true,
   "participant_count": 3,
-  "residual_risk_note": "cross-model disagreement (advisory, NOT a block): pass=[claude(required), glm(advisory)] fail=[codex(required)]",
+  "residual_risk_note": "required-backend FAIL: codex; cross-model disagreement: pass=[claude(required), glm(advisory)] fail=[codex(required)]",
   "fail_open_backends": []
 }
 ```

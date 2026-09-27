@@ -25,6 +25,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // runResolveWorktreeL2Path sets HOME and USERPROFILE to homeDir via t.Setenv
@@ -49,6 +51,9 @@ func runResolveWorktreeL2Path(t *testing.T, homeDir string, args []string) error
 // and claude then receives the absolute path via the canonical --worktree
 // <abs-path> two-token form).
 func TestLauncherWorktreeL2AbsPath(t *testing.T) {
+	// L2 worktrees live under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the L2 root derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	l2Base := filepath.Join(tmpHome, ".moai", "worktrees")
 	// Synthesize a representative L2 absolute path matching the auto-isolation

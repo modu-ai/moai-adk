@@ -15,6 +15,7 @@ tier: L
 depends_on:
   - SPEC-FACTORY-MIXED-HOOK-001
 card: t1082
+partially_superseded_by: [SPEC-CODEX-FACTORY-RETIRE-001]
 ---
 
 # SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001

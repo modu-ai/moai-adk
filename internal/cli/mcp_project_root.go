@@ -47,7 +47,8 @@ const projectRootDescCommon = "Optional project or worktree root to act on. Supp
 	"real directory rather than on the spelling that reached it. A linked worktree of a repository that does not " +
 	"track .moai is accepted too, when git registers it as a worktree of a primary checkout that has .moai. On such " +
 	"a worktree without its own workflow config, the audit gate (workflow.audit.gates) is read from the primary " +
-	"checkout; other configuration, the SPEC catalogue, and state are still read from the accepted tree. "
+	"checkout; its SPEC catalogue is the union of the worktree's and the primary checkout's .moai/specs, and its " +
+	"state is kept in the primary checkout's .moai/state under the worktree's own tree identity. "
 
 // projectRootDesc describes the parameter on a tool whose absent case falls back
 // to resolveProjectDir() — the tools that already resolved a root before this
