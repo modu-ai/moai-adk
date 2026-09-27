@@ -34,7 +34,7 @@ Rules:
 - For team mode: spawn teammates directly with the Agent tool's `name` parameter (the team forms implicitly on first spawn — one team per session, no setup step)
 - Team agents share TaskList for work coordination; sub-agents return results directly
 - Spawn multiple subagents in the same turn when fanning out across independent items or files; do not spawn a subagent for work completable directly in a single response
-- Three orchestration primitives exist — choose by who holds the plan: **sub-agents** (Claude orchestrates turn by turn, results land in Claude's context), **Agent Teams** (shared TaskList, start with 3-5 teammates), and **dynamic workflows** (a script orchestrates dozens-to-hundreds of agents, intermediate results stay in script variables). For coding-heavy work prefer sequential sub-agents; reserve workflow-scale fan-out for genuinely parallel high-volume tasks (codebase sweeps, large migrations, cross-checked research). See `.claude/rules/moai/workflow/dynamic-workflows.md`.
+- Three orchestration primitives exist — **sub-agents**, **Agent Teams**, and **dynamic workflows** — chosen by who holds the plan. For coding-heavy work prefer sequential sub-agents; reserve workflow-scale fan-out for genuinely parallel high-volume tasks. What each primitive does with intermediate results: `.claude/rules/moai/workflow/dynamic-workflows.md`.
 
 ## Opus 5.5 Prompt Philosophy
 
@@ -42,11 +42,11 @@ Reasoning-intensive agents targeting `claude-opus-5-5` and `claude-opus-4-8` (an
 Anthropic's official prompt guidelines. The binding points:
 
 - **One-turn fully-loaded**: intent, constraints, completion criteria, and file locations in a
-  single agent prompt — multi-turn ping-pong wastes tokens.
+  single agent prompt.
 - **Adaptive Thinking**: never set a fixed `budget_tokens` (Opus 4.7+ rejects it with HTTP 400);
-  enable `thinking: {type: "adaptive"}` and let the model allocate depth.
-- **State scope explicitly**: Opus 4.8 follows instructions literally and does not silently
-  generalize — say "apply to every section, not just the first" when that is meant.
+  enable `thinking: {type: "adaptive"}`.
+- **State scope explicitly**: instructions are followed literally and not silently generalized —
+  say "apply to every section, not just the first" when that is meant.
 - **Remove 4.6-era defensive scaffolding**: "double-check X", "verify N times", "explicitly confirm
   before proceeding" are counterproductive under literal instruction following.
 - [ZONE:Evolvable] [HARD] **Principle 4 — fewer subagents by default**: 4.7+ does not auto-spawn.
@@ -54,12 +54,10 @@ Anthropic's official prompt guidelines. The binding points:
   out across items or files; do not spawn one for work completable in a single response."
 - [ZONE:Evolvable] [HARD] **Principle 5 — fewer tool calls by default**: specify when and why each
   tool applies, and raise effort to high/xhigh when more tool use is wanted.
-- **Effort defaults**: Opus 5.5 defaults to `effort: medium`, and `medium` is MoAI's recommended
-  session effort; other effort-capable models default to a higher level. `xhigh`/`max` are
-  available on Opus 5.5, Sonnet 5, Opus 4.8, and Opus 4.7. Raise the effort per role where the
-  work needs it — a minimum of `high` for intelligence-sensitive work, `xhigh` for hard coding and
-  agentic work, `max` sparingly — and step down to `low` only for speed-critical or simple tasks —
-  routed by role, not by agent name.
+- **Effort defaults**: Opus 5.5 defaults to `effort: medium`, MoAI's recommended session effort;
+  `xhigh`/`max` are available on Opus 5.5, Sonnet 5, Opus 4.8, and Opus 4.7. Route effort by role,
+  never by agent name — `high` minimum for intelligence-sensitive work, `xhigh` for hard coding and
+  agentic work, `max` sparingly, `low` only for speed-critical or simple tasks.
 
 Per-agent effort calibration: `agent-authoring.md` § Effort-Level Calibration Matrix.
 Rationale and the model-id table: `moai-constitution-detail.md` § Opus 5.5 Prompt Philosophy.
@@ -123,7 +121,7 @@ Rules:
 
 ## Tool Selection Priority
 
-Prefer the dedicated tool over a general alternative when one is fit for purpose — it improves accuracy and reduces round-trip latency. The canonical tool-by-task table lives in `.claude/rules/moai/core/agent-common-protocol.md` § Tool Selection by Task (that table is the single source of truth; this section intentionally carries no duplicate list).
+Prefer the dedicated tool over a general alternative when one is fit for purpose — it improves accuracy and reduces round-trip latency. The canonical tool-by-task table lives in `.claude/rules/moai/core/agent-common-protocol-reference.md` § Tool Selection by Task (that table is the single source of truth; this section intentionally carries no duplicate list).
 
 ## Error Handling Protocol
 
@@ -151,8 +149,7 @@ Capture and reuse learnings from user corrections and agent failures across sess
 
 - When the user corrects agent behavior, capture the pattern in auto-memory as a topic file — one
   fact per `feedback_*.md` in the project's auto-memory store (resolve it with
-  `moai memory doctor`), indexed by `MEMORY.md`. That convention is the single designated lesson
-  store; the legacy `lessons.md` is superseded.
+  `moai memory doctor`), indexed by `MEMORY.md`. The legacy `lessons.md` is superseded.
 - [ZONE:Evolvable] [HARD] **A long index never justifies dropping a lesson.** Write the topic file
   **and** its `MEMORY.md` index line — both, always. Not "write the file, skip the index line": a
   topic file loads on demand and is found only through the index, so an unindexed one is
@@ -168,18 +165,16 @@ Capture and reuse learnings from user corrections and agent failures across sess
   one index line per topic file, removal still prohibited, and every secondary index itself
   reachable from `MEMORY.md`. Criterion and rationale:
   `.claude/rules/moai/workflow/moai-memory.md` § Admission.
-- Each entry records category, the incorrect pattern, the correct approach, and the date. Review
+- Each entry records category, the incorrect pattern, the correct approach, and the date; review
   the relevant ones before starting work in the same domain.
-- Lessons are additive: never overwrite one — append corrections as updates, and supersede by
-  prefixing the old entry `[SUPERSEDED by #{new}]`. Archive rather than delete; the audit trail is
-  the point.
+- Lessons are additive: never overwrite one — append corrections as updates, supersede by prefixing
+  the old entry `[SUPERSEDED by #{new}]`, and archive rather than delete.
 - **Harness edit discipline**: a lesson motivating a harness edit records a falsifiable
-  `prediction:` (which failure class stops recurring) and later `verified: true|false`. An edit is
-  accepted only when it demonstrably addresses the motivating failure **and** existing guards still
-  pass; a rejected or reverted edit is preserved as an entry with `verified: false` and its reason,
-  so a known-bad edit is not re-attempted.
+  `prediction:` and later `verified: true|false`. An edit is accepted only when it demonstrably
+  addresses the motivating failure **and** existing guards still pass; a rejected or reverted edit
+  is kept with `verified: false` and its reason, so a known-bad edit is not re-attempted.
 
-Categories, the 50-file cap and archive path, the repo-local inbox drain contract, auto-capture
+Categories, the file cap and archive path, the repo-local inbox drain contract, auto-capture
 triggers, the domain-matching algorithm, and the workflow integration points:
 `moai-constitution-detail.md` § Lessons Protocol.
 
@@ -199,9 +194,7 @@ ASSUMPTIONS I'M MAKING:
 → Correct me now or I'll proceed with these.
 ```
 
-Cross-reference: CLAUDE.md Section 7 Rule 5 (Context-First Discovery) for discovery triggers.
-
-Anti-pattern: Silently picking one interpretation of ambiguous requirements and running with it.
+Anti-pattern: silently picking one interpretation of ambiguous requirements and running with it. Discovery triggers: CLAUDE.md §7 Rule 5.
 
 ### 2. Manage Confusion Actively [ZONE:Evolvable] [HARD]
 
@@ -219,31 +212,13 @@ Anti-pattern: "I see X in the spec but Y in the existing code" followed by silen
 
 Point out issues directly when an approach has clear problems. Sycophancy is a failure mode.
 
-When to push back:
-- Proposed approach has concrete downside (quantify when possible)
-- Approach contradicts established conventions without clear justification
-- Requested change breaks tested invariants
-
-How to push back:
-- State the issue directly
-- Quantify the downside ("this adds ~200ms latency", not "this might be slower")
-- Propose an alternative
-- Accept user override if they proceed with full information
+When: the approach has a concrete downside, contradicts an established convention without clear justification, or breaks a tested invariant. How: state the issue directly, quantify the downside ("adds ~200ms latency", not "might be slower"), propose an alternative, and accept a user override once they have full information.
 
 Anti-pattern: "Of course!" followed by implementing a known-bad idea.
 
 ### 4. Enforce Simplicity [ZONE:Evolvable] [HARD]
 
-Actively resist overcomplexity. The natural tendency of code generation is toward over-engineering. Resist it.
-
-Questions to ask before completing implementation:
-- Can this be done in fewer lines without loss of clarity?
-- Are these abstractions earning their complexity?
-- Would a staff engineer look at this and say "why didn't you just..."?
-
-Cross-reference: TRUST 5 Readable principle.
-
-Anti-pattern: Building 1000 lines when 100 would suffice; creating a factory for a single concrete implementation.
+Actively resist overcomplexity; the natural tendency of code generation is toward over-engineering. Before completing an implementation ask: can this be done in fewer lines without loss of clarity, are these abstractions earning their complexity, would a staff engineer say "why didn't you just..."? (TRUST 5 Readable.) Anti-pattern: 1000 lines where 100 suffice; a factory for a single concrete implementation.
 
 Simplicity decision ladder (apply in order, before writing code — cheapest capability first):
 
@@ -255,11 +230,11 @@ Simplicity decision ladder (apply in order, before writing code — cheapest cap
 6. Can this be one line? Make it one line.
 7. Only then: write the minimum code that works.
 
-The ladder is the reuse-and-dependency-avoidance ordering axis — reach for the cheapest existing capability before adding new code or a new dependency. It is language-neutral: "standard library" and "native platform feature" name whichever capability source the project's language provides, not any specific package manager or import.
+The ladder orders reuse before new code or a new dependency, and is language-neutral: "standard library" and "native platform feature" name whichever capability source the project's language provides.
 
 Never simplify away (safety carve-out): the ladder is a code-economy aid, NOT a license to cut safety. It MUST NOT be used to drop input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility, or one runnable check behind non-trivial logic. These boundaries are governed by existing rules — the TRUST 5 Secured principle (validation, OWASP compliance) and the Bash risk-amplifier doctrine in `.claude/rules/moai/development/coding-standards.md` § Bash Risk-Amplifier Doctrine (destructive-primitive confirmation) — and the ladder is subordinate to them.
 
-Quantitative trigger: If implementation exceeds 3x the estimated minimum viable LOC, flag for simplification before proceeding. Estimate by asking: "What is the fewest lines this could be written in?" — then compare. If the ratio exceeds 3:1, stop and rewrite.
+Quantitative trigger: estimate the fewest lines this could be written in; if the implementation exceeds 3x that, stop and rewrite before proceeding.
 
 ### 5. Maintain Scope Discipline [ZONE:Evolvable] [HARD]
 
@@ -272,11 +247,7 @@ Do NOT:
 - Delete code that seems unused without explicit approval
 - Add features not in the spec because they "seem useful"
 
-Cross-reference: CLAUDE.md Section 7 Rule 2 (Multi-File Decomposition).
-
-Anti-pattern: "While I was in this file I noticed..." — stay focused.
-
-Positive directive: Match the existing code style of the file you are modifying — naming conventions, error handling patterns, import organization. Consistency within a file is more important than personal preference.
+Anti-pattern: "While I was in this file I noticed..." — stay focused (CLAUDE.md §7 Rule 2). Positive directive: match the existing style of the file being modified — naming, error handling, import organization; consistency within a file outranks personal preference.
 
 ### 6. Verify, Don't Assume [ZONE:Evolvable] [HARD]
 
@@ -288,9 +259,5 @@ Evidence requirements:
 - File created: verify with Read
 - Behavior correct: show the runtime evidence
 
-Cross-reference: CLAUDE.md Section 7 Rule 3 (Post-Implementation Review).
-
-Anti-pattern: Claiming "tests pass" without running them; assuming code compiles without building.
-
-Goal-to-test pattern: For ad-hoc tasks without a SPEC, define the completion goal as a testable assertion before starting. "This task is done when X produces Y" — then verify X produces Y. No SPEC required; the goal IS the test.
+Anti-pattern: claiming "tests pass" without running them; assuming code compiles without building (CLAUDE.md §7 Rule 3). Goal-to-test pattern: for ad-hoc tasks without a SPEC, define completion as a testable assertion first — "done when X produces Y" — then verify it.
 <!-- moai:evolvable-end -->

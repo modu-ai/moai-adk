@@ -10,7 +10,7 @@
 
 Prefix the condition with `model:` or `cmd:` to declare which tier is meant. Without a prefix the tier is inferred from an English substring test, which reads a claim written in any other language as a shell command — and a shell command that cannot run never exits 0, so the goal blocks every turn until its bound fires.
 
-State lives at `.moai/state/goal/<session-id>.json`, one file per session. A turn ceiling (default 30) bounds the loop; at the ceiling the evaluator emits a 5-section verdict (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) and stops blocking. The runtime's consecutive-block cap (default 8, `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`) overrides the block first on an unattended run — the effective bound is `min(ceiling, cap)` and a missing verdict must not be read as convergence. A stagnation guard halts the loop after N consecutive no-progress iterations with an E1/E3 escalation note.
+State lives at `.moai/state/goal/<session-id>.json`, one file per session. A turn ceiling (default 30) bounds the loop; at the ceiling the evaluator emits a 5-section verdict and stops blocking. The runtime's consecutive-block cap (default 8, `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`) overrides the block first on an unattended run — the effective bound is `min(ceiling, cap)`, and a missing verdict must not be read as convergence. A stagnation guard halts the loop after N consecutive no-progress iterations.
 
 `/moai goal` is **arm-only** (see § Goal-Presentation Timing). The delivered verbs are `/moai goal "<condition>"` (register + arm), `/moai goal status [--all]`, and `/moai goal clear`. Full verb surface, the progression-mode axis, and the safety invariants live in `.claude/skills/moai/workflows/goal.md`.
 
@@ -20,9 +20,9 @@ Availability: `/moai goal` needs hooks enabled (its evaluator IS a Stop hook); i
 
 **`/moai goal` is arm-only.** Arming records the condition in goal state and causes the `stop-goal` evaluator to block turn-end until the condition holds; it starts no work of its own. The consequence is concrete: a goal armed while nothing is running spins idle turns until the ceiling, because each turn-end finds the condition unmet and no work advancing it. Arming is therefore always paired with a work-starting action, and it never substitutes for one. This is why a paste-ready resume keeps a work-starting command (`/moai run SPEC-X`) as Block 5's single primary action rather than a bare goal-arming directive — see `.claude/rules/moai/workflow/session-handoff.md` § Canonical Format (Block 5).
 
-**The goal is presented at the Implementation Kickoff Approval gate.** When the orchestrator runs Implementation Kickoff Approval (the `AskUserQuestion` round at the plan→run boundary), the goal is offered there as the **autonomous vs semi-autonomous progression-mode axis** — a DISTINCT axis from the approve/decline decision. The orchestrator arms the goal only after the gate passes. The axis and its two modes are specified in `.claude/skills/moai/workflows/goal.md` § Progression Mode.
+**The goal is presented at the Implementation Kickoff Approval gate** — offered there as the **autonomous vs semi-autonomous progression-mode axis**, DISTINCT from the approve/decline decision, and armed only after the gate passes. The axis and its two modes: `.claude/skills/moai/workflows/goal.md` § Progression Mode.
 
-**Arming a goal does not authorize autonomous run-phase entry.** The Implementation Kickoff Approval human gate remains required in both progression modes: the progression-mode axis selects only what happens AFTER the gate passes, and is never a gate bypass or a relaxation. An armed goal likewise never authorizes creating a PR or performing a destructive operation — the evaluator decides only whether the turn continues.
+**Arming a goal does not authorize autonomous run-phase entry.** The Implementation Kickoff Approval human gate remains required in both progression modes: the axis selects only what happens AFTER the gate passes, and is never a gate bypass or a relaxation. An armed goal likewise never authorizes creating a PR or a destructive operation — the evaluator decides only whether the turn continues.
 
 ## Hard Preconditions for Every Recommendation
 
@@ -31,21 +31,11 @@ Availability: `/moai goal` needs hooks enabled (its evaluator IS a Stop hook); i
 - **Safety boundary unchanged**: an armed goal does not relax the "confirm before hard-to-reverse / shared-system actions" boundary.
 - **`run.md` "set" shorthand**: `run.md` § Run-phase Autonomy states the orchestrator MAY set the `ac_converge` goal — the orchestrator arms it via `/moai goal` after the gate passes.
 
-## Proactive Recommendation Triggers
-
-When the orchestrator recognizes a situation where a condition-declared loop is the right continuation primitive, it arms one rather than driving the work turn by turn. T1-T4 one-liners (full condition templates in `goal-directive-detail.md`):
-
-- **T1 — Long run-phase / multi-milestone (Tier M/L)**: the run-phase autonomy wiring in `run.md` § Run-phase Autonomy (`ac_converge`) owns this case — surface that block verbatim.
-- **T2 — Migration / refactoring across many call sites**: arm once the call-site inventory is enumerated and transcript-visible.
-- **T3 — TDD cycle / SPEC AC convergence**: for SPEC-scoped work, T1 and `run.md` `ac_converge` is the SSOT; for non-SPEC TDD work arm a test-suite-shaped condition.
-- **T4 — `/moai loop` alternative**: when work is better expressed as a verifiable end-state than as "fix what the tooling flags", surface the two options (decision axis: what should start the next turn).
-
 ## Cross-references
 
 - `.claude/skills/moai/workflows/goal.md` — verb surface, progression-mode axis, semi-autonomous checkpoint flow, safety invariants
-- `goal-directive-detail.md` — Comparing Approaches table, condition templates, MoAI Integration Notes, Native `/goal` Prohibition rationale
-- `.claude/rules/moai/workflow/session-handoff.md` § Canonical Format (Block 5) — the resume-context goal line and the arm-only consequence on the handoff surface
 - `.claude/skills/moai/workflows/run.md` § Run-phase Autonomy — the `ac_converge` condition wiring
+- `goal-directive-detail.md` — the lazy companion. Load it for § Comparing Autonomous-Continuation Approaches · § Writing an Effective Condition · § Arming Under Multi-Session Concurrency · § Trigger condition templates · § Proactive Recommendation Triggers · § MoAI Integration Notes · § Native `/goal` Prohibition
 
 ---
 

@@ -31,7 +31,7 @@ The cut-line marker text AND the 6-block skeleton verbs/headers translate per `c
 
 Read `conversation_language` at render time; substitute the localized text between the `✂────` decorators (`✂` / `─` verbatim) and the locale rendering for each Block 1/3/5/6 placeholder.
 
-**Fallback rule for locales not in the table** (binding text in `session-handoff.md` § Localization Table): en / ko / ja / zh are listed above; any other ISO-639 code falls back to the English structural skeleton with the label text rendered in the configured language (naturalization, never literal transliteration) — English-skeleton fallback, not English-output.
+**Fallback rule for locales not in the table** (binding text: `session-handoff-format.md` § Localization Table): en/ko/ja/zh are listed above; any other ISO-639 code falls back to the English structural skeleton with the label text rendered in the configured language (naturalization, never literal transliteration) — English-skeleton fallback, not English-output.
 
 ## Example (Illustrative; substitute project-specific values when adapting)
 
