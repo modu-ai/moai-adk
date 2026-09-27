@@ -721,8 +721,19 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		// auditor PASS stands unproven in this tree. Activation is the raw
 		// workflow.audit.gates.codex == required value itself — writing that
 		// value IS the opt-in, so there is no separate flag.
-		if decision, reason := checkAuditReceiptSpawn(input); decision == DecisionDeny {
-			return NewDenyOutput(reason), nil
+		// Served-model consumer (SPEC-SERVED-MODEL-AUDIT-001 REQ-SMA-010).
+		// Evaluated alongside the receipt consumer so that, when both kinds of
+		// refusal are outstanding, one deny carries both sentinels, each
+		// followed by its own records.
+		receiptDecision, receiptReason := checkAuditReceiptSpawn(input)
+		servedDecision, servedReason := checkServedModelSpawn(input)
+		switch {
+		case receiptDecision == DecisionDeny && servedDecision == DecisionDeny:
+			return NewDenyOutput(receiptReason + "; " + servedReason), nil
+		case receiptDecision == DecisionDeny:
+			return NewDenyOutput(receiptReason), nil
+		case servedDecision == DecisionDeny:
+			return NewDenyOutput(servedReason), nil
 		}
 
 		// Deliberate-revival escape hatch (stop-guard, REQ-TRG-005): a fresh
