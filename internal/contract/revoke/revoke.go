@@ -28,6 +28,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/contract"
 	"github.com/modu-ai/moai-adk/internal/contract/receipt"
 	"github.com/modu-ai/moai-adk/internal/escalation"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // Result statuses.
@@ -79,7 +80,11 @@ func withDefaults(s Seams) Seams {
 	}
 	if s.GitHead == nil {
 		s.GitHead = func(root string) (string, error) {
-			out, err := exec.Command("git", "-C", root, "rev-parse", "HEAD").Output()
+			// Scrub the repository-scoping variables: an inherited GIT_DIR
+			// would override -C and read another repository's HEAD.
+			cmd := exec.Command("git", "-C", root, "rev-parse", "HEAD")
+			cmd.Env = gitenv.Env()
+			out, err := cmd.Output()
 			if err != nil {
 				return "", fmt.Errorf("read HEAD: %w", err)
 			}

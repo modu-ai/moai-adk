@@ -129,12 +129,36 @@ FAIL	github.com/modu-ai/moai-adk/internal/template	19.431s
   - unregistered `[HARD]` line → `contract_mode_guided_test.go:422: .claude/rules/moai/core/askuser-protocol.md: unregistered [HARD] line not present at the base: "[HARD] Probe-only unregistered rule inserted by the mutant probe."` / `--- FAIL: TestContractModeConstitutionDriftNotIncreased`; HEAD `ok …/internal/template`.
 - Coverage (combined, `-coverpkg` receipt/revoke/kickoff over contract + cli tests; `cover-a3.txt`): total 81.8% of statements; per-package function average kickoff 79.6%, revoke 74.6%, receipt 86.0%. Below the 85% target for kickoff and revoke — recorded as a gap, not claimed.
 
-### M7b / M8 — held
+### M7b / M8
 
 - M7b (doctrine amendment + `JevDoctrineAmended = true`, one commit): first held on instruction; the §29 line was returned to the lead and the SPEC-JEV-CORE-001 body change returned as a manager-spec blocker.
 - M7b resumed (2026-09-27): the operator confirmed the §29 line in the lane session (relayed by the coordinator; the text is design.md §11.1 verbatim). Authors, one at a time: the lane orchestrator wrote the `CLAUDE.local.md` §29 exception paragraph; manager-spec wrote `SPEC-JEV-CORE-001` v0.3.0; manager-develop set `JevDoctrineAmended = true`, added the exception sentence to both `moai-mcp-tools-catalogue.md` copies (tool row and `Judgment (gated)` row) and both `workflow.yaml` `jev:` comments, and added `TestJevDoctrineAmendment`. The lane orchestrator makes the single linkage commit.
 - M7b RED (`.moai/state/verify/t1236/m7b-red.txt`, before this record existed) → exit 1: `contract_mode_blocks_test.go:1041: progress.md records no operator confirmation of the §29 line` / `--- FAIL: TestJevDoctrineAmendment/local-guide`. The three falsifiers FAILED the checker as required: `observed: [authority item 1 keeps a gate prohibition with no contract-mode Kickoff exception authority item 2 …]`, `observed: [REQ-JEVC-011 states no contract-mode Kickoff llm+jev exception]`, `observed: [fixture: does not keep Jev from deciding alone …]`.
-- M8 (activation): held. design.md §7.1 row 6 is unmet — `orchestration-mode-selection.md` line 18 (`[ZONE:Frozen] [HARD] All Phase 4 execution modes are strictly downstream of Implementation Kickoff Approval …`) names no non-human signer. Row 4: `git merge-base --is-ancestor fb5901251 HEAD` → exit 0 (A2b merge is in this tree; its tests were not re-run here). Row 3 (A1 fallback-receipt signing) not independently re-verified in this run.
+- M7b landed as `185569ef3` (the lane orchestrator's single linkage commit, 10 explicit paths). On that tree the orchestrator observed `--- PASS: TestJevAmendmentLinkage` / `ok` (all markers first appear in one commit). Pre-commit working-tree verification (`m7b-select.txt`): `--- PASS: TestJevDoctrineAmendment`, `--- PASS: TestJevAmendmentLinkage` with `JevDoctrineAmended = true`; `m7b-scope.txt` `go test ./internal/contract/... ./internal/template/ ./internal/spec/` → 8 × `ok`; spec lint of SPEC-JEV-CORE-001 and this SPEC → `✓ No findings`; golangci-lint v2.1.6 `0 issues.`; `make build` exit 0. AC-GR-022 moves from DEFERRED to PASS.
+- M8 closed as held debt (lead ruling): M8 보류 — design §7.1 6행 미충족(Frozen 문단에 비인간 결정자 서명 등가 부재), autonomousKickoffEnabled=false 유지, 3행 충족·4행 부분 확인
+- M8 evidence: design.md §7.1 row 6 is unmet — `orchestration-mode-selection.md` line 18 (`[ZONE:Frozen] [HARD] All Phase 4 execution modes are strictly downstream of Implementation Kickoff Approval …`) names no non-human signer. Row 4: `git merge-base --is-ancestor fb5901251 HEAD` → exit 0 (A2b merge is in this tree; its tests were not re-run here). Row 3 (A1 fallback-receipt signing) not independently re-verified in this run.
+- M8 re-evaluation after M7b: row 3 — `git merge-base --is-ancestor 25283ebf8 HEAD` exit 0 and `--- PASS: TestSign_ReceiptPathRecord/r3_recorded_fallback` (`m8-row3.txt`). Row 4 — the eight `internal/hook` contract sign/decide guard tests `--- PASS` (`m8-row4.txt`); the push-serialization half was not re-run. Row 6 — unchanged, the Frozen paragraph was not touched.
+
+### Coverage uplift (`62726e1e4`)
+
+- Characterization tests for existing behavior (no new behavior, so no RED phase): `kickoff/units_test.go` (judgement decoder, tier reader, Jev verdict mapping, disabled production seam), `revoke/units_test.go` (record writer, default seams), `revoke/failures_test.go` (failures before the write leave no event and no record; default seams; reader directory handling).
+- `go test -cover` (`cov-uplift.txt` + later rerun): kickoff 82.3% → 87.4%, revoke 68.8% → 86.0%.
+- Non-vacuity by mutant: `specTier` absent-file default `"L"`→`"M"` → `units_test.go:62: specTier = "M", want "L"` / `--- FAIL: TestSpecTier`; dropping the reader's `.md` filter → `failures_test.go:179: Blocked = true, err parse …notes.txt: escalation: record has no YAML frontmatter; want false, nil` / `--- FAIL: TestBlockedReaderShapes`; both restored (`cmp`) and HEAD exit 0.
+
+### revoke HEAD read — ambient git environment leak (M6 code, same class as the runGitRevParse GIT_DIR fix)
+
+- Reproduction first — RED (`gitenv-red.txt`), `go test ./internal/contract/revoke/ -run '^TestRevokeHeadIgnoresAmbientGitEnv$' -count=1 -v` → exit 1:
+
+```text
+    failures_test.go:215: record head "fe9daa6fd4382f5132e5f983e637be6aa1728b2e", want the project's HEAD "cdf7e7e659b0a701b07da04a10cd76d0ae4a19ca" (ambient GIT_DIR HEAD is "fe9daa6fd4382f5132e5f983e637be6aa1728b2e")
+--- FAIL: TestRevokeHeadIgnoresAmbientGitEnv (0.40s)
+```
+
+  The recorded HEAD equals the ambient repository's HEAD: an inherited `GIT_DIR` overrides `git -C <root>`, and the default reader ran with the full parent environment.
+- Fix: the default `GitHead` seam sets `cmd.Env = gitenv.Env()` — the existing helper `decide.go` already uses; no new helper.
+- GREEN (`gitenv-green.txt`): `--- PASS: TestRevokeHeadIgnoresAmbientGitEnv (0.39s)` / `ok`.
+- Sibling sweep: every `exec.Command` under `internal/contract` outside tests now sets a scrubbed environment (`revoke.go` gitenv.Env, `decide.go` gitenv.Env, `sign/defaults.go` gitEnv, `signtest` ScrubbedEnv).
+- `go test ./internal/contract/... -count=1` → 6 × `ok` (`gitenv-scope.txt`); `go test ./internal/cli/ -run '^TestContractRevoke$'` → `ok`; golangci-lint v2.1.6 on `./internal/contract/...` → `0 issues.`; `go vet` clean.
 
 ### M10 — AC matrix (tree `ec051a27b332a7e4bb3cee2715bb9762680092df`, HEAD `0e1f2edb9`, `MOAI_GR_BASE=7fe658815` where required)
 
@@ -173,16 +197,31 @@ Logs: `.moai/state/verify/t1236/ac/<AC>.txt`. Columns: exit / `--- PASS` count /
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_complete_at: null            # run held at M7b / M8
-run_commit_sha: 0e1f2edb9        # last run-phase code commit (M7)
-run_status: held-m7b-m8
-ac_pass_count: 24
+run_complete_at: 2026-09-27
+run_commit_sha: pending-backfill    # the commit carrying this block cannot cite itself; the gitenv fix commit
+run_status: complete-with-held-debt
+m8_status: "M8 보류 — design §7.1 6행 미충족(Frozen 문단에 비인간 결정자 서명 등가 부재), autonomousKickoffEnabled=false 유지, 3행 충족·4행 부분 확인"
+milestone_commits:
+  M0: 7e82f8b66
+  M1: fdf274c42
+  M2-M5: 1e7e483f3
+  M9: 39ca88f50
+  M6: 5f8a67b78
+  M7: 0e1f2edb9
+  M10: 0fff55f64
+  M7b: 185569ef3
+  coverage-uplift: 62726e1e4
+ac_pass_count: 25                   # 24 at M10 + AC-GR-022 after M7b
 ac_fail_count: 0
-ac_deferred: [AC-GR-022, AC-GR-017-linkage-true-state]
-new_warnings_or_lints_introduced: 0   # golangci-lint v2.1.6, go vet
-cross_platform_build: {darwin: pass, windows: pass}
-coverage_gap: {kickoff: 79.6, revoke: 74.6}   # function average, below 85
+ac_deferred: []                     # M8 activation is held debt, not an AC
+ac_linkage_true_state: pass         # TestJevAmendmentLinkage on 185569ef3
+preserve_list_post_run_count: n/a   # allowlist guard TestContractModeChangeSetAllowlist PASS, 76 changed paths
+new_warnings_or_lints_introduced: 0 # golangci-lint v2.1.6, go vet
+cross_platform_build: {darwin: pass, windows: pass}   # measured at M7; not re-run after M7b
+coverage: {kickoff: 87.4, revoke: 86.0, receipt_standalone: 68.1}   # receipt below 85
 base_derived_debt: [grBaseDriftIDs, grKickoffClasses, EV-6 ids]  # BASE is the pre-t1175-repair tree — regenerate on absorb
+l44_pre_commit_fetch: not-run       # lanes do not push; the lead batch-pushes develop
+l44_post_push_fetch: not-applicable
 m1_to_mN_commit_strategy: milestone-per-commit
 ```
 

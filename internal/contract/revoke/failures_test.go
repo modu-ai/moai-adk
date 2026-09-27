@@ -181,6 +181,41 @@ func TestBlockedReaderShapes(t *testing.T) {
 	})
 }
 
+// TestRevokeHeadIgnoresAmbientGitEnv reproduces the ambient-environment leak:
+// with GIT_DIR naming a different repository, the default HEAD reader must
+// still record the HEAD of the project being revoked.
+func TestRevokeHeadIgnoresAmbientGitEnv(t *testing.T) {
+	other := signtest.New(t)
+	other.WriteFile("other.txt", "a different history")
+	other.Git("add", "other.txt")
+	other.Git("commit", "-q", "-m", "other")
+	otherHead := strings.TrimSpace(other.Git("rev-parse", "HEAD"))
+
+	p := signtest.New(t)
+	signHuman(t, p)
+	head := strings.TrimSpace(p.Git("rev-parse", "HEAD"))
+	if head == otherHead {
+		t.Fatalf("fixture premise: both repositories share HEAD %s", head)
+	}
+
+	t.Setenv("GIT_DIR", filepath.Join(other.Root, ".git"))
+	res, err := revoke.Revoke(opts(p), revoke.Seams{})
+	if err != nil || res.Status != revoke.StatusRevoked {
+		t.Fatalf("revoke: status %q err %v", res.Status, err)
+	}
+	data, err := os.ReadFile(res.RecordPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec, err := escalation.ParseRecord(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec.HeadSHA != head {
+		t.Errorf("record head %q, want the project's HEAD %q (ambient GIT_DIR HEAD is %q)", rec.HeadSHA, head, otherHead)
+	}
+}
+
 func relTo(t *testing.T, root, path string) string {
 	t.Helper()
 	rel, err := filepath.Rel(root, path)
