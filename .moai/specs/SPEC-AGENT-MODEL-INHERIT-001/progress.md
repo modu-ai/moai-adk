@@ -142,6 +142,39 @@ Package verification (env-scrubbed, one compound call each):
 | `go build ./...` | ok |
 | `git diff --name-only 5509ea71e HEAD -- internal/hook internal/config` | 0 files — t1282-frozen surfaces untouched |
 
+### M2 — web console removal (2026-09-27, commit `384eb3460`)
+
+RED (before any removal), `go test ./internal/web/ -run 'TestAgentSettings(Tab_IsNotRendered|Fields_ArePostedWithoutEffect)'`:
+`GET /settings still renders "sec.agentfm.title"`, `… "name=\"performance_tier\""`,
+`… "id=\"moai-profile-matrix\""`, and `llm.yaml changed:` after a POST carrying
+`performance_tier` + `agentfm.manager-develop.{model,effort}`. GREEN: both PASS.
+
+Removed: `internal/web/agentfm.go`, `internal/settings/agentfm/`, the agentfm templ blocks
+(`*_templ.go` regenerated with `go run github.com/a-h/templ/cmd/templ generate -path ./internal/web`,
+`templ version` → `v0.3.1020`), app seams `listAgentFMs` / `patchAgentFM` / `applyPerfTierEdits`,
+pageView fields `AgentFMs` / `PerfTier*` / `LLM`, the settings tab entry, the v4manifest
+tier/model-colour helpers and settings re-exports (`TierForAgent`, `TierSuggestedModelEffort`,
+`V4EffortValues`, `V4ModelValues`), the app.js `wireProfileMatrix` / haiku-lock code (V3 resolved),
+orphaned CSS, 148 i18n lines (`agentfm.*`, `fieldDesc.agentfm.*`, `agentdesc.*`, `sec.agentfm.*`; count
+after = 0), the `agentdesc.` exemption and the empty-registry assertion, and rosterguard sites
+`v4manifest-agent-tiers`, `v4manifest-tier-test`, `web-i18n-agent-descriptions`,
+`web-agentfm-display-rank(-test)`, exemption `web-agentfm-subset-count`. No dedicated agentfm
+route existed; the former fields rode `/save` and are now ignored.
+
+| Command | Result |
+|---|---|
+| `go test ./internal/web/... -count=1 -timeout 25m -v` | exit 1 — only `TestDocsTabContract` (README ×4 and docs-site `moai-web-console.md` ×4 still list 14 tabs incl. Agents); 509 PASS incl. the M1 web characterisation tests |
+| `go test ./internal/settings/... ./internal/harness/v4manifest/...` | ok |
+| `go test ./internal/template/... -count=1` | exit 0 |
+| `go test ./internal/harness/rosterguard/` | exit 1 — same three tests; failure lines byte-identical to M1 (`diff rg1.txt rg2.txt` exit 0, 7 lines) |
+| `go test ./internal/cli/ -run 'TestCharacterize_(…)$'` | 4 PASS |
+| `golangci-lint run` (v2.1.6) web, settings, harness | `0 issues.` |
+| `go build ./...` / `go vet` on cli, web, settings, harness, template | ok / exit 0 |
+
+Blocker for the lead: `TestDocsTabContract` binds README.md (4 locales, manager-docs territory) and
+the docs-site web-console pages (M8) to the rendered tab list; it stays red until those drop
+the Agents tab.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
