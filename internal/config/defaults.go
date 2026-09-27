@@ -48,6 +48,11 @@ const (
 	// lease takes when the caller omits --max-duration. A chosen value, not a
 	// measured one (plan.md §B3, OQ-3); this is the one place it is defined.
 	DefaultSlotLeaseMaxDuration = "30m"
+	// DefaultFactoryLeaseDuration is how long a factory worker's card lease
+	// lasts past its last heartbeat. It bounds worker liveness only: the
+	// decision-pending card states hold no lease, so a human decision is never
+	// raced by it. A chosen value, not a measured one; no config key reads it.
+	DefaultFactoryLeaseDuration = 15 * time.Minute
 
 	DefaultTestCoverageTarget    = 85
 	DefaultMaxTransformationSize = "small"
