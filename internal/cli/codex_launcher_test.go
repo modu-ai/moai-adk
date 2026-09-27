@@ -892,8 +892,12 @@ func checkCodexSpawnRealAssembly(t *testing.T) {
 	// direct path assigns.
 	// resolveCodexHomeDir's second result is the source label, not an error.
 	codexHome, _ := resolveCodexHomeDir()
+	laneBlanks := ""
+	for _, key := range codexLaneLaunchEnvKeys {
+		laneBlanks += key + "= "
+	}
 	wantCommand := codexHomeEnvVar + "=" + shellQuote(codexHome) + " " +
-		config.EnvClaudeCodeSessionID + "= " + config.EnvMoaiSessionPID + "= " +
+		config.EnvClaudeCodeSessionID + "= " + config.EnvMoaiSessionPID + "= " + laneBlanks +
 		"exec " + shellQuote(fixture) + " --flag=v " + shellQuote("a b")
 	if gotCommand != wantCommand {
 		t.Errorf("tmux command = %q, want %q", gotCommand, wantCommand)
@@ -911,22 +915,27 @@ func checkCodexSpawnRealAssembly(t *testing.T) {
 	}
 }
 
-func TestFactoryCodexSpawnRegistersLaunchPendingPeer(t *testing.T) {
+// TestCodexSpawnUnderLaneEnvRegistersNoFactoryPeer is AC-CFR-007's spawn
+// half: a codex spawn run inside a Claude worker lane registers no
+// launch-pending peer and leaves the run owner untouched (REQ-CFR-008). The
+// pane-identity seam is faked as live, so a regression that restored the
+// factory branch would find everything it needs to register.
+func TestCodexSpawnUnderLaneEnvRegistersNoFactoryPeer(t *testing.T) {
 	t.Setenv("MOAI_HOME", t.TempDir())
 	root := t.TempDir()
-	run := "spawn-pending"
+	run := "r1"
 	db, err := homestate.OpenFactory(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.RecordRun(context.Background(), homestate.FactoryRun{RunID: run, Backend: "codex", ManifestJSON: "{}"}); err != nil {
+	if err := db.RecordRun(context.Background(), homestate.FactoryRun{RunID: run, Backend: "claude", ManifestJSON: "{}", LeadPID: 424242, LeadProcessStart: "t1242-lead"}); err != nil {
 		t.Fatal(err)
 	}
 	_ = db.Close()
 	t.Setenv(config.EnvMoaiKanbanID, run)
-	t.Setenv(config.EnvMoaiKanbanBackend, "codex")
-	t.Setenv(config.EnvMoaiFactoryWorker, "agent-1")
-	t.Setenv(config.EnvMoaiFactoryWorkers, "0")
+	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
+	t.Setenv(config.EnvMoaiFactoryWorker, "worker-1")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	start, state := homestate.ProbeProcessIdentity(os.Getpid())
 	if state != homestate.ProcessIdentityLive || start == "" {
 		t.Fatal("test process identity unavailable")
@@ -939,7 +948,7 @@ func TestFactoryCodexSpawnRegistersLaunchPendingPeer(t *testing.T) {
 	t.Cleanup(func() {
 		tmuxSpawnFn, codexSpawnPaneIdentityFn, codexSpawnCleanupPaneFn = oldSpawn, oldIdentity, oldCleanup
 	})
-	if err := defaultCodexSpawnLaunch(root, "/test/codex", nil); err != nil {
+	if _, err := withStdoutCapture(t, func() error { return defaultCodexSpawnLaunch(root, "/test/codex", nil) }); err != nil {
 		t.Fatal(err)
 	}
 	if cleanups != 0 {
@@ -954,8 +963,11 @@ func TestFactoryCodexSpawnRegistersLaunchPendingPeer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(status.Lanes) != 1 || status.Lanes[0].Slot != "agent-1" || status.Lanes[0].BindingState != factorymsg.BindingLaunchPending {
-		t.Fatalf("spawn pending roster=%+v", status.Lanes)
+	if len(status.Lanes) != 0 {
+		t.Fatalf("codex spawn under a lane env registered peers: %+v", status.Lanes)
+	}
+	if pid, owner := runOwnerStamp(t, root, run); pid != 424242 || owner != "t1242-lead" {
+		t.Fatalf("run owner = (%d, %q), want unchanged (424242, t1242-lead)", pid, owner)
 	}
 }
 

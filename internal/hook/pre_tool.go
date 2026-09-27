@@ -1072,6 +1072,22 @@ func (h *preToolHandler) checkBashCommand(toolInput json.RawMessage) (string, st
 		return DecisionDeny, fmt.Sprintf("Dangerous command blocked: removal of protected path %q", target)
 	}
 
+	// REQ-HGF-007 (SPEC-HOOK-GUARD-POWERSHELL-FORMS-001): a LITERAL quoted
+	// operand of an indirection construct — Bash eval, PowerShell
+	// iex/Invoke-Expression, or the joined program-and-argument text of
+	// Start-Process … -ArgumentList — is positive evidence the deny-list
+	// pattern will execute through the indirection, so the same compiled
+	// patterns run over the operand before the quoted-span collapse blanks
+	// it. A non-literal operand (variable, subexpression) is found-but-empty:
+	// the scan skips it and the fail-open path with its audit line stands.
+	if operand, found := extractLiteralIndirectionOperand(command); found {
+		for _, pattern := range h.policy.DangerousBashPatterns {
+			if pattern.MatchString(operand) {
+				return DecisionDeny, fmt.Sprintf("Dangerous command blocked: %s", pattern.String())
+			}
+		}
+	}
+
 	// Collapse quoted spans to a placeholder before the pattern scan, matching
 	// what the branch guard already does (substituteQuotedArguments). Without
 	// this, a command that merely PRINTS or STORES a dangerous form — a commit
@@ -1094,6 +1110,100 @@ func (h *preToolHandler) checkBashCommand(toolInput json.RawMessage) (string, st
 	}
 
 	return "", ""
+}
+
+// --- literal indirection-operand extraction (SPEC-HOOK-GUARD-POWERSHELL-FORMS-001 REQ-HGF-007) ---
+
+// extractLiteralIndirectionOperand returns the literal quoted operand text of
+// an indirection construct with its outer quoting stripped, and whether an
+// operand was found at all. Covered constructs: Bash eval, PowerShell
+// iex/Invoke-Expression, and Start-Process (including the saps/start
+// aliases). A found-but-empty return marks a NON-literal operand — a
+// variable reference or subexpression, where the deny scan fails open and
+// the unclassifiable audit line (where applicable) is the only record.
+func extractLiteralIndirectionOperand(command string) (string, bool) {
+	tokens := splitPSTokens(command)
+	for i, tok := range tokens {
+		switch strings.ToLower(strings.TrimLeft(tok, "({&")) {
+		case "eval", "iex", "invoke-expression":
+			return firstLiteralOperand(tokens[i+1:])
+		case "start-process", "saps", "start":
+			return startProcessOperand(tokens[i+1:])
+		}
+	}
+	return "", false
+}
+
+// firstLiteralOperand returns the first quoted operand after the construct
+// with its outer quotes stripped. An operand whose content carries a `$` is
+// a variable reference or substitution, not a literal — found-but-empty.
+func firstLiteralOperand(rest []string) (string, bool) {
+	for _, tok := range rest {
+		if len(tok) >= 2 && (tok[0] == '"' || tok[0] == '\'') && tok[len(tok)-1] == tok[0] {
+			content := tok[1 : len(tok)-1]
+			if strings.ContainsRune(content, '$') {
+				return "", true // non-literal: fail open
+			}
+			return content, true
+		}
+	}
+	return "", false
+}
+
+// startProcessOperand joins the Start-Process program with its -ArgumentList
+// values into one text the deny scan runs over (REQ-HGF-007: the joined
+// program-and-argument text). `-FilePath <prog>` supplies the program when
+// the positional form is not used.
+func startProcessOperand(rest []string) (string, bool) {
+	program := ""
+	var args []string
+	sawOperand := false
+	for j := 0; j < len(rest); j++ {
+		tok := rest[j]
+		low := strings.ToLower(tok)
+		switch {
+		case low == "-argumentlist":
+			sawOperand = true
+		case strings.HasPrefix(low, "-argumentlist="):
+			sawOperand = true
+			args = append(args, argumentListItems(tok[len("-argumentlist="):])...)
+		case strings.HasPrefix(low, "-"):
+			if low == "-filepath" && j+1 < len(rest) {
+				program = rest[j+1]
+				j++
+			}
+		default:
+			if program == "" {
+				program = tok
+			} else {
+				args = append(args, argumentListItems(tok)...)
+			}
+		}
+	}
+	if program == "" && len(args) == 0 {
+		return "", sawOperand
+	}
+	return strings.Join(append([]string{program}, args...), " "), true
+}
+
+// argumentListItems extracts the array items of an -ArgumentList value —
+// quoted spans stripped, bare words kept, commas dropped
+// (`'switch','probe'` yields switch, probe).
+var argumentListItemPattern = regexp.MustCompile(`'([^']*)'|"([^"]*)"|[^,\s]+`)
+
+func argumentListItems(value string) []string {
+	var out []string
+	for _, m := range argumentListItemPattern.FindAllStringSubmatch(value, -1) {
+		switch {
+		case m[1] != "":
+			out = append(out, m[1])
+		case m[2] != "":
+			out = append(out, m[2])
+		default:
+			out = append(out, m[0])
+		}
+	}
+	return out
 }
 
 // resolveThroughExistingParent resolves the symlinks of the nearest EXISTING

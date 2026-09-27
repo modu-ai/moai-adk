@@ -100,9 +100,9 @@ a hard error.
 
 | Tool | Purpose | Consumer | CLI equivalent |
 |------|---------|----------|----------------|
-| `mcp__moai__codex_role_audit` | Start a read-only contract role as one top-level `codex exec` process (read-only sandbox, every MCP server disabled); returns a job id at once | Codex lane orchestrator | none — a Codex lane's shell cannot reach the model from a nested `codex exec` |
-| `mcp__moai__codex_role_audit_status` | Read a role job's state and timestamps | Codex lane orchestrator | — |
-| `mcp__moai__codex_role_audit_result` | Read a finished role job's exit code, returned text or verdict path, and launch record path | Codex lane orchestrator | — |
+| `mcp__moai__codex_role_audit` | Start a read-only contract role as one top-level `codex exec` process (read-only sandbox, every MCP server disabled); returns a job id at once | a Codex session | none — a Codex session's shell cannot reach the model from a nested `codex exec` |
+| `mcp__moai__codex_role_audit_status` | Read a role job's state and timestamps | a Codex session | — |
+| `mcp__moai__codex_role_audit_result` | Read a finished role job's exit code, returned text or verdict path, and launch record path | a Codex session | — |
 
 On Codex, `spawn_agent` gives a subagent the parent session's sandbox, so a
 read-only role started that way could write. This family starts it as its own

@@ -209,6 +209,9 @@ var namesAddedAfterBaseline = map[string]bool{
 	// settingsDefaultModeCheckName — card t1247, the ignored
 	// defaultMode=bypassPermissions diagnostic. Registered through a constant.
 	"settingsDefaultModeCheckName": true,
+	// hookMissingLogCheckName — card t1251, the "Hook Missing Log" skipped-hook
+	// diagnostic. Registered through a constant, hence bare.
+	"hookMissingLogCheckName": true,
 }
 
 // TestBinaryLag_AllowlistKeysAreLiveNames asserts that every key of

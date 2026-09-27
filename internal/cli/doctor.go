@@ -208,6 +208,9 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		// provider escape name-based dedup and load the tools twice.
 		{mcpProviderDuplicatesCheckName, func(v bool) DiagnosticCheck { return checkMCPProviderDuplicates(cwd, v) }},
 		{mcpServerVersionCheckName, func(v bool) DiagnosticCheck { return checkMCPServerVersion(cwd, v) }},
+		// Card t1251: hook wrappers log skipped fires here; surface them so a
+		// silently missing hook is not silently forgotten.
+		{hookMissingLogCheckName, func(v bool) DiagnosticCheck { return checkHookMissingLog(cwd, v) }},
 		// SPEC-AGENT-EMIT-LINEAGE-001 REQ-AEL-004: embed-axis judgment point.
 		// Applicable only in a tree carrying the committed emission set — a
 		// deployed project sees one added `ok` row and the same exit status.

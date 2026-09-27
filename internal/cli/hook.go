@@ -283,6 +283,11 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 	if herr != nil {
 		return herr
 	}
+	if harnessCodex {
+		// A Codex session's hook never acts as a Claude lane's factory peer
+		// (SPEC-CODEX-FACTORY-RETIRE-001 REQ-CFR-022).
+		defer unsetLaneEnvForCodexHook()()
+	}
 
 	stdin := &stdinByteCounter{r: os.Stdin}
 	input, err := deps.HookProtocol.ReadInput(stdin)
@@ -294,6 +299,13 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 		return answerStdinParseFailure(string(event), event, harnessCodex, stdin.n, err, func() error {
 			return writeHookOutput(event, nil, &hook.HookOutput{})
 		})
+	}
+
+	// A Claude Stop that parsed ends a run of parse-failure Stops, so its
+	// counting record is deleted before dispatch (SPEC-HOOK-STOP-PARSE-CAP-001
+	// REQ-SPC-005). No other event touches the count (REQ-SPC-006).
+	if !harnessCodex && event == hook.EventStop {
+		resetStopParseCap()
 	}
 
 	// Inject event name from CLI subcommand when Claude Code omits it.
