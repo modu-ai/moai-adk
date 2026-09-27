@@ -2,6 +2,8 @@ package gitenv
 
 import (
 	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
@@ -198,5 +200,69 @@ func TestEnv_ScrubsLiveEnvironment(t *testing.T) {
 	if len(got) != wantLen {
 		t.Errorf("Env() returned %d entries, want %d (live %d minus repo-scoping)",
 			len(got), wantLen, len(live))
+	}
+}
+
+// ScrubProcess removes repo-scoping variables from the live process and leaves
+// identity alone. The variables are set by this test, so the check does not
+// depend on what the ambient environment holds.
+func TestScrubProcess_UnsetsRepoScopingVars(t *testing.T) {
+	t.Setenv("GIT_DIR", "/leak")
+	t.Setenv("GIT_WORK_TREE", "/leak")
+	t.Setenv("GIT_AUTHOR_NAME", "t1232")
+
+	if err := ScrubProcess(); err != nil {
+		t.Fatalf("ScrubProcess: %v", err)
+	}
+	for _, name := range []string{"GIT_DIR", "GIT_WORK_TREE"} {
+		if v, ok := os.LookupEnv(name); ok {
+			t.Errorf("%s survived ScrubProcess (value %q)", name, v)
+		}
+	}
+	if got := os.Getenv("GIT_AUTHOR_NAME"); got != "t1232" {
+		t.Errorf("GIT_AUTHOR_NAME = %q after ScrubProcess, want identity kept", got)
+	}
+}
+
+// The mechanism a package TestMain relies on, end to end: a fixture that runs
+// git with only cmd.Dir set, in a process carrying an inherited GIT_DIR and
+// GIT_WORK_TREE, acts on the inherited repository — and after ScrubProcess it
+// acts on its own directory. Both variables point into this test's temp dir,
+// so the leaking arm writes nowhere outside it.
+func TestScrubProcess_FixtureGitStaysInItsOwnDir(t *testing.T) {
+	gitBin, err := exec.LookPath("git")
+	if err != nil {
+		t.Skip("git not on PATH")
+	}
+
+	run := func(mode string) (leaked bool, out string) {
+		root := t.TempDir()
+		leakDir := filepath.Join(root, "leak.git")
+		t.Setenv("GIT_DIR", leakDir)
+		t.Setenv("GIT_WORK_TREE", filepath.Join(root, "elsewhere"))
+		if mode == "scrub" {
+			if err := ScrubProcess(); err != nil {
+				t.Fatalf("ScrubProcess: %v", err)
+			}
+		}
+
+		fixture := filepath.Join(root, "fixture")
+		if err := os.MkdirAll(fixture, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(gitBin, "init", "-q")
+		cmd.Dir = fixture
+		b, _ := cmd.CombinedOutput()
+		_, statErr := os.Stat(leakDir)
+		return statErr == nil, string(b)
+	}
+
+	// Control arm: without the scrub the fixture's init lands in the inherited
+	// GIT_DIR. If this stops happening the test proves nothing, so it fails.
+	if leaked, out := run("inherit"); !leaked {
+		t.Fatalf("control: inherited GIT_DIR was not used by the fixture (git output %q); the scrub arm cannot be told apart", out)
+	}
+	if leaked, out := run("scrub"); leaked {
+		t.Errorf("after ScrubProcess the fixture still initialised the inherited GIT_DIR (git output %q)", out)
 	}
 }

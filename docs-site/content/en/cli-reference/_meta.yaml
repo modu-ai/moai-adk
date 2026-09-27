@@ -49,3 +49,5 @@ tokens:
   title: "moai tokens Token Accounting"
 memory:
   title: "moai memory Memory Maintenance"
+contract:
+  title: "moai contract Autonomy Contracts"

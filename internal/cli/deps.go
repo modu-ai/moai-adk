@@ -248,12 +248,17 @@ func InitDependencies() {
 	// additionalContext alongside the other SessionStart handlers' output.
 	deps.HookRegistry.Register(hook.NewSessionStartCompactHandler())
 
-	deps.HookRegistry.Register(hook.NewStopHandler())
+	deps.HookRegistry.Register(hook.WithEscalationConfig(hook.NewStopHandler(), deps.Config))
 	// Build security policy: defaults + extra patterns from security.yaml (REQ-SEC-003).
 	secPolicy := hook.DefaultSecurityPolicy()
 	secPolicy.MergeExtraPatterns(security.LoadExtraSecurityConfig(cwd))
 	deps.HookRegistry.Register(hook.NewPreToolHandlerWithScanner(deps.Config, secPolicy, securityScanner))
-	deps.HookRegistry.Register(hook.NewPostToolHandlerWithMxValidatorAndTimeout(diagnosticsCollector, astAnalyzer, cwd, 500*time.Millisecond))
+	// WithEscalationConfig hands the contract-mode escalation detector the
+	// configuration without giving the handler a cfg (which would change its
+	// lint_as_instruction default).
+	deps.HookRegistry.Register(hook.WithEscalationConfig(
+		hook.NewPostToolHandlerWithMxValidatorAndTimeout(diagnosticsCollector, astAnalyzer, cwd, 500*time.Millisecond),
+		deps.Config))
 	// The regex security guardian runs in this process alongside the post-tool
 	// handler; the registry accumulates its additionalContext next to the
 	// post-tool handler's systemMessage, so neither advisory is dropped. It
@@ -261,7 +266,7 @@ func InitDependencies() {
 	// `moai hook security-scan` subcommand it fronted stays registered.
 	deps.HookRegistry.Register(hook.NewPostToolGuardianHandler())
 	deps.HookRegistry.Register(hook.NewCompactHandler())
-	deps.HookRegistry.Register(hook.NewPostToolUseFailureHandler())
+	deps.HookRegistry.Register(hook.WithEscalationConfig(hook.NewPostToolUseFailureHandler(), deps.Config))
 	deps.HookRegistry.Register(hook.NewNotificationHandlerWithConfig(deps.Config))
 	// Config-ful constructor so project-context additionalContext injection is
 	// live in production (the no-config constructor left buildContext dead).

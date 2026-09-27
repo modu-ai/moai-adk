@@ -85,6 +85,13 @@ MoAI-ADK가 기본으로 연결하는 열세 개 이벤트와 역할은 다음�
         "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
         "timeout": 5
       }]
+    }, {
+      "matcher": "PowerShell",
+      "hooks": [{
+        "type": "command",
+        "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
+        "timeout": 5
+      }]
     }],
     "PostToolUse": [{
       "matcher": "Write|Edit",
@@ -113,6 +120,9 @@ MoAI-ADK가 기본으로 연결하는 열세 개 이벤트와 역할은 다음�
 | `"Write"` | Write 도구에만 |
 | `"Write\|Edit"` | Write 또는 Edit |
 | `"Bash"` | Bash 도구에만 |
+| `"PowerShell"` | PowerShell 도구에만 |
+
+MoAI-ADK는 `PreToolUse`의 `handle-pre-tool.sh`를 `Write|Edit|Bash` 매처와 별도의 `PowerShell` 매처, 두 곳에 연결합니다. Claude Code는 셸 명령을 PowerShell 도구(`CLAUDE_CODE_USE_POWERSHELL_TOOL=1`)로도 실행하는데, `Bash` 매처는 이 도구의 호출에는 발화하지 않습니다. 두 매처를 함께 두어야 위험 명령 차단, 브랜치 가드, 통합 창 잠금 같은 셸 명령 가드가 어느 도구를 거치든 똑같이 적용됩니다. `PostToolUse` 매처는 그대로입니다.
 
 권장 타임아웃은 훅이 하는 일에 따라 다릅니다. 보안 가드 (PreToolUse) 는 5초, 포맷터·린트 (PostToolUse) 는 10초, 세션 시작과 컨텍스트 저장 (SessionStart·PreCompact) 은 30초까지 허용됩니다. `PreCompact`는 `/clear` 직전에 현재 진행 중이던 SPEC 상태와 수정 파일 목록, 핵심 결정을 `.moai/state/` 아래에 저장해, 세션이 끊겨도 다음 세션이 하던 자리에서 이어 가게 만드는 안전망입니다.
 

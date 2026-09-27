@@ -14,23 +14,63 @@ import (
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
+// factoryAmbientEnvKeys lists the factory/kanban signal variables a lane or
+// factory session carries in its ambient environment. clearFactoryTestEnv
+// clears them per test on the t.Setenv-restore contract, and TestMain clears
+// the same family once for the whole binary so tests that never call the
+// helper (todo round-trips, golden captures) do not stamp a live run_id/owner
+// into their fixtures (card t1252). The family is the union of the factory
+// launch gate (factory_launch_pending.go), the todo runtime stamping
+// (todo.go run_id/owner), the codex spawn forwarding list
+// (codexSpawnForwardedEnv), and the per-lane agent cap, whose seed is
+// fill-if-absent — an ambient value would mask it.
+var factoryAmbientEnvKeys = []string{
+	config.EnvMoaiFactoryWorkers,
+	config.EnvMoaiFactoryWorker,
+	config.EnvMoaiKanban,
+	config.EnvMoaiKanbanID,
+	config.EnvMoaiKanbanSpec,
+	config.EnvMoaiKanbanLabel,
+	config.EnvMoaiKanbanSettingsInjected,
+	config.EnvMoaiKanbanLeadAddr,
+	config.EnvMoaiKanbanBackend,
+	config.EnvMoaiKanbanCard,
+	config.EnvMoaiKanbanLeadName,
+	config.EnvClaudeCodeMaxConcurrentSubagents,
+}
+
+// factoryEnvPinnedEnv exempts a re-executed helper child from the TestMain
+// ambient clear. A parent that deliberately composes factory env for an
+// os.Args[0] child — codex_launcher_exec_posix_test.go builds the
+// preserves-factory-owner exec chain this way — sets it in cmd.Env: for that
+// child the keys are the payload under test, not ambient lane state, and
+// clearing them leaves the helper asserting on an empty run id (the
+// merge-window remeasure failure of TestCodexDirectPOSIXExecPreservesFactoryOwner,
+// card t1252). Same carry-to-re-exec-children pattern as profileBaseDirEnv.
+const factoryEnvPinnedEnv = "MOAI_CLI_TEST_FACTORY_ENV_PINNED"
+
+// clearFactoryAmbientEnv clears the factory/kanban ambient family for this
+// process, unless factoryEnvPinnedEnv marks a re-executed helper whose parent
+// composed the family deliberately. TestMain calls it before any test runs so
+// tests that never call clearFactoryTestEnv (todo round-trips, golden
+// captures) cannot stamp a live run_id/owner into their fixtures (t1252).
+func clearFactoryAmbientEnv() {
+	if os.Getenv(factoryEnvPinnedEnv) != "" {
+		return
+	}
+	for _, key := range factoryAmbientEnvKeys {
+		_ = os.Unsetenv(key)
+	}
+}
+
 // clearFactoryTestEnv isolates the factory signal variables from this test
 // binary's ambient environment, on the same t.Setenv-restore contract as
 // clearKanbanLauncherEnv (a developer running tests inside a factory session
 // carries MOAI_FACTORY_* in the ambient env; the branches under test are
-// unconditional on them). The per-lane agent cap joins the list for the same
-// reason — its seed is fill-if-absent, so an ambient value would mask it.
+// unconditional on them).
 func clearFactoryTestEnv(t *testing.T) {
 	t.Helper()
-	for _, key := range []string{
-		config.EnvMoaiFactoryWorkers,
-		config.EnvMoaiFactoryWorker,
-		config.EnvMoaiKanban,
-		config.EnvMoaiKanbanID,
-		config.EnvMoaiKanbanLabel,
-		config.EnvMoaiKanbanLeadAddr,
-		config.EnvClaudeCodeMaxConcurrentSubagents,
-	} {
+	for _, key := range factoryAmbientEnvKeys {
 		t.Setenv(key, "")
 		_ = os.Unsetenv(key)
 	}
@@ -44,6 +84,48 @@ func requireFactoryLaunchDisabled(t *testing.T) {
 	t.Helper()
 	if factoryLaunchEnabled(os.Environ()) {
 		t.Fatal("factory launch still enabled after clearFactoryTestEnv; the helper no longer covers factoryLaunchEnabled's gate")
+	}
+}
+
+// TestFactoryAmbientEnvClearedInTestMain guards the TestMain clear (card
+// t1252). It only fires from inside a factory/kanban session — the ambient
+// case this card measured (three todo tests stamped run_id/owner into their
+// goldens); on a plain developer shell it passes vacuously, the shared limit
+// of every ambient-env guard. The launch gate plus the two stamping keys
+// cover both failure shapes: launch-path tests and todo golden captures.
+func TestFactoryAmbientEnvClearedInTestMain(t *testing.T) {
+	if factoryLaunchEnabled(os.Environ()) {
+		t.Fatal("factory launch still enabled after TestMain: the TestMain " +
+			"clear no longer covers factoryLaunchEnabled's gate keys")
+	}
+	for _, key := range []string{
+		config.EnvMoaiKanbanID,
+		config.EnvMoaiFactoryWorker,
+		config.EnvMoaiFactoryWorkers,
+	} {
+		if v := os.Getenv(key); v != "" {
+			t.Fatalf("%s=%q survived TestMain: the todo runtime stamps this "+
+				"value into golden fixtures (card t1252)", key, v)
+		}
+	}
+}
+
+// TestFactoryEnvPinnedSkipsTestMainClear covers the factoryEnvPinnedEnv branch
+// of clearFactoryAmbientEnv: a re-executed helper whose parent composed
+// factory env must keep it. The unpinned branch is covered end-to-end by
+// TestFactoryAmbientEnvClearedInTestMain (this process went through TestMain
+// with no marker); the marker side is evaluated only at binary start, so a
+// same-process guard cannot reach it through TestMain — hence this direct
+// call. Removing the marker check fails this test and re-breaks
+// TestCodexDirectPOSIXExecPreservesFactoryOwner in a lane session.
+func TestFactoryEnvPinnedSkipsTestMainClear(t *testing.T) {
+	t.Setenv(factoryEnvPinnedEnv, "1")
+	t.Setenv(config.EnvMoaiKanbanID, "pinned-run")
+	clearFactoryAmbientEnv()
+	if got := os.Getenv(config.EnvMoaiKanbanID); got != "pinned-run" {
+		t.Fatalf("%s=%q after clearFactoryAmbientEnv with pin marker; the "+
+			"marker must keep a parent-composed family intact",
+			config.EnvMoaiKanbanID, got)
 	}
 }
 

@@ -109,14 +109,17 @@ func TestCodexRPC_BareStringTargetNotSentInReviewRequest(t *testing.T) {
 }
 
 // TestSynthesizeReviewOutput_FindingBulletsMapToFail pins the verdict synthesis:
-// codex's severity-tagged finding bullets ("- [P1] ...") ⇒ fail; a clean review
-// ⇒ pass. Grounded in codex-cli 0.146.1 live output on both directions.
+// codex's severity-tagged finding bullets ("- [P1] ...") ⇒ fail; a body with no
+// recognized signal ⇒ inconclusive (SPEC-CODEX-PARSER-SHAPE-001 M4 — pre-M4
+// these rows carried "pass"; a clean review now states the pinned
+// `Verdict: pass`, which codexStatedVerdict reads). Grounded in codex-cli
+// 0.146.1 live output on the bullets direction.
 func TestSynthesizeReviewOutput_FindingBulletsMapToFail(t *testing.T) {
 	cases := map[string]string{
 		"- [P1] injection at vuln.go:5\n- [P1] AWS key at vuln.go:7": "fail",
 		"- [P2] minor style issue":                                   "fail",
-		"The change introduces no blocking issues.":                  "pass",
-		"": "pass",
+		"The change introduces no blocking issues.":                  "inconclusive",
+		"": "inconclusive",
 	}
 	for text, want := range cases {
 		if got := synthesizeReviewOutput(text, codexMethodReviewStart).Verdict; got != want {

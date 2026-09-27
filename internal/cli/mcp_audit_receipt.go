@@ -39,10 +39,20 @@ func receiptTarget(projectRoot string) (root, source string) {
 // codex gate required. A write failure is logged and returns an empty id: the
 // receipt is evidence, and failing the audit because the evidence could not be
 // filed would turn a disk problem into a verdict.
-func recordAuditReceipt(tool, projectRoot, codexVerdict, gateUnmet string) string {
+//
+// The receipt carries the audited tree's identity and is kept in that tree's
+// store root — the primary checkout for a config-orphaned worktree
+// (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-002/003). Where that primary cannot be
+// identified there is no store: the write is skipped, never redirected, and
+// notice says so (REQ-WSR-004).
+func recordAuditReceipt(tool, projectRoot, codexVerdict, gateUnmet string) (id, notice string) {
 	root, source := receiptTarget(projectRoot)
 	if root == "" {
-		return ""
+		return "", ""
+	}
+	store, err := auditreceipt.StoreRoot(root)
+	if err != nil {
+		return "", "audit receipt not recorded: " + err.Error()
 	}
 	r := auditreceipt.Receipt{
 		Tool:         tool,
@@ -51,13 +61,13 @@ func recordAuditReceipt(tool, projectRoot, codexVerdict, gateUnmet string) strin
 		CodexVerdict: codexVerdict,
 		GateUnmet:    gateUnmet,
 	}
-	id, err := auditreceipt.WriteReceipt(root, &r)
+	id, err = auditreceipt.WriteReceipt(store, &r)
 	if err != nil {
 		slog.Warn("audit receipt not recorded", "tool", tool, "tree_root", root, "error", err)
-		return ""
+		return "", ""
 	}
 	if !receiptCodexGateRequired(root) {
-		return ""
+		return "", ""
 	}
-	return id
+	return id, ""
 }

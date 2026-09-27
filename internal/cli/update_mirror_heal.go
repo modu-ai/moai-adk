@@ -73,6 +73,16 @@ func repairSkillMirrorBestEffortAt(projectRoot string, out, errOut io.Writer) {
 			len(res.PathACreated), pluralMirrorEntries(len(res.PathACreated)),
 			len(res.PublishedRestored), pluralMirrorFiles(len(res.PublishedRestored)))
 	}
+	// card t1276 F2: Path B rewrote published SKILL.md artifacts the deploy
+	// had tracked — re-record them so a later init --force does not freeze
+	// the restored files user_modified on their stale hashes. The mirror
+	// symlinks of Path A are links, not hashable regular files, and stay out
+	// of the manifest's hash bookkeeping.
+	if len(res.PublishedRestored) > 0 {
+		if err := retrackPaths(projectRoot, errOut, res.PublishedRestored); err != nil {
+			warnMirrorRepair(errOut, fmt.Sprintf("manifest retrack of restored published skills: %v", err))
+		}
+	}
 }
 
 // repairSkillMirrorBestEffort is the runUpdate call-site form: runUpdate
