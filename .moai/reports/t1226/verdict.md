@@ -5,6 +5,7 @@
 기준 커밋: `7fe658815eb0d4110b9acadad56e5a85bee3ed3f` (`git rev-parse HEAD`, 깨끗한 트리 — 오케스트레이터 실측)
 기준선(`S_live`): `199111 total` — 150,000 에 대한 잔여 49,111. 이 run 에서 `build_head` 트리를 다시 재도 `199111` 이다(아래 S_live)
 동결 다중집합 sha256(`S_live`, 170줄, 기준 커밋): `d97b33d960c9801d4ec145ca263ed788425b337f43c585594c8d527c1318c6c3`
+측정 기준 한정: 이 판정서의 모든 수치(합계·해시·A_adm·T_min)는 `7fe658815` 기준 트리(측정 build_head `f8d6f5167`)의 측정값이다. 병합 창에서 로컬 develop `5d4c37664` 를 흡수했고, 그 뒤 always-loaded 룰과 CLAUDE.md 가 바뀌었다(흡수 후 `S_live` 18경로 `wc -m` = `199333 total`, 관측만 — 판정 재측정은 리드 지시로 요구되지 않음). 흡수 후 트리의 판정은 재산출하지 않았다
 폐기 수치(다른 트리의 값, 산술에 쓰지 않음): 197,897(`3a48485af`) · 198,361(`8e50ef148`)
 plan-audit iter3 은 Tier M 상한(plan_audit_tier_ceilings.M = 2) 초과 — 리드 사후 승인
 킥오프: `CLAUDE.local.md §31` 자율 승인(운영자 정책). 동결 해제 여부는 카드 본문이 명시한 운영자 게이트로 남는다
