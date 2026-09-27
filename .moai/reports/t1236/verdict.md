@@ -259,3 +259,5 @@ RED (expected) extra:
   - lint v2.1.6: 0 issues.
   - `agents-emit-check`와 `make build`: 통과.
 - 새 부채(병합을 막지 않음): SPEC 본문의 EV-6 원장과 AC-GR-003 2단계 서술(acceptance.md L46·L51·L333 이하, plan.md L213)이 여전히 옛 BASE `7fe658815`의 DRIFT 9건을 전제로 적혀 있다. 과거 측정 기록으로서는 사실이지만, 새 BASE에서 테스트가 쓰는 전제(빈 집합)와는 문면이 어긋난다. manager-spec의 비전이 정정 대상이며 리드가 부채로 받는다. 또 `contract --help`의 긴 설명문이 새 동사를 반영하지 않는다(A1 소유 문구).
+
+- 병합 후 gitenv 가드 적색 — kickoff TestMain 누락, t1237 창에서 수리 (`internal/contract/kickoff/activation_test.go:35`가 git을 직접 실행하는데 `gitenv.ScrubProcess()`를 부르는 TestMain이 없어 `internal/gitenv` TestFixturePackagesScrubProcess가 적색. 수리는 worker-62가 t1237 창에서 card t1236 귀속 커밋으로 진행. 카드 셀렉터가 다른 패키지의 가드를 놓친 사례.)
