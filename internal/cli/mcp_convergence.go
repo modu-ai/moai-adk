@@ -149,6 +149,13 @@ type ConvergenceResult struct {
 	// result, and invisible to every project that did not declare the gate.
 	AuditReceipt string `json:"audit_receipt,omitempty"`
 
+	// SecondReviewRecordError carries the A4 append failure
+	// (SPEC-AUTONOMY-CLOSURE-001 REQ-CLOSURE-012): non-empty only when a
+	// card_id was supplied and the record could not be written. omitempty —
+	// absent when no card_id was supplied, which is what keeps a card-less
+	// fan-out byte-identical to the pre-change output.
+	SecondReviewRecordError string `json:"second_review_record_error,omitempty"`
+
 	// BuildCommit / BuildLag record the identity of the ONE binary that
 	// serviced all three backends (SPEC-AUDIT-BUILD-IDENTITY-001) —
 	// deliberately TOP-LEVEL, not on PerBackendVerdict: repeating the same
@@ -505,6 +512,13 @@ type MultiAuditConfig struct {
 	// origin may reuse a caller-supplied in-session Claude anchor; GPT, GLM, and
 	// unknown origins must execute the actual Claude backend.
 	OriginProvider string
+
+	// CardID is the A4 card argument (SPEC-AUTONOMY-CLOSURE-001
+	// REQ-CLOSURE-012). Non-empty ⇒ the fan-out appends one second-review
+	// record binding the review to the card, the audited commit, the reviewed
+	// scope, and the signed contract digest, into the card evidence
+	// directory. Empty ⇒ byte-identical pre-change behavior.
+	CardID string
 }
 
 // backendCallFn is the injectable seam for external-backend invocation.
@@ -809,6 +823,16 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		}
 	}
 	result.StateNotice = strings.Join(notices, " | ")
+
+	// ── A4 second-review record (SPEC-AUTONOMY-CLOSURE-001 REQ-CLOSURE-012)
+	// ── Append-only, after the existing persistence step. A failure rides
+	// the result's second_review_record_error — the audit result itself is
+	// never altered. Empty CardID skips the whole block byte-identically.
+	if cfg.CardID != "" {
+		if err := appendSecondReviewRecord(cfg, result); err != nil {
+			result.SecondReviewRecordError = err.Error()
+		}
+	}
 	return result
 }
 

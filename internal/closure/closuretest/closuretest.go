@@ -91,8 +91,13 @@ func New(t *testing.T) *Fixture {
 	f.Git(f.Root, "commit", "-m", "init")
 
 	f.Git(f.Remote, "init", "--bare")
+	// The bare remote's default head must resolve, so the review
+	// base-resolution chain (origin/HEAD → main) finds it exactly as it
+	// would in a real clone.
+	f.Git(f.Remote, "symbolic-ref", "HEAD", "refs/heads/"+RepoBranch)
 	f.Git(f.Root, "remote", "add", "origin", f.Remote)
 	f.Git(f.Root, "push", "-q", "origin", RepoBranch)
+	f.Git(f.Root, "remote", "set-head", "origin", "-a")
 
 	f.Git(f.Root, "worktree", "add", f.CardDir, "-b", Branch)
 
