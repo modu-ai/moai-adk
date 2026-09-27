@@ -15,6 +15,7 @@ tier: M
 card: t1085
 depends_on: [SPEC-FACTORY-MIXED-HOOK-001]
 related_specs: [SPEC-FACTORY-MIXED-HOOK-001, SPEC-GTD-AUTONOMY-001, SPEC-GTD-CANON-BODY-001]
+partially_superseded_by: [SPEC-ROLE-NAMING-CODE-001]
 ---
 
 # SPEC-FACTORY-WORKER-NAMING-001 — Factory worker naming axis
@@ -68,3 +69,4 @@ Acceptance criteria, Given-When-Then scenarios, severity, and closure gates: see
 ## §E History
 
 - 2026-09-22 — v0.1.0 — manager-spec — initial plan-phase draft (card t1085, Tier M + card-mandated research.md).
+- 2026-09-28 — manager-spec — partially superseded by SPEC-ROLE-NAMING-CODE-001 (card t1256), which reverses this SPEC's worker-canonical vocabulary contract by operator directive of 2026-09-26 (`lane` canonical; `worker`/`agent` demoted to aliases).
