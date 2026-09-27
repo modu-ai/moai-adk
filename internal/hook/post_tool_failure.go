@@ -53,7 +53,11 @@ var oomExitCodeRe = regexp.MustCompile(`\b137\b`)
 
 // postToolUseFailureHandler processes PostToolUseFailure events.
 // It classifies errors by signature and provides actionable messages.
-type postToolUseFailureHandler struct{}
+type postToolUseFailureHandler struct {
+	// escalationCfg is the configuration the escalation detector reads; nil
+	// leaves the detector inert (see WithEscalationConfig).
+	escalationCfg ConfigProvider
+}
 
 // NewPostToolUseFailureHandler creates a new PostToolUseFailure event handler.
 func NewPostToolUseFailureHandler() Handler {
@@ -75,6 +79,11 @@ func (h *postToolUseFailureHandler) EventType() EventType {
 // and swallows errors) — a learning-loop write failure never blocks the user's
 // session end.
 func (h *postToolUseFailureHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
+	// Contract-mode escalation detector: a failed call is an operation whose
+	// failure the invariant-command class reads. Records only; inert unless
+	// workflow.autonomy.mode is contract.
+	observeEscalationWith(h.escalationCfg, string(EventPostToolUse), input, escalationOptions{failed: true})
+
 	category := h.classifyError(input)
 	message := h.formatMessage(category, input)
 

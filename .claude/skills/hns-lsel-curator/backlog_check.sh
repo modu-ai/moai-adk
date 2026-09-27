@@ -31,7 +31,7 @@ if [[ -f "$OFFSET_FILE" ]]; then
 fi
 
 if [[ ! -f "$INBOX" ]]; then
-  echo "lsel-backlog: inbox absent; no-op"
+  echo "lsel-backlog: inbox absent; no-op" >&2   # t1249: never stdout — hook stdout is session context
   exit 0
 fi
 

@@ -89,12 +89,17 @@ flows. The hook applies the doctrine conditionally.
   agent identity is the trusted git agent (`HookInput.AgentType ==
   "manager-git"`) OR the sentinel environment variable
   `MOAI_BRANCH_GUARD_EXEMPT=1` is present. Both axes are implemented and each
-  fires on its own — but each is read from a different place, and **neither is
-  reachable from inside a tool-spawned subagent**:
-  - `AgentType` arrives in the hook payload, and Claude Code populates
-    `agent_type` for a main-thread `claude --agent manager-git` launch. A
-    subagent spawned through the Agent tool sends no `agent_type` on
-    PreToolUse, so the identity axis cannot fire for it.
+  fires on its own — but each is read from a different place, and the two differ
+  in whether a spawned agent can reach them:
+  - `AgentType` arrives in the hook payload, and Claude Code **does** populate
+    `agent_type` for an agent spawned through the Agent tool — measured against
+    a live runtime, in the same snake_case spelling `HookInput` decodes, carrying
+    the spawn name verbatim rather than a
+    catalog name. The identity axis therefore fires for a spawned agent named
+    `manager-git`, and the three-arm check confirmed the deny is suppressed for
+    it while firing for a main-session payload and for a spawned agent under any
+    other name. The earlier claim here — that a spawned agent sends no
+    `agent_type` — was never measured and is false.
   - The sentinel is read from the hook process's own environment. The hook
     runs as a separate process spawned **before** the guarded command executes,
     so an `export MOAI_BRANCH_GUARD_EXEMPT=1` inside that command never reaches
@@ -102,18 +107,21 @@ flows. The hook applies the doctrine conditionally.
     launched with.
 
   Exporting the sentinel inside the command being guarded is therefore a no-op.
-  A `manager-git` subagent that needs to mutate branch state has two working
-  routes: do the work in a worktree (`git -C <worktree>`, which the discriminant
-  correctly classifies as non-primary), or have the operator launch the session
-  with the sentinel already in its environment. Reading a `BRANCH_GUARD_VIOLATION`
-  as "the exemption is broken" is a misdiagnosis — the axes work; the values were
-  never delivered.
+  A spawned `manager-git` agent that needs to mutate branch state should do the
+  work in a worktree (`git -C <worktree>`, which the discriminant correctly
+  classifies as non-primary); the operator may also launch the session with the
+  sentinel already in its environment. Reading a `BRANCH_GUARD_VIOLATION` as "the
+  exemption is broken" is still a misdiagnosis — but the reason is now
+  axis-specific: the sentinel's value was never delivered, while the identity
+  axis reaches a spawned agent and simply did not match the name it was given.
 
-  The deny reason's remediation text aligns with this reachability caveat
-  (v1.3.1): it directs the caller to a worktree and states that the manager-git
-  identity and sentinel exemptions fire only for main-thread launches — it must
-  not suggest delegating to a `manager-git` subagent, which receives the same
-  deny again.
+  The deny reason's remediation text must not suggest delegating to a
+  `manager-git` agent. The ORIGINAL reason for that wording —
+  "such a delegation reproduces the same deny" — is false as measured, so the
+  wording now stands on a different and stronger footing: the delegation would
+  actually SUCCEED, and succeeding is precisely the outcome the guard exists to
+  prevent in the primary checkout. A remediation must not name a route whose only
+  effect is to defeat the guard.
 
 - **Scan scope**: the pattern set is matched against the command with quoted
   spans collapsed to a placeholder word, so a match reflects the command being
@@ -145,3 +153,41 @@ flows. The hook applies the doctrine conditionally.
 
 Classification: Lazy companion — rationale and implementation detail only. Every prohibition and
 every permitted-operation clause stays in `main-checkout-branch-guard.md`.
+
+## Why This Matters
+
+`HEAD` is shared mutable state and a read of it goes stale immediately, so a branch switch, reset,
+or stash in the primary checkout reaches every concurrent reader mid-operation. Neither resulting
+failure raises an error; both surface later as "commits I did not make" or "my changes are on the
+wrong branch". The full mechanism: `main-checkout-branch-guard-detail.md` § Why the race is quiet.
+
+## Procedure — Isolate With a Worktree
+
+When work needs a different branch, use the launcher instead of switching — `moai worktree new` creates the tree, `moai cc -w` enters it:
+
+```bash
+moai worktree new <name>
+moai cc -w <name>
+git -C <worktree-path> add <paths>
+git -C <worktree-path> commit -m "<message>"
+```
+
+Drive the worktree with `git -C <path>` rather than `cd`. A `cd` inside a compound command changes the shell's working directory for that invocation only, which makes subsequent commands read the wrong tree if the pattern is copied without the `cd`.
+
+Remove the worktree when the branch is merged:
+
+```bash
+git worktree remove <worktree-path>
+```
+
+## Verification
+
+```bash
+# Confirm the intended tree before writing to it
+git -C <worktree-path> rev-parse --show-toplevel
+git -C <worktree-path> branch --show-current
+
+# Confirm the push shipped exactly what was intended
+git rev-list --count --left-right origin/<branch>...HEAD
+```
+

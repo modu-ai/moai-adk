@@ -206,6 +206,12 @@ var namesAddedAfterBaseline = map[string]bool{
 	// mcpProviderDuplicatesCheckName — card t1250, the local-server vs
 	// claude.ai-connector overlap diagnostic. Registered through a constant.
 	"mcpProviderDuplicatesCheckName": true,
+	// settingsDefaultModeCheckName — card t1247, the ignored
+	// defaultMode=bypassPermissions diagnostic. Registered through a constant.
+	"settingsDefaultModeCheckName": true,
+	// hookMissingLogCheckName — card t1251, the "Hook Missing Log" skipped-hook
+	// diagnostic. Registered through a constant, hence bare.
+	"hookMissingLogCheckName": true,
 }
 
 // TestBinaryLag_AllowlistKeysAreLiveNames asserts that every key of

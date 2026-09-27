@@ -47,6 +47,10 @@ type postToolHandler struct {
 	// REQ-LL-003: PostTool hook emits diagnostics to both systemMessage and this channel.
 	// If nil, channel emission is skipped (no-op).
 	feedbackCh *loop.FeedbackChannel
+	// escalationCfg is the configuration the escalation detector reads; when
+	// nil the detector reads cfg. Kept separate from cfg so wiring the
+	// detector does not change lint_as_instruction's nil-cfg default.
+	escalationCfg ConfigProvider
 }
 
 // NewPostToolHandler creates a new PostToolUse event handler.
@@ -143,6 +147,14 @@ func (h *postToolHandler) EventType() EventType {
 // injects a systemMessage when lint_as_instruction is enabled (REQ-LAI-001).
 // Always returns Decision "allow" (observation only).
 func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
+	// Contract-mode escalation detector: records only, returns nothing, and
+	// is inert (no file read) unless workflow.autonomy.mode is contract.
+	escCfg := h.escalationCfg
+	if escCfg == nil {
+		escCfg = h.cfg
+	}
+	observeEscalation(escCfg, string(EventPostToolUse), input)
+
 	slog.Debug("collecting post-tool metrics",
 		"tool_name", input.ToolName,
 		"session_id", input.SessionID,
@@ -161,6 +173,17 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 	// Collect input size metric
 	if len(input.ToolInput) > 0 {
 		metrics["input_size"] = len(input.ToolInput)
+	}
+
+	// Push serializer release (SPEC-AUTONOMY-PRECONDITION-001 REQ-AP-002,
+	// design.md §B Release). A failed admitted push of `develop` releases the
+	// push-develop lease immediately — nothing is in flight. Inactive until
+	// the contract resolver is wired into pushShowJSONLoader (the activation
+	// document does not resolve, so nothing else here runs); every other
+	// uncertainty keeps the record and lets its declared bound expire it.
+	if IsShellTool(input.ToolName) {
+		root := resolveProjectRootFromEnvAt("post-tool push-serializer release", slog.LevelDebug)
+		releasePushLeaseOnFailure(input, root, pushSerializerShow(root), os.Stderr)
 	}
 
 	// Collect Agent (formerly Task) subagent metrics.
