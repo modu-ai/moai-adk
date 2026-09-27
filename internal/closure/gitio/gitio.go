@@ -55,6 +55,11 @@ func Run(dir string, args ...string) (string, error) {
 }
 
 // Head returns the commit HEAD points at.
+//
+// @MX:ANCHOR: [AUTO] the one HEAD-resolution entry point for the closure packages.
+// @MX:REASON: 4 non-test callers (closuretest.go, contract_report.go,
+// mcp_audit_multi_record.go, plus the record scope in the CLI); every audited
+// commit identity flows through here.
 func Head(dir string) (string, error) {
 	return Run(dir, "rev-parse", "HEAD")
 }

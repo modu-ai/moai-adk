@@ -46,6 +46,11 @@ type EvidencePaths struct {
 // (undetermined), never a silent primary-checkout fallback. The result is
 // symlink-canonicalized: git reports worktree paths in its own resolved form,
 // and writers and readers must build the same evidence paths from one home.
+//
+// @MX:ANCHOR: [AUTO] the §C.7 evidence-home rule every A4 writer and reader shares.
+// @MX:REASON: 4 non-test callers (pushcheck.go, contract_report.go,
+// mcp_audit_multi_record.go, contract_verdict.go); a divergent home rule
+// would scatter the evidence files across trees.
 func ResolveEvidenceHome(runDir, card string) (string, error) {
 	wts, err := gitio.WorktreeList(runDir)
 	if err != nil {
