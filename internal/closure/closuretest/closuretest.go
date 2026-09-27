@@ -96,7 +96,7 @@ func New(t *testing.T) *Fixture {
 	// would in a real clone.
 	f.Git(f.Remote, "symbolic-ref", "HEAD", "refs/heads/"+RepoBranch)
 	f.Git(f.Root, "remote", "add", "origin", f.Remote)
-	f.Git(f.Root, "push", "-q", "origin", RepoBranch)
+	f.Git(f.Root, "push", "-q", "-u", "origin", RepoBranch)
 	f.Git(f.Root, "remote", "set-head", "origin", "-a")
 
 	f.Git(f.Root, "worktree", "add", f.CardDir, "-b", Branch)

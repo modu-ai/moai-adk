@@ -1,6 +1,7 @@
 package closure
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -111,4 +112,15 @@ func (f *acFixture) writeGlobalPlanAudit(name, lastLine string) {
 	f.t.Helper()
 	f.Write(filepath.Join(f.CardDir, ".moai", "reports", "plan-audit", name),
 		"# plan audit\n\n"+lastLine+"\n")
+}
+
+// WriteSecondReviewLine appends one second-review record line to the card
+// evidence directory's second-review.jsonl.
+func (f *acFixture) WriteSecondReviewLine(rec SecondReviewRecord) {
+	f.t.Helper()
+	data, err := json.Marshal(rec)
+	if err != nil {
+		f.t.Fatalf("marshal second-review record: %v", err)
+	}
+	f.Write(filepath.Join(f.EvidenceDir, SecondReviewFile), string(data)+"\n")
 }
