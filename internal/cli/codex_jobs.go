@@ -159,6 +159,13 @@ type CodexJobRecord struct {
 	// before the field existed, which therefore match no work_key.
 	WorkKey string `json:"work_key,omitempty"`
 
+	// Model is the requested model the session sent in its thread request
+	// (absent when none was sent); ServedModel is codexServedModelUnknown for
+	// every job this server records, and empty on records written before the
+	// field existed (SPEC-MCP-SERVED-MODEL-001 REQ-MSM-006).
+	Model       string `json:"model,omitempty"`
+	ServedModel string `json:"served_model"`
+
 	// Output is the completed task output; Error is the failure reason. Both are
 	// empty until the job reaches a terminal status.
 	Output string `json:"output,omitempty"`
@@ -174,6 +181,8 @@ type codexJobSpec struct {
 	Mode           string
 	RequestSummary string
 	WorkKey        string
+	Model          string
+	ServedModel    string
 }
 
 // ─── structured errors ───
@@ -244,6 +253,8 @@ func (r *codexJobRegistry) create(spec codexJobSpec) (CodexJobRecord, error) {
 		Mode:           spec.Mode,
 		RequestSummary: codexJobSummary(spec.RequestSummary),
 		WorkKey:        spec.WorkKey,
+		Model:          spec.Model,
+		ServedModel:    spec.ServedModel,
 	}
 
 	r.mu.Lock()
