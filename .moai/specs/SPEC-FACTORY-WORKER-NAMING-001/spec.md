@@ -69,4 +69,4 @@ Acceptance criteria, Given-When-Then scenarios, severity, and closure gates: see
 ## §E History
 
 - 2026-09-22 — v0.1.0 — manager-spec — initial plan-phase draft (card t1085, Tier M + card-mandated research.md).
-- 2026-09-28 — manager-spec — partially superseded by SPEC-ROLE-NAMING-CODE-001 (card t1256), which reverses this SPEC's worker-canonical vocabulary contract by operator directive of 2026-09-26 (`lane` canonical; `worker`/`agent` demoted to aliases).
+- 2026-09-28 — manager-spec — partially superseded by SPEC-ROLE-NAMING-CODE-001 (card t1256), which reverses this SPEC's worker-canonical vocabulary contract by operator directive of 2026-09-26 (`lane` canonical; `worker`/`agent` rejected with no compatibility aliases).
