@@ -173,7 +173,38 @@ route existed; the former fields rode `/save` and are now ignored.
 
 Blocker for the lead: `TestDocsTabContract` binds README.md (4 locales, manager-docs territory) and
 the docs-site web-console pages (M8) to the rendered tab list; it stays red until those drop
-the Agents tab.
+the Agents tab. **Resolved** by operator decision in `961631da3` (Agents entry removed from the
+README tab lists ×4 and the numbered list in `advanced/moai-web-console.md` ×4, renumbered 9–13);
+`go test ./internal/web/ -run TestDocsTabContract -v` → literals / allowlist / names PASS.
+
+### M3 — agent_model_guard key and deny (lead boundary ① only, commit `d76728a0a`)
+
+RED: `TestAgentModelGuardKey_LoadsAndHasNoEffect` —
+`decision: got "deny", want allow fall-through` and `with key "deny|AGENT_MODEL_VIOLATION: Explore
+was spawned with model \"haiku\" …"`. GREEN: PASS (the key loads; with/without key decisions equal).
+
+Removed: `config.AgentModelGuardConfig`, `WorkflowConfig.AgentModelGuard`, its default and
+`TestDefaultAgentModelGuardDisabled`; `agentModelGuardEnabled`, `SentinelAgentModelViolation`, the deny
+branch of `checkAgentModel` (now returns the advisory only) and the deny call site in `pre_tool.go`;
+the deny-matrix / gate-on hook tests. Sibling comments reworded (`agent_stop_guard.go`,
+`subagent_write_guard.go`, `types.go`). The gitignore-artifact row and rosterguard row name the audit
+jsonl (frozen) and stay.
+
+Deferred to post-t1282 (frozen, verdict.md §2 ②): `agentModelAuditFileName`, `appendAgentModelAudit`
+and the `.moai/logs/agent-model-audit.jsonl` writes, `prune_logs` retention, `resolveAgentModel`,
+`llmConfig`, `classifyAgentModel` / `agentModelAdvisory` / `extractAgentSpawn` (the observation layer
+that feeds the frozen writes), the rest of `agent_model_guard.go` + its observation tests, and the
+audit-receipt path in `pre_tool.go` (unchanged; its line moved from :724 to :719 because 5 lines above
+it were removed). REQ-AMI-009 (no observation, no audit file) is therefore not yet met.
+
+| Command | Result |
+|---|---|
+| `go test ./internal/hook/... -count=1 -timeout 25m` | exit 0 (11 packages ok) |
+| `go test ./internal/config/... -count=1` | exit 0 |
+| `go test ./internal/config/ -run 'TestAlwaysLoadedTokenBudget$' -v` | `always-loaded surface = 65591 tokens (budget 77600, headroom 12009, 16 entries)` PASS |
+| `go test ./internal/web/... ./internal/template/... -count=1` | exit 0 (web now fully green) |
+| `golangci-lint run` (v2.1.6) hook, config | `0 issues.` |
+| `go build ./...` | ok |
 
 ## §E.3 Run-phase Audit-Ready Signal
 
