@@ -129,9 +129,60 @@ FAIL	github.com/modu-ai/moai-adk/internal/template	19.431s
   - unregistered `[HARD]` line → `contract_mode_guided_test.go:422: .claude/rules/moai/core/askuser-protocol.md: unregistered [HARD] line not present at the base: "[HARD] Probe-only unregistered rule inserted by the mutant probe."` / `--- FAIL: TestContractModeConstitutionDriftNotIncreased`; HEAD `ok …/internal/template`.
 - Coverage (combined, `-coverpkg` receipt/revoke/kickoff over contract + cli tests; `cover-a3.txt`): total 81.8% of statements; per-package function average kickoff 79.6%, revoke 74.6%, receipt 86.0%. Below the 85% target for kickoff and revoke — recorded as a gap, not claimed.
 
+### M7b / M8 — held
+
+- M7b (doctrine amendment + `JevDoctrineAmended = true`, one commit): held on instruction. The CLAUDE.local.md §29 line is returned to the lead for operator confirmation; the SPEC-JEV-CORE-001 body change is returned as a manager-spec blocker. Nothing of M7b is in the tree (`TestJevAmendmentLinkage/tree` PASS with all markers absent).
+- M8 (activation): held. design.md §7.1 row 6 is unmet — `orchestration-mode-selection.md` line 18 (`[ZONE:Frozen] [HARD] All Phase 4 execution modes are strictly downstream of Implementation Kickoff Approval …`) names no non-human signer. Row 4: `git merge-base --is-ancestor fb5901251 HEAD` → exit 0 (A2b merge is in this tree; its tests were not re-run here). Row 3 (A1 fallback-receipt signing) not independently re-verified in this run.
+
+### M10 — AC matrix (tree `ec051a27b332a7e4bb3cee2715bb9762680092df`, HEAD `0e1f2edb9`, `MOAI_GR_BASE=7fe658815` where required)
+
+Logs: `.moai/state/verify/t1236/ac/<AC>.txt`. Columns: exit / `--- PASS` count / `--- FAIL` / `--- SKIP` / `[no tests to run]`.
+
+| AC | exit | PASS | FAIL | SKIP | no-tests | verdict |
+|---|---|---|---|---|---|---|
+| 001 | 0 | 3 | 0 | 0 | 0 | PASS |
+| 002 | 0 | 2 | 0 | 0 | 0 | PASS |
+| 003 | 0 | 6 | 0 | 0 | 0 | PASS |
+| 004 | 0 | 1 | 0 | 0 | 0 | PASS |
+| 005 | 0 | 3 | 0 | 0 | 0 | PASS |
+| 006 | 0 | 3 | 0 | 0 | 0 | PASS |
+| 007 | 0 | 3 | 0 | 0 | 0 | PASS |
+| 008 | 0 | 7 | 0 | 0 | 0 | PASS |
+| 009 | 0 | 16 | 0 | 0 | 0 | PASS |
+| 010 | 0 | 1 | 0 | 0 | 0 | PASS |
+| 011 | 0 | 3 | 0 | 0 | 0 | PASS |
+| 012 | 0 | 3 | 0 | 0 | 0 | PASS |
+| 013 | 0 | 3 | 0 | 0 | 0 | PASS |
+| 014 | 0 | 3 | 0 | 0 | 0 | PASS |
+| 015 | `make build` exit 0; `go test ./internal/template/... ./internal/contract/...` exit 0 (9 `ok`); cli exit 0, 12 PASS | | | | | PASS |
+| 016 | 0 | 18 | 0 | 0 | 0 | PASS |
+| 017 | 0 | 14 | 0 | 0 | 0 | PASS (order half + interim-rule test; linkage half passes in the all-absent state — the linkage-true state is deferred to M7b) |
+| 018 | 0 | 14 | 0 | 0 | 0 | PASS |
+| 019 | 0 | 18 | 0 | 0 | 0 | PASS |
+| 020 | 0 | 7 | 0 | 0 | 0 | PASS |
+| 021 | 0 | 10 | 0 | 0 | 0 | PASS |
+| 022 | 0 | 0 | 0 | 0 | 2 | DEFERRED — empty selection; `TestJevDoctrineAmendment` belongs to M7b |
+| 023 | 0 | 15 | 0 | 0 | 0 | PASS |
+| 024 | 0 | 1 | 0 | 0 | 0 | PASS |
+| 025 | 0 | 11 | 0 | 0 | 0 | PASS |
+
+- `moai spec lint SPEC-AUTONOMY-GATE-REWIRE-001` (tree-built `bin/moai`) → `✓ No findings — all SPEC documents are valid`, exit 0. `go vet ./internal/contract/... ./internal/cli/ ./internal/template/` exit 0. `make build` exit 0, working tree clean afterwards.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: null            # run held at M7b / M8
+run_commit_sha: 0e1f2edb9        # last run-phase code commit (M7)
+run_status: held-m7b-m8
+ac_pass_count: 24
+ac_fail_count: 0
+ac_deferred: [AC-GR-022, AC-GR-017-linkage-true-state]
+new_warnings_or_lints_introduced: 0   # golangci-lint v2.1.6, go vet
+cross_platform_build: {darwin: pass, windows: pass}
+coverage_gap: {kickoff: 79.6, revoke: 74.6}   # function average, below 85
+base_derived_debt: [grBaseDriftIDs, grKickoffClasses, EV-6 ids]  # BASE is the pre-t1175-repair tree — regenerate on absorb
+m1_to_mN_commit_strategy: milestone-per-commit
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
