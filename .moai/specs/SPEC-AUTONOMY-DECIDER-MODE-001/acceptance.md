@@ -195,7 +195,9 @@ grep -c "criteria_commit" .moai/reports/t1261/run-record.md
 
 `<criteria_commit>` is substituted from the run record. Expected: `0` and ≥ 1; the time
 comparison reads `git log -1 --format=%ct "<criteria_commit>"` against the first `runs/` row
-timestamp. This AC judges EXECUTION — `--- PENDING-RUN` until the run record exists.
+timestamp. RESOLVED [RUN] **PASS** — run-record.md §1: `criteria_commit: 568d11754` (restart-1
+registration), `git cat-file -e` exit 0, commit epoch 17:14:56 < declared_at 17:16:50 < first
+call 17:17:04; census and pin evidence at progress.md §E.2 (M0).
 
 ### AC-DM-013 — Caps declared before the first call, execution within them [RUN] — maps REQ-DM-013, REQ-DM-014
 
@@ -210,7 +212,9 @@ timestamp. This AC judges EXECUTION — `--- PENDING-RUN` until the run record e
 grep -c "declared_at" .moai/reports/t1261/run-record.md
 ```
 
-Expected: `declared_at` ≥ 3 (one per cap). `--- PENDING-RUN` until then.
+Expected: `declared_at` ≥ 3 (one per cap). RESOLVED [RUN] **PASS** — measured `declared_at` 7;
+run-record.md §2 (three caps declared_at 2026-09-27T17:16:50+09:00, 14s before the restart-1
+first call) + §5 call accounting (298/298 executed, retries 0, no cap reached, unmeasured 0).
 
 ### AC-DM-014 — Scrub execution: positive control precedes first transmission, zero hit-sent [RUN] — maps REQ-DM-012
 
@@ -226,7 +230,9 @@ grep -c "positive-control" .moai/reports/t1261/run-record.md; grep -c "scan: hit
 ```
 
 Expected: positive-control ≥ 1 (pre-first-transmission); every `scan: hit` row carries a
-`blocked` marker and hit-without-block rows number 0. `--- PENDING-RUN` until then.
+`blocked` marker and hit-without-block rows number 0. RESOLVED [RUN] **PASS** — run-record.md
+§6: positive-control FIRED 8/8 at 2026-09-26T20:51:27+09:00 (precedes both registrations' first
+calls); restart-1 298 call rows all `scan_exit=0`; `scan: hit` data rows 0, hit-sent 0.
 
 ### AC-DM-015 — Identical payload sets across arms [RUN] — maps REQ-DM-005
 
@@ -240,7 +246,8 @@ grep -c "payload_id set" .moai/reports/t1261/run-record.md
 ```
 
 Expected: ≥ 1 recorded set comparison with an equality statement; the sets themselves are the
-evidence. `--- PENDING-RUN` until then.
+evidence. RESOLVED [RUN] **PASS** — run-record.md §7: payload_id set glm ≡ jev — C 9/9, P 20/20,
+M 120/120, unmeasured 0, asymmetry 0 (recompute: `.moai/reports/t1261/analysis/output.txt`).
 
 ### AC-DM-016 — Verdict applies the pre-fixed predicate in the 5-section format [RUN] — maps REQ-DM-002, REQ-DM-006, REQ-DM-007, REQ-DM-015
 
@@ -260,7 +267,10 @@ grep -c "Baseline-attribution" .moai/reports/t1261/verdict.md 2>/dev/null || ech
 ```
 
 Expected: the five section headers present (Claim / Evidence / Baseline-attribution / Gaps /
-Residual-risk) — `verdict-absent` is the `--- PENDING-RUN` state, not a FAIL.
+Residual-risk). RESOLVED [RUN] **PASS** — `.moai/reports/t1261/verdict.md` carries all five
+headers; the committed predicate applied with constant baselines alongside every accuracy
+figure; the pool-fidelity Gaps row present (Gaps #1). Per-item outcomes:
+progress.md §E.2 self-verification table.
 
 ## §B. Checks deferred to run-phase judgment
 
