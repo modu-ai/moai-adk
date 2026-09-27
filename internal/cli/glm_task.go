@@ -52,14 +52,6 @@ import (
 const (
 	// glmTaskToolName is the MCP tool name.
 	glmTaskToolName = "glm_task"
-
-	// glmTaskAgentKey is the profile-matrix agent key used to resolve the
-	// default task model + effort via the SSOT (template.ResolveAgentModelEffort).
-	// super-advisor is the GLM delegation family's wired consumer, so a generic
-	// task resolves on the same matrix cell its caller runs under — the
-	// auditor-shaped glmAuditAgentKey is NOT reused, because a task is not a
-	// review and should not inherit an auditor's model choice.
-	glmTaskAgentKey = "super-advisor"
 )
 
 // glmLiveJobs holds the cancel function of every RUNNING background job, keyed
@@ -117,12 +109,12 @@ type GLMTaskResult struct {
 	Error string `json:"error,omitempty"`
 }
 
-// resolveGLMTaskModel resolves the default GLM task model via the model/effort
-// SSOT, keyed on the task family's consumer (glmTaskAgentKey). Same rule as
-// the audit resolver: a GLM session uses the matrix cell, anything else falls
-// back to the canonical GLM model.
+// resolveGLMTaskModel resolves the default GLM task model: the backend default
+// glmAuditDefaultModel. MoAI assigns no per-agent model, so no llm.yaml cell is
+// consulted (SPEC-AGENT-MODEL-INHERIT-001 design D5); a caller override is
+// handled by handleGLMTask before this is reached.
 func resolveGLMTaskModel() string {
-	return resolveGLMModelForAgent(glmTaskAgentKey)
+	return glmAuditDefaultModel
 }
 
 // handleGLMTask is the handler for the `glm_task` MCP tool.
@@ -158,7 +150,7 @@ func handleGLMTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 
 	model := req.GetString("model", "")
 	if model == "" {
-		model = resolveGLMTaskModel() // SSOT, keyed on glmTaskAgentKey
+		model = resolveGLMTaskModel() // backend default
 	} else if os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
 		// Factory-mode guard (t85 lead loop): this server process was spawned
 		// from a factory session and inherited MOAI_FACTORY_WORKERS, so the
@@ -166,7 +158,7 @@ func handleGLMTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 		// model override — the GLM tier mapping rides the
 		// ANTHROPIC_DEFAULT_*_MODEL slot env the launcher established, and a
 		// per-call override splits the session's caches and can bypass the
-		// slot-to-GLM mapping. The override is ignored in favor of the SSOT
+		// slot-to-GLM mapping. The override is ignored in favor of the backend
 		// default and the result says so.
 		resolved := resolveGLMTaskModel()
 		result.Note = fmt.Sprintf("model override %q ignored in factory mode (MOAI_FACTORY_WORKERS is set); running on the resolved default %q — factory dispatches carry no model override", model, resolved)

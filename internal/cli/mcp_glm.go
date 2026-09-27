@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -42,16 +41,9 @@ import (
 // than in defaults.go because it is a single-call ceiling, not a cross-package
 // threshold).
 const (
-	// glmAuditAgentKey is the profile-matrix agent key used to resolve the
-	// audit model + effort via the SSOT (template.ResolveAgentModelEffort,
-	// REQ-MCP-013). "sync-auditor" is the auditor-shaped key present in the
-	// matrix; the GLM backend reuses it so model selection goes through the
-	// single interpreter rather than a forked read.
-	glmAuditAgentKey = "sync-auditor"
-
-	// glmAuditDefaultModel is the fallback GLM model id when the SSOT returns
-	// mapped=false (no llm.yaml) or the resolved model is a Claude id the
-	// z.ai endpoint cannot serve (non-GLM session). Named constant per §14.
+	// glmAuditDefaultModel is the GLM backend default model id: the model the
+	// audit and task paths use when no workflow.audit.glm pin (audit) or
+	// caller override (task) names one. Named constant per §14.
 	//
 	// DERIVED from the tier default rather than restated as its own literal. A
 	// second literal drifts: this fallback sat on a two-generation-old id while
@@ -150,18 +142,16 @@ type glmMessagesResponse struct {
 // (SPEC-V3R6-AUDIT-MODEL-PIN-001 REQ-AMP-003). Precedence:
 //
 //  1. The workflow.audit.glm pin — a non-empty pin model returns the pair
-//     VERBATIM, bypassing the IsGLMBackend session check: a pin is
+//     VERBATIM, bypassing any session-backend check: a pin is
 //     by-construction a GLM id, and a wrong id degrades via the existing
 //     z.ai-4xx fail-open to VerdictInconclusive (design decision D3), never a
 //     hard error. Effort rides the pin only when the model is pinned (the
 //     model is the gate — effort alone pins nothing).
-//  2. Otherwise the legacy SSOT resolution: the sync-auditor cell through
-//     resolveGLMModelForAgent, with an EMPTY effort (the pre-SPEC body carried
-//     no reasoning field, and the SSOT effort is Claude-vocabulary — never
-//     transmittable under the single-reading rule).
+//  2. Otherwise the backend default glmAuditDefaultModel with an EMPTY effort.
+//     MoAI assigns no per-agent model, so no llm.yaml cell is consulted
+//     (SPEC-AGENT-MODEL-INHERIT-001 design D5).
 //
-// It NEVER reads agent frontmatter or llm.agent_overrides directly (REQ-MCP-013
-// / AC-MCP-015), and glm_task never calls it (REQ-AMP-008).
+// glm_task never calls it (REQ-AMP-008).
 //
 // projectRoot names the tree being reviewed (the project_root doctrine,
 // .claude/rules/moai/core/moai-mcp-tools.md): a worktree session MUST pass its
@@ -177,39 +167,7 @@ func resolveGLMAuditModelEffort(projectRoot string) config.ModelEffort {
 	if pin := workflowAuditPins(root).GLM; pin.Model != "" {
 		return pin
 	}
-	return config.ModelEffort{Model: resolveGLMModelForAgent(glmAuditAgentKey)}
-}
-
-// resolveGLMModelForAgent resolves a GLM model id for the given profile-matrix
-// agent key via the model/effort SSOT (template.ResolveAgentModelEffort). It is
-// the shared body behind the GLM audit resolver and the glm_task resolver: the
-// audit path keys on the auditor-shaped cell, the task path on its consumer
-// (super-advisor), and the resolution rule is otherwise identical.
-//
-// Resolution rule:
-//  1. Load llm.yaml through the SAME loadLLMSectionOnly helper the launcher uses.
-//  2. Resolve via ResolveAgentModelEffort(agentKey).
-//  3. If the session backend is GLM (template.IsGLMBackend) and the SSOT returned
-//     a non-empty mapped model, use it (the matrix carries a GLM model id).
-//  4. Otherwise fall back to glmAuditDefaultModel — a Claude id cannot be served
-//     by the z.ai endpoint, and a missing llm.yaml has nothing to resolve.
-func resolveGLMModelForAgent(agentKey string) string {
-	sectionsDir := filepath.Join(projectDirResolver(), ".moai", "config", "sections")
-	llm, err := loadLLMSectionOnly(sectionsDir)
-	if err != nil {
-		return glmAuditDefaultModel
-	}
-	me, mapped := template.ResolveAgentModelEffort(llm, agentKey)
-	if !mapped || me.Model == "" {
-		return glmAuditDefaultModel
-	}
-	if template.IsGLMBackend(llm) {
-		return me.Model // GLM session ⇒ a GLM model id from the matrix.
-	}
-	// Non-GLM session: the SSOT returned a Claude id the z.ai endpoint cannot
-	// serve. Fall back to the canonical GLM model so the tool is still callable
-	// directly (the caller opted into the GLM tool explicitly).
-	return glmAuditDefaultModel
+	return config.ModelEffort{Model: glmAuditDefaultModel}
 }
 
 // handleGLMAudit is the thin-wrapper handler for the `glm_audit` MCP tool. It
@@ -264,7 +222,7 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	// the diff under review — a worktree session names its own root, and
 	// resolving through projectDirResolver() here could read a different
 	// tree's workflow.yaml.
-	me := resolveGLMAuditModelEffort(root) // pin > SSOT (REQ-AMP-003)
+	me := resolveGLMAuditModelEffort(root) // pin > backend default (REQ-AMP-003)
 	if explicit := req.GetString("model", ""); strings.TrimSpace(explicit) != "" {
 		me.Model = strings.TrimSpace(explicit) // explicit caller model outranks the pin
 	}
