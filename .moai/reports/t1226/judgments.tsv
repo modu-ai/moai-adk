@@ -1,0 +1,312 @@
+surf	file	section	mech	gov	c2	c3	c4	dest	plan	note
+*	CLAUDE.md	MoAI Execution Directive	none	a	NA	NA	NA	-	REJECT:governs-scope	H1 title; the numbered-section skeleton that every "CLAUDE.md §N" citation resolves against
+*	CLAUDE.md	0. Standing Contract (imported)	none	a	NA	NA	NA	-	REJECT:governs-scope	carries the @AGENTS.md import (design.md §4.3 rejected)
+*	CLAUDE.md	1. Core Identity	none	a	NA	NA	NA	-	REJECT:governs-scope	obligation summary framing delegation (design.md §4.3 rejected)
+*	CLAUDE.md	HARD Rules (Mandatory)	none	a	NA	NA	NA	-	REJECT:governs-scope	obligation summary (design.md §4.3 rejected)
+*	CLAUDE.md	2. Request Processing Pipeline	M2	N	NA	NA	NA	-	try	normative pipeline prose; no keyword line depends on it
+*	CLAUDE.md	3. Command Reference	M1	N	N	NA	NA	-	REJECT:citation-breaks	heading-only row; removal renumbers the §N skeleton cited as "CLAUDE.md §N" (see evidence/citations-claude.txt)
+*	CLAUDE.md	Unified Skill: /moai	M2	N	NA	NA	NA	-	try	pointer prose
+*	CLAUDE.md	4. Agent Catalog	none	a	NA	NA	NA	-	REJECT:governs-scope	parent heading of Selection Decision Tree, which carries a keyword line
+*	CLAUDE.md	Selection Decision Tree ¶1	M2	N	NA	NA	NA	-	try	routing list; the keyword line (archived names) does not depend on it
+*	CLAUDE.md	Selection Decision Tree ¶3	M2	N	NA	NA	NA	-	try	horizontal rule
+*	CLAUDE.md	5. SPEC-Based Workflow	M2	N	NA	NA	NA	-	try	pointer prose
+*	CLAUDE.md	6. Quality Gates	M2	N	NA	NA	NA	-	try	pure pointer (design.md §4.3: rejected for M1 only)
+*	CLAUDE.md	7. Safe Development Protocol	M2	N	NA	NA	NA	-	try	normative safeguards; in-place compression only
+*	CLAUDE.md	8. User Interaction Architecture ¶3	M2	N	NA	NA	NA	-	try	pointer to AGENTS.md §6
+*	CLAUDE.md	8. User Interaction Architecture ¶4	M2	N	NA	NA	NA	-	try	pointer to SSOT
+*	CLAUDE.md	8. User Interaction Architecture ¶5	M2	N	NA	NA	NA	-	try	horizontal rule
+*	CLAUDE.md	9. Configuration Reference	M2	N	NA	NA	NA	-	try	the two @ import lines stay byte-identical; only surrounding prose is compressed (design.md §4.3 rejected the import lines for M1)
+*	CLAUDE.md	10. Web Search Protocol	M2	N	NA	NA	NA	-	try	normative, short
+*	CLAUDE.md	11. Error Handling	M1	N	N	NA	NA	-	REJECT:citation-breaks	empty numbered heading kept as a citation anchor (session-handoff cross-refs cite "CLAUDE.md §11")
+*	CLAUDE.md	12. MCP Servers & Deep Analysis Modes	M1	N	N	NA	NA	-	REJECT:citation-breaks	empty numbered heading kept as a citation anchor for the §N skeleton
+*	CLAUDE.md	13. Progressive Disclosure System	M2	N	NA	NA	NA	-	try	pointer index
+*	CLAUDE.md	14. Parallel Execution Safeguards ¶2	M2	N	NA	NA	NA	-	try	horizontal rule
+*	CLAUDE.md	15. Agent Teams (Re-allowed, experimental)	M2	N	NA	NA	NA	-	try	normative prose
+*	CLAUDE.md	16. Context Search Protocol	M2	N	NA	NA	NA	-	try	normative prose + pointers
+*	CLAUDE.md	17. Troubleshooting	M2	N	NA	NA	NA	-	try	table + file footer; footer is CLAUDE.md metadata so the row is not relocatable
+*	CLAUDE.md	MOAI:LEARNED-WORKFLOW	M2	N	NA	NA	NA	-	UNTRIED:machine-marker	marker block written by the learned-workflow writer; whether it may shrink is a code question this card does not answer
+*	AGENTS.md	AGENTS.md — standing contract for agents in this repository	M2	a	NA	NA	NA	-	REJECT:governs-scope	establishes that every clause binds regardless of harness and that the file is self-sufficient — the applicability of every keyword line (cf. kanban Scope, design.md §4.3)
+*	AGENTS.md	1. Evidence and verification claims ¶3	M2	N	NA	NA	NA	-	try	SHOULD paragraph, independent of the two MUST lines
+*	AGENTS.md	1. Evidence and verification claims ¶4	M2	N	NA	NA	NA	-	try	horizontal rule
+*	AGENTS.md	2. Git, branches, and the shared checkout	M2	N	NA	NA	NA	-	try	normative; AGENTS.md is M2-only (REQ-ALD2-011)
+*	AGENTS.md	3. Worktrees	M2	N	NA	NA	NA	-	try	normative; M2-only
+*	AGENTS.md	4. How verification is run	M2	N	NA	NA	NA	-	try	normative; M2-only
+*	AGENTS.md	5. Core behaviors ¶1	M2	N	NA	NA	NA	-	try	behavior 1
+*	AGENTS.md	5. Core behaviors ¶2	M2	N	NA	NA	NA	-	try	behavior 2
+*	AGENTS.md	5. Core behaviors ¶3	M2	N	NA	NA	NA	-	try	behavior 3
+*	AGENTS.md	5. Core behaviors ¶5	M2	N	NA	NA	NA	-	try	behavior 5
+*	AGENTS.md	5. Core behaviors ¶6	M2	N	NA	NA	NA	-	try	behavior 6
+*	AGENTS.md	5. Core behaviors ¶7	M2	N	NA	NA	NA	-	try	horizontal rule
+*	AGENTS.md	6. Output, language, and format ¶1	M2	N	NA	NA	NA	-	try	independent of the two MUST lines
+*	AGENTS.md	6. Output, language, and format ¶4	M2	N	NA	NA	NA	-	try	init: markdown clause; live: text differs (attempted per surface)
+*	AGENTS.md	6. Output, language, and format ¶5	M2	N	NA	NA	NA	-	try	init: XML clause; live: text differs
+*	AGENTS.md	6. Output, language, and format ¶6	M2	N	NA	NA	NA	-	try	init: time predictions; live: horizontal rule
+*	AGENTS.md	6. Output, language, and format ¶7	M2	N	NA	NA	NA	-	try	horizontal rule (init only)
+*	AGENTS.md	7. Tools and command output	M2	N	NA	NA	NA	-	try	normative; M2-only
+*	AGENTS.md	8. Harness-local instructions	M2	N	NA	NA	NA	-	try	descriptive; M2-only
+*	AGENTS.md	9. Hook Event Coverage	M2	N	NA	NA	NA	-	try	descriptive; M2-only (init only)
+*	AGENTS.md	10. Configuration Map	M2	N	NA	NA	NA	-	try	pointer; M2-only (init only)
+*	AGENTS.md	11. moai CLI Verbs	M2	N	NA	NA	NA	-	try	reference table; M2-only (init only)
+*	AGENTS.md	12. Status Line Tokens	M2	N	NA	NA	NA	-	try	pointer; M2-only (init only)
+*	core/agent-common-protocol.md	(서문)	none	a	NA	NA	NA	-	REJECT:governs-scope	frontmatter declares the loading scope ("no paths restriction") the file's keyword lines rely on
+*	core/agent-common-protocol.md	Agent Common Protocol	none	a	NA	NA	NA	-	REJECT:governs-scope	applicability sentence + the companion pointer line REQ-ALD2-005a requires
+*	core/agent-common-protocol.md	User Interaction Boundary	none	a	NA	NA	NA	-	REJECT:governs-scope	design.md §4.3 (a)
+*	core/agent-common-protocol.md	Subagent Prohibitions ¶2	M2	N	NA	NA	NA	-	try	positive duties list; the MUST NOT line does not depend on it
+*	core/agent-common-protocol.md	Subagent Prohibitions ¶3	M1	N	Y	Y	Y	core/agent-common-protocol-reference.md	move	rationale paragraph (REQ-AMC-002 eligible class)
+*	core/agent-common-protocol.md	Subagent Prohibitions ¶4	none	b	NA	NA	NA	-	REJECT:narrows-scope	carves lane sessions out of the subagent class the MUST NOT binds
+*	core/agent-common-protocol.md	Hook Invocation Surface ¶1	none	a	NA	NA	NA	-	REJECT:governs-scope	names the hooks the section's MUST NOT binds
+*	core/agent-common-protocol.md	Hook Invocation Surface ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	heading of the MUST: procedure
+*	core/agent-common-protocol.md	Hook Invocation Surface ¶4	none	a	NA	NA	NA	-	REJECT:governs-scope	the list the "MUST:" line introduces
+*	core/agent-common-protocol.md	Hook Invocation Surface ¶5	M2	N	NA	NA	NA	-	try	h4 heading
+*	core/agent-common-protocol.md	Hook Invocation Surface ¶6	M2	N	NA	NA	NA	-	try	Stop self-gate caveat, independent of the MUST lines
+*	core/agent-common-protocol.md	Hook Invocation Surface ¶7	M2	N	NA	NA	NA	-	try	h4 heading
+*	core/agent-common-protocol.md	Hook Invocation Surface ¶8	none	b	NA	NA	NA	-	REJECT:narrows-scope	recovery-signal carve-out narrows when a hook block applies
+*	core/agent-common-protocol.md	Blocker Report Format ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	the format the "MUST return a structured blocker report:" line names
+*	core/agent-common-protocol.md	Ledger Closure ¶1	none	a	NA	NA	NA	-	REJECT:governs-scope	defines the invariant the MUST closes
+*	core/agent-common-protocol.md	Ledger Closure ¶3	none	a	NA	NA	NA	-	REJECT:governs-scope	the four clauses the MUST line enumerates
+*	core/agent-common-protocol.md	Ledger Closure ¶4	none	a	NA	NA	NA	-	REJECT:governs-scope	scope-boundary note fixing where the clause applies
+*	core/agent-common-protocol.md	Language Handling ¶2	none	b	NA	NA	NA	-	REJECT:narrows-scope	exceptions (code/identifiers stay English) to the [HARD] language line
+*	core/agent-common-protocol.md	MCP Fallback Strategy ¶2	none	b	NA	NA	NA	-	REJECT:narrows-scope	GLM routing replaces the fallback under a GLM backend
+*	core/agent-common-protocol.md	Per-Spawn Model Injection ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	how to resolve the value the [HARD] line requires
+*	core/agent-common-protocol.md	Per-Spawn Model Injection ¶3	M1	N	Y	Y	Y	core/agent-common-protocol-reference.md	move	enforcement-mechanism description (advisory audit hook)
+*	core/agent-common-protocol.md	Background Agent Execution ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	"one writer per tree" — the concept the audit-window [HARD] line depends on
+*	core/agent-common-protocol.md	Verbatim batch, output contracts, and CLI idioms ¶1	M2	N	NA	NA	NA	-	try	pointer
+*	core/agent-common-protocol.md	Verbatim batch, output contracts, and CLI idioms ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	introduces the restated binding list
+*	core/agent-common-protocol.md	Pre-Spawn Sync Check (Multi-Session Race Mitigation) ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	part of the [HARD] batch definition
+*	core/agent-common-protocol.md	Pre-Spawn Sync Check (Multi-Session Race Mitigation) ¶4	none	a	NA	NA	NA	-	REJECT:governs-scope	the batch the [HARD] line requires
+*	core/agent-common-protocol.md	Pre-Spawn Sync Check (Multi-Session Race Mitigation) ¶6	none	a	NA	NA	NA	-	REJECT:governs-scope	matrix label
+*	core/agent-common-protocol.md	Pre-Spawn Sync Check (Multi-Session Race Mitigation) ¶8	none	a	NA	NA	NA	-	REJECT:governs-scope	matrix label
+*	core/agent-common-protocol.md	Pre-Spawn Sync Check (Multi-Session Race Mitigation) ¶9	none	a	NA	NA	NA	-	REJECT:governs-scope	interpretation matrix
+*	core/agent-common-protocol.md	Pre-Spawn Sync Check (Multi-Session Race Mitigation) ¶10	none	a	NA	NA	NA	-	REJECT:governs-scope	matrix semantics ("no false positives")
+*	core/agent-common-protocol.md	Pre-Spawn Sync Check (Multi-Session Race Mitigation) ¶11	none	b	NA	NA	NA	-	REJECT:narrows-scope	read-only exemption
+*	core/agent-common-protocol.md	Pre-Spawn Sync Check (Multi-Session Race Mitigation) ¶12	none	b	NA	NA	NA	-	REJECT:narrows-scope	spawn-gate boundary
+*	core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation) ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	part of the [HARD] rule body
+*	core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation) ¶3	none	a	NA	NA	NA	-	REJECT:governs-scope	TRIGGER
+*	core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation) ¶4	none	a	NA	NA	NA	-	REJECT:governs-scope	TRIGGER table
+*	core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation) ¶5	none	a	NA	NA	NA	-	REJECT:governs-scope	CHECK
+*	core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation) ¶6	none	a	NA	NA	NA	-	REJECT:governs-scope	DECIDE
+*	core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation) ¶7	none	a	NA	NA	NA	-	REJECT:governs-scope	DECIDE table
+*	core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation) ¶8	none	a	NA	NA	NA	-	REJECT:governs-scope	stale-registry caveat on the probe
+*	core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation) ¶9	none	a	NA	NA	NA	-	REJECT:governs-scope	RE-CHECK
+*	core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation) ¶10	none	a	NA	NA	NA	-	REJECT:governs-scope	heading of the sweep [HARD]
+*	core/agent-common-protocol.md	Pre-Edit Sync Check (Direct-Edit Race Mitigation) ¶12	M1	N	Y	Y	Y	core/agent-common-protocol-reference.md	move	rationale (relation to the SessionStart detection layer)
+*	core/askuser-protocol.md	(서문)	none	a	NA	NA	NA	-	REJECT:governs-scope	frontmatter (loader contract)
+*	core/askuser-protocol.md	AskUserQuestion Protocol — Canonical Reference	none	a	NA	NA	NA	-	REJECT:governs-scope	SSOT + loading-scope declaration + companion pointer
+*	core/askuser-protocol.md	Channel Monopoly ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	enumerates the turns the MUST covers
+*	core/askuser-protocol.md	Channel Monopoly ¶3	none	b	NA	NA	NA	-	REJECT:narrows-scope	exceptions
+*	core/askuser-protocol.md	Channel Monopoly ¶4	M1	N	Y	Y	Y	core/askuser-protocol-reference.md	move	anti-pattern example
+*	core/askuser-protocol.md	Channel Monopoly ¶5	M2	N	NA	NA	NA	-	try	horizontal rule
+*	core/askuser-protocol.md	ToolSearch Preload Procedure	none	a	NA	NA	NA	-	REJECT:governs-scope	defines "deferred tool", used by the MUST in the child section
+*	core/askuser-protocol.md	Mandatory Preload Step ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	the call the MUST names
+*	core/askuser-protocol.md	Socratic Interview Structure	none	a	NA	NA	NA	-	REJECT:governs-scope	design.md §4.3 (a)
+*	core/askuser-protocol.md	Structural Constraints (all mandatory) ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	defines the term the round MUST lines use
+*	core/askuser-protocol.md	Structural Constraints (all mandatory) ¶3	M2	N	NA	NA	NA	-	try	horizontal rule
+*	core/askuser-protocol.md	Option Description Standards ¶4	M2	N	NA	NA	NA	-	try	horizontal rule
+*	core/askuser-protocol.md	Recommendation Placement Principles	none	a	NA	NA	NA	-	REJECT:governs-scope	design.md §4.3 (a): Recommendation mode [HARD] names principle 5
+*	core/askuser-protocol.md	Recommendation mode ¶1	none	a	NA	NA	NA	-	REJECT:governs-scope	push/pull definition the [HARD] line uses
+*	core/askuser-protocol.md	Recommendation mode ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	the config key the [HARD] line names
+*	core/askuser-protocol.md	Recommendation mode ¶4	none	a	NA	NA	NA	-	REJECT:governs-scope	when the mode resolves
+*	core/askuser-protocol.md	Recommendation mode ¶5	none	b	NA	NA	NA	-	REJECT:narrows-scope	pull withholds a recommendation and nothing else
+*	core/askuser-protocol.md	The three adopted conditions ¶1	none	a	NA	NA	NA	-	REJECT:governs-scope	intro of the binding list
+*	core/askuser-protocol.md	Requested-Deliverable Primacy (user requirement analysis first) ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	operationalizes the [HARD] line
+*	core/askuser-protocol.md	Exceptions (gate does not apply)	none	b	NA	NA	NA	-	REJECT:narrows-scope	design.md §4.3 (b)
+*	core/askuser-protocol.md	Orchestrator–Subagent Boundary	none	a	NA	NA	NA	-	REJECT:governs-scope	design.md §4.3 (a)
+*	core/askuser-protocol.md	Blocker Report Format / Re-delegation Procedure	none	a	NA	NA	NA	-	REJECT:governs-scope	design.md §4.3 (a) ownership pointer
+*	core/askuser-protocol.md	Ambiguity Triggers and Exceptions	none	a	NA	NA	NA	-	REJECT:governs-scope	design.md §4.3 (a) SSOT declaration
+*	core/askuser-protocol.md	Free-form Circumvention Prohibition ¶2	M1	N	Y	Y	Y	core/askuser-protocol-reference.md	move	rationale (why free-form questions are unnecessary)
+*	core/askuser-protocol.md	Free-form Circumvention Prohibition ¶3	none	a	NA	NA	NA	-	REJECT:governs-scope	enumerates what the MUST NOT covers
+*	core/askuser-protocol.md	Free-form Circumvention Prohibition ¶4	M1	N	Y	Y	Y	core/askuser-protocol-reference.md	move	worked example
+*	core/askuser-protocol.md	Completion-Report Next-Step Discipline ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	"exactly TWO valid closes"
+*	core/askuser-protocol.md	Completion-Report Next-Step Discipline ¶3	none	a	NA	NA	NA	-	REJECT:governs-scope	the two closes
+*	core/askuser-protocol.md	Completion-Report Next-Step Discipline ¶4	M2	N	NA	NA	NA	-	try	restatement + rationale
+*	core/askuser-protocol.md	Completion-Report Next-Step Discipline ¶5	M1	N	Y	Y	Y	core/askuser-protocol-reference.md	move	pre-emit checklist (procedure; precedent: the report-before-ask checklist already lives in the reference)
+*	core/askuser-protocol.md	Non-ASCII Tool-Call Encoding ¶2	M1	N	Y	Y	Y	core/askuser-protocol-reference.md	move	failure-mode mechanism (precedent: root-cause mechanism already in the reference)
+*	core/moai-constitution.md	MoAI Orchestrator ¶1	M2	N	NA	NA	NA	-	try	normative, independent of the channel [HARD] line
+*	core/moai-constitution.md	Parallel Execution	M2	N	NA	NA	NA	-	try	normative rules list; in place only
+*	core/moai-constitution.md	Opus 5.5 Prompt Philosophy ¶1	none	a	NA	NA	NA	-	REJECT:governs-scope	"The binding points:" intro
+*	core/moai-constitution.md	Opus 5.5 Prompt Philosophy ¶3	M2	N	NA	NA	NA	-	try	pointers
+*	core/moai-constitution.md	Output Format	M2	N	NA	NA	NA	-	try	REQ-ALD2-013 obligation block: in place only (design.md §4.3 D-24)
+*	core/moai-constitution.md	Worktree Isolation	M2	N	NA	NA	NA	-	try	REQ-ALD2-013 obligation block: in place only
+*	core/moai-constitution.md	Quality Gates	M2	N	NA	NA	NA	-	try	REQ-ALD2-013 obligation block: in place only
+*	core/moai-constitution.md	MX Tag Quality Gates ¶1	none	a	NA	NA	NA	-	REJECT:governs-scope	frames the list that holds the MUST line
+*	core/moai-constitution.md	URL Verification	M2	N	NA	NA	NA	-	try	normative rules list
+*	core/moai-constitution.md	Tool Selection Priority	M2	N	NA	NA	NA	-	try	pointer + one-line principle
+*	core/moai-constitution.md	Error Handling Protocol	M2	N	NA	NA	NA	-	try	REQ-ALD2-013 obligation block: in place only
+*	core/moai-constitution.md	Security Boundaries	M2	N	NA	NA	NA	-	try	REQ-ALD2-013 obligation block: in place only
+*	core/moai-constitution.md	Lessons Protocol ¶1	M2	N	NA	NA	NA	-	try	one-line purpose
+*	core/moai-constitution.md	Lessons Protocol ¶3	M2	N	NA	NA	NA	-	try	pointer
+*	core/moai-constitution.md	Agent Core Behaviors	none	a	NA	NA	NA	-	REJECT:governs-scope	design.md §4.3 (a) scope of the six behaviors
+*	core/moai-constitution.md	1. Surface Assumptions [ZONE:Evolvable] [HARD] ¶1	none	a	NA	NA	NA	-	REJECT:governs-scope	the behavior the [HARD] heading binds
+*	core/moai-constitution.md	1. Surface Assumptions [ZONE:Evolvable] [HARD] ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	required format
+*	core/moai-constitution.md	1. Surface Assumptions [ZONE:Evolvable] [HARD] ¶3	M2	N	NA	NA	NA	-	try	anti-pattern + pointer
+*	core/moai-constitution.md	2. Manage Confusion Actively [ZONE:Evolvable] [HARD] ¶1	none	a	NA	NA	NA	-	REJECT:governs-scope	the behavior the [HARD] heading binds
+*	core/moai-constitution.md	2. Manage Confusion Actively [ZONE:Evolvable] [HARD] ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	required steps
+*	core/moai-constitution.md	2. Manage Confusion Actively [ZONE:Evolvable] [HARD] ¶3	M2	N	NA	NA	NA	-	try	anti-pattern
+*	core/moai-constitution.md	3. Push Back When Warranted [ZONE:Evolvable] [HARD] ¶1	none	a	NA	NA	NA	-	REJECT:governs-scope	the behavior the [HARD] heading binds
+*	core/moai-constitution.md	3. Push Back When Warranted [ZONE:Evolvable] [HARD] ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	when/how of the binding behavior
+*	core/moai-constitution.md	3. Push Back When Warranted [ZONE:Evolvable] [HARD] ¶3	M2	N	NA	NA	NA	-	try	anti-pattern
+*	core/moai-constitution.md	4. Enforce Simplicity [ZONE:Evolvable] [HARD] ¶1	none	a	NA	NA	NA	-	REJECT:governs-scope	the behavior the [HARD] heading binds
+*	core/moai-constitution.md	4. Enforce Simplicity [ZONE:Evolvable] [HARD] ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	ladder intro
+*	core/moai-constitution.md	4. Enforce Simplicity [ZONE:Evolvable] [HARD] ¶3	none	a	NA	NA	NA	-	REJECT:governs-scope	the ladder the safety carve-out MUST NOT line refers to
+*	core/moai-constitution.md	4. Enforce Simplicity [ZONE:Evolvable] [HARD] ¶4	none	a	NA	NA	NA	-	REJECT:governs-scope	interpretation of the ladder
+*	core/moai-constitution.md	4. Enforce Simplicity [ZONE:Evolvable] [HARD] ¶6	none	a	NA	NA	NA	-	REJECT:governs-scope	quantitative trigger of the binding behavior
+*	core/moai-constitution.md	5. Maintain Scope Discipline [ZONE:Evolvable] [HARD] ¶1	none	a	NA	NA	NA	-	REJECT:governs-scope	the behavior the [HARD] heading binds
+*	core/moai-constitution.md	5. Maintain Scope Discipline [ZONE:Evolvable] [HARD] ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	the Do NOT list
+*	core/moai-constitution.md	5. Maintain Scope Discipline [ZONE:Evolvable] [HARD] ¶3	M2	N	NA	NA	NA	-	try	anti-pattern + positive directive
+*	core/moai-constitution.md	6. Verify, Don't Assume [ZONE:Evolvable] [HARD] ¶1	none	a	NA	NA	NA	-	REJECT:governs-scope	the behavior the [HARD] heading binds
+*	core/moai-constitution.md	6. Verify, Don't Assume [ZONE:Evolvable] [HARD] ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	evidence requirements
+*	core/moai-constitution.md	6. Verify, Don't Assume [ZONE:Evolvable] [HARD] ¶3	M2	N	NA	NA	NA	-	try	anti-pattern + goal-to-test
+*	core/moai-mcp-tools.md	moai-mcp Tool Catalogue	none	a	NA	NA	NA	-	REJECT:governs-scope	SSOT statement fixing what the file owns
+*	core/moai-mcp-tools.md	MCP-over-CLI rule	none	a	NA	NA	NA	-	REJECT:governs-scope	design.md §4.3 (a): the file's only selection rule
+*	core/moai-mcp-tools.md	The `project_root` input — name your own tree ¶1	none	a	NA	NA	NA	-	REJECT:governs-scope	the tool list the MUST line applies to
+*	core/moai-mcp-tools.md	The `project_root` input — name your own tree ¶3	M1	N	Y	Y	Y	core/moai-mcp-tools-catalogue.md	move	rationale
+*	core/moai-mcp-tools.md	The `project_root` input — name your own tree ¶4	none	a	NA	NA	NA	-	REJECT:governs-scope	what to pass
+*	core/moai-mcp-tools.md	The `project_root` input — name your own tree ¶5	M1	N	Y	Y	Y	core/moai-mcp-tools-catalogue.md	move	rationale
+*	core/moai-mcp-tools.md	The `project_root` input — name your own tree ¶6	M1	N	Y	Y	Y	core/moai-mcp-tools-catalogue.md	move	server-side mechanism description
+*	core/moai-mcp-tools.md	The `project_root` input — name your own tree ¶7	M2	N	NA	NA	NA	-	try	operative statement for linked worktrees
+*	core/moai-mcp-tools.md	The `project_root` input — name your own tree ¶8	M1	N	Y	Y	Y	core/moai-mcp-tools-catalogue.md	move	server-side mechanism description
+*	core/moai-mcp-tools.md	Cross-reference	M2	N	NA	NA	NA	-	try	companion pointer + footer
+*	core/native-idiom-and-register.md	Native-Idiom & Register Policy (Non-English Locales)	none	a	NA	NA	NA	-	REJECT:governs-scope	title + loading scope
+*	core/native-idiom-and-register.md	The Invariant ¶2	none	b	NA	NA	NA	-	REJECT:narrows-scope	conditional: zero overhead on English sessions
+*	core/native-idiom-and-register.md	The Invariant ¶3	none	a	NA	NA	NA	-	REJECT:governs-scope	defines "native prose" per surface
+*	core/native-idiom-and-register.md	Cross-references	M2	N	NA	NA	NA	-	try	pointers + footer
+*	core/verification-claim-integrity.md	Verification-Claim Integrity	none	a	NA	NA	NA	-	REJECT:governs-scope	applicability ("loaded for the orchestrator and all agents")
+*	core/verification-claim-integrity.md	1. The Invariant — no unobserved-claim (verification, defect, OR premise) ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	headline of the invariant
+*	core/verification-claim-integrity.md	1. The Invariant — no unobserved-claim (verification, defect, OR premise) ¶3	none	a	NA	NA	NA	-	REJECT:governs-scope	elaborates the invariant
+*	core/verification-claim-integrity.md	1. The Invariant — no unobserved-claim (verification, defect, OR premise) ¶4	none	a	NA	NA	NA	-	REJECT:governs-scope	defect direction of the invariant
+*	core/verification-claim-integrity.md	1. The Invariant — no unobserved-claim (verification, defect, OR premise) ¶6	M2	N	NA	NA	NA	-	try	rationale; M1 blocked because verification-claim-integrity-detail.md is self-keyed (see evidence)
+*	core/verification-claim-integrity.md	1. The Invariant — no unobserved-claim (verification, defect, OR premise) ¶7	none	a	NA	NA	NA	-	REJECT:governs-scope	the norm binds independently of the mechanical layer
+*	core/verification-claim-integrity.md	1.1 Binding scope — ALL FOUR surfaces ¶1	none	a	NA	NA	NA	-	REJECT:governs-scope	intro of the four surfaces
+*	core/verification-claim-integrity.md	1.1 Binding scope — ALL FOUR surfaces ¶5	none	a	NA	NA	NA	-	REJECT:governs-scope	surface 4 of "ALL FOUR"
+*	core/verification-claim-integrity.md	2. Baseline-Integrity Attribution / baseline 무결성 귀속 ¶3	none	a	NA	NA	NA	-	REJECT:governs-scope	defines an attributed claim
+*	core/verification-claim-integrity.md	2. Baseline-Integrity Attribution / baseline 무결성 귀속 ¶4	none	a	NA	NA	NA	-	REJECT:governs-scope	defines an attributed claim
+*	core/verification-claim-integrity.md	2.1 Moving-ref attribution — the anchor-or-subject predicate ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	frames the predicate the [HARD] lines apply
+*	core/verification-claim-integrity.md	2.1 Moving-ref attribution — the anchor-or-subject predicate ¶4	none	a	NA	NA	NA	-	REJECT:governs-scope	heading within the binding body
+*	core/verification-claim-integrity.md	2.1 Moving-ref attribution — the anchor-or-subject predicate ¶6	none	a	NA	NA	NA	-	REJECT:governs-scope	heading within the binding body
+*	core/verification-claim-integrity.md	2.2 Tool-provenance attribution — which build judged the tree ¶2	M2	N	NA	NA	NA	-	try	rationale (silent symmetric failure)
+*	core/verification-claim-integrity.md	2.2 Tool-provenance attribution — which build judged the tree ¶4	none	a	NA	NA	NA	-	REJECT:governs-scope	the "either:" options of the MUST
+*	core/verification-claim-integrity.md	2.2 Tool-provenance attribution — which build judged the tree ¶5	none	a	NA	NA	NA	-	REJECT:governs-scope	citation requirement of the obligation
+*	core/verification-claim-integrity.md	2.2 Tool-provenance attribution — which build judged the tree ¶6	none	b	NA	NA	NA	-	REJECT:narrows-scope	where it does not bind
+*	core/verification-claim-integrity.md	2.2 Tool-provenance attribution — which build judged the tree ¶7	none	b	NA	NA	NA	-	REJECT:narrows-scope	not a substitute for the tooling verdict
+*	core/verification-claim-integrity.md	3. The 5-Section Evidence-Bearing Report Format ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	intro of the section table
+*	core/verification-claim-integrity.md	3. The 5-Section Evidence-Bearing Report Format ¶3	none	a	NA	NA	NA	-	REJECT:governs-scope	the five sections the [HARD] line names
+*	core/verification-claim-integrity.md	3. The 5-Section Evidence-Bearing Report Format ¶4	M2	N	NA	NA	NA	-	try	companion pointer
+*	core/verification-claim-integrity.md	3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	interprets the [HARD] line
+*	core/verification-claim-integrity.md	3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution ¶3	M2	N	NA	NA	NA	-	try	rationale
+*	core/verification-claim-integrity.md	3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution ¶4	none	a	NA	NA	NA	-	REJECT:governs-scope	intro of the consequences
+*	core/verification-claim-integrity.md	3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution ¶5	none	b	NA	NA	NA	-	REJECT:narrows-scope	a refusal does not block the verdict
+*	core/verification-claim-integrity.md	3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution ¶6	M2	N	NA	NA	NA	-	try	init: horizontal rule; live: provenance note
+*	core/verification-claim-integrity.md	3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution ¶7	M2	N	NA	NA	NA	-	try	init: version footer; live: horizontal rule
+*	core/verification-claim-integrity.md	3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution ¶8	M2	N	NA	NA	NA	-	try	live: version footer
+*	workflow/cache-aware-execution.md	Cache-Aware Execution	none	b	NA	NA	NA	-	REJECT:narrows-scope	design.md §4.3 (b): "change no gate semantics" + loading scope
+*	workflow/cache-aware-execution.md	Directives ¶1	M2	N	NA	NA	NA	-	try	non-[HARD] directive 1
+*	workflow/cache-aware-execution.md	Directives ¶2	M2	N	NA	NA	NA	-	try	directive 2
+*	workflow/cache-aware-execution.md	Directives ¶3	M2	N	NA	NA	NA	-	try	directive 3
+*	workflow/cache-aware-execution.md	Directives ¶4	M2	N	NA	NA	NA	-	try	directive 4
+*	workflow/cache-aware-execution.md	Directives ¶5	M2	N	NA	NA	NA	-	try	directive 5
+*	workflow/cache-aware-execution.md	Non-goals	none	b	NA	NA	NA	-	REJECT:narrows-scope	bounds the directives (never justify skipping a gate)
+*	workflow/cache-aware-execution.md	Cross-references	M2	N	NA	NA	NA	-	try	pointers + footer
+*	workflow/context-window-management.md	Context Window Management	none	a	NA	NA	NA	-	REJECT:governs-scope	title + audience scope
+*	workflow/context-window-management.md	Context Window Targets ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	the table the [HARD] threshold line depends on
+*	workflow/context-window-management.md	Context Window Targets ¶3	none	a	NA	NA	NA	-	REJECT:governs-scope	tie-break rule for the table
+*	workflow/context-window-management.md	User Responsibilities ¶1	none	a	NA	NA	NA	-	REJECT:governs-scope	intro restating the thresholds the [HARD] lines use
+*	workflow/context-window-management.md	Orchestrator Responsibilities ¶4	none	a	NA	NA	NA	-	REJECT:governs-scope	part of the resume-format [HARD] body
+*	workflow/context-window-management.md	Detection Heuristics	M2	N	NA	NA	NA	-	try	estimation procedure
+*	workflow/context-window-management.md	Applies To	none	a	NA	NA	NA	-	REJECT:governs-scope	applicability of the whole rule
+*	workflow/context-window-management.md	Cross-references	M2	N	NA	NA	NA	-	try	pointers + footer
+*	workflow/cross-session-messaging.md	Cross-Session Messaging	none	a	NA	NA	NA	-	REJECT:governs-scope	scope + loading scope
+*	workflow/cross-session-messaging.md	What the channel is	M2	N	NA	NA	NA	-	try	channel description (definitions, not REQ-AMC-002 relocation classes)
+*	workflow/cross-session-messaging.md	Availability constraints	M2	N	NA	NA	NA	-	try	constraint summary + operative sentence
+*	workflow/cross-session-messaging.md	Rules ¶5	M2	N	NA	NA	NA	-	try	enforcement description mixed with a normative sentence
+*	workflow/cross-session-messaging.md	Rules ¶6	none	b	NA	NA	NA	-	REJECT:narrows-scope	role-boundary dispatch is permitted
+*	workflow/cross-session-messaging.md	Rules ¶7	M2	N	NA	NA	NA	-	try	normative Evolvable rule
+*	workflow/cross-session-messaging.md	Rules ¶8	M2	N	NA	NA	NA	-	try	normative Evolvable rule
+*	workflow/cross-session-messaging.md	Rules ¶9	M2	N	NA	NA	NA	-	try	normative Evolvable rule
+*	workflow/cross-session-messaging.md	A send result has three shapes, and none of them says "read" ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	the shapes table the [HARD] line relies on
+*	workflow/cross-session-messaging.md	A send result has three shapes, and none of them says "read" ¶3	M1	N	Y	Y	Y	workflow/cross-session-messaging-detail.md	move	explanation of the third shape (rationale)
+*	workflow/cross-session-messaging.md	A send result has three shapes, and none of them says "read" ¶4	M2	N	NA	NA	NA	-	try	normative sentence
+*	workflow/cross-session-messaging.md	A send result has three shapes, and none of them says "read" ¶5	M2	N	NA	NA	NA	-	try	normative + rationale
+*	workflow/cross-session-messaging.md	An idle notice is a scheduling hint ¶1	none	a	NA	NA	NA	-	REJECT:governs-scope	defines notify_when_idle the [HARD] line refers to
+*	workflow/cross-session-messaging.md	An idle notice is a scheduling hint ¶3	M1	N	Y	Y	Y	workflow/cross-session-messaging-detail.md	move	rationale
+*	workflow/cross-session-messaging.md	Codex broker path (session messaging tools)	none	a	NA	NA	NA	-	REJECT:governs-scope	extends every rule above to the Codex broker (scope)
+*	workflow/cross-session-messaging.md	Cross-references	M2	N	NA	NA	NA	-	try	pointers + footer
+*	workflow/goal-directive.md	Goal Directive (`/moai goal`) — Autonomous Continuation	M2	N	NA	NA	NA	-	try	title + pointer; the file has no keyword line
+*	workflow/goal-directive.md	What It Is	M2	N	NA	NA	NA	-	try	definition + operating facts (not a REQ-AMC-002 relocation class)
+*	workflow/goal-directive.md	Goal-Presentation Timing	M2	N	NA	NA	NA	-	try	normative prose
+*	workflow/goal-directive.md	Hard Preconditions for Every Recommendation	none	b	NA	NA	NA	-	REJECT:narrows-scope	design.md §4.3 (b)
+*	workflow/goal-directive.md	Cross-references	M2	N	NA	NA	NA	-	try	pointers + footer
+*	workflow/kanban-dispatch.md	Kanban Dispatch Protocol ¶1	none	a	NA	NA	NA	-	REJECT:governs-scope	what the rule governs
+*	workflow/kanban-dispatch.md	Kanban Dispatch Protocol ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	loading scope
+*	workflow/kanban-dispatch.md	Kanban Dispatch Protocol ¶4	M2	N	NA	NA	NA	-	try	companion pointer
+*	workflow/kanban-dispatch.md	Scope — when this rule is live	none	b	NA	NA	NA	-	REJECT:narrows-scope	design.md §4.3 (b) remote governance
+*	workflow/kanban-dispatch.md	Entry into the board is an operator act ¶1	none	a	NA	NA	NA	-	REJECT:governs-scope	grounds the sole-producer [HARD] line
+*	workflow/kanban-dispatch.md	Entry into the board is an operator act ¶5	none	b	NA	NA	NA	-	REJECT:narrows-scope	what is not a silent promotion
+*	workflow/kanban-dispatch.md	Card classes — not every card needs every column ¶1	none	a	NA	NA	NA	-	REJECT:governs-scope	class definitions the Class A [HARD] line uses
+*	workflow/kanban-dispatch.md	Card classes — not every card needs every column ¶3	M2	N	NA	NA	NA	-	try	normative sentence
+*	workflow/kanban-dispatch.md	Card classes — not every card needs every column ¶4	none	b	NA	NA	NA	-	REJECT:narrows-scope	Class B skips plan, not review
+*	workflow/kanban-dispatch.md	Card classes — not every card needs every column ¶5	M2	N	NA	NA	NA	-	try	WIP rule
+*	workflow/kanban-dispatch.md	The dispatch cycle	none	a	NA	NA	NA	-	REJECT:governs-scope	parent heading of binding subsections
+*	workflow/kanban-dispatch.md	The delegation channel is the queue ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	elaborates the [HARD] queue line
+*	workflow/kanban-dispatch.md	Dispatch language ¶2	none	b	NA	NA	NA	-	REJECT:narrows-scope	what stays verbatim
+*	workflow/kanban-dispatch.md	Dispatch format ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	the fields the [HARD] line names
+*	workflow/kanban-dispatch.md	Deputy dispatch surface ¶6	M2	N	NA	NA	NA	-	try	pointer
+*	workflow/kanban-dispatch.md	Completion is read, never trusted ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	operationalizes the [HARD] line
+*	workflow/kanban-dispatch.md	Completion is read, never trusted ¶3	none	a	NA	NA	NA	-	REJECT:governs-scope	operationalizes the [HARD] line
+*	workflow/kanban-dispatch.md	Completion is read, never trusted ¶4	none	a	NA	NA	NA	-	REJECT:governs-scope	verdict home of the [HARD] line
+*	workflow/kanban-dispatch.md	CodeRabbit is not read from `gh pr checks` ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	condition 1
+*	workflow/kanban-dispatch.md	CodeRabbit is not read from `gh pr checks` ¶3	none	a	NA	NA	NA	-	REJECT:governs-scope	condition 1 command
+*	workflow/kanban-dispatch.md	CodeRabbit is not read from `gh pr checks` ¶4	none	a	NA	NA	NA	-	REJECT:governs-scope	condition 2
+*	workflow/kanban-dispatch.md	CodeRabbit is not read from `gh pr checks` ¶5	none	a	NA	NA	NA	-	REJECT:governs-scope	outcome of the conditions
+*	workflow/kanban-dispatch.md	The `/clear` handoff between phases ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	part of the [HARD] handoff
+*	workflow/kanban-dispatch.md	The `/clear` handoff between phases ¶3	none	a	NA	NA	NA	-	REJECT:governs-scope	extends the [HARD] handoff to the lead
+*	workflow/kanban-dispatch.md	Isolation is provisioned by MoAI, then entered through a launcher ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	forms table the [HARD] launcher line uses
+*	workflow/kanban-dispatch.md	Isolation is provisioned by MoAI, then entered through a launcher ¶3	none	a	NA	NA	NA	-	REJECT:governs-scope	creation verb of the [HARD] line
+*	workflow/kanban-dispatch.md	Isolation is provisioned by MoAI, then entered through a launcher ¶8	none	a	NA	NA	NA	-	REJECT:governs-scope	slug rule intro
+*	workflow/kanban-dispatch.md	Isolation is provisioned by MoAI, then entered through a launcher ¶10	none	b	NA	NA	NA	-	REJECT:narrows-scope	directory keeps the card id
+*	workflow/kanban-dispatch.md	Isolation is provisioned by MoAI, then entered through a launcher ¶12	none	a	NA	NA	NA	-	REJECT:governs-scope	the three carriers
+*	workflow/kanban-dispatch.md	Isolation is provisioned by MoAI, then entered through a launcher ¶13	none	a	NA	NA	NA	-	REJECT:governs-scope	consequence of the carriers rule
+*	workflow/kanban-dispatch.md	Isolation is provisioned by MoAI, then entered through a launcher ¶15	none	b	NA	NA	NA	-	REJECT:narrows-scope	binds card-delivering PRs only
+*	workflow/kanban-dispatch.md	Isolation is provisioned by MoAI, then entered through a launcher ¶16	M2	N	NA	NA	NA	-	try	dispatch obligation (git -C)
+*	workflow/kanban-dispatch.md	Verification load is lane-local ¶3	M2	N	NA	NA	NA	-	try	normative sentence
+*	workflow/kanban-dispatch.md	The env-isolated verification form ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	the form the [HARD] line requires
+*	workflow/kanban-dispatch.md	The env-isolated verification form ¶3	none	a	NA	NA	NA	-	REJECT:governs-scope	load-bearing property of the form
+*	workflow/kanban-dispatch.md	The env-isolated verification form ¶4	none	a	NA	NA	NA	-	REJECT:governs-scope	defines which form is standard
+*	workflow/kanban-dispatch.md	The env-isolated verification form ¶5	M1	N	Y	Y	Y	workflow/kanban-dispatch-mechanics.md	move	rationale (why the subshell form breaks)
+*	workflow/kanban-dispatch.md	The env-isolated verification form ¶6	M1	N	Y	Y	Y	workflow/kanban-dispatch-mechanics.md	move	measurement record (incident class)
+*	workflow/kanban-dispatch.md	The env-isolated verification form ¶7	M2	N	NA	NA	NA	-	try	normative sentence
+*	workflow/kanban-dispatch.md	Integration into the release branch is self-served ¶2	M1	N	Y	Y	Y	workflow/kanban-dispatch-mechanics.md	move	rationale (two measured constraints)
+*	workflow/kanban-dispatch.md	Integration into the release branch is self-served ¶3	none	a	NA	NA	NA	-	REJECT:governs-scope	the integration rules under the [HARD] line
+*	workflow/kanban-dispatch.md	Integration into the release branch is self-served ¶7	none	a	NA	NA	NA	-	REJECT:governs-scope	completion signal of the [HARD] integration
+*	workflow/kanban-dispatch.md	Factory Mode — the card travels whole	none	b	NA	NA	NA	-	REJECT:narrows-scope	design.md §4.3 (b): lane spawn authority
+*	workflow/kanban-dispatch.md	Boundaries — what this protocol does not do	none	b	NA	NA	NA	-	REJECT:narrows-scope	design.md §4.3 (b)
+*	workflow/kanban-dispatch.md	Cross-references	M2	N	NA	NA	NA	-	try	pointers + footer
+*	workflow/main-checkout-branch-guard.md	Main-Checkout Branch Guard	none	a	NA	NA	NA	-	REJECT:governs-scope	title + loading scope
+*	workflow/main-checkout-branch-guard.md	Rules ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	the forbidden table
+*	workflow/main-checkout-branch-guard.md	Rules ¶3	none	b	NA	NA	NA	-	REJECT:narrows-scope	permitted list intro
+*	workflow/main-checkout-branch-guard.md	Rules ¶4	none	b	NA	NA	NA	-	REJECT:narrows-scope	permitted list
+*	workflow/main-checkout-branch-guard.md	Staleness Rule ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	the commands of the [HARD] line
+*	workflow/main-checkout-branch-guard.md	Staleness Rule ¶3	none	a	NA	NA	NA	-	REJECT:governs-scope	action of the [HARD] line
+*	workflow/main-checkout-branch-guard.md	Detecting Concurrent Sessions ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	operative consequence of the MUST NOT line
+*	workflow/main-checkout-branch-guard.md	Mechanical Enforcement	M2	N	NA	NA	NA	-	try	enforcement description with a normative sentence
+*	workflow/main-checkout-branch-guard.md	Cross-references	M2	N	NA	NA	NA	-	try	pointers + footer
+*	workflow/session-handoff.md	Session Handoff Protocol	none	a	NA	NA	NA	-	REJECT:governs-scope	loading scope + companion pointer
+*	workflow/session-handoff.md	When To Generate (5 Triggers) ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	the triggers the MUST line names
+*	workflow/session-handoff.md	When To Generate (5 Triggers) ¶3	none	b	NA	NA	NA	-	REJECT:narrows-scope	when none apply
+*	workflow/session-handoff.md	Emission-Time Save Obligation (auto-resume wiring) ¶3	none	a	NA	NA	NA	-	REJECT:governs-scope	record semantics of the save obligation
+*	workflow/session-handoff.md	Canonical Format (Verbatim Spec) ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	the verbatim format the MUST line names
+*	workflow/session-handoff.md	Field-by-Field Specification ¶1	M2	N	NA	NA	NA	-	try	pointer
+*	workflow/session-handoff.md	Auto-Injected Resume Flow (mode=auto)	M2	N	NA	NA	NA	-	try	summary + pointer
+*	workflow/session-handoff.md	Invariants (both modes)	none	b	NA	NA	NA	-	REJECT:narrows-scope	design.md §4.3 (b)
+*	workflow/session-handoff.md	Auto-Memory Integration (Mandatory) ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	the "MUST also:" list
+*	workflow/session-handoff.md	Auto-Memory Integration (Mandatory) ¶3	M2	N	NA	NA	NA	-	try	one-line rationale
+*	workflow/session-handoff.md	Output Surface (User-Facing) ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	defines non-emission for the [HARD] line
+*	workflow/session-handoff.md	Output Surface (User-Facing) ¶3	none	a	NA	NA	NA	-	REJECT:governs-scope	the obligation still binds without a banner
+*	workflow/session-handoff.md	Diet Constraints ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	the constraints the [HARD] line names
+*	workflow/session-handoff.md	Cross-references	M2	N	NA	NA	NA	-	try	drift sentinel + pointers
+*	workflow/skill-routing.md	(서문)	none	a	NA	NA	NA	-	REJECT:governs-scope	frontmatter carries paths: (acceptance.md §D.3)
+*	workflow/skill-routing.md	Skill Routing Protocol	none	a	NA	NA	NA	-	REJECT:governs-scope	title + scope
+*	workflow/skill-routing.md	1. Orchestrator Obligation ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	the instruction the MUST line injects
+*	workflow/skill-routing.md	1. Orchestrator Obligation ¶3	M1	N	Y	Y	Y	workflow/skill-routing-detail.md	move	worked examples
+*	workflow/skill-routing.md	1. Orchestrator Obligation ¶4	none	b	NA	NA	NA	-	REJECT:narrows-scope	zero matches is valid
+*	workflow/skill-routing.md	§1.1 — Orchestrator-Direct Skill Routing (non-spawn) ¶2	none	a	NA	NA	NA	-	REJECT:governs-scope	the mandatory-skill table
+*	workflow/skill-routing.md	4. Cross-references	M2	N	NA	NA	NA	-	try	pointers + footer

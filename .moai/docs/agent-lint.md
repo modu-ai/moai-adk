@@ -42,7 +42,7 @@ Flags:
 | LR-04 | error | error | Dead hook entry: `matcher:` references a tool absent from `tools:` list. |
 | LR-05 | error | error | Write-heavy agent missing `isolation: worktree`. Promoted from warning per SPEC-V3R2-ORC-004. |
 | LR-06 | warning | error | `--deepthink flag:` boilerplate text in `description:` field (redundant activation instructions). |
-| LR-07 | error | error | Duplicate Skeptical-Evaluator Mandate block (canonical copy lives in `agent-common-protocol.md` §Skeptical Evaluation Stance). |
+| LR-07 | error | error | Duplicate Skeptical-Evaluator Mandate block (canonical copy lives in `agent-common-protocol-reference.md` §Skeptical Evaluation Stance). |
 | LR-08 | warning | warning | Skill-preload drift within same agent category (>=50% peer-omission threshold). |
 | LR-09 | error | error | `isolation: worktree` on read-only agent (`permissionMode: plan`). |
 | LR-10 | error | error | Static `team-*.md` agent file (v3r2 uses dynamic team generation only). |

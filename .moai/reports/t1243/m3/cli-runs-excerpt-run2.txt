@@ -1,0 +1,8 @@
+--- PASS: TestCodexAuditMCPTool (3.77s)
+--- PASS: TestCodexContractLinkCreation (0.02s)
+--- PASS: TestCodexContractIdempotent (0.06s)
+--- PASS: TestCodexLocalSeparation (0.02s)
+--- PASS: TestCodexContractLink_LocalImportMatrix (0.02s)
+--- PASS: TestCodexLocalInstructions_TemplateDescribesCommonAndSpecificInputs (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	165.798s
+1763

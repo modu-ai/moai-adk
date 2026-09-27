@@ -26,6 +26,10 @@ const (
 	// the resolver can report it as a configuration error rather than as an
 	// ordinary out-of-set value.
 	AutonomyDeciderJev = "jev"
+
+	// workflow.autonomy.escalation.new_api_detector values.
+	AutonomyNewAPIDetectorGraph = "graph"
+	AutonomyNewAPIDetectorOff   = "off"
 )
 
 // Full dotted key names used in warnings and in the decider error.
@@ -34,6 +38,7 @@ const (
 	autonomyKeySecondReview     = "workflow.autonomy.contract.second_review"
 	autonomyKeyDecider          = "workflow.autonomy.kickoff.decider"
 	autonomyKeyJevMinConfidence = "workflow.autonomy.kickoff.jev_min_confidence"
+	autonomyKeyNewAPIDetector   = "workflow.autonomy.escalation.new_api_detector"
 )
 
 // ErrKickoffDeciderJevSole is reported (never returned as a load failure) when
@@ -61,6 +66,9 @@ type AutonomySettings struct {
 	DeciderDerived   bool
 	JevMinConfidence float64
 	BudgetDefault    AutonomyBudget
+	// NewAPIDetector is workflow.autonomy.escalation.new_api_detector
+	// (graph | off), read by the escalation detector's class 4.
+	NewAPIDetector string
 	// JevEnabled mirrors workflow.jev.enabled for the signer; an llm+jev
 	// decider with Jev disabled is not an error here (the fallback is the
 	// receipt's to record).
@@ -131,6 +139,17 @@ func ResolveAutonomy(wf WorkflowConfig) AutonomySettings {
 			s.warn(autonomyKeyJevMinConfidence, strconv.FormatFloat(*c, 'g', -1, 64),
 				strconv.FormatFloat(DefaultAutonomyJevMinConfidence, 'f', 2, 64))
 		}
+	}
+
+	switch a.Escalation.NewAPIDetector {
+	case "":
+		s.NewAPIDetector = DefaultAutonomyNewAPIDetector
+	case AutonomyNewAPIDetectorGraph, AutonomyNewAPIDetectorOff:
+		s.NewAPIDetector = a.Escalation.NewAPIDetector
+	default:
+		// graph is the detecting value, so it is the stricter fallback.
+		s.NewAPIDetector = AutonomyNewAPIDetectorGraph
+		s.warn(autonomyKeyNewAPIDetector, a.Escalation.NewAPIDetector, AutonomyNewAPIDetectorGraph)
 	}
 
 	b := a.Escalation.BudgetDefault

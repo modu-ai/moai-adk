@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 3fc0650a28fb9be0c630815b3cea2f7c2c49e207eebefbdfa7b6ca30535afb30
+              hash: ef2b05a57f2f27feb8f4163cd0d0f1771cf76611c32e67a6f2d80c07c252cec8
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -21,7 +21,7 @@ catalog:
             - name: moai-foundation-quality
               tier: core
               path: templates/.claude/skills/moai-foundation-quality/
-              hash: 0917dca49b2a19b22c752845c6004b59ea9141d4b725ff62ccf23f9967de5a37
+              hash: 957d89cb3193d4ca39ff70c53186fee3deb5066cf922d3760774999bf5320aca
               version: 1.0.0
             - name: moai-foundation-thinking
               tier: core
@@ -117,7 +117,7 @@ catalog:
             - name: sync-auditor
               tier: core
               path: templates/.claude/agents/moai/sync-auditor.md
-              hash: 81b60051724d9ff9d930077fd9df16d14f449ee20b770b62f3bf6f6d18412932
+              hash: 9a55b76aeb3b4c11786afda4957b509e0ec85194a8270b0286a129744b446611
               version: 1.0.0
             - name: manager-develop
               tier: core
@@ -147,12 +147,12 @@ catalog:
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/moai/plan-auditor.md
-              hash: 696a1e749129896ac0cb55de11aa33ad48049c39fb255aeb2aa38dfc6f54e95e
+              hash: 3118ffb9889db0f8556d03488baed296f0a6ad13eee7975992805b7a80bffec9
               version: 1.0.0
             - name: super-advisor
               tier: core
               path: templates/.claude/agents/moai/super-advisor.md
-              hash: 529819c72e932597cf367ac158f7f138751f8d3cef833941955b09bb05db386e
+              hash: d8b2d09bab8c219947fa85176a588b3e36c85d6d8eddcd6c038c408222116371
               version: 1.0.0
             - name: mission-governor
               tier: core
@@ -225,7 +225,7 @@ catalog:
                 - name: moai-ref-cross-model-audit
                   tier: optional-pack:devops
                   path: templates/.claude/skills/moai-ref-cross-model-audit/
-                  hash: d3069f41fb13d356d2bcd04c71b9da33c5849f13c0f5b7148847e6c381648f4e
+                  hash: ef0c5b52b6ff9c961be05058c55681112445936a71db8f595246922d7cc8e3fa
                   version: 1.0.0
                 - name: moai-ref-supply-chain
                   tier: optional-pack:devops
@@ -255,7 +255,7 @@ catalog:
                 - name: moai-ref-ui-polish
                   tier: optional-pack:frontend
                   path: templates/.claude/skills/moai-ref-ui-polish/
-                  hash: 2c9a758559e4c27fab337296bd8cc4eb6772af3aedaf395b152c51ade3a3d017
+                  hash: bf7ea9eac5ad067c57a5b3b49a7674ef67f419b30608d7cd6c040510ef61fb52
                   version: 1.0.0
                 - name: moai-ref-seo
                   tier: optional-pack:frontend

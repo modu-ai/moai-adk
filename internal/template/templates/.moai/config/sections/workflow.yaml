@@ -156,6 +156,16 @@ workflow:
         enabled: false
         default_max_duration: 30m
         resources: {}
+    # served_model_gate: refuse to adopt a plan-auditor or sync-auditor verdict
+    # when the model that actually answered that auditor differs from the
+    # expected one, or cannot be determined. The SubagentStop hook records the
+    # served model and warns on every subagent whatever `enabled` says;
+    # `enabled` gates ONLY the refusal, which keeps the run, docs, and git
+    # phase-entry spawns denied until a later run of the same auditor is
+    # observed on the expected model. The completed audit itself is never
+    # undone, re-run, or rewritten. Ships OFF.
+    served_model_gate:
+        enabled: false
     # jev: the TypeSafe System One judgment capability. It answers a typed
     # question about a supplied state and returns a typed answer with a
     # probability; it generates no text and decides nothing. Ships OFF, and
@@ -171,6 +181,9 @@ workflow:
     # The capability is display-only: an answer is a labelled model-produced
     # signal a person reads, never an input to a completion verdict, a merge
     # approval, a queue mutation, or any other decision that is hard to undo.
+    # One exception: the contract-mode Kickoff `llm+jev` cross-check may use
+    # an answer as its second signal, where it can only confirm an LLM
+    # approval or route the Kickoff to a human; it never decides alone.
     #
     # Where this setting is changed, and where it is NOT: `moai init` asks
     # about it once, and after that the `moai web` settings screen is the only
@@ -195,6 +208,13 @@ workflow:
             jev_min_confidence: 0.50
         escalation:
             budget_default: { turns: 60, operations: 40, audit_retries: 2 }
+            # new_api_detector: how the escalation detector looks for new
+            # packages, exported declarations, CLI verbs, MCP tools, and
+            # configuration keys between the card base and HEAD under
+            # mode: contract. graph compares declarations; off disables that
+            # check only. It runs at an on-demand checkpoint whose invocation
+            # surface is pending, never inside a tool-call hook.
+            new_api_detector: graph   # graph | off
     # workflow_agents: dynamic-workflow purpose taxonomy -> {model, effort}
     # DEFAULTS. This block is the SSOT for workflow agent() model/effort
     # defaults; per-script literals in .claude/workflows/*.js override it.

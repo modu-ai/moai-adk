@@ -73,6 +73,12 @@ var codexLiveAxis = []codexLiveAxisEntry{
 		observes: "AC-CRT-010 — a baseBranch review target is not rejected by a live codex",
 	},
 	{
+		file:     "parity_live_test.go",
+		switches: []string{"MOAI_PARITY_LIVE", "codexBinaryName"},
+		tests:    9,
+		observes: "SPEC-DUAL-HARNESS-HOOK-PARITY-001 live legs (AC-HPR-004, 007, 008–012 live, 020, 021): whether Codex and Claude hosts honour the Stop chain, needs_input, hook faults, compaction, approval, Interrupt, goal continuation, isolation, and the Stop-timeout ceiling — NOT_RUN by operator decision Q5",
+	},
+	{
 		file:     "audit_pin_live_test.go",
 		switches: []string{"MOAI_AUDIT_PIN_LIVE", "codexBinaryName"},
 		tests:    2,
@@ -90,7 +96,7 @@ const codexLiveAxisMinFiles = 4
 func codexLiveGatedFiles(t *testing.T) []string {
 	t.Helper()
 	lookPath := regexp.MustCompile(`(?:exec\.LookPath|codexLookPath)\(codexBinaryName\)`)
-	liveEnv := regexp.MustCompile(`"MOAI_(?:CODEX_LIVE_PROBE|AUDIT_PIN_LIVE)"`)
+	liveEnv := regexp.MustCompile(`"MOAI_(?:CODEX_LIVE_PROBE|AUDIT_PIN_LIVE|PARITY_LIVE)"`)
 
 	entries, err := os.ReadDir(".")
 	if err != nil {

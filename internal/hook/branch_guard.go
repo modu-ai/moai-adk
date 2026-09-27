@@ -25,21 +25,28 @@ import (
 // branchGuardExemptEnv is the sentinel env var that exempts a session from the
 // guard, complementing the AgentType identity axis (REQ-WBG-011b).
 //
-// Reachability — both axes are read from what arrives at THIS process, and a
-// tool-spawned subagent can supply neither:
+// Reachability — both axes are read from what arrives at THIS process, and they
+// differ in whether a spawned agent can reach them
+// (SPEC-BRANCHGUARD-EXEMPT-REACH-001, measured 2026-09-27):
 //
-//   - AgentType arrives only in the hook payload, and Claude Code populates
-//     agent_type for a main-thread `claude --agent <name>` launch. A subagent
-//     spawned through the Agent tool sends no agent_type on PreToolUse, so the
-//     identity axis cannot fire for it.
+//   - AgentType arrives in the hook payload, and Claude Code DOES populate
+//     agent_type for an agent spawned through the Agent tool — snake_case, the
+//     same spelling HookInput decodes, carrying the spawn name verbatim rather
+//     than a catalog name. The identity axis therefore fires for a spawned
+//     agent named manager-git, and a three-arm check confirmed the deny is
+//     suppressed for it while still firing for a main-session payload and for
+//     a spawned agent under any other name. The prior comment here claimed the
+//     opposite; that claim was never measured.
 //   - This env var is read from the hook process's own environment. The hook
 //     runs as a separate process spawned BEFORE the guarded command executes,
 //     so an `export` inside that command cannot reach it. The variable must be
-//     present in the environment Claude Code itself was launched with.
+//     present in the environment Claude Code itself was launched with. This
+//     axis was NOT re-measured by that card and is unchanged.
 //
-// Exporting the sentinel inside the command being guarded is therefore a no-op,
-// and was mistaken for a broken exemption. Neither axis is defective; both are
-// simply unreachable from inside a guarded command.
+// Exporting the sentinel inside the command being guarded is therefore still a
+// no-op, and was mistaken for a broken exemption. Neither axis is defective —
+// but the reasons now differ: the sentinel's value never arrives, whereas the
+// identity value does arrive and simply did not match manager-git.
 const branchGuardExemptEnv = "MOAI_BRANCH_GUARD_EXEMPT"
 
 // branchGuardAuditRelPath is the fail-open advisory log path, relative to the
@@ -349,10 +356,37 @@ func substituteShellComments(command string) string {
 // pattern matched. Heredoc bodies and quoted arguments collapse to a
 // placeholder first (substituteHeredocBodies, substituteQuotedArguments) and
 // shell comments are elided last (substituteShellComments) so a match
-// reflects the command being invoked, not its data. Used by checkBranchState
-// (M2) and by M1 pattern-set tests.
+// reflects the command being invoked, not its data. The PowerShell form
+// expansions of SPEC-HOOK-GUARD-POWERSHELL-FORMS-001 run inside the same
+// scan: the .exe-suffixed git spelling normalizes onto the plain one, a call
+// operator's quoted call target is unquoted (it is command, not data), and
+// command-position backtick escapes are de-escaped. When the outer text does
+// not match, a pwsh -Command-family payload is scanned with the same
+// pipeline — the payload is executed code. Used by checkBranchState (M2) and
+// by M1 pattern-set tests.
 func matchBranchStateCommand(command string) (string, bool) {
-	scanned := substituteShellComments(substituteQuotedArguments(substituteHeredocBodies(command)))
+	if suffix, matched := matchNormalizedBranchState(command); matched {
+		return suffix, true
+	}
+	// REQ-HGF-004: a -Command payload is executed code, not data. The full
+	// pipeline — quoted-span collapse and comment elision included — is
+	// computed WITHIN the payload, so a query payload passes and a nested
+	// quoted span inside the payload stays data
+	// (pwsh -Command "Write-Output 'git switch'" keeps its allow).
+	if payload := extractPowerShellCommandPayload(command); payload != "" {
+		if suffix, matched := matchNormalizedBranchState(payload); matched {
+			return suffix, true
+		}
+	}
+	return "", false
+}
+
+// matchNormalizedBranchState runs the collapse pipeline and the pattern set
+// over one text (the outer command, or a -Command payload).
+func matchNormalizedBranchState(command string) (string, bool) {
+	scanned := substituteShellComments(normalizeGitExeSuffix(
+		substituteCommandBackticks(substituteQuotedArguments(
+			substituteCallOperatorTargets(substituteHeredocBodies(command))))))
 	for _, p := range branchStatePatterns {
 		if p.match != nil {
 			if p.match(scanned) {
@@ -365,6 +399,229 @@ func matchBranchStateCommand(command string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// --- PowerShell form expansions (SPEC-HOOK-GUARD-POWERSHELL-FORMS-001) ---
+
+// gitExeSuffixPattern matches the .exe-suffixed spelling of the git
+// executable, optionally behind a path (REQ-HGF-001). The \b bounds keep a
+// longer word like `gitexe` or `xgit.exe` from matching.
+var gitExeSuffixPattern = regexp.MustCompile(`(?i)\bgit\.exe\b`)
+
+// normalizeGitExeSuffix rewrites the .exe-suffixed git spelling onto the
+// plain spelling so the branch-state patterns reach it. Runs on the
+// quote-collapsed text — a `git.exe` inside quoted prose is already part of
+// the placeholder and is never normalized.
+func normalizeGitExeSuffix(command string) string {
+	return gitExeSuffixPattern.ReplaceAllString(command, "git")
+}
+
+// callOperatorTargetPattern locates a PowerShell call operator (&) in command
+// position — at the start of the command, after a segment separator or an
+// opening parenthesis, or after whitespace following one — immediately
+// followed by a quoted span. That span names the executable the call operator
+// invokes: it is the ONE site where a quoted span is command, not data
+// (REQ-HGF-002).
+var callOperatorTargetPattern = regexp.MustCompile(`(?:^|[(;&|][ \t]*|[ \t]+)&[ \t]*('[^']*'|"[^"]*")`)
+
+// isGitExecutableSpelling reports whether content names the git executable —
+// plain, .exe-suffixed, or behind a path. Only a git-naming span gains
+// command meaning; any other call target stays data (collapsed by
+// substituteQuotedArguments like every quoted span), so the expansion never
+// widens what counts as a git invocation.
+func isGitExecutableSpelling(content string) bool {
+	base := content[strings.LastIndexAny(content, `/\`)+1:]
+	return strings.EqualFold(base, "git") || strings.EqualFold(base, "git.exe")
+}
+
+// substituteCallOperatorTargets unquotes ONLY the quoted span immediately
+// following a PowerShell call operator in command position, and only when the
+// span names git. PowerShell resolves that span as the executable name, so
+// `& 'git' switch probe` must reach the same decision as `git switch probe`.
+//
+// The general quoted-argument collapse is untouched: a quoted `git switch`
+// carried as data inside another command's argument is still collapsed to the
+// placeholder by substituteQuotedArguments, which runs right after — the
+// measured quoted-prose false positive (`moai todo add "… git switch …"`)
+// stays protected. An & that merely sits inside quoted prose is skipped too:
+// the & position is checked against the quoted spans before any rewrite.
+func substituteCallOperatorTargets(command string) string {
+	matches := callOperatorTargetPattern.FindAllStringSubmatchIndex(command, -1)
+	if len(matches) == 0 {
+		return command
+	}
+	quoted := quotedArgumentPattern.FindAllStringIndex(command, -1)
+	var b strings.Builder
+	last := 0
+	for _, m := range matches {
+		spanStart, spanEnd := m[2], m[3]
+		if spanStart < 0 {
+			continue
+		}
+		ampIdx := strings.LastIndexByte(command[m[0]:spanStart], '&')
+		if ampIdx < 0 {
+			continue
+		}
+		if insideAnySpan(m[0]+ampIdx, quoted) {
+			continue // the & itself sits in quoted prose — the collapse will blank it
+		}
+		content := command[spanStart+1 : spanEnd-1]
+		if !isGitExecutableSpelling(content) {
+			continue // not git: the span stays data
+		}
+		b.WriteString(command[last:spanStart])
+		b.WriteString(content)
+		last = spanEnd
+	}
+	if last == 0 {
+		return command
+	}
+	b.WriteString(command[last:])
+	return b.String()
+}
+
+// substituteCommandBackticks removes PowerShell backtick escape characters
+// from the scanned text (REQ-HGF-003). PowerShell itself de-escapes a
+// backtick in command position — “git swi`tch probe“ runs as
+// `git switch probe` — so the guard reaches the decision the de-escaped
+// command reaches. Single-quoted spans are already collapsed to the
+// placeholder at this point in the pipeline, so a literal backtick inside one
+// is gone with its span; that is the bound the REQ states.
+func substituteCommandBackticks(command string) string {
+	if !strings.ContainsRune(command, '`') {
+		return command
+	}
+	return strings.ReplaceAll(command, "`", "")
+}
+
+// splitPSCommandSegments splits a command on segment separators that sit
+// OUTSIDE quoted spans (`;`, `|`, `&&`, newline). A bare `&` is the call
+// operator, not a separator. Quoted tracking is single-level, matching the
+// quote model substituteQuotedArguments uses.
+func splitPSCommandSegments(command string) []string {
+	var segs []string
+	start := 0
+	quote := byte(0)
+	for i := 0; i < len(command); i++ {
+		c := command[i]
+		if quote != 0 {
+			if c == quote {
+				quote = 0
+			}
+			continue
+		}
+		switch c {
+		case '\'', '"':
+			quote = c
+		case ';', '|', '\n':
+			segs = append(segs, command[start:i])
+			start = i + 1
+		case '&':
+			if i+1 < len(command) && command[i+1] == '&' {
+				segs = append(segs, command[start:i])
+				start = i + 2
+				i++
+			}
+		}
+	}
+	return append(segs, command[start:])
+}
+
+// splitPSTokens splits one command segment into whitespace-separated tokens,
+// keeping quoted spans as single tokens so a -Command payload token survives
+// whole (`"git switch probe"` is one token, not five).
+func splitPSTokens(segment string) []string {
+	var toks []string
+	var cur strings.Builder
+	quote := byte(0)
+	for i := 0; i < len(segment); i++ {
+		c := segment[i]
+		if quote != 0 {
+			cur.WriteByte(c)
+			if c == quote {
+				quote = 0
+			}
+			continue
+		}
+		switch c {
+		case '\'', '"':
+			quote = c
+			cur.WriteByte(c)
+		case ' ', '\t':
+			if cur.Len() > 0 {
+				toks = append(toks, cur.String())
+				cur.Reset()
+			}
+		default:
+			cur.WriteByte(c)
+		}
+	}
+	if cur.Len() > 0 {
+		toks = append(toks, cur.String())
+	}
+	return toks
+}
+
+// stripOuterQuotes removes ONE layer of quoting — the layer the shell or
+// wrapper stripped on its way to pwsh, which is not part of the executed
+// script text. Inner quoting survives and is handled by the payload's own
+// pipeline (the nested-quote mutant must stay allowed).
+func stripOuterQuotes(tok string) string {
+	if len(tok) >= 2 {
+		if (tok[0] == '"' && tok[len(tok)-1] == '"') || (tok[0] == '\'' && tok[len(tok)-1] == '\'') {
+			return tok[1 : len(tok)-1]
+		}
+	}
+	return tok
+}
+
+// commandPayloadParameter reports whether a PowerShell parameter name selects
+// the -Command family — the parameter whose payload is executed code
+// (REQ-HGF-004). Covers -Command, -c, -CommandWithArgs and their prefix
+// abbreviations.
+func commandPayloadParameter(name string) bool {
+	if name == "c" || name == "cwa" {
+		return true
+	}
+	return strings.HasPrefix("command", name) || strings.HasPrefix(name, "commandwith")
+}
+
+// extractPowerShellCommandPayload returns the script text pwsh executes for a
+// -Command-family parameter, or "" when the command carries none. The payload
+// is every token after the parameter, with the outer quoting of each token
+// stripped — that quoting belongs to the wrapper, not the script. -File and
+// other script parameters end the parameter scan: their remaining tokens
+// belong to the script FILE, not to an inline payload. Each pwsh /
+// powershell segment is considered independently, so an iex segment sharing
+// the line does not blind the extraction.
+func extractPowerShellCommandPayload(command string) string {
+	for _, seg := range splitPSCommandSegments(command) {
+		tokens := splitPSTokens(seg)
+		for i, tok := range tokens {
+			base := tok[strings.LastIndexAny(tok, `/\`)+1:]
+			base = strings.TrimSuffix(base, ".exe")
+			if low := strings.ToLower(base); low != "pwsh" && low != "powershell" {
+				continue
+			}
+			for j := i + 1; j < len(tokens); j++ {
+				name, ok := powerShellParameterName(tokens[j])
+				if !ok {
+					continue
+				}
+				if commandPayloadParameter(name) {
+					payload := make([]string, 0, len(tokens)-j-1)
+					for _, p := range tokens[j+1:] {
+						payload = append(payload, stripOuterQuotes(p))
+					}
+					return strings.Join(payload, " ")
+				}
+				if isScriptParameter(name) {
+					break // -File: the remaining tokens belong to the script
+				}
+			}
+		}
+	}
+	return ""
 }
 
 // --- git branch flag-class discrimination (SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001) ---
@@ -628,12 +885,15 @@ func isPrimaryCheckout(projectDir string) (bool, error) {
 // The deny fires ONLY on positive evidence; uncertainty never denies.
 //
 // The deny reason's remediation directs the caller to a worktree and
-// deliberately does NOT suggest delegating to a manager-git subagent: both
-// exemption axes are unreachable from tool-spawned subagents (see the
-// branchGuardExemptEnv reachability note above), so such a delegation
-// reproduces the same deny. Kanban card t43: the old "(use a worktree or
-// invoke via manager-git)" wording sent orchestrator sessions down that dead
-// end — one wasted turn per session, observed in two sessions.
+// deliberately does NOT suggest delegating to a manager-git agent. Kanban card
+// t43 introduced that rule because the old "(use a worktree or invoke via
+// manager-git)" wording sent two orchestrator sessions down what was believed
+// to be a dead end, burning a turn each. The rule survives but its reason is
+// inverted: SPEC-BRANCHGUARD-EXEMPT-REACH-001 measured that the identity
+// exemption DOES reach a spawned agent, so the delegation would succeed — and
+// succeeding is exactly what this guard exists to prevent in the primary
+// checkout. A remediation must not name a route whose only effect is to defeat
+// the guard.
 //
 // The projectDir argument is the AUDIT-LOG project directory — resolved by the
 // caller (pre_tool.go) via $CLAUDE_PROJECT_DIR → os.Getwd() and pinned to the
@@ -686,7 +946,7 @@ func checkBranchState(input *HookInput, projectDir string) (decision string, rea
 	if !isPrimary {
 		return "", ""
 	}
-	reason = fmt.Sprintf("%s: %s in primary checkout (use a worktree; the manager-git identity and %s exemptions fire only for main-thread launches, not for tool-spawned subagents)",
+	reason = fmt.Sprintf("%s: %s in primary checkout (use a worktree; do not route around this by naming a spawned agent manager-git - the identity exemption does reach spawned agents, and using it that way defeats the guard; the %s sentinel is main-thread-only)",
 		branchGuardViolationPrefix, suffix, branchGuardExemptEnv)
 	return DecisionDeny, reason
 }

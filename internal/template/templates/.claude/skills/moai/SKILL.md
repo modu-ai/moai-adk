@@ -166,6 +166,10 @@ Flags: `--auto` selects `mission_mode=auto`; it does not mean `progression_mode=
 Progression mode: autonomous (default) vs. semi-autonomous — chosen at Implementation Kickoff Approval; the gate stays mandatory in both modes.
 For detailed orchestration: Read .claude/skills/moai/workflows/goal.md
 
+<!-- moai:contract-mode-start id="contract-signing-router" -->
+Where `workflow.autonomy.mode: contract` — the Kickoff approval named here is the contract signature checked by `moai contract kickoff-check`; the progression mode is chosen when a goal is armed after that check passes. See `.claude/rules/moai/workflow/contract-autonomy.md` § The signing gate.
+
+<!-- moai:contract-mode-end -->
 ### gtd - GTD Workflow and Backlog Queue
 
 Purpose: Carry captured work through Capture, Clarify, Organize, Reflect, and Engage, and hold what the operator wants to work on next. `backlog` has no owning session, so admission to the board is always an operator act — this is that surface.

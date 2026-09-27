@@ -305,6 +305,33 @@ const (
 	EnvChainNodeID = "MOAI_CHAIN_NODE_ID"
 )
 
+// Factory-role marker constants (SPEC-AUTONOMY-PRECONDITION-001
+// REQ-AP-012). The contract-sign and contract-decide guard
+// (internal/hook/contract_sign_guard.go) reads these constants — never a
+// repeated literal — so the marker's spelling has one home.
+const (
+	// EnvFactoryRole carries a session's factory role claim. The guard
+	// denies the non-interactive sign path (`--signer llm` /
+	// `--signer llm+jev`) and `moai contract decide` in a session whose
+	// value equals FactoryRoleWorker, and allows them otherwise (REQ-AP-011):
+	// the allow direction is the lead session's own decide path when the
+	// decider is llm or llm+jev. A session that sets no such variable makes
+	// no role claim. Until card t1240 stamps the variable into worker launch
+	// environments, the role gate denies nothing in production — the
+	// protection that does not depend on the marker is the boundary-keyed
+	// human-path deny (REQ-AP-003).
+	EnvFactoryRole = "MOAI_FACTORY_ROLE"
+
+	// FactoryRoleWorker is the role value the guard expects: the canonical
+	// `-f worker` role spelling (internal/cli's live factoryWorkerRoleToken),
+	// not the retired pre-rename alias `agent` — operator ruling on spec.md
+	// §F O5. Pinning to both live carriers (the CLI role token and the
+	// worker-label prefix in internal/kanban) is asserted inside the carrier
+	// packages (REQ-AP-013, AC-AP-018): internal/config cannot import
+	// internal/cli back without a cycle, and both carriers are unexported.
+	FactoryRoleWorker = "worker"
+)
+
 // GLM inject/clear env-var names (set onto the process env when entering
 // GLM / CG mode, and deleted when leaving it). These three keys are the
 // canonical GLM env-var set per SPEC-CLIFIX-HYGIENE-001 REQ-HYG-001-003 —

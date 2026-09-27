@@ -160,6 +160,9 @@ type Project struct {
 // and a committed git repository.
 func New(t testing.TB) *Project {
 	t.Helper()
+	// Signing appends to the contract store under MOAI_HOME; point it at a
+	// fresh temporary home so no fixture ever writes the real store.
+	t.Setenv("MOAI_HOME", t.TempDir())
 	p := &Project{t: t, Root: t.TempDir()}
 	p.AddSpec(SpecID, Draft{}, Acceptance)
 	p.WriteFile(PlanAuditReportPath, "# plan-audit report — SPEC-FIXTURE-001\n\nVerdict: PASS\n")

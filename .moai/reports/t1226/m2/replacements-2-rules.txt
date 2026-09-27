@@ -1,0 +1,396 @@
+# M2 attempts, part 2 — the 14 rule files (format: see replacements.txt).
+
+@@ * | core/agent-common-protocol.md | Subagent Prohibitions ¶2
+Rules for subagents: missing context → return a blocker report, never free-form questions; never surface AskUserQuestion calls in a subagent prompt body; user preferences arrive only via the spawn prompt; critical data omitted → respond with a structured "missing inputs" section and stop.
+@@END
+@@ * | core/agent-common-protocol.md | Hook Invocation Surface ¶5
+#### Stop self-gate caveat
+@@END
+@@ * | core/agent-common-protocol.md | Hook Invocation Surface ¶6
+The Stop hook fires on every turn-end, not only on completion, so it self-gates (exit 0 unless the turn is a genuine completion point). It does NOT fire on user interrupt — not a guaranteed end-of-work signal.
+@@END
+@@ * | core/agent-common-protocol.md | Hook Invocation Surface ¶7
+#### Recovery-Signal Carve-Out
+@@END
+@@ * | core/agent-common-protocol.md | Verbatim batch, output contracts, and CLI idioms ¶1
+The 7-command batch, file-redirect contract, evidence-persistence obligation, serial-verification anti-pattern and CLI idioms: `agent-common-protocol-reference.md` (read it when composing a batch).
+@@END
+@@ * | core/askuser-protocol.md | Channel Monopoly ¶5
+@@END
+@@ * | core/askuser-protocol.md | Structural Constraints (all mandatory) ¶3
+@@END
+@@ * | core/askuser-protocol.md | Option Description Standards ¶4
+@@END
+@@ * | core/askuser-protocol.md | Completion-Report Next-Step Discipline ¶4
+"Ask through `AskUserQuestion`, or do not ask" — no third "ask in prose" option; "a short trailing next-step question can be plain prose" is exactly the forbidden failure mode.
+@@END
+@@ * | core/moai-constitution.md | MoAI Orchestrator ¶1
+MoAI is the strategic orchestrator for Claude Code; direct implementation by MoAI is prohibited for complex tasks.
+@@END
+@@ * | core/moai-constitution.md | Parallel Execution
+## Parallel Execution
+
+Run independent tool calls in parallel; go sequential only for dependencies.
+
+Rules:
+- Independent agents launch in one message (sub-agent mode: multiple Agent() calls in a single message)
+- fanout bounds: hard bound is the runtime subagent cap (`CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`, default 20 per turn); MoAI's 3-5 is a cache/coordination ADVISORY for fan-out, distinct from the 3-5 TEAM-SIZE advisory that binds agent-team teammates only. SSOT: orchestration-mode-selection.md §C.2
+- Team mode: spawn teammates with the Agent tool's `name` parameter (the team forms on first spawn — one team per session, no setup); team agents share TaskList, sub-agents return results directly
+- Spawn multiple subagents in one turn when fanning out across independent items or files; never spawn one for work completable in a single response
+- Three primitives — **sub-agents**, **Agent Teams**, **dynamic workflows** — chosen by who holds the plan; coding-heavy work prefers sequential sub-agents, workflow-scale fan-out is for genuinely parallel high-volume tasks. Intermediate results per primitive: `.claude/rules/moai/workflow/dynamic-workflows.md`.
+@@END
+@@ * | core/moai-constitution.md | Opus 5.5 Prompt Philosophy ¶3
+Effort calibration: `agent-authoring.md` § Effort-Level Calibration Matrix; rationale and model-id table: `moai-constitution-detail.md` § Opus 5.5 Prompt Philosophy.
+@@END
+@@ * | core/moai-constitution.md | Output Format
+## Output Format
+
+Never display XML tags in user-facing responses: XML is for agent-to-agent data transfer; user-facing communication is Markdown, with language-tagged code blocks.
+@@END
+@@ * | core/moai-constitution.md | Worktree Isolation
+## Worktree Isolation
+
+Prompts for agents spawned with `isolation: "worktree"` must use project-root-relative paths for every write target — no absolute paths to the main project directory, no `cd /absolute/path &&` in Bash commands. Claude Code sets the agent's CWD to the worktree root. Full rules: .claude/rules/moai/workflow/worktree-integration.md
+@@END
+@@ * | core/moai-constitution.md | Quality Gates
+## Quality Gates
+
+All code changes must pass TRUST 5:
+- Tested: 85%+ coverage, characterization tests for existing code
+- Readable: clear naming; comments follow the surrounding code's language and density (`code_comments` in `.moai/config/sections/language.yaml`, default English)
+- Unified: the project language's formatter (gofmt, ruff/black, prettier, rustfmt, ...)
+- Secured: OWASP compliance, input validation
+- Trackable: conventional commits, issue references
+- Team mode: TeammateIdle hook validates work before idle acceptance; TaskCompleted hook validates deliverables before completion
+@@END
+@@ * | core/moai-constitution.md | URL Verification
+## URL Verification
+
+Verify every URL before including it: WebFetch the URLs WebSearch returned, mark unverified information as uncertain, include a Sources section when WebSearch was used. Under a GLM backend (`moai glm`) verification uses `mcp__web_reader__webReader` and search `mcp__web_search_prime__webSearchPrime` instead of `WebFetch` / `WebSearch` (`.claude/rules/moai/core/glm-web-tooling.md`).
+@@END
+@@ * | core/moai-constitution.md | Tool Selection Priority
+## Tool Selection Priority
+
+Prefer the dedicated tool over a general one when fit for purpose (accuracy, fewer round trips). The tool-by-task table (SSOT, not duplicated here): `.claude/rules/moai/core/agent-common-protocol-reference.md` § Tool Selection by Task.
+@@END
+@@ * | core/moai-constitution.md | Error Handling Protocol
+## Error Handling Protocol
+
+Report errors clearly in the user's language with recovery options; maximum 3 retries per operation, then request user intervention.
+@@END
+@@ * | core/moai-constitution.md | Security Boundaries
+## Security Boundaries
+
+Never commit secrets; validate all external inputs; follow OWASP web-security guidelines; keep credentials in environment variables.
+@@END
+@@ * | core/moai-constitution.md | Lessons Protocol ¶1
+Capture and reuse learnings from user corrections and agent failures across sessions.
+@@END
+@@ * | core/moai-constitution.md | Lessons Protocol ¶3
+Categories, file cap and archive path, inbox drain contract, auto-capture triggers, domain matching, workflow integration: `moai-constitution-detail.md` § Lessons Protocol.
+@@END
+@@ * | core/moai-constitution.md | 1. Surface Assumptions [ZONE:Evolvable] [HARD] ¶3
+Anti-pattern: silently picking one reading of an ambiguous requirement. Discovery triggers: CLAUDE.md §7 Rule 5.
+@@END
+@@ * | core/moai-constitution.md | 2. Manage Confusion Actively [ZONE:Evolvable] [HARD] ¶3
+Anti-pattern: "the spec says X, the code does Y", then silently choosing Y because it is easier.
+@@END
+@@ * | core/moai-constitution.md | 3. Push Back When Warranted [ZONE:Evolvable] [HARD] ¶3
+Anti-pattern: "Of course!" followed by implementing a known-bad idea.
+@@END
+@@ * | core/moai-constitution.md | 5. Maintain Scope Discipline [ZONE:Evolvable] [HARD] ¶3
+Anti-pattern: "While I was in this file I noticed..." (CLAUDE.md §7 Rule 2). Match the modified file's existing style — naming, error handling, imports; in-file consistency outranks preference.
+@@END
+@@ * | core/moai-constitution.md | 6. Verify, Don't Assume [ZONE:Evolvable] [HARD] ¶3
+Anti-pattern: claiming "tests pass" without running them, or compiling without building (CLAUDE.md §7 Rule 3). Without a SPEC, define completion as a testable assertion first ("done when X produces Y"), then verify it.
+<!-- moai:evolvable-end -->
+@@END
+@@ * | core/moai-mcp-tools.md | The `project_root` input — name your own tree ¶7
+A registered linked worktree of a repository keeping `.moai` untracked is also accepted
+(caveats: `moai-mcp-tools-catalogue.md` § Linked worktrees).
+@@END
+@@ * | core/moai-mcp-tools.md | Cross-reference
+## Cross-reference
+
+`moai-mcp-tools-catalogue.md` (lazy companion): § Tool catalogue (39 tools) · § Tool families
+(family-to-consumer map) · § Session messaging broker (Claude ↔ Codex) · § Unwired-by-design (why
+`goal_arm` reaches no agent).
+
+Classification: Evolvable reference rule — the MCP tool surface map. Update it whenever a tool is
+added/removed/renamed on the `moai mcp-server` (producer: `internal/cli/mcp_server.go`).
+@@END
+@@ * | core/native-idiom-and-register.md | Cross-references
+## Cross-references
+
+- `.claude/rules/moai/core/moai-constitution.md` § Response Language — the requirement this policy specializes.
+- `.claude/skills/moai-domain-humanize/` — per-locale calque catalogue (Category A) and post-edit pass.
+- `native-idiom-and-register-detail.md` (lazy companion): § Why calques survive · § Calque hazard list · § Two registers — do not conflate · § Pre-emit self-check (non-English output only).
+
+Version: 1.0.0
+Classification: Always-loaded language-quality invariant — non-English conditional.
+@@END
+@@ * | core/verification-claim-integrity.md | 1. The Invariant — no unobserved-claim (verification, defect, OR premise) ¶6
+This direction is the more dangerous because it fails silently: a wrong "remove it" is contradicted by the next build or test run; a wrong "keep it" preserves dead code and no signal ever contradicts it.
+@@END
+@@ * | core/verification-claim-integrity.md | 2.2 Tool-provenance attribution — which build judged the tree ¶2
+The failure is silent and **symmetric**: a build behind the tree skips the rules that landed after it — clean pass, exit zero, empty error stream — exactly *the same three signals* a matching build gives. So a green result shows only that the invoked build's checks reported nothing, not that the checks passed.
+@@END
+@@ * | core/verification-claim-integrity.md | 3. The 5-Section Evidence-Bearing Report Format ¶4
+Full section contents, the cross-reference table, and the two incident records behind §1 (defect-claim and retention-claim hazards): `verification-claim-integrity-detail.md` — load it when first composing an evidence-bearing report or tracing a clause to its origin.
+@@END
+@@ * | core/verification-claim-integrity.md | 3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution ¶3
+The hazard: a refusal is loud to the actor at the time and invisible in the artifact afterwards — an auditor whose command was refused can still reach PASS by reading source, turning "confirmed by measurement" into "inferred by reading" with nothing in the verdict recording it. §1 already forbids the claim; this clause fixes WHERE the difference is written down.
+@@END
+@@ init | core/verification-claim-integrity.md | 3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution ¶6
+@@END
+@@ init | core/verification-claim-integrity.md | 3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution ¶7
+Version: 1.3.0
+Classification: Canonical Reference (policy-layer codification) — do not duplicate cross-referenced content; cross-reference this file instead.
+@@END
+@@ * | workflow/cache-aware-execution.md | Directives ¶1
+1. **Front-load user gates** [ZONE:Evolvable] Ask intent-drain gates early (Clarify stage, small context), not late in a large one — a late blocking wait risks expiring the cache over the whole accumulated prefix. Unavoidable late gates (sync approval, completion decisions) SHOULD be batched into consecutive rounds so the expiry is paid at most once.
+@@END
+@@ * | workflow/cache-aware-execution.md | Directives ¶2
+2. **Stagger-spawn parallel same-type agents** [ZONE:Evolvable] For N parallel subagents sharing one definition, spawn ONE first and the other N−1 once it produces output — a cache entry still being written cannot be read, so simultaneous fan-out pays N cold writes. Composes with (does not replace) the fanout bounds in `orchestration-mode-selection.md` §C.2.
+@@END
+@@ * | workflow/cache-aware-execution.md | Directives ¶3
+3. **Defer session-loaded file edits to task end** [ZONE:Evolvable] Editing a file loaded into the session prefix (`.claude/rules/`, `CLAUDE.md`, output styles, always-loaded skills) mid-session invalidates the whole prefix from the edit point. Batch such edits at the END of a task or just before a `/clear` boundary (matches the Template-First cycle: edit → `make build` → commit → session boundary).
+@@END
+@@ * | workflow/cache-aware-execution.md | Directives ¶4
+4. **Consider `/clear` before large batches** [ZONE:Evolvable] `/clear` discards the warm cache but shrinks the prefix: before a large multi-spawn batch in a context bloated by finished unrelated work, `/clear` + paste-ready resume is cheaper than carrying the prefix through N spawns — even below the handoff threshold in `context-window-management.md`. With only short follow-up work left, keep the warm cache.
+@@END
+@@ * | workflow/cache-aware-execution.md | Directives ¶5
+5. **Inherit the session model on spawns** [ZONE:Evolvable] Caches are model-scoped; a per-spawn model override cuts the spawn off from every session cache. Omit overrides unless the task needs a different tier (the agent-authoring default); this records the caching cost of violating it.
+@@END
+@@ * | workflow/cache-aware-execution.md | Cross-references
+## Cross-references
+
+- `.claude/rules/moai/workflow/orchestration-mode-selection.md` — fan-out (stagger-spawn composes with its concurrency ceiling)
+- `.claude/rules/moai/workflow/context-window-management.md` — model-specific `/clear` thresholds (directive 4 is an earlier trigger)
+- `cache-aware-execution-reference.md` (lazy companion): § Cited cache numbers · § Directive rationale (directives 6-10).
+
+Version: 1.1.0
+Classification: Evolvable operational rule — execution ordering only; gate semantics unchanged.
+@@END
+@@ * | workflow/context-window-management.md | Detection Heuristics
+## Detection Heuristics
+
+Usage is estimated **state-file-first** from `<projectDir>/.moai/state/context-usage/<session-id>.json`,
+the per-session snapshot the statusline writes each render (prefer its `raw_pct` and `stage` over
+any proxy; per-session, so no cross-session validity check). If absent or unparseable, estimate
+from cumulative output bytes, system-reminder volume, large tool results and completed `Agent()`
+returns — under-estimating when uncertain (a premature `/clear` costs one paste, a missed one a
+stalled stream).
+
+**Trust.** The snapshot relays the percentage Claude Code computed (upstream metering changes reach
+it unrecomputed), and measured within about a percentage point of occupancy rebuilt from the
+transcript, with no double-counting either way. Trust it to about a point, and **re-derive rather
+than cite it when a verdict needs a number**. Sample size, command, distribution, dated baseline:
+`context-window-management-detail.md` § Snapshot confidence.
+
+The statusline's two-stage `/clear` marker is a signal, not a guarantee: auto-compact often
+pre-empts the hard stage. Snapshot fields and the guide-gated advisory:
+`context-window-management-detail.md` § Detection Heuristics.
+@@END
+@@ * | workflow/context-window-management.md | Cross-references
+## Cross-references
+
+- `.claude/rules/moai/workflow/cache-aware-execution.md` — cache-aware `/clear` timing (directive 4 permits an earlier `/clear` before a large multi-spawn batch) + gate placement, stagger-spawn.
+- `.claude/rules/moai/workflow/session-handoff.md` — resume format + auto-memory. Trigger #1 reads this file's threshold table (1M = 50%, 200K = 90%); the `/clear` recommendation and the paste-ready emission fire at the same boundary.
+- `context-window-management-detail.md` (lazy companion): § Why This Matters · § Claude Code's Graduated-Compaction Layers · § Reduction Ladder — cheaper moves before `/clear` · § GLM-5.3 context window · § Multi-session work — resume rather than re-establish · § Detection Heuristics · § Snapshot confidence
+
+Status: HARD operational rule, applies to all sessions
+@@END
+@@ * | workflow/cross-session-messaging.md | What the channel is
+## What the channel is
+
+A per-session inbox socket plus two tools: `ListAgents` (discover reachable agents) and `SendMessage` (plain text to one, by name). A message carries text and a reply address — never history, never files — and may carry an opt-in `notify_when_idle` request (§ An idle notice is a scheduling hint).
+
+Three properties bound everything below:
+
+- **Same machine is direct; beyond it goes through Anthropic servers.** Another of your machines or a cloud session is addressed by name the same way, and may be **opened** rather than only answered — from Claude Code v2.1.225, only where it appears in the listing. A send from a session not connected to Remote Control arrives with **no reply address** (one-way); a cloud session receives but cannot message back.
+- **A message is not consent.** The receiver is told the text came from another session, not the user: it cannot answer a permission prompt or change configuration, and a slash command in it arrives as inert text.
+- **Filesystem visibility gates reach.** Sessions find each other through files on disk: a container and its host cannot message each other; two sessions in one container can.
+@@END
+@@ * | workflow/cross-session-messaging.md | Availability constraints
+## Availability constraints
+
+"On with nothing to enable" holds only where the platform provides the channel; five axes bound where it (and thus Kanban nudges) exists, with one diagnostic separating "absent" from "blocked": **operating system**, **provider**, **runtime version**, **feature-flag evaluation** (the four opt-out env vars), and **the shared machine-global flag slot** third-party-backend sessions inherit and can lose mid-session.
+
+A biting constraint fails quietly — no error, just no channel. Surface it to the operator instead of retrying or re-spawning.
+@@END
+@@ * | workflow/cross-session-messaging.md | Rules ¶5
+**Mechanism layer (landed).** A PreToolUse deny enforces the prohibition above: a send addressed to a
+live entry in the session's stop registry is refused (`STOPPED_TEAMMATE_VIOLATION:`). The deny is
+opt-in (`workflow.agent_stop_guard.enabled`, template default false) and switches off the DENY only
+— recording and audit continue. A fresh spawn with the same name revives deliberately. The deny is
+never a bug to route around: it means the doctrine held — route through the owning orchestrator or
+respawn deliberately. Registry path, audit rows, entry lifecycle: `cross-session-messaging-detail.md`
+§ The stopped-teammate registry.
+@@END
+@@ * | workflow/cross-session-messaging.md | Rules ¶7
+[ZONE:Evolvable] **Do not let a dispatch depend on the reply arriving.** Reply routing is not guaranteed, so completion must also be observable in the shared source of truth (a progress record the coordinator reads); the message is a prompt notification, not the record — a coordinator advancing only on replies stalls silently when one is lost.
+@@END
+@@ * | workflow/cross-session-messaging.md | Rules ¶8
+[ZONE:Evolvable] **Prefer a message over a stall when a peer holds the answer.** Where a concurrent session would otherwise make the orchestrator ask the user to mediate, ask the peer directly — usually faster, sparing the user a round-trip. Not free: a delivered message counts toward the recipient's usage like a typed prompt; it saves attention, not tokens. Ask the user when the decision is theirs, the peer when the fact is theirs.
+@@END
+@@ * | workflow/cross-session-messaging.md | Rules ¶9
+[ZONE:Evolvable] **Keep messages short and self-contained**: the recipient has none of this context — one or two sentences naming the artifact, the change, and the consequence.
+@@END
+@@ * | workflow/cross-session-messaging.md | A send result has three shapes, and none of them says "read" ¶4
+**No notice ever arrives for a Remote Control, cloud, or Claude Desktop peer.** Silence there is neither agreement nor delivery — just no channel to report either; never read it as a reply.
+@@END
+@@ * | workflow/cross-session-messaging.md | A send result has three shapes, and none of them says "read" ¶5
+**The queue survives all three shapes.** A dispatch is delegated through the queue on disk and completion is read from evidence (`kanban-dispatch.md` § The delegation channel is the queue, § Completion is read, never trusted), so a held or lost message costs the board nothing; the send result only says whether a *nudge* landed. Advancing a card because a send reported success is an unobserved completion claim (`verification-claim-integrity.md` §1.1 surface 1).
+@@END
+@@ * | workflow/cross-session-messaging.md | Cross-references
+## Cross-references
+
+- `.claude/rules/moai/core/askuser-protocol.md` — the user-question channel monopoly, unchanged by this rule
+- `.claude/rules/moai/workflow/worktree-integration.md` — isolation, the structural fix for a write conflict
+- `cross-session-messaging-detail.md` (lazy companion): § Availability constraints · § The shared flag slot · § Where it sits among MoAI's existing mechanisms · § Addressing, sending, and replying · § Configuration surface · § Addressing and configuration · § Integration with the concurrency checks · § Anti-patterns · § The Codex broker path (session messaging tools)
+
+Version: 1.3.0
+Classification: Evolvable operational rule — peer-session communication; changes no gate semantics.
+@@END
+@@ * | workflow/goal-directive.md | Goal Directive (`/moai goal`) — Autonomous Continuation
+# Goal Directive (`/moai goal`) — Autonomous Continuation
+
+`/moai goal` is MoAI's session-scoped completion condition — a condition-declared loop that keeps the session working across turns until it holds — and the single goal-arming surface for every orchestrator emission path.
+
+> Detail (approach comparison, condition authoring, T1-T4 templates, MoAI Integration Notes, Native `/goal` Prohibition rationale): `goal-directive-detail.md` — load it when arming a goal or choosing between `/moai goal` and `/moai loop`.
+@@END
+@@ * | workflow/goal-directive.md | What It Is
+## What It Is
+
+`/moai goal "<condition>"` registers and arms a completion condition for the session. The text is parsed into `conditions[]` mixing **mechanical** conditions (a shell command's exit code decides) and **model** conditions (a claim the transcript must demonstrate). The `moai hook stop-goal` Stop-hook evaluator loads the goal state at each turn-end and blocks until the goal converges or a bound fires.
+
+Prefix a condition with `model:` or `cmd:` to declare its tier. Unprefixed, the tier comes from an English substring test that reads a claim in any other language as a shell command — which never exits 0, so the goal blocks every turn until its bound.
+
+State: `.moai/state/goal/<session-id>.json`, one file per session. A turn ceiling (default 30) bounds the loop; at it the evaluator emits a 5-section verdict and stops blocking. The runtime's consecutive-block cap (default 8, `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`) overrides first on an unattended run — the effective bound is `min(ceiling, cap)`, and a missing verdict is not convergence. A stagnation guard halts after N consecutive no-progress iterations.
+
+`/moai goal` is **arm-only** (§ Goal-Presentation Timing). Verbs: `/moai goal "<condition>"` (register + arm), `/moai goal status [--all]`, `/moai goal clear`; full surface, progression-mode axis and safety invariants: `.claude/skills/moai/workflows/goal.md`.
+
+Needs hooks enabled (the evaluator IS a Stop hook): unavailable under `disableAllHooks` or `allowManagedHooksOnly`; no runtime-version floor of its own.
+@@END
+@@ * | workflow/goal-directive.md | Goal-Presentation Timing
+## Goal-Presentation Timing
+
+**`/moai goal` is arm-only.** Arming records the condition and makes the `stop-goal` evaluator block turn-end until it holds; it starts no work. A goal armed with nothing running spins idle turns to the ceiling, so arming is always paired with a work-starting action and never substitutes for one — which is why a paste-ready resume keeps a work-starting command (`/moai run SPEC-X`) as Block 5's single primary action (`.claude/rules/moai/workflow/session-handoff.md` § Canonical Format (Block 5)).
+
+**The goal is presented at the Implementation Kickoff Approval gate** as the **autonomous vs semi-autonomous progression-mode axis**, DISTINCT from approve/decline, and armed only after the gate passes (`.claude/skills/moai/workflows/goal.md` § Progression Mode).
+
+**Arming a goal does not authorize autonomous run-phase entry.** The Kickoff human gate stays required in both modes; the axis only selects what happens AFTER it passes and is never a bypass or relaxation. An armed goal never authorizes a PR or a destructive operation — the evaluator decides only whether the turn continues.
+@@END
+@@ * | workflow/goal-directive.md | Cross-references
+## Cross-references
+
+- `.claude/skills/moai/workflows/goal.md` — verbs, progression-mode axis, semi-autonomous checkpoints, safety invariants
+- `.claude/skills/moai/workflows/run.md` § Run-phase Autonomy — `ac_converge` wiring
+- `goal-directive-detail.md` (lazy companion): § Comparing Autonomous-Continuation Approaches · § Writing an Effective Condition · § Arming Under Multi-Session Concurrency · § Trigger condition templates · § Proactive Recommendation Triggers · § MoAI Integration Notes · § Native `/goal` Prohibition
+
+Version: 2.1.0 (stub reduced; detail moved to `goal-directive-detail.md` lazy companion)
+Classification: Evolvable orchestration guidance — applies to autonomous multi-turn continuation
+@@END
+@@ * | workflow/kanban-dispatch.md | Kanban Dispatch Protocol ¶4
+> **Mechanics companion**: `kanban-dispatch-mechanics.md` — § The board (five fixed columns, owning roles) · § The dispatch cycle walkthrough · § Review lens selection (`--deep --patch` is opt-in twice over, never added on the lead's own initiative) · § Serializing a heavy run across lanes (`moai slot` lease) · § Factory Mode mechanics · § Boundaries · § Cross-references. Load it when moving or classifying a card, choosing lenses, or serializing a heavy run.
+@@END
+@@ * | workflow/kanban-dispatch.md | Card classes — not every card needs every column ¶3
+Speed is never the justification — it is the effect of skipping columns; a card justified by speed alone is a Class C card being rushed.
+@@END
+@@ * | workflow/kanban-dispatch.md | Card classes — not every card needs every column ¶5
+**Work in progress: one card per worktree — cards sharing a worktree run serially whatever their columns, since they share a tree and a branch.** Several cards in one column go by per-card fan-out: parallel `Agent()` workers each writing only inside their own card directory (`kanban-dispatch-detail.md` § Per-card fan-out; per class: § Card classes).
+@@END
+@@ * | workflow/kanban-dispatch.md | Deputy dispatch surface ¶6
+Background work, what returns to the lead's turn, the idle-notice request, delivery-shape verification: `kanban-dispatch-detail.md` § The lead works through manager-lead.
+@@END
+@@ * | workflow/kanban-dispatch.md | Isolation is provisioned by MoAI, then entered through a launcher ¶16
+The lead dispatches this explicitly: each instruction names the worktree and says to drive it with `git -C <path>`, not `cd` (a `cd` in a compound command lasts one invocation, so the next command silently reads the wrong tree). A companion reporting work in the shared checkout is a fault to report (rationale: `kanban-dispatch-detail.md` § Isolation rationale).
+@@END
+@@ * | workflow/kanban-dispatch.md | Verification load is lane-local ¶3
+**A verification recipe that spawns processes is a hazard and is reviewed as one**; the fault is the dispatcher's who wrote and approved it, not the lane's that ran it as given.
+@@END
+@@ * | workflow/kanban-dispatch.md | The env-isolated verification form ¶7
+A script file is not a workaround — the guard cannot read inside it, so every check is bypassed. If a verification cannot be one compound invocation, reduce the verification rather than route around the guard.
+@@END
+@@ * | workflow/kanban-dispatch.md | Cross-references
+## Cross-references
+
+- `.claude/rules/moai/core/askuser-protocol.md` — the lead's question channel (card selection, `/clear` prompts)
+- `.claude/rules/moai/core/verification-claim-integrity.md` — why completion is read, not trusted
+- The other four (blocker-report format, worktree tiers, the queue surface, `manager-lead`): `kanban-dispatch-mechanics.md` § Cross-references
+
+Classification: Evolvable operational rule — applies to the lead session of Kanban Mode. Detail companion: `kanban-dispatch-detail.md` (stub + lazy-companion split).
+@@END
+@@ * | workflow/main-checkout-branch-guard.md | Mechanical Enforcement
+## Mechanical Enforcement
+
+A PreToolUse hook applies this doctrine conditionally (a static `settings.json` deny cannot scope to
+the primary checkout and would lock out worktree flows):
+
+- **Opt-in, inert by default.** `Workflow.BranchGuard.Enabled` gates it; distributed default
+  `false` (the hazard does not apply to single-developer repos). Disabled, no `git rev-parse` runs.
+- **Deny sentinel.** Every deny is prefixed `BRANCH_GUARD_VIOLATION:`, matchable without parsing
+  the reason.
+- **Query-vs-mutate.** The `git branch` matcher denies every mutating form and passes read-only
+  queries; an unclassifiable form under-matches and passes (the accepted fail-open direction).
+- **Fail-open.** Deny only on positive evidence — primary checkout confirmed, a branch-state pattern
+  matched, agent not exempt; any uncertainty allows and appends to `.moai/logs/branch-guard-audit.log`.
+- **The identity exemption IS reachable from a spawned agent** (measured on a live runtime): Claude
+  Code populates `agent_type` on PreToolUse for an Agent-tool spawn, in the snake_case spelling
+  `HookInput` decodes, with the spawn name verbatim — so an agent spawned as `manager-git` passes
+  the guard in the primary checkout. Deliberately left un-narrowed (narrowing may withdraw a live
+  path): the bypass **exists** — never route around the guard through it; use a worktree.
+- **The sentinel axis is separate and was not re-tested.** `MOAI_BRANCH_GUARD_EXEMPT=1` is read from
+  the hook process's own environment, spawned before the guarded command, so exporting it inside the
+  command is a no-op; reading a `BRANCH_GUARD_VIOLATION` as "the exemption is broken" remains a
+  misdiagnosis — use a worktree.
+
+Flag classification, pattern set, primary-vs-worktree discriminant, quoted-span scan scope:
+`main-checkout-branch-guard-detail.md` § Mechanical enforcement.
+@@END
+@@ * | workflow/main-checkout-branch-guard.md | Cross-references
+## Cross-references
+
+- `.claude/rules/moai/workflow/worktree-integration.md` — worktree systems, lifecycle, disposal contract
+- `.claude/rules/moai/core/agent-common-protocol.md` § Pre-Spawn Sync Check — divergence check before spawning a write-capable agent
+- `main-checkout-branch-guard-detail.md` (lazy companion): § Why the race is quiet · § Mechanical enforcement · § Procedure — Isolate With a Worktree · § Verification
+
+Version: 1.3.3
+Classification: Evolvable operational rule — branch-state isolation; changes no gate semantics.
+@@END
+@@ * | workflow/session-handoff.md | Field-by-Field Specification ¶1
+Per-block detail (`mode:` enum couplings, fan-out steering phrase, the two `ultracode` forms, `source_session_id` fallback, Block 5 arm-only consequence): `session-handoff-examples.md` § Field-by-Field Specification; binding clauses summarized here.
+@@END
+@@ * | workflow/session-handoff.md | Auto-Injected Resume Flow (mode=auto)
+## Auto-Injected Resume Flow (mode=auto)
+
+[ZONE:Evolvable] Under `handoff.mode: auto` the saved pending record is consumed at the next `/clear` session start — the resume becomes **ONE** user message. Flow, `/clear`-only injection boundary, resumed-turn precondition verification: `session-handoff-format.md` § Auto-Injected Resume Flow (mode=auto) · `session-handoff-examples.md` § Auto-Injected Resume Flow (mode=auto).
+@@END
+@@ * | workflow/session-handoff.md | Auto-Memory Integration (Mandatory) ¶3
+The message then survives `/clear` and is discoverable at the next session's start.
+@@END
+@@ * | workflow/session-handoff.md | Cross-references
+## Cross-references
+
+**Drift-mitigation self-check sentinel (SSOT → render surface).** This file is the SSOT; `.claude/output-styles/moai/moai.md §8` renders it. **Before committing any edit to this file**, run the parity check in `session-handoff-examples.md` § Drift-mitigation self-check sentinel (that companion is `paths:`-scoped here, so it loads whenever the check is owed).
+
+- `.claude/rules/moai/workflow/context-window-management.md` § Context Window Targets — per-model-class threshold SSOT for `/clear` and Trigger #1 (no inline model-class numbers here, to avoid label drift).
+- `.claude/output-styles/moai/moai.md` §8 (Response Templates → Session Handoff) — render surface for the 6-block template + pre-emit self-check (bidirectional link).
+- `.claude/rules/moai/core/moai-constitution.md` §Lessons Protocol — auto-memory + `[SUPERSEDED by ...]` convention
+- `.moai/config/sections/handoff.yaml` — `handoff.mode` (`manual`/`auto`) + `handoff.guide` keys consumed by § Auto-Injected Resume Flow
+- `.claude/rules/moai/workflow/goal-directive.md` § Goal-Presentation Timing — arm-only property and Kickoff-gate timing Block 5 implements; § MoAI Integration Notes — the auto-injected resume path
+- Output-style §6 (Persistence & Context Awareness) and CLAUDE.md §11 (token-limit recovery): `session-handoff-format.md` § Cross-references
+
+Status: HARD operational rule, applies to all multi-phase MoAI workflows
+@@END
+@@ * | workflow/skill-routing.md | 4. Cross-references
+## 4. Cross-references
+
+- `.claude/rules/moai/core/moai-constitution.md` § Agent Core Behaviors — cross-cutting agent obligations
+- `.claude/rules/moai/development/agent-authoring.md` — agent frontmatter (`skills:` YAML array, `tools:` CSV), Extension-Mechanism Context-Cost Ladder
+- `.claude/rules/moai/development/skill-authoring.md` § Progressive Disclosure — the 3-level token budget
+- `skill-routing-detail.md` (lazy companion): § Why the two loading mechanisms differ · § 2. Agent Obligation · § 3. Rationale.
+
+Classification: Evolvable operational rule — applies to all agent spawns and agent bodies with the Skill tool.
+@@END

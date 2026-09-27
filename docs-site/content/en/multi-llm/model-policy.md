@@ -327,6 +327,20 @@ timestamp, session, agent, declared model, resolved model, and verdict —
 prompt bodies are never recorded. The log lets you aggregate per-agent drift
 rates.
 
+That record sees only what was **declared** at spawn time — the model that
+actually answered is known only after the response arrives. So when a subagent
+stops (SubagentStop), MoAI reads the served model from its transcript and
+appends a second row with `"source":"subagent_stop"` to the same file. Its
+verdict is `ok`, `served_drift` (a different model than expected answered), or
+`unknown` (the served model could not be read); anything other than `ok` raises
+a warning. This record never blocks.
+
+- With `workflow.served_model_gate.enabled` (default `false`), MoAI **refuses to
+  adopt** the verdict of a plan-auditor or sync-auditor run that is not `ok`. The
+  finished run is not undone; only entry into the next phase is refused.
+- To sweep past records in one pass, run `moai doctor --check "Served Model"`. A
+  plain `moai doctor` does not run the sweep and shows a one-line hint instead.
+
 A block goes out only on **positive evidence** (the fail-open principle). It
 rejects only when the agent identifier parses, the resolution maps, the
 declared model exists, and the two differ. Every other uncertain state

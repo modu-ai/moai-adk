@@ -1,0 +1,12 @@
+=== RUN   TestTemplateNeutralityC5_LocalFileNames
+=== PAUSE TestTemplateNeutralityC5_LocalFileNames
+=== CONT  TestTemplateNeutralityC5_LocalFileNames
+=== RUN   TestTemplateNeutralityC5_LocalFileNames/agents_local_allowed
+    template_neutrality_audit_test.go:482: C5 hit on "# CLAUDE.md\n\n@AGENTS.md\n\n@AGENTS.local.md\n" = true, want false
+=== RUN   TestTemplateNeutralityC5_LocalFileNames/claude_local_forbidden
+--- FAIL: TestTemplateNeutralityC5_LocalFileNames (0.00s)
+    --- FAIL: TestTemplateNeutralityC5_LocalFileNames/agents_local_allowed (0.00s)
+    --- PASS: TestTemplateNeutralityC5_LocalFileNames/claude_local_forbidden (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.336s
+FAIL

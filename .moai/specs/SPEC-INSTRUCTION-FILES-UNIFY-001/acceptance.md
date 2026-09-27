@@ -83,7 +83,10 @@ for each path. (REQ-IFU-003)
 **AC-IFU-002** — Given the deployed `CLAUDE.md` in both mirrors, When
 `grep -n '^@AGENTS\.md$\|^@AGENTS\.local\.md$' CLAUDE.md internal/template/templates/CLAUDE.md`
 runs, Then each file reports exactly two matches and the `@AGENTS.md` line number is lower
-than the `@AGENTS.local.md` line number. (REQ-IFU-002)
+than the `@AGENTS.local.md` line number. This is a declared proxy: it establishes the two
+imports and their relative order, which any correct link file carries, but not that
+`@AGENTS.local.md` is the final import with the mechanism layer between them — that part is read
+in the §D.3 noun pass, not asserted here. (REQ-IFU-002)
 
 **AC-IFU-003** — Given the deployed contract in both mirrors, When
 `grep -c '^@' AGENTS.md internal/template/templates/AGENTS.md.tmpl` runs, Then each reports
@@ -97,8 +100,9 @@ Codex's discovered chain. (REQ-IFU-018)
 > not sufficient, and it is already satisfied before any work (measured 2026-09-26 on this commit:
 > `0` / `0`). **No criterion here positively asserts clause-level neutrality.** That gap is a named
 > debt item in §D.3; it is stated rather than papered over, because the declared-proxy note is what
-> keeps the §D.2 row honest and a proxy read as coverage is exactly the defect the retirement of
-> `REQ-IFU-016` was meant to close. `REQ-IFU-018`'s section-set clause is asserted by `AC-IFU-008`.
+> keeps the §D.2 row honest and a proxy read as coverage is exactly the defect the v0.3.2
+> requirement retirement (spec.md §C.4) was meant to close. `REQ-IFU-018`'s section-set clause is
+> asserted by `AC-IFU-008`.
 
 **AC-IFU-026** — Deployment of the contract itself. Given a fixture project created by
 `moai init`, When `ls AGENTS.md` runs in it and then `sha256sum AGENTS.md` is captured, and
@@ -191,7 +195,12 @@ template-only and 17 root-only lines), so a content-level diff would fail by des
 **AC-IFU-009** — Given the reconciled contract, When
 `grep -in 'personal.*~/\.codex/AGENTS\.md.*consumed\|narrowing what the project' AGENTS.md internal/template/templates/AGENTS.md.tmpl`
 runs, Then it reports no matches; and when `grep -c 'truncat' AGENTS.md` runs, Then it
-reports `>= 1`. (REQ-IFU-017)
+reports `>= 1`; and when `grep -c 'project instruction files only' AGENTS.md` and
+`grep -c 'project instruction files only' internal/template/templates/AGENTS.md.tmpl` run as
+two separate commands, Then each reports `>= 1` — the replacement statement, written with
+that phrase unbroken on one line. This third clause is RED at plan time (t1270, tree
+`20c73990d`: both commands print `0` and exit `1`), and the superseded sentence cannot
+satisfy it. (REQ-IFU-017)
 
 ### D.5 Codex read order
 
@@ -284,11 +293,13 @@ Codex's discovered chain; dropping the `CLAUDE.md` direction would leave the imp
 > `grep -rc 'func TestCodexContractLink_LocalImportMatrix' --include='*_test.go' .` → **0
 > declarations**, so the criterion fails correctly against the unimplemented tree today.
 >
-> The citation also dropped `REQ-IFU-016`. This criterion measures import counts, which is not the
-> noun that requirement constrained (clauses); the requirement itself is now retired, its substance
+> The citation also dropped the requirement retired at v0.3.2. This criterion measures import
+> counts, which is not the noun that requirement constrained (clauses); its substance is now
 > absorbed as a clause of `REQ-IFU-018` (spec.md §C.4). Removing a citation the criterion does not
-> earn is part of the same repair — a citation that survives without substance is what let
-> `REQ-IFU-016` read as covered while nothing tested it.
+> earn is part of the same repair — a citation that survives without substance is what let the
+> retired requirement read as covered while nothing tested it. (It is named here in prose, not by
+> its id token, for the reason given under `AC-IFU-010`: §D.2's verification command extracts every
+> id token in this file as a coverage row.)
 
 > **[HARD] v0.3.1 repair — vacuous pattern, and one asserted half does not exist yet.** The
 > pattern was `'^TestCodexContractLink'`, head-anchored only; no symbol
@@ -359,7 +370,9 @@ and `.github/workflows/template-neutrality-check.yaml` run over a template fixtu
 the literal `AGENTS.local.md`, Then the test output contains
 `--- PASS: TestNeutralityByInheritance `, does not contain `no tests to run`, and the workflow
 passes; and over a fixture containing `CLAUDE.local.md`, Then the guard fails naming C5.
-(REQ-IFU-015)
+This is a declared proxy in its test half: `TestNeutralityByInheritance` checks tokens the agent
+emitter introduces and never reads the C5 local-filename class, so the two fixture runs are the
+part that establishes the requirement. (REQ-IFU-015)
 
 > v0.3.0 repair, two-part. The package was `./internal/template/` without `...`, which does
 > not walk sub-packages, so the guard was never reached; and the symbol is
@@ -373,18 +386,30 @@ passes; and over a fixture containing `CLAUDE.local.md`, Then the guard fails na
 and whose `CLAUDE.md` carries `@AGENTS.local.md`, When a headless `claude -p` session runs
 in that project asking for the sentinel, Then the response contains it. This asserts the
 import RESOLVED; a grep for the directive line does not, because M0-1 establishes an
-unresolved import is silently skipped with exit `0` and empty stderr. (REQ-IFU-023)
+unresolved import is silently skipped with exit `0` and empty stderr. The probe is also
+carried as a durable, re-runnable check: the run phase creates
+`TestClaudeImportResolution_AgentsLocalSentinel` in `./internal/cli/` (0 declarations at
+t1270, tree `20c73990d`), and
+`go test ./internal/cli/ -run '^TestClaudeImportResolution_AgentsLocalSentinel$' -v` must
+print `--- PASS: TestClaudeImportResolution_AgentsLocalSentinel ` and must not print
+`no tests to run`; where the `claude` binary or its credentials are absent the test skips,
+and a skipped run does not discharge this clause. (REQ-IFU-023)
 
 **AC-IFU-020** — Given a fixture project with NO `AGENTS.local.md`, When `moai init` runs
 and a headless `claude -p` session then starts, Then `moai init` exits `0`, the deployed
-`CLAUDE.md` still contains the literal line `@AGENTS.local.md`, and the session exits `0`.
-(REQ-IFU-004)
+`CLAUDE.md` still contains the literal line `@AGENTS.local.md`, and the session exits `0`;
+and When `moai update` then runs on the same fixture, still with no `AGENTS.local.md`, Then
+`moai update` exits `0` and the re-deployed `CLAUDE.md` still contains the literal line
+`@AGENTS.local.md` — recorded as a separate result from the `init` run. (REQ-IFU-004)
 
 **AC-IFU-027** — Launcher invariance. Given the fixture of `AC-IFU-019` (an
 `AGENTS.local.md` carrying a unique sentinel, reached only through `CLAUDE.md`'s
 `@AGENTS.local.md` import), When the same sentinel request is issued under **each** of
 `moai cc`, bare `claude`, and `moai glm` in headless mode, Then every one of the three
-responses contains the sentinel; and When
+responses contains the sentinel; the same fixture also carries an `AGENTS.md` with a second,
+distinct sentinel reached only through `CLAUDE.md`'s `@AGENTS.md` import, and every one of
+the three responses contains that sentinel too — six results, because the two files travel
+different imports and one establishes nothing about the other; and When
 `git diff --stat` is taken over the launcher sources for the whole change
 (`internal/cli/cc*.go`, `internal/cli/glm*.go`), Then no launcher passes an
 instruction-file path or an instruction argument of its own — the import path is the only
@@ -521,8 +546,8 @@ assertion, which is why it names that absence rather than implying coverage).
 
 Without this clause the derivation rule asks only whether the citation exists, so a table can be
 citation-faithful and substance-empty — and the more faithfully the rule is followed, the more
-legitimate that silence looks. The plan-audit of `4eb5405dc` found exactly that: `REQ-IFU-016`
-constrained *clauses* while both citing criteria measured *import counts*, so the requirement was
+legitimate that silence looks. The plan-audit of `4eb5405dc` found exactly that: the requirement
+since retired (spec.md §C.4) constrained *clauses* while both citing criteria measured *import counts*, so the requirement was
 tested by nothing while every mechanical check in this SPEC passed. The set-difference command below
 cannot see this shape — the citation is present — which is why the clause is `[HARD]` rather than
 delegated to a command.
@@ -575,7 +600,10 @@ diff <(grep -o 'REQ-IFU-[0-9]\{3\}' acceptance.md | sort -u) \
      <(grep -o '^- \*\*REQ-IFU-[0-9]\{3\}' spec.md | grep -o 'REQ-IFU-[0-9]\{3\}' | sort -u)
 ```
 
-Empty output is the passing condition. The nine requirements transferred to
+Empty output is the passing condition. A retired requirement is therefore named in prose in this
+file, never by its id token, so that its historical mention cannot be read as a coverage row; the
+command is left unchanged, and still reports any live `spec.md` requirement no criterion cites. The
+nine requirements transferred to
 `SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001` are absent from both sides, so their absence is not a
 gap here.
 
@@ -643,17 +671,33 @@ members are not named is not a debt list, it is a disclaimer.
 2. **The anchoring rule is enforced by review until t1269's rule lands.** The head
    block of this file states this plainly rather than implying a live check. A criterion added or
    edited during the run phase is exactly where the class returns, and nothing mechanical will
-   catch it in the interim.
+   catch it in the interim. **Update at v0.3.6:** t1269 has since landed — a binary built from
+   this tree reports 5 advisory `VacuousTestAssertion` warnings on this SPEC, all on the quoted
+   counter-examples in the head block, §C, and the repair records, none on a criterion's own
+   command — so this item and item 6's "has not landed" now read as the plan-time record, and the
+   check is mechanical wherever the installed `moai` is at least that new.
+3. **CI never executes `TestClaudeImportResolution_AgentsLocalSentinel`, so `AC-IFU-019`'s
+   durable check has local-run evidence only.** The test needs a live `claude` with credentials
+   and skips without one. CI runs the suite as `go test -json … ./...`
+   (`.github/workflows/ci.yml:229` in the `test` job, `:311` in the race job), so the skip is
+   recorded in the event stream, and `scripts/ci-census/test-census.sh` lists it as a
+   `SKIPPED TEST` row — but the census is a reporter that exits `0` by contract
+   (`test-census.sh:52-54`), and no step fails, warns, or annotates on a skip. A green CI run is
+   therefore indistinguishable from a run in which this check did not execute, and a regression
+   in Claude Code's import resolution would pass CI. The check stays live only while someone runs
+   it locally with `claude` present; `plan.md` M3 owns that run and records its
+   `--- PASS: TestClaudeImportResolution_AgentsLocalSentinel ` line in `progress.md` §E.2. This
+   is accepted as debt, not closed by this SPEC.
 
 **Deferred to card t1270 (out of this SPEC's plan scope; coordinates recorded here so t1270 can
 pick them up without re-deriving them):**
 
-3. **D21 (t1270) — `AC-IFU-009` asserts the removal of the superseded budget sentence and not the presence
+4. **D21 (t1270) — `AC-IFU-009` asserts the removal of the superseded budget sentence and not the presence
    of its replacement.** `REQ-IFU-017`'s first half ("shall state that the budget is charged
    against project instruction files only") is satisfiable by deleting the old sentence and writing
    nothing. The repair is a third clause greping both mirrors for the replacement phrasing; the
    existing `grep -c 'truncat'` clause discharges the requirement's **second** half, not its first.
-4. **D22 (t1270) — three criteria narrower than the requirement they cite.** `AC-IFU-020` asserts
+5. **D22 (t1270) — three criteria narrower than the requirement they cite.** `AC-IFU-020` asserts
    `moai init` where `REQ-IFU-004` names `init` **and** `update`, and `update` is the likelier
    regression surface because it re-deploys over an existing tree. `AC-IFU-027` asserts the
    `AGENTS.local.md` sentinel where `REQ-IFU-005` names both `AGENTS.md` **and**
@@ -662,7 +706,16 @@ pick them up without re-deriving them):**
    **carry** a mechanical check", which reads as a durable automated guard, while `AC-IFU-019` and
    `AC-IFU-021` are one-off headless `claude -p` measurements — a narrowing of the requirement is
    the likely resolution, since a `claude -p` probe needs a live model and cannot run in CI.
-5. **The `moai spec lint` anchoring rule itself — card t1269.** `VacuousAssertionRule` in
+
+   **Closed by t1270 (spec.md HISTORY v0.3.3).** D21: `AC-IFU-009` gained a third clause greping
+   both mirrors separately for `project instruction files only`, measured RED at tree `20c73990d`.
+   D22: `AC-IFU-020` gained a `moai update` leg on the same fixture; `AC-IFU-027` gained an
+   `AGENTS.md` sentinel reached through `@AGENTS.md` under all three launchers; and `AC-IFU-019`
+   gained a durable Go test, `TestClaudeImportResolution_AgentsLocalSentinel`, rather than a
+   narrowed `REQ-IFU-023`. That test needs a live `claude` and skips without one, so CI will show
+   it skipped, not passed — the check survives the run phase as a re-runnable local gate, and a
+   skipped run discharges nothing (named debt item 3). No criterion id was added; the count stays at 20.
+6. **The `moai spec lint` anchoring rule itself — card t1269.** `VacuousAssertionRule` in
    `internal/spec/lint_vacuous_assertion.go`, registered in the rule slice in
    `internal/spec/lint.go`, with two-arm fixtures — one arm carrying a conformant criterion that
    must pass, one carrying each unanchored shape that must be caught. [HARD] **t1269 has not landed,

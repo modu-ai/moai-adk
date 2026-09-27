@@ -206,18 +206,21 @@ func ValidateKickoffReceipt(chk ReceiptCheck) (*KickoffReceipt, string) {
 }
 
 // ReceiptOutcome applies the signer steps that follow an accepted receipt
-// (design.md § Kickoff Receipt): (1) the interim A1 rule — while A3's
-// amendment has not landed, an effective decider of llm+jev (Jev actually
-// answered) is refused with RefuseReceiptRequiresHuman even when both answers
-// approve; (2) the recorded outcome — approve signs (ok), reject is
-// RefuseReceiptRejected, human is RefuseReceiptRequiresHuman. A nil receipt
-// or an outcome outside the set (the validator rejects both) is
-// RefuseReceiptInvalid.
-func ReceiptOutcome(r *KickoffReceipt) (refusal string, ok bool) {
+// (design.md § Kickoff Receipt): (1) the interim A1 rule — while the Jev
+// doctrine is not amended (doctrineAmended false), an effective decider of
+// llm+jev (Jev actually answered) is refused with RefuseReceiptRequiresHuman
+// even when both answers approve; once it is amended the receipt's recorded
+// cross-check outcome decides; (2) the recorded outcome — approve signs (ok),
+// reject is RefuseReceiptRejected, human is RefuseReceiptRequiresHuman. A nil
+// receipt or an outcome outside the set (the validator rejects both) is
+// RefuseReceiptInvalid. The flag arrives as an argument (the kickoff package's
+// JevDoctrineAmended constant, passed by the CLI), so this package imports no
+// A3 package.
+func ReceiptOutcome(r *KickoffReceipt, doctrineAmended bool) (refusal string, ok bool) {
 	if r == nil {
 		return RefuseReceiptInvalid, false
 	}
-	if r.EffectiveDecider == DeciderLLMJev {
+	if !doctrineAmended && r.EffectiveDecider == DeciderLLMJev {
 		return RefuseReceiptRequiresHuman, false
 	}
 	switch r.Outcome {

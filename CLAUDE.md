@@ -28,16 +28,14 @@ Core principles (1-4) + six Agent Core Behaviors: `.claude/rules/moai/core/moai-
 
 ## 2. Request Processing Pipeline
 
-**Analyze-First** is the default main-session orchestration behavior: every request — in any input language, with or without a `/moai` subcommand — flows through one ordered pipeline, beginning with intent analysis (classify meaning, language-independent, never keyword-gated). The structured Intent Router (P1 subcommand fast-path + P3 semantic classification) lives in the `/moai` skill (`.claude/skills/moai/SKILL.md`).
+**Analyze-First** is the default main-session orchestration behavior: every request — in any input language, with or without a `/moai` subcommand — flows through one ordered pipeline, beginning with intent analysis (classify meaning, language-independent, never keyword-gated). The structured Intent Router lives in the `/moai` skill (`.claude/skills/moai/SKILL.md`).
 
-Five ordered stages:
+Five ordered stages: ① intent analysis → ② context-sufficiency check (insufficient → Rule 5 Context-First Discovery rounds, §7) → ③ execution-plan composition (`orchestration-mode-selection.md`; surfaced before execution per Approach-First, §7 Rule 1) → ④ **approval gates**, incl. the **Implementation Kickoff Approval** human gate at plan→run (§8; the progression axis is post-approval, never a bypass) → ⑤ execute → verify → iterate against acceptance criteria (an armed `/moai goal` is the termination judge).
 
-- ① **Intent analysis** — classify intent language-independently (not keyword-gated; tech signals are context for ③ only).
-- ② **Context-sufficiency check** — if insufficient, run the Rule 5 Context-First Discovery `AskUserQuestion` rounds (§7).
-- ③ **Execution-plan composition** — compose the skill/agent/dynamic-workflow chain + select the Phase 0.95 mode (`orchestration-mode-selection.md`); the plan names skills/agents/order and is surfaced before execution (Approach-First, §7 Rule 1).
-- ④ **Approval gates** — incl. the **Implementation Kickoff Approval** human gate at plan→run (§8); offers an autonomous-vs-semi-autonomous progression axis (post-approval, never a bypass).
-- ⑤ **Execute → verify → iterate** — verify vs acceptance criteria; an armed `/moai goal` is the termination judge.
+<!-- moai:contract-mode-start id="contract-signing-pipeline" -->
+Where `workflow.autonomy.mode: contract` — the plan→run gate at ④ is the signed SPEC contract: `moai contract kickoff-check <SPEC-ID> --card <card>` must exit 0, and no Kickoff `AskUserQuestion` is emitted. See `.claude/rules/moai/workflow/contract-autonomy.md` § The signing gate.
 
+<!-- moai:contract-mode-end -->
 Report: consolidate agent results in the user's `conversation_language`.
 
 ---
@@ -46,15 +44,11 @@ Report: consolidate agent results in the user's `conversation_language`.
 
 ### Unified Skill: /moai
 
-Single entry point for all MoAI development workflows. Subcommands: plan, run, sync, project, fix, loop, mx, feedback, review, clean, codemaps, gate, e2e, harness, goal, todo. Default (natural language): autonomous workflow (plan -> run -> sync pipeline). `/moai loop` (bounded project-wide improvement sweep → goal engine) and `/moai fix` (one-shot turn-based) are goal-preset siblings built on the goal engine.
+Single entry point for all MoAI development workflows. Default (natural language): autonomous workflow (plan -> run -> sync pipeline). Subcommand catalogue and per-subcommand routing: `.claude/skills/moai/SKILL.md`.
 
 ---
 
 ## 4. Agent Catalog
-
-The MoAI agent catalog consists of exactly **13 retained agents** (12 MoAI-custom + 1 Anthropic built-in `Explore`), aligned with Anthropic's best practices (sub-agents, agent-teams, best-practices docs).
-
-> **Nesting (Claude Code 2.1.219+)**: subagent nesting is enabled by default at depth 3 (`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` disables). MoAI's flat hierarchy holds by configuration — every retained agent except `manager-lead` omits the `Agent` tool. `manager-lead` is the sole Agent-carrier, opened one layer deep and depth-2 sealed (leaf workers omit `Agent`, enforced by `manager_lead_depth_test.go`). The spawn-time `mode` parameter is deprecated and ignored. Full note: `.claude/rules/moai/development/agent-authoring.md` + `agent-patterns.md`.
 
 ### Selection Decision Tree
 
@@ -72,7 +66,7 @@ The MoAI agent catalog consists of exactly **13 retained agents** (12 MoAI-custo
 
 ## 5. SPEC-Based Workflow
 
-MoAI uses DDD and TDD as its development methodologies, selected via quality.yaml. **Command flow**: `/moai plan "desc"` → manager-spec · `/moai run SPEC-XXX` → manager-develop · `/moai sync SPEC-XXX` → manager-docs. **Agent chain**: plan (manager-spec) → plan-audit (plan-auditor) → run (manager-develop, cycle_type ∈ {ddd, tdd, autofix}) → sync (manager-docs) → sync-audit (sync-auditor) → [optional Tier L OR `--pr`] PR (manager-git). Detailed phase specs + Late-Branch closure: `.claude/rules/moai/workflow/spec-workflow.md`. All phases manage @MX code annotations (`@MX:NOTE`/`@MX:WARN`/`@MX:ANCHOR`/`@MX:TODO`); details: `.claude/rules/moai/workflow/mx-tag-protocol.md`.
+**Command flow**: `/moai plan "desc"` → manager-spec · `/moai run SPEC-XXX` → manager-develop · `/moai sync SPEC-XXX` → manager-docs. **Agent chain**: plan (manager-spec) → plan-audit (plan-auditor) → run (manager-develop, cycle_type ∈ {ddd, tdd, autofix}) → sync (manager-docs) → sync-audit (sync-auditor) → [optional Tier L OR `--pr`] PR (manager-git). Methodology selection (DDD/TDD via quality.yaml), phase specs and Late-Branch closure: `.claude/rules/moai/workflow/spec-workflow.md`. @MX annotations across all phases: `.claude/rules/moai/workflow/mx-tag-protocol.md`.
 
 ---
 
@@ -84,17 +78,20 @@ The quality-gate system — 3-level harness, TRUST 5, sync-auditor scoring, and 
 
 ## 7. Safe Development Protocol
 
-The five development safeguards (HARD Rules) ensure code quality and prevent regressions. They are the §1 HARD bullets (Approach-First, Multi-File Decomposition, Post-Implementation Review, Reproduction-First Bug Fix, Context-First Discovery) expanded:
+The five development safeguards (HARD Rules) are the §1 HARD bullets expanded:
 
-- **Rule 1 — Approach-First Development**: Before non-trivial code, explain the approach + which files change + why; get user approval. Exceptions: typo/single-line/obvious bug fixes.
-  - Present the decisions most likely to change first (data-model changes, new type interfaces, user-facing/UX flows), deferring mechanical/refactoring steps to the end, so review focuses on the highest-change-likelihood decisions.
+- **Rule 1 — Approach-First Development**: Before non-trivial code, explain the approach + which files change + why; get user approval. Exceptions: typo/single-line/obvious bug fixes. Present the decisions most likely to change first (data-model changes, new type interfaces, user-facing/UX flows), deferring mechanical/refactoring steps to the end.
   - **Proportionality test — "can the diff be stated in one sentence?"** Planning overhead is repaid only when the approach is genuinely uncertain, the change spans multiple files, or the code is unfamiliar. When none hold, the exception list applies and the change proceeds directly — gating an obvious change trains approval without reading, and the gate then fails on the changes that needed it.
-  - **The plan is editable, not just approvable.** In Plan Mode `Ctrl+G` opens the plan in an editor. Route wording, scope trims, and step reordering there — cheaper and higher-fidelity than an `AskUserQuestion` round trip; route genuine either/or decisions through `AskUserQuestion` (§8 Channel Monopoly, unchanged).
+  - **The plan is editable, not just approvable.** In Plan Mode `Ctrl+G` opens the plan in an editor — route wording, scope trims, and step reordering there; route genuine either/or decisions through `AskUserQuestion` (§8 Channel Monopoly, unchanged).
 - **Rule 2 — Multi-File Change Decomposition**: When modifying 3+ files, split into logical units (TodoList), execute file-by-file, analyze dependencies before parallel execution, report progress per unit.
 - **Rule 3 — Post-Implementation Review**: After coding, provide potential-issue list (edge cases, error/concurrency scenarios), suggested test cases, known limitations/assumptions, additional-validation recommendations.
 - **Rule 4 — Reproduction-First Bug Fixing**: Write a failing reproduction test first; confirm it fails; challenge the diagnosed root cause once ("How do we know this is the cause, not a symptom?"); fix minimally; verify the test passes.
 - **Rule 5 — Context-First Discovery**: When intent is unclear, conduct a Socratic interview before execution. Trigger conditions, discovery process, exceptions, and the 4-quadrant Unknowns lens are the SSOT at `.claude/rules/moai/core/askuser-protocol.md` § Ambiguity Triggers and Exceptions + § Socratic Interview Structure (+ optional Blind Spot Pass for suspected unknown-unknowns).
 
+<!-- moai:contract-mode-start id="contract-safe-dev" -->
+Where `workflow.autonomy.mode: contract` — after signing, the Socratic interview and approach approval are satisfied by the contract; assumptions are recorded in `progress.md` and work proceeds, escalating on a contradiction. See `.claude/rules/moai/workflow/contract-autonomy.md` § Gate disposition.
+
+<!-- moai:contract-mode-end -->
 Rule sequencing: Rule 5 (Discovery — establishes WHAT) executes BEFORE Rule 1 (Approach-First — explains HOW). The quality gate auto-detects the project language and runs its standard lint/format/test toolchain (Go: `go vet`→`golangci-lint`→`go test`; illustrative — all 16 supported languages detected equally via project markers; missing tools skipped gracefully).
 
 ---
@@ -118,35 +115,21 @@ User and language configuration:
 @.moai/config/sections/user.yaml
 @.moai/config/sections/language.yaml
 
-MoAI-ADK uses Claude Code's official rules system at `.claude/rules/moai/` (core / workflow / development / language / design categories). Design System Configuration lives in `.moai/config/sections/{design,constitution,harness}.yaml`, `.moai/project/brand/`, `.moai/config/evaluator-profiles/`; legacy `.agency/` archived via `moai migrate agency`. Language rules: user responses in `conversation_language`; internal agent comms + Commands/Agents/Skills instructions always English; code comments per `code_comments` (default English); memory files always English (`moai-memory.md` § Rules).
+Rules live at `.claude/rules/moai/` (core / workflow / development / language / design). Language rules: user responses in `conversation_language`; internal agent comms + Commands/Agents/Skills instructions always English; code comments per `code_comments` (default English); memory files always English (`moai-memory.md` § Rules). Design-system config: `.moai/config/sections/{design,constitution,harness}.yaml` · `.moai/project/brand/` · `.moai/config/evaluator-profiles/`.
 
 ---
 
 ## 10. Web Search Protocol
 
-For anti-hallucination policy, see `.claude/rules/moai/core/moai-constitution.md`. Execution: (1) WebSearch with targeted queries → (2) URL validation via WebFetch → (3) response including only verified URLs with sources. Never generate URLs not found in WebSearch results, never present uncertain info as fact, never omit "Sources:" when WebSearch was used. **GLM-backend routing**: under `moai glm`, WebSearch+WebFetch route to the z.ai MCP tools (`.claude/rules/moai/core/glm-web-tooling.md`). The bundled `/deep-research <question>` workflow fans out searches, cross-checks, votes, returns a cited report (manual only since v2.1.218; requires WebSearch; the AskUserQuestion boundary holds): `.claude/rules/moai/workflow/dynamic-workflows.md`.
-
----
+Never generate URLs not found in WebSearch results, never present uncertain info as fact, never omit "Sources:" when WebSearch was used.
 
 ## 11. Error Handling
 
-> Canonical rule: detailed recovery flows live in `.claude/rules/moai/core/agent-common-protocol.md` § Error Recovery Pattern and individual agent definitions.
-
-**Error Recovery**: `ARCHIVED_AGENT_REJECTED` on archived-agent reference → consult `archived-agent-rejection.md` §C; spawn `Agent(general-purpose)` (diagnostics/infra) or `Agent(Explore)` (read-only). Token-limit / Permission / MoAI-ADK errors → /clear + paste-ready resume per `session-handoff.md`; permission → review settings.json; MoAI-ADK → /moai feedback. Resume interrupted agent work using agentId (e.g., "Resume agent abc123 and continue the analysis").
-
----
-
 ## 12. MCP Servers & Deep Analysis Modes
-
-- **UltraThink** (`ultrathink` keyword) / **Adaptive Thinking** (Opus 4.7+, incl. Opus 5.5/4.8): sets `effort: xhigh` + Adaptive Thinking (dynamically allocated reasoning tokens, no fixed budget_tokens). See Skill("moai-foundation-thinking").
-- **Context7**: up-to-date library docs (resolve-library-id, get-library-docs). **claude-in-chrome**: browser automation.
-- **Dynamic Workflows / ultracode**: `/effort ultracode` combines xhigh effort with workflow orchestration (v2.1.154+). MCP config: `.claude/rules/moai/core/settings-management.md`. See `.claude/rules/moai/workflow/dynamic-workflows.md`.
-
----
 
 ## 13. Progressive Disclosure System
 
-> Canonical rule: see `.claude/rules/moai/development/skill-authoring.md` § Progressive Disclosure for the 3-level token budget spec (L1 metadata ~100 tokens always listed; L2 body ~5K on invocation; L3 bundled on-demand; 67% initial-token reduction), skill-listing / post-compaction budget (`skillListingBudgetFraction`), and trigger configuration schema.
+Bodies retired to their canonical rules; load on the named trigger. Anti-hallucination policy and GLM web-tool routing: `moai-constitution.md` § URL Verification · `glm-web-tooling.md` · `dynamic-workflows.md` (`/deep-research`). Error recovery, archived-agent rejection and token-limit resume: `agent-common-protocol-reference.md` § Error Recovery Pattern · `archived-agent-rejection.md` §C · `session-handoff.md`. Thinking modes, MCP configuration and dynamic workflows: `moai-constitution.md` § Opus 5.5 Prompt Philosophy · `settings-management.md` · `dynamic-workflows.md` · Skill("moai-foundation-thinking"). Progressive-disclosure token budget: `skill-authoring.md` § Progressive Disclosure.
 
 ---
 
@@ -156,28 +139,36 @@ For core principles, see `.claude/rules/moai/core/moai-constitution.md`. Operati
 
 ---
 
-## 15. Agent Teams (Re-allowed, experimental) and Legacy CG Migration
+## 15. Agent Teams (Re-allowed, experimental)
 
-**Agent Teams usage ALLOWED (experimental)** — operator decision. `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships enabled in `.claude/settings.json` and the distributed template, making the native teammate runtime (spawn with the Agent tool's `name` parameter; one team per session, shared TaskList) a sanctioned orchestration surface. Result-return behavior is two-sided in observation, so verify it per session before relying on it. Explicit `--team` selects the Agent Teams layer; the Phase 4 decision tree still auto-routes Tier L coordination to `manager-lead`. Known constraints (conditional, see `orchestration-mode-selection.md` §C.1): no nested teams, one team per session with a fixed lead, in-process teammates cannot spawn background subagents, `/resume` does not restore them, permissions fixed at spawn time, `/model` inherited from the leader by default since CC 2.1.234, team state under `~/.claude/teams/{name}`·`~/.claude/tasks/{name}` is runtime-managed (never hand-edit). Genealogy and the observation record: `spec-workflow.md` § Agent Teams Variant. **Legacy CG**: `moai cg` is retired. Run `moai migrate cg` to preview an explicit role migration. Removing automatic GLM teammate assignment requires `--target claude-only --apply --accept-role-change`; the mixed-role target remains blocked until actual teammate capability is verified. This does not retire native Agent Teams or waive independent audits. See `glm-web-tooling.md` § CG Retirement and Migration. Dynamic Workflows + `/effort ultracode`: `dynamic-workflows.md` + `goal-directive.md` (workflow subagents cannot prompt the user).
-
----
+**Agent Teams usage ALLOWED (experimental)** — operator decision; `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships enabled. Explicit `--team` selects the layer; the Phase 4 decision tree still auto-routes Tier L coordination to `manager-lead`. **Legacy CG**: `moai cg` is retired — run `moai migrate cg` to preview an explicit role migration. This does not retire native Agent Teams or waive independent audits. Migration flags: `model-policy.md` § Legacy CG Configuration.
 
 ## 16. Context Search Protocol
 
-> Canonical rule: see `.claude/rules/moai/workflow/context-window-management.md` for thresholds (1M = 50%, 200K = 90%) and `session-handoff.md` for the paste-ready resume format.
+When compacting, always preserve modified/created files, verification commands + exit codes + evidence paths, active SPEC ID/phase, unresolved blockers, and any armed goal condition — load-bearing per `verification-claim-integrity.md` §2.
 
-MoAI searches previous sessions when context is needed to continue work. **Search when**: user references past work without sufficient context, mentions a SPEC-ID not loaded, asks to resume/continue, or requests a find. **Skip when**: relevant SPEC/code is already in session, or duplication adds no value. **Process**: (1) check current session first; (2) confirm via AskUserQuestion; (3) Grep session index + transcripts in `~/.claude/projects/` (default 30-day window); (4) summarize + present for approval; (5) inject avoiding duplicates. **Token budget**: max 5,000 tokens per injection; skip if current usage exceeds 150,000; summarize lengthy conversations. Manual trigger available anytime; complements @MX TAG system. When compacting, always preserve modified/created files, verification commands + exit codes + evidence paths, active SPEC ID/phase, unresolved blockers, and any armed goal condition — load-bearing per `verification-claim-integrity.md` §2; reduction ladder: `context-window-management.md` § Reduction Ladder.
+Remaining bodies retired to their canonical rules. Agent Teams constraints, `--team` selection and CG-role migration: `orchestration-mode-selection.md` §C.1 · `spec-workflow.md` § Agent Teams Variant · `glm-web-tooling.md`. Previous-session search, context thresholds and the reduction ladder: `context-window-management.md` · `session-handoff.md`.
 
 ---
 
 ## 17. Troubleshooting
 
-When MoAI workflows behave unexpectedly, use Claude Code's built-in debug tools — `claude --debug "hooks"`, `claude --debug "api,hooks"`, `claude --debug "mcp"`, or `/debug` inside a session to inspect session state, hook logs, and tool traces.
+Debug tools: `claude --debug "hooks"` / `"api,hooks"` / `"mcp"`, or `/debug` in-session — session state, hook logs, tool traces.
 
 | Symptom | Cause | Solution |
-|---------|-------|---------|
-| `moai hook subagent-stop` fails | Binary not in PATH | Run `which moai` to verify installation |
-| settings.json not updated after `moai update` | Conflict with user modifications | Run `moai update -t` for template-only sync |
+|---|---|---|
+| `moai hook subagent-stop` fails | Binary not in PATH | `which moai` |
+| settings.json unchanged after `moai update` | Conflict with user modifications | `moai update -t` (template-only) |
+
+---
+
+## 18. Local Instructions (imported)
+
+The user-owned `AGENTS.local.md` (gitignored, never deployed) is imported last, so it layers over
+everything above. When the file is absent, or the session runs in a linked worktree where the import
+points outside the project, Claude Code skips the import silently.
+
+@AGENTS.local.md
 
 ---
 

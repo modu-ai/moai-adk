@@ -96,14 +96,7 @@ func TestFactoryLaneHandoffOperatorAbandon(t *testing.T) {
 		to   func(t *testing.T, f *laneHandoffFixture) factorymsg.Handoff
 	}{
 		{factorymsg.HandoffReserved, func(t *testing.T, f *laneHandoffFixture) factorymsg.Handoff {
-			h, err := f.store.ReserveHandoff(context.Background(), factorymsg.HandoffReservation{
-				Slot: handoffTestSlot, CardID: handoffTestCard, SpecID: handoffTestSpec, Mode: factorymsg.HandoffModeInteractive,
-				DevelopPin: f.developPin, TargetPath: f.target(handoffTestCard), TargetBranch: handoffTestBranch,
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			return h
+			return f.reserve(t, factorymsg.HandoffModeInteractive)
 		}},
 		{factorymsg.HandoffWTReady, func(t *testing.T, f *laneHandoffFixture) factorymsg.Handoff {
 			return f.wtReady(t, factorymsg.HandoffModeInteractive)
@@ -125,7 +118,7 @@ func TestFactoryLaneHandoffOperatorAbandon(t *testing.T) {
 	}
 	for _, tc := range states {
 		t.Run(tc.name, func(t *testing.T) {
-			f := newLaneHandoffFixture(t, "develop", true)
+			f := newLaneHandoffFixture(t, true)
 			ctx := context.Background()
 			lead := abandonTestLead(t, f)
 			d1, err := f.store.Send(ctx, factorymsg.SendRequest{From: lead, To: f.source, Kind: factorymsg.KindDispatchNotice, IdempotencyKey: "d1", TaskRef: "t1082", CorrelationID: "c-d1", TTL: time.Hour, Payload: []byte("body-d1")})
@@ -137,7 +130,13 @@ func TestFactoryLaneHandoffOperatorAbandon(t *testing.T) {
 				t.Fatalf("fixture state = %s, want %s", h.State, tc.name)
 			}
 			target := f.target(handoffTestCard)
-			if pathExists(target) {
+			// Every state but RESERVED has a target by construction, so its
+			// preservation is asserted, never skipped: a fixture that stops
+			// creating the worktree fails here instead of passing vacuously.
+			// RESERVED has no target by design (the reservation precedes it).
+			hasTarget := tc.name != factorymsg.HandoffReserved
+			if hasTarget {
+				f.requireTargetMaterialized(t, target, handoffTestBranch)
 				// A dirty target with an unmerged commit on its WT branch.
 				if err := os.WriteFile(filepath.Join(target, "card-work.txt"), []byte("committed\n"), 0o600); err != nil {
 					t.Fatal(err)
@@ -147,6 +146,8 @@ func TestFactoryLaneHandoffOperatorAbandon(t *testing.T) {
 				if err := os.WriteFile(filepath.Join(target, "dirty.txt"), []byte("uncommitted\n"), 0o600); err != nil {
 					t.Fatal(err)
 				}
+			} else if pathExists(target) {
+				t.Fatalf("RESERVED handoff has a target at %s; the reservation must precede the tree", target)
 			}
 			restarted := factorymsg.Peer{ProjectKey: "project", RunID: f.run, Backend: "codex", Role: "worker", Slot: handoffTestSlot, SessionUUID: "restarted-uuid", Generation: 1, PID: 999_983, ProcessStart: "restarted-start"}
 			if _, err := f.store.RegisterPeer(ctx, restarted); err == nil {
@@ -156,7 +157,7 @@ func TestFactoryLaneHandoffOperatorAbandon(t *testing.T) {
 			}
 
 			var targetBefore string
-			if pathExists(target) {
+			if hasTarget {
 				targetBefore = targetSnapshot(t, f.primary, target, handoffTestBranch)
 			}
 			refusals := []struct {
@@ -211,7 +212,7 @@ func TestFactoryLaneHandoffOperatorAbandon(t *testing.T) {
 			if after := f.endpointRow(t); after != rowBefore {
 				t.Fatalf("abandon moved the endpoint: before=%+v after=%+v", rowBefore, after)
 			}
-			if targetBefore != "" {
+			if hasTarget {
 				if after := targetSnapshot(t, f.primary, target, handoffTestBranch); after != targetBefore {
 					t.Fatalf("target worktree changed:\nbefore=%s\nafter=%s", targetBefore, after)
 				}
@@ -243,7 +244,7 @@ func TestFactoryLaneHandoffOperatorAbandon(t *testing.T) {
 	}
 
 	t.Run("no_handoff_on_slot", func(t *testing.T) {
-		f := newLaneHandoffFixture(t, "develop", true)
+		f := newLaneHandoffFixture(t, true)
 		withAbandonLaneProbe(t, homestate.ProcessIdentityDead, "")
 		before := f.brokerSnapshot(t)
 		out, err := runFactoryHandoffCommand(t, "abandon-lane", "--slot", handoffTestSlot)

@@ -2607,6 +2607,9 @@
 - path: "workflow.autonomy.escalation.budget_default.turns"
   class: W
   evidence: reader
+- path: "workflow.autonomy.escalation.new_api_detector"
+  class: W
+  evidence: reader
 - path: "workflow.autonomy.kickoff.jev_min_confidence"
   class: W
   evidence: reader
@@ -2949,6 +2952,9 @@
 - path: "workflow.project.continuation"
   class: P
   evidence: .claude/skills/moai/workflows/project/doc-generation.md
+- path: "workflow.served_model_gate.enabled"
+  class: W
+  evidence: reader
 - path: "workflow.slot_lease.default_max_duration"
   class: W
   evidence: reader

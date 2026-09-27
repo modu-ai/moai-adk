@@ -208,6 +208,13 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		// provider escape name-based dedup and load the tools twice.
 		{mcpProviderDuplicatesCheckName, func(v bool) DiagnosticCheck { return checkMCPProviderDuplicates(cwd, v) }},
 		{mcpServerVersionCheckName, func(v bool) DiagnosticCheck { return checkMCPServerVersion(cwd, v) }},
+		// Card t1251: hook wrappers log skipped fires here; surface them so a
+		// silently missing hook is not silently forgotten.
+		{hookMissingLogCheckName, func(v bool) DiagnosticCheck { return checkHookMissingLog(cwd, v) }},
+		// Read-only sweep of subagent transcripts for the model that actually
+		// served each run; advisory, never gates doctor. Explicit-only: the
+		// default run shows one info hint row and does not sweep.
+		{servedModelCheckName, servedModelDoctorEntry(cwd, filterCheck)},
 		// SPEC-AGENT-EMIT-LINEAGE-001 REQ-AEL-004: embed-axis judgment point.
 		// Applicable only in a tree carrying the committed emission set — a
 		// deployed project sees one added `ok` row and the same exit status.
@@ -237,6 +244,10 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		{"Hook Delivery", func(v bool) DiagnosticCheck { return checkHookDelivery(cwd, v) }},
 		{"Hook opt-in:", func(v bool) DiagnosticCheck { return checkHookOptIn(cwd, v) }},
 		{"Slash Commands", func(v bool) DiagnosticCheck { return checkSlashCommands(cwd, v) }},
+		// Card t1247: project/local defaultMode="bypassPermissions" is dead
+		// configuration — Claude Code only grants bypass from policy/user/flag
+		// scope, so the value warns on every session start and grants nothing.
+		{settingsDefaultModeCheckName, func(v bool) DiagnosticCheck { return checkSettingsDefaultMode(cwd, v) }},
 		{"Skills Allowlist", func(v bool) DiagnosticCheck { return checkSkillsAllowlist(cwd, v) }},
 		{"MX Tag Config", func(v bool) DiagnosticCheck { return checkMXTagConfig(cwd, v) }},
 		{"Worktree State", func(v bool) DiagnosticCheck { return checkWorktreeState(cwd, v) }},
@@ -305,6 +316,9 @@ var claudeSurfaceCheckNames = map[string]bool{
 	"Slash Commands":        true,
 	"Skills Allowlist":      true,
 	"Constitution Registry": true,
+	// Card t1247: reads .claude/settings.json + settings.local.json — a
+	// claude-only surface, downgraded on codex-only projects (REQ-IH-011).
+	settingsDefaultModeCheckName: true,
 }
 
 // claudeSurfaceDowngradedMessage is the explicit INFO line a codex-only

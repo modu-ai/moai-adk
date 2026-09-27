@@ -5,10 +5,10 @@ Every clause here binds a turn regardless of which agent harness drives it. The 
 exists, Codex loads it as an additional, more-specific contract; the merged byte budget must cover
 the whole discovery chain.
 
-**Budget warning.** A personal `~/.codex/AGENTS.md` joins the same merged chain and is consumed
-**before** this file, narrowing what the project's contract can carry. Overflow is dropped from the
-**tail**, silently — no warning, no stderr, exit 0. Clauses below are ordered most-critical-first
-for that reason.
+**Budget warning.** Codex charges its instruction byte budget against
+project instruction files only; a personal `~/.codex/AGENTS.md` does not shrink it. Overflow is
+truncated from the **tail**, silently — no warning, no stderr, exit 0. Clauses below are ordered
+most-critical-first for that reason.
 
 This file is the canonical cross-harness contract. Shared detail lives in
 `.moai/policies/**` and `.moai/workflows/**`. When Claude is installed,
@@ -29,7 +29,7 @@ harness driving this contract lacks the capability.
 | output-style | Claude output styles | Follow this contract directly |
 | slash-commands | `/moai` slash commands | Use the underlying `moai` CLI verbs |
 | workflow-scripts | Workflow scripts (`ultracode`) | Run the steps sequentially |
-| worktree-entry | `moai cc -w <name>`; Codex lanes: `moai codex -w <worktree>` — resolves an existing tree and never creates one | Report the missing isolation; never create a tree by hand |
+| worktree-entry | `moai cc -w <name>`; Codex: `moai codex -w <worktree>` — resolves an existing tree and never creates one | Report the missing isolation; never create a tree by hand |
 | audit-verdict-file | The auditor agent writes its own verdict or report file | On Codex, start the read-only roles (`plan-auditor`, `sync-auditor`, `mission-governor`, `super-advisor`) through the launcher, the moai MCP tool `codex_role_audit`, and never through `spawn_agent`, which would hand them your own writing sandbox. Pass `role`, your own worktree root as `worktree_root`, the task as `task`, and the verdict or report path under `.moai/reports/` as `out`; the tool returns a job id at once, and `codex_role_audit_status` / `codex_role_audit_result` report on it. The role runs as one top-level read-only `codex exec` process, and the launcher writes the verdict or report file with exactly the returned text, unedited |
 
 **`Skill("<name>")` instructions carry no row, and are read literally.** `skill-loader` is a
@@ -115,10 +115,11 @@ and resolve the remote default branch instead of assuming `main`.
 
 ## 3. Worktrees
 
-**Work inside a worktree, entered through the launcher** (`moai cc -w <name>`,
-`moai cc -w <name> --spawn` for a new window, `EnterWorktree(<path>)` to re-enter); never create one
-with a bare `git worktree add`. Leave with `ExitWorktree`. Drive a worktree with `git -C <path>`,
-not `cd`.
+**Work inside a worktree, entered through your harness's launcher** — Claude Code:
+`moai cc -w <name>` (`--spawn` for a new window), `EnterWorktree(<path>)` to re-enter,
+`ExitWorktree` to leave; Codex: `moai codex -w <worktree>`, which enters an existing tree and never
+creates one. Create a tree with `moai worktree new <name>`, never with a bare `git worktree add`.
+Drive a worktree with `git -C <path>`, not `cd`.
 
 **From inside a worktree session, `<path>` must be that worktree's absolute path.** Measured on
 Claude Code 2.1.275: the guard refuses `-C .`, a relative path, a runtime-computed path, and any
@@ -271,10 +272,13 @@ session re-pays the always-loaded prefix. Split only when the benefit justifies 
 
 ## 8. Harness-local instructions
 
-`moai codex` reads non-empty common local guidance followed by Codex-specific local guidance
-from the project root. It preserves each input body and adds source headers in one session
-`developer_instructions` override. Shared instruction documents never import these local inputs.
-Other harness-local settings and memory remain owned by their harness.
+`moai codex` reads the project's common local guidance — the gitignored, never-deployed file that
+`CLAUDE.md` imports last — followed by any legacy local guidance, from the project root. It keeps
+each input body under its own source header and passes the result as one Codex-specific session
+`developer_instructions` override. This contract never imports local guidance, which keeps it out of
+Codex's discovered chain. In a linked worktree the `CLAUDE.md` import points outside the project and
+is skipped silently, so a worktree session does not receive it. Other harness-local settings and
+memory remain owned by their harness.
 
 Codex Web sessions read `AGENTS.md`, but local `.codex/hooks.json`, the status line, and the MoAI
 launcher injection do not run there. Treat Web sessions as read-and-review first.

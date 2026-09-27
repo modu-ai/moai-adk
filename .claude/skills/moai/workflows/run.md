@@ -140,6 +140,10 @@ This section wires the run-phase autonomy mechanisms — the Implementation Kick
 
 Because Implementation Kickoff Approval also drains all user preferences (Tier, mode preference, PR strategy), the orchestrator collects every preference at this gate BEFORE launching any autonomy — goal-loop turn agents and sweep Workflow agents cannot prompt the user mid-run, so the one decision that must involve the user is taken here.
 
+<!-- moai:contract-mode-start id="contract-signing-run" -->
+Where `workflow.autonomy.mode: contract` — the gate above is `moai contract kickoff-check <SPEC-ID> --card <card>` exiting 0, and no Kickoff question is emitted. A kickoff decision outcome of reject or human refuses the receipt signature and needs a human decision, so follow the human signing procedure for both. A non-zero exit is escalated, never downgraded to guided mode. See `.claude/rules/moai/workflow/contract-autonomy.md` § The signing gate.
+
+<!-- moai:contract-mode-end -->
 ### 2. The `ac_converge` goal condition (armed only after Implementation Kickoff Approval approval)
 
 ONLY after Implementation Kickoff Approval approval is obtained, the orchestrator MAY arm the `ac_converge` goal via `/moai goal "<condition>"` to grant phase-internal autonomy (it removes per-turn STOP prompts so the run-phase loop continues until convergence). Because arming is **arm-only** — it records the condition but starts no work — the orchestrator arms it ALONGSIDE the run-phase work it is driving, never in place of that work (`goal-directive.md` § Goal-Presentation Timing). The condition is hard-coded inline (no registry dependency) and is authored entirely as **model conditions** — every predicate references a line the orchestrator surfaces in the conversation, so the evaluator judges it against the transcript rather than by opening a file:
@@ -178,6 +182,10 @@ The following HARD invariants govern the `ac_converge` loop. Each is the canonic
 
 ---
 
+<!-- moai:contract-mode-start id="contract-lifecycle-run" -->
+Where `workflow.autonomy.mode: contract` — the run phase carries the first four stages of the one-pass lifecycle: Discovery (re-observe the contract's `reobserve` list), RED (commit the failing tests first), GREEN (the same tests pass), Qualification (scoped tests, lint, coverage, mutation check, second-model review). Record each stage's evidence and run `moai contract kickoff-check` at every stage boundary; an open escalation record or a revocation stops the run there. See `.claude/rules/moai/workflow/contract-autonomy.md` § One-pass lifecycle.
+
+<!-- moai:contract-mode-end -->
 ## Recursive Self-Diagnosis Loop (bounded — DIAGNOSE-PATCH-VERIFY)
 
 The bounded self-diagnosis loop handles MECHANICAL run-phase failures fast (DIAGNOSE-PATCH-VERIFY, max 3 iterations) and escalates SEMANTIC failures immediately. It is the run-phase projection of the `cycle_type=autofix` DIAGNOSE-PATCH-VERIFY contract; the canonical doctrine lives in the cross-referenced rules above. Summary contract:

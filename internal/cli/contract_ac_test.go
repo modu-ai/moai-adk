@@ -583,14 +583,14 @@ func TestAC_CONTRACT_018(t *testing.T) {
 		if !slices.Equal(rep.Scratch, []string{".moai/state/verify/**"}) {
 			t.Errorf("scratch: want [.moai/state/verify/**], got %v", rep.Scratch)
 		}
-		wantFrozen := []string{"**/CLAUDE.md", "**/CLAUDE.local.md", ".claude/rules/moai/core/moai-constitution.md", "internal/x/**"}
+		wantFrozen := []string{"**/AGENTS.md", "**/AGENTS.local.md", "**/CLAUDE.md", "**/CLAUDE.local.md", ".claude/rules/moai/core/moai-constitution.md", "internal/x/**"}
 		got := slices.Clone(rep.FrozenFiles)
 		slices.Sort(got)
 		slices.Sort(wantFrozen)
 		if !slices.Equal(got, wantFrozen) {
 			t.Errorf("frozen_files: want the set %v, got %v", wantFrozen, rep.FrozenFiles)
 		}
-		for _, bare := range []string{"CLAUDE.md", "CLAUDE.local.md"} {
+		for _, bare := range []string{"AGENTS.md", "AGENTS.local.md", "CLAUDE.md", "CLAUDE.local.md"} {
 			if slices.Contains(rep.FrozenFiles, bare) {
 				t.Errorf("frozen_files must not carry the bare string %q", bare)
 			}
