@@ -17,6 +17,8 @@ import (
 	"golang.org/x/term"
 
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
+
+	"github.com/modu-ai/moai-adk/internal/contract/receipt"
 )
 
 // Default seam implementations. They are the only process, terminal, and
@@ -51,7 +53,20 @@ func withDefaults(s Seams) Seams {
 	if s.WriteFile == nil {
 		s.WriteFile = writeAtomic
 	}
+	if s.RecordEvent == nil {
+		s.RecordEvent = recordStoreEvent
+	}
 	return s
+}
+
+// recordStoreEvent appends a signing event to the project's contract store.
+func recordStoreEvent(root, kind string, ev receipt.SignEvent) error {
+	st, err := receipt.Open(root)
+	if err != nil {
+		return err
+	}
+	_, err = st.AppendEvent(kind, ev)
+	return err
 }
 
 // stdinIsTerminal reports whether standard input is an interactive terminal.

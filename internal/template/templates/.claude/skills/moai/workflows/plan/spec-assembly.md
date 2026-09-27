@@ -72,6 +72,10 @@ Agent: manager-spec subagent
 
 Input: Approved plan from Phase 8, validated SPEC ID from Phase 9.
 
+<!-- moai:contract-mode-start id="contract-draft" -->
+Where `workflow.autonomy.mode: contract` — the manager-spec delegation also asks for a draft `contract.yaml` (no `signature` block) beside the SPEC artifacts, carrying the card, acceptance binding, invariants, ownership, approach, actions, reobserve list, review, and escalation triggers. See `.claude/rules/moai/workflow/contract-autonomy.md` § Scope and activation.
+
+<!-- moai:contract-mode-end -->
 File generation — **single writer, single-turn parallel Write**: `manager-spec` is the sole writer of every plan-phase artifact, and no second agent writes into `.moai/specs/SPEC-{ID}/` while it works. Within that single writer, issue one `Write` call per artifact in the SAME assistant turn (per `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution) rather than one artifact per turn — the artifacts are independent files, so batching costs one turn instead of N. The artifact set is Tier-determined (Tier S = 2, Tier M = 3, Tier L = 5):
 
 - .moai/specs/SPEC-{ID}/spec.md
@@ -241,6 +245,10 @@ the index is absent or unreadable, this presentation step is skipped silently �
 the gate is unchanged and the plan-phase pipeline is NOT blocked. No second
 human gate is introduced.
 
+<!-- moai:contract-mode-start id="contract-signing-review" -->
+Where `workflow.autonomy.mode: contract` — the decision index is presented with the signing summary instead of the Kickoff question: report `moai contract sign <SPEC-ID>` for the operator to run at an interactive terminal, close the turn, and run `moai contract kickoff-check` on the next turn. See `.claude/rules/moai/workflow/contract-autonomy.md` § The signing gate.
+
+<!-- moai:contract-mode-end -->
 After the gate, operator verdicts per row are written back into the row's
 `Operator verdict:` line using exactly the verdict-action vocabulary `DECIDE`,
 `NEED_ANALYSIS`, `NEED_EVIDENCE`, `DEFER`. When a recorded verdict is
@@ -284,6 +292,10 @@ Present the full defect history to the user:
   - Request manual SPEC revision: "I will manually edit the SPEC — re-run review after my edits"
   - Abort plan workflow: "Abort — start over with a clearer feature description"
 
+<!-- moai:contract-mode-start id="contract-audit-retry" -->
+Where `workflow.autonomy.mode: contract` — do not present the three options; repair and re-audit automatically up to the contract's `budget.audit_retries` (or `workflow.autonomy.escalation.budget_default.audit_retries` when the draft has no budget), then stop with an escalation report. See `.claude/rules/moai/workflow/contract-autonomy.md` § Gate disposition.
+
+<!-- moai:contract-mode-end -->
 Harness configuration reference (harness.yaml):
 - `minimal`: plan_audit.enabled: true, max_iterations: 1, require_must_pass: false (lightweight, non-blocking 1-iteration audit — NOT skipped; `plan_audit_global.always_enabled: true` guarantees this phase always runs)
 - `standard`: plan_audit.enabled: true, tier-resolved ceiling, require_must_pass: true
@@ -476,6 +488,10 @@ Gate decision:
 - **WARNING**: Minor gaps found (e.g., missing acceptance criteria for edge cases). Present findings and offer fix or continue.
 - **FAIL**: Critical gaps (e.g., no acceptance criteria, security-sensitive scope without security considerations). Must fix before proceeding.
 
+<!-- moai:contract-mode-start id="contract-quality-gate" -->
+Where `workflow.autonomy.mode: contract` — a WARNING or FAIL is repaired automatically up to the same retry cap (`budget.audit_retries`, or `workflow.autonomy.escalation.budget_default.audit_retries`), then reported as an escalation instead of a question. See `.claude/rules/moai/workflow/contract-autonomy.md` § Gate disposition.
+
+<!-- moai:contract-mode-end -->
 Preload: `ToolSearch(query: "select:AskUserQuestion")`.
 
 Tool: AskUserQuestion (when WARNING or FAIL)
