@@ -5,9 +5,10 @@ Every clause here binds a turn regardless of which agent harness drives it. The 
 exists, Codex loads it as an additional, more-specific contract; the merged byte budget must cover
 the whole discovery chain.
 
-**Budget warning.** A personal `~/.codex/AGENTS.md` is consumed **before** this file in the same
-merged chain, and overflow is dropped from the **tail**, silently — no warning, no stderr, exit 0.
-Clauses below are ordered most-critical-first for that reason.
+**Budget warning.** Codex charges its instruction byte budget against
+project instruction files only; a personal `~/.codex/AGENTS.md` does not shrink it. Overflow is
+truncated from the **tail**, silently — no warning, no stderr, exit 0. Clauses below are ordered
+most-critical-first for that reason.
 
 This file is the canonical cross-harness contract. `.claude/rules/moai/**` and `CLAUDE.md` expand
 Claude-only mechanisms; they do not override a cross-harness clause here. Compression removed
@@ -101,10 +102,11 @@ and resolve the remote default branch instead of assuming `main`.
 
 ## 3. Worktrees
 
-**Work inside a worktree, entered through the launcher** (`moai cc -w <name>`,
-`moai cc -w <name> --spawn` for a new window, `EnterWorktree(<path>)` to re-enter); never create one
-with a bare `git worktree add`. Leave with `ExitWorktree`. Drive a worktree with `git -C <path>`,
-not `cd`.
+**Work inside a worktree, entered through your harness's launcher** — Claude Code:
+`moai cc -w <name>` (`--spawn` for a new window), `EnterWorktree(<path>)` to re-enter,
+`ExitWorktree` to leave; Codex: `moai codex -w <worktree>`, which enters an existing tree and never
+creates one. Create a tree with `moai worktree new <name>`, never with a bare `git worktree add`.
+Drive a worktree with `git -C <path>`, not `cd`.
 
 **From inside a worktree session, `<path>` must be that worktree's absolute path.** Measured on
 Claude Code 2.1.275: the guard refuses `-C .`, a relative path, a runtime-computed path, and any
@@ -253,13 +255,52 @@ session re-pays the always-loaded prefix. Split only when the benefit justifies 
 
 ## 8. Harness-local instructions
 
-`CLAUDE.local.md` is a common local input shared with Claude workflows; `AGENTS.local.md` is the
-Codex-specific input. For every local launch shape (bare, `cli`, `app`, `--spawn`, and `-w`),
-`moai codex` reads the non-empty regular files from the project root in that order,
-prefixes each body with its own provenance header, and passes the combined text as one session
-`developer_instructions` override. A `-w` child still reads the original project root.
+`AGENTS.local.md` is the user-owned local instruction file both harnesses read; `CLAUDE.local.md`
+is its legacy predecessor. Claude Code reaches `AGENTS.local.md` through the final
+`@AGENTS.local.md` import in `CLAUDE.md`; this contract never imports either local file, which
+keeps them out of Codex's discovered chain. In a linked worktree that import points outside the
+project and is skipped silently, so a worktree session does not receive `AGENTS.local.md`.
 
-Shared `AGENTS.md` and `CLAUDE.md` never import or link either local file. The launcher refuses
-links and non-regular inputs, reads through the descriptor it inspected, and fails before launch on
-an operator-supplied `developer_instructions` collision or an oversized direct/spawn argument.
-Codex Web sessions do not run the local MoAI launcher, so this injection is local-CLI-only.
+For every local launch shape (bare, `cli`, `app`, `--spawn`, and `-w`), `moai codex` reads the
+non-empty regular files from the project root — `AGENTS.local.md`, then `CLAUDE.local.md` —
+prefixes each body with its own provenance header, and passes the combined text as one session
+`developer_instructions` override. A `-w` child still reads the original project root. The
+launcher refuses links and non-regular inputs, reads through the descriptor it inspected, and fails
+before launch on an operator-supplied `developer_instructions` collision or an oversized
+direct/spawn argument. Codex Web sessions do not run the local MoAI launcher, so this injection is
+local-CLI-only.
+
+## 9. Hook Event Coverage
+
+Codex currently wires SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, Stop,
+SubagentStart, and SubagentStop. It does not wire PreCompact, PostCompact, PermissionRequest, or
+Interrupt; Claude-only Notification, PostToolUseFailure, TeammateIdle, and TaskCompleted never fire
+under Codex. Verify coverage before relying on a hook.
+
+## 10. Configuration Map
+
+Project configuration lives in `.moai/config/sections/*.yaml`. Harness, TRUST 5, and phase LSP
+thresholds come from `harness.yaml`, `quality.yaml`, `lsp.yaml`, and evaluator profiles; never
+duplicate those values inline.
+
+## 11. moai CLI Verbs
+
+| Verb | Purpose |
+|------|---------|
+| `moai init <project> --llm claude\|codex\|both` | Scaffold a project and select its LLM harness |
+| `moai update` | Sync templates and refresh already-enabled wiring |
+| `moai tool enable codex` | Add or refresh Codex wiring in an existing project |
+| `moai hook <event>` | Hook dispatcher entry point (drives hooks.json / settings.json) |
+| `moai doctor` | Diagnose installation and wiring health |
+| `moai worktree` | Worktree lifecycle (sync / remove / clean / recover / done / snapshot / verify / restore) |
+| `moai cc` / `moai glm` / `moai gpt` | Explicit Claude, GLM, or GPT session launchers |
+| `moai migrate cg` | Preview legacy CG migration; role changes require explicit acceptance |
+| `moai version` | Print build version and provenance |
+| `moai codex` | Codex session launcher — `cli` launch, `status` readout, `app` web; `-w <worktree>` enters an existing tree and never creates one |
+
+Run `moai --help` for the generated, current command surface.
+
+## 12. Status Line Tokens
+
+`moai statusline` reads `.moai/state/` and honors `MOAI_STATUSLINE_CONTEXT_SIZE`. Read
+`internal/statusline` for the current token set; do not duplicate it here.
