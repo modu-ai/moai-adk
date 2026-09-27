@@ -67,11 +67,42 @@ func flattenInto(out map[string]string, prefix string, v any) {
 
 // assertSectionsUnchanged reports every leaf key of before whose value differs
 // (or is missing) in the section files under root now.
+// strippedByUpdate reports whether the flattened path k belongs to a retired
+// per-agent model/effort key the update strip step removes on purpose
+// (SPEC-AGENT-MODEL-INHERIT-001 REQ-AMI-014): a retired key the embedded
+// template no longer ships. The survey expects such a key gone, not unchanged.
+func strippedByUpdate(t *testing.T, k string) bool {
+	t.Helper()
+	shipped, err := template.ShippedRetiredModelKeys()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{
+		"llm.profile", "llm.performance_tier", "llm.profiles", "llm.harness_agents", "llm.agent_overrides",
+		"workflow.agent_model_guard", "workflow.workflow_agents", "workflow.model_routing", "workflow.model_routing_profiles",
+	} {
+		if shipped[key] {
+			continue
+		}
+		p := strings.SplitN(key, ".", 2)[0] + ".yaml:" + key
+		if k == p || strings.HasPrefix(k, p+".") {
+			return true
+		}
+	}
+	return false
+}
+
 func assertSectionsUnchanged(t *testing.T, root string, before map[string]string) {
 	t.Helper()
 	after := flattenSections(t, root)
 	var changed []string
 	for k, v := range before {
+		if strippedByUpdate(t, k) {
+			if a, ok := after[k]; ok {
+				changed = append(changed, fmt.Sprintf("%s: %q -> %q (a retired model key the update must remove)", k, v, a))
+			}
+			continue
+		}
 		if a, ok := after[k]; !ok {
 			changed = append(changed, fmt.Sprintf("%s: %q -> <missing>", k, v))
 		} else if a != v {

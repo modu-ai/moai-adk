@@ -528,6 +528,13 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// Pre-fix UX leaked a "Skipping sync" line immediately followed by
 	// "Legacy skill archive failed" because the archive ran unconditionally.
 	if syncSkipped {
+		// A version-matched update runs no sync and no merge, so the retired
+		// per-agent model/effort keys are stripped here, after its own backup.
+		// A user-cancelled merge returns the same skipped=true; the helper
+		// re-evaluates the version predicate and leaves that case untouched.
+		if err := stripRetiredModelConfigOnVersionMatch(cmd, out, "."); err != nil {
+			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Retired model keys", "removal failed", err.Error(), &th))
+		}
 		// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-016): an explicit --profile override
 		// must still persist to llm.profile even when the template sync short-circuits.
 		if p := getStringFlag(cmd, "profile"); p != "" {
