@@ -42,6 +42,7 @@
 | 형태 1: `runtime_files_init = N` · `runtime_total_init = <런타임 표기 그대로>` · `runtime_isolated = yes` · `runtime_source = <관측 방법>` | AC-ALH-010 |
 | 형태 2: `runtime_observed = no` 와 17집합 줄 `total_init_17` · `current_init_17` · `A_adm_init_17` · `R_init_17` · `U_init_17` · `T_min_init_17` · `verdict_init_17` | AC-ALH-010 — `count_set_init = 18` 일 때만 |
 | `verdict_init_reason = count-set` | 형태 2 에서 `verdict_init_17` 이 18집합 규칙 토큰과 다를 때만 |
+| `missing_init = <경로 …>` / `missing_init = -` | `S_init` 에 없는 18경로(§D.3). 없으면 `-` |
 
 ### 후보 표 TSV 열 규약
 
@@ -142,7 +143,18 @@ V=.moai/reports/t1226/verdict.md
 grep -c -E '^charmap = UTF-8$' "$V"                                   # 1
 grep -c -E '^build_head = [0-9a-f]{40}$' "$V"                         # 1
 grep -c -E '^count_set_init = (18|17|observed)$' "$V"                 # 1
-wc -l < .moai/reports/t1226/count-set-live.txt                        # 18
+# 18경로 목록 고정 — 줄 수가 아니라 내용을 대조한다
+P18="CLAUDE.md AGENTS.md .moai/config/sections/user.yaml .moai/config/sections/language.yaml
+.claude/rules/moai/core/agent-common-protocol.md .claude/rules/moai/core/askuser-protocol.md
+.claude/rules/moai/core/moai-constitution.md .claude/rules/moai/core/moai-mcp-tools.md
+.claude/rules/moai/core/native-idiom-and-register.md .claude/rules/moai/core/verification-claim-integrity.md
+.claude/rules/moai/workflow/cache-aware-execution.md .claude/rules/moai/workflow/context-window-management.md
+.claude/rules/moai/workflow/cross-session-messaging.md .claude/rules/moai/workflow/goal-directive.md
+.claude/rules/moai/workflow/kanban-dispatch.md .claude/rules/moai/workflow/main-checkout-branch-guard.md
+.claude/rules/moai/workflow/session-handoff.md .claude/rules/moai/workflow/skill-routing.md"
+printf '%s\n' $P18 | sort | diff - <(sort .moai/reports/t1226/count-set-live.txt) && echo PIN-live-OK      # PIN-live-OK
+# count_set_init = 18 이면 같은 목록에서 §D.3 누락 경로(판정서 missing_init = 줄에 공백 구분)만 뺀 것과 같아야 한다
+# count_set_init = 17 이면 위 목록에서 skill-routing.md 만 뺀 것과 같아야 한다
 # S_live 재현 — BH 트리
 mkdir -p "$SCRATCH/live" && git archive BH CLAUDE.md AGENTS.md .moai/config/sections .claude/rules/moai | tar -x -C "$SCRATCH/live"
 (cd "$SCRATCH/live" && xargs wc -m < "$OLDPWD/.moai/reports/t1226/count-set-live.txt" | tail -1)   # == total_live
@@ -153,7 +165,7 @@ awk '/^## S_init/,/^## S_live/' "$V" | grep -c '_미측정'               # 0
 awk '/^## S_live/,/^## P절 재조정/' "$V" | grep -c '_미측정'           # 0
 ```
 
-`BH` 가 `7fe658815` 과 다르고 그 사이 흡수가 18경로를 바꿨다면(`git diff --quiet 7fe658815 BH -- <18경로>` 가 0 이 아님), 판정서는 그 사실과 새 `total_live` 를 적고 기준선 199,111 은 이력으로만 남긴다. `count-set-init.txt` 의 줄 수는 `count_set_init` 이 `18`·`17` 이면 그 수와 같다.
+`BH` 가 `7fe658815` 과 다르고 그 사이 흡수가 18경로를 바꿨다면(`git diff --quiet 7fe658815 BH -- <18경로>` 가 0 이 아님), 판정서는 그 사실과 새 `total_live` 를 적고 기준선 199,111 은 이력으로만 남긴다. `count-set-init.txt` 의 내용은 위 고정 목록 대조를 따른다 — `count_set_init` 이 `18`·`17` 이면 줄 수는 그 수에서 §D.3 누락 경로 수(판정서 `missing_init = <경로 …>` 줄, 누락이 없으면 `missing_init = -`)를 뺀 값이다.
 
 FAIL 조건: 두 재측정값 중 하나가 판정서 값과 다르거나, 위 기대와 다른 출력이 하나라도 있다.
 
@@ -205,7 +217,16 @@ for s in init live; do
       if (!ok) bad++;
     }
     if ($3 !~ /^[0-9]+$/ || $15=="") bad++;
+    if ($13=="ADMIT" && $4+0 > $3+0) bad++;                         # DEBT-1: chars <= gross
+    if ($13=="ADMIT" && $5 ~ /^M1/ && $4+0 != $3+0) bad++;          # DEBT-1: M1·M1p 는 후보 전체를 옮기거나 지운다
   } END {print "ROWS-'"$s"' BAD="bad+0}' "$f"
+  # DEBT-2: 같은 절의 절 행과 문단 행이 동시에 ADMIT 이면 이중 계상
+  awk -F'\t' 'NR>1 && $13=="ADMIT" {b=$2; isp=sub(/ ¶[0-9]+$/,"",b); k=$1 SUBSEP b; if (isp) p[k]=1; else s[k]=1} END {for (k in s) if (k in p) bad++; print "OVERLAP-'"$s"' BAD="bad+0}' "$f"
+  # DEBT-3: ADMIT M1 의 목적지가 그 표면 계수 집합 안에 있으면 옮긴 문자가 합계에 남는다
+  awk -F'\t' 'NR>1 && $13=="ADMIT" && $5=="M1" {print ".claude/rules/moai/"$12}' "$f" | sort -u \
+    | grep -x -F -f ".moai/reports/t1226/count-set-$s.txt" | wc -l | awk '{print "DESTIN-'"$s"' BAD="$1}'
+  # M1p 증거는 남는 중복 원본의 경로를 dup_source = <경로> 줄로 담는다
+  awk -F'\t' 'NR>1 && $13=="ADMIT" && $5=="M1p" {print $15}' "$f" | while read -r p; do grep -q -E '^dup_source = .+' "$p" || echo "m1p-bad $p"; done | wc -l | awk '{print "M1P-'"$s"' BAD="$1}'
   # net-negative: 증거의 pointer_chars >= gross
   awk -F'\t' 'NR>1 && $14=="net-negative" {print $3"\t"$15}' "$f" | while IFS="$(printf '\t')" read -r g p; do
     P=$(grep -E '^pointer_chars = [0-9]+$' "$p" | awk '{print $3}'); [ -n "$P" ] && [ "$P" -ge "$g" ] || echo "netneg-bad $p"
@@ -225,7 +246,9 @@ done
 
 검토 항목: `SPEC-ALWAYS-LOADED-DIET-002/design.md §4.3` 기각 표의 절 중 이 트리에 남아 있는 것은 모두 `gov` 가 `a`/`b` 이거나, `N` 이면 증거 파일이 그 판단을 뒤집는 근거를 담는다.
 
-FAIL 조건: `KEYS-*-OK`·`SPLIT-*-OK` 넷 중 하나가 없다, `BAD`·`MISSING` 값 중 하나라도 0 이 아니다.
+DEBT-3 귀결: 계수 집합 안의 파일을 목적지로 삼는 M1 은 허용되지 않으므로, 17집합 재계산(AC-ALH-006 `init_17`)에서 제외 파일 `skill-routing.md` 가 목적지인 행은 18집합에서 이미 FAIL 이다 — 17집합 전용 규칙은 필요 없다.
+
+FAIL 조건: `KEYS-*-OK`·`SPLIT-*-OK` 넷 중 하나가 없다, `BAD`·`MISSING` 값(`ROWS`·`OVERLAP`·`DESTIN`·`M1P`·`NETNEG`·`EVID`·`DEST`) 중 하나라도 0 이 아니다.
 
 ### AC-ALH-004 — 표면 해시를 재현하고, M2 자수는 실제 압축 시도로 쟀다
 
@@ -246,17 +269,21 @@ grep -c -E '^hash_(init|live) = [0-9a-f]{64}$' "$V"                          # 2
 
 for s in init live; do
   H=$(grep -E "^hash_${s} = " "$V" | awk '{print $3}')
-  awk -F'\t' 'NR>1 && $5=="M2" && ($13=="ADMIT" || $14=="rewraps-binding-line") {print $13"\t"$15}' \
+  awk -F'\t' 'NR>1 && $5=="M2" && ($13=="ADMIT" || $14=="rewraps-binding-line") {print $13"\t"$15"\t"$3"\t"$4}' \
     ".moai/reports/t1226/candidates-${s}.tsv" \
-  | while IFS="$(printf '\t')" read -r v p; do
+  | while IFS="$(printf '\t')" read -r v p g c; do
       got=$(grep -E '^post_hash = ' "$p" | awk '{print $3}')
       if [ "$v" = "ADMIT" ] && [ "$got" != "$H" ]; then echo "bad $p"; fi
       if [ "$v" != "ADMIT" ] && [ "$got" = "$H" ]; then echo "bad $p"; fi
+      if [ "$v" = "ADMIT" ]; then   # DEBT-1: M2 허용 자수는 증거의 전후 자수 차와 같다
+        pre=$(grep -E '^pre_chars = [0-9]+$' "$p" | awk '{print $3}'); post=$(grep -E '^post_chars = [0-9]+$' "$p" | awk '{print $3}')
+        if [ -z "$pre" ] || [ -z "$post" ] || [ "$pre" != "$g" ] || [ "$c" != "$((pre - post))" ]; then echo "chars-bad $p"; fi
+      fi
     done
 done | wc -l | awk '{print "HASH-BAD="$1}'                                  # HASH-BAD=0
 ```
 
-증거 파일은 scratch 사본에 가한 압축 diff 와 `post_hash = <sha256>` 줄을 담는다. `hash_init` 은 `S_init` 트리에서 **실측한** 값이며 라이브 해시를 옮겨 적지 않는다. 검토 항목: 압축이 의무·조건·예외·수치를 지우지 않았다(REQ-ALD2-012 준용).
+증거 파일은 scratch 사본에 가한 압축 diff 와 `post_hash = <sha256>` 줄을 담고, `ADMIT` M2 행은 추가로 `pre_chars = N`(압축 전 후보 자수, `gross` 와 같음)과 `post_chars = M`(압축 후 자수)을 담는다. 그 행의 `chars` 는 `N − M` 이어야 한다(DEBT-1). `hash_init` 은 `S_init` 트리에서 **실측한** 값이며 라이브 해시를 옮겨 적지 않는다. 검토 항목: 압축이 의무·조건·예외·수치를 지우지 않았다(REQ-ALD2-012 준용).
 
 FAIL 조건: 재실행 해시가 판정서 값과 다르다, `HASH-BAD` 가 0 이 아니다, 해시 줄이 2개가 아니다.
 
@@ -416,7 +443,7 @@ test -s .moai/reports/t1226/commands.log && echo LOG-OK                        #
 grep -c -E 'moai([[:space:]]+-[^[:space:]]+)*[[:space:]]+init([[:space:]]|$)' .moai/reports/t1226/commands.log   # 0
 ```
 
-하네스 계약(검토): 테스트 헬퍼 `prepareSafeInitHome` 로 실제 홈의 네 쓰기 지점을 돌리고 전후 지문을 비교한 상태에서, `runInitWithFlags` 와 같은 방식으로 init 명령을 실행한다. 고정 플래그는 `--non-interactive`, `--root <t.TempDir()>`, `--name headroom-probe`, `--language go`, `--mode tdd`, `--llm claude` 이며 `--all` 을 주지 않는다(기본 slim 설치가 기본 사용자의 표면이다). init 이 만든 **프로젝트 트리 전체**를 `-headroom-export` 인자가 가리키는 디렉터리로 복사하고(`.git` 제외), 18경로의 (경로, 존재 여부, sha256) 를 `t.Log` 로 출력한다. 인자가 비면 `t.Skip` 한다 — 그래서 위 판정은 SKIP 을 FAIL 로 친다.
+하네스 계약(검토): 테스트 헬퍼 `prepareSafeInitHome` 로 실제 홈의 네 쓰기 지점을 돌리고 전후 지문을 비교한 상태에서, `runInitWithFlags` 와 같은 방식으로 init 명령을 실행한다. 고정 플래그는 `--non-interactive`, `--root <t.TempDir()>`, `--name headroom-probe`, `--language go`, `--mode tdd`, `--llm claude` 이며 `--all` 을 주지 않는다(기본 slim 설치가 기본 사용자의 표면이다). 같은 이유로 하네스는 init 실행 전에 `t.Setenv("MOAI_DISTRIBUTE_ALL", "")` 로 전체 배포 환경변수를 비운다(`internal/cli/init.go` `shouldDistributeAll` 은 이 변수로도 전체 배포를 켠다). `BH` 가 현재 HEAD 와 다르면 `BH` 를 새 격리 워크트리(`moai cc -w` 계열 또는 `EnterWorktree`)로 열어 그 안에서 같은 명령을 돌린다. init 이 만든 **프로젝트 트리 전체**를 `-headroom-export` 인자가 가리키는 디렉터리로 복사하고(`.git` 제외), 18경로의 (경로, 존재 여부, sha256) 를 `t.Log` 로 출력한다. 인자가 비면 `t.Skip` 한다 — 그래서 위 판정은 SKIP 을 FAIL 로 친다.
 
 `commands.log` 는 run 단계가 실행한 셸 명령을 한 줄씩 적은 **자기 신고** 기록이다(임시 경로는 `$SCRATCH` 표기). 정규식은 `HOME=… moai init`, `moai --debug init`, 공백이 여럿인 형태를 잡지만, 기록에서 빠진 실행은 잡지 못한다 — 이 한계는 판정서 Residual-risk 에 적는다. 감사 보고서처럼 `moai init` 을 **서술**하는 문서는 검사 대상이 아니다.
 
@@ -479,7 +506,7 @@ FAIL 조건: 두 형태 중 어느 것도 완결되지 않았거나, 두 형태�
 
 ## §D.3 경계 사례
 
-- **`S_init` 에 18경로 일부가 없다** — 하네스 `t.Log` 의 존재 여부 열이 근거다. `count-set-init.txt` 에서 그 경로를 빼고 판정서에 누락 경로를 적는다(형태 2 라도 `count_set_init = 18` 표기는 유지하고 누락을 명시). 경로 목록을 조용히 바꾸지 않는다.
+- **`S_init` 에 18경로 일부가 없다** — 하네스 `t.Log` 의 존재 여부 열이 근거다. `count-set-init.txt` 에서 그 경로를 빼고 판정서 `missing_init = <경로 …>` 줄에 누락 경로를 적는다(형태 2 라도 `count_set_init = 18` 표기는 유지한다 — 줄 수 규칙은 AC-ALH-002 가 누락 수를 빼서 맞춘다). 경로 목록을 조용히 바꾸지 않는다.
 - **후보가 두 기제에 걸친다** — 한 절의 일부는 M1, 나머지는 M2 로 갈 수 있으면, 스크립트가 절 행 아래 문단 행(`¶n`)을 산출하고 문단 행으로 판정한다. 분할 완결성(AC-ALH-003 (2))은 절 행으로만 세므로 이중 계상되지 않는다. 허용 자수는 절 행과 문단 행 중 한 곳에만 둔다.
 - **포인터 재유입이 제거량보다 크다** — 순감이 음수인 M1 후보는 `REJECT`(사유 `net-negative`)이며 증거에 `pointer_chars` 가 있어야 한다.
 - **서문** — 첫 제목 앞의 텍스트(frontmatter 포함)는 후보 행 `(서문)` 이다. `paths:` 줄을 지우는 후보는 `REJECT`(`governs-scope`)다.

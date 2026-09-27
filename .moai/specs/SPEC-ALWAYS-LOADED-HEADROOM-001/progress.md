@@ -8,7 +8,7 @@
 
 - plan_complete_at: 2026-09-27
 - plan_status: audit-ready
-- spec 버전: 0.3.0 (plan-audit 2회차 FAIL 0.77 수리본 — 최종 수리 회차). 요구사항 16개(Tier M 상한), AC 10개
+- spec 버전: 0.4.0 (plan-audit 3회차 PASS-WITH-DEBT 0.86 의 필수 채무 흡수본). 요구사항 16개(Tier M 상한), AC 10개(ID 불변)
 - 산출물: `spec.md` · `plan.md` · `acceptance.md` · `research.md` · `progress.md`, 판정서 뼈대 `.moai/reports/t1226/verdict.md`, `.moai/reports/t1226/sec.py`(sha256 `d0e61541367abb06a170bd36b6376e51d51882380ca9f899f0d2934016a78547`, 원본과 일치)
 - SPEC ID 정규식 검사(Bash 실행): `SPEC-ALWAYS-LOADED-HEADROOM-001` → `PASS`. 중복 확인 `ls .moai/specs | grep -c HEADROOM` → `0`(작성 전)
 - 기준선(오케스트레이터 실측, 이 트리): 18파일 `wc -m` → `199111 total`, 잔여 49,111
@@ -41,6 +41,32 @@
 | D20 마커 리터럴 | plan·progress 의 설명 문장에서 리터럴 마커 표기 제거 |
 | D21 트레일러 | 이번 커밋에 `Authored-By-Agent: manager-spec`. 최초 커밋 `10281a857` 의 INFO 는 이력 재작성 없이는 남는다 |
 
+### plan-audit 3회차 — PASS-WITH-DEBT 0.86 과 채무 처분 (0.4.0)
+
+판정: `.moai/reports/t1226/plan-audit-iter3.md`(커밋 `01ce1851e`). 필수 채무 셋은 run 착수 전에 기존 AC 안의 검사 줄로 흡수했다 — AC 추가·ID 변경 없음.
+
+| 채무 | 처분 |
+|---|---|
+| DEBT-1 (N1, 필수) | **해소.** AC-ALH-003 (3) 에 `ADMIT` `chars ≤ gross`, M1·M1p `chars == gross`. AC-ALH-004 증거 루프에 M2 `pre_chars == gross`·`chars == pre_chars − post_chars`. M1p 증거에 `dup_source` 줄(`M1P-<s> BAD=0`) |
+| DEBT-2 (N2, 필수) | **해소.** AC-ALH-003 (3) 에 감사자 awk 그대로 `OVERLAP-<s> BAD=0` |
+| DEBT-3 (N3, 필수) | **해소.** AC-ALH-003 (3) 에 `DESTIN-<s> BAD=0`(ADMIT M1 목적지가 `count-set-<s>.txt` 안이면 FAIL). 17집합은 18집합에서 이미 FAIL 이므로 별도 규칙 불요 — 한 줄로 명시 |
+| DEBT-4 N4 | **해소.** 18경로 리터럴 목록과 `count-set-live.txt` 내용 diff(`PIN-live-OK`), `count-set-init.txt` 도 같은 대조 규칙 |
+| DEBT-4 N7 | **해소.** `research.md` 옛 번호를 REQ-ALH-014 로 |
+| DEBT-4 N8 | **해소.** `BH ≠ HEAD` 이면 `BH` 를 새 격리 워크트리에서 열어 하네스 재실행 |
+| DEBT-4 N10 | **해소.** 하네스 계약에 `t.Setenv("MOAI_DISTRIBUTE_ALL", "")` |
+| DEBT-4 N11 | **해소.** `missing_init` 줄 도입, 줄 수 규칙을 「18(또는 17) − 누락 수」로 바꿔 §D.3 과 정합 |
+| DEBT-4 N5·N6·N9 | **이월(선택).** `pointer_chars` 와 포인터 원문의 기계 대조, 흡수 병합 내부 편집 한계, 상위 경로 지시문 — run 단계 검토 항목으로 남는다 |
+
+양성 대조(이번 실행, `$SCRATCH` 합성 TSV, BSD awk): 절 행과 `¶1` 문단 행을 동시에 `ADMIT` 으로 둔 표에서 `OVERLAP BAD=1`, 목적지 `workflow/skill-routing.md` 인 M1 `ADMIT` 에서 `DESTIN BAD=1`, 정상 `chars` 행에서 새 ROWS 조건 `BAD=0`.
+
+### Implementation Kickoff — 자율 승인 기록
+
+- 근거: `CLAUDE.local.md §31`(운영자 정책, 2026-09-26) — 「모든 킥오프 승인은 자율로 진행한다」, 진행 모드 자율. 카드 본문은 킥오프에 대한 운영자 게이트를 명시하지 않으므로 §31 예외에 해당하지 않는다.
+- 승인 대상: SPEC-ALWAYS-LOADED-HEADROOM-001 v0.4.0, plan-audit 3회차 PASS-WITH-DEBT 0.86. 필수 채무 DEBT-1~3 은 위 표대로 이 개정에서 해소했고, 선택 채무 N5·N6·N9 는 run 단계 검토 항목으로 이월한다.
+- 선택 기록: 판정 표면 `S_init` 1차(plan D1), 격리 하네스 경로(plan D2) — 모두 plan 의 권장안.
+- 운영자 게이트로 남는 것: 카드 본문이 명시한 「동결 해시 해제 여부의 운영자 결정」(REQ-ALH-011·012). 이는 §31 이 인정하는 카드 본문 명시 예외이며, 리드가 리드 창에서 운영자에게 올린다. 레인은 결정하지 않는다.
+- 킥오프 자율 승인은 plan-audit 판정과 별개의 게이트이며, PASS-WITH-DEBT 가 그것을 대신한 것이 아니라 §31 정책이 적용된 것이다.
+
 ### plan-audit 2회차 결함 대응표 (0.3.0)
 
 | 결함 | 반영 |
@@ -65,7 +91,7 @@
 ```
 $ go build -o $SCRATCH/moai ./cmd/moai
 built
-$ $SCRATCH/moai spec lint --strict SPEC-ALWAYS-LOADED-HEADROOM-001; echo "exit=$?"   # 0.3.0, 이 트리 재빌드
+$ $SCRATCH/moai spec lint --strict SPEC-ALWAYS-LOADED-HEADROOM-001; echo "exit=$?"   # 0.4.0, 이 트리 재빌드
 INFO      OwnershipTransitionUnmeasured  …/SPEC-ALWAYS-LOADED-HEADROOM-001/spec.md  1  SPEC SPEC-ALWAYS-LOADED-HEADROOM-001 transition "(none)" → "draft" expected owner "manager-spec" but commit 10281a8570f4d9b870cfa1d69e1a9cfac125dd36 (…) has no Authored-By-Agent trailer — ownership transition unmeasured
 
 0 error(s), 0 warning(s)
