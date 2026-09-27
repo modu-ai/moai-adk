@@ -179,6 +179,7 @@
 > - `:183` 의 post-state **138,762** 와 §4.4 `:581` 의 post-state **137,569** 는 둘 다 `acceptance.md §AC-ALD2-001.1` 이 같은 census 에서 도출한 **최저 하한 `F₀ = 149,195` 보다 낮다**(각각 10,433 · 11,626 아래). 즉 **구조상 달성 불가한 post-state 를 달성 가능으로 단언한 문장**이며, 아래 본문은 그대로 두되 이 사실을 나란히 읽어야 한다.
 > - **현행 판정 기준**은 문턱이 아니라 기록 술어다 — `acceptance.md §AC-ALD2-001`. 이 절의 어떤 수치도 그 AC 의 PASS·FAIL 을 가르지 않는다.
 > - 실측 결과(이 카드): 합계 **197,897**, 감축 49,046, 런타임 한도 150,000 에 대한 잔여 **47,897**. 이 절의 투영(감축 gross 117,200 / net 108,181)은 실측의 **약 2.2배**였다.
+> - **[개정 3 — sync-audit F4 · 2026-09-27]** 위 값은 병합 전 트리 `3a48485af` 의 것이다. 병합 트리 `4989ea6b0` 은 198,351, HEAD `8e50ef148` 은 **198,361**(감축 48,582, 잔여 **48,361**) — 트리별 이력과 귀속은 `acceptance.md §AC-ALD2-001.2`. 잔여는 후속 카드 `t1226` 의 채무다(`spec.md` REQ-ALD2-001 개정 3).
 
 **재유입은 상수가 아니라 이동량에 비례하므로, 목표 집합마다 값이 다르다.** 한 칸에 합쳐 적으면 D5 를 만든 바로 그 오해 — 재유입이 이동량과 무관하다는 직관 — 를 그 수정 안에 다시 심게 된다. 두 행을 따로 적는다.
 
@@ -477,7 +478,7 @@ wc -m .claude/rules/moai/<companion>.md
 
 | # | 기제 | 제거되는 절 | 자수 | 인용 | 범위 의존 |
 |---|---|---|---:|---:|---|
-| R-70 | M1 | `## Parallel Execution` 중 세 원시 기제(sub-agents / Agent Teams / dynamic workflows) 해설부 | 1,000 (계획; 절 전체 1,638) | 0 | `## MoAI Orchestrator` 의 `[HARD]`(AskUserQuestion 독점) + `## Agent Core Behaviors` 의 `[HARD]` 7건 · Q1 **도달** / Q2 **불변**, 단 **조건부**: fanout 상한 문장과 "독립 호출은 병렬로" 규칙 불릿을 **남기는 경우에만** 성립한다. 그것이 이 절의 규범부다 |
+| R-70 | M1 | `## Parallel Execution` 중 세 원시 기제(sub-agents / Agent Teams / dynamic workflows) 해설부 | 1,000 (계획; 절 전체 1,638) | 0 | `## MoAI Orchestrator` 의 `[HARD]`(AskUserQuestion 독점) + `## Agent Core Behaviors` 의 `[HARD]` 7건 · Q1 **도달** / Q2 **불변**, 단 **조건부**: fanout 상한 문장과 "독립 호출은 병렬로" 규칙 불릿을 **남기는 경우에만** 성립한다. 그것이 이 절의 규범부다. **[개정 3 — 실제 처리 · sync-audit F2]** 계획은 M1(이동)이었으나 **실제로는 삭제**였다 — 세 원시 기제 해설부는 `moai-constitution.md` 에서 지워졌고 어느 companion 으로도 옮겨지지 않았다(`moai-constitution-detail.md` 에는 `§ Parallel Execution` 절이 없다). 정본 내용은 `.claude/rules/moai/workflow/dynamic-workflows.md` § The Three Orchestration Primitives 에 이미 있으므로 정보 손실은 없다. 삭제 뒤 남았던 끊긴 포인터 `moai-constitution-detail.md § Parallel Execution` 는 커밋 `8e50ef148` 에서 라이브·템플릿 두 사본 모두 제거됐고, 지금 stub 은 `dynamic-workflows.md` 만 가리킨다. 목적지 칸은 `삭제(목적지 없음) — 정본 dynamic-workflows.md` 로 읽는다. 조건부로 남기기로 한 규범부(fanout 상한 문장·병렬 규칙 불릿)는 stub 에 남아 있다 |
 | R-71 | M1 | `## Tool Selection Priority` | 380 | 6 | `없음(판단)` — 본문이 이미 "정본 표는 `agent-common-protocol.md` 에 있다"고 적는 포인터다. **주의**: R-04 가 그 정본 표를 companion 으로 옮기므로 두 이동이 연쇄한다 — 포인터의 대상 경로를 **같은 커밋에서** 갱신한다 |
 | R-72 | M1 | `## URL Verification` 중 실행 절차 3단계 서술 | 496 → 실이동 **300** (계획) | 1 | `없음(판단)` — 절차 서술은 `glm-web-tooling.md` 와 `CLAUDE.md §10` 의 재서술이다. **다만 "검증 없는 URL 생성 금지"는 이 파일과 `CLAUDE.md` 어디에도 `[HARD]` 로 없어** REQ-ALD2-013 의 취지대로 **always-loaded 에 보존**한다 — 실제 이동은 절차 서술뿐 |
 | | | **소계** | **1,680** | | 목적지 이후 **9,324**. 목표 8,500 대비 **−6,820 → M2**(D-24). **16파일 중 가장 빡빡** |
