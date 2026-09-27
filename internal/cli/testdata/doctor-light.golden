@@ -21,6 +21,7 @@
 │    ok      MCP Provider Duplicates  no Claude Code state file; not checked                                                                             │
 │    ok      MCP Server Version       no running moai MCP server recorded                                                                                │
 │    ok      Hook Missing Log         no hook-missing entries                                                                                            │
+│    info    Served Model             run with --check "Served Model"                                                                                    │
 │    ok      Agent Emit Embed   not applicable: no committed agent-emit artifacts                                                                          │
 │    warn    Constitution Registry    zone-registry.md not found at ".claude/rules/moai/core/zone-registry.md" — run `moai constitution list` to verify  │
 │    ok      Harness 5-Layer          .moai/harness/ not present (no harness configured)                                                                 │

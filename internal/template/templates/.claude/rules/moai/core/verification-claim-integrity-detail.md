@@ -48,7 +48,7 @@ and time-of-check-to-time-of-use windows all belong here.
 
 ## Cross-references (each remains the single source of truth for its own subject)
 
-- `.claude/rules/moai/core/agent-common-protocol.md` § Skeptical Evaluation Stance — the
+- `.claude/rules/moai/core/agent-common-protocol-reference.md` § Skeptical Evaluation Stance — the
   fresh-judgment auditor stance (treat claims as suspect until evidence is shown).
 - `.claude/rules/moai/core/moai-constitution.md` § Agent Core Behaviors #6 "Verify, Don't Assume" —
   the cross-cutting behavior requiring evidence of completion.
