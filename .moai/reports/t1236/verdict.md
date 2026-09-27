@@ -261,3 +261,32 @@ RED (expected) extra:
 - 새 부채(병합을 막지 않음): SPEC 본문의 EV-6 원장과 AC-GR-003 2단계 서술(acceptance.md L46·L51·L333 이하, plan.md L213)이 여전히 옛 BASE `7fe658815`의 DRIFT 9건을 전제로 적혀 있다. 과거 측정 기록으로서는 사실이지만, 새 BASE에서 테스트가 쓰는 전제(빈 집합)와는 문면이 어긋난다. manager-spec의 비전이 정정 대상이며 리드가 부채로 받는다. 또 `contract --help`의 긴 설명문이 새 동사를 반영하지 않는다(A1 소유 문구).
 
 - 병합 후 gitenv 가드 적색 — kickoff TestMain 누락, t1237 창에서 수리 (`internal/contract/kickoff/activation_test.go:35`가 git을 직접 실행하는데 `gitenv.ScrubProcess()`를 부르는 TestMain이 없어 `internal/gitenv` TestFixturePackagesScrubProcess가 적색. 수리는 worker-62가 t1237 창에서 card t1236 귀속 커밋으로 진행. 카드 셀렉터가 다른 패키지의 가드를 놓친 사례.)
+
+## 병합 후 CI 적색 수리 (2026-09-28, WT-gate-rewire-ci)
+
+develop `e9577de4f` CI run 36333964365 적색(Test ubuntu + Race) 두 갈래 수리. base `088594d6b`.
+
+### ① MOAI_HOME 쓰기 — 원인 정정
+- 재현: `TestObserveInertUnderGuided` `detector_paths_test.go:25: guided mode wrote under MOAI_HOME: [d db/]`, `TestDetectorNeverAltersToolCall` `escalation_m5_test.go:232: … db/t9001-8d01049e/contract/events.jsonl`, `…/store.lock`.
+- 원인: 감지기가 아니다. `escalation.Active` 는 contract 에서만 참이고 `Observe` 는 guided 에서 즉시 반환한다. 쓰는 쪽은 픽스처 준비 단계 `escalationtest.AddSpec → sign.Sign` 이며, 이 SPEC 이후 `Seams.RecordEvent` 기본값이 MOAI_HOME 저장소에 서명 이벤트를 남긴다. hook 테스트는 저장소 디렉터리명에 워크트리 해시가 붙어 두 실행의 준비 파일이 서로 다른 경로로 보였다.
+- 수리: 두 단언을 관측 호출 전후 MOAI_HOME 차이(경로+크기)로 좁힘. 커밋 `3596dbeaf`.
+- 변이 대조: `Active` 를 `return true` 로 바꾸면 `TestObserveInertUnderGuided` FAIL.
+- **부채**: `TestDetectorNeverAltersToolCall` 은 같은 변이를 잡지 못한다(원래부터). escalation 경로 파일은 허용 목록이고, guided 실행이 contract 와 같은 출력을 내도 비교가 통과한다. 이 약점은 이번 수리 이전부터 있었다.
+
+### ② 스킬 LOC 상한 — 블록 밖 산문 원문 이관
+- 재현: `run.md has 207 LOC (ceiling: 200)`, `plan/spec-assembly.md has 616 LOC (ceiling: 600)`.
+- 블록 원위치 앵커 방식(리드 1안)은 줄 수로 불가능: 이 SPEC 이전 LOC 199/600, 앵커 최소 3줄 × id 수 → 205/612.
+- 리드 결정 (1): CI LOC 상한 때문에 블록 **밖** 산문을 하위 파일로 원문 그대로 옮김 — 계약 모드 블록은 원위치·같은 id 유지(emitter 배치 결정 불변).
+  - `run.md` § 3. Autonomy invariants (9줄) → `run/phase-execution.md` 끝 「Run-phase Autonomy invariants (moved from run.md, verbatim)」. 원 자리에 한 줄 포인터. 199줄(템플릿 200).
+  - `plan/spec-assembly.md` Step 2.3.3a Plan HTML Report Emission (21줄, [HARD] 1개 포함) → `plan/context-discovery.md` 끝. 원 자리에 한 줄 포인터. 596줄.
+  - 로컬·템플릿 두 사본 동일 적용.
+- 로드 경로: 출발지·도착지 모두 `paths:` 없는 `user-invocable: false` 하위 스킬로, 오케스트레이터가 `Read` 로 싣는다. 포인터 줄이 그 자리에서 도착지 `Read` 를 지시하므로 옮긴 [HARD] 조항은 원래와 같은 시점(해당 단계 진입 시)에 로드된다. 단 자동 로드가 아니라 포인터를 따르는 Read 에 의존한다 — 원래도 spec-assembly 자체가 Read 로 로드됐으므로 로드 방식은 같다.
+- AC-GR-001 보존 검사: 이관 목록(`grRelocations`)에 한해 도착지 절을 포인터 자리에 되돌린 뒤 base 와 바이트 비교. 변이 대조: 이관된 한 줄(`Transcript-measurability`→`…biliti`)을 바꾸면 `TestContractModeGuidedPreservation` FAIL, 복원 확인.
+- 허용 목록: 이관 도착지 2개와 ①의 테스트 2개 추가. `internal/template/catalog.yaml` 해시 재생성.
+
+### 재측정 (이 트리)
+- `go test ./internal/escalation/... ./internal/hook/... ./internal/contract/... ./internal/gitenv` → 19패키지 ok
+- `go test ./internal/skills/... ./internal/template/...` → exit 0
+- `MOAI_GR_BASE=5f5840ae4 go test -v -run TestContractMode ./internal/template/` → PASS 40, FAIL 1(`TestContractModeChangeSetAllowlist/tree`): 남은 6경로는 base 이후 다른 카드 변경 — t1286 codemaps 3, t1237 closure 2, t1225 codexadapter 1. 이 수리 경로는 0.
+- `golangci-lint` v2.1.6 → 0 issues; `make agents-emit-check commands-emit-check` → ok
+- CI 경로 확인: `MOAI_GR_BASE` 미설정(CI 와 같은 조건)에서 `go test -v -run TestContractModeChangeSetAllowlist ./internal/template/` → `--- SKIP: TestContractModeChangeSetAllowlist/tree` ("MOAI_GR_BASE is not set"), falsifier 하위 테스트만 PASS. 즉 이 base-ref 검사는 CI 에서 돌지 않는다 — 수동 수용 실행에서만 판정되며, base 이후 타 카드 경로로 적색이 되는 것은 F9 부채와 같은 축.
