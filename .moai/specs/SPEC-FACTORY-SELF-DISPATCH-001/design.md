@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-SELF-DISPATCH-001
 title: "Design — self-dispatching lane (Factory F2)"
-version: "0.1.0"
+version: "0.2.0"
 created: 2026-09-27
 ---
 
@@ -14,94 +14,101 @@ Mechanism notes for the run phase. Requirements live in `spec.md`; nothing here 
 | # | Decision | Chosen | Rejected | Why |
 |---|---|---|---|---|
 | D1 | Codex engine | interactive `codex` session per card, working directory = card worktree | headless `codex exec` (t1242 design §5) | Card text: "헤드리스 엔진 없음", "codex -C <wt> 대화형 재기동" |
-| D2 | Codex integration | none — stop at `merge-ready` | self-integration | Card text: "자가 통합 없이 merge-ready" |
-| D3 | Lane selection order in `next` | own assigned → unowned picked → oldest queued (promote) | operator-picked only | Operator Q3 (SPEC-ROLE-NAMING-CODE-001 plan.md §B): self-dispatch up to promoting a queued card. Queue order only — no inferred priority |
-| D4 | Queue writes by a lane | only the promotion inside `next` | allow `todo add` from lanes | Card text: "에이전트 권한에서 큐 변경 … 제외" |
-| D5 | Lane detection on the MCP path | role marker equals the value constant **or** the lane-label variable is non-empty | marker only | Codex MCP receives only allowlisted variables, and the allowlist is frozen (REQ-CFR-020, REQ-SD-022) |
-| D6 | Integration branch for `complete` | the configured worktree base branch (`config.LoadWorktreeBaseBranch`, `session_worktree.go:228`) | a new setting | One source for "where cards branch from" and "where they merge into" |
-| D7 | Clear policy default | `clear-each` | `clear-when-full` | Card text: "기본 clear-each" |
-| D8 | Where the next-card rule lives | SessionStart additionalContext on `clear` (and on `startup` under `relaunch`) | a rule file | Always-loaded surface must not grow (REQ-CFR-021 precedent); the rule is per-session state |
+| D2 | Codex integration | none — stop at `merge-ready`; `next` never re-leases such a card (REQ-SD-025) | self-integration; re-lease after expiry | Card text: "자가 통합 없이 merge-ready"; re-lease would livelock (plan-audit D1) |
+| D3 | Lane selection order in `next` | own assigned → unowned picked → oldest queued (promote); other lanes' cards never | operator-picked only | Operator Q3 (SPEC-ROLE-NAMING-CODE-001 plan.md §B). Queue order only |
+| D4 | Queue writes by a lane | only the promotion inside `next`; every other `todo` verb outside a read-only allowlist refused | per-verb blocklist | Card text; an allowlist covers verbs added later (plan-audit D7) |
+| D5 | Lane predicate | role marker == value constant, on every path; label alone is not a lane | marker-or-label on MCP | One rule everywhere (plan-audit D5); the Codex MCP consequence is a stated residual (spec.md §E.1) |
+| D6 | Integration branch and tree | the branch `moai integration acquire` records and the worktree that has it checked out (`internal/cli/integration.go:166-180`, `worktreeForBranch` `:218`) | worktree base branch; merging in the parent | One integration surface; the parent checkout never changes branch (plan-audit D2) |
+| D7 | Harness identification | `MOAI_KANBAN_BACKEND` (`config.EnvMoaiKanbanBackend`, `envkeys.go:235`) with values `kanban.BackendClaude`/`BackendGLM`/`BackendGPT` (`internal/kanban/record.go:22-24`); `gpt` = Codex harness | a new variable | Existing name and constants; it is in the frozen Codex MCP allowlist, so the Codex MCP path sees it |
+| D8 | Clear policy default | `clear-each` | `clear-when-full` | Card text: "기본 clear-each" |
+| D9 | Where the next-card rule lives | SessionStart additionalContext on `startup` (every policy) and `clear` | a rule file | Always-loaded surface must not grow; the rule is per-session state |
+| D10 | MCP tree resolution | caller-supplied `project_root`, required on the three lane verbs | server working directory | The server's cwd does not follow `EnterWorktree` (moai-mcp-tools rule) |
 
 ## §2 Card lifecycle per harness
 
 ```mermaid
 flowchart TD
   A[lane session in parent checkout] --> B[factory next]
-  B -->|no card| Z[print none; exit distinct status]
-  B -->|leased| C{recorded worktree?}
+  B -->|no card| Z[print none; exit 3]
+  B -->|leased; prints id, stage, tree, PR/landed| C{recorded worktree?}
   C -->|no| D[worktree new card-id; branch -m WT-slug; record path]
   C -->|yes| E[reuse this card's own tree]
-  D --> F{harness}
+  D --> F{harness from MOAI_KANBAN_BACKEND}
   E --> F
-  F -->|Claude| G[EnterWorktree]
+  F -->|claude / glm| G[EnterWorktree]
   G --> H[plan → plan-audit via factory stage]
   H -->|PASS| K[kickoff: lease released]
-  K --> Q[clear policy → next card]
+  K --> Q[ExitWorktree keep; clear policy; next]
   H --> R[run → sync → sync-audit → merge-ready]
-  R --> S[integration hold; merge --no-ff into base branch]
-  S --> T[factory complete → merged-local]
-  T --> U[ExitWorktree keep]
-  U --> Q
-  F -->|Codex| V[launcher runs codex with -C worktree]
-  V --> W[plan … sync-audit → merge-ready via MCP or CLI]
-  W --> X[factory complete stops at merge-ready]
-  X --> Y[codex exits; launcher loops to next]
+  R --> S[integration acquire; merge --no-ff in integration worktree]
+  S --> T[factory complete → merged-local; integration release]
+  T --> Q
+  F -->|gpt| V[launcher runs codex in the card worktree]
+  V --> W[plan … sync-audit → merge-ready via CLI verbs]
+  W --> X[codex exits; launcher loops to next; merge-ready cards skipped]
 ```
-
-A card that returns from `kickoff` after the leader's `decide approve` comes back `assigned` to the same
-lane with stage `run` (F1 REQ-FR-019); `next` picks it up first (D3) and re-enters its recorded tree.
 
 ## §3 Verbs
 
-| CLI | MCP | Role allowed | Record effect |
+| CLI | MCP (`project_root`) | Caller | Record effect |
 |---|---|---|---|
-| `moai factory next [--wait]` | `factory_next` | lane | T2/T3 (and T1 for a promoted card), queue pick for a promoted card |
-| `moai factory stage <card> <state> [evidence flags]` | `factory_stage` | lane (lease holder) | one F1 edge + lease renew |
-| `moai factory complete <card> [merge evidence]` | `factory_complete` | lane (lease holder) | T13/T14/T16 (Claude) or up to T13 (Codex) |
-| `moai factory decide …` (F1) | `factory_decide` | not a lane | F1 REQ-FR-019..021 |
-| `moai todo add <text>` | `todo_add` | not a lane | queue insert |
-| `moai todo list` | `todo_list` | any | read only |
+| `moai factory next [--wait]` | `factory_next` (required) | lane | T2/T3 (and T1 for a promoted card); queue pick for a promoted card |
+| `moai factory stage <card> <state> [evidence]` | `factory_stage` (required) | lane, lease holder | one F1 edge + lease renew; Codex refused `merging` |
+| `moai factory complete <card> [merge evidence]` | `factory_complete` (required) | lane, lease holder | T14/T16 (claude/glm); refused for Codex |
+| `moai factory decide …` (F1) | `factory_decide` (optional) | not a lane | F1 REQ-FR-019..021 |
+| `moai todo add <text>` | `todo_add` (optional) | not a lane | queue insert |
+| `moai todo list` | `todo_list` (optional) | any | read only |
 
-One implementation per verb; the MCP handler calls the same function the cobra `RunE` calls, so the
-equivalence test (AC-SD-014) compares record rows and refusal text, not two code paths.
+- One implementation per verb; the MCP handler calls the function the cobra `RunE` calls.
+- Actor label: the lane-label variable (`MOAI_FACTORY_WORKER`, name kept under REQ-RNC-011).
+- Exit status 3 = no card available (help text states it).
+- PR/landed line: reuse the reader behind `moai todo pr` (`runTodoPR`, `internal/cli/todo_pr.go:177`).
+- Promotion atomicity: queue store and `factory.db` are separate stores. `next` picks in the queue first,
+  then writes T1-T3; a failed record write leaves the card `picked` and unowned, and the next `next`
+  takes it as an unowned picked card. Concurrent lanes are serialized by F1's version check; the loser
+  re-selects.
 
-The actor label is read from the lane-label variable (`MOAI_FACTORY_WORKER`, name kept under REQ-RNC-011).
-A call with no lane label on a lane-only verb is refused ("not a lane session").
+## §4 Launcher environment
 
-## §4 Role marker stamping
-
-- cc / glm: `enterFactoryWorkerMode` (`internal/cli/factory.go:402-418`) gains one `Setenv` of the
-  marker name constant to the value constant, restored on return like the other keys.
+- cc / glm: `enterFactoryWorkerMode` (`internal/cli/factory.go:402-418`) gains the marker (name and value
+  constants); restored on return like the other keys. The backend value is already exported on the glm
+  factory-lane path (`internal/cli/glm.go:267-268`) but not on the cc one (`internal/cli/cc.go:219`
+  calls `enterFactoryWorkerMode` with no `exportKanbanLaunchFacts`; the calls at `:237,255` sit under
+  `!entry.FactoryEnabled`), so the cc lane path gains it.
 - Codex: the per-card child environment starts from `codexChildEnv` (`codex_launcher.go:607-625`) and
-  then sets the marker, the lane label, and the factory signal. This is the one path on which the
-  eleven-key scrub of REQ-CFR-006 is deliberately not the final word; bare `moai codex` keeps it.
+  then sets the marker, the lane label, the factory signal, and `MOAI_KANBAN_BACKEND=gpt`. Bare
+  `moai codex` keeps the eleven-key scrub.
 - The leader session gets no marker.
 
-## §5 Lane check
+## §5 Lane predicate and refusal wording
 
 ```
-isLane(env) = env[EnvFactoryRole] == <value constant>
-           || (onMCPPath && env[EnvMoaiFactoryWorker] != "")
+isLane(env) = env[config.EnvFactoryRole] == <role-value constant>
 ```
 
-CLI verbs run inside the session's own shell, which carries the full launcher environment, so the
-marker suffices there. The MCP path adds the label clause for Codex (D5). Both halves read constants.
+Used by the queue guard, the `decide` guard, and the lane-verb admission, on the CLI and MCP paths.
+Refusal lines are constants in one place per verb family; the REQ-SD-004 Codex line is one constant in
+`codex_launcher.go` replacing `codexFactoryRefusalDiag` (`:743-744`); legacy role tokens on every
+launcher go through t1256's REQ-RNC-003/-005/-007 producer.
 
-## §6 Launcher shapes
+## §6 Launcher shapes and clear policies
 
 - `clear-each` / `clear-when-full`: unchanged exec model (`launch_exec_posix.go:37`); the policy value
-  travels in the lane session's environment for the SessionStart rule to read.
-- `relaunch` (Claude) and every Codex lane: a supervising loop — the launcher stays the parent,
-  runs `next` and `worktree new` itself, starts the interactive child, waits, and loops. `syscall.Exec`
-  cannot be used on this path because it leaves no parent.
-- Windows: the Codex and relaunch loops use the same child-process path the Windows launcher already
-  uses; no new `syscall` use (REQ-CFR-016 precedent).
+  travels in the lane session's environment for the SessionStart rule and the `complete` output to read.
+- `clear-when-full` reads the session's record at `<project>/.moai/state/context-usage/<session-id>.json`
+  (`internal/statusline/context_usage.go:13-20`) and compares it with the model-specific handoff
+  threshold (context-window-management rule); a missing record reads as below threshold.
+- `relaunch` (Claude) and every Codex lane: a supervising loop — the launcher stays the parent, runs
+  `next` and `worktree new` itself, starts the interactive child, waits for it to exit (the Claude child
+  exits when the operator ends it after the end-session request), and loops. `syscall.Exec` is not used
+  on this path.
+- Windows: the loops use the existing child-process launch path; no new `syscall` use.
 
 ## §7 Superseded clauses of SPEC-CODEX-FACTORY-RETIRE-001
 
 | Clause | Effect of this SPEC |
 |---|---|
-| REQ-CFR-002 | Narrowed: the `-f lane` shape is accepted; every other factory token stays refused (REQ-SD-004) |
+| REQ-CFR-002 | Narrowed: `-f lane` accepted; other factory shapes keep a refusal with new wording (REQ-SD-004) |
 | REQ-CFR-006/007 | Narrowed: the `-f lane` child carries the lane keys; bare codex keeps the scrub |
 | REQ-CFR-010 | Unchanged |
 | REQ-CFR-020 | Unchanged (REQ-SD-022) |

@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-SELF-DISPATCH-001
 title: "Research — self-dispatching lane (Factory F2)"
-version: "0.1.0"
+version: "0.2.0"
 created: 2026-09-27
 ---
 
@@ -74,7 +74,7 @@ guard nevertheless matches a `contract decide` command line, so it is future-pro
 | Item | Location |
 |---|---|
 | Refusal call | `internal/cli/codex_launcher.go:701` |
-| Refusal lines | `:737-742` (`FACTORY_MODE_UNSUPPORTED_BACKEND: moai codex no longer enters Factory Mode; ...`) |
+| Refusal lines | const block `:740-745`; factory line `codexFactoryRefusalDiag` at `:743-744` (`FACTORY_MODE_UNSUPPORTED_BACKEND: moai codex no longer enters Factory Mode; use 'moai cc -f' or 'moai glm -f' instead`) |
 | Scanner | `codexEntryRefusal`, `:754-768` — refuses `-f`, `--factory`, `--factory-run`, and `=` forms |
 | Child env scrub | `codexChildEnv`, `:607-625` — drops `codexLaneLaunchEnvKeys` (the eleven lane keys of REQ-CFR-006, which include `MOAI_FACTORY_WORKER`/`S`) |
 | MCP env allowlist | `internal/codexwiring/configtoml.go:21` — includes `MOAI_FACTORY_WORKER`, `MOAI_FACTORY_WORKERS`; excludes `MOAI_FACTORY_ROLE` |
@@ -103,6 +103,21 @@ marker. The role token is `factoryWorkerRoleToken = "worker"` (`factory.go:59`),
 `factoryLegacyAgentRoleToken = "agent"` (`:64`) still parses today. POSIX launch is `syscall.Exec`
 (`internal/cli/launch_exec_posix.go:37`), which leaves no parent process to relaunch from — the
 relaunch policy needs a supervising form (design.md §6).
+
+## §8a Measurements added at v0.2.0 (plan-audit iteration 1)
+
+| Item | Location | Observation |
+|---|---|---|
+| Lease owner check | `internal/homestate/card_transition.go:433-441` | `guardLeaseAcquire` requires the actor to be registered and equal to `cur.OwnerLabel` — an expired card returns to its own lane, hence REQ-SD-025's skip rule |
+| Backend variable | `internal/config/envkeys.go:224-235` | `EnvMoaiKanbanBackend = "MOAI_KANBAN_BACKEND"`, values `kanban.BackendClaude`/`BackendGLM`/`BackendGPT` |
+| Backend constants | `internal/kanban/record.go:22-24` | `"claude"`, `"glm"`, `"gpt"` |
+| Backend on factory lanes | `internal/cli/glm.go:267-268` exports it; `internal/cli/cc.go:219` does not | cc lane path gains it |
+| Backend in Codex MCP allowlist | `internal/codexwiring/configtoml.go:21` | `MOAI_KANBAN_BACKEND` present |
+| `todo` subcommand tree | `internal/cli/todo.go:262-267` | add, list, done, undone, next, unpick, edit, move, drop, undrop, analyze, relate, unrelate, why, pr, landed, auto-done, export-json, history, triage |
+| Read-intent `todo` verbs | `todo_triage.go:94` ("read-only"), `todo_pr.go:180`, `todo_history.go:131`, `todo.go:570-574` (`list`, `LoadPure`); `todo_why.go:29` uses `Load`, which can migrate a legacy layout (`internal/kanban/backlog_store.go:607-619`) | `list`, `history`, `pr`, `triage` read through `LoadPure`; `why` is read-intent but goes through `Load` — on an already-migrated queue it writes nothing (AC-SD-015 checks bytes on such a fixture); `analyze` (`todo_analysis.go:129` `Mutate`), `landed` ("Record the operator's landing evidence"), `export-json` (writes a file) are writers |
+| Integration target | `internal/cli/integration.go:166-180`, `:218` | branch = explicit `--branch`, else configured git-flow develop branch; worktree = the tree that has it checked out, empty when none |
+| `integration acquire` | `internal/cli/integration.go:325-329` | records the holder of the release-integration window |
+| Context-usage record | `internal/statusline/context_usage.go:13-20` | `<projectDir>/.moai/state/context-usage/<session-id>.json` |
 
 ## §9 Not verified (Gaps)
 
