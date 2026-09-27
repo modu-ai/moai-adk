@@ -299,19 +299,22 @@ func TestHarnessCodexEventMismatchRejected(t *testing.T) {
 	}
 }
 
-// TestHarnessCodexUnadaptedSubcommandRejected verifies --harness codex on an
-// event this milestone does not adapt (compact) is refused, not silently
-// wired (dead-path prevention).
-func TestHarnessCodexUnadaptedSubcommandRejected(t *testing.T) {
+// TestHarnessCodexCompactSubcommandAccepted verifies --harness codex on
+// compact is dispatched now that PreCompact is adapted
+// (SPEC-DUAL-HARNESS-HOOK-PARITY-001 M2e). This is the intentional rewrite of
+// TestHarnessCodexUnadaptedSubcommandRejected: no shipped Codex event remains
+// unadapted, so the refusal path it exercised is kept by the adapter-level
+// TestResolveUnadaptedRowIsRefused instead.
+func TestHarnessCodexCompactSubcommandAccepted(t *testing.T) {
 	input := &hook.HookInput{HookEventName: "PreCompact", SessionID: "s1"}
 	output := &hook.HookOutput{}
 
 	_, err := runHookSubcommandCodex(t, "compact", input, output)
-	if err == nil {
-		t.Fatal("--harness codex on an unadapted event must be refused")
+	if err != nil {
+		t.Fatalf("--harness codex on the adapted compact event must be accepted: %v", err)
 	}
-	if !codexadapter.IsUnadapted(err) {
-		t.Errorf("diagnostic should carry the adapter's ErrUnadapted marker: %v", err)
+	if codexadapter.IsUnadapted(err) {
+		t.Fatalf("compact still refused as unadapted: %v", err)
 	}
 }
 

@@ -218,7 +218,7 @@ Anti-pattern: "Of course!" followed by implementing a known-bad idea.
 
 ### 4. Enforce Simplicity [ZONE:Evolvable] [HARD]
 
-Actively resist overcomplexity; the natural tendency of code generation is toward over-engineering. Before completing an implementation ask: can this be done in fewer lines without loss of clarity, are these abstractions earning their complexity, would a staff engineer say "why didn't you just..."? (TRUST 5 Readable.) Anti-pattern: 1000 lines where 100 suffice; a factory for a single concrete implementation.
+Actively resist overcomplexity. The natural tendency of code generation is toward over-engineering. Resist it. Before completing an implementation ask: can this be done in fewer lines without loss of clarity, are these abstractions earning their complexity, would a staff engineer say "why didn't you just..."? (TRUST 5 Readable.) Anti-pattern: 1000 lines where 100 suffice; a factory for a single concrete implementation.
 
 Simplicity decision ladder (apply in order, before writing code — cheapest capability first):
 

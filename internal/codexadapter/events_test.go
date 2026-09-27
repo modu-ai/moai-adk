@@ -28,18 +28,22 @@ func TestEventTableMapping(t *testing.T) {
 		arg     string
 		adapted bool
 	}{
-		hook.EventPreToolUse:        {"pre-tool", true},
-		hook.EventPostToolUse:       {"post-tool", true},
-		hook.EventSessionStart:      {"session-start", true},
-		hook.EventSessionEnd:        {"session-end", true},
-		hook.EventStop:              {"stop", true},
-		hook.EventUserPromptSubmit:  {"user-prompt-submit", true},
-		hook.EventPreCompact:        {"compact", false},
-		hook.EventPostCompact:       {"post-compact", false},
-		hook.EventPermissionRequest: {"permission-request", false},
+		hook.EventPreToolUse:       {"pre-tool", true},
+		hook.EventPostToolUse:      {"post-tool", true},
+		hook.EventSessionStart:     {"session-start", true},
+		hook.EventSessionEnd:       {"session-end", true},
+		hook.EventStop:             {"stop", true},
+		hook.EventUserPromptSubmit: {"user-prompt-submit", true},
+		// SPEC-DUAL-HARNESS-HOOK-PARITY-001 M2e: the four rows held back by
+		// SPEC-CODEX-EVENT-COVERAGE-001 are adapted, and Interrupt gains the
+		// Codex-only `interrupt` dispatcher arg (intentional amendment of
+		// REQ-CEV-001).
+		hook.EventPreCompact:        {"compact", true},
+		hook.EventPostCompact:       {"post-compact", true},
+		hook.EventPermissionRequest: {"permission-request", true},
 		hook.EventSubagentStart:     {"subagent-start", true},
 		hook.EventSubagentStop:      {"subagent-stop", true},
-		hook.EventType("Interrupt"): {"", false},
+		hook.EventType("Interrupt"): {"interrupt", true},
 	}
 
 	if len(want) != len(EventTable) {
@@ -61,13 +65,15 @@ func TestEventTableMapping(t *testing.T) {
 	}
 }
 
-// TestAdaptedRowCount pins the adapted subset at eight — the six events
-// adapted on the 0.147.0 measurement basis plus SubagentStart/SubagentStop,
-// which the 0.153.4 campaign (t496) measured FIRING.
+// TestAdaptedRowCount pins the adapted subset at twelve — every row. The six
+// events adapted on the 0.147.0 measurement basis, SubagentStart/SubagentStop
+// (measured FIRING by the 0.153.4 campaign, t496), and the four rows
+// SPEC-DUAL-HARNESS-HOOK-PARITY-001 M2e adapts: PreCompact, PostCompact,
+// PermissionRequest, and Interrupt (intentional amendment, 8 → 12).
 func TestAdaptedRowCount(t *testing.T) {
 	t.Parallel()
 
-	const wantAdapted = 8
+	const wantAdapted = 12
 	got := 0
 	for _, row := range EventTable {
 		if row.Adapted {
@@ -103,49 +109,75 @@ func TestResolveAdapted(t *testing.T) {
 	}
 }
 
-// TestResolveRecognizedButUnadapted asserts the unadapted events are refused
-// as recognized — distinguishable from an unknown name (AC-REQ-1a). After the
-// 0.153.4 campaign the set is the two compaction events (trigger not achieved
-// in a non-interactive run), PermissionRequest (approval request never raised
-// non-interactively), and Interrupt (no MoAI dispatcher counterpart).
-func TestResolveRecognizedButUnadapted(t *testing.T) {
+// TestResolveFormerlyUnadaptedNowResolve asserts the four events
+// SPEC-CODEX-EVENT-COVERAGE-001 held back now resolve to their dispatcher
+// argument (SPEC-DUAL-HARNESS-HOOK-PARITY-001 M2e — intentional amendment of
+// TestResolveRecognizedButUnadapted, REQ-CEV-003). The unknown-vs-unadapted
+// distinction that test guarded stays covered by TestResolveUnknownEvent and
+// by TestResolveUnadaptedRowIsRefused.
+func TestResolveFormerlyUnadaptedNowResolve(t *testing.T) {
 	t.Parallel()
 
-	for _, name := range []string{"PreCompact", "PostCompact", "PermissionRequest", "Interrupt"} {
-		_, err := Resolve(name)
-		if err == nil {
-			t.Errorf("Resolve(%s) error = nil, want refusal", name)
+	for _, tc := range []struct {
+		event string
+		arg   string
+	}{
+		{"PreCompact", "compact"},
+		{"PostCompact", "post-compact"},
+		{"PermissionRequest", "permission-request"},
+		{"Interrupt", "interrupt"},
+	} {
+		arg, err := Resolve(tc.event)
+		if err != nil {
+			t.Errorf("Resolve(%s) error = %v, want %q", tc.event, err, tc.arg)
 			continue
 		}
-		if !IsUnadapted(err) {
-			t.Errorf("Resolve(%s) error = %v, want an unadapted refusal", name, err)
-		}
-		if IsUnknownEvent(err) {
-			t.Errorf("Resolve(%s) classified as unknown; it is recognized-but-unadapted", name)
+		if arg != tc.arg {
+			t.Errorf("Resolve(%s) = %q, want %q", tc.event, arg, tc.arg)
 		}
 	}
 }
 
-// TestResolveInterruptNoCounterpart asserts the Interrupt refusal carries the
-// unadapted class AND a truthful message: Interrupt has no MoAI dispatcher
-// counterpart, so the message must not assert that a dispatcher argument
-// exists (SPEC-CODEX-EVENT-COVERAGE-001 REQ-CEV-003) — the generic unadapted
-// format's "dispatcher arg %q exists" clause is false for an empty arg.
-func TestResolveInterruptNoCounterpart(t *testing.T) {
+// TestResolveInterruptResolvesToInterrupt asserts Interrupt resolves to the
+// Codex-only `interrupt` dispatcher arg handled in internal/cli
+// (SPEC-DUAL-HARNESS-HOOK-PARITY-001 design.md §D7 — intentional amendment of
+// TestResolveInterruptNoCounterpart, REQ-CEV-003). The event constant still
+// lives in this package, not internal/hook (REQ-CEV-002 kept).
+func TestResolveInterruptResolvesToInterrupt(t *testing.T) {
 	t.Parallel()
 
-	_, err := Resolve("Interrupt")
-	if err == nil {
-		t.Fatal("Resolve(Interrupt) error = nil, want refusal")
+	arg, err := Resolve(string(CodexEventInterrupt))
+	if err != nil {
+		t.Fatalf("Resolve(Interrupt) error = %v, want \"interrupt\"", err)
 	}
-	if !IsUnadapted(err) {
-		t.Fatalf("Resolve(Interrupt) error = %v, want an unadapted refusal", err)
+	if arg != "interrupt" {
+		t.Fatalf("Resolve(Interrupt) = %q, want \"interrupt\"", arg)
 	}
-	if IsUnknownEvent(err) {
-		t.Fatal("Resolve(Interrupt) classified as unknown; it is recognized-but-unadapted")
+}
+
+// TestResolveUnadaptedRowIsRefused keeps the recognized-but-unadapted refusal
+// path covered now that no shipped row is unadapted: a row with Adapted false
+// is refused with the unadapted class, never classified unknown, and — when it
+// has no dispatcher arg — without claiming one exists.
+func TestResolveUnadaptedRowIsRefused(t *testing.T) {
+	t.Parallel()
+
+	rows := []EventRow{
+		{hook.EventPreCompact, "compact", false},
+		{CodexEventInterrupt, "", false},
 	}
-	if msg := err.Error(); contains(msg, "dispatcher arg") {
-		t.Fatalf("Resolve(Interrupt) message asserts a dispatcher arg exists, but Interrupt has none: %q", msg)
+	for _, name := range []string{"PreCompact", "Interrupt"} {
+		_, err := resolveIn(rows, name)
+		if err == nil {
+			t.Errorf("Resolve(%s) error = nil, want refusal", name)
+			continue
+		}
+		if !IsUnadapted(err) || IsUnknownEvent(err) {
+			t.Errorf("Resolve(%s) error = %v, want an unadapted (not unknown) refusal", name, err)
+		}
+	}
+	if _, err := resolveIn(rows, "Interrupt"); err != nil && contains(err.Error(), "dispatcher arg") {
+		t.Errorf("an arg-less unadapted row claims a dispatcher arg exists: %v", err)
 	}
 }
 

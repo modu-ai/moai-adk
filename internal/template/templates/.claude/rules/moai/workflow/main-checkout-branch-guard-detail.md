@@ -92,9 +92,9 @@ flows. The hook applies the doctrine conditionally.
   fires on its own — but each is read from a different place, and the two differ
   in whether a spawned agent can reach them:
   - `AgentType` arrives in the hook payload, and Claude Code **does** populate
-    `agent_type` for an agent spawned through the Agent tool — measured against
-    a live runtime, in the same snake_case spelling `HookInput` decodes, carrying
-    the spawn name verbatim rather than a
+    `agent_type` for an agent spawned through the Agent tool — measured
+    against a live runtime, in the same snake_case
+    spelling `HookInput` decodes, carrying the spawn name verbatim rather than a
     catalog name. The identity axis therefore fires for a spawned agent named
     `manager-git`, and the three-arm check confirmed the deny is suppressed for
     it while firing for a main-session payload and for a spawned agent under any
@@ -146,6 +146,12 @@ flows. The hook applies the doctrine conditionally.
   Risk-Amplifier Doctrine (WARN-ONLY, FAIL-OPEN). This norm is unchanged by
   the opt-in gate: when disabled the guard returns allow BEFORE reaching any
   uncertainty path, so fail-open is trivially preserved.
+
+Origin: the branch-guard doctrine specification (its full requirement set).
+Opt-in gate + pattern refinement: the follow-on opt-in specification
+(its requirement set).
+Discriminant directory correction: the discriminant-correction specification
+(its requirement set).
 
 
 
