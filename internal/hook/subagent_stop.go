@@ -60,9 +60,9 @@ func (h *subagentStopHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// Served-model observation (SPEC-SERVED-MODEL-AUDIT-001). Never blocks and
 	// never fails the hook: its only outputs are an audit row and, at most, a
 	// warning message appended to the merged output.
-	served := h.observeServedModel(input)
+	_, warning := h.observeServedModel(input)
 	out, err := h.handleTeardown(ctx, input)
-	return appendSystemMessage(mergeAuditorStopGuard(out, guard), served), err
+	return appendSystemMessage(mergeAuditorStopGuard(out, guard), warning), err
 }
 
 // mergeAuditorStopGuard lays the guard's decision over the teardown output.
