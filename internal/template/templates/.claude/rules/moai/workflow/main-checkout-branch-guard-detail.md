@@ -92,9 +92,9 @@ flows. The hook applies the doctrine conditionally.
   fires on its own — but each is read from a different place, and the two differ
   in whether a spawned agent can reach them:
   - `AgentType` arrives in the hook payload, and Claude Code **does** populate
-    `agent_type` for an agent spawned through the Agent tool — measured
-    2026-09-27 under SPEC-BRANCHGUARD-EXEMPT-REACH-001, in the same snake_case
-    spelling `HookInput` decodes, carrying the spawn name verbatim rather than a
+    `agent_type` for an agent spawned through the Agent tool — measured against
+    a live runtime, in the same snake_case spelling `HookInput` decodes, carrying
+    the spawn name verbatim rather than a
     catalog name. The identity axis therefore fires for a spawned agent named
     `manager-git`, and the three-arm check confirmed the deny is suppressed for
     it while firing for a main-session payload and for a spawned agent under any
@@ -116,7 +116,7 @@ flows. The hook applies the doctrine conditionally.
   axis reaches a spawned agent and simply did not match the name it was given.
 
   The deny reason's remediation text must not suggest delegating to a
-  `manager-git` agent (kanban card t43). The ORIGINAL reason for that wording —
+  `manager-git` agent. The ORIGINAL reason for that wording —
   "such a delegation reproduces the same deny" — is false as measured, so the
   wording now stands on a different and stronger footing: the delegation would
   actually SUCCEED, and succeeding is precisely the outcome the guard exists to

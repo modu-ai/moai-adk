@@ -94,8 +94,8 @@ to the primary checkout and would lock out legitimate worktree flows.
 - **Fail-open.** The deny fires only on positive evidence — primary checkout confirmed, a
   branch-state pattern matched, agent not exempt. Any uncertainty falls through to allow and
   appends to `.moai/logs/branch-guard-audit.log`.
-- **The identity exemption IS reachable from a spawned agent** — measured, not inferred
-  (SPEC-BRANCHGUARD-EXEMPT-REACH-001, 2026-09-27). Claude Code populates `agent_type` on PreToolUse
+- **The identity exemption IS reachable from a spawned agent** — measured against a live
+  runtime, not inferred. Claude Code populates `agent_type` on PreToolUse
   for an agent spawned through the Agent tool, in the same snake_case spelling `HookInput` decodes,
   and the value is the spawn name verbatim rather than a catalog name. An agent spawned under the
   name `manager-git` therefore passes the guard in the primary checkout. The exemption was
