@@ -227,4 +227,21 @@ m1_to_mN_commit_strategy: milestone-per-commit
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-28
+sync_commit_sha: pending-backfill
+sync_status: complete-with-held-debt
+b12_self_test_a: pass            # grep -c 'SPEC-AUTONOMY-GATE-REWIRE-001' CHANGELOG.md → 0 before emission
+b12_self_test_b: pass            # distinct AC ids in acceptance.md: 26 = 25 AC-GR-001..025 + AC-CONTRACT-016 (A1 cross-reference); entry states 25
+b12_self_test_c: pass            # every path named in the entry resolved via ls before commit
+changelog_entry_position: "[Unreleased] / ### Added, first bullet"
+frontmatter_status_transitions:
+  spec.md: in-progress → implemented → completed   # only spec.md carries frontmatter in this SPEC directory
+  plan.md: n/a (no frontmatter)
+  acceptance.md: n/a (no frontmatter)
+  progress.md: n/a (no frontmatter)
+docs_surface: "docs-site/content/{ko,en,ja,zh}/cli-reference/contract.md — kickoff-check / decide / revoke rows + section, 4 locales; README has no moai contract surface"
+allowlist_amendment: "sync outputs admitted by design §2 row 27 (0864b2a09) + grAllowed mirror (1a1746794), lane decision option (a)"
+verdict: .moai/reports/t1236/verdict.md   # run+sync section appended
+m8_status: "M8 보류 — design §7.1 6행 미충족(Frozen 문단에 비인간 결정자 서명 등가 부재), autonomousKickoffEnabled=false 유지, 3행 충족·4행 부분 확인"
+```

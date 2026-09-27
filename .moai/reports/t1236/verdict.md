@@ -125,3 +125,99 @@ RED (expected) extra:
 
 - 집합 비교는 중복을 없앤 집합이라, 블록 안에 **기존 `[HARD]` 줄과 글자까지 같은 줄**을 새로 넣으면 잡지 못한다. 미등록 규칙의 유입은 막지만 기존 규칙 문장의 복제는 이 비교 밖이다.
 - `goal-directive.md` 두 사본은 BASE 에 `[HARD]` 줄이 0개라 어떤 `[HARD]` 줄이든 들어오면 실패한다. 이는 의도한 동작이다.
+
+## run·sync 결과 — PASS-WITH-DEBT (2026-09-28)
+
+적용 규칙: `verification-claim-integrity.md` §1(관측하지 않은 주장 금지), `verification-completeness.md` §1.1·§2. 아래 수치는 모두 `progress.md` §E.2·§E.3 에 남은 명령과 출력, 또는 이번 sync 에서 직접 실행한 명령에서 가져왔다.
+
+### 주장
+
+- run 단계는 AC 25/25 PASS 로 닫혔다. M8(자율 Kickoff 활성화)은 보류 부채로 종결했다. 리드는 run 결과를 PASS-WITH-DEBT 로 판정했다.
+- sync 단계에서 CHANGELOG 항목, docs-site 4개 로케일의 `moai contract` 명령 문서, `spec.md` 상태 전이(in-progress → implemented → completed)를 한 커밋에 담았다.
+- 자율 Kickoff 는 꺼진 채 출하된다(`autonomousKickoffEnabled = false`). 따라서 Implementation Kickoff Approval 사람 게이트는 실제 동작에서 바뀌지 않는다.
+
+### 증거
+
+**마일스톤 커밋**
+
+| 단계 | 커밋 |
+|---|---|
+| M0 | `7e82f8b66` |
+| M1 | `fdf274c42` |
+| M2~M5 | `1e7e483f3` |
+| M9 | `39ca88f50` |
+| M6 | `5f8a67b78` |
+| M7 | `0e1f2edb9` |
+| M10 | `0fff55f64` |
+| M7b | `185569ef3` |
+| 커버리지 보강 | `62726e1e4` |
+| revoke HEAD 판독 GIT_DIR 수리 | `8e504df95` |
+| run_commit_sha 기입 | `a80c2941f` |
+| SPEC v0.3.7 — sync 산출물 허용 목록(design §2 27행) | `0864b2a09` |
+| `grAllowed` 미러 | `1a1746794` |
+
+**AC 25/25 PASS**
+- M10 행렬: `progress.md` §E.2 「M10 — AC matrix」(트리 `ec051a27b332a7e4bb3cee2715bb9762680092df`, 로그 `.moai/state/verify/t1236/ac/<AC>.txt`). 24건이 PASS, AC-GR-022 는 빈 선택으로 DEFERRED 였다.
+- AC-GR-022 는 M7b(`185569ef3`) 뒤에 PASS 로 바뀌었다. 근거는 `progress.md` §E.2 「M7b / M8」에 기록된 `--- PASS: TestJevDoctrineAmendment`, `--- PASS: TestJevAmendmentLinkage` 이다.
+- §E.3 기록: `ac_pass_count: 25`, `ac_fail_count: 0`.
+
+**변이 제거 (FAIL 후 원복, HEAD 에서 PASS)**
+- kickoff 판독기 우회: `check_test.go:147: pass=true reason="" reasons=[] state=signed-valid, want pass=false reason="revoked"` / `--- FAIL: TestKickoffCheck/17_revoke_record_only`. HEAD 에서 `ok …/internal/contract/kickoff`.
+- decide 판독기 우회: `decide_test.go:274: outcome "human" reason "jev-doctrine-not-amended", want human "precondition:e"` / `--- FAIL: TestDecidePreconditions`. HEAD 에서 `ok`.
+- 미등록 `[HARD]` 줄: `contract_mode_guided_test.go:422: … unregistered [HARD] line not present at the base: …` / `--- FAIL: TestContractModeConstitutionDriftNotIncreased`. HEAD 에서 `ok …/internal/template`.
+- `specTier` 기본값 `"L"`→`"M"`: `units_test.go:62: specTier = "M", want "L"` / `--- FAIL: TestSpecTier`.
+- 판독기 `.md` 필터 제거: `failures_test.go:179: Blocked = true, err parse …notes.txt: escalation: record has no YAML frontmatter; want false, nil` / `--- FAIL: TestBlockedReaderShapes`.
+- 두 변이 모두 `cmp` 로 원복을 확인했고, 원복 뒤 HEAD 는 exit 0 이었다.
+
+**GIT_DIR 누수 (재현 먼저)**
+- RED: `failures_test.go:215: record head "fe9daa6f…", want the project's HEAD "cdf7e7e6…"` / `--- FAIL: TestRevokeHeadIgnoresAmbientGitEnv`.
+- GREEN: `--- PASS: TestRevokeHeadIgnoresAmbientGitEnv (0.39s)` / `ok`. 수리는 `cmd.Env = gitenv.Env()` 한 줄이다.
+- 형제 스윕: `internal/contract` 안의 테스트 외 `exec.Command` 는 모두 정리된 환경으로 실행된다.
+
+**M7b 기록**
+- 운영자가 레인 세션에서 AskUserQuestion 으로 §29 문구를 확인했다(선택지 「넣기 (권장)」).
+- 연계 변경은 단일 커밋 `185569ef3` 로 들어갔다. 커밋된 트리에서 `--- PASS: TestJevAmendmentLinkage` 를 관측했다.
+
+**M8 (원문 그대로)**
+- "M8 보류 — design §7.1 6행 미충족(Frozen 문단에 비인간 결정자 서명 등가 부재), autonomousKickoffEnabled=false 유지, 3행 충족·4행 부분 확인"
+- 리드 처분: 보류 부채로 종결.
+
+**리드 결정**
+- B1~B5(2026-09-27). B3 은 선택지 (a)로 정했다: 재개 차단은 A3 revoke 판독기가 맡고 A2 는 바꾸지 않는다. Jev 신뢰도 문턱은 0.80 이다.
+- plan-audit 과 run 은 모두 PASS-WITH-DEBT 로 판정했다.
+
+**허용 목록 개정 (레인 결정, 선택지 (a))**
+- 처음 sync 초안을 넣었을 때 `TestContractModeChangeSetAllowlist` 가 `CHANGELOG.md` 와 docs-site 4개 파일을 허용 목록 밖으로 보고했다.
+- 조치 순서: SPEC v0.3.7 design §2 에 27행 추가(`0864b2a09`), 테스트 `grAllowed` 에 같은 경로 반영(`1a1746794`).
+- 이번 sync 에서 다시 측정한 결과는 아래 「sync 검증」에 있다.
+
+**sync 검증 (이번 실행)**
+- 결과는 커밋 메시지와 manager-docs 보고에 원문으로 남긴다. 명령:
+  - `MOAI_GR_BASE=7fe658815 go test ./internal/template/ -run TestContractModeChangeSetAllowlist -count=1 -v`
+  - `go run ./cmd/moai spec lint SPEC-AUTONOMY-GATE-REWIRE-001`
+  - `go run ./cmd/moai spec lint --baseline .moai/spec-lint-baseline.json`
+
+**문서 표면**
+- `docs-site/content/{ko,en,ja,zh}/cli-reference/contract.md` 에 `kickoff-check`·`decide`·`revoke` 행과 설명 절을 넣었다. 네 로케일 모두 `##` 절이 4개로 같다.
+- README 에는 `moai contract` 항목이 없어 고치지 않았다.
+
+### 기준 귀속
+
+- run 수치의 기준 트리: M10 행렬은 `ec051a27b…`(HEAD `0e1f2edb9`), AC-GR-022 는 `185569ef3`, 커버리지와 GIT_DIR 수치는 `62726e1e4`·`8e504df95` 트리에서 쟀다.
+- BASE 는 `MOAI_GR_BASE=7fe658815` 이다.
+- sync 검증은 싱크 커밋 직전의 작업 트리에서 실행했다. 그 트리는 `1a1746794` 에 이번 sync 편집을 더한 상태다.
+
+### 미검증
+
+- **BASE 파생 산출물**: `grBaseDriftIDs`, `grKickoffClasses`, EV-6 id 들. BASE 는 t1175 수리 이전 트리이므로, develop 을 흡수할 때 다시 생성해야 한다.
+- **receipt 패키지 커버리지**: 단독 측정 68.1% 로 목표 85% 에 못 미친다. kickoff 87.4%, revoke 86.0% 는 목표를 넘었다.
+- **M8 4행**: push 직렬화 쪽 테스트는 다시 돌리지 않았다. 같은 행의 sign/decide 가드 8건은 PASS 였다.
+- **교차 플랫폼 빌드**: darwin/windows 빌드는 M7 에서 마지막으로 쟀고, M7b 이후에는 다시 돌리지 않았다.
+- **헌법 검증**: `moai constitution validate` 의 DRIFT 9건은 BASE 에도 있던 것이다. 리드가 별도 카드로 처리한다.
+- **sync 범위**: 전체 테스트 스위트는 돌리지 않았다. CI 가 판정한다.
+
+### 잔여 위험
+
+- 자율 Kickoff 경로는 꺼져 있어 실제 사용 환경에서 한 번도 돌지 않았다. 켜는 시점에 새 결함이 드러날 수 있다.
+- 체인 저장소와 에스컬레이션 기록을 함께 지우는 행위자는 막지 못한다(design D21).
+- 허용 목록이 sync 산출물을 받도록 넓어졌다. 이후 같은 경로에 무관한 변경이 들어와도 이 가드는 잡지 못한다.
