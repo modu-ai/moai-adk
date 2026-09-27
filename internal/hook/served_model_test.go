@@ -111,6 +111,42 @@ func TestServedModel_Classify(t *testing.T) {
 			wantVerdict: ServedVerdictUnmapped,
 			wantServed:  []string{"claude-opus-5-5"},
 		},
+		{
+			name:        "e_declared_context_suffix_id_served_bare_id_is_ok",
+			agentType:   "manager-develop",
+			meta:        map[string]string{"agentType": "manager-develop", "model": "claude-opus-5[1m]"},
+			rows:        []string{assistantRow("claude-opus-5")},
+			cfg:         zero,
+			wantVerdict: ServedVerdictOK,
+			wantServed:  []string{"claude-opus-5"},
+		},
+		{
+			name:        "f_declared_context_suffix_alias_served_family_is_ok",
+			agentType:   "plan-auditor",
+			meta:        map[string]string{"agentType": "plan-auditor", "model": "opus[1m]"},
+			rows:        []string{assistantRow("claude-opus-5-5")},
+			cfg:         zero,
+			wantVerdict: ServedVerdictOK,
+			wantServed:  []string{"claude-opus-5-5"},
+		},
+		{
+			name:        "g_control_context_suffix_alias_served_glm_stays_drift",
+			agentType:   "plan-auditor",
+			meta:        map[string]string{"agentType": "plan-auditor", "model": "opus[1m]"},
+			rows:        []string{assistantRow("glm-5.3-flash")},
+			cfg:         zero,
+			wantVerdict: ServedVerdictDrift,
+			wantServed:  []string{"glm-5.3-flash"},
+		},
+		{
+			name:        "h_declared_inherit_without_profile_is_not_drift",
+			agentType:   "fork",
+			meta:        map[string]string{"agentType": "fork", "model": "inherit"},
+			rows:        []string{assistantRow("claude-sonnet-5")},
+			cfg:         zero,
+			wantVerdict: ServedVerdictUnmapped,
+			wantServed:  []string{"claude-sonnet-5"},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
