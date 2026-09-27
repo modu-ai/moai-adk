@@ -288,11 +288,32 @@ directly, consistent with the Forbidden ownership crossings clause's
 blocker-report discipline. No card is opened for this follow-up by this
 commit; the lead may issue one.
 
-**M5 status (regression-guard, not release-blocking per AC-CFR-024's own
-classification).** Not performed by this sync commit. `.moai/reports/t1242/m5-lead-confirm.md`
-does not exist; the develop worktree at `.claude/worktrees/develop` was not
-touched by this session. Blocked on an operator decision relayed through the
-lead, per the delegating instruction.
+**M5 status — closed as already disposed (equivalent to option (a)); no
+disposition step executed by the lane.** `.moai/reports/t1242/m5-lead-confirm.md`
+now exists (copied into this tree and the primary checkout) and records the
+lead's own measurement, taken from the develop worktree, not this branch:
+`git status --short` on develop is empty; `grep -rln 'factoryQueueCodexMessage'
+internal/` returns 0 files in develop and in `git grep` on this branch; the
+positive control `git log --all --oneline -S 'factoryQueueCodexMessage'`
+finds it (commit `e92cdbde5` and plan artifact `b82332ea2`), so the symbol
+did exist and the zero-hit result above is a measured absence, not a missed
+grep. `git branch -a --contains e92cdbde5` shows the six-file residue
+(`mcp_factory_msg.go`, `mcp_factory_msg_test.go`,
+`mcp_factory_push_live_test.go`, `factorymsg/store.go` +4,
+`reports/factory-cross-host-push-20260924.{md,html}`) preserved on
+2026-09-26 17:55 KST by operator decision as WIP commit `e92cdbde5` on
+branch `WT-factory-push-wip` (do NOT delete or merge that branch), and
+already removed from the develop worktree. `factorymsg/store.go`'s +4 lines
+add a `Duplicate bool` field on the envelope, read only by the preserved wake
+path — not a change this card's own scope touches.
+
+AC-CFR-024 is judged **PASS**, via this recorded lead confirmation — no
+disposition step (removal, merge, or file edit) was executed by the lane in
+`WT-codex-factory-retire`, and none was needed: option (a) had already
+happened before this sync commit, on the develop worktree the lane never
+entered. The confirmation file's own Gaps note: whether any other checkout
+holds an uncommitted copy of these six files was not measured beyond the
+develop worktree and the primary checkout.
 
 **Codemaps regeneration.** `.moai/project/codemaps/modules.md` lines 71 and 73
 (the `codex*` and `factory*`/`handoff*`/`profile*` cluster rows) were edited
@@ -305,9 +326,26 @@ edit of the two affected rows, not a full codemaps re-scan.
 ### Gaps (this sync commit)
 
 - `§E.3 Run-phase Audit-Ready Signal` above is still `_<pending run-phase>_` —
-  that section is manager-develop's, not manager-docs's, and M5 (part of the
-  run-phase scope per plan.md) has not landed, so it is correctly still open.
+  that section is manager-develop's, not manager-docs's. This is no longer
+  gated on M5 (M5 is now closed, see above); it remains open because no
+  manager-develop commit has populated it.
 - `run_commit_sha` / any run-phase-owned field is not backfilled by this commit.
 - AC-CFR-022 (always-loaded budget on the merge tree, comparing `<merge>` vs
   `<merge>^1`) was not re-measured by this sync commit — it is defined against
   the develop merge commit, which does not exist yet on this branch.
+
+### Status decision — remains `implemented`, not `completed`
+
+Per `acceptance.md` §D.3 Definition of Done, `completed` requires: (1) all 25
+ACs pass with evidence in §E.2 — AC-CFR-024 now PASSes via the lead
+confirmation above, but AC-CFR-022 is unmeasured (gap, above); (2) CI on the
+develop push that carries the merge is green — no merge has happened yet;
+(3) the sync phase has marked the five partially-superseded SPECs
+(`plan.md` §I) — deferred to manager-spec, not yet done (see the
+partially-superseded-by note above). M5's closure removes one blocker but
+two others (green develop-push CI, the five-SPEC marking) remain outstanding
+independent of AC-CFR-022, so `spec.md` `status:` stays `implemented`. The
+DoD's own wording defers AC-CFR-022's measurement to the merge window
+(it compares `<merge>` against `<merge>^1`, which cannot exist before the
+merge) — but that deferral does not, on its own, satisfy the other two DoD
+items, so `completed` is not yet reachable on any reading of the contract.
