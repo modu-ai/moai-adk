@@ -169,3 +169,45 @@ exit=0
 (상태 전이 커밋 전 실행. 전이 뒤 재실행 결과는 `progress.md §E.2`.)
 
 `golangci-lint version` → `golangci-lint has version v2.1.6 …`(CI 판). `golangci-lint run ./internal/cli/...; echo exit=$?` → `0 issues.` / `exit=0`. `go vet ./internal/cli/` → 종료 0.
+
+## sync-audit 후속 수정 뒤 재검증 (F1·F2·F3·F5)
+
+수정 커밋: F1 `7e509e4f1`(하네스 내보내기 경로 가드), F2·F3 `e1252de31`(판정서 상신 절차), F5 `6c84224b9`(progress.md SHA 보충, spec.md HISTORY 완료 행). 재검증은 `6c84224b9` 트리에서 했다. 워크트리 가드가 `bash <스크립트>` 호출을 거부해서, `ac-run.sh` 의 AC-ALH-007·009 줄을 같은 명령 그대로 한 줄씩 실행했다. AC-ALH-007 의 `rule()` 함수는 같은 판정식을 awk 한 줄로 펼쳐서 실행했다.
+
+AC-ALH-007 — PASS:
+
+```
+TOKEN-live=OK
+TOKEN-init_17=OK
+TOKEN-init=OK
+rule18=STRUCTURALLY-INFEASIBLE-UNDER-FREEZE verdict_init=STRUCTURALLY-INFEASIBLE-UNDER-FREEZE n=1 verdict_init_17=STRUCTURALLY-INFEASIBLE-UNDER-FREEZE
+4
+1
+0
+```
+
+(상신 항목 `### (a)~(d)` 4, `^RECOMMEND: ` 1, 결정 서술 0. F2 는 하나뿐인 RECOMMEND 줄에 선택지 (4)로 넣고, 나머지는 불릿으로 적었다.)
+
+AC-ALH-009 — **하네스 해시 줄 1건 불일치. F1 이 하네스 파일을 고쳤기 때문이다.** 나머지 줄은 전부 기대값과 같다.
+
+```
+1                                   # --- PASS
+0                                   # --- SKIP
+05d79c8b27b1aacfc56946672e5187b0fcabf96e      # harness_head
+build_head = 05d79c8b27b1aacfc56946672e5187b0fcabf96e
+1
+harness_sha256 = 8776d7b5809b47a6215a79497f6036414ceb2967d32067db612d07289b49e9c5
+LOG-OK
+0
+internal/cli/init_headroom_export_test.go      # git ls-files
+fdc74ea71b8963de49de943d2cad979b68a3a4356f1f3dedef5aab6c569dc573  internal/cli/init_headroom_export_test.go
+2                                   # prepareSafeInitHome
+```
+
+- 현재 하네스의 sha256 `fdc74ea7…c573` 은 판정서 `harness_sha256`(`8776d7b5…e9c5`)과 다르다. AC 명령을 문자 그대로 읽으면 이 줄은 FAIL 이다.
+- S_init 을 만든 하네스는 `build_head` 판이다. `git show 05d79c8b2:internal/cli/init_headroom_export_test.go | shasum -a 256` 은 `8776d7b5809b47a6215a79497f6036414ceb2967d32067db612d07289b49e9c5` 이고 판정서 값과 같다. 따라서 측정의 출처 결속은 유지된다.
+- 판정서의 `build_head`·`harness_sha256`·측정값은 고치지 않았다. 새 하네스로 S_init 을 다시 재어 이 줄들을 갱신하는 일은 리드가 정한다(아래 F1 증거 참조. 새 하네스는 init 코드를 바꾸지 않았다).
+
+F1 증거(`.moai/reports/t1226/evidence/`): `f1-red.txt`(헬퍼 부재 컴파일 RED), `f1-red2.txt`(무조건 `os.RemoveAll` 헬퍼에서 `--- FAIL: TestHeadroomExportDirGuard/refuses_non-empty_unmarked_dir`), `f1-green.txt`(4개 하위 테스트 PASS), `f1-harness.txt`(플래그 실행 `-count=2` 두 번 모두 PASS. 두 번째 실행은 표식이 붙은 첫 번째 내보내기를 지웠다), `f1-lint.txt`(golangci-lint v2.1.6 `0 issues.`).
+
+부수 확인: 판정서 편집 뒤 AC-ALH-001 의 폐기 수치 줄 `0`, `^F = ` `0`. `moai spec lint --strict SPEC-ALWAYS-LOADED-HEADROOM-001` 은 `✓ No findings`, 종료 코드 0(F5 커밋 전 작업 트리에서 실행).
