@@ -100,11 +100,18 @@ func TestReviewGate_NoEditTurnAllows(t *testing.T) {
 }
 
 // TestReviewGate_CodexPassAllows proves an edit turn that codex approves ALLOWs
-// (the gate reviews the uncommitted change, codex's review prose has no finding
-// bullets ⇒ synthesized pass ⇒ ALLOW).
+// (the gate reviews the uncommitted change, codex's review pins `Verdict: pass`
+// ⇒ synthesized pass ⇒ ALLOW). Post-#1718 parsing (Opus re-audit F1 sibling,
+// repaired with card t1099): prose approval without a pinned verdict line
+// synthesizes inconclusive — which the gate also allows — so the premise
+// assertion below keeps this test on the pass property rather than passing
+// vacuously on an inconclusive verdict.
 func TestReviewGate_CodexPassAllows(t *testing.T) {
 	withChangeDetector(t, true)
-	withCodexSession(t, codexSessionScript("clean change, approved"))
+	withCodexSession(t, codexSessionScript(realCleanReview))
+	if v := synthesizeReviewOutput(realCleanReview, codexMethodReviewStart).Verdict; v != codexReviewVerdictPass {
+		t.Fatalf("premise: fixture must synthesize a %q verdict, got %q", codexReviewVerdictPass, v)
+	}
 
 	out, _ := HandleCodexReviewGate(gateInput(false), true, "/proj")
 	if out == nil || out.Decision == hook.DecisionBlock {

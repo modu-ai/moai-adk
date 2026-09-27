@@ -109,6 +109,57 @@ The consequence for MoAI is direct: `moai glm`, and the GLM panes of `moai cg`, 
 
 **The manual escape hatch.** The gate checks `CLAUDE_CODE_HARBOR_KITE` before it reads the slot, so exporting `CLAUDE_CODE_HARBOR_KITE=1` for a session turns the channel on whatever the slot holds. MoAI does not inject it. It is an upstream internal flag rather than a documented interface, so reaching for it is an operator decision taken knowing the name can change without notice — worth having when a session is cut off and the slot is out of reach, not something to wire in by default.
 
+## Integration with the concurrency checks
+
+The Pre-Spawn and Pre-Edit Sync Checks (`agent-common-protocol.md`) detect a foreign session and then stop for user mediation. Where the detected peer is reachable, messaging adds a step between detection and escalation:
+
+1. Detect the concurrent session (registry query + divergence check) — unchanged.
+2. **Ask the peer what it is holding** (`SendMessage`), when the blocking question is a fact the peer knows: which paths it is editing, whether its work is committed, when it expects to land.
+3. Escalate to the user only when the answer does not resolve the conflict, or when the resolution is a decision rather than a fact.
+
+Worktree isolation remains the structural fix for a write conflict. Messaging shortens the diagnosis; it does not make two sessions safe to write the same path.
+
+Conversely, after landing a change that invalidates what a peer is building on — a schema change, a renamed symbol, a merged branch — notifying the affected peer is appropriate without being asked.
+
+## Addressing and configuration
+
+A session answers to the name set at launch or by rename; the bare name delivers when exactly one
+live session answers to it, and the short `[ref]` is the exception the error text supplies. An
+arriving message carries both the sender's name and a reply address — reply to the name as given,
+and fall back to the address only when that name does not resolve. Reply routing is not guaranteed,
+so a message carries enough identification for a human or a peer to route the answer by hand.
+
+Inbound acceptance, cross-machine isolation, dialog expiry, deny rules, and the inbox's rapid-burst
+refusal (the shape a lead's fan-out nudge reaches) are configuration, not doctrine — see
+§ Addressing, sending, and replying and § Configuration surface above. The availability trap is
+diagnostic: a session where the peer-listing command is unrecognized does not have the feature at
+all (§ Availability constraints); one where listing works but a send never arrives is being blocked
+by something narrower.
+
+## Anti-patterns
+
+- **Peer-as-user.** Treating a peer's reply as approval for a gated action.
+- **Peer-as-handoff.** Sending a work summary to a peer that has no context, where a resume or a paste-ready handoff was the correct mechanism.
+- **Peer-as-worker.** Offloading work this session should have done — or should have given to a subagent it supervises — onto an independent session, because that session is idle. Distinct from role-boundary dispatch (below), which is permitted.
+- **Reviving a stopped teammate.** Addressing a stopped teammate by name — one delivered message
+  resumes it from the transcript as an ownerless writer. Coordination about it goes through the
+  owning orchestrator or lead, never the stopped name (now also mechanically denied — see the
+  mechanism layer note above).
+- **Silent write race.** Messaging a peer about a shared path and then writing it anyway, without isolation, because the peer answered.
+- **Broadcast noise.** Messaging every listed session rather than the one whose work is affected.
+
+## The stopped-teammate registry
+
+The PreToolUse refusal named in `cross-session-messaging.md` § Rules reads one file per session:
+`.moai/state/agent-stops/<session-id>.json`, populated by a matcher-less PostToolUse dispatch on
+every `TaskStop` completion. A send matches when its recipient — bare name, agent id, or the
+`name [ref]` form (suffix parsed and stripped) — names a live entry.
+
+Entry lifecycle: an explicit fresh spawn carrying the same name clears the entry before the spawn
+proceeds, and session end removes the session's entries. Every stop, send, deny, and clear appends
+one JSONL row to `.moai/logs/agent-stop-audit.jsonl`, so the record survives the flag being off.
+
+
 ---
 
 Classification: Lazy companion — selection guidance, observed frictions, and configuration

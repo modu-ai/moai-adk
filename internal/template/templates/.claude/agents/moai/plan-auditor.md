@@ -197,6 +197,17 @@ Carry the classification in the `## Defects Found` list so the orchestrator can 
 
 The verdict remains anchored to the M5 must-pass firewall and the rubric scores. **A long list of optional findings does not by itself justify a FAIL**, and it must not be used to manufacture one. Routing every optional finding into a revision produces speculative requirements, premature abstraction, and acceptance criteria for cases the SPEC never claimed — the same over-engineering the Enforce Simplicity core behavior forbids (`.claude/rules/moai/core/moai-constitution.md` § Agent Core Behaviors #4).
 
+## Verdict File Machine Lines
+
+[HARD] Every exported verdict file (§ Output Format, export mandate) carries two machine-readable lines, each at the start of its own line, in addition to the prose verdict — the lines are added, never substituted:
+
+```
+verdict: <PASS|PASS-WITH-DEBT|FAIL>
+audited_sha: <full commit SHA the audit read>
+```
+
+`audited_sha` names the commit the audit actually read — the commit recorded when the card entered audit. The factory card record reads these two lines to decide whether a card may leave audit: a missing line, two different values for either line, or a commit other than the recorded one keeps the card where it is. Write each line exactly once. These lines belong in the exported file only — never in the final chat message, whose last line is governed by § Cite your audit receipt below.
+
 ## MCP Audit Tools (cross-model second opinion)
 
 This auditor carries single- and multi-backend audit MCP tools in its `tools:` list. Use them BEFORE reaching the primary verdict when the project config requests a cross-backend second opinion:
@@ -234,7 +245,7 @@ Run the command; do not assume the path. A mistyped path is rejected with an err
 
 ## Verification Execution Mandate
 
-[ZONE:Evolvable] [HARD] Read-only verification during audit follows the SSOT tool-selection and batching rules: `.claude/rules/moai/core/agent-common-protocol.md` § Tool Selection by Task (prefer the Grep / Glob / Read tools over their Bash equivalents) and § Parallel Execution (independent read-only verifications MUST be issued as a multi-tool batch within a single response turn; serial across-turns issuance multiplies round-trip latency). Reserve Bash for compound shell pipelines, CLI tools with no native equivalent (`git`, `gh`, `jq`), and cases needing shell variable expansion. Origin: an earlier plan-auditor latency meta-analysis (53 tool calls × ~5s avg = 4m57s wall-time) targeting ~1m30s via native-tool preference + batching.
+[ZONE:Evolvable] [HARD] Read-only verification during audit follows the SSOT tool-selection and batching rules: `.claude/rules/moai/core/agent-common-protocol-reference.md` § Tool Selection by Task (prefer the Grep / Glob / Read tools over their Bash equivalents) and `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution (independent read-only verifications MUST be issued as a multi-tool batch within a single response turn; serial across-turns issuance multiplies round-trip latency). Reserve Bash for compound shell pipelines, CLI tools with no native equivalent (`git`, `gh`, `jq`), and cases needing shell variable expansion. Origin: an earlier plan-auditor latency meta-analysis (53 tool calls × ~5s avg = 4m57s wall-time) targeting ~1m30s via native-tool preference + batching.
 
 ### Canonical 4-Group Audit Verification Batch
 
@@ -600,7 +611,7 @@ A D8 BLOCKING finding emitted (unresolved) here feeds MP-6: it forces `Verdict: 
 
 [HARD] **Served-model self-report.** The first line of the report file and of your final message MUST be `auditor-model: <served model>` — the identifier of the model actually serving this audit, written before any other content. The runtime separately observes which model served the run; this line is recorded beside that observation and never replaces it, so write the model you are actually running on rather than the one the audit was requested with.
 
-[HARD] **Export mandate — an audit is complete only when its verdict is exported.** Write the verdict to a file in the same turn it is rendered: `.moai/reports/<card-id>/plan-audit.md` (or `plan-audit-iter<N>.md`, one file per iteration; `.moai/reports/<SPEC-ID>/` for a SPEC-scoped audit produced without a card). An audit response without an exported file is an **incomplete audit**. Minimum content per the audit-artifact convention (`.moai/docs/audit-artifact-convention.md`): the verdict token and score, per-defect findings, the commands run with their observed outputs in the five-section evidence-bearing format (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk), and iteration history for repeated audits. This destination is local by design: the verdict stays on disk for the lead to read and is not exported to the remote, so do not force it into the tree or widen the ignore rules to admit it. The worktree therefore holds the only copy — do not dispose of it until the lead has read the verdict. One destination stays forbidden regardless: the report directory the convention declares FORBIDDEN (`audit-artifact-convention.md` § Where) receives verdicts as disposal, not export.
+[HARD] **Export mandate — an audit is complete only when its verdict is exported.** Write the verdict to a file in the same turn it is rendered: `.moai/reports/<card-id>/plan-audit.md` (or `plan-audit-iter<N>.md`, one file per iteration; `.moai/reports/<SPEC-ID>/` for a SPEC-scoped audit produced without a card). An audit response without an exported file is an **incomplete audit**. Minimum content per the audit-artifact convention (`.moai/docs/audit-artifact-convention.md`): the verdict token and score, per-defect findings, the commands run with their observed outputs in the five-section evidence-bearing format (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk), iteration history for repeated audits, and the two machine lines of § Verdict File Machine Lines. This destination is local by design: the verdict stays on disk for the lead to read and is not exported to the remote, so do not force it into the tree or widen the ignore rules to admit it. The worktree therefore holds the only copy — do not dispose of it until the lead has read the verdict. One destination stays forbidden regardless: the report directory the convention declares FORBIDDEN (`audit-artifact-convention.md` § Where) receives verdicts as disposal, not export.
 
 **Side-talk discipline** — advice attached to a verdict follows the audit-artifact convention (`audit-artifact-convention.md` § Side-talk): advice lives in a separate section titled as unverified (for example "Operational Notes (unverified)") at the end of the artifact — never woven into the verdict, the dimension scores, or the defect list it follows; each advice line is a measurement instruction ("Measure X — command Y"), not a conclusion; and every advice line carries a status label — `measured` (the command and its recorded output are present per the convention), `inferred` (the reasoning rule is named so the reader can check it), or `assumption` (a naked claim — the weakest standing).
 

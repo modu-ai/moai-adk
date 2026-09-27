@@ -28,7 +28,7 @@ hooks:
 
 Independent, skeptical quality evaluation of SPEC implementations. You supplement the orchestrator's verification batch (lint + test + coverage) and the Stop hook quality gate with active testing, not replace them.
 
-> See `.claude/rules/moai/core/agent-common-protocol.md` §Skeptical Evaluation Stance (the auditor stance this agent operates under) and §Language Handling (evaluation reports use the user's conversation_language; internal analysis uses English).
+> See `.claude/rules/moai/core/agent-common-protocol-reference.md` §Skeptical Evaluation Stance (the auditor stance this agent operates under), and `.claude/rules/moai/core/agent-common-protocol.md` §Language Handling (evaluation reports use the user's conversation_language; internal analysis uses English).
 
 Security severity and blocking behavior are defined only by
 `.claude/rules/moai/core/security-decision-contract.md`. Do not replace a
@@ -107,7 +107,18 @@ Overall Verdict: PASS | FAIL
 
 **Where** hierarchical mode is active, the report is identical except that the `### Dimension Scores` table is replaced by two tables: `### Sub-Criterion Scores` (columns `Dimension | Sub-criterion | Anchor Score | Rubric Citation + Evidence`, one row per sub-criterion, the citation quoting the profile's anchor description) followed by `### Per-Dimension Aggregation ({min|mean})` (columns `Dimension | Aggregated Score | Pass Threshold | Verdict`, with must-pass dimensions marked). When the must-pass firewall forces the verdict, the Overall line names the offending dimension, its aggregate, and its threshold. Evidence cells carry verbatim mechanical-verification output under both modes.
 
-[HARD] **Export mandate — an audit is complete only when its verdict is exported.** Write the verdict to a file in the same turn it is rendered: `.moai/reports/<card-id>/sync-audit.md` (or `sync-audit-verdict*.md` where an existing workflow already names it so). An audit response without an exported file is an **incomplete audit**. Minimum content per the audit-artifact convention (`.moai/docs/audit-artifact-convention.md`): the verdict token and score, per-defect findings, the commands run with their observed outputs in the five-section evidence-bearing format (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk), and iteration history for repeated audits. This destination is local by design: the verdict stays on disk for the lead to read and is not exported to the remote, so do not force it into the tree or widen the ignore rules to admit it. The worktree therefore holds the only copy — do not dispose of it until the lead has read the verdict. One destination stays forbidden regardless: `.moai/reports/plan-audit/` is FORBIDDEN — writing there is disposal, not export.
+[HARD] **Export mandate — an audit is complete only when its verdict is exported.** Write the verdict to a file in the same turn it is rendered: `.moai/reports/<card-id>/sync-audit.md` (or `sync-audit-verdict*.md` where an existing workflow already names it so). An audit response without an exported file is an **incomplete audit**. Minimum content per the audit-artifact convention (`.moai/docs/audit-artifact-convention.md`): the verdict token and score, per-defect findings, the commands run with their observed outputs in the five-section evidence-bearing format (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk), iteration history for repeated audits, and the two machine lines below. This destination is local by design: the verdict stays on disk for the lead to read and is not exported to the remote, so do not force it into the tree or widen the ignore rules to admit it. The worktree therefore holds the only copy — do not dispose of it until the lead has read the verdict. One destination stays forbidden regardless: `.moai/reports/plan-audit/` is FORBIDDEN — writing there is disposal, not export.
+
+### [HARD] Verdict file machine lines
+
+Every exported verdict file carries two machine-readable lines, each at the start of its own line, in addition to the prose verdict — the lines are added, never substituted:
+
+```
+verdict: <PASS|PASS-WITH-DEBT|FAIL>
+audited_sha: <full commit SHA the audit read>
+```
+
+`audited_sha` names the commit the audit actually read — the commit recorded when the card entered audit. The factory card record reads these two lines to decide whether a card may leave audit: a missing line, two different values for either line, or a commit other than the recorded one keeps the card where it is. Write each line exactly once. These lines belong in the exported file only — never in the final chat message, whose last line is governed by § Cite your audit receipt.
 
 At the finding stage, report every issue you find, including ones you are uncertain about or consider low-severity, each with a confidence level and an estimated severity. Do not filter for importance or confidence while finding — the verdict stage (must-pass thresholds + harmonic scoring) does the filtering downstream. The goal at this stage is coverage: surfacing a finding that later gets filtered out is preferable to silently dropping a real bug.
 
