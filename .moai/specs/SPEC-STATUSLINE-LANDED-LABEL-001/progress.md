@@ -103,4 +103,18 @@ m1_to_mN_commit_strategy: "single run-phase commit (code + tests + 4-locale docs
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-27
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash
+sync_status: complete
+b12_self_test_a: "grep -c SPEC-STATUSLINE-LANDED-LABEL-001 CHANGELOG.md -> 0 before emission"
+b12_self_test_b: "distinct AC IDs in acceptance.md = 12 (AC-SLL-001..012); entry states 12 IDs / 18 matrix rows"
+b12_self_test_c: "ls internal/statusline/landed.go internal/statusline/landed_test.go .moai/reports/t1281/verdict.md -> all exist"
+changelog_entry_position: "[Unreleased] / ### Changed, first entry"
+frontmatter_status_transitions:
+  spec.md: "in-progress -> completed (implemented merged into this sync commit); updated already 2026-09-27"
+  plan.md: "no status field"
+  acceptance.md: "no status field"
+verdict: .moai/reports/t1281/verdict.md
+retests_rerun_in_sync: false   # §E.2 outputs transcribed, not re-executed
+```

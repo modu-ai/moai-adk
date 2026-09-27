@@ -2,7 +2,7 @@
 id: SPEC-STATUSLINE-LANDED-LABEL-001
 title: "Statusline landed annotation — subject-attribution criterion, verify-before-done glyph, criterion-versioned cache"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-27
 updated: 2026-09-27
 author: manager-spec
