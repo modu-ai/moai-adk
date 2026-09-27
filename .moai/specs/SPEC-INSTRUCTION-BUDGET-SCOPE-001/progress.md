@@ -1,8 +1,12 @@
 # Progress — SPEC-INSTRUCTION-BUDGET-SCOPE-001
 
-Card: t1180 · Branch: `WT-rules-40k-split` · **Branch base: `088594d6b`** (zero commits on the branch until the plan-artifact commit, so `HEAD` = base)
+Card: t1180 · Branch: `WT-rules-40k-split` · **Branch base: `088594d6b`**
 
-The pin is the SHA, never the branch name. `088594d6b` was `develop`'s tip when this worktree was created; `develop` has since moved three times (`e9577def` → `088594d6b` → `7e05ef43b` → `37dc766b9`) and last measured **14 commits ahead**. The target files were measured unchanged at every tip — `git diff --stat 088594d6b develop -- <the four files, both coding-standards copies, the hook, the template rules mirror>` returned empty each time, re-measured rather than carried forward. So the SHA is a live measurement of these files and "develop" is an expired name for them. Re-measurement at the integration window is a standing obligation (plan.md §A).
+The pin is the SHA, never a branch name. `088594d6b` was `develop`'s tip when this worktree was created; it is an **ancestor** of `develop` now, which is ahead of it. `develop` moved repeatedly during this card, and the target files were measured unchanged at each tip that was read — `git diff --stat 088594d6b develop -- <the four files, both coding-standards copies, the hook, the template rules mirror>` returned empty every time, re-measured rather than carried forward. So the SHA is a live measurement of those files while a branch name for them expires without notice.
+
+Absorption of local `develop` plus **re-measurement in the merged tree** is owed at the integration window per `CLAUDE.local.md` §4.1 — unconditionally, not because anything diverged. The empty diff predicts the absorption will be uneventful; it does not make it unnecessary.
+
+No commit count appears in this header on purpose (plan.md §G).
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -37,11 +41,11 @@ Repairs landed in v0.5.0:
 Both are recorded in `spec.md` §6 with their measurements. In brief:
 
 - **D3's parentage.** `kanban-dispatch-mechanics.md` is a **sibling** of `-detail.md`, not its child; both are companions of `kanban-dispatch.md`, which carries no `paths:` frontmatter at all. The proper-subset test compares a companion against *its parent's* pattern set, so it is inapplicable here and the REQ-IBS-006 violation is not substantiated. D3's other half — that all three files co-load on `**/kanban-dispatch*.md` — stands and is now the measured precedent for the naming constraint.
-- **Residual-risk (1) — direction inverted.** The report reads the family as already diverged on `develop` and recommends a `git merge develop` absorption. Measured: `develop` equals this base, and `main` is its ancestor 6,546 commits behind carrying the older two-file state. The primary checkout sits on `main`, which is the intended steady state here, so reading it produced the older tree. **The absorption is a no-op** and is not performed.
+- **Residual-risk (1) — direction inverted.** The report reads the family as already diverged on `develop`. Measured: this base is an **ancestor** of `develop`, and `develop` fully contains `main`, which is further behind and carries the older two-file state. The primary checkout sits on `main` — the intended steady state here — so reading it produced the older tree and the inference ran backwards. **Absorption is still owed**: the `CLAUDE.local.md` §4.1 lane duty requires absorbing local `develop` and re-measuring in the merged tree regardless of what the diff says. The empty target-file diff predicts an uneventful absorption; it does not make one unnecessary. (A v0.6.0 version of this bullet called the absorption a no-op, which was wrong for the reason recorded in the v0.7.0 HISTORY row.)
 
-The reusable point, and the reason it is recorded rather than just acted on: in this repository the primary checkout and the branch base are thousands of commits apart by design, so a measurement's tree must be named rather than assumed. This is the second time in this card that a read of one was taken for a read of the other — once by me about the lead, once by the auditor.
+The reusable point, and the reason it is recorded rather than just acted on: in this repository the primary checkout and the branch base are far apart by design, so a measurement's tree must be **named** rather than assumed. No divergence risk is recorded in the SPEC, because there is no divergence — one branch is behind the other, which is the normal state here; `kanban-dispatch-mechanics.md` and the `gtd.md` pattern exist on `develop` and reach `main` through the release PR.
 
-The `6,546` figure above is itself pinned to when it was measured. `develop` has since moved to `37dc766b9`, so the gap is wider now, and quoting the old number as current would repeat the error one level down. No divergence risk is recorded in the SPEC, because there is no divergence: one branch is behind the other, which is the normal state here. `kanban-dispatch-mechanics.md` and the `gtd.md` pattern exist on `develop` and reach `main` through the release PR.
+**This lesson has now fired three times in one card, twice against me.** Once when I read the lead's stale measurement as a broken read path; once by the auditor reading the primary checkout as the branch base; and once when I wrote that `develop` **equals** this base — in the same document that carries the warning. The generalisation is in `plan.md` §G rather than only here, because a hazard recorded as a HISTORY note is read once and a hazard recorded as an anti-pattern is read every time someone edits the section it guards: **a moving reference in prose is a claim with an expiry date, and the expiry is invisible in the text.**
 
 ### Measurement conventions adopted this iteration
 
@@ -71,9 +75,9 @@ Measured this turn. All four files untracked (`?? .moai/specs/SPEC-INSTRUCTION-B
 
 | file | version |
 |---|---|
-| `spec.md` | 0.6.0 |
-| `plan.md` | 0.6.0 |
-| `acceptance.md` | 0.6.0 |
+| `spec.md` | 0.7.0 |
+| `plan.md` | 0.7.0 |
+| `acceptance.md` | 0.7.0 |
 | `progress.md` | (this write) |
 
 ## §E.2 Run-phase Evidence

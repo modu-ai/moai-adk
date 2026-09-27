@@ -1,7 +1,7 @@
 ---
 id: SPEC-INSTRUCTION-BUDGET-SCOPE-001
 title: "Implementation plan — instruction-budget scope alignment and four-file reduction"
-version: "0.6.0"
+version: "0.7.0"
 created: 2026-09-28
 ---
 
@@ -13,11 +13,13 @@ Milestones are ordered by decision-reversibility: the doctrine wording and the p
 
 **Branch base: `088594d6b`** — worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1180`, branch `WT-rules-40k-split`, card `t1180`.
 
-[HARD] **Every measurement in these artifacts is pinned to the SHA, never to the branch name.** `088594d6b` was `develop`'s tip when this worktree was created; it is not `develop` now. During this card `develop` moved three times — `e9577def` → `088594d6b` → `7e05ef43b` → `37dc766b9` — and at the last reading stood **14 commits ahead** of this base. A sentence of the form "measured against develop at `088594d6b`" reads as false to anyone who resolves `develop` afterwards, so the noun is the SHA and the branch name appears only where a moving ref is genuinely what is meant.
+[HARD] **Every measurement in these artifacts is pinned to the SHA, never to the branch name.** `088594d6b` was `develop`'s tip when this worktree was created; it is an **ancestor** of `develop` now, not equal to it. A sentence of the form "measured against develop at `088594d6b`" reads as false to anyone who resolves `develop` afterwards, so the noun is the SHA and the branch name appears only where a moving ref is genuinely what is meant. §G states the hazard in general form; this paragraph is its application.
 
-The pins survive that movement, and the reason is measured rather than assumed: `git diff --stat 088594d6b <develop-tip> --` over the four target files, both `coding-standards.md` copies, `internal/hook/instructions_loaded.go`, and `internal/template/templates/.claude/rules/` came back **empty at every one of the three develop tips**, each re-measured rather than carried forward. So `088594d6b` remains a valid measurement *of these files* while being stale as a *name for develop*.
+The pins survive `develop` advancing, and the reason is measured rather than assumed: `git diff --stat 088594d6b develop --` over the four target files, both `coding-standards.md` copies, `internal/hook/instructions_loaded.go`, and `internal/template/templates/.claude/rules/` came back **empty at every `develop` tip read during this card**, each re-measured rather than carried forward. So `088594d6b` remains a valid measurement *of these files* while being stale as a *name for develop*.
 
-**Integration-time obligation.** "Unchanged as of `37dc766b9`" is a fact about now, not a guarantee. At the integration window the lane absorbs develop and **re-measures in the merged tree** — all four char counts, the four `paths:` globs, the family census, and the three reference-count baselines. `AC-IBS-003`'s recorded glob values and `AC-IBS-002`'s RED-now figures are the specific things that would go stale, and neither announces it.
+**Integration-time obligation.** An empty diff read now is a fact about now, not a guarantee. At the integration window the lane absorbs local `develop` and **re-measures in the merged tree** — all four char counts, the four `paths:` globs, the family census, and the three reference-count baselines. `AC-IBS-003`'s recorded glob values and `AC-IBS-002`'s RED-now figures are the specific things that would go stale, and neither announces it. The absorption is owed under `CLAUDE.local.md` §4.1 whatever the diff says; the empty diff predicts only that it will be uneventful.
+
+No `develop` tip SHA and no commit count appear in this section. Either would be a moving reference wearing a fixed-looking value — see §G, which this card earned the hard way.
 
 Scope is `(c) + (a)` — the doctrine fix plus the four-file reduction. Option `(b)` was rejected before planning (spec.md §5).
 
@@ -146,6 +148,11 @@ Re-measure all four (and any companion) in one batch; run the anchor resolution 
 - **Naming-trap shard.** A companion named `kanban-dispatch-<anything>.md` re-enters the parent's own first pattern and is a same-glob shard wearing a narrower-looking `paths:` line. REQ-IBS-013 forbids it.
 - **Size-driven partition.** Cutting a file at whatever boundary yields the needed characters, then writing whichever glob makes the cut legal. This inverts the correct order: affinity decides the boundary, and the glob follows the affinity (REQ-IBS-014/015). Its signature is a companion whose sections have no common trigger.
 - **Affinity asserted rather than stated per section.** "This companion holds the worktree-specific material" is a summary, not an affinity claim. The claim is per moved section and names both the pattern it is needed on and the patterns it is not.
+- **Naming a moving reference in prose.** [HARD] **A moving reference written into prose is a claim with an expiry date, and the expiry is invisible in the text.** `develop`, `main`, `HEAD`, `origin/<branch>`, "current", "latest" — each resolves differently tomorrow, and nothing in the sentence signals that it has stopped being true. A fixed object (a commit SHA) cannot rot; a branch name asserts a relationship that the next push dissolves silently.
+  - The rule: in prose, **name the SHA and state the relation** (`this base is an ancestor of develop`), never the identity (`develop equals this base`). Where a moving ref is genuinely the subject — a provenance claim about the mainline, an obligation to absorb whatever `develop` holds at integration time — the moving ref is correct and the SHA would weaken it. The discriminator is whether a flip would be a true signal about the subject or noise from upstream (`verification-completeness.md` §4).
+  - **Also do not state a commit count or a moving ref's current SHA.** A count of commits ahead is a measurement, and a measurement in prose is a moving reference wearing a fixed-looking value; naming the tip SHA a branch "currently" points at has the same defect one step removed.
+  - **Carve-out: a dated record.** A `HISTORY` row or a dated progress entry MAY state a measurement, because the date is in the row — the expiry is visible, which is exactly the property the hazard is about. Live prose carries no date, so it carries no expiry signal.
+  - Provenance, because it is the strongest argument available: this hazard is named here because **a v0.6.0 sentence violated it** — `spec.md` asserted that `develop` *equals* the branch base, derived soundly from "the branch has zero commits, so HEAD = base" and then unsoundly from "base = develop", which had been true only at worktree creation and had expired three times by the time it was written. It was written in the same document that warned a measurement must name its tree. Applying a rule one level down while breaking it one level up is the recurring shape; this is its third instance in this card.
 - **Reading three green anchor sub-conditions as three independent confirmations.** Named because the composition is counter-intuitive and would otherwise be invisible to a reader of the result: **anchor verification is thinnest exactly where the work is heaviest.**
   - `worktree-integration.md` carries the largest relocation (21,435 chars) and `kanban-dispatch-detail.md` the naming-constrained one, so both have the highest chance of introducing a broken reference.
   - `AC-IBS-004a` is **inert on both** — 0 `#anchor` references measured, nothing there to break. Its green is an empty sweep.

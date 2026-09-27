@@ -1,7 +1,7 @@
 ---
 id: SPEC-INSTRUCTION-BUDGET-SCOPE-001
 title: "Acceptance criteria — instruction-budget scope alignment and four-file reduction"
-version: "0.6.0"
+version: "0.7.0"
 created: 2026-09-28
 ---
 
@@ -11,9 +11,11 @@ created: 2026-09-28
 
 ## Document-level measurement pin
 
-[§2.1] Every RED-now cell below is measured on the **branch base, tree SHA `088594d6b`**, in the worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1180`, branch `WT-rules-40k-split`, which carries zero commits (so `HEAD` = base). This document-level pin binds every criterion carrying no pin of its own, per `.claude/rules/moai/development/verification-completeness.md` §2.1.
+[§2.1] Every RED-now cell below is measured on the **branch base, tree SHA `088594d6b`**, in the worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1180`, branch `WT-rules-40k-split`. This document-level pin binds every criterion carrying no pin of its own, per `.claude/rules/moai/development/verification-completeness.md` §2.1.
 
-The pin is the **SHA**, not the branch name. `088594d6b` was `develop`'s tip when this worktree was created and is not `develop` now — it moved three times during this card and last stood 14 commits ahead. The target files were measured unchanged at every one of those tips (plan.md §A carries the command and the empty results), so the pin remains valid as a measurement of these files while being stale as a name for a branch. Re-measurement at the integration window is a standing obligation, not a contingency.
+The pin is the **SHA**, not a branch name, and the SHA is what makes the cells re-checkable: the measurements were taken before any commit landed on this branch, and the plan-artifact commit that followed touched only files under `.moai/specs/SPEC-INSTRUCTION-BUDGET-SCOPE-001/` — none of the four target files, so every RED-now figure below still describes the tree a reader can inspect at `088594d6b`.
+
+`088594d6b` was `develop`'s tip when this worktree was created; it is an **ancestor** of `develop` now, not equal to it. The target files were measured unchanged at each `develop` tip read during this card (plan.md §A carries the command and the empty results), so the pin is a live measurement of those files while a branch name for them would already have expired. Re-measurement in the merged tree at the integration window is a standing obligation, not a contingency — see plan.md §G on why a moving reference in prose carries an invisible expiry.
 
 Two measurement conventions bind every row:
 
@@ -135,7 +137,7 @@ Decided by `go test ./internal/template/...` → exit `0` (full package, per the
 
 **Given** the branch diff, **when** inspected, **then** `internal/hook/instructions_loaded.go`, `CLAUDE.local.md`, and `.moai/reports/t1180/verdict.md` are all absent from it. Decided by `git diff --name-only 088594d6b..HEAD` → none of the three appears.
 
-Green at arrival because the branch carries zero commits. The three paths are the SPEC's declared non-targets: the hook is read-only for this SPEC (spec.md §4), `CLAUDE.local.md` is out of scope with its figures recorded as a follow-up card candidate (spec.md §5), and the verdict file is referenced, never overwritten.
+Green at arrival, and the reason has to be stated carefully now that the branch carries the plan-artifact commit: it is green because that commit touched only files under `.moai/specs/SPEC-INSTRUCTION-BUDGET-SCOPE-001/`, not because the branch is empty. The earlier wording ("green because the branch carries zero commits") was true when written and expired the moment the commit landed — an instance of the plan.md §G hazard inside the row that checks scope. The three paths are the SPEC's declared non-targets: the hook is read-only for this SPEC (spec.md §4), `CLAUDE.local.md` is out of scope with its figures recorded as a follow-up card candidate (spec.md §5), and the verdict file is referenced, never overwritten.
 
 ### AC-IBS-008 — the evidence record is attributable [process check]
 
