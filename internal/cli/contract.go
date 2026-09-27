@@ -513,7 +513,7 @@ Exit codes:
 	signCmd.Flags().BoolVar(&sf.resign, "resign", false,
 		"Re-sign a signed contract after its acceptance.md changed (records supersedes)")
 
-	cmd.AddCommand(verifyCmd, showCmd, signCmd)
+	cmd.AddCommand(verifyCmd, showCmd, signCmd, newContractRevokeCmd())
 	return cmd
 }
 

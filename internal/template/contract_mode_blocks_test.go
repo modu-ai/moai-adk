@@ -90,14 +90,13 @@ var grForbidden = []struct {
 
 // grBlock is one parsed contract-mode block.
 type grBlock struct {
-	id         string
-	startLine  int // 1-based line of the start marker
-	endLine    int // 1-based line of the end marker
-	text       string
-	body       string // lines strictly between the markers
-	firstLine  string // first non-empty body line
-	evolvable  bool   // the block lies inside an evolvable zone
-	nestedFail bool
+	id        string
+	startLine int // 1-based line of the start marker
+	endLine   int // 1-based line of the end marker
+	text      string
+	body      string // lines strictly between the markers
+	firstLine string // first non-empty body line
+	evolvable bool   // the block lies inside an evolvable zone
 }
 
 // grParse splits text into blocks and reports structural findings: an end

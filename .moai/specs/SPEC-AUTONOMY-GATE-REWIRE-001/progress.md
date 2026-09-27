@@ -80,6 +80,25 @@ FAIL	github.com/modu-ai/moai-adk/internal/template	19.431s
 - Cascade: `internal/template/catalog.yaml` moai-skill whole-tree hash regenerated (`go run ./internal/template/scripts/gen-catalog-hashes.go --all`, 1 line) — required by `TestManifestHashFormat`/`TestCatalogHashCoversSkillSubfiles`; not on design.md §2 allowlist, admitted in the allowlist test as a mechanical cascade (deviation reported to lead).
 - GREEN: `.moai/state/verify/t1236/m9-green1.txt` — all 15 guard tests `--- PASS`; `go test ./internal/template/ -count=1` → `ok … 71.294s`.
 
+### M6 — revoke, revoke reader, store chain
+
+- RED (stub package returning zero values; `.moai/state/verify/t1236/m6-red.txt`), `go test ./internal/contract/revoke/ -run '^(TestRevoke|TestRevokeLeavesRepositoryUntouched)$' -count=1 -v` → exit 1:
+
+```text
+    revoke_test.go:108: revoke: status "" err <nil>
+    revoke_test.go:174: status "" err <nil>, want not-signed
+    revoke_test.go:200: err = <nil>, want integrity
+    revoke_test.go:214: err = <nil>, want usage
+    revoke_test.go:283: Blocked = false, err <nil>; want true, err false
+    --- FAIL: TestRevoke/reader/r1_revoke_record (0.00s)
+    --- FAIL: TestRevoke/reader/r4_status_open (0.00s)
+    --- FAIL: TestRevoke/reader/r5_broken_header (0.00s)
+--- FAIL: TestRevokeLeavesRepositoryUntouched (0.44s)
+```
+
+- CLI RED obtained by temporarily removing the `newContractRevokeCmd()` registration from `contract.go` (restored right after; `m6-cli-red.txt`): `contract_revoke_test.go:41: revoke: exit=1 reads=0` / `--- FAIL: TestContractRevoke`.
+- GREEN: all 14 subtests + `TestRevokeLeavesRepositoryUntouched` `--- PASS` (`m6-green.txt`); `--- PASS: TestContractRevoke`. Lint (golangci-lint v2.1.6) on receipt/revoke/cli/template: `0 issues.`
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
