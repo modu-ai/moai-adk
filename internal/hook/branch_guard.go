@@ -25,21 +25,28 @@ import (
 // branchGuardExemptEnv is the sentinel env var that exempts a session from the
 // guard, complementing the AgentType identity axis (REQ-WBG-011b).
 //
-// Reachability — both axes are read from what arrives at THIS process, and a
-// tool-spawned subagent can supply neither:
+// Reachability — both axes are read from what arrives at THIS process, and they
+// differ in whether a spawned agent can reach them
+// (SPEC-BRANCHGUARD-EXEMPT-REACH-001, measured 2026-09-27):
 //
-//   - AgentType arrives only in the hook payload, and Claude Code populates
-//     agent_type for a main-thread `claude --agent <name>` launch. A subagent
-//     spawned through the Agent tool sends no agent_type on PreToolUse, so the
-//     identity axis cannot fire for it.
+//   - AgentType arrives in the hook payload, and Claude Code DOES populate
+//     agent_type for an agent spawned through the Agent tool — snake_case, the
+//     same spelling HookInput decodes, carrying the spawn name verbatim rather
+//     than a catalog name. The identity axis therefore fires for a spawned
+//     agent named manager-git, and a three-arm check confirmed the deny is
+//     suppressed for it while still firing for a main-session payload and for
+//     a spawned agent under any other name. The prior comment here claimed the
+//     opposite; that claim was never measured.
 //   - This env var is read from the hook process's own environment. The hook
 //     runs as a separate process spawned BEFORE the guarded command executes,
 //     so an `export` inside that command cannot reach it. The variable must be
-//     present in the environment Claude Code itself was launched with.
+//     present in the environment Claude Code itself was launched with. This
+//     axis was NOT re-measured by that card and is unchanged.
 //
-// Exporting the sentinel inside the command being guarded is therefore a no-op,
-// and was mistaken for a broken exemption. Neither axis is defective; both are
-// simply unreachable from inside a guarded command.
+// Exporting the sentinel inside the command being guarded is therefore still a
+// no-op, and was mistaken for a broken exemption. Neither axis is defective —
+// but the reasons now differ: the sentinel's value never arrives, whereas the
+// identity value does arrive and simply did not match manager-git.
 const branchGuardExemptEnv = "MOAI_BRANCH_GUARD_EXEMPT"
 
 // branchGuardAuditRelPath is the fail-open advisory log path, relative to the
@@ -878,12 +885,15 @@ func isPrimaryCheckout(projectDir string) (bool, error) {
 // The deny fires ONLY on positive evidence; uncertainty never denies.
 //
 // The deny reason's remediation directs the caller to a worktree and
-// deliberately does NOT suggest delegating to a manager-git subagent: both
-// exemption axes are unreachable from tool-spawned subagents (see the
-// branchGuardExemptEnv reachability note above), so such a delegation
-// reproduces the same deny. Kanban card t43: the old "(use a worktree or
-// invoke via manager-git)" wording sent orchestrator sessions down that dead
-// end — one wasted turn per session, observed in two sessions.
+// deliberately does NOT suggest delegating to a manager-git agent. Kanban card
+// t43 introduced that rule because the old "(use a worktree or invoke via
+// manager-git)" wording sent two orchestrator sessions down what was believed
+// to be a dead end, burning a turn each. The rule survives but its reason is
+// inverted: SPEC-BRANCHGUARD-EXEMPT-REACH-001 measured that the identity
+// exemption DOES reach a spawned agent, so the delegation would succeed — and
+// succeeding is exactly what this guard exists to prevent in the primary
+// checkout. A remediation must not name a route whose only effect is to defeat
+// the guard.
 //
 // The projectDir argument is the AUDIT-LOG project directory — resolved by the
 // caller (pre_tool.go) via $CLAUDE_PROJECT_DIR → os.Getwd() and pinned to the
@@ -936,7 +946,7 @@ func checkBranchState(input *HookInput, projectDir string) (decision string, rea
 	if !isPrimary {
 		return "", ""
 	}
-	reason = fmt.Sprintf("%s: %s in primary checkout (use a worktree; the manager-git identity and %s exemptions fire only for main-thread launches, not for tool-spawned subagents)",
+	reason = fmt.Sprintf("%s: %s in primary checkout (use a worktree; do not route around this by naming a spawned agent manager-git - the identity exemption does reach spawned agents, and using it that way defeats the guard; the %s sentinel is main-thread-only)",
 		branchGuardViolationPrefix, suffix, branchGuardExemptEnv)
 	return DecisionDeny, reason
 }
