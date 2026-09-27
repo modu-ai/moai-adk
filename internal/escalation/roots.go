@@ -28,11 +28,10 @@ func MemorySlug(absPath string) string {
 	}, filepath.Clean(absPath))
 }
 
-// memoryRoots returns every candidate auto-memory store for the worktree
-// (its own path and its primary checkout, under $CLAUDE_CONFIG_DIR and
-// ~/.claude), the set `moai memory doctor` audits. ok is false when neither
-// base directory can be determined.
-func memoryRoots(worktreeRoot string) (roots []string, ok bool) {
+// ClaudeConfigBases returns the Claude configuration base directories the
+// auto-memory resolver considers, in order: $CLAUDE_CONFIG_DIR when set, then
+// ~/.claude. Each base holds a projects/<slug>/ directory per project path.
+func ClaudeConfigBases() []string {
 	var bases []string
 	if cfg := os.Getenv(config.EnvClaudeConfigDir); cfg != "" {
 		bases = append(bases, cfg)
@@ -40,6 +39,15 @@ func memoryRoots(worktreeRoot string) (roots []string, ok bool) {
 	if home, err := os.UserHomeDir(); err == nil && home != "" {
 		bases = append(bases, filepath.Join(home, ".claude"))
 	}
+	return bases
+}
+
+// memoryRoots returns every candidate auto-memory store for the worktree
+// (its own path and its primary checkout, under $CLAUDE_CONFIG_DIR and
+// ~/.claude), the set `moai memory doctor` audits. ok is false when neither
+// base directory can be determined.
+func memoryRoots(worktreeRoot string) (roots []string, ok bool) {
+	bases := ClaudeConfigBases()
 	if len(bases) == 0 {
 		return nil, false
 	}

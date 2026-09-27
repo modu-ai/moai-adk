@@ -67,6 +67,8 @@ These 4 verifications are independent and read-only: issue them as ONE single-tu
 
 ## Output Format
 
+[HARD] **Served-model self-report.** The first line of the report file and of your final message MUST be `auditor-model: <served model>` — the identifier of the model actually serving this audit, written before any other content. The runtime separately observes which model served the run; this line is recorded beside that observation and never replaces it, so write the model you are actually running on rather than the one the audit was requested with.
+
 ```
 ## Evaluation Report
 SPEC: {SPEC-ID}
