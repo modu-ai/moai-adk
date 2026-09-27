@@ -2,135 +2,155 @@
 
 ## §A — Context
 
-- Card: t1279. Worktree `.claude/worktrees/t1279`, branch `WT-session-double-load`, plan authored at HEAD `2370c5b31`.
-- Source of truth: `.moai/reports/t1279/verdict.md` §①–§④. All load judgments come from session transcripts; debug logs are not evidence here.
-- Scope: path D (no mid-session worktree moves for card sessions) plus a measurement of the skill-listing duplicate on the move path. Options A and B are out of scope (spec.md §E).
-- Tier: **M** under the recommended DP-1 (warn) or docs-only — about 10 doctrine files, 3 evidence files, and at most 2 Go files (the PostToolUse handler and its test). Under DP-1 = block the SPEC re-tiers to **L** before run (spec.md §F), because the guard adds a PreToolUse matcher to the settings template, a new handler, a config key and default, and tests, which exceeds 15 files and introduces a new deny path.
+- Card t1279. Worktree `.claude/worktrees/t1279`, branch `WT-session-double-load`. Plan v0.1.0 at `2370c5b31`; revised after plan-audit iter-1 (`.moai/reports/t1279/plan-audit.md`, FAIL 0.55).
+- Source of truth: `.moai/reports/t1279/verdict.md` §①–§④. Load judgments come from transcripts only.
+- **Tier L** (reclassified in v0.2.0): 19 REQ and 21 AC exceed the Tier M ceiling of 16. Artifacts: spec.md, plan.md, acceptance.md, design.md, research.md, progress.md. The plan-auditor PASS threshold is 0.85. The reclassification is made before re-audit, so the next audit is scored against Tier L.
 
 ## §B — Decisions first (most likely to change)
 
-Milestones are ordered by how likely each decision is to change. The three decision points in spec.md §F are resolved at the Implementation Kickoff Approval gate, before M1 starts.
+The three decision points (spec.md §F) are resolved at the Implementation Kickoff Approval gate and recorded in progress.md §E.2 before M1.
 
-| DP | Recommendation | What changes in this plan if the other option is chosen |
+| DP | Recommendation (label) | Plan change under the other option |
 |---|---|---|
-| DP-1 guard | warn | block → re-tier to L, add design.md + research.md, add M4b (PreToolUse handler, opt-in flag, fail-open, sentinel); docs-only → drop M4 |
-| DP-2 integration moves | exempt | covered → M3 adds move → `/clear` → re-send to kanban dispatch lines 250–251, lane protocol lines 37/155, CLAUDE.local.md line 340 |
-| DP-3 t1175 ordering | wait | proceed → Gate G1 removed; conflict resolution with `WT-rules-diet` is added to M3's risk list |
+| DP-1 hook | docs-only | warn → add M5a (mode gate, exemption set, `additionalContext`, visibility probe from the M1 spare budget); block → add M5b (PreToolUse, opt-in flag, sentinel, fail-open) |
+| DP-2 integration moves | exempt | covered → M4 adds move → `/clear` → re-send to the integration lines in the kanban rule, lane protocol, and CLAUDE.local.md |
+| DP-3 t1175 ordering | wait | proceed → Gate G1 still records `CARD_BASE`, but the §D refresh and the budget "before" figure are taken now; conflicts with t1175 go to M4's risk list |
 
-## §C — Pre-flight (before M1)
+## §C — Read-time base and worktree-guard form
 
-1. Record `git rev-parse --short HEAD` and `git branch --show-current` for this worktree in the evidence file.
-2. Build the scratch fixture under the session scratchpad (never inside this repository):
-   - `fx/` — a git repository with `CLAUDE.md` (marker A), `CLAUDE.local.md` (marker B), and `.claude/skills/fx-primary-<n>/SKILL.md` (3 skills).
-   - `fx/.claude/worktrees/w1` — created with `git -C fx worktree add` (a fixture, not a MoAI card tree; this is the fixture's own git, not this repository's), carrying `.claude/skills/fx-wt-<n>/SKILL.md` (3 skills) and its own `CLAUDE.md` / `CLAUDE.local.md` markers.
-   - No `.claude/settings.json` hooks in the fixture; tool permission for the move is granted per probe with `--allowedTools EnterWorktree`.
-3. Positive control extract: from the parent session transcript that holds the observed duplicate (spec.md §A), extract only the `skill_listing` attachments' `timestamp`, `isInitial`, `skillCount`, byte size, and the set of scope prefixes in `names`, into `.moai/reports/t1279/m1-control.txt`. No transcript body is copied.
+- `CARD_BASE` is `git merge-base develop HEAD`, read at the moment a check runs (lane protocol rule: measure from the merge-base with the absorbed ref, never from a literal plan-time SHA).
+- The worktree-session guard refuses command substitution around git (`CARD_BASE=$(git merge-base develop HEAD)` was refused in this worktree, observed at revision time; research.md §R5). In a worktree session, therefore:
+  1. run `git merge-base develop HEAD` alone;
+  2. assign the printed SHA literally in the next command;
+  3. verify it with `git rev-parse --verify "$CARD_BASE^{commit}"`.
+
+  In an unguarded shell the one-line form is equivalent. The same two-step pattern applies to every derived SHA in acceptance.md.
 
 ## §D — Milestones
 
-### M1 — Measurement (Priority High; runs now under any DP-3 outcome)
+### M1 — Fixture mechanism check (Priority High; runs now)
 
-1. **Caps commit.** Write `.moai/reports/t1279/m1-caps.md` with the REQ-SMM-001 caps and the probe list below; force-add and commit it alone (`git add -f`), before any probe runs.
-2. **Probes** (each a single compound invocation; the fixture root is the cwd):
-   - Headless form: `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && timeout -k 10 300 claude -p "<prompt>" --model haiku --max-turns 4 --output-format json [--allowedTools EnterWorktree] [--resume <session-id>]`.
-   - P1: started with the fixture worktree as cwd; two turns.
-   - P2: started at the fixture root; turn 1 calls `EnterWorktree` on the fixture worktree; turns 2–3 continue.
-   - P3: `/clear` on the P2 session, then one turn. Headless `/clear` support is not verified; when it is unavailable, P3 is a Gap (REQ-SMM-005) and is re-run once as an operator-run interactive session in the fixture (`claude` started at the fixture root, operator types the move prompt, then `/clear`, then one prompt). The operator-run session counts toward the 6-session cap and is recorded in `commands.txt` as `# operator-run: <steps>`.
-   - Spare budget: 2 sessions for a re-run of a probe whose transcript was unreadable.
-3. **Extraction.** For each probe session id, read its transcript from the active Claude config directory's `projects/<fixture-key>/<session-id>.jsonl`:
-   - skill-source trees: scope prefixes in `skill_listing.names` (no prefix → start tree);
-   - `skill_listing` count and byte sizes;
-   - per assistant turn: `input_tokens + cache_creation_input_tokens + cache_read_input_tokens`.
-   The same command is run on `m1-control.txt` first; it must report at least one `.claude/worktrees/`-scoped prefix, or M1 stops (the extractor is blind).
-4. **Evidence file** `.moai/reports/t1279/m1-measure.md` carries one line per key:
+1. **Caps commit:** `.moai/reports/t1279/m1-caps.md` holds the REQ-SMM-001 caps and their counting rules. Force-add it (`git add -f`) and commit it alone.
+2. **Fixture** (built under the session scratchpad; commands recorded in `fixture.txt`):
+   - `fx/` git repo with `CLAUDE.md`, `CLAUDE.local.md`, and `.claude/skills/fx-primary-{a,b,c}/SKILL.md`;
+   - `fx/.claude/worktrees/w1` made with the fixture's own `git -C fx worktree add` (a fixture, not a MoAI card tree), carrying `.claude/skills/fx-wt-{a,b,c}/SKILL.md`;
+   - no hooks in the fixture; `--allowedTools EnterWorktree` per probe.
+3. **Probes** (`probes.txt`: one line per invocation, nothing else):
+   - form: `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && timeout -k 10 300 claude -p "<prompt>" --model haiku --max-turns 4 --output-format json [--allowedTools EnterWorktree] [--resume <session-id>]`;
+   - P1 starts in `w1`; P2 starts at the `fx` root, moves in turn 1, and continues in turns 2–3; P3 is `/clear` then one turn;
+   - operator-run substitute (REQ-SMM-005): a line starting `# operator-run:` naming the session id and steps. Its transcript is checked exactly like a headless one;
+   - spare: 2 sessions (re-run, or the DP-1 warn visibility probe).
+4. **Extractor** (`.moai/reports/t1279/extract_listing.py`, committed; its invocations are recorded in `extract.txt`). For a transcript JSONL, it prints:
+   - `session_id`;
+   - the distinct `cwd` values;
+   - per `skill_listing`: `isInitial`, `skillCount`, `content` UTF-8 bytes, the fixture-tree set (base-name rule, spec.md REQ-SMM-002), and the scoped names;
+   - per assistant turn: the input-side usage total.
+5. **Controls:**
+   - `m1-control.jsonl` is the real line-404 `skill_listing` of transcript `bb145fe7`, reduced to `{"type":"attachment","attachment":{"type","isInitial","skillCount","names"}}` (skill identifiers only; no conversation text);
+   - `m1-control-neg.jsonl` has the same shape with every scoped name stripped of its prefix;
+   - the extractor must report ≥ 1 scoped name on the first and 0 on the second, or M1 stops.
+6. **Evidence** `m1-measure.md` (one key per line; value formats are enforced by AC-SMM-002):
    - `judge_source: transcript`
-   - `first_probe_ts: <ISO>` (first transcript line timestamp of the first probe)
-   - `listing_trees_P1|P2|P3: <tree,...>|gap`
-   - `listing_count_P1|P2|P3: <n>|gap`
-   - `turn_tokens_P1|P2|P3: <n,n,...>|gap`
-   - `skill_dup_tokens_P2: <int>|gap` — input-side total of the first turn after the move minus the last turn before it (reference only)
-   - `launcher_single_listing: yes|no|gap` — yes exactly when `listing_trees_P1` names one tree
-   - `clear_restores_single_listing: yes|no|gap` — yes exactly when `listing_trees_P3` names one tree
-   - `gap_reason_<key>: <text>` for each gap
-   - `probes_run: <n>`, `wall_clock_min: <n>`
-   - `repo_head_before|after`, `repo_branch_before|after` (this worktree; must be equal)
-5. Commit `m1-measure.md`, `m1-control.txt`, and `commands.txt` (force-added) in one commit that touches no doctrine file.
+   - `fixture_root:` (absolute scratch path)
+   - `first_probe_ts:`, `first_probe_epoch:`, `last_probe_epoch:`, `wall_clock_min:`
+   - `probes_run:` (distinct session ids)
+   - `session_id_P1|P2|P3:`, `probe_cwd_P1|P2|P3:`
+   - `fixture_trees_P1|P2|P3: primary|wt|primary,wt|gap`
+   - `listing_count_P1|P2|P3:`, `listing_bytes_P1|P2|P3:` (comma list), `turn_tokens_P1|P2|P3:` (comma list)
+   - `move_adds_listing: yes|no|gap` (yes ⇔ `fixture_trees_P2: primary,wt`)
+   - `launcher_single_listing: yes|no|gap` (yes ⇔ `fixture_trees_P1` holds one tree)
+   - `clear_restores_single_listing: yes|no|gap` (yes ⇔ `fixture_trees_P3` holds one tree)
+   - `gap_reason_<key>:` for every `gap`
+   - `repo_head_before|after`, `repo_branch_before|after`
+   - added in M3: `t1175_absorbed:`, `always_loaded_before:`; added in M5a only: `additional_context_visible: yes|no|gap`
+   - file formats: `extract.txt` lists each command on a line starting `$ ` followed by its output; `m1-cost.md` holds one `command:` line and `row:` lines (or one `cost: gap reason=` line) in the exact shape AC-SMM-009 checks
+7. **Commit:** the evidence, controls, extractor, `probes.txt`, `extract.txt`, and `fixture.txt` are force-added in one commit that touches no doctrine file.
 
-Note on P1 vs the launcher: P1 starts a headless session inside the fixture worktree; it stands in for `moai cc -w <name>`, which only sets the start directory before launching `claude`. The difference (launcher environment, hooks) is recorded as residual risk, not as a result.
+### M2 — Real-session cost (Priority High; runs now)
 
-### M2 — Gate G1 (only when DP-3 = wait)
+- Run the extractor's cost mode on transcript `bb145fe7`, and write `m1-cost.md`: one row per non-initial scoped `skill_listing` with the REQ-SMM-008 fields, the command, and the label `upper bound`. Research.md §R2 gives the plan-time reading: the row at `03:57:49.175Z` is 43,566 B, 42 scoped names, delta 20,829, other rows 20,526 B.
 
-- Record `t1175_landed: <sha>` in `m1-measure.md` once t1175's merge commit is on develop and develop is absorbed here; `<sha>` is the t1175 branch tip that merge brought in. G1 passes when `git merge-base --is-ancestor <sha> HEAD` exits 0. At plan time the tip `3a48485af` is not an ancestor (exit 1) — this is the predicate's negative control.
+### M3 — Gate G1 and refresh (only when DP-3 = wait)
 
-### M3 — Doctrine, template first (Priority High)
+1. After t1175 lands on develop and develop is absorbed, record `CARD_BASE` (§C) and `t1175_absorbed: <sha>` in `m1-measure.md`.
+2. Re-run the §D grep and record the refreshed table in `.moai/reports/t1279/m3-surface.md`, including any text t1175 moved into `kanban-dispatch-mechanics.md`.
+3. Re-measure the `[HARD]` baselines and the always-loaded figure (`always_loaded_before: N`, from the `TestAlwaysLoadedTokenBudget` log line) before the first doctrine commit.
+4. Re-check `AGENTS.md` §3 ↔ `AGENTS.md.tmpl` §3 identity at HEAD. When they differ for a reason outside this card, report it to the lead as a pre-existing defect and do not fix it here.
 
-Edit order: template copies, then local mirrors in the same commit, then local-only files.
+### M4 — Doctrine, template first (Priority High)
 
-1. `internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md`
-   - line 93 `wt` bullet: the card's session starts inside the named worktree through the launcher (`moai cc -w <card-id>`, `--spawn` for a new window); where a lane must move instead, the move is followed by `/clear` and the lead re-sends the pointer.
-   - "The `/clear` handoff between phases": add one paragraph for card changes: move → operator `/clear` → lead re-sends the full pointer. Every existing sentence stays.
-   - isolation table row "Re-enter one from the current session": qualify as not for starting card work.
-   - line 179 [HARD] new-card clause: launcher start; exit-first kept; unavoidable move → `/clear` → re-send.
-   - lines 250–251: DP-2 wording.
-   - REQ-SMM-010 wording: pick the sentence from the two branches below by reading `m1-measure.md`.
-2. `kanban-dispatch-detail.md` template: lines 27, 28 (example becomes `wt: moai cc -w <card-id>` form), 188 (factory next card).
-3. `worktree-integration.md` template: § `EnterWorktree` / `ExitWorktree` Tools — one card-session caveat sentence after line 224.
-4. `AGENTS.md.tmpl` §3, then `AGENTS.md` §3 with identical text: entry line and "Start a new card in a new worktree".
-5. Copy each edited template file over its local mirror (byte-identical pairs).
-6. Local-only: `.claude/rules/local/gitflow-lane-protocol.md` lines 20, 22, 37, 83, 155; `CLAUDE.local.md` line 340 (DP-2 only).
+Offset rule (REQ-SMM-015): in each always-loaded file (the kanban dispatch rule and `AGENTS.md`), every sentence added is paid for by shortening wording in the same file. The candidates:
+- the `wt` bullet's parenthetical move sequence, which moves to the detail companion;
+- the "`EnterWorktree(<card-id>)` cannot run from inside a worktree session" explanation in the new-card paragraph, **except** the three sentences REQ-SMM-017 keeps verbatim;
+- the isolation table row text.
 
-REQ-SMM-010 wording branches (template text is generic — no card ids, SPEC ids, dates, or hashes):
+The full standing-session flow, its rationale, and the `/clear` ordering explanation go to the detail companion (paths-scoped). The kanban rule keeps a one-line pointer.
 
-| Evidence | Sentence the doctrine carries |
-|---|---|
-| `clear_restores_single_listing: yes` | `/clear` after the move leaves the session with the new worktree's skill listing only |
-| `no` or `gap` | `/clear` is still the next step after a move, but it is not shown to remove the listing carried from the start tree; ending the session and relaunching it through the launcher is the way to a single listing |
-| `launcher_single_listing: yes` | starting through the launcher gives the session one skill listing |
-| `no` or `gap` | the launcher is the entry form; no single-listing claim is made |
+1. Template kanban dispatch rule:
+   - `wt` bullet;
+   - one sentence in the `/clear` section: a card change is move → `/clear` → re-send, and the between-cards `/clear` is this one;
+   - isolation table row;
+   - new-card paragraph;
+   - integration bullets per DP-2.
+2. Template detail companion:
+   - glossary lines 27–28 (the example becomes `wt: moai cc -w <card-id>`);
+   - factory `/clear` boundary line 188;
+   - a new sub-section "Card change in a standing session": the four-step flow, who re-sends (the lead), one `/clear` per card change, relaunch optional, and the REQ-SMM-012-bounded sentences.
+3. Template worktree integration rule: one card-session caveat after line 224 (REQ-SMM-012 bounded; it states the move adds a listing only when `move_adds_listing: yes`).
+4. `AGENTS.md.tmpl` §3, then `AGENTS.md` §3 with identical text (net ≤ 0 tokens).
+5. Copy each edited template over its local mirror in the same commit.
+6. Local-only:
+   - lane protocol lines 20, 22, 37, 83, 155;
+   - CLAUDE.local.md §4.1: one entry-form sentence (`moai cc -w <card-id>` for a fresh session), the standing flow, and the DP-2 wording on the window steps.
 
-### M4 — Guard (only when DP-1 ≠ docs-only; Priority Medium)
+REQ-SMM-012 wording table:
 
-- **M4a warn:** extend the PostToolUse handler for `EnterWorktree` so that a move into a card worktree (a path under `.claude/worktrees/` other than an exempt integration tree) adds a model-visible notice: the next step is `/clear`, then the lead re-sends the pointer. Exit 0 always; no config flag needed; a move into an exempt tree gets no notice.
-- **M4b block:** a PreToolUse handler for `EnterWorktree`, opt-in flag default false, deny reason prefixed by a fixed sentinel, fail-open on any uncertainty, exempt list read from config. Requires the Tier L artifacts first.
+| Evidence key | yes → doctrine may state | no / gap → doctrine states |
+|---|---|---|
+| `move_adds_listing` | a mid-session move adds the moved-into tree's skill listing | the move is followed by `/clear` and re-send (no claim about listings) |
+| `launcher_single_listing` | starting through the launcher gives one skill listing | the launcher is the entry form (no single-listing claim) |
+| `clear_restores_single_listing` | `/clear` after the move leaves only the new tree's listing | `/clear` is still the next step; relaunching through the launcher is the way to a single listing (optional) |
 
-### M5 — Verification and mechanical steps (Priority Low)
+### M5 — Hook (only when DP-1 ≠ docs-only; Priority Medium)
 
-- `cmp` the three byte-identical pairs; diff the extracted `AGENTS.md` §3 sections.
+- **M5a warn:** handler extension for PostToolUse `EnterWorktree`. It is gated on Kanban/Factory mode (the `MOAI_KANBAN*` environment), uses the exemption set from config, and puts the notice in `additionalContext`, exit 0. Before it lands, one spare M1 session runs the fixture with a hook that emits a unique marker in `additionalContext`, and the transcript must show the model repeating the marker.
+- **M5b block:** PreToolUse handler, opt-in flag (default false), sentinel-prefixed deny, fail-open.
+
+### M6 — Verification (Priority Low)
+
 - `go test ./internal/config/ -run '^TestCodexContractByteCeiling$|^TestAlwaysLoadedTokenBudget$' -count=1 -v`.
-- Under M4: `go test ./internal/hook/...` for the handler package.
-- `moai spec lint .moai/specs/SPEC-SESSION-MIDMOVE-001` and `go run ./cmd/moai spec lint --baseline .moai/spec-lint-baseline.json`.
-- `make build` after template edits (embedded templates).
+- `cmp` the three pairs and `diff` the two §3 sections at HEAD.
+- `make build` after template edits.
+- `go run ./cmd/moai spec lint .moai/specs/SPEC-SESSION-MIDMOVE-001`, and `go run ./cmd/moai spec lint --baseline .moai/spec-lint-baseline.json`.
+- Under M5: `go test ./internal/hook/... -count=1`.
 
 ## §E — Constraints
 
-- Probes run only in the scratch fixture; this repository's primary checkout and other card worktrees are never a probe cwd or a move target.
-- No `--setting-sources` on any probe (plan-audit finding on the held sibling SPEC: it suppresses the CLAUDE.local.md load).
-- Raw transcripts and debug output are never committed; the committed evidence is the extracted lines plus `commands.txt`.
-- Every commit message names t1279 and ends with the MoAI trailer; staging is by explicit path; nothing is pushed by this card's lane.
-- Template text stays neutral: no card ids, SPEC ids, dates, or commit hashes in added template lines.
+- Probes run only in the scratch fixture: no `--setting-sources`, no debug flags, no raw transcripts committed.
+- Every commit message names t1279, carries `Authored-By-Agent: <agent>`, and ends with the MoAI trailer. Staging is by explicit path. The lane pushes nothing.
+- Added template lines carry no card ids, SPEC ids, dates, or hashes.
 
 ## §F — Risks
 
-| Risk | Effect | Mitigation |
-|---|---|---|
-| Headless cannot run `EnterWorktree` or `/clear` | P2/P3 unmeasured | REQ-SMM-005 Gap + one operator-run session within the cap |
-| The skill listing in the fixture differs from a real project (3 vs ~40 skills) | Token figure not representative | Record per-skill bytes; state the scale difference as residual risk; the positive control uses the real transcript |
-| t1175 rewrites the same clauses | Merge conflict on `[HARD]` text | DP-3 wait; REQ-SMM-014 `[HARD]` count check after absorption |
-| t1243/t1259 move CLAUDE.local.md content | CLAUDE.local.md §4.1 edit lands on a moved section | Edit only line 340 (DP-2); re-grep before M3 |
-| The always-loaded budget has little headroom after t1175 | Budget guard fails | Keep the added kanban text to a few sentences; run the guard in M5 |
-| Probe sessions write to the user-level transcript store | Side effect outside the repo | Accepted and declared; the store is per-fixture-key and holds only fixture sessions |
+| Risk | Mitigation |
+|---|---|
+| Always-loaded headroom is 70 tokens at `2370c5b31` | Offset rule; explanatory text in paths-scoped files; AC-SMM-015 compares after vs before |
+| t1175 changes the same clauses; its tip moves (`3a48485af` → `4989ea6b0`) | DP-3 wait; `CARD_BASE` ranges; M3 refresh of §D and baselines |
+| Headless cannot run `/clear` | Gap or operator-run substitute with the same checks |
+| Fixture scale (3+3 skills) is not representative | The fixture checks the mechanism only; cost comes from the real transcript (M2) |
+| The `bb145fe7` transcript is removed before M2 | M2 records `gap`; research.md §R2 keeps the plan-time reading as a reference, not as evidence |
+| Standing lanes may lose the dispatch address on relaunch | Relaunch is optional (REQ-SMM-010); the standard flow keeps the session and its name |
 
 ## §G — Anti-patterns to avoid
 
-- Reading a debug log and reporting it as a load result.
-- Reporting a zero-tree result without the positive control.
-- Counting lines rather than distinct keys in `m1-measure.md`.
-- Writing `/clear removes the duplicate` into the doctrine before P3 says so.
-- Editing the local mirror first and copying it to the template.
+- Literal plan-time SHAs as range bases.
+- Command substitution around git inside a worktree session.
+- Counting key names instead of validating key values.
+- A control that does not pass through the extractor.
+- Adding always-loaded text without an offset.
 
 ## §H — Cross-references
 
-- `.moai/reports/t1279/verdict.md` — cause attribution, option comparison, A hold and revival conditions
-- `.moai/specs/SPEC-SESSION-DOUBLELOAD-001/` — held sibling; its plan-audit findings (`.moai/reports/t1219/plan-audit-iter2.md`) shaped the probe isolation here
-- `.claude/rules/moai/workflow/kanban-dispatch.md`, `worktree-integration.md`, `AGENTS.md` §3
-- `internal/hook/post_tool_worktree.go` — existing PostToolUse handler for `EnterWorktree`/`ExitWorktree`
+- design.md (doctrine placement and extractor design), research.md (measurements behind this plan)
+- `.moai/reports/t1279/verdict.md`, `.moai/reports/t1279/plan-audit.md`
+- `.moai/specs/SPEC-SESSION-DOUBLELOAD-001/` (held sibling)
