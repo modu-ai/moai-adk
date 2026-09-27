@@ -26,6 +26,11 @@ const (
 	// internal/template/templates/.moai/docs/), so the pointer resolves in a
 	// user's project without any lookup rule.
 	stdinParseFailClosedDocID = ".moai/docs/hook-stdin-fail-closed.md"
+	// stdinParseFailClosedInstruction is what the Claude reason tells the
+	// model to do instead of working around the deny (REQ-SPC-010). A model
+	// handed the bare deny was measured reading and trying to edit the hook
+	// scripts and settings to get past it.
+	stdinParseFailClosedInstruction = "Do not edit hook scripts or settings files to get past this; stop and tell a human operator"
 
 	// stdinParseFailClosedDiscardKey marks a parse-failure fail-closed record
 	// in the adapter's sink, distinct from hookFaultDiscardKey.
@@ -57,15 +62,21 @@ func harnessOf(codex bool) codexadapter.Harness {
 	return codexadapter.HarnessClaude
 }
 
-// stdinParseFailClosedReason is the reason a fail-closed deny carries: the
-// marker, the fixed cause, and the operator document identifier — nothing
-// derived from the payload and no recovery steps (REQ-HSF-010, REQ-HSF-011).
-func stdinParseFailClosedReason() string {
+// stdinParseFailClosedReason is the reason a fail-closed deny carries for
+// harness: the marker, the fixed cause, and the operator document identifier —
+// nothing derived from the payload and no recovery steps (REQ-HSF-010,
+// REQ-HSF-011). Under Claude the reason also tells the model not to edit hooks
+// or settings and to stop and tell a human (SPEC-HOOK-STOP-PARSE-CAP-001
+// REQ-SPC-010); the Codex reason is unchanged (REQ-SPC-009).
+func stdinParseFailClosedReason(harness codexadapter.Harness) string {
+	if harness == codexadapter.HarnessClaude {
+		return "fail-closed: " + stdinParseFailureCause + ". " + stdinParseFailClosedInstruction + " (" + stdinParseFailClosedDocID + ")"
+	}
 	return "fail-closed: " + stdinParseFailureCause + " (" + stdinParseFailClosedDocID + ")"
 }
 
-// @MX:WARN: [AUTO] a Stop that fails to parse is blocked under Claude on every turn — the loop is bounded only by the host's Stop block cap, measured on Claude Code 2.1.283 at the default cap: JSON decision:block + exit 0 behaves like exit 2 — the hook ran and blocked 9 times, then the turn ended; the launcher raises the cap to 200 for kanban/factory sessions and for sessions with an infinite goal armed at launch (launcher_blockcap_infinite.go); under Codex the same Stop is exempt because Codex was measured with no cap
-// @MX:REASON: [AUTO] REQ-HSF-009 — a parse failure hides stop_hook_active, so no in-process guard can end a Stop loop; the Codex exemption is decided only by codexadapter.HostLacksStopBlockCap
+// @MX:WARN: [AUTO] a Stop that fails to parse is blocked under Claude on every turn, and the host's Stop block cap does not reliably end that loop — measured on Claude Code 2.1.283 (t1230, t1272): at the default cap the host ended the turn after 9 blocks only when no tool use came in between (tool use appears to restart its count), and at the raised cap of 200 the launcher injects for kanban/factory sessions and for sessions with an infinite goal armed at launch (launcher_blockcap_infinite.go) the loop ran to the turn limit; so moai's own cap (applyStopParseCap, N=8 consecutive parse-failure Stops per counting key) releases the ninth; under Codex the same Stop is exempt because Codex was measured with no cap
+// @MX:REASON: [AUTO] REQ-HSF-009, SPEC-HOOK-STOP-PARSE-CAP-001 REQ-SPC-003 — a parse failure hides stop_hook_active, so no in-process guard can see the turn boundary; the Codex exemption is decided only by codexadapter.HostLacksStopBlockCap, the Claude release only by applyStopParseCap
 // answerStdinParseFailure answers a hook invocation whose stdin could not be
 // parsed, without dispatching. label names the invocation in the stderr
 // warning ("<Event>" or "agent <action>"), stdinBytes is how much stdin the
@@ -74,6 +85,8 @@ func stdinParseFailClosedReason() string {
 //   - observation event: the existing warning and default output (6a3603274);
 //   - decision event where the host has no Stop block cap: the default output
 //     plus an exemption line and record (REQ-HSF-012);
+//   - a Claude Stop past moai's own cap: the default output plus a release
+//     line and record (SPEC-HOOK-STOP-PARSE-CAP-001 REQ-SPC-003);
 //   - any other decision event: a fail-closed deny rendered through the
 //     translation table, a stderr line, and a record (REQ-HSF-001/003/004/008).
 //
@@ -97,9 +110,13 @@ func answerStdinParseFailure(label string, event hook.EventType, codex bool, std
 		return writeDefault()
 	}
 
+	if harness == codexadapter.HarnessClaude && applyStopParseCap(label, event, stdinBytes, parseErr) {
+		return writeDefault()
+	}
+
 	_, _ = fmt.Fprintf(os.Stderr, "moai hook %s: invalid stdin JSON (%v) on %s, harness %s; answered fail-closed\n",
 		label, parseErr, event, harness)
-	return writeFailClosedDeny(harness, event, stdinParseFailClosedReason(), codexadapter.Discard{
+	return writeFailClosedDeny(harness, event, stdinParseFailClosedReason(harness), codexadapter.Discard{
 		Event:         event,
 		Key:           stdinParseFailClosedDiscardKey,
 		ContentLength: stdinBytes,

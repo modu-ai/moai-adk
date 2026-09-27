@@ -361,6 +361,36 @@ var forbiddenReads = [][2]string{
 // followed: the sink's project-root resolution.
 const b3AllowedRoot = "resolveHookProjectRoot"
 
+// b3StopParseCapFile is the one file whose functions may read inside the
+// parse-failure path, and only what SPEC-HOOK-STOP-PARSE-CAP-001 requires:
+// the two environment variables that choose the counting key (REQ-SPC-014 —
+// they pick WHICH record, never the deny/release threshold, REQ-SPC-004) and
+// the state area's own records (REQ-SPC-001/007/008). Any other read there,
+// and every read anywhere else, is still a violation. The threshold side of
+// REQ-SPC-004 is pinned separately by TestStopParseCap_StaticChecks.
+const b3StopParseCapFile = "hook_stop_parse_cap.go"
+
+var (
+	b3StopParseCapEnv   = map[string]bool{"EnvClaudeCodeSessionID": true, "EnvMoaiSessionPID": true}
+	b3StopParseCapFiles = map[string]bool{"ReadFile": true, "ReadDir": true}
+)
+
+// b3StopParseCapAllows reports whether call, found in file, is one of the
+// reads b3StopParseCapFile is allowed.
+func b3StopParseCapAllows(file string, call *ast.CallExpr, fr [2]string) bool {
+	if filepath.Base(file) != b3StopParseCapFile || fr[0] != "os" {
+		return false
+	}
+	if fr[1] == "Getenv" {
+		if len(call.Args) != 1 {
+			return false
+		}
+		sel, ok := call.Args[0].(*ast.SelectorExpr)
+		return ok && isSel(sel, "config", "") && b3StopParseCapEnv[sel.Sel.Name]
+	}
+	return b3StopParseCapFiles[fr[1]]
+}
+
 // checkB3 walks both entry points' parse-failure blocks and the transitive
 // closure of same-package function calls from them.
 func checkB3(src pkgSource) []string {
@@ -399,6 +429,9 @@ func checkB3(src pkgSource) []string {
 				if fr[0] == "os" && fr[1] == "Getenv" && len(call.Args) == 1 && isSel(call.Args[0], "config", "EnvClaudeProjectDir") {
 					continue
 				}
+				if b3StopParseCapAllows(src.fset.Position(call.Pos()).Filename, call, fr) {
+					continue
+				}
 				problems = append(problems, src.fset.Position(call.Pos()).String()+": "+fr[0]+"."+fr[1]+" in the parse-failure path")
 			}
 			return true
@@ -426,10 +459,10 @@ func TestStdinFailClosed_SingleDecisionListAST(t *testing.T) {
 // TestStdinFailClosed_ASTCheckerDetectsItsTargets proves each check can fail:
 // it runs the same checkers over fixture sources that carry the violation.
 func TestStdinFailClosed_ASTCheckerDetectsItsTargets(t *testing.T) {
-	fixture := func(t *testing.T, body string) pkgSource {
+	fixtureNamed := func(t *testing.T, name, body string) pkgSource {
 		t.Helper()
 		fset := token.NewFileSet()
-		f, err := parser.ParseFile(fset, "fixture.go", "package cli\n"+body, parser.SkipObjectResolution)
+		f, err := parser.ParseFile(fset, name, "package cli\n"+body, parser.SkipObjectResolution)
 		if err != nil {
 			t.Fatalf("parse fixture: %v", err)
 		}
@@ -440,6 +473,10 @@ func TestStdinFailClosed_ASTCheckerDetectsItsTargets(t *testing.T) {
 			}
 		}
 		return src
+	}
+	fixture := func(t *testing.T, body string) pkgSource {
+		t.Helper()
+		return fixtureNamed(t, "fixture.go", body)
 	}
 	entries := `
 func runHookEvent() error {
@@ -513,5 +550,40 @@ func helper() error {
 `)
 	if len(checkB3(env)) == 0 {
 		t.Fatal("(b3) missed an environment read in a transitive callee")
+	}
+
+	// The SPEC-HOOK-STOP-PARSE-CAP-001 carve-out admits exactly the key
+	// selection and the state-area reads, and only in its own file.
+	capBody := func(reads string) string {
+		return entries + `
+func handle(event hook.EventType, err error) error {
+	if codexadapter.IsDecisionBearing(event) { return helper() }
+	return nil
+}
+func helper() error {
+` + reads + `
+	return nil
+}
+`
+	}
+	allowed := `	_ = os.Getenv(config.EnvClaudeCodeSessionID)
+	_ = os.Getenv(config.EnvMoaiSessionPID)
+	_, _ = os.ReadFile("x")
+	_, _ = os.ReadDir("x")`
+	if p := checkB3(fixtureNamed(t, "hook_stop_parse_cap.go", capBody(allowed))); len(p) != 0 {
+		t.Fatalf("(b3) carve-out rejected its own reads: %v", p)
+	}
+	if len(checkB3(fixture(t, capBody(allowed)))) != 4 {
+		t.Fatal("(b3) the carve-out leaked outside hook_stop_parse_cap.go")
+	}
+	for _, read := range []string{
+		`	_ = os.Getenv(config.EnvClaudeCodeStopHookBlockCap)`,
+		`	_ = os.Getenv("CLAUDE_CODE_SESSION_ID")`,
+		`	_, _ = os.Open("x")`,
+		`	_, _ = os.LookupEnv(config.EnvClaudeCodeSessionID)`,
+	} {
+		if len(checkB3(fixtureNamed(t, "hook_stop_parse_cap.go", capBody(read)))) == 0 {
+			t.Fatalf("(b3) carve-out admitted %q", read)
+		}
 	}
 }

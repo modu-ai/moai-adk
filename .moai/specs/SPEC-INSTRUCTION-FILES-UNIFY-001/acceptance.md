@@ -191,7 +191,12 @@ template-only and 17 root-only lines), so a content-level diff would fail by des
 **AC-IFU-009** — Given the reconciled contract, When
 `grep -in 'personal.*~/\.codex/AGENTS\.md.*consumed\|narrowing what the project' AGENTS.md internal/template/templates/AGENTS.md.tmpl`
 runs, Then it reports no matches; and when `grep -c 'truncat' AGENTS.md` runs, Then it
-reports `>= 1`. (REQ-IFU-017)
+reports `>= 1`; and when `grep -c 'project instruction files only' AGENTS.md` and
+`grep -c 'project instruction files only' internal/template/templates/AGENTS.md.tmpl` run as
+two separate commands, Then each reports `>= 1` — the replacement statement, written with
+that phrase unbroken on one line. This third clause is RED at plan time (t1270, tree
+`20c73990d`: both commands print `0` and exit `1`), and the superseded sentence cannot
+satisfy it. (REQ-IFU-017)
 
 ### D.5 Codex read order
 
@@ -373,18 +378,30 @@ passes; and over a fixture containing `CLAUDE.local.md`, Then the guard fails na
 and whose `CLAUDE.md` carries `@AGENTS.local.md`, When a headless `claude -p` session runs
 in that project asking for the sentinel, Then the response contains it. This asserts the
 import RESOLVED; a grep for the directive line does not, because M0-1 establishes an
-unresolved import is silently skipped with exit `0` and empty stderr. (REQ-IFU-023)
+unresolved import is silently skipped with exit `0` and empty stderr. The probe is also
+carried as a durable, re-runnable check: the run phase creates
+`TestClaudeImportResolution_AgentsLocalSentinel` in `./internal/cli/` (0 declarations at
+t1270, tree `20c73990d`), and
+`go test ./internal/cli/ -run '^TestClaudeImportResolution_AgentsLocalSentinel$' -v` must
+print `--- PASS: TestClaudeImportResolution_AgentsLocalSentinel ` and must not print
+`no tests to run`; where the `claude` binary or its credentials are absent the test skips,
+and a skipped run does not discharge this clause. (REQ-IFU-023)
 
 **AC-IFU-020** — Given a fixture project with NO `AGENTS.local.md`, When `moai init` runs
 and a headless `claude -p` session then starts, Then `moai init` exits `0`, the deployed
-`CLAUDE.md` still contains the literal line `@AGENTS.local.md`, and the session exits `0`.
-(REQ-IFU-004)
+`CLAUDE.md` still contains the literal line `@AGENTS.local.md`, and the session exits `0`;
+and When `moai update` then runs on the same fixture, still with no `AGENTS.local.md`, Then
+`moai update` exits `0` and the re-deployed `CLAUDE.md` still contains the literal line
+`@AGENTS.local.md` — recorded as a separate result from the `init` run. (REQ-IFU-004)
 
 **AC-IFU-027** — Launcher invariance. Given the fixture of `AC-IFU-019` (an
 `AGENTS.local.md` carrying a unique sentinel, reached only through `CLAUDE.md`'s
 `@AGENTS.local.md` import), When the same sentinel request is issued under **each** of
 `moai cc`, bare `claude`, and `moai glm` in headless mode, Then every one of the three
-responses contains the sentinel; and When
+responses contains the sentinel; the same fixture also carries an `AGENTS.md` with a second,
+distinct sentinel reached only through `CLAUDE.md`'s `@AGENTS.md` import, and every one of
+the three responses contains that sentinel too — six results, because the two files travel
+different imports and one establishes nothing about the other; and When
 `git diff --stat` is taken over the launcher sources for the whole change
 (`internal/cli/cc*.go`, `internal/cli/glm*.go`), Then no launcher passes an
 instruction-file path or an instruction argument of its own — the import path is the only
@@ -644,16 +661,28 @@ members are not named is not a debt list, it is a disclaimer.
    block of this file states this plainly rather than implying a live check. A criterion added or
    edited during the run phase is exactly where the class returns, and nothing mechanical will
    catch it in the interim.
+3. **CI never executes `TestClaudeImportResolution_AgentsLocalSentinel`, so `AC-IFU-019`'s
+   durable check has local-run evidence only.** The test needs a live `claude` with credentials
+   and skips without one. CI runs the suite as `go test -json … ./...`
+   (`.github/workflows/ci.yml:229` in the `test` job, `:311` in the race job), so the skip is
+   recorded in the event stream, and `scripts/ci-census/test-census.sh` lists it as a
+   `SKIPPED TEST` row — but the census is a reporter that exits `0` by contract
+   (`test-census.sh:52-54`), and no step fails, warns, or annotates on a skip. A green CI run is
+   therefore indistinguishable from a run in which this check did not execute, and a regression
+   in Claude Code's import resolution would pass CI. The check stays live only while someone runs
+   it locally with `claude` present; `plan.md` M3 owns that run and records its
+   `--- PASS: TestClaudeImportResolution_AgentsLocalSentinel ` line in `progress.md` §E.2. This
+   is accepted as debt, not closed by this SPEC.
 
 **Deferred to card t1270 (out of this SPEC's plan scope; coordinates recorded here so t1270 can
 pick them up without re-deriving them):**
 
-3. **D21 (t1270) — `AC-IFU-009` asserts the removal of the superseded budget sentence and not the presence
+4. **D21 (t1270) — `AC-IFU-009` asserts the removal of the superseded budget sentence and not the presence
    of its replacement.** `REQ-IFU-017`'s first half ("shall state that the budget is charged
    against project instruction files only") is satisfiable by deleting the old sentence and writing
    nothing. The repair is a third clause greping both mirrors for the replacement phrasing; the
    existing `grep -c 'truncat'` clause discharges the requirement's **second** half, not its first.
-4. **D22 (t1270) — three criteria narrower than the requirement they cite.** `AC-IFU-020` asserts
+5. **D22 (t1270) — three criteria narrower than the requirement they cite.** `AC-IFU-020` asserts
    `moai init` where `REQ-IFU-004` names `init` **and** `update`, and `update` is the likelier
    regression surface because it re-deploys over an existing tree. `AC-IFU-027` asserts the
    `AGENTS.local.md` sentinel where `REQ-IFU-005` names both `AGENTS.md` **and**
@@ -662,7 +691,16 @@ pick them up without re-deriving them):**
    **carry** a mechanical check", which reads as a durable automated guard, while `AC-IFU-019` and
    `AC-IFU-021` are one-off headless `claude -p` measurements — a narrowing of the requirement is
    the likely resolution, since a `claude -p` probe needs a live model and cannot run in CI.
-5. **The `moai spec lint` anchoring rule itself — card t1269.** `VacuousAssertionRule` in
+
+   **Closed by t1270 (spec.md HISTORY v0.3.3).** D21: `AC-IFU-009` gained a third clause greping
+   both mirrors separately for `project instruction files only`, measured RED at tree `20c73990d`.
+   D22: `AC-IFU-020` gained a `moai update` leg on the same fixture; `AC-IFU-027` gained an
+   `AGENTS.md` sentinel reached through `@AGENTS.md` under all three launchers; and `AC-IFU-019`
+   gained a durable Go test, `TestClaudeImportResolution_AgentsLocalSentinel`, rather than a
+   narrowed `REQ-IFU-023`. That test needs a live `claude` and skips without one, so CI will show
+   it skipped, not passed — the check survives the run phase as a re-runnable local gate, and a
+   skipped run discharges nothing (named debt item 3). No criterion id was added; the count stays at 20.
+6. **The `moai spec lint` anchoring rule itself — card t1269.** `VacuousAssertionRule` in
    `internal/spec/lint_vacuous_assertion.go`, registered in the rule slice in
    `internal/spec/lint.go`, with two-arm fixtures — one arm carrying a conformant criterion that
    must pass, one carrying each unanchored shape that must be caught. [HARD] **t1269 has not landed,

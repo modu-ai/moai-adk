@@ -5,10 +5,18 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/modu-ai/moai-adk/internal/civerdict"
 	"github.com/modu-ai/moai-adk/internal/escalation"
 	"github.com/modu-ai/moai-adk/internal/escalation/escalationtest"
+	"github.com/modu-ai/moai-adk/internal/verify"
 )
+
+// fixtureHead is the fixture worktree's HEAD SHA; otherHead is any other.
+const fixtureHead = escalationtest.HeadSHA
+
+const otherHead = "ffffffffffffffffffffffffffffffffffffffff"
 
 // budgetEdit sets the contract's budget before signing.
 func budgetEdit(ops, retries string) func(string) string {
@@ -155,10 +163,10 @@ func TestAuditFailAtRetryCapTrips(t *testing.T) {
 
 // AC-AE-012 (REQ-AE-010, REQ-AE-022). (a) disagreement_flag true and (b) a
 // second_model verdict opposite the first each trip contradictory-evidence;
-// (d) a null flag and (e) a local pass without a recorded CI verdict write
-// none and are listed not-observed. Clause (c) — a recorded CI failure — has
-// no on-disk producer in this repository, so the CI limb is always
-// not-observed (orchestrator ruling on Q5); see progress.md §E.2.
+// (d) a null flag and (e) a local pass without a CI verdict record write
+// none and are listed not-observed. Clause (c) — a recorded CI failure — is
+// judged by the CI limb (SPEC-CI-VERDICT-PRODUCER-001): see
+// TestContradictoryEvidenceCISameHeadTrips below.
 func TestContradictoryEvidenceTrips(t *testing.T) {
 	cases := []struct {
 		name, body string
@@ -205,4 +213,149 @@ func TestContradictoryEvidenceTrips(t *testing.T) {
 			t.Errorf("checkpoint does not list the CI verdict: %+v", no)
 		}
 	})
+}
+
+// writeCIVerdict records a CI verdict for head via the civerdict store (the
+// producer's write path, REQ-CV-004).
+func writeCIVerdict(t *testing.T, w *escalationtest.Worktree, head, conclusion, runID string) {
+	t.Helper()
+	rec := civerdict.Record{
+		HeadSHA:    head,
+		Conclusion: conclusion,
+		RunID:      runID,
+		ObservedAt: time.Date(2026, 9, 26, 12, 0, 0, 0, time.UTC).Format(time.RFC3339),
+		Producer:   "test",
+	}
+	if err := civerdict.Save(w.Root, rec); err != nil {
+		t.Fatalf("civerdict.Save: %v", err)
+	}
+}
+
+// writeLocalPass records a verify snapshot at head with one exit-0 check
+// entry (the REQ-CV-006 local-pass source).
+func writeLocalPass(t *testing.T, w *escalationtest.Worktree, head string) {
+	t.Helper()
+	snap := &verify.Snapshot{
+		Key: head + ":testdigest",
+		Checks: []verify.CheckEntry{{
+			CheckID: "test", Command: "go test ./...", ExitCode: 0, RecordedAt: time.Now(),
+		}},
+	}
+	if err := verify.Save(w.Root, snap); err != nil {
+		t.Fatalf("verify.Save: %v", err)
+	}
+}
+
+// lastNotObserved joins the not-observed items of the worktree's last
+// checkpoint entry.
+func lastNotObserved(t *testing.T, w *escalationtest.Worktree) string {
+	t.Helper()
+	no := notObservedEntries(t, w)
+	if len(no) == 0 {
+		return ""
+	}
+	return strings.Join(no[len(no)-1].NotObserved, "|")
+}
+
+// AC-CV-005 (REQ-CV-006, REQ-CV-007) — clause (c), the previously dead limb:
+// a recorded local pass and a recorded CI failure at the SAME head trip class
+// contradictory-evidence once, through the existing contradiction path, and
+// the completed observation is not listed under not_observed.
+func TestContradictoryEvidenceCISameHeadTrips(t *testing.T) {
+	isolateStore(t)
+	w := armedWith(t, "t9001", nil, "")
+	writeLocalPass(t, w, fixtureHead)
+	writeCIVerdict(t, w, fixtureHead, civerdict.ConclusionFailure, "run-1")
+	commitCheckpoint(contractSettings(t, w), w)
+	rs, raw := recordsOfClass(t, w, escalation.ClassContradictoryEvidence)
+	if len(rs) != 1 {
+		t.Fatalf("contradictory-evidence records = %d, want 1\n%s", len(rs), strings.Join(raw, "\n"))
+	}
+	if !strings.Contains(raw[0], "passed locally") || !strings.Contains(raw[0], "CI failed") ||
+		!strings.Contains(raw[0], fixtureHead) {
+		t.Errorf("observation does not name the local pass and the CI failure at the head:\n%s", raw[0])
+	}
+	if all := lastNotObserved(t, w); strings.Contains(all, "ci verdict") {
+		t.Errorf("completed CI observation listed not-observed: %q", all)
+	}
+}
+
+// AC-CV-006 (REQ-CV-008) — no-trip dispositions of the CI limb.
+func TestContradictoryEvidenceCINoTrip(t *testing.T) {
+	cases := []struct {
+		name       string
+		head       string
+		conclusion string
+		localPass  bool
+		listed     string // substring required in not_observed; "" = the limb must list nothing ci-related
+	}{
+		// (a) CI failure recorded for a different head.
+		{"different-head", otherHead, civerdict.ConclusionFailure, true, "ci verdict"},
+		// (b) success at the head completes the observation: nothing listed.
+		{"success-with-pass", fixtureHead, civerdict.ConclusionSuccess, true, ""},
+		// (c) CI failure at the head without a recorded local pass.
+		{"failure-no-local-pass", fixtureHead, civerdict.ConclusionFailure, false, "local"},
+		// (e) neutral at the head is a completed observation: nothing listed.
+		{"neutral-with-pass", fixtureHead, civerdict.ConclusionNeutral, true, ""},
+		// (f) success at the head without a local pass: only the missing pass listed.
+		{"success-no-local-pass", fixtureHead, civerdict.ConclusionSuccess, false, "local"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			isolateStore(t)
+			w := armedWith(t, "t9001", nil, "")
+			if tc.localPass {
+				writeLocalPass(t, w, fixtureHead)
+			}
+			writeCIVerdict(t, w, tc.head, tc.conclusion, "run-1")
+			commitCheckpoint(contractSettings(t, w), w)
+			if rs, raw := recordsOfClass(t, w, escalation.ClassContradictoryEvidence); len(rs) != 0 {
+				t.Fatalf("contradictory-evidence records written: %+v\n%s", rs, strings.Join(raw, "\n"))
+			}
+			all := lastNotObserved(t, w)
+			switch {
+			case tc.listed != "" && !strings.Contains(all, tc.listed):
+				t.Errorf("not-observed = %q, want %q listed", all, tc.listed)
+			case tc.listed == "" && (strings.Contains(all, "ci verdict") || strings.Contains(all, "local verification pass")):
+				t.Errorf("not-observed = %q, want nothing ci-related listed", all)
+			}
+			// The success or neutral conclusion at the head itself must never
+			// surface under not_observed (REQ-CV-008): cases (b), (e), and (f)
+			// list at most the missing local pass.
+			if tc.conclusion != civerdict.ConclusionFailure && strings.Contains(all, "conclusion "+tc.conclusion) {
+				t.Errorf("completed CI observation listed not-observed: %q", all)
+			}
+		})
+	}
+}
+
+// AC-CV-007 (REQ-CV-009, REQ-CV-004) — the idempotent producer re-run cannot
+// re-trip a resolved record without new evidence; a changed CI record re-trips
+// once (freshEvidence content-hash gate).
+func TestContradictoryEvidenceCIFreshness(t *testing.T) {
+	isolateStore(t)
+	w := armedWith(t, "t9001", nil, "")
+	s := contractSettings(t, w)
+	writeLocalPass(t, w, fixtureHead)
+	writeCIVerdict(t, w, fixtureHead, civerdict.ConclusionFailure, "run-1")
+	commitCheckpoint(s, w)
+	if n := openCount(t, w, escalation.ClassContradictoryEvidence); n != 1 {
+		t.Fatalf("open=%d after the first trip, want 1", n)
+	}
+	resolveAll(t, w, escalation.ClassContradictoryEvidence)
+	// Idempotent producer re-run: byte-identical record rewrite.
+	writeCIVerdict(t, w, fixtureHead, civerdict.ConclusionFailure, "run-1")
+	commitCheckpoint(s, w)
+	if rs, _ := recordsOfClass(t, w, escalation.ClassContradictoryEvidence); len(rs) != 1 {
+		t.Errorf("records after identical re-record = %d, want 1 (no duplicate)", len(rs))
+	}
+	if n := openCount(t, w, escalation.ClassContradictoryEvidence); n != 0 {
+		t.Errorf("resolved record re-opened without new evidence: open=%d", n)
+	}
+	// Genuinely new evidence: a changed run_id re-trips once as -2.
+	writeCIVerdict(t, w, fixtureHead, civerdict.ConclusionFailure, "run-2")
+	commitCheckpoint(s, w)
+	if !anySuffix(records(t, w), "-2.md") || openCount(t, w, escalation.ClassContradictoryEvidence) != 1 {
+		t.Errorf("changed CI record did not re-trip as -2: %v", records(t, w))
+	}
 }

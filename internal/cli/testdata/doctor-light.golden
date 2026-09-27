@@ -20,13 +20,14 @@
 │    ok      MCP Scope Duplicates     no MCP configuration found (project or global)                                                                     │
 │    ok      MCP Provider Duplicates  no Claude Code state file; not checked                                                                             │
 │    ok      MCP Server Version       no running moai MCP server recorded                                                                                │
+│    ok      Hook Missing Log         no hook-missing entries                                                                                            │
 │    ok      Agent Emit Embed   not applicable: no committed agent-emit artifacts                                                                          │
 │    warn    Constitution Registry    zone-registry.md not found at ".claude/rules/moai/core/zone-registry.md" — run `moai constitution list` to verify  │
 │    ok      Harness 5-Layer          .moai/harness/ not present (no harness configured)                                                                 │
 │    ok      Migration                current version 0                                                                                                  │
 │    ok      Plugin Deployment        no plugin marker (binary-managed)                                                                                  │
 │    ok      Home Disk Usage          no ~/.moai home found — nothing to report                                                                          │
-│    10 ok, 3 warn, 0 fail                                                                                                                               │
+│    11 ok, 3 warn, 0 fail                                                                                                                               │
 │                                                                                                                                                        │
 │  Workspace ---                                                                                                                                         │
 │    STATUS  CHECK                  MESSAGE                                                                                                              │
@@ -48,6 +49,6 @@
 │    ok      Jev                    disabled (workflow.jev.enabled: false) — no request constructed, no network call                                     │
 │    7 ok, 9 warn, 0 fail                                                                                                                                │
 │                                                                                                                                                        │
-│   Pass 23    Warn 12    Fail 0                                                                                                                         │
+│   Pass 24    Warn 12    Fail 0                                                                                                                         │
 │                                                                                                                                                        │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

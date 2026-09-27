@@ -9,7 +9,9 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/modu-ai/moai-adk/internal/civerdict"
 	"github.com/modu-ai/moai-adk/internal/contract"
+	"github.com/modu-ai/moai-adk/internal/verify"
 	"strings"
 )
 
@@ -22,10 +24,12 @@ const (
 	sameDiagnosticThreshold     = 3
 )
 
-// notObservedCIVerdict is listed at every commit checkpoint: no on-disk
-// producer of recorded CI verdicts exists in this repository, so class 5's CI
-// limb is never observed (plan.md §H Q5, orchestrator ruling).
-const notObservedCIVerdict = "ci verdict (no recorded CI verdict producer)"
+// notObservedCIVerdict is listed at a commit checkpoint when no CI verdict
+// record at all exists under .moai/state/ci-verdicts/ for the checkpoint head
+// (REQ-CV-008's no-record case — limb (e), listed not-observed, never as
+// agreement). SPEC-CI-VERDICT-PRODUCER-001 replaced the former unconditional
+// seed with the conditional CI limb below.
+const notObservedCIVerdict = "ci verdict (no record for the checkpoint head)"
 
 // Class 6 recognizers (design.md §C.3). The destructive denylist is reused by
 // reference: the hook sets Event.Denylisted.
@@ -319,10 +323,11 @@ type convergenceFile struct {
 // classContradictoryEvidence trips class 5 from recorded audit_multi results
 // (REQ-AE-010): a true disagreement_flag, or the contract's second_model
 // verdict opposite the first verdict. A null flag is not-observed; the CI
-// limb is always not-observed. Returns the not-observed items.
+// limb (REQ-CV-006..009) is judged from recorded CI verdicts. Returns the
+// not-observed items.
 func (r *run) classContradictoryEvidence() []string {
 	a := r.st.Armed
-	notObs := []string{notObservedCIVerdict}
+	var notObs []string
 	paths, _ := filepath.Glob(filepath.Join(r.root, ".moai", "state", "audit-multi", "*.json"))
 	cdata, _ := os.ReadFile(a.ContractPath)
 	for _, p := range paths {
@@ -349,6 +354,57 @@ func (r *run) classContradictoryEvidence() []string {
 					first.Backend, first.Verdict, second.Backend, second.Verdict, name),
 				contractRef(ContractLine(cdata, "review", "second_model"), cdata, "review"))
 		}
+	}
+	return append(notObs, r.ciLimb(cdata)...)
+}
+
+// ciLimb judges class 5's CI limb from the recorded CI verdicts the
+// civerdict producer wrote (REQ-CV-006..009): a CI failure at the checkpoint
+// head whose local verification also passed trips through the existing
+// contradiction path; every limb it cannot complete is named under
+// not_observed (a foreign-head verdict, a missing local pass, no record).
+// A success or neutral conclusion at the head is a completed observation and
+// is not listed (REQ-CV-008).
+//
+// @MX:NOTE: [AUTO] the detector's public-behavior CI seam — reads only the civerdict package's on-disk records (SPEC-CI-VERDICT-PRODUCER-001); a schema change there re-shapes this limb's not_observed vocabulary
+func (r *run) ciLimb(cdata []byte) []string {
+	var notObs []string
+	head := r.headSHA()
+	loaded, unreadable := civerdict.LoadAll(r.root)
+	for _, name := range unreadable {
+		notObs = append(notObs, "ci verdict record "+name+" (unreadable)")
+	}
+	var match *civerdict.Loaded
+	for i := range loaded {
+		if loaded[i].Record.HeadSHA == head {
+			match = &loaded[i]
+			break
+		}
+	}
+	if match == nil {
+		if len(loaded) == 0 {
+			notObs = append(notObs, notObservedCIVerdict)
+		} else {
+			for i := range loaded {
+				notObs = append(notObs, "ci verdict "+loaded[i].Name+" (head "+
+					loaded[i].Record.HeadSHA+" != checkpoint head "+head+")")
+			}
+		}
+		return notObs
+	}
+	localPass := verify.HasLocalPass(r.root, head)
+	if !localPass {
+		notObs = append(notObs, "local verification pass (none recorded) for head "+head)
+	}
+	if match.Record.Conclusion != civerdict.ConclusionFailure {
+		// An observed verdict that does not contradict the local pass
+		// completes the CI observation (REQ-CV-008).
+		return notObs
+	}
+	if localPass {
+		r.contradiction(match.Name, match.Data, "local-pass|ci-failure",
+			fmt.Sprintf("verification passed locally but CI failed for head %s (%s)", head, match.Name),
+			contractRef(ContractItemLine(cdata, ClassContradictoryEvidence, "escalate_on"), cdata, "escalate_on"))
 	}
 	return notObs
 }
