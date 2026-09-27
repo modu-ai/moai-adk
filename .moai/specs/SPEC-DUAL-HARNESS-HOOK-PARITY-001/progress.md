@@ -1207,3 +1207,21 @@ changed (`go list -deps ./internal/hook/`); the writer is the contract store
 (`internal/contract/receipt`), landed with t1235/t1236 and absent from the
 t1236 audit's disclosed findings. Reported to the lead — a t1235/t1236
 follow-up, out of this card's scope.
+
+**Post-audit repairs (lead-ordered, 2026-09-28).** Audit verdict **PASS-WITH-DEBT 86.0**,
+blocking 0 (`.moai/reports/t1280/sync-audit-opus.md`, auditor claude-opus-5-5[1m] 116/116,
+lead-invoked). F1 (Medium): the goal-cap reset leg was vacuous — its `f.dirty` tree move resets
+the count by key change, so the capReset-removal mutants (m3/m4) survived; the leg is rewritten
+as the audit probe's same-tree-key re-arm shape (measured-unmet and measured-met variants) and
+both mutants now die verbatim (`codex_goal_parity_test.go:388` / `:416`); the production file is
+byte-identical to `55a19025b` after the mutation restore. F2 (Medium): REQ-HPR-019, design §D3.4
+cap row, §D3.8 rule scope and reset clauses, and the §D3.5 old sentence now state the goal
+member's cap membership; spec.md HISTORY v0.6.1 line added. The §D3.8 goal-member extension is
+confirmed by the lead as an **extension** of the 2026-09-23 operator decision within §31
+delegation — not a reversal. Correction to the §E.5 remeasure note: the `internal/hook`
+`TestDetectorNeverAltersToolCall` red was caused by the **test-setup-stage sign.Sign recording**
+(not the detector path) and is already repaired by t1236 (commit `3596dbeaf`, landed
+origin/develop `535d2fc33`); it resolves with the merge-window absorb — the merged-tree remeasure
+re-runs `./internal/hook/...` to confirm. Audit disclosure: the auditor's selector carelessness
+made one real operator-login codex review call (17:42:54Z), not a parity leg;
+`TestCodexTaskBackgroundHandshakeHonorsTaskBound` is a base flake (4/5 fail) the lead has carded.

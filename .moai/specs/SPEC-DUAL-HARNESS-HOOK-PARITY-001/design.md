@@ -216,8 +216,9 @@ The goal member (3) and the sync gate (2) stay fail-closed once their self-gates
 receipt continues the turn and never allows a pass. Member 6 behaves the same way once its
 self-gates hold. For the sync gate and member 6 the continuation is bounded on Codex by the
 consecutive-`unmeasured` cap (§D3.8): at the cap the stop is allowed and the gate is recorded
-`unverified`, which no verdict reads as PASS. The goal member keeps its own turn ceiling and is not
-under the cap.
+`unverified`, which no verdict reads as PASS. The goal member keeps its own turn ceiling for
+measured evaluations; since the t1280 amendment below, its `unmeasured` continuations are under the
+same cap.
 
 > **t1280 amendment (2026-09-28, follow-up card F4).** The turn ceiling bounds only evaluations
 > that complete and save: a goal member cut off at its internal budget on every Stop — or whose
@@ -256,7 +257,7 @@ of member 1 (telemetry prune, reflection, evidence gate, `stop.go:59–79`) stay
 | codex review gate (member 6), codex installed, review pass, inconclusive, or call error | allow (`:95–101`, `:109`) | allow (fresh receipt, verdict `pass` or `inconclusive`) | yes (identical) |
 | codex review gate (member 6), codex installed, **receipt missing or stale** | (does not arise: Claude runs the review in-hook) | `unmeasured` → continuation naming the review runner command | **yes, declared mapping `unmeasured` ↔ review ran in-hook**: at `stop_hook_active: false`, neither harness allows the stop before the review call has completed for the current tree, below the Codex-only §D3.8 cap (Claude still allows without a verdict at step 2 and on a call error, `:95–101`; the Codex runner records that error as `inconclusive`) |
 | codex review gate (member 6), codex installed, `stop_hook_active: true` (receipt missing, stale, `fail`, or `pass`) | allow (step 2, `codex_review_gate.go:71–72`, before the reviewer lookup and the review call) | allow (step 2, before any receipt read) | yes (identical). Step 2 is the only bound on the step-7 continuation shared by both harnesses (§D3.3); Codex adds the §D3.8 cap |
-| sync gate (self-gate holds) or member 6 (codex installed), receipt missing or stale, **Nth consecutive `unmeasured` continuation** for the same gate, HEAD, and working-tree digest (N from §D3.8) | (does not arise: Claude runs the check in-hook) | allow, **plus** a discard record and reason text naming the gate as `unverified` and the command that was never run | **no — declared Codex-only parity deviation (§D3.8).** Not a PASS: the gate reads `unverified` (NOT_RUN class) in the verdict and the registry. These cap goldens are Codex-only and are excluded from the Claude/Codex equality comparison |
+| sync gate (self-gate holds), member 6 (codex installed), or the goal member (member 3, `unmeasured` continuation — receipt absent or member cut off), receipt missing or stale, **Nth consecutive `unmeasured` continuation** for the same member, HEAD, and working-tree digest (N from §D3.8; the goal member joined in follow-up card t1280) | (does not arise: Claude runs the check in-hook; a Claude goal is bounded by its turn ceiling) | allow, **plus** a discard record and reason text naming the member as `unverified` and the command that was never run | **no — declared Codex-only parity deviation (§D3.8).** Not a PASS: the gate or goal reads `unverified` (NOT_RUN class) in the verdict and the registry, and the goal is never `satisfied`. These cap goldens are Codex-only and are excluded from the Claude/Codex equality comparison |
 | multi review gate (member 7), result present and blocking | block | block | yes (identical) |
 | multi review gate (member 7), result present and passing | allow | allow | yes (identical) |
 | multi review gate (member 7), **result missing** | allow, fail-open (`multi_review_gate.go:47, :79`) | allow, fail-open, **plus** a discard record and reason text naming the missing result | yes (identical decision). The Codex-only diagnostic is an addition to the output, not a different decision |
@@ -343,9 +344,11 @@ continuation has step 2 (`stop_hook_active`) as its only other bound, and whethe
 flag to `true` on a continued turn is live-unmeasured (`NOT_RUN` under Q5). If the working agent
 never produces the receipt, either case can continue the turn without end.
 
-**The rule.** On Codex, for the sync gate (member 2, self-gate holding) and member 6 (codex
-installed), the Stop chain counts consecutive `unmeasured` continuations per gate, keyed by the
-gate id, HEAD, and working-tree digest (the §D3.6 `head` and `tree_digest` fields, from
+**The rule.** On Codex, for the sync gate (member 2, self-gate holding), member 6 (codex
+installed), and — since follow-up card t1280 — the goal member (member 3, whose `unmeasured`
+continuation is a receipt absent or the member cut off at its internal budget), the Stop chain
+counts consecutive `unmeasured` continuations per capped member, keyed by the member's cap id,
+HEAD, and working-tree digest (the §D3.6 `head` and `tree_digest` fields, from
 `verify.Key`):
 
 - continuations 1 to N−1 for the same key → continue, exactly as §D3.4 says;
@@ -355,8 +358,10 @@ gate id, HEAD, and working-tree digest (the §D3.6 `head` and `tree_digest` fiel
 - the count stays at N until it resets, so each further Stop on the same key also allows and also
   writes an `unverified` record — the gate is never silently dropped;
 - the count **resets to 0** when a fresh receipt for the current key is read (a receipt was
-  produced), or when HEAD or the working-tree digest differs from the stored key.
-- "consecutive" means the count accumulated per gate and key within the session: only the two resets above clear it, so an intervening Stop that is not `unmeasured` (a step-2 allow, a self-gate that no longer holds, a different user prompt) leaves it unchanged.
+  produced; the gates), when a measured goal evaluation completes (the goal member: met, unmet,
+  cancelled, or budget-terminated — t1280), or when HEAD or the working-tree digest differs from
+  the stored key.
+- "consecutive" means the count accumulated per capped member and key within the session: only the resets above clear it, so an intervening gate Stop that is not `unmeasured` (a step-2 allow, a self-gate that no longer holds, a different user prompt) leaves the gate's count unchanged; for the goal member, any completed measured evaluation clears it.
 
 `unverified` is NOT_RUN-class. The verdict record and the obligation registry read a capped gate as
 `unverified`, never as PASS (REQ-HPR-022, REQ-HPR-023); AC-HPR-019 injects it. The cap bounds the
