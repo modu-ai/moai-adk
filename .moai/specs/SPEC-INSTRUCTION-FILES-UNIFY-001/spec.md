@@ -2,11 +2,11 @@
 id: SPEC-INSTRUCTION-FILES-UNIFY-001
 title: "Instruction-file unification — AGENTS.md as the harness-neutral contract"
 version: "0.3.4"
-status: draft
+status: in-progress
 priority: P1
 phase: "v3.3.0 target"
 created: 2026-09-26
-updated: 2026-09-26
+updated: 2026-09-27
 author: manager-spec
 module: "internal/cli, internal/config, internal/hook, internal/harness/curator, internal/template/templates"
 lifecycle: spec-anchored

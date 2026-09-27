@@ -51,9 +51,80 @@
   not a path the criterion already expects — a `-maxdepth 1` or path-presence form would keep
   passing after a rename back to `AGENTS.md`.
 
+## §F Phase 4 Mode Selection
+
+- **Decision: serial.** Tier L, coding-heavy, and the three milestones are dependent (M1's
+  measurements gate M2's start and feed M3's worktree paragraph and byte budget), so neither
+  fan-out nor an agent team buys parallelism. Orchestrator decision, recorded at M1.
+
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1a — AC-IFU-021 real-worktree ancestor discovery
+
+Full transcript, fixture description, and raw outputs: `.moai/reports/t1243/m1/evidence.md`,
+`.moai/reports/t1243/m1/m1a-{nested,sibling,primary}.{out,err}`. Tool: `claude 2.1.283`.
+
+Fixture: throwaway repo in the session scratchpad; committed `CLAUDE.md` with
+`WT_CONTROL = OSCAR4` (positive control); untracked, gitignored, primary-root-only
+`AGENTS.local.md` (`LOCAL_AGENTS_TOKEN = PAPA6`) and `CLAUDE.local.md`
+(`LOCAL_CLAUDE_TOKEN = QUEBEC2`). Two real linked worktrees via `git worktree add` — nested at
+`.claude/worktrees/wt` (this repository's geometry) and a sibling `../sibling-wt` — each with
+`.git` as a file (`-rw-r--r-- ... 139 ... primary/.claude/worktrees/wt/.git`,
+`gitdir: .../primary/.git/worktrees/wt`).
+
+Command (all three runs, cwd varies):
+`unset MOAI_KANBAN ... MOAI_KANBAN_SETTINGS_INJECTED && cd <cwd> && timeout 180 claude -p "Answer only from your loaded instructions, run no tools. Three lines: (1) exact value of WT_CONTROL (write NOT_PRESENT if absent), (2) exact value of LOCAL_AGENTS_TOKEN (write NOT_PRESENT if absent), (3) exact value of LOCAL_CLAUDE_TOKEN (write NOT_PRESENT if absent)." --model claude-haiku-4-5-20251001`
+
+| cwd | exit | verbatim output |
+|---|---|---|
+| nested worktree `primary/.claude/worktrees/wt` | 0 | `1. OSCAR4` / `2. NOT_PRESENT` / `3. QUEBEC2` |
+| sibling worktree `sibling-wt` | 0 | `OSCAR4` / `NOT_PRESENT` / `NOT_PRESENT` |
+| primary root (control) | 0 | `1. WT_CONTROL = OSCAR4` / `2. LOCAL_AGENTS_TOKEN = NOT_PRESENT` / `3. LOCAL_CLAUDE_TOKEN = QUEBEC2` |
+
+stderr empty in all three.
+
+**Outcome — design.md §A.5 row 2: discovery confirmed for `CLAUDE.local.md` but NOT for
+`AGENTS.local.md`.** `CLAUDE.local.md` is reached from a real nested linked worktree by a
+directory-ancestor walk (the sibling worktree does not get it, so the walk is not
+git-worktree-aware). `AGENTS.local.md` is not discovered by Claude Code at all — not even at the
+primary root. Per §A.5, Option 3 degrades to Option 1: **known limitation — a worktree session does
+not receive `AGENTS.local.md` content** (the `@AGENTS.local.md` import is out-of-project there per
+M0-3 and silently skipped per M0-1, and no filename discovery reaches it). Not retried.
+
+**acceptance.md §D.3 conditional handoff: NOT triggered** — the condition is confirmation for
+`AGENTS.local.md`, and that was not observed. Informational only (not a Definition-of-Done
+transfer): the real-worktree `CLAUDE.local.md` result is direct evidence for the mechanism behind
+card t1219 item (1); the lead may forward `.moai/reports/t1243/m1/evidence.md` to t1219.
+
+### M1b — AC-IFU-022 Codex discovery of `AGENTS.local.md`
+
+Full transcript: `.moai/reports/t1243/m1/evidence.md`; project-doc segment
+`.moai/reports/t1243/m1/m1b-project-doc-excerpt.txt`; stderr `m1b-prompt-input.err` (empty). Full
+render not committed (it embeds the operator's personal global `~/.codex/AGENTS.md`); sha256
+`eea9b78fc070dc2b1a1d0a5cdcc1767685d519879aba847c90837a0d0c3f2a09`, 40,358 B.
+
+Verb re-confirmed on this version: `codex debug --help` →
+`prompt-input  Render the model-visible prompt input list as JSON`. `~/.codex/config.toml` has no
+`fallback` / `project_doc` key; `CODEX_HOME` unset.
+
+```
+$ cd <fixture> && codex --version && timeout 120 codex debug prompt-input > ../prompt-input.json 2> ../prompt-input.err
+codex-cli 0.157.0
+exit=0
+   40358 ../prompt-input.json
+       0 ../prompt-input.err
+CONTRACT_HEAD count=1
+CONTRACT_TAIL count=1
+LOCAL_HEAD count=0
+LOCAL_TAIL count=0
+```
+
+**Outcome (positive control first):** `CONTRACT_HEAD` present → conclusive. `LOCAL_HEAD` absent →
+**Codex does not discover `AGENTS.local.md`; the design's budget arithmetic holds.** Not a blocker.
+`CONTRACT_TAIL` present → no truncation of the fixture `AGENTS.md`.
+
+**Gate:** both measurements' evidence is on disk; M1b is negative, so M2 is gated open and M3's
+byte budget is unchanged by M1.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
