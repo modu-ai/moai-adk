@@ -2,7 +2,7 @@
 id: SPEC-AUTONOMY-GATE-REWIRE-001
 title: "계약 기반 자율 하네스 A3 — contract 모드 게이트 재배선, Kickoff 자율 승인, contract decide·kickoff-check·revoke"
 version: "0.3.6"
-status: draft
+status: in-progress
 created: 2026-09-26
 updated: 2026-09-27
 author: manager-spec
