@@ -45,7 +45,7 @@ func newTimingFixture(t *testing.T) *stopFixture {
 	t.Helper()
 	ctx := context.Background()
 	fakeCodexVersion(t, "codex-cli 0.0.0-timing")
-	withCodexSession(t, codexSessionScript("clean change, approved"))
+	withCodexSession(t, codexSessionScript(realCleanReview))
 	t.Setenv(config.EnvSecurityCommitReview, "1")
 	f := newStopFixture(t)
 	f.enableReviewGates(t, true, true)

@@ -930,15 +930,46 @@ the top of `writeHookOutputCodex` plus two new functions at the end of the file)
 - No whole-package `internal/cli` run is green in a single invocation: run 1 was stopped at
   5180 tests; run 2 carries 49 environment-induced failures, each re-attributed above. CI is the
   package verdict.
-- Package coverage of `internal/goal` (78.0%) and `internal/template` (82.8%) is below 85%. This
-  SPEC changed no production code in `internal/goal`; no pre-change baseline for either package
-  was measured in this run, so no delta is claimed.
+- Package coverage of `internal/goal` (78.0%) and `internal/template` (82.8%) is below 85%.
+  Correction (Opus re-audit F4, 2026-09-27): this SPEC DID change `internal/goal` production
+  code — `ce15e08b8` (M2a, the `cancelled` status and its readers) — which landed on develop
+  first via the t1152 merge, so it does not appear in the post-absorb diff. A same-methodology
+  pair was measured at sync (77.9% @ merge-base 4dcd4d8d4 → 78.0% current; see §E.4): no
+  regression; the below-85 standing is carried as debt.
 - **Lease database exposure.** The merge-repair whole-package run (09:25–09:55), the M2e/M2f
   targeted runs, and run 1 above executed `internal/cli` tests without the `MOAI_HOME`
   isolation, before the lead's constraint arrived; whether any of them overwrote rows in
   `~/.moai/run/profile-leases.db` was not measured (its mtime moves with every session on the
   machine and attributes nothing).
 - Live legs: all NOT_RUN (Q5).
+
+**Opus re-audit F1 repair evidence (2026-09-27, post-sync).** The Opus binding audit
+(`.moai/reports/t1099/sync-audit-opus.md`, FAIL 0.79) found the develop absorption had vacated
+AC-HPR-002's "codex installed, fresh PASS receipt" golden: the fixture `"clean change, approved"`
+produces an `inconclusive` receipt under the post-#1718 parser (inconclusive also allows), so the
+leg no longer tested a PASS receipt. Repair (this card's tree): the golden's fixture sites
+(`codex_stop_chain_golden_test.go` :196/:340/:343 and `codex_stop_timing_test.go:48`) re-pinned to
+the package's shared `realCleanReview`, and the "fresh PASS receipt" subtest gained a premise
+assertion (`r.Verdict == codexReviewVerdictPass` on the producer's return). Mutation M-A from the
+audit (`codex_stop_chain.go:573` `== codexReviewVerdictFail` → `!= codexReviewVerdictInconclusive`,
+i.e. member 6 blocks on a true PASS receipt), applied uncommitted and then reverted:
+
+```text
+$ go test -count=1 -v -run '^TestStopChainEffectParityGolden$/codex_review_gate/codex_installed,_fresh_PASS_receipt$' ./internal/cli/   # mutated
+    codex_stop_chain_golden_test.go:249: Codex path decision = deny (class "gate_failed", reason "codex review gate: the codex review recorded for this tree failed. Run `moai verify codex-review` to see the findings, address them, and end the turn again."), Claude path = allow
+--- FAIL: TestStopChainEffectParityGolden (1.08s)
+    --- FAIL: TestStopChainEffectParityGolden/codex_review_gate (1.08s)
+        --- FAIL: TestStopChainEffectParityGolden/codex_review_gate/codex_installed,_fresh_PASS_receipt (1.08s)
+FAIL    github.com/modu-ai/moai-adk/internal/cli   1.877s
+
+$ git restore internal/cli/codex_stop_chain.go && go test -count=1 -run '^TestStopChainEffectParityGolden$' ./internal/cli/   # reverted
+ok      github.com/modu-ai/moai-adk/internal/cli   32.857s
+```
+
+The mutation that survived the merged tree before the repair now turns the subtest RED — the
+PASS-receipt leg is measured again. (Observed this run, on the repair tree; the golden's 36
+subtests green post-repair. A same-class sibling fixture in `codex_review_gate_test.go:107` —
+not this card's file — was reported to the lead instead of edited here.)
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -952,13 +983,14 @@ run_commit_sha: 4f5b74496   # last run-phase commit (M2i); this §E.3 commit fol
 run_status: complete — closing as partial (live-uncertified) per operator decision Q5
 spec_status: in-progress    # spec.md unchanged; the close belongs to manager-docs (sync)
 ac_total: 22                # AC-HPR-001..022
-ac_pass_count: 19           # every unit/golden AC and every unit/golden leg PASS under rule P
+ac_pass_count: 13           # unit/golden-ONLY ACs, PASS under rule P — a NOT_RUN/SKIP live leg never counts an AC as PASS (Opus re-audit F2 correction, 2026-09-27; was 19)
+ac_partial_count: 5         # unit+golden legs PASS, live legs NOT_RUN: AC-HPR-008..012 (Q5)
 ac_fail_count: 0
-ac_not_run_count: 3         # live-only ACs: AC-HPR-004, 007, 021 (Q5)
+ac_not_run_count: 4         # AC-HPR-004, 007, 021 (live-only) + AC-HPR-020 (Kind live per the acceptance.md matrix; its offline detector leg PASS is auxiliary evidence only)
 ac_breakdown:
   unit_golden_only_pass: [001, 002, 003, 005, 006, 013, 014, 015, 016, 017, 018, 019, 022]
-  golden_pass_live_not_run: [008, 009, 010, 011, 012, 020]   # 020 = offline detector leg PASS
-  live_only_not_run: [004, 007, 021]
+  golden_pass_live_not_run: [008, 009, 010, 011, 012]
+  live_only_not_run: [004, 007, 020, 021]
 ac_evidence_map:
   AC-HPR-001: M2d (TestStopChainInventoryMatchesClaudeTemplate)
   AC-HPR-002: M2d (TestStopChainEffectParityGolden, 15 mutations)
@@ -1011,7 +1043,7 @@ coverage:   # M2i, no pre-change baseline except verify (M2b: 81.0% → 84.6%)
   codexadapter: 88.4%
   codexwiring: 86.2%
   verify: 84.6%
-  goal: 78.0%       # below 85; no production code changed here by this SPEC; no baseline, no delta claimed
+  goal: 78.0%       # below 85; goal production code WAS changed by this SPEC (M2a ce15e08b8 — landed on develop first via the t1152 merge, absent from the post-absorb diff); pair vs merge-base 4dcd4d8d4: 77.9% → 78.0%, no regression
   template: 82.8%   # below 85; no baseline, no delta claimed
   cli: not measured (whole-package coverage run not done)
 ```

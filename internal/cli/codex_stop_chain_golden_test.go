@@ -193,7 +193,9 @@ func TestStopChainEffectParityGolden(t *testing.T) {
 	// ── codex review gate (member 6) ─────────────────────────────────────
 	t.Run("codex review gate", func(t *testing.T) {
 		const failReview = "- [P1] found issues\n- [P2] more issues"
-		const passReview = "clean change, approved"
+		// Post-#1718 parser: prose approval is inconclusive, only a body with
+		// the pinned `Verdict: pass` line is a PASS receipt (Opus re-audit F1).
+		const passReview = realCleanReview
 		setup := func(t *testing.T) *stopFixture {
 			t.Helper()
 			f := newStopFixture(t)
@@ -209,12 +211,14 @@ func TestStopChainEffectParityGolden(t *testing.T) {
 			out, _ := HandleCodexReviewGate(stopInput("s", active), true, f.root)
 			return claudeDecision(out)
 		}
-		produce := func(t *testing.T, f *stopFixture, review string) {
+		produce := func(t *testing.T, f *stopFixture, review string) verify.Receipt {
 			t.Helper()
 			withCodexSession(t, codexSessionScript(review))
-			if _, err := produceCodexReviewReceipt(ctx, f.root); err != nil {
+			r, err := produceCodexReviewReceipt(ctx, f.root)
+			if err != nil {
 				t.Fatalf("codex review receipt producer: %v", err)
 			}
+			return r
 		}
 		codex := func(t *testing.T, f *stopFixture, active bool) stopMemberOutcome {
 			t.Helper()
@@ -233,7 +237,15 @@ func TestStopChainEffectParityGolden(t *testing.T) {
 		t.Run("codex installed, fresh PASS receipt", func(t *testing.T) {
 			f := setup(t)
 			claude := claudeReview(t, f, passReview, false)
-			produce(t, f, passReview)
+			r := produce(t, f, passReview)
+			// Premise (Opus re-audit F1): this golden's allow leg must be
+			// carried by an actual PASS receipt. The post-#1718 parser reads
+			// prose approval as inconclusive — which also allows — so without
+			// this assertion a fixture regression would silently vacate the
+			// "fresh PASS receipt" property while the test stayed green.
+			if r.Verdict != codexReviewVerdictPass {
+				t.Fatalf("premise: fixture must produce a %q receipt for this leg, got %q", codexReviewVerdictPass, r.Verdict)
+			}
 			wantPair(t, claude, codex(t, f, false), codexadapter.DecisionAllow, "")
 		})
 		t.Run("codex installed, FAIL receipt", func(t *testing.T) {
@@ -337,10 +349,10 @@ func TestStopChainEffectParityGolden(t *testing.T) {
 				f.commit(t, "feat: not a sync commit")
 				f.enableReviewGates(t, true, false)
 				f.dirty(t, "reviewable")
-				withCodexSession(t, codexSessionScript("clean change, approved"))
+				withCodexSession(t, codexSessionScript(realCleanReview))
 				return f
 			}, func(t *testing.T, f *stopFixture) {
-				withCodexSession(t, codexSessionScript("clean change, approved"))
+				withCodexSession(t, codexSessionScript(realCleanReview))
 				if _, err := produceCodexReviewReceipt(ctx, f.root); err != nil {
 					t.Fatal(err)
 				}
