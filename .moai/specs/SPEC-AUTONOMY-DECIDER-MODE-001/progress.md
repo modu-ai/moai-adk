@@ -350,7 +350,7 @@ M2 드라이버의 보고 집계를 인용하지 않고 로그 재시작-1 행�
 ```yaml
 run_status: audit-ready
 run_complete_at: 2026-09-27T19:00:08+09:00
-run_commit_sha: pending-backfill-run   # M3 커밋 착지 시 backfill
+run_commit_sha: b9e4243ba   # M3 커밋 (backfilled in follow-up commit per D3)
 spec_id: SPEC-AUTONOMY-DECIDER-MODE-001
 card: t1261
 criteria_commit: 568d11754
