@@ -8,6 +8,8 @@ Rules for agent model field values and multi-model architecture.
 
 ## Valid Model Field Values
 
+MoAI agent definitions declare neither `model:` nor `effort:`: every subagent inherits the main session's model and effort, and a spawn passes neither. The values below remain the accepted set for an agent file a user authors.
+
 Agent definition `model` field accepts only these values:
 - inherit: Uses parent session's model (default)
 - opus: Claude Opus (highest capability)
@@ -27,11 +29,11 @@ Invalid values (NEVER use):
 - glm: Not a model field value (GLM is configured via environment variables)
 - high/medium/low: These are CLI policy flags, not model field values
 - Pinned old versions (opus-4-0, opus-4-1, sonnet-4-5): Auto-migrated to current generation
-- Full model-ID form (e.g., `claude-opus-5-5`): **official-but-intentionally-disallowed in MoAI.** Claude Code itself accepts a full model-ID string in the `model` field, but MoAI intentionally restricts agents to the five alias values above (`inherit` / `opus` / `sonnet` / `fable` / `haiku`). The reason is the `[1m]` context-entitlement inheritance bug (see § Inherit-by-Default Convention): a subagent that pins a concrete full model ID — like an explicit `model: sonnet` / `model: opus` — does not inherit the parent session's `[1m]` entitlement and fails to spawn. The alias `inherit` sidesteps this. This restriction being a deliberate MoAI policy (not a stale gap) means "MoAI is outdated relative to Claude Code" is a misreading — the full-ID form is omitted on purpose.
+- Full model-ID form (e.g., `claude-opus-5-5`): **official-but-intentionally-disallowed in MoAI.** Claude Code itself accepts a full model-ID string in the `model` field, but MoAI intentionally restricts agents to the five alias values above (`inherit` / `opus` / `sonnet` / `fable` / `haiku`). The reason is the `[1m]` context-entitlement inheritance bug (see § Inherit-by-Default Convention): a subagent that pins a concrete full model ID — like an explicit `model: sonnet` / `model: opus` — does not inherit the parent session's `[1m]` entitlement and fails to spawn. Omitting the field (or `inherit`) sidesteps this. This restriction being a deliberate MoAI policy (not a stale gap) means "MoAI is outdated relative to Claude Code" is a misreading — the full-ID form is omitted on purpose.
 
 ## Inherit-by-Default Convention
 
-[ZONE:Evolvable] [HARD] All MoAI agents SHOULD declare `model: inherit` unless explicitly assigned `haiku` for speed-critical tasks. The previous practice of declaring `model: sonnet` or `model: opus` is deprecated for new agents.
+[ZONE:Evolvable] [HARD] MoAI agents declare no `model:` and no `effort:` frontmatter key. Claude Code resolves a subagent's model as spawn-time `model` → frontmatter `model` → `CLAUDE_CODE_SUBAGENT_MODEL` → the main conversation's model, and an absent `effort` inherits the session's, so an agent with neither field runs on the main session's model and effort. MoAI never sets `CLAUDE_CODE_SUBAGENT_MODEL`; a user who exports it still pins every subagent (a documented user-environment residual).
 
 Rationale (Claude Code session inheritance bug):
 - When the parent session uses an `[1m]` context variant (e.g., `claude-opus-5-5[1m]`, `claude-sonnet-5[1m]`) and a spawned subagent declares an explicit `model: sonnet` or `model: opus` in its frontmatter, the parent's 1M context entitlement does NOT propagate to the subagent.
@@ -43,10 +45,9 @@ Upstream tracking (Anthropic claude-code repository):
 - [Issue #51060](https://github.com/anthropics/claude-code/issues/51060): subagent with `model: opus` ignores parent's Extra Usage flag
 - [Issue #36670](https://github.com/anthropics/claude-code/issues/36670): Team teammates do not inherit the `[1m]` context variant from leader
 
-Workaround pattern (`model: inherit`):
+Workaround pattern (no `model:` field, equivalent to `model: inherit`):
 - The subagent fully inherits the parent's model + context entitlement, eliminating the mismatch.
-- Reference implementation: `.claude/agents/moai/plan-auditor.md` has used `model: inherit`.
-- Frontmatter and matrix are separate layers. In frontmatter, 11 of the 12 agent definitions under `.claude/agents/moai/` declare `model: inherit`; only `manager-git` pins `model: sonnet`. In the profile matrix (`internal/template/profile_matrix.go`), both `manager-git` and `manager-docs` resolve to sonnet / low in every column (high, medium, low) — `manager-docs` reaches that model through per-spawn injection, not a frontmatter pin. The No-Haiku policy retired the former `model: haiku` exception — cost reduction is achieved via effort tiering, not model-class substitution.
+- No agent definition under `.claude/agents/moai/` declares `model:` or `effort:`, and no spawn passes either. The No-Haiku policy retired the former `model: haiku` exception.
 
 Exceptions (do NOT migrate to inherit):
 - Documentation/example YAML inside skill bodies (`.claude/skills/moai-foundation-cc/reference/**/*.md`) — these mirror official Claude Code documentation and MUST show all valid values (`sonnet`, `opus`, `haiku`, `inherit`) for educational purposes.
@@ -75,7 +76,7 @@ Evidence fetched via the GitHub issue API + the canonical CC CHANGELOG:
 - Issue #36670 (Team teammates don't inherit `[1m]` from leader): **OPEN** — the Team-mode path is confirmed unfixed at CC 2.1.178.
 - CC 2.1.172 fixes ("1M context stuck session", "doubled `[1m]` suffix") address the *symptom* and *suffix normalization*, NOT the *spawn-time entitlement mismatch*. CC 2.1.173/2.1.174 are Fable-5-suffix and background-env-inheritance fixes — orthogonal.
 
-**Why STILL-ACTIVE mechanism ≠ practical impact (Sonnet 5 / Opus 5.5 era):** the #36670 mechanism strips the `[1m]` suffix on teammate spawn, which historically forced a fallback to a 200K variant. On the Anthropic API, Sonnet 5 and Opus 5.5 have **no 200K variant** — their context window is 1M as both default and maximum (per platform.claude.com Sonnet 5 model docs; Opus 5.5 serves the full 1M window by default). The stripped-suffix teammate therefore still resolves to 1M; there is no smaller variant to degrade into. The mechanism is unfixed upstream, but on the current default lineup it has nothing to break. The `model: inherit` convention is retained as defense-in-depth and for legacy-200K-variant models (Haiku 4.5 still ships 200K).
+**Why STILL-ACTIVE mechanism ≠ practical impact (Sonnet 5 / Opus 5.5 era):** the #36670 mechanism strips the `[1m]` suffix on teammate spawn, which historically forced a fallback to a 200K variant. On the Anthropic API, Sonnet 5 and Opus 5.5 have **no 200K variant** — their context window is 1M as both default and maximum (per platform.claude.com Sonnet 5 model docs; Opus 5.5 serves the full 1M window by default). The stripped-suffix teammate therefore still resolves to 1M; there is no smaller variant to degrade into. The mechanism is unfixed upstream, but on the current default lineup it has nothing to break. The no-field (inherit) convention is retained as defense-in-depth and for legacy-200K-variant models (Haiku 4.5 still ships 200K).
 
 A follow-up SPEC (conditional) MAY re-enable per-agent pinning only when #36670 is closed-with-fixed AND a CHANGELOG confirms Team `[1m]` inheritance for explicit `model:` teammates — though for Sonnet 5 / Opus 5.5 the practical case for that re-enablement has dissolved.
 
@@ -85,12 +86,12 @@ Re-verified against the CC 2.1.197 Sonnet 5 release + `code.claude.com/docs/en/m
 
 - On the Anthropic API, `sonnet` resolves to **Sonnet 5** with a **native 1M context window — there is no 200K variant, no `[1m]` suffix to select, and no usage credits required on any plan** (sessions auto-compact ~967K). A frontmatter `model: sonnet` pin therefore no longer trips the sonnet-side `[1m]` credit-mismatch on the Anthropic API — the credit entitlement it used to require does not exist for Sonnet 5.
 - The `[1m]` doctrine still binds two surviving paths: (1) the **opus`[1m]`** path (Opus variants still expose `[1m]` selection), and (2) the **gateway / older-model** path — behind an LLM gateway (`ANTHROPIC_BASE_URL` non-Anthropic) or with `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`, `sonnet` budgets 200K and `sonnet[1m]` selects the 1M window for Sonnet 5. The flag's blast radius widened at CC 2.1.223 — it now holds every native-1M Claude model (Opus 5.5 included) to 200K, so setting it changes the Opus-side budget too, not only the sonnet-side one.
-- **`model: inherit` remains the MoAI default regardless.** Sonnet 5's native 1M removes the sonnet-side spawn-time hazard on the Anthropic API, but per-agent `model:` pins stay deprecated (§ Inherit-by-Default Convention) — the opus`[1m]` + Team-mode paths still make `inherit` the safe choice.
+- **Inheriting remains the MoAI default regardless.** Sonnet 5's native 1M removes the sonnet-side spawn-time hazard on the Anthropic API, but per-agent `model:` pins stay deprecated (§ Inherit-by-Default Convention) — the opus`[1m]` + Team-mode paths still make inheriting the safe choice.
 - **Gap (NOT re-verified this run)**: issue #36670 (Team teammates don't inherit `[1m]` from leader) was **NOT re-checked** against CC 2.1.198 — its state is unknown; do NOT claim it closed. The Team-mode `[1m]` non-inheritance premise in § Baseline-Refill Breaker is unchanged pending a fresh issue-state observation.
 
 ## Default-Model Cost Lever (Default = sonnet, no allowlist enforcement)
 
-[ZONE:Evolvable] [HARD] The `[1m]`-safe cost lever is the **Default model** set at the settings level, NOT per-agent `model:` pins. The deployed `settings.json` template (`.claude/settings.json.tmpl`) sets ONLY:
+[ZONE:Evolvable] [HARD] The `[1m]`-safe cost lever is the **Default model** set at the settings level; MoAI assigns no per-agent model. The deployed `settings.json` template (`.claude/settings.json.tmpl`) sets ONLY:
 
 ```json
 "model": "sonnet"
@@ -103,7 +104,7 @@ The template deliberately does **NOT** set `availableModels` or `enforceAvailabl
 
 Dropping `enforceAvailableModels` resolves both at once: all Claude models (current and future) auto-appear in the picker with no maintenance, and the GLM swap is admitted without an allowlist. Only the Default-model cost lever is retained — `"model": "sonnet"` alone still routes the busy-agent cost through Sonnet by default.
 
-Why this is `[1m]`-safe: the lever operates on the **Default** model resolution at the settings level, not on per-agent explicit pins, so it does not trigger the spawn-time entitlement-inheritance failure (#45847/#51060/#36670). The cost-routing thesis (route the busy-agent cost through Sonnet, not Opus) flows through the Default; deep-reasoning exceptions use per-spawn `Agent(model: "opus")` only for the 5-10% of tasks where Opus wins (architecture, complex perf) — and even those inherit the parent `[1m]` entitlement because they are spawned without a frontmatter `model:` pin (the per-spawn `model` parameter is a runtime arg, distinct from the frontmatter field that triggers the bug).
+Why this is `[1m]`-safe: the lever operates on the **Default** model resolution at the settings level, not on per-agent explicit pins, so it does not trigger the spawn-time entitlement-inheritance failure (#45847/#51060/#36670). Subagents inherit the session model, so the Default drives their cost too; a task that needs a stronger model runs in a session started on that model.
 
 ### GLM-mode reconciliation
 
@@ -139,83 +140,13 @@ Each tier variable, and `ANTHROPIC_CUSTOM_MODEL_OPTION`, takes three companions 
 
 MoAI reads and writes none of these. They are named here, and declared in `internal/config/envkeys.go`, because that package's contract is to enumerate the `ANTHROPIC_*` namespace completely rather than only the names MoAI consumes — a contract asserted at runtime by `TestAnthropicBannedSetCoversAllNames`.
 
-## Model Policy Tiers (3-tier — high/medium/low)
+## Model Policy (main session)
 
-Model policy is set via `moai init --model-policy <tier>`. The 3-tier system is `high` / `medium` / `low`. The top tier was formerly named `max`; that name is still READ as an alias for `high` so pre-rename configs keep resolving, but it is never written back. The rename unified three vocabularies that previously disagreed — `llm.profile`, the legacy `llm.performance_tier`, and the `ModelPolicy` CLI tokens are now all `{high, medium, low}`, so the former `high -> max` projection is an identity and no migration pass is required. Under the No-Haiku policy (SPEC-AGENT-ARCH-V2-001 §D) haiku is absent from every tier; the tier governs (a) where Fable and Opus are deployed and (b) how aggressively effort is lowered. The `model_routing_profiles.{high,medium,low}` matrices in `workflow.yaml` are the Tier×Phase config SSOT, and `llm.profiles.{high,medium,low}` is the per-agent SSOT.
+The `model_policy` preference (`high` / `medium` / `low`, set with `moai profile setup` or `moai web`) supplies the main session's default effort when no `effort_level` is chosen: the launcher maps it one-to-one (`MapModelPolicyToEffort`). It assigns nothing to subagents — they inherit the session's model and effort. The superseded top-tier name `max` is still read as `high`. The former `moai init --model-policy` / `--profile` flags are accepted but have no effect beyond a deprecation warning.
 
-| Tier | Philosophy | Top-model deployment | Effort baseline |
-|------|------------|-----------------|------------------------|
-| `high` | Quality first — Opus on every reasoning and coding row | Opus on every row except manager-docs, manager-git, Explore (Sonnet); Fable 0 | `high` on plan-auditor/sync-auditor/super-advisor/mission-governor/design/lead/harness; `medium` on manager-spec/manager-develop/e2e; `low` on docs/git/Explore |
-| `medium` (default) | Same models as `high`; builder-harness and e2e step down one level | Opus on every row except manager-docs, manager-git, Explore (Sonnet); Fable 0 | `high` on plan-auditor/sync-auditor/super-advisor/mission-governor/design/lead; `medium` on manager-spec/manager-develop/harness; `low` on e2e/docs/git/Explore |
-| `low` | Cost minimum — Opus `low` still outscores Sonnet at any effort AND costs less per task | Opus retained on every agentic row; Sonnet on e2e / docs / git / Explore | `high` on super-advisor/mission-governor; `medium` on manager-spec/plan-auditor/sync-auditor/manager-develop/design/lead; `low` on harness/e2e/docs/git/Explore |
+## Harness-Agent Model Policy
 
-The per-agent cells are the `llm.profiles` matrix (13 rows — 12 agents plus `Explore` — × 3 columns = 39 cells; Go SSOT `template.DefaultProfileMatrix`). Every agent row is monotone across `high >= medium >= low`. The matrix encodes two model rules, both measured on a long-horizon coding-agent benchmark that reports score, cost per task, output tokens, and agent steps at every effort level:
-
-1. **Opus dominates Sonnet at every effort.** Opus at `low` scores higher AND costs less per task than Sonnet at any level, because Sonnet spends a multiple of the agent steps and output tokens to finish the same long-horizon task. Completion efficiency — not unit token price — drives cost, so Opus is the model for every multi-turn agentic row.
-2. **Sonnet is retained for single-shot, input-dominated, non-agentic rows** (`Explore` search, `manager-git` mechanics, plus `manager-docs` and `e2e-tester` in the `low` column), where that multi-step completion failure does not apply and the lower input price does. `manager-docs` is also Sonnet in the two upper columns, set later by operator policy as profile-invariant alongside `manager-git` and `Explore`; that policy records no further reason.
-
-`xhigh` is absent from the matrix on purpose: on Opus it scores the same as `high` at materially higher cost (measured on Opus 5), so it is strictly dominated. `max` is absent as well: no cell uses it, so `high` is the ceiling in every column.
-
-## Per-Agent Profile Resolver (model injection source)
-
-The per-agent model+effort **profile** (config `llm.profile` ∈ {high, medium, low}; the superseded `max` is read as `high`) is the runtime-arg **model** injection source the orchestrator reads at spawn time. Query it with the read-only accessor:
-
-```bash
-moai model profile          # human table
-moai model profile --json   # machine-readable
-```
-
-The `--json` form emits a single JSON **OBJECT** — the per-agent cells live under the `agents` array INSIDE it, never at the top level. A consumer that guesses a top-level array (`jq '.[0]'`, `jq 'length'`) fails with a jq type error (exit 5). Shape and correct filter (t696):
-
-```json
-{
-  "profile": "high",
-  "backend": "claude",
-  "agents": [
-    {"agent": "manager-develop", "group": "develop", "model": "opus", "effort": "medium"}
-  ]
-}
-```
-
-```bash
-moai model profile --json | jq -r '.agents[] | select(.agent == "manager-develop") | .model'  # correct
-moai model profile --json | jq '.[0]'   # WRONG — Cannot index object with number (jq exit 5)
-```
-
-The resolver maps the active profile + optional `llm.agent_overrides` to each retained agent's `{model, effort}` by agent NAME. Lookup is per-agent, not per-group: per-agent cells split two of the former groups, so the group layer no longer carries routing information and survives only as a display classification. Precedence: `agent_overrides[agent]` → active profile cell (config `llm.profiles`) → Go-default cell → `inherit`. Only agents outside the retained catalog (any user-added agent) resolve to `inherit`; `Explore` is an explicit matrix row. A pre-rename `llm.profiles` mirror still keyed by GROUP name simply misses on lookup and falls through to the Go default — a stale mirror degrades, it does not break.
-
-The resolved **model** is the value the orchestrator injects as a per-spawn `Agent(model: <alias>)` runtime arg — `[1m]`-safe and distinct from the frontmatter `model:` field (see § Inherit-by-Default Convention), so a profile change never re-introduces the concrete-frontmatter-`model:` spawn-failure risk. Agent `.md` frontmatter stays at `model: inherit` (the one exception, `manager-git`, pins `model: sonnet`, matching its matrix row); no init / update / web save mutates it.
-
-The resolved **effort** reaches an agent through a **path-dependent channel**, and the channel determines which value is actually effective:
-
-| Channel | Orchestration path | `model` | `effort` | Effective effort source |
-|---------|--------------------|---------|----------|-------------------------|
-| `Agent` tool | sub-agent delegation (the standard path) | runtime arg (`sonnet\|opus\|haiku\|fable`) | **no parameter exists** | the agent file's frontmatter `effort:` |
-| `Workflow` `agent()` | dynamic-workflow | `opts.model` | `opts.effort` (structured, `{low,medium,high,xhigh,max}`) | the injected `opts.effort` |
-
-Because the `Agent` tool has no `effort` parameter, the shipped agent frontmatter `effort:` is the load-bearing value on the standard path — it is not merely documentation. The template tree pins each agent's frontmatter to the **medium** column so a deployment's baseline matches the default profile; a non-medium profile is delivered by the frontmatter-rewrite path, never by a per-spawn arg. The GLM effort overlay (`CollapseClaudeEffortToGLM` + the `manager-develop` coding-max override) consumes the same value under a GLM backend.
-
-**`Explore` is the one exception**: it is an Anthropic built-in with **no agent file on disk**, so neither channel above can carry its effort — there is no frontmatter to pin and no `effort` parameter to pass. Its effort is therefore **stated at call time** in the spawn prompt alongside the search-breadth qualifier, and is never persisted. The default is `low` (a read-only breadth-first sweep, the vendor-documented `low` use case for subagents); raise it to `medium` in the same prompt when the request asks for a `very thorough` sweep, so breadth and effort move together. The matrix row for `Explore` records `sonnet / low` as the call-time default, not as an injected value.
-
-## Harness-Agent Model Policy (model-uniform, effort-differentiated)
-
-Generated harness specialists (`/moai:harness`, `.claude/agents/harness/`) sit OUTSIDE the retained catalog, so `ResolveAgentModelEffort` returns `inherit` for them and no per-spawn injection applies — their frontmatter is the only channel. They are therefore assigned at generation time, and they are **model-uniform on purpose**: every generated harness agent is pinned to `opus`, and the only axis that differentiates them is `effort`. The rationale is that a harness specialist is a persistent, user-owned worker whose distinction is reasoning DEPTH rather than model tier.
-
-Pinning is safe on the current lineup: on the Anthropic API, Fable 5, Opus 5.5, and Sonnet 5 all carry a 1M context window, so an explicit pin no longer loses the 1M entitlement that the inherit-by-default convention (§ Inherit-by-Default Convention) exists to preserve. Of the current-generation tiers, only Haiku 4.5 remains 200K, and haiku is retired from MoAI routing. A session that runs at 200K for another reason — a provider serving a 200K window, or `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` — has no 1M entitlement for a pin to lose.
-
-The effort comes from `llm.harness_agents[<profile>][<purpose class>].effort`, whose 7 purpose classes share the `workflow_agents` taxonomy vocabulary in `workflow.yaml`. Each class inherits the effort of one profile-matrix row:
-
-| purpose class | derives effort from | typical harness role |
-|---------------|---------------------|----------------------|
-| `read-only-extract` | `Explore` | search / reconnaissance worker |
-| `mechanical-transform` | `manager-git` | translation, format conversion, release mechanics |
-| `synthesize` | `manager-docs` | content authoring |
-| `research` | `plan-auditor` | upstream tracking, investigation |
-| `verify-judge` | `sync-auditor` | quality / audit specialist |
-| `implement` | `manager-develop` | code, hook, CI specialist |
-| `design-architecture` | `manager-design` | structure / navigation curation |
-
-An unrecognized class falls back to `implement`. Because harness agents are **user-owned** (`moai update` never modifies them), assignment happens only at generation time: a later `llm.profile` change does NOT retroactively rewrite an existing harness agent's frontmatter. Re-alignment is an explicit user action (`/moai:harness` re-run or a manual edit).
+Generated harness specialists (`/moai:harness`, `.claude/agents/harness/`) follow the same rule as every MoAI agent: their definitions declare no `model:` and no `effort:`, and a harness v4 manifest may omit a specialist's `model` / `effort` (an existing manifest that names them still validates). Harness agents are user-owned — `moai update` never rewrites them — so a file generated before this rule keeps its fields until the user edits it.
 
 ## Legacy CG Configuration
 
@@ -233,18 +164,16 @@ Claude models support five effort levels that control reasoning depth. The set i
 
 The vendor guidance that `low` and `medium` are stronger than on earlier Opus models was measured on Opus 5 and is not re-stated for Opus 5.5; treat `low` and `medium` as the primary control for token cost and response time wherever quality holds, and re-sweep effort settings carried over from an earlier model generation rather than reusing them. On Opus 5.5, thinking cannot be disabled at any effort level (adaptive thinking is always on); MoAI never disables thinking, so this constraint does not bind any MoAI path.
 
-The per-agent effort defaults across the 3-tier profile system (high/medium/low) are the `llm.profiles` matrix (39 cells; Go SSOT `template.DefaultProfileMatrix`). The `model_routing_profiles` cells in `workflow.yaml` carry the `{model, effort}` pair for each Tier-Phase × perfTier combination. No cell uses `max` or `xhigh`; `xhigh` on Opus scores the same as `high` at materially higher cost (measured on Opus 5), so `high` is the matrix ceiling.
-
-The `medium` column is not cost-minimal: review (`plan-auditor`, `sync-auditor`) takes `high`, authoring (`manager-spec`, `manager-develop`) takes `medium`, and sync (`manager-docs`) takes `low`. The column departs from the `medium` knee of the Opus cost/score curve in both directions, so it is not the benchmark-derived cost floor and must not be re-derived back onto that anchor. Under a GLM backend these per-agent cells are not what reaches the wire: MoAI's GLM overlay collapses every effort above `low` (`medium`, `high`, `xhigh`, `max`) onto `reasoning_effort=max` and keeps only `low` at the low level (on `glm-5.3-flash`, which accepts `max` only, `low` maps to `max` too), and the delivery channel is session-global — the launcher injects one `ANTHROPIC_REASONING_EFFORT` per session, derived from `SessionGLMReasoningState()`, never a per-agent value. The cells record per-agent intent and take effect on Claude-backed sessions, where agent frontmatter carries the effort.
+Effort is a session setting: subagents inherit the main session's effort. Under a GLM backend, MoAI's GLM overlay collapses every effort above `low` (`medium`, `high`, `xhigh`, `max`) onto `reasoning_effort=max` and keeps only `low` at the low level (on `glm-5.3-flash`, which accepts `max` only, `low` maps to `max` too), and the delivery channel is session-global — the launcher injects one `ANTHROPIC_REASONING_EFFORT` per session, derived from `SessionGLMReasoningState()`.
 
 Note: `ultrathink` is a Claude Code one-turn keyword that requests deeper reasoning for that prompt; MoAI standardizes it to `effort: xhigh` (the coding/agentic level above) for that turn.
 
 ## Rules
 
 - Agent `model` field must be one of: inherit, opus, sonnet, fable, haiku
-- [ZONE:Evolvable] [HARD] New agent definitions SHOULD use `model: inherit` (default); explicit `sonnet`/`opus` are deprecated due to Claude Code Issue #45847/#51060 (see Inherit-by-Default Convention)
-- `model: haiku` is retired from MoAI agent routing per the No-Haiku policy (SPEC-AGENT-ARCH-V2-001 §D); the HaikuResidualRule lint enforces 0 haiku references in agent frontmatter, claude_models, model_routing_profiles, workflow_agents, and the retired Agent Teams `role_profiles` surface (historical configs). Former haiku slots use `sonnet` with `effort: low`.
+- [ZONE:Evolvable] [HARD] New MoAI agent definitions omit `model:` and `effort:` (subagents inherit the main session's); explicit `sonnet`/`opus` pins are deprecated due to Claude Code Issue #45847/#51060 (see Inherit-by-Default Convention)
+- `model: haiku` is retired from MoAI agent routing per the No-Haiku policy (SPEC-AGENT-ARCH-V2-001 §D); the HaikuResidualRule lint enforces 0 haiku references in agent definitions and the `claude_models` block.
 - GLM is configured via env vars in settings.json, never via model field
-- Model policy tier (high/medium/low) is a CLI concern, not an agent definition concern
+- The model policy (high/medium/low) is a main-session preference set with `moai profile setup`, not an agent definition concern
 - Legacy CG configuration never selects a runtime provider or bypasses independent review
 - Old model versions are auto-migrated: do not pin to specific version IDs

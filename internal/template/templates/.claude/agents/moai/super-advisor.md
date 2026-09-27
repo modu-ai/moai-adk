@@ -38,13 +38,12 @@ question is "what should I do here?", route to super-advisor.
 
 ## `[1m]`-safe Wiring
 
-The frontmatter pins `model: inherit`, NOT `model: opus`. The per-spawn runtime-arg
-channel (per `.claude/rules/moai/development/model-policy.md` § Inherit-by-Default) is
-the wiring mechanism — the orchestrator passes the tier-resolved model (`opus` at
-max/medium, `sonnet` at low) as a spawn-time override. This sidesteps the Anthropic
-`[1m]` entitlement inheritance bug (#45847 / #51060 / #36670): a subagent that pins a
-concrete model ID fails to inherit the parent session's `[1m]` entitlement and fails
-to spawn. The `inherit` alias preserves entitlement flow.
+The frontmatter declares no `model:` and no `effort:`, and the orchestrator passes
+neither on the spawn (per `.claude/rules/moai/development/model-policy.md` §
+Inherit-by-Default), so super-advisor runs on the main session's model and effort.
+This sidesteps the Anthropic `[1m]` entitlement inheritance bug (#45847 / #51060 /
+#36670): a subagent that pins a concrete model ID fails to inherit the parent
+session's `[1m]` entitlement and fails to spawn.
 
 ## Escalation Doctrine (E1-E4)
 
@@ -61,7 +60,7 @@ conditions are also documented in
 | **E4 — loop-deadlock** | `/moai loop` or `/moai fix` ceiling-exit per the loop ceiling-exit verdict contract | Auto-fix iteration count exhausted without green CI |
 
 **On trigger**: the orchestrator spawns `Agent(general-purpose)` with the super-advisor
-role profile (Opus + xhigh at max/medium; Sonnet + xhigh at low), receives a non-binding
+role profile, receives a non-binding
 prescription, then either re-seeds the executor with the prescription or escalates to the
 user via `AskUserQuestion`. The prescription is **advisory** — the orchestrator remains the
 decision owner and may override it with justification.
@@ -70,12 +69,9 @@ decision owner and may override it with justification.
 
 super-advisor retains provider-aware advice without replacing an independent audit:
 
-- **GLM carve-out**: under `moai glm`, super-advisor's
-  Opus injection does NOT apply (the session runs on GLM models). The spawn falls back to
-  the session's effective GLM reasoning model (glm-5.3) with the resolved effort preserved
-  (the profile-matrix row, not a fixed `xhigh`).
-  This is the natural consequence of `model: inherit` — the runtime resolves the session
-  model.
+- **GLM carve-out**: under `moai glm`, super-advisor runs on the session's GLM
+  reasoning model (glm-5.3) with the session's effort — the natural consequence of
+  inheriting: the runtime resolves the session model.
 - **Independent advice**: the orchestrator may consult super-advisor about uncertain results. This advisory consultation does not replace sync-auditor evaluation or reactivate retired CG roles.
 
 ## Output Contract

@@ -40,7 +40,7 @@ The Builder is **orchestrator-side logic**. It is NOT a dynamic-workflow script 
 
 - Manifest schema: the companion design document's manifest-schema section (8 top-level fields, specialist shape, Sprint Contract).
 - Runner Workflow contract: the companion design document's Runner section (reads `manifest.json`, dispatches per `specialist.primitive`).
-- Dynamic-workflow primitive + determinism + purpose-driven effort taxonomy: `.claude/rules/moai/workflow/dynamic-workflows.md`.
+- Dynamic-workflow primitive + determinism: `.claude/rules/moai/workflow/dynamic-workflows.md`.
 - Orchestration mode selection (parallel multi-spawn / sequential single-spawn): `.claude/rules/moai/workflow/orchestration-mode-selection.md`.
 - AskUserQuestion channel monopoly + preload: `.claude/rules/moai/core/askuser-protocol.md`.
 - Orchestrator-subagent boundary: `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary.
@@ -72,9 +72,9 @@ ANALYZE  →  PLAN (approval gate)  →  GENERATE  →  ACTIVATE (A/B optional)
 
 ### Phase 1 — ANALYZE [orchestrator parallel Agent(Explore) fan-out, read-only, main tree]
 
-**Primitive**: orchestrator-direct parallel `Agent()` fan-out — one `Agent(agentType: "Explore", effort: "low")` per source surface (orchestration-mode parallel multi-spawn).
+**Primitive**: orchestrator-direct parallel `Agent()` fan-out — one `Agent(agentType: "Explore")` per source surface (orchestration-mode parallel multi-spawn).
 **Isolation**: none (read-only — no write conflicts are possible).
-**Purpose** (per the effort taxonomy): read-only-extract.
+**Purpose**: read-only-extract.
 
 Fan out N Explore sub-agents across the codebase + docs surfaces relevant to the confirmed domain:
 
@@ -90,25 +90,24 @@ Each Explore agent returns a structured markdown summary. The orchestrator recei
 
 **External-research sub-step.** Alongside the codebase fan-out, ANALYZE runs an external-research sub-step covering three source classes: official Claude Code documentation (WebFetch on the official docs pages; WebSearch for targeted queries with URL verification), domain best practices (WebSearch with URL verification per the web-search protocol), and library documentation via WebSearch / WebFetch against the library's official docs site (search to find the authoritative URL, then fetch the relevant page). The research findings join the domain profile and task-pattern inventory as PLAN-aggregate input — they feed the PLAN sub-agent's pattern selection, specialist role definitions, and companion-skill content. Degradation is graceful per the MCP Fallback Strategy (`.claude/rules/moai/core/agent-common-protocol.md` § MCP Fallback Strategy): detect unavailability, inform, fall back to established best-practice patterns where possible, then continue — a harness build never blocks on research availability. While the session is GLM-backed, web search / web fetch route through the z.ai MCP tools per the routing table in `.claude/rules/moai/core/glm-web-tooling.md`. Where the confirmed domain is purely internal (no external libraries or external docs are relevant), the orchestrator MAY skip the research sub-step; the skip is recorded with rationale, consistent with the load-bearing-minimum collapse policy below.
 
-**Effort discipline.** Each Explore agent carries `effort: "low"` (read-only-extract purpose). Raising effort on the extraction step multiplies token cost without improving the mechanical baseline; the architecture-insight value comes from the prompt, not from raising effort. Omitting `effort` is a cost leak — it inherits the session default.
+**Model and effort.** Each Explore agent is spawned without `model` or `effort` and inherits the main session's (`.claude/rules/moai/development/model-policy.md`); the architecture-insight value comes from the prompt.
 
 **Load-bearing minimum.** If the domain is already well-understood from the Discovery profile (e.g., a single-skill harness with a narrow, well-bounded scope), the orchestrator MAY collapse ANALYZE into a single Explore agent or skip the per-package fan-out. The collapse/skip is recorded with rationale.
 
-### Phase 2 — PLAN [orchestrator spawns single Agent(opus, xhigh); AskUserQuestion gate]
+### Phase 2 — PLAN [orchestrator spawns single Agent(); AskUserQuestion gate]
 
-**Primitive**: orchestrator-direct — the orchestrator spawns a single `Agent(model: "opus", effort: "xhigh")` sub-agent (orchestration-mode sequential single-spawn for the deep-reasoning step).
+**Primitive**: orchestrator-direct — the orchestrator spawns a single `Agent()` sub-agent (orchestration-mode sequential single-spawn for the deep-reasoning step).
 **Isolation**: none (single agent — no parallel writes).
-**Purpose**: design-architecture (per the effort taxonomy).
+**Purpose**: design-architecture.
 
-One opus-xhigh sub-agent reasons over the ANALYZE aggregate (domain profile + task-pattern inventory) and:
+One sub-agent reasons over the ANALYZE aggregate (domain profile + task-pattern inventory) and:
 
 1. **Selects/combines patterns** from the 6-pattern catalog (§ Pattern Catalog below) based on task signals: parallelism available, adversarial-verification need, supervision depth, expertise diversity.
 2. **Defines specialist roles** — one specialist role per distinct responsibility the harness needs.
 3. **Maps each specialist to an execution primitive** — `sub-agent` / `dynamic-workflow` / `worktree` / `/moai goal` / `adversarial-fan-out` (§ Primitive Mapping below).
 4. **Decides per-specialist `isolation`** — `worktree` only for conflict-prone parallel generation targeting overlapping paths; `none` otherwise (§ Worktree Policy below).
-5. **Assigns per-specialist `effort` + `model`** per the purpose-driven effort taxonomy (read-only-extract = haiku/low; design-architecture = opus/xhigh; etc.).
-6. **Drafts the Sprint Contract** — the graded dimensions + thresholds the harness's evaluator (if invoked) will score against.
-7. **Emits a draft manifest** — the 8 top-level fields populated, ready for validation against the canonical schema.
+5. **Drafts the Sprint Contract** — the graded dimensions + thresholds the harness's evaluator (if invoked) will score against.
+6. **Emits a draft manifest** — the 8 top-level fields populated, ready for validation against the canonical schema.
 
 **Specialist-count guardrail (3-7 maximum).** PLAN MUST cap the specialist roster at a **3-7-specialists-maximum** — generate FEW trigger-rich specialists, because over-generation degrades Claude's automatic sub-agent delegation. PLAN MUST justify each specialist as a **recurring same-instruction** worker (a role the harness will dispatch repeatedly with the same instruction shape); when a candidate specialist is a one-off or does not recur, PLAN MUST **emit a companion skill instead** of an agent. Exactly 3 or exactly 7 specialists is within the guardrail; ≤2 or ≥8 triggers this justify-each-or-emit-skill path. This guardrail is a HARD cap, not an unbounded suggestion.
 
@@ -118,7 +117,7 @@ The gate presents, at minimum:
 
 - The derived harness `<name>` + domain.
 - The selected patterns (from the 6-pattern catalog) with a one-line rationale each.
-- The specialist roster — each specialist's role, primitive, isolation, effort, model.
+- The specialist roster — each specialist's role, primitive, isolation.
 - The Sprint Contract dimensions + thresholds.
 - Options: **Proceed to GENERATE (Recommended)** / **Revise manifest** (return to PLAN with refinement) / **Abort**.
 
@@ -193,7 +192,7 @@ Each specialist in the manifest has a `primitive` field set to exactly one of 5 
 
 | Primitive | Runner dispatches as | When PLAN assigns it |
 |-----------|---------------------|----------------------|
-| `sub-agent` | `Agent(role, effort, model)` — ordinary sub-agent | Default for most single-task specialists |
+| `sub-agent` | `Agent(role)` — ordinary sub-agent | Default for most single-task specialists |
 | `dynamic-workflow` | dynamic-workflow `agent()` call | High-volume parallel independent work (Fan-out/Fan-in, Expert Pool) |
 | `worktree` | `Agent(role, isolation:"worktree", ...)` | Conflict-prone parallel generation targeting overlapping paths |
 | `/moai goal` | `/moai goal` autonomous-convergence arming | Long-running convergence on a verifiable end-state |
@@ -252,7 +251,7 @@ The GENERATE phase emits 5 base artifact types PLUS a **mandatory** `hns-<name>-
 
 - YAML frontmatter: `name`, `description`, `tools` (the tools the specialist needs).
 - Body: the specialist's responsibility, its inputs/outputs, its quality bar, and any domain-specific guidance.
-- The specialist's `effort` / `model` / `isolation` / `primitive` live in the manifest (NOT duplicated in the agent frontmatter) — the manifest is the SSOT for dispatch, the agent file is the SSOT for the specialist's reasoning.
+- The specialist's `isolation` / `primitive` live in the manifest (NOT duplicated in the agent frontmatter) — the manifest is the SSOT for dispatch, the agent file is the SSOT for the specialist's reasoning. Neither names a `model` or `effort`: specialists inherit the main session's.
 - **Mandatory injected rule blocks**: every generated specialist agent body carries the two short rule blocks below, injected verbatim — a tool-priority decision tree + a Skill-First execution rule. Each block stays short by contract (≤ 8 lines) so generated agents are not bloated:
 
 ```markdown
@@ -286,7 +285,7 @@ Before any file/code work, read the relevant companion SKILL.md.
 - `domain` — short human-readable domain description.
 - `source_request` — the original natural-language request verbatim (carried from the entry workflow's confirmed profile).
 - `patterns` — array of pattern names from the 6-pattern catalog (≥1 entry).
-- `specialists` — non-empty array of specialist objects, each with `role`, `primitive`, `isolation`, `effort`, `model`.
+- `specialists` — non-empty array of specialist objects, each with `role`, `primitive`, `isolation` (the schema still accepts optional `model` / `effort`; the Builder writes neither).
 - `sprint_contract` — object with `dimensions` (array) and `thresholds` (map).
 - `entry_command` — the `/harness:<name>` string.
 - `runner_workflow` — the `hns-<name>-run.js` filename.
@@ -327,7 +326,7 @@ The manifest is validated against the canonical schema before GENERATE completes
 
 The Builder phases are orchestrator-direct. The skill body DESCRIBES that the orchestrator calls `AskUserQuestion` at the PLAN→GENERATE gate. The skill body itself MUST NOT contain an `AskUserQuestion(...)` invocation — skills are not the orchestrator. The approval gate is orchestrator behavior documented in prose here; the orchestrator implements it at runtime.
 
-Subagents reachable from the Builder (Explore agents in ANALYZE, the opus-xhigh agent in PLAN, specialist agents in GENERATE) MUST NOT invoke `AskUserQuestion` — they return structured blocker reports and the orchestrator re-runs the round, per the asymmetric boundary in `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary.
+Subagents reachable from the Builder (Explore agents in ANALYZE, the PLAN sub-agent, specialist agents in GENERATE) MUST NOT invoke `AskUserQuestion` — they return structured blocker reports and the orchestrator re-runs the round, per the asymmetric boundary in `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary.
 
 ## Cross-references
 
