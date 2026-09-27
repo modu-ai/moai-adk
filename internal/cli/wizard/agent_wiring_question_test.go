@@ -157,7 +157,6 @@ func TestReconfigureQuestions_NoHarnessLeak(t *testing.T) {
 		"conversation_language",
 		"user_name",
 		"project_name",
-		"model_policy",
 		"report_format",
 		"git_mode",
 		"git_provider",

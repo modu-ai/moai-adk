@@ -72,8 +72,10 @@ shift+tab 戻る • enter 次へ
 ┃ ▸ opus[1m] (Opus 5.5 + 1Mコンテキスト、推奨)                                  
 ┃   sonnet[1m] (Sonnet 5 + 1Mコンテキスト)                                      
 ┃   haiku (Haiku 4.5、最速)                                                     
-  エージェントモデルポリシー                                                    
-  各エージェントに最適なモデルを割り当て、トークン消費を制御します。            
+  セッションモデルポリシー                                                      
+  推論強度を個別に選ばなかったとき、このプロファイルで起動する Claude           
+  セッションの既定の推論強度を決めます。サブエージェントはセッションのモデルと推
+  論強度をそのまま引き継ぎます。                                                
                                                                                 
   ▸ High - Opus 5.5 (high~medium) + Sonnet (low, docs/single-shot rows)         
     Medium - Opus 5.5 (high~low) + Sonnet (low, docs/single-shot rows)          
@@ -81,8 +83,7 @@ shift+tab 戻る • enter 次へ
   セッション推論レベル                                                          
   このプロファイルで起動する Claude セッションの推論深度です。xhigh/max         
   は対応モデル（Opus 5.5、Sonnet 5、Opus 4.7                                    
-  以降）が必要です。エージェントごとの推論強度はエージェントモデルポリシーで決ま
-  ります。                                                                      
+  以降）が必要です。サブエージェントはこのセッションの推論強度を引き継ぎます。  
     (モデルポリシー、未設定なら Claude Code 既定値: Opus 5.5 は medium)         
     low - 最速、簡易推論                                                        
     medium - バランス (推奨)                                                    
@@ -94,7 +95,6 @@ shift+tab 戻る • enter 次へ
   ▸ 編集を自動承認 (acceptEdits) - ファイル編集を自動承認、コマンドのみ確認     
     オートモード (auto) - 分類器による自動承認。Max/Team/Enterprise/APIプラン + 
     Sonnet 5+ 必須。未対応環境では実行時エラーが発生します。                    
-    権限を確認 (default) - ファイル編集とコマンドの都度確認                     
 
 ↑ 上 • ↓ 下 • / 絞り込み • shift+tab 戻る • enter 選択
 ● ● ● ● ● ● ● ● ● ● 10 / 10

@@ -35,7 +35,6 @@ func TestInitWizardIdentityPersisted(t *testing.T) {
 			ConversationLang: "ja",
 			UserName:         "WizardName",
 			ProjectName:      "ident-proj",
-			ModelPolicy:      "high",
 			ReportFormat:     "html+md",
 			GitMode:          "manual",
 		}, nil

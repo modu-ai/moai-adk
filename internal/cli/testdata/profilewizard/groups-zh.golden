@@ -72,15 +72,16 @@ shift+tab 返回 • enter 下一步
 ┃ ▸ opus[1m] (Opus 5.5 + 1M 上下文，推荐)                                       
 ┃   sonnet[1m] (Sonnet 5 + 1M 上下文)                                           
 ┃   haiku (Haiku 4.5，最快)                                                     
-  代理模型策略                                                                  
-  通过为每个代理分配最优模型来控制token消耗。                                   
+  会话模型策略                                                                  
+  未单独选择推理强度时，决定使用此配置文件启动的 Claude                         
+  会话的默认推理强度。子代理沿用会话的模型与推理强度。                          
                                                                                 
   ▸ High - Opus 5.5 (high~medium) + Sonnet (low, docs/single-shot rows)         
     Medium - Opus 5.5 (high~low) + Sonnet (low, docs/single-shot rows)          
     Low - Opus 5.5 (high~low) + Sonnet (low, docs/e2e/single-shot rows)         
   会话推理强度                                                                  
   使用此配置文件启动的 Claude 会话的推理深度。xhigh/max 需要支持它们的模型（Opus
-  5.5、Sonnet 5、Opus 4.7 及以上）。各代理的推理强度由代理模型策略决定。        
+  5.5、Sonnet 5、Opus 4.7 及以上）。子代理沿用此会话的推理强度。                
     (模型策略，未设置则用 Claude Code 默认值: Opus 5.5 为 medium)               
     low - 最快，简略推理                                                        
     medium - 均衡 (推荐)                                                        
@@ -94,7 +95,6 @@ shift+tab 返回 • enter 下一步
     Sonnet 5+。不支持时会产生运行时错误。                                       
     请求权限 (default) - 每次文件编辑和命令都需确认                             
     计划模式 (plan) - 只读探索和规划                                            
-    跳过权限 (bypassPermissions) - 跳过所有检查（仅限隔离环境）                 
 
 ↑ 上 • ↓ 下 • / 筛选 • shift+tab 返回 • enter 选择
 ● ● ● ● ● ● ● ● ● ● 10 / 10

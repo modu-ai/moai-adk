@@ -98,19 +98,15 @@ func init() {
 	initCmd.Flags().Bool("enforce-quality", true, "Enforce quality gates (default: true)")
 	initCmd.Flags().Bool("enable-design", true, "Enable design workflow (default: true)")
 
-	// SPEC-AGENT-ARCH-V2-001 M3c (REQ-AA2-010): No-Haiku 3-tier performance
-	// tier flag. New canonical name --model-policy max|medium|low; legacy
-	// --high/--medium/--low accepted as deprecated aliases (one-cycle, plan.md D4).
-	initCmd.Flags().String("model-policy", "", "Performance tier: high, medium, or low (legacy max accepted as an alias of high; persists to llm.yaml performance_tier)")
-	initCmd.Flags().Bool("high", false, "Deprecated alias for --model-policy max (one-cycle backward compat)")
-	initCmd.Flags().Bool("medium-alias", false, "Deprecated alias for --model-policy medium (one-cycle backward compat)")
-	initCmd.Flags().Bool("low", false, "Deprecated alias for --model-policy low (one-cycle backward compat)")
-
-	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015): per-agent model+effort profile
-	// selection. Persists to llm.profile; closed-set validated {high, medium, low}
-	// with the superseded top-column name max accepted as a read-time alias.
-	// Takes precedence over the wizard answer. Supersedes the retired --plan-type.
-	initCmd.Flags().String("profile", "", "Model+effort profile: high, medium, or low (legacy max accepted as an alias of high; persists to llm.yaml profile)")
+	// Retired per-agent model flags (SPEC-AGENT-MODEL-INHERIT-001 D10/D13).
+	// Subagents inherit the main session's model and effort, so these flags
+	// are accepted for script compatibility, print a deprecation warning, and
+	// have no effect. The main-session policy lives in `moai profile setup`.
+	initCmd.Flags().String("model-policy", "", deprecatedAgentModelFlagUsage)
+	initCmd.Flags().Bool("high", false, deprecatedAgentModelFlagUsage)
+	initCmd.Flags().Bool("medium-alias", false, deprecatedAgentModelFlagUsage)
+	initCmd.Flags().Bool("low", false, deprecatedAgentModelFlagUsage)
+	initCmd.Flags().String("profile", "", deprecatedAgentModelFlagUsage)
 
 	// SPEC-WT-DOC-001 workflow toggle flags. Each ships default-off and uses an
 	// opt-in tracker (see applyWorkflowBranchGuardFlags) so a flag-absent init
@@ -354,22 +350,9 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// SPEC-AGENT-ARCH-V2-001 M3c (REQ-AA2-010): validate --model-policy enum.
-	// Invalid value exits non-zero with a stderr usage error naming the 3-enum.
-	// Shares config.IsValidProfile with --profile below: performance_tier and
-	// profile are the same axis, so one validator keeps the two flags from
-	// drifting apart on the superseded max -> high rename.
-	modelPolicy := getStringFlag(cmd, "model-policy")
-	if modelPolicy != "" && !config.IsValidProfile(modelPolicy) {
-		return fmt.Errorf("invalid --model-policy value %q: must be one of: high, medium, low", modelPolicy)
-	}
-
-	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015): validate --profile enum.
-	// Invalid value exits non-zero with a usage error naming the closed set.
-	profileFlag := getStringFlag(cmd, "profile")
-	if profileFlag != "" && !config.IsValidProfile(profileFlag) {
-		return fmt.Errorf("invalid --profile value %q: must be one of: high, medium, low", profileFlag)
-	}
+	// Retired per-agent model flags: any value is accepted and only warned
+	// about (SPEC-AGENT-MODEL-INHERIT-001 D10/D13).
+	warnDeprecatedAgentModelFlags(cmd, "profile", "model-policy", "high", "medium-alias", "low")
 
 	// F3 git-provider identity validation (init-path parity with the
 	// reconfigure path's validateWizardInput). Reuses the in-package helpers
@@ -412,27 +395,6 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	}
 
 	return nil
-}
-
-// resolveModelPolicy resolves the effective performance tier from the
-// --model-policy flag and its legacy aliases (--high/--medium-alias/--low).
-// The new canonical flag takes precedence; legacy aliases map high→max,
-// medium→medium, low→low (plan.md D4, one-cycle backward compat). Returns
-// "" when no model-policy flag was set.
-func resolveModelPolicy(cmd *cobra.Command) string {
-	if mp := getStringFlag(cmd, "model-policy"); mp != "" {
-		return mp
-	}
-	if getBoolFlag(cmd, "high") {
-		return "max"
-	}
-	if getBoolFlag(cmd, "medium-alias") {
-		return "medium"
-	}
-	if getBoolFlag(cmd, "low") {
-		return "low"
-	}
-	return ""
 }
 
 // @MX:NOTE: [AUTO] CATALOG-002 REQ-012/013/EC3 — single decision point for slim/full opt-out. Narrow env matching: only "1" exact or case-insensitive "true".
@@ -565,10 +527,6 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		GitLabInstanceURL: getStringFlag(cmd, "gitlab-instance-url"),
 		NonInteractive:    nonInteractive,
 		Force:             getBoolFlag(cmd, "force"),
-		// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015/016): --profile flag value
-		// (validated in validateInitFlags). The wizard fills opts.Profile only when
-		// the flag is absent, so the flag takes precedence over the wizard answer.
-		Profile: getStringFlag(cmd, "profile"),
 		// Page-3 non-interactive overrides — defaults match wizard defaults (REQ-IWE-008).
 		// The InitOptions mode field is gone (C33): the Page-3 writes are
 		// unconditional now, so there is no mode to carry into the initializer.
@@ -979,39 +937,6 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		p.Warn("Failed to persist the Jev opt-in: %v", err)
 	}
 
-	// SPEC-AGENT-ARCH-V2-001 M3c (REQ-AA2-010): persist the resolved
-	// performance tier to llm.yaml. CLI --model-policy takes precedence over
-	// the wizard's ModelPolicy; both resolve to one of {high, medium, low}.
-	perfTier := resolveModelPolicy(cmd)
-	if perfTier == "" && opts.ModelPolicy != "" {
-		perfTier = opts.ModelPolicy
-	}
-	if perfTier != "" && template.IsValidPerformanceTier(perfTier) {
-		if err := template.ApplyPerformanceTier(opts.ProjectRoot, perfTier); err != nil {
-			p.Warn("Failed to apply performance tier: %v", err)
-		}
-	}
-
-	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-016): persist the resolved per-agent
-	// profile to llm.profile. Precedence: the --profile flag (opts.Profile, already
-	// validated to {high, medium, low}), else the resolved model-policy tier
-	// (perfTier / opts.ModelPolicy). NormalizeToTier is total (high→max, ""→medium),
-	// so the wizard's legacy {high, medium, low} answer maps correctly.
-	{
-		profile := opts.Profile
-		if profile == "" {
-			profile = perfTier
-		}
-		if profile == "" {
-			profile = opts.ModelPolicy
-		}
-		if resolved := template.NormalizeToTier(profile); resolved != "" {
-			if err := template.ApplyProfile(opts.ProjectRoot, resolved); err != nil {
-				p.Warn("Failed to apply profile: %v", err)
-			}
-		}
-	}
-
 	// SPEC-INIT-HARNESS-001 (REQ-IH-002): persist the RESOLVED harness value to
 	// llm.harness on every init run — all three closed-set values INCLUDING the
 	// claude default. agentWiringSelection is already the single resolution
@@ -1091,7 +1016,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	flushUpdateNotice(p)
 
 	// card t1277: every post-deploy rewrite above (WritePhase1Configs patching
-	// lsp/quality/design, ApplyProfile/ApplyPerformanceTier/ApplyHarness
+	// lsp/quality/design, ApplyHarness
 	// rewriting llm.yaml) happens AFTER the deploy tracked the rendered
 	// sections, so the manifest saves the pre-answer hashes and the next
 	// init --force reads the drifted files as user edits. Re-record the

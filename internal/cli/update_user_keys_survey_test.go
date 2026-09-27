@@ -133,7 +133,6 @@ func initUserOwnedKeysProject(t *testing.T) string {
 		ConversationLang:  "ko",
 		UserName:          "surveyor",
 		DevelopmentMode:   "ddd",
-		ModelPolicy:       "low",
 		ReportFormat:      "md",
 		GitMode:           "team",
 		GitProvider:       "gitlab",
