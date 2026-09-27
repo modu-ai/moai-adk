@@ -1,0 +1,15 @@
+dest	size_live	size_tmpl
+core/agent-common-protocol-reference.md	38639	38606
+core/askuser-protocol-reference.md	21080	21080
+core/moai-constitution-detail.md	7644	7499
+core/moai-mcp-tools-catalogue.md	18396	18396
+core/native-idiom-and-register-detail.md	4433	4433
+core/verification-claim-integrity-detail.md	21357	21293
+workflow/cache-aware-execution-reference.md	5905	5880
+workflow/context-window-management-detail.md	11742	11742
+workflow/cross-session-messaging-detail.md	19006	18945
+workflow/goal-directive-detail.md	21259	21259
+workflow/kanban-dispatch-mechanics.md	5224	5224
+workflow/main-checkout-branch-guard-detail.md	12046	11638
+workflow/session-handoff-format.md	5266	5266
+workflow/skill-routing-detail.md	2201	2201

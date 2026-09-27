@@ -8,3 +8,20 @@ gofmt -l internal/cli/init_headroom_export_test.go   # empty
 go vet ./internal/cli/ > $SCRATCH/vet.txt 2>&1   # exit 0
 golangci-lint run ./internal/cli/... > $SCRATCH/lint-run.txt 2>&1   # exit 0, "0 issues."
 sed <scrub $SCRATCH/$TMPDIR> $SCRATCH/red.txt > .moai/reports/t1226/harness-red.txt
+git add internal/cli/init_headroom_export_test.go ; git add -f .moai/reports/t1226/harness-red.txt .moai/reports/t1226/commands.log ; git commit -F $SCRATCH/msg1.txt   # -> 05d79c8b2
+unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_DISTRIBUTE_ALL && go test ./internal/cli/ -run '^TestHeadroomInitSurfaceExport$' -count=1 -v -args -headroom-export=$SCRATCH/init-surface > $SCRATCH/green.txt 2>&1   # GREEN at 05d79c8b2, exit 0
+rm -rf $SCRATCH/live ; mkdir -p $SCRATCH/live ; git archive 05d79c8b27b1aacfc56946672e5187b0fcabf96e CLAUDE.md AGENTS.md .moai/config/sections .claude/rules/moai | tar -x -C $SCRATCH/live
+(echo "harness_head = 05d79c8b27b1aacfc56946672e5187b0fcabf96e"; sed <scrub> $SCRATCH/green.txt) > .moai/reports/t1226/harness-run.txt ; shasum -a 256 internal/cli/init_headroom_export_test.go
+for s in init live: (cd <surface> && xargs wc -m < count-set-$s.txt) ; (cd <surface> && grep '\.md$' count-set-$s.txt | xargs grep -hE '\[HARD\]|MUST|shall ' | sed trim | sort | shasum -a 256)
+mkdir -p $SCRATCH/orig ; git archive 172ef22eb CLAUDE.md AGENTS.md .claude/rules/moai | tar -x -C $SCRATCH/orig
+(cd $SCRATCH/orig && python3 .moai/reports/t1226/sec.py 3) > .moai/reports/t1226/sec-172ef22eb.txt   # exit 0
+python3 .moai/reports/t1226/candidates.py --keys --paths .moai/reports/t1226/count-set-$s.txt <surface>   # s = init, live
+git grep -n -E 'CLAUDE\.md.{0,4}§ ?(3|4|11|12)([^0-9]|$)' -- <excludes> > .moai/reports/t1226/evidence/citations-claude.txt
+bash $SCRATCH/destsizes.sh   # wc -m of 14 companions in .claude/rules/moai and internal/template/templates/.claude/rules/moai -> dest-sizes.tsv, evidence/dest-paths.txt
+python3 .moai/reports/t1226/build.py --surface init --root $SCRATCH/init-surface --out-tree $SCRATCH/post-init
+python3 .moai/reports/t1226/build.py --surface live --root $SCRATCH/live --ref-root $SCRATCH/init-surface --out-tree $SCRATCH/post-live
+bash $SCRATCH/posthash.sh   # AC-ALH-004 pipeline + wc -m on $SCRATCH/post-{init,live}
+python3 .moai/reports/t1226/build.py --surface init ... --hash 93de7321ea747c584768af09d1908ad3e36fd076073a6f2a9d6fb5b7a22b4477
+python3 .moai/reports/t1226/build.py --surface live ... --hash d97b33d960c9801d4ec145ca263ed788425b337f43c585594c8d527c1318c6c3
+python3 .moai/reports/t1226/unfreeze.py candidates-init.tsv 189689 > .moai/reports/t1226/unfreeze-init.txt
+python3 .moai/reports/t1226/psection.py > .moai/reports/t1226/evidence/p-section.txt

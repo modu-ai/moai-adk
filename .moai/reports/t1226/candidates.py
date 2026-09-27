@@ -40,6 +40,11 @@ def nbind(lines):
 def split_markdown(text):
     """Return a list of (section_name, lines, is_paragraph) rows."""
     lines = text.splitlines(keepends=True)
+    return [(name, lines[a:b], isp) for name, a, b, isp in split_spans(lines)]
+
+
+def split_spans(lines):
+    """Return (section_name, start, end, is_paragraph) line spans over lines."""
     infence = False
     heads = []
     for i, l in enumerate(lines):
@@ -54,37 +59,37 @@ def split_markdown(text):
     rows = []
     first = heads[0][0] if heads else len(lines)
     if first > 0:
-        rows.append(("(서문)", lines[:first], False))
+        rows.append(("(서문)", 0, first, False))
     seen = {}
     bounds = [h[0] for h in heads] + [len(lines)]
     for (a, title), b in zip(heads, bounds[1:]):
         seen[title] = seen.get(title, 0) + 1
         name = title if seen[title] == 1 else "%s (#%d)" % (title, seen[title])
-        body = lines[a:b]
-        rows.append((name, body, False))
-        if nbind(body) > 0:
-            for n, para in enumerate(paragraphs(body[1:]), start=1):
-                if nbind(para) == 0:
-                    rows.append(("%s ¶%d" % (name, n), para, True))
+        rows.append((name, a, b, False))
+        if nbind(lines[a:b]) > 0:
+            for n, (pa, pb) in enumerate(paragraph_spans(lines, a + 1, b), start=1):
+                if nbind(lines[pa:pb]) == 0:
+                    rows.append(("%s ¶%d" % (name, n), pa, pb, True))
     return rows
 
 
-def paragraphs(lines):
-    """Blank-line-delimited blocks; a fenced block is never split."""
-    out, cur, infence = [], [], False
-    for l in lines:
+def paragraph_spans(lines, start, end):
+    """Blank-line-delimited blocks in lines[start:end]; a fence is never split."""
+    out, cur, infence = [], None, False
+    for i in range(start, end):
+        l = lines[i]
         if l.lstrip().startswith("```"):
             infence = not infence
-            cur.append(l)
+            cur = i if cur is None else cur
             continue
         if not infence and l.strip() == "":
-            if cur:
-                out.append(cur)
-                cur = []
+            if cur is not None:
+                out.append((cur, i))
+                cur = None
             continue
-        cur.append(l)
-    if cur:
-        out.append(cur)
+        cur = i if cur is None else cur
+    if cur is not None:
+        out.append((cur, end))
     return out
 
 
