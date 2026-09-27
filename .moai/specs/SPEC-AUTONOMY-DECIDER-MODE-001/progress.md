@@ -281,9 +281,105 @@ llm+jev 합성 팔 오답. 전 9대조 진단 계측(원시 증거 `runs/`, `voi
 커밋을 `criteria_commit`으로** 한다(첫 호출 전 `git cat-file -e` 검증 + 시간 비교 —
 REQ-DM-014(a)). 기존 runs/ 증거와 계측기는 무효 실행 기록으로 그대로 보존된다(수정 없음).
 
+### M2 — 재시작-1 측정 완료 (2026-09-27, criteria_commit 568d11754)
+
+**등록**: restart-1 — 프리앰블 2026-09-27T17:16:50+09:00, head `568d11754`,
+criteria_commit `568d11754`(ancestor exit 0, 커밋 17:14:56 < 선언 17:16:50 < 첫 콜 17:17:04).
+세 상한 재선언( turn 2/항목 · call 298/배치 · PT8H — run-record.md §2).
+
+**실행**: stage C(대조 9) → P(파일럿 20) → M(본배치 120), 양팔 glm/jev.
+**콜 회계: C 18 + P 40 + M 240 = 298/298 (상한 이내), 재시도 0, 파이프라인 실패 0** —
+개정 기준의 VOID 게이트(전송 실패/파싱 불가/합성 불가) 발화 없음, 미측정 항목 0,
+`blocked_by_scrub` 0, served_model `glm-5.3` 149/149. 스크럽: 양성 대조 8/8
+(2026-09-26T20:51:27+09:00, 양쪽 등록 첫 콜에 선행) + 콜별 scan_exit=0 298/298.
+voided 22 dispatches·진단 3건은 무효 기록으로 원시 보존(unsuffixed/`.diag`/`.recovered`).
+
+**증거 경로**: `runs/m2_run_log.jsonl`(328행 단일 로그), `runs/glm|jev/*.r2.json`(권위 원시),
+`run-record.md`(등록·수리·회계·스크럽 통합), `analysis/recompute_m3.py` + `analysis/output.txt`.
+
+**raw 재파싱 대조**: 권위 원시(`M_*.r2.json`)를 커밋된 파서로 재파싱 — glm 120/120,
+jev 120/120 로그 라벨 일치, 불일치 0.
+
+### M3 — 독립 재계산·판정 (2026-09-27)
+
+M2 드라이버의 보고 집계를 인용하지 않고 로그 재시작-1 행에서 전 수치를 재계산
+(`python3 .moai/reports/t1261/analysis/recompute_m3.py` → exit 0, 원문 `analysis/output.txt`).
+**드라이버 보고치와의 차이: 0건 — 전 수치 일치.**
+
+| 지표 | glm 단독 | jev 단독 | 합성(glm∧jev) | 상수 기준선 |
+|---|---|---|---|---|
+| 정확도 (n=120) | **57/120 = 47.50%** | 46/120 = 38.33% | 44/120 = 36.67% | approve 50.00% / hold 33.33% / modify 16.67% |
+| clean/defect 정답 | 33/60 · 24/60 | 13/60 · 33/60 | 10/60 · 34/60 | (모집단 구성 승인 60) |
+| wrong-automation (결함→승인) | 18/60 = **30.00%** | 8/60 = 13.33% | 7/60 = **11.67%** | — |
+| 라벨 분포 | hold64/app51/other1/mod4 | hold99/app21/mod0 | hold103/app17 | gt 60/40/20 |
+| 밴드 (a) n≥20 | 통과 | 통과 | 통과 | — |
+| 밴드 (b) 정확도≥60% | **미달** | **미달** | **미달** | — |
+| 밴드 (c) wrong-auto≤10% | **미달** | **미달** | **미달** | — |
+
+- **McNemar 불일치쌍 정확 이항(양측, α=0.05)**: b=23(glm 맞음·합성 틀림) / c=10,
+  n=33 → **p = 0.035082, 유의** — glm이 합성보다 나은 방향.
+- **REQ-DM-007 매핑**: 「llm+jev 나쁨」 충족 — (a) glm 47.5% ≥ 합성+5%p(41.7%) AND 유의;
+  (b) 합성 wrong-auto 11.67% > 10%. → **권고: llm 단독** (풀 GLM/z.ai via `glm_direct` —
+  glm_task 팩토리 모드 불가용 수리 기록; 풀 병합 없음).
+- **밴드 결론**: 어느 팔도 (b)(c)를 통과하지 못했다 → **어느 팔도 좋은 판단자로 인증 안 됨**.
+  llm 단독 권고는 비교상 나은 쪽의 방향일 뿐, llm 단독이 좋다는 뜻이 아니다. 세 판단자 모두
+  최선 상수(always-approve 50%)보다 낮다.
+- **gt-modify 붕괴(1급 발견)**: 지상진실 modify 20항목 정확 일치 **전 팔 0/20**; modify 방출
+  glm 4회(gt-modify 0회)·jev 0회·합성 0회 — modify 축 사실상 소실, 포착해도 hold로 응답
+  (클래스 v: 포착 10/10·일치 0/10).
+- **클래스 하이라이트**: (iii)전제 위반·(vi)AC 모순 양팔 완벽 10/10; glm wrong-auto 18건은
+  (i)7+(iv)8+(ii)3 집중 — (iv)증거 위조에서 glm 승인 8/10 최악; 합성은 (i) 포착 9/10으로
+  glm(3/10)·jev(8/10)보다 낫다. 합성 분해: 일치 77(정답 33)+불일치 hold 43(gt-hold 11).
+- **부록(병합 금지)** — 대조 C: glm 7/9, jev 4/9(hold 9/9 상수), 합성 4/9. 파일럿 P:
+  glm 11/20, jev 6/20, 합성 7/20. **등록 간 대조 라벨 뒤집기 3건 전부 glm**
+  (t1261-120·064·083, approve→hold) — 판정서 Residual-risk. Jev 레지스터 이동: 대조 hold
+  9/9 → 본배치 승인 21건(확률 0.50~0.86, 중앙값 0.59; hold 중앙값 0.77).
+
+### [RUN] AC 셀프 검증 (AC-DM-012~016 — 본 §E.2/§E.3 기록 기준, acceptance.md 전환 없음)
+
+| AC | 판정 | 검증 명령 | 실측 출력 |
+|---|---|---|---|
+| AC-DM-012 | PASS | `git cat-file -e 568d11754^{commit}; echo $?` / `grep -c criteria_commit run-record.md` / 커밋-콜 시각 비교 | `0` / `6` / 1790496896 < 1790497024 (17:14:56 < 17:17:04) |
+| AC-DM-013 | PASS | `grep -c declared_at run-record.md` + 콜 회계 | `7` (≥3); 298/298, 재시도 0, 도달 없음 |
+| AC-DM-014 | PASS | `grep -c positive-control run-record.md` / `grep -c "scan: hit" run-record.md` | `1` (선행 기록 존재) / hit 데이터 행 0 (grep 1행은 「hit 행 0건」 서술문), hit-without-block 0 |
+| AC-DM-015 | PASS | `grep -c "payload_id set" run-record.md` + 재계산 n_measured | `2` (≥1); 양팔 9/9·20/20·120/120 동일, 비대칭 0 |
+| AC-DM-016 | PASS | verdict.md 5섹션 헤더 존재 + 기준선 병기 + 풀 충실도 Gap 행 | Claim/Evidence/Baseline-attribution/Gaps/Residual-risk 각 1; 모든 정확도에 상수 기준선 병기; Gaps #1 풀 충실도 행 존재 |
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-09-27T19:00:08+09:00
+run_commit_sha: pending-backfill-run   # M3 커밋 착지 시 backfill
+spec_id: SPEC-AUTONOMY-DECIDER-MODE-001
+card: t1261
+criteria_commit: 568d11754
+registration: restart-1
+milestones: M0 census · M1 instruments · M2 measurement (restart-1) · M3 analysis/verdict
+ac_pass_count: 5   # AC-DM-012..016 [RUN] 셀프 검증 PASS (§E.2 표)
+ac_fail_count: 0
+pipeline_failures: 0
+call_accounting: "C 18 + P 40 + M 240 = 298/298 (cap within), retries 0"
+scrub: "positive-control 8/8 (2026-09-26T20:51:27+09:00), per-call scan_exit=0 298/298, hit-sent 0"
+m3_headline: "glm 47.50% / jev 38.33% / composite 36.67% (baseline approve-all 50.00%) — McNemar b=23/c=10 p=0.035082 significant — mapping: llm-only — band: NO arm qualified (b,c failed all arms)"
+verdict_path: .moai/reports/t1261/verdict.md
+run_record_path: .moai/reports/t1261/run-record.md
+recompute_path: .moai/reports/t1261/analysis/
+l44_pre_commit_fetch: not-applicable-card-worktree   # 카드 워크트리, push는 리드 일괄
+l44_post_push_fetch: pending-lead-push
+new_warnings_or_lints_introduced: 0   # 본 마일스톤은 마크다운·python 분석 도구 추가뿐, Go 소스 변경 없음
+cross_platform_build: not-applicable-analysis-only   # Go 소스 미변경
+total_run_phase_files: see §E.2 증거 경로 (runs/ 649파일 + 계측기 + 판정서·런레코드·분석)
+m1_to_m3_commit_strategy: per-M commit (M0 786e7a419 → M1 fcba7ae65 → amendment 568d11754 → M3 본 커밋)
+```
+
+**Gaps (M3)**: 보충 배치(다른 풀) 미실행 — 권고는 1차 풀 단독 발출(판정서 Gaps #1, AC-DM-016
+의무 행); 모집단은 합성 킥오프형·한국어 네이티브로 한정(생태 타당성 격차); gt-modify 붕괴의
+원인 규명 미실행; 단일 실행·단일 시드(신뢰구간 없음).
+
+**Residual-risk (M3)**: GLM 결함 판단 실행 간 변동(대조 플립 3건 전부 glm); Jev 레지스터 이동
+(대조 hold 9/9 → 본배치 승인 21건, 낮은 확률대 0.50~0.86); 템플릿형 결함 패턴매칭 가능성;
+합성 팔 hold 폴백의 gt 분포 의존.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
