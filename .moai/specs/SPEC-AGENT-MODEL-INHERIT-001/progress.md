@@ -244,6 +244,40 @@ warning, a nil error, and no `profile: high` write.
 | `golangci-lint run` (v2.1.6) cli, spec, core | `0 issues.` |
 | `go build ./...` | ok |
 
+### M6 — agent frontmatter, Codex emission, harness manifests, workflow scripts (commits `ee77b7d4d`, `ddd9ad83a`)
+
+RED: `TestAgentsDeclareNoModelOrEffort` (replaces the haiku-effort guard) — 34 files reported
+`AGENT_MODEL_EFFORT_DECLARED` (12 template + 12 local moai + 10 local harness);
+`TestValidate_SpecialistModelAndEffortAreOptional` — `specialists[0].effort "" is not low|medium|high|xhigh|max`.
+Both GREEN.
+
+- Commit 1 (template): 24 frontmatter lines stripped from the 12 C2 agents; `agents-codex.yaml`
+  `model_reasoning_effort.emit: false`, class row `effort` → `disposition: omit` ("Omitted — inherit the
+  parent"); AC-008 emitter tests inverted; `make agents-emit` exit 0 (12 toml, −12 lines);
+  `make agents-emit-check` exit 0 (`ok … internal/template/agentemit`); `make build` exit 0 (catalog.yaml hashes).
+- Commit 2 (local + harness + scripts): 44 frontmatter lines stripped (12 moai + 10 harness);
+  v4manifest model/effort optional (`omitempty`, present values still checked); local manifests drop
+  them; `agent()` effort options removed from template + local `codemaps-extract.js`,
+  `plan-research-fanout.js`, `sync-audit-4dim.js` and the local Runners (7 lines); local
+  `judge_effort` / `JUDGE_EFFORT` channel and `test-judge-effort-contract.sh` removed; rosterguard
+  `agentemit-golden` site removed (its 12-name effort map is gone) and the numeral live-candidate line
+  re-measured (52 → 50).
+
+| Command | Result |
+|---|---|
+| `make build` (after template script edits) / `make embed-check` | exit 0 / exit 0, `Agent Emit Embed 12/12 embedded agent-emit artifacts match the committed set` |
+| `go test ./internal/template/... ./internal/cli/agentlint/... -count=1` | exit 0 |
+| `go test ./internal/harness/... -count=1` | all ok except rosterguard: the same three; failure lines identical to M1 (`diff rg1.txt rg6.txt` exit 0) |
+| AC-AMI-003(a) `grep -rnE '^(model\|effort):' .claude/agents internal/template/templates/.claude/agents` | no output (exit 1) |
+| AC-AMI-004 `grep -nE '^(model\|model_reasoning_effort)' …/.codex/agents/moai/*.toml` | no output (exit 1) |
+| AC-AMI-007(b) scripts grep | no output (exit 1) |
+| AC-AMI-005 `bin/moai agent lint` | exit 0, 0 LR-03/LR-12 findings (25 LR-08 warnings, pre-existing kind) |
+| `golangci-lint run` (v2.1.6) template, v4manifest, rosterguard | `0 issues.` |
+
+Deferred to M7 (doctrine): `.claude/rules/moai/workflow/verify-judge-effort-contract.md` (H22 rule file —
+the last `judge_effort` hit for AC-AMI-007(d)); the `/moai:harness` generation instructions
+(harness-builder / harness-build-entry / builder-harness body, H12 — AC-AMI-003 second grep).
+
 Deferred to post-t1282: `internal/hook/agent_model_guard.go` still calls
 `template.ResolveAgentModelEffort` (`resolveAgentModel`, frozen) — the last non-test consumer
 outside `internal/config` / `internal/template`, so M5 cannot delete the resolver until it moves.
