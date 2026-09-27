@@ -948,11 +948,12 @@ func normalizeWorktreeFlag(args []string) []string {
 // error so the launcher does not silently fall through to creating a new
 // worktree under either prefix (AC-WES-010c).
 //
-// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-006 (design D2.5 A-보완): resolving an
-// entry ALSO backfills a missing .codex/hooks.json in the target tree when
-// that tree already exists — the materializer seeds new trees, this path
-// covers trees created before the seeding existed. The backfill is one stat +
-// the same idempotent, fail-open seeding call; diagnostics go to warn.
+// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-006 note: the launcher-entry .codex/hooks.json
+// backfill used to run HERE, but this function is a pre-resolution step that
+// runs BEFORE the concurrent-writer admission — a refused launch was seeding
+// the tree it refused to enter (audit F0, sync-audit-opus.md). The backfill
+// now runs only after admission succeeds, via seedAdmittedWorktreeHooks at the
+// entry flows' post-admission points (cc.go / glm.go) and runCodexLaunch.
 //
 // Tokens after the "--" pass-through marker are not scanned (they are verbatim
 // pass-through to claude). Returns nil when no -w value is present or the
@@ -967,44 +968,31 @@ func resolveWorktreeL2Path(args []string, warn io.Writer) error {
 		// Bare -w (auto-name) or no -w flag: nothing to validate.
 		return nil
 	}
-	tree := ""
-	if filepath.IsAbs(value) {
-		// Absolute path: must be under an accepted worktree prefix.
-		var acceptedPrefixes []string
-		if moaiWorktrees, err := paths.WorktreesDir(); err == nil {
-			acceptedPrefixes = append(acceptedPrefixes, moaiWorktrees)
-		}
-		if root, err := findProjectRootFn(); err == nil {
-			acceptedPrefixes = append(acceptedPrefixes, filepath.Join(root, ".claude", "worktrees"))
-		}
+	if !filepath.IsAbs(value) {
+		// Short name: defer to normalizeWorktreeFlag + claude resolution.
+		return nil
+	}
+	// Absolute path: must be under an accepted worktree prefix.
+	var acceptedPrefixes []string
+	if moaiWorktrees, err := paths.WorktreesDir(); err == nil {
+		acceptedPrefixes = append(acceptedPrefixes, moaiWorktrees)
+	}
+	if root, err := findProjectRootFn(); err == nil {
+		acceptedPrefixes = append(acceptedPrefixes, filepath.Join(root, ".claude", "worktrees"))
+	}
 
-		accepted := false
-		for _, prefix := range acceptedPrefixes {
-			if isUnderWorktreePrefix(value, prefix) {
-				accepted = true
-				break
-			}
-		}
-		if !accepted {
-			return fmt.Errorf(
-				"worktree path %q is not under an accepted worktree prefix\n"+
-					"  accepted prefixes: ~/.moai/worktrees/ (L2 persistent), .claude/worktrees/ (L1 Claude-native)\n"+
-					"  use a short name to create a new worktree under .claude/worktrees/<name>, or an\n"+
-					"  absolute path under one of the accepted prefixes to re-enter an existing worktree",
-				value,
-			)
-		}
-		tree = value
-	} else {
-		// Short name: defer to normalizeWorktreeFlag + claude resolution. The
-		// backfill only needs the candidate L1 path; a tree that does not
-		// exist yet is created by the backend and seeded on its next entry.
-		if root, err := findProjectRootFn(); err == nil && root != "" {
-			tree = filepath.Join(root, ".claude", "worktrees", value)
+	for _, prefix := range acceptedPrefixes {
+		if isUnderWorktreePrefix(value, prefix) {
+			return nil
 		}
 	}
-	seedWorktreeEntryHooks(tree, warn)
-	return nil
+	return fmt.Errorf(
+		"worktree path %q is not under an accepted worktree prefix\n"+
+			"  accepted prefixes: ~/.moai/worktrees/ (L2 persistent), .claude/worktrees/ (L1 Claude-native)\n"+
+			"  use a short name to create a new worktree under .claude/worktrees/<name>, or an\n"+
+			"  absolute path under one of the accepted prefixes to re-enter an existing worktree",
+		value,
+	)
 }
 
 // worktreeFlagValue scans args (stopping at the "--" pass-through marker) for

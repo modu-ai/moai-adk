@@ -280,6 +280,10 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	if err := ccWorktreeWriterPrecheck(filteredArgs); err != nil {
 		return err
 	}
+	// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-006: launcher-entry backfill — applied
+	// only now that the admission above succeeded, so a refused launch leaves
+	// the tree untouched (audit F0, sync-audit-opus.md).
+	seedAdmittedWorktreeHooks(filteredArgs, cmd.ErrOrStderr())
 	filteredArgs = normalizeWorktreeFlag(filteredArgs)
 	return launch(profileName, mode, filteredArgs)
 }

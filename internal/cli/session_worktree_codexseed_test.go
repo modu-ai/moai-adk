@@ -84,6 +84,17 @@ func TestNew_SeedsCodexHooksJson(t *testing.T) {
 	}
 }
 
+// admittedEntrySeed applies the launcher-entry backfill at its post-admission
+// position (audit F0): the entry flows call seedAdmittedWorktreeHooks only
+// after the concurrent-writer admission succeeds — resolveWorktreeL2Path is
+// validation-only. The admission order itself is the guard test's
+// (TestWorktreeLaunchRejectsConcurrentWriter) assertion; this helper covers the
+// backfill behavior.
+func admittedEntrySeed(t *testing.T, args []string, warn *bytes.Buffer) {
+	t.Helper()
+	seedAdmittedWorktreeHooks(args, warn)
+}
+
 // TestEnterWorktree_SeedsMissingCodexHooks is AC-HN-006: entering an existing
 // tree through the launcher resolution path backfills a missing hooks.json,
 // and an existing file stays byte-identical (user-owned entries preserved).
@@ -101,9 +112,7 @@ func TestEnterWorktree_SeedsMissingCodexHooks(t *testing.T) {
 
 	// Short-name entry into a tree without wiring: seeded.
 	var warn bytes.Buffer
-	if err := resolveWorktreeL2Path([]string{"--worktree", "seed-entry"}, &warn); err != nil {
-		t.Fatalf("resolveWorktreeL2Path (short name): %v", err)
-	}
+	admittedEntrySeed(t, []string{"--worktree", "seed-entry"}, &warn)
 	if _, err := os.Stat(hooksPath); err != nil {
 		t.Fatalf("launcher entry must backfill a missing .codex/hooks.json: %v", err)
 	}
@@ -113,9 +122,7 @@ func TestEnterWorktree_SeedsMissingCodexHooks(t *testing.T) {
 	if err := os.WriteFile(hooksPath, []byte(userDoc), 0o600); err != nil {
 		t.Fatalf("write user doc: %v", err)
 	}
-	if err := resolveWorktreeL2Path([]string{"--worktree", "seed-entry"}, &warn); err != nil {
-		t.Fatalf("resolveWorktreeL2Path (existing file): %v", err)
-	}
+	admittedEntrySeed(t, []string{"--worktree", "seed-entry"}, &warn)
 	after, err := os.ReadFile(hooksPath)
 	if err != nil {
 		t.Fatalf("read back: %v", err)
@@ -129,9 +136,7 @@ func TestEnterWorktree_SeedsMissingCodexHooks(t *testing.T) {
 	if err := os.MkdirAll(tree2, 0o755); err != nil {
 		t.Fatalf("mkdir tree2: %v", err)
 	}
-	if err := resolveWorktreeL2Path([]string{"--worktree", tree2}, &warn); err != nil {
-		t.Fatalf("resolveWorktreeL2Path (absolute): %v", err)
-	}
+	admittedEntrySeed(t, []string{"--worktree", tree2}, &warn)
 	if _, err := os.Stat(filepath.Join(tree2, ".codex", "hooks.json")); err != nil {
 		t.Fatalf("absolute-path entry must seed a fresh tree: %v", err)
 	}

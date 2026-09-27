@@ -453,9 +453,10 @@ func resolveOrCreateCodexWorktreeDir(projectRoot, value string) (string, bool, e
 		if !info.IsDir() {
 			return "", false, fmt.Errorf("worktree path %s is not a directory", path)
 		}
-		// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-006: launcher-entry backfill for an
-		// existing tree (idempotent, fail-open).
-		seedWorktreeEntryHooks(path, os.Stderr)
+		// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-006: the launcher-entry backfill for an
+		// existing tree does NOT run here — this function resolves before the
+		// concurrent-writer admission, and a refused launch must not mutate the
+		// tree (audit F0). The caller seeds after codexWorktreeWriterCheck passes.
 		return path, false, nil
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return "", false, fmt.Errorf("inspect worktree path: %w", err)
@@ -836,6 +837,13 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 		if werr != nil {
 			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), werr.Error())
 			return &exitCodeError{code: 1}
+		}
+		if !created {
+			// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-006: launcher-entry backfill for an
+			// existing tree — only now that the writer admission above succeeded,
+			// so a refused launch leaves the tree untouched (audit F0). A created
+			// tree was seeded inside resolveOrCreateCodexWorktreeDir.
+			seedWorktreeEntryHooks(resolved, os.Stderr)
 		}
 		dir = resolved
 	}

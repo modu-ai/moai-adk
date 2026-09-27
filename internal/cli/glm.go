@@ -311,6 +311,10 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-006: launcher-entry backfill, at the same
+	// post-validation point the cc flow applies it after its writer precheck —
+	// the glm flow has no moai-side refusal, so this is the admitted point (audit F0).
+	seedAdmittedWorktreeHooks(filteredArgs, cmd.ErrOrStderr())
 	filteredArgs = normalizeWorktreeFlag(filteredArgs)
 
 	// Auto mode is not available with third-party providers (GLM/Z.AI).
