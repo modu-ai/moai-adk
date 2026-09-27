@@ -117,13 +117,6 @@ func Registry() []Site {
 
 		// ── Definition-file axis (12; the built-in Explore has no file) ────
 		{
-			ID:     "agentemit-golden",
-			Path:   "internal/template/agentemit/golden_test.go",
-			Axis:   AxisDefinitionFiles,
-			Claims: ClaimMembership,
-			Note:   "The emitter operates on definition files, so its golden set is the file population.",
-		},
-		{
 			ID:     "template-catalog",
 			Path:   "internal/template/catalog.yaml",
 			Axis:   AxisDefinitionFiles,

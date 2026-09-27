@@ -7,8 +7,6 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: run-phase code implementation (manager-develop), testing execution, deployment, code review, documentation sync (manager-docs)
 tools: Read, Write, Edit, Bash, Glob, Grep, TaskCreate, TaskUpdate, TaskList, TaskGet, WebFetch, Skill, mcp__moai__spec_progress, mcp__moai__spec_audit, mcp__moai__spec_drift
-model: inherit
-effort: medium
 color: blue
 permissionMode: bypassPermissions
 memory: project

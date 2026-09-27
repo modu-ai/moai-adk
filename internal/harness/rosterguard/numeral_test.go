@@ -292,7 +292,7 @@ func scanLive(t *testing.T) []NumeralHit {
 // declared exemptions for exactly that reason.
 func TestLiveWordAxisBreadthSetIsEmptyOutsideThisPackage(t *testing.T) {
 	const liveCandidate = ".claude/agents/harness/workflow-specialist.md"
-	const liveCandidateLine = 52
+	const liveCandidateLine = 50
 
 	body, err := os.ReadFile(filepath.Join(repoRoot(t), liveCandidate))
 	if err != nil {

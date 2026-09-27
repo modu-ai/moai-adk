@@ -8,8 +8,6 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: code implementation, testing, architecture design, documentation content, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
-model: sonnet
-effort: low
 color: orange
 permissionMode: bypassPermissions
 memory: project
