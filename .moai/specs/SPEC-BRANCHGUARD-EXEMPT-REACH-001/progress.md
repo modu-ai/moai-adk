@@ -380,6 +380,107 @@ PASS
 **Residual-risk**
 - 세션 중간 `EnterWorktree` 는 훅 경로의 `CLAUDE_PROJECT_DIR` 을 바꾸지 않는 것으로 보인다 — 그렇다면 워크트리 사본 계측기는 이 방식으로는 원리상 발화할 수 없고, 워크트리에서 **세션을 시작**하는 경로(`moai cc -w t1064`)가 필요하다. 이 판단은 추론이며 우회책으로 실행하지 않았다.
 
+
+### M2 본 측정 — 도달성 CONFIRMED (2026-09-27, HEAD `d49a4aec8`, 브랜치 `WT-branchguard-exempt`)
+
+**등급: PLAUSIBLE → CONFIRMED.** 면제는 도구로 spawn 된 서브에이전트에서 도달 가능하며, deny 억제까지 실행으로 확인했다. 독트린 `main-checkout-branch-guard.md` § Mechanical Enforcement 의 「두 예외 축 모두 서브에이전트에서 도달 불가」는 **거짓**이다.
+
+#### Claim
+
+1. 이 세션의 Bash 호출에 PreToolUse 훅이 실제로 돈다.
+2. 실행되는 래퍼 사본은 워크트리 것이 아니라 primary 체크아웃 것이다 — 세션 중간 `EnterWorktree` 는 훅의 `CLAUDE_PROJECT_DIR` 을 바꾸지 않는다.
+3. 도구로 spawn 된 서브에이전트의 PreToolUse 페이로드에는 `agent_type` 과 `agent_id` 가 **snake_case 로 존재**한다. 메인 세션 호출에는 두 키가 **부재**한다.
+4. `agent_type` 은 카탈로그 에이전트 이름에 한정되지 않고 **spawn 시 지정한 임의 이름**을 그대로 싣는다.
+5. `agent_type == "manager-git"` 인 서브에이전트 형태 입력에서 BranchGuard 의 deny 가 **실제로 억제된다**(allow).
+
+#### Evidence
+
+**(1) 훅 발화 — 유일 표식 양성 대조.** 래퍼는 부분명령 수가 소프트캡 5를 넘으면 경고 1행을 `~/.moai/logs/hook-stderr.log` 에 적는다. 경계 43개 탐침을 쏘고 경계 0의 판독 명령으로 전후를 쟀다.
+
+```
+$ wc -l < ~/.moai/logs/hook-stderr.log      # 탐침 전
+   53031
+$ echo p1; ... ; echo done43                # 경계 43개
+$ wc -l < ~/.moai/logs/hook-stderr.log      # 탐침 후
+   53034
+$ tail -n 1 ~/.moai/logs/hook-stderr.log
+[moai:bash-risk] WARN: subcommand count 43 exceeds soft cap 5 — ...
+```
+
+애초 후보였던 `count 17` 은 같은 로그에 과거 **362회** 존재해(측정: `grep -c "count 17 exceeds"` = 362) 귀속 표식이 되지 못했다. 값을 43으로 올린 것이 이 측정의 성립 조건이다.
+
+**(2) 실행 사본 판별.** 두 사본 모두 경고 코드를 보유하나(`grep -c bash_subcommand_soft_cap` = 각 5), 계측기는 워크트리 사본에만 있었다.
+
+```
+$ grep -c t1064 .claude/hooks/moai/handle-pre-tool.sh                                   # 워크트리
+5
+$ grep -c t1064 /Users/goos/MoAI/moai-adk-go/.claude/hooks/moai/handle-pre-tool.sh      # primary
+0
+$ ls ~/.moai/logs/t1064-dump ~/.moai/logs/t1064-instrument.log
+No such file or directory  (둘 다)
+```
+
+계측기는 `payload=` 직후 행에 있고 **그 아래** 경고 코드는 발화했다. 따라서 실행된 파일은 「경고 코드는 있고 계측기는 없는」 사본 — primary 이다. 이로써 2026-09-23 선행 측정이 **추론**으로만 남겼던 잔여 위험이 확정되고, 동시에 그 측정의 Gap(「primary 가 돌았는지 / 훅이 아예 안 돌았는지 가르지 못함」)이 닫힌다.
+
+**(3)(4) 키 집합 동등 비교.** 운영자 승인(2026-09-27)으로 primary 래퍼에 C2 계측기(최상위 키 이름 + 네 프로브 값만, 프롬프트 본문 없음)를 임시 삽입했다. 관측 원문 `~/.moai/logs/t1064-keys.log` 발췌:
+
+```
+tool=Bash keys=cwd,effort,hook_event_name,permission_mode,prompt_id,scratchpad_dir,
+               session_id,tool_input,tool_name,tool_use_id,transcript_path
+         probes=NONE                                              ← 메인 세션
+
+tool=Bash keys=agent_id,agent_type,cwd,effort,hook_event_name,permission_mode,
+               prompt_id,scratchpad_dir,session_id,tool_input,tool_name,
+               tool_use_id,transcript_path
+         probes={'agent_type': "'plan-auditor'", 'agent_id': "'a8e6f5ecb87b2613d'"}
+
+         probes={'agent_type': "'manager-develop'", 'agent_id': "'a5a593b7e4697e72c'"}
+         probes={'agent_type': "'t1261-m2-live'",   'agent_id': "'at1261-m2-live-beccc0362f9f5874'"}
+```
+
+판정은 grep 이 아니라 키 집합 동등 비교로 내렸다(plan.md M2 4항). 네 프로브 중 존재한 것은 `agent_type` · `agent_id` 두 snake 철자이며, camel 두 철자(`agentType` / `agentId`)는 어느 행에도 없다. `HookInput.AgentType` 의 태그가 `json:"agent_type"` 이므로 **철자가 일치**한다 — 디코더가 버리지 않는다.
+
+세 번째 행의 `t1261-m2-live` 는 카탈로그 에이전트가 아니라 다른 세션이 spawn 시 붙인 이름이다. 즉 `agent_type` 은 spawn 이름을 그대로 싣는다.
+
+**(5) deny 억제 — 세 팔.** 트리 빌드로 실제 핸들러를 실행했다(설치본 판정 위험 차단, VCI §2.2):
+
+```
+$ go build -o <scratch>/moai-t1064 ./cmd/moai
+BUILD_OK from HEAD d49a4aec8
+```
+
+세 페이로드는 위 (3)에서 **측정된 키 집합**을 그대로 쓰고, `cwd` 는 primary 체크아웃, 명령은 패턴에 걸리되 실행돼도 무해한 `git checkout t1064-no-such-branch-probe` 로 고정했다.
+
+| 팔 | `agent_type` | 결과 |
+|---|---|---|
+| A | (키 부재 — 메인 세션 형태) | `"permissionDecision":"deny"` · `BRANCH_GUARD_VIOLATION: git checkout <branch/-b> in primary checkout` |
+| B | `plan-auditor` (측정된 서브에이전트 형태, 비면제) | `"permissionDecision":"deny"` · 같은 reason |
+| C | `manager-git` | **`"permissionDecision":"allow"`** |
+
+세 팔 모두 exit 0. A·B 는 공허 통과를 배제하는 대조다 — deny 는 메인 세션 형태에서도, 실제 관측된 서브에이전트 형태에서도 발화하므로, C 의 allow 는 **면제 외에 귀속될 곳이 없다.**
+
+코드 좌표는 이 트리에서 다시 쟀다(배차문 좌표를 인용하지 않음): `internal/hook/branch_guard.go:593` `isExemptAgent`, `:603` `return input.AgentType == "manager-git"`, `:660` 그 호출이 `isPrimaryCheckout` 판정보다 **위**에 있다. 가드 활성: `.moai/config/sections/workflow.yaml:160-161` `branch_guard.enabled: true`.
+
+#### Baseline-attribution
+
+- 트리: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1064` · HEAD `d49a4aec8` · 브랜치 `WT-branchguard-exempt`
+- 위 (1)~(5) 전부 이번 실행에서, 이 트리에 대해 실행됐다. (5)의 바이너리는 이 HEAD 에서 빌드한 것이며 설치본이 아니다.
+- 계측기 제거 증명: primary 래퍼의 `t1064` 적중 0, 그리고 이 브랜치 HEAD 판과 sha256 **바이트 동일** — 양쪽 `0ebb97828a91f27c08a63362f0b9ec39e04ba6fc2f8934b8980de8bed7ac5536`. 앵커 인접성도 확인(`payload=$(head -c 1048576)` 다음 행이 원래의 `# Only meaningful for the Bash tool ...`).
+
+#### Gaps
+
+- **살아 있는 서브에이전트가 `manager-git` 이라는 이름으로 실제 Bash 를 쏘는 것까지는 실행하지 않았다.** (5)는 관측된 페이로드 형태를 실제 핸들러에 먹인 것이고, 런타임이 그 이름을 실을 것이라는 근거는 (4)의 임의 이름 관측이다. 두 조각을 잇는 추론이 한 단계 남아 있다 — 다만 그 한 단계를 실행하려면 primary 체크아웃에서 브랜치 상태를 실제로 바꾸는 명령이 통과해야 하므로 의도적으로 하지 않았다.
+- **계측기 삽입 직전 sha256 을 캡처하지 않았다.** 제거 증명은 「이 브랜치 HEAD 판과 동일」로 성립하지만, primary 가 체크아웃하고 있는 `main` 판과의 대조는 아니다(가드가 cross-tree git 을 거부).
+- **`MOAI_BRANCH_GUARD_EXEMPT` 환경변수 축은 재지 않았다.** 이번 측정은 신원 축 하나만 판정한다.
+- **`internal/hook/pre_tool.go` `frozenZonePrefixes`** 는 범위 밖. 선행 기록의 부수 발견으로 남고 등급은 PLAUSIBLE 그대로다.
+- **테스트 미실행.** 이번 단계에서 `go test ./internal/hook/...` 를 돌리지 않았다.
+
+#### Residual-risk
+
+- **계측기가 다른 세션의 호출까지 기록했다.** 남긴 것은 키 이름과 에이전트 이름뿐이고 프롬프트 본문·명령 문자열은 아니지만, `~/.moai/logs/t1064-keys.log` 는 측정 산물이므로 처분이 필요하다.
+- **deny 문안 자체가 틀린 주장을 싣고 있다**(`branch_guard.go:682`: "fire only for main-thread launches, not for tool-spawned subagents"). 문안 정정 시 이 지점은 사용자에게 직접 보이는 표면이므로 동반이동 집합에서 빠지면 안 된다.
+- **처방은 아직 정해지지 않았다.** CODE 분기는 `agent_id` 가 페이로드에 실재함이 확인됐으므로 **구성 가능**하다(M4-b 미발동). 즉 「고를 수 없어서 DOC」이 아니라 양쪽이 모두 후보인 상태이며, 결정은 운영자 게이트다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
