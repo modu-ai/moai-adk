@@ -1,0 +1,12 @@
+=== RUN   TestFrozenInstructionFiles
+=== RUN   TestFrozenInstructionFiles/AGENTS.local.md
+=== RUN   TestFrozenInstructionFiles/AGENTS.md
+=== RUN   TestFrozenInstructionFiles/CLAUDE.local.md
+=== RUN   TestFrozenInstructionFiles/CLAUDE.md
+--- PASS: TestFrozenInstructionFiles (0.00s)
+    --- PASS: TestFrozenInstructionFiles/AGENTS.local.md (0.00s)
+    --- PASS: TestFrozenInstructionFiles/AGENTS.md (0.00s)
+    --- PASS: TestFrozenInstructionFiles/CLAUDE.local.md (0.00s)
+    --- PASS: TestFrozenInstructionFiles/CLAUDE.md (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	0.560s

@@ -149,8 +149,10 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 		if ok {
 			// A proven PASS clears this role's outstanding refusals in THIS tree —
 			// the other SPECs' and the unknown-spec one included (operator
-			// decision K4) — and never another tree's (REQ-WSR-003).
-			if err := auditreceipt.ClearRejectionsForRoleInTree(g.store, g.tree, input.AgentType); err != nil {
+			// decision K4) — and never another tree's (REQ-WSR-003). Only
+			// receipt-kind refusals: a served-model refusal is the served
+			// gate's to clear (SPEC-SERVED-MODEL-AUDIT-001 REQ-SMA-011).
+			if err := auditreceipt.ClearRejectionsForRoleInTreeKind(g.store, g.tree, input.AgentType, auditreceipt.KindReceipt); err != nil {
 				slog.Warn("audit rejections not cleared", "agent_type", input.AgentType, "tree_root", g.tree, "error", err)
 			}
 			clearStartMarker(g.store, input.AgentID)
@@ -258,12 +260,17 @@ func checkAuditReceiptSpawn(input *HookInput) (decision, reason string) {
 			"%s: the audit rejection records in %s cannot be read, so %s cannot be cleared to spawn: %v",
 			auditReceiptViolation, g.store, sp.Agent, err)
 	}
-	if len(rejections) == 0 {
-		return "", ""
-	}
 	parts := make([]string, 0, len(rejections))
 	for _, r := range rejections {
+		// Served-kind refusals are listed by the served gate under its own
+		// sentinel (checkServedModelSpawn), never here.
+		if auditreceipt.RejectionKind(r) != auditreceipt.KindReceipt {
+			continue
+		}
 		parts = append(parts, fmt.Sprintf("%s / %s / %s", r.AgentType, r.SpecID, r.Cause))
+	}
+	if len(parts) == 0 {
+		return "", ""
 	}
 	return DecisionDeny, fmt.Sprintf(
 		"%s: %s cannot be spawned while an audit PASS stands unproven in %s. Outstanding: %s. Re-run the audit through codex_audit or audit_multi and let the auditor end with a verdict line citing the receipt.",

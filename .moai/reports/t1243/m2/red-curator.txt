@@ -1,0 +1,13 @@
+=== RUN   TestSurfaceForTier_Tier3
+=== PAUSE TestSurfaceForTier_Tier3
+=== RUN   TestPrepareTierDispatch_Tier3
+=== PAUSE TestPrepareTierDispatch_Tier3
+=== CONT  TestSurfaceForTier_Tier3
+    dispatch_test.go:23: Tier 3 Path = "CLAUDE.local.md", want AGENTS.local.md
+--- FAIL: TestSurfaceForTier_Tier3 (0.00s)
+=== CONT  TestPrepareTierDispatch_Tier3
+    dispatch_test.go:144: surface.Path = "CLAUDE.local.md", want AGENTS.local.md
+--- FAIL: TestPrepareTierDispatch_Tier3 (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/harness/curator	0.320s
+FAIL

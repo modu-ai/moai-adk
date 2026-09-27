@@ -119,10 +119,11 @@ func codexChildArgs(kind codexVerb, tail []string) []string {
 // @MX:REASON: Compose source order and framing before encoding exactly one override.
 // @MX:SPEC: SPEC-CODEX-LOCALMD-001
 // codexLocalDeveloperInstructionArgs reads both local inputs fresh on each
-// launch. JSON string encoding preserves UTF-8 in a TOML basic string.
+// launch, AGENTS.local.md ahead of CLAUDE.local.md (SPEC-INSTRUCTION-FILES-UNIFY-001
+// REQ-IFU-006). JSON string encoding preserves UTF-8 in a TOML basic string.
 func codexLocalDeveloperInstructionArgs(projectRoot string) ([]string, error) {
 	var payload strings.Builder
-	for _, name := range []string{codexClaudeLocalName, codexLocalInstructionName} {
+	for _, name := range []string{codexLocalInstructionName, codexClaudeLocalName} {
 		body, err := readCodexLocalInstruction(projectRoot, name)
 		if err != nil {
 			return nil, err

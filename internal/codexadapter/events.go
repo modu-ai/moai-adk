@@ -46,26 +46,24 @@ const CodexEventInterrupt hook.EventType = "Interrupt"
 
 // EventTable is the complete Codex event set and its dispatcher counterparts.
 //
-// The table carries all twelve documented Codex hook events. Eleven of them
-// have a MoAI dispatcher counterpart: MoAI's dispatcher registers a
-// subcommand for each. Interrupt is the exception — it is Codex-only and has
-// no MoAI dispatcher counterpart, so its DispatcherArg is the empty string,
-// the marker for "no counterpart".
+// The table carries all twelve documented Codex hook events, and every row is
+// adapted. Eleven dispatcher args are the `moai hook <arg>` subcommands MoAI
+// also registers for Claude Code; Interrupt's `interrupt` arg is Codex-only —
+// a subcommand handled entirely in internal/cli that records a user
+// cancellation, with no Claude-side counterpart and no constant in
+// internal/hook (SPEC-DUAL-HARNESS-HOOK-PARITY-001 design.md §D7; REQ-CEV-002
+// kept).
 //
-// Eight rows are adapted: the six with a payload capture and observed behavior
-// on the 0.147.0 basis, plus SubagentStart/SubagentStop, which the 0.153.4
-// campaign measured FIRING with payloads captured (agent_id / agent_type on
-// both; SubagentStop additionally carries agent_transcript_path,
-// stop_hook_active, last_assistant_message — it reverses the 0.147.0
-// observation that SubagentStop never fires).
-//
-// PreCompact/PostCompact are held back: compaction could not be triggered in
-// a non-interactive run (264,808 input tokens max under the 1,048,576-char
-// input cap produced no compaction) — trigger-not-achieved, not not-fired.
-// PermissionRequest is held back on the same distinction: three non-interactive
-// configurations never raised an approval request (interactive TUI untested).
-// Interrupt is held back because it has no MoAI dispatcher counterpart to map
-// to, even though it was measured firing on SIGINT.
+// Adaptation history. Six rows were adapted on the codex-cli 0.147.0 basis.
+// SubagentStart/SubagentStop joined after the 0.153.4 campaign measured them
+// FIRING with payloads captured. SPEC-DUAL-HARNESS-HOOK-PARITY-001 M2e adapted
+// the last four: PreCompact/PostCompact (compaction could not be triggered in
+// a non-interactive run — trigger-not-achieved, not not-fired),
+// PermissionRequest (an approval request was never raised non-interactively;
+// the interactive TUI is untested), and Interrupt (measured firing on SIGINT).
+// Adapting a row makes MoAI's handler run when Codex fires the event; whether
+// Codex fires the three trigger-not-achieved events at all is a live
+// measurement this adaptation does not make.
 var EventTable = []EventRow{
 	{hook.EventPreToolUse, "pre-tool", true},
 	{hook.EventPostToolUse, "post-tool", true},
@@ -76,12 +74,16 @@ var EventTable = []EventRow{
 	{hook.EventSubagentStart, "subagent-start", true},
 	{hook.EventSubagentStop, "subagent-stop", true},
 
-	{hook.EventPreCompact, "compact", false},
-	{hook.EventPostCompact, "post-compact", false},
-	{hook.EventPermissionRequest, "permission-request", false},
+	{hook.EventPreCompact, "compact", true},
+	{hook.EventPostCompact, "post-compact", true},
+	{hook.EventPermissionRequest, "permission-request", true},
 
-	{CodexEventInterrupt, "", false},
+	{CodexEventInterrupt, CodexInterruptDispatcherArg, true},
 }
+
+// CodexInterruptDispatcherArg is the Codex-only `moai hook` subcommand that
+// handles the Interrupt event (design.md §D7).
+const CodexInterruptDispatcherArg = "interrupt"
 
 // ErrUnknownEvent marks a name absent from EventTable.
 var ErrUnknownEvent = errors.New("unknown codex hook event")
@@ -98,7 +100,13 @@ var ErrUnadapted = errors.New("codex hook event recognized but not adapted")
 // unadapted-but-recognized event must be distinguishable from a typo, or the
 // operator cannot tell a scoping decision from a mistake.
 func Resolve(codexEvent string) (string, error) {
-	for _, row := range EventTable {
+	return resolveIn(EventTable, codexEvent)
+}
+
+// resolveIn is Resolve over an explicit table, so the refusal paths stay
+// testable after every shipped row is adapted.
+func resolveIn(rows []EventRow, codexEvent string) (string, error) {
+	for _, row := range rows {
 		if string(row.CodexEvent) != codexEvent {
 			continue
 		}

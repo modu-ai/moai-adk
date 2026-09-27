@@ -1611,7 +1611,19 @@ rows carrying .message.model: 100
 ### 판정
 
 - **1차 감사: FAIL.** must-pass 는 중립성 단독이었다 — Functionality 62/100 이 must-pass 로 걸렸고 그 원인이 기존 가드 `TestTemplateNoInternalContentLeak` 의 적색(이 카드가 미러에 심은 `SPEC-` 접두)이었다. Security 88 PASS(must-pass), Craft 78 PASS, Consistency 55 FAIL(must-pass 아님).
-- **재감사: PASS-WITH-DEBT.** 커밋 `43697af85` 가 세 리터럴을 0행으로 만들고 리크·중립성 가드를 초록으로 되돌렸음을 감사가 직접 실행해 확인했다. 중립성 쪽은 클래스별 서브테스트(`C1-macos-bias-path`·`C2-bare-narrative-v3r`·`C4-feedback-memory-ref`·`C5-claude-local-ref`·`C6-pr-number-ref`·`C9-natural-language-canonical-form`)가 전부 발화했으므로 공허 초록이 아니다.
+- **재감사: PASS-WITH-DEBT → 최종 PASS(optional D3 잔존).** 커밋 `43697af85` 가 세 리터럴을 0행으로 만들고 리크·중립성 가드를 초록으로 되돌렸음을 감사가 직접 실행해 확인했다. 중립성 쪽은 클래스별 서브테스트(`C1-macos-bias-path`·`C2-bare-narrative-v3r`·`C4-feedback-memory-ref`·`C5-claude-local-ref`·`C6-pr-number-ref`·`C9-natural-language-canonical-form`)가 전부 발화했으므로 공허 초록이 아니다.
+- **최종 판정: PASS(optional D3 잔존)** — 카드 t1283 에서 기록(감사 최종분이 t1064 병합 `e765d33ec` 뒤에
+  도착해 그 병합에는 PASS-WITH-DEBT 로 실렸다). must-pass 는 Functionality + Security 두 축이며 둘 다
+  PASS 였고, PASS-WITH-DEBT 의 **차단 부채였던 D1 이 감사 자신의 측정 오류**였다. optional D3(줄바꿈
+  잔해)는 닫히지 않은 채 남아 있으므로 **「부채 없음」이라 적지 않는다**(F4 정정 — 판정서 초판이 그렇게
+  적어 같은 항목의 D3 서술과 모순됐다).
+  **점수 인용을 뺐다**: 4개 점수는 감사자가 세션 안에서 보고한 값이고 디스크의 어떤 파일에도 없다. 출처
+  파일 없이 수치를 인용하면 귀속되지 않은 주장이 되므로(F4 두 번째 지적), 수치 대신 축 판정만 남긴다.
+- **감사의 정정 철회.** 감사자가 둘째 부모 측정을 **독립 재현**했다(블롭 해시까지 일치 — `21180fc4` /
+  `8c4d6cf2`, ancestry yes, `00e761af8..develop` 미러 5커밋) 뒤, D1 의 `[blocking-for-merge]` 등급과
+  「병합하면 develop 의 초록 가드를 적색으로 만든다」는 문장, 그리고 D2(귀속 정정 요구)를 모두 철회했다.
+  자기 오류의 성격도 기록했다 — 「병합에는 부모가 둘인데 하나만 재고 차이를 병합 해소에 귀속시켰다; 내가
+  이 감사에서 남에게 지적하는 바로 그 형태」. 흡수 후 두 사본이 61749 로 일치한 것이 결과로도 이를 확인한다.
 
 ### 감사가 확인해 준 것
 
