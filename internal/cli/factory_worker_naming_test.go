@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // TestParseFactoryFlagWorkerVocabulary pins the worker-axis entry tokens and
@@ -112,27 +114,30 @@ func TestResolveFactoryWorkerNameCanonicalizesLegacyWithHint(t *testing.T) {
 	}
 }
 
-// TestStripCodexFactoryFlagWorkerVocabulary: the codex door accepts the same
-// worker tokens and keeps the legacy role token as an alias.
-func TestStripCodexFactoryFlagWorkerVocabulary(t *testing.T) {
-	t.Parallel()
+// NextFactoryWorkerNumberForTest delegates to the kanban SSOT.
+func NextFactoryWorkerNumberForTest(reg map[string]kanban.FactoryWorkerEntry, alive func(int) bool) int {
+	return kanban.NextFactoryWorkerNumber(reg, alive)
+}
 
-	cases := []struct {
-		head     []string
-		wantRole string
-		wantLane string
-	}{
-		{head: []string{"-f", "worker"}, wantRole: factoryWorkerRoleToken},
-		{head: []string{"-f", "agent"}, wantRole: factoryLegacyAgentRoleToken},
-		{head: []string{"-f", "worker-3"}, wantLane: "worker-3"},
-		{head: []string{"-f", "lane-3"}, wantLane: "lane-3"},
+// TestNextFactoryWorkerNumber: the worker join takes one past the highest
+// live claim across the canonical and legacy shapes — the former separate
+// agent-<n> and lane-<n> sequences are one worker numbering now.
+func TestNextFactoryWorkerNumber(t *testing.T) {
+	alive := func(int) bool { return true }
+	if n := NextFactoryWorkerNumberForTest(map[string]kanban.FactoryWorkerEntry{}, alive); n != 1 {
+		t.Errorf("empty registry = %d, want 1", n)
 	}
-	for _, c := range cases {
-		_, lead, role, lane, err := stripCodexFactoryFlag(c.head)
-		if err != nil || lead || role != c.wantRole || lane != c.wantLane {
-			t.Errorf("stripCodexFactoryFlag(%v) = (lead %v, role %q, lane %q, %v), want (false, %q, %q, nil)",
-				c.head, lead, role, lane, err, c.wantRole, c.wantLane)
-		}
+	reg := map[string]kanban.FactoryWorkerEntry{
+		"worker-1": {PID: 100},
+		"agent-2":  {PID: 101}, // legacy row
+		"lane-5":   {PID: 102}, // legacy row — shares the one numbering
+	}
+	if n := NextFactoryWorkerNumberForTest(reg, alive); n != 6 {
+		t.Errorf("registry up to lane-5 = %d, want 6", n)
+	}
+	dead := func(int) bool { return false }
+	if n := NextFactoryWorkerNumberForTest(reg, dead); n != 1 {
+		t.Errorf("dead claims pruned = %d, want 1", n)
 	}
 }
 

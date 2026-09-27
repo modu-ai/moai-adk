@@ -15,6 +15,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 	"github.com/modu-ai/moai-adk/internal/verify"
 )
 
@@ -76,6 +77,15 @@ func verifyResolveRoot(flagValue string) (string, error) {
 	return root, nil
 }
 
+// verifyStoreRoot returns the root whose .moai/state holds root's snapshots —
+// the primary checkout for a config-orphaned linked worktree, root itself
+// otherwise — or an error naming the unidentifiable primary; it never
+// substitutes another root (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-001/006). The
+// working-tree key is still computed on root: the snapshot is about that tree.
+func verifyStoreRoot(root string) (string, error) {
+	return auditreceipt.StoreRoot(root)
+}
+
 func newVerifyRecordCmd(projectRoot *string) *cobra.Command {
 	var (
 		checkID    string
@@ -119,6 +129,10 @@ An entry with the identical command replaces the previous record for this key.`,
 			if entry.RecordedAt.IsZero() {
 				entry.RecordedAt = time.Now()
 			}
+			store, err := verifyStoreRoot(root)
+			if err != nil {
+				return fmt.Errorf("verify record: %w", err)
+			}
 
 			ctx, cancel := context.WithTimeout(c.Context(), verifyKeyTimeout)
 			defer cancel()
@@ -126,7 +140,7 @@ An entry with the identical command replaces the previous record for this key.`,
 			if err != nil {
 				return fmt.Errorf("verify record: %w", err)
 			}
-			if _, err := verify.RecordCheck(root, key, entry); err != nil {
+			if _, err := verify.RecordCheck(store, key, entry); err != nil {
 				// Fail-open contract lives at the CONSUMER: an unwritable state
 				// dir means recording is skipped with an explicit note and the
 				// consumer re-executes. The CLI surfaces the error (exit 1) so
@@ -134,7 +148,7 @@ An entry with the identical command replaces the previous record for this key.`,
 				return fmt.Errorf("verify record: %w", err)
 			}
 			return verifyEmitJSON(c, map[string]any{
-				"snapshot":  verify.SnapshotPath(root, key),
+				"snapshot":  verify.SnapshotPath(store, key),
 				"key":       key,
 				"check_id":  entry.CheckID,
 				"command":   entry.Command,
@@ -172,17 +186,21 @@ of reusing.`,
 			if err != nil {
 				return err
 			}
+			store, err := verifyStoreRoot(root)
+			if err != nil {
+				return fmt.Errorf("verify check: %w", err)
+			}
 			ctx, cancel := context.WithTimeout(c.Context(), verifyKeyTimeout)
 			defer cancel()
 			key, err := verify.Key(ctx, root)
 			if err != nil {
 				return fmt.Errorf("verify check: %w", err)
 			}
-			snap, err := verify.Load(root, key)
+			snap, err := verify.Load(store, key)
 			if err != nil {
 				return fmt.Errorf("verify check: %w", err)
 			}
-			path := verify.SnapshotPath(root, key)
+			path := verify.SnapshotPath(store, key)
 			stale := func(reason string) error {
 				_ = verifyEmitJSON(c, map[string]any{
 					"fresh":  false,

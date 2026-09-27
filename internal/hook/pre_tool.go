@@ -412,6 +412,22 @@ func (h *preToolHandler) EventType() EventType {
 // "deny" with a reason if the tool is denied, "ask" if user confirmation is
 // needed, or "allow" otherwise.
 func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
+	// Contract-mode escalation detector (SPEC-AUTONOMY-ESCALATION-001). It
+	// records only and returns nothing, so it introduces no conditional return
+	// above the destructive-command denylist; it is inert (no file read)
+	// unless workflow.autonomy.mode is contract.
+	observeEscalationWith(h.cfg, string(EventPreToolUse), input, escalationOptions{
+		// Class 6 records a denylisted command before the denylist below
+		// denies it; the denylist is consulted, never copied (design.md §C.3).
+		denylisted: func() bool {
+			if h.policy == nil || !IsShellTool(input.ToolName) {
+				return false
+			}
+			decision, _ := h.checkBashCommand(input.ToolInput)
+			return decision == DecisionDeny
+		},
+	})
+
 	// No policy means allow everything (subject to the same permission-mode
 	// awareness as the "no dangerous pattern found" path below — a nil
 	// policy trivially finds nothing dangerous).
@@ -447,8 +463,10 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 	// nowhere at all.
 	var gateNotice string
 
-	// Handle Bash commands
-	if input.ToolName == "Bash" && len(input.ToolInput) > 0 {
+	// Handle shell commands (Bash and PowerShell — IsShellTool). The deny/ask
+	// lists stay deny-on-positive-match for both tools: PowerShell text that
+	// the POSIX quote collapse misreads can under-match, never newly deny.
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 {
 		command := h.extractBashCommand(input.ToolInput)
 
 		// F5 mechanical: --no-verify bypass defense (SPEC-PRETOOL-GATE-MOVE-001
@@ -531,7 +549,7 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 	// any git-context uncertainty (REQ-WBG-012). The exemption logic
 	// (MOAI_BRANCH_GUARD_EXEMPT + manager-git identity) is unchanged and is
 	// consulted only on the enabled path (REQ-6 backward compat).
-	if input.ToolName == "Bash" && len(input.ToolInput) > 0 && h.branchGuardEnabled() {
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 && h.branchGuardEnabled() {
 		if decision, reason := checkBranchState(input, h.projectRoot()); decision == DecisionDeny {
 			slog.Warn("branch guard denied",
 				"tool_name", input.ToolName,
@@ -549,7 +567,7 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 	// Workflow.IntegrationLock.Enabled (default false): on the disabled path
 	// the lock record is never read. Fails OPEN on every uncertainty; a deny
 	// requires positive evidence that a DIFFERENT, LIVE session holds it.
-	if input.ToolName == "Bash" && len(input.ToolInput) > 0 && h.integrationLockEnabled() {
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 && h.integrationLockEnabled() {
 		if decision, reason := checkIntegrationLock(input, h.projectRoot()); decision == DecisionDeny {
 			slog.Warn("integration lock denied",
 				"tool_name", input.ToolName,
@@ -566,7 +584,7 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 	// Gated by Workflow.SlotLease.Enabled (default false): on the disabled
 	// path neither the project root, the patterns, nor any lease record is
 	// touched. Fails OPEN on every uncertainty.
-	if input.ToolName == "Bash" && len(input.ToolInput) > 0 {
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 {
 		if slotCfg, enabled := h.slotLeaseConfig(); enabled {
 			if decision, reason := checkSlotLease(input, h.projectRoot(), slotCfg, os.Stderr); decision == DecisionDeny {
 				slog.Warn("slot lease denied",
@@ -576,6 +594,51 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 				)
 				return NewDenyOutput(reason), nil
 			}
+		}
+	}
+
+	// Push serializer (SPEC-AUTONOMY-PRECONDITION-001 REQ-AP-001/002/007,
+	// design.md §B). Sits after the generic slot-lease guard: that one refuses
+	// any configured heavy command under an opt-in flag, this one serializes
+	// pushes of `develop` behind the push-develop slot lease when a signed
+	// contract carries the action with push_requires_lease — reading the
+	// activation triple from the `moai contract show --json` document, NOT
+	// from workflow.slot_lease.enabled. Inactive until the contract resolver
+	// (SPEC-AUTONOMY-ESCALATION-001 REQ-AE-002) is wired into
+	// pushShowJSONLoader; on the inactive path no record is read and no audit
+	// line is written. Fails OPEN on every uncertainty; a deny requires a
+	// live, unexpired foreign holder, and writes no escalation record.
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 {
+		if show := pushSerializerShow(h.projectRoot()); show != nil {
+			if decision, reason := checkPushSerializer(input, h.projectRoot(), show, pushSerializerBound(h.projectRoot()), os.Stderr); decision == DecisionDeny {
+				slog.Warn("push serializer denied",
+					"tool_name", input.ToolName,
+					"session_id", input.SessionID,
+					"reason", reason,
+				)
+				return NewDenyOutput(reason), nil
+			}
+		}
+	}
+
+	// Contract-sign and contract-decide guard (SPEC-AUTONOMY-PRECONDITION-001
+	// REQ-AP-003/004/005/009/011/012, design.md §C). Independent of
+	// workflow.autonomy.mode: the human-path `moai contract sign` deny is
+	// unconditional in every session (signing happens at an operator
+	// terminal); the non-interactive sign path and `moai contract decide`
+	// are gated on the session's MOAI_FACTORY_ROLE role marker. Fails
+	// CLOSED: a wrongly allowed signature voids the contract model, while a
+	// wrongly denied sign costs the operator one terminal command. Reads no
+	// project state and no record; an allowed call leaves the hook output
+	// byte-identical to the no-guard baseline and writes no audit line.
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 {
+		if decision, reason := checkContractSign(input); decision == DecisionDeny {
+			slog.Warn("contract sign guard denied",
+				"tool_name", input.ToolName,
+				"session_id", input.SessionID,
+				"reason", reason,
+			)
+			return NewDenyOutput(reason), nil
 		}
 	}
 
@@ -1009,6 +1072,22 @@ func (h *preToolHandler) checkBashCommand(toolInput json.RawMessage) (string, st
 		return DecisionDeny, fmt.Sprintf("Dangerous command blocked: removal of protected path %q", target)
 	}
 
+	// REQ-HGF-007 (SPEC-HOOK-GUARD-POWERSHELL-FORMS-001): a LITERAL quoted
+	// operand of an indirection construct — Bash eval, PowerShell
+	// iex/Invoke-Expression, or the joined program-and-argument text of
+	// Start-Process … -ArgumentList — is positive evidence the deny-list
+	// pattern will execute through the indirection, so the same compiled
+	// patterns run over the operand before the quoted-span collapse blanks
+	// it. A non-literal operand (variable, subexpression) is found-but-empty:
+	// the scan skips it and the fail-open path with its audit line stands.
+	if operand, found := extractLiteralIndirectionOperand(command); found {
+		for _, pattern := range h.policy.DangerousBashPatterns {
+			if pattern.MatchString(operand) {
+				return DecisionDeny, fmt.Sprintf("Dangerous command blocked: %s", pattern.String())
+			}
+		}
+	}
+
 	// Collapse quoted spans to a placeholder before the pattern scan, matching
 	// what the branch guard already does (substituteQuotedArguments). Without
 	// this, a command that merely PRINTS or STORES a dangerous form — a commit
@@ -1031,6 +1110,100 @@ func (h *preToolHandler) checkBashCommand(toolInput json.RawMessage) (string, st
 	}
 
 	return "", ""
+}
+
+// --- literal indirection-operand extraction (SPEC-HOOK-GUARD-POWERSHELL-FORMS-001 REQ-HGF-007) ---
+
+// extractLiteralIndirectionOperand returns the literal quoted operand text of
+// an indirection construct with its outer quoting stripped, and whether an
+// operand was found at all. Covered constructs: Bash eval, PowerShell
+// iex/Invoke-Expression, and Start-Process (including the saps/start
+// aliases). A found-but-empty return marks a NON-literal operand — a
+// variable reference or subexpression, where the deny scan fails open and
+// the unclassifiable audit line (where applicable) is the only record.
+func extractLiteralIndirectionOperand(command string) (string, bool) {
+	tokens := splitPSTokens(command)
+	for i, tok := range tokens {
+		switch strings.ToLower(strings.TrimLeft(tok, "({&")) {
+		case "eval", "iex", "invoke-expression":
+			return firstLiteralOperand(tokens[i+1:])
+		case "start-process", "saps", "start":
+			return startProcessOperand(tokens[i+1:])
+		}
+	}
+	return "", false
+}
+
+// firstLiteralOperand returns the first quoted operand after the construct
+// with its outer quotes stripped. An operand whose content carries a `$` is
+// a variable reference or substitution, not a literal — found-but-empty.
+func firstLiteralOperand(rest []string) (string, bool) {
+	for _, tok := range rest {
+		if len(tok) >= 2 && (tok[0] == '"' || tok[0] == '\'') && tok[len(tok)-1] == tok[0] {
+			content := tok[1 : len(tok)-1]
+			if strings.ContainsRune(content, '$') {
+				return "", true // non-literal: fail open
+			}
+			return content, true
+		}
+	}
+	return "", false
+}
+
+// startProcessOperand joins the Start-Process program with its -ArgumentList
+// values into one text the deny scan runs over (REQ-HGF-007: the joined
+// program-and-argument text). `-FilePath <prog>` supplies the program when
+// the positional form is not used.
+func startProcessOperand(rest []string) (string, bool) {
+	program := ""
+	var args []string
+	sawOperand := false
+	for j := 0; j < len(rest); j++ {
+		tok := rest[j]
+		low := strings.ToLower(tok)
+		switch {
+		case low == "-argumentlist":
+			sawOperand = true
+		case strings.HasPrefix(low, "-argumentlist="):
+			sawOperand = true
+			args = append(args, argumentListItems(tok[len("-argumentlist="):])...)
+		case strings.HasPrefix(low, "-"):
+			if low == "-filepath" && j+1 < len(rest) {
+				program = rest[j+1]
+				j++
+			}
+		default:
+			if program == "" {
+				program = tok
+			} else {
+				args = append(args, argumentListItems(tok)...)
+			}
+		}
+	}
+	if program == "" && len(args) == 0 {
+		return "", sawOperand
+	}
+	return strings.Join(append([]string{program}, args...), " "), true
+}
+
+// argumentListItems extracts the array items of an -ArgumentList value —
+// quoted spans stripped, bare words kept, commas dropped
+// (`'switch','probe'` yields switch, probe).
+var argumentListItemPattern = regexp.MustCompile(`'([^']*)'|"([^"]*)"|[^,\s]+`)
+
+func argumentListItems(value string) []string {
+	var out []string
+	for _, m := range argumentListItemPattern.FindAllStringSubmatch(value, -1) {
+		switch {
+		case m[1] != "":
+			out = append(out, m[1])
+		case m[2] != "":
+			out = append(out, m[2])
+		default:
+			out = append(out, m[0])
+		}
+	}
+	return out
 }
 
 // resolveThroughExistingParent resolves the symlinks of the nearest EXISTING

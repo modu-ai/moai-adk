@@ -216,3 +216,21 @@ workflow:
     # no `enabled: true` under internal/template/templates/).
     jev:
         enabled: true
+    # autonomy: how a SPEC's autonomous-execution contract is signed and bounded.
+    # An absent key takes the default shown here; an unrecognized value for
+    # mode, second_review, decider, or jev_min_confidence falls back to the
+    # stricter default (guided, required, human, 0.50) with a warning naming
+    # the key.
+    autonomy:
+        mode: guided              # guided | contract
+        contract:
+            # sign several SPECs with one confirmation
+            batch_sign: true
+            second_review: required # required | advisory | off
+            # allow the push-develop action in contracts
+            push_develop: true
+        kickoff:
+            # decider: human | llm | llm+jev   (omitted: human in guided, llm in contract)
+            jev_min_confidence: 0.50
+        escalation:
+            budget_default: { turns: 60, operations: 40, audit_retries: 2 }

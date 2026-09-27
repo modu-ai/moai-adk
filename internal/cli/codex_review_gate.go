@@ -22,6 +22,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook"
 
@@ -188,7 +189,7 @@ func runCodexReviewGate(cmd *cobra.Command, _ []string) error {
 		return emitHookOutput(cmd.OutOrStdout(), &hook.HookOutput{})
 	}
 	projectDir := resolveProjectDirFromInput(input)
-	enabled := readCodexReviewGateEnabled(projectDir)
+	enabled := readCodexReviewGateEnabled(reviewGateConfigRoot(projectDir))
 	out, gateErr := HandleCodexReviewGate(input, enabled, projectDir)
 	if gateErr != nil {
 		// Fail-open: a handler error MUST NOT trap the Stop pipeline.
@@ -199,6 +200,21 @@ func runCodexReviewGate(cmd *cobra.Command, _ []string) error {
 		out = &hook.HookOutput{}
 	}
 	return emitHookOutput(cmd.OutOrStdout(), out)
+}
+
+// reviewGateConfigRoot returns the root whose workflow config carries the Stop
+// review gates' opt-in flags for a resolved projectDir: the primary checkout
+// for a config-orphaned linked worktree, projectDir itself otherwise, and ""
+// (gate disabled, the fail-open direction of these gates) when that primary
+// cannot be identified (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-008). The order
+// in which projectDir is picked, and the tree the codex review targets, do
+// not change.
+func reviewGateConfigRoot(projectDir string) string {
+	root, err := auditreceipt.StoreRoot(projectDir)
+	if err != nil {
+		return ""
+	}
+	return root
 }
 
 // readHookInput reads and parses the hook stdin JSON into a HookInput. It is

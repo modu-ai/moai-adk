@@ -433,7 +433,8 @@ func TestCodexLocalInstructions_AllFunnelsPreserveInputs(t *testing.T) {
 	renames := 0
 	codexRenameFn = func(a, b string) error { renames++; return os.Rename(a, b) }
 	t.Cleanup(func() { inTmuxFn, spawnLookPath, codexRenameFn = prevTmux, prevLook, prevRename })
-	forms := [][]string{{}, {"cli"}, {"app"}, {"--spawn"}, {"-w", "fixture"}, {"-f"}, {"-f", "agent"}, {"-f", "agent-2"}, {"-f", "lane-3"}}
+	// The -f forms are gone: moai codex refuses them (SPEC-CODEX-FACTORY-RETIRE-001).
+	forms := [][]string{{}, {"cli"}, {"app"}, {"--spawn"}, {"-w", "fixture"}}
 	var want []string
 	for i, args := range forms {
 		if _, _, err := runCodexCmd(t, args...); err != nil {
