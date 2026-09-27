@@ -1,0 +1,10 @@
+# t1226 run-phase shell command log (self-report; $SCRATCH = session scratchpad dir; one command per line, exit noted)
+git rev-parse --short HEAD ; git branch --show-current ; git status --short
+locale charmap   # UTF-8
+git fetch origin develop -q ; git rev-parse develop origin/develop HEAD ; git rev-list --count --left-right develop...HEAD   # develop c501bd1da, card HEAD c29277629, "3 7"
+golangci-lint version   # v2.1.6
+unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_DISTRIBUTE_ALL && go test ./internal/cli/ -run '^TestHeadroomInitSurfaceExport$' -count=1 -v -args -headroom-export=$SCRATCH/red-surface > $SCRATCH/red.txt 2>&1   # RED (copy stub), exit 1
+gofmt -l internal/cli/init_headroom_export_test.go   # empty
+go vet ./internal/cli/ > $SCRATCH/vet.txt 2>&1   # exit 0
+golangci-lint run ./internal/cli/... > $SCRATCH/lint-run.txt 2>&1   # exit 0, "0 issues."
+sed <scrub $SCRATCH/$TMPDIR> $SCRATCH/red.txt > .moai/reports/t1226/harness-red.txt
