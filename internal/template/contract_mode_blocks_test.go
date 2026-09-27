@@ -811,3 +811,234 @@ func TestContractModeSigningBlocks(t *testing.T) {
 		}
 	})
 }
+
+// ---------------------------------------------------------------------------
+// Jev doctrine amendment (AC-GR-022)
+// ---------------------------------------------------------------------------
+
+// The amendment opens exactly one exception to the Jev display-only
+// principle: the second signal of the contract-mode Kickoff llm+jev
+// cross-check. These are the English tokens every amended location carries.
+const (
+	grJevException = "contract-mode Kickoff"
+	grJevCrossChk  = "llm+jev"
+	grJevAmended   = "[AMENDED 2026-09-26"
+	grJevSpec      = ".moai/specs/SPEC-JEV-CORE-001/spec.md"
+	grJevDesign    = ".moai/specs/SPEC-AUTONOMY-GATE-REWIRE-001/design.md"
+	grJevProgress  = ".moai/specs/SPEC-AUTONOMY-GATE-REWIRE-001/progress.md"
+)
+
+// grReqBody returns the paragraph run of one requirement: from its bold id to
+// the next bold requirement id or heading.
+func grReqBody(text, id string) string {
+	start := strings.Index(text, "**"+id+"**")
+	if start < 0 {
+		return ""
+	}
+	rest := text[start+len(id)+4:]
+	end := len(rest)
+	for _, stop := range []string{"\n**REQ-", "\n## ", "\n### "} {
+		if i := strings.Index(rest, stop); i >= 0 && i < end {
+			end = i
+		}
+	}
+	return rest[:end]
+}
+
+// grJevSpecFindings checks the amended Jev SPEC: both requirements carry the
+// amendment marker and the exception, both authority items name it, HISTORY
+// records the re-decision, and the SPEC stays completed.
+func grJevSpecFindings(text string) []string {
+	var f []string
+	if !regexp.MustCompile(`(?m)^status: completed$`).MatchString(text) {
+		f = append(f, "status is not `completed`")
+	}
+	for _, id := range []string{"REQ-JEVC-011", "REQ-JEVC-012"} {
+		body := grReqBody(text, id)
+		switch {
+		case body == "":
+			f = append(f, id+" not found")
+		case !strings.Contains(body, grJevAmended):
+			f = append(f, id+" lacks the amendment marker")
+		case !strings.Contains(body, grJevException) || !strings.Contains(body, grJevCrossChk):
+			f = append(f, id+" states no contract-mode Kickoff llm+jev exception")
+		}
+	}
+	sec, ok := grSection(text, "### Out of Scope — authority")
+	if !ok {
+		f = append(f, "section `### Out of Scope — authority` not found")
+	} else {
+		var items []string
+		for _, line := range strings.Split(sec, "\n") {
+			if strings.HasPrefix(line, "- ") {
+				items = append(items, line)
+			}
+		}
+		if len(items) != 2 {
+			f = append(f, fmt.Sprintf("authority section has %d items, want 2", len(items)))
+		}
+		for i, it := range items {
+			if !strings.Contains(it, grJevException) || !strings.Contains(it, grJevCrossChk) {
+				f = append(f, fmt.Sprintf("authority item %d keeps a gate prohibition with no contract-mode Kickoff exception", i+1))
+			}
+		}
+	}
+	hist, ok := grSection(text, "## HISTORY")
+	found := false
+	if ok {
+		for _, line := range strings.Split(hist, "\n") {
+			if strings.Contains(line, "2026-09-26") && strings.Contains(line, "0.3.0") &&
+				strings.Contains(line, "Jev-alone") && strings.Contains(line, "cross-check") {
+				found = true
+			}
+		}
+	}
+	if !found {
+		f = append(f, "HISTORY has no 0.3.0 row recording the cross-check-only re-decision")
+	}
+	return f
+}
+
+// grJevNoteFindings checks one rule or config passage: it names the exception
+// exactly once, keeps Jev from deciding alone, and keeps the other closed
+// targets.
+func grJevNoteFindings(label, passage string, closed []string) []string {
+	var f []string
+	if n := strings.Count(passage, grJevException); n != 1 {
+		f = append(f, fmt.Sprintf("%s: names the contract-mode Kickoff exception %d times, want 1", label, n))
+	}
+	if !strings.Contains(passage, grJevCrossChk) {
+		f = append(f, label+": exception does not name the llm+jev cross-check")
+	}
+	if !strings.Contains(passage, "never decides alone") {
+		f = append(f, label+": does not keep Jev from deciding alone")
+	}
+	for _, c := range closed {
+		if !strings.Contains(passage, c) {
+			f = append(f, fmt.Sprintf("%s: dropped the closed target %q", label, c))
+		}
+	}
+	return f
+}
+
+// grLineWith returns the single line containing marker ("" when absent).
+func grLineWith(text, marker string) string {
+	for _, line := range strings.Split(text, "\n") {
+		if strings.Contains(line, marker) {
+			return line
+		}
+	}
+	return ""
+}
+
+// grJevYAMLComment returns the comment run that documents the jev key.
+func grJevYAMLComment(text string) string {
+	start := strings.Index(text, "# jev: ")
+	if start < 0 {
+		return ""
+	}
+	end := strings.Index(text[start:], "\n    jev:")
+	if end < 0 {
+		return ""
+	}
+	return text[start : start+end]
+}
+
+// grAmendmentText extracts the §29 sentence the design fixes between its
+// marker comments, without the code fence.
+func grAmendmentText(design string) string {
+	const open, close = "<!-- §29-amendment-text-start -->", "<!-- §29-amendment-text-end -->"
+	i, j := strings.Index(design, open), strings.Index(design, close)
+	if i < 0 || j < i {
+		return ""
+	}
+	var lines []string
+	for _, line := range strings.Split(design[i+len(open):j], "\n") {
+		if s := strings.TrimSpace(line); s != "" && !strings.HasPrefix(s, "```") {
+			lines = append(lines, s)
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+// TestJevDoctrineAmendment (AC-GR-022): the Jev SPEC, both copies of the MCP
+// tools catalogue rows and the workflow.yaml jev comment, and the local guide
+// carry the one exception and nothing wider.
+func TestJevDoctrineAmendment(t *testing.T) {
+	root := grRoot(t)
+	spec := grRead(t, root, grJevSpec)
+
+	t.Run("falsifier/authority-items-unamended", func(t *testing.T) {
+		bad := spec
+		sec, _ := grSection(spec, "### Out of Scope — authority")
+		old := strings.ReplaceAll(sec, grJevException, "Kickoff")
+		bad = strings.Replace(bad, sec, old, 1)
+		if f := grJevSpecFindings(bad); len(f) == 0 {
+			t.Fatal("checker accepted a SPEC whose authority items keep the old prohibition")
+		} else {
+			t.Logf("observed: %v", f)
+		}
+	})
+	t.Run("falsifier/req-011-display-only", func(t *testing.T) {
+		body := grReqBody(spec, "REQ-JEVC-011")
+		bad := strings.Replace(spec, body, " (Ubiquitous) "+grJevAmended+" — v0.3.0] A Jev answer shall not mutate anything. The capability is display-only.\n", 1)
+		if f := grJevSpecFindings(bad); len(f) == 0 {
+			t.Fatal("checker accepted REQ-JEVC-011 left display-only with no exception")
+		} else {
+			t.Logf("observed: %v", f)
+		}
+	})
+	t.Run("falsifier/note-widened", func(t *testing.T) {
+		passage := "never a completion predicate or gate input, except the " + grJevException + " `llm+jev` cross-check"
+		if f := grJevNoteFindings("fixture", passage, []string{"merge approval", "queue mutation"}); len(f) == 0 {
+			t.Fatal("checker accepted a note that dropped closed targets and the alone clause")
+		} else {
+			t.Logf("observed: %v", f)
+		}
+	})
+
+	t.Run("spec", func(t *testing.T) {
+		for _, f := range grJevSpecFindings(spec) {
+			t.Error(f)
+		}
+	})
+	t.Run("rules-and-config", func(t *testing.T) {
+		for _, prefix := range []string{"", "internal/template/templates/"} {
+			cat := grRead(t, root, prefix+".claude/rules/moai/core/moai-mcp-tools-catalogue.md")
+			closed := []string{"completion predicate", "merge approval", "queue mutation"}
+			for _, marker := range []string{"| `mcp__moai__jev_ask` |", "| Judgment (gated) |"} {
+				label := prefix + "moai-mcp-tools-catalogue.md " + marker
+				for _, f := range grJevNoteFindings(label, grLineWith(cat, marker), closed) {
+					t.Error(f)
+				}
+			}
+			wf := grRead(t, root, prefix+".moai/config/sections/workflow.yaml")
+			label := prefix + "workflow.yaml jev comment"
+			for _, f := range grJevNoteFindings(label, grJevYAMLComment(wf), []string{"completion verdict", "merge", "queue mutation"}) {
+				t.Error(f)
+			}
+		}
+	})
+	t.Run("local-guide", func(t *testing.T) {
+		want := grAmendmentText(grRead(t, root, grJevDesign))
+		if want == "" {
+			t.Fatal("design.md carries no §29 amendment text between its markers")
+		}
+		local := grRead(t, root, "CLAUDE.local.md")
+		start := strings.Index(local, "\n## 29.")
+		if start < 0 {
+			t.Fatal("CLAUDE.local.md has no §29")
+		}
+		sec := local[start+1:]
+		if end := strings.Index(sec, "\n## "); end >= 0 {
+			sec = sec[:end]
+		}
+		if !strings.Contains(sec, want) {
+			t.Error("CLAUDE.local.md §29 lacks the design.md §11.1 amendment text")
+		}
+		progress := grRead(t, root, grJevProgress)
+		if !strings.Contains(progress, "operator confirmed the §29 line") {
+			t.Error("progress.md records no operator confirmation of the §29 line")
+		}
+	})
+}

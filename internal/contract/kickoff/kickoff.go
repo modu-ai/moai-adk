@@ -21,8 +21,11 @@ const autonomousKickoffEnabled = false
 // JevDoctrineAmended is true once the Jev display-only principle is amended
 // for the contract-mode Kickoff cross-check. While false, rule R3 routes a
 // Jev-answered llm+jev decision to a human and the A1 signer refuses an
-// effective llm+jev receipt. Both read this one constant.
-const JevDoctrineAmended = false
+// effective llm+jev receipt. Both read this one constant. It turns true in
+// the same commit as every amendment marker (the Jev SPEC, the MCP tools
+// catalogue, the workflow.yaml jev comment, the local guide) —
+// TestJevAmendmentLinkage fails on any split.
+const JevDoctrineAmended = true
 
 // AutonomousKickoffEnabled reports the compiled activation state.
 func AutonomousKickoffEnabled() bool { return autonomousKickoffEnabled }

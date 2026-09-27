@@ -243,8 +243,16 @@ func TestContractKickoffCheck(t *testing.T) {
 			r.JevAnswer = signtest.JevAnswer("approve", 0.71)
 		}))
 		r := runContract(t, p, contractRun{}, "sign", signtest.SpecID, "--signer", "llm+jev", "--receipt", signtest.ReceiptRel())
-		if r.code != 1 || !strings.Contains(r.stdout+r.stderr, contract.RefuseReceiptRequiresHuman) {
-			t.Fatalf("CLI sign of an llm+jev approve receipt with the doctrine constant false: %s, want refused %s", r, contract.RefuseReceiptRequiresHuman)
+		// The CLI must hand the compiled constant to the signer: refused while
+		// the doctrine is unamended, signed once it is.
+		if !contractDoctrineAmended() {
+			if r.code != 1 || !strings.Contains(r.stdout+r.stderr, contract.RefuseReceiptRequiresHuman) {
+				t.Fatalf("CLI sign of an llm+jev approve receipt with the doctrine constant false: %s, want refused %s", r, contract.RefuseReceiptRequiresHuman)
+			}
+			return
+		}
+		if r.code != 0 || strings.Contains(r.stdout+r.stderr, contract.RefuseReceiptRequiresHuman) {
+			t.Fatalf("CLI sign of an llm+jev approve receipt with the doctrine constant true: %s, want signed", r)
 		}
 	})
 }
