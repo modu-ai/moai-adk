@@ -171,6 +171,96 @@ func TestMapOutput_SessionStartAdditionalContext(t *testing.T) {
 	}
 }
 
+// TestMapOutput_BothKeysAppendsNotReplaces — audit F1 (card t1273,
+// sync-audit-opus.md; regression probe in the audit's E4).
+//
+// Real moai SessionStart / UserPromptSubmit outputs carry BOTH systemMessage
+// (migration-failure, auto-update, and operator notices —
+// internal/hook/registry.go mergeHandlerOutput) and hookSpecificOutput
+// (attribution, injected handoff body). Since `604bd952a` mapped the notice,
+// MapOutput REPLACED the existing additionalContext with the notice text,
+// silently (0 discards). The fix appends the notice and keeps every other
+// hookSpecificOutput key.
+func TestMapOutput_BothKeysAppendsNotReplaces(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		event hook.EventType
+		hso   string
+	}{
+		{
+			name:  "session_start",
+			event: hook.EventSessionStart,
+			hso:   `{"hookEventName":"SessionStart","additionalContext":"HANDOFF-BODY"}`,
+		},
+		{
+			name:  "user_prompt_submit",
+			event: hook.EventUserPromptSubmit,
+			hso:   `{"hookEventName":"UserPromptSubmit","additionalContext":"PROMPT-BODY"}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			payload := `{"systemMessage":"OPERATOR-NOTICE","hookSpecificOutput":` + tt.hso + `}`
+			out, discards, err := MapOutput(tt.event, []byte(payload))
+			if err != nil {
+				t.Fatalf("MapOutput error = %v", err)
+			}
+			if len(discards) != 0 {
+				t.Errorf("discards = %v, want none (both keys delivered)", discards)
+			}
+
+			got := decode(t, out)
+			if _, ok := got["systemMessage"]; ok {
+				t.Error("systemMessage survived; Codex ignores it")
+			}
+			hso, ok := got["hookSpecificOutput"].(map[string]any)
+			if !ok {
+				t.Fatalf("hookSpecificOutput missing in %s", out)
+			}
+			want := map[hook.EventType]string{
+				hook.EventSessionStart:     "HANDOFF-BODY\n\nOPERATOR-NOTICE",
+				hook.EventUserPromptSubmit: "PROMPT-BODY\n\nOPERATOR-NOTICE",
+			}[tt.event]
+			if hso["additionalContext"] != want {
+				t.Errorf("additionalContext = %v, want %q (body kept, notice appended)", hso["additionalContext"], want)
+			}
+			if hso["hookEventName"] != string(tt.event) {
+				t.Errorf("hookEventName = %v, want %s (existing key preserved)", hso["hookEventName"], tt.event)
+			}
+		})
+	}
+}
+
+// TestMapOutput_BothKeysExtraHSOKeyPreserved — audit F1 companion: a
+// hookSpecificOutput key beyond hookEventName/additionalContext must survive
+// the append.
+func TestMapOutput_BothKeysExtraHSOKeyPreserved(t *testing.T) {
+	t.Parallel()
+
+	payload := `{"systemMessage":"NOTICE","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"BODY","sessionId":"abc"}}`
+	out, discards, err := MapOutput(hook.EventSessionStart, []byte(payload))
+	if err != nil {
+		t.Fatalf("MapOutput error = %v", err)
+	}
+	if len(discards) != 0 {
+		t.Errorf("discards = %v, want none", discards)
+	}
+	hso, ok := decode(t, out)["hookSpecificOutput"].(map[string]any)
+	if !ok {
+		t.Fatalf("hookSpecificOutput missing in %s", out)
+	}
+	if hso["sessionId"] != "abc" {
+		t.Errorf("sessionId = %v, want abc (other hookSpecificOutput keys preserved)", hso["sessionId"])
+	}
+	if hso["additionalContext"] != "BODY\n\nNOTICE" {
+		t.Errorf("additionalContext = %v, want BODY\\n\\nNOTICE", hso["additionalContext"])
+	}
+}
+
 // TestDiscardRecordCarriesNoContent — AC-REQ-3a.
 //
 // Length rather than content keeps the diagnostic from becoming an
