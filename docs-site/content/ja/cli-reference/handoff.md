@@ -4,7 +4,7 @@ weight: 68
 draft: false
 ---
 
-`moai handoff` は auto-resume ハンドオフの pending レコードを管理します。セッション境界 (`/clear`) を越えて作業を継続するための paste-ready resume 本文を保存または消去します。保存されたレコードは `handoff.mode: auto` 設定時に次のセッション開始時に自動注入されます。
+`moai handoff` は auto-resume ハンドオフの pending レコードを管理します。セッション境界 (`/clear`) を越えて作業を継続するための paste-ready resume 本文を保存または消去します。保存されたレコードは `handoff.mode: auto` 設定時に次のセッション開始時に自動注入されます。消費経路はハーネス中立です。Codex セッションも同じレコードを消費でき、ワークツリーへ入ると `.codex/hooks.json` がシードされ、そちらでも moai フックが読み込まれます。
 
 ## サブコマンド
 
@@ -12,6 +12,7 @@ draft: false
 |--------|------|
 | `moai handoff save` | paste-ready resume 本文を pending レコードとして保存 |
 | `moai handoff clear` | pending レコードを除去 |
+| `moai handoff show` | pending レコードを消費せずにそのまま表示(消費履歴の最新レコードへフォールバック) |
 
 共通フラグとして `--project-dir <path>` (プロジェクトルート、デフォルト: 現在のディレクトリ) を受け取ります。
 
@@ -40,6 +41,14 @@ moai handoff clear
 ```
 
 pending ハンドオフレコードを除去します。
+
+## moai handoff show
+
+```bash
+moai handoff show [--json]
+```
+
+pending ハンドオフレコードの本文を、状態を変えずにそのまま表示します。pending レコードがない場合は消費履歴の最新レコードへフォールバックします。`--json` はソース・SPEC id・フェーズ・本文を JSON で出力します。
 
 ## Fail-open 保証
 

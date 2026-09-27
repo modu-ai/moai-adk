@@ -4,7 +4,7 @@ weight: 68
 draft: false
 ---
 
-`moai handoff` 管理 auto-resume 交接 pending 记录。它保存或清除跨会话边界(`/clear`)继续工作所需的 paste-ready resume 正文。保存的记录在设置 `handoff.mode: auto` 时会在下一次会话开始时自动注入。
+`moai handoff` 管理 auto-resume 交接 pending 记录。它保存或清除跨会话边界(`/clear`)继续工作所需的 paste-ready resume 正文。保存的记录在设置 `handoff.mode: auto` 时会在下一次会话开始时自动注入。消费路径与 harness 无关:Codex 会话同样消费这些记录,进入 worktree 时会播种 `.codex/hooks.json`,moai 钩子在那里也会加载。
 
 ## 子命令
 
@@ -12,6 +12,7 @@ draft: false
 |--------|------|
 | `moai handoff save` | 将 paste-ready resume 正文保存为 pending 记录 |
 | `moai handoff clear` | 移除 pending 记录 |
+| `moai handoff show` | 显示 pending 记录而不消费它(回退到最近的已消费记录) |
 
 公共标志接受 `--project-dir <path>`(项目根目录,默认:当前目录)。
 
@@ -40,6 +41,14 @@ moai handoff clear
 ```
 
 移除 pending 交接记录。
+
+## moai handoff show
+
+```bash
+moai handoff show [--json]
+```
+
+在不改变状态的前提下原样显示 pending 交接记录的正文。没有 pending 记录时回退到最近的已消费记录。`--json` 以 JSON 输出来源、SPEC id、阶段和正文。
 
 ## Fail-open 保证
 

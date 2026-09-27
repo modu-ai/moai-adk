@@ -4,7 +4,7 @@ weight: 68
 draft: false
 ---
 
-`moai handoff` 는 auto-resume 핸드오프 pending 레코드를 관리합니다. 세션 경계(`/clear`)를 넘어 작업을 이어 가려고 준비해 둔 paste-ready resume 본문을 저장하거나 지웁니다. `handoff.mode: auto` 로 설정해 두면 저장된 레코드가 다음 세션이 시작될 때 자동으로 주입됩니다.
+`moai handoff` 는 auto-resume 핸드오프 pending 레코드를 관리합니다. 세션 경계(`/clear`)를 넘어 작업을 이어 가려고 준비해 둔 paste-ready resume 본문을 저장하거나 지웁니다. `handoff.mode: auto` 로 설정해 두면 저장된 레코드가 다음 세션이 시작될 때 자동으로 주입됩니다. 소비 경로는 하네스 중립입니다. Codex 세션도 같은 레코드를 소비하며, 워크트리 진입 시 `.codex/hooks.json` 이 시딩되어 그쪽에서도 moai 훅이 로드됩니다.
 
 SPEC 하나가 여러 세션에 걸쳐 진행될 때, 이전 세션의 진행 상황이 없으면 다음 세션이 처음부터 다시 맥락을 모아야 하기 때문에 토큰과 시간 낭비가 큽니다. 그래서 이 커맨드는 오케스트레이터가 내보낸 6-블록 resume 본문을 매개로 삼아, 이전 SPEC 단계의 전제·검증·실행 명령을 다음 세션으로 건네줍니다. 따라서 관리자 에이전트가 긴 에픽을 연속으로 끌고 가는 흐름에서 끊김 없는 복귀 지점을 만들어 줍니다.
 
@@ -14,6 +14,7 @@ SPEC 하나가 여러 세션에 걸쳐 진행될 때, 이전 세션의 진행 �
 |--------|------|
 | `moai handoff save` | paste-ready resume 본문을 pending 레코드로 저장 |
 | `moai handoff clear` | pending 레코드 제거 |
+| `moai handoff show` | pending 레코드를 소비하지 않고 그대로 보여줍니다(소비 이력 최신 레코드로 폴백) |
 
 공통 플래그로 `--project-dir <path>` (프로젝트 루트, 기본: 현재 디렉터리)를 받습니다.
 
@@ -42,6 +43,14 @@ moai handoff clear
 ```
 
 pending 핸드오프 레코드를 제거합니다.
+
+## moai handoff show
+
+```bash
+moai handoff show [--json]
+```
+
+pending 핸드오프 레코드의 본문을 상태를 바꾸지 않고 그대로 보여줍니다. pending 레코드가 없으면 소비 이력의 최신 레코드로 폴백합니다. `--json` 은 출처·SPEC id·단계·본문을 JSON 으로 내보냅니다.
 
 ## Fail-open 보장
 

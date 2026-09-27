@@ -87,3 +87,28 @@ cross_platform_build:
 total_run_phase_files: 15      # Go 신규 5 + 수정 10
 m1_to_mN_commit_strategy: per-milestone   # M1.2 cfa540967, M1.3 a347d83ee, 문서 커밋 후행
 ```
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-09-28T00:00:00+09:00
+sync_commit_sha: pending-backfill-sync   # D3 backfill exemption — 커밋은 자신의 해시를 모른다; 후속 커밋에서 실측 SHA로 backfill
+sync_status: complete
+b12_self_test_a: pass   # grep -c 'SPEC-HANDOFF-NEUTRAL-001' CHANGELOG.md → 0 (중복 없음, emission 허용)
+b12_self_test_b: pass   # acceptance.md 고유 AC 12건 == CHANGELOG 항목 기재 12건 (AC-HN-001..012)
+b12_self_test_c: pass   # CHANGELOG 기재 파일 경로 전부 ls로 존재 확인 (handoff.go, session_worktree.go, codexadapter/output.go, internal/homestate/)
+changelog_entry_position: "[Unreleased] → Added 첫 번째 불릿"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (sync 커밋에서 적용)"
+  plan_md: unchanged
+  acceptance_md: unchanged
+  progress_md: unchanged
+canary_compliance_check:
+  scope_statement: "M1만 동기 범위 — M2(t1175 게이트)·M3(t1243 게이트)는 deferred 문서 범위 후속으로 CHANGELOG·문서에 명시"
+  body_edits: "spec.md/plan.md/acceptance.md 본문 무변경 — frontmatter status/updated만 갱신"
+  internal_source_edits: 0   # sync 단계에서 internal/** 무변경
+docs_rotation:
+  readme_4locale: "handoff 커맨드 셀 `<save|list>` → `<save|show|clear>` (README.md/ko/ja/zh)"
+  docs_site: "cli-reference/handoff.md 4-locale — show 행·섹션 추가, 하네스 중립 소비 문장 추가"
+mx_tag_validation: "sync 서브스텝 — 문서 대상, 신규 코드 어노테이션 불요(run에서 이행)"
+```

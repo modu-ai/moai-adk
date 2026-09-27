@@ -4,7 +4,7 @@ weight: 68
 draft: false
 ---
 
-`moai handoff` manages the auto-resume handoff pending record. It saves or clears the paste-ready resume body used to continue work across a session boundary (`/clear`). When `handoff.mode: auto` is set, the saved record is auto-injected at the next session start.
+`moai handoff` manages the auto-resume handoff pending record. It saves or clears the paste-ready resume body used to continue work across a session boundary (`/clear`). When `handoff.mode: auto` is set, the saved record is auto-injected at the next session start. Consumption is harness-neutral: a Codex session consumes the same records, and entering a worktree seeds `.codex/hooks.json` so the moai hook loads there as well.
 
 When a single SPEC spans multiple sessions, the next session has to reassemble context from scratch if the previous session's progress is lost, wasting both tokens and time. So this command uses the orchestrator's 6-block resume body as the medium to carry the previous SPEC step's preconditions, verifications, and execution commands into the next session. It is what gives manager agents an unbroken re-entry point when driving long epics back-to-back.
 
@@ -14,6 +14,7 @@ When a single SPEC spans multiple sessions, the next session has to reassemble c
 |--------|------|
 | `moai handoff save` | Save the paste-ready resume body as a pending record |
 | `moai handoff clear` | Remove the pending record |
+| `moai handoff show` | Display the pending record without consuming it (falls back to the latest consumed record) |
 
 Both accept the common flag `--project-dir <path>` (project root, default: current directory).
 
@@ -42,6 +43,14 @@ moai handoff clear
 ```
 
 Removes the pending handoff record.
+
+## moai handoff show
+
+```bash
+moai handoff show [--json]
+```
+
+Displays the pending handoff record's body verbatim without changing its state. When no pending record exists, it falls back to the latest consumed record. `--json` emits the source, SPEC id, phase, and body as JSON.
 
 ## Fail-open guarantee
 
