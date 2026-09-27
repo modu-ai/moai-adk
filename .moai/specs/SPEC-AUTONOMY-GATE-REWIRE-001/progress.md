@@ -198,7 +198,7 @@ Logs: `.moai/state/verify/t1236/ac/<AC>.txt`. Columns: exit / `--- PASS` count /
 
 ```yaml
 run_complete_at: 2026-09-27
-run_commit_sha: pending-backfill    # the commit carrying this block cannot cite itself; the gitenv fix commit
+run_commit_sha: 8e504df95
 run_status: complete-with-held-debt
 m8_status: "M8 보류 — design §7.1 6행 미충족(Frozen 문단에 비인간 결정자 서명 등가 부재), autonomousKickoffEnabled=false 유지, 3행 충족·4행 부분 확인"
 milestone_commits:
