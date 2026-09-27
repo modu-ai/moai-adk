@@ -7,8 +7,8 @@
 - SPEC ID 사전 점검: Bash 정규식 검사 출력 `PASS`.
 - 입력 근거: `.moai/reports/t1289/root-cause.md`. plan 페이즈의 새 측정은 픽스처 이메일 열거
   (51 개, `plan.md` §B.1)와 센티널 스윕(14 종)뿐이다.
-- 요구사항 REQ-CIG-001..009, 인수조건 AC-CIG-001..012.
-- 미해소: `plan.md` §B.3 `[NEEDS CLARIFICATION]` 1 건(저장소 범위) — Kickoff 전 해소 대상.
+- 요구사항 REQ-CIG-001..010, 인수조건 AC-CIG-001..014.
+- `plan.md` §B.3 저장소 범위 판단: 레인 결정 (b) 로 해소(2026-09-28, spec 0.1.1). 미해소 `[NEEDS CLARIFICATION]` 0 건.
 - status: `draft`.
 - plan_status: audit-ready
 

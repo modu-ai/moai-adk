@@ -1,7 +1,7 @@
 ---
 id: SPEC-COMMIT-IDENTITY-GUARD-001
 title: "커밋 시점 테스트 신원 가드 — 테스트 픽스처 신원으로 커밋을 만드는 셸 명령을 PreToolUse 에서 거부한다"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-09-28
 updated: 2026-09-28
@@ -21,6 +21,7 @@ tags: "hook, pretooluse, guard, git-identity, commit, test-fixture, fail-open"
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-09-28 | manager-spec | 최초 plan-phase 초안 (card t1289). 원인 규명 `.moai/reports/t1289/root-cause.md` 의 측정을 입력으로 삼고, 레인이 이미 내린 설계 결정 7건(§4)을 결정으로 기록했다 |
+| 0.1.1 | 2026-09-28 | manager-spec | 레인 결정으로 저장소 범위 `[NEEDS CLARIFICATION]` 해소 — (b) 이 프로젝트와 git common dir 을 공유하는 저장소만 거부(D8). REQ-CIG-010 추가, REQ-CIG-006 실패 원인에 common dir 해석 실패 추가, AC-CIG-013·014 추가 |
 
 ## 1. 문제
 
@@ -128,7 +129,7 @@ advisory 관례).
 
 ### D6 — 이빨: 변이 증거를 인수 기준에 넣는다
 
-거부 검사 제거, 트리거 동사 제거, 신원 해석 파손 — 세 변이 각각이 이름 붙은 테스트 하나 이상을
+거부 검사 제거, 트리거 동사 제거, 신원 해석 파손 — 세 변이(D8 이후 저장소 범위 비교 상수화를 더해 네 변이, REQ-CIG-009) 각각이 이름 붙은 테스트 하나 이상을
 실패시켜야 한다. 실신원이 통과하는 양성 대조도 함께 둔다. 동작하지 않는 가드가 초록불을 내는
 상태(공허 초록)를 막기 위해서다.
 
@@ -140,6 +141,23 @@ advisory 관례).
 않는 것은 알고 있으며, 이 SPEC 은 배포 사용자가 키의 존재를 설정 파일에서 발견할 수 있도록
 싣는 쪽을 택한다.
 
+### D8 — 저장소 범위: 이 프로젝트와 git common dir 을 공유하는 저장소만 거부
+
+가드는 명령의 대상 저장소가 이 프로젝트와 **같은 git common dir** 을 공유할 때만 거부한다. 판별은
+명령의 대상 디렉터리에서 `git rev-parse --git-common-dir` 를 실행해 절대경로로 정규화한 값과, 훅의
+프로젝트 디렉터리에서 같은 명령을 실행해 정규화한 값을 비교한다. 같으면(이 저장소 자체이거나 그
+링크드 워크트리) 신원 검사를 진행하고, 다르면(`/tmp` 픽스처 저장소 등) 허용한다. 어느 한쪽이라도
+해석에 실패하면 허용하고 감사 한 줄을 남긴다(D5 와 같은 fail-open).
+
+대상 디렉터리는 훅 입력의 cwd 를 기본으로 하되, 명령 문자열에 리터럴 `git -C <path>` 나 선두
+`cd <path> &&` 가 있으면 그 경로를 쓴다(상대경로는 cwd 기준으로 절대화). 이 해석으로 풀 수 없는
+형태는 cwd 로 남으며, 그 결과의 미탐·과탐 방향은 잔여 위험으로 기록한다. 신원 탐침(D3)도 같은 대상
+디렉터리에서 실행한다.
+
+근거(레인 결정): 버려지는 임시 저장소에서 픽스처 신원으로 커밋하는 것은 정당한 테스트 활동이다.
+측정된 누출은 이 저장소의 공유 설정층에 한정됐다(§2.1). 그 밖의 저장소를 거부해도 보호 가치 없이
+실제 작업만 막는다.
+
 ## 5. 요구사항 (GEARS)
 
 - REQ-CIG-001 (Event-driven): **When** a shell tool call's normalized command invokes a commit-creating git verb (`commit`, `merge`, `cherry-pick`, `revert`, `rebase`, `am`, `commit-tree`, `pull`), the commit identity guard shall evaluate the identity that command would commit under; for any other command it shall return allow without spawning an identity probe.
@@ -147,10 +165,11 @@ advisory 관례).
 - REQ-CIG-003 (Event-driven): **When** the command text carries a command-level identity override — an inline `GIT_AUTHOR_EMAIL=` / `GIT_COMMITTER_EMAIL=` / `EMAIL=` assignment or `export` of one, a `-c user.email=` option, or an `--author=` option — the commit identity guard shall evaluate the overriding email in addition to the probed identity.
 - REQ-CIG-004 (Ubiquitous): The commit identity guard shall allow a commit-creating command whose resolved and overriding emails all fall outside the effective deny list.
 - REQ-CIG-005 (Capability gate): **Where** `workflow.commit_identity_guard.enabled` is false or absent, the pre-tool handler shall not invoke the commit identity guard, and no identity probe subprocess shall run.
-- REQ-CIG-006 (Event-driven): **When** identity resolution fails — probe error, probe timeout, unparseable probe output, or missing working directory — the commit identity guard shall allow the command and append one advisory line naming the cause to `.moai/logs/commit-identity-guard-audit.log`.
+- REQ-CIG-006 (Event-driven): **When** identity resolution or repository-scope resolution fails — probe error, probe timeout, unparseable probe output, missing working directory, or a `git rev-parse --git-common-dir` failure on either the target side or the project side — the commit identity guard shall allow the command and append one advisory line naming the cause to `.moai/logs/commit-identity-guard-audit.log`.
 - REQ-CIG-007 (Ubiquitous): The effective deny list shall be the union of the built-in fixture list and `workflow.commit_identity_guard.deny_emails`; the built-in list shall contain every fixture email literal the repository's `*_test.go` files assign through `user.email`, `GIT_AUTHOR_EMAIL`, or `GIT_COMMITTER_EMAIL`, and an in-repository test shall fail when a literal found by that enumeration is missing from the built-in list.
 - REQ-CIG-008 (Ubiquitous): The commit identity guard shall run after the destructive-command check and the existing shell-tool guards in the pre-tool handler, so an earlier deny takes precedence, and shall treat a PowerShell indirection construct it cannot classify as allow-plus-audit rather than deny.
-- REQ-CIG-009 (Ubiquitous): The guard's test suite shall fail under each of three mutations — removal of the deny-list comparison, removal of any single trigger verb, and breakage of identity resolution — and shall carry a positive control in which a non-fixture identity passes.
+- REQ-CIG-009 (Ubiquitous): The guard's test suite shall fail under each of four mutations — removal of the deny-list comparison, removal of any single trigger verb, breakage of identity resolution, and replacement of the repository-scope comparison by a constant (always-equal or always-different) — and shall carry a positive control in which a non-fixture identity passes.
+- REQ-CIG-010 (State-driven): **While** the command's target directory (the hook input cwd, or the path named by a literal `git -C <path>` or leading `cd <path> &&`) resolves to a git common dir different from the git common dir of the hook's project directory, both compared as absolute cleaned paths, the commit identity guard shall allow the command regardless of the identity it would commit under; it shall evaluate the identity only when the two common dirs are equal.
 
 ## 6. 제약
 
@@ -193,10 +212,11 @@ advisory 관례).
 
 ## 8. 성공 기준
 
-- 트리거 명령 × 픽스처 신원(설정층 경유·명령 수준 재정의 경유)이 모두 `TEST_IDENTITY_VIOLATION:`
-  로 거부되고, 실신원은 통과한다.
+- 이 저장소(링크드 워크트리 포함)를 대상으로 한 트리거 명령 × 픽스처 신원(설정층 경유·명령 수준
+  재정의 경유)이 모두 `TEST_IDENTITY_VIOLATION:` 로 거부되고, 실신원과 다른 저장소(`/tmp` 픽스처
+  저장소)의 픽스처 신원 커밋은 통과한다.
 - 가드가 꺼져 있을 때와 트리거가 아닐 때 탐침이 0 회 실행된다(seam 호출 계수로 확인).
-- 세 변이가 각각 이름 붙은 테스트를 실패시킨다.
+- 네 변이(범위 비교 상수화 포함)가 각각 이름 붙은 테스트를 실패시킨다.
 - 내장 목록이 저장소 픽스처 열거 결과를 전부 포함하며, 새 리터럴이 들어오면 테스트가 잡는다.
 - `make build` 통과, 템플릿 문언 중립, 변경 패키지 테스트·`golangci-lint`(v2.1.6) 초록.
 

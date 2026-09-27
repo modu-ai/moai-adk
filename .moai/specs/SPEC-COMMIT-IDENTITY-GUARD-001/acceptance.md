@@ -3,6 +3,10 @@
 > 각 항목은 Given-When-Then 이며 이진 판정 가능하다. 각 AC 는 머리에 **Covers** 로 자기가 덮는
 > `REQ-CIG-XXX` 를 인용한다. "테스트" 는 run 페이즈가 `internal/hook`(설정 표면은
 > `internal/config`)에 두는 이름 붙은 Go 테스트이며, 판정은 그 테스트의 실제 실행 출력으로 한다.
+>
+> **저장소 범위 전제(D8).** AC-CIG-001..012 의 가짜 탐침 테스트는, 따로 적지 않는 한 저장소 범위
+> 탐침이 대상과 프로젝트에 **같은** common dir 을 돌려주는 상태(= 이 저장소 대상)를 전제한다. 범위가
+> 다른 경우는 AC-CIG-013, 링크드 워크트리는 AC-CIG-014 가 덮는다.
 
 ## AC-CIG-001 — 설정층 경유 픽스처 신원의 커밋이 거부된다
 
@@ -50,8 +54,8 @@
 
 **Covers**: maps REQ-CIG-004, REQ-CIG-009
 
-**Given** 가드가 켜져 있고, `t.TempDir()` 임시 저장소에 `cmd.Env` 로만 비픽스처 신원을 준 상태에서
-(설정 파일 쓰기 없음)
+**Given** 가드가 켜져 있고, `t.TempDir()` 임시 저장소를 **프로젝트 디렉터리이자 명령 cwd** 로 두고
+(D8 범위 일치), 그 저장소에 `cmd.Env` 로만 비픽스처 신원을 준 상태에서 (설정 파일 쓰기 없음)
 **When** 실제 `git var` 탐침으로 `git commit -m x` 를 평가할 때
 **Then** 결정은 allow 다. 같은 저장소에 `cmd.Env` 로 `t@t.t` 를 준 짝 테스트는 deny 다 — 두 테스트가
 짝으로 있어야 실제 해석 경로가 판별에 쓰였음이 선다.
@@ -70,9 +74,11 @@
 **Covers**: maps REQ-CIG-006
 
 **Given** 가드가 켜져 있고, 탐침이 (a) 오류 종료, (b) 시간 상한 초과, (c) `<` `>` 가 없는 출력,
-(d) 존재하지 않는 cwd 중 하나를 겪도록 만든 상태에서
+(d) 존재하지 않는 cwd, (e) 대상 쪽 `git rev-parse --git-common-dir` 실패, (f) 프로젝트 쪽
+`git rev-parse --git-common-dir` 실패 중 하나를 겪도록 만든 상태에서(모든 경우 신원 탐침이 돌려주는
+이메일은 `t@t.t` — 실패가 거부로 새지 않음을 보이기 위해)
 **When** `git commit -m x` 가 들어올 때
-**Then** 네 경우 모두 결정은 allow 이고, `t.TempDir()` 프로젝트 루트의
+**Then** 여섯 경우 모두 결정은 allow 이고, `t.TempDir()` 프로젝트 루트의
 `.moai/logs/commit-identity-guard-audit.log` 에 원인을 담은 줄이 정확히 1 줄 추가된다.
 
 ## AC-CIG-008 — 꺼져 있으면 가드가 불리지 않는다
@@ -107,7 +113,7 @@
 테스트가 0 개 파일을 훑고 통과하는 경우는 실패로 처리한다(빈 결과집합 통과 금지 — 테스트가 훑은
 파일 수 ≥ 1 과 찾은 리터럴 수 ≥ 1 을 단언).
 
-## AC-CIG-011 — 세 변이가 각각 테스트를 실패시킨다
+## AC-CIG-011 — 네 변이가 각각 테스트를 실패시킨다
 
 **Covers**: maps REQ-CIG-009
 
@@ -115,7 +121,9 @@
 **When** 다음 변이를 하나씩 적용한 트리에서 같은 명령을 돌릴 때 —
 (a) 거부 목록 비교를 항상 불일치로 바꾼다,
 (b) 트리거 동사 중 하나(각 동사에 대해 따로)를 가드의 트리거 정의에서 뺀다,
-(c) 탐침이 이메일을 추출하지 못하도록(빈 문자열 반환) 해석을 깨뜨린다
+(c) 탐침이 이메일을 추출하지 못하도록(빈 문자열 반환) 해석을 깨뜨린다,
+(d) 저장소 범위 비교를 상수로 바꾼다 — (d1) 항상 같음(AC-CIG-013 이 잡아야 함), (d2) 항상 다름
+(AC-CIG-014 가 잡아야 함)
 **Then** 각 변이마다 이름 붙은 테스트가 1 개 이상 FAIL 하며, 증거(변이 설명, 실행 명령, 실패한
 테스트 이름, 종료 코드)가 `.moai/reports/t1289/` 아래 판정 증거에 기록된다. (b) 는 8 동사 모두에
 대해 기록한다. 변이는 커밋되지 않는다.
@@ -133,6 +141,34 @@ allow 이며 감사 로그에 분류 불가 구문 한 줄이 남는다. 또한
 `grep -rn '"TEST_IDENTITY_VIOLATION"' internal/hook --include=*.go` 가 비테스트 파일에서 정확히 1 건
 (정의 1 곳)을 적중한다.
 
+## AC-CIG-013 — 다른 저장소의 픽스처 신원 커밋은 허용된다 (양성 대조)
+
+**Covers**: maps REQ-CIG-010, REQ-CIG-006
+
+**Given** 가드가 켜져 있고, 프로젝트 디렉터리는 `t.TempDir()` 저장소 P, 명령 대상은 별개의
+`t.TempDir()` 저장소 F(`/tmp` 픽스처 저장소 역할, P 와 common dir 이 다름)이며, 실제
+`git rev-parse --git-common-dir`·`git var` 탐침을 쓴다
+**When** 다음이 각각 들어올 때 — (a) cwd 가 F 인 `GIT_AUTHOR_EMAIL=t@t.t GIT_COMMITTER_EMAIL=t@t.t git commit -m x`,
+(b) cwd 가 P 인 `git -C <F 절대경로> -c user.email=t@t.t commit -m x`,
+(c) cwd 가 P 인 `cd <F 절대경로> && GIT_AUTHOR_EMAIL=t@t.t git commit -m x`
+**Then** 세 경우 모두 결정은 allow 이고 거부 사유가 없으며, 신원 탐침(`git var`) 호출 수는 0 이다
+(범위 불일치에서 신원 검사까지 가지 않음). 짝 대조로 같은 명령의 대상을 P 로 바꾼 3 행은 모두
+`TEST_IDENTITY_VIOLATION:` 으로 deny 다 — 짝이 있어야 allow 가 범위 판정 덕분임이 선다.
+
+## AC-CIG-014 — 이 저장소의 링크드 워크트리 커밋은 거부된다
+
+**Covers**: maps REQ-CIG-010, REQ-CIG-002
+
+**Given** 가드가 켜져 있고, 프로젝트 디렉터리는 `t.TempDir()` 저장소 P 의 primary 트리, 명령 대상은
+테스트 안에서 `git -C <P> worktree add <W>` 로 만든 P 의 링크드 워크트리 W 이며(P 와 W 의
+`--git-common-dir` 은 정규화 후 같은 경로), 실제 범위 탐침을 쓴다
+**When** 다음이 각각 들어올 때 — (a) cwd 가 W 인 `GIT_AUTHOR_EMAIL=t@t.t git commit -m x`,
+(b) cwd 가 P 인 `git -C <W 절대경로> -c user.email=t@t.t commit -m x`
+**Then** 두 경우 모두 결정은 deny 이고 사유는 `TEST_IDENTITY_VIOLATION:` 으로 시작하며 `t@t.t` 를
+담는다. 테스트는 P 와 W 의 경로 문자열이 서로 **다름**을 함께 단언한다 — 경로가 같으면 링크드
+워크트리를 잰 것이 아니다. (macOS `t.TempDir()` 의 `/var` ↔ `/private/var` 별칭이 정규화로 흡수되는지도
+이 테스트가 드러낸다.)
+
 ## 경계 사례
 
 - 이름만 `t` 이고 이메일이 실주소인 신원(§2.1 부수 관측) — 이메일이 목록 밖이면 allow. 이름 판별은
@@ -140,7 +176,10 @@ allow 이며 감사 로그에 분류 불가 구문 한 줄이 남는다. 또한
 - `git commit --amend` — `commit` 동사로 트리거된다.
 - `git merge --ff-only` — 커밋을 만들지 않지만 동사 단위 트리거이므로 검사 대상이다. 실신원이면
   통과하므로 정상 작업 비용은 탐침 1 회다.
-- 탐침 cwd 가 primary checkout 이고 명령이 `cd <워크트리> && git commit` 인 경우 — 이 저장소는
+- 대상 해석이 풀지 못하는 형태(`pushd`, 변수로 계산한 경로, 서브셸 안의 `cd`) — 대상은 cwd 로 남는다.
+  cwd 가 이 저장소이고 실제 대상이 다른 저장소면 과탐, 반대면 미탐이 된다. 잔여 위험으로 기록한다.
+- 탐침 cwd 가 primary checkout 이고 명령이 `cd <워크트리> && git commit` 인 경우 — D8 해석이 선두
+  `cd` 를 대상으로 삼는다. 이 저장소는
   워크트리 전용 설정이 꺼져 있어 신원 해석이 같다. 워크트리 전용 설정이 켜진 저장소에서는 미탐이
   생길 수 있으며 잔여 위험으로 기록한다.
 
@@ -159,10 +198,11 @@ allow 이며 감사 로그에 분류 불가 구문 한 줄이 남는다. 또한
 | AC-CIG-010 | 내장 목록 부재 | M1 |
 | AC-CIG-011 | 가드·테스트 부재로 변이 대상 없음 | M4 |
 | AC-CIG-012 | `pre_tool.go` 에 가드 호출 부재 | M3 |
+| AC-CIG-013, AC-CIG-014 | `grep -rn 'TEST_IDENTITY_VIOLATION' internal/hook` → 0 건 (가드 부재; `git-common-dir` 문자열은 형제 코드 7 파일에 이미 있어 RED 판별로 쓰지 않는다) | M2 |
 
 ## 품질 게이트 / 완료 정의
 
-- AC-CIG-001..012 전부 PASS, 각 판정은 실제 실행 출력으로 뒷받침.
+- AC-CIG-001..014 전부 PASS, 각 판정은 실제 실행 출력으로 뒷받침.
 - `plan.md` §E 의 E1-E8 실행 기록이 `.moai/reports/t1289/` 에 있음.
 - `golangci-lint` v2.1.6 0 건, `make build` exit 0.
-- `plan.md` §B.3 의 `[NEEDS CLARIFICATION]` 이 Implementation Kickoff 전에 해소됨.
+- `plan.md` §B.3 저장소 범위 판단이 해소된 상태 유지(레인 결정 (b), spec 0.1.1).

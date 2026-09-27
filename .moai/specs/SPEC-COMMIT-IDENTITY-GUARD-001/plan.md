@@ -47,13 +47,17 @@ t768@example.test test@example.com test@example.invalid test@test.com tier-guard
   이 SPEC 은 D7 결정대로 키를 싣는다.
 - 로컬 `.moai/config/sections/workflow.yaml` 에는 `branch_guard.enabled: true` 가 있다.
 
-### B.3 판단 대기 항목
+### B.3 해소된 판단 — 저장소 범위 (레인 결정, 2026-09-28)
 
-- [NEEDS CLARIFICATION: 저장소 범위 — 가드가 명령의 대상 저장소와 무관하게 거부할 것인가,
-  이 프로젝트 저장소(공유 common dir)를 대상으로 하는 커밋만 거부할 것인가.
-  (a) 저장소 무관 거부(권장 기본): 파싱이 단순하고 `git -C <다른경로>` 해석이 필요 없다.
-  대가 — 레인이 `/tmp` 임시 저장소에서 수동 프로브 커밋을 할 때도 픽스처 신원이면 거부된다.
-  (b) 이 저장소 한정: `-C`·`cd` 대상 해석이 필요해 미탐 표면이 넓어지고 코드가 늘어난다.]
+- **결정: (b) 이 저장소 한정.** 명령의 대상 디렉터리와 훅 프로젝트 디렉터리 각각에서
+  `git rev-parse --git-common-dir` 를 실행해 절대경로로 정규화한 값이 같을 때만 신원을 검사한다.
+  다른 저장소(`/tmp` 픽스처 저장소 등)는 허용, 어느 한쪽이라도 해석 실패면 허용 + 감사 한 줄.
+  spec.md §4 D8, REQ-CIG-010, AC-CIG-013·014 로 반영했다.
+- 기각된 (a) 저장소 무관 거부: 버려지는 임시 저장소의 픽스처 신원 커밋이라는 정당한 테스트 활동을
+  막는다. 측정된 누출은 이 저장소의 공유 설정층에 한정됐으므로 그 거부는 보호 가치가 없다.
+- 대가: 대상 디렉터리 해석(`-C <path>`, 선두 `cd <path> &&`)이 필요하고, 판별마다
+  `git rev-parse` 호출 2 회가 더해진다(트리거가 맞은 명령에서만). 해석이 풀지 못하는 형태는
+  cwd 로 남으며, 잔여 위험으로 기록한다.
 
 ## §C 사전 점검
 
@@ -68,8 +72,9 @@ t768@example.test test@example.com test@example.invalid test@test.com tier-guard
 - 새 명령 파서를 만들지 않는다. `substituteQuotedArguments`, `substituteHeredocBodies`,
   `substituteShellComments`, `normalizeGitExeSuffix` 등 `branch_guard.go` 도우미를 재사용한다.
 - 탐침은 seam(패키지 변수 함수) 뒤에 둔다. 테스트는 실제 `git` 을 부르지 않는 가짜 탐침과,
-  `t.TempDir()` 임시 저장소에서 실제 `git var` 를 부르는 통합 테스트를 모두 둔다(후자가 D3 해석
-  경로의 이빨이다). 임시 저장소 신원은 `cmd.Env` 로만 준다 — 설정 파일에 쓰지 않는다(통로 B 교훈).
+  `t.TempDir()` 임시 저장소에서 실제 `git var`·`git rev-parse --git-common-dir` 를 부르는 통합
+  테스트를 모두 둔다(후자가 D3·D8 해석 경로의 이빨이다). 링크드 워크트리 케이스는 임시 저장소에
+  `git worktree add` 로 만든 트리를 쓴다 — 이 저장소 자신의 트리를 쓰지 않는다. 임시 저장소 신원은 `cmd.Env` 로만 준다 — 설정 파일에 쓰지 않는다(통로 B 교훈).
 - 탐침 환경: `internal/gitenv` 로 `GIT_DIR`/`GIT_INDEX_FILE`/`GIT_COMMON_DIR` 류를 걷어내되
   신원 변수는 보존한다.
 - 테스트에서 OTEL 환경 변수 `t.Setenv` 금지, `HOME` 교체 금지(병렬 오염).
@@ -86,7 +91,7 @@ t768@example.test test@example.com test@example.invalid test@test.com tier-guard
   정의되고 형제와 충돌하지 않음을 확인.
 - E5 `golangci-lint run ./internal/hook/... ./internal/config/...` — v2.1.6.
 - E6 `make build` exit 0 (템플릿 키 추가 후).
-- E7 변이 증거(AC-CIG-011): 세 변이를 각각 적용한 트리에서 E1 의 해당 테스트가 실패함을 기록하고
+- E7 변이 증거(AC-CIG-011): 네 변이를 각각 적용한 트리에서 E1 의 해당 테스트가 실패함을 기록하고
   변이를 되돌린다. 변이는 커밋하지 않는다.
 - E8 AC 기준선 스냅숏이 acceptance.md 변경과 같은 커밋에 있는지 확인(plan 페이즈에서 이미 적용).
 
@@ -100,11 +105,17 @@ t768@example.test test@example.com test@example.invalid test@test.com tier-guard
   목록 누락 시 실패, 실패 메시지에 누락 리터럴과 처치 방법을 싣는다).
 - 로컬 `.moai/config/sections/workflow.yaml` 에 `commit_identity_guard.enabled: true`,
   템플릿 `workflow.yaml` 에 중립 문언의 `enabled: false`.
-- §B.3 판단 결과를 반영.
+### M2 — 판별 핵심: 트리거 + 저장소 범위 + 신원 해석 + 비교 (우선순위 High)
 
-### M2 — 판별 핵심: 트리거 + 신원 해석 + 비교 (우선순위 High)
-
-- 트리거 매처(정규화 후 git 동사 8 종), 명령 수준 재정의 추출기, `git var` 탐침 seam,
+- 저장소 범위(D8): 대상 디렉터리 해석(cwd, 리터럴 `-C <path>`, 선두 `cd <path> &&`) →
+  양쪽 `git rev-parse --git-common-dir` 탐침(seam 뒤) → 절대경로 정규화(`filepath.Abs` +
+  `filepath.Clean`, 심볼릭 링크는 `filepath.EvalSymlinks` 로 해소 — macOS `/var` ↔ `/private/var`
+  별칭 때문) → 불일치면 신원 탐침 없이 허용.
+  재사용 우선: `internal/hook` 에 이미 common dir 을 읽는 코드가 있다 — `agentmemory.go`
+  `revParseDirs`(절대 `--git-dir`/`--git-common-dir`), `branch_guard.go` `isPrimaryCheckout`,
+  `worktree_base_branch.go`. 새 탐침을 쓰기 전에 이 셋 중 하나를 재사용할 수 있는지 먼저 본다
+  (측정: `grep -rln 'git-common-dir' internal/hook` → 7 파일, 트리 `58b1d5f75`).
+- 트리거 매처(정규화 후 git 동사 8 종), 명령 수준 재정의 추출기, `git var` 탐침 seam(대상 디렉터리에서 실행),
   `<name> <email> <epoch> <tz>` 출력에서 이메일 추출, 정확 일치 비교.
 - 탐침 시간 상한 기본 설계값 2 초(초과 시 REQ-CIG-006 경로). run 페이즈가 근거를 들어 조정할 수 있다.
 - 실패 시 `.moai/logs/commit-identity-guard-audit.log` advisory 한 줄.
@@ -130,6 +141,6 @@ t768@example.test test@example.com test@example.invalid test@test.com tier-guard
 ## §H 상호 참조
 
 - `spec.md` §4 결정 D1-D7, §5 REQ-CIG-001..009.
-- `acceptance.md` AC-CIG-001..012.
+- `acceptance.md` AC-CIG-001..014.
 - `.moai/reports/t1289/root-cause.md`.
 - `internal/hook/branch_guard.go`, `internal/hook/integration_lock_guard.go`, `internal/hook/pre_tool.go`.
