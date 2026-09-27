@@ -147,11 +147,7 @@ flows. The hook applies the doctrine conditionally.
   the opt-in gate: when disabled the guard returns allow BEFORE reaching any
   uncertainty path, so fail-open is trivially preserved.
 
-Origin: SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-001 through REQ-WBG-013).
-Opt-in gate + pattern refinement: SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001
-(REQ-1 through REQ-6).
-Discriminant directory correction: SPEC-WORKTREE-BRANCH-GUARD-DISCRIM-001
-(REQ-WBG-D-001 through REQ-WBG-D-008).
+> Provenance: SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-001..013); opt-in gate + pattern refinement SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 (REQ-1..6); discriminant directory correction SPEC-WORKTREE-BRANCH-GUARD-DISCRIM-001 (REQ-WBG-D-001..008).
 
 
 ---
