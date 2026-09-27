@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUTONOMY-GATE-REWIRE-001
 title: "계약 기반 자율 하네스 A3 — contract 모드 게이트 재배선, Kickoff 자율 승인, contract decide·kickoff-check·revoke"
-version: "0.3.5"
+version: "0.3.6"
 status: draft
 created: 2026-09-26
 updated: 2026-09-27
@@ -22,6 +22,7 @@ related_specs: [SPEC-JEV-CORE-001, SPEC-AUTONOMY-TIERS-001]
 
 | 날짜 | 버전 | 변경 | 작성 |
 |---|---|---|---|
+| 2026-09-27 | 0.3.6 | **plan-audit iter-6(최종) FAIL 0.868 → 리드 결정 PASS-WITH-DEBT** (보고서 `.moai/reports/t1236/plan-audit-6.md`, 감사 대상 `a02e7c02b`, 7차 감사 없음). 처분은 `plan.md §L` 추가 행. REQ·AC 수 25·25 그대로. (D56) `constitution.Validate` 는 `ZONE_UNREGISTERED`·`ANCHOR_NOT_FOUND` 를 내지 않으므로 AC-GR-003 의 미등록 `[HARD]` 반증을 테스트 자체의 `[HARD]` 집합 비교(always-loaded 대상 여섯 사본, 현재 ⊆ BASE)로 바꿈 — 셸 측정 가능성 탐침 결과(GREEN/RED)는 `.moai/reports/t1236/verdict.md`; (D57) plan.md §H 의 낡은 A2 표지; (D58) AC-GR-009 선택 확인 증거의 명령 귀속; (D59) design.md §12 판독기 행의 기대 열 개수 | manager-spec |
 | 2026-09-27 | 0.3.5 | **plan-audit iter-5(델타) FAIL 0.841 수리** (보고서 `.moai/reports/t1236/plan-audit-5.md`, 감사 대상 `f40824c82`). 처분은 `plan.md §L`. REQ·AC 수 25·25 그대로. (D47) AC-GR-003 을 비-OK 전 범주 `(sentinel, id)` 비교·세 개수 이하로 넓히고 건너뛰기 변수 제거·비건너뜀·BASE=EV-6 전제 단언, 미등록 `[HARD]` 반증 추가, 판정 명령을 하나로; (D48) 판독기 소비 경로 픽스처 — AC-GR-016 (17)·AC-GR-018 (e) 두 변형; (D49) 허용 목록 24행에 `internal/cli/contract.go`(516행·389~414행); (D50) EV-6 원문을 원시 바이트로 복원; (D51) plan·acceptance 의 옛 A2 표지 정리; (D52) `doc.go` 허용 범위에 135~141행; (D53) REQ-GR-009 추적에 AC-GR-023; (D54) 에스컬레이션 디렉터리 부재 = 기록 0건(해제, REQ-GR-022·AC-GR-023 (r0)); (D55) AC 명령의 `-run` 정규식을 `^…$` 로 고정 | manager-spec |
 | 2026-09-27 | 0.3.4 | **M0 재앵커 blocker 처분(리드 결정 B1~B5, 2026-09-27)** — run M0(`progress.md §E.2`, BASE `7fe658815`)이 멈춘 다섯 차이를 제자리에서 고쳤다. REQ·AC 수는 25·25 그대로. (B1) t1175 가 `askuser-protocol.md` 의 「The Five Exceptions」 본문을 `askuser-protocol-reference.md:229` 로 옮기고 `## Ambiguity Triggers and Exceptions` 스텁(206행)만 남겼으므로 `contract-ambiguity` 블록 위치를 그 스텁 문단 뒤로 옮김(`design.md §2` 3행, M3). (B2) `moai-mcp-tools.md` 에는 더 이상 `jev_ask` 행이 없으므로 개정 위치를 `moai-mcp-tools-catalogue.md` 의 두 행(138·216)으로 바꾸고 `moai-mcp-tools.md` +300자 예산을 삭제, 카탈로그는 always-loaded 가 아니므로 조건부 로드 예산(행당 300자)을 따로 둠(REQ-GR-013·025, D-6, AC-GR-010·022). (B3) A2 는 revoke 기록을 `status: resolved` 로 두고 needs-decision 으로 세지 않는다(A2 0.4.3 spec §I.2, `escalation.NeedsDecision`) — A2 는 바꾸지 않고, A3 가 자기 판독기로 `kind: revoke` 기록을 재개 차단 신호로 읽는다(REQ-GR-009 (e)·007·012·020·022, AC-GR-023 이 판독 규칙을 고정). (B4) A1 서명기 단계 (1) 은 `internal/contract/receipt.go` `ReceiptOutcome`(208~232행)에 있으므로 그 자리에서 조건화하도록 허용 목록 23행에 추가(`design.md §2`·`§7.1`). (B5) `moai constitution validate` 는 BASE 에서 이미 exit 1·DRIFT 9건(이 SPEC 범위 밖, 리드가 별도 카드 발행) — AC-GR-003 의 기대를 「BASE 대비 DRIFT 가 늘지 않음」으로 바꾸고 BASE 측정을 증거 원장 EV-6 에 고정 | manager-spec |
 | 2026-09-26 | 0.3.3 | 운영자 승인 4차 예외 (D43~D46 한정), 2026-09-26, 리드 전달. 보고서 `.moai/reports/t1236/plan-audit-3.md`, 감사 대상 `710530d67`. (D43) kickoff-check 사유가 여럿이면 `--json` 에 모두 담고 대표 사유는 정해진 우선순위를 따름(REQ-GR-007, AC-GR-016); (D44) A1 서명기 단계 (1) 은 doctrine 플래그를 주입받고 대체 테스트가 매 head 에서 두 상태를 주입해 검사 — 「매 커밋 CI」 전제 삭제(`design.md §2`·`§7.1`, AC-GR-017); (D45) `acceptance.md` 의 `AC-CONTRACT-016` 교차 참조 두 곳에 `[REF]`; (D46) 원천 없는 「moai 측 세션 식별자」를 REQ-GR-012·`design.md §9` 에서 삭제. 함께: 운영자가 `CLAUDE.local.md §29` 한 줄 문안을 그대로 승인(리드 전달) — 연동 커밋 보류 조건 해소 | manager-spec |

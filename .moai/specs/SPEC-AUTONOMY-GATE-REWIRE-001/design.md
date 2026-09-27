@@ -1,4 +1,4 @@
-# design.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.5)
+# design.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.6)
 
 A1 기준: 0.5.2 (`25283ebf8`) — 스키마(결정자 값 집합, 파생 기본값, 영수증 필드, 구조 검증, `card` 필드)는 A1, 결정 규칙은 A3. A2 기준: 0.4.3 (`status: implemented`, BASE `7fe658815`) — 기록 경로·YAML 머리·`revoke` 종류를 M0 에서 대조했다. A2 는 revoke 기록을 `status: resolved` 로 두고 needs-decision 으로 세지 않으므로 재개 차단은 A3 revoke 판독기가 맡는다(§10). A2b(t1245): push 직렬화·에이전트발 `sign` 차단·팩토리 에이전트 세션의 `decide` 거절(리드 결정 2026-09-26).
 
@@ -111,7 +111,7 @@ AC 명령은 워크트리 세션 가드에 막히지 않도록 `go test` 한 줄
 | `TestContractModeGuidedPreservation` | `contract_mode_guided_test.go` | 예 | 행 2~14 × 2 사본: 걷어낸 결과가 `git show $BASE:<path>` 와 바이트 동일 |
 | `TestContractModeInheritedDivergence` | 같은 파일 | 예 | 걷어낸 로컬·템플릿 쌍의 차이 = 기준 ref 쌍의 차이 |
 | `TestContractModeChangeSetAllowlist` | 같은 파일 | 예 | `git diff --name-only $BASE` ⊆ §2 허용 목록 |
-| `TestContractModeConstitutionDriftNotIncreased` | 같은 파일 | 예 | `git archive $BASE` 를 `t.TempDir()` 에 풀고, 그 트리와 현재 트리에 `internal/constitution` 의 `Validate`(`moai constitution validate` 와 같은 구현)를 각각 실행해 상태가 OK 가 아닌 **모든 범주**의 `(sentinel, id)` 쌍을 모은다. 현재 트리의 집합 ⊆ BASE 의 집합이고 `drift_count`·`missing_count`·`unregistered_count` 가 각각 BASE 이하여야 통과(BASE 에 이미 있는 DRIFT 9건은 이 SPEC 범위 밖 — 리드가 별도 카드 발행). 전제 단언: `MOAI_CONSTITUTION_SKIP_VALIDATE` 를 지운 상태에서 두 결과 모두 `Skipped == false`, BASE 쪽 DRIFT id 집합 = EV-6 의 9개, BASE `missing_count`·`unregistered_count` = 0. 두 집합을 `t.Log` 로 출력. 반증 하위 테스트 두 개: 등록 조항 하나를 지운 사본(DRIFT +1), always-loaded 파일에 미등록 `[HARD]` 줄을 넣은 사본(`ZONE_UNREGISTERED` +1) — 둘 다 비교가 FAIL 함을 관측(AC-GR-003) |
+| `TestContractModeConstitutionDriftNotIncreased` | 같은 파일 | 예 | `git archive $BASE` 를 `t.TempDir()` 에 풀고, 그 트리와 현재 트리에 `internal/constitution` 의 `Validate`(`moai constitution validate` 와 같은 구현)를 각각 실행해 상태가 OK 가 아닌 **모든 범주**의 `(sentinel, id)` 쌍을 모은다. 현재 트리의 집합 ⊆ BASE 의 집합이고 `drift_count`·`missing_count`·`unregistered_count` 가 각각 BASE 이하여야 통과(BASE 에 이미 있는 DRIFT 9건은 이 SPEC 범위 밖 — 리드가 별도 카드 발행). 전제 단언: `MOAI_CONSTITUTION_SKIP_VALIDATE` 를 지운 상태에서 두 결과 모두 `Skipped == false`, BASE 쪽 DRIFT id 집합 = EV-6 의 9개, BASE `missing_count`·`unregistered_count` = 0. 두 집합을 `t.Log` 로 출력. **`constitution.Validate` 는 `ZONE_UNREGISTERED`·`ANCHOR_NOT_FOUND` 를 내지 않으므로**(plan-audit-6 D56) 미등록 `[HARD]` 유입은 테스트 자체의 `[HARD]` 집합 비교가 판정한다 — always-loaded 대상 여섯 사본(`CLAUDE.md`·`askuser-protocol.md`·`goal-directive.md` 로컬·템플릿)마다 `[HARD]` 를 담은 줄의 중복 제거 집합이 현재 ⊆ BASE. 반증 하위 테스트 두 개: 등록 조항 하나를 지운 사본(DRIFT +1 → 범주 비교 FAIL), 대상 파일 사본에 미등록 `[HARD]` 줄 하나 삽입(→ `[HARD]` 집합 비교 FAIL) — 둘 다 FAIL 관측(AC-GR-003) |
 | `TestContractModeAlwaysLoadedBudget` | 같은 파일 | 예 | §4 표의 상시 증가 상한과 카탈로그 조건부 상한 |
 | `TestContractModeEmitterSites` | 같은 파일 | 예 | `BASE` 에서 Kickoff 를 담은 파일 집합 = E ∪ R ∪ H ∪ 로컬 전용, E 의 각 파일에 블록 ≥ 1 |
 
@@ -322,7 +322,7 @@ A3 가 만드는 동사다 — A1 의 동사는 `show`·`verify`·`sign` 뿐이�
 | decide 이름·입력·출력 | `moai contract decide --help`, `<card>` ≠ 계약 `card`, 정상 입력 | 도움말에 동사 `decide`·`<card>`·`--spec`·`--judgement`·`--json`; `card-mismatch` exit 2; `receipts.jsonl`·`events.jsonl` 각 +1줄, `kickoff-receipt.json` 이 영수증 줄 본문과 바이트 동일 |
 | decide 부작용 | 임시 git 저장소 + `backlog.db` | `backlog.db`·ref·워크트리 목록·`contract.yaml` 바이트 동일, 작업 트리의 새 파일은 영수증 하나 |
 | revoke | 사람 서명 계약 / `llm` 영수증 서명 계약 / 반복 / 미서명 | 0(+1 사건 +1 기록) / 0 / 0(쓰기 0) / 1 |
-| revoke 판독기 | (디렉터리 부재 → 해제·오류 없음) / revoke 가 쓴 기록 / 같은 기록인데 새 서명(다른 seal) / `kind: revoke` 이나 지문이 현재 seal 과 다른 기록 / `status: open` 으로 바꾼 revoke 기록 / 머리가 깨진 기록 / `kind: contract`·`status: open` 기록 | 차단 / 해제 / 해제 / 차단(`status` 무시) / 차단(오류는 차단) / A3 판독기는 해제·A2 `NeedsDecision` 은 참 — 그리고 revoke 기록에 대해 A2 `NeedsDecision` 은 거짓(A2 불변) |
+| revoke 판독기 | 디렉터리 부재 / revoke 가 쓴 기록 / 같은 기록인데 새 서명(다른 seal) / `kind: revoke` 이나 지문이 현재 seal 과 다른 기록 / `status: open` 으로 바꾼 revoke 기록 / 머리가 깨진 기록 / `kind: contract`·`status: open` 기록 | 해제(오류 없음) / 차단 / 해제 / 해제 / 차단(`status` 무시) / 차단(오류는 차단) / A3 판독기는 해제·A2 `NeedsDecision` 은 참 — 그리고 revoke 기록에 대해 A2 `NeedsDecision` 은 거짓(A2 불변) |
 | revoke 금지 사항 | 워크트리·브랜치·원격·`backlog.db` 픽스처 | 전후 동일, git 실행 이음매에 push·branch -d·worktree remove 0회 |
 | 활성 순서 | 상수 `true` 를 조건 커밋과 같은 커밋에 둔 픽스처 저장소 | 순서 테스트 FAIL(엄격한 후손 아님) |
 | 연동 | 개정 표지만 있는 커밋 / `jevDoctrineAmended = true` 만 있는 커밋 / §29 만 빠진 커밋 / 임시 규칙 단계가 삭제된 head(상수 참) / 모두 한 커밋 | 앞의 넷 FAIL(넷째는 `TestSignInterimRuleFollowsDoctrine` 의 거짓 주입 경우가 FAIL), 마지막 PASS |

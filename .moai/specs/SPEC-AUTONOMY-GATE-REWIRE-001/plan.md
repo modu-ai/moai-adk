@@ -1,4 +1,4 @@
-# plan.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.5)
+# plan.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.6)
 
 ## §A. 맥락
 
@@ -141,7 +141,7 @@ acceptance.md 의 AC 전부를 PASS/FAIL 표로, 명령·원문 출력·exit 코
 ## §H. 교차 참조
 
 - `spec.md` 요구사항·본문 결정, `acceptance.md` 판정, `design.md` 허용 목록·마커 규약·SSOT·활성 조건(§7.1 정본)·decide·저장소·revoke·Jev 개정, `research.md` 인벤토리·A1/A2 기준선·상충.
-- `SPEC-AUTONOMY-CONTRACT-001` (A1 0.5.2 `25283ebf8`), `SPEC-AUTONOMY-ESCALATION-001` (A2 — 개정본 대기), A2b(t1245 — SPEC 미확인), `SPEC-JEV-CORE-001` (REQ-JEVC-007·011·012), `SPEC-ALWAYS-LOADED-DIET-002` (t1175).
+- `SPEC-AUTONOMY-CONTRACT-001` (A1 0.5.2 `25283ebf8`), `SPEC-AUTONOMY-ESCALATION-001` (A2 0.4.3, `status: implemented`), A2b(t1245 — SPEC 미확인), `SPEC-JEV-CORE-001` (REQ-JEVC-007·011·012), `SPEC-ALWAYS-LOADED-DIET-002` (t1175).
 - `.moai/reports/t1236/plan-audit-1.md` — iter-1 감사 보고서.
 
 ## §I. 감사 결함 처분 (plan-audit iter-1, `.moai/reports/t1236/plan-audit-1.md`)
@@ -227,5 +227,9 @@ run M0(manager-develop, `progress.md §E.2`, BASE `7fe658815`)이 멈춤 규칙�
 | D53 REQ-GR-009 추적 | **수리** — 추적표에 AC-GR-023 추가 | `acceptance.md §C.2` |
 | D54 디렉터리 부재의 판정 모호 | **수리** — 부재 = 기록 0건(해제, `filepath.Glob` 과 같음), 있는 파일의 읽기·파싱 실패만 차단; AC-GR-023 (r0) | REQ-GR-022, `design.md §10`, AC-GR-023 |
 | D55 비고정 `-run` 정규식 | **수리** — AC·plan 의 모든 `-run` 을 `^…$`/`^(…)$` 로 고정, 접두 선택이던 AC-GR-009 는 정확한 이름 넷으로 전개, AC-GR-001 기대 줄에 이름 뒤 공백 구분자 | `acceptance.md` 전 AC 명령, `plan.md §D` |
+| D56 (iter-6) AC-GR-003 4.(ii) 가 `Validate` 로는 관측 불가능한 RED 요구 | **수리(리드 결정 2026-09-27, 한 번의 좁은 편집 + 기계 탐침, 7차 감사 없음)** — 미등록 `[HARD]` 판정을 테스트 자체의 `[HARD]` 집합 비교(always-loaded 대상 여섯 사본, 현재 ⊆ BASE)로 옮기고 「`constitution.Validate` 는 이 범주를 내지 않는다」를 명시. 셸 탐침: BASE↔HEAD 여섯 파일 GREEN, 삽입 사본 RED(`.moai/reports/t1236/verdict.md`) | AC-GR-003, `design.md §5` |
+| D57 plan.md:144 낡은 A2 표지 | **수리** — 「A2 0.4.3, `status: implemented`」 | `plan.md §H` |
+| D58 acceptance.md:124 증거 귀속 | **수리** — 측정 당시 비고정 명령을 그대로 적고, 고정형 재측정(트리 `a02e7c02b`, 같은 3개)을 덧붙임 | `acceptance.md` AC-GR-009 |
+| D59 design.md:325 열 개수 | **수리** — 기대 열을 7개로 맞춤 | `design.md §12` |
 
 요구사항 25개·AC 25개 그대로 — AC 스냅숏 재생성 의무 없음.
