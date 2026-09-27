@@ -2,7 +2,7 @@
 id: SPEC-SERVED-MODEL-AUDIT-001
 title: "서브에이전트 서빙 모델 관측 — 선언 모델만 보는 감사 로그의 사각 해소와 감사관 판정 채택 거부"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-09-27
 updated: 2026-09-27
 author: manager-spec
