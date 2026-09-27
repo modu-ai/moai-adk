@@ -30,7 +30,86 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M0 — run entry and baseline (2026-09-27, measured on HEAD `5509ea71e`)
+
+Tree: branch `WT-agent-model-inherit`, HEAD `5509ea71e` = merge of `dc8d18bcd` (plan close) and
+develop `7fe658815` (the absorbed develop SHA). No file edited before these measurements; raw
+outputs under `.moai/state/verify/t1246/` (local, not committed).
+
+Run gate (REQ-AMI-001 / AC-AMI-001):
+
+| Command | Output |
+|---|---|
+| `git merge-base --is-ancestor WT-rules-diet develop; echo $?` | `rules-diet-ancestor exit=0` (`WT-rules-diet` = `8fb81c948`, develop = `7fe658815`) |
+
+Overlap gate (REQ-AMI-002 / AC-AMI-002):
+
+| Command | Output |
+|---|---|
+| `sh .moai/reports/t1246/touch-set.sh > .moai/state/verify/t1246/touch-set.now.txt` | exit 0, **272** paths; `LC_ALL=C diff` against the committed `touch-set.txt` → exit 0 (byte-identical); `LC_ALL=C sort -c` → exit 0 |
+| `git merge-base HEAD WT-role-naming-docs` | `b59a5d69c1862b08a8a9e4a48afc0ad33c8d951c` (`WT-role-naming-docs` tip `637513578`) |
+| `git diff --name-only b59a5d69c… WT-role-naming-docs \| LC_ALL=C sort` | 40 paths: 34 under `.moai/reports/t1257/`, 6 under `.moai/specs/SPEC-ROLE-NAMING-DOCS-001/` |
+| `LC_ALL=C comm -12 t1257.txt touch-set.now.txt \| wc -l` | **0** — gate open |
+
+Touch-set distribution (`cut -d/ -f1-2 | LC_ALL=C sort | uniq -c`): 22 `.claude/agents`,
+2 `.claude/commands`, 1 `.claude/hooks`, 12 `.claude/rules`, 8 `.claude/skills`, 5 `.claude/workflows`,
+1 `.moai/docs`, 2 `.moai/project`, 1 `CHANGELOG.md`, 62 `docs-site/content`, 38 `internal/cli`,
+12 `internal/config`, 10 `internal/harness`, 6 `internal/hook`, 5 `internal/settings`, 2 `internal/spec`,
+54 `internal/template`, 29 `internal/web` — identical to the plan-time distribution (research.md §I).
+
+Re-measured inventory (research.md §B–§K), this tree:
+
+| Item | Command (abridged) | Now | Plan-time |
+|---|---|---|---|
+| local moai agent frontmatter | `grep -rlE / -rnE '^(model\|effort):' .claude/agents/moai` | 12 files / 24 lines | 12 / 24 |
+| local harness agent frontmatter | same over `.claude/agents/harness` | 10 / 20 | 10 / 20 |
+| template agent frontmatter | same over `internal/template/templates/.claude/agents` | 12 / 24 | 12 / 24 |
+| codex toml `model` / `model_reasoning_effort` lines | `grep -cE '^model ' / '^model_reasoning_effort'` over the 12 toml | 0 / 12 | 0 / 12 |
+| `ResolveAgentModelEffort` files (non-test / test, definer included) | `grep -rlF … --include='*.go' internal cmd pkg` | 9 / 9 | 8 consumers + definer |
+| `ResolveHarnessAgentModelEffort` | same | 3 / 2 | 3 |
+| `DefaultProfileMatrix` | same | 4 / 7 | 3 + definer |
+| `ProfileMatrixAgents` | same | 7 / 4 | 6 + definer |
+| `AgentGroup(` | same | 3 / 0 | 2 + definer |
+| `ApplyProfile` | same | 5 / 1 | 4 + definer |
+| `EffectiveProfile` | same | 6 / 1 | 5 + definer |
+| `ResolveGLMReasoningForModel` | same | 3 / 2 | 2 + definer |
+| `retainedAgentNames` | same | 2 / 1 | profile.go + registry.go |
+| guard surface `.go` files | `grep -rlE 'agent_model_guard\|AgentModelGuard\|agent-model-audit' --include='*.go'` | 11 | 11 (research §C list) |
+| `agent_model_guard` in template YAML | `grep -rnE … --include='*.yaml' internal/template/templates` | 0 | 0 |
+| resolver/guard test pattern | `grep -rlE 'ProfileMatrix\|ResolveAgentModelEffort\|agent_overrides\|AgentModelGuard\|agentModel\|profile_matrix' --include='*_test.go'` | 29 | 29 |
+| `CLAUDE_CODE_SUBAGENT_MODEL` non-test hits | `grep -rnE … internal cmd pkg \| grep -v _test.go` | 1 (scrub list) | 1 |
+| AC-AMI-007(d) `judge_effort` files | `grep -rlE 'judge_effort\|JUDGE_EFFORT' …` | 3 | 3 |
+| AC-AMI-007(c) prose hits | research §F regex | 6 | 6 |
+| docs-site pages (AC-AMI-025 pattern) | research §F narrowed pattern | 52 | 52 |
+| `[HARD]` lines naming effort/model | `grep -rnE '\[HARD\].*(effort\|model)' .claude/rules` | 17 | 17 |
+
+Always-loaded budget baseline (REQ-AMI-024 / AC-AMI-024 "before"):
+
+```
+$ unset MOAI_KANBAN … && go test ./internal/config/ -run 'TestAlwaysLoadedTokenBudget$' -count=1 -v
+    token_budget_guard_test.go:70: always-loaded surface = 65591 tokens (budget 77600, headroom 12009, 16 entries)
+--- PASS: TestAlwaysLoadedTokenBudget (0.02s)
+ok  	github.com/modu-ai/moai-adk/internal/config	0.152s
+```
+
+Before-headroom re-baselined after t1175: **12009** (plan-time 61 at `d6992e3a0`). The test lives in
+`internal/config`; `go test ./internal/template/ -run TestAlwaysLoadedTokenBudget` reports
+`[no tests to run]`.
+
+Run-entry debt resolution:
+
+- **W1 — resolved by record.** `internal/cli/init_test.go` is added to the run touch set as an
+  explicit addendum (touch set for this run = the 272 generated paths + `internal/cli/init_test.go`
+  = 273; `grep -c 'internal/cli/init_test.go' touch-set.now.txt` → 0 before the addendum). The
+  generator script and plan.md §G are plan artifacts and are not edited in run; the M4 test-file
+  row is carried here instead: at M4, `TestValidateInitFlags_InvalidProfile` (:419), the invalid
+  half of `TestValidateInitFlags_ModelPolicyVocabulary` (:451) and `TestInitCmd_ProfilePersistence`
+  (:490, asserts `profile:` persisted) are adapted to expect the deprecation warning, exit 0, and no
+  `profile:` / `performance_tier:` write (D10/D13).
+- **W2** — carried to M1 host (b): implemented against design D14's
+  `verr == nil && packageVersion == projectVersion && !forceUpdate`.
+- **W3** — carried to M4 (whole `"model_policy": {…}` block per locale).
+- **V3 / V4** — carried to M2 / the AC-AMI-006 fixture.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

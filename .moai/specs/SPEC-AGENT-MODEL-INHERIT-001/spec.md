@@ -2,9 +2,9 @@
 id: SPEC-AGENT-MODEL-INHERIT-001
 title: "Subagents inherit the main session's model and effort — remove per-agent model/effort assignment"
 version: "0.5.0"
-status: draft
+status: in-progress
 created: 2026-09-26
-updated: 2026-09-26
+updated: 2026-09-27
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
