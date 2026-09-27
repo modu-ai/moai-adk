@@ -24,8 +24,12 @@
 #      spec section B.5). Newest 100 archives kept (retention is implementation
 #      discretion; the duty is the copy before any overwrite).
 #   3. Invoke drain.sh unchanged (the frozen mechanical core, byte-preserved).
-#   4. Emit a one-line status to stderr: stubs read / candidates / new offset
-#      (no-op stated as such, REQ-LDS-004).
+#   4. Record a one-line status: stubs read / candidates / new offset (no-op
+#      stated as such, REQ-LDS-004) — appended to <state-dir>/last-drain.log,
+#      NOT stderr (t1249): the hook runtime attaches a SessionStart hook's
+#      stderr to its success message on every session start, so a routine drain
+#      stays silent on both streams. drain.sh's own summary goes to the same
+#      log. Failure and contention notices still go to stderr.
 #   5. FAIL-OPEN (REQ-LDS-005): any internal error degrades to a stderr notice
 #      and exit 0 — this hook must NEVER block session start. The EXIT trap
 #      forces exit 0 by construction. Runtime budget: measured <1s for a 1.1MB /
@@ -121,8 +125,10 @@ if [[ -f "$CLUSTERS_FILE" ]]; then
 fi
 
 # --- step 3: the frozen mechanical core (drain.sh, byte-preserved) -------------
-if ! "$DRAIN" --inbox "$INBOX" --state-dir "$STATE_DIR"; then
-  fail_open "drain.sh exited non-zero (tooling or inbox problem) — offset NOT advanced"
+# Both streams go to the log — a routine drain must not reach the hook output.
+LOG_FILE="$STATE_DIR/last-drain.log"
+if ! "$DRAIN" --inbox "$INBOX" --state-dir "$STATE_DIR" >>"$LOG_FILE" 2>&1; then
+  fail_open "drain.sh exited non-zero (tooling or inbox problem; see $LOG_FILE) — offset NOT advanced"
   exit 0
 fi
 
@@ -132,10 +138,12 @@ CAND_N="$(jq -r '(.candidates // []) | length' "$CLUSTERS_FILE" 2>/dev/null)" ||
 OFF_N="$(jq -r '.offset_after // 0' "$CLUSTERS_FILE" 2>/dev/null)" || OFF_N=""
 if [[ -n "$READ_N" && -n "$CAND_N" && -n "$OFF_N" ]]; then
   if [[ "$READ_N" == "0" ]]; then
-    echo "session_drain: no-op read=0 candidates=$CAND_N offset=$OFF_N (offset already at inbox tail)" >&2
+    echo "session_drain: no-op read=0 candidates=$CAND_N offset=$OFF_N (offset already at inbox tail)" >>"$LOG_FILE"
   else
-    echo "session_drain: read=$READ_N candidates=$CAND_N offset=$OFF_N" >&2
+    echo "session_drain: read=$READ_N candidates=$CAND_N offset=$OFF_N" >>"$LOG_FILE"
   fi
+  # keep the log bounded: newest 200 lines
+  tail -n 200 "$LOG_FILE" >"$LOG_FILE.tmp" 2>/dev/null && mv "$LOG_FILE.tmp" "$LOG_FILE"
 else
   fail_open "cannot parse drain status from $CLUSTERS_FILE"
 fi

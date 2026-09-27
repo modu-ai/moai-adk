@@ -5,6 +5,7 @@
 #
 # Paths covered:
 #   1. normal drain             (AC-LDS-001) — offset advance + candidates + one-line status
+#                                              in <state-dir>/last-drain.log; both streams silent (t1249)
 #   2. lock contention          (AC-LDS-002) — skip + exit 0 + contention notice, drain NOT run
 #   3. archive-before-overwrite (AC-LDS-003) — prior staged candidates preserved to clusters-history
 #   4. no-op                    (AC-LDS-004) — offset==tail: exit 0, offset unchanged, no-op status
@@ -86,8 +87,12 @@ run_wrapper "$INBOX1" "$SD1" "$FIX_TMP/p1.out" "$FIX_TMP/p1.err"
   || fail "path1: offset expected 18, got $(jq -r '.offset' "$SD1/drain-offset.json")"
 [[ "$(jq '.candidates | length' "$SD1/clusters.json")" == "3" ]] \
   || fail "path1: expected 3 candidates, got $(jq '.candidates | length' "$SD1/clusters.json")"
-grep -q '^session_drain: read=18 candidates=3 offset=18$' "$FIX_TMP/p1.err" \
-  || fail "path1: one-line status missing; stderr: $(cat "$FIX_TMP/p1.err")"
+grep -q '^session_drain: read=18 candidates=3 offset=18$' "$SD1/last-drain.log" \
+  || fail "path1: one-line status missing from last-drain.log: $(cat "$SD1/last-drain.log" 2>&1)"
+# t1249: a routine drain is silent on both streams — the hook runtime attaches
+# stderr to every SessionStart success message, so the status lives in the log.
+[[ ! -s "$FIX_TMP/p1.err" && ! -s "$FIX_TMP/p1.out" ]] \
+  || fail "path1: routine drain must be silent; stderr: $(cat "$FIX_TMP/p1.err") stdout: $(cat "$FIX_TMP/p1.out")"
 [[ ! -d "$SD1/clusters-history" ]] || fail "path1: fresh first run must not create an archive"
 ok "path1 normal drain: offset 0->18, 3 candidates, one-line status emitted"
 
@@ -129,8 +134,10 @@ run_wrapper "$INBOX1" "$SD1" "$FIX_TMP/p4.out" "$FIX_TMP/p4.err"
 [[ "$RUN_RC" -eq 0 ]] || { cat "$FIX_TMP/p4.err"; fail "path4: wrapper exited $RUN_RC"; }
 [[ "$(jq -r '.offset' "$SD1/drain-offset.json")" == "18" ]] \
   || fail "path4: offset moved on no-op: $(jq -r '.offset' "$SD1/drain-offset.json")"
-grep -q '^session_drain: no-op read=0' "$FIX_TMP/p4.err" \
-  || fail "path4: no-op status line missing; stderr: $(cat "$FIX_TMP/p4.err")"
+grep -q '^session_drain: no-op read=0' "$SD1/last-drain.log" \
+  || fail "path4: no-op status line missing from last-drain.log: $(cat "$SD1/last-drain.log" 2>&1)"
+[[ ! -s "$FIX_TMP/p4.err" && ! -s "$FIX_TMP/p4.out" ]] \
+  || fail "path4: routine no-op must be silent; stderr: $(cat "$FIX_TMP/p4.err")"
 # The no-op overwrite WIPES the live candidates (spec section B.5 ephememerality) —
 # and the archive taken BEFORE the overwrite preserves the path-1 bulk result:
 [[ "$(jq '.candidates | length' "$SD1/clusters.json")" == "0" ]] \
