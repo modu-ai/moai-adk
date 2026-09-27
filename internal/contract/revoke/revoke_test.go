@@ -209,11 +209,12 @@ func TestRevoke(t *testing.T) {
 		signHuman(t, p)
 		o := opts(p)
 		o.Card = "t9999"
+		before := eventCount(t, p, "")
 		_, err := revoke.Revoke(o, seams())
 		if !errors.Is(err, revoke.ErrUsage) {
 			t.Fatalf("err = %v, want usage", err)
 		}
-		if eventCount(t, p, "") != 0 || len(records(t, p)) != 0 {
+		if eventCount(t, p, "") != before || len(records(t, p)) != 0 {
 			t.Error("card mismatch wrote")
 		}
 	})

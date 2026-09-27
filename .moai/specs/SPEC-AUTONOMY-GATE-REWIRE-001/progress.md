@@ -99,6 +99,36 @@ FAIL	github.com/modu-ai/moai-adk/internal/template	19.431s
 - CLI RED obtained by temporarily removing the `newContractRevokeCmd()` registration from `contract.go` (restored right after; `m6-cli-red.txt`): `contract_revoke_test.go:41: revoke: exit=1 reads=0` / `--- FAIL: TestContractRevoke`.
 - GREEN: all 14 subtests + `TestRevokeLeavesRepositoryUntouched` `--- PASS` (`m6-green.txt`); `--- PASS: TestContractRevoke`. Lint (golangci-lint v2.1.6) on receipt/revoke/cli/template: `0 issues.`
 
+### M7 — kickoff-check, decide, signing events, A1 conditioned in place
+
+- Scope: `internal/contract/kickoff/` (new: Check, Decide, Jev seam, constants `autonomousKickoffEnabled = false`, `JevDoctrineAmended = false`); `internal/contract/receipt/` (event store verbs, `StoreDir` reproduction of the escalation resolver + parity test); `internal/contract/sign/` (signing records `sign-human` / `sign-receipt` / `reseal` before the contract write; the interim `llm+jev` refusal now follows the doctrine flag); `internal/contract/receipt.go` (`ReceiptOutcome(r, doctrineAmended)` — A1 step (1) conditioned in place, not duplicated in `sign/`); CLI `moai contract kickoff-check` / `moai contract decide` (`contract.go` lines 403 and 517).
+- RED (stubs returning zero values; `.moai/state/verify/t1236/m7-red.txt`, `m7-cli-red.txt`) → exit 1:
+
+```text
+    check_test.go:147: pass=false reason="" reasons=[] state=, want pass=true reason=""
+    decide_test.go:274: outcome "" reason "", want human "precondition:a"
+    decide_test.go:278: Jev called 0 times, want 1
+    decide_test.go:280: receipts 0→0 events 0→0, want +1/+1
+    activation_test.go:138: llm signature under the compiled state: pass=false reason="", want inactive
+--- FAIL: TestKickoffCheck
+--- FAIL: TestDecidePreconditions
+--- FAIL: TestDecideJevFallback
+--- FAIL: TestSignRecordsEvent
+--- FAIL: TestSignInterimRuleFollowsDoctrine
+--- FAIL: TestEventStore
+    contract_decide_test.go:95: help lacks "decide":
+--- FAIL: TestContractDecide
+--- FAIL: TestContractKickoffCheck
+```
+
+  `TestJevAmendmentLinkage` passed at RED by design (all markers absent is the consistent state).
+- GREEN: `ok …/internal/contract/kickoff`, `ok …/internal/contract/receipt` (`m7-green1.txt`); `ok …/internal/cli` for `^(TestContractDecide|TestContractKickoffCheck|TestContractRevoke)$` (`m7-cli-green.txt`); guards with `MOAI_GR_BASE` set → `ok …/internal/template` (`m7-guards.txt`, 70 changed paths). `go build ./cmd/moai` and `GOOS=windows go build ./cmd/moai` exit 0. golangci-lint v2.1.6: `0 issues.`
+- Mutant kills (D47/D48; mutate → run → restore, restore confirmed by `cmp`):
+  - kickoff reader bypass → `check_test.go:147: pass=true reason="" reasons=[] state=signed-valid, want pass=false reason="revoked"` / `--- FAIL: TestKickoffCheck/17_revoke_record_only`; HEAD `ok …/internal/contract/kickoff`.
+  - decide reader bypass → `decide_test.go:274: outcome "human" reason "jev-doctrine-not-amended", want human "precondition:e"` / `--- FAIL: TestDecidePreconditions`; HEAD `ok`.
+  - unregistered `[HARD]` line → `contract_mode_guided_test.go:422: .claude/rules/moai/core/askuser-protocol.md: unregistered [HARD] line not present at the base: "[HARD] Probe-only unregistered rule inserted by the mutant probe."` / `--- FAIL: TestContractModeConstitutionDriftNotIncreased`; HEAD `ok …/internal/template`.
+- Coverage (combined, `-coverpkg` receipt/revoke/kickoff over contract + cli tests; `cover-a3.txt`): total 81.8% of statements; per-package function average kickoff 79.6%, revoke 74.6%, receipt 86.0%. Below the 85% target for kickoff and revoke — recorded as a gap, not claimed.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

@@ -14,7 +14,7 @@
 // record as a second witness).
 //
 // The store lives outside every worktree and is shared by all worktrees of
-// the repository through the project key (escalation.StoreDir), so an agent
+// the repository through the project key (StoreDir), so an agent
 // editing its tree cannot reach it with an ordinary write. Tests point
 // MOAI_HOME at t.TempDir() so they never touch the real home.
 package receipt
@@ -32,7 +32,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/modu-ai/moai-adk/internal/escalation"
 	"github.com/modu-ai/moai-adk/internal/lockfile"
 )
 
@@ -72,7 +71,7 @@ type ChainError struct {
 }
 
 func (e *ChainError) Error() string {
-	return fmt.Sprintf("contract store: %s line %d: %s", e.File, e.Line, e.Why)
+	return fmt.Sprintf("contract store integrity: %s line %d: %s", e.File, e.Line, e.Why)
 }
 
 // ErrIntegrity is wrapped by every chain failure.
@@ -93,9 +92,9 @@ type Store struct {
 // detector's arming state already uses. The directory is not created until
 // the first append.
 func Open(worktreeRoot string) (*Store, error) {
-	dir, err := escalation.StoreDir(worktreeRoot)
+	dir, err := StoreDir(worktreeRoot)
 	if err != nil {
-		return nil, fmt.Errorf("contract store: resolve: %w", err)
+		return nil, err
 	}
 	return &Store{Dir: dir}, nil
 }
