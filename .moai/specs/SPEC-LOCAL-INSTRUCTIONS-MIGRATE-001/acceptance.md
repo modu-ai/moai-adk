@@ -133,8 +133,10 @@ cannot regress the preamble the same payload carries. (REQ-IFU-008)
 > ok  github.com/modu-ai/moai-adk/internal/cli
 > ```
 >
-> `REQ-IFU-008` is already satisfied at `internal/cli/codex_launcher.go:138`
-> (`fmt.Fprintf(&payload, "<!-- source: %s -->\n", name)`). That is the honest reading and it is
+> `REQ-IFU-008` is already satisfied at `internal/cli/codex_launcher.go:137`, inside
+> `codexLocalDeveloperInstructionArgs` (`fmt.Fprintf(&payload, "<!-- source: %s -->\n", name)`) —
+> re-read 2026-09-28 on `develop` = `origin/develop` = `37dc766b9`; the v0.2.4 citation `:138` was wrong even at
+> `5ba87003f`, which reads `:136`. That is the honest reading and it is
 > now stated where it binds: **`REQ-IFU-008` is a preservation requirement, not new behaviour**
 > (`spec.md` §C.1), and `AC-IFU-029` is a **regression guard**, labelled as such above with the
 > passing baseline recorded here — so a *later* failure is meaningful and a run phase reading §D.3
@@ -268,6 +270,12 @@ here — see the v0.2.0 note. (REQ-IFU-021)
 >
 > Re-checked across every other numeric clause in this SPEC: `AC-IFU-023`'s locale-count equality
 > and `AC-IFU-013`'s exit `0` carry no drifting constant, so this was the only instance.
+>
+> **v0.2.5 (2026-09-28) — current reading.** `git show develop:CLAUDE.local.md | wc -m` →
+> **45,810** on `develop` = `origin/develop` = `37dc766b9` (`.moai/reports/t1259/premise-20260928.md`). The 44,740 above is the
+> v0.2.0 reading and is **not** the current value. The criterion is unchanged and still
+> satisfiable without being vacuous: before (45,810) > 39,999, so passing requires a measured
+> reduction of at least 5,811 characters.
 
 > **D3 repair, applied at the carve.** The criterion previously asserted only the post-state
 > (`< 40000`) against an unnamed copy. Two things made that dischargeable without doing the

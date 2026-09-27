@@ -1,12 +1,12 @@
 ---
 id: SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001
 title: "Local-instruction migration — CLAUDE.local.md to AGENTS.local.md, with advisories and docs"
-version: "0.2.4"
+version: "0.2.5"
 status: draft
 priority: P1
 phase: "v3.3.0 target"
 created: 2026-09-26
-updated: 2026-09-26
+updated: 2026-09-28
 author: manager-spec
 module: "internal/cli, docs-site/content"
 lifecycle: spec-anchored
@@ -25,8 +25,9 @@ tier: L
 | 0.2.2 | 2026-09-26 | **plan-audit iter2 repairs (PASS-WITH-DEBT 0.92, report `.moai/reports/t1259/plan-audit-iter2.md` at `28476f1a9`).** Five of six iter1 repairs confirmed; two items remained. **D3-residual** — `AC-IFU-031` still asserted a docs-site build no workflow performs (`grep -rn 'hugo\|vercel' .github/workflows/` → nothing across 19 files). The whole clause is now grounded against the workflow files once, as the audit asked: `CI` and `spec-lint` named as the checks that actually run on a `develop` push, the docs-site build clause **dropped** rather than re-sited onto an unmeasured Vercel behaviour, and `docs i18n parity check` named in its true weight — it fires on this head but is **advisory, `strict=false`** by construction, so it is read, never gated. **N1** — the v0.2.1 alternation silenced this file's own `no tests to run` guard; split into two commands, and the marker is documented as the discriminator since `go test` exits `0` on a selector matching nothing. |
 | 0.2.3 | 2026-09-26 | **plan-audit iter3 repairs (FAIL 0.88 — the audit ceiling; report `.moai/reports/t1259/plan-audit-iter3.md` at `8d73a2a88`).** N1 and the D3 reasoning were both confirmed repaired; the FAIL is that the D3 repair **stopped at the criterion body**. `grep -rn "PR head"` found four live normative sites it never reached — `acceptance.md` §D.3 and `plan.md` §D/§E ×2 — so two sections of one file gave different close instructions for the same criterion and `plan.md` agreed with the superseded one. All four now name the `origin/develop` head carrying the lane's merge SHA. §D.3 additionally gains the four close-time duties the earlier repairs established but never propagated out of the notes that produced them: the `no tests to run` marker read, a named home for recording the docs-i18n log reading, the close-time re-read of the two decaying external readings, and a handover pointer to `SPEC-V3R3-DOCS-PARITY-001` for the docs-parity residual this SPEC does not own. **N2** — two miscited figures corrected: `strict=false` is at `docs-i18n-check.yml:75`, and there are **19** workflow files, not 20. |
 | 0.2.4 | 2026-09-26 | **Repair of a defect introduced by the v0.2.3 commit itself.** `da0df2113` shipped `progress.md` with the iter3 block duplicated (113 lines), carrying a second copy of the iter2 verification section and a surviving copy of the brittle-count table v0.2.3 had just replaced — so the file both argued against the count and retained it. Cause: a span-replacing edit whose end anchor was not unique resolved *before* its start anchor, re-emitting the span instead of removing it. No content change to `spec.md`, `plan.md`, or `acceptance.md`; the v0.2.3 repairs are unaffected. Found by the lead's close grep, not by the no-regression trio — all three were green over the duplicated file, because none reads prose structure. |
+| 0.2.5 | 2026-09-28 | **Dispatch-time premise re-measurement repairs (card t1259; readings in `.moai/reports/t1259/premise-20260928.md`).** Three stale statements repaired, no requirement or criterion changed. **(1)** `REQ-IFU-008`'s preamble citation `codex_launcher.go:138` → **`:137`** on `develop` = `origin/develop` = `37dc766b9`. The old figure did not merely drift: `git show 5ba87003f:internal/cli/codex_launcher.go \| grep -n 'source: %s'` → `136`, so `:138` was already wrong at the commit it was attributed to. Corrected in `spec.md` §C.1 and `acceptance.md` §D.2; the historical records in `progress.md` and `research.md` are kept and annotated, together with the other drifted `codex_launcher.go` / `codex_contract.go` lines (producer `:123`→`:124`, call site `:825`→`:813`, loop `:125`→`:126`, name constants `:33-34`→`:35-36`, install hint `:804`→`:792`, worktree error `:842`→`:830`). **(2)** `REQ-IFU-021` / `AC-IFU-007` before-value re-measured: `git show develop:CLAUDE.local.md \| wc -m` → **45,810** (44,740 at v0.2.0). The derived floor still yields a satisfiable, non-vacuous criterion: `after <= 39,999` demands a reduction of at least 5,811 characters (~12.7%). The v0.2.0 notes keep their 44,740 as history and now carry a dated pointer. **(3)** Both run-phase blocking dependencies read `status: completed` on `origin/develop` (`SPEC-INSTRUCTION-FILES-UNIFY-001`, `SPEC-ALWAYS-LOADED-DIET-002`), and the parent's loop now iterates `codexLocalInstructionName` first — recorded in `plan.md` §B and `progress.md` §E.1. Status stays `draft`. |
 
-> **Plan phase complete (v0.2.4, card t1259; plan-audit iter1-iter3 repairs applied).** Every item the carve left open is now either
+> **Plan phase complete (v0.2.5, card t1259; plan-audit iter1-iter3 repairs and the 2026-09-28 premise re-measurement applied).** Every item the carve left open is now either
 > applied or explicitly deferred with a reason; `progress.md` §E.1 is the itemised record. The
 > Tier judgment is taken (L, on measured file count), the milestones are re-sequenced for this
 > SPEC's own dependency order, both recorded debts are unfolded, and the parent `research.md`
@@ -89,8 +90,11 @@ repository's own copy.
   file it actually read, never a normalized or substituted name.
 
   > **[HARD] This is a preservation requirement, not new behaviour.** It is already satisfied at
-  > `internal/cli/codex_launcher.go:138` (`fmt.Fprintf(&payload, "<!-- source: %s -->\n", name)`),
-  > measured at `5ba87003f`. `AC-IFU-029` is therefore labelled a **regression guard** rather than
+  > `internal/cli/codex_launcher.go:137`, inside `codexLocalDeveloperInstructionArgs`
+  > (`fmt.Fprintf(&payload, "<!-- source: %s -->\n", name)`), measured 2026-09-28 on
+  > `develop` = `origin/develop` = `37dc766b9` with `grep -n 'source: %s' internal/cli/codex_launcher.go`. (v0.2.4 and
+  > earlier cited `:138` "at `5ba87003f`"; that commit reads `:136`, so the figure was wrong when
+  > written. The symbol is the durable anchor; the line number is re-read before use.) `AC-IFU-029` is therefore labelled a **regression guard** rather than
   > a verification, with its passing baseline recorded, and is extended to the new
   > fallback-advisory path — the advisory is emitted from the same launch path that builds the
   > payload, so the change most likely to break this preamble is this SPEC's own.
@@ -159,6 +163,13 @@ repository's own copy.
 > stops the criterion being discharged against an already-compliant copy — but neither is
 > predicted here. At 44,740 the reduction is ~4,741 characters, roughly 11%; that figure is an
 > expectation, not a bound.
+>
+> **v0.2.5 (2026-09-28) — the before-value moved again, as predicted.** `git show
+> develop:CLAUDE.local.md | wc -m` → **45,810** on `develop` = `origin/develop` = `37dc766b9` (`.moai/reports/t1259/premise-20260928.md`).
+> The 44,740 above is the v0.2.0 reading, kept as history — **it is not the current value**, and
+> neither is 45,810 by the time M3 runs. The derived floor still yields a satisfiable, non-vacuous
+> criterion: the before-value exceeds the `after <= 39,999` bound, so the migration must remove at
+> least 5,811 characters (~12.7%); an already-compliant copy cannot discharge it.
 
 ---
 

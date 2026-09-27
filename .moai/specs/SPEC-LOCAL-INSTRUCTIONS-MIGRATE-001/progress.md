@@ -123,7 +123,7 @@ preferred shape: `design.md` §B. plan.md M2 no longer opens with this task.
 **(8) Every carved figure re-measured — and two do not reproduce.**
 
 - **`CLAUDE.local.md` size.** `git show origin/develop:CLAUDE.local.md | wc -m` → **44,740** in
-  this tree, 2026-09-26; `git show develop:CLAUDE.local.md | wc -m` agrees. The carve recorded
+  this tree, 2026-09-26 (**45,810** on 2026-09-28 — see the v0.2.5 section below); `git show develop:CLAUDE.local.md | wc -m` agrees. The carve recorded
   **44,381** — short by 359 characters. The file is a live maintainer document that sibling cards
   keep editing, so **any** absolute figure written into a criterion about it is stale by
   construction. `AC-IFU-007`'s fixed reduction floor is therefore **withdrawn**, not re-repaired:
@@ -146,7 +146,8 @@ preferred shape: `design.md` §B. plan.md M2 no longer opens with this task.
   documented structure untouched. Full readings: `research.md` §C.
 
 - **Symbols still resolve.** `codexLocalInstructionName` / `codexClaudeLocalName`
-  (`codex_contract.go:33-34`), the local-instruction loop (`codex_launcher.go:125`), and the
+  (`codex_contract.go:33-34`; `:35-36` on 2026-09-28), the local-instruction loop
+  (`codex_launcher.go:125`; `:126` on 2026-09-28), and the
   `migrate_agency_*` precedent are all present. plan.md's cite-by-symbol discipline holds.
 
 ### Verification run at plan close
@@ -236,7 +237,7 @@ PASS
 ok  github.com/modu-ai/moai-adk/internal/cli
 ```
 
-`REQ-IFU-008` is satisfied at `codex_launcher.go:138`. It is now declared a **preservation
+`REQ-IFU-008` is satisfied at `codex_launcher.go:138` [v0.2.5: miscited — `5ba87003f` reads `:136`, the current tree `:137`]. It is now declared a **preservation
 requirement** in `spec.md` §C.1 and `AC-IFU-029` is labelled a **regression guard** with that
 baseline recorded — so a later failure is meaningful and §D.3's "all ten criteria pass" no longer
 hands out a free pass. The audit offered declaration *or* extension; both are applied, because
@@ -566,6 +567,30 @@ running it as written rather than trusting the summary of it.
 
 **Guard for the next span edit**: assert both anchors are unique (`s.count(marker) == 1`) and that
 `a < b`, before splicing. Applied by hand here; worth remembering rather than re-deriving.
+
+### Dispatch-time premise re-measurement, 2026-09-28 (v0.2.5)
+
+Readings: `.moai/reports/t1259/premise-20260928.md` (card t1259, CLAUDE.local.md §30 premise check). Tree for
+the figures below: `develop` = `origin/develop` = `37dc766b9`.
+
+- **Blocking dependencies — now MET.** On `origin/develop`, `SPEC-INSTRUCTION-FILES-UNIFY-001` and
+  `SPEC-ALWAYS-LOADED-DIET-002` both read `status: completed`; the parent's loop at
+  `codex_launcher.go:126` reads `codexLocalInstructionName` first. This supersedes the
+  "both unmet" reading recorded above at `a9e5f9d5a`. `plan.md` §B carries the status note.
+- **Premise still live.** No deprecation advisory and no migrate verb exist in `internal/cli`
+  (premise file §2, with positive controls), so REQ-IFU-007/009/010 remain owed.
+- **`REQ-IFU-008` citation repaired `:138` → `:137`.** `git show 5ba87003f:internal/cli/codex_launcher.go
+  | grep -n 'source: %s'` → `136`: the figure was wrong at the commit it named, not just drifted.
+  Live citations (`spec.md` §C.1, `acceptance.md` §D.2) now name the symbol and the line with its
+  measuring tree; historical records here and in `research.md` are annotated, not rewritten.
+- **Other drifted lines** (all annotated in `research.md` §A): producer `:123`→`:124`, call site
+  `:825`→`:813`, body `:123-143`→`:124-145`, install hint `:804`→`:792`, worktree error
+  `:842`→`:830`, `codex_contract.go` name constants `:33-34`→`:35-36`.
+- **`CLAUDE.local.md` before-value 44,740 → 45,810** (`git show develop:CLAUDE.local.md | wc -m`).
+  Criterion unchanged; `after <= 39,999` now requires a reduction of at least 5,811 characters.
+- **AC count unchanged** after these edits: manager-docs AC counter → `live=10 excluded=3 ambiguous=0`;
+  `grep -c '^\*\*AC-IFU-' acceptance.md` → `10`; `moai spec lint SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001`
+  → no findings; `go test ./internal/spec/ -run TestACCounterFullCorpusMatchesBaseline -count=1` → `ok`.
 
 ## §E.2 Run-phase Evidence
 

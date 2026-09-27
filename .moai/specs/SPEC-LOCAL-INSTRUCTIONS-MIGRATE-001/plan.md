@@ -41,6 +41,15 @@ decision is what prevents it.
 the parent SPEC, because the docs-site milestone and the `CLAUDE.local.md` relocation both touch
 surfaces t1175 is rewriting.
 
+**Status, 2026-09-28 — both dependencies are met** (`.moai/reports/t1259/premise-20260928.md` §1, read on
+`origin/develop`): `SPEC-INSTRUCTION-FILES-UNIFY-001` → `status: completed`, and
+`SPEC-ALWAYS-LOADED-DIET-002` (t1175) → `status: completed`. The parent's M2 reorder is in this
+branch's base (`git merge-base --is-ancestor 108be044f HEAD` → exit 0), and the loop at
+`internal/cli/codex_launcher.go:126` now iterates `codexLocalInstructionName` before
+`codexClaudeLocalName`. The two gates above no longer hold M2 or the run phase; they stay written
+as the reason for the order. The earlier unmet reading (`.moai/reports/t1259/blocking-dependencies.md`,
+2026-09-26) is superseded, not deleted.
+
 **Source locations are cited by symbol, not by line.** `origin/develop` is roughly 93 commits
 ahead of the carve base and has already moved one location the parent SPEC cited (card t1224
 shifted `frozenInstructionFiles` while leaving the symbol intact). Every figure in the parent's
@@ -69,7 +78,7 @@ mapping from the carve's transferred list, so nothing is lost by the renumber:
 |---|---|---|
 | **M1** — migration verb + advisories | M2 | Nothing depends on it; `M2` and `M3` both depend on it. It was second only because the parent authored it second. |
 | **M2** — Codex fallback advisory | M1 | Blocked on the parent SPEC's M2 landing (§B). Sequencing it first would have stalled the whole card behind another card's merge. |
-| **M3** — this repository's own migration | M4 | Unchanged in position, but now explicitly downstream of M1: the migration is performed **with** the verb M1 builds, which is the dogfood and is what proves the verb on a real 44,740-character file rather than a fixture. |
+| **M3** — this repository's own migration | M4 | Unchanged in position, but now explicitly downstream of M1: the migration is performed **with** the verb M1 builds, which is the dogfood and is what proves the verb on a real ~45,810-character file (2026-09-28 reading; 44,740 at v0.2.0) rather than a fixture. |
 | **M4** — docs-site, four locales | M3 | Moved last. It documents the verb's name, its refusal behaviour, and the advisory text — all of which M1 and M2 settle. Writing 24 files against a design that has not landed is the expensive way to discover a rename. |
 
 ### M1 — the migration verb and the advisories
@@ -111,8 +120,9 @@ gitignored, and read by every lane. `REQ-IFU-021`, `REQ-IFU-022`; `AC-IFU-007`, 
 - The migrating copy is the **`develop`-committed** one, per that file's own §0.1 discriminant —
   not the primary checkout's working copy, which §0.2 forbids citing and §0.4 documents as
   permanently modified by design.
-- **Re-measure the before-value at this milestone.** It was 44,381 at the carve and **44,740**
-  when t1259 measured it; it will have moved again. The bound that does not drift is
+- **Re-measure the before-value at this milestone.** It was 44,381 at the carve, **44,740**
+  when t1259 measured it at v0.2.0, and **45,810** at the 2026-09-28 dispatch re-measurement
+  (`.moai/reports/t1259/premise-20260928.md`); it will have moved again. The bound that does not drift is
   `after <= 39,999` (`AC-IFU-007` v0.2.0 note).
 - Split operational procedure out into `.moai/docs/`, leave the rules behind. Do not re-decide
   what any relocated rule says (spec.md §D).
