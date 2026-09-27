@@ -218,31 +218,30 @@ func TestBranchGuardFlagClass_QueryAllowlistEndToEnd(t *testing.T) {
 // negative-path condition test for REQ-WBG-F-008 / AC-WBG-F-008. It pins the
 // guard LOGIC only and does NOT prove the PreToolUse payload shape.
 //
-// Documented conditions (REQ-WBG-F-008) — both exemption axes are unreachable
-// from a tool-spawned subagent:
+// Documented conditions (REQ-WBG-F-008) — the two exemption axes differ in
+// whether a spawned agent can reach them:
 //
 //   - Env axis (uncontested): MOAI_BRANCH_GUARD_EXEMPT is read from the hook
 //     process's own environment, spawned BEFORE the guarded command runs, so
 //     exporting it inside the command is a no-op. This test holds it unset,
 //     which is the subagent-shaped condition.
-//   - AgentType axis (CONTESTED — left contested by this card, see below):
-//     branch_guard.go:30-33 holds that agent_type arrives only for a
-//     main-thread `claude --agent <name>` launch, while
-//     .claude/rules/moai/core/hooks-system.md:114 states all hook events
-//     include agent_type when triggered from a subagent context. This test
-//     supplies a subagent-SHAPED HookInput (AgentType zero-valued) and pins
-//     that the deny stands for it — an assertion about isExemptAgent's logic,
-//     NOT about which shape the runtime actually delivers.
+//   - AgentType axis (CONTEST RESOLVED, see below): a spawned agent DOES
+//     receive agent_type, so this axis is reachable. This test still supplies a
+//     subagent-SHAPED HookInput with AgentType zero-valued and pins that the
+//     deny stands for it — which remains a true and useful assertion about
+//     isExemptAgent's logic (an unnamed spawn is not exempt), and was never an
+//     assertion about which shape the runtime delivers.
 //
-// CONTESTED-AXIS CAPTURE OUTCOME (D12, audit iteration 2): the mandated
-// capture of one real tool-spawned PreToolUse payload is IMPRACTICABLE in this
-// card's environment — the nested `claude -p` probe is refused by the runtime
-// worktree-session guard (verbatim refusal observed twice: "this command runs
-// claude ... in a plain command, so what it runs cannot be shown not to be
-// git"), and the hook's own trace logging (internal/hook/trace) records no
-// agent_type/agent_id field, so no existing log can decide the axis either.
-// The axis therefore REMAINS CONTESTED; a future capture contradicting the
-// guard's reading routes to a doc-reconciliation blocker report, never a
+// CONTESTED-AXIS RESOLUTION (SPEC-BRANCHGUARD-EXEMPT-REACH-001, card t1064,
+// measured 2026-09-27): the capture that D12 recorded as impracticable was
+// obtained by a different route — a key-set instrument in the hook wrapper that
+// actually executes, rather than a nested `claude -p` probe. 57 PreToolUse
+// payloads: 27 main-session rows carry neither agent_type nor agent_id, and 30
+// spawned-agent rows carry BOTH, in snake_case, with agent_type holding the
+// spawn name verbatim. Of the two documents this comment set against each other,
+// .claude/rules/moai/core/hooks-system.md was RIGHT and branch_guard.go's
+// reachability comment was WRONG; the latter has been corrected. Per the
+// route D12 itself mandated, this went to doc reconciliation rather than a
 // silent re-classification.
 //
 // Non-parallel: t.Setenv mutates the process-global exemption env var.

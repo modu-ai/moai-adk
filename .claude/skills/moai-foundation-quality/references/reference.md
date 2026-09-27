@@ -88,7 +88,7 @@ retained-agent replacement.
 ## sync-auditor Scoring Model
 
 `sync-auditor` scores a change on four dimensions as a fresh-judgment auditor.
-The stance (from agent-common-protocol § Skeptical Evaluation Stance): treat
+The stance (from agent-common-protocol-reference § Skeptical Evaluation Stance): treat
 every claim as suspect until evidence is shown; demand reproducible
 verification; consider the null hypothesis; score as the harmonic mean of
 dimensions, not the average; reject when must-pass criteria fail regardless of
@@ -161,7 +161,7 @@ measurement (verification-claim-integrity §2 Baseline-Integrity Attribution).
 
 - CLAUDE.md §6 (Quality Gates) — the harness + LSP gate policy
 - `.claude/rules/moai/core/moai-constitution.md` § Quality Gates — TRUST 5 principles
-- `.claude/rules/moai/core/agent-common-protocol.md` § Skeptical Evaluation Stance — the auditor stance sync-auditor adopts
+- `.claude/rules/moai/core/agent-common-protocol-reference.md` § Skeptical Evaluation Stance — the auditor stance sync-auditor adopts
 - `.claude/rules/moai/core/verification-claim-integrity.md` — no unobserved verification claims
 - moai-ref-testing-pyramid — test-pyramid strategy and coverage targets
 - moai-ref-owasp-checklist — OWASP Top 10 for the Secured principle

@@ -1,6 +1,6 @@
 ---
 description: "Verbatim verification-batch example, output-representation contracts, and CLI idiom catalogue for the agent common protocol"
-paths: "**/agent-common-protocol.md"
+paths: "**/agent-common-protocol.md,**/.claude/agents/moai/*.md,**/.claude/skills/moai/workflows/*.md"
 ---
 
 # Agent Common Protocol — Reference Detail
@@ -306,3 +306,119 @@ The orchestrator interacts with three hook scripts that mechanically enforce orc
 | `.claude/hooks/moai/team-ac-verify.sh` | TaskCompleted in team mode — registered in no settings surface, so no configuration flag (harness level, team mode) activates it; activation undecided | exit 0 always; rejection via stdout JSON `{"continue":false,"stopReason":...,"ledger_note":...}` (`decision` NOT valid for TaskCompleted) |
 
 Full per-row owning-policy detail and the hook subagent-boundary acceptance criterion (grep verifying no hook invokes AskUserQuestion): `agent-common-protocol-reference.md` § Hook Invocation Surface detail.
+
+---
+
+## Relocated bodies — always-loaded stub sections
+
+> Relocated from `agent-common-protocol.md` to keep the always-loaded file within its size budget. Every binding clause stays inline there; these are the non-binding bodies it points at.
+
+### Skeptical Evaluation Stance
+
+<!-- @MX:WARN: Duplication prohibited — LR-07 lint rule detects copies of this section in agent files and flags as error. Canonical copy lives only in this file. -->
+
+The reviewer mode operates as a fresh-judgment auditor:
+
+- Treat every claim as suspect until evidence is shown
+- Demand reproducible verification, not assertions
+- Consider the null hypothesis: did this change actually fix anything?
+- Score quality as the harmonic mean of dimensions, not the average
+- Reject when must-pass criteria fail, regardless of nice-to-have scores
+- Surface contradictions; never silently override a prior rule
+- Resist agreement: the RLHF training gradient biases toward flattery, so treat any urge to PASS without cited evidence as a sycophancy signal, not a verdict
+
+### File Operations Pattern
+
+- ALWAYS Read a file before using Edit on it
+- Use Grep to locate specific line numbers before targeted Read with offset/limit; use Glob to discover files before reading — never guess file paths
+- Prefer Edit over Write for existing files (sends only the diff, preserves context)
+- Use absolute paths for all file operations; never construct paths from assumptions — verify with Glob or Bash `ls` first
+- In worktrees, use project-root-relative paths for write targets
+
+### Search Pattern
+
+Progressive narrowing: (1) Glob by pattern → (2) Grep `files_with_matches` → (3) Grep `content` mode + context lines → (4) Read with offset/limit. Avoid reading entire large files when one section suffices; avoid Bash grep/find when Grep/Glob are available; filter by file type when the target language is known.
+
+### Tool Selection by Task
+
+| Task | Preferred Tool | Avoid |
+|------|---------------|-------|
+| Find files by name | Glob | Bash find, Bash ls |
+| Search file contents | Grep | Bash grep, Bash rg |
+| Read file contents | Read | Bash cat, Bash head |
+| Modify existing file | Edit | Bash sed, Write (overwrites) |
+| Create new file | Write | Bash echo/cat heredoc |
+| Run system commands | Bash | — |
+| Explore codebase | Agent(Explore) | Multiple sequential Grep calls |
+
+**MCP-over-CLI preference**: where an `mcp__moai__*` tool exists for a capability in the agent's `tools:` list, prefer it over the equivalent Bash CLI — same implementation, structured output, no shell-quoting hazards. Full catalogue: `.claude/rules/moai/core/moai-mcp-tools.md`.
+
+### Bash Timeout
+
+The Bash tool supports a `timeout` parameter (milliseconds): default 120,000ms, max 600,000ms. Set it for long-running commands (builds, test suites, installs).
+
+### Error Recovery Pattern
+
+When a tool call fails:
+1. Read the error message carefully — diagnose root cause
+2. Verify assumptions: does the file/path exist? (Glob check)
+3. Try an alternative approach — do not retry the identical call
+4. After 3 failures on the same operation, report the blocker
+
+**Retry safety is asymmetric with respect to side effects.** Idempotent / read-only calls may be retried up to the ceiling. **Side-effecting calls** (write/edit, commit, push, PR, deploy, external-API mutation) that fail *ambiguously* require observing the current state first and retrying only when the effect is confirmed absent — a blind retry risks a duplicate commit / PR / deploy. The absence of a success signal is not evidence the effect did not land. (Full worked detail: `agent-common-protocol-reference.md` § Error Recovery retry-safety detail.)
+
+### Super-Advisor Escalation (E1-E4)
+
+When the 3-retry ceiling is insufficient OR a higher-reasoning consultation is warranted, the
+orchestrator escalates to **super-advisor**, which returns **non-binding prescriptions** — the
+orchestrator remains the decision owner. DISTINCT from auditor verdicts: `plan-auditor` /
+`sync-auditor` own binding PASS/FAIL ("should this PASS?"); super-advisor answers "what should I do
+here?".
+
+Four entry conditions, exhaustive: **E1** bug-deadlock (3+ consecutive same-diagnostic failures),
+**E2** architecture/design decision point (≥2 viable options, neither obviously correct), **E3**
+second-opinion request (orchestrator confidence below 80% in the next delegation step), **E4**
+loop-deadlock (`/moai loop` or `/moai fix` ceiling-exit). On trigger: spawn
+`Agent(general-purpose)` with the super-advisor role profile, receive the prescription, then
+re-seed the executor or escalate to the user via `AskUserQuestion`. Worked examples and the
+model-tier profile: `agent-common-protocol-reference.md` § Super-Advisor Escalation. Agent file:
+`.claude/agents/moai/super-advisor.md`.
+
+### Read-only verification batching
+
+When the orchestrator needs to verify implementation completion, it SHOULD issue multiple Bash tool calls within a single response turn. Independent verifications that do not share state are safe to parallelize.
+
+### Attributable diff-check doctrinal switch
+
+A default-inversion in how the orchestrator COMPOSES the canonical batch: consult the shared
+diagnostic snapshot via `moai verify check --key-current` (keyed by HEAD SHA) BEFORE re-executing.
+
+**All-three attribution match → CONSUME the attributable §E evidence, do not re-execute [DEFAULT].**
+The three conditions: the §E-cited HEAD SHA equals the current snapshot key; the §E-cited command
+matches the snapshot's recorded command; the §E-cited output matches the snapshot's recorded output.
+The batch then records the snapshot key plus the cited §E evidence path as its baseline-attribution
+(VCI §2) and marks the dimension PASS-attributed rather than PASS-reexecuted.
+
+**Any mismatch → re-execute that dimension.** On `snapshot_key_drift`, `command_drift`,
+`missing_section_e`, or `output_drift`, the batch re-executes and logs the mismatch reason — any
+mismatch means re-execute, never silent skip. The VCI §1.1 invariant holds on every path. Full
+mechanism and fallback contract: `agent-common-protocol-reference.md` § Attributable diff-check
+detail; pattern file `.claude/rules/moai/workflow/verification-batch-pattern.md`.
+
+### Orchestrator Obligations
+
+> Canonical: see `.claude/rules/moai/core/askuser-protocol.md` § Orchestrator Obligations for the full preload sequence (`ToolSearch(query: "select:AskUserQuestion")` before each call), the AskUserQuestion channel monopoly, the Socratic interview structure, and the option-description standards. This file owns only the subagent-side boundary (above) and the blocker-report → re-delegation flow (below).
+
+The MoAI orchestrator collects all user preferences before delegating to subagents via `Agent()`. On receiving a blocker report from a subagent, it runs an `AskUserQuestion` round, injects the user's responses into a fresh subagent prompt, and re-delegates (procedure below).
+
+### Re-delegation Procedure
+
+On receiving a blocker report, the orchestrator:
+1. Invokes `ToolSearch(query: "select:AskUserQuestion")`
+2. Runs an AskUserQuestion round to collect the missing inputs from the user
+3. Constructs a fresh subagent prompt with the user's answers injected
+4. Re-delegates to the subagent
+
+### CLAUDE.md Reference
+
+Agents follow MoAI's core execution directives defined in CLAUDE.md (auto-loaded, no restating needed).

@@ -7,8 +7,8 @@
 // this predicate reads the role's own session record (rollout JSONL) and
 // compares the sha256 of its "developer" response_item body against the
 // role's own developer_instructions, extracted from the role TOML by a
-// TOML-specification parse (never a regular-expression extraction —
-// REQ-RLP-003).
+// line scanner that follows the TOML string rules for the top-level keys
+// (never a regular-expression extraction — REQ-RLP-003).
 //
 // @MX:ANCHOR: [AUTO] codexRoleLoadPredicate is the SSOT for role-load
 // decisions across every role, including the two contract-refusal roles.
@@ -45,7 +45,9 @@ var ErrCodexRoleBodyKeyAbsent = errors.New("codex role body: developer_instructi
 // when the string's content begins on the same line as the opening
 // delimiter. This function never uses the regexp package — it is a
 // TOML-specification parse, not a regular-expression extraction
-// (REQ-RLP-003).
+// (REQ-RLP-003). It is a line scanner over the top-level keys, not a full
+// TOML parser: it skips other keys' multi-line string values and stops at
+// the first table header, which covers the emitted role-file shape.
 func codexRoleBodyExtractTOML(src string) (string, error) {
 	lines := strings.Split(src, "\n")
 	for i := 0; i < len(lines); i++ {
@@ -61,6 +63,7 @@ func codexRoleBodyExtractTOML(src string) (string, error) {
 			continue
 		}
 		if strings.TrimSpace(key) != codexRoleBodyKey {
+			i = codexRoleSkipMultilineValue(lines, i, strings.TrimSpace(rhs))
 			continue
 		}
 		val := strings.TrimSpace(rhs)
@@ -90,6 +93,30 @@ func codexRoleBodyExtractTOML(src string) (string, error) {
 		return rest[:end], nil
 	}
 	return "", ErrCodexRoleBodyKeyAbsent
+}
+
+// codexRoleSkipMultilineValue returns the index of the line that closes a
+// multi-line string value (literal or basic, triple-quoted) opened on line i, so lines
+// inside another key's value are never read as structure. It returns i when
+// val is not a multi-line string or closes on its opening line, and
+// len(lines) when the value never closes. An escaped \""" inside a basic
+// string is not recognised; the role files carry literal strings only.
+func codexRoleSkipMultilineValue(lines []string, i int, val string) int {
+	for _, delim := range []string{"'''", `"""`} {
+		if !strings.HasPrefix(val, delim) {
+			continue
+		}
+		if strings.Contains(val[len(delim):], delim) {
+			return i
+		}
+		for j := i + 1; j < len(lines); j++ {
+			if strings.Contains(lines[j], delim) {
+				return j
+			}
+		}
+		return len(lines)
+	}
+	return i
 }
 
 // codexRoleBodySHA256Hex returns the lowercase-hex sha256 of body.
@@ -249,15 +276,59 @@ func codexRoleSessionLabel(path string) (role string, hasLabel bool, err error) 
 // session record. Its input is the session record path and an expectation
 // table — never the model's free-form reply text (REQ-RLP-001).
 func codexRoleFingerprintDerive(path string, table codexRoleExpectationTable) (map[string]bool, error) {
-	f, err := os.Open(path) //nolint:gosec // fixture/test-controlled path
+	obs, err := codexRoleFingerprintObserve(path, table)
 	if err != nil {
 		return nil, err
+	}
+	return obs.Matched, nil
+}
+
+// codexRoleFingerprintObservation is what one scan of a session record
+// observed: the matched role set, and how many developer response_items the
+// scan saw at all. DeveloperItems == 0 means nothing was measured — an empty
+// Matched set then says nothing about load.
+type codexRoleFingerprintObservation struct {
+	Matched        map[string]bool
+	DeveloperItems int
+}
+
+// Three outcomes a role-load reading can report. NOT_RUN (nothing measured)
+// and FAIL (measured, and the role's body was not observed) are distinct:
+// both give codexRoleLoadPredicate == false, which alone cannot tell them
+// apart (plan.md §G row 1).
+const (
+	codexRoleLoadOutcomePass   = "PASS"
+	codexRoleLoadOutcomeFail   = "FAIL"
+	codexRoleLoadOutcomeNotRun = "NOT_RUN"
+)
+
+// codexRoleLoadOutcome classifies a role's load reading from an observation.
+// It reports NOT_RUN when the scan saw no developer response_item, and
+// otherwise PASS or FAIL from codexRoleLoadPredicate — whose input stays
+// {Role, Matched} only.
+func codexRoleLoadOutcome(role string, obs codexRoleFingerprintObservation) string {
+	if obs.DeveloperItems == 0 {
+		return codexRoleLoadOutcomeNotRun
+	}
+	if codexRoleLoadPredicate(codexRoleLoadInput{Role: role, Matched: obs.Matched}) {
+		return codexRoleLoadOutcomePass
+	}
+	return codexRoleLoadOutcomeFail
+}
+
+// codexRoleFingerprintObserve is codexRoleFingerprintDerive's scan, also
+// counting the developer response_items it saw.
+func codexRoleFingerprintObserve(path string, table codexRoleExpectationTable) (codexRoleFingerprintObservation, error) {
+	f, err := os.Open(path) //nolint:gosec // fixture/test-controlled path
+	if err != nil {
+		return codexRoleFingerprintObservation{}, err
 	}
 	defer func() { _ = f.Close() }()
 
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
 	matched := map[string]bool{}
+	developerItems := 0
 	for sc.Scan() {
 		line := sc.Bytes()
 		if len(line) == 0 {
@@ -277,6 +348,7 @@ func codexRoleFingerprintDerive(path string, table codexRoleExpectationTable) (m
 		if item.Role != "developer" {
 			continue
 		}
+		developerItems++
 		var sb strings.Builder
 		for _, c := range item.Content {
 			sb.WriteString(c.Text)
@@ -287,9 +359,9 @@ func codexRoleFingerprintDerive(path string, table codexRoleExpectationTable) (m
 		}
 	}
 	if err := sc.Err(); err != nil {
-		return nil, err
+		return codexRoleFingerprintObservation{}, err
 	}
-	return matched, nil
+	return codexRoleFingerprintObservation{Matched: matched, DeveloperItems: developerItems}, nil
 }
 
 // --- Load predicate + structural independence (AC-RLP-004, AC-RLP-006) --

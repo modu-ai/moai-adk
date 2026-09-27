@@ -139,10 +139,11 @@ func assertStampMatchesPeer(t *testing.T, root, runID string) {
 func TestRestampSeamIsCalledAtEveryNonReplaceCallSite(t *testing.T) {
 	const seamCall = "stampFactoryRunOwner("
 
+	// The codex doors (codex_direct_windows.go spawn, codex_launcher.go pane)
+	// are no longer factory doors (SPEC-CODEX-FACTORY-RETIRE-001 REQ-CFR-008);
+	// they appear in the absent set below instead.
 	required := []string{
-		"launch_exec_windows.go",  // spawn
-		"codex_direct_windows.go", // spawn
-		"codex_launcher.go",       // pane
+		"launch_exec_windows.go", // spawn
 	}
 	for _, name := range required {
 		t.Run("required/"+name, func(t *testing.T) {
@@ -153,8 +154,9 @@ func TestRestampSeamIsCalledAtEveryNonReplaceCallSite(t *testing.T) {
 	}
 
 	// A replace-shaped door needs no restamp, and demanding one there would
-	// make this leg false about the design it is checking.
-	for _, name := range []string{"launch_exec_posix.go", "codex_direct_posix.go"} {
+	// make this leg false about the design it is checking. A codex door writes
+	// no factory state at all, so a restamp there would be a regression.
+	for _, name := range []string{"launch_exec_posix.go", "codex_direct_posix.go", "codex_direct_windows.go", "codex_launcher.go"} {
 		t.Run("absent/"+name, func(t *testing.T) {
 			if strings.Contains(readCallSite(t, name), seamCall) {
 				t.Fatalf("%s calls %s, but a replace-shaped door has nothing to correct", name, seamCall)
@@ -172,11 +174,12 @@ func readCallSite(t *testing.T, name string) string {
 	return string(raw)
 }
 
-// AC-012 — when a door that does not replace its launching process cannot
-// obtain a session identity, the launch is refused AND no runs row is left
-// carrying the launching process's pid. A refusal that cleans up the pane but
-// leaves the run stamped fails this criterion.
-func TestPaneDoorRefusalLeavesNoLauncherStampedRun(t *testing.T) {
+// The codex pane door (`moai codex -w … --spawn`) is no longer a factory door
+// (SPEC-CODEX-FACTORY-RETIRE-001 REQ-CFR-008): under a lead lane's environment
+// it neither stamps nor clears the run owner, on any path. When the spawned
+// pane's identity cannot be resolved for the -w anchor, the launch is still
+// refused and the pane cleaned up, and the run row keeps the owner it had.
+func TestCodexPaneDoorIdentityRefusalLeavesRunOwner(t *testing.T) {
 	root := runOwnerSandbox(t)
 	const runID = "run-pane-refusal"
 	launcherPID := os.Getpid()
@@ -184,44 +187,43 @@ func TestPaneDoorRefusalLeavesNoLauncherStampedRun(t *testing.T) {
 
 	t.Setenv(config.EnvMoaiKanbanID, runID)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvMoaiKanbanBackend, "codex")
+	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
 
 	restoreSpawn := tmuxSpawnFn
 	restoreIdentity := codexSpawnPaneIdentityFn
 	restoreCleanup := codexSpawnCleanupPaneFn
+	restoreAnchor := codexSpawnAnchorFn
 	t.Cleanup(func() {
 		tmuxSpawnFn = restoreSpawn
 		codexSpawnPaneIdentityFn = restoreIdentity
 		codexSpawnCleanupPaneFn = restoreCleanup
+		codexSpawnAnchorFn = restoreAnchor
 	})
 
 	tmuxSpawnFn = func(string, string) (string, error) { return "%42", nil }
-	codexSpawnPaneIdentityFn = func(string) (int, string, error) {
-		return 0, "", errors.New("spawned Codex pane process identity unavailable")
-	}
+	errIdentity := errors.New("spawned Codex pane process identity unavailable")
+	codexSpawnPaneIdentityFn = func(string) (int, string, error) { return 0, "", errIdentity }
 	cleaned := false
 	codexSpawnCleanupPaneFn = func(string) error { cleaned = true; return nil }
+	codexSpawnAnchorFn = func(int, string) error { t.Fatal("anchor called without a pane identity"); return nil }
 
 	err := defaultCodexSpawnLaunch(root, "codex", []string{"--version"})
-	if err == nil {
-		t.Fatal("launch succeeded, want a refusal")
+	if !errors.Is(err, errIdentity) {
+		t.Fatalf("launch error = %v, want the identity refusal", err)
 	}
 	if !cleaned {
 		t.Fatal("the pane was not cleaned up on refusal")
 	}
-	pid, start := runOwnerStamp(t, root, runID)
-	if pid == launcherPID {
-		t.Fatalf("run row still carries the launching process's pid %d (start %q); that identity is known in advance to die", pid, start)
+	if pid, start := runOwnerStamp(t, root, runID); pid != launcherPID || start != "launcher-start" {
+		t.Fatalf("run owner = (%d, %q), want unchanged (%d, launcher-start)", pid, start, launcherPID)
 	}
 }
 
-// REQ-002d on the anchor-refusal path — in factory mode, when the spawned
-// pane's identity resolves but the worktree anchor lock is refused (a second
-// writer, or a tree already anchored), the launch is refused with the anchor
-// error AND the run row no longer carries the launching process's identity.
-// The refusal returns before the pane restamp, so without the owner clear on
-// this path the launcher's soon-dead pid would survive on the run.
-func TestPaneDoorAnchorRefusalClearsFactoryRunOwner(t *testing.T) {
+// On the anchor-refusal path — the spawned pane's identity resolves but the
+// worktree anchor lock is refused (a second writer, or a tree already
+// anchored) — the launch is refused with the anchor error and the pane
+// cleaned up, and the run row under the lane's environment is left as it was.
+func TestCodexPaneDoorAnchorRefusalLeavesRunOwner(t *testing.T) {
 	root := runOwnerSandbox(t)
 	const runID = "run-pane-anchor-refusal"
 	launcherPID := os.Getpid()
@@ -232,7 +234,7 @@ func TestPaneDoorAnchorRefusalClearsFactoryRunOwner(t *testing.T) {
 
 	t.Setenv(config.EnvMoaiKanbanID, runID)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvMoaiKanbanBackend, "codex")
+	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
 
 	restoreSpawn := tmuxSpawnFn
 	restoreIdentity := codexSpawnPaneIdentityFn
@@ -260,7 +262,33 @@ func TestPaneDoorAnchorRefusalClearsFactoryRunOwner(t *testing.T) {
 	if anchorCalls != 1 || !cleaned {
 		t.Fatalf("anchor calls = %d, pane cleaned = %v; want the anchor-refusal path taken once with pane cleanup", anchorCalls, cleaned)
 	}
+	if pid, start := runOwnerStamp(t, root, runID); pid != launcherPID || start != "launcher-start" {
+		t.Fatalf("run owner after anchor refusal = (%d, %q), want unchanged (%d, launcher-start)", pid, start, launcherPID)
+	}
+}
+
+// clearFactoryRunOwner is the shared owner-clear helper the Windows cc/glm
+// launch path calls on its REQ-002d refusal (launch_exec_windows.go). Its
+// codex caller is retired (SPEC-CODEX-FACTORY-RETIRE-001), so this pins the
+// helper's own contract on every platform: it clears the named run's owner,
+// and a blank root or run id is a no-op.
+func TestClearFactoryRunOwnerClearsTheNamedRun(t *testing.T) {
+	root := runOwnerSandbox(t)
+	const runID = "run-clear-owner"
+	seedRun(t, root, runID, 90003, "seed-start")
+	if err := clearFactoryRunOwner("", runID); err != nil {
+		t.Fatalf("blank root: %v", err)
+	}
+	if err := clearFactoryRunOwner(root, " "); err != nil {
+		t.Fatalf("blank run id: %v", err)
+	}
+	if pid, start := runOwnerStamp(t, root, runID); pid != 90003 || start != "seed-start" {
+		t.Fatalf("no-op calls changed the owner to (%d, %q)", pid, start)
+	}
+	if err := clearFactoryRunOwner(root, runID); err != nil {
+		t.Fatalf("clear: %v", err)
+	}
 	if pid, start := runOwnerStamp(t, root, runID); pid != 0 || start != "" {
-		t.Fatalf("run owner after anchor refusal = (%d, %q), want cleared (0, \"\"); the launcher's identity is known in advance to die", pid, start)
+		t.Fatalf("owner after clear = (%d, %q), want (0, \"\")", pid, start)
 	}
 }

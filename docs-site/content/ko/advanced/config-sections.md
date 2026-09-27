@@ -238,6 +238,37 @@ workflow:
 
 크기가 크지 않은 일회성 프로젝트에서 세션마다 뜨는 백로그 요약이 소음으로 느껴질 때 이 키를 씁니다. 큐 자체의 운영법은 [moai todo](/ko/utility-commands/moai-todo/) 페이지에 있습니다.
 
+## workflow.yaml — autonomy
+
+SPEC 자율 실행 계약(`contract.yaml`)을 어떻게 서명하고 어디까지 묶을지 정합니다. 계약을 다루는 명령은 [moai contract](/ko/cli-reference/contract/) 입니다. 이름이 비슷한 [자율성 티어(`MOAI_AUTONOMY_TIER`)](/ko/advanced/autonomy-tier/)와는 서로 무관한 설정입니다.
+
+```yaml
+workflow:
+    autonomy:
+        mode: guided              # guided | contract
+        contract:
+            batch_sign: false       # 여러 SPEC 을 확인 한 번으로 서명
+            second_review: required # required | advisory | off
+            push_develop: false     # 계약에서 push-develop 작업 허용
+        kickoff:
+            # decider: human | llm | llm+jev   (생략 시 guided 는 human, contract 는 llm)
+            jev_min_confidence: 0.50
+        escalation:
+            budget_default: { turns: 60, operations: 40, audit_retries: 2 }
+```
+
+| 키 | 설명 |
+|----|------|
+| `mode` | `guided`(기본) 또는 `contract`. 영수증 기반 서명(`--signer llm`)은 `contract` 에서만 열립니다 |
+| `contract.batch_sign` | `true` 이면 여러 SPEC 을 확인 한 번으로 서명합니다. 기본 `false` |
+| `contract.second_review` | `required` 이면 계약의 `review.second_model` 이 `none` 이거나 비어 있을 때 무효로 판정합니다. `advisory` · `off` 는 이 검사를 하지 않습니다 |
+| `contract.push_develop` | `false`(기본)이면 계약의 `push-develop` 작업을 무효로 판정합니다 |
+| `kickoff.decider` | 착수 결정 주체. `human` · `llm` · `llm+jev`. 생략하면 모드에서 파생됩니다. `jev` 단독은 설정 오류이며 영수증 서명이 거부됩니다 |
+| `kickoff.jev_min_confidence` | 착수 영수증을 발급하는 쪽이 Jev 판단을 받아들일 최소 신뢰도로 쓰도록 예약된 값. 이번 릴리스에서는 값을 읽어 형식만 검사하며, 서명과 검증에는 영향을 주지 않습니다. 기본 `0.50` |
+| `escalation.budget_default` | 계약에 `budget` 이 없을 때 서명 시점에 채워 넣는 기본 예산 |
+
+**값이 틀렸을 때.** 키가 없으면 위 기본값을 씁니다. `mode` · `second_review` · `decider` · `jev_min_confidence` 에 허용되지 않은 값을 적으면 더 엄격한 기본값(`guided` · `required` · `human` · `0.50`)으로 되돌리고, 어느 키를 바꿨는지 경고로 알립니다.
+
 ## crosssession.yaml — 세션 간 메시지
 
 내 다른 Claude Code 세션이 보내는 메시지를 이 세션이 어떻게 다룰지 정합니다. `moai cc` · `moai glm` 런처가 실행 시점에 이 값을 임시 `--settings` 파일로 옮겨 담고, 웹 콘솔은 설정 seam을 통해 이 파일을 편집합니다. 런처를 거치지 않고 맨손으로 `claude`를 실행한 세션은 이 파일을 읽지 않습니다.
