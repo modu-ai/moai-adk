@@ -19,6 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/codexadapter"
 	"github.com/modu-ai/moai-adk/internal/codexwiring"
 	"github.com/modu-ai/moai-adk/internal/goal"
 	"github.com/modu-ai/moai-adk/internal/hook"
@@ -299,4 +300,126 @@ func TestCodexGoalBudgetTerminationRecorded(t *testing.T) {
 	if got := rec.status(3); got != stopStatusTerminated {
 		t.Fatalf("a goal ended by its budget was recorded %q, want %q", got, stopStatusTerminated)
 	}
+}
+
+// TestCodexGoalUnmeasuredCapBoundsContinuation is the t1280 F4 leg: the goal
+// member's consecutive-unmeasured continuations count toward the §D3.8 cap —
+// both the receipt-absent path and the cut-off path — and the Nth unmeasured
+// Stop allows as unverified with the goal NOT satisfied. A measured
+// evaluation resets the streak.
+func TestCodexGoalUnmeasuredCapBoundsContinuation(t *testing.T) {
+	fakeCodexVersion(t, "codex-cli 0.0.0-golden")
+	n := codexwiring.StopUnmeasuredCap
+	const cmd1 = "test -f done.flag"
+	const cmd2 = "test -f other.flag"
+
+	t.Run("receipt absent: the Nth unmeasured Stop allows as unverified", func(t *testing.T) {
+		f := goalFixture(t)
+		armParityGoal(t, f.root, "goal-cap", cmd1, 30)
+		for i := 1; i < n; i++ {
+			_, rec := codexStop(t, f.root, stopInput("goal-cap", false))
+			if st := rec.status(3); st != reasonUnmeasured {
+				t.Fatalf("Stop %d: goal member recorded %q, want %q", i, st, reasonUnmeasured)
+			}
+		}
+		before := countDiscards(sinkRecords(t, f.root), "unverified")
+		out, rec := codexStop(t, f.root, stopInput("goal-cap", false))
+		if strings.Contains(out, `"decision":"block"`) {
+			t.Fatalf("the Nth unmeasured Stop must allow, got %s", out)
+		}
+		if st := rec.status(3); st != reasonUnverified {
+			t.Fatalf("capped goal recorded %q, want %q (never a pass)", st, reasonUnverified)
+		}
+		if st := loadGoalStatus(t, f.root, "goal-cap"); st == goal.StatusSatisfied {
+			t.Fatal("a capped goal must NOT read satisfied")
+		}
+		if after := countDiscards(sinkRecords(t, f.root), "unverified"); after-before != 1 {
+			t.Fatalf("the goal cap must write exactly one unverified record, wrote %d", after-before)
+		}
+	})
+
+	t.Run("cut off: the Nth cut-off Stop allows as unverified", func(t *testing.T) {
+		f := newTimingFixture(t)
+		armParityGoal(t, f.root, "goal-cut", cmd1, 30)
+		run := func() stopMemberOutcome {
+			c := newCodexStopChain(f.root, stopInput("goal-cut", false))
+			c.member1 = allowMember1
+			c.budgetFor = func(m int) time.Duration {
+				if m == 3 {
+					return time.Nanosecond
+				}
+				return wideStopBudget(m)
+			}
+			res := c.run(context.Background())
+			c.waitOrphans()
+			return memberByNumber(t, res, 3)
+		}
+		for i := 1; i < n; i++ {
+			if m := run(); m.Decision != codexadapter.DecisionDeny || m.Class != reasonUnmeasured {
+				t.Fatalf("cut-off %d: got %s/%q, want deny/unmeasured", i, m.Decision, m.Class)
+			}
+		}
+		m := run()
+		if m.Decision != codexadapter.DecisionAllow || m.Class != reasonUnverified {
+			t.Fatalf("the Nth cut-off: got %s/%q, want allow/unverified", m.Decision, m.Class)
+		}
+	})
+
+	// The two same-key reset legs below are the discriminating shape the
+	// sync-audit probe pinned (t1280 F1): a tree move would reset the count
+	// by key change alone, so the re-arm keeps the SAME tree and changes only
+	// the goal's condition — only capReset can restart the streak there.
+	t.Run("a measured unmet evaluation resets the streak (same tree key)", func(t *testing.T) {
+		f := goalFixture(t)
+		armParityGoal(t, f.root, "goal-reset", cmd1, 30)
+		for i := 1; i < n; i++ {
+			codexStop(t, f.root, stopInput("goal-reset", false))
+		}
+		// A measured, failing receipt → unmet (not unmeasured), and the streak resets.
+		recordGoalReceipt(t, f.root, cmd1, 1)
+		if _, rec := codexStop(t, f.root, stopInput("goal-reset", false)); rec.status(3) != reasonUnmet {
+			t.Fatalf("a measured failing goal recorded %q, want %q", rec.status(3), reasonUnmet)
+		}
+		// Same tree, a re-armed goal with a new unmeasured condition: the
+		// streak must restart at 1 — a key change cannot explain it.
+		armParityGoal(t, f.root, "goal-reset", cmd2, 30)
+		out, rec := codexStop(t, f.root, stopInput("goal-reset", false))
+		if !strings.Contains(out, `"decision":"block"`) {
+			t.Fatal("after a measured eval on the same key, the first unmeasured Stop must continue the turn")
+		}
+		if st := rec.status(3); st != reasonUnmeasured {
+			t.Fatalf("after a measured eval on the same key, goal recorded %q, want %q (streak not reset)", st, reasonUnmeasured)
+		}
+		if !strings.Contains(stopReason(t, out), "continuation 1 of") {
+			t.Fatalf("the streak must restart at 1; reason %q", stopReason(t, out))
+		}
+	})
+
+	t.Run("a met goal resets the streak (same tree key)", func(t *testing.T) {
+		f := goalFixture(t)
+		armParityGoal(t, f.root, "goal-met", cmd1, 30)
+		for i := 1; i < n; i++ {
+			codexStop(t, f.root, stopInput("goal-met", false))
+		}
+		recordGoalReceipt(t, f.root, cmd1, 0)
+		out, _ := codexStop(t, f.root, stopInput("goal-met", false))
+		if strings.Contains(out, `"decision":"block"`) {
+			t.Fatal("a met goal must allow the stop")
+		}
+		if st := loadGoalStatus(t, f.root, "goal-met"); st != goal.StatusSatisfied {
+			t.Fatalf("met goal status %q, want %q", st, goal.StatusSatisfied)
+		}
+		// Re-armed on the same key with a new unmeasured condition: restart at 1.
+		armParityGoal(t, f.root, "goal-met", cmd2, 30)
+		out, rec := codexStop(t, f.root, stopInput("goal-met", false))
+		if !strings.Contains(out, `"decision":"block"`) {
+			t.Fatal("after a met goal on the same key, the first unmeasured Stop must continue the turn")
+		}
+		if st := rec.status(3); st != reasonUnmeasured {
+			t.Fatalf("after a met goal on the same key, goal recorded %q, want %q (streak not reset)", st, reasonUnmeasured)
+		}
+		if !strings.Contains(stopReason(t, out), "continuation 1 of") {
+			t.Fatalf("the streak must restart at 1; reason %q", stopReason(t, out))
+		}
+	})
 }
