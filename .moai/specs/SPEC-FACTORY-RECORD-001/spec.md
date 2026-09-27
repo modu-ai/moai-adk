@@ -4,7 +4,7 @@ title: "Harness-neutral factory F1 — card record layer and version-checked car
 version: "0.2.1"
 status: completed
 created: 2026-09-26
-updated: 2026-09-26
+updated: 2026-09-27
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -261,3 +261,16 @@ CI verdict reader) consume it.
   the common case (the database write fails, the directory is fine), not that one.
 - **The contract pointer is not verified.** A stale or fabricated pointer is readable by `status`; A1's
   `moai contract verify` and the A3 store are the authorities.
+- **Schema v4 is a one-way migration (F5, Opus sync-audit).** `factorySchemaVersion = 4` has no
+  downgrade path: a v3 binary rejects a v4 database with `unsupported factory schema version "4"`,
+  and the handoff hooks (`internal/hook/handoff/pending.go`, `persist.go`) and `factorymsg` open
+  the same database. In a repository where lanes run different builds, the first v4 open locks
+  every v3-binary path (handoff + factory) out of the project. Operational order: update all lane
+  binaries first, then let the new database be opened.
+- **`--decider human` is a self-report (F1, Opus sync-audit).** `moai factory decide` records the
+  decider the caller names; nothing yet distinguishes an operator terminal from an agent lane
+  running the same command through Bash, and no hook restricts the command. F1 has no consumer
+  that grants run entry on this record, so there is no present harm — but when F2/F3 start
+  treating this record as an authority basis, they must first require proof of a human decision
+  (for example a PreToolUse denial of `moai factory decide` from agent sessions, or an
+  interactive TTY check).
