@@ -72,6 +72,10 @@ Constraints: 10k concurrent users, 100ms read latency target
 4. Orchestrator runs AskUserQuestion rounds to resolve each marked topic
 5. Implementation Kickoff Approval proceeds only after all clarifications are resolved
 
+<!-- moai:contract-mode-start id="contract-clarification" -->
+Where `workflow.autonomy.mode: contract` — markers still block the run: the contract is signed only after they are resolved, and `moai contract decide` treats any marker left in plan.md or research.md as a failed precondition that routes the Kickoff to a human signature. See `.claude/rules/moai/workflow/contract-autonomy.md` § The signing gate.
+
+<!-- moai:contract-mode-end -->
 **3-layer distinction**:
 - `[NEEDS CLARIFICATION: <topic>]` — SPEC artifact blocker (user Q required before run)
 - `TODO` — code-level implementation debt (no user Q needed, inline comment sufficient)
