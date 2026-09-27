@@ -1659,3 +1659,68 @@ $ git show develop:<양쪽> | wc -c                     →  61749 / 61749
 - 미러 전역 중립성 스윕 미수행 — 두 미러 파일 범위만 쟀고 C7(커밋 SHA) 축은 미측정.
 - 살아 있는 `manager-git` 서브에이전트의 실 Bash 발사는 감사도 하지 않았다(카드와 같은 이유).
 - `TestSessionStart_MissPathSpendsNoJoinBudgetOnDrift` 1회 사망(`Handle took 293.716459ms` vs 벽시계 예산 250ms). 격리 `-count=3` 3/3 통과로 부하 의존 flake 로 판단했으나 표본 4회이며, `session_start` 소관으로 `branch_guard` 와 무관하다.
+
+---
+
+## 병합 트리 재측정 (2026-09-27, 통합 창 — agent-48)
+
+창을 `moai integration acquire --name agent-48 --card t1064` 로 잡았고(settings 드리프트 적중 없음 — 거절 없이 통과), 로컬 develop `b59a5d69c`(= `origin/develop`)를 흡수했다. 흡수 전 HEAD `c900d0193`, 흡수 후 **`82a3a3d3c`**, 충돌 0.
+
+카드 작업 전체가 미흡수 트리에서 이뤄졌으므로(배차 지시 미이행) 여기의 측정이 판정의 근거이며, 앞선 §E.2 측정은 미흡수 트리 기준으로 남긴다.
+
+### 흡수가 해소한 것 — 드리프트 귀속의 확인
+
+```
+$ wc -c < .claude/rules/moai/workflow/worktree-integration.md
+   61749
+$ wc -c < internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md
+   61749
+```
+
+흡수 전 60597 / 60762 였던 두 사본이 일치했다. 이 카드가 아무것도 고치지 않고 흡수만으로 해소됐으므로, § 독립 sync-audit 기록의 귀속 판정(감사의 정정이 아니라 레인 측정이 맞다)이 결과로도 확인된다.
+
+### 재측정 결과 — 전항목 초록
+
+| 측정 | 명령 | 결과 |
+|---|---|---|
+| 훅 전 패키지 | `go test ./internal/hook/... -count=1` | **exit 0** — 11패키지 전부 ok(`internal/hook` 430.893s) |
+| 템플릿 가드 4종 | `go test ./internal/template/ -run 'Leak\|Neutral\|MirrorDrift\|SanitizedPair' -count=1` | **exit 0** — ok 1.845s |
+| 바이너리 지연 | `go test ./internal/cli -run TestBinaryLag -count=1` | **exit 0** — ok 1.011s |
+| 빌드 | `make build` | **exit 0** — commit stamp `82a3a3d3c`, 빌드 후 `status --porcelain` **0행**(재생성 산물이 커밋본과 동일) |
+| 임베드 축 | `make embed-check` | **exit 0** — `Agent Emit Embed: 12/12 embedded agent-emit artifacts match the committed set`, 1 ok / 0 warn / 0 fail |
+| lint (CI 판) | `golangci-lint run ./internal/hook/... ./internal/template/...` (v2.1.6) | **0 issues** |
+| 포맷 | `gofmt -l internal/` | **0행** |
+| 정적검사 | `go vet ./internal/hook/... ./internal/template/...` | **exit 0** |
+
+**감사가 flake 로 판단한 항목**: `TestSessionStart_MissPathSpendsNoJoinBudgetOnDrift` 는 이번 병합 트리 전 패키지 실행에서 **발화하지 않았다**(exit 0). 부하 의존이라는 감사 판단과 일관되나, 이 1회 통과가 flake 아님을 확립하지는 않는다 — 벽시계 예산 테스트이므로 병렬 레인 환경에서 재발 가능성은 남는다.
+
+### 미러 전역 중립성 스윕 — 측정의 한계를 함께 적는다
+
+리드가 요구한 C7 포함 전역 스윕을 돌렸으나, **crude regex 스윕은 가드가 아니다.** `internal/template/templates/` 전역에 `SPEC-`·날짜·`card t<n>`·9자리 hex 적중이 다수 있고 그것들은 전부 기존 파일이다. 실제 C 클래스 규칙은 `TestTemplateNoInternalContentLeak` 과 중립성 가드가 갖고 있으며, 그 가드들이 초록이다. 따라서 텍스트 적중을 결함으로 주장하지 않는다.
+
+귀속 가능한 형태로 잰 것은 **이 카드가 만진 두 미러 파일**이며, 네 축 전부 0이다:
+
+```
+$ for pat in 'SPEC-[A-Z0-9-]+-[0-9]{3}' '20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]' \
+             'card t[0-9]+' '\b[0-9a-f]{9}\b'; do
+    grep -rlE "$pat" <두 미러> | wc -l
+  done
+0
+0
+0
+0
+```
+
+### Baseline-attribution
+
+- 트리 `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1064` · 브랜치 `WT-branchguard-exempt` · 흡수 후 HEAD **`82a3a3d3c`** · 흡수원 로컬 develop `b59a5d69c`(= `origin/develop`)
+- 위 표의 모든 행은 **이번 실행에서 병합 트리에 대해** 돌린 명령의 결과다. 흡수 전 측정값을 옮긴 것은 없다.
+- 측정 중 `git status --porcelain` 0행 — `make build` 직후에도 0행.
+
+### Gaps
+
+- **살아 있는 `manager-git` 서브에이전트의 실 Bash 발사는 여전히 미실행.** 병합 트리에서도 하지 않았다 — 성립 조건이 primary 체크아웃의 브랜치 상태 변경이 실제로 통과하는 것이므로 의도적이다.
+- **`MOAI_BRANCH_GUARD_EXEMPT` 환경변수 축 미측정** — 이 카드의 범위가 아니며 문안에도 「미재측정」으로 적혀 있다.
+- **전 패키지 스위트(`go test ./...`)는 돌리지 않았다** — §4.1 대로 변경 영향 범위(`internal/hook`, `internal/template`, `internal/cli` 의 BinaryLag)만 쟀고, 전 패키지 판정은 CI 몫이다.
+- **`TestSessionStart…` flake 판정의 표본은 여전히 작다**(감사 4회 + 이번 1회).
+- **crude 중립성 스윕은 가드를 대체하지 않는다**(위 절에 명시).
