@@ -43,6 +43,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -152,6 +153,12 @@ type CodexJobRecord struct {
 	// RequestSummary is a redacted, bounded description of what was asked.
 	RequestSummary string `json:"request_summary"`
 
+	// WorkKey is the caller-chosen work-item key (for example a card id) the job
+	// was started under (SPEC-CODEX-RESUME-SCOPE-001 REQ-CRS-005). It scopes a
+	// later resume_last to this work item's threads. Absent on records written
+	// before the field existed, which therefore match no work_key.
+	WorkKey string `json:"work_key,omitempty"`
+
 	// Output is the completed task output; Error is the failure reason. Both are
 	// empty until the job reaches a terminal status.
 	Output string `json:"output,omitempty"`
@@ -166,6 +173,7 @@ type codexJobSpec struct {
 	PID            int
 	Mode           string
 	RequestSummary string
+	WorkKey        string
 }
 
 // ─── structured errors ───
@@ -235,6 +243,7 @@ func (r *codexJobRegistry) create(spec codexJobSpec) (CodexJobRecord, error) {
 		PID:            spec.PID,
 		Mode:           spec.Mode,
 		RequestSummary: codexJobSummary(spec.RequestSummary),
+		WorkKey:        spec.WorkKey,
 	}
 
 	r.mu.Lock()
@@ -322,32 +331,61 @@ func (r *codexJobRegistry) turnIDRecorder(jobID string) func(string) {
 	}
 }
 
-// latestThreadID returns the threadId of the most recently updated record that
-// carries one — "the most recently recorded threadId for the project" that
-// resume_last reuses (REQ-CX2-008). The second return is false when no record
-// carries a thread, which is the case the caller must report rather than paper
-// over by silently opening a new thread without saying so.
+// ─── resume selection (SPEC-CODEX-RESUME-SCOPE-001) ───
 //
-// Records are the only place a thread is recorded, and REQ-CX2-003 creates them
-// for BACKGROUND jobs, so this resumes the last background job's thread. A
-// project that has only ever run foreground tasks has nothing to resume, and
-// says so.
+// resume_last used to resume the newest thread in the WHOLE project registry.
+// Parallel work items (kanban cards in separate worktrees) share that one
+// registry, so a call continuing card A resumed card B's thread and reported
+// nothing. The functions below replace that single recency pick with three
+// scoped questions — is this thread recorded here, which thread does this
+// work_key own, and how many distinct threads exist — and leave the decision
+// (resume, open new, refuse) to the caller in codex_task.go.
+
+// codexThreadCandidate is one DISTINCT recorded thread, described by its
+// representative record: among the records carrying the thread, the one with
+// the latest updated_at, ties broken by the lexicographically smallest record
+// id. A resumed thread leaves a new record per background job, so one thread
+// spanning several records is the normal shape.
+//
+// It is also the candidate shape a resume_ambiguous refusal returns
+// (REQ-CRS-006): thread_id plus the representative's request_summary and
+// updated_at, and its work_key only when the representative carries one — the
+// value the caller passes back as a selector.
+type codexThreadCandidate struct {
+	ThreadID       string    `json:"thread_id"`
+	RequestSummary string    `json:"request_summary"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	WorkKey        string    `json:"work_key,omitempty"`
+}
+
+// codexRecordNewer reports whether record a orders before record b: later
+// updated_at first, and on equal updated_at the lexicographically smaller record
+// id first. Every resume selection uses this one ordering, so "latest" never
+// depends on directory-listing order.
+func codexRecordNewer(a, b CodexJobRecord) bool {
+	if !a.UpdatedAt.Equal(b.UpdatedAt) {
+		return a.UpdatedAt.After(b.UpdatedAt)
+	}
+	return a.ID < b.ID
+}
+
+// threadRecords returns every readable record that carries a thread id.
 //
 // An unreadable directory or an undecodable record is skipped rather than
 // surfaced: failing to find a thread to resume is a reportable outcome, not an
-// error — the caller opens a new thread either way.
-func (r *codexJobRegistry) latestThreadID() (string, bool) {
+// error (REQ-CX2-008).
+//
+// Records are the only place a thread is recorded, and REQ-CX2-003 creates them
+// for BACKGROUND jobs only, so a foreground task's thread is never a candidate.
+func (r *codexJobRegistry) threadRecords() []CodexJobRecord {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	entries, err := os.ReadDir(r.dir)
 	if err != nil {
-		return "", false
+		return nil
 	}
-	var (
-		bestID string
-		bestAt time.Time
-	)
+	var out []CodexJobRecord
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 			continue
@@ -363,11 +401,70 @@ func (r *codexJobRegistry) latestThreadID() (string, bool) {
 		if rec.ThreadID == "" {
 			continue
 		}
-		if bestID == "" || rec.UpdatedAt.After(bestAt) {
-			bestID, bestAt = rec.ThreadID, rec.UpdatedAt
+		out = append(out, rec)
+	}
+	return out
+}
+
+// hasThread reports whether any record in THIS project's registry carries
+// threadID — the only threads an explicit thread_id may resume (REQ-CRS-003).
+func (r *codexJobRegistry) hasThread(threadID string) bool {
+	for _, rec := range r.threadRecords() {
+		if rec.ThreadID == threadID {
+			return true
 		}
 	}
-	return bestID, bestID != ""
+	return false
+}
+
+// latestThreadForWorkKey returns the thread of the newest record carrying
+// workKey (REQ-CRS-004). Selection is per RECORD, not per representative: a
+// thread whose newest record carries another key is still found through an
+// older record carrying this one. Records with a different key or none are not
+// considered.
+func (r *codexJobRegistry) latestThreadForWorkKey(workKey string) (string, bool) {
+	var (
+		best  CodexJobRecord
+		found bool
+	)
+	for _, rec := range r.threadRecords() {
+		if rec.WorkKey != workKey {
+			continue
+		}
+		if !found || codexRecordNewer(rec, best) {
+			best, found = rec, true
+		}
+	}
+	return best.ThreadID, found
+}
+
+// recordedThreads returns one candidate per DISTINCT recorded thread, each
+// described by its representative record, newest first (REQ-CRS-006/007). Its
+// length is what a selector-less resume_last decides on: 0 opens a new thread,
+// 1 resumes it, more than 1 is refused as ambiguous.
+func (r *codexJobRegistry) recordedThreads() []codexThreadCandidate {
+	reps := map[string]CodexJobRecord{}
+	for _, rec := range r.threadRecords() {
+		if cur, ok := reps[rec.ThreadID]; !ok || codexRecordNewer(rec, cur) {
+			reps[rec.ThreadID] = rec
+		}
+	}
+	ordered := make([]CodexJobRecord, 0, len(reps))
+	for _, rec := range reps {
+		ordered = append(ordered, rec)
+	}
+	sort.Slice(ordered, func(i, j int) bool { return codexRecordNewer(ordered[i], ordered[j]) })
+
+	out := make([]codexThreadCandidate, 0, len(ordered))
+	for _, rec := range ordered {
+		out = append(out, codexThreadCandidate{
+			ThreadID:       rec.ThreadID,
+			RequestSummary: rec.RequestSummary,
+			UpdatedAt:      rec.UpdatedAt,
+			WorkKey:        rec.WorkKey,
+		})
+	}
+	return out
 }
 
 // read loads and decodes one record. The caller holds r.mu.

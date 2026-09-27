@@ -91,6 +91,12 @@ $ grep -n "CREATE TABLE IF NOT EXISTS peers" internal/factorymsg/store.go
 already in service. This is what makes REQ-006's legacy-row fallback possible at all: rows written
 before this SPEC lands have no stamp, but their lead peer has an identity.
 
+> **Note added 2026-09-25 (v0.13.1, card t1169).** The sentence above holds for a legacy row whose
+> lead registered a peer; card t1168 later measured legacy rows with no broker file at all, for
+> which neither source yields an identity. Such a row is not always `indeterminate`: it is `dead`
+> when the REQ-006b boot proof holds and `indeterminate` otherwise (`spec.md` REQ-006 / REQ-006b).
+> The measurement above is left as recorded.
+
 ---
 
 ## §C Ledger — the five call sites, in three launch shapes

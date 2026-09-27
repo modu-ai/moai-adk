@@ -141,10 +141,12 @@ func factoryHookBatch(ctx context.Context, input *HookInput, event EventType) (s
 		// bound lane's inbox into a silent empty read.
 		//
 		// This makes the state string truthful; it does not surface it. Both
-		// call sites still discard the state, and a hook process discards slog
-		// records too (internal/cli/logging.go resolveLoggingDecision), so a
-		// degraded inspection is still not reported anywhere. Closing that is
-		// card t1144.
+		// call sites still discard the state, so the string itself reaches no
+		// reader. A hook's slog records do now reach a file
+		// (.moai/logs/hook-runtime.log — internal/cli/logging.go
+		// resolveLoggingDecision, card t1144), so a degraded inspection is
+		// reportable from here at warn level; nothing on this path emits one
+		// yet.
 		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, factorymsg.ErrEndpointLaunchPending) {
 			return "", false, "unbound-session"
 		}

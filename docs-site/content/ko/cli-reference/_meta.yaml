@@ -49,3 +49,5 @@ tokens:
   title: "moai tokens 토큰 회계"
 memory:
   title: "moai memory 메모리 관리"
+contract:
+  title: "moai contract 자율 실행 계약"

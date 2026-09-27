@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
@@ -20,6 +21,9 @@ import (
 //
 // NOTE: does not call t.Parallel() because it sets HOME via t.Setenv.
 func TestCleanupMoaiWorktrees_GlobalPath(t *testing.T) {
+	// L2 worktrees live under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the L2 root derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tests := []struct {
 		name         string
 		createLocal  bool // create a worktree under .claude/worktrees/

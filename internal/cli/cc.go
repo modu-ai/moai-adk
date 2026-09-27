@@ -98,9 +98,9 @@ Factory Mode (dedicated -f entry):
 
 Permission Modes:
   default            Ask permissions for file edits and commands
-  acceptEdits        Auto-accept file edits, ask for commands (project default)
+  acceptEdits        Auto-accept file edits, ask for commands (moai init default)
   plan               Read-only exploration and planning
-  auto               Background classifier checks actions (requires Team plan + Sonnet/Opus 4.6)
+  auto               Background classifier checks actions (requires a supported model and plan; see Claude Code permission-modes docs)
   bypassPermissions  Skip all checks (isolated environments only)
   dontAsk            Only pre-approved tools
 

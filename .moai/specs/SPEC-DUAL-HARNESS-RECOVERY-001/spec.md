@@ -24,6 +24,7 @@ related_specs:
   - SPEC-CODEX-PARTIAL-WIRING-001
   - SPEC-UPDATE-ADD-CODEX-001
   - SPEC-WORKTREE-DONE-TIER-001  # completed; its L1 refusal in `moai worktree done` is kept unchanged (REQ-DHR-010)
+partially_superseded_by: [SPEC-CODEX-FACTORY-RETIRE-001]
 ---
 
 # SPEC-DUAL-HARNESS-RECOVERY-001

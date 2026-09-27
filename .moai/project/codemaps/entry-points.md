@@ -1,5 +1,19 @@
 # 진입점
 
+**현재 갱신 — t1278, worktree `.claude/worktrees/t1278`, 브랜치 `WT-codemaps-refresh5`, base `6d514f9b7` (2026-09-27).**
+이 판의 새 표면: CLI verb `moai ci-verdict`(`internal/cli/ci_verdict.go`, card t1268 — head SHA 의 CI 판정을 `gh` 로 가져오거나 `--from-json` 으로 오프라인 파싱해 `internal/civerdict` 저장소에 기록), doctor 의 Hook Missing Log 진단(card t1251), 훅의 계약 서명 가드(`CONTRACT_SIGN_AGENT_VIOLATION:`)·push-develop 슬롯 임대 직렬화(`PUSH_SERIALIZATION_VIOLATION:`)·Stop 파싱 실패 상한(card t1271), 그리고 PowerShell 가드 형태 분류(card t1255 — 아래 § 훅).
+
+**이전 갱신 — t1187, `origin/develop` `a8a9b9376` (2026-09-25).**
+CLI `moai codex audit <role> [--out <path>]`는 `runCodexAudit`을 호출하고,
+MCP `codex_role_audit`는 같은 런처의 `prepareCodexAudit`·`plan.run`으로
+감사를 시작한다. `codex_role_audit_status`·`codex_role_audit_result`는
+서버에 있는 job을 읽는다(`internal/cli/codex_audit_launch.go`,
+`codex_audit_mcp.go`). 호출자의 등록된 워크트리와 `.moai/reports/` 아래
+목적지를 먼저 검증하고, 허용된 읽기 전용 역할을 별도 `codex exec -s read-only`
+프로세스로 띄운다. MCP 경로는 job ID를 즉시 반환하며 status/result로
+완료를 읽는다. 런처가 결과를 그대로 쓴다. 모델의 읽기 전용 샌드박스가
+프로젝트 훅 명령이나 Codex HOME 기록까지 막는다는 뜻은 아니다.
+
 > `/moai codemaps`로 생성됐습니다.
 
 **최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
@@ -7,6 +21,8 @@
 **정기 재측정**: worktree `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`, 2026-09-22 — § Cobra 명령 트리의 등록 수치 세 개(자기 파일 등록 파일 70 불변, `AddCommand` 219→220, `rootCmd.AddCommand` 65→66, `root.go init()` 30→31)와 그 판에서 새로 더해진 숨은 명령 1개(스킬 제안 앵커 — 이후 card t1083이 철수), init 위자드 질문 4→5, § 훅과 § 웹 콘솔의 신규 seam 단락. 훅의 개수 네 가지(38·48·26·30)와 § MCP 서버 표면(도구 30), § HOME 상태 절, § CI 종료 코드 절은 같은 명령으로 재확인해 변동이 없었습니다.
 **부분 재측정**: worktree `.claude/worktrees/t1083`, 브랜치 `WT-jev-guard-green`, sync-phase HEAD `dd19e6b90`, 2026-09-22 — card t1083(SPEC-JEV-GUARD-001)이 Consumer B의 숨은 스킬 제안 명령을 철수하며 § Cobra 명령 트리의 세 수치를 다시 봤습니다(`root.go init()` `rootCmd.AddCommand` 31→30, 비테스트 `AddCommand(` 220→219, `rootCmd.AddCommand(` 66→65, 자기 파일 등록 파일 70 불변 — 수치는 비테스트 파일만 대상으로 센 값: `find internal/cli -name '*.go' -not -name '*_test.go' -print0 | xargs -0 grep -h 'AddCommand(' | wc -l` = 219, 같은 형태에 `rootCmd\.AddCommand(` = 65). § MCP 서버 표면(도구 수)과 § 훅·§ 웹 콘솔 절은 이 카드 변경과 무관해 손대지 않았습니다.
 **부분 재측정**: worktree `.claude/worktrees/t1092`, 브랜치 `WT-codemaps-restamp`, base `08113ff0f`, 2026-09-23 — 카드 t1092, 앵커 `598e8f748` 이후 착지분을 반영. § MCP 서버 표면의 도구 수 30→36(신규 `factory_msg_{send,list,body,receipt,status}` 5개 + `jev_ask` 1개, 목록·신규 절 갱신)과 § Cobra 명령 트리에 `moai worktree new <name>` 신규 서브커맨드 서술을 더했습니다. § Cobra 명령 트리의 등록 수치(`AddCommand` 카운트 등)는 이번 변경에서 움직이지 않아(신규 서브커맨드는 `worktree` 자식 패키지의 `WorktreeCmd.AddCommand`이지 루트 3수치가 세는 자리가 아님) 다시 재지 않았습니다. § `main()`·§ 훅·§ 웹 콘솔·§ HOME 상태·§ CI 종료 코드 절은 이 카드 변경과 무관해 손대지 않았습니다.
+**문장 정정**: 카드 t1144(SPEC-HOOK-DIAG-SINK-001), worktree `.claude/worktrees/t1144`, 브랜치 `WT-hook-diag-channel`, run-phase HEAD `bedc731d6`, 2026-09-25 — § 훅의 「룰 적재 감사 행」 단락이 `moai hook` 의 로깅 목적지를 `io.Discard` 라고 **사실로** 서술하고 있었고, 그 카드가 목적지를 `.moai/logs/hook-runtime.log` 싱크로 바꿨으므로 그 한 문장만 정정했습니다. 이 파일의 어떤 수치도 다시 재지 않았습니다 — 정정 범위는 문장 하나입니다.
+**정기 재측정**: worktree `.claude/worktrees/t1278`, 브랜치 `WT-codemaps-refresh5`, base `6d514f9b7`, 2026-09-27 — 카드 t1278, 스탬프 앵커 `cf4b82755` 이후 착지분을 반영. § Cobra 명령 트리의 등록 수치 둘(비테스트 `AddCommand(` 219→227, `rootCmd.AddCommand(` 65→67 — t1235 계열·t1242 GTD/계약·t1268 ci-verdict 등의 누적)과 신규 verb `moai ci-verdict` 서술, § 훅의 t1278 판 seam 단락(계약 서명 가드·push 직렬화·Stop 상한·PS 가드 형태)을 더했습니다. 훅의 개수 네 가지와 § MCP 서버 표면·§ 웹 콘솔·§ HOME 상태·§ CI 종료 코드 절은 이 카드 변경과 무관해 손대지 않았습니다.
 
 **부분 재측정**: worktree `.claude/worktrees/t1151`, 브랜치 `WT-codemaps-refresh2`, base `60017eb83`, 2026-09-24 — 카드 t1151, 앵커 `ee4e6d22f`(card t1132) 이후 착지분(주로 card t1100 SPEC-DUAL-HARNESS-RECOVERY-001)을 반영. § Cobra 명령 트리에 `moai tool disable codex` 신규 서브커맨드 서술을 더했습니다. § Cobra 명령 트리의 등록 수치(`AddCommand` 카운트 등)는 이번 변경에서 움직이지 않아(신규 서브커맨드는 이미 등록된 `tool` 부모 아래 자식 `AddCommand`이지 세 루트 수치가 세는 자리가 아님) 다시 재지 않았습니다. § MCP 서버 표면·§ `main()`·§ 훅·§ 웹 콘솔·§ HOME 상태·§ CI 종료 코드 절은 이 카드 변경과 무관해 손대지 않았습니다.
 
@@ -92,7 +108,7 @@ root.go Execute()
    `gate.go`, `graph.go`, `goal.go`, `integration.go` 등이 이 방식이고, 앞선 판 사이에
    `gtd.go`(`NewGTDCommand()` — todo 명령 트리를 감싸 `Use`만 `gtd`로 바꾼 두 번째 이름)와
    `slot.go`(`moai slot` — 무거운 실행용 세션 간 자원 임대)가 더해진 바 있습니다.
-   비테스트 `AddCommand(` 호출은 모두 **219회**, 그중 `rootCmd.AddCommand(`는 **65회**입니다
+   비테스트 `AddCommand(` 호출은 모두 **227회**, 그중 `rootCmd.AddCommand(`는 **67회**입니다(t1278 판 재측정 — 사이 판들의 누적을 한 번에 반영했다. 신규 verb `moai ci-verdict` 는 `root.go` 의 `newCIVerdictCmd(defaultGhRunner)` 로 tools 그룹에 등록된다)
    (card t1083 재측정 2026-09-22 — Consumer B 등록 철수 -1. 카운팅 명령:
    `find internal/cli -name '*.go' -not -name '*_test.go' -print0 | xargs -0 grep -h 'AddCommand(' | wc -l`;
    같은 파이프에 `rootCmd\.AddCommand(` 패턴 = 65. 이 판 앞의 238회는 테스트 파일까지 선 값으로 정정).
@@ -102,6 +118,11 @@ root.go Execute()
 있고 `DefaultQuestions`에는 없어서 `moai update --reconfigure`에는 **도달하지 않습니다** —
 초기화 뒤의 유일한 이후 경로는 `moai web` 설정 화면입니다. 답은 `internal/settings`의 같은
 `ApplySchemaEdits` seam으로 영속화됩니다(§ `data-flow.md` L).
+
+**t1238 판에서 `moai contract` 명령 트리가 더했다** — `internal/cli/contract.go`의 `init()`이
+`rootCmd.AddCommand(newContractCmd())`로 등록하며, 서브커맨드는 `verify <SPEC-ID>`·`show <SPEC-ID>`·
+`sign <SPEC-ID>...` 셋이다. 판정은 전부 `internal/contract`(검증 코어)와 `internal/contract/sign`(서명기)이
+내리고 CLI는 결과를 출력과 종료 코드(0 / 1 / 2)로만 옮긴다. 위 `AddCommand` 수치는 이 판에서 다시 세지 않았다.
 
 **합성 루트**: `internal/cli/deps.go` — `type Dependencies` + `InitDependencies()`.
 Config · Git(Repository/Branch/Worktree) · HookRegistry · HookProtocol · UpdateChecker/Orchestrator ·
@@ -196,9 +217,13 @@ args: ["-c", "[ -f \"$0\" ] && exec bash \"$0\"; ...missing 로그 후 exit 0",
 
 **룰 적재 감사 행** — `internal/hook/instructions_loaded.go`가 이벤트 1건당 `.moai/logs/rule-load-audit.jsonl`에
 JSONL 한 줄을 씁니다. 호스트가 주는 `LoadReason`·`Globs`·`TriggerFilePath` 필드는 전에는 버려져서
-`paths:` 글롭 매칭이 런타임에 관측 불가능했고, slog 기록은 `moai hook` 호출이 로깅을 io.Discard로
-보내기 때문에 독자에게 도달하지 않습니다 — 그래서 영구 행이 유일한 관측면입니다. 실패는
+`paths:` 글롭 매칭이 런타임에 관측 불가능했고, 이 자리의 slog 기록도 독자에게 도달하지 않습니다.
+카드 t1144(SPEC-HOOK-DIAG-SINK-001) 이후 `moai hook` 의 로깅은 `io.Discard` 가 아니라
+`.moai/logs/hook-runtime.log` 싱크로 갑니다만, 그 싱크는 기본값에서 warn 이상만 받고 이 기록은
+Info 이므로 여전히 아무 곳에도 쓰이지 않습니다 — 그래서 영구 행이 유일한 관측면입니다. 실패는
 agent-stop-audit 선례대록대로 침묵하고 계속합니다.
+
+**t1278 판에서 더해진 네 seam** — ① 계약 서명 가드(`internal/hook/contract_sign_guard.go`, card t1245): 도구 호출 경로에서 `moai contract sign`·`decide` 를 차단한다(센티넬 `CONTRACT_SIGN_AGENT_VIOLATION:`). 인간 경로는 무조건 거부, `--signer llm|llm+jev` 비대화형 경로와 `decide` 는 `MOAI_FACTORY_ROLE=worker` 세션에서만 거부하며, 판별 불가호출은 fail-closed. ② push-develop 직렬화(`internal/hook/push_serializer.go`, card t1245): 계약 triple(계약 모드 ∧ `push-develop` ∧ `push_requires_lease`)이 활성일 때 develop push 는 `moai slot` 의 `push-develop` 임대를 요구한다(센티넬 `PUSH_SERIALIZATION_VIOLATION:`; PostToolUse 가 실패한 push 의 임대를 돌려준다). ③ Stop 파싱 실패 상한(`internal/cli/hook_stop_parse_cap.go`, card t1271): 셈 키별 8연속 파싱 실패 Stop 의 9번째를 무의견으로 답한다(기록 `.moai/state/stop-parse-cap/`, 60분 만료). ④ PowerShell 가드 형태 분류(card t1255, SPEC-HOOK-GUARD-POWERSHELL-FORMS-001): 브랜치 상태 스캔이 `.exe` 접미·호출연산자 인용 대상·백틱 분리·`pwsh -Command` 페이로드를 정규화해 기존 query-vs-mutate 판정으로 거부하고, 동적 해석(`Get-Command`)·`saps`/`start` 별칭·유니코드 대시 `-EncodedCommand` 철자는 감사선 1행(`unclassifiable`)으로 격하한다. 인용 산문(`Write-Output 'git switch'`)은 데이터로 남아 허용된다.
 
 ---
 
@@ -207,13 +232,14 @@ agent-stop-audit 선례대록대로 침묵하고 계속합니다.
 - **명령**: `internal/cli/mcp_server.go`의 `newMCPServerCmd()` — `root.go`에서 등록. stdio
   JSON-RPC이고 `mark3labs/mcp-go` SDK는 전송만 담당합니다. **기본 off**이며 `.mcp.json`
   프로비저닝은 opt-in입니다.
-- **도구 수**: `mcp_server.go` 안 `add(...)` 호출 **35회** + `registerJevAskTool(add)`를 통한
-  1회(총 **36**), 그중 대부분은 이름 리터럴이고 2개는 상수 경유 — `claudeAuditToolName`과
-  `auditMultiToolName`. 카탈로그 `internal/mcp/catalog.go`도 `Name:` 선언 **36개**를 가지며
-  두 수가 일치합니다(이 판에서 30→36, 아래 신규 6개 몫).
+- **도구 수**: `mcp_server.go` 안 `add(...)` 호출 35회 +
+  `registerJevAskTool(add)` 1회 + `codexRoleAuditTools()` 루프 3회로
+  총 **39개**입니다. 카탈로그 `internal/mcp/catalog.go`의 `Name:` 선언도
+  **39개**입니다(2026-09-25 재측정).
 - **도구 목록**: `session_list`, `goal_status`, `goal_arm`, `spec_progress`, `verify_snapshot`,
   `verify_trend`, `spec_audit`, `spec_drift`, `audit_cache`,
-  `codex_{audit,setup,task,job_status,job_result,job_cancel}`, `claude_audit`,
+  `codex_{audit,setup,task,job_status,job_result,job_cancel}`,
+  `codex_role_audit{,_status,_result}`, `claude_audit`,
   `glm_{task,job_status,job_result,job_cancel,audit}`, `audit_multi`,
   `session_msg_{register,list,send,poll}`,
   `factory_msg_{send,list,body,receipt,status}`, `jev_ask`,

@@ -20,17 +20,10 @@ import (
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
+// The codex-backed live cases were removed with the codex factory path
+// (SPEC-CODEX-FACTORY-RETIRE-001); the claude cases remain.
 type factoryLiveCase struct{ name, lead, worker string }
 
-func TestFactoryLiveCodexCodex(t *testing.T) {
-	runFactoryLiveCase(t, factoryLiveCase{"codex-codex", "codex", "codex"})
-}
-func TestFactoryLiveCodexClaude(t *testing.T) {
-	runFactoryLiveCase(t, factoryLiveCase{"codex-claude", "codex", "claude"})
-}
-func TestFactoryLiveClaudeCodex(t *testing.T) {
-	runFactoryLiveCase(t, factoryLiveCase{"claude-codex", "claude", "codex"})
-}
 func TestFactoryLiveClaudeClaudeCompletionSeparation(t *testing.T) {
 	runFactoryLiveCase(t, factoryLiveCase{"claude-claude", "claude", "claude"})
 }
@@ -364,15 +357,6 @@ var factoryCardAttemptPattern = regexp.MustCompile(`attempt=(\d+)`)
 // before receipting it (REQ-DHR-019), and integrates.
 func TestFactoryLiveCardFlowClaudeClaude(t *testing.T) {
 	runFactoryCardFlow(t, factoryLiveCase{"claude-claude", "claude", "claude"})
-}
-func TestFactoryLiveCardFlowCodexCodex(t *testing.T) {
-	runFactoryCardFlow(t, factoryLiveCase{"codex-codex", "codex", "codex"})
-}
-func TestFactoryLiveCardFlowClaudeCodex(t *testing.T) {
-	runFactoryCardFlow(t, factoryLiveCase{"claude-codex", "claude", "codex"})
-}
-func TestFactoryLiveCardFlowCodexClaude(t *testing.T) {
-	runFactoryCardFlow(t, factoryLiveCase{"codex-claude", "codex", "claude"})
 }
 
 // requireFactoryCardLive is the card-flow gate: an unset gate or an absent

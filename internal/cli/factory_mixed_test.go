@@ -16,6 +16,24 @@ import (
 )
 
 func TestFactoryLauncherRegistersLaunchPendingPeers(t *testing.T) {
+	checkFactoryLauncherRegistersLaunchPendingPeers(t)
+}
+
+// TestFactoryLauncherRegistersLaunchPendingPeersUnderLaneEnv exports a lane's
+// launch variables before the same check: its final os.Environ() launch must
+// still read as non-factory (card t1222).
+func TestFactoryLauncherRegistersLaunchPendingPeersUnderLaneEnv(t *testing.T) {
+	t.Setenv(config.EnvMoaiKanbanID, "run-t1222-probe")
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-7")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
+	checkFactoryLauncherRegistersLaunchPendingPeers(t)
+}
+
+func checkFactoryLauncherRegistersLaunchPendingPeers(t *testing.T) {
+	t.Helper()
+	// The final launch passes os.Environ() and expects a non-factory result.
+	clearFactoryTestEnv(t)
+	requireFactoryLaunchDisabled(t)
 	t.Setenv("MOAI_HOME", t.TempDir())
 	root := t.TempDir()
 	run := "run-launch-pending"
@@ -23,7 +41,7 @@ func TestFactoryLauncherRegistersLaunchPendingPeers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.RecordRun(context.Background(), homestate.FactoryRun{RunID: run, Backend: "codex", ManifestJSON: "{}"}); err != nil {
+	if err := db.RecordRun(context.Background(), homestate.FactoryRun{RunID: run, Backend: "claude", ManifestJSON: "{}"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Close(); err != nil {
@@ -35,7 +53,7 @@ func TestFactoryLauncherRegistersLaunchPendingPeers(t *testing.T) {
 	}
 	env := []string{
 		config.EnvMoaiKanbanID + "=" + run,
-		config.EnvMoaiKanbanBackend + "=codex",
+		config.EnvMoaiKanbanBackend + "=claude",
 		config.EnvMoaiFactoryWorkers + "=1",
 	}
 	peer, err := registerFactoryLaunchPending(context.Background(), root, env, os.Getpid(), start)
@@ -76,7 +94,7 @@ func TestFactoryRunSelectionAtomicSlotsAndArgv(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.RecordRun(context.Background(), homestate.FactoryRun{RunID: "run-a", Backend: "codex", ManifestJSON: "{}"}); err != nil {
+	if err := db.RecordRun(context.Background(), homestate.FactoryRun{RunID: "run-a", Backend: "glm", ManifestJSON: "{}"}); err != nil {
 		t.Fatal(err)
 	}
 	if got, err := factorymsg.ResolveActiveRun(context.Background(), root, ""); err != nil || got != "run-a" {
@@ -114,7 +132,7 @@ func TestFactoryRunSelectionAtomicSlotsAndArgv(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			peer := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: "run-b", Backend: "codex", Role: "worker", Slot: "worker", SessionUUID: fmt.Sprintf("session-%d", i), Generation: 1, PID: os.Getpid(), ProcessStart: start}
+			peer := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: "run-b", Backend: "claude", Role: "worker", Slot: "worker", SessionUUID: fmt.Sprintf("session-%d", i), Generation: 1, PID: os.Getpid(), ProcessStart: start}
 			got, e := s.RegisterPeer(context.Background(), peer)
 			if e != nil {
 				t.Errorf("register: %v", e)

@@ -350,14 +350,14 @@ Natural language and 16 subcommands feed the same pipeline. `/moai plan`, `/moai
 
 ### MCP server
 
-`moai init` provisions exactly **one** active MCP entry by default — the self-hosted `moai mcp-server` (a local stdio server). It exposes 21 MoAI tools in six groups to Claude Code. Four documented-but-disabled entries (`context7`, `chrome-devtools`, `playwright`, `ast-grep`) are activated via `moai mcp add <name>`. The `moai mcp add|remove|list` CLI manages entries via an atomic-RWM seam — users never hand-edit `.mcp.json`.
+`moai init` provisions exactly **one** active MCP entry by default — the self-hosted `moai mcp-server` (a local stdio server). It exposes the MoAI tools to Claude Code. The table below lists the main groups only — the full list is in the [MCP server guide](https://adk.mo.ai.kr/en/guides/mcp-server), and the authoritative tool count and list are what the installed binary returns from `tools/list`. Four documented-but-disabled entries (`context7`, `chrome-devtools`, `playwright`, `ast-grep`) are activated via `moai mcp add <name>`. The `moai mcp add|remove|list` CLI manages entries via an atomic-RWM seam — users never hand-edit `.mcp.json`.
 
 | Group | Tools | Purpose |
 |-------|-------|---------|
 | SPEC lifecycle | `spec_progress`, `spec_audit`, `spec_drift` | Era classification + drift detection |
 | Verification | `verify_snapshot`, `verify_trend` | Per-key evidence snapshots |
 | Goal + session | `goal_arm`, `goal_status`, `session_list` | Autonomous loop + multi-session coordination |
-| Cross-model audit | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | Multi-auditor convergence |
+| Cross-model audit | `audit_multi`, `claude_audit`, `codex_audit`, `glm_audit`, `audit_cache` | Multi-auditor convergence |
 | Codex delegation | `codex_task`, `codex_setup`, `codex_job_*` | Background cross-model jobs |
 | GLM delegation | `glm_task`, `glm_job_status`, `glm_job_result`, `glm_job_cancel` | GLM (z.ai) background job delegation |
 

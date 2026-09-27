@@ -45,19 +45,11 @@ jobs:
         # push-to-main runs. The step carries no silent-slip escape hatch: an
         # orphan-bound stamp must fail this job, not slip past it.
         #
-        # Lane split (t407, measured on PR #1685): under git-flow the release
-        # lane merges with a MERGE COMMIT (release doctrine — "PR with merge
-        # commit NOT squash"), so a develop-anchored stamp survives the merge
-        # even though it is not a base ancestor until the merge lands — the
-        # base-ancestry test makes every release PR red by construction
-        # (CI run 33382844542). Re-anchoring cannot rescue that lane: a
-        # merge-base stamp passes the guard but then fails the freshness
-        # threshold (91 described-worthy files, threshold 40). For release/*
-        # heads the survival predicate is therefore reachability from HEAD —
-        # the pull_request checkout IS the merge preview, which carries the
-        # head branch's full history. Every other lane keeps the strict
-        # base-ancestry test: under a squash merge only base-reachable
-        # content survives (incident 0d15864ae90b).
+        # The pull_request checkout is the merge preview. A newly stamped
+        # commit exists on the PR branch, not yet on origin/<base>, so testing
+        # base ancestry rejects every legitimate new stamp before merge.
+        # Check preview HEAD for every PR. The push event checks the landed
+        # HEAD again and catches a squash/rebase that stranded the stamp.
         env:
           GITHUB_BASE_REF: ${{ github.base_ref }}
           GITHUB_HEAD_REF: ${{ github.head_ref }}
@@ -74,20 +66,11 @@ jobs:
             echo "::error::codemaps provenance names commit ${SHA} which does not exist in this checkout's history"
             exit 1
           fi
+          TARGET="HEAD"
           if [ -z "${GITHUB_BASE_REF:-}" ]; then
-            # push event: there is no base ref to judge against, and the object
-            # probe above answers only whether the commit RESOLVES. A squash or
-            # rebase leaves the stamped commit resolvable while dropping it out
-            # of this ref's history, so object presence alone let an orphaned
-            # stamp pass every push-to-main run. The checkout IS the tree being
-            # judged, so HEAD is the target.
-            TARGET="HEAD"
             echo "guard: push event (no base ref) — judging reachability from HEAD"
-          elif [ "${GITHUB_HEAD_REF#release/}" != "$GITHUB_HEAD_REF" ]; then
-            TARGET="HEAD"
-            echo "guard: release lane (${GITHUB_HEAD_REF}) — judging reachability from merge preview HEAD"
           else
-            TARGET="origin/${GITHUB_BASE_REF}"
+            echo "guard: PR ${GITHUB_HEAD_REF} into ${GITHUB_BASE_REF} — judging reachability from merge preview HEAD"
           fi
           if ! git -C "$REPO" merge-base --is-ancestor "$SHA" "$TARGET" 2>/dev/null; then
             echo "::error::codemaps provenance stamp ${SHA} is NOT reachable from ${TARGET} — orphan-bound stamp (the merge would strand it)"

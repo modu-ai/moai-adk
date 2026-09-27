@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // This file implements the seventeen-scenario oracle for IsBranchMerged
@@ -67,7 +69,7 @@ func runGitEnv(t *testing.T, dir string, env []string, args ...string) string {
 	t.Helper()
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
-	e := append(append([]string{}, os.Environ()...), "GIT_TERMINAL_PROMPT=0", "LC_ALL=C")
+	e := append(gitenv.Env(), "GIT_TERMINAL_PROMPT=0", "LC_ALL=C")
 	e = append(e, env...)
 	cmd.Env = e
 	out, err := cmd.CombinedOutput()

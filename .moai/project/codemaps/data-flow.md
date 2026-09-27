@@ -1,5 +1,29 @@
 # 데이터 흐름
 
+**현재 갱신 — t1187, `origin/develop` `a8a9b9376` (2026-09-25).**
+앵커 `bd71c59e4` 뒤 끝점 변경 41개 비테스트 Go 파일을 확인했다.
+이번 판에서 아래 두 경로를 보강했다.
+
+### Codex 읽기 전용 감사
+
+`moai codex audit`와 MCP `codex_role_audit`는
+`internal/cli/codex_audit_launch.go`의 `prepareCodexAudit`으로 합류한다.
+호출자의 워크트리·역할·보고서 경로·지시문 길이를 검사한 뒤
+`codex exec -s read-only` 별도 프로세스를 시작한다. MCP 경로는
+`codex_audit_mcp.go`의 서버 메모리 job 표에 ID를 두고 즉시 반환한다.
+`codex_role_audit_status`·`codex_role_audit_result`가 실행 결과와
+기록 경로를 읽는다. 런처가 결과 원문과 시작 기록을 쓴다.
+
+### Factory 런 은퇴
+
+`internal/factorymsg/factory_run_retire.go`가 등록된 lead peer의 PID와
+프로세스 시작 지문을 이전 런의 fallback 신원으로 건넨다.
+`internal/homestate/factory_run_retire.go`는 소유자를 분류하고,
+정상적인 신원이 없는 런에 대해서는 부팅 시각보다 모든 기록 활동이
+이전인지 확인한다. `OwnerDead`가 양성으로 확인된 런만 `retired`로
+바꾸고 `run.retired` 이벤트에 증거 근거를 남긴다. 살아 있음 또는
+판정 불명확 상태는 은퇴시키지 않는다.
+
 > `/moai codemaps`로 생성됐습니다. 시스템 동작의 대부분을 실어 나르는 경로를
 > 끝에서 끝까지 따라갑니다.
 
@@ -72,6 +96,15 @@ cmd/moai/main.go                        cli.ResolveExitCode → os.Exit(2)
 **계약상 중요한 지점**: `hook.go`의 주석이 명시하듯 **deny 결정에는 exit-2 분기가 없습니다.**
 JSON deny는 `hookSpecificOutput` 안에 살고 exit 0으로 나갑니다 — exit 2에서는 stdout JSON이
 무시되어 deny가 유실되기 때문입니다.
+
+**t1274 판 추가 — 계약 모드 이탈 관측 옆길(card t1235, SPEC-AUTONOMY-ESCALATION-001).**
+같은 훅 디스패치에서 갈라져 나가는 관측 전용 옆길이 하나 더 있다. `internal/hook/escalation_observe.go`가
+internal/escalation 패키지의 `Active` 게이트(contract 모드인가?)를 지나 계약 이벤트를 조립해 같은 패키지의 `Observe`로
+넘긴다. 이 옆길은 **위의 종료 코드 계약에 영향을 주지 않는다** — 감지기는 아무 값도 반환하지 않고(결정 불개입),
+고장(panic·입력 불가·락 시간 초과)은 `not-checked` 로그 한 줄로만 남는다. 산출물은 두 갈래:
+에스컬레이션 기록 `<worktree>/.moai/reports/<card>/escalation/<class>-<fingerprint>.md`(재발생은 새 ordinal),
+해시 체인 카드 로그와 상태 캐시 `$MOAI_HOME/db/<project-key>/contract/escalation/<card>.{log.jsonl,json}`.
+기록·해시에 들어가는 명령 텍스트는 `MaskCommand`로 자격증이 마스킹된 뒤다.
 
 ---
 

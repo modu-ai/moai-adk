@@ -82,6 +82,11 @@ type Verdict struct {
 	// trail for results served from the shared diagnostic snapshot instead of
 	// re-execution.
 	SnapshotAttribution []string `json:"snapshot_attribution,omitempty"`
+	// Diagnostic is set when the goal carries a status outside the vocabulary
+	// (IsKnownStatus). It is never serialized into the hook's stdout decision;
+	// the caller writes it to stderr so the anomaly is visible without turning
+	// into a block or a satisfied reading (REQ-HPR-015).
+	Diagnostic string `json:"-"`
 }
 
 // Eval carries the evaluator's injectable dependencies.
@@ -290,9 +295,24 @@ func shortHash(s string) string {
 // The goal is persisted by the caller after Evaluate returns; Evaluate itself
 // performs no I/O (the CmdRunner handles command execution).
 func (e *Eval) Evaluate(ctx context.Context, g *Goal) (Verdict, bool) {
-	// Step 1: inactive goal → no block.
-	if g == nil || g.Status == StatusCleared || g.Status == StatusSatisfied {
+	// Step 1: inactive goal → no block. A cancelled goal is inactive: the user
+	// cancellation takes precedence over an unmet goal, and returning here keeps
+	// every writer below from overwriting it (REQ-HPR-015). A status outside
+	// the vocabulary is surfaced as a diagnostic and never evaluated — it must
+	// not become a silent block, nor be rewritten to satisfied.
+	if g == nil {
 		return Verdict{}, false
+	}
+	switch g.Status {
+	case StatusCleared, StatusSatisfied, StatusCancelled:
+		return Verdict{}, false
+	case StatusArmed, StatusCeilingExit, StatusUnsatisfiable:
+		// evaluated below (ceiling-exit and unsatisfiable keep their existing
+		// re-evaluation behavior)
+	default:
+		return Verdict{Diagnostic: fmt.Sprintf(
+			"stop-goal: unrecognised goal status %q in session %s — not blocking, not satisfied",
+			string(g.Status), g.SessionID)}, false
 	}
 
 	// Step 4 (checked before ceiling so a native /goal always wins): yield.

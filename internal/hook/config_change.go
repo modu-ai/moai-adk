@@ -188,12 +188,17 @@ func (h *configChangeHandler) runReload(ctx context.Context, input *HookInput) {
 // pipeline actually decided, relative to the project root.
 //
 // The slog calls in runReload cannot serve as that record on the path that
-// matters. resolveLoggingDecision (internal/cli/logging.go) routes EVERY record
-// emitted under `moai hook` to io.Discard, unconditionally — stdout carries the
-// hook's JSON contract and stderr is read by the Claude Code runtime, so a
-// stray record would corrupt the exchange, and MOAI_LOG_LEVEL does not re-open
-// the carve-out. A validation verdict reached inside a one-shot hook process is
-// therefore invisible unless it is written somewhere of its own.
+// matters. resolveLoggingDecision (internal/cli/logging.go) keeps EVERY record
+// emitted under `moai hook` off both standard streams, unconditionally — stdout
+// carries the hook's JSON contract and stderr is read by the Claude Code
+// runtime, so a stray record would corrupt the exchange, and MOAI_LOG_LEVEL
+// does not re-open that carve-out.
+//
+// Such records now reach a file sink (.moai/logs/hook-runtime.log) rather than
+// io.Discard, but that does not make them this record: the sink sits behind a
+// level gate, is pruned on a retention schedule, and mixes every hook's output
+// into one stream. A validation verdict is a durable decision about THIS
+// pipeline and wants a record of its own.
 //
 // The file is that somewhere, modeled on the sibling advisory logs
 // (branchGuardAuditRelPath, preEditAdvisoryLogRelPath).

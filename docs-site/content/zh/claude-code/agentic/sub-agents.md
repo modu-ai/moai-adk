@@ -97,7 +97,7 @@ flowchart TD
 
 ## 定义方法概览
 
-子代理通过带有 YAML 前置元数据的 Markdown 文件来定义。既可以用 `/agents` 命令交互式生成，也可以直接手写文件。（CC 2.1.198 移除了 `/agents` 创建向导 — 让 Claude 代劳或直接编辑 `.claude/agents/`；官方文档中截至 2026-07 `/agents` 界面仍存在，请在实际 2.1.198 会话中确认。）
+子代理通过带有 YAML 前置元数据的 Markdown 文件来定义。既可以请 Claude 创建，也可以直接手写文件。自 v2.1.198 起，`/agents` 命令不再打开交互式创建向导，只提示让 Claude 代劳或直接编辑 `.claude/agents/`（文件格式和存放位置不变）。
 
 ```markdown
 ---

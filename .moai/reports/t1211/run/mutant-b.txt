@@ -1,0 +1,10 @@
+--- FAIL: TestSettingsTemplatePowerShellDenyParity (0.00s)
+    --- FAIL: TestSettingsTemplatePowerShellDenyParity/darwin (0.00s)
+        settings_powershell_deny_test.go:186: Bash deny has neither a PowerShell counterpart nor an exclusion: Bash(wipefs:*)
+    --- FAIL: TestSettingsTemplatePowerShellDenyParity/linux (0.00s)
+        settings_powershell_deny_test.go:186: Bash deny has neither a PowerShell counterpart nor an exclusion: Bash(wipefs:*)
+    --- FAIL: TestSettingsTemplatePowerShellDenyParity/windows (0.00s)
+        settings_powershell_deny_test.go:186: Bash deny has neither a PowerShell counterpart nor an exclusion: Bash(wipefs:*)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.399s
+FAIL

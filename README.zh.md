@@ -349,14 +349,14 @@ claude        # 或者 moai cc —— 在项目里运行 Claude Code
 
 ### MCP 服务器
 
-`moai init` 默认恰好准备**一个**启用的 MCP 条目 —— 自带的 `moai mcp-server`（本地 stdio 服务器）。它向 Claude Code 暴露分成六组的 21 个 MoAI 工具。四个已记载但未启用的条目（`context7`、`chrome-devtools`、`playwright`、`ast-grep`）用 `moai mcp add <名称>` 打开。`moai mcp add|remove|list` CLI 通过 atomic-RWM seam 管理条目，用户无需手改 `.mcp.json`。
+`moai init` 默认恰好准备**一个**启用的 MCP 条目 —— 自带的 `moai mcp-server`（本地 stdio 服务器）。它向 Claude Code 暴露 MoAI 工具。下表只列出主要分组 —— 完整列表见 [MCP 服务器指南](https://adk.mo.ai.kr/zh/guides/mcp-server)，工具数量与列表以已安装二进制通过 `tools/list` 返回的列表为准。四个已记载但未启用的条目（`context7`、`chrome-devtools`、`playwright`、`ast-grep`）用 `moai mcp add <名称>` 打开。`moai mcp add|remove|list` CLI 通过 atomic-RWM seam 管理条目，用户无需手改 `.mcp.json`。
 
 | 组 | 工具 | 用途 |
 |------|------|------|
 | SPEC 生命周期 | `spec_progress`, `spec_audit`, `spec_drift` | 时代分类 + 漂移检测 |
 | 验证 | `verify_snapshot`, `verify_trend` | 按键的证照快照 |
 | 目标 + 会话 | `goal_arm`, `goal_status`, `session_list` | 自主循环 + 多会话协调 |
-| 跨模型审计 | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | 多审计者收敛 |
+| 跨模型审计 | `audit_multi`, `claude_audit`, `codex_audit`, `glm_audit`, `audit_cache` | 多审计者收敛 |
 | codex 委派 | `codex_task`, `codex_setup`, `codex_job_*` | 后台跨模型作业 |
 | GLM 委派 | `glm_task`, `glm_job_status`, `glm_job_result`, `glm_job_cancel` | GLM（z.ai）后台作业委派 |
 

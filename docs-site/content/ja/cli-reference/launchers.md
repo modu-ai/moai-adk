@@ -44,7 +44,7 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 
 バックエンドの組み合わせは、トークンの空きをまず見て決めます。ひとつの出発点は、リードは GLM、plan は Claude(Opus)、run は GLM、sync は Claude(Opus)と置き、判断の重い段階にだけ Opus を配置するやり方です。別の組み合わせを使うのも、片方のバックエンドに統一するのも同じように問題ありません。
 
-権限モードは `default`、`acceptEdits`(プロジェクトデフォルト)、`plan`、`auto`、`bypassPermissions`、`dontAsk` のいずれかです。`auto` モードはバックグラウンド分類器が動作を検査するもので、Team プラン + Sonnet/Opus 4.6 以上が必要です。
+権限モードは `default`、`acceptEdits`(`moai init` の既定値)、`plan`、`auto`、`bypassPermissions`、`dontAsk` のいずれかです。`auto` モードではバックグラウンドの分類器が操作を審査します。対応するプランとモデルは [Claude Code の権限モードのドキュメント](https://code.claude.com/docs/en/permission-modes) を参照してください。
 
 ## moai glm — GLM バックエンド
 

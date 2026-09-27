@@ -8,10 +8,12 @@ import (
 // RefuseMutationFromNonCanonicalTree stops a state mutation whose caller tree
 // is not the tree the mutation would actually reach.
 //
-// CanonicalProjectRoot resolves a linked worktree back to the primary checkout
-// on purpose — one repository keeps one queue, and the todo queue depends on
-// that. MOAI_HOME redirects only the TARGET. A caller working from a worktree
-// with an isolated home therefore mutates the PRIMARY checkout's live state
+// CanonicalProjectRoot resolves a linked worktree to the root every worktree of
+// the repository shares on purpose — one repository keeps one queue, and the
+// todo queue depends on that. That root is the primary checkout in an ordinary
+// repository and the git directory itself in a --separate-git-dir, bare, or
+// submodule one. MOAI_HOME redirects only the TARGET. A caller working from a
+// worktree with an isolated home therefore mutates the SHARED root's live state
 // while believing both ends are isolated, and nothing in the result contradicts
 // that belief.
 //

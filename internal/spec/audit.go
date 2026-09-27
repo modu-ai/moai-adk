@@ -33,6 +33,11 @@ type AuditOptions struct {
 	// SPEC, the result carries empty drift_findings (graceful, not an error).
 	// SPEC-V3R6-ORCH-IGGDA-001 M5.
 	FilterSpec string
+	// ExcludeSpecs skips the named SPEC directories entirely — they are neither
+	// counted nor audited. A caller merging two catalogues uses it so a SPEC ID
+	// present in both is audited once, from the copy that wins
+	// (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-012). Nil → no exclusion.
+	ExcludeSpecs map[string]bool
 	// IncludeGrandfathered surfaces V2.x / V3R2-R4 / V3R5 SPECs in findings with
 	// severity: INFO (no drift; observational only).
 	IncludeGrandfathered bool
@@ -218,6 +223,9 @@ func Audit(opts AuditOptions) (*AuditResult, error) {
 		// below after classification, since era is only known post-auditSpec).
 		// Empty FilterSpec = no filter.
 		if opts.FilterSpec != "" && specName != opts.FilterSpec {
+			continue
+		}
+		if opts.ExcludeSpecs[specName] {
 			continue
 		}
 

@@ -13,7 +13,11 @@ package cli
 // so a launcher that pinned the profile's effort there froze the level for the
 // whole session. The transient settings file the launcher already injects
 // carries the same value as a launch DEFAULT, which an in-session change is
-// free to replace — measured on Claude Code v2.1.269 (card t595).
+// free to replace — measured on Claude Code v2.1.269 for Sonnet (card t595)
+// and on v2.1.282 for Sonnet 5, Opus 5.5, Opus 4.8 and Fable 5.1 (card t1184).
+// Before v2.1.280, Opus 4.7/4.8 and Fable 5 ignored a `--settings`
+// `effortLevel` in favour of their launch-default effort. The injected value
+// also takes precedence over the user's saved per-model effort levels.
 //
 // An INHERITED CLAUDE_CODE_EFFORT_LEVEL is deliberately left alone. A user who
 // writes `CLAUDE_CODE_EFFORT_LEVEL=max moai cc` is using the documented

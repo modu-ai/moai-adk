@@ -350,14 +350,14 @@ claude        # または moai cc — プロジェクト内で Claude Code を�
 
 ### MCP サーバー
 
-`moai init` はデフォルトで**ちょうど 1 つ**の有効な MCP エントリを用意する — 自前の `moai mcp-server`（ローカル stdio サーバー）だ。このサーバーが 6 グループにまとめた 21 個の MoAI ツールを Claude Code に公開する。ドキュメントに記載された非活性の 4 エントリ（`context7`・`chrome-devtools`・`playwright`・`ast-grep`）は `moai mcp add <名前>` で有効化する。`moai mcp add|remove|list` CLI が atomic-RWM seam でエントリを管理するため、ユーザーが `.mcp.json` を手で編集する必要はない。
+`moai init` はデフォルトで**ちょうど 1 つ**の有効な MCP エントリを用意する — 自前の `moai mcp-server`（ローカル stdio サーバー）だ。このサーバーが MoAI のツール群を Claude Code に公開する。下の表は主要なグループだけを載せる — 全一覧は [MCP サーバーガイド](https://adk.mo.ai.kr/ja/guides/mcp-server) にあり、ツール数と一覧の基準はインストールされたバイナリが `tools/list` で返す一覧だ。ドキュメントに記載された非活性の 4 エントリ（`context7`・`chrome-devtools`・`playwright`・`ast-grep`）は `moai mcp add <名前>` で有効化する。`moai mcp add|remove|list` CLI が atomic-RWM seam でエントリを管理するため、ユーザーが `.mcp.json` を手で編集する必要はない。
 
 | グループ | ツール | 目的 |
 |------|------|------|
 | SPEC ライフサイクル | `spec_progress`, `spec_audit`, `spec_drift` | 時代分類 + ドリフト検出 |
 | 検証 | `verify_snapshot`, `verify_trend` | キー別証拠スナップショット |
 | ゴール + セッション | `goal_arm`, `goal_status`, `session_list` | 自律ループ + マルチセッション調整 |
-| クロスモデル監査 | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | 多監査者収束 |
+| クロスモデル監査 | `audit_multi`, `claude_audit`, `codex_audit`, `glm_audit`, `audit_cache` | 多監査者収束 |
 | codex 委譲 | `codex_task`, `codex_setup`, `codex_job_*` | バックグラウンド・クロスモデル作業 |
 | GLM 委譲 | `glm_task`, `glm_job_status`, `glm_job_result`, `glm_job_cancel` | GLM(z.ai)へのバックグラウンド作業委譲 |
 

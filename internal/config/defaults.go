@@ -73,6 +73,21 @@ const (
 	// references MUST use this const (CLAUDE.local.md §14 — no hardcoding).
 	DefaultAgenticLoopMaxIterations = 10
 
+	// workflow.autonomy.* defaults (SPEC-AUTONOMY-CONTRACT-001
+	// REQ-CONTRACT-015). ResolveAutonomy is the only reader; the kickoff
+	// decider has no stored default (it derives from the effective mode).
+	DefaultAutonomyMode               = AutonomyModeGuided
+	DefaultAutonomySecondReview       = AutonomySecondReviewRequired
+	DefaultAutonomyBatchSign          = false
+	DefaultAutonomyPushDevelop        = false
+	DefaultAutonomyJevMinConfidence   = 0.50
+	DefaultAutonomyBudgetTurns        = 60
+	DefaultAutonomyBudgetOperations   = 40
+	DefaultAutonomyBudgetAuditRetries = 2
+	// DefaultAutonomyNewAPIDetector is workflow.autonomy.escalation.new_api_detector
+	// when absent (SPEC-AUTONOMY-ESCALATION-001).
+	DefaultAutonomyNewAPIDetector = AutonomyNewAPIDetectorGraph
+
 	DefaultPlanTokens = 30000
 	DefaultRunTokens  = 180000
 	DefaultSyncTokens = 40000
@@ -91,6 +106,21 @@ const (
 	// literal at two dispatcher call sites in internal/cli/hook.go; this is the
 	// single source of truth.
 	DefaultHookDispatcherTimeout = 30 * time.Second
+
+	// DefaultStopParseCapLimit is N, the number of consecutive stdin-parse-
+	// failure Stops under the Claude harness that keep the fail-closed deny;
+	// the next one is answered with no opinion (SPEC-HOOK-STOP-PARSE-CAP-001
+	// REQ-SPC-002/003). It is deliberately not a config key or an environment
+	// variable: no runtime switch may move the deny/release boundary
+	// (REQ-SPC-004).
+	DefaultStopParseCapLimit = 8
+
+	// DefaultStopParseCapExpiry is how long a stop-parse count record stays
+	// live after its last update; an older record counts as absent and is
+	// swept (SPEC-HOOK-STOP-PARSE-CAP-001 REQ-SPC-007). It exceeds the working
+	// time of one long turn, so an expiry between two parse-failure Stops does
+	// not keep resetting the count.
+	DefaultStopParseCapExpiry = 60 * time.Minute
 
 	// DefaultTraceFlushTimeout bounds how long a hook process waits at teardown
 	// for the async trace writer to drain to disk before abandoning the wait
@@ -260,6 +290,19 @@ const (
 	// unconditionally regardless of age; the current session's active trace is
 	// always preserved (EC-3).
 	DefaultTraceRetentionDays = 30
+
+	// DefaultHookRuntimeLogRetentionDays is the age threshold (in days) past
+	// which the `moai hook` path's log sink (.moai/logs/hook-runtime.log,
+	// written by internal/cli/hook_sink.go) is pruned at SessionEnd
+	// (SPEC-HOOK-DIAG-SINK-001 REQ-HDS-009 / REQ-HDS-010). The sink is an
+	// append-only file with no rotation of its own, so this threshold is the
+	// only thing bounding its growth.
+	//
+	// It is a SEPARATE constant from DefaultTraceRetentionDays rather than a
+	// reuse of it: the two artifacts age for different reasons (a trace is one
+	// session's record, the sink is a rolling diagnostic tail), so REQ-HDS-010
+	// gives the sink its own named knob. They happen to share a value today.
+	DefaultHookRuntimeLogRetentionDays = 30
 
 	// Home disk/clean defaults (SPEC-V3R6-MOAI-CLEAN-HOME-001). These are the
 	// compiled-in configuration surface for the `moai doctor` Home Disk Usage
@@ -475,14 +518,6 @@ var DefaultCodexAuditTimeout = 20 * time.Minute
 // audit launcher runs before the audit to learn which MCP servers to disable.
 // The lookup makes no model call, so its bound is short.
 var DefaultCodexAuditListTimeout = 30 * time.Second
-
-// DefaultCodexHandoffRelocationTimeout bounds ONE headless lane relocation
-// request — initialize, thread/fork or thread/start, and the thread/started
-// wait (SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001 REQ-FLH-007). No model turn runs
-// inside it, so it is far shorter than a codex_task turn; it is its own value
-// so tuning either caller never moves the other. Not a const so a test can
-// shorten it.
-var DefaultCodexHandoffRelocationTimeout = 60 * time.Second
 
 // DefaultCodexJobSummaryMaxLen bounds the request summary a codex job record
 // carries (SPEC-CODEX-PHASE2-001 REQ-CX2-003 / REQ-CX2-015). A job record is a
@@ -1037,6 +1072,20 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// `enabled: true` under internal/template/templates/.
 		Jev: WorkflowJevConfig{
 			Enabled: false,
+		},
+		// workflow.autonomy ships in guided mode with a required second review
+		// (REQ-CONTRACT-015). The numeric keys stay nil here on purpose: nil
+		// means "absent", and ResolveAutonomy applies the DefaultAutonomy*
+		// constants above, so an explicit zero stays distinguishable. A
+		// pointer seeded here would also be shared with the loader's decode
+		// target and written through.
+		Autonomy: AutonomyConfig{
+			Mode: DefaultAutonomyMode,
+			Contract: AutonomyContractConfig{
+				BatchSign:    DefaultAutonomyBatchSign,
+				SecondReview: DefaultAutonomySecondReview,
+				PushDevelop:  DefaultAutonomyPushDevelop,
+			},
 		},
 		// The agent-model guard ships with its BLOCKING layer off. Observation
 		// and advisory always run; a maintainer opts into denial via local

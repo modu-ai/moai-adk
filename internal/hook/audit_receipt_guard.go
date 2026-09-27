@@ -30,6 +30,14 @@ import (
 // in a worktree session that variable names the primary checkout, and a guard
 // keyed on it would compare a worktree auditor against another tree's store.
 //
+// A config-orphaned linked worktree (its repository keeps .moai untracked, so
+// the worktree has no workflow config) reads the gate from its primary
+// checkout and keeps its records in the primary checkout's store under its own
+// tree identity (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-003/009). When that
+// primary cannot be identified the gate is assumed `required` and, with no
+// store to write to, the guard refuses and denies without recording anything
+// (REQ-WSR-010).
+//
 // @MX:ANCHOR: [AUTO] auditor receipt guard; entry points on SubagentStart, SubagentStop and the Agent/Task spawn path
 // @MX:REASON: fan_in = 3 hook handlers, and a wrong answer here either blocks every spawn or silently accepts an unproven audit
 
@@ -45,19 +53,38 @@ var phaseEntryAgents = map[string]bool{
 	"manager-git":     true,
 }
 
-// auditReceiptTree resolves the guarded tree for a hook input, returning ""
+// guardTree is the resolved scope of the guard for one hook input.
+type guardTree struct {
+	tree  string // canonical tree identity the auditor runs in
+	store string // store root holding the tree's records; "" when unresolved
+}
+
+// assumed reports the fail-closed case: a config-orphaned tree whose primary
+// checkout could not be identified, so the gate is assumed `required` and no
+// store exists.
+func (g guardTree) assumed() bool { return g.store == "" }
+
+// auditReceiptScope resolves the guarded tree for a hook input, returning false
 // when the tree did not opt in. Every entry point below starts here, so a
 // project that never wrote the gate value pays one config read and gets three
-// no-ops.
-func auditReceiptTree(input *HookInput) string {
+// no-ops; a tree that is not a config-orphaned worktree runs no git beyond the
+// toplevel lookup it always ran.
+func auditReceiptScope(input *HookInput) (guardTree, bool) {
 	if input == nil {
-		return ""
+		return guardTree{}, false
 	}
 	tree := auditreceipt.TreeRootFromCWD(input.CWD)
-	if tree == "" || !auditreceipt.CodexGateRequired(tree) {
-		return ""
+	if tree == "" {
+		return guardTree{}, false
 	}
-	return tree
+	store, err := auditreceipt.StoreRoot(tree)
+	if err != nil {
+		return guardTree{tree: tree}, true // fail-closed: gate assumed required, no store
+	}
+	if !auditreceipt.CodexGateRequired(store) {
+		return guardTree{}, false
+	}
+	return guardTree{tree: tree, store: store}, true
 }
 
 // recordAuditorStart writes the start marker for an auditor subagent
@@ -68,18 +95,18 @@ func recordAuditorStart(input *HookInput) {
 	if input == nil || !auditreceipt.IsAuditorAgent(input.AgentType) || input.AgentID == "" {
 		return
 	}
-	tree := auditReceiptTree(input)
-	if tree == "" {
-		return
+	g, ok := auditReceiptScope(input)
+	if !ok || g.assumed() {
+		return // no store: nothing may be written under any root (REQ-WSR-010)
 	}
 	m := auditreceipt.StartMarker{
 		AgentID:   input.AgentID,
 		AgentType: input.AgentType,
 		SessionID: input.SessionID,
-		TreeRoot:  tree,
+		TreeRoot:  g.tree,
 	}
-	if err := auditreceipt.WriteStartMarker(tree, &m); err != nil {
-		slog.Warn("auditor start marker not recorded", "agent_id", input.AgentID, "tree_root", tree, "error", err)
+	if err := auditreceipt.WriteStartMarker(g.store, &m); err != nil {
+		slog.Warn("auditor start marker not recorded", "agent_id", input.AgentID, "tree_root", g.tree, "error", err)
 	}
 }
 
@@ -90,15 +117,17 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 	if input == nil || !auditreceipt.IsAuditorAgent(input.AgentType) {
 		return nil
 	}
-	tree := auditReceiptTree(input)
-	if tree == "" {
+	g, ok := auditReceiptScope(input)
+	if !ok {
 		return nil
 	}
 
 	line, parsed := auditreceipt.ParseVerdictLine(input.LastAssistantMessage)
 	if parsed && !line.IsPass() {
 		// A FAIL needs no receipt: it is not claiming an audit approved anything.
-		clearStartMarker(tree, input.AgentID)
+		if !g.assumed() {
+			clearStartMarker(g.store, input.AgentID)
+		}
 		return nil
 	}
 
@@ -108,29 +137,42 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 	if parsed {
 		specID = line.SpecID
 		cited = line.Receipts
-		start := readStartMarker(tree, input.AgentID)
-		ok, failure := auditreceipt.CheckCitedReceipts(tree, start, cited)
+	}
+	switch {
+	case g.assumed():
+		// No store exists, so no receipt can corroborate anything and no
+		// refusal can be recorded: refuse, and say why the gate applied.
+		cause = auditreceipt.GateAssumedRequiredNote + ", so no audit receipt can be recorded or checked for this tree"
+	case parsed:
+		start := readStartMarker(g.store, input.AgentID)
+		ok, failure := auditreceipt.CheckCitedReceipts(g.store, start, cited)
 		if ok {
-			// A proven PASS clears this role's outstanding refusals — the other
-			// SPECs' and the unknown-spec one included (operator decision K4).
-			if err := auditreceipt.ClearRejectionsForRole(tree, input.AgentType); err != nil {
-				slog.Warn("audit rejections not cleared", "agent_type", input.AgentType, "tree_root", tree, "error", err)
+			// A proven PASS clears this role's outstanding refusals in THIS tree —
+			// the other SPECs' and the unknown-spec one included (operator
+			// decision K4) — and never another tree's (REQ-WSR-003).
+			if err := auditreceipt.ClearRejectionsForRoleInTree(g.store, g.tree, input.AgentType); err != nil {
+				slog.Warn("audit rejections not cleared", "agent_type", input.AgentType, "tree_root", g.tree, "error", err)
 			}
-			clearStartMarker(tree, input.AgentID)
+			clearStartMarker(g.store, input.AgentID)
 			return nil
 		}
 		cause = failure
 	}
 
-	persistAuditRejection(tree, input, specID, cause, cited)
+	if !g.assumed() {
+		persistAuditRejection(g, input, specID, cause, cited)
+	}
 
 	if input.StopHookActive {
 		// Re-entry: blocking again would loop the subagent against its own stop
-		// hook. The refusal stays on disk, so the phase-entry spawns stay denied.
-		clearStartMarker(tree, input.AgentID)
+		// hook. The refusal stays on disk (or, with no store, the spawn check
+		// fails closed on its own), so the phase-entry spawns stay denied.
+		if !g.assumed() {
+			clearStartMarker(g.store, input.AgentID)
+		}
 		return &HookOutput{SystemMessage: fmt.Sprintf(
 			"%s: this %s PASS is not accepted — %s. Phase-entry spawns (manager-develop / manager-docs / manager-git) stay denied in %s until a PASS citing a valid audit receipt is recorded.",
-			auditReceiptViolation, input.AgentType, cause, tree)}
+			auditReceiptViolation, input.AgentType, cause, g.tree)}
 	}
 	// The start marker is deliberately KEPT on a first-stop block: the auditor
 	// continues after the block, and the receipt it mints then must be able to
@@ -150,11 +192,12 @@ func passLabel(parsed bool, line auditreceipt.VerdictLine) string {
 	return "no parseable verdict line"
 }
 
-// persistAuditRejection writes (or updates) the refusal record. An existing
-// record keeps its original timestamp and cause and gains the re-entry mark, so
-// the record reads as one refusal that was warned about rather than two.
-func persistAuditRejection(tree string, input *HookInput, specID, cause string, cited []string) {
-	rj, err := auditreceipt.ReadRejection(tree, input.AgentType, specID)
+// persistAuditRejection writes (or updates) the refusal record of this tree.
+// An existing record keeps its original timestamp and cause and gains the
+// re-entry mark, so the record reads as one refusal that was warned about
+// rather than two.
+func persistAuditRejection(g guardTree, input *HookInput, specID, cause string, cited []string) {
+	rj, err := auditreceipt.ReadRejectionIn(g.store, g.tree, input.AgentType, specID)
 	if err != nil {
 		rj = auditreceipt.Rejection{AgentType: input.AgentType, SpecID: specID, RejectedAt: auditreceipt.Now()}
 	}
@@ -162,53 +205,58 @@ func persistAuditRejection(tree string, input *HookInput, specID, cause string, 
 	// stale reason would send the reader to a condition that has since changed.
 	// The original timestamp survives, so one unresolved refusal stays one
 	// refusal rather than resetting its age on every stop.
-	rj.AgentID, rj.Cause, rj.CitedReceipts = input.AgentID, cause, cited
+	rj.AgentID, rj.Cause, rj.CitedReceipts, rj.TreeRoot = input.AgentID, cause, cited, g.tree
 	if input.StopHookActive {
 		rj.ReentryWarned = true
 	}
-	if err := auditreceipt.WriteRejection(tree, &rj); err != nil {
-		slog.Warn("audit rejection not recorded", "agent_type", input.AgentType, "spec_id", specID, "tree_root", tree, "error", err)
+	if err := auditreceipt.WriteRejectionIn(g.store, &rj); err != nil {
+		slog.Warn("audit rejection not recorded", "agent_type", input.AgentType, "spec_id", specID, "tree_root", g.tree, "error", err)
 	}
 }
 
-func readStartMarker(tree, agentID string) *auditreceipt.StartMarker {
+func readStartMarker(store, agentID string) *auditreceipt.StartMarker {
 	if agentID == "" {
 		return nil
 	}
-	m, err := auditreceipt.ReadStartMarker(tree, agentID)
+	m, err := auditreceipt.ReadStartMarker(store, agentID)
 	if err != nil {
 		return nil // absent or unreadable: both mean this instance cannot be corroborated
 	}
 	return &m
 }
 
-func clearStartMarker(tree, agentID string) {
+func clearStartMarker(store, agentID string) {
 	if agentID == "" {
 		return
 	}
-	if err := auditreceipt.RemoveStartMarker(tree, agentID); err != nil {
+	if err := auditreceipt.RemoveStartMarker(store, agentID); err != nil {
 		slog.Debug("start marker not removed", "agent_id", agentID, "error", err)
 	}
 }
 
 // checkAuditReceiptSpawn is the PreToolUse consumer (REQ-CAG-014). It returns
-// (DecisionDeny, reason) while any refusal is outstanding in the spawning
-// tree, and ("", "") otherwise. An unreadable refusal record denies too: a
-// record nobody can read is not a record that went away.
+// (DecisionDeny, reason) while any refusal of the spawning tree is outstanding,
+// and ("", "") otherwise. An unreadable refusal record denies too: a record
+// nobody can read is not a record that went away.
 func checkAuditReceiptSpawn(input *HookInput) (decision, reason string) {
 	sp, ok := extractAgentSpawn(input.ToolInput)
 	if !ok || !phaseEntryAgents[sp.Agent] {
 		return "", ""
 	}
-	tree := auditReceiptTree(input)
-	if tree == "" {
+	g, ok := auditReceiptScope(input)
+	if !ok {
 		return "", ""
 	}
-	rejections, err := auditreceipt.ListRejections(tree)
+	if g.assumed() {
+		return DecisionDeny, fmt.Sprintf(
+			"%s: %s cannot be spawned from %s: %s, so no audit receipt can be recorded or checked there. Make the primary checkout identifiable, or give this worktree its own .moai/config/sections/workflow.yaml.",
+			auditReceiptViolation, sp.Agent, g.tree, auditreceipt.GateAssumedRequiredNote)
+	}
+	rejections, err := auditreceipt.ListRejectionsForTree(g.store, g.tree)
 	if err != nil {
 		return DecisionDeny, fmt.Sprintf(
 			"%s: the audit rejection records in %s cannot be read, so %s cannot be cleared to spawn: %v",
-			auditReceiptViolation, tree, sp.Agent, err)
+			auditReceiptViolation, g.store, sp.Agent, err)
 	}
 	if len(rejections) == 0 {
 		return "", ""
@@ -219,5 +267,5 @@ func checkAuditReceiptSpawn(input *HookInput) (decision, reason string) {
 	}
 	return DecisionDeny, fmt.Sprintf(
 		"%s: %s cannot be spawned while an audit PASS stands unproven in %s. Outstanding: %s. Re-run the audit through codex_audit or audit_multi and let the auditor end with a verdict line citing the receipt.",
-		auditReceiptViolation, sp.Agent, tree, strings.Join(parts, "; "))
+		auditReceiptViolation, sp.Agent, g.tree, strings.Join(parts, "; "))
 }

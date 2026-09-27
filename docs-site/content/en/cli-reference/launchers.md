@@ -44,7 +44,7 @@ A card travels differently here than in kanban. In kanban one card moves across 
 
 The backend mix is decided by token availability first. One starting point is the lead on GLM, plan on Claude (Opus), run on GLM, and sync on Claude (Opus), placing Opus only on the phases where judgment is heavy. A different combination, or unifying on a single backend, is equally fine.
 
-The permission mode is one of `default`, `acceptEdits` (project default), `plan`, `auto`, `bypassPermissions`, `dontAsk`. The `auto` mode runs a background classifier that inspects actions and requires a Team plan + Sonnet/Opus 4.6 or later.
+The permission mode is one of `default`, `acceptEdits` (the `moai init` default), `plan`, `auto`, `bypassPermissions`, `dontAsk`. The `auto` mode runs a background classifier that inspects actions; supported plans and models are listed in the [Claude Code permission modes documentation](https://code.claude.com/docs/en/permission-modes).
 
 ## moai glm — GLM backend
 

@@ -1,0 +1,23 @@
+--- FAIL: TestSettingsTemplatePowerShellDenyParity (0.00s)
+    --- FAIL: TestSettingsTemplatePowerShellDenyParity/darwin (0.00s)
+        settings_powershell_deny_test.go:186: Bash deny has neither a PowerShell counterpart nor an exclusion: Bash(git * clean -fdx*)
+        settings_powershell_deny_test.go:186: PowerShell deny maps to no Bash deny: PowerShell(git * clean -fdx:*)
+        settings_powershell_deny_test.go:186: PowerShell deny mixes a non-trailing '*' with ':*': PowerShell(git * clean -fdx:*)
+    --- FAIL: TestSettingsTemplatePowerShellDenyParity/linux (0.00s)
+        settings_powershell_deny_test.go:186: Bash deny has neither a PowerShell counterpart nor an exclusion: Bash(git * clean -fdx*)
+        settings_powershell_deny_test.go:186: PowerShell deny maps to no Bash deny: PowerShell(git * clean -fdx:*)
+        settings_powershell_deny_test.go:186: PowerShell deny mixes a non-trailing '*' with ':*': PowerShell(git * clean -fdx:*)
+    --- FAIL: TestSettingsTemplatePowerShellDenyParity/windows (0.00s)
+        settings_powershell_deny_test.go:186: Bash deny has neither a PowerShell counterpart nor an exclusion: Bash(git * clean -fdx*)
+        settings_powershell_deny_test.go:186: PowerShell deny maps to no Bash deny: PowerShell(git * clean -fdx:*)
+        settings_powershell_deny_test.go:186: PowerShell deny mixes a non-trailing '*' with ':*': PowerShell(git * clean -fdx:*)
+--- FAIL: TestSettingsTemplateDenyWildcardSyntax (0.00s)
+    --- FAIL: TestSettingsTemplateDenyWildcardSyntax/darwin (0.00s)
+        settings_test.go:91: shell deny rule mixes wildcard with legacy prefix syntax: "PowerShell(git * clean -fdx:*)"
+    --- FAIL: TestSettingsTemplateDenyWildcardSyntax/linux (0.00s)
+        settings_test.go:91: shell deny rule mixes wildcard with legacy prefix syntax: "PowerShell(git * clean -fdx:*)"
+    --- FAIL: TestSettingsTemplateDenyWildcardSyntax/windows (0.00s)
+        settings_test.go:91: shell deny rule mixes wildcard with legacy prefix syntax: "PowerShell(git * clean -fdx:*)"
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.357s
+FAIL
