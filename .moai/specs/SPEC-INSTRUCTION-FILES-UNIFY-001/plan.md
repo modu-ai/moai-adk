@@ -121,9 +121,16 @@ Three independent, mechanically small changes, each with its test:
 `TestFrozenInstructionFiles` with one sub-case per entry. Adding the two basenames without it
 would leave the guard set unguarded.
 
-Invert the `codex_contract_link_test.go` `@AGENTS.local.md`-imports assertion and the
-`codex_local_instructions_test.go` read-order assertions here, not later — leaving them for
-M3 would put the tree red across two milestones.
+Invert the `codex_local_instructions_test.go` read-order assertions here, not later — leaving
+them for M3 would put the tree red across two milestones.
+
+The `codex_contract_link_test.go` `@AGENTS.local.md`-imports assertion — and the same
+inversion in `TestCodexLocalSeparation` — is **not** inverted here; it moves to M3 (corrected
+at v0.3.5 after the run-phase deviation recorded in `progress.md` §E.2 M2, lead-approved). Its
+`AGENTS.md` half (`= 0`) already holds, but its `CLAUDE.md` half (`= 1`) holds only once
+`codexCreatedClaudeBody` emits `@AGENTS.local.md`, which is M3 scope; inverting it at M2 would
+turn the tree red — the outcome this ordering exists to avoid. `acceptance.md` `AC-IFU-012`
+already assigns the test to M3.
 
 ### M3 — the `AGENTS.md` body rewrite and the `CLAUDE.md` thinning
 
@@ -168,6 +175,10 @@ decision.
   > `AC-IFU-003`'s import count: that is a declared proxy and says nothing about clause wording.
 
 - Thin `CLAUDE.md` to import + mechanism layer + import (REQ-IFU-002).
+- **Invert the `codex_contract_link_test.go` `@AGENTS.local.md`-imports assertion and the same
+  assertion in `TestCodexLocalSeparation` (moved from M2 at v0.3.5).** Do it in the same commit
+  as the `codexCreatedClaudeBody` change above, so the `CLAUDE.md` half (`= 1`) flips together
+  with the constant it measures and the tree is never red between them.
 - **Create `TestClaudeImportResolution_AgentsLocalSentinel` in `./internal/cli/` (REQ-IFU-023,
   `AC-IFU-019`).** A new test is written here, not assumed: the symbol has 0 declarations at
   commit `20c73990d`. It builds a throwaway fixture project whose `AGENTS.local.md` carries a
