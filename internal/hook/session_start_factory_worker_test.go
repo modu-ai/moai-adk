@@ -22,15 +22,15 @@ func TestFactoryGuideTeachesLaneFormsInEveryLocale(t *testing.T) {
 		if !ok {
 			t.Fatalf("locale %q missing from factoryLocales", lang)
 		}
-		if !strings.Contains(m.leadManual, "lane-1..lane-%d") {
-			t.Errorf("%s leadManual lacks the lane-1..lane-%%d naming:\n%s", lang, m.leadManual)
+		if !strings.Contains(m.leaderManual, "lane-1..lane-%d") {
+			t.Errorf("%s leaderManual lacks the lane-1..lane-%%d naming:\n%s", lang, m.leaderManual)
 		}
 		for _, want := range []string{"`moai %[2]s -f lane`", "`moai %[2]s -f lane-<n>`", "lane-<n>"} {
 			if !strings.Contains(m.entryGuide, want) {
 				t.Errorf("%s entryGuide lacks %q:\n%s", lang, want, m.entryGuide)
 			}
 		}
-		for field, text := range map[string]string{"leadManual": m.leadManual, "entryGuide": m.entryGuide} {
+		for field, text := range map[string]string{"leaderManual": m.leaderManual, "entryGuide": m.entryGuide} {
 			for _, banned := range []string{"-f worker", "worker-<n>", "-f agent", "agent-<n>"} {
 				if strings.Contains(text, banned) {
 					t.Errorf("%s %s still teaches %q:\n%s", lang, field, banned, text)

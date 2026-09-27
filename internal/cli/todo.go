@@ -3,7 +3,7 @@
 // Thin cobra wiring over internal/kanban.BacklogStore: every mutation
 // delegates to the store's locked Mutate path, reads go through the
 // lock-free Load. The verbs serve the kanban dispatch protocol's entry rule
-// (`/moai todo` is the operator's act — the lead never picks for the
+// (`/moai todo` is the operator's act — the leader never picks for the
 // operator): `add` and `done` mutate, `list` and bare `next` observe, and
 // `next <n> [--spec]` records the operator's pick as one locked write.
 //
@@ -1002,7 +1002,7 @@ func recordFactoryCardState(cardID, specID, state, eventKind string) {
 	}
 	owner := os.Getenv(config.EnvMoaiFactoryWorker)
 	if owner == "" {
-		owner = kanban.RoleLead // the factory card owner vocabulary: `leader` (REQ-RNC-010)
+		owner = kanban.RoleLeader // the factory card owner vocabulary: `leader` (REQ-RNC-010)
 	}
 	// Queue mutations resolve through the primary checkout, but provenance must
 	// describe the lane checkout that actually selected and executed the card.

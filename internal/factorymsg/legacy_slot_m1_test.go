@@ -111,12 +111,12 @@ func TestLeadPeerIdentityReadsLeaderAndLegacyLead(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = s.Close()
-	pid, pstart, ok := LeadPeerIdentity(root, "run-legacy")
+	pid, pstart, ok := LeaderPeerIdentity(root, "run-legacy")
 	if !ok {
-		t.Fatalf("LeadPeerIdentity(legacy-only run) ok=false, want the lead peer identity")
+		t.Fatalf("LeaderPeerIdentity(legacy-only run) ok=false, want the lead peer identity")
 	}
 	if pid != os.Getpid() || pstart != start {
-		t.Errorf("LeadPeerIdentity = (%d, %q), want (%d, %q)", pid, pstart, os.Getpid(), start)
+		t.Errorf("LeaderPeerIdentity = (%d, %q), want (%d, %q)", pid, pstart, os.Getpid(), start)
 	}
 
 	// A post-change run: role='leader' wins.
@@ -131,9 +131,9 @@ func TestLeadPeerIdentityReadsLeaderAndLegacyLead(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = s2.Close()
-	pid, _, ok = LeadPeerIdentity(root, "run-new")
+	pid, _, ok = LeaderPeerIdentity(root, "run-new")
 	if !ok || pid != os.Getpid() {
-		t.Errorf("LeadPeerIdentity(leader run) = (%d, %v), want the leader peer", pid, ok)
+		t.Errorf("LeaderPeerIdentity(leader run) = (%d, %v), want the leader peer", pid, ok)
 	}
 }
 

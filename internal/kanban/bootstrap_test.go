@@ -88,8 +88,8 @@ func TestCompanionRolesAreTheThreePhases(t *testing.T) {
 	}
 	// The lead is not a companion: it is the only session carrying the kanban
 	// token, and listing it here would invite a second chain driver.
-	if isCompanionRole(RoleLead) {
-		t.Error(RoleLead + " must not be a companion role")
+	if isCompanionRole(RoleLeader) {
+		t.Error(RoleLeader + " must not be a companion role")
 	}
 	// The review role is retired (D1): a label carrying it no longer parses
 	// as companion-shaped, in the bare form, the bump form, or the legacy
@@ -198,17 +198,17 @@ func TestCompanionNumberLabelRoundTrips(t *testing.T) {
 }
 
 // TestLeadLabelIsBareRole pins the t133 naming change: the lead label carries
-// no run id, and it is never recognized as a companion because RoleLead is
+// no run id, and it is never recognized as a companion because RoleLeader is
 // absent from CompanionRoles.
 func TestLeadLabelIsBareRole(t *testing.T) {
 	t.Parallel()
 
-	label := LeadLabel()
-	if label != RoleLead {
-		t.Errorf("LeadLabel() = %q, want %q", label, RoleLead)
+	label := LeaderLabel()
+	if label != RoleLeader {
+		t.Errorf("LeaderLabel() = %q, want %q", label, RoleLeader)
 	}
 	if _, _, ok := SplitCompanionLabel(label); ok {
-		t.Errorf("LeadLabel() = %q reads as a companion label", label)
+		t.Errorf("LeaderLabel() = %q reads as a companion label", label)
 	}
 }
 
@@ -218,38 +218,38 @@ func TestLeadLabelIsBareRole(t *testing.T) {
 func TestLeadNumberLabelIsNotACompanion(t *testing.T) {
 	t.Parallel()
 
-	label := LeadNumberLabel(2)
-	if want := RoleLead + "-2"; label != want {
-		t.Errorf("LeadNumberLabel(2) = %q, want %q", label, want)
+	label := LeaderNumberLabel(2)
+	if want := RoleLeader + "-2"; label != want {
+		t.Errorf("LeaderNumberLabel(2) = %q, want %q", label, want)
 	}
 	if _, _, ok := SplitCompanionLabel(label); ok {
-		t.Errorf("LeadNumberLabel(2) = %q reads as a companion label", label)
+		t.Errorf("LeaderNumberLabel(2) = %q reads as a companion label", label)
 	}
 }
 
 // TestSplitLeadLabelRoundTrip pins the migration property the launcher relies
-// on: BOTH the bare form LeadLabel now writes AND the legacy `lead-<run-id>`
-// form an operator may still be pasting read back through SplitLeadLabel.
+// on: BOTH the bare form LeaderLabel now writes AND the legacy `lead-<run-id>`
+// form an operator may still be pasting read back through SplitLeaderLabel.
 // Rejecting the legacy form would drop such a launch down the branch that
 // treats an unrecognized name as no lead name at all, which is the misroute
 // the migration exists to prevent.
 func TestSplitLeadLabelRoundTrip(t *testing.T) {
 	t.Parallel()
 
-	got, ok := SplitLeadLabel(LeadLabel())
+	got, ok := SplitLeaderLabel(LeaderLabel())
 	if !ok || got != "" {
-		t.Errorf("SplitLeadLabel(LeadLabel()) = %q/%v, want \"\"/true", got, ok)
+		t.Errorf("SplitLeaderLabel(LeaderLabel()) = %q/%v, want \"\"/true", got, ok)
 	}
 
 	runID := NewRunID()
-	got, ok = SplitLeadLabel(RoleLead + "-" + runID)
+	got, ok = SplitLeaderLabel(RoleLeader + "-" + runID)
 	if !ok || got != runID {
-		t.Errorf("SplitLeadLabel(legacy %q) = %q/%v, want %q/true", RoleLead+"-"+runID, got, ok, runID)
+		t.Errorf("SplitLeaderLabel(legacy %q) = %q/%v, want %q/true", RoleLeader+"-"+runID, got, ok, runID)
 	}
 
-	got, ok = SplitLeadLabel(LeadNumberLabel(3))
+	got, ok = SplitLeaderLabel(LeaderNumberLabel(3))
 	if !ok || got != "3" {
-		t.Errorf("SplitLeadLabel(LeadNumberLabel(3)) = %q/%v, want \"3\"/true", got, ok)
+		t.Errorf("SplitLeaderLabel(LeaderNumberLabel(3)) = %q/%v, want \"3\"/true", got, ok)
 	}
 }
 
@@ -292,9 +292,9 @@ func TestSplitLeadLabelRejectsNonLeadShapes(t *testing.T) {
 		{"run-abc123", "", false},
 		{"board-watch", "", false},
 	} {
-		got, ok := SplitLeadLabel(c.label)
+		got, ok := SplitLeaderLabel(c.label)
 		if ok != c.ok || got != c.want {
-			t.Errorf("SplitLeadLabel(%q) = %q/%v, want %q/%v", c.label, got, ok, c.want, c.ok)
+			t.Errorf("SplitLeaderLabel(%q) = %q/%v, want %q/%v", c.label, got, ok, c.want, c.ok)
 		}
 	}
 }
@@ -305,12 +305,12 @@ func TestSplitLeadLabelRejectsNonLeadShapes(t *testing.T) {
 func TestSplitLeadLabelAndCompanionAreDisjoint(t *testing.T) {
 	t.Parallel()
 
-	labels := []string{LeadLabel(), LeadNumberLabel(1)}
+	labels := []string{LeaderLabel(), LeaderNumberLabel(1)}
 	for _, role := range CompanionRoles {
 		labels = append(labels, CompanionLabel(role), CompanionNumberLabel(role, 1))
 	}
 	for _, label := range labels {
-		_, isLead := SplitLeadLabel(label)
+		_, isLead := SplitLeaderLabel(label)
 		_, _, isCompanion := SplitCompanionLabel(label)
 		if isLead && isCompanion {
 			t.Errorf("label %q satisfies both discriminators", label)

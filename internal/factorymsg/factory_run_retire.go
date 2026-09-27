@@ -12,7 +12,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
-// LeadPeerIdentity reports the process identity carried by a run's registered
+// LeaderPeerIdentity reports the process identity carried by a run's registered
 // leader peer. It is the REQ-006 fallback source for a run row written before
 // the owner column existed.
 //
@@ -25,7 +25,7 @@ import (
 // A launch-pending peer counts: a leader sits in that state from launch until
 // its SessionStart hook binds a session UUID, and its process identity is
 // exactly as good a liveness source there as it is afterwards.
-func LeadPeerIdentity(projectRoot, runID string) (pid int, processStart string, ok bool) {
+func LeaderPeerIdentity(projectRoot, runID string) (pid int, processStart string, ok bool) {
 	path, err := BrokerPath(projectRoot, runID)
 	if err != nil {
 		return 0, "", false
@@ -88,7 +88,10 @@ func LiveLegacyPeer(ctx context.Context, projectRoot, runID string) (value strin
 		if err := rows.Scan(&role, &slot, &pid, &start); err != nil {
 			return "", false, err
 		}
-		isLegacyPeer := role == "lead" || kanban.IsLegacyLeadLabel(slot) ||
+		// "lead" is the legacy leader role value: detection only, read to
+		// classify the run's owner for the retire step (REQ-RNC-024), never
+		// mapped back to the leader role.
+		isLegacyPeer := role == "lead" || kanban.IsLegacyLeaderSpelling(slot) ||
 			kanban.IsLegacyFactoryRoleValue(role) || kanban.IsLegacyFactoryRoleValue(slot)
 		if !isLegacyPeer {
 			continue
@@ -106,18 +109,18 @@ func LiveLegacyPeer(ctx context.Context, projectRoot, runID string) (value strin
 	return "", false, nil
 }
 
-// LeadIdentityLookupFor adapts LeadPeerIdentity to the lookup homestate's
+// LeaderIdentityLookupFor adapts LeaderPeerIdentity to the lookup homestate's
 // reconciler takes as a parameter. The fallback crosses the package boundary
 // as a function value because factorymsg imports homestate and the direction
 // cannot be closed.
-func LeadIdentityLookupFor(projectRoot string) homestate.LeadIdentityLookup {
-	return func(runID string) (int, string, bool) { return LeadPeerIdentity(projectRoot, runID) }
+func LeaderIdentityLookupFor(projectRoot string) homestate.LeaderIdentityLookup {
+	return func(runID string) (int, string, bool) { return LeaderPeerIdentity(projectRoot, runID) }
 }
 
-// LeadRecordAbsentFor reports that a run has no broker database at all, so no
+// LegacyPeerRecordAbsentFor reports that a run has no broker database at all, so no
 // lead-peer record can exist. Any stat outcome other than "does not exist"
 // answers false: a broker the fallback could not read is not an absent one.
-func LeadRecordAbsentFor(projectRoot string) func(runID string) bool {
+func LegacyPeerRecordAbsentFor(projectRoot string) func(runID string) bool {
 	return func(runID string) bool {
 		path, err := BrokerPath(projectRoot, runID)
 		if err != nil {
@@ -129,11 +132,11 @@ func LeadRecordAbsentFor(projectRoot string) func(runID string) bool {
 }
 
 // ReconcileOptionsFor is the option set every production retirement path
-// passes: the lead-peer fallback plus both premises of the boot proof.
+// passes: the legacy-peer fallback plus both premises of the boot proof.
 func ReconcileOptionsFor(projectRoot string) homestate.ReconcileOptions {
 	return homestate.ReconcileOptions{
-		Fallback:         LeadIdentityLookupFor(projectRoot),
-		BootTime:         homestate.SystemBootTime,
-		LeadRecordAbsent: LeadRecordAbsentFor(projectRoot),
+		Fallback:               LeaderIdentityLookupFor(projectRoot),
+		BootTime:               homestate.SystemBootTime,
+		LegacyPeerRecordAbsent: LegacyPeerRecordAbsentFor(projectRoot),
 	}
 }

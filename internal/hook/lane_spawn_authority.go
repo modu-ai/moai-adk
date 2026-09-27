@@ -6,8 +6,8 @@ package hook
 // Why this exists: the tk8hce factory run (2026-08-24) produced two lanes that
 // REFUSED to spawn the phase-required specialist (manager-spec) because the
 // runtime's default agent-usage guidance — "do not spawn subagents unless the
-// user asks" — stood unoverridden in their bootstrap context. The lead's
-// approval could not lift that instruction, because the lead is not the lane's
+// user asks" — stood unoverridden in their bootstrap context. The leader's
+// approval could not lift that instruction, because the leader is not the lane's
 // user; a peer message is inert against a session instruction. Both lanes fell
 // back to direct edits, which routed SPEC-body writes around the Status
 // Transition Ownership Matrix — the exact outcome the matrix exists to
@@ -23,7 +23,7 @@ package hook
 //     chain's prescribed auditors), not arbitrary spawning.
 //  2. Depth — depth-1 only: agents a lane spawns are leaf workers and never
 //     spawn further agents, the same flat-hierarchy seal
-//     manager_lead_depth_test.go enforces for the lead's own fan-out.
+//     manager_lead_depth_test.go enforces for the leader's own fan-out.
 //  3. Placement — the bootstrap context is the operative layer (what the lane
 //     actually reads; a peer message cannot override a session instruction).
 //     The normative text lives in the doctrine files (kanban-dispatch.md,

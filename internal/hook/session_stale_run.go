@@ -24,7 +24,7 @@ import (
 // leaders alike) and the lane label (MOAI_FACTORY_WORKER) are the two
 // role-bearing launch labels.
 func legacyLaunchLabelValue() string {
-	if label := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanLeadName)); kanban.IsLegacyLeadLabel(label) {
+	if label := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanLeadName)); kanban.IsLegacyLeaderSpelling(label) {
 		return label
 	}
 	if label := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker)); kanban.IsLegacyFactoryRoleValue(label) {

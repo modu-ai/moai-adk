@@ -3,7 +3,7 @@
 //
 // Exactly ONE guarded write entry point exists for the board state file
 // (AC-KB-017's static half — enforced here, not documented): every mutation
-// resolves the caller's DECLARED role and refuses anything but `lead`, takes
+// resolves the caller's DECLARED role and refuses anything but `leader`, takes
 // the board-wide lock across the entire read-modify-write, and lands the
 // write through the same-directory temp + atomic rename. No call site writes
 // the state file directly; the write helper below is unexported and reachable
@@ -23,7 +23,7 @@ import (
 )
 
 // ErrNotSoleWriter is returned when a session whose declared role is not
-// `lead` — including a session with no readable declaration at all — attempts
+// `leader` — including a session with no readable declaration at all — attempts
 // a board write. The guard fails CLOSED: a refusal with nothing to read does
 // not refuse, it admits every write (spec.md §A.8).
 var ErrNotSoleWriter = errors.New("kanban board write refused: caller is not the leader")
@@ -181,18 +181,18 @@ func acquireBoardLockSerialized(root string) (*BoardLock, error) {
 	}
 }
 
-// requireLeadRole resolves the caller's declared role and refuses anything
-// but `lead` (REQ-KB-017's runtime half — the role is READ from the
+// requireLeaderRole resolves the caller's declared role and refuses anything
+// but `leader` (REQ-KB-017's runtime half — the role is READ from the
 // declaration carrier, never derived from a session identifier or a launch
 // label). It is the guard BOTH guarded entry points run before touching the
 // board: the mutation path and the bounded recovery, which is a board write
 // too.
-func requireLeadRole(root, sessionID string) error {
+func requireLeaderRole(root, sessionID string) error {
 	role, err := ResolveDeclaredRole(root, sessionID)
 	if err != nil {
 		return fmt.Errorf("%w: session %q has no readable role declaration: %v", ErrNotSoleWriter, sessionID, err)
 	}
-	if role != RoleLead {
+	if role != RoleLeader {
 		return fmt.Errorf("%w: session %q declared role %q", ErrNotSoleWriter, sessionID, role)
 	}
 	return nil
@@ -219,7 +219,7 @@ func requireLeadRole(root, sessionID string) error {
 // this exists to prevent. On the absent-file path the sole writer creates
 // the state directory (REQ-KB-021 — it is gitignored and cannot ship).
 func WriteBoardState(root, sessionID string, mutate func(*BoardState) error) (err error) {
-	if err := requireLeadRole(root, sessionID); err != nil {
+	if err := requireLeaderRole(root, sessionID); err != nil {
 		return err
 	}
 

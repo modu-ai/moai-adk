@@ -11,19 +11,19 @@ package kanban
 // announces them — and internal/cli already imports internal/hook, so the
 // dependency can only run in that direction.
 //
-// Naming policy (card t56, operator decision 2026-08-17; extended to the lead
-// by card t133): NO session name carries a run id. Every session — the lead
+// Naming policy (card t56, operator decision 2026-08-17; extended to the leader
+// by card t133): NO session name carries a run id. Every session — the leader
 // and its companions alike — is named by its role alone, and a second live
 // session claiming the same role takes the next free number. The premise this
 // accepts is one kanban run per machine: the run id was the only distinguisher
 // of two concurrent runs, and the operator has decided that case out of scope.
 //
-// t133 finished what t56 began. The lead kept its run id in its name one card
-// longer because the name looked like the only path by which a relaunched lead
+// t133 finished what t56 began. The leader kept its run id in its name one card
+// longer because the name looked like the only path by which a relaunched leader
 // could recover its own id. It is not: the board and the per-session records
 // are keyed by the Claude session id (board_store.go, record.go), and companion
 // names stopped carrying the run id at t56 — so the id survives only as the
-// notice header and the conventional lead-socket path, both display. The
+// notice header and the conventional leader-socket path, both display. The
 // launcher recovers it from a still-set MOAI_KANBAN_ID instead, and mints a
 // fresh one when there is none.
 
@@ -34,8 +34,8 @@ import (
 )
 
 // CompanionRoles are the three companion roles of a kanban run, in the order
-// the lead announces them: plan / run / sync — the bare phase names (operator
-// final design 2026-08-18; full chain lead > plan > run > sync). D1 (card
+// the leader announces them: plan / run / sync — the bare phase names (operator
+// final design 2026-08-18; full chain leader > plan > run > sync). D1 (card
 // t97) retired the review role: the chain is the three phases
 // plan -> run -> sync, and reviewing gates integration from the hub instead
 // of occupying a companion session.
@@ -49,7 +49,7 @@ import (
 // is the single discriminator, and carrying permanent normalization for a
 // name set no binary ever launched would complicate it for nothing.
 //
-// The lead is deliberately absent from this list. It is the only session that
+// The leader is deliberately absent from this list. It is the only session that
 // carries the kanban token, because that token seeds a session whose
 // orchestrator drives the whole plan -> run -> sync chain; giving it
 // to a companion would produce three sessions each driving the whole chain.
@@ -59,7 +59,7 @@ var CompanionRoles = []string{"plan", "run", "sync"}
 // bootstrap notice prints for it: "cc" runs the Claude backend, "glm" the GLM
 // backend. The mapping IS the recommended default — judgment and review work
 // (plan, sync) on Claude, implementation (run) on GLM, the always-on
-// lead on GLM — so the notice's copyable launch lines and its per-locale
+// leader on GLM — so the notice's copyable launch lines and its per-locale
 // recommendation table render one recommendation, not two that can drift.
 var companionLaunchers = map[string]string{
 	"plan": "cc",
@@ -90,7 +90,7 @@ const base36Digits = "0123456789abcdefghijklmnopqrstuvwxyz"
 // deliberately NOT consulted for uniqueness: it has been observed holding a
 // dead PID as live, so it cannot answer that question.
 //
-// Two leads launched within the same second collide. That residual is left
+// Two leaders launched within the same second collide. That residual is left
 // standing — the window is one second of wall clock on a manual, two-terminal
 // operation, and every mechanism that would close it costs more than the case
 // is worth.
@@ -114,7 +114,7 @@ func base36(n int64) string {
 }
 
 // CompanionLabel returns the label a companion session is launched under: the
-// bare role name. This is the form the lead announces and the form an
+// bare role name. This is the form the leader announces and the form an
 // unobstructed launch keeps; a collision with a live claim appends a number
 // (CompanionNumberLabel), which the launcher — not this composer — resolves.
 func CompanionLabel(role string) string {
@@ -129,34 +129,34 @@ func CompanionNumberLabel(role string, n int) string {
 	return role + "-" + strconv.Itoa(n)
 }
 
-// LeadLabel returns the label a lead session is launched under: the bare role
+// LeaderLabel returns the label a leader session is launched under: the bare role
 // name, the same shape companions already use. This is the form the notice
 // announces and the form an unobstructed launch keeps; a collision with a live
-// claim appends a number (LeadNumberLabel), which the launcher — not this
+// claim appends a number (LeaderNumberLabel), which the launcher — not this
 // composer — resolves.
 //
 // The run id is deliberately NOT in the name any more. It was carried there so
-// a relaunched lead could read its own id back out, but nothing functional
+// a relaunched leader could read its own id back out, but nothing functional
 // depends on that continuity: companion names carry no run id under the
 // one-machine-one-run policy, and the board and session records are keyed by
 // the Claude session id rather than the run id. What remains — the notice
-// header and the conventional lead-socket path — is display, and the launcher
+// header and the conventional leader-socket path — is display, and the launcher
 // adopts a still-set MOAI_KANBAN_ID rather than reading the name (see
-// internal/cli/kanban.go leadRunID).
+// internal/cli/kanban.go leaderRunID).
 //
-// The label deliberately never satisfies SplitCompanionLabel: RoleLead is
+// The label deliberately never satisfies SplitCompanionLabel: RoleLeader is
 // absent from CompanionRoles, so a session launched under this name is never
 // reclassified as a companion by the shape discriminator.
-func LeadLabel() string {
-	return RoleLead
+func LeaderLabel() string {
+	return RoleLeader
 }
 
-// LeadNumberLabel joins the leader role and a collision number into the
+// LeaderNumberLabel joins the leader role and a collision number into the
 // bumped label a leader launches under when the bare name is held by a live
 // session (`leader-1`, `leader-2`, ...). It is the leader sibling of
 // CompanionNumberLabel and shares its shape.
-func LeadNumberLabel(n int) string {
-	return RoleLead + "-" + strconv.Itoa(n)
+func LeaderNumberLabel(n int) string {
+	return RoleLeader + "-" + strconv.Itoa(n)
 }
 
 // SplitCompanionLabel splits a companion label into its role and optional
@@ -168,14 +168,14 @@ func LeadNumberLabel(n int) string {
 //
 // Two forms parse:
 //
-//   - the bare role (`plan`) — the form the lead announces and the common
+//   - the bare role (`plan`) — the form the leader announces and the common
 //     case under the one-machine-one-run policy;
 //   - `<role>-<suffix>` — the suffix is a collision number the launcher
 //     appended (`plan-1`), or any run-id-shaped value in that position.
 //
 // The suffixed form is MIGRATED, not rejected: a rejected suffix would fail
 // the shape check, and `-k --name plan-abc123` then reroutes down the
-// LEAD branch of the launcher's truth table (a `-k` launch whose name is not
+// LEADER branch of the launcher's truth table (a `-k` launch whose name is not
 // companion-shaped seeds a whole second chain) — a silent misroute far worse
 // than joining under a stale suffix. A role name carries no hyphen, so the
 // first hyphen is the boundary and a second hyphen never parses.
@@ -190,7 +190,7 @@ func SplitCompanionLabel(label string) (role, suffix string, ok bool) {
 	return role, suffix, true
 }
 
-// SplitLeadLabel splits a leader label into its optional suffix and reports
+// SplitLeaderLabel splits a leader label into its optional suffix and reports
 // whether the value has the leader shape at all. It is the leader-side
 // counterpart of SplitCompanionLabel, and admits the same two forms:
 //
@@ -201,19 +201,19 @@ func SplitCompanionLabel(label string) (role, suffix string, ok bool) {
 //     (`leader-abc123`).
 //
 // The legacy `lead` / `lead-<suffix>` spellings do NOT parse (they are
-// detection values, IsLegacyLeadLabel) — a legacy label maps to no role
+// detection values, IsLegacyLeaderSpelling) — a legacy label maps to no role
 // (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009).
 //
 // The suffix is returned for the caller to interpret; it is NOT itself a run
 // id. Whether a suffix is adopted as one is the launcher's decision
-// (internal/cli/kanban.go leadRunID), which is where a bump number must not be
+// (internal/cli/kanban.go leaderRunID), which is where a bump number must not be
 // mistaken for an id.
-func SplitLeadLabel(label string) (suffix string, ok bool) {
-	if label == RoleLead {
+func SplitLeaderLabel(label string) (suffix string, ok bool) {
+	if label == RoleLeader {
 		return "", true
 	}
 	role, suffix, found := strings.Cut(label, "-")
-	if !found || role != RoleLead || !isRunIDShape(suffix) {
+	if !found || role != RoleLeader || !isRunIDShape(suffix) {
 		return "", false
 	}
 	return suffix, true
@@ -258,7 +258,7 @@ const (
 // factory lane session is launched under (`lane-3`).
 //
 // The label deliberately never satisfies SplitCompanionLabel or
-// SplitLeadLabel: factory lanes neither occupy the three-role kanban chain
+// SplitLeaderLabel: factory lanes neither occupy the three-role kanban chain
 // nor the leader position, so a factory name is never reclassified by the
 // kanban shape discriminators. Like the companion labels it carries no run id
 // — every lane is addressed by name alone (the run's leader dispatches cards
@@ -268,10 +268,10 @@ func FactoryLaneLabel(n int) string {
 	return factoryLaneRole + "-" + strconv.Itoa(n)
 }
 
-// FactoryAgentLabel renders the LEGACY `agent-<n>` label shape. Nothing
+// FactoryLegacyAgentLabel renders the LEGACY `agent-<n>` label shape. Nothing
 // launches under it and no reader maps it to a lane; it exists for detection
 // and test fixtures only (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009).
-func FactoryAgentLabel(n int) string {
+func FactoryLegacyAgentLabel(n int) string {
 	return factoryLegacyAgentRole + "-" + strconv.Itoa(n)
 }
 
@@ -291,11 +291,11 @@ func splitFactoryPrefixedLabel(label string) (prefix string, n int, ok bool) {
 	return role, n, true
 }
 
-// SplitFactoryAgentLabel splits a legacy `agent-<n>` label into its number
+// SplitFactoryLegacyAgentLabel splits a legacy `agent-<n>` label into its number
 // and reports whether the value has that shape at all. Detection only: a
 // match never maps the label to a lane (SPEC-ROLE-NAMING-CODE-001
 // REQ-RNC-009).
-func SplitFactoryAgentLabel(label string) (n int, ok bool) {
+func SplitFactoryLegacyAgentLabel(label string) (n int, ok bool) {
 	prefix, n, ok := splitFactoryPrefixedLabel(label)
 	if !ok || prefix != factoryLegacyAgentRole {
 		return 0, false
@@ -356,8 +356,8 @@ func IsLegacyFactoryRoleValue(value string) bool {
 	return IsLegacyFactoryLabel(value)
 }
 
-// CanonicalFactoryLabel maps any factory worker label shape onto its
-// canonical `worker-<n>` form; ok is false for anything that is not a worker
+// CanonicalFactoryLabel maps a canonical factory lane label onto its
+// canonical `lane-<n>` form; ok is false for anything that is not a lane
 // label.
 func CanonicalFactoryLabel(label string) (string, bool) {
 	n, ok := factoryLabelNumber(label)
@@ -367,12 +367,12 @@ func CanonicalFactoryLabel(label string) (string, bool) {
 	return FactoryLaneLabel(n), true
 }
 
-// NextFactoryWorkerNumber returns the number a `-f lane` join takes: one
+// NextFactoryLaneNumber returns the number a `-f lane` join takes: one
 // past the highest LIVE canonical claim in the pruned registry (1 when
 // nothing is claimed). Legacy claims hold no number — a live legacy record
 // refuses the join instead (REQ-RNC-022); dead claims are pruned first so a
 // crashed lane frees its number for reuse.
-func NextFactoryWorkerNumber(reg map[string]FactoryWorkerEntry, alive func(int) bool) int {
+func NextFactoryLaneNumber(reg map[string]FactoryLaneEntry, alive func(int) bool) int {
 	reg = PruneFactoryDeadClaims(reg, alive)
 	highest := 0
 	for label := range reg {
@@ -412,15 +412,15 @@ const (
 )
 
 // LeaderSocketPath returns the conventional leader-socket address a KANBAN
-// lead publishes for runID: <kanbanSocketDir>/<run-id>. The launcher sets it
+// leader publishes for runID: <kanbanSocketDir>/<run-id>. The launcher sets it
 // into EnvMoaiKanbanLeadAddr and the SessionStart notice prints it verbatim;
-// the factory lead uses FactoryLeaderSocketPath, its factory sibling.
+// the factory leader uses FactoryLeaderSocketPath, its factory sibling.
 func LeaderSocketPath(runID string) string {
 	return kanbanSocketDir + "/" + runID
 }
 
 // FactoryLeaderSocketPath returns the conventional leader-socket address a
-// FACTORY lead publishes for runID: <factorySocketDir>/<run-id>. Same carrier
+// FACTORY leader publishes for runID: <factorySocketDir>/<run-id>. Same carrier
 // and same print surface as LeaderSocketPath; a separate directory so a kanban
 // run and a factory run sharing one machine never address the same line.
 func FactoryLeaderSocketPath(runID string) string {

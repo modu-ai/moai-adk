@@ -49,9 +49,9 @@ const (
 var ChainRoles = []string{"leader", "plan", "run", "sync"}
 
 const (
-	// legacyLeadRole 는 개칭 이전 바이너리가 쓴 리더 역할 값이다. 감지 전용 —
+	// legacyLeaderRole 는 개칭 이전 바이너리가 쓴 리더 역할 값이다. 감지 전용 —
 	// 리더 슬롯으로 편입되지 않는다 (REQ-RNC-009).
-	legacyLeadRole = "lead"
+	legacyLeaderRole = "lead"
 
 	// legacyLeaderLabel 은 레거시 리더 기록이 리더 슬롯에서 렌더될 때의 역할
 	// 라벨이다 (AC-RNC-013): 리더는 부재로 보고되고, 라벨이 재시동 치료법을
@@ -268,7 +268,7 @@ func chainRoleRecords(records []KanbanRecord) []KanbanRecord {
 	for _, role := range ChainRoles {
 		isChainRole[role] = true
 	}
-	isChainRole[legacyLeadRole] = true
+	isChainRole[legacyLeaderRole] = true
 	out := make([]KanbanRecord, 0, len(records))
 	for _, r := range records {
 		if isChainRole[roleOf(r)] {
@@ -327,7 +327,7 @@ func buildChain(root string, records []KanbanRecord, sessions map[string]Session
 	// so the view never reports a present leader for a pre-rename run.
 	legacyLeader := false
 	for _, r := range records {
-		if roleOf(r) == legacyLeadRole {
+		if roleOf(r) == legacyLeaderRole {
 			legacyLeader = true
 			break
 		}

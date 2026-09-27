@@ -22,7 +22,7 @@ func TestFactoryWorkerNoticeCarriesSpawnAuthority(t *testing.T) {
 		{name: "no-count", workers: 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := factoryWorkerNotice("lane-2", tc.workers, "en")
+			got := factoryLaneNotice("lane-2", tc.workers, "en")
 			for _, marker := range []string{
 				"Standing spawn authority",
 				"Status Transition Ownership Matrix",
@@ -64,7 +64,7 @@ func TestKanbanCompanionNoticeCarriesSpawnAuthority(t *testing.T) {
 // NOTHING — the authority must never turn a degraded join into a mislabeled
 // one (the fail-open contract the join notices already carry).
 func TestLaneSpawnAuthorityFailOpenPreserved(t *testing.T) {
-	if got := factoryWorkerNotice("not-a-lane", 5, "en"); got != "" {
+	if got := factoryLaneNotice("not-a-lane", 5, "en"); got != "" {
 		t.Errorf("unparseable factory label must emit no notice, got:\n%s", got)
 	}
 	if got := kanbanCompanionNotice("not-a-role", "en"); got != "" {

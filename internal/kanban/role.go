@@ -26,40 +26,40 @@ import (
 	"time"
 )
 
-// RoleLead names the one role the board's write guard admits (REQ-KB-017).
+// RoleLeader names the one role the board's write guard admits (REQ-KB-017).
 // The role SET and the election that occupies it are the bootstrap sibling's
 // (REQ-KS-004) — this constant names a role value, not an election rule, and
 // a declaration may carry any role string the topology defines. The value is
 // the operator's leader noun (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-006/-010):
 // the managing session is `leader`, its bumped and run-id forms
 // `leader-<n>` / `leader-<run-id>` — the same value the label composer
-// (LeadLabel), the collision bumper (LeadNumberLabel), the shape parser
-// (SplitLeadLabel), the board write guard, and the session records all use.
+// (LeaderLabel), the collision bumper (LeaderNumberLabel), the shape parser
+// (SplitLeaderLabel), the board write guard, and the session records all use.
 // The pre-rename value `lead` survives only as a detection value
-// (IsLegacyLeadLabel): readers refuse it, writers never write it, and no
+// (IsLegacyLeaderSpelling): readers refuse it, writers never write it, and no
 // existing record is rewritten (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009).
-const RoleLead = "leader"
+const RoleLeader = "leader"
 
-// legacyLeadLabel is the pre-rename leader value. It exists only to be
+// legacyLeaderSpelling is the pre-rename leader value. It exists only to be
 // detected (stale-run notices, registry notices) — never written, never
 // accepted as a role (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009).
-const legacyLeadLabel = "lead"
+const legacyLeaderSpelling = "lead"
 
-// IsLegacyLeadLabel reports whether label is a pre-rename leader spelling —
+// IsLegacyLeaderSpelling reports whether label is a pre-rename leader spelling —
 // the bare `lead` or any `lead-<suffix>` form. Detection only: a true result
 // never maps the value to the leader role, it triggers a refuse-or-notice
 // path (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009, REQ-RNC-025).
-func IsLegacyLeadLabel(label string) bool {
-	return label == legacyLeadLabel || strings.HasPrefix(label, legacyLeadLabel+"-")
+func IsLegacyLeaderSpelling(label string) bool {
+	return label == legacyLeaderSpelling || strings.HasPrefix(label, legacyLeaderSpelling+"-")
 }
 
-// RoleLane names a factory run's numbered worker session (the `worker-<n>`
-// labels, SPEC-FACTORY-WORKER-FANOUT-001). The persisted value stays "lane":
+// RoleLane names a factory run's numbered lane session (the `lane-<n>` labels,
+// SPEC-ROLE-NAMING-CODE-001 REQ-RNC-004). The persisted value stays "lane":
 // it is the record's role key on disk, not user-facing notation, so renaming
 // it would change the record format existing readers parse.
 //
 // It is deliberately NOT a CompanionRoles member: factory lanes are
-// dispatched cards by their lead
+// dispatched cards by their leader
 // over cross-session messages and never occupy the three-role kanban chain, so
 // the companion shape discriminators must not admit their labels.
 const RoleLane = "lane"
@@ -90,7 +90,7 @@ func roleDeclarationDir(root string) string {
 //
 // The declaration is written by the declaring session itself and read by
 // every other session through the shared origin — both cross-session
-// directions (a worker resolving the lead, the lead resolving a worker) are
+// directions (a lane resolving the leader, the leader resolving a lane) are
 // the same read against the same path. Re-declaring overwrites, which is how
 // a relaunched session refreshes its declaration.
 func DeclareRole(root, sessionID, role, label string) error {
@@ -124,11 +124,11 @@ func DeclareRole(root, sessionID, role, label string) error {
 }
 
 // @MX:ANCHOR: [AUTO] ResolveDeclaredRole — the single-origin role-declaration read (REQ-KB-025 carrier)
-// @MX:REASON: expected fan_in >= 3 (requireLeadRole for board writes and recovery, cross-session consumers in the worktree sibling's gates, bootstrap's dispatch/quorum key); a parallel declaration datum is the fork AP-31 names
+// @MX:REASON: expected fan_in >= 3 (requireLeaderRole for board writes and recovery, cross-session consumers in the worktree sibling's gates, bootstrap's dispatch/quorum key); a parallel declaration datum is the fork AP-31 names
 //
 // ResolveDeclaredRole returns the role sessionID declared. It is callable by
-// any session — the lead resolving a worker's declaration (the dispatch and
-// quorum key) and a worker resolving the lead's (the sibling's gates) are the
+// any session — the leader resolving a lane's declaration (the dispatch and
+// quorum key) and a lane resolving the leader's (the sibling's gates) are the
 // same operation against the same single-origin artifact.
 //
 // An absent or unreadable declaration is an error, never a default role: the

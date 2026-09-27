@@ -53,10 +53,10 @@ func TestLeadNameArgs_InjectsWhenUnnamed(t *testing.T) {
 	clearAllKanbanEnv(t)
 	t.Setenv(config.EnvMoaiKanbanID, "abc123")
 
-	got := leadNameArgs([]string{"-p", "work"})
+	got := leaderNameArgs([]string{"-p", "work"})
 	want := []string{"--name", "leader"}
 	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
-		t.Fatalf("leadNameArgs = %q, want %q", got, want)
+		t.Fatalf("leaderNameArgs = %q, want %q", got, want)
 	}
 }
 
@@ -72,8 +72,8 @@ func TestLeadNameArgs_NeverOverridesOperatorName(t *testing.T) {
 		{"-n", "board-watch"},
 		{"-n=board-watch"},
 	} {
-		if got := leadNameArgs(args); got != nil {
-			t.Errorf("leadNameArgs(%q) = %q, want nil (operator name wins)", args, got)
+		if got := leaderNameArgs(args); got != nil {
+			t.Errorf("leaderNameArgs(%q) = %q, want nil (operator name wins)", args, got)
 		}
 	}
 }
@@ -87,9 +87,9 @@ func TestLeadNameArgs_NeverOverridesOperatorName(t *testing.T) {
 func TestLeadNameArgs_InjectsWithoutRunID(t *testing.T) {
 	clearAllKanbanEnv(t)
 
-	got := leadNameArgs(nil)
+	got := leaderNameArgs(nil)
 	if len(got) != 2 || got[0] != "--name" || got[1] != "leader" {
-		t.Errorf("leadNameArgs with no run id = %q, want [--name leader]", got)
+		t.Errorf("leaderNameArgs with no run id = %q, want [--name leader]", got)
 	}
 }
 
@@ -99,9 +99,9 @@ func TestLeadNameArgs_InjectsWithoutRunID(t *testing.T) {
 func TestLeadNameArgs_LabelIsNotCompanionShape(t *testing.T) {
 	clearAllKanbanEnv(t)
 
-	args := leadNameArgs(nil)
+	args := leaderNameArgs(nil)
 	if len(args) != 2 {
-		t.Fatalf("leadNameArgs = %q, want a --name pair", args)
+		t.Fatalf("leaderNameArgs = %q, want a --name pair", args)
 	}
 	if _, _, isCompanion := kanban.SplitCompanionLabel(args[1]); isCompanion {
 		t.Errorf("injected lead label %q reads as a companion label", args[1])
@@ -112,7 +112,7 @@ func TestLeadNameArgs_LabelIsNotCompanionShape(t *testing.T) {
 }
 
 // TestEnterKanbanMode_AdoptsOperatorLeadRunID is the assertion whose ABSENCE let
-// the divergence ship green: the prior suite checked only that leadNameArgs
+// the divergence ship green: the prior suite checked only that leaderNameArgs
 // returned nil for an operator-named lead, never that the run id the launcher
 // published matched the one in that name. It did not — the launcher minted a
 // fresh id beside it, and the SessionStart notice, which reads the environment,
@@ -125,9 +125,9 @@ func TestEnterKanbanMode_AdoptsOperatorLeadRunID(t *testing.T) {
 	clearAllKanbanEnv(t)
 
 	args := []string{"--name", "leader-abc123"}
-	label, ok := parseLeadLabel(args)
+	label, ok := parseLeaderLabel(args)
 	if !ok {
-		t.Fatalf("parseLeadLabel(%q) did not recognize the lead name", args)
+		t.Fatalf("parseLeaderLabel(%q) did not recognize the lead name", args)
 	}
 	restore := enterKanbanMode("", label)
 	defer restore()
@@ -140,8 +140,8 @@ func TestEnterKanbanMode_AdoptsOperatorLeadRunID(t *testing.T) {
 	}
 	// The operator's name still wins — adoption must not also inject a second
 	// --name and hand claude two.
-	if got := leadNameArgs(args); got != nil {
-		t.Errorf("leadNameArgs(%q) = %q, want nil (operator name wins)", args, got)
+	if got := leaderNameArgs(args); got != nil {
+		t.Errorf("leaderNameArgs(%q) = %q, want nil (operator name wins)", args, got)
 	}
 }
 
@@ -173,9 +173,9 @@ func TestEnterKanbanMode_MintsWithoutLeadName(t *testing.T) {
 	}
 }
 
-// TestParseLeadLabel covers the four name forms claude accepts and the shapes
+// TestParseLeaderLabel covers the four name forms claude accepts and the shapes
 // that must NOT read as a lead label.
-func TestParseLeadLabel(t *testing.T) {
+func TestParseLeaderLabel(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -197,15 +197,15 @@ func TestParseLeadLabel(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			got, ok := parseLeadLabel(c.args)
+			got, ok := parseLeaderLabel(c.args)
 			if c.want == "" {
 				if ok {
-					t.Errorf("parseLeadLabel(%q) = %q, want no match", c.args, got)
+					t.Errorf("parseLeaderLabel(%q) = %q, want no match", c.args, got)
 				}
 				return
 			}
 			if !ok || got != c.want {
-				t.Errorf("parseLeadLabel(%q) = %q/%v, want %q/true", c.args, got, ok, c.want)
+				t.Errorf("parseLeaderLabel(%q) = %q/%v, want %q/true", c.args, got, ok, c.want)
 			}
 		})
 	}
@@ -221,7 +221,7 @@ func TestLeadLabelNeverReadsAsCompanion(t *testing.T) {
 	if _, isCompanion := parseCompanionLabel(args); isCompanion {
 		t.Fatalf("parseCompanionLabel(%q) matched a lead name", args)
 	}
-	if branch := resolveKanbanBranch(true, false); branch != kanbanBranchLead {
+	if branch := resolveKanbanBranch(true, false); branch != kanbanBranchLeader {
 		t.Errorf("resolveKanbanBranch = %v, want the lead branch", branch)
 	}
 }
@@ -235,11 +235,11 @@ func TestLeadRunID_AdoptsEnvironmentRunID(t *testing.T) {
 	clearAllKanbanEnv(t)
 	t.Setenv(config.EnvMoaiKanbanID, "abc123")
 
-	if got := leadRunID(""); got != "abc123" {
-		t.Errorf("leadRunID(\"\") = %q, want %q (adopted from the environment)", got, "abc123")
+	if got := leaderRunID(""); got != "abc123" {
+		t.Errorf("leaderRunID(\"\") = %q, want %q (adopted from the environment)", got, "abc123")
 	}
-	if got := leadRunID("lead"); got != "abc123" {
-		t.Errorf("leadRunID(\"lead\") = %q, want %q (the bare name carries no id)", got, "abc123")
+	if got := leaderRunID("lead"); got != "abc123" {
+		t.Errorf("leaderRunID(\"lead\") = %q, want %q (the bare name carries no id)", got, "abc123")
 	}
 }
 
@@ -250,8 +250,8 @@ func TestLeadRunID_LegacyNameWinsOverEnvironment(t *testing.T) {
 	clearAllKanbanEnv(t)
 	t.Setenv(config.EnvMoaiKanbanID, "stale1")
 
-	if got := leadRunID("leader-abc123"); got != "abc123" {
-		t.Errorf("leadRunID(\"lead-abc123\") = %q, want %q (the pasted name wins)", got, "abc123")
+	if got := leaderRunID("leader-abc123"); got != "abc123" {
+		t.Errorf("leaderRunID(\"lead-abc123\") = %q, want %q (the pasted name wins)", got, "abc123")
 	}
 }
 
@@ -263,8 +263,8 @@ func TestLeadRunID_BumpNumberIsNotARunID(t *testing.T) {
 	clearAllKanbanEnv(t)
 	t.Setenv(config.EnvMoaiKanbanID, "abc123")
 
-	if got := leadRunID(kanban.LeadNumberLabel(2)); got != "abc123" {
-		t.Errorf("leadRunID(%q) = %q, want %q (a bump number is not a run id)", kanban.LeadNumberLabel(2), got, "abc123")
+	if got := leaderRunID(kanban.LeaderNumberLabel(2)); got != "abc123" {
+		t.Errorf("leaderRunID(%q) = %q, want %q (a bump number is not a run id)", kanban.LeaderNumberLabel(2), got, "abc123")
 	}
 }
 
@@ -275,13 +275,13 @@ func TestLeadRunID_BumpNumberIsNotARunID(t *testing.T) {
 func TestResolveLeadName_BumpsPastALiveClaim(t *testing.T) {
 	root := t.TempDir()
 
-	first := resolveLeadName(root, kanban.LeadLabel(), nil)
-	if first != kanban.LeadLabel() {
-		t.Fatalf("first lead launched as %q, want the bare %q", first, kanban.LeadLabel())
+	first := resolveLeaderName(root, kanban.LeaderLabel(), nil)
+	if first != kanban.LeaderLabel() {
+		t.Fatalf("first lead launched as %q, want the bare %q", first, kanban.LeaderLabel())
 	}
 	// This process holds the claim, so it is alive by construction.
-	second := resolveLeadName(root, kanban.LeadLabel(), nil)
-	if want := kanban.LeadNumberLabel(1); second != want {
+	second := resolveLeaderName(root, kanban.LeaderLabel(), nil)
+	if want := kanban.LeaderNumberLabel(1); second != want {
 		t.Errorf("second lead launched as %q, want %q", second, want)
 	}
 }
@@ -293,10 +293,10 @@ func TestResolveLeadName_SeparateFromCompanions(t *testing.T) {
 	root := t.TempDir()
 
 	resolveCompanionName(root, kanban.CompanionLabel("plan"), nil)
-	if got := resolveLeadName(root, kanban.LeadLabel(), nil); got != kanban.LeadLabel() {
-		t.Errorf("lead launched as %q after a companion claim, want the bare %q", got, kanban.LeadLabel())
+	if got := resolveLeaderName(root, kanban.LeaderLabel(), nil); got != kanban.LeaderLabel() {
+		t.Errorf("lead launched as %q after a companion claim, want the bare %q", got, kanban.LeaderLabel())
 	}
-	if leadRegistryPath(root) == companionRegistryPath(root) {
+	if leaderRegistryPath(root) == companionRegistryPath(root) {
 		t.Error("lead and companion registries share one path")
 	}
 }
@@ -307,13 +307,13 @@ func TestAppendLeadName_OperatorNameWins(t *testing.T) {
 	root := t.TempDir()
 
 	args := []string{"--name", "board-watch"}
-	got, name := appendLeadName(args, root, nil)
+	got, name := appendLeaderName(args, root, nil)
 	if len(got) != len(args) {
-		t.Errorf("appendLeadName appended to an operator-named lead: %q", got)
+		t.Errorf("appendLeaderName appended to an operator-named lead: %q", got)
 	}
 	// The operator's own name is still REPORTED, so the title registered
 	// downstream is the name the session actually answers to (issue #1596).
 	if name != "board-watch" {
-		t.Errorf("appendLeadName reported %q for an operator-named lead, want %q", name, "board-watch")
+		t.Errorf("appendLeaderName reported %q for an operator-named lead, want %q", name, "board-watch")
 	}
 }

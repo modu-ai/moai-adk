@@ -16,17 +16,17 @@ import (
 )
 
 func TestRoleLeadValueIsLeader(t *testing.T) {
-	if RoleLead != "leader" {
-		t.Errorf("RoleLead = %q, want %q", RoleLead, "leader")
+	if RoleLeader != "leader" {
+		t.Errorf("RoleLeader = %q, want %q", RoleLeader, "leader")
 	}
-	if got := LeadLabel(); got != "leader" {
-		t.Errorf("LeadLabel() = %q, want leader", got)
+	if got := LeaderLabel(); got != "leader" {
+		t.Errorf("LeaderLabel() = %q, want leader", got)
 	}
-	if got := LeadNumberLabel(2); got != "leader-2" {
-		t.Errorf("LeadNumberLabel(2) = %q, want leader-2", got)
+	if got := LeaderNumberLabel(2); got != "leader-2" {
+		t.Errorf("LeaderNumberLabel(2) = %q, want leader-2", got)
 	}
-	if got := LeadNumberLabel(7); got != "leader-7" {
-		t.Errorf("LeadNumberLabel(7) = %q, want leader-7", got)
+	if got := LeaderNumberLabel(7); got != "leader-7" {
+		t.Errorf("LeaderNumberLabel(7) = %q, want leader-7", got)
 	}
 }
 
@@ -44,9 +44,9 @@ func TestSplitLeadLabelLeaderForms(t *testing.T) {
 		{"lane-1", false, ""},     // factory lane — never a leader label
 	}
 	for _, tc := range tests {
-		suffix, ok := SplitLeadLabel(tc.label)
+		suffix, ok := SplitLeaderLabel(tc.label)
 		if ok != tc.ok || suffix != tc.suffix {
-			t.Errorf("SplitLeadLabel(%q) = (%q, %v), want (%q, %v)", tc.label, suffix, ok, tc.suffix, tc.ok)
+			t.Errorf("SplitLeaderLabel(%q) = (%q, %v), want (%q, %v)", tc.label, suffix, ok, tc.suffix, tc.ok)
 		}
 	}
 }
@@ -59,13 +59,13 @@ func TestFactoryLaneLabelPrefixIsLane(t *testing.T) {
 
 func TestIsLegacyLeadLabelDetection(t *testing.T) {
 	for _, value := range []string{"lead", "lead-7", "lead-abc123"} {
-		if !IsLegacyLeadLabel(value) {
-			t.Errorf("IsLegacyLeadLabel(%q) = false, want true", value)
+		if !IsLegacyLeaderSpelling(value) {
+			t.Errorf("IsLegacyLeaderSpelling(%q) = false, want true", value)
 		}
 	}
 	for _, value := range []string{"leader", "leader-2", "leader-r7", "lane", ""} {
-		if IsLegacyLeadLabel(value) {
-			t.Errorf("IsLegacyLeadLabel(%q) = true, want false", value)
+		if IsLegacyLeaderSpelling(value) {
+			t.Errorf("IsLegacyLeaderSpelling(%q) = true, want false", value)
 		}
 	}
 }
@@ -79,10 +79,10 @@ func TestClaimFactoryWorkerRefusesLiveLegacyClaim(t *testing.T) {
 		t.Fatal(err)
 	}
 	alive := func(int) bool { return true }
-	_, err := ClaimFactoryWorker(root, "", true, os.Getpid(), "newrun", alive)
+	_, err := ClaimFactoryLane(root, "", true, os.Getpid(), "newrun", alive)
 	var legacy *FactoryLegacyRunError
 	if !errors.As(err, &legacy) {
-		t.Fatalf("ClaimFactoryWorker live legacy row: err = %v, want *FactoryLegacyRunError", err)
+		t.Fatalf("ClaimFactoryLane live legacy row: err = %v, want *FactoryLegacyRunError", err)
 	}
 	if legacy.Label != "worker-3" {
 		t.Errorf("legacy error label = %q, want worker-3", legacy.Label)
@@ -112,9 +112,9 @@ func TestClaimFactoryWorkerDeadLegacyClaimIsStale(t *testing.T) {
 		t.Fatal(err)
 	}
 	alive := func(int) bool { return false } // the legacy claim's pid is dead
-	claim, err := ClaimFactoryWorker(root, "", true, os.Getpid(), "newrun", alive)
+	claim, err := ClaimFactoryLane(root, "", true, os.Getpid(), "newrun", alive)
 	if err != nil {
-		t.Fatalf("ClaimFactoryWorker with dead legacy row: %v", err)
+		t.Fatalf("ClaimFactoryLane with dead legacy row: %v", err)
 	}
 	if claim.Label != "lane-1" {
 		t.Errorf("claimed label = %q, want lane-1 (dead legacy pruned, canonical numbering)", claim.Label)
@@ -131,9 +131,9 @@ func TestClaimFactoryWorkerIgnoresLegacyClaimOfNoRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	alive := func(int) bool { return true }
-	claim, err := ClaimFactoryWorker(root, "", true, os.Getpid(), "newrun", alive)
+	claim, err := ClaimFactoryLane(root, "", true, os.Getpid(), "newrun", alive)
 	if err != nil {
-		t.Fatalf("ClaimFactoryWorker with empty-run_id legacy row: %v", err)
+		t.Fatalf("ClaimFactoryLane with empty-run_id legacy row: %v", err)
 	}
 	if claim.Label != "lane-1" {
 		t.Errorf("claimed label = %q, want lane-1 (empty-run_id legacy claim is no run)", claim.Label)
@@ -143,9 +143,9 @@ func TestClaimFactoryWorkerIgnoresLegacyClaimOfNoRun(t *testing.T) {
 func TestClaimFactoryWorkerWritesLaneLabel(t *testing.T) {
 	root := t.TempDir()
 	alive := func(int) bool { return true }
-	claim, err := ClaimFactoryWorker(root, "", true, os.Getpid(), "newrun", alive)
+	claim, err := ClaimFactoryLane(root, "", true, os.Getpid(), "newrun", alive)
 	if err != nil {
-		t.Fatalf("ClaimFactoryWorker: %v", err)
+		t.Fatalf("ClaimFactoryLane: %v", err)
 	}
 	if claim.Label != "lane-1" {
 		t.Errorf("claimed label = %q, want lane-1", claim.Label)
@@ -168,9 +168,9 @@ func TestBoardGuardRefusesLegacyLeadDeclaration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = requireLeadRole(root, "legacy-session")
+	err = requireLeaderRole(root, "legacy-session")
 	if !errors.Is(err, ErrNotSoleWriter) {
-		t.Fatalf("requireLeadRole(lead declaration) err = %v, want ErrNotSoleWriter", err)
+		t.Fatalf("requireLeaderRole(lead declaration) err = %v, want ErrNotSoleWriter", err)
 	}
 	if !strings.Contains(err.Error(), "lead") {
 		t.Errorf("refusal %q does not name the legacy role lead", err.Error())
@@ -186,11 +186,11 @@ func TestBoardGuardRefusesLegacyLeadDeclaration(t *testing.T) {
 
 func TestBoardGuardAdmitsLeaderDeclaration(t *testing.T) {
 	root := t.TempDir()
-	if err := DeclareRole(root, "leader-session", RoleLead, LeadLabel()); err != nil {
+	if err := DeclareRole(root, "leader-session", RoleLeader, LeaderLabel()); err != nil {
 		t.Fatalf("DeclareRole: %v", err)
 	}
-	if err := requireLeadRole(root, "leader-session"); err != nil {
-		t.Fatalf("requireLeadRole(leader declaration) = %v, want nil", err)
+	if err := requireLeaderRole(root, "leader-session"); err != nil {
+		t.Fatalf("requireLeaderRole(leader declaration) = %v, want nil", err)
 	}
 }
 
@@ -223,10 +223,10 @@ func seedWorkerRowRun(t *testing.T, root, label string, pid int, runID string) e
 // for detection and fixtures, nothing launches under it and no reader maps it
 // to a lane (REQ-RNC-009).
 func TestFactoryAgentLabelLegacyRendererOnly(t *testing.T) {
-	if got := FactoryAgentLabel(2); got != "agent-2" {
-		t.Errorf("FactoryAgentLabel(2) = %q, want agent-2", got)
+	if got := FactoryLegacyAgentLabel(2); got != "agent-2" {
+		t.Errorf("FactoryLegacyAgentLabel(2) = %q, want agent-2", got)
 	}
-	if _, ok := SplitFactoryLaneLabel(FactoryAgentLabel(2)); ok {
+	if _, ok := SplitFactoryLaneLabel(FactoryLegacyAgentLabel(2)); ok {
 		t.Errorf("the legacy agent label must not parse as a lane")
 	}
 }

@@ -16,10 +16,10 @@ import (
 // response channel for gate-blocked cards (card t863, operator goal
 // 2026-09-16 decision 2: the verb lives under `moai gtd`).
 //
-// A lead without a question channel (a codex lead) surfaces a card as
+// A leader without a question channel (a codex leader) surfaces a card as
 // blocked(gate) on the GTD surface; the operator answers from ANY terminal
 // or session with this verb, and the answer lands as a durable file the
-// lead reads when it next polls. The queue item itself is NOT mutated —
+// leader reads when it next polls. The queue item itself is NOT mutated —
 // answering is evidence, not a transition; unblocking remains the lane's
 // act (mirrors `todo landed` evidence semantics).
 

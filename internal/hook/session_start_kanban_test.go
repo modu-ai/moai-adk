@@ -166,7 +166,7 @@ func TestKanbanLeadNoticeFullContent(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-kanban/abc123")
 	t.Setenv(config.EnvMoaiKanbanSettingsInjected, "1")
 
-	got := kanbanLeadNotice("abc123", "", langEnglish)
+	got := kanbanLeaderNotice("abc123", "", langEnglish)
 
 	// (a) run id
 	if !strings.Contains(got, "abc123") {
@@ -224,7 +224,7 @@ func TestKanbanLeadNoticeOmitsSPECWhenUnset(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanID, "abc123")
 	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-kanban/abc123")
 
-	got := kanbanLeadNotice("abc123", "", langEnglish)
+	got := kanbanLeaderNotice("abc123", "", langEnglish)
 	// No line should contain a SPEC- prefixed identifier.
 	if strings.Contains(got, "SPEC-") {
 		t.Errorf("notice contains a SPEC- identifier when MOAI_KANBAN_SPEC is unset:\n%s", got)
@@ -240,7 +240,7 @@ func TestKanbanLeadNoticeCompanionLinesCarryF(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanID, "xyz789")
 	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-kanban/xyz789")
 
-	got := kanbanLeadNotice("xyz789", "", langEnglish)
+	got := kanbanLeaderNotice("xyz789", "", langEnglish)
 	re := regexp.MustCompile(`(?m)^moai (cc|glm) -k --name (plan|run|sync)$`)
 	matches := re.FindAllString(got, -1)
 	if len(matches) < 3 {
@@ -275,16 +275,16 @@ func TestKanbanLeadNoticeNamesTheLeadSession(t *testing.T) {
 			t.Setenv(config.EnvMoaiKanban, "1")
 			t.Setenv(config.EnvMoaiKanbanID, "xyz789")
 
-			got := kanbanLeadNotice("xyz789", "", lang)
+			got := kanbanLeaderNotice("xyz789", "", lang)
 			// The bare label is the word "lead", which occurs throughout the
 			// notice — a plain substring check would pass on any of them and
 			// assert nothing. Anchor on the rendered identity line instead, so
 			// a regression that stops naming the session is actually caught.
-			want := fmt.Sprintf(kanbanMessagesFor(lang).leadIdentity, kanban.LeadLabel())
+			want := fmt.Sprintf(kanbanMessagesFor(lang).leaderIdentity, kanban.LeaderLabel())
 			if !strings.Contains(got, want) {
 				t.Errorf("lead notice does not name the lead session:\nwant line: %s\ngot:\n%s", want, got)
 			}
-			if strings.Contains(got, kanban.LeadLabel()+"-xyz789") {
+			if strings.Contains(got, kanban.LeaderLabel()+"-xyz789") {
 				t.Errorf("lead notice still carries the run id in the session name:\n%s", got)
 			}
 		})
@@ -385,7 +385,7 @@ func TestKanbanLeadNoticeOperatorSettingsAdvisory(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanSettingsInjected, "")
 	_ = os.Unsetenv(config.EnvMoaiKanbanSettingsInjected)
 
-	got := kanbanLeadNotice("tjlgt1", "", langEnglish)
+	got := kanbanLeaderNotice("tjlgt1", "", langEnglish)
 	if got == "" {
 		t.Fatal("expected a lead notice, got empty string")
 	}
@@ -406,7 +406,7 @@ func TestKanbanLeadNoticeInjectedSettingsAutoAccept(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-kanban/tjlgt1")
 	t.Setenv(config.EnvMoaiKanbanSettingsInjected, "1")
 
-	got := kanbanLeadNotice("tjlgt1", "", langEnglish)
+	got := kanbanLeaderNotice("tjlgt1", "", langEnglish)
 	lowered := strings.ToLower(got)
 	if !strings.Contains(lowered, "auto-accept") {
 		t.Errorf("lead notice lacks the auto-accept notice:\n%s", got)
@@ -451,7 +451,7 @@ func TestKanbanLeadNoticeBacklogSummaryCountsQueuedOnly(t *testing.T) {
 		{ID: "t4", Text: "dropped", State: kanban.BacklogStateDropped},
 	})
 
-	got := kanbanLeadNotice("t55cnt", root, langEnglish)
+	got := kanbanLeaderNotice("t55cnt", root, langEnglish)
 	if want := "Kanban backlog: 2 waiting"; !strings.Contains(got, want) {
 		t.Errorf("notice omits the queued count line %q:\n%s", want, got)
 	}
@@ -507,7 +507,7 @@ func TestKanbanLeadNoticeBacklogSummaryFailsOpen(t *testing.T) {
 		setLeadEnv(t)
 		root := t.TempDir() // no backlog.json anywhere under it
 
-		got := kanbanLeadNotice("t55fo", root, langEnglish)
+		got := kanbanLeaderNotice("t55fo", root, langEnglish)
 		if want := "Kanban backlog: 0 waiting"; !strings.Contains(got, want) {
 			t.Errorf("missing backlog did not render the zero line %q:\n%s", want, got)
 		}
@@ -518,7 +518,7 @@ func TestKanbanLeadNoticeBacklogSummaryFailsOpen(t *testing.T) {
 		root := t.TempDir()
 		writeKanbanBacklog(t, root, nil)
 
-		got := kanbanLeadNotice("t55fo", root, langEnglish)
+		got := kanbanLeaderNotice("t55fo", root, langEnglish)
 		if want := "Kanban backlog: 0 waiting"; !strings.Contains(got, want) {
 			t.Errorf("empty backlog did not render the zero line %q:\n%s", want, got)
 		}
@@ -535,7 +535,7 @@ func TestKanbanLeadNoticeBacklogSummaryFailsOpen(t *testing.T) {
 			t.Fatalf("write: %v", err)
 		}
 
-		got := kanbanLeadNotice("t55fo", root, langEnglish)
+		got := kanbanLeaderNotice("t55fo", root, langEnglish)
 		if want := "Kanban backlog: 0 waiting"; !strings.Contains(got, want) {
 			t.Errorf("malformed backlog did not render the zero line %q:\n%s", want, got)
 		}
@@ -544,7 +544,7 @@ func TestKanbanLeadNoticeBacklogSummaryFailsOpen(t *testing.T) {
 	t.Run("empty root renders zero", func(t *testing.T) {
 		setLeadEnv(t)
 
-		got := kanbanLeadNotice("t55fo", "", langEnglish)
+		got := kanbanLeaderNotice("t55fo", "", langEnglish)
 		if want := "Kanban backlog: 0 waiting"; !strings.Contains(got, want) {
 			t.Errorf("empty root did not render the zero line %q:\n%s", want, got)
 		}

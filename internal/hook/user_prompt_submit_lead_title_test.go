@@ -37,7 +37,7 @@ func TestBuildSessionTitle_LeadNameWinsOverSPEC(t *testing.T) {
 
 	// Negative control FIRST: with the variable unset, the SPEC title is what a
 	// session gets. Without this the positive case below could pass for the
-	// wrong reason — a leadSessionTitle that returned its argument on every
+	// wrong reason — a leaderSessionTitle that returned its argument on every
 	// session would look identical on the lead alone.
 	t.Run("not a lead -> SPEC title (unchanged default)", func(t *testing.T) {
 		// t.Setenv first so the prior value is restored on cleanup; the unset

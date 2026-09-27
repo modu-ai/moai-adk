@@ -20,8 +20,8 @@ func TestFactoryGuideNamesWorkerJoinInEveryLocale(t *testing.T) {
 				t.Errorf("%s entryGuide missing %q:\n%s", lang, want, m.entryGuide)
 			}
 		}
-		if !strings.Contains(m.leadManual, "lane-<n>") {
-			t.Errorf("%s leadManual does not name lane-<n> lanes:\n%s", lang, m.leadManual)
+		if !strings.Contains(m.leaderManual, "lane-<n>") {
+			t.Errorf("%s leaderManual does not name lane-<n> lanes:\n%s", lang, m.leaderManual)
 		}
 	}
 }
@@ -112,7 +112,7 @@ func TestFactoryLeadNoticeEmptyWithoutRunID(t *testing.T) {
 // session actually launched under — the reliable surface for a bumped number,
 // since the launcher's stderr note is gone by the time the TUI takes the
 // screen. The exact-sentence assertion also pins the (label, count) argument
-// order of the workerJoin format: the pre-t118 formats carried %d before %s
+// order of the laneJoin format: the pre-t118 formats carried %d before %s
 // while the call passed the label first, rendering %!d(string=lane-4) —
 // a Contains("lane-4") assertion passed right through that garbage, so the
 // whole sentence is asserted here.
@@ -158,12 +158,12 @@ func TestFactoryWorkerNoticeLocaleWordOrders(t *testing.T) {
 	clearKanbanEnv(t)
 
 	for _, lang := range []string{"en", "ko", "ja", "zh"} {
-		got := factoryWorkerNotice("lane-2", 5, lang)
+		got := factoryLaneNotice("lane-2", 5, lang)
 		if !strings.Contains(got, "lane-2") || !strings.Contains(got, "5") ||
 			strings.Contains(got, "%!") {
 			t.Errorf("locale %q worker join rendered wrong: %q", lang, got)
 		}
-		gotNoCount := factoryWorkerNotice("lane-2", 0, lang)
+		gotNoCount := factoryLaneNotice("lane-2", 0, lang)
 		if !strings.Contains(gotNoCount, "lane-2") || strings.Contains(gotNoCount, "%!") {
 			t.Errorf("locale %q count-less join rendered wrong: %q", lang, gotNoCount)
 		}
@@ -213,11 +213,11 @@ func TestFactoryMessagesLocaleFallback(t *testing.T) {
 	t.Parallel()
 
 	for _, lang := range []string{"en", "ko", "ja", "zh"} {
-		if factoryMessagesFor(lang).leadHeader == "" {
+		if factoryMessagesFor(lang).leaderHeader == "" {
 			t.Errorf("locale %q resolved to an empty message set", lang)
 		}
 	}
-	if factoryMessagesFor("fr").leadHeader != factoryMessagesFor(langEnglish).leadHeader {
+	if factoryMessagesFor("fr").leaderHeader != factoryMessagesFor(langEnglish).leaderHeader {
 		t.Error("an unknown locale must fall back to English")
 	}
 }
@@ -237,8 +237,8 @@ func TestFactoryLeadNoticeCarriesDispatchDiscipline(t *testing.T) {
 	root := t.TempDir()
 	// lane-2 claimed by THIS test process — a pid that is genuinely alive,
 	// so slot 2 reads busy without a probe seam.
-	if err := kanban.SaveFactoryRegistry(kanban.FactoryRegistryPath(root), map[string]kanban.FactoryWorkerEntry{
-		"lane-2": kanban.NewFactoryWorkerEntry(),
+	if err := kanban.SaveFactoryRegistry(kanban.FactoryRegistryPath(root), map[string]kanban.FactoryLaneEntry{
+		"lane-2": kanban.NewFactoryLaneEntry(),
 	}); err != nil {
 		t.Fatalf("seed registry: %v", err)
 	}
@@ -303,9 +303,9 @@ func TestFactoryLeadNoticeAllSlotsClaimed(t *testing.T) {
 	clearKanbanEnv(t)
 
 	root := t.TempDir()
-	reg := map[string]kanban.FactoryWorkerEntry{}
+	reg := map[string]kanban.FactoryLaneEntry{}
 	for i := 1; i <= 2; i++ {
-		reg[kanban.FactoryLaneLabel(i)] = kanban.NewFactoryWorkerEntry()
+		reg[kanban.FactoryLaneLabel(i)] = kanban.NewFactoryLaneEntry()
 	}
 	if err := kanban.SaveFactoryRegistry(kanban.FactoryRegistryPath(root), reg); err != nil {
 		t.Fatalf("seed registry: %v", err)

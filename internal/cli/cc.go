@@ -178,13 +178,13 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	label, isCompanion := parseCompanionLabel(filteredArgs)
 	factoryLabel, isFactoryLane := parseFactoryLaneLabel(filteredArgs)
 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
-	case factoryBranchLead:
-		// The operator-supplied `lead-<run-id>` name is adopted on the same
-		// terms as the kanban lead (see kanban.go leadRunID) — the run id, the
+	case factoryBranchLeader:
+		// The operator-supplied `leader-<run-id>` name is adopted on the same
+		// terms as the kanban leader (see kanban.go leaderRunID) — the run id, the
 		// session name, and the lane commands the notice prints stay on one
 		// run.
-		leadLabel, _ := parseLeadLabel(filteredArgs)
-		restoreFactory := enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)
+		leaderLabel, _ := parseLeaderLabel(filteredArgs)
+		restoreFactory := enterFactoryLeaderMode(entry.FactoryLanes, leaderLabel)
 		defer restoreFactory()
 		restoreRun, runErr := enterSelectedFactoryRun(launchProjectRoot(), entry.FactoryRun, false)
 		if runErr != nil {
@@ -195,15 +195,15 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 			return fmt.Errorf("record factory run: %w", err)
 		}
 		defer exportFactoryLaunchFacts(entry.Spec, backend)()
-		var leadName string
-		filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
-		defer exportLeadSessionName(leadName)()
+		var leaderName string
+		filteredArgs, leaderName = appendLeaderName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+		defer exportLeaderSessionName(leaderName)()
 		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
 		defer settingsCleanup()
-	case factoryBranchWorker:
+	case factoryBranchLane:
 		restoreRun, runErr := enterSelectedFactoryRun(launchProjectRoot(), entry.FactoryRun, true)
 		if runErr != nil {
 			return runErr
@@ -211,13 +211,13 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		defer restoreRun()
 		// A number held by a live session is bumped to the next free one, and
 		// the bumped value must reach the backend argv — the session name is
-		// the address the lead dispatches to.
-		finalLabel, claimErr := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, entry.FactoryAutoNumber, cmd.ErrOrStderr())
+		// the address the leader dispatches to.
+		finalLabel, claimErr := resolveFactoryLaneName(launchProjectRoot(), factoryLabel, entry.FactoryAutoNumber, cmd.ErrOrStderr())
 		if claimErr != nil {
 			return claimErr
 		}
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
-		defer enterFactoryWorkerMode(finalLabel, entry.FactoryWorkers)()
+		defer enterFactoryLaneMode(finalLabel, entry.FactoryLanes)()
 		defer exportFactoryLaunchFacts(entry.Spec, backend)()
 		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 		if len(settingsFlag) > 0 {
@@ -227,20 +227,20 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	}
 	if !entry.FactoryEnabled {
 		switch resolveKanbanBranch(entry.KanbanEnabled, isCompanion) {
-		case kanbanBranchLead:
+		case kanbanBranchLeader:
 			// An operator-supplied `lead-<run-id>` name carries the run id this
-			// session already belongs to — a relaunch of an existing lead, or a
+			// session already belongs to — a relaunch of an existing leader, or a
 			// board whose companions are already open. Adopting it is what keeps
-			// the session name, MOAI_KANBAN_ID, the lead socket path, and the
+			// the session name, MOAI_KANBAN_ID, the leader socket path, and the
 			// companion commands the SessionStart notice prints on one run.
-			leadLabel, _ := parseLeadLabel(filteredArgs)
-			defer enterKanbanMode(entry.Spec, leadLabel)()
+			leaderLabel, _ := parseLeaderLabel(filteredArgs)
+			defer enterKanbanMode(entry.Spec, leaderLabel)()
 			defer exportKanbanLaunchFacts(entry.Spec, backend)()
-			// A lead launched bare has only an AI-generated title, which claude
+			// A leader launched bare has only an AI-generated title, which claude
 			// discards on /clear; naming it explicitly is what survives.
-			var leadName string
-			filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
-			defer exportLeadSessionName(leadName)()
+			var leaderName string
+			filteredArgs, leaderName = appendLeaderName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+			defer exportLeaderSessionName(leaderName)()
 			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)
@@ -249,7 +249,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		case kanbanBranchCompanion:
 			// A label held by a live session is bumped to the next free number
 			// for the role, and the bumped value must reach the backend argv —
-			// the session name is the address the lead dispatches to.
+			// the session name is the address the leader dispatches to.
 			finalLabel := resolveCompanionName(launchProjectRoot(), label, cmd.ErrOrStderr())
 			filteredArgs = replaceNamedLabel(filteredArgs, label, finalLabel)
 			defer enterKanbanCompanionMode(finalLabel)()

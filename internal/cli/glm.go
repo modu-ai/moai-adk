@@ -228,31 +228,31 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	label, isCompanion := parseCompanionLabel(filteredArgs)
 	factoryLabel, isFactoryLane := parseFactoryLaneLabel(filteredArgs)
 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
-	case factoryBranchLead:
-		leadLabel, _ := parseLeadLabel(filteredArgs)
-		restoreFactory := enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)
+	case factoryBranchLeader:
+		leaderLabel, _ := parseLeaderLabel(filteredArgs)
+		restoreFactory := enterFactoryLeaderMode(entry.FactoryLanes, leaderLabel)
 		defer restoreFactory()
 		restoreRun, runErr := enterSelectedFactoryRun(launchProjectRoot(), entry.FactoryRun, false)
 		if runErr != nil {
 			return runErr
 		}
 		defer restoreRun()
-		// Same recording as the cc lead: the kanban store AND the factory state
+		// Same recording as the cc leader: the kanban store AND the factory state
 		// a lane's -f lane-<n> join resolves. Recording only the former left
 		// every GLM-led run unjoinable (NO_ACTIVE_FACTORY).
 		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), kanban.BackendGLM, entry.Spec); err != nil {
 			return fmt.Errorf("record factory run: %w", err)
 		}
 		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
-		var leadName string
-		filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
-		defer exportLeadSessionName(leadName)()
+		var leaderName string
+		filteredArgs, leaderName = appendLeaderName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+		defer exportLeaderSessionName(leaderName)()
 		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
 		defer settingsCleanup()
-	case factoryBranchWorker:
+	case factoryBranchLane:
 		restoreRun, runErr := enterSelectedFactoryRun(launchProjectRoot(), entry.FactoryRun, true)
 		if runErr != nil {
 			return runErr
@@ -260,12 +260,12 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		defer restoreRun()
 		// See cc.go: a live-held lane number is bumped, and the bumped value
 		// must reach the backend argv.
-		finalLabel, claimErr := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, entry.FactoryAutoNumber, cmd.ErrOrStderr())
+		finalLabel, claimErr := resolveFactoryLaneName(launchProjectRoot(), factoryLabel, entry.FactoryAutoNumber, cmd.ErrOrStderr())
 		if claimErr != nil {
 			return claimErr
 		}
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
-		defer enterFactoryWorkerMode(finalLabel, entry.FactoryWorkers)()
+		defer enterFactoryLaneMode(finalLabel, entry.FactoryLanes)()
 		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
 		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 		if len(settingsFlag) > 0 {
@@ -275,15 +275,15 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	}
 	if !entry.FactoryEnabled {
 		switch resolveKanbanBranch(entry.KanbanEnabled, isCompanion) {
-		case kanbanBranchLead:
-			// See cc.go: the operator's lead run id is adopted rather than replaced.
-			leadLabel, _ := parseLeadLabel(filteredArgs)
-			defer enterKanbanMode(entry.Spec, leadLabel)()
+		case kanbanBranchLeader:
+			// See cc.go: the operator's leader run id is adopted rather than replaced.
+			leaderLabel, _ := parseLeaderLabel(filteredArgs)
+			defer enterKanbanMode(entry.Spec, leaderLabel)()
 			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
-			// See cc.go: glm mirrors the lead branch exactly.
-			var leadName string
-			filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
-			defer exportLeadSessionName(leadName)()
+			// See cc.go: glm mirrors the leader branch exactly.
+			var leaderName string
+			filteredArgs, leaderName = appendLeaderName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+			defer exportLeaderSessionName(leaderName)()
 			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)
@@ -423,7 +423,7 @@ func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 // removed with its dead caller enableTeamMode in #1531.)
 //
 // Delivery status MEASURED, direction reversed post-close (SPEC-V3R6-AUDIT-MODEL-PIN-001
-// acceptance.md AC-AMP-006 amendment, 2026-08-24, lead-approved; closes the
+// acceptance.md AC-AMP-006 amendment, 2026-08-24, leader-approved; closes the
 // AC-MTP-032b residual of SPEC-MODEL-TIER-PLANTYPE-001): the null-controlled
 // live differential proved the top-level `reasoning_effort` request field is
 // the effective delivery channel (ratios 1.34/1.85/1.48 against the 1.25 bound;

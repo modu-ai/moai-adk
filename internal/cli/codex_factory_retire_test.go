@@ -477,14 +477,14 @@ func TestFactoryLeadRefusesCodexLedRun(t *testing.T) {
 	}
 }
 
-// refuseCodexLedRun fails closed when the selected run's lead backend cannot
+// refuseCodexLeaderRun fails closed when the selected run's lead backend cannot
 // be read, rather than letting an unread run be joined as if it were claude-led.
 func TestRefuseCodexLedRunFailsClosedOnUnreadableRun(t *testing.T) {
 	root := codexLedRun(t, "rc", "claude")
-	if err := refuseCodexLedRun(root, "rc"); err != nil {
+	if err := refuseCodexLeaderRun(root, "rc"); err != nil {
 		t.Fatalf("claude-led run refused: %v", err)
 	}
-	err := refuseCodexLedRun(root, "no-such-run")
+	err := refuseCodexLeaderRun(root, "no-such-run")
 	if err == nil || !strings.Contains(err.Error(), "no-such-run") {
 		t.Fatalf("missing run = %v, want a read error naming the run", err)
 	}

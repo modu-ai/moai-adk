@@ -73,15 +73,15 @@ func TestLegacyFactoryLabelDetection(t *testing.T) {
 func TestNextFactoryWorkerNumberCountsCanonicalOnly(t *testing.T) {
 	t.Parallel()
 
-	reg := map[string]FactoryWorkerEntry{
+	reg := map[string]FactoryLaneEntry{
 		"lane-1":   {PID: 1},
 		"worker-4": {PID: 2}, // legacy — holds no number
 		"agent-2":  {PID: 3}, // legacy
 		"lane-9":   {PID: 4}, // dead — must not count
 	}
 	alive := func(pid int) bool { return pid != 4 }
-	if got := NextFactoryWorkerNumber(reg, alive); got != 2 {
-		t.Errorf("NextFactoryWorkerNumber = %d, want 2", got)
+	if got := NextFactoryLaneNumber(reg, alive); got != 2 {
+		t.Errorf("NextFactoryLaneNumber = %d, want 2", got)
 	}
 }
 
@@ -95,7 +95,7 @@ func TestClaimFactoryWorkerNameCanonicalOnly(t *testing.T) {
 
 	t.Run("canonical request claims its label", func(t *testing.T) {
 		t.Parallel()
-		got, err := ClaimFactoryWorkerName(t.TempDir(), "lane-2", 101, "testrun", alive)
+		got, err := ClaimFactoryLaneName(t.TempDir(), "lane-2", 101, "testrun", alive)
 		if err != nil || got != "lane-2" {
 			t.Fatalf("claim lane-2 = (%q, %v), want lane-2", got, err)
 		}
@@ -105,7 +105,7 @@ func TestClaimFactoryWorkerNameCanonicalOnly(t *testing.T) {
 		want := "lane-" + strings.TrimPrefix(strings.TrimPrefix(legacy, "worker-"), "agent-")
 		t.Run("legacy request "+legacy+" refused naming "+want, func(t *testing.T) {
 			t.Parallel()
-			_, err := ClaimFactoryWorkerName(t.TempDir(), legacy, 101, "testrun", alive)
+			_, err := ClaimFactoryLaneName(t.TempDir(), legacy, 101, "testrun", alive)
 			if err == nil || !strings.Contains(err.Error(), want) {
 				t.Fatalf("claim %s = %v, want an error naming %s", legacy, err, want)
 			}
@@ -117,12 +117,12 @@ func TestClaimFactoryWorkerNameCanonicalOnly(t *testing.T) {
 	t.Run("empty-run legacy row is ignored, not rewritten", func(t *testing.T) {
 		t.Parallel()
 		root := t.TempDir()
-		if err := SaveFactoryRegistry(FactoryRegistryPath(root), map[string]FactoryWorkerEntry{
+		if err := SaveFactoryRegistry(FactoryRegistryPath(root), map[string]FactoryLaneEntry{
 			"worker-3": {PID: 201},
 		}); err != nil {
 			t.Fatalf("seed: %v", err)
 		}
-		got, err := ClaimFactoryWorkerName(root, "lane-3", 203, "run7", alive)
+		got, err := ClaimFactoryLaneName(root, "lane-3", 203, "run7", alive)
 		if err != nil || got != "lane-3" {
 			t.Fatalf("claim lane-3 past empty-run legacy worker-3 = (%q, %v), want lane-3", got, err)
 		}
@@ -143,7 +143,7 @@ func TestFactoryFreeSlotsCountsCanonicalOnly(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
-	if err := SaveFactoryRegistry(FactoryRegistryPath(root), map[string]FactoryWorkerEntry{
+	if err := SaveFactoryRegistry(FactoryRegistryPath(root), map[string]FactoryLaneEntry{
 		"lane-2":   {PID: 1},
 		"worker-3": {PID: 2}, // legacy — no slot number
 	}); err != nil {

@@ -24,7 +24,7 @@ func TestFactoryLeadProviderLaunchLines(t *testing.T) {
 				clearKanbanEnv(t)
 				t.Setenv(config.EnvMoaiLaunchProvider, tc.provider)
 				t.Setenv(config.EnvMoaiKanbanBackend, tc.backend)
-				notice := factoryLeadNotice("provider-test", 2, "", lang)
+				notice := factoryLeaderNotice("provider-test", 2, "", lang)
 				var launch []string
 				for _, line := range strings.Split(notice, "\n") {
 					if strings.HasPrefix(line, "moai ") {

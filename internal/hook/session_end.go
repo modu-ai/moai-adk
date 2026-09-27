@@ -24,7 +24,7 @@ import (
 
 // teamConfig is the minimal structure read from ~/.claude/teams/*/config.json.
 type teamConfig struct {
-	LeadSessionID string `json:"leadSessionId"`
+	LeadSessionID string `json:"leaderSessionId"`
 }
 
 // sessionEndHandler processes SessionEnd events.
@@ -91,7 +91,7 @@ func (h *sessionEndHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 	// This is safe to call unconditionally:
 	//   - If not in tmux: early return (checks TMUX env var)
 	//   - If env vars don't exist: tmux command is a no-op
-	// This ensures the lead session returns to Claude after team completion.
+	// This ensures the team lead session returns to Claude after team completion.
 	clearTmuxSessionEnv(ctx)
 
 	// Clean up GLM env vars from settings.local.json.
@@ -363,7 +363,7 @@ func validateMxTags(ctx context.Context, filePaths []string, projectRoot string)
 	}
 }
 
-// cleanupCurrentSessionTeam removes the team directory whose leadSessionId
+// cleanupCurrentSessionTeam removes the team directory whose leaderSessionId
 // matches the given sessionID. Errors are logged and never returned.
 func cleanupCurrentSessionTeam(sessionID, homeDir string) {
 	teamsDir := filepath.Join(homeDir, ".claude", "teams")
@@ -521,7 +521,7 @@ func garbageCollectStaleTeams(homeDir string) {
 			continue
 		}
 
-		// The task list is part of the same team's activity: a lead that is
+		// The task list is part of the same team's activity: a team lead that is
 		// only writing tasks is still working.
 		taskNewest, err := newestActivity(taskDir)
 		switch {
@@ -749,7 +749,7 @@ var glmEnvVarsToClean = []string{
 }
 
 // clearTmuxSessionEnv removes GLM environment variables from tmux session.
-// Called when team mode completes to restore Claude models for the lead session.
+// Called when team mode completes to restore Claude models for the team lead session.
 // This ensures that after --team mode, the leader returns to using Claude models
 // instead of continuing to use GLM from the tmux session-level env vars.
 func clearTmuxSessionEnv(ctx context.Context) {

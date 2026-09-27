@@ -30,14 +30,14 @@ const langEnglish = "en"
 // kanbanMessages is the operator-facing prose of one locale.
 //
 // Fields carrying a %s or %d are format strings. No field carries a trailing
-// newline; leadManual carries one internal newline because it is two sentences
+// newline; leaderManual carries one internal newline because it is two sentences
 // the operator reads as separate lines, and backendRecommend carries them
 // because it is a header line, one indented row per role, and a trailer —
 // a block the operator scans as a table, not a wrapped sentence.
 type kanbanMessages struct {
-	leadHeader       string // run id
-	leadIdentity     string // lead label
-	leadManual       string
+	leaderHeader     string // run id
+	leaderIdentity   string // leader label
+	leaderManual     string
 	glmSubstitute    string
 	backendRecommend string // recommended backend per role; internal newlines
 	agentFanout      string
@@ -58,9 +58,9 @@ type kanbanMessages struct {
 // configuration, not for some population of unsupported locales.
 var kanbanLocales = map[string]kanbanMessages{
 	langEnglish: {
-		leadHeader:   "Kanban Mode: run %s, leader session.",
-		leadIdentity: "This session is named %s. It carries no run id: a second leader launched while this one is live takes the next free number instead, and peers address whichever name the session actually launched under. The session list shows that same name — the title is registered on your first prompt, and a later /rename still wins.",
-		leadManual: "This session drives the kanban chain.\n" +
+		leaderHeader:   "Kanban Mode: run %s, leader session.",
+		leaderIdentity: "This session is named %s. It carries no run id: a second leader launched while this one is live takes the next free number instead, and peers address whichever name the session actually launched under. The session list shows that same name — the title is registered on your first prompt, and a later /rename still wins.",
+		leaderManual: "This session drives the kanban chain.\n" +
 			"The three companions below are launched by hand, one per new terminal, " +
 			"because a session cannot launch another session.",
 		glmSubstitute: "Entry points: `moai cc -k` is the Claude-backend foreman, `moai glm -k` the GLM-backend " +
@@ -82,9 +82,9 @@ var kanbanLocales = map[string]kanbanMessages{
 		companionJoin:  "Kanban Mode: joined the kanban run as %s.",
 	},
 	"ko": {
-		leadHeader:   "칸반 모드: run %s, 리더 세션.",
-		leadIdentity: "이 세션의 이름은 %s 입니다. 이름에 run id 는 들어가지 않습니다 — 이 세션이 살아 있는 동안 리더를 하나 더 띄우면 그쪽이 다음 번호를 받고, 다른 세션은 실제로 띄워진 이름으로 이 세션을 부릅니다. 세션 목록에도 같은 이름이 뜹니다 — 제목은 첫 프롬프트에서 등록되고, 나중에 /rename 을 하면 그쪽이 우선합니다.",
-		leadManual: "이 세션이 칸반 체인을 주도합니다.\n" +
+		leaderHeader:   "칸반 모드: run %s, 리더 세션.",
+		leaderIdentity: "이 세션의 이름은 %s 입니다. 이름에 run id 는 들어가지 않습니다 — 이 세션이 살아 있는 동안 리더를 하나 더 띄우면 그쪽이 다음 번호를 받고, 다른 세션은 실제로 띄워진 이름으로 이 세션을 부릅니다. 세션 목록에도 같은 이름이 뜹니다 — 제목은 첫 프롬프트에서 등록되고, 나중에 /rename 을 하면 그쪽이 우선합니다.",
+		leaderManual: "이 세션이 칸반 체인을 주도합니다.\n" +
 			"아래 세 개의 동반 세션은 터미널을 하나씩 새로 열어 직접 실행하세요 — 세션은 다른 세션을 띄울 수 없습니다.",
 		glmSubstitute: "진입점: `moai cc -k` 는 Claude 백엔드 공장장, `moai glm -k` 는 GLM 백엔드 공장장 — 런처가 백엔드를, `-k` 가 칸반 역할을 정합니다. " +
 			"동반 세션을 GLM 백엔드로 돌리려면 'moai cc -k --name ...' 대신 'moai glm -k --name ...' 을 사용하세요.",
@@ -104,9 +104,9 @@ var kanbanLocales = map[string]kanbanMessages{
 		companionJoin:  "칸반 모드: 칸반 run 에 %s 로 합류했습니다.",
 	},
 	"ja": {
-		leadHeader:   "かんばんモード: run %s、リーダーセッション。",
-		leadIdentity: "このセッションの名前は %s です。名前に run id は含まれません — このセッションが生きている間にもう一つリーダーを起動すると、そちらが次の番号を取り、他のセッションは実際に起動した名前でこのセッションを呼びます。セッション一覧にも同じ名前が表示されます — タイトルは最初のプロンプトで登録され、後から /rename すればそちらが優先されます。",
-		leadManual: "このセッションがかんばんチェーンを進行します。\n" +
+		leaderHeader:   "かんばんモード: run %s、リーダーセッション。",
+		leaderIdentity: "このセッションの名前は %s です。名前に run id は含まれません — このセッションが生きている間にもう一つリーダーを起動すると、そちらが次の番号を取り、他のセッションは実際に起動した名前でこのセッションを呼びます。セッション一覧にも同じ名前が表示されます — タイトルは最初のプロンプトで登録され、後から /rename すればそちらが優先されます。",
+		leaderManual: "このセッションがかんばんチェーンを進行します。\n" +
 			"以下の 3 つの併走セッションは、ターミナルを 1 つずつ新規に開いて手動で起動してください — セッションが別のセッションを起動することはできません。",
 		glmSubstitute: "入口: `moai cc -k` は Claude バックエンドの親方、`moai glm -k` は GLM バックエンドの親方 — ランチャーがバックエンドを、`-k` がかんばんの役割を決めます。 " +
 			"併走セッションを GLM バックエンドで動かす場合は、'moai cc -k --name ...' の代わりに 'moai glm -k --name ...' を使用してください。",
@@ -126,9 +126,9 @@ var kanbanLocales = map[string]kanbanMessages{
 		companionJoin:  "かんばんモード: かんばん run に %s として参加しました。",
 	},
 	"zh": {
-		leadHeader:   "看板模式：run %s，主导会话。",
-		leadIdentity: "本会话的名称是 %s。名称中不含 run id —— 本会话存活期间再启动一个主导会话，后者会取下一个编号；其他会话按实际启动时的名称来称呼本会话。会话列表中也显示同一名称 —— 标题在首次提示时注册，之后 /rename 优先。",
-		leadManual: "本会话负责推进整条看板链路。\n" +
+		leaderHeader:   "看板模式：run %s，主导会话。",
+		leaderIdentity: "本会话的名称是 %s。名称中不含 run id —— 本会话存活期间再启动一个主导会话，后者会取下一个编号；其他会话按实际启动时的名称来称呼本会话。会话列表中也显示同一名称 —— 标题在首次提示时注册，之后 /rename 优先。",
+		leaderManual: "本会话负责推进整条看板链路。\n" +
 			"下面三个协同会话需要各自新开一个终端手动启动 —— 会话无法启动另一个会话。",
 		glmSubstitute: "入口：`moai cc -k` 是 Claude 后端的工头，`moai glm -k` 是 GLM 后端的工头 —— 启动器决定后端，`-k` 决定看板角色。 " +
 			"如需让某个协同会话运行在 GLM 后端，请将 'moai cc -k --name ...' 换成 'moai glm -k --name ...'。",

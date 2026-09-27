@@ -315,7 +315,7 @@ func TestHomeStateBarrierAdmissionHaltsAllHosts(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, ".moai", "state", "active-sessions.json")); !os.IsNotExist(err) {
 		t.Fatalf("blocked session wrote registry: %v", err)
 	}
-	if _, err := kanban.ClaimFactoryWorkerName(root, "lane-1", os.Getpid(), "testrun", func(int) bool { return true }); err == nil {
+	if _, err := kanban.ClaimFactoryLaneName(root, "lane-1", os.Getpid(), "testrun", func(int) bool { return true }); err == nil {
 		t.Fatal("factory worker admitted")
 	}
 	if err := runMCPServer(); err == nil {

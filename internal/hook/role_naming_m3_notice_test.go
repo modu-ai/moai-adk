@@ -68,9 +68,9 @@ func TestRoleNamingM3NoticesCarryLeaderLaneTerms(t *testing.T) {
 
 			notices := map[string]string{
 				// The three bootstrap notices (AC-RNC-012's named set).
-				"factory-leader": factoryLeadNotice("runX", 2, root, tableLang),
-				"factory-lane":   factoryWorkerNotice("lane-1", 3, tableLang),
-				"kanban-leader":  kanbanLeadNotice("runX", root, tableLang),
+				"factory-leader": factoryLeaderNotice("runX", 2, root, tableLang),
+				"factory-lane":   factoryLaneNotice("lane-1", 3, tableLang),
+				"kanban-leader":  kanbanLeaderNotice("runX", root, tableLang),
 				// The stale-run notice, both variants (plan.md §F M3).
 				"stale-factory": staleRunNotice("worker-2", tableLang),
 				"stale-kanban":  staleRunNotice("lead", tableLang),

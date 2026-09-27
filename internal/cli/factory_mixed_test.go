@@ -114,7 +114,7 @@ func TestFactoryRunSelectionAtomicSlotsAndArgv(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.RunID != "run-b" || !p.WorkerRole || len(p.Rest) != 4 || p.Rest[0] != "--" || p.Rest[1] != "--factory-run" || p.Rest[2] != "child" || p.Rest[3] != "x" {
+	if p.RunID != "run-b" || !p.LaneRole || len(p.Rest) != 4 || p.Rest[0] != "--" || p.Rest[1] != "--factory-run" || p.Rest[2] != "child" || p.Rest[3] != "x" {
 		t.Fatalf("parse=%+v", p)
 	}
 	s, err := factorymsg.Open(root, "run-b")

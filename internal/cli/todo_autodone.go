@@ -1,5 +1,5 @@
 // todo_autodone.go — `moai todo auto-done` (SPEC-TODO-LAND-AUTO-DONE-001):
-// the evidence-gated landing scan the LEAD runs immediately after its
+// the evidence-gated landing scan the LEADER runs immediately after its
 // post-push remote-landing confirmation (`git fetch origin develop` +
 // `git rev-parse origin/develop`).
 //

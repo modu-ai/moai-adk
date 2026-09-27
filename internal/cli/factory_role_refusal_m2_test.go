@@ -220,7 +220,7 @@ func TestRunCCRefusesLegacySpellingsNothingWritten(t *testing.T) {
 			clearFactoryTestEnv(t)
 			cap := installFactoryLaunchSeam(t)
 
-			leadsPath := leadRegistryPath(root)
+			leadsPath := leaderRegistryPath(root)
 			_ = os.MkdirAll(filepath.Dir(leadsPath), 0o755)
 			before, _ := os.ReadFile(leadsPath)
 
@@ -261,7 +261,7 @@ func TestRunCCRefusesLegacyLeaderNameLeadsJSONSeeded(t *testing.T) {
 	clearFactoryTestEnv(t)
 	cap := installFactoryLaunchSeam(t)
 
-	leadsPath := leadRegistryPath(root)
+	leadsPath := leaderRegistryPath(root)
 	seed := []byte(`{"lead":{"pid":1,"registered_at":"2026-09-01T00:00:00Z"}}`)
 	if err := os.MkdirAll(filepath.Dir(leadsPath), 0o755); err != nil {
 		t.Fatal(err)

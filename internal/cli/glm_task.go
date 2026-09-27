@@ -160,9 +160,9 @@ func handleGLMTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 	if model == "" {
 		model = resolveGLMTaskModel() // SSOT, keyed on glmTaskAgentKey
 	} else if os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
-		// Factory-mode guard (t85 lead loop): this server process was spawned
+		// Factory-mode guard (t85 leader loop): this server process was spawned
 		// from a factory session and inherited MOAI_FACTORY_WORKERS, so the
-		// caller is a factory lead or worker. Factory dispatches carry NO
+		// caller is a factory leader or lane. Factory dispatches carry NO
 		// model override — the GLM tier mapping rides the
 		// ANTHROPIC_DEFAULT_*_MODEL slot env the launcher established, and a
 		// per-call override splits the session's caches and can bypass the

@@ -187,19 +187,19 @@ const (
 	EnvMoaiKanbanSpec = "MOAI_KANBAN_SPEC"
 
 	// EnvMoaiKanbanID carries the run identifier that distinguishes one kanban
-	// run from another on the same machine. The lead session generates it once at
+	// run from another on the same machine. The leader session generates it once at
 	// launch; the SessionStart hook reads it to name itself and the leader
-	// socket. It is lead-owned state: a companion neither carries nor publishes
+	// socket. It is leader-owned state: a companion neither carries nor publishes
 	// it (companion names are bare roles, so no companion surface holds a run id
-	// that could disagree with the lead's).
+	// that could disagree with the leader's).
 	EnvMoaiKanbanID = "MOAI_KANBAN_ID"
 
 	// EnvMoaiKanbanLabel marks a session as a COMPANION of a kanban run, and
 	// carries its label — the bare role name, or the bumped `<role>-<n>` form a
 	// collision produces. It is deliberately distinct from
 	// EnvMoaiKanban: a companion needs the raised Stop-hook block cap (it arms
-	// its own goal mid-session, exactly like the lead) but must NOT be seeded
-	// with the plan -> run -> verify -> sync chain, which only the lead drives.
+	// its own goal mid-session, exactly like the leader) but must NOT be seeded
+	// with the plan -> run -> verify -> sync chain, which only the leader drives.
 	// Setting EnvMoaiKanban on a companion would give every session the whole
 	// chain to drive.
 	EnvMoaiKanbanLabel = "MOAI_KANBAN_LABEL"
@@ -217,8 +217,11 @@ const (
 
 	// EnvMoaiKanbanLeadAddr carries the leader socket path — the address on
 	// the cross-session messaging substrate that companions send messages to.
-	// Set by the launcher when enterKanbanMode classifies a lead, read by the
-	// SessionStart hook to surface the address in the lead notice.
+	// Set by the launcher when enterKanbanMode classifies a leader, read by the
+	// SessionStart hook to surface the address in the leader notice.
+	//
+	// Name kept under REQ-RNC-011 (this SPEC); the value it carries follows the
+	// leader/lane vocabulary.
 	EnvMoaiKanbanLeadAddr = "MOAI_KANBAN_LEAD_ADDR"
 
 	// EnvMoaiKanbanBackend names the backend the launcher opened the session
@@ -241,7 +244,7 @@ const (
 	// EnvMoaiKanbanCard names the queue card the session is working, and is
 	// the EXPLICIT OVERRIDE of the card identifier a session otherwise derives
 	// from its own worktree root. It is read by the session, not required of
-	// the launcher: an operator or a lead that knows the card exports it into
+	// the launcher: an operator or a leader that knows the card exports it into
 	// the launch environment, and the launcher passes the environment through
 	// unchanged.
 	//
@@ -249,41 +252,50 @@ const (
 	// derivable value (REQ-KRS-005).
 	EnvMoaiKanbanCard = "MOAI_KANBAN_CARD"
 
-	// EnvMoaiKanbanLeadName carries the lead session's RESOLVED name — the value
+	// EnvMoaiKanbanLeadName carries the leader session's RESOLVED name — the value
 	// that actually reached the backend argv as `--name`, which is the operator's
 	// own name when they supplied one and the bare-or-bumped role otherwise.
 	//
 	// It exists because a session name and a session TITLE are two different
 	// registrations in Claude Code. `--name` registers the messaging address, and
-	// peers address the lead correctly by it; the title shown in the session list
-	// is a separate record, and a lead that never set one is given a generated
-	// title instead — which is how a lead came to be listed under an unrelated
+	// peers address the leader correctly by it; the title shown in the session list
+	// is a separate record, and a leader that never set one is given a generated
+	// title instead — which is how a leader came to be listed under an unrelated
 	// SPEC heading while messaging worked perfectly (issue #1596). The launcher is
 	// the only place that knows the resolved name, and the UserPromptSubmit hook
 	// is the only place that can register a title, so the value travels between
 	// them through the environment the child session already inherits.
 	//
-	// It is set on the LEAD only. A companion's title is not registered from here.
+	// It is set on the LEADER only. A companion's title is not registered from here.
+	//
+	// Name kept under REQ-RNC-011 (this SPEC); the value it carries follows the
+	// leader/lane vocabulary.
 	EnvMoaiKanbanLeadName = "MOAI_KANBAN_LEAD_NAME"
 
 	// EnvMoaiFactoryWorkers carries the Factory Mode signal and the run's
-	// worker count from the launcher entry point to the block-cap inject and
-	// the SessionStart hook. It is set on BOTH the factory lead and every
-	// worker — the count travels in the worker's own `-f <N>` token, which is
-	// why the worker launch command carries it. A non-empty value is what
+	// lane count from the launcher entry point to the block-cap inject and
+	// the SessionStart hook. It is set on BOTH the factory leader and every
+	// lane — the count travels in the lane's own `-f <N>` token, which is
+	// why the lane launch command carries it. A non-empty value is what
 	// marks a session a factory session; the value is the fan-out size N.
 	//
 	// A factory run reuses EnvMoaiKanbanID and EnvMoaiKanbanLeadAddr on the
-	// lead (run id, leader socket) and deliberately does NOT set
+	// leader (run id, leader socket) and deliberately does NOT set
 	// EnvMoaiKanban or EnvMoaiKanbanLabel: those seed the four-role kanban
 	// chain, which a factory run never drives.
+	//
+	// Name kept under REQ-RNC-011 (this SPEC); the value it carries follows the
+	// leader/lane vocabulary.
 	EnvMoaiFactoryWorkers = "MOAI_FACTORY_WORKERS"
 
-	// EnvMoaiFactoryWorker marks a session as a WORKER of a factory run and
+	// EnvMoaiFactoryWorker marks a session as a LANE of a factory run and
 	// carries its `lane-<n>` label. It is the factory counterpart of
 	// EnvMoaiKanbanLabel: the lane needs the raised Stop-hook block cap
 	// (it fields long dispatch-driven turns) but must not be seeded with any
-	// chain, and the lead is signalled by EnvMoaiFactoryWorkers instead.
+	// chain, and the leader is signalled by EnvMoaiFactoryWorkers instead.
+	//
+	// Name kept under REQ-RNC-011 (this SPEC); the value it carries follows the
+	// leader/lane vocabulary.
 	EnvMoaiFactoryWorker = "MOAI_FACTORY_WORKER"
 
 	// EnvMoaiSessionPID carries an explicit override for the PID recorded in
@@ -316,7 +328,7 @@ const (
 	// the non-interactive sign path (`--signer llm` /
 	// `--signer llm+jev`) and `moai contract decide` in a session whose
 	// value equals FactoryRoleLane, and allows them otherwise (REQ-AP-011):
-	// the allow direction is the lead session's own decide path when the
+	// the allow direction is the leader session's own decide path when the
 	// decider is llm or llm+jev. A session that sets no such variable makes
 	// no role claim. Until card t1240 stamps the variable into lane launch
 	// environments, the role gate denies nothing in production — the
@@ -572,7 +584,7 @@ const (
 	// EnvClaudeCodeMaxConcurrentSubagents is the runtime per-session cap on
 	// concurrently running subagents (default 20 per turn). t118 (v3.1.1
 	// launcher axis): the launcher seeds it on every kanban companion and
-	// factory worker lane so one lane's fan-out cannot crowd out the others —
+	// factory lane so one lane's fan-out cannot crowd out the others —
 	// the operator-confirmed architecture is DefaultLaneMaxConcurrentSubagents
 	// (10) agents in parallel per lane. MoAI does not own this env (it is a
 	// Claude Code runtime env); the const centralizes the name per

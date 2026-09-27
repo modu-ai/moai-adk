@@ -4,8 +4,8 @@
 //
 // Through v1 the registry lived as package-private symbols in
 // internal/cli/factory.go, which was fine while the launcher was its only
-// reader. The lead loop needs the same read — which lane slots are FREE
-// right now — from the SessionStart hook that renders the lead notice, and
+// reader. The leader loop needs the same read — which lane slots are FREE
+// right now — from the SessionStart hook that renders the leader notice, and
 // internal/hook cannot import internal/cli (the cli package imports hook for
 // the `moai hook` subcommand), so the cluster moved to this package: the one
 // that already owns the worker-label vocabulary (FactoryLaneLabel) and the
@@ -31,11 +31,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
-// FactoryWorkerEntry is one registered lane: the pid of the process that
+// FactoryLaneEntry is one registered lane: the pid of the process that
 // claimed the label. Because the launcher exec's into the backend without
 // forking, the recorded pid IS the session's pid for the process's whole
 // lifetime, which is what makes kill -0 a valid liveness probe for it.
-type FactoryWorkerEntry struct {
+type FactoryLaneEntry struct {
 	PID          int    `json:"pid"`
 	RegisteredAt string `json:"registered_at"`
 }
@@ -54,9 +54,9 @@ func FactoryRegistryPath(root string) string {
 // LoadFactoryRegistry reads the lane registry, returning an empty map on
 // any failure (missing file, unwritable dir, malformed JSON) — fail-open, so
 // an unreadable registry reads as "every slot free" rather than blocking the
-// lead loop's slot pick.
-func LoadFactoryRegistry(path string) map[string]FactoryWorkerEntry {
-	reg := make(map[string]FactoryWorkerEntry)
+// leader loop's slot pick.
+func LoadFactoryRegistry(path string) map[string]FactoryLaneEntry {
+	reg := make(map[string]FactoryLaneEntry)
 	db, err := homestate.OpenFactoryPath(path)
 	if err != nil {
 		return reg
@@ -72,7 +72,7 @@ func LoadFactoryRegistry(path string) map[string]FactoryWorkerEntry {
 	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var label string
-		var entry FactoryWorkerEntry
+		var entry FactoryLaneEntry
 		if err := rows.Scan(&label, &entry.PID, &entry.RegisteredAt); err == nil {
 			reg[label] = entry
 		}
@@ -82,7 +82,7 @@ func LoadFactoryRegistry(path string) map[string]FactoryWorkerEntry {
 
 // SaveFactoryRegistry writes the lane registry, creating its directory as
 // needed. Best-effort: the error is returned for the caller to ignore.
-func SaveFactoryRegistry(path string, reg map[string]FactoryWorkerEntry) error {
+func SaveFactoryRegistry(path string, reg map[string]FactoryLaneEntry) error {
 	db, err := homestate.OpenFactoryPath(path)
 	if err != nil {
 		return err
@@ -108,10 +108,10 @@ func SaveFactoryRegistry(path string, reg map[string]FactoryWorkerEntry) error {
 	return tx.Commit()
 }
 
-// ClaimFactoryWorkerName is ClaimFactoryWorker for an operator-typed number,
+// ClaimFactoryLaneName is ClaimFactoryLane for an operator-typed number,
 // returning only the recorded label.
-func ClaimFactoryWorkerName(root, requested string, pid int, runID string, alive func(int) bool) (string, error) {
-	claim, err := ClaimFactoryWorker(root, requested, false, pid, runID, alive)
+func ClaimFactoryLaneName(root, requested string, pid int, runID string, alive func(int) bool) (string, error) {
+	claim, err := ClaimFactoryLane(root, requested, false, pid, runID, alive)
 	return claim.Label, err
 }
 
@@ -135,7 +135,7 @@ func (e *FactoryLegacyRunError) Error() string {
 		"end its sessions, retire with 'moai factory runs --retire " + e.RunID + "', then relaunch"
 }
 
-// ClaimFactoryWorker atomically removes dead claims, selects a lane number,
+// ClaimFactoryLane atomically removes dead claims, selects a lane number,
 // and records pid under the canonical `lane-<n>` label, stamped with the
 // joining run's id (runID — the membership datum the same-run refusal reads
 // back). The selection and insert share one IMMEDIATE SQLite transaction, so
@@ -150,7 +150,7 @@ func (e *FactoryLegacyRunError) Error() string {
 // whose run_id is empty (a legacy import) belongs to no run: it is neither
 // refused nor counted as a lane, and it is never rewritten. Dead claims of
 // any shape are pruned as stale.
-func ClaimFactoryWorker(root, requested string, auto bool, pid int, runID string, alive func(int) bool) (FactoryClaim, error) {
+func ClaimFactoryLane(root, requested string, auto bool, pid int, runID string, alive func(int) bool) (FactoryClaim, error) {
 	claim := FactoryClaim{Label: requested}
 	admissionLock, lockErr := homestate.AcquireAdmissionLock(root)
 	if lockErr != nil {
@@ -257,8 +257,8 @@ func ClaimFactoryWorker(root, requested string, auto bool, pid int, runID string
 // accumulate — a crashed or exited lane leaves a dead pid behind, and a
 // dead claim frees the name so a relaunch reuses it instead of counting up
 // forever. Mutates reg in place, matching the original inline loop in
-// resolveFactoryWorkerName.
-func PruneFactoryDeadClaims(reg map[string]FactoryWorkerEntry, alive func(int) bool) map[string]FactoryWorkerEntry {
+// resolveFactoryLaneName.
+func PruneFactoryDeadClaims(reg map[string]FactoryLaneEntry, alive func(int) bool) map[string]FactoryLaneEntry {
 	for l, e := range reg {
 		if e.PID <= 0 || !alive(e.PID) {
 			delete(reg, l)
@@ -267,13 +267,13 @@ func PruneFactoryDeadClaims(reg map[string]FactoryWorkerEntry, alive func(int) b
 	return reg
 }
 
-// FactoryFreeSlots returns the FREE slot numbers among 1..workers under root
-// — the lead loop's picker input. A slot is free when its number
+// FactoryFreeSlots returns the FREE slot numbers among 1..lanes under root
+// — the leader loop's picker input. A slot is free when its number
 // has no live claim: absent from the registry, mapped to a non-positive pid,
 // or mapped to a pid the probe reports dead (dead claims are pruned on the
 // way through, same rule as the bump path). Fail-open on registry errors via
 // LoadFactoryRegistry, so an unreadable registry reads as all-free.
-func FactoryFreeSlots(root string, workers int, alive func(int) bool) []int {
+func FactoryFreeSlots(root string, lanes int, alive func(int) bool) []int {
 	reg := PruneFactoryDeadClaims(LoadFactoryRegistry(FactoryRegistryPath(root)), alive)
 	// Pruning leaves only live claims; a live canonical `lane-<n>` claim
 	// occupies its number. Legacy shapes hold no number (a live legacy record
@@ -284,8 +284,8 @@ func FactoryFreeSlots(root string, workers int, alive func(int) bool) []int {
 			taken[n] = true
 		}
 	}
-	free := make([]int, 0, workers)
-	for i := 1; i <= workers; i++ {
+	free := make([]int, 0, lanes)
+	for i := 1; i <= lanes; i++ {
 		if !taken[i] {
 			free = append(free, i)
 		}
@@ -293,10 +293,10 @@ func FactoryFreeSlots(root string, workers int, alive func(int) bool) []int {
 	return free
 }
 
-// NewFactoryWorkerEntry stamps a claim for the current process — the register
+// NewFactoryLaneEntry stamps a claim for the current process — the register
 // step the launcher's name resolver performs before a lane session starts.
-func NewFactoryWorkerEntry() FactoryWorkerEntry {
-	return FactoryWorkerEntry{
+func NewFactoryLaneEntry() FactoryLaneEntry {
+	return FactoryLaneEntry{
 		PID:          os.Getpid(),
 		RegisteredAt: time.Now().UTC().Format(time.RFC3339),
 	}

@@ -58,6 +58,9 @@ func checkFactoryRun(cwd string, verbose bool) DiagnosticCheck {
 		case "leader":
 			leader = &records[i]
 		case "lead":
+			// Legacy value, detection only: a pre-rename leader record is
+			// reported as "legacy run: relaunch required", never as a present
+			// leader (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009/-013).
 			legacy = &records[i]
 		case "lane":
 			laneCount++

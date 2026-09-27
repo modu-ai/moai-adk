@@ -136,7 +136,7 @@ func kanbanRoleFromEnv() (role string, lane int, ok bool) {
 		return kanban.RoleLane, n, true
 	}
 	if os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
-		return kanban.RoleLead, 0, true
+		return kanban.RoleLeader, 0, true
 	}
 	if label := os.Getenv(config.EnvMoaiKanbanLabel); label != "" {
 		companion, _, parsed := kanban.SplitCompanionLabel(label)
@@ -146,7 +146,7 @@ func kanbanRoleFromEnv() (role string, lane int, ok bool) {
 		return companion, 0, true
 	}
 	if os.Getenv(config.EnvMoaiKanban) != "" {
-		return kanban.RoleLead, 0, true
+		return kanban.RoleLeader, 0, true
 	}
 	return "", 0, false
 }

@@ -25,9 +25,9 @@ func configWithLang(lang string) ConfigProvider {
 func TestKanbanLocalesCoverEveryField(t *testing.T) {
 	for lang, m := range kanbanLocales {
 		fields := map[string]string{
-			"leadHeader":       m.leadHeader,
-			"leadIdentity":     m.leadIdentity,
-			"leadManual":       m.leadManual,
+			"leaderHeader":     m.leaderHeader,
+			"leaderIdentity":   m.leaderIdentity,
+			"leaderManual":     m.leaderManual,
 			"glmSubstitute":    m.glmSubstitute,
 			"backendRecommend": m.backendRecommend,
 			"agentFanout":      m.agentFanout,
@@ -48,11 +48,11 @@ func TestKanbanLocalesCoverEveryField(t *testing.T) {
 		// lead label, and the socket path silently vanish from that locale's
 		// notice.
 		for name, value := range map[string]string{
-			"leadHeader":    m.leadHeader,
-			"leadIdentity":  m.leadIdentity,
-			"leaderSocket":  m.leaderSocket,
-			"specLine":      m.specLine,
-			"companionJoin": m.companionJoin,
+			"leaderHeader":   m.leaderHeader,
+			"leaderIdentity": m.leaderIdentity,
+			"leaderSocket":   m.leaderSocket,
+			"specLine":       m.specLine,
+			"companionJoin":  m.companionJoin,
 		} {
 			if !strings.Contains(value, "%s") {
 				t.Errorf("locale %q: field %s lost its %%s verb: %q", lang, name, value)
@@ -278,7 +278,7 @@ func TestKanbanRecommendationTableMatchesLaunchLines(t *testing.T) {
 			t.Setenv(config.EnvMoaiKanban, "1")
 			t.Setenv(config.EnvMoaiKanbanID, "tjrec")
 
-			got := kanbanLeadNotice("tjrec", "", lang)
+			got := kanbanLeaderNotice("tjrec", "", lang)
 			for _, role := range kanban.CompanionRoles {
 				line := "moai " + kanban.CompanionLauncher(role) + " -k --name " + role
 				if !strings.Contains(got, line) {

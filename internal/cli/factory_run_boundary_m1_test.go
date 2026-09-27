@@ -91,20 +91,20 @@ func TestEnterSelectedFactoryRunLiveLegacyLeaderPeerRefuses(t *testing.T) {
 
 // REQ-RNC-025 first clause: a live `lead` entry in leads.json produces one
 // notice naming it and the relaunch step, and the launch proceeds under
-// `leader` — resolveLeadName never blocks.
+// `leader` — resolveLeaderName never blocks.
 func TestResolveLeadNameNoticesLegacyLeadEntry(t *testing.T) {
 	root := t.TempDir()
-	path := leadRegistryPath(root)
+	path := leaderRegistryPath(root)
 	reg := loadFactoryRegistry(path)
-	reg["lead"] = factoryWorkerEntry{PID: os.Getpid(), RegisteredAt: "2026-09-01T00:00:00Z"}
+	reg["lead"] = factoryLaneEntry{PID: os.Getpid(), RegisteredAt: "2026-09-01T00:00:00Z"}
 	if err := saveFactoryRegistry(path, reg); err != nil {
 		t.Fatal(err)
 	}
 
 	var notes bytes.Buffer
-	got := resolveLeadName(root, kanban.LeadLabel(), &notes)
+	got := resolveLeaderName(root, kanban.LeaderLabel(), &notes)
 	if got != "leader" {
-		t.Fatalf("resolveLeadName = %q, want leader (legacy entry never blocks)", got)
+		t.Fatalf("resolveLeaderName = %q, want leader (legacy entry never blocks)", got)
 	}
 	out := notes.String()
 	if !strings.Contains(out, `"lead"`) && !strings.Contains(out, "lead") {
@@ -128,7 +128,7 @@ func TestResolveLeadNameNoticesLegacyLeadEntry(t *testing.T) {
 func TestFactoryCardOwnerWriterUsesLeaderConstant(t *testing.T) {
 	// recordFactoryCardState falls back to the leader role constant when the
 	// session carries no lane label (REQ-RNC-010: factory card owner).
-	if kanban.RoleLead != "leader" {
-		t.Fatalf("kanban.RoleLead = %q, want leader", kanban.RoleLead)
+	if kanban.RoleLeader != "leader" {
+		t.Fatalf("kanban.RoleLeader = %q, want leader", kanban.RoleLeader)
 	}
 }

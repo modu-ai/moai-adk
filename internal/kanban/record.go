@@ -141,14 +141,14 @@ func NewRecord(sessionID, specID, backend string) *Record {
 // WithRole returns rec with the chain role attached. A role outside the known
 // set is discarded rather than stored, so a consumer never has to defend
 // against an arbitrary string arriving from a launch label. The known set is
-// the kanban roles (lead + the three companions) plus RoleLane, which a
+// the kanban roles (leader + the three companions) plus RoleLane, which a
 // factory run's numbered lanes record (SPEC-FACTORY-WORKER-FANOUT-001).
 func (r *Record) WithRole(role string) *Record {
 	if r == nil {
 		return nil
 	}
 	role = strings.ToLower(strings.TrimSpace(role))
-	if role == RoleLead || role == RoleLane || isCompanionRole(role) {
+	if role == RoleLeader || role == RoleLane || isCompanionRole(role) {
 		r.Role = role
 	}
 	return r

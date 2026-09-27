@@ -14,7 +14,7 @@ package cli
 //     acceptable, measuring one quietly is not.
 //
 //   - `moai integration preflight [path]` runs it alone, so a human can ask
-//     the question outside a window and a lead can put the answer in a report.
+//     the question outside a window and a leader can put the answer in a report.
 //
 // Neither surface can be dropped. Without the acquire precondition, running
 // the check is a social protocol — the exact gap card t181 named when it wrote

@@ -26,7 +26,7 @@ func newStaleRunRoot(t *testing.T) string {
 	return root
 }
 
-func TestStaleRunNoticeLegacyLeadLabel(t *testing.T) { // AC-RNC-025 (a) + debt P4
+func TestStaleRunNoticeLegacyLeaderSpelling(t *testing.T) { // AC-RNC-025 (a) + debt P4
 	root := newStaleRunRoot(t)
 	t.Setenv(config.EnvMoaiKanban, "1")
 	t.Setenv(config.EnvMoaiKanbanLeadName, "lead")

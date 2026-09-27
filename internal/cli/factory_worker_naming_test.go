@@ -33,8 +33,8 @@ func TestParseFactoryFlagLaneVocabulary(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parseFactoryFlag(%v): %v", c.args, err)
 		}
-		if !p.Enabled || p.WorkerRole != c.wantRole ||
-			p.WorkerNumber != c.wantNum || p.WorkerLabel != c.wantLabel {
+		if !p.Enabled || p.LaneRole != c.wantRole ||
+			p.LaneNumber != c.wantNum || p.LaneLabel != c.wantLabel {
 			t.Errorf("parseFactoryFlag(%v) = %+v, want role=%v num=%d label=%q",
 				c.args, p, c.wantRole, c.wantNum, c.wantLabel)
 		}
@@ -97,7 +97,7 @@ func TestResolveFactoryWorkerNameRefusesLegacyLabel(t *testing.T) {
 	}
 	for _, c := range cases {
 		var notes bytes.Buffer
-		if got, err := resolveFactoryWorkerName(t.TempDir(), c.label, false, &notes); err == nil {
+		if got, err := resolveFactoryLaneName(t.TempDir(), c.label, false, &notes); err == nil {
 			t.Fatalf("resolve %s = %q, want an error naming %s", c.label, got, c.want)
 		} else if !strings.Contains(err.Error(), c.want) {
 			t.Errorf("resolve %s error %q lacks the canonical form %s", c.label, err.Error(), c.want)
@@ -105,14 +105,14 @@ func TestResolveFactoryWorkerNameRefusesLegacyLabel(t *testing.T) {
 	}
 
 	var notes bytes.Buffer
-	if got, err := resolveFactoryWorkerName(t.TempDir(), "lane-1", false, &notes); err != nil || got != "lane-1" || notes.Len() != 0 {
+	if got, err := resolveFactoryLaneName(t.TempDir(), "lane-1", false, &notes); err != nil || got != "lane-1" || notes.Len() != 0 {
 		t.Errorf("canonical free label = (%q, %v, notes %q), want lane-1 with no note", got, err, notes.String())
 	}
 }
 
-// NextFactoryWorkerNumberForTest delegates to the kanban SSOT.
-func NextFactoryWorkerNumberForTest(reg map[string]kanban.FactoryWorkerEntry, alive func(int) bool) int {
-	return kanban.NextFactoryWorkerNumber(reg, alive)
+// NextFactoryLaneNumberForTest delegates to the kanban SSOT.
+func NextFactoryLaneNumberForTest(reg map[string]kanban.FactoryLaneEntry, alive func(int) bool) int {
+	return kanban.NextFactoryLaneNumber(reg, alive)
 }
 
 // TestNextFactoryWorkerNumber: the lane join takes one past the highest LIVE
@@ -120,19 +120,19 @@ func NextFactoryWorkerNumberForTest(reg map[string]kanban.FactoryWorkerEntry, al
 // refuses the join instead (design §4).
 func TestNextFactoryWorkerNumber(t *testing.T) {
 	alive := func(int) bool { return true }
-	if n := NextFactoryWorkerNumberForTest(map[string]kanban.FactoryWorkerEntry{}, alive); n != 1 {
+	if n := NextFactoryLaneNumberForTest(map[string]kanban.FactoryLaneEntry{}, alive); n != 1 {
 		t.Errorf("empty registry = %d, want 1", n)
 	}
-	reg := map[string]kanban.FactoryWorkerEntry{
+	reg := map[string]kanban.FactoryLaneEntry{
 		"lane-1":   {PID: 100},
 		"agent-2":  {PID: 101}, // legacy row — holds no number
 		"worker-5": {PID: 102}, // legacy row — holds no number
 	}
-	if n := NextFactoryWorkerNumberForTest(reg, alive); n != 2 {
+	if n := NextFactoryLaneNumberForTest(reg, alive); n != 2 {
 		t.Errorf("registry up to lane-1 = %d, want 2", n)
 	}
 	dead := func(int) bool { return false }
-	if n := NextFactoryWorkerNumberForTest(reg, dead); n != 1 {
+	if n := NextFactoryLaneNumberForTest(reg, dead); n != 1 {
 		t.Errorf("dead claims pruned = %d, want 1", n)
 	}
 }

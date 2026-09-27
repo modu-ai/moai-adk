@@ -69,7 +69,7 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 	} else if os.Getenv(config.EnvMoaiFactoryWorkers) == "" {
 		return ""
 	}
-	role, slot := kanban.RoleLead, kanban.RoleLead
+	role, slot := kanban.RoleLeader, kanban.RoleLeader
 	if label != "" {
 		role, slot = kanban.RoleLane, label
 	}
