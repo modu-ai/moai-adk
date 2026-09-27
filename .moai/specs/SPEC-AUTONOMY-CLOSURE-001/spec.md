@@ -2,7 +2,7 @@
 id: SPEC-AUTONOMY-CLOSURE-001
 title: "Contract-based autonomy A4 — closure report, second-review record, human verdict, and stop before push (moai contract report)"
 version: "0.3.2"
-status: draft
+status: in-progress
 created: 2026-09-26
 updated: 2026-09-27
 author: manager-spec

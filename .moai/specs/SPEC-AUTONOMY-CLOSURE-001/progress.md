@@ -21,7 +21,30 @@ a2_baseline: "8c9ee29b7"
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### Pre-flight (plan.md §C — run 2026-09-27, worktree `.claude/worktrees/t1237`, HEAD `7d5159a54`)
+
+| # | Check | Command | Observed result |
+|---|---|---|---|
+| C1 | A1 landed + absorbed | `git merge-base --is-ancestor b1a62fb2b HEAD` | exit 0 |
+| C1 | A2 landed + absorbed | `git merge-base --is-ancestor 19daa9dcf HEAD` | exit 0 |
+| C2 | A1 verify core present | `go doc ./internal/contract Verify` | `func Verify(in Inputs) Report` — pure, never errors |
+| C2 | A1 loader present | `go doc ./internal/contract LoadDir` | `func LoadDir(specDir string) (Inputs, error)` |
+| C3 | A2 record reader (R2) | `go doc ./internal/escalation` | `ParseRecord(data []byte) (Record, error)` (`internal/escalation/record.go:118`); `ReadCardState(path)`; `NeedsDecision(worktreeRoot, card)`; `RecordDir(worktreeRoot, card)` = `.moai/reports/<card>/escalation` |
+| C3 | A2 class-4 comparison (R2) | `go doc ./internal/escalation NewAPIAdditions` | `doc: no symbol NewAPIAdditions` — `newAPIAdditions` (`newapi.go:150`) is UNEXPORTED → per R2: the production New APIs live comparison renders `not observed` + `not_performed: new-api-comparison-unavailable`; AC-CLOSURE-007 is covered through the injected comparison seam. Follow-up card owed: export a read-only comparison from A2. A2 logic is NOT copied. |
+| C4 | A1 design delta (R1) | `diff` of `.moai/specs/SPEC-AUTONOMY-CONTRACT-001/design.md` at HEAD tree (v0.5.2) vs pin `65e0a9167` (v0.5.1) | wording only (provenance comment, A2→A2b attributions, interim-rule phrasing) — no field, code, or rule A4 consumes changed; receipt field set (v0.5.1) unchanged |
+| C5 | Hook anchor re-measured | `grep -n 'checkBashCommand(input.ToolInput)' internal/hook/pre_tool.go` | `:426` (escalationOptions.denylisted closure) and `:525` (main path; `@MX:ANCHOR` at `:523-524` forbids a conditional return above it). design.md §F cited `:507` — the line drifted with the develop absorption; anchor semantics unchanged. Branch guard `:552`, integration lock `:570`, slot lease `:587`, push serializer `:611`, contract-sign guard `:634`; A4's two checks go after the contract-sign guard, before the Write/Edit block (`:645`). |
+
+Baseline-attribution: all five rows measured in this run, in this tree, at HEAD `7d5159a54`.
+
+### §31 autonomous decisions (card t1237 run phase)
+
+| Decision | Choice | Rationale |
+|---|---|---|
+| R2 disposition | New APIs live comparison renders `not observed` + `new-api-comparison-unavailable` in production; the AC seam carries the test path | A2's `newAPIAdditions` is unexported; copying A2 logic is the plan.md §G anti-pattern. Follow-up card: export the read-only comparison from `internal/escalation`. |
+| AC-CLOSURE-007 seam shape | section builder takes an injected `NewAPICompareFunc` returning `([]escalation.Addition, error)`; nil/unavailable → `not observed` | keeps AC-CLOSURE-007 testable both ways (two additions / error) without re-implementing A2 |
+| Verdict TTY seam | reuse A1's `contractStdinIsTerminalFn` / `newContractLineReader` / `contractAgentMarkers()` seams | same refusal semantics as `sign` (design.md §E); no new marker set |
+
+Milestone evidence follows as each milestone lands.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
