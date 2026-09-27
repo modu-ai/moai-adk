@@ -82,9 +82,12 @@ type Discard struct {
 }
 
 // additionalContextEvents are the events with a working additionalContext
-// channel. Only UserPromptSubmit was measured delivering it.
+// channel. UserPromptSubmit and SessionStart both measured delivering it
+// (codex-cli 0.157.0, 2026-09-28 LIVE gate (b), controlled two-arm probe —
+// card t1273).
 var additionalContextEvents = map[hook.EventType]bool{
 	hook.EventUserPromptSubmit: true,
+	hook.EventSessionStart:     true,
 }
 
 // MapOutput rewrites a MoAI hook's output for Codex.

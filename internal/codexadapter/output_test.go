@@ -137,6 +137,40 @@ func TestSystemMessageDiscardedWhereNoChannel(t *testing.T) {
 	}
 }
 
+// TestMapOutput_SessionStartAdditionalContext — AC-HN-008 (card t1273,
+// SPEC-HANDOFF-NEUTRAL-001 M1.5 P1).
+//
+// The LIVE gate (b) measurement (codex-cli 0.157.0, 2026-09-28, isolated
+// CODEX_HOME, controlled two-arm probe) observed SessionStart delivering
+// additionalContext to the model context, so a SessionStart systemMessage maps
+// to hookSpecificOutput instead of recording a Discard.
+func TestMapOutput_SessionStartAdditionalContext(t *testing.T) {
+	t.Parallel()
+
+	out, discards, err := MapOutput(hook.EventSessionStart, []byte(`{"systemMessage":"resume context"}`))
+	if err != nil {
+		t.Fatalf("MapOutput error = %v", err)
+	}
+	if len(discards) != 0 {
+		t.Errorf("discards = %v, want none (SessionStart has a working channel)", discards)
+	}
+
+	got := decode(t, out)
+	hso, ok := got["hookSpecificOutput"].(map[string]any)
+	if !ok {
+		t.Fatalf("hookSpecificOutput missing in %s", out)
+	}
+	if hso["hookEventName"] != "SessionStart" {
+		t.Errorf("hookEventName = %v, want SessionStart", hso["hookEventName"])
+	}
+	if hso["additionalContext"] != "resume context" {
+		t.Errorf("additionalContext = %v, want resume context", hso["additionalContext"])
+	}
+	if _, ok := got["systemMessage"]; ok {
+		t.Error("systemMessage survived; Codex ignores it")
+	}
+}
+
 // TestDiscardRecordCarriesNoContent — AC-REQ-3a.
 //
 // Length rather than content keeps the diagnostic from becoming an
