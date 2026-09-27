@@ -283,6 +283,11 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 	if herr != nil {
 		return herr
 	}
+	if harnessCodex {
+		// A Codex session's hook never acts as a Claude lane's factory peer
+		// (SPEC-CODEX-FACTORY-RETIRE-001 REQ-CFR-022).
+		defer unsetLaneEnvForCodexHook()()
+	}
 
 	stdin := &stdinByteCounter{r: os.Stdin}
 	input, err := deps.HookProtocol.ReadInput(stdin)

@@ -177,11 +177,11 @@ codex 委托工具族连线到 super-advisor——因为按需高推理咨询智
 
 | 工具 | 用途 | 使用方 | CLI 等价 |
 |------|------|--------|----------|
-| `mcp__moai__codex_role_audit` | 以顶层 `codex exec` 进程启动一个只读角色（只读沙箱，禁用全部 MCP 服务器），立即返回任务 ID | Codex 泳道编排器 | — |
-| `mcp__moai__codex_role_audit_status` | 读取角色任务的状态与时间戳 | Codex 泳道编排器 | — |
-| `mcp__moai__codex_role_audit_result` | 读取已结束角色任务的退出码、返回文本或判定书路径，以及启动记录路径 | Codex 泳道编排器 | — |
+| `mcp__moai__codex_role_audit` | 以顶层 `codex exec` 进程启动一个只读角色（只读沙箱，禁用全部 MCP 服务器），立即返回任务 ID | Codex 会话 | — |
+| `mcp__moai__codex_role_audit_status` | 读取角色任务的状态与时间戳 | Codex 会话 | — |
+| `mcp__moai__codex_role_audit_result` | 读取已结束角色任务的退出码、返回文本或判定书路径，以及启动记录路径 | Codex 会话 | — |
 
-Codex 泳道通过这组工具而不是 `spawn_agent` 启动 `plan-auditor`、`sync-auditor` 等只读角色。泳道 shell 中嵌套的 `codex exec` 无法访问模型，因此没有 CLI 等价物。任务存在于服务器进程中，随进程结束而结束。
+Codex 会话通过这组工具而不是 `spawn_agent` 启动 `plan-auditor`、`sync-auditor` 等只读角色。Codex 会话的 shell 中嵌套的 `codex exec` 无法访问模型，因此没有 CLI 等价物。任务存在于服务器进程中，随进程结束而结束。
 
 ### GLM 委托（后台任务）
 

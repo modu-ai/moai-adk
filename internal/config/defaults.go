@@ -519,14 +519,6 @@ var DefaultCodexAuditTimeout = 20 * time.Minute
 // The lookup makes no model call, so its bound is short.
 var DefaultCodexAuditListTimeout = 30 * time.Second
 
-// DefaultCodexHandoffRelocationTimeout bounds ONE headless lane relocation
-// request — initialize, thread/fork or thread/start, and the thread/started
-// wait (SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001 REQ-FLH-007). No model turn runs
-// inside it, so it is far shorter than a codex_task turn; it is its own value
-// so tuning either caller never moves the other. Not a const so a test can
-// shorten it.
-var DefaultCodexHandoffRelocationTimeout = 60 * time.Second
-
 // DefaultCodexJobSummaryMaxLen bounds the request summary a codex job record
 // carries (SPEC-CODEX-PHASE2-001 REQ-CX2-003 / REQ-CX2-015). A job record is a
 // lifecycle artifact, not a transcript: the summary exists so an operator can
