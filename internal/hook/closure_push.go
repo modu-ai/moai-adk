@@ -198,15 +198,21 @@ type classifiedPush struct {
 
 var (
 	pushSegmentSplitRe = regexp.MustCompile(`&&|\|\||;|\n`)
+	pushCandidateRe    = regexp.MustCompile(`\bgit\b[^;&|\n]*\bpush\b`)
 	unprovableRe       = regexp.MustCompile(`\$\(|` + "`" + `|\beval\s|\b(?:sh|bash|zsh|dash)\s+-c\b|\$[A-Za-z_{]`)
 )
 
 // classifyPushCommand splits the command text into shell segments and
 // classifies every git push among them against the caller-resolved
-// integration branch. An unprovable context anywhere in the command
-// (command substitution, eval, a wrapper shell, a variable operand) makes
-// the whole call undetermined.
+// integration branch. A command without a push candidate anywhere in its
+// text is not an A4 subject at all (REQ-CLOSURE-015 judges Bash calls that
+// push); when a candidate exists, an unprovable context anywhere in the
+// command (command substitution, eval, a wrapper shell, a variable operand)
+// makes the whole call undetermined.
 func classifyPushCommand(command, integration string) []classifiedPush {
+	if !pushCandidateRe.MatchString(command) {
+		return nil
+	}
 	if unprovableRe.MatchString(command) {
 		return []classifiedPush{{undetermined: true,
 			cause: "command substitution, eval, a wrapper shell, or a variable operand"}}

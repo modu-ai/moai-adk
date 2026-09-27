@@ -347,6 +347,25 @@ func TestAC_CLOSURE_017(t *testing.T) {
 		expectClosureStop(t, r, "push_check_undetermined")
 	})
 
+	t.Run("pushless unprovable commands are not judged", func(t *testing.T) {
+		// F1 regression (REQ-CLOSURE-015 judges Bash calls that push): the
+		// unprovable judgment is scoped to commands that may contain a git
+		// push. A pushless command gets no A4 decision at all, however
+		// unprovable its text. The still-undetermined counterpart — a push
+		// wrapped in sh -c — is asserted by the forms loop above.
+		for _, command := range []string{
+			"echo $HOME",
+			"go test $(go list ./internal/...)",
+			`ls "${TMPDIR}"`,
+			`bash -c "echo hi"`,
+		} {
+			r := runClosurePush(t, provider, command, f.Root)
+			if r.decision != "" {
+				t.Fatalf("command %q: decision %q reason %q, want no A4 decision", command, r.decision, r.reason)
+			}
+		}
+	})
+
 	t.Run("missing remote ref", func(t *testing.T) {
 		f.Git(f.Root, "branch", "-dr", "origin/develop")
 		r := runClosurePush(t, provider, "git push origin develop", f.Root)
