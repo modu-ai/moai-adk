@@ -29,14 +29,20 @@ Repairs landed in v0.5.0:
 | # | Defect | Repair |
 |---|---|---|
 | D7 | `tier:` absent → machine read Tier L | `tier: M` added. This one came first because it changes what the other numbers mean: at Tier L the ceiling reads 25/25 and the PASS threshold 0.85, so the entire v0.3.0 "Tier M budget repair" had been performed toward a tier the frontmatter never declared. |
-| D2 | `kanban-dispatch*` census said 2 members | Corrected to **3**, with the family's per-trigger total measured at 81,159 characters (spec.md §1). |
+| D2 | `kanban-dispatch*` census said 2 members | Corrected to **3** at the time, with a per-trigger total of 81,159 characters. **Both figures were superseded in iteration 3**: the census had been taken by filename prefix, which misses files that HOLD the pattern without sharing the prefix. By `grep -rl` the family has **4** co-loaders totalling **100,165** characters, of which 65,264 are reducible (spec.md §1). |
 | D3 | `kanban-dispatch-mechanics.md` called a REQ violation | Half applied, half corrected — see § Corrections below. |
 | D1 | REQ ids skipped 005/006/014 | Renumbered continuously `001`-`015`. The gap was an asymmetry rather than a cosmetic issue: AC had been renumbered continuously in the same v0.3.0 pass, so the cost of continuity was already paid on one axis and withheld on the other. |
-| D4 | `AC-IBS-006`'s `git diff --stat` could not attribute a new file to a parent | Replaced by the **companion roster** (`AC-IBS-002-R`): M2 records the authorised companion filenames before content moves, and the check is a set difference against the new-file set. |
-| D5 | `AC-IBS-011b` cited a baseline its own command did not produce | Baselines split per command (`acceptance.md` § Reference-count scope note), reverse-order `§` form added, bound widened 40 → 200 characters. |
+| D4 | `AC-IBS-006` ⚠️ **pre-renumbering id — see the note below** — its `git diff --stat` could not attribute a new file to a parent | Replaced by the **companion roster** (`AC-IBS-002-R`): M2 records the authorised companion filenames before content moves, and the check is a set difference against the new-file set. |
+| D5 | `AC-IBS-011b` (pre-renumbering; no current id) cited a baseline its own command did not produce | Baselines split per command (`acceptance.md` § Reference-count scope note), reverse-order `§` form added, bound widened 40 → 200 characters. |
 | D6 | affinity conditions only checked the author's own claim | `AC-IBS-002-A-falsifier` added — the one condition that can falsify an affinity claim rather than check it for internal consistency. |
 | F3 | the `ls`-based decider | Replaced. In this environment `ls` is aliased to long format, so `ls … \| grep -c '^kanban-dispatch'` returned `0` — neither the expected 2 nor the correct 3. |
 | F7 | `REQ-IBS-009` carried a declarative middle clause | Trimmed; the arithmetic moved to §1 where it was already established. |
+
+**Pre-renumbering ids in the table above — and one collision that matters more than the dangling ones.** Every `AC-IBS-*` id in this dated table is from the pre-v0.3.0 scheme. Most simply no longer resolve (`AC-IBS-011b`), which is visible to any reader who looks them up.
+
+`AC-IBS-006` is the dangerous case: that id **exists today** and denotes something else entirely — the template-and-hook-packages row. So the D4 row above reads as a live cross-reference and silently points at the wrong criterion. A dangling id announces itself; a collided id does not, and it is the one a reader is likely to act on.
+
+The ids are **marked rather than rewritten**, on the principle already stated in `spec.md`'s v0.5.0 HISTORY row: a dated record describes what was done at the time, and renumbering its identifiers would make it agree with the present at the cost of no longer describing the past. The current criterion set is `AC-IBS-001` … `AC-IBS-008` in `acceptance.md`, which is the document to resolve any id against.
 
 ### Corrections to the audit — two findings not applied
 
@@ -73,16 +79,46 @@ The reusable point, and the reason it is recorded rather than just acted on: in 
 
 Also this iteration: REQ-IBS-006 explicitly barred from the always-loaded-stub shape, where `⊊` is undefined because the parent has no pattern set at all; the stub's 34,901 characters recorded as a **per-session** cost that no companion split reduces; and a dangling `§B.5` → `§B.4` repaired in the plan that defines the cross-reference check — a self-application failure in the document specifying that every cross-reference resolves.
 
+### Plan-audit iteration 2 — FAIL, and the ten repairs of iteration 3
+
+Iteration 2 returned FAIL. Iteration 3 was granted past the Tier M ceiling of 2 on the lead's judgement: the score drop was **audit-coverage expansion, not quality decay** — Traceability held at 1.00, every must-pass item passed, and each defect was a wrong sentence or a mis-scoped criterion rather than a structural fault. Standing condition: **if iteration 3 scores under 0.80, stop** — no further iteration, report, and the decision goes to the operator.
+
+| # | Defect | Repair |
+|---|---|---|
+| D1 | AC-IBS-005 demanded byte-identity of a pair whose divergence is permanent by design | Row split. 005a keeps byte-identity for the four workflow files; 005b asserts the `coding-standards.md` pair's **diff is unchanged from its recorded baseline** (measured: 2 lines, 1 content line, exit `1`), with a positive control. The line is local-only because it carries a SPEC ID + REQ tokens, which `C1-spec-id` excludes from the template — so byte-identity there was **impossible-red**, satisfiable by no correct work. |
+| D11 | literal base-SHA pins in range predicates | `CARD_BASE=$(git merge-base develop HEAD)` resolved at read time, plus two parts the audit did not carry: **pre-merge-only** declared (after the merge `merge-base` is the card tip, the range empties, the predicate passes vacuously — measured precedent in `gitflow-lane-protocol.md` §8) and a **non-empty-range control** (measured: 4 files). Applied at **three** sites; the audit named two, and AC-IBS-008(b) is the same class — extension flagged, not silent. |
+| D2 | family census counted by filename prefix | Recounted by pattern **holding**. `grep -rl 'kanban-dispatch\*'` surfaces `cross-session-messaging-detail.md`, which shares no prefix; `session-handoff*` has **two** such holders. Totals: 4 files / 100,165 and 4 files / 74,732. Rung 3 reopened for the session-handoff family. |
+| D3 | one total conflated reducible and always-loaded characters | Two totals stated separately and never summed: co-loading (100,165 / 74,732) vs reducible (65,264 / 58,623). §4 forbids folding the stub, so its characters are a per-session cost no rung can move. |
+| D6 | "no commit count appears in this prose" — refuted six lines above | The `0\t6546` transcript stays (attributed to its command and run, which the carve-out permits); the false claim is replaced by the actual distinction — a transcript carries provenance, a bare sentence does not. |
+| D7 | RED cell named `grep -rc` but quoted `-rl` output and the wrong exit code | Measured: `-rc` prints `<file>:0` per scanned file and exits `0`; `-rl` prints nothing and exits `1`. Cell now names `-rl` with its real output, and the mismatch is recorded rather than quietly swapped. |
+| D8 | § Artifact state false in the present tense | Every row dated, with its command; the HEAD and count rows qualified, since a figure measured before the commit recording it cannot describe the tree after it. |
+| D5 | four pre-renumbering AC ids in live prose | Marked, not rewritten (a dated record describes its own time). One is a **collision**: `AC-IBS-006` resolves today to a different row, so it read as a live cross-reference pointing at the wrong criterion — more dangerous than the dangling ids, because it does not announce itself. |
+| D4 | Folding record arithmetic: `16 - 7 = 9`, not 8 | Recorded as **unrecoverable**. v0.4.0's criterion list was replaced in place, so no copy of the 16-row set survives to diff against; whether the eighth disposition was a fold or a drop cannot be established. Recorded rather than reconstructed, because a plausible reconstruction is indistinguishable from a measured one once written. |
+| D10 | proportionality claim carried a numerator with no denominator | Denominator declared a **Gap** until M4 measures it with its command. `1 of 2` and `1 of 40` share the numerator and support opposite conclusions. |
+
+**Two earlier defects came back resolved and were not re-touched**: the companion roster closed iteration 1's D4 attribution problem, and the affinity falsifier can genuinely falsify. **One claim was checked and left standing**: `plan.md` §A's "no commit count appears in this section" — measured against the section after D6 taught that self-referential claims need measuring like any other; it holds.
+
 ### Artifact state
 
-Measured this turn. All four files untracked (`?? .moai/specs/SPEC-INSTRUCTION-BUDGET-SCOPE-001/`), worktree HEAD `088594d6b`.
+[HARD] **Every row here is a dated measurement, not a standing description.** The previous version of this block read "all four files untracked, worktree HEAD `088594d6b`", in the present tense, and each clause was false within minutes of being written — the files were committed and HEAD advanced six times. A present-tense sentence about mutable state is a claim with an invisible expiry (plan.md §G); in this block the fix is to date every reading and name the command, so a stale row reads as history rather than as an assertion.
 
-| file | version |
+**Measured 2026-09-28, plan-audit iteration 3 repair round:**
+
+| reading | command | value |
+|---|---|---|
+| tracked state | `git status --short` | clean at the iteration-3 repair commit; all four artifacts tracked, no longer untracked |
+| worktree HEAD | `git rev-parse --short HEAD` | `a5e983d54` before this round's commit; the commit closing this round supersedes it |
+| card base | `git merge-base develop HEAD` | `088594d6b874933f060bcbadbb833737fd25fb4d` — resolved, not pinned (acceptance.md § Card-base resolution) |
+| commit count on branch | `git rev-list --count "$CARD_BASE"..HEAD` | 6 before this round's commit |
+
+| file | version (this round) |
 |---|---|
-| `spec.md` | 0.7.0 |
-| `plan.md` | 0.7.0 |
-| `acceptance.md` | 0.7.0 |
+| `spec.md` | 0.9.0 |
+| `plan.md` | 0.9.0 |
+| `acceptance.md` | 0.9.0 |
 | `progress.md` | (this write) |
+
+The HEAD and count rows are deliberately qualified rather than restated as bare values: a figure measured before the commit that records it cannot describe the tree after it, and pretending otherwise is the self-referential hazard the §E.4 SHA-backfill convention exists for.
 
 ## §E.2 Run-phase Evidence
 

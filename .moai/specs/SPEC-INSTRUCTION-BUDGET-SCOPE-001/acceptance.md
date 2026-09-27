@@ -1,7 +1,7 @@
 ---
 id: SPEC-INSTRUCTION-BUDGET-SCOPE-001
 title: "Acceptance criteria — instruction-budget scope alignment and four-file reduction"
-version: "0.8.0"
+version: "0.9.0"
 created: 2026-09-28
 ---
 
@@ -109,10 +109,16 @@ This is the SPEC's only budget gate. Everything folded into it is a constraint o
 
 - **002-H — `[HARD]` clause preservation.** Every `[HARD]` clause present in a modified file before the change is present afterwards at a stated destination, evidenced by a per-clause transfer table in `progress.md` §E.2: one row per clause, source location (file + pre-change line) and destination location (file + post-change line), none marked dropped. A before/after `grep -c '\[HARD\]'` equality is **explicitly not sufficient** — an equal count is compatible with one clause lost and another duplicated. The token-count sum (`4 + 21 + 8 + 12 = 45` `grep -c` hits, not re-measured in this run and carried from M0) may be cited as corroboration; citing it alone fails this sub-condition.
 - **002-A — trigger affinity, per relocated section.** Each relocated section's transfer-table row names which of the parent's patterns it is needed on, which it is not needed on, and why; and the claimed "needed on" pattern is one the companion actually carries. A companion-level summary in place of per-section rows fails this.
-- **002-A-falsifier.** For each relocated section, the section body does not mention, as a literal string, any path matching a pattern it declared itself NOT needed on. A section mentioning `manager-lead.md` cannot declare `**/.claude/agents/moai/manager-lead.md` as not-needed-on. This is the only condition in the SPEC that can **falsify** an affinity claim rather than check it for internal consistency, which is why it is here — without it, the mutant "declare every section's affinity as a single pattern" satisfies 002-A while violating REQ-IBS-014/015. Stated limitation: literal path mention is a **weak proxy** for affinity, so this is an additional gate and never a sufficient condition. Measured for proportionality: of `worktree-integration.md`'s H2 sections, only the preamble mentions literal paths from two trigger domains, so the falsifier rejects almost no legitimate partition.
+- **002-A-falsifier.** For each relocated section, the section body does not mention, as a literal string, any path matching a pattern it declared itself NOT needed on. A section mentioning `manager-lead.md` cannot declare `**/.claude/agents/moai/manager-lead.md` as not-needed-on. This is the only condition in the SPEC that can **falsify** an affinity claim rather than check it for internal consistency, which is why it is here — without it, the mutant "declare every section's affinity as a single pattern" satisfies 002-A while violating REQ-IBS-014/015. Stated limitation: literal path mention is a **weak proxy** for affinity, so this is an additional gate and never a sufficient condition. Measured for proportionality, **with the denominator stated**: `worktree-integration.md` carries H2 sections of which exactly **1** — the preamble — mentions literal paths from two trigger domains. The previous wording gave the numerator alone ("only the preamble"), which is not a proportion: `1` of `2` and `1` of `40` share that numerator and support opposite conclusions about whether the falsifier is proportionate. The denominator is measured at M4 and recorded there with its command (`grep -c '^## ' .claude/rules/moai/workflow/worktree-integration.md`); until then this is **1 of an unmeasured total**, and the proportionality claim is a **Gap**, not a finding.
 - **002-S — span-affinity sections stay.** Any section whose affinity spans two or more of the parent's patterns remains in the parent and is reduced by compression or not at all. No "recorded N/A" escape: a sub-condition of a row that must go green does not need one.
 - **002-R — companion roster.** M2 records, in `progress.md` §E.2 before any content moves, the exact filename of every companion it authorises. The set of new files under `.claude/rules/moai/workflow/` after the change equals that roster — set difference empty in both directions. This is what makes 002a-i and 002d-i attributable: a `git diff --stat` cannot say which parent a new file came from, and a legal `worktree-integration.md` companion appears in the same directory as an illegal one would.
-  - Decided by: `find .claude/rules/moai/workflow -maxdepth 1 -name '*.md' | sort` compared against `git ls-tree --name-only 088594d6b:.claude/rules/moai/workflow/ | sort`, with the difference read against the roster.
+  - Decided by: `find .claude/rules/moai/workflow -maxdepth 1 -name '*.md' | sort` compared against `git ls-tree --name-only "$CARD_BASE":.claude/rules/moai/workflow/ | sort`, with the difference read against the roster, where **`CARD_BASE` is resolved at read time**:
+
+    ```
+    CARD_BASE=$(git merge-base develop HEAD)
+    ```
+
+  - **Pre-merge-only, and the control is mandatory.** See § Card-base resolution below: this decider is evaluated before the card merges into `develop`, and its non-empty control is run before its result is read.
 - **002-P — proper subset.** Every companion's `paths:` pattern set is a proper subset of its parent's: every companion pattern appears in the parent, AND at least one parent pattern is absent. Both failure directions are checked — a companion pattern absent from the parent (scope widened) and an empty complement (equals the parent; the degenerate same-glob shard with zero saving on every trigger). Evidenced by an enumerated table, one row per parent pattern marked carried/not-carried, plus the named complement. A proper subset necessarily **overlaps** the parent on the patterns it carries; that overlap is the saving mechanism (spec.md §1), so an overlap check is NOT part of this condition and must not be added to it.
 - **002-N — companion naming.** No companion's filename matches a filename-shaped pattern in its parent's `paths:`. For a companion of `kanban-dispatch-detail.md` that means not matching `kanban-dispatch*`. Decided by `python3 -c "import fnmatch,sys;print(fnmatch.fnmatch(sys.argv[1],sys.argv[2]))" <companion-basename> 'kanban-dispatch*'` → `False`. The family census this defends is in spec.md §1: **three** files already match that pattern at base, and one of them (`kanban-dispatch-mechanics.md`) is the realised form of exactly this trap.
 - **002-B — companions are themselves under budget.** Each companion measures `< 40000` by the same single-invocation command. A reduction that pushes the parent under while leaving the companion over satisfies nothing.
@@ -126,7 +132,8 @@ Sub-conditions 002-R / 002-P / 002-N / 002-B / 002-G / 002-A / 002-A-falsifier /
 **Given** the four files' `paths:` frontmatter, **when** the guard test runs, **then** each matches the value recorded in the test source.
 
 - **Deciding command**: `go test -run '^TestWorkflowRulePathsPinned$' ./internal/template/...`
-- **RED-now**: the guard does not exist. Evidenced by `grep -rc "TestWorkflowRulePathsPinned" internal/template/` → no file matches (count of matching files: `0`), exit `1`. **The deciding command is deliberately NOT the RED-now evidence**: an anchored selector matching zero tests exits `0` and prints `ok … [no tests to run]`, so running it now would produce a green that asserts nothing — the empty-sweep shape of `verification-completeness.md` §1.1. Absence is evidenced by the grep, not by the selector.
+- **RED-now**: the guard does not exist. Evidenced by `grep -rl "TestWorkflowRulePathsPinned" internal/template/` → **empty stdout, exit `1`** (measured this run).
+  - **The command is `-rl`, not `-rc`, and the earlier cell named the wrong one.** `grep -rc` prints a `<file>:0` line for **every** file it scans and exits `0`, so the previous cell's stated output ("no file matches … exit `1`") was not what its own command produces and the exit code it claimed was the opposite of the truth. Measured: `grep -rc …` prints `internal/template/project_continuation_pipeline_signal_test.go:0` and one such line per scanned file. `-rl` lists only matching files, so absence is an empty stdout and exit `1` — which is the observation this cell needs. Recorded rather than quietly swapped, because a RED cell whose output does not match its command is the §2.1 defect this SPEC disciplines elsewhere. **The deciding command is deliberately NOT the RED-now evidence**: an anchored selector matching zero tests exits `0` and prints `ok … [no tests to run]`, so running it now would produce a green that asserts nothing — the empty-sweep shape of `verification-completeness.md` §1.1. Absence is evidenced by the grep, not by the selector.
 - **Green path**: the guard is added in M2 and asserts the four recorded globs. Passing output is `ok internal/template`, exit `0`.
 - **Why recorded values and not `git show 088594d6b:<path>`**: REQ-IBS-010 preserves the globs *unless this SPEC is amended to argue a change* — a this-card constraint, not an invariant. A tree-pinned guard would outlive the requirement motivating it and become an unattributable stale guard after close. Recording the values in the test source makes a future glob change deliberate (edit the test, visible in review) rather than forbidden, which is the same idiom `sanitizedPairPaths` and `workflowOptMirroredPaths` already use. Provenance — that the recorded values came from `088594d6b` — lives in this document's pin and a source comment, which is the correct home for a statement about how values were obtained rather than an assertion a test can check.
 - **The anchored selector is load-bearing, not cosmetic.** `TestWorkflowRulePathsPinned` unanchored would also select any longer name, making a pass unattributable to the test named. The repo's own lint flags the unanchored form as `VacuousTestAssertion`.
@@ -150,9 +157,38 @@ Green at arrival — references resolve today — so this asserts that the work 
 
 ### AC-IBS-005 — local and template mirror stay byte-identical [regression-guard]
 
-**Given** every file modified or created under `.claude/`, **when** compared to its `internal/template/templates/.claude/` counterpart, **then** each pair is byte-identical. Decided by `diff <local> <mirror>` per file → exit `0`, no output.
+**The property is "no NEW divergence", not byte-identity.** The row guards against a **one-sided edit** — that is the Template-First failure this repo has had before — and byte-identity is only a proxy for it. The proxy is exact for four of the five pairs and provably wrong for the fifth, so the row splits.
 
-Green at arrival: all four workflow files and both `coding-standards.md` copies are byte-identical at `088594d6b`, verified by `diff -q` in this run. The guard is against a one-sided edit, which is the Template-First failure this repo has had before.
+**005a — the four workflow files: byte-identical.** **Given** each of the four target files, **when** compared to its `internal/template/templates/.claude/` counterpart, **then** the pair is byte-identical. Decided by `diff <local> <mirror>` per file → exit `0`, no output. Green at arrival, verified by `diff -q` in this run. M1 does not touch these four; M4-M6 do, and this is the row that catches a one-sided reduction.
+
+**005b — the `coding-standards.md` pair: the diff is unchanged from its pre-M1 baseline.** **Given** the pair, **when** diffed, **then** the output equals the baseline recorded below, byte for byte.
+
+- **Deciding command**: `diff .claude/rules/moai/development/coding-standards.md internal/template/templates/.claude/rules/moai/development/coding-standards.md`
+- **Baseline, measured this run** — exit `1`, two lines of output, one content line:
+
+```
+141d140
+< - `git commit --no-verify` — bypasses the relocated pre-commit quality gate (the harness safety net at the commit tier; enforced mechanically by the PreToolUse guard at `internal/hook/pre_tool.go` per SPEC-PRETOOL-GATE-MOVE-001 REQ-PGM-006 / F5)
+```
+
+- **Why this pair is exempt from byte-identity, permanently.** That line is local-only **by design**: it carries a SPEC ID and REQ tokens, which the template-neutrality `C1-spec-id` class excludes from the distributed template. So the divergence is intended, it is not M1's to repair, and no correct M1 edit removes it. A byte-identity criterion on this pair is **impossible-red** in the `verification-completeness.md` §2 sense — red at arrival and red forever, satisfiable by no correct work.
+- **Why not an exclusion list of local-only lines.** It would also work today and ages badly: every legitimately-added internal line needs an edit to the list, and a stale list fails **silently** — the one failure mode this SPEC is least willing to ship. Diff-unchanged needs no maintenance, because a new local-only line changes the baseline visibly and deliberately.
+- **Positive control — executed at plan phase, and it found a defect in the obvious form of this check.** A one-sided edit (`<!-- t1180 one-sided-edit control -->` appended to the local copy only) made the deciding command print two extra hunks on top of the baseline:
+
+```
+141d140
+< - `git commit --no-verify` — bypasses the relocated pre-commit quality gate (…)
+172,173d170
+<
+< <!-- t1180 one-sided-edit control -->
+```
+
+  Reverted with `git checkout --`; the output returned to the baseline exactly, and `git status --short` showed the tree clean apart from this SPEC's own artifacts.
+
+  **[HARD] The exit code was `1` in all three states — baseline, injected, and reverted — so the verdict is the OUTPUT comparison and never the exit code.** This is the finding the control exists to produce: `diff` exits `1` for *any* difference, so a check written as "the diff still exits 1, as it did at baseline" passes an injected one-sided edit without noticing. That is precisely the one-sided edit this row is here to catch, and it is the shape a later reader would most plausibly simplify the row into. The predicate is **byte equality of the diff output against the recorded baseline**; the exit code is recorded as context and carries no verdict.
+
+  Run again at M1 after the doctrine amendment lands, since M1 changes the baseline it is measured against.
+- **Scope note.** 005b is the ONLY pair leaving the byte-identity clause. Any further file this SPEC creates under `.claude/` enters 005a, not 005b; an exemption is earned by a measured, explained, permanent divergence, never assumed.
 
 ### AC-IBS-006 — the template and hook packages pass [regression-guard]
 
@@ -162,7 +198,7 @@ Decided by `go test ./internal/template/...` → exit `0` (full package, per the
 
 ### AC-IBS-007 — scope containment [regression-guard]
 
-**Given** the branch diff, **when** inspected, **then** `internal/hook/instructions_loaded.go`, `CLAUDE.local.md`, and `.moai/reports/t1180/verdict.md` are all absent from it. Decided by `git diff --name-only 088594d6b..HEAD` → none of the three appears.
+**Given** the branch diff, **when** inspected, **then** `internal/hook/instructions_loaded.go`, `CLAUDE.local.md`, and `.moai/reports/t1180/verdict.md` are all absent from it. Decided by `git diff --name-only "$CARD_BASE"..HEAD` → none of the three appears, with **`CARD_BASE` resolved at read time** and the non-empty control run first — see § Card-base resolution.
 
 Green at arrival, and the reason has to be stated carefully now that the branch carries the plan-artifact commit: it is green because that commit touched only files under `.moai/specs/SPEC-INSTRUCTION-BUDGET-SCOPE-001/`, not because the branch is empty. The earlier wording ("green because the branch carries zero commits") was true when written and expired the moment the commit landed — an instance of the plan.md §G hazard inside the row that checks scope. The three paths are the SPEC's declared non-targets: the hook is read-only for this SPEC (spec.md §4), `CLAUDE.local.md` is out of scope with its figures recorded as a follow-up card candidate (spec.md §5), and the verdict file is referenced, never overwritten.
 
@@ -171,12 +207,34 @@ Green at arrival, and the reason has to be stated carefully now that the branch 
 **Given** `progress.md` §E.2 and every commit on `WT-rules-40k-split`, **when** read, **then**:
 
 - (a) every character-count claim cites its single-invocation `python3` command, and no `wc -c` output appears as a budget figure — `grep -c "wc -c" progress.md` → `0`;
-- (b) every commit message names the card id `t1180` — `git log --format=%s 088594d6b..HEAD` read for the token, with the count of non-matching subjects being `0`;
+- (b) every commit message names the card id `t1180` — `git log --format=%s "$CARD_BASE"..HEAD` read for the token, with the count of non-matching subjects being `0`. **`CARD_BASE` resolved at read time**, and the same non-empty control applies: a `0` non-matching count over an empty commit range asserts nothing. (This row was not in the audit's D11 list, which named two sites; it is the same range-predicate class, so it is repaired with them rather than left as the one literal pin the fix missed — flagged here rather than extended silently.);
 - (c) every figure in §E.2 names the command that produced it. This condition exists because the v0.4.0 defect in 004b was exactly a figure whose stated decider was not the command that measured it.
+
+## Card-base resolution — read-time, pre-merge-only, control-gated
+
+[HARD] Every range or tree predicate in this document resolves its left end **at read time**, never from a literal SHA:
+
+```
+CARD_BASE=$(git merge-base develop HEAD)
+```
+
+Per `.claude/rules/local/gitflow-lane-protocol.md` §8 [HARD]. A literal pin stops describing "this card's own contribution" the moment local `develop` is absorbed: another card's commits enter the range, and the predicate reports contact this card never made. Resolved at read time, `merge-base` stays at the last absorbed `develop` commit and keeps answering the intended question however far `develop` advances afterwards.
+
+**These predicates are pre-merge-only, and the reason is that they pass vacuously afterwards.** Once the card merges into `develop`, `merge-base develop HEAD` **becomes the card tip itself**, the range empties, and every range predicate above passes while measuring nothing. This is measured, not predicted: `gitflow-lane-protocol.md` §8 records the empty output from an already-merged card branch (`.moai/reports/t543/repro/limit-a-post-merge-all.txt`). After the merge, the evidence is tree identity between the merge commit and the card branch — not these rows.
+
+[HARD] **Non-empty-range control — run before any range predicate's result is read.**
+
+```
+git diff --name-only "$CARD_BASE"..HEAD | wc -l
+```
+
+≥ 1 required. Measured this run: **4**.
+
+**Why the control is not optional, and why it is the point of this repair.** Swapping a literal SHA for `merge-base` removes a **false red** and introduces the possibility of a **vacuous green** — the same defect class one step over, and precisely the one this SPEC exists to discipline (`verification-completeness.md` §1.1: a pass whose swept set is empty asserts nothing). A `0` from the control means **not measurable**, never "no contact found"; a row whose control reads `0` is reported as a Gap and its verdict withheld. Without the control this repair would have traded a defect the reader can see for one they cannot.
 
 ## Folding record
 
-v0.4.0 carried 16 criteria; this version carries 8. Six rows and one condition were folded into AC-IBS-002, and none was dropped. Each fold has the same justification, applied per row:
+v0.4.0 carried 16 criteria; this version carries 8. The table below records **7** dispositions (six rows plus one condition), all folded into AC-IBS-002 and none dropped. Each fold has the same justification, applied per row:
 
 | v0.4.0 row | Folded to | Why it was not a gate of its own |
 |---|---|---|
@@ -188,7 +246,11 @@ v0.4.0 carried 16 criteria; this version carries 8. Six rows and one condition w
 | 013 registry enrolment | 002-G | Conditional on a companion. |
 | 010 `[HARD]` preservation | 002-H | The null implementation satisfies it trivially. Folding keeps it binding on the route to green while removing a gate that cannot fail on its own. Its prominence is preserved by placement: it is the first sub-condition on every arm. |
 
-The effect is fewer gates, each red today, with the constraints living inside the row they constrain. Headroom against the 16 ceiling went from 0 to 8; that headroom is a by-product, not the reason — every fold was ruled on mutant-probe or impossible-RED grounds.
+**The arithmetic does not close, and the missing disposition is unrecoverable.** `16 - 7 = 9`, not `8`. Seven dispositions are recorded above; the eighth is not, and it cannot be reconstructed — v0.4.0's criterion list was replaced in place rather than amended, so no copy of the 16-row set survives in this branch's history to diff against. What can be stated is bounded: one v0.4.0 criterion left the document in that pass without its disposition being written down, and whether it was folded into an existing row or dropped outright **cannot now be established from the artifacts**.
+
+Recorded as unrecoverable rather than reconstructed, because a plausible reconstruction is indistinguishable from a measured one once written, and this document's whole subject is the difference. The live consequence is bounded too: the 8 criteria now in force each carry their own RED-now cell and deciding command, so the standing criterion set is verifiable on its own terms regardless of how it was reached — an unrecorded disposition damages the audit trail, not the gate.
+
+The effect of the folds is fewer gates, each red today, with the constraints living inside the row they constrain. Headroom against the 16 ceiling is a by-product, not the reason — every recorded fold was ruled on mutant-probe or impossible-RED grounds, and the ceiling turns out to have no mechanical enforcer at all (§ the guard-unit note above).
 
 ## Reference-count scope note
 

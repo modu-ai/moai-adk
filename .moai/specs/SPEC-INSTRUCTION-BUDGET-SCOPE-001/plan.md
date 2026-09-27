@@ -1,7 +1,7 @@
 ---
 id: SPEC-INSTRUCTION-BUDGET-SCOPE-001
 title: "Implementation plan — instruction-budget scope alignment and four-file reduction"
-version: "0.8.0"
+version: "0.9.0"
 created: 2026-09-28
 ---
 
@@ -30,7 +30,7 @@ Scope is `(c) + (a)` — the doctrine fix plus the four-file reduction. Option `
    - `kanban-dispatch-detail.md` — 3 patterns (`**/kanban-dispatch*.md`, `**/.claude/agents/moai/manager-lead.md`, `**/.claude/skills/moai/workflows/gtd.md`). **Splittable** — the complement is non-empty. Subject to the naming constraint in §B.2; the companion carries exactly one of the two non-self-matching patterns.
    - `session-handoff-examples.md` — 1 pattern (`**/session-handoff.md`). Genuinely foreclosed: the only proper subset of a one-element set is empty, so any companion co-loads on the only trigger there is and saves nothing. REQ-IBS-007 binds it — removal or compression only, worked through the M6 ladder.
    - `spec-workflow.md` — 2 patterns, so nominally splittable, but compression-first **by lead direction** (spec.md §4 constraint, not a requirement) because the overage is 797 characters. Do not open a split there.
-2. **The `kanban-dispatch-detail.md` naming trap is already realised — by a third family member neither the SPEC nor the lead saw until the audit.** The family has **three** members at base, not two (spec.md §1 carries the census and the measurement): `kanban-dispatch.md` (34,901 chars, no `paths:` at all — always-loaded), `kanban-dispatch-detail.md` (41,034), and `kanban-dispatch-mechanics.md` (5,224). All three match `**/kanban-dispatch*.md`, so that trigger loads **81,159 characters**. Mechanics is a **sibling** of `-detail.md`, not its child — both are companions of the stub — so REQ-IBS-006's proper-subset test does not apply to it and no violation is recorded (spec.md §6 carries the correction to the audit's D3). What it does show, measurably, is the naming trap REQ-IBS-013 forbids: a companion named inside the parent's own filename pattern co-loads with it forever. A new companion named outside that pattern (for example `card-class-detail.md`) and scoped to one of the other two patterns engages no prohibition.
+2. **The `kanban-dispatch-detail.md` naming trap is already realised — by a third family member neither the SPEC nor the lead saw until the audit.** The family has **three** members at base, not two (spec.md §1 carries the census and the measurement): `kanban-dispatch.md` (34,901 chars, no `paths:` at all — always-loaded), `kanban-dispatch-detail.md` (41,034), and `kanban-dispatch-mechanics.md` (5,224). All three match `**/kanban-dispatch*.md`, and so does a fourth the earlier prefix census missed — `cross-session-messaging-detail.md` (19,006), which HOLDS the pattern without sharing the prefix. The trigger therefore loads **100,165 characters** across four files, of which **65,264** are reducible (the always-loaded stub's 34,901 are a per-session cost no split or dedup touches — spec.md §1 carries both totals and why they are never summed). Mechanics is a **sibling** of `-detail.md`, not its child — both are companions of the stub — so REQ-IBS-006's proper-subset test does not apply to it and no violation is recorded (spec.md §6 carries the correction to the audit's D3). What it does show, measurably, is the naming trap REQ-IBS-013 forbids: a companion named inside the parent's own filename pattern co-loads with it forever. A new companion named outside that pattern (for example `card-class-detail.md`) and scoped to one of the other two patterns engages no prohibition.
 3. **Proper-subset is necessary but not sufficient — trigger affinity is the second condition, and it rides on the same pattern set.** A split that passes the proper-subset test is still wrong if the content moved does not belong to the trigger the companion claims. Move content that a `manager-lead.md` editor needs into a companion scoped to `**/kanban-dispatch*.md`, and that session silently loses guidance it used to have: the characters improve, the reader is worse off, and nothing signals it — the complement triggers are exactly the ones that lose. REQ-IBS-014 and REQ-IBS-015 bind the per-section affinity claim, and AC-IBS-002-A-falsifier is the only condition that can **falsify** one rather than check it for internal consistency. The hazard is largest in M4, where 21,435 characters must be partitioned across three patterns and a size-driven cut is the likeliest place for this defect to land.
 4. **The neutrality guard needs no registration — measured by sentinel, not read.** Two registries need an entry, not three. The structural read said so; the sentinel demonstration now shows it.
 
@@ -82,7 +82,7 @@ Record, per file: char count, `[HARD]` clause inventory with line numbers, `path
 
 The `[HARD]` occurrence counts are `grep -c` hits, which is a token count and NOT a clause count — a line may carry the token twice, and a clause may span lines. M0 must resolve each hit into a named clause before it can serve as the transfer-table left column. Treating the `grep -c` number as the clause count is the count-only claim REQ-IBS-008 forbids.
 
-M0 also records the `kanban-dispatch*` family census — all three members and the 81,159-character per-trigger total (spec.md §1) — because a baseline taken on `kanban-dispatch-detail.md` alone describes one third of what that trigger loads.
+M0 also records both family censuses — enumerated by `grep -rl '<pattern>' .claude/rules/` rather than by filename prefix, with the co-loading and reducible totals stated separately (spec.md §1) — because a baseline taken on `kanban-dispatch-detail.md` alone describes 41% of what that trigger loads, and a prefix-based census misses a co-loader in each family.
 
 ### M1 — doctrine amendment (REQ-IBS-001, 002, 003)
 
@@ -107,7 +107,7 @@ Before any content moves, decide per file whether a proper subset with a non-emp
 
 M2 also records, per splittable file, the candidate companion filename and the single parent pattern it will carry, so REQ-IBS-013 is checked before the file exists rather than after. The record is the **companion roster** AC-IBS-002-R decides against; it is written to `progress.md` §E.2 before any content moves, which is what makes a new file attributable to a parent at all.
 
-For the `kanban-dispatch*` family the census covers **all three members** (§B.2), not `-detail.md` alone — the trigger loads 81,159 characters across three files, and a subset judgement made against one of them describes the wrong thing.
+For the `kanban-dispatch*` family the census covers **all four co-loaders** (§B.2), not `-detail.md` alone — the trigger loads 100,165 characters across four files, and a subset judgement made against one of them describes the wrong thing. The census is taken by pattern holding (`grep -rl`), which is what surfaced the fourth.
 
 M2 also lands the two mechanical artifacts the criteria depend on:
 
@@ -148,9 +148,13 @@ Applies in order. A blocker is real only at the bottom.
 |---|---|---|
 | 1 | **Compression / duplicate removal in place** | Cheapest, no structural change, no affinity question. Always attempted first. |
 | 2 | **Relocation outside `.claude/rules/`** — e.g. `.moai/docs/<topic>.md` with a prose pointer, the pattern `CLAUDE.local.md` § References already uses | Not a companion, so REQ-IBS-005/006's subset test does not apply and no `[HARD]` clause is cut. **Gated on the precondition above.** |
-| 3 | **Dedup within the co-loading family** | Only where a family co-loads on one trigger — the `kanban-dispatch*` case (M5). Removes characters from the trigger total without moving anything. |
+| 3 | **Dedup within the co-loading family** | Wherever a family co-loads on one trigger — **both** the `kanban-dispatch*` case (M5) **and** the `session-handoff*` case (M6). Removes characters from the trigger total without moving anything. Family membership is decided by `grep -rl '<pattern>' .claude/rules/`, never by filename prefix (spec.md §1). |
 | 4 | **Split into a companion** | Requires a non-empty complement (so: M4 and M5 only, never M6) plus the naming constraint and the affinity claims. |
 | 5 | **Blocker report to the lead** | Correct only once rungs 1-4 are each attempted or measured unavailable, with the measurement recorded. A blocker raised before that is a report of unexplored options, not a blocker. |
+
+**Rung 3 was previously closed to "kanban only", and that was wrong in the most costly direction.** It shut the cheapest instrument on `session-handoff-examples.md` — the file this SPEC itself names as the top false-blocker risk, and the one where foreclosure from splitting (single-pattern `paths:`) leaves compression as the only other route. Measured, the family has three reducible co-loaders besides the stub: `session-handoff-examples.md` 41,615 + `session-handoff-format.md` 5,266 + `context-window-management-detail.md` 11,742 = **58,623** characters on one trigger, of which two files were invisible to the earlier prefix-based census. Duplication between co-loaders costs characters twice on the same trigger, so removing it is a pure win — no relocation, no new file, no affinity question, and no `[HARD]` clause at risk.
+
+**The foreclosure verdict itself is untouched.** It rests on single-element-set arithmetic — the only proper subset of a one-pattern set is empty — and does not depend on how many siblings the family has. Reopening rung 3 gives M6 a second instrument; it does not reopen the split question, and REQ-IBS-007 still binds.
 
 `[HARD]` clause trimming appears nowhere on the ladder and is not a rung (§G). AC-IBS-002-H failing together with the arm's char count is the signal that a blocker is genuine.
 
