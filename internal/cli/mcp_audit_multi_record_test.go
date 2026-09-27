@@ -202,3 +202,63 @@ func TestAC_CLOSURE_012_NoCardID(t *testing.T) {
 		}
 	}
 }
+
+// TestAC_CLOSURE_012_TargetRecorded — the record's target is the REQUESTED
+// target, verbatim (REQ-CLOSURE-012), so the scope-covered filter keeps its
+// teeth: only a baseBranch review proves baseBranch coverage (REQ-CLOSURE-013).
+func TestAC_CLOSURE_012_TargetRecorded(t *testing.T) {
+	cases := []struct {
+		name   string
+		target string
+	}{
+		{"uncommittedChanges is recorded verbatim", "uncommittedChanges"},
+		{"no requested target records the empty default", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := closuretest.New(t)
+			fixtureSeams(t, f)
+			queueWithCards(t, f, map[string]string{"c1": closuretest.SpecID})
+			recordBackends(t)
+
+			runMultiAudit(context.Background(), ReviewOutput{}, tc.target, "", MultiAuditConfig{
+				ProjectRoot: f.CardDir,
+				CardID:      "c1",
+			}, nil)
+
+			records := readSecondReviewLines(t, filepath.Join(f.EvidenceDir, closure.SecondReviewFile))
+			if len(records) != 1 {
+				t.Fatalf("records = %d, want one", len(records))
+			}
+			if got, _ := records[0]["target"].(string); got != tc.target {
+				t.Fatalf("recorded target = %q, want the requested %q", got, tc.target)
+			}
+
+			// The scope filter regains teeth: the recorded target fails the
+			// baseBranch coverage rule, so the record cannot clear the
+			// second review.
+			line, err := json.Marshal(records[0])
+			if err != nil {
+				t.Fatalf("re-encode: %v", err)
+			}
+			var rec closure.SecondReviewRecord
+			if err := json.Unmarshal(line, &rec); err != nil {
+				t.Fatalf("decode record: %v", err)
+			}
+			st := closure.SelectSecondReview(closure.SecondReviewInput{
+				Records:        []closure.SecondReviewRecord{rec},
+				ContractCard:   "c1",
+				ContractDigest: rec.ContractSHA256,
+				EvalCommit:     f.Head(),
+				Facts: closure.GitFacts{
+					IsAncestor: func(a, b string) (bool, error) { return a == b, nil },
+				},
+				SpecID: closuretest.SpecID,
+			})
+			if st.State != closure.SecondReviewNotPerformed || st.Cause != closure.SecondReviewCauseScopeNotCovered {
+				t.Fatalf("state = %q cause %q, want %q/%q", st.State, st.Cause,
+					closure.SecondReviewNotPerformed, closure.SecondReviewCauseScopeNotCovered)
+			}
+		})
+	}
+}

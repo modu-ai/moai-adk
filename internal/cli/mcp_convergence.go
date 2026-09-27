@@ -829,7 +829,7 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// the result's second_review_record_error — the audit result itself is
 	// never altered. Empty CardID skips the whole block byte-identically.
 	if cfg.CardID != "" {
-		if err := appendSecondReviewRecord(cfg, result); err != nil {
+		if err := appendSecondReviewRecord(cfg, result, target); err != nil {
 			result.SecondReviewRecordError = err.Error()
 		}
 	}

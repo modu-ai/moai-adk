@@ -25,10 +25,13 @@ import (
 )
 
 // appendSecondReviewRecord builds and appends the record (design.md §A.1).
+// target is the review target the caller REQUESTED, recorded verbatim —
+// only a baseBranch review proves baseBranch coverage (REQ-CLOSURE-013),
+// so a verbatim record is what keeps the scope filter honest.
 // Unknown card or missing SPEC → spec_id "" (the reader classifies it
 // unbound); absent contract → contract_card/digest ""; git scope failure →
 // empty scope fields; append failure → the returned error.
-func appendSecondReviewRecord(cfg MultiAuditConfig, result ConvergenceResult) error {
+func appendSecondReviewRecord(cfg MultiAuditConfig, result ConvergenceResult, target string) error {
 	root := cfg.ProjectRoot
 	if root == "" {
 		root = resolveProjectDir()
@@ -42,7 +45,7 @@ func appendSecondReviewRecord(cfg MultiAuditConfig, result ConvergenceResult) er
 	rec := closure.SecondReviewRecord{
 		SchemaVersion: closure.SchemaVersion,
 		Card:          cfg.CardID,
-		Target:        "baseBranch",
+		Target:        target,
 		Backends:      []closure.SecondReviewBackend{},
 		RecordedAt:    time.Now().UTC().Format(time.RFC3339),
 	}
