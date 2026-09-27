@@ -117,22 +117,6 @@ func Registry() []Site {
 
 		// ── Definition-file axis (12; the built-in Explore has no file) ────
 		{
-			ID:     "v4manifest-agent-tiers",
-			Path:   "internal/harness/v4manifest/schema.go",
-			Axis:   AxisDefinitionFiles,
-			Claims: ClaimMembership,
-			Note: "Tier assignments exist per agent DEFINITION; Explore has no definition file " +
-				"and so no tier. Registering this on AxisRetainedRoster would report a " +
-				"correct file as broken.",
-		},
-		{
-			ID:     "v4manifest-tier-test",
-			Path:   "internal/harness/v4manifest/tier_test.go",
-			Axis:   AxisDefinitionFiles,
-			Claims: ClaimMembership,
-			Note:   "The expectation table pinning the tier map above; same axis for the same reason.",
-		},
-		{
 			ID:     "agentemit-golden",
 			Path:   "internal/template/agentemit/golden_test.go",
 			Axis:   AxisDefinitionFiles,
@@ -145,13 +129,6 @@ func Registry() []Site {
 			Axis:   AxisDefinitionFiles,
 			Claims: ClaimMembership,
 			Note:   "An inventory of templates/.claude/agents/moai/*.md — the file population by construction.",
-		},
-		{
-			ID:     "web-i18n-agent-descriptions",
-			Path:   "internal/web/assets/i18n.js",
-			Axis:   AxisDefinitionFiles,
-			Claims: ClaimMembership,
-			Note:   "One agentdesc.* key per definition file, in four locales.",
 		},
 
 		// ── Retained-roster sites that are currently consistent ────────────
@@ -366,26 +343,6 @@ func Registry() []Site {
 			CountPattern: `the (\d+) retained agents \(CLAUDE\.md section 4\)`,
 			// KnownStale deleted with the row above: both copies were repaired
 			// together, which is what registering the mirror separately was for.
-		},
-		{
-			ID:     "web-agentfm-display-rank",
-			Path:   "internal/web/agentfm.go",
-			Axis:   AxisSubsetByDesign,
-			Claims: 0,
-			Note: "agentGroupRank classifies 9 named agents into display buckets and routes " +
-				"everything else — Explore, harness specialists, and anything added later — " +
-				"into a documented trailing bucket. Asserting complete membership here would " +
-				"be wrong. OBSERVED, not adjudicated: manager-lead and mission-governor " +
-				"currently land in that trailing bucket, so two managers render outside the " +
-				"manager group; whether that is the intended degradation or a defect is the " +
-				"owning surface's call, not this guard's.",
-		},
-		{
-			ID:     "web-agentfm-display-rank-test",
-			Path:   "internal/web/agentfm_ordering_test.go",
-			Axis:   AxisSubsetByDesign,
-			Claims: 0,
-			Note:   "The expectation table for the subset above; same boundary, same reason.",
 		},
 
 		// ── Count-only sites reached by the NUMERAL layer (card t930) ──────
@@ -846,14 +803,6 @@ func NumeralExemptions() []NumeralExempt {
 			ID:     "agentlint-section-marker",
 			Path:   "internal/cli/agentlint/agent_lint.go",
 			Reason: "MEASURED FALSE POSITIVE: the numeral is the section marker in a comment citing \"CLAUDE.md §4 retained-agent catalog\".",
-		},
-		{
-			ID:   "web-agentfm-subset-count",
-			Path: "internal/web/agentfm.go",
-			Reason: "\"The 9 named retained agents\" counts the SUBSET agentGroupRank names, not the retained " +
-				"roster — the subset-by-design boundary the web-agentfm-display-rank row already records. " +
-				"Registering it as a roster count would report a correct file as broken; this is also the " +
-				"one path the rejected any-row discharge rule would have freed (decision D2).",
 		},
 
 		// ── This package describing itself ─────────────────────────────────

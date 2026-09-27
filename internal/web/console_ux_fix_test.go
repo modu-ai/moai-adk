@@ -2,11 +2,9 @@ package web
 
 import (
 	"regexp"
-	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/harness/v4manifest"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
@@ -126,22 +124,12 @@ func TestEffortGoUnboundWording(t *testing.T) {
 		}
 	}
 
-	// The hint renders on the agentfm effort row, so the render needs an agent.
-	root := t.TempDir()
-	seedAgentFMFile(t, root, "moai", "manager-spec", "opus", "xhigh")
-	body := renderAgentFMBody(t, root)
-	if !strings.Contains(body, `data-i18n="hint.effort.go_unbound"`) {
-		t.Fatal("the effort hint badge did not render — the baseline assertion below would be vacuous")
-	}
-	if !strings.Contains(body, "Resolved from the performance tier above — per-agent edits save as overrides.") {
-		t.Error("the templ baseline does not render the reworded English hint.effort.go_unbound text")
-	}
-
-	// Both templ call sites carry the reworded English baseline (the schemaSelectRow
-	// branch has no live `.effort` FieldDef today, so it is asserted at the source level).
+	// The templ baseline carries the reworded English text. The agent-settings
+	// row that also rendered it is gone; schemaSelectRow is the remaining call
+	// site (asserted at the source level — no live `.effort` FieldDef today).
 	src := readGoSource(t, "fieldsets.templ")
-	if n := strings.Count(src, `data-i18n="hint.effort.go_unbound">Resolved from the performance tier above — per-agent edits save as overrides.`); n != 2 {
-		t.Errorf("fieldsets.templ has %d reworded hint.effort.go_unbound baselines, want 2 (schemaSelectRow + agentFMRow)", n)
+	if n := strings.Count(src, `data-i18n="hint.effort.go_unbound">Resolved from the performance tier above — per-agent edits save as overrides.`); n != 1 {
+		t.Errorf("fieldsets.templ has %d reworded hint.effort.go_unbound baselines, want 1 (schemaSelectRow)", n)
 	}
 }
 
@@ -255,120 +243,5 @@ func TestEffortOptRecommendationLabels(t *testing.T) {
 		if n := len(re.FindAllString(dict, -1)); n != 1 {
 			t.Errorf("opt.runtime_default naming %q then %s appears %d times, want 1", policy, settings.RuntimeDefaultEffortModel, n)
 		}
-	}
-}
-
-// TestAgentFMSinglePanel verifies G2-2: the "Harness agents" sub-tab is gone. Only
-// the .claude/agents/moai/ rows render, the sub-tab/panel chrome is absent, and
-// the section count reports the RENDERED agent count (not the full catalog).
-func TestAgentFMSinglePanel(t *testing.T) {
-	root := t.TempDir()
-	// Two moai-core agents + one harness agent.
-	seedAgentFMFile(t, root, "moai", "manager-spec", "opus", "xhigh")
-	seedAgentFMFile(t, root, "moai", "manager-docs", "sonnet", "medium")
-	seedAgentFMFile(t, root, "harness", "hook-ci-specialist", "", "")
-	body := renderAgentFMBody(t, root)
-
-	// Sub-tab chrome removed entirely.
-	for _, banned := range []string{
-		`data-agentfm-tab=`,
-		`data-agentfm-panel=`,
-		`class="agentfm-subtabs"`,
-		`data-i18n="agentfm.subtab.subagents"`,
-		`data-i18n="agentfm.subtab.harness"`,
-	} {
-		if strings.Contains(body, banned) {
-			t.Errorf("agentfm section still renders removed sub-tab markup %q", banned)
-		}
-	}
-
-	// moai-core rows render; the harness agent does not.
-	if !strings.Contains(body, `agentfm.manager-spec.model`) {
-		t.Error("moai-core agent (manager-spec) row not rendered")
-	}
-	if strings.Contains(body, `agentfm.hook-ci-specialist.model`) {
-		t.Error("harness agent (hook-ci-specialist) row still renders after the harness sub-tab removal")
-	}
-
-	// The count matches what actually renders (2 moai-core agents, not 3).
-	if got := agentFMSectionCount(t, body); got != 2 {
-		t.Errorf("agentfm section count = %d, want 2 (rendered moai-core agents only)", got)
-	}
-}
-
-// agentFMSectionCount extracts the numeric field count rendered next to the
-// agentfm panel title. sec.agentfm.title appears twice — first in the rail's tab
-// list, then in the panel heading — so the LAST occurrence is the heading.
-func agentFMSectionCount(t *testing.T, body string) int {
-	t.Helper()
-	heading := strings.LastIndex(body, `data-i18n="sec.agentfm.title"`)
-	if heading < 0 {
-		t.Fatal("agentfm panel heading not found in render")
-	}
-	if !strings.HasPrefix(body[heading:], `data-i18n="sec.agentfm.title">Agents</span></h2>`) {
-		t.Fatalf("expected the agentfm panel heading at the last sec.agentfm.title occurrence, got: %.80q", body[heading:])
-	}
-	rest := body[heading:]
-	marker := `class="panel__meta">`
-	at := strings.Index(rest, marker)
-	if at < 0 {
-		t.Fatal("agentfm panel field count not found in render")
-	}
-	rest = rest[at+len(marker):]
-	digits := regexp.MustCompile(`^\s*(\d+)`).FindStringSubmatch(rest)
-	if digits == nil {
-		t.Fatalf("agentfm panel field count is not numeric: %.40q", rest)
-	}
-	n, err := strconv.Atoi(digits[1])
-	if err != nil {
-		t.Fatal(err)
-	}
-	return n
-}
-
-// TestAgentTierBadgeInheritIsDefault verifies G2-3: `model: inherit` is the SHIPPED
-// default for the core agents (SPEC-MODEL-PROFILE-MATRIX-001 stopped mutating agent
-// frontmatter), so it must NOT be treated as a manual override. Only `effort: max`
-// still marks a row CUSTOM.
-func TestAgentTierBadgeInheritIsDefault(t *testing.T) {
-	// inherit → the inherit glyph (🩵), the default model badge — NOT the CUSTOM pill.
-	for _, name := range []string{"manager-spec", "manager-develop", "manager-docs"} {
-		b := agentTierBadge(name, v4manifest.ModelInherit, v4manifest.EffortXhigh)
-		if b.IsCustom {
-			t.Errorf("%s (model=inherit): CUSTOM badge rendered (effort=xhigh is not max)", name)
-		}
-		if !b.HasBadge {
-			t.Errorf("%s (model=inherit): expected a badge", name)
-		}
-		if want := v4manifest.ModelColor(v4manifest.ModelInherit); b.Glyph != want {
-			t.Errorf("%s (model=inherit): glyph = %q, want the inherit glyph %q", name, b.Glyph, want)
-		}
-	}
-
-	// effort=max remains the sole manual-override signal.
-	if b := agentTierBadge("manager-spec", v4manifest.ModelInherit, v4manifest.EffortMax); !b.IsCustom {
-		t.Error("effort=max must still render the CUSTOM badge")
-	}
-	if b := agentTierBadge("manager-spec", v4manifest.ModelOpus, v4manifest.EffortMax); !b.IsCustom {
-		t.Error("effort=max must still render the CUSTOM badge (with a concrete model pin)")
-	}
-}
-
-// TestAgentTierBadgeGlyphConsistency verifies the badge is model-derived and
-// consistent: with the shipped `model: inherit` frontmatter, EVERY seeded core
-// agent renders the inherit glyph (🩵) — no mixed CUSTOM/glyph rows.
-func TestAgentTierBadgeGlyphConsistency(t *testing.T) {
-	root := t.TempDir()
-	for _, name := range []string{"manager-spec", "manager-develop", "manager-docs", "manager-git"} {
-		seedAgentFMFile(t, root, "moai", name, v4manifest.ModelInherit, "")
-	}
-	body := renderAgentFMBody(t, root)
-
-	if strings.Contains(body, "agentfm-badge--custom") {
-		t.Error("a CUSTOM badge renders for shipped `model: inherit` agents")
-	}
-	want := v4manifest.ModelColor(v4manifest.ModelInherit)
-	if !strings.Contains(body, want) {
-		t.Errorf("inherit glyph %q missing from the render — all seeded agents share model=inherit", want)
 	}
 }

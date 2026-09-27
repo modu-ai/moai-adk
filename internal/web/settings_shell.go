@@ -6,8 +6,6 @@
 package web
 
 import (
-	"strings"
-
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
 
@@ -151,8 +149,6 @@ func settingsTabDesc(tabID string) string {
 		return "Review backend that gates merges and the per-auditor gate strictness."
 	case "codex":
 		return "Every Codex setting on one screen. Each row links to its owning tab."
-	case "agentfm":
-		return "Per-agent model and effort frontmatter for the live agent files."
 	case "report":
 		return "Output format for generated HTML and Markdown reports."
 	case "mcp":
@@ -176,8 +172,6 @@ func settingsTabEffect(tabID string) (string, string) {
 		return "settings.effect.next-launch", "Next launch"
 	case "codex":
 		return "settings.effect.read-only", "Read-only"
-	case "agentfm":
-		return "settings.effect.stored", "Stored value"
 	default:
 		return "settings.effect.per-request", "Per request"
 	}
@@ -205,24 +199,16 @@ func activeSettingsTabEffect(vm ShellVM) string { return activeSettingsTabVM(vm)
 // 쓰는 수와 같아야 한다 — 레일과 패널이 다른 수를 말하면 어느 쪽이 맞는지 알
 // 방법이 없다.
 //
-// 두 탭이 오류 판정용 이름 목록과 갈라진다: agentfm 은 렌더되는 에이전트 행 수를
-// 세고, mcp 는 도구 필드만 센다 (codex · GLM 블록은 필드가 아니라 별도 상태
-// 표면이라 패널 머리글도 세지 않는다).
+// mcp 탭은 오류 판정용 이름 목록과 갈라진다: 도구 필드만 센다 (codex · GLM
+// 블록은 필드가 아니라 별도 상태 표면이라 패널 머리글도 세지 않는다).
 func settingsTabFieldCount(tabID string, view pageView, names []string) int {
 	switch tabID {
-	case "agentfm":
-		return agentFMRenderCount(view.AgentFMs)
 	case "mcp":
 		return len(settings.SectionFields(settings.SectionMCP))
 	default:
 		return len(names)
 	}
 }
-
-// agentFMFieldPrefix 는 per-agent frontmatter 필드의 공통 접두사다. 이 접두사를
-// 가진 필드는 어느 것이든 agentfm 탭에 속한다 (에이전트 목록은 런타임 스캔이라
-// 이름을 미리 열거할 수 없다).
-const agentFMFieldPrefix = "agentfm."
 
 // settingsTabFieldNames 는 한 탭이 렌더하는 필드 이름을 돌려준다. 수제 fieldset
 // 다섯 종은 목록을 여기에 적고, 나머지는 스키마 패널 메타에서 끌어온다.
@@ -234,8 +220,6 @@ func settingsTabFieldNames(tabID string) []string {
 		return []string{"conversation_lang", "git_commit_lang", "code_comment_lang", "doc_lang"}
 	case "launch":
 		return []string{"permission_mode", "model", "effort_level"}
-	case "agentfm":
-		return []string{"performance_tier"}
 	case "codex":
 		// SPEC-WEB-CODEX-PANEL-001: the codex panel owns NO field — every row
 		// is a mirror of a field owned by audit or mcp, or probe state. Zero is
@@ -265,7 +249,7 @@ func fieldDefNames(defs []settings.FieldDef) []string {
 }
 
 // settingsTabHasError 는 이 탭이 렌더하는 필드 중 하나라도 검증 오류를 달고
-// 있는지 본다. agentfm 탭은 에이전트 이름을 미리 알 수 없으므로 접두사로 본다.
+// 있는지 본다.
 func settingsTabHasError(tabID string, names []string, errs map[string]string) bool {
 	if len(errs) == 0 {
 		return false
@@ -273,13 +257,6 @@ func settingsTabHasError(tabID string, names []string, errs map[string]string) b
 	for _, n := range names {
 		if errs[n] != "" {
 			return true
-		}
-	}
-	if tabID == "agentfm" {
-		for name := range errs {
-			if strings.HasPrefix(name, agentFMFieldPrefix) {
-				return true
-			}
 		}
 	}
 	return false

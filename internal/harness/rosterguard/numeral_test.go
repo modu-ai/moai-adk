@@ -241,7 +241,7 @@ func TestNumeralScopeIsTheSweepScopePlusResearch(t *testing.T) {
 			t.Errorf("%s must be OUT of the numeral layer's scope", rel)
 		}
 	}
-	in := []string{"CLAUDE.md", ".claude/rules/moai/development/model-policy.md", "internal/web/agentfm.go"}
+	in := []string{"CLAUDE.md", ".claude/rules/moai/development/model-policy.md", "internal/web/schemaform.go"}
 	for _, rel := range in {
 		if !InNumeralScope(rel) {
 			t.Errorf("%s must be IN the numeral layer's scope", rel)

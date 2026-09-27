@@ -3,8 +3,9 @@ package web
 // mcp_audit_surface_test.go — SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 /
 // AC-MCP-021). Verifies the audit selection surfaces in the web console
 // schema, AND that the web console does NOT fork the audit interpreter — it
-// reuses the M3 typed config (config.AuditConfig) + the shared model/effort
-// SSOT (template.ResolveAgentModelEffort). No second definition, no reresolver.
+// reuses the M3 typed config (config.AuditConfig). It carries no per-agent
+// model/effort resolver at all: subagents inherit the main session's model and
+// effort (SPEC-AGENT-MODEL-INHERIT-001).
 
 import (
 	"os"
@@ -69,16 +70,16 @@ func TestWebConsole_AuditNoForkedInterpreter(t *testing.T) {
 	}
 }
 
-// TestWebConsole_ResolveAgentModelEffortSSOTShared verifies the ResolveAgentModelEffort
-// SSOT clause of AC-MCP-021: the model/effort interpreter is defined ONCE (in
-// internal/template) and the web console IMPORTS it — it does NOT redefine a
-// second resolver. This is the "ResolveAgentModelEffort SSOT respected" guard.
-func TestWebConsole_ResolveAgentModelEffortSSOTShared(t *testing.T) {
+// TestWebConsole_NoPerAgentModelResolver verifies the web console neither
+// defines nor calls a per-agent model/effort resolver: the agent-settings tab
+// that consumed one is gone (SPEC-AGENT-MODEL-INHERIT-001 REQ-AMI-011), and no
+// other surface may reintroduce per-agent assignment.
+func TestWebConsole_NoPerAgentModelResolver(t *testing.T) {
 	files, err := filepath.Glob("*.go")
 	if err != nil {
 		t.Fatalf("glob internal/web *.go: %v", err)
 	}
-	const def = "func ResolveAgentModelEffort"
+	var scanned int
 	for _, f := range files {
 		if strings.HasSuffix(f, "_test.go") {
 			continue
@@ -87,8 +88,14 @@ func TestWebConsole_ResolveAgentModelEffortSSOTShared(t *testing.T) {
 		if err != nil {
 			t.Fatalf("read %s: %v", f, err)
 		}
-		if strings.Contains(string(data), def) {
-			t.Errorf("internal/web/%s redefines %q — the SSOT lives in internal/template; the web console must import, not redefine (AC-MCP-021)", f, def)
+		scanned++
+		for _, sym := range []string{"ResolveAgentModelEffort", "ProfileMatrixAgents", "EffectiveProfile", "AgentOverrides"} {
+			if strings.Contains(string(data), sym) {
+				t.Errorf("internal/web/%s references %s — the web console assigns no per-agent model or effort", f, sym)
+			}
 		}
+	}
+	if scanned == 0 {
+		t.Fatal("scanned no internal/web source file — the guard read nothing")
 	}
 }

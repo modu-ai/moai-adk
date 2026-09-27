@@ -203,13 +203,11 @@ var seamTable = []struct {
 	{stepWriteProjectCfg, "writeProjectConfig", "profile preferences saved, but project config write failed"},
 	{stepWriteNested, "writeProjectNestedConfig", "profile preferences saved, but project nested config write failed"},
 	{stepApplySchema, "applySchemaEdits", "profile preferences saved, but section config write failed"},
-	{stepApplyPerfTier, "applyPerfTierEdits", "profile preferences saved, but performance_tier apply failed"},
-	{stepPatchAgentFM, "patchAgentFM", "settings saved, but agent override write failed"},
 	{stepGlmcredSave, "glmcred.Save", "settings saved, but GLM credential write failed"},
 	{stepJevcredSave, "jevcred.Save", "settings saved, but Jev credential write failed"},
 }
 
-// TestSaveFailureSeamCoverage is AC-WC17-002: for EVERY one of the nine
+// TestSaveFailureSeamCoverage is AC-WC17-002: for EVERY one of the
 // persistence seams, a forced failure names that seam on BOTH surfaces —
 // the inline slot (REQ-A) and the stderr log (REQ-B). The pre-submit
 // absence assertion rides along per seam so the two-directional guard of

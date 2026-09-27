@@ -36,41 +36,9 @@ func v4EffortValues() []string {
 	}
 }
 
-// v4ModelValues는 v4manifest의 4-model-tier closed set이다.
-func v4ModelValues() []string {
-	return []string{
-		v4manifest.ModelInherit, v4manifest.ModelHaiku,
-		v4manifest.ModelSonnet, v4manifest.ModelOpus,
-	}
-}
-
-// V4EffortValues / V4ModelValues는 웹 계층(agent frontmatter 편집 검증,
-// REQ-WC11-029)이 소비하는 공개 접근자다.
-func V4EffortValues() []string { return v4EffortValues() }
-func V4ModelValues() []string  { return v4ModelValues() }
-
-// ─── Sub-agent tier accessors (SPEC-WEBCONF-SIMPLIFY-001 M1) ──────────────────
-//
-// 티어(tier)는 서브에이전트의 4색 추론-역할 분류다. 각 에이전트의 effort
-// frontmatter와는 독립적인 display-only 분류며 (design.md §B), canonical 테이블/
-// 접근자는 internal/harness/v4manifest에 있다. 여기선 웹 계층이 effort/model
-// closed-set 접근자(V4EffortValues/V4ModelValues)를 이미 임포트한 같은 패키지에서
-// 티어 표면도 함께 노출한다.
-
-// TierForAgent returns the display-only Tier for the named agent (keyed by
-// agent file stem, matching agentfm.AgentInfo.Name). The second return is
-// false when the name has no tier entry (a future agent not yet added to the
-// table — design.md EC-6).
-func TierForAgent(name string) (v4manifest.Tier, bool) {
-	return v4manifest.AgentTier(name)
-}
-
-// TierSuggestedModelEffort returns the suggested (model, effort) pair for the
-// tier (design.md §D). Applied only on explicit user action; writes via
-// agentfm.Patch, NOT a new tier: frontmatter key (C-7).
-func TierSuggestedModelEffort(t v4manifest.Tier) (model, effort string) {
-	return v4manifest.TierSuggestedModelEffort(t)
-}
+// NOTE: the model closed-set accessors and the sub-agent tier accessors
+// (TierForAgent / TierSuggestedModelEffort) left with the agent-settings tab
+// they served (SPEC-AGENT-MODEL-INHERIT-001).
 
 // NOTE: workflow.yaml team.role_profiles 키 목록을 반환하던 접근자와 그 isolation
 // closed-set 헬퍼는 Agent Teams 정적 레이어와 함께 제거되었다 — 웹 콘솔은 더 이상
@@ -578,8 +546,8 @@ func reportFields() []FieldDef {
 // NOTE: agent-settings 웹 렌더 표면(team.role_profiles — 7 profiles ×
 // {model, effort, isolation, mode})은 Agent Teams 정적 레이어와 함께 제거되었다
 // (SPEC-AGENT-TEAM-RETIRE-001). 웹 콘솔은 더 이상 Agent Teams 설정을 렌더하지
-// 않는다. sub-agent frontmatter 편집(agentfm.*)은 별도 표면(agentfm.go)으로
-// 유지된다 — Agent Teams와 무관하다.
+// 않는다. sub-agent model/effort 편집 표면(agentfm.*)도 제거되었다
+// (SPEC-AGENT-MODEL-INHERIT-001).
 
 // withEmptySubmits opts a closed-set select into treating "" as a real,
 // submittable value: the rendered empty option writes the yaml key back to its
