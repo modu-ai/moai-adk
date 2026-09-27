@@ -437,7 +437,7 @@ type WorkflowConfig struct {
 	// Config.DriftCacheFillEnabled.
 	//
 	// Default TRUE, and that is a deliberate departure from the workflow.*
-	// guard family (BranchGuard, AgentModelGuard, IntegrationLock, ...). Those
+	// guard family (BranchGuard, AgentStopGuard, IntegrationLock, ...). Those
 	// default to false because they ship INERT — the default is grounded on
 	// NEUTRALITY, not on "adds a deny". This feature is not inert when
 	// enabled: on every cache miss it starts an unsolicited child process. The
@@ -474,17 +474,15 @@ type WorkflowConfig struct {
 	// exemption logic (MOAI_BRANCH_GUARD_EXEMPT + manager-git identity).
 	BranchGuard BranchGuardConfig `yaml:"branch_guard"`
 
-	// AgentModelGuard gates the blocking layer of the PreToolUse agent-model
-	// guard. Default false: the observation and advisory layers always run,
-	// but no spawn is ever denied until a maintainer opts in via local config.
-	// Sibling of BranchGuard — same opt-in shape, same default-OFF neutrality.
-	AgentModelGuard AgentModelGuardConfig `yaml:"agent_model_guard"`
+	// A leftover workflow.agent_model_guard key is ignored on load: subagents
+	// inherit the main session's model, so no spawn is denied on the basis of
+	// its model (SPEC-AGENT-MODEL-INHERIT-001).
 
 	// AgentStopGuard gates the deny layer of the PreToolUse SendMessage
 	// stop-guard. Default false: TaskStop recording and SendMessage
 	// observation + advisory always run, but no send is ever denied until a
-	// maintainer opts in via local config. Sibling of BranchGuard /
-	// AgentModelGuard — same opt-in shape, same default-OFF neutrality.
+	// maintainer opts in via local config. Sibling of BranchGuard — same
+	// opt-in shape, same default-OFF neutrality.
 	AgentStopGuard AgentStopGuardConfig `yaml:"agent_stop_guard"`
 
 	// IntegrationLock gates the PreToolUse release-integration holder guard
@@ -515,8 +513,8 @@ type WorkflowConfig struct {
 	// destructive-write guard (SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001). Default
 	// false: detection and the audit-log append always run, but no subagent
 	// Write is ever denied until a maintainer opts in via local config.
-	// Sibling of BranchGuard / AgentModelGuard / AgentStopGuard — same
-	// opt-in shape, same default-OFF neutrality.
+	// Sibling of BranchGuard / AgentStopGuard — same opt-in shape, same
+	// default-OFF neutrality.
 	SubagentWriteGuard SubagentWriteGuardConfig `yaml:"subagent_write_guard"`
 
 	// Jev gates the TypeSafe System One judgment capability (internal/jev).
@@ -783,17 +781,6 @@ type SlotLeaseConfig struct {
 type SlotLeaseResourceConfig struct {
 	Commands []string `yaml:"commands"`
 	Invalid  string   `yaml:"-"`
-}
-
-// AgentModelGuardConfig mirrors workflow.agent_model_guard.* — the opt-in
-// blocking layer of the PreToolUse agent-model guard. When Enabled is false
-// (the distributed default) the guard still observes every Agent spawn and
-// still emits advisories, but it never returns a deny decision. Only the
-// mismatch verdict is blockable even when enabled; the far more common
-// missing verdict stays advisory, because blocking it would refuse nearly
-// every spawn.
-type AgentModelGuardConfig struct {
-	Enabled bool `yaml:"enabled"`
 }
 
 // AgentStopGuardConfig mirrors workflow.agent_stop_guard.* — the opt-in deny

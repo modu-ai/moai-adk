@@ -1092,13 +1092,6 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 				PushDevelop:  DefaultAutonomyPushDevelop,
 			},
 		},
-		// The agent-model guard ships with its BLOCKING layer off. Observation
-		// and advisory always run; a maintainer opts into denial via local
-		// config. Template neutrality: no `enabled: true` anywhere under
-		// internal/template/templates/.
-		AgentModelGuard: AgentModelGuardConfig{
-			Enabled: false,
-		},
 		// The SendMessage stop-guard deny layer ships OFF the same way: stop
 		// recording and send observation + advisory always run; a maintainer
 		// opts into denial via local config. Template neutrality: no

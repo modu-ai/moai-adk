@@ -11,19 +11,16 @@
 //
 //	observe  — always on; appends one JSONL record per spawn, never blocks.
 //	advise   — always on; emits a non-blocking advisory on missing/mismatch.
-//	block    — opt-in (workflow.agent_model_guard.enabled, default false);
-//	           denies ONLY the mismatch verdict.
 //
-// The dominant real-world verdict is `missing`, not `mismatch`: a payload survey
-// found the model argument present on well under 1% of observed spawns. Blocking
-// `missing` would therefore refuse nearly every spawn, so `missing` stays
-// advisory even when the gate is on.
+// The former opt-in block layer (workflow.agent_model_guard.enabled) is gone:
+// subagents inherit the main session's model and effort
+// (SPEC-AGENT-MODEL-INHERIT-001), so no spawn is denied on the basis of its
+// model. A leftover agent_model_guard key in a user's workflow.yaml is ignored.
+// The observation layer stays until its reader-side rework lands.
 //
-// Fail-open is the house norm (branch_guard.go): a deny fires ONLY on positive
-// evidence — the agent identifier parsed, the resolution mapped, a declared
-// model present, and the two differing. Every other state (unparseable payload,
-// absent subagent_type, unmapped agent, unreadable config, unresolved project
-// root) allows. An enforcement bug must never wedge a session.
+// Fail-open is the house norm (branch_guard.go): every uncertainty
+// (unparseable payload, absent subagent_type, unmapped agent, unreadable
+// config, unresolved project root) records nothing it cannot and never blocks.
 //
 // effort is deliberately out of scope: the Agent tool exposes no effort
 // parameter, so only `model` is observable at spawn time.
@@ -41,11 +38,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
-
-// SentinelAgentModelViolation prefixes every deny emitted by the agent-model
-// guard, so the orchestrator can pattern-match the source without parsing the
-// full reason string. Mirrors the BRANCH_GUARD_VIOLATION precedent.
-const SentinelAgentModelViolation = "AGENT_MODEL_VIOLATION"
 
 // agentModelAuditFileName is the per-spawn audit log under <root>/.moai/logs/.
 // JSON Lines (not .log) because the point is aggregation — per-agent drift
@@ -200,22 +192,6 @@ func appendAgentModelAudit(projectRoot string, rec agentModelAuditRecord) {
 	}
 }
 
-// agentModelGuardEnabled reports whether the opt-in blocking gate is on
-// (workflow.agent_model_guard.enabled, distributed default false). A nil
-// provider or nil config returns false so a misconfigured hook can never
-// accidentally reach the deny path — the same defensive shape as
-// branchGuardEnabled.
-func (h *preToolHandler) agentModelGuardEnabled() bool {
-	if h.cfg == nil {
-		return false
-	}
-	cfg := h.cfg.Get()
-	if cfg == nil {
-		return false
-	}
-	return cfg.Workflow.AgentModelGuard.Enabled
-}
-
 // llmConfig returns the LLM config the resolver needs, falling back to the zero
 // value when no config is reachable. The zero value resolves through the
 // matrix defaults, so observation still works without a loaded config.
@@ -231,14 +207,13 @@ func (h *preToolHandler) llmConfig() config.LLMConfig {
 }
 
 // checkAgentModel is the PreToolUse entry point for an Agent/Task spawn. It
-// returns (decision, reason, advisory): decision is DecisionDeny only when the
-// gate is on AND the verdict is mismatch; otherwise it is empty and the caller
-// falls through to allow, optionally surfacing the advisory.
-func (h *preToolHandler) checkAgentModel(input *HookInput) (decision, reason, advisory string) {
+// records the observation and returns the non-blocking advisory (empty when
+// there is nothing to say). It never denies.
+func (h *preToolHandler) checkAgentModel(input *HookInput) (advisory string) {
 	sp, ok := extractAgentSpawn(input.ToolInput)
 	if !ok {
-		// Uncertain payload — nothing to observe, nothing to enforce.
-		return "", "", ""
+		// Uncertain payload — nothing to observe.
+		return ""
 	}
 
 	verdict, resolved := classifyAgentModel(sp, h.llmConfig())
@@ -251,23 +226,5 @@ func (h *preToolHandler) checkAgentModel(input *HookInput) (decision, reason, ad
 		Verdict:       string(verdict),
 	})
 
-	advisory = agentModelAdvisory(sp.Agent, resolved, verdict)
-
-	// Blocking is opt-in AND mismatch-only. `missing` stays advisory even when
-	// the gate is on: blocking it would refuse nearly every spawn.
-	if verdict == verdictAgentModelMismatch && h.agentModelGuardEnabled() {
-		reason = fmt.Sprintf(
-			"%s: %s was spawned with model %q but the active profile resolves it to %q. "+
-				"Pass model=%s on the spawn, or adjust the profile.",
-			SentinelAgentModelViolation, sp.Agent, sp.DeclaredModel, resolved, resolved)
-		slog.Warn("agent model guard denied",
-			"agent", sp.Agent,
-			"declared_model", sp.DeclaredModel,
-			"resolved_model", resolved,
-			"session_id", input.SessionID,
-		)
-		return DecisionDeny, reason, advisory
-	}
-
-	return "", "", advisory
+	return agentModelAdvisory(sp.Agent, resolved, verdict)
 }

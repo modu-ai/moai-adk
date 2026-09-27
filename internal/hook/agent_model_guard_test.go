@@ -234,7 +234,7 @@ func TestAgentModelAuditWriteFailureFailsOpen(t *testing.T) {
 
 	t.Run("handler allows despite unwritable root", func(t *testing.T) {
 		t.Parallel()
-		h := newAgentModelTestHandler(t, "", false)
+		h := newAgentModelTestHandler(t, "")
 		out, err := h.Handle(context.Background(), agentInput("Explore", "haiku"))
 		if err != nil {
 			t.Fatalf("Handle returned error: %v", err)
@@ -258,12 +258,11 @@ func agentInput(agent, model string) *HookInput {
 	}
 }
 
-// newAgentModelTestHandler builds a preToolHandler with the guard gate set to
-// the requested state and the project root pinned to root.
-func newAgentModelTestHandler(t *testing.T, root string, gateEnabled bool) *preToolHandler {
+// newAgentModelTestHandler builds a preToolHandler on the default config with
+// the project root pinned to root.
+func newAgentModelTestHandler(t *testing.T, root string) *preToolHandler {
 	t.Helper()
 	cfg := config.NewDefaultConfig()
-	cfg.Workflow.AgentModelGuard.Enabled = gateEnabled
 	return &preToolHandler{
 		cfg:        &auditConfigProvider{cfg: cfg},
 		policy:     DefaultSecurityPolicy(),
@@ -291,12 +290,12 @@ func assertDeny(t *testing.T, out *HookOutput) {
 	}
 }
 
-// TestAgentModelObserveNeverBlocks pins AC-AME-015 + AC-AME-031: with the gate
-// off (the distributed default) every verdict falls through to allow.
+// TestAgentModelObserveNeverBlocks pins AC-AME-015 + AC-AME-031: every verdict
+// falls through to allow — the hook has no model-based deny.
 func TestAgentModelObserveNeverBlocks(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	h := newAgentModelTestHandler(t, root, false)
+	h := newAgentModelTestHandler(t, root)
 
 	var llm config.LLMConfig
 	_, resolved := resolveAgentModel(llm, "Explore")
@@ -316,18 +315,6 @@ func TestAgentModelObserveNeverBlocks(t *testing.T) {
 			assertNotDeny(t, out)
 		})
 	}
-}
-
-// TestAgentModelGuardDisabledNeverBlocks is the AC-AME-031 alias pin.
-func TestAgentModelGuardDisabledNeverBlocks(t *testing.T) {
-	t.Parallel()
-	root := t.TempDir()
-	h := newAgentModelTestHandler(t, root, false)
-	out, err := h.Handle(context.Background(), agentInput("Explore", "haiku"))
-	if err != nil {
-		t.Fatalf("Handle: %v", err)
-	}
-	assertNotDeny(t, out)
 }
 
 // TestAgentModelAdvisoryContent pins AC-AME-020.
@@ -366,7 +353,7 @@ func TestAgentModelAdvisoryContent(t *testing.T) {
 func TestAgentModelAdvisoryDoesNotBlock(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	h := newAgentModelTestHandler(t, root, false)
+	h := newAgentModelTestHandler(t, root)
 	out, err := h.Handle(context.Background(), agentInput("Explore", ""))
 	if err != nil {
 		t.Fatalf("Handle: %v", err)
@@ -375,60 +362,6 @@ func TestAgentModelAdvisoryDoesNotBlock(t *testing.T) {
 	if out.SystemMessage == "" {
 		t.Errorf("expected a non-blocking advisory on the missing verdict")
 	}
-}
-
-// TestAgentModelGuardEnabledDenyMatrix pins AC-AME-032: the (gate x verdict)
-// 8-row matrix. Only (enabled, mismatch) denies.
-func TestAgentModelGuardEnabledDenyMatrix(t *testing.T) {
-	t.Parallel()
-	var llm config.LLMConfig
-	_, resolved := resolveAgentModel(llm, "Explore")
-
-	cases := []struct {
-		name     string
-		enabled  bool
-		agent    string
-		model    string
-		wantDeny bool
-	}{
-		{"off/ok", false, "Explore", resolved, false},
-		{"off/missing", false, "Explore", "", false},
-		{"off/mismatch", false, "Explore", "haiku", false},
-		{"off/unmapped", false, "hns-user-specialist", "opus", false},
-		{"on/ok", true, "Explore", resolved, false},
-		{"on/missing", true, "Explore", "", false},
-		{"on/mismatch", true, "Explore", "haiku", true},
-		{"on/unmapped", true, "hns-user-specialist", "opus", false},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			h := newAgentModelTestHandler(t, t.TempDir(), tc.enabled)
-			out, err := h.Handle(context.Background(), agentInput(tc.agent, tc.model))
-			if err != nil {
-				t.Fatalf("Handle: %v", err)
-			}
-			if tc.wantDeny {
-				assertDeny(t, out)
-				if !strings.Contains(reasonOf(out), SentinelAgentModelViolation+":") {
-					t.Errorf("deny reason lacks the %q sentinel prefix: %s", SentinelAgentModelViolation, reasonOf(out))
-				}
-			} else {
-				assertNotDeny(t, out)
-			}
-		})
-	}
-}
-
-// TestAgentModelGuardMissingNeverBlocked pins AC-AME-034 (AP-3 regression pin).
-func TestAgentModelGuardMissingNeverBlocked(t *testing.T) {
-	t.Parallel()
-	h := newAgentModelTestHandler(t, t.TempDir(), true)
-	out, err := h.Handle(context.Background(), agentInput("Explore", ""))
-	if err != nil {
-		t.Fatalf("Handle: %v", err)
-	}
-	assertNotDeny(t, out)
 }
 
 // TestAgentModelGuardFailsOpen pins AC-AME-033: every uncertainty allows.
@@ -442,7 +375,7 @@ func TestAgentModelGuardFailsOpen(t *testing.T) {
 
 	t.Run("payload uncertainties", func(t *testing.T) {
 		t.Parallel()
-		h := newAgentModelTestHandler(t, t.TempDir(), true)
+		h := newAgentModelTestHandler(t, t.TempDir())
 		for name, in := range map[string]*HookInput{
 			"unparseable tool_input": unparseable,
 			"absent subagent_type":   noSubagent,
@@ -479,7 +412,7 @@ func TestAgentModelGuardFailsOpen(t *testing.T) {
 
 	t.Run("unresolved project root", func(t *testing.T) {
 		t.Parallel()
-		h := newAgentModelTestHandler(t, "", true)
+		h := newAgentModelTestHandler(t, "")
 		out, err := h.Handle(context.Background(), agentInput("Explore", "haiku"))
 		if err != nil {
 			t.Fatalf("Handle: %v", err)
@@ -492,12 +425,12 @@ func TestAgentModelGuardFailsOpen(t *testing.T) {
 	})
 }
 
-// TestAgentModelGuardDisabledNoExtraIO pins AC-AME-035: the gate-off path
+// TestAgentModelGuardDisabledNoExtraIO pins AC-AME-035: an Agent spawn
 // writes only the audit log and performs no other file I/O under the root.
 func TestAgentModelGuardDisabledNoExtraIO(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	h := newAgentModelTestHandler(t, root, false)
+	h := newAgentModelTestHandler(t, root)
 
 	if _, err := h.Handle(context.Background(), agentInput("Explore", "")); err != nil {
 		t.Fatalf("Handle: %v", err)
@@ -550,7 +483,7 @@ func TestPruneObservationLogsIncludesAgentModelAudit(t *testing.T) {
 // does not disturb the existing Bash deny precedence.
 func TestPreToolDecisionPrecedence(t *testing.T) {
 	t.Parallel()
-	h := newAgentModelTestHandler(t, t.TempDir(), true)
+	h := newAgentModelTestHandler(t, t.TempDir())
 
 	raw, _ := json.Marshal(map[string]any{"command": "rm -rf /"})
 	out, err := h.Handle(context.Background(), &HookInput{
@@ -562,7 +495,7 @@ func TestPreToolDecisionPrecedence(t *testing.T) {
 		t.Fatalf("Handle: %v", err)
 	}
 	assertDeny(t, out)
-	if strings.Contains(reasonOf(out), SentinelAgentModelViolation) {
+	if strings.Contains(reasonOf(out), "AGENT_MODEL_VIOLATION") {
 		t.Errorf("Bash dangerous-pattern deny was displaced by the agent-model guard: %s", reasonOf(out))
 	}
 }
