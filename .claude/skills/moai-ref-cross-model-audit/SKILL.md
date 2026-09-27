@@ -67,6 +67,24 @@ results.
 | `session_id` | string | no | When set, the result is persisted to `.moai/state/audit-multi/<session>.json` so the multi-review-gate Stop hook reads the most recent result rather than re-invoking convergence. |
 | `project_root` | string | no *(REQUIRED in a worktree)* | The tree the backends should read — this session's own `git rev-parse --show-toplevel`. Omitted from a worktree, the fan-out reads the PRIMARY checkout instead, so the backends review a diff that is not the one under audit and nothing in the result says so. Omit it only in the primary checkout. An unusable path is rejected with an error naming it, never silently replaced. |
 
+<!-- moai:closure-second-review:start -->
+**Contract-mode second review (card-bound).** When the reviewed card runs under a
+contract-based autonomy workflow, invoke the tool with the card argument so this
+fan-out is recorded as the card's second review:
+
+- pass `card_id` set to the card identifier from the reviewed card's contract;
+- keep `target: "baseBranch"` — the review must cover the reviewed scope, never
+  uncommitted changes;
+- run the review AFTER the last commit that changes the card's governed paths
+  (the contract's ownership `write` globs, excluding the SPEC's own directory),
+  so the recorded scope is current for the commit that will be judged; a review
+  recorded before that commit is stale for the closure push.
+
+The tool appends one second-review record into the card evidence directory.
+Without `card_id` no record is written and the tool behaves byte-identically to
+the pre-argument surface.
+<!-- moai:closure-second-review:end -->
+
 ### Output shape
 
 The tool returns a `ConvergenceResult`:
