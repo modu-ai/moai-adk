@@ -144,6 +144,9 @@ var schemaOptionBridge = map[string]func(t profileSetupText) string{
 	"f.effort_level.opt.high":   func(t profileSetupText) string { return t.EffortLevelHigh },
 	"f.effort_level.opt.xhigh":  func(t profileSetupText) string { return t.EffortLevelXHigh },
 	"f.effort_level.opt.max":    func(t profileSetupText) string { return t.EffortLevelMax },
+	// Effort level empty option (schema EmptyLabelKey). A blank result (en)
+	// falls back to the schema's EmptyLabel in schemaSelectOptions.
+	"opt.runtime_default": func(t profileSetupText) string { return t.EffortLevelEmpty },
 	// Permission mode (f.permission_mode.opt.*)
 	"f.permission_mode.opt.acceptEdits":       func(t profileSetupText) string { return t.PermAcceptEdits },
 	"f.permission_mode.opt.auto":              func(t profileSetupText) string { return t.PermAuto },

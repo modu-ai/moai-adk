@@ -100,7 +100,7 @@ Settings fields introduced by specific Claude Code versions:
 
 | Field | Version | Notes |
 |-------|---------|-------|
-| `effortLevel` | v2.1.110 | Sets CLAUDE_CODE_EFFORT_LEVEL; values: low/medium/high/xhigh/max |
+| `effortLevel` | v2.1.110 | Persistent effort default; values: low/medium/high/xhigh. `max` is not accepted here — MoAI's launcher passes a resolved max as the `--effort max` launch argument |
 | `disableBypassPermissionsMode` | v2.1.111 | Prevents agents from using bypassPermissions mode when true |
 | `Bash(timeout=N)` | v2.1.110 | Per-command Bash timeout in ms; max 600,000ms |
 
@@ -143,6 +143,8 @@ When a Bash command contains a destructive primitive, the orchestrator/agent SHA
 - `chmod -R 777` — recursive world-writable (security hole)
 
 This cross-references the **Implementation Kickoff Approval** human-gate pattern: irreversible / shared-system / hard-to-reverse actions require explicit user confirmation regardless of permission mode. The warn-only hook signal (§4) does NOT enforce this confirmation — confirmation is an orchestrator/agent obligation (doctrine-level), not a hook block.
+
+Claude Code adds a separate native check for dangerous recursive `rm` commands. Since v2.1.281, auto mode and `--dangerously-skip-permissions` wait up to two minutes for the dangerous-rm prompt, then deny an unanswered command with a rewrite hint (`CLAUDE_CODE_DISABLE_DANGEROUS_RM_TIMEOUT=1` opts out). A recursive `rm` whose target comes only from command substitution (for example `"$(pwd)"`) also prompts even with a Bash allow rule; `CLAUDE_CODE_DISABLE_SUBSTITUTION_RM_PROMPT=1` opts out of that check. The detector also covers variable-derived working directories, a variable followed by a top-level directory, and backslash-only targets. Claude Code suggests the `${VAR:?}` guard for variable targets; it rejects an unset or empty variable before deletion. MoAI does not set either opt-out variable. These native prompts do not replace the explicit-confirmation obligation above.
 
 ### (4) Warn-only, fail-open hook signal
 

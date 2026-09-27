@@ -487,7 +487,16 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		view.ActiveTab = r.PostFormValue("__tab")
 		view.Banner = "Validation failed — no changes were saved."
 		view.BannerKind = "error"
-		a.render(w, http.StatusBadRequest, view)
+		// Card t1105: 2xx, not 400. The page is boosted (root.templ
+		// hx-boost="true"), and the pinned embedded htmx 2.0.4 default
+		// responseHandling table answers 4xx with {swap:false} — so a 400 here
+		// renders the banner and the per-field errors into a body the client
+		// then throws away, and the user sees nothing at all. This is the same
+		// correction SPEC-WEB-CONSOLE-017 already made for the save-failure
+		// seam below (renderErrorPage answers 200, not 500, for this reason).
+		// The reject stays atomic: nothing was persisted, and the status says
+		// only that the client should display what was rendered.
+		a.render(w, http.StatusOK, view)
 		return
 	}
 

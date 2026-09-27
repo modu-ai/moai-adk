@@ -138,6 +138,12 @@ const (
 	SourceInjected Source = "injected"
 )
 
+// noulTrueAbove is the probability above which a Noul answer reads as its TRUE
+// label when scoring accuracy. The vendor returns a Noul as a probability, not
+// a boolean; "more likely true than not" is the neutral cut, and it is only the
+// scoring rule — a consumer's decision gate is a fitted Threshold, not this.
+const noulTrueAbove = 0.5
+
 // Verdict is the gate's binding decision (REQ-JEVO-009).
 type Verdict string
 
@@ -353,7 +359,8 @@ func sourceOf(a Answerer) Source {
 //
 // For a Noul, the convention is that labels[0] is the TRUE label and labels[1]
 // the false one; a set declaring fewer than two labels for a Noul cannot be
-// scored and yields the empty string, which matches nothing.
+// scored and yields the empty string, which matches nothing. A Noul answer is a
+// probability, so the label is read at noulTrueAbove.
 func labelOf(a jev.Answer, labels []string) string {
 	switch a.Kind {
 	case jev.KindChoice:
@@ -362,7 +369,7 @@ func labelOf(a jev.Answer, labels []string) string {
 		if len(labels) < 2 {
 			return ""
 		}
-		if a.Noul {
+		if a.Probability > noulTrueAbove {
 			return labels[0]
 		}
 		return labels[1]

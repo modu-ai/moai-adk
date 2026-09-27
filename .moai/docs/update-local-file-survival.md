@@ -38,13 +38,45 @@ git status --porcelain | grep '^ D' | sed 's/^...//' | tr '\n' '\0' | xargs -0 g
 **[HARD] update 후 `git-strategy.yaml`의 git-flow 키를 반드시 재적용한다.** `.moai/config`는 위 wipe 대상이므로, `moai update` 는 `.moai/config/sections/git-strategy.yaml` 을 템플릿 기본값(`workflow: github-flow`, develop/release 키 없음)으로 되돌린다. 이 파일은 **템플릿에 미러하지 않는다** — 미러하면 16개 언어 배포판 전체에 이 프로젝트의 사설 워크플로가 실려 나간다(§15). 그러니 매 update 후 로컬에서 다시 넣는다:
 
 ```bash
-# 확인 — git-flow 가 아니면 되돌아간 것
-grep -n 'workflow: git-flow' .moai/config/sections/git-strategy.yaml || echo 'REVERTED — 재적용 필요'
-# 재적용 (git_strategy.manual 블록)
-git restore --source=HEAD -- .moai/config/sections/git-strategy.yaml
+# 확인 — 두 키를 함께 본다. 하나만 보면 나머지가 되돌아간 것을 놓친다 (card t1159)
+grep -n 'workflow: git-flow' .moai/config/sections/git-strategy.yaml || echo 'REVERTED(workflow) — 재적용 필요'
+grep -n 'worktree_base_branch: develop' .moai/config/sections/git-strategy.yaml || echo 'REVERTED(worktree_base_branch) — 재적용 필요'
+# 재적용 — **--source=develop 이다. HEAD 가 아니다** (card t1159)
+git restore --source=develop -- .moai/config/sections/git-strategy.yaml
 ```
 
-`git restore` 가 통하지 않는 상황(커밋 전 상태)이면 `git_strategy.manual` 아래를 손으로 되돌린다: `workflow: git-flow` [2026-08-27 감사 정정], 그리고 `main_branch:` 바로 아래에 `develop_branch: develop` / `release_branch_prefix: release/` / `rc_version_format: vX.Y.Z-rc.N` 세 줄.
+**[HARD] `--source=HEAD` 를 쓰지 않는다.** primary 체크아웃은 `main` 에 체크아웃돼 있고, `main` 커밋본에는 `worktree_base_branch` 키가 **아예 없으며** 세 블록 모두 `workflow: github-flow` 다(2026-09-24 실측: `git show main:.moai/config/sections/git-strategy.yaml`). `HEAD` 에서 복원하면 두 키가 함께 되돌아간다 — 확인 grep 은 실패하는데 복원은 고쳐 주지 않는 순환이 된다. 정본은 `develop` 이다(§0.1 과 같은 판별식: 레인이 분기하는 트리가 지배한다).
+
+`git restore` 가 통하지 않는 상황(커밋 전 상태)이면 `git_strategy` 아래를 손으로 되돌린다 — **네 줄이 아니라 다섯 줄이다**:
+
+- `git_strategy.manual`: `workflow: git-flow` [2026-08-27 감사 정정], 그리고 `main_branch:` 바로 아래에 `develop_branch: develop` / `release_branch_prefix: release/` / `rc_version_format: vX.Y.Z-rc.N` 세 줄.
+- `git_strategy` 최상위: `worktree_base_branch: develop` — **이 줄이 목록에서 빠져 있어 2026-09-24 에 카드 트리 6개가 develop 이 아니라 main 에서 났다**(t1154·t1153·t1075·t1157·t1158·t1159). 빈 값은 `SPEC-WORKTREE-BASEREF-001` 의 중립 기본값이라 `moai worktree new` 가 base 오퍼랜드 없이 `git worktree add` 를 돌리고, git 은 호출 트리의 HEAD(= primary 의 `main`)에서 판다. 손실이 조용하다 — 확인 grep 이 `workflow` 만 보면 이 되돌림은 통과한다. 근거: `.moai/reports/t1159/measurement.md`.
+
+**[HARD] AC 스냅숏 커밋 가드의 무장 상태는 세션 시작마다 읽는다 (card t1161).** t1150 이
+넣은 가드(`git config hook.ac-baseline-guard.{event,command}` + `scripts/ac-baseline/check-staged.sh`)는
+**꺼져도 조용하다** — 키 삭제·git < 2.54·체커 부재 세 경우 모두 커밋이 그냥 통과하고, 그 통과는
+"가드가 돌아서 아무것도 못 찾았다"와 출력이 같다. 침묵이 정보를 담지 않으므로 말해 주는 표면이
+따로 있어야 한다:
+
+```bash
+# 읽기 전용. 무장이면 침묵(stdout `ARMED`), 아니면 고장마다 stderr 1줄. 항상 exit 0
+sh scripts/ac-baseline/check-armed.sh
+```
+
+배선: `.claude/settings.local.json` 의 `SessionStart` 에 항목 하나를 더한다(§28 의 lsel 2항목과
+같은 자리·같은 이유 — tracked `settings.json` 은 `moai update` 가 통째 재배포해 배선이 매번
+유실된다). **`moai doctor` 에는 넣지 않는다**: doctor 체크는 Go 제품 코드라 전 사용자 배포판에
+실려 나가고, 이 가드는 이 저장소 전용 도구다(템플릿 미러 없음).
+
+```jsonc
+// .claude/settings.local.json  .hooks.SessionStart[0].hooks[] 에 추가
+{ "type": "command", "command": "bash", "timeout": 30,
+  "args": ["-c", "[ -f \"$0\" ] && exec sh \"$0\"; exit 0",
+           "${CLAUDE_PROJECT_DIR}/scripts/ac-baseline/check-armed.sh"] }
+```
+
+`scripts/` 는 관리 대상 뿌리 밖이므로 이 스크립트는 `moai update` 가 지우지 않는다 — 재적용
+대상이 아니다. 배선만 settings.local.json 에 있고, 그 파일은 런타임이 쓰는 로컬 전용이다.
 
 **[HARD] 보고된 파일 수를 믿지 않는다.** `Updated N files`의 N은 관리 대상 뿌리 **밖** 파일만 센다(`internal/cli/update/plan/plan.go:73` `if IsMoaiManaged(...) { continue }`). 2026-08-15 실측: 보고 32, 실제 175. **삭제는 이 요약에 전혀 나타나지 않는다.**
 

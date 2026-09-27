@@ -178,6 +178,9 @@ func init() {
 	// SPEC-V3R2-RT-004: register state subcommand
 	rootCmd.AddCommand(newStateCmd())
 
+	// SPEC-CI-VERDICT-PRODUCER-001: register the CI verdict producer verb
+	rootCmd.AddCommand(newCIVerdictCmd(defaultGhRunner))
+
 	// kanban t86: register tokens subcommand (per-pool token accounting seed)
 	rootCmd.AddCommand(newTokensCmd())
 
@@ -210,12 +213,6 @@ func init() {
 
 	// SPEC-V3R2-RT-007: register migration subcommand group
 	rootCmd.AddCommand(migrationCmd)
-
-	// SPEC-JEV-CONSUMERS-001 M6: Consumer B's mechanical anchor. Hidden so no
-	// user-facing surface presents the consumer while it sits in the gate-unrun
-	// state (REQ-JEVN-016 condition iii); the /moai skill's gated protocol block
-	// is the only surface that names it.
-	rootCmd.AddCommand(newJevSuggestCmd())
 
 	// SPEC-CHAIN-CORE-001: register chain subcommand group
 	rootCmd.AddCommand(newChainCmd())

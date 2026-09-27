@@ -139,8 +139,8 @@ The marker attached beside the CW bar is the statusline's most important recomme
 ```mermaid
 flowchart TD
     A["measure context usage<br/>(by raw usage)"] --> B{"window size class"}
-    B -- "1M context<br/>(Opus 5, GLM-5.3)" --> C{"usage 50% or more?"}
-    B -- "200K / 256K standard<br/>(Sonnet, Haiku, Fable)" --> D{"usage 90% or more?"}
+    B -- "1M context<br/>(Opus 5.5, Sonnet 5, Fable, GLM-5.3)" --> C{"usage 50% or more?"}
+    B -- "200K standard<br/>(Haiku, Sonnet 4.5 and earlier)" --> D{"usage 90% or more?"}
     C -- "no" --> N["no marker<br/>(safe zone)"]
     D -- "no" --> N
     C -- "yes" --> S["soft marker (⚠️/clear)<br/>recommendation"]
@@ -152,7 +152,7 @@ flowchart TD
     S --> CLR
 ```
 
-The thresholds differ by model class because the larger the window, the more an early switch favors SSE-stall prevention. On 1M-context models the soft marker fires at half full (50%); on 200K/256K models at 90%. The hard marker is a ceiling that anticipates when auto-compact would fire. Since the runtime's auto-compact often pre-empts this ceiling first, the hard stage is in practice a top-level signal that fires rarely.
+The thresholds differ by model class because the larger the window, the more an early switch favors SSE-stall prevention. On 1M-context models the soft marker fires at half full (50%); on 200K models at 90%. The hard marker is a ceiling that anticipates when auto-compact would fire. Since the runtime's auto-compact often pre-empts this ceiling first, the hard stage is in practice a top-level signal that fires rarely.
 
 When the marker turns on, follow the fixed order: save in-flight work to `progress.md`, receive the orchestrator's paste-ready resume message, `/clear` the session, and paste the message into the new session to continue. This flow matches the session handoff rules.
 
@@ -208,7 +208,7 @@ The refresh interval is set by `statusLine.refreshInterval` in `settings.json` (
 
 **If the PR does not show**, check three things. Claude Code must be v2.1.145 or later for the `pr` field to arrive on stdin. Confirm an open PR exists on the current branch with `gh pr view`. And check that the configuration does not explicitly say `pr: false`.
 
-**If the handoff marker does not show**, that is usually normal. Below 50% on a 1M model, or below 90% on a 200K/256K model, the threshold simply has not been reached. If it does not show even past the threshold, check that the model's window size is mapped correctly (especially the GLM correction).
+**If the handoff marker does not show**, that is usually normal. Below 50% on a 1M model, or below 90% on a 200K model, the threshold simply has not been reached. If it does not show even past the threshold, check that the model's window size is mapped correctly (especially the GLM correction).
 
 **If colors do not show**, check that the terminal supports ANSI 256-color, that `NO_COLOR=1` is not set, and that the theme fits the environment.
 

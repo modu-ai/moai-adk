@@ -5,7 +5,7 @@ language:
   # Conversation language code (ISO 639-1)
   # Options: ko (Korean), en (English), ja (Japanese), zh (Chinese), es (Spanish), fr (French), de (German)
   # Determines the language of AI responses to the user
-  conversation_language: "{{.ConversationLanguage}}"
+  conversation_language: "{{yamlEscape .ConversationLanguage}}"
 
   # Full language name with native script
   # Automatically resolved from conversation_language code
@@ -19,17 +19,17 @@ language:
   # Git commit message language
   # Options: en (English, recommended), ko, ja, zh
   # Recommended: "en" for international collaboration
-  git_commit_messages: "{{.GitCommitMessages}}"
+  git_commit_messages: "{{yamlEscape .GitCommitMessages}}"
 
   # Code comment language
   # Options: en (English, recommended), ko, ja, zh
   # Recommended: "en" for international collaboration
-  code_comments: "{{.CodeComments}}"
+  code_comments: "{{yamlEscape .CodeComments}}"
 
   # Documentation language
   # Options: en (English), ko, ja, zh, or match conversation_language
   # Can differ from conversation_language for international docs
-  documentation: "{{.Documentation}}"
+  documentation: "{{yamlEscape .Documentation}}"
 
   # Error message language
   # Options: en (English), ko, ja, zh, or match conversation_language

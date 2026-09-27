@@ -12,7 +12,9 @@ import (
 // catches drift in either direction. The jev_ask addition rides
 // SPEC-JEV-GOAL-DIST-001 M8a: registration is unconditional, the capability
 // itself stays gated (workflow.jev.enabled ships false).
-const wantCatalogSize = 31
+// The factory message family contributes five further registered tools, and
+// the Codex read-only role launcher three (start, status, result).
+const wantCatalogSize = 39
 
 // TestMoaiMCPTools_CatalogSize asserts the catalog declares exactly
 // wantCatalogSize tools, matching the registration count in
@@ -24,8 +26,8 @@ func TestMoaiMCPTools_CatalogSize(t *testing.T) {
 	}
 }
 
-// TestMoaiMCPTools_ElevenWriteCapable asserts exactly the eleven write-capable
-// tools carry WriteCapable=true (REQ-C-3 / AC-C-003), and the other 19 are
+// TestMoaiMCPTools_WriteCapableSet asserts exactly the fifteen write-capable
+// tools carry WriteCapable=true (REQ-C-3 / AC-C-003), and the other 24 are
 // read-only. session_msg_list is read-only: it enumerates registered peers
 // without touching the store, unlike register/send/poll which write an agent
 // record, append a message, and claim an inbox respectively.
@@ -36,12 +38,13 @@ func TestMoaiMCPTools_CatalogSize(t *testing.T) {
 // behavioral evidence for that claim is pinned in internal/cli
 // (TestMCPAuditTools_DeclaredWriteCapableActuallyWrite) — this test pins the
 // declaration, that one pins the behavior it must match.
-func TestMoaiMCPTools_ElevenWriteCapable(t *testing.T) {
+func TestMoaiMCPTools_WriteCapableSet(t *testing.T) {
 	want := map[string]bool{
 		"goal_arm":             true,
 		"verify_snapshot":      true,
 		"codex_task":           true,
 		"codex_job_cancel":     true,
+		"codex_role_audit":     true,
 		"glm_task":             true,
 		"glm_job_cancel":       true,
 		"codex_audit":          true,
@@ -49,6 +52,9 @@ func TestMoaiMCPTools_ElevenWriteCapable(t *testing.T) {
 		"session_msg_register": true,
 		"session_msg_send":     true,
 		"session_msg_poll":     true,
+		"factory_msg_send":     true,
+		"factory_msg_list":     true,
+		"factory_msg_receipt":  true,
 	}
 	var got []string
 	for _, tool := range MoaiMCPTools() {

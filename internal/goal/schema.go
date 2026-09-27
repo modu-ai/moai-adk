@@ -76,7 +76,24 @@ const (
 	// status), so it can never be satisfied. The evaluator emits a verdict and
 	// stops blocking rather than burning every remaining turn on it.
 	StatusUnsatisfiable Status = "unsatisfiable"
+	// StatusCancelled: a user cancellation (the Codex Interrupt event, handled
+	// by MoAI) ended the run. It takes precedence over an unmet goal: the
+	// evaluator never blocks on it and never rewrites it. It is deliberately
+	// distinct from StatusCleared, which records an explicit clear rather than
+	// an interrupt (SPEC-DUAL-HARNESS-HOOK-PARITY-001 design.md §D6, Q3).
+	StatusCancelled Status = "cancelled"
 )
+
+// IsKnownStatus reports whether s is in the goal status vocabulary. A reader
+// that meets a status outside it surfaces a diagnostic instead of treating the
+// goal as armed or satisfied (REQ-HPR-015).
+func IsKnownStatus(s Status) bool {
+	switch s {
+	case StatusArmed, StatusSatisfied, StatusCeilingExit, StatusCleared, StatusUnsatisfiable, StatusCancelled:
+		return true
+	}
+	return false
+}
 
 // ProgressionMode selects post-approval progression behavior. It is chosen at
 // the Implementation Kickoff Approval gate (a DISTINCT axis from approve/decline)

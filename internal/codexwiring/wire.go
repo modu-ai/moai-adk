@@ -9,15 +9,21 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/codexadapter"
+	"github.com/modu-ai/moai-adk/internal/manifest"
 )
 
 // sidecarDoc is the JSON shape of the trust sidecar (.moai/state/codex-wiring.json).
 type sidecarDoc struct {
 	HooksSHA256  string `json:"hooks_sha256"`
 	ConfigSHA256 string `json:"config_sha256"`
+	// Disabled records that `moai tool disable codex` took the wiring out.
+	// The update-path refresh treats it as an opt-out that outlives any
+	// user-owned wiring file left behind; `moai tool enable codex` clears it.
+	Disabled bool `json:"disabled,omitempty"`
 }
 
 // ErrValidationRefused marks a REQ-CW-003 refusal: rendered bytes failed the
@@ -41,23 +47,65 @@ var ErrValidationRefused = errors.New("codex wiring refused: rendered hooks.json
 // pass continues; the ONLY hard failure is a validation refusal (REQ-CW-003),
 // returned as ErrValidationRefused with the violating keys named.
 func Wire(projectRoot string, out, warn io.Writer) (Result, error) {
-	return wireProject(projectRoot, out, warn)
+	return wireWith(projectRoot, out, warn, defaultPassOptions())
 }
 
 // RefreshWiring is the update-path entry (REQ-CW-009): it refreshes wiring
 // ONLY in projects that already carry a wiring file. File existence is the
 // user's standing opt-in — a `--agent claude` (or flag-absent) init left no
-// wiring behind, and an update must not create any.
+// wiring behind, and an update must not create any. An interrupted wiring
+// change is recovered first even when no wiring file survived it
+// (REQ-DHR-004).
 func RefreshWiring(projectRoot string, out, warn io.Writer) (Result, error) {
-	if !wiringFilesExist(projectRoot) {
-		return Result{}, nil
-	}
-	return wireProject(projectRoot, out, warn)
+	return runPass(projectRoot, out, warn, defaultPassOptions(), true)
 }
 
-// wireProject is the shared body of Wire and RefreshWiring.
-func wireProject(projectRoot string, out, warn io.Writer) (Result, error) {
-	res := Result{}
+// wireWith is Wire with explicit pass options (tests switch guards and set
+// the interruption seam).
+func wireWith(projectRoot string, out, warn io.Writer, opts passOptions) (Result, error) {
+	return runPass(projectRoot, out, warn, opts, false)
+}
+
+// runPass takes the wiring lock, recovers interrupted changes, and then
+// wires. gated limits the wiring (not the recovery) to projects that already
+// carry a wiring file. A multi-file pass is not atomic as a whole: each file
+// change is journaled and recoverable on its own (REQ-DHR-002).
+func runPass(projectRoot string, out, warn io.Writer, opts passOptions, gated bool) (Result, error) {
+	if gated && !wiringFilesExist(projectRoot) && !journalExists(projectRoot) {
+		return Result{}, nil
+	}
+	evidence := wiringEvidence(projectRoot)
+	release, err := acquireWiringLock(projectRoot)
+	if err != nil {
+		return Result{}, err
+	}
+	defer release()
+	recovered, err := recoverLocked(projectRoot, warn)
+	if err != nil {
+		return Result{Recovered: recovered}, fmt.Errorf("recover interrupted wiring change: %w", err)
+	}
+	if gated && (!wiringFilesExist(projectRoot) || wiringDisabled(projectRoot)) {
+		return Result{Recovered: recovered}, nil
+	}
+	p := newPass(projectRoot, out, warn, opts, evidence)
+	p.res.Recovered = recovered
+	p.clearDisabled = !gated && wiringDisabled(projectRoot)
+	err = p.wireProject()
+	return p.res, err
+}
+
+// journalExists reports whether a wiring journal is present.
+func journalExists(projectRoot string) bool {
+	_, err := os.Stat(filepath.Join(projectRoot, filepath.FromSlash(JournalRelPath)))
+	return err == nil
+}
+
+// wireProject is the shared body of Wire and RefreshWiring, run under the
+// wiring lock after recovery.
+func (p *pass) wireProject() error {
+	projectRoot, out, warn := p.root, p.out, p.warn
+	res := &p.res
+	recorded, _ := readManifestFiles(projectRoot)
 
 	hooksPath := filepath.Join(projectRoot, HooksRelPath)
 	existing, readErr := os.ReadFile(hooksPath)
@@ -85,22 +133,34 @@ func wireProject(projectRoot string, out, warn io.Writer) (Result, error) {
 		// reach disk; the pass aborts with the violations named.
 		violations, verr := codexadapter.ValidateConfig(rendered)
 		if verr != nil {
-			return res, fmt.Errorf("%w: %v", ErrValidationRefused, verr)
+			return fmt.Errorf("%w: %v", ErrValidationRefused, verr)
 		}
 		if len(violations) > 0 {
 			names := make([]string, len(violations))
 			for i, v := range violations {
 				names[i] = v.Error()
 			}
-			return res, fmt.Errorf("%w: %s", ErrValidationRefused, strings.Join(names, "; "))
+			return fmt.Errorf("%w: %s", ErrValidationRefused, strings.Join(names, "; "))
 		}
 
+		pre := ""
+		if res.HooksExisted {
+			pre = sha256Hex(existing)
+		}
+		post := sha256Hex(rendered)
+		entry := intendedEntry(mergeParts(recorded[HooksRelPath].Parts, hooksParts(existing, res.HooksExisted), p.evidence, pre, post), post)
 		if res.HooksExisted && bytesEqual(rendered, existing) {
 			res.HooksChanged = false // unchanged regeneration — no write, no guidance
+			p.recordUnchanged(HooksRelPath, recorded, entry)
 		} else {
-			if err := writeAtomic(hooksPath, rendered); err != nil {
+			written, err := p.write(HooksRelPath, rendered, &entry)
+			if err != nil {
+				if p.crashed {
+					return err
+				}
 				warnf(warn, "write %s: %v", HooksRelPath, err)
-			} else {
+			}
+			if written {
 				res.HooksWritten = true
 				res.HooksChanged = true
 			}
@@ -113,20 +173,25 @@ func wireProject(projectRoot string, out, warn io.Writer) (Result, error) {
 	if cfgErr != nil && !errors.Is(cfgErr, os.ErrNotExist) {
 		warnf(warn, "read %s: %v", ConfigRelPath, cfgErr)
 	} else {
-		cfgNext := EnsureMCPTable(cfgExisting)
-		cfgNext = EnsureStatusLine(cfgNext)
-		if cfgErr == nil && !bytesEqual(cfgNext, cfgExisting) {
-			if err := writeAtomic(cfgPath, cfgNext); err != nil {
+		cfgExisted := cfgErr == nil
+		cfgNext, cfgParts := renderConfig(cfgExisting, cfgExisted)
+		pre := ""
+		if cfgExisted {
+			pre = sha256Hex(cfgExisting)
+		}
+		post := sha256Hex(cfgNext)
+		entry := intendedEntry(mergeParts(recorded[ConfigRelPath].Parts, cfgParts, p.evidence, pre, post), post)
+		if cfgExisted && bytesEqual(cfgNext, cfgExisting) {
+			p.recordUnchanged(ConfigRelPath, recorded, entry)
+		} else {
+			written, err := p.write(ConfigRelPath, cfgNext, &entry)
+			if err != nil {
+				if p.crashed {
+					return err
+				}
 				warnf(warn, "write %s: %v", ConfigRelPath, err)
-			} else {
-				res.ConfigWritten = true
 			}
-		} else if errors.Is(cfgErr, os.ErrNotExist) {
-			if err := writeAtomic(cfgPath, cfgNext); err != nil {
-				warnf(warn, "write %s: %v", ConfigRelPath, err)
-			} else {
-				res.ConfigWritten = true
-			}
+			res.ConfigWritten = written
 		}
 	}
 
@@ -137,7 +202,7 @@ func wireProject(projectRoot string, out, warn io.Writer) (Result, error) {
 	// and the on-disk hooks still byte-match the render — the current file IS
 	// the last generated content, verified, so re-recording restores the
 	// divergence signal instead of silently degrading to "no baseline".
-	sidecarNeeded := res.HooksWritten
+	sidecarNeeded := res.HooksWritten || p.clearDisabled
 	if !sidecarNeeded && !res.HooksSkipped && len(rendered) > 0 {
 		if _, present, serr := LoadSidecar(projectRoot); serr == nil && !present {
 			if onDisk, rerr := os.ReadFile(hooksPath); rerr == nil && bytesEqual(onDisk, rendered) {
@@ -171,7 +236,25 @@ func wireProject(projectRoot string, out, warn io.Writer) (Result, error) {
 		}
 	}
 
-	return res, nil
+	if len(res.Conflicts) > 0 {
+		paths := make([]string, len(res.Conflicts))
+		for i, c := range res.Conflicts {
+			paths[i] = c.Path
+		}
+		return fmt.Errorf("%w: %s", ErrWiringConflict, strings.Join(paths, ", "))
+	}
+	return nil
+}
+
+// recordUnchanged brings the part record of a file the pass did not need to
+// rewrite up to date. No wiring file changes, so no journal entry is needed.
+func (p *pass) recordUnchanged(rel string, recorded map[string]manifest.FileEntry, entry manifest.FileEntry) {
+	if old, ok := recorded[rel]; ok && reflect.DeepEqual(old, entry) {
+		return
+	}
+	if err := applyProvenance(p.root, rel, &entry, p.warn); err != nil {
+		warnf(p.warn, "record %s ownership: %v", rel, err)
+	}
 }
 
 // writeSidecar records the sha256 of the generated content.
@@ -189,6 +272,12 @@ func writeSidecar(projectRoot string, hooks, config []byte) error {
 		return fmt.Errorf("create sidecar directory: %w", err)
 	}
 	return writeAtomic(path, append(raw, '\n'))
+}
+
+// wiringDisabled reports whether the sidecar records a disable.
+func wiringDisabled(projectRoot string) bool {
+	doc, present, err := LoadSidecar(projectRoot)
+	return err == nil && present && doc.Disabled
 }
 
 // LoadSidecar reads the trust sidecar, if present. A missing sidecar is not an

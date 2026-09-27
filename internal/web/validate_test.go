@@ -70,7 +70,7 @@ func TestValidatePrefs_ModelPolicyField(t *testing.T) {
 }
 
 // TestSaveInvalidModelRejected verifies AC-WC2-002a: a POST /save with an
-// out-of-list model is rejected (400), no persistence occurs, and the form
+// out-of-list model is rejected (swappable status + banner), no persistence occurs, and the form
 // re-renders with a per-field model error.
 func TestSaveInvalidModelRejected(t *testing.T) {
 	a := newTestApp(t)
@@ -85,9 +85,10 @@ func TestSaveInvalidModelRejected(t *testing.T) {
 		"model":           {"gpt-4"},
 	}
 	rec := servePost(t, h, "/save", form)
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("invalid model status = %d, want 400", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Errorf("invalid model status = %d, want 200", rec.Code)
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	if wrote || synced {
 		t.Error("persistence functions called despite invalid model (state must be unchanged)")
 	}
@@ -123,7 +124,7 @@ func TestSaveValidModelPersisted(t *testing.T) {
 }
 
 // TestSaveInvalidEffortLevelRejected verifies AC-WC2-003: an out-of-list
-// effort_level is rejected (400), state unchanged.
+// effort_level is rejected (swappable status + banner), state unchanged.
 func TestSaveInvalidEffortLevelRejected(t *testing.T) {
 	a := newTestApp(t)
 	var wrote bool
@@ -137,9 +138,10 @@ func TestSaveInvalidEffortLevelRejected(t *testing.T) {
 		"effort_level":    {"ultra"},
 	}
 	rec := servePost(t, h, "/save", form)
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("invalid effort_level status = %d, want 400", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Errorf("invalid effort_level status = %d, want 200", rec.Code)
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	if wrote {
 		t.Error("WritePreferences called despite invalid effort_level")
 	}

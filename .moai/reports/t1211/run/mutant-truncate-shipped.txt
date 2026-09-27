@@ -1,0 +1,12 @@
+--- FAIL: TestSettingsTemplatePowerShellDenyParity (0.00s)
+    --- FAIL: TestSettingsTemplatePowerShellDenyParity/darwin (0.00s)
+        settings_powershell_deny_test.go:186: excluded Bash deny also has a PowerShell counterpart: Bash(TRUNCATE:*)
+    --- FAIL: TestSettingsTemplatePowerShellDenyParity/linux (0.00s)
+        settings_powershell_deny_test.go:186: excluded Bash deny also has a PowerShell counterpart: Bash(TRUNCATE:*)
+    --- FAIL: TestSettingsTemplatePowerShellDenyParity/windows (0.00s)
+        settings_powershell_deny_test.go:186: excluded Bash deny also has a PowerShell counterpart: Bash(TRUNCATE:*)
+--- FAIL: TestSettingsTemplatePowerShellDenyNoOverBlock (0.00s)
+    settings_powershell_deny_test.go:194: benign command truncate -s 0 app.log is blocked by PowerShell(TRUNCATE:*)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.338s
+FAIL

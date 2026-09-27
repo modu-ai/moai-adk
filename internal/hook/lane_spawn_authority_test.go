@@ -22,7 +22,7 @@ func TestFactoryWorkerNoticeCarriesSpawnAuthority(t *testing.T) {
 		{name: "no-count", workers: 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := factoryWorkerNotice("lane-2", tc.workers, "en")
+			got := factoryWorkerNotice("worker-2", tc.workers, "en")
 			for _, marker := range []string{
 				"Standing spawn authority",
 				"Status Transition Ownership Matrix",
@@ -38,7 +38,7 @@ func TestFactoryWorkerNoticeCarriesSpawnAuthority(t *testing.T) {
 			}
 			// The join line itself must still be present — the authority is
 			// appended to, not substituted for, the join acknowledgment.
-			if !strings.Contains(got, "lane-2") {
+			if !strings.Contains(got, "worker-2") {
 				t.Errorf("join acknowledgment missing from notice:\n%s", got)
 			}
 		})

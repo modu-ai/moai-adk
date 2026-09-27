@@ -51,15 +51,15 @@ MoAI-ADK가 에이전트를 부를 때마다 슬쩍 결정하는 것이 하나 �
 
 | 모델 | 식별자 | 컨텍스트 | 어울리는 일 |
 |------|--------|----------|------------|
-| **Claude Fable 5** | `claude-fable-5` | 256K | 신규 Mythos-tier 범용 최상위. 가장 깊은 추론과 복잡한 코딩 |
-| **Claude Opus 5 / 4.8** | — | 1M | 복잡한 아키텍처와 고난도 추론 |
-| **Claude Sonnet 5** | — | 200K | 속도와 지능의 균형, 일상 코딩 |
+| **Claude Fable 5** | `claude-fable-5` | 1M | 신규 Mythos-tier 범용 최상위. 가장 깊은 추론과 복잡한 코딩 |
+| **Claude Opus 5.5 / 5 / 4.8** | — | 1M | 복잡한 아키텍처와 고난도 추론 |
+| **Claude Sonnet 5** | — | 1M | 속도와 지능의 균형, 일상 코딩 |
 | **Claude Haiku 4.5** | `claude-haiku-4-5-20251001` | 200K | 가장 빠르고 경제적, 단순·대량 작업 |
 
 {{< callout type="info" >}}
 **라인업과 배정은 다릅니다.** 위 표는 "사용 가능한 모델"을 보여 줄 뿐, MoAI-ADK가
 실제로 배정하는 모델은 아닙니다. 기본으로 배송되는 프로필 매트릭스는
-**No-Haiku 정책**을 따라 Opus를 일차 모델로 삼고, Sonnet은 단발성 행에만 쓰며,
+**No-Haiku 정책**을 따라 Opus를 일차 모델로 삼고, Sonnet은 단발성 행과 `low` 열의 `e2e-tester`에만 쓰며,
 Haiku는 어떤 셀에도 등장하지 않습니다. Fable 5도 라인업의 정점이지만 기본
 매트릭스에는 없습니다. 무엇을 배정할지는 아래 [프로필 매트릭스](#프로필-매트릭스가-한-열을-고른다)가 정합니다.
 {{< /callout >}}
@@ -76,7 +76,7 @@ effort는 다섯 단계로 붙습니다.
 | `xhigh` | 더 깊이. 고난도 추론·복잡한 코딩 |
 | `max` | 가장 깊은 추론 |
 
-`xhigh`와 `max`는 Opus 5·Opus 4.8·Sonnet 5·Opus 4.7에서 지원합니다. 두 단계를
+`xhigh`와 `max`는 Opus 5.5·Opus 5·Opus 4.8·Sonnet 5·Opus 4.7에서 지원합니다. 두 단계를
 한 번에 켜는 단축어가 **ultrathink** 키워드입니다. 이 키워드는
 `effort: xhigh`를 설정하는 동시에 **Adaptive Thinking** (추론 토큰을 모델이
 스스로 할당하도록 맡기는 방식)을 켭니다.

@@ -32,7 +32,7 @@ Condensed reference of Anthropic's official prompt-engineering guidance for Clau
 ## Thinking & Reasoning
 
 - **Adaptive thinking** (`thinking: {type: "adaptive"}`) is the mode for Opus 4.7+/4.8 and Sonnet (current) — the model self-allocates reasoning by effort + query complexity. Do NOT set `budget_tokens` (deprecated; rejected on Opus 4.7+). Control depth with the **effort** parameter, not a token budget. On Opus 4.8 thinking is OFF unless explicitly enabled; the `ultrathink` keyword is MoAI's canonical trigger for `effort: xhigh`.
-- **Effort calibration**: `xhigh` for coding/agentic work, minimum `high` for intelligence-sensitive work, `medium`/`low` only for speed-critical or simple tasks. At `max`/`xhigh`, set a large max output budget (start ~64k) so the model has room to think and act across tool calls. Raising effort is the first lever for shallow reasoning — prefer it over prompt scaffolding.
+- **Effort calibration**: `medium` is Opus 5.5's default and MoAI's recommended session effort. Raise it per role (`high` / `xhigh` / `max`) where the work needs it — a minimum of `high` for intelligence-sensitive work, `xhigh` for hard coding/agentic work — and use `low` for speed-critical or simple tasks. At `max`/`xhigh`, set a large max output budget (start ~64k) so the model has room to think and act across tool calls. Raising effort is the first lever for shallow reasoning — prefer it over prompt scaffolding.
 - **Prefer general thinking instructions** ("think thoroughly", "reason through the tradeoffs") over hand-written step-by-step plans. Ask the model to self-check before finishing ("verify your answer against the test criteria").
 - **Curb overthinking** when needed: "choose an approach and commit to it; avoid revisiting decisions unless new information contradicts your reasoning" — or simply lower effort.
 
@@ -59,7 +59,7 @@ On the latest models, a review prompt that says "only report high-severity issue
 
 Most of this guidance is already encoded in MoAI doctrine — this file is the consolidated external reference:
 
-- Literal instruction following + no `budget_tokens` + effort routing → `.claude/rules/moai/core/moai-constitution.md` § Opus 5 / 4.8 Prompt Philosophy
+- Literal instruction following + no `budget_tokens` + effort routing → `.claude/rules/moai/core/moai-constitution.md` § Opus 5.5 Prompt Philosophy
 - Anti-overengineering + scope discipline + verify-don't-assume → `moai-constitution.md` § Agent Core Behaviors
 - Persistence / never-stop-early → `.claude/output-styles/moai/moai.md` § Persistence & Context Awareness
 - Parallel tool calls → `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution

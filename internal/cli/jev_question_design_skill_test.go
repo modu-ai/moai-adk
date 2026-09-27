@@ -38,7 +38,10 @@ func TestJevQuestionDesignSkillCarriesNoCallPath(t *testing.T) {
 	// Positive controls: files that DO carry forbidden tokens, one per family,
 	// proving the scan is capable of seeing what it is trusted to exclude.
 	controls := map[string]string{
-		"../../internal/cli/jev_skill_suggest.go":                    "internal/jev",
+		// SPEC-JEV-GUARD-001 (t1083) withdrew jev_skill_suggest.go, the former
+		// positive control; mcp_jev.go is the live MCP wrapper that still
+		// imports internal/jev, so the control keeps proving the scan fires.
+		"../../internal/cli/mcp_jev.go":                             "internal/jev",
 		"../../.claude/rules/moai/core/moai-mcp-tools-catalogue.md": "jev_ask",
 	}
 	for path, token := range controls {

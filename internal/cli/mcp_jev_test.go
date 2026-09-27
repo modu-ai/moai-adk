@@ -77,15 +77,20 @@ func TestJevAskGateOnDelegatesToJevClientAndMapsAnswers(t *testing.T) {
 	root := jevProject(t, true)
 	t.Setenv("CLAUDE_PROJECT_DIR", root)
 
+	// The fake server speaks the vendor's documented shape: questions and
+	// answers are objects keyed by question id, and a noul is a probability.
 	var received struct {
 		Model     string `json:"model"`
 		State     string `json:"state"`
-		Questions []jev.Question
+		Questions map[string]struct {
+			Type         string `json:"type"`
+			Instructions string `json:"instructions"`
+		} `json:"questions"`
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewDecoder(r.Body).Decode(&received)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"model":"jev-1.13.0","answers":[{"question_id":"premise-alive","kind":"noul","noul":true,"probability":0.62}],"usage":{"input_tokens":42}}`))
+		_, _ = w.Write([]byte(`{"model":"jev-1.13.0","answers":{"premise-alive":{"type":"noul","noul":0.62}},"usage":{"input_tokens":42}}`))
 	}))
 	t.Cleanup(server.Close)
 
@@ -119,14 +124,15 @@ func TestJevAskGateOnDelegatesToJevClientAndMapsAnswers(t *testing.T) {
 	}
 	// The wrapper is a caller: the request reached internal/jev's call path
 	// with the state and questions passed through, not reshaped.
-	if received.State != "card t-1 premise may be gone" || len(received.Questions) != 1 || received.Questions[0].ID != "premise-alive" {
+	if q, ok := received.Questions["premise-alive"]; received.State != "card t-1 premise may be gone" || len(received.Questions) != 1 ||
+		!ok || q.Type != "noul" || q.Instructions != "Is the premise still alive?" {
 		t.Errorf("delegate request = %+v, want the supplied state and questions", received)
 	}
 	answers, ok := doc["answers"].([]jev.Answer)
 	if !ok || len(answers) != 1 {
 		t.Fatalf("answers = %#v, want exactly one mapped answer", doc["answers"])
 	}
-	if answers[0].QuestionID != "premise-alive" || answers[0].Noul != true || answers[0].Probability != 0.62 {
+	if answers[0].QuestionID != "premise-alive" || answers[0].Kind != jev.KindNoul || answers[0].Probability != 0.62 {
 		t.Errorf("mapped answer = %+v, want the typed Noul answer passed through", answers[0])
 	}
 }

@@ -417,8 +417,16 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// file not advanced, failure appended to .moai/logs/migrations.log); this is
 	// the only one on the hook surface, and it was missing — runMigration
 	// recorded the failure in Data, which carries json:"-" and never reaches
-	// Claude Code, and in slog, whose stderr the hook wrappers discard. The
-	// failure was recorded and invisible.
+	// Claude Code, and in slog, which resolveLoggingDecision
+	// (internal/cli/logging.go) keeps off both standard streams on every
+	// `moai hook` invocation, unconditionally.
+	//
+	// That slog record is no longer written nowhere: it is a slog.Warn, so it
+	// reaches the file sink (.moai/logs/hook-runtime.log admits warn and above).
+	// It still is not THIS record — the sink is a log a reader opens afterwards,
+	// mixing every hook's output into one pruned stream, where this obligation
+	// is to name the failure to the user with the session that hit it. The
+	// notice below is that surface.
 	if notice := migrationFailureNotice(data); notice != "" {
 		if out.SystemMessage == "" {
 			out.SystemMessage = notice
@@ -455,6 +463,15 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// call returns nothing and the session start cannot gate on it.
 	clock.lap("marshal_attribution")
 	writeKanbanSessionRecord(input)
+	if factoryNotice := registerFactorySessionStartPeer(ctx, input); factoryNotice != "" {
+		if out.HookSpecificOutput == nil {
+			out.HookSpecificOutput = &HookSpecificOutput{HookEventName: string(EventSessionStart)}
+		}
+		if out.HookSpecificOutput.AdditionalContext != "" {
+			out.HookSpecificOutput.AdditionalContext += "\n\n"
+		}
+		out.HookSpecificOutput.AdditionalContext += factoryNotice
+	}
 	clock.lap("kanban_record")
 
 	// SPEC-STEERING-ALIGN-GUARDRAIL-HOOK-001: GLM 가드레일 리마인더 주입.

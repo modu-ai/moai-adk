@@ -27,16 +27,16 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 
 先把可选项摆清楚。模型策略就是在下面的阵容中挑选用哪个模型、以哪个推理深度来用的规则。
 
-### 模型阵容（2026-08）
+### 模型阵容（2026-09）
 
 | 模型 | 标识符 | 上下文 | 特性 |
 |------|--------|----------|------|
-| Claude Fable 5 | `claude-fable-5` | 256K | 新 Mythos 级通用旗舰。最深的推理与复杂编码 |
-| Claude Opus 5 / 4.8 | `opus` | 1M | 复杂架构、高难度推理 |
-| Claude Sonnet 5 | `sonnet` | 200K | 速度与智能的平衡，日常编码 |
+| Claude Fable 5 | `claude-fable-5` | 1M | 新 Mythos 级通用旗舰。最深的推理与复杂编码 |
+| Claude Opus 5.5 | `opus` | 1M | 复杂架构、高难度推理 |
+| Claude Sonnet 5 | `sonnet` | 1M | 速度与智能的平衡，日常编码 |
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 最快最省，简单 · 大批量任务 |
 
-> MoAI 的模型策略并不使用这份阵容的全部。按 **No-Haiku 策略**，Haiku 不出现在智能体矩阵的任何位置，多轮智能体行全部由 Opus 承担。原因就在下一节。
+> MoAI 的模型策略并不使用这份阵容的全部。按 **No-Haiku 策略**，Haiku 不出现在智能体矩阵的任何位置，多轮智能体行由 Opus 承担（唯一例外是 `low` 配置下的 `e2e-tester`）。原因就在下一节。
 
 ### 推理深度（effort）
 
@@ -47,8 +47,10 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 | `low` | 最浅的推理。快且便宜 |
 | `medium` | 平衡。默认配置文件的基准点 |
 | `high` | 深推理 |
-| `xhigh` | 更深的推理（Opus 5 · 4.8 · Sonnet 5 · Opus 4.7 支持） |
+| `xhigh` | 更深的推理（Opus 5.5 · Opus 5 · 4.8 · Sonnet 5 · Opus 4.7 支持） |
 | `max` | 最深的推理 |
+
+> **默认 effort**： Opus 5.5 的默认 effort 是 `medium`，其他支持 effort 的模型大多默认 `high`。MoAI 的配置向导和 Web 控制台也推荐把会话 effort 设为 `medium`。`opus` 别名要解析为 Opus 5.5，需要 Claude Code v2.1.280 或更高版本。
 
 > **`ultrathink` 关键字**： 输入 `ultrathink` 会同时开启 `effort:xhigh` 和 Adaptive Thinking（推理代币自动分配）。不使用固定的 `budget_tokens` —— 模型自行分配推理深度。也可以用 `/effort low|medium|high|xhigh|max|ultracode|auto` 斜杠命令切换。
 
@@ -66,7 +68,7 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 **名称对照**： `llm.yaml` 的 `profile` 字段、legacy `performance_tier` 别名与 CLI 标志 `--model-policy` 用的都是 `high`/`medium`/`low` 三个值，1:1 对应。默认值是 `medium`。旧顶层档位名 `max` 至今仍作为 `high` 的**只读别名**处理（让既有配置继续可读），但保存时始终写入 `high`。无需单独迁移。`performance_tier` 仅在 `profile` 缺失时读取。
 {{< /callout >}}
 
-> **调低策略并不等于换更弱的模型等级。** 在长周期智能体任务上，Opus 的 `low` effort 比任何 effort 的 Sonnet 得分都高，同时每任务成本更低。因此 `low` 策略是在 Opus *内部* 靠调低推理深度来省，只在多步完赛失败不构成问题的单发行上才用 Sonnet。
+> **调低策略时，绝大多数行并不会换到更弱的模型等级。** 在长周期智能体任务上，Opus 的 `low` effort 比任何 effort 的 Sonnet 得分都高，同时每任务成本更低。因此 `low` 策略是在 Opus *内部* 靠调低推理深度来省，Sonnet 本来就用于单发行，`low` 下换模型的只有 `e2e-tester` 一行（`sonnet / low`）。
 
 ## 各智能体分配表
 
@@ -107,8 +109,8 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 ## 分配原则
 
 - **开销流向做判断的行**： 这套策略是敲定的运营者判断，不是成本/得分推导。审计·顾问行（`plan-auditor`、`sync-auditor`、`super-advisor`）、协调行（`manager-design`、`manager-lead`）与判定行（`mission-governor`）保持 `high`，而撰写·实现行（`manager-spec`、`manager-develop`）在三个配置文件中都停在 `medium`。
-- **所有智能体行都用 Opus**： `manager-spec`、`manager-develop`、`plan-auditor`、`sync-auditor`、`manager-design`、`manager-lead`、`builder-harness`、`e2e-tester` 等多轮工作全部留在 Opus。因为 Opus 的 `low` 比任何 effort 的 Sonnet 得分高、每任务成本却更低。
-- **Sonnet 只用于单发·以输入为主的行**： `manager-docs` 的文档整理、`manager-git` 的机械性工作与 `Explore` 探索都是一次以输入为主的 pass 就结束，不存在多步完赛失败的问题，而在这些位置 Sonnet 更低的输入单价是决定性的。这三行在三个配置文件下都固定为 `sonnet / low`。
+- **智能体行用 Opus**： `manager-spec`、`manager-develop`、`plan-auditor`、`sync-auditor`、`manager-design`、`manager-lead`、`builder-harness`、`e2e-tester` 等多轮工作留在 Opus（只有 `e2e-tester` 在 `low` 下为 `sonnet / low`）。因为 Opus 的 `low` 比任何 effort 的 Sonnet 得分高、每任务成本却更低。
+- **Sonnet 承担的单发·以输入为主的行**： `manager-docs` 的文档整理、`manager-git` 的机械性工作与 `Explore` 探索都是一次以输入为主的 pass 就结束，不存在多步完赛失败的问题，而在这些位置 Sonnet 更低的输入单价是决定性的。这三行在三个配置文件下都固定为 `sonnet / low`。在 `low` 配置下，`e2e-tester` 也为 `sonnet / low`。
 - **没有任何行取 `max`**： `max` 仍作为 `high` 之上唯一的级别留在词汇表中，但当前没有格子使用它。
 - **`xhigh` 哪里都不用**： 在 Opus 上得分与 `high` 相同，成本却多 49%。
 

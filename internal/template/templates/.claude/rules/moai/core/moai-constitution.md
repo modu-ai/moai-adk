@@ -36,9 +36,9 @@ Rules:
 - Spawn multiple subagents in the same turn when fanning out across independent items or files; do not spawn a subagent for work completable directly in a single response
 - Three orchestration primitives exist — choose by who holds the plan: **sub-agents** (Claude orchestrates turn by turn, results land in Claude's context), **Agent Teams** (shared TaskList, start with 3-5 teammates), and **dynamic workflows** (a script orchestrates dozens-to-hundreds of agents, intermediate results stay in script variables). For coding-heavy work prefer sequential sub-agents; reserve workflow-scale fan-out for genuinely parallel high-volume tasks (codebase sweeps, large migrations, cross-checked research). See `.claude/rules/moai/workflow/dynamic-workflows.md`.
 
-## Opus 5 / 4.8 Prompt Philosophy
+## Opus 5.5 Prompt Philosophy
 
-Reasoning-intensive agents targeting `claude-opus-5` and `claude-opus-4-8` (and 4.7+) follow
+Reasoning-intensive agents targeting `claude-opus-5-5` and `claude-opus-4-8` (and 4.7+) follow
 Anthropic's official prompt guidelines. The binding points:
 
 - **One-turn fully-loaded**: intent, constraints, completion criteria, and file locations in a
@@ -54,14 +54,15 @@ Anthropic's official prompt guidelines. The binding points:
   out across items or files; do not spawn one for work completable in a single response."
 - [ZONE:Evolvable] [HARD] **Principle 5 — fewer tool calls by default**: specify when and why each
   tool applies, and raise effort to high/xhigh when more tool use is wanted.
-- **Effort defaults**: Opus 5 and 4.8 default to `effort: high` everywhere; `xhigh`/`max` are
-  available on Opus 5, Sonnet 5, Opus 4.8, and Opus 4.7. Use `xhigh` for coding and agentic work,
-  keep a minimum of `high` for intelligence-sensitive work, and step down only for speed-critical
-  or simple tasks — routed by role, not by agent name.
+- **Effort defaults**: Opus 5.5 defaults to `effort: medium`, and `medium` is MoAI's recommended
+  session effort; other effort-capable models default to a higher level. `xhigh`/`max` are
+  available on Opus 5.5, Sonnet 5, Opus 4.8, and Opus 4.7. Raise the effort per role where the
+  work needs it — a minimum of `high` for intelligence-sensitive work, `xhigh` for hard coding and
+  agentic work, `max` sparingly — and step down to `low` only for speed-critical or simple tasks —
+  routed by role, not by agent name.
 
 Per-agent effort calibration: `agent-authoring.md` § Effort-Level Calibration Matrix.
-Rationale and the model-id table: `moai-constitution-detail.md` § Opus 5 / 4.8 Prompt
-Philosophy.
+Rationale and the model-id table: `moai-constitution-detail.md` § Opus 5.5 Prompt Philosophy.
 
 ## Output Format
 

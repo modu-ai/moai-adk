@@ -3,8 +3,13 @@
 package cli
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"os"
 	"syscall"
+
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // execOrSpawnClaude replaces the current process with the claude binary via
@@ -23,5 +28,15 @@ import (
 // (launch_exec_windows.go) spawns a child and propagates its exit code instead,
 // mirroring the reexecNewBinary pattern in update.go.
 func execOrSpawnClaude(claudeBin string, args, env []string) error {
-	return syscall.Exec(claudeBin, args, withSessionPID(env, os.Getpid()))
+	launchEnv := withSessionPID(env, os.Getpid())
+	root := launchProjectRoot()
+	pending, err := registerFactoryLaunchPending(context.Background(), root, launchEnv, os.Getpid(), homestate.CurrentProcessFingerprint())
+	if err != nil {
+		return err
+	}
+	if err := syscall.Exec(claudeBin, args, launchEnv); err != nil {
+		rollbackErr := rollbackFactoryLaunchPending(context.Background(), root, pending)
+		return fmt.Errorf("exec Claude: %w", errors.Join(err, rollbackErr))
+	}
+	return nil
 }

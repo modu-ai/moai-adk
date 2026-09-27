@@ -35,11 +35,22 @@ func (s stubAnswerer) Ask(_ context.Context, req jev.Request) jev.Result {
 	if v, ok := s.probs[id]; ok {
 		p = v
 	}
+	// A Noul answer is ONE probability, so the fixture's decision and its
+	// probability are folded into that number: the probability is mirrored
+	// across 0.5 when it disagrees with the decision the fixture wants read.
+	if s.answers[id] && p <= noulTrueAbove {
+		p = 1 - p
+		if p <= noulTrueAbove {
+			p = 0.75
+		}
+	} else if !s.answers[id] && p > noulTrueAbove {
+		p = 1 - p
+	}
 	return jev.Result{
 		Availability: jev.Available,
 		Answers: []jev.Answer{{
 			QuestionID: req.Questions[0].ID, Kind: jev.KindNoul,
-			Noul: s.answers[id], Probability: p,
+			Probability: p,
 		}},
 		Usage: jev.Usage{Model: jev.ModelID},
 	}

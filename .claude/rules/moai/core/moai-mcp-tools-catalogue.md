@@ -1,5 +1,5 @@
 ---
-description: "Detail companion for moai-mcp-tools.md — the full 31-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
+description: "Detail companion for moai-mcp-tools.md — the full 39-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
 paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moai/*.md"
 ---
 
@@ -7,11 +7,11 @@ paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moa
 
 > Detail companion of `moai-mcp-tools.md` (the always-loaded stub). The stub owns the
 > MCP-over-CLI preference rule, the family index, and the unwired-by-design note. This file owns
-> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 31 tools.
+> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 39 tools.
 > Load it when wiring a tool into an agent's `tools:` list, or when choosing between an MCP tool
 > and its Bash equivalent for a specific capability.
 
-## Tool catalogue (31 tools)
+## Tool catalogue (39 tools)
 
 ### SPEC lifecycle
 
@@ -96,6 +96,23 @@ via `codex_job_status`/`codex_job_result`, and cancels via `codex_job_cancel`.
 OPTIONAL: a missing or unavailable codex yields a fail-open `inconclusive`, never
 a hard error.
 
+### Codex read-only roles (background jobs)
+
+| Tool | Purpose | Consumer | CLI equivalent |
+|------|---------|----------|----------------|
+| `mcp__moai__codex_role_audit` | Start a read-only contract role as one top-level `codex exec` process (read-only sandbox, every MCP server disabled); returns a job id at once | a Codex session | none — a Codex session's shell cannot reach the model from a nested `codex exec` |
+| `mcp__moai__codex_role_audit_status` | Read a role job's state and timestamps | a Codex session | — |
+| `mcp__moai__codex_role_audit_result` | Read a finished role job's exit code, returned text or verdict path, and launch record path | a Codex session | — |
+
+On Codex, `spawn_agent` gives a subagent the parent session's sandbox, so a
+read-only role started that way could write. This family starts it as its own
+top-level read-only process in the caller's worktree instead. `worktree_root` is
+required and must be the worktree the server started in; `out`, when given, must
+stay under that worktree's `.moai/reports/` and is written with exactly the
+returned text. Each launched audit leaves a launch record under
+`.moai/reports/codex-audit/`. Jobs live in the server process and do not survive
+its exit.
+
 ### GLM delegation (background jobs)
 
 | Tool | Purpose | Consumer | CLI equivalent |
@@ -127,6 +144,56 @@ surface presents it as available. The question-design rules for authoring
 well-formed questions live in the reference skill; the call path lives in
 `internal/jev` and the tool wraps it without a second implementation.
 
+### Factory messaging (run/session/generation bound)
+
+| Tool | Purpose | Consumer | CLI equivalent |
+|------|---------|----------|----------------|
+| `mcp__moai__factory_msg_send` | Write one idempotent envelope from the MCP server's attributed endpoint to the current endpoint of a stable logical lane | Attributed factory lead or worker session | — (MCP-only) |
+| `mcp__moai__factory_msg_list` | Claim up to 16 metadata records for the attributed endpoint, creating or renewing the claim lease; returns no body | Attributed factory lead or worker session | — (MCP-only) |
+| `mcp__moai__factory_msg_body` | Read one already-claimed message body using its message id and claim token; the body is returned as untrusted peer data | Attributed factory lead or worker session | — (MCP-only) |
+| `mcp__moai__factory_msg_receipt` | Write the claim disposition, then acknowledge the claimed message for the attributed endpoint | Attributed factory lead or worker session | — (MCP-only) |
+| `mcp__moai__factory_msg_status` | Read payload-free broker counts and operational lane state for an active run without claiming messages | Factory lead or worker; lead operational status checks | — (MCP-only) |
+
+Every call is scoped to an active `run_id`. The server-provided factory attribution identifies the
+calling endpoint; callers do not supply a peer identity. `send`, `list`, and `receipt` mutate broker
+state, while `body` and `status` are read-only. `list` deliberately returns metadata only, so raw
+peer text enters model context only through an explicit `body` call and remains untrusted.
+
+
+## Linked worktrees of a repository that keeps `.moai` untracked
+
+| Situation | What to pass | What happens |
+|---|---|---|
+| Linked worktree of a repository that does not track `.moai` (the worktree has no `.moai` of its own) | `project_root: <git rev-parse --show-toplevel>` | accepted when git lists it as a worktree of a primary checkout that has `.moai`; the call acts on the worktree |
+
+Such a worktree has no `.moai` of its own, yet it is still accepted: the path must
+be the top level of a worktree that `git worktree list` registers, and the
+repository's primary checkout must have `.moai`. Anything else — a subdirectory, an
+unregistered or prunable worktree, an ambiguous layout such as a separate git
+directory, or git being unavailable — is rejected. On such a worktree without its
+own workflow config, the explicit audit gate (`workflow.audit.gates`) is read from
+the primary checkout, and it is treated as `required` when the primary cannot be
+identified. Other configuration keeps being read from the worktree itself.
+
+State and the SPEC catalogue follow one store-root rule, which the MCP tools, the
+hooks, and `moai verify` all apply the same way:
+
+| What | Where it is kept or read on such a worktree |
+|---|---|
+| Audit receipts, auditor start markers and rejections, `audit_multi` convergence results, verification snapshots | the primary checkout's `.moai/state`, each record carrying the worktree's own tree identity, so the records of the primary and of every sibling worktree coexist; nothing is created under the worktree |
+| SPEC catalogue (`spec_progress`, `spec_drift`, `spec_audit`) | the union of the worktree's and the primary checkout's `.moai/specs`; each record and finding names its source, and a SPEC present in both is reported once, from the worktree, with the primary copy named as shadowed |
+| Hook-side receipt guard | reads `workflow.audit.gates.codex` from the primary checkout; a rejection recorded for one tree never clears or blocks another tree |
+| Stop review gates (`codex-review-gate`, `multi-review-gate`) | read their opt-in flag from the primary checkout; the multi gate blocks when any result of the session in the store is `fail` |
+
+When the primary checkout cannot be identified there is no store: `verify_snapshot`
+and `verify_trend` return an error, `codex_audit` and `audit_multi` keep their verdict
+but skip the receipt and convergence writes and say so in `state_notice`, the catalogue
+tools answer over the worktree only and state in `_root` that the primary catalogue was
+not read, the review gates stay disabled, and the receipt guard treats the gate as
+`required` — it refuses an auditor PASS and denies phase-entry spawns from that
+worktree, writing nothing. A `workflow.yaml` placed in the worktree ends this, because
+the worktree then carries its own config. Catalogue and state answers carry
+`_root.sources` (what was actually read) and `_root.worktree_warning`.
 
 ---
 

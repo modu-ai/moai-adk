@@ -32,6 +32,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/specid"
 	"github.com/modu-ai/moai-adk/internal/paths"
+	"github.com/modu-ai/moai-adk/internal/spec"
 )
 
 // branchProbe is the package-level indirection over exec.Command used by
@@ -330,7 +331,7 @@ func parseFrontmatterStatus(raw []byte) (string, bool) {
 	if m == nil {
 		return "", false
 	}
-	return string(m[1]), true
+	return spec.NormalizeStatusValue(string(m[1])), true
 }
 
 // isGitWorktreeDir reports whether path exists and holds a .git file (a

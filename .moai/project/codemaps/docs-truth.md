@@ -109,7 +109,7 @@ Rejected snake_case aliases (silently dropped by the YAML decoder): `created_at:
 
 ### §4.1 `moai` terminal verbs (human-facing)
 
-Top-level verbs rendered by `moai --help`, in the render's own grouping (re-rendered 2026-09-22 from a binary built at HEAD `0314801c2` with `go build ./cmd/moai` — all four groups are byte-equivalent in verb composition to the 2026-09-18 render below; the only new root command since, `jev-suggest`, is `Hidden: true` and renders nowhere):
+Top-level verbs rendered by `moai --help`, in the render's own grouping (re-rendered 2026-09-22 from a binary built at HEAD `0314801c2` with `go build ./cmd/moai` — all four groups are byte-equivalent in verb composition to the 2026-09-18 render below. The one hidden root command that existed at that HEAD (a skill-suggestion anchor) has since been withdrawn by SPEC-JEV-GUARD-001 — it was never rendered by `--help` and is absent from every group):
 
 | Render group | Verbs |
 |------------------|-------|

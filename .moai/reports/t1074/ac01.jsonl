@@ -1,0 +1,8 @@
+{"Time":"2026-09-22T15:53:30.096321+09:00","Action":"start","Package":"github.com/modu-ai/moai-adk/internal/factorymsg"}
+{"Time":"2026-09-22T15:53:30.377719+09:00","Action":"run","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryCanonicalNamespaceAndIsolation"}
+{"Time":"2026-09-22T15:53:30.377857+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryCanonicalNamespaceAndIsolation","Output":"=== RUN   TestFactoryCanonicalNamespaceAndIsolation\n"}
+{"Time":"2026-09-22T15:53:31.359861+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryCanonicalNamespaceAndIsolation","Output":"--- PASS: TestFactoryCanonicalNamespaceAndIsolation (0.98s)\n"}
+{"Time":"2026-09-22T15:53:31.359895+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryCanonicalNamespaceAndIsolation","Elapsed":0.98}
+{"Time":"2026-09-22T15:53:31.359913+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Output":"PASS\n"}
+{"Time":"2026-09-22T15:53:31.360667+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Output":"ok  \tgithub.com/modu-ai/moai-adk/internal/factorymsg\t1.263s\n"}
+{"Time":"2026-09-22T15:53:31.360685+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Elapsed":1.264}

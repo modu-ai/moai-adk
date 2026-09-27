@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -254,5 +255,161 @@ func TestCodexOnlyRemapSkipsOccupiedTarget(t *testing.T) {
 	// And the skip is reported somewhere observable.
 	if len(res.ProtectedSkips) == 0 && len(res.Warnings()) == 0 {
 		t.Error("occupied remap target: neither ProtectedSkips nor Warnings recorded the skip")
+	}
+}
+
+func TestHarnessProfilesResolveSharedReferences(t *testing.T) {
+	cat, err := LoadEmbeddedCatalog()
+	if err != nil {
+		t.Fatal(err)
+	}
+	embedded, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	renderer := NewRenderer(embedded)
+	profiles := []struct {
+		name        string
+		newDeployer func() (Deployer, error)
+		wantClaude  bool
+		wantCodex   bool
+	}{
+		{"claude", func() (Deployer, error) { return NewClaudeHarnessDeployerWithRenderer(cat, renderer) }, true, false},
+		{"gpt", func() (Deployer, error) { return NewCodexOnlyDeployerWithRenderer(cat, renderer) }, false, true},
+		{"both", func() (Deployer, error) { return NewDualHarnessDeployerWithRenderer(cat, renderer) }, true, true},
+	}
+	for _, tc := range profiles {
+		t.Run(tc.name, func(t *testing.T) {
+			d, err := tc.newDeployer()
+			if err != nil {
+				t.Fatal(err)
+			}
+			root := t.TempDir()
+			owned := filepath.Join(root, ".moai", "policies", "README.md")
+			if err := os.MkdirAll(filepath.Dir(owned), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(owned, []byte("user policy note\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			mgr := manifest.NewManager()
+			if _, err := mgr.Load(root); err != nil {
+				t.Fatal(err)
+			}
+			if err := d.Deploy(context.Background(), root, mgr, NewTemplateContext()); err != nil {
+				t.Fatal(err)
+			}
+			if got, err := os.ReadFile(owned); err != nil || string(got) != "user policy note\n" {
+				t.Errorf("user policy note changed: bytes=%q error=%v", got, err)
+			}
+			for _, rel := range []string{".moai/policies/core/moai-constitution.md", ".moai/workflows/plan.md", "AGENTS.md"} {
+				if _, err := os.Stat(filepath.Join(root, rel)); err != nil {
+					t.Errorf("required shared reference %s: %v", rel, err)
+				}
+			}
+			if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); (err == nil) != tc.wantClaude {
+				t.Errorf("CLAUDE.md presence = %v, want %v", err == nil, tc.wantClaude)
+			}
+			if _, err := os.Stat(filepath.Join(root, ".codex", "agents", "moai", "manager-develop.toml")); (err == nil) != tc.wantCodex {
+				t.Errorf("Codex agent presence = %v, want %v", err == nil, tc.wantCodex)
+			}
+			if tc.wantCodex {
+				// Only concrete file references are checked. Placeholders and
+				// directory examples do not pretend to be required read targets.
+				concreteRef := regexp.MustCompile(`(?:\.moai/(?:policies|workflows)|\.agents/skills)/[A-Za-z0-9_./-]+\.(?:md|yaml|json|toml)`)
+				checkedRefs := 0
+				checkReferences := func(path string, data []byte) {
+					for _, line := range strings.Split(string(data), "\n") {
+						lower := strings.ToLower(line)
+						if !strings.Contains(lower, "read ") && !strings.Contains(lower, "load ") {
+							continue
+						}
+						for _, ref := range concreteRef.FindAllString(line, -1) {
+							checkedRefs++
+							if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(ref))); err != nil {
+								t.Errorf("%s requires absent %s: %v", strings.TrimPrefix(path, root), ref, err)
+							}
+						}
+					}
+				}
+				body, err := os.ReadFile(filepath.Join(root, ".agents", "skills", "moai", "SKILL.md"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if strings.Contains(string(body), ".claude/rules/moai/") || strings.Contains(string(body), ".claude/skills/moai/workflows/") {
+					t.Error("Codex dispatcher contains unavailable Claude reference")
+				}
+				if !strings.Contains(string(body), ".moai/policies/") || !strings.Contains(string(body), ".moai/workflows/") {
+					t.Error("Codex dispatcher does not link shared references")
+				}
+				role, err := os.ReadFile(filepath.Join(root, ".codex", "agents", "moai", "manager-develop.toml"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if strings.Contains(string(role), ".claude/rules/moai/") || strings.Contains(string(role), ".claude/skills/") {
+					t.Error("Codex role contains unavailable Claude reference")
+				}
+				err = filepath.WalkDir(filepath.Join(root, ".codex", "agents"), func(path string, entry fs.DirEntry, err error) error {
+					if err != nil {
+						return err
+					}
+					if entry.IsDir() || !strings.HasSuffix(path, ".toml") {
+						return nil
+					}
+					data, err := os.ReadFile(path)
+					if err != nil {
+						return err
+					}
+					if strings.Contains(string(data), ".claude/rules/moai/") || strings.Contains(string(data), ".claude/skills/") {
+						t.Errorf("Codex role %s contains unavailable Claude reference", filepath.Base(path))
+					}
+					checkReferences(path, data)
+					return nil
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				err = filepath.WalkDir(filepath.Join(root, ".agents", "skills"), func(path string, entry fs.DirEntry, err error) error {
+					if err != nil {
+						return err
+					}
+					if entry.IsDir() || !strings.HasSuffix(path, ".md") {
+						return nil
+					}
+					data, err := os.ReadFile(path)
+					if err != nil {
+						return err
+					}
+					if strings.Contains(string(data), ".claude/rules/moai/") || strings.Contains(string(data), ".claude/skills/") {
+						t.Errorf("Codex skill %s contains unavailable Claude reference", strings.TrimPrefix(path, root))
+					}
+					checkReferences(path, data)
+					return nil
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, rel := range []string{".moai/policies", ".moai/workflows"} {
+					err := filepath.WalkDir(filepath.Join(root, rel), func(path string, entry fs.DirEntry, err error) error {
+						if err != nil {
+							return err
+						}
+						if entry.IsDir() || !strings.HasSuffix(path, ".md") {
+							return nil
+						}
+						data, err := os.ReadFile(path)
+						if err != nil {
+							return err
+						}
+						checkReferences(path, data)
+						return nil
+					})
+					if err != nil {
+						t.Fatal(err)
+					}
+				}
+				t.Logf("checked %d concrete read/load references", checkedRefs)
+			}
+		})
 	}
 }

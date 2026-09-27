@@ -48,7 +48,7 @@ MoAI-ADK가 에이전트(스스로 일하는 AI 도우미)를 부를 때마다 "
 
 - `high` — 품질 우선 열. 지출은 "생산하는 행"이 아니라 "판단하는 행"에 몰립니다: 감사·자문 행(`plan-auditor`, `sync-auditor`, `super-advisor`)과 조율 행(`manager-design`, `manager-lead`), 판정 행(`mission-governor`)이 `high`를 유지하고, 저작·구현 행(`manager-spec`, `manager-develop`)은 세 열 모두 `medium`에 머릅니다. 어느 행도 `max`를 받지 않습니다. `xhigh`는 어떤 셀에도 없습니다 — Opus에서는 `high`와 같은 점수를 내면서 비용만 뚜렷하게 더 들기 때문입니다.
 - `medium`(기본값) — 균형 열. `high` 열과 정확히 두 행에서만 다릅니다: `builder-harness`가 `medium`으로, `e2e-tester`가 `low`로 내려갑니다. 값이 없거나 비어 있으면 `medium`으로 해석됩니다.
-- `low` — 경제 열. Opus의 `low`가 Sonnet의 어떤 effort보다도 점수가 높으면서 동시에 과제당 비용이 낮으므로, 모든 에이전틱 행에 Opus를 유지합니다. 대부분의 Opus 행은 `medium`에 내려앉지만 `super-advisor`와 `mission-governor`는 `high`를 지킵니다 — 에스컬레이션 경로와 봉인된 미션 판정이야말로 싼 열에서 가장 건전하게 유지할 가치가 있는 자리이기 때문입니다. Sonnet은 단발성·입력 지배 행에만 등장합니다.
+- `low` — 경제 열. Opus의 `low`가 Sonnet의 어떤 effort보다도 점수가 높으면서 동시에 과제당 비용이 낮으므로, 에이전틱 행은 Opus를 유지합니다(예외는 `sonnet / low`로 내려가는 `e2e-tester` 하나). 대부분의 Opus 행은 `medium`에 내려앉지만 `super-advisor`와 `mission-governor`는 `high`를 지킵니다 — 에스컬레이션 경로와 봉인된 미션 판정이야말로 싼 열에서 가장 건전하게 유지할 가치가 있는 자리이기 때문입니다. 그 밖에 Sonnet은 단발성·입력 지배 행에만 등장합니다.
 
 `max`는 `high`의 **읽기 전용 별칭**입니다. 예전 설정의 `profile: max`는 그대로 `high`로 읽히고, 저장할 때는 언제나 정규 이름 `high`로 기록됩니다. 따로 옮길 일이 없습니다. `profile`과 `performance_tier`는 별개 필드가 아니라 같은 설정을 가리킵니다 — `llm.profile`이 우선이고, 없으면 legacy `performance_tier`를 별칭으로 읽습니다. 두 필드 모두 `high` / `medium` / `low` 어휘를 그대로 씁니다.
 
@@ -70,7 +70,7 @@ flowchart TD
 
 모델 클래스를 정하는 두 규칙은 실측에 뿌리를 둡니다.
 
-첫째, **Opus는 모든 effort에서 Sonnet을 앞섭니다.** Opus 5 `low`(58%, 과제당 $1.66, 36스텝)는 어떤 단계의 Sonnet 5보다도 점수가 높고 과제당 비용이 낮습니다. Sonnet 5 `max`(54%, 과제당 $26.40, 268스텝)도 예외가 아닙니다. 과제당 비용을 가르는 것은 토큰당 단가가 아니라 완주 효율, 즉 과제를 끝내는 데 쓴 스텝과 출력 토큰입니다. 그래서 Sonnet은 멀티스텝 완주가 걸리지 않는 자리, 즉 단발·입력 지배 행(`Explore` 검색, `manager-git` 기계 작업)에만 남습니다. 그곳에서는 낮은 입력 단가가 실질적인 변수이기 때문입니다. 모든 멀티턴 에이전틱 행이 Opus인 이유입니다.
+첫째, **Opus는 모든 effort에서 Sonnet을 앞섭니다.** Opus 5 `low`(58%, 과제당 $1.66, 36스텝)는 어떤 단계의 Sonnet 5보다도 점수가 높고 과제당 비용이 낮습니다. Sonnet 5 `max`(54%, 과제당 $26.40, 268스텝)도 예외가 아닙니다. 과제당 비용을 가르는 것은 토큰당 단가가 아니라 완주 효율, 즉 과제를 끝내는 데 쓴 스텝과 출력 토큰입니다. 그래서 Sonnet은 멀티스텝 완주가 걸리지 않는 자리, 즉 단발·입력 지배 행(`Explore` 검색, `manager-git` 기계 작업)에만 남습니다. 그곳에서는 낮은 입력 단가가 실질적인 변수이기 때문입니다. 멀티턴 에이전틱 행이 Opus인 이유입니다. 다만 매트릭스는 `manager-docs`를 모든 열에서, `e2e-tester`를 `low` 열에서 Sonnet으로 둡니다.
 
 둘째, **`xhigh`는 Opus에서 완전히 열등합니다.** `high`는 $6.08에 73%를, `xhigh`는 같은 73%를 $9.07에 냅니다 — 이득 없이 비용 +49%, 스텝 +22%. 매트릭스에서 퇴출했습니다(6셀 → 0). `max`는 `high` 위의 유일한 단계로 어휘에 남아 있지만, 현재 그것을 받는 행은 없습니다.
 

@@ -29,22 +29,26 @@ import (
 // helper: a test that asks the implementation where a field lives cannot
 // detect the implementation putting it in the wrong place.
 var codexMirrorOwningPanel = map[string]string{
-	"workflow.audit.gates.codex":         "audit",
-	"workflow.audit.codex.model":         "audit",
-	"workflow.audit.codex.effort":        "audit",
-	"workflow.audit.model":               "audit", // the one declared exception
-	"workflow.codex.review_gate.enabled": "mcp",
-	"workflow.codex.task.allow_write":    "mcp",
-	"mcp.tools.codex_audit.enabled":      "mcp",
-	"mcp.tools.codex_setup.enabled":      "mcp",
-	"mcp.tools.codex_task.enabled":       "mcp",
-	"mcp.tools.codex_job_status.enabled": "mcp",
-	"mcp.tools.codex_job_result.enabled": "mcp",
-	"mcp.tools.codex_job_cancel.enabled": "mcp",
+	"workflow.audit.gates.codex":                "audit",
+	"workflow.audit.codex.model":                "audit",
+	"workflow.audit.codex.effort":               "audit",
+	"workflow.audit.model":                      "audit", // the one declared exception
+	"workflow.codex.review_gate.enabled":        "mcp",
+	"workflow.codex.task.allow_write":           "mcp",
+	"mcp.tools.codex_audit.enabled":             "mcp",
+	"mcp.tools.codex_setup.enabled":             "mcp",
+	"mcp.tools.codex_task.enabled":              "mcp",
+	"mcp.tools.codex_job_status.enabled":        "mcp",
+	"mcp.tools.codex_job_result.enabled":        "mcp",
+	"mcp.tools.codex_job_cancel.enabled":        "mcp",
+	"mcp.tools.codex_role_audit.enabled":        "mcp",
+	"mcp.tools.codex_role_audit_status.enabled": "mcp",
+	"mcp.tools.codex_role_audit_result.enabled": "mcp",
 }
 
-// wantCodexTokenFields is the INDEPENDENT ORACLE for AC-WCP-006: the 11
-// registry fields carrying a codex token. workflow.audit.model is deliberately
+// wantCodexTokenFields is the INDEPENDENT ORACLE for AC-WCP-006: the 14
+// registry fields carrying a codex token (11 when AC-WCP-006 landed, plus the
+// read-only role launcher trio). workflow.audit.model is deliberately
 // absent — it carries no codex token, so no predicate reaches it, and it is
 // asserted separately by TestCodexMirrorDeclaredException (spec.md §C.1).
 var wantCodexTokenFields = []string{
@@ -59,6 +63,9 @@ var wantCodexTokenFields = []string{
 	"mcp.tools.codex_job_status.enabled",
 	"mcp.tools.codex_job_result.enabled",
 	"mcp.tools.codex_job_cancel.enabled",
+	"mcp.tools.codex_role_audit.enabled",
+	"mcp.tools.codex_role_audit_status.enabled",
+	"mcp.tools.codex_role_audit_result.enabled",
 }
 
 // codexPanelTestApp builds an app over a seeded temp project root, optionally

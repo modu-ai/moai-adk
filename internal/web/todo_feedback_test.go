@@ -117,3 +117,50 @@ func TestTodoCommitsStillRefresh(t *testing.T) {
 		})
 	}
 }
+
+// A WAL renamed into the watched directory produces Create and never Write,
+// because its bytes were written before any watch on the file could exist.
+// That is the event shape a held writer produces when it loses the race
+// against the watch registration, made deterministic.
+func TestTodoCreatedWALRefreshesOnlyWhenPopulated(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		size int
+		want bool
+	}{
+		{"populated WAL refreshes", 4096, true},
+		{"empty reader WAL stays quiet", 0, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, store, events := watchSeededTodo(t)
+			wal := store.EnginePath() + "-wal"
+			if _, err := os.Stat(wal); err == nil {
+				t.Fatalf("precondition: WAL already exists at %s", wal)
+			}
+			staged := filepath.Join(t.TempDir(), "staged-wal")
+			if err := os.WriteFile(staged, make([]byte, tc.size), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Rename(staged, wal); err != nil {
+				t.Fatal(err)
+			}
+			wait := 3 * time.Second
+			if !tc.want {
+				wait = 1200 * time.Millisecond
+			}
+			select {
+			case ev := <-events:
+				if !tc.want {
+					t.Fatalf("empty WAL creation emitted %s", ev)
+				}
+				if ev != "kanban" {
+					t.Fatalf("created WAL event=%s", ev)
+				}
+			case <-time.After(wait):
+				if tc.want {
+					t.Fatal("created populated WAL did not refresh")
+				}
+			}
+		})
+	}
+}

@@ -90,9 +90,9 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "모델 정책 선택",
 			Description: "각 에이전트에 할당되는 Claude 모델 등급을 제어합니다. Claude 플랜에 맞추세요.",
 			Options: []OptionTranslation{
-				{Label: "Max", Desc: "Opus 5 (high~medium) + Sonnet (low, 문서/단발성 작업) — Max $200 플랜"},
-				{Label: "Medium (권장)", Desc: "Opus 5 (high~low) + Sonnet (low, 문서/단발성 작업) — Max $100 플랜"},
-				{Label: "Low", Desc: "Opus 5 (high~low) + Sonnet (low, 문서/E2E/단발성 작업) — Plus $20 플랜"},
+				{Label: "Max", Desc: "Opus 5.5 (high~medium) + Sonnet (low, 문서/단발성 작업) — Max $200 플랜"},
+				{Label: "Medium (권장)", Desc: "Opus 5.5 (high~low) + Sonnet (low, 문서/단발성 작업) — Max $100 플랜"},
+				{Label: "Low", Desc: "Opus 5.5 (high~low) + Sonnet (low, 문서/E2E/단발성 작업) — Plus $20 플랜"},
 			},
 		},
 		"autonomy_tier": {
@@ -109,7 +109,7 @@ var translations = map[string]map[string]QuestionTranslation{
 			Description: "이 프로젝트에 MoAI가 배포하고 연결할 LLM 하니스입니다. 'claude'가 권장 기본값이며, --llm 플래그가 이 답변보다 우선합니다.",
 			Options: []OptionTranslation{
 				{Label: "Claude 단독 (권장)", Desc: ".claude/ 표면과 AGENTS.md를 배포합니다 (지금까지의 기본 동작)"},
-				{Label: "Codex 단독", Desc: "AGENTS.md와 Codex 표면만 배포합니다 — .claude/ 디렉터, CLAUDE.md, .mcp.json이 생기지 않습니다"},
+				{Label: "Codex 단독", Desc: "AGENTS.md와 Codex 표면만 배포합니다 — .claude/ 디렉터리, CLAUDE.md, .mcp.json이 생기지 않습니다"},
 				{Label: "Claude + Codex", Desc: "동일한 .claude/ 배포에 .codex/ 연결을 더하고 .mcp.json 프로비저닝을 강제로 켭니다"},
 			},
 		},
@@ -180,9 +180,9 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "モデルポリシーを選択",
 			Description: "各エージェントに割り当てる Claude モデルのティアを制御します。ご利用の Claude プランに合わせてください。",
 			Options: []OptionTranslation{
-				{Label: "Max", Desc: "Opus 5 (high~medium) + Sonnet (low, ドキュメント/単発タスク) — Max $200 プラン"},
-				{Label: "Medium (推奨)", Desc: "Opus 5 (high~low) + Sonnet (low, ドキュメント/単発タスク) — Max $100 プラン"},
-				{Label: "Low", Desc: "Opus 5 (high~low) + Sonnet (low, ドキュメント/E2E/単発タスク) — Plus $20 プラン"},
+				{Label: "Max", Desc: "Opus 5.5 (high~medium) + Sonnet (low, ドキュメント/単発タスク) — Max $200 プラン"},
+				{Label: "Medium (推奨)", Desc: "Opus 5.5 (high~low) + Sonnet (low, ドキュメント/単発タスク) — Max $100 プラン"},
+				{Label: "Low", Desc: "Opus 5.5 (high~low) + Sonnet (low, ドキュメント/E2E/単発タスク) — Plus $20 プラン"},
 			},
 		},
 		"autonomy_tier": {
@@ -195,7 +195,7 @@ var translations = map[string]map[string]QuestionTranslation{
 			},
 		},
 		"agent_wiring": {
-			Title:       "배포하고 접속할 에이전트 하니스를 선택",
+			Title:       "デプロイして接続するエージェントハーネスを選択",
 			Description: "このプロジェクトに MoAI がデプロイ・接続する LLM ハーネスです。'claude' が推奨デフォルトで、--llm フラグがこの回答より優先されます。",
 			Options: []OptionTranslation{
 				{Label: "Claude のみ (推奨)", Desc: ".claude/ サーフェスと AGENTS.md をデプロイします (従来のデフォルト動作)"},
@@ -270,9 +270,9 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "选择模型策略",
 			Description: "控制为每个智能体分配的 Claude 模型等级。请与您的 Claude 套餐匹配。",
 			Options: []OptionTranslation{
-				{Label: "Max", Desc: "Opus 5 (high~medium) + Sonnet (low, 文档/一次性任务) — Max $200 套餐"},
-				{Label: "Medium (推荐)", Desc: "Opus 5 (high~low) + Sonnet (low, 文档/一次性任务) — Max $100 套餐"},
-				{Label: "Low", Desc: "Opus 5 (high~low) + Sonnet (low, 文档/E2E/一次性任务) — Plus $20 套餐"},
+				{Label: "Max", Desc: "Opus 5.5 (high~medium) + Sonnet (low, 文档/一次性任务) — Max $200 套餐"},
+				{Label: "Medium (推荐)", Desc: "Opus 5.5 (high~low) + Sonnet (low, 文档/一次性任务) — Max $100 套餐"},
+				{Label: "Low", Desc: "Opus 5.5 (high~low) + Sonnet (low, 文档/E2E/一次性任务) — Plus $20 套餐"},
 			},
 		},
 		"autonomy_tier": {
@@ -442,7 +442,7 @@ var profileQuestionTexts = map[string]map[string]QuestionTranslation{
 		"doc_lang":              {Title: "Documentation language", Description: "Language for documentation files."},
 		"model":                 {Title: "Default model override", Description: "Override the model when launching with this profile."},
 		"model_policy":          {Title: "Agent model policy", Description: "Controls token consumption by assigning optimal models to each agent."},
-		"effort_level":          {Title: "Session effort level", Description: "Reasoning depth for the Claude session launched with this profile. xhigh/max need a model that supports them (Opus 5, Sonnet 5, Opus 4.7+). Per-agent effort comes from the agent model policy instead."},
+		"effort_level":          {Title: "Session effort level", Description: "Reasoning depth for the Claude session launched with this profile. xhigh/max need a model that supports them (Opus 5.5, Sonnet 5, Opus 4.7+). Per-agent effort comes from the agent model policy instead."},
 		"permission_mode":       {Title: "Permission mode", Description: "Controls how Claude asks for permission before taking actions."},
 		"development_mode":      {Title: "Development mode", Description: "Project methodology written to quality.yaml. Empty keeps the project default."},
 	},
@@ -454,7 +454,7 @@ var profileQuestionTexts = map[string]map[string]QuestionTranslation{
 		"doc_lang":              {Title: "문서 언어", Description: "문서 파일에 사용할 언어입니다."},
 		"model":                 {Title: "기본 모델 오버라이드", Description: "이 프로필로 실행할 때 모델을 오버라이드합니다."},
 		"model_policy":          {Title: "에이전트 모델 정책", Description: "각 에이전트에 최적 모델을 할당하여 토큰 소비를 제어합니다."},
-		"effort_level":          {Title: "세션 추론 강도", Description: "이 프로필로 실행하는 Claude 세션의 추론 깊이입니다. xhigh/max는 이를 지원하는 모델(Opus 5, Sonnet 5, Opus 4.7 이상)이 필요합니다. 에이전트별 추론 강도는 에이전트 모델 정책에서 정해집니다."},
+		"effort_level":          {Title: "세션 추론 강도", Description: "이 프로필로 실행하는 Claude 세션의 추론 깊이입니다. xhigh/max는 이를 지원하는 모델(Opus 5.5, Sonnet 5, Opus 4.7 이상)이 필요합니다. 에이전트별 추론 강도는 에이전트 모델 정책에서 정해집니다."},
 		"permission_mode":       {Title: "권한 모드", Description: "Claude가 작업 수행 전 권한을 요청하는 방식을 제어합니다."},
 		"development_mode":      {Title: "개발 방법론", Description: "quality.yaml에 기록되는 프로젝트 개발 방법론. 비워두면 프로젝트 기본값을 유지합니다."},
 	},
@@ -466,7 +466,7 @@ var profileQuestionTexts = map[string]map[string]QuestionTranslation{
 		"doc_lang":              {Title: "ドキュメント言語", Description: "ドキュメントファイルに使用する言語です。"},
 		"model":                 {Title: "デフォルトモデルオーバーライド", Description: "このプロファイルで起動する際のモデルをオーバーライドします。"},
 		"model_policy":          {Title: "エージェントモデルポリシー", Description: "各エージェントに最適なモデルを割り当て、トークン消費を制御します。"},
-		"effort_level":          {Title: "セッション推論レベル", Description: "このプロファイルで起動する Claude セッションの推論深度です。xhigh/max は対応モデル（Opus 5、Sonnet 5、Opus 4.7 以降）が必要です。エージェントごとの推論強度はエージェントモデルポリシーで決まります。"},
+		"effort_level":          {Title: "セッション推論レベル", Description: "このプロファイルで起動する Claude セッションの推論深度です。xhigh/max は対応モデル（Opus 5.5、Sonnet 5、Opus 4.7 以降）が必要です。エージェントごとの推論強度はエージェントモデルポリシーで決まります。"},
 		"permission_mode":       {Title: "権限モード", Description: "Claudeがアクション実行前に権限を要求する方法を制御します。"},
 		"development_mode":      {Title: "開発方法論", Description: "quality.yaml に記録されるプロジェクトの開発方法論。空欄の場合はプロジェクトのデフォルトを維持します。"},
 	},
@@ -478,7 +478,7 @@ var profileQuestionTexts = map[string]map[string]QuestionTranslation{
 		"doc_lang":              {Title: "文档语言", Description: "文档文件使用的语言。"},
 		"model":                 {Title: "默认模型覆盖", Description: "使用此配置文件启动时覆盖模型。"},
 		"model_policy":          {Title: "代理模型策略", Description: "通过为每个代理分配最优模型来控制token消耗。"},
-		"effort_level":          {Title: "会话推理强度", Description: "使用此配置文件启动的 Claude 会话的推理深度。xhigh/max 需要支持它们的模型（Opus 5、Sonnet 5、Opus 4.7 及以上）。各代理的推理强度由代理模型策略决定。"},
+		"effort_level":          {Title: "会话推理强度", Description: "使用此配置文件启动的 Claude 会话的推理深度。xhigh/max 需要支持它们的模型（Opus 5.5、Sonnet 5、Opus 4.7 及以上）。各代理的推理强度由代理模型策略决定。"},
 		"permission_mode":       {Title: "权限模式", Description: "控制Claude在执行操作前如何请求权限。"},
 		"development_mode":      {Title: "开发方法论", Description: "写入 quality.yaml 的项目开发方法论。留空则保留项目默认值。"},
 	},

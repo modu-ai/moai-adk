@@ -22,11 +22,14 @@ func TestTodoTriageStaysModelFree(t *testing.T) {
 		t.Error("todo_triage.go references the judgment capability — moai todo triage stays model-free (REQ-JEVG-014)")
 	}
 
-	control, err := os.ReadFile("jev_skill_suggest.go")
+	// SPEC-JEV-GUARD-001 (t1083) withdrew jev_skill_suggest.go, the former
+	// positive control; mcp_jev.go is the live MCP wrapper that still carries
+	// the capability, so the control keeps proving the scan fires.
+	control, err := os.ReadFile("mcp_jev.go")
 	if err != nil {
 		t.Fatalf("read positive control: %v", err)
 	}
 	if !strings.Contains(strings.ToLower(string(control)), "jev") {
-		t.Fatal("positive control failed: jev_skill_suggest.go no longer references the capability, so the zero-result above establishes nothing")
+		t.Fatal("positive control failed: mcp_jev.go no longer references the capability, so the zero-result above establishes nothing")
 	}
 }

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/foundation"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // Compile-time interface compliance check.
@@ -329,7 +329,10 @@ func execGit(ctx context.Context, dir string, args ...string) (string, error) {
 
 	cmd := exec.CommandContext(ctx, gitPath, args...)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(),
+	// gitenv.Env, not os.Environ: an inherited GIT_DIR / GIT_WORK_TREE (git
+	// exports them into every hook) outranks cmd.Dir and would redirect the
+	// command, writes included, into the caller's repository.
+	cmd.Env = append(gitenv.Env(),
 		"GIT_TERMINAL_PROMPT=0",
 		"LC_ALL=C",
 	)
@@ -418,7 +421,7 @@ func execGitExit(ctx context.Context, dir string, extraEnv []string, args ...str
 
 	cmd := exec.CommandContext(ctx, gitPath, args...)
 	cmd.Dir = dir
-	env := append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "LC_ALL=C")
+	env := append(gitenv.Env(), "GIT_TERMINAL_PROMPT=0", "LC_ALL=C") // see execGit
 	env = append(env, extraEnv...)
 	cmd.Env = env
 

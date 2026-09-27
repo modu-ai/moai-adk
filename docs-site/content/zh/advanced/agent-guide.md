@@ -95,7 +95,7 @@ MoAI-ADK 使用 **13 个核心智能体**（12 个 MoAI 自定义 + 1 个 Anthro
 {{< callout type="info" >}}
 **4 级 token 成本层级**（{{< icon flash danger >}} max · {{< icon flash warn >}} high · {{< icon flash primary >}} medium · {{< icon flash muted >}} low）：`model: inherit` 继承父会话模型，effort 决定推理 token 的预算。
 
-上表数值是**随附的 frontmatter**，它固定在[配置矩阵](/zh/advanced/profile-matrix/)的 `medium` 列上，使全新部署与默认配置文件保持一致。切换配置文件会重写这些数值 — 在 `high` 下，`manager-develop` 与 `super-advisor` 移到 `max`（仅这两格使用它），在 `low` 下代理式行降到 `low`，同时 `manager-docs` 与 `e2e-tester` 回退到 Sonnet。可用 `moai model profile` 查看活动配置文件下解析出的数值。
+上表数值是**随附的 frontmatter**，它固定在[配置矩阵](/zh/advanced/profile-matrix/)的 `medium` 列上，使全新部署与默认配置文件保持一致。切换配置文件会重写这些数值 — 在 `high` 下只有 `builder-harness` 与 `e2e-tester` 提高一级（没有任何一格使用 `max`），在 `low` 下审计与协调行降到 `medium`，`builder-harness` 降到 `low`，`e2e-tester` 改用 Sonnet。可用 `moai model profile` 查看活动配置文件下解析出的数值。
 {{< /callout >}}
 
 ## Manager-Develop 领域上下文注入
@@ -187,7 +187,7 @@ flowchart TD
 2. **追加折叠行** —— 按既有行格式在 `progress.md` §E.2 追加一行：`M<n>: <AC-id-1>=PASS, ... | evidence: .moai/reports/<card-id>/verdict.md | fold-at: <ISO-8601>`。`M<n>:` 前缀是特意选来避免与 `internal/spec/era.go` 中 §E 标题匹配器冲突的，因此两者无需改动匹配器即可共存。
 3. **执行 `/compact`** —— 压缩时明确给出保留指令：retain-current-milestone（刚完成的里程碑及其折叠行）、retain-fold-rows（§E.2 中此前的全部折叠行）、retain-armed-goal（若通过 `/moai goal` 挂载了条件，则保留该条件）。
 
-折叠之后有两条不变式：压缩后的 token 用量必须低于压缩前，并且同时低于按模型划分的移交阈值（1M 级别为 50%，200K/256K 级别为 90%）。若用量没有下降，就按折叠失败处理并重新规划。当子智能体上下文中无法使用 `/compact` 时，返回 blocker 报告，由编排器代为压缩，或改走 `/clear` 加恢复消息的路径绕开。
+折叠之后有两条不变式：压缩后的 token 用量必须低于压缩前，并且同时低于按模型划分的移交阈值（1M 级别为 50%，200K 级别为 90%）。若用量没有下降，就按折叠失败处理并重新规划。当子智能体上下文中无法使用 `/compact` 时，返回 blocker 报告，由编排器代为压缩，或改走 `/clear` 加恢复消息的路径绕开。
 
 ```mermaid
 flowchart TD

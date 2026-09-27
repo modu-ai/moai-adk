@@ -60,7 +60,9 @@ var reqLineWidePattern = regexp.MustCompile(`^\s*[-*]\s+\**\s*(REQ-[A-Z0-9]+(?:-
 
 // parseREQsWide mirrors parseREQs but uses reqLineWidePattern. It returns one
 // REQEntry per recognized REQ definition line, in document order, with Line as a
-// 1-based index into body.
+// 1-based index into body. Unlike parseREQs, its Text joins the wrapped
+// continuation lines of the list item (card t1138); parseREQsWithProvenance
+// restores the single-line Text on entries the narrow pattern also collects.
 func parseREQsWide(body string) []REQEntry {
 	var reqs []REQEntry
 	lines := strings.Split(body, "\n")
@@ -69,7 +71,7 @@ func parseREQsWide(body string) []REQEntry {
 		if len(matches) >= 3 {
 			reqs = append(reqs, REQEntry{
 				ID:   matches[1],
-				Text: strings.TrimSpace(matches[2]),
+				Text: joinStatementContinuation(matches[2], lines, i+1, true),
 				Line: i + 1,
 			})
 		}
@@ -110,6 +112,12 @@ func parseREQsWide(body string) []REQEntry {
 // The same no-perturbation guarantee holds for the list and table branches:
 // AC-HRC-007 asserts that every pre-existing entry keeps its ID, Text, Line,
 // Widened and Source, and the result differs only by ADDED heading entries.
+//
+// Card t1104 added a FOURTH source: bare definitions carrying no markdown
+// marker at all (lint_req_bare.go), folded in by the same composition. The four
+// anchors are mutually exclusive by their opening character, so no line reaches
+// two collectors, and every pre-existing entry keeps its ID, Text, Line,
+// Widened and Source unchanged.
 func parseREQsWithProvenance(body string) []REQEntry {
 	narrow := parseREQs(body)
 	narrowAt := make(map[int]string, len(narrow))
@@ -118,8 +126,20 @@ func parseREQsWithProvenance(body string) []REQEntry {
 	}
 
 	wide := parseREQsWide(body)
+	lines := strings.Split(body, "\n")
 	for i := range wide {
 		wide[i].Widened = narrowAt[wide[i].Line] != wide[i].ID
+		// Card t1138 (sync-audit F1): an entry the narrow pattern also collects
+		// gates, so it keeps its pre-t1138 single-line Text. Joining continuation
+		// lines onto it could turn an advisory ModalityUnjudged into a gating
+		// ModalityMalformed, or introduce a non-advisory LegacyEARSKeyword, which
+		// would break the byte-identical guarantee stated above. Only widened entries,
+		// which never gate, receive the joined paragraph.
+		if !wide[i].Widened {
+			m := reqLineWidePattern.FindStringSubmatch(lines[wide[i].Line-1])
+			wide[i].Text = strings.TrimSpace(m[2])
+		}
 	}
-	return mergeREQsByLine(mergeREQsByLine(wide, parseREQsTable(body)), parseREQsHeadingForm(body))
+	merged := mergeREQsByLine(mergeREQsByLine(wide, parseREQsTable(body)), parseREQsHeadingForm(body))
+	return mergeREQsByLine(merged, parseREQsBareForm(body))
 }

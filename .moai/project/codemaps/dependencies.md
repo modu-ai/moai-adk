@@ -1,14 +1,23 @@
 # 의존성 그래프
 
+**현재 재측정 — t1187, `origin/develop` `a8a9b9376` (2026-09-25).**
+아래 import 엣지는 같은 `go list -f` 명령으로 다시 셌다. 비테스트 소스
+변경 41개 중 Codex 감사 런처와 Factory 런 은퇴가 기존 `internal/cli`·
+`internal/homestate`·`internal/factorymsg` 경계를 사용하며, 새 Go 패키지는
+늘지 않았다.
+
 > `/moai codemaps`로 생성됐습니다. 내부 엣지만 대상이며 stdlib·서드파티는 제거했습니다.
 
 **최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
 **재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — 엣지 수, fan-in·fan-out 표 전체, 상호 참조 쌍, 새 leaf 표, `go.mod` 직접 require 항목 수와 버전, § 이례적인 것 7. § 이례적인 것 1~6의 서술은 이번에 버전·사용처 줄을 다시 대조했고 판단은 앞 판을 이어받았습니다.
 **정기 재측정**: worktree `.claude/worktrees/t999`, 브랜치 `WT-codemaps-remediation`, HEAD `56c64891a`, 2026-09-20 — 엣지 수(365→371 · 222→227), fan-in 표에서 움직인 한 행(`internal/atomicfile` 10→11), fan-out 표에서 움직인 두 행(`internal/cli` 62→63 · `internal/hook` 32→35), 그리고 작은 fan-in 표의 신규 세 항목. 나머지 행은 같은 명령으로 재확인해 변동이 없었고, § 외부 의존성과 § 순환은 이번에 다시 재지 않았습니다(앞 판 인계).
 **정기 재측정**: worktree `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`, 2026-09-22 — 엣지 수(371→378 · 227→234), fan-in 표에서 움직인 두 행(`internal/defs` 11→12 · `internal/paths` 11→12), fan-out 표에서 움직인 두 행(`internal/cli` 63→65 · `internal/web` 15→16)과 하나의 정정(`internal/spec` — 앞 판 행이 3으로 적혔으나 스탬프 트리에서도 4였다), 작은 fan-in 표의 `internal/stateanchor` 2→3(소비자에 `internal/session` 합류)과 신규 세 행(`internal/jev` · `internal/jevcred` · `internal/jevmeasure`). § 순환은 같은 방법으로 재확인해 세 쌍 그대로였고, § 외부 의존성은 `go.mod`가 스탬프 이후 한 줄도 바뀌지 않은 것으로 확인했습니다.
+**부분 재측정**: worktree `.claude/worktrees/t1092`, 브랜치 `WT-codemaps-restamp`, base `08113ff0f`, 2026-09-23 — 카드 t1092. 엣지 수(378→381 · 234→237). 신규 패키지 `internal/factorymsg`는 fan-in 2(`internal/cli` · `internal/hook`이 import)로 작은 fan-in 표(상위 14 밖)에 속하며, fan-out 상위 표에는 두 소비자 쪽 수치 변화가 반영됐지만 순위표 자체는 움직이지 않았습니다(`internal/cli`·`internal/hook` 모두 기존에도 상위권). § 순환·§ 외부 의존성·상호 참조 쌍 목록은 이번 변경과 무관해 손대지 않았습니다.
+**정기 재측정**: worktree `.claude/worktrees/t1274`, 브랜치 `WT-codemaps-refresh4`, base `cf4b82755`, 2026-09-26 — 카드 t1274. 엣지 수(386→409 · 241→256; 최상위 집계는 계보 방식대로 고유 쌍 집합 기준). 증가분의 대부분은 신규 패키지 `internal/escalation`(비테스트 소비자 `internal/hook` 1개, 스스로는 `internal/config`·`internal/contract`·`internal/spec`·`internal/constitution`·`internal/homestate`·`internal/navigator/astx` 등을 import)와 t1235 계열 cli·hook·config 변경이 가져왔습니다. § 순환·§ 외부 의존성은 이번 변경과 무관해 손대지 않았습니다.
+**정기 재측정**: worktree `.claude/worktrees/t1278`, 브랜치 `WT-codemaps-refresh5`, base `6d514f9b7`, 2026-09-27 — 카드 t1278. 엣지 수(409→413 · 256→260). 신규 엣지는 정확히 넷: 신규 패키지 `internal/civerdict`로 향하는 둘(`internal/cli`·`internal/escalation`)과 `internal/escalation`→`internal/verify`(ciLimb 의 HasLocalPass 소비), `internal/contract`→`internal/mission`(projection_mission 투영). t1242 가 지운 `internal/cli`→`internal/homestate` 접힌 엣지는 타 cli 파일이 유지해 상위 집계에 변동이 없습니다. fan-out 상위 표는 `internal/cli` 66→67(civerdict 합류) 한 행, 작은 fan-in 표는 `internal/mission` 1→2(소비자에 `internal/contract` 합류)와 신규 `internal/civerdict` 2 한 행. § 순환·§ 외부 의존성·상호 참조 쌍은 이번 변경과 무관해 손대지 않았습니다.
 
-두 가지 해상도로 봅니다 — 패키지 단위 **378 엣지**, 이를 `internal/<X>` · `pkg/<X>` · `cmd/<X>`
-최상위로 접고 self-edge를 제거한 **234 엣지**. 아래 표는 후자 기준입니다.
+두 가지 해상도로 봅니다 — 패키지 단위 **413 엣지**, 이를 `internal/<X>` · `pkg/<X>` · `cmd/<X>`
+최상위로 접고 self-edge를 제거한 **260 엣지**. 아래 표는 후자 기준입니다.
 
 산출:
 
@@ -16,12 +25,12 @@
 $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
   | awk '{src=$1; for(i=2;i<=NF;i++) if ($i ~ /^github\.com\/modu-ai\/moai-adk\//) print src, $i}' \
   | wc -l
-378
+413
 ```
 
 > 앵커 `25a3212a9` 판은 이 자리에 1638을 적었습니다. 위 명령으로 재현되지 않고 그 판의
 > 명령 인용이 생략형이라 무엇을 셌는지 복원할 수 없으므로, 이후 판은 위 명령의 출력을 싣습니다.
-> 최상위 집계는 205 → 214 → 222 → 227 → 234로 움직였습니다.
+> 최상위 집계는 205 → 214 → 222 → 227 → 234 → 237로 움직였습니다.
 
 ---
 
@@ -30,8 +39,8 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 | # | 패키지 | 피import | 레이어 |
 |---|---|---|---|
 | 1 | `internal/config` | 22 | data |
-| 2 | `internal/defs` | 12 | cross-cutting |
-| 2 | `internal/paths` | 12 | cross-cutting |
+| 2 | `internal/defs` | 13 | cross-cutting |
+| 3 | `internal/paths` | 12 | cross-cutting |
 | 4 | `internal/atomicfile` | 11 | cross-cutting |
 | 5 | `pkg/models` | 8 | cross-cutting |
 | 5 | `internal/core` | 8 | domain |
@@ -39,10 +48,11 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 | 8 | `internal/template` | 6 | domain |
 | 8 | `internal/kanban` | 6 | domain |
 | 8 | `internal/hook` | 6 | **presentation** |
-| 11 | `pkg/version` | 5 | cross-cutting |
-| 11 | `internal/statusline` | 5 | **presentation** |
-| 11 | `internal/spec` | 5 | domain |
-| 11 | `internal/lsp` | 5 | infrastructure |
+| 8 | `internal/homestate` | 6 | data |
+| 8 | `internal/spec` | 6 | domain |
+| 13 | `pkg/version` | 5 | cross-cutting |
+| 13 | `internal/statusline` | 5 | **presentation** |
+| 13 | `internal/lsp` | 5 | infrastructure |
 
 산출은 최상위 집계 엣지 목록의 목적지 열을 `sort | uniq -c | sort -rn` 한 것입니다.
 
@@ -73,15 +83,17 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 | `internal/auditreceipt` | 2 | **t999 판에서 새로 들어왔다.** 소비자는 `internal/cli`와 `internal/hook` — 생산 쪽(MCP 도구 호출)과 소비 쪽(훅 가드)이 각각 하나씩이며, 그 비대칭이 아니라 대칭이 이 패키지의 설계다 |
 | `internal/jev` | 2 | **이 판에서 새로 들어왔다.** 소비자는 `internal/cli`(doctor·todo admission·숨은 suggest 앵커 세 파일)와 `internal/jevmeasure`(살아 있는 `Answerer` 구현) |
 | `internal/jevcred` | 2 | **이 판에서 새로 들어왔다.** 소비자는 `internal/cli`와 `internal/web` — 위자드·doctor 쪽과 콘솔 Jev 패널이 각각 하나씩이며, 두 표면이 하나의 reader를 공유하는 것이 이 패키지의 요건이다 |
-| `internal/mission` | 1 | 소비자는 `internal/cli` 하나 — 실제로는 `internal/cli/goal.go` 한 파일이다 |
+| `internal/mission` | 2 | 소비자는 `internal/cli`(실제로는 `internal/cli/goal.go` 한 파일)와 — t1278 판 합류 — `internal/contract`(`projection_mission.go` 의 단방향 투영이 import 한다)다 |
+| `internal/contract` | 1 | **t1238 판에서 새로 들어왔다.** 비테스트 소비자는 `internal/cli/contract.go` 한 파일과 같은 계열의 `internal/contract/sign`뿐이다. 코어는 표준 라이브러리와 `gopkg.in/yaml.v3` — **t1278 판부터 `internal/mission` 이 그 옆에 더해졌다**(`projection_mission.go` 의 단방향 투영; 더 이상 순수 leaf가 아니다) — 만 import 하며, 부수효과를 지는 `internal/contract/sign`은 코어와 `internal/atomicfile`을 import 한다 — 방향은 sign→core 한쪽뿐이다. `internal/hook`은 Frozen 지시 파일 목록을 테스트에서만 고정하므로 이 칸에 들어오지 않는다 |
+| **`internal/civerdict`** | **2** | **t1278 판에서 새로 들어왔다.** 비테스트 소비자는 `internal/cli`(`ci_verdict.go` — `moai ci-verdict` 저장 경로)와 `internal/escalation`(`ciLimb` 판정)둘이며, 패키지 스스로는 내부 import 0인 순수 leaf다 |
 | `internal/codextools` | 0 | 비테스트 소비자 없음(`modules.md` §네거티브 스페이스) |
 | `internal/jevmeasure` | 0 | **이 판에서 새로 들어왔고, 0은 설계다 — 그러나 종류가 다른 0이다.** 테스트 시점 가드도 빌드타임 도구도 아니고, 측정 게이트가 실행되지 않은 **게이트 미실행 상태**라 소비자가 원리상 아직 없다. 게이트가 통과하면 소비자가 붙는 것이 이 0의 의미다(`modules.md` §네거티브 스페이스) |
 | `internal/harness/rosterguard` · `internal/harness/cellguard` | 0 | **t999 판에서 새로 들어왔고, 0이 정상이다.** 테스트 시점 가드라 비테스트 소비자가 원리상 없다 — `internal/template/agentemit` · `commandemit`과 같은 이유이고 `codextools`와는 다른 이유다(`modules.md` §네거티브 스페이스) |
 
-`internal/homestate`는 leaf가 아니라 최상위 fan-in **4**(`cli` · `hook` · `kanban` · `web`)의
+`internal/homestate`는 leaf가 아니라 최상위 fan-in **6**의
 data/persistence seam입니다. 패키지 단위로 풀면 직접 소비자는 `internal/cli`,
 `internal/cli/ptycaptest`, `internal/hook`, `internal/hook/handoff`, `internal/kanban`,
-`internal/web` 여섯이며, 이 표면들이 프로젝트 키 경로·Factory 인계·프로필 lease·migration
+`internal/web`, `internal/factorymsg` 등의 표면이며, 이 표면들이 프로젝트 키 경로·Factory 인계·프로필 lease·migration
 admission 계약을 공유합니다.
 
 두 방출기(`internal/template/agentemit`, `internal/template/commandemit`)는 이 표에 **나타나지
@@ -94,17 +106,18 @@ admission 계약을 공유합니다.
 
 | # | 패키지 | import |
 |---|---|---|
-| 1 | `internal/cli` | **65** |
-| 2 | `internal/hook` | 35 |
+| 1 | `internal/cli` | **67** |
+| 2 | `internal/hook` | 36 |
 | 3 | `internal/web` | 16 |
 | 4 | `internal/core` | 12 |
 | 5 | `internal/statusline` | 8 |
 | 6 | `internal/settings` | 7 |
-| 7 | `internal/kanban` · `feedback` | 6 각 |
+| 7 | `internal/kanban` | 7 |
+| 8 | `internal/feedback` | 6 |
 | 9 | `internal/update` · `spec` · `harness` | 4 각 |
 | 12 | `internal/template` · `session` · `ralph` · `profile` · `lsp` · `loop` · `graph` · `config` | 3 각 |
 
-`internal/cli`가 다른 최상위 패키지 **65개**를 import 합니다 — 사실상 전 트리에 닿습니다.
+`internal/cli`가 다른 최상위 패키지 **67개**를 import 합니다(t1278 판에서 `internal/civerdict` 신규 합류) — 사실상 전 트리에 닿습니다.
 합성 루트(`internal/cli/deps.go`)가 여기 있으므로 일부는 의도된 것이지만, 상당수는
 `deps.go`가 아니라 **개별 verb 파일에서 직접** 들어옵니다. 이 판에서 더해진
 `internal/mission`이 그 전형입니다 — `internal/cli/goal.go` 한 파일만이 그 패키지를 import 합니다.

@@ -49,20 +49,22 @@ import (
 // SPEC-INIT-HARNESS-001 (REQ-IH-010): the seam reads llm.harness from the
 // live config — a codex-only project re-deploys through the codex-only
 // deployer (force-update semantics preserved) instead of resurrecting the
-// claude surfaces. A claude/both project, an absent key, or any harness
-// resolution failure falls through to the unchanged claude deployer.
-var newTemplateSyncDeployer = func(embedded fs.FS) template.Deployer {
+// Claude surfaces. The other profiles use their matching deployers. A
+// catalog/construction error aborts update instead of changing profiles.
+var newTemplateSyncDeployer = func(embedded fs.FS) (template.Deployer, error) {
 	renderer := template.NewRenderer(embedded)
-	if config.ReadHarness(".") == "gpt" {
-		if cat, catErr := template.LoadEmbeddedCatalog(); catErr == nil {
-			if d, dErr := template.NewCodexOnlyDeployerWithRendererAndForceUpdate(cat, renderer); dErr == nil {
-				return d
-			}
-		}
-		// Catalog or construction failure falls through to the claude
-		// deployer — same fail-open shape as CATALOG_LOAD_FAILED's warn path.
+	cat, catErr := template.LoadEmbeddedCatalog()
+	if catErr != nil {
+		return nil, fmt.Errorf("load harness catalog: %w", catErr)
 	}
-	return template.NewDeployerWithRendererAndForceUpdate(embedded, renderer, true)
+	switch config.ReadHarness(".") {
+	case "gpt":
+		return template.NewCodexOnlyDeployerWithRendererAndForceUpdate(cat, renderer)
+	case "both":
+		return template.NewDualHarnessDeployerWithRendererAndForceUpdate(cat, renderer)
+	default:
+		return template.NewClaudeHarnessDeployerWithRendererAndForceUpdate(cat, renderer)
+	}
 }
 
 // runTemplateSync synchronizes embedded templates with the project directory.
@@ -226,7 +228,10 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 
 	// Create deployer with renderer and force update enabled for template sync
 	// This ensures template files are rendered (.tmpl -> actual file) and updated even if they exist
-	deployer := newTemplateSyncDeployer(embedded)
+	deployer, err := newTemplateSyncDeployer(embedded)
+	if err != nil {
+		return fmt.Errorf("construct harness deployer: %w", err)
+	}
 
 	// t40 defect 2: AnalyzeFiles skips IsMoaiManaged paths, so analysis.Files
 	// carries only the merged/added files. Count the managed re-deployments
@@ -315,6 +320,11 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// renders, so the project's git mode is read here, while the file exists.
 	// Without it every render falls back to the template default (manual).
 	gitMode := config.LoadGitMode(projectRoot)
+	// Cards t1139 / t1147: the same holds for the user-owned values the other
+	// section files render (names, languages, development mode, git provider).
+	// A value the render cannot carry verbatim falls back to the default (see
+	// loadUpdateUserValues for when the merge then keeps it).
+	userValues := loadUpdateUserValues(projectRoot)
 
 	// Define deployment steps
 	steps := []struct {
@@ -360,6 +370,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					template.WithVersion(version.GetVersion()),
 					template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
 					template.WithGitMode(gitMode),
+					userValues,
 				)
 
 				// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces
@@ -441,6 +452,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					template.WithVersion(version.GetVersion()),
 					template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
 					template.WithGitMode(gitMode),
+					userValues,
 				)
 
 				if deployErr := deployWithMirrorNotice(ctx, deployer, projectRoot, mgr, tmplCtx, errOut); deployErr != nil {
@@ -458,6 +470,24 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// while a newly added server still arrives — an update that
 				// looks successful and is half-applied.
 				backup.StageDeployedMCPSnapshot(projectRoot, mgr, errOut)
+				// Card t1139: record the section render this deploy wrote as the
+				// next update's merge BASE — here, before Restore Settings writes
+				// the user's values over it. A snapshot taken after the restore
+				// records the user's own values as BASE, and the next merge reads
+				// every carried customization as "unchanged" and drops it.
+				// This run's BASE was already copied into the backup, so the
+				// write cannot affect the merge below. Best-effort non-blocking.
+				writeTemplateSnapshotBestEffort(projectRoot, errOut)
+				// card t1275: Deploy tracks every written file in the in-memory
+				// manifest, but nothing in the update flow persisted it (init's
+				// initializer calls Save; update never did) — so the on-disk
+				// manifest kept pre-update hashes and the next `init --force`
+				// reclassified every content-changed file user_modified. Persist
+				// the deploy's tracking here, before the merge/restore steps
+				// rewrite their files (those retrack separately below).
+				if saveErr := mgr.Save(); saveErr != nil {
+					_, _ = fmt.Fprintf(errOut, "  manifest save after deploy: %v\n", saveErr)
+				}
 				pl.Done("Templates deployed")
 				return nil
 			},
@@ -628,14 +658,15 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 						_, _ = fmt.Fprintf(out, "  %s llm.harness re-assert warning: %v\n", uikit.SymWarning(), err)
 					}
 				}
+				// card t1275: RestoreMoaiConfigRetained + ApplyHarness just
+				// rewrote .moai/config/sections/*.yaml on top of the deployed
+				// render — re-record those hashes so the manifest matches what
+				// this update actually left on disk.
+				retrackSectionFiles(projectRoot, errOut)
 				deletedCount := backup.CleanupOldBackups(projectRoot, 5)
 				if deletedCount > 0 {
 					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), deletedCount)
 				}
-				// SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001 (REQ-TBS-002, Decision
-				// D4 trigger #2): capture the post-restore on-disk config so the
-				// next update has a rendered BASE. Best-effort non-blocking.
-				writeTemplateSnapshotBestEffort(projectRoot, out)
 			}
 			// Merge .gitignore: preserve user-added patterns via EntryMerge
 			if len(gitignoreBackup) > 0 {
@@ -644,6 +675,20 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					_, _ = fmt.Fprintf(out, "  %s .gitignore merge warning: %v\n", uikit.SymWarning(), mergeErr)
 				} else {
 					_, _ = fmt.Fprintf(out, "  %s .gitignore user patterns preserved\n", uikit.SymSuccess())
+					// card t1276 F1 (lead-approved option A): the EntryMerge
+					// rewrote .gitignore as template + user entries AFTER the
+					// deploy tracked its render — re-record the merged output
+					// so the manifest matches the tree. Must go through the
+					// SAME in-memory mgr the later mergeable retrack saves:
+					// a fresh manager would save the new hash here and then
+					// have it overwritten by the stale entry that mgr still
+					// carries. The merge itself is what preserves the user's
+					// entries, and a user who edits .gitignore outside any
+					// update is not in this path, so their drift still reads
+					// user_modified (two-way).
+					if retrackErr := retrackManifestFiles(projectRoot, mgr, errOut, []string{".gitignore"}); retrackErr != nil {
+						_, _ = fmt.Fprintf(errOut, "  manifest retrack (.gitignore): %v\n", retrackErr)
+					}
 				}
 			}
 			// Merge user-customized files using 3-way merge engine, then settle
@@ -653,6 +698,15 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			// flow that deployed (plan.md D4 ③, M-07d).
 			if err := mergeUserFilesSettlingSnapshot(projectRoot, mergeableBackups, out, errOut); err != nil {
 				_, _ = fmt.Fprintf(out, "  %s File merge warning: %v\n", uikit.SymWarning(), err)
+			}
+			// card t1275: the 3-way merge rewrote the mergeable set
+			// (.claude/settings.json, .moai/status_line.sh, .mcp.json, ...)
+			// after the deploy already tracked the fresh render — re-record
+			// the merged result for exactly those paths. user-owned files are
+			// filtered out inside retrackManifestFiles, so a file the user
+			// alone changed keeps its drift and still reads user_modified.
+			if retrackErr := retrackManifestFiles(projectRoot, mgr, errOut, collectMergeableFiles(projectRoot)); retrackErr != nil {
+				_, _ = fmt.Fprintf(errOut, "  manifest retrack (mergeable set): %v\n", retrackErr)
 			}
 		default:
 			// Execute normal step under the recovery guard: a failure after the
@@ -693,6 +747,9 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		}
 	}
 	renderUpdateOutcome(out, len(analysis.Files), detail, configBackupPath, th)
+	// REQ-DHR-007: a .codex/ template the target harness profile (or this
+	// version) no longer ships is reported and left in place, never deleted.
+	reportUndeployedCodexTemplates(errOut, projectRoot, mgr.Manifest().Files, restoredSet)
 	report.EmitHooksReviewGuidance(out)
 
 	_, _ = fmt.Fprintln(out)

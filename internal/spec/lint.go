@@ -100,6 +100,29 @@ type Linter struct {
 	rules    []Rule
 }
 
+// projectRootFromBaseDir derives the project root from a LinterOptions.BaseDir.
+// BaseDir is the SPEC search directory: the CLI's detectBaseDir returns
+// <root>/.moai/specs when that directory exists and <root> otherwise, so the
+// root is recovered by stripping a trailing ".moai/specs" segment pair.
+func projectRootFromBaseDir(baseDir string) string {
+	if baseDir == "" {
+		return "."
+	}
+	parent, last := filepath.Split(filepath.Clean(baseDir))
+	if last != "specs" {
+		return baseDir
+	}
+	grandparent, moai := filepath.Split(filepath.Clean(parent))
+	if moai != ".moai" {
+		return baseDir
+	}
+	root := filepath.Clean(grandparent)
+	if root == "" {
+		return "."
+	}
+	return root
+}
+
 // NewLinter creates a new Linter instance
 // Loads zone registry if options.RegistryPath is specified
 func NewLinter(opts LinterOptions) *Linter {
@@ -119,11 +142,17 @@ func NewLinter(opts LinterOptions) *Linter {
 	}
 
 	// HaikuResidualRule scans the project tree (not a SPEC document), so it
-	// needs the project root. Default to "." matching discoverSPECs behavior.
-	haikuBaseDir := opts.BaseDir
-	if haikuBaseDir == "" {
-		haikuBaseDir = "."
-	}
+	// needs the project root, while opts.BaseDir is the SPEC search directory —
+	// the CLI supplies <root>/.moai/specs whenever that directory exists. Strip
+	// that trailing pair so every caller lands on the project root; any other
+	// BaseDir is already the root. Empty defaults to "." matching discoverSPECs.
+	haikuBaseDir := projectRootFromBaseDir(opts.BaseDir)
+
+	// Tier artifact-set table (card t1121): each SPEC's project root is derived
+	// from its own spec.md path (BaseDir is only the fallback), and that root's
+	// spec-workflow.md is read once and cached per root for this Linter. The
+	// cache is shared by the per-SPEC rule and its corpus-warning companion.
+	tierTable := &tierArtifactTable{fallbackRoot: lintProjectRoot(opts.BaseDir)}
 
 	l.rules = []Rule{
 		&EARSModalityRule{},
@@ -172,6 +201,13 @@ func NewLinter(opts LinterOptions) *Linter {
 		// Severity is warning only (spec.md §D.5) and the code is deliberately
 		// NOT in eraDemotableCodes.
 		&MovingRefUnpinnedRule{},
+		// VacuousTestAssertionRule — SPEC-SPEC-LINT-VACUOUS-ASSERT-001 (card
+		// t1269). Per-SPEC: reads its SPEC's own spec.md / plan.md /
+		// acceptance.md via filepath.Dir(doc.Path), so lint.skip and era
+		// demotion both apply. Warning only; non-advisory only for SPECs created
+		// on or after vacuousGateCutoff. Deliberately NOT in eraDemotableCodes
+		// (that map demotes errors only).
+		&VacuousTestAssertionRule{},
 		// SyncSHASlotFormatRule — SPEC-SYNC-SHA-SLOT-FORMAT-001 M3, REQ-SSF-004.
 		// Per-SPEC (not cross-SPEC): it reads the SPEC's own sibling progress.md
 		// via filepath.Dir(doc.Path), so lint.skip and era demotion both apply.
@@ -184,7 +220,15 @@ func NewLinter(opts LinterOptions) *Linter {
 		// map demotes ERRORS, so the entry would be inert for a warning, and an
 		// inert entry in a policy map reads as intent. AC-SSF-010 guards it.
 		&SyncSHASlotFormatRule{},
+		// TierArtifactMissingRule — card t1121. Per-SPEC: checks the SPEC dir
+		// against the artifact set its `tier:` requires, read at lint time from
+		// spec-workflow.md § SPEC Complexity Tier. Warning only; lint.skip and
+		// era demotion apply. Not in eraDemotableCodes (warnings never reach it).
+		&TierArtifactMissingRule{table: tierTable},
 		// cross-SPEC rules
+		// TierArtifactTableRule — card t1121. One corpus warning when the
+		// spec-workflow.md Tier table is present but unparseable.
+		&TierArtifactTableRule{table: tierTable},
 		&DependencyCycleRule{},
 		&DuplicateSPECIDRule{},
 		// HaikuResidualRule — cross-SPEC HARD gate (NOT skip-able; CheckAll
@@ -534,6 +578,10 @@ type SPECFrontmatter struct {
 	// (absent → no badge, not an error). Not one of the 12 required fields, so
 	// FrontmatterSchemaRule does not report its absence.
 	Tier string `yaml:"tier,omitempty"`
+	// AmendmentOf is the optional in-place / successor amendment declaration
+	// (completed → in-progress (amendment) transition). Not one of the 12
+	// required fields. Read by the audit SyncStatusDrift amendment exemption.
+	AmendmentOf string `yaml:"amendment_of,omitempty"`
 }
 
 type REQEntry struct {
@@ -594,6 +642,14 @@ const (
 	// every entry through all three Source values and requiring the severity
 	// distribution to be unchanged each time.
 	REQSourceHeading
+	// REQSourceBare is a definition line carrying NO markdown marker at all
+	// (`**REQ-X-001** — …` opening its own line). Card t1104.
+	//
+	// [HARD] Like REQSourceTable and REQSourceHeading, this value is
+	// ATTRIBUTION ONLY and MUST NOT reach reqFindingSeverity or any other
+	// severity decision. Bare entries are demoted through the EXISTING single
+	// axis (Widened), exactly as table and heading entries are.
+	REQSourceBare
 )
 
 func (s REQSource) String() string {
@@ -602,6 +658,8 @@ func (s REQSource) String() string {
 		return "table"
 	case REQSourceHeading:
 		return "heading"
+	case REQSourceBare:
+		return "bare"
 	default:
 		return "list"
 	}

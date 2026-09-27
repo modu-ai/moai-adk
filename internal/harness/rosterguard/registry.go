@@ -213,6 +213,16 @@ func Registry() []Site {
 			Claims: ClaimMembership,
 			Note:   "The shipped per-agent profile cells.",
 		},
+		{
+			ID:           "docs-truth-catalog",
+			Path:         ".moai/project/codemaps/docs-truth.md",
+			Axis:         AxisRetainedRoster,
+			Claims:       ClaimMembership | ClaimCount,
+			BlockStart:   "| # | Agent | Class | Phase scope |",
+			BlockEnd:     "| `Explore` | Anthropic built-in",
+			CountPattern: `consists of exactly \*\*(\d+) retained agents\*\*`,
+			Note:         "§1 table repaired to 13 rows by card t1069; its stale marker was retired by card t1091.",
+		},
 
 		// ── Count-only sites: a roster SIZE claim with no roster ───────────
 		//
@@ -257,22 +267,6 @@ func Registry() []Site {
 		},
 
 		// ── Retained-roster sites with a measured stale claim ──────────────
-		{
-			ID:           "docs-truth-catalog",
-			Path:         ".moai/project/codemaps/docs-truth.md",
-			Axis:         AxisRetainedRoster,
-			Claims:       ClaimMembership | ClaimCount,
-			BlockStart:   "| # | Agent | Class | Phase scope |",
-			BlockEnd:     "| `Explore` | Anthropic built-in",
-			CountPattern: `consists of exactly \*\*(\d+) retained agents\*\*`,
-			KnownStale: &Staleness{
-				Reason: "The §1 table carries 12 rows and the file records the mission-governor " +
-					"gap in its own body as an unresolved drift it declines to adjudicate.",
-				FollowUp:      "the catalog-owning document's decision, per that file's own note",
-				MissingNames:  []string{"mission-governor"},
-				DeclaredCount: 12,
-			},
-		},
 		{
 			ID:           "spec-workflow-catalog-sentence",
 			Path:         ".claude/rules/moai/workflow/spec-workflow.md",
@@ -397,31 +391,58 @@ func Registry() []Site {
 		// twin. Deriving would cost a reviewer one row instead of two and would
 		// blind the guard to a repair landing on only one copy of a pair — the
 		// case recorded a few rows above, firing.
+		// The two rows below carried three declarations written against a
+		// sentence that t1127/t1131/t1140 replaced, and all three had to go
+		// together (card t1141). The document is the party that became CORRECT:
+		// it now reads "13 rows — 12 agents plus `Explore` — × 3 columns = 39
+		// cells", and 13 is what template.ProfileMatrixAgents() carries — the
+		// set CheckSite actually compares against (delegationmap's
+		// retainedCatalog and CLAUDE.md §4 agree, as cross-checks). The
+		// registry was the stale party.
+		//
+		// What each dropped declaration had asserted, and why it is now false:
+		//
+		//   KnownStale (DeclaredCount 11) — the recorded staleness is REPAIRED.
+		//   Leaving the marker is not the safe side: check.go fires on a marker
+		//   whose declared value no longer matches the site, so a resolved
+		//   staleness left behind reads as a fresh drift.
+		//
+		//   SweepUnreachable ("names no agents") — the file now mentions twelve
+		//   of the thirteen roster names, so the sweep reaches it and the
+		//   exemption asserts something measurably untrue.
+		//
+		// The names are NOT replaced by a membership assertion, which is what
+		// the sweep's own message suggests. The reason is a NAMING system, not
+		// an omission — the tier table's effort-baseline cell does partition the
+		// whole roster, but it writes six of the thirteen in shorthand
+		// (`design`, `lead`, `harness`, `e2e`, `docs`, `git`) beside seven
+		// canonical names. NamesIn bounds a name by non-identifier characters,
+		// and `-` is one of them, so `lead` never satisfies `manager-lead`.
+		// A membership claim keyed on canonical names would therefore report
+		// four agents that ARE in the table as absent, and silencing that would
+		// mean either four fabricated KnownStale gaps or expanding the
+		// document's shorthand to suit the test.
+		//
+		// NumeralUnreachable is added rather than widening the numeral layer:
+		// the new sentence counts "rows" and plain "agents", neither of which is
+		// in rosterNounRe's noun class, so the layer cannot reach this claim
+		// without a vocabulary change that would move every other file's breadth
+		// set too.
 		{
-			ID:               "model-policy-profile-matrix-size",
-			SweepUnreachable: "count-only claim: the sentence sizes the profile matrix and names no agents",
-			Path:             ".claude/rules/moai/development/model-policy.md",
-			Axis:             AxisRetainedRoster,
-			Claims:           ClaimCount,
-			CountPattern:     `\((\d+) retained agents × 3 columns`,
-			KnownStale: &Staleness{
-				Reason:        "Cites 11 where the retained roster carries 13; the 33-cell figure is sized off that stale count, identically to product.md and tech.md.",
-				FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
-				DeclaredCount: 11,
-			},
+			ID:                 "model-policy-profile-matrix-size",
+			NumeralUnreachable: "the count noun is `rows` (and `agents` unqualified), outside the numeral layer's noun class",
+			Path:               ".claude/rules/moai/development/model-policy.md",
+			Axis:               AxisRetainedRoster,
+			Claims:             ClaimCount,
+			CountPattern:       `\((\d+) rows — \d+ agents plus`,
 		},
 		{
-			ID:               "model-policy-profile-matrix-size-mirror",
-			SweepUnreachable: "count-only claim; template mirror of the row above",
-			Path:             "internal/template/templates/.claude/rules/moai/development/model-policy.md",
-			Axis:             AxisRetainedRoster,
-			Claims:           ClaimCount,
-			CountPattern:     `\((\d+) retained agents × 3 columns`,
-			KnownStale: &Staleness{
-				Reason:        "Template mirror of the row above, stale identically.",
-				FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
-				DeclaredCount: 11,
-			},
+			ID:                 "model-policy-profile-matrix-size-mirror",
+			NumeralUnreachable: "same noun class miss; template mirror of the row above",
+			Path:               "internal/template/templates/.claude/rules/moai/development/model-policy.md",
+			Axis:               AxisRetainedRoster,
+			Claims:             ClaimCount,
+			CountPattern:       `\((\d+) rows — \d+ agents plus`,
 		},
 		{
 			ID:               "foundation-core-skill-catalog-size",
@@ -710,6 +731,12 @@ func NumeralExemptions() []NumeralExempt {
 		"OBSERVED, not adjudicated: the same sentence's live tail (\"since grown to 11\") is itself stale, " +
 		"and the adopted noun class does not reach it — no noun follows that numeral."
 
+	const t1171Fixture = "HISTORICAL CITATION: a captured test fixture — a copy of an emitted codex agent " +
+		"definition or a recorded codex session, quoting roster counts as they stood at capture (the 17→8 " +
+		"consolidation sentence; \"13 retained agents\" in the recorded session). " +
+		"Only machine-local paths were rewritten to neutral placeholders; the roster wording is kept as " +
+		"captured, and editing it would invalidate the capture. The live sources are exempted above on their own rows."
+
 	return []NumeralExempt{
 		// ── Historical citations ───────────────────────────────────────────
 		{ID: "manager-docs-then-8", Path: ".claude/agents/moai/manager-docs.md", Reason: historicalConsolidation},
@@ -736,6 +763,16 @@ func NumeralExemptions() []NumeralExempt {
 			Reason: "HISTORICAL CITATION: two comments — the 17→8 consolidation, and \"all 7 retained agents live " +
 				"directly in moai/\" describing the folder layout after a superseded split.",
 		},
+		// Captured codex role/rollout fixtures (card t1171): byte-frozen copies of
+		// emitted agent definitions and a recorded session, kept verbatim so the
+		// role-load predicate is tested against real input.
+		{ID: "t1171-fixture-roles-manager-design", Path: "internal/cli/testdata/codex-rollouts-t1171/roles/manager-design.toml", Reason: t1171Fixture},
+		{ID: "t1171-fixture-roles-manager-docs", Path: "internal/cli/testdata/codex-rollouts-t1171/roles/manager-docs.toml", Reason: t1171Fixture},
+		{ID: "t1171-fixture-roles-manager-spec", Path: "internal/cli/testdata/codex-rollouts-t1171/roles/manager-spec.toml", Reason: t1171Fixture},
+		{ID: "t1171-fixture-roles-other-manager-design", Path: "internal/cli/testdata/codex-rollouts-t1171/roles-other-version/manager-design.toml", Reason: t1171Fixture},
+		{ID: "t1171-fixture-roles-other-manager-docs", Path: "internal/cli/testdata/codex-rollouts-t1171/roles-other-version/manager-docs.toml", Reason: t1171Fixture},
+		{ID: "t1171-fixture-roles-other-manager-spec", Path: "internal/cli/testdata/codex-rollouts-t1171/roles-other-version/manager-spec.toml", Reason: t1171Fixture},
+		{ID: "t1171-fixture-real-rollout-8d51", Path: "internal/cli/testdata/codex-rollouts-t1171/real/rollout-2026-09-24T18-40-19-01a0d2c9-8d51-7623-a979-b364671a0205.jsonl", Reason: t1171Fixture},
 		{
 			ID:     "embed-catalog-test-consolidation-comment",
 			Path:   "internal/template/embed_catalog_test.go",

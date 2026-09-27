@@ -363,9 +363,10 @@ func TestSaveInvalidPermissionModeRejected(t *testing.T) {
 	}
 	rec := servePost(t, h, "/save", form)
 
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("invalid submit status = %d, want 400", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Errorf("invalid submit status = %d, want 200", rec.Code)
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	if wrote || synced {
 		t.Error("persistence functions called despite validation failure (state must be unchanged)")
 	}

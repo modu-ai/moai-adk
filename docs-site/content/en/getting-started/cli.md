@@ -351,7 +351,7 @@ Flags common to both launch commands.
 |--------|------|
 | `-c, --continue` | Continue the previous session |
 | `-m, --model <model>` | Override the model selection |
-| `--chrome` / `--no-chrome` | Toggle the Chrome MCP |
+| `--chrome` / `--no-chrome` | Passed through to Claude Code unchanged; the launcher adds neither, so `/chrome` can attach unless you pass `--no-chrome` |
 
 > The `auto` permission mode is not available on GLM (a third-party provider) — it is supported only in `moai cc`.
 
@@ -449,9 +449,9 @@ MoAI-ADK provides a performance-tier system that assigns the optimal AI model to
 
 | Tier | Characteristics |
 |------|------|
-| **high** | Highest quality — `max` reasoning depth on the two rarest-invocation agents |
+| **high** | Highest quality — same as medium except that `builder-harness` and `e2e-tester` run one effort level higher |
 | **medium** (default) | Balance of quality and cost — the knee of the cost/score curve |
-| **low** | Lowest cost per task — agentic agents drop to Opus `low` effort; Sonnet only on single-shot rows |
+| **low** | Lowest cost per task — the auditing and coordinating rows drop to `medium` and `builder-harness` to Opus `low` (`super-advisor` and `mission-governor` stay at `high`), and Sonnet covers the single-shot rows plus `e2e-tester` |
 
 ```bash
 # Set at initialization

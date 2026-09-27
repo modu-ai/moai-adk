@@ -60,7 +60,7 @@ flowchart TD
 
 ## 模型层级路由
 
-将 Layer B 路由具体化的是模型配置文件策略。MoAI-ADK v3.0 将 Haiku 从路由模型集合中排除，以贴合任务性质的三层结构分散工作 — Sonnet 承担单次完成的行，Opus 贯穿整条代理式阶梯，`max` effort 只用于两个调用频率最低的行。此设计的依据和配置矩阵实现在以下两页讨论。
+将 Layer B 路由具体化的是模型配置文件策略。MoAI-ADK v3.0 将 Haiku 从路由模型集合中排除，以贴合任务性质的三层结构分散工作 — Sonnet 承担单次完成的行，Opus 贯穿整条代理式阶梯，更高的 effort 集中给做判断的行（审计、顾问、协调）。此设计的依据和配置矩阵实现在以下两页讨论。
 
 - [三层代理架构](/zh/advanced/no-haiku-3tier/) — 为什么排除 Haiku、DeepSWE 排行榜依据
 - [配置矩阵](/zh/advanced/profile-matrix/) — 单一 3 列 per-agent 配置矩阵

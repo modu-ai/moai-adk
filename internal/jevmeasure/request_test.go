@@ -154,8 +154,8 @@ func TestBuildRequest_StateIsDataNotInstruction(t *testing.T) {
 // matter, both are read. P(yes) is not guaranteed to equal 1 - P(no).
 func TestReadNoul_BothPolaritiesRead(t *testing.T) {
 	answers := []jev.Answer{
-		{QuestionID: "is_dead", Kind: jev.KindNoul, Noul: true, Probability: 0.71},
-		{QuestionID: "is_alive", Kind: jev.KindNoul, Noul: true, Probability: 0.44},
+		{QuestionID: "is_dead", Kind: jev.KindNoul, Probability: 0.71},
+		{QuestionID: "is_alive", Kind: jev.KindNoul, Probability: 0.44},
 	}
 	pair, err := ReadNoulPair(answers, "is_dead", "is_alive")
 	if err != nil {

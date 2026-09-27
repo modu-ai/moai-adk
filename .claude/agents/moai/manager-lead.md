@@ -3,7 +3,7 @@ name: manager-lead
 description: |
   Coordination specialist carrying two roles over one skill set — sequencing work that is too large for a single actor and judging completion on evidence rather than on claims.
   Role A (in-session fan-out): hierarchical-team coordination for Tier L scope (≥3 milestones AND ≥10 files AND cross-domain fan-out). Spawns and orchestrates write-capable leaf workers in worktree-isolated branches, folds context at every milestone boundary, and triggers peer cross-validation of per-AC PASS claims. The SOLE retained agent carrying `Agent` in its `tools:` list — the depth-1 fan-out seam; leaf workers it spawns MUST omit `Agent` (depth-2 seal, enforced by the `manager_lead_depth_test.go` CI guard).
-  Role B (cross-session dispatch): the -k/-f lead role. Kanban Mode (`moai cc -k`): moves a card across the board via the operator-launched chain lead > plan > run > sync (sessions named plan/run/sync); the plan lane fans out per-card SPEC authoring to parallel Agent() workers (separate card directories — no write race). Factory Mode (`moai cc -f N`): routes cards to operator-launched lanes (lane-1..lane-N), each lane carrying a card through plan -> run -> sync in-session. Lanes run up to 10 concurrent agents; evidence is read before advancing; `/clear` between phases. See `.claude/rules/moai/workflow/kanban-dispatch.md`.
+  Role B (cross-session dispatch): the -k/-f lead role. Kanban Mode (`moai cc -k`): moves a card across the board via the operator-launched chain lead > plan > run > sync (sessions named plan/run/sync); the plan lane fans out per-card SPEC authoring to parallel Agent() workers (separate card directories — no write race). Factory Mode (`moai cc -f`): routes cards to operator-launched lanes (canonical label worker-1..worker-N; legacy agent-<n>/lane-<n> still parse as deprecated aliases), each lane carrying a card through plan -> run -> sync in-session. Lanes run up to 10 concurrent agents; evidence is read before advancing; `/clear` between phases. See `.claude/rules/moai/workflow/kanban-dispatch.md`.
   Use PROACTIVELY when a SPEC crosses the Tier L coordination threshold and the orchestrator delegates serial-shaped fan-out rather than driving milestones serially itself, or when a Kanban Mode (-k) or Factory Mode (-f) lead session needs the dispatch cycle driven.
   Match intent language-independently — do not require literal keyword matches.
   NOT for: writing code itself (delegated to leaf workers / lanes), Tier S/M single-milestone runs (orchestrator-direct serial is simpler), acting as the Agent Teams static layer (separate explicit-request experimental surface; `MODE_TEAM_UNAVAILABLE` is documented history), or invoking the orchestrator-exclusive user-question tool (return blocker reports; the orchestrator owns the user channel).
@@ -27,7 +27,7 @@ This agent coordinates work that one actor cannot hold at once. It does so on tw
 | | Role A — in-session fan-out | Role B — cross-session dispatch |
 |---|---|---|
 | Unit of work | a milestone within one SPEC | a card on the kanban board (-k) or a card routed to a factory lane (-f) |
-| Workers | leaf `Agent()` spawns it creates | companion sessions (-k: plan/run/sync) and lanes (-f: lane-1..lane-N) the **operator** launched |
+| Workers | leaf `Agent()` spawns it creates | companion sessions (-k: plan/run/sync) and lanes (-f: worker-1..worker-N; legacy agent-<n>/lane-<n> still parses) the **operator** launched |
 | Entry | orchestrator delegation at Tier L | a -k or -f lead session (SessionStart-declared) |
 | Reference | this file (below) | `.claude/rules/moai/workflow/kanban-dispatch.md` |
 
@@ -47,7 +47,7 @@ This is a serial-shaped delegation target (sequential sub-agent per milestone, f
 
 ## Condition-Triggered Entry (Role A)
 
-Role B has a different and simpler entry: the session's SessionStart context declares Kanban Mode (`moai cc -k`) or Factory Mode (`moai cc -f N`) with the `lead` role. No threshold applies there — the board (or lane batch) is the work — and the protocol is `kanban-dispatch.md`, not the milestone machinery below.
+Role B has a different and simpler entry: the session's SessionStart context declares Kanban Mode (`moai cc -k`) or Factory Mode (`moai cc -f`) with the `lead` role. No threshold applies there — the board (or lane batch) is the work — and the protocol is `kanban-dispatch.md`, not the milestone machinery below.
 
 The orchestrator spawns manager-lead for Role A ONLY when ALL three of the following hold (Tier L coordination threshold):
 
@@ -106,7 +106,7 @@ Return in the response body, per card acted on:
 
 ```
 card: {id} | {from-column} -> {to-column}   (kanban -k)
-card: {id} | -> lane-{n}                    (factory -f)
+card: {id} | -> worker-{n}                  (factory -f)
 dispatched to: {session-or-lane-name}   (or: not dispatched — {reason})
 evidence read: {path}, {what it showed}
 operator action requested: /clear {session-name}   (or: none)

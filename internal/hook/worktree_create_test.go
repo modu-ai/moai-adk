@@ -64,6 +64,7 @@ func runWorktreeTestGit(t *testing.T, dir string, args ...string) string {
 // empty path, so Claude Code aborted every isolation: worktree spawn.
 func TestWorktreeCreateHandler_ActiveCreator(t *testing.T) {
 	repo := initWorktreeTestRepo(t)
+	markMoaiProjectRoot(t, repo)
 
 	h := NewWorktreeCreateHandler()
 	got, err := h.Handle(context.Background(), &HookInput{
@@ -126,6 +127,7 @@ func TestWorktreeCreateHandler_ActiveCreator(t *testing.T) {
 // the name "../.." and any squatting plain directory for an ordinary name.
 func TestWorktreeCreateHandler_ReusesExistingDirectory(t *testing.T) {
 	repo := initWorktreeTestRepo(t)
+	markMoaiProjectRoot(t, repo)
 
 	h := NewWorktreeCreateHandler()
 	created, err := h.Handle(context.Background(), &HookInput{

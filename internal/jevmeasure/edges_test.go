@@ -140,7 +140,7 @@ func TestLabelOf_ChoiceAndUnderspecifiedNoul(t *testing.T) {
 	if got := labelOf(jev.Answer{Kind: jev.KindChoice, Choice: "lane-2"}, nil); got != "lane-2" {
 		t.Errorf("Choice label = %q, want lane-2", got)
 	}
-	if got := labelOf(jev.Answer{Kind: jev.KindNoul, Noul: true}, []string{"only-one"}); got != "" {
+	if got := labelOf(jev.Answer{Kind: jev.KindNoul, Probability: 0.9}, []string{"only-one"}); got != "" {
 		t.Errorf("an under-specified Noul mapped to %q, want the empty string", got)
 	}
 	if got := labelOf(jev.Answer{Kind: jev.KindScore, Score: 0.4}, []string{"a", "b"}); got != "" {

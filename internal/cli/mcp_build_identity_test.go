@@ -633,10 +633,14 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 	// todo_landed.go coordinate asks at record time, and equally not a
 	// binary-vs-source freshness comparison.
 	//
-	// The coordinate is line-keyed like its neighbours, so an edit above it
-	// in todo_landed.go or todo_autodone.go moves it and this baseline needs
-	// re-measuring; that brittleness is the guard's existing design, not
-	// something introduced here.
+	// The lane-handoff restart reconciler's coordinate
+	// (factory_lane_handoff_recover.go) left the baseline with that file:
+	// the handoff CLI was retired (SPEC-CODEX-FACTORY-RETIRE-001 M3).
+	//
+	// The coordinates are line-keyed, so an edit above one in todo_landed.go
+	// or todo_autodone.go moves it and this baseline needs re-measuring; that
+	// brittleness is the guard's existing design, not something introduced
+	// here.
 	want := map[string]bool{
 		"graph_stamp.go:68":  true,
 		"graph_stamp.go:131": true,

@@ -40,6 +40,25 @@ func harnessModeIsCodex(cmd *cobra.Command) (bool, error) {
 	}
 }
 
+// unsetLaneEnvForCodexHook removes the eleven lane launch keys from this hook
+// process and returns the function that restores them. A hook running under
+// --harness codex is a Codex session's hook, never a Claude lane's, so it must
+// not register, bind, or rotate a factory peer in whatever lane environment
+// it inherited (SPEC-CODEX-FACTORY-RETIRE-001 REQ-CFR-022). The hook package
+// has no harness field; this boundary is where the harness is known.
+func unsetLaneEnvForCodexHook() func() {
+	restores := make([]func(), 0, len(codexLaneLaunchEnvKeys))
+	for _, key := range codexLaneLaunchEnvKeys {
+		restores = append(restores, captureEnvState(key))
+		_ = os.Unsetenv(key)
+	}
+	return func() {
+		for i := len(restores) - 1; i >= 0; i-- {
+			restores[i]()
+		}
+	}
+}
+
 // validateCodexHarnessEvent cross-checks the payload's hook_event_name
 // against the invoked subcommand via codexadapter.Resolve (REQ-CW-007 second
 // clause): the hooks.json the generator emits and the runtime command Codex
@@ -76,11 +95,22 @@ func validateCodexHarnessEvent(event hook.EventType, input *hook.HookInput) erro
 func writeHookOutputCodex(event hook.EventType, output *hook.HookOutput) error {
 	var raw bytes.Buffer
 	if err := deps.HookProtocol.WriteOutput(&raw, output); err != nil {
-		return fmt.Errorf("serialize hook output for codex mapping: %w", err)
+		err = fmt.Errorf("serialize hook output for codex mapping: %w", err)
+		if codexadapter.IsDecisionBearing(event) && (output == nil || output.ExitCode != 2) {
+			return writeCodexFailClosed(event, err)
+		}
+		return err
 	}
 	mapped, discards, err := codexadapter.MapOutput(event, raw.Bytes())
 	if err != nil {
-		return fmt.Errorf("map hook output for codex: %w", err)
+		err = fmt.Errorf("map hook output for codex: %w", err)
+		// Unparseable output on a decision-bearing event is a fault, answered
+		// fail-closed (SPEC-DUAL-HARNESS-HOOK-PARITY-001 M2c, REQ-HPR-009).
+		// Under exit 2 the exit code already carries the block.
+		if codexadapter.IsDecisionBearing(event) && (output == nil || output.ExitCode != 2) {
+			return writeCodexFailClosed(event, err)
+		}
+		return err
 	}
 
 	// hookBlocked mirrors RecordDiscards' own contract: when the underlying

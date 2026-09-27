@@ -145,7 +145,7 @@ func TestGTDFiveStageCLIUsesSameSQLite(t *testing.T) {
 	if out, err := runGTD(t, "reflect", "--rebuild-projection", "--json"); err != nil || !bytes.Contains([]byte(out), []byte(`"projection"`)) {
 		t.Fatalf("projection output=%q err=%v", out, err)
 	}
-	if out, err := runGTD(t, "engage", captured.ItemID, "--approve", "--fresh", "--dependencies-ready", "--lane", "lane-10", "--resources", "--pick", "--dispatch", "--run-id", "mission-cli-1", "--json"); err != nil || !bytes.Contains([]byte(out), []byte(`"card_id":"t1"`)) {
+	if out, err := runGTD(t, "engage", captured.ItemID, "--approve", "--fresh", "--dependencies-ready", "--lane", "worker-10", "--resources", "--pick", "--dispatch", "--run-id", "mission-cli-1", "--json"); err != nil || !bytes.Contains([]byte(out), []byte(`"card_id":"t1"`)) {
 		t.Fatalf("engage output=%q err=%v", out, err)
 	}
 	record, err := store.Load()

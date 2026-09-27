@@ -1,6 +1,6 @@
 # moai-mcp Tool Catalogue
 
-> Single source of truth for the 31 tools exposed by the self-hosted `moai` MCP
+> Single source of truth for the 39 tools exposed by the self-hosted `moai` MCP
 > server (`.mcp.json` → `{command: "moai", args: ["mcp-server"]}`). Each tool is
 > prefixed `mcp__moai__` at the call site. This rule tells agents and the
 > orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.
@@ -55,12 +55,15 @@ a later containment check cannot be walked through by pointing a link at a tree
 outside the boundary. A path that cannot be canonicalized is rejected on the same
 terms as any other unusable one.
 
+A registered linked worktree of a repository that keeps `.moai` untracked is also
+accepted; rules and caveats: `moai-mcp-tools-catalogue.md` § Linked worktrees.
+
 For `audit_multi` the root reaches every backend in the fan-out: Claude and GLM
 use it to collect the diff sent to their isolated reviewer, while codex receives
 it as the working directory it reviews in. Passing it keeps all independent
 opinions about the same tree.
 
-## Tool families (27 of the 31 tools; the session-messaging family follows below)
+## Tool families (35 of the 39 tools; the session-messaging family follows below)
 
 | Family | Tools | Wired consumers |
 |---|---|---|
@@ -69,9 +72,11 @@ opinions about the same tree.
 | Goal + session | `goal_arm`, `goal_status`, `session_list` | orchestrator only / manager-develop, manager-lead |
 | Cross-model audit | `audit_multi`, `claude_audit`, `codex_audit`, `glm_audit`, `audit_cache` | plan-auditor, sync-auditor |
 | Codex delegation | `codex_task`, `codex_setup`, `codex_job_{status,result,cancel}` | super-advisor |
+| Codex read-only roles | `codex_role_audit`, `codex_role_audit_status`, `codex_role_audit_result` | a Codex session — starts `plan-auditor`, `sync-auditor`, `mission-governor`, `super-advisor` as a top-level read-only process instead of through `spawn_agent` |
 | GLM delegation | `glm_task`, `glm_job_{status,result,cancel}` | super-advisor |
 | Code queries | `graph_file_api`, `graph_find_code`, `graph_trace_calls`, `graph_shortest_path` | any agent (signature-level code navigation from the code-derived edge layer; every answer carries tree+commit provenance) |
 | Judgment (gated) | `jev_ask` | gated-unavailable at the shipped default (`workflow.jev.enabled: false`) — no request constructed, no network call; while the chain's fitness gate stands unrun it is not presented as available. Display-only: a labelled model signal a person reads, never a completion predicate, merge approval, queue mutation, or gate input |
+| Factory messaging | `factory_msg_send`, `factory_msg_list`, `factory_msg_body`, `factory_msg_receipt`, `factory_msg_status` | attributed factory lead/worker sessions; `status` is the read-only operational roster/count surface |
 
 Per-tool purpose, consumer, and CLI equivalent: `moai-mcp-tools-catalogue.md`. Claude, codex, and
 GLM audit transports fail open at the tool boundary: an unavailable backend returns

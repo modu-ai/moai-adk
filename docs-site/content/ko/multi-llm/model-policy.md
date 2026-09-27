@@ -43,18 +43,18 @@ description: 작업 성격과 품질/비용 목표에 맞춰 에이전트마다 
 먼저 선택지를 짚고 넘어갑니다. 모델 정책은 아래 라인업 가운데 어느 모델을, 어느
 추론 깊이로 쓸지를 고르는 규칙입니다.
 
-### 모델 라인업 (2026-08)
+### 모델 라인업 (2026-09)
 
 | 모델 | 식별자 | 컨텍스트 | 성격 |
 |------|--------|----------|------|
-| Claude Fable 5 | `claude-fable-5` | 256K | 신규 Mythos-tier 범용 최상위. 가장 깊은 추론과 복잡한 코딩 |
-| Claude Opus 5 / 4.8 | `opus` | 1M | 복잡한 아키텍처, 고난도 추론 |
-| Claude Sonnet 5 | `sonnet` | 200K | 속도와 지능의 균형, 일상 코딩 |
+| Claude Fable 5 | `claude-fable-5` | 1M | 신규 Mythos-tier 범용 최상위. 가장 깊은 추론과 복잡한 코딩 |
+| Claude Opus 5.5 | `opus` | 1M | 복잡한 아키텍처, 고난도 추론 |
+| Claude Sonnet 5 | `sonnet` | 1M | 속도와 지능의 균형, 일상 코딩 |
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 가장 빠르고 경제적, 단순·대량 작업 |
 
 > MoAI의 모델 정책은 이 라인업 전체를 쓰지 않습니다. **No-Haiku 정책**에 따라 Haiku는
-> 에이전트 매트릭스 어디에도 등장하지 않으며, 멀티턴 에이전틱 행은 전부 Opus가
-> 맡습니다. 이유는 바로 다음 절에 나옵니다.
+> 에이전트 매트릭스 어디에도 등장하지 않으며, 멀티턴 에이전틱 행은 Opus가
+> 맡습니다(`low` 프로필의 `e2e-tester`만 예외). 이유는 바로 다음 절에 나옵니다.
 
 ### 추론 깊이(effort)
 
@@ -65,8 +65,12 @@ description: 작업 성격과 품질/비용 목표에 맞춰 에이전트마다 
 | `low` | 가장 얕은 추론. 빠르고 쌈 |
 | `medium` | 균형. 기본 프로필의 기준점 |
 | `high` | 깊은 추론 |
-| `xhigh` | 더 깊은 추론 (Opus 5 · 4.8 · Sonnet 5 · Opus 4.7 지원) |
+| `xhigh` | 더 깊은 추론 (Opus 5.5 · Opus 5 · 4.8 · Sonnet 5 · Opus 4.7 지원) |
 | `max` | 가장 깊은 추론 |
+
+> **기본 effort**: Opus 5.5의 기본 effort는 `medium`이고, effort를 지원하는 다른 모델은 대부분 `high`가 기본입니다.
+> MoAI의 프로필 위저드와 웹 콘솔도 세션 effort로 `medium`을 권장합니다. `opus` 별칭이
+> Opus 5.5로 풀리려면 Claude Code v2.1.280 이상이 필요합니다.
 
 > **`ultrathink` 키워드**: `ultrathink`를 입력하면 `effort:xhigh`와 Adaptive Thinking
 > (추론 토큰 자동 할당)가 함께 켜집니다. 고정된 `budget_tokens`는 쓰지 않습니다 — 모델이
@@ -93,10 +97,11 @@ description: 작업 성격과 품질/비용 목표에 맞춰 에이전트마다 
 없을 때만 읽습니다.
 {{< /callout >}}
 
-> **정책을 낮춘다고 더 약한 모델 클래스로 가는 건 아닙니다.** 호흡이 긴 에이전틱
+> **정책을 낮춰도 대부분의 행은 더 약한 모델 클래스로 가지 않습니다.** 호흡이 긴 에이전틱
 > 작업에서는 Opus의 `low` effort가 어떤 effort의 Sonnet보다도 점수가 높고, 동시에
 > 과제당 비용도 쌉니다. 그래서 `low` 정책은 추론 깊이를 낮춰 Opus *안에서* 아끼고,
-> 멀티스텝 완주 실패가 문제되지 않는 단발성 행에서만 Sonnet을 씁니다.
+> Sonnet은 원래부터 단발성 행에 쓰며, `low`에서 모델이 바뀌는 행은
+> `e2e-tester` 하나뿐입니다(`sonnet / low`).
 
 ## 에이전트별 배정표
 
@@ -145,14 +150,15 @@ description: 작업 성격과 품질/비용 목표에 맞춰 에이전트마다 
   행(`manager-design`, `manager-lead`), 판정 행(`mission-governor`)이 `high`를
   유지하는 동안, 저작·구현 행
   (`manager-spec`, `manager-develop`)은 세 프로필 모두 `medium`에 머뭅니다.
-- **모든 에이전틱 행은 Opus**: `manager-spec`, `manager-develop`, `plan-auditor`,
+- **에이전틱 행은 Opus**: `manager-spec`, `manager-develop`, `plan-auditor`,
   `sync-auditor`, `manager-design`, `manager-lead`, `builder-harness`, `e2e-tester`
-  등 멀티턴 작업은 전부 Opus에 남깁니다. Opus의 `low`가 어떤 effort의 Sonnet보다 점수는
+  등 멀티턴 작업은 Opus에 남깁니다(`e2e-tester`만 `low`에서 `sonnet / low`). Opus의 `low`가 어떤 effort의 Sonnet보다 점수는
   높고 과제당 비용은 싸기 때문입니다.
-- **Sonnet은 단발성·입력 지배 행에만**: `manager-docs`의 문서 정리, `manager-git`의
+- **Sonnet이 맡는 단발성·입력 지배 행**: `manager-docs`의 문서 정리, `manager-git`의
   기계적 작업, `Explore` 탐색은 입력이 대부분인 단일 패스로 끝나 멀티스텝 완주 실패를
   걱정할 일이 없고, 그 자리에서는 Sonnet의 싼 입력 단가가 결정적입니다. 이 세 행은
-  세 프로필 모두에서 `sonnet / low`로 고정입니다.
+  세 프로필 모두에서 `sonnet / low`로 고정입니다. `low` 프로필에서는 `e2e-tester`도
+  `sonnet / low`를 받습니다.
 - **어떤 행도 `max`를 받지 않음**: `max`는 `high` 위의 유일한 단계로 어휘에 남지만,
   현재 그것을 쓰는 셀은 없습니다.
 - **`xhigh`는 어디에도 쓰지 않음**: Opus에서는 점수가 `high`와 같은데 비용만 49% 더

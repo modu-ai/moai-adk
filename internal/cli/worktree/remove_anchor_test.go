@@ -82,6 +82,7 @@ func TestRunRemove_ForceOverridesAnchorWarning(t *testing.T) {
 // TestRunRemove_RemovesWhenNoAnchoredSession: a tree without a tree-local
 // registry disposes as before (fail-open on absent registry).
 func TestRunRemove_RemovesWhenNoAnchoredSession(t *testing.T) {
+	stubReadableEmptyLockList(t)
 	tree := t.TempDir()
 	mock := withAnchoredMockProvider(t, tree)
 	// Drop the registry the helper wrote — no anchor evidence remains.

@@ -12,7 +12,7 @@ MoAI-ADK 通过单一的 **配置矩阵**将保留的 13 个代理各自映射�
 
 - `high` — 质量优先列。开销流向"做判断的行"而非"做产出的行": 审计·顾问行(`plan-auditor`、`sync-auditor`、`super-advisor`)、协调行(`manager-design`、`manager-lead`)与判定行(`mission-governor`)保持 `high`，而撰写·实现行(`manager-spec`、`manager-develop`)在三列中都停在 `medium`。没有任何行取 `max`。`xhigh` 不出现在任何格子中: 在 Opus 5 上它与 `high` 得分相同，成本却明显更高。
 - `medium`(默认) — 平衡列。与 `high` 列恰好只在两行上不同: `builder-harness` 降到 `medium`、`e2e-tester` 降到 `low`。取值缺失或为空时按 `medium` 解释。
-- `low` — 经济列。Opus 5 在 `low` 下比任何 effort 的 Sonnet 5 得分更高**且**每任务成本更低，因此所有代理式行都保留 Opus；大多数 Opus 行落在 `medium`，只有 `super-advisor` 与 `mission-governor` 保持 `high` —— 升级路径与封存任务的判定，正是便宜列里最值得保持健全的位置。Sonnet 只出现在单次完成、以输入为主的行上。
+- `low` — 经济列。Opus 5 在 `low` 下比任何 effort 的 Sonnet 5 得分更高**且**每任务成本更低，因此代理式行都保留 Opus（唯一例外是降到 `sonnet / low` 的 `e2e-tester`）；大多数 Opus 行落在 `medium`，只有 `super-advisor` 与 `mission-governor` 保持 `high` —— 升级路径与封存任务的判定，正是便宜列里最值得保持健全的位置。除此之外，Sonnet 只出现在单次完成、以输入为主的行上。
 
 `max` 是 `high` 的**只读别名**。既有配置中的 `profile: max` 仍解析为 `high`，保存时始终写入规范名 `high`。无需任何迁移操作。
 
@@ -59,7 +59,7 @@ moai update --profile low              # 事后切换
 
 决定模型等级的两条规则以实测为根:
 
-- **Opus 在每个 effort 上都压制 Sonnet。** Opus 5 在 `low`(58%、$1.66/任务、36 步)下得分高于任何级别的 Sonnet 5，每任务成本也更低，包括 `max` 下的 Sonnet 5(54%、$26.40/任务、268 步)。决定每任务成本的是完成效率 — 即完成任务所花的步数与输出 token — 而非单 token 价格。因此 Sonnet 仅保留在多步完成不适用之处: 单次完成、以输入为主的行(`Explore` 检索、`manager-git` 机械性操作)，那里更低的输入价格才是决定性因素。这也是所有多轮代理式行都用 Opus 的原因。
+- **Opus 在每个 effort 上都压制 Sonnet。** Opus 5 在 `low`(58%、$1.66/任务、36 步)下得分高于任何级别的 Sonnet 5，每任务成本也更低，包括 `max` 下的 Sonnet 5(54%、$26.40/任务、268 步)。决定每任务成本的是完成效率 — 即完成任务所花的步数与输出 token — 而非单 token 价格。因此 Sonnet 仅保留在多步完成不适用之处: 单次完成、以输入为主的行(`Explore` 检索、`manager-git` 机械性操作)，那里更低的输入价格才是决定性因素。这也是多轮代理式行用 Opus 的原因。不过矩阵在每一列都把 `manager-docs` 放在 Sonnet 上，并在 `low` 列把 `e2e-tester` 放在 Sonnet 上。
 - **`xhigh` 在 Opus 上被严格压制。** `high` 以 $6.08 取得 73%，而 `xhigh` 以 $9.07 取得同样的 73% — 没有收益，成本 +49%，步数 +22%。它已从矩阵中退役(6 格 → 0 格)。`max` 仍作为 `high` 之上唯一的级别留在词汇表中，但当前没有行取它。
 
 {{< icon warning warn >}} **证据的适用范围**: 该基准测试衡量的是*编码*代理。文档撰写、审计判断与 SPEC 撰写质量**并未**被直接测量 — 这些行的位置基于与多轮代理式工作的相似性推断。任何行都可通过 `llm.agent_overrides` 按代理逐一回退。

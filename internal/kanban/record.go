@@ -65,7 +65,7 @@ type Record struct {
 	// Role is the chain role this session occupies: lead | plan | run
 	// | sync, or "lane" for a factory run's numbered lane. It is derived
 	// from the companion label (the bare role name, or its bumped
-	// `<role>-<n>` form) or the factory lane label (`lane-<n>`) at
+	// `<role>-<n>` form) or the factory worker label (`worker-<n>`) at
 	// launch, or "lead" for the session that elected the run.
 	//
 	// Empty is legitimate and load-bearing: a record written before this field
@@ -158,7 +158,7 @@ func (r *Record) WithRole(role string) *Record {
 // "not a lane" signal instead of being overwritten by an unparsed label.
 //
 // This is deliberately NOT part of WithRole. Widening the role setter to
-// pattern-match a `lane-<n>` label would reopen exactly what its drop-unknown
+// pattern-match a `worker-<n>` label would reopen exactly what its drop-unknown
 // guard closes — arbitrary launch-label text reaching the role field.
 func (r *Record) WithLane(lane int) *Record {
 	if r == nil {

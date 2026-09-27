@@ -34,9 +34,13 @@ import (
 // LeadLabel/SplitLeadLabel compose and parse that shape from this constant.
 const RoleLead = "lead"
 
-// RoleLane names a factory run's numbered lane (the `lane-<n>` lanes of
-// `moai cc -f <N>`, SPEC-FACTORY-WORKER-FANOUT-001). It is deliberately NOT a
-// CompanionRoles member: factory lanes are dispatched cards by their lead
+// RoleLane names a factory run's numbered worker session (the `worker-<n>`
+// labels, SPEC-FACTORY-WORKER-FANOUT-001). The persisted value stays "lane":
+// it is the record's role key on disk, not user-facing notation, so renaming
+// it would change the record format existing readers parse.
+//
+// It is deliberately NOT a CompanionRoles member: factory lanes are
+// dispatched cards by their lead
 // over cross-session messages and never occupy the three-role kanban chain, so
 // the companion shape discriminators must not admit their labels.
 const RoleLane = "lane"

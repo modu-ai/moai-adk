@@ -167,12 +167,12 @@ func TestSettingsPageFormContract(t *testing.T) {
 	html := renderTempl(t, page(tg5ShellVM(), view))
 
 	for _, want := range []string{
-		`name="__profile" value="work"`,                     // hidden profile input
-		`name="__tab" value="identity"`,                     // hidden tab input
-		`action="/save?profile=work"`,                       // per-profile save target
-		`is-active`,                                         // the active panel is marked
-		`banner--warn`, "save rejected",                     // the error banner rendered
-		`aria-invalid="true"`, "required",                   // the field error surfaced
+		`name="__profile" value="work"`, // hidden profile input
+		`name="__tab" value="identity"`, // hidden tab input
+		`action="/save?profile=work"`,   // per-profile save target
+		`is-active`,                     // the active panel is marked
+		`banner--warn`, "save rejected", // the error banner rendered
+		`aria-invalid="true"`, "required", // the field error surfaced
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("settings page missing %q:\n%s", want, html)

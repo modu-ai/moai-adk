@@ -26,6 +26,10 @@ import (
 	"github.com/modu-ai/moai-adk/internal/manifest"
 )
 
+// residueSweepExemptDB is the defs.DeprecatedPaths entry the v3 residue sweep
+// skips (see runV3ResidueCleanup).
+const residueSweepExemptDB = ".moai/db"
+
 // v3ResidueCleanupResult reports what the residue-cleanup path did.
 type v3ResidueCleanupResult struct {
 	// Removed holds the slash-relative deprecated paths whose absence was
@@ -92,6 +96,14 @@ func runV3ResidueCleanup(projectRoot string, dryRun, force bool, out io.Writer) 
 	// that no longer exists would abort the whole sweep.
 	sweep := make([]string, 0, len(preScan))
 	for _, rel := range preScan {
+		// Card t1139: .moai/db is never swept here. homestate.ProjectDir places
+		// a project's LIVE state database at .moai/db/<key> when the project
+		// sits under a temp root and MOAI_HOME is not set explicitly, so
+		// removing the deprecated entry deleted live state on a routine update.
+		// The destructive clean-reinstall (v2 path) still removes it.
+		if rel == residueSweepExemptDB {
+			continue
+		}
 		if _, statErr := os.Lstat(filepath.Join(projectRoot, filepath.FromSlash(rel))); statErr == nil {
 			sweep = append(sweep, rel)
 		}

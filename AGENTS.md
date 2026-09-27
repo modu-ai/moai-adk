@@ -23,6 +23,7 @@ harness driving this contract lacks the capability.
 | question-channel | `AskUserQuestion` | Return a blocker report naming the missing input instead of asking in prose |
 | task-list | `TaskCreate` / `TaskUpdate` / `TaskList` / `TaskGet` | Track the work and report progress in prose |
 | design-sync | `DesignSync` | Skip the design-sync surface; say so in the report |
+| worktree-entry | `moai cc -w <name>`; Codex: `moai codex -w <worktree>` — resolves an existing tree and never creates one | Report the missing isolation; never create a tree by hand |
 
 **`Skill("<name>")` instructions carry no row, and are read literally.** `skill-loader` is a
 capability every harness driving this contract has, so it earns no row above; what is Claude-only
@@ -262,8 +263,8 @@ session re-pays the always-loaded prefix. Split only when the benefit justifies 
 ## 8. Harness-local instructions
 
 `CLAUDE.local.md` is a common local input shared with Claude workflows; `AGENTS.local.md` is the
-Codex-specific input. For every local launch shape (bare, `cli`, `app`, `--spawn`, `-w`, and `-f`
-lead/agents), `moai codex` reads the non-empty regular files from the project root in that order,
+Codex-specific input. For every local launch shape (bare, `cli`, `app`, `--spawn`, and `-w`),
+`moai codex` reads the non-empty regular files from the project root in that order,
 prefixes each body with its own provenance header, and passes the combined text as one session
 `developer_instructions` override. A `-w` child still reads the original project root even though
 it runs inside the worktree.

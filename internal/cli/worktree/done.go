@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -72,6 +73,14 @@ func runDoneWorktreeCleanup(branchName string, force, deleteBranch bool) (succes
 		return true, nil
 	}
 
+	// L1 tier guard (SPEC-WORKTREE-DONE-TIER-001): session worktrees under
+	// <mainRoot>/.claude/worktrees/ are never done disposal targets, with
+	// or without --force. Ordered BEFORE the anchor guard; neither guard
+	// replaces the other.
+	if isL1WorktreePath(targetPath) {
+		return false, refuseL1SessionWorktree(targetPath)
+	}
+
 	// Anchor guard (t46): automation skips removal while a live session is
 	// anchored in the tree, rather than killing that session's shell.
 	if anchored := session.LiveAnchoredSessions(targetPath, time.Now()); len(anchored) > 0 && !force {
@@ -121,6 +130,99 @@ func lockGuidance(path string) string {
 		path, path)
 }
 
+// gitMainRootFromTargetFunc resolves the MAIN repository root FROM THE
+// TARGET worktree path — never from the process CWD. Inside a linked
+// worktree the process CWD names the worktree itself, so a CWD-anchored
+// resolution would compute a wrong L1 prefix and the tier guard would fail
+// open in the primary operating mode (plan-audit iter-1 D1).
+//
+// Primary mechanism (git >= 2.31): `git -C <targetPath> rev-parse
+// --path-format=absolute --git-common-dir`; the main root is the parent of
+// the returned common dir. Fallback for older git: the FIRST `worktree`
+// stanza of `git -C <targetPath> worktree list --porcelain` — the main
+// worktree, present in every porcelain output.
+//
+// Overridable in tests; the default above is the tested mechanism
+// (SPEC-WORKTREE-DONE-TIER-001 M2f mandate: the CWD-independence cell runs
+// this default against real git).
+var gitMainRootFromTargetFunc = func(targetPath string) (string, error) {
+	out, err := gitWorktreeCmd("-C", targetPath, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	if err == nil {
+		if commonDir := strings.TrimSpace(out); commonDir != "" {
+			return filepath.Dir(commonDir), nil
+		}
+	}
+	// Fallback for git < 2.31 (--path-format unsupported): parse the first
+	// `worktree` stanza of the porcelain listing instead.
+	list, listErr := gitWorktreeCmd("-C", targetPath, "worktree", "list", "--porcelain")
+	if listErr != nil {
+		return "", fmt.Errorf("resolve main repo root from %s: %w", targetPath, err)
+	}
+	for line := range strings.SplitSeq(list, "\n") {
+		if mainPath, ok := strings.CutPrefix(line, "worktree "); ok && mainPath != "" {
+			return mainPath, nil
+		}
+	}
+	return "", fmt.Errorf("resolve main repo root from %s: no worktree stanza in porcelain output", targetPath)
+}
+
+// canonicalTierPath best-effort canonicalizes a path via EvalSymlinks and
+// falls back to the raw path on error (macOS /tmp vs /private/tmp; a path
+// that does not exist yet must not fail the comparison).
+//
+// @MX:NOTE: [AUTO] symlink fallback — EvalSymlinks failure returns the raw path, keeping the predicate total over missing/unresolvable targets
+func canonicalTierPath(path string) string {
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		return resolved
+	}
+	return path
+}
+
+// isL1WorktreePath reports whether targetPath is a session-scoped L1 tree
+// under <mainRoot>/.claude/worktrees/. The main root is resolved FROM THE
+// TARGET PATH (see gitMainRootFromTargetFunc); both sides are canonicalized
+// before the separator-safe prefix comparison. A resolver failure is not
+// evidence of tier: the predicate reports false and the command proceeds
+// exactly as before the guard (REQ-005 — the L2 flow is unchanged).
+//
+// @MX:ANCHOR: [AUTO] done L1 tier guard — the single removal-refusal boundary shared by both done paths
+// @MX:REASON: runDone and runDoneWorktreeCleanup both route their WorktreeProvider.Remove calls through this predicate; weakening it re-opens the silent L1 data-loss shapes (SPEC-WORKTREE-DONE-TIER-001 §D A1/A3/C), so its target-derived resolution and --force immunity are invariants
+// @MX:SPEC: SPEC-WORKTREE-DONE-TIER-001
+func isL1WorktreePath(targetPath string) bool {
+	mainRoot, err := gitMainRootFromTargetFunc(targetPath)
+	if err != nil {
+		return false
+	}
+	target := canonicalTierPath(targetPath)
+	l1Root := canonicalTierPath(filepath.Join(mainRoot, ".claude", "worktrees"))
+	// Separator-safe boundary: a path equal to the L1 root itself, or a
+	// sibling whose name merely shares the prefix as a substring, is not an
+	// L1 tree.
+	return strings.HasPrefix(target, l1Root+string(os.PathSeparator))
+}
+
+// l1Guidance renders the two exits an L1 session worktree leaves the user:
+// the session-end keep/remove prompt, or manual git unlock + remove. Named
+// after the tree so the command lines are copy-pasteable, matching the
+// lockGuidance style.
+func l1Guidance(path string) string {
+	return fmt.Sprintf("\n\nThe worktree is an L1 session worktree under .claude/worktrees/ — session-scoped, not owned by moai worktree verbs:\n"+
+		"  session-end keep/remove prompt:  choose when the owning session exits\n"+
+		"  remove manually:                 git worktree unlock %s\n"+
+		"                                   git worktree remove %s",
+		path, path)
+}
+
+// refuseL1SessionWorktree is the ONE shared refusal site for the done
+// command: both the interactive path and the --auto core print the REQ-003
+// message to stderr through it and return the wrapped error that surfaces
+// as a non-zero exit. --force never reaches it as a parameter — the L1
+// refusal is not bypassable (REQ-002).
+func refuseL1SessionWorktree(path string) error {
+	fmt.Fprintf(os.Stderr, "moai: worktree %s kept: L1 session worktree%s\n", path, l1Guidance(path))
+	return fmt.Errorf("L1_SESSION_WORKTREE: %s is an L1 session worktree%s", path, l1Guidance(path))
+}
+
 func runDone(cmd *cobra.Command, args []string) error {
 	out := cmd.OutOrStdout()
 	branchName := resolveSpecBranch(args[0])
@@ -168,6 +270,12 @@ func runDone(cmd *cobra.Command, args []string) error {
 
 	if targetPath == "" {
 		return fmt.Errorf("no worktree found for branch %q", branchName)
+	}
+
+	// L1 tier guard (SPEC-WORKTREE-DONE-TIER-001): same shared refusal site
+	// as the --auto core above, so the two paths cannot diverge.
+	if isL1WorktreePath(targetPath) {
+		return refuseL1SessionWorktree(targetPath)
 	}
 
 	// Anchor guard (t46): refuse to remove the tree while a live session is

@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/execerr"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // ExecCommand is the package-level indirection over exec.Command. Tests inject
@@ -115,6 +116,9 @@ func validateDirArg(dir string) error {
 func runGitRevParse(dir string, args ...string) (string, error) {
 	full := append([]string{"-C", dir, "rev-parse"}, args...)
 	cmd := ExecCommand("git", full...)
+	// -C names the repository; an inherited GIT_DIR (exported by git into every
+	// hook) would otherwise outrank it and answer about the caller's repo (t1208).
+	cmd.Env = gitenv.Env()
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

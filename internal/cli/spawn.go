@@ -24,6 +24,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/execerr"
@@ -92,6 +93,25 @@ func defaultTmuxSpawn(cwd, command string) (string, error) {
 		return "", fmt.Errorf("tmux new-window: %s", execerr.StatusDetail(err))
 	}
 	return parsePaneID(string(out))
+}
+
+// tmuxPanePID resolves the process hosted by a spawned pane. Keeping tmux
+// process primitives in this file preserves one ownership boundary for every
+// launcher that uses --spawn.
+func tmuxPanePID(paneID string) (int, error) {
+	out, err := exec.Command("tmux", "display-message", "-p", "-t", paneID, "#{pane_pid}").Output()
+	if err != nil {
+		return 0, err
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(out)))
+	if err != nil || pid <= 0 {
+		return 0, fmt.Errorf("tmux returned unexpected pane pid: %q", strings.TrimSpace(string(out)))
+	}
+	return pid, nil
+}
+
+func tmuxKillPane(paneID string) error {
+	return exec.Command("tmux", "kill-pane", "-t", paneID).Run()
 }
 
 // parsePaneID validates the stdout of `tmux new-window -P -F '#{pane_id}'`.

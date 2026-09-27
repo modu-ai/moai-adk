@@ -44,12 +44,19 @@ func (h *instructionsLoadedHandler) Handle(ctx context.Context, input *HookInput
 		"trigger_file_path", input.TriggerFilePath,
 	)
 
-	// The slog record above never reaches a reader: resolveLoggingDecision in
-	// internal/cli/logging.go routes every `moai hook` invocation to io.Discard,
-	// unconditionally, so stdout/stderr stay clean for the hook JSON contract.
+	// The slog record above does not reach a reader HERE: resolveLoggingDecision
+	// in internal/cli/logging.go keeps every `moai hook` invocation off
+	// stdout/stderr, unconditionally, so both stay clean for the hook JSON
+	// contract. It is an Info record, so it also sits below the sink's level
+	// gate (.moai/logs/hook-runtime.log admits warn and above) — it is written
+	// nowhere at all.
+	//
 	// The persistent record is therefore an audit row, written here — without it
 	// the three host-supplied fields are observable nowhere.
-	appendRuleLoadAudit(input.CWD, RuleLoadAuditRecord{
+	// The destination is the write-side project root, never input.CWD: a
+	// session whose cwd is a subdirectory would otherwise grow a stray
+	// <subdir>/.moai/logs/ tree (card t1160).
+	appendRuleLoadAudit(resolveProjectRoot(input), RuleLoadAuditRecord{
 		SessionID:       input.SessionID,
 		FilePath:        instructionPath,
 		LoadReason:      input.LoadReason,

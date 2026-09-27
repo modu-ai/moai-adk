@@ -27,8 +27,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 	"github.com/modu-ai/moai-adk/internal/hook"
 
 	"github.com/spf13/cobra"
@@ -74,8 +76,8 @@ func HandleMultiReviewGate(input *hook.HookInput, enabled bool, projectDir, sess
 		return allow, nil // (3) self-gate — nothing reviewable ⇒ no false block
 	}
 
-	result, ok := loadConvergenceResult(projectDir, sessionID)
-	if !ok {
+	results := loadConvergenceResults(projectDir, sessionID)
+	if len(results) == 0 {
 		return allow, nil // (4)+(5) fail-open: missing/malformed state ⇒ ALLOW
 	}
 
@@ -83,11 +85,16 @@ func HandleMultiReviewGate(input *hook.HookInput, enabled bool, projectDir, sess
 	// REQ-AMM-006 policy table (advisory-never-blocks baked in at AC-AMM-009).
 	// A required FAIL produces overall=fail; advisory-only conflict yields
 	// overall=pass + disagreement_flag=true. The gate trusts that derivation.
-	if result.OverallVerdict == overallVerdictFail {
-		return &hook.HookOutput{
-			Decision: hook.DecisionBlock, // (7) the gate's ONLY BLOCK path
-			Reason:   blockReason(result),
-		}, nil
+	// A store shared by a primary checkout and its config-orphaned worktrees
+	// can hold one result per tree for the session; any fail blocks, whichever
+	// tree the gate's input named (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-007).
+	for _, result := range results {
+		if result.OverallVerdict == overallVerdictFail {
+			return &hook.HookOutput{
+				Decision: hook.DecisionBlock, // (7) the gate's ONLY BLOCK path
+				Reason:   blockReason(result),
+			}, nil
+		}
 	}
 	return allow, nil // pass / advisory conflict / fail-open to claude ⇒ ALLOW
 }
@@ -124,6 +131,51 @@ func loadConvergenceResult(projectDir, sessionID string) (ConvergenceResult, boo
 		return ConvergenceResult{}, false
 	}
 	return r, true
+}
+
+// treeQualifiedSuffix matches the tail of a tree-qualified convergence file
+// name, <session>--tree-<12 hex>.json (auditreceipt.TreeKey).
+var treeQualifiedSuffix = regexp.MustCompile(`^--tree-[0-9a-f]{12}\.json$`)
+
+// loadConvergenceResults reads every ConvergenceResult persisted for sessionID
+// in the store root of projectDir: the store's own <session>.json and each
+// tree-qualified <session>--tree-<key>.json a config-orphaned worktree wrote
+// there (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-006/007). Missing, unreadable,
+// and malformed files are skipped (fail-open, as loadConvergenceResult); a root
+// whose store cannot be resolved yields none rather than another root's state.
+func loadConvergenceResults(projectDir, sessionID string) []ConvergenceResult {
+	if projectDir == "" || sessionID == "" {
+		return nil
+	}
+	store, err := auditreceipt.StoreRoot(projectDir)
+	if err != nil {
+		return nil
+	}
+	dir := filepath.Join(store, ".moai", "state", "audit-multi")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	var out []ConvergenceResult
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasPrefix(name, sessionID) {
+			continue
+		}
+		if rest := strings.TrimPrefix(name, sessionID); rest != ".json" && !treeQualifiedSuffix.MatchString(rest) {
+			continue
+		}
+		b, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			continue
+		}
+		var r ConvergenceResult
+		if err := json.Unmarshal(b, &r); err != nil {
+			continue
+		}
+		out = append(out, r)
+	}
+	return out
 }
 
 // ─── config gate reader ───
@@ -209,7 +261,7 @@ func runMultiReviewGate(cmd *cobra.Command, _ []string) error {
 		return emitHookOutput(cmd.OutOrStdout(), &hook.HookOutput{})
 	}
 	projectDir := resolveProjectDirFromInput(input)
-	enabled := readMultiReviewGateEnabled(projectDir)
+	enabled := readMultiReviewGateEnabled(reviewGateConfigRoot(projectDir))
 	out, gateErr := HandleMultiReviewGate(input, enabled, projectDir, input.SessionID)
 	if gateErr != nil {
 		// Fail-open: a handler error MUST NOT trap the Stop pipeline.

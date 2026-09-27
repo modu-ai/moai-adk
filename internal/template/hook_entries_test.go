@@ -1,11 +1,46 @@
 package template
 
 import (
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 	"testing/fstest"
 )
+
+func TestFactoryStopHookSynchronousParity(t *testing.T) {
+	fsys, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	rendered, err := RenderHookEntries(fsys, NewTemplateContext(WithPlatform(runtime.GOOS), WithHookOptIn(true)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join("..", "..", ".claude", "settings.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	project, err := ParseHookEntries(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertSync := func(name string, entries []HookEntry) {
+		t.Helper()
+		for _, e := range entries {
+			if e.Event == "Stop" && e.Script == "handle-stop.sh" {
+				if e.Async {
+					t.Fatalf("%s Stop handle-stop.sh remains async", name)
+				}
+				return
+			}
+		}
+		t.Fatalf("%s missing Stop handle-stop.sh", name)
+	}
+	assertSync("template", rendered)
+	assertSync("project", project)
+}
 
 // fixtureSettings is a minimal settings document carrying two hook entries in
 // one event plus a statusLine block, which is `"type": "command"` but is NOT a

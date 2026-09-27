@@ -524,9 +524,9 @@ MoAI-ADK 为每个智能体分配最优的模型与推理深度。目标是在�
 
 | 策略 | 特点 |
 |------|------|
-| **high** | 最高质量 —— 对调用频率最低的两个智能体使用 `max` 推理深度 |
+| **high** | 最高质量 —— 与 medium 相同，只有 `builder-harness` 和 `e2e-tester` 两个智能体的 effort 高一级 |
 | **medium** (默认) | 质量与成本的平衡 —— 成本/评分曲线的拐点 |
-| **low** | 每任务成本最低 —— agentic 智能体降到 Opus `low` effort,Sonnet 仅用于单次调用的行 |
+| **low** | 每任务成本最低 —— 审计与协调行降到 `medium`，`builder-harness` 降到 Opus `low`(`super-advisor` 与 `mission-governor` 保持 `high`)，Sonnet 用于单发行和 `e2e-tester` |
 
 ### 设置方法
 

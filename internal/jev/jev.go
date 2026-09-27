@@ -43,6 +43,8 @@ import (
 	"net"
 	"net/http"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -138,12 +140,28 @@ const (
 	KindScore AnswerKind = "score"
 )
 
+// UserAgent identifies this client on every request. It is a compiled constant
+// for the same reason the endpoint is. The vendor's edge refuses some default
+// client User-Agents (an HTTP 403 carrying "error code: 1010" was observed for
+// Python's urllib default; Go's default was observed to pass), so the client
+// names itself rather than depending on whatever default its transport sends.
+const UserAgent = "moai-adk-jev/1 (+https://github.com/modu-ai/moai-adk)"
+
 // Question is one typed question asked over the request's state.
+//
+// This is the caller-facing shape. The wire shape differs — the vendor takes
+// questions as a map keyed by ID, with Text sent as `instructions` and the
+// options or levels sent as `criteria` — and the translation happens inside
+// this package (see toWire), so no caller depends on the wire layout.
 type Question struct {
-	ID      string     `json:"question_id"`
-	Text    string     `json:"question"`
-	Kind    AnswerKind `json:"kind,omitempty"`
-	Choices []string   `json:"choices,omitempty"`
+	ID   string     `json:"question_id"`
+	Text string     `json:"question"`
+	Kind AnswerKind `json:"kind,omitempty"` // empty means KindNoul
+	// Choices are the options of a KindChoice question (required for it).
+	Choices []string `json:"choices,omitempty"`
+	// Levels are the ordered score levels of a KindScore question, lowest
+	// first (required for it).
+	Levels []string `json:"levels,omitempty"`
 }
 
 // Request carries ONE state and a LIST of questions (REQ-JEVC-010). The list is
@@ -164,14 +182,24 @@ type Request struct {
 	Repeatable bool `json:"-"`
 }
 
-// Answer is one typed answer with the model's probability.
+// Answer is one typed answer.
+//
+// Probability is the answer's headline number, and its meaning depends on the
+// kind: for a KindNoul it IS the answer — the model's probability that the
+// statement holds (the vendor's `noul` value, in [0, 1]); there is no boolean,
+// and any yes/no cut is the caller's threshold to choose. For a KindChoice or
+// KindScore it is the vendor's `confidence` in the chosen option or score.
 type Answer struct {
 	QuestionID  string     `json:"question_id"`
 	Kind        AnswerKind `json:"kind"`
 	Choice      string     `json:"choice,omitempty"`
-	Noul        bool       `json:"noul,omitempty"`
 	Score       float64    `json:"score,omitempty"`
 	Probability float64    `json:"probability"`
+	// Probabilities is the per-option (choice) or per-level-index (score)
+	// distribution the vendor returned. Empty for a noul.
+	Probabilities map[string]float64 `json:"probabilities,omitempty"`
+	// Legend maps a score's level index to its description. Score only.
+	Legend map[string]string `json:"legend,omitempty"`
 }
 
 // Label renders the answer as a labelled model signal (REQ-JEVC-013). It names
@@ -179,16 +207,15 @@ type Answer struct {
 // as a mechanical measurement — a reader must be able to tell this apart from
 // something that was measured.
 func (a Answer) Label() string {
-	var value string
+	prefix := fmt.Sprintf("[%s · %s] %s", SignalLabel, ModelID, a.QuestionID)
 	switch a.Kind {
 	case KindChoice:
-		value = a.Choice
+		return fmt.Sprintf("%s = %s (confidence=%.2f)", prefix, a.Choice, a.Probability)
 	case KindScore:
-		value = fmt.Sprintf("%.3f", a.Score)
+		return fmt.Sprintf("%s = %s (confidence=%.2f)", prefix, strconv.FormatFloat(a.Score, 'f', -1, 64), a.Probability)
 	default:
-		value = fmt.Sprintf("%t", a.Noul)
+		return fmt.Sprintf("%s: p(true)=%.2f", prefix, a.Probability)
 	}
-	return fmt.Sprintf("[%s · %s] %s = %s (p=%.2f)", SignalLabel, ModelID, a.QuestionID, value, a.Probability)
 }
 
 // Usage is the per-call record REQ-JEVC-004 requires: the input-token count the
@@ -294,25 +321,151 @@ func EstimateTokens(s string) int {
 
 // wireRequest is the on-the-wire payload. The pinned model id is written here
 // and nowhere else, so there is exactly one place a moving alias could enter.
+//
+// The layout follows the vendor's documented schema: `questions` is an OBJECT
+// keyed by the caller's question id (the id is not a field), and each entry
+// carries `type`, `instructions`, and — for choice and score — `criteria`. A
+// list-shaped `questions` is rejected by the endpoint with HTTP 422.
 type wireRequest struct {
-	Model     string     `json:"model"`
-	State     string     `json:"state"`
-	Questions []Question `json:"questions"`
+	Model     string                  `json:"model"`
+	State     string                  `json:"state"`
+	Questions map[string]wireQuestion `json:"questions"`
 }
 
+// wireQuestion is one documented question entry. Criteria is an object
+// {option: description} for a choice, an ordered level list for a score, and
+// absent for a noul (whose text travels as instructions).
+type wireQuestion struct {
+	Type         AnswerKind `json:"type"`
+	Instructions string     `json:"instructions"`
+	Criteria     any        `json:"criteria,omitempty"`
+}
+
+// wireResponse is the documented response: `answers` is an object keyed by the
+// question id the caller sent.
 type wireResponse struct {
-	Model   string   `json:"model"`
-	Answers []Answer `json:"answers"`
+	Model   string                `json:"model"`
+	Answers map[string]wireAnswer `json:"answers"`
 	Usage   struct {
 		InputTokens int `json:"input_tokens"`
 	} `json:"usage"`
+}
+
+// wireAnswer is one documented answer. Noul is a probability, not a boolean.
+type wireAnswer struct {
+	Type          AnswerKind         `json:"type"`
+	Noul          float64            `json:"noul"`
+	Choice        string             `json:"choice"`
+	Score         float64            `json:"score"`
+	Probabilities map[string]float64 `json:"probabilities"`
+	Legend        map[string]string  `json:"legend"`
+	Confidence    float64            `json:"confidence"`
+}
+
+// kindOf resolves a question's kind, defaulting an unset one to noul.
+func kindOf(q Question) AnswerKind {
+	if q.Kind == "" {
+		return KindNoul
+	}
+	return q.Kind
+}
+
+// validateQuestions refuses what the documented schema cannot express, so it
+// is refused unsent rather than rejected (and charged) by the endpoint. Ids
+// become map keys, so an empty or repeated id would silently merge questions.
+func validateQuestions(qs []Question) (string, bool) {
+	seen := make(map[string]bool, len(qs))
+	for i, q := range qs {
+		if q.ID == "" {
+			return fmt.Sprintf("question %d has an empty id", i), false
+		}
+		if seen[q.ID] {
+			return fmt.Sprintf("question id %q is repeated; ids key the request", q.ID), false
+		}
+		seen[q.ID] = true
+		switch kindOf(q) {
+		case KindNoul:
+		case KindChoice:
+			if len(q.Choices) == 0 {
+				return fmt.Sprintf("choice question %q carries no options", q.ID), false
+			}
+		case KindScore:
+			if len(q.Levels) == 0 {
+				return fmt.Sprintf("score question %q carries no levels", q.ID), false
+			}
+		default:
+			return fmt.Sprintf("question %q has unknown kind %q", q.ID, q.Kind), false
+		}
+	}
+	return "", true
+}
+
+// toWire translates the caller-facing request into the documented wire shape.
+// A choice option's description is the option text itself: the caller-facing
+// type carries no separate descriptions.
+func toWire(req Request) wireRequest {
+	qs := make(map[string]wireQuestion, len(req.Questions))
+	for _, q := range req.Questions {
+		wq := wireQuestion{Type: kindOf(q), Instructions: q.Text}
+		switch wq.Type {
+		case KindChoice:
+			criteria := make(map[string]string, len(q.Choices))
+			for _, c := range q.Choices {
+				criteria[c] = c
+			}
+			wq.Criteria = criteria
+		case KindScore:
+			wq.Criteria = q.Levels
+		}
+		qs[q.ID] = wq
+	}
+	return wireRequest{Model: ModelID, State: req.State, Questions: qs}
+}
+
+// fromWire flattens the answer map into the caller-facing list, in the
+// request's question order; answers for ids the request did not carry follow,
+// sorted by id, so the result is deterministic.
+func fromWire(questions []Question, answers map[string]wireAnswer) []Answer {
+	out := make([]Answer, 0, len(answers))
+	convert := func(id string, w wireAnswer) Answer {
+		a := Answer{QuestionID: id, Kind: w.Type, Probabilities: w.Probabilities}
+		switch w.Type {
+		case KindNoul:
+			a.Probability = w.Noul
+			a.Probabilities = nil
+		case KindChoice:
+			a.Choice, a.Probability = w.Choice, w.Confidence
+		case KindScore:
+			a.Score, a.Probability, a.Legend = w.Score, w.Confidence, w.Legend
+		}
+		return a
+	}
+	used := make(map[string]bool, len(questions))
+	for _, q := range questions {
+		if w, ok := answers[q.ID]; ok {
+			out = append(out, convert(q.ID, w))
+			used[q.ID] = true
+		}
+	}
+	extra := make([]string, 0)
+	for id := range answers {
+		if !used[id] {
+			extra = append(extra, id)
+		}
+	}
+	sort.Strings(extra)
+	for _, id := range extra {
+		out = append(out, convert(id, answers[id]))
+	}
+	return out
 }
 
 // Ask runs one call. The order of checks is load-bearing:
 //
 //  1. the GATE, because a disabled capability must construct no request at all
 //     and must report "disabled" rather than whatever else is also missing;
-//  2. the question list, because an empty one has nothing to ask;
+//  2. the question list, because an empty one has nothing to ask and one the
+//     documented schema cannot express would only be rejected by the endpoint;
 //  3. the CREDENTIAL, because an absent one is an absence rather than a failure;
 //  4. the SIZE bounds, before the send, so an oversize payload is refused whole;
 //  5. the secret SCREEN, also before the send, so a credential-bearing payload
@@ -329,6 +482,9 @@ func (c *Client) Ask(ctx context.Context, req Request) Result {
 	}
 	if len(req.Questions) == 0 {
 		return Result{Availability: Malformed, Condition: "request carries no question"}
+	}
+	if reason, ok := validateQuestions(req.Questions); !ok {
+		return Result{Availability: Malformed, Condition: reason}
 	}
 
 	credential := ""
@@ -349,7 +505,7 @@ func (c *Client) Ask(ctx context.Context, req Request) Result {
 		return Result{Availability: SecretDetected, Condition: reason}
 	}
 
-	body, err := json.Marshal(wireRequest{Model: ModelID, State: req.State, Questions: req.Questions})
+	body, err := json.Marshal(toWire(req))
 	if err != nil {
 		return Result{Availability: Malformed, Condition: "request could not be encoded: " + err.Error()}
 	}
@@ -359,13 +515,16 @@ func (c *Client) Ask(ctx context.Context, req Request) Result {
 	usage := Usage{InputTokens: requestTokens(req), Model: ModelID}
 	c.record(usage)
 
-	res := c.send(ctx, body, req.Repeatable)
+	res, answers := c.send(ctx, body, req.Repeatable)
+	if res.OK() {
+		res.Answers = fromWire(req.Questions, answers)
+	}
 	res.Usage = usage
 	return res
 }
 
 // send performs the round trip with the retry policy applied.
-func (c *Client) send(ctx context.Context, body []byte, repeatable bool) Result {
+func (c *Client) send(ctx context.Context, body []byte, repeatable bool) (Result, map[string]wireAnswer) {
 	endpoint := c.Endpoint
 	if endpoint == "" {
 		endpoint = EndpointURL
@@ -384,9 +543,10 @@ func (c *Client) send(ctx context.Context, body []byte, repeatable bool) Result 
 	for attempt := 0; attempt < attempts; attempt++ {
 		httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 		if err != nil {
-			return Result{Availability: Unreachable, Condition: "request could not be built: " + err.Error()}
+			return Result{Availability: Unreachable, Condition: "request could not be built: " + err.Error()}, nil
 		}
 		httpReq.Header.Set("Content-Type", "application/json")
+		httpReq.Header.Set("User-Agent", UserAgent)
 		httpReq.Header.Set("Authorization", "Bearer "+c.credentialHeader())
 
 		resp, err := doer.Do(httpReq)
@@ -399,11 +559,11 @@ func (c *Client) send(ctx context.Context, body []byte, repeatable bool) Result 
 			if preDelivery(err) {
 				continue
 			}
-			return last
+			return last, nil
 		}
 		return decode(resp)
 	}
-	return last
+	return last, nil
 }
 
 // credentialHeader re-reads the credential for the Authorization header. It is
@@ -427,33 +587,35 @@ func preDelivery(err error) bool {
 	return false
 }
 
-func decode(resp *http.Response) Result {
+// decode maps the HTTP response to a Result and, on success, the raw answer
+// map; Ask flattens the map in request order (fromWire).
+func decode(resp *http.Response) (Result, map[string]wireAnswer) {
 	defer func() { _ = resp.Body.Close() }()
 
 	switch resp.StatusCode {
 	case http.StatusUnauthorized:
-		return Result{Availability: Unauthorized, Condition: "endpoint returned HTTP 401"}
+		return Result{Availability: Unauthorized, Condition: "endpoint returned HTTP 401"}, nil
 	case http.StatusTooManyRequests:
-		return Result{Availability: RateLimited, Condition: "endpoint returned HTTP 429"}
+		return Result{Availability: RateLimited, Condition: "endpoint returned HTTP 429"}, nil
 	case 529:
-		return Result{Availability: Overloaded, Condition: "endpoint returned HTTP 529"}
+		return Result{Availability: Overloaded, Condition: "endpoint returned HTTP 529"}, nil
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return Result{
 			Availability: Unreachable,
 			Condition:    fmt.Sprintf("endpoint returned HTTP %d", resp.StatusCode),
-		}
+		}, nil
 	}
 
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return Result{Availability: Unreachable, Condition: "response could not be read: " + err.Error()}
+		return Result{Availability: Unreachable, Condition: "response could not be read: " + err.Error()}, nil
 	}
 	var wire wireResponse
 	if err := json.Unmarshal(raw, &wire); err != nil {
-		return Result{Availability: Unreachable, Condition: "response could not be decoded: " + err.Error()}
+		return Result{Availability: Unreachable, Condition: "response could not be decoded: " + err.Error()}, nil
 	}
-	return Result{Availability: Available, Answers: wire.Answers}
+	return Result{Availability: Available}, wire.Answers
 }
 
 // checkBounds applies both size bounds (REQ-JEVC-009) and reports which one was
@@ -465,9 +627,9 @@ func checkBounds(req Request) (string, bool) {
 	longest := 0
 	total := state
 	for _, q := range req.Questions {
-		n := EstimateTokens(q.Text)
-		for _, choice := range q.Choices {
-			n += EstimateTokens(choice)
+		n := 0
+		for _, part := range questionParts(q) {
+			n += EstimateTokens(part)
 		}
 		total += n
 		if n > longest {
@@ -489,12 +651,21 @@ func checkBounds(req Request) (string, bool) {
 func requestTokens(req Request) int {
 	total := EstimateTokens(req.State)
 	for _, q := range req.Questions {
-		total += EstimateTokens(q.Text)
-		for _, choice := range q.Choices {
-			total += EstimateTokens(choice)
+		for _, part := range questionParts(q) {
+			total += EstimateTokens(part)
 		}
 	}
 	return total
+}
+
+// questionParts lists every caller-supplied text a question sends — its text,
+// its choice options, and its score levels — so the size bounds, the usage
+// estimate, and the secret screen all cover the same payload.
+func questionParts(q Question) []string {
+	parts := make([]string, 0, 1+len(q.Choices)+len(q.Levels))
+	parts = append(parts, q.Text)
+	parts = append(parts, q.Choices...)
+	return append(parts, q.Levels...)
 }
 
 // credentialShapedPatterns are the credential shapes the screener refuses. The
@@ -535,11 +706,9 @@ func ScreenPayload(req Request, storedCredential string) (string, bool) {
 	var b strings.Builder
 	b.WriteString(req.State)
 	for _, q := range req.Questions {
-		b.WriteByte('\n')
-		b.WriteString(q.Text)
-		for _, choice := range q.Choices {
+		for _, part := range questionParts(q) {
 			b.WriteByte('\n')
-			b.WriteString(choice)
+			b.WriteString(part)
 		}
 	}
 	payload := b.String()

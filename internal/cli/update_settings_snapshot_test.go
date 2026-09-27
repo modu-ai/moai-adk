@@ -161,7 +161,7 @@ func snapChdir(t *testing.T, root string) {
 func snapUseSyncDeployer(t *testing.T, d template.Deployer) {
 	t.Helper()
 	prev := newTemplateSyncDeployer
-	newTemplateSyncDeployer = func(fs.FS) template.Deployer { return d }
+	newTemplateSyncDeployer = func(fs.FS) (template.Deployer, error) { return d, nil }
 	t.Cleanup(func() { newTemplateSyncDeployer = prev })
 }
 
@@ -345,9 +345,12 @@ func TestSettingsSnapshot_WriteSites(t *testing.T) {
 			out, _ := snapRunTemplateSync(t, root, &settingsRenderDeployer{render: r2})
 
 			// The two cells differ only in the Restore Settings branch taken;
-			// confirm the fixture really selected the intended branch. Only the
-			// configBackupPath != "" branch writes the sections snapshot.
-			_, restored := snapRead(t, root, ".moai/cache/template-snapshot/sections/system.yaml")
+			// confirm the fixture really selected the intended branch. The fake
+			// deployer renders no section files, so only the configBackupPath != ""
+			// branch puts system.yaml back into the live tree. (Card t1139 moved the
+			// sections snapshot write ahead of the restore, so the snapshot is no
+			// longer a witness of the restore branch.)
+			_, restored := snapRead(t, root, ".moai/config/sections/system.yaml")
 			if restored != tc.withConfig {
 				t.Fatalf("config restore branch ran = %v, want %v (the cell does not exercise its branch)\n%s", restored, tc.withConfig, out)
 			}

@@ -53,17 +53,25 @@ func TestIsValidModelPolicy(t *testing.T) {
 	}
 }
 
-// TestModelClaudeOpus5Constant verifies the claude-opus-5 model ID constant
-// and that the opus alias resolves to it.
-func TestModelClaudeOpus5Constant(t *testing.T) {
-	if ModelIDOpus5 != "claude-opus-5" {
-		t.Errorf("ModelIDOpus5 = %q, want %q", ModelIDOpus5, "claude-opus-5")
+// TestModelOpusAliasTargetsOpus55 verifies the opus alias resolves to the
+// Opus 5.5 canonical id.
+func TestModelOpusAliasTargetsOpus55(t *testing.T) {
+	if got := ModelAliasCanonicalID("opus"); got != "claude-opus-5-5" {
+		t.Errorf("opus alias = %q, want %q", got, "claude-opus-5-5")
 	}
-	if got := ModelAliasCanonicalID("opus"); got != ModelIDOpus5 {
-		t.Errorf("opus alias = %q, want %q", got, ModelIDOpus5)
+	if got := ModelAliasFromCanonicalID("claude-opus-5-5"); got != "opus" {
+		t.Errorf("claude-opus-5-5 reverse-maps to %q, want opus", got)
 	}
-	if got := ModelAliasFromCanonicalID(ModelIDOpus48); got != "opus" {
-		t.Errorf("deprecated claude-opus-4-8 reverse-maps to %q, want opus", got)
+}
+
+// TestModelDeprecatedOpusIDsNormalizeToAlias verifies every superseded Opus
+// canonical id still normalizes back to the opus alias, so historical prefs
+// files keep resolving after an alias bump.
+func TestModelDeprecatedOpusIDsNormalizeToAlias(t *testing.T) {
+	for _, id := range []string{"claude-opus-5", "claude-opus-4-8", "claude-opus-4-7", "claude-opus-4-6"} {
+		if got := ModelAliasFromCanonicalID(id); got != "opus" {
+			t.Errorf("ModelAliasFromCanonicalID(%q) = %q, want opus", id, got)
+		}
 	}
 }
 

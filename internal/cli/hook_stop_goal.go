@@ -90,6 +90,11 @@ func runStopGoalHook(cmd *cobra.Command, _ []string) error {
 	// on the optimization.
 	e := &goal.Eval{Runner: realCmdRunner{}, Snapshot: &verify.Source{ProjectRoot: root}}
 	verdict, block := e.Evaluate(context.Background(), g)
+	if verdict.Diagnostic != "" {
+		// An unrecognised goal status: visible on stderr, never a stdout
+		// decision (SPEC-DUAL-HARNESS-HOOK-PARITY-001 REQ-HPR-015).
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), verdict.Diagnostic)
+	}
 	// Persist the updated goal (turns incremented, status set, progress appended).
 	if err := goal.SaveGoal(root, g); err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "stop-goal save: %v\n", err)

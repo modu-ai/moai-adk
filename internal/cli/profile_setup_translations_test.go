@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -84,20 +85,25 @@ func TestGetProfileText_AllLanguages(t *testing.T) {
 // version string fails the test.
 func TestGetProfileText_OpusAliasValues(t *testing.T) {
 	// The version token is derived from the canonical id the alias resolves to, so
-	// bumping ModelAliasTable without re-labelling the wizard fails here.
-	wantVersion := strings.TrimPrefix(template.ModelAliasCanonicalID("opus"), "claude-opus-")
-	if wantVersion != "5" {
-		t.Fatalf("opus alias resolves to %q; update the expected label version token",
-			template.ModelAliasCanonicalID("opus"))
+	// bumping ModelAliasTable without re-labelling the wizard fails here. The id
+	// spells a dotted marketing version with hyphens (claude-opus-5-5 -> "5.5").
+	opusID := template.ModelAliasCanonicalID("opus")
+	wantVersion := strings.ReplaceAll(strings.TrimPrefix(opusID, "claude-opus-"), "-", ".")
+	if wantVersion == "" || wantVersion == opusID {
+		t.Fatalf("cannot derive an opus version from canonical id %q", opusID)
 	}
 	for _, lang := range []string{"en", "ko", "ja", "zh"} {
 		txt := getProfileText(lang)
 		for name, label := range map[string]string{
-			"ModelOpus":   txt.ModelOpus,
-			"ModelOpus1M": txt.ModelOpus1M,
+			"ModelOpus":         txt.ModelOpus,
+			"ModelOpus1M":       txt.ModelOpus1M,
+			"ModelPolicyHigh":   txt.ModelPolicyHigh,
+			"ModelPolicyMedium": txt.ModelPolicyMedium,
+			"ModelPolicyLow":    txt.ModelPolicyLow,
 		} {
-			if !containsStr(label, "Opus "+wantVersion) {
-				t.Errorf("lang=%q: %s %q should reference Opus %s", lang, name, label, wantVersion)
+			if !namesOpusVersion(label, wantVersion) {
+				t.Errorf("lang=%q: %s %q should reference Opus %s (derived from %q)",
+					lang, name, label, wantVersion, opusID)
 			}
 			if containsStr(label, "4.8") {
 				t.Errorf("lang=%q: %s %q still references the superseded Opus 4.8", lang, name, label)
@@ -105,6 +111,40 @@ func TestGetProfileText_OpusAliasValues(t *testing.T) {
 		}
 		if !containsStr(txt.ModelOpus1M, "1M") {
 			t.Errorf("lang=%q: ModelOpus1M %q should reference 1M context", lang, txt.ModelOpus1M)
+		}
+	}
+}
+
+// namesOpusVersion reports whether label names "Opus <version>" as a whole
+// version token, so a bare "Opus 5" never satisfies "Opus 5.5" and "Opus 5.5"
+// never satisfies "Opus 5".
+func namesOpusVersion(label, version string) bool {
+	return regexp.MustCompile(`Opus ` + regexp.QuoteMeta(version) + `([^.0-9]|$)`).MatchString(label)
+}
+
+// TestGetProfileText_RecommendationMarkers verifies the wizard marks medium as
+// the recommended session effort and the opus[1m] option as the recommended
+// model, each in its locale's own marker, and that no other effort level
+// carries the marker.
+func TestGetProfileText_RecommendationMarkers(t *testing.T) {
+	markers := map[string]string{"en": "Recommended", "ko": "권장", "ja": "推奨", "zh": "推荐"}
+	for lang, marker := range markers {
+		txt := getProfileText(lang)
+		if !containsStr(txt.EffortLevelMedium, "("+marker+")") {
+			t.Errorf("lang=%q: EffortLevelMedium %q lacks the (%s) marker", lang, txt.EffortLevelMedium, marker)
+		}
+		if !containsStr(txt.ModelOpus1M, marker) {
+			t.Errorf("lang=%q: ModelOpus1M %q lacks the %s marker", lang, txt.ModelOpus1M, marker)
+		}
+		for name, label := range map[string]string{
+			"EffortLevelLow":   txt.EffortLevelLow,
+			"EffortLevelHigh":  txt.EffortLevelHigh,
+			"EffortLevelXHigh": txt.EffortLevelXHigh,
+			"EffortLevelMax":   txt.EffortLevelMax,
+		} {
+			if containsStr(label, marker) {
+				t.Errorf("lang=%q: %s %q carries the %s marker; only medium is recommended", lang, name, label, marker)
+			}
 		}
 	}
 }

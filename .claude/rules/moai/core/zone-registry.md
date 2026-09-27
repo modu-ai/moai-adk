@@ -308,7 +308,7 @@ moai constitution list --format json
   zone: Evolvable
   zone_class: evolvable-tuning
   file: .claude/rules/moai/core/moai-constitution.md
-  anchor: "#opus-5-48-prompt-philosophy"
+  anchor: "#opus-55-prompt-philosophy"
   clause: "Principle 4 — fewer subagents by default**: 4.7+ does not auto-spawn"
   canary_gate: false
 
@@ -316,7 +316,7 @@ moai constitution list --format json
   zone: Evolvable
   zone_class: evolvable-tuning
   file: .claude/rules/moai/core/moai-constitution.md
-  anchor: "#opus-5-48-prompt-philosophy"
+  anchor: "#opus-55-prompt-philosophy"
   clause: "Principle 5 — fewer tool calls by default**: specify when and why each"
   canary_gate: false
 

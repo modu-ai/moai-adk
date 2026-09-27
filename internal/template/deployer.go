@@ -226,6 +226,13 @@ func (d *deployer) DeployWithResult(ctx context.Context, projectRoot string, m m
 		// Compute destination path
 		destPath := filepath.Join(projectRoot, filepath.FromSlash(destRelPath))
 
+		// Release MoAI's own mirror link before the existence check below:
+		// stat would otherwise follow it to the canonical file and record the
+		// mirror path user_created, leaving the link in place.
+		if err := releaseOwnMirrorLink(projectRoot, destRelPath); err != nil {
+			return fmt.Errorf("template deploy release mirror link %q: %w", destRelPath, err)
+		}
+
 		// Existing file protection: skip files that already exist at the
 		// destination. This prevents overwriting user-created or
 		// programmatically-generated files (e.g., config YAMLs from Step 2

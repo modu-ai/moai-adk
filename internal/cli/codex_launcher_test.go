@@ -26,6 +26,9 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factorymsg"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/spf13/cobra"
 )
 
@@ -119,8 +122,18 @@ func withCodexLaunchCapture(t *testing.T) *codexLaunchCapture {
 		return nil
 	}
 	codexLookPath = func(string) (string, error) { return sentinelCodexBinaryPath, nil }
+	// The worktree anchor seams touch a real repository's lock state; the
+	// launch-mechanics cells use plain directories, so they are pinned open
+	// here. Cells that measure the anchor restore the real bodies with
+	// withRealCodexWorktreeAnchor.
+	prevCheck, prevLock, prevBase, prevResolve := codexWorktreeWriterCheck, codexWorktreeAnchorLock, codexWorktreeBaseCheck, codexResolveBaseCommit
+	codexWorktreeWriterCheck = func(string) error { return nil }
+	codexWorktreeAnchorLock = func(string, int, string) error { return nil }
+	codexWorktreeBaseCheck = func(string, string, string) error { return nil }
+	codexResolveBaseCommit = func(string, string) (string, error) { return "", nil }
 	t.Cleanup(func() {
 		codexDirectLaunchFn, codexSpawnLaunchFn, codexLookPath = prevDirect, prevSpawn, prevLook
+		codexWorktreeWriterCheck, codexWorktreeAnchorLock, codexWorktreeBaseCheck, codexResolveBaseCommit = prevCheck, prevLock, prevBase, prevResolve
 	})
 	return cap
 }
@@ -134,6 +147,18 @@ func withCodexProjectRoot(t *testing.T, root string) *int {
 	findProjectRootFn = func() (string, error) { calls++; return root, nil }
 	t.Cleanup(func() { findProjectRootFn = prev })
 	return &calls
+}
+
+func TestCodexChildEnvScrubsForeignAttribution(t *testing.T) {
+	t.Setenv(config.EnvClaudeCodeSessionID, "foreign-claude-session")
+	t.Setenv(config.EnvMoaiSessionPID, "12345")
+	env := codexChildEnv()
+	if _, ok := codexEnvLast(env, config.EnvClaudeCodeSessionID); ok {
+		t.Fatalf("%s leaked into Codex child", config.EnvClaudeCodeSessionID)
+	}
+	if _, ok := codexEnvLast(env, config.EnvMoaiSessionPID); ok {
+		t.Fatalf("%s leaked into Codex child", config.EnvMoaiSessionPID)
+	}
 }
 
 // runCodexCmd invokes runCodex on a FRESH command (no global codexCmd state
@@ -803,7 +828,28 @@ func TestCodexApp_RealChildExitCodePropagates(t *testing.T) {
 // must be the token-by-token shell-quoted codex line, and a tmux failure
 // wraps without launching anything else.
 func TestCodexSpawn_RealAssemblyThroughStubTmux(t *testing.T) {
+	checkCodexSpawnRealAssembly(t)
+}
+
+// TestCodexSpawn_RealAssemblyUnderLaneEnv runs the same assertion with the
+// variables a factory lane session exports. The expected command is built
+// for an unset environment, so the check itself must pin every variable the
+// spawn command forwards; otherwise it fails only inside a lane (card t1217).
+func TestCodexSpawn_RealAssemblyUnderLaneEnv(t *testing.T) {
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-7")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
+	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
+	checkCodexSpawnRealAssembly(t)
+}
+
+func checkCodexSpawnRealAssembly(t *testing.T) {
+	t.Helper()
 	requireTmuxSpawnEnv(t)
+	// The expected command below is the unset-environment form; pin every
+	// forwarded variable empty so the caller's shell cannot add assignments.
+	for _, key := range codexSpawnForwardedEnv {
+		t.Setenv(key, "")
+	}
 	fixture := codexAppMessageFixture(t)
 	withCodexGateOpen(t)
 
@@ -846,8 +892,13 @@ func TestCodexSpawn_RealAssemblyThroughStubTmux(t *testing.T) {
 	// direct path assigns.
 	// resolveCodexHomeDir's second result is the source label, not an error.
 	codexHome, _ := resolveCodexHomeDir()
+	laneBlanks := ""
+	for _, key := range codexLaneLaunchEnvKeys {
+		laneBlanks += key + "= "
+	}
 	wantCommand := codexHomeEnvVar + "=" + shellQuote(codexHome) + " " +
-		shellQuote(fixture) + " --flag=v " + shellQuote("a b")
+		config.EnvClaudeCodeSessionID + "= " + config.EnvMoaiSessionPID + "= " + laneBlanks +
+		"exec " + shellQuote(fixture) + " --flag=v " + shellQuote("a b")
 	if gotCommand != wantCommand {
 		t.Errorf("tmux command = %q, want %q", gotCommand, wantCommand)
 	}
@@ -861,6 +912,62 @@ func TestCodexSpawn_RealAssemblyThroughStubTmux(t *testing.T) {
 	err := runCodex(c2, []string{"cli", "--spawn"})
 	if err == nil || !strings.Contains(err.Error(), "no server") {
 		t.Errorf("tmux failure = %v, want wrapped no-server error", err)
+	}
+}
+
+// TestCodexSpawnUnderLaneEnvRegistersNoFactoryPeer is AC-CFR-007's spawn
+// half: a codex spawn run inside a Claude worker lane registers no
+// launch-pending peer and leaves the run owner untouched (REQ-CFR-008). The
+// pane-identity seam is faked as live, so a regression that restored the
+// factory branch would find everything it needs to register.
+func TestCodexSpawnUnderLaneEnvRegistersNoFactoryPeer(t *testing.T) {
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root := t.TempDir()
+	run := "r1"
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.RecordRun(context.Background(), homestate.FactoryRun{RunID: run, Backend: "claude", ManifestJSON: "{}", LeadPID: 424242, LeadProcessStart: "t1242-lead"}); err != nil {
+		t.Fatal(err)
+	}
+	_ = db.Close()
+	t.Setenv(config.EnvMoaiKanbanID, run)
+	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
+	t.Setenv(config.EnvMoaiFactoryWorker, "worker-1")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
+	start, state := homestate.ProbeProcessIdentity(os.Getpid())
+	if state != homestate.ProcessIdentityLive || start == "" {
+		t.Fatal("test process identity unavailable")
+	}
+	oldSpawn, oldIdentity, oldCleanup := tmuxSpawnFn, codexSpawnPaneIdentityFn, codexSpawnCleanupPaneFn
+	tmuxSpawnFn = func(string, string) (string, error) { return "%42", nil }
+	codexSpawnPaneIdentityFn = func(string) (int, string, error) { return os.Getpid(), start, nil }
+	cleanups := 0
+	codexSpawnCleanupPaneFn = func(string) error { cleanups++; return nil }
+	t.Cleanup(func() {
+		tmuxSpawnFn, codexSpawnPaneIdentityFn, codexSpawnCleanupPaneFn = oldSpawn, oldIdentity, oldCleanup
+	})
+	if _, err := withStdoutCapture(t, func() error { return defaultCodexSpawnLaunch(root, "/test/codex", nil) }); err != nil {
+		t.Fatal(err)
+	}
+	if cleanups != 0 {
+		t.Fatalf("successful spawn cleaned pane %d times", cleanups)
+	}
+	s, err := factorymsg.Open(root, run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	closeOnCleanup(t, "factory message broker", s)
+	status, err := s.Status(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(status.Lanes) != 0 {
+		t.Fatalf("codex spawn under a lane env registered peers: %+v", status.Lanes)
+	}
+	if pid, owner := runOwnerStamp(t, root, run); pid != 424242 || owner != "t1242-lead" {
+		t.Fatalf("run owner = (%d, %q), want unchanged (424242, t1242-lead)", pid, owner)
 	}
 }
 

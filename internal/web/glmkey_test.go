@@ -274,9 +274,10 @@ func TestGLMKeySave_NewlineRejected(t *testing.T) {
 	a := newTestApp(t)
 	// A value with a line break in the body — NOT just surrounding whitespace.
 	rec := postGLMSave(a, glmSaveURL("abc\ndef"))
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("save status = %d, want 400 (validation failure)", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("save status = %d, want 200 (validation failure)", rec.Code)
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	body := rec.Body.String()
 	if !strings.Contains(body, glmAPIKeyFormField) && !strings.Contains(body, "line break") {
 		t.Fatalf("response missing per-field GLM key error; body: %s", body)
@@ -344,9 +345,10 @@ func TestGLMKeySave_AtomicRejectLeavesCredentialUntouched(t *testing.T) {
 	form := glmSaveURL(sentinelKey)
 	form.Set("development_mode", "this-is-not-a-valid-mode")
 	rec := postGLMSave(a, form)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("save status = %d, want 400 (atomic reject)", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("save status = %d, want 200 (atomic reject)", rec.Code)
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	// The credential file must be unchanged.
 	after, err := os.Stat(envPath)
 	if err != nil {

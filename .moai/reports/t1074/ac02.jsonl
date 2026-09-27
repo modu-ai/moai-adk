@@ -1,0 +1,8 @@
+{"Time":"2026-09-22T15:53:36.62781+09:00","Action":"start","Package":"github.com/modu-ai/moai-adk/internal/cli"}
+{"Time":"2026-09-22T15:53:37.355914+09:00","Action":"run","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryRunSelectionAtomicSlotsAndArgv"}
+{"Time":"2026-09-22T15:53:37.355956+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryRunSelectionAtomicSlotsAndArgv","Output":"=== RUN   TestFactoryRunSelectionAtomicSlotsAndArgv\n"}
+{"Time":"2026-09-22T15:53:38.74941+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryRunSelectionAtomicSlotsAndArgv","Output":"--- PASS: TestFactoryRunSelectionAtomicSlotsAndArgv (1.39s)\n"}
+{"Time":"2026-09-22T15:53:38.749437+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryRunSelectionAtomicSlotsAndArgv","Elapsed":1.39}
+{"Time":"2026-09-22T15:53:38.749602+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/cli","Output":"PASS\n"}
+{"Time":"2026-09-22T15:53:38.751016+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/cli","Output":"ok  \tgithub.com/modu-ai/moai-adk/internal/cli\t2.123s\n"}
+{"Time":"2026-09-22T15:53:38.751033+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/cli","Elapsed":2.123}

@@ -142,9 +142,16 @@ func TestCodexLocalInstructions_SymlinkIsRefused(t *testing.T) {
 }
 
 func TestCodexLocalInstructions_DocumentedInLauncherHelp(t *testing.T) {
-	for _, want := range []string{"CLAUDE.local.md", "shared with Claude", "AGENTS.local.md", "developer instructions", "Codex-only", "non-empty"} {
+	for _, want := range []string{"Common local guidance", "shared with Claude", "Codex-specific local", "developer instructions", "non-empty"} {
 		if !strings.Contains(codexCmd.Long, want) {
 			t.Errorf("launcher help does not mention %q", want)
+		}
+	}
+	// The help is a shipped user-facing surface: describe the inputs without
+	// enumerating local filenames, as the distributed template does.
+	for _, name := range []string{codexClaudeLocalName, codexLocalInstructionName} {
+		if strings.Contains(codexCmd.Long, name) {
+			t.Errorf("launcher help enumerates local filename %q", name)
 		}
 	}
 }
@@ -426,7 +433,8 @@ func TestCodexLocalInstructions_AllFunnelsPreserveInputs(t *testing.T) {
 	renames := 0
 	codexRenameFn = func(a, b string) error { renames++; return os.Rename(a, b) }
 	t.Cleanup(func() { inTmuxFn, spawnLookPath, codexRenameFn = prevTmux, prevLook, prevRename })
-	forms := [][]string{{}, {"cli"}, {"app"}, {"--spawn"}, {"-w", "fixture"}, {"-f"}, {"-f", "agent"}, {"-f", "agent-2"}, {"-f", "lane-3"}}
+	// The -f forms are gone: moai codex refuses them (SPEC-CODEX-FACTORY-RETIRE-001).
+	forms := [][]string{{}, {"cli"}, {"app"}, {"--spawn"}, {"-w", "fixture"}}
 	var want []string
 	for i, args := range forms {
 		if _, _, err := runCodexCmd(t, args...); err != nil {

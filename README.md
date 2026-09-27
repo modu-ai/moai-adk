@@ -66,18 +66,18 @@ Companion sessions are launched **by hand, one per terminal** — a session neve
 
 When you open a kanban run, the bootstrap notice carries a default recommendation — token availability first: lead on `moai glm -k`, plan on `moai cc -k --name plan`, run on `moai glm -k --name run`, sync on `moai cc -k --name sync`. The reasoning is the kind of thinking each lane needs. Plan and sync turn on judgment and review, so they sit on Claude; run is implementation-heavy, so GLM keeps its cost down. The lead is not the seat that renders verdicts — it watches the queue and moves cards — so GLM, cheap to keep waiting, fits it. When a Claude verdict is needed under a GLM lead, escape through a session named `judge` — the only route by which the GLM lead uses Claude. When one account starts hitting 429s, spreading lanes across accounts is the workable move. This mix is only the default — a different combination, or unifying every session on one backend, is equally fine.
 
-### Factory Mode — many cards at once across N lanes
+### Factory Mode — many cards at once across N workers
 
-`-f` opens a factory lead, Kanban's second form. Where a kanban card hops between columns, a factory card goes **whole to one lane**, and that lane carries it through `plan → run → sync` serially in-session, each phase spawned as `Agent()` subagents. Lanes are labelled `lane-1` … `lane-N`.
+`-f` opens a factory lead, Kanban's second form. Where a kanban card hops between columns, a factory card goes **whole to one worker**, and that worker carries it through `plan → run → sync` serially in-session, each phase spawned as `Agent()` subagents. Workers are labelled `worker-1` … `worker-N`. The old names `agent-<n>` / `lane-<n>` still work as deprecated aliases.
 
 ```bash
-moai cc -f                    # lead — one lane (lane-1) by default
-moai cc -f 4                  # lead — four lanes
-moai cc -f lane-1             # a lane, in its own terminal
-moai glm -f lane-3            # …and one lane on the GLM backend
+moai cc -f                    # lead only (one worker, worker-1)
+moai cc -f worker             # a worker, auto-joins the next free number
+moai cc -f worker-3           # a worker, picking the number directly
+moai glm -f worker            # …and one worker on the GLM backend
 ```
 
-Grow a run one lane at a time with `moai cc -f lane-<n>`. That form already names the lane, so passing `--name`/`-n` alongside it is an error. A number is skipped only while a live session holds it — a dead lane's number is released and reused. Lane ownership is recorded in `~/.moai/db/<project-key>/factory/factory.db` — or, when the launch directory is a temporary one (no absolute `MOAI_HOME` override), project-local under `<base>/.moai/db/<project-key>/factory/`, the same exception the backlog queue follows; a legacy `.moai/state/factory/workers.json` is imported once and retained only as rollback evidence. A lane runs up to 10 concurrent `Agent()` subagents, and write-capable spawns are isolated in their own worktree. Never bring every lane up at once — start the first, confirm it is actually producing output, then activate the rest. Cards are never split across lanes. `-k` still drives the three-role kanban chain; one launch takes one entry token, so `-k` with `-f` is an error. CG is retired; use `moai migrate cg` to preview explicit migration choices.
+Grow a run one worker at a time with `moai cc -f worker` (auto-join the next free number) or `moai cc -f worker-<n>` (that number exactly). Both forms already name the worker, so passing `--name`/`-n` alongside them is an error. An explicitly-picked number that collides with a live legacy worker (`agent-<n>`/`lane-<n>`) is refused by name; auto-assignment with `-f worker` is never refused, and reports by name which legacy numbers it skipped. A number is otherwise skipped only while a live session holds it — a dead worker's claim no longer blocks its number (an explicit pick reuses it right away), but `-f worker` auto-assignment always takes one past the highest live number and never backfills a gap. Worker ownership is recorded in `~/.moai/db/<project-key>/factory/factory.db` — or, when the launch directory is a temporary one (no absolute `MOAI_HOME` override), project-local under `<base>/.moai/db/<project-key>/factory/`, the same exception the backlog queue follows; a legacy `.moai/state/factory/workers.json` is imported once and retained only as rollback evidence. A worker runs up to 10 concurrent `Agent()` subagents, and write-capable spawns are isolated in their own worktree. Never bring every worker up at once — start the first, confirm it is actually producing output, then activate the rest. Cards are never split across workers. `-k` still drives the three-role kanban chain; one launch takes one entry token, so `-k` with `-f` is an error. CG is retired; use `moai migrate cg` to preview explicit migration choices. A factory run now records the process identity of the session that owns it, so a run whose lead has died is retired automatically the next time a worker joins instead of leaving that join stuck on `AMBIGUOUS_FACTORY`. `moai factory runs` lists every run with its owner's liveness, and `moai factory runs --retire <run-id>` retires one by hand — refused unless that run's owner is actually dead.
 
 > Details: [Kanban mode — Factory Mode](https://adk.mo.ai.kr/en/advanced/kanban-mode)
 
@@ -243,6 +243,8 @@ The DeepSWE leaderboard (113 tasks, per-effort view) demonstrates this. Within t
 
 Opus 5 at its **lowest** effort scores higher than Sonnet 5 at its **highest** (58% vs 54%) while costing one-sixteenth as much per task ($1.66 vs $26.40) — even though Sonnet's per-token price is lower. The cause is 268 steps against 36: retry loops, not token rates, write the invoice. Cost is determined by **assigning the right model and reasoning depth to each task**, not by unit price.
 
+The table above was measured on Opus 5. MoAI's `opus` alias now points to Opus 5.5 (requires Claude Code v2.1.280 or later; default effort `medium`), which has not been re-measured yet.
+
 <p align="center">
   <img src="./assets/images/why-tokenomics-infographic-en.png" alt="The Tokenomics Paradox — price down 98%, spend up 320%. The response: measure → route → diet → stop" width="80%">
 </p>
@@ -348,14 +350,14 @@ Natural language and 16 subcommands feed the same pipeline. `/moai plan`, `/moai
 
 ### MCP server
 
-`moai init` provisions exactly **one** active MCP entry by default — the self-hosted `moai mcp-server` (a local stdio server). It exposes 21 MoAI tools in six groups to Claude Code. Four documented-but-disabled entries (`context7`, `chrome-devtools`, `playwright`, `ast-grep`) are activated via `moai mcp add <name>`. The `moai mcp add|remove|list` CLI manages entries via an atomic-RWM seam — users never hand-edit `.mcp.json`.
+`moai init` provisions exactly **one** active MCP entry by default — the self-hosted `moai mcp-server` (a local stdio server). It exposes the MoAI tools to Claude Code. The table below lists the main groups only — the full list is in the [MCP server guide](https://adk.mo.ai.kr/en/guides/mcp-server), and the authoritative tool count and list are what the installed binary returns from `tools/list`. Four documented-but-disabled entries (`context7`, `chrome-devtools`, `playwright`, `ast-grep`) are activated via `moai mcp add <name>`. The `moai mcp add|remove|list` CLI manages entries via an atomic-RWM seam — users never hand-edit `.mcp.json`.
 
 | Group | Tools | Purpose |
 |-------|-------|---------|
 | SPEC lifecycle | `spec_progress`, `spec_audit`, `spec_drift` | Era classification + drift detection |
 | Verification | `verify_snapshot`, `verify_trend` | Per-key evidence snapshots |
 | Goal + session | `goal_arm`, `goal_status`, `session_list` | Autonomous loop + multi-session coordination |
-| Cross-model audit | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | Multi-auditor convergence |
+| Cross-model audit | `audit_multi`, `claude_audit`, `codex_audit`, `glm_audit`, `audit_cache` | Multi-auditor convergence |
 | Codex delegation | `codex_task`, `codex_setup`, `codex_job_*` | Background cross-model jobs |
 | GLM delegation | `glm_task`, `glm_job_status`, `glm_job_result`, `glm_job_cancel` | GLM (z.ai) background job delegation |
 

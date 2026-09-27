@@ -96,7 +96,7 @@ MoAI-ADK は **13 個のコアエージェント** (12 個の MoAI カスタム 
 {{< callout type="info" >}}
 **4 段のトークンコストティア** ({{< icon flash danger >}} max · {{< icon flash warn >}} high · {{< icon flash primary >}} medium · {{< icon flash muted >}} low): `model: inherit` は親セッションのモデルを継承し、effort が推論トークンの予算を決めます。
 
-上記の値は **配布時の frontmatter** であり、新規デプロイがデフォルトプロファイルと一致するように[プロファイルマトリクス](/ja/advanced/profile-matrix/)の `medium` 列に固定されています。プロファイルを切り替えるとこれらの値は書き換わります — `high` では `manager-develop` と `super-advisor` が `max`(それを使う唯一の 2 セル)に移り、`low` ではエージェンティック行が `low` に下がり、`manager-docs` と `e2e-tester` は Sonnet にフォールバックします。アクティブプロファイルで解決された値は `moai model profile` で確認してください。
+上記の値は **配布時の frontmatter** であり、新規デプロイがデフォルトプロファイルと一致するように[プロファイルマトリクス](/ja/advanced/profile-matrix/)の `medium` 列に固定されています。プロファイルを切り替えるとこれらの値は書き換わります — `high` では `builder-harness` と `e2e-tester` だけが 1 段階上がり(`max` を使うセルはありません)、`low` では監査・調整の行が `medium` に、`builder-harness` が `low` に下がり、`e2e-tester` は Sonnet に移ります。アクティブプロファイルで解決された値は `moai model profile` で確認してください。
 {{< /callout >}}
 
 ## Manager-Develop ドメインコンテキスト注入
@@ -188,7 +188,7 @@ flowchart TD
 2. **フォールド行の追加** — `progress.md` §E.2 に既存の行フォーマットのまま 1 行を追記します: `M<n>: <AC-id-1>=PASS, ... | evidence: .moai/reports/<card-id>/verdict.md | fold-at: <ISO-8601>`。`M<n>:` という接頭辞は `internal/spec/era.go` の §E 見出しマッチャーと衝突しないよう選んだ形であり、マッチャーに手を入れずに共存できます。
 3. **`/compact` の実行** — 保持する項目を明示して圧縮します: retain-current-milestone (いま終えたマイルストーンとそのフォールド行)、retain-fold-rows (§E.2 にある過去のフォールド行すべて)、retain-armed-goal (`/moai goal` で設定した条件があればその条件)。
 
-フォールド後の不変条件は 2 つです。圧縮後のトークン使用量が圧縮前より減っていること、そして同時にモデル別のハンドオフ閾値 (1M 系は 50%、200K/256K 系は 90%) を下回っていることです。減っていなければ失敗したフォールドとして扱い、計画を立て直します。サブエージェントのコンテキストで `/compact` が使えない場合は blocker レポートを返し、オーケストレーターに代わりに圧縮してもらうか、`/clear` と再開メッセージで迂回します。
+フォールド後の不変条件は 2 つです。圧縮後のトークン使用量が圧縮前より減っていること、そして同時にモデル別のハンドオフ閾値 (1M 系は 50%、200K 系は 90%) を下回っていることです。減っていなければ失敗したフォールドとして扱い、計画を立て直します。サブエージェントのコンテキストで `/compact` が使えない場合は blocker レポートを返し、オーケストレーターに代わりに圧縮してもらうか、`/clear` と再開メッセージで迂回します。
 
 ```mermaid
 flowchart TD

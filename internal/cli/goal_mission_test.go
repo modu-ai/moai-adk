@@ -444,7 +444,7 @@ func TestGTDAutonomyEndToEndProductionCLIWithGovernanceReceipts(t *testing.T) {
 	if err := run("approve", "--session", session, "--scope", target, "--action", "publish", "--action", "pick", "--action", "dispatch", "--completion-evidence", "assignment"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := kanban.AcquireSlotLease(root, kanban.SlotLeaseRequest{Resource: "lane-10", SessionID: session, MaxDuration: time.Hour}); err != nil {
+	if _, err := kanban.AcquireSlotLease(root, kanban.SlotLeaseRequest{Resource: "worker-10", SessionID: session, MaxDuration: time.Hour}); err != nil {
 		t.Fatal(err)
 	}
 	head := gitFixtureCLI(t, root, "rev-parse", "HEAD")
@@ -489,7 +489,7 @@ func TestGTDAutonomyEndToEndProductionCLIWithGovernanceReceipts(t *testing.T) {
 		t.Fatalf("preflight governance: %v", err)
 	}
 	completionPath := filepath.Join(root, ".moai", "state", "mission", "governance", "completion.json")
-	superviseArgs := []string{"run", "--supervise", "--session", session, "--target", target, "--governor-receipt", governorPattern, "--audit-receipt", auditPattern, "--completion-receipt", completionPath, "--lane", "lane-10", "--run-id", "auto-run-1"}
+	superviseArgs := []string{"run", "--supervise", "--session", session, "--target", target, "--governor-receipt", governorPattern, "--audit-receipt", auditPattern, "--completion-receipt", completionPath, "--lane", "worker-10", "--run-id", "auto-run-1"}
 	if err := run(superviseArgs...); err == nil {
 		t.Fatal("supervisor completed without sealed completion receipt")
 	}
@@ -513,7 +513,7 @@ func TestGTDAutonomyEndToEndProductionCLIWithGovernanceReceipts(t *testing.T) {
 		t.Fatalf("record=%+v err=%v", record, err)
 	}
 	assignment := record.Runtime.Assignments[0]
-	if assignment.CardID != record.Items[0].ID || assignment.OwnerLabel != "lane-10" || assignment.RunID != "auto-run-1" {
+	if assignment.CardID != record.Items[0].ID || assignment.OwnerLabel != "worker-10" || assignment.RunID != "auto-run-1" {
 		t.Fatalf("assignment=%+v card=%+v", assignment, record.Items[0])
 	}
 }
@@ -697,25 +697,25 @@ func TestAuthoritativeDispatchEvidenceRefusalMatrix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := authoritativeDispatchEvidence(ctx, store, root, session, item.ItemID, engaged.CardID, "lane-10", "run-1", current.SourceRevision); err == nil {
+	if _, err := authoritativeDispatchEvidence(ctx, store, root, session, item.ItemID, engaged.CardID, "worker-10", "run-1", current.SourceRevision); err == nil {
 		t.Fatal("missing lease accepted")
 	}
-	if _, err := kanban.AcquireSlotLease(root, kanban.SlotLeaseRequest{Resource: "lane-10", SessionID: session, MaxDuration: time.Hour}); err != nil {
+	if _, err := kanban.AcquireSlotLease(root, kanban.SlotLeaseRequest{Resource: "worker-10", SessionID: session, MaxDuration: time.Hour}); err != nil {
 		t.Fatal(err)
 	}
-	if values, err := authoritativeDispatchEvidence(ctx, store, root, session, item.ItemID, engaged.CardID, "lane-10", "run-1", current.SourceRevision); err != nil || values["picked"] != "true" {
+	if values, err := authoritativeDispatchEvidence(ctx, store, root, session, item.ItemID, engaged.CardID, "worker-10", "run-1", current.SourceRevision); err != nil || values["picked"] != "true" {
 		t.Fatalf("values=%v err=%v", values, err)
 	}
 	for name, args := range map[string]struct {
 		item, card, lane, run string
 		rev                   int64
 	}{
-		"stale":        {item.ItemID, engaged.CardID, "lane-10", "run-1", current.SourceRevision + 1},
-		"wrong-card":   {item.ItemID, "t999", "lane-10", "run-1", current.SourceRevision},
-		"empty-card":   {item.ItemID, "", "lane-10", "run-1", current.SourceRevision},
+		"stale":        {item.ItemID, engaged.CardID, "worker-10", "run-1", current.SourceRevision + 1},
+		"wrong-card":   {item.ItemID, "t999", "worker-10", "run-1", current.SourceRevision},
+		"empty-card":   {item.ItemID, "", "worker-10", "run-1", current.SourceRevision},
 		"empty-lane":   {item.ItemID, engaged.CardID, "", "run-1", current.SourceRevision},
-		"empty-run":    {item.ItemID, engaged.CardID, "lane-10", "", current.SourceRevision},
-		"missing-item": {"gtd-missing", engaged.CardID, "lane-10", "run-1", current.SourceRevision},
+		"empty-run":    {item.ItemID, engaged.CardID, "worker-10", "", current.SourceRevision},
+		"missing-item": {"gtd-missing", engaged.CardID, "worker-10", "run-1", current.SourceRevision},
 	} {
 		t.Run(name, func(t *testing.T) {
 			if _, err := authoritativeDispatchEvidence(ctx, store, root, session, args.item, args.card, args.lane, args.run, args.rev); err == nil {
@@ -723,10 +723,10 @@ func TestAuthoritativeDispatchEvidenceRefusalMatrix(t *testing.T) {
 			}
 		})
 	}
-	if err := kanban.RecordFactoryCardAssignment(root, "foreign-run", engaged.CardID, "lane-10", ""); err != nil {
+	if err := kanban.RecordFactoryCardAssignment(root, "foreign-run", engaged.CardID, "worker-10", ""); err != nil {
 		t.Fatal(err)
 	}
-	if values, err := authoritativeDispatchEvidence(ctx, store, root, session, item.ItemID, engaged.CardID, "lane-10", "run-1", current.SourceRevision); err == nil || values["lane_owner_free"] != "false" {
+	if values, err := authoritativeDispatchEvidence(ctx, store, root, session, item.ItemID, engaged.CardID, "worker-10", "run-1", current.SourceRevision); err == nil || values["lane_owner_free"] != "false" {
 		t.Fatalf("conflict values=%v err=%v", values, err)
 	}
 }
