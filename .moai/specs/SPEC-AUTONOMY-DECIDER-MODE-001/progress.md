@@ -383,4 +383,25 @@ m1_to_m3_commit_strategy: per-M commit (M0 786e7a419 → M1 fcba7ae65 → amendm
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-09-27T19:11:05+09:00
+sync_commit_sha: pending-backfill-sync   # D3 placeholder — 실제 SHA는 후속 커밋에서 backfill
+spec_id: SPEC-AUTONOMY-DECIDER-MODE-001
+card: t1261
+status_transition: "in-progress → implemented → completed (단일 싱크 커밋 병합 전이, manager-docs 소관)"
+changelog_decision: "skip — 측정 카드 규약: 제품 코드 변경 0건(SPEC 문서·마크다운·python 분석 도구뿐) + 선행 측정 카드 t1244(SPEC-AUTONOMY-KICKOFF-CALIB-001)도 CHANGELOG 항목 없음(grep 실측 0행) — B12 사전 검사 count=0, 중복 위험 없음"
+docs_surfaces: "README·docs-site 동기화 불요 — 사용자 대면 제품 변경 없음(측정+SPEC 문서만). 확인된 결정이며 누락이 아님"
+evidence_export: "verdict.md·run-record.md·runs/·analysis/ 는 gitignored 워크트리 로컬 미추적(.gitignore:235 .moai/reports/*) — primary 반출은 sync-audit 뒤 레인 오케스트레이터의 행위이며 본 에이전트가 수행하지 않음"
+ac_evidence: "AC-DM-012..016 [RUN] 5/5 PASS — progress.md §E.2 증거 표 + acceptance.md 해결 마커(commit 040b51af2)"
+mx_tag_validation: "sync 하위 단계로 수행 — 스코프 가드 실측(git diff --name-only 422aa1e20 HEAD = SPEC dir 5파일만)상 Go 소스 변경 0건이므로 @MX 신규·갱신 대상 없음, 기존 태그 무손상"
+```
+
+**Gaps (sync)**: 없음 — 싱크 단계 자체 산출은 frontmatter 전이 + §E.4 기록뿐이며, 본
+SPEC은 제품 코드를 만지지 않았다. primary 반출과 develop 병합·push는 레인 절차상 리드 몫으로
+본 신호의 범위 밖이다(각각 post-audit·창 지명 대기).
+
+**Residual-risk (sync)**: backfill 커밋이 §E.4 placeholder를 실제 SHA로 갱신할 때까지
+`sync_commit_sha` 슬롯은 인정된 중간 상태(D3 window)에 있다 — 이는 규약상 결함이 아니나,
+backfill이 누락되면 감사가 슬롯을 읽을 수 없다.
+
