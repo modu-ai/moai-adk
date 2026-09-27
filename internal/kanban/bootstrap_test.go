@@ -254,16 +254,20 @@ func TestSplitLeadLabelRoundTrip(t *testing.T) {
 }
 
 // TestSplitLeadLabelRejectsNonLeadShapes covers what must and must not carry
-// the lead shape. The admitted set is deliberately identical to the companion
-// side's: the bare role parses (with an empty suffix), and `lead-notarunid` IS
-// accepted because `notarunid` is a well-formed suffix as far as the grammar is
+// the leader shape (SPEC-ROLE-NAMING-CODE-001: the role value is `leader`).
+// The admitted set is deliberately identical to the companion side's: the bare
+// role parses (with an empty suffix), and `leader-notarunid` IS accepted
+// because `notarunid` is a well-formed suffix as far as the grammar is
 // concerned, exactly as `run-notarunid` is accepted as a companion. Tightening
 // one side alone is how the two branches drift apart.
 //
 // The accepted-with-empty-suffix case is why this table carries an explicit ok
-// column rather than treating an empty want as rejection: after t133 the bare
-// `lead` parses AND yields "", so conflating the two states would let a
-// regression that rejects the bare form pass unnoticed.
+// column rather than treating an empty want as rejection: the bare `leader`
+// parses AND yields "", so conflating the two states would let a regression
+// that rejects the bare form pass unnoticed.
+//
+// The legacy `lead` / `lead-<suffix>` spellings are detection values now —
+// they never parse as a leader label (REQ-RNC-009).
 func TestSplitLeadLabelRejectsNonLeadShapes(t *testing.T) {
 	t.Parallel()
 
@@ -272,19 +276,19 @@ func TestSplitLeadLabelRejectsNonLeadShapes(t *testing.T) {
 		want  string
 		ok    bool
 	}{
-		{"lead", "", true}, // the bare form t133 made canonical
-		{"lead-1", "1", true},
-		{"lead-abc123", "abc123", true},
-		{"lead-notarunid", "notarunid", true},
+		{"leader", "", true}, // the bare form the notice announces
+		{"leader-1", "1", true},
+		{"leader-abc123", "abc123", true},
+		{"leader-notarunid", "notarunid", true},
 		{"", "", false},
+		{"lead", "", false},        // legacy — detection only
+		{"lead-1", "", false},      // legacy
+		{"lead-abc123", "", false}, // legacy
+		{"leader-", "", false},
+		{"leader-ABC123", "", false},
+		{"leader-a-b", "", false},
+		{"leader-a_b", "", false},
 		{"lead-", "", false},
-		{"lead-ABC123", "", false},
-		{"lead-a-b", "", false},
-		{"lead-a_b", "", false},
-		// The transient `leader-` prefix (t118 working-tree naming, never
-		// committed or released) is not the lead shape — adopting it would
-		// fork the run id off a name no new launch prints.
-		{"leader-abc123", "", false},
 		{"run-abc123", "", false},
 		{"board-watch", "", false},
 	} {

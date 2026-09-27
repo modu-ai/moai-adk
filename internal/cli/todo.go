@@ -1000,7 +1000,7 @@ func recordFactoryCardState(cardID, specID, state, eventKind string) {
 	}
 	owner := os.Getenv(config.EnvMoaiFactoryWorker)
 	if owner == "" {
-		owner = "lead"
+		owner = kanban.RoleLead // the factory card owner vocabulary: `leader` (REQ-RNC-010)
 	}
 	// Queue mutations resolve through the primary checkout, but provenance must
 	// describe the lane checkout that actually selected and executed the card.

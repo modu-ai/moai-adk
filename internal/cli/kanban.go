@@ -374,23 +374,50 @@ func leadRegistryPath(root string) string {
 }
 
 // resolveLeadName returns the label this lead session should launch under:
-// label itself when it is free, or the next free number (`lead-1`, `lead-2`,
-// ...) when a live session already holds it — the lead sibling of
-// resolveCompanionName, on the same registry machinery.
+// label itself when it is free, or the next free number (`leader-1`,
+// `leader-2`, ...) when a live session already holds it — the leader sibling
+// of resolveCompanionName, on the same registry machinery.
 //
 // The bump is what the one-machine-one-run policy costs and what makes it
-// survivable. Two runs on one machine both want the name `lead`, and the peer
-// listing distinguishes same-named sessions only by an opaque reference — so
-// without the bump a dispatch addressed to `lead` is ambiguous exactly when a
-// second run is what made it ambiguous. Numbering the second lead keeps every
-// session addressable by name alone, which is the property the whole naming
-// policy is for.
+// survivable. Two runs on one machine both want the name `leader`, and the
+// peer listing distinguishes same-named sessions only by an opaque reference
+// — so without the bump a dispatch addressed to `leader` is ambiguous exactly
+// when a second run is what made it ambiguous. Numbering the second leader
+// keeps every session addressable by name alone, which is the property the
+// whole naming policy is for.
+//
+// A LIVE registry entry named `lead` / `lead-<suffix>` (a pre-rename leader)
+// never blocks: one notice names the entry and the relaunch step, and the
+// launch proceeds under `leader` (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-025). A
+// dead legacy entry is pruned by the claim like any dead claim.
 //
 // Best-effort throughout, like its companion sibling: an unreadable or
 // unwritable registry degrades to using the label as supplied. The launch must
 // never block on a name claim.
 func resolveLeadName(root, label string, notes io.Writer) string {
+	noteLegacyLeadRegistryEntries(root, notes)
 	return claimName(leadRegistryPath(root), label, kanban.LeadNumberLabel, notes)
+}
+
+// noteLegacyLeadRegistryEntries writes one notice per LIVE legacy leader
+// entry in the leads registry, naming the entry and the end-and-relaunch
+// step. Best-effort: notes may be nil, and the registry read is fail-open.
+func noteLegacyLeadRegistryEntries(root string, notes io.Writer) {
+	if notes == nil {
+		return
+	}
+	reg := loadFactoryRegistry(leadRegistryPath(root))
+	seen := map[string]bool{}
+	for name, entry := range reg {
+		if !kanban.IsLegacyLeadLabel(name) || seen[name] {
+			continue
+		}
+		if entry.PID <= 0 || !factoryProcessAlive(entry.PID) {
+			continue // dead legacy entries are pruned by the claim, not noticed
+		}
+		seen[name] = true
+		_, _ = fmt.Fprintf(notes, "kanban: registry entry %q is a leader session from before the leader/lane rename; end that session and relaunch it — launching as %s\n", name, kanban.LeadLabel())
+	}
 }
 
 // claimName returns the label to launch under after claiming it in the

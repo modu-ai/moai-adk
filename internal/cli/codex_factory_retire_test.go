@@ -572,8 +572,8 @@ func TestCodexHarnessHooksRegisterNoFactoryPeer(t *testing.T) {
 		slot string
 		env  map[string]string
 	}{
-		{"worker", "worker-1", map[string]string{config.EnvMoaiFactoryWorker: "worker-1"}},
-		{"lead", "lead", map[string]string{config.EnvMoaiFactoryWorkers: "2"}},
+		{"lane", "lane-1", map[string]string{config.EnvMoaiFactoryWorker: "lane-1"}},
+		{"leader", "leader", map[string]string{config.EnvMoaiFactoryWorkers: "2"}},
 	} {
 		t.Run(shape.name, func(t *testing.T) {
 			root := codexLedRun(t, "r1", "claude")

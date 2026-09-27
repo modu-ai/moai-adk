@@ -196,7 +196,7 @@ func TestChainCardIDAndRoleFilter(t *testing.T) {
 	}
 
 	records := []KanbanRecord{
-		{SessionID: "s1", Role: "Lead"}, // case-insensitive role match
+		{SessionID: "s1", Role: "Leader"}, // case-insensitive role match
 		{SessionID: "s2", Role: "lane"},
 		{SessionID: "s3", Role: ""},
 	}

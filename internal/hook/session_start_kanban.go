@@ -33,19 +33,25 @@ import (
 // kanbanBootstrapNotice returns the announcement for this session in lang, or
 // "" when the session is not part of a kanban run. root is the project root the
 // lead branch reads the backlog queue under; it may be empty, which the queue
-// summary degrades from rather than failing.
+// summary degrades from rather than failing. sessionID keys the stale-run
+// check: a session whose launch label or record carries a legacy role value
+// gets the stale-run notice instead of a leader notice
+// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-025).
 //
 // Fail-open throughout, matching the surrounding hook code: an unresolvable run
 // id or a label that does not parse degrades to emitting nothing rather than
 // emitting something wrong or failing the session start. An unknown lang
 // degrades to English (kanbanMessagesFor), never to an empty notice.
-func kanbanBootstrapNotice(root, lang string) string {
+func kanbanBootstrapNotice(root, sessionID, lang string) string {
 	// A factory session reads the factory notice, never this one. The
 	// launcher never sets the kanban variables on a factory branch, so this
 	// guard is insurance against a hand-exported environment, not a branch the
 	// normal launch path can reach.
 	if os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
 		return ""
+	}
+	if notice := staleRunNoticeFor(root, sessionID); notice != "" {
+		return notice
 	}
 	if label := os.Getenv(config.EnvMoaiKanbanLabel); label != "" {
 		return kanbanCompanionNotice(label, lang)
@@ -82,11 +88,11 @@ func kanbanBootstrapNotice(root, lang string) string {
 // safer-to-emit reasoning is recorded in SPEC-HOOK-SESSIONSTART-PROBE-001
 // (AC-HOOK-004), which gates on startup and treats an absent source the same
 // way.
-func kanbanBootstrapNoticeForSource(source, root, lang string) string {
+func kanbanBootstrapNoticeForSource(source, root, sessionID, lang string) string {
 	if source != "" && source != "startup" {
 		return ""
 	}
-	return kanbanBootstrapNotice(root, lang)
+	return kanbanBootstrapNotice(root, sessionID, lang)
 }
 
 // kanbanLeadNotice is the lead branch. It carries, in order: (a) the run id;

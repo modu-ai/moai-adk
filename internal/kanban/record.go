@@ -62,11 +62,12 @@ type Record struct {
 	// the chain heads at plan-phase from the operator's first prompt.
 	SpecID string `json:"spec_id"`
 
-	// Role is the chain role this session occupies: lead | plan | run
+	// Role is the chain role this session occupies: leader | plan | run
 	// | sync, or "lane" for a factory run's numbered lane. It is derived
 	// from the companion label (the bare role name, or its bumped
-	// `<role>-<n>` form) or the factory worker label (`worker-<n>`) at
-	// launch, or "lead" for the session that elected the run.
+	// `<role>-<n>` form) or the factory lane label (`lane-<n>`) at
+	// launch, or "leader" for the session that elected the run
+	// (SPEC-ROLE-NAMING-CODE-001).
 	//
 	// Empty is legitimate and load-bearing: a record written before this field
 	// existed, or a launch whose label could not be parsed, leaves it blank —

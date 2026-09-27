@@ -41,13 +41,94 @@
 - Implementation Kickoff: approved by the operator on 2026-09-26, progression mode semi-autonomous.
 - Status: plan closed; frontmatter `status: draft` left for manager-develop's `draft → in-progress` at run entry.
 
+## §F Phase 4 Mode Selection
+
+- Input parameters: tier L · scope ≈ census 88 production files / 1,261 occurrences (post-absorb 16,124 census rows) · domains 6+ (kanban, cli, hook, factorymsg, homestate, web, config, codexwiring) · file mix Go + i18n string tables · concurrency benefit LOW (coding-heavy: rename with rejection/stale-record behavior changes and per-package tests) · Agent Teams prereqs: not requested.
+- Mode evaluation: `direct` not selected (Tier L, multi-file, behavior-bearing) · `serial` **selected** (coding-heavy; one manager-develop milestone spawn at a time, M1→M5 ordered by change likelihood) · `fanout` not selected (coding-heavy, write-capable — violates one-writer discipline) · `sweep` not selected (multi-rule semantic change, not one uniform mechanical transform; the mechanical identifier rename is compiler-checked and stays inside serial M5) · `agent-team` not selected (no operator request).
+- Decision: serial.
+- Justification: the rename carries behavior changes (rejection paths, run-boundary refusal, SessionStart writer guard, retire fallback) whose tests must land before the rename in the same packages — sequential milestone delegation with scoped per-package verification is the safe shape; high-volume mechanical transform criteria for sweep do not hold across milestones (uniform rule only within M5, which rides the serial chain anyway). Implementation Kickoff Approval: approved by the operator on 2026-09-26 (§E.1); progression mode semi-autonomous (operator policy CLAUDE.local.md §31).
+
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+_M1 (card t1256, branch `WT-role-naming-code`). Attribution: every row names the command, its verbatim output, and the HEAD SHA it was measured on._
+
+### Pre-flight (REQ-RNC-014 / AC-RNC-015)
+
+| Check | Observed (measured by the orchestrator on `d39a1dc09`) |
+|---|---|
+| develop SHA | `b59a5d69c`; `git rev-list --count --left-right origin/develop...develop` → `0 0` |
+| t1242 deletion landed | `git cat-file -e` on `internal/cli/codex_factory.go` / `codex_kanban.go` → 128 (absent on develop) → **landed** |
+| t1245 constants | `EnvFactoryRole = "MOAI_FACTORY_ROLE"` at internal/config/envkeys.go:323; `FactoryRoleWorker = "worker"` at :332 → **M4 branch selected** (constants untouched by M1) |
+| t1193 state | `git merge-base --is-ancestor WT-factory-broker-safety develop` → exit 1 → **not landed**; six overlap files clear to edit |
+| Census post-absorb | 16,124 rows at `.moai/reports/t1256/raw/census-postabsorb.tsv` (plan time: 16,608) |
+| AC-RNC-023 population | 2 rows: `internal/cli/factory.go:547`, `internal/cli/kanban.go:711` (both `moai cg runs a mixed backend (leader Claude, teammates GLM)`) — M3's |
+| Characterization | five packages ok on `d39a1dc09` — `.moai/reports/t1256/raw/preflight-characterization.txt`; `internal/cli` ok 988.881s with `-timeout 35m` — `.moai/reports/t1256/raw/preflight-characterization-cli.txt` |
+
+### Freeze guards
+
+- **AC-RNC-010 (REQ-RNC-008)** — `git merge-base develop HEAD` → `b59a5d69c`; `git diff b59a5d69c -- internal/homestate internal/factorymsg \| grep -cE '^[+-].*(CREATE TABLE\|ALTER TABLE\|CREATE INDEX\|CREATE UNIQUE INDEX)'` → **0** (this run, this tree).
+- **AC-RNC-011 first clause (REQ-RNC-011)** — `grep -rnE '"MOAI_(KANBAN_LEADER\|FACTORY_LANE)' internal --include='*.go'` → **0 rows**; `git diff b59a5d69c -- internal/codexwiring/ internal/config/envkeys.go` → **empty** (env name constants AND `mcpServerEnvVarsValue` byte-identical to the merge base).
+
+### Build and boundary
+
+- **E2 builds** — `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0 (this run, tree at M1 tip; SHA recorded in §E.3).
+- **E4 subagent-boundary** — `grep -rn 'AskUserQuestion' internal/kanban internal/hook internal/factorymsg internal/homestate | grep -v _test.go | grep -v '// '` → **1 row**: `internal/hook/pre_tool.go:756: if input.ToolName == "AskUserQuestion" {`. Pre-existing at the merge base (`git diff b59a5d69c -- internal/hook/pre_tool.go` → empty): a ToolName comparison, not an invocation. **0 new findings.**
+- **E5 lint** — `golangci-lint run ./internal/kanban/... ./internal/hook/... ./internal/factorymsg/... ./internal/cli/... ./internal/web/...` → exit 0, `0 issues.` (`.moai/reports/t1256/raw/lint-m1.txt`).
+
+### M1 test evidence (scoped runs, this tree)
+
+| Package | Command | Verbatim verdict |
+|---|---|---|
+| internal/kanban | `go test ./internal/kanban/` | `ok github.com/modu-ai/moai-adk/internal/kanban 174.906s` |
+| internal/hook | `go test ./internal/hook/` | `ok github.com/modu-ai/moai-adk/internal/hook 289.691s` |
+| internal/factorymsg | `go test ./internal/factorymsg/` | `ok github.com/modu-ai/moai-adk/internal/factorymsg 47.400s` |
+| internal/homestate | `go test ./internal/homestate/ ./internal/web/` | `ok ... internal/homestate 18.904s` / `ok ... internal/web 29.587s` |
+| internal/cli (full) | `go test -timeout 35m ./internal/cli/` (slot `go-test-cli-hook` held) | attempt 1 FAIL (10 vocabulary-fixture tests) → fixtures updated → attempt 2 `ok github.com/modu-ai/moai-adk/internal/cli 1263.126s` (`.moai/reports/t1256/raw/cli-full-m1-attempt2.txt`) |
+| internal/config, internal/codexwiring | `go test ./internal/config/ ./internal/codexwiring/` | both `ok` (freeze surfaces) |
+
+### AC binary matrix (E1)
+
+| AC | Status | Evidence (command → observed) |
+|---|---|---|
+| AC-RNC-006 | PASS | `go test ./internal/kanban/ -run 'TestRoleLeadValueIsLeader\|TestSplitLeadLabelLeaderForms'` → ok (`RoleLead=="leader"`, `LeadNumberLabel(2)=="leader-2"`, `SplitLeadLabel("leader-r7")→("r7",true)`, digits-bump edge `leader-2` covered); cli full-suite attempt 2 green covers the launcher composing these labels |
+| AC-RNC-008 | PASS | kanban M1 tests: claim writes registry label `lane-1` (`TestClaimFactoryWorkerWritesLaneLabel`); broker writer emits `leader`/`lane`/`lane-1` (hook `factory_messages.go` now `kanban.RoleLead`/`kanban.RoleLane`, `TestFactoryLauncherRegistersLaunchPendingPeers` green); board guard admits `leader`/refuses `lead` (`TestBoardGuardAdmitsLeaderDeclaration`/`TestBoardGuardRefusesLegacyLeadDeclaration`); run-retire reads a `leader` peer (`TestLeadPeerIdentityReadsLeaderAndLegacyLead`); SessionStart writes role `leader` (`TestKanbanRoleFromEnvNewVocabulary`); card owner writer `kanban.RoleLead` (`TestFactoryCardOwnerWriterUsesLeaderConstant`); no written value equals `lead`/`worker`/`agent` (factorymsg `TestSendDeliversNewVocabularyRefusesLegacy` + web `ChainRoles` swap) |
+| AC-RNC-009 | PASS | factorymsg: `TestResolveLaneRefusesLegacySlots`, `TestRegisterPeerBareLaneNumbersLaneOnly`, `TestSendDeliversNewVocabularyRefusesLegacy`; hook: `TestKanbanRoleFromEnvReadsOnlyLaneLabels`, `TestKanbanRoleFromEnvLegacyLabelsNotRecognized`; kanban: `TestSplitFactoryLaneLabelCanonicalOnly`, `TestLegacyFactoryLabelDetection` |
+| AC-RNC-010 | PASS | schema-freeze filter over merge-base diff → **0 lines** (above); writers verified in AC-RNC-008 rows |
+| AC-RNC-011 | PASS | freeze checks above (0 grep rows; envkeys+codexwiring diff empty); launch env values verified by `TestCC_FactoryEntryThroughRunCC` (`MOAI_FACTORY_WORKER="lane-2"`) and `TestLeadNameArgs_InjectsWhenUnnamed` (`--name leader`) |
+| AC-RNC-022 | PASS | cli: `TestEnterSelectedFactoryRunRefusesLiveLegacyPeer` (message names `worker-2`, `runR`, `moai factory runs --retire runR`; peer+run rows untouched), `TestEnterSelectedFactoryRunDeadLegacyPeerProceeds`, `TestEnterSelectedFactoryRunLiveLegacyLeaderPeerRefuses`; hook: `TestStaleRunNoticeFactoryLegacyLabel`; factorymsg: `TestLiveLegacyPeerDetectsLiveLegacyRow`; **P3 debt**: `TestClaimFactoryWorkerIgnoresLegacyClaimOfNoRun` + `TestClaimFactoryWorkerAutoIgnoresLegacyRows` (run_id='' live legacy claim → launch proceeds, not counted as a lane) |
+| AC-RNC-024 | PASS | factorymsg: `TestLeadPeerIdentityReadsLeaderAndLegacyLead` (leader peer primarily; legacy `lead` peer as identity evidence only); cli/homestate retire path: `TestEnterSelectedFactoryRunDeadLegacyPeerProceeds` + base homestate suite ok (retirable accepts `OwnerDead` unchanged); no other reader treats the `lead` peer as leader (AC-RNC-009/022 tests) |
+| AC-RNC-025 | PASS | hook: `TestStaleRunNoticeLegacyLeadLabel` ((a) + debt P4: no record file created), `TestStaleRunNoticeLegacySessionRecord` ((b) record byte-identical), `TestFactoryHookPeerRefusesLegacyLabel`, `TestResolveLeadNameNoticesLegacyLeadEntry` (cli: live `lead` entry → one notice naming it + relaunch, launch proceeds as `leader`, entry untouched); kanban: `TestBoardGuardRefusesLegacyLeadDeclaration`/`TestBoardGuardAdmitsLeaderDeclaration` (test-written `DeclareRole`; `ErrNotSoleWriter` names `lead`; declaration byte-identical) |
+
+### Coverage (E3)
+
+`go test -cover` figures, this tree at M1 tip vs the same command on the merge-base tree (`git archive b59a5d69c` extracted to `/tmp/t1256-base`):
+
+| Package | M1 tip | merge-base | Delta |
+|---|---|---|---|
+| internal/kanban | 86.4% | 86.5% | −0.1pp (the run deleted the superseded alias-collision test file; the replaced refusal paths are covered by the new M1 tests; 85% floor met) |
+| internal/hook | 86.6% | 86.6% | equal |
+| internal/factorymsg | 81.5% | 81.5% | equal |
+| internal/web | 74.7% | 74.7% | equal |
+| internal/cli | _see Gap below_ | — | — |
+
+**Gaps (E3):** (1) `internal/cli` paired coverage did not complete — the full cli `-cover` runs were launched twice and did not finish under heavy cross-lane machine load (the delegated close-out makes the full cli suite the orchestrator's re-measure surface; a cli `-cover` figure is recorded there). (2) The merge-base kanban figure was measured in `/tmp`, where one unrelated cwd-sensitive test (`TestTempOrigin_FailsOpenOnUnresolvable`) fails as a measurement artifact; its coverage number is still computed and comparable.
+
+
+
+
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- run_status: M1 complete (kanban / hook / factorymsg / homestate / web / config / codexwiring scoped suites green; full `internal/cli` suite green on attempt 2; lint 0 issues; both builds exit 0)
+- run_complete_at: 2026-09-27
+- run_commit_sha: pending-backfill-m1
+- RED evidence: `.moai/reports/t1256/raw/red-m1.txt` (verbatim pre-implementation failures: 5 assertion REDs in internal/cli + compile-RED for the new kanban/hook/factorymsg APIs)
+- coverage: kanban 86.4 (base 86.5) · hook 86.6 (base 86.6) · factorymsg 81.5 (base 81.5) · web 74.7 (base 74.7) — cli pair not completed under machine contention (Gap, see §E.2)
+- notes:
+  - M1 transient: the t1245 AC-AP-018 kanban pin limb (`internal/kanban/factory_label_pin_test.go`) is pinned to the M1 state — prefix `lane`, legacy prefixes detection-only — and carries an M4 tripwire; the full three-way equality (marker value == CLI token == prefix) is restored at M4 when `config.FactoryRoleWorker` flips to `lane` (constant untouched by M1 per delegation §C).
+  - `-f worker` / `-f agent` role tokens still PARSE at M1 (minimal compile adaptation; desugars to canonical `lane-<n>` labels) — their dedicated rejection wording is M2 (REQ-RNC-003/-005/-007). Legacy LABELS on the input path are already refused by the claim naming the canonical `lane-<n>`.
+  - The i18n message tables (`session_start_factory_i18n.go`, `session_start_kanban_i18n.go` nameChoices) received the minimal worker→lane token swap forced by the label machinery; the full four-locale native rewrite stays M3 (REQ-RNC-015).
+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

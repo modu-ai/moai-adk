@@ -508,7 +508,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	if factoryRoot == "" {
 		factoryRoot = input.CWD
 	}
-	if notice := factoryBootstrapNoticeForSource(input.Source, factoryRoot, langEnglish); notice != "" {
+	if notice := factoryBootstrapNoticeForSource(input.Source, factoryRoot, input.SessionID, langEnglish); notice != "" {
 		if out.HookSpecificOutput == nil {
 			out.HookSpecificOutput = &HookSpecificOutput{
 				HookEventName: string(EventSessionStart),
@@ -520,7 +520,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			out.HookSpecificOutput.AdditionalContext += "\n\n" + notice
 		}
 
-		operatorNotice := factoryBootstrapNotice(factoryRoot, operatorLang(h.cfg))
+		operatorNotice := factoryBootstrapNotice(factoryRoot, input.SessionID, operatorLang(h.cfg))
 		if out.SystemMessage == "" {
 			out.SystemMessage = operatorNotice
 		} else {
@@ -560,7 +560,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	if kanbanRoot == "" {
 		kanbanRoot = input.CWD
 	}
-	if notice := kanbanBootstrapNoticeForSource(input.Source, kanbanRoot, langEnglish); notice != "" {
+	if notice := kanbanBootstrapNoticeForSource(input.Source, kanbanRoot, input.SessionID, langEnglish); notice != "" {
 		if out.HookSpecificOutput == nil {
 			out.HookSpecificOutput = &HookSpecificOutput{
 				HookEventName: string(EventSessionStart),
@@ -572,7 +572,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			out.HookSpecificOutput.AdditionalContext += "\n\n" + notice
 		}
 
-		operatorNotice := kanbanBootstrapNotice(kanbanRoot, operatorLang(h.cfg))
+		operatorNotice := kanbanBootstrapNotice(kanbanRoot, input.SessionID, operatorLang(h.cfg))
 		if out.SystemMessage == "" {
 			out.SystemMessage = operatorNotice
 		} else {

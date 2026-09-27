@@ -252,15 +252,15 @@ func TestParseFactoryFlag(t *testing.T) {
 		// Legacy spellings (keep-alias): still parse onto the worker shapes.
 		{name: "-f agent legacy alias", args: []string{"-f", "agent"}, wantEnabled: true, wantRole: true},
 		{name: "-f=agent legacy alias", args: []string{"-f=agent"}, wantEnabled: true, wantRole: true},
-		{name: "-f lane-2 legacy alias", args: []string{"-f", "lane-2"}, wantEnabled: true, wantWorkerNum: 2},
-		{name: "-f worker-2", args: []string{"-f", "worker-2"}, wantEnabled: true, wantWorkerNum: 2},
+		{name: "-f lane role token", args: []string{"-f", "lane"}, wantEnabled: true, wantRole: true},
+		{name: "-f lane-2", args: []string{"-f", "lane-2"}, wantEnabled: true, wantWorkerNum: 2},
+		{name: "-f worker-2 legacy token (rejected at M2)", args: []string{"-f", "worker-2"}, wantEnabled: true, wantWorkerNum: 2},
 		{name: "-f=worker-3", args: []string{"-f=worker-3"}, wantEnabled: true, wantWorkerNum: 3},
 		{name: "--factory=worker-7", args: []string{"--factory=worker-7"}, wantEnabled: true, wantWorkerNum: 7},
 		{name: "positional flag is not a value", args: []string{"-f", "-b"}, wantEnabled: true, wantRest: []string{"-b"}},
 		{name: "zero count errors", args: []string{"-f", "0"}, wantErr: true, errMarker: "worker role token"},
 		{name: "negative joined count errors", args: []string{"-f=-2"}, wantErr: true, errMarker: "worker role token"},
 		{name: "non-numeric non-lane errors", args: []string{"-f", "SPEC-X-001"}, wantErr: true, errMarker: "worker label"},
-		{name: "unnumbered legacy lane errors", args: []string{"-f", "lane"}, wantErr: true, errMarker: "worker label"},
 		{name: "worker zero errors", args: []string{"-f", "worker-0"}, wantErr: true, errMarker: "worker label"},
 		{name: "lookalike long flag not stolen", args: []string{"--factory-reset"}, wantRest: []string{"--factory-reset"}},
 	}
@@ -457,16 +457,16 @@ func TestParseFactoryLaneLabelRecognizesWithoutConsuming(t *testing.T) {
 		args []string
 		want string
 	}{
-		{"long form", []string{"--name", "worker-1"}, "worker-1"},
-		{"short form", []string{"-n", "worker-12"}, "worker-12"},
-		{"long equals", []string{"--name=worker-3"}, "worker-3"},
-		{"short equals", []string{"-n=worker-2"}, "worker-2"},
+		{"long form", []string{"--name", "lane-1"}, "lane-1"},
+		{"short form", []string{"-n", "lane-12"}, "lane-12"},
+		{"long equals", []string{"--name=lane-3"}, "lane-3"},
+		{"short equals", []string{"-n=lane-2"}, "lane-2"},
 
 		{"absent", []string{"-f", "4"}, ""},
 		{"non-lane name", []string{"--name", "run-tjlgt1"}, ""},
-		{"lead shape", []string{"--name", "lead-abc123"}, ""},
-		{"unnumbered", []string{"--name", "worker"}, ""},
-		{"suffix not a number", []string{"--name", "worker-a"}, ""},
+		{"leader shape", []string{"--name", "leader-abc123"}, ""},
+		{"unnumbered", []string{"--name", "lane"}, ""},
+		{"suffix not a number", []string{"--name", "lane-a"}, ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -491,7 +491,7 @@ func TestParseFactoryLaneLabelRecognizesWithoutConsuming(t *testing.T) {
 func TestEnterFactoryLeadModeEnv(t *testing.T) {
 	clearFactoryTestEnv(t)
 
-	restore := enterFactoryLeadMode(4, "lead-abc123")
+	restore := enterFactoryLeadMode(4, "leader-abc123")
 	defer restore()
 
 	if got := os.Getenv(config.EnvMoaiFactoryWorkers); got != "4" {
@@ -597,21 +597,21 @@ func TestEnterFactoryWorkerModeUnknownCount(t *testing.T) {
 func TestResolveFactoryWorkerName(t *testing.T) {
 	t.Run("free name is kept and registered", func(t *testing.T) {
 		root := t.TempDir()
-		if got, err := resolveFactoryWorkerName(root, "worker-1", false, nil); err != nil || got != "worker-1" {
-			t.Fatalf("free name = %q, want worker-1", got)
+		if got, err := resolveFactoryWorkerName(root, "lane-1", false, nil); err != nil || got != "lane-1" {
+			t.Fatalf("free name = %q, want lane-1", got)
 		}
 		reg := loadFactoryRegistry(factoryRegistryPath(root))
-		if e, ok := reg["worker-1"]; !ok || e.PID != os.Getpid() {
-			t.Errorf("worker-1 not registered to this pid: %+v", reg)
+		if e, ok := reg["lane-1"]; !ok || e.PID != os.Getpid() {
+			t.Errorf("lane-1 not registered to this pid: %+v", reg)
 		}
 	})
 
 	t.Run("live claim bumps to the next free number", func(t *testing.T) {
 		root := t.TempDir()
-		// Simulate two live holders: worker-2 and worker-3.
+		// Simulate two live holders: lane-2 and lane-3.
 		reg := map[string]factoryWorkerEntry{
-			"worker-2": {PID: 11100},
-			"worker-3": {PID: 11101},
+			"lane-2": {PID: 11100},
+			"lane-3": {PID: 11101},
 		}
 		if err := saveFactoryRegistry(factoryRegistryPath(root), reg); err != nil {
 			t.Fatalf("seed registry: %v", err)
@@ -621,14 +621,14 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 		defer func() { factoryProcessAlive = probe }()
 
 		var notes bytes.Buffer
-		got, err := resolveFactoryWorkerName(root, "worker-2", false, &notes)
+		got, err := resolveFactoryWorkerName(root, "lane-2", false, &notes)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got != "worker-4" {
-			t.Fatalf("bumped name = %q, want worker-4 (2 and 3 are live)", got)
+		if got != "lane-4" {
+			t.Fatalf("bumped name = %q, want lane-4 (2 and 3 are live)", got)
 		}
-		if !strings.Contains(notes.String(), "worker-4") {
+		if !strings.Contains(notes.String(), "lane-4") {
 			t.Errorf("operator note missing the final name: %q", notes.String())
 		}
 	})
@@ -636,7 +636,7 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 	t.Run("dead claim frees the name and is pruned", func(t *testing.T) {
 		root := t.TempDir()
 		if err := saveFactoryRegistry(factoryRegistryPath(root), map[string]factoryWorkerEntry{
-			"worker-2": {PID: 11100},
+			"lane-2": {PID: 11100},
 		}); err != nil {
 			t.Fatalf("seed registry: %v", err)
 		}
@@ -644,16 +644,16 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 		factoryProcessAlive = func(int) bool { return false }
 		defer func() { factoryProcessAlive = probe }()
 
-		got, err := resolveFactoryWorkerName(root, "worker-2", false, nil)
+		got, err := resolveFactoryWorkerName(root, "lane-2", false, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got != "worker-2" {
+		if got != "lane-2" {
 			t.Fatalf("dead claim should free the name, got %q", got)
 		}
 		reg := loadFactoryRegistry(factoryRegistryPath(root))
-		if e, ok := reg["worker-2"]; !ok || e.PID != os.Getpid() {
-			t.Errorf("worker-2 should be re-registered to this pid after pruning: %+v", reg)
+		if e, ok := reg["lane-2"]; !ok || e.PID != os.Getpid() {
+			t.Errorf("lane-2 should be re-registered to this pid after pruning: %+v", reg)
 		}
 	})
 
@@ -665,7 +665,7 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 		}
 		root := blocker // .moai/state/factory/ resolves under a file → fails
 
-		if got, err := resolveFactoryWorkerName(root, "worker-7", false, nil); err == nil || got != "" {
+		if got, err := resolveFactoryWorkerName(root, "lane-7", false, nil); err == nil || got != "" {
 			t.Fatalf("fail-closed name = %q err=%v", got, err)
 		}
 	})
@@ -678,7 +678,7 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer func() { _ = release(true) }()
-		if got, err := resolveFactoryWorkerName(root, "worker-1", false, nil); err == nil || got != "" {
+		if got, err := resolveFactoryWorkerName(root, "lane-1", false, nil); err == nil || got != "" {
 			t.Fatalf("resolver admitted marker: got=%q err=%v", got, err)
 		}
 	})
@@ -994,19 +994,19 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		buf := new(bytes.Buffer)
 		ccCmd.SetOut(buf)
 		ccCmd.SetErr(buf)
-		if err := runCC(ccCmd, []string{"-f", "worker-2"}); err != nil {
-			t.Fatalf("runCC(-f worker-2): %v", err)
+		if err := runCC(ccCmd, []string{"-f", "lane-2"}); err != nil {
+			t.Fatalf("runCC(-f lane-2): %v", err)
 		}
 		if c.runID != run {
 			t.Errorf("%s at launch = %q, want the active run %q", config.EnvMoaiKanbanID, c.runID, run)
 		}
-		if c.worker != "worker-2" {
-			t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want worker-2", c.worker)
+		if c.worker != "lane-2" {
+			t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want lane-2", c.worker)
 		}
 		if c.workers != "0" {
 			t.Errorf("MOAI_FACTORY_WORKERS at launch = %q, want 0 (count unknown on the incremental form)", c.workers)
 		}
-		if !slices.Contains(c.args, "worker-2") {
+		if !slices.Contains(c.args, "lane-2") {
 			t.Errorf("the desugared --name must reach the launcher, got %v", c.args)
 		}
 		if c.cap != "10" {
@@ -1026,19 +1026,16 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		}
 	})
 
-	// Keep-alias coverage: the legacy `-f lane-<n>` spelling still launches,
-	// under the canonical worker label, with a deprecation hint on stderr.
-	t.Run("-f lane-5 legacy alias launches as worker-5 with a hint", func(t *testing.T) {
-		// Same isolation as the worker-2 subtest: its own project and the one
-		// active run it joins, so the bare -f subtests above cannot make the
-		// join ambiguous.
+	// REQ-RNC-009/-005 (early rejection via the claim): a legacy label typed on
+	// the input path is refused naming the canonical lane-<n>; nothing launches.
+	t.Run("-f worker-5 legacy label is refused naming lane-5", func(t *testing.T) {
 		root := t.TempDir()
 		t.Setenv(config.EnvClaudeProjectDir, root)
 		t.Setenv("MOAI_HOME", t.TempDir())
 		clearFactoryTestEnv(t)
 		c := installFactoryLaunchSeam(t)
 
-		const run = "run-cc-legacy-lane-entry"
+		const run = "run-cc-legacy-worker-entry"
 		if err := recordFactoryRunStart(root, run, kanban.BackendClaude, ""); err != nil {
 			t.Fatalf("record factory run: %v", err)
 		}
@@ -1046,20 +1043,11 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		buf := new(bytes.Buffer)
 		ccCmd.SetOut(buf)
 		ccCmd.SetErr(buf)
-		if err := runCC(ccCmd, []string{"-f", "lane-5"}); err != nil {
-			t.Fatalf("runCC(-f lane-5): %v", err)
+		if err := runCC(ccCmd, []string{"-f", "worker-5"}); err == nil || !strings.Contains(err.Error(), "lane-5") {
+			t.Fatalf("runCC(-f worker-5) = %v, want an error naming lane-5", err)
 		}
-		if c.runID != run {
-			t.Errorf("%s at launch = %q, want the active run %q", config.EnvMoaiKanbanID, c.runID, run)
-		}
-		if c.worker != "worker-5" {
-			t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want worker-5", c.worker)
-		}
-		if !slices.Contains(c.args, "worker-5") || slices.Contains(c.args, "lane-5") {
-			t.Errorf("the canonical label must replace the legacy one in the launch args, got %v", c.args)
-		}
-		if !strings.Contains(buf.String(), "deprecated") || !strings.Contains(buf.String(), "-f worker-<n>") {
-			t.Errorf("legacy spelling launched without its deprecation hint; stderr = %q", buf.String())
+		if c.worker != "" {
+			t.Errorf("a refused legacy label must not launch, MOAI_FACTORY_WORKER = %q", c.worker)
 		}
 	})
 }
@@ -1090,14 +1078,14 @@ func TestGLM_FactoryWorkerEntry(t *testing.T) {
 	buf := new(bytes.Buffer)
 	glmCmd.SetOut(buf)
 	glmCmd.SetErr(buf)
-	if err := runGLM(glmCmd, []string{"-f", "worker-3"}); err != nil {
-		t.Fatalf("runGLM(-f worker-3): %v", err)
+	if err := runGLM(glmCmd, []string{"-f", "lane-3"}); err != nil {
+		t.Fatalf("runGLM(-f lane-3): %v", err)
 	}
 	if c.runID != run {
 		t.Errorf("%s at launch = %q, want the active run %q", config.EnvMoaiKanbanID, c.runID, run)
 	}
-	if c.worker != "worker-3" {
-		t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want worker-3", c.worker)
+	if c.worker != "lane-3" {
+		t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want lane-3", c.worker)
 	}
 	if c.cap != "10" {
 		t.Errorf("%s at launch = %q, want 10 (the per-lane cap)", config.EnvClaudeCodeMaxConcurrentSubagents, c.cap)

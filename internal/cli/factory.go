@@ -54,13 +54,17 @@ const (
 	factoryFlagShort = "-f"
 
 	// factoryWorkerRoleToken is the `-f worker` role value: join the running
-	// factory as the next free worker-<n> — the symmetric form across the
-	// cc/glm launchers.
+	// factory as the next free lane-<n>. M1 keeps the legacy token accepted —
+	// its rejection (with `-f lane` as the canonical name) is M2
+	// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-002/-003).
 	factoryWorkerRoleToken = "worker"
 
+	// factoryLaneRoleToken is the canonical `-f lane` role value
+	// (REQ-RNC-002): join the running factory as the next free lane-<n>.
+	factoryLaneRoleToken = "lane"
+
 	// factoryLegacyAgentRoleToken is the pre-rename spelling of the role
-	// token. It still parses (keep-alias) and behaves exactly like `-f
-	// worker`; the launch prints a deprecation hint naming the new form.
+	// token. M1 keeps it parsing (its rejection wording is M2).
 	factoryLegacyAgentRoleToken = "agent"
 )
 
@@ -152,7 +156,7 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 		if !hasValue {
 			continue
 		}
-		if value == factoryWorkerRoleToken || value == factoryLegacyAgentRoleToken {
+		if value == factoryWorkerRoleToken || value == factoryLaneRoleToken || value == factoryLegacyAgentRoleToken {
 			p.WorkerRole = true
 			p.LegacyAgentToken = value == factoryLegacyAgentRoleToken
 			continue
@@ -160,6 +164,14 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 		if n, ok := kanban.SplitFactoryLaneLabel(value); ok {
 			p.WorkerNumber = n
 			p.WorkerLabel = value
+			continue
+		}
+		if _, isLegacy := kanban.SplitFactoryLegacyLabel(value); isLegacy {
+			// M1 minimal adaptation: a legacy label travels as typed and the
+			// claim refuses it naming the canonical lane-<n>; the dedicated
+			// rejection wording is M2 (REQ-RNC-005).
+			p.WorkerLabel = value
+			p.WorkerNumber, _ = kanban.SplitFactoryLegacyLabel(value)
 			continue
 		}
 		return p, fmt.Errorf("%s, got %q", factoryFlagUsageError, value)
@@ -214,16 +226,12 @@ func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
 		if operatorSuppliedName(fp.Rest) {
 			return entry, fmt.Errorf("-f worker already names the role; drop the --name/-n flag (got args %v)", fp.Rest)
 		}
-		// Desugar into the next free worker label so the bump/liveness rules
-		// and the lead's dispatch address stay one implementation. The
-		// legacy `-f agent` spelling desugars into the legacy agent label,
-		// which the claim canonicalizes to worker-<n> and reports as
-		// deprecated (resolveFactoryWorkerName is the one hint site).
+		// Desugar into the next free lane label so the bump/liveness rules
+		// and the leader's dispatch address stay one implementation. The
+		// label is always the canonical lane-<n> — every writer emits the
+		// new vocabulary (REQ-RNC-010).
 		next := kanban.NextFactoryWorkerNumber(loadFactoryRegistry(factoryRegistryPath(launchProjectRoot())), factoryProcessAlive)
 		label := kanban.FactoryLaneLabel(next)
-		if fp.LegacyAgentToken {
-			label = kanban.FactoryAgentLabel(next)
-		}
 		entry.Rest = append(entry.Rest, nameFlagLong, label)
 		entry.FactoryAutoNumber = true
 	case fp.WorkerNumber > 0:
@@ -252,6 +260,15 @@ func enterSelectedFactoryRun(root, explicit string, requireActive bool) (func(),
 	}
 	if err := refuseCodexLedRun(root, runID); err != nil {
 		return func() {}, err
+	}
+	// REQ-RNC-022 run boundary: a LIVE legacy record in the run's broker
+	// database refuses the launch/join with the retire-and-relaunch message.
+	// A dead legacy row is stale and blocks nothing.
+	if value, live, err := factorymsg.LiveLegacyPeer(context.Background(), root, runID); err != nil {
+		return func() {}, err
+	} else if live {
+		return func() {}, fmt.Errorf("factory run %s holds live legacy record %q from a binary before the leader/lane rename — "+
+			"end its sessions, retire with 'moai factory runs --retire %s', then relaunch", runID, value, runID)
 	}
 	restore := captureEnvState(config.EnvMoaiKanbanID)
 	_ = os.Setenv(config.EnvMoaiKanbanID, runID)
@@ -331,21 +348,21 @@ func resolveFactoryBranch(factoryEnabled, isLane bool) factoryBranch {
 	}
 }
 
-// parseFactoryLaneLabel reports the worker label in args, if any — the
-// canonical `worker-<n>` or a legacy `lane-<n>` / `agent-<n>` spelling (the
-// `-f worker` desugared name flows through the same --name channel the
-// incremental worker form uses).
-// It matches only the worker SHAPES (kanban.SplitFactoryLaneLabel /
-// kanban.SplitFactoryAgentLabel), for the same reason parseCompanionLabel
-// matches only the companion shape: treating every named session as a
-// worker would silently change launch behavior for unrelated work.
+// parseFactoryLaneLabel reports the lane label in args, if any — the
+// canonical `lane-<n>` or, for M1's minimal adaptation, a legacy
+// `worker-<n>` / `agent-<n>` spelling (which the claim refuses naming the
+// canonical form; the dedicated rejection wording is M2). It matches only
+// the lane SHAPES (kanban.SplitFactoryLaneLabel / kanban.SplitFactoryLegacyLabel),
+// for the same reason parseCompanionLabel matches only the companion shape:
+// treating every named session as a lane would silently change launch
+// behavior for unrelated work.
 func parseFactoryLaneLabel(args []string) (label string, ok bool) {
 	return parseNamedLabel(args, func(candidate string) bool {
 		if _, isLane := kanban.SplitFactoryLaneLabel(candidate); isLane {
 			return true
 		}
-		_, isAgent := kanban.SplitFactoryAgentLabel(candidate)
-		return isAgent
+		_, isLegacy := kanban.SplitFactoryLegacyLabel(candidate)
+		return isLegacy
 	})
 }
 
@@ -451,50 +468,28 @@ var factoryProcessAlive = kanban.FactoryProcessAlive
 // forever. Dead entries are pruned on the way through. The final label is
 // registered to this process's pid before returning.
 //
-// label MUST have a worker shape, canonical or legacy; the claim records the
-// canonical worker-<n>. notes, when non-nil, receives the operator-visible
-// lines: the deprecation hint for a legacy spelling, and the bump line.
+// label MUST have a lane shape (canonical, or legacy — which the claim
+// refuses naming the canonical lane-<n>). notes, when non-nil, receives the
+// operator-visible bump line.
 func resolveFactoryWorkerName(root, label string, auto bool, notes io.Writer) (string, error) {
-	claim, err := kanban.ClaimFactoryWorker(root, label, auto, os.Getpid(), factoryProcessAlive)
-	var collision *kanban.FactoryLegacyCollisionError
-	if errors.As(err, &collision) {
-		// Legacy agent-/lane- labels share the worker number space; an
-		// operator-typed number held by one is refused by name, never moved.
-		return "", fmt.Errorf("claim factory worker %s: %s (a live session launched under the legacy spelling; "+
-			"legacy agent-<n> and lane-<n> labels share the worker number space) — "+
-			"pick another number with -f worker-<n>, or use -f worker to take the next free one", label, collision)
+	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
+	claim, err := kanban.ClaimFactoryWorker(root, label, auto, os.Getpid(), runID, factoryProcessAlive)
+	var legacyRun *kanban.FactoryLegacyRunError
+	if errors.As(err, &legacyRun) {
+		// REQ-RNC-022: a live legacy record of the same run refuses the join.
+		return "", fmt.Errorf("claim factory lane: %s", legacyRun)
 	}
 	if err != nil {
-		return "", fmt.Errorf("claim factory worker %s: %w", label, err)
+		return "", fmt.Errorf("claim factory lane %s: %w", label, err)
 	}
 	final := claim.Label
 	if notes == nil {
 		return final, nil
 	}
-	if len(claim.SkippedLegacy) > 0 {
-		_, _ = fmt.Fprintf(notes, "factory: skipped number(s) held by legacy label(s) %s — legacy agent-<n> and lane-<n> labels share the worker number space; launching as %s\n",
-			strings.Join(claim.SkippedLegacy, ", "), final)
-	}
-	// Both notes are best-effort operator guidance; the SessionStart worker
-	// notice is the reliable surface for the final name.
-	if kanban.IsLegacyFactoryLabel(label) {
-		_, _ = fmt.Fprintf(notes, "factory: %s; launching as %s\n", legacyFactorySpellingHint(label), final)
-	}
-	if canonical, _ := kanban.CanonicalFactoryLabel(label); canonical != final {
+	if canonical, _ := kanban.CanonicalFactoryLabel(label); canonical != "" && canonical != final {
 		_, _ = fmt.Fprintf(notes, "factory: %s is held by a live session; launching as %s\n", canonical, final)
 	}
 	return final, nil
-}
-
-// legacyFactorySpellingHint names the deprecated spelling a legacy worker
-// label came from and the worker-axis form that replaces it. The legacy
-// spellings keep working (keep-alias); the hint is how they retire without a
-// silent break.
-func legacyFactorySpellingHint(label string) string {
-	if _, isAgent := kanban.SplitFactoryAgentLabel(label); isAgent {
-		return "`-f agent` (and the agent-<n> label) is a deprecated spelling — use `-f worker`"
-	}
-	return "`-f lane-<n>` / `--name lane-<n>` is a deprecated spelling — use `-f worker-<n>`"
 }
 
 // replaceNamedLabel returns args with the first `--name` / `-n` value equal

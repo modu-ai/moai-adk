@@ -21,51 +21,49 @@ func seedLiveFactoryClaims(t *testing.T, root string, labels ...string) {
 	t.Cleanup(func() { factoryProcessAlive = probe })
 }
 
-// TestResolveFactoryWorkerNameExplicitLegacyCollisionIsAnError: `-f
-// worker-3` (or `--name lane-3`) against a live legacy row fails with a
-// message naming the row and saying what to do.
-func TestResolveFactoryWorkerNameExplicitLegacyCollisionIsAnError(t *testing.T) {
-	root := t.TempDir()
-	seedLiveFactoryClaims(t, root, "agent-3")
-
-	var notes bytes.Buffer
-	got, err := resolveFactoryWorkerName(root, "worker-3", false, &notes)
-	if err == nil {
-		t.Fatalf("explicit worker-3 over live agent-3 launched as %q; want an error naming agent-3", got)
-	}
-	t.Logf("operator-facing error: %v", err)
-	for _, want := range []string{"worker-3", "legacy label agent-3", "-f worker"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("error %q lacks %q", err, want)
+// TestResolveFactoryWorkerNameRefusesLegacyRequest: a legacy label typed on
+// the input path is refused with an error naming the canonical lane-<n>
+// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009; the dedicated rejection wording is
+// M2).
+func TestResolveFactoryWorkerNameRefusesLegacyRequest(t *testing.T) {
+	for legacy, canonical := range map[string]string{"worker-3": "lane-3", "agent-2": "lane-2"} {
+		var notes bytes.Buffer
+		got, err := resolveFactoryWorkerName(t.TempDir(), legacy, false, &notes)
+		if err == nil {
+			t.Fatalf("legacy %s launched as %q; want an error naming %s", legacy, got, canonical)
+		}
+		if !strings.Contains(err.Error(), canonical) {
+			t.Errorf("error %q lacks the canonical form %s", err, canonical)
 		}
 	}
 }
 
-// TestResolveFactoryWorkerNameAutoNamesSkippedLegacyRows: `-f worker` whose
-// number lands past live legacy rows says so on stderr, by label.
-func TestResolveFactoryWorkerNameAutoNamesSkippedLegacyRows(t *testing.T) {
+// TestResolveFactoryWorkerNameAutoIgnoresLegacyRows: an auto claim proceeds
+// past a live legacy row (the legacy import shape carries no run id, so it
+// belongs to no run — P3) and the row is never rewritten.
+func TestResolveFactoryWorkerNameAutoIgnoresLegacyRows(t *testing.T) {
 	root := t.TempDir()
-	seedLiveFactoryClaims(t, root, "worker-1", "lane-2")
+	seedLiveFactoryClaims(t, root, "lane-1", "worker-2")
 
 	var notes bytes.Buffer
-	got, err := resolveFactoryWorkerName(root, "worker-3", true, &notes)
-	if err != nil || got != "worker-3" {
-		t.Fatalf("auto worker-3 = (%q, %v), want worker-3", got, err)
+	got, err := resolveFactoryWorkerName(root, "", true, &notes)
+	if err != nil || got != "lane-2" {
+		t.Fatalf("auto claim = (%q, %v), want lane-2 (legacy worker-2 holds no number)", got, err)
 	}
-	out := notes.String()
-	t.Logf("operator-facing stderr: %s", out)
-	for _, want := range []string{"lane-2", "worker-3", "share"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("stderr %q lacks %q (the skipped legacy row must be named)", out, want)
-		}
+	reg := loadFactoryRegistry(factoryRegistryPath(root))
+	if _, ok := reg["worker-2"]; !ok {
+		t.Errorf("legacy row worker-2 must survive untouched, registry = %v", reg)
+	}
+	if _, ok := reg["lane-2"]; !ok {
+		t.Errorf("new claim lane-2 must be recorded, registry = %v", reg)
 	}
 }
 
-// TestParseLauncherEntryMarksAutoAssignedNumbers: only the `-f worker` role
-// token desugars into an auto-assigned number.
+// TestParseLauncherEntryMarksAutoAssignedNumbers: only the `-f worker` /
+// `-f lane` role tokens desugar into an auto-assigned number.
 func TestParseLauncherEntryMarksAutoAssignedNumbers(t *testing.T) {
 	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
-	for args, want := range map[string]bool{"-f worker": true, "-f agent": true, "-f worker-2": false, "-f lane-2": false} {
+	for args, want := range map[string]bool{"-f worker": true, "-f agent": true, "-f lane": true, "-f worker-2": false, "-f lane-2": false} {
 		p, err := parseLauncherEntry(strings.Fields(args))
 		if err != nil {
 			t.Fatalf("parseLauncherEntry(%s): %v", args, err)

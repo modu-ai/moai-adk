@@ -151,10 +151,10 @@ func LeadLabel() string {
 	return RoleLead
 }
 
-// LeadNumberLabel joins the lead role and a collision number into the bumped
-// label a lead launches under when the bare name is held by a live session
-// (`lead-1`, `lead-2`, ...). It is the lead sibling of CompanionNumberLabel
-// and shares its shape.
+// LeadNumberLabel joins the leader role and a collision number into the
+// bumped label a leader launches under when the bare name is held by a live
+// session (`leader-1`, `leader-2`, ...). It is the leader sibling of
+// CompanionNumberLabel and shares its shape.
 func LeadNumberLabel(n int) string {
 	return RoleLead + "-" + strconv.Itoa(n)
 }
@@ -190,24 +190,22 @@ func SplitCompanionLabel(label string) (role, suffix string, ok bool) {
 	return role, suffix, true
 }
 
-// SplitLeadLabel splits a lead label into its optional suffix and reports
-// whether the value has the lead shape at all. It is the lead-side counterpart
-// of SplitCompanionLabel, and admits the same two forms:
+// SplitLeadLabel splits a leader label into its optional suffix and reports
+// whether the value has the leader shape at all. It is the leader-side
+// counterpart of SplitCompanionLabel, and admits the same two forms:
 //
-//   - the bare role (`lead`) — the form the notice announces and the common
+//   - the bare role (`leader`) — the form the notice announces and the common
 //     case under the one-machine-one-run policy, returning an empty suffix;
-//   - `lead-<suffix>` — a collision number the launcher appended (`lead-1`),
-//     or a legacy run id an operator is still pasting (`lead-abc123`).
+//   - `leader-<suffix>` — a collision number the launcher appended
+//     (`leader-2`), or a run id an operator is still pasting
+//     (`leader-abc123`).
 //
-// The suffixed form is MIGRATED, not rejected, for the same reason the
-// companion side migrates its own: a rejected suffix fails the shape check,
-// and `-k --name lead-abc123` then falls through to the branch that treats an
-// unrecognized name as no lead name at all — a silent misroute worse than
-// joining under a stale suffix. A role name carries no hyphen, so the first
-// hyphen is the boundary and a second hyphen never parses.
+// The legacy `lead` / `lead-<suffix>` spellings do NOT parse (they are
+// detection values, IsLegacyLeadLabel) — a legacy label maps to no role
+// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009).
 //
 // The suffix is returned for the caller to interpret; it is NOT itself a run
-// id. Whether a legacy suffix is adopted as one is the launcher's decision
+// id. Whether a suffix is adopted as one is the launcher's decision
 // (internal/cli/kanban.go leadRunID), which is where a bump number must not be
 // mistaken for an id.
 func SplitLeadLabel(label string) (suffix string, ok bool) {
@@ -230,47 +228,49 @@ func isCompanionRole(role string) bool {
 	return false
 }
 
-// factoryLaneRole is the label prefix of a factory run's numbered workers
-// (`worker-<n>`). It is deliberately absent from CompanionRoles: a factory
-// worker is not a kanban companion, so the companion shape discriminator must
-// not admit the label (and by the same construction a kanban role is never
-// mistaken for a worker number).
+// factoryLaneRole is the label prefix of a factory run's numbered lanes
+// (`lane-<n>`, SPEC-ROLE-NAMING-CODE-001 REQ-RNC-004/-010). It is deliberately
+// absent from CompanionRoles: a factory lane is not a kanban companion, so the
+// companion shape discriminator must not admit the label (and by the same
+// construction a kanban role is never mistaken for a lane number).
 //
-// COMPATIBILITY (label rename with read aliases): factory worker sessions were
-// previously labelled `lane-<n>` (numbered form) and `agent-<n>` (the
-// role-token join form). Both legacy prefixes stay READABLE — a registry row,
-// broker slot, or `--name` value carrying one parses to the same number — but
-// every label this package PRODUCES is `worker-<n>`, and the two legacy
-// shapes share the one worker numbering (a live `lane-3` or `agent-3` claim
-// takes number 3). See SplitFactoryLaneLabel, IsLegacyFactoryLabel, and
-// CanonicalFactoryLabel.
-const factoryLaneRole = "worker"
+// COMPATIBILITY (label rename, rejection not aliasing): factory lane sessions
+// were previously labelled `worker-<n>` and, before that, `agent-<n>`. The
+// legacy spellings are NOT readable aliases any more — a legacy label maps to
+// no role and holds no lane number (SplitFactoryLaneLabel admits `lane-<n>`
+// only). They survive solely as DETECTION values for the stale-record rule
+// (SplitFactoryLegacyLabel, IsLegacyFactoryLabel, IsLegacyFactoryRoleValue):
+// a live legacy record of the same run refuses the join (REQ-RNC-022), a dead
+// one ages out through the existing stale paths, and nothing on disk is
+// rewritten.
+const factoryLaneRole = "lane"
 
-// factoryLegacyLaneRole and factoryLegacyAgentRole are the read-only legacy
-// prefixes of factory worker labels.
+// factoryLegacyWorkerRole and factoryLegacyAgentRole are the legacy lane
+// label prefixes (`worker-<n>`, `agent-<n>`). They exist only to be detected
+// and refused or reported stale — never written, never mapped to a role
+// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009).
 const (
-	factoryLegacyLaneRole  = "lane"
-	factoryLegacyAgentRole = "agent"
+	factoryLegacyWorkerRole = "worker"
+	factoryLegacyAgentRole  = "agent"
 )
 
-// FactoryLaneLabel joins the worker prefix and a number into the label a
-// factory worker session is launched under (`worker-3`).
+// FactoryLaneLabel joins the lane prefix and a number into the label a
+// factory lane session is launched under (`lane-3`).
 //
 // The label deliberately never satisfies SplitCompanionLabel or
-// SplitLeadLabel: factory workers neither occupy the three-role kanban chain
-// nor the lead position, so a factory name is never reclassified by the
+// SplitLeadLabel: factory lanes neither occupy the three-role kanban chain
+// nor the leader position, so a factory name is never reclassified by the
 // kanban shape discriminators. Like the companion labels it carries no run id
-// — every worker is addressed by name alone (the run's lead dispatches cards
+// — every lane is addressed by name alone (the run's leader dispatches cards
 // over cross-session messages), which is why the launcher maintains a
 // liveness-checked registry to keep the numbered names unique.
 func FactoryLaneLabel(n int) string {
 	return factoryLaneRole + "-" + strconv.Itoa(n)
 }
 
-// FactoryAgentLabel renders the LEGACY `agent-<n>` label. Nothing launches
-// under it any more; it exists so the launcher can route a legacy `-f agent`
-// join through the one deprecation-hint site (the claim canonicalizes it to
-// `worker-<n>`).
+// FactoryAgentLabel renders the LEGACY `agent-<n>` label shape. Nothing
+// launches under it and no reader maps it to a lane; it exists for detection
+// and test fixtures only (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009).
 func FactoryAgentLabel(n int) string {
 	return factoryLegacyAgentRole + "-" + strconv.Itoa(n)
 }
@@ -292,7 +292,9 @@ func splitFactoryPrefixedLabel(label string) (prefix string, n int, ok bool) {
 }
 
 // SplitFactoryAgentLabel splits a legacy `agent-<n>` label into its number
-// and reports whether the value has that shape at all.
+// and reports whether the value has that shape at all. Detection only: a
+// match never maps the label to a lane (SPEC-ROLE-NAMING-CODE-001
+// REQ-RNC-009).
 func SplitFactoryAgentLabel(label string) (n int, ok bool) {
 	prefix, n, ok := splitFactoryPrefixedLabel(label)
 	if !ok || prefix != factoryLegacyAgentRole {
@@ -301,35 +303,57 @@ func SplitFactoryAgentLabel(label string) (n int, ok bool) {
 	return n, true
 }
 
-// SplitFactoryLaneLabel splits a factory worker label into its number and
-// reports whether the value has the worker shape at all: the canonical
-// `worker-<n>` or the legacy `lane-<n>`. The shape is the discriminator for
-// factory worker recognition, exactly as SplitCompanionLabel is for kanban
-// companions. The legacy `agent-<n>` shape is recognised separately by
-// SplitFactoryAgentLabel (and by CanonicalFactoryLabel, which accepts all
-// three).
+// SplitFactoryLaneLabel splits a factory lane label into its number and
+// reports whether the value has the canonical `lane-<n>` shape at all. It is
+// the discriminator for factory lane recognition, exactly as
+// SplitCompanionLabel is for kanban companions. The legacy `worker-<n>` /
+// `agent-<n>` shapes are DETECTION values only (SplitFactoryLegacyLabel,
+// IsLegacyFactoryLabel) — they never parse as a lane.
 func SplitFactoryLaneLabel(label string) (n int, ok bool) {
 	prefix, n, ok := splitFactoryPrefixedLabel(label)
-	if !ok || (prefix != factoryLaneRole && prefix != factoryLegacyLaneRole) {
+	if !ok || prefix != factoryLaneRole {
 		return 0, false
 	}
 	return n, true
 }
 
-// factoryLabelNumber parses any factory worker label shape — canonical
-// `worker-<n>` or legacy `lane-<n>` / `agent-<n>` — into its number.
-func factoryLabelNumber(label string) (n int, ok bool) {
-	if n, ok := SplitFactoryLaneLabel(label); ok {
-		return n, true
+// SplitFactoryLegacyLabel splits a legacy factory label (`worker-<n>` /
+// `agent-<n>`) into its number and reports whether the value has a legacy
+// shape at all. Detection only: the number is for refusal/stale messaging,
+// never a lane number (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009).
+func SplitFactoryLegacyLabel(label string) (n int, ok bool) {
+	prefix, n, ok := splitFactoryPrefixedLabel(label)
+	if !ok || (prefix != factoryLegacyWorkerRole && prefix != factoryLegacyAgentRole) {
+		return 0, false
 	}
-	return SplitFactoryAgentLabel(label)
+	return n, true
 }
 
-// IsLegacyFactoryLabel reports whether label is one of the pre-rename worker
-// shapes (`lane-<n>`, `agent-<n>`) — the launcher's deprecation-hint trigger.
+// factoryLabelNumber parses a CANONICAL factory lane label (`lane-<n>`) into
+// its number. Legacy shapes are deliberately not accepted — a legacy claim
+// holds no number in the new regime; the same-run refusal replaced the shared
+// number space (SPEC-ROLE-NAMING-CODE-001 design §4).
+func factoryLabelNumber(label string) (n int, ok bool) {
+	return SplitFactoryLaneLabel(label)
+}
+
+// IsLegacyFactoryLabel reports whether label is one of the pre-rename lane
+// shapes (`worker-<n>`, `agent-<n>`) — the stale-record detection trigger
+// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-022).
 func IsLegacyFactoryLabel(label string) bool {
 	prefix, _, ok := splitFactoryPrefixedLabel(label)
-	return ok && (prefix == factoryLegacyLaneRole || prefix == factoryLegacyAgentRole)
+	return ok && (prefix == factoryLegacyWorkerRole || prefix == factoryLegacyAgentRole)
+}
+
+// IsLegacyFactoryRoleValue reports whether value is ANY legacy factory role
+// spelling — the bare role tokens (`worker`, `agent`) as well as their
+// numbered labels. Detection only: a true result triggers a refuse-or-notice
+// path, never a role mapping (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009).
+func IsLegacyFactoryRoleValue(value string) bool {
+	if value == factoryLegacyWorkerRole || value == factoryLegacyAgentRole {
+		return true
+	}
+	return IsLegacyFactoryLabel(value)
 }
 
 // CanonicalFactoryLabel maps any factory worker label shape onto its
@@ -343,10 +367,11 @@ func CanonicalFactoryLabel(label string) (string, bool) {
 	return FactoryLaneLabel(n), true
 }
 
-// NextFactoryWorkerNumber returns the number a `-f worker` join takes: one
-// past the highest LIVE claim in the pruned registry, across the canonical
-// and both legacy shapes (1 when nothing is claimed). Dead claims are pruned
-// first so a crashed worker frees its number for reuse.
+// NextFactoryWorkerNumber returns the number a `-f lane` join takes: one
+// past the highest LIVE canonical claim in the pruned registry (1 when
+// nothing is claimed). Legacy claims hold no number — a live legacy record
+// refuses the join instead (REQ-RNC-022); dead claims are pruned first so a
+// crashed lane frees its number for reuse.
 func NextFactoryWorkerNumber(reg map[string]FactoryWorkerEntry, alive func(int) bool) int {
 	reg = PruneFactoryDeadClaims(reg, alive)
 	highest := 0

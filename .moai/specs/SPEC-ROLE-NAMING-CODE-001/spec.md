@@ -2,9 +2,9 @@
 id: SPEC-ROLE-NAMING-CODE-001
 title: "Role naming unification, code and CLI layer — leader and lane"
 version: "0.3.1"
-status: draft
+status: in-progress
 created: 2026-09-26
-updated: 2026-09-26
+updated: 2026-09-27
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"

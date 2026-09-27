@@ -10,6 +10,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 func launchEnvValue(env []string, key string) string {
@@ -44,9 +45,15 @@ func registerFactoryLaunchPending(ctx context.Context, root string, env []string
 	if err := factorymsg.ValidateActiveRun(ctx, root, runID); err != nil {
 		return factorymsg.Peer{}, err
 	}
-	role, slot := "lead", "lead"
+	// Persisted vocabulary: `leader` for the run's leader, `lane`/`lane-<n>`
+	// for a lane (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-010). A legacy label in
+	// the launch environment is refused — never registered.
+	role, slot := kanban.RoleLead, kanban.RoleLead
 	if worker != "" {
-		role, slot = "worker", worker
+		if kanban.IsLegacyFactoryRoleValue(worker) {
+			return factorymsg.Peer{}, fmt.Errorf("factory lane label %q is legacy vocabulary; relaunch under the lane vocabulary (lane-<n>)", worker)
+		}
+		role, slot = kanban.RoleLane, worker
 	}
 	backend := strings.TrimSpace(launchEnvValue(env, config.EnvMoaiKanbanBackend))
 	if backend == "" {

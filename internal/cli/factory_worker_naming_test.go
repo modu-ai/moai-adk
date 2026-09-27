@@ -25,9 +25,13 @@ func TestParseFactoryFlagWorkerVocabulary(t *testing.T) {
 		{args: []string{"-f", "worker"}, wantRole: true},
 		{args: []string{"-f=worker"}, wantRole: true},
 		{args: []string{"-f", "agent"}, wantRole: true, wantLegacy: true},
-		{args: []string{"-f", "worker-3"}, wantNum: 3, wantLabel: "worker-3"},
-		{args: []string{"--factory=worker-7"}, wantNum: 7, wantLabel: "worker-7"},
 		{args: []string{"-f", "lane-3"}, wantNum: 3, wantLabel: "lane-3"},
+		{args: []string{"--factory=lane-7"}, wantNum: 7, wantLabel: "lane-7"},
+		{args: []string{"-f", "lane-3"}, wantNum: 3, wantLabel: "lane-3"},
+		{args: []string{"-f", "lane"}, wantRole: true},
+		// Legacy label shapes still parse at M1 (the claim refuses them);
+		// the dedicated rejection wording is M2.
+		{args: []string{"-f", "worker-3"}, wantNum: 3, wantLabel: "worker-3"},
 	}
 	for _, c := range cases {
 		p, err := parseFactoryFlag(c.args)
@@ -85,32 +89,26 @@ func TestParseLauncherEntryDesugarsWorkerLabel(t *testing.T) {
 	}
 }
 
-// TestResolveFactoryWorkerNameCanonicalizesLegacyWithHint: a legacy label
-// (typed `-f lane-<n>` / `--name lane-<n>`, or the `-f agent` desugar) is
-// launched under the canonical `worker-<n>` and the operator is told the
-// new spelling — the alias is kept, never silent.
-func TestResolveFactoryWorkerNameCanonicalizesLegacyWithHint(t *testing.T) {
-	cases := []struct {
-		label, want, hint string
-	}{
-		{"lane-4", "worker-4", "-f worker-<n>"},
-		{"agent-2", "worker-2", "-f worker"},
+// TestResolveFactoryWorkerNameRefusesLegacyLabel: a legacy label on the
+// input path is refused with an error naming the canonical lane-<n>
+// (REQ-RNC-009; the dedicated rejection wording is M2).
+func TestResolveFactoryWorkerNameRefusesLegacyLabel(t *testing.T) {
+	cases := []struct{ label, want string }{
+		{"worker-4", "lane-4"},
+		{"agent-2", "lane-2"},
 	}
 	for _, c := range cases {
 		var notes bytes.Buffer
-		got, err := resolveFactoryWorkerName(t.TempDir(), c.label, false, &notes)
-		if err != nil || got != c.want {
-			t.Fatalf("resolve %s = (%q, %v), want %s", c.label, got, err, c.want)
-		}
-		out := notes.String()
-		if !strings.Contains(out, "deprecated") || !strings.Contains(out, c.hint) || !strings.Contains(out, c.want) {
-			t.Errorf("resolve %s notes = %q, want a deprecation hint naming %q and %q", c.label, out, c.hint, c.want)
+		if got, err := resolveFactoryWorkerName(t.TempDir(), c.label, false, &notes); err == nil {
+			t.Fatalf("resolve %s = %q, want an error naming %s", c.label, got, c.want)
+		} else if !strings.Contains(err.Error(), c.want) {
+			t.Errorf("resolve %s error %q lacks the canonical form %s", c.label, err.Error(), c.want)
 		}
 	}
 
 	var notes bytes.Buffer
-	if got, err := resolveFactoryWorkerName(t.TempDir(), "worker-1", false, &notes); err != nil || got != "worker-1" || notes.Len() != 0 {
-		t.Errorf("canonical free label = (%q, %v, notes %q), want worker-1 with no note", got, err, notes.String())
+	if got, err := resolveFactoryWorkerName(t.TempDir(), "lane-1", false, &notes); err != nil || got != "lane-1" || notes.Len() != 0 {
+		t.Errorf("canonical free label = (%q, %v, notes %q), want lane-1 with no note", got, err, notes.String())
 	}
 }
 
@@ -119,21 +117,21 @@ func NextFactoryWorkerNumberForTest(reg map[string]kanban.FactoryWorkerEntry, al
 	return kanban.NextFactoryWorkerNumber(reg, alive)
 }
 
-// TestNextFactoryWorkerNumber: the worker join takes one past the highest
-// live claim across the canonical and legacy shapes — the former separate
-// agent-<n> and lane-<n> sequences are one worker numbering now.
+// TestNextFactoryWorkerNumber: the lane join takes one past the highest LIVE
+// canonical claim. Legacy claims hold no number — a live legacy record
+// refuses the join instead (design §4).
 func TestNextFactoryWorkerNumber(t *testing.T) {
 	alive := func(int) bool { return true }
 	if n := NextFactoryWorkerNumberForTest(map[string]kanban.FactoryWorkerEntry{}, alive); n != 1 {
 		t.Errorf("empty registry = %d, want 1", n)
 	}
 	reg := map[string]kanban.FactoryWorkerEntry{
-		"worker-1": {PID: 100},
-		"agent-2":  {PID: 101}, // legacy row
-		"lane-5":   {PID: 102}, // legacy row — shares the one numbering
+		"lane-1":   {PID: 100},
+		"agent-2":  {PID: 101}, // legacy row — holds no number
+		"worker-5": {PID: 102}, // legacy row — holds no number
 	}
-	if n := NextFactoryWorkerNumberForTest(reg, alive); n != 6 {
-		t.Errorf("registry up to lane-5 = %d, want 6", n)
+	if n := NextFactoryWorkerNumberForTest(reg, alive); n != 2 {
+		t.Errorf("registry up to lane-1 = %d, want 2", n)
 	}
 	dead := func(int) bool { return false }
 	if n := NextFactoryWorkerNumberForTest(reg, dead); n != 1 {

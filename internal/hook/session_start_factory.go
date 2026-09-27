@@ -39,17 +39,26 @@ import (
 // lang, or "" when the session is not part of a factory run. root is the
 // project root the lead's loop data (queue count, free slots) is read under;
 // an empty root degrades to zero-count/all-free summaries inside the notice.
+// sessionID keys the stale-run check: a session whose launch label or record
+// carries a legacy role value gets the stale-run notice instead of a leader
+// or lane notice (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-022, REQ-RNC-025).
 //
 // Fail-open throughout, matching kanbanBootstrapNotice: an unparseable lane
 // count degrades to omitting the count-dependent copy rather than failing the
 // session start, and an unknown lang degrades to English, never to an empty
 // notice.
-func factoryBootstrapNotice(root, lang string) string {
+func factoryBootstrapNotice(root, sessionID, lang string) string {
 	if label := os.Getenv(config.EnvMoaiFactoryWorker); label != "" {
+		if kanban.IsLegacyFactoryRoleValue(label) {
+			return legacyFactoryHookNotice(label, os.Getenv(config.EnvMoaiKanbanID))
+		}
 		return factoryWorkerNotice(label, factoryWorkersEnv(), lang)
 	}
 	if os.Getenv(config.EnvMoaiFactoryWorkers) == "" {
 		return ""
+	}
+	if notice := staleRunNoticeFor(root, sessionID); notice != "" {
+		return notice
 	}
 	return factoryLeadNotice(os.Getenv(config.EnvMoaiKanbanID), factoryWorkersEnv(), root, lang)
 }
@@ -58,12 +67,14 @@ func factoryBootstrapNotice(root, lang string) string {
 // genuinely new session, on the same startup-only allowlist and for the same
 // reason as kanbanBootstrapNoticeForSource: the factory environment survives
 // resume / clear / compact / fork, and re-announcing the bootstrap would tell
-// the operator to open lane terminals that are already open.
-func factoryBootstrapNoticeForSource(source, root, lang string) string {
+// the operator to open lane terminals that are already open. The stale-run
+// notice shares the same gate — a relaunch reminder repeated on every re-entry
+// is the same noise problem in reverse.
+func factoryBootstrapNoticeForSource(source, root, sessionID, lang string) string {
 	if source != "" && source != "startup" {
 		return ""
 	}
-	return factoryBootstrapNotice(root, lang)
+	return factoryBootstrapNotice(root, sessionID, lang)
 }
 
 // factoryWorkersEnv reads the run's fan-out size from the environment the

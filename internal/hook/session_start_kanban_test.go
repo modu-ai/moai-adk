@@ -40,7 +40,7 @@ func clearKanbanEnv(t *testing.T) {
 func TestKanbanBootstrapNoticeSilentForOrdinarySession(t *testing.T) {
 	clearKanbanEnv(t)
 
-	if got := kanbanBootstrapNotice("", langEnglish); got != "" {
+	if got := kanbanBootstrapNotice("", "", langEnglish); got != "" {
 		t.Errorf("non-kanban session got a notice: %q", got)
 	}
 }
@@ -55,7 +55,7 @@ func TestKanbanBootstrapNoticeLead(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanID, "tjlgt1")
 	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-kanban/tjlgt1")
 
-	got := kanbanBootstrapNotice("", langEnglish)
+	got := kanbanBootstrapNotice("", "", langEnglish)
 	if got == "" {
 		t.Fatal("lead session got no notice")
 	}
@@ -89,7 +89,7 @@ func TestKanbanBootstrapNoticeCompanion(t *testing.T) {
 			clearKanbanEnv(t)
 			t.Setenv(config.EnvMoaiKanbanLabel, kanban.CompanionLabel(role))
 
-			got := kanbanBootstrapNotice("", langEnglish)
+			got := kanbanBootstrapNotice("", "", langEnglish)
 			if !strings.Contains(got, role) {
 				t.Errorf("companion notice = %q, want it to name label %q", got, role)
 			}
@@ -118,7 +118,7 @@ func TestKanbanBootstrapNoticeFailsOpen(t *testing.T) {
 		clearKanbanEnv(t)
 		t.Setenv(config.EnvMoaiKanban, "1")
 
-		if got := kanbanBootstrapNotice("", langEnglish); got != "" {
+		if got := kanbanBootstrapNotice("", "", langEnglish); got != "" {
 			t.Errorf("emitted a notice with no run id: %q", got)
 		}
 	})
@@ -127,7 +127,7 @@ func TestKanbanBootstrapNoticeFailsOpen(t *testing.T) {
 		clearKanbanEnv(t)
 		t.Setenv(config.EnvMoaiKanbanLabel, "oauth-migration")
 
-		if got := kanbanBootstrapNotice("", langEnglish); got != "" {
+		if got := kanbanBootstrapNotice("", "", langEnglish); got != "" {
 			t.Errorf("emitted a notice for a non-companion label: %q", got)
 		}
 	})
@@ -142,7 +142,7 @@ func TestKanbanBootstrapNoticeLabelWinsOverKanban(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanID, "tjlgt1")
 	t.Setenv(config.EnvMoaiKanbanLabel, "plan-tjlgt1")
 
-	got := kanbanBootstrapNotice("", langEnglish)
+	got := kanbanBootstrapNotice("", "", langEnglish)
 	if strings.Contains(got, "--name") {
 		t.Errorf("a labelled session printed the launch block:\n%s", got)
 	}
@@ -478,7 +478,7 @@ func TestKanbanLeadNoticeBacklogSummaryEveryLocale(t *testing.T) {
 				{ID: "t1", Text: "only card", State: kanban.BacklogStateQueued},
 			})
 
-			got := kanbanBootstrapNotice(root, lang)
+			got := kanbanBootstrapNotice(root, "", lang)
 			want := fmt.Sprintf(kanbanMessagesFor(lang).backlogSummary, 1)
 			if !strings.Contains(got, want) {
 				t.Errorf("locale %q: notice omits its backlog summary %q:\n%s", lang, want, got)

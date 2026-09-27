@@ -43,8 +43,10 @@ const (
 	maxVerifyRows   = 10
 )
 
-// ChainRoles 는 kanban-dispatch.md 의 역할 순서를 그대로 따른다.
-var ChainRoles = []string{"lead", "plan", "run", "sync"}
+// ChainRoles 는 kanban-dispatch.md 의 역할 순서를 그대로 따른다. 리더 역할
+// 값은 `leader` 다 (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009/-010) — 레거시
+// `lead` 레코드는 어떤 역할로도 매핑되지 않는다.
+var ChainRoles = []string{"leader", "plan", "run", "sync"}
 
 // KanbanRecord 는 디스크에 있는 칸반 세션 기록이다.
 type KanbanRecord = kanban.Record

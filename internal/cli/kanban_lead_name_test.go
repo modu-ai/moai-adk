@@ -54,7 +54,7 @@ func TestLeadNameArgs_InjectsWhenUnnamed(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanbanID, "abc123")
 
 	got := leadNameArgs([]string{"-p", "work"})
-	want := []string{"--name", "lead"}
+	want := []string{"--name", "leader"}
 	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
 		t.Fatalf("leadNameArgs = %q, want %q", got, want)
 	}
@@ -88,8 +88,8 @@ func TestLeadNameArgs_InjectsWithoutRunID(t *testing.T) {
 	clearAllKanbanEnv(t)
 
 	got := leadNameArgs(nil)
-	if len(got) != 2 || got[0] != "--name" || got[1] != "lead" {
-		t.Errorf("leadNameArgs with no run id = %q, want [--name lead]", got)
+	if len(got) != 2 || got[0] != "--name" || got[1] != "leader" {
+		t.Errorf("leadNameArgs with no run id = %q, want [--name leader]", got)
 	}
 }
 
@@ -124,7 +124,7 @@ func TestLeadNameArgs_LabelIsNotCompanionShape(t *testing.T) {
 func TestEnterKanbanMode_AdoptsOperatorLeadRunID(t *testing.T) {
 	clearAllKanbanEnv(t)
 
-	args := []string{"--name", "lead-abc123"}
+	args := []string{"--name", "leader-abc123"}
 	label, ok := parseLeadLabel(args)
 	if !ok {
 		t.Fatalf("parseLeadLabel(%q) did not recognize the lead name", args)
@@ -155,11 +155,11 @@ func TestEnterKanbanMode_MintsWithoutLeadName(t *testing.T) {
 	}{
 		{"no name at all", ""},
 		{"non-lead name", "board-watch"},
-		{"the bare lead name carries no id to adopt", "lead"},
-		{"a bump number is not a run id", "lead-2"},
-		{"lead prefix with no id", "lead-"},
-		{"uppercase is not a run id shape", "lead-ABC123"},
-		{"a second hyphen is not a run id shape", "lead-a-b"},
+		{"the bare leader name carries no id to adopt", "leader"},
+		{"a bump number is not a run id", "leader-2"},
+		{"lead prefix with no id", "leader-"},
+		{"uppercase is not a run id shape", "leader-ABC123"},
+		{"a second hyphen is not a run id shape", "leader-a-b"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			clearAllKanbanEnv(t)
@@ -183,16 +183,16 @@ func TestParseLeadLabel(t *testing.T) {
 		args []string
 		want string
 	}{
-		{"the bare lead name", []string{"--name", "lead"}, "lead"},
-		{"a bumped lead name", []string{"--name", "lead-1"}, "lead-1"},
-		{"--name value", []string{"--name", "lead-abc123"}, "lead-abc123"},
-		{"--name=value", []string{"--name=lead-abc123"}, "lead-abc123"},
-		{"-n value", []string{"-n", "lead-abc123"}, "lead-abc123"},
-		{"-n=value", []string{"-n=lead-abc123"}, "lead-abc123"},
+		{"the bare leader name", []string{"--name", "leader"}, "leader"},
+		{"a bumped leader name", []string{"--name", "leader-1"}, "leader-1"},
+		{"--name value", []string{"--name", "leader-abc123"}, "leader-abc123"},
+		{"--name=value", []string{"--name=leader-abc123"}, "leader-abc123"},
+		{"-n value", []string{"-n", "leader-abc123"}, "leader-abc123"},
+		{"-n=value", []string{"-n=leader-abc123"}, "leader-abc123"},
 		{"absent", []string{"-p", "work"}, ""},
 		{"a non-lead name is not ours", []string{"--name", "board-watch"}, ""},
 		{"a companion name is not ours", []string{"--name", "run-abc123"}, ""},
-		{"past the pass-through marker is not ours", []string{"--", "--name", "lead-abc123"}, ""},
+		{"past the pass-through marker is not ours", []string{"--", "--name", "leader-abc123"}, ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -217,7 +217,7 @@ func TestParseLeadLabel(t *testing.T) {
 func TestLeadLabelNeverReadsAsCompanion(t *testing.T) {
 	t.Parallel()
 
-	args := []string{"--name", "lead-abc123"}
+	args := []string{"--name", "leader-abc123"}
 	if _, isCompanion := parseCompanionLabel(args); isCompanion {
 		t.Fatalf("parseCompanionLabel(%q) matched a lead name", args)
 	}
@@ -250,7 +250,7 @@ func TestLeadRunID_LegacyNameWinsOverEnvironment(t *testing.T) {
 	clearAllKanbanEnv(t)
 	t.Setenv(config.EnvMoaiKanbanID, "stale1")
 
-	if got := leadRunID("lead-abc123"); got != "abc123" {
+	if got := leadRunID("leader-abc123"); got != "abc123" {
 		t.Errorf("leadRunID(\"lead-abc123\") = %q, want %q (the pasted name wins)", got, "abc123")
 	}
 }

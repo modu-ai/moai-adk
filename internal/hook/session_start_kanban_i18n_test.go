@@ -129,14 +129,14 @@ func TestKanbanNoticePreservesProtocolTokensInEveryLocale(t *testing.T) {
 			t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-kanban/tjpzpl")
 			t.Setenv(config.EnvMoaiKanbanSpec, "SPEC-FOO-001")
 
-			got := kanbanBootstrapNotice("", lang)
+			got := kanbanBootstrapNotice("", "", lang)
 			for _, want := range []string{
 				"moai cc -k --name plan",
 				"moai glm -k --name run",
 				"moai cc -k --name sync",
 				"moai glm -k --name",
 				"`judge`",
-				"`worker-N`",
+				"`lane-N`",
 				"/tmp/moai-socket-kanban/tjpzpl",
 				"SPEC-FOO-001",
 				"`moai todo`",
@@ -162,7 +162,7 @@ func TestKanbanLeadNoticeBlockLayout(t *testing.T) {
 			t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-kanban/tjq2bd")
 			t.Setenv(config.EnvMoaiKanbanSettingsInjected, "1")
 
-			blocks := strings.Split(strings.TrimRight(kanbanBootstrapNotice("", lang), "\n"), "\n\n")
+			blocks := strings.Split(strings.TrimRight(kanbanBootstrapNotice("", "", lang), "\n"), "\n\n")
 			if len(blocks) != 5 {
 				t.Fatalf("expected 5 blank-separated blocks, got %d:\n%q", len(blocks), blocks)
 			}
@@ -204,7 +204,7 @@ func TestKanbanLeadNoticeSPECKeepsItsOwnLine(t *testing.T) {
 			t.Setenv(config.EnvMoaiKanbanID, "tjq2bd")
 			t.Setenv(config.EnvMoaiKanbanSpec, "SPEC-FOO-001")
 
-			for _, line := range strings.Split(kanbanBootstrapNotice("", lang), "\n") {
+			for _, line := range strings.Split(kanbanBootstrapNotice("", "", lang), "\n") {
 				if !strings.Contains(line, "SPEC-FOO-001") {
 					continue
 				}

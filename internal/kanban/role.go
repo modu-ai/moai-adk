@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -29,10 +30,28 @@ import (
 // The role SET and the election that occupies it are the bootstrap sibling's
 // (REQ-KS-004) — this constant names a role value, not an election rule, and
 // a declaration may carry any role string the topology defines. The value is
-// the operator final design's session noun (2026-08-18): the lead session is
-// named `lead-<run-id>` — the same value v3.1.0 shipped — and
-// LeadLabel/SplitLeadLabel compose and parse that shape from this constant.
-const RoleLead = "lead"
+// the operator's leader noun (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-006/-010):
+// the managing session is `leader`, its bumped and run-id forms
+// `leader-<n>` / `leader-<run-id>` — the same value the label composer
+// (LeadLabel), the collision bumper (LeadNumberLabel), the shape parser
+// (SplitLeadLabel), the board write guard, and the session records all use.
+// The pre-rename value `lead` survives only as a detection value
+// (IsLegacyLeadLabel): readers refuse it, writers never write it, and no
+// existing record is rewritten (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009).
+const RoleLead = "leader"
+
+// legacyLeadLabel is the pre-rename leader value. It exists only to be
+// detected (stale-run notices, registry notices) — never written, never
+// accepted as a role (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009).
+const legacyLeadLabel = "lead"
+
+// IsLegacyLeadLabel reports whether label is a pre-rename leader spelling —
+// the bare `lead` or any `lead-<suffix>` form. Detection only: a true result
+// never maps the value to the leader role, it triggers a refuse-or-notice
+// path (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009, REQ-RNC-025).
+func IsLegacyLeadLabel(label string) bool {
+	return label == legacyLeadLabel || strings.HasPrefix(label, legacyLeadLabel+"-")
+}
 
 // RoleLane names a factory run's numbered worker session (the `worker-<n>`
 // labels, SPEC-FACTORY-WORKER-FANOUT-001). The persisted value stays "lane":

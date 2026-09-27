@@ -172,7 +172,7 @@ func TestClaimFactoryWorkerNameConcurrentClaimsAreUnique(t *testing.T) {
 		wg.Add(1)
 		go func(pid int) {
 			defer wg.Done()
-			label, err := ClaimFactoryWorkerName(root, "lane-1", pid, func(int) bool { return true })
+			label, err := ClaimFactoryWorkerName(root, "lane-1", pid, "testrun", func(int) bool { return true })
 			results <- label
 			errs <- err
 		}(10000 + i)

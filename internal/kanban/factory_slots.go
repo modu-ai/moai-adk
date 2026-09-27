@@ -110,48 +110,47 @@ func SaveFactoryRegistry(path string, reg map[string]FactoryWorkerEntry) error {
 
 // ClaimFactoryWorkerName is ClaimFactoryWorker for an operator-typed number,
 // returning only the recorded label.
-func ClaimFactoryWorkerName(root, requested string, pid int, alive func(int) bool) (string, error) {
-	claim, err := ClaimFactoryWorker(root, requested, false, pid, alive)
+func ClaimFactoryWorkerName(root, requested string, pid int, runID string, alive func(int) bool) (string, error) {
+	claim, err := ClaimFactoryWorker(root, requested, false, pid, runID, alive)
 	return claim.Label, err
 }
 
-// FactoryClaim is the outcome of a worker-label claim.
+// FactoryClaim is the outcome of a lane-label claim.
 type FactoryClaim struct {
-	Label         string   // the canonical worker-<n> label recorded for pid
-	SkippedLegacy []string // live legacy labels whose numbers the claim passed over
+	Label string // the canonical lane-<n> label recorded for pid
 }
 
-// FactoryLegacyCollisionError reports an explicit-number request whose
-// number is held by a live legacy (`agent-<n>` / `lane-<n>`) row.
-type FactoryLegacyCollisionError struct {
-	Requested string // the canonical label that was asked for
-	Held      string // the live legacy label holding the same number
+// FactoryLegacyRunError reports a join refused because the run already holds
+// a LIVE record in the legacy vocabulary (written by a pre-rename binary).
+// Adopting or numbering around it would mix two vocabularies in one run; the
+// run must be retired and relaunched (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-022).
+// The message names the legacy value, the run id, and the retire step.
+type FactoryLegacyRunError struct {
+	Label string // the live legacy label the run holds
+	RunID string // the run the legacy record belongs to
 }
 
-func (e *FactoryLegacyCollisionError) Error() string {
-	return e.Requested + " is held by legacy label " + e.Held
+func (e *FactoryLegacyRunError) Error() string {
+	return e.Label + ": factory run " + e.RunID + " holds a live record from a binary before the leader/lane rename — " +
+		"end its sessions, retire with 'moai factory runs --retire " + e.RunID + "', then relaunch"
 }
 
-// ClaimFactoryWorker atomically removes dead claims, selects a worker number,
-// and records pid under the canonical `worker-<n>` label. The selection and
-// insert share one IMMEDIATE SQLite transaction, so two launchers cannot both
-// observe the same free label and then erase each other's claim.
+// ClaimFactoryWorker atomically removes dead claims, selects a lane number,
+// and records pid under the canonical `lane-<n>` label, stamped with the
+// joining run's id (runID — the membership datum the same-run refusal reads
+// back). The selection and insert share one IMMEDIATE SQLite transaction, so
+// two launchers cannot both observe the same free label and then erase each
+// other's claim.
 //
-// Legacy `agent-<n>` / `lane-<n>` rows share the worker number space, and a
-// collision with one is never silent:
-//
-//   - auto == false (the operator typed the number): when the requested
-//     number is held by a live legacy row, the claim is refused with a
-//     *FactoryLegacyCollisionError naming that row, and nothing is recorded.
-//     A number held by a live canonical row is bumped as before.
-//   - auto == true (the launcher chose the number, `-f worker`): the claim
-//     never refuses; it reports in SkippedLegacy every live legacy row whose
-//     number sits between the canonical-only next number and the final one —
-//     the rows the unified numbering stepped over.
-//
-// On an explicit bump, legacy rows passed over during the bump are reported
-// in SkippedLegacy too.
-func ClaimFactoryWorker(root, requested string, auto bool, pid int, alive func(int) bool) (FactoryClaim, error) {
+// Only the canonical `lane-<n>` shape is accepted (requested empty means
+// auto-select the next free number); a legacy request is refused with the
+// canonical name. A LIVE legacy record (`worker-<n>` / `agent-<n>`) stamped
+// with a run id refuses the whole claim — *FactoryLegacyRunError names the
+// legacy value, the run, and the retire step (REQ-RNC-022). A legacy row
+// whose run_id is empty (a legacy import) belongs to no run: it is neither
+// refused nor counted as a lane, and it is never rewritten. Dead claims of
+// any shape are pruned as stale.
+func ClaimFactoryWorker(root, requested string, auto bool, pid int, runID string, alive func(int) bool) (FactoryClaim, error) {
 	claim := FactoryClaim{Label: requested}
 	admissionLock, lockErr := homestate.AcquireAdmissionLock(root)
 	if lockErr != nil {
@@ -161,12 +160,16 @@ func ClaimFactoryWorker(root, requested string, auto bool, pid int, alive func(i
 	if err := homestate.CheckRuntimeAdmission(root); err != nil {
 		return claim, err
 	}
-	// Any worker shape is accepted; the claim is always recorded under the
-	// canonical `worker-<n>` label (a legacy `lane-<n>` / `agent-<n>`
-	// request is a deprecated spelling of the same number).
-	n, ok := factoryLabelNumber(requested)
-	if !ok {
-		return claim, fmt.Errorf("invalid factory worker label %q", requested)
+	n := 0
+	if requested != "" {
+		var ok bool
+		n, ok = factoryLabelNumber(requested)
+		if !ok {
+			if legacyN, isLegacy := SplitFactoryLegacyLabel(requested); isLegacy {
+				return claim, fmt.Errorf("legacy factory label %q is not accepted; use %q", requested, FactoryLaneLabel(legacyN))
+			}
+			return claim, fmt.Errorf("invalid factory lane label %q", requested)
+		}
 	}
 	db, err := homestate.OpenFactory(root)
 	if err != nil {
@@ -182,24 +185,25 @@ func ClaimFactoryWorker(root, requested string, auto bool, pid int, alive func(i
 		return claim, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	rows, err := tx.Query(`SELECT label,pid FROM workers`)
+	rows, err := tx.Query(`SELECT label,pid,run_id FROM workers`)
 	if err != nil {
 		return claim, err
 	}
 	type row struct {
 		label string
 		pid   int
+		runID string
 	}
 	var stale []row
-	// Live claims by number: taken marks any worker shape, legacyAt names the
-	// live legacy row holding a number, and maxCanonical is the highest live
-	// canonical number (the auto path's "canonical-only next" is one past it).
+	// Live canonical claims mark their number taken; maxCanonical is the
+	// highest live canonical number (the auto path's next is one past it).
+	// A live legacy row with a run id refuses the claim outright; with an
+	// empty run id it belongs to no run and is simply ignored.
 	taken := map[int]bool{}
-	legacyAt := map[int]string{}
 	maxCanonical := 0
 	for rows.Next() {
 		var r row
-		if err := rows.Scan(&r.label, &r.pid); err != nil {
+		if err := rows.Scan(&r.label, &r.pid, &r.runID); err != nil {
 			_ = rows.Close()
 			return claim, err
 		}
@@ -207,15 +211,16 @@ func ClaimFactoryWorker(root, requested string, auto bool, pid int, alive func(i
 			stale = append(stale, r)
 			continue
 		}
-		num, isWorker := factoryLabelNumber(r.label)
-		if !isWorker {
+		if num, isLane := factoryLabelNumber(r.label); isLane {
+			taken[num] = true
+			if num > maxCanonical {
+				maxCanonical = num
+			}
 			continue
 		}
-		taken[num] = true
-		if IsLegacyFactoryLabel(r.label) {
-			legacyAt[num] = r.label
-		} else if num > maxCanonical {
-			maxCanonical = num
+		if IsLegacyFactoryLabel(r.label) && r.runID != "" {
+			_ = rows.Close()
+			return claim, &FactoryLegacyRunError{Label: r.label, RunID: r.runID}
 		}
 	}
 	if err := rows.Close(); err != nil {
@@ -227,25 +232,17 @@ func ClaimFactoryWorker(root, requested string, auto bool, pid int, alive func(i
 		}
 	}
 
-	from := n
 	if auto {
-		from = maxCanonical + 1
-	} else if held, isLegacy := legacyAt[n]; isLegacy {
-		return claim, &FactoryLegacyCollisionError{Requested: FactoryLaneLabel(n), Held: held}
+		n = maxCanonical + 1
 	}
 	for taken[n] {
 		n++
-	}
-	for i := from; i < n; i++ {
-		if held, isLegacy := legacyAt[i]; isLegacy {
-			claim.SkippedLegacy = append(claim.SkippedLegacy, held)
-		}
 	}
 	// Every surviving row is live and was counted into taken, so the
 	// canonical label for n is free by construction.
 	final := FactoryLaneLabel(n)
 	at := time.Now().UTC().Format(time.RFC3339Nano)
-	if _, err := tx.Exec(`INSERT INTO workers(label,pid,registered_at,heartbeat_at) VALUES(?,?,?,?)`, final, pid, at, at); err != nil {
+	if _, err := tx.Exec(`INSERT INTO workers(label,pid,registered_at,heartbeat_at,run_id) VALUES(?,?,?,?,?)`, final, pid, at, at, runID); err != nil {
 		return claim, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -278,8 +275,9 @@ func PruneFactoryDeadClaims(reg map[string]FactoryWorkerEntry, alive func(int) b
 // LoadFactoryRegistry, so an unreadable registry reads as all-free.
 func FactoryFreeSlots(root string, workers int, alive func(int) bool) []int {
 	reg := PruneFactoryDeadClaims(LoadFactoryRegistry(FactoryRegistryPath(root)), alive)
-	// Pruning leaves only live claims; a live claim in any worker shape —
-	// canonical or legacy — occupies its number.
+	// Pruning leaves only live claims; a live canonical `lane-<n>` claim
+	// occupies its number. Legacy shapes hold no number (a live legacy record
+	// refuses the join instead — REQ-RNC-022).
 	taken := map[int]bool{}
 	for label := range reg {
 		if n, ok := factoryLabelNumber(label); ok {

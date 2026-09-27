@@ -36,7 +36,7 @@ func TestKanbanChainRoleStates(t *testing.T) {
 	k := KanbanVM{
 		CardID: "t1079", IdleRole: "sync",
 		Roles: []RoleVM{
-			tg2PopulatedRole("lead"), tg2PopulatedRole("plan"), tg2PopulatedRole("run"),
+			tg2PopulatedRole("leader"), tg2PopulatedRole("plan"), tg2PopulatedRole("run"),
 			{Role: "sync", State: StateIdle, Stage: StageBlocked, ContextPct: -1},
 		},
 	}

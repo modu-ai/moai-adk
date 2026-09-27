@@ -60,7 +60,7 @@ func checkFactoryLauncherRegistersLaunchPendingPeers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if peer.Slot != "lead" || peer.PID != os.Getpid() || peer.ProcessStart != start {
+	if peer.Slot != "leader" || peer.PID != os.Getpid() || peer.ProcessStart != start {
 		t.Fatalf("pending peer=%+v", peer)
 	}
 	s, err := factorymsg.Open(root, run)
@@ -75,7 +75,7 @@ func checkFactoryLauncherRegistersLaunchPendingPeers(t *testing.T) {
 	if len(status.Lanes) != 1 || status.Lanes[0].BindingState != factorymsg.BindingLaunchPending || status.Lanes[0].SessionUUID != "" {
 		t.Fatalf("pending roster leaked a session identity: %+v", status.Lanes)
 	}
-	if _, err := s.ResolveLane(context.Background(), "lead"); !errors.Is(err, factorymsg.ErrEndpointLaunchPending) {
+	if _, err := s.ResolveLane(context.Background(), "leader"); !errors.Is(err, factorymsg.ErrEndpointLaunchPending) {
 		t.Fatalf("pending lane resolved for delivery: %v", err)
 	}
 
@@ -132,7 +132,7 @@ func TestFactoryRunSelectionAtomicSlotsAndArgv(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			peer := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: "run-b", Backend: "claude", Role: "worker", Slot: "worker", SessionUUID: fmt.Sprintf("session-%d", i), Generation: 1, PID: os.Getpid(), ProcessStart: start}
+			peer := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: "run-b", Backend: "claude", Role: "lane", Slot: "lane", SessionUUID: fmt.Sprintf("session-%d", i), Generation: 1, PID: os.Getpid(), ProcessStart: start}
 			got, e := s.RegisterPeer(context.Background(), peer)
 			if e != nil {
 				t.Errorf("register: %v", e)

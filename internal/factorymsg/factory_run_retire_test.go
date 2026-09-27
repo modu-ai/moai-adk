@@ -297,7 +297,7 @@ func registerLeadPeer(t *testing.T, root, runID string, pid int, processStart st
 	defer func() { _ = s.Close() }()
 	if _, err := s.RegisterLaunchPending(context.Background(), Peer{
 		ProjectKey: "project", RunID: runID, Backend: "claude",
-		Role: "lead", Slot: "lead", Generation: 1, PID: pid, ProcessStart: processStart,
+		Role: "leader", Slot: "leader", Generation: 1, PID: pid, ProcessStart: processStart,
 	}); err != nil {
 		t.Fatalf("register lead peer for %s: %v", runID, err)
 	}

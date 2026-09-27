@@ -78,6 +78,13 @@ func writeKanbanSessionRecord(input *HookInput) {
 		return
 	}
 
+	// REQ-RNC-025: a session whose launch label carries a legacy role value is
+	// never adopted into the new vocabulary — no record, and the stale-run
+	// notice (emitted by the notice paths) tells the operator to relaunch.
+	if legacy := legacyLaunchLabelValue(); legacy != "" {
+		return
+	}
+
 	role, lane, ok := kanbanRoleFromEnv()
 	if !ok {
 		return
@@ -109,6 +116,9 @@ func writeKanbanSessionRecord(input *HookInput) {
 // factory lane, its number. ok is false when the session is not part of a
 // kanban or factory run at all, and when a label is present but does not
 // parse — a malformed label yields no record rather than a guessed role.
+// A LEGACY label also yields no record: the caller's legacy gate (above)
+// stops it earlier, and this reader maps no legacy spelling to a role
+// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009).
 //
 // The discriminators and their ORDER mirror the bootstrap notices
 // (session_start_factory.go, session_start_kanban.go): a factory session reads
@@ -121,10 +131,7 @@ func kanbanRoleFromEnv() (role string, lane int, ok bool) {
 	if label := os.Getenv(config.EnvMoaiFactoryWorker); label != "" {
 		n, parsed := kanban.SplitFactoryLaneLabel(label)
 		if !parsed {
-			n, parsed = kanban.SplitFactoryAgentLabel(label)
-			if !parsed {
-				return "", 0, false
-			}
+			return "", 0, false
 		}
 		return kanban.RoleLane, n, true
 	}
