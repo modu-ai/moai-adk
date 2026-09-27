@@ -154,6 +154,16 @@ Debug tools: `claude --debug "hooks"` / `"api,hooks"` / `"mcp"`, or `/debug` in-
 
 ---
 
+## 18. Local Instructions (imported)
+
+The user-owned `AGENTS.local.md` (gitignored, never deployed) is imported last, so it layers over
+everything above. When the file is absent, or the session runs in a linked worktree where the import
+points outside the project, Claude Code skips the import silently.
+
+@AGENTS.local.md
+
+---
+
 Version: 14.3.0 | Language: English | Core Rule: MoAI orchestrates complex work; simple bounded operations may run directly
 For detailed patterns (plugins, sandboxing, headless mode, version management), see Skill("moai-foundation-cc").
 
