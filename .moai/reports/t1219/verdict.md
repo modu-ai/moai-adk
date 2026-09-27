@@ -17,11 +17,13 @@
 2. 이 세션(primary 에서 시작 → `EnterWorktree`)에서 워크트리 안의 `CLAUDE.local.md` 를 Read 하자, 워크트리 사본 `.claude/rules/local/gitflow-lane-protocol.md` 전문이 컨텍스트에 새로 첨부됐다. primary 사본은 세션 시작 때 이미 실려 있었다.
 3. 크기: primary 사본 52,280 B, 워크트리(develop) 사본 62,301 B(`wc -c`). 두 사본은 내용이 다르다(CLAUDE.local.md §0 이 설명하는 의도된 분기).
 
+4. 같은 세션(primary 시작 → EnterWorktree)에서 턴이 진행되자, 시스템이 스킬 목록을 두 번 추가로 첨부했다. 첫 번째는 `.claude/worktrees/t1219:hns-moaiadk-patterns` 1건이었다. 두 번째는 `.claude/worktrees/t1219:` 접두를 단 스킬 약 40건이었고, primary 쪽 같은 이름의 스킬 목록은 그대로 남아 있었다. 따라서 이 경로에서 스킬 목록 이중 나열은 관측으로 확인됐다(토큰 수는 미측정).
+
 ### Baseline-attribution
 위 명령과 출력은 이 실행에서, 이 트리(`e464fd5d0`)를 대상으로 얻었다.
 
 ### Gaps
-- 두 번째 경로(primary 시작 → EnterWorktree)의 **스킬 목록 이중 나열**은 이 세션 컨텍스트에서 직접 세지 못했다. 메모리·rules 는 관측했고, 스킬 목록은 추론이다.
+- 두 번째 경로에서 스킬 목록 이중 나열은 관측했으나(Evidence 4), 토큰 수로는 재지 않았다.
 - 이중 로드의 토큰 수(카드의 약 30k·17~20k)는 재측정하지 않았다.
 - `moai cc -w <name>` 런처 경로는 "워크트리 안에서 시작" 쪽이라 한 벌만 로드할 것으로 보이나, 런처 자체로는 재지 않았다.
 
