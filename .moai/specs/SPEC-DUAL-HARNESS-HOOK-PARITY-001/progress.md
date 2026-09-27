@@ -1044,7 +1044,7 @@ coverage:   # M2i, no pre-change baseline except verify (M2b: 81.0% → 84.6%)
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-09-27
-sync_commit_sha: pending-backfill-sync   # placeholder (D3) — the real SHA of the single sync commit is backfilled in the immediately following commit
+sync_commit_sha: fa0f5714e   # backfilled in the commit following the single sync commit (D3 exemption)
 sync_status: completed — **partial (live-uncertified)**, per operator decision Q5 (2026-09-23): no live Claude Code or Codex leg runs in this SPEC
 
 **Aggregate parity verdict (quoted verbatim from §E.3):**
