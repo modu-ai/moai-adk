@@ -90,7 +90,7 @@ Additional: `TestLandedScanRunner_RefusesNonGit` pins the adapter guard from pla
 
 ```yaml
 run_complete_at: 2026-09-27
-run_commit_sha: "<see commit log on WT-statusline-landed-label, card t1281>"
+run_commit_sha: 7803fa4c0
 run_status: complete
 ac_pass_count: 18
 ac_fail_count: 0
