@@ -33,4 +33,4 @@ Reasons (.moai/reports/t1279/plan-audit-delta.md, auditor-model claude-opus-5-5[
 - D3 (ND8): forbidden probe flags pass AC-007 via brace expansion or `-p <flag>`.
 - D4: AC-022 does not check that the develop merge commit is an ancestor.
 
-State at hold: t1175 has landed on develop (merge 7fe658815), and this branch has NOT absorbed it. develop CI was red (t1175 regression under repair) at hold time, so absorption was deliberately skipped.
+State at hold: t1175 has landed on develop (merge 7fe658815). This branch did not absorb it at hold time because develop CI was red (t1175 regression under repair). It was absorbed afterwards, together with the repair, via `git merge develop` at develop 80e0fdc0e in the integration window (`git merge-base --is-ancestor 7fe658815 HEAD` exit 0). The HOLD itself is unchanged.
