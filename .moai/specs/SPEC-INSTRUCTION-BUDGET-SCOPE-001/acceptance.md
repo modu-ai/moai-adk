@@ -7,7 +7,18 @@ created: 2026-09-28
 
 # Acceptance Criteria — SPEC-INSTRUCTION-BUDGET-SCOPE-001
 
-8 acceptance criteria against the Tier M ceiling of 16. The count fell from 16 to 8 in v0.5.0 by folding, not by dropping checks — see § Folding record.
+**8 acceptance criteria** against the Tier M ceiling of 16 — unit: **logical criteria**, `AC-IBS-001` … `AC-IBS-008`. The count fell from 16 to 8 in v0.5.0 by folding, not by dropping checks — see § Folding record.
+
+**Two counts exist for this file, and they measure different things.** The repo's `ac-baseline-guard` pre-commit hook counts **distinct live AC identifiers including a letter suffix** and reports **10** here, because `AC-IBS-002a` and `AC-IBS-002d` appear as prefixed identifiers in their own right. Both numbers are correct under their own unit; neither is the other's error.
+
+Which one binds depends on the consumer, so both are stated rather than one being picked:
+
+| consumer | unit | value | command |
+|---|---|---|---|
+| Tier M ceiling (`spec-workflow.md` § SPEC Complexity Tier) | logical criteria | **8** | `grep -ohE 'AC-IBS-[0-9]{3}' acceptance.md \| sort -u \| wc -l` |
+| CHANGELOG AC count at sync (`manager-develop-prompt-template.md` § B12, which names this file as SSOT and counts live identifiers) | live identifiers incl. suffix | **10** | `grep -ohE 'AC-IBS-[0-9]{3}[a-z]?' acceptance.md \| sort -u \| wc -l` |
+
+Recorded at plan phase because the sync-phase consumer would otherwise read `8` from `progress.md`, count `10` with its own convention, and have to adjudicate a discrepancy nobody had flagged. This is the fourth unit mismatch in this card — after line-vs-file reference counts (twice) and `grep -c` lines vs occurrences — which is why the unit is now stated beside every count rather than left to the reader.
 
 ## Document-level measurement pin
 
