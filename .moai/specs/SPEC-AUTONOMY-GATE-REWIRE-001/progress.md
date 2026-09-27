@@ -194,6 +194,14 @@ Logs: `.moai/state/verify/t1236/ac/<AC>.txt`. Columns: exit / `--- PASS` count /
 
 - `moai spec lint SPEC-AUTONOMY-GATE-REWIRE-001` (tree-built `bin/moai`) → `✓ No findings — all SPEC documents are valid`, exit 0. `go vet ./internal/contract/... ./internal/cli/ ./internal/template/` exit 0. `make build` exit 0, working tree clean afterwards.
 
+### Re-anchor after absorbing develop (absorb merge `00fee4131`)
+
+- New BASE: `git merge-base develop HEAD` → `5f5840ae45fac4075deaf7428bb5469baf779014` (absorbs the t1175 rules repair, t1237, t1243). Tests read it from `MOAI_GR_BASE` only.
+- Regenerated `grBaseDriftIDs`: the new BASE carries no DRIFT. First guard run against it → `contract_mode_guided_test.go:422: base premise broken: drift ids [] (want [CONST-V3R2-013 … CONST-V3R2-153]), missing 0, unregistered 0` / `--- FAIL: TestContractModeConstitutionDriftNotIncreased` (`absorb-guards-1.txt`). The set is now empty, so the current tree must carry no DRIFT either.
+- Re-measured `grKickoffClasses`: `git grep -l Kickoff 5f5840ae4 -- <scopes>` → 65 files, 33 unique after stripping the template prefix; classified keys 33; the difference is empty in both directions. No change needed.
+- Tree binary (`go build -o …/moai-t1236 ./cmd/moai`), `constitution validate` → `constitution validate: OK — no drift or violations detected (97 of 101 entries checked)`, exit 0; `--format json` → `"drift_count": 0`, `"missing_count": 0`, `"unregistered_count": 0`.
+- Guards against the new BASE (`absorb-guards-2.txt`): all 15 `TestContractMode*` plus `TestJevDoctrineAmendment` `--- PASS`, `85 changed paths checked`, `base non-OK pairs: [] (drift 0 missing 0 unregistered 0)` / `current non-OK pairs: [] (drift 0 missing 0 unregistered 0)`, `65 Kickoff documents at the base, 20 emitter copies checked`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml

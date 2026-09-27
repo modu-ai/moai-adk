@@ -390,13 +390,12 @@ func grHardFindings(rel, base, cur string) []string {
 	return findings
 }
 
-// grBaseDriftIDs are the DRIFT ids the base carries (the ledger's EV-6
-// baseline). They describe the base tree, not a constant of the code: when the
-// base is re-absorbed this set is re-measured and updated with it.
-var grBaseDriftIDs = []string{
-	"CONST-V3R2-013", "CONST-V3R2-014", "CONST-V3R2-015", "CONST-V3R2-016", "CONST-V3R2-017",
-	"CONST-V3R2-033", "CONST-V3R2-049", "CONST-V3R2-152", "CONST-V3R2-153",
-}
+// grBaseDriftIDs are the DRIFT ids the base carries. They describe the base
+// tree, not a constant of the code: when the base is re-absorbed this set is
+// re-measured and updated with it. The current base carries none (the rules
+// repair absorbed with it cleared the nine the earlier base carried), so the
+// current tree must carry none either.
+var grBaseDriftIDs = []string{}
 
 // TestContractModeConstitutionDriftNotIncreased requires the constitution
 // validation not to get worse than the base in any category, and the
