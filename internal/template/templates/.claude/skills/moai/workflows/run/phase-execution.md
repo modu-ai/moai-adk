@@ -471,3 +471,15 @@ Before routing to Phase 11 or 2B, scan the loaded SPEC for `[DELTA]` section mar
 4. Process all `[REMOVE]` items — dependency analysis → safe deletion
 
 If no delta markers are present in the SPEC, delta processing is silently skipped and the standard implementation flow proceeds unchanged (backward compatible with greenfield SPECs).
+
+## Run-phase Autonomy invariants (moved from run.md, verbatim)
+
+### 3. Autonomy invariants (cite, do not restate — full doctrine in canonical rules)
+
+The following HARD invariants govern the `ac_converge` loop. Each is the canonical rule's render surface here; the rule is the SSOT.
+
+- **Transcript-measurability**: the `acceptance.md` reference NAMES where the AC list lives — it is NOT a path the evaluator opens. Because every predicate above is a model condition, the `stop-goal` evaluator judges only what the orchestrator SURFACES into the transcript (per-AC PASS line, `go test ./...` exit 0, `git status`).
+- **Semantic-failure escalation (HARD)**: on a data race / deadlock / panic / test assertion failure surfaced during the loop, clear the goal (`/moai goal clear`) and escalate via `AskUserQuestion` — NEVER auto-fix a semantic failure (per `ci-autofix-protocol.md` semantic-failure-handling).
+- **Non-substitution (HARD)**: the goal removes per-turn STOP prompts only. It does NOT authorize bypassing Implementation Kickoff Approval (already cleared), PR creation, or any destructive operation — those remain separately-surfaced explicit gates.
+- **Blocker reports, never user prompts**: a goal-loop turn or sweep Workflow agent lacking input returns a structured blocker report; the orchestrator runs `AskUserQuestion` and re-delegates (asymmetric boundary per `agent-common-protocol.md` § User Interaction Boundary).
+- **Graceful degradation**: the goal engine's evaluator IS a Stop hook (`moai hook stop-goal`), so `/moai goal` is unavailable when hooks are disabled (`disableAllHooks`, or `allowManagedHooksOnly` permitting only managed hooks). It carries no runtime-version floor of its own. When the engine is unavailable, run-phase autonomy degrades to the standard manual per-turn flow rather than failing.

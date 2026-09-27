@@ -248,6 +248,31 @@ func TestStopChainEffectParityGolden(t *testing.T) {
 			}
 			wantPair(t, claude, codex(t, f, false), codexadapter.DecisionAllow, "")
 		})
+		t.Run("codex installed, fresh INCONCLUSIVE receipt", func(t *testing.T) {
+			f := setup(t)
+			// Post-#1718 parser: prose approval carries no pinned Verdict
+			// line, so the receipt records inconclusive — the review ran but
+			// produced no verdict.
+			const proseApproval = "Looks good to me — no blocking findings."
+			claude := claudeReview(t, f, proseApproval, false)
+			if claude != codexadapter.DecisionAllow {
+				t.Fatalf("premise: Claude must fail-open an inconclusive review, got %s", claude)
+			}
+			r := produce(t, f, proseApproval)
+			if r.Verdict != codexReviewVerdictInconclusive {
+				t.Fatalf("premise: fixture must produce an %q receipt for this leg, got %q", codexReviewVerdictInconclusive, r.Verdict)
+			}
+			got := codex(t, f, false)
+			wantPair(t, claude, got, codexadapter.DecisionAllow, "")
+			// t1280 F3: the allow is fail-open, and the record must not read
+			// pass for a review that never produced a verdict.
+			if got.Status != stopStatusFailOpen {
+				t.Fatalf("an inconclusive receipt must be recorded %q, not %q", stopStatusFailOpen, got.Status)
+			}
+			if len(got.Discards) != 1 || got.Discards[0].Key != "codex-stop-chain/codex-review/inconclusive" {
+				t.Fatalf("an inconclusive allow must write exactly one inconclusive discard record, got %+v", got.Discards)
+			}
+		})
 		t.Run("codex installed, FAIL receipt", func(t *testing.T) {
 			f := setup(t)
 			claude := claudeReview(t, f, failReview, false)
