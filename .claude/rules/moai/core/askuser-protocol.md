@@ -9,7 +9,7 @@ description: Canonical reference for AskUserQuestion-only interaction protocol, 
 >
 > **Loading scope**: Intentionally always-loaded (no `paths:` restriction). The orchestrator may compose an `AskUserQuestion` on any non-trivial turn, so the channel-monopoly rule and the ToolSearch deferred-tool preload procedure must be available every session.
 >
-> **Detail companion**: `askuser-protocol-reference.md` (paths-scoped to this file) — recommendation-placement evidence base, preview-field usage catalogue, and the Non-ASCII encoding root-cause mechanism / pollution-loop detail. Read it when those details are needed.
+> **Detail companion**: `askuser-protocol-reference.md` — recommendation-placement evidence base, preview-field usage catalogue, the Non-ASCII encoding root-cause mechanism / pollution-loop detail, § Blind Spot Pass, and the bodies relocated from here: § General Rule for Deferred Tools · § The Four Triggers · § The Five Exceptions · § The Unknowns 4-Quadrant Lens · § First-Action Sequence After Trigger · § Directive and Recovery · § Pre-Emit Self-Check (non-ASCII) — 3 items · § Pre-emit self-check (report-before-ask) — 5 items. Load it when classifying an ambiguity trigger, preloading a deferred tool, recovering a rejected non-ASCII payload, or running a pre-emit self-check.
 
 ---
 
@@ -17,7 +17,7 @@ description: Canonical reference for AskUserQuestion-only interaction protocol, 
 
 **AskUserQuestion is the only user-facing question channel.** The MoAI orchestrator MUST route every user-facing question through an `AskUserQuestion` tool invocation. Free-form interrogative prose in the response body is **prohibited** as a question channel.
 
-Applies to all orchestrator turns involving: clarification questions (Stage 1 Clarify), preference/decision questions ("Which approach?", "Continue or abort?"), Socratic interview rounds during Context-First Discovery (CLAUDE.md §7 Rule 5), branch and workflow selection, and conflict resolution (merge strategy, rollback confirmation, etc.).
+Applies to every orchestrator turn involving clarification (Stage 1 Clarify), a preference or decision ("Which approach?", "Continue or abort?"), a Socratic interview round during Context-First Discovery (CLAUDE.md §7 Rule 5), branch and workflow selection, or conflict resolution.
 
 **Exceptions** (free-form prose questions permitted ONLY when):
 - `AskUserQuestion` is technically unavailable — should not occur in normal orchestrator operation
@@ -29,7 +29,7 @@ Applies to all orchestrator turns involving: clarification questions (Stage 1 Cl
 
 ## ToolSearch Preload Procedure
 
-`AskUserQuestion` is a **deferred tool** in Claude Code. Its JSON schema is NOT loaded into the active context at agent initialization time. Attempting to invoke it without first selecting it results in `InputValidationError: tool not in schema`.
+`AskUserQuestion` is a **deferred tool**: its JSON schema is not loaded at agent initialization, so invoking it without selecting it first yields `InputValidationError: tool not in schema`.
 
 ### Mandatory Preload Step
 
@@ -38,20 +38,6 @@ Immediately before **every** `AskUserQuestion` call, the orchestrator MUST invok
 ```
 ToolSearch(query: "select:AskUserQuestion")
 ```
-
-### General Rule for Deferred Tools
-
-Any deferred tool requires a `ToolSearch` select preload before invocation. The pattern generalizes: `ToolSearch(query: "select:<tool>[,<tool>...]")` — single (`select:AskUserQuestion`) or multiple (`select:AskUserQuestion,TaskCreate`).
-
-**Preload sequence** (per turn — if a new turn begins and `AskUserQuestion` will be called again, preload again; never reverse or omit Step 1):
-
-```
-[Turn N]
-Step 1: ToolSearch(query: "select:AskUserQuestion")   ← preload deferred schema
-Step 2: AskUserQuestion({ questions: [...] })           ← now valid to invoke
-```
-
----
 
 ## Socratic Interview Structure
 
@@ -88,29 +74,27 @@ Each option description MUST include:
 
 The `(Recommended)` / `(권장)` label is grounded in the statistically-majority rational default the
 user has actually been observed to select — never a policy default the system wants to push. Five
-principles bind its placement; reasoning, evidence base, and worked detail live in
+principles bind its placement; reasoning and evidence base:
 `askuser-protocol-reference.md` § Recommendation Placement Principles.
 
-1. **Emission timing.** Ask when the decision is genuinely uncertain (p ≈ 0.5, where information
-   gain peaks). When the outcome is nearly certain, auto-resolve to the majority option and omit
-   the question.
+1. **Emission timing.** Ask when the decision is genuinely uncertain (p ≈ 0.5). When the outcome is
+   nearly certain, auto-resolve to the majority option and omit the question.
 2. **Question ordering.** Within one call, order questions by descending information gain.
 3. **Recommended option = observed majority.** On cold start, fall back to the static default AND
-   disclose that in the description; an undisclosed cold-start recommendation is an
+   disclose that in the description — an undisclosed cold-start recommendation is an
    unobserved-recommendation claim (`verification-claim-integrity.md` §1.1 surface 3).
 4. **Precondition statement.** The recommended option's `description` states the condition under
-   which the recommendation holds, so the user can reject it immediately when it does not apply.
+   which the recommendation holds, so the user can reject it when it does not apply.
 5. **Adaptive strength.** High estimated proficiency → weak recommendation (disclose the inferred
-   preference, omit the label). Low proficiency → label plus transparent rationale. Proficiency
-   unknown → no inferred-preference label at all. Principle 5 is the label-suppressing condition
-   the mode axis below generalizes — from an inferred proficiency estimate to an explicit operator
-   setting.
+   preference, omit the label); low → label plus rationale; unknown → no inferred-preference label
+   at all. This is the label-suppressing condition the mode axis below generalizes, from an
+   inferred estimate to an explicit operator setting.
 
 ### Recommendation mode
 
-The five principles above state the `push` branch — the distributed default, and the resolved
-behavior whenever the key below is absent, empty, or unrecognized. `pull` is the judgment-first
-branch. The axis generalizes principle 5 rather than adding a parallel mechanism.
+The five principles above state the `push` branch — the distributed default, and the behavior
+whenever the key below is absent, empty, or unrecognized. `pull` is the judgment-first branch,
+generalizing principle 5 rather than adding a parallel mechanism.
 
 ```yaml
 interview:
@@ -124,14 +108,14 @@ and MUST NOT re-encode the same preference through option ordering, description 
 carries no question-type field, so an obligation scoped to a class the runtime cannot distinguish
 could not be measured.
 
-The mode is resolved at output-composition time, per surface — never latched at session start. A
-mode change therefore takes effect on the next composed output and never rewrites, recalls, or
-re-renders a round already emitted.
+The mode resolves at output-composition time, per surface — never latched at session start, so a
+change takes effect on the next composed output and never rewrites or re-renders a round already
+emitted.
 
 `pull` withholds a recommendation and nothing else. The observation, the evidence, the enumerated
-options, and every gate and evidence obligation stated elsewhere in this file remain binding and
-unmodified in both modes — including the mandatory, score-independent Implementation Kickoff
-Approval gate, which under `pull` asks the same question with an unlabeled first option.
+options, and every gate and evidence obligation elsewhere in this file stay binding in both modes —
+including the mandatory, score-independent Implementation Kickoff Approval gate, which under `pull`
+asks the same question with an unlabeled first option.
 
 ### On-request emission
 
@@ -143,10 +127,10 @@ it does not abolish it.
 
 ### The three adopted conditions
 
-These bind every `pull`-mode composition:
+Binding on every `pull`-mode composition:
 
 1. **Detect → Explain → Ask, but never decide.** Withholding a recommendation never withholds the
-   underlying observation, the evidence, or the enumerated options.
+   observation, the evidence, or the enumerated options.
 2. **An LLM 'best practice' is not a policy.** A model-inferred default MUST NOT be presented as an
    established project rule.
 3. **When uncertain, escalate. Never downgrade.** Where it is unclear which option holds, the
@@ -169,15 +153,15 @@ When to use it, when to skip it, and a worked example: `askuser-protocol-referen
 
 [ZONE:Evolvable] [HARD] When the user's latest message explicitly requests a report, analysis, or explanation ("report on X", "explain why", "analyze this first"), that requested deliverable IS the turn's terminal output: the orchestrator MUST complete the report as a standalone response and end the turn WITHOUT appending a decision-type `AskUserQuestion` to the same turn. Pipeline-stage needs (clarification resolution, scope selection, audit-gate unblocking, next-step routing) NEVER override or preempt the user's stated information request.
 
-- **Requirement analysis before question composition**: re-read the user's latest message; if it asks for information, deliver the information and stop — ask only when it asks for (or clearly requires) a decision
-- **No question-as-epilogue**: a scope/next-step question appended to a requested report demotes the report to a preamble — deliver the report; let the user respond
-- **Deferred pipeline questions**: pending workflow questions surface in a LATER turn — after the user reacts to the report, or explicitly says to proceed
+- **Requirement analysis first**: re-read the latest message; if it asks for information, deliver it and stop — ask only when a decision is asked for or clearly required
+- **No question-as-epilogue**: a next-step question appended to a requested report demotes the report to a preamble
+- **Deferred pipeline questions**: they surface in a LATER turn, after the user reacts or says to proceed
 
 ### Report Completeness Criteria (all mandatory)
 
-1. **Per-source coverage**: the report names each investigation source (agent, lens, audit dimension) and states its key findings with quantification (N findings, severity/classification breakdown). A single-line completion claim ("investigation complete", in any locale) is NOT a report.
+1. **Per-source coverage**: name each investigation source (agent, lens, audit dimension) and state its key findings with quantification (N findings, severity breakdown). A single-line completion claim, in any locale, is NOT a report.
 2. **Option-to-report traceability**: every codename, identifier, or finding referenced in the question's option labels / descriptions / previews MUST have been introduced and explained in the preceding report body — the user cannot evaluate what was never explained.
-3. **Structured rendering**: render the report via the Discovery banner (`.claude/output-styles/moai/moai.md` §8 Discovery Report) or equivalent structured markdown with per-source subsections, scaled to the investigation's size.
+3. **Structured rendering**: the Discovery banner (`.claude/output-styles/moai/moai.md` §8 Discovery Report) or equivalent structured markdown with per-source subsections, scaled to the investigation.
 
 ### Preview-as-Report Substitution (named anti-pattern)
 
@@ -193,16 +177,6 @@ When to use it, when to skip it, and a worked example: `askuser-protocol-referen
 2. Confirmation gates on already-reported context (e.g., Implementation Kickoff Approval after plan artifacts were presented in prose)
 3. Blocker re-delegation rounds where the subagent's blocker report was already surfaced
 4. Preference questions with no investigative basis (naming, formatting choices)
-
-### Pre-emit self-check (report-before-ask) — 5 items
-
-- [ ] Does the user's latest message request a report / analysis / explanation rather than a decision? If yes, this turn ends with the report — defer this AskUserQuestion to a later turn.
-- [ ] Do this question's options derive from investigation results? If yes, does a substantive report precede this call in the same turn?
-- [ ] Is every codename / identifier appearing in the options explained in the preceding report?
-- [ ] Do the findings live in the response body (not only inside option previews)?
-- [ ] If a report was promised earlier in the task, has it actually been rendered?
-
----
 
 ## Orchestrator–Subagent Boundary
 
@@ -225,59 +199,13 @@ Subagents invoked via `Agent()` operate in isolated, stateless contexts and CANN
 
 ### Blocker Report Format / Re-delegation Procedure
 
-Owned by `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format and § Re-delegation Procedure — see there.
+Owned by `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format and `.claude/rules/moai/core/agent-common-protocol-reference.md` § Re-delegation Procedure — see there.
 
 ---
 
 ## Ambiguity Triggers and Exceptions
 
 This section is the **single source of truth** for Stage 1 Clarify trigger conditions. Both `CLAUDE.md §7 Rule 5` and `CLAUDE.md §8 Ambiguity Triggers` cross-reference this definition.
-
-### The Four Triggers (any one activates Stage 1)
-
-1. **Pronoun or demonstrative without clear referent**: "this", "that", "it", "the previous one" — the referent cannot be unambiguously determined from context
-2. **Multi-interpretable action verb without specified scope**: "clean up", "process", "improve", "fix" — the action could apply to multiple different implementations
-3. **Unclear boundaries**: How far to go, how much to change, which files are in scope, where to stop
-4. **Potential conflict with existing state**: Uncommitted changes, in-progress branches, overlapping work that the request might conflict with
-
-### The Five Exceptions (Stage 1 is skipped)
-
-1. Single-line typo or formatting fix — scope is self-evident
-2. Bug fix with explicit reproduction provided — the reproducer defines scope
-3. Direct file read when the path is explicitly specified — no interpretation needed
-4. Command invocation with all required arguments provided — no ambiguity
-5. Continuation of previously confirmed work in the same session — intent already established
-
-### The Unknowns 4-Quadrant Lens
-
-Classify the ambiguity by **user blind spot** (Known-Knowns / Known-Unknowns / Unknown-Knowns / Unknown-Unknowns):
-
-- **Known-Knowns** — stated + confirmed facts. No clarification needed
-- **Known-Unknowns** — gaps the user is aware of. Resolve via a Socratic interview round (§ Socratic Interview Structure)
-- **Unknown-Knowns** — constraints implicit in the codebase the user has not surfaced. Resolve via `Agent(Explore)` read-only reconnaissance, then confirm with the user
-- **Unknown-Unknowns** — risks neither side has articulated. When suspected (unfamiliar domain/subsystem/design territory), run a Blind Spot Pass (§ Blind Spot Pass) before plan-phase entry
-
-### First-Action Sequence After Trigger
-
-```
-Trigger detected
-  → Step 1: ToolSearch(query: "select:AskUserQuestion")   [deferred tool preload]
-  → Step 2: Compose AskUserQuestion round (≤4 Q, ≤4 options, (권장) first under recommendation_mode: push — withheld under pull, conversation_language)
-  → Step 3: Send AskUserQuestion, collect responses
-  → Step 4: Assess intent clarity (100% required)
-  → Step 5: If <100%: go to Step 1 with narrowed questions
-             If 100%: consolidate report → final confirmation → execute
-```
-
----
-
-## Blind Spot Pass
-
-An OPTIONAL pre-plan Discovery technique for surfacing the user's **unknown-unknowns**: read-only
-`Agent(Explore)` reconnaissance of an unfamiliar domain, with findings surfaced through the
-orchestrator's own `AskUserQuestion` channel — the subagent never prompts the user. The trigger is
-a judgment call, not an automatic gate; in a familiar domain the pass is skipped with no forced
-overhead. Mechanism and timing: `askuser-protocol-reference.md` § Blind Spot Pass.
 
 ## Free-form Circumvention Prohibition
 
@@ -298,10 +226,10 @@ Free-form interrogative prose in the response body MUST NOT be used as a substit
 
 A completion report has exactly TWO valid closes:
 
-1. **Route a genuine next-step decision through `AskUserQuestion`** — preload, then ask, so the user selects-and-enters instead of typing. The recommended option carries the `(Recommended)` / `(권장)` label.
-2. **Close with NO question** — a clean completion statement (what was done, the evidence, the current state). When no decision is actually required, do NOT manufacture a next-step question; an unneeded prompt is noise.
+1. **Route the decision through `AskUserQuestion`** — preload, then ask, so the user selects instead of typing. The recommended option carries the `(Recommended)` / `(권장)` label.
+2. **Close with NO question** — what was done, the evidence, the current state. Where no decision is required, do NOT manufacture one; an unneeded prompt is noise.
 
-"Ask through `AskUserQuestion`, or do not ask" — there is no third "ask in prose" option. The convenience rationalization "a short trailing next-step question on a finished report can be plain prose" is the exact failure mode this clause forbids.
+"Ask through `AskUserQuestion`, or do not ask" — there is no third "ask in prose" option. The rationalization that a short trailing next-step question on a finished report can be plain prose is the exact failure mode this clause forbids.
 
 **Pre-emit self-check (completion report)** — before sending any "done" report:
 - [ ] Does the report end with a `?`-bearing prose next-step prompt? If yes → convert to `AskUserQuestion`, or drop the prompt entirely.
@@ -313,19 +241,3 @@ A completion report has exactly TWO valid closes:
 The `AskUserQuestion` payload — `question`, `header`, and every option `label` / `description` / `preview` — routinely carries text in the user's `conversation_language`. For Korean, Japanese, Chinese, and other multi-byte scripts, this text MUST be written as **native UTF-8 directly** in the tool-call JSON. Hand-authored `\uXXXX` escape sequences are **PROHIBITED**.
 
 **Failure Mode**: a malformed escape (stray space, truncated code point, half-written `\u`) corrupts the JSON so the `questions` array parses as a bare string — the call is rejected with `Invalid tool parameters` / `InputValidationError`, and the clarification round silently fails on its first attempt. (Root-cause mechanism, the self-reinforcing pollution loop, and the scope note: `askuser-protocol-reference.md` § Non-ASCII Tool-Call Encoding detail.)
-
-### Directive and Recovery
-
-- **Preventive (always):** write all `conversation_language` text as native UTF-8 in the tool-call JSON — this binds **every** tool call carrying multi-byte text, not only `AskUserQuestion` but Bash commands, Write / Edit content arguments, and any other tool-call payload. Never hand-escape a non-ASCII character.
-- **Recovery (on failure):** if a call is rejected with `Invalid tool parameters` and the payload contained non-ASCII text, re-issue the identical call with the text rewritten as native UTF-8 — do not try to "repair" the escape sequence. Do not carry the corrupted form forward; re-author the next non-ASCII payload from the intended source text, not by transcribing the `\uXXXX` run visible in context. Persistent recurrence within a session → escalate to `/clear` with a paste-ready resume (last-resort loop-break).
-
-### Pre-Emit Self-Check (before any tool call carrying non-ASCII text) — 3 items
-
-- [ ] Is every `conversation_language` string in this payload written as native UTF-8 characters (한글 / 日本語 / 中文), with **zero** hand-authored `\uXXXX` sequences?
-- [ ] Am I authoring this text from the intended source meaning, not transcribing an escaped `\uXXXX` run visible in my own context?
-- [ ] If a prior call in this turn already failed with `Invalid tool parameters` on non-ASCII text, have I re-authored — not repaired — this payload, and am I watching for a saturated context that warrants `/clear`?
-
----
-
-Version: 1.3.0
-Classification: Canonical Reference — do not duplicate content; cross-reference this file instead.

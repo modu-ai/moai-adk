@@ -17,7 +17,7 @@ import (
 	sqlite3 "modernc.org/sqlite/lib"
 )
 
-const factorySchemaVersion = 3
+const factorySchemaVersion = 4
 
 const factoryDDL = `
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -49,6 +49,28 @@ CREATE TABLE IF NOT EXISTS cards (
   version INTEGER NOT NULL DEFAULT 1,
   evidence_path TEXT NOT NULL DEFAULT '',
   updated_at TEXT NOT NULL,
+  stage TEXT NOT NULL DEFAULT '',
+  lease_holder TEXT NOT NULL DEFAULT '',
+  lease_expires_at TEXT NOT NULL DEFAULT '',
+  heartbeat_at TEXT NOT NULL DEFAULT '',
+  decision_gate TEXT NOT NULL DEFAULT '',
+  decision_question TEXT NOT NULL DEFAULT '',
+  decision_resume TEXT NOT NULL DEFAULT '',
+  decider TEXT NOT NULL DEFAULT '',
+  decided_at TEXT NOT NULL DEFAULT '',
+  failure_reason TEXT NOT NULL DEFAULT '',
+  hint_prefer TEXT NOT NULL DEFAULT '',
+  hint_after TEXT NOT NULL DEFAULT '',
+  spec_id TEXT NOT NULL DEFAULT '',
+  worktree_path TEXT NOT NULL DEFAULT '',
+  evidence_sha TEXT NOT NULL DEFAULT '',
+  merge_sha TEXT NOT NULL DEFAULT '',
+  merge_tree TEXT NOT NULL DEFAULT '',
+  remeasure_path TEXT NOT NULL DEFAULT '',
+  contract_spec_id TEXT NOT NULL DEFAULT '',
+  contract_sha256 TEXT NOT NULL DEFAULT '',
+  contract_signed_at TEXT NOT NULL DEFAULT '',
+  contract_event TEXT NOT NULL DEFAULT '',
   PRIMARY KEY(run_id, card_id)
 );
 CREATE TABLE IF NOT EXISTS events (
@@ -195,6 +217,12 @@ func OpenFactoryPath(path string) (*FactoryDB, error) {
 			version = "3"
 		}
 	}
+	if err == nil && version == "3" {
+		err = migrateFactoryV3ToV4(ctx, db)
+		if err == nil {
+			version = "4"
+		}
+	}
 	if err == nil && version != strconv.Itoa(factorySchemaVersion) {
 		err = fmt.Errorf("unsupported factory schema version %q", version)
 	}
@@ -315,8 +343,53 @@ func migrateFactoryV2ToV3(ctx context.Context, db *sql.DB) error {
 	return tx.Commit()
 }
 
-func factoryRunColumns(ctx context.Context, tx *sql.Tx) (_ map[string]bool, err error) {
-	rows, err := tx.QueryContext(ctx, `PRAGMA table_info(runs)`)
+// migrateFactoryV3ToV4 adds the F1 card-record columns (card state machine,
+// lease, decision, hints, evidence, contract pointer). Every column is TEXT
+// NOT NULL with an empty-string default, so no backfill is needed and every v3 row stays
+// valid; a row whose state lies outside the F1 state set is classified as
+// legacy by the transition API rather than rewritten here.
+func migrateFactoryV3ToV4(ctx context.Context, db *sql.DB) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	existing, err := factoryTableColumns(ctx, tx, "cards")
+	if err != nil {
+		return err
+	}
+	for _, column := range cardF1Columns {
+		if existing[column] {
+			continue
+		}
+		// SQL: column comes from the constant cardF1Columns list, never from input.
+		if _, err := tx.ExecContext(ctx, `ALTER TABLE cards ADD COLUMN `+column+` TEXT NOT NULL DEFAULT ''`); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE meta SET value='4' WHERE key='schema_version' AND value='3'`); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// cardF1Columns lists, in declaration order, the text columns schema version 4
+// adds to `cards`. factoryDDL declares the same set for a fresh database.
+var cardF1Columns = []string{
+	"stage", "lease_holder", "lease_expires_at", "heartbeat_at",
+	"decision_gate", "decision_question", "decision_resume", "decider", "decided_at",
+	"failure_reason", "hint_prefer", "hint_after", "spec_id", "worktree_path",
+	"evidence_sha", "merge_sha", "merge_tree", "remeasure_path",
+	"contract_spec_id", "contract_sha256", "contract_signed_at", "contract_event",
+}
+
+func factoryRunColumns(ctx context.Context, tx *sql.Tx) (map[string]bool, error) {
+	return factoryTableColumns(ctx, tx, "runs")
+}
+
+func factoryTableColumns(ctx context.Context, tx *sql.Tx, table string) (_ map[string]bool, err error) {
+	// SQL: table is an internal constant ("runs", "cards"), never input.
+	rows, err := tx.QueryContext(ctx, `PRAGMA table_info(`+table+`)`)
 	if err != nil {
 		return nil, err
 	}

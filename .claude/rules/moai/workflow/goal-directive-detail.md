@@ -95,3 +95,13 @@ Canonical native documentation: `https://code.claude.com/docs/en/goal`.
 - `https://code.claude.com/docs/en/hooks-guide` — prompt-based / agent-based Stop hooks (the mechanism class the goal evaluator belongs to)
 - `.claude/output-styles/moai/moai.md` § Persistence & Context Awareness — long-horizon non-stop doctrine
 - `.claude/skills/moai/workflow-loop` — `/moai loop` Ralph Engine (deterministic diagnostic loop)
+
+## Proactive Recommendation Triggers
+
+When the orchestrator recognizes a situation where a condition-declared loop is the right continuation primitive, it arms one rather than driving the work turn by turn. T1-T4 one-liners (full condition templates in § Trigger condition templates above):
+
+- **T1 — Long run-phase / multi-milestone (Tier M/L)**: the run-phase autonomy wiring in `run.md` § Run-phase Autonomy (`ac_converge`) owns this case — surface that block verbatim.
+- **T2 — Migration / refactoring across many call sites**: arm once the call-site inventory is enumerated and transcript-visible.
+- **T3 — TDD cycle / SPEC AC convergence**: for SPEC-scoped work, T1 and `run.md` `ac_converge` is the SSOT; for non-SPEC TDD work arm a test-suite-shaped condition.
+- **T4 — `/moai loop` alternative**: when work is better expressed as a verifiable end-state than as "fix what the tooling flags", surface the two options (decision axis: what should start the next turn).
+
