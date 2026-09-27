@@ -22,11 +22,11 @@
 3. codex 경로는 서빙 모델을 비교하지 않는다(`unknown` 고정, REQ-MSM-006).
 4. 따라서 F1 은 이 카드가 내는 어떤 판정도 뒤집을 수 없다. 반대로 이 카드에서 접미사 정규화를 넣으면 REQ-MSM-005 의 "비교 전에 id 를 고치지 않는다"와 충돌하고, 형제 비교기의 동작 변경이 이 카드의 인수 범위 밖에서 일어난다.
 
-run 단계 확인 의무: 새 비교 함수가 `internal/hook` 을 import 하지 않는다는 것을 `go list -deps` 가 아닌 소스 판독으로 확인해 §E.2 에 적는다(import 가 생기면 이 결정의 전제가 깨진 것이므로 blocker 로 보고).
+run 단계 확인 의무(기계 점검 — acceptance.md §D 와 같은 명령): `git diff e9577de4f -- internal/cli | grep -nE '^\+.*(hook\.ObserveServedModel|expectedServedModel|servedMatches)'` 가 빈 출력(exit 1)이어야 하고, 같은 패턴을 `internal/cli/doctor_served_model.go` 에 건 양성 대조 `grep -c -E 'hook\.ObserveServedModel|expectedServedModel|servedMatches' internal/cli/doctor_served_model.go` 가 1 이상이어야 한다(plan 단계 실측 `2`). 두 출력을 §E.2 에 적는다. 판정 명령이 적중하면 이 결정의 전제가 깨진 것이므로 blocker 로 보고한다. `internal/cli` 는 이미 여러 파일에서 `internal/hook` 을 import 하므로 import 유무는 판정 기준이 아니다.
 
 ### §B.2 glm_audit — 범위 밖 (결정)
 
-`glm_audit` 도 `glmMessagesResponse` 를 공유한다(`mcp_glm.go:343`). 이 카드는 그 구조체에 `model` 필드를 **더하기만** 하므로 glm_audit 의 파싱 결과는 바뀌지 않는다. 그러나 glm_audit 의 결과에 서빙 모델을 **싣는 것**은 범위 밖이다. glm_audit 은 `ReviewOutput` 을 돌려주는데 이 타입은 codex_audit·glm_audit·audit_multi 의 수렴 계약이며, 여기에 필드를 더하면 세 백엔드와 수렴 로직, 그 소비자(plan-auditor·sync-auditor)의 판독 규약을 함께 건드리게 된다. 단순성 원칙상 별도 카드 몫이다. AC-MSM-004 가 공유 구조체 변경의 무회귀를 잰다.
+`glm_audit` 도 `glmMessagesResponse` 를 공유한다(`mcp_glm.go:343`). 이 카드는 그 구조체에 `model` 필드를 `json.RawMessage` 로 더하므로(§E) 응답 `model` 이 어떤 JSON 타입이든 봉투 디코드가 실패하지 않고, glm_audit 의 파싱 결과는 바뀌지 않는다. `Model string` 으로 더하면 숫자형 `model` 응답이 Unmarshal 오류가 되어 glm_audit 이 `inconclusive` 로 떨어진다(plan-audit D2 실측) — 그래서 문자열 타입 필드는 금지한다. 그러나 glm_audit 의 결과에 서빙 모델을 **싣는 것**은 범위 밖이다. glm_audit 은 `ReviewOutput` 을 돌려주는데 이 타입은 codex_audit·glm_audit·audit_multi 의 수렴 계약이며, 여기에 필드를 더하면 세 백엔드와 수렴 로직, 그 소비자(plan-auditor·sync-auditor)의 판독 규약을 함께 건드리게 된다. 단순성 원칙상 별도 카드 몫이다. AC-MSM-004 가 공유 구조체 변경의 무회귀를 잰다.
 
 ### §B.3 codex 서빙 모델 — `unknown` 명시 (결정)
 
@@ -44,7 +44,8 @@ codex_task 는 app-server JSON-RPC 세션을 쓰고, 소비하는 응답 어디�
 
 - 동기 결과와 기록 모두 기존 `model` 키는 **요청 모델**의 의미를 유지한다.
 - 새 필드: `served_model` (GLM 은 관측값 또는 빈 값, codex 는 `"unknown"`).
-- 경고: GLM 동기 결과는 기존 `note` 에 덧붙인다(공장 모드 안내 등 기존 문장 보존). GLM 작업 기록은 기존에 note 필드가 없으므로 `omitempty` 경고 필드 하나를 더한다.
+- 경고: GLM 동기 결과는 기존 `note` 에 덧붙인다(공장 모드 안내 등 기존 문장 보존). GLM 작업 기록은 기존에 note 필드가 없으므로 `omitempty` 경고 필드 `served_model_warning` 을 더한다. 경고 문장은 리터럴 `served` 를 포함한다 — acceptance.md §A 규약 7 의 관측식이 이 토큰으로 경고 유무를 판정한다.
+- codex 경로는 서빙 경고 필드를 두지 않고 `note` 에 서빙 관련 문장을 쓰지 않는다(REQ-MSM-007, acceptance.md §A 규약 7).
 - codex 결과·기록: 요청 모델용 `model`(비어 있으면 생략 가능)과 `served_model` 을 더한다.
 
 필드 이름은 JSON 계약의 일부이므로 run 단계가 바꾸려면 blocker 로 보고한다.
@@ -68,13 +69,13 @@ go test ./internal/cli/ -run 'GLM|Glm|Codex' -count=1
 
 ### M1 — GLM 서빙 모델 관측 (Priority High)
 
-- RED: `TestGLMTask_ServedModel`(동기 표), `TestGLMJob_ServedModel`(백그라운드 기록) 작성. 가짜 HTTP doer 가 돌려주는 응답 봉투에 `model` 을 싣거나 빼서 표를 만든다.
-- GREEN: `glmMessagesResponse` 에 `model` 필드, `callGLMTask` 가 텍스트와 서빙 모델을 함께 돌려주도록, 동기 결과·작업 기록에 서빙 모델과 경고.
+- RED: `TestGLMTask_ServedModel`(동기 표), `TestGLMJob_ServedModel`(백그라운드 기록) 작성. 가짜 HTTP doer 가 돌려주는 응답 봉투에 `model` 을 싣거나 빼거나 숫자로 싣고, HTTP 500 행을 더해 표를 만든다.
+- GREEN: `glmMessagesResponse` 에 `model` 필드를 `json.RawMessage` 로 추가, 서빙 모델은 그 값이 JSON 문자열일 때만 채택(비문자열·`null`·부재·빈 문자열 → 서빙 모델 빈 값 + 부재 경고, 디코드 실패로 만들지 않음). `callGLMTask` 가 텍스트와 서빙 모델을 함께 돌려주도록, 동기 결과·완료 작업 기록에 서빙 모델과 경고. 실패·취소 기록에는 서빙 경고를 쓰지 않는다.
 - 비교: `strings.EqualFold(strings.TrimSpace(req), strings.TrimSpace(served))` 수준 — 별칭·접미사 처리 없음.
 
 ### M2 — codex 요청 모델 기록 + 서빙 `unknown` (Priority High)
 
-- RED: `TestCodexTask_ServedModelUnknown` — 기존 가짜 세션 픽스처로 동기·백그라운드 양쪽 확인.
+- RED: `TestCodexTask_ServedModelUnknown` — 기존 가짜 세션 픽스처로 동기·백그라운드 양쪽 확인. 요청 모델 행은 `writeCodexLLMFixture(t, "gpt-5-codex", "high")`(`codex_session_test.go:109`)로 만든 설정 트리에 `projectDirResolver` 를 돌려 만든다 — `codex_task` 에 `model` 인자를 더하지 않는다. `gpt-5-codex` 는 `codexServableModel` 통과 id 다(`TestCodexServableModel` 의 servable 목록).
 - GREEN: `CodexTaskResult`·`CodexJobRecord`·`codexJobSpec` 에 필드 추가, 요청 모델은 `resolveCodexModelEffort(turnParams).Model`.
 
 ### M3 — 무회귀와 린트 (Priority Medium)
@@ -88,7 +89,7 @@ go test ./internal/cli/ -run 'GLM|Glm|Codex' -count=1
 
 | 파일 | 변경 |
 |------|------|
-| `internal/cli/mcp_glm.go` | `glmMessagesResponse` 에 `model` 필드 추가(공유 구조체 — audit 은 읽지 않음) |
+| `internal/cli/mcp_glm.go` | `glmMessagesResponse` 에 `model` 필드를 `json.RawMessage` 로 추가 — JSON 문자열일 때만 서빙 모델로 채택, 비문자열은 서빙 모델 없음 + 부재 경고이며 봉투 디코드 실패가 되지 않는다(공유 구조체 — audit 은 읽지 않음) |
 | `internal/cli/glm_task.go` | `callGLMTask` 가 서빙 모델 반환, `GLMTaskResult` 에 서빙 모델, 불일치·부재 경고, 백그라운드 완료 시 기록 갱신 |
 | `internal/cli/glm_jobs.go` | `GLMJobRecord` 에 서빙 모델·경고 필드 |
 | `internal/cli/codex_task.go` | `CodexTaskResult` 에 요청 모델·서빙 `unknown`, 기록 생성 시 전달 |
@@ -107,7 +108,7 @@ go test ./internal/cli/ -run 'GLM|Glm|Codex' -count=1
 |------|------|
 | z.ai 가 `model` 을 싣지 않으면 모든 완료 호출에 부재 경고가 붙는다 | 의도된 동작이다 — 부재는 `ok` 가 아니다. 실측 후 경고 문구 조정은 후속 카드 |
 | z.ai 가 요청 id 를 다른 표기(예: 대문자)로 돌려준다 | 대소문자 무시 비교로 흡수. 그 밖의 표기 차이는 경고만 붙고 호출은 성공 — 거짓 경고는 비용이 낮다 |
-| 공유 구조체 변경이 glm_audit 을 깨뜨린다 | 필드 추가만 하며 AC-MSM-004 가 잰다 |
+| 공유 구조체 변경이 glm_audit 을 깨뜨린다(예: 숫자형 `model` 이 Unmarshal 오류가 됨) | `model` 을 `json.RawMessage` 로 받아 타입 불일치가 디코드를 실패시키지 않게 하고, AC-MSM-001 (h)·AC-MSM-004 (b) 가 숫자형 봉투로 잰다 |
 | 좁은 셀렉터가 형제 가드를 놓친다 | §C 사전 점검과 AC-MSM-005 가 `GLM|Glm|Codex` 전체를 재측정 |
 
 ---

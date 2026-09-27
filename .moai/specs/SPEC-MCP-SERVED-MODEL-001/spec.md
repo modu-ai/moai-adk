@@ -1,7 +1,7 @@
 ---
 id: SPEC-MCP-SERVED-MODEL-001
 title: "MCP 위임 도구의 서빙 모델 관측 — glm_task·codex_task 결과와 작업 기록에 요청 모델과 서빙 모델을 함께 남기기"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-09-28
 updated: 2026-09-28
@@ -23,6 +23,7 @@ related_specs: [SPEC-SERVED-MODEL-AUDIT-001]
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-09-28 | manager-spec (card t1284) | 최초 draft. 전제 실측 `.moai/reports/t1284/premise.md` 와 plan 단계 코드 판독(§A.2)에 근거. 형제 SPEC-SERVED-MODEL-AUDIT-001 의 설계 (c) 가운데 "기록하고 경고하되 거부하지 않는다" 자세만 MCP 위임 경로로 옮긴다. |
+| 0.1.1 | 2026-09-28 | manager-spec (card t1284) | plan-audit(`.moai/reports/t1284/plan-audit.md`) 반영: D1 AC-MSM-003 을 설정 기반 경로로 재작성(codex_task 에 `model` 인자를 더하지 않음), D2 비문자열 `model` 행과 디코드 비실패 조항, D3 import 판독을 diff 기반 grep 으로 교체, D4 REQ-MSM-005 정규화 범위 한정, D5 codex 경고 부재 관측식 정의, D7 백그라운드 실패 기록 행 추가. |
 
 ---
 
@@ -64,11 +65,11 @@ SPEC-SERVED-MODEL-AUDIT-001 은 서브에이전트 트랜스크립트에서 서�
 
 ### §C.1 GLM 위임 경로
 
-- **REQ-MSM-001** (Ubiquitous) — The GLM task call shall take the served model of a completed call from the top-level `model` field of the z.ai response envelope, trimmed of surrounding whitespace, and shall treat an absent, non-string, or empty field as no served model.
+- **REQ-MSM-001** (Ubiquitous) — The GLM task call shall take the served model of a completed call from the top-level `model` field of the z.ai response envelope, trimmed of surrounding whitespace, and shall treat an absent, non-string, or empty field as no served model without failing the decode of the rest of the envelope.
 - **REQ-MSM-002** (Event-driven) — **When** a foreground `glm_task` call completes, the tool result shall carry both the requested model and the served model, and the existing requested-model field shall keep its current meaning.
 - **REQ-MSM-003** (Event-driven) — **When** a background GLM job reaches the completed status, its durable job record — and therefore the job-status output that renders that record — shall carry the served model alongside the requested model.
 - **REQ-MSM-004** (Event-driven) — **When** a completed GLM call's served model differs from its requested model under case-insensitive comparison, or the completed call carries no served model, the foreground result or the background job record shall carry a served-model warning naming the requested model and the served model (or its absence); any note the result already carries shall be preserved.
-- **REQ-MSM-005** (Unwanted) — The GLM served-model observation shall not change the status, output, or error of any task, shall not refuse or fail a call on a served-model ground, shall not attach a served-model warning to a call that did not complete, and shall not strip, rewrite, or alias-match either model id before comparing them.
+- **REQ-MSM-005** (Unwanted) — The GLM served-model observation shall not change the status, output, or error of any task, shall not refuse or fail a call on a served-model ground, shall not attach a served-model warning to a call that did not complete, and shall not remove suffixes (such as `[1m]`) from, rewrite, or alias-match either model id before comparing them, beyond trimming surrounding whitespace (REQ-MSM-001) and the case-insensitive comparison (REQ-MSM-004).
 
 ### §C.2 Codex 위임 경로
 
@@ -87,10 +88,10 @@ Tier S 이지만 카드 지시에 따라 인수 기준 본문은 `acceptance.md`
 
 | AC | REQ | 요지 |
 |----|-----|------|
-| AC-MSM-001 | REQ-MSM-001, REQ-MSM-002, REQ-MSM-004, REQ-MSM-005 | glm_task 동기 결과 표: 일치·불일치·부재·대소문자만 다름·접미사 차이·실패 호출 |
-| AC-MSM-002 | REQ-MSM-003, REQ-MSM-004 | 백그라운드 GLM 작업 기록과 job-status 출력에 요청·서빙 모델과 경고 |
-| AC-MSM-003 | REQ-MSM-006, REQ-MSM-007 | codex_task 결과와 작업 기록: 요청 모델 기록, 서빙 `unknown`, 경고 없음 |
-| AC-MSM-004 | REQ-MSM-005, REQ-MSM-008 | glm_audit 판정 불변(응답에 `model` 이 있어도), 기존 GLM·codex 테스트 회귀 없음 |
+| AC-MSM-001 | REQ-MSM-001, REQ-MSM-002, REQ-MSM-004, REQ-MSM-005 | glm_task 동기 결과 표: 일치·불일치·부재·대소문자만 다름·접미사 차이·실패 호출·숫자형 `model` |
+| AC-MSM-002 | REQ-MSM-003, REQ-MSM-004 | 백그라운드 GLM 작업 기록과 job-status 출력에 요청·서빙 모델과 경고, 실패 기록에는 경고 없음 |
+| AC-MSM-003 | REQ-MSM-006, REQ-MSM-007 | codex_task 결과와 작업 기록: 설정 기반 요청 모델 기록, 서빙 `unknown`, 경고 없음(관측식 명시) |
+| AC-MSM-004 | REQ-MSM-005, REQ-MSM-008 | glm_audit 판정 불변(응답에 문자열·숫자형 `model` 이 있어도), 기존 GLM·codex 테스트 회귀 없음 |
 | AC-MSM-005 | REQ-MSM-001..008 (재측정) | 재측정 묶음(형제 가드·spec 패키지·CI 판 린트) |
 
 ---
@@ -117,6 +118,7 @@ Tier S 이지만 카드 지시에 따라 인수 기준 본문은 `acceptance.md`
 - `glm_audit`·`codex_audit`·`audit_multi` 의 서빙 모델 관측 — 세 도구가 공유하는 리뷰 출력 계약을 바꾸는 일이라 별도 카드 몫이다(plan.md §B.2).
 - codex rollout 파일(`~/.codex/sessions/**`)을 읽어 서빙 모델을 복원하는 것 — app-server 세션이 쓰는 rollout 과 이 세션의 대응이 확립되지 않았다.
 - `glm_job_result` 출력에 모델 필드를 더하는 것 — 기록은 job-status 로 이미 보인다.
+- `codex_task` 도구에 `model` 인자를 더하는 것 — codex 요청 모델은 지금처럼 프로젝트 llm 설정 해석값에서만 나온다(REQ-MSM-006 은 이미 보낸 값을 기록할 뿐 새 입력을 요구하지 않는다).
 
 ### Out of Scope — 형제 SPEC 의 부채
 
