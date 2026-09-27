@@ -428,6 +428,28 @@ Sum check: 151 rows enumerated across the tags above; **untagged = 0**.
 - `factory_worker_naming_test.go` / `factory_worker_label_test.go` file NAMES still carry `worker` (content fully converted); file renames deferred as churn with no census effect (census scans content, not paths).
 - Test-symbol names matching the AC-RNC-019 grep were also renamed (`TestParseLeadLabel`→`TestParseLeaderLabel`, `TestGLM_FactoryWorkerEntry`→`TestGLM_FactoryLaneEntry`, `TestStaleRunNoticeLegacyLeadLabel`→`TestStaleRunNoticeLegacyLeaderSpelling`) — the AC grep covers `--include='*.go'`, tests included.
 
+### Post-M5 orchestrator verification — handshake-test adjudication (TestCodexTaskBackgroundHandshakeHonorsTaskBound)
+
+The M5 agent recorded this test as "sandbox-environmental, passes unsandboxed". That adjudication was incomplete and is superseded by a same-conditions differential (lane, 2026-09-28):
+
+- **Claim**: the failure is a pre-existing load/timing sensitivity of the test's 100ms real-subprocess handshake bound (test last touched by t1186, commit `e5d6030f1`), NOT a t1256 regression and NOT sandbox-specific.
+- **Evidence** (commands run unsandboxed with the lane env scrub, extraction trees under /tmp):
+  - Card tree `165e4b2d0`, isolated `-run` selector: FAIL ("real child never reached the handshake", `.moai/reports/t1256/raw/flaky-probe.txt`).
+  - Merge-base `b59a5d69c` extraction: PASS at a quiet moment (count=2, `ok 1.113s`), then FAIL under the same back-to-back conditions in which the card tree fails (count=3, FAIL) — the arms do not separate when measured together, so the earlier base PASS was a quiet-window artifact, not a tree difference.
+  - Production spawn-path files byte-identical to merge-base: `git diff b59a5d69c --stat -- internal/cli/codex_task.go internal/cli/mcp_codex.go internal/cli/codex_launcher.go` → empty; the only codex-adjacent diffs are test files.
+  - M1–M3 full cli suite runs passed this test (quiet windows: 1263.1s / 992.586s / 1064.433s); it failed in both M5 full-suite runs and in M4/M5/HEAD isolated probes during a loaded period.
+- **Baseline-attribution**: all runs this lane, trees named above; the decisive control is the back-to-back pair (base FAIL + card FAIL under identical current load).
+- **Gaps**: no fix proposed here — the 100ms bound vs machine load is the test's own characteristic (follow-up stability candidate for the queue; the lead owns card issuance). Whether the load sensitivity also fires on CI runners is unmeasured.
+- **Residual-risk**: under load, any full-suite verdict on this machine may show this test red regardless of tree; read full-suite greens with that in mind.
+
+### Post-M5 orchestrator verification — cli merge-base coverage pair (M1 Gap closed)
+
+- **Claim**: `internal/cli` coverage post-change (84.0%) is not below the merge-base value (83.7%) — §D quality-gate coverage clause satisfied for the last unpaired package.
+- **Evidence**: base run `cd /tmp/t1256-base-check (git-archive extraction of b59a5d69c) && go test -count=1 -cover -timeout 35m ./internal/cli/` → `coverage: 83.7% of statements` (1360.0s; exit 1 — the adjudicated handshake flake fired under load, see the adjudication block above; the figure is still computed). Verbatim: `.moai/reports/t1256/raw/cover-base-cli.txt`. Post figure 84.0%: `.moai/reports/t1256/raw/cover-m1-post-cli.txt` (M1) and M5's equal re-measure.
+- **Baseline-attribution**: base measured this lane, this run, on the `b59a5d69c` extraction; post measured on card trees `5ee3d4dc3`/`6be449bc8`+ by M1/M5.
+- **Gaps**: the base run's single failed test (the load-sensitive handshake test) excludes its own executed-path contribution from the base figure — the bias direction lowers the base number, and one test's contribution in this package is far below the 0.3pp margin; noted rather than re-run (a clean-window re-run would only raise the base figure slightly).
+- **Residual-risk**: neither figure comes from a CI-grade clean environment; the authoritative full-suite verdict is CI on the develop push.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 - run_status: M5 complete (M1–M5, all code milestones of this SPEC) — cli full suite green (17 pkgs ok; the one sandbox-environmental failure passes unsandboxed, recorded above), hook full suite green with coverage (86.6%), kanban/factorymsg/homestate/web/config green, guard test green with 9 exact-literal allowlist entries + 3 recorded mutation reds + paired controls, AC-RNC-019 five-pattern grep 0 rows, census untagged 0, lint 0 issues (golangci v2.1.6), gofmt clean, both builds exit 0
@@ -443,4 +465,11 @@ Sum check: 151 rows enumerated across the tags above; **untagged = 0**.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: complete — 3-phase close (spec.md frontmatter `in-progress → completed`, `status:` + `updated:` only, zero body edits), CHANGELOG `[Unreleased]` § Changed entry, progress.md §E.4 this signal; lane-local commit only (git-flow card, NO PR, NO push — the lead batch-pushes develop from the merge window)
+- sync_complete_at: 2026-09-28
+- sync_commit_sha: pending-backfill-sync
+- audit_evidence: sync-audit verdict pending — the verdict file is appended to `.moai/reports/t1256/` by the lane AFTER this commit (slot reserved, not fabricated)
+- notes:
+  - Layer B (vocabulary documentation across README 4-locale set and docs-site) is handed to sibling card t1257 — deliberately out of this card's write scope.
+  - t1245 REQ-AP-012 wording report is owed to the leader (plan.md §F M6); the frontmatter supersession of SPEC-FACTORY-WORKER-NAMING-001 belongs to manager-spec (re-delegation after sync).
+  - AC count: 25 live AC identifiers (AC-RNC-001..025) in acceptance.md §C, matched against the CHANGELOG entry; CHANGELOG pre-emission grep for the SPEC-ID returned 0 before emission.
