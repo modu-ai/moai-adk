@@ -105,7 +105,7 @@ m1_to_mN_commit_strategy: "single run-phase commit (code + tests + 4-locale docs
 
 ```yaml
 sync_complete_at: 2026-09-27
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash
+sync_commit_sha: 93f0bb814
 sync_status: complete
 b12_self_test_a: "grep -c SPEC-STATUSLINE-LANDED-LABEL-001 CHANGELOG.md -> 0 before emission"
 b12_self_test_b: "distinct AC IDs in acceptance.md = 12 (AC-SLL-001..012); entry states 12 IDs / 18 matrix rows"
