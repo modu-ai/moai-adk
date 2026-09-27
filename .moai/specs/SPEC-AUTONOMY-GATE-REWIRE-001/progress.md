@@ -229,7 +229,7 @@ m1_to_mN_commit_strategy: milestone-per-commit
 
 ```yaml
 sync_complete_at: 2026-09-28
-sync_commit_sha: pending-backfill
+sync_commit_sha: c902d4ffd
 sync_status: complete-with-held-debt
 b12_self_test_a: pass            # grep -c 'SPEC-AUTONOMY-GATE-REWIRE-001' CHANGELOG.md → 0 before emission
 b12_self_test_b: pass            # distinct AC ids in acceptance.md: 26 = 25 AC-GR-001..025 + AC-CONTRACT-016 (A1 cross-reference); entry states 25
