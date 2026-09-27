@@ -17,6 +17,21 @@ Which one binds depends on the consumer, so both are stated rather than one bein
 |---|---|---|---|
 | Tier M ceiling (`spec-workflow.md` § SPEC Complexity Tier) | logical criteria | **8** | `grep -ohE 'AC-IBS-[0-9]{3}' acceptance.md \| sort -u \| wc -l` |
 | CHANGELOG AC count at sync (`manager-develop-prompt-template.md` § B12, which names this file as SSOT and counts live identifiers) | live identifiers incl. suffix | **10** | `grep -ohE 'AC-IBS-[0-9]{3}[a-z]?' acceptance.md \| sort -u \| wc -l` |
+| `ac-baseline-guard` pre-commit hook (`scripts/ac-baseline/check-staged.sh`) | live identifiers incl. suffix — same unit as the row above | **10** | the hook's own counter; it printed `COUNT 10` on every commit of this card |
+
+[HARD] **If `ac-baseline-guard` is ever armed for this SPEC, the recorded baseline takes the guard's unit — `10`, never `8`.** The guard is a maintained repo mechanism (`scripts/ac-baseline/{check-staged,check-armed,install-hook}.sh` with `internal/spec/ac_baseline_commit_guard_test.go` and `ac_baseline_check_armed_test.go` behind it), and it counts identifiers, not logical criteria. It reported rather than blocked throughout this card only because this SPEC is absent from `.moai/reports/t338/ac-count-baseline.txt` — which is exactly what its `unrecorded (report only)` line means — and because `acceptance.md` carries no counter-delimiter markers.
+
+The marker claim needs its predicate stated, because a substring count no longer answers it — **this paragraph mentions the token, so `grep -c "MOAI-AC-COUNTER"` now matches its own description of the guard.** The guard does not use a substring test: `scripts/ac-baseline/check-staged.sh:124-125` compares a **whole stripped line** for equality (`s == "# MOAI-AC-COUNTER-BEGIN"`), so a backticked mention inside prose cannot arm it. The measurable predicate is therefore an exact-line one, and it is `0`:
+
+```
+grep -cxF '# MOAI-AC-COUNTER-BEGIN' acceptance.md
+```
+
+A check whose measurement its own documentation changes is the hazard REQ-IBS-004 names in another form; here it is recorded rather than worked around.
+
+The trap is the direction of the mistake. Whoever arms it will reach for the number these artifacts emphasise, and that number is `8` — the Tier figure. Record `8` and the guard fires on the very next commit, reporting it as **an AC was deleted** when nothing changed at all: the count did not move, the unit did. A false deletion alarm is a costly shape to diagnose, because the honest reading of the message sends the reader looking for a removal that never happened.
+
+**The Tier ceiling, by contrast, has no mechanical enforcer.** `16/16` is doctrine the plan-auditor applies by reading. The config key exists but is explicitly unread — `internal/config/loader.go:331` carries `"plan_audit_tier_ceilings": true, // prose-consumed by the plan-auditor agent body; no Go reader` (verified verbatim in this tree, this run). So the v0.5.0 folds were never relieving mechanical pressure; they stand on the merits stated in § Folding record, and the `8` they produced is a doctrinal figure with no gate behind it. The `10` is the one a machine actually produces.
 
 Recorded at plan phase because the sync-phase consumer would otherwise read `8` from `progress.md`, count `10` with its own convention, and have to adjudicate a discrepancy nobody had flagged. This is the fourth unit mismatch in this card — after line-vs-file reference counts (twice) and `grep -c` lines vs occurrences — which is why the unit is now stated beside every count rather than left to the reader.
 
