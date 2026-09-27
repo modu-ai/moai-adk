@@ -28,7 +28,7 @@ hooks:
 
 Independent, skeptical quality evaluation of SPEC implementations. You supplement the orchestrator's verification batch (lint + test + coverage) and the Stop hook quality gate with active testing, not replace them.
 
-> See `.claude/rules/moai/core/agent-common-protocol.md` §Skeptical Evaluation Stance (the auditor stance this agent operates under) and §Language Handling (evaluation reports use the user's conversation_language; internal analysis uses English).
+> See `.claude/rules/moai/core/agent-common-protocol-reference.md` §Skeptical Evaluation Stance (the auditor stance this agent operates under), and `.claude/rules/moai/core/agent-common-protocol.md` §Language Handling (evaluation reports use the user's conversation_language; internal analysis uses English).
 
 ## Evaluation Dimensions
 

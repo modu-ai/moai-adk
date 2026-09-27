@@ -117,3 +117,54 @@ threshold and every obligation stays in `context-window-management.md`.
 Work that spans sessions does not have to be rebuilt from a paste each time. `claude --continue` reopens the most recent session and `claude --resume` picks one from a list, both with context intact; `/rename` gives a session a durable name (`oauth-migration`) so it stays findable. Treat named sessions as branches — one per work stream, each with its own accumulated context.
 
 This composes with the paste-ready handoff rather than replacing it. Resume is for continuing a session that still exists; the handoff (`session-handoff.md`) is for crossing a `/clear` or a machine boundary, where the previous context is gone by construction.
+
+### GLM-5.3 context window (Issue #653)
+
+GLM-5.3 (z.ai, served via `moai glm` / `moai cg` GLM panes) is a genuine 1M-context model; operate it at the **50% (~500K)** handoff threshold, the same class as Opus 5.5 / Opus 4.8 on the Anthropic API (1M). Do NOT treat a `moai glm` session as a 200K session.
+
+Caveat (Issue #653): Claude Code reports `context_window_size` based on the Claude slot (Opus=1M, Sonnet/Haiku=200K) regardless of provider, so raw telemetry (`effectiveWindow`) may show ~180K under GLM. This is an upstream misreport. MoAI corrects it: the statusline gauge uses `MOAI_STATUSLINE_CONTEXT_SIZE` and Claude Code auto-compact uses `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, both resolved from the `glmContextWindows` table in `internal/statusline/memory.go` (glm-5.3 → 1,000,000) or the `llm.glm.context_windows` override. Trust the MoAI statusline CW%, not raw `effectiveWindow`.
+
+## Reduction Ladder — cheaper moves before `/clear`
+
+`/clear` is the heaviest reduction available: it discards the whole window, including the warm prompt cache, and forces the next turn to re-pay the entire always-loaded prefix. That cost is not incidental — it scales with the always-loaded footprint, so `/clear` gets more expensive as the rule tree grows. Reach for it when a full reset is genuinely what is wanted, not as the reflexive answer to a full window.
+
+Four cheaper moves come first. Each targets a different cause of context growth, so pick by cause rather than working down the list:
+
+| Move | Use when | Effect |
+|------|----------|--------|
+| `/btw <question>` | A side question would otherwise land in the transcript | Answer renders in a dismissible overlay and never enters conversation history — context does not grow at all |
+| `/compact <instructions>` | The window is full but the *current* task must continue | Summarizes in place; the instructions steer what survives |
+| `Esc Esc` / `/rewind` → **Summarize up to here** | Early exploration is spent but recent turns must stay verbatim | Compacts the old prefix, keeps the tail intact |
+| `Esc Esc` / `/rewind` → restore a checkpoint | A line of attempts polluted the context, or the tree needs reverting | Restores conversation, files, or both, from a per-prompt snapshot |
+
+Checkpoints are automatic (one per prompt) and persist across sessions, so an approach can be tried and abandoned rather than deliberated over. They track only Claude's own edits — external processes are invisible to them, and they are not a substitute for git.
+
+`/clear` remains correct for a genuine task switch, and remains **mandatory** at the thresholds below. The ladder shortens how often those thresholds are reached; it does not move them.
+
+### Multi-session work: resume rather than re-establish
+
+`claude --continue` reopens the most recent session and `claude --resume` picks one from a list,
+both with context intact; `/rename` gives a session a durable name so it stays findable. Resume
+continues a session that still exists; the paste-ready handoff crosses a `/clear` or a machine
+boundary, where the previous context is gone by construction — they compose rather than replace one
+another. Detail: `context-window-management-detail.md`.
+
+
+## Snapshot confidence
+
+The stub's § Detection Heuristics states the norm — the snapshot is a relay, trustworthy to about a
+percentage point, and re-derived rather than cited when a verdict needs a number. This is the
+measurement behind it.
+
+Across the 518 snapshots whose sessions still had transcripts: rebuilding each session's occupancy
+from its own transcript usage fields (`input_tokens + cache_read + cache_creation`) and dividing the
+snapshot's `tokens_used` by it gives a median of 0.99-1.00 on every capture date in the sampled
+range, and no ratio anywhere above 1.04 — no double-counting signature, in either direction, at any
+date in that range. Low outliers are snapshots captured early in a session and compared against its
+later peak, plus stale zero-valued records; they are an artifact of the comparison, not of the
+metering.
+
+The dated baseline, the command, and the full distribution live with the measurement itself in its
+own evidence file rather than here — the norm belongs in the rule, the dated figures belong with
+the measurement.
+
