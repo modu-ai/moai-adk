@@ -503,7 +503,9 @@ func (r *realHandlerRegistry) Handlers(hook.EventType) []hook.Handler { return n
 func (r *realHandlerRegistry) Dispatch(ctx context.Context, event hook.EventType, input *hook.HookInput) (*hook.HookOutput, error) {
 	switch event {
 	case hook.EventSessionStart:
-		return hook.NewSessionStartHandler(r.cfg).Handle(ctx, input)
+		// WithSynchronousDeferredScans: this test owns the project dir via
+		// t.TempDir; deferred scans must not outlive the test body.
+		return hook.NewSessionStartHandler(r.cfg, hook.WithSynchronousDeferredScans()).Handle(ctx, input)
 	case hook.EventUserPromptSubmit:
 		return hook.NewUserPromptSubmitHandler(r.cfg).Handle(ctx, input)
 	}
