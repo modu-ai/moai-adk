@@ -29,6 +29,7 @@ baseline: worktree t1273, branch WT-handoff-neutral, develop 분기점 1b7a88d78
 - 2026-09-26 레인 검증 배치: 커밋 3건·RED 첫 줄 HEAD 계약·PRESERVE 4대상 무변경(git diff)·show/시딩/보존 그룹 GREEN 재실행 ok·`go build ./...`/`go vet` exit 0 (에디터 gopls가 워크트리를 go.work에 안 넣어 뿜는 undefined 진단은 재측정으로 기각 — 판정 근거는 실측 실행). manager-develop가 적발한 acceptance 표 셀 `\|` 셀렉터 공허 초록 결함을 fenced evidence ledger로 수리(`934e111b0`, 양성 대조 L1 스윕 3·L2 스윕 7). AC-cascade 재측정: `go test ./internal/spec/ -count=1` → ok 132.8s exit 0.
 - 2026-09-26 **M1.4 격리 환경 사전 구축 완료** (리드 지시, 모델 호출 0회): `/tmp/t1273-live` — 격리 CODEX_HOME·스크래치 proj(`.codex/config.toml` features.hooks + hooks.json SessionStart/UserPromptSubmit 배선, 이 트리 HEAD 빌드 바이너리 `/tmp/t1273-live/moai-t1273`), 핸드오프 표본 save→show 재출력 **실환경 관측**(factory.db 저장·출처 pending 헤더·본문 verbatim). 판정서 `.moai/reports/t1273/verdict.md` 작성 — 머리 「외부 차단: Codex 쿼터 2026-09-28 14:37」, LIVE 절차(양방향·관문별 판정 명령·상한 관문당 3회·30분·증거 경로 live-gate-*.txt)·M1.5 분기 판정 선언. **격리 인증 방식 리드 확정(auth 사본, [HARD]: LIVE 직전 복사+즉시 600, 삭제는 같은 복합 호출의 trap 정리, 부재는 경로+absent만 기록, 사본 흔적 전면 금지) — 판정서 LIVE 절차에 반영 완료.** **대기 상태 진입.**
 - 2026-09-28 **재개 (worker-64)**: ① 다른 작성자 부재 확인(lsof cwd 0건) ② develop `e9577de4f` 흡수 — 머지 `ddf24851f`, 충돌 0 ③ 병합 트리 재측정 **전항목 초록**: `go build ./...`·`GOOS=windows` exit 0 · vet(cli/codexadapter/homestate/codexwiring) exit 0 · show/시딩 스윕 10 PASS · 회귀 스윕 cli ok(59 PASS) · `internal/hook` RenderHandoffContext PASS 보강(원 판정의 2패키지 스윕 재현 — TestRenderHandoffContext는 hook 패키지) · homestate ok 85.1s·codexwiring ok · golangci-lint **v2.1.6**(CI 판 일치) `0 issues.` ④ 판정 바이너리 `ddf24851f` 재빌드(sha `d04b1a46…`) → save→show 재출력 재현(exit 0, pending 헤더, 마커 2) ⑤ **관문 (a) 시도 3회 → 상한 도달·훅 무발화**: 쿼터는 회복 실측(attempt2 gpt-6-astra 4,635 tokens exit 0). 신규 실측 — codex v0.157.0의 `--skip-git-repo-check` 요구·hook trust 개념·`hooks stable true`. 훅 실행 흔적 없음(상태 파일 mtime 무변화·로그 부재). 증거 `live-gate-a-attempt{1,2,3}.txt`·`live-show-recheck.txt` — 판정서에 전문 기록. **리드 보고·판정 대기** (원인 후보: trust 경로 / hooks.json 발견 경로). 부수 발견: 원 회귀 스윕의 `TestHandoffRecover`는 역사상 부재 테스트(0-스윕 토큰) — sync 시 정정 후보. auth 사본 trap 정리가 worktree 가드(2.1.275)에 거부돼 [실행]→[rm+부재기록] 연속 호출 형태로 대체(매 시도 absent confirmed).
+- 2026-09-28 **LIVE 관문 (a)(b)(c) 통과 — run 종결**: 관문 (a)는 t1225 대조로 밝힌 CODEX_HOME hooks.json 배치로 훅 발화 확인, 관문 (b)는 양팔 프로브로 codex-cli 0.157.0에서 SessionStart additionalContext 전달 실측. M1.5 P1 채택·착지(`604bd952a`, AC-HN-008 — SessionStart additionalContext 어댑터 매핑 테스트), 방향-2(Codex save → Claude clear-source 소비, DB 행 pending→consumed) 재현. 전문은 판정서 `.moai/reports/t1273/verdict.md`.
 
 ## §E.2 Run-phase Evidence
 
@@ -52,8 +53,8 @@ baseline: worktree t1273, branch WT-handoff-neutral, develop 분기점 1b7a88d78
 | AC-HN-005 | PASS | `-run 'TestNew_SeedsCodexHooksJson' -v` → `--- PASS` — materializer 경로에서 `.codex/hooks.json` 생성·`"moai hook ` 커맨드·description 확인 (생성 로직 `internal/codexwiring` RenderHooks 재사용) |
 | AC-HN-006 | PASS | `-run 'TestEnterWorktree_SeedsMissingCodexHooks' -v` → `--- PASS` — 부재 트리 진입 시 채워짐(단축명·절대경로 양쪽), 존재 파일 진입 시 바이트 불변 |
 | AC-HN-007 | PASS | `-run 'TestNew_SeedFailureFailOpen' -v` → `--- PASS` — 경로 오염(`.codex`을 일반파일로 점유) 강제 실패에도 워크트리 생성 성공 + `codex hooks` 진단 발화 |
-| AC-HN-008 | DEFERRED | 관문 (b) 미실시(쿼터 9/28 14:37) — 위임 범위 밖(M1.5). 테스트 미작성은 계약상 정상 상태 |
-| AC-HN-009 | DEFERRED | LIVE 관문 (a)(b)(c) — 쿼터 회복 후 실행(regression-guard 등급, 판정 기록 의무) |
+| AC-HN-008 | PASS | `go test ./internal/codexadapter/ -count=1 -run 'TestMapOutput_SessionStartAdditionalContext' -v` → `--- PASS: TestMapOutput_SessionStartAdditionalContext` · `ok github.com/modu-ai/moai-adk/internal/codexadapter` (HEAD `604bd952a`에서 재측정 확인; 테스트는 커밋 `604bd952a`에 착지). 관문 (b) 통과 → acceptance 계약에 따라 테스트 작성·통과 |
+| AC-HN-009 | PASS | LIVE 관문 (a)(b)(c) 전부 2026-09-28 관측(regression-guard 등급, 판정 기록 의무 이행). 관문별 관측·증거 인용은 판정서 `.moai/reports/t1273/verdict.md` § 「LIVE 종결 요약」 (증거 파일: live-gate-a-attempt4.txt, live-gate-b-ups.txt, live-gate-b-ss.txt, live-gate-c-ss.txt, live-d2-*.txt) |
 | AC-HN-010 (보존) | PASS | `go test ./internal/cli/ ./internal/hook/ -count=1 -run 'TestHandoffSave_(WritesJSONNotMarkdown\|Schema\|Stdin\|RequiresBody)\|TestHandoffClear\|TestHandoffCmdRegistered\|TestRenderHandoffContext' -v` → `--- PASS` 7건 스윕(grep -c로 확인), `ok` 2패키지. TestMapOutput은 관문 (b) 전까지 이 트리에 부재 — AC 주석대로 제외 |
 | AC-HN-011 | PASS | `grep -c "moai handoff save" .moai/specs/SPEC-HANDOFF-NEUTRAL-001/design.md` → `6` (≥1, design §D3 방향 중립 문서화 — plan-phase 산출물, run에서 변동 없음; 이 run에서 재측정) |
 | AC-HN-012 (형식) | PASS | `go vet ./internal/cli/ ./internal/codexadapter/ ./internal/homestate/` exit 0 · `gofmt -l` 대상 파일 전부 빈 목록(첫 측정에서 handoff.go·handoff_show_test.go 2건 적발 → `gofmt -w` 후 재측정 빈 목록) |
@@ -70,12 +71,12 @@ baseline: worktree t1273, branch WT-handoff-neutral, develop 분기점 1b7a88d78
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_complete_at: 2026-09-26T21:05:00+09:00
-run_commit_sha: a347d83ee
-run_status: m1-partial-green   # M1.1–M1.3 완료; M1.4(LIVE)/M1.5(P1 판정) 쿼터 회복(9/28 14:37) 후 잔여 — M1 종결 아님
-ac_pass_count: 10              # 001..007, 004b, 010, 011, 012
+run_complete_at: 2026-09-28T02:25:00+09:00
+run_commit_sha: 604bd952a
+run_status: m1-green-complete  # M1.1–M1.5 전부 종결; M2/M3는 2026-09-26 진행 기록에 등록된 deferred 문서 범위 후속으로 유지
+ac_pass_count: 12              # 001..007, 004b, 008, 009, 010, 011, 012
 ac_fail_count: 0
-ac_deferred_count: 2           # 008(조건부, 관문 b 대기), 009(LIVE, 쿼터 대기)
+ac_deferred_count: 0           # 008(관문 b 통과 후 테스트 착지·PASS), 009(LIVE 관문 (a)(b)(c) 관측 완료)
 preserve_list_post_run_count: 4  # persist.go, handoff_inject.go, codexadapter/output.go, template/templates/**
 l44_pre_commit_fetch: not-run-lane   # push는 리드 일괄 — 원격 판정은 develop push 후 CI
 l44_post_push_fetch: not-run-lane
