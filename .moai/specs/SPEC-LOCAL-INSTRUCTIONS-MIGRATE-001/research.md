@@ -94,6 +94,10 @@ not a bound.
 > again, by 1,070 characters, exactly as argued above; 44,740 is history, not the current value.
 > Expected reduction now ≥ 5,811 characters (~12.7%) — still an expectation, not a bound.
 
+> **v0.3.0 (2026-09-28) — this section's subject left the SPEC.** M3 (`REQ-IFU-021`/`022`, with
+> `AC-IFU-007`/`024`) was transferred to card t1290 after plan-audit iter4 (spec.md §D). The readings
+> above are kept as that card's input; nothing in this SPEC measures `CLAUDE.local.md` any more.
+
 ## §C The docs-site six pages — the cited path matches nothing, and one stem is ambiguous
 
 **Claim under test.** `AC-IFU-023` cited six page stems in `docs-site/content/{ko,en,ja,zh}/`.
@@ -175,7 +179,8 @@ is 25,790 bytes, with a 30,580-byte test file beside it.
   neither, and the criterion's own `--- PASS:` assertion is what settles it at run time.
 - The `.moai/docs/` split point for M3 — which sections of `CLAUDE.local.md` are procedure and
   which are rules. That is M3's first act, and doing it here would be re-deciding the document's
-  content, which spec.md §D puts out of scope.
+  content, which spec.md §D puts out of scope. (v0.3.0: M3 is now card t1290's, so this stays open
+  there, not here.)
 
 ## §F Cross-references
 

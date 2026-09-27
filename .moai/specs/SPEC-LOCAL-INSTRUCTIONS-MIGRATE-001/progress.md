@@ -592,6 +592,95 @@ the figures below: `develop` = `origin/develop` = `37dc766b9`.
   `grep -c '^\*\*AC-IFU-' acceptance.md` → `10`; `moai spec lint SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001`
   → no findings; `go test ./internal/spec/ -run TestACCounterFullCorpusMatchesBaseline -count=1` → `ok`.
 
+### plan-audit iter4 — FAIL 0.84, scope reduction by the lead (v0.3.0)
+
+Report: `.moai/reports/t1259/plan-audit-iter4.md` (subject `a73c78d1a`). Score fell 0.88 → 0.84,
+which is the STOP signal; the lead took the tier-3 scope-reduction decision and it is applied here,
+not re-opened. Edits measured on HEAD `4441cf1a6`.
+
+**What moved to card t1290** (spec.md §D "this repository's own migration"):
+
+| Item | Why it moved |
+|---|---|
+| `REQ-IFU-021`, `REQ-IFU-022` | iter4 D2 — worktree sessions do not receive `AGENTS.local.md` (`grep -n 'worktree session does not receive' AGENTS.md` → `262:`, this run); t1290's prerequisite is a reception design |
+| `AC-IFU-007` | verified only `REQ-IFU-021` (§D.2 row, one-to-one) |
+| `AC-IFU-024` | verified only `REQ-IFU-022` (§D.2 row, one-to-one) |
+| plan milestone M3 and its operator gate | the milestone that carried the two requirements |
+
+No other criterion moved: `AC-IFU-031` cites the full requirement set but is not per-requirement
+coverage (§D.2), so it stays, its citation narrowed to `REQ-IFU-007 … REQ-IFU-012, REQ-IFU-020`.
+Remaining milestones keep their ids (M1, M2, M4). Tier stays **L**: the 24 docs-site files alone
+exceed the `> 15` threshold (all 24 exist, re-checked this run); ~31 files in total.
+
+**D1 — moot here, carried to t1290.** Both criteria it named left with M3, so no criterion in this
+SPEC reads `AGENTS.local.md` any more. The replacement committed-tree predicate was demonstrated in
+a temp git repo; verbatim output (full script in `.moai/reports/t1259/d1-mutant.md`):
+
+```
+== MUTANT A: verb run, commit WITHOUT git add -f (git add -A sweep) ==
+git ls-files AGENTS.local.md CLAUDE.local.md -> []
+  PASS (old, working copy): 39000 chars
+  FAIL: HEAD carries no AGENTS.local.md
+  exit=1
+== MUTANT B: verb run, file left only in working tree, deletion not committed either ==
+  PASS (old, working copy): 39000 chars
+  FAIL: HEAD carries no AGENTS.local.md
+  exit=1
+== MUTANT C: AGENTS.local.md force-added, but CLAUDE.local.md deletion left uncommitted ==
+git ls-files AGENTS.local.md CLAUDE.local.md -> [AGENTS.local.md CLAUDE.local.md ]
+  PASS (old, working copy): 39000 chars
+  FAIL: HEAD still carries CLAUDE.local.md
+  exit=1
+== CONTROL: verb run, git add -f AGENTS.local.md, deletion committed ==
+git ls-files AGENTS.local.md CLAUDE.local.md -> [AGENTS.local.md]
+  PASS (old, working copy): 39000 chars
+  PASS: HEAD:AGENTS.local.md = 39000 chars, CLAUDE.local.md absent from HEAD
+  exit=0
+```
+
+Old (working-copy) predicate passes all four cases; the new one kills mutants A/B/C (exit 1 each,
+on three different clauses) and passes the control (exit 0).
+
+**D3 — repaired.** `spec.md`'s status paragraph no longer says "no plan-audit has run", no longer
+calls the dependency unchanged, and the dangling "One" is gone; it now states four audits, both
+dependencies completed, and the M3 split. **N2 — repaired**: `docs-i18n-check.yml:71-74` →
+`:71-75` (line 71 `elif … push`, line 75 `strict=false`, read this run). N3-N8 not taken.
+
+**Verification after these edits** (this run, HEAD `4441cf1a6` plus the uncommitted v0.3.0 edits):
+
+```
+$ AC_FILE=.moai/specs/SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001/acceptance.md bash <manager-docs.md:136-175, indent stripped>
+live=8 excluded=5 ambiguous=0
+8
+exit=0
+$ grep -c '^\*\*AC-IFU-' .moai/specs/SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001/acceptance.md
+8
+$ diff <(grep -o 'REQ-IFU-[0-9]\{3\}' acceptance.md | sort -u) <(grep -o '^- \*\*REQ-IFU-[0-9]\{3\}' spec.md | grep -o 'REQ-IFU-[0-9]\{3\}' | sort -u)
+diff_exit=0
+$ go run ./cmd/moai spec lint SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001; echo exit=$?
+WARNING   VacuousTestAssertion  …/acceptance.md  15    outcome-assertion: '--- PASS: TestFoo' has no whitespace delimiter …
+0 error(s), 1 warning(s)
+exit=0
+```
+
+The one warning is iter4 N3 (the deliberate bad-form illustration at `acceptance.md:15`), present
+before this edit and not introduced by it.
+
+**AC-count baseline cascade** (`.moai/docs/ac-count-baseline-refresh.md` §2 fourth row — in-place
+amendment changed the count 10 → 8): regenerated with
+`MOAI_AC_BASELINE_REGENERATE=1 go test ./internal/spec -run TestACCounterBaselineRegenerate -count=1`
+→ `regenerated … 850 corpus entries from source tree 4441cf1a6`. Diff read line by line: this
+SPEC's row `COUNT 10 live=10 excluded=3` → `COUNT 8 live=8 excluded=5` (cause: this edit); seven
+absent rows absorbed, each a directory absent from the old snapshot (`in_old=0`) with its adding
+commit named in the commit message; 0 HALT rows. Committed in the same commit as `acceptance.md`.
+
+```
+$ go test ./internal/spec/ -count=1 -run 'TestACCounter|TestAC' -v   (output: .moai/state/verify/t1259/ac-tests.out)
+exit=0 · 14 × "--- PASS" · 0 × "--- FAIL" · 0 × "no tests to run" · 1 SKIP (TestACCounterBaselineRegenerate, gate off by default)
+--- PASS: TestACCounterFullCorpusMatchesBaseline (11.72s)
+ok  	github.com/modu-ai/moai-adk/internal/spec	56.626s
+```
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
