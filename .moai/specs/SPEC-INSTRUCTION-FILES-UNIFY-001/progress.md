@@ -126,6 +126,61 @@ LOCAL_TAIL count=0
 **Gate:** both measurements' evidence is on disk; M1b is negative, so M2 is gated open and M3's
 byte budget is unchanged by M1.
 
+### M2 — Codex read order, guard set, learner target
+
+Base: `9f32f8077`. Raw outputs: `.moai/reports/t1243/m2/` (`red-*.txt` = RED before GREEN,
+`ac-ifu-*.txt` = AC commands after GREEN, `pkg-*.txt` = wider package runs, `build-*.txt`,
+`lint*.txt`). All test runs used `unset MOAI_KANBAN ... MOAI_KANBAN_SETTINGS_INJECTED && go test ... -count=1 -v`.
+
+| AC | Status | Command | Observed |
+|---|---|---|---|
+| AC-IFU-010 | PASS | `go test ./internal/cli/ -run '^TestCodexLocalInstructions_AgentsLocalReadFirst$\|^TestCodexLocalInstructions_DualFileMatrix$' -v` | `--- PASS: TestCodexLocalInstructions_AgentsLocalReadFirst (0.00s)` / `--- PASS: TestCodexLocalInstructions_DualFileMatrix (0.01s)` / `ok ... internal/cli 1.017s`; `no tests to run` count 0 |
+| AC-IFU-016 | PASS | `grep -n 'frozenInstructionFiles = ' internal/hook/pre_tool.go` + `go test ./internal/hook/ -run '^TestFrozenInstructionFiles$' -v` | `1405:var frozenInstructionFiles = []string{"CLAUDE.md", "CLAUDE.local.md", "AGENTS.md", "AGENTS.local.md"}`; `--- PASS: TestFrozenInstructionFiles (0.00s)` with four sub-cases `AGENTS.local.md`, `AGENTS.md`, `CLAUDE.local.md`, `CLAUDE.md`; `ok ... internal/hook 0.560s` |
+| AC-IFU-017 | PASS | `go test ./internal/harness/curator/ -run '^TestSurfaceForTier_Tier3$\|^TestPrepareTierDispatch_Tier3$' -v` | `--- PASS: TestSurfaceForTier_Tier3 (0.00s)` / `--- PASS: TestPrepareTierDispatch_Tier3 (0.00s)`; `dispatch.go:44: 3: {Path: "AGENTS.local.md", ...}` |
+
+RED (before GREEN, same commands): launcher — `ALPHA (AGENTS.local.md) at 72 must precede BETA
+(CLAUDE.local.md) at 33` and `--- FAIL` for all three read-order tests; hook — `frozenInstructionFiles
+= [CLAUDE.md CLAUDE.local.md], want exactly [AGENTS.local.md AGENTS.md CLAUDE.local.md CLAUDE.md]`;
+curator — `Tier 3 Path = "CLAUDE.local.md", want AGENTS.local.md` (both tests); contract — `derived_test.go:265:
+FrozenInstructionFiles = [CLAUDE.md CLAUDE.local.md]`.
+
+Inverted in this milestone: `TestCodexLocalInstructions_DualFileMatrix` and
+`TestCodexLocalInstructions_LargeBodySlicesAndFreshRead` (read order). **Not inverted:** the
+`codex_contract_link_test.go` `@AGENTS.local.md` assertion (see Deviation 1).
+
+**Cascade (outside the three named files, forced by a pin test).** `TestFrozenInstructionFilesPinnedInContract`
+(`internal/hook`) requires `internal/contract.FrozenInstructionFiles` to equal the hook set, so the
+contract copy gained the same two basenames, with its expectations in `internal/contract/derived_test.go`
+and `internal/cli/contract_ac_test.go`. Observable effect: a signed contract's `frozen_files` now also
+carries `**/AGENTS.md` and `**/AGENTS.local.md`, and the escalation detector's frozen-file class covers
+them. This changes the literal set SPEC-AUTONOMY-CONTRACT-001 `AC-CONTRACT-018` states; that SPEC's
+acceptance.md was not edited. The guard-set change and this cascade share one commit (they are
+pinned to each other), separate from the launcher/curator commit, so the pair reverts as a unit.
+
+**Deviation 1 — the link-test inversion is deferred to M3.** plan.md M2 says to invert the
+`@AGENTS.local.md`-imports assertion here. Its `AGENTS.md` half (`= 0`) already holds and is unchanged;
+its `CLAUDE.md` half (`= 1`) needs `codexCreatedClaudeBody` to emit `@AGENTS.local.md`, which plan.md
+M3 owns, and acceptance.md `AC-IFU-012` (v0.3.2) assigns `TestCodexContractLink_LocalImportMatrix` to
+M3. Inverting it at M2 would turn the tree red, the outcome the plan instruction exists to avoid.
+`TestCodexLocalSeparation` ("no shared instruction file may point at AGENTS.local.md", `CLAUDE.md` entry)
+will need the same inversion at M3.
+
+Wider runs: `go test -count=1 -cover ./internal/harness/... ./internal/contract/... ./internal/escalation/...`
+→ all `ok` except `internal/harness/rosterguard`; `go test ./internal/hook/ -run 'Frozen|Harness|Escalation|Contract' -v`
+→ 24 `--- PASS`, `ok`; `go test ./internal/cli/ -run 'Codex|Contract' -v` → 547 `--- PASS`, one `--- FAIL:
+TestCodexAuditMCPTool`. Both failures are pre-existing and not caused by M2: they assert text anchors in
+files M2 does not touch (`CLAUDE.md` "consists of exactly **N retained agents**" → 0 matches;
+`moai-mcp-tools.md` names `codex_role_audit*` → 0 matches), `git diff --quiet HEAD --` on those files
+exits 0, and `go list -test -deps ./internal/harness/rosterguard/` includes none of the changed packages.
+
+Build: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (both 0 bytes output).
+Lint: `golangci-lint v2.1.6 run ./internal/...` → `0 issues.` exit 0.
+Coverage: `internal/harness/curator` 91.4%, `internal/contract` 96.3%, `internal/harness` 87.1%,
+`internal/escalation` 88.7%; function level `codexLocalDeveloperInstructionArgs` 100.0%,
+`checkHarnessFrozenZone` 58.3% (the unexercised part is the pre-existing prefix-zone branch).
+Package-level `internal/cli` / `internal/hook` coverage not measured: slot `go-test-cli-hook` was held by
+another session (`moai slot status`, ends 11:24Z) at load 26, so full suites were not run.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
