@@ -233,15 +233,15 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_status: implemented   # NOT completed — see rationale below
-sync_complete_at: 2026-09-27T04:08:45Z
+sync_status: completed   # first close: implemented (2026-09-27T04:08:45Z); this record: implemented -> completed
+sync_complete_at: 2026-09-27T05:52:19Z
 sync_commit_sha: pending-backfill-sync
 changelog_entry_position: "CHANGELOG.md [Unreleased] > ### Added, first entry (inserted before SPEC-POWERSHELL-DENY-PARITY-001)"
 b12_self_test_a: "grep -c 'SPEC-CODEX-FACTORY-RETIRE-001' CHANGELOG.md (before write) -> 0 -> PASS"
 b12_self_test_b: "grep -oE 'AC-CFR-[0-9]+' acceptance.md | sort -u | wc -l -> 25; CHANGELOG entry states '25 acceptance criteria AC-CFR-001..025' -> PASS (count match)"
 b12_self_test_c: "ls .moai/reports/t1242/{m1,m2-*,m3-*,m4-*} + ls .moai/project/codemaps/modules.md -> all exist -> PASS"
 frontmatter_status_transitions:
-  spec_md: "in-progress -> implemented (NOT completed)"
+  spec_md: "in-progress -> implemented (2026-09-27) -> completed (this record, 2026-09-27)"
   plan_md: "no status: field (stateless per spec-frontmatter-schema.md Artifact Statelessness)"
   acceptance_md: "no status: field (stateless)"
 canary_compliance_check:
@@ -349,3 +349,43 @@ DoD's own wording defers AC-CFR-022's measurement to the merge window
 (it compares `<merge>` against `<merge>^1`, which cannot exist before the
 merge) — but that deferral does not, on its own, satisfy the other two DoD
 items, so `completed` is not yet reachable on any reading of the contract.
+
+### Final close record (2026-09-27T05:52:19Z) — `implemented → completed`
+
+Both DoD items that kept `status:` at `implemented` are now satisfied.
+
+**1. Green develop CI on the push carrying the merge.** Run `36296844622`,
+head `6b523a5d3` — includes merge `6d514f9b7` of this card and the guard-fix
+merge `6b523a5d3` (see the CI-fix note below). CI, Graph Freshness, CodeQL,
+and lsel-leak-guard all report `success` (**lead-reported evidence** — this
+lane did not independently query the GitHub Actions API for this run).
+
+**AC-CFR-022 on the merge tree** — `TestAlwaysLoadedTokenBudget`: `77530 ≤
+77539`, measured by the lane on merge tree `a7143c58e` (tree identical to
+merge `6d514f9b7`). This is the merge-tree measurement the original AC-CFR-022
+gap deferred to the merge window; it now PASSes.
+
+**Post-merge CI fix (recorded for the audit trail).** Develop CI run
+`36295706756` was red on `internal/hook` `TestDeferredScanOptOut_CrossPackageTestCallersOptOut`.
+Fixed by commit `4a0078651` (`WithSynchronousDeferredScans` added at
+`codex_factory_retire_test.go:506`), merged as `6b523a5d3` — the same head
+named in item 1 above. This fix is downstream of this card's M1 test file and
+is recorded here for traceability; it is not a change to this SPEC's own
+milestones.
+
+**2. F2 — `partially_superseded_by:` marking.** Done by commit `1fbac5f5b`
+(`Authored-By-Agent: manager-spec`), which added
+`partially_superseded_by: [SPEC-CODEX-FACTORY-RETIRE-001]` to the frontmatter
+of the five sibling SPECs named in `plan.md` §I: `SPEC-DUAL-HARNESS-RECOVERY-001`,
+`SPEC-FACTORY-MIXED-HOOK-001`, `SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001`,
+`SPEC-FACTORY-RUN-RETIRE-001`, `SPEC-CODEX-LOCALMD-001`. Frontmatter-only
+(non-transition frontmatter correction, `spec-frontmatter-schema.md` § Non-
+transition frontmatter corrections); the follow-up recorded in the earlier
+sync-close note above is now resolved.
+
+**All three `acceptance.md` §D.3 Definition of Done items are satisfied**:
+all 25 ACs pass (AC-CFR-024 via the M5 lead confirmation, AC-CFR-022 via the
+merge-tree measurement above); CI on the develop push carrying the merge is
+green; the five partially-superseded SPECs are marked. `spec.md` `status:`
+transitions `implemented → completed`, `updated:` unchanged (already
+2026-09-27). This closes the 3-phase close for card t1242.
