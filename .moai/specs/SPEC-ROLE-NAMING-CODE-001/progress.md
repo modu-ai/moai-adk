@@ -467,7 +467,7 @@ The M5 agent recorded this test as "sandbox-environmental, passes unsandboxed". 
 
 - sync_status: complete — 3-phase close (spec.md frontmatter `in-progress → completed`, `status:` + `updated:` only, zero body edits), CHANGELOG `[Unreleased]` § Changed entry, progress.md §E.4 this signal; lane-local commit only (git-flow card, NO PR, NO push — the lead batch-pushes develop from the merge window)
 - sync_complete_at: 2026-09-28
-- sync_commit_sha: pending-backfill-sync
+- sync_commit_sha: fe737681b
 - audit_evidence: sync-audit verdict pending — the verdict file is appended to `.moai/reports/t1256/` by the lane AFTER this commit (slot reserved, not fabricated)
 - notes:
   - Layer B (vocabulary documentation across README 4-locale set and docs-site) is handed to sibling card t1257 — deliberately out of this card's write scope.
