@@ -422,7 +422,8 @@ Minor 3건(optional): F1 wrong-auto 분모 정의 격(REQ-DM-006 문자 40분모
 정의에서 결론 불변) · F2 run-record 「voided 22 dispatches」 합산 표기(voided 5 + diagnostic 17) ·
 F3 플립 3건 출처 등록명(voided → 실제 diagnostic). 상세: `.moai/reports/t1261/sync-audit.md`.
 
-> **[무효 — VOID]** 위 95.8 감사는 레인 감사자가 `glm-5.3-flash`로 서빙돼(132/132 콜) 모델
+> **[무효 — VOID]** 위 95.8 감사는 레인 감사자가 `glm-5.3-flash`로 서빙돼(트랜스크립트 132행
+> — 고유 응답 46) 모델
 > 프로필(claude-opus) 위반 — 구속력 없는 기록으로만 남긴다(커밋 075691bd2 당시 산출). 판정
 > 근거로 인용 금지. F1 소견 자체는 뒤의 구속 감사가 독립 재발견했다.
 
@@ -450,4 +451,14 @@ Consistency 88; Tier M 임계 0.80 미달, 필수 차원 Functionality FAIL). �
   후 승인, 승인 질문이 결론 방향 예상 — 바뀐 것은 타당성 게이트이므로 오염 위험 낮게 판단).
 - **F4 [skip]**: `llm_manifest.json` 스테일 arm 필드 — run-record §4 고지 존재, 생성 계측기
   산출물은 미수정.
+
+**sync-audit r2 (구속 판정 — 재감사)**: 2026-09-27, **claude-opus-5-5[1m] —
+PASS-WITH-DEBT 93.5/100**. 보고서: `.moai/reports/t1261/sync-audit-opus-r2.md`
+(auditor-model 첫 줄·`AUDIT-VERDICT: PASS-WITH-DEBT` 종결 행 리드 직접 판독). F1·F2·F3·F5
+해소 확인 — `recompute_m3.py` 재실행 출력이 `analysis/output.txt` 와 일치하고 ÷40·÷120 두
+해석 모두에서 권고는 **llm 단독으로 불변**. F4(llm_manifest 스테일 필드)는 부채로 잔류.
+재감사 신규 발견 N1(판정서 Claim 4 「갈래 a+ b」 서술 과장 — 커밋 정의 (b)는 결함 항목만
+보므로 clean 방향 의존은 갈래 (a)뿐; Gaps #2 「equal로 내려갈 수 있다」 과장)·N2(무효 주석
+「132/132 콜」→ 트랜스크립트 132행·고유 응답 46)은 본 커밋에서 사실 정정 반영, primary
+반출본 재반영(cmp 확인).
 
