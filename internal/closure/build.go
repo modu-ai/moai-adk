@@ -3,6 +3,7 @@ package closure
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
@@ -100,7 +101,49 @@ func Build(in BuildInput) (*Report, error) {
 	buildPlanAuditBinding(r, in)
 	buildHumanVerdict(r, in)
 	buildResidualRisk(r, in)
+	buildSources(r, in)
 	return r, nil
+}
+
+// buildSources fills the evidence-role → path map (REQ-CLOSURE-024): the
+// path of every evidence file the builder read, "" when it was not read.
+func buildSources(r *Report, in BuildInput) {
+	specDir := ""
+	if in.Home != "" && in.SpecID != "" {
+		specDir = filepath.Join(in.Home, ".moai", "specs", in.SpecID)
+	}
+	r.Sources["contract"] = filepath.Join(specDir, "contract.yaml")
+	if in.ProgressMD != nil {
+		r.Sources["progress"] = filepath.Join(specDir, "progress.md")
+	} else {
+		r.Sources["progress"] = ""
+	}
+	if in.AcceptanceMD != nil {
+		r.Sources["acceptance"] = filepath.Join(specDir, "acceptance.md")
+	} else {
+		r.Sources["acceptance"] = ""
+	}
+	if in.ReceiptPresent {
+		r.Sources["receipt"] = filepath.Join(specDir, "kickoff-receipt.json")
+	} else {
+		r.Sources["receipt"] = ""
+	}
+	ev := EvidenceFor(in.Home, in.Card)
+	if len(in.SecondReviews) > 0 || len(in.SecondReviewSkipped) > 0 {
+		r.Sources["second-review"] = ev.SecondReview
+	} else {
+		r.Sources["second-review"] = ""
+	}
+	if len(in.Verdicts) > 0 {
+		r.Sources["closure-verdict"] = ev.ClosureVerdict
+	} else {
+		r.Sources["closure-verdict"] = ""
+	}
+	if len(in.Records) > 0 || len(in.UnreadableRecords) > 0 {
+		r.Sources["escalation-records"] = escalation.RecordDir(in.Home, in.Card)
+	} else {
+		r.Sources["escalation-records"] = ""
+	}
 }
 
 // WriteReportPair writes closure-report.md and closure-report.json into the

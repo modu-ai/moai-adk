@@ -82,6 +82,14 @@ GREEN (`go test -count=1 ./internal/closure/...`): `ok ... internal/closure 19.3
 
 §31 design decision — **canonical report hash**: `CanonicalReportHash` = SHA-256 of the report JSON with `generated_at` masked to "". Both the verdict recorder (M4) and the Human Verdict currency check use it; hashing raw file bytes instead would stale every verdict on the next rebuild, violating REQ-CLOSURE-002 determinism. `CountValue.UnmarshalJSON` added so the file round-trips through the struct (prerequisite of the same property).
 
+### M4 — CLI surfaces (commit pending)
+
+Files: `internal/cli/contract_report.go` (`moai contract report <card-id>`: queue lookup → §C.7 evidence home → A1 verify over the home's SPEC → Build → atomic pair write → prints the md path; refusals exit 2 naming the cause; the three A4 subcommands attach to A1's `contract` tree via file-name-ordered init — A1's files untouched), `contract_verdict.go` (`verdict <card> <verdict>`: closed refusal set agent_marker/not_tty/confirmation_mismatch/report_missing/git_identity_missing → exit 1 without writing; appends one `interactive-tty` record), `contract_pushcheck.go` (`push-check`: mode gate → inactive exit 0 under guided; `--all`/`--mirror`/unresolvable → `push_check_undetermined` exit 1; unknown flag exit 2; per-SPEC codes line). Shared core: `internal/closure/pushcheck.go` (`EvaluatePush` — REQ-CLOSURE-015 own-card candidacy over the source commit's tree, evidence from the live worktree, `EvaluateReadiness` per candidate) + `closuretest` package (the acceptance.md §A fixture, shared by closure/cli/hook tests).
+
+RED (`go test -count=1 ./internal/cli/ -run 'TestAC_CLOSURE_001|…'`, before implementation): build failure — `runContractReport` etc. undefined.
+
+GREEN (`go test -count=1 ./internal/cli/ -run 'TestAC_CLOSURE_001|TestAC_CLOSURE_019|TestAC_CLOSURE_020|TestAC_CLOSURE_024'`): `ok github.com/modu-ai/moai-adk/internal/cli 13.774s` — AC-001 (pair written at the c1 evidence dir; c2/c3/c4/c5 each exit 2 naming the cause; nothing created under any `.moai/reports`), AC-019 (ready/not-ready naming SPEC+codes/refspec/--all undetermined/missing remote ref undetermined/unknown flag 2/guided inactive), AC-020 (four refusals exit 1 with no file + success line with operator/method/report_sha256 = canonical hash), AC-024 (evidence lands only in the c1 worktree from both trees; sources name the home; removed worktree → primary). `go build ./...` + `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

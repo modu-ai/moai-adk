@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/closure/closuretest"
 	"github.com/modu-ai/moai-adk/internal/contract"
 	"github.com/modu-ai/moai-adk/internal/escalation"
 )
@@ -165,13 +166,13 @@ func TestAC_CLOSURE_004(t *testing.T) {
 	// Keep only the first ID's row; replace the other two with one unknown
 	// row (AC-004: rows for the first ID plus a fourth ID absent from
 	// acceptance.md).
-	progress := strings.Replace(fixProgress,
+	progress := strings.Replace(closuretest.Progress,
 		"| AC-FIXTURE-002 | PASS | `go test -run TestAC ok` |\n| AC-FIXTURE-003 | FAIL | `go test -run TestAC missing` |",
 		"| AC-EXTRA-009 | PASS | not in acceptance.md |", 1)
-	if progress == fixProgress {
+	if progress == closuretest.Progress {
 		t.Fatalf("fixture replacement did not apply")
 	}
-	f.write(filepath.Join(f.CardDir, ".moai", "specs", fixSpecID, "progress.md"), progress)
+	f.Write(filepath.Join(f.CardDir, ".moai", "specs", fixSpecID, "progress.md"), progress)
 
 	in := f.input()
 	rep := in.Verify
@@ -213,7 +214,7 @@ func TestAC_CLOSURE_005(t *testing.T) {
 	// Swap the contract view for one carrying the four invariants of the AC
 	// (pure verify over synthetic inputs; the fixture's own contract keeps
 	// its two plain invariants for signed-validity).
-	draft := draftContract(fixCard, fixSpecID,
+	draft := closuretest.DraftContract(fixCard, fixSpecID,
 		[]string{"constitution:X-1", "frozen-files", "go test ./pkg/...", "make check"},
 		[]string{"src/**", ".moai/specs/" + fixSpecID + "/**"})
 	rep := contract.Verify(contract.Inputs{
@@ -434,8 +435,8 @@ func TestAC_CLOSURE_009(t *testing.T) {
 	}
 
 	// Without run_commit_sha, the field shows not recorded.
-	progress := strings.Replace(fixProgress, "run_commit_sha: abc1234\n", "", 1)
-	f.write(filepath.Join(f.CardDir, ".moai", "specs", fixSpecID, "progress.md"), progress)
+	progress := strings.Replace(closuretest.Progress, "run_commit_sha: abc1234\n", "", 1)
+	f.Write(filepath.Join(f.CardDir, ".moai", "specs", fixSpecID, "progress.md"), progress)
 	in = f.input()
 	r = mustBuild(t, in)
 	if r.FirstVerdict.RunCommitSHA != NotRecorded {
@@ -443,8 +444,8 @@ func TestAC_CLOSURE_009(t *testing.T) {
 	}
 
 	// pass+fail that does not sum to the measured count flags a mismatch.
-	progress = strings.Replace(string(fixProgress), "ac_pass_count: 2", "ac_pass_count: 9", 1)
-	f.write(filepath.Join(f.CardDir, ".moai", "specs", fixSpecID, "progress.md"), progress)
+	progress = strings.Replace(closuretest.Progress, "ac_pass_count: 2", "ac_pass_count: 9", 1)
+	f.Write(filepath.Join(f.CardDir, ".moai", "specs", fixSpecID, "progress.md"), progress)
 	in = f.input()
 	r = mustBuild(t, in)
 	if !r.FirstVerdict.CountMismatch {

@@ -228,7 +228,7 @@ func TestAC_CLOSURE_011(t *testing.T) {
 
 	t.Run("receipt-named file hash mismatch", func(t *testing.T) {
 		f := newACFixture(t)
-		f.write(filepath.Join(f.CardDir, ".moai", "reports", "plan-audit", "other.md"), "changed later\n")
+		f.Write(filepath.Join(f.CardDir, ".moai", "reports", "plan-audit", "other.md"), "changed later\n")
 		receiptJSON := `{"receipt_version":1,"spec_id":"` + fixSpecID + `",` +
 			`"inputs":{"plan_audit_report":{"path":".moai/reports/plan-audit/other.md","sha256":"deadbeef"}},` +
 			`"llm_answer":{"answer":"approve"},"outcome":"approve"}`

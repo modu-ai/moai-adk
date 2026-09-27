@@ -209,3 +209,46 @@ func ChangedFileCount(dir, from, to string) (int, error) {
 func Diff(dir, from, to string) (string, error) {
 	return Run(dir, "diff", from, to)
 }
+
+// Blob returns one file's bytes at a rev (`git show <rev>:<path>`). A path
+// absent from the rev is an error the caller maps to "absent".
+func Blob(dir, rev, path string) ([]byte, error) {
+	out, err := RunRaw(dir, "show", rev+":"+path)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// PathsUnder lists the repo-relative file paths under prefix (a directory)
+// at a rev.
+func PathsUnder(dir, rev, prefix string) ([]string, error) {
+	args := []string{"ls-tree", "-r", "--name-only", rev}
+	if prefix != "" {
+		args = append(args, "--", prefix)
+	}
+	out, err := Run(dir, args...)
+	if err != nil {
+		return nil, err
+	}
+	if out == "" {
+		return nil, nil
+	}
+	return strings.Split(out, "\n"), nil
+}
+
+// RunRaw executes one git command and returns its raw stdout bytes.
+func RunRaw(dir string, args ...string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout())
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd.Dir = dir
+	var out, errb bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errb
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("gitio: git %s in %s: %w: %s",
+			strings.Join(args, " "), dir, err, strings.TrimSpace(errb.String()))
+	}
+	return out.Bytes(), nil
+}
