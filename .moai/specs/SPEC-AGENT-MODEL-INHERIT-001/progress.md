@@ -282,6 +282,71 @@ Deferred to post-t1282: `internal/hook/agent_model_guard.go` still calls
 `template.ResolveAgentModelEffort` (`resolveAgentModel`, frozen) — the last non-test consumer
 outside `internal/config` / `internal/template`, so M5 cannot delete the resolver until it moves.
 
+### M7 — doctrine (design §D H1–H20, H22, H23; H24b wording) (commits `238219302`, `d8d164d90`, `29081aaf3`)
+
+Template first, then local (commit 1 template, commit 2 local + Go + tests, commit 3 label restore).
+
+- H1/H2: `agent-common-protocol.md` § Per-Spawn Model Injection → "### Subagent Model and Effort" (one
+  plain sentence; the PreToolUse hook is described neutrally as an observation log that never blocks —
+  the `.moai/logs/agent-model-audit.jsonl` surface stays until t1282); reference rationale removed.
+- H3–H6 + D9: `model-policy.md` rewritten to the inheritance rule; § Model Policy Tiers → § Model
+  Policy (main session); § Per-Agent Profile Resolver removed; § Harness-Agent Model Policy reduced to
+  the no-field rule; per-agent effort paragraph → session effort. Rosterguard rows
+  `model-policy-profile-matrix-size` + `-mirror` removed with it.
+- H7/H8/H19/H23: agent-authoring § Effort-Level Calibration Matrix removed (its general effort-default
+  paragraph moved into the `effort` field note); constitution pointer removed; constitution-detail
+  pointer reworded; `model: "haiku"` dropped from the team spawn example; prompt-craft line and the
+  per-spawn cost-axis cross-reference rewritten/removed.
+- H9/H10 cache-aware d5/d10; H11 agent-patterns (history kept, "no field" line added; the
+  canonical per-spawn example also loses `model: "opus"`); H12 harness-builder / harness-build-entry
+  (`Agent(model/effort)` arguments, the cost-leak sentence, per-specialist model/effort assignment
+  removed); H13 token-optimization; H14 sub-agents reference (measured resolution order); H15 agent
+  bodies' escalation line (all 12 agents, both trees) + builder-harness generation policy +
+  manager-design / super-advisor model text; H16 agent-lint LR-03/LR-12 rows retired; H17
+  dynamic-workflows purpose taxonomy section replaced by one plain sentence; H18 settings-management;
+  H20 archived-agent-rejection `model:` arguments; H22 `verify-judge-effort-contract.md` deleted.
+- H24b (wording): `hint.effort.go_unbound` (templ + i18n.js, 4 locales) now states the backend-only
+  scope; `EffortLevelXHigh` labels (4 locales) drop the agent-matrix clause; profile-wizard goldens
+  regenerated (ko/ja/zh). The `ModelPolicyHigh/Medium/Low` labels were rewritten and then restored:
+  `TestModelPolicyLabels_AgreeWithProfileMatrix` and `TestGetProfileText_OpusAliasValues` derive the
+  expected label text from `template.DefaultProfileMatrix`, so the labels move with the matrix (M5,
+  after t1282).
+- agentlint doc tests adapted: `TestAuthoringDocHasEffortMatrix` → `TestAuthoringDocHasNoEffortMatrix`,
+  `TestConstitutionCrossReference` → `TestConstitutionHasNoPerAgentEffortPointer`.
+
+Design §D row note (not edited in design.md): AC-AMI-007(a) had four residual hits outside §D —
+maintainer-owned `.claude/agents/harness/{hook-ci,cli-template}-specialist.md` and
+`.claude/skills/hns-moaiadk-{patterns,best-practices}/SKILL.md` quoted the archived-agent `§C`
+per-spawn pattern with `model: opus`. Edited under REQ-AMI-007 so they match the H20 row they cite.
+
+| Command | Result |
+|---|---|
+| `go test ./internal/config/ -run TestAlwaysLoadedTokenBudget -v` before | `always-loaded surface = 65591 tokens (budget 77600, headroom 12009, 16 entries)` PASS |
+| same, after | `always-loaded surface = 65307 tokens (budget 77600, headroom 12293, 16 entries)` PASS |
+| `go test ./internal/template/ -count=1` (neutrality, internal-content-leak, rule mirror, catalog) | `ok … internal/template 112.639s` |
+| `go test ./internal/cli/agentlint/ ./internal/web/ ./internal/harness/... ./internal/template/agentemit/...` | all ok except rosterguard |
+| `go test ./internal/harness/rosterguard/` | the same three failures; failure lines equal M6's `rg6.txt` after sorting (`sort … \| diff` exit 0) |
+| `make agents-emit` / `make agents-emit-check` / `make build` / `go build ./...` | exit 0 / exit 0 / exit 0 / exit 0 |
+| `golangci-lint run` (v2.1.6) agentlint, web, rosterguard | `0 issues.` |
+| AC-AMI-007 (a)(b)(c)(d) | no output each |
+| HARD markers (`grep -c '\[HARD\]'`, both trees) | agent-common-protocol 16→15, dynamic-workflows 1→0, reference 5→4, all others unchanged |
+| zone-registry check | no test or command found for it |
+| `go test ./internal/cli/ -count=1 -timeout 40m` (slot `internal-cli-suite`; a second session ran cli tests concurrently, load ~25) | FAIL, 1630.772s: 14 failures = inherited `TestCodexAuditMCPTool`, `TestMCPToolCatalogueFiguresMatchRegistry`, flaky `TestCodexTaskBackgroundHandshakeHonorsTaskBound`; 9 codex-launch tests (M6 regression, below); 2 label tests from the first H24b draft (fixed by restoring the model-policy labels) |
+| after the restore: `go test ./internal/cli/ -run TestModelPolicyLabels_AgreeWithProfileMatrix` / `-run TestGetProfileText` / `-run Profile` | PASS / PASS / `ok … 22.069s` |
+| `golangci-lint run ./internal/cli/` / `GOOS=windows GOARCH=amd64 go build ./...` | `0 issues.` / exit 0 |
+
+AC-AMI-021 note: the reference file's −1 is not a marker — the removed H2 section's relocation note
+contained the literal text "The [HARD] rule and the four operative bullets", which `grep -c` counts.
+
+Found, not fixed (outside M7): the M6 codex emission change (`model_reasoning_effort.emit: false`)
+broke `internal/cli/codex_audit_launch.go`, which requires `model_reasoning_effort` in each role toml
+(`role "sync-auditor" file carries no usable model_reasoning_effort`). Nine `TestCodexAuditLaunch*` /
+`TestCodexAuditVerbRunsInCallerWorktree` tests fail. The SPEC inventory (research §F) does not list
+this consumer.
+
+Deferred to post-t1282: the frozen hook (`resolveAgentModel`, the audit log) is described neutrally
+in doctrine; no text claims a deny or opt-in exists or that the log is gone.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
