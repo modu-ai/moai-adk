@@ -58,26 +58,39 @@ card N done → lead reads evidence → lead sends card N+1 pointer
 - A fresh session opened for a card skips the move and its `/clear`, because it starts inside the tree.
 - The session keeps its name, so the dispatch address is unchanged. Relaunch is optional (REQ-SMM-012).
 - The exit-first safety sentence of the new-card `[HARD]` line still governs the move: a lane anchored in the previous card's tree exits first, then moves.
+- The detail sub-section carries two clarifications (ND9); the `[HARD]` line itself is unchanged:
+  - "When no next card is ready, the session is cleared as before";
+  - "Nothing but the move happens between the move and the /clear".
 
 ## 3. Extractor contract (`.moai/reports/t1279/extract_listing.py`)
 
-- Input: a transcript JSONL path and `--fixture-root <abs>`. With `--cost`, it switches to the REQ-SMM-008 row format.
-- Output lines:
+- Input: a transcript JSONL path and `--fixture-root <abs>`.
+  - With `--cost`, it switches to the REQ-SMM-008 row format.
+  - `--until-line <N>` stops reading after line N, so a growing transcript gives a fixed result.
+- Output lines (every per-row line carries the transcript line number):
   - `session <id>`;
   - `cwd <value>` for each distinct `cwd`, in first-seen order;
-  - `turn tokens=<input-side total>` per assistant row with `usage`;
-  - per `skill_listing`: `listing ts=<ts> isInitial=<bool> skillCount=<n> content_bytes=<utf8 len of content> scoped_names=<n> trees=<primary|wt|primary+wt|none>`.
-- Path attribution (REQ-SMM-002): for each fixture-family name, the source directory is `<fixture root>/<prefix path>/.claude/skills` when a `<path>:` prefix is present, and otherwise `<first cwd>/.claude/skills`. The tree is `wt` when that directory lies under `<fixture root>/.claude/worktrees/w1`, and `primary` otherwise.
-- The family cross-check prints `attribution_conflict <name>` when the family disagrees with the tree. Any such line invalidates the evidence (AC-SMM-002).
+  - `turn line=<n> tokens=<input-side total>` per assistant row with `usage`;
+  - `clear line=<n> ts=<ts>` for a `/clear` boundary row (a `local_command` row naming `/clear`, or a `compact_boundary` row);
+  - per `skill_listing`: `listing line=<n> ts=<ts> isInitial=<bool> skillCount=<n> content_bytes=<utf8 len of content> scoped_names=<n> trees=<primary|wt|primary+wt|none>`;
+  - `attribution_conflict line=<n> name=<name>` when a fixture-family name disagrees with its path-derived tree.
+- Path attribution is a **hypothesis** (REQ-SMM-002):
+  - a prefixed name comes from `<fixture root>/<prefix path>/.claude/skills`;
+  - an unprefixed name comes from `<first cwd>/.claude/skills`;
+  - `wt` means under `<fixture root>/.claude/worktrees/w1`.
+
+  A conflict does not invalidate the whole evidence. It sends that path to `gap` with reason `attribution_conflict` (REQ-SMM-005, AC-SMM-002), stops M1, and leaves the doctrine on its no/gap wording.
+- P2/P3 split: rows before the single `clear` row belong to P2, rows after it to P3. Without that row in P2's own transcript, P3 is `gap` (`no_clear_link`).
 - `--cost` rows: `row: ts=<ts> skillCount=<n> scoped_names=<n> content_bytes=<n> before=<n> after=<n> delta=<n> other_row_bytes=<n> bound=<upper|confounded>`.
   - `other_row_bytes` sums each in-between row's UTF-8 length without its newline.
   - `bound` follows the REQ-SMM-008 boundary rule.
+  - `m1-cost.md` records `cutoff_line:` and the `--until-line` used.
 - The controls (`m1-control.jsonl`, `m1-control-neg.jsonl`) have the same row shape, so the extractor under test is the real one.
-
 ## 4. Hook options (DP-1), for reference
 
 - Shared predicate: Kanban/Factory mode (a `MOAI_KANBAN*` variable is set) AND target under `.claude/worktrees/` AND target not in the configured exemption set.
+- The exemption set is `workflow.midmove_guard.exempt_trees`, default `["develop"]`.
 - Warn writes `hookSpecificOutput.additionalContext`.
-- Block writes `hookSpecificOutput.permissionDecision: deny` with a sentinel-prefixed `permissionDecisionReason`. It sits behind the opt-in key `workflow.midmove_guard.enabled` (default false) and fails open.
+- Block writes `hookSpecificOutput.permissionDecision: deny` with a `permissionDecisionReason` prefixed `MIDMOVE_GUARD_VIOLATION:`. It sits behind the opt-in key `workflow.midmove_guard.enabled` (default false) and fails open.
 - The existing handler's `systemMessage` is not relied on, because its model visibility is unverified.
 - Recommendation stays docs-only (spec.md §F).

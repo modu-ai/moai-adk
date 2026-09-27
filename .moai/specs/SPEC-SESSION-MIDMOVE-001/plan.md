@@ -63,12 +63,16 @@ Kickoff records `dp1:` and `dp2:` in progress.md §E.2 before M1.
 
 ### M2 — Real-session cost (Priority High; runs now)
 
-Run `python3 .moai/reports/t1279/extract_listing.py --cost <bb145fe7 transcript>` and write `m1-cost.md`: one `command:` line, then one `row:` per non-initial scoped listing, labelled `bound=upper` or `bound=confounded` per the REQ-SMM-008 boundary rule. `other_row_bytes` is newline-excluded. The plan-time reading (research.md §R2) found no compaction/clear boundary between any bracketing pair, so all four rows would read `bound=upper`.
+Record the transcript's current line count as `cutoff_line: N` (`wc -l < <transcript>`). Then run `python3 .moai/reports/t1279/extract_listing.py --cost --until-line N <bb145fe7 transcript>` and write `m1-cost.md`: the `cutoff_line:` line, one `command:` line, then one `row:` per non-initial scoped listing, labelled `bound=upper` or `bound=confounded` per the REQ-SMM-008 boundary rule. `other_row_bytes` is newline-excluded. The plan-time reading (research.md §R2) found no compaction/clear boundary between any bracketing pair, so all four rows would read `bound=upper`.
 
 ### M3 — Gate G1: absorb, then refresh (REQ-SMM-020; before any doctrine edit)
 
-1. Wait until t1175 has landed on develop. Absorb develop into this branch. Record `t1175_absorbed: <sha of the t1175 tip that develop's merge brought in>`.
-2. Check t1257 (naming-unification docs, waiting on t1256). When it has landed, absorb it too and record `t1257_status: absorbed <sha>`. When it has not, record `t1257_status: not-landed` and `t1257_notified: yes` after telling the lead that t1257 must rebase on this change.
+1. Wait until t1175 has landed on develop; then absorb develop into this branch.
+   - The t1175 landing commit is **not** written down by the lane. AC-SMM-022 derives it at check time: it is the second parent of the develop merge commit whose subject merges `WT-rules-diet` into develop.
+   - At v0.4.0 no such merge exists (`git merge-base --is-ancestor WT-rules-diet develop` exit 1).
+2. Check t1257 (`WT-role-naming-docs`, waiting on t1256) the same way.
+   - When its merge commit exists on develop, absorb it too.
+   - When it does not, record `t1257_status: not-landed` and `t1257_notified: yes`, after telling the lead that t1257 must rebase on this change.
 3. Re-read `CARD_BASE` (§C). Re-run the §D grep and write `.moai/reports/t1279/m3-surface.md`, including text t1175 moved into `kanban-dispatch-mechanics.md`.
 4. Confirm the old line (design.md §0 `old-153`) is still present verbatim in both kanban copies (`grep -cxF` = 1 each). If t1175 or t1257 changed it, stop and return a blocker. The amendment draft must be re-approved against the new text.
 5. Record `always_loaded_before: N` (the `TestAlwaysLoadedTokenBudget` log line) and `claude_local_bytes_before: B` (`wc -c < CLAUDE.local.md`).
@@ -90,7 +94,10 @@ Rules:
 2. Template detail companion:
    - glossary lines 27–28 (example `wt: moai cc -w <card-id>`);
    - factory line 188;
-   - new `### Card change in a standing session` with the four steps, P-FLOW, "the lead re-sends", relaunch optional, and the REQ-SMM-012 phrases per the evidence keys.
+   - new `### Card change in a standing session` containing:
+     - the four steps, P-FLOW, "the lead re-sends", and relaunch as an option;
+     - the REQ-SMM-012 phrases, per the evidence keys;
+     - the two ND9 clarifications (design.md §2).
 3. Template worktree integration rule: one card-session caveat (P-MOVE only when `move_adds_listing: yes`).
 4. `AGENTS.md.tmpl` §3, then `AGENTS.md` §3 with the identical paragraph (entry form + P-FLOW), net ≤ 0 tokens.
 5. Copy each edited template over its mirror in the same commit (per pair).

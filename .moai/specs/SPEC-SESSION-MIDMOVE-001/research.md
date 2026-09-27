@@ -118,3 +118,27 @@ Each heredoc was extracted verbatim from acceptance.md (dedented as rendered) an
 | 007 | heredoc: valid probes; trailing `; rm -rf x`; `fx-evil` cd target; `-d`; status digest differs | `2 0`; `1 1`; `1 1`; `1 1`; `2 1` | check works; unforgeable line form enforced |
 
 Not run at plan time, because their inputs do not exist until the run phase and they need the committed extractor or probe output: AC-004, AC-005, AC-008, AC-009, the AC-020 warn/block branches, and the `$FIRST_KT` half of AC-022. Their commands stay as written and are checked in M6. None of these is recorded as a pass.
+
+### R11 addendum — v0.4.0 delta ledger (HEAD `bce7248ff`, CARD_BASE `b59a5d69c1862b08a8a9e4a48afc0ad33c8d951c`, S = `mktemp -d` read alone)
+
+Every command below ran under the worktree-session guard exactly as written in acceptance.md: `S`, `CARD_BASE`, and the derived SHAs are assigned as literals, and each git call sits on its own line. Heredocs were extracted verbatim from acceptance.md. Synthetic inputs came from a scratch fixture.
+
+| AC | Observed | Reading |
+|---|---|---|
+| 022 (a) | control count `1`; `t1175.txt` `0` lines; `t1257.txt` `0` lines | RED-now, right reason: neither t1175 (`WT-rules-diet`, tip `8fb81c948`) nor t1257 (`WT-role-naming-docs`, tip `637513578`) has a develop merge commit. `git merge-base --is-ancestor WT-rules-diet develop` → exit `1`; `WT-role-naming-docs` → exit `1` |
+| 022 derivation control | the landed-card merge `f01c7889a…` gives `f01c7889abcd… 047a924f17ad…`; that second parent equals `git rev-parse WT-statusline-landed-label` | the `%P` field-3 derivation returns the merged branch tip |
+| 022 (b) on that control | merged-in-range grep for `t1175` → `0`; for `t1281` → `9`; `is-ancestor … HEAD` → `rc=1` | provenance rejects a foreign card and accepts the right one. The branch tip itself carries no card id (it is an absorb merge), so the range form is required |
+| 002 first heredoc | valid `0`; gap path with `turn_tokens_P3: 1,2` → `1` | ND5 mutant caught |
+| 002 second heredoc (cross-check) | valid `0`; unrelated P3 session `1`; clear row removed `5`; correctly gapped no-link evidence `0`; conflict in a non-gap path `1`; conflict path gapped `0`; `listing_bytes_P1` off by one `1` | ND4 linkage, ND3 gap route, and ND5 extract cross-check each fire |
+| 007 | valid `2 0`; `; rm -rf x`, `fx-evil`, `-d`, `--max-turns 40`, duplicate `--max-turns`, `--dangerously-skip-permissions`, `--add-dir /x`, `--settings /x.json` → each `2 1` | ND8 allow-list |
+| 012 | counter with the narrowed exclusions `6` | RED-now unchanged |
+| 013 | clear key `gap`: RED `1`; P-RELAUNCH in `$DT` copy only `0`; in `$AT` copy only `1`; a `목록` line in added lines `2` | ND1 argv[4] fixed; ND11 Korean surface covered |
+| 014 covered | `0`, `2`, `1` | RED-now for the covered branch across `$KT`/`$LP`/`$CL` |
+| 015 | cmp `0 0 0` (no output); §3 `36`/`36`; diff `0`; 8 `git log` to files; four `comm -23` `0 0 0 0`; `$KT` commits `0` | runs under the guard as written; RED-now on the last count |
+| 016 | `rc=0`; PASS-line greps `1`, `1`; `always-loaded surface = 77530 tokens (budget 77600, headroom 70, 16 entries)`; heredoc `0` (before 77530 / 64316 B); constant diff `0`; constant grep `1` | PASS at plan time |
+| 018 `$KT` | old/new line files `1`/`1`; preservation `0`; old line `1`; section new line `0`; file new line `0`; re-send sentence `1` | RED-now on the amendment |
+| 018 `$KL` | preservation `0`; old line `1`; section new line `0`; re-send sentence `1`; copy with the re-send sentence deleted `0` | both copies checked; ND11 control fires |
+| 018 non-kanban `[HARD]` | `0` | PASS |
+| 020 docs-only / 021 | `0` / `11` | PASS / range non-empty |
+
+Not run in v0.4.0: AC-009 (no `m1-cost.md` and no extractor yet; the cutoff re-run runs in M2/M6), the AC-020 warn/block branches (no hook under docs-only), and AC-022 (b)/(c) on real landing commits, which cannot exist until t1175 lands. None of these is recorded as a pass.

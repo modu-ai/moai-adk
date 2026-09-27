@@ -2,7 +2,8 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-- plan_status: v0.3.0 revised after plan-audit iter-2 (FAIL 0.74, `.moai/reports/t1279/plan-audit-iter2.md`). N1–N15 addressed; N1 follows the lead decision (a) in `verdict.md` §⑤. Next audit is iteration 3 of 3.
+- plan_status: v0.4.0 delta revision after plan-audit iter-3 (FAIL 0.83, `.moai/reports/t1279/plan-audit-iter3.md`). ND1–ND11 addressed under the one-time extension (`verdict.md` §⑦); the next audit is a delta audit over `b284d634a..<this commit>`.
+- plan_time_ac_ledger_v040: research.md §R11 addendum (HEAD `bce7248ff`)
 - tier: L; artifacts spec.md, plan.md, acceptance.md, design.md, research.md, progress.md; PASS threshold 0.85
 - requirements: 20 (REQ-SMM-001..020); acceptance criteria: 22 (AC-SMM-001..022)
 - decision_points: DP-1 hook (recommended docs-only) and DP-2 integration-window moves (recommended exempt) open for kickoff; N1 `/clear` placement and DP-3 ordering settled by the lead
