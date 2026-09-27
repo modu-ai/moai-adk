@@ -277,7 +277,9 @@ func grAllowed(p string) bool {
 	for _, r := range grRelocations {
 		exact = append(exact, r.dst)
 	}
-	exact = append(exact, "internal/escalation/detector_paths_test.go", "internal/hook/escalation_m5_test.go")
+	exact = append(exact, "internal/escalation/detector_paths_test.go", "internal/hook/escalation_m5_test.go",
+		// The relocated spec-compact section carries an allowlisted deadline.
+		"internal/template/internal_content_leak_test.go")
 	for _, e := range exact {
 		if p == e || p == grTemplatePrefix+e {
 			return true
