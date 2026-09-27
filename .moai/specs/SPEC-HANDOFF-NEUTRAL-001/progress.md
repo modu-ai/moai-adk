@@ -92,7 +92,7 @@ m1_to_mN_commit_strategy: per-milestone   # M1.2 cfa540967, M1.3 a347d83ee, 문�
 
 ```yaml
 sync_complete_at: 2026-09-28T00:00:00+09:00
-sync_commit_sha: pending-backfill-sync   # D3 backfill exemption — 커밋은 자신의 해시를 모른다; 후속 커밋에서 실측 SHA로 backfill
+sync_commit_sha: 417cfc1a7                             # D3 backfill — sync 커밋 417cfc1a7의 실측 SHA
 sync_status: complete
 b12_self_test_a: pass   # grep -c 'SPEC-HANDOFF-NEUTRAL-001' CHANGELOG.md → 0 (중복 없음, emission 허용)
 b12_self_test_b: pass   # acceptance.md 고유 AC 12건 == CHANGELOG 항목 기재 12건 (AC-HN-001..012)
