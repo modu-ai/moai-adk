@@ -55,7 +55,15 @@ At `b59a5d69c`, the `/clear` section extraction gave 3 non-blank lines. `grep -v
 
 ## R7. Move-without-`/clear` baseline
 
-The same logic as the AC-SMM-012 Python check (an equivalent inline form, not the byte-identical command), run on the kanban template, the detail template, `AGENTS.md.tmpl`, CLAUDE.local.md, and the lane protocol, printed `5`.
+- v0.2.0 rule, excused by any `/clear` substring: `5`. Iter-2 N6 showed that the new-card `[HARD]` paragraph was excused only by the unrelated phrase "reuse without a `/clear` in between".
+- v0.3.0 rule, excused only by the P-FLOW phrase: the AC-SMM-012 heredoc (extracted verbatim from acceptance.md) printed `6`.
+- The six counted units at `59ecb6582` are:
+  - the kanban template `wt`-bullet list;
+  - the kanban isolation-table `EnterWorktree(<path>)` row;
+  - the kanban new-card `[HARD]` paragraph;
+  - the detail glossary `dispatch` row;
+  - the `AGENTS.md.tmpl` §3 entry paragraph;
+  - the lane protocol launcher line.
 
 ## R8. t1175 overlap
 
@@ -71,3 +79,42 @@ The same logic as the AC-SMM-012 Python check (an equivalent inline form, not th
 - `HookOutput.SystemMessage`, commented "Warning message shown to user" (:366).
 
 The existing `EnterWorktree` PostToolUse handler (`internal/hook/post_tool_worktree.go`) returns only `SystemMessage`.
+
+## R10. t1175 keeps the line the amendment replaces
+
+- Commands: `git show WT-rules-diet:<path>` for the local and template kanban dispatch rule. Then `cmp` of the two, `grep -cxF -f old153.txt` on each (with `old153.txt` extracted from design.md §0), and `grep -c '[HARD]'` on each.
+- Observed at t1175 tip `4989ea6b0`:
+  - `cmp` rc `0`;
+  - old line present `1` / `1`;
+  - `[HARD]` count `38` / `38`;
+  - `MUST \`ExitWorktree\`` present `1`;
+  - `EnterWorktree(<card-id>)` `2`.
+- Consequence: the draft in design.md §0 applies unchanged after t1175 absorption, as long as the tip does not move again. M3 step 4 re-checks this.
+- Transcript `bb145fe7` carries no `compact_boundary` or `isCompactSummary` row (`grep -c` → `0`). Its single `local_command` row is line 11, before every listing, so every R2 row qualifies for `bound=upper`.
+
+## R11. Plan-time AC ledger (HEAD `59ecb6582`, CARD_BASE `b59a5d69c1862b08a8a9e4a48afc0ad33c8d951c`)
+
+Each heredoc was extracted verbatim from acceptance.md (dedented as rendered) and executed. Synthetic evidence was used for the checks whose inputs are produced in the run phase (`fixture_root` = a scratch `fx/` directory).
+
+| AC | Command(s) | Observed output | Reading |
+|---|---|---|---|
+| 021 | `git rev-parse --verify "$CARD_BASE^{commit}"`; `git diff --name-only "$CARD_BASE"..HEAD \| wc -l` | `b59a5d69c1862b08a8a9e4a48afc0ad33c8d951c` rc `0`; `10` | PASS (range non-empty) |
+| 022 | `git merge-base --is-ancestor WT-rules-diet HEAD` | rc `1` | RED-now, right reason (t1175 not absorbed) |
+| 010 | `grep -c 'moai cc -w <card-id>'` on 7 files | `$WT 0, $AT 0, $DT 0, $KT 0, $LP 1, $AL 0, $CL 0` | RED-now (LP is a regression guard) |
+| 011 | P-FLOW on `$DT $AT $LP $CL`; P-CARD in `/clear` section; P-HEAD | `0 0 0 0`; `0`; `0` | RED-now |
+| 012 | `EnterWorktree(<card-id>)` on `$KT $LP`; `moai cc -w … 또는 … EnterWorktree`; counter heredoc | `2`, `2`; `1`; `6` | RED-now |
+| 013 | heredoc with synthetic `$E` (clear key `gap`); control with P-CLEAR appended to a `$DT` copy | `1`; `2` | RED-now (P-RELAUNCH missing); control fires |
+| 014 | P-EXEMPT on the `$KT` integration section, `$LP`, `$CL` | `0`; `0`, `0` | RED-now |
+| 015 | 3× `cmp`; §3 extracts; `diff`; per-pair `git log … > file` (8 calls, rc `0`); per-pair `comm -23 \| wc -l`; `$KT` commit count; control `comm` with a foreign SHA | `0 0 0`; `36`, `36`; `0`; `0 0 0 0`; `0`; `1` | runs under the worktree guard; RED-now (no `$KT` commit yet); control fires |
+| 016 | budget test; heredoc (synthetic before = 77530, 64316 B); constant diff; constant grep; control before = 77529 | rc `0`, `always-loaded surface = 77530 tokens (budget 77600, headroom 70, 16 entries)`, `--- PASS: TestAlwaysLoadedTokenBudget (0.02s)`, `--- PASS: TestCodexContractByteCeiling (0.01s)`; `0`; `0`; `1`; `1` | PASS at plan time; control fires |
+| 017 | added-line neutrality scan; 4-line control; `$KT` added-line count | `0`; `4`; `0` | RED-now on the added-line count (no edit yet) |
+| 018 | `old153`/`new153` line counts; preservation heredoc (`$KT`, `$KL`); old-line count; section new-line heredoc; file new-line count; non-kanban `[HARD]` heredoc; controls: moved `MUST` line, amended copy (preservation / section new line / old line) | `1`, `1`; `0`, `0`; `1` (`$KT`), `1` (`$KL`); `0`; `0`; `0`; moved `1`; amended `0` / `1` / `0` | RED-now on old/new; controls fire |
+| 019 | `test -e …/rules/local`; template grep; local grep | rc `1`; `0`; `1` | PASS |
+| 020 | docs-only diff on `internal/hook/` | `0` | PASS at plan time (docs-only) |
+| 001 | heredoc with first_probe_ts `2026-09-28T01:00:00Z` / epoch `1790557200`; CAPS_CT `1790550000` vs `1790560000` | `0`; `1` | check works on synthetic input |
+| 002 | heredoc: valid; count 0 with tree `wt`; flipped key | `0`; `2`; `1` | check works; mutants caught |
+| 003 | session-id grep; heredoc: valid; `fx-evil` cwd; wrong first cwd | `3`; `0`; `2`; `1` | check works; path-component containment rejects `fx-evil` |
+| 006 | heredoc: valid; missing gap reason; wall_clock off by one | `0`; `1`; `1` | check works |
+| 007 | heredoc: valid probes; trailing `; rm -rf x`; `fx-evil` cd target; `-d`; status digest differs | `2 0`; `1 1`; `1 1`; `1 1`; `2 1` | check works; unforgeable line form enforced |
+
+Not run at plan time, because their inputs do not exist until the run phase and they need the committed extractor or probe output: AC-004, AC-005, AC-008, AC-009, the AC-020 warn/block branches, and the `$FIRST_KT` half of AC-022. Their commands stay as written and are checked in M6. None of these is recorded as a pass.

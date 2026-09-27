@@ -1,7 +1,7 @@
 ---
 id: SPEC-SESSION-MIDMOVE-001
 title: "Card sessions do not move between worktrees mid-session"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-09-27
 updated: 2026-09-27
@@ -21,6 +21,7 @@ related_specs: [SPEC-SESSION-DOUBLELOAD-001]
 
 - **2026-09-27** — v0.1.0 plan-phase draft for card t1279 (Tier M, 16 REQ / 16 AC). Source of truth: `.moai/reports/t1279/verdict.md` §①–§④. Scope is the lead's §④ decision: path D only. SPEC-SESSION-DOUBLELOAD-001 stays on HOLD and is not modified.
 - **2026-09-27** — v0.2.0 revision after plan-audit iter-1 (FAIL 0.55, `.moai/reports/t1279/plan-audit.md`, audited at `a14fcf851`). Defects D1–D22 addressed. Re-tiered to **L** (19 REQ, 21 AC; above the Tier M ceiling of 16), so design.md and research.md are added and the plan-auditor PASS threshold becomes 0.85. Changes: ranges use a read-time `CARD_BASE`; an always-loaded net-zero rule; a REQ for the real-session cost of the duplicate; the standing-lane per-card flow; a symmetric DP-1 table.
+- **2026-09-27** — v0.3.0 revision after plan-audit iter-2 (FAIL 0.74, `.moai/reports/t1279/plan-audit-iter2.md`, audited at `75f761f43`). N1 follows the lead's decision (a), recorded in `verdict.md` §⑤: only on a card change does the phase-end `/clear` move to after the worktree move, and the obligation is relocated, not weakened. The amendment text for the kanban dispatch `[HARD]` line is drafted verbatim in design.md §0. Fixes: path-based fixture attribution (N2); an unforgeable probe line with path-component containment (N3); a guard-runnable per-pair AC-SMM-015 (N4); section-scoped `[HARD]` line preservation (N5); a flow-phrase-based move counter (N6); the upper-bound premise and byte basis (N7); command-only criteria (N8); plus N9–N15. A t1175/t1257 ordering gate is added as REQ-SMM-020 / AC-SMM-022. Tier stays L (20 REQ, 22 AC).
 
 ## §A — Problem
 
@@ -55,29 +56,44 @@ The current doctrine prescribes the move and orders the `/clear` **before** it (
 
 - **REQ-SMM-001** (Ubiquitous) — The measurement shall commit its caps before the first probe runs, in a commit that touches only the caps file. The caps are:
   - at most 6 probe sessions, counted as distinct transcript session ids (a `--resume` of the same id is one session; a new id after `/clear` is a new session);
-  - at most 4 turns per probe;
+  - at most 4 turns per probe, where a turn is one assistant transcript row carrying `usage` (every probe line also passes `--max-turns 4`);
   - each headless probe bounded by `timeout -k 10 300`;
   - at most 45 minutes of wall clock, measured from the first row of the first probe transcript to the last row of the last probe transcript.
-- **REQ-SMM-002** (Ubiquitous) — The measurement shall record the following for three paths in a scratch fixture repository. The fixture primary carries project skills named `fx-primary-*`, and a fixture worktree under `.claude/worktrees/` carries skills named `fx-wt-*`.
-  - **Paths:**
-    - (P1) a session started inside the fixture worktree;
-    - (P2) a session started at the fixture root, moved into the fixture worktree by `EnterWorktree`, then continued for at least two turns;
-    - (P3) the P2 session after `/clear`, continued for one turn.
-  - **Recorded for each path:**
-    - the fixture-tree set. A listed skill belongs to the primary tree when its base name (after removing any `<path>:` prefix) starts with `fx-primary-`, and to the worktree tree when it starts with `fx-wt-`. Every other name (user, plugin, and command namespaces) is excluded. P3 counts only listings after the `/clear`;
-    - the count of `skill_listing` attachments, and the UTF-8 byte length of each one's `content`;
-    - per assistant turn, the input-side usage total;
-    - the session id, and the `cwd` field of the transcript's rows.
+- **REQ-SMM-002** (Ubiquitous) — The measurement shall run in a scratch fixture repository whose two skill directories are disjoint by construction:
+  - the fixture worktree `.claude/worktrees/w1` is created before any skill exists;
+  - `fx-primary-*` skills are then written only under the fixture root's `.claude/skills/`;
+  - `fx-wt-*` skills are written only under `w1/.claude/skills/`;
+  - the fixture record shows both absence checks (`fx-primary-a` absent in `w1`, `fx-wt-a` absent at the root) exiting 0.
+
+  For each listed fixture skill, the source directory shall be decided by **path**: a name carrying a `<path>:` prefix comes from `<fixture root>/<path>/.claude/skills`, and an unprefixed name comes from the session's start directory's `.claude/skills`. The tree is `wt` when that directory lies under `w1`, and `primary` otherwise. The name family (`fx-primary-*` / `fx-wt-*`) is only a cross-check, and a disagreement invalidates the evidence. User, plugin, and command namespaces are excluded. For three paths:
+  - (P1) a session started inside `w1`;
+  - (P2) a session started at the fixture root, moved into `w1` by `EnterWorktree`, then continued for at least two turns;
+  - (P3) the P2 session after `/clear`, continued for one turn (only listings after the `/clear` count);
+
+  the measurement records:
+  - the per-listing tree sets, in listing order;
+  - the listing count;
+  - each listing's `content` UTF-8 byte length;
+  - the per-turn input-side usage totals;
+  - the session id;
+  - the transcript `cwd` values (the first one is the start directory).
+
+  The three decision keys shall be derived from listing counts and per-listing tree sets alone:
+  - `launcher_single_listing` is yes when P1 has exactly one listing and its set is `wt`;
+  - `move_adds_listing` is yes when P2 has at least two listings, its first set is `primary`, and a later set contains `wt`;
+  - `clear_restores_single_listing` is yes when P3 has at least one listing and every P3 set is `wt`.
+
+  A path with listing count 0, or with no measurement, yields `gap` for every value of that path. Evidence that pairs a count of 0 with any non-gap tree value is invalid.
 - **REQ-SMM-003** (Unwanted) — The measurement shall not take any load or listing judgment from a debug log. Every judgment shall come from a session transcript through a committed extractor, and the command shall be recorded beside its output.
-- **REQ-SMM-004** (Event-driven) — When a path's fixture-tree set holds one tree, or when no path records a worktree-scoped listing, the evidence shall carry two controls, both run through the same extractor:
+- **REQ-SMM-004** (Event-driven) — When any P1–P3 listing set holds a single tree, or when no path records a worktree-scoped name, the evidence shall carry two controls, both run through the same extractor:
   - a positive control on a committed JSONL file shaped like a transcript and holding a worktree-scoped `skill_listing`, which reports at least one worktree-scoped name;
   - a negative control on the same shape with no scoped names, which reports none.
 - **REQ-SMM-005** (Event-driven) — When a headless session cannot perform a path's move or `/clear`, or a cap is reached first, the measurement shall either record the path as a Gap with its reason, or substitute one operator-run session in the same fixture. The substitute's transcript passes the same extractor, the same `cwd` check, and the same session-id recording.
 - **REQ-SMM-006** (Unwanted) — The measurement probes shall not:
-  - run with a transcript `cwd` outside the scratch fixture;
-  - change branch state outside the fixture;
+  - run from a start directory outside the fixture root. A probe line has the fixed form `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED CLAUDE_PROJECT_DIR && cd -- <abs dir> && timeout -k 10 300 claude <args>`, with `<abs dir>` inside the fixture root by path components, `<args>` free of `;`, `&`, `|`, `<`, `>`, backquote, `$`, and parentheses, and no trailing command;
+  - carry a transcript `cwd` outside the fixture root by path components, or a first `cwd` other than `w1` (P1) or the fixture root (P2);
+  - change branch state or the working-tree status of this repository (`git status --porcelain` digest equal before and after);
   - use `--setting-sources`, `-d`, `--debug`, or `--debug-file`;
-  - run without the `MOAI_KANBAN*` variables unset in the same compound invocation;
   - commit raw transcripts or debug output.
 - **REQ-SMM-007** (Ubiquitous) — The measurement shall keep probe invocations, extraction commands, and fixture construction in three separate committed files, so each can be checked against its own format.
 
@@ -86,49 +102,54 @@ The current doctrine prescribes the move and orders the `/clear` **before** it (
 - **REQ-SMM-008** (Ubiquitous) — The evidence shall record the real-session cost of the duplicate listing from the transcript of session `bb145fe7`. For each non-initial `skill_listing` that carries a name with a `.claude/worktrees/<x>:` prefix, it records:
   - the timestamp, `skillCount`, the scoped-name count, and the `content` UTF-8 bytes;
   - the input-side usage totals of the assistant turns immediately before and after it, and their delta;
-  - the byte size of the other rows between those two turns.
+  - the sum of the UTF-8 byte lengths of the other transcript rows strictly between those two turns, each row measured without its trailing newline.
 
-  The delta shall be labelled an upper bound. When that transcript is no longer readable, the evidence shall record `gap` with the reason, instead of any figure.
+  The delta is an upper bound on the listing's cost only on the premise that no prompt content is removed between the two turns. A row is labelled `bound=upper` when no row between the two turns is a compaction or clear boundary (`"subtype":"compact_boundary"`, `"isCompactSummary":true`, or a `local_command` row whose content names `/clear`). Otherwise it is labelled `bound=confounded`. When that transcript is no longer readable, the evidence shall record `gap` with the reason, instead of any figure.
 
 ### C.3 Doctrine — entry and card change
 
 - **REQ-SMM-009** (Ubiquitous) — The kanban dispatch rule, its detail companion, the root agent contract §3, the worktree integration rule, the local lane protocol, and CLAUDE.local.md §4.1 shall name starting the session inside the card worktree through the launcher (`moai cc -w <card-id>`, or `--spawn` for a new window) as the entry form for a session opened fresh for a card.
-- **REQ-SMM-010** (While) — While a standing Kanban companion or Factory lane session carries successive cards, the doctrine shall state the per-card flow in this order:
+- **REQ-SMM-010** (While) — While a standing Kanban companion or Factory lane session carries successive cards, the doctrine shall state that **on a card change, `/clear` exactly once, after the move**. The per-card flow is:
   1. the lead sends the next card's pointer;
   2. the session moves into the new card worktree;
   3. the operator issues `/clear`;
   4. the lead re-sends the full pointer.
 
-  This `/clear` is the single between-cards `/clear`: it replaces the earlier clear-then-move order and is not added to it. Relaunching the session per card shall not be required.
-- **REQ-SMM-011** (Unwanted) — The doctrine shall not present an in-session move into a card worktree without the `/clear` and pointer re-send that follow it. For sessions opened fresh for a card, it shall not offer `EnterWorktree(<card-id>)` as an equal alternative to the launcher.
+  A phase end that is not a card change keeps today's `/clear` handoff unchanged. The obligation is relocated, never weakened: the kanban dispatch `[HARD]` line that begins `[HARD] A companion session does not carry one card's context into the next card.` shall be replaced by the amendment text drafted verbatim in design.md §0, in both the local and the template copy. Relaunching the session per card shall not be required.
+- **REQ-SMM-011** (Unwanted) — The doctrine shall not present an in-session move into a card worktree without both the `/clear` and the lead's pointer re-send that follow it; the canonical phrase ``move → `/clear` → re-send`` marks that presentation. For sessions opened fresh for a card, outside the preserved `[HARD]` lines of REQ-SMM-017, the doctrine shall not offer `EnterWorktree(<card-id>)` as an equal alternative to the launcher.
 - **REQ-SMM-012** (Event-driven) — When the doctrine states what a move, the launcher entry, or `/clear` does to the skill listing, the statement shall be bounded by the measurement:
-  - "a move adds the moved-into tree's listing" only when P2 recorded two fixture trees;
-  - "the launcher entry yields one listing" only when P1 recorded one fixture tree;
-  - "`/clear` removes the carried listing" only when P3 recorded one fixture tree.
+  - "a move adds the moved-into tree's listing" only when `move_adds_listing` is yes;
+  - "the launcher entry yields one listing" only when `launcher_single_listing` is yes;
+  - "`/clear` removes the carried listing" only when `clear_restores_single_listing` is yes.
 
-  When the result is otherwise, including a Gap, the doctrine shall keep the flow of REQ-SMM-010 and name ending the session and relaunching it through the launcher as the way to a single listing, as an option rather than a requirement.
-- **REQ-SMM-013** (Where) — Where decision point DP-2 exempts integration-window moves, the kanban dispatch rule, the lane protocol, and CLAUDE.local.md §4.1 shall name exactly two moves as exempt: the move into the integration or release worktree to merge, and the return move to the card worktree. Where DP-2 does not exempt them, those surfaces shall apply the move → `/clear` → re-send order to those moves as well.
+  Every added doctrine line that mentions a skill listing shall use one of the canonical phrases fixed in acceptance.md. When a key is `no` or `gap`, the doctrine shall keep the flow of REQ-SMM-010 and name ending the session and relaunching it through the launcher as the way to a single listing, as an option rather than a requirement.
+- **REQ-SMM-013** (Where) — Where decision point DP-2 exempts integration-window moves, the kanban dispatch rule, the lane protocol, and CLAUDE.local.md §4.1 shall carry the canonical exemption sentence naming exactly two moves: the move into the integration or release worktree to merge, and the return move to the card worktree. Where DP-2 does not exempt them, those surfaces shall apply the move → `/clear` → re-send order to those moves as well.
 
 ### C.4 Where the doctrine lives
 
-- **REQ-SMM-014** (Ubiquitous) — Template copies shall be edited first, and every commit that changes a local mirror shall change its template in the same commit. At HEAD, three local copies shall be byte-identical to their templates: the kanban dispatch rule, its detail companion, and the worktree integration rule. At HEAD, the §3 section of `AGENTS.md` shall be identical to the §3 section of `AGENTS.md.tmpl`.
+- **REQ-SMM-014** (Ubiquitous) — Template copies shall be edited first, and every commit that changes a local mirror shall change that mirror's own template in the same commit (per pair, not per union). At HEAD, three local copies shall be byte-identical to their templates: the kanban dispatch rule, its detail companion, and the worktree integration rule. At HEAD, the §3 section of `AGENTS.md` shall be identical to the §3 section of `AGENTS.md.tmpl`.
 - **REQ-SMM-015** (Unwanted) — The doctrine change shall not increase the always-loaded surface:
   - the `always-loaded surface = N tokens` figure logged by `TestAlwaysLoadedTokenBudget` after the change shall not exceed the figure logged immediately before the first doctrine commit;
   - the `AlwaysLoadedTokenBudget` constant shall not change;
-  - explanatory text shall go to paths-scoped files (the detail companion, the worktree integration rule), and the always-loaded files shall carry only offset-balanced wording and pointers.
+  - explanatory text shall go to paths-scoped files (the detail companion, the worktree integration rule), and the always-loaded files shall carry only offset-balanced wording and pointers. Offsets come only from non-`[HARD]` lines.
+
+  CLAUDE.local.md lies outside that surface but is loaded twice in L1 worktree sessions, so its net growth shall be at most 600 bytes.
 - **REQ-SMM-016** (Unwanted) — The lines this SPEC adds to any template file shall not carry card ids, SPEC ids, dates, or commit hashes.
-- **REQ-SMM-017** (Unwanted) — The doctrine change shall not remove or weaken an existing `[HARD]` clause of a touched file. In particular:
-  - every non-blank line of "The `/clear` handoff between phases" section shall remain verbatim;
-  - the `WT-` rename paragraph shall remain verbatim;
-  - the new-card paragraph shall keep, verbatim, its bold lead sentence, its fresh-tree sentence, and its merge-not-reuse sentence;
-  - the `[HARD]` count of each touched file shall not decrease.
+- **REQ-SMM-017** (Unwanted) — The doctrine change shall not remove, alter, or relocate an existing `[HARD]` line of the kanban dispatch rule, in either copy, except the single line named in REQ-SMM-010:
+  - every other line containing `[HARD]` at `CARD_BASE` shall appear verbatim at HEAD, inside the section (`## ` heading) that held it at `CARD_BASE`. This includes the new-card line carrying the `MUST \`ExitWorktree\`` exit-first safety sentence and the `WT-` rename line;
+  - the replaced line shall be absent at HEAD, and the amendment text shall be present exactly once, in the `/clear` handoff section;
+  - in the other touched files (detail companion, worktree integration rule, lane protocol, CLAUDE.local.md), the `[HARD]` count shall not decrease.
 - **REQ-SMM-018** (Ubiquitous) — The local-only lane protocol (`.claude/rules/local/gitflow-lane-protocol.md`) and CLAUDE.local.md §4.1 shall state the entry form of REQ-SMM-009 and the flow of REQ-SMM-010, and shall remain without a template mirror.
+- **REQ-SMM-020** (Unwanted) — The doctrine body replacement shall not begin before the rules-diet card t1175 has landed on develop and that develop has been absorbed into this branch:
+  - the first commit in the range that touches the kanban dispatch rule shall descend from the recorded t1175 landing commit;
+  - the naming-unification card t1257, which edits the same file and waits on t1256, shall likewise be absorbed first when it has landed;
+  - when t1257 has not landed, its status shall be recorded as `not-landed` and the lead notified that t1257 must rebase on this change.
 
 ### C.5 Optional hook (conditional on decision point DP-1)
 
 - **REQ-SMM-019** (Where) — Where DP-1 selects a hook, the hook shall act only while the session runs in Kanban or Factory mode, and only on `EnterWorktree` targets that are card worktrees and not an exempt integration worktree.
   - **Warn option:** after the move, the hook shall carry the notice (next step `/clear`, then the lead re-sends the pointer) in the `additionalContext` output field, and shall exit 0.
-  - **Block option:** before the move, the hook shall deny the move with a reason prefixed by a fixed sentinel, only while a configuration flag is enabled (default disabled), and shall allow the move on any uncertainty.
+  - **Block option:** before the move, the hook shall deny the move with a reason prefixed by a fixed sentinel, only while the opt-in key named in design.md §4 is enabled (default disabled), and shall allow the move on any uncertainty.
 
   Where DP-1 selects docs-only, the hook layer shall not change.
 
@@ -139,9 +160,9 @@ Enumerated with `grep -n -E "EnterWorktree|ExitWorktree|moai cc -w|/clear"` at H
 | File (template path; local mirror) | Line(s) at `2370c5b31` | Current text (abridged) | Change | Load |
 |---|---|---|---|---|
 | `internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` (`.claude/rules/moai/workflow/kanban-dispatch.md`) | 93 | `wt`: exit-first `ExitWorktree` → `EnterWorktree(<card-id>)` → `git branch -m WT-<slug>` | Launcher for fresh sessions; standing-session flow pointer | always |
-| same | 151–157 | "The `/clear` handoff between phases" | One added sentence: card change = move → `/clear` → re-send; existing lines verbatim | always |
+| same | 153 (in 151–157) | [HARD] "A companion session does not carry one card's context…" | **Replaced** by the amendment text in design.md §0 (lead decision (a)); the section's other lines verbatim | always |
 | same | 166–170 | isolation table (`EnterWorktree(<path>)` "re-enter from the current session") | Qualify: followed by `/clear` + re-send for card work | always |
-| same | 179 | [HARD] new card starts in a new worktree | Launcher / standing-session flow; three sentences kept verbatim | always |
+| same | 179 | [HARD] new card starts in a new worktree (carries the `MUST \`ExitWorktree\`` safety sentence) | Line verbatim; a following non-`[HARD]` continuation line in the same paragraph adds the launcher entry and ``move → `/clear` → re-send`` | always |
 | same | 181 | [HARD] `WT-` rename | No change | always |
 | same | 250–251 | integration `EnterWorktree(<release-worktree-path>)`, return `EnterWorktree(<own-path>)` | Per DP-2 | always |
 | `internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch-detail.md` (mirror) | 27, 28, 188, 214–220 | glossary "worktree"; example `wt: EnterWorktree(t0)`; factory `/clear` boundary; `/clear` message structure | Launcher example; standing-session per-card flow in full; rationale for the order | paths |
@@ -208,9 +229,10 @@ Each decision point is resolved at the Implementation Kickoff Approval gate and 
 
 **Recommendation (label):** exempt. The listing it leaves lasts at most until the between-cards `/clear` of REQ-SMM-010; whether that `/clear` removes it is what P3 measures.
 
-### DP-3 — Ordering against the rules-diet card t1175
+### DP-3 — Ordering against t1175 and t1257 (settled; now a gate)
 
-- `WT-rules-diet` is not an ancestor of this branch. Its tip was `3a48485af` at plan time and `4989ea6b0` at revision time, so the tip moves.
-- Its diff rewrites the kanban dispatch rule and `AGENTS.md`, and adds `kanban-dispatch-mechanics.md`.
+- `WT-rules-diet` (t1175) is not an ancestor of this branch. Its tip was `3a48485af` at plan time and `4989ea6b0` at revision time, so the tip moves.
+- Its diff rewrites the kanban dispatch rule and `AGENTS.md`, and adds `kanban-dispatch-mechanics.md`. At `4989ea6b0` it keeps the line that REQ-SMM-010 replaces verbatim in both copies, and still has 38 `[HARD]` lines (research.md §R10).
+- t1257 (naming-unification docs, waiting on t1256) edits the same file.
 
-**Recommendation (label):** wait. M1 runs now. The doctrine milestones start after t1175 lands on develop and develop is absorbed here. Ranges then start at the read-time `CARD_BASE`, so t1175's commits fall outside them.
+**Decision (lead, verdict.md §⑤):** wait. M1 and M2 run now. The body replacement runs after absorption, as REQ-SMM-020 / AC-SMM-022 require.

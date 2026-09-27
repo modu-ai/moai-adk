@@ -2,155 +2,145 @@
 
 ## §A — Context
 
-- Card t1279. Worktree `.claude/worktrees/t1279`, branch `WT-session-double-load`. Plan v0.1.0 at `2370c5b31`; revised after plan-audit iter-1 (`.moai/reports/t1279/plan-audit.md`, FAIL 0.55).
-- Source of truth: `.moai/reports/t1279/verdict.md` §①–§④. Load judgments come from transcripts only.
-- **Tier L** (reclassified in v0.2.0): 19 REQ and 21 AC exceed the Tier M ceiling of 16. Artifacts: spec.md, plan.md, acceptance.md, design.md, research.md, progress.md. The plan-auditor PASS threshold is 0.85. The reclassification is made before re-audit, so the next audit is scored against Tier L.
+- Card t1279, worktree `.claude/worktrees/t1279`, branch `WT-session-double-load`.
+- Plan history:
+  - v0.1.0 at `2370c5b31`;
+  - v0.2.0 after plan-audit iter-1 (FAIL 0.55);
+  - v0.3.0 after iter-2 (FAIL 0.74, `.moai/reports/t1279/plan-audit-iter2.md`). The next audit is the last one.
+- Source of truth: `.moai/reports/t1279/verdict.md` §①–§⑤. Load judgments come from transcripts only.
+- **Tier L:** 20 REQ and 22 AC, above the Tier M ceiling of 16. The six artifacts are spec, plan, acceptance, design, research, and progress. The PASS threshold is 0.85.
 
 ## §B — Decisions first (most likely to change)
 
-The three decision points (spec.md §F) are resolved at the Implementation Kickoff Approval gate and recorded in progress.md §E.2 before M1.
-
-| DP | Recommendation (label) | Plan change under the other option |
+| Decision | State | Plan change under the other option |
 |---|---|---|
-| DP-1 hook | docs-only | warn → add M5a (mode gate, exemption set, `additionalContext`, visibility probe from the M1 spare budget); block → add M5b (PreToolUse, opt-in flag, sentinel, fail-open) |
-| DP-2 integration moves | exempt | covered → M4 adds move → `/clear` → re-send to the integration lines in the kanban rule, lane protocol, and CLAUDE.local.md |
-| DP-3 t1175 ordering | wait | proceed → Gate G1 still records `CARD_BASE`, but the §D refresh and the budget "before" figure are taken now; conflicts with t1175 go to M4's risk list |
+| N1 `/clear` placement | **settled by the lead: (a)** (verdict §⑤) | — |
+| DP-1 hook | recommendation: docs-only (kickoff decides) | warn → add M5a; block → add M5b |
+| DP-2 integration moves | recommendation: exempt (kickoff decides) | covered → M4 adds ``move → `/clear` → re-send`` to the integration lines instead of the P-EXEMPT sentence |
+| DP-3 ordering | **settled by the lead: wait** — now Gate G1 (REQ-SMM-020) | — |
 
-## §C — Read-time base and worktree-guard form
+Kickoff records `dp1:` and `dp2:` in progress.md §E.2 before M1.
 
-- `CARD_BASE` is `git merge-base develop HEAD`, read at the moment a check runs (lane protocol rule: measure from the merge-base with the absorbed ref, never from a literal plan-time SHA).
-- The worktree-session guard refuses command substitution around git (`CARD_BASE=$(git merge-base develop HEAD)` was refused in this worktree, observed at revision time; research.md §R5). In a worktree session, therefore:
-  1. run `git merge-base develop HEAD` alone;
-  2. assign the printed SHA literally in the next command;
-  3. verify it with `git rev-parse --verify "$CARD_BASE^{commit}"`.
+## §C — Read-time values and the worktree-guard form
 
-  In an unguarded shell the one-line form is equivalent. The same two-step pattern applies to every derived SHA in acceptance.md.
+- `CARD_BASE` is `git merge-base develop HEAD`, read when a check runs (lane protocol §8). It is never a literal plan-time SHA.
+- The worktree-session guard refuses `$(git …)`, `awk -f`, and loops that pass computed values to `sed`/`git` (research.md §R5). Every acceptance command therefore uses one of three forms:
+  - a plain git call with double-quoted variables;
+  - a git call writing to a scratch file, followed by a separate command that reads the file;
+  - a `python3 - args <<'PY'` heredoc whose body does not name git.
+- A derived SHA is printed by one command and assigned literally in the next.
 
 ## §D — Milestones
 
 ### M1 — Fixture mechanism check (Priority High; runs now)
 
-1. **Caps commit:** `.moai/reports/t1279/m1-caps.md` holds the REQ-SMM-001 caps and their counting rules. Force-add it (`git add -f`) and commit it alone.
-2. **Fixture** (built under the session scratchpad; commands recorded in `fixture.txt`):
-   - `fx/` git repo with `CLAUDE.md`, `CLAUDE.local.md`, and `.claude/skills/fx-primary-{a,b,c}/SKILL.md`;
-   - `fx/.claude/worktrees/w1` made with the fixture's own `git -C fx worktree add` (a fixture, not a MoAI card tree), carrying `.claude/skills/fx-wt-{a,b,c}/SKILL.md`;
-   - no hooks in the fixture; `--allowedTools EnterWorktree` per probe.
-3. **Probes** (`probes.txt`: one line per invocation, nothing else):
-   - form: `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && timeout -k 10 300 claude -p "<prompt>" --model haiku --max-turns 4 --output-format json [--allowedTools EnterWorktree] [--resume <session-id>]`;
-   - P1 starts in `w1`; P2 starts at the `fx` root, moves in turn 1, and continues in turns 2–3; P3 is `/clear` then one turn;
-   - operator-run substitute (REQ-SMM-005): a line starting `# operator-run:` naming the session id and steps. Its transcript is checked exactly like a headless one;
-   - spare: 2 sessions (re-run, or the DP-1 warn visibility probe).
-4. **Extractor** (`.moai/reports/t1279/extract_listing.py`, committed; its invocations are recorded in `extract.txt`). For a transcript JSONL, it prints:
-   - `session_id`;
-   - the distinct `cwd` values;
-   - per `skill_listing`: `isInitial`, `skillCount`, `content` UTF-8 bytes, the fixture-tree set (base-name rule, spec.md REQ-SMM-002), and the scoped names;
-   - per assistant turn: the input-side usage total.
-5. **Controls:**
-   - `m1-control.jsonl` is the real line-404 `skill_listing` of transcript `bb145fe7`, reduced to `{"type":"attachment","attachment":{"type","isInitial","skillCount","names"}}` (skill identifiers only; no conversation text);
-   - `m1-control-neg.jsonl` has the same shape with every scoped name stripped of its prefix;
-   - the extractor must report ≥ 1 scoped name on the first and 0 on the second, or M1 stops.
-6. **Evidence** `m1-measure.md` (one key per line; value formats are enforced by AC-SMM-002):
-   - `judge_source: transcript`
-   - `fixture_root:` (absolute scratch path)
-   - `first_probe_ts:`, `first_probe_epoch:`, `last_probe_epoch:`, `wall_clock_min:`
-   - `probes_run:` (distinct session ids)
-   - `session_id_P1|P2|P3:`, `probe_cwd_P1|P2|P3:`
-   - `fixture_trees_P1|P2|P3: primary|wt|primary,wt|gap`
-   - `listing_count_P1|P2|P3:`, `listing_bytes_P1|P2|P3:` (comma list), `turn_tokens_P1|P2|P3:` (comma list)
-   - `move_adds_listing: yes|no|gap` (yes ⇔ `fixture_trees_P2: primary,wt`)
-   - `launcher_single_listing: yes|no|gap` (yes ⇔ `fixture_trees_P1` holds one tree)
-   - `clear_restores_single_listing: yes|no|gap` (yes ⇔ `fixture_trees_P3` holds one tree)
-   - `gap_reason_<key>:` for every `gap`
-   - `repo_head_before|after`, `repo_branch_before|after`
-   - added in M3: `t1175_absorbed:`, `always_loaded_before:`; added in M5a only: `additional_context_visible: yes|no|gap`
-   - file formats: `extract.txt` lists each command on a line starting `$ ` followed by its output; `m1-cost.md` holds one `command:` line and `row:` lines (or one `cost: gap reason=` line) in the exact shape AC-SMM-009 checks
-7. **Commit:** the evidence, controls, extractor, `probes.txt`, `extract.txt`, and `fixture.txt` are force-added in one commit that touches no doctrine file.
+1. **Caps commit.** `.moai/reports/t1279/m1-caps.md` holds the four REQ-SMM-001 caps and their counting rules. Force-add it and commit it alone.
+2. **Fixture** (under the session scratchpad; every command is recorded in `fixture.txt` as `$ <cmd>  # rc=<n>`):
+   - `git init fx`, then commit `CLAUDE.md` and `CLAUDE.local.md` markers;
+   - create the worktree `fx/.claude/worktrees/w1` with the fixture's own `git -C fx worktree add` **before any skill exists** (this is a fixture, not a MoAI card tree);
+   - write `fx/.claude/skills/fx-primary-{a,b,c}/SKILL.md` and `fx/.claude/worktrees/w1/.claude/skills/fx-wt-{a,b,c}/SKILL.md` as untracked files, so neither tree can receive the other's skills;
+   - record `test ! -e fx/.claude/worktrees/w1/.claude/skills/fx-primary-a  # rc=0` and `test ! -e fx/.claude/skills/fx-wt-a  # rc=0`;
+   - no hooks in the fixture.
+3. **Before and after the probes,** record in `m1-measure.md` this repository's `repo_head`, `repo_branch`, and `repo_status_sha` (sha256 of `git status --porcelain`).
+4. **Probes** (`probes.txt`: one invocation per line, nothing else except `# operator-run:` lines):
+   - the form is `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED CLAUDE_PROJECT_DIR && cd -- <abs dir under fx> && timeout -k 10 300 claude -p "<plain-word prompt>" --model haiku --max-turns 4 --output-format json [--allowedTools EnterWorktree] [--resume <session-id>]`;
+   - `CLAUDE_PROJECT_DIR` is unset so that a user-level hook cannot write into this repository (N13). The prompt text avoids `;&|<>` backquote, `$`, and parentheses;
+   - P1 runs with `cd -- <fx>/.claude/worktrees/w1`. P2 runs with `cd -- <fx>`, moves in turn 1, then takes turns 2–3. P3 is `/clear` on the P2 session, then one turn;
+   - operator-run substitute: `# operator-run: session=<uuid> steps=<…>`, checked like a headless one (same extractor and `cwd` check);
+   - the 2 spare sessions cover one re-run, or the DP-1 warn visibility probe.
+5. **Extractor** `.moai/reports/t1279/extract_listing.py` (design.md §3): path-based tree attribution, the family cross-check, and the `listing` / `session` / `cwd` / `turn` / `row:` output lines. Each invocation is recorded in `extract.txt` as `$ python3 .moai/reports/t1279/extract_listing.py …`, followed by its output.
+6. **Controls:**
+   - `m1-control.jsonl` is the real line-404 `skill_listing` of `bb145fe7`, reduced to `{"type":"attachment","attachment":{"type","isInitial","skillCount","names"}}`;
+   - `m1-control-neg.jsonl` has the same shape with every prefix stripped;
+   - the extractor must report ≥ 1 and 0 scoped names respectively, or M1 stops.
+7. **Evidence** `m1-measure.md`, one key per line:
+   - `judge_source`, `fixture_root`, `first_probe_ts`, `first_probe_epoch`, `last_probe_epoch`, `wall_clock_min`, `probes_run`
+   - `session_id_P1..P3`, `probe_cwd_P1..P3` (comma list, first = start directory)
+   - `listing_count_P1..P3`, `listing_trees_P1..P3` (`;`-separated sets from `primary|wt|primary+wt|none`), `listing_bytes_P1..P3`, `turn_tokens_P1..P3`
+   - `launcher_single_listing`, `move_adds_listing`, `clear_restores_single_listing` (derived exactly as REQ-SMM-002 states), and a `gap_reason_<key>` line for every `gap`
+   - `repo_head_before/after`, `repo_branch_before/after`, `repo_status_sha_before/after`
+8. **Commit:** evidence, controls, extractor, `probes.txt`, `extract.txt`, and `fixture.txt`, force-added in one commit that touches no doctrine file.
 
 ### M2 — Real-session cost (Priority High; runs now)
 
-- Run the extractor's cost mode on transcript `bb145fe7`, and write `m1-cost.md`: one row per non-initial scoped `skill_listing` with the REQ-SMM-008 fields, the command, and the label `upper bound`. Research.md §R2 gives the plan-time reading: the row at `03:57:49.175Z` is 43,566 B, 42 scoped names, delta 20,829, other rows 20,526 B.
+Run `python3 .moai/reports/t1279/extract_listing.py --cost <bb145fe7 transcript>` and write `m1-cost.md`: one `command:` line, then one `row:` per non-initial scoped listing, labelled `bound=upper` or `bound=confounded` per the REQ-SMM-008 boundary rule. `other_row_bytes` is newline-excluded. The plan-time reading (research.md §R2) found no compaction/clear boundary between any bracketing pair, so all four rows would read `bound=upper`.
 
-### M3 — Gate G1 and refresh (only when DP-3 = wait)
+### M3 — Gate G1: absorb, then refresh (REQ-SMM-020; before any doctrine edit)
 
-1. After t1175 lands on develop and develop is absorbed, record `CARD_BASE` (§C) and `t1175_absorbed: <sha>` in `m1-measure.md`.
-2. Re-run the §D grep and record the refreshed table in `.moai/reports/t1279/m3-surface.md`, including any text t1175 moved into `kanban-dispatch-mechanics.md`.
-3. Re-measure the `[HARD]` baselines and the always-loaded figure (`always_loaded_before: N`, from the `TestAlwaysLoadedTokenBudget` log line) before the first doctrine commit.
-4. Re-check `AGENTS.md` §3 ↔ `AGENTS.md.tmpl` §3 identity at HEAD. When they differ for a reason outside this card, report it to the lead as a pre-existing defect and do not fix it here.
+1. Wait until t1175 has landed on develop. Absorb develop into this branch. Record `t1175_absorbed: <sha of the t1175 tip that develop's merge brought in>`.
+2. Check t1257 (naming-unification docs, waiting on t1256). When it has landed, absorb it too and record `t1257_status: absorbed <sha>`. When it has not, record `t1257_status: not-landed` and `t1257_notified: yes` after telling the lead that t1257 must rebase on this change.
+3. Re-read `CARD_BASE` (§C). Re-run the §D grep and write `.moai/reports/t1279/m3-surface.md`, including text t1175 moved into `kanban-dispatch-mechanics.md`.
+4. Confirm the old line (design.md §0 `old-153`) is still present verbatim in both kanban copies (`grep -cxF` = 1 each). If t1175 or t1257 changed it, stop and return a blocker. The amendment draft must be re-approved against the new text.
+5. Record `always_loaded_before: N` (the `TestAlwaysLoadedTokenBudget` log line) and `claude_local_bytes_before: B` (`wc -c < CLAUDE.local.md`).
+6. Re-check `AGENTS.md` §3 ↔ `AGENTS.md.tmpl` §3 at HEAD. A difference with a cause outside this card is reported to the lead as a pre-existing defect, and is not fixed here.
 
 ### M4 — Doctrine, template first (Priority High)
 
-Offset rule (REQ-SMM-015): in each always-loaded file (the kanban dispatch rule and `AGENTS.md`), every sentence added is paid for by shortening wording in the same file. The candidates:
-- the `wt` bullet's parenthetical move sequence, which moves to the detail companion;
-- the "`EnterWorktree(<card-id>)` cannot run from inside a worktree session" explanation in the new-card paragraph, **except** the three sentences REQ-SMM-017 keeps verbatim;
-- the isolation table row text.
-
-The full standing-session flow, its rationale, and the `/clear` ordering explanation go to the detail companion (paths-scoped). The kanban rule keeps a one-line pointer.
+Rules:
+- Every `[HARD]` line of the kanban dispatch rule stays verbatim in its section, except the `old-153` line.
+- Offsets come only from non-`[HARD]` lines (design.md §1). The `Where the next phase reuses a just-cleared session …` sentence is not an offset.
+- When net ≤ 0 is not reachable, stop with a blocker to the lead.
 
 1. Template kanban dispatch rule:
-   - `wt` bullet;
-   - one sentence in the `/clear` section: a card change is move → `/clear` → re-send, and the between-cards `/clear` is this one;
-   - isolation table row;
-   - new-card paragraph;
-   - integration bullets per DP-2.
+   - replace the `old-153` line with the `amendment-153` line (design.md §0), byte for byte;
+   - add, directly under the new-card `[HARD]` line (same paragraph, not `[HARD]`), one continuation line with `moai cc -w <card-id>` and ``move → `/clear` → re-send``;
+   - `wt` bullet: point to the launcher form and to the detail sub-section;
+   - isolation-table row: qualify the `EnterWorktree(<path>)` row with ``move → `/clear` → re-send``;
+   - integration section: the P-EXEMPT sentence (exempt) or P-FLOW (covered).
 2. Template detail companion:
-   - glossary lines 27–28 (the example becomes `wt: moai cc -w <card-id>`);
-   - factory `/clear` boundary line 188;
-   - a new sub-section "Card change in a standing session": the four-step flow, who re-sends (the lead), one `/clear` per card change, relaunch optional, and the REQ-SMM-012-bounded sentences.
-3. Template worktree integration rule: one card-session caveat after line 224 (REQ-SMM-012 bounded; it states the move adds a listing only when `move_adds_listing: yes`).
-4. `AGENTS.md.tmpl` §3, then `AGENTS.md` §3 with identical text (net ≤ 0 tokens).
-5. Copy each edited template over its local mirror in the same commit.
+   - glossary lines 27–28 (example `wt: moai cc -w <card-id>`);
+   - factory line 188;
+   - new `### Card change in a standing session` with the four steps, P-FLOW, "the lead re-sends", relaunch optional, and the REQ-SMM-012 phrases per the evidence keys.
+3. Template worktree integration rule: one card-session caveat (P-MOVE only when `move_adds_listing: yes`).
+4. `AGENTS.md.tmpl` §3, then `AGENTS.md` §3 with the identical paragraph (entry form + P-FLOW), net ≤ 0 tokens.
+5. Copy each edited template over its mirror in the same commit (per pair).
 6. Local-only:
-   - lane protocol lines 20, 22, 37, 83, 155;
-   - CLAUDE.local.md §4.1: one entry-form sentence (`moai cc -w <card-id>` for a fresh session), the standing flow, and the DP-2 wording on the window steps.
+   - lane protocol lines 20, 22, 37, 83, 155: launcher-only fresh entry, P-FLOW, and the P-EXEMPT sentence under DP-2 exempt;
+   - CLAUDE.local.md §4.1: the entry-form sentence with `moai cc -w <card-id>`, P-FLOW, and the P-EXEMPT sentence; net growth ≤ 600 B.
 
-REQ-SMM-012 wording table:
+REQ-SMM-012 wording table (the canonical phrases are in acceptance.md):
 
 | Evidence key | yes → doctrine may state | no / gap → doctrine states |
 |---|---|---|
-| `move_adds_listing` | a mid-session move adds the moved-into tree's skill listing | the move is followed by `/clear` and re-send (no claim about listings) |
-| `launcher_single_listing` | starting through the launcher gives one skill listing | the launcher is the entry form (no single-listing claim) |
-| `clear_restores_single_listing` | `/clear` after the move leaves only the new tree's listing | `/clear` is still the next step; relaunching through the launcher is the way to a single listing (optional) |
+| `move_adds_listing` | P-MOVE | only P-FLOW (no listing claim) |
+| `launcher_single_listing` | P-LAUNCH | the launcher is the entry form (no listing claim) |
+| `clear_restores_single_listing` | P-CLEAR | `/clear` stays the next step; P-RELAUNCH as an option |
 
 ### M5 — Hook (only when DP-1 ≠ docs-only; Priority Medium)
 
-- **M5a warn:** handler extension for PostToolUse `EnterWorktree`. It is gated on Kanban/Factory mode (the `MOAI_KANBAN*` environment), uses the exemption set from config, and puts the notice in `additionalContext`, exit 0. Before it lands, one spare M1 session runs the fixture with a hook that emits a unique marker in `additionalContext`, and the transcript must show the model repeating the marker.
-- **M5b block:** PreToolUse handler, opt-in flag (default false), sentinel-prefixed deny, fail-open.
+- **M5a warn:** the PostToolUse `EnterWorktree` handler, gated on Kanban/Factory mode and the exemption set, with the notice in `additionalContext`, exit 0. The visibility probe uses a spare M1 session: a fixture hook emits a marker, and the transcript must show the model repeating it (`additional_context_visible:`).
+- **M5b block:** a PreToolUse handler behind `workflow.midmove_guard.enabled` (default false), with a sentinel-prefixed deny that fails open. Tier stays L.
 
 ### M6 — Verification (Priority Low)
 
-- `go test ./internal/config/ -run '^TestCodexContractByteCeiling$|^TestAlwaysLoadedTokenBudget$' -count=1 -v`.
-- `cmp` the three pairs and `diff` the two §3 sections at HEAD.
-- `make build` after template edits.
-- `go run ./cmd/moai spec lint .moai/specs/SPEC-SESSION-MIDMOVE-001`, and `go run ./cmd/moai spec lint --baseline .moai/spec-lint-baseline.json`.
-- Under M5: `go test ./internal/hook/... -count=1`.
+Run every AC in acceptance.md, `make build`, `go run ./cmd/moai spec lint .moai/specs/SPEC-SESSION-MIDMOVE-001`, and `go run ./cmd/moai spec lint --baseline .moai/spec-lint-baseline.json`. Under M5, also `go test ./internal/hook/... -count=1`.
 
 ## §E — Constraints
 
 - Probes run only in the scratch fixture: no `--setting-sources`, no debug flags, no raw transcripts committed.
-- Every commit message names t1279, carries `Authored-By-Agent: <agent>`, and ends with the MoAI trailer. Staging is by explicit path. The lane pushes nothing.
+- Every commit names t1279, carries `Authored-By-Agent: <agent>`, and ends with `🗿 MoAI`. Staging is by explicit path. The lane pushes nothing.
 - Added template lines carry no card ids, SPEC ids, dates, or hashes.
 
 ## §F — Risks
 
 | Risk | Mitigation |
 |---|---|
-| Always-loaded headroom is 70 tokens at `2370c5b31` | Offset rule; explanatory text in paths-scoped files; AC-SMM-015 compares after vs before |
-| t1175 changes the same clauses; its tip moves (`3a48485af` → `4989ea6b0`) | DP-3 wait; `CARD_BASE` ranges; M3 refresh of §D and baselines |
-| Headless cannot run `/clear` | Gap or operator-run substitute with the same checks |
-| Fixture scale (3+3 skills) is not representative | The fixture checks the mechanism only; cost comes from the real transcript (M2) |
-| The `bb145fe7` transcript is removed before M2 | M2 records `gap`; research.md §R2 keeps the plan-time reading as a reference, not as evidence |
-| Standing lanes may lose the dispatch address on relaunch | Relaunch is optional (REQ-SMM-010); the standard flow keeps the session and its name |
+| 70-token always-loaded headroom (at `2370c5b31`) | Offsets from non-`[HARD]` lines only; blocker instead of trimming `[HARD]` or raising the constant |
+| t1175 or t1257 changes the `old-153` line | M3 step 4 stops and requests re-approval of the amendment against the new text |
+| t1175 tip moves (`3a48485af` → `4989ea6b0`) | `t1175_absorbed` is recorded at absorption; AC-SMM-022 checks ancestry, not a name |
+| Headless cannot run `/clear` | Gap, or an operator-run substitute with the same checks |
+| Fixture scale (3+3 skills) | The fixture checks the mechanism only; cost comes from the real transcript (M2) |
+| `bb145fe7` transcript removed | `cost: gap`; research.md §R2 stays as a reference, not as evidence |
 
 ## §G — Anti-patterns to avoid
 
 - Literal plan-time SHAs as range bases.
-- Command substitution around git inside a worktree session.
-- Counting key names instead of validating key values.
-- A control that does not pass through the extractor.
-- Adding always-loaded text without an offset.
+- `$(git …)`, `awk -f`, or loops with computed values inside a worktree session.
+- Name-based tree attribution; union-based mirror comparison.
+- Weakening or moving a `[HARD]` line to buy budget.
 
 ## §H — Cross-references
 
-- design.md (doctrine placement and extractor design), research.md (measurements behind this plan)
-- `.moai/reports/t1279/verdict.md`, `.moai/reports/t1279/plan-audit.md`
+- design.md (§0 amendment draft, doctrine placement, extractor), research.md (measurements)
+- `.moai/reports/t1279/verdict.md` §⑤, `plan-audit.md`, `plan-audit-iter2.md`
 - `.moai/specs/SPEC-SESSION-DOUBLELOAD-001/` (held sibling)
