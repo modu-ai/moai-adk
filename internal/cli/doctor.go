@@ -212,8 +212,9 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		// silently missing hook is not silently forgotten.
 		{hookMissingLogCheckName, func(v bool) DiagnosticCheck { return checkHookMissingLog(cwd, v) }},
 		// Read-only sweep of subagent transcripts for the model that actually
-		// served each run; advisory, never gates doctor.
-		{servedModelCheckName, func(v bool) DiagnosticCheck { return checkServedModel(cwd, v) }},
+		// served each run; advisory, never gates doctor. Explicit-only: the
+		// default run shows one info hint row and does not sweep.
+		{servedModelCheckName, servedModelDoctorEntry(cwd, filterCheck)},
 		// SPEC-AGENT-EMIT-LINEAGE-001 REQ-AEL-004: embed-axis judgment point.
 		// Applicable only in a tree carrying the committed emission set — a
 		// deployed project sees one added `ok` row and the same exit status.

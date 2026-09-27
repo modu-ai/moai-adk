@@ -140,3 +140,28 @@ func TestServedModelCheck_Sweep(t *testing.T) {
 		}
 	})
 }
+
+// The sweep is explicit-only: a default doctor run shows one informational
+// hint row and never sweeps; only `--check "Served Model"` runs the sweep.
+func TestServedModelCheck_DefaultRunShowsHintOnly(t *testing.T) {
+	cwd := t.TempDir()
+	t.Setenv(config.EnvClaudeConfigDir, t.TempDir())
+
+	hint := servedModelDoctorEntry(cwd, "")(true)
+	if hint.Name != servedModelCheckName || hint.Status != uikit.CheckInfo {
+		t.Fatalf("default entry = %+v, want an info row named %q", hint, servedModelCheckName)
+	}
+	if hint.Message != servedModelHintMessage || strings.Contains(hint.Message+hint.Detail, "swept") {
+		t.Fatalf("default entry must carry only the hint, got %+v", hint)
+	}
+
+	other := servedModelDoctorEntry(cwd, "Git")(true)
+	if other.Message != servedModelHintMessage {
+		t.Fatalf("a --check naming another check must not sweep: %+v", other)
+	}
+
+	swept := servedModelDoctorEntry(cwd, servedModelCheckName)(true)
+	if !strings.Contains(swept.Message, "swept") {
+		t.Fatalf("--check %q must run the sweep, got %+v", servedModelCheckName, swept)
+	}
+}

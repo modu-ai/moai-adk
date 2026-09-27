@@ -50,6 +50,24 @@ type servedScanInputs struct {
 	cfg           *config.Config // project configuration; nil when unreadable
 }
 
+// servedModelHintMessage is the one informational row a default doctor run
+// shows in place of the sweep.
+const servedModelHintMessage = `run with --check "Served Model"`
+
+// servedModelDoctorEntry returns the doctor entry for this check. The sweep
+// reads every subagent transcript on the machine (thousands of files), so it
+// runs only when named explicitly with `--check "Served Model"`; every other
+// run — the default run included — reports a single info row pointing there,
+// the same info status doctor uses for its other not-applicable rows.
+func servedModelDoctorEntry(cwd, filterCheck string) func(bool) DiagnosticCheck {
+	return func(verbose bool) DiagnosticCheck {
+		if filterCheck != servedModelCheckName {
+			return DiagnosticCheck{Name: servedModelCheckName, Status: uikit.CheckInfo, Message: servedModelHintMessage}
+		}
+		return checkServedModel(cwd, verbose)
+	}
+}
+
 // checkServedModel runs the sweep for the project containing cwd.
 func checkServedModel(cwd string, verbose bool) DiagnosticCheck {
 	return runServedModelScan(servedScanInputsFor(cwd), verbose)

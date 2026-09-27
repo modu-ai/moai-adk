@@ -121,7 +121,7 @@ func (h *subagentStopHandler) observeServedModel(input *HookInput) (ServedObserv
 	}
 	path := subagentTranscriptPath(input)
 	if path == "" {
-		// @MX:NOTE: [AUTO] a payload naming no transcript at all (neither agent_transcript_path nor transcript_path + agent_id) identifies no subagent run to observe, so it yields no row and no warning; the runtime always sends transcript_path and agent_id, so every real stop still reaches the unknown-never-ok path when its file is absent
+		// @MX:NOTE: [AUTO] a payload naming no transcript at all (neither agent_transcript_path nor transcript_path + agent_id) identifies no subagent run to observe, so it yields no row and no warning; whether the runtime ever sends such a SubagentStop payload has not been measured — if it does, that stop goes unobserved rather than recorded unknown
 		return ServedObservation{}, ""
 	}
 	obs := ObserveServedModel(path, input.AgentType, h.loadedConfig())
