@@ -327,8 +327,9 @@
 - Two queue entries map to the same SPEC: the contract's `card` field decides the card; the other
   entry is ignored.
 - A `completed` SPEC's contract is a candidate when a range commit changes its own SPEC directory (the
-  card closes in this push); a contract terminal on the remote whose SPEC directory is unchanged in the
-  range is not a candidate even when its governed paths overlap the pushed change (AC-CLOSURE-015).
+  card closes in this push; a later card's edit of the closed SPEC's own directory also re-admits it —
+  spec.md §H); a contract terminal on the remote whose SPEC directory is unchanged in the range is not
+  a candidate even when its governed paths overlap the pushed change (AC-CLOSURE-015).
 - A `second-review.jsonl` line with an unknown `schema_version` is skipped and listed under Not
   Performed; it never counts as performed.
 
