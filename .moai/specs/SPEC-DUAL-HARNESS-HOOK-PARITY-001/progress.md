@@ -968,8 +968,33 @@ ok      github.com/modu-ai/moai-adk/internal/cli   32.857s
 
 The mutation that survived the merged tree before the repair now turns the subtest RED — the
 PASS-receipt leg is measured again. (Observed this run, on the repair tree; the golden's 36
-subtests green post-repair. A same-class sibling fixture in `codex_review_gate_test.go:107` —
-not this card's file — was reported to the lead instead of edited here.)
+subtests green post-repair.)
+
+**Opus re-audit F1 sibling repair (2026-09-27, lead-ordered same-card close).**
+`codex_review_gate_test.go` `TestReviewGate_CodexPassAllows` carried the same stale fixture.
+Observation BEFORE the fix (temporary probe, this run):
+`synthesizeReviewOutput("clean change, approved", codexMethodReviewStart).Verdict` →
+**`inconclusive`** (vs `realCleanReview` → `pass`), and the gate's allow path is
+`pass / inconclusive ⇒ ALLOW` — so the test named "CodexPassAllows" was proving
+inconclusive⇒ALLOW, a vacuous green w.r.t. its name. Fix: fixture → shared `realCleanReview`,
+comment rewritten to the post-#1718 semantics, premise assertion added (the parser must
+synthesize `pass` for the fixture). Mutation M-A applied to the gate
+(`codex_review_gate.go:104` `isBlockVerdict(out.Verdict)` →
+`out.Verdict != codexReviewVerdictInconclusive`, i.e. block on a true pass), uncommitted then
+reverted:
+
+```text
+$ go test -count=1 -run '^TestReviewGate_CodexPassAllows$' -v ./internal/cli/   # mutated
+    codex_review_gate_test.go:118: codex pass must ALLOW, got &{... Decision:block Reason:"codex review gate: Verdict: pass ..." ...}
+--- FAIL: TestReviewGate_CodexPassAllows (0.00s)
+$ git restore internal/cli/codex_review_gate.go && go test -count=1 -run '^TestReviewGate_CodexPassAllows$' ./internal/cli/   # reverted
+ok      github.com/modu-ai/moai-adk/internal/cli   0.593s
+```
+
+Repo-wide sweep of the fixture string (`git grep -c 'clean change, approved'`): at 571472948
+(positive control) 2 hits — this progress.md quote + the code fixture; on the repaired tree
+**0 code hits** (the only remaining match is this documentation quote naming the replaced
+fixture).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
