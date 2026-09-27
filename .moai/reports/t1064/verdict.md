@@ -1576,3 +1576,86 @@ $ grep -vcE '^[0-9T:Z-]+ cpd=[^ ]+ tool=[A-Za-z]+ keys=[a-z_,]+ probes=(NONE|\{.
 ```
 
 57행 전부가 그 형태이며(형태 위반 0행), 명령 값 표식은 0행이다. 로그에 실린 식별 정보는 최상위 **키 이름**, `tool_name`, 그리고 `agent_type` / `agent_id` 값뿐이다 — 프롬프트 본문도 명령 문자열도 없다. `keys=` 목록에 `tool_input` 이 보이는 것은 **키 이름**이며 그 값이 아니다.
+
+---
+
+## 독립 sync-audit 기록 (2026-09-27, 리드 지시)
+
+### 감사자 모델 귀속 — 자기선언이 아닌 관측 두 개
+
+감사 판정을 인용하려면 그 감사가 어느 모델에서 돌았는지가 먼저 확립돼야 한다. 같은 날 GLM 레인 두 곳에서 `model: opus` 로 띄운 감사자가 실제로는 `glm-5.3-flash` 로 돌았고, 리드가 그 사고를 근거로 모델 id 표기를 재감사 조건으로 걸었다.
+
+감사자 자신은 `auditor-model: claude-opus-5[1m]` 을 보고하면서 **그 값이 런타임의 자기선언이며 독립 측정이 아니라는 한계를 스스로 고지**했다 — 자기 스폰의 model 파라미터를 조회할 도구가 자기 `tools:` 에 없다는 이유까지 적었다. 그 고지가 맞으므로 이 값 하나로는 귀속이 성립하지 않는다.
+
+**관측 1 — 서브에이전트 트랜스크립트의 `.message.model`** (이 레인이 직접 측정):
+
+```
+$ python3 <count .message.model in
+  ~/.moai/claude-profiles/moai-adk/projects/-Users-goos-MoAI-moai-adk-go--claude-worktrees-t1064/
+  337ea462-74d9-49b6-ae11-96d132b67a4c/subagents/agent-at1064-sync-audit-9eca3c6b97d79d83.jsonl>
+rows carrying .message.model: 100
+  claude-opus-5 100
+```
+
+**관측 2 — 스폰 메타** (같은 디렉터리의 `.meta.json`):
+
+```
+{"agentType":"t1064-sync-audit", … "model":"claude-opus-5[1m]",
+ "customAgentType":"sync-auditor","permissionMode":"bypassPermissions"}
+```
+
+리드도 같은 트랜스크립트에서 독립적으로 96/96 `claude-opus-5` 를 얻었다(측정 시점이 이르러 행 수만 다르다). 1차 감사와 재감사가 같은 감사자 기록에 이어져 있으므로 **두 판정 모두 Opus 귀속**이다.
+
+**막힌 경로 하나를 기록한다**: 감사자가 교차검증 경로로 가리킨 `.moai/logs/agent-model-audit.jsonl` 은 이 스폰에 대해 **0행**이었다(`t1064` + `audit` 매칭 0건). 그 로그는 advisory 이고 이 경로를 기록하지 않았으므로, 모델 귀속의 근거는 위 관측 두 개다.
+
+### 판정
+
+- **1차 감사: FAIL.** must-pass 는 중립성 단독이었다 — Functionality 62/100 이 must-pass 로 걸렸고 그 원인이 기존 가드 `TestTemplateNoInternalContentLeak` 의 적색(이 카드가 미러에 심은 `SPEC-` 접두)이었다. Security 88 PASS(must-pass), Craft 78 PASS, Consistency 55 FAIL(must-pass 아님).
+- **재감사: PASS-WITH-DEBT.** 커밋 `43697af85` 가 세 리터럴을 0행으로 만들고 리크·중립성 가드를 초록으로 되돌렸음을 감사가 직접 실행해 확인했다. 중립성 쪽은 클래스별 서브테스트(`C1-macos-bias-path`·`C2-bare-narrative-v3r`·`C4-feedback-memory-ref`·`C5-claude-local-ref`·`C6-pr-number-ref`·`C9-natural-language-canonical-form`)가 전부 발화했으므로 공허 초록이 아니다.
+
+### 감사가 확인해 준 것
+
+- **렌즈 ① 통과.** 57행을 감사가 재계수해 카드 수치와 완전 일치(NONE 27 / nonNONE 30 / 식별자 7·19·4, camel 0). 교차 오염 0행 — NONE 행에 agent 언급 0, nonNONE 행에 `agent_id` 누락 0. camel 0 은 같은 프로브의 snake 두 철자 발화가 양성 대조로 붙는다고 판정했다.
+- **렌즈 ③ 통과, 수리 후에도 회귀 없음.** 미러가 좌표를 잃었을 뿐 신원 축 실질 여섯 조각(측정됨·추론 아님 / snake_case / spawn 이름 verbatim / 세 팔 결과 / 우회 존재 / 거짓 주장 철회)과 센티널 축의 축 분리가 전부 남아 있고, 센티널이 검증된 척하는 지점은 0곳이다.
+- **미러 분기는 기계적으로 승인된 형태다.** 감사가 `rule_template_mirror_test.go:65` 주변을 읽어, 바이트 동일 allowlist 부재가 누락이 아니라 **§25 sanitized pair 등록**이며 전용 가드 `sanitized_pair_parity_test.go` 의 `TestSanitizedPairParity` 가 독트린 등가성을 직접 판정해 통과함을 확인했다. 즉 이번 수리는 새 정책 도입이 아니라 원상복귀다.
+- **비공허성** — 감사가 변이를 직접 실행해 `branch_guard_test.go:699` 에서 죽고 복원 후 ok 를 확인했으며, 트리 원복을 sha256(`7bdb76676ba2…`)과 빈 `status --porcelain` 으로 이중 확인했다.
+- **부수 2 방어 가능.** 고치지 않은 14파일은 전부 `.moai/specs/**` + `CHANGELOG.md` 이고 템플릿 트리에 하나도 없다. live holder 의심 1건(`SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001/acceptance.md:307`)은 그 SPEC 자기 가드의 문안 제약이며, 같은 SPEC `spec.md` §F 가 BranchGuard 면제 도달성 질문을 별도 카드로 명시 유보한다.
+- **부수 3.** deny 문안은 정확하고 실행 가능하다고 판정했다. 약 210자로 길지만 축약하면 비공허성 단언(`:699`)이 물 곳을 잃으므로 축약 비권고.
+- **M4 커밋 격리** — `8b3464757` 은 `progress.md` 1파일, 문안 변경 0.
+
+### 감사의 틀린 정정 1건 — 둘째 부모 미측정
+
+감사는 재감사에서 `TestRuleTemplateMirrorDrift`(`worktree-integration.md`) 실패의 귀속을 「develop 은 깨끗하고 이 브랜치의 흡수 병합 `6ed2cb1f2` 가 분기를 만들었다. 병합 전에 처리해야 하며, 병합되면 develop 의 초록 가드를 적색으로 만든다」로 정정했다. **이 정정은 틀렸다.** 근거로 든 것은 첫 부모(58473/58473 동일)와 병합 결과(60597/60762)이며, **둘째 부모를 재지 않았다.**
+
+```
+$ git rev-parse --short 6ed2cb1f2^2
+00e761af8
+$ git show 00e761af8:.claude/rules/moai/workflow/worktree-integration.md | wc -c
+   60597
+$ git show 00e761af8:internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md | wc -c
+   60762
+```
+
+흡수된 develop 스냅숏이 **이미** 갈려 있었다. 병합이 이 파일을 손대지 않았음은 해시로 확정된다 — HEAD 양쪽이 둘째 부모와 바이트 동일:
+
+```
+00e761af8  source fa93b1d76acd6a98ef19a8f32bce846eb01df0ab3bf193ddb062d036947274f3
+           mirror 028609a2e46bba85279ef8e1776e32e07e7ce5cf4c36d23f293e93b535256c63
+HEAD       source fa93b1d76acd6a98ef19a8f32bce846eb01df0ab3bf193ddb062d036947274f3
+           mirror 028609a2e46bba85279ef8e1776e32e07e7ce5cf4c36d23f293e93b535256c63
+$ git merge-base --is-ancestor 6ed2cb1f2^2 develop   →  yes
+$ git log --oneline 00e761af8..develop -- <미러>      →  5커밋
+$ git show develop:<양쪽> | wc -c                     →  61749 / 61749
+```
+
+즉 드리프트는 흡수 시점 develop 의 결함이고 develop 이 그 뒤 고쳤다. 「develop 은 깨끗하다」는 감사의 관측은 **현재** develop 에 대해서만 참이며, 흡수 시점 develop 에 대해서는 거짓이다. 결론도 뒤집힌다 — 병합 전 별도 수리는 필요하지 않고, 신선한 흡수가 `61749/61749` 를 가져오면 해소된다. 리드가 develop head `b59a5d69c` 에서 이 테스트를 돌려 해당 서브테스트까지 PASS 를 확인한 것과 같은 결론이다.
+
+**기록하는 이유**: 감사 판정을 그대로 받았다면 병합 전에 불필요한 수리를 했을 것이고, 그 수리는 develop 이 이미 고친 파일을 이 브랜치에서 손으로 되돌리는 형태가 됐을 것이다. 감사자의 판정은 근거를 보고 받는 것이며, 근거가 닿지 않는 축이 있으면 그 축을 재는 것이 수리자 몫이다.
+
+### 감사가 남긴 Gap — 창의 병합 트리 재측정으로 이월
+
+- `golangci-lint`·`gofmt`·`go vet` 을 감사가 재실행하지 않았다(카드의 v2.1.6 0 issues 는 감사 미검증).
+- `make build` 후 임베드 축 미측정 — 리크 2건이 설치 바이너리에 실렸는지 미확인.
+- 미러 전역 중립성 스윕 미수행 — 두 미러 파일 범위만 쟀고 C7(커밋 SHA) 축은 미측정.
+- 살아 있는 `manager-git` 서브에이전트의 실 Bash 발사는 감사도 하지 않았다(카드와 같은 이유).
+- `TestSessionStart_MissPathSpendsNoJoinBudgetOnDrift` 1회 사망(`Handle took 293.716459ms` vs 벽시계 예산 250ms). 격리 `-count=3` 3/3 통과로 부하 의존 flake 로 판단했으나 표본 4회이며, `session_start` 소관으로 `branch_guard` 와 무관하다.
