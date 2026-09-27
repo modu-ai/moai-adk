@@ -142,26 +142,7 @@ When the SPEC modifies existing code (detected via research.md analysis), apply 
 
 Delta markers are OPTIONAL and only suggested for brownfield projects. Greenfield projects skip this.
 
-### spec-compact.md Auto-Generation
-
-After all SPEC files are created, auto-generate `.moai/specs/SPEC-{ID}/spec-compact.md`:
-
-Extract from spec.md:
-- All REQ-XXX requirements (GEARS-notation entries — EARS legacy form accepted for pre-v3 SPECs until 2026-11-22)
-- All acceptance criteria (Given/When/Then scenarios)
-- Files to modify list
-- Exclusions (What NOT to Build) section
-
-Exclude: Overview, technical approach, research references, annotation history.
-
-Purpose: Run phase loads spec-compact.md (~30% token savings) instead of full spec.md.
-Fallback: If generation fails, Run phase uses full spec.md.
-
-Quality constraints:
-- Requirement modules limited to 5 or fewer per SPEC
-- Acceptance criteria minimum 2 Given/When/Then scenarios
-- Technical terms and function names remain in English
-- Exclusions section MUST contain at least 1 entry
+### spec-compact.md Auto-Generation — Read `workflows/plan/context-discovery.md` § spec-compact.md Auto-Generation.
 
 ### Phase 11: Independent SPEC Review (Conditional)
 

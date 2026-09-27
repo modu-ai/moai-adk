@@ -18,7 +18,10 @@ import "github.com/modu-ai/moai-adk/internal/hook"
 // hook 191 consecutive times over about ten minutes and never ended the turn
 // on its own. Scope of that observation: default configuration, the
 // non-interactive exec form, one model — an absence of a cap within that run,
-// not a proof that none exists.
+// not a proof that none exists. Re-verified on codex-cli 0.157.0
+// (.moai/reports/t1225/verdict.md, card t1225, same harness shape with a
+// declared cap): 39 consecutive blocks accepted, turn still alive at the cap —
+// the probe itself released the block; no host-side ending was observed.
 //
 // Claude Code is not exempt, but its host cap does not bound the loop either.
 // Measured on Claude Code 2.1.283 (.moai/reports/t1230/verdict.md,
