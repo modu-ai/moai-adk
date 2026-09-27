@@ -164,7 +164,30 @@ known_debt:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-27
+sync_commit_sha: "pending-backfill-sync"
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-AUTONOMY-CLOSURE-001' CHANGELOG.md = 0 (pre-emission) — no duplicate entry"
+b12_self_test_b: "acceptance.md distinct AC = 25 (AC-CLOSURE-001..025, zero [RETIRED]/[REF] markers — all live); CHANGELOG entry references 25 AC-CLOSURE criteria — match"
+b12_self_test_c: "all paths in CHANGELOG entry verified via ls: internal/closure/ (11 files), internal/closure/gitio/gitio.go, internal/closure/closuretest/closuretest.go, internal/cli/contract_{report,verdict,pushcheck}.go, internal/cli/mcp_audit_multi_record.go, internal/hook/closure_push.go, .claude/agents/moai/sync-auditor.md, .claude/skills/moai-ref-cross-model-audit/SKILL.md + template mirrors"
+changelog_entry_position: "Added, first entry of [Unreleased]"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (merged 3-phase close, single sync commit)"
+  plan_md: n/a (no frontmatter status field)
+  acceptance_md: n/a (no frontmatter status field)
+  progress_md: n/a (progress carries §E.4 signal, not frontmatter status)
+  updated_field: "2026-09-27 (unchanged — sync same day)"
+mx_tag_validation:
+  existing: "build.go @MX:ANCHOR on Build (single assembly point, [AUTO] + @MX:REASON) — kept"
+  gaps_reported_not_retaged: "ResolveEvidenceHome (4 non-test callers) and gitio.Head (3 non-test callers) lack @MX:ANCHOR per the fan_in>=3 gate — reported to the lead, not bulk-retagged in sync phase"
+canary_compliance_check:
+  spec_body_untouched: true
+  forbidden_files_touched: false
+  mx_delta: "0 tags added/removed in sync phase; run-phase [AUTO] tags left as-is"
+```
+
+Docs surfaces: README 4-locale set deliberately NOT extended — no README command table lists the `moai contract` family (it was absent when A1 landed `verify|show|sign` and remains absent), so adding only the three A4 verbs would be both inconsistent and beyond a one-line change; flagged to the lead as a follow-up instead. Codemaps scoped refresh: `.moai/project/codemaps/modules.md` + `entry-points.md` (`data-flow.md`/`dependencies.md` left for the next full regeneration).
 
 ## §F Phase 4 Mode Selection
 
