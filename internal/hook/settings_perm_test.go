@@ -35,6 +35,9 @@ func statSettings(t *testing.T, path string) os.FileMode {
 // ANTHROPIC_AUTH_TOKEN.
 func TestEnsureGLMCredentialsFilePerm(t *testing.T) {
 	t.Setenv(config.EnvMoaiLaunchProvider, "")
+	// .env.glm is staged under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX file-mode test skipped on Windows (ACL model differs)")
 	}

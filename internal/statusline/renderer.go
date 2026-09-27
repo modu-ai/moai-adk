@@ -216,19 +216,21 @@ func (r *Renderer) renderSessionLine(data *StatusData) string {
 	if r.isSegmentEnabled(SegmentBacklog) && r.isTodoEnabled() && data.Backlog.Available {
 		seg := fmt.Sprintf("🔄 TODO: %d/%d", data.Backlog.Picked, data.Backlog.Queued)
 		// The landed annotation ADDS a third number; it never subtracts from
-		// the first. The shipped criterion counts a card as landed when any
-		// commit merely NAMES it — another card's report commit included — so
-		// subtracting would silently under-report genuine in-flight work and
-		// would claim more than `moai todo pr` itself claims. "N of the picked
-		// are named on the integration branch" is a prompt to reconcile, not a
-		// re-derived truth.
+		// the first. A card stays picked until auto-done or `moai todo done`
+		// actually closes it, and a landing is not a close: the count is
+		// kanban's subject attribution, which also credits a plan-only landing
+		// and skips the auto-done close guards. Subtracting would report work
+		// as finished that nobody closed. "N of the picked have a landing
+		// commit — verify before done" is a prompt to reconcile, which is why
+		// the glyph is a flag (landedGlyph) and never a check mark: a check
+		// mark reads "done" and was repeatedly read as "safe to close".
 		//
 		// An unavailable judgment renders NOTHING, leaving the pair
-		// byte-identical to what it was before this annotation existed: "✓0"
-		// for a measurement nobody took would assert a fact nobody observed.
-		// An OBSERVED zero is a fact, and does render.
+		// byte-identical to what it was before this annotation existed: a
+		// zero for a measurement nobody took would assert a fact nobody
+		// observed. An OBSERVED zero is a fact, and does render.
 		if data.Landed.Known() {
-			seg += fmt.Sprintf(" ✓%d", data.Landed.Landed)
+			seg += fmt.Sprintf(" %s%d", landedGlyph, data.Landed.Landed)
 		}
 		segs = append(segs, seg)
 	}

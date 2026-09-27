@@ -18,8 +18,16 @@ import "github.com/modu-ai/moai-adk/internal/hook"
 // hook 191 consecutive times over about ten minutes and never ended the turn
 // on its own. Scope of that observation: default configuration, the
 // non-interactive exec form, one model — an absence of a cap within that run,
-// not a proof that none exists. Claude Code is not covered here: its Stop
-// block cap is assumed from repository doctrine and has not been measured.
+// not a proof that none exists.
+//
+// Claude Code is not exempt, but its host cap does not bound the loop either.
+// Measured on Claude Code 2.1.283 (.moai/reports/t1230/verdict.md,
+// .moai/reports/t1272/verdict.md, local evidence): at the default cap the
+// host ended the turn after 9 consecutive blocks only when no tool use came in
+// between — tool use appears to restart its count — and with the raised cap of
+// 200 the launcher injects the loop ran to the turn limit. So the Claude side
+// is bounded by moai's own cap instead, independent of the host cap value
+// (internal/cli applyStopParseCap, SPEC-HOOK-STOP-PARSE-CAP-001).
 //
 // Revisit this predicate when Codex introduces a Stop block cap: it is the one
 // place the exemption is decided.

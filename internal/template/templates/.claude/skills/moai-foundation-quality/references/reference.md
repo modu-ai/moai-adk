@@ -159,7 +159,7 @@ Attribution).
 
 - CLAUDE.md §6 (Quality Gates) — the harness + LSP gate policy
 - `.claude/rules/moai/core/moai-constitution.md` § Quality Gates — TRUST 5 principles
-- `.claude/rules/moai/core/agent-common-protocol.md` § Skeptical Evaluation Stance — the auditor stance sync-auditor adopts
+- `.claude/rules/moai/core/agent-common-protocol-reference.md` § Skeptical Evaluation Stance — the auditor stance sync-auditor adopts
 - `.claude/rules/moai/core/verification-claim-integrity.md` — no unobserved verification claims
 - moai-ref-testing-pyramid — test-pyramid strategy and coverage targets
 - moai-ref-owasp-checklist — OWASP Top 10 for the Secured principle

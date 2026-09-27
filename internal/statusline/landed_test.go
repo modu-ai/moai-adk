@@ -14,16 +14,28 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/mattn/go-runewidth"
+
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
-// seedPicked writes the given ids as picked cards under root.
+// seedPicked writes the given ids as picked cards under root, each added at
+// landedAddedAt.
 func seedPicked(t *testing.T, root string, ids ...string) {
+	t.Helper()
+	seedPickedAt(t, root, landedAddedAt, ids...)
+}
+
+// seedPickedAt writes the given ids as picked cards under root with an
+// explicit added_at — the generation boundary reads it.
+func seedPickedAt(t *testing.T, root, addedAt string, ids ...string) {
 	t.Helper()
 	store := kanban.NewBacklogStore(kanban.BacklogPathForRootAdopting(root))
 	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
@@ -32,7 +44,7 @@ func seedPicked(t *testing.T, root string, ids ...string) {
 			rec.Items = append(rec.Items, kanban.BacklogItem{
 				ID:      id,
 				Text:    "card " + id,
-				AddedAt: "2026-01-02T03:04:05Z",
+				AddedAt: addedAt,
 				State:   kanban.BacklogStatePicked,
 			})
 		}
@@ -112,10 +124,48 @@ func TestResolveLandedCounts_ObservedZeroIsAFact(t *testing.T) {
 	root := t.TempDir()
 	writeLanded(t, root, mustJSON(t, LandedCounts{
 		Landed: 0, Measured: true, Ref: "origin/develop", FetchedAt: time.Now().Unix(),
+		Criterion: landedCriterion,
 	}))
 	got := resolveLandedCounts(root)
 	if !got.Known() || got.Landed != 0 {
 		t.Fatalf("measured zero lost: %+v", got)
+	}
+}
+
+// oldSchemaCache is a cache as the retired body-mention criterion wrote it:
+// no criterion field at all.
+func oldSchemaCache(fetchedAt int64) []byte {
+	return []byte(`{"landed":9,"ref":"origin/develop","measured":true,"fetched_at":` +
+		strconv.FormatInt(fetchedAt, 10) + `}`)
+}
+
+// TestResolveLandedCounts_OldCriterionIsUnknown is AC-SLL-005: a measured
+// number written under the retired criterion is not a judgment under the
+// current one, so it renders nothing — neither the new glyph nor the old.
+func TestResolveLandedCounts_OldCriterionIsUnknown(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	writeLanded(t, root, oldSchemaCache(time.Now().Unix()))
+
+	got := resolveLandedCounts(root)
+	if got.Known() {
+		t.Fatalf("old-criterion cache reported known: %+v", got)
+	}
+	line := NewRenderer("default", true, nil).renderSessionLine(landedData(got))
+	if strings.Contains(line, landedGlyph) || strings.Contains(line, "✓") {
+		t.Fatalf("old-criterion cache annotated the line: %q", line)
+	}
+	if !strings.Contains(line, "🔄 TODO: 76/4") || strings.Contains(line, "🔄 TODO: 76/4 ") {
+		t.Fatalf("segment is not the unannotated pair: %q", line)
+	}
+
+	// A different, non-empty criterion is just as unknown as an absent one.
+	other := t.TempDir()
+	writeLanded(t, other, mustJSON(t, LandedCounts{
+		Landed: 4, Measured: true, FetchedAt: time.Now().Unix(), Criterion: "body-mention/v0",
+	}))
+	if got := resolveLandedCounts(other); got.Known() {
+		t.Fatalf("foreign-criterion cache reported known: %+v", got)
 	}
 }
 
@@ -156,14 +206,14 @@ func TestRenderer_LandedAnnotation(t *testing.T) {
 		},
 		{
 			name:           "measured count annotates",
-			landed:         LandedCounts{Landed: 48, Measured: true, Available: true},
-			want:           "🔄 TODO: 76/4 ✓48",
+			landed:         LandedCounts{Landed: 48, Measured: true, Available: true, Criterion: landedCriterion},
+			want:           "🔄 TODO: 76/4 ⚑48",
 			wantAnnotation: true,
 		},
 		{
 			name:           "observed zero annotates",
-			landed:         LandedCounts{Landed: 0, Measured: true, Available: true},
-			want:           "🔄 TODO: 76/4 ✓0",
+			landed:         LandedCounts{Landed: 0, Measured: true, Available: true, Criterion: landedCriterion},
+			want:           "🔄 TODO: 76/4 ⚑0",
 			wantAnnotation: true,
 		},
 	}
@@ -176,12 +226,51 @@ func TestRenderer_LandedAnnotation(t *testing.T) {
 				t.Fatalf("segment = %q, want it to contain %q", got, tc.want)
 			}
 			// An unknown judgment must not merely omit the number — it must
-			// not print a check mark at all.
-			if hasAnnotation := strings.Contains(got, "✓"); hasAnnotation != tc.wantAnnotation {
+			// not print the glyph at all.
+			if hasAnnotation := strings.Contains(got, "⚑"); hasAnnotation != tc.wantAnnotation {
 				t.Fatalf("annotation present = %v, want %v (line: %q)",
 					hasAnnotation, tc.wantAnnotation, got)
 			}
+			// The check mark reads "done"; it must not appear in any case.
+			if strings.Contains(got, "✓") {
+				t.Fatalf("line carries a check mark: %q", got)
+			}
 		})
+	}
+}
+
+// TestRenderer_LandedNeverSubtracts is AC-SLL-009: the picked/queued pair is
+// the same whether the landed count is known or not.
+func TestRenderer_LandedNeverSubtracts(t *testing.T) {
+	t.Parallel()
+	r := NewRenderer("default", true, nil)
+	known := r.renderSessionLine(landedData(LandedCounts{
+		Landed: 48, Measured: true, Available: true, Criterion: landedCriterion,
+	}))
+	unknown := r.renderSessionLine(landedData(LandedCounts{}))
+	const prefix = "🔄 TODO: 76/4"
+	for name, line := range map[string]string{"known": known, "unknown": unknown} {
+		if !strings.Contains(line, prefix) {
+			t.Fatalf("%s line lost the unreduced pair %q: %q", name, prefix, line)
+		}
+	}
+}
+
+// TestLandedGlyph_SingleCellLocaleNeutral is AC-SLL-010: one code point,
+// U+2691, one terminal cell whether or not the terminal treats East Asian
+// ambiguous characters as wide.
+func TestLandedGlyph_SingleCellLocaleNeutral(t *testing.T) {
+	t.Parallel()
+	runes := []rune(landedGlyph)
+	if len(runes) != 1 || runes[0] != '⚑' {
+		t.Fatalf("landedGlyph = %q (%U), want exactly U+2691", landedGlyph, runes)
+	}
+	for _, eaw := range []bool{false, true} {
+		cond := runewidth.NewCondition()
+		cond.EastAsianWidth = eaw
+		if w := cond.StringWidth(landedGlyph); w != 1 {
+			t.Fatalf("EastAsianWidth=%v: width = %d, want 1", eaw, w)
+		}
 	}
 }
 
@@ -209,6 +298,7 @@ func TestLandedRenderPath_SpawnsNoGit(t *testing.T) {
 	root := t.TempDir()
 	writeLanded(t, root, mustJSON(t, LandedCounts{
 		Landed: 3, Measured: true, Ref: "origin/develop", FetchedAt: time.Now().Unix(),
+		Criterion: landedCriterion,
 	}))
 
 	counts := resolveLandedCounts(root)
@@ -222,19 +312,23 @@ func TestLandedRenderPath_SpawnsNoGit(t *testing.T) {
 }
 
 // TestRefreshLandedCounts_OneInvocationRegardlessOfCardCount is the load-bearing
-// assertion: the child folds every picked card into a SINGLE git invocation. A
-// test that only checked the resulting number would pass for a per-card
+// assertion (AC-SLL-004): the child folds every picked card into a SINGLE git
+// invocation, and that invocation is kanban's own subject-scan argv. A test
+// that only checked the resulting number would pass for a per-card
 // implementation, so the count is asserted AND asserted not to grow.
 func TestRefreshLandedCounts_OneInvocationRegardlessOfCardCount(t *testing.T) {
-	for _, n := range []int{3, 30} {
+	for _, n := range []int{1, 50} {
 		var calls atomic.Int64
+		var gotArgs []string
 		ids := make([]string, 0, n)
 		var body strings.Builder
+		want := 0
 		for i := 1; i <= n; i++ {
 			id := "t" + itoa(1000+i)
 			ids = append(ids, id)
-			if i%2 == 0 { // half of them are named in history
-				body.WriteString("feat(" + id + "): something landed\n\n")
+			if i%2 == 1 { // odd ones carry an attributing subject
+				body.WriteString(scanLine("sha"+id, landedFreshCT, "feat("+id+"): something landed"))
+				want++
 			}
 		}
 
@@ -242,8 +336,9 @@ func TestRefreshLandedCounts_OneInvocationRegardlessOfCardCount(t *testing.T) {
 		seedPicked(t, root, ids...)
 
 		restore := landedGitRunner
-		landedGitRunner = func(_ context.Context, _ string, _ ...string) (string, error) {
+		landedGitRunner = func(_ context.Context, _ string, args ...string) (string, error) {
 			calls.Add(1)
+			gotArgs = args
 			return body.String(), nil
 		}
 		if err := RefreshLandedCounts(context.Background(), root); err != nil {
@@ -254,9 +349,13 @@ func TestRefreshLandedCounts_OneInvocationRegardlessOfCardCount(t *testing.T) {
 		if got := calls.Load(); got != 1 {
 			t.Fatalf("cards=%d: git invocations = %d, want exactly 1", n, got)
 		}
+		wantArgs := kanban.LandedScanArgs(kanban.LandedRefFor(root))
+		if strings.Join(gotArgs, "\x1f") != strings.Join(wantArgs, "\x1f") {
+			t.Fatalf("cards=%d: argv = %q, want kanban's scan argv %q", n, gotArgs, wantArgs)
+		}
 		got := resolveLandedCounts(root)
-		if !got.Known() || got.Landed != n/2 {
-			t.Fatalf("cards=%d: landed = %+v, want %d", n, got, n/2)
+		if !got.Known() || got.Landed != want {
+			t.Fatalf("cards=%d: landed = %+v, want %d", n, got, want)
 		}
 	}
 }
@@ -272,7 +371,7 @@ func TestRefreshLandedCounts_TimestampPrecedesTheWork(t *testing.T) {
 	restore := landedGitRunner
 	landedGitRunner = func(_ context.Context, _ string, _ ...string) (string, error) {
 		seen = resolveLandedCounts(root)
-		return "fix(t900): landed\n", nil
+		return scanLine("sha900", landedFreshCT, "fix(t900): landed"), nil
 	}
 	defer func() { landedGitRunner = restore }()
 
@@ -287,12 +386,61 @@ func TestRefreshLandedCounts_TimestampPrecedesTheWork(t *testing.T) {
 	}
 }
 
-// TestRefreshLandedCounts_FailedQueryKeepsThePriorMeasurement: a git failure
-// degrades to the stale-but-observed number, never to a fabricated zero.
+// TestRefreshLandedCounts_FailedQueryKeepsThePriorMeasurement is AC-SLL-007: a
+// failed or malformed query over a current-criterion cache degrades to the
+// stale-but-observed number with an advanced timestamp, never to a
+// fabricated zero.
 func TestRefreshLandedCounts_FailedQueryKeepsThePriorMeasurement(t *testing.T) {
+	cases := []struct {
+		name string
+		run  func(context.Context, string, ...string) (string, error)
+	}{
+		{
+			name: "runner error",
+			run: func(_ context.Context, _ string, _ ...string) (string, error) {
+				return "", errors.New("no such ref")
+			},
+		},
+		{
+			name: "malformed stream (no separator)",
+			run: func(_ context.Context, _ string, _ ...string) (string, error) {
+				return "feat(t901): a line with no NUL separators\n", nil
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			seedPicked(t, root, "t901")
+			writeLanded(t, root, mustJSON(t, LandedCounts{
+				Landed: 3, Measured: true, FetchedAt: 1, Criterion: landedCriterion,
+			}))
+
+			restore := landedGitRunner
+			landedGitRunner = tc.run
+			defer func() { landedGitRunner = restore }()
+
+			if err := RefreshLandedCounts(context.Background(), root); err != nil {
+				t.Fatalf("refresh: %v", err)
+			}
+			got := resolveLandedCounts(root)
+			if !got.Known() || got.Landed != 3 {
+				t.Fatalf("stale measurement lost on a failed query: %+v", got)
+			}
+			if got.FetchedAt <= 1 {
+				t.Fatalf("timestamp not advanced: %+v", got)
+			}
+		})
+	}
+}
+
+// TestRefreshLandedCounts_OldCriterionNeverSurvivesAFailure is AC-SLL-008 /
+// AC-SLL-006: a failed refresh over an old-criterion cache must not carry the
+// old number forward as a current-criterion measurement.
+func TestRefreshLandedCounts_OldCriterionNeverSurvivesAFailure(t *testing.T) {
 	root := t.TempDir()
-	seedPicked(t, root, "t901")
-	writeLanded(t, root, mustJSON(t, LandedCounts{Landed: 7, Measured: true, FetchedAt: 1}))
+	seedPicked(t, root, "t905")
+	writeLanded(t, root, oldSchemaCache(time.Now().Unix()))
 
 	restore := landedGitRunner
 	landedGitRunner = func(_ context.Context, _ string, _ ...string) (string, error) {
@@ -304,8 +452,152 @@ func TestRefreshLandedCounts_FailedQueryKeepsThePriorMeasurement(t *testing.T) {
 		t.Fatalf("refresh: %v", err)
 	}
 	got := resolveLandedCounts(root)
-	if !got.Known() || got.Landed != 7 {
-		t.Fatalf("stale measurement lost on a failed query: %+v", got)
+	if got.Known() {
+		t.Fatalf("old-criterion number became a current measurement: %+v", got)
+	}
+	if got.Criterion == landedCriterion && got.Landed == 9 {
+		t.Fatalf("old number 9 relabelled under the current criterion: %+v", got)
+	}
+}
+
+// TestRefreshLandedCounts_FailedRefreshOverOldCacheHoldsTheStampedeGuard pins
+// the stampede guard's link to the criterion reset: a refresh that fails over
+// an old-criterion cache must still leave a current-criterion timestamp behind,
+// so renders inside the TTL spawn no further child. Without the reset, the
+// cache keeps its old criterion, reads as stale, and every render spawns.
+func TestRefreshLandedCounts_FailedRefreshOverOldCacheHoldsTheStampedeGuard(t *testing.T) {
+	root := t.TempDir()
+	seedPicked(t, root, "t906")
+	writeLanded(t, root, oldSchemaCache(time.Now().Unix()))
+
+	restoreRunner := landedGitRunner
+	landedGitRunner = func(_ context.Context, _ string, _ ...string) (string, error) {
+		return "", errors.New("no such ref")
+	}
+	defer func() { landedGitRunner = restoreRunner }()
+
+	if err := RefreshLandedCounts(context.Background(), root); err != nil {
+		t.Fatalf("refresh: %v", err)
+	}
+
+	var spawns atomic.Int64
+	restoreProbe := landedSpawnProbe
+	landedSpawnProbe = func(string) { spawns.Add(1) }
+	defer func() { landedSpawnProbe = restoreProbe }()
+
+	maybeRefreshLandedCounts(root)
+	maybeRefreshLandedCounts(root)
+	if got := spawns.Load(); got != 0 {
+		t.Fatalf("spawn attempts after a failed refresh inside TTL = %d, want 0 (stampede guard)", got)
+	}
+}
+
+// TestRefreshLandedCounts_AttributedSubjectCounts is AC-SLL-002: a subject
+// the kanban predicate attributes, committed after the card was added,
+// counts. The equal-second commit counts too (the boundary is `>=`).
+func TestRefreshLandedCounts_AttributedSubjectCounts(t *testing.T) {
+	for _, ct := range []int64{landedFreshCT, landedFreshCT - 60} {
+		root := t.TempDir()
+		seedPicked(t, root, "t101")
+
+		restore := landedGitRunner
+		landedGitRunner = func(_ context.Context, _ string, _ ...string) (string, error) {
+			return scanLine("bbbb", ct, "feat(statusline): x (t101)"), nil
+		}
+		if err := RefreshLandedCounts(context.Background(), root); err != nil {
+			t.Fatalf("refresh: %v", err)
+		}
+		landedGitRunner = restore
+
+		got := resolveLandedCounts(root)
+		if !got.Known() || got.Landed != 1 {
+			t.Fatalf("ct=%d: attributed subject: %+v, want known landed=1", ct, got)
+		}
+	}
+}
+
+// TestRefreshLandedCounts_GenerationBoundary is AC-SLL-003 / AC-SLL-003b: an
+// attributing commit older than the card, or a card whose added_at cannot be
+// parsed, does not count.
+func TestRefreshLandedCounts_GenerationBoundary(t *testing.T) {
+	cases := []struct {
+		name    string
+		addedAt string
+		ct      int64
+	}{
+		{name: "commit predates the card", addedAt: landedAddedAt, ct: landedStaleCT},
+		{name: "empty added_at fails closed", addedAt: "", ct: landedFreshCT},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			seedPickedAt(t, root, tc.addedAt, "t101")
+
+			restore := landedGitRunner
+			landedGitRunner = func(_ context.Context, _ string, _ ...string) (string, error) {
+				return scanLine("cccc", tc.ct, "feat(statusline): x (t101)"), nil
+			}
+			defer func() { landedGitRunner = restore }()
+
+			if err := RefreshLandedCounts(context.Background(), root); err != nil {
+				t.Fatalf("refresh: %v", err)
+			}
+			got := resolveLandedCounts(root)
+			if !got.Known() || got.Landed != 0 {
+				t.Fatalf("%s: %+v, want known landed=0", tc.name, got)
+			}
+		})
+	}
+}
+
+// TestRefreshLandedCounts_WritesTheCriterion is AC-SLL-004b: the cache on
+// disk names the criterion that produced its number.
+func TestRefreshLandedCounts_WritesTheCriterion(t *testing.T) {
+	root := t.TempDir()
+	seedPicked(t, root, "t101")
+
+	restore := landedGitRunner
+	landedGitRunner = func(_ context.Context, _ string, _ ...string) (string, error) {
+		return scanLine("dddd", landedFreshCT, "feat(statusline): x (t101)"), nil
+	}
+	defer func() { landedGitRunner = restore }()
+
+	if err := RefreshLandedCounts(context.Background(), root); err != nil {
+		t.Fatalf("refresh: %v", err)
+	}
+	raw, err := os.ReadFile(landedCachePath(root))
+	if err != nil {
+		t.Fatalf("read cache: %v", err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatalf("decode cache: %v", err)
+	}
+	if landedCriterion == "" || m["criterion"] != landedCriterion {
+		t.Fatalf("cache criterion = %v, want %q (raw: %s)", m["criterion"], landedCriterion, raw)
+	}
+}
+
+// TestLandedScanRunner_RefusesNonGit pins the adapter's one guard: kanban's
+// runner contract carries a command name, and the adapter only ever runs git.
+func TestLandedScanRunner_RefusesNonGit(t *testing.T) {
+	var calls atomic.Int64
+	restore := landedGitRunner
+	landedGitRunner = func(_ context.Context, _ string, _ ...string) (string, error) {
+		calls.Add(1)
+		return "", nil
+	}
+	defer func() { landedGitRunner = restore }()
+
+	run := landedScanRunner(context.Background(), t.TempDir())
+	if _, err := run("sh", "-c", "true"); err == nil {
+		t.Fatalf("non-git command accepted")
+	}
+	if _, err := run("git", "log"); err != nil {
+		t.Fatalf("git refused: %v", err)
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("runner calls = %d, want 1 (only the git call)", got)
 	}
 }
 
@@ -346,8 +638,9 @@ func TestMaybeRefreshLandedCounts_StampedeGuard(t *testing.T) {
 		t.Fatalf("cold cache: spawn attempts = %d, want 1", got)
 	}
 
-	// Simulate the child's first act: the timestamp lands before the work.
-	writeLanded(t, root, mustJSON(t, LandedCounts{FetchedAt: time.Now().Unix()}))
+	// Simulate the child's first act: the timestamp lands before the work,
+	// under the current criterion.
+	writeLanded(t, root, mustJSON(t, LandedCounts{FetchedAt: time.Now().Unix(), Criterion: landedCriterion}))
 	maybeRefreshLandedCounts(root)
 	maybeRefreshLandedCounts(root)
 	if got := spawns.Load(); got != 1 {
@@ -357,10 +650,28 @@ func TestMaybeRefreshLandedCounts_StampedeGuard(t *testing.T) {
 	// Past the TTL the question is asked again.
 	writeLanded(t, root, mustJSON(t, LandedCounts{
 		Landed: 1, Measured: true, FetchedAt: time.Now().Add(-2 * LandedCountsTTL).Unix(),
+		Criterion: landedCriterion,
 	}))
 	maybeRefreshLandedCounts(root)
 	if got := spawns.Load(); got != 2 {
 		t.Fatalf("past TTL: spawn attempts = %d, want 2", got)
+	}
+}
+
+// TestMaybeRefreshLandedCounts_OldCriterionIsStale is AC-SLL-005b: a cache
+// written under a different criterion is refreshed at once, whatever its
+// timestamp says.
+func TestMaybeRefreshLandedCounts_OldCriterionIsStale(t *testing.T) {
+	var spawns atomic.Int64
+	restore := landedSpawnProbe
+	landedSpawnProbe = func(string) { spawns.Add(1) }
+	defer func() { landedSpawnProbe = restore }()
+
+	root := t.TempDir()
+	writeLanded(t, root, oldSchemaCache(time.Now().Unix()))
+	maybeRefreshLandedCounts(root)
+	if got := spawns.Load(); got != 1 {
+		t.Fatalf("fresh old-criterion cache: spawn attempts = %d, want 1", got)
 	}
 }
 
@@ -384,8 +695,8 @@ func TestRefreshLandedCounts_EmptyQueueNeedsNoQuery(t *testing.T) {
 		t.Fatalf("empty queue asked git %d time(s), want 0", got)
 	}
 	got := resolveLandedCounts(root)
-	if !got.Known() || got.Landed != 0 {
-		t.Fatalf("empty queue: %+v, want an observed zero", got)
+	if !got.Known() || got.Landed != 0 || got.Criterion != landedCriterion {
+		t.Fatalf("empty queue: %+v, want an observed zero under the current criterion", got)
 	}
 }
 
@@ -422,107 +733,47 @@ func namesArg(ss []string, want string) bool {
 	return false
 }
 
-// TestCountNamed_WordBoundaryCriterion pins the matching criterion itself.
-//
-// countNamed IS the feature: everything else is caching around it. Its failure
-// mode is the silent one internal/kanban/prlink_landed.go's file header
-// documents — a matcher that matches nothing returns a clean, error-free count
-// byte-identical to "nothing landed". A prefix collision is where the
-// alternation `\b(?:id1|id2|...)\b` would go wrong if the engine picked the
-// shorter branch, failed the trailing boundary, and gave up instead of trying
-// the longer one, so that case is pinned rather than assumed.
-//
-// The boundary-adjacency and repeat cases are the positive control: without
-// them a matcher that always returned 0 would satisfy every negative case.
-func TestCountNamed_WordBoundaryCriterion(t *testing.T) {
-	t.Parallel()
+// landedAddedAt is the added_at seedPicked writes; landedFreshCT is a
+// committer time one minute after it, and landedStaleCT one day before it.
+const (
+	landedAddedAt = "2026-01-02T03:04:05Z"
+	landedFreshCT = int64(1767323045 + 60)
+	landedStaleCT = int64(1767323045 - 86400)
+)
 
-	cases := []struct {
-		name string
-		ids  []string
-		body string
-		want int
-	}{
-		{
-			name: "prefix collision, both named",
-			ids:  []string{"t45", "t456"},
-			body: "fix(t45): one thing\n\nfeat(t456): another\n",
-			want: 2,
-		},
-		{
-			name: "prefix collision, only the longer named",
-			ids:  []string{"t45", "t456"},
-			body: "feat(t456): only the longer card is here\n",
-			want: 1, // and specifically NOT 2 — t45 must not match inside t456
-		},
-		{
-			name: "a substring is not a mention",
-			ids:  []string{"t45"},
-			body: "feat(t456): a different card entirely\n",
-			want: 0,
-		},
-		{
-			name: "start of body",
-			ids:  []string{"t336"},
-			body: "t336 landed",
-			want: 1,
-		},
-		{
-			name: "end of body",
-			ids:  []string{"t336"},
-			body: "landed as t336",
-			want: 1,
-		},
-		{
-			name: "parenthesised scope",
-			ids:  []string{"t336"},
-			body: "fix(t336): repair the thing\n",
-			want: 1,
-		},
-		{
-			name: "trailing colon",
-			ids:  []string{"t336"},
-			body: "t336: repair the thing\n",
-			want: 1,
-		},
-		{
-			name: "sentence punctuation",
-			ids:  []string{"t336"},
-			body: "docs: record the verdict for card t336.\n",
-			want: 1,
-		},
-		{
-			name: "hyphen is a boundary, not part of the token",
-			ids:  []string{"t336"},
-			body: "chore: revert t336-followup\n",
-			want: 1,
-		},
-		{
-			name: "many mentions of one card count once",
-			ids:  []string{"t336"},
-			body: "feat(t336): a\n\nfix(t336): b\n\ndocs(t336): c\n",
-			want: 1,
-		},
-		{
-			name: "no ids is zero without touching the body",
-			ids:  nil,
-			body: "feat(t336): a\n",
-			want: 0,
-		},
-		{
-			name: "an empty history names nobody",
-			ids:  []string{"t336", "t337"},
-			body: "",
-			want: 0,
-		},
+// scanLine renders one row of the kanban subject scan's stream
+// (`%H%x00%ct%x00%s`), the shape the refresh child now reads.
+func scanLine(sha string, ct int64, subject string) string {
+	return sha + "\x00" + strconv.FormatInt(ct, 10) + "\x00" + subject + "\n"
+}
+
+// TestRefreshLandedCounts_NonAttributingMentionDoesNotCount is AC-SLL-001.
+// The subject NAMES t101, but not in any position kanban's subject
+// attribution accepts, so the new criterion counts nothing. The fixture is
+// chosen to DISCRIMINATE: the retired body-mention criterion (`\bt101\b`
+// over the same text) counts it, which the control below states outright.
+func TestRefreshLandedCounts_NonAttributingMentionDoesNotCount(t *testing.T) {
+	const subject = "chore: follow-up review notes for t101"
+
+	// Discrimination control: the retired criterion would have counted 1.
+	if !regexp.MustCompile(`\bt101\b`).MatchString(subject) {
+		t.Fatalf("control broken: the old body-mention criterion must match %q", subject)
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			if got := countNamed(tc.body, tc.ids); got != tc.want {
-				t.Fatalf("countNamed(ids=%v) = %d, want %d\nbody:\n%s", tc.ids, got, tc.want, tc.body)
-			}
-		})
+	root := t.TempDir()
+	seedPicked(t, root, "t101")
+
+	restore := landedGitRunner
+	landedGitRunner = func(_ context.Context, _ string, _ ...string) (string, error) {
+		return scanLine("aaaa", landedFreshCT, subject), nil
+	}
+	defer func() { landedGitRunner = restore }()
+
+	if err := RefreshLandedCounts(context.Background(), root); err != nil {
+		t.Fatalf("refresh: %v", err)
+	}
+	got := resolveLandedCounts(root)
+	if !got.Measured || got.Landed != 0 {
+		t.Fatalf("non-attributing mention: %+v, want measured landed=0 (old criterion would give 1)", got)
 	}
 }
