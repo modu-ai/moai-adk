@@ -1,4 +1,4 @@
-# research.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.2)
+# research.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.4 — §10.6 추가; 그 밖의 절은 v0.3.2 측정)
 
 측정 트리: 워크트리 `.claude/worktrees/t1236`, 브랜치 `WT-contract-gate-rewire`, HEAD `ca1d5dc43` (develop 과 동일). 측정일 2026-09-26. 아래 수치는 모두 이 트리에서 이 실행에 잰 값이다. **t1175 흡수 후 run phase 진입 시 전부 재측정한다**(`plan.md §C` M0).
 
@@ -271,3 +271,24 @@ v0.3.0 은 세 출처의 불일치를 보고만 했다. 리드가 A2b 로 확정
 | `grep -rnE 'Session-Id:\|Authored-By-Session' internal` (감사 보고서 인용) | 0건 — 커밋에 세션 식별자를 남기는 장치가 없다 |
 
 따라서 작성자 배제는 `parseAuthoredByAgent` 로 읽은 작성 에이전트 집합과 판단 파일의 결정자 신고값을 비교한다(REQ-GR-010). 세션 식별자 조건은 원천이 없어 삭제했다. 결정자 신원은 자기 신고라 거짓 신고를 막지 못한다 — 남는 위험으로 기록한다.
+
+### §10.6 M0 재앵커 재측정 (v0.3.4, 트리 HEAD `7e82f8b66` — `BASE` `7fe658815` 과의 차이는 이 SPEC 디렉터리 6개 파일뿐)
+
+이 절은 §1 끝의 기준선 문장(100행 「exit 0, 97 of 101」)과 §7·§9.2 의 `moai-mcp-tools.md:75` 인용(161·184행)을 대체한다 — 두 곳은 t1175 이전 트리의 측정이라 이력으로만 남긴다.
+
+| 측정 | 명령 | 관측 |
+|---|---|---|
+| B1 askuser 앵커 | `grep -n 'Ambiguity Triggers\|Five Exceptions\|^## ' .claude/rules/moai/core/askuser-protocol.md` | `206:## Ambiguity Triggers and Exceptions`, `208:This section is the **single source of truth** …`, `210:## Free-form Circumvention Prohibition`; 「The Five Exceptions」 제목 없음(12행 detail-companion 목록에만 이름). 템플릿 사본도 206행 |
+| B1 이동처 | `grep -n 'Five Exceptions' .claude/rules/moai/core/askuser-protocol-reference.md` | `229:### The Five Exceptions (Stage 1 is skipped)`(템플릿 사본도 229) |
+| B2 jev_ask 위치 | `grep -n 'jev' .claude/rules/moai/core/moai-mcp-tools.md .claude/rules/moai/core/moai-mcp-tools-catalogue.md` | `moai-mcp-tools.md` 0건; 카탈로그 `138:` (`mcp__moai__jev_ask` 행), `145:`(설명 문단), `216:` (`Judgment (gated)` 행). 템플릿 사본 같은 행 |
+| B2 카탈로그 로드 조건 | `head -4 .claude/rules/moai/core/moai-mcp-tools-catalogue.md` | `paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moai/*.md"` — always-loaded 아님. 크기 `LC_ALL=en_US.UTF-8 wc -m` 18,396자(로컬·템플릿 동일) |
+| B3 A2 판독 | `sed -n 160,185p internal/escalation/record.go` | `NeedsDecision` 는 `r.Status == StatusOpen && (r.Kind == KindContract \|\| r.Kind == KindOperational)` 일 때만 참. 22~23행 주석 「revoke records are reserved for A3 and never count」 |
+| B3 A2 SPEC | `sed -n 500,545p .moai/specs/SPEC-AUTONOMY-ESCALATION-001/spec.md` (A2 `version: "0.4.3"`, `status: implemented`) | 경로 `<worktree root>/.moai/reports/<card-id>/escalation/<class>-<fingerprint>.md`; §I.1 머리 필드 15개; §I.2 「A revoke record carries `status: resolved` and a non-empty `decider`; it never makes a card needs-decision」, 예약 class `revoke-operator`·`revoke-on-decision`, 「A3 may add revoke classes」 |
+| B3 A2 함수 | `grep -n 'func ' internal/escalation/record.go` | `Marshal` 87, `ParseRecord` 118, `Fingerprint` 138, `RecordDir` 144, `RecordPath` 151, `NeedsDecision` 163 — A3 가 재사용(쓰기·파싱·지문), 수정하지 않음 |
+| B4 임시 규칙 위치 | `grep -n 'ReceiptOutcome applies\|^func ReceiptOutcome\|^// ContractLineCount' internal/contract/receipt.go` | `208:` 주석 시작, `216:func ReceiptOutcome(r *KickoffReceipt) (refusal string, ok bool) {`, `234:` 다음 함수 주석(함수 끝 232행). 첫 분기가 `EffectiveDecider == DeciderLLMJev` → `RefuseReceiptRequiresHuman` |
+| B4 호출부와 A1 (t) 테스트 | `grep -rn 'ReceiptOutcome' internal cmd` | 유일한 제품 호출부 `internal/contract/sign/sign.go:519`; 테스트 `internal/contract/receipt_test.go`(`TestValidateKickoffReceipt_AC016`·`TestReceiptOutcome`), `internal/contract/sign/ac_contract_016_test.go:114` `t_llm_jev_both_approve_interim_rule`; 시그니처 목록 주석 `internal/contract/doc.go:47` |
+| B5 헌법 검증 BASE | `moai constitution validate --format json`(작업 디렉터리 = `git archive 7fe658815` 을 푼 디렉터리, 실행 파일 = 이 트리의 `cmd/moai` 빌드) | exit 1, `"drift_count": 9`, id `CONST-V3R2-013`·`014`·`015`·`016`·`017`·`033`·`049`·`152`·`153`, `"retired_count": 4` — 원문은 `acceptance.md §B.2` EV-6 |
+| B5 헌법 검증 HEAD | `moai constitution validate`(이 트리, 같은 빌드) | `constitution validate: FAILED — 9 error(s) found`, 같은 9개 id, exit 1 |
+| AC-GR-003 선택 | `go test -list 'TestContractModeChangeSetAllowlist\|TestContractModeConstitutionDriftNotIncreased' ./internal/template/` | 목록 없이 `ok  	github.com/modu-ai/moai-adk/internal/template	0.666s`, exit 0 — 아직 없음 |
+
+M0 기록(`progress.md §E.2`)이 이미 적은 것 — §1.1 계수 불변(로컬 33 파일/116 줄, 템플릿 32/111), Kickoff 줄 로컬↔템플릿 차이 0, E/R/H 분류 불변, 행 6~14 skill 앵커 존재 — 은 여기서 다시 재지 않았다.

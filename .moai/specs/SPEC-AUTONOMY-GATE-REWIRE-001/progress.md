@@ -4,11 +4,11 @@
 
 - plan_status: audit-ready
 - plan_complete_at: 2026-09-26
-- spec_version: 0.3.3 (operator-approved one-time 4th audit exception limited to D43-D46; base 710530d67); prior 0.3.2 (revision base 1b071a573 = v0.3.1; plan-audit iter-2 FAIL 0.77 → `.moai/reports/t1236/plan-audit-2.md`, dispositions D26-D42 in plan.md §J; iter-1 dispositions in plan.md §I)
+- spec_version: 0.3.4 (2026-09-27, M0 re-anchor per lead decisions B1-B5 — plan.md §K, research.md §10.6; REQ 25 / AC 25 unchanged); prior 0.3.3 (operator-approved one-time 4th audit exception limited to D43-D46; base 710530d67); prior 0.3.2 (revision base 1b071a573 = v0.3.1; plan-audit iter-2 FAIL 0.77 → `.moai/reports/t1236/plan-audit-2.md`, dispositions D26-D42 in plan.md §J; iter-1 dispositions in plan.md §I)
 - tier: L (spec.md, plan.md, acceptance.md, design.md, research.md)
 - requirements: 25 (REQ-GR-001..025, contiguous, no new IDs in v0.3.2) / acceptance criteria: 25 (AC-GR-001..025)
 - a1_reference_baseline: 25283ebf8 (SPEC-AUTONOMY-CONTRACT-001 0.5.2, schema owner; conditional interim-rule wording, A3 owns the AC-CONTRACT-016 (t) replacement test); history 8f77d9a33 / 98cb7879d / 4208a3a3b / 652243c72 / 6d98ca466 / 67a2f55cb / 65e0a9167
-- a2_reference: lead-stated final format (escalation/<class>-<fingerprint>.md + YAML header + revoke kind); current A2 commit d8926ff9a carries the withdrawn JSON format
+- a2_reference: A2 0.4.3 (implemented, BASE 7fe658815) — escalation/<class>-<fingerprint>.md + YAML header + revoke kind confirmed at M0; revoke records are status: resolved in A2, so resume blocking is owned by the A3 revoke reader (v0.3.4, B3); earlier withdrawn JSON format d8926ff9a is history
 - a2b_reference: t1245 owns push serialization, agent-origin sign deny, decide refusal in MOAI_FACTORY_ROLE=agent sessions (SPEC not yet written; marker kept)
 - store: $MOAI_HOME/db/<project-key>/contract/{receipts.jsonl,events.jsonl} (lead decision R10)
 - deciders: guided=human; contract autonomous = llm (default) | llm+jev; jev refused (R5); outcome in {approve, reject, human} derived by A3 rules R1-R5; reject and human both = sign refused, human decision required

@@ -1,9 +1,10 @@
-# plan.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.3)
+# plan.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.4)
 
 ## §A. 맥락
 
 - 카드 t1236 (AUTONOMY-A3), 워크트리 `.claude/worktrees/t1236`, 브랜치 `WT-contract-gate-rewire`. 이력: v0.1.0 `ca1e39f6f`, v0.2.0 `62a65f709`(plan-audit iter-1 FAIL 0.71, `.moai/reports/t1236/plan-audit-1.md`), v0.3.0 `781ddc355` 은 그 수리본, v0.3.1 은 운영자 재결정(`llm+jev` 교차 확인만, 결정 규칙 A3 소유)·A2b 소유·리드 결정 R10 반영본.
 - v0.3.2: v0.3.1 `1b071a573` 의 plan-audit iter-2 FAIL 0.77(`.moai/reports/t1236/plan-audit-2.md`) 수리본, 리드 결정 2026-09-26(D32·D33) 반영, A1 0.5.2 `25283ebf8` 기준.
+- v0.3.4: run M0(`progress.md §E.2`, BASE `7fe658815`)이 멈춘 재앵커 blocker 다섯 건을 리드 결정 B1~B5(2026-09-27)로 제자리 수리(§K). 코드·템플릿·`SPEC-JEV-CORE-001`·`CLAUDE.local.md` 는 건드리지 않았다.
 - 산출물: `spec.md`, `plan.md`, `acceptance.md`, `design.md`, `research.md`, `progress.md` (Tier L).
 - 개발 방식: 문서 층(추가형 블록 + Jev 원칙 개정) + Go 코드(kickoff-check·decide·revoke·사건 저장소·A1 서명기 사건 추가) + Go 가드 테스트. 모두 TDD — RED 를 먼저 관측한다(`design.md §12`).
 - A1 기준: 0.5.2 `25283ebf8`(이력 `65e0a9167`; 스키마: 결정자 값 집합·파생 기본값·영수증 필드·구조 검증·`card` 필드). A2b(t1245): push 직렬화·에이전트발 `sign` 차단·팩토리 에이전트 세션의 `decide` 거절. A2 기준: 리드가 전달한 최종 형식(A2 개정본 대기, 현재 커밋 `d8926ff9a` 는 철회된 형식 — `research.md §10.1`).
@@ -19,7 +20,7 @@ v0.2.0 의 NC-1~NC-9 는 모두 닫혔다. 본문 정본은 `spec.md §B` 「본
 | NC-3 G4 원문 | 결정 D-3: 헌법 파일 무수정 | 헌법 개정은 범위 밖 — 바인딩 범위가 답을 강제(감사 D1) |
 | NC-4 서명 후 goal 무장 | **기본값 D-4**: 자동 무장 없음. 운영자가 바꿀 수 있음 | 리드 승인(2026-09-26). 보수적 기본값 — run 은 이 기본값으로 진행할 수 있다 |
 | NC-5 초안 작성 지시 | 결정 D-5: `spec-assembly.md` 위임문 | `.claude/agents/**` 제외가 답을 강제(감사 D1) |
-| NC-6 always-loaded 예산 | 결정 D-6: 블록 합계 1,500자 + `jev_ask` 행 300자 | `design.md §4` 에 수치로 묶음. t1175 조율은 리드 몫 |
+| NC-6 always-loaded 예산 | 결정 D-6: 블록 합계 1,500자. v0.3.4(B2): `jev_ask` 행이 t1175 로 always-loaded 가 아닌 `moai-mcp-tools-catalogue.md` 로 옮겨 상시 예산에서 빠지고, 카탈로그 두 행은 행당 300자의 조건부 예산 | `design.md §4` 에 수치로 묶음. t1175 조율은 리드 몫 |
 | NC-7 Jev 게이트 입력 | 결정 D-7: 리드 결정 L1 을 운영자 재결정으로 좁힘 — contract 모드 Kickoff 의 `llm+jev` 교차 확인 두 번째 신호 한정 개정 | REQ-GR-013, `design.md §11` |
 | NC-8 주 LLM 결정자 | 결정 D-8: 리드 결정 L3 — 리드 세션 또는 새 컨텍스트 판단 역할 | `mission-governor` 정의가 승인을 배제 |
 | NC-9 revoke 정지 시점 | 결정 D-9: 다음 단계 경계 | REQ-GR-020·022 가 이미 규정(감사 NC 분류) |
@@ -55,7 +56,7 @@ Push 단계(REQ-GR-021)와 자율 Kickoff 활성(M8)에만 걸리는 추가 조�
 - 로컬·템플릿은 같은 커밋에서 함께 편집한다.
 - 블록·SSOT·템플릿 개정 문장에 내부 토큰 금지(REQ-GR-023).
 - Go 테스트는 `t.TempDir()` 와 격리된 `MOAI_HOME` 만 쓴다. Jev 는 스텁 이음매로만, 네트워크 금지.
-- 검증은 범위 한정: `go test ./internal/template/... ./internal/contract/...`, `go test ./internal/cli/ -run 'TestContract(Decide|KickoffCheck|Revoke)'`, `moai constitution validate`, `moai spec lint`. `go test ./...` 로컬 실행 금지.
+- 검증은 범위 한정: `go test ./internal/template/... ./internal/contract/...`, `go test ./internal/cli/ -run 'TestContract(Decide|KickoffCheck|Revoke)'`, 헌법 DRIFT 비증가(`TestContractModeConstitutionDriftNotIncreased`, AC-GR-003 — `BASE` 에서 이미 exit 1·DRIFT 9건이므로 exit 0 을 요구하지 않는다), `moai spec lint`. `go test ./...` 로컬 실행 금지.
 - AC 명령은 한 줄 단순 명령 — `git` 을 서브셸·프로세스 치환·heredoc 안에 두지 않는다(감사 D12).
 - `acceptance.md` 의 AC 수를 제자리에서 바꾸는 개정은 AC 스냅숏 재생성을 같은 커밋에 싣는다(감사 D24, `.moai/docs/ac-count-baseline-refresh.md §2`). 새 `acceptance.md` 추가 자체는 방아쇠가 아니다.
 - `.claude/agents/**` 무수정이므로 `make agents-emit` 불필요.
@@ -73,6 +74,7 @@ acceptance.md 의 AC 전부를 PASS/FAIL 표로, 명령·원문 출력·exit 코
 - `research.md §1` 계수를 `BASE` 에서 재실행. E/R/H 분류가 바뀌면 blocker 로 manager-spec 재위임.
 - A1 병합본과 0.5.2(`25283ebf8`) 인용 항목을, A2 병합본과 **[A2 개정본으로 재확인]** 항목을, A2b 병합본과 **[A2b SPEC 으로 재확인]** 항목을 대조. 차이는 blocker.
 - 절 제목 앵커가 t1175 이후에도 있는지 확인.
+- **M0 결과(2026-09-27, `progress.md §E.2`)**: 멈춤 규칙 발동 → blocker 다섯 건 → 리드 결정 B1~B5 → v0.3.4 재앵커(§K). 재위임 뒤 M0 은 §K 의 재측정 명령으로 새 앵커를 다시 확인하고 M1 로 넘어간다 — E/R/H 분류와 skill 앵커(행 6~14)는 바뀌지 않았다.
 
 ### M1 — SSOT `contract-autonomy.md` (Priority High)
 
@@ -84,7 +86,7 @@ acceptance.md 의 AC 전부를 PASS/FAIL 표로, 명령·원문 출력·exit 코
 
 ### M3 — G2/G3/G4 (Priority Medium)
 
-`CLAUDE.md` §7, `askuser-protocol.md`. plan phase 인터뷰는 건드리지 않는다(D-2).
+`CLAUDE.md` §7, `askuser-protocol.md`(블록은 `## Ambiguity Triggers and Exceptions` 스텁 문단 뒤, `## Free-form Circumvention Prohibition` 앞 — `design.md §2` 3행, B1). plan phase 인터뷰는 건드리지 않는다(D-2).
 
 ### M4 — G7/G8 (Priority Medium)
 
@@ -96,11 +98,11 @@ acceptance.md 의 AC 전부를 PASS/FAIL 표로, 명령·원문 출력·exit 코
 
 ### M6 — `moai contract revoke` (Priority High, TDD, 자율 Kickoff 보다 먼저)
 
-`internal/contract/receipt/`(체인의 최소 부분) + `internal/contract/revoke/` + `internal/cli/contract_revoke.go`. RED: `design.md §12` revoke 행. **M8 보다 먼저 커밋한다(AC-GR-017).**
+`internal/contract/receipt/`(체인의 최소 부분) + `internal/contract/revoke/`(A2 형식 기록 쓰기와 A3 revoke 판독기 — `design.md §10`, B3) + `internal/cli/contract_revoke.go`. `internal/escalation` 은 읽기만 한다(`RecordPath`·`Fingerprint`·`ParseRecord`·`NeedsDecision`). RED: `design.md §12` revoke·revoke 판독기 행. **M8 보다 먼저 커밋한다(AC-GR-017).**
 
 ### M7 — 사건 저장소 완성 + 서명기 사건 추가 + decide + kickoff-check (Priority High, TDD)
 
-`internal/contract/receipt/` 완성(`$MOAI_HOME/db/<project-key>/contract/` 의 `receipts.jsonl`·`events.jsonl`), `internal/contract/sign/` 에 서명·재봉인 사건 추가(주입 가능한 저장소 이음매, 모든 서명 테스트를 `t.TempDir()` `MOAI_HOME` 으로 — D37)와 서명기 단계 (1) 의 `jevDoctrineAmended` 조건화(동작 불변), `internal/contract/kickoff/`(전제조건·결정 규칙 R1~R5·decide·kickoff-check, 상수 `autonomousKickoffEnabled`·`jevDoctrineAmended` 모두 `false`), `internal/cli/contract_decide.go`·`contract_kickoff_check.go`. RED: 저장소·서명 사건·kickoff-check·decide 행, 결정 규칙은 규칙마다 따로(AC-GR-019·025).
+`internal/contract/receipt/` 완성(`$MOAI_HOME/db/<project-key>/contract/` 의 `receipts.jsonl`·`events.jsonl`), `internal/contract/sign/` 에 서명·재봉인 사건 추가(주입 가능한 저장소 이음매, 모든 서명 테스트를 `t.TempDir()` `MOAI_HOME` 으로 — D37)와 서명기 단계 (1) 의 `jevDoctrineAmended` 조건화(동작 불변 — 규칙은 `internal/contract/receipt.go` `ReceiptOutcome` 에 있으므로 그 자리에서 인자로 받고 `sign/sign.go` 는 값을 넘기기만 한다, B4), `internal/contract/kickoff/`(전제조건·결정 규칙 R1~R5·decide·kickoff-check, 상수 `autonomousKickoffEnabled`·`jevDoctrineAmended` 모두 `false`), `internal/cli/contract_decide.go`·`contract_kickoff_check.go`. RED: 저장소·서명 사건·kickoff-check·decide 행, 결정 규칙은 규칙마다 따로(AC-GR-019·025).
 
 ### M7b — Jev 원칙 개정 연동 커밋 (Priority High)
 
@@ -116,7 +118,7 @@ acceptance.md 의 AC 전부를 PASS/FAIL 표로, 명령·원문 출력·exit 코
 
 ### M10 — 기계적 마무리 (Priority Low)
 
-`make build`, AC 전부, `moai constitution validate`, `moai spec lint`(이 SPEC 과 `SPEC-JEV-CORE-001`).
+`make build`, AC 전부, 헌법 DRIFT 비증가(AC-GR-003), `moai spec lint`(이 SPEC 과 `SPEC-JEV-CORE-001`).
 
 ## §G. 반패턴
 
@@ -197,3 +199,17 @@ acceptance.md 의 AC 전부를 PASS/FAIL 표로, 명령·원문 출력·exit 코
 | D42 `./internal/spec` 재측정 | **수리** — M7b 검증 범위에 포함(다른 SPEC 본문 변경). A1 `acceptance.md` 는 더 이상 편집하지 않으므로 AC 스냅숏 재생성 의무는 생기지 않는다 | M7b, `design.md §11.2` |
 
 요구사항 25개·AC 25개 그대로(새 id 없음, 기존 문장과 픽스처만 수정). v0.3.1 의 `design.md §2` 27행(A1 SPEC 문언 개정)은 A1 0.5.2 가 문언을 조건부화해 필요 없어졌으므로 삭제했고, 그에 걸려 있던 M7b 보류도 해제했다.
+
+## §K. M0 재앵커 처분 (v0.3.4, 리드 결정 2026-09-27)
+
+run M0(manager-develop, `progress.md §E.2`, BASE `7fe658815`)이 멈춤 규칙으로 돌려보낸 차이 다섯 건. 모두 리드가 고정한 처분이며, 재측정 명령은 `BASE`(HEAD `7e82f8b66` 과 트리 차이는 이 SPEC 디렉터리뿐)에서 이 판 작성 중에 실행했다(`research.md §10.6`).
+
+| blocker | 처분 | 어디서 |
+|---|---|---|
+| B1 `askuser-protocol.md` 「The Five Exceptions」 이동(t1175 → `askuser-protocol-reference.md:229`) | `contract-ambiguity` 블록을 `askuser-protocol.md` 의 `## Ambiguity Triggers and Exceptions` 스텁 문단(206·208행) 뒤, `## Free-form Circumvention Prohibition`(210행) 앞으로. reference 파일은 편집 대상 아님 | `design.md §2` 3행, M3 |
+| B2 `moai-mcp-tools.md` 에 `jev_ask` 행 없음 | 개정 위치를 `moai-mcp-tools-catalogue.md` 138행(도구 표)·216행(계열 요약)으로 교체, `moai-mcp-tools.md` +300자 상시 예산 삭제(상시 상한 1,800 → 1,500자), 카탈로그는 always-loaded 아님 — 행당 300자·사본당 600자 조건부 예산 | REQ-GR-013·025, `spec.md §B` D-6, `design.md §2` 15·16행·§4·§11·§11.2, AC-GR-009·010·022, §B NC-6 |
+| B3 A2 revoke 기록은 `status: resolved`, `NeedsDecision` 에 안 잡힘 | 선택지 (a): A2 불변, A3 revoke 판독기가 `kind: revoke`·`card`·`spec`·`class`·`fingerprint`(= `Fingerprint(class, 현재 seal)`)로 차단 판정, `status` 무시, 오류는 차단. 경계 문장 「A2 는 revoke 를 해결됨으로 기록 — A3 의 재개 차단은 A3 판독기의 책임」 | REQ-GR-007·009 (e)·012·020·022, `design.md §9`·`§10`·`§12`, AC-GR-018·023 |
+| B4 A1 서명기 단계 (1) 이 `sign/` 이 아니라 `internal/contract/receipt.go` `ReceiptOutcome`(208~232행) | 허용 목록 23행에 `receipt.go`·`receipt_test.go`·`doc.go`(47행 주석) 추가, 조건화는 그 자리에서(`sign/` 에 규칙 중복 없음), `sign/sign.go` 는 값 전달만 | REQ-GR-025, `design.md §2` 23행·§7.1, AC-GR-017, M7 |
+| B5 `moai constitution validate` 가 BASE 에서 exit 1·DRIFT 9건(CONST-V3R2-013~017·033·049·152·153 — 범위 밖, 리드 별도 카드) | AC-GR-003 기대를 「BASE 대비 DRIFT 가 늘지 않음(수 ≤, id 집합 ⊆)」으로, 판정은 `TestContractModeConstitutionDriftNotIncreased`(`git archive $MOAI_GR_BASE` 대 현재 트리), 기준선 셀 EV-6 을 `7fe658815` 로 고정 | AC-GR-003, `acceptance.md §B`·§B.2, `design.md §5`, §D·M10 |
+
+요구사항 25개·AC 25개 그대로(새 id 없음) — AC 수가 바뀌지 않으므로 AC 스냅숏 재생성 의무는 생기지 않는다(`.moai/docs/ac-count-baseline-refresh.md §2`). 재위임된 M0 은 위 앵커를 한 번 더 재측정한 뒤 M1 로 넘어간다.
