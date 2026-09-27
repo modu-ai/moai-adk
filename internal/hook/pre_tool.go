@@ -1400,8 +1400,9 @@ var frozenZonePrefixes = []struct {
 	{".claude/output-styles/", SentinelHarnessFrozenOutputStyle},
 }
 
-// frozenInstructionFiles lists CLAUDE.md variants guarded by HARNESS_FROZEN_INSTRUCTION_VIOLATION.
-var frozenInstructionFiles = []string{"CLAUDE.md", "CLAUDE.local.md"}
+// frozenInstructionFiles lists the instruction-file basenames (CLAUDE.md and
+// AGENTS.md variants) guarded by HARNESS_FROZEN_INSTRUCTION_VIOLATION.
+var frozenInstructionFiles = []string{"CLAUDE.md", "CLAUDE.local.md", "AGENTS.md", "AGENTS.local.md"}
 
 // checkHarnessFrozenZone returns (sentinel, deny-reason) when the file path falls inside
 // a FROZEN zone. Returns ("", "") when the path is not frozen.
