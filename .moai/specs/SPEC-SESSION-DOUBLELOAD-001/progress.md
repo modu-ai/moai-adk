@@ -2,10 +2,11 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-- plan_status: draft authored, pending plan-audit
+- plan_status: revised after plan-audit iter-1 (FAIL 0.64); pending iter-2
 - tier: M (spec.md, plan.md, acceptance.md, progress.md)
-- requirements: 15 (REQ-SDL-001..015); acceptance criteria: 16 (AC-SDL-001..016)
-- self_check: SPEC ID regex PASS; ID unused under `.moai/specs/`; 3 `[NEEDS CLARIFICATION]` markers open in plan.md §I
+- requirements: 16 (REQ-SDL-001..016); acceptance criteria: 16 (AC-SDL-001..016)
+- self_check: SPEC ID regex PASS; ID unused under `.moai/specs/`; no open clarification markers (all three resolved by operator decision, spec.md §F)
+- defects addressed: D1–D20 of `.moai/reports/t1219/plan-audit.md`
 
 ## §E.2 Run-phase Evidence
 
