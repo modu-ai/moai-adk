@@ -114,4 +114,24 @@ m1_to_mN_commit_strategy: one commit per milestone (M1..M6) + this evidence comm
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-27
+sync_commit_sha: pending-backfill   # 자기 SHA 는 커밋 안에 적을 수 없다 — `git log -1 --format=%h -- .moai/specs/SPEC-SERVED-MODEL-AUDIT-001/progress.md` 로 읽는다
+sync_status: audit-ready
+b12_self_test_a: pass   # pre-emission `grep -c 'SERVED-MODEL-AUDIT-001' CHANGELOG.md` → 0
+b12_self_test_b: pass   # distinct AC ids in acceptance.md → 16; CHANGELOG entry cites AC-SMA-001..016 (16)
+b12_self_test_c: pass   # ls: spec.md, internal/hook/served_model.go, internal/cli/doctor_served_model.go, docs-site/content/{ko,en,ja,zh}/multi-llm/model-policy.md 모두 존재
+changelog_entry_position: "[Unreleased] › ### Added › 첫 항목"
+docs_synced:
+  - docs-site/content/{ko,en,ja,zh}/multi-llm/model-policy.md   # § 감사 기록과 fail-open 에 서빙 행·게이트·스윕 문단 (4개 로케일 동시)
+docs_checked_no_change:
+  - README{,.ko,.ja,.zh}.md   # doctor 점검·workflow.* 키 서술 없음
+  - .claude/rules/**          # 감사 로그 언급은 agent-common-protocol.md:168 (§ Per-Spawn Model Injection) 한 곳 — t1246 소유라 미편집
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed (implemented 병합, 단일 sync 커밋)"
+  plan.md: "frontmatter 없음 — 변경 없음"
+  acceptance.md: "frontmatter 없음 — 변경 없음"
+  progress.md: "frontmatter 없음 — 변경 없음"
+deferred_notes_resolved_by: f54b67c38   # 커밋 메시지 기준: REQ-SMA-002 행 수 문구·위치 정보 없는 페이로드 예외·REQ-SMA-014 명시 호출 전용 (본문 diff 는 sync 에서 재대조하지 않음)
+open_gap: "SubagentStop 실제 페이로드의 트랜스크립트 위치 정보 — 미측정 (spec.md §A.4)"
+```
