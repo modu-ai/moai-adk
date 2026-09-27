@@ -33,7 +33,7 @@ wc -m CLAUDE.md AGENTS.md \
 
 ## S_init
 
-_미측정 — run 단계 M1: 격리 하네스 실행 출력(`harness-run.txt`), 18경로 존재 대조, `total_init`, `hash_init`, 런타임 계수 관측 또는 `runtime_observed = no`._
+_미측정 — run 단계 M1: 격리 하네스 실행 출력(`harness-run.txt`, 첫 줄 `harness_head`), 프로젝트 트리 전체 내보내기, 18경로 존재 대조, 계수 집합(`count-set-init.txt`), `total_init`, `hash_init`, 격리 런타임 계수 관측 또는 `runtime_observed = no` 와 17집합 줄._
 
 ## S_live
 

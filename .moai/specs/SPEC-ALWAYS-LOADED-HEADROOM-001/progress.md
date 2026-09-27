@@ -8,14 +8,14 @@
 
 - plan_complete_at: 2026-09-27
 - plan_status: audit-ready
-- spec 버전: 0.2.0 (plan-audit 1회차 FAIL 0.62 수리본)
+- spec 버전: 0.3.0 (plan-audit 2회차 FAIL 0.77 수리본 — 최종 수리 회차). 요구사항 16개(Tier M 상한), AC 10개
 - 산출물: `spec.md` · `plan.md` · `acceptance.md` · `research.md` · `progress.md`, 판정서 뼈대 `.moai/reports/t1226/verdict.md`, `.moai/reports/t1226/sec.py`(sha256 `d0e61541367abb06a170bd36b6376e51d51882380ca9f899f0d2934016a78547`, 원본과 일치)
 - SPEC ID 정규식 검사(Bash 실행): `SPEC-ALWAYS-LOADED-HEADROOM-001` → `PASS`. 중복 확인 `ls .moai/specs | grep -c HEADROOM` → `0`(작성 전)
 - 기준선(오케스트레이터 실측, 이 트리): 18파일 `wc -m` → `199111 total`, 잔여 49,111
 - 동결 다중집합 재실행(manager-spec, 이 트리): `d97b33d960c9801d4ec145ca263ed788425b337f43c585594c8d527c1318c6c3`
 - 결정 지점: D1 판정 표면 = `S_init` 1차 + `S_live` 병기. D2 `S_init` 산출 = 커밋된 격리 하네스 테스트. D3 표면별 해시 실측. D4 런타임 계수 관측 요청, 불가 시 18·17 이중 판정. 해소가 필요한 clarification 마커 0건.
 
-### plan-audit 1회차 결함 대응표
+### plan-audit 1회차 결함 대응표 (번호는 0.2.0 당시 REQ 번호)
 
 | 결함 | 반영 |
 |---|---|
@@ -41,6 +41,23 @@
 | D20 마커 리터럴 | plan·progress 의 설명 문장에서 리터럴 마커 표기 제거 |
 | D21 트레일러 | 이번 커밋에 `Authored-By-Agent: manager-spec`. 최초 커밋 `10281a857` 의 INFO 는 이력 재작성 없이는 남는다 |
 
+### plan-audit 2회차 결함 대응표 (0.3.0)
+
+| 결함 | 반영 |
+|---|---|
+| D1 흡수 형식 | AC-ALH-008 을 `git log --first-parent --no-merges 7fe658815..HEAD -- <36경로>` 로 교체, 한계(흡수 방향) 명시. REQ-ALH-013 을 「카드 계보의 비병합 커밋」으로. 1회차 처방이 틀렸음을 spec HISTORY 0.3.0 행에 기록 |
+| D2 `S_init` 값 미검증 | AC-ALH-002 가 하네스를 `build_head` 에서 재실행해 `total_init` 을, `git archive` 로 `total_live` 를 재현. AC-ALH-004 가 두 트리에서 파이프라인을 재실행해 `hash_init`·`hash_live` 재현. AC-ALH-003 (2) 파일별 `Σ gross == wc -m` 분할 완결성 |
+| D3 `net-negative` 우회 | 사유 조건을 `mech=M1`·`bind=0`·`gov=N`·`c1~c4=Y`·`dest≠-` 로 좁히고, 증거 `pointer_chars = P` 가 `P ≥ gross` 인지 검사 |
+| D4 관측 설계 | 하네스가 init 프로젝트 트리 전체를 내보냄. 관측은 격리 `CLAUDE_CONFIG_DIR`·`HOME` 에서, `runtime_isolated = yes` 줄 필수. 관측자 사용자 범위 지시문 혼입은 가설로 표기(spec §A) |
+| D5 집합 모순 | `count_set_init`(18/17/observed) 한 줄과 `count-set-<s>.txt` 도입. `total`·`current`·`A_adm`·`R`·`U` 를 그 집합 기준으로 정의(REQ-ALH-002·009·015), AC-ALH-006 이 집합 행만 합산 |
+| D6 17집합 미검증 | `total/current/A_adm/R/U/T_min_init_17`·`verdict_init_17` 줄 요구, AC-ALH-006 `calc init <skill-routing 제외> init_17`, AC-ALH-007 토큰 재계산과 `count-set` 사유 규칙 |
+| D7 REQ 예산 | 옛 REQ-ALH-014 를 REQ-ALH-001 에 병합, 옛 015~017 → 014~016. 16개. 매트릭스·추적성 표 갱신 |
+| D8 외부 AC 참조 | 선행 SPEC 참조를 `AC-ALD2-002 [REF]` 로 표기 |
+| D9 하네스 재실행 | `harness-run.txt` 첫 줄 `harness_head`, `build_head` 와 일치 검사. AC-ALH-002 에 재실행 절차 |
+| D10 정규식 | `moai([[:space:]]+-[^[:space:]]+)*[[:space:]]+init` 로 확장, 자기 신고 한계를 Residual-risk 로 |
+| D11 REQ 구현 세부 | REQ-ALH-016 에서 헬퍼 함수명 제거, 이름은 plan D2·AC-ALH-009 에만 |
+| D12 린트 게이트 | M7·§D 제약·§D.1 게이트에 CI 판 `golangci-lint run ./internal/cli/...` |
+
 ### 린트
 
 이 트리에서 빌드한 바이너리로 실행(설치본은 2026-09-25 빌드라 이 트리의 린트 규칙을 담는다는 보장이 없다):
@@ -48,7 +65,7 @@
 ```
 $ go build -o $SCRATCH/moai ./cmd/moai
 built
-$ $SCRATCH/moai spec lint --strict SPEC-ALWAYS-LOADED-HEADROOM-001; echo "exit=$?"
+$ $SCRATCH/moai spec lint --strict SPEC-ALWAYS-LOADED-HEADROOM-001; echo "exit=$?"   # 0.3.0, 이 트리 재빌드
 INFO      OwnershipTransitionUnmeasured  …/SPEC-ALWAYS-LOADED-HEADROOM-001/spec.md  1  SPEC SPEC-ALWAYS-LOADED-HEADROOM-001 transition "(none)" → "draft" expected owner "manager-spec" but commit 10281a8570f4d9b870cfa1d69e1a9cfac125dd36 (…) has no Authored-By-Agent trailer — ownership transition unmeasured
 
 0 error(s), 0 warning(s)

@@ -10,7 +10,7 @@
 
 기준선(오케스트레이터 실측, 이 트리): `199111 total`, 잔여 49,111, 동결 해시 `d97b33d9…c6c3`.
 
-v0.2.0 에서 plan-audit 1회차(`.moai/reports/t1226/plan-audit.md`)의 결함 D1~D21 을 반영했다. 대응표는 `progress.md §E.1`.
+v0.2.0 에서 plan-audit 1회차(`.moai/reports/t1226/plan-audit.md`)의 결함 D1~D21 을, v0.3.0 에서 2회차(`plan-audit-iter2.md`)의 D1~D12 를 반영했다. 대응표는 `progress.md §E.1`.
 
 ---
 
@@ -30,7 +30,7 @@ v0.2.0 에서 plan-audit 1회차(`.moai/reports/t1226/plan-audit.md`)의 결함 
 
 워크트리 격리 가드는 인라인 `HOME=` 지정을 거부한다(plan-audit 재측정). 그런데 `runInit` 은 실제 홈의 네 곳 — user-scope settings(`userHomeDirFn`), profile ledger(`profile.BaseDirOverride`), `MOAI_HOME`, 셸 rc(`project.ConfigureShellEnvFn`) — 에 쓴다(`internal/cli/init_home_guard_test.go:6-13`, `internal/cli/init.go:923`, `internal/core/project/initializer.go:673`). `moai init` 에는 전역 쓰기를 건너뛰는 플래그가 없다(`moai init --help` 확인). 그래서 CLI 바이너리를 직접 돌리는 길은 격리가 불가능하거나 가드와 충돌한다.
 
-채택한 경로: 기존 테스트 헬퍼 `prepareSafeInitHome`(세 홈 seam 을 `t.TempDir()` 아래로 돌리고, 셸 rc seam 을 카운팅 스파이로 바꾸고, 실제 홈 지문을 전후 비교한다)를 쓰는 격리 하네스 테스트 `TestHeadroomInitSurfaceExport` 를 `internal/cli/` 에 커밋한다. 테스트는 `-args -headroom-export=<dir>` 테스트 플래그가 있을 때만 돌고(없으면 `t.Skip`), 고정 플래그로 init 을 실행해 18경로를 그 디렉터리로 복사한다. 환경변수 인라인 지정이 필요 없으므로 가드와 양립한다. 고정 플래그와 계약은 `acceptance.md` AC-ALH-009.
+채택한 경로: 기존 테스트 헬퍼 `prepareSafeInitHome`(세 홈 seam 을 `t.TempDir()` 아래로 돌리고, 셸 rc seam 을 카운팅 스파이로 바꾸고, 실제 홈 지문을 전후 비교한다)를 쓰는 격리 하네스 테스트 `TestHeadroomInitSurfaceExport` 를 `internal/cli/` 에 커밋한다. 테스트는 `-args -headroom-export=<dir>` 테스트 플래그가 있을 때만 돌고(없으면 `t.Skip`), 고정 플래그로 init 을 실행해 init 이 만든 프로젝트 트리 전체(`.git` 제외)를 그 디렉터리로 복사한다 — 18경로 밖의 상시 로드 파일이 있는지 런타임 관측이 드러낼 수 있도록 하기 위해서다(plan-audit 2회차 D4). 환경변수 인라인 지정이 필요 없으므로 가드와 양립한다. 고정 플래그와 계약은 `acceptance.md` AC-ALH-009.
 
 대안(채택하지 않음): 리드가 워크트리 밖 세션에서 `HOME`·`CLAUDE_CONFIG_DIR` 를 돌려 `moai init` 을 실행하는 것. 리드 의존이 생기고 바이너리 출처 증명이 따로 필요하다. 하네스가 실패하면 이 경로를 블로커로 올린다.
 
@@ -40,7 +40,7 @@ v0.2.0 에서 plan-audit 1회차(`.moai/reports/t1226/plan-audit.md`)의 결함 
 
 ### D4. 런타임 계수 집합 (plan-audit D1)
 
-`skill-routing.md` 는 쉼표 문자열 `paths:` 를 가진 path-scoped 룰이다. 런타임이 그것을 세는지는 가설이다. 관측은 레인이 직접 할 수 없을 가능성이 크므로(기동 경고는 새 세션에서만 보인다) 리드에게 관측을 요청하고, 답이 없으면 18·17 두 집합으로 판정해 갈리면 `UNDETERMINED` 로 둔다(AC-ALH-010).
+`skill-routing.md` 는 쉼표 문자열 `paths:` 를 가진 path-scoped 룰이다. 런타임이 그것을 세는지는 가설이다. 관측은 레인이 직접 할 수 없을 가능성이 크므로(기동 경고는 새 세션에서만 보인다) 리드에게 관측을 요청한다. 관측은 사용자 범위 지시문이 없는 격리 `CLAUDE_CONFIG_DIR`·`HOME` 에서, 하네스가 내보낸 트리 전체의 사본을 대상으로 한다 — 관측자의 `~/.claude/CLAUDE.md` 같은 지시문이 합계에 섞일 수 있다는 가설 때문이다(관측으로 확인되지 않음). 집합 기준은 판정서 `count_set_init` 한 줄(`18`·`17`·`observed`)과 `count-set-init.txt` 가 정하고, AC-ALH-006·007 이 그것을 소비한다. 답이 없으면 `count_set_init = 18` 로 두고 17집합 기계 줄을 함께 적어, 두 판정이 갈리면 `UNDETERMINED` 로 둔다(AC-ALH-010).
 
 ---
 
@@ -48,10 +48,10 @@ v0.2.0 에서 plan-audit 1회차(`.moai/reports/t1226/plan-audit.md`)의 결함 
 
 ### M1 — 격리 하네스와 표면 생성 (우선순위: High)
 
-- `internal/cli/` 에 `TestHeadroomInitSurfaceExport` 를 작성한다(`prepareSafeInitHome` + init 명령 실행 + 18경로 복사 + (경로, 존재, sha256) `t.Log`). 테스트 플래그가 비면 Skip.
-- `acceptance.md` AC-ALH-009 의 명령으로 실행하고 출력을 `.moai/reports/t1226/harness-run.txt` 로 커밋한다. 실행한 모든 셸 명령은 `.moai/reports/t1226/commands.log` 에 한 줄씩 남긴다.
-- `locale charmap` 이 UTF-8 인지 확인하고 두 표면의 18경로 `wc -m`·`hash_<s>` 를 잰다. `build_head`·`harness_sha256` 줄을 적는다.
-- 리드에게 `S_init` 사본에 대한 런타임 기동 경고 관측을 요청한다(D4).
+- `internal/cli/` 에 `TestHeadroomInitSurfaceExport` 를 작성한다(`prepareSafeInitHome` + init 명령 실행 + 프로젝트 트리 전체 복사 + 18경로의 (경로, 존재, sha256) `t.Log`). 테스트 플래그가 비면 Skip.
+- `acceptance.md` AC-ALH-009 의 명령으로 실행하고 출력을 `.moai/reports/t1226/harness-run.txt` 로 커밋한다. 파일 첫 줄은 실행 직전 `git rev-parse HEAD` 의 `harness_head = <sha>` 다. 같은 명령을 `build_head` 에서 다시 돌리면 `$SCRATCH/init-surface` 가 재현된다(AC-ALH-002·003·004 가 그렇게 재검증한다). 실행한 모든 셸 명령은 `.moai/reports/t1226/commands.log` 에 한 줄씩 남긴다.
+- `locale charmap` 이 UTF-8 인지 확인하고 두 표면의 계수 집합 파일(`count-set-<s>.txt`)을 쓰고 `wc -m`·`hash_<s>` 를 잰다. `build_head`·`harness_sha256` 줄을 적는다.
+- 리드에게 `S_init` 트리 사본에 대한 격리 런타임 기동 경고 관측을 요청한다(D4).
 
 ### M2 — `P절` 재조정 확정 (우선순위: High)
 
@@ -88,14 +88,15 @@ v0.2.0 에서 plan-audit 1회차(`.moai/reports/t1226/plan-audit.md`)의 결함 
 
 - AC-ALH-001~010 명령을 한 턴에 병렬로 실행하고 출력을 `.moai/reports/t1226/ac-verify.md` 에 저장한다.
 - 이 트리에서 빌드한 바이너리로 `moai spec lint --strict SPEC-ALWAYS-LOADED-HEADROOM-001` 재실행.
+- 하네스 테스트 파일에 CI 판 `golangci-lint run ./internal/cli/...` 를 돌려 0 issues 를 확인한다.
 
 ---
 
 ## §D. 제약
 
 - 18개 계수 파일과 템플릿 미러 수정 금지(REQ-ALH-013). 압축 시도는 `$SCRATCH` 사본에서만.
-- 비격리 `moai init` 실행 금지(REQ-ALH-017). 설치된 `~/go/bin/moai` 로 `S_init` 을 만들지 않는다.
-- 전체 테스트 스위트를 로컬에서 돌리지 않는다. Go 검증은 하네스 테스트 하나(`-run '^TestHeadroomInitSurfaceExport$'`)와, 하네스가 기존 테스트와 충돌하지 않는지 보는 `go vet ./internal/cli/` 로 한정한다.
+- 비격리 `moai init` 실행 금지(REQ-ALH-016). 설치된 `~/go/bin/moai` 로 `S_init` 을 만들지 않는다.
+- 전체 테스트 스위트를 로컬에서 돌리지 않는다. Go 검증은 하네스 테스트 하나(`-run '^TestHeadroomInitSurfaceExport$'`)와, 하네스가 기존 테스트와 충돌하지 않는지 보는 `go vet ./internal/cli/` 와 CI 판 `golangci-lint run ./internal/cli/...`(v2.1.6)로 한정한다.
 - 환경 격리가 필요한 실행은 `unset … && <명령>` 한 호출로 한다.
 - 수치는 모두 이 트리·이 실행의 명령 출력으로만 적는다. 197,897·198,361 은 폐기 수치, F 는 원 트리 서술값이다.
 
