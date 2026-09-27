@@ -42,17 +42,14 @@ var guardPackages = []string{".", "../kanban", "../hook", "../factorymsg", "../w
 // documented non-role sense (REQ-RNC-018).
 var guardAllowlist = []guardAllowlistEntry{
 	// --- internal/kanban: the detection vocabulary -------------------------
-	// legacyLeaderSpelling and the legacy factory role constants exist only to
-	// be refused or detected (REQ-RNC-009); their values are the frozen
-	// legacy spellings.
+	// legacyLeaderSpelling (role.go) and the legacy factory role constants
+	// (bootstrap.go) exist only to be refused or detected (REQ-RNC-009);
+	// their values are the frozen legacy spellings. Legacy label shapes are
+	// built by concatenation (`factoryLegacyWorkerRole + "-" + n`), so the
+	// only legacy literals in production strings are the bare role tokens.
 	{file: "../kanban/role.go", literal: "lead"},
 	{file: "../kanban/bootstrap.go", literal: "worker"},
 	{file: "../kanban/bootstrap.go", literal: "agent"},
-	{file: "../kanban/bootstrap.go", literal: "worker-"},
-	{file: "../kanban/bootstrap.go", literal: "agent-"},
-	{file: "../kanban/factory_slots.go", literal: "worker-"},
-	{file: "../kanban/factory_slots.go", literal: "agent-"},
-	{file: "../kanban/record.go", literal: "worker-"},
 
 	// --- internal/cli: refusal messages and detection comparisons ----------
 	// factory.go: the leader-name refusal path composes the canonical form by
