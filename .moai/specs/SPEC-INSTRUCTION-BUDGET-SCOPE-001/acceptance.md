@@ -1,7 +1,7 @@
 ---
 id: SPEC-INSTRUCTION-BUDGET-SCOPE-001
 title: "Acceptance criteria — instruction-budget scope alignment and four-file reduction"
-version: "0.7.0"
+version: "0.8.0"
 created: 2026-09-28
 ---
 
@@ -101,7 +101,8 @@ This is the SPEC's only budget gate. Everything folded into it is a constraint o
 - **002-P — proper subset.** Every companion's `paths:` pattern set is a proper subset of its parent's: every companion pattern appears in the parent, AND at least one parent pattern is absent. Both failure directions are checked — a companion pattern absent from the parent (scope widened) and an empty complement (equals the parent; the degenerate same-glob shard with zero saving on every trigger). Evidenced by an enumerated table, one row per parent pattern marked carried/not-carried, plus the named complement. A proper subset necessarily **overlaps** the parent on the patterns it carries; that overlap is the saving mechanism (spec.md §1), so an overlap check is NOT part of this condition and must not be added to it.
 - **002-N — companion naming.** No companion's filename matches a filename-shaped pattern in its parent's `paths:`. For a companion of `kanban-dispatch-detail.md` that means not matching `kanban-dispatch*`. Decided by `python3 -c "import fnmatch,sys;print(fnmatch.fnmatch(sys.argv[1],sys.argv[2]))" <companion-basename> 'kanban-dispatch*'` → `False`. The family census this defends is in spec.md §1: **three** files already match that pattern at base, and one of them (`kanban-dispatch-mechanics.md`) is the realised form of exactly this trap.
 - **002-B — companions are themselves under budget.** Each companion measures `< 40000` by the same single-invocation command. A reduction that pushes the parent under while leaving the companion over satisfies nothing.
-- **002-G — registry enrolment.** Each companion's path appears in `sanitizedPairPaths` (`internal/template/sanitized_pair_parity_test.go`) and `workflowOptMirroredPaths` (`internal/template/rule_template_mirror_test.go`). Decided by `grep -c "<companion path>" <each file>` → ≥1. Two registries, not three: `internal/template/template_neutrality_audit_test.go` walks the whole template tree, so a new `.md` is covered without enrolment — pending the M2 sentinel demonstration that converts that structural read into a measurement.
+- **002-G — registry enrolment.** Each companion's path appears in `sanitizedPairPaths` (`internal/template/sanitized_pair_parity_test.go`) and `workflowOptMirroredPaths` (`internal/template/rule_template_mirror_test.go`). Decided by `grep -c "<companion path>" <each file>` → ≥1.
+  - **Two registries, not three — measured, no longer a structural read.** `internal/template/template_neutrality_audit_test.go` walks the whole template tree, so a new mirrored `.md` is covered without enrolment. The sentinel demonstration (plan.md §B.4) injected a `C1-macos-bias-path` violation into the mirror of `spec-workflow.md` and the anchored audit reported it by path — `TEMPLATE_NEUTRALITY_VIOLATION: class=C1-macos-bias-path file=.claude/rules/moai/workflow/spec-workflow.md`, exit `1`, green again at exit `0` after revert. The premise this sub-condition rests on is therefore executed rather than inferred.
 
 Sub-conditions 002-R / 002-P / 002-N / 002-B / 002-G / 002-A / 002-A-falsifier / 002-S apply only where a companion is created, and are recorded as **not-applicable-because-no-companion** where none is. That record is itself required: silence is not the same statement.
 

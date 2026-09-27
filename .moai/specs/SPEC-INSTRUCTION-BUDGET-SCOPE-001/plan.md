@@ -1,7 +1,7 @@
 ---
 id: SPEC-INSTRUCTION-BUDGET-SCOPE-001
 title: "Implementation plan — instruction-budget scope alignment and four-file reduction"
-version: "0.7.0"
+version: "0.8.0"
 created: 2026-09-28
 ---
 
@@ -32,7 +32,23 @@ Scope is `(c) + (a)` — the doctrine fix plus the four-file reduction. Option `
    - `spec-workflow.md` — 2 patterns, so nominally splittable, but compression-first **by lead direction** (spec.md §4 constraint, not a requirement) because the overage is 797 characters. Do not open a split there.
 2. **The `kanban-dispatch-detail.md` naming trap is already realised — by a third family member neither the SPEC nor the lead saw until the audit.** The family has **three** members at base, not two (spec.md §1 carries the census and the measurement): `kanban-dispatch.md` (34,901 chars, no `paths:` at all — always-loaded), `kanban-dispatch-detail.md` (41,034), and `kanban-dispatch-mechanics.md` (5,224). All three match `**/kanban-dispatch*.md`, so that trigger loads **81,159 characters**. Mechanics is a **sibling** of `-detail.md`, not its child — both are companions of the stub — so REQ-IBS-006's proper-subset test does not apply to it and no violation is recorded (spec.md §6 carries the correction to the audit's D3). What it does show, measurably, is the naming trap REQ-IBS-013 forbids: a companion named inside the parent's own filename pattern co-loads with it forever. A new companion named outside that pattern (for example `card-class-detail.md`) and scoped to one of the other two patterns engages no prohibition.
 3. **Proper-subset is necessary but not sufficient — trigger affinity is the second condition, and it rides on the same pattern set.** A split that passes the proper-subset test is still wrong if the content moved does not belong to the trigger the companion claims. Move content that a `manager-lead.md` editor needs into a companion scoped to `**/kanban-dispatch*.md`, and that session silently loses guidance it used to have: the characters improve, the reader is worse off, and nothing signals it — the complement triggers are exactly the ones that lose. REQ-IBS-014 and REQ-IBS-015 bind the per-section affinity claim, and AC-IBS-002-A-falsifier is the only condition that can **falsify** one rather than check it for internal consistency. The hazard is largest in M4, where 21,435 characters must be partitioned across three patterns and a size-driven cut is the likeliest place for this defect to land.
-4. **The neutrality guard needs no registration — verified, not assumed.** `internal/template/template_neutrality_audit_test.go` walks with `filepath.WalkDir` at `:229`, `:288`, `:411`; the root comes from `findNeutralityRoot` (`:200-222`), which ascends from cwd until it finds a `templates/` directory containing `.claude` — i.e. `internal/template/templates`, the whole tree. The only filter is the extension map `neutralityScannedExts` (`:87-94`), which includes `.md`; the walk bodies carry no directory skip. So a new `.md` under `internal/template/templates/.claude/rules/moai/workflow/` is reached automatically. This corrects the dispatch's assumption that three registries need an entry; only two do.
+4. **The neutrality guard needs no registration — measured by sentinel, not read.** Two registries need an entry, not three. The structural read said so; the sentinel demonstration now shows it.
+
+   **Sentinel demonstration** (plan phase, branch base `088594d6b`). A `/Users/` string — class `C1-macos-bias-path`, whose allow-list is **empty**, so any hit is a binary FAIL — was appended to `internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md`, the mirror of a target file, then reverted.
+
+   | step | command | exit | observed |
+   |---|---|---:|---|
+   | pre-check | `grep -c "/Users/" <mirror>` | — | `0` — target clean, so the green below is not pre-existing |
+   | pre-check | `go test -run '^TestTemplateNeutralityAudit$' ./internal/template/...` | `0` | `ok github.com/modu-ai/moai-adk/internal/template 0.571s` — **no `[no tests to run]`**, so the swept set was non-empty |
+   | sentinel | same command, sentinel present | **`1`** | `TEMPLATE_NEUTRALITY_VIOLATION: class=C1-macos-bias-path file=.claude/rules/moai/workflow/spec-workflow.md` |
+   | revert | `git checkout -- <mirror>`; `git status --short` | — | `0` hits; empty status |
+   | post-revert | same command | `0` | `ok … 0.446s` |
+
+   The violation names the file **by its path under `.claude/rules/moai/workflow/`**, which is the premise: the walk reaches that directory in the template tree, so a new mirrored `.md` there is covered without enrolment. `AC-IBS-002-G`'s "two registries, not three" is therefore an executed measurement, and REQ-IBS-011 requires the right two entries rather than resting on a read.
+
+   Two notes on method. The selector is **anchored**, so the pass and the failure are both attributable to the one test named. And the sibling packages print `[no tests to run]` — the empty-sweep token — which is why the `internal/template` line is read specifically rather than the aggregate exit code: an aggregate `0` with every package empty would look identical to a real pass.
+
+   **Lease note.** This is the anchored single-test form, not the package suite. `.claude/rules/local/gitflow-lane-protocol.md` §8's lease discipline targets full-suite runs competing across lanes; one test is not that. The unanchored package suite stays un-run and remains a declared Gap (`progress.md` §E.1).
 
 ## C. Pre-flight
 
