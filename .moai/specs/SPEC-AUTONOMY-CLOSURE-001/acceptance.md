@@ -222,6 +222,14 @@
   c1 ready (performed `pass` review, current closure report), **When** the hook receives
   `git push origin develop`, **Then** the decision is not a deny on A4's account and the evaluation seam
   records `SPEC-FIXTURE-001` only (an out-of-range contract is not a candidate even when paths overlap).
+- **Given** the same `SPEC-FIXTURE-002` fixture (`status: completed`, already on `origin/develop`, no
+  closure report and no second-review record), and one additional non-merge commit in the pushed range
+  from ready card c1 that edits `.moai/specs/SPEC-FIXTURE-002/spec.md` (one supersession line),
+  **When** the hook receives `git push origin develop`, **Then** the evaluation seam records
+  `SPEC-FIXTURE-002` (it is a candidate on the path-only SPEC-directory branch of REQ-CLOSURE-015) and
+  the decision is deny with a reason beginning `CLOSURE_PUSH_STOP:` containing `SPEC-FIXTURE-002=` with
+  `closure_report_missing` and `second_review_not_performed` — the named accepted residual of spec.md
+  §H (another card's SPEC-directory edit re-admits a closed card).
 
 ### AC-CLOSURE-016 — Readiness code set
 

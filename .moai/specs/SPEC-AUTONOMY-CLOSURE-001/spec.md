@@ -1,10 +1,10 @@
 ---
 id: SPEC-AUTONOMY-CLOSURE-001
 title: "Contract-based autonomy A4 — closure report, second-review record, human verdict, and stop before push (moai contract report)"
-version: "0.3.1"
+version: "0.3.2"
 status: draft
 created: 2026-09-26
-updated: 2026-09-26
+updated: 2026-09-27
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -25,8 +25,8 @@ related_specs: [SPEC-AUDIT-PARTICIPANT-COUNT-001, SPEC-CODEX-AUDIT-GATE-AXES-001
 | 0.1.0 | 2026-09-26 | manager-spec | Initial plan-phase draft (card t1237, AUTONOMY-A4). A1 read at `67a2f55cb` (v0.5.0), A2 escalation record format at `8c9ee29b7` (v0.3.0 §I). Lead amendment 2026-09-26: the stop before push when the second review was not performed is owned here. |
 | 0.2.0 | 2026-09-26 | manager-spec | Plan-audit iteration 1 (FAIL 0.77) repairs D1-D18. A1 re-pinned to `65e0a9167` (v0.5.1): v0.5.1 receipt fields and `outcome` (D2), card taken from the signed contract `card` field (D3, D4). Push range taken from the pushed source ref with a fail-closed classifier (D5); one evidence-currency rule shared by the second review and the closure report (D6, D16); second-review record binds its reviewed scope (D7); command invariants never render as passed without evidence (D8); one card evidence home for writers and readers (D9); acceptance criteria cut to 25 (D10); plan-audit discovery covers both report streams (D11); residual-risk and guided-mode wording fixed (D13, D18); `audit_multi` card failure paths defined (D17); template markers named (D14). Lead decisions 2026-09-26 on OQ-1 and OQ-2 folded in (D1). |
 | 0.3.0 | 2026-09-26 | manager-spec | Plan-audit iteration 2 (FAIL 0.84) repairs D19-D25: the push set no longer excludes terminal SPECs, so a card synced to `completed` before merge is still evaluated (D19); `--all` and `--mirror` are undetermined under contract mode everywhere (D20); `push_check_undetermined` exits 1 in `push-check` (D21); REQ-016 wording (D22); the second-review scope records the base the review backend resolved (D23); AC-010 states which receipt fixtures are written after signing (D24); A1 tip re-read (D25). |
-| 0.3.1 | 2026-09-26 | manager-spec | Plan-audit iteration 3 (FAIL 0.87) blocker D26: push-set membership is own-card — a contract is a candidate only when a range commit changes its own SPEC directory, or it is non-terminal in the source commit and a range commit changes its governed paths; closed cards already on the remote are not re-evaluated because another card touched overlapping paths. Optional D27 (scope base wording) and D28 (A1 tip row) folded in. |
-| 0.3.1 | 2026-09-26 | manager-spec | 운영자 승인 4차 예외(D26 한정): the operator approved a one-time fourth plan-audit iteration limited to D26. |
+| 0.3.1 | 2026-09-26 | manager-spec | Plan-audit iteration 3 (FAIL 0.87) blocker D26: push-set membership is own-card — a contract is a candidate only when a range commit changes its own SPEC directory, or it is non-terminal in the source commit and a range commit changes its governed paths; a closed card on the remote is not re-evaluated unless a range commit edits that closed SPEC's own directory. Optional D27 (scope base wording) and D28 (A1 tip row) folded in. 운영자 승인 4차 예외(D26 한정): the operator approved a one-time fourth plan-audit iteration limited to D26. |
+| 0.3.2 | 2026-09-27 | manager-spec | Plan-audit iteration 4 (FAIL 0.87, binding, lead-side Opus) blocker D31 repaired via lead disposition (b): the membership rule is unchanged; the re-admission of a closed card by another card's SPEC-directory edit is now a named accepted residual in spec.md §H with its resolution procedure, plan.md R3 is conditioned accordingly, and AC-015 gains one pinning case. Optional D29 (research.md moving-ref tip sentence removed; re-measured and pinned at `2d7987c74`; `65e0a9167` stays the binding pin) and D33 (duplicate 0.3.1 HISTORY rows merged into one) folded in. D30 and D32 remain optional debt. |
 
 ## §A. User Story
 
@@ -386,7 +386,18 @@ available in every mode; the push guard is inert under `guided`.
 - **Currency is path-based, candidacy is own-card.** While a card is a candidate in a push, another
   card's commit in the range that changes one of its governed paths makes its review and report stale;
   this errs toward stopping, and the remedy is a fresh second review and report of that card. A closed
-  card is not re-evaluated because a later card touches its paths: a code-only commit that changes a
-  closed card's governed paths without touching its SPEC directory is not attributed to that contract.
+  card is not re-evaluated because a later card touches its paths — provided the touch is not an edit
+  of that card's own SPEC directory: a code-only commit that changes a closed card's governed paths
+  without touching its SPEC directory is not attributed to that contract, and an edit of that SPEC
+  directory is (the accepted residual below).
+- **Accepted residual — another card's edit of a closed card's SPEC directory re-admits it.** The
+  SPEC-directory branch of REQ-CLOSURE-015 is path-only by design (it never asks which card authored
+  the commit), so a non-merge range commit from another card that edits a closed card's own
+  `.moai/specs/<SPEC-ID>/` directory (a supersession marker, a HISTORY line) makes that closed
+  contract a candidate again; if its evidence is not current, the push stops with that contract's
+  readiness codes — typically `closure_report_stale` with `second_review_stale`, or
+  `closure_report_missing` where the card evidence home holds no report. Resolution: recreate the
+  card-named worktree at the integration head, regenerate the closure report, re-run the second
+  review, then push again.
 - **Class-4 comparison is a heuristic** (A2 C6); an empty New APIs list is evidence of no detected
   addition, not of no addition.
