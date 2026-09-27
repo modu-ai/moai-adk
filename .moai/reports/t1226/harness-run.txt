@@ -1,25 +1,25 @@
-harness_head = 05d79c8b27b1aacfc56946672e5187b0fcabf96e
+harness_head = f8d6f51671535c613c5afb8b5ba0b984dcc3a585
 === RUN   TestHeadroomInitSurfaceExport
-2026/09/27 22:33:33 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1226/internal/cli/.moai/config/sections
-2026/09/27 22:33:34 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=$TMPDIR/TestHeadroomInitSurfaceExport934118000/002/.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
-    init_headroom_export_test.go:142: headroom-path	CLAUDE.md	present	46702b5e42a85abba832e0e6738c4f5f7abd49bd5ac9f564897324c653e3483c
-    init_headroom_export_test.go:142: headroom-path	AGENTS.md	present	f2892c450d63080825d5777d604e98e5af43e2775e360ebf3137df66eca68b9a
-    init_headroom_export_test.go:142: headroom-path	.moai/config/sections/user.yaml	present	73bc038b8f13d387d3a7b0e89d8f80fed84af44bd4f73cb1b005aa9fdf05452e
-    init_headroom_export_test.go:142: headroom-path	.moai/config/sections/language.yaml	present	5d203c16f859426e4ea0a51c5177d8a041ae64f128e0bf1a1098f77949274b71
-    init_headroom_export_test.go:142: headroom-path	.claude/rules/moai/core/agent-common-protocol.md	present	5712ab4f3d998ba480f8b608f0cb59aeb58a114e583339f00cbd315b6377d95d
-    init_headroom_export_test.go:142: headroom-path	.claude/rules/moai/core/askuser-protocol.md	present	3d9f5cb33f9e233c2867f03dac32b4eb3f37b7ae549a5c22a11bfc6ee517f34a
-    init_headroom_export_test.go:142: headroom-path	.claude/rules/moai/core/moai-constitution.md	present	28f8115718ec03ec5030b94470de5207246ff4d6691eb9e2757020eba47f382c
-    init_headroom_export_test.go:142: headroom-path	.claude/rules/moai/core/moai-mcp-tools.md	present	927bf4be884e139c4c69dfd30c31e99de28221df72ac3dcb148599ec5d12c917
-    init_headroom_export_test.go:142: headroom-path	.claude/rules/moai/core/native-idiom-and-register.md	present	285c8a4ed3d2460b100641d593d2e2645f4a9c6941b4d73fd1430c5ad1d49e4c
-    init_headroom_export_test.go:142: headroom-path	.claude/rules/moai/core/verification-claim-integrity.md	present	3a3634aacd2be3e622033b3d81c77a92b0fe7f07c2f6d04a2b206eb586d22a64
-    init_headroom_export_test.go:142: headroom-path	.claude/rules/moai/workflow/cache-aware-execution.md	present	c6118d097571570ddee24fe6cf9d1ff41dc2b1fd94e1481a91e031073cf69d62
-    init_headroom_export_test.go:142: headroom-path	.claude/rules/moai/workflow/context-window-management.md	present	090f9162577ebc30d0f517566711ac43b3993fa26aa3c2ed8281b59b7c4c88ee
-    init_headroom_export_test.go:142: headroom-path	.claude/rules/moai/workflow/cross-session-messaging.md	present	d02895db156a50a17b66a627c24ee0901651541b3e4a0ce541ddee8c6ce77031
-    init_headroom_export_test.go:142: headroom-path	.claude/rules/moai/workflow/goal-directive.md	present	7ee390f48eeab03c8cf8f43dfa1b3f2281d5c1c29a5e2e47eed930f635a0f211
-    init_headroom_export_test.go:142: headroom-path	.claude/rules/moai/workflow/kanban-dispatch.md	present	21ec8f85d06d76a9256888b18ab361c4095982a0f245a8862734b6eb675e3426
-    init_headroom_export_test.go:142: headroom-path	.claude/rules/moai/workflow/main-checkout-branch-guard.md	present	f2335faf658023d74b1001f2ede2be974fade54e2bb978f368b540e450c31100
-    init_headroom_export_test.go:142: headroom-path	.claude/rules/moai/workflow/session-handoff.md	present	c021a2eeaf7239bb5a8145c2101fb0ef73a2042d7977f91a0871a43f5e8b3e3b
-    init_headroom_export_test.go:142: headroom-path	.claude/rules/moai/workflow/skill-routing.md	present	18a9ae66838750e3988a1dabe4db84a12bc4c04fbaef0f1201cab26cbb050229
---- PASS: TestHeadroomInitSurfaceExport (0.54s)
+2026/09/27 23:59:45 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1226/internal/cli/.moai/config/sections
+2026/09/27 23:59:45 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=$TMPDIR/TestHeadroomInitSurfaceExport1438921267/002/.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+    init_headroom_export_test.go:181: headroom-path	CLAUDE.md	present	46702b5e42a85abba832e0e6738c4f5f7abd49bd5ac9f564897324c653e3483c
+    init_headroom_export_test.go:181: headroom-path	AGENTS.md	present	f2892c450d63080825d5777d604e98e5af43e2775e360ebf3137df66eca68b9a
+    init_headroom_export_test.go:181: headroom-path	.moai/config/sections/user.yaml	present	73bc038b8f13d387d3a7b0e89d8f80fed84af44bd4f73cb1b005aa9fdf05452e
+    init_headroom_export_test.go:181: headroom-path	.moai/config/sections/language.yaml	present	5d203c16f859426e4ea0a51c5177d8a041ae64f128e0bf1a1098f77949274b71
+    init_headroom_export_test.go:181: headroom-path	.claude/rules/moai/core/agent-common-protocol.md	present	5712ab4f3d998ba480f8b608f0cb59aeb58a114e583339f00cbd315b6377d95d
+    init_headroom_export_test.go:181: headroom-path	.claude/rules/moai/core/askuser-protocol.md	present	3d9f5cb33f9e233c2867f03dac32b4eb3f37b7ae549a5c22a11bfc6ee517f34a
+    init_headroom_export_test.go:181: headroom-path	.claude/rules/moai/core/moai-constitution.md	present	28f8115718ec03ec5030b94470de5207246ff4d6691eb9e2757020eba47f382c
+    init_headroom_export_test.go:181: headroom-path	.claude/rules/moai/core/moai-mcp-tools.md	present	927bf4be884e139c4c69dfd30c31e99de28221df72ac3dcb148599ec5d12c917
+    init_headroom_export_test.go:181: headroom-path	.claude/rules/moai/core/native-idiom-and-register.md	present	285c8a4ed3d2460b100641d593d2e2645f4a9c6941b4d73fd1430c5ad1d49e4c
+    init_headroom_export_test.go:181: headroom-path	.claude/rules/moai/core/verification-claim-integrity.md	present	3a3634aacd2be3e622033b3d81c77a92b0fe7f07c2f6d04a2b206eb586d22a64
+    init_headroom_export_test.go:181: headroom-path	.claude/rules/moai/workflow/cache-aware-execution.md	present	c6118d097571570ddee24fe6cf9d1ff41dc2b1fd94e1481a91e031073cf69d62
+    init_headroom_export_test.go:181: headroom-path	.claude/rules/moai/workflow/context-window-management.md	present	090f9162577ebc30d0f517566711ac43b3993fa26aa3c2ed8281b59b7c4c88ee
+    init_headroom_export_test.go:181: headroom-path	.claude/rules/moai/workflow/cross-session-messaging.md	present	d02895db156a50a17b66a627c24ee0901651541b3e4a0ce541ddee8c6ce77031
+    init_headroom_export_test.go:181: headroom-path	.claude/rules/moai/workflow/goal-directive.md	present	7ee390f48eeab03c8cf8f43dfa1b3f2281d5c1c29a5e2e47eed930f635a0f211
+    init_headroom_export_test.go:181: headroom-path	.claude/rules/moai/workflow/kanban-dispatch.md	present	21ec8f85d06d76a9256888b18ab361c4095982a0f245a8862734b6eb675e3426
+    init_headroom_export_test.go:181: headroom-path	.claude/rules/moai/workflow/main-checkout-branch-guard.md	present	f2335faf658023d74b1001f2ede2be974fade54e2bb978f368b540e450c31100
+    init_headroom_export_test.go:181: headroom-path	.claude/rules/moai/workflow/session-handoff.md	present	c021a2eeaf7239bb5a8145c2101fb0ef73a2042d7977f91a0871a43f5e8b3e3b
+    init_headroom_export_test.go:181: headroom-path	.claude/rules/moai/workflow/skill-routing.md	present	18a9ae66838750e3988a1dabe4db84a12bc4c04fbaef0f1201cab26cbb050229
+--- PASS: TestHeadroomInitSurfaceExport (0.68s)
 PASS
-ok  	github.com/modu-ai/moai-adk/internal/cli	1.302s
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.306s

@@ -211,3 +211,44 @@ fdc74ea71b8963de49de943d2cad979b68a3a4356f1f3dedef5aab6c569dc573  internal/cli/i
 F1 증거(`.moai/reports/t1226/evidence/`): `f1-red.txt`(헬퍼 부재 컴파일 RED), `f1-red2.txt`(무조건 `os.RemoveAll` 헬퍼에서 `--- FAIL: TestHeadroomExportDirGuard/refuses_non-empty_unmarked_dir`), `f1-green.txt`(4개 하위 테스트 PASS), `f1-harness.txt`(플래그 실행 `-count=2` 두 번 모두 PASS. 두 번째 실행은 표식이 붙은 첫 번째 내보내기를 지웠다), `f1-lint.txt`(golangci-lint v2.1.6 `0 issues.`).
 
 부수 확인: 판정서 편집 뒤 AC-ALH-001 의 폐기 수치 줄 `0`, `^F = ` `0`. `moai spec lint --strict SPEC-ALWAYS-LOADED-HEADROOM-001` 은 `✓ No findings`, 종료 코드 0(F5 커밋 전 작업 트리에서 실행).
+
+## F1 재측정과 AC 전체 재검증 (리드 결정: 재측정)
+
+**새 `build_head` = `f8d6f51671535c613c5afb8b5ba0b984dcc3a585`** (F1 하네스 `7e509e4f1` 포함, 하네스 재실행 직전 `git rev-parse HEAD`). `$SCRATCH` 는 세션 임시 디렉터리 아래 `rm/` 이다. 재측정 절차와 전후 값 표는 `verdict.md` § 측정 환경 「F1 재측정」에 있다. 요지는 다음과 같다. 하네스 `--- PASS: TestHeadroomInitSurfaceExport (0.68s)`, `headroom-path` 18줄이 모두 `present` 이고, 이전 `harness-run.txt` 의 18줄과 `diff` 해도 출력이 없다. `git archive -o live.tar f8d6f5167 …` 뒤 `tar -x`. 모든 합계와 해시가 기록값과 같아서, 판정서에서는 `build_head`·`harness_sha256` 두 줄과 `harness-run.txt` 첫 줄 `harness_head` 만 바꿨다.
+
+```
+  203413 total                      # S_init (18)  == total_init
+  198447 total                      # S_init (17)  == total_init_17
+  199111 total                      # S_live       == total_live
+93de7321ea747c584768af09d1908ad3e36fd076073a6f2a9d6fb5b7a22b4477  -   # == hash_init
+d97b33d960c9801d4ec145ca263ed788425b337f43c585594c8d527c1318c6c3  -   # == hash_live
+surface=init total=203413 A_adm=14201 R=477 U=79 T_min=189689
+surface=init_17 total=198447 A_adm=13717 R=454 U=79 T_min=185184
+surface=live total=199111 A_adm=13716 R=477 U=79 T_min=185872
+```
+
+(`build.py` 는 `--hash` 없이 돌렸다. 산출 트리는 `$SCRATCH` 에만 쓰였고, 실행 뒤 `git status --short` 는 무출력이었다.)
+
+### 실행 방식
+
+워크트리 가드가 `bash .moai/reports/t1226/ac-run.sh` 를 거부해서, AC 명령을 한 줄씩 따로 실행했다. 다음 두 곳은 가드가 셸 형태를 거부해 같은 판정식을 옮겨 적었다.
+- AC-ALH-004 HASH 루프(셸 산술 `$((pre - post))` 거부) → `python3 -c`. 행 선택 awk 는 원문 그대로이고, 비교 조건 네 가지(ADMIT 은 `post_hash == H`, 비-ADMIT 은 `!= H`, `pre_chars == gross`, `chars == pre − post`)를 1:1 로 옮겼다.
+- AC-ALH-006 `calc`(함수 안 awk 거부) → `python3 -c`. `C·A·U·R` 합산 조건과 `T_min = C − A + R` 을 1:1 로 옮기고, `PAIRS` 는 정렬 집합을 비교한다.
+- AC-ALH-003 의 ROWS·OVERLAP·DEST awk 는 원문 그대로 한 파일씩 실행했다. M1P·NETNEG 루프는 대상 행 수를 직접 셌다. 두 표면 합쳐 `M1p` ADMIT 행 0, `net-negative` 행 0 이라서 루프가 검사할 대상이 없다(원 스크립트 출력 `BAD=0` 과 같은 의미).
+
+### 결과 (재측정 트리, `build_head = f8d6f5167`)
+
+| AC | 판정 | 핵심 출력 |
+|---|---|---|
+| AC-ALH-001 | PASS | `1` `1` `2` `1` / `0` `0` |
+| AC-ALH-002 | PASS | `UTF-8`, `1 1 1`, `PIN-live-OK`, `PIN-init-OK`, 재측정 `199111 total`·`203413 total` = `total_live`·`total_init`, `_미측정` `0 0`, `missing_init = -` |
+| AC-ALH-003 | PASS | `KEYS-init-OK` `KEYS-live-OK` `SPLIT-init-OK` `SPLIT-live-OK`, `ROWS-{init,live} BAD=0`, `OVERLAP-{init,live} BAD=0`, `DESTIN-{init,live} BAD=0`, M1p 0행·net-negative 0행, `EVID-{init,live} MISSING=0`, `DEST-{init,live} BAD=0` |
+| AC-ALH-004 | PASS | 재실행 해시 `93de7321…4477`·`d97b33d9…c6c3` = 판정서, 해시 줄 `2`, `HASH-BAD-init=0` `HASH-BAD-live=0` (M2 대상 110·106행) |
+| AC-ALH-005 | PASS | `d0e61541367abb06a170bd36b6376e51d51882380ca9f899f0d2934016a78547`, `1 1 1`, `sec-172ef22eb.txt` 존재, `/tmp` 인용 `0 0` |
+| AC-ALH-006 | PASS | `CHECK-init=OK (C=203413 A=14201 R=477 U=79 T_min=189689)`, `CHECK-live=OK (C=199111 A=13716 R=477 U=79 T_min=185872)`, `CHECK-init_17=OK (C=198447 A=13717 R=454 U=79 T_min=185184)`, `PAIRS-init=OK` `PAIRS-live=OK`, 포인터 원문 `wc -m` = `23 64 68 87 89 146` 양쪽 |
+| AC-ALH-007 | PASS | `TOKEN-live=OK` `TOKEN-init_17=OK` `TOKEN-init=OK`, 상신 항목 `4`, `RECOMMEND:` `1`, 결정 서술 `0` |
+| AC-ALH-008 | PASS | 36경로 `git log --first-parent --no-merges --format=%H 7fe658815..HEAD -- …` → 무출력(0행). 양성 대조: 같은 형태를 `.moai/reports/t1226/verdict.md` 에 걸면 5행(`e1252de31 6a03d5272 7ae1a3b86 b231487ab 10281a857`)이 나온다 |
+| AC-ALH-009 | PASS | PASS `1`, SKIP `0`, `harness_head` `f8d6f51671535c613c5afb8b5ba0b984dcc3a585` = `build_head`, `git ls-files` → `internal/cli/init_headroom_export_test.go`, sha256 `fdc74ea71b8963de49de943d2cad979b68a3a4356f1f3dedef5aab6c569dc573` = `harness_sha256`, `prepareSafeInitHome` `2`, `LOG-OK`, `moai … init` `0` |
+| AC-ALH-010 | PASS (형태 2) | 형태 1 줄 `0 0 0 0 0`, `runtime_observed = no` `1`, `count_set_init = 18` `1`, 17집합 줄 `6`, `verdict_init_17` `1` |
+
+바로 앞 절에 적은 AC-ALH-009 하네스 해시 불일치는 이 재측정으로 해소됐다.

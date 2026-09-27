@@ -24,12 +24,33 @@ plan-audit iter3 은 Tier M 상한(plan_audit_tier_ceilings.M = 2) 초과 — �
 ## 측정 환경
 
 charmap = UTF-8
-build_head = 05d79c8b27b1aacfc56946672e5187b0fcabf96e
-harness_sha256 = 8776d7b5809b47a6215a79497f6036414ceb2967d32067db612d07289b49e9c5
+build_head = f8d6f51671535c613c5afb8b5ba0b984dcc3a585
+harness_sha256 = fdc74ea71b8963de49de943d2cad979b68a3a4356f1f3dedef5aab6c569dc573
 
 - `locale charmap` → `UTF-8`.
-- `build_head` 는 하네스 테스트 커밋이다. 하네스 실행 직전 `git rev-parse HEAD` 가 이 값이었고 `harness-run.txt` 첫 줄 `harness_head` 와 같다. 이후 커밋은 `.moai/reports/t1226/` 만 바꿨다.
-- `git diff --quiet 7fe658815 05d79c8b2 -- CLAUDE.md AGENTS.md <yaml 2개> .claude/rules/moai/core .claude/rules/moai/workflow internal/template/templates` → 종료 코드 0. 기준 커밋 이후 계수 파일·미러에 변화가 없으므로 기준선 199,111 이 그대로 유효하다.
+- `build_head` 는 F1 하네스(내보내기 경로 가드, `7e509e4f1`)가 들어간 트리다. 하네스 재실행 직전 `git rev-parse HEAD` 가 이 값이었고 `harness-run.txt` 첫 줄 `harness_head` 와 같다. 최초 측정은 `05d79c8b2` 에서 했으며, 아래 「F1 재측정」에 전후 값을 적었다.
+
+### F1 재측정
+
+sync-audit F1 수정으로 하네스 파일이 바뀌어(`harness_sha256` 변경), F1 하네스로 `build_head` 에서 두 표면을 다시 쟀다. 절차는 최초 측정과 같다: AC-ALH-009 하네스 실행(`--- PASS: TestHeadroomInitSurfaceExport (0.68s)`, `headroom-path` 18줄 모두 `present`) → `$SCRATCH` 로 내보내기, `git archive <build_head> … | tar -x`(아카이브 파일을 거쳐 풀었다) → `wc -m`·AC-ALH-004 파이프라인·`build.py`(`--hash` 없이, 산출 트리는 `$SCRATCH`).
+
+| 줄 | 이전(`05d79c8b2`) | 이후(`f8d6f5167`) | 같음 |
+|---|---|---|---|
+| `build_head` | `05d79c8b27b1aacfc56946672e5187b0fcabf96e` | `f8d6f51671535c613c5afb8b5ba0b984dcc3a585` | 갱신 |
+| `harness_head` | `05d79c8b27b1aacfc56946672e5187b0fcabf96e` | `f8d6f51671535c613c5afb8b5ba0b984dcc3a585` | 갱신 |
+| `harness_sha256` | `8776d7b5…e9c5` | `fdc74ea7…c573` | 갱신 |
+| `total_init` | `203413` | `203413` | 예 |
+| `hash_init` | `93de7321…4477` | `93de7321…4477` | 예 |
+| `total_init_17` | `198447` | `198447` | 예 |
+| `T_min_init`(A_adm·R·U) | `189689` (14201·477·79) | `189689` (14201·477·79) | 예 |
+| `T_min_init_17`(A_adm·R·U) | `185184` (13717·454·79) | `185184` (13717·454·79) | 예 |
+| `total_live` | `199111` | `199111` | 예 |
+| `hash_live` | `d97b33d9…c6c3` | `d97b33d9…c6c3` | 예 |
+| `T_min_live`(A_adm·R·U) | `185872` (13716·477·79) | `185872` (13716·477·79) | 예 |
+| 18경로 `(경로, 존재, sha256)` | `harness-run.txt` 이전 판 | 재실행 로그 | 18줄 `diff` 무출력 |
+
+모든 합계와 해시가 기록값과 같다. 판정 토큰과 후보 표(`candidates-*.tsv`), 증거 파일은 바뀌지 않는다. 바뀐 것은 위 세 줄뿐이다.
+- `git diff --quiet 7fe658815 05d79c8b2 -- CLAUDE.md AGENTS.md <yaml 2개> .claude/rules/moai/core .claude/rules/moai/workflow internal/template/templates` → 종료 코드 0. 기준 커밋 이후 계수 파일·미러에 변화가 없으므로 기준선 199,111 이 그대로 유효하다. F1 재측정 때 같은 경로를 `7fe658815..f8d6f5167` 범위로 `git diff --stat` 해도 출력이 없었다.
 - `develop` 은 run 시작 시점에 `c501bd1da` 로 앞서 있었다(`git rev-list --count --left-right develop...HEAD` → `3 7`). 흡수하지 않았다.
 
 ## S_init
@@ -47,7 +68,7 @@ U_init_17 = 79
 T_min_init_17 = 185184
 verdict_init_17 = STRUCTURALLY-INFEASIBLE-UNDER-FREEZE
 
-- 산출: `TestHeadroomInitSurfaceExport`(`internal/cli/init_headroom_export_test.go`)를 AC-ALH-009 명령 그대로 `build_head` 에서 실행했다. `--- PASS: TestHeadroomInitSurfaceExport (0.54s)`. 출력 원문은 `.moai/reports/t1226/harness-run.txt`. 하네스는 `prepareSafeInitHome` 으로 실제 홈의 네 쓰기 지점을 돌리고, `MOAI_DISTRIBUTE_ALL` 을 비운 뒤 `--non-interactive --root <t.TempDir()> --name headroom-probe --language go --mode tdd --llm claude` 로 init 을 실행해 `.git` 을 뺀 프로젝트 트리 전체를 `$SCRATCH/init-surface` 로 내보냈다.
+- 산출: `TestHeadroomInitSurfaceExport`(`internal/cli/init_headroom_export_test.go`)를 AC-ALH-009 명령 그대로 최초 측정 트리 `05d79c8b2` 에서 실행했다(`--- PASS: TestHeadroomInitSurfaceExport (0.54s)`). F1 재측정은 `build_head` 에서 실행했고(`--- PASS … (0.68s)`), 현재 `.moai/reports/t1226/harness-run.txt` 는 그 재실행의 출력 원문이다. 하네스는 `prepareSafeInitHome` 으로 실제 홈의 네 쓰기 지점을 돌리고, `MOAI_DISTRIBUTE_ALL` 을 비운 뒤 `--non-interactive --root <t.TempDir()> --name headroom-probe --language go --mode tdd --llm claude` 로 init 을 실행해 `.git` 을 뺀 프로젝트 트리 전체를 `$SCRATCH/init-surface` 로 내보냈다.
 - 18경로 존재: 하네스 `t.Log` 의 `headroom-path` 18줄이 모두 `present` → `missing_init = -`.
 - `total_init`: `(cd $SCRATCH/init-surface && xargs wc -m < .moai/reports/t1226/count-set-init.txt | tail -1)` → `203413 total`.
 - `hash_init`: AC-ALH-004 파이프라인을 `$SCRATCH/init-surface` 에서 실행 → `93de7321…4477`, 구속 줄 `170`. 라이브 해시와 다른 것은 결함이 아니다(plan D3) — 템플릿 판 규칙 문구가 라이브와 다르다.
@@ -59,7 +80,7 @@ verdict_init_17 = STRUCTURALLY-INFEASIBLE-UNDER-FREEZE
 total_live = 199111
 hash_live = d97b33d960c9801d4ec145ca263ed788425b337f43c585594c8d527c1318c6c3
 
-- `git archive 05d79c8b2 CLAUDE.md AGENTS.md .moai/config/sections .claude/rules/moai | tar -x -C $SCRATCH/live` 뒤 `(cd $SCRATCH/live && xargs wc -m < .moai/reports/t1226/count-set-live.txt | tail -1)` → `199111 total`.
+- (최초 측정. F1 재측정은 `build_head` 에서 같은 절차로 같은 값을 얻었다 — 위 「F1 재측정」) `git archive 05d79c8b2 CLAUDE.md AGENTS.md .moai/config/sections .claude/rules/moai | tar -x -C $SCRATCH/live` 뒤 `(cd $SCRATCH/live && xargs wc -m < .moai/reports/t1226/count-set-live.txt | tail -1)` → `199111 total`.
 - 파이프라인 → `d97b33d9…c6c3`, 구속 줄 `170`. 선행 SPEC 기준선과 같다.
 
 ## P절 재조정
@@ -189,7 +210,7 @@ RECOMMEND: 운영자에게 네 선택지를 함께 올리는 것을 권고한다
 
 ## Gaps
 
-- **런타임 계수 집합 미관측(AC-ALH-010 형태 2)**. 레인은 워크트리 밖에서 격리 `CLAUDE_CONFIG_DIR`·`HOME` 으로 `claude` 를 띄울 수 없다. 리드에게 보내는 관측 요청 원문: 「`.moai/reports/t1226/harness-run.txt` 의 하네스를 `build_head`(05d79c8b2)에서 다시 돌려 `$SCRATCH/init-surface` 를 만든 뒤, 상위 경로에 `CLAUDE.md`·`.claude/` 가 없는 빈 디렉터리로 사본을 옮기고, `CLAUDE_CONFIG_DIR`·`HOME` 을 빈 임시 디렉터리로 돌린 워크트리 밖 세션에서 그 사본을 작업 디렉터리로 `claude` 를 띄워, 기동 시 always-loaded 경고 줄(파일 수·합계)을 원문 그대로 옮겨 주십시오. 결과는 `runtime_files_init`·`runtime_total_init`·`runtime_isolated = yes`·`runtime_source` 줄로 판정서에 반영합니다.」 18·17 두 집합의 판정이 같으므로 이 관측은 판정 토큰을 바꾸지 않는다.
+- **런타임 계수 집합 미관측(AC-ALH-010 형태 2)**. 레인은 워크트리 밖에서 격리 `CLAUDE_CONFIG_DIR`·`HOME` 으로 `claude` 를 띄울 수 없다. 리드에게 보내는 관측 요청 원문: 「`.moai/reports/t1226/harness-run.txt` 의 하네스를 `build_head`(f8d6f5167)에서 다시 돌려 `$SCRATCH/init-surface` 를 만든 뒤, 상위 경로에 `CLAUDE.md`·`.claude/` 가 없는 빈 디렉터리로 사본을 옮기고, `CLAUDE_CONFIG_DIR`·`HOME` 을 빈 임시 디렉터리로 돌린 워크트리 밖 세션에서 그 사본을 작업 디렉터리로 `claude` 를 띄워, 기동 시 always-loaded 경고 줄(파일 수·합계)을 원문 그대로 옮겨 주십시오. 결과는 `runtime_files_init`·`runtime_total_init`·`runtime_isolated = yes`·`runtime_source` 줄로 판정서에 반영합니다.」 18·17 두 집합의 판정이 같으므로 이 관측은 판정 토큰을 바꾸지 않는다.
 - **탐욕 집합의 포인터 재유입**: (b) 표는 해제된 절을 옮길 때 새로 생길 포인터 자수를 넣지 않았다.
 - **U2 수율**: 하드랩 해제가 문단 압축을 얼마나 늘리는지는 재지 않았다.
 - **M2 의미 보존의 기계 검사 없음**: 압축본이 의무·조건·예외·수치를 지우지 않았다는 것은 작성자 검토뿐이다(REQ-ALD2-012 준용 검토 항목). 전후 원문은 `evidence/m2/` 에 있다.

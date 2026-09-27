@@ -39,3 +39,14 @@ git ls-files 'internal/cli/*headroom*_test.go' ; shasum -a 256 internal/cli/init
 go build -o $SCRATCH/moai-run ./cmd/moai ; $SCRATCH/moai-run spec lint --strict SPEC-ALWAYS-LOADED-HEADROOM-001   # 0 error(s), 0 warning(s)
 golangci-lint run ./internal/cli/... > $SCRATCH/lint-final.txt 2>&1   # 0 issues., exit 0
 GOOS=windows GOARCH=amd64 go vet ./internal/cli/ > $SCRATCH/vet-win.txt 2>&1   # exit 0
+# --- sync-audit F1 fix + re-measure (manager-develop, lead decision "re-measure") ---
+unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_DISTRIBUTE_ALL && go test ./internal/cli/ -run '^TestHeadroom' -count=1 -v > $SCRATCH/f1-red.txt / f1-red2.txt / f1-green.txt   # F1 RED (compile), RED (behavior), GREEN
+unset ... && go test ./internal/cli/ -run TestHeadroomInitSurfaceExport -count=2 -v -args -headroom-export=$SCRATCH/f1-export > $SCRATCH/f1-harness.txt   # PASS x2
+golangci-lint run ./internal/cli/...   # 0 issues
+git rev-parse HEAD   # f8d6f51671535c613c5afb8b5ba0b984dcc3a585 = new build_head
+unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_DISTRIBUTE_ALL && go test ./internal/cli/ -run TestHeadroomInitSurfaceExport -count=1 -v -args -headroom-export=$SCRATCH/rm/init-surface > $SCRATCH/rm-green.txt   # PASS 0.68s
+git -C <wt> archive -o $SCRATCH/rm/live.tar f8d6f51671535c613c5afb8b5ba0b984dcc3a585 CLAUDE.md AGENTS.md .moai/config/sections .claude/rules/moai ; tar -x -C $SCRATCH/rm/live -f $SCRATCH/rm/live.tar
+for s in init live: (cd <surface> && xargs wc -m < count-set-$s.txt | tail -1) ; hash pipeline ; init_17 = count-set-init minus skill-routing.md
+python3 .moai/reports/t1226/build.py --surface init --root $SCRATCH/rm/init-surface --out-tree $SCRATCH/rm/post-init   # no --hash
+python3 .moai/reports/t1226/build.py --surface live --root $SCRATCH/rm/live --ref-root $SCRATCH/rm/init-surface --out-tree $SCRATCH/rm/post-live   # no --hash
+(echo "harness_head = f8d6f51671535c613c5afb8b5ba0b984dcc3a585"; sed <scrub $TMPDIR> $SCRATCH/rm-green.txt) > .moai/reports/t1226/harness-run.txt
