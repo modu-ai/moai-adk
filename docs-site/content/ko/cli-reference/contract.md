@@ -17,6 +17,9 @@ draft: false
 | `moai contract verify <SPEC-ID>` | 계약을 검사합니다. 읽기 전용이라 훅에서 호출해도 안전합니다 | 0 유효 · 1 무효 · 2 사용법/입출력 오류 |
 | `moai contract show <SPEC-ID>` | 계약 섹션, 서명 상태, 파생 집합(실효 금지 경로 등)을 출력합니다 | 0 출력 · 2 사용법/입출력 오류 |
 | `moai contract sign <SPEC-ID>...` | 계약에 서명합니다 | 0 서명 · 1 거부 · 2 사용법/입출력 오류 |
+| `moai contract kickoff-check <SPEC-ID> --card <card>` | contract 모드의 plan→run 게이트를 판정합니다. 읽기 전용입니다 | 0 통과 · 1 실패 · 2 사용법/입출력 오류 |
+| `moai contract decide <card> --spec <SPEC-ID> --judgement <file\|->` | 착수 결정을 판정해 계약 저장소에 기록합니다 | 0 기록 · 1 저장소 무결성 오류 · 2 사용법/입출력 오류 |
+| `moai contract revoke <card> --spec <SPEC-ID>` | 서명된 계약의 서명을 철회합니다 | 0 철회(이미 철회된 경우 포함) · 1 서명 없음 · 2 사용법/입출력 오류 |
 
 `verify` 와 `show` 는 `--json` 플래그로 기계가 읽는 JSON 객체를 출력합니다. `verify` 의 무효 사유는 닫힌 코드 집합(`unsigned`, `acceptance_hash_mismatch`, `contract_digest_mismatch` 등)으로만 보고됩니다.
 
@@ -40,6 +43,24 @@ moai contract sign SPEC-AUTH-001 --signer llm \
 **영수증 경로.** `--signer llm` 또는 `--signer llm+jev` 와 `--receipt` 를 함께 주면 터미널 확인 없이 착수 영수증을 근거로 서명합니다. 이 경로는 `workflow.autonomy.mode` 가 `contract` 일 때만 열리고, 한 번에 SPEC 하나만 서명합니다.
 
 **거부.** 서명이 거부되면 파일은 하나도 바뀌지 않고 `refused <code> (<SPEC-ID>): <사유>` 한 줄이 출력됩니다. 코드는 닫힌 집합(`not_tty`, `confirmation_mismatch`, `already_signed`, `plan_audit_not_passing`, `verify_failed` 등)입니다. 서명할 파일은 쓰기 전에 다시 검증해 유효한 서명이 확인된 경우에만 기록되며, 작성자의 주석과 빈 줄은 보존됩니다.
+
+## moai contract kickoff-check · decide · revoke
+
+```bash
+moai contract kickoff-check SPEC-AUTH-001 --card t42
+moai contract decide t42 --spec SPEC-AUTH-001 --judgement judgement.json
+moai contract revoke t42 --spec SPEC-AUTH-001
+```
+
+**kickoff-check.** 카드가 계약의 `card` 필드와 같은지, `verify` 가 유효한 서명을 보고하는지, 계약 저장소에 그 서명이 기록돼 있는지, 서명을 덮는 철회가 없는지를 확인합니다. 아무것도 쓰지 않으며, 실패하면 사유를 모두 나열합니다.
+
+**decide.** 결정 LLM 의 판단(JSON 파일, 또는 `-` 로 표준 입력)을 받아 착수 전제 조건과 결정 규칙을 평가하고 결과(`approve`·`reject`·`human`)를 저장소에 기록합니다. 결정이 나면 `.moai/specs/<SPEC-ID>/kickoff-receipt.json` 영수증을 씁니다. `decide` 는 LLM 을 직접 부르지 않고, 서명도 하지 않습니다.
+
+**revoke.** 저장소에 철회 사건을 남기고 `kind: revoke` 에스컬레이션 기록 하나를 씁니다. 진행 중인 run 은 다음 단계 경계에서 멈춥니다. 워크트리·브랜치 삭제, push, 큐 변경, 계약이나 SPEC 문서 수정은 하지 않습니다.
+
+{{< callout type="warning" >}}
+자율 착수는 **꺼진 상태로 배포됩니다.** 현재 버전의 `kickoff-check` 는 `llm` · `llm+jev` 서명을 `autonomous-kickoff-inactive` 로 거부하므로, run 진입에는 여전히 사람 서명이 필요합니다.
+{{< /callout >}}
 
 ## 관련 문서
 

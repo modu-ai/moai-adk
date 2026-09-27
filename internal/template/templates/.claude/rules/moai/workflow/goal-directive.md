@@ -24,6 +24,10 @@ Availability: `/moai goal` needs hooks enabled (its evaluator IS a Stop hook); i
 
 **Arming a goal does not authorize autonomous run-phase entry.** The Implementation Kickoff Approval human gate remains required in both progression modes: the axis selects only what happens AFTER the gate passes, and is never a gate bypass or a relaxation. An armed goal likewise never authorizes creating a PR or a destructive operation — the evaluator decides only whether the turn continues.
 
+<!-- moai:contract-mode-start id="contract-signing-goal" -->
+Where `workflow.autonomy.mode: contract` — the Kickoff gate named here is the contract signature checked by `moai contract kickoff-check`; signing never arms a goal by itself. See `.claude/rules/moai/workflow/contract-autonomy.md` § The signing gate.
+
+<!-- moai:contract-mode-end -->
 ## Hard Preconditions for Every Recommendation
 
 - **Implementation Kickoff Approval comes first**: any run-phase goal-arming is downstream of the Implementation Kickoff Approval human gate (`AskUserQuestion`, plan→run) and never substitutes for or bypasses it. `run.md` § Run-phase Autonomy #1 owns the preferences-drained rationale.

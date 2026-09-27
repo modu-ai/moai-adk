@@ -44,7 +44,7 @@
 //	ComputeSeal(sig Signature) (string, error)     // signature seal (design.md § Signature Seal)
 //	DecodeKickoffReceipt(raw []byte) (*KickoffReceipt, error)  // strict JSON decode
 //	ValidateKickoffReceipt(chk ReceiptCheck) (*KickoffReceipt, string)  // field rules 1-9; "" = accepted
-//	ReceiptOutcome(r *KickoffReceipt) (refusal string, ok bool)  // signer steps after validation
+//	ReceiptOutcome(r *KickoffReceipt, doctrineAmended bool) (refusal string, ok bool)  // signer steps after validation
 //	ContractLineCount(raw []byte) int              // bound for contract.yaml:<line> references
 //
 // Variables: FrozenInstructionFiles (the hook's frozen instruction basenames,
@@ -137,8 +137,9 @@
 // ValidateKickoffReceipt checks structure and internal consistency only
 // (design.md § Kickoff Receipt, field rules 1-9) and returns the refusal code
 // of the first failing rule in table order. ReceiptOutcome then applies the
-// interim A1 rule (effective decider llm+jev → receipt_requires_human) and
-// the recorded outcome. The A3-owned cross-check rules are not evaluated.
+// interim A1 rule while the Jev doctrine is not amended (its doctrineAmended
+// argument false: effective decider llm+jev → receipt_requires_human) and the
+// recorded outcome. The A3-owned cross-check rules are not evaluated.
 //
 // # Digest
 //
