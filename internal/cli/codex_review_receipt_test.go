@@ -56,7 +56,10 @@ func TestVerifyCodexReviewRecordsReceipt(t *testing.T) {
 		want   string
 	}{
 		{"review finds issues", codexSessionScript("- [P1] found issues\n- [P2] more"), nil, "fail"},
-		{"review passes", codexSessionScript("clean change, approved"), nil, "pass"},
+		// Post-#1718 parser (absorbed from develop): prose approval is not a
+		// pass — only a body carrying the pinned `Verdict: pass` line is. Same
+		// fixture the audit-gate tests pin (realCleanReview).
+		{"review passes", codexSessionScript(realCleanReview), nil, "pass"},
 		{"review call errors", nil, errors.New("fake: session start failed"), "inconclusive"},
 	}
 	for _, tc := range cases {
