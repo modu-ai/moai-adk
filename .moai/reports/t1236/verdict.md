@@ -237,3 +237,9 @@ RED (expected) extra:
   - F7: 이 판정서의 sync 검증 절에는 출력 원문이 없다. `--baseline` lint는 레인이 커밋된 트리 `1f0a99279`에서 다시 돌려 exit 0, `baseline: OK`를 얻었다.
   - F8: design §11.1의 승인 기록이 낡았다.
   - F9: BASE 참조 가드 6개는 `MOAI_GR_BASE`가 없으면 SKIP되므로 CI와 병합 이후에는 돌지 않는다.
+
+## 리드 최종 판정 (2026-09-28)
+
+리드는 PASS-WITH-DEBT로 판정하고 카드를 병합 대기열에 넣었다. 근거는 감사관이 sync-audit.md 105행에 처방한 재감사 범위이며, 리드가 이를 그대로 다시 쟀다. `git show af24dfbcc:CHANGELOG.md | grep -c 'always-loaded SSOT'`는 `0`을 냈고, CHANGELOG.md 12행은 "path-scoped SSOT"로 읽힌다. `contract-autonomy.md` 머리에는 `paths:`가 있다. F1 커밋이 바꾼 것은 CHANGELOG 1행과 reports 2파일뿐이다. 필수 두 차원은 이미 PASS였다(Functionality 90, Security 85).
+
+병합 순서는 t1282 → t1099 → t1237 → t1226 → t1243 → t1236 → t1286이다. 흡수한 뒤 할 일은 두 가지다. BASE에서 파생한 산출물을 흡수한 트리에서 다시 만들고, `moai constitution validate`의 DRIFT가 0인지 확인해 "constitution DRIFT 9 기존" 줄을 그 결과로 고친다.
