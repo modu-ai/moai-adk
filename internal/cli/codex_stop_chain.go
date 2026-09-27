@@ -118,6 +118,13 @@ type codexStopChain struct {
 	keyOK  bool
 
 	capMu sync.Mutex
+
+	// orphans tracks member goroutines still running after a budget cut-off
+	// (budgeted). Production never waits on them — the handler process ends
+	// shortly after run() and bounds them (design §D3.5); tests call
+	// waitOrphans so a cut-off member cannot read package-level seams after
+	// its test has returned (CI Race, card t1099).
+	orphans sync.WaitGroup
 }
 
 func newCodexStopChain(root string, input *hook.HookInput) *codexStopChain {
@@ -303,7 +310,11 @@ func (c *codexStopChain) budgeted(ctx context.Context, n int, fn func(context.Co
 	defer cancel()
 	start := time.Now()
 	done := make(chan stopMemberOutcome, 1)
-	go func() { done <- fn(mctx) }()
+	c.orphans.Add(1)
+	go func() {
+		defer c.orphans.Done()
+		done <- fn(mctx)
+	}()
 	var o stopMemberOutcome
 	select {
 	case o = <-done:
@@ -318,6 +329,16 @@ func (c *codexStopChain) budgeted(ctx context.Context, n int, fn func(context.Co
 	}
 	return o
 }
+
+// waitOrphans blocks until every member goroutine cut off at its internal
+// budget has returned. Production never calls it — the handler process exit
+// bounds the orphans there. A test that exercises a cut-off (or can produce
+// one under load) calls it before returning, so the orphaned member cannot
+// keep reading package-level function seams (codexLookPath, codexRunner,
+// codexVersionProbe) while the next test's setup writes them — the
+// intermittent CI Race failure of TestStopChainGateCutOffNeverAllows
+// (run 36327685623, card t1099).
+func (c *codexStopChain) waitOrphans() { c.orphans.Wait() }
 
 // cutOffUnmeasured is the cut-off outcome of a goal or required gate:
 // unmeasured, never an allow (design §D3.5). For a capped gate the cut-off
