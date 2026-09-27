@@ -3,6 +3,7 @@ package homestate
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -40,6 +41,12 @@ func TestAppendRecordUnavailableFailureModes(t *testing.T) {
 		}
 	})
 	t.Run("read-only factory dir fails at the lock", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("a read-only directory does not block file creation on Windows")
+		}
+		if os.Geteuid() == 0 {
+			t.Skip("read-only directory does not block the root user")
+		}
 		root := factorySandbox(t)
 		path, err := RecordUnavailablePath(root)
 		if err != nil {
@@ -101,6 +108,12 @@ func TestMarkRecordUnavailableReconciledFailureModes(t *testing.T) {
 		}
 	})
 	t.Run("read-only factory dir fails at the temp file", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("a read-only directory does not block file creation on Windows")
+		}
+		if os.Geteuid() == 0 {
+			t.Skip("read-only directory does not block the root user")
+		}
 		root := factorySandbox(t)
 		if err := AppendRecordUnavailable(root, RecordUnavailableEntry{ID: "one", RunID: frRun, CardID: "lost", Lane: "w", Error: "boom"}); err != nil {
 			t.Fatal(err)

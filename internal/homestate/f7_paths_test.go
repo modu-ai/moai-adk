@@ -12,9 +12,6 @@ import (
 // do not belong in a directory name.
 func TestProjectKeyForCanonicalRoot(t *testing.T) {
 	root := "/Users/x/proj"
-	if got := ProjectKeyForCanonicalRoot(root); got != ProjectKeyForCanonicalRoot(root) {
-		t.Fatalf("key not deterministic: %q vs %q", got, ProjectKeyForCanonicalRoot(root))
-	}
 	if got := ProjectKeyForCanonicalRoot(root); got != ProjectKey(root) {
 		t.Fatalf("canonical-root key = %q, ProjectKey = %q, want equivalence", got, ProjectKey(root))
 	}

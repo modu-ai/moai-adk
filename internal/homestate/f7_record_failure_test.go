@@ -52,8 +52,12 @@ func TestRenewLeaseRefusalsAndExpiry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("renew with zero clock: %v", err)
 	}
-	if _, perr := time.Parse(time.RFC3339Nano, renewed.LeaseExpiresAt); perr != nil {
+	expiry, perr := time.Parse(time.RFC3339Nano, renewed.LeaseExpiresAt)
+	if perr != nil {
 		t.Fatalf("zero-clock renewal expiry %q unparseable: %v", renewed.LeaseExpiresAt, perr)
+	}
+	if !expiry.After(time.Now()) {
+		t.Fatalf("zero-clock renewal expiry %q is not in the future", renewed.LeaseExpiresAt)
 	}
 }
 
