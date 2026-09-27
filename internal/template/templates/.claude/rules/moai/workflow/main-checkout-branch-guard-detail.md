@@ -147,6 +147,12 @@ flows. The hook applies the doctrine conditionally.
   the opt-in gate: when disabled the guard returns allow BEFORE reaching any
   uncertainty path, so fail-open is trivially preserved.
 
+Origin: the branch-guard doctrine specification (its full requirement set).
+Opt-in gate + pattern refinement: the follow-on opt-in specification
+(its requirement set).
+Discriminant directory correction: the discriminant-correction specification
+(its requirement set).
+
 
 
 ---

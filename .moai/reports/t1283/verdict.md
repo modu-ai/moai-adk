@@ -128,6 +128,121 @@ must-pass 는 Functionality + Security 두 축), 그리고 감사자가 둘째 �
 - 줄 경계 정렬은 내용이 아니라 형식에 의존한다. 미러를 다시 감싸는 편집이 들어오면 같은 형태로 재발할 수
   있다.
 
+
+---
+
+## 감사 지적 반영 — 정정 4건 (2026-09-27, sync-audit 후)
+
+감사자 모델 귀속: `auditor-model: claude-opus-5[1m]`. 감사자 스스로 **런타임 자기 선언이며 독립 측정이
+아니라는 한계**를 고지했다. GLM 서빙 징후는 없다고 보고했으나 그 판단 역시 자기 선언 층에 있다.
+독립 관측은 병합 전 리드에게 요청한다(t1064 에서는 서브에이전트 트랜스크립트의 `.message.model` 과 스폰
+`.meta.json` 두 경로가 그 역할을 했다).
+
+### 정정 1 — 「관행을 따랐다」는 근거를 넘은 주장이었다 (철회)
+
+위 ② 절과 커밋 `b6c1c3f4a` 의 메시지는 출처 1행화를 *"follows the house convention instead of
+inventing one"* 이라고 적었다. **성립하지 않는다.** 감사 측정:
+
+- 카드 이전 규칙 트리에서 `^> Provenance:` 는 **1개 파일**(`verification-claim-integrity.md`)뿐.
+- 내가 버린 `^Origin:` 형식은 **4개 파일**에 살아 있음(`agent-common-protocol-reference.md`,
+  `orchestration-mode-selection.md`, `archived-agent-rejection.md`, `lifecycle-sync-gate.md`).
+
+즉 **더 흔한 형식을 더 드문 쪽으로 바꾸고** 그것을 관행이라 불렀다. n=1 에서의 일반화다. 주장을 철회한다.
+
+**「1행화가 유일한 통과 경로였다」는 문장도 쓰지 않는다** — 아래 정정 2가 측정으로 반증한다.
+
+### 정정 2 — 제3의 경로를 채택했다 (형식 되돌림, 여유폭 확대)
+
+내가 상정한 갈래는 둘(1행화 유지 / 4행 유지하며 다른 방식으로 오차 진입)이었고, 감사가 **후자가 실제로
+작동함을 변이로 측정**했다. 그 처방을 채택했다:
+
+- **로컬**: 4행 `Origin:` 블록을 원상 복구(`e765d33ec` 판과 같은 형태). 세 SPEC ID·세 REQ 범위 그대로.
+- **미러**: 같은 자리에 같은 행 수의 **중립 산문 대응 블록**을 넣었다(내부 식별자 없음). 4행이
+  `local-only` 로 남지 않고 **reword 쌍으로 상계**된다(`localExcess = len(localOnly) - len(tmplOnly)`).
+
+측정 결과:
+
+```
+$ go test ./internal/template/ -run TestSanitizedPairParity -count=1 -v
+main-checkout-branch-guard-detail.md: normalized diff —
+  10 local-only, 10 template-only, ~10 reword pairs, net one-sided=0 (tolerance 4)
+  → within reword tolerance
+$ go test ./internal/template/ -run 'SanitizedPair|Leak|Neutral|MirrorDrift' -count=1
+ok      github.com/modu-ai/moai-adk/internal/template    1.149s
+$ grep -cE 'SPEC-…-[0-9]{3}|REQ-[A-Z0-9]|card t[0-9]+' <미러>   → 0
+$ grep -coE 'SPEC-WORKTREE-BRANCH-GUARD(-OPTIN|-DISCRIM)?-001' <로컬>   → 4
+```
+
+**`net one-sided=0`** — 착지분(`net=1`)보다 여유폭이 한 행 넓다. 동시에 다수 형식을 유지하고, 미러가
+provenance 를 **침묵으로 잃지 않고** 중립 문구로 보유한다. 잔여 위험의 「여유폭 3행」은 **4행**으로 갱신된다.
+
+### 정정 3 — 부수 발견의 수치가 틀렸다 (4행 → 카드 id 2행)
+
+`kanban-dispatch-detail.md` 미러의 내부 토큰을 **4행**이라 적었다. 재측정 결과 **그 4행은 전부 거짓
+양성**이다 — 내 패턴 `SPEC-[A-Z0-9-]+` 가 `<SPEC-ID>` **플레이스홀더** 안쪽을 물었다(`/moai run
+<SPEC-ID>` 같은 일반 산문). 앵커를 붙이면 내부 SPEC ID 는 **0**이다.
+
+감사가 잡은 것은 다른 클래스이며 그쪽이 실재한다 — **내부 카드 id 2행**(`26:t133`, `186:card t224`).
+로컬 사본도 같은 2행이므로 **양쪽이 동일하게 오염**돼 있다. 따라서 결론(이 파일만 오염 · 정리하면 바이트
+동일이 깨지므로 바이트 등록 불가)은 살아남고 **근거가 교체**된다: SPEC ID 4행이 아니라 카드 id 2행.
+
+```
+$ grep -cE 'card t[0-9]+|\bt[0-9]{2,4}\b' <로컬>  → 2
+$ grep -cE 'card t[0-9]+|\bt[0-9]{2,4}\b' <미러>  → 2
+$ grep -coE 'SPEC-[A-Z0-9]+(-[A-Z0-9]+)+-[0-9]{3}' <미러>  → 0
+```
+
+**이 오류의 성격**: t1064 판정서 §E.1 (10) 에 내가 직접 「앵커 없이 센 값은 과다계상이며 재측정해도 같은
+값이 나와 검산으로 안 잡힌다」고 적었다. 같은 함정에 같은 사람이 걸렸다. 교훈을 기록한 것이 면제가 되지
+않는다는 실사례로 남긴다.
+
+### 정정 4 — 가드는 양방향이다 (내 의심이 기각됨)
+
+감사 의뢰서에서 「가드가 `local-only` 축만 세는 일방향일 수 있다」를 의심 축으로 넘겼다. **측정으로
+기각됐다.** 감사가 신규 등록 항목으로 양방향 변이를 실행했다 — 미러에서 6행 삭제 → `net one-sided=6`
+FAIL(`present in the LOCAL copy but ABSENT from the template mirror`), 로컬에서 8행 삭제 →
+`net one-sided=-6` FAIL(`present in the TEMPLATE mirror but ABSENT from the local copy`). 코드 근거는
+`sanitized_pair_parity_test.go:219` 의 `case -localExcess > structuralDriftToleranceLines`.
+
+**내 부족은 도달 범위가 아니라 그 범위를 재지도 보고하지도 않은 것이다.** ③ 절의 변이는 한 방향만
+확인했고, 판정서는 그 한계를 적지 않았다. 이제 적는다.
+
+### 감사가 추가로 낸 발견 2건 — 이 카드가 고치지 않는다
+
+- **`sanitized_pair_parity_test.go` 의 `runtime-recovery-doctrine.md` 주석이 스테일하다.** 주석은 로컬이
+  "Origin line" 을 보유한다고 적지만 **양쪽 어디에도 `Origin:` 줄이 없다**(각 0행). 리드에 별 카드 후보로
+  보고한다.
+- **커밋 `b6c1c3f4a` 메시지의 "both REQ ranges" 는 부정확하다** — 실제 범위는 **세 개**
+  (`REQ-WBG-001..013`, `REQ-1..6`, `REQ-WBG-D-001..008`). 세 개 다 보존돼 손실은 없고 서술 수만 틀렸다.
+  커밋 메시지는 고치지 않고(이력 무결성) 이 절에 정정으로 남긴다.
+
+### 감사가 확인해 준 것 (전부 감사 자신의 실행)
+
+- **렌즈 1 PASS**: `find .claude -name '*-detail.md'` → 정확히 9개, `.claude/agents/`·`.claude/skills/`·
+  중첩 디렉터리에 누락 **0**. 내 루프가 하위 디렉터리 5개를 손으로 열거한 것이 결과적으로 트리를 전부
+  덮었음을 독립 확인했다. 4열 행렬도 내 표와 전부 일치. `rule_template_mirror_test.go:41-43` 이 명시
+  allowlist 임을 읽고, 9개 중 어느 것도 그 목록에 없음을 확인해 **「통과」가 「미측정」이었다는 판단이
+  옳다**고 판정했다.
+- **렌즈 2**: 등록 4건 전부 통과. Origin 붕괴에서 SPEC ID 3개·REQ 범위 3개 **손실 0**. 미러 재줄바꿈은
+  공백 정규화 후 `cmp` **바이트 동일** — 단어 손실 없이 줄 경계만 움직였음을 증명.
+- **④ 충족**: `git diff e765d33ec HEAD -- .moai/reports/t1064/verdict.md` 로 최종 PASS 기록·점수 4개·
+  관측 순서 보존(덮어쓰지 않고 이어 붙임)·철회 기록 3건 전부 실재 확인.
+- **`git show --stat b6c1c3f4a`**: 5 files changed, 162 insertions(+), 9 deletions(-) — 커밋 메시지가
+  주장하는 항목 전부가 내용에 있음(위 "both REQ ranges" 오기 1건 제외).
+- **재실행**: `golangci-lint` v2.1.6 `0 issues.` · `gofmt -l internal/template/` 0행 ·
+  `go test ./internal/template/ -count=1` exit 0 (패키지 전량 91.162s) · parity 13/13.
+- **복원 증명**: 감사의 모든 변이 실험이 sha256 일치 + 빈 `git status --porcelain` 으로 원복 확인됨.
+
+### 갱신된 잔여 위험
+
+- **여유폭은 이제 4행**(`net one-sided=0`, tolerance 4). 정정 2로 3행에서 넓어졌다. 감사가 3행 상태를
+  「유예된 실패에 가깝다」고 평했고, 그 평가를 받아들여 여유폭을 넓히는 쪽을 택한 것이다. 다만 오차 0을
+  요구하면 정상 §25 사문화가 적색이 되므로 tolerance 자체는 건드리지 않는다.
+- **범위 밖 5쌍은 현재 동일성을 무엇도 강제하지 않는다** — 어느 가드에도 없으므로 **한쪽만 편집되면
+  조용히 갈라진다**. 별 카드 후보로 남긴 판단은 유지하되, 함정이 실재한다는 감사 표현을 그대로 싣는다.
+
+---
+
 ## resume-pointer
 
 - **이월(리드 전언, t1259 run 착수 첫 일)**: Claude 2.1.283 은 `AGENTS.local.md` 를 primary 에서도 발견하지
