@@ -502,6 +502,75 @@ M4-b 는 발동하지 않았다. 판별 필드 `agent_id` 가 페이로드에 �
 
 동반이동 집합에는 `internal/hook/branch_guard.go:682` 의 deny reason 문자열이 반드시 포함된다 — 그것은 **사용자에게 직접 보이는 표면**이며, 이번 카드가 거짓이라고 판정한 바로 그 문장이다. 집합 열거는 M6 에서 접두 열거로 과다매칭원을 먼저 드러낸 뒤 확정한다.
 
+
+### M6 동반 이동 — 집합 열거와 처분 (SHA `8b3464757` 기준 측정, 적용 `237d5e3e7` + `3478bb88d`)
+
+#### 네 좌표 (AC-BGX-009)
+
+| 좌표 | 값 |
+|---|---|
+| 패턴 | 리터럴 `tool-spawned subagent` |
+| 시점 | HEAD `8b3464757` |
+| 뿌리 | `.` (저장소 루트) |
+| 추적 범위 | 추적 파일 **22** · 미추적 포함 **22** |
+
+두 수가 일치한다. 이번에는 추적 범위 축이 갈리지 않았다 — 이 카드의 미추적 판정서(`.moai/reports/t1064/verdict.md`)는 같은 주장을 한국어로 적었고 이 리터럴을 싣지 않기 때문이다. **일치가 이 축이 무해하다는 뜻은 아니다**(선행 iter-5 가 델타 1을 관측했다); 이번 측정의 두 수가 같았다는 사실만 기록한다.
+
+접두 열거로 과다매칭원을 먼저 드러냈다:
+
+```
+$ grep -rohE '[A-Za-z-]*tool-spawned subagent' --exclude-dir=.git . | sort | uniq -c
+  60 tool-spawned subagent
+```
+
+단일 형태 60회이며 접두 변종이 없다 — 열거 합과 앵커 적용값이 같으므로 이 축에는 과다매칭원이 **없다.** 따라서 파일 단위 22 는 앵커 여부와 무관하게 성립한다.
+
+#### 처분 — 22 파일 중 8 을 고쳤다
+
+**고친 것(살아 있는 주장 보유자, 8파일)**
+
+| 파일 | 지점 |
+|---|---|
+| `.claude/rules/moai/workflow/main-checkout-branch-guard.md` | § Mechanical Enforcement 의 「Exemptions are unreachable」 불릿 |
+| `.claude/rules/moai/workflow/main-checkout-branch-guard-detail.md` | § Exemption mechanism 의 「neither is reachable」 + 처방 근거 문단 |
+| 위 두 파일의 `internal/template/templates/…` 미러 2개 | 같은 지점. 두 사본은 바이트 동일이 아니므로(§2.0 의 의도된 분기) 각각 적용했다 |
+| `internal/hook/branch_guard.go` | `branchGuardExemptEnv` 도달성 주석 · `checkBranchState` 처방 주석 · **deny reason 문자열** |
+| `internal/hook/branch_guard_test.go` | 처방 계약 테스트의 근거 주석 + 단언 |
+| `internal/hook/branch_guard_flagclass_test.go` | CONTESTED 표식 → 해소 기록 |
+| `internal/hook/branch_guard_quoted_test.go` | 축 독립성 테스트의 도달성 주석 |
+
+**고치지 않은 것(과거 관측 기록, 14파일)** — `CHANGELOG.md`, 이 SPEC 의 `spec.md`/`acceptance.md`/`progress.md`, 그리고 다른 세 SPEC(`SPEC-RC-TESTBED-001`, `SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001`, `SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001`)의 아티팩트. **관측 기록은 나중 사실에 맞춰 고쳐 쓰지 않는다** — 이 SPEC 자신이 iter-2 에서 세운 규율이며, 여기서 예외를 두지 않는다. 이 SPEC 의 `spec.md`/`acceptance.md` 는 다투는 주장을 **시험 대상으로서** 인용하므로 그대로가 옳다.
+
+**대립하던 두 문서 중 옳았던 쪽**: `.claude/rules/moai/core/hooks-system.md` 는 「모든 훅 이벤트가 서브에이전트 컨텍스트에서 `agent_type` 을 포함한다」고 적었고, 이것이 **맞았다.** 고칠 것이 없으며, 틀린 쪽은 `branch_guard.go` 의 도달성 주석이었다. `flagclass_test.go` 가 D12 에서 예고한 「반증 포획 시 문서 조정 경로로 보낸다」가 그대로 실행됐다.
+
+#### 검증
+
+```
+$ gofmt -l internal/hook/          → 0행
+$ go vet ./internal/hook/...       → exit 0
+$ golangci-lint run ./internal/hook/...   (v2.1.6 — CI 판) → 0 issues
+$ go test ./internal/hook/...      → exit 0 (11 패키지 전부 ok)
+```
+
+**공허 통과 배제(변이 검출).** deny reason 에서 새 도달성 절을 지우면 계약 테스트가 죽는다:
+
+```
+$ <deny reason 의 "the identity exemption does reach spawned agents, …" 절 제거>
+$ go test ./internal/hook/ -run TestBranchGuard_DenyReasonRemediationContract -count=1
+--- FAIL: TestBranchGuard_DenyReasonRemediationContract (0.46s)
+    branch_guard_test.go:699: deny reason lacks the measured identity-axis reachability statement: "…"
+FAIL
+$ <복원>
+$ go test ./internal/hook/ -run TestBranchGuard_DenyReasonRemediationContract -count=1
+ok      github.com/modu-ai/moai-adk/internal/hook       1.048s
+```
+
+단언은 문자열을 되읊는 것이 아니라 **물린다.** 무변이 성공 방향은 전체 패키지 통과(위)가 담당한다.
+
+#### 처방이 남기는 잔여 위험 (DOC 분기의 명시 의무)
+
+임의 이름으로 spawn 된 에이전트가 `manager-git` 을 자칭하면 primary 체크아웃의 BranchGuard 를 통과한다. 이 우회는 **닫히지 않았다.** DOC 를 고른 이유는 우회가 불가능해서가 아니라, 면제를 좁히는 대가(현재 살아 있는 `manager-git` 경로 의존 여부)가 미측정이기 때문이다. 좁히는 쪽을 선택하려면 그 의존을 먼저 재야 하며, 그것은 이 카드의 범위가 아니다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
