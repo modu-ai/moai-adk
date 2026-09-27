@@ -45,8 +45,15 @@ steps come last.
   extraction/label agreement (the REQ-CALIB-004 20/20 shape, scaled to the pinned population
   size and recorded in the criteria commit).
 - Judge positive controls: fixed-seed selection with label-variance intent, selected and recorded
-  BEFORE the first judge call (the REQ-CALIB-005 shape); either arm's control failure voids the
-  run (both-arms rule).
+  BEFORE the first judge call (the REQ-CALIB-005 shape) — AMENDED 2026-09-27, operator-approved
+  (record: progress.md §E.2 amendment entry): controls are measured and recorded per-item for
+  BOTH arms as DATA and published in the verdict, but they NO LONGER gate on label accuracy — a
+  judge being a constant or weak responder is a measured finding, not an execution defect. The
+  VOID gate binds to PIPELINE validation only: a control (or any batch item) where transmission
+  failed, the response did not parse to the committed format (label outside the 4-value space,
+  non-numeric confidence), or the composite could not be computed is a pipeline failure and still
+  voids. The pipeline positive control (extraction/label agreement, REQ-CALIB-004 shape) stays in
+  force unchanged.
 - llm 단독 arm batch: N items, committed primary pool (GLM / `glm_task`), caps per REQ-DM-013.
 - llm+jev arm batch: identical payload_id set (AC-DM-015), llm stage + Jev cross-check stage,
   composite rule per REQ-DM-007. Pre-declared supplement batches (Opus window if granted, or

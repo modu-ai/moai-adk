@@ -8,7 +8,8 @@
 
 - plan_status: audit-ready
 - plan_complete_at: 2026-09-26
-- spec_version: 0.1.0 (initial plan-phase authoring)
+- spec_version: 0.2.0 (operator-approved criteria amendment 2026-09-27 — judge controls
+  redefined as pipeline validation; 0.1.0 initial plan-phase authoring)
 - plan_audit: FAIL (iter-1, 2026-09-26, score 0.91 — Tier M threshold 0.80 met but 2 blocking
   findings: D1 research.md §3 π_d=0.15 row unreproducible from the stated formula [stated
   params yield n_d≈18/N≈118 vs claimed 29/191; 0.20/0.30 rows reproduce], D2 REQ-DM-002
@@ -248,6 +249,37 @@ B6(카드 배차·선택)은 4값 라벨 공간과 wrong-automation 이 정의�
 **Gaps (M1)**: 베이스 페이로드는 센서스가 기록한 프로젝션(question_head + 헤더 + 선택지 라벨)이 원문 전체인지 행별 단절 여부는 센서스 추출기가 결정 — 핀된 표현 자체가 이 프로젝션이므로 본 카드 기준선은 이것; clean/defect 베이스 겹침 51(산술 강제, 항목 텍스트 상이) → 판정서 Residual-risk; 스크럽 패턴 집합은 하한(패턴 밖 비밀 형태 통과 가능) → 판정서 Residual-risk; 배치 바이트 핀은 센서스 코퍼스 바이트 + 본 코드 + 시드의 함수(잘리는 코퍼스이므로 sha256 재현 조건 명시); 파일럿 20건의 라벨 스프레드(approve 10/hold 7/modify 3)는 층화 규칙의 산물.
 
 **Residual-risk (M1)**: 주입 결함이 템플릿 형태라 판사가 템플릿을 패턴 매칭하면 인위적으로 잘 나올 수 있음 — 파일럿이 이 난이도를 먼저 진단(REQ-DM-004 파일럿 규칙이 존재한 이유); (i) 증거-제거형 10건이 전부 동일 변형으로 성립(적격 베이스가 충분해 변형 편중) — 클래스 내 다양성은 (ii)-(vi)의 다변형과 비대칭; judge-tool fail-open 시 미측정 기록과 measurement-impossible 경로는 M2 기록이 소유.
+
+### 기준 개정 기록 — 판사 대조 규칙 재정의 (2026-09-27, 운영자 승인)
+
+**무효된 실행 (voided run)**: 첫 M2 실행 — 첫 판사 호출 2026-09-26T21:08:15+09:00, 22 dispatches.
+당시 규칙(plan.md M2 「어느 팔이든 대조 실패 시 양팔 무효」)이 발화: 대조 항목 t1261-005에서
+llm+jev 합성 팔 오답. 전 9대조 진단 계측(원시 증거 `runs/`, `void_run_diagnostic` 태그 유지·보존):
+**Jev 측이 상수 hold 응답자**(9/9 hold, clean 0/3), GLM 측은 산포 정답 5/9.
+
+**왜 바꾸는가 (circular-gate 근거)**: 종전 규칙은 측정의 종속변수(판사 정확도)를 실행의 타당성
+게이트에 걸어 있었다 — 판사가 틀리면 실행 자체가 무효가 되는 구조는 「판사가 잘 맞는 경우만
+측정할 수 있다」는 자기순환이다. 이 카드의 종속변수가 곧 판사 품질인 이상, 대조의 원래 역할인
+계측 경로 검증(전송·파싱·합성 가능성)만 게이트로 남기고 라벨 정확도는 데이터로 공표하는 쪽이
+측정의 질문과 정합적이다.
+
+**변경 내용 (v0.2.0, HISTORY 행 동일)**: (1) plan.md M2 — 판사 대조는 양팔 모두 항목별
+데이터로 측정·기록·판정서 공표하되 라벨 정확도로 게이트하지 않는다; VOID 게이트는 파이프라인
+검증(전송 실패 / 응답이 커밋 형식으로 파싱 불가 — 라벨이 4값 공간 밖·confidence 비수치 / 합성
+산출 불가)에만 묶이며 이 경우에도 무효. 파이프라인 양성 대조(추출·라벨 일치, REQ-CALIB-004
+형태)는 변경 없이 유지. (2) spec.md REQ-DM-004 — 파일럿 퇴화 판정은 구성 수준 지표(팔 전체의
+인구 규모 천장/바닥 — 양팔 ≥90% 또는 ≤10%, 또는 전 결함 클래스가 양팔에서 자명하게 포착/누락)에만
+묶인다; 개별 팔의 상수 응답(예: 진단에서 관측된 Jev 상수 hold)은 판정서에 보고되는 측정
+결과이지 구성 퇴화도 개정 트리거도 아니다 — 구성이 신호를 갖는 것은 GLM 측 실측(clean 3/3,
+결함 포착 2/6, 천장·바닥 아님)이 이미 보여준다. REQ-DM-006의 동결 4요소(비교 술어·팔별
+지표·신뢰도 필드·밴드 술어)와 모집단·매핑·풀은 불변.
+
+**운영자 승인**: 2026-09-27 레인 AskUserQuestion 라운드 — 선택지 「기준 재정의 후 재측정
+(권장)」 채택.
+
+**재시작 조건**: 재시작 실행은 첫 호출 전 새 `declared_at`으로 세 상한을 재선언하고, **본 개정
+커밋을 `criteria_commit`으로** 한다(첫 호출 전 `git cat-file -e` 검증 + 시간 비교 —
+REQ-DM-014(a)). 기존 runs/ 증거와 계측기는 무효 실행 기록으로 그대로 보존된다(수정 없음).
 
 ## §E.3 Run-phase Audit-Ready Signal
 

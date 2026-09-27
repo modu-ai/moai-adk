@@ -1,10 +1,10 @@
 ---
 id: SPEC-AUTONOMY-DECIDER-MODE-001
 title: "Contract-mode kickoff decider default measurement — llm vs llm+jev on a discriminable population (card t1261, AUTONOMY-A5b)"
-version: "0.1.0"
+version: "0.2.0"
 status: in-progress
 created: 2026-09-26
-updated: 2026-09-26
+updated: 2026-09-27
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -23,6 +23,7 @@ related_specs: [SPEC-AUTONOMY-GATE-REWIRE-001, SPEC-AUTONOMY-TIERS-001]
 | Date | Version | Change | Author |
 |---|---|---|---|
 | 2026-09-26 | 0.1.0 | Initial authoring (plan phase — measurement design with first-class population redefinition). Baseline tree: card worktree branch `WT-decider-mode-eval` HEAD `422aa1e20` (= local develop tip at fork; merge-base confirmed 2026-09-26). Card text (verbatim, operator decision 2026-09-26): 「[운영자 결정 09-26 · t1244 분할 · Tier M · 클래스 C] contract 모드 킥오프 판단자 기본값(llm 단독 vs llm+jev) 결정 근거 측정 — t1244 가 운영자 킥오프 기록 105건 중 104건 승인(always-approve 99.05%)이라 이 모집단으로는 어떤 판사도 기준선+10%p 를 넘을 수 없음을 관측(.moai/reports/t1244/). 범위: 판별 가능한 모집단 재정의 먼저(보류·거절이 실제로 있는 라운드 확대, 다른 게이트, 또는 합성 대조군) — 기준선 대비 검정력이 있는지 측정 전에 산술로 보이고, 그 뒤 llm 판사 팔(모델·한도 풀 명시)과 llm+jev 팔을 같은 프로토콜로. §30 t943 재실험 금지 준수.」 No product code, `internal/`, or template changes — protocol-and-analysis card. Population census is run-phase work (M0), deliberately NOT performed at plan phase. | manager-spec |
+| 2026-09-27 | 0.2.0 | Operator-approved criteria amendment (operator decision 2026-09-27, lane AskUserQuestion round, option 「기준 재정의 후 재측정 (권장)」) after the first M2 run was voided under the then-binding both-arms judge-control rule — control t1261-005 failed on the llm+jev composite arm, and the 9-control diagnostic (runs/, void_run_diagnostic-tagged) showed the Jev side a CONSTANT hold-responder (9/9 hold, clean 0/3) while GLM was scattered-correct 5/9: judge accuracy, the measurement's dependent variable, was wired into the validity gate (circular). (1) REQ-DM-004 pilot rule reworded — degeneracy binds to CONSTRUCTION-level indicators (population-wide ceiling/floor across arms); an individual arm being a constant responder is a measured verdict finding, not a revision trigger. (2) plan.md M2 judge-control void rule redefined — judge controls are measured and published as DATA per-item for both arms, no longer gate on label accuracy; the void gate binds to PIPELINE validation only (transmission failure / response not parsing to the committed format / composite not computable). Population, comparison predicate, per-arm metrics, confidence fields, band predicate, mapping, and pools UNCHANGED (REQ-DM-006's frozen four untouched). The restarted run re-declares caps with a fresh declared_at before its first call and takes THIS commit as its criteria_commit. Full record: progress.md §E.2 amendment entry. | manager-spec |
 
 ## §A. Background
 
@@ -170,9 +171,16 @@ the defect:clean ratio is 50:50, so the always-approve constant baseline is 50%;
 class pre-fixes its ground-truth label from the 4-value space (clean → `approve`; defect classes
 → the label a correct gate would return, e.g. missing mandatory section → `hold`, scope violation
 → `modify`), so the label space keeps genuine 4-value variance; **the pilot rule**: a
-difficulty-diagnostic pilot arm (n = 20) may run before the main batch — if it shows a degenerate
-ceiling or floor, the construction is revised under a NEW criteria commit BEFORE any main-batch
-call, and pilot results are recorded but never merged into main-batch statistics.
+difficulty-diagnostic pilot arm (n = 20) may run before the main batch — CONSTRUCTION-level
+degeneracy is what triggers revision, meaning a population-wide ceiling or floor ACROSS arms
+(both arms ≥ 90% or ≤ 10% overall, or every defect class trivially caught — or trivially
+missed — by both); the construction is then revised under a NEW criteria commit BEFORE any
+main-batch call, and pilot results are recorded but never merged into main-batch statistics. An
+INDIVIDUAL arm being a constant or weak responder on the pilot (e.g. one judge answering hold
+throughout) is a measured finding for the verdict — NOT construction degeneracy and NOT a
+revision trigger (operator-approved amendment 2026-09-27; ground: the voided first M2 run's
+diagnostic already showed construction signal via the other arm — clean 3/3, defects caught
+2/6, neither ceiling nor floor).
 
 ### REQ-DM-005 — Both arms, one protocol (Ubiquitous)
 
