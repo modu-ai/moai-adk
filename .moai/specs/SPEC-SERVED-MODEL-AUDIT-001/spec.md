@@ -1,7 +1,7 @@
 ---
 id: SPEC-SERVED-MODEL-AUDIT-001
 title: "서브에이전트 서빙 모델 관측 — 선언 모델만 보는 감사 로그의 사각 해소와 감사관 판정 채택 거부"
-version: "0.2.0"
+version: "0.3.0"
 status: in-progress
 created: 2026-09-27
 updated: 2026-09-27
@@ -24,6 +24,7 @@ related_specs: [SPEC-AGENT-MODEL-ENFORCE-001, SPEC-CODEX-AUDIT-GATE-AXES-001, SP
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-09-27 | manager-spec | 최초 draft. 착수 판정서(`.moai/reports/t1282/verdict.md`)의 재현 3세션과 plan 단계 추가 실측(§A.2)에 근거. 리드 결정 (c) — 관측 지점 2곳(SubagentStop + 사후 스캔), 기본은 기록·경고, 감사관 한정 opt-in 채택 거부 — 를 요구사항으로 옮김. |
 | 0.2.0 | 2026-09-27 | manager-spec | plan-audit iter1(FAIL 0.75) 반영. D3: Tier M 예산에 맞춰 REQ 19→16, AC 25→16 으로 통합(리드 결정 동작은 하나도 빼지 않음, 형제 부정 사례는 표 기반 AC 로 묶음). D2: 서빙 게이트 전용 스코프 + 영수증 가드 결합 금지 REQ-SMA-013. D4: 해석 모델 출처를 PreToolUse 와 같은 설정 제공자로 고정(REQ-SMA-003). D1/D11: 워크트리 slug 열거 규칙(REQ-SMA-014)과 §A.2 실측 원문. D5: 자기 보고를 보고서 파일과 최종 메시지 양쪽에 고정(REQ-SMA-015/016). D6: 센티널·병합 사유(REQ-SMA-010). D9: 빈 스캔은 ok 가 아님(REQ-SMA-014). D10: Kind 부재 레코드는 영수증 종류(REQ-SMA-011). 규칙 문서 편집(M7)은 sync 단계로 넘김(§E). |
+| 0.3.0 | 2026-09-27 | manager-spec | run 단계 산출물과 본문 정렬(리드 승인 3건). REQ-SMA-014: doctor 사후 스캔을 명시 호출 전용으로 — 기본 `moai doctor` 는 안내 info 행 1개(`run with --check "Served Model"`)만 내고 스캔은 `moai doctor --check "Served Model"` 에서만 돈다. 근거: 기본 실행에 넣으면 이 머신(트랜스크립트 약 2.3k개)에서 doctor 한 번에 5.7–10.2초가 더해진다. AC-SMA-011 에 기본 실행 안내 행 테스트 추가. REQ-SMA-002: "exactly one row" → "one row per SubagentStop event". REQ-SMA-002/005: 트랜스크립트 위치가 전혀 없는 입력은 관측하지 않음(행·경고 없음)을 명시 예외로, 런타임 페이로드가 위치를 늘 담는지는 미측정 Gap 으로 §A.4 에 기록. |
 
 ---
 
@@ -135,6 +136,7 @@ M1c worktree slug dirs: 363
 - SubagentStop 발화 시점에 트랜스크립트 마지막 assistant 행이 이미 디스크에 쓰였는지는 관측하지 않았다.
 - 판정서가 든 세 감사 판정(t1237·t1239·t1099)은 개별 대조하지 않았다.
 - L2 워크트리(`~/.moai/worktrees/…`)에서 띄운 세션의 slug 는 이번 측정 범위(primary slug 와 `--claude-worktrees-` 접두 slug)에 들어 있지 않다.
+- **[run 단계 이후에도 열린 Gap]** 런타임의 SubagentStop 페이로드가 트랜스크립트 위치(`agent_transcript_path`, 또는 `transcript_path` 와 `agent_id`)를 늘 담는지는 이 머신에서 **측정되지 않았다(UNMEASURED)**. 부재 쪽 증거만 있다: `.moai/logs/agent-model-audit.jsonl` 의 `"source":"subagent_stop"` 행 0건, `.moai/logs` 전체에서 `transcript_path` 문자열 0건, `trace-*.jsonl` 의 SubagentStop 행은 페이로드 필드를 담지 않는다. 따라서 "런타임이 위치를 항상 보낸다"고 주장하지 않는다. 위치가 없는 정지는 REQ-SMA-002 예외에 따라 관측에서 빠지며(`unknown` 으로도 기록되지 않음), 이것이 잔여 위험이다. 측정 경로와 원문은 progress.md §E.2 에 있다.
 
 ---
 
@@ -155,10 +157,10 @@ M1c worktree slug dirs: 363
 ### §C.1 서빙 모델 관측
 
 - **REQ-SMA-001** (Ubiquitous) — The served-model observer shall derive the served set of a subagent solely from the `.message.model` values of `type=="assistant"` rows in that subagent's own transcript, excluding empty values, absent fields, and the `<synthetic>` marker; it shall locate that transcript from the hook input's `agent_transcript_path`, falling back to `subagents/agent-<agent_id>.jsonl` under the directory named by the hook input's `transcript_path` with its `.jsonl` suffix removed, and shall read the declared model from the sibling `agent-<agent_id>.meta.json`.
-- **REQ-SMA-002** (Event-driven) — **When** a subagent stops, the SubagentStop hook shall append exactly one served-observation row to `.moai/logs/agent-model-audit.jsonl` carrying the session id, the agent id, the agent type, the declared model, the resolved model, the served set, the served verdict, the self-reported model, and a source marker that distinguishes it from the PreToolUse row.
+- **REQ-SMA-002** (Event-driven) — **When** a subagent stops, the SubagentStop hook shall append one served-observation row per SubagentStop event to `.moai/logs/agent-model-audit.jsonl` carrying the session id, the agent id, the agent type, the declared model, the resolved model, the served set, the served verdict, the self-reported model, and a source marker that distinguishes it from the PreToolUse row. Exception: a SubagentStop input that carries no transcript location — neither `agent_transcript_path` nor the pair `transcript_path` and `agent_id` — identifies no subagent run and is not observed: the hook shall append no row for it and emit no warning for it (REQ-SMA-005 does not apply). An input that carries a location whose file is missing or unreadable is observed and falls under REQ-SMA-004.
 - **REQ-SMA-003** (Ubiquitous) — The served-model observer shall compute the resolved model through the same profile resolver and the same configuration provider the PreToolUse agent-model guard uses (active profile and per-agent overrides included), and shall classify each observation as `ok` when every member of the served set matches the expected model, `served_drift` when any member does not, and `unmapped` when the agent has neither a declared model nor a profile mapping; a served model shall match an expected model when the two are equal ignoring case, or when the expected model is a bare family alias and the served model is a model identifier of that family.
 - **REQ-SMA-004** (Event-driven) — **When** the transcript is absent or unreadable, the transcript holds no assistant row with a non-empty, non-`<synthetic>` model value, reading the transcript exceeds the observer's bounded read budget, or no declared model exists and the configuration provider yields no configuration, the served-model observer shall record the verdict `unknown` and shall not record `ok`.
-- **REQ-SMA-005** (Event-driven) — **When** a served verdict is `served_drift` or `unknown`, the SubagentStop hook shall emit a non-blocking warning naming the agent type, the expected model, and the served set.
+- **REQ-SMA-005** (Event-driven) — **When** a served verdict is `served_drift` or `unknown`, the SubagentStop hook shall emit a non-blocking warning naming the agent type, the expected model, and the served set; this includes the `unknown` verdict recorded when a transcript location is present but its file is missing or unreadable, and excludes the no-location input excepted in REQ-SMA-002.
 - **REQ-SMA-006** (Unwanted) — The served-model observation shall not return a block decision to the subagent, shall not fail or delay the hook on an observation error, and shall not modify or remove any existing row of the agent-model audit log.
 
 ### §C.2 게이트 감사관 판정 채택 거부 (opt-in)
@@ -173,7 +175,7 @@ M1c worktree slug dirs: 363
 
 ### §C.3 사후 스캔
 
-- **REQ-SMA-014** (Event-driven) — **When** `moai doctor` runs, a read-only diagnostic shall scan subagent transcripts under every Claude configuration base the auto-memory resolver considers, within every project directory whose name equals the slug of the primary checkout, begins with that slug followed by `--claude-worktrees-`, or equals the slug of a path listed by `git worktree list`; it shall classify each per REQ-SMA-003 and REQ-SMA-004, report the number of transcripts swept, the bases and slugs searched, the count per verdict, and every gate-auditor run whose verdict is `served_drift` or `unknown`; a sweep that finds no transcript shall report an informational status stating a swept count of zero and never an `ok` status; and the diagnostic shall not write to the audit log, the audit store, or any transcript, nor change doctor's exit status on account of any served-model finding.
+- **REQ-SMA-014** (Event-driven) — **When** `moai doctor` runs without naming this diagnostic, the doctor shall report a single informational row for the `Served Model` check whose message reads `run with --check "Served Model"`, and shall not scan any transcript; **when** `moai doctor --check "Served Model"` runs, a read-only diagnostic shall scan subagent transcripts under every Claude configuration base the auto-memory resolver considers, within every project directory whose name equals the slug of the primary checkout, begins with that slug followed by `--claude-worktrees-`, or equals the slug of a path listed by `git worktree list`; it shall classify each per REQ-SMA-003 and REQ-SMA-004, report the number of transcripts swept, the bases and slugs searched, the count per verdict, and every gate-auditor run whose verdict is `served_drift` or `unknown`; a sweep that finds no transcript shall report an informational status stating a swept count of zero and never an `ok` status; and the diagnostic shall not write to the audit log, the audit store, or any transcript, nor change doctor's exit status on account of any served-model finding.
 
 ### §C.4 감사관 자기 보고
 
@@ -186,6 +188,7 @@ M1c worktree slug dirs: 363
 
 - **fail-open**: 관측 경로의 모든 실패는 조용히 계속한다 — REQ-SMA-006. 단 판정 값은 `unknown` 으로 남아 성공으로 위장되지 않는다 — REQ-SMA-004.
 - **시간 상한**: SubagentStop 훅 래퍼 timeout 은 5초다(`internal/template/templates/.claude/settings.json.tmpl:217`). 관측은 제한된 읽기 예산 안에서 끝나야 하며 예산 초과는 `unknown` 이다 — REQ-SMA-004. 실측 트랜스크립트 최대 크기는 3.4MB 급이다(판정서 세션 `d46e0166`).
+- **doctor 비용**: 사후 스캔은 머신의 서브에이전트 트랜스크립트 전부를 읽는다. 이 머신(약 2.3k개, 약 3.8GB)에서 한 번에 5.7초(워커 4개)–10.2초(순차)가 걸려 기본 `moai doctor` 에 넣지 않고 `--check "Served Model"` 명시 호출 전용으로 둔다 — REQ-SMA-014. 수치 원문은 progress.md §E.2.
 - **템플릿 중립성**: `internal/template/templates/**` 에 들어가는 문구에는 SPEC ID·카드 ID·날짜·내부 경로를 넣지 않는다.
 - **프로그래밍 언어 중립성**: 감사관 정의에 추가되는 문구는 특정 프로그래밍 언어를 전제하지 않는다.
 - **Tier 판정**: REQ 16 · AC 16 으로 Tier M 예산 안이다. 변경 파일 수는 Tier M 대역(5-15)을 넘는 18개 안팎이지만, 그중 C3 2개는 기계 방출물이고 C1/C2 4개와 템플릿·로컬 workflow.yaml 2개는 같은 한 줄 결정의 미러다. 판단이 들어가는 독립 편집 단위는 hook·auditreceipt·config·cli 4개 패키지로 Tier M 범위라서 Tier L 로 올리지 않았다.

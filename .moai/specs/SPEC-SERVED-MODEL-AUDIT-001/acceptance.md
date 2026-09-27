@@ -26,7 +26,7 @@
 | AC-SMA-008 | REQ-SMA-011 | 해제는 kind 한정, Kind 부재 레코드는 receipt 로 취급, 상호 덮어쓰기 없음 |
 | AC-SMA-009 | REQ-SMA-013 | 서빙 게이트 ON · codex 게이트 미선언 → 영수증 가드 비활성 유지 |
 | AC-SMA-010 | REQ-SMA-007 | 설정 기본값 OFF · 템플릿 false · 로컬 true |
-| AC-SMA-011 | REQ-SMA-014 | doctor 사후 스캔: 워크트리 slug 포함·빈 스캔 비-ok·읽기 전용·종료 코드 불변 |
+| AC-SMA-011 | REQ-SMA-014 | doctor 사후 스캔: 기본 실행은 안내 info 행만·명시 `--check` 에서만 스캔·워크트리 slug 포함·빈 스캔 비-ok·읽기 전용·종료 코드 불변 |
 | AC-SMA-012 | REQ-SMA-014 | 새 doctor 점검 이름의 binary_lag 허용 목록 등록 |
 | AC-SMA-013 | REQ-SMA-015 | 감사관 정의 C1·C2·C3 가 보고서 파일과 최종 메시지 첫 줄 요구 |
 | AC-SMA-014 | REQ-SMA-016 | 자기 보고는 `last_assistant_message` 첫 줄에서 읽어 기록, 판정은 바꾸지 않음 |
@@ -75,6 +75,13 @@ go test ./internal/hook/ -run '^TestServedModel_ResolvedFromActiveProfile$' -cou
 
 ```bash
 go test ./internal/hook/ -run '^TestServedModel_SubagentStopRecord$' -count=1 -v
+```
+
+- **위치 없는 입력 예외(REQ-SMA-002)**: 트랜스크립트 위치가 전혀 없는 입력(`agent_transcript_path` 없음, `transcript_path`+`agent_id` 없음)은 행도 경고도 내지 않는다. 이 무출력은 기존 영수증 가드 테스트가 수정 없이 요구하며 그 통과가 증거다 — 두 테스트의 `stopInput` 은 위치 필드를 담지 않는다. 위치는 있으나 파일이 없는 경우는 AC-SMA-005 (b) 가 `unknown` + 경고로 판정한다.
+
+```bash
+go test ./internal/hook/ -run '^TestAuditReceiptGuard_NonRequiredTreesAreInert$' -count=1 -v
+go test ./internal/hook/ -run '^TestSubagentStop_ReentryWarnsAcceptanceClearsRoleFailIsInert$' -count=1 -v
 ```
 
 ### AC-SMA-005 — 게이트 OFF: 경고만
@@ -146,9 +153,17 @@ go test ./internal/template/... -count=1
 - **When** 점검 함수를 실행하면
 - **Then** (a) 상태 warn, 메시지에 swept 4, 검색한 기준·slug 목록, verdict 별 개수(ok 1 / served_drift 2 / unknown 1)와 세 감사관 실행(워크트리 slug 건 포함)이 나열되고 `-x-other` 건은 세지 않음 · (b) 상태는 `ok` 가 아닌 info 이며 메시지에 swept 0 과 검색한 기준·slug 가 있음. 두 행 모두 실행 전후 픽스처 트리와 감사 로그의 바이트가 같고, 이 점검 결과로 doctor 종료 코드가 바뀌지 않음(같은 테스트가 doctor 진입 함수의 종료 코드를 대조군과 비교).
 
+- **Given** (c) 기본 doctor 실행(점검 이름 없음)과 (d) 다른 점검 이름(`Git`)을 지정한 실행, 그리고 양성 대조 (e) `--check "Served Model"` 실행
+- **When** doctor 항목 함수를 각 필터로 실행하면
+- **Then** (c)(d) 상태 info, 메시지는 정확히 `run with --check "Served Model"` 이고 `swept` 가 들어 있지 않음(스캔하지 않음) · (e) 메시지에 `swept` 가 있음(스캔이 실제로 돎).
+
 ```bash
 go test ./internal/cli/ -run '^TestServedModelCheck_Sweep$' -count=1 -v
+go test ./internal/cli/ -run '^TestServedModelCheck_DefaultRunShowsHintOnly$' -count=1 -v
 ```
+
+- 스캔 행 (a)(b) 는 `TestServedModelCheck_Sweep`, 기본 실행 행 (c)(d)(e) 는 `TestServedModelCheck_DefaultRunShowsHintOnly` 가 판정한다. §A 규약 3 의 “AC 하나에 최상위 테스트 하나” 에 대한 이 AC 한정 예외다 — run 단계에서 명시 호출 전용 결정이 추가되며 표면이 둘로 나뉘었다. 두 명령 모두 PASS 여야 AC PASS.
+- 명시 호출 전용인 이유: 기본 실행에 스캔을 넣으면 이 머신(트랜스크립트 약 2.3k개)에서 doctor 한 번에 5.7–10.2초가 더해진다.
 
 ### AC-SMA-012 — binary_lag 허용 목록 등록
 

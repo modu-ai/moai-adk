@@ -51,7 +51,8 @@
 - **기준 디렉터리**: `internal/escalation/roots.go:35` `memoryRoots` 의 기준 집합(`$CLAUDE_CONFIG_DIR`, `~/.claude`). 비공개이므로 기준 계산을 export 함수로 끌어내 공유한다.
 - **slug 열거 규칙**(REQ-SMA-014): 각 기준의 `projects/` 아래 디렉터리 중 이름이 ① primary 체크아웃 slug 와 같음, ② `<primary slug>--claude-worktrees-` 로 시작함, ③ `git worktree list --porcelain` 이 나열한 경로의 slug 와 같음 — 셋 중 하나를 만족하는 것. slug 계산은 `escalation.MemorySlug`(`roots.go:21`) 한 곳만 쓴다. primary 는 `canonicalProjectRoot` 로 얻는다(워크트리에서 doctor 를 돌려도 같은 집합). ②는 §A.2 실측에서 363개 slug 디렉터리가 이 모양임을 확인한 규칙이고, ③은 L2 워크트리처럼 다른 접두를 가진 살아 있는 트리를 덮는다. 둘 다에 없는 과거 slug 는 Out of Scope.
 - 트랜스크립트: 각 slug 아래 `*/subagents/agent-*.jsonl`. 분류 로직은 SubagentStop 과 **한 구현**을 공유한다(hook 패키지 export 함수). 해석 모델은 doctor 가 적재한 프로젝트 설정으로 계산한다.
-- 출력: 상태는 발견 시 warn, 발견 없음 ok, **스캔 대상 0개면 info**(ok 아님). 메시지는 항상 swept 개수와 검색한 기준·slug 를 담는다. 읽기 전용이며 doctor 종료 코드를 바꾸지 않는다.
+- **명시 호출 전용(run 단계 결정)**: 기본 `moai doctor` 는 이 점검 자리에 info 행 1개(`run with --check "Served Model"`)만 내고 스캔하지 않는다. 스캔은 `moai doctor --check "Served Model"` 에서만 돈다(`servedModelDoctorEntry`, `internal/cli/doctor_served_model.go`). 기본 실행에 넣으면 이 머신(트랜스크립트 약 2.3k개)에서 doctor 한 번에 5.7–10.2초가 더해지기 때문이다. 점검 이름은 `moaiChecks` 에 계속 등록되므로 `namesAddedAfterBaseline` 등록은 그대로 필요하다.
+- 출력(명시 호출 시): 상태는 발견 시 warn, 발견 없음 ok, **스캔 대상 0개면 info**(ok 아님). 메시지는 항상 swept 개수와 검색한 기준·slug 를 담는다. 읽기 전용이며 doctor 종료 코드를 바꾸지 않는다.
 - **[HARD] 점검 이름을 `internal/cli/binary_lag_test.go:198` `namesAddedAfterBaseline` 에 `"servedModelCheckName": true` 로 등록한다.** 누락 시 `TestBinaryLag_DoctorCheckNameSetIsUnchanged` 가 CI 에서 붉어진다.
 
 ### D6. 설정 키 — 형제 키 `workflow.served_model_gate.enabled`
@@ -124,7 +125,7 @@ acceptance.md 의 AC 별 명령이 권위다. 위 목록은 묶음 실행용 요
 
 ### M5 — 사후 스캔 doctor 점검 (Priority Medium)
 
-- D5 전부. 테스트 `TestServedModelCheck_Sweep`(AC-SMA-011).
+- D5 전부. 테스트 `TestServedModelCheck_Sweep`·`TestServedModelCheck_DefaultRunShowsHintOnly`(AC-SMA-011).
 - `namesAddedAfterBaseline` 등록 후 `go test ./internal/cli/ -run '^TestBinaryLag_.*$' -count=1 -v`(AC-SMA-012).
 
 ### M6 — 감사관 자기 보고 첫 줄 (Priority Medium)
