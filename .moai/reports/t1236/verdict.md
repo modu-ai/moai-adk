@@ -289,3 +289,4 @@ develop `e9577de4f` CI run 36333964365 적색(Test ubuntu + Race) 두 갈래 수
 - `go test ./internal/skills/... ./internal/template/...` → exit 0
 - `MOAI_GR_BASE=5f5840ae4 go test -v -run TestContractMode ./internal/template/` → PASS 40, FAIL 1(`TestContractModeChangeSetAllowlist/tree`): 남은 6경로는 base 이후 다른 카드 변경 — t1286 codemaps 3, t1237 closure 2, t1225 codexadapter 1. 이 수리 경로는 0.
 - `golangci-lint` v2.1.6 → 0 issues; `make agents-emit-check commands-emit-check` → ok
+- CI 경로 확인: `MOAI_GR_BASE` 미설정(CI 와 같은 조건)에서 `go test -v -run TestContractModeChangeSetAllowlist ./internal/template/` → `--- SKIP: TestContractModeChangeSetAllowlist/tree` ("MOAI_GR_BASE is not set"), falsifier 하위 테스트만 PASS. 즉 이 base-ref 검사는 CI 에서 돌지 않는다 — 수동 수용 실행에서만 판정되며, base 이후 타 카드 경로로 적색이 되는 것은 F9 부채와 같은 축.
