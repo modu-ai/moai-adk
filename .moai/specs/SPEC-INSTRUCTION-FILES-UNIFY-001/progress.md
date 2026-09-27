@@ -416,4 +416,43 @@ blockers_for_manager_spec:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-27T14:41:17Z
+sync_commit_sha: pending-backfill-sync   # backfilled in the follow-up commit (f385b6255 convention)
+sync_status: complete-pending-ci         # AC-IFU-025's CI clause is still unobserved
+b12_self_test_a: "grep -c 'SPEC-INSTRUCTION-FILES-UNIFY-001' CHANGELOG.md -> 0 before emission (no duplicate)"
+b12_self_test_b: "live AC ids = 20 (grep -oE '^\\*\\*AC-IFU-[0-9]+\\*\\*' acceptance.md | sort -u | wc -l -> 20; the bare-token regex returns 24 because AC-IFU-011/013/014/015 appear only as [REF] citations to SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001)"
+b12_self_test_c: "every path cited in the CHANGELOG entry verified with ls in this run (12 paths, all present)"
+changelog_entry_position: "[Unreleased] ### Changed, first entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (updated: 2026-09-27, unchanged value)"
+  plan_md: "n/a (stateless artifact, no status field)"
+  acceptance_md: "n/a (stateless artifact, no status field)"
+docs_obligations:
+  changelog: done
+  docs_site_4_locale: "out of scope - carved to SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001 (card t1259), spec.md §D"
+  readme: "none owed by this SPEC"
+mx_validation:
+  scope: "Go files touched in c501bd1da..HEAD"
+  result: "no new exported function introduced; existing @MX:ANCHOR on secureCodexInstructionContract (internal/cli/codex_contract.go) retained and still accurate; no tag added or removed"
+```
+
+### Gaps (not observed)
+
+1. **M2 deviation.** The link-test inversion planned for M2 landed in M3, because the generated
+   `CLAUDE.md` body change had to land first. Lead-approved; plan corrected in dbec65279.
+2. **Contract frozen-set debt.** The frozen set now includes `**/AGENTS.md` and `**/AGENTS.local.md`
+   (6d07b91c8, lead-approved). This diverges from the set stated by SPEC-AUTONOMY-CONTRACT-001
+   AC-CONTRACT-018. That acceptance.md is NOT amended here; the lead tracks the divergence.
+3. **AC-IFU-025 CI clause.** Unobserved until `origin/develop` CI runs on the merged head.
+4. **Installed-binary lint coverage.** The installed `moai` predates the VacuousTestAssertion rule,
+   so `moai spec lint` via PATH does not run it. A rebuilt binary (run phase) reported 5 advisory
+   warnings, none from criterion commands; that figure is carried from the run phase, not
+   re-measured in this sync.
+
+### Residual risk
+
+- **Armed-card snapshot.** An old-set signed contract still verifies (`signed-valid`, same digest —
+  `internal/contract/frozen_compat_test.go`), but an already-armed card keeps its arming snapshot
+  and does not detect `AGENTS*.md` writes until re-armed. Established by a one-off probe
+  (`.moai/reports/t1243/m3/m2-followup-escalation-probe.txt`), not a committed test.
