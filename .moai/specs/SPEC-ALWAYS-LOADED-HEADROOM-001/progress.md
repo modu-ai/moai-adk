@@ -156,7 +156,7 @@ run 레인: manager-develop (cycle_type=tdd — 하네스 테스트 1개, 나머
 
 ```yaml
 run_complete_at: 2026-09-27
-run_commit_sha: pending-backfill-run
+run_commit_sha: 6a03d5272   # 보충(sync-audit F5)
 run_status: audit-ready
 ac_pass_count: 10
 ac_fail_count: 0
@@ -178,7 +178,7 @@ operator_gate_pending: "동결 해제 여부 — 리드가 AskUserQuestion 으�
 
 ```yaml
 sync_complete_at: 2026-09-27
-sync_commit_sha: pending-backfill-sync   # 이 sync 커밋 자신 — 자기 SHA 는 커밋 안에 적을 수 없다
+sync_commit_sha: fcae46594   # 보충(sync-audit F5) — sync 커밋 자신은 자기 SHA 를 담을 수 없어 후속 커밋에서 채웠다
 sync_status: audit-ready
 run_head_consumed: 6a03d5272
 b12_self_test_a: "grep -c 'SPEC-ALWAYS-LOADED-HEADROOM-001' CHANGELOG.md → 0 (중복 없음; 단 항목은 추가하지 않음 — 아래)"
