@@ -111,6 +111,37 @@ Run-entry debt resolution:
 - **W3** — carried to M4 (whole `"model_policy": {…}` block per locale).
 - **V3 / V4** — carried to M2 / the AC-AMI-006 fixture.
 
+### M1 — retention seams, characterisation, strip step (2026-09-27)
+
+Commits: `152ba5545` (characterisation, test-only), `dc51913ee` (roster SSOT), `267a484ba` (D5),
+`0d19b6107` (strip step). Raw outputs under `.moai/state/verify/t1246/` (local).
+
+| Unit | RED evidence | GREEN evidence |
+|---|---|---|
+| Characterisation (REQ-AMI-012/017/018/019) | n/a — pins current behaviour; recorded before any removal | `TestCharacterize_{LaunchEffortFromPreferenceProfile,GLMAliasMapping,GLMSessionReasoning,AuditPinPrecedenceAndBackendDefault}` (cli) and `TestCharacterize_{PreferenceProfileCreateRenameDelete,MainSessionEffortSaveWritesPreferencesOnly}` (web): PASS |
+| Roster SSOT (REQ-AMI-020, D4) | `undefined: RetainedAgents` (build failed); rosterguard sweep `undeclared roster listing: internal/template/retained_agents.go` | `TestRetainedAgents_IsTheModelFreeRosterSSOT` PASS; sweep failure gone; registry row `retained-agent-roster` added, `profile-matrix-order` asserted against the SSOT |
+| D5 pin > backend default (REQ-AMI-019) | `codex task = {Model:gpt-5-codex Effort:high}, want the zero value`; `glm task default = "glm-4.6", want "glm-5.3-flash"` | `Test{Codex,GLM}Resolution_IgnoresPerAgentLLMCells` PASS; `ResolveAgentModelEffort` gone from `cli/{glm_task,mcp_codex,mcp_glm}.go` and their tests |
+| Strip step (REQ-AMI-014, D14 a/b/c) | `undefined: StripRetiredModelKeys` / `undefined: stripRetiredModelConfig … confirmViaPreviewFn`; mutation replays: flow-mapping fix removed → `stripped llm.yaml no longer parses`; shipped gate removed → `RetiredModelKeysPresent with every key shipped = true` | 10 template tests + 7 cli tests PASS (report once as removed, backup holds originals, version-match own backup, cancel byte-identical via `confirmViaPreviewFn`, host placement, clean-reinstall filtered advisory) |
+
+Design deviation recorded for manager-spec: the strip leaves a retired key in place while the
+embedded template still ships it (`template.ShippedRetiredModelKeys`). Without that gate, every
+update would strip `profile`/`agent_overrides`/… that code in the same build still reads and
+that the next deploy re-adds; the existing llm-preserve tests (AC-LCP-001/002/005) fail on it.
+Today only `workflow.agent_model_guard` (never shipped in YAML) is stripped; the rest start
+stripping automatically when M5 removes them from the template.
+
+Package verification (env-scrubbed, one compound call each):
+
+| Command | Result |
+|---|---|
+| `go test ./internal/template/... -count=1` | exit 0 (3 packages ok) |
+| `go test ./internal/web/... -count=1 -timeout 25m` | exit 0 |
+| `go test ./internal/cli/... -count=1 -timeout 25m` | exit 1 — only `TestCodexAuditMCPTool` and `TestMCPToolCatalogueFiguresMatchRegistry`, both reading `moai-mcp-tools.md` (not touched by this card; pre-existing from the absorbed develop) |
+| `go test ./internal/harness/rosterguard/` | exit 1 — `TestNumeralResidualArithmeticCloses`, `TestNumeralBreadthSetEqualsTheDeclaredUnion`, `TestRegisteredSitesMatchTheirDeclaredAxis` (CLAUDE.md §4 CountPattern); identical failing set on HEAD before the roster edit — pre-existing |
+| `golangci-lint run` (v2.1.6) on cli, template, rosterguard, web | `0 issues.` |
+| `go build ./...` | ok |
+| `git diff --name-only 5509ea71e HEAD -- internal/hook internal/config` | 0 files — t1282-frozen surfaces untouched |
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
