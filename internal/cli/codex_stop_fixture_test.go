@@ -5,9 +5,7 @@ package cli
 // and the AC-HPR-016 timing leg.
 
 import (
-	"bufio"
 	"context"
-	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -156,23 +154,9 @@ func claudeDecision(out *hook.HookOutput) codexadapter.Decision {
 	return codexadapter.DecisionAllow
 }
 
-func sinkRecords(t *testing.T, root string) []codexadapter.Discard {
-	t.Helper()
-	fh, err := os.Open(filepath.Join(root, codexadapter.DiagnosticSinkRel))
-	if err != nil {
-		return nil
-	}
-	defer func() { _ = fh.Close() }()
-	var out []codexadapter.Discard
-	sc := bufio.NewScanner(fh)
-	for sc.Scan() {
-		var d codexadapter.Discard
-		if json.Unmarshal(sc.Bytes(), &d) == nil {
-			out = append(out, d)
-		}
-	}
-	return out
-}
+// sinkRecords now resolves to the package-level helper in
+// hook_stop_parse_cap_test.go (t1272): same signature, and it fails the test
+// on an unparseable sink line instead of silently skipping it.
 
 // fakeCodexVersion pins the reviewer version both the receipt producer and the
 // Stop chain read, so a test does not spawn a real codex binary.
