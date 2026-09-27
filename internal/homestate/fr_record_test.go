@@ -131,7 +131,7 @@ func TestFR_RecordUnavailableLogAndReconcile(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	ctx := context.Background()
-	if entries, err := ReadRecordUnavailable(root, ""); err != nil || len(entries) != 0 {
+	if entries, _, err := ReadRecordUnavailable(root, ""); err != nil || len(entries) != 0 {
 		t.Fatalf("empty log = %v err=%v", entries, err)
 	}
 	for _, e := range []RecordUnavailableEntry{
@@ -142,7 +142,7 @@ func TestFR_RecordUnavailableLogAndReconcile(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if entries, _ := ReadRecordUnavailable(root, frRun); len(entries) != 1 || entries[0].CardID != "lost" || entries[0].ID == "" {
+	if entries, _, _ := ReadRecordUnavailable(root, frRun); len(entries) != 1 || entries[0].CardID != "lost" || entries[0].ID == "" {
 		t.Fatalf("run-filtered read = %+v", entries)
 	}
 	// A successful write for the run reconciles its entry, and only its entry.
@@ -153,10 +153,10 @@ func TestFR_RecordUnavailableLogAndReconcile(t *testing.T) {
 	if len(drift) != 1 || !strings.Contains(drift[0], `"card_id":"lost"`) || !strings.Contains(drift[0], `"factory_state":"absent"`) {
 		t.Fatalf("record.drift = %v", drift)
 	}
-	if entries, _ := ReadRecordUnavailable(root, frRun); len(entries) != 0 {
+	if entries, _, _ := ReadRecordUnavailable(root, frRun); len(entries) != 0 {
 		t.Fatalf("run entry still unreconciled: %+v", entries)
 	}
-	if entries, _ := ReadRecordUnavailable(root, "other"); len(entries) != 1 {
+	if entries, _, _ := ReadRecordUnavailable(root, "other"); len(entries) != 1 {
 		t.Fatalf("other run's entry was touched: %+v", entries)
 	}
 	if _, err := db.RecordPicked(ctx, frRun, "next2", CardFields{}, "assign", frNow.Add(time.Second)); err != nil {
@@ -173,8 +173,56 @@ func TestFR_RecordUnavailableLogAndReconcile(t *testing.T) {
 	if _, err := db.RecordPicked(ctx, frRun, "next3", CardFields{}, "assign", frNow); err != nil {
 		t.Fatalf("write with a corrupt log: %v", err)
 	}
-	if _, err := ReadRecordUnavailable(root, ""); err == nil {
-		t.Fatal("a corrupt log read without error")
+	// F2: a torn line is a warning, not a read failure.
+	if _, skipped, err := ReadRecordUnavailable(root, ""); err != nil || skipped != 1 {
+		t.Fatalf("corrupt log read = skipped %d err %v, want skipped 1 err nil", skipped, err)
+	}
+}
+
+// F2 (Opus sync-audit): one torn line in the unavailable log must not blind
+// the report — REQ-FR-025 says status reports, it does not fail, and the
+// valid entries still reconcile. The torn line is skipped and counted so the
+// caller can surface a warning.
+func TestFR_UnavailableTornLineSkippedAndReported(t *testing.T) {
+	root := factorySandbox(t)
+	if err := AppendRecordUnavailable(root, RecordUnavailableEntry{ID: "ok", RunID: frRun, CardID: "lost", Lane: "worker-2", Error: "boom"}); err != nil {
+		t.Fatal(err)
+	}
+	path, err := RecordUnavailablePath(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString(`{"id":"torn","run_id":"fr`); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	entries, skipped, err := ReadRecordUnavailable(root, "")
+	if err != nil {
+		t.Fatalf("one torn line made the whole read fail: %v", err)
+	}
+	if len(entries) != 1 || entries[0].ID != "ok" {
+		t.Fatalf("valid entries = %+v", entries)
+	}
+	if skipped != 1 {
+		t.Fatalf("skipped = %d, want 1", skipped)
+	}
+	// The valid entry still reconciles despite the torn line.
+	db, err := OpenFactory(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	if _, err := db.RecordPicked(context.Background(), frRun, "next", CardFields{}, "assign", frNow); err != nil {
+		t.Fatal(err)
+	}
+	if drift := frEvents(t, db, "record.drift"); len(drift) != 1 || !strings.Contains(drift[0], `"card_id":"lost"`) {
+		t.Fatalf("record.drift = %v", drift)
 	}
 }
 

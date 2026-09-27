@@ -44,7 +44,7 @@ func TestFR_UnavailableLogAppendSurvivesRewrite(t *testing.T) {
 	if err := <-appendErr; err != nil {
 		t.Fatalf("concurrent append: %v", err)
 	}
-	entries, err := readRecordUnavailableFile(path)
+	entries, _, err := readRecordUnavailableFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestFR_UnavailableLogConcurrentAppendsNoLoss(t *testing.T) {
 		}
 	}
 	wg.Wait()
-	entries, err := readRecordUnavailableFile(path)
+	entries, _, err := readRecordUnavailableFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}

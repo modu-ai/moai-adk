@@ -178,6 +178,9 @@ type factoryCardView struct {
 type factoryStatusReport struct {
 	Run   string            `json:"run"`
 	Cards []factoryCardView `json:"cards"`
+	// UnavailableSkipped counts unparseable unavailable-log lines the reader
+	// skipped — reported as a warning, never a read failure (F2).
+	UnavailableSkipped int `json:"unavailable_skipped,omitempty"`
 	// Unavailable lists the dispatch mirror writes that failed and have not
 	// been reconciled by a later successful write (REQ-FR-025).
 	Unavailable []homestate.RecordUnavailableEntry `json:"unavailable"`
@@ -239,11 +242,12 @@ func newFactoryStatusCommand() *cobra.Command {
 			} else if !errors.Is(statErr, os.ErrNotExist) {
 				return fmt.Errorf("factory status: %w", statErr)
 			}
-			entries, err := homestate.ReadRecordUnavailable(root, report.Run)
+			entries, skipped, err := homestate.ReadRecordUnavailable(root, report.Run)
 			if err != nil {
 				return fmt.Errorf("factory status: %w", err)
 			}
 			report.Unavailable = append([]homestate.RecordUnavailableEntry{}, entries...)
+			report.UnavailableSkipped = skipped
 			if jsonOut {
 				enc := json.NewEncoder(cmd.OutOrStdout())
 				enc.SetIndent("", "  ")
@@ -286,6 +290,9 @@ func writeFactoryStatusText(w io.Writer, r factoryStatusReport) {
 	}
 	for _, e := range r.Unavailable {
 		_, _ = fmt.Fprintf(w, "%s run=%s card=%s lane=%s at=%s error=%s\n", factoryRecordUnavailableTag, e.RunID, e.CardID, e.Lane, e.At, e.Error)
+	}
+	if r.UnavailableSkipped > 0 {
+		_, _ = fmt.Fprintf(w, "%s warning: skipped %d unparseable line(s)\n", factoryRecordUnavailableTag, r.UnavailableSkipped)
 	}
 }
 

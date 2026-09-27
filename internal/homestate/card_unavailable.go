@@ -84,15 +84,19 @@ func AppendRecordUnavailable(root string, e RecordUnavailableEntry) error {
 	return f.Close()
 }
 
-func readRecordUnavailableFile(path string) ([]RecordUnavailableEntry, error) {
+// readRecordUnavailableFile parses the log line by line. A torn line is a
+// warning, not a failure (F2): it is skipped and counted, so one corrupt
+// append never blinds the report or the reconciliation (REQ-FR-025).
+func readRecordUnavailableFile(path string) ([]RecordUnavailableEntry, int, error) {
 	raw, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
+		return nil, 0, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	var out []RecordUnavailableEntry
+	skipped := 0
 	sc := bufio.NewScanner(bytes.NewReader(raw))
 	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
 	for sc.Scan() {
@@ -102,23 +106,26 @@ func readRecordUnavailableFile(path string) ([]RecordUnavailableEntry, error) {
 		}
 		var e RecordUnavailableEntry
 		if err := json.Unmarshal([]byte(line), &e); err != nil {
-			return nil, fmt.Errorf("parse %s: %w", path, err)
+			skipped++
+			continue
 		}
 		out = append(out, e)
 	}
-	return out, sc.Err()
+	return out, skipped, sc.Err()
 }
 
 // ReadRecordUnavailable returns the unreconciled entries of runID (every run
-// when runID is empty). It never writes.
-func ReadRecordUnavailable(root, runID string) ([]RecordUnavailableEntry, error) {
+// when runID is empty) plus the number of unparseable lines it skipped. It
+// never writes, and a torn line is reported through the skipped count rather
+// than failing the read (REQ-FR-025).
+func ReadRecordUnavailable(root, runID string) ([]RecordUnavailableEntry, int, error) {
 	path, err := RecordUnavailablePath(root)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	all, err := readRecordUnavailableFile(path)
+	all, skipped, err := readRecordUnavailableFile(path)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	var out []RecordUnavailableEntry
 	for _, e := range all {
@@ -126,7 +133,7 @@ func ReadRecordUnavailable(root, runID string) ([]RecordUnavailableEntry, error)
 			out = append(out, e)
 		}
 	}
-	return out, nil
+	return out, skipped, nil
 }
 
 // reconcileUnavailable appends one `record.drift` event per unreconciled log
@@ -136,9 +143,10 @@ func ReadRecordUnavailable(root, runID string) ([]RecordUnavailableEntry, error)
 // this write found it, or "absent".
 func (f *FactoryDB) reconcileUnavailable(ctx context.Context, tx *sql.Tx, runID string, now time.Time) (func(), error) {
 	path := filepath.Join(filepath.Dir(f.Path), recordUnavailableFile)
-	entries, err := readRecordUnavailableFile(path)
+	entries, _, err := readRecordUnavailableFile(path)
 	if err != nil || len(entries) == 0 {
-		// An unreadable log never blocks a factory-record write.
+		// An unreadable log never blocks a factory-record write. Torn lines
+		// are skipped by the reader, so valid entries still reconcile.
 		return nil, nil
 	}
 	ids := map[string]bool{}
@@ -190,7 +198,9 @@ func markRecordUnavailableReconciled(path string, ids map[string]bool) error {
 		return err
 	}
 	defer unlock()
-	entries, err := readRecordUnavailableFile(path)
+	// Torn lines the reader skipped drop out here: the rewrite is the one
+	// place the log self-heals.
+	entries, _, err := readRecordUnavailableFile(path)
 	if err != nil {
 		return err
 	}
