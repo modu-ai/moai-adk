@@ -126,7 +126,7 @@ func newTodoAutoDoneCmd() *cobra.Command {
 // facts every reader of the scan's output keys on.
 func todoAutoDoneLong(landedRef string) string {
 	return `Close queued and picked cards whose landing is EVIDENCED on ` + landedRef + ` —
-the step the LEAD runs immediately after the post-push remote-landing
+the step the LEADER runs immediately after the post-push remote-landing
 confirmation (git fetch origin develop + git rev-parse origin/develop).
 Lanes never run this scan: lanes never push, and a local merge is not a
 landing.

@@ -198,7 +198,7 @@ func newTodoCmd() *cobra.Command {
 
 The queue resolves against the PRIMARY checkout even when this command runs
 inside a linked worktree — one repository, one queue; a card worktree adds
-to and reads the same store the lead and the foreman loop see. A project
+to and reads the same store the leader and the foreman loop see. A project
 without git metadata uses the same project-keyed home layout. A backlog.json
 left at the former project-local path is NOT the queue — it is
 an export or a legacy leftover, and its contents can be arbitrarily stale.

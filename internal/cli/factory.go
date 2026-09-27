@@ -311,7 +311,7 @@ func refuseCodexLedRun(root, runID string) (err error) {
 	defer closeFactoryInto(&err, db, "factory state")
 	var backend string
 	if err := db.DB.QueryRowContext(context.Background(), `SELECT lead_backend FROM runs WHERE run_id=?`, runID).Scan(&backend); err != nil {
-		return fmt.Errorf("read factory run %s lead backend: %w", runID, err)
+		return fmt.Errorf("read factory run %s leader backend: %w", runID, err)
 	}
 	if backend != BackendCodex {
 		return nil

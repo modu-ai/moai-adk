@@ -155,6 +155,28 @@ Every new refusal test captured verbatim pre-implementation: `.moai/reports/t125
 | AC-RNC-016 | PASS | Built binary (`go build -o /tmp/... ./cmd/moai` at `5ee3d4dc3`+M2 working set): `moai cc --help` → contains `-f lane` ×7 and `-f lane-<n>` ×4, 0 matches of `-f worker`/`-f agent` (`.moai/reports/t1256/raw/cc-help-m2.txt`); `moai glm --help` → `-f lane` ×6, `lane-<n>` ×4, 0 forbidden (`.moai/reports/t1256/raw/glm-help-m2.txt`); usage error: `TestFactoryFlagUsageErrorVocabulary` (contains `lane`+`leader`, no `worker`, no `(?i)\blead\b` match) + `TestFactoryFlagUsageErrorAdvertisesLaneForms`; unit-level `TestLauncherHelpLaneVocabulary` green |
 | AC-RNC-021 | PASS | Built binary: `moai todo next --help` names the leader pick path and the lane `self-dispatch`, 0 matches of `lead session` (`.moai/reports/t1256/raw/todo-next-help-m2.txt`); unit-level `TestTodoNextHelpLeaderAndLanePromotion` green; pick-path guard check: `git diff b59a5d69c -- internal/cli/todo.go` → only the help text (M2) and the M1 owner-vocabulary line (`owner = kanban.RoleLead`) — no new or deleted call reading a role declaration or `MOAI_FACTORY_*` in the pick path |
 
+### M2 follow-up: `-k` help blocks and residual role-sense sweep (REQ-RNC-001)
+
+A post-AC residual sweep found role-noun `lead` in the user-facing `-k` help blocks that AC-RNC-016's `-f`-scoped assertions did not cover. Converted (user-facing Long/Short/usage-error strings only; code comments untouched per the M5 REQ-RNC-019 carve-out; `moai cg` mixed-backend strings untouched per M3):
+
+- `cc.go` / `glm.go` `-k` help blocks: `Enter as the LEAD of a kanban run` → `LEADER`; `The lead drives the whole chain` → `The leader drives`; examples `Kanban lead:` → `Kanban leader:` (cc :117-118, glm :120)
+- `kanban.go` `kanbanFlagUsageError`: `the plain kanban lead` → `the plain kanban leader`
+- `todo.go` parent Long: `the lead and the foreman loop` → `the leader and the foreman loop`
+- `todo_autodone.go` Long: `the step the LEAD runs` → `the step the LEADER runs`
+- `integration.go` Long: `announces its integration to the lead` → `to the leader`
+- `integration_settings_drift.go` report line: `report this to the lead` → `to the leader` (assertion in `integration_settings_drift_report_test.go` updated in the same edit)
+- `session_worktree_automerge.go` notice: `push remains the lead's explicit act` → `the leader's explicit act`
+- `update_destructive_registry.go`: `a lead-ratified disposition` → `a leader-ratified disposition`
+- `factory.go` error text: `read factory run %s lead backend` → `leader backend`
+
+**New evidence row (AC-RNC-016 extension — `-k` help blocks carry no `\blead\b`):**
+
+| Check | Command | Verbatim output |
+|---|---|---|
+| `-k`/full help `\blead\b` sweep | `go build -o /tmp/t1256-m2-moai4 ./cmd/moai && /tmp/t1256-m2-moai4 cc --help \| grep -icE '\blead\b'` (likewise `glm --help`, `todo --help`) | `0` / `0` / `0` (files: `.moai/reports/t1256/raw/cc-help-m2-followup.txt`, `glm-help-m2-followup.txt`); `-f lane`×7 / `-f lane-<n>`×4 present in cc help, ×6 / ×4 in glm help; `-f worker`/`-f agent` still 0; usage error smoke `moai cc -k=abc` prints `plain kanban leader` |
+
+Targeted tests re-run: `go test ./internal/cli/ -run 'TestACFB019\|TestLauncherHelpLaneVocabulary\|TestTodoNextHelpLeaderAndLanePromotion\|TestParseKanbanFlag\|TestRejectKanbanOnCG\|TestRejectFactoryOnCG\|TestIntegrationSettingsDrift\|TestTodoAutoDone\|TestCC\|TestGLM' -count=1` → `ok github.com/modu-ai/moai-adk/internal/cli 39.569s`; `golangci-lint run ./internal/cli/...` → `0 issues.`
+
 ### Coverage (E3, M2)
 
 | Package | M2 tip | M1 tip | merge-base | Delta |

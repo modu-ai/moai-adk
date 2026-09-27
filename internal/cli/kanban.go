@@ -36,7 +36,7 @@ const (
 // an invalid SUPPLIED value and the reference the help texts paraphrase.
 const kanbanFlagUsageError = "-k/--kanban takes a SPEC identifier (e.g. -k SPEC-X-001), " +
 	"a lane count of 1 or more (e.g. -k 4) for Factory Mode, " +
-	"or no argument for the plain kanban lead"
+	"or no argument for the plain kanban leader"
 
 // kanbanUnsupportedBackendSentinel is the machine-greppable marker on the
 // `moai cg` rejection. A mixed leader/teammate backend contradicts the

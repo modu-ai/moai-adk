@@ -63,10 +63,10 @@ Flags:
                                 replacing the current session (requires tmux)
 
 Kanban Mode:
-  -k, --kanban [SPEC-ID]       Enter as the LEAD of a kanban run. Seeds a
+  -k, --kanban [SPEC-ID]       Enter as the LEADER of a kanban run. Seeds a
                                 plan -> run -> sync chain in this
                                 session. The optional SPEC-ID ties the run to a
-                                SPEC. The lead drives the whole chain; three
+                                SPEC. The leader drives the whole chain; three
                                 companion sessions are launched by hand.
   -k --name <role>             Enter as a COMPANION of an existing kanban run.
                                 Joins the run without seeding a chain. The three
@@ -117,7 +117,7 @@ Examples:
   moai glm setup sk-xxx    # Save API key (one-time)
   moai glm                 # Launch with GLM backend
   moai glm -p work         # Use 'work' profile with GLM
-  moai glm -k              # Kanban lead on GLM: seeds the chain
+  moai glm -k              # Kanban leader on GLM: seeds the chain
   moai glm -k --name run           # Kanban companion on GLM (the GLM-recommended role)
   moai glm -f              # Factory leader on GLM: one lane (lane-1)
   moai glm -f lane         # Join the running factory as the next free lane (GLM backend)

@@ -126,7 +126,7 @@ func settingsDriftReportText(r kanban.SettingsDriftResult) string {
 		if r.Bypassed {
 			b.WriteString("  bypassed: --allow-settings-drift was given; the window was recorded anyway and the bypass is in the lock record\n")
 		}
-		b.WriteString("  report this to the lead with the preserved path and sha256. Nothing was restored, reverted or deleted; disposal is a human decision.\n")
+		b.WriteString("  report this to the leader with the preserved path and sha256. Nothing was restored, reverted or deleted; disposal is a human decision.\n")
 	}
 	return b.String()
 }

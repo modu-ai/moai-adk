@@ -300,7 +300,7 @@ func sessionExitAutoMerge(cfg *config.Config, wtPath string, cleanExit bool, out
 	// Success: name the resulting merge commit so the lead's batch-push flow
 	// can read what landed (spec.md §C — local/remote divergence is accepted;
 	// pushing remains the lead's explicit act).
-	autoMergeNoticef(out, "merged %s into %s as %s (local merge only — push remains the lead's explicit act)", branch, develop, autoMergeHeadShort(targetWt))
+	autoMergeNoticef(out, "merged %s into %s as %s (local merge only — push remains the leader's explicit act)", branch, develop, autoMergeHeadShort(targetWt))
 }
 
 // --- real implementations (overridable in tests via the seams above) ---

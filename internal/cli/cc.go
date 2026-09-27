@@ -53,10 +53,10 @@ Flags:
                                 via /chrome unless you pass --no-chrome)
 
 Kanban Mode:
-  -k, --kanban [SPEC-ID]       Enter as the LEAD of a kanban run. Seeds a
+  -k, --kanban [SPEC-ID]       Enter as the LEADER of a kanban run. Seeds a
                                 plan -> run -> sync chain in this
                                 session. The optional SPEC-ID ties the run to a
-                                SPEC. The lead drives the whole chain; three
+                                SPEC. The leader drives the whole chain; three
                                 companion sessions are launched by hand.
   -k --name <role>             Enter as a COMPANION of an existing kanban run.
                                 Joins the run without seeding a chain. The three
@@ -114,8 +114,8 @@ Examples:
   moai cc -w                           # Launch in auto-named isolated worktree
   moai cc -w feat-login --spawn        # Teammate session in a new tmux window
   moai cc -w develop --branch develop  # Integration worktree on the existing develop branch
-  moai cc -k                           # Kanban lead: seeds the plan->run->sync chain
-  moai cc -k SPEC-AUTH-001             # Kanban lead tied to SPEC-AUTH-001
+  moai cc -k                           # Kanban leader: seeds the plan->run->sync chain
+  moai cc -k SPEC-AUTH-001             # Kanban leader tied to SPEC-AUTH-001
   moai cc -k --name plan               # Kanban companion: joins as the plan lane
   moai cc -f                           # Factory leader: one lane (lane-1)
   moai cc -f lane                      # Join the running factory as the next free lane

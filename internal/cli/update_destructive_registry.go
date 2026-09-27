@@ -77,7 +77,7 @@ var destructiveTargetRegistry = []destructiveSite{
 			"backupThenRemove. The dangling branch has no target to lose; the live-directory " +
 			"branch removes the link only and never reads, walks, or backs up through it " +
 			"(REQ-CSL-003). The link itself is user state the run deliberately withdraws — " +
-			"a lead-ratified disposition (plan.md D-5) surfaced by a progress line naming " +
+			"a leader-ratified disposition (plan.md D-5) surfaced by a progress line naming " +
 			"the path and form, not by a backup.",
 	},
 	{
