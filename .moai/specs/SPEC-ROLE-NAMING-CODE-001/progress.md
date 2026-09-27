@@ -326,13 +326,115 @@ Verbatim, in `.moai/reports/t1256/raw/`:
 - Do NOT touch list honored: neither SPEC's spec.md/plan.md/acceptance.md bodies edited (t1245's SPEC text still names `worker` — its amendment is t1245's, reported by the lane); CHANGELOG/codemaps untouched; no doctor check added; M5's comment/identifier sweep NOT started beyond this constant.
 - `gofmt -l` over the four touched packages flags `internal/cli/factory_test.go` — pre-existing drift in a file M4 does not touch (unmodified in `git status`); left alone per scope discipline.
 
+## M5 — mechanical rename and guards (Priority Low)
+
+### M5 pre-flight (delegation §C)
+
+- `git rev-parse --short HEAD` → `a40d8dcc7` (expected value, matched).
+- `grep -rn 'manager-lead' internal cmd pkg --include='*.go' | wc -l` → **106** (baseline recorded; AC-RNC-017 post-change equality below).
+- `git diff --stat b59a5d69c -- internal/hook/subagent_start.go internal/sessionmsg internal/cli/agentlint internal/hook/session_end.go internal/tmux internal/cli/codex_role_fingerprint.go internal/cli/worktree/guard.go` → empty output (exit 0) — the unrelated-sense surface is untouched at entry.
+- Pre-M5 census re-measure: 16,992 rows at `.moai/reports/t1256/raw/census-prem5.tsv` (plan time 16,608 → post-absorb 16,124 → post-M1..M4 16,992; the rise is the M1–M4 rejection/notice/guard code itself, counted before its own vocabulary landed).
+
+### M5 scope delivered
+
+1. **Role-sense identifier + comment rename (REQ-RNC-019, O7)** — 105 files, 883 insertions / 864 deletions (commit `6be449bc8`). Compiler-checked renames (all callers updated, `go build ./...` + `go vet` green): `RoleLead`→`RoleLeader`, `LeadLabel`→`LeaderLabel`, `LeadNumberLabel`→`LeaderNumberLabel`, `SplitLeadLabel`→`SplitLeaderLabel`, `IsLegacyLeadLabel`→`IsLegacyLeaderSpelling` (+`legacyLeaderSpelling` const), `FactoryWorkerEntry`→`FactoryLaneEntry`, `NewFactoryLaneEntry`, `NextFactoryLaneNumber(ForTest)`, `ClaimFactoryWorker(Name)`→`ClaimFactoryLane(Name)`, `resolveFactoryWorkerName`→`resolveFactoryLaneName`, `FactoryAgentLabel`→`FactoryLegacyAgentLabel`, `SplitFactoryLegacyAgentLabel`, `LeadPeerIdentity`→`LeaderPeerIdentity`, `LeadIdentityLookup(For)`→`LeaderIdentityLookup(For)`, `LeadRecordAbsent(For)`→`LegacyPeerRecordAbsent(For)`, `parseLeadLabel`→`parseLeaderLabel`, `resolveLeadName`→`resolveLeaderName`, `leadRunID`→`leaderRunID`, `appendLeadName`→`appendLeaderName`, `exportLeadSessionName`→`exportLeaderSessionName`, `noteLegacyLeadRegistryEntries`→`noteLegacyLeaderRegistryEntries`, `requireLeadRole`→`requireLeaderRole`, `factoryBranchLead/Worker`→`factoryBranchLeader/Lane`, `kanbanBranchLead`→`kanbanBranchLeader`, `factoryFlagParse{Workers,WorkerNumber,WorkerLabel,WorkerRole}`→`{Lanes,LaneNumber,LaneLabel,LaneRole}`, `kanbanEntryParse.FactoryWorkers`→`FactoryLanes`, `enterFactoryLeadMode`→`enterFactoryLeaderMode`, `enterFactoryWorkerMode`→`enterFactoryLaneMode`, `factoryLeadNotice`→`factoryLeaderNotice`, `factoryWorkerNotice`→`factoryLaneNotice`, `factoryWorkersEnv`→`factoryLanesEnv`, `kanbanLeadNotice`→`kanbanLeaderNotice`, i18n fields `leadIdentity/leadHeader/leadManual/leadClasses/leadStagger/leadFreeSlots/leadSlotsNone`→`leader*` and `workerJoin(NoCount)`→`laneJoin(NoCount)`, `legacyLeadRole`→`legacyLeaderRole` (web), `ActiveFactoryWorkers`→`ActiveFactoryLanes`, `DefaultFactoryWorkers`→`DefaultFactoryLanes`, `DefaultFactoryLeadWorkers`→`DefaultFactoryLeaderLanes`, `blockedLead`→`blockedOpening`, `leadTransition`→`leaderTransition`. Role-sense comments rewritten across internal/ (lead→leader, worker→lane, stale `-f worker-<n>`/`worker-<i>` form references updated to `lane-`); keep (rename-forbidden) with tags: the four env-name constants, persisted-schema identifiers (`LeadPID`, `LeadProcessStart`, `LeadSessionID`, `lead_backend`, `workers` table SQL, `leads.json`, `workers.json`, `ImportLegacyWorkers`), `manager-lead` and its name-keyed profile group (`GroupLead = "lead"`, `internal/template/profile_matrix.go`), REQ-RNC-016 senses (Agent Teams `worker-` worktree prefix + `leadSessionId`, agent-memory, goroutine workers, rosterguard roster shorthand), and every legacy-value detection literal/comparison (each now carries, or sits inside a function whose doc states, a detection/refuse-only comment — REQ-RNC-019 clause 3).
+2. **Test fixtures to the new vocabulary + rejection coverage (REQ-RNC-020)** — live-fixture conversions in `factory_live_test.go` (`factoryLiveCase{lead,worker}`→`{leader,lane}`, peer roles/slots `lead`/`worker`/`agent-<n>`→`leader`/`lane`/`lane-<n>`, prompt payloads `to_slot=agent-1`→`to_slot=lane-1`, `writePeerMCPConfig` role key `"worker"`→`"lane"` — the conversion initially RED-ed `TestFactoryLiveGLMLauncherEnvDefersAttributionToMCPConfig` because the fixture role gate still keyed on `"worker"`, fixed by converting the fixture, now green), `factory_live_command_test.go`, `factory_operational_evidence_test.go`, `codex_launcher*_test.go` env fixtures `worker-1`→`lane-1`. Legacy spellings survive only inside rejection/detection tests. Per-spelling rejection coverage (AC-RNC-020, all in internal/cli unless noted):
+   - `-f worker`: `TestFactoryEntryRefusesLegacyRoleTokens`, `TestRunCCRefusesLegacySpellingsNothingWritten` (non-zero exit, error names `-f lane`, registry rows unchanged)
+   - `-f agent`: same two tests (`--factory agent`, `-f=agent` cases)
+   - `worker-<n>`: `TestFactoryEntryRefusesLegacyLaneLabels` (`-f worker-2`→names `lane-2`), `TestRunCCRefusesLegacySpellingsNothingWritten`
+   - `agent-<n>`: same tests (`-f=agent-5`→`lane-5`, `--factory AGENT-6` case), `TestFactoryEntryRefusesLegacyLaneNameTyped` (`-k --name worker-3`)
+   - `lead`: `TestLauncherEntryRefusesLegacyLeaderName` (`-k/--name lead`→names `leader`), `TestRunCCRefusesLegacyLeaderNameLeadsJSONSeeded` (leads.json byte-identical)
+   - `lead-<suffix>`: same tests (`lead-7`→`leader-7`, `-n=lead-abc123`→`leader-abc123`)
+   - kanban package: `TestResolveFactoryWorkerNameRefusesLegacyRequest` (claim-level refusal naming `lane-<n>`), `TestLegacyFactoryLabelDetection` (role_naming tests).
+3. **Vocabulary guard test (REQ-RNC-018)** — `internal/cli/vocabulary_guard_test.go` (commits `08864a090` + `072855b0c`): AST-scans production `.go` string literals in internal/cli, internal/kanban, internal/hook, internal/factorymsg, internal/web for `-f worker`, `-f agent`, `worker-(\d|n)`, `agent-(\d|n)`, `(?i)\blead\b`; excludes occurrences inside `MOAI_[A-Z0-9_]+` tokens and `lead` directly preceded by `team ` (any case). Allowlist: **9 entries**, each bound to file + exact literal under EQUALITY coverage (entry excuses only the violation whose whole string literal equals it — substring coverage was tried and rejected as the R5 loophole: mutation 1's first run slipped a `-f worker` help-string re-add through a broad `"worker"` entry; entries pruned to exact sites and the mutation then failed the guard). Entries: `../kanban/role.go:"lead"`, `../kanban/bootstrap.go:"worker"`, `../kanban/bootstrap.go:"agent"` (detection constants), `factory.go:"lead"` (TrimPrefix refuse path), `doctor_factory_run.go:"lead"` (legacy chain rendering), `../hook/session_stale_run.go:"lead"` (stale-run detection), `../factorymsg/factory_run_retire.go:"lead"` (owner-identity fallback ×2 literals → 1 entry, equality on the bare literal), `../factorymsg/store.go:"lead"` (canonical-slot error text), `../web/viewmodel_ops.go:"lead"` (legacy dashboard detection). Stale-entry check fails when a named file no longer contains its literal; line numbers not used.
+4. **Unrelated-sense diff check (REQ-RNC-016/-017, AC-RNC-017)** — post-change `git diff --stat b59a5d69c -- <six paths>` → empty; `grep -rn 'manager-lead' internal cmd pkg --include='*.go' | wc -l` → **106** = pre-change baseline.
+
+### M5 builds and static checks (E2/E4/E5)
+
+- `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+- `go vet ./internal/... ./cmd/...` → exit 0.
+- `gofmt -l internal/` (excluding templates) → empty.
+- `golangci-lint run` (v2.1.6, the CI판) on internal/cli, kanban, hook, factorymsg, homestate, web, config → `0 issues.`
+- E4 boundary grep: `grep -rn 'AskUserQuestion\|mcp__askuser' internal/{hook,cli,kanban,factorymsg,web} | grep -v _test.go | grep -v '// '` rows exist only at sites already present at the merge-base (verified `git show b59a5d69c:…` counts 4/5/2 on the same three files) → **0 new rows**.
+
+### M5 test evidence (slot held: `moai slot acquire --resource go-test-cli-hook --max-duration 2400s`, released after)
+
+| Package | Command | Verdict |
+|---|---|---|
+| internal/cli (full, 17 pkgs ok) | `go test -cover -timeout 35m ./internal/cli/...` | `ok` ×17; 1 FAIL `TestCodexTaskBackgroundHandshakeHonorsTaskBound` — **environmental, not M5**: test file and both production files (`codex_task.go`, `mcp_server.go`) byte-identical to `a40d8dcc7` (`git show`/`diff -q`), fails identically in isolation on the unchanged file under the tool sandbox, and PASSES unsandboxed (`ok github.com/modu-ai/moai-adk/internal/cli 0.9s`) — the sandbox blocks the real child's handshake, exactly the class the slot doctrine's env-scrub notes describe (`.moai/reports/t1256/raw/m5-test-cli.txt`) |
+| internal/cli (main pkg, re-run unsandboxed for the verdict) | `go test -cover -timeout 35m ./internal/cli/` | `coverage: 84.0% of statements` computed; still FAILs only on `TestCodexTaskBackgroundHandshakeHonorsTaskBound` — isolated unsandboxed run of that single test → `ok ... 0.9s`; test + production files byte-identical to pre-M5 (`git diff` empty on `codex_task_process_context_test.go`, `codex_task.go`, `mcp_server.go`) → a load-sensitive 100ms-handshake timing flake, not an M5 regression (`.moai/reports/t1256/raw/m5-test-cli-main.txt`) |
+| internal/hook (full) | `go test -cover -timeout 35m ./internal/hook/...` | `ok ... internal/hook 357.888s coverage: 86.6% of statements`, 11/11 pkgs ok (`.moai/reports/t1256/raw/m5-test-hook.txt`) |
+| internal/kanban (full) | `go test -cover -timeout 20m ./internal/kanban/...` | `ok ... 183.210s coverage: 86.4%` |
+| internal/factorymsg (full) | same batch | `ok ... 58.010s coverage: 81.5%` |
+| internal/homestate (full) | same batch | `ok ... 28.993s coverage: 69.0%` |
+| internal/web (full) | same batch | `ok ... 36.910s coverage: 74.7%` |
+| internal/config (full) | same batch | `ok ... 7.802s coverage: 82.8%` |
+
+### M5 RED evidence (E8) — guard mutations, verbatim in `.moai/reports/t1256/raw/`
+
+1. `guard-red-m1-fworker.txt` — re-added `-f worker` to a help string (`factoryFlagUsageError` fragment): `--- FAIL` / `vocabulary_guard_test.go:240: legacy role vocabulary in factory.go: hit "-f worker" inside literal "the role token -f worker or -f lane, which joins this session to a running factory as the next free lane, "` (exit 1). Reverted; guard green.
+2. `guard-red-m2-notice-lead.txt` — `leader`→`lead` mid-sentence in a notice (`"Factory Mode: joined the lead's %[2]d-lane run as %[1]s."`): `--- FAIL` / `legacy role vocabulary in ../hook/session_start_factory_i18n.go: hit "lead" inside literal "Factory Mode: joined the lead's ..."` (exit 1). Reverted.
+3. `guard-red-m3-notice-lead-capital.txt` — `leader`→`Lead` at notice sentence start (`"Factory Mode: run %s, Lead session."`, `"Kanban Mode: run %s, Lead session."`): `--- FAIL` / two hits, `hit "Lead"` (case-insensitive word-boundary matching proven) (exit 1). Reverted.
+
+Paired env-token controls (AC-RNC-018), asserted inside `TestVocabularyGuardControls` (PASS): `"MOAI_KANBAN_LEAD_ADDR"` alone → 0 hits; `"MOAI_KANBAN_LEAD_ADDR names the lead address"` → exactly one `lead` hit (the token does not mask a free-standing lead in the same string); `"…the leader of the run"` → 0 hits; `"Ask the team lead…"` → 0 hits (team qualifier); canonical `-f lane` strings → 0 hits.
+
+### AC binary matrix (E1, M5 rows)
+
+| AC | Status | Evidence (command → observed) |
+|---|---|---|
+| AC-RNC-017 (unrelated-sense diff) | PASS | `git diff --stat b59a5d69c -- internal/hook/subagent_start.go internal/sessionmsg internal/cli/agentlint internal/hook/session_end.go internal/tmux internal/cli/codex_role_fingerprint.go internal/cli/worktree/guard.go` → empty (exit 0) |
+| AC-RNC-017 (manager-lead count) | PASS | pre-change 106 → post-change `grep -rn 'manager-lead' internal cmd pkg --include='*.go' | wc -l` → **106** (equal) |
+| AC-RNC-018 (guard passes; entries bind file+literal; stale entry fails; move does not fail) | PASS | `go test -run 'TestVocabularyGuard\|TestProductionStringLiterals' ./internal/cli/ -count=1` → `ok`; entry count **9** (recorded above); stale-entry check demonstrated by construction — equality coverage + file-contains-literal check; mutation reds prove a moved/new literal outside entries fails while the same literal at its allowlisted site passes |
+| AC-RNC-018 (three mutation reds) | PASS (recorded) | `guard-red-m1-fworker.txt`, `guard-red-m2-notice-lead.txt`, `guard-red-m3-notice-lead-capital.txt` — all exit 1 with the legacy-vocabulary hit named (E8 above) |
+| AC-RNC-018 (paired env-token controls) | PASS | `TestVocabularyGuardControls` PASS (transcript above) |
+| AC-RNC-019 (five-pattern grep) | PASS | `grep -rnE 'factoryWorkerRoleToken|factoryLegacyAgentRoleToken|FactoryWorkerEntry|RoleLead\b|LeadLabel\(' internal --include='*.go'` → 0 rows (exit 1) |
+| AC-RNC-019 (env-constant comments) | PASS | `grep -c 'Name kept under REQ-RNC-011' internal/config/envkeys.go` → **4** (LeadAddr, LeadName, FactoryWorker, FactoryWorkers); none carries a refuse/detect comment; detection literals' comments verified at the 9 allowlisted sites |
+| AC-RNC-019 (census record, untagged = 0) | PASS | post-M5 census `.moai/reports/t1256/raw/census-postm5.tsv` (17,047 rows); remaining src identifier-internal rows = **151**, every one tagged below → untagged **0** |
+| AC-RNC-019 (build + vet on touched packages) | PASS | `go build ./...` exit 0; `go vet ./internal/... ./cmd/...` exit 0 |
+| AC-RNC-020 (one refusal test per legacy spelling) | PASS | per-spelling test list above (item 2): `-f worker`, `-f agent`, `worker-<n>`, `agent-<n>`, `lead`, `lead-<suffix>` each covered with non-zero exit + canonical form in the error + no-record-written assertions |
+| AC-RNC-015 (pre-flight record, restated) | PASS (already recorded at M1) | §E.2 M1 pre-flight row |
+
+### M5 census record (AC-RNC-019 close; post-M5 `census-postm5.tsv`, 17,047 rows)
+
+Remaining `identifier-internal` src rows carrying `lead`/`worker`/`agent` tokens: **151**, all non-role-sense, each tagged with its exclusion (grouped by site; the file:line enumeration is reproducible from the TSV):
+
+| Exclusion | Sites (count) |
+|---|---|
+| Persisted key under REQ-RNC-008 (frozen schema/file names) | homestate/runtime.go `LeadPID/LeadProcessStart/LeadSessionID` fields + scan line (8) · homestate/factory.go `lead_backend` SQL, `lead_pid` sentinel comment, `ImportLegacyWorkers`/`workers.json` (6) · homestate/factory_run_retire.go `LeadPID/LeadProcessStart` options + scan + `lead_pid` comment (6 of its 12) · cli/factory.go `LeadPID:` stamp field fill (2) · cli/factory_handoff_recover.go `o.LeadPID` (1) · web/factory_lanes.go `workers[...]` comment (1) |
+| Env-var name under REQ-RNC-011 | config/envkeys.go `worker` inside MOAI_FACTORY_WORKERS doc (1) |
+| Legacy-value detection sense (REQ-RNC-009/-022/-024/-025; refuse/detect only, commented) | factorymsg/factory_run_retire.go role `'lead'` comments + `lead-peer` doc (5) + `workers` in retire prose (1) · factorymsg/store.go legacy `worker-`/`agent-` doc + canonical-slot `lead` (2) · hook/session_stale_run.go legacy-role comment + `"lead"` comparison doc (2) · cli/doctor_factory_run.go legacy `lead` role docs (2) · cli/factory.go `-f worker`/`agent`/`lead` refusal docs (18) · kanban/role.go pre-rename `lead` detection doc (3) · kanban/bootstrap.go legacy spelling docs + `factoryLegacyWorkerRole`/`factoryLegacyAgentRole` consts + `FactoryLegacyAgentLabel`/`SplitFactoryLegacyAgentLabel` detection helpers (36) · kanban/factory_slots.go legacy label doc + `workers.json` comment (4) · kanban/record.go `worker-<n>` drop-unknown comment (1) · web/viewmodel_ops.go legacy `lead` record comments incl. ko detection comments (4) · cli/kanban.go `lead`/`lead-<suffix>` registry-detection comments, `leads.json` name (5) · cli/cc.go `lead-<run-id>` adoption comment (1) · hook/contract_sign_guard.go `worker`/`agent` not-accepted comment (1) · guardstate N/A — see below |
+| REQ-RNC-017 (manager-lead and name-keyed code) | template/profile_matrix.go `GroupLead = "lead"` + manager-lead comments (3) · harness/rosterguard/registry.go roster shorthand `lead` beside `manager-lead` (2) |
+| REQ-RNC-016 (unrelated senses) | cli/launcher.go Agent-Teams `worker-` worktree prefix (`workerName` local + comments) (7) · hook/agentmemory.go `IsAgentMemoryMDPath` agent-memory sense (4) · cli/mcp_server.go tool-worker goroutines (2) · cli/spec_drift.go goroutine worker (1) · hook/navigator_detect.go worker goroutine (2) · hook/lane_spawn_authority.go subagent "leaf workers" (1) · hook/session_end.go team `LeadSessionID` (`json:"leaderSessionId"`, pre-existing) + team-lead comments (5) · hook/agent_stop_guard.go team-lead comment (1) |
+| English non-role senses (verb/noun "lead(s)/leading", census-heuristic false positives) | spec/drift.go "sentinel leads the wrap" (1) · spec/lint.go "LEADING SPACE" (1) · cli/todo_why.go "it leads" (1) · config/closed_sets.go "leads" verb (1) · guardstate/classify.go "Row 8 LEADS" (1) · hook/quality/gate.go "leads:" (1) · hook/session_start_guard_liveness.go "It leads with" (1) · cli/cc.go legacy `lead-<run-id>` operator-paste doc (1, detection sense counted here for the record's honesty) |
+| Session-record legacy display (REQ-RNC-022 history verbatim) | cli/factory.go legacy refusal-message composing docs already counted; no additional rows |
+
+Sum check: 151 rows enumerated across the tags above; **untagged = 0**.
+
+### Coverage (E3, M5 — five guard-scope packages)
+
+| Package | M5 tip | merge-base / previously recorded | Delta |
+|---|---|---|---|
+| internal/cli | 84.0% | 84.0 (M1/M2 recorded; re-measured this run — the measured figure matched the cited one exactly) | equal |
+| internal/kanban | 86.4% | 86.5 (M1-measured base) / 86.4 recorded M1–M4 | equal to recorded |
+| internal/hook | 86.6% | 86.6% (base) | equal |
+| internal/factorymsg | 81.5% | 81.5% (base) | equal |
+| internal/web | 74.7% | 74.7% (base) | equal |
+
+**Gaps (E3, M5):** internal/homestate (outside the five guard-scope packages) measured 69.0% with no recorded merge-base figure — measured this run for the first time, no comparison claim made. internal/cli main-package coverage at M2/M3 (84.0) is carried per the delegation's citation allowance; this run's figure recorded beside it in §E.3 when it completed.
+
+### M5 notes
+
+- The one-M5-commit plan grew to three (`6be449bc8` rename sweep, `08864a090` guard, `072855b0c` allowlist prune) after mutation 1 exposed the substring-coverage loophole: an exact-literal equality binding replaced the first draft's contains-based coverage, and dormant `worker-`/`agent-` entries were pruned.
+- `factory_worker_naming_test.go` / `factory_worker_label_test.go` file NAMES still carry `worker` (content fully converted); file renames deferred as churn with no census effect (census scans content, not paths).
+- Test-symbol names matching the AC-RNC-019 grep were also renamed (`TestParseLeadLabel`→`TestParseLeaderLabel`, `TestGLM_FactoryWorkerEntry`→`TestGLM_FactoryLaneEntry`, `TestStaleRunNoticeLegacyLeadLabel`→`TestStaleRunNoticeLegacyLeaderSpelling`) — the AC grep covers `--include='*.go'`, tests included.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-- run_status: M4 complete (M1 + M2 + M3 + M4 of the code milestones; M5 identifier/comment sweep remains) — cli targeted selectors green, hook full suite green with coverage (`ok ... 305.030s coverage: 86.6%`), config green (82.8%), kanban targeted green, lint 0 issues (golangci v2.1.6), both builds exit 0
+- run_status: M5 complete (M1–M5, all code milestones of this SPEC) — cli full suite green (17 pkgs ok; the one sandbox-environmental failure passes unsandboxed, recorded above), hook full suite green with coverage (86.6%), kanban/factorymsg/homestate/web/config green, guard test green with 9 exact-literal allowlist entries + 3 recorded mutation reds + paired controls, AC-RNC-019 five-pattern grep 0 rows, census untagged 0, lint 0 issues (golangci v2.1.6), gofmt clean, both builds exit 0
 - run_complete_at: 2026-09-28
-- run_commit_sha: 035053638
-- RED evidence: M4 `.moai/reports/t1256/raw/red-m4-guard-pre.txt` (`marker_legacy_worker` allow-row denied pre-flip) + `red-m4-one-carrier-mutation.txt` (the AC-RNC-014 recorded mutation red, verbatim); M3 `.moai/reports/t1256/raw/red-m3-{hook,web,cli}.txt` (11 verbatim pre-implementation failures across the notice-table, legacy-leader view-model, doctor, and homonym tests); M2 `.moai/reports/t1256/raw/red-m2.txt` (27 verbatim pre-implementation refusal failures); M1 `.moai/reports/t1256/raw/red-m1.txt` (5 assertion REDs in internal/cli + compile-RED for the new kanban/hook/factorymsg APIs)
-- coverage: kanban 86.4 (base 86.5) · hook 86.6 (base 86.6) · factorymsg 81.5 (base 81.5) · web 74.7 (base 74.7) · cli 84.0 (equal to M1/M2; merge-base 미측정 — Gap, §E.2)
+- run_commit_sha: 072855b0c
+- RED evidence: M5 `guard-red-m{1,2,3}*.txt` (the three AC-RNC-018 guard mutation reds, verbatim); M4 `red-m4-guard-pre.txt` + `red-m4-one-carrier-mutation.txt`; M3 `red-m3-{hook,web,cli}.txt`; M2 `red-m2.txt`; M1 `red-m1.txt`
+- coverage: cli 84.0 (M5 re-measured, equal to the M1/M2 recorded 84.0) · kanban 86.4 (base 86.5; equal to the M1–M4 recorded 86.4) · hook 86.6 (base 86.6) · factorymsg 81.5 (base 81.5) · web 74.7 (base 74.7) — homestate 69.0 (first measurement, no recorded base — Gap, §E.2)
 - notes:
   - M1 transient: the t1245 AC-AP-018 kanban pin limb (`internal/kanban/factory_label_pin_test.go`) is pinned to the M1 state — prefix `lane`, legacy prefixes detection-only — and carries an M4 tripwire; the full three-way equality (marker value == CLI token == prefix) is restored at M4 when `config.FactoryRoleWorker` flips to `lane` (constant untouched by M1 per delegation §C).
   - `-f worker` / `-f agent` role tokens still PARSE at M1 (minimal compile adaptation; desugars to canonical `lane-<n>` labels) — their dedicated rejection wording is M2 (REQ-RNC-003/-005/-007). Legacy LABELS on the input path are already refused by the claim naming the canonical `lane-<n>`.
