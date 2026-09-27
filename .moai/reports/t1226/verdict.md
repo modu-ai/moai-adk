@@ -208,6 +208,8 @@ verdict_live = STRUCTURALLY-INFEASIBLE-UNDER-FREEZE
 
 RECOMMEND: 운영자에게 네 선택지를 함께 올리는 것을 권고한다 — (1) 동결 유지와 150,000 한도 경고 수용, (2) U1 범위를 위 탐욕 집합(27줄은 하한)으로 한정한 해제 검토, (3) U2 수율을 먼저 재는 후속 측정 카드, (4) 동결 해시를 건드리지 않고 조건 1 단서 풀에 M2 제자리 압축을 허용하는 범위 해석과 그 수율(목표 40.9%, 실측 16.3%)을 재는 후속 측정 카드(sync-audit F2). 레인 권고 순서는 (3)·(4) 측정 → (1)/(2) 선택이며, 어느 것도 레인이 정하지 않는다.
 
+운영자 결정 — 동결 유지. 150,000자 목표는 동결 하에서 달성 불가로 종결, 해제 후속 카드 없음. (출처: 리드 전달 2026-09-28 — 운영자가 리드 창에서 직접 선택. 레인은 기록만 한다.)
+
 ## Gaps
 
 - **런타임 계수 집합 미관측(AC-ALH-010 형태 2)**. 레인은 워크트리 밖에서 격리 `CLAUDE_CONFIG_DIR`·`HOME` 으로 `claude` 를 띄울 수 없다. 리드에게 보내는 관측 요청 원문: 「`.moai/reports/t1226/harness-run.txt` 의 하네스를 `build_head`(f8d6f5167)에서 다시 돌려 `$SCRATCH/init-surface` 를 만든 뒤, 상위 경로에 `CLAUDE.md`·`.claude/` 가 없는 빈 디렉터리로 사본을 옮기고, `CLAUDE_CONFIG_DIR`·`HOME` 을 빈 임시 디렉터리로 돌린 워크트리 밖 세션에서 그 사본을 작업 디렉터리로 `claude` 를 띄워, 기동 시 always-loaded 경고 줄(파일 수·합계)을 원문 그대로 옮겨 주십시오. 결과는 `runtime_files_init`·`runtime_total_init`·`runtime_isolated = yes`·`runtime_source` 줄로 판정서에 반영합니다.」 18·17 두 집합의 판정이 같으므로 이 관측은 판정 토큰을 바꾸지 않는다.
