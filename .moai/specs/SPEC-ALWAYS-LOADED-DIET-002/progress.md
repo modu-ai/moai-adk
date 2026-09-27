@@ -284,9 +284,12 @@ follow_up_candidates:
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_complete_at: 2026-09-26
-sync_commit_sha: 5bfa134ca               # 그 커밋 자신은 자기 해시를 인용할 수 없어 `pending-backfill-sync` 였고, 이 backfill 커밋이 채웠다
-sync_status: implemented                 # completed 로 올리지 않는다 — 아래 "상태 전이를 implemented 에서 멈춘 이유" 항 참조
+sync_complete_at: 2026-09-27             # 종결 sync. 1차 sync(2026-09-26, 5bfa134ca, implemented 에서 정지)는 아래 「1차 sync 기록」으로 보존
+sync_commit_sha: pending-backfill-sync   # 종결 sync 커밋은 자기 해시를 인용할 수 없다 — 1차와 같은 방식으로 뒤따르는 backfill 커밋이 채운다
+sync_commit_sha_first_pass: 5bfa134ca    # 1차 sync(implemented 에서 정지)
+sync_status: completed                   # 2026-09-27 종결 — 아래 「종결 sync (2026-09-27)」 절 참조
+frontmatter_status_transitions_final:
+  spec_md: "implemented → completed"     # updated 2026-09-27. status 를 싣는 SPEC 산출물은 spec.md 하나뿐(plan/acceptance/design/research/progress 는 status 필드 없음)
 b12_self_test_a: not-applicable          # 이 카드는 CHANGELOG 항목을 내지 않는다 — 아래 CHANGELOG 판단 항 참조
 b12_self_test_b: not-applicable
 b12_self_test_c: not-applicable
@@ -315,6 +318,37 @@ model_deviation:
     닿았는지를 판정한다. 닿지 못했다고 판정하면, 한도 해소 후 opus 로 이 sync 기록을
     다시 쓴다 — completed 전이가 여기서 유보되는 것과 같은 이유다.
 ```
+
+### 종결 sync (2026-09-27) — `implemented → completed`
+
+**sync 는 이 커밋으로 닫혔다. 이어받는 사람은 재측정을 다시 하지 않는다** — 아래 수치가 병합 트리(`950fcc492`)에서 잰 종결 근거이며, 남은 일은 병합 창뿐이다(아래 「재개 지점」 4번).
+
+1. **develop 흡수** — 로컬 develop `b59a5d69c` 를 흡수해 병합 커밋 `4989ea6b0`. 충돌 3건은 다이어트 쪽으로 해소했다. develop 이 새로 더한 9행을 전수 추적했고 유실 0(원문 그대로 남지 않은 3행은 다이어트 쪽 재작성으로 흡수 — `.moai/reports/t1175/remeasure/develop-lines-trace.txt`, `TOTAL added=9 missing_verbatim=3`).
+2. **1차 sync-audit FAIL 0.71** (`.moai/reports/t1175/sync-audit.md`) → 수리 3커밋:
+   - `8e50ef148` — 재배치가 남긴 깨진 앵커 2건(F1·F2)
+   - `7deb5b3b1` — REQ-ALD2-001 을 「감축 + 채무」로 개정하고 AC-001 기록 갱신(F3·F4, manager-spec 소관)
+   - `950fcc492` — F1 수리 뒤 sync-auditor 카탈로그 해시 갱신
+3. **범위 한정 재감사 PASS-WITH-DEBT 0.87** (`.moai/reports/t1175/sync-reaudit.md`) — Functionality 88 / Security 90 / Craft 78 / Consistency 90.
+4. **감사 모델 근거** (§E.4 `model_deviation` 이 걸어 둔 감사 의무의 해소) — 세 가지를 확인했다:
+   - 세션 시작 시 「GLM backend detected」 표시가 없었다.
+   - 레인 환경에 `ANTHROPIC_BASE_URL` 도 모델 매핑 변수도 없다 — Anthropic 직결이며, 레인 세션 모델은 `claude-opus-5-5[1m]`.
+   - 두 감사 보고서의 첫 줄이 모두 `auditor-model: claude-opus-5-5[1m]`.
+   이 종결 sync 기록도 같은 opus 모델 위에서 쓰였다 — 1차 기록의 sonnet 편차는 완료 판정에 닿지 않는다.
+5. **재측정 (HEAD `950fcc492`, 병합 트리)**:
+
+| 항목 | 결과 | 근거 |
+|---|---|---|
+| `go test` spec / template / config | exit 0 (전 패키지 `ok`) | `.moai/reports/t1175/remeasure/go-test-final.txt` |
+| spec lint (baseline) | baseline OK | `.moai/reports/t1175/remeasure/spec-lint.txt` |
+| 18파일 합계 | `198361 total` | `acceptance.md §AC-ALD2-001.2` 명령 |
+| 구속 조항 동결 해시 | `d97b33d960c9801d4ec145ca263ed788425b337f43c585594c8d527c1318c6c3` 불변 | `acceptance.md §AC-ALD2-002` 명령 |
+
+6. **남은 채무** — 런타임 한도 150,000 대비 잔여 **48,361자**. 개정된 REQ-ALD2-001 에 따라 이 카드의 요구에서 빠졌고 후속 카드 **t1226** 이 소유한다. 재감사가 남긴 선택 항목 F5~F8·N2 도 열린 채로 넘긴다(N1 은 이 절과 「재개 지점」 주석으로 닫았다).
+7. **공정 결함 자진 보고** — 1차 감사 창이 열려 있는 동안 레인이 `805d44bed` 커밋과 `remeasure/spec-lint.txt` 를 썼다. 감사 중인 트리에는 소유자 외 작성자가 없어야 한다는 규율(`agent-common-protocol.md` § Background Agent Execution)을 어겼다. 재감사는 이 두 산출물을 포함한 트리 위에서 다시 돌았으므로 판정은 오염되지 않았지만, 결함 자체는 기록으로 남긴다.
+
+### 1차 sync 기록 (2026-09-26, `5bfa134ca`) — 보존
+
+아래는 1차 sync 가 남긴 기록이다. 상태를 `implemented` 에서 멈춘 판단은 위 종결 sync 로 해소됐다.
 
 ### 재측정 — 이 실행이 직접 쟀다 (2026-09-26, HEAD `c1727f93d`)
 
@@ -350,6 +384,8 @@ model_deviation:
 ---
 
 ## 재개 지점 (2026-09-26 기록, 10/1 이후 이어받는 사람을 위해)
+
+> **[2026-09-27 갱신] sync 는 종결 sync 커밋으로 닫혔다(`status: completed`).** 아래 1~3번(흡수·재측정·opus 감사)은 끝났으니 다시 하지 않는다 — 결과는 §E.4 「종결 sync (2026-09-27)」 절. 남은 일은 4번 병합 창뿐이다. 아래 표의 HEAD·상태 값은 2026-09-26 시점 기록이다.
 
 ### 지금 상태
 
