@@ -461,6 +461,10 @@ func itoa(n int) string {
 func TestAC_CLOSURE_023(t *testing.T) {
 	f := closuretest.New(t)
 	queueC1(t, f)
+	// The integration branch must resolve for the corpus's integration push
+	// to be classified at all (F4: without it the mode gate is untestable —
+	// evaluation returns before the mode check either way).
+	writeGitFlowConfig(t, f)
 	// The evaluation counter is package-global and earlier AC tests ran
 	// evaluations; zero it for this test's no-op assertions.
 	savedEvalCount := closurePushEvalInvocations
