@@ -69,7 +69,7 @@ func newGTDAnswerCmd() *cobra.Command {
 	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "answer <t-id> <text>",
-		Short: "Answer a gate-blocked card; any lead reads the response on its next poll",
+		Short: "Answer a gate-blocked card; any leader reads the response on its next poll",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			root, err := findProjectRootFn()

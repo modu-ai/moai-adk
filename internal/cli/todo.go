@@ -880,8 +880,10 @@ func newTodoNextCmd() *cobra.Command {
 		Use:   "next [<n>]",
 		Short: "List queued cards (bare) or pick one (<n>)",
 		Long: `Bare ` + "`moai todo next`" + ` prints the queued items oldest-first as
-read-only candidates — the selection remains the operator's act performed
-through the lead session's question channel. ` + "`moai todo next <n> [--spec <SPEC-ID>]`" + `
+read-only candidates. A queued card is promoted to picked either by the
+operator's pick made through the leader session or by a lane's own
+self-dispatch — a lane may pick a queued card itself to start on it.
+` + "`moai todo next <n> [--spec <SPEC-ID>]`" + `
 marks the addressed item picked (attaching spec_id when given) as one
 locked write, confirming with the card text prefix. ` + "`--expect <prefix>`" + `
 refuses the pick unless the addressed card's text starts with the prefix.`,

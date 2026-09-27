@@ -383,15 +383,15 @@ func driveFactoryEntry(t *testing.T, launcher string, args ...string) (int, erro
 	return launches, err
 }
 
-// AC-CFR-008 — a worker join into a codex-led run is refused before any claim.
+// AC-CFR-008 — a lane join into a codex-led run is refused before any claim.
 func TestFactoryJoinRefusesCodexLedRun(t *testing.T) {
 	for _, tc := range []struct {
 		launcher string
 		args     []string
 	}{
-		{"cc", []string{"-f", "worker"}},
-		{"cc", []string{"-f", "worker-2"}},
-		{"glm", []string{"-f", "worker"}},
+		{"cc", []string{"-f", "lane"}},
+		{"cc", []string{"-f", "lane-2"}},
+		{"glm", []string{"-f", "lane"}},
 	} {
 		t.Run(tc.launcher+" "+strings.Join(tc.args, " "), func(t *testing.T) {
 			root := codexLedRun(t, "rc", "codex")
@@ -427,10 +427,10 @@ func TestFactoryJoinRefusesCodexLedRun(t *testing.T) {
 
 // AC-CFR-009 — a claude-led run is joined and led exactly as before.
 func TestFactoryJoinAndLeadAcceptNonCodexRun(t *testing.T) {
-	t.Run("worker", func(t *testing.T) {
+	t.Run("lane", func(t *testing.T) {
 		root := codexLedRun(t, "rc", "claude")
 		rowsBefore := workerRows(t, root)
-		launches, err := driveFactoryEntry(t, "cc", "-f", "worker")
+		launches, err := driveFactoryEntry(t, "cc", "-f", "lane")
 		if err != nil {
 			t.Fatalf("join refused: %v", err)
 		}

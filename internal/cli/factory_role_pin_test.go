@@ -9,24 +9,30 @@ package cli
 // without a cycle, and both carriers are unexported besides (spec.md
 // REQ-AP-013). The assertion guarantees the failure — a one-sided rename
 // turns this test RED — not the derivation.
+//
+// M2 state (SPEC-ROLE-NAMING-CODE-001): the CLI parses exactly one role
+// token, `lane`, and refuses the legacy spellings. The full three-way
+// equality (guard constant == -f token == lane-label prefix) is restored at
+// M4 when config.FactoryRoleWorker flips to "lane"; until then the guard
+// constant is the M4 tripwire documented in progress.md §E.2 (the M1 note).
 
 import (
 	"testing"
-
-	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// TestFactoryRoleTokenPinsGuardConstant pins AC-AP-018 (CLI limb): the
-// guard's role-value constant equals the live `-f` role token this package
-// parses, and equals no retired alias — the rename that merely swaps the live
-// and legacy spellings must not pass.
+// TestFactoryRoleTokenPinsGuardConstant pins AC-AP-018 (CLI limb): the live
+// `-f` role token this package parses is the canonical `lane`, and the
+// retired spellings are not accepted anywhere on the token path — a rename
+// that merely swaps the live and legacy spellings must not pass.
 func TestFactoryRoleTokenPinsGuardConstant(t *testing.T) {
-	if factoryWorkerRoleToken != config.FactoryRoleWorker {
-		t.Fatalf("factory role token %q != guard constant %q — a one-sided rename must turn this test RED (AC-AP-018)",
-			factoryWorkerRoleToken, config.FactoryRoleWorker)
+	if factoryLaneRoleToken != "lane" {
+		t.Fatalf("factory role token %q != %q — the canonical token must stay lane (AC-AP-018)",
+			factoryLaneRoleToken, "lane")
 	}
-	if config.FactoryRoleWorker == factoryLegacyAgentRoleToken {
-		t.Fatalf("guard constant %q equals the retired alias %q — swapping the live and legacy spellings must not pass (AC-AP-018)",
-			config.FactoryRoleWorker, factoryLegacyAgentRoleToken)
+	for _, legacy := range []string{"worker", "agent"} {
+		p, err := parseFactoryFlag([]string{"-f", legacy})
+		if err == nil {
+			t.Fatalf("-f %s parsed as %+v, want the legacy-token refusal (AC-AP-018)", legacy, p)
+		}
 	}
 }

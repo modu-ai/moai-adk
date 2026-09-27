@@ -113,6 +113,61 @@ _M1 (card t1256, branch `WT-role-naming-code`). Attribution: every row names the
 
 **Gaps (E3):** (1) `internal/cli` merge-base 커버리지 미측정 — post 변경 수치는 `ok github.com/modu-ai/moai-adk/internal/cli 1304.232s coverage: 84.0% of statements` (`go test -cover -timeout 35m ./internal/cli/`, 이 트리, `.moai/reports/t1256/raw/cover-m1-post-cli.txt`); 베이스 페어 실행은 크로스레인 기계 경합으로 미완료, cli 전체 재측정은 오케스트레이터 소관. (2) The merge-base kanban figure was measured in `/tmp`, where one unrelated cwd-sensitive test (`TestTempOrigin_FailsOpenOnUnresolvable`) fails as a measurement artifact; its coverage number is still computed and comparable.
 
+---
+
+_M2 (card t1256, branch `WT-role-naming-code`). Attribution: every row names the command, its verbatim output, and the HEAD SHA it was measured on. Measured against the tree at `672e9645a` + `5ee3d4dc3` (the M1 close-out backfill commit — progress.md only, no Go source); the M2 implementation commit lands on top of `5ee3d4dc3`._
+
+### M2 pre-flight (delegation §C)
+
+- `git rev-parse --short HEAD` → `672e9645a` (at delegation start); `go build ./...` → exit 0. (HEAD later advanced to `5ee3d4dc3` by the M1 backfill — progress.md only.)
+- Tree at M2 evidence close: `5ee3d4dc3` + the uncommitted M2 working set (14 modified files + 2 new test files, listed in the M2 commit).
+
+### M2 builds and static checks (E2/E4/E5)
+
+- **E2 builds** — `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0 (this run, tree at `5ee3d4dc3` + M2 working set).
+- **E4 subagent-boundary** — `git diff b59a5d69c -- internal/cli internal/kanban \| grep -c AskUserQuestion` → **0** (no new rows; the 18 pre-existing package rows are doc comments and the agentlint rule text, untouched).
+- **E5 lint** — `golangci-lint run ./internal/cli/... ./internal/kanban/...` (v2.1.6, CI-matching) → exit 0, `0 issues.` (snapshot key `672e9645a:m2-lint-cli-kanban`).
+
+### M2 test evidence (scoped runs, this tree)
+
+| Package | Command | Verbatim verdict |
+|---|---|---|
+| internal/cli (full, with coverage) | `go test -cover ./internal/cli -timeout 35m` (slot `go-test-cli-hook` held) | `ok github.com/modu-ai/moai-adk/internal/cli 992.586s coverage: 84.0% of statements` (`.moai/reports/t1256/raw/cli-cover-m2.txt`) |
+| internal/cli full attempt 1 | `go test ./internal/cli/... -timeout 35m` | top-level package FAIL on exactly 1 test (`TestACFB019_HelpDocumentsCompanionEntry` — the rewrapped help no longer carried the contiguous phrase `bumped to the next free number`); all subpackages `ok` → phrase rewrap fixed → clean re-run is the `-cover` row above (`.moai/reports/t1256/raw/cli-full-m2-attempt1.txt`) |
+| internal/kanban | `go test ./internal/kanban/` | `ok github.com/modu-ai/moai-adk/internal/kanban 174.409s` |
+| internal/kanban (cover) | `go test -cover ./internal/kanban -timeout 15m` | `ok ... coverage: 86.4% of statements` |
+| internal/hook, factorymsg, homestate, config, codexwiring, web | `go test ./internal/hook/ ./internal/factorymsg/ ./internal/homestate/ ./internal/config/ ./internal/codexwiring/` ; `go test ./internal/web/` | `ok` × hook 288.236s / factorymsg 46.950s / homestate 19.440s / config 3.277s / codexwiring 1.147s / web 29.160s |
+
+### M2 RED evidence (E8)
+
+Every new refusal test captured verbatim pre-implementation: `.moai/reports/t1256/raw/red-m2.txt` — 27 failing subtests across 9 tests (`TestFactoryEntryRefusesLegacyRoleTokens`, `TestFactoryEntryRefusesLegacyLaneLabels`, `TestFactoryEntryRefusesLegacyLaneNameTyped`, `TestLauncherEntryRefusesLegacyLeaderName`, `TestRunCCRefusesLegacySpellingsNothingWritten`, `TestRunCCRefusesLegacyLeaderNameLeadsJSONSeeded`, `TestFactoryFlagUsageErrorVocabulary`, `TestLauncherHelpLaneVocabulary`, `TestTodoNextHelpLeaderAndLanePromotion`), plus the expected RED-stage greens (`TestRunCCFactoriesEntryWritesLane1`, `TestRunCCLiveLegacyClaimRefusedThroughCLI`, `TestRunCCDeadLegacyClaimProceedsThroughCLI` — AC verification of M1 machinery, not refusals).
+
+### AC binary matrix (E1, M2 rows)
+
+| AC | Status | Evidence (command → observed) |
+|---|---|---|
+| AC-RNC-001 | PASS | `go test ./internal/cli/ -run TestRunCCFactoriesEntryWritesLane1` → ok: `runCC(-f lane)` returns nil (exit 0), launch seam captures `MOAI_FACTORY_WORKER="lane-1"` and `--name lane-1` in argv, factory `workers` table holds exactly 1 row with `label == "lane-1"` |
+| AC-RNC-002 | PASS | `TestFactoryEntryRefusesLegacyRoleTokens` (8 cases: `-f worker`, `-f=worker`, `--factory agent`, `--factory=agent`, `-f WORKER`, `-f Worker`, `-f AGENT`, `-f Agent` — each error contains `-f lane`, one line) + `TestRunCCRefusesLegacySpellingsNothingWritten` command-level rows (`-f worker`/`-f agent`/`-f WORKER` → refusal, launch seam not fired, `workers` table 0 rows before and after); built-binary smoke: `moai cc -f worker` → rc=1, one line `"...legacy role token; use -f lane..."` |
+| AC-RNC-003 | PASS | CLI path: `TestRunCCLiveLegacyClaimRefusedThroughCLI` (seeded live `worker-3` row → `runCC(-f lane)` error names `worker-3`, run id, `moai factory runs --retire <run>`; seam not fired; row count unchanged 1) + `TestRunCCDeadLegacyClaimProceedsThroughCLI` (dead row → join proceeds, `MOAI_FACTORY_WORKER="lane-1"`); kanban side: M1's `TestClaimFactoryWorkerRefusesLiveLegacyClaim`/`TestClaimFactoryWorkerDeadLegacyClaimIsStale` (already in §E.2 M1) |
+| AC-RNC-004 | PASS | kanban: `TestSplitFactoryLaneLabelAdmitsLaneShapesOnly` (accepts `lane-3`; rejects `worker-3`, `agent-3`, `lane-0`, `lane-`, `lane-a`, `lane-3-x`, `lane`) + `TestFactoryLaneLabelPrefixIsLane` (`FactoryLaneLabel(3)=="lane-3"`); CLI: `-f lane-0`/`lane-`/`lane-a`/`lane-3-x` fall to the usage error (errMarker `lane label` rows in `TestParseFactoryFlag`) |
+| AC-RNC-005 | PASS | `TestFactoryEntryRefusesLegacyLaneLabels` (`-f worker-2`→`lane-2`, `-f Worker-4`→`lane-4`, `-f=agent-5`→`lane-5`, `--factory AGENT-6`→`lane-6`) + `TestFactoryEntryRefusesLegacyLaneNameTyped` (`--name agent-5`→`lane-5`, `-n=worker-3`→`lane-3`, `-k --name worker-3`→`lane-3`) + command-level rows in `TestRunCCRefusesLegacySpellingsNothingWritten` (nothing written) |
+| AC-RNC-007 | PASS | parse: `TestLauncherEntryRefusesLegacyLeaderName` (`-k --name lead`→`leader`, `-k --name lead-7`→`leader-7`, `-f --name lead`→`leader`, `-n=lead-abc123`→`leader-abc123`; valid forms `leader`, `leader-abc123`, `leader-r7`, companion `plan` still parse) + command-level: `TestRunCCRefusesLegacySpellingsNothingWritten` (`-k --name lead`/`lead-7` → refusal, seam not fired, leads.json byte-identical) + `TestRunCCRefusesLegacyLeaderNameLeadsJSONSeeded` (seeded leads.json byte-identical across the refusal); built-binary smoke: `moai cc -k --name lead` → rc=1, one line naming `leader` |
+| AC-RNC-016 | PASS | Built binary (`go build -o /tmp/... ./cmd/moai` at `5ee3d4dc3`+M2 working set): `moai cc --help` → contains `-f lane` ×7 and `-f lane-<n>` ×4, 0 matches of `-f worker`/`-f agent` (`.moai/reports/t1256/raw/cc-help-m2.txt`); `moai glm --help` → `-f lane` ×6, `lane-<n>` ×4, 0 forbidden (`.moai/reports/t1256/raw/glm-help-m2.txt`); usage error: `TestFactoryFlagUsageErrorVocabulary` (contains `lane`+`leader`, no `worker`, no `(?i)\blead\b` match) + `TestFactoryFlagUsageErrorAdvertisesLaneForms`; unit-level `TestLauncherHelpLaneVocabulary` green |
+| AC-RNC-021 | PASS | Built binary: `moai todo next --help` names the leader pick path and the lane `self-dispatch`, 0 matches of `lead session` (`.moai/reports/t1256/raw/todo-next-help-m2.txt`); unit-level `TestTodoNextHelpLeaderAndLanePromotion` green; pick-path guard check: `git diff b59a5d69c -- internal/cli/todo.go` → only the help text (M2) and the M1 owner-vocabulary line (`owner = kanban.RoleLead`) — no new or deleted call reading a role declaration or `MOAI_FACTORY_*` in the pick path |
+
+### Coverage (E3, M2)
+
+| Package | M2 tip | M1 tip | merge-base | Delta |
+|---|---|---|---|---|
+| internal/cli | 84.0% | 84.0% | _not measured (M1 Gap kept)_ | equal (`ok ... 992.586s coverage: 84.0%`, `.moai/reports/t1256/raw/cli-cover-m2.txt`) |
+| internal/kanban | 86.4% | 86.4% | 86.5% | equal vs M1; −0.1pp vs merge-base (M1-attributed; 85% floor met) |
+
+**M2 notes / debt:**
+- M1 §E.2 note closed: the `-f worker` / `-f agent` role tokens no longer PARSE — the M1 transitional desugar path is removed; refusal replaces it (one error line, canonical form, non-zero exit, nothing written).
+- t1245 AC-AP-018 CLI pin (`factory_role_pin_test.go`): the M1 form pinned `factoryWorkerRoleToken == config.FactoryRoleWorker`; that constant is gone with the transitional parse. M2 state pins `factoryLaneRoleToken == "lane"` + refusal of both legacy tokens; the full three-way equality (guard constant == `-f` token == lane-label prefix) remains the M4 tripwire when `config.FactoryRoleWorker` flips to `lane`.
+- Legacy literals remain in `_test.go` passthrough fixtures that never reach the parse (`codex_factory_retire_test.go` argv-preservation sets); refusal tests per legacy spelling (REQ-RNC-020 seed) live in `factory_role_refusal_m2_test.go` + `role_naming_m2_test.go` + updated factory tests.
+- Vocabulary strings updated (REQ-RNC-001, M2 slice): `factoryFlagUsageError`, cc/glm `Use`+`Long` factory blocks and examples, the `-f`-value conflict errors (`-f lane already names the role` / `-f lane-<n> already names the lane`), `moai tokens --role` flag help (`e.g. leader, plan, run, sync`), `gtd answer` Short (`any leader reads`), `ErrNotSoleWriter` text (`caller is not the leader`), `todo next` Long (leader pick + lane self-dispatch). CG mixed-backend strings (`factory.go` / `kanban.go` "leader Claude, teammates GLM") kept verbatim for M3's qualifier pass; doctor/web/i18n tables untouched (M3).
+
 
 
 

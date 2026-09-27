@@ -9,46 +9,42 @@ import (
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
-// TestParseFactoryFlagWorkerVocabulary pins the worker-axis entry tokens and
-// the retained legacy aliases: `-f worker` / `-f worker-<n>` are canonical,
-// `-f agent` / `-f lane-<n>` still parse (keep-alias) and are marked legacy.
-func TestParseFactoryFlagWorkerVocabulary(t *testing.T) {
+// TestParseFactoryFlagLaneVocabulary pins the lane-axis entry tokens
+// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-002): `-f lane` / `-f lane-<n>` are the
+// only accepted role shapes. The legacy spellings are refused — their
+// refusal matrix lives in factory_role_refusal_m2_test.go.
+func TestParseFactoryFlagLaneVocabulary(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		args       []string
-		wantRole   bool
-		wantLegacy bool
-		wantNum    int
-		wantLabel  string
+		args      []string
+		wantRole  bool
+		wantNum   int
+		wantLabel string
 	}{
-		{args: []string{"-f", "worker"}, wantRole: true},
-		{args: []string{"-f=worker"}, wantRole: true},
-		{args: []string{"-f", "agent"}, wantRole: true, wantLegacy: true},
+		{args: []string{"-f", "lane"}, wantRole: true},
+		{args: []string{"-f=lane"}, wantRole: true},
+		{args: []string{"--factory=lane"}, wantRole: true},
 		{args: []string{"-f", "lane-3"}, wantNum: 3, wantLabel: "lane-3"},
 		{args: []string{"--factory=lane-7"}, wantNum: 7, wantLabel: "lane-7"},
-		{args: []string{"-f", "lane-3"}, wantNum: 3, wantLabel: "lane-3"},
-		{args: []string{"-f", "lane"}, wantRole: true},
-		// Legacy label shapes still parse at M1 (the claim refuses them);
-		// the dedicated rejection wording is M2.
-		{args: []string{"-f", "worker-3"}, wantNum: 3, wantLabel: "worker-3"},
 	}
 	for _, c := range cases {
 		p, err := parseFactoryFlag(c.args)
 		if err != nil {
 			t.Fatalf("parseFactoryFlag(%v): %v", c.args, err)
 		}
-		if !p.Enabled || p.WorkerRole != c.wantRole || p.LegacyAgentToken != c.wantLegacy ||
+		if !p.Enabled || p.WorkerRole != c.wantRole ||
 			p.WorkerNumber != c.wantNum || p.WorkerLabel != c.wantLabel {
-			t.Errorf("parseFactoryFlag(%v) = %+v, want role=%v legacy=%v num=%d label=%q",
-				c.args, p, c.wantRole, c.wantLegacy, c.wantNum, c.wantLabel)
+			t.Errorf("parseFactoryFlag(%v) = %+v, want role=%v num=%d label=%q",
+				c.args, p, c.wantRole, c.wantNum, c.wantLabel)
 		}
 	}
 }
 
-// TestFactoryFlagUsageErrorAdvertisesWorkerForms: the usage error names only
-// the worker-axis forms — the legacy spellings still parse but are not taught.
-func TestFactoryFlagUsageErrorAdvertisesWorkerForms(t *testing.T) {
+// TestFactoryFlagUsageErrorAdvertisesLaneForms: the usage error names only
+// the lane-axis forms — the legacy spellings are refused, never taught
+// (REQ-RNC-001).
+func TestFactoryFlagUsageErrorAdvertisesLaneForms(t *testing.T) {
 	t.Parallel()
 
 	_, err := parseFactoryFlag([]string{"-f", "SPEC-X-001"})
@@ -56,42 +52,44 @@ func TestFactoryFlagUsageErrorAdvertisesWorkerForms(t *testing.T) {
 		t.Fatal("want a usage error")
 	}
 	msg := err.Error()
-	for _, want := range []string{"-f worker", "-f worker-2"} {
+	for _, want := range []string{"-f lane", "-f lane-2"} {
 		if !strings.Contains(msg, want) {
 			t.Errorf("usage error %q missing %q", msg, want)
 		}
 	}
-	for _, banned := range []string{"-f agent", "lane-"} {
+	for _, banned := range []string{"-f agent", "worker"} {
 		if strings.Contains(msg, banned) {
 			t.Errorf("usage error %q still advertises %q", msg, banned)
 		}
 	}
 }
 
-// TestParseLauncherEntryDesugarsWorkerLabel: `-f worker-<n>` desugars into
-// the same --name channel the legacy `-f lane-<n>` used.
-func TestParseLauncherEntryDesugarsWorkerLabel(t *testing.T) {
+// TestParseLauncherEntryDesugarsLaneLabel: `-f lane-<n>` desugars into the
+// --name channel the launch branches read, and a lane label plus an
+// operator --name is the naming conflict.
+func TestParseLauncherEntryDesugarsLaneLabel(t *testing.T) {
 	t.Parallel()
 
-	p, err := parseLauncherEntry([]string{"-f", "worker-2", "-b"})
+	p, err := parseLauncherEntry([]string{"-f", "lane-2", "-b"})
 	if err != nil {
-		t.Fatalf("parseLauncherEntry(-f worker-2): %v", err)
+		t.Fatalf("parseLauncherEntry(-f lane-2): %v", err)
 	}
-	if !slices.Equal(p.Rest, []string{"-b", "--name", "worker-2"}) {
-		t.Errorf("desugared rest = %v, want [-b --name worker-2]", p.Rest)
+	if !slices.Equal(p.Rest, []string{"-b", "--name", "lane-2"}) {
+		t.Errorf("desugared rest = %v, want [-b --name lane-2]", p.Rest)
 	}
-	if label, ok := parseFactoryLaneLabel(p.Rest); !ok || label != "worker-2" {
-		t.Errorf("worker label not recognised in %v: (%q, %v)", p.Rest, label, ok)
+	if label, ok := parseFactoryLaneLabel(p.Rest); !ok || label != "lane-2" {
+		t.Errorf("lane label not recognised in %v: (%q, %v)", p.Rest, label, ok)
 	}
-	if _, err := parseLauncherEntry([]string{"-f", "worker-2", "--name", "worker-3"}); err == nil ||
-		!strings.Contains(err.Error(), "-f worker-<n> already names the worker") {
-		t.Errorf("worker label plus --name = %v, want the naming conflict", err)
+	if _, err := parseLauncherEntry([]string{"-f", "lane-2", "--name", "lane-3"}); err == nil ||
+		!strings.Contains(err.Error(), "-f lane-<n> already names the lane") {
+		t.Errorf("lane label plus --name = %v, want the naming conflict", err)
 	}
 }
 
 // TestResolveFactoryWorkerNameRefusesLegacyLabel: a legacy label on the
 // input path is refused with an error naming the canonical lane-<n>
-// (REQ-RNC-009; the dedicated rejection wording is M2).
+// (REQ-RNC-009; the claim keeps the legacy refusal as the library-level
+// defense behind the entry-parse refusal).
 func TestResolveFactoryWorkerNameRefusesLegacyLabel(t *testing.T) {
 	cases := []struct{ label, want string }{
 		{"worker-4", "lane-4"},
@@ -136,30 +134,5 @@ func TestNextFactoryWorkerNumber(t *testing.T) {
 	dead := func(int) bool { return false }
 	if n := NextFactoryWorkerNumberForTest(reg, dead); n != 1 {
 		t.Errorf("dead claims pruned = %d, want 1", n)
-	}
-}
-
-// TestLauncherHelpAdvertisesWorkerVocabulary: the cc and glm help surfaces
-// teach the worker forms and no longer teach `-f agent` / `lane-<n>`.
-func TestLauncherHelpAdvertisesWorkerVocabulary(t *testing.T) {
-	t.Parallel()
-
-	for name, text := range map[string]string{
-		"cc":  ccCmd.Use + "\n" + ccCmd.Long,
-		"glm": glmCmd.Use + "\n" + glmCmd.Long,
-	} {
-		for _, want := range []string{"-f worker-<n>", "worker-1"} {
-			if !strings.Contains(text, want) {
-				t.Errorf("%s help missing %q", name, want)
-			}
-		}
-		for _, banned := range []string{"-f agent", "lane-<", "lane-1", "lane-2", "lane-3"} {
-			if strings.Contains(text, banned) {
-				t.Errorf("%s help still advertises %q", name, banned)
-			}
-		}
-	}
-	if !strings.Contains(ccCmd.Long, "-f worker ") {
-		t.Errorf("cc help missing the `-f worker` role-token entry")
 	}
 }

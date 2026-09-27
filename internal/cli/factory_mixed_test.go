@@ -110,7 +110,7 @@ func TestFactoryRunSelectionAtomicSlotsAndArgv(t *testing.T) {
 	if got, err := factorymsg.ResolveActiveRun(context.Background(), root, "run-b"); err != nil || got != "run-b" {
 		t.Fatalf("explicit=%q %v", got, err)
 	}
-	p, err := parseFactoryFlag([]string{"-f", "worker", "--factory-run", "run-b", "--", "--factory-run", "child", "x"})
+	p, err := parseFactoryFlag([]string{"-f", "lane", "--factory-run", "run-b", "--", "--factory-run", "child", "x"})
 	if err != nil {
 		t.Fatal(err)
 	}

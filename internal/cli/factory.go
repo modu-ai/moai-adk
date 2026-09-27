@@ -53,55 +53,49 @@ const (
 	factoryFlagLong  = "--factory"
 	factoryFlagShort = "-f"
 
-	// factoryWorkerRoleToken is the `-f worker` role value: join the running
-	// factory as the next free lane-<n>. M1 keeps the legacy token accepted —
-	// its rejection (with `-f lane` as the canonical name) is M2
-	// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-002/-003).
-	factoryWorkerRoleToken = "worker"
-
 	// factoryLaneRoleToken is the canonical `-f lane` role value
-	// (REQ-RNC-002): join the running factory as the next free lane-<n>.
+	// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-002): join the running factory as
+	// the next free lane-<n>. The legacy `worker` / `agent` tokens are
+	// REFUSED (REQ-RNC-003) — they survive only as detection values
+	// (kanban.IsLegacyFactoryRoleValue).
 	factoryLaneRoleToken = "lane"
-
-	// factoryLegacyAgentRoleToken is the pre-rename spelling of the role
-	// token. M1 keeps it parsing (its rejection wording is M2).
-	factoryLegacyAgentRoleToken = "agent"
 )
 
 // factoryFlagUsageError names every accepted -f shape. It is the error text
 // for an invalid SUPPLIED value and the reference the help texts paraphrase.
-// The numeric count form was REMOVED (N is unnecessary — workers join via the
-// role token). Only the worker-axis spellings are taught here; the legacy
-// `agent` / `lane-<n>` spellings still parse and print their own hint.
-const factoryFlagUsageError = "-f/--factory takes no argument (the factory lead), " +
-	"the worker role token (e.g. -f worker) that joins this session to a running factory as the next free worker, " +
-	"or a worker label (e.g. -f worker-2) that launches exactly that one worker"
+// The numeric count form was REMOVED (N is unnecessary — lanes join via the
+// role token). Only the lane-axis forms are taught here; the legacy
+// `worker` / `agent` spellings are refused naming this text's canonical
+// forms (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-002/-003).
+const factoryFlagUsageError = "-f/--factory takes no argument (the factory leader), " +
+	"the role token -f lane, which joins this session to a running factory as the next free lane, " +
+	"or a lane label (e.g. -f lane-2) that launches exactly that one lane"
 
 // factoryFlagParse is the -f/--factory entry parse (t118). ONE flag token,
 // three shapes:
 //
-//	-f                → the factory lead, one worker (DefaultFactoryLeadWorkers)
-//	-f worker         → join the running factory as the next free worker-<n>
-//	-f worker-<n>     → exactly one additional worker, worker n — the
+//	-f                → the factory leader, one lane (DefaultFactoryLeadWorkers)
+//	-f lane           → join the running factory as the next free lane-<n>
+//	-f lane-<n>       → exactly one additional lane, lane n — the
 //	                    incremental form; the run's count is not carried, and
-//	                    a count of 0 ("unknown") flows into the worker env
+//	                    a count of 0 ("unknown") flows into the lane env
 //
-// Legacy spellings (keep-alias): `-f agent` parses as `-f worker`, and `-f
-// lane-<n>` as `-f worker-<n>`; the launch prints a deprecation hint.
+// Legacy spellings are REFUSED, any letter case (SPEC-ROLE-NAMING-CODE-001
+// REQ-RNC-003/-005): `-f worker` / `-f agent` error naming `-f lane`; a
+// `worker-<n>` / `agent-<n>` label errors naming the canonical `lane-<n>`.
 //
 // The factory carries no SPEC identifier (that is the kanban chain's -k
 // SPEC-ID shape), so a SUPPLIED value that is neither the role token nor a
-// worker label is an error — there is no second interpretation to silently
+// lane label is an error — there is no second interpretation to silently
 // fall into, and hiding the typo would be worse than naming it.
 type factoryFlagParse struct {
-	Enabled          bool     // -f present (any shape)
-	Workers          int      // always 0 post-N-removal; kept for the merge contract
-	WorkerNumber     int      // n of `-f worker-<n>` (or legacy `-f lane-<n>`); 0 otherwise
-	WorkerLabel      string   // the worker label exactly as typed (`worker-3`, or legacy `lane-3`)
-	WorkerRole       bool     // `-f worker` (or legacy `-f agent`): join as the next free worker
-	LegacyAgentToken bool     // the role token was typed as the legacy `agent`
-	RunID            string   // explicit --factory-run selector (MoAI-owned, pre--- only)
-	Rest             []string // args with -f and its consumed value removed
+	Enabled      bool     // -f present (any shape)
+	Workers      int      // always 0 post-N-removal; kept for the merge contract
+	WorkerNumber int      // n of `-f lane-<n>`; 0 otherwise
+	WorkerLabel  string   // the lane label exactly as typed (`lane-3`)
+	WorkerRole   bool     // `-f lane`: join as the next free lane
+	RunID        string   // explicit --factory-run selector (MoAI-owned, pre--- only)
+	Rest         []string // args with -f and its consumed value removed
 }
 
 // parseFactoryFlag extracts --factory / -f and its optional value from args.
@@ -156,28 +150,51 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 		if !hasValue {
 			continue
 		}
-		if value == factoryWorkerRoleToken || value == factoryLaneRoleToken || value == factoryLegacyAgentRoleToken {
+		if value == factoryLaneRoleToken {
 			p.WorkerRole = true
-			p.LegacyAgentToken = value == factoryLegacyAgentRoleToken
 			continue
+		}
+		// Legacy spellings are refused on any letter case (REQ-RNC-003,
+		// REQ-RNC-005): one error line naming the canonical form, nothing
+		// parsed, nothing launched.
+		lowered := strings.ToLower(value)
+		if kanban.IsLegacyFactoryRoleValue(lowered) {
+			if n, isLabel := kanban.SplitFactoryLegacyLabel(lowered); isLabel {
+				return p, fmt.Errorf("%q is the legacy lane label; use %q (or -f lane to join as the next free lane)",
+					value, kanban.FactoryLaneLabel(n))
+			}
+			return p, fmt.Errorf("%q is the legacy role token; use -f lane to join the running factory as the next free lane", value)
 		}
 		if n, ok := kanban.SplitFactoryLaneLabel(value); ok {
 			p.WorkerNumber = n
 			p.WorkerLabel = value
 			continue
 		}
-		if _, isLegacy := kanban.SplitFactoryLegacyLabel(value); isLegacy {
-			// M1 minimal adaptation: a legacy label travels as typed and the
-			// claim refuses it naming the canonical lane-<n>; the dedicated
-			// rejection wording is M2 (REQ-RNC-005).
-			p.WorkerLabel = value
-			p.WorkerNumber, _ = kanban.SplitFactoryLegacyLabel(value)
-			continue
-		}
 		return p, fmt.Errorf("%s, got %q", factoryFlagUsageError, value)
 	}
 
 	return p, nil
+}
+
+// refuseLegacyEntryNames refuses the legacy spellings on the operator-name
+// input path, before any branch resolves (SPEC-ROLE-NAMING-CODE-001
+// REQ-RNC-004/-005/-007): a `lead` / `lead-<suffix>` name errors naming the
+// canonical `leader[-…]` form; a `worker-<n>` / `agent-<n>` (or bare legacy
+// role) name errors naming the canonical `lane-<n>` / `-f lane`. Nothing is
+// parsed further, nothing launches, nothing is written.
+func refuseLegacyEntryNames(args []string) error {
+	if name, ok := parseNamedLabel(args, kanban.IsLegacyLeadLabel); ok {
+		return fmt.Errorf("--name %q is the legacy leader spelling; use %q (leader label forms: leader, leader-<n>, leader-<run-id>)",
+			name, kanban.LeadLabel()+strings.TrimPrefix(name, "lead"))
+	}
+	if name, ok := parseNamedLabel(args, kanban.IsLegacyFactoryRoleValue); ok {
+		if n, isLabel := kanban.SplitFactoryLegacyLabel(name); isLabel {
+			return fmt.Errorf("--name %q is the legacy lane label; use %q", name, kanban.FactoryLaneLabel(n))
+		}
+		return fmt.Errorf("--name %q is a legacy factory spelling; the leader launches as %q and lanes join with -f lane",
+			name, kanban.LeadLabel())
+	}
+	return nil
 }
 
 // parseLauncherEntry is the unified -k + -f entry parse (t118): parseKanbanFlag
@@ -189,18 +206,26 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 //
 //   - `-f [N]` sets FactoryEnabled with Workers (N, or
 //     DefaultFactoryLeadWorkers when omitted);
-//   - `-f worker-<n>` sets FactoryEnabled and appends `--name worker-<n>`
-//     to Rest, desugaring into the existing worker branch (registry bump,
-//     replaceNamedLabel, settings injection, per-worker agent cap) so the
-//     new form and the `-k N --name worker-<i>` form share one
-//     implementation. The run's count is NOT fabricated — a worker joined
-//     incrementally carries 0 ("unknown"), which the worker notice degrades
-//     from. A -f worker-label form plus an operator-supplied --name is a
-//     conflict error: the flag value already named the worker.
-//   - `-f worker` appends the next free worker label the same way.
+//   - `-f lane-<n>` sets FactoryEnabled and appends `--name lane-<n>`
+//     to Rest, desugaring into the existing lane branch (registry bump,
+//     replaceNamedLabel, settings injection, per-lane agent cap) so the
+//     new form and the `-k N --name lane-<i>` form share one
+//     implementation. The run's count is NOT fabricated — a lane joined
+//     incrementally carries 0 ("unknown"), which the lane notice degrades
+//     from. A -f lane-label form plus an operator-supplied --name is a
+//     conflict error: the flag value already named the lane.
+//   - `-f lane` appends the next free lane label the same way.
+//
+// Legacy spellings (`-f worker`, `-f agent`, `worker-<n>`, `agent-<n>` as a
+// -f value, and any of them as an operator --name, plus `lead` /
+// `lead-<suffix>` leader names) are refused before any branch resolves
+// (REQ-RNC-003/-004/-005/-007).
 func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
 	entry, err := parseKanbanFlag(args)
 	if err != nil {
+		return entry, err
+	}
+	if err := refuseLegacyEntryNames(args); err != nil {
 		return entry, err
 	}
 	fp, err := parseFactoryFlag(entry.Rest)
@@ -218,13 +243,13 @@ func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
 	entry.FactoryEnabled = true
 	entry.FactoryRun = fp.RunID
 	// The stripped args always become the launch args — for every -f shape,
-	// not only the lane form below. (The lane and agent forms append their
-	// desugared --name on top of these.)
+	// not only the lane form below. (The lane forms append their desugared
+	// --name on top of these.)
 	entry.Rest = fp.Rest
 	switch {
 	case fp.WorkerRole:
 		if operatorSuppliedName(fp.Rest) {
-			return entry, fmt.Errorf("-f worker already names the role; drop the --name/-n flag (got args %v)", fp.Rest)
+			return entry, fmt.Errorf("-f lane already names the role; drop the --name/-n flag (got args %v)", fp.Rest)
 		}
 		// Desugar into the next free lane label so the bump/liveness rules
 		// and the leader's dispatch address stay one implementation. The
@@ -236,15 +261,12 @@ func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
 		entry.FactoryAutoNumber = true
 	case fp.WorkerNumber > 0:
 		if operatorSuppliedName(fp.Rest) {
-			return entry, fmt.Errorf("-f worker-<n> already names the worker; drop the --name/-n flag (got args %v)", fp.Rest)
+			return entry, fmt.Errorf("-f lane-<n> already names the lane; drop the --name/-n flag (got args %v)", fp.Rest)
 		}
-		// The label travels as typed: a legacy `lane-<n>` is canonicalized
-		// (with its deprecation hint) at the claim, exactly like a typed
-		// --name lane-<n>.
 		entry.Rest = append(entry.Rest, nameFlagLong, fp.WorkerLabel)
 	default:
-		// Bare -f: the factory lead. Workers join via -f worker / -f
-		// worker-<n>; the numeric count form is retired.
+		// Bare -f: the factory leader. Lanes join via -f lane / -f
+		// lane-<n>; the numeric count form is retired.
 		entry.FactoryWorkers = config.DefaultFactoryLeadWorkers
 	}
 	return entry, nil
@@ -348,21 +370,18 @@ func resolveFactoryBranch(factoryEnabled, isLane bool) factoryBranch {
 	}
 }
 
-// parseFactoryLaneLabel reports the lane label in args, if any — the
-// canonical `lane-<n>` or, for M1's minimal adaptation, a legacy
-// `worker-<n>` / `agent-<n>` spelling (which the claim refuses naming the
-// canonical form; the dedicated rejection wording is M2). It matches only
-// the lane SHAPES (kanban.SplitFactoryLaneLabel / kanban.SplitFactoryLegacyLabel),
-// for the same reason parseCompanionLabel matches only the companion shape:
-// treating every named session as a lane would silently change launch
-// behavior for unrelated work.
+// parseFactoryLaneLabel reports the canonical `lane-<n>` label in args, if
+// any. It matches only the lane SHAPE (kanban.SplitFactoryLaneLabel) for the
+// same reason parseCompanionLabel matches only the companion shape: treating
+// every named session as a lane would silently change launch behavior for
+// unrelated work. A legacy `worker-<n>` / `agent-<n>` spelling never reaches
+// this parser — refuseLegacyEntryNames refuses it at the entry parse
+// (REQ-RNC-005); the claim keeps its own legacy refusal as the library-level
+// defense for direct callers.
 func parseFactoryLaneLabel(args []string) (label string, ok bool) {
 	return parseNamedLabel(args, func(candidate string) bool {
-		if _, isLane := kanban.SplitFactoryLaneLabel(candidate); isLane {
-			return true
-		}
-		_, isLegacy := kanban.SplitFactoryLegacyLabel(candidate)
-		return isLegacy
+		_, isLane := kanban.SplitFactoryLaneLabel(candidate)
+		return isLane
 	})
 }
 

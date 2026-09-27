@@ -26,7 +26,7 @@ import (
 // `lead` — including a session with no readable declaration at all — attempts
 // a board write. The guard fails CLOSED: a refusal with nothing to read does
 // not refuse, it admits every write (spec.md §A.8).
-var ErrNotSoleWriter = errors.New("kanban board write refused: caller is not the lead")
+var ErrNotSoleWriter = errors.New("kanban board write refused: caller is not the leader")
 
 // IsNotSoleWriter reports whether err is the sole-writer refusal.
 func IsNotSoleWriter(err error) bool {

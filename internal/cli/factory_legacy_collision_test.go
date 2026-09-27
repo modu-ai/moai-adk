@@ -59,17 +59,23 @@ func TestResolveFactoryWorkerNameAutoIgnoresLegacyRows(t *testing.T) {
 	}
 }
 
-// TestParseLauncherEntryMarksAutoAssignedNumbers: only the `-f worker` /
-// `-f lane` role tokens desugar into an auto-assigned number.
+// TestParseLauncherEntryMarksAutoAssignedNumbers: only the `-f lane` role
+// token desugars into an auto-assigned number; the legacy role tokens are
+// refused before the merge (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-003).
 func TestParseLauncherEntryMarksAutoAssignedNumbers(t *testing.T) {
 	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
-	for args, want := range map[string]bool{"-f worker": true, "-f agent": true, "-f lane": true, "-f worker-2": false, "-f lane-2": false} {
+	for args, want := range map[string]bool{"-f lane": true, "-f lane-2": false} {
 		p, err := parseLauncherEntry(strings.Fields(args))
 		if err != nil {
 			t.Fatalf("parseLauncherEntry(%s): %v", args, err)
 		}
 		if p.FactoryAutoNumber != want {
 			t.Errorf("parseLauncherEntry(%s).FactoryAutoNumber = %v, want %v", args, p.FactoryAutoNumber, want)
+		}
+	}
+	for _, legacy := range []string{"-f worker", "-f agent"} {
+		if _, err := parseLauncherEntry(strings.Fields(legacy)); err == nil {
+			t.Errorf("parseLauncherEntry(%s) = nil error, want the legacy-token refusal", legacy)
 		}
 	}
 }

@@ -21,7 +21,7 @@ import (
 var findProjectRootFn = findProjectRoot
 
 var ccCmd = &cobra.Command{
-	Use:   "cc [-p profile] [-k [SPEC-ID] | -k --name <role> | -f | -f worker | -f worker-<n>] [-- claude-args...]",
+	Use:   "cc [-p profile] [-k [SPEC-ID] | -k --name <role> | -f | -f lane | -f lane-<n>] [-- claude-args...]",
 	Short: "Launch Claude Code with Claude backend",
 	Long: `Launch Claude Code with Claude backend.
 
@@ -65,30 +65,31 @@ Kanban Mode:
                                 free number (plan-1, plan-2, ...).
 
 Factory Mode (dedicated -f entry):
-  -f, --factory                Enter as the LEAD of a factory run. The
+  -f, --factory                Enter as the LEADER of a factory run. The
                                 numeric count form was retired (2026-09-16):
-                                workers join one at a time via the worker
-                                role token or the incremental worker form
-                                below. The lead routes operator-picked cards
-                                to free workers over cross-session messages —
-                                each card goes WHOLE to one worker, which
+                                lanes join one at a time via the lane role
+                                token or the incremental lane form below.
+                                The leader routes operator-picked cards to
+                                free lanes over cross-session messages —
+                                each card goes WHOLE to one lane, which
                                 carries it through plan -> run -> sync
                                 in-session.
-  -f worker                    Join the running factory as a WORKER: the
-                                next free worker-<n> label is claimed for
-                                this session.
-  -f worker-<n>                Launch exactly one additional worker —
-                                worker n — and connect it to the lead socket
-                                of the running factory. A number whose
-                                label is held by a live session is
-                                bumped to the next free number.
-  -k <N> / -k <N> --name worker-<i>
+  -f lane                      Join the running factory as a LANE: the next
+                                free lane-<n> label is claimed for this
+                                session.
+  -f lane-<n>                  Launch exactly one additional lane — lane n —
+                                and connect it to the leader socket of the
+                                running factory. A number whose label is held by
+                                a live session is bumped to the next free number.
+  -k <N> / -k <N> --name lane-<i>
                                 The v1.2.0 unified -k factory shapes, still
-                                valid: -k N is the lead of an N-worker run,
-                                -k N --name worker-<i> is worker i of it (a
-                                bare -k --name worker-<i> defaults to 8).
+                                valid: -k N is the leader of an N-lane run,
+                                -k N --name lane-<i> is lane i of it (a
+                                bare -k --name lane-<i> defaults to 8).
                                 One entry token per launch: -k and -f
                                 together is an error.
+  Legacy role and label spellings (the pre-rename nouns, any letter case)
+  are refused — the error names the canonical -f lane / lane-<n> form.
 
   Genealogy: the pre-3.1 "factory" flag (-f/--factory) was RENAMED to
   -k/--kanban in #1513 (7f61332ef) and now drives the three-role kanban chain
@@ -116,10 +117,10 @@ Examples:
   moai cc -k                           # Kanban lead: seeds the plan->run->sync chain
   moai cc -k SPEC-AUTH-001             # Kanban lead tied to SPEC-AUTH-001
   moai cc -k --name plan               # Kanban companion: joins as the plan lane
-  moai cc -f                           # Factory lead: one worker (worker-1)
-  moai cc -f worker                    # Join the running factory as the next free worker
-  moai cc -f worker-2                  # Add worker 2 to the running factory
-  moai glm -f worker-3                 # Same worker on the GLM backend`,
+  moai cc -f                           # Factory leader: one lane (lane-1)
+  moai cc -f lane                      # Join the running factory as the next free lane
+  moai cc -f lane-2                    # Add lane 2 to the running factory
+  moai glm -f lane-3                   # Same lane on the GLM backend`,
 	GroupID:            "launch",
 	DisableFlagParsing: true,
 	RunE:               runCC,
@@ -164,7 +165,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	// tokens — the -k shapes of SPEC-FACTORY-BOOTSTRAP-001 (kanban membership,
 	// role disambiguated by --name, per the §A.2 truth table REQ-FB-001 /
 	// REQ-FB-002) plus the v1.2.0 factory shapes (-k N), and the revived
-	// dedicated -f surface (bare -f / -f worker / -f worker-<n>). Parsed after
+	// dedicated -f surface (bare -f / -f lane / -f lane-<n>). Parsed after
 	// --spawn is stripped (a spawned session re-issues this command and must
 	// carry the token through) and before worktree handling (so an entry token
 	// can never be mistaken for a -w value). The environment mutation is
