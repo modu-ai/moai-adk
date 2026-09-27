@@ -6,6 +6,10 @@
 
 ## (1)(2) 이중 로드 — 원인 귀속
 
+> **[정정 2026-09-27] 아래 원 Claim 은 틀렸다.** plan-audit iter-2(N2)가 지적했고 레인이 직접 재확인했다. 프로브 세션 `79ed0553`(cwd t1219, 11:29:18Z)의 전사에는 `CLAUDE.local.md` 가 두 벌 모두 실려 있다 — `probe-transcript-claude-files.txt`: 워크트리 사본, 워크트리 `CLAUDE.md`, 그리고 primary `/Users/goos/MoAI/moai-adk-go/CLAUDE.local.md`. 원 Claim 은 디버그 로그의 훅 경고 줄에서 나왔고, 실제 로드 내역인 전사를 읽지 않은 것이 오류다.
+> **정정된 Claim:** 워크트리 안에서 시작한 세션도 primary 사본 `CLAUDE.local.md` 를 함께 로드한다. L1 워크트리(`.claude/worktrees/`)가 primary 디렉터리 안에 있어 상위 디렉터리 탐색에 걸리는 것으로 보인다(원인은 추정, 로드 사실은 관측). 따라서 「런처로 워크트리 안에서 시작」은 (1)을 해결하지 못한다. primary `CLAUDE.md` 는 이 전사에 없었다(왜 CLAUDE.local.md 만 걸리는지는 미관측).
+> 스킬 디렉터리(Evidence 1 첫 줄)의 단일 경로 관측과 Evidence 4 는 유효하다.
+
 ### Claim
 이중 로드는 워크트리 세션 일반의 성질이 아니다. **워크트리 안에서 시작한 세션**은 지침 파일과 프로젝트 스킬 디렉터리를 워크트리 사본 한 벌만 읽는다. 이중 로드는 **primary 체크아웃에서 시작한 뒤 `EnterWorktree` 로 옮겨 온 세션**에서 생긴다. 시작 시 primary 사본을 싣고, 이동 뒤 워크트리 안의 파일을 읽을 때 워크트리 사본(중첩 메모리·rules)을 추가로 싣는다.
 
