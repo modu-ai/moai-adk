@@ -2,7 +2,7 @@
 id: SPEC-CODEX-FACTORY-RETIRE-001
 title: "Retire the interactive-TUI codex factory path (moai codex -k / -f)"
 version: "0.3.0"
-status: implemented
+status: completed
 created: 2026-09-26
 updated: 2026-09-27
 author: manager-spec

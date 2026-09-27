@@ -12,6 +12,7 @@ module: "internal/cli"
 lifecycle: "spec-anchored"
 tags: "codex,launcher,local-instructions,cli"
 tier: "M"
+partially_superseded_by: [SPEC-CODEX-FACTORY-RETIRE-001]
 ---
 
 ## HISTORY
