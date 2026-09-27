@@ -52,6 +52,23 @@
 | **C. `--setting-sources` 조정** | 역효과 가능 — t1219 감사(N1)에서 `user,project` 는 CLAUDE.local.md 로드를 통째로 끔. 워크트리 사본까지 잃는다 | 무관 | 채택 불가로 판단 |
 | **D. 세션 도중 이동 금지**(레인은 런처로 워크트리 안에서 시작, 불가피하면 이동 후 `/clear`) | 해소 안 됨(Claim 2) | 해소 가능 — t1219 Evidence 1·4 | 레인 운영 절차 변경. `/clear` 가 스킬 목록을 되돌리는지는 미측정 |
 
-**권고:** (1)은 **A** 가 유일하게 원인을 제거한다. (2)는 **D** 가 담당한다. 둘은 서로 다른 원인을 겨냥하므로 함께 쓴다.
+## ③ 리드 결정(2026-09-27): A + D — 사전 조건 ② 확인 결과: 블로커
+
+리드는 A+D 를 정하면서, A 를 확정하기 전에 L2 경로에서 도구들이 동작하는지 먼저 확인하도록 했다. 코드와 도구 계약을 읽어 확인했으며, 실행 프로브는 돌리지 않았다. 확인 결과 막히는 지점이 셋이다.
+
+| 도구 | L2 에서 | 근거 |
+|---|---|---|
+| **생성**(`moai worktree new`) | **불가** — 절대 경로·구분자를 거부하고 L1 leaf 이름만 받는다 | `internal/cli/worktree/new.go:50-58` `validateNewWorktreeName` |
+| **WorktreeCreate 훅**(`isolation: worktree` 서브에이전트) | **L1 고정** — `.claude/worktrees/<name>` 에만 만든다 | `internal/hook/worktree_create.go:41` `agentWorktreeParentDir` |
+| **EnterWorktree 전환** | **부분 불가** — 이미 워크트리 안에 있으면 전환 대상이 `.claude/worktrees/` 아래여야 한다. launch 디렉터리에서 첫 진입할 때만 `git worktree list` 의 임의 경로가 허용된다 | Claude Code EnterWorktree 도구 계약(설명문) |
+| 재진입(`moai cc -w <abs>`) | 가능 — `~/.moai/worktrees/` 접두를 받는다 | `internal/cli/launcher.go:958-991` `resolveWorktreeL2Path` |
+| `moai worktree done` | L2 대상. 코드 주석에 따르면 L2 흐름은 변경 없이 유지된다 | `internal/cli/worktree/done.go:186` |
+| `moai integration acquire/release`, git -C 절대 경로 가드 | **미확인** | — |
+
+**Claim:** A 를 그대로 채택하면 카드 워크트리를 만들 인가된 경로가 없다. 레인이 맨손 `git worktree add` 로 돌아가게 되는데, 이는 독트린이 금지한다. 레인 사이의 전환도 막힌다. 따라서 A 는 **생성 경로 신설(Go 변경)** 을 필수 선행으로 갖는다.
+
+**Gaps:** 위 표는 실행 프로브가 아니라 코드·계약 판독이다. integration·가드는 확인하지 않았다.
+
+**권고(이전):** (1)은 **A** 가 유일하게 원인을 제거한다. (2)는 **D** 가 담당한다. 둘은 서로 다른 원인을 겨냥하므로 함께 쓴다.
 
 A 는 사용자 표면(워크트리 위치, 런처 동작)을 바꾸는 선택이다. 그래서 리드에게 올려 결정을 받는다. 결정 전에 SPEC 을 쓰면 t1219 처럼 전제가 뒤집힐 수 있으므로, SPEC 작성은 결정 뒤로 미룬다.
