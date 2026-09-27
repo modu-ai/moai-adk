@@ -98,4 +98,28 @@ m1_to_mN_commit_strategy: "구현 커밋 1 + 증거 커밋 1"
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-28
+sync_commit_sha: pending-backfill   # 자기 SHA 는 커밋 안에 적을 수 없다 — `git log -1 --format=%h -- .moai/specs/SPEC-MCP-SERVED-MODEL-001/progress.md` 로 읽는다
+sync_status: audit-ready-with-debt
+b12_self_test_a: pass   # pre-emission `grep -c 'MCP-SERVED-MODEL-001' CHANGELOG.md` → 0
+b12_self_test_b: pass   # distinct AC ids in acceptance.md → 5 (AC-MSM-001..005); CHANGELOG entry cites AC-MSM-001..005 (5)
+b12_self_test_c: pass   # ls: spec.md, internal/cli/{mcp_glm,glm_task,glm_jobs,codex_task,codex_jobs}.go, internal/cli/mcp_served_model_test.go 모두 존재
+changelog_entry_position: "[Unreleased] › ### Added › 첫 항목"
+docs_synced: []
+docs_checked_no_change:
+  - README.md:361-362                              # MCP 도구 목록만 — 결과 필드 서술 없음
+  - docs-site/content/*/guides/mcp-server.md       # 도구·소비자 표만 — 결과 필드 서술 없음
+  - docs-site/content/*/advanced/config-sections.md # 감사 핀 범위 문장 — 이 카드 무관
+codemaps_check: "moai graph check → exit 1; codemaps value=5 threshold=40 verdict=fresh, citations value=0 verdict=fresh; exit 1 은 mx-index·edges 의 absent(추적되지 않는 런타임 산출물, 새 워크트리 상태) 뿐 — codemaps 갱신 불필요"
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed (implemented 병합, 단일 sync 커밋); updated 2026-09-28 유지(이미 당일)"
+  plan.md: "frontmatter 없음 — 변경 없음"
+  acceptance.md: "frontmatter 없음 — 변경 없음"
+  progress.md: "frontmatter 없음 — 변경 없음"
+mx_tags: "run-phase 추가 1건(mcp_glm.go glmMessagesResponse @MX:NOTE) 외 sync 추가 없음 — 새 공개 함수·fan_in≥3 신규 함수 없음"
+known_gaps:
+  - "AC-MSM-005 명령 1 `go test ./internal/cli/ -run 'GLM|Glm|Codex'` exit 1 — 유일한 실패 TestCodexTaskBackgroundHandshakeHonorsTaskBound, base e9577de4f 에서도 부하 하 동일 실패 (.moai/reports/t1284/run/03b, 03c, 03f). 리드 판정 대기"
+  - "plan-audit 부채 D6(리뷰 출력 새 필드 부재의 비교 기준), D8(REQ-MSM-006 이 거부·fail-open 결과에도 적용되는지), D9(Tier S 파일 수 초과), D10(z.ai 가 model 을 싣는지 미실측 — 싣지 않으면 모든 GLM 완료 호출에 부재 경고) 미해소"
+  - "linux·windows 빌드 미측정 (CI 몫)"
+```

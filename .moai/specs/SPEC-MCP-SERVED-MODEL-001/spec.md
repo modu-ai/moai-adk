@@ -2,7 +2,7 @@
 id: SPEC-MCP-SERVED-MODEL-001
 title: "MCP 위임 도구의 서빙 모델 관측 — glm_task·codex_task 결과와 작업 기록에 요청 모델과 서빙 모델을 함께 남기기"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-09-28
 updated: 2026-09-28
 author: manager-spec (card t1284)
