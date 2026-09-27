@@ -1140,3 +1140,70 @@ parity_live_test.go:343: NOT_RUN (AC-HPR-004): attempted: codex exec (+ resume) 
 - Remaining order: (1) receive follow-up card id → (2) sync via manager-docs (§E.4 + CHANGELOG [Unreleased] partial live-uncertified entry + spec.md status completed, single commit; sync_commit_sha recorded in a follow-up line) → (3) sync-audit via sync-auditor, verdict at .moai/reports/t1099/ → (4) request merge window from lead; on grant absorb local develop and remeasure on the merged tree (internal/cli hook tests isolated per card t1229 note; hook.go touched only at :96–114, check overlap with t1152's regions :278–307/:472–493/:523–542).
 - Coverage request for sync-audit: measure internal/goal (78.0%) and internal/template (82.8%) before vs after this card (baseline at merge-base of the branch with develop), record as debt if not a regression.
 - Lead notes: codex was removed from factory/kanban by operator decision; no live leg depends on codex factory/lane (acceptance.md has 0 factory/lane/kanban hits; parity_live_test.go legs need a single codex session + ~/.codex/auth.json only).
+
+## §E.5 Live-certification follow-up (card t1280, 2026-09-28)
+
+Follow-up card t1280 (named in §E.4) attempted the 9 live legs on the
+post-race-repair tree and repaired the two debts the binding audits assigned
+to its scope. Run commit `55a19025b`, base local develop `e9577de4f`, branch
+`WT-hook-parity-live`, worktree `.claude/worktrees/t1280`.
+
+**Live attempt — blocked before any host call.** Caps were declared before the
+run (`.moai/reports/t1280/live-caps.md`: the suite's own 10-turn / 45-minute
+budget, one execution, no retry, verdict records persisted via
+`MOAI_PARITY_VERDICT_DIR`). Premise held under the §30 three-stage
+measurement: the live tests are byte-identical to the certified tree
+(`git diff ee29e8c6c e9577de4f -- internal/cli/parity_live_test.go` → empty;
+9 `^func TestLive` at both), and both same-day merges are ancestors of the
+card base (`git merge-base --is-ancestor 5d4c37664 e9577de4f` → 0;
+`ee29e8c6c` → 0). With `MOAI_PARITY_LIVE=1` every leg skipped at the same
+line numbers as the §E.4 record (:343,376,392,419,440,454,481,503,520) with
+`NOT_RUN Codex login is due for a token refresh; refreshing a copy would
+rotate the operator token` — the t1273 auth-copy rule's safe refusal
+(`internal/cli/live_harness_test.go:394`), which fires before any codex
+invocation. Host turns consumed: 0 of 10. The token refresh is the operator's
+act; the t1203-recorded account quota (blocked until 2026-09-28 14:37) was
+therefore not reached today and stays unobserved this run. The live legs
+remain NOT_RUN and the aggregate parity verdict remains not-PASS — unchanged
+from §E.4, now with a fresh machine-observed blocking reason replacing the Q5
+decision as the recorded cause.
+
+**F3 repair (t1099 Opus re-audit F3: inconclusive receipt recorded `pass`).**
+`codexReviewMember` (`internal/cli/codex_stop_chain.go`): a fresh
+`inconclusive` receipt still allows (design §D3 step 5, fail-open as on
+Claude's erroring-reviewer path) but now records Status `fail-open` with one
+discard record (`codex-stop-chain/codex-review/inconclusive`) — never `pass`.
+The §D3.8 count still resets on any fresh receipt read, as before. New golden
+subtest `codex installed, fresh INCONCLUSIVE receipt` premise-asserts the
+fixture produces an `inconclusive` receipt and pins decision-parity with
+Claude plus the non-pass record.
+
+**F4 repair (t1099 sync-audit F4, Medium: goal member outside the §D3.8
+cap).** The goal member's unmeasured continuations — receipt absent, or the
+member cut off at its internal budget — now count toward the same §D3.8
+consecutive-unmeasured cap as the gates (`stopCapGoal = "goal"`; the cut-off
+wrapper passes it instead of `""`). The Nth unmeasured Stop allows as
+`unverified` with one discard record and the goal NOT satisfied; a measured
+evaluation (met, unmet, cancelled, budget-terminated) resets the streak.
+design.md carries the dated t1280 amendment at §D3.5 completing the §D3.4
+mapping row's wording. Decision graded by Jev `route.sh` → LEAD-ANSWER-NOW
+(owner lead, conf 0.69, reversible 0.59): option A (apply the existing cap
+machinery, Codex-only) over option B (change goal-state semantics shared with
+Claude). New test `TestCodexGoalUnmeasuredCapBoundsContinuation` (three legs:
+receipt-absent cap, cut-off cap, measured reset).
+
+**Remeasure (this run, tree `55a19025b`).** `go test -count=1 ./internal/gitenv/...` ok;
+cli selectors `^TestStopChain|^TestCodexGoal|^TestStopChainEffectParityGolden|^TestReviewGate|^TestCodexStopHandler|^TestLive` ok 98.4s;
+`go vet` cli/codexadapter/codexwiring exit 0; `golangci-lint` v2.1.6 `./internal/cli/` `0 issues.`;
+`TestCodexGoalUnmeasuredCapBoundsContinuation` ok 11.5s (all subtests);
+review-gate golden family PASS 9.94s including the new subtest.
+**`internal/hook` root package FAIL — `TestDetectorNeverAltersToolCall`
+(`escalation_m5_test.go:232`, `detector wrote an unexpected MOAI_HOME file:
+db/t9001-…/contract/events.jsonl`), deterministic in isolation (2.0s).**
+Attributed to the base tree, not this card: the failing test binary compiles
+`internal/hook` and its deps, which include `internal/cli/preference` and
+`internal/cli/specid` but not the `internal/cli` root package this card
+changed (`go list -deps ./internal/hook/`); the writer is the contract store
+(`internal/contract/receipt`), landed with t1235/t1236 and absent from the
+t1236 audit's disclosed findings. Reported to the lead — a t1235/t1236
+follow-up, out of this card's scope.
