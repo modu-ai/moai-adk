@@ -176,4 +176,34 @@ operator_gate_pending: "동결 해제 여부 — 리드가 AskUserQuestion 으�
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-27
+sync_commit_sha: pending-backfill-sync   # 이 sync 커밋 자신 — 자기 SHA 는 커밋 안에 적을 수 없다
+sync_status: audit-ready
+run_head_consumed: 6a03d5272
+b12_self_test_a: "grep -c 'SPEC-ALWAYS-LOADED-HEADROOM-001' CHANGELOG.md → 0 (중복 없음; 단 항목은 추가하지 않음 — 아래)"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 11 = 자기 AC 10 (AC-ALH-001..010) + 선행 SPEC 참조 AC-ALD2-002 1; ac-verify.md 10/10 PASS 와 일치"
+b12_self_test_c: "ls internal/cli/init_headroom_export_test.go .moai/reports/t1226/verdict.md .moai/reports/t1226/ac-verify.md → 3개 모두 존재"
+changelog_entry_position: skipped
+changelog_skip_reason: >-
+  측정·판정 카드 선례를 따른다. 직계 선행 SPEC-ALWAYS-LOADED-DIET-002 와 측정 카드
+  SPEC-AUTONOMY-KICKOFF-CALIB-001(t1244) 모두 CHANGELOG 항목이 없다(grep -c → 0, 0).
+  이 카드는 배포 표면을 바꾸지 않는다 — 18 계수 파일·템플릿 미러 무변경(AC-ALH-008),
+  추가된 것은 테스트 파일 1개와 .moai/reports/t1226/** 뿐이다.
+frontmatter_status_transitions:
+  spec.md: "in-progress → implemented → completed (이 sync 커밋에서 병합 전이)"
+  plan.md: "frontmatter 없음 — 전이 대상 아님"
+  acceptance.md: "frontmatter 없음 — 전이 대상 아님"
+  progress.md: "frontmatter 없음 — 전이 대상 아님"
+readme_docs_site: untouched   # 내부 측정 카드
+mx_tag_validation: "신규 파일은 _test.go 1개 — 공개 함수 없음, @MX 추가 대상 없음"
+```
+
+### 선행 채무 해소 기록 (SPEC-ALWAYS-LOADED-DIET-002 → t1226)
+
+SPEC-ALWAYS-LOADED-DIET-002 progress.md(「남은 채무」 6항)는 런타임 한도 150,000자 대비 잔여 **48,361자**를 후속 카드 t1226 소유 채무로 넘겼다. 그 SPEC 본문은 수정하지 않고, 해소 상태를 여기에 기록한다.
+
+- **판정**: 동결 조건 아래에서는 달성 불가 — `init`·`live` 두 표면 모두 `STRUCTURALLY-INFEASIBLE-UNDER-FREEZE` (`.moai/reports/t1226/verdict.md`).
+- **근거 수치**: 허용 제거 풀을 전부 적용해도 `T_min_init = 189,689`, `T_min_live = 185,872` 로 150,000 을 넘는다.
+- **해제 시 경로**: 최소 탐욕 해제 24개 절 / 구속 줄 27개(40,838자)를 풀면 `T_min = 148,851` 로 한도 안에 들어온다.
+- **채무 상태**: 「측정 미완」에서 「판정 완료, 운영자 결정 대기」로 이동. 동결 해제 여부는 3등급 운영자 게이트이며 리드가 `AskUserQuestion` 으로 상신한다. 해제가 승인되면 실제 감축은 별도 카드의 일이다.

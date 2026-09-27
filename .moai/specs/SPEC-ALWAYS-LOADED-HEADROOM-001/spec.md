@@ -2,7 +2,7 @@
 id: SPEC-ALWAYS-LOADED-HEADROOM-001
 title: "always-loaded 지시문 표면의 허용 제거 풀 A_adm 실측과 150,000자 런타임 한도 달성 가능성 판정"
 version: "0.4.0"
-status: in-progress
+status: completed
 created: 2026-09-27
 updated: 2026-09-27
 author: manager-spec
