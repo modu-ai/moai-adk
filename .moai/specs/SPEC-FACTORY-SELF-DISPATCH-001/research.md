@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-SELF-DISPATCH-001
 title: "Research — self-dispatching lane (Factory F2)"
-version: "0.2.0"
+version: "0.3.0"
 created: 2026-09-27
 ---
 
@@ -111,7 +111,10 @@ relaunch policy needs a supervising form (design.md §6).
 | Lease owner check | `internal/homestate/card_transition.go:433-441` | `guardLeaseAcquire` requires the actor to be registered and equal to `cur.OwnerLabel` — an expired card returns to its own lane, hence REQ-SD-025's skip rule |
 | Backend variable | `internal/config/envkeys.go:224-235` | `EnvMoaiKanbanBackend = "MOAI_KANBAN_BACKEND"`, values `kanban.BackendClaude`/`BackendGLM`/`BackendGPT` |
 | Backend constants | `internal/kanban/record.go:22-24` | `"claude"`, `"glm"`, `"gpt"` |
-| Backend on factory lanes | `internal/cli/glm.go:267-268` exports it; `internal/cli/cc.go:219` does not | cc lane path gains it |
+| Backend on factory lanes | `internal/cli/glm.go:267-268`; `internal/cli/cc.go:220` `exportFactoryLaunchFacts` → `internal/cli/kanban.go:514` → `exportKanbanLaunchFacts` sets it at `kanban.go:492-497` | both lane paths already export it (v0.2.0's "cc does not" was wrong — corrected at v0.3.0) |
+| Card-id variable | `internal/config/envkeys.go:250` | `EnvMoaiKanbanCard = "MOAI_KANBAN_CARD"`; in the eleven-key Codex scrub (`codex_launcher.go:276`), not in the MCP allowlist — the hook reads it from the process env |
+| Integration branch source | `internal/kanban/integration_lock.go:88-93`; `internal/cli/integration.go:204` | sources `flag` / `config` / `caller`; the configured source is the git-flow develop branch only, so a github-flow `acquire` without `--branch` records the caller's own branch |
+| Codex SessionStart | `internal/codexadapter/events.go:72` | `{hook.EventSessionStart, "session-start", true}` — Codex sessions do fire SessionStart |
 | Backend in Codex MCP allowlist | `internal/codexwiring/configtoml.go:21` | `MOAI_KANBAN_BACKEND` present |
 | `todo` subcommand tree | `internal/cli/todo.go:262-267` | add, list, done, undone, next, unpick, edit, move, drop, undrop, analyze, relate, unrelate, why, pr, landed, auto-done, export-json, history, triage |
 | Read-intent `todo` verbs | `todo_triage.go:94` ("read-only"), `todo_pr.go:180`, `todo_history.go:131`, `todo.go:570-574` (`list`, `LoadPure`); `todo_why.go:29` uses `Load`, which can migrate a legacy layout (`internal/kanban/backlog_store.go:607-619`) | `list`, `history`, `pr`, `triage` read through `LoadPure`; `why` is read-intent but goes through `Load` — on an already-migrated queue it writes nothing (AC-SD-015 checks bytes on such a fixture); `analyze` (`todo_analysis.go:129` `Mutate`), `landed` ("Record the operator's landing evidence"), `export-json` (writes a file) are writers |

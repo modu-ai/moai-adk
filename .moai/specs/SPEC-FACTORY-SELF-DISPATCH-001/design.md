@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-SELF-DISPATCH-001
 title: "Design — self-dispatching lane (Factory F2)"
-version: "0.2.0"
+version: "0.3.0"
 created: 2026-09-27
 ---
 
@@ -71,22 +71,31 @@ flowchart TD
 ## §4 Launcher environment
 
 - cc / glm: `enterFactoryWorkerMode` (`internal/cli/factory.go:402-418`) gains the marker (name and value
-  constants); restored on return like the other keys. The backend value is already exported on the glm
-  factory-lane path (`internal/cli/glm.go:267-268`) but not on the cc one (`internal/cli/cc.go:219`
-  calls `enterFactoryWorkerMode` with no `exportKanbanLaunchFacts`; the calls at `:237,255` sit under
-  `!entry.FactoryEnabled`), so the cc lane path gains it.
+  constants); restored on return like the other keys. The backend value is already exported on both
+  factory-lane paths: glm at `internal/cli/glm.go:267-268`, cc at `internal/cli/cc.go:220`
+  (`exportFactoryLaunchFacts`, which delegates at `internal/cli/kanban.go:514` to
+  `exportKanbanLaunchFacts`, whose `os.Setenv(config.EnvMoaiKanbanBackend, …)` is at `kanban.go:492-497`).
+  No launcher change is needed for the backend value.
 - Codex: the per-card child environment starts from `codexChildEnv` (`codex_launcher.go:607-625`) and
-  then sets the marker, the lane label, the factory signal, and `MOAI_KANBAN_BACKEND=gpt`. Bare
+  then sets the marker, the lane label, the factory signal, `MOAI_KANBAN_BACKEND=gpt`, and the leased
+  card id in `MOAI_KANBAN_CARD` (`config.EnvMoaiKanbanCard`, `envkeys.go:250`) — the hand-off the
+  owned-card rule reads (REQ-SD-003, -019). Bare
   `moai codex` keeps the eleven-key scrub.
 - The leader session gets no marker.
 
 ## §5 Lane predicate and refusal wording
 
 ```
-isLane(env) = env[config.EnvFactoryRole] == <role-value constant>
+laneAdmit(env)  = env[config.EnvFactoryRole] == <role-value constant>
+laneRefuse(env) = laneAdmit(env)
+               || env[config.EnvMoaiFactoryWorker] != ""
+               || env[config.EnvMoaiKanbanBackend] == kanban.BackendGPT
 ```
 
-Used by the queue guard, the `decide` guard, and the lane-verb admission, on the CLI and MCP paths.
+`laneAdmit` gates `next`/`stage`/`complete` on every path. `laneRefuse` gates the queue guard, the
+`decide` guard, and the contract guard's role gate on every path. The two extra clauses of `laneRefuse`
+read variables the frozen Codex MCP allowlist already forwards (`configtoml.go:21`), so the Codex MCP
+path refuses without widening it. Widening only the deny side can refuse more, never grant more.
 Refusal lines are constants in one place per verb family; the REQ-SD-004 Codex line is one constant in
 `codex_launcher.go` replacing `codexFactoryRefusalDiag` (`:743-744`); legacy role tokens on every
 launcher go through t1256's REQ-RNC-003/-005/-007 producer.

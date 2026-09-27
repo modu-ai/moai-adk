@@ -17,15 +17,18 @@ them. None is open.
   card; stop at `merge-ready`; a Codex lane's `next` skips any card at `merge-ready` or later, including
   one returned to `assigned` by lease expiry (REQ-SD-025, AC-SD-023). Rationale: card text, and a
   re-lease would livelock the launcher on a card it cannot advance.
-- **B3 — Lane predicate** (D5; plan-audit D5): role marker equals the value constant, on every path; a
-  label alone is not a lane. Default keeps the Codex MCP allowlist frozen (REQ-SD-022), accepting that
-  `todo_add`/`factory_decide` are not refused on the Codex MCP path (spec.md §E.1). Rationale: one rule
-  everywhere; widening the allowlist is a REQ-CFR-020 reversal with user-visible drift and is left to a
-  later explicit decision.
+- **B3 — Lane predicates, asymmetric** (D5; plan-audit iter-1 D5, iter-2 N1): **admission** to
+  `next`/`stage`/`complete` requires the role marker; **refusal** of queue mutation, `factory_decide`, and
+  the contract guard's role gate also fires on a lane label or `MOAI_KANBAN_BACKEND=gpt`. Correction of
+  the v0.2.0 premise: closing the Codex MCP refusal gap needs **no** allowlist change — both the lane
+  label and the backend variable are already in the frozen allowlist
+  (`internal/codexwiring/configtoml.go:21`, re-measured). Rationale: widening only the deny direction
+  cannot grant anything, so the one-rule simplicity is kept where it grants and dropped where it denies.
 - **B4 — Integration surface** (D6; plan-audit D2, O10): a Claude lane acquires `moai integration
   acquire`, merges in the worktree that has the integration branch checked out, records `complete`, and
   releases; the parent checkout never changes branch; `complete` refuses when that worktree is not
-  provisioned. Rationale: the repository's existing single integration surface; merging in the parent
+  provisioned, and when the window's branch source is the caller's own tree (plan-audit iter-2 N2 — on a
+  github-flow project `acquire` without `--branch` records the card's own branch). Rationale: the repository's existing single integration surface; merging in the parent
   would contradict REQ-SD-018. Local override noted in spec.md §E.1.
 - **B5 — Harness signal** (D7; plan-audit D6): `MOAI_KANBAN_BACKEND` with the existing
   `kanban.Backend*` constants; `gpt` identifies Codex. Rationale: existing name (REQ-SD-022 forbids new
@@ -38,8 +41,10 @@ them. None is open.
   `factory_next`/`stage`/`complete`; `factory_next`'s parent-checkout check evaluates that argument.
   Branch if the pre-flight measurement (§C.4) shows the server does follow the session tree: nothing
   changes — the argument remains required, because the rule must hold on every harness.
-- **B8 — Next-card rule on `startup`** (plan-audit D3): injected on every lane `startup` regardless of
-  clear policy, and on `clear`.
+- **B8 — SessionStart rule, per harness** (plan-audit iter-1 D3, iter-2 N3): on every lane `startup`
+  regardless of clear policy, and on `clear`. Claude-harness lanes get the next-card rule; Codex lanes
+  get the owned-card rule naming the card id the launcher passed in `MOAI_KANBAN_CARD`, and are never
+  told to take a card.
 - **B9 — Pre-dispatch cross-check** (plan-audit D12, O9): `next` prints the leased card's PR and landed
   state through the `moai todo pr` reader; the next-card rule states that lane promotion is
   operator-authorized.
@@ -95,7 +100,7 @@ paths its committed spec/plan/research/design/acceptance name.
 | `internal/hook/session_start_factory_i18n.go` | rule text en/ko/ja/zh | **Yes** (M3 locales) |
 | `internal/kanban/bootstrap.go`, `internal/kanban/factory_slots.go` | read only (label producer, roster) | **Yes** — read dependency |
 | `internal/cli/factory_role_pin_test.go` | extended to assert the stamp uses the constant | **Yes** (M4 pin) |
-| `internal/cli/cc.go` | export backend on the factory-lane path | No |
+| `internal/cli/cc.go`, `internal/cli/kanban.go` | read only — the backend is already exported on the cc factory-lane path (`cc.go:220` → `exportFactoryLaunchFacts` → `kanban.go:514` → `kanban.go:492-497`) | No |
 | `internal/cli/factory_card.go` | `next`, `stage`, `complete`; lane refusal on `decide` | No |
 | `internal/cli/factory_handoff_recover.go` | register the three verbs | No |
 | `internal/cli/integration.go` | read only (target resolution reused by `complete`) | No |

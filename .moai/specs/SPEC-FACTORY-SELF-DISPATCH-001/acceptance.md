@@ -24,7 +24,9 @@ and vocabulary. F1 record behavior and F3 controller behavior are not verified h
   capture the argv and environment the launcher would hand to it.
 - Waits and lease expiry are driven by an injected clock, never by sleeping.
 - "Lane environment" means the role marker set to the role-value constant plus a lane label; "label-only
-  environment" means a lane label with the marker unset.
+  environment" means a lane label with the marker unset; "Codex MCP environment" means exactly the
+  variables the frozen Codex MCP `env_vars` allowlist forwards for a lane — a lane label and
+  `MOAI_KANBAN_BACKEND=gpt`, no role marker.
 
 ## §C Traceability
 
@@ -56,6 +58,9 @@ and vocabulary. F1 record behavior and F3 controller behavior are not verified h
 | REQ-SD-024 | AC-SD-010, AC-SD-014 |
 | REQ-SD-025 | AC-SD-023, AC-SD-024 |
 
+AC numbers track REQ numbers for 001-022 only; the three added at v0.2.0 are crossed (AC-SD-023/024 ↔
+REQ-SD-025, AC-SD-025 ↔ REQ-SD-023). The matrix above is authoritative.
+
 ## §D Acceptance criteria (Given-When-Then)
 
 ### AC-SD-001 — run gate
@@ -65,7 +70,7 @@ and vocabulary. F1 record behavior and F3 controller behavior are not verified h
   `.moai/`; the recorded `develop_sha` equals the develop SHA the run read (the first parent of the
   absorbing merge, or `git rev-parse develop` at gate time); and `t1256_landed` is `yes`.
 - Verify (production-path check, prints nothing on pass):
-  `G=$(git log -n1 --format=%H -S'develop_sha:' -- .moai/specs/SPEC-FACTORY-SELF-DISPATCH-001/progress.md) && git log --first-parent --no-merges --format=%H ed506740b.."$G"^ -- . ':!.moai' | grep -c . | grep -qx 0 && echo OK`
+  `G=$(git log -n1 --format=%H -S'develop_sha:' -- .moai/specs/SPEC-FACTORY-SELF-DISPATCH-001/progress.md) && test -n "$G" && git log --first-parent --no-merges --format=%H ed506740b.."$G"^ -- . ':!.moai' | grep -c . | grep -qx 0 && echo OK`
   prints `OK`.
 - Verify (SHA and landing lines):
   `grep -E '^- (develop_sha: [0-9a-f]{40}|t1256_landed: yes)$' .moai/specs/SPEC-FACTORY-SELF-DISPATCH-001/progress.md | wc -l`
@@ -83,8 +88,8 @@ and vocabulary. F1 record behavior and F3 controller behavior are not verified h
 ### AC-SD-003 — Codex per-card relaunch
 - **Given** two operator-picked cards and a substituted `codex` binary that exits 0 after moving its card
   to `merge-ready`, **When** `moai codex -f lane` runs, **Then** the substitute is invoked twice, each time
-  with its working directory set to that card's worktree and with the marker, the lane label, and
-  `MOAI_KANBAN_BACKEND=gpt` in its environment, and the launcher exits 0 once `next` returns status 3.
+  with its working directory set to that card's worktree and with the marker, the lane label,
+  `MOAI_KANBAN_BACKEND=gpt`, and `MOAI_KANBAN_CARD` equal to that card's id in its environment, and the launcher exits 0 once `next` returns status 3.
 - Verify: `go test ./internal/cli -run '^TestSD_AC003_CodexRelaunchPerCard$' -count=1 -v`
 
 ### AC-SD-004 — other Codex factory shapes
@@ -157,9 +162,13 @@ and vocabulary. F1 record behavior and F3 controller behavior are not verified h
 - **Given** the §B fixture and a Claude lane holding the integration window, with the card's branch merged
   `--no-ff` into `develop` inside `.claude/worktrees/develop` and a re-measure file naming the merge commit,
   **When** the lane runs `complete`, **Then** the card is `merged-local` with that merge SHA recorded and
-  the window is released; **Given** the integration branch is checked out only in the parent checkout,
+  the window is still held by the lane (release is the lane's next step, not part of `complete`);
+  **Given** the integration branch is checked out only in the parent checkout, or in no tree at all,
   **Then** `complete` refuses saying the integration worktree is not provisioned and the card row is
-  unchanged.
+  unchanged; **Given** a github-flow fixture (no configured integration branch) where the lane acquired
+  the window from its card worktree without `--branch`, so the window's branch source is `caller` and
+  its branch is the card's own `WT-` branch, **Then** `complete` refuses naming `--branch` and the card
+  never reaches `merged-local`.
 - Verify: `go test ./internal/cli -run '^TestSD_AC013_ClaudeCompleteViaIntegrationWorktree$' -count=1 -v`
 
 ### AC-SD-014 — MCP ↔ CLI equivalence and `project_root`
@@ -178,13 +187,18 @@ and vocabulary. F1 record behavior and F3 controller behavior are not verified h
   subcommand added later is covered without editing the test.
 - Verify: `go test ./internal/cli -run '^TestSD_AC015_LaneQueueAllowlistWalk$' -count=1 -v`
 - **Given** a label-only environment, **When** `moai factory next`, `stage`, and `complete` are invoked,
-  **Then** each is refused as not a lane session; and `moai todo add` is not refused by the lane guard.
+  **Then** each is refused as not a lane session; **and When** `moai todo add` is invoked there, **Then**
+  the lane guard refuses it (refusal holds on the label) and the queue bytes are unchanged. **Given** a
+  Codex MCP environment, **When** `todo_add` is called, **Then** it is refused with the queue bytes
+  unchanged, and `factory_next` is refused as not a lane session.
 - Verify: `go test ./internal/cli -run '^TestSD_AC015_LabelOnlyIsNotALane$' -count=1 -v`
 
 ### AC-SD-016 — lane cannot decide
 - **Given** a card in `kickoff` and a lane environment, **When** `moai factory decide` and
-  `factory_decide` are invoked, **Then** both are refused and the card row is unchanged; in a non-lane
-  environment the same CLI call succeeds.
+  `factory_decide` are invoked, **Then** both are refused and the card row is unchanged; **Given** a Codex
+  MCP environment, **When** `factory_decide` is called on the same card, **Then** it is refused and the
+  card row is unchanged; in an environment carrying none of the three lane variables the same CLI call
+  succeeds.
 - Verify: `go test ./internal/cli -run '^TestSD_AC016_LaneDecideRefused$' -count=1 -v`
 
 ### AC-SD-017 — marker via constants; guard live
@@ -201,10 +215,13 @@ and vocabulary. F1 record behavior and F3 controller behavior are not verified h
 - Verify: `go test ./internal/cli -run '^TestSD_AC018_ParentCheckoutUntouched$' -count=1 -v`
 
 ### AC-SD-019 — next-card rule
-- **Given** a lane environment, **When** SessionStart runs with source `startup` under each of the three
-  clear policies and with source `clear`, for each of en, ko, ja, zh, **Then** additionalContext carries
-  the next-card rule in that language, names each of the six MCP tools together with its CLI equivalent,
-  and states that lane queue promotion is operator-authorized; **Given** a leader environment and an
+- **Given** a lane environment with `MOAI_KANBAN_BACKEND=claude`, **When** SessionStart runs with source
+  `startup` under each of the three clear policies and with source `clear`, for each of en, ko, ja, zh,
+  **Then** additionalContext carries the next-card rule in that language, names each of the six MCP
+  tools together with its CLI equivalent, and states that lane queue promotion is operator-authorized;
+  **Given** a lane environment with `MOAI_KANBAN_BACKEND=gpt` and `MOAI_KANBAN_CARD=t9`, **When**
+  SessionStart runs with source `startup`, **Then** additionalContext carries the owned-card rule naming
+  `t9` and the current worktree, and contains neither `factory next` nor `factory_next`; **Given** a leader environment and an
   environment with no factory keys, **Then** no next-card rule is present for either source.
 - Verify: `go test ./internal/hook -run '^TestSD_AC019_NextCardRuleInjection$' -count=1 -v`
 
@@ -240,7 +257,9 @@ and vocabulary. F1 record behavior and F3 controller behavior are not verified h
 - Verify: `go test ./internal/cli -run '^TestSD_AC023_CodexNextSkipsUnadvanceableCard$' -count=1 -v`
 
 ### AC-SD-024 — Codex merge edge refused on every path
-- **Given** a card in `merge-ready` leased by a lane whose `MOAI_KANBAN_BACKEND` is `gpt`, **When** the lane
+- **Given** a card in `merge-ready` leased by a lane whose `MOAI_KANBAN_BACKEND` is `gpt`, in a lane
+  environment (marker set, so lane admission holds and the harness check is the only possible refusal
+  cause — the MCP-path test sets the marker in the server's environment explicitly), **When** the lane
   requests `merging` through each path, **Then** each is refused and the card row is unchanged:
 - Verify (`complete`): `go test ./internal/cli -run '^TestSD_AC024_CodexMergeRefusedComplete$' -count=1 -v`
 - Verify (`stage … merging`): `go test ./internal/cli -run '^TestSD_AC024_CodexMergeRefusedStage$' -count=1 -v`
