@@ -1,4 +1,4 @@
-# plan.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.6)
+# plan.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.7)
 
 ## §A. 맥락
 
@@ -52,7 +52,7 @@ Push 단계(REQ-GR-021)와 자율 Kickoff 활성(M8)에만 걸리는 추가 조�
 
 ## §D. 제약
 
-- 변경은 `design.md §2` 허용 목록 안에서만(REQ-GR-024, AC-GR-003).
+- 변경은 `design.md §2` 허용 목록 안에서만(REQ-GR-024, AC-GR-003). 1~26행은 plan·run 산출물이고, 27행은 sync 단계 문서 산출물(`CHANGELOG.md` 의 `[Unreleased]` 항목, `docs-site/content/{ko,en,ja,zh}/cli-reference/contract.md` 의 `contract` 하위 명령 문서)이다.
 - 로컬·템플릿은 같은 커밋에서 함께 편집한다.
 - 블록·SSOT·템플릿 개정 문장에 내부 토큰 금지(REQ-GR-023).
 - Go 테스트는 `t.TempDir()` 와 격리된 `MOAI_HOME` 만 쓴다. Jev 는 스텁 이음매로만, 네트워크 금지.
@@ -231,5 +231,6 @@ run M0(manager-develop, `progress.md §E.2`, BASE `7fe658815`)이 멈춤 규칙�
 | D57 plan.md:144 낡은 A2 표지 | **수리** — 「A2 0.4.3, `status: implemented`」 | `plan.md §H` |
 | D58 acceptance.md:124 증거 귀속 | **수리** — 측정 당시 비고정 명령을 그대로 적고, 고정형 재측정(트리 `a02e7c02b`, 같은 3개)을 덧붙임 | `acceptance.md` AC-GR-009 |
 | D59 design.md:325 열 개수 | **수리** — 기대 열을 7개로 맞춤 | `design.md §12` |
+| (sync, v0.3.7) sync 산출물이 AC-GR-003 허용 목록 밖 | **수리(레인 결정 선택지 a)** — 허용 목록 27행에 sync 단계 문서 산출물 다섯 경로 추가, 편집 범위를 `[Unreleased]` 항목과 `contract` 하위 명령 문서로 한정. 테스트 쪽 허용 목록(`grAllowed`)은 manager-develop 이 같은 다섯 경로로 맞춘다 | `design.md §2` 27행, AC-GR-003 Given, REQ-GR-024, §D |
 
 요구사항 25개·AC 25개 그대로 — AC 스냅숏 재생성 의무 없음.

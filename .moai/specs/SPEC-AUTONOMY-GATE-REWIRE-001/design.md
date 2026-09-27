@@ -1,4 +1,4 @@
-# design.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.6)
+# design.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.7)
 
 A1 기준: 0.5.2 (`25283ebf8`) — 스키마(결정자 값 집합, 파생 기본값, 영수증 필드, 구조 검증, `card` 필드)는 A1, 결정 규칙은 A3. A2 기준: 0.4.3 (`status: implemented`, BASE `7fe658815`) — 기록 경로·YAML 머리·`revoke` 종류를 M0 에서 대조했다. A2 는 revoke 기록을 `status: resolved` 로 두고 needs-decision 으로 세지 않으므로 재개 차단은 A3 revoke 판독기가 맡는다(§10). A2b(t1245): push 직렬화·에이전트발 `sign` 차단·팩토리 에이전트 세션의 `decide` 거절(리드 결정 2026-09-26).
 
@@ -59,8 +59,9 @@ Where `workflow.autonomy.mode: contract` — <지시>. See `.claude/rules/moai/w
 | 24 | `internal/cli/contract_decide.go`, `contract_kickoff_check.go`, `contract_revoke.go` + 테스트, 그리고 `internal/cli/contract.go`(A1 파일 — BASE `7fe658815` 기준 `newContractCmd` 의 하위 명령 등록 516행 `cmd.AddCommand(verifyCmd, showCmd, signCmd)`, 서명 옵션·이음매 조립 389~414행 `sign.Options{…}`·`sign.Seams{…}`·`sign.Sign(opts, seams)`) | A1 `contract` Cobra 명령에 하위 명령 추가. `contract.go` 의 편집은 **그 두 곳으로만** 한정한다 — 516행에 세 하위 명령 등록, 389~414행에 doctrine 플래그(`jevDoctrineAmended`)와 사건 저장소 이음매 전달. 그 밖의 `contract.go` 줄은 바꾸지 않는다 | 007·011·022·012·025 | — |
 | 25 | `internal/template/contract_mode_blocks_test.go`, `contract_mode_guided_test.go` (신규, 템플릿 사본 없음) | 가드·보존·동등·변경 집합 | 002·023·024 | — |
 | 26 | `.moai/specs/SPEC-AUTONOMY-GATE-REWIRE-001/**` | 진행 기록 | — | — |
+| 27 | **sync 단계 문서 산출물 (sync-phase 행)** — `CHANGELOG.md`, `docs-site/content/ko/cli-reference/contract.md`, `docs-site/content/en/cli-reference/contract.md`, `docs-site/content/ja/cli-reference/contract.md`, `docs-site/content/zh/cli-reference/contract.md` (이 다섯 경로뿐, 템플릿 사본 없음) | sync 단계(manager-docs)에서만 편집. `CHANGELOG.md` 는 `[Unreleased]` 항목만, `contract.md` 네 로케일은 이 SPEC 이 더하는 `contract` 하위 명령(`kickoff-check`·`decide`·`revoke`) 문서만. 그 밖의 줄은 바꾸지 않는다 | 007·011·022 (사용자 문서) | — |
 
-행 2~14 가 블록 방식(추가형)이고, 15~19 는 원칙 개정(비추가형, §11), 20~25 는 코드다. A1 SPEC 문서는 편집 대상이 아니다 — A1 0.5.2 가 임시 규칙과 알림 문언을 「A3 가 착지하기 전/후」 조건부로 적어 두었다. 이 목록 밖의 파일 변경은 AC-GR-003 이 실패로 잡는다(D13).
+행 2~14 가 블록 방식(추가형)이고, 15~19 는 원칙 개정(비추가형, §11), 20~25 는 코드, 26 은 이 SPEC 디렉터리, 27 은 sync 단계 문서 산출물이다(v0.3.7 — sync 가 AC-GR-003 허용 목록에 막혀 추가, 레인 결정 선택지 a). A1 SPEC 문서는 편집 대상이 아니다 — A1 0.5.2 가 임시 규칙과 알림 문언을 「A3 가 착지하기 전/후」 조건부로 적어 두었다. 이 목록 밖의 파일 변경은 AC-GR-003 이 실패로 잡는다(D13).
 
 ## §3. SSOT — `contract-autonomy.md`
 

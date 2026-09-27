@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUTONOMY-GATE-REWIRE-001
 title: "계약 기반 자율 하네스 A3 — contract 모드 게이트 재배선, Kickoff 자율 승인, contract decide·kickoff-check·revoke"
-version: "0.3.6"
+version: "0.3.7"
 status: in-progress
 created: 2026-09-26
 updated: 2026-09-27
@@ -22,6 +22,7 @@ related_specs: [SPEC-JEV-CORE-001, SPEC-AUTONOMY-TIERS-001]
 
 | 날짜 | 버전 | 변경 | 작성 |
 |---|---|---|---|
+| 2026-09-27 | 0.3.7 | **sync 단계 산출물을 허용 목록에 추가(레인 결정 선택지 a)** — t1236 sync 가 AC-GR-003 허용 목록에 막혔다. `design.md §2` 에 sync 단계 행(27행)을 두어 `CHANGELOG.md`(`[Unreleased]` 항목만)와 `docs-site/content/{ko,en,ja,zh}/cli-reference/contract.md`(`contract` 하위 명령 문서만) 다섯 경로를 넣고, AC-GR-003 Given·REQ-GR-024·`plan.md §D`·`§L` 을 맞췄다. 테스트의 허용 목록(`grAllowed`) 반영은 manager-develop 몫. REQ·AC 수 25·25 그대로 | manager-spec |
 | 2026-09-27 | 0.3.6 | **plan-audit iter-6(최종) FAIL 0.868 → 리드 결정 PASS-WITH-DEBT** (보고서 `.moai/reports/t1236/plan-audit-6.md`, 감사 대상 `a02e7c02b`, 7차 감사 없음). 처분은 `plan.md §L` 추가 행. REQ·AC 수 25·25 그대로. (D56) `constitution.Validate` 는 `ZONE_UNREGISTERED`·`ANCHOR_NOT_FOUND` 를 내지 않으므로 AC-GR-003 의 미등록 `[HARD]` 반증을 테스트 자체의 `[HARD]` 집합 비교(always-loaded 대상 여섯 사본, 현재 ⊆ BASE)로 바꿈 — 셸 측정 가능성 탐침 결과(GREEN/RED)는 `.moai/reports/t1236/verdict.md`; (D57) plan.md §H 의 낡은 A2 표지; (D58) AC-GR-009 선택 확인 증거의 명령 귀속; (D59) design.md §12 판독기 행의 기대 열 개수 | manager-spec |
 | 2026-09-27 | 0.3.5 | **plan-audit iter-5(델타) FAIL 0.841 수리** (보고서 `.moai/reports/t1236/plan-audit-5.md`, 감사 대상 `f40824c82`). 처분은 `plan.md §L`. REQ·AC 수 25·25 그대로. (D47) AC-GR-003 을 비-OK 전 범주 `(sentinel, id)` 비교·세 개수 이하로 넓히고 건너뛰기 변수 제거·비건너뜀·BASE=EV-6 전제 단언, 미등록 `[HARD]` 반증 추가, 판정 명령을 하나로; (D48) 판독기 소비 경로 픽스처 — AC-GR-016 (17)·AC-GR-018 (e) 두 변형; (D49) 허용 목록 24행에 `internal/cli/contract.go`(516행·389~414행); (D50) EV-6 원문을 원시 바이트로 복원; (D51) plan·acceptance 의 옛 A2 표지 정리; (D52) `doc.go` 허용 범위에 135~141행; (D53) REQ-GR-009 추적에 AC-GR-023; (D54) 에스컬레이션 디렉터리 부재 = 기록 0건(해제, REQ-GR-022·AC-GR-023 (r0)); (D55) AC 명령의 `-run` 정규식을 `^…$` 로 고정 | manager-spec |
 | 2026-09-27 | 0.3.4 | **M0 재앵커 blocker 처분(리드 결정 B1~B5, 2026-09-27)** — run M0(`progress.md §E.2`, BASE `7fe658815`)이 멈춘 다섯 차이를 제자리에서 고쳤다. REQ·AC 수는 25·25 그대로. (B1) t1175 가 `askuser-protocol.md` 의 「The Five Exceptions」 본문을 `askuser-protocol-reference.md:229` 로 옮기고 `## Ambiguity Triggers and Exceptions` 스텁(206행)만 남겼으므로 `contract-ambiguity` 블록 위치를 그 스텁 문단 뒤로 옮김(`design.md §2` 3행, M3). (B2) `moai-mcp-tools.md` 에는 더 이상 `jev_ask` 행이 없으므로 개정 위치를 `moai-mcp-tools-catalogue.md` 의 두 행(138·216)으로 바꾸고 `moai-mcp-tools.md` +300자 예산을 삭제, 카탈로그는 always-loaded 가 아니므로 조건부 로드 예산(행당 300자)을 따로 둠(REQ-GR-013·025, D-6, AC-GR-010·022). (B3) A2 는 revoke 기록을 `status: resolved` 로 두고 needs-decision 으로 세지 않는다(A2 0.4.3 spec §I.2, `escalation.NeedsDecision`) — A2 는 바꾸지 않고, A3 가 자기 판독기로 `kind: revoke` 기록을 재개 차단 신호로 읽는다(REQ-GR-009 (e)·007·012·020·022, AC-GR-023 이 판독 규칙을 고정). (B4) A1 서명기 단계 (1) 은 `internal/contract/receipt.go` `ReceiptOutcome`(208~232행)에 있으므로 그 자리에서 조건화하도록 허용 목록 23행에 추가(`design.md §2`·`§7.1`). (B5) `moai constitution validate` 는 BASE 에서 이미 exit 1·DRIFT 9건(이 SPEC 범위 밖, 리드가 별도 카드 발행) — AC-GR-003 의 기대를 「BASE 대비 DRIFT 가 늘지 않음」으로 바꾸고 BASE 측정을 증거 원장 EV-6 에 고정 | manager-spec |
@@ -133,7 +134,7 @@ Tier L 상한 25개, 번호는 문서 순서대로 연속이다.
 ### 로컬·템플릿 동등, 중립성, 범위
 
 - **REQ-GR-023** (Ubiquitous) — The 각 contract-mode 블록 shall 로컬 사본과 템플릿 사본에서 바이트 동일하고(신규 SSOT 는 통째로 동일), 블록 밖의 기존 로컬·템플릿 분기는 `BASE` 대비 변하지 않으며, 블록과 SSOT 는 SPEC ID·REQ/AC 토큰·카드 id·내부 날짜·커밋 SHA 를 담지 않고, 템플릿 테스트 패키지는 짝 맞춤·비중첩·evolvable 구간 밖 배치·금지 클래스 부재·블록 문자 상한을 상시 검사하며 검사 대상 블록이 0개면 실패한다.
-- **REQ-GR-024** (Unwanted) — The 이 SPEC 의 구현 shall not `design.md §2` 의 편집 허용 목록(템플릿 사본과 이 SPEC 디렉터리 포함) 밖의 파일을 바꾸며, 특히 `moai-constitution.md`·`zone-registry.md`·`.claude/agents/**`·`.claude/output-styles/**`·`ci-autofix-protocol.md`·`context-window-management.md`·`agent-common-protocol.md`·`spec-workflow.md`·`session-handoff-examples.md`·큐 스키마를 바꾸지 않는다.
+- **REQ-GR-024** (Unwanted) — The 이 SPEC 의 구현 shall not `design.md §2` 의 편집 허용 목록(템플릿 사본, 이 SPEC 디렉터리, sync 단계 문서 산출물 27행 포함) 밖의 파일을 바꾸며, 특히 `moai-constitution.md`·`zone-registry.md`·`.claude/agents/**`·`.claude/output-styles/**`·`ci-autofix-protocol.md`·`context-window-management.md`·`agent-common-protocol.md`·`spec-workflow.md`·`session-handoff-examples.md`·큐 스키마를 바꾸지 않는다.
 
 
 ### 활성 순서 — Jev 원칙 개정과 해제의 연동

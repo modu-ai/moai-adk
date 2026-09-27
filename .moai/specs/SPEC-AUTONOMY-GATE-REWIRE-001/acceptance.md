@@ -1,4 +1,4 @@
-# acceptance.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.6)
+# acceptance.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.7)
 
 모든 AC 는 Given-When-Then 이며 명령과 기대 출력으로 판정한다. 명령은 워크트리 세션 가드를 통과하도록 **한 줄짜리 단순 명령**만 쓴다 — `git` 을 `$( )`·`<( )`·heredoc 안에 두지 않는다. `git` 이 필요한 검사는 Go 테스트 안에서 실행하고, 기준 ref 는 환경 변수 `MOAI_GR_BASE`(= `progress.md §E.2` 에 기록된 `BASE` SHA)로 넘긴다. 브랜치 이름을 기준으로 쓰지 않는다.
 
@@ -32,7 +32,7 @@ MOAI_GR_BASE=<BASE> go test ./internal/template/ -run '^(TestContractModeLocalTe
 
 ### AC-GR-003 — 변경 집합이 허용 목록 안 (REQ-GR-024)
 
-- **Given** `design.md §2` 의 허용 목록
+- **Given** `design.md §2` 의 허용 목록(1~27행 — 27행은 sync 단계 문서 산출물 `CHANGELOG.md` 와 `docs-site/content/{ko,en,ja,zh}/cli-reference/contract.md` 다섯 경로)
 - **When** `BASE` 대비 변경된 파일 목록을 읽는다
 - **Then** 목록 밖 파일이 0개다 — 특히 `moai-constitution.md`·`zone-registry.md`·`.claude/agents/**`·`.claude/output-styles/**`·`ci-autofix-protocol.md`·`context-window-management.md`·`agent-common-protocol.md`·`spec-workflow.md`·`session-handoff-examples.md`·`internal/kanban/**` 가 포함되지 않는다. 그리고 헌법 검증 결과가 **`BASE` 대비 나빠지지 않는다** — 상태가 OK 가 아닌 **모든** 항목(DRIFT 에 한정하지 않고 `internal/constitution/validator.go` 의 모든 sentinel — `DRIFT`·`SOURCE_FILE_MISSING`·`ZONE_UNREGISTERED`·`FROZEN_WITHOUT_CANARY`·`ANCHOR_NOT_FOUND`·`DUPLICATE_ID`·`STALE_ENTRY`·`DUPLICATE_ZONE_MARKER`·`INVALID_ZONE_CLASS`)의 `(sentinel, id)` 쌍 집합에 대해, 현재 트리의 집합 ⊆ `BASE` 의 집합이고, 현재 트리의 `drift_count`·`missing_count`·`unregistered_count` 가 각각 `BASE` 의 값 이하다. `BASE` 에 이미 있는 DRIFT 9건(아래 EV-6, `missing_count`·`unregistered_count` 는 0)은 이 SPEC 의 편집 허용 목록 밖 원인이며(리드가 별도 카드 발행) 이 AC 가 고치라고 요구하지 않는다. **`constitution.Validate` 는 `ZONE_UNREGISTERED`·`ANCHOR_NOT_FOUND` 범주를 내지 않는다**(상수와 재집계 분기만 있고 항목을 만드는 경로가 없다 — `.moai/reports/t1236/plan-audit-6.md` D56) — 그래서 `unregistered_count` 조건은 향후 구현 대비일 뿐 현재 판정력이 없고, **미등록 `[HARD]` 줄의 유입은 아래 `[HARD]` 집합 비교가 판정한다**: 이 SPEC 이 편집하는 always-loaded 대상 파일 세 개의 로컬·템플릿 사본 여섯 개(`CLAUDE.md`, `.claude/rules/moai/core/askuser-protocol.md`, `.claude/rules/moai/workflow/goal-directive.md` 와 각각의 `internal/template/templates/` 사본)마다, `[HARD]` 를 문자 그대로 담은 줄의 집합(중복 제거)이 현재 트리에서 `BASE` 의 같은 파일 집합의 부분집합이다
 
