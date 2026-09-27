@@ -127,6 +127,12 @@ fi
 # --- step 3: the frozen mechanical core (drain.sh, byte-preserved) -------------
 # Both streams go to the log — a routine drain must not reach the hook output.
 LOG_FILE="$STATE_DIR/last-drain.log"
+# The log is a convenience, never a precondition: an unwritable log (a directory,
+# a read-only file) must not stop the drain (t1249 F2).
+if ! { : >>"$LOG_FILE"; } 2>/dev/null; then
+  echo "session_drain: log $LOG_FILE not writable — drain output discarded; drain runs anyway" >&2
+  LOG_FILE=/dev/null
+fi
 if ! "$DRAIN" --inbox "$INBOX" --state-dir "$STATE_DIR" >>"$LOG_FILE" 2>&1; then
   fail_open "drain.sh exited non-zero (tooling or inbox problem; see $LOG_FILE) — offset NOT advanced"
   exit 0
@@ -143,7 +149,9 @@ if [[ -n "$READ_N" && -n "$CAND_N" && -n "$OFF_N" ]]; then
     echo "session_drain: read=$READ_N candidates=$CAND_N offset=$OFF_N" >>"$LOG_FILE"
   fi
   # keep the log bounded: newest 200 lines
-  tail -n 200 "$LOG_FILE" >"$LOG_FILE.tmp" 2>/dev/null && mv "$LOG_FILE.tmp" "$LOG_FILE"
+  if [[ "$LOG_FILE" != /dev/null ]]; then
+    tail -n 200 "$LOG_FILE" >"$LOG_FILE.tmp" 2>/dev/null && mv "$LOG_FILE.tmp" "$LOG_FILE"
+  fi
 else
   fail_open "cannot parse drain status from $CLUSTERS_FILE"
 fi

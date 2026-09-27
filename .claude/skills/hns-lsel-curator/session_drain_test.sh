@@ -161,6 +161,26 @@ run_wrapper "$INBOX1" "$FIX_TMP/blocker-file/sub" "$FIX_TMP/p5b.out" "$FIX_TMP/p
 grep -q '^session_drain:' "$FIX_TMP/p5b.err" || fail "path5b: stderr notice missing"
 ok "path5 fail-open: inbox-absent and uncreatable state dir both exit 0 with a stderr notice"
 
+# --- path 5c/5d: unwritable drain log (t1249 F2) --------------------------------
+# The log is a convenience; the drain must never depend on it (CLAUDE.local.md
+# sec 28). H: the log path is a directory. I: the log file is read-only.
+for probe in H I; do
+  INB="$FIX_TMP/inbox5$probe.jsonl"; build_inbox "$INB"
+  SDP="$FIX_TMP/state5$probe"; mkdir -p "$SDP"
+  if [[ "$probe" == H ]]; then mkdir "$SDP/last-drain.log"; else : >"$SDP/last-drain.log"; chmod 444 "$SDP/last-drain.log"; fi
+  run_wrapper "$INB" "$SDP" "$FIX_TMP/p5$probe.out" "$FIX_TMP/p5$probe.err"
+  [[ "$RUN_RC" -eq 0 ]] || fail "path5$probe: unwritable log must exit 0, got $RUN_RC"
+  [[ "$(jq -r '.offset' "$SDP/drain-offset.json" 2>/dev/null)" == "18" ]] \
+    || fail "path5$probe: drain skipped on unwritable log — offset $(jq -r '.offset' "$SDP/drain-offset.json" 2>&1)"
+  grep -q 'log.*not writable' "$FIX_TMP/p5$probe.err" \
+    || fail "path5$probe: notice must name the unwritable log; stderr: $(cat "$FIX_TMP/p5$probe.err")"
+  grep -q 'exited non-zero' "$FIX_TMP/p5$probe.err" \
+    && fail "path5$probe: notice misattributes the cause to drain.sh"
+  [[ ! -s "$FIX_TMP/p5$probe.out" ]] || fail "path5$probe: stdout must stay empty"
+  chmod 644 "$SDP/last-drain.log" 2>/dev/null || true
+done
+ok "path5c/5d unwritable log (dir / read-only): drain still runs (offset 0->18), notice names the log"
+
 # --- path 6: mutant probe (AC-LDS-005 / the AC-LDS-010 guard) ------------------
 INBOX6="$FIX_TMP/inbox6.jsonl"; build_inbox "$INBOX6"
 # REAL: bulk drain via the wrapper, then a second (no-op) run whose unconditional
