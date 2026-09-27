@@ -290,3 +290,11 @@ develop `e9577de4f` CI run 36333964365 적색(Test ubuntu + Race) 두 갈래 수
 - `MOAI_GR_BASE=5f5840ae4 go test -v -run TestContractMode ./internal/template/` → PASS 40, FAIL 1(`TestContractModeChangeSetAllowlist/tree`): 남은 6경로는 base 이후 다른 카드 변경 — t1286 codemaps 3, t1237 closure 2, t1225 codexadapter 1. 이 수리 경로는 0.
 - `golangci-lint` v2.1.6 → 0 issues; `make agents-emit-check commands-emit-check` → ok
 - CI 경로 확인: `MOAI_GR_BASE` 미설정(CI 와 같은 조건)에서 `go test -v -run TestContractModeChangeSetAllowlist ./internal/template/` → `--- SKIP: TestContractModeChangeSetAllowlist/tree` ("MOAI_GR_BASE is not set"), falsifier 하위 테스트만 PASS. 즉 이 base-ref 검사는 CI 에서 돌지 않는다 — 수동 수용 실행에서만 판정되며, base 이후 타 카드 경로로 적색이 되는 것은 F9 부채와 같은 축.
+
+### ② 재수리 (2026-09-28, WT-gate-rewire-ci2, base 535d2fc33)
+- develop CI run 36336732706 적색: `internal/cli TestSpecAssembly_RewrittenToCLIPath` — `plan_subagent_boundary_test.go:67` `moai plan render-html` 경로 누락, `:71` [HARD] Implementation Kickoff Approval 문단 누락. 앞 수리가 Step 2.3.3a 를 옮기면서 다른 패키지(`internal/cli`) 가드가 spec-assembly.md 에 고정한 두 요소를 함께 옮겼다. 앞 재측정 셀렉터(skills·template·AC-GR)에 그 패키지가 없었다.
+- 수리: Step 2.3.3a 를 spec-assembly.md 로 되돌리고(두 사본 088594d6b 판 복원), 대신 「spec-compact.md Auto-Generation」 절 20줄을 `plan/context-discovery.md` 로 원문 그대로 이관, 원 자리에 한 줄 포인터. spec-assembly 597줄(두 사본). `grRelocations` 해당 항목 갱신, catalog.yaml 재생성.
+- 가드 탐색: `grep -rl 'spec-assembly.md\|workflows/run.md\|"run.md"' internal --include='*_test.go'` → cli 4파일, harness 1, skills 1, template 9.
+- 재측정: `go test -run '^(<cli 4파일 전 테스트>)$' ./internal/cli/` ok(`TestSpecAssembly_RewrittenToCLIPath` PASS 확인) · `./internal/skills/... ./internal/template/... ./internal/harness/...` 20패키지 ok · `MOAI_GR_BASE=5f5840ae4` TestContractMode PASS 40 / FAIL 1(ChangeSetAllowlist/tree, 앞과 같은 타 카드 6경로, 이 수리 경로 0) · lint v2.1.6 0 issues.
+- 변이: 이관된 줄 1개(`limited to 5`→`6`) 변경 → `TestContractModeGuidedPreservation` FAIL, 복원 확인.
+- 이관 절 로드: spec-compact 생성은 Phase 10 단계 — spec-assembly 를 Read 하는 시점에 포인터가 context-discovery Read 를 지시한다(앞과 같은 포인터 의존).
