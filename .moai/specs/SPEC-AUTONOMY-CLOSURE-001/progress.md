@@ -30,3 +30,31 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Logged by the lane orchestrator before the first run-phase `Agent()` spawn (2026-09-27).
+
+Input parameters:
+
+- tier: L (25 REQ / 25 AC, > 15 files)
+- scope (estimated files): ~20 — new `internal/closure` package (+ `internal/closure/gitio`), 3 new CLI files, 2 MCP server files, 2 hook files, 4 Markdown mirrors + regenerated Codex TOML, plus tests
+- domain count: 4 (Go source, MCP server surface, PreToolUse hook, template mirrors)
+- file language mix: Go + Markdown + generated TOML
+- concurrency benefit: LOW — coding-heavy; milestones are strictly ordered by decision reversibility (M1 record shapes → M2 readiness rule → M3 report builder → M4 CLI → M5 MCP record → M6 hook wiring → M7 mirrors)
+- Agent Teams prereqs: not requested (no `--team`; no operator request)
+
+Mode evaluation:
+
+| Mode | Selected | Rationale (one line) |
+|---|---|---|
+| direct | no | multi-file, multi-milestone implementation |
+| serial | **yes** | coding-heavy Tier L; per Anthropic's coding-task parallelism caveat the sequential delegation is the safe default; M1→M7 is a strict dependency chain |
+| fanout | no | not research-heavy; write-capable parallelism would need isolated worktrees and the milestone chain is serial |
+| sweep | no | new-code multi-rule work, not a mechanical uniform transform |
+
+Decision: serial
+
+Justification: plan.md §F orders the milestones by decision reversibility and each builds on the previous (record shapes → evaluator → builder → CLI → MCP append → hook wiring → mirrors); nothing is genuinely parallel. One manager-develop delegation (cycle_type=tdd) with per-milestone commits.
+
+Kickoff: applied autonomously per CLAUDE.local.md §31 (operator policy, card t1266); progression mode autonomous. Kickoff gate basis: binding delta-audit PASS 0.90 (lead-side Opus `claude-opus-5-5[1m]`) at `d76d460e0`; the post-PASS commit `1aabfa37c` carries only the auditor-prescribed N1/N2 wording (lead-sanctioned).
