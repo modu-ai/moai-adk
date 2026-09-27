@@ -3,8 +3,8 @@ package cli
 // codex_contract.go — SPEC-CODEX-INIT-001 M4+M5+M6 (REQ-CI-005..008,
 // REQ-CI-011): the AGENTS.md ↔ CLAUDE.md instruction contract. Connection
 // only — never content: a missing file is created with a minimal body, an
-// existing file is preserved byte-for-byte with at most one appended link
-// line (REQ-CI-006). Every write is a per-file temp+rename; no truncating
+// existing file is preserved byte-for-byte with only its missing link lines
+// appended — at most two, CLAUDE.md only (REQ-CI-006, REQ-IFU-002). Every write is a per-file temp+rename; no truncating
 // write path exists here at all (AC-CI-010's open cell observes that).
 //
 // Containment comes FIRST (M4 before M5 — plan §D): before any touch of an
@@ -25,8 +25,10 @@ import (
 )
 
 // Instruction paths — the single source the contract guards. AGENTS.local.md
-// is Codex-only input consumed by the launcher; it is never imported from a
-// shared instruction file.
+// is the user-owned local file shared by both harnesses: Claude reaches it
+// through CLAUDE.md's final import, Codex through the launcher's
+// developer_instructions injection. The neutral AGENTS.md never imports it
+// (SPEC-INSTRUCTION-FILES-UNIFY-001 REQ-IFU-002).
 const (
 	codexAgentsRelPath        = "AGENTS.md"
 	codexClaudeRelPath        = "CLAUDE.md"
@@ -34,15 +36,22 @@ const (
 	codexClaudeLocalName      = "CLAUDE.local.md"
 )
 
-// Link directive — the only executing line this contract may add.
-const codexLinkAgentsDirective = "@AGENTS.md"
+// Link directives — the only executing lines this contract may add, and only
+// to CLAUDE.md. They form the two-import shape of REQ-IFU-002: the contract
+// import first, the local import as the final import. An unresolved local
+// import is skipped silently by Claude Code, so it is written whether or not
+// AGENTS.local.md exists (REQ-IFU-004).
+const (
+	codexLinkAgentsDirective = "@AGENTS.md"
+	codexLinkLocalDirective  = "@AGENTS.local.md"
+)
 
 // Created bodies — minimal and non-empty (AC-CI-005 requires a created
 // AGENTS.md to carry at least one non-space character; body QUALITY is out
-// of this SPEC's scope). Local instructions are injected by the launcher,
-// never linked into either shared instruction file.
+// of this SPEC's scope). A created CLAUDE.md carries the two-import shape; a
+// created AGENTS.md imports nothing — it is the neutral contract.
 const (
-	codexCreatedClaudeBody = "# CLAUDE.md\n\n" + codexLinkAgentsDirective + "\n"
+	codexCreatedClaudeBody = "# CLAUDE.md\n\n" + codexLinkAgentsDirective + "\n\n" + codexLinkLocalDirective + "\n"
 	codexCreatedAgentsBody = "# AGENTS.md\n"
 )
 
@@ -259,11 +268,21 @@ func secureCodexInstructionContract(req codexContractRequest) error {
 	if cerr != nil && !errors.Is(cerr, os.ErrNotExist) {
 		return fmt.Errorf("read %s: %w", rels[1], cerr)
 	}
-	switch {
-	case !claudeExists:
+	if !claudeExists {
 		plans = append(plans, codexContractPlan{rel: rels[1], content: []byte(codexCreatedClaudeBody)})
-	case codexCountExecutingImports(claudeBytes, codexLinkAgentsDirective) == 0:
-		plans = append(plans, codexContractPlan{rel: rels[1], content: codexAppendLine(claudeBytes, codexLinkAgentsDirective)})
+	} else {
+		// Append only the missing link(s), contract import before local
+		// import. Append-only cannot reorder: a file carrying the local import
+		// alone gets the contract import after it (REQ-CI-006 wins over order).
+		linked := claudeBytes
+		for _, directive := range []string{codexLinkAgentsDirective, codexLinkLocalDirective} {
+			if codexCountExecutingImports(linked, directive) == 0 {
+				linked = codexAppendLine(linked, directive)
+			}
+		}
+		if len(linked) != len(claudeBytes) {
+			plans = append(plans, codexContractPlan{rel: rels[1], content: linked})
+		}
 	}
 
 	// 3. Stage ALL temp files first. A staging failure leaves every target

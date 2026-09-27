@@ -1,0 +1,25 @@
+time=2026-09-27T23:08:25.734+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/a424fc26-39f5-4b5e-a0f1-a8b767c73688/scratchpad/ifu/.moai/config/sections
+time=2026-09-27T23:08:25.737+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/a424fc26-39f5-4b5e-a0f1-a8b767c73688/scratchpad/ifu/.moai/config/sections
+· Initializing MoAI project...
+  ● Detection: Analyzing project structure...
+  ✓ Detected project structure
+  ● Validation: Using mode: tdd...
+  ✓ Mode validated
+  ● Validation: Validating project structure...
+  ✓ Validation passed
+  ● Initialization: Creating project structure...
+  ✓ Created 2 files
+
+╭─────────────────────────────────────────────────╮
+│                                                 │
+│  ✓ MoAI project initialized                     │
+│   13 dirs    2 files                            │
+│                                                 │
+│  Next steps:                                    │
+│    1. cd ac027                                  │
+│    2. moai cc                                   │
+│    3. /moai plan "describe your first feature"  │
+│                                                 │
+╰─────────────────────────────────────────────────╯
+  Pre-push hook installed (.git/hooks/pre-push)
+  Pre-commit hook installed (.git/hooks/pre-commit)
