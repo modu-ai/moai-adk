@@ -386,7 +386,7 @@ m1_to_m3_commit_strategy: per-M commit (M0 786e7a419 → M1 fcba7ae65 → amendm
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-09-27T19:11:05+09:00
-sync_commit_sha: pending-backfill-sync   # D3 placeholder — 실제 SHA는 후속 커밋에서 backfill
+sync_commit_sha: 9d69db1b1   # backfilled in follow-up commit per D3 (sync close commit)
 spec_id: SPEC-AUTONOMY-DECIDER-MODE-001
 card: t1261
 status_transition: "in-progress → implemented → completed (단일 싱크 커밋 병합 전이, manager-docs 소관)"
