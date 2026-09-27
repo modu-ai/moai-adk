@@ -460,6 +460,38 @@ func TestRefreshLandedCounts_OldCriterionNeverSurvivesAFailure(t *testing.T) {
 	}
 }
 
+// TestRefreshLandedCounts_FailedRefreshOverOldCacheHoldsTheStampedeGuard pins
+// the stampede guard's link to the criterion reset: a refresh that fails over
+// an old-criterion cache must still leave a current-criterion timestamp behind,
+// so renders inside the TTL spawn no further child. Without the reset, the
+// cache keeps its old criterion, reads as stale, and every render spawns.
+func TestRefreshLandedCounts_FailedRefreshOverOldCacheHoldsTheStampedeGuard(t *testing.T) {
+	root := t.TempDir()
+	seedPicked(t, root, "t906")
+	writeLanded(t, root, oldSchemaCache(time.Now().Unix()))
+
+	restoreRunner := landedGitRunner
+	landedGitRunner = func(_ context.Context, _ string, _ ...string) (string, error) {
+		return "", errors.New("no such ref")
+	}
+	defer func() { landedGitRunner = restoreRunner }()
+
+	if err := RefreshLandedCounts(context.Background(), root); err != nil {
+		t.Fatalf("refresh: %v", err)
+	}
+
+	var spawns atomic.Int64
+	restoreProbe := landedSpawnProbe
+	landedSpawnProbe = func(string) { spawns.Add(1) }
+	defer func() { landedSpawnProbe = restoreProbe }()
+
+	maybeRefreshLandedCounts(root)
+	maybeRefreshLandedCounts(root)
+	if got := spawns.Load(); got != 0 {
+		t.Fatalf("spawn attempts after a failed refresh inside TTL = %d, want 0 (stampede guard)", got)
+	}
+}
+
 // TestRefreshLandedCounts_AttributedSubjectCounts is AC-SLL-002: a subject
 // the kanban predicate attributes, committed after the card was added,
 // counts. The equal-second commit counts too (the boundary is `>=`).

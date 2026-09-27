@@ -71,7 +71,7 @@ $ go vet ./internal/statusline/...
 - `grep -c '⚑N'` 같은 페이지 → ko 3 / en 2 / ja 3 / zh 3
 - `grep -c -- '--format=%B' internal/statusline/landed.go` → 0
 
-커버리지: `internal/statusline` 문장 기준 90.7%.
+커버리지: `internal/statusline` 문장 기준 90.7% (run 단계가 `7803fa4c0` 에서 측정). sync-audit 재측정은 90.4% (`f4ca82858` 에서 측정).
 
 ## 3. Baseline-attribution (기준선 귀속)
 

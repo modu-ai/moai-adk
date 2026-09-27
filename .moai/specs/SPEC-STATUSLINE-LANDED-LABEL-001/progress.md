@@ -55,6 +55,8 @@ landed.go  landedScanRunner 100.0% | RefreshLandedCounts 91.3% | pickedCards 87.
 total: (statements) 90.7%
 ```
 
+Coverage attribution: 90.7% was measured at `7803fa4c0` (run phase). The sync-audit remeasure on `f4ca82858` gave 90.4% (`.moai/reports/t1281/sync-audit.md` §3). Both are above the 85% gate.
+
 ### AC matrix
 
 | AC | Evidence | Status |
