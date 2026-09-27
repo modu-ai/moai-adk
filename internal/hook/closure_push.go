@@ -94,7 +94,7 @@ func checkClosurePush(cfg ConfigProvider, input *HookInput) closurePushEvalResul
 		return closurePushEvalResult{} // no integration branch to protect
 	}
 
-	pushes := classifyPushCommand(command, integration)
+	pushes := classifyPushCommand(command, integration, tree)
 	var sources []classifiedPush
 	for _, p := range pushes {
 		if p.undetermined {
@@ -197,7 +197,7 @@ type classifiedPush struct {
 }
 
 var (
-	pushSegmentSplitRe = regexp.MustCompile(`&&|\|\||;|\n`)
+	pushSegmentSplitRe = regexp.MustCompile(`&&|\|\||\||;|&|\n`)
 	pushCandidateRe    = regexp.MustCompile(`\bgit\b[^;&|\n]*\bpush\b`)
 	unprovableRe       = regexp.MustCompile(`\$\(|` + "`" + `|\beval\s|\b(?:sh|bash|zsh|dash)\s+-c\b|\$[A-Za-z_{]`)
 )
@@ -209,7 +209,7 @@ var (
 // push); when a candidate exists, an unprovable context anywhere in the
 // command (command substitution, eval, a wrapper shell, a variable operand)
 // makes the whole call undetermined.
-func classifyPushCommand(command, integration string) []classifiedPush {
+func classifyPushCommand(command, integration, tree string) []classifiedPush {
 	if !pushCandidateRe.MatchString(command) {
 		return nil
 	}
@@ -219,7 +219,7 @@ func classifyPushCommand(command, integration string) []classifiedPush {
 	}
 	var out []classifiedPush
 	for _, segment := range pushSegmentSplitRe.Split(command, -1) {
-		if p := classifyPushSegment(strings.TrimSpace(segment), integration); p != nil {
+		if p := classifyPushSegment(strings.TrimSpace(segment), integration, tree); p != nil {
 			out = append(out, *p)
 		}
 	}
@@ -228,14 +228,20 @@ func classifyPushCommand(command, integration string) []classifiedPush {
 
 // classifyPushSegment classifies one `git [-C tree] [-c k=v] push …`
 // segment against the integration branch, or nil when the segment is not a
-// git push.
-func classifyPushSegment(segment, integration string) *classifiedPush {
+// git push. A segment whose first word is not git but that still names a
+// git push (an env assignment, a subshell, a wrapper command) cannot be
+// proven non-integration and is undetermined (REQ-CLOSURE-017).
+func classifyPushSegment(segment, integration, tree string) *classifiedPush {
 	words := strings.Fields(segment)
 	if len(words) < 2 || words[0] != "git" {
+		if len(words) > 0 && words[0] != "git" && pushCandidateRe.MatchString(segment) {
+			return &classifiedPush{undetermined: true,
+				cause: "a git push behind " + words[0] + " cannot be proven non-integration"}
+		}
 		return nil
 	}
 	i := 1
-	segTree := "" // "" → the caller's tree
+	segTree := tree // overridden by -C; "" → the caller's tree
 	for i < len(words) {
 		switch words[i] {
 		case "-C":
@@ -275,31 +281,18 @@ func classifyPushOperands(segTree, integration string, words []string) *classifi
 		case strings.HasPrefix(w, "-"):
 			continue // --tags, --force, -q, --set-upstream, …
 		default:
-			operands = append(operands, strings.TrimPrefix(w, "+"))
+			operands = append(operands, unquoteOperand(strings.TrimPrefix(w, "+")))
 		}
 	}
 
-	// No operands: destination = the upstream of the current branch.
-	if len(operands) == 0 {
-		branch, err := currentBranchOf(p.tree)
-		if err != nil || branch == "" {
-			p.undetermined, p.cause = true, "bare push: current branch unresolvable"
-			return p
+	// No operands — or a single remote operand (`git push origin`,
+	// design.md §C.1 row 3): destination = the upstream of the current
+	// branch.
+	if n := len(operands); n == 0 || (n == 1 && isRemoteOperand(operands[0])) {
+		if n == 1 {
+			p.remote = operands[0]
 		}
-		upstream, err := upstreamBranchOf(p.tree, branch)
-		if err != nil || upstream == "" {
-			p.undetermined, p.cause = true, "bare push: no upstream for "+branch
-			return p
-		}
-		name := upstream
-		if j := strings.LastIndex(upstream, "/"); j >= 0 {
-			name = upstream[j+1:]
-			p.remote = upstream[:j]
-		}
-		if name == integration {
-			p.evaluate = true
-			p.source = branch
-		}
+		p.classifyUpstreamPush(integration)
 		return p
 	}
 
@@ -307,30 +300,80 @@ func classifyPushOperands(segTree, integration string, words []string) *classifi
 	// otherwise the operands are all refspecs.
 	rest := operands
 	if len(rest) > 1 && !strings.Contains(rest[0], ":") && !strings.HasPrefix(rest[0], "refs/") &&
-		rest[0] != "HEAD" {
+		rest[0] != "HEAD" && rest[0] != "@" {
 		p.remote = rest[0]
 		rest = rest[1:]
 	}
 	for _, refspec := range rest {
-		dst := refspec
+		dst, src := refspec, ""
 		if j := strings.Index(refspec, ":"); j >= 0 {
-			dst = refspec[j+1:]
+			dst, src = refspec[j+1:], refspec[:j]
 		}
 		dst = strings.TrimPrefix(dst, "refs/heads/")
+		if src == "" && (refspec == "HEAD" || refspec == "@") {
+			// A colon-less HEAD/@ source (design.md §C.1 row 2): git reads
+			// the destination as the current branch's name.
+			if branch, err := currentBranchOf(p.tree); err == nil && branch != "" {
+				dst = branch
+			}
+		}
 		if dst == "" {
 			p.undetermined, p.cause = true, "refspec "+refspec+" has an unresolvable destination"
 			return p
 		}
 		if dst == integration {
 			p.evaluate = true
-			p.source = refspec
-			if j := strings.Index(refspec, ":"); j >= 0 {
-				p.source = refspec[:j]
+			p.source = src
+			if src == "" {
+				p.source = refspec
 			}
 			return p
 		}
 	}
 	return nil // every destination differs from the integration branch
+}
+
+// classifyUpstreamPush evaluates a no-refspec push (design.md §C.1 row 3):
+// the destination is the upstream of the tree's current branch; an
+// unresolvable branch or upstream is undetermined.
+func (p *classifiedPush) classifyUpstreamPush(integration string) {
+	branch, err := currentBranchOf(p.tree)
+	if err != nil || branch == "" {
+		p.undetermined, p.cause = true, "bare push: current branch unresolvable"
+		return
+	}
+	upstream, err := upstreamBranchOf(p.tree, branch)
+	if err != nil || upstream == "" {
+		p.undetermined, p.cause = true, "bare push: no upstream for "+branch
+		return
+	}
+	name := upstream
+	if j := strings.LastIndex(upstream, "/"); j >= 0 {
+		name = upstream[j+1:]
+		p.remote = upstream[:j]
+	}
+	if name == integration {
+		p.evaluate = true
+		p.source = branch
+	}
+}
+
+// isRemoteOperand reports whether a single colon-less push operand names a
+// remote rather than a refspec: no colon, not refs/-shaped, and not a HEAD
+// source. Any other single operand could still be either form, so it also
+// routes to the upstream judgment — over-blocking there is fail-closed.
+func isRemoteOperand(w string) bool {
+	return !strings.Contains(w, ":") && !strings.HasPrefix(w, "refs/") &&
+		w != "HEAD" && w != "@"
+}
+
+// unquoteOperand strips one pair of matching shell quotes, the pair the
+// shell removes before git sees the operand.
+func unquoteOperand(w string) string {
+	if len(w) >= 2 && (w[0] == '"' || w[0] == '\'') && w[len(w)-1] == w[0] {
+		return w[1 : len(w)-1]
+	}
+	return w
 }
 
 // currentBranchOf and upstreamBranchOf run git in the segment's tree; ""

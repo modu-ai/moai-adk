@@ -211,6 +211,16 @@ func TestAC_CLOSURE_015(t *testing.T) {
 		{"forced branch push", "git push origin +develop", mainTree},
 		{"full-ref destination", "git push origin develop:refs/heads/develop", mainTree},
 		{"-C into the develop worktree", "git -C " + f.Root + " push origin develop", mainTree},
+		// F2 regressions (design.md §C.1 rows 2-3): a bare remote operand,
+		// a colon-less HEAD/@ source, a quoted destination, and a pipe or
+		// background wrapper around the push all name the integration
+		// branch and must be evaluated, never passed silently.
+		{"bare remote push from the develop worktree", "git push origin", f.Root},
+		{"colon-less HEAD source", "git push origin HEAD", f.Root},
+		{"colon-less @ source", "git push origin @", f.Root},
+		{"double-quoted destination", `git push origin "develop"`, mainTree},
+		{"single-quoted destination", `git push origin 'develop'`, mainTree},
+		{"pipe-wrapped push", "echo hi | git push origin develop", mainTree},
 	}
 	for _, tc := range forms {
 		t.Run(tc.name, func(t *testing.T) {
@@ -334,6 +344,14 @@ func TestAC_CLOSURE_017(t *testing.T) {
 		`sh -c "git push origin develop"`,
 		`git push origin "$BR"`,
 		"git push origin $(git branch --show-current)",
+		// F2 regressions (REQ-CLOSURE-017): a push behind an env
+		// assignment, a wrapper command, or a subshell cannot be proven
+		// non-integration and is undetermined — never a silent pass.
+		"GIT_X=1 git push origin develop",
+		"env X=1 git push origin develop",
+		"time git push origin develop",
+		"command git push origin develop",
+		"(git push origin develop)",
 	}
 	for _, command := range forms {
 		t.Run(command, func(t *testing.T) {
