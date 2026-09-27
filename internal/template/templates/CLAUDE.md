@@ -32,6 +32,10 @@ Core principles (1-4) + six Agent Core Behaviors: `.claude/rules/moai/core/moai-
 
 Five ordered stages: ① intent analysis → ② context-sufficiency check (insufficient → Rule 5 Context-First Discovery rounds, §7) → ③ execution-plan composition (`orchestration-mode-selection.md`; surfaced before execution per Approach-First, §7 Rule 1) → ④ **approval gates**, incl. the **Implementation Kickoff Approval** human gate at plan→run (§8; the progression axis is post-approval, never a bypass) → ⑤ execute → verify → iterate against acceptance criteria (an armed `/moai goal` is the termination judge).
 
+<!-- moai:contract-mode-start id="contract-signing-pipeline" -->
+Where `workflow.autonomy.mode: contract` — the plan→run gate at ④ is the signed SPEC contract: `moai contract kickoff-check <SPEC-ID> --card <card>` must exit 0, and no Kickoff `AskUserQuestion` is emitted. See `.claude/rules/moai/workflow/contract-autonomy.md` § The signing gate.
+
+<!-- moai:contract-mode-end -->
 Report: consolidate agent results in the user's `conversation_language`.
 
 ---
@@ -84,6 +88,10 @@ The five development safeguards (HARD Rules) are the §1 HARD bullets expanded:
 - **Rule 4 — Reproduction-First Bug Fixing**: Write a failing reproduction test first; confirm it fails; challenge the diagnosed root cause once ("How do we know this is the cause, not a symptom?"); fix minimally; verify the test passes.
 - **Rule 5 — Context-First Discovery**: When intent is unclear, conduct a Socratic interview before execution. Trigger conditions, discovery process, exceptions, and the 4-quadrant Unknowns lens are the SSOT at `.claude/rules/moai/core/askuser-protocol.md` § Ambiguity Triggers and Exceptions + § Socratic Interview Structure (+ optional Blind Spot Pass for suspected unknown-unknowns).
 
+<!-- moai:contract-mode-start id="contract-safe-dev" -->
+Where `workflow.autonomy.mode: contract` — after signing, the Socratic interview and approach approval are satisfied by the contract; assumptions are recorded in `progress.md` and work proceeds, escalating on a contradiction. See `.claude/rules/moai/workflow/contract-autonomy.md` § Gate disposition.
+
+<!-- moai:contract-mode-end -->
 Rule sequencing: Rule 5 (Discovery — establishes WHAT) executes BEFORE Rule 1 (Approach-First — explains HOW). The quality gate auto-detects the project language and runs its standard lint/format/test toolchain (Go: `go vet`→`golangci-lint`→`go test`; illustrative — all 16 supported languages detected equally via project markers; missing tools skipped gracefully).
 
 ---
@@ -151,6 +159,16 @@ Debug tools: `claude --debug "hooks"` / `"api,hooks"` / `"mcp"`, or `/debug` in-
 |---|---|---|
 | `moai hook subagent-stop` fails | Binary not in PATH | `which moai` |
 | settings.json unchanged after `moai update` | Conflict with user modifications | `moai update -t` (template-only) |
+
+---
+
+## 18. Local Instructions (imported)
+
+The user-owned `AGENTS.local.md` (gitignored, never deployed) is imported last, so it layers over
+everything above. When the file is absent, or the session runs in a linked worktree where the import
+points outside the project, Claude Code skips the import silently.
+
+@AGENTS.local.md
 
 ---
 

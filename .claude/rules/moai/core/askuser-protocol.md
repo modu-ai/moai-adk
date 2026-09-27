@@ -207,6 +207,10 @@ Owned by `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Fo
 
 This section is the **single source of truth** for Stage 1 Clarify trigger conditions. Both `CLAUDE.md §7 Rule 5` and `CLAUDE.md §8 Ambiguity Triggers` cross-reference this definition.
 
+<!-- moai:contract-mode-start id="contract-ambiguity" -->
+Where `workflow.autonomy.mode: contract` — after the contract is signed, a trigger the contract already answers is recorded, not asked; an ambiguity that contradicts the contract escalates instead. See `.claude/rules/moai/workflow/contract-autonomy.md` § Gate disposition.
+
+<!-- moai:contract-mode-end -->
 ## Free-form Circumvention Prohibition
 
 Free-form interrogative prose in the response body MUST NOT be used as a substitute for `AskUserQuestion` — always use AskUserQuestion.

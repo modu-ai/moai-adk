@@ -57,6 +57,9 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	target := req.GetString("target", "")
 	focus := req.GetString("focus", "")
 	gates := readGatesArgument(req)
+	// A4 card argument (REQ-CLOSURE-012): binds the fan-out to the card.
+	// Empty ⇒ byte-identical pre-change behavior.
+	cardID := req.GetString("card_id", "")
 
 	// The convergence engine writes its per-session state file under
 	// .moai/state/audit-multi/<session>.json (DQ-1). The tool surface does NOT
@@ -81,6 +84,7 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		SessionID:      req.GetString("session_id", ""),
 		ProjectRoot:    projectRoot,
 		OriginProvider: os.Getenv(config.EnvMoaiLaunchProvider),
+		CardID:         cardID,
 	}
 
 	token := extractProgressToken(req)

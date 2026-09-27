@@ -213,6 +213,10 @@ progression-mode choice as a DISTINCT axis from the approve/decline decision.
 The selected mode is persisted in goal state as `progression_mode` (default
 `autonomous` when the user declines to choose).
 
+<!-- moai:contract-mode-start id="contract-progression" -->
+Where `workflow.autonomy.mode: contract` — the approval above is the contract signature checked by `moai contract kickoff-check`; signing never arms a goal by itself, and the progression mode is chosen when the orchestrator arms one. See `.claude/rules/moai/workflow/contract-autonomy.md` § The signing gate.
+
+<!-- moai:contract-mode-end -->
 Because arming is arm-only — it records the condition but starts no work — the
 goal is always armed alongside a work-starting action, never in place of one.
 The resume-surface counterpart of this axis is

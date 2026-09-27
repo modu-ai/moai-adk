@@ -1,0 +1,3 @@
+constitution validate: OK — no drift or violations detected (97 of 101 entries checked)
+
+  4 retired entry/entries skipped ([SUPERSEDED …] marker); re-check them with --strict

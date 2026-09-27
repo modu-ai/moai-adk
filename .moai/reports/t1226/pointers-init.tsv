@@ -1,0 +1,7 @@
+file	dest	pointer_chars
+.claude/rules/moai/core/agent-common-protocol.md	core/agent-common-protocol-reference.md	89
+.claude/rules/moai/core/askuser-protocol.md	core/askuser-protocol-reference.md	146
+.claude/rules/moai/core/moai-mcp-tools.md	core/moai-mcp-tools-catalogue.md	64
+.claude/rules/moai/workflow/cross-session-messaging.md	workflow/cross-session-messaging-detail.md	68
+.claude/rules/moai/workflow/kanban-dispatch.md	workflow/kanban-dispatch-mechanics.md	87
+.claude/rules/moai/workflow/skill-routing.md	workflow/skill-routing-detail.md	23

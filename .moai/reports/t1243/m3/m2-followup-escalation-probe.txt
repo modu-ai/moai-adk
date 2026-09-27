@@ -1,0 +1,8 @@
+=== RUN   TestM3Probe_ArmedUnderPriorFrozenSet
+    zz_m3_frozen_arming_probe_test.go:22: armed snapshot frozen_files (prior set) = [**/CLAUDE.local.md **/CLAUDE.md internal/x/**]
+    zz_m3_frozen_arming_probe_test.go:27: after set growth, write AGENTS.md: invariant-violation records = 0
+    zz_m3_frozen_arming_probe_test.go:29: armed snapshot frozen_files after the write = [**/CLAUDE.local.md **/CLAUDE.md internal/x/**]
+    zz_m3_frozen_arming_probe_test.go:33: control, write CLAUDE.md: invariant-violation records = 1
+--- PASS: TestM3Probe_ArmedUnderPriorFrozenSet (0.03s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/escalation	0.533s

@@ -642,6 +642,38 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		}
 	}
 
+	// A4 verdict-command deny (SPEC-AUTONOMY-CLOSURE-001 REQ-CLOSURE-021).
+	// Every mode, a string match on the command text, no I/O. Sits after
+	// checkBashCommand (its @MX:ANCHOR forbids a conditional return above)
+	// and beside the other opt-in guards, before the Write/Edit block.
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 {
+		if decision, reason := checkContractVerdict(input); decision == DecisionDeny {
+			slog.Warn("closure verdict deny",
+				"tool_name", input.ToolName,
+				"session_id", input.SessionID,
+				"reason", reason,
+			)
+			return NewDenyOutput(reason), nil
+		}
+	}
+
+	// A4 push readiness (SPEC-AUTONOMY-CLOSURE-001 REQ-CLOSURE-015..018).
+	// The mode check is the first statement inside: under guided — or any
+	// mode other than contract — it returns before any file read or
+	// subprocess, leaving the hook output byte-identical (REQ-CLOSURE-023).
+	// Fail-closed: an unprovable push destination is undetermined, and
+	// undetermined denies.
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 {
+		if r := checkClosurePush(h.cfg, input); r.decision == DecisionDeny {
+			slog.Warn("closure push stop",
+				"tool_name", input.ToolName,
+				"session_id", input.SessionID,
+				"reason", r.reason,
+			)
+			return NewDenyOutput(r.reason), nil
+		}
+	}
+
 	// Handle Write and Edit tools
 	if (input.ToolName == "Write" || input.ToolName == "Edit") && len(input.ToolInput) > 0 {
 		// Harness-learner FROZEN zone guard (Vision §3.4, W3 first implementer).
@@ -1411,8 +1443,9 @@ var frozenZonePrefixes = []struct {
 	{".claude/output-styles/", SentinelHarnessFrozenOutputStyle},
 }
 
-// frozenInstructionFiles lists CLAUDE.md variants guarded by HARNESS_FROZEN_INSTRUCTION_VIOLATION.
-var frozenInstructionFiles = []string{"CLAUDE.md", "CLAUDE.local.md"}
+// frozenInstructionFiles lists the instruction-file basenames (CLAUDE.md and
+// AGENTS.md variants) guarded by HARNESS_FROZEN_INSTRUCTION_VIOLATION.
+var frozenInstructionFiles = []string{"CLAUDE.md", "CLAUDE.local.md", "AGENTS.md", "AGENTS.local.md"}
 
 // checkHarnessFrozenZone returns (sentinel, deny-reason) when the file path falls inside
 // a FROZEN zone. Returns ("", "") when the path is not frozen.

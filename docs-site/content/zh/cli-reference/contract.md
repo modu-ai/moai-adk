@@ -17,6 +17,9 @@ draft: false
 | `moai contract verify <SPEC-ID>` | 检查契约。只读，可安全地在钩子中调用 | 0 有效 · 1 无效 · 2 用法或 I/O 错误 |
 | `moai contract show <SPEC-ID>` | 输出契约各节、签名状态和派生集合（如实际生效的禁写路径） | 0 已输出 · 2 用法或 I/O 错误 |
 | `moai contract sign <SPEC-ID>...` | 签署契约 | 0 已签署 · 1 被拒绝 · 2 用法或 I/O 错误 |
+| `moai contract kickoff-check <SPEC-ID> --card <card>` | 判定 contract 模式下的 plan→run 关卡。只读 | 0 通过 · 1 未通过 · 2 用法或 I/O 错误 |
+| `moai contract decide <card> --spec <SPEC-ID> --judgement <file\|->` | 判定开工决定并记录到契约存储 | 0 已记录 · 1 存储完整性错误 · 2 用法或 I/O 错误 |
+| `moai contract revoke <card> --spec <SPEC-ID>` | 撤回已签署契约的签名 | 0 已撤回（含此前已撤回） · 1 未签署 · 2 用法或 I/O 错误 |
 
 `verify` 和 `show` 支持 `--json`，输出机器可读的 JSON 对象。`verify` 只通过封闭的原因代码集合（`unsigned`、`acceptance_hash_mismatch`、`contract_digest_mismatch` 等）报告无效原因。
 
@@ -40,6 +43,24 @@ moai contract sign SPEC-AUTH-001 --signer llm \
 **回执路径。** 同时指定 `--signer llm` 或 `--signer llm+jev` 与 `--receipt` 时，无需终端确认，而是以启动回执为依据签署。该路径仅在 `workflow.autonomy.mode` 为 `contract` 时可用，每次只签署一个 SPEC。
 
 **拒绝。** 签署被拒绝时不会修改任何文件，并输出一行 `refused <code> (<SPEC-ID>): <原因>`。代码来自封闭集合（`not_tty`、`confirmation_mismatch`、`already_signed`、`plan_audit_not_passing`、`verify_failed` 等）。待签署的文件在写入前会再次验证，只有确认为有效签名时才会写入，作者的注释和空行都会保留。
+
+## moai contract kickoff-check · decide · revoke
+
+```bash
+moai contract kickoff-check SPEC-AUTH-001 --card t42
+moai contract decide t42 --spec SPEC-AUTH-001 --judgement judgement.json
+moai contract revoke t42 --spec SPEC-AUTH-001
+```
+
+**kickoff-check.** 确认卡片与契约的 `card` 字段一致、`verify` 报告签名有效、契约存储中记录了该签名，且没有覆盖该签名的撤回。它不写入任何内容；未通过时列出全部原因。
+
+**decide.** 接收决策 LLM 的判断（JSON 文件，或用 `-` 表示标准输入），评估开工前提条件和决策规则，并将结果（`approve`、`reject` 或 `human`）记录到存储。作出决定后写入回执 `.moai/specs/<SPEC-ID>/kickoff-receipt.json`。`decide` 本身不调用 LLM，也不签名。
+
+**revoke.** 向存储追加一条撤回事件，并写入一条 `kind: revoke` 升级记录。正在进行的 run 会在下一个阶段边界停止。它不会删除工作树或分支、推送、更改队列，也不会修改契约或 SPEC 文档。
+
+{{< callout type="warning" >}}
+自主开工**以关闭状态发布。** 当前版本的 `kickoff-check` 会以 `autonomous-kickoff-inactive` 拒绝 `llm` 和 `llm+jev` 签名，因此进入 run 阶段仍需要人工签名。
+{{< /callout >}}
 
 ## 相关文档
 

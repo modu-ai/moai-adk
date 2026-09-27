@@ -89,6 +89,10 @@ The orchestrator launches the script itself; this is scaling, not subagent nesti
 
 > Note: Additional AskUserQuestion decision points exist in Phase 1 (gate failure), Phase 3 (test failure), Phase 6 (breaking changes), Phase 7 (test failure), Phase 8 (security critical), Phase 13 (CI mirror failure), and Phase 14 (next steps). These are inline decision gates, not named evolvable GATEs.
 
+<!-- moai:contract-mode-start id="contract-sync-gates" -->
+Where `workflow.autonomy.mode: contract` — the sync phase carries the last three lifecycle stages: Closure (status transition and verdict), Integration (re-measure on the merged tree), Push (inactive until the stop-before-push on a missing second review exists). No documentation-scope approval (`gate-sync-2`), next-step, or current-branch question is asked, and the failure decision points — Phase 1 gate failure, Phase 3 and Phase 7 test failure, Phase 6 compatibility break, Phase 8 critical security finding, Phase 13 local CI mirror failure — are routed to an escalation report instead of a question. The CI auto-fix loop after a pull request is unchanged. See `.claude/rules/moai/workflow/contract-autonomy.md` § Gate disposition.
+
+<!-- moai:contract-mode-end -->
 ## Invocation Flow
 
 ```
