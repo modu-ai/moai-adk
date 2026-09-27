@@ -133,7 +133,7 @@ For core principles, see `.claude/rules/moai/core/moai-constitution.md`. Operati
 
 ## 15. Agent Teams (Re-allowed, experimental)
 
-**Agent Teams usage ALLOWED (experimental)** — operator decision; `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships enabled. Explicit `--team` selects the layer; the Phase 4 decision tree still auto-routes Tier L coordination to `manager-lead`. **Legacy CG**: `moai cg` is retired — run `moai migrate cg` to preview an explicit role migration. This does not retire native Agent Teams or waive independent audits.
+**Agent Teams usage ALLOWED (experimental)** — operator decision; `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships enabled. Explicit `--team` selects the layer; the Phase 4 decision tree still auto-routes Tier L coordination to `manager-lead`. **Legacy CG**: `moai cg` is retired — run `moai migrate cg` to preview an explicit role migration. This does not retire native Agent Teams or waive independent audits. Migration flags: `model-policy.md` § Legacy CG Configuration.
 
 ## 16. Context Search Protocol
 
