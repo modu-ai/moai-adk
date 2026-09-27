@@ -1,6 +1,6 @@
 ---
 description: "Detailed reference for AskUserQuestion recommendation-placement principles and the preview field"
-paths: "**/askuser-protocol.md"
+paths: "**/askuser-protocol.md,**/.claude/skills/moai/workflows/*.md,**/.claude/output-styles/moai/*.md"
 ---
 
 # AskUserQuestion Protocol — Reference Detail
@@ -200,3 +200,83 @@ The **Blind Spot Pass** is an OPTIONAL pre-plan Discovery technique for surfacin
 - **Subagent boundary (preserved)**: `Agent(Explore)` — and any subagent — **does not prompt the user** directly; findings surface only through the orchestrator's channel. A subagent that lacks input returns a blocker report; it never asks the user.
 
 ---
+
+## Relocated bodies — always-loaded stub sections
+
+> Relocated from `askuser-protocol.md` to keep the always-loaded file within its size budget. Every binding clause stays inline there; these are the non-binding bodies it points at.
+
+### General Rule for Deferred Tools
+
+Any deferred tool requires a `ToolSearch` select preload before invocation. The pattern generalizes: `ToolSearch(query: "select:<tool>[,<tool>...]")` — single (`select:AskUserQuestion`) or multiple (`select:AskUserQuestion,TaskCreate`).
+
+**Preload sequence** (per turn — if a new turn begins and `AskUserQuestion` will be called again, preload again; never reverse or omit Step 1):
+
+```
+[Turn N]
+Step 1: ToolSearch(query: "select:AskUserQuestion")   ← preload deferred schema
+Step 2: AskUserQuestion({ questions: [...] })           ← now valid to invoke
+```
+
+---
+
+### The Four Triggers (any one activates Stage 1)
+
+1. **Pronoun or demonstrative without clear referent**: "this", "that", "it", "the previous one" — the referent cannot be unambiguously determined from context
+2. **Multi-interpretable action verb without specified scope**: "clean up", "process", "improve", "fix" — the action could apply to multiple different implementations
+3. **Unclear boundaries**: How far to go, how much to change, which files are in scope, where to stop
+4. **Potential conflict with existing state**: Uncommitted changes, in-progress branches, overlapping work that the request might conflict with
+
+### The Five Exceptions (Stage 1 is skipped)
+
+1. Single-line typo or formatting fix — scope is self-evident
+2. Bug fix with explicit reproduction provided — the reproducer defines scope
+3. Direct file read when the path is explicitly specified — no interpretation needed
+4. Command invocation with all required arguments provided — no ambiguity
+5. Continuation of previously confirmed work in the same session — intent already established
+
+### The Unknowns 4-Quadrant Lens
+
+Classify the ambiguity by **user blind spot** (Known-Knowns / Known-Unknowns / Unknown-Knowns / Unknown-Unknowns):
+
+- **Known-Knowns** — stated + confirmed facts. No clarification needed
+- **Known-Unknowns** — gaps the user is aware of. Resolve via a Socratic interview round (§ Socratic Interview Structure)
+- **Unknown-Knowns** — constraints implicit in the codebase the user has not surfaced. Resolve via `Agent(Explore)` read-only reconnaissance, then confirm with the user
+- **Unknown-Unknowns** — risks neither side has articulated. When suspected (unfamiliar domain/subsystem/design territory), run a Blind Spot Pass (§ Blind Spot Pass) before plan-phase entry
+
+### First-Action Sequence After Trigger
+
+```
+Trigger detected
+  → Step 1: ToolSearch(query: "select:AskUserQuestion")   [deferred tool preload]
+  → Step 2: Compose AskUserQuestion round (≤4 Q, ≤4 options, (권장) first under recommendation_mode: push — withheld under pull, conversation_language)
+  → Step 3: Send AskUserQuestion, collect responses
+  → Step 4: Assess intent clarity (100% required)
+  → Step 5: If <100%: go to Step 1 with narrowed questions
+             If 100%: consolidate report → final confirmation → execute
+```
+
+---
+
+### Directive and Recovery
+
+- **Preventive (always):** write all `conversation_language` text as native UTF-8 in the tool-call JSON — this binds **every** tool call carrying multi-byte text, not only `AskUserQuestion` but Bash commands, Write / Edit content arguments, and any other tool-call payload. Never hand-escape a non-ASCII character.
+- **Recovery (on failure):** if a call is rejected with `Invalid tool parameters` and the payload contained non-ASCII text, re-issue the identical call with the text rewritten as native UTF-8 — do not try to "repair" the escape sequence. Do not carry the corrupted form forward; re-author the next non-ASCII payload from the intended source text, not by transcribing the `\uXXXX` run visible in context. Persistent recurrence within a session → escalate to `/clear` with a paste-ready resume (last-resort loop-break).
+
+### Pre-Emit Self-Check (before any tool call carrying non-ASCII text) — 3 items
+
+- [ ] Is every `conversation_language` string in this payload written as native UTF-8 characters (한글 / 日本語 / 中文), with **zero** hand-authored `\uXXXX` sequences?
+- [ ] Am I authoring this text from the intended source meaning, not transcribing an escaped `\uXXXX` run visible in my own context?
+- [ ] If a prior call in this turn already failed with `Invalid tool parameters` on non-ASCII text, have I re-authored — not repaired — this payload, and am I watching for a saturated context that warrants `/clear`?
+
+### Pre-emit self-check (report-before-ask) — 5 items
+
+- [ ] Does the user's latest message request a report / analysis / explanation rather than a decision? If yes, this turn ends with the report — defer this AskUserQuestion to a later turn.
+- [ ] Do this question's options derive from investigation results? If yes, does a substantive report precede this call in the same turn?
+- [ ] Is every codename / identifier appearing in the options explained in the preceding report?
+- [ ] Do the findings live in the response body (not only inside option previews)?
+- [ ] If a report was promised earlier in the task, has it actually been rendered?
+
+---
+
+Version: 1.3.0
+Classification: Canonical Reference — do not duplicate content; cross-reference this file instead.

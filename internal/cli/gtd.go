@@ -246,7 +246,12 @@ func newGTDEngageCmd() *cobra.Command {
 				}
 				return false, nil
 			}, apply: func() error {
-				return kanban.RecordFactoryCardAssignment(resolveTodoQueueRoot(), runID, result.CardID, lane, "")
+				root := resolveTodoQueueRoot()
+				if err := kanban.RecordFactoryCardAssignment(root, runID, result.CardID, lane, ""); err != nil {
+					return err
+				}
+				mirrorFactoryAssignment(cmd.Context(), cmd.ErrOrStderr(), root, store, runID, result.CardID, lane)
+				return nil
 			}}
 			dispatchOp := kanban.GTDOperation{OperationID: "gtd-dispatch:" + runID + ":" + args[0], MissionID: runID, Action: "dispatch", Target: result.CardID, SnapshotHash: op.SnapshotHash, ReceiptJSON: []byte(`{"source":"gtd_cli"}`)}
 			if _, err = kanban.ExecuteGTDOperation(cmd.Context(), store, dispatchOp, dispatchOwner); err != nil {

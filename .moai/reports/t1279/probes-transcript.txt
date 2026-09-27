@@ -1,0 +1,26 @@
+== de2dbb1a-9047-48f1-aeda-a3ab51f3e14f
+   1 nest/outer/CLAUDE.local.md
+   1 nest/outer/CLAUDE.md
+   1 nest/outer/inner/CLAUDE.local.md
+   1 nest/outer/inner/CLAUDE.md
+"input_tokens":10,"cache_creation_input_tokens":27015,"cache_read_input_tokens":13840
+== 45a671b6-8d91-479e-92e4-6ba005a2c822
+   1 nest/outer/CLAUDE.local.md
+   1 nest/outer/CLAUDE.md
+   1 nest/outer/inner/CLAUDE.local.md
+   1 nest/outer/inner/CLAUDE.md
+"input_tokens":10,"cache_creation_input_tokens":22986,"cache_read_input_tokens":17871
+== f592469f-7d35-4a91-b1ca-1112f831cf0f
+   1 wt/main/.claude/worktrees/w1/CLAUDE.local.md
+   1 wt/main/.claude/worktrees/w1/CLAUDE.md
+   1 wt/main/CLAUDE.local.md
+"input_tokens":10,"cache_creation_input_tokens":27504,"cache_read_input_tokens":13840
+== e8a442d6-3a77-4dae-928b-8cfdc8df6090
+   1 wt/outside-w2/CLAUDE.local.md
+   1 wt/outside-w2/CLAUDE.md
+"input_tokens":10,"cache_creation_input_tokens":23370,"cache_read_input_tokens":17870
+== 27c54282-1895-4877-9090-7ec803916648
+   1 wt/main/.claude/worktrees/w1/CLAUDE.local.md
+   1 wt/main/.claude/worktrees/w1/CLAUDE.md
+   1 wt/main/CLAUDE.local.md
+"input_tokens":10,"cache_creation_input_tokens":44329,"cache_read_input_tokens":17870

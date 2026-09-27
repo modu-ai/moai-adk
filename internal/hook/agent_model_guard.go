@@ -171,11 +171,19 @@ type agentModelAuditRecord struct {
 // unwritable directory, or a marshal error must never surface to the caller,
 // because an observation failure may not block a spawn.
 func appendAgentModelAudit(projectRoot string, rec agentModelAuditRecord) {
-	if projectRoot == "" {
-		return
-	}
 	if rec.Timestamp == "" {
 		rec.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	}
+	appendAuditJSONL(projectRoot, rec)
+}
+
+// appendAuditJSONL appends one JSON line to the agent-model audit log. It is
+// the single writer shared by the PreToolUse row and the SubagentStop
+// served-model row, and it is append-only: no existing row is ever rewritten.
+// Every failure is silent-and-continue, for the reason given above.
+func appendAuditJSONL(projectRoot string, rec any) {
+	if projectRoot == "" {
+		return
 	}
 	line, err := json.Marshal(rec)
 	if err != nil {
