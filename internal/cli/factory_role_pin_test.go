@@ -10,21 +10,27 @@ package cli
 // REQ-AP-013). The assertion guarantees the failure — a one-sided rename
 // turns this test RED — not the derivation.
 //
-// M2 state (SPEC-ROLE-NAMING-CODE-001): the CLI parses exactly one role
-// token, `lane`, and refuses the legacy spellings. The full three-way
-// equality (guard constant == -f token == lane-label prefix) is restored at
-// M4 when config.FactoryRoleWorker flips to "lane"; until then the guard
-// constant is the M4 tripwire documented in progress.md §E.2 (the M1 note).
+// SPEC-ROLE-NAMING-CODE-001 M4: the full three-way equality (guard constant
+// == -f role token == lane-label prefix) is restored — the M1 tripwire is
+// gone (REQ-RNC-012).
 
 import (
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // TestFactoryRoleTokenPinsGuardConstant pins AC-AP-018 (CLI limb): the live
-// `-f` role token this package parses is the canonical `lane`, and the
-// retired spellings are not accepted anywhere on the token path — a rename
-// that merely swaps the live and legacy spellings must not pass.
+// `-f` role token this package parses equals the guard's role-value constant
+// (REQ-RNC-012's three-way equality, CLI carrier), the token is the canonical
+// `lane`, and the retired spellings are not accepted anywhere on the token
+// path — a rename that merely swaps the live and legacy spellings must not
+// pass.
 func TestFactoryRoleTokenPinsGuardConstant(t *testing.T) {
+	if factoryLaneRoleToken != config.FactoryRoleLane {
+		t.Fatalf("-f role token %q != guard value constant %q — the REQ-AP-013 equality (marker value == -f token, SPEC-ROLE-NAMING-CODE-001 REQ-RNC-012) regressed",
+			factoryLaneRoleToken, config.FactoryRoleLane)
+	}
 	if factoryLaneRoleToken != "lane" {
 		t.Fatalf("factory role token %q != %q — the canonical token must stay lane (AC-AP-018)",
 			factoryLaneRoleToken, "lane")

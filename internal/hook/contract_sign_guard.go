@@ -124,12 +124,13 @@ func checkContractSign(input *HookInput) (decision string, reason string) {
 }
 
 // contractRoleMarker reports whether the calling session claims the factory
-// worker role (REQ-AP-011). The marker's name and value come from the
-// internal/config constants REQ-AP-012 defines, so the retired alias `agent`
-// is not accepted here by construction. A session that sets no marker makes
-// no role claim.
+// lane role (REQ-AP-011; the value follows the leader/lane vocabulary per
+// SPEC-ROLE-NAMING-CODE-001 REQ-RNC-012). The marker's name and value come
+// from the internal/config constants REQ-AP-012 defines, so the legacy
+// spellings `worker` and `agent` are not accepted here by construction. A
+// session that sets no marker makes no role claim.
 func contractRoleMarker() bool {
-	return os.Getenv(config.EnvFactoryRole) == config.FactoryRoleWorker
+	return os.Getenv(config.EnvFactoryRole) == config.FactoryRoleLane
 }
 
 // classifyContractCall parses one command line per design.md §C.2: shell-word
