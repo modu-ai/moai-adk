@@ -190,6 +190,19 @@ func grAllowed(p string) bool {
 			return true
 		}
 	}
+	// design.md §2 row 27: the sync-phase documentation outputs. These have
+	// no template mirror, so they match only as written.
+	for _, e := range []string{
+		"CHANGELOG.md",
+		"docs-site/content/ko/cli-reference/contract.md",
+		"docs-site/content/en/cli-reference/contract.md",
+		"docs-site/content/ja/cli-reference/contract.md",
+		"docs-site/content/zh/cli-reference/contract.md",
+	} {
+		if p == e {
+			return true
+		}
+	}
 	prefixes := []string{
 		"internal/contract/receipt/",
 		"internal/contract/kickoff/",
@@ -226,6 +239,11 @@ func TestContractModeChangeSetAllowlist(t *testing.T) {
 			".claude/rules/moai/workflow/spec-workflow.md",
 			"internal/kanban/backlog.go",
 			"internal/escalation/record.go",
+			// Neighbours of the row 27 sync outputs stay outside.
+			"internal/template/templates/CHANGELOG.md",
+			"docs-site/content/ko/cli-reference/spec.md",
+			"docs-site/content/fr/cli-reference/contract.md",
+			"README.md",
 		} {
 			if grAllowed(p) {
 				t.Errorf("allowlist admits forbidden path %s", p)
