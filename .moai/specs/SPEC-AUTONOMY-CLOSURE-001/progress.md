@@ -131,6 +131,38 @@ Marker blocks between `<!-- moai:closure-second-review:start/end -->` in the tem
 
 Boundary greps: `grep -rn 'AskUserQuestion' internal/closure internal/hook internal/cli/contract_*` non-test → 1 hit, the pre-existing blocklist line in `pre_tool.go` (denies the tool; predates this SPEC). `grep -rn "Retired\|superseded" internal/closure …` → only this SPEC's own STALE rendering strings. `verdict.md` is written by no code path (the constant catalogue deliberately omits it).
 
+### Sync-audit repair — F1-F5 + F10 (lead-side Opus sync-audit FAIL 63.3; report `.moai/reports/t1237/sync-audit-opus.md` §7)
+
+Repairs landed one commit per defect; every fix was preceded by its failing regression test (auditor §8.1 reproduce-first). All measurements below: this run, this tree, HEAD `819847831`.
+
+| Defect | Fix | Commit | Regression evidence |
+|---|---|---|---|
+| F1 [High] | `classifyPushCommand` gates on a push candidate (`\bgit\b[^;&\|\n]*\bpush\b`) before the unprovable judgment; pushless `$VAR`/`$(…)`/wrapper-shell commands get no A4 decision | `14a09d162` | RED (pre-fix): `command "echo $HOME": decision "deny" reason "CLOSURE_PUSH_STOP: push_check_undetermined (command substitution, eval, a wrapper shell, or a variable operand)", want no A4 decision`; GREEN post-fix. Test: `TestAC_CLOSURE_017/pushless_unprovable_commands_are_not_judged` |
+| F2 [High] | design.md §C.1 rows 2-3: bare remote → upstream judgment; colon-less HEAD/@ → destination = current branch; matched operand quotes stripped; wrapped pushes (env assignment, subshell, `time`/`command`) → undetermined; `\|` and `&` join the segment splitters; the caller-resolved tree is threaded into the classifier | `1d8d9fad2` | RED (pre-fix): 11 new AC-015/017 forms all fail — 6 evaluate forms `decision = "", want deny` + 5 undetermined forms — matching probe E6; GREEN post-fix |
+| F3 [High] | `appendSecondReviewRecord` receives the REQUESTED target from `runMultiAudit` and records it verbatim (was the literal `"baseBranch"`) | `cb64d1c6e` | RED (pre-fix): `recorded target = "baseBranch", want the requested "uncommittedChanges"` (and the `""` default case), matching probe E7; GREEN incl. the `SelectSecondReview` scope-not-covered assertion |
+| F4 [Med] | AC-023 fixture gains `writeGitFlowConfig(t, f)` after `queueC1` so `integrationBranchFor` resolves and the mode gate is reachable | `de302c7c2` | Mutant check (`go test -overlay`, guided-gate deleted): `--- FAIL: TestAC_CLOSURE_023` + `mode "guided": A4 evaluations ran (0 -> 1)` — mutant dead; original code + strengthened fixture passes (E8 contrast) |
+| F5 [Med] | card_id validated against `contract.CardPattern` before any path construction; failure rides `second_review_record_error`, audit result unaltered | `20527c978` | RED (pre-fix): `second_review_record_error empty, want the invalid card_id rejection` (traversal id `../../../../tmp/zzt1237`); GREEN post-fix: error set, nothing written outside the evidence home |
+| F10 | `@MX:ANCHOR` on `ResolveEvidenceHome` and `gitio.Head` (4 non-test callers each, auditor E9) | `819847831` | n/a (annotation) |
+
+Remeasurement batch (env-scrubbed single compound invocations, this run, this tree, HEAD `819847831`):
+
+- `go test -timeout 30m -count=1 ./internal/closure/...` → `ok … internal/closure 14.054s` + `ok … internal/closure/gitio 2.566s` (`closuretest` `[no test files]` — test-support package).
+- `go test -timeout 30m -count=1 -v -run '^TestAC_CLOSURE_' ./internal/hook/ ./internal/template/` → 6 `--- PASS` top-level, `ok` both packages.
+- `go test -timeout 30m -count=1 -v -run '^TestAC_CLOSURE_\|AuditMulti\|Convergence\|Contract' ./internal/cli/` → 58 `--- PASS`, `ok … internal/cli 68.852s`.
+- `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+- `golangci-lint run ./internal/closure/... ./internal/cli/... ./internal/hook/... ./internal/template/...` (PATH **v2.1.6**, the CI judge) → `0 issues.`, exit 0.
+- `moai spec lint SPEC-AUTONOMY-CLOSURE-001` with a TREE-BUILT binary (`go build -o bin/moai ./cmd/moai`; the installed `~/go/bin/moai` is stale at `a8a9b9376`, older than this tree's VacuousTestAssertion rule, and is FORBIDDEN as a verdict source — F6's cause): `0 error(s), 2 warning(s)` — `acceptance.md:13` (run-pattern anchoring) and `acceptance.md:14` (outcome-assertion delimiter). Both recorded below; acceptance.md not modified.
+
+Debt list — recorded as debt per the lead's disposition (all Low/optional in audit §7; no repair this round):
+
+- **F6** [Low] The §E.2 self-verification E6 row above cites the stale installed binary's "No findings"; the tree binary emits the 2 warnings above. `acceptance.md:13`'s unanchored run-pattern is real debt in SPEC body prose (amending it is manager-spec's domain). `acceptance.md:14` is a likely VacuousTestAssertion rule false-positive (the pattern already carries a space after the `<NNN>` placeholder) — `/moai:feedback` candidate.
+- **F7** [Low] `contract_pushcheck.go` carries its own pre-F2 classifier (REQ-019 parity: bare-remote / colon-less-HEAD forms judge differently there than in the hook). Follow-up: share the hook classifier.
+- **F8** [Low] `pushcheck.go` silently drops undecodable contracts and ignores closure-verdict.jsonl read errors — consider REQ-017 undetermined routing.
+- **F9** [Low] `report_sha256` is the generated_at-masked canonical hash, not the file-byte SHA-256 (deliberate, coupled to REQ-002 determinism); the REQ-020/022 wording amendment is manager-spec's.
+- **F11** [Low] New APIs stay `not observed` (plan.md R2 disposition: A2's `newAPIAdditions` is unexported) — follow-up card material.
+- **F12** [Low] README 4-locale carries no `moai contract` verbs — manager-docs scope.
+- **F13** [Low] AC-012's top-level test count grew by 2 (`TargetRecorded`, `PathTraversalCardID`; family now 6) against the acceptance.md one-top-level-test convention — the same accepted deviation class the audit recorded.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
