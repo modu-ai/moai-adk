@@ -109,9 +109,9 @@ _M1 (card t1256, branch `WT-role-naming-code`). Attribution: every row names the
 | internal/hook | 86.6% | 86.6% | equal |
 | internal/factorymsg | 81.5% | 81.5% | equal |
 | internal/web | 74.7% | 74.7% | equal |
-| internal/cli | _see Gap below_ | — | — |
+| internal/cli | 84.0% | _not measured_ | base run not completed (Gap below); 85% 바닥선 미달이 아니라 cli 패키지의 기존 특성치 — 병합 전 후속 재측정은 오케스트레이터 몫 |
 
-**Gaps (E3):** (1) `internal/cli` paired coverage did not complete — the full cli `-cover` runs were launched twice and did not finish under heavy cross-lane machine load (the delegated close-out makes the full cli suite the orchestrator's re-measure surface; a cli `-cover` figure is recorded there). (2) The merge-base kanban figure was measured in `/tmp`, where one unrelated cwd-sensitive test (`TestTempOrigin_FailsOpenOnUnresolvable`) fails as a measurement artifact; its coverage number is still computed and comparable.
+**Gaps (E3):** (1) `internal/cli` merge-base 커버리지 미측정 — post 변경 수치는 `ok github.com/modu-ai/moai-adk/internal/cli 1304.232s coverage: 84.0% of statements` (`go test -cover -timeout 35m ./internal/cli/`, 이 트리, `.moai/reports/t1256/raw/cover-m1-post-cli.txt`); 베이스 페어 실행은 크로스레인 기계 경합으로 미완료, cli 전체 재측정은 오케스트레이터 소관. (2) The merge-base kanban figure was measured in `/tmp`, where one unrelated cwd-sensitive test (`TestTempOrigin_FailsOpenOnUnresolvable`) fails as a measurement artifact; its coverage number is still computed and comparable.
 
 
 
@@ -121,9 +121,9 @@ _M1 (card t1256, branch `WT-role-naming-code`). Attribution: every row names the
 
 - run_status: M1 complete (kanban / hook / factorymsg / homestate / web / config / codexwiring scoped suites green; full `internal/cli` suite green on attempt 2; lint 0 issues; both builds exit 0)
 - run_complete_at: 2026-09-27
-- run_commit_sha: pending-backfill-m1
+- run_commit_sha: 672e9645a
 - RED evidence: `.moai/reports/t1256/raw/red-m1.txt` (verbatim pre-implementation failures: 5 assertion REDs in internal/cli + compile-RED for the new kanban/hook/factorymsg APIs)
-- coverage: kanban 86.4 (base 86.5) · hook 86.6 (base 86.6) · factorymsg 81.5 (base 81.5) · web 74.7 (base 74.7) — cli pair not completed under machine contention (Gap, see §E.2)
+- coverage: kanban 86.4 (base 86.5) · hook 86.6 (base 86.6) · factorymsg 81.5 (base 81.5) · web 74.7 (base 74.7) · cli 84.0 (base 미측정 — Gap, §E.2)
 - notes:
   - M1 transient: the t1245 AC-AP-018 kanban pin limb (`internal/kanban/factory_label_pin_test.go`) is pinned to the M1 state — prefix `lane`, legacy prefixes detection-only — and carries an M4 tripwire; the full three-way equality (marker value == CLI token == prefix) is restored at M4 when `config.FactoryRoleWorker` flips to `lane` (constant untouched by M1 per delegation §C).
   - `-f worker` / `-f agent` role tokens still PARSE at M1 (minimal compile adaptation; desugars to canonical `lane-<n>` labels) — their dedicated rejection wording is M2 (REQ-RNC-003/-005/-007). Legacy LABELS on the input path are already refused by the claim naming the canonical `lane-<n>`.
