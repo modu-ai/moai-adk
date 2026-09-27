@@ -19,6 +19,7 @@ tier: S
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-09-27 | manager-spec | Initial creation — plan-phase artifacts for card t1281 (Class C, Tier S). Decision ③ fixed by the lead (reuse kanban's subject-attribution matcher + generation boundary; replace the check mark with a verify-before-done glyph; keep "never subtracts"; version the cache criterion). Problem measurements supplied by the lane; code shape measured on this tree (base b59a5d69c). |
+| 2026-09-27 | manager-spec | Plan-audit iter-1 (PASS-WITH-DEBT 0.81) delta fixes, card t1281: D1 AC-SLL-001 fixture now discriminates old vs new criterion; D2 AC-SLL-011 greps any `✓`; D3 REQ-SLL-004/AC-SLL-004 scoped to one `git log` subject query, ref resolution unchanged; D4 REQ-SLL-005 keep-on-failure scoped to current-criterion caches; D5 Out of Scope adds form-1 exclusion, `closed=N` non-oracle, residual M1 over-count. D6-D8 (optional) not applied. |
 
 ## §A Context and Problem
 
@@ -60,11 +61,11 @@ The landed refresh shall not count a card whose id appears only in a commit mess
 
 ### REQ-SLL-004 — One query per refresh (Ubiquitous)
 
-The landed refresh shall issue exactly one git invocation per refresh regardless of the number of picked cards, using the argument shape kanban's landed scan uses, and the render path shall issue none.
+The landed refresh shall issue exactly one `git log` subject-stream query per refresh regardless of the number of picked cards, using the argument shape kanban's landed scan uses; ref resolution (`kanban.LandedRefFor`, which may issue one read-only `symbolic-ref` when the base branch is unconfigured) is unchanged; and the render path shall issue no git invocation.
 
 ### REQ-SLL-005 — Unknown is never rendered as zero (Event-driven)
 
-**When** the subject query fails or returns a malformed stream, the landed refresh shall keep the previously stored measurement unchanged apart from its timestamp and shall not write a zero; **when** no picked card exists, the refresh shall record an observed zero without querying git.
+**When** the subject query fails or returns a malformed stream, the landed refresh shall keep a previously stored current-criterion measurement unchanged apart from its timestamp (an old-criterion cache instead becomes unknown, per REQ-SLL-008) and shall not write a zero; **when** no picked card exists, the refresh shall record an observed zero without querying git.
 
 ### REQ-SLL-006 — Criterion-versioned cache (Ubiquitous)
 
@@ -106,6 +107,9 @@ The TODO segment shall render the picked and queued numbers unchanged by the lan
 ### Out of Scope — close-policy guards
 
 - Guard M1 (reissued-id collision, `AutoDoneDistinctTexts`) and guard M2 (SPEC-status sync gate) are not applied to the statusline count. The count answers "a landing commit exists", not "this card may close"; a plan-only landing still counts, which is exactly why the glyph reads verify-before-done.
+- Evidence form 1 (recorded delivering SHA reachable from the ref) is not consulted: it needs a per-card reachability query, which the one-query constraint forbids. The count is subject-attribution only.
+- Consequently the statusline count is NOT guaranteed to equal `moai todo auto-done --dry-run`'s `closed=N` (no form-1 evidence, no M1/M2 skips). The run phase must not use the lane's measured `closed=4` as the oracle for the new count; the oracle is the AC fixtures.
+- Residual M1 over-count (accepted): when a reissued id's predecessor generation lands a subject-attributed commit AFTER the reissued card's `added_at` (concurrent reuse), the generation boundary cannot tell them apart and the card counts. Rare; absorbed by the verify-before-done glyph.
 - No change to `moai todo auto-done`, `moai todo pr`, or the subject-attribution predicate itself.
 
 ### Out of Scope — layout and other segments
