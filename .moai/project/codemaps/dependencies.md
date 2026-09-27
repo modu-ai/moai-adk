@@ -13,9 +13,10 @@
 **정기 재측정**: worktree `.claude/worktrees/t999`, 브랜치 `WT-codemaps-remediation`, HEAD `56c64891a`, 2026-09-20 — 엣지 수(365→371 · 222→227), fan-in 표에서 움직인 한 행(`internal/atomicfile` 10→11), fan-out 표에서 움직인 두 행(`internal/cli` 62→63 · `internal/hook` 32→35), 그리고 작은 fan-in 표의 신규 세 항목. 나머지 행은 같은 명령으로 재확인해 변동이 없었고, § 외부 의존성과 § 순환은 이번에 다시 재지 않았습니다(앞 판 인계).
 **정기 재측정**: worktree `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`, 2026-09-22 — 엣지 수(371→378 · 227→234), fan-in 표에서 움직인 두 행(`internal/defs` 11→12 · `internal/paths` 11→12), fan-out 표에서 움직인 두 행(`internal/cli` 63→65 · `internal/web` 15→16)과 하나의 정정(`internal/spec` — 앞 판 행이 3으로 적혔으나 스탬프 트리에서도 4였다), 작은 fan-in 표의 `internal/stateanchor` 2→3(소비자에 `internal/session` 합류)과 신규 세 행(`internal/jev` · `internal/jevcred` · `internal/jevmeasure`). § 순환은 같은 방법으로 재확인해 세 쌍 그대로였고, § 외부 의존성은 `go.mod`가 스탬프 이후 한 줄도 바뀌지 않은 것으로 확인했습니다.
 **부분 재측정**: worktree `.claude/worktrees/t1092`, 브랜치 `WT-codemaps-restamp`, base `08113ff0f`, 2026-09-23 — 카드 t1092. 엣지 수(378→381 · 234→237). 신규 패키지 `internal/factorymsg`는 fan-in 2(`internal/cli` · `internal/hook`이 import)로 작은 fan-in 표(상위 14 밖)에 속하며, fan-out 상위 표에는 두 소비자 쪽 수치 변화가 반영됐지만 순위표 자체는 움직이지 않았습니다(`internal/cli`·`internal/hook` 모두 기존에도 상위권). § 순환·§ 외부 의존성·상호 참조 쌍 목록은 이번 변경과 무관해 손대지 않았습니다.
+**정기 재측정**: worktree `.claude/worktrees/t1274`, 브랜치 `WT-codemaps-refresh4`, base `cf4b82755`, 2026-09-26 — 카드 t1274. 엣지 수(386→409 · 241→256; 최상위 집계는 계보 방식대로 고유 쌍 집합 기준). 증가분의 대부분은 신규 패키지 `internal/escalation`(비테스트 소비자 `internal/hook` 1개, 스스로는 `internal/config`·`internal/contract`·`internal/spec`·`internal/constitution`·`internal/homestate`·`internal/navigator/astx` 등을 import)와 t1235 계열 cli·hook·config 변경이 가져왔습니다. § 순환·§ 외부 의존성은 이번 변경과 무관해 손대지 않았습니다.
 
-두 가지 해상도로 봅니다 — 패키지 단위 **386 엣지**, 이를 `internal/<X>` · `pkg/<X>` · `cmd/<X>`
-최상위로 접고 self-edge를 제거한 **241 엣지**. 아래 표는 후자 기준입니다.
+두 가지 해상도로 봅니다 — 패키지 단위 **409 엣지**, 이를 `internal/<X>` · `pkg/<X>` · `cmd/<X>`
+최상위로 접고 self-edge를 제거한 **256 엣지**. 아래 표는 후자 기준입니다.
 
 산출:
 
@@ -23,7 +24,7 @@
 $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
   | awk '{src=$1; for(i=2;i<=NF;i++) if ($i ~ /^github\.com\/modu-ai\/moai-adk\//) print src, $i}' \
   | wc -l
-386
+409
 ```
 
 > 앵커 `25a3212a9` 판은 이 자리에 1638을 적었습니다. 위 명령으로 재현되지 않고 그 판의
@@ -82,6 +83,7 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 | `internal/jev` | 2 | **이 판에서 새로 들어왔다.** 소비자는 `internal/cli`(doctor·todo admission·숨은 suggest 앵커 세 파일)와 `internal/jevmeasure`(살아 있는 `Answerer` 구현) |
 | `internal/jevcred` | 2 | **이 판에서 새로 들어왔다.** 소비자는 `internal/cli`와 `internal/web` — 위자드·doctor 쪽과 콘솔 Jev 패널이 각각 하나씩이며, 두 표면이 하나의 reader를 공유하는 것이 이 패키지의 요건이다 |
 | `internal/mission` | 1 | 소비자는 `internal/cli` 하나 — 실제로는 `internal/cli/goal.go` 한 파일이다 |
+| `internal/contract` | 1 | **t1238 판에서 새로 들어왔다.** 비테스트 소비자는 `internal/cli/contract.go` 한 파일과 같은 계열의 `internal/contract/sign`뿐이다. 코어는 표준 라이브러리와 `gopkg.in/yaml.v3`만 import 하는 leaf이며(`go list -f '{{.Imports}}' ./internal/contract`), 부수효과를 지는 `internal/contract/sign`은 코어와 `internal/atomicfile`을 import 한다 — 방향은 sign→core 한쪽뿐이다. `internal/hook`은 Frozen 지시 파일 목록을 테스트에서만 고정하므로 이 칸에 들어오지 않는다 |
 | `internal/codextools` | 0 | 비테스트 소비자 없음(`modules.md` §네거티브 스페이스) |
 | `internal/jevmeasure` | 0 | **이 판에서 새로 들어왔고, 0은 설계다 — 그러나 종류가 다른 0이다.** 테스트 시점 가드도 빌드타임 도구도 아니고, 측정 게이트가 실행되지 않은 **게이트 미실행 상태**라 소비자가 원리상 아직 없다. 게이트가 통과하면 소비자가 붙는 것이 이 0의 의미다(`modules.md` §네거티브 스페이스) |
 | `internal/harness/rosterguard` · `internal/harness/cellguard` | 0 | **t999 판에서 새로 들어왔고, 0이 정상이다.** 테스트 시점 가드라 비테스트 소비자가 원리상 없다 — `internal/template/agentemit` · `commandemit`과 같은 이유이고 `codextools`와는 다른 이유다(`modules.md` §네거티브 스페이스) |

@@ -301,6 +301,13 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 		})
 	}
 
+	// A Claude Stop that parsed ends a run of parse-failure Stops, so its
+	// counting record is deleted before dispatch (SPEC-HOOK-STOP-PARSE-CAP-001
+	// REQ-SPC-005). No other event touches the count (REQ-SPC-006).
+	if !harnessCodex && event == hook.EventStop {
+		resetStopParseCap()
+	}
+
 	// Inject event name from CLI subcommand when Claude Code omits it.
 	if input.HookEventName == "" || input.HookEventName == "unknown" {
 		input.HookEventName = string(event)
@@ -817,14 +824,15 @@ func runHarnessObserve(cmd *cobra.Command, _ []string) error {
 	// matcher and does receive the full Bash payload, so routing Bash through the
 	// evidence path here restores reachability with no settings.json edit.
 	//
-	// Scoped to Bash: Write/Edit stay owned by handle-post-tool.sh, so no tool
-	// call produces two evidence records.
+	// Scoped to the shell tools (Bash and PowerShell, hook.IsShellTool):
+	// Write/Edit stay owned by handle-post-tool.sh, so no tool call produces
+	// two evidence records.
 	//
 	// Gated on the hook opt-in as well as the learning gate. The usage-log write
 	// above intentionally keeps its pre-existing single-gate behavior; this NEW
 	// write is a distinct emission path and REQ-HLE-013 requires it to stay inert
 	// while either observation gate is closed.
-	if hookInput.ToolName == "Bash" && isHookOptInEnabled(root) {
+	if hook.IsShellTool(hookInput.ToolName) && isHookOptInEnabled(root) {
 		hook.LogBashEvidence(hookInput)
 	}
 

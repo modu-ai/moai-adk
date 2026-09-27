@@ -35,7 +35,11 @@ bash_subcommand_soft_cap=5
 # 1MB stdin cap: a large Write/Edit payload must not be truncated mid-JSON,
 # which would silently skip the security scan (64KB was too small).
 payload=$(head -c 1048576)
-# Only meaningful for the Bash tool (matcher scope is Write|Edit|Bash; Write/Edit have no command).
+# Bash-only on purpose. The shell tools reach this wrapper through the PreToolUse
+# matchers "Write|Edit|Bash" and "PowerShell" (Write/Edit carry no command). The
+# PowerShell tool is excluded from this count: backtick is PowerShell's escape and
+# line-continuation character and $( is a subexpression, so the same count would
+# not measure subcommands there. The moai binary below still guards both tools.
 if printf '%s' "$payload" | grep -q '"tool_name"[[:space:]]*:[[:space:]]*"Bash"'; then
     # Extract the command value (best-effort, no jq dependency).
     cmd=$(printf '%s' "$payload" | grep -oE '"command"[[:space:]]*:[[:space:]]*"([^"\\]|\\.)*"' | head -n1 | sed -E 's/^"command"[[:space:]]*:[[:space:]]*"//; s/"$//')

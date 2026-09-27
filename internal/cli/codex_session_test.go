@@ -58,7 +58,7 @@ func sentParams(t *testing.T, sent []string, i int) map[string]any {
 // repeating the handshake: exactly one initialize, exactly one thread/start,
 // both turns carrying the same threadId, and both returning their result.
 func TestCodexSession_SecondTurnReusesThread(t *testing.T) {
-	sess := withCodexSession(t, codexTwoTurnScript("clean, no findings", "- [P1] second turn found an issue"))
+	sess := withCodexSession(t, codexTwoTurnScript(realCleanReview, "- [P1] second turn found an issue"))
 
 	handle, err := openCodexSession(context.Background(), "/fake/codex", map[string]any{"cwd": t.TempDir()})
 	if err != nil {

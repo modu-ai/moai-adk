@@ -22,7 +22,7 @@ else
 fi
 
 log "step 3/5: go test -race -short"
-go test -race -count=1 -short ./... || exit 2
+go test -race -count=1 -short -timeout 60m ./... || exit 2 # -timeout 60m = D1 derivation (SPEC-CLI-TEST-TIMEOUT-001; baseline .moai/reports/t1253/measure-meta.txt; -short subset unmeasured — spec.md §C.3)
 
 log "step 4/5: cross-compile"
 CROSS="$SCRIPT_DIR/cross-compile.sh"

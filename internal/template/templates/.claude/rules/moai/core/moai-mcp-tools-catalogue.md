@@ -173,9 +173,27 @@ unregistered or prunable worktree, an ambiguous layout such as a separate git
 directory, or git being unavailable — is rejected. On such a worktree without its
 own workflow config, the explicit audit gate (`workflow.audit.gates`) is read from
 the primary checkout, and it is treated as `required` when the primary cannot be
-identified. Other configuration, the SPEC catalogue, and state are still read from
-the accepted tree, so catalogue and state answers there carry a
-`_root.worktree_warning` that an empty result may only mean `.moai` is not tracked.
+identified. Other configuration keeps being read from the worktree itself.
+
+State and the SPEC catalogue follow one store-root rule, which the MCP tools, the
+hooks, and `moai verify` all apply the same way:
+
+| What | Where it is kept or read on such a worktree |
+|---|---|
+| Audit receipts, auditor start markers and rejections, `audit_multi` convergence results, verification snapshots | the primary checkout's `.moai/state`, each record carrying the worktree's own tree identity, so the records of the primary and of every sibling worktree coexist; nothing is created under the worktree |
+| SPEC catalogue (`spec_progress`, `spec_drift`, `spec_audit`) | the union of the worktree's and the primary checkout's `.moai/specs`; each record and finding names its source, and a SPEC present in both is reported once, from the worktree, with the primary copy named as shadowed |
+| Hook-side receipt guard | reads `workflow.audit.gates.codex` from the primary checkout; a rejection recorded for one tree never clears or blocks another tree |
+| Stop review gates (`codex-review-gate`, `multi-review-gate`) | read their opt-in flag from the primary checkout; the multi gate blocks when any result of the session in the store is `fail` |
+
+When the primary checkout cannot be identified there is no store: `verify_snapshot`
+and `verify_trend` return an error, `codex_audit` and `audit_multi` keep their verdict
+but skip the receipt and convergence writes and say so in `state_notice`, the catalogue
+tools answer over the worktree only and state in `_root` that the primary catalogue was
+not read, the review gates stay disabled, and the receipt guard treats the gate as
+`required` — it refuses an auditor PASS and denies phase-entry spawns from that
+worktree, writing nothing. A `workflow.yaml` placed in the worktree ends this, because
+the worktree then carries its own config. Catalogue and state answers carry
+`_root.sources` (what was actually read) and `_root.worktree_warning`.
 
 ---
 
