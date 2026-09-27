@@ -1094,6 +1094,14 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		AgentModelGuard: AgentModelGuardConfig{
 			Enabled: false,
 		},
+		// The served-model gate ships with its ADOPTION-REFUSAL layer off. The
+		// SubagentStop observation row and its warning always run; a
+		// maintainer opts into refusing a gate auditor's verdict via local
+		// config. Template neutrality: no `enabled: true` anywhere under
+		// internal/template/templates/.
+		ServedModelGate: ServedModelGateConfig{
+			Enabled: false,
+		},
 		// The SendMessage stop-guard deny layer ships OFF the same way: stop
 		// recording and send observation + advisory always run; a maintainer
 		// opts into denial via local config. Template neutrality: no
