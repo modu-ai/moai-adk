@@ -243,3 +243,19 @@ RED (expected) extra:
 리드는 PASS-WITH-DEBT로 판정하고 카드를 병합 대기열에 넣었다. 근거는 감사관이 sync-audit.md 105행에 처방한 재감사 범위이며, 리드가 이를 그대로 다시 쟀다. `git show af24dfbcc:CHANGELOG.md | grep -c 'always-loaded SSOT'`는 `0`을 냈고, CHANGELOG.md 12행은 "path-scoped SSOT"로 읽힌다. `contract-autonomy.md` 머리에는 `paths:`가 있다. F1 커밋이 바꾼 것은 CHANGELOG 1행과 reports 2파일뿐이다. 필수 두 차원은 이미 PASS였다(Functionality 90, Security 85).
 
 병합 순서는 t1282 → t1099 → t1237 → t1226 → t1243 → t1236 → t1286이다. 흡수한 뒤 할 일은 두 가지다. BASE에서 파생한 산출물을 흡수한 트리에서 다시 만들고, `moai constitution validate`의 DRIFT가 0인지 확인해 "constitution DRIFT 9 기존" 줄을 그 결과로 고친다.
+
+## 흡수 후 재측정 (병합 창, 2026-09-28)
+
+- 흡수: 로컬 develop `5f5840ae4`를 흡수했다(흡수 커밋 `00fee4131`). 충돌은 CHANGELOG 하나였고 양쪽 항목을 모두 살려 해결했다. 이어서 BASE 파생 데이터를 다시 만들었다(`14ecb399c`). 새 BASE는 `5f5840ae4`이고, `grBaseDriftIDs`는 빈 집합이 됐으며 `grKickoffClasses`는 바뀌지 않았다.
+- constitution: 트리에서 빌드한 바이너리로 `moai constitution validate`를 돌렸다. 결과는 `OK — no drift or violations detected (97 of 101 entries checked)`, exit 0, `drift_count: 0`이다. 앞 절의 "constitution DRIFT 9 기존" 부채는 t1175 수리가 흡수되면서 **해소**됐다. 9건은 옛 BASE `7fe658815` 시점의 측정값이다.
+- 충돌 점검: t1243(frozen 집합에 AGENTS*.md 추가)과 t1237(closure 계약) 모두 실제 충돌이 없다. 명령 이름, 저장소 파일, frozen 경로가 겹치지 않는다. t1237의 `LoadA2Records`는 revoke 기록을 resolved로 읽으므로 호환된다.
+- 병합 트리 재측정은 모두 exit 0이었고, SKIP과 빈 선택은 없었다.
+  - `./internal/contract/...`: 6개 패키지 ok.
+  - AC-GR 가드: 최상위 16개 PASS(`85 changed paths checked`).
+  - `./internal/template` 전체: ok.
+  - A2b 가드: 8개 PASS.
+  - cli `^TestContract`: 3개 PASS.
+  - `./internal/spec`: ok.
+  - lint v2.1.6: 0 issues.
+  - `agents-emit-check`와 `make build`: 통과.
+- 새 부채(병합을 막지 않음): SPEC 본문의 EV-6 원장과 AC-GR-003 2단계 서술(acceptance.md L46·L51·L333 이하, plan.md L213)이 여전히 옛 BASE `7fe658815`의 DRIFT 9건을 전제로 적혀 있다. 과거 측정 기록으로서는 사실이지만, 새 BASE에서 테스트가 쓰는 전제(빈 집합)와는 문면이 어긋난다. manager-spec의 비전이 정정 대상이며 리드가 부채로 받는다. 또 `contract --help`의 긴 설명문이 새 동사를 반영하지 않는다(A1 소유 문구).
