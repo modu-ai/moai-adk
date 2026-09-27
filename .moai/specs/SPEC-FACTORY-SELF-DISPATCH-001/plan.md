@@ -48,10 +48,11 @@ them. None is open.
 - **B9 — Pre-dispatch cross-check** (plan-audit D12, O9): `next` prints the leased card's PR and landed
   state through the `moai todo pr` reader; the next-card rule states that lane promotion is
   operator-authorized.
-- **B11 — Open decisions OD-1 and OD-2** (leader instruction after plan-audit iteration 3): lane queue
-  promotion and Claude-lane self-integration are **not** settled by this plan. The leader decides each
-  at run Kickoff (spec.md §D); REQ-SD-008/-013/-015/-019/-023 are conditional on them. No default is
-  presumed.
+- **B11 — OD-1 and OD-2 decided: both PERMITTED, self-dispatch lane mode only** (leader, 2026-09-27,
+  final). Authority: the card text is the operator's prior authorization — "카드를 스스로 임대(moai factory next [--wait])", "Claude 는 EnterWorktree→처리→통합→ExitWorktree(keep)", "Codex 는 … 자가 통합 없이 merge-ready". The earlier "unresolved" instruction was withdrawn by the leader as
+  its own error. No runtime key: the self-dispatch lane mode is the discriminator. B1 and B4 therefore
+  stand as decided, and the statement "None is open" above holds. The doctrine amendments these
+  decisions need are run/sync deliverables (REQ-SD-015, §D.2 rows).
 - **B10 — `--wait` bound and no-card status**: exit status 3 for no card; the wait interval and bound are
   fixed defaults with a flag to change the bound; exact values recorded in progress.md at run.
 
@@ -110,6 +111,9 @@ paths its committed spec/plan/research/design/acceptance name.
 | `internal/cli/integration.go` | read only (target resolution reused by `complete`) | No |
 | `internal/cli/mcp_server.go` + new `mcp_factory_card.go`, `mcp_todo.go` | six tools with `project_root` | No |
 | `internal/hook/session_start.go` | wire the rule | No |
+| `.claude/rules/moai/workflow/kanban-dispatch.md` | self-dispatch-lane exception to "Promotion is the operator's act, always" (REQ-SD-015; OD-1) | No |
+| `internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` | same text, byte-identical twin; template-neutrality rules apply (REQ-SD-015) | No |
+| `CLAUDE.local.md` §4.1 | self-dispatch-lane exception to "the lane does not take the merge window itself" (REQ-SD-015; OD-2); local-only, no template mirror | No |
 | `internal/hook/contract_sign_guard.go` | role gate reads lane refusal (REQ-SD-017; widens SPEC-AUTONOMY-PRECONDITION-001 REQ-AP-011 in the deny direction) | No |
 | `internal/cli/launch_exec_posix.go`, `launch_exec_windows.go` | supervising form for relaunch | No |
 | `internal/homestate/card_*.go` | at most a selection query helper | No |
@@ -154,7 +158,8 @@ REQ-SD-003, -004. ACs: AC-SD-003, -004.
 REQ-SD-019, -020. ACs: AC-SD-019, -020.
 
 ### M7 — Invariants, vocabulary, lifecycle records (Priority Low)
-REQ-SD-001, -018, -021, -022. Sync phase adds `partially_superseded_by` on
+REQ-SD-001, -018, -021, -022, and the REQ-SD-015 doctrine amendments (kanban-dispatch.md + template
+twin, `CLAUDE.local.md` §4.1; rebuild with `make build` after the template edit). Sync phase adds `partially_superseded_by` on
 SPEC-CODEX-FACTORY-RETIRE-001 and SPEC-AUTONOMY-PRECONDITION-001 (manager-spec by re-delegation). ACs: AC-SD-001, -018, -021, -022.
 
 ## §G Risks

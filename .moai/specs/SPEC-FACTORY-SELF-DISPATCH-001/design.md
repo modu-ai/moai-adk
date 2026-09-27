@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-SELF-DISPATCH-001
 title: "Design — self-dispatching lane (Factory F2)"
-version: "0.4.0"
+version: "0.5.0"
 created: 2026-09-27
 ---
 
@@ -15,7 +15,7 @@ Mechanism notes for the run phase. Requirements live in `spec.md`; nothing here 
 |---|---|---|---|---|
 | D1 | Codex engine | interactive `codex` session per card, working directory = card worktree | headless `codex exec` (t1242 design §5) | Card text: "헤드리스 엔진 없음", "codex -C <wt> 대화형 재기동" |
 | D2 | Codex integration | none — stop at `merge-ready`; `next` never re-leases such a card (REQ-SD-025) | self-integration; re-lease after expiry | Card text: "자가 통합 없이 merge-ready"; re-lease would livelock (plan-audit D1) |
-| D3 | Lane selection order in `next` | own assigned → unowned picked → oldest queued (promote); other lanes' cards never | operator-picked only | Operator Q3 (SPEC-ROLE-NAMING-CODE-001 plan.md §B). Queue order only |
+| D3 | Lane selection order in `next` | own assigned → unowned picked → oldest queued (promote); other lanes' cards never | operator-picked only | Card text "카드를 스스로 임대(moai factory next [--wait])" and operator Q3; leader decision OD-1 (spec.md §D). Queue order only |
 | D4 | Queue writes by a lane | only the promotion inside `next`; every other `todo` verb outside a read-only allowlist refused | per-verb blocklist | Card text; an allowlist covers verbs added later (plan-audit D7) |
 | D5 | Lane predicate | role marker == value constant, on every path; label alone is not a lane | marker-or-label on MCP | One rule everywhere (plan-audit D5); the Codex MCP consequence is a stated residual (spec.md §E.1) |
 | D6 | Integration branch and tree | the branch `moai integration acquire` records and the worktree that has it checked out (`internal/cli/integration.go:166-180`, `worktreeForBranch` `:218`) | worktree base branch; merging in the parent | One integration surface; the parent checkout never changes branch (plan-audit D2) |

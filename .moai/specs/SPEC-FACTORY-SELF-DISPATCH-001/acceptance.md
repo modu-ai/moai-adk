@@ -121,7 +121,7 @@ REQ-SD-025, AC-SD-025 ↔ REQ-SD-023). The matrix above is authoritative.
   unowned picked card plus an older queued card; (c) only a card assigned to `lane-2`; (d) no picked card
   and two queued cards; (e) an empty queue; **When** `lane-1` runs `moai factory next`, **Then** (a) the
   assigned card is leased and the other stays `picked`; (b) the picked card is leased and the queued card
-  stays `queued`; (c) nothing is leased and the exit status is 3; (d) with OD-1 permitting promotion, the older queued card becomes
+  stays `queued`; (c) nothing is leased and the exit status is 3; (d) the older queued card becomes
   `picked` in the queue and `leased` in the record and the newer stays `queued`; (e) stdout says no card
   is available and the exit status is 3. In (a), (b), (d) stdout carries the card id, its stage, its
   worktree name, and a PR/landed line equal to what `moai todo pr <id>` prints for that card.
@@ -159,7 +159,7 @@ REQ-SD-025, AC-SD-025 ↔ REQ-SD-023). The matrix above is authoritative.
 - Verify: `go test ./internal/cli -run '^TestSD_AC012_StageAppliesEdgeAndRenews$' -count=1 -v`
 
 ### AC-SD-013 — Claude `complete` through the integration worktree
-- **Given** OD-2 permitting self-integration, the §B fixture, and a Claude lane holding the integration window, with the card's branch merged
+- **Given** the §B fixture and a Claude lane holding the integration window, with the card's branch merged
   `--no-ff` into `develop` inside `.claude/worktrees/develop` and a re-measure file naming the merge commit,
   **When** the lane runs `complete`, **Then** the card is `merged-local` with that merge SHA recorded and
   the window is still held by the lane (release is the lane's next step, not part of `complete`);
@@ -194,6 +194,15 @@ REQ-SD-025, AC-SD-025 ↔ REQ-SD-023). The matrix above is authoritative.
   Codex MCP environment, **When** `todo_add` is called, **Then** it is refused with the queue bytes
   unchanged, and `factory_next` is refused as not a lane session.
 - Verify: `go test ./internal/cli -run '^TestSD_AC015_LabelOnlyIsNotALane$' -count=1 -v`
+- **Given** the run/sync deliverable of REQ-SD-015, **When** the three doctrine files are read, **Then**
+  `.claude/rules/moai/workflow/kanban-dispatch.md` and its template twin are byte-identical, each carries
+  a self-dispatch-lane exception naming `moai factory next` next to the "Promotion is the operator's act"
+  clause, and `CLAUDE.local.md` §4.1 carries the self-dispatch-lane merge-window exception; each of the
+  three states that other queue mutations and `moai contract sign` stay forbidden to a lane; the template
+  twin passes the template-neutrality guard.
+- Verify: `cmp .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` exits 0
+- Verify: `grep -c 'self-dispatch lane' .claude/rules/moai/workflow/kanban-dispatch.md CLAUDE.local.md` prints a count of at least 1 for each file
+- Verify: `go test ./internal/template -run '^TestTemplateNeutralityAudit$' -count=1 -v` (`internal/template/template_neutrality_audit_test.go:335`)
 
 ### AC-SD-016 — lane cannot decide
 - **Given** a card in `kickoff` and a lane environment, **When** `moai factory decide` and

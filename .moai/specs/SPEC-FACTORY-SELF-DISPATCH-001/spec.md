@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-SELF-DISPATCH-001
 title: "Harness-neutral factory F2 — self-dispatching lane"
-version: "0.4.0"
+version: "0.5.0"
 status: draft
 created: 2026-09-27
 updated: 2026-09-27
@@ -27,6 +27,7 @@ related_specs: [SPEC-FACTORY-RECORD-001, SPEC-AUTONOMY-PRECONDITION-001, SPEC-CO
 | 0.2.0 | 2026-09-27 | manager-spec | Plan-audit iteration 1 (FAIL 0.66, `.moai/reports/t1240/plan-audit-iter1.md`) resolved. D1 Codex lanes never re-lease a card they cannot advance (REQ-SD-025). D2 integration through the hold and the integration worktree; parent checkout never changes branch (REQ-SD-023). D3 lane `startup` always injects the rule (REQ-SD-019). D4 MCP tools resolve the caller's tree from `project_root` (REQ-SD-024). D5 one lane predicate (REQ-SD-015). D6 harness identified by `MOAI_KANBAN_BACKEND`; Codex merge edges refused on every path (REQ-SD-025). D7 queue guard is a read-only allowlist. D8/D12 reconciliation rows and t1257 hand-off list (§E); `next` reports PR/landed state. D9 one wording source for Codex refusals. D10/D11 AC coverage. O3 `depends_on` narrowed to F1; t1256 gated by REQ-SD-001 only. AC count 27 → 25. |
 | 0.3.0 | 2026-09-27 | manager-spec | Plan-audit iteration 2 (FAIL 0.79, `.moai/reports/t1240/plan-audit-iter2.md`), narrow fix only. N1: refusal predicate widened to lane label or Codex backend (both in the frozen allowlist); admission stays on the marker (REQ-SD-015/016/017). N2: `complete` refuses a window whose branch source is the caller's own tree; github-flow parent constraint recorded (REQ-SD-023, §E.1). N3: REQ-SD-019 split by harness; Codex sessions receive their card through `MOAI_KANBAN_CARD` (REQ-SD-003). N4: cc backend citations corrected. REQ and AC counts unchanged (25 / 25). |
 | 0.4.0 | 2026-09-27 | manager-spec | Plan-audit iteration 3 (FAIL 0.83, `.moai/reports/t1240/plan-audit-iter3.md`), leader-approved override fix, R1-R3 only. R1: MCP/CLI tool naming moved to the Claude-lane rule; the Codex rule names only `moai factory stage` / `complete` (REQ-SD-019). R2: REQ-AP-011 widening reconciled (design.md §7 row, plan.md file table, AC-SD-017 cases). R3: `complete` also refuses when the window's branch equals the card's branch or its tree equals the card worktree (REQ-SD-023). Leader instruction: two unresolved doctrine conflicts recorded as open decisions OD-1 (lane queue promotion) and OD-2 (Claude-lane self-integration), decided by the leader at run Kickoff; REQ-SD-008, -013, -015, -019, -023 made conditional on them. REQ and AC counts unchanged (25 / 25). |
+| 0.5.0 | 2026-09-27 | manager-spec | Leader final decision closing the plan as PASS-WITH-DEBT (plan-audit iteration 4, `.moai/reports/t1240/plan-audit-iter4.md`; no further audit). OD-1 (lane queue promotion) and OD-2 (Claude-lane self-integration) are both PERMITTED, scoped to the self-dispatch lane mode only; the card text is the operator's prior authorization — "카드를 스스로 임대(moai factory next [--wait])", "Claude 는 EnterWorktree→처리→통합→ExitWorktree(keep)", "Codex 는 … 자가 통합 없이 merge-ready". The leader withdrew the "unresolved conflict" instruction as its own error. C1-C4 resolved by removing the OD conditionals; no runtime key — the self-dispatch lane mode itself is the discriminator. Doctrine amendments added as run/sync deliverables inside REQ-SD-015 and AC-SD-015 (kanban-dispatch.md and its template twin; CLAUDE.local.md §4.1). REQ and AC counts unchanged (25 / 25). |
 
 ### Card text → SPEC vocabulary and interpretation
 
@@ -114,9 +115,8 @@ so document order is not numeric order.
 
 - **REQ-SD-008** (Event-driven) — When a lane runs `moai factory next`, the verb shall acquire the lease
   on exactly one card for that lane through the F1 transition API, choosing in this order: a card
-  assigned to this lane, then an operator-picked card assigned to no lane, then — only where the
-  leader's run-Kickoff decision OD-1 (§D) permits lane queue promotion — the oldest queued card, which it
-  promotes to picked in the same operation; it shall never select a card assigned to another
+  assigned to this lane, then an operator-picked card assigned to no lane, then the oldest queued card,
+  which it promotes to picked in the same operation (OD-1, §D); it shall never select a card assigned to another
   lane; it shall print the card id, its stage, its worktree name, and the card's pull-request and landed
   state as `moai todo pr` reports them; and **when** no card qualifies it shall print that no card is
   available and exit with status 3.
@@ -138,10 +138,9 @@ so document order is not numeric order.
   with the lane's label as actor and renew the lease, and shall print an F1 refusal verbatim and exit
   non-zero when the API refuses.
 - **REQ-SD-013** (Event-driven) — When a Claude-harness lane runs `moai factory complete <card>` on a
-  card in `merge-ready` and the leader's run-Kickoff decision OD-2 (§D) permits lane self-integration, the
-  verb shall take the card through `merging` to `merged-local` by the F1 merge gate, using as integration
-  branch the branch the integration window records (REQ-SD-023); **when** OD-2 does not permit it, the
-  verb shall take the card no further than `merge-ready`, as for a Codex-harness lane.
+  card in `merge-ready`, the verb shall take the card through `merging` to `merged-local` by the F1
+  merge gate, using as integration branch the branch the integration window records (REQ-SD-023; OD-2,
+  §D).
 - **REQ-SD-014** (Ubiquitous) — The MCP server shall expose `todo_add`, `todo_list`, `factory_next`,
   `factory_stage`, `factory_complete`, and `factory_decide`, each backed by the same implementation as
   its CLI counterpart (`moai todo add`, `moai todo list`, `moai factory next`, `stage`, `complete`,
@@ -156,9 +155,17 @@ so document order is not numeric order.
   so refusal also works on the Codex MCP path without widening it. When a session for which lane
   refusal holds invokes any `moai todo` subcommand outside the read-only allowlist (bare `todo`, `list`,
   `history`, `why`, `pr`, `triage`) or the `todo_add` MCP tool, the call shall be refused with one line naming the lane boundary, exit non-zero, and leave the
-  queue file byte-identical; the promotion inside `moai factory next` (REQ-SD-008), where OD-1 permits
-  it, is the only queue write a lane performs; **when** a session for which lane admission does not hold invokes
-  `moai factory next`, `stage`, or `complete`, the call shall be refused as not a lane session.
+  queue file byte-identical; the promotion inside `moai factory next` (REQ-SD-008) is the only queue
+  write a lane performs; **when** a session for which lane admission does not hold invokes
+  `moai factory next`, `stage`, or `complete`, the call shall be refused as not a lane session; and the
+  doctrine that states the lane boundary shall carry the self-dispatch-lane exceptions this SPEC relies
+  on — `.claude/rules/moai/workflow/kanban-dispatch.md` and its byte-identical template twin
+  `internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` (an exception to "Promotion
+  is the operator's act, always": a self-dispatch lane may lease a card, promoting a queued one, only
+  through `moai factory next`), and this repository's `CLAUDE.local.md` §4.1 (an exception to "the lane
+  does not take the merge window itself" for Claude self-dispatch lanes) — each stating explicitly that
+  every other queue mutation (`add`, `drop`, `done`, `edit`, and the rest) and `moai contract sign` stay
+  forbidden to a lane.
 - **REQ-SD-016** (Event-driven) — When a session for which lane refusal (REQ-SD-015) holds invokes
   `moai factory decide` or the `factory_decide` MCP tool, the call shall be refused and change no
   record.
@@ -177,10 +184,10 @@ so document order is not numeric order.
   every clear policy) or `clear`, the hook shall inject a rule chosen by the backend variable, in the
   session's conversation language (en, ko, ja, zh): for a Claude-harness lane (backend `claude` or
   `glm`), the next-card rule, naming each MCP tool of REQ-SD-014 together with its CLI equivalent —
-  leave any worktree kept, take the next card from the parent checkout (stating queue promotion as
-  permitted only where OD-1 permits it), enter its worktree, carry it through plan, run, and sync,
-  integrate where OD-2 permits it and otherwise stop at `merge-ready`, leave the worktree kept, record
-  completion, then follow the clear policy; for a Codex-harness lane (backend `gpt`), the owned-card
+  leave any worktree kept, take the next card from the parent checkout (stating that lane queue
+  promotion through `moai factory next` is operator-authorized for the self-dispatch lane mode), enter its
+  worktree, carry it through plan, run, and sync, integrate, leave the worktree kept, record completion,
+  then follow the clear policy; for a Codex-harness lane (backend `gpt`), the owned-card
   rule, naming only the `moai factory stage` and `moai factory complete` CLI verbs — the card id read
   from the card-identifier variable (REQ-SD-003) and the current worktree, carry that card to
   `merge-ready`, then end the session — and it shall never name `moai factory next` or any MCP tool to
@@ -195,8 +202,8 @@ so document order is not numeric order.
 
 ### B.6 Integration, MCP tree, harness
 
-- **REQ-SD-023** (Event-driven) — Where the leader's run-Kickoff decision OD-2 (§D) permits lane
-  self-integration, when a Claude-harness lane integrates a card, it shall first hold the
+- **REQ-SD-023** (Event-driven) — When a Claude-harness lane integrates a card (OD-2, §D), it shall
+  first hold the
   integration window (`moai integration acquire`), perform the `--no-ff` merge inside the worktree that
   has the integration branch checked out, record `complete`, and then release the window itself
   (`complete` does not release it); **when** another session holds the window, `complete` shall refuse
@@ -252,21 +259,25 @@ Traceability: every REQ-SD-0NN maps to at least one AC-SD-0NN (matrix in `accept
   the hand-off list in §E.2.
 - docs-site pages and README text for the new verbs (sync-phase work).
 
-### Out of Scope — unresolved doctrine conflicts (open decisions, decided by the leader at run Kickoff)
+### Out of Scope — decided doctrine conflicts (resolved decision record)
 
-This SPEC does not presume either of the following allowed. Each is an open decision the leader records
-at the run-phase Kickoff; until then the REQs that depend on it are conditional on it.
+Both conflicts below were decided by the leader on 2026-09-27 (final, closing the plan as
+PASS-WITH-DEBT). Authority: the card text is the operator's prior authorization — "카드를 스스로 임대(moai factory next [--wait])", "Claude 는 EnterWorktree→처리→통합→ExitWorktree(keep)", "Codex 는 … 자가 통합 없이 merge-ready". The earlier instruction to treat them as unresolved was
+withdrawn by the leader as its own error. There is no runtime configuration key for either decision:
+the self-dispatch lane mode (`-f lane`, the card's `-f agent`) is itself the discriminator. Changing
+the rest of the doctrine is out of scope; only the two exceptions REQ-SD-015 names are deliverables.
 
-- **OD-1 — lane queue promotion.** REQ-SD-008's promotion of the oldest queued card by a lane conflicts
-  with the `[HARD]` clause "Promotion is the operator's act, always" in
-  `.claude/rules/moai/workflow/kanban-dispatch.md` § Entry into the board is an operator act. The
-  operator's Q3 ruling recorded in SPEC-ROLE-NAMING-CODE-001 plan.md §B points the other way; the
-  conflict is unresolved here. If OD-1 does not permit promotion, `next` selects only assigned and
-  operator-picked cards.
-- **OD-2 — Claude-lane self-integration.** REQ-SD-013 and REQ-SD-023 let a Claude lane take the
-  integration window itself; this repository's `CLAUDE.local.md` §4.1 says a lane does not take the merge
-  window itself (and `.claude/rules/local/gitflow-lane-protocol.md` §6 that a lane does not pick its own
-  card). If OD-2 does not permit self-integration, Claude lanes stop at `merge-ready` like Codex lanes.
+- **OD-1 — lane queue promotion: PERMITTED, self-dispatch lane mode only.** Leasing through
+  `moai factory next` may promote the oldest queued card (REQ-SD-008). This is an exception to the
+  `[HARD]` clause "Promotion is the operator's act, always" in
+  `.claude/rules/moai/workflow/kanban-dispatch.md` § Entry into the board is an operator act, amended as
+  a run/sync deliverable (REQ-SD-015). Every other queue mutation stays forbidden to a lane.
+- **OD-2 — Claude-lane self-integration: PERMITTED, self-dispatch lane mode only.** A Claude lane
+  holds the integration window and merges itself (REQ-SD-013, -023); Codex lanes still stop at
+  `merge-ready`. This is an exception to this repository's `CLAUDE.local.md` §4.1 "the lane does not
+  take the merge window itself", amended as a run/sync deliverable (REQ-SD-015).
+  `.claude/rules/local/gitflow-lane-protocol.md` §6 ("a lane does not pick its own card") is outside
+  the deliverable set and is handed to the operator (§E.2).
 
 ### Out of Scope — storage and wiring
 
@@ -295,19 +306,18 @@ at the run-phase Kickoff; until then the REQs that depend on it are conditional 
   `project_root` passes REQ-SD-010's check; the check stops mistakes, not a lane that misreports its
   own tree.
 - **Codex `merge-ready` cards wait for F3.** REQ-SD-025 stops the livelock; it does not integrate them.
-- **Local-repo override.** This repository's `CLAUDE.local.md` §4.1 says a lane does not take the
-  integration window itself (the leader names the window), and its local rule
-  `.claude/rules/local/gitflow-lane-protocol.md` §6 says a lane does not pick its own card. REQ-SD-023
-  and REQ-SD-008 let a Claude lane do both. These are local-repo overrides of the product behavior; the
-  operator (or card t1257 for the distributed documents) must reconcile them before F2 runs here.
+- **Local rule not amended here.** `.claude/rules/local/gitflow-lane-protocol.md` §6 ("a lane does not
+  pick its own card") is not in REQ-SD-015's deliverable set; until the operator amends it, it reads as
+  contradicting self-dispatch in this repository (§E.2 item 4).
 
 ### E.2 Hand-off list for card t1257 (documentation layer)
 
-1. The HARD "Promotion is the operator's act, always" clause — lanes promote through
-   `moai factory next` under operator Q3.
+1. The HARD "Promotion is the operator's act, always" clause — the self-dispatch-lane exception
+   itself is now this SPEC's deliverable (REQ-SD-015) in `kanban-dispatch.md` and its template twin;
+   t1257 keeps only its vocabulary pass over that text (template neutrality rules bind the twin).
 2. The HARD pre-dispatch PR cross-check — for self-dispatched cards it is reported by `moai factory
    next` (REQ-SD-008) rather than read by the leader before dispatch.
 3. REQ-RNC-021's pick help text ("promoted … by a lane's self-dispatch") — lanes are refused
    `todo next <n>` by REQ-SD-015; the help text should name `moai factory next` as the lane path.
-4. `CLAUDE.local.md` §4.1 lane-window rule vs REQ-SD-023, and `gitflow-lane-protocol.md` §6 "a lane
-   does not pick its own card" vs REQ-SD-008 (local documents; operator decision).
+4. `CLAUDE.local.md` §4.1 is amended by this SPEC (REQ-SD-015). `gitflow-lane-protocol.md` §6 "a
+   lane does not pick its own card" is not — it is handed to the operator.
