@@ -212,6 +212,10 @@ var namesAddedAfterBaseline = map[string]bool{
 	// hookMissingLogCheckName — card t1251, the "Hook Missing Log" skipped-hook
 	// diagnostic. Registered through a constant, hence bare.
 	"hookMissingLogCheckName": true,
+	// factoryRunCheckName — SPEC-ROLE-NAMING-CODE-001 M3 (card t1256), the
+	// "Factory Run" leader-role diagnostic. Registered through a constant,
+	// hence bare.
+	"factoryRunCheckName": true,
 }
 
 // TestBinaryLag_AllowlistKeysAreLiveNames asserts that every key of

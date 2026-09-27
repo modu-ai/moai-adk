@@ -558,7 +558,7 @@ func rejectFactoryOnCG(args []string) error {
 	if !p.FactoryEnabled {
 		return nil
 	}
-	return fmt.Errorf("%s: moai cg runs a mixed backend (leader Claude, teammates GLM), "+
+	return fmt.Errorf("%s: moai cg runs a mixed backend (CG leader Claude, CG teammates GLM), "+
 		"which contradicts Factory Mode's one-session / one-backend premise; "+
 		"use 'moai cc -f <N>' or 'moai glm -f <N>' instead", factoryUnsupportedBackendSentinel)
 }

@@ -50,7 +50,7 @@ func kanbanBootstrapNotice(root, sessionID, lang string) string {
 	if os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
 		return ""
 	}
-	if notice := staleRunNoticeFor(root, sessionID); notice != "" {
+	if notice := staleRunNoticeFor(root, sessionID, lang); notice != "" {
 		return notice
 	}
 	if label := os.Getenv(config.EnvMoaiKanbanLabel); label != "" {

@@ -60,7 +60,7 @@ func TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide(t *testing.T) {
 		"moai cc -f lane-3",
 		"moai glm -f",
 		"moai cc -f lane-<n>",
-		"starts a Claude factory lead",
+		"starts a Claude factory leader",
 		"Every lane can run up to 10 agents concurrently in parallel.",
 		"/tmp/moai-socket-factory/abc123",
 	} {
@@ -126,7 +126,7 @@ func TestFactoryWorkerNoticeNamesLabel(t *testing.T) {
 	// (appended, never substituted) — assert the join line as a prefix-presence
 	// rather than whole-output equality.
 	got := factoryBootstrapNotice("", "", langEnglish)
-	if !strings.HasPrefix(got, "Factory Mode: joined a 3-lane run as lane-4.") {
+	if !strings.HasPrefix(got, "Factory Mode: joined the leader's 3-lane run as lane-4.") {
 		t.Errorf("lane notice missing the join line prefix:\n%s", got)
 	}
 	if !strings.Contains(got, "Standing spawn authority") {
@@ -138,7 +138,7 @@ func TestFactoryWorkerNoticeNamesLabel(t *testing.T) {
 	// leak a bad verb.
 	t.Setenv(config.EnvMoaiFactoryWorkers, "0")
 	if got := factoryBootstrapNotice("", "", langEnglish); !strings.HasPrefix(got,
-		"Factory Mode: joined the factory run as lane-4.") {
+		"Factory Mode: joined the leader's factory run as lane-4.") {
 		t.Errorf("count-less lane notice missing the join line prefix:\n%s", got)
 	}
 

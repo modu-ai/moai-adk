@@ -45,8 +45,19 @@ const (
 
 // ChainRoles 는 kanban-dispatch.md 의 역할 순서를 그대로 따른다. 리더 역할
 // 값은 `leader` 다 (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009/-010) — 레거시
-// `lead` 레코드는 어떤 역할로도 매핑되지 않는다.
+// `lead` 레코드는 리더로 매핑되지 않고, legacyLeaderLabel 로 렌더된다.
 var ChainRoles = []string{"leader", "plan", "run", "sync"}
+
+const (
+	// legacyLeadRole 는 개칭 이전 바이너리가 쓴 리더 역할 값이다. 감지 전용 —
+	// 리더 슬롯으로 편입되지 않는다 (REQ-RNC-009).
+	legacyLeadRole = "lead"
+
+	// legacyLeaderLabel 은 레거시 리더 기록이 리더 슬롯에서 렌더될 때의 역할
+	// 라벨이다 (AC-RNC-013): 리더는 부재로 보고되고, 라벨이 재시동 치료법을
+	// 말한다.
+	legacyLeaderLabel = "legacy run: relaunch required"
+)
 
 // KanbanRecord 는 디스크에 있는 칸반 세션 기록이다.
 type KanbanRecord = kanban.Record
@@ -246,15 +257,18 @@ func processAlive(pid int) bool {
 func roleOf(r KanbanRecord) string { return strings.ToLower(strings.TrimSpace(r.Role)) }
 
 // chainRoleRecords keeps only the records whose role is one of the four fixed
-// chain roles. A factory lane's record carries role "lane", which is not a chain
-// role: buildChain treats any record as proof the chain is present but renders
-// only ChainRoles, so passing one through makes a lanes-only project render an
-// idle chain it does not have.
+// chain roles, plus a legacy `lead` record — a pre-rename leader record is
+// evidence the chain exists (it renders as legacyLeaderLabel, never as a
+// present leader). A factory lane's record carries role "lane", which is
+// neither: buildChain treats any record as proof the chain is present but
+// renders only ChainRoles, so passing one through makes a lanes-only project
+// render an idle chain it does not have.
 func chainRoleRecords(records []KanbanRecord) []KanbanRecord {
-	isChainRole := make(map[string]bool, len(ChainRoles))
+	isChainRole := make(map[string]bool, len(ChainRoles)+1)
 	for _, role := range ChainRoles {
 		isChainRole[role] = true
 	}
+	isChainRole[legacyLeadRole] = true
 	out := make([]KanbanRecord, 0, len(records))
 	for _, r := range records {
 		if isChainRole[roleOf(r)] {
@@ -308,10 +322,24 @@ func buildChain(root string, records []KanbanRecord, sessions map[string]Session
 		}
 	}
 	out := ChainVM{Present: len(records) > 0, CardID: cardID}
+	// A legacy `lead` record is detection evidence only (REQ-RNC-009): the
+	// leader slot renders the relaunch label instead of adopting the record,
+	// so the view never reports a present leader for a pre-rename run.
+	legacyLeader := false
+	for _, r := range records {
+		if roleOf(r) == legacyLeadRole {
+			legacyLeader = true
+			break
+		}
+	}
 	for _, role := range ChainRoles {
 		rec, ok := byRole[role]
 		if !ok {
-			out.Roles = append(out.Roles, RoleVM{Role: role, State: StateIdle, Stage: StageBlocked, ContextPct: -1})
+			slot := RoleVM{Role: role, State: StateIdle, Stage: StageBlocked, ContextPct: -1}
+			if role == "leader" && legacyLeader {
+				slot.Role = legacyLeaderLabel
+			}
+			out.Roles = append(out.Roles, slot)
 			if out.IdleRole == "" {
 				out.IdleRole = role
 			}

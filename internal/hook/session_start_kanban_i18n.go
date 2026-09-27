@@ -58,8 +58,8 @@ type kanbanMessages struct {
 // configuration, not for some population of unsupported locales.
 var kanbanLocales = map[string]kanbanMessages{
 	langEnglish: {
-		leadHeader:   "Kanban Mode: run %s, lead session.",
-		leadIdentity: "This session is named %s. It carries no run id: a second lead launched while this one is live takes the next free number instead, and peers address whichever name the session actually launched under. The session list shows that same name — the title is registered on your first prompt, and a later /rename still wins.",
+		leadHeader:   "Kanban Mode: run %s, leader session.",
+		leadIdentity: "This session is named %s. It carries no run id: a second leader launched while this one is live takes the next free number instead, and peers address whichever name the session actually launched under. The session list shows that same name — the title is registered on your first prompt, and a later /rename still wins.",
 		leadManual: "This session drives the kanban chain.\n" +
 			"The three companions below are launched by hand, one per new terminal, " +
 			"because a session cannot launch another session.",
@@ -67,7 +67,7 @@ var kanbanLocales = map[string]kanbanMessages{
 			"foreman — the launcher picks the backend, `-k` the kanban role. Substitute 'moai glm -k --name ...' " +
 			"for 'moai cc -k --name ...' on any companion to run it on the GLM backend.",
 		backendRecommend: "Recommended mix (token availability first — one GLM account, one Claude account):\n" +
-			"  lead      → GLM\n" +
+			"  leader    → GLM\n" +
 			"  plan      → Claude (Opus)\n" +
 			"  run       → GLM\n" +
 			"  sync      → Claude (Opus)\n" +
@@ -83,13 +83,13 @@ var kanbanLocales = map[string]kanbanMessages{
 	},
 	"ko": {
 		leadHeader:   "칸반 모드: run %s, 리더 세션.",
-		leadIdentity: "이 세션의 이름은 %s 입니다. 이름에 run id 는 들어가지 않습니다 — 이 세션이 살아 있는 동안 리드를 하나 더 띄우면 그쪽이 다음 번호를 받고, 다른 세션은 실제로 띄워진 이름으로 이 세션을 부릅니다. 세션 목록에도 같은 이름이 뜹니다 — 제목은 첫 프롬프트에서 등록되고, 나중에 /rename 을 하면 그쪽이 우선합니다.",
+		leadIdentity: "이 세션의 이름은 %s 입니다. 이름에 run id 는 들어가지 않습니다 — 이 세션이 살아 있는 동안 리더를 하나 더 띄우면 그쪽이 다음 번호를 받고, 다른 세션은 실제로 띄워진 이름으로 이 세션을 부릅니다. 세션 목록에도 같은 이름이 뜹니다 — 제목은 첫 프롬프트에서 등록되고, 나중에 /rename 을 하면 그쪽이 우선합니다.",
 		leadManual: "이 세션이 칸반 체인을 주도합니다.\n" +
 			"아래 세 개의 동반 세션은 터미널을 하나씩 새로 열어 직접 실행하세요 — 세션은 다른 세션을 띄울 수 없습니다.",
 		glmSubstitute: "진입점: `moai cc -k` 는 Claude 백엔드 공장장, `moai glm -k` 는 GLM 백엔드 공장장 — 런처가 백엔드를, `-k` 가 칸반 역할을 정합니다. " +
 			"동반 세션을 GLM 백엔드로 돌리려면 'moai cc -k --name ...' 대신 'moai glm -k --name ...' 을 사용하세요.",
 		backendRecommend: "추천 조합 (토큰 가용성 우선 — GLM·Claude 계정은 각각 1개씩 사용 가능):\n" +
-			"  lead      → GLM\n" +
+			"  leader    → GLM\n" +
 			"  plan      → Claude (Opus)\n" +
 			"  run       → GLM\n" +
 			"  sync      → Claude (Opus)\n" +
@@ -111,7 +111,7 @@ var kanbanLocales = map[string]kanbanMessages{
 		glmSubstitute: "入口: `moai cc -k` は Claude バックエンドの親方、`moai glm -k` は GLM バックエンドの親方 — ランチャーがバックエンドを、`-k` がかんばんの役割を決めます。 " +
 			"併走セッションを GLM バックエンドで動かす場合は、'moai cc -k --name ...' の代わりに 'moai glm -k --name ...' を使用してください。",
 		backendRecommend: "推奨組み合わせ（トークン余裕優先 — GLM・Claude アカウントは各1つずつ使用可能）:\n" +
-			"  lead      → GLM\n" +
+			"  leader    → GLM\n" +
 			"  plan      → Claude (Opus)\n" +
 			"  run       → GLM\n" +
 			"  sync      → Claude (Opus)\n" +
@@ -133,7 +133,7 @@ var kanbanLocales = map[string]kanbanMessages{
 		glmSubstitute: "入口：`moai cc -k` 是 Claude 后端的工头，`moai glm -k` 是 GLM 后端的工头 —— 启动器决定后端，`-k` 决定看板角色。 " +
 			"如需让某个协同会话运行在 GLM 后端，请将 'moai cc -k --name ...' 换成 'moai glm -k --name ...'。",
 		backendRecommend: "推荐组合（优先考虑令牌余量 —— GLM·Claude 账号各有一个可用）:\n" +
-			"  lead      → GLM\n" +
+			"  leader    → GLM\n" +
 			"  plan      → Claude (Opus)\n" +
 			"  run       → GLM\n" +
 			"  sync      → Claude (Opus)\n" +

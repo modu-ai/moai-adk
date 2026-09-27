@@ -56,14 +56,14 @@ type factoryMessages struct {
 // contract).
 var factoryLocales = map[string]factoryMessages{
 	langEnglish: {
-		leadHeader:   "Factory Mode: run %s, lead session.",
-		leadIdentity: "This session is named %s. It carries no run id: a second lead launched while this one is live takes the next free number instead, and peers address whichever name the session actually launched under. The session list shows that same name — the title is registered on your first prompt, and a later /rename still wins.",
+		leadHeader:   "Factory Mode: run %s, leader session.",
+		leadIdentity: "This session is named %s. It carries no run id: a second leader launched while this one is live takes the next free number instead, and peers address whichever name the session actually launched under. The session list shows that same name — the title is registered on your first prompt, and a later /rename still wins.",
 		leadManual: "This session dispatches cards to %d lanes over cross-session messages.\n" +
 			"The lanes below are launched by hand, one per new terminal, because a session cannot launch another session.\n" +
 			"Lanes are named lane-1..lane-%d, and a lane that joins with `-f lane` takes the next free lane-<n>; a number whose label is held by a live session is bumped to the next free number.",
-		entryGuide: "Entry points: `moai cc -f` starts a Claude factory lead and `moai glm -f` a GLM lead — " +
+		entryGuide: "Entry points: `moai cc -f` starts a Claude factory leader and `moai glm -f` a GLM leader — " +
 			"the launcher picks the backend, `-f` the factory. `-f` with no count starts the one-lane default; " +
-			"to add a lane using the same provider as this lead, run `moai %[2]s -f lane`, which takes the next free lane-<n>, " +
+			"to add a lane using the same provider as this leader, run `moai %[2]s -f lane`, which takes the next free lane-<n>, " +
 			"or pin a number with `moai %[2]s -f lane-<n>`.",
 		agentFanout:  "Every lane can run up to 10 agents concurrently in parallel.",
 		leaderSocket: "Leader socket: %s",
@@ -82,12 +82,12 @@ var factoryLocales = map[string]factoryMessages{
 		leadSlotsNone:     "none — every slot is held by a live session",
 		settingsAuto:      "Cross-session messages are auto-accepted via the injected --settings.",
 		settingsVerify:    "Verify \"crossSessionInbound\": \"accept\" is present in your --settings file so cross-session messages are accepted.",
-		workerJoin:        "Factory Mode: joined a %[2]d-lane run as %[1]s.",
-		workerJoinNoCount: "Factory Mode: joined the factory run as %[1]s.",
+		workerJoin:        "Factory Mode: joined the leader's %[2]d-lane run as %[1]s.",
+		workerJoinNoCount: "Factory Mode: joined the leader's factory run as %[1]s.",
 	},
 	"ko": {
 		leadHeader:   "팩토리 모드: run %s, 리더 세션.",
-		leadIdentity: "이 세션의 이름은 %s 입니다. 이름에 run id 는 들어가지 않습니다 — 이 세션이 살아 있는 동안 리드를 하나 더 띄우면 그쪽이 다음 번호를 받고, 다른 세션은 실제로 띄워진 이름으로 이 세션을 부릅니다. 세션 목록에도 같은 이름이 뜹니다 — 제목은 첫 프롬프트에서 등록되고, 나중에 /rename 을 하면 그쪽이 우선합니다.",
+		leadIdentity: "이 세션의 이름은 %s 입니다. 이름에 run id 는 들어가지 않습니다 — 이 세션이 살아 있는 동안 리더를 하나 더 띄우면 그쪽이 다음 번호를 받고, 다른 세션은 실제로 띄워진 이름으로 이 세션을 부릅니다. 세션 목록에도 같은 이름이 뜹니다 — 제목은 첫 프롬프트에서 등록되고, 나중에 /rename 을 하면 그쪽이 우선합니다.",
 		leadManual: "이 세션이 세션 간 메시지로 카드를 레인 %d개에 배분합니다.\n" +
 			"아래 레인은 터미널을 하나씩 새로 열어 직접 실행하세요 — 세션은 다른 세션을 띄울 수 없습니다.\n" +
 			"레인 이름은 lane-1..lane-%d 이고, `-f lane` 로 합류한 레인은 비어 있는 다음 lane-<n> 이름을 받습니다. 생존 세션이 이미 쓰고 있는 번호는 다음 빈 번호로 늘어납니다.",
@@ -109,8 +109,8 @@ var factoryLocales = map[string]factoryMessages{
 		leadSlotsNone:     "없음 — 모든 슬롯을 생존 세션이 사용 중입니다",
 		settingsAuto:      "세션 간 메시지는 주입된 --settings 로 자동 수락됩니다.",
 		settingsVerify:    "--settings 파일에 \"crossSessionInbound\": \"accept\" 가 있는지 확인하세요. 세션 간 메시지 수락에 필요합니다.",
-		workerJoin:        "팩토리 모드: 레인 %[2]d개 런에 %[1]s 로 합류했습니다.",
-		workerJoinNoCount: "팩토리 모드: 팩토리 run 에 %[1]s 로 합류했습니다.",
+		workerJoin:        "팩토리 모드: 리더의 레인 %[2]d개 런에 %[1]s 로 합류했습니다.",
+		workerJoinNoCount: "팩토리 모드: 리더의 팩토리 run 에 %[1]s 로 합류했습니다.",
 	},
 	"ja": {
 		leadHeader:   "ファクトリーモード: run %s、リーダーセッション。",
@@ -136,8 +136,8 @@ var factoryLocales = map[string]factoryMessages{
 		leadSlotsNone:     "なし — すべてのスロットを生存セッションが保持しています",
 		settingsAuto:      "セッション間メッセージは、注入された --settings により自動的に受理されます。",
 		settingsVerify:    "--settings ファイルに \"crossSessionInbound\": \"accept\" があることを確認してください。セッション間メッセージの受理に必要です。",
-		workerJoin:        "ファクトリーモード: レーン %[2]d 本の run に %[1]s として参加しました。",
-		workerJoinNoCount: "ファクトリーモード: ファクトリー run に %[1]s として参加しました。",
+		workerJoin:        "ファクトリーモード: リーダーのレーン %[2]d 本の run に %[1]s として参加しました。",
+		workerJoinNoCount: "ファクトリーモード: リーダーのファクトリー run に %[1]s として参加しました。",
 	},
 	"zh": {
 		leadHeader:   "工厂模式：run %s，主导会话。",
@@ -162,8 +162,8 @@ var factoryLocales = map[string]factoryMessages{
 		leadSlotsNone:     "无 — 所有槽位均被存活会话占用",
 		settingsAuto:      "跨会话消息通过注入的 --settings 自动接受。",
 		settingsVerify:    "请确认 --settings 文件中包含 \"crossSessionInbound\": \"accept\"，跨会话消息的接受依赖该配置。",
-		workerJoin:        "工厂模式：已以 %[1]s 身份加入 %[2]d 条泳道的 run。",
-		workerJoinNoCount: "工厂模式：已以 %[1]s 身份加入工厂 run。",
+		workerJoin:        "工厂模式：已以 %[1]s 身份加入主导会话的 %[2]d 条泳道的 run。",
+		workerJoinNoCount: "工厂模式：已以 %[1]s 身份加入主导会话的工厂 run。",
 	},
 }
 

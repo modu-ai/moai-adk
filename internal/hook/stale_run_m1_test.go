@@ -37,7 +37,7 @@ func TestStaleRunNoticeLegacyLeadLabel(t *testing.T) { // AC-RNC-025 (a) + debt 
 	if _, err := os.Stat(kanban.RecordPath(root, "stale-lead-session")); !os.IsNotExist(err) {
 		t.Errorf("session record exists after legacy-label SessionStart, want no file created")
 	}
-	notice := staleRunNoticeFor(root, "stale-lead-session")
+	notice := staleRunNoticeFor(root, "stale-lead-session", "en")
 	if notice == "" {
 		t.Fatalf("staleRunNoticeFor = \"\", want a notice")
 	}
@@ -80,7 +80,7 @@ func TestStaleRunNoticeLegacySessionRecord(t *testing.T) { // AC-RNC-025 (b)
 	if string(before) != string(after) {
 		t.Errorf("session record was rewritten by SessionStart (writer re-derived the role)")
 	}
-	notice := staleRunNoticeFor(root, "legacy-record-session")
+	notice := staleRunNoticeFor(root, "legacy-record-session", "en")
 	if notice == "" {
 		t.Fatalf("staleRunNoticeFor = \"\", want a notice naming the legacy record role")
 	}
@@ -101,7 +101,7 @@ func TestStaleRunNoticeFactoryLegacyLabel(t *testing.T) { // AC-RNC-022 hook cla
 		t.Errorf("session record exists after legacy lane label, want none")
 	}
 
-	notice := staleRunNoticeFor(root, "stale-lane-session")
+	notice := staleRunNoticeFor(root, "stale-lane-session", "en")
 	for _, want := range []string{"worker-2", "runR", "moai factory runs --retire runR"} {
 		if !strings.Contains(notice, want) {
 			t.Errorf("stale-run notice %q missing %q", notice, want)
@@ -137,10 +137,10 @@ func TestKanbanRoleFromEnvNewVocabulary(t *testing.T) {
 func TestFactoryHookPeerRefusesLegacyLabel(t *testing.T) {
 	// The factory message hook must not register a peer under a legacy label;
 	// it reports the stale-run condition instead.
-	if got := legacyFactoryHookNotice("worker-2", "runR"); got == "" || !strings.Contains(got, "worker-2") {
+	if got := legacyFactoryHookNotice("worker-2", "runR", "en"); got == "" || !strings.Contains(got, "worker-2") {
 		t.Errorf("legacyFactoryHookNotice(worker-2) = %q, want a stale-run notice naming worker-2", got)
 	}
-	if got := legacyFactoryHookNotice("lane-2", "runR"); got != "" {
+	if got := legacyFactoryHookNotice("lane-2", "runR", "en"); got != "" {
 		t.Errorf("legacyFactoryHookNotice(lane-2) = %q, want \"\" (current vocabulary)", got)
 	}
 }

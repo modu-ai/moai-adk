@@ -64,7 +64,7 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 	label := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
 	if label != "" {
 		if kanban.IsLegacyFactoryRoleValue(label) {
-			return legacyFactoryHookNotice(label, runID)
+			return legacyFactoryHookNotice(label, runID, langEnglish)
 		}
 	} else if os.Getenv(config.EnvMoaiFactoryWorkers) == "" {
 		return ""

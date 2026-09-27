@@ -248,7 +248,7 @@ func TestSessionStartKanbanChannelsCarryTheirOwnLanguage(t *testing.T) {
 
 	// Agent channel: English prose, regardless of conversation_language.
 	ac := out.HookSpecificOutput.AdditionalContext
-	if !strings.Contains(ac, "Kanban Mode: run tjpzpl, lead session.") {
+	if !strings.Contains(ac, "Kanban Mode: run tjpzpl, leader session.") {
 		t.Errorf("AdditionalContext is not English — the agent-facing copy must not follow conversation_language:\n%s", ac)
 	}
 	if strings.Contains(ac, "칸반 모드") {
@@ -294,8 +294,8 @@ func TestKanbanRecommendationTableMatchesLaunchLines(t *testing.T) {
 						lang, role, row[1], kanban.CompanionLauncher(role))
 				}
 			}
-			if !regexp.MustCompile(`(?m)^  lead\s+→ GLM$`).MatchString(got) {
-				t.Errorf("locale %q: recommendation table omits the lead → GLM row:\n%s", lang, got)
+			if !regexp.MustCompile(`(?m)^  leader\s+→ GLM$`).MatchString(got) {
+				t.Errorf("locale %q: recommendation table omits the leader → GLM row:\n%s", lang, got)
 			}
 			if strings.Contains(got, "--name lead") {
 				t.Errorf("locale %q: notice prints a lead launch line — the lead has none:\n%s", lang, got)

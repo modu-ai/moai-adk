@@ -50,14 +50,14 @@ import (
 func factoryBootstrapNotice(root, sessionID, lang string) string {
 	if label := os.Getenv(config.EnvMoaiFactoryWorker); label != "" {
 		if kanban.IsLegacyFactoryRoleValue(label) {
-			return legacyFactoryHookNotice(label, os.Getenv(config.EnvMoaiKanbanID))
+			return legacyFactoryHookNotice(label, os.Getenv(config.EnvMoaiKanbanID), lang)
 		}
 		return factoryWorkerNotice(label, factoryWorkersEnv(), lang)
 	}
 	if os.Getenv(config.EnvMoaiFactoryWorkers) == "" {
 		return ""
 	}
-	if notice := staleRunNoticeFor(root, sessionID); notice != "" {
+	if notice := staleRunNoticeFor(root, sessionID, lang); notice != "" {
 		return notice
 	}
 	return factoryLeadNotice(os.Getenv(config.EnvMoaiKanbanID), factoryWorkersEnv(), root, lang)

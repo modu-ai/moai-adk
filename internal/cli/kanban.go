@@ -735,7 +735,7 @@ func rejectKanbanOnCG(args []string) error {
 	if !p.KanbanEnabled || p.FactoryEnabled {
 		return nil
 	}
-	return fmt.Errorf("%s: moai cg runs a mixed backend (leader Claude, teammates GLM), "+
+	return fmt.Errorf("%s: moai cg runs a mixed backend (CG leader Claude, CG teammates GLM), "+
 		"which contradicts Kanban Mode's one-session / one-backend / one-chain premise; "+
 		"use 'moai cc --kanban' or 'moai glm --kanban' instead", kanbanUnsupportedBackendSentinel)
 }

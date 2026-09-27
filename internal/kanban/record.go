@@ -250,6 +250,37 @@ func Read(projectRoot, sessionID string) (*Record, error) {
 	return &rec, nil
 }
 
+// ReadAll loads every session record under projectRoot. Per-record failures
+// (unreadable, malformed) skip that record rather than failing the sweep — a
+// display surface asking "what runs here" loses one row, not the listing. An
+// absent state directory returns an empty slice, not an error: no records is
+// a state, not a failure.
+func ReadAll(projectRoot string) ([]Record, error) {
+	entries, err := os.ReadDir(RuntimeStateDirForRoot(projectRoot))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []Record{}, nil
+		}
+		return nil, fmt.Errorf("read kanban records: %w", err)
+	}
+	out := make([]Record, 0, len(entries))
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		raw, err := os.ReadFile(filepath.Join(RuntimeStateDirForRoot(projectRoot), e.Name()))
+		if err != nil {
+			continue
+		}
+		var rec Record
+		if err := json.Unmarshal(raw, &rec); err != nil {
+			continue
+		}
+		out = append(out, rec)
+	}
+	return out, nil
+}
+
 // validateSessionID rejects identifiers that cannot safely name a file. The
 // record path is derived from the session id, so a separator or a parent
 // reference would place the record outside the state directory.
