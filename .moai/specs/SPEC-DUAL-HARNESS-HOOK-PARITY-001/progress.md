@@ -1069,7 +1069,7 @@ coverage:   # M2i, no pre-change baseline except verify (M2b: 81.0% → 84.6%)
   codexwiring: 86.2%
   verify: 84.6%
   goal: 78.0%       # below 85; goal production code WAS changed by this SPEC (M2a ce15e08b8 — landed on develop first via the t1152 merge, absent from the post-absorb diff); pair vs merge-base 4dcd4d8d4: 77.9% → 78.0%, no regression
-  template: 82.8%   # below 85; no baseline, no delta claimed
+  template: 82.8%   # below 85; pair vs merge-base 4dcd4d8d4: 81.4% → 82.8%, no regression
   cli: not measured (whole-package coverage run not done)
 ```
 
@@ -1135,7 +1135,7 @@ parity_live_test.go:343: NOT_RUN (AC-HPR-004): attempted: codex exec (+ resume) 
 
 ## Resume point (2026-09-26)
 
-- State: run phase complete (M2a–M2i), §E.3 filled at d96189e42 (19 PASS / 0 FAIL / 3 NOT_RUN: AC-HPR-004, 007, 021; live legs of 008–012 and 020 NOT_RUN). SPEC status still in-progress. Branch unpushed; develop absorbed at f75957505 (local develop 4dcd4d8d4); lane's local develop has since advanced (origin/develop 35ab8cff3).
+- State: run phase complete (M2a–M2i), §E.3 filled at d96189e42 (19 PASS / 0 FAIL / 3 NOT_RUN: AC-HPR-004, 007, 021; live legs of 008–012 and 020 NOT_RUN) **[superseded 2026-09-27 by the Opus re-audit F2 correction — the current split is 13 PASS / 5 partial (AC-HPR-008–012, unit+golden legs PASS, live NOT_RUN) / 4 NOT_RUN (004, 007, 020, 021); see §E.3]**. SPEC status still in-progress. Branch unpushed; develop absorbed at f75957505 (local develop 4dcd4d8d4); lane's local develop has since advanced (origin/develop 35ab8cff3).
 - Blocker: sync (manager-docs) stopped because spec.md §E / acceptance.md §G require the live-certification follow-up card id in both §E.4 and the CHANGELOG entry; the card is awaiting operator issuance via the lead.
 - Remaining order: (1) receive follow-up card id → (2) sync via manager-docs (§E.4 + CHANGELOG [Unreleased] partial live-uncertified entry + spec.md status completed, single commit; sync_commit_sha recorded in a follow-up line) → (3) sync-audit via sync-auditor, verdict at .moai/reports/t1099/ → (4) request merge window from lead; on grant absorb local develop and remeasure on the merged tree (internal/cli hook tests isolated per card t1229 note; hook.go touched only at :96–114, check overlap with t1152's regions :278–307/:472–493/:523–542).
 - Coverage request for sync-audit: measure internal/goal (78.0%) and internal/template (82.8%) before vs after this card (baseline at merge-base of the branch with develop), record as debt if not a regression.

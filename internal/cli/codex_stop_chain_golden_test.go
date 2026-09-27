@@ -328,16 +328,18 @@ func TestStopChainEffectParityGolden(t *testing.T) {
 			name    string
 			member  int
 			setup   func(t *testing.T) *stopFixture
-			produce func(t *testing.T, f *stopFixture)
+			produce func(t *testing.T, f *stopFixture) verify.Receipt
 			// invalidate makes the stored receipt stale without moving the key.
 			invalidate func(t *testing.T, f *stopFixture)
 		}{
 			{"sync gate", 2, func(t *testing.T) *stopFixture {
 				return newStopFixture(t)
-			}, func(t *testing.T, f *stopFixture) {
-				if _, err := produceSyncGateReceipt(ctx, f.root); err != nil {
+			}, func(t *testing.T, f *stopFixture) verify.Receipt {
+				r, err := produceSyncGateReceipt(ctx, f.root)
+				if err != nil {
 					t.Fatal(err)
 				}
+				return r
 			}, func(t *testing.T, f *stopFixture) {
 				// A different `go` on PATH changes the receipt's tool_version,
 				// not the tree.
@@ -351,11 +353,13 @@ func TestStopChainEffectParityGolden(t *testing.T) {
 				f.dirty(t, "reviewable")
 				withCodexSession(t, codexSessionScript(realCleanReview))
 				return f
-			}, func(t *testing.T, f *stopFixture) {
+			}, func(t *testing.T, f *stopFixture) verify.Receipt {
 				withCodexSession(t, codexSessionScript(realCleanReview))
-				if _, err := produceCodexReviewReceipt(ctx, f.root); err != nil {
+				r, err := produceCodexReviewReceipt(ctx, f.root)
+				if err != nil {
 					t.Fatal(err)
 				}
+				return r
 			}, func(t *testing.T, _ *stopFixture) {
 				// An upgraded reviewer changes the receipt's tool_version, not
 				// the tree.
@@ -415,7 +419,13 @@ func TestStopChainEffectParityGolden(t *testing.T) {
 					for i := 1; i < n; i++ {
 						run(t, f)
 					}
-					g.produce(t, f)
+					// Premise (delta re-audit D2): the count reset must be
+					// carried by an actual PASS receipt — an inconclusive
+					// one also allows, and would leave this subtest green
+					// without the pass property (same shape as F1).
+					if r := g.produce(t, f); r.Verdict != "pass" {
+						t.Fatalf("premise: the fresh receipt must be a pass receipt, got %q", r.Verdict)
+					}
 					if m := run(t, f); m.Decision != codexadapter.DecisionAllow || m.Status != stopStatusPass {
 						t.Fatalf("with a fresh receipt: got %s/%q, want an evaluated pass", m.Decision, m.Status)
 					}
