@@ -190,17 +190,81 @@ Targeted tests re-run: `go test ./internal/cli/ -run 'TestACFB019\|TestLauncherH
 - Legacy literals remain in `_test.go` passthrough fixtures that never reach the parse (`codex_factory_retire_test.go` argv-preservation sets); refusal tests per legacy spelling (REQ-RNC-020 seed) live in `factory_role_refusal_m2_test.go` + `role_naming_m2_test.go` + updated factory tests.
 - Vocabulary strings updated (REQ-RNC-001, M2 slice): `factoryFlagUsageError`, cc/glm `Use`+`Long` factory blocks and examples, the `-f`-value conflict errors (`-f lane already names the role` / `-f lane-<n> already names the lane`), `moai tokens --role` flag help (`e.g. leader, plan, run, sync`), `gtd answer` Short (`any leader reads`), `ErrNotSoleWriter` text (`caller is not the leader`), `todo next` Long (leader pick + lane self-dispatch). CG mixed-backend strings (`factory.go` / `kanban.go` "leader Claude, teammates GLM") kept verbatim for M3's qualifier pass; doctor/web/i18n tables untouched (M3).
 
+---
+
+_M3 (card t1256, branch `WT-role-naming-code`). Attribution: every row names the command, its verbatim output, and the HEAD SHA it was measured on. Measured against the tree at `d9512be0f` (M2 tip) + the uncommitted M3 working set; the M3 implementation commit lands on top of `d9512be0f`._
+
+### M3 pre-flight (delegation §C)
+
+- `git rev-parse --short HEAD` → `d9512be0f` (expected: `d9512be0f` ✓); branch `WT-role-naming-code`; `git status --short` clean at start.
+- `go build ./...` → exit 0.
+
+### M3 scope delivered
+
+1. **Notices / locales (REQ-RNC-015, AC-RNC-012)** — `session_start_factory_i18n.go`: en `leadHeader`/`leadIdentity`/`entryGuide` lead→leader, ko `leadIdentity` 리드→리더, `workerJoin`/`workerJoinNoCount` reworded in all four locales to name the leader ("joined the leader's N-lane run" 계열) so the lane notice carries both design §3 terms; `session_start_kanban_i18n.go`: en `leadHeader`/`leadIdentity` lead→leader, ko `leadIdentity` 리드→리더, `backendRecommend` role row `  lead      → GLM` → `  leader    → GLM` in all four locales. Stale-run notice (M1 minimal English) brought into a new per-locale table `staleRunLocales` in `session_stale_run.go` (en/ko/ja/zh × {factory-retire, kanban-relaunch, lane-label-retire}), `lang` threaded through `staleRunNoticeFor`/`staleRunNotice`/`legacyFactoryHookNotice` from both bootstrap builders (operator locale) and the broker hook (agent-facing en, per the two-audience split). Unknown-language fallback = en table, covered by the test.
+2. **Dashboard (REQ-RNC-001, AC-RNC-013)** — web: `chainRoleRecords` now keeps a legacy `lead` record as leader *evidence* (lanes still excluded); `buildChain` renders the leader slot for it as RoleVM with role label exactly `legacy run: relaunch required`, State idle, Session empty — no present leader is ever reported for a pre-rename run. Doctor: new `checkFactoryRun` (`internal/cli/doctor_factory_run.go`, check name `Factory Run` in the Workspace group) reads `kanban.ReadAll` (new, `internal/kanban/record.go`) — role `leader` → ok with label `leader`; role `lead` → fail with Message exactly carrying `legacy run: relaunch required`; lanes/companions only → warn; no records → info. Golden snapshots regenerated (`UPDATE_GOLDEN=1`): delta is exactly the one new `info Factory Run` row ×3 files.
+3. **Homonym qualifiers (REQ-RNC-023, AC-RNC-023)** — the pre-flight population's 2 rows (`internal/cli/factory.go`, `internal/cli/kanban.go`, the `moai cg` mixed-backend refusal) reworded to `(CG leader Claude, CG teammates GLM)` per design D10. No identifier or JSON field renamed.
+4. **Sweep beyond the named files (REQ-RNC-001/015)** — `lane_spawn_authority.go` "without asking the lead or the operator" → "the leader or the operator"; `internal/web/assets/i18n.js` ko `agentdesc.manager-lead` "리드 세션" → "리더 세션". `nameChoices` "the default Agent worker" left untouched (Claude Code Agent-tool naming sense, REQ-RNC-016 carve-out); `launcher.go` `worker-` prefix check untouched (REQ-RNC-016); all code comments untouched (M5 REQ-RNC-019). Residual string literals `strings.TrimPrefix(name, "lead")` (factory.go refuse path) and doctor's `case "lead":` are detection/refuse-only (M5 allowlist).
+
+### M3 builds and static checks (E2/E4/E5)
+
+- **E2 builds** — `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0 (this run, tree `d9512be0f` + M3 working set).
+- **go vet** — `go vet ./internal/hook/ ./internal/web/ ./internal/cli/ ./internal/kanban/` → exit 0.
+- **E4 subagent-boundary** — `git diff b59a5d69c -- internal/cli internal/hook internal/web internal/kanban \| grep -c AskUserQuestion` → **0**.
+- **E5 lint** — `golangci-lint run ./internal/hook/... ./internal/web/... ./internal/kanban/...` → exit 0 `0 issues.`; `golangci-lint run ./internal/cli/...` → exit 0 `0 issues.` (v2.1.6, CI-matching; `.moai/reports/t1256/raw/lint-m3-part1.txt`, `lint-m3-cli.txt`).
+
+### M3 test evidence (scoped runs, this tree)
+
+| Package | Command | Verbatim verdict |
+|---|---|---|
+| internal/cli (full, with coverage) | `go test -cover -timeout 35m ./internal/cli/` (slot `go-test-cli-hook`) | attempt 1 FAIL on exactly 2 tests → fixed (below) → attempt 2 `ok github.com/modu-ai/moai-adk/internal/cli 1064.433s coverage: 84.0% of statements` (`.moai/reports/t1256/raw/cli-full-m3-attempt2.txt`) |
+| internal/hook (full) | `go test ./internal/hook/` (slot held) | `ok github.com/modu-ai/moai-adk/internal/hook 351.118s` |
+| internal/hook (cover) | `go test -cover ./internal/hook/` | `ok ... 392.965s coverage: 86.6% of statements` |
+| internal/web (full) | `go test ./internal/web/ -count=1` / `go test -cover ./internal/web/` | `ok ... 36.854s` / `ok ... coverage: 74.7% of statements` |
+| internal/kanban (full) | `go test ./internal/kanban/` / `go test -cover ./internal/kanban/` | `ok ... 178.995s` / `ok ... 187.290s coverage: 86.4% of statements` |
+| internal/statusline | `go test ./internal/statusline/ -count=1` | `ok ... 20.276s` (untouched by M3; swept clean) |
+| cli attempt-1 failures | `TestBinaryLag_DoctorCheckNameSetIsUnchanged` → `factoryRunCheckName` added to `namesAddedAfterBaseline` (bare constant shape, per the t1251 lesson); `TestRunDiagnosticChecks_AllChecksHaveValidStatus` → `uikit.CheckInfo` added to the valid-status set (a legitimate terminal status the Factory Run no-records row is the first flat-path producer of) | both re-runs `ok` |
+
+### M3 RED evidence (E8)
+
+Verbatim pre-implementation failures captured in `.moai/reports/t1256/raw/`: `red-m3-hook.txt` (6 FAIL lines — `TestRoleNamingM3NoticesCarryLeaderLaneTerms` red in all 5 locale subtests incl. the en-fallback, plus `TestRoleNamingM3StaleRunNoticeNamesRetireStep` stage), `red-m3-web.txt` (2 FAIL — `TestLegacyLeadRecordRendersRelaunchLabel`, `TestLegacyLeadRecordKeepsLaneRecordsOutOfTheChain`: `chainRoleRecords kept 0 records`), `red-m3-cli.txt` (3 FAIL — both doctor clauses against the RED stub + the homonym qualifier). One RED-stage test correction before GREEN: the stale-run rows initially asserted the en `\blead\b` prohibition, which the notice must VIOLATE by design (REQ-RNC-022/025: the notice names the legacy value it detected) — the prohibition binds only the three bootstrap notices; corrected before first GREEN.
+
+### AC binary matrix (E1, M3 rows)
+
+| AC | Status | Evidence (command → observed) |
+|---|---|---|
+| AC-RNC-012 | PASS | `go test ./internal/hook/ -run 'TestRoleNamingM3' -count=1` → `ok ... 2.244s` — table-driven over en/ko/ja/zh/en-fallback × {factory leader notice, factory lane notice, kanban leader notice, stale-run factory, stale-run kanban}: each carries its locale's design §3 leader term (leader/리더/リーダー/主导) AND lane term (lane/레인/レーン/泳道); the three bootstrap notices match none of `worker-\d`, `-f worker`, `-f agent`; ko strings contain no `리드`; en strings contain no `(?i)\blead\b` match; the stale-run rows additionally pin the retire step on the factory variant and its absence on the kanban variant (`TestRoleNamingM3StaleRunNoticeNamesRetireStep`) |
+| AC-RNC-013 | PASS | web: `go test ./internal/web/ -run 'TestLeaderRecordRenders'` / `'TestLegacyLeadRecord'` / `'TestChainIsAbsentWhenOnlyFactoryLanesHaveRecords'` → all `ok` — leader record → chain Present with slot label `leader` (non-idle); `lead` record → leader slot role label EXACTLY `legacy run: relaunch required`, State idle, Session empty, IdleRole stays `leader`; lane records still excluded. doctor: `go test ./internal/cli/ -run 'TestDoctorFactoryRunCheck'` → `ok` — `leader` → CheckOK + label `leader`; `lead` → CheckFail, Message contains the literal `legacy run: relaunch required`; no records → CheckInfo. Golden delta: exactly one new `info Factory Run` row ×3 golden files |
+| AC-RNC-023 | PASS | population re-run (the acceptance.md §A AC-RNC-023 command verbatim) → still exactly 2 rows, both `(CG leader Claude, CG teammates GLM)` — **unqualified count 0**; `git diff --stat b59a5d69c -- internal/cli/factory.go internal/cli/kanban.go` shows text-only changes — `factoryUnsupportedBackendSentinel` / `kanbanUnsupportedBackendSentinel` and every identifier/JSON field unchanged (sentinels still grep-counted at 4 / 3 occurrences) |
+
+### Coverage (E3, M3)
+
+| Package | M3 tip | M2 tip | merge-base | Delta |
+|---|---|---|---|---|
+| internal/cli | 84.0% | 84.0% | _not measured (M1 Gap kept)_ | equal (`ok ... 1064.433s coverage: 84.0%`) |
+| internal/hook | 86.6% | 86.6% | 86.6% | equal |
+| internal/web | 74.7% | 74.7% | 74.7% | equal |
+| internal/kanban | 86.4% | 86.4% | 86.5% | equal vs M1/M2; −0.1pp vs merge-base (M1-attributed; the M3 `ReadAll` addition is covered by `record_readall_test.go` in-package — an interim 86.0% reading without it was repaired before close) |
+
+**Gaps (E3):** the `internal/cli` merge-base figure remains unmeasured (M1 Gap carried; cli merge-base re-measurement stays the orchestrator's call).
+
+### M3 notes
+
+- Slot discipline: `moai slot acquire --resource go-test-cli-hook --max-duration 2400s` held for the cli and hook full suites; the lease expired at its declared cap before the explicit release — no unbounded hold.
+- `kanban.ReadAll` added to `internal/kanban/record.go` (absent state dir → empty slice, nil error; per-record malformed files skipped) — the bulk reader both the doctor check and future display surfaces consume.
+
+
 
 
 
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-- run_status: M2 complete (M1 + M2 of the code milestones; M3 notices/locales/web/doctor, M4 marker flip, M5 identifier rename remain) — cli full suite green with coverage (`ok ... 992.586s coverage: 84.0%`), kanban green (86.4%), hook/factorymsg/homestate/config/codexwiring/web scoped suites green, lint 0 issues (golangci v2.1.6), both builds exit 0
+- run_status: M3 complete (M1 + M2 + M3 of the code milestones; M4 marker flip, M5 identifier rename remain) — cli full suite green with coverage (`ok ... 1064.433s coverage: 84.0%`), hook full suite green (351.118s; cover 86.6%), kanban green (86.4%), web green (74.7%), statusline green, lint 0 issues (golangci v2.1.6), both builds exit 0
 - run_complete_at: 2026-09-27
-- run_commit_sha: 579fa393a
-- RED evidence: M2 `.moai/reports/t1256/raw/red-m2.txt` (27 verbatim pre-implementation refusal failures); M1 `.moai/reports/t1256/raw/red-m1.txt` (5 assertion REDs in internal/cli + compile-RED for the new kanban/hook/factorymsg APIs)
-- coverage: kanban 86.4 (base 86.5) · hook 86.6 (base 86.6) · factorymsg 81.5 (base 81.5) · web 74.7 (base 74.7) · cli 84.0 (M2 re-measured, equal to M1; merge-base 미측정 — Gap, §E.2)
+- run_commit_sha: f0ebcc82b
+- RED evidence: M3 `.moai/reports/t1256/raw/red-m3-{hook,web,cli}.txt` (11 verbatim pre-implementation failures across the notice-table, legacy-leader view-model, doctor, and homonym tests); M2 `.moai/reports/t1256/raw/red-m2.txt` (27 verbatim pre-implementation refusal failures); M1 `.moai/reports/t1256/raw/red-m1.txt` (5 assertion REDs in internal/cli + compile-RED for the new kanban/hook/factorymsg APIs)
+- coverage: kanban 86.4 (base 86.5) · hook 86.6 (base 86.6) · factorymsg 81.5 (base 81.5) · web 74.7 (base 74.7) · cli 84.0 (equal to M1/M2; merge-base 미측정 — Gap, §E.2)
 - notes:
   - M1 transient: the t1245 AC-AP-018 kanban pin limb (`internal/kanban/factory_label_pin_test.go`) is pinned to the M1 state — prefix `lane`, legacy prefixes detection-only — and carries an M4 tripwire; the full three-way equality (marker value == CLI token == prefix) is restored at M4 when `config.FactoryRoleWorker` flips to `lane` (constant untouched by M1 per delegation §C).
   - `-f worker` / `-f agent` role tokens still PARSE at M1 (minimal compile adaptation; desugars to canonical `lane-<n>` labels) — their dedicated rejection wording is M2 (REQ-RNC-003/-005/-007). Legacy LABELS on the input path are already refused by the claim naming the canonical `lane-<n>`.
