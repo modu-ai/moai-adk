@@ -206,6 +206,48 @@ it were removed). REQ-AMI-009 (no observation, no audit file) is therefore not y
 | `golangci-lint run` (v2.1.6) hook, config | `0 issues.` |
 | `go build ./...` | ok |
 
+### M4 — CLI, lint and guard consumers (commit `41cf11c4d`)
+
+RED before any change:
+- `TestModelCommandIsRemoved`: `` `moai model` is still registered (Model-routing profile inspection) ``.
+- `TestInitDeprecatedModelFlags_WarnAndAcceptAnyValue`: no warning for any flag, and
+  `--profile=bogus must be accepted, got: invalid --profile value "bogus": …`.
+- `TestUpdateDeprecatedProfileFlag_WarnsAndIsAccepted`: no warning.
+- `TestInitDeprecatedModelFlags_WriteNothing`: `init with map[profile:high] wrote a different llm.yaml…` (also model-policy, high).
+- `TestWizardsDoNotAskTheAgentModelPolicy`: `the default wizard still asks model_policy` (also reconfigure).
+- `TestEffortRules_LR03AndLR12Retired`: LR-03 and LR-12 fired.
+- `TestWorkflowLint_ModelRoutingBlockIsNoLongerChecked`: `lint violations detected`.
+- `TestHaikuResidualRule_RoutingSurfacesRetired`: routing surfaces still yield findings.
+All GREEN after the change.
+
+Removed / changed: `moai model` (`model.go`, `model_test.go`, root registration); retired flags now
+warn to stderr (`Warning: --<flag> is deprecated and has no effect: subagents now inherit the main
+session's model and effort. Set the main-session model policy with `moai profile setup`.`), accept any
+value and write nothing (`resolveModelPolicy`, the init ApplyPerformanceTier/ApplyProfile block,
+`applyUpdateProfile` and both update call sites removed; `InitOptions.{ModelPolicy,Profile}` removed);
+wizard `model_policy` question, capture branch, ko/ja/zh blocks and `WizardResult.ModelPolicy`; the
+update-wizard ApplyProfile + system.yaml `model_policy` write; H24 wording (20 lines, 4 locales);
+agentlint LR-03/LR-12 + `canonicalEffortMatrix`; workflow-lint routing check + `SentinelModelRoutingInvalid`
+(the command keeps its parse/exit-code contract); HaikuResidual surfaces 3–4; `internal/harness/cellguard`;
+`normalizeLLMSectionMaps` retired-map lines; MCP tool-description resolver citations. The
+`agentlint-section-marker` numeral exemption stays (its comment survives).
+
+W1 resolved: `TestValidateInitFlags_InvalidProfile`, the invalid half of
+`TestValidateInitFlags_ModelPolicyVocabulary`, and `TestInitCmd_ProfilePersistence` now expect the
+warning, a nil error, and no `profile: high` write.
+
+| Command | Result |
+|---|---|
+| `go test ./internal/cli/... -count=1 -timeout 25m` (slot `internal-cli-suite`) | 17 packages ok; `internal/cli` FAIL on `TestCodexAuditMCPTool`, `TestMCPToolCatalogueFiguresMatchRegistry` (inherited), `TestProfileWizardGolden_LocaleFrames` (H24 wording → goldens regenerated with `-update-golden`, now PASS), `TestCodexTaskBackgroundHandshakeHonorsTaskBound` (100 ms handshake race: 1/3 then 0/10 fails on re-run; code path untouched) |
+| `go test ./internal/cli/agentlint/ ./internal/cli/wizard/... ./internal/spec/ -count=1` | all ok |
+| `go test ./internal/harness/rosterguard/ -v` | the same three failures; failure lines identical to M1 (`diff rg1.txt rg4.txt` exit 0) |
+| `golangci-lint run` (v2.1.6) cli, spec, core | `0 issues.` |
+| `go build ./...` | ok |
+
+Deferred to post-t1282: `internal/hook/agent_model_guard.go` still calls
+`template.ResolveAgentModelEffort` (`resolveAgentModel`, frozen) — the last non-test consumer
+outside `internal/config` / `internal/template`, so M5 cannot delete the resolver until it moves.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
