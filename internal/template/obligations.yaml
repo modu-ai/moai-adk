@@ -1,0 +1,284 @@
+# Dual-harness obligation registry (SPEC-DUAL-HARNESS-HOOK-PARITY-001 design.md §D4).
+#
+# One row per required behavior: where Claude applies it, where Codex applies
+# it (a concrete path, or a marker — UNSUPPORTED:<evidence>, blocked:<reason>,
+# unverified:<reason>), and the Go test that verifies it. The whole catalog is
+# registered (operator decision Q1): M2 obligations, M1 standing-policy rows as
+# blocked:M1, the Claude interrupt source as UNSUPPORTED, and the non-Stop
+# multi-handler chains as unverified. A path is a `moai …` command (resolved
+# against the registered cobra commands) or a template-relative file.
+#
+# CheckObligationCoverage (AC-HPR-018) requires every row to resolve;
+# AggregateParityVerdict (AC-HPR-019) reads it with the go-test actions and the
+# verdict records and is PASS only when every required row is effect-verified.
+
+obligations:
+  # ── Stop chain (AC-HOOK-01) ────────────────────────────────────────────
+  - id: stop-chain-inventory
+    required: true
+    claude_path: .claude/settings.json.tmpl
+    codex_path: moai hook stop --harness codex
+    check: TestStopChainInventoryMatchesClaudeTemplate
+    ac: AC-HPR-001
+  - id: stop-member1-dispatch
+    required: true
+    claude_path: moai hook stop
+    codex_path: moai hook stop --harness codex
+    check: TestCodexStopHandlerRunsTheChain
+    ac: AC-HPR-002
+  - id: stop-member2-sync-gate
+    required: true
+    claude_path: .claude/hooks/moai/sync-phase-quality-gate.sh
+    codex_path: moai verify sync-gate
+    check: TestStopChainEffectParityGolden
+    ac: AC-HPR-002
+  - id: stop-member3-goal
+    required: true
+    claude_path: moai hook stop-goal
+    codex_path: moai hook stop --harness codex
+    check: TestCodexGoalContinueUntilMet
+    ac: AC-HPR-012
+  - id: stop-member4-security-turn
+    required: true
+    claude_path: moai hook security-turn
+    codex_path: moai hook stop --harness codex
+    check: TestStopChainAdvisoryFailureRecorded
+    ac: AC-HPR-005
+  - id: stop-member5-security-commit
+    required: true
+    claude_path: moai hook security-commit
+    codex_path: moai hook stop --harness codex
+    check: TestStopChainAdvisoryFailureRecorded
+    ac: AC-HPR-005
+  - id: stop-member6-codex-review-gate
+    required: true
+    claude_path: moai hook codex-review-gate
+    codex_path: moai verify codex-review
+    check: TestStopChainEffectParityGolden
+    ac: AC-HPR-002
+  - id: stop-member7-multi-review-gate
+    required: true
+    claude_path: moai hook multi-review-gate
+    codex_path: moai hook stop --harness codex
+    check: TestStopChainEffectParityGolden
+    ac: AC-HPR-002
+  - id: stop-member8-harness-observe
+    required: true
+    claude_path: moai hook harness-observe-stop
+    codex_path: moai hook stop --harness codex
+    check: TestStopChainAdvisoryFailureRecorded
+    ac: AC-HPR-005
+  - id: stop-chain-no-claude-dependency
+    required: true
+    claude_path: moai hook stop
+    codex_path: moai hook stop --harness codex
+    check: TestStopChainGPTProfileNoClaudeDependency
+    ac: AC-HPR-003
+  - id: stop-chain-live-continuation
+    required: true
+    claude_path: moai hook stop-goal
+    codex_path: moai hook stop --harness codex
+    check: TestLiveStopChainGoalContinuation
+    ac: AC-HPR-004
+
+  # ── Decision preservation and event adaptation (AC-HOOK-02) ───────────
+  - id: decision-never-loosens
+    required: true
+    claude_path: moai hook pre-tool
+    codex_path: moai hook pre-tool --harness codex
+    check: TestDecisionTranslationNeverLoosens
+    ac: AC-HPR-006
+  - id: needs-input-live-outcome
+    required: true
+    claude_path: moai hook pre-tool
+    codex_path: moai hook pre-tool --harness codex
+    check: TestLiveCodexNeedsInputOutcome
+    ac: AC-HPR-007
+  - id: needs-input-visible-deny
+    required: true
+    claude_path: moai hook pre-tool
+    codex_path: moai hook pre-tool --harness codex
+    check: TestNeedsInputVisibleDeny
+    ac: AC-HPR-022
+  - id: hook-fault-fail-closed
+    required: true
+    claude_path: moai hook pre-tool
+    codex_path: moai hook pre-tool --harness codex
+    check: TestHookFaultInjection
+    ac: AC-HPR-008
+  - id: hook-fault-live-outcome
+    required: true
+    claude_path: moai hook pre-tool
+    codex_path: moai hook pre-tool --harness codex
+    check: TestLiveHookFaultOutcome
+    ac: AC-HPR-008
+  - id: compact-checkpoint-roundtrip
+    required: true
+    claude_path: moai hook compact
+    codex_path: moai hook compact --harness codex
+    check: TestCodexCompactCheckpointRoundTrip
+    ac: AC-HPR-009
+  - id: compact-live-fires
+    required: true
+    claude_path: moai hook post-compact
+    codex_path: moai hook post-compact --harness codex
+    check: TestLiveCodexCompactFires
+    ac: AC-HPR-009
+  - id: permission-request-deny
+    required: true
+    claude_path: moai hook permission-request
+    codex_path: moai hook permission-request --harness codex
+    check: TestCodexPermissionRequestDenyPreserved
+    ac: AC-HPR-010
+  - id: permission-request-live-fires
+    required: true
+    claude_path: moai hook permission-request
+    codex_path: moai hook permission-request --harness codex
+    check: TestLiveCodexPermissionRequestFires
+    ac: AC-HPR-010
+  - id: interrupt-cancellation
+    required: true
+    claude_path: "UNSUPPORTED:design.md §D6 — the Claude Stop hook does not fire on user interrupt, and IsInterrupt rides PostToolUseFailure (spec.md §F exclusion)"
+    codex_path: moai hook interrupt --harness codex
+    check: TestCodexInterruptRecordsCancellation
+    ac: AC-HPR-011
+  - id: interrupt-live-fires
+    required: true
+    claude_path: "UNSUPPORTED:design.md §D6 — no Claude-side interrupt producer"
+    codex_path: moai hook interrupt --harness codex
+    check: TestLiveCodexInterruptFires
+    ac: AC-HPR-011
+
+  # ── Goal continuation, cancellation, budget (AC-GOAL-01) ──────────────
+  - id: goal-continue-until-met
+    required: true
+    claude_path: moai hook stop-goal
+    codex_path: moai hook stop --harness codex
+    check: TestCodexGoalContinueUntilMet
+    ac: AC-HPR-012
+  - id: goal-continue-live
+    required: true
+    claude_path: moai hook stop-goal
+    codex_path: moai hook stop --harness codex
+    check: TestLiveCodexGoalContinueUntilMet
+    ac: AC-HPR-012
+  - id: goal-cancellation-precedence
+    required: true
+    claude_path: moai goal clear
+    codex_path: moai hook interrupt --harness codex
+    check: TestGoalCancellationPrecedence
+    ac: AC-HPR-013
+  - id: goal-status-consumers
+    required: true
+    claude_path: moai hook stop-goal
+    codex_path: moai hook stop --harness codex
+    check: TestGoalStatusConsumersHandleCancelled
+    ac: AC-HPR-013
+  - id: goal-budget-termination
+    required: true
+    claude_path: moai hook stop-goal
+    codex_path: moai hook stop --harness codex
+    check: TestGoalBudgetTerminationNotSuccess
+    ac: AC-HPR-014
+  - id: goal-host-override
+    required: true
+    claude_path: moai hook stop-goal
+    codex_path: moai hook stop --harness codex
+    check: TestGoalHostOverrideNotSuccess
+    ac: AC-HPR-015
+
+  # ── Receipts and timeouts ─────────────────────────────────────────────
+  - id: stop-budget-fits-timeout
+    required: true
+    claude_path: .claude/settings.json.tmpl
+    codex_path: moai hook stop --harness codex
+    check: TestStopChainAggregateBudgetFitsTimeout
+    ac: AC-HPR-016
+  - id: stop-member-cost-within-budget
+    required: true
+    claude_path: moai hook stop
+    codex_path: moai hook stop --harness codex
+    check: TestStopChainMemberCostWithinBudget
+    ac: AC-HPR-016
+  - id: receipt-validity
+    required: true
+    claude_path: moai verify record
+    codex_path: moai verify record
+    check: TestCheckReceiptFieldMismatchIsNotRun
+    ac: AC-HPR-017
+  - id: stop-timeout-ceiling
+    required: true
+    claude_path: .claude/settings.json.tmpl
+    codex_path: moai hook stop --harness codex
+    check: TestLiveCodexStopTimeoutCeiling
+    ac: AC-HPR-021
+  - id: harness-isolation
+    required: true
+    claude_path: moai hook stop-goal
+    codex_path: moai hook stop --harness codex
+    check: TestLiveHarnessIsolation
+    ac: AC-HPR-020
+
+  # ── Non-Stop multi-handler chains: excluded from this SPEC (spec.md §F) ──
+  - id: chain-post-tool-use
+    required: true
+    claude_path: moai hook post-tool
+    codex_path: "unverified:spec.md §F — the PostToolUse multi-handler chain is not composed on Codex"
+    check: TestNonStopChainsRecordedUnverified
+    ac: AC-HPR-018
+  - id: chain-session-start
+    required: true
+    claude_path: moai hook session-start
+    codex_path: "unverified:spec.md §F — the SessionStart multi-handler chain is not composed on Codex"
+    check: TestNonStopChainsRecordedUnverified
+    ac: AC-HPR-018
+  - id: chain-subagent-stop
+    required: true
+    claude_path: moai hook subagent-stop
+    codex_path: "unverified:spec.md §F — the SubagentStop multi-handler chain is not composed on Codex"
+    check: TestNonStopChainsRecordedUnverified
+    ac: AC-HPR-018
+  - id: chain-user-prompt-submit
+    required: true
+    claude_path: moai hook user-prompt-submit
+    codex_path: "unverified:spec.md §F — the UserPromptSubmit multi-handler chain is not composed on Codex"
+    check: TestNonStopChainsRecordedUnverified
+    ac: AC-HPR-018
+
+  # ── M1 standing-policy obligations (operator decision Q1) ─────────────
+  - id: policy-standing-delivery
+    required: true
+    claude_path: CLAUDE.md
+    codex_path: "blocked:M1 — standing contract delivered through the root AGENTS.md"
+    check: TestStandingPolicyParity
+    ac: AC-POL-01
+  - id: policy-scoped-delivery
+    required: true
+    claude_path: .claude/rules/moai
+    codex_path: "blocked:M1 — path-scoped rules have no Codex delivery yet"
+    check: TestStandingPolicyParity
+    ac: AC-POL-01
+  - id: policy-workflow-references
+    required: true
+    claude_path: .claude/skills/moai
+    codex_path: "blocked:M1 — workflow references resolved for the Codex skill tree"
+    check: TestStandingPolicyParity
+    ac: AC-TPL-01
+  - id: policy-host-isolation
+    required: true
+    claude_path: CLAUDE.md
+    codex_path: "blocked:M1 — host-only procedures never called from the other harness"
+    check: TestStandingPolicyParity
+    ac: AC-POL-01
+  - id: policy-enforced-boundary
+    required: true
+    claude_path: moai hook pre-tool
+    codex_path: "blocked:M1 — enforced boundaries under bypass and fault injection"
+    check: TestStandingPolicyParity
+    ac: AC-POL-01
+  - id: template-render-determinism
+    required: true
+    claude_path: .claude/settings.json.tmpl
+    codex_path: "blocked:M1 — identical sources render identical outputs for both harnesses"
+    check: TestStandingPolicyParity
+    ac: AC-TPL-02

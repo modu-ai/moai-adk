@@ -19,12 +19,27 @@ import (
 )
 
 // subagentStopHandler processes SubagentStop events.
-// It cleans up tmux panes when teammates shut down.
-type subagentStopHandler struct{}
+// It cleans up tmux panes when teammates shut down, and records the model that
+// actually answered the subagent (served_model_stop.go).
+type subagentStopHandler struct {
+	// cfg is the configuration provider the served-model observer resolves the
+	// profile model through — the same provider the PreToolUse agent-model
+	// guard reads. nil means no configuration is reachable.
+	cfg ConfigProvider
+}
 
-// NewSubagentStopHandler creates a new SubagentStop event handler.
+// NewSubagentStopHandler creates a new SubagentStop event handler without a
+// configuration provider. The served-model observer then has only the
+// declared model to compare against; an undeclared spawn records `unknown`.
 func NewSubagentStopHandler() Handler {
-	return &subagentStopHandler{}
+	return NewSubagentStopHandlerWithConfig(nil)
+}
+
+// NewSubagentStopHandlerWithConfig creates a SubagentStop event handler whose
+// served-model observer resolves the expected model through cfg — the same
+// provider the PreToolUse handler is constructed with.
+func NewSubagentStopHandlerWithConfig(cfg ConfigProvider) Handler {
+	return &subagentStopHandler{cfg: cfg}
 }
 
 // EventType returns EventSubagentStop.
@@ -42,8 +57,14 @@ func (h *subagentStopHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// path returns below. nil means the guard has no opinion, which is every
 	// case outside an auditor in a tree that declared the codex gate required.
 	guard := checkAuditorStop(input)
+	// Served-model observation (SPEC-SERVED-MODEL-AUDIT-001). Never blocks and
+	// never fails the hook: its only outputs are an audit row and, at most, a
+	// warning message appended to the merged output.
+	obs, warning := h.observeServedModel(input)
+	notice := checkServedModelStop(input, obs)
 	out, err := h.handleTeardown(ctx, input)
-	return mergeAuditorStopGuard(out, guard), err
+	out = appendSystemMessage(mergeAuditorStopGuard(out, guard), warning)
+	return appendSystemMessage(out, notice), err
 }
 
 // mergeAuditorStopGuard lays the guard's decision over the teardown output.

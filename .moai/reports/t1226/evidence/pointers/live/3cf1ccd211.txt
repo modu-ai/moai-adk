@@ -1,0 +1,1 @@
+ · § Subagent Prohibitions rationale · § Per-Spawn audit hook · § Pre-Edit ambient signal
