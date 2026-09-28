@@ -2,7 +2,7 @@
 
 ## Claim
 
-CI에서 관측된 `.git/objects` 정리 실패의 원인은 아직 확인되지 않았다. 다음 재발 때 Git 자식 프로세스의 시작·종료 기록을 볼 수 있도록 해당 테스트에만 Trace2 진단을 추가했다. 카드는 미완료다.
+로컬 Trace2에서 임시 저장소의 두 `git commit`이 각각 분리된 자동 maintenance와 `repack`을 시작하는 것을 확인했다. 이 작업이 테스트 종료 후 `.git/objects`를 쓸 수 있으므로 fixture의 Git 명령에만 `maintenance.auto=false`를 적용했다. 원래 실패한 CI 실행에는 Trace2가 없어 그 순간의 작성자를 직접 특정할 수 없으며, 수정 커밋의 CI 판정도 아직 없다.
 
 ## Evidence
 
@@ -32,6 +32,37 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	2.219s
 
 `GIT_TRACE2_EVENT`은 테스트의 별도 `t.TempDir` 파일에만 기록한다. 실패 시 프로젝트 임시 디렉터리의 정리가 끝난 뒤 최대 12000바이트를 테스트 로그에 남기고, 마지막에 trace 디렉터리를 정리한다.
 
+현재 원격 `develop` `e7eb03517`의 같은 테스트에 읽기 전용 Go overlay를 씌워 성공 때도 전체 Trace2를 출력했다. 출력 860개 이벤트의 47개 Git 프로세스에서 두 fixture `commit`이 각각 `maintenance run --auto --quiet --detach`와 `repack -d -l --cruft --cruft-expiration=2.weeks.ago --quiet --write-midx`를 자식으로 시작했다. 모든 자식은 이번 로컬 실행에서 종료됐지만, [Git 공식 문서](https://git-scm.com/docs/git-maintenance)는 `maintenance.autoDetach`의 기본값이 분리 실행이며 `maintenance.auto=false`가 명령 뒤 자동 maintenance를 막는다고 설명한다.
+
+fixture의 Git 명령에 `-c maintenance.auto=false`를 넣은 뒤 동일한 overlay로 다시 잰 결과:
+
+```text
+trace_events 656 git_process_starts 37 auto_maintenance_starts 0 repack_starts 0
+test_result --- PASS: TestStopChainGPTProfileNoClaudeDependency (1.24s)
+test_exit=0
+```
+
+관련 Stop-chain 범위와 race 재측정:
+
+```text
+$ timeout 180s go test ./internal/cli -run '^TestStopChain' -count=1 -timeout 160s
+ok  \tgithub.com/modu-ai/moai-adk/internal/cli\t45.259s
+test_exit=0
+$ go test -race ./internal/cli -run '^TestStopChainGPTProfileNoClaudeDependency$' -count=2 -timeout 180s
+ok  \tgithub.com/modu-ai/moai-adk/internal/cli\t5.584s
+$ go vet ./internal/cli && git diff --check && gofmt -l internal/cli/codex_stop_fixture_test.go
+(출력 없음, exit 0)
+```
+
+로컬 `develop` `38c019810`을 흡수한 병합 트리 `de8a5e542`에서도 다음을 확인했다.
+
+```text
+$ go test ./internal/cli -run '^TestStopChainGPTProfileNoClaudeDependency$' -count=2 -timeout 180s
+ok  \tgithub.com/modu-ai/moai-adk/internal/cli\t3.202s
+$ go test -race ./internal/cli -run '^TestStopChainGPTProfileNoClaudeDependency$' -count=1 -timeout 180s
+ok  \tgithub.com/modu-ai/moai-adk/internal/cli\t3.927s
+```
+
 최신 로컬 `develop` `2e34b99b5`를 흡수한 뒤 재측정:
 
 ```text
@@ -47,12 +78,12 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	2.060s
 
 ## Baseline-attribution
 
-실패는 `517ec51ba`의 해당 CI 로그에서, 계측 활성화와 로컬 통과는 이 브랜치 시작점 `cee197917`에 계측 변경을 얹어 이번 실행에서 확인했다.
+실패는 `517ec51ba`의 해당 CI 로그에서 확인했다. 수리 전 Trace2는 `origin/develop` `e7eb03517`, 수리 후 Trace2는 `WT-gpt-tempdir-trace`에 이 fixture 수정만 얹은 워킹 트리에서 이번 실행에 측정했다. overlay는 로깅 조건만 바꾸고 저장소 소스는 바꾸지 않았다.
 
 ## Gaps
 
-로컬 실행에서는 정리 실패가 재현되지 않았다. CI에서 계측이 적용된 뒤 같은 실패가 다시 나타난 로그를 아직 보지 못했다. 따라서 어떤 Git 명령 또는 다른 프로세스가 `.git/objects`를 썼는지는 미확정이다. 이 브랜치 병합 뒤에도 카드는 원인 확정과 수리가 끝날 때까지 열어 둔다.
+로컬 실행에서는 정리 실패가 재현되지 않았다. 실패한 CI 실행 자체에는 Trace2가 없으므로 그 순간의 정확한 작성자는 미확정이다. 수정 커밋의 통합 CI 결과도 아직 없다.
 
 ## Residual-risk
 
-Git 이외의 작성자라면 Trace2만으로 식별되지 않을 수 있다. 실패 로그에서 Trace2 자식 종료와 `.git/objects`의 활동을 대조한 뒤에만 수리 방향을 정한다.
+다른 프로세스가 `.git/objects`를 쓰는 별개 경로는 남을 수 있다. CI 재발 시 Trace2 상세로 작성자를 다시 대조해야 한다.
