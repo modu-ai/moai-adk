@@ -222,6 +222,57 @@ func TestStopChainGateCutOffNeverAllows(t *testing.T) {
 	}
 }
 
+// TestStopChainBudgetedCutOffBeatsADeadlineEdgeMember pins the
+// budget-enforcement determinism the CI-only flake exposed (card t1293, run
+// 36361758033): a member that returns a real verdict AT its deadline — not
+// before it — must read as cut off. The runner-observed shape: members 2 and 3
+// returned their REAL verdicts (allow, and deny/unmeasured with no budget Err)
+// although their 1ns budget had expired, because a select between the result
+// channel and mctx.Done() picks randomly when both are ready, and the ctx
+// timer's firing can lag a fast member's return on a loaded runner. The
+// deadline itself, not channel readiness, must decide.
+//
+// Reproduction shape: the member sleeps exactly its budget, so its return and
+// the timer's firing land in the same instant and both channels are ready at
+// the blocked select — against the unfixed select this fails roughly half the
+// runs; with the send-time deadline check it is deterministically cut off.
+func TestStopChainBudgetedCutOffBeatsADeadlineEdgeMember(t *testing.T) {
+	f := newStopFixture(t)
+	c := newCodexStopChain(f.root, stopInput("edge-s", false))
+	const budget = 100 * time.Millisecond
+	c.budgetFor = func(int) time.Duration { return budget }
+	res := c.budgeted(context.Background(), 2,
+		func(context.Context) stopMemberOutcome {
+			time.Sleep(budget)                                             // returns at the deadline, never before it
+			return stopMemberOutcome{Decision: codexadapter.DecisionAllow} // a real verdict
+		},
+		c.cutOffUnmeasured(2, "", ""))
+	if res.Decision != codexadapter.DecisionDeny || res.Class != reasonUnmeasured || !strings.Contains(res.Err, "budget") {
+		t.Fatalf("a member returning at its deadline took a real verdict: got %s/%q err %q, want the cut-off deny/unmeasured naming the budget", res.Decision, res.Class, res.Err)
+	}
+}
+
+// TestStopChainAdvisoryCutOffBeatsADeadlineEdgeMember pins the advisory half
+// of the deadline-authority rule (card t1293, sync-audit F2): an advisory
+// member whose result is sent at its budget records failed with the budget
+// Err, never its real OK status. The audit's removal mutant deleting only the
+// advisory gate survived the suite (86.7% vs 100%); this edge shape — same
+// sleep-exactly-the-budget trick as the budgeted leg — kills it.
+func TestStopChainAdvisoryCutOffBeatsADeadlineEdgeMember(t *testing.T) {
+	f := newStopFixture(t)
+	c := newCodexStopChain(f.root, stopInput("adv-edge-s", false))
+	const budget = 100 * time.Millisecond
+	c.budgetFor = func(int) time.Duration { return budget }
+	c.advisory[4] = func(context.Context) (string, error) {
+		time.Sleep(budget) // sends at the deadline, never before it
+		return "late but real", nil
+	}
+	o := c.advisoryMember(context.Background(), 4)
+	if o.Status != stopStatusFailed || !strings.Contains(o.Err, "budget") {
+		t.Fatalf("an advisory member sending at its deadline recorded %q err %q, want failed naming the budget", o.Status, o.Err)
+	}
+}
+
 // runCodexStopSubcommand runs `moai hook stop --harness codex` against root,
 // with the registry serving out1 as member 1's output.
 func runCodexStopSubcommand(t *testing.T, root string, input *hook.HookInput, out1 *hook.HookOutput) (string, error) {
