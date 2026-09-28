@@ -314,6 +314,21 @@ $ grep -m1 '^paths:' … → paths: "**/session-handoff.md"   # single pattern p
 
 `go test -run 'TestWorkflowRulePathsPinned|TestTemplateNeutralityAudit$|TestRuleTemplateMirror' ./internal/template/` → ok (paths guard, neutrality over the new template appendix, mirror parity). REQ-IBS-007 respected: foreclosed file reduced without any companion.
 
+### M7 — closure sweep (all measurements this round, tree at the M7 commits)
+
+**Batch re-measure (single invocation):** spec-workflow **39,984** · worktree-integration **39,681** · worktree-integration-ops (companion) **22,923** · session-handoff-examples **39,053** · kanban-dispatch-detail **39,973** (after the anchor-precision fixes below) — all five under 40,000. HARD token counts unchanged from M0 across all four targets (4 / 18 / 12 / 8; companion 0).
+
+**Byte-identity batch:** all five local↔template pairs `cmp` identical; the appendix pair identical; the `coding-standards.md` 005b diff still exactly the recorded single-hunk baseline (`141d140`, content line byte-equal).
+
+**Anchor resolution — differential sweep.** Every `§ <name>` token extracted per file at base `088594d6b` and at HEAD, then set-diffed. New refs (4): the two parent redirect stubs → companion headings that exist verbatim; the spec-workflow `§ SPEC Phase Discipline Step 2` pointer → existing section; two M5-shortened refs initially resolved only by prefix (`§ Isolation`, `§ Terminology above`) — **restored to full section names** (commit `170920e17`). Gone refs (2): one moved with its section to the companion (heading exists there); one was the M5 rewrite itself. **Zero structural breakage.**
+
+**AC-IBS-006 suite** (`go test -timeout 25m ./internal/template/... ./internal/hook/...`, slot-leased): first run FAILED on exactly two tests.
+
+1. `TestTemplateNoInternalContentLeak` — **card-caused, fixed this round.** The relocated appendix's illustrative placeholders `SPEC-MYPROJ-001/002/003` match the C1-spec-id-prefix class (`SPEC-[A-Z0-9-]+-[0-9]{3}`) once the file entered the template tree at `.moai/docs/`. Neutralized to `SPEC-EXAMPLE-A/B/C` (outside the C1 shape) in BOTH copies; leak + neutrality guards re-run green; **full `./internal/template/` package re-run: ok (64.5s)**.
+2. `TestDetectorNeverAltersToolCall` (internal/hook) — **pre-existing on this base, not card-caused.** Attribution: `git diff --name-only 088594d6b..HEAD -- internal/hook/` → **empty** (this card touched no hook file). The failure is the known base red whose fix landed upstream in t1236 (test-preparation `sign.Sign` cause, lead-corrected attribution in the project memory); the fix postdates this branch's base and arrives with develop absorption at the integration window. All eleven other hook packages/subpackages: ok.
+
+Final suite state for the record: `./internal/template/` **ok** after the fix; `./internal/hook/` carries the one attributed pre-existing red; `./internal/hook/**` subpackages all ok.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
