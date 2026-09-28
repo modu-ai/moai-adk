@@ -6,6 +6,8 @@ How the **lead** session of Kanban Mode moves a card across the board: what admi
 
 > **Detail companion**: `kanban-dispatch-detail.md` owns the long tables, dispatch-cycle walkthrough, incident narratives, and rationale — now also per-card fan-out, Factory in-lane 3-stage, and the `manager-lead` working mode. The stub keeps every [HARD] rule and pointer; load the companion when moving or classifying a card, or choosing review lenses.
 
+> **Mechanics companion**: `kanban-dispatch-mechanics.md` owns the board-and-lens bodies relocated from this file — § The board (the five fixed columns and their owning roles) · § The dispatch cycle walkthrough · § Review lens selection (`--deep --patch` is opt-in twice over, and is never added on the lead's own initiative) · § Serializing a heavy run across lanes (`moai slot` lease) · § Factory Mode mechanics · § Boundaries · § Cross-references. Load it when moving or classifying a card, choosing review lenses, or serializing a heavy run.
+
 ## Scope — when this rule is live
 
 This rule binds a session whose SessionStart context declares **Kanban Mode** with the `lead` role. In every other session it is inert: a companion session (`plan` / `run` / `sync`) receives instructions, it does not dispatch them, and a session outside Kanban Mode has no board to move.
@@ -16,13 +18,9 @@ The lead session works through the `manager-lead` agent: it holds the operator d
 
 One boundary: nudge delivery rides on cross-session messaging, absent on native Windows and off under some providers, versions, and flags (`cross-session-messaging.md` § Availability constraints) — an absent channel fails quietly; the lead surfaces it, and the queue keeps working without it.
 
-## The board
-
-Five columns, fixed and ordered: `backlog → plan → run → sync → done`. `backlog` and `done` have no owning session; the three working columns each map to exactly one companion role (`plan` / `run` / `sync`), which is what makes dispatch a lookup rather than a decision. There is no `review` column — the sync gate absorbs the review verdict and runs the lenses itself. Column-by-role table: `kanban-dispatch-detail.md` § The board.
-
 ## Entry into the board is an operator act
 
-`backlog` has no owning session, and a lead that admitted cards on its own initiative would be **generating** work rather than scheduling it. Every card's origin is therefore the operator's request.
+`backlog` has no owning session, so a lead admitting cards on its own initiative would be **generating** work rather than scheduling it. Every card's origin is the operator's request.
 
 [HARD] **The lead is the queue's sole producer.** The operator asks; the lead turns the request into a card with `moai gtd add "<description>"` (`moai gtd` alone lists the queue). Production is the one queue mutation the lead performs on its own authority — translation, not invention: nothing enters the queue the operator did not ask for.
 
@@ -30,7 +28,7 @@ Five columns, fixed and ordered: `backlog → plan → run → sync → done`. `
 
 [HARD] **Promotion is the operator's act, always.** After a `/clear`, the lead presents the queued cards through `AskUserQuestion` and the operator picks; only then does the lead dispatch according to the card class: Class A direct close, Class B `run`, Class C `plan`. The lead never picks for the operator, never reorders by inferred priority, and never silently promotes a backlog item. An empty queue is a state to report, not a prompt to invent work.
 
-A card the operator chose to start at the moment it was issued is not a silent promotion. Where a workflow's completion question offers starting the card as one branch and the operator takes it, that answer is the promotion — given explicitly, in the operator's own words, before anything moved. The lead receiving that choice follows the same class-based entry: Class A direct close, Class B `run`, Class C `plan`. What stays forbidden is unchanged: promoting because a card looks ready, because the queue holds only one, or because no answer came back.
+A card the operator chose to start when it was issued is not a silent promotion: that answer IS the promotion, given explicitly before anything moved, and the same class-based entry follows. What stays forbidden is unchanged — promoting because a card looks ready, because the queue holds only one, or because no answer came back.
 
 [HARD] **The lead may attach a finding; it may not act on one.** Analysis runs automatically and records a relation between two cards — a near-duplicate the machine measured on `add` or `analyze`, or a `contains` / `absorbs` / `replaces` / `conflicts` the lead judged and wrote with `moai gtd relate`. The record is evidence the operator reads, never a mandate: the lead never folds the related card away, never reorders the queue around it, and never drops or edits it. Analysis changes exactly one thing on its own authority — it refuses the admission of a card whose normalized text is identical to one already queued or picked, which creates no card and leaves the queue file byte-identical. Everything a finding suggests beyond that refusal is the operator's act.
 
@@ -50,17 +48,13 @@ The lead classifies each card as it leaves `backlog` and names the class in the 
 
 [HARD] **Class A is admitted on checked evidence, not on an assertion.** Two of its three properties are mechanically checkable, and are checked and cited: the diff is measured (`git diff --stat` against the base, showing the one file) and CI is green **on the head that will merge**. The third — no design judgement in it — is a judgement, stated in the dispatch where the operator can disagree with it. A card that cannot cite both measurements is not Class A.
 
-The justification is never "it is faster": speed is the effect of skipping the columns, not the reason for it — a card justified by speed alone is a Class C card being rushed.
+The justification is never "it is faster" — speed is the effect of skipping the columns, not the reason; a card justified by speed alone is a Class C card being rushed.
 
-**Class B skips `plan`, not the sync gate's review** — an unestablished cause is precisely what a review catches. The `run` session owns both the investigation and the fix; before the card leaves `run`, the cause-establishing evidence (the reproducing command + what it printed) is written into the card's progress record, and the run session names that path in its completion report so the lead reads the cause rather than taking it on trust.
+**Class B skips `plan`, not the sync gate's review** — an unestablished cause is precisely what a review catches. The `run` session owns the investigation and the fix; before the card leaves `run` the cause-establishing evidence (the reproducing command and what it printed) goes into the card's progress record, and the completion report names that path so the lead reads the cause rather than trusting it.
 
 **Work in progress: one card per worktree — two cards sharing a worktree run serially whatever columns they sit in, because they share a working tree and a branch.** A lane holding several cards in one column does it by per-card fan-out: parallel `Agent()` workers whose writes each stay inside their own card directory (`kanban-dispatch-detail.md` § Per-card fan-out; parallelism per class: § Card classes).
 
 ## The dispatch cycle
-
-`[operator picks a card] → plan → run → sync → [lead marks done]` — each arrow is one dispatch from the lead to one companion session, addressed by name (`SendMessage`; `ListAgents` lists live sessions and says when it could not check them all). Each instruction carries, at minimum: the card, the SPEC ID once one exists, the phase command, and the completion signal to write. Keep it a pointer, not a copy — the companion reads the SPEC artifacts itself.
-
-**`sync → done` is the same act with the dispatch removed.** No session occupies `done`, so the lead reads the sync session's completion evidence and records the terminal transition itself. Session-naming rules and the address-block walkthrough: `kanban-dispatch-detail.md` § The dispatch cycle.
 
 ### The delegation channel is the queue
 
@@ -84,13 +78,13 @@ What stays verbatim in every language: SPEC IDs, command names and their flags, 
 card: <id>
 spec: <SPEC-ID>
 cmd: /moai run <SPEC-ID>
-wt: .claude/worktrees/<name>
+wt: .moai/worktrees/<name>
 evidence: .moai/specs/<SPEC-ID>/progress.md
 lens: --security --deep
 ```
 
 - `card`, `cmd`, `wt`, and `evidence` are always present. `spec` joins once a SPEC exists; a Class B card, which skips `plan`, carries none, and its `evidence` names whatever record the lead will read instead. `lens` appears only in a `sync` dispatch — the review lenses the sync gate will run, the choice itself stated as an address rather than a sentence.
-- `wt` names the new card's worktree, never a previous card's tree; where the lane may still be anchored elsewhere, it carries the exit-first instruction (`ExitWorktree` → `EnterWorktree(<card-id>)` → `git branch -m WT-<slug>`). The tree keeps the card id; the branch takes a descriptive slug — see the naming rule below.
+- `wt` names the new card's worktree, never a previous card's tree. A Claude lane exits its old tree before entry; a Codex lane starts its next session with `codex -C <absolute-worktree-path>`. The tree keeps the card id; the branch takes a descriptive slug — see the naming rule below.
 - **No explanatory prose.** Procedure, background, and justification live in the card text and the SPEC artifacts the block points at; a dispatch that restates them makes the operator read the same thing twice. What does not fit a field belongs in the card, not around the block.
 - **Ceiling: the block is at most 10 lines.** A dispatch that does not fit is trying to be a handoff; move the payload into the card and send the block.
 - **[HARD] The send is read, not assumed.** The result has three shapes and only one of them delivered:
@@ -113,19 +107,17 @@ lens: --security --deep
 
 [HARD] **Nothing structural moves with the delegation.** The queue stays the channel, completion stays evidence the lead read, and the verdict's home stays the lead. The deputy reads and reports; the lead decides.
 
-What the deputy does in the background, what returns to the lead's turn, the idle-notice request that replaces a polling loop, and the delivery-shape verification it performs: `kanban-dispatch-detail.md` § The lead works through manager-lead.
+Background work, what returns to the lead's turn, the idle-notice request replacing a polling loop, and the delivery-shape verification: `kanban-dispatch-detail.md` § The lead works through manager-lead.
 
 ## Completion is read, never trusted
 
 [HARD] The lead advances a card on **evidence it read**, not on a companion's reply. Reply routing is not guaranteed to arrive, and a reply is a claim rather than an observation.
 
-Before moving a card out of a working column, the lead reads the card's `progress.md` (and the verification evidence path the phase declares, if any) and confirms the phase closed. A missing, unreadable, or stale evidence file is a **gap** — the card stays put and the lead reports why. Absence of a failure signal is not a pass.
+Before moving a card out of a working column, the lead reads the card's `progress.md` and the verification evidence path the phase declares, and confirms the phase closed. A missing, unreadable, or stale evidence file is a **gap** — the card stays put and the lead reports why; absence of a failure signal is not a pass. The same applies to the operator: a report that a column advanced names what was read.
 
-This applies equally to the operator: when the lead reports a column advanced, it names what it read.
+Where the phase's declared evidence includes an audit verdict, the lead reads the verdict **file** under `.moai/reports/<card-id>/` per `.moai/docs/audit-artifact-convention.md`. An absent, unreadable, or uncommitted verdict file is a gap exactly like a missing progress record.
 
-When a phase's declared evidence should include an audit verdict (a plan-audit or sync-audit), the lead reads the verdict **file** itself under `.moai/reports/<card-id>/` per the audit-artifact convention (`.moai/docs/audit-artifact-convention.md`). An absent, unreadable, or uncommitted verdict file is a **gap** exactly like a missing progress record — the card stays put and the lead reports why.
-
-**The final PASS/FAIL verdict is the lead's**, read from the evidence on disk and never delegated to the lane that produced the work — the executor judging its own output is the failure shape this section exists to prevent. Why the division is structural: `kanban-dispatch-detail.md` § The verdict's home.
+**The final PASS/FAIL verdict is the lead's**, read from the evidence on disk and never delegated to the lane that produced the work — the executor judging its own output is the failure shape this section prevents. Why the division is structural: `kanban-dispatch-detail.md` § The verdict's home.
 
 ### CodeRabbit is not read from `gh pr checks`
 
@@ -140,13 +132,7 @@ When a phase's declared evidence should include an audit verdict (a plan-audit o
 
 2. A `Merge Risk:` line exists whose `` up to `<prefix>` `` matches the current `headRefOid`.
 
-Anything else is a gap, not a pass. `Review rate limited` means the review never started; a card carrying it does not leave `sync`. (Endpoint choice + why branch protection is not the lever: `kanban-dispatch-detail.md` § CodeRabbit endpoint measurement.)
-
-## Review lens selection
-
-`review` is not one thing. The lead picks the lenses from what the card actually changed and states the choice in the `sync` dispatch, so the gate runs that review rather than re-deriving it. Lens table: `kanban-dispatch-detail.md` § Review lens selection.
-
-`--deep --patch` is opt-in twice over: `--patch` drafts a fix and is absent unless the operator asked for it. Do not add it on the lead's own initiative.
+Anything else is a gap, not a pass. `Review rate limited` means the review never started, and a card carrying it does not leave `sync`. (Endpoint choice, and why branch protection is not the lever: `kanban-dispatch-detail.md` § CodeRabbit endpoint measurement.)
 
 ## The `/clear` handoff between phases
 
@@ -163,24 +149,27 @@ The lead's own session is cleared the same way, between cards rather than phases
 | Need | Form |
 |---|---|
 | Create a harness-neutral L1 worktree | `moai worktree new <name>` |
-| Work inside the worktree in this session | `moai cc -w <name>` |
-| Work inside it with Codex | `moai codex -w <name>` |
-| Open it in a new window, keeping this session | `moai cc -w <name> --spawn` |
-| Re-enter one from the current session | `EnterWorktree(<path>)` |
-| Leave it | `ExitWorktree` |
-| Dispose it once the card's work has merged on the remote | L2 tree (`~/.moai/worktrees/…`) only: `moai worktree done`. An L1 tree (`.claude/worktrees/…`) is disposed via the session-end keep/remove prompt — `moai worktree` never registers it |
+| Start Claude Code in a MoAI tree | `moai cc -w <absolute-worktree-path>` (`--spawn` for a new window; Claude may ask to approve an external worktree path) |
+| Start a Claude-native worktree | `moai cc -w <name>` creates or enters `.claude/worktrees/<name>` |
+| Re-enter or leave in the current Claude Code session | `EnterWorktree(<path>)` / `ExitWorktree` |
+| Start a Codex app chat in a new tree | Select Worktree and the starting branch in the new chat |
+| Start a Codex CLI session in an existing tree | `moai codex -w <name-or-absolute-path>`; the flag never creates a tree |
+| Work in a tree from the current Codex session | `git -C <absolute-worktree-path>` and direct file operations there |
+| Dispose it once the card's work has merged on the remote | L2 tree (`~/.moai/worktrees/…`) only: `moai worktree done`. Project L1 trees under `.claude/worktrees/` or `.moai/worktrees/` are removed only after their sessions end |
 
-`moai worktree new <name>` is the sole harness-neutral creation verb. It creates an L1 tree through MoAI's shared materializer but does not enter it; entry remains the launcher's job. Never use a raw `git worktree add`: it bypasses MoAI's name validation, base selection, and post-create Git configuration.
+`moai worktree new <name>` creates a harness-neutral L1 tree at `.moai/worktrees/<name>` without entering it. A Codex factory lane uses it for each card, then launches the interactive card session with `codex -C <absolute-worktree-path>`; it does not use `moai codex -w` to create the tree. The Codex app's Worktree selector creates a Codex-managed tree separately. A raw `git worktree add` bypasses MoAI's name validation, base selection, and post-create Git configuration.
 
-[HARD] **`moai worktree done` closes L2 trees only.** A worktree entered by short name (`moai cc -w <name>` → `.claude/worktrees/<name>/`) is L1 and is never in `moai worktree`'s registry — `done` on it is a category error, not a disposal. L1 disposal is the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` once the session is done. The full L1/L2 boundary lives in `worktree-integration.md` § Terminology Glossary.
+[HARD] A Codex factory agent must never call `moai cc -w`, `EnterWorktree`, or `ExitWorktree`; those are Claude Code entry mechanisms. `moai codex -w` starts another Codex process and only accepts an existing tree, so an agent already running in Codex works through its current session instead of nesting a launcher.
+
+[HARD] **`moai worktree done` closes L2 trees only.** Project trees under `.claude/worktrees/` and `.moai/worktrees/` are L1 and absent from its registry. `done` refuses both roots. Remove an L1 tree only after its session ends and its branch is integrated, using the session-end prompt where available or `git worktree unlock` + `git worktree remove`. The full L1/L2 boundary lives in `worktree-integration.md` § Terminology Glossary.
 
 [HARD] **The card's branch is unpushed, so its worktree is the work's only instance.** Dispose of no worktree — L1 or L2 — until the lead has integrated the branch and the remote merge has landed; disposal before that destroys the only copy.
 
-[HARD] **A new card starts in a new worktree — exit any previous one first.** `EnterWorktree(<card-id>)` cannot run from inside a worktree session: a lane still anchored in the previous card's tree MUST `ExitWorktree` back to the primary checkout before creating the new one, or it does the new card's work on the old card's branch. The fresh tree is created from the remote default branch rather than reused — reuse without a `/clear` in between carries the old card's context and untracked artifacts into the new card. Where the new card depends on a prior card's unmerged code, merge the prior branch inside the new worktree; a dependency is a reason to merge, never to reuse the tree.
+[HARD] **A new card starts in a new worktree.** A Claude Code lane anchored in the previous card's tree MUST `ExitWorktree` before entering the next one. A Codex factory lane ends the previous interactive card session and the launcher starts the next one with `codex -C <new-tree>`; the agent does not call Claude's entry tools. The fresh tree is created from the configured base rather than reused — reuse carries the old card's context and untracked artifacts into the new card. Where the new card depends on a prior card's unmerged code, merge the prior branch inside the new worktree; a dependency is a reason to merge, never to reuse the tree.
 
 [HARD] **Card worktree branches carry the `WT-` prefix and a descriptive slug — never the card id.** `EnterWorktree(<name>)` auto-names its branch `worktree-<name>`, which is unwieldy and invisible to the worktree lifecycle tooling. Immediately after creating a card worktree, rename in place with `git branch -m WT-<slug>`: safe inside a worktree (tree, lock, anchoring unaffected); `moai cc -w <name>` re-entry resolves by tree name, not branch name, and the rename switches the disposal path (`worktree-integration.md` § Terminology Glossary).
 
-The slug is derived from what the card **does**, so a reader of `git branch` or a pull-request list learns the change without a lookup — `WT-t0` says nothing, `WT-branch-naming` says what landed. Its shape:
+The slug says what the card **does**, so a reader of `git branch` or a pull-request list learns the change without a lookup — `WT-t0` says nothing, `WT-branch-naming` says what landed. Its shape:
 
 | Property | Rule |
 |---|---|
@@ -190,7 +179,7 @@ The slug is derived from what the card **does**, so a reader of `git branch` or 
 | Alphabet | Lowercase `a-z`, `0-9`, and `-` |
 | Card id | MUST NOT appear — not as a prefix, a suffix, or a token |
 
-The **worktree directory keeps the card id** (`.claude/worktrees/<card-id>`). Only the branch takes the slug; the tree path is what the disposal tooling and the evidence path key on.
+The **worktree directory keeps the card id** (`.moai/worktrees/<card-id>` for new MoAI trees; `.claude/worktrees/<card-id>` for existing Claude-native trees) — only the branch takes the slug, and the tree path is what the disposal tooling and the evidence path key on.
 
 [HARD] **Dropping the id from the branch moves traceability onto three other carriers, and all three are mandatory.** The branch name no longer answers "which card was this?", so nothing may rely on reading it back:
 
@@ -198,13 +187,13 @@ The **worktree directory keeps the card id** (`.claude/worktrees/<card-id>`). On
 - Every commit on the branch names the card id in its message, so `git log` recovers the card without the branch name.
 - The evidence path keeps the card id (`.moai/reports/<card-id>/verdict.md`).
 
-A lane that reports a branch name without also reporting its card id has not reported the card. Merges reference the `WT-` name; the lead maps it back through the `card:` field it dispatched.
+A lane reporting a branch name without its card id has not reported the card. Merges reference the `WT-` name; the lead maps it back through the dispatched `card:` field.
 
 [HARD] **A card-delivering pull request's PR title MUST carry the delivering card id** — and this does not contradict the branch-name rule above: the branch name is read by a human scanning `git branch` and wants a slug; the PR title is read by a machine and wants the id. Traceability therefore rests on **four** carriers rather than the three above — the dispatch `card:` field, the commit message, the evidence path, and the PR title — the only one a resolver can read off the pull-request surface itself, where the dispatch `card:` field (also machine-readable) does not reach.
 
-The obligation binds card-delivering pull requests only; a release, batch, or maintenance pull request delivers no card and carries none. It binds pull requests opened after it lands — nothing is retitled. Rationale and the carrier measurements: `kanban-dispatch-detail.md` § The PR-title carrier.
+It binds card-delivering pull requests only — a release, batch, or maintenance PR delivers no card and carries none — and only those opened after it landed; nothing is retitled. Rationale and carrier measurements: `kanban-dispatch-detail.md` § The PR-title carrier.
 
-The lead dispatches this rather than assuming it: each instruction names the worktree and says to drive it with `git -C <path>` rather than `cd` — a `cd` inside a compound command lasts for that invocation only, so the next command silently reads the wrong tree. A companion reporting it worked in the shared checkout is a fault to report, not a detail to tidy up (rationale: `kanban-dispatch-detail.md` § Isolation rationale).
+The lead dispatches this rather than assuming it: each instruction names the worktree and says to drive it with `git -C <path>` rather than `cd` — a `cd` inside a compound command lasts for that invocation only, so the next command silently reads the wrong tree. A companion reporting it worked in the shared checkout is a fault to report (rationale: `kanban-dispatch-detail.md` § Isolation rationale).
 
 [HARD] **Inside a worktree session that `<path>` is the worktree's own absolute path**, and the dispatch writes it that way. Measured on Claude Code 2.1.275: the guard refuses `-C .`, a relative path, a path computed at runtime, and a path outside this worktree — three distinct refusal messages, none of them a runtime defect. Plain git (pipes and `&&` chains included), `git -C <own absolute path>`, and `--git-dir=<own .git>` pass; so does `cd <own worktree> && git …`, which the rule above still advises against for the reason it gives. The refusal is git-scoped: a command carrying no git passes with substitution, loops, redirects, or a heredoc body naming a git command.
 
@@ -215,12 +204,6 @@ The lead dispatches this rather than assuming it: each instruction names the wor
 [HARD] **Never spawn background load.** Where a verification genuinely needs contention, the load must be cleanup-guaranteed — kills registered with the test framework's cleanup hook, or a `timeout` wrapper that bounds the process from outside. A trailing `kill` is not cleanup; it is a line the process may never reach, and every path that ends early leaves the load running.
 
 **A verification recipe that spawns processes is itself a hazard, and gets reviewed as one.** The fault belongs to the dispatcher who wrote and approved the recipe, not to the lane that ran it as given.
-
-### Serializing a heavy run across lanes
-
-Where two lanes would otherwise start the same heavy verification at once, a lane takes a lease on a named resource first: `moai slot acquire --resource <name> --max-duration <bound>`, and `moai slot release --resource <name>` when the run ends. `moai slot status` says who holds it. This is the same record-and-liveness shape as the integration window, kept deliberately separate from it — its own record, its own lock, its own config key — because a merge window and a heavy-run window are different resources and one window for both makes each wait on the other.
-
-The bound is the holder's own declaration: past it another lane may take the resource over without `--force`, so a forgotten release costs the bound and not the batch. A PreToolUse guard that refuses a matching command while another live session holds the resource exists, and is **opt-in and off by default** (`workflow.slot_lease.enabled`); the verbs work whatever that flag says. Full surface: `.claude/rules/moai/workflow/resource-slot-lease.md`.
 
 ### The env-isolated verification form
 
@@ -244,45 +227,41 @@ Moving the command into a script file is not a workaround — the guard cannot r
 
 [HARD] A lane whose card has passed verification does not wait for the lead to integrate it: the lane merges its own branch into the batch's release branch (`release/vX.Y.Z`) itself. The lead provisions the release branch and its worktree at batch start; from then on, every integration is lane work.
 
-Two measured constraints — git checks one branch out in exactly one worktree, and the worktree-session guard refuses a cross-tree `git -C` — make the lane enter the release worktree rather than drive it remotely.
+Two measured constraints make the lane enter the release worktree rather than drive it remotely: git checks one branch out in exactly one worktree, and the worktree-session guard refuses a cross-tree `git -C`.
 
 - **One integration surface.** The release branch lives in exactly one worktree — the one the lead provisioned; a lane never checks it out in its own tree.
-- **Enter, do not redirect.** The lane switches into the release worktree with `EnterWorktree(<release-worktree-path>)` and runs the merge there as a plain `git merge --no-ff <WT-branch>`. A cross-tree `git -C <release-worktree> merge` from inside the lane's own worktree is refused by the worktree-session guard; entering is the sanctioned path.
-- **Return the same way.** `ExitWorktree` returns the session to the primary checkout, not to the lane's own worktree — after the merge, the lane re-enters its card worktree with `EnterWorktree(<own-path>)` before continuing card work.
-- **One integrating session at a time — and an empty `MERGE_HEAD` does not establish that.** The release worktree is the serialization point. `git rev-parse -q --verify MERGE_HEAD` printing nothing is a NECESSARY condition, never a sufficient one: it prints nothing just as readily while another lane is mid-resolution — between a `git merge --abort` and its retry, or before it has staged anything. Reading that silence as "the tree is free" is precisely what lets two lanes overlap, and the overlap is invisible until one of them commits.
+- **Enter, do not redirect.** The lane switches in with `EnterWorktree(<release-worktree-path>)` and runs a plain `git merge --no-ff <WT-branch>` there. A cross-tree `git -C <release-worktree> merge` is refused by the worktree-session guard; entering is the sanctioned path.
+- **Return the same way.** `ExitWorktree` returns to the primary checkout, not to the lane's own worktree — the lane re-enters its card worktree with `EnterWorktree(<own-path>)` before continuing.
+- **One integrating session at a time — and an empty `MERGE_HEAD` does not establish that.** The release worktree is the serialization point. `git rev-parse -q --verify MERGE_HEAD` printing nothing is NECESSARY, never sufficient: it prints nothing just as readily while another lane is mid-resolution — between a `git merge --abort` and its retry, or before it has staged anything. Reading that silence as "the tree is free" is what lets two lanes overlap, invisibly until one commits.
 
     [HARD] **Serialize by the recorded hold and the announcement, not by probe.** A lane takes the window BEFORE entering the release worktree: `moai integration acquire --name <lane> --card <card-id>` records the hold, `moai integration status` says who has it, `moai integration release` gives it back when the completion report is sent. Taking a live holder's window needs `--force`, which records what it displaced — deliberate, never quiet. The recorded hold is what the PreToolUse guard reads to refuse a second lane's `git merge`; the deny layer is opt-in (`workflow.integration_lock.enabled`, default off), the record works either way. The announcement to the lead rides alongside it — the lead broadcasts the hold and names the holder, and no other session enters until that lane's completion report lands. The probe stays — a lane that finds a merge in progress anyway exits, waits, and retries — but it is the last check, never the first.
 
     [HARD] **`acquire` asserts the caller's tree first.** It checks tracked `.claude/settings.json`, preserves a modified copy outside that tree, and reports — every time; only the refusal is opt-in, and nothing is ever restored. Detail: `kanban-dispatch-detail.md` § The pre-merge settings-drift assertion.
 
     [HARD] **Re-read `HEAD` immediately before the commit and again before the push.** `AGENTS.md` §2 binds this everywhere; the release worktree is where it has already earned its keep. A repair commit landing from another lane moves the release `HEAD` mid-resolution, and the pre-commit re-read is the only thing between that and a merge built on a tree that no longer exists.
-- **Conflicts belong to the lane that owns the change.** The integrating lane resolves the conflicts its own merge raises. A conflict it cannot resolve — a semantic clash with another lane's already-merged change — is a blocker report to the lead, not a forced merge.
-- **Push the release branch; the batch pull request stays with the lead.** After its merge, the lane pushes the release branch (`git push origin release/vX.Y.Z`). A rejected push means another lane pushed first — fetch, integrate the fetched release branch, and push again; never force. Until the pushed release branch's batch PR merges, the disposal rule above still binds.
+- **Conflicts belong to the lane that owns the change.** The integrating lane resolves what its own merge raises. A conflict it cannot resolve — a semantic clash with another lane's merged change — is a blocker report to the lead, not a forced merge.
+- **Push the release branch; the batch pull request stays with the lead.** The lane pushes `git push origin release/vX.Y.Z`. A rejected push means another lane pushed first — fetch, integrate, push again; never force. Until that branch's batch PR merges, the disposal rule above still binds.
 
 The completion signal is the branch name, merge SHA, and evidence path.
 
 ## Factory Mode — the card travels whole
 
-`moai cc -f <N>` launches one lead plus lane sessions labelled `worker-1..worker-N` ("lane" stays the prose term for the slot; `worker-<n>` is the session label, and `-f worker` joins as the next free one). No per-column companions: the lead routes each card WHOLE to a free lane, which carries it `plan → run → sync` in-session — serial stages, each stage's execution spawned as sub-agents — and owns it end to end. A/B/C collapse into the lane (the class still names which ceremonies are skipped — `plan` for A and B — but no card changes sessions). Queue, evidence-reading, integration, and disposal rules are unchanged. Mechanics: `kanban-dispatch-detail.md` § Factory in-lane 3-stage.
+`moai cc -f <N>` launches one lead plus lane sessions labelled `worker-1..worker-N`; the lead routes each card WHOLE to a free lane, which carries it `plan → run → sync` in-session and owns it end to end. Mechanics, label convention, and the A/B/C collapse: `kanban-dispatch-mechanics.md` § Factory Mode mechanics · `kanban-dispatch-detail.md` § Factory in-lane 3-stage.
 
 **Lane spawn authority (standing).** A lane is an orchestrator for its card: it spawns, with the Agent tool and WITHOUT asking, the specialist the Status Transition Ownership Matrix names for the stage at hand — plan-phase artifacts to `manager-spec`, implementation to `manager-develop`, sync-phase docs to `manager-docs`, plus the chain's prescribed auditors. Depth-1 only: agents a lane spawns are leaf workers and never spawn further agents. This authority is part of the lane's bootstrap context (the SessionStart join notice carries it verbatim), and it is deliberately NOT a per-dispatch grant: the runtime's default "don't spawn unless the user asks" guidance does not bind a lane, and a lead's approval can neither grant nor revoke what the bootstrap already grants — the lead is not the lane's user. The same authority binds kanban companion sessions. Observed defect this closes: two lanes refused to spawn `manager-spec` under the default guidance and fell back to editing SPEC bodies directly, routing artifact writes around the ownership matrix.
 
 ## Boundaries — what this protocol does not do
 
-- **No board state store.** The queue is a plain file; column position is held by the lead within a card's run and re-derived from SPEC status after a clear. Persistent board state, per-card worktree lifecycle, WIP limits, and card/frontmatter reconciliation are separate work, not assumed here.
-- **No session spawning.** The lead addresses sessions the operator launched — it never creates one (sub-agents are not sessions).
 - **No gate bypass.** Kickoff approval before run-phase entry, and every other approval gate, is unchanged by being inside a dispatch cycle.
 - **No question delegation.** Companion sessions return blocker reports; the operator is asked by the lead, through `AskUserQuestion`.
-- **A role with no live session is a fault, not a wait.** The lead reports the empty role and the waiting card; silently holding it presents as a hang, the most expensive failure shape to diagnose. Empty means a complete listing showed none; an incomplete one is a gap, not an empty role (detail companion).
+
+The three remaining boundaries — no board state store, no session spawning, and an empty role being a fault rather than a wait: `kanban-dispatch-mechanics.md` § Boundaries.
 
 ## Cross-references
 
 - `.claude/rules/moai/core/askuser-protocol.md` — the question channel the lead uses for card selection and `/clear` prompts
 - `.claude/rules/moai/core/verification-claim-integrity.md` — why completion is read rather than trusted
-- `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format — what a companion returns when it cannot proceed
-- `.claude/rules/moai/workflow/worktree-integration.md` — the L1/L2 worktree tiers, their lifetimes, and the disposal contract
-- `.claude/skills/moai/workflows/gtd.md` — the backlog queue surface
-- `.claude/agents/moai/manager-lead.md` — the coordination agent the lead session works through
+- The remaining four (blocker-report format, worktree tiers, the queue surface, `manager-lead`): `kanban-dispatch-mechanics.md` § Cross-references
 
 ---
 

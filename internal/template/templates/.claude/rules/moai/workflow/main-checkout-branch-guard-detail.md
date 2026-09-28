@@ -92,9 +92,9 @@ flows. The hook applies the doctrine conditionally.
   fires on its own — but each is read from a different place, and the two differ
   in whether a spawned agent can reach them:
   - `AgentType` arrives in the hook payload, and Claude Code **does** populate
-    `agent_type` for an agent spawned through the Agent tool — measured against
-    a live runtime, in the same snake_case spelling `HookInput` decodes, carrying
-    the spawn name verbatim rather than a
+    `agent_type` for an agent spawned through the Agent tool — measured
+    against a live runtime, in the same snake_case
+    spelling `HookInput` decodes, carrying the spawn name verbatim rather than a
     catalog name. The identity axis therefore fires for a spawned agent named
     `manager-git`, and the three-arm check confirmed the deny is suppressed for
     it while firing for a main-session payload and for a spawned agent under any
@@ -147,9 +147,53 @@ flows. The hook applies the doctrine conditionally.
   the opt-in gate: when disabled the guard returns allow BEFORE reaching any
   uncertainty path, so fail-open is trivially preserved.
 
+Origin: the branch-guard doctrine specification (its full requirement set).
+Opt-in gate + pattern refinement: the follow-on opt-in specification
+(its requirement set).
+Discriminant directory correction: the discriminant-correction specification
+(its requirement set).
+
 
 
 ---
 
 Classification: Lazy companion — rationale and implementation detail only. Every prohibition and
 every permitted-operation clause stays in `main-checkout-branch-guard.md`.
+
+## Why This Matters
+
+`HEAD` is shared mutable state and a read of it goes stale immediately, so a branch switch, reset,
+or stash in the primary checkout reaches every concurrent reader mid-operation. Neither resulting
+failure raises an error; both surface later as "commits I did not make" or "my changes are on the
+wrong branch". The full mechanism: `main-checkout-branch-guard-detail.md` § Why the race is quiet.
+
+## Procedure — Isolate With a Worktree
+
+When work needs a different branch, use the launcher instead of switching — `moai worktree new` creates the tree, `moai cc -w` enters it:
+
+```bash
+moai worktree new <name>
+moai cc -w <name>
+git -C <worktree-path> add <paths>
+git -C <worktree-path> commit -m "<message>"
+```
+
+Drive the worktree with `git -C <path>` rather than `cd`. A `cd` inside a compound command changes the shell's working directory for that invocation only, which makes subsequent commands read the wrong tree if the pattern is copied without the `cd`.
+
+Remove the worktree when the branch is merged:
+
+```bash
+git worktree remove <worktree-path>
+```
+
+## Verification
+
+```bash
+# Confirm the intended tree before writing to it
+git -C <worktree-path> rev-parse --show-toplevel
+git -C <worktree-path> branch --show-current
+
+# Confirm the push shipped exactly what was intended
+git rev-list --count --left-right origin/<branch>...HEAD
+```
+

@@ -30,7 +30,7 @@ func TestBindLaunchPendingCannotOverwriteConcurrentAuthoritativePeer(t *testing.
 			t.Fatal("test process identity unavailable")
 		}
 		pending, err := sessionStore.RegisterLaunchPending(context.Background(), Peer{
-			ProjectKey: "project", RunID: run, Backend: "codex", Role: "lead", Slot: "lead",
+			ProjectKey: "project", RunID: run, Backend: "codex", Role: "leader", Slot: "leader",
 			PID: os.Getpid(), ProcessStart: start,
 		})
 		if err != nil {
@@ -60,7 +60,7 @@ func TestBindLaunchPendingCannotOverwriteConcurrentAuthoritativePeer(t *testing.
 		if bindErr != nil || promptErr != nil {
 			t.Fatalf("iteration %d bind=%v prompt=%v", i, bindErr, promptErr)
 		}
-		got, err := sessionStore.ResolveLane(context.Background(), "lead")
+		got, err := sessionStore.ResolveLane(context.Background(), "leader")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -86,7 +86,7 @@ func TestBindLaunchPendingRejectsOwnerMismatch(t *testing.T) {
 		t.Fatal("test process identity unavailable")
 	}
 	pending, err := s.RegisterLaunchPending(context.Background(), Peer{
-		ProjectKey: "project", RunID: run, Backend: "codex", Role: "lead", Slot: "lead",
+		ProjectKey: "project", RunID: run, Backend: "codex", Role: "leader", Slot: "leader",
 		PID: os.Getpid(), ProcessStart: start,
 	})
 	if err != nil {
@@ -118,7 +118,7 @@ func TestRollbackLaunchPendingDeletesOnlyExactProvisionalOwner(t *testing.T) {
 	start := homestate.CurrentProcessFingerprint()
 	pending, err := s.RegisterLaunchPending(context.Background(), Peer{
 		ProjectKey: homestate.ProjectKey(root), RunID: "run-rollback", Backend: "codex",
-		Role: "lead", Slot: "lead", PID: os.Getpid(), ProcessStart: start,
+		Role: "leader", Slot: "leader", PID: os.Getpid(), ProcessStart: start,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -140,7 +140,7 @@ func TestRollbackLaunchPendingDeletesOnlyExactProvisionalOwner(t *testing.T) {
 	if deleted, err := s.RollbackLaunchPending(context.Background(), pending); err != nil || deleted {
 		t.Fatalf("rebound row rollback=(%v,%v)", deleted, err)
 	}
-	resolved, err := s.ResolveLane(context.Background(), "lead")
+	resolved, err := s.ResolveLane(context.Background(), "leader")
 	if err != nil || resolved.SessionUUID != "actual-session" {
 		t.Fatalf("bound row removed: peer=%+v err=%v", resolved, err)
 	}
@@ -156,7 +156,7 @@ func TestRollbackLaunchPendingDeletesOnlyExactProvisionalOwner(t *testing.T) {
 		t.Fatalf("exact pending rollback=(%v,%v)", deleted, err)
 	}
 	status, err = s.Status(context.Background())
-	if err != nil || len(status.Lanes) != 1 || status.Lanes[0].Slot != "lead" {
+	if err != nil || len(status.Lanes) != 1 || status.Lanes[0].Slot != "leader" {
 		t.Fatalf("exact rollback affected other row: status=%+v err=%v", status, err)
 	}
 }

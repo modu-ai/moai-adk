@@ -20,7 +20,7 @@ func newCardFlowFixture(t *testing.T, leadBackend string) *dispatchFixture {
 	f := &dispatchFixture{t: t, root: t.TempDir(), live: map[string]bool{}, slots: map[string]string{}}
 	f.open()
 	t.Cleanup(func() { _ = f.s.Close() })
-	f.lead = registerBackend(f, leadBackend, "lead", "lead", "lead-s1", "start-lead")
+	f.lead = registerBackend(f, leadBackend, "leader", "leader", "lead-s1", "start-lead")
 	return f
 }
 

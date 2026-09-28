@@ -87,7 +87,7 @@ func TestRuntimeCensusCountsLiveAndIgnoresProvablyDead(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if census.ActiveSessions != 1 || census.ActiveFactoryWorkers != 1 || census.ActiveMCPServers != 1 || census.Total() != 3 || census.Fingerprint != "1:1:1" {
+	if census.ActiveSessions != 1 || census.ActiveFactoryLanes != 1 || census.ActiveMCPServers != 1 || census.Total() != 3 || census.Fingerprint != "1:1:1" {
 		t.Fatalf("census=%+v", census)
 	}
 }

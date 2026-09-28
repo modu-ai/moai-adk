@@ -23,3 +23,16 @@ Keeping the static preload minimal and routing the rest through explicit `Skill(
 
 Classification: Lazy companion — cost rationale only. Every routing obligation stays in
 `skill-routing.md`.
+
+## 2. Agent Obligation
+
+Agents whose `tools:` include `Skill` load conditional skills per the "Conditional Skill Loading" section in their own body. The static `skills:` frontmatter preload stays at most 2 entries per agent (token diet — progressive disclosure does the rest). An agent loads a conditional skill when its body's stated trigger situation actually arises, not preemptively.
+
+## 3. Rationale
+
+The two loading mechanisms have different cost profiles: `skills:` frontmatter injects each listed
+skill's full body at spawn, paid whether or not it is used, while `Skill()` pays ~100 tokens of
+metadata always and the ~5K body only on invocation. Keeping the static preload minimal and routing
+the rest through explicit `Skill()` instructions converts a fixed per-spawn cost into a
+pay-per-use one. Worked detail: `skill-routing-detail.md`.
+

@@ -136,14 +136,55 @@ type glmMessage struct {
 	Content string `json:"content"`
 }
 
-// glmMessagesResponse is the Anthropic-compatible response envelope. Only the
-// text content block is consumed; the audit prompt constrains the model to
-// emit a JSON ReviewOutput there.
+// glmMessagesResponse is the Anthropic-compatible response envelope. The audit
+// path consumes only the text content block (the audit prompt constrains the
+// model to emit a JSON ReviewOutput there); the task path also reads Model.
+//
+// Model is the envelope's top-level `model` field, held RAW so that a value of
+// any JSON type never fails the decode of the rest of the envelope — a string
+// field would turn a numeric `model` into an Unmarshal error and push the
+// audit path to VerdictInconclusive. glmServedModel adopts it only when it is
+// a JSON string.
+//
+// @MX:NOTE: [AUTO] Model stays json.RawMessage — this envelope is shared by glm_task and glm_audit (parseGLMReview); a typed field would let a non-string `model` fail the audit decode.
+// @MX:SPEC: SPEC-MCP-SERVED-MODEL-001
 type glmMessagesResponse struct {
+	Model   json.RawMessage `json:"model"`
 	Content []struct {
 		Type string `json:"type"`
 		Text string `json:"text"`
 	} `json:"content"`
+}
+
+// glmServedModel returns the model id the z.ai response envelope names for
+// itself: the top-level `model` field when it is a JSON string, trimmed of
+// surrounding whitespace. An absent, null, non-string, or empty field yields
+// "" — "no served model" — and is never an error (SPEC-MCP-SERVED-MODEL-001
+// REQ-MSM-001).
+func glmServedModel(raw json.RawMessage) string {
+	var served string
+	if len(raw) == 0 || json.Unmarshal(raw, &served) != nil {
+		return ""
+	}
+	return strings.TrimSpace(served)
+}
+
+// glmServedModelWarning returns the served-model warning for a COMPLETED GLM
+// call, or "" when none is due. It warns when the served model differs from
+// the requested model under case-insensitive comparison, or when the response
+// named no served model. Neither id is rewritten before the comparison — no
+// suffix stripping, no alias matching — beyond trimming surrounding
+// whitespace (REQ-MSM-004, REQ-MSM-005). The warning is informational only:
+// it never changes a task's status, output, or error.
+func glmServedModelWarning(requested, served string) string {
+	requested = strings.TrimSpace(requested)
+	if served == "" {
+		return fmt.Sprintf("served model not reported: the z.ai response named no model for requested model %q", requested)
+	}
+	if strings.EqualFold(requested, served) {
+		return ""
+	}
+	return fmt.Sprintf("served model %q differs from requested model %q", served, requested)
 }
 
 // resolveGLMAuditModelEffort resolves the GLM audit {model, effort} pair

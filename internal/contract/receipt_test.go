@@ -160,7 +160,9 @@ func TestValidateKickoffReceipt_AC016(t *testing.T) {
 			r["jev_answer"] = receiptJevAnswer("approve", 0.71)
 			return r
 		}, "llm", "llm", "", "", RefuseReceiptInvalid},
-		{"(t) Jev answered and both approve", jevReceipt, "llm+jev", "llm+jev", "", "", RefuseReceiptRequiresHuman},
+		// Row (t) — the interim A1 rule — is replaced by
+		// sign.TestSignInterimRuleFollowsDoctrine (both doctrine states) and
+		// by the doctrine rows of TestReceiptOutcome.
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -177,7 +179,7 @@ func TestValidateKickoffReceipt_AC016(t *testing.T) {
 					t.Fatalf("accepted receipt returned nil")
 				}
 				var ok bool
-				code, ok = ReceiptOutcome(r)
+				code, ok = ReceiptOutcome(r, false)
 				if ok {
 					code = ""
 				}
@@ -222,7 +224,7 @@ func TestValidateKickoffReceipt_Accepted(t *testing.T) {
 			if code != "" || r == nil {
 				t.Fatalf("refusal %q (receipt %v), want accepted", code, r)
 			}
-			if refusal, ok := ReceiptOutcome(r); !ok || refusal != "" {
+			if refusal, ok := ReceiptOutcome(r, false); !ok || refusal != "" {
 				t.Errorf("ReceiptOutcome = (%q, %v), want approve", refusal, ok)
 			}
 			if r.SpecID != fixtureSpecID || r.LLMAnswer == nil {
@@ -422,19 +424,23 @@ func TestReceiptOutcome(t *testing.T) {
 	cases := []struct {
 		name     string
 		r        *KickoffReceipt
+		doctrine bool
 		wantCode string
 		wantOK   bool
 	}{
-		{"approve", &KickoffReceipt{EffectiveDecider: "llm", LLMAnswer: answer("approve"), Outcome: "approve"}, "", true},
-		{"reject", &KickoffReceipt{EffectiveDecider: "llm", Outcome: "reject"}, RefuseReceiptRejected, false},
-		{"human", &KickoffReceipt{EffectiveDecider: "llm", Outcome: "human"}, RefuseReceiptRequiresHuman, false},
-		{"llm+jev approve (interim rule)", &KickoffReceipt{EffectiveDecider: "llm+jev", Outcome: "approve"}, RefuseReceiptRequiresHuman, false},
-		{"llm+jev reject (interim rule first)", &KickoffReceipt{EffectiveDecider: "llm+jev", Outcome: "reject"}, RefuseReceiptRequiresHuman, false},
-		{"unknown outcome", &KickoffReceipt{EffectiveDecider: "llm", Outcome: "maybe"}, RefuseReceiptInvalid, false},
-		{"nil receipt", nil, RefuseReceiptInvalid, false},
+		{"approve", &KickoffReceipt{EffectiveDecider: "llm", LLMAnswer: answer("approve"), Outcome: "approve"}, false, "", true},
+		{"reject", &KickoffReceipt{EffectiveDecider: "llm", Outcome: "reject"}, false, RefuseReceiptRejected, false},
+		{"human", &KickoffReceipt{EffectiveDecider: "llm", Outcome: "human"}, false, RefuseReceiptRequiresHuman, false},
+		{"llm+jev approve (interim rule)", &KickoffReceipt{EffectiveDecider: "llm+jev", Outcome: "approve"}, false, RefuseReceiptRequiresHuman, false},
+		{"llm+jev reject (interim rule first)", &KickoffReceipt{EffectiveDecider: "llm+jev", Outcome: "reject"}, false, RefuseReceiptRequiresHuman, false},
+		{"llm+jev approve (doctrine amended)", &KickoffReceipt{EffectiveDecider: "llm+jev", Outcome: "approve"}, true, "", true},
+		{"llm+jev reject (doctrine amended)", &KickoffReceipt{EffectiveDecider: "llm+jev", Outcome: "reject"}, true, RefuseReceiptRejected, false},
+		{"llm+jev human (doctrine amended)", &KickoffReceipt{EffectiveDecider: "llm+jev", Outcome: "human"}, true, RefuseReceiptRequiresHuman, false},
+		{"unknown outcome", &KickoffReceipt{EffectiveDecider: "llm", Outcome: "maybe"}, false, RefuseReceiptInvalid, false},
+		{"nil receipt", nil, false, RefuseReceiptInvalid, false},
 	}
 	for _, tc := range cases {
-		code, ok := ReceiptOutcome(tc.r)
+		code, ok := ReceiptOutcome(tc.r, tc.doctrine)
 		if code != tc.wantCode || ok != tc.wantOK {
 			t.Errorf("%s: (%q, %v), want (%q, %v)", tc.name, code, ok, tc.wantCode, tc.wantOK)
 		}

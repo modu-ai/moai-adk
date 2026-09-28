@@ -9,7 +9,7 @@ import (
 )
 
 // resolveDowngradeLocale picks the language of the `moai update --version`
-// downgrade confirmation (design.md §6, lead decision Q3): the project's
+// downgrade confirmation (design.md §6, leader decision Q3): the project's
 // language.yaml conversation_language when cwd is a MoAI project, else the
 // active profile's conversation language, else English. A language.yaml that
 // is missing, unreadable, or lacks the key counts as no project value.

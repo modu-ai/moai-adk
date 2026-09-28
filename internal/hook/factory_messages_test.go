@@ -33,11 +33,11 @@ func factoryHookFixture(t *testing.T) (string, *factorymsg.Store, factorymsg.Pee
 	}
 	t.Cleanup(func() { _ = s.Close() })
 	start := "test-start"
-	p := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "claude", Role: "worker", Slot: "agent-1", SessionUUID: "receiver", Generation: 1, PID: os.Getpid(), ProcessStart: start}
+	p := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "claude", Role: "lane", Slot: "lane-1", SessionUUID: "receiver", Generation: 1, PID: os.Getpid(), ProcessStart: start}
 	from := p
 	from.Backend = "codex"
-	from.Role = "lead"
-	from.Slot = "lead"
+	from.Role = "leader"
+	from.Slot = "leader"
 	from.SessionUUID = "sender"
 	if from, e = s.RegisterPeer(context.Background(), from); e != nil {
 		t.Fatal(e)
@@ -75,14 +75,14 @@ func TestFactoryHookBenchmarkBudget(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			sender := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex", Role: "lead", Slot: "lead", SessionUUID: "sender", Generation: 1, PID: os.Getpid(), ProcessStart: "bench"}
+			sender := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex", Role: "leader", Slot: "leader", SessionUUID: "sender", Generation: 1, PID: os.Getpid(), ProcessStart: "bench"}
 			if sender, err = s.RegisterPeer(context.Background(), sender); err != nil {
 				t.Fatal(err)
 			}
 			receivers := make([]factorymsg.Peer, sessions)
 			for i := range receivers {
 				receivers[i] = sender
-				receivers[i].Role, receivers[i].Slot, receivers[i].SessionUUID = "worker", fmt.Sprintf("agent-%d", i+1), fmt.Sprintf("receiver-%d", i+1)
+				receivers[i].Role, receivers[i].Slot, receivers[i].SessionUUID = "lane", fmt.Sprintf("lane-%d", i+1), fmt.Sprintf("receiver-%d", i+1)
 				if receivers[i], err = s.RegisterPeer(context.Background(), receivers[i]); err != nil {
 					t.Fatal(err)
 				}
@@ -126,7 +126,7 @@ func TestFactoryHookBenchmarkBudget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	probePeer := factorymsg.Peer{ProjectKey: homestate.ProjectKey(probeRoot), RunID: probeRun, Backend: "claude", Role: "worker", Slot: "agent-1", SessionUUID: "probe", Generation: 1, PID: os.Getpid(), ProcessStart: "bench"}
+	probePeer := factorymsg.Peer{ProjectKey: homestate.ProjectKey(probeRoot), RunID: probeRun, Backend: "claude", Role: "lane", Slot: "lane-1", SessionUUID: "probe", Generation: 1, PID: os.Getpid(), ProcessStart: "bench"}
 	if probePeer, err = probeStore.RegisterPeer(context.Background(), probePeer); err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +174,7 @@ func TestFactoryHookBenchmarkBudget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "claude", Role: "worker", Slot: "agent-1", SessionUUID: "receiver", Generation: 1, PID: os.Getpid(), ProcessStart: "bench"}
+	p := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "claude", Role: "lane", Slot: "lane-1", SessionUUID: "receiver", Generation: 1, PID: os.Getpid(), ProcessStart: "bench"}
 	if p, err = s.RegisterPeer(context.Background(), p); err != nil {
 		t.Fatal(err)
 	}
@@ -246,7 +246,7 @@ func TestFactorySessionStartRebindsLaunchPendingPeer(t *testing.T) {
 	closeOnCleanup(t, "factory message broker", s)
 	pending, err := s.RegisterLaunchPending(context.Background(), factorymsg.Peer{
 		ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex",
-		Role: "lead", Slot: "lead", PID: owner, ProcessStart: start,
+		Role: "leader", Slot: "leader", PID: owner, ProcessStart: start,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -256,7 +256,7 @@ func TestFactorySessionStartRebindsLaunchPendingPeer(t *testing.T) {
 	if !strings.Contains(notice, "factory messaging bound") {
 		t.Fatalf("SessionStart did not bind pending endpoint: %q", notice)
 	}
-	bound, err := s.ResolveLane(context.Background(), "lead")
+	bound, err := s.ResolveLane(context.Background(), "leader")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -279,14 +279,14 @@ func TestFactorySessionStartCannotRotateAuthoritativeUserPromptBinding(t *testin
 	if notice := registerFactorySessionStartPeer(context.Background(), &alias); !strings.Contains(notice, "factory messaging bound") {
 		t.Fatalf("initial SessionStart did not bind pending peer: %q", notice)
 	}
-	afterAlias := factoryPeerSnapshot(t, s, "lead")
+	afterAlias := factoryPeerSnapshot(t, s, "leader")
 	if afterAlias.SessionUUID != alias.SessionID || afterAlias.Generation != pending.Generation+1 {
 		t.Fatalf("SessionStart alias bind=%+v pending=%+v", afterAlias, pending)
 	}
 	if notice := registerFactorySessionStartPeer(context.Background(), &alias); notice != "" {
 		t.Fatalf("idempotent SessionStart returned notice: %q", notice)
 	}
-	if after := factoryPeerSnapshot(t, s, "lead"); !reflect.DeepEqual(after, afterAlias) {
+	if after := factoryPeerSnapshot(t, s, "leader"); !reflect.DeepEqual(after, afterAlias) {
 		t.Fatalf("idempotent SessionStart rewrote peer: before=%+v after=%+v", afterAlias, after)
 	}
 
@@ -294,7 +294,7 @@ func TestFactorySessionStartCannotRotateAuthoritativeUserPromptBinding(t *testin
 	if notice := registerFactoryUserPromptPeer(context.Background(), input); !strings.Contains(notice, "factory messaging bound") {
 		t.Fatalf("UserPromptSubmit did not rotate alias to actual session: %q", notice)
 	}
-	authoritative := factoryPeerSnapshot(t, s, "lead")
+	authoritative := factoryPeerSnapshot(t, s, "leader")
 	if authoritative.SessionUUID != input.SessionID || authoritative.Generation != afterAlias.Generation+1 {
 		t.Fatalf("authoritative bind=%+v alias=%+v", authoritative, afterAlias)
 	}
@@ -302,14 +302,14 @@ func TestFactorySessionStartCannotRotateAuthoritativeUserPromptBinding(t *testin
 	if notice := registerFactorySessionStartPeer(context.Background(), &alias); notice != "" {
 		t.Fatalf("delayed SessionStart returned notice after authoritative bind: %q", notice)
 	}
-	if after := factoryPeerSnapshot(t, s, "lead"); !reflect.DeepEqual(after, authoritative) {
+	if after := factoryPeerSnapshot(t, s, "leader"); !reflect.DeepEqual(after, authoritative) {
 		t.Fatalf("delayed SessionStart rewrote authoritative peer: before=%+v after=%+v", authoritative, after)
 	}
 
 	if notice := registerFactoryUserPromptPeer(context.Background(), input); notice != "" {
 		t.Fatalf("idempotent UserPromptSubmit returned notice: %q", notice)
 	}
-	if after := factoryPeerSnapshot(t, s, "lead"); !reflect.DeepEqual(after, authoritative) {
+	if after := factoryPeerSnapshot(t, s, "leader"); !reflect.DeepEqual(after, authoritative) {
 		t.Fatalf("idempotent UserPromptSubmit rewrote peer: before=%+v after=%+v", authoritative, after)
 	}
 }
@@ -332,7 +332,7 @@ func factoryPromptPendingFixture(t *testing.T) (string, string, *factorymsg.Stor
 	t.Cleanup(func() { _ = s.Close() })
 	pending, err := s.RegisterLaunchPending(context.Background(), factorymsg.Peer{
 		ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex",
-		Role: "lead", Slot: "lead", PID: owner, ProcessStart: start,
+		Role: "leader", Slot: "leader", PID: owner, ProcessStart: start,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -412,7 +412,7 @@ func bindAcrossTurns(t *testing.T, s *factorymsg.Store, input *HookInput) (facto
 			notice = out.HookSpecificOutput.AdditionalContext
 		}
 		notices = append(notices, notice)
-		bound, resolveErr := s.ResolveLane(context.Background(), "lead")
+		bound, resolveErr := s.ResolveLane(context.Background(), "leader")
 		if resolveErr == nil {
 			return bound, notices
 		}
@@ -499,7 +499,7 @@ func TestFactoryUserPromptSubmitExhaustedBudgetStaysDegraded(t *testing.T) {
 		if !strings.Contains(notice, "factory messaging degraded") {
 			t.Fatalf("turn %d: exhausted budget was not reported: notice=%q", turn, notice)
 		}
-		if _, resolveErr := s.ResolveLane(context.Background(), "lead"); resolveErr == nil {
+		if _, resolveErr := s.ResolveLane(context.Background(), "leader"); resolveErr == nil {
 			t.Fatalf("turn %d: bound despite a budget no bind can meet", turn)
 		}
 	}
@@ -510,7 +510,7 @@ func TestFactoryUserPromptSubmitExhaustedBudgetStaysDegraded(t *testing.T) {
 	if _, err := NewUserPromptSubmitHandler(nil).Handle(context.Background(), input); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.ResolveLane(context.Background(), "lead"); err != nil {
+	if _, err := s.ResolveLane(context.Background(), "leader"); err != nil {
 		t.Fatalf("lane did not bind once the budget was restored: %v", err)
 	}
 }
@@ -551,7 +551,7 @@ func TestFactoryUserPromptSubmitRecoversAfterFirstTurnFailure(t *testing.T) {
 	if !strings.Contains(notice, "factory messaging degraded") {
 		t.Fatalf("forced failure did not report degradation: notice=%q", notice)
 	}
-	if _, resolveErr := s.ResolveLane(context.Background(), "lead"); resolveErr == nil {
+	if _, resolveErr := s.ResolveLane(context.Background(), "leader"); resolveErr == nil {
 		t.Fatal("forced-failure turn bound anyway — the premise of this test is broken")
 	}
 
@@ -568,14 +568,14 @@ func TestFactoryUserPromptSubmitRecoversAfterFirstTurnFailure(t *testing.T) {
 
 func TestFactoryUserPromptSubmitRebindsLaunchPendingPeer(t *testing.T) {
 	_, _, s, pending, input := factoryPromptPendingFixture(t)
-	before := factoryPeerSnapshot(t, s, "lead")
+	before := factoryPeerSnapshot(t, s, "leader")
 	for _, prompt := range []string{"", " \t\n "} {
 		in := *input
 		in.Prompt = prompt
 		if _, err := NewUserPromptSubmitHandler(nil).Handle(context.Background(), &in); err != nil {
 			t.Fatal(err)
 		}
-		if after := factoryPeerSnapshot(t, s, "lead"); !reflect.DeepEqual(after, before) {
+		if after := factoryPeerSnapshot(t, s, "leader"); !reflect.DeepEqual(after, before) {
 			t.Fatalf("empty prompt rewrote pending peer: before=%+v after=%+v", before, after)
 		}
 	}
@@ -636,7 +636,7 @@ func TestFactoryBoundUserPromptSubmitDoesNotRewritePeer(t *testing.T) {
 		t.Fatalf("precondition: could not bind the lane directly: bound=%v err=%v", didBind, err)
 	}
 	sender := bound
-	sender.Role, sender.Slot, sender.SessionUUID = "worker", "agent-1", "sender-session"
+	sender.Role, sender.Slot, sender.SessionUUID = "lane", "lane-1", "sender-session"
 	if sender, err = s.RegisterPeer(context.Background(), sender); err != nil {
 		t.Fatal(err)
 	}
@@ -652,7 +652,7 @@ func TestFactoryBoundUserPromptSubmitDoesNotRewritePeer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	beforeUpdated := factoryPeerSnapshot(t, s, "lead").UpdatedAt
+	beforeUpdated := factoryPeerSnapshot(t, s, "leader").UpdatedAt
 	input.Prompt = "Check the existing factory inbox."
 	out, err := NewUserPromptSubmitHandler(nil).Handle(context.Background(), input)
 	if err != nil {
@@ -662,7 +662,7 @@ func TestFactoryBoundUserPromptSubmitDoesNotRewritePeer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	afterUpdated := factoryPeerSnapshot(t, s, "lead").UpdatedAt
+	afterUpdated := factoryPeerSnapshot(t, s, "leader").UpdatedAt
 	if before != after || beforeUpdated != afterUpdated {
 		t.Fatalf("bound prompt rewrote peer: before=%+v/%s after=%+v/%s", before, beforeUpdated, after, afterUpdated)
 	}

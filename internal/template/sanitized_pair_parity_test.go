@@ -94,6 +94,16 @@ var sanitizedPairPaths = []string{
 	// doctrine preserved verbatim). Doctrine parity is enforced here, NOT by
 	// byte-parity (rule_template_mirror_test.go).
 	".claude/rules/moai/workflow/main-checkout-branch-guard.md",
+	// Detail companions (card t1283). Every *-detail.md under the rules tree sat
+	// outside BOTH guards: this registry is an explicit list, and the byte-parity
+	// allowlist in rule_template_mirror_test.go is explicit too, so "no failure"
+	// meant "unmeasured", not "held". The four below are the ones whose two copies
+	// actually differ, so byte-parity cannot apply and doctrine parity is the
+	// right invariant. Measured at enrolment: mirror present, copies differ.
+	".claude/rules/moai/core/moai-constitution-detail.md",
+	".claude/rules/moai/core/verification-claim-integrity-detail.md",
+	".claude/rules/moai/workflow/cross-session-messaging-detail.md",
+	".claude/rules/moai/workflow/main-checkout-branch-guard-detail.md",
 }
 
 // tokenNormalizer pairs a regex matching an intentionally-divergent internal

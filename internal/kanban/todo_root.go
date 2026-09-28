@@ -67,7 +67,7 @@ var HomeDirFn = paths.Home
 // repository the launch context sits in, or a home-based fallback when git
 // cannot answer.
 //
-// The queue is the delegation channel between sessions — the lead, the
+// The queue is the delegation channel between sessions — the leader, the
 // foreman loop, and the operator's picks all read one queue. A linked
 // worktree holding its own .moai/state would fork that channel, so the
 // primary is resolved through the repository itself: git's common directory

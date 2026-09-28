@@ -280,7 +280,7 @@ func InitDependencies() {
 	deps.HookRegistry.Register(hook.NewPostCompactHandler())
 	deps.HookRegistry.Register(hook.NewInstructionsLoadedHandler())
 	deps.HookRegistry.Register(hook.NewStopFailureHandler())
-	deps.HookRegistry.Register(hook.NewSubagentStopHandler())
+	deps.HookRegistry.Register(hook.NewSubagentStopHandlerWithConfig(deps.Config))
 	deps.HookRegistry.Register(hook.NewTaskCreatedHandlerWithConfig(deps.Config))
 	deps.HookRegistry.Register(hook.NewPermissionDeniedHandler())
 	deps.HookRegistry.Register(hook.NewConfigChangeHandler())

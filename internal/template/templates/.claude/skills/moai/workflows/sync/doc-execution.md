@@ -95,6 +95,10 @@ For each SPEC associated with the current sync:
 - [ ] User has confirmed PR description draft
 <!-- moai:evolvable-end -->
 
+<!-- moai:contract-mode-start id="contract-doc-scope" -->
+Where `workflow.autonomy.mode: contract` — the documentation scope approval (`gate-sync-2`) is not asked: regenerate the documents the divergence report names within the contract's ownership, and escalate when the scope would reach outside it. See `.claude/rules/moai/workflow/contract-autonomy.md` § Gate disposition.
+
+<!-- moai:contract-mode-end -->
 Tool: AskUserQuestion
 
 Display sync plan report and present options:

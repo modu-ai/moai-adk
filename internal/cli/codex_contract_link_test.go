@@ -4,6 +4,12 @@ package cli
 // AC-CI-005 (link creation, 10), AC-CI-006 (three-run idempotency, 12),
 // AC-CI-007 (local-file separation, 4).
 //
+// SPEC-INSTRUCTION-FILES-UNIFY-001 (REQ-IFU-002) inverts the local-file
+// rule: CLAUDE.md now carries two executing imports — @AGENTS.md first,
+// @AGENTS.local.md as its final import — while AGENTS.md still imports
+// nothing. "Already linked" therefore means BOTH links are present, and a
+// user CLAUDE.md missing either gets only the missing line(s) appended.
+//
 // Disciplines: fixture-specific EXPECTED BYTE SEQUENCES compared for FULL
 // equality on every cell that touches an existing file (partial-substring
 // checks pass an implementation that appends a provenance block it was
@@ -43,6 +49,14 @@ type codexLinkFixture struct {
 var userAgentsBody = []byte("# user agents notes\n\ninstruction prose for agents\n")
 var userClaudeBody = []byte("# user claude notes\n\ninstruction prose for claude\n")
 
+// codexBothLinks is the canonical tail the contract appends to a CLAUDE.md
+// that carries neither link: the contract import first, the local import last.
+var codexBothLinks = codexLinkAgentsDirective + "\n" + codexTestLocalImportDirective + "\n"
+
+func codexWithTail(body []byte, tail string) []byte {
+	return append(append([]byte(nil), body...), []byte(tail)...)
+}
+
 func codexLinkFixtures() []codexLinkFixture {
 	return []codexLinkFixture{
 		{
@@ -59,7 +73,7 @@ func codexLinkFixtures() []codexLinkFixture {
 			name:              "i3_claude_only",
 			claude:            userClaudeBody,
 			wantAgentsRenames: 1, wantClaudeRenames: 1,
-			wantClaudeExact: append(append([]byte(nil), userClaudeBody...), []byte(codexLinkAgentsDirective+"\n")...),
+			wantClaudeExact: codexWithTail(userClaudeBody, codexBothLinks),
 		},
 		{
 			name:              "i4_both_no_link",
@@ -67,51 +81,73 @@ func codexLinkFixtures() []codexLinkFixture {
 			claude:            userClaudeBody,
 			wantAgentsRenames: 0, wantClaudeRenames: 1,
 			wantAgentsExact: userAgentsBody,
-			wantClaudeExact: append(append([]byte(nil), userClaudeBody...), []byte(codexLinkAgentsDirective+"\n")...),
+			wantClaudeExact: codexWithTail(userClaudeBody, codexBothLinks),
 		},
 		{
 			name:              "i5a_line_front",
 			agents:            userAgentsBody,
-			claude:            []byte("@AGENTS.md\n\ntitle body follows\n"),
+			claude:            []byte("@AGENTS.md\n@AGENTS.local.md\n\ntitle body follows\n"),
 			wantAgentsRenames: 0, wantClaudeRenames: 0,
 			wantAgentsExact: userAgentsBody,
-			wantClaudeExact: []byte("@AGENTS.md\n\ntitle body follows\n"),
+			wantClaudeExact: []byte("@AGENTS.md\n@AGENTS.local.md\n\ntitle body follows\n"),
 		},
 		{
 			name:              "i5b_line_middle",
 			agents:            userAgentsBody,
-			claude:            []byte("# title\n\n@AGENTS.md\n\nbody\n"),
+			claude:            []byte("# title\n\n@AGENTS.md\n\nbody\n@AGENTS.local.md\n"),
 			wantAgentsRenames: 0, wantClaudeRenames: 0,
 			wantAgentsExact: userAgentsBody,
-			wantClaudeExact: []byte("# title\n\n@AGENTS.md\n\nbody\n"),
+			wantClaudeExact: []byte("# title\n\n@AGENTS.md\n\nbody\n@AGENTS.local.md\n"),
 		},
 		{
 			name:              "i5c_line_end",
 			agents:            userAgentsBody,
-			claude:            []byte("# title\n\nbody\n@AGENTS.md\n"),
+			claude:            []byte("# title\n\nbody\n@AGENTS.md\n@AGENTS.local.md\n"),
 			wantAgentsRenames: 0, wantClaudeRenames: 0,
 			wantAgentsExact: userAgentsBody,
-			wantClaudeExact: []byte("# title\n\nbody\n@AGENTS.md\n"),
+			wantClaudeExact: []byte("# title\n\nbody\n@AGENTS.md\n@AGENTS.local.md\n"),
 		},
 		{
 			name:              "i5d_crlf",
 			agents:            userAgentsBody,
-			claude:            []byte("# title\r\n\r\n@AGENTS.md\r\n\r\nbody\r\n"),
+			claude:            []byte("# title\r\n\r\n@AGENTS.md\r\n\r\nbody\r\n@AGENTS.local.md\r\n"),
 			wantAgentsRenames: 0, wantClaudeRenames: 0,
 			wantAgentsExact: userAgentsBody,
-			wantClaudeExact: []byte("# title\r\n\r\n@AGENTS.md\r\n\r\nbody\r\n"),
+			wantClaudeExact: []byte("# title\r\n\r\n@AGENTS.md\r\n\r\nbody\r\n@AGENTS.local.md\r\n"),
 		},
 		{
 			name:              "i6_fenced_only",
 			claude:            []byte("# title\n\n```\n@AGENTS.md\n```\n\nbody\n"),
 			wantAgentsRenames: 1, wantClaudeRenames: 1,
-			wantClaudeExact: append(append([]byte(nil), []byte("# title\n\n```\n@AGENTS.md\n```\n\nbody\n")...), []byte(codexLinkAgentsDirective+"\n")...),
+			wantClaudeExact: codexWithTail([]byte("# title\n\n```\n@AGENTS.md\n```\n\nbody\n"), codexBothLinks),
 		},
 		{
 			name:              "i7_quoted_only",
 			claude:            []byte("# title\n\n> @AGENTS.md\n\nbody\n"),
 			wantAgentsRenames: 1, wantClaudeRenames: 1,
-			wantClaudeExact: append(append([]byte(nil), []byte("# title\n\n> @AGENTS.md\n\nbody\n")...), []byte(codexLinkAgentsDirective+"\n")...),
+			wantClaudeExact: codexWithTail([]byte("# title\n\n> @AGENTS.md\n\nbody\n"), codexBothLinks),
+		},
+		{
+			// Linked under the pre-unification rule (the contract import only):
+			// the local import is the one missing line, appended after it.
+			name:              "i8_agents_link_only",
+			agents:            userAgentsBody,
+			claude:            []byte("# title\n\n@AGENTS.md\n\nbody\n"),
+			wantAgentsRenames: 0, wantClaudeRenames: 1,
+			wantAgentsExact: userAgentsBody,
+			wantClaudeExact: []byte("# title\n\n@AGENTS.md\n\nbody\n@AGENTS.local.md\n"),
+		},
+		{
+			// Only the local import is present: the contract can only append,
+			// so the contract import lands AFTER it. Append-only preserves the
+			// user's bytes (REQ-CI-006) at the cost of the canonical order; the
+			// counts still hold at exactly one each.
+			name:              "i9_local_link_only",
+			agents:            userAgentsBody,
+			claude:            []byte("# title\n\n@AGENTS.local.md\n"),
+			wantAgentsRenames: 0, wantClaudeRenames: 1,
+			wantAgentsExact: userAgentsBody,
+			wantClaudeExact: []byte("# title\n\n@AGENTS.local.md\n@AGENTS.md\n"),
 		},
 	}
 }
@@ -197,9 +233,14 @@ func TestCodexContractLinkCreation(t *testing.T) {
 			if got := codexTestExecImports(t, filepath.Join(proj, codexClaudeRelPath), codexLinkAgentsDirective); got != 1 {
 				t.Errorf("executing @AGENTS.md imports = %d, want 1", got)
 			}
-			// no local file in the I-fixtures → nothing may reference it
+			// REQ-IFU-002: CLAUDE.md imports the local file exactly once, even
+			// with no local file present (an unresolved import is skipped);
+			// the neutral AGENTS.md never imports it.
+			if got := codexTestExecImports(t, filepath.Join(proj, codexClaudeRelPath), codexTestLocalImportDirective); got != 1 {
+				t.Errorf("executing @AGENTS.local.md imports in CLAUDE.md = %d, want 1", got)
+			}
 			if got := codexTestExecImports(t, filepath.Join(proj, codexAgentsRelPath), codexTestLocalImportDirective); got != 0 {
-				t.Errorf("executing @AGENTS.local.md imports = %d, want 0", got)
+				t.Errorf("executing @AGENTS.local.md imports in AGENTS.md = %d, want 0", got)
 			}
 
 			// created AGENTS.md: non-empty with at least one non-space char
@@ -307,6 +348,9 @@ func TestCodexContractIdempotent(t *testing.T) {
 				if got := codexTestCountImportsInString(t, claude, codexLinkAgentsDirective); got != 1 {
 					t.Errorf("snapshot %d: executing @AGENTS.md imports = %d, want 1", i+1, got)
 				}
+				if got := codexTestCountImportsInString(t, claude, codexTestLocalImportDirective); got != 1 {
+					t.Errorf("snapshot %d: executing @AGENTS.local.md imports in CLAUDE.md = %d, want 1", i+1, got)
+				}
 				agents := s[codexAgentsRelPath]
 				if got := codexTestCountImportsInString(t, agents, codexTestLocalImportDirective); got != 0 {
 					t.Errorf("snapshot %d: executing @AGENTS.local.md imports = %d, want 0", i+1, got)
@@ -334,8 +378,10 @@ func codexRunContractSnap(t *testing.T, proj string, snap func() map[string]stri
 // ─── AC-CI-007 — local-file separation (4 cells) ───────────────────────────
 
 // TestCodexLocalSeparation: from EACH shared entry file, walk the transitive
-// closure of EXECUTING imports. Codex-only guidance must not be reachable and
-// no shared instruction file may point at AGENTS.local.md. The launcher test
+// closure of EXECUTING imports. Since SPEC-INSTRUCTION-FILES-UNIFY-001
+// (REQ-IFU-002) the local file is reachable from CLAUDE.md through exactly
+// one directive, and from AGENTS.md through none — the neutral contract must
+// not pull a local file into Codex's discovered chain. The launcher test
 // separately proves that the same bytes reach Codex as developer_instructions.
 func TestCodexLocalSeparation(t *testing.T) {
 	type reachCase struct {
@@ -362,21 +408,27 @@ func TestCodexLocalSeparation(t *testing.T) {
 
 				contents, directiveTargets := codexTestWalkClosure(t, proj, entry)
 
-				// The local sentinel must not enter either shared closure.
+				// CLAUDE.md reaches the local file; AGENTS.md never does.
+				wantDirectives := 0
+				if entry == codexClaudeRelPath {
+					wantDirectives = 1
+				}
+				wantReachable := wantDirectives == 1 && localBytes != nil
+
 				reachable := false
 				for _, content := range contents {
 					if strings.Contains(content, codexSentinelLocal) {
 						reachable = true
 					}
 				}
-				if reachable {
-					t.Errorf("entry %s: Codex-only sentinel leaked into the shared import closure", entry)
+				if reachable != wantReachable {
+					t.Errorf("entry %s: local sentinel reachable = %v, want %v", entry, reachable, wantReachable)
 				}
 
 				// directive count toward the local file across the WHOLE closure
 				localAbs := filepath.Join(proj, codexLocalInstructionName)
-				if got := directiveTargets[localAbs]; got != 0 {
-					t.Errorf("entry %s: directives pointing at %s = %d, want 0", entry, codexLocalInstructionName, got)
+				if got := directiveTargets[localAbs]; got != wantDirectives {
+					t.Errorf("entry %s: directives pointing at %s = %d, want %d", entry, codexLocalInstructionName, got, wantDirectives)
 				}
 
 				// the local file is byte-untouched
@@ -512,4 +564,78 @@ func codexTestCountImportsInString(t *testing.T, content, directive string) int 
 		}
 	}
 	return n
+}
+
+// ─── SPEC-INSTRUCTION-FILES-UNIFY-001 AC-IFU-012 — local import matrix ────
+
+// TestCodexContractLink_LocalImportMatrix asserts both import directions of
+// REQ-IFU-002 in one place, across every starting shape of CLAUDE.md and with
+// the local file both present and absent: after the contract runs, CLAUDE.md
+// carries exactly one executing @AGENTS.local.md import and AGENTS.md carries
+// none. Dropping the AGENTS.md direction would let the neutral contract pull a
+// local file into Codex's discovered chain; dropping the CLAUDE.md direction
+// would leave the import unreached. In every shape below the two links end up
+// in canonical order — @AGENTS.md before @AGENTS.local.md, the local import
+// last — whether the contract wrote them or found them already there.
+func TestCodexContractLink_LocalImportMatrix(t *testing.T) {
+	claudeShapes := []struct {
+		name   string
+		claude []byte // nil = absent, so the contract creates it
+	}{
+		{name: "claude_absent", claude: nil},
+		{name: "claude_unlinked", claude: userClaudeBody},
+		{name: "claude_agents_link_only", claude: []byte("# t\n\n@AGENTS.md\n\nbody\n")},
+		{name: "claude_both_links", claude: []byte("# t\n\n@AGENTS.md\n\nmechanism\n\n@AGENTS.local.md\n")},
+	}
+	for _, shape := range claudeShapes {
+		for _, localPresent := range []bool{true, false} {
+			t.Run(fmt.Sprintf("claude=%s/local_present=%v", shape.name, localPresent), func(t *testing.T) {
+				_, proj := codexNewSandbox(t)
+				if shape.claude != nil {
+					if err := os.WriteFile(filepath.Join(proj, codexClaudeRelPath), shape.claude, 0o644); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if localPresent {
+					if err := os.WriteFile(filepath.Join(proj, codexLocalInstructionName), []byte("local "+codexSentinelLocal+"\n"), 0o644); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if err := secureCodexInstructionContract(codexContractRequest{ProjectRoot: proj}); err != nil {
+					t.Fatalf("contract failed: %v", err)
+				}
+
+				claudePath := filepath.Join(proj, codexClaudeRelPath)
+				agentsPath := filepath.Join(proj, codexAgentsRelPath)
+				if got := codexTestExecImports(t, claudePath, codexTestLocalImportDirective); got != 1 {
+					t.Errorf("executing @AGENTS.local.md imports in CLAUDE.md = %d, want 1", got)
+				}
+				if got := codexTestExecImports(t, agentsPath, codexTestLocalImportDirective); got != 0 {
+					t.Errorf("executing @AGENTS.local.md imports in AGENTS.md = %d, want 0", got)
+				}
+				if got := codexTestExecImports(t, claudePath, codexLinkAgentsDirective); got != 1 {
+					t.Errorf("executing @AGENTS.md imports in CLAUDE.md = %d, want 1", got)
+				}
+
+				data, err := os.ReadFile(claudePath)
+				if err != nil {
+					t.Fatal(err)
+				}
+				dirs := codexTestExecDirectives(t, data)
+				agentsAt, localAt := -1, -1
+				for i, d := range dirs {
+					switch d {
+					case codexAgentsRelPath:
+						agentsAt = i
+					case codexLocalInstructionName:
+						localAt = i
+					}
+				}
+				if agentsAt < 0 || localAt < 0 || agentsAt > localAt || localAt != len(dirs)-1 {
+					t.Errorf("executing directive order = %v, want %s before %s and %s last",
+						dirs, codexAgentsRelPath, codexLocalInstructionName, codexLocalInstructionName)
+				}
+			})
+		}
+	}
 }

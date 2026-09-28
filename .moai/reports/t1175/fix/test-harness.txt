@@ -1,0 +1,16 @@
+ok  	github.com/modu-ai/moai-adk/internal/harness	1.156s
+ok  	github.com/modu-ai/moai-adk/internal/harness/capture	0.269s
+ok  	github.com/modu-ai/moai-adk/internal/harness/cellguard	1.102s
+ok  	github.com/modu-ai/moai-adk/internal/harness/cluster	0.735s
+ok  	github.com/modu-ai/moai-adk/internal/harness/curator	0.870s
+ok  	github.com/modu-ai/moai-adk/internal/harness/delegationmap	0.328s
+ok  	github.com/modu-ai/moai-adk/internal/harness/harnessrun	0.306s
+ok  	github.com/modu-ai/moai-adk/internal/harness/proposalgen	0.736s
+ok  	github.com/modu-ai/moai-adk/internal/harness/rosterguard	26.980s
+ok  	github.com/modu-ai/moai-adk/internal/harness/router	0.334s
+ok  	github.com/modu-ai/moai-adk/internal/harness/routing	0.699s
+ok  	github.com/modu-ai/moai-adk/internal/harness/safety	0.728s
+ok  	github.com/modu-ai/moai-adk/internal/harness/seeds	0.616s
+ok  	github.com/modu-ai/moai-adk/internal/harness/throttle	0.652s
+ok  	github.com/modu-ai/moai-adk/internal/harness/tier	0.641s
+ok  	github.com/modu-ai/moai-adk/internal/harness/v4manifest	0.298s

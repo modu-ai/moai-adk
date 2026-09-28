@@ -25,9 +25,9 @@ func configWithLang(lang string) ConfigProvider {
 func TestKanbanLocalesCoverEveryField(t *testing.T) {
 	for lang, m := range kanbanLocales {
 		fields := map[string]string{
-			"leadHeader":       m.leadHeader,
-			"leadIdentity":     m.leadIdentity,
-			"leadManual":       m.leadManual,
+			"leaderHeader":     m.leaderHeader,
+			"leaderIdentity":   m.leaderIdentity,
+			"leaderManual":     m.leaderManual,
 			"glmSubstitute":    m.glmSubstitute,
 			"backendRecommend": m.backendRecommend,
 			"agentFanout":      m.agentFanout,
@@ -48,11 +48,11 @@ func TestKanbanLocalesCoverEveryField(t *testing.T) {
 		// lead label, and the socket path silently vanish from that locale's
 		// notice.
 		for name, value := range map[string]string{
-			"leadHeader":    m.leadHeader,
-			"leadIdentity":  m.leadIdentity,
-			"leaderSocket":  m.leaderSocket,
-			"specLine":      m.specLine,
-			"companionJoin": m.companionJoin,
+			"leaderHeader":   m.leaderHeader,
+			"leaderIdentity": m.leaderIdentity,
+			"leaderSocket":   m.leaderSocket,
+			"specLine":       m.specLine,
+			"companionJoin":  m.companionJoin,
 		} {
 			if !strings.Contains(value, "%s") {
 				t.Errorf("locale %q: field %s lost its %%s verb: %q", lang, name, value)
@@ -129,14 +129,14 @@ func TestKanbanNoticePreservesProtocolTokensInEveryLocale(t *testing.T) {
 			t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-kanban/tjpzpl")
 			t.Setenv(config.EnvMoaiKanbanSpec, "SPEC-FOO-001")
 
-			got := kanbanBootstrapNotice("", lang)
+			got := kanbanBootstrapNotice("", "", lang)
 			for _, want := range []string{
 				"moai cc -k --name plan",
 				"moai glm -k --name run",
 				"moai cc -k --name sync",
 				"moai glm -k --name",
 				"`judge`",
-				"`worker-N`",
+				"`lane-N`",
 				"/tmp/moai-socket-kanban/tjpzpl",
 				"SPEC-FOO-001",
 				"`moai todo`",
@@ -162,7 +162,7 @@ func TestKanbanLeadNoticeBlockLayout(t *testing.T) {
 			t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-kanban/tjq2bd")
 			t.Setenv(config.EnvMoaiKanbanSettingsInjected, "1")
 
-			blocks := strings.Split(strings.TrimRight(kanbanBootstrapNotice("", lang), "\n"), "\n\n")
+			blocks := strings.Split(strings.TrimRight(kanbanBootstrapNotice("", "", lang), "\n"), "\n\n")
 			if len(blocks) != 5 {
 				t.Fatalf("expected 5 blank-separated blocks, got %d:\n%q", len(blocks), blocks)
 			}
@@ -204,7 +204,7 @@ func TestKanbanLeadNoticeSPECKeepsItsOwnLine(t *testing.T) {
 			t.Setenv(config.EnvMoaiKanbanID, "tjq2bd")
 			t.Setenv(config.EnvMoaiKanbanSpec, "SPEC-FOO-001")
 
-			for _, line := range strings.Split(kanbanBootstrapNotice("", lang), "\n") {
+			for _, line := range strings.Split(kanbanBootstrapNotice("", "", lang), "\n") {
 				if !strings.Contains(line, "SPEC-FOO-001") {
 					continue
 				}
@@ -248,7 +248,7 @@ func TestSessionStartKanbanChannelsCarryTheirOwnLanguage(t *testing.T) {
 
 	// Agent channel: English prose, regardless of conversation_language.
 	ac := out.HookSpecificOutput.AdditionalContext
-	if !strings.Contains(ac, "Kanban Mode: run tjpzpl, lead session.") {
+	if !strings.Contains(ac, "Kanban Mode: run tjpzpl, leader session.") {
 		t.Errorf("AdditionalContext is not English — the agent-facing copy must not follow conversation_language:\n%s", ac)
 	}
 	if strings.Contains(ac, "칸반 모드") {
@@ -278,7 +278,7 @@ func TestKanbanRecommendationTableMatchesLaunchLines(t *testing.T) {
 			t.Setenv(config.EnvMoaiKanban, "1")
 			t.Setenv(config.EnvMoaiKanbanID, "tjrec")
 
-			got := kanbanLeadNotice("tjrec", "", lang)
+			got := kanbanLeaderNotice("tjrec", "", lang)
 			for _, role := range kanban.CompanionRoles {
 				line := "moai " + kanban.CompanionLauncher(role) + " -k --name " + role
 				if !strings.Contains(got, line) {
@@ -294,8 +294,8 @@ func TestKanbanRecommendationTableMatchesLaunchLines(t *testing.T) {
 						lang, role, row[1], kanban.CompanionLauncher(role))
 				}
 			}
-			if !regexp.MustCompile(`(?m)^  lead\s+→ GLM$`).MatchString(got) {
-				t.Errorf("locale %q: recommendation table omits the lead → GLM row:\n%s", lang, got)
+			if !regexp.MustCompile(`(?m)^  leader\s+→ GLM$`).MatchString(got) {
+				t.Errorf("locale %q: recommendation table omits the leader → GLM row:\n%s", lang, got)
 			}
 			if strings.Contains(got, "--name lead") {
 				t.Errorf("locale %q: notice prints a lead launch line — the lead has none:\n%s", lang, got)

@@ -145,6 +145,10 @@ The default pipeline declares these gates explicitly. Each is implemented by its
 3. **Phase 4 Mode Selection (4-mode catalog)** — autonomous selection per `orchestration-mode-selection.md` §A, logged to progress.md; strictly downstream of Implementation Kickoff Approval. **sweep (workflow fan-out) operational entry**: selectable ONLY when the §C.3 capability gate holds — Implementation Kickoff Approval passed + all preferences collected + scope ≥ ~30 files with one uniform mechanical transform and no inter-file dependency + runtime ≥ v2.1.154 with workflows not disabled. Before launch, record the selection + gate confirmations in `progress.md` §F Phase 4 Mode Selection; then launch the fan-out from the orchestrator (scaling, not nesting) — workflow agents cannot prompt the user, so every needed decision must already be drained.
 4. **Sync-audit gate (sync-auditor)** — after Phase 5: the sync-auditor subagent scores the sync output in a fresh context (4-dimension). FAIL/INCONCLUSIVE halts the chain — the pipeline never auto-completes past a failing gate. On FAIL, the sync-auditor verdict carries a structured defect-list (finding id / file+location / severity / required fix); the orchestrator routes fixes directly (orchestrator-direct edit or a single re-delegation) and the confirming re-audit is scoped to the enumerated defect delta rather than a from-scratch full re-audit — within the existing iteration ceilings. Verdict authority stays with the sync-auditor: the delta scope reduces re-audit cost, and it never substitutes an orchestrator self-assessment for an auditor verdict.
 
+<!-- moai:contract-mode-start id="contract-pipeline-gates" -->
+Where `workflow.autonomy.mode: contract` — gate 2 is the contract signature: `moai contract kickoff-check <SPEC-ID> --card <card>` must exit 0 and no Kickoff question is emitted; a plan-audit FAIL is repaired automatically up to `budget.audit_retries` and then escalated. See `.claude/rules/moai/workflow/contract-autonomy.md` § The signing gate.
+
+<!-- moai:contract-mode-end -->
 ## Phase 4: Implementation (TDD or DDD based on development_mode)
 
 [HARD] Agent delegation mandate: ALL implementation tasks MUST be delegated to specialized agents. NEVER execute implementation directly, even after auto compact.
@@ -268,6 +272,10 @@ Mode selection:
    - Full-pipeline completion close: when a `full-pipeline` contract completes successfully with no genuine pending decision, close with a clean completion statement and NO manufactured next-step question — the askuser-protocol § Completion-Report Next-Step Discipline "close with NO question" clause is the full-pipeline default. A genuine next-step decision, when one actually exists, still rides AskUserQuestion.
    - `single-phase` contract completions keep the existing "(Recommended)" next-step chain question unchanged (Step 14 — the chain never fires silently)
 
+<!-- moai:contract-mode-start id="contract-merged-round" -->
+Where `workflow.autonomy.mode: contract` — Step 11.3 carries no Kickoff question: the merged round asks only the execution-shape question, and run-phase entry waits for `moai contract kickoff-check` to exit 0. See `.claude/rules/moai/workflow/contract-autonomy.md` § The signing gate.
+
+<!-- moai:contract-mode-end -->
 ---
 
 Version: 3.0.1

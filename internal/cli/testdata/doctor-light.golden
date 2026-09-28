@@ -21,6 +21,7 @@
 │    ok      MCP Provider Duplicates  no Claude Code state file; not checked                                                                             │
 │    ok      MCP Server Version       no running moai MCP server recorded                                                                                │
 │    ok      Hook Missing Log         no hook-missing entries                                                                                            │
+│    info    Served Model             run with --check "Served Model"                                                                                    │
 │    ok      Agent Emit Embed   not applicable: no committed agent-emit artifacts                                                                          │
 │    warn    Constitution Registry    zone-registry.md not found at ".claude/rules/moai/core/zone-registry.md" — run `moai constitution list` to verify  │
 │    ok      Harness 5-Layer          .moai/harness/ not present (no harness configured)                                                                 │
@@ -42,6 +43,7 @@
 │    warn    Worktree State         .moai/state/ not found — worktree checkpoint storage unavailable                                                     │
 │    ok      Worktree Base Branch   git_strategy.worktree_base_branch unset — card worktrees follow the repository default                               │
 │    ok      Git Strategy Workflow  git_strategy workflow unreadable or no active profile — nothing to interpret                                         │
+│    info    Factory Run            no session records — no factory or kanban run declared                                                               │
 │    warn    BODP Config            .moai/branches/ not found — BODP audit trail disabled                                                                │
 │    warn    Telemetry Config       .moai/config/sections/telemetry.yaml not found — telemetry uses defaults                                             │
 │    warn    Glamour Cache          glamour not integrated                                                                                               │

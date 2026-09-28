@@ -41,24 +41,12 @@ Config coupling (report): the orchestrator reads `report.format` from the settin
 
 [ZONE:Evolvable] [HARD] **Anti-pattern (named)**: reaching for `artifact-design` when the task is a markdown→HTML **report render**. `artifact-design` calibrates visual identity for claude.ai-hosted web pages (landing pages, apps, shareable artifacts); `moai-domain-html-report` owns the report-render surface (six report modes, audience tiers, md-twin asymmetry). A report request that loads `artifact-design` instead of `moai-domain-html-report` is a routing miss. The corrective is intent-based: any request — in any language — whose intent is "produce a report/document as HTML" routes to `moai-domain-html-report`; `artifact-design` routes only "produce a hosted visual-identity page" intents.
 
-## 2. Agent Obligation
-
-Agents whose `tools:` include `Skill` load conditional skills per the "Conditional Skill Loading" section in their own body. The static `skills:` frontmatter preload stays at most 2 entries per agent (token diet — progressive disclosure does the rest). An agent loads a conditional skill when its body's stated trigger situation actually arises, not preemptively.
-
-## 3. Rationale
-
-The two loading mechanisms have different cost profiles: `skills:` frontmatter injects each listed
-skill's full body at spawn, paid whether or not it is used, while `Skill()` pays ~100 tokens of
-metadata always and the ~5K body only on invocation. Keeping the static preload minimal and routing
-the rest through explicit `Skill()` instructions converts a fixed per-spawn cost into a
-pay-per-use one. Worked detail: `skill-routing-detail.md`.
-
 ## 4. Cross-references
 
 - `.claude/rules/moai/core/moai-constitution.md` § Agent Core Behaviors — cross-cutting agent obligations
 - `.claude/rules/moai/development/agent-authoring.md` — agent frontmatter format (`skills:` YAML array, `tools:` CSV) and the Extension-Mechanism Context-Cost Ladder
-- `CLAUDE.md` §4 — the retained agent catalog this protocol applies to
 - `.claude/rules/moai/development/skill-authoring.md` § Progressive Disclosure — the 3-level token budget behind the on-demand cost profile
+- `skill-routing-detail.md` — the lazy companion. Load it for § Why the two loading mechanisms differ · § 2. Agent Obligation · § 3. Rationale (the per-mechanism cost profile).
 
 ---
 

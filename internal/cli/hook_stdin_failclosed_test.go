@@ -198,10 +198,12 @@ func subcommandFor(t *testing.T, ev hook.EventType) string {
 
 // expectedClaudeFailClosedReason and expectedCodexFailClosedReason are the
 // two harness reasons, each its own literal (SPEC-HOOK-STOP-PARSE-CAP-001
-// acceptance.md §D): the Claude reason is REQ-SPC-010's text, the Codex reason
-// is unchanged (REQ-SPC-009). Neither is built by a shared helper, so a change
-// to one harness's reason cannot move the other's expectation with it, and
-// neither calls the implementation's own reason builder.
+// acceptance.md §D): the Claude reason is REQ-SPC-010's text, the Codex
+// reason is the t1233 revision — cause + operator document identifier, the
+// marker riding the fatal_error template. Neither is built by a shared
+// helper, so a change to one harness's reason cannot move the other's
+// expectation with it, and neither calls the implementation's own reason
+// builder.
 func expectedClaudeFailClosedReason() string { return claudeFailClosedReasonLiteral }
 
 func expectedCodexFailClosedReason() string { return codexFailClosedReasonLiteral }
@@ -484,6 +486,45 @@ func TestStdinFailClosed_CodexDecisionEvents(t *testing.T) {
 				assertFailClosedObservability(t, ev, "codex", f, r)
 			})
 		}
+	}
+}
+
+// TestStdinFailClosedCodexReasonSingleMarker is card t1233 (t1152 sync-audit
+// F7): the rendered Codex deny must carry the fail-closed marker exactly once.
+// The translation table's fatal_error template already says the call was
+// denied fail-closed, so the reason handed to TranslateCodex must carry only
+// the cause and the operator document identifier — repeating the marker there
+// rendered "…denied fail-closed: fail-closed: hook stdin …".
+func TestStdinFailClosedCodexReasonSingleMarker(t *testing.T) {
+	for _, ev := range failClosedEvents(codexadapter.HarnessCodex) {
+		r := runHookWithStdin(t, subcommandFor(t, ev), nil, "codex", []byte(`{"broken`))
+		if r.err != nil {
+			t.Fatalf("%s: RunE = %v, want nil (exit 0)", ev, r.err)
+		}
+		reason, ok := denyReason(ev, r.stdout)
+		if !ok {
+			t.Fatalf("%s: stdout lacks the deny field: %s", ev, r.stdout)
+		}
+		if n := strings.Count(reason, "fail-closed: "); n != 1 {
+			t.Errorf("%s: deny reason carries the fail-closed marker %d times, want exactly 1 (t1152 sync-audit F7 doubling; the operator doc path's own 'fail-closed' substring is not the marker):\n%s", ev, n, reason)
+		}
+	}
+
+	// Pin the fixed composition on one event (card t1233): the rendered deny
+	// equals the translation of the bare cause + operator document identifier,
+	// matching how AC-HSF-002(d) observes the reason handed to TranslateCodex.
+	ev := hook.EventPreToolUse
+	r := runHookWithStdin(t, subcommandFor(t, ev), nil, "codex", []byte(`{"broken`))
+	if r.err != nil {
+		t.Fatalf("RunE = %v, want nil (exit 0)", r.err)
+	}
+	wantReason := "hook stdin could not be parsed as JSON (" + stdinFailClosedDocPath + ")"
+	want, _, err := codexadapter.TranslateCodex(ev, codexadapter.DecisionFatalError, wantReason)
+	if err != nil {
+		t.Fatalf("translate %s: %v", ev, err)
+	}
+	if got, want := strings.TrimSpace(r.stdout), string(want); got != want {
+		t.Fatalf("stdout = %s\nwant    %s", got, want)
 	}
 }
 
@@ -815,7 +856,7 @@ func TestStdinFailClosed_DocPointerIsDeployed(t *testing.T) {
 	if stdinParseFailClosedDocID != stdinFailClosedDocPath {
 		t.Errorf("document pointer = %q, want the deployed path %q", stdinParseFailClosedDocID, stdinFailClosedDocPath)
 	}
-	wantCodex := "fail-closed: hook stdin could not be parsed as JSON (" + stdinFailClosedDocPath + ")"
+	wantCodex := "hook stdin could not be parsed as JSON (" + stdinFailClosedDocPath + ")"
 	if got := expectedCodexFailClosedReason(); got != wantCodex {
 		t.Errorf("Codex reason = %q, want %q", got, wantCodex)
 	}

@@ -1,0 +1,6 @@
+=== RUN   TestVerify_SignedUnderPriorFrozenSetStillVerifies
+    frozen_compat_test.go:55: prior-set frozen_files = [**/CLAUDE.local.md **/CLAUDE.md .claude/rules/moai/core/moai-constitution.md internal/x/**]
+    frozen_compat_test.go:56: grown-set frozen_files = [**/AGENTS.local.md **/AGENTS.md **/CLAUDE.local.md **/CLAUDE.md .claude/rules/moai/core/moai-constitution.md internal/x/**]
+--- PASS: TestVerify_SignedUnderPriorFrozenSetStillVerifies (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/contract	0.279s

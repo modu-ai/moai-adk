@@ -172,6 +172,36 @@ func localInstructionPayload(t *testing.T, args []string) string {
 	return body
 }
 
+// TestCodexLocalInstructions_AgentsLocalReadFirst pins the read order
+// (REQ-IFU-006, AC-IFU-010): with both local files present, both reach
+// developer_instructions, AGENTS.local.md's sentinel precedes CLAUDE.local.md's,
+// and the provenance preambles follow the same order.
+func TestCodexLocalInstructions_AgentsLocalReadFirst(t *testing.T) {
+	root := t.TempDir()
+	for name, body := range map[string]string{codexLocalInstructionName: "ALPHA\n", codexClaudeLocalName: "BETA\n"} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	args, err := codexLocalDeveloperInstructionArgs(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload := localInstructionPayload(t, args)
+	alpha, beta := strings.Index(payload, "ALPHA"), strings.Index(payload, "BETA")
+	if alpha < 0 || beta < 0 {
+		t.Fatalf("both sentinels must reach the payload: ALPHA@%d BETA@%d in %q", alpha, beta, payload)
+	}
+	if alpha > beta {
+		t.Errorf("ALPHA (AGENTS.local.md) at %d must precede BETA (CLAUDE.local.md) at %d: %q", alpha, beta, payload)
+	}
+	agentsHead := strings.Index(payload, "<!-- source: "+codexLocalInstructionName+" -->")
+	claudeHead := strings.Index(payload, "<!-- source: "+codexClaudeLocalName+" -->")
+	if agentsHead < 0 || claudeHead < 0 || agentsHead > claudeHead {
+		t.Errorf("provenance order: AGENTS.local.md@%d must precede CLAUDE.local.md@%d", agentsHead, claudeHead)
+	}
+}
+
 func TestCodexLocalInstructions_DualFileMatrix(t *testing.T) {
 	states := []string{"absent", "empty", "body"}
 	for _, claude := range states {
@@ -179,8 +209,9 @@ func TestCodexLocalInstructions_DualFileMatrix(t *testing.T) {
 			t.Run(claude+"/"+agents, func(t *testing.T) {
 				root := t.TempDir()
 				want := ""
-				for i, name := range []string{"CLAUDE.local.md", codexLocalInstructionName} {
-					state := []string{claude, agents}[i]
+				// Read order (REQ-IFU-006): AGENTS.local.md ahead of CLAUDE.local.md.
+				for i, name := range []string{codexLocalInstructionName, "CLAUDE.local.md"} {
+					state := []string{agents, claude}[i]
 					if state == "absent" {
 						continue
 					}
@@ -218,13 +249,14 @@ func TestCodexLocalInstructions_LargeBodySlicesAndFreshRead(t *testing.T) {
 	root := t.TempDir()
 	prefix := "한글🙂<&>\\\"\n"
 	first := prefix + strings.Repeat("x", 61360-len(prefix))
-	second := "AGENTS_MARKER\n"
+	second := "CLAUDE_MARKER\n"
 	for launch := range 2 {
 		if launch == 1 {
-			first = "updated Claude body"
-			second = "updated agents body"
+			first = "updated agents body"
+			second = "updated Claude body"
 		}
-		for i, name := range []string{"CLAUDE.local.md", codexLocalInstructionName} {
+		// Read order (REQ-IFU-006): the first slice is AGENTS.local.md.
+		for i, name := range []string{codexLocalInstructionName, "CLAUDE.local.md"} {
 			if err := os.WriteFile(filepath.Join(root, name), []byte([]string{first, second}[i]), 0o600); err != nil {
 				t.Fatal(err)
 			}
@@ -234,11 +266,11 @@ func TestCodexLocalInstructions_LargeBodySlicesAndFreshRead(t *testing.T) {
 			t.Fatal(err)
 		}
 		payload := localInstructionPayload(t, args)
-		body, ok := strings.CutPrefix(payload, "<!-- source: CLAUDE.local.md -->\n")
+		body, ok := strings.CutPrefix(payload, "<!-- source: AGENTS.local.md -->\n")
 		if !ok {
 			t.Fatal("missing first provenance")
 		}
-		left, right, ok := strings.Cut(body, "\n<!-- source: AGENTS.local.md -->\n")
+		left, right, ok := strings.Cut(body, "\n<!-- source: CLAUDE.local.md -->\n")
 		if !ok || sha256.Sum256([]byte(left)) != sha256.Sum256([]byte(first)) || sha256.Sum256([]byte(right)) != sha256.Sum256([]byte(second)) {
 			t.Fatal("body slice hash differs from source")
 		}

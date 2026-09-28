@@ -17,7 +17,7 @@ package cli
 // retrackManifestFiles re-records exactly the paths THIS update just rewrote
 // — never a disk-wide sweep: a file the user edited outside any update is not
 // in the caller's path list, so its drift is preserved and it still reads as
-// user_modified (the two-way invariant the lead set as the acceptance bar).
+// user_modified (the two-way invariant the leader set as the acceptance bar).
 
 import (
 	"fmt"
