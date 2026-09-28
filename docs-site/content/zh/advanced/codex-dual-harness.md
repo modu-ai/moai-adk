@@ -30,7 +30,19 @@ codex-cli 不读 Claude Code 的 `.claude/skills/`,所以技能以**镜像**(复
 
 ## 各 harness 的个人指令
 
-`CLAUDE.local.md` 是与 Claude 工作流共用的本地输入，`AGENTS.local.md` 则是 Codex 专用输入。本地 `moai codex` 的所有启动路径——无参数、`cli`、`app`、`--spawn` 以及 `-w`——都会按此顺序读取项目根目录中非空的常规文件，在每段正文前加入 `<!-- source: <filename> -->` 来源标头，再把合并后的内容作为一个 `developer_instructions` 覆盖项传入。使用 `-w` 时，Codex 虽在工作树中运行，输入来源仍是原项目根目录。共享的 `AGENTS.md` 和 `CLAUDE.md` 都不会导入或链接这两个本地文件。启动器拒绝链接和非常规文件，并从完成检查的同一个文件描述符读取；如果操作者另行提供了 `developer_instructions`，或 direct/spawn 参数过大，启动会提前失败。其他 harness 的本地设置与记忆仍归各自 harness 所有。Codex Web 不经过本地启动器，因此不会收到这些注入内容。
+`AGENTS.local.md` 是两个 harness 共同读取的个人指令文件，`CLAUDE.local.md` 是它的旧名称，仅作为回退输入保留。本地 `moai codex` 的所有启动路径——无参数、`cli`、`app`、`--spawn` 以及 `-w`——都会按此顺序读取项目根目录中非空的常规文件，在每段正文前加入 `<!-- source: <filename> -->` 来源标头，再把合并后的内容作为一个 `developer_instructions` 覆盖项传入。使用 `-w` 时，Codex 虽在工作树中运行，输入来源仍是原项目根目录。共享的 `AGENTS.md` 和 `CLAUDE.md` 都不会导入或链接这两个本地文件。启动器拒绝链接和非常规文件，并从完成检查的同一个文件描述符读取；如果操作者另行提供了 `developer_instructions`，或 direct/spawn 参数过大，启动会提前失败。其他 harness 的本地设置与记忆仍归各自 harness 所有。Codex Web 不经过本地启动器，因此不会收到这些注入内容。
+
+## `CLAUDE.local.md` 回退与迁移提示
+
+项目里只有 `CLAUDE.local.md`、没有 `AGENTS.local.md` 时，`moai codex` 仍会把该文件作为回退读取，放进 `developer_instructions`。来源标头写的是实际读取的文件名——此处为 `<!-- source: CLAUDE.local.md -->`。
+
+走回退路径时，启动器会在标准错误输出一行迁移提示：
+
+```text
+Advisory: CLAUDE.local.md is a legacy local instruction file; run `moai migrate local-instructions` to move it to AGENTS.local.md.
+```
+
+这条提示是写给操作者的，因此不会进入会成为模型上下文的 `developer_instructions`。两个文件同时存在时两者都会被读取，提示改为要求手动合并。在三文件结构中——通用契约在 `AGENTS.md`，Claude 专属层在 `CLAUDE.md`，个人指令在 `AGENTS.local.md`——`CLAUDE.local.md` 只是一个待迁移的旧名称。
 
 ## `internal/codexadapter` —— 钩子适配器库
 
