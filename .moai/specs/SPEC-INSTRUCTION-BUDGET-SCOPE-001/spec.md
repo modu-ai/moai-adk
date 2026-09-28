@@ -2,7 +2,7 @@
 id: SPEC-INSTRUCTION-BUDGET-SCOPE-001
 title: "Align the 40,000-char instruction budget doctrine with the hook, and bring the four over-budget workflow rules under it"
 version: "0.10.0"
-status: draft
+status: completed
 created: 2026-09-28
 updated: 2026-09-28
 author: manager-spec

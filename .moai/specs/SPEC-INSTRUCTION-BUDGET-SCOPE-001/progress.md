@@ -331,8 +331,14 @@ Final suite state for the record: `./internal/template/` **ok** after the fix; `
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+Run phase complete at the pre-sync tree. Milestones M0–M7 all landed with per-milestone measured evidence in §E.2 above (commands + verbatim outputs). Final AC state at the pre-absorption tree: AC-IBS-001 green (M1); AC-IBS-002a–d green (M3/M4/M5/M6 — all four files under 40,000, measured); AC-IBS-003 green (guard landed, anchored run PASS); AC-IBS-004 green (differential anchor sweep, zero structural breakage); AC-IBS-005 green (five workflow mirrors + appendix byte-identical; 005b single-hunk baseline unchanged); AC-IBS-006: `./internal/template/` full package ok after the in-round leak neutralization; `./internal/hook/` carried exactly one red on the pre-absorption base — `TestDetectorNeverAltersToolCall` — attributed pre-existing (this card touched zero `internal/hook/` files; `git diff --name-only 088594d6b..HEAD -- internal/hook/` empty), fixed upstream by t1236 and RESOLVED by the develop absorption at sync entry (anchored re-run PASS, then full-package re-run green). Run commits: M0 `2dbe9f103` · M1 `d252527be` · M2 `83622059c` · M3 `a5d7ffc10` · M4 `a30c22070` · M5 `d0fd3c7c2` · M6 `dd29feb4c` · M7 `170920e17` + `3babb4f84` · absorption re-fit `7daaaede4`.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_commit_sha: pending-backfill-sync
+
+3-phase close: this sync commit carries the consolidated `spec.md` status transition to `completed` (the intermediate `draft → in-progress` step was not written at the M1 commit — run-phase commits recorded milestones without touching frontmatter; the full transition is consolidated here and disclosed, rather than backdated) and the CHANGELOG entry under `[Unreleased] → Added` (duplicate check `grep -c 'SPEC-INSTRUCTION-BUDGET-SCOPE-001' CHANGELOG.md` = 0 before emission).
+
+Post-absorption state (develop `a7190891d` absorbed at `eac8e8b3b`, re-fit at `7daaaede4`): all five rule files under 40,000 — spec-workflow 39,984 · worktree-integration 39,989 (re-fit after t1256-era additions pushed it to 40,601; nine semantic-preserving compressions) · worktree-integration-ops 22,923 · session-handoff-examples 39,053 · kanban-dispatch-detail 39,973. HARD counts unchanged (4/18/12/8, companion 0). Mirrors: five workflow pairs + appendix pair byte-identical (`cmp` each). The parent `worktree-integration.md` paths glob expanded upstream to four patterns (`**/.moai/worktrees/**` added); `TestWorkflowRulePathsPinned`'s recorded value updated to the new SSOT glob after the guard correctly flagged the drift — the companion's single-pattern subset remains proper (complement {`agents/**`, `moai/worktrees/**`, `teams/**`} non-empty). Guards green individually: paths-pinned, mirror-drift, content-leak, neutrality. `./internal/hook/` full package re-run post-absorption: green (the t1236 fix landed with the absorption). `moai spec lint`: no findings.
+
+Follow-up candidates surfaced by this card (not this card's work): the companion's scope does not yet include the new `.moai/worktrees/**` root (legal subset as-is; extending it would follow the parent's root expansion); t1257 (role naming B) is queued behind this card on the same file family.
