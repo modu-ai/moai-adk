@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -39,6 +40,13 @@ type swSeams struct {
 	// so defaulting to real git here would fail them on a fake path rather
 	// than on the guard each test actually exercises.
 	hasUnpushed func(wtPath string) (bool, error)
+	// seedHooks is the SPEC-HANDOFF-NEUTRAL-001 .codex/hooks.json seeding
+	// seam. When a test leaves it nil, the swapper installs a neutral no-op
+	// stub: the pre-existing materializer tests use fake worktree paths that
+	// cannot host a real seed, and each would fail on the seed's diagnostic
+	// rather than on the behavior it exercises. The seeding tests
+	// (session_worktree_codexseed_test.go) pass the real implementation.
+	seedHooks func(tree string, out io.Writer)
 }
 
 // swapSessionWorktreeSeams replaces the seams and registers restoration.
@@ -52,6 +60,7 @@ func swapSessionWorktreeSeams(t *testing.T, s swSeams) {
 		statusPorc:  sessionWorktreeGitStatusPorcelain,
 		ignoredPorc: sessionWorktreeGitStatusIgnored,
 		hasUnpushed: sessionWorktreeGitHasUnpushed,
+		seedHooks:   sessionWorktreeSeedCodexHooks,
 	}
 	if s.add != nil {
 		sessionWorktreeGitWorktreeAdd = s.add
@@ -85,6 +94,13 @@ func swapSessionWorktreeSeams(t *testing.T, s swSeams) {
 		// guard each test actually exercises.
 		sessionWorktreeGitHasUnpushed = func(string) (bool, error) { return false, nil }
 	}
+	if s.seedHooks != nil {
+		sessionWorktreeSeedCodexHooks = s.seedHooks
+	} else {
+		// Neutral default: fake worktree paths cannot host a real seed (see
+		// the field comment) — the seeding tests pass the real body.
+		sessionWorktreeSeedCodexHooks = func(string, io.Writer) {}
+	}
 	t.Cleanup(func() {
 		sessionWorktreeGitWorktreeAdd = orig.add
 		sessionWorktreeInGitWorktree = orig.inWt
@@ -95,6 +111,7 @@ func swapSessionWorktreeSeams(t *testing.T, s swSeams) {
 		sessionWorktreeGitStatusPorcelain = orig.statusPorc
 		sessionWorktreeGitStatusIgnored = orig.ignoredPorc
 		sessionWorktreeGitHasUnpushed = orig.hasUnpushed
+		sessionWorktreeSeedCodexHooks = orig.seedHooks
 	})
 }
 

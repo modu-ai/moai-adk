@@ -249,6 +249,12 @@ func materializeSessionWorktree(branch string, out io.Writer) (string, error) {
 	// the M2 direct call above. A helper result is best-effort and never
 	// aborts materialization (the worktree is already on disk and usable).
 	_ = applyWorktreeGitConfig(wtPath, out)
+
+	// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-005: seed .codex/hooks.json (MoAI-owned
+	// entries only) so a Codex session inside the new tree loads the moai
+	// hooks. Fail-open by construction — seeding is additive, never a gate
+	// (REQ-HN-007).
+	sessionWorktreeSeedCodexHooks(wtPath, out)
 	return wtPath, nil
 }
 
