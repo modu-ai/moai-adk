@@ -330,6 +330,16 @@ templ Todo(vm ShellVM, q TodoVM) {
 								<span class="todo-row__spec">@missing()</span>
 							}
 						</div>
+						if len(it.Relations) > 0 {
+							<div class="tr tr--todo-rel" data-todo-relations>
+								<span></span>
+								<span class="panel__meta todo-row__relations">
+									for _, rel := range it.Relations {
+										<span class="mono todo-row__relation">{ rel }</span>
+									}
+								</span>
+							</div>
+						}
 					}
 				</div>
 			}
