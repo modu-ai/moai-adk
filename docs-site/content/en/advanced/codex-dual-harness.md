@@ -30,7 +30,19 @@ codex-cli does not read Claude Code's `.claude/skills/`, so skills are deployed 
 
 ## Harness-local personal instructions
 
-`CLAUDE.local.md` is the common local input shared with Claude workflows; `AGENTS.local.md` remains Codex-specific. Every local `moai codex` route—bare, `cli`, `app`, `--spawn`, and `-w`—reads the non-empty regular files from the project root in that order, places a `<!-- source: <filename> -->` provenance header before each body, and sends the combined text as one `developer_instructions` override. For `-w`, the source stays the original project root even though Codex runs in the worktree. Neither shared `AGENTS.md` nor `CLAUDE.md` imports or links these local files. The launcher refuses links and non-regular inputs, reads from the same descriptor it checked, and fails before launch if the operator also supplies `developer_instructions` or if the direct/spawn argument is too large. Other harness-local settings and memory remain with their harness. Codex Web does not run the local launcher and receives none of this injection.
+`AGENTS.local.md` is the personal instruction file both harnesses read; `CLAUDE.local.md` is its former name and survives only as a fallback input. Every local `moai codex` route—bare, `cli`, `app`, `--spawn`, and `-w`—reads the non-empty regular files from the project root in that order, places a `<!-- source: <filename> -->` provenance header before each body, and sends the combined text as one `developer_instructions` override. For `-w`, the source stays the original project root even though Codex runs in the worktree. Neither shared `AGENTS.md` nor `CLAUDE.md` imports or links these local files. The launcher refuses links and non-regular inputs, reads from the same descriptor it checked, and fails before launch if the operator also supplies `developer_instructions` or if the direct/spawn argument is too large. Other harness-local settings and memory remain with their harness. Codex Web does not run the local launcher and receives none of this injection.
+
+## The `CLAUDE.local.md` fallback and the migration advisory
+
+In a project that has `CLAUDE.local.md` but no `AGENTS.local.md`, `moai codex` still reads that file as a fallback and places it in `developer_instructions`. The provenance header carries the literal name of the file actually read — here, `<!-- source: CLAUDE.local.md -->`.
+
+When the fallback is taken, the launcher prints a one-line migration advisory on standard error:
+
+```text
+Advisory: CLAUDE.local.md is a legacy local instruction file; run `moai migrate local-instructions` to move it to AGENTS.local.md.
+```
+
+The advisory is addressed to the operator, so it never enters `developer_instructions`, which becomes model context. When both files exist, both are read and the advisory switches to asking for a manual merge. In the three-file structure — the shared contract in `AGENTS.md`, the Claude-only layer in `CLAUDE.md`, personal instructions in `AGENTS.local.md` — `CLAUDE.local.md` is only a former name waiting to be migrated.
 
 ## `internal/codexadapter` — the hook adapter library
 

@@ -353,6 +353,34 @@ flowchart TD
 | 3. Skills | `.claude/skills/*/skill.md` | On trigger match | Expertise, patterns |
 | 4. Agents | `.claude/agents/*.md` | On delegation | Specialist role definitions |
 
+## The three-file structure — `AGENTS.md`, `CLAUDE.md`, `AGENTS.local.md`
+
+MoAI-ADK splits instructions across three files, so that every harness reads the same contract and personal instructions live in exactly one place.
+
+| File | Holds | Tracked by Git | Read by |
+|------|-------|----------------|---------|
+| `AGENTS.md` | The cross-harness contract | Yes | Claude Code (via `@AGENTS.md`) and Codex |
+| `CLAUDE.md` | A thin layer of Claude-only mechanisms | Yes | Claude Code |
+| `AGENTS.local.md` | Personal instructions | No (`.gitignore`) | Claude Code (via the final `@AGENTS.local.md` in `CLAUDE.md`) and `moai codex` |
+
+```mermaid
+flowchart TD
+    A["AGENTS.md<br/>shared contract"] --> C["CLAUDE.md<br/>Claude-only layer"]
+    L["AGENTS.local.md<br/>personal instructions"] --> C
+    C --> CC["Claude Code"]
+    A --> X["Codex"]
+    L --> R["moai codex launcher"]
+    R --> X
+```
+
+`CLAUDE.local.md` is the former name of `AGENTS.local.md`. Move an existing file with `moai migrate local-instructions`: it writes the content byte-for-byte to `AGENTS.local.md`, backs the original up under `.moai/backups/local-instructions/`, and removes it from the project root. That command is the only thing that renames the file — `moai update`, `moai init`, and hooks never move or delete either one.
+
+{{< callout type="warning" >}}
+{{< icon warning warn >}} When both files exist, Claude Code reads both and similar instructions load twice. In that state `moai migrate local-instructions` refuses and touches neither file, because a tool cannot know which content you mean to keep. Merge the content of `CLAUDE.local.md` into `AGENTS.local.md` by hand, then delete `CLAUDE.local.md`.
+{{< /callout >}}
+
+In a session opened inside a linked worktree, the `@AGENTS.local.md` import points outside the project and Claude Code skips it silently — a worktree session does not receive `AGENTS.local.md`.
+
 ## Related Documents
 
 - [Skill Guide](/en/advanced/skill-guide) - skill system details

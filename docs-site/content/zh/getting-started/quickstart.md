@@ -289,7 +289,7 @@ MoAI-ADK 项目的标准结构：
 ```
 my-first-project/
 ├── CLAUDE.md                        # Claude Code 项目指南
-├── CLAUDE.local.md                  # 项目本地设置（个人用）
+├── AGENTS.local.md                  # 个人指令（Git 忽略，两个 harness 共用）
 ├── .mcp.json                        # MCP 服务器设置
 ├── .claude/
 │   ├── agents/                      # Claude Code 智能体定义
@@ -377,6 +377,16 @@ graph TD
 ```
 
 ---
+
+## 个人指令文件 —— `AGENTS.local.md`
+
+希望在项目中遵守的个人规则写在项目根目录的 `AGENTS.local.md` 里。它被 Git 忽略，`moai update` 不会改动它，Claude Code 和 `moai codex` 都会读取。与团队共享的契约在 `AGENTS.md`，Claude 专属设置在 `CLAUDE.md`——这三个文件就是完整的指令结构。
+
+如果有旧版本留下的 `CLAUDE.local.md`，迁移一次即可：
+
+```bash
+moai migrate local-instructions
+```
 
 ## 下一步
 

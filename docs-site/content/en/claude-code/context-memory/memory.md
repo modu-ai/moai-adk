@@ -183,6 +183,12 @@ MoAI-ADK operates on top of this Claude Code memory foundation. It uses the proj
 
 File-based persistent memory is also the raw material for MoAI-ADK's **recursive self-learning**. The observations the loop leaves behind — user corrections, failure patterns, routing decisions — accumulate in memory files, and the harness improves skills and agent guidance based on that accumulation. The first link in the sentence "the loop accumulates observations, the harness learns, and the guidance evolves" is precisely the memory mechanism on this page. MoAI's own memory operating rules and index management are covered in detail in separate documents.
 
+## Local instructions in a MoAI-ADK project — `AGENTS.local.md`
+
+Claude Code itself reads `CLAUDE.local.md`, but a MoAI-ADK project keeps personal instructions in `AGENTS.local.md`. The `@AGENTS.local.md` import at the end of `CLAUDE.md` loads it into Claude Code, and `moai codex` passes the same file to Codex. The shared contract is `AGENTS.md`, the Claude-only layer is `CLAUDE.md`, and personal instructions are `AGENTS.local.md` — the three-file structure.
+
+Keeping both `CLAUDE.local.md` and `AGENTS.local.md` makes Claude Code read both, so similar instructions load twice. Move an existing `CLAUDE.local.md` with `moai migrate local-instructions`. That command refuses while both files exist; merge them by hand in that case.
+
 ## Related Documents
 
 - [CLAUDE.md Guide](/en/advanced/claude-md-guide)

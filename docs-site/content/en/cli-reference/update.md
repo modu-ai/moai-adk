@@ -289,7 +289,8 @@ On a MoAI-ADK update, **CLAUDE.md** and `settings.json` are synced to the new ve
 |------|------|--------------|
 | `CLAUDE.md` | Project root | {{< icon warning warn >}} Changed on update (MoAI-ADK managed) |
 | `settings.json` | `.claude/` | {{< icon warning warn >}} Changed on update (MoAI-ADK managed) |
-| `CLAUDE.local.md` | Project root | {{< icon check ok >}} No impact (personal settings) |
+| `AGENTS.local.md` | Project root | {{< icon check ok >}} No impact (personal instructions) |
+| `CLAUDE.local.md` | Project root | {{< icon check ok >}} No impact (former name; advisory only) |
 | `.claude/settings.local.json` | Project | {{< icon check ok >}} No impact (personal settings) |
 
 {{< callout type="info" >}}
@@ -385,6 +386,18 @@ To force an overwrite, use `--force` (your existing changes are backed up to `.m
 ```bash
 moai update --force
 ```
+
+## Local instruction file advisory
+
+`moai update` never moves, renames, or deletes `AGENTS.local.md` or `CLAUDE.local.md`. Instead, when a `CLAUDE.local.md` remains at the project root, it prints a one-line advisory on standard output. Instructions are split across three files — the shared contract `AGENTS.md`, the Claude-only layer `CLAUDE.md`, and personal instructions in `AGENTS.local.md` — and `CLAUDE.local.md` is the former name of `AGENTS.local.md`.
+
+| Project state | `moai update` output |
+|---------------|----------------------|
+| Only `CLAUDE.local.md` | Advisory to move it with `moai migrate local-instructions` |
+| Both files | Advisory to merge them by hand (the migration command refuses this state) |
+| Only `AGENTS.local.md`, or neither | No advisory |
+
+`moai doctor` prints the same advisory under the same conditions. The rename happens only when the operator runs `moai migrate local-instructions`.
 
 ## Next steps
 
