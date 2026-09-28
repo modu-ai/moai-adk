@@ -96,6 +96,52 @@ M3 — C-cluster treatment + outside-cluster dispositions. Evidence captured on 
   - NO-CHANGE: statusline, moai-web-console, decision-memory, agent-teams, best-practices, features-overview — measured grep (`moai model profile|profile matrix|per-agent|agent별 모델|エージェント別のモデル|逐智能体`) returns zero hits on all of them.
 - AC-AMD-008 on M3-touched pages: heading parity — prompt-caching 13/3 ×4, config-sections 12/0 ×4, autonomy-tier 7/0 ×4, advanced/_index 2/4 ×4; multi-llm/_index ko 7/4 vs en/ja/zh 4/1 is a pre-existing locale-content divergence (the ko page is a fuller section index; en/ja/zh carry different thinner content, verified at baseline). Emoji scan on all 17 M3 files: 0 hits each.
 
+M4 — H24 regression-guard verification (VERIFY-ONLY; zero source edits). Evidence captured on tree HEAD `fbd13bbfc`, working tree clean at pre-flight, worktree `.moai/worktrees/t1300`, 2026-09-29. The only file modified in this milestone is this progress.md. `internal/cli/wizard/translations.go` was never opened for edit.
+
+- AC-AMD-006(a) forbidden-edit guard:
+
+  ```
+  $ git diff -- internal/cli/wizard/translations.go
+  (no output) exit=0
+  $ git diff -- internal/cli/profile_setup_translations.go
+  (no output) exit=0
+  ```
+
+- AC-AMD-006(b) 4-locale payload byte-identity — comparison basis `git show 8a969dfc0:internal/cli/wizard/translations.go` lines 417/429/441/453 (per N1: NOT paste-grep of the SPEC-quoted baseline). Mechanical diff of the two 4-line extracts: exit 0 (byte-identical).
+
+  ```
+  CURRENT (HEAD fbd13bbfc) sed -n '417p;429p;441p;453p':
+  417  "model_policy": {Title: "Session model policy", Description: "Sets the default reasoning effort of the Claude session launched with this profile when no effort level is chosen. Subagents inherit the session's model and effort."},
+  429  "model_policy": {Title: "세션 모델 정책", Description: "추론 강도를 따로 고르지 않았을 때, 이 프로필로 실행하는 Claude 세션의 기본 추론 강도를 정합니다. 서브에이전트는 세션의 모델과 추론 강도를 그대로 따릅니다."},
+  441  "model_policy": {Title: "セッションモデルポリシー", Description: "推論強度を個別に選ばなかったとき、このプロファイルで起動する Claude セッションの既定の推論強度を決めます。サブエージェントはセッションのモデルと推論強度をそのまま引き継ぎます。"},
+  453  "model_policy": {Title: "会话模型策略", Description: "未单独选择推理强度时，决定使用此配置文件启动的 Claude 会话的默认推理强度。子代理沿用会话的模型与推理强度。"}
+  BASELINE (8a969dfc0) same lines: byte-identical (diff exit 0)
+  ```
+
+- Map keys unchanged (shared config keys — no rename): `grep -n '"model_policy"'` → exactly 417/429/441/453; the line-404 comment (`// four profile ids (conversation_language, user_name, model_policy,`) intact.
+
+- Per-agent wording guard: `grep -c 'assigning optimal models\|Controls token consumption by assigning' internal/cli/wizard/translations.go` → `0` (exit 1 = zero hits). AC-AMD-007: `grep -c 'Session model policy' internal/cli/profile_setup_translations.go` → `1`; `grep -cin 'assigning optimal models to each agent'` → `0`.
+
+- `go build ./...` → exit 0 (recorded: verify snapshot `fbd13bbfc:go-build`).
+
+- Named tests (located via grep first; `-count=1 -v` fresh run, no cache):
+
+  ```
+  --- PASS: TestWizardsDoNotAskTheAgentModelPolicy (internal/cli/agent_model_flags_retired_test.go:154)
+  --- PASS: TestValidateInitFlags_ModelPolicyVocabulary (internal/cli/init_test.go:443; 7 subtests incl. former-invalid bogus/xhigh/subscription)
+  --- PASS: TestProfileText_ModelPolicyLabels (internal/cli/profile_setup_model_policy_test.go:14; en/ko/ja/zh subtests)
+  --- PASS: TestProfileSetup_ModelPolicySelectPresent (internal/cli/profile_setup_model_policy_test.go:41)
+  PASS  ok  github.com/modu-ai/moai-adk/internal/cli  0.688s
+  ```
+
+- Full affected-package suite `go test -count=1 -timeout 30m ./internal/cli/...` → exit 1 with exactly 2 failing tests, BOTH classified PRE-EXISTING BASELINE at fbd13bbfc per B5 (this run made zero Go edits — the tree the suite ran on IS fbd13bbfc; neither failure touches the wizard/model-policy surface; `internal/cli/wizard` package: `ok 5.287s`):
+
+  - `TestLocalInstructions_UpdateDoctorPreserveFile` — environment-dependent: the test invokes the installed `moai doctor`, which reports `fail Constitution Registry registry loads (101 entries) but validate found 5 error(s)` against the shared LOCAL registry state. Not a defect of this tree's source.
+  - `TestTodoVerbSurfaceZeroDelta` — sibling-card t1309 gap: commit `932645f1c` (feat(todo): blocks/depends relation vocabulary) changed the `todo relate` usage string in both directions the guard measures ("relate … conflicts>" GONE; "relate … blocks|depends>" appeared undeclared) without updating the declared surface in `todo_surface_test.go` (last touched by `72db76870`, card t943). Deterministic 0.00s logic failure, not contention flake. Owner: card t1309 / lead disposition.
+  - Suite ran under observed cross-lane contention (3+ concurrent `internal/cli` test processes from other lanes); the two failures above are deterministic and load-independent, all other packages `ok`. Recorded: verify snapshot `fbd13bbfc:cli-suite-m4` (exit 1). Log: `/tmp/t1300-cli-suite.log` (2105 lines).
+
+- M4 verdict: AC-AMD-006 guard clauses all PASS (no edit, keys unchanged, payloads byte-identical, build 0, wizard package + named ModelPolicy tests PASS). The "affected packages pass" clause carries the 2 pre-existing baseline failures above as PASS-WITH-DEBT — outside M4's H24 scope, NOT fixed per the verify-only constraint, flagged to the lead for disposition (t1309 surface-guard update; constitution registry validation).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
