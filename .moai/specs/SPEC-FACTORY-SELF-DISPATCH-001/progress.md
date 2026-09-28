@@ -802,8 +802,8 @@ re-verifies, -018, -021, -022. Continuation at `f37942d79` (clean).
 - run_commit_sha: aaf4fd1e2
 - run_tree: `.claude/worktrees/t1240`, branch `WT-factory-self-dispatch`, baseline measured at `f37942d79`
 - milestone_commits: M1 `490d64649` · M2 `986e1a8fa` · M3 `ac7b1b87a` · AC-SD-011 amendment `061614bd5` · M4 `4d73ee088` · M5 `48af8d3ae` · label unification `7714fcd9e` · gate disposition `003514807` · §D carrier amendment `3eeaabe5b` · AC-SD-001 rewrite `f37942d79` · M7 `aaf4fd1e2`
-- scope_doc_amendments: `061614bd5` (acceptance.md worktree-root literals → `.moai/worktrees/`) · `3eeaabe5b` (REQ-SD-020 §D carrier carve-out) · `f37942d79` (AC-SD-001 graph-verifiable rewrite)
-- ac_pass_count: 25 (AC-SD-001…025 — final comprehensive anchored run, `ok … internal/cli 58.311s` + hook `ok 0.623s` + codexwiring `ok 0.509s`; AC-SD-015's doctrine third block 2/3 files verified in-tree, CLAUDE.local.md §4.1 pending the lead-applied blocker above)
+- scope_doc_amendments: `061614bd5` (acceptance.md worktree-root literals → `.moai/worktrees/`) · `3eeaabe5b` (REQ-SD-020 §D carrier carve-out) · `f37942d79` (AC-SD-001 graph-verifiable rewrite) · `917005dfb` (CLAUDE.local.md → AGENTS.local.md migration + merge-window exception applied) · `252d7d32e` (plan.md sweep + HISTORY row token restored)
+- ac_pass_count: 25 (AC-SD-001…025 — final comprehensive anchored run, `ok … internal/cli 58.311s` + hook `ok 0.623s` + codexwiring `ok 0.509s`; AC-SD-015's doctrine third block 3/3 files verified in-branch (kanban-dispatch 1 / AGENTS.local.md 1 / gitflow-lane-protocol 2 — the CLAUDE.local.md deliverable completed by `917005dfb` + `252d7d32e` after the t1290 migration removed that file from the tree))
 - ac_fail_count: 0
 - preserve_list_post_run_count: 0 violations — `internal/codexwiring/configtoml.go` production value untouched (AC-SD-022 freeze test green); schema statements of internal/homestate, internal/factorymsg, internal/kanban untouched (AC-SD-022 green); `internal/cli/integration.go` untouched (not in the diff)
 - l44_pre_commit_fetch: n/a (worktree lane — no push, per the lane protocol)
