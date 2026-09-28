@@ -204,6 +204,33 @@ $ diff .claude/rules/moai/development/coding-standards.md internal/template/temp
 
 One hunk, its single content line byte-equal to the baseline content line, no hunk added or removed — the 005b predicate holds at its strongest form (header unmoved). REQ-IBS-003 satisfied: both copies carry the identical amendment.
 
+### M2 — proper-subset adjudication + companion roster + paths-pinned guard (recorded BEFORE any content moves)
+
+**Adjudication, pattern-by-pattern with the complement named** (globs verbatim from the M0 measurement):
+
+| File | Pattern set P | Companion carries C | Complement P∖C | Verdict |
+|---|---|---|---|---|
+| `worktree-integration.md` | `**/.claude/agents/**`, `**/.claude/worktrees/**`, `**/.claude/teams/**` | {`**/.claude/worktrees/**`} | {`**/.claude/agents/**`, `**/.claude/teams/**`} — non-empty | **splittable** |
+| `kanban-dispatch-detail.md` | `**/kanban-dispatch*.md`, `**/.claude/agents/moai/manager-lead.md`, `**/.claude/skills/moai/workflows/gtd.md` | {`**/kanban-dispatch*.md`} if rung 4 fires | {`manager-lead.md`, `gtd.md`} — non-empty | splittable, **naming-constrained** (first pattern is filename-shaped; companion name MUST NOT match `kanban-dispatch*` — REQ-IBS-013) |
+| `spec-workflow.md` | `**/.moai/specs/**`, `**/.moai/config/sections/quality.yaml` | — | — | **compression-first by lead direction** (797-char overage; a split is disproportionate) |
+| `session-handoff-examples.md` | `**/session-handoff.md` | — | only non-empty subset is P itself = same-glob shard | **foreclosed** (single-element arithmetic; ladder rungs 1-3 only) |
+
+**Companion roster** (AC-IBS-002-R; the REQ-IBS-013 name check is done here, before the file exists):
+
+1. `worktree-integration.md` → companion **`worktree-integration-ops.md`**, `paths: "**/.claude/worktrees/**"`. Name check: the parent's patterns are directory globs, none filename-shaped — no naming trap; the name matches no parent pattern. Planned move (sizes from the M0/measured spans, verified at M4): § Disposing a Worktree the Automatic Sweep Does Not Reach (2,897 chars, **0 [HARD] clauses**) + § Refused Commands in a Worktree-Isolated Session (19,194 chars, **0 [HARD] clauses**) = 22,091 out; parent projected 39,344. Affinity claim per moved section (REQ-IBS-014/015): both are operational knowledge for a session already working *inside* a worktree — needed on the `worktrees/**` trigger; not needed when only agent definitions (`agents/**`) or team state (`teams/**`) are touched. One cross-block reference rewires on move: the disposal section's "the unpushed-branch rule above" points at the [HARD] clause staying in the parent's Terminology Glossary → becomes a named cross-file pointer. Inbound references measured: **zero** files outside `worktree-integration.md` name either moved section.
+2. `kanban-dispatch-detail.md` → **no companion pre-committed**; the ladder runs first (rung 3, dedup against co-loading `kanban-dispatch-mechanics.md`, is the promising instrument at a 1,034-char overage). If rung 4 fires later, the companion is named outside `kanban-dispatch*` — the constraint is recorded here so it binds before any name is chosen.
+3. `spec-workflow.md`, `session-handoff-examples.md` → no companions (compression-first / foreclosed).
+
+**`TestWorkflowRulePathsPinned` landed** (AC-IBS-003 green path; internal/template/workflow_rule_paths_pinned_test.go) — asserts the four `paths:` globs against values recorded in the test source (not tree-derived), reusing `parseFrontmatterAndBody`, reading the embedded template tree. RED was the guard's absence (`grep -rl "TestWorkflowRulePathsPinned" internal/template/` → empty, recorded in acceptance.md's RED-now cell); executed now with the anchored selector:
+
+```
+$ go test -v -run '^TestWorkflowRulePathsPinned$' ./internal/template/
+--- PASS: TestWorkflowRulePathsPinned (0.00s)
+ok  github.com/modu-ai/moai-adk/internal/template 0.333s
+```
+
+**Neutrality sentinel demonstration** — executed at v0.8.0 with its full table in `plan.md` §B.4 (pre-check exit 0 → injected sentinel reported `TEMPLATE_NEUTRALITY_VIOLATION: class=C1-macos-bias-path` exit 1 → reverted, exit 0, tree clean). Confirmed as already executed; not re-run this round.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
