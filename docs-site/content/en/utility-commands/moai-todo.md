@@ -31,7 +31,7 @@ The queue is deliberately thin. It holds nothing that a SPEC, git history, or th
 ```mermaid
 flowchart TD
     Add["/moai todo description<br/>add an item"] --> Queue["backlog queue"]
-    Queue --> Pick["via the lead question channel<br/>a human picks one"]
+    Queue --> Pick["via the factory leader question channel<br/>a human picks one"]
     Pick --> Class{"Card class"}
     Class --> A["A: direct close"]
     Class --> B["B: run → sync"]
@@ -54,7 +54,7 @@ flowchart TD
 | `/moai todo "<description>"` | Appends an item to the end of the queue and shows the added item and its position. |
 | `/moai todo`                 | Shows the queue in order, with position numbers.                                   |
 
-Removing an item and picking the next card are not verbs on the slash surface. Those two belong to the terminal CLI below (`moai todo done`, `moai todo next`) or to the pick made through the lead session.
+Removing an item and picking the next card are not verbs on the slash surface. Those two belong to the terminal CLI below (`moai todo done`, `moai todo next`) or to the pick made through the leader session.
 
 Any other argument shape is treated as a description. `/moai todo fix flaky CI cache` is not an error but an item add — the cost of a misunderstanding is a human deleting one line.
 
@@ -102,7 +102,7 @@ For a regular project directory, the queue is stored in one SQLite database at `
         "card_uuid": null,
         "run_id": "run-1",
         "card_id": "t1",
-        "owner_label": "worker-1",
+        "owner_label": "lane-1",
         "reported_state": "picked",
         "event_kind": "card.assigned",
         "provenance_json": "{}"
@@ -137,13 +137,13 @@ The four relations `contains` · `absorbs` · `replaces` · `conflicts` are writ
 
 ## Picking the next card
 
-The pick is made by a human through the lead session's question channel. The lead presents the queue as choices — one item at a time, oldest first, up to the four the tooling allows, with the rest summarized in the body so nothing is hidden — the same way it presents the queue as the first move after a `/clear`. From the terminal, a bare `moai todo next` prints the same list read-only when you just want to see the candidates.
+The pick is made by a human through the leader session's question channel. The leader presents the queue as choices — one item at a time, oldest first, up to the four the tooling allows, with the rest summarized in the body so nothing is hidden — the same way it presents the queue as the first move after a `/clear`. From the terminal, a bare `moai todo next` prints the same list read-only when you just want to see the candidates.
 
 {{< callout type="warning" >}}
 {{< icon warning warn >}} **A human does the picking.** Nothing is pre-selected, no estimated priority reorders the queue, and "just start from the top" is never a default. If the queue is empty, it says so and stops — an empty backlog is a normal state, not a signal to invent work.
 {{< /callout >}}
 
-You can also approve several cards at once — by pointing at the cards, or by saying to proceed in order until the queue is empty. That is still a human choice, just made in one batch instead of one at a time. The lead admits the cards in the approved order and does not ask again. What that approval permits is exactly that and nothing more — it is not a license to add items, reorder the queue, or decide cards whose judgment falls outside the approved scope.
+You can also approve several cards at once — by pointing at the cards, or by saying to proceed in order until the queue is empty. That is still a human choice, just made in one batch instead of one at a time. The leader admits the cards in the approved order and does not ask again. What that approval permits is exactly that and nothing more — it is not a license to add items, reorder the queue, or decide cards whose judgment falls outside the approved scope.
 
 After a card is picked, it continues like this:
 
@@ -158,7 +158,7 @@ After a card is picked, it continues like this:
 ## Boundaries
 
 - **Not a work-management tool.** No priorities, no assignees, no deadlines, no dependency graph. Work that needs those belongs in an issue tracker or a SPEC.
-- **Not the board.** Which column a card sits in is held by the lead session and the SPEC status, not by this file.
+- **Not the board.** Which column a card sits in is held by the leader session and the SPEC status, not by this file.
 - **Not the source of truth for work in progress.** Once a card has a SPEC, the SPEC artifacts are the reference; the backlog item is only a pointer to it.
 - **It does not fill itself.** The tool never scrapes TODO comments, open issues, or audit findings into the queue. A human puts items in.
 - **The guidance surfaces can be switched off.** The session-start summary, the statusline TODO segment, and the automatic routing turn off with `workflow.todo.enabled: false` in `workflow.yaml` (see the [configuration reference](/en/advanced/config-sections/)). The command and its verbs keep working when off.
@@ -193,7 +193,7 @@ $ moai todo done 4 --expect "auth middleware"
 # Ask whether the card landed, and refuse only on a positive "not landed" answer
 $ moai todo done 4 --require-landed
 
-# Batch-close landed cards (lead only, after the batch push is confirmed) — dry-run first
+# Batch-close landed cards (leader only, after the batch push is confirmed) — dry-run first
 $ moai todo auto-done --fetch --dry-run
 $ moai todo auto-done --fetch
 
@@ -249,7 +249,7 @@ $ moai todo unrelate 2
 
 The CLI never prompts. It takes arguments and flags, prints one line, and reports errors on stderr — a shape that is safe in scripts and CI.
 
-Run it inside a linked worktree and the queue still **resolves to the primary checkout's project key** — the contract is one repository, one queue. A `moai todo add` from a card worktree lands in the same database the lead and the foreman loop read. Projects without git metadata use the same home layout — unless they originate in a temporary directory, in which case the queue is project-local at `<base>/.moai/state/todo/backlog.db` (an absolute `MOAI_HOME` override applies even then).
+Run it inside a linked worktree and the queue still **resolves to the primary checkout's project key** — the contract is one repository, one queue. A `moai todo add` from a card worktree lands in the same database the leader and the foreman loop read. Projects without git metadata use the same home layout — unless they originate in a temporary directory, in which case the queue is project-local at `<base>/.moai/state/todo/backlog.db` (an absolute `MOAI_HOME` override applies even then).
 
 Both surfaces share the same storage layer. Mutations hold the sibling lock file (backlog.lock) next to the database and land inside one SQLite transaction in WAL mode; reads take no lock. Item ids are issued from the persisted high-water mark (`last_seq`), advanced in the same transaction as the insert and guarded by a UNIQUE constraint on the id, so a removed item's id is never reused even if a process dies mid-mutation.
 

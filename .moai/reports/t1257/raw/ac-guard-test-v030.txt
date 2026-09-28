@@ -1,0 +1,6 @@
+=== RUN   TestACCounterFullCorpusMatchesBaseline
+    ac_count_clause_test.go:530: AC corpus: 1 file(s) matched by the glob but absent from the snapshot - reported, not failed (spec.md 3.5 rule 4)
+    ac_count_clause_test.go:532:   absent-from-snapshot .moai/specs/SPEC-ROLE-NAMING-DOCS-001/acceptance.md: COUNT 25
+--- PASS: TestACCounterFullCorpusMatchesBaseline (8.10s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	8.431s

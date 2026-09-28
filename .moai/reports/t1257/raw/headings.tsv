@@ -1,0 +1,134 @@
+path	line	tokens	heading
+.claude/agents/moai/e2e-tester.md	87	lane	### desktop-native (non-Electron/non-Tauri) — OS-accessibility lane
+.claude/agents/moai/manager-lead.md	21	coordinator,lead	# Lead Coordinator
+.claude/agents/moai/manager-lead.md	89	worker	## Leaf Workers
+.claude/agents/moai/manager-lead.md	198	deputy	## Deputy dispatch surface (Role B extension)
+.claude/agents/moai/manager-lead.md	202	deputy	### Resident mode (the deputy is spawned per batch, not per need)
+.claude/agents/moai/manager-lead.md	214	deputy	### Delegable duties (the deputy MAY)
+.claude/agents/moai/manager-lead.md	224	deputy,lead	### DEPUTY-RETAINED-BY-LEAD (the deputy MUST NOT)
+.claude/agents/moai/super-advisor.md	71	leader	## GLM Carve-out + CG Leader-Review Absorption
+.claude/output-styles/moai/moai-easy.md	7	companion	# MoAI-Easy — Beginner-Friendly Pair Programming Companion
+.claude/output-styles/moai/moai.md	627	lane	### Lane Board [HARD]
+.claude/rules/local/gitflow-lane-protocol.md	6	lane	# git-flow Lane Protocol (moai-adk-go, local-only)
+.claude/rules/moai/core/agent-common-protocol.md	303	lane	# Lane A — ordered; wait for fetch completion before reading origin/main.
+.claude/rules/moai/core/agent-common-protocol.md	312	lane	# Lane B — can be started while Lane A is fetching, then joined before the
+.claude/rules/moai/core/glm-web-tooling.md	42	leader	### cg-leader exception
+.claude/rules/moai/core/moai-constitution-detail.md	6	companion	# MoAI Constitution — Detail Companion
+.claude/rules/moai/core/moai-mcp-tools-catalogue.md	6	companion	# moai-mcp Tool Catalogue — Detail Companion
+.claude/rules/moai/core/native-idiom-and-register-detail.md	6	companion	# Native Idiom & Register — Detail Companion
+.claude/rules/moai/core/output-style-localization-catalogue.md	6	companion	# Output-Style Localization — Anti-Pattern Catalogues (Detail Companion)
+.claude/rules/moai/core/verification-claim-integrity-detail.md	6	companion	# Verification-Claim Integrity — Detail Companion
+.claude/rules/moai/development/model-policy.md	134	companion	### The companion display and capability variables
+.claude/rules/moai/workflow/cache-aware-execution-reference.md	6	companion	# Cache-Aware Execution — Reference Companion
+.claude/rules/moai/workflow/context-window-management-detail.md	6	companion	# Context Window Management — Detail Companion
+.claude/rules/moai/workflow/cross-session-messaging-detail.md	6	companion	# Cross-Session Messaging — Detail Companion
+.claude/rules/moai/workflow/goal-directive-detail.md	6	companion	# Goal Directive — Detail Companion
+.claude/rules/moai/workflow/kanban-dispatch-detail.md	6	companion	# Kanban Dispatch — Detail Companion
+.claude/rules/moai/workflow/kanban-dispatch-detail.md	123	lead	## The lead works through manager-lead
+.claude/rules/moai/workflow/kanban-dispatch-detail.md	132	deputy,lead	### Deputy mode — background coordination off the lead's turn
+.claude/rules/moai/workflow/kanban-dispatch-detail.md	180	lane	## Factory in-lane 3-stage
+.claude/rules/moai/workflow/kanban-dispatch.md	104	deputy	## Deputy dispatch surface
+.claude/rules/moai/workflow/kanban-dispatch.md	211	lane	## Verification load is lane-local
+.claude/rules/moai/workflow/kanban-dispatch.md	219	lane	### Serializing a heavy run across lanes
+.claude/rules/moai/workflow/main-checkout-branch-guard-detail.md	6	companion	# Main-Checkout Branch Guard — Detail Companion
+.claude/rules/moai/workflow/orchestration-mode-selection.md	182	worker	### §C.4 Factory workers (default 8) are not `fanout`
+.claude/rules/moai/workflow/orchestration-mode-selection.md	290	lead	## §G.2 — `manager-lead` as a serial-shaped delegation target (NOT a new mode)
+.claude/rules/moai/workflow/skill-routing-detail.md	6	companion	# Skill Routing — Detail Companion
+.claude/skills/hns-lsel-curator/drain.sh	4	companion	# Companion-offset drain of a lessons-inbox.jsonl. The frozen Go applier is NOT touched
+.claude/skills/hns-lsel-curator/drain.sh	9	companion	#   1. Read companion offset from <state-dir>/drain-offset.json (seed 0 if absent).
+.claude/skills/hns-lsel-curator/drain.sh	22	companion	#   7. Emit candidates to <state-dir>/clusters.json; advance the companion offset.
+.claude/skills/hns-lsel-curator/drain.sh	52	companion	# --- step 1: companion offset (seed 0 if absent) ---
+.claude/skills/hns-lsel-curator/drain.sh	124	companion	# --- advance the companion offset (the consumed-stub marker) ---
+.claude/skills/moai-foundation-cc/SKILL.md	149	worker	### Orchestrator-Worker Architecture
+.claude/skills/moai-foundation-cc/reference/advanced-agent-patterns.md	141	worker	### Orchestrator-Worker Architecture
+.claude/skills/moai-kanban-foreman/SKILL.md	31	foreman	# Kanban Foreman Loop Iteration
+.claude/skills/moai-workflow-project/scripts/navigator-regen.sh	111	companion	# set AND a companion "<barrier>.armed" sentinel exists, write "ready" to the
+.claude/skills/moai-workflow-testing/modules/performance/optimization-patterns.md	82	worker	# Rust rayon, Java ForkJoinPool, JS worker threads.
+.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md	1	lane	# Desktop-Native E2E Recipes (OS accessibility lane)
+.claude/skills/moai/workflows/harness-builder.md	269	companion	### Artifact 4 — Companion Progressive-Disclosure skills
+README.md	69	worker	### Factory Mode — many cards at once across N workers
+docs-site/content/en/advanced/agent-guide.md	133	lead	## Hierarchical Teams — How manager-lead Works
+docs-site/content/en/advanced/factory-mode.md	33	lead,worker	## Entry — opening the lead and the workers
+docs-site/content/en/advanced/factory-mode.md	36	lead,worker	# Lead — opens the factory lead (one worker, worker-1)
+docs-site/content/en/advanced/factory-mode.md	39	worker	# Workers — each in its own terminal; the role token joins the next free number
+docs-site/content/en/advanced/factory-mode.md	44	worker	# You can also pick a number directly and join exactly that worker
+docs-site/content/en/advanced/factory-mode.md	47	worker	# GLM-backend workers take the same form
+docs-site/content/en/advanced/factory-mode.md	59	lead,worker	## The lead's routing — whole cards to free workers
+docs-site/content/en/advanced/factory-mode.md	65	worker	## The 3 stages inside a worker — serial
+docs-site/content/en/advanced/factory-mode.md	97	worker	## Worker-number ownership — factory.db
+docs-site/content/en/advanced/kanban-mode.md	158	lead	# Enter as the lead — start the kanban chain targeting a SPEC
+docs-site/content/en/advanced/kanban-mode.md	174	companion,lead	# Companion sessions — join under their bare role name (the run-id is the lead's identifier)
+docs-site/content/en/advanced/kanban-mode.md	211	worker	## Factory Mode — many cards at once across N workers
+docs-site/content/en/advanced/kanban-mode.md	267	foreman	## The unattended foreman — a bare `/loop` {{< new-badge v3.1.1 >}}
+docs-site/content/en/advanced/manager-lead.md	10	coordinator,lead	# manager-lead Lead Coordinator
+docs-site/content/en/advanced/manager-lead.md	39	lead	## The posture of a lead session — the conversation continues, the work runs behind it
+docs-site/content/en/advanced/manager-lead.md	91	lead	# Check in progress.md whether the current SPEC took the manager-lead path
+docs-site/content/en/advanced/manager-lead.md	106	lead	# Tool lists when manager-lead calls leaf agents (conceptual example)
+docs-site/content/en/core-concepts/kanban-board-terms.md	43	lane	## Lane vs column — the most confused pair
+docs-site/content/en/multi-llm/kanban-mode.md	27	lead	### Lead entry
+docs-site/content/en/multi-llm/kanban-mode.md	41	companion	### Companion entry
+docs-site/content/en/utility-commands/moai-todo.md	196	lead	# Batch-close landed cards (lead only, after the batch push is confirmed) — dry-run first
+docs-site/content/en/worktree/examples.md	299	lead	# On the team lead or CI system
+docs-site/content/en/worktree/faq.md	105	leader	# Enter with the Claude leader + GLM teammate hybrid
+docs-site/content/ja/advanced/agent-guide.md	134	lead	## 階層型チーム — manager-lead の仕組み
+docs-site/content/ja/advanced/factory-mode.md	36	worker	# リード — ファクトリーリードを開きます(ワーカー 1 人、worker-1)
+docs-site/content/ja/advanced/manager-lead.md	10	coordinator,lead	# manager-lead リードコーディネーター (Lead Coordinator)
+docs-site/content/ko/advanced/agent-guide.md	176	lead	## 계층형 팀 — manager-lead
+docs-site/content/ko/advanced/factory-mode.md	36	worker	# 리드 — 팩토리 리드를 엽니다(워커 하나, worker-1)
+docs-site/content/ko/advanced/manager-lead.md	10	coordinator,lead	# manager-lead 리드 코디네이터 (Lead Coordinator)
+docs-site/content/ko/advanced/manager-lead.md	91	lead	# 현재 SPEC이 manager-lead 경로로 갔는지 progress.md에서 확인
+docs-site/content/zh/advanced/agent-guide.md	133	lead	## 分层团队 — manager-lead 的运作原理
+docs-site/content/zh/advanced/factory-mode.md	36	worker	# 主控 —— 打开工厂主控（一名工作者，worker-1）
+docs-site/content/zh/advanced/manager-lead.md	10	lead	# manager-lead 领导协调者
+docs-site/content/zh/advanced/manager-lead.md	91	lead	# 在 progress.md 里确认当前 SPEC 是否走了 manager-lead 路径
+docs-site/content/zh/advanced/manager-lead.md	106	lead	# manager-lead 调用叶子智能体时的工具清单 (概念示例)
+docs-site/content/zh/utility-commands/moai-todo.md	196	lead	# 批量关闭已落地的卡片（仅限 lead，确认批量 push 之后）— 先 dry-run
+internal/template/templates/.claude/agents/moai/e2e-tester.md	88	lane	### desktop-native (non-Electron/non-Tauri) — OS-accessibility lane
+internal/template/templates/.claude/agents/moai/manager-lead.md	21	coordinator,lead	# Lead Coordinator
+internal/template/templates/.claude/agents/moai/manager-lead.md	91	worker	## Leaf Workers
+internal/template/templates/.claude/agents/moai/manager-lead.md	200	deputy	## Deputy dispatch surface (Role B extension)
+internal/template/templates/.claude/agents/moai/manager-lead.md	204	deputy	### Resident mode (the deputy is spawned per batch, not per need)
+internal/template/templates/.claude/agents/moai/manager-lead.md	216	deputy	### Delegable duties (the deputy MAY)
+internal/template/templates/.claude/agents/moai/manager-lead.md	226	deputy,lead	### DEPUTY-RETAINED-BY-LEAD (the deputy MUST NOT)
+internal/template/templates/.claude/loop.md	1	foreman	# Kanban foreman iteration
+internal/template/templates/.claude/output-styles/moai/moai-easy.md	7	companion	# MoAI-Easy — Beginner-Friendly Pair Programming Companion
+internal/template/templates/.claude/output-styles/moai/moai.md	627	lane	### Lane Board [HARD]
+internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md	303	lane	# Lane A — ordered; wait for fetch completion before reading origin/main.
+internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md	312	lane	# Lane B — can be started while Lane A is fetching, then joined before the
+internal/template/templates/.claude/rules/moai/core/moai-constitution-detail.md	6	companion	# MoAI Constitution — Detail Companion
+internal/template/templates/.claude/rules/moai/core/moai-mcp-tools-catalogue.md	6	companion	# moai-mcp Tool Catalogue — Detail Companion
+internal/template/templates/.claude/rules/moai/core/native-idiom-and-register-detail.md	6	companion	# Native Idiom & Register — Detail Companion
+internal/template/templates/.claude/rules/moai/core/output-style-localization-catalogue.md	6	companion	# Output-Style Localization — Anti-Pattern Catalogues (Detail Companion)
+internal/template/templates/.claude/rules/moai/core/verification-claim-integrity-detail.md	6	companion	# Verification-Claim Integrity — Detail Companion
+internal/template/templates/.claude/rules/moai/development/model-policy.md	134	companion	### The companion display and capability variables
+internal/template/templates/.claude/rules/moai/workflow/cache-aware-execution-reference.md	6	companion	# Cache-Aware Execution — Reference Companion
+internal/template/templates/.claude/rules/moai/workflow/context-window-management-detail.md	6	companion	# Context Window Management — Detail Companion
+internal/template/templates/.claude/rules/moai/workflow/cross-session-messaging-detail.md	6	companion	# Cross-Session Messaging — Detail Companion
+internal/template/templates/.claude/rules/moai/workflow/goal-directive-detail.md	6	companion	# Goal Directive — Detail Companion
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch-detail.md	6	companion	# Kanban Dispatch — Detail Companion
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch-detail.md	123	lead	## The lead works through manager-lead
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch-detail.md	132	deputy,lead	### Deputy mode — background coordination off the lead's turn
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch-detail.md	180	lane	## Factory in-lane 3-stage
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md	104	deputy	## Deputy dispatch surface
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md	211	lane	## Verification load is lane-local
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md	219	lane	### Serializing a heavy run across lanes
+internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard-detail.md	6	companion	# Main-Checkout Branch Guard — Detail Companion
+internal/template/templates/.claude/rules/moai/workflow/orchestration-mode-selection.md	174	worker	### §C.4 Factory workers (default 8) are not `fanout`
+internal/template/templates/.claude/rules/moai/workflow/orchestration-mode-selection.md	282	lead	## §G.2 — `manager-lead` as a serial-shaped delegation target (NOT a new mode)
+internal/template/templates/.claude/rules/moai/workflow/skill-routing-detail.md	6	companion	# Skill Routing — Detail Companion
+internal/template/templates/.claude/skills/moai-foundation-cc/SKILL.md	149	worker	### Orchestrator-Worker Architecture
+internal/template/templates/.claude/skills/moai-foundation-cc/reference/advanced-agent-patterns.md	141	worker	### Orchestrator-Worker Architecture
+internal/template/templates/.claude/skills/moai-kanban-foreman/SKILL.md	31	foreman	# Kanban Foreman Loop Iteration
+internal/template/templates/.claude/skills/moai-workflow-project/scripts/navigator-regen.sh	111	companion	# set AND a companion "<barrier>.armed" sentinel exists, write "ready" to the
+internal/template/templates/.claude/skills/moai-workflow-testing/modules/performance/optimization-patterns.md	82	worker	# Rust rayon, Java ForkJoinPool, JS worker threads.
+internal/template/templates/.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md	1	lane	# Desktop-Native E2E Recipes (OS accessibility lane)
+internal/template/templates/.claude/skills/moai/workflows/harness-builder.md	269	companion	### Artifact 4 — Companion Progressive-Disclosure skills
+internal/template/templates/.codex/agents/moai/e2e-tester.toml	81	lane	### desktop-native (non-Electron/non-Tauri) — OS-accessibility lane
+internal/template/templates/.codex/agents/moai/manager-lead.toml	2	lead	# Neutral source: .claude/agents/moai/manager-lead.md (body carried verbatim).
+internal/template/templates/.codex/agents/moai/manager-lead.toml	14	coordinator,lead	# Lead Coordinator
+internal/template/templates/.codex/agents/moai/manager-lead.toml	84	worker	## Leaf Workers
+internal/template/templates/.codex/agents/moai/manager-lead.toml	193	deputy	## Deputy dispatch surface (Role B extension)
+internal/template/templates/.codex/agents/moai/manager-lead.toml	197	deputy	### Resident mode (the deputy is spawned per batch, not per need)
+internal/template/templates/.codex/agents/moai/manager-lead.toml	209	deputy	### Delegable duties (the deputy MAY)
+internal/template/templates/.codex/agents/moai/manager-lead.toml	219	deputy,lead	### DEPUTY-RETAINED-BY-LEAD (the deputy MUST NOT)
+internal/template/templates/.moai/config/sections/lsp.yaml.tmpl	38	coordinator	#   - charmbracelet/crush: manager-coordinator + powernap

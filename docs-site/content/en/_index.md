@@ -16,26 +16,26 @@ MoAI-ADK (Agentic Development Kit) is a strategic orchestration framework for Cl
 
 ## New in v3.1 — Kanban Mode {{< new-badge v3.1 >}}
 
-A session holds one context window, and a long SPEC fills it — everything that follows carries everything that came before. Kanban Mode splits one unit of work across **four terminals**: a lead session drives the chain while three companion sessions each own a single column — `plan`, `run`, `sync` — and carry only that column's context. The review verdict is not a column: the sync gate absorbs it. Limits do not disappear, but no session carries three phases' worth of history, so the same budget goes considerably further.
+A session holds one context window, and a long SPEC fills it — everything that follows carries everything that came before. Kanban Mode splits one unit of work across **four terminals**: a factory leader session drives the chain while three companion sessions each own a single column — `plan`, `run`, `sync` — and carry only that column's context. The review verdict is not a column: the sync gate absorbs it. Limits do not disappear, but no session carries three phases' worth of history, so the same budget goes considerably further.
 
-![One Kanban Mode run: the five-column board with a lead session and three companion sessions, each in its own terminal, each on its own model and effort level](/images/profile/kanban-five-sessions.png)
+![One Kanban Mode run: the five-column board with a leader session and three companion sessions, each in its own terminal, each on its own model and effort level](/images/profile/kanban-five-sessions.png)
 
 Each lane can run a different backend and effort level. The run above puts Plan on Opus 5 at high effort, Run on GLM 5.2 at xhigh, and Sync on GLM 5.2.
 
 {{< terminal title="kanban mode" raw="true" >}}
-moai cc -k                    # lead — announces a run-id, seeds the chain
+moai cc -k                    # leader — announces a run-id, seeds the chain
 moai cc -k --name plan        # companion, in its own terminal
 moai cc -k --name run
 moai cc -k --name sync
 {{< /terminal >}}
 
-The board has five columns, `backlog → plan → run → sync → done`, and `backlog` has no owning session by design — work enters the board only when you put it there with [`/moai todo`](/en/utility-commands/moai-todo). Review is not a column: the sync gate absorbs the verdict. The lead advances a card only on evidence it read from the card's `progress.md`, never on a companion's reply.
+The board has five columns, `backlog → plan → run → sync → done`, and `backlog` has no owning session by design — work enters the board only when you put it there with [`/moai todo`](/en/utility-commands/moai-todo). Review is not a column: the sync gate absorbs the verdict. The leader advances a card only on evidence it read from the card's `progress.md`, never on a companion's reply.
 
 Run `moai web` to watch the chain and the SPEC pipeline side by side on the Kanban screen.
 
 ![moai web console — Overview screen with SPEC counts, in-progress SPECs, and session registry](/images/profile/web-console-v31-overview.png)
 
-More: [Kanban Mode](/en/advanced/kanban-mode) · [manager-lead Lead Coordinator](/en/advanced/manager-lead) · [`/moai todo`](/en/utility-commands/moai-todo) · [moai web console](/en/advanced/moai-web-console)
+More: [Kanban Mode](/en/advanced/kanban-mode) · [manager-lead Leader Coordinator](/en/advanced/manager-lead) · [`/moai todo`](/en/utility-commands/moai-todo) · [moai web console](/en/advanced/moai-web-console)
 
 ## Three Core Values of MoAI 3.1
 
