@@ -188,7 +188,7 @@ m1_to_mN_commit_strategy: per-milestone commits (M1 b363e54b5, M2 08ed325ac, M3 
 
 ```yaml
 sync_complete_at: 2026-09-29
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "fc543c9c3"
 sync_status: complete
 b12_self_test_a: "PASS — grep -c 'SPEC-TODO-STALE-STORE-001' CHANGELOG.md = 0 before emission (no duplicate from parallel BATCH-SYNC)"
 b12_self_test_b: "PASS — acceptance.md SSOT: 11 distinct AC identifiers (AC-TSS-001 counted once with five per-verb sub-rows a–e); executable scope 13 PASS / 0 FAIL; AC-TSS-022 awaiting-disposition BY DESIGN (disposal is an operator decision record, out of executed scope) — CHANGELOG entry states this split verbatim"
