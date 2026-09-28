@@ -62,6 +62,24 @@ func memberByNumber(t *testing.T, res codexStopChainResult, n int) stopMemberOut
 // the goal member execute on the goal-unmet and gate-failing goldens and each
 // returns its own decision.
 func TestStopChainGPTProfileNoClaudeDependency(t *testing.T) {
+	// A CI-only TempDir cleanup failure has left .git/objects nonempty while
+	// RemoveAll was walking it. Keep Git's process trace outside the project
+	// directory so a failing cleanup can show which Git child was still active.
+	traceDir := t.TempDir()
+	tracePath := filepath.Join(traceDir, "git-trace.jsonl")
+	t.Setenv("GIT_TRACE2_EVENT", tracePath)
+	t.Cleanup(func() {
+		if !t.Failed() {
+			return
+		}
+		data, err := os.ReadFile(tracePath)
+		if err != nil {
+			t.Logf("git trace unavailable after failure: %v", err)
+			return
+		}
+		t.Logf("git trace tail after failure:\n%s", tailOfString(string(data), 12000))
+	})
+
 	ctx := context.Background()
 	projectDir, _ := runInitForAutonomy(t, nil, map[string]string{"llm": "gpt"})
 	if _, err := os.Stat(filepath.Join(projectDir, ".claude")); err == nil {
@@ -72,6 +90,11 @@ func TestStopChainGPTProfileNoClaudeDependency(t *testing.T) {
 	f.enableReviewGates(t, true, false)
 	f.setFakeGo(t, 1) // the sync gate's vet fails
 	f.dirty(t, "reviewable")
+	if st, err := os.Stat(tracePath); err == nil {
+		t.Logf("git trace active after fixture setup: %d bytes", st.Size())
+	} else {
+		t.Logf("git trace unavailable after fixture setup: %v", err)
+	}
 
 	// Receipts for the current tree: a failing sync gate, a failing review.
 	if _, err := produceSyncGateReceipt(ctx, f.root); err != nil {
