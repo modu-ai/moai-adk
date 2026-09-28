@@ -24,10 +24,10 @@
 
 ### §2.1 Research record (fill during M3)
 
-- [ ] URL fetched: ___
-- [ ] Context window stated: ___ (or "not stated")
-- [ ] Fetch date: ___
-- [ ] Decision: tables updated / unchanged — reason: ___
+- [x] URL fetched: `https://platform.claude.com/docs/en/about-claude/models/overview.md` (models overview; also cross-checked the per-model page link `https://platform.claude.com/docs/en/models/sonnet-5-5/overview` carried by the same table)
+- [x] Context window stated: **1M tokens** (Claude Sonnet 5.5 column, "Context window" row; max output 128K tokens). The official docs DO state the figure — the announcement's silence was announcement-scoped only.
+- [x] Fetch date: 2026-09-29
+- [x] Decision: **tables unchanged** — reason: the stated figure (1M) is identical to what `context-window-management.md` ("Sonnet 5 (1M)" row) and the docs-site tokenomics pages already state for Sonnet, so REQ-SSB-012's update condition ("only if the figure differs") is not met. The row LABELS were updated to "Sonnet 5.5 (1M)" under REQ-SSB-007 (current-generation statement); the VALUES are untouched. No citation gap remains.
 
 ## §3 Tree measurements (a62a05764)
 
