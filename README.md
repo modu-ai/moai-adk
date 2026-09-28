@@ -182,7 +182,7 @@ This identity organizes into three keys: **cost** (tokenomics — the same quali
 | **Autonomy with real boundaries** | Declare a completion condition with `/moai goal` and the session works on its own until it holds. Four hard boundaries are attached — a turn limit (default 30), a stagnation guard, a wall-clock budget, and pre-approval gates — so it cannot fall into an infinite loop. |
 | **Parallel-safe** | Every SPEC gets its own working tree, a branch-state guard blocks accidental branch switches in the primary checkout, and the gap against the remote is checked before spawning write agents. Two write-capable agents never run at the same time. |
 | **Long-horizon continuity** | Work survives `/clear`. Progress stays in `progress.md`, handoff messages in memory, routing decisions in decision memory. The next session starts from what the last one learned, not from bare ground. |
-| **Cost-efficient** | Models and reasoning depth are assigned declaratively, matched to work phase and SPEC size. Prompt caches are reused and long output is spilled to disk to keep the context light. |
+| **Cost-efficient** | Pick the session's model and reasoning effort once, and every agent inherits it as-is. Prompt caches are reused and long output is spilled to disk to keep the context light. |
 | **Equal support for 16 programming languages** | Go, Python, TypeScript, JavaScript, Rust, Java, Kotlin, C#, Ruby, PHP, Elixir, C++, Scala, R, Flutter, Swift — sixteen programming languages handled as one set via marker-based auto-detection. None receives preferential treatment. |
 | **Self-improving** | Recurring failure patterns observed in the wild rise as proposed rule changes. Nothing is applied silently — approval comes first. Routing decisions and gate evidence accumulate in decision memory as material for the next run. |
 | **Native-language friendly** | Korean, Japanese, Chinese, and English locales are maintained in the same PR, translationese is banned, and each language gets its own native prose. Users are never forced into English. |
@@ -500,25 +500,25 @@ flowchart TD
 
 ### The 13-agent catalog
 
-| Category | Agent | Cost | Role |
-|----------|-------|------|------|
-| **Manager** | manager-spec | 🔴 | Plan-phase SPEC authoring |
-| | manager-develop | 🔴 | Run-phase TDD/DDD/autofix implementation |
-| | manager-docs | 🔵 | Sync-phase documentation |
-| | manager-git | 🩵 | PR creation and routing |
-| | manager-design | 🟠 | Design-phase collaboration (Claude Design) |
-| | manager-lead | 🔴 | Hierarchical-team Tier L coordination + kanban/factory lead-session dispatch (sole Agent-carrier, depth-2 sealed) |
-| **Evaluator** | plan-auditor | 🔴 | Independent plan audit (bias prevention) |
-| | sync-auditor | 🔴 | 4-dimensional quality scoring (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
-| **Builder** | builder-harness | 🟠 | Project-specific agents, skills, commands, hooks scaffolding |
-| **Advisor** | super-advisor | 🔵 | On-demand high-reasoning consultation (E1-E4 escalation) |
-| **Specialist** | e2e-tester | 🟠 | Web/mobile/desktop E2E test execution (CLI-first) |
-| | mission-governor | 🔴 | Read-only decision for an approved GTD auto mission — returns one bounded decision, never applies it (dispatched by the GTD workflow, so it carries no selection-tree row) |
-| **Built-in** | Explore | ⚪ | Read-only codebase exploration |
+| Category | Agent | Role |
+|----------|-------|------|
+| **Manager** | manager-spec | Plan-phase SPEC authoring |
+| | manager-develop | Run-phase TDD/DDD/autofix implementation |
+| | manager-docs | Sync-phase documentation |
+| | manager-git | PR creation and routing |
+| | manager-design | Design-phase collaboration (Claude Design) |
+| | manager-lead | Hierarchical-team Tier L coordination + kanban/factory lead-session dispatch (sole Agent-carrier, depth-2 sealed) |
+| **Evaluator** | plan-auditor | Independent plan audit (bias prevention) |
+| | sync-auditor | 4-dimensional quality scoring (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
+| **Builder** | builder-harness | Project-specific agents, skills, commands, hooks scaffolding |
+| **Advisor** | super-advisor | On-demand high-reasoning consultation (E1-E4 escalation) |
+| **Specialist** | e2e-tester | Web/mobile/desktop E2E test execution (CLI-first) |
+| | mission-governor | Read-only decision for an approved GTD auto mission — returns one bounded decision, never applies it (dispatched by the GTD workflow, so it carries no selection-tree row) |
+| **Built-in** | Explore | Read-only codebase exploration |
 
-Cost colors follow the default `medium` profile's model×effort cells (inspect via `moai model profile`): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ session-model inherit (user-added agents). Assignments shift when switching profiles (`high`/`low`). Authoring and auditing are separated from the start, so the writing side never grades its own work.
+Every agent inherits the session's model and reasoning effort — the model and effort the session starts with are the assignment for all of them. Authoring and auditing are separated from the start, so the writing side never grades its own work.
 
-Twelve of the thirteen are agents moai-adk built; `Explore` is a built-in that already ships with Claude Code. It carries a profile cell like every other row — `sonnet / low` in all three profiles — so the model profile section further down counts the same thirteen agents: 13 × 3 = 39 cells.
+Twelve of the thirteen are agents moai-adk built; `Explore` is a built-in that already ships with Claude Code.
 
 ### trust-but-verify — binding evidence to completion claims
 
@@ -649,22 +649,6 @@ v3.1.1 adds four more sections worth touching.
 `gate.yaml`'s `ast_grep_gate.rules_dir` is not a new key — it is a key whose **default changed**. What used to default to an empty string now defaults to `.moai/config/astgrep-rules`, and `moai init` / `moai update` lay the bundled ruleset down at that path. The fallback path on the code side is gone, so this key is now the only source of truth for where the ruleset lives — move the rules elsewhere and this value has to move with them, or the gate will not find them.
 
 Environment variables override file values. For precedence details and the full section list, see the [CLI reference](https://adk.mo.ai.kr/en/cli-reference).
-
-### Model profiles — high / medium / low
-
-`moai model profile` resolves 13 agents × 3 profiles = 39 cells of `{model, effort}` pairs.
-
-<p align="center">
-  <img src="./assets/images/model-routing-infographic-en.png" alt="Agent model routing — each agent gets the right model and reasoning effort" width="85%">
-</p>
-
-| Profile | Character | When |
-|---|---|---|
-| **high** | Opus-heavy, deep reasoning | Complex planning · security audits · hard debugging |
-| **medium** (default) | Balanced | Typical SPECs |
-| **low** | Sonnet + low effort | Mechanical repetition · docs · one-shot work |
-
-Assignment follows work phase (plan / run / sync) and SPEC size (Tier S / M / L) — deep-reasoning models for planning phases that need inference, lighter models for mechanical implementation phases. Under the No-Haiku 3-tier policy, single-shot input-dominated work goes to Sonnet low, and every multi-turn agentic task goes to Opus.
 
 ### settings.json / settings.local.json separation
 
