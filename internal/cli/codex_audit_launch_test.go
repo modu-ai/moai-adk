@@ -387,7 +387,17 @@ func TestCodexAuditLaunchArgv(t *testing.T) {
 	}
 	wantInstr := roleLiteral(t, string(roleSrc), "developer_instructions")
 	wantInstrJSON, _ := json.Marshal(wantInstr)
-	wantEffort := roleBasic(t, string(roleSrc), "model_reasoning_effort")
+	// Effort comes from the audit pin, not the role file (the emitter stopped
+	// publishing model_reasoning_effort with the frontmatter strip). Pin the
+	// caller tree and expect that value on the argv.
+	if err := os.MkdirAll(filepath.Join(repo.a1, ".moai", "config", "sections"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pin := "workflow:\n  audit:\n    codex:\n      model: gpt-5-codex\n      effort: high\n"
+	if err := os.WriteFile(filepath.Join(repo.a1, ".moai", "config", "sections", "workflow.yaml"), []byte(pin), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	wantEffort := "high"
 
 	r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1, Task: strings.NewReader("check SPEC X")})
 	if r.err != nil || r.res.ExitCode != 0 {
@@ -527,7 +537,9 @@ func codexAuditArgvViolations(argv []string, root, instrJSON, effort string, nam
 					v = append(v, "approval_policy="+val)
 				}
 			case key == "model_reasoning_effort":
-				if val != effort {
+				if effort == "" {
+					v = append(v, "model_reasoning_effort present with no audit pin")
+				} else if val != effort {
 					v = append(v, "model_reasoning_effort="+val)
 				}
 			case key == "developer_instructions":
@@ -572,10 +584,13 @@ func codexAuditArgvViolations(argv []string, root, instrJSON, effort string, nam
 	if roots != 1 || jsons != 1 || stdins != 1 {
 		v = append(v, fmt.Sprintf("-C=%d --json=%d -=%d, want 1 each", roots, jsons, stdins))
 	}
-	for _, k := range []string{"approval_policy", "model_reasoning_effort", "developer_instructions"} {
+	for _, k := range []string{"approval_policy", "developer_instructions"} {
 		if keys[k] != 1 {
 			v = append(v, fmt.Sprintf("-c %s appears %d times, want 1", k, keys[k]))
 		}
+	}
+	if effort != "" && keys["model_reasoning_effort"] != 1 {
+		v = append(v, fmt.Sprintf("-c model_reasoning_effort appears %d times, want 1", keys["model_reasoning_effort"]))
 	}
 	for n, c := range wantNames {
 		if c != 1 {
