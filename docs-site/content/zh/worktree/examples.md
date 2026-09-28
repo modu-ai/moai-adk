@@ -290,7 +290,7 @@ $ moai worktree done feature/SPEC-BE-001 --delete-branch
 #### PR 合并与集成
 
 ```bash
-# 在团队负责人或 CI 系统上
+# 在团队队长或 CI 系统上
 gh pr list
 # FE-001  Login UI Component          Ready
 # BE-001  Authentication API Service  Ready

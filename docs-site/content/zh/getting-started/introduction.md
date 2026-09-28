@@ -46,7 +46,7 @@ MoAI-ADK 是用**三根轴**包住 Claude Code 的 Agentic Development Kit —�
 - **`/moai goal`** —— 一行声明完成条件，会话自主推进。
 - **看板模式** —— 同时运行多个会话。
 - **BAS Navigator** —— 自动同步三段代码地图。
-- **manager-lead** —— 协调大规模工作：SPEC 内的 Tier L 里程碑扇出，加上看板与工厂领导会话调度。
+- **manager-lead** —— 协调大规模工作：SPEC 内的 Tier L 里程碑扇出，加上看板与工厂主导会话调度。
 - **multi-model audit** —— 用多模型交叉验证抓偏差。
 - **autonomy tier** —— 调节自主档位，安全地跑。
 - **profile matrix** —— 以 13 个智能体 × 3 个配置文件分配模型。

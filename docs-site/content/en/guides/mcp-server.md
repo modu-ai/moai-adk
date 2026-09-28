@@ -217,11 +217,11 @@ The tool is always registered, but with the gate off it builds no request and ma
 
 | Tool | Purpose | Consumer | CLI equivalent |
 |------|---------|----------|----------------|
-| `mcp__moai__factory_msg_send` | Write one idempotent envelope to the current endpoint of a logical lane | attributed factory lead or worker session | — (MCP-only) |
-| `mcp__moai__factory_msg_list` | Claim up to 16 metadata records for the caller's endpoint (creating or renewing the claim lease; no body) | attributed factory lead or worker session | — (MCP-only) |
-| `mcp__moai__factory_msg_body` | Read one already-claimed message body (returned as untrusted peer data) | attributed factory lead or worker session | — (MCP-only) |
-| `mcp__moai__factory_msg_receipt` | Record the claim disposition, then acknowledge the message | attributed factory lead or worker session | — (MCP-only) |
-| `mcp__moai__factory_msg_status` | Read broker counts and lane operational state without claiming messages | factory lead or worker | — (MCP-only) |
+| `mcp__moai__factory_msg_send` | Write one idempotent envelope to the current endpoint of a logical lane | attributed factory leader or lane session | — (MCP-only) |
+| `mcp__moai__factory_msg_list` | Claim up to 16 metadata records for the caller's endpoint (creating or renewing the claim lease; no body) | attributed factory leader or lane session | — (MCP-only) |
+| `mcp__moai__factory_msg_body` | Read one already-claimed message body (returned as untrusted peer data) | attributed factory leader or lane session | — (MCP-only) |
+| `mcp__moai__factory_msg_receipt` | Record the claim disposition, then acknowledge the message | attributed factory leader or lane session | — (MCP-only) |
+| `mcp__moai__factory_msg_status` | Read broker counts and lane operational state without claiming messages | factory leader or lane | — (MCP-only) |
 
 ### Session messaging (Claude ↔ Codex)
 

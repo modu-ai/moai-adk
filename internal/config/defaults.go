@@ -924,8 +924,8 @@ func NewDefaultSystemConfig() SystemConfig {
 // NewDefaultLLMConfig returns a LLMConfig with default values.
 func NewDefaultLLMConfig() LLMConfig {
 	return LLMConfig{
-		GLMEnvVar:       DefaultGLMEnvVar,
-		Harness:         DefaultHarness,
+		GLMEnvVar: DefaultGLMEnvVar,
+		Harness:   DefaultHarness,
 		ClaudeModels: ClaudeTierModels{
 			High:   "opus",
 			Medium: "sonnet",

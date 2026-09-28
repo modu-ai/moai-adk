@@ -5,19 +5,19 @@ draft: false
 ---
 
 {{< callout type="info" >}}
-For the full overview of Kanban Mode and the Origin-Trail Chain design direction, see [Kanban Mode](/en/advanced/kanban-mode). This page covers the multi-session (lead + companion) operating procedure.
+For the full overview of Kanban Mode and the Origin-Trail Chain design direction, see [Kanban Mode](/en/advanced/kanban-mode). This page covers the multi-session (factory leader + companion) operating procedure.
 {{< /callout >}}
 
 ## What is Kanban Mode?
 
-Kanban Mode lets one **lead** session drive a `plan -> run -> sync`
+Kanban Mode lets one **leader** session drive a `plan -> run -> sync`
 chain while three **companion** sessions join the same run to parallelize the
 work. The review verdict is not a separate stage — the sync gate absorbs it.
-Every session in the run — lead or companion — gets the raised
+Every session in the run — leader or companion — gets the raised
 Stop-hook block cap so a mid-session goal keeps running past the default
 consecutive-block ceiling.
 
-The lead seeds the chain; companions do not. Each companion carries a
+The leader seeds the chain; companions do not. Each companion carries a
 kanban-membership flag (`-k`) plus a role label (`--name <role>`)
 so the dispatcher classifies it correctly and the SessionStart hook
 announces its membership.
@@ -27,12 +27,12 @@ announces its membership.
 ### Lead entry
 
 ```bash
-moai cc -k                     # lead on Claude backend
-moai cc -k SPEC-AUTH-001       # lead tied to a SPEC
-moai glm -k                    # lead on GLM backend
+moai cc -k                     # leader on Claude backend
+moai cc -k SPEC-AUTH-001       # leader tied to a SPEC
+moai glm -k                    # leader on GLM backend
 ```
 
-The lead session:
+The leader session:
 
 {{< icon check-circle ok >}} Sets `MOAI_KANBAN` + `MOAI_KANBAN_ID` (chain seed).
 {{< icon check-circle ok >}} Prints the run id and three companion launch lines at SessionStart.
@@ -48,14 +48,14 @@ moai glm -k --name run    # same, on the GLM backend
 ```
 
 Companions are named by their bare role; the three roles are `plan`, `run`,
-and `sync`. The `<run-id>` names the lead session alone and never appears in
+and `sync`. The `<run-id>` names the leader session alone and never appears in
 a companion name — a second live session claiming the same role takes the
 next free number.
 
 The companion session:
 
 {{< icon check-circle ok >}} Sets `MOAI_KANBAN_LABEL` (membership + role label).
-{{< icon check-circle ok >}} Gets the same raised Stop-hook block cap as the lead.
+{{< icon check-circle ok >}} Gets the same raised Stop-hook block cap as the leader.
 {{< icon x-circle danger >}} Does NOT set `MOAI_KANBAN` — it does not seed a chain.
 
 ### No-op (unchanged session)
@@ -71,14 +71,14 @@ Without `-k`, the launcher is a no-op regardless of `--name` shape. The
 ## Multi-session bootstrap flow
 
 ```
-Terminal 1 (lead)          Terminal 2-4 (companions)
+Terminal 1 (leader)          Terminal 2-4 (companions)
 ─────────────────          ────────────────────────
 moai cc -k                 moai cc -k --name plan
                            moai cc -k --name run
                            moai cc -k --name sync
 ```
 
-Bootstrap is manual: a session cannot launch another session. The lead
+Bootstrap is manual: a session cannot launch another session. The leader
 SessionStart notice prints the exact three commands to copy, one per new
 terminal. Substitute `moai glm` for `moai cc` on any companion to run it on
 the GLM backend.
@@ -92,7 +92,7 @@ controls whether an inbound message is accepted, held, or refused.
 ### Availability constraints
 
 Cross-session messaging is not available in every environment. Kanban Mode
-connects the lead and companions through this channel alone, so where the
+connects the leader and companions through this channel alone, so where the
 channel is absent the mode itself cannot form. Check these constraints
 before you start.
 
@@ -127,12 +127,12 @@ inject its own settings file. Verify your file carries:
 }
 ```
 
-The lead SessionStart notice prints an advisory reminding you to check when
+The leader SessionStart notice prints an advisory reminding you to check when
 the launcher did not inject.
 
 ## SessionStart notice
 
-The lead notice announces the run id, the three companion launch lines, the
+The leader notice announces the run id, the three companion launch lines, the
 leader socket path, and the inbound-automation status. A companion notice
 is a single role-less line acknowledging the join. Neither notice prompts;
 both are informational stdout only.

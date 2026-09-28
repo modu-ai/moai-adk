@@ -2,7 +2,7 @@
 
 > **Purpose**: Essential guide for local moai-adk-go development
 > **Audience**: GOOS (local developer only)
-> **Last Updated**: 2026-09-28
+> **Last Updated**: 2026-09-29
 
 ---
 
@@ -40,65 +40,7 @@
 
 ## 1. Quick Start
 
-### Work Location
-```bash
-# Primary work location (template development)
-/Users/goos/MoAI/moai-adk-go/internal/template/templates/
-
-# Local project (testing & git)
-/Users/goos/MoAI/moai-adk-go/
-```
-
-### Development Cycle
-```
-1. Work in internal/template/templates/
-2. Run `make build` to regenerate embedded files
-3. Test in local project
-4. Git commit from the card worktree — never from the primary checkout (AGENTS.md §2·§3)
-```
-
-### [CRITICAL] moai CLI vs /moai Slash Command
-
-**DO NOT CONFUSE** these two completely different things:
-
-| | `moai` (Terminal CLI) | `/moai` (Slash Command) |
-|---|---|---|
-| **Where** | Terminal shell | Claude Code chat input |
-| **What** | Go binary (`~/go/bin/moai`) | Claude Code skill invocation |
-| **Purpose** | Project setup, template deployment | AI-assisted development workflows |
-| **Example** | `moai init myproject` | `/moai plan "add auth"` |
-| **Scope** | File system operations | AI agent orchestration |
-
-**Terminal `moai` commands:**
-```bash
-moai init <project>     # Initialize new project with templates
-moai update             # Sync templates to current project
-moai hook <event>       # Execute hook handler
-moai glm                # GLM worker mode
-moai version            # Show version
-
-# NOTE: There is NO top-level `moai build` command. To rebuild the binary
-# after editing templates, run `make build` (templates are embedded via
-# //go:embed all:templates in internal/template/embed.go — recompiled into
-# the binary). See §2 Embedded Template System.
-```
-
-**Claude Code `/moai` commands:**
-```
-/moai plan "feature"    # Create SPEC document
-/moai run SPEC-XXX      # Implement SPEC
-/moai sync SPEC-XXX     # Generate docs & PR
-/moai fix               # Auto-fix errors
-/moai loop              # Iterative fix loop
-/moai project           # Generate project docs
-/moai feedback          # Create GitHub issue
-```
-
-**Common mistake to avoid:**
-- WRONG: Running `/moai init` in Claude Code chat (not a valid slash command)
-- CORRECT: Running `moai init` in terminal
-- WRONG: Running `moai plan` in terminal (not a CLI command)
-- CORRECT: Running `/moai plan` in Claude Code chat
+See: `.moai/docs/local-dev-guide.md` § 1 — work locations, the edit→`make build`→test→commit cycle, and the [CRITICAL] `moai` CLI vs `/moai` slash-command distinction table. 핵심 한 줄: 템플릿은 `internal/template/templates/` 에서 고치고 `make build` 로 재생성하며, 커밋은 카드 워크트리에서 한다(primary 체크아웃 금지 — AGENTS.md §2·§3).
 
 ---
 
@@ -170,41 +112,8 @@ Never add files directly to the local project directories without also adding th
 **Pre-PR Verification (template contributor-checklist)** — before opening a PR that touches `internal/template/templates/**`, run the canonical 5-item pre-commit self-check (the CI guard `template-neutrality-check.yaml` is the safety net). See `.moai/docs/template-internal-isolation-doctrine.md` §25.3 for the full 5-item checklist and §25.1 for the forbidden/allowed content-class catalogue (C1-C8). (C3 dates + C7 commit-hashes are owned by the sibling `internal_content_leak_test.go` per §25, not this neutrality checklist.)
 
 ### Local-Only Files (Never in Templates)
-```
-.claude/settings.local.json    # Personal settings — runtime-managed, NEVER template
-.claude/settings.json          # Rendered from .json.tmpl
-.claude/agent-memory/          # Per-project agent memory
-.claude/hooks/moai/handle-*.sh # Hook wrappers deployed from templates (.sh/.sh.tmpl pairs in internal/template/templates/.claude/hooks/moai/ — edit both sides together, §2.3)
-.claude/rules/local/lifecycle-sync-gate.md                 # Dev-only: maintainer lifecycle sync-gate rule (no template mirror, unreferenced by any shipped template file — intentional local-only)
-.claude/rules/local/repo-local-pr-policy.md               # Dev-only: repo-local all-tier PR policy override (Route A main-direct disabled by branch protection enforce_admins:true; no template mirror — intentional local-only)
-.claude/rules/local/gitflow-lane-protocol.md              # Dev-only: git-flow lane operational rule (2026-08-27 transition; no template mirror — added [2026-08-27 감사])
-.claude/commands/harness/{release-update,github,release}*  # Dev-only: split maintainer harness entries (§21)
-.claude/commands/harness/release-update/manifest.json      # Dev-only: release-update harness manifest (§21)
-.claude/workflows/hns-release-update-run.js                # Dev-only: release-update harness Runner (§21)
-.claude/agents/harness/hns-{release-update,github,release}-specialist.md  # Dev-only: split harness specialists (§21, user-owned per §24)
-scripts/ci-watch/              # Dev-only: CI watch loop scripts (5) — not distributed
-scripts/ci-autofix/            # Dev-only: CI auto-fix scripts (4) — not distributed
-scripts/jev/                   # Dev-only: TypeSafe(Jev) 로컬 전용 도구 (§29) — 템플릿 미러 없음, 사용자 프로젝트로 배포되지 않음
-scripts/ac-baseline/           # Dev-only: 커밋타임 AC-snapshot 가드(check-staged.sh·install-hook.sh) — git config 기반 pre-commit 훅으로 develop 병합 후 리드가 1회 설치, 템플릿 미러 없음, 사용자 프로젝트로 배포되지 않음 (SPEC-ACSNAPSHOT-COMMIT-GUARD-001)
-~/.moai/.env.typesafe          # Dev-only: TypeSafe API 키 (저장소 밖, chmod 600). settings/config/템플릿에 넣지 않는다 (§29)
-.claude/skills/hns-workflow-ci-loop/                       # Dev-only: CI watch+autofix skill (removed from template; mirror kept). §2.3에 따라 moai-workflow-ci-loop → hns-* 로 이동(2026-08-15): `.claude/skills/moai*` 글롭이 매 update마다 삭제했음
-.claude/rules/local/ci-watch-protocol.md                     # Dev-only: governs scripts/ci-watch (removed from template; mirror kept)
-.claude/rules/local/ci-autofix-protocol.md                 # Dev-only 원본: scripts/ci-autofix 를 지배. 배포판(.claude/rules/moai/workflow/ 의 같은 이름, script-free)과 **의도적 쌍둥이** — SPEC-CI-LOOP-DEVONLY-001 의 결정이며 미해결 상태가 아니다. 둘은 `paths:` 범위가 서로 겹치지 않아 함께 로드되지 않는다(로컬판=데브 스킬 SKILL.md, 배포판=manager-develop + .github/workflows/**). #1557(ed04e40e6)이 이 파일을 관리 대상 뿌리 밖으로 옮겨 §2.3 경로 충돌도 해소됐다. 다만 배포판이 update 때마다 `.claude/rules/moai/workflow/` 에 미추적으로 재생성돼 git status 노이즈로 남는다
-AGENTS.local.md                # This file
-.moai/state/last-cc-version.json # Dev-only: CC tracking state (§21)
-.moai/research/cc-update-*.md  # Dev-only: CC update reports (§21)
-.moai/cache/                   # Cache
-.moai/logs/                    # Logs — 내용물만 로컬 전용. 빈 디렉터리 스캐폴드(.gitkeep)는 템플릿에 있다 [2026-08-27 감사 정정]
-.moai/state/                   # Session state storage — 위와 같음(템플릿에 .gitkeep + state/chain/ 스캐폴드 존재)
-.moai/specs/                   # Active SPEC documents
-.moai/plans/                   # Session plans
-.moai/reports/                 # Generated reports — 내용물만 로컬 전용(템플릿에 reports/plan-audit/ 스캐폴드 존재) [2026-08-27 감사 정정]
-.moai/manifest.json            # Generated at runtime
-.moai/status_line.sh           # Rendered from .sh.tmpl
-.moai/docs/update-local-file-survival.md  # Dev-only: moai update 관리 대상 삭제 실측·생존 규칙 (이 파일 §2.3 본문 이관, card t750; no template mirror)
-.moai/docs/gitflow-integration-chain.md   # Dev-only: GitFlow 통합 체인 운영 절차·실측 근거 (이 파일 §4.1 절차 본문 이관, card t750; no template mirror)
-.moai/astgrep-rules/                                                       # Dogfood-only: 실험적 ast-grep 룰셋 전체. §2.3에 따라 .moai/config/astgrep-rules → .moai/astgrep-rules 로 이동(2026-08-15): `.moai/config` 통째 삭제가 로컬 전용 6개(go/{concurrency,error-handling,idioms,resource-safety}.yml, security/{secrets,web}.yml)를 매번 지웠음. gate.yaml `ast_grep_gate.rules_dir` 로 연결. 주의: (2026-08-27 감사 정정) `moai ast-grep`/`moai ast-edit` CLI의 `--rules-dir` 기본값은 현재 `gate.yaml`의 `ast_grep_gate.rules_dir`이며, 빈 값이면 기본 경로 폴백 없이 0룰 스캔을 한다(t50)
-```
+
+전체 레지스트리(30+ 항목, 경로·사유·이력 포함): `.moai/docs/local-dev-guide.md` § 2a. 핵심만: `settings.local.json`(런타임 관리) · `.claude/rules/local/*`(dev-only 룰) · `scripts/{ci-watch,ci-autofix,jev,ac-baseline}/` · `.moai/{cache,logs,state,specs,plans,reports,docs} 내용물` · `.moai/docs/*.md` dev-only 문서 전체 — **전부 템플릿 미러가 없어야 하는 파일이며, §2.3의 관리 대상 뿌리 밖에 두거나 뿌리 안에서도 삭제되지 않는 위치에 둔다.**
 
 ### [HARD] §2.3 moai update는 관리 대상 뿌리 안의 로컬 전용 파일을 통째로 삭제한다
 
@@ -228,21 +137,9 @@ Do NOT use `t.Setenv` with OTEL environment variables (`OTEL_EXPORTER_*`, `OTEL_
 - Use a fake/no-op exporter instead of env-var configuration in tests
 - If the test must set OTEL vars, make the parent test non-parallel and use `t.Setenv` only in non-parallel subtests
 
-### Embedded Template System
+### Embedded Template System · Command-to-Skill Publication
 
-moai-adk-go uses Go's `go:embed` directive:
-- **Source**: `internal/template/templates/` (edit here — this is the source of truth)
-- **Embed mechanism**: `internal/template/embed.go` carries `//go:embed all:templates` + `//go:embed catalog.yaml`, which compile the `templates/` FS directly into the binary (there is NO generated `embedded.go` file)
-- **Build**: Run `make build` after editing templates (recompiles the binary)
-
-### Command-to-Skill Publication (SPEC-CODEX-COMMAND-SKILLS-001)
-
-`internal/template/commandemit` publishes the 16 `/moai` command sources as codex skill-shaped artifacts at `templates/.agents/skills/moai-<command>/SKILL.md` (committed real files, golden-checked).
-
-- **Regenerate** (after editing any command source or the emitter): `make commands-emit`
-- **Drift check**: `make commands-emit-check` — read-only, wired ahead of `build` (same position as `agents-emit-check`); it never writes
-- **Boundary**: bodies publish VERBATIM from the command sources, including their Claude-only `Skill("moai")` dispatcher line — the emitter flags this per skill and never repairs it (repair is the command-body layer's concern, sibling card t497). Do not hand-edit the emitted SKILL.md files; edit the command sources and regenerate.
-- **gitignore coupling**: the 16 published names are re-included in `templates/.gitignore` (the mirror rule `.agents/skills/moai*` would otherwise ignore them); `TestGitignoreCarriesEveryPublishedName` + `TestPublishedSkillsNamesMatchTree` keep both lists in step with the emitted set.
+본문은 `.moai/docs/local-dev-guide.md` § 2b·2c 로 이관됐다(card t1303). 요지: `internal/template/embed.go` 가 `//go:embed all:templates` + `catalog.yaml` 를 바이너리에 컴파일하므로 템플릿 편집 후 `make build` 필수; 16개 `/moai` 커맨드의 codex skill 방출은 `make commands-emit`(명시적 동사)으로만 재생성하고 방출본(`.agents/skills/moai-*/SKILL.md`)은 손으로 고치지 않는다.
 
 ---
 
@@ -272,22 +169,8 @@ Language policy는 `.claude/rules/moai/development/coding-standards.md`에 정�
 - [ ] Commit messages follow format (Conventional Commits)
 
 ### Commit Message Format
-```
-<type>(<scope>): <description>
 
-[optional body]
-
-[optional footer]
-```
-
-**Types:** feat, fix, docs, style, refactor, perf, test, chore, revert
-
-**Examples:**
-```
-feat(template): add SessionEnd hook to settings.json generator
-fix(cli): prevent race condition in hook execution
-test(settings): add TestEnsureGlobalSettingsEnv test cases
-```
+Conventional Commits — `<type>(<scope>): <description>` + 선택 본문/푸터. Types: feat, fix, docs, style, refactor, perf, test, chore, revert. 예시와 서식 전문: `.moai/docs/local-dev-guide.md` § 4a.
 
 ### §4.1 GitFlow 통합 체인 (develop)
 
@@ -316,15 +199,12 @@ local/main
 **[HARD] 규율**
 
 1. **모든 워크트리는 develop으로 병합한다.** 카드가 끝나면 `main`이 아니라 `develop`에 합친다. 카드 브랜치는 develop에서 판다.
-2. **`develop`은 원격에 있다.** push는 **리드가 일괄**로 수행하며(2026-09-02 — 레인은 push하지 않는다), 그 head의 CI가 통합 판정을 만든다.
+2. **`develop`은 원격에 있다.** push는 **리더가 일괄**로 수행하며(2026-09-02 — 레인은 push하지 않는다), 그 head의 CI가 통합 판정을 만든다.
 3. **main으로는 release 브랜치의 PR만 올라간다.** 카드가 직접 main으로 PR을 내지 않는다.
-4. **통합 창은 직렬이다.** `moai integration acquire --card <card-id>` → 병합 → `release` — push는 창 밖이다(리드 일괄, 2026-09-02). 락은 병합을 직렬화하는 장치이지 수리를 직렬화하는 장치가 아니므로, 수리가 남았으면 준비된 뒤에 잡는다.
+4. **통합 창은 직렬이다.** `moai integration acquire --card <card-id>` → 병합 → `release` — push는 창 밖이다(리더 일괄, 2026-09-02). 락은 병합을 직렬화하는 장치이지 수리를 직렬화하는 장치가 아니므로, 수리가 남았으면 준비된 뒤에 잡는다.
 5. **판정은 CI.** 로컬 통과는 조기 신호일 뿐이다 — 깨끗한 환경도, darwin/windows 매트릭스도 아니다. 병합 전 검증을 병합 후 근거로 재사용하지 않는다: 병합 트리에서 다시 재거나, 병합 커밋의 `git rev-parse <merge>^{tree}`가 재측정한 트리와 동일함을 보인다.
 
-**[SUPERSEDED by 위 체인 — 2026-08-29]** 종전 규율 두 가지는 폐기됐다. 폐기 사실을 남기는 이유는 두 문서가 반대 지시를 하는 상태를 만들지 않기 위해서다.
-- ~~"`develop`은 원격에 올리지 않는다"~~ — 지금은 올린다. 종전 근거(원격에 없으면 `branches: [main]` 트리거를 안 건드림)는 `.github/workflows/`의 push 트리거가 `[main, develop]`로 넓혀지면서(`11216d13f`) 사라졌다.
-- ~~"PR은 카드별로 main에 낸다"~~ — 지금은 release 브랜치 PR 하나로 낸다. 종전 근거(N개를 모으면 리뷰 품질 저하·CodeRabbit rate limit)는 여전히 참이므로, release PR의 크기를 줄이는 것은 배치 크기로 관리한다.
-- ~~"`develop`은 일회용"~~ — 상설이다.
+**[SUPERSEDED by 위 체인 — 2026-08-29]** 종전 규위(develop 원격 미푸시 · 카드별 main PR · 일회용 develop)은 폐기됐다 — 폐기 사실과 사유의 보존은 두 문서가 반대 지시를 하지 않게 하기 위함이며, 전문은 `.moai/docs/gitflow-integration-chain.md` 에 있다.
 
 **관련 문서 포인터 (SPEC-RC-TESTBED-001)** — 절차 본문은 두지 않는다(위 규율 4의 delivery.md 위임과 마찬가지로, 두 벌이 되는 순간 갈라진다):
 
@@ -333,17 +213,17 @@ local/main
 
 **[HARD] -k / -f 모드 레인 의무**
 
-Kanban(`moai cc -k`) / Factory(`moai cc -f N`) 모드에서 레인은 카드 작업이 끝나면 **반드시 리드에게 로컬 develop 병합을 요청한다.** 레인이 스스로 병합 창을 잡지 않는다.
+Kanban(`moai cc -k`) / Factory(`moai cc -f N`) 모드에서 레인은 카드 작업이 끝나면 **반드시 리더에게 로컬 develop 병합을 요청한다.** 레인이 스스로 병합 창을 잡지 않는다.
 
 - 완료 보고에 담을 것: 카드 id · 브랜치와 HEAD · 로컬 병합 SHA · 미푸시 커밋 수 · 증거 경로(primary 반출 여부) · 재측정 범위
-- `moai integration status`가 `free`인 것은 **승인이 아니다.** 리드의 창 지명만이 근거다.
-- 창을 받으면: `moai integration acquire --name <lane> --card <card-id>` → 본인 워크트리에서 `git merge develop` 흡수(대상은 **로컬** `develop` — 원격이 아니다. 흡수 **전에** 그 로컬 develop 이 최신인지부터 본다 — 판정식과 갱신 경로는 `.claude/rules/local/gitflow-lane-protocol.md` §11) → **병합 트리에서 재측정** → `EnterWorktree(.claude/worktrees/develop)` → `git merge --no-ff <WT-브랜치>` → `moai integration release` → `ExitWorktree keep` → 완료 보고(로컬 병합 SHA를 리드에게 보고 — push는 리드가 일괄로 한다)
-- **[HARD] WT 브랜치 push·CI 직접 요청 금지 (운영자 지시 2026-09-01).** 카드가 마감되면 원격 develop 반영이 **유일한** 공개 경로다 — 리드가 창 밖에서 레인 병합 SHA를 모아 일괄로 실행하는 `git push origin develop`이며, 레인은 그 push의 주체가 아니다. 레인은 `git push origin <WT-브랜치>`를 하지 않고, `gh run rerun`/`workflow dispatch` 등 CI를 직접 요청·재요청하지도 않는다 — CI 판정은 develop push가 일으키는 실행에 맡기고, 판독은 리드 몫이다. (당일 lane-2가 `WT-version-stamp-predicate`를 origin에 push한 전례로 추가)
-- **[HARD] `acquire`는 창을 기록하기 전에 호출자 트리를 먼저 단정한다.** tracked `.claude/settings.json`의 워킹 사본이 수정돼 있는지 `git --no-optional-locks status --porcelain -- .claude/settings.json`으로 재고, 적중이면 그 사본을 primary 체크아웃의 `.moai/state/settings-drift/` 아래로 보존한 뒤 같은 자리 `ledger.jsonl`에 한 줄을 남기고 보존 경로·sha256을 출력한다. **검출·보존·원장은 설정과 무관하게 매번 돈다**(9일 동안 아무도 보지 않아서 놓친 것이 문제였지 막지 않아서가 아니다). 거절만 opt-in이며(`workflow.settings_drift_gate.enabled`, 이 저장소는 켠다) 우회는 `--allow-settings-drift`다 — `--force`는 "살아 있는 보유자에게서 창을 빼앗는다"는 다른 축이라 우회로 쓰지 않는다. 창과 무관하게 손으로 확인할 때는 `moai integration preflight [경로]`. **어떤 경우에도 자동 복원하지 않는다** — 그 파일은 런타임이 쓰고 토큰·절대경로·tmux pane id를 담을 수 있어 자동 복원 자체가 데이터 파괴다. 적중 보고를 받으면 리드가 처분을 정한다.
+- `moai integration status`가 `free`인 것은 **승인이 아니다.** 리더의 창 지명만이 근거다.
+- 창을 받으면: `moai integration acquire --name <lane> --card <card-id>` → 본인 워크트리에서 `git merge develop` 흡수(대상은 **로컬** `develop` — 원격이 아니다. 흡수 **전에** 그 로컬 develop 이 최신인지부터 본다 — 판정식과 갱신 경로는 `.claude/rules/local/gitflow-lane-protocol.md` §11) → **병합 트리에서 재측정** → `EnterWorktree(.claude/worktrees/develop)` → `git merge --no-ff <WT-브랜치>` → `moai integration release` → `ExitWorktree keep` → 완료 보고(로컬 병합 SHA를 리더에게 보고 — push는 리더가 일괄로 한다)
+- **[HARD] WT 브랜치 push·CI 직접 요청 금지 (운영자 지시 2026-09-01).** 카드가 마감되면 원격 develop 반영이 **유일한** 공개 경로다 — 리더가 창 밖에서 레인 병합 SHA를 모아 일괄로 실행하는 `git push origin develop`이며, 레인은 그 push의 주체가 아니다. 레인은 `git push origin <WT-브랜치>`를 하지 않고, `gh run rerun`/`workflow dispatch` 등 CI를 직접 요청·재요청하지도 않는다 — CI 판정은 develop push가 일으키는 실행에 맡기고, 판독은 리더 몫이다. (당일 lane-2가 `WT-version-stamp-predicate`를 origin에 push한 전례로 추가)
+- **[HARD] `acquire`는 창을 기록하기 전에 호출자 트리를 먼저 단정한다.** tracked `.claude/settings.json`의 워킹 사본이 수정돼 있는지 `git --no-optional-locks status --porcelain -- .claude/settings.json`으로 재고, 적중이면 그 사본을 primary 체크아웃의 `.moai/state/settings-drift/` 아래로 보존한 뒤 같은 자리 `ledger.jsonl`에 한 줄을 남기고 보존 경로·sha256을 출력한다. **검출·보존·원장은 설정과 무관하게 매번 돈다**(9일 동안 아무도 보지 않아서 놓친 것이 문제였지 막지 않아서가 아니다). 거절만 opt-in이며(`workflow.settings_drift_gate.enabled`, 이 저장소는 켠다) 우회는 `--allow-settings-drift`다 — `--force`는 "살아 있는 보유자에게서 창을 빼앗는다"는 다른 축이라 우회로 쓰지 않는다. 창과 무관하게 손으로 확인할 때는 `moai integration preflight [경로]`. **어떤 경우에도 자동 복원하지 않는다** — 그 파일은 런타임이 쓰고 토큰·절대경로·tmux pane id를 담을 수 있어 자동 복원 자체가 데이터 파괴다. 적중 보고를 받으면 리더가 처분을 정한다.
 - **워크트리는 원격 머지가 확인되기 전까지 폐기하지 않는다.** 미푸시 브랜치의 워크트리는 그 작업의 유일본이다.
 - sync는 병합 **전에** 워크트리 안에서 끝낸다. run만 닫고 병합하면 SPEC이 `in-progress`로 develop에 올라가 창을 다시 받아야 한다(2026-08-29 t342 실사례).
 
-**운영 절차 이하는 `.moai/docs/gitflow-integration-chain.md` 로 이관됐다(card t750) — 창 집행 bash(통합 워크트리 진입·흡수·재측정·병합), 리드 develop 일괄 push 절차, 로컬 CI 기각 기록, BranchGuard 조회 과다 매칭 마찰, docs-site Vercel 바인딩 주의.** 위 [HARD] 규율과 레인 의무가 변하지 않는 한 이 요지로 충분하고, 절차를 실행할 때 이관 문서를 연다.
+**운영 절차 이하는 `.moai/docs/gitflow-integration-chain.md` 로 이관됐다(card t750) — 창 집행 bash(통합 워크트리 진입·흡수·재측정·병합), 리더 develop 일괄 push 절차, 로컬 CI 기각 기록, BranchGuard 조회 과다 매칭 마찰, docs-site Vercel 바인딩 주의.** 위 [HARD] 규율과 레인 의무가 변하지 않는 한 이 요지로 충분하고, 절차를 실행할 때 이관 문서를 연다.
 
 ---
 
@@ -361,33 +241,13 @@ When running tests, **always check if they modify project files**.
 
 ### Test Isolation
 
-**[HARD] All test temp directories MUST be created under `/tmp` and cleaned up automatically.**
+**[HARD] All test temp directories MUST be created under `/tmp` and cleaned up automatically** — `t.TempDir()` for every temporary directory (auto-cleanup registered).
 
-Use `t.TempDir()` for all temporary directories. It creates dirs under `os.TempDir()` and registers automatic cleanup.
-
-```go
-func TestSomething(t *testing.T) {
-    tempDir := t.TempDir()  // Auto-cleanup after test - ALWAYS use this
-    // Work in tempDir instead of project root
-}
-```
-
-**Why this matters - `filepath.Join` vs absolute paths:**
-
-On macOS, `t.TempDir()` returns paths starting with `/var/folders/...`.
-Go's `filepath.Join(cwd, absPath)` does NOT strip the leading `/` from the second arg:
-```
-filepath.Join("/a/b", "/var/folders/x") = "/a/b/var/folders/x"  // WRONG!
-filepath.Abs("/var/folders/x") = "/var/folders/x"                // CORRECT
-```
-
-Always use `filepath.Abs()` when resolving user-supplied paths in CLI commands.
-Never use `filepath.Join(cwd, userPath)` when `userPath` can be absolute.
+**[HARD] 함정 — `filepath.Join(cwd, absPath)`는 두 번째 인수의 선행 `/`를 벗기지 않는다**: `filepath.Join("/a/b", "/var/folders/x") = "/a/b/var/folders/x"` (오동작). 사용자 제공 경로 해석엔 `filepath.Abs()` 를 쓴다. 실측 예시와 코드 전문: `.moai/docs/local-dev-guide.md` § 6a.
 
 ### Coverage Targets
 
-- Package-level: 85% minimum coverage (`.moai/config/sections/quality.yaml` `test_coverage_target: 85`)
-- Critical packages (cli, template, hook): 90%+ coverage — 목표치로서 유효하나 기계적 근거는 strict 평가 프로필의 전역 "Coverage >= 90%" 게이트뿐이다(`.moai/config/evaluator-profiles/strict.md`; 패키지별 룰은 미발견 [2026-08-27 감사 정정])
+본문은 `.moai/docs/local-dev-guide.md` § 6a 로 이관됐다 — 패키지 85%(`quality.yaml` `test_coverage_target`), critical(cli·template·hook) 90%+는 목표치이며 기계적 근거는 strict 프로필의 전역 게이트뿐이다.
 
 ### Go Test Execution Rules
 
@@ -407,83 +267,13 @@ See: `.moai/docs/hook-development.md` — shell-script-only hook pattern, hook w
 
 ## 8. Template Variable Strategy
 
-### Template vs Local Settings
-
-moai-adk-go uses different path variable strategies:
-
-**Template settings** (`internal/template/templates/.claude/settings.json.tmpl`; [2026-08-27 감사 정정]):
-- Uses: `{{.GoBinPath}}` template variable (Go template syntax)
-- Purpose: Runtime rendering during `moai init`
-- Cross-platform: Resolved by `template.TemplateContext`
-
-**Local settings** (`~/.claude/settings.json`):
-- Uses: `"$CLAUDE_PROJECT_DIR"` environment variable
-- Purpose: Runtime path resolution by Claude Code
-- Cross-platform: Automatically resolved by Claude Code
-
-### Template Variables
-
-Available in Go templates (`*.tmpl` files):
-
-```go
-type TemplateContext struct { // (요약 발췌 — 전체 구조체는 internal/template/context.go)
-    GoBinPath string  // Path to Go bin directory
-    HomeDir   string  // User home directory
-}
-```
-
-**Usage in templates:**
-```bash
-# .moai/status_line.sh.tmpl — 바이너리 폴백 체인(command -v → ResolvedMoaiPath → $HOME/go/bin)
-if [ -f "$HOME/go/bin/moai" ]; then
-	exec "$HOME/go/bin/moai" statusline
-fi
-```
-
-**Rendering:**
-```go
-ctx := template.NewTemplateContext(
-    template.WithGoBinPath(detectGoBinPath()),
-    template.WithHomeDir(homeDir),
-)
-// Deploy(ctx context.Context, projectRoot string, m manifest.Manager, tmplCtx *TemplateContext)
-// — 첫 인자는 context.Context, 마지막 인자가 TemplateContext다 [2026-08-27 감사 정정]
-deployer.Deploy(context.Background(), projectRoot, mgr, tmplCtx)
-```
+본문은 `.moai/docs/local-dev-guide.md` § 8 로 이관됐다(card t1303). 요지: 템플릿(`*.tmpl`)은 `{{.GoBinPath}}`류 Go 템플릿 변수(`moai init` 시 렌더링), 로컬 설정은 `$CLAUDE_PROJECT_DIR`(Claude Code가 실행 시 해석) — 경로 변수 전략이 둘 다 필요한 이유와 `TemplateContext`·`Deploy` 서명은 이관 문서에. **[HARD] `.sh.tmpl` 폴백엔 `.HomeDir` 금지 — `$HOME` 사용(§14와 동일 축).**
 
 ---
 
 ## 9. Configuration System
 
-### Config File Format
-
-moai-adk-go uses YAML for configuration:
-
-**Project config**: 단일 `config.yaml`은 없다 — 설정은 `.moai/config/sections/*.yaml` 32개 파일로만 존재한다([2026-08-27 감사 정정]; 종전 서술이 가리키던 `.moai/config/config.yaml`은 이 트리에 부재).
-
-**Section files** (`.moai/config/sections/*.yaml`, 32개):
-- `quality.yaml` - Quality gates, development mode
-- `language.yaml` - Language preferences
-- `user.yaml` - User information
-- `workflow.yaml` - Workflow settings
-
-### Configuration Priority
-
-1. Environment Variables (override file values) — the actually-implemented
-   config overrides: `internal/config/manager.go` `applyEnvOverrides` reads
-   `MOAI_DEVELOPMENT_MODE`, `MOAI_LOG_LEVEL`, `MOAI_LOG_FORMAT`, `MOAI_NO_COLOR`
-   (manager.go:398-411), while `MOAI_CONFIG_DIR` (config directory location) is
-   honored separately by the same file's config-dir resolver (manager.go:70;
-   [2026-08-27 감사 정정]). All env-var names are
-   constants in `internal/config/envkeys.go`.
-2. User Configuration: `.moai/config/sections/*.yaml`
-3. Template Defaults: From `internal/template/templates/.moai/config/`
-
-> NOTE: `MOAI_USER_NAME` / `MOAI_CONVERSATION_LANG` are NOT currently
-> implemented — no code in `internal/`/`pkg/`/`cmd/` reads them. User name and
-> conversation language come from `.moai/config/sections/user.yaml` /
-> `language.yaml` only. (Adding these env overrides would be a future
-> enhancement, not current behavior.)
+본문은 `.moai/docs/local-dev-guide.md` § 9 로 이관됐다(card t1303). 요지: 단일 `config.yaml`은 없다 — 설정은 `.moai/config/sections/*.yaml` 32개 파일로만 존재한다. 우선순위: env var(`MOAI_DEVELOPMENT_MODE`·`MOAI_LOG_LEVEL`·`MOAI_LOG_FORMAT`·`MOAI_NO_COLOR` — 상수는 `internal/config/envkeys.go`) > sections/*.yaml > 템플릿 기본값. `MOAI_USER_NAME`/`MOAI_CONVERSATION_LANG`은 미구현이다.
 
 ---
 
@@ -495,11 +285,7 @@ moai-adk-go uses YAML for configuration:
 
 ## 11. Frequent Issues and Solutions
 
-자주 발생 4건 — 상세는 각 섹션 참조:
-- **Templates not updated after editing** → §2 Embedded Template System (`make build` 필수, `//go:embed all:templates`).
-- **Tests modify ~/.claude/settings.json** → §6 `t.TempDir()` 격리 위반. 테스트가 project root에 파일 만드는지 확인.
-- **Hook timeout** → settings.json `{"timeout": 60}` (기본 5초).
-- **`moai version` exit 137 (SIGKILL) after binary reinstall** → `cp bin/moai ~/go/bin/moai`만으로 부족; 기존 binary 잔재(go install buildinfo·mmap 캐시)가 꼬여 SHA가 같아도 crash. **반드시 `rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai`**(또는 `make install`)로 inode 갱신하며 clean 재설치. 맨손 `go install ./cmd/moai`는 금지 — `LDFLAGS`를 안 실어서 `pkg/version`의 컴파일 기본값(`Commit="none"`, `Date="unknown"`)이 박히고 binary provenance 검증이 무력화된다. clean 재설치 직후 `sh scripts/verify-local-install.sh`를 실행한다(`make verify-local-install`은 같은 script의 편의 alias). 이 script는 `bin/moai`와 설치본을 byte 단위로 비교하고 설치본의 `version`에서 측정 시점 HEAD의 short SHA와 exit 0을 확인한다. 기본 `git`이 Xcode 라이선스에 막히면 Command Line Tools `git`을 자동 재시도하며 macOS `strings`는 호출하지 않는다. `/usr/bin/make`까지 exit 69인 호스트는 `.claude/rules/local/gitflow-lane-protocol.md` §9의 PATH 전처리를 먼저 적용한다. 진단 징후: `bin/moai version`=0인데 설치본 `version`=137. binary lag 검증은 §6 검증 규율(clear → 측정).
+자주 발생 4건 — 한 줄 요지와 상세는 `.moai/docs/local-dev-guide.md` § 11a: 템플릿 미갱신(`make build` 필수) · 테스트가 실설정 오염(`t.TempDir()` 격리) · 훅 타임아웃(`{"timeout": 60}`) · **exit 137 재설치 잔재**(반드시 `rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai` clean 재설치 + `sh scripts/verify-local-install.sh` 검증; 맨손 `go install` 금지 — `LDFLAGS` 누락이 provenance 검증을 무력화한다).
 
 ### [HARD] 사용 중 버그·개선 발견 → 즉시 `/moai:feedback`
 
@@ -509,17 +295,7 @@ MoAI-ADK를 사용하다 버그나 개선이 필요한 부분을 발견하는 �
 
 ## 12. YAML Frontmatter 빠른 참조
 
-범용 형식 규칙은 `.claude/rules/moai/development/` 내 `skill-authoring.md`, `agent-authoring.md`에 정의.
-
-### 로컬 개발 체크리스트
-
-- [ ] `tools:`, `allowed-tools:` → CSV string (공백 구분 절대 금지)
-- [ ] `skills:` → YAML array (유일한 예외)
-- [ ] `metadata.*` → quoted string
-- [ ] Template 수정 후 `make build` 실행
-- [ ] Local copy (`.claude/`)도 동기화
-
-탐지 스크립트: 전역 프로젝트 메모리(`~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/` (**휴면 저장소** — 세션이 실제로 로드하는 것은 `CLAUDE_CONFIG_DIR` profile 저장소이고 이 파일은 거기 없다. 읽으려면 이 경로를 직접 연다. 두 저장소 확인은 `moai memory doctor`))의 `audit_sweep_patterns.md` Pattern A 참조.
+범용 형식 규칙은 `.claude/rules/moai/development/` 내 `skill-authoring.md`, `agent-authoring.md`에 정의. 로컬 개발 체크리스트(CSV 금지·`skills:` 배열 예외·`metadata.*` 인용·`make build`·로컬 동기화)와 탐지 스크립트 위치는 `.moai/docs/local-dev-guide.md` § 12 로 이관됐다(card t1303).
 
 ---
 
@@ -595,7 +371,7 @@ Dart/Flutter 캐논 이름: **"flutter"** (not "dart").
 - [ ] project_markers 기반 자동 감지 로직이 포함되어 있는가?
 - [ ] 로컬 config와 템플릿이 달라도 정상 (같으면 오히려 의심)
 
-상세 교훈: 전역 프로젝트 메모리(`~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/` (**휴면 저장소** — 세션이 실제로 로드하는 것은 `CLAUDE_CONFIG_DIR` profile 저장소이고 이 파일은 거기 없다. 읽으려면 이 경로를 직접 연다. 두 저장소 확인은 `moai memory doctor`))의 `lessons.md` #5 참조.
+상세 교훈: 전역 프로젝트 메모리의 `lessons.md` #5 — 읽는 법: 그 저장소(`~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/`)는 **휴면**이라 세션이 로드하지 않는다. 직접 열어 읽고, 두 저장소 확인은 `moai memory doctor`.
 
 ---
 
@@ -624,7 +400,7 @@ Typo/포맷 수정, 설정 1개 편집, 사용자 명시 요청, 위임 대상 �
 
 Rule 5(WHAT) → §16(WHO) → Rule 1(HOW) → 실행
 
-상세 교훈 및 5 Whys: 전역 프로젝트 메모리(`~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/` (**휴면 저장소** — 세션이 실제로 로드하는 것은 `CLAUDE_CONFIG_DIR` profile 저장소이고 이 파일은 거기 없다. 읽으려면 이 경로를 직접 연다. 두 저장소 확인은 `moai memory doctor`))의 `lessons.md` #4 참조.
+상세 교훈 및 5 Whys: 전역 프로젝트 메모리의 `lessons.md` #4 — **휴면 저장소**라 세션이 로드하지 않는다(§15의 읽는 법과 동일: 직접 열어 읽고, `moai memory doctor` 로 두 저장소 확인).
 
 ---
 
@@ -667,7 +443,7 @@ Sections §18-27 were consolidated into external `.moai/docs/` files to reduce l
 
 ## 29. Jev (TypeSafe System One) — 로컬 전용
 
-[HARD] `scripts/jev/`는 이 저장소의 로컬 도구이며 제품에 배선되지 않았다. `-k`/`-f` 리드는 묵은 카드 배차 전에 `scripts/jev/triage.sh <id>`, 레인 질문으로 멈췄을 때 `scripts/jev/route.sh < 질문`을 자율 실행한다. 출력은 판단 자료일 뿐이다. 완료·병합·큐 변경·운영자 게이트에는 Jev를 판정 근거로 쓰지 않는다. 키는 `~/.moai/.env.typesafe`에만 두고, 외부 전송 전에 카드의 비밀·고객 데이터를 확인한다. 키나 네트워크가 없으면 독트린과 직접 읽은 증거로 판단한다. 0.50 신뢰도 문턱은 잠정값이다. 등급·명령·측정 한계는 `.moai/docs/jev-local-operations.md`에 있다.
+[HARD] `scripts/jev/`는 이 저장소의 로컬 도구이며 제품에 배선되지 않았다. `-k`/`-f` 리더는 묵은 카드 배차 전에 `scripts/jev/triage.sh <id>`, 레인 질문으로 멈췄을 때 `scripts/jev/route.sh < 질문`을 자율 실행한다. 출력은 판단 자료일 뿐이다. 완료·병합·큐 변경·운영자 게이트에는 Jev를 판정 근거로 쓰지 않는다. 키는 `~/.moai/.env.typesafe`에만 두고, 외부 전송 전에 카드의 비밀·고객 데이터를 확인한다. 키나 네트워크가 없으면 독트린과 직접 읽은 증거로 판단한다. 0.50 신뢰도 문턱은 잠정값이다. 등급·명령·측정 한계는 `.moai/docs/jev-local-operations.md`에 있다.
 
 ## 30. 배차 전 전제 판정 (며칠 지난 카드)
 
@@ -675,4 +451,4 @@ Sections §18-27 were consolidated into external `.moai/docs/` files to reduce l
 
 ## 31. 킥오프 자율·의사결정 위임 (운영자 정책)
 
-[HARD] 킥오프는 카드가 운영자 게이트를 명시하지 않는 한 자율로 진행한다. 레인 창에서 운영자가 이미 고른 모드는 덮지 않는다. 레인은 선택을 운영자에게 되묻지 않고 리드에게 올린다. 리드는 Jev를 쓰더라도 완료·병합·큐 변경·운영자 게이트를 모델 답으로 판정하지 않는다. 근거와 적용 범위는 `.moai/docs/kickoff-autonomy.md`에 있다.
+[HARD] 킥오프는 카드가 운영자 게이트를 명시하지 않는 한 자율로 진행한다. 레인 창에서 운영자가 이미 고른 모드는 덮지 않는다. 레인은 선택을 운영자에게 되묻지 않고 리더에게 올린다. 리더는 Jev를 쓰더라도 완료·병합·큐 변경·운영자 게이트를 모델 답으로 판정하지 않는다. 근거와 적용 범위는 `.moai/docs/kickoff-autonomy.md`에 있다.

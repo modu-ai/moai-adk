@@ -32,7 +32,7 @@ $ moai tokens record --transcript <路径> --json
 | `--transcript <路径>` | 要汇总的 Claude Code 转录文件 |
 | `--session <id>` | 用会话标识符指定转录 |
 | `--card <卡片>` | 把这笔用量归入的看板卡片（如 `t12`） |
-| `--role <角色>` | 会话的角色（如 `run`, `sync`, `worker-3`） |
+| `--role <角色>` | 会话的角色（如 `run`, `sync`, `lane-3`） |
 | `--json` | 同时把记录以 JSON 输出到标准输出 |
 
 ## 记录的样子
