@@ -73,7 +73,7 @@ flowchart TD
 - cc / glm: `enterFactoryWorkerMode` (`internal/cli/factory.go:402-418`) gains the marker (name and value
   constants); restored on return like the other keys. The backend value is already exported on both
   factory-lane paths: glm at `internal/cli/glm.go:267-268`, cc at `internal/cli/cc.go:220`
-  (`exportFactoryLaunchFacts`, which delegates at `internal/cli/kanban.go:514` to
+  (`exportFactoryLaunchFacts`, which delegates at `internal/cli/kanban.go:543` to
   `exportKanbanLaunchFacts`, whose `os.Setenv(config.EnvMoaiKanbanBackend, …)` is at `kanban.go:492-497`).
   No launcher change is needed for the backend value.
 - Codex: the per-card child environment starts from `codexChildEnv` (`codex_launcher.go:607-625`) and

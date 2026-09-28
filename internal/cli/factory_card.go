@@ -26,6 +26,372 @@ var factoryCardNow = time.Now
 // factoryCardRoot is the project root the factory record and the queue share.
 func factoryCardRoot() string { return resolveTodoQueueRoot() }
 
+// Lane predicates (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-015), deliberately
+// asymmetric. Admission — the right to run `moai factory next`, `stage`, and
+// `complete` — holds only when the factory role marker equals the role-value
+// constant. Refusal — the duty NOT to mutate the queue or record decisions —
+// additionally fires on a non-empty lane label and on the Codex backend
+// value, because both of those ride the frozen Codex MCP env_vars allowlist:
+// a Codex lane session has no role marker there, yet must stay refused.
+// Widening only the deny direction can grant nothing (plan B3).
+
+// factoryLaneAdmission reports lane admission: the role marker equals the
+// role-value constant, read through the internal/config constants only
+// (REQ-SD-017 forbids string literals at stamp/compare sites).
+func factoryLaneAdmission() bool {
+	return os.Getenv(config.EnvFactoryRole) == config.FactoryRoleLane
+}
+
+// factoryLaneRefusal reports lane refusal: admission, or a non-empty
+// lane-label variable, or the backend variable naming the Codex harness.
+func factoryLaneRefusal() bool {
+	return factoryLaneAdmission() ||
+		os.Getenv(config.EnvMoaiKanbanLabel) != "" ||
+		os.Getenv(config.EnvMoaiKanbanBackend) == kanban.BackendGPT
+}
+
+// The refusal sentinels. One wording source per refusal kind, so the queue
+// guard, the decide guard, and the lane verbs cannot drift apart.
+const (
+	// factoryLaneBoundarySentinel names the lane permission boundary in the
+	// queue-mutation and decide refusals (REQ-SD-015/-016).
+	factoryLaneBoundarySentinel = "lane boundary"
+	// factoryNotALaneSentinel names the admission refusal of the lane verbs
+	// (REQ-SD-015): next/stage/complete belong to a lane session only.
+	factoryNotALaneSentinel = "not a lane session"
+)
+
+// factoryNotALaneError refuses a lane verb invoked outside a lane session.
+func factoryNotALaneError(verb string) error {
+	return fmt.Errorf("factory %s: refused — %s: set %s=%s in a lane session (the launcher stamps it)",
+		verb, factoryNotALaneSentinel, config.EnvFactoryRole, config.FactoryRoleLane)
+}
+
+// factoryAssertParentCheckout refuses when dir is not the repository's
+// parent (primary) checkout, naming the parent path (REQ-SD-010). The CLI
+// path evaluates it against the command's project root; the MCP factory
+// tools (M3) evaluate the same function against the caller's project_root
+// argument, so both surfaces share one rule.
+func factoryAssertParentCheckout(dir string) error {
+	if real, err := filepath.EvalSymlinks(dir); err == nil {
+		dir = real
+	}
+	primary, _, err := identifyPrimaryCheckout(dir)
+	if err != nil {
+		return fmt.Errorf("factory next: cannot identify the parent checkout of %s: %w", dir, err)
+	}
+	if primary != dir {
+		return fmt.Errorf("factory next: refused — this verb runs from the parent checkout %s, not from %s", primary, dir)
+	}
+	return nil
+}
+
+// The `next` wait contract (REQ-SD-009, plan B10): a fixed check interval,
+// a fixed default bound, and one flag to change the bound.
+const (
+	factoryNextWaitInterval     = 5 * time.Second
+	factoryNextWaitBoundDefault = 15 * time.Minute
+)
+
+// factoryNextWaitSleep is the seam the --wait loop sleeps through; tests
+// replace it to drive the interval without sleeping.
+var factoryNextWaitSleep = time.Sleep
+
+// factoryNextSelectionAttempts bounds the retry loop around a selection that
+// lost a lease race: each attempt re-reads the record and the queue, so a
+// bounded number of attempts is enough to converge without spinning.
+const factoryNextSelectionAttempts = 5
+
+// factoryNextNoCardExit is the status `next` reports when no card qualifies
+// (REQ-SD-008): 3, so a supervising launcher can distinguish it from failure.
+const factoryNextNoCardExit = 3
+
+// factoryNextLeaseOnce selects and leases one card for lane through the F1
+// transition API (REQ-SD-008): a card assigned to this lane, then an
+// operator-picked card assigned to no lane, then the oldest queued card
+// (promoted to picked in the same operation). It never selects a card
+// assigned to another lane. A race with another lane is retried inside; the
+// returned bool reports whether a card was leased.
+func factoryNextLeaseOnce(ctx context.Context, root, runID, lane string) (homestate.Card, bool, error) {
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return homestate.Card{}, false, fmt.Errorf("open factory record: %w", err)
+	}
+	defer func() { _ = db.Close() }()
+	skip := factoryNextSkipForBackend()
+	for attempt := 0; attempt < factoryNextSelectionAttempts; attempt++ {
+		card, leased, raced, err := factoryNextSelectAndLease(ctx, db, root, runID, lane, skip)
+		if err != nil {
+			return homestate.Card{}, false, err
+		}
+		if leased {
+			return card, true, nil
+		}
+		if !raced {
+			return homestate.Card{}, false, nil
+		}
+	}
+	return homestate.Card{}, false, nil
+}
+
+// factoryNextSelectAndLease runs one selection pass. raced reports that
+// another lane moved the candidate first and the caller should re-select.
+func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, skip func(homestate.Card) bool) (homestate.Card, bool, bool, error) {
+	cards, err := db.ListCards(ctx, runID)
+	if err != nil {
+		return homestate.Card{}, false, false, err
+	}
+	recorded := make(map[string]bool, len(cards))
+	for _, c := range cards {
+		recorded[c.CardID] = true
+	}
+	// (a) a card assigned to this lane — the lease edge alone (T3).
+	for _, c := range cards {
+		if c.State != homestate.CardAssigned || c.OwnerLabel != lane {
+			continue
+		}
+		if skip(c) {
+			continue
+		}
+		return factoryNextClaim(ctx, db, runID, c, lane)
+	}
+	// (b) an operator-picked card assigned to no lane. The record row sits at
+	// `picked` with no owner; the queue item must still be picked, so an
+	// unpicked queue item disqualifies the row rather than failing the verb.
+	for _, c := range cards {
+		if c.State != homestate.CardPicked || strings.TrimSpace(c.OwnerLabel) != "" {
+			continue
+		}
+		if skip(c) {
+			continue
+		}
+		state, inQueue, err := queueItemState(c.CardID)
+		if err != nil {
+			return homestate.Card{}, false, false, err
+		}
+		if !inQueue || state != kanban.BacklogStatePicked {
+			continue
+		}
+		return factoryNextClaim(ctx, db, runID, c, lane)
+	}
+	// (b2) a queue-picked card with no record row yet: record it, then claim.
+	rec, err := newTodoReadStore().LoadPure()
+	if err != nil {
+		return homestate.Card{}, false, false, err
+	}
+	for _, it := range rec.Items {
+		if it.State != kanban.BacklogStatePicked || recorded[it.ID] {
+			continue
+		}
+		return factoryNextRecordAndClaim(ctx, db, runID, it.ID, lane)
+	}
+	// (c) the oldest queued card: promote it to picked in the queue FIRST,
+	// then record — a record-write failure leaves it a plain unowned picked
+	// card the next `next` takes at arm (b) (design.md §3).
+	var promoted string
+	if err := newTodoStore().Mutate(func(r *kanban.BacklogRecord) error {
+		for i := range r.Items {
+			if r.Items[i].State == kanban.BacklogStateQueued {
+				r.Items[i].State = kanban.BacklogStatePicked
+				promoted = r.Items[i].ID
+				return nil
+			}
+		}
+		return nil
+	}); err != nil {
+		return homestate.Card{}, false, false, err
+	}
+	if promoted == "" {
+		// Another lane promoted the oldest card between the read and the
+		// write; re-select against the new state.
+		return homestate.Card{}, false, true, nil
+	}
+	return factoryNextRecordAndClaim(ctx, db, runID, promoted, lane)
+}
+
+// factoryNextRecordAndClaim records a queue-picked card (T1) and claims it.
+func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, runID, cardID, lane string) (homestate.Card, bool, bool, error) {
+	fresh, err := db.RecordPicked(ctx, runID, cardID, homestate.CardFields{}, "factory-next", factoryCardNow())
+	if err != nil {
+		return factoryNextClaimRefused(err)
+	}
+	return factoryNextClaim(ctx, db, runID, fresh, lane)
+}
+
+// factoryNextClaim takes a card from `picked` or `assigned` to `leased` for
+// lane through the version-checked F1 edges (T2 then T3), with the lane's
+// label as the lease holder.
+func factoryNextClaim(ctx context.Context, db *homestate.FactoryDB, runID string, cur homestate.Card, lane string) (homestate.Card, bool, bool, error) {
+	c := cur
+	if c.State == homestate.CardPicked {
+		next, err := db.Transition(ctx, homestate.TransitionRequest{
+			RunID: runID, CardID: c.CardID, To: homestate.CardAssigned,
+			ExpectedVersion: c.Version, Actor: "factory-next", Owner: lane, Now: factoryCardNow(),
+		})
+		if err != nil {
+			return factoryNextClaimRefused(err)
+		}
+		c = next
+	}
+	leased, err := db.Transition(ctx, homestate.TransitionRequest{
+		RunID: runID, CardID: c.CardID, To: homestate.CardLeased,
+		ExpectedVersion: c.Version, Actor: lane, Now: factoryCardNow(),
+	})
+	if err != nil {
+		return factoryNextClaimRefused(err)
+	}
+	return leased, true, false, nil
+}
+
+// factoryNextClaimRefused maps a claim refusal: a stale version or a holder
+// mismatch is a race to retry; anything else is a real error.
+func factoryNextClaimRefused(err error) (homestate.Card, bool, bool, error) {
+	if errors.Is(err, homestate.ErrStaleVersion) || errors.Is(err, homestate.ErrLeaseHolder) {
+		return homestate.Card{}, false, true, nil
+	}
+	return homestate.Card{}, false, false, err
+}
+
+// factoryNextSkipForBackend is the REQ-SD-025 selection half: a Codex lane
+// never selects a card whose recorded stage or state it cannot advance —
+// `merge-ready` or later, including a card returned to `assigned` by lease
+// expiry with its stage kept. Every other backend selects freely.
+func factoryNextSkipForBackend() func(homestate.Card) bool {
+	if os.Getenv(config.EnvMoaiKanbanBackend) != kanban.BackendGPT {
+		return func(homestate.Card) bool { return false }
+	}
+	return func(c homestate.Card) bool {
+		return cardStageAtOrAfterMergeReady(c.Stage) || cardStageAtOrAfterMergeReady(c.State)
+	}
+}
+
+// cardStageAtOrAfterMergeReady reports whether s is a card stage or state at
+// or past merge-ready in the F1 pipeline order.
+func cardStageAtOrAfterMergeReady(s string) bool {
+	switch s {
+	case homestate.CardMergeReady, homestate.CardMerging, homestate.CardMergedLocal,
+		homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone:
+		return true
+	}
+	return false
+}
+
+// newFactoryNextCommand — `moai factory next [--wait] [--wait-bound <d>]`
+// (REQ-SD-008/-009/-010): a lane session's self-dispatch verb, run from the
+// parent checkout.
+func newFactoryNextCommand() *cobra.Command {
+	var wait bool
+	var waitBound time.Duration
+	var run string
+	cmd := &cobra.Command{
+		Use:   "next",
+		Short: "Lease the lane's next card through the factory record (lane session, parent checkout)",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if !factoryLaneAdmission() {
+				return factoryNotALaneError("next")
+			}
+			lane := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanLabel))
+			if lane == "" {
+				return fmt.Errorf("factory next: %s is empty — a lane session carries its lane label there", config.EnvMoaiKanbanLabel)
+			}
+			if err := factoryAssertParentCheckout(resolveProjectDir()); err != nil {
+				return err
+			}
+			root := factoryCardRoot()
+			ctx := cmd.Context()
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			runID, err := resolveFactoryCardRun(ctx, root, run)
+			if err != nil {
+				return fmt.Errorf("factory next: %w", err)
+			}
+			deadline := factoryCardNow().Add(waitBound)
+			for {
+				card, leased, err := factoryNextLeaseOnce(ctx, root, runID, lane)
+				if err != nil {
+					return fmt.Errorf("factory next: %w", err)
+				}
+				if leased {
+					return factoryNextPrint(cmd, card)
+				}
+				if !wait || !factoryCardNow().Before(deadline) {
+					_, _ = fmt.Fprintln(cmd.OutOrStdout(), "no card is available")
+					return &exitCodeError{code: factoryNextNoCardExit, msg: "factory next: no card is available"}
+				}
+				factoryNextWaitSleep(factoryNextWaitInterval)
+			}
+		},
+	}
+	cmd.Flags().BoolVar(&wait, "wait", false,
+		"Keep re-checking at a fixed interval until a card is leased or the wait bound elapses")
+	cmd.Flags().DurationVar(&waitBound, "wait-bound", factoryNextWaitBoundDefault,
+		"How long --wait re-checks before reporting no card")
+	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
+	return cmd
+}
+
+// factoryNextPrint reports the leased card (REQ-SD-008, plan B9): its id,
+// its stage, its worktree name, and its pull-request and landed state
+// exactly as `moai todo pr` prints them — the pre-dispatch cross-check the
+// leader performs, reported by the lane itself for a self-dispatched card.
+func factoryNextPrint(cmd *cobra.Command, card homestate.Card) error {
+	out := cmd.OutOrStdout()
+	worktree := dash("")
+	if p := strings.TrimSpace(card.WorktreePath); p != "" {
+		worktree = filepath.Base(p)
+	}
+	_, _ = fmt.Fprintf(out, "%s stage=%s worktree=%s\n", card.CardID, dash(card.Stage), worktree)
+	rec, err := newTodoReadStore().LoadPure()
+	if err != nil {
+		return fmt.Errorf("factory next: read the queue for the pr line: %w", err)
+	}
+	rows := computeTodoPRRows(cmd.ErrOrStderr(), rec, card.CardID)
+	writeTodoPRRows(out, rec, rows)
+	return nil
+}
+
+// newFactoryStageCommand — `moai factory stage <card> <state>` (REQ-SD-012).
+// M1 registers the admission refusal; the transition behavior lands with
+// milestone M3 of this SPEC.
+func newFactoryStageCommand() *cobra.Command {
+	var run string
+	cmd := &cobra.Command{
+		Use:   "stage <card> <state>",
+		Short: "Apply a card's next stage transition with its evidence (lane session)",
+		Args:  cobra.MinimumNArgs(2),
+		RunE: func(_ *cobra.Command, _ []string) error {
+			if !factoryLaneAdmission() {
+				return factoryNotALaneError("stage")
+			}
+			return errors.New("factory stage: not yet implemented (SPEC-FACTORY-SELF-DISPATCH-001 M3)")
+		},
+	}
+	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
+	return cmd
+}
+
+// newFactoryCompleteCommand — `moai factory complete <card>` (REQ-SD-013).
+// M1 registers the admission refusal; the merge-gate behavior lands with
+// milestone M2 of this SPEC.
+func newFactoryCompleteCommand() *cobra.Command {
+	var run string
+	cmd := &cobra.Command{
+		Use:   "complete <card>",
+		Short: "Take a merge-ready card through merging to merged-local (lane session)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(_ *cobra.Command, _ []string) error {
+			if !factoryLaneAdmission() {
+				return factoryNotALaneError("complete")
+			}
+			return errors.New("factory complete: not yet implemented (SPEC-FACTORY-SELF-DISPATCH-001 M2)")
+		},
+	}
+	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
+	return cmd
+}
+
 // resolveFactoryCardRun returns the explicit --run value, or the single active
 // factory run.
 func resolveFactoryCardRun(ctx context.Context, root, explicit string) (string, error) {
@@ -303,6 +669,12 @@ func newFactoryDecideCommand() *cobra.Command {
 		Short: "Record an operator decision: --gate kickoff --choice approve|reject, --gate push, or --choice resume|block|unblock|abandon",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// REQ-SD-016: a session for which lane refusal holds — a lane by
+			// marker, label, or Codex backend — cannot record decisions. The
+			// guard runs before any card row is read or written.
+			if factoryLaneRefusal() {
+				return fmt.Errorf("factory decide: refused — %s: decide records the operator's decisions; a lane session cannot (on the Codex MCP path the same refusal covers factory_decide)", factoryLaneBoundarySentinel)
+			}
 			if decider != homestate.DeciderHuman {
 				return fmt.Errorf("factory decide: decider %q is not accepted; F1 records only %q decisions", decider, homestate.DeciderHuman)
 			}

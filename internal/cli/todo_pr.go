@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -186,6 +187,31 @@ func runTodoPR(cmd *cobra.Command, only string, jsonOutput bool) error {
 		return fmt.Errorf("no backlog item %s", only)
 	}
 
+	rows := computeTodoPRRows(cmd.ErrOrStderr(), rec, only)
+
+	out := cmd.OutOrStdout()
+	if jsonOutput {
+		data, err := json.Marshal(rows)
+		if err != nil {
+			return err
+		}
+		_, _ = fmt.Fprintln(out, string(data))
+		return nil
+	}
+	if len(rows) == 0 {
+		_, _ = fmt.Fprintln(out, "queue is empty")
+		return nil
+	}
+	writeTodoPRRows(out, rec, rows)
+	return nil
+}
+
+// computeTodoPRRows computes the link outcome rows for rec restricted to
+// only ("" = every card), writing the degradation notes to errW. Shared by
+// `moai todo pr` and `moai factory next` — the PR/landed line `next` prints
+// must equal what `todo pr` reports for the same card (REQ-SD-008, plan B9),
+// which one shared computation guarantees by construction.
+func computeTodoPRRows(errW io.Writer, rec *kanban.BacklogRecord, only string) []todoPRRow {
 	prs, saturated, ghErr := fetchOpenPRs()
 	lookup := ""
 	if saturated {
@@ -193,7 +219,7 @@ func runTodoPR(cmd *cobra.Command, only string, jsonOutput bool) error {
 		// to the resolver, and its card would report `no-link` or `landed` —
 		// wrong, and silent. Saying so is the whole mitigation: paging would
 		// spawn a second `gh` process, which the one-query bound forbids.
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+		_, _ = fmt.Fprintf(errW,
 			"note: the open pull-request query returned its %d-record ceiling; cards without an observed link report unknown\n",
 			todoPROpenPRLimit)
 		lookup = "incomplete"
@@ -201,7 +227,7 @@ func runTodoPR(cmd *cobra.Command, only string, jsonOutput bool) error {
 	if ghErr != nil {
 		// Fail-open (REQ-2.3): the note names what degraded, so an empty link
 		// column is never mistaken for "no card has a pull request".
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+		_, _ = fmt.Fprintf(errW,
 			"note: open pull requests unavailable (%v); link column left empty, landed check still ran\n", ghErr)
 		prs = nil
 		lookup = "unavailable"
@@ -230,24 +256,16 @@ func runTodoPR(cmd *cobra.Command, only string, jsonOutput bool) error {
 		rows = append(rows, todoPRRow{PRLinkOutcome: out, Landing: it.Landing, PRLookup: lookup})
 	}
 	if len(degraded) > 0 {
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+		_, _ = fmt.Fprintf(errW,
 			"note: the landed check against %s could not answer for %s; those cards report unknown rather than no-link, because an unanswerable query is not evidence of not-landed\n",
 			landedRef, strings.Join(degraded, " "))
 	}
+	return rows
+}
 
-	out := cmd.OutOrStdout()
-	if jsonOutput {
-		data, err := json.Marshal(rows)
-		if err != nil {
-			return err
-		}
-		_, _ = fmt.Fprintln(out, string(data))
-		return nil
-	}
-	if len(rows) == 0 {
-		_, _ = fmt.Fprintln(out, "queue is empty")
-		return nil
-	}
+// writeTodoPRRows renders the link rows, one per line. Shared by `moai todo
+// pr` and `moai factory next` so the two surfaces print the same bytes.
+func writeTodoPRRows(w io.Writer, rec *kanban.BacklogRecord, rows []todoPRRow) {
 	text := map[string]string{}
 	state := map[string]kanban.BacklogState{}
 	for _, it := range rec.Items {
@@ -277,11 +295,10 @@ func runTodoPR(cmd *cobra.Command, only string, jsonOutput bool) error {
 		// so a consumer reading the final field still reads the text after a
 		// second contract change. It is empty for a card with no record —
 		// blank rather than omitted, so every row keeps the same shape.
-		_, _ = fmt.Fprintf(out, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			o.CardID, o.Kind, formatPRLinks(o.PRs), o.Confidence, state[o.CardID],
 			formatLandingEvidence(r.Landing), todoPRCell(text[o.CardID]))
 	}
-	return nil
 }
 
 // todoPRRow is the RENDER-TIME shape: the resolver's outcome plus the stored

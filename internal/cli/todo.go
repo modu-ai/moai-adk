@@ -254,8 +254,16 @@ mentions an id later in the sentence still falls through, and
 		// here rather than inside resolveTodoQueueRoot: that helper is called
 		// several times per run (store, landed ref, ...) and would repeat the
 		// notice once per call.
-		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
-			warnTempOriginQueueRefusal(cmd)
+		//
+		// The lane queue guard (REQ-SD-015) rides the same hook, ahead of
+		// every subcommand's RunE, so a refused lane session never reaches a
+		// mutation and the queue file stays byte-identical.
+		PersistentPreRunE: func(run *cobra.Command, args []string) error {
+			if err := todoRefuseLaneMutation(todoTreeRoot(run), run, args); err != nil {
+				return err
+			}
+			warnTempOriginQueueRefusal(run)
+			return nil
 		},
 		GroupID: "tools",
 	}
@@ -266,6 +274,54 @@ mentions an id later in the sentence still falls through, and
 		newTodoPRCmd(), newTodoLandedCmd(), newTodoAutoDoneCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd(),
 		newTodoTriageCmd())
 	return cmd
+}
+
+// todoLaneReadOnlyVerbs is the REQ-SD-015 read-only allowlist: the only
+// `moai todo` forms a lane session may run. Everything else — including
+// `next <n>`, which the operator's pick path shares — is refused; the one
+// queue write a lane performs is the promotion inside `moai factory next`
+// (OD-1, operator-authorized for the self-dispatch lane mode).
+var todoLaneReadOnlyVerbs = map[string]bool{
+	"list":    true,
+	"history": true,
+	"why":     true,
+	"pr":      true,
+	"triage":  true,
+}
+
+// todoTreeRoot returns the todo tree's own root for run: the nearest
+// ancestor (run included) that defines this PersistentPreRunE. Inside the
+// todo tree that is the `moai todo` command itself, so the lane guard can
+// tell "the parent invoked bare" from "a subcommand" without closing over
+// the not-yet-defined root variable.
+func todoTreeRoot(run *cobra.Command) *cobra.Command {
+	for p := run; p != nil; p = p.Parent() {
+		if p.PersistentPreRunE != nil {
+			return p
+		}
+	}
+	return run
+}
+
+// todoRefuseLaneMutation guards the todo surface against a lane session
+// (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-015): when lane refusal holds, only
+// the read-only allowlist — and a bare parent render with no arguments — may
+// proceed. The parent-with-args form is refused because it falls through to
+// `add`, a mutation. root is the tree the hook was defined on; run is the
+// command actually executing.
+func todoRefuseLaneMutation(root, run *cobra.Command, args []string) error {
+	if !factoryLaneRefusal() {
+		return nil
+	}
+	if run == root {
+		if len(args) == 0 {
+			return nil
+		}
+	} else if todoLaneReadOnlyVerbs[run.Name()] {
+		return nil
+	}
+	return fmt.Errorf("moai %s: refused — %s: a lane session cannot mutate the queue (read-only here: bare todo, list, history, why, pr, triage); a lane takes its next card through moai factory next",
+		todoSurfaceName(run), factoryLaneBoundarySentinel)
 }
 
 // todoVerbShaped matches a first token that reads as a command verb: one

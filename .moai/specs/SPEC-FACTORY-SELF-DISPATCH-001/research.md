@@ -16,7 +16,7 @@ the worktree root. Every row below was read with a command in this run; anything
 |---|---|---|
 | `factory` command root | `internal/cli/factory_handoff_recover.go:20` | `Use: "factory"` |
 | F1 subcommands | `internal/cli/factory_handoff_recover.go:55` | `factory.AddCommand(newFactoryAssignCommand(), newFactoryStatusCommand(), newFactoryDecideCommand())` |
-| `assign`, `status`, `decide` | `internal/cli/factory_card.go:81,213,302` | `Use: "assign <card>"`, `"status"`, `"decide <card>..."` |
+| `assign`, `status`, `decide` | `internal/cli/factory_card.go:444,575,665` | `Use: "assign <card>"`, `"status"`, `"decide <card>..."` (post-M1 lines — M1 added `next`, `stage`, `complete` above them) |
 | `next`, `stage`, `complete` | — | absent: `grep -rnE 'Use: +"(next\|stage\|complete)' internal/cli/factory*.go` returns nothing |
 | Transition API | `internal/homestate/card_transition.go:214` | `func (f *FactoryDB) Transition(ctx, req TransitionRequest)` |
 | Lease renew | `internal/homestate/card_transition.go:368` | `RenewLease(ctx, runID, cardID, label, now)` |
@@ -59,9 +59,9 @@ None of the six F2 tools exists.
 
 | Item | Location |
 |---|---|
-| Name constant `EnvFactoryRole = "MOAI_FACTORY_ROLE"` | `internal/config/envkeys.go:323` |
-| Value constant `FactoryRoleWorker = "worker"` | `internal/config/envkeys.go:332` |
-| Guard read | `internal/hook/contract_sign_guard.go:131-133` (`contractRoleMarker`) |
+| Name constant `EnvFactoryRole = "MOAI_FACTORY_ROLE"` | `internal/config/envkeys.go:337` |
+| Value constant `FactoryRoleLane = "lane"` (t1256 renamed from `FactoryRoleWorker`) | `internal/config/envkeys.go:347` |
+| Guard read | `internal/hook/contract_sign_guard.go:132-134` (`contractRoleMarker`) |
 | Role-gated verbs | `contract_sign_guard.go:18-24`: `sign --signer llm`/`llm+jev` and `decide` |
 | Pin tests (REQ-AP-013) | `internal/cli/factory_role_pin_test.go` (`TestFactoryRoleTokenPinsGuardConstant`), `internal/kanban/factory_label_pin_test.go` (`TestFactoryLabelPrefixPinsGuardConstant`) |
 | Production writers | none: all four `Setenv(config.EnvFactoryRole` hits are in `internal/hook/contract_sign_guard*_test.go` |
@@ -73,10 +73,10 @@ guard nevertheless matches a `contract decide` command line, so it is future-pro
 
 | Item | Location |
 |---|---|
-| Refusal call | `internal/cli/codex_launcher.go:701` |
-| Refusal lines | const block `:740-745`; factory line `codexFactoryRefusalDiag` at `:743-744` (`FACTORY_MODE_UNSUPPORTED_BACKEND: moai codex no longer enters Factory Mode; use 'moai cc -f' or 'moai glm -f' instead`) |
-| Scanner | `codexEntryRefusal`, `:754-768` — refuses `-f`, `--factory`, `--factory-run`, and `=` forms |
-| Child env scrub | `codexChildEnv`, `:607-625` — drops `codexLaneLaunchEnvKeys` (the eleven lane keys of REQ-CFR-006, which include `MOAI_FACTORY_WORKER`/`S`) |
+| Refusal call | `internal/cli/codex_launcher.go:690` |
+| Refusal lines | const block `:666-672`; factory line `codexFactoryRefusalDiag` at `:670-671` (`FACTORY_MODE_UNSUPPORTED_BACKEND: moai codex no longer enters Factory Mode; use 'moai cc -f' or 'moai glm -f' instead`) |
+| Scanner | `codexEntryRefusal`, `:678-681` — refuses `-f`, `--factory`, `--factory-run`, and `=` forms |
+| Child env scrub | `codexChildEnv`, `:521-535` — drops `codexLaneLaunchEnvKeys` (the eleven lane keys of REQ-CFR-006, which include `MOAI_FACTORY_WORKER`/`S`) |
 | MCP env allowlist | `internal/codexwiring/configtoml.go:21` — includes `MOAI_FACTORY_WORKER`, `MOAI_FACTORY_WORKERS`; excludes `MOAI_FACTORY_ROLE` |
 
 t1242 design.md §5: "F2 replaces the refusal for the `-f agent` shape with the headless worker". The
@@ -88,10 +88,10 @@ REQ-CFR-020 (allowlist frozen) is kept.
 
 | Item | Location | Observation |
 |---|---|---|
-| Factory notice source gate | `internal/hook/session_start_factory.go:62-67` | returns `""` unless source is `""` or `startup` |
+| Factory notice source gate | `internal/hook/session_start_factory.go:73-78` (`factoryBootstrapNoticeForSource`) | returns `""` unless source is `""` or `startup` |
 | Wiring | `internal/hook/session_start.go:511` | `factoryBootstrapNoticeForSource(input.Source, factoryRoot, langEnglish)` |
 | Clear-source consumer that exists | `internal/hook/handoff_inject.go:88` | handoff injection only under `handoff.mode: auto` |
-| Lane notice builder | `internal/hook/session_start_factory.go:201` | `factoryWorkerNotice(label, workers, lang)` |
+| Lane notice builder | `internal/hook/session_start_factory.go:212` | `factoryLaneNotice(label, lanes, lang)` (t1256 renamed from `factoryWorkerNotice`) |
 
 So a cleared lane session gets nothing today — the gap REQ-SD-019 closes.
 
@@ -111,7 +111,7 @@ relaunch policy needs a supervising form (design.md §6).
 | Lease owner check | `internal/homestate/card_transition.go:433-441` | `guardLeaseAcquire` requires the actor to be registered and equal to `cur.OwnerLabel` — an expired card returns to its own lane, hence REQ-SD-025's skip rule |
 | Backend variable | `internal/config/envkeys.go:224-235` | `EnvMoaiKanbanBackend = "MOAI_KANBAN_BACKEND"`, values `kanban.BackendClaude`/`BackendGLM`/`BackendGPT` |
 | Backend constants | `internal/kanban/record.go:22-24` | `"claude"`, `"glm"`, `"gpt"` |
-| Backend on factory lanes | `internal/cli/glm.go:267-268`; `internal/cli/cc.go:220` `exportFactoryLaunchFacts` → `internal/cli/kanban.go:514` → `exportKanbanLaunchFacts` sets it at `kanban.go:492-497` | both lane paths already export it (v0.2.0's "cc does not" was wrong — corrected at v0.3.0) |
+| Backend on factory lanes | `internal/cli/glm.go:267-268`; `internal/cli/cc.go:220` `exportFactoryLaunchFacts` → `internal/cli/kanban.go:543` → `exportKanbanLaunchFacts` sets it at `kanban.go:520-526` | both lane paths already export it (v0.2.0's "cc does not" was wrong — corrected at v0.3.0) |
 | Card-id variable | `internal/config/envkeys.go:250` | `EnvMoaiKanbanCard = "MOAI_KANBAN_CARD"`; in the eleven-key Codex scrub (`codex_launcher.go:276`), not in the MCP allowlist — the hook reads it from the process env |
 | Integration branch source | `internal/kanban/integration_lock.go:88-93`; `internal/cli/integration.go:204` | sources `flag` / `config` / `caller`; the configured source is the git-flow develop branch only, so a github-flow `acquire` without `--branch` records the caller's own branch |
 | Codex SessionStart | `internal/codexadapter/events.go:72` | `{hook.EventSessionStart, "session-start", true}` — Codex sessions do fire SessionStart |

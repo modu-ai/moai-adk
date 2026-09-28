@@ -2,9 +2,9 @@
 id: SPEC-FACTORY-SELF-DISPATCH-001
 title: "Harness-neutral factory F2 — self-dispatching lane"
 version: "0.5.1"
-status: draft
+status: in-progress
 created: 2026-09-27
-updated: 2026-09-27
+updated: 2026-09-28
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
