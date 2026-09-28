@@ -142,9 +142,32 @@ M4 — H24 regression-guard verification (VERIFY-ONLY; zero source edits). Evide
 
 - M4 verdict: AC-AMD-006 guard clauses all PASS (no edit, keys unchanged, payloads byte-identical, build 0, wizard package + named ModelPolicy tests PASS). The "affected packages pass" clause carries the 2 pre-existing baseline failures above as PASS-WITH-DEBT — outside M4's H24 scope, NOT fixed per the verify-only constraint, flagged to the lead for disposition (t1309 surface-guard update; constitution registry validation).
 
+M5 — verification closure. Full hns-oss-docs-verify recipe + consolidated 9-AC matrix; complete gate record at `.moai/reports/t1300/m5-verification.md` (measured on tree `7d3b2be5b`, worktree `.moai/worktrees/t1300`, 2026-09-29). Gate outcomes:
+
+- build-clean: `hugo --minify --gc` → exit 0; WARN/ERROR grep over full output → 0 (grep exit=1 = no matches); sitemap `sitemap OK`
+- URL blacklist: no matches (exit=1); Mermaid TD-only: no matches (exit=1)
+- 4-locale parity: file existence 620/620 (missing-flag=0); ratcheted section-count parity — divergence set now=54 vs baseline=54, `comm -23` (NEW divergence) EMPTY (gate PASS), `comm -13` (converged) empty; README headings 12/12/12/12
+- body-emoji scan: all tree hits reviewed as preserved typographic symbols (✓ ✗ ✂), cut-line markers, and statusline/orchestrator example-output blocks; zero body-text emoji in M1-M3-edited files
+- version-sync: hugo.toml `version = "v3.1.3"` = Release badges ×4 (`Release-v3.1.3`); 4 `🗿 v3.1.2` hits = the faq update-prompt example's "installed" side (target side equals the release number), pre-existing at baseline, untouched by M1-M3 — judged not a stale display, flagged for lead if strict reading preferred
+
+Consolidated 9-AC closure (full matrix in the M5 record): AC-AMD-001 PASS (M1 `5f4f199ef`), 002 PASS (M2 `7d3b2be5b`), 003 PASS (M2), 004 PASS (M1-M3), 005 PASS (M3 `fbd13bbfc`), 006 PASS (M4, verify-only), 007 PASS (M4), 008 PASS (M5 gate), 009 PASS (M1-M3 read-throughs).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_status: audit-ready
+run_complete_at: 2026-09-29
+
+### Run summary (5-section, VCI §3)
+
+**Claim**: All docs-site deliverables of SPEC-AGENT-MODEL-INHERIT-DOCS-001 landed across M1-M3 (A-cluster 20 + B-cluster 24 + C/outside-cluster 17 files touched, each cluster authored ko→en→ja/zh in one work session), the H24 regression guard held with zero edits to `translations.go` / `profile_setup_translations.go`, and the full hns-oss-docs-verify recipe passes on the final tree.
+
+**Evidence**: milestone commits `5f4f199ef` (M1), `7d3b2be5b` (M2), `fbd13bbfc` (M3), M4 verify-only (§E.2 above, no code commit by design), M5 gate (`.moai/reports/t1300/m5-verification.md`). Deciding commands and verbatim outputs per AC are recorded in §E.2 and the M5 record: retired-marker greps (no output), per-locale inheritance markers (≥4 pages/locale), deprecated-stub framing across 24 B-cluster files, before/after caching grep, ratchet `comm -23` EMPTY, hugo WARN count 0, sitemap OK.
+
+**Baseline-attribution**: all evidence measured in this run, worktree `.moai/worktrees/t1300`, branch `WT-model-docs-sweep`. M1-M2 on the `5f4f199ef` lineage; M3-M5 on the merged tree after one develop absorb (`a62a05764` → merge commit `4321c28fe`), with the M2 verification re-run on the merged tree.
+
+**Gaps**: (a) pre-existing 4-locale heading-parity divergences on `advanced/agent-guide.md` (ko 15/7 vs en/ja/zh 14/16), `getting-started/init-wizard.md` (ko 10/8 vs 11/8), `multi-llm/_index.md` (ko 7/4 vs 4/1) — each `git show`-verified identical to baseline; all 54 divergent pages sit inside the checked-in `.locale-parity-baseline` ratchet (zero NEW divergence); structural unification out of SPEC scope, escalated for lead disposition. (b) full-suite CI verdict belongs to the lead's develop push (lane-local rule; the M4 CLI-suite's 2 failures are pre-existing baseline, PASS-WITH-DEBT per §E.2 M4). (c) ja/zh native-reader (humanize) pass did not run on the M1 rewrites.
+
+**Residual-risk**: the version-sync `🗿 v3.1.2` upgrade-example reading is a judgment call (strict reading would update the installed-side example); ja/zh prose on the rewritten model-policy/profile-matrix pages lacks an independent native-reader pass; the local hugo build (darwin) is not the production Vercel build.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
