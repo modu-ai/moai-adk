@@ -255,7 +255,7 @@ func newIntegrationCmd() *cobra.Command {
 		Short: "Hold and release the release-integration window (lane serialization)",
 		Long: `Hold and release the release-integration window.
 
-A lane announces its integration to the lead, then records the hold here so
+A lane announces its integration to the leader, then records the hold here so
 the PreToolUse guard can refuse a second lane's ` + "`git merge`" + ` in the release
 worktree. The record lives in the primary checkout's .moai/state, visible
 from every linked worktree.

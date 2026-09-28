@@ -29,7 +29,7 @@ func TestFactoryFreeSlots(t *testing.T) {
 	t.Run("live claim makes its slot busy", func(t *testing.T) {
 		t.Parallel()
 		root := t.TempDir()
-		if err := SaveFactoryRegistry(FactoryRegistryPath(root), map[string]FactoryWorkerEntry{
+		if err := SaveFactoryRegistry(FactoryRegistryPath(root), map[string]FactoryLaneEntry{
 			"lane-1": {PID: 11100},
 			"lane-3": {PID: 11101},
 		}); err != nil {
@@ -44,7 +44,7 @@ func TestFactoryFreeSlots(t *testing.T) {
 	t.Run("dead claim is pruned and reads free", func(t *testing.T) {
 		t.Parallel()
 		root := t.TempDir()
-		if err := SaveFactoryRegistry(FactoryRegistryPath(root), map[string]FactoryWorkerEntry{
+		if err := SaveFactoryRegistry(FactoryRegistryPath(root), map[string]FactoryLaneEntry{
 			"lane-2": {PID: 11100},
 		}); err != nil {
 			t.Fatalf("seed registry: %v", err)
@@ -58,7 +58,7 @@ func TestFactoryFreeSlots(t *testing.T) {
 	t.Run("claims beyond workers do not widen the result", func(t *testing.T) {
 		t.Parallel()
 		root := t.TempDir()
-		if err := SaveFactoryRegistry(FactoryRegistryPath(root), map[string]FactoryWorkerEntry{
+		if err := SaveFactoryRegistry(FactoryRegistryPath(root), map[string]FactoryLaneEntry{
 			"lane-9": {PID: 11100},
 		}); err != nil {
 			t.Fatalf("seed registry: %v", err)
@@ -75,7 +75,7 @@ func TestFactoryFreeSlots(t *testing.T) {
 func TestPruneFactoryDeadClaims(t *testing.T) {
 	t.Parallel()
 
-	reg := map[string]FactoryWorkerEntry{
+	reg := map[string]FactoryLaneEntry{
 		"lane-1": {PID: 11100}, // live
 		"lane-2": {PID: 11101}, // dead
 		"lane-3": {PID: 0},     // non-positive
@@ -142,7 +142,7 @@ func TestFactoryRegistryRoundTrip(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
-	seed := map[string]FactoryWorkerEntry{
+	seed := map[string]FactoryLaneEntry{
 		"lane-1": {PID: os.Getpid(), RegisteredAt: "2026-08-17T00:00:00Z"},
 	}
 	if err := SaveFactoryRegistry(FactoryRegistryPath(root), seed); err != nil {
@@ -172,7 +172,7 @@ func TestClaimFactoryWorkerNameConcurrentClaimsAreUnique(t *testing.T) {
 		wg.Add(1)
 		go func(pid int) {
 			defer wg.Done()
-			label, err := ClaimFactoryWorkerName(root, "lane-1", pid, func(int) bool { return true })
+			label, err := ClaimFactoryLaneName(root, "lane-1", pid, "testrun", func(int) bool { return true })
 			results <- label
 			errs <- err
 		}(10000 + i)

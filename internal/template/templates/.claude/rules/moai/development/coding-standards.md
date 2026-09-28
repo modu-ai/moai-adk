@@ -39,10 +39,10 @@ elixir, cpp, scala, r, flutter, swift (Dart's canonical name is "flutter").
 
 ## File Size Limits
 
-CLAUDE.md should stay under 40,000 characters. This is a MoAI CI-enforceable heuristic; the official Claude Code spec instead targets "under 200 lines per CLAUDE.md" and loads the file in full regardless of length. Any project-local instruction file that also loads in full at every session launch follows the same size discipline.
+CLAUDE.md should stay under 40,000 characters. This is a MoAI CI-enforceable heuristic; the official Claude Code spec instead targets "under 200 lines per CLAUDE.md" and loads the file in full regardless of length. The budget applies to every instruction file the InstructionsLoaded hook measures — always-loaded and `paths:`-scoped alike; scoping changes when a file loads, not whether it is measured.
 
 When approaching the limit, reduce launch-time context (priority order):
-- Move detailed content to path-scoped rules (.claude/rules/ with `paths:` frontmatter) so it loads only when matching files are touched
+- Move detailed content to path-scoped rules (.claude/rules/ with `paths:` frontmatter) so it loads only when matching files are touched — a `paths:`-scoped destination is subject to the same 40,000-character budget; the move narrows when the content loads, not whether it is measured
 - Move stable doctrine to .moai/docs/ and reference it with a plain prose pointer ("See: .moai/docs/<file>.md")
 - Trim content not needed in every session
 - Keep only core identity and hard rules inline

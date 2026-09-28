@@ -32,14 +32,17 @@ import (
 
 // kanbanBootstrapNotice returns the announcement for this session in lang, or
 // "" when the session is not part of a kanban run. root is the project root the
-// lead branch reads the backlog queue under; it may be empty, which the queue
-// summary degrades from rather than failing.
+// leader branch reads the backlog queue under; it may be empty, which the queue
+// summary degrades from rather than failing. sessionID keys the stale-run
+// check: a session whose launch label or record carries a legacy role value
+// gets the stale-run notice instead of a leader notice
+// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-025).
 //
 // Fail-open throughout, matching the surrounding hook code: an unresolvable run
 // id or a label that does not parse degrades to emitting nothing rather than
 // emitting something wrong or failing the session start. An unknown lang
 // degrades to English (kanbanMessagesFor), never to an empty notice.
-func kanbanBootstrapNotice(root, lang string) string {
+func kanbanBootstrapNotice(root, sessionID, lang string) string {
 	// A factory session reads the factory notice, never this one. The
 	// launcher never sets the kanban variables on a factory branch, so this
 	// guard is insurance against a hand-exported environment, not a branch the
@@ -47,13 +50,16 @@ func kanbanBootstrapNotice(root, lang string) string {
 	if os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
 		return ""
 	}
+	if notice := staleRunNoticeFor(root, sessionID, lang); notice != "" {
+		return notice
+	}
 	if label := os.Getenv(config.EnvMoaiKanbanLabel); label != "" {
 		return kanbanCompanionNotice(label, lang)
 	}
 	if os.Getenv(config.EnvMoaiKanban) == "" {
 		return ""
 	}
-	return kanbanLeadNotice(os.Getenv(config.EnvMoaiKanbanID), root, lang)
+	return kanbanLeaderNotice(os.Getenv(config.EnvMoaiKanbanID), root, lang)
 }
 
 // kanbanBootstrapNoticeForSource returns the announcement only for a genuinely
@@ -62,7 +68,7 @@ func kanbanBootstrapNotice(root, lang string) string {
 //
 // SessionStart fires on five documented sources — startup, resume, clear,
 // compact, and fork — and the kanban environment survives all of them, so an
-// ungated notice re-announces the bootstrap every time a lead session comes
+// ungated notice re-announces the bootstrap every time a leader session comes
 // back: the operator is told to open three companion terminals that are already
 // open, for a run already under way. Only startup is the moment that
 // instruction is actionable.
@@ -82,14 +88,14 @@ func kanbanBootstrapNotice(root, lang string) string {
 // safer-to-emit reasoning is recorded in SPEC-HOOK-SESSIONSTART-PROBE-001
 // (AC-HOOK-004), which gates on startup and treats an absent source the same
 // way.
-func kanbanBootstrapNoticeForSource(source, root, lang string) string {
+func kanbanBootstrapNoticeForSource(source, root, sessionID, lang string) string {
 	if source != "" && source != "startup" {
 		return ""
 	}
-	return kanbanBootstrapNotice(root, lang)
+	return kanbanBootstrapNotice(root, sessionID, lang)
 }
 
-// kanbanLeadNotice is the lead branch. It carries, in order: (a) the run id;
+// kanbanLeaderNotice is the leader branch. It carries, in order: (a) the run id;
 // (b) the three companion launch lines, each carrying -k; (c) the leader socket
 // path; (d) an inbound-automation notice; (e) the SPEC identifier (only when
 // MOAI_KANBAN_SPEC is set) and the backlog queue summary.
@@ -107,7 +113,7 @@ func kanbanBootstrapNoticeForSource(source, root, lang string) string {
 // three lines to copy, not reading top to bottom. Blocks are built here rather
 // than baked into the message table, so every locale lays out identically and a
 // missing terminator cannot weld two lines together.
-func kanbanLeadNotice(runID, root, lang string) string {
+func kanbanLeaderNotice(runID, root, lang string) string {
 	if runID == "" {
 		return ""
 	}
@@ -116,26 +122,26 @@ func kanbanLeadNotice(runID, root, lang string) string {
 	// (a) the run id and the session name that must accompany it, printed
 	// together so a disagreement between them is visible HERE — at the moment
 	// the notice is emitted — rather than later, when a copied command opens a
-	// companion on a run no lead is listening to. The launcher now adopts an
-	// operator-supplied `lead-<run-id>` name (internal/cli/kanban.go
-	// leadRunID) so the two agree by construction; this line is what makes a
+	// companion on a run no leader is listening to. The launcher now adopts an
+	// operator-supplied `leader-<run-id>` name (internal/cli/kanban.go
+	// leaderRunID) so the two agree by construction; this line is what makes a
 	// residual disagreement self-announcing instead of silent.
 	identity := []string{
-		fmt.Sprintf(m.leadHeader, runID),
-		fmt.Sprintf(m.leadIdentity, kanban.LeadLabel()),
+		fmt.Sprintf(m.leaderHeader, runID),
+		fmt.Sprintf(m.leaderIdentity, kanban.LeaderLabel()),
 	}
 
 	// (b) why bootstrap is manual — stated rather than left to be discovered.
 	blocks := []string{
 		strings.Join(identity, "\n"),
-		m.leadManual,
+		m.leaderManual,
 	}
 
 	// (c) the three companion launch lines, each carrying -k (AC-FB-015) so the
 	// operator copies a kanban-membership command, not the bare --name form the
 	// prior-art notice printed. The names are the bare roles — under the
 	// one-machine-one-run policy no run id travels in companion names, so a
-	// copied command cannot address a run the lead is not on (the t21 class).
+	// copied command cannot address a run the leader is not on (the t21 class).
 	// Each line carries its RECOMMENDED launcher (kanban.CompanionLauncher):
 	// the operator copies the line as printed and lands on the backend the
 	// recommendation table below explains. A role already held by a live
@@ -164,7 +170,7 @@ func kanbanLeadNotice(runID, root, lang string) string {
 	// supplied their own --settings / a write failure degraded to fail-open (the
 	// operator must verify the field themselves). The SPEC line appears ONLY when
 	// MOAI_KANBAN_SPEC is set. The queue summary replaced the former Epic Status
-	// pointer (SPEC-EPIC-STATUS-001 REQ-ES-012): the lead's working unit is the
+	// pointer (SPEC-EPIC-STATUS-001 REQ-ES-012): the leader's working unit is the
 	// backlog queue and the six-column board, not epic milestones, so the
 	// standing-context line now names what the run actually moves — N queued
 	// cards and the command that lists them.
@@ -192,7 +198,7 @@ func kanbanLeadNotice(runID, root, lang string) string {
 
 // queuedBacklogCount returns the number of cards waiting in the backlog queue
 // under root — the same project-keyed home backlog.db the `moai todo` CLI
-// operates (internal/cli/todo.go todoBacklogPath). Since the t85 factory lead
+// operates (internal/cli/todo.go todoBacklogPath). Since the t85 factory leader
 // loop reads the same count, the path shape and the queued-only counting live
 // in ONE shared place — kanban.QueuedBacklogCountForRoot (BacklogStore.
 // QueuedCount) — so the kanban notice, the factory notice, and the todo CLI
@@ -218,7 +224,7 @@ func queuedBacklogCount(root string) int {
 //
 // AC-FB-016 / AC-FB-016a: the notice is role-less prose and names the LABEL
 // the session launched under — which may be a bumped number, and is the
-// address the lead dispatches to; the launch-time stderr note is gone by the
+// address the leader dispatches to; the launch-time stderr note is gone by the
 // time the TUI takes the screen, so this line is where the operator reads the
 // final name. When the label does not parse (ok=false) the notice is the
 // empty string (fail-open, C8) — no notice emitted, no error raised, the

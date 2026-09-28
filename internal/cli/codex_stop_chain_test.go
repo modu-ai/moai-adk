@@ -86,6 +86,7 @@ func TestStopChainGPTProfileNoClaudeDependency(t *testing.T) {
 	c := newCodexStopChain(f.root, stopInput("gpt-s", false))
 	c.member1 = allowMember1
 	c.budgetFor = wideStopBudget
+	defer c.waitOrphans()
 	res := c.run(ctx)
 
 	for _, want := range []struct {
@@ -177,22 +178,35 @@ func TestStopChainAdvisoryFailureRecorded(t *testing.T) {
 // the fail-open-on-missing member 7 cut off reads as result-missing — it
 // allows, with the discard record.
 func TestStopChainGateCutOffNeverAllows(t *testing.T) {
-	f := newTimingFixture(t)
-	c := newCodexStopChain(f.root, stopInput("timing-s", false))
-	// Members 2/3/6/7 are cut off below, so their goroutines outlive run()
-	// by design. Join them before this test returns: an orphan still reading
-	// the package-level seams races with the next test's fixture setup —
-	// the intermittent CI Race failure this wait closes (card t1099).
-	defer c.waitOrphans()
-	c.member1 = allowMember1
+	c := newCodexStopChain(t.TempDir(), stopInput("timing-s", false))
+	// An ignored-context member cannot win the result channel before its
+	// deadline. Release and join every goroutine even when an assertion fails.
+	release := make(chan struct{})
+	defer func() { close(release); c.waitOrphans() }()
+	blocked := func(context.Context) stopMemberOutcome {
+		<-release
+		return stopMemberOutcome{Decision: codexadapter.DecisionAllow}
+	}
 	c.budgetFor = func(n int) time.Duration {
 		switch n {
 		case 2, 3, 6, 7:
-			return time.Nanosecond
+			return time.Millisecond
 		}
 		return wideStopBudget(n)
 	}
-	res := c.run(context.Background())
+	members := []stopMemberOutcome{{Number: 1, Decision: codexadapter.DecisionAllow}}
+	for _, entry := range []struct {
+		n      int
+		cutOff func(context.Context) stopMemberOutcome
+	}{
+		{2, c.cutOffUnmeasured(2, stopCapGateSync, "sync")},
+		{3, c.cutOffUnmeasured(3, stopCapGoal, "goal")},
+		{6, c.cutOffUnmeasured(6, stopCapGateReview, "review")},
+		{7, c.multiCutOff},
+	} {
+		members = append(members, c.budgeted(context.Background(), entry.n, blocked, entry.cutOff))
+	}
+	res := codexStopChainResult{Members: members, Output: c.merge(nil, members)}
 	for _, n := range []int{2, 3, 6} {
 		m := memberByNumber(t, res, n)
 		if m.Decision != codexadapter.DecisionDeny || m.Class != reasonUnmeasured || !strings.Contains(m.Err, "budget") {

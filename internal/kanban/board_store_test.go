@@ -20,7 +20,7 @@ import (
 // seedLead declares a lead session beneath root.
 func seedLead(t *testing.T, root, sessionID string) {
 	t.Helper()
-	if err := DeclareRole(root, sessionID, RoleLead, "plan-host"); err != nil {
+	if err := DeclareRole(root, sessionID, RoleLeader, "plan-host"); err != nil {
 		t.Fatalf("DeclareRole(lead %s): %v", sessionID, err)
 	}
 }

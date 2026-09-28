@@ -237,8 +237,8 @@ func TestFactoryOperationalEvidenceAcceptsOwnedCurrentCodexMCPShape(t *testing.T
 		turn1 := current("turn-1", "call-1", "moai", "factory_msg_status", "r", "completed", "call-1", true)
 		turn2 := current("turn-2", "call-2", "moai", "factory_msg_status", "r", "completed", "call-2", true)
 		latestOutput, err := json.Marshal(map[string]any{
-			"first":  map[string]any{"structuredContent": map[string]any{"lanes": []map[string]any{{"slot": "agent-2"}}}},
-			"second": map[string]any{"structuredContent": map[string]any{"lanes": []map[string]any{{"slot": "agent-2"}}}},
+			"first":  map[string]any{"structuredContent": map[string]any{"lanes": []map[string]any{{"slot": "lane-2"}}}},
+			"second": map[string]any{"structuredContent": map[string]any{"lanes": []map[string]any{{"slot": "lane-2"}}}},
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -248,7 +248,7 @@ func TestFactoryOperationalEvidenceAcceptsOwnedCurrentCodexMCPShape(t *testing.T
 			{"type": "input_text", "text": string(latestOutput)},
 		})
 		lanes, ok := operationalMCPResultCount(append(turn1, turn2...), "r", 4)
-		if !ok || len(lanes) != 1 || lanes[0].Slot != "agent-2" {
+		if !ok || len(lanes) != 1 || lanes[0].Slot != "lane-2" {
 			t.Fatalf("cumulative result ok=%v lanes=%+v", ok, lanes)
 		}
 	})
@@ -265,7 +265,7 @@ func TestFactoryOperationalEvidenceAcceptsOwnedCurrentCodexMCPShape(t *testing.T
 		}
 		turn2 = []byte(strings.Join(kept, "\n") + "\n")
 		oneOutput, err := json.Marshal(map[string]any{
-			"first": map[string]any{"structuredContent": map[string]any{"lanes": []map[string]any{{"slot": "agent-2"}}}},
+			"first": map[string]any{"structuredContent": map[string]any{"lanes": []map[string]any{{"slot": "lane-2"}}}},
 		})
 		if err != nil {
 			t.Fatal(err)

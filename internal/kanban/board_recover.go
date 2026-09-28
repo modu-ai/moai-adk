@@ -49,7 +49,7 @@ type RecoveryResult struct {
 }
 
 // RecoverBoard is the explicit, bounded recovery operation: the sole writer
-// (the caller's declared role must be `lead` — recovery is a board write),
+// (the caller's declared role must be `leader` — recovery is a board write),
 // holding the board-wide lock, reconstructs or replaces the state file so
 // the board leaves the unknown state.
 //
@@ -62,7 +62,7 @@ type RecoveryResult struct {
 // never presented as the board that was lost.
 func RecoverBoard(root, sessionID string) (result *RecoveryResult, err error) {
 	// Recovery IS a board write, so the sole-writer guard binds it too.
-	if err := requireLeadRole(root, sessionID); err != nil {
+	if err := requireLeaderRole(root, sessionID); err != nil {
 		return nil, err
 	}
 
