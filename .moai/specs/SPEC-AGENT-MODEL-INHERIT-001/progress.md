@@ -359,7 +359,24 @@ target (PASS-WITH-DEBT).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+SYNC-PHASE CLOSE (2026-09-29, card t1246 sync lane). Sync commit subject: `docs(SPEC-AGENT-MODEL-INHERIT-001): sync-phase close — card t1246` (`sync_commit_sha: "pending-backfill-sync"` — a commit cannot cite its own SHA; backfilled in the immediately following commit, which carries the real hash). This close consolidates the `spec.md` status transition `in-progress → implemented → completed` on the single sync commit (the intermediate `implemented` state is disclosed rather than backdated) and refreshes `updated: 2026-09-29`.
+
+Live-criteria basis (B12 self-test 2): 25 distinct AC-AMI identifiers in `acceptance.md` (no `[RETIRED]`/`[REF]` markers present, no ambiguity), so the CHANGELOG entry counts 25 live criteria; the M8 (docs-site) split to card t1300 (lead dispatch 2026-09-28) is disclosed in prose in the CHANGELOG entry and in §E.3 above rather than marked on AC-AMI-025 in acceptance.md, which this phase may not edit.
+
+**Close-verification evidence (this tree, this lane)**:
+
+- `grep -c 'SPEC-AGENT-MODEL-INHERIT-001' CHANGELOG.md` → 1 (B12 pre-emission self-test: 0 before emission; exactly 1 after — no parallel-session duplicate)
+- `go test ./internal/spec/ -count=1` → ok (spec lint; era V3R6 classification, no drift findings on the close shape)
+- `go build ./...` → exit 0
+- `mcp__moai__spec_audit` filtered to SPEC-AGENT-MODEL-INHERIT-001 → no MUST-FIX
+- `git status --short` after commit 2 → clean; no push performed (lane never pushes; lead batch-pushes)
+
+**Residuals recorded for sync-audit adjudication (unchanged from §E.2/§E.3, carried so the record travels with the close)**:
+
+1. AC-AMI-008 — the absence-assertion grep at `internal/web/mcp_audit_surface_test.go:92` carries the searched symbols (`ResolveAgentModelEffort|DefaultProfileMatrix|ResolveHarnessAgentModelEffort`) as its own literals; the criterion as written is self-referential. PASS-with-deviation; no grep was gamed.
+2. Coverage — `go test -cover ./internal/config/ ./internal/template/` → 81.7% / 83.8% vs the 85% target. PASS-WITH-DEBT (producer deletion removed their tests with them; no in-card prior figure exists to attribute a delta).
+
+**Scope disclosures**: M8 (docs-site, AC-AMI-025's rewrite surface) → card t1300 (lead dispatch 2026-09-28); design H24 (profile-setup "Agent model policy" label rewording, 4 locales) unassigned, candidate t1300 — both outside this close.
 
 ### Succession session — develop absorption + stranded-consumer repairs (2026-09-28, worker-66; commits `3b29dfcea`·`b822c7d00`·`9eb125a73`)
 
