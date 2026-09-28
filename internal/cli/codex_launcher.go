@@ -391,7 +391,7 @@ func resolveCodexWorktreeDir(projectRoot, value string) (string, error) {
 
 	path := value
 	if filepath.IsAbs(path) {
-		if err := resolveWorktreeL2Path([]string{"--worktree", value}); err != nil {
+		if err := resolveWorktreeL2Path([]string{"--worktree", value}, os.Stderr); err != nil {
 			return "", err
 		}
 	} else {

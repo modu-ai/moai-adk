@@ -24,6 +24,9 @@ type ResumeHandoff struct {
 	ClaimExpiresAt       *time.Time
 	ClaimOwnerPID        int
 	ClaimOwnerSession    string
+	// ConsumedAt is set only by the consumed-history read (ReadLatestConsumedResume);
+	// the pending/claim readers leave it nil because their rows are not consumed.
+	ConsumedAt *time.Time
 }
 
 type ResumeClaim struct {
@@ -141,6 +144,34 @@ WHERE status='pending' ORDER BY id DESC LIMIT 1`).Scan(&row.ID, &row.SchemaVersi
 	row.SavedAt, err = time.Parse(time.RFC3339Nano, saved)
 	if err != nil {
 		return nil, true, fmt.Errorf("parse saved_at: %w", err)
+	}
+	return row, true, nil
+}
+
+// ReadLatestConsumedResume returns the most recent consumed resume row
+// (status='consumed', consumed_at DESC, id DESC as the tie-breaker). It is the
+// `moai handoff show` fallback source (SPEC-HANDOFF-NEUTRAL-001 REQ-HN-001):
+// a read-only history query that never claims, consumes, or mutates any row.
+func (f *FactoryDB) ReadLatestConsumedResume(ctx context.Context) (*ResumeHandoff, bool, error) {
+	row := &ResumeHandoff{}
+	var saved, consumed string
+	err := f.DB.QueryRowContext(ctx, `SELECT id,schema_version,spec_id,phase,saved_at,saved_by_session,
+conversation_language,directives_json,embedded_goal_json,body,consumed_at FROM resume_handoffs
+WHERE status='consumed' AND consumed_at IS NOT NULL ORDER BY consumed_at DESC, id DESC LIMIT 1`).Scan(&row.ID, &row.SchemaVersion, &row.SpecID,
+		&row.Phase, &saved, &row.SavedBySession, &row.ConversationLanguage, &row.DirectivesJSON,
+		&row.EmbeddedGoalJSON, &row.Body, &consumed)
+	if err == sql.ErrNoRows {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	row.SavedAt, err = time.Parse(time.RFC3339Nano, saved)
+	if err != nil {
+		return nil, true, fmt.Errorf("parse saved_at: %w", err)
+	}
+	if parsed, parseErr := time.Parse(time.RFC3339Nano, consumed); parseErr == nil {
+		row.ConsumedAt = &parsed
 	}
 	return row, true, nil
 }
