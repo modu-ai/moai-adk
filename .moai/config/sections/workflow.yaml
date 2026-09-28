@@ -197,7 +197,7 @@ workflow:
     # (internal/config/defaults.go enforces this; no `enabled: true` under
     # internal/template/templates/).
     served_model_gate:
-        enabled: true
+        enabled: false
     # jev: the TypeSafe System One judgment capability. It answers a typed
     # question about a supplied state and returns a typed answer with a
     # probability; it generates no text and decides nothing. Ships OFF, and

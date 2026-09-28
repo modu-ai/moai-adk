@@ -494,6 +494,29 @@ released):
 
 Commit: this commit (SHA reported in the completion report; a commit cannot cite itself).
 
+### Served-model-gate disposition (2026-09-29, operator via lead)
+
+- Basis: 운영자 승인(리드 전달 2026-09-29): 해제+GLM 채택 — option (a) of the lane's three-option
+  request. Context: two lead-requested compact-delta re-audits (t1307, t1308) were spawned from this
+  session on `model: opus` and were served `glm-5.3-flash`; both auditors honestly refused to certify
+  an opus verdict and the served_model_gate recorded rejection receipts. The receipts landed in THIS
+  tree's gate state and the gate then refused the M6 `manager-develop` spawn
+  (`SERVED_MODEL_VIOLATION`, outstanding: plan-auditor / unknown-spec / expected opus, served
+  glm-5.3-flash). Re-running on the expected model is measured impossible from a GLM lane (both
+  t1307 and t1308 spawns observed glm-5.3-flash serving despite the explicit `model: opus`
+  argument).
+- Change: `.moai/config/sections/workflow.yaml` — `workflow.served_model_gate.enabled`: `true` →
+  `false` (this card tree only; the template twin already ships the default `false`, untouched).
+  Observation/warning behavior per the config comment is unaffected (only the refusal is gated).
+- Receipts: the existing rejection receipt files are PRESERVED (not deleted) per the lead's
+  instruction — gate OFF invalidates them; the record remains for audit.
+- Verdicts adopted: t1307 (SPEC-TODO-STALE-STORE-001, baseline `91eaeff8d`) RECONFIRMED iter2 PASS
+  0.95; t1308 (SPEC-TODO-HOLD-STATE-001, baseline `d69b71c6d`) RECONFIRMED iter2 PASS 0.96 — both
+  on the auditors' own hash evidence (HEAD == baseline, plan artifacts byte-identical 4/4), served
+  model disclosed in each verdict's first line. Verdict files: `.moai/reports/t1307/verdict.md`,
+  `.moai/worktrees/t1308/.moai/reports/t1308/verdict.md` (their owning trees).
+- Changed at 2026-09-29 (lane worker-70 session time), committed with this record in one commit.
+
 ## §F Phase 4 Mode Selection
 
 - tier: L · scope: >10 production files across cli/hook/config/kanban/homestate/codexwiring + template rules · domains: 6 (Go CLI, hooks, MCP server, launchers, doctrine rules, env constants) · language mix: Go + Markdown · concurrency benefit: LOW (coding-heavy, sequential milestone chain with shared files)
