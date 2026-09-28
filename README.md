@@ -776,7 +776,7 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC lifecycle tools |
 | `moai goal <arm\|status\|clear>` | Goal engine CLI |
 | `moai harness <status\|apply\|rollback\|disable>` | Harness learning lifecycle |
-| `moai handoff <save\|list>` | Session handoff records |
+| `moai handoff <save\|show\|clear>` | Session handoff records |
 | `moai preference <list\|decay-scan\|toggle>` | Decision memory management |
 | `moai memory <doctor\|archive>` | Agent memory checks and archiving of stale entries |
 | `moai tokens record` | Per-pool token usage ledger records |

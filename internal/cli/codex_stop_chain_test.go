@@ -86,7 +86,6 @@ func TestStopChainGPTProfileNoClaudeDependency(t *testing.T) {
 	c := newCodexStopChain(f.root, stopInput("gpt-s", false))
 	c.member1 = allowMember1
 	c.budgetFor = wideStopBudget
-	defer c.waitOrphans()
 	res := c.run(ctx)
 
 	for _, want := range []struct {
@@ -178,35 +177,22 @@ func TestStopChainAdvisoryFailureRecorded(t *testing.T) {
 // the fail-open-on-missing member 7 cut off reads as result-missing — it
 // allows, with the discard record.
 func TestStopChainGateCutOffNeverAllows(t *testing.T) {
-	c := newCodexStopChain(t.TempDir(), stopInput("timing-s", false))
-	// An ignored-context member cannot win the result channel before its
-	// deadline. Release and join every goroutine even when an assertion fails.
-	release := make(chan struct{})
-	defer func() { close(release); c.waitOrphans() }()
-	blocked := func(context.Context) stopMemberOutcome {
-		<-release
-		return stopMemberOutcome{Decision: codexadapter.DecisionAllow}
-	}
+	f := newTimingFixture(t)
+	c := newCodexStopChain(f.root, stopInput("timing-s", false))
+	// Members 2/3/6/7 are cut off below, so their goroutines outlive run()
+	// by design. Join them before this test returns: an orphan still reading
+	// the package-level seams races with the next test's fixture setup —
+	// the intermittent CI Race failure this wait closes (card t1099).
+	defer c.waitOrphans()
+	c.member1 = allowMember1
 	c.budgetFor = func(n int) time.Duration {
 		switch n {
 		case 2, 3, 6, 7:
-			return time.Millisecond
+			return time.Nanosecond
 		}
 		return wideStopBudget(n)
 	}
-	members := []stopMemberOutcome{{Number: 1, Decision: codexadapter.DecisionAllow}}
-	for _, entry := range []struct {
-		n      int
-		cutOff func(context.Context) stopMemberOutcome
-	}{
-		{2, c.cutOffUnmeasured(2, stopCapGateSync, "sync")},
-		{3, c.cutOffUnmeasured(3, stopCapGoal, "goal")},
-		{6, c.cutOffUnmeasured(6, stopCapGateReview, "review")},
-		{7, c.multiCutOff},
-	} {
-		members = append(members, c.budgeted(context.Background(), entry.n, blocked, entry.cutOff))
-	}
-	res := codexStopChainResult{Members: members, Output: c.merge(nil, members)}
+	res := c.run(context.Background())
 	for _, n := range []int{2, 3, 6} {
 		m := memberByNumber(t, res, n)
 		if m.Decision != codexadapter.DecisionDeny || m.Class != reasonUnmeasured || !strings.Contains(m.Err, "budget") {
@@ -219,6 +205,57 @@ func TestStopChainGateCutOffNeverAllows(t *testing.T) {
 	}
 	if res.Output == nil || res.Output.Decision != hook.DecisionBlock {
 		t.Fatalf("merged output = %+v, want a Stop block", res.Output)
+	}
+}
+
+// TestStopChainBudgetedCutOffBeatsADeadlineEdgeMember pins the
+// budget-enforcement determinism the CI-only flake exposed (card t1293, run
+// 36361758033): a member that returns a real verdict AT its deadline — not
+// before it — must read as cut off. The runner-observed shape: members 2 and 3
+// returned their REAL verdicts (allow, and deny/unmeasured with no budget Err)
+// although their 1ns budget had expired, because a select between the result
+// channel and mctx.Done() picks randomly when both are ready, and the ctx
+// timer's firing can lag a fast member's return on a loaded runner. The
+// deadline itself, not channel readiness, must decide.
+//
+// Reproduction shape: the member sleeps exactly its budget, so its return and
+// the timer's firing land in the same instant and both channels are ready at
+// the blocked select — against the unfixed select this fails roughly half the
+// runs; with the send-time deadline check it is deterministically cut off.
+func TestStopChainBudgetedCutOffBeatsADeadlineEdgeMember(t *testing.T) {
+	f := newStopFixture(t)
+	c := newCodexStopChain(f.root, stopInput("edge-s", false))
+	const budget = 100 * time.Millisecond
+	c.budgetFor = func(int) time.Duration { return budget }
+	res := c.budgeted(context.Background(), 2,
+		func(context.Context) stopMemberOutcome {
+			time.Sleep(budget)                                             // returns at the deadline, never before it
+			return stopMemberOutcome{Decision: codexadapter.DecisionAllow} // a real verdict
+		},
+		c.cutOffUnmeasured(2, "", ""))
+	if res.Decision != codexadapter.DecisionDeny || res.Class != reasonUnmeasured || !strings.Contains(res.Err, "budget") {
+		t.Fatalf("a member returning at its deadline took a real verdict: got %s/%q err %q, want the cut-off deny/unmeasured naming the budget", res.Decision, res.Class, res.Err)
+	}
+}
+
+// TestStopChainAdvisoryCutOffBeatsADeadlineEdgeMember pins the advisory half
+// of the deadline-authority rule (card t1293, sync-audit F2): an advisory
+// member whose result is sent at its budget records failed with the budget
+// Err, never its real OK status. The audit's removal mutant deleting only the
+// advisory gate survived the suite (86.7% vs 100%); this edge shape — same
+// sleep-exactly-the-budget trick as the budgeted leg — kills it.
+func TestStopChainAdvisoryCutOffBeatsADeadlineEdgeMember(t *testing.T) {
+	f := newStopFixture(t)
+	c := newCodexStopChain(f.root, stopInput("adv-edge-s", false))
+	const budget = 100 * time.Millisecond
+	c.budgetFor = func(int) time.Duration { return budget }
+	c.advisory[4] = func(context.Context) (string, error) {
+		time.Sleep(budget) // sends at the deadline, never before it
+		return "late but real", nil
+	}
+	o := c.advisoryMember(context.Background(), 4)
+	if o.Status != stopStatusFailed || !strings.Contains(o.Err, "budget") {
+		t.Fatalf("an advisory member sending at its deadline recorded %q err %q, want failed naming the budget", o.Status, o.Err)
 	}
 }
 
