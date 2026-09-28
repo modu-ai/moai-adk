@@ -335,7 +335,7 @@ Run phase complete at the pre-sync tree. Milestones M0–M7 all landed with per-
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 06e33f3ab
 
 3-phase close: this sync commit carries the consolidated `spec.md` status transition to `completed` (the intermediate `draft → in-progress` step was not written at the M1 commit — run-phase commits recorded milestones without touching frontmatter; the full transition is consolidated here and disclosed, rather than backdated) and the CHANGELOG entry under `[Unreleased] → Added` (duplicate check `grep -c 'SPEC-INSTRUCTION-BUDGET-SCOPE-001' CHANGELOG.md` = 0 before emission).
 
