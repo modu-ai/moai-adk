@@ -973,6 +973,7 @@ func resolveWorktreeL2Path(args []string) error {
 	}
 	if root, err := findProjectRoot(); err == nil {
 		acceptedPrefixes = append(acceptedPrefixes, filepath.Join(root, ".claude", "worktrees"))
+		acceptedPrefixes = append(acceptedPrefixes, filepath.Join(root, ".moai", "worktrees"))
 	}
 
 	for _, prefix := range acceptedPrefixes {
@@ -983,7 +984,7 @@ func resolveWorktreeL2Path(args []string) error {
 
 	return fmt.Errorf(
 		"worktree path %q is not under an accepted worktree prefix\n"+
-			"  accepted prefixes: ~/.moai/worktrees/ (L2 persistent), .claude/worktrees/ (L1 Claude-native)\n"+
+			"  accepted prefixes: ~/.moai/worktrees/ (L2 persistent), .claude/worktrees/ and .moai/worktrees/ (L1)\n"+
 			"  use a short name to create a new worktree under .claude/worktrees/<name>, or an\n"+
 			"  absolute path under one of the accepted prefixes to re-enter an existing worktree",
 		value,

@@ -14,14 +14,14 @@ package cli
 // subcommand, so a verb moai synthesized never lands in the child's argv.
 //
 // -w/--worktree is consumed HERE and never forwarded: it points the child's
-// working directory at an existing or newly created worktree. CODEX_HOME
+// working directory at an existing worktree. CODEX_HOME
 // reaches the child as an explicit environment entry rather than by ambient
 // inheritance, on both the direct and the new-window path.
 //
 // The readout rows come from M2's codexReadiness VERBATIM (AC-CL-004 — the
 // command surface never re-words a row), and the binary/auth values come from
 // the shared probe, so no second classification path forks here (REQ-CL-007).
-// The status readout never writes; -w may create a worktree. POSIX direct
+// The status readout never writes; -w requires an existing worktree. POSIX direct
 // launch replaces moai with Codex (the -w lock names that one pid); Windows
 // retains the child Start/wait path. The kanban/factory entries (-k, -f,
 // --factory-run) are retired and refused (SPEC-CODEX-FACTORY-RETIRE-001).
@@ -39,7 +39,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/execerr"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
 )
@@ -50,10 +49,10 @@ const (
 	// codexUsageDiag is the one-line usage diagnostic every unknown token
 	// receives (AC-CL-002). Byte-identical for all six probe tokens so the
 	// rejection cannot leak which token was seen.
-	codexUsageDiag = "unknown verb - usage: moai codex [cli] [-w [worktree]] [-- codex-args...] | moai codex status | moai codex app"
+	codexUsageDiag = "unknown verb - usage: moai codex [cli] [-w <worktree>] [-- codex-args...] | moai codex status | moai codex app"
 
-	// A bare -w creates an automatically named worktree, like moai cc.
-	codexWorktreeValueDiag = "-w could not generate a worktree name"
+	// Codex only enters an already-created worktree; -w needs its name or path.
+	codexWorktreeValueDiag = "-w requires an existing worktree name or path"
 
 	// codexInstallHint is the single diagnostic line the launch verbs print
 	// when the codex binary is unresolved (AC-CL-011: exactly one line, exact
@@ -360,8 +359,7 @@ func stripCodexWorktreeFlag(head []string) ([]string, codexWorktreeArg) {
 		switch {
 		case token == "-w" || token == "--worktree":
 			arg.present = true
-			// The value is the next token unless that token is itself a flag
-			// (a bare -w triggers an automatically named worktree).
+			// The value is the next token unless that token is itself a flag.
 			if i+1 < len(head) && !strings.HasPrefix(head[i+1], "-") {
 				arg.value = head[i+1]
 				i++
@@ -380,11 +378,8 @@ func stripCodexWorktreeFlag(head []string) ([]string, codexWorktreeArg) {
 }
 
 // resolveCodexWorktreeDir turns the operator's -w value into the directory the
-// child starts in. Existing paths are re-entered; a new short name is created
-// by resolveOrCreateCodexWorktreeDir before the child starts.
-//
-// Claude creates its own -w worktree. Codex has no corresponding flag, so
-// MoAI consumes it and uses the existing worktree materializer.
+// child starts in. The tree must already exist; Codex has no CLI worktree
+// creation flag, so MoAI consumes -w without forwarding it to Codex.
 //
 // Absolute values are validated by the SAME rule cc applies
 // (resolveWorktreeL2Path), so an out-of-prefix path fails with cc's own
@@ -403,78 +398,38 @@ func resolveCodexWorktreeDir(projectRoot, value string) (string, error) {
 		if projectRoot == "" {
 			return "", fmt.Errorf("cannot resolve worktree %q: the project root is unresolved", value)
 		}
-		path = filepath.Join(projectRoot, ".claude", "worktrees", value)
+		if value == "." || value == ".." || filepath.Base(value) != value || strings.ContainsAny(value, `/\\`) {
+			return "", fmt.Errorf("invalid worktree name %q", value)
+		}
+		modern := filepath.Join(projectRoot, sessionWorktreeSubdir, value)
+		legacy := filepath.Join(projectRoot, claudeNativeWorktreeSubdir, value)
+		_, modernErr := os.Lstat(modern)
+		_, legacyErr := os.Lstat(legacy)
+		if modernErr == nil && legacyErr == nil {
+			return "", fmt.Errorf("worktree %q exists in both %s and %s; use an absolute path", value, modern, legacy)
+		}
+		if modernErr == nil {
+			path = modern
+		} else if legacyErr == nil {
+			path = legacy
+		} else if errors.Is(modernErr, os.ErrNotExist) && errors.Is(legacyErr, os.ErrNotExist) {
+			return "", fmt.Errorf("worktree %q does not exist at %s or %s; create it before launching Codex", value, modern, legacy)
+		} else {
+			return "", fmt.Errorf("inspect worktree %q: %w", value, errors.Join(modernErr, legacyErr))
+		}
 	}
 
-	info, err := os.Stat(path)
-	if err != nil || !info.IsDir() {
-		return "", fmt.Errorf("worktree %q does not exist at %s", value, path)
+	info, err := os.Lstat(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", fmt.Errorf("worktree %q does not exist at %s; create it before launching Codex", value, path)
+		}
+		return "", fmt.Errorf("inspect worktree %q: %w", value, err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("worktree path %s is not a directory", path)
 	}
 	return path, nil
-}
-
-// codexWorktreeAdd is shared with the session worktree materializer. The
-// function variable also lets tests prove creation without mutating a real
-// repository's worktree registry.
-var codexWorktreeAdd = gitWorktreeAddReal
-
-// codexWorktreeBase resolves a configured base first and otherwise uses the
-// remote default branch. Never branch from whichever shared checkout happens
-// to be active: it may be an unrelated card branch.
-var codexWorktreeBase = func(projectRoot string) (string, error) {
-	if base := config.LoadWorktreeBaseBranch(projectRoot); base != "" && hook.WorktreeBaseBranchResolvable(base) {
-		return base, nil
-	}
-	if out, err := runGitCommand(projectRoot, "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"); err == nil {
-		return strings.TrimSpace(out), nil
-	}
-	return "", errors.New("remote default branch is unresolved; configure git_strategy.worktree_base_branch before creating a Codex worktree")
-}
-
-// resolveOrCreateCodexWorktreeDir returns the tree the child starts in and
-// whether this call created it. An existing tree may already have a writer;
-// a created one cannot, so only existing trees go through the writer check.
-func resolveOrCreateCodexWorktreeDir(projectRoot, value string) (string, bool, error) {
-	if projectRoot == "" {
-		return "", false, errors.New("cannot create worktree: project root is unresolved")
-	}
-	if value == "" {
-		value = "codex-" + sessionWorktreeResolveSessionShort()
-	}
-	if filepath.IsAbs(value) {
-		path, err := resolveCodexWorktreeDir(projectRoot, value)
-		return path, false, err
-	}
-	if value == "." || value == ".." || filepath.Base(value) != value || strings.ContainsAny(value, `/\\`) {
-		return "", false, fmt.Errorf("invalid worktree name %q", value)
-	}
-	path := filepath.Join(projectRoot, sessionWorktreeSubdir, value)
-	if info, err := os.Lstat(path); err == nil {
-		if !info.IsDir() {
-			return "", false, fmt.Errorf("worktree path %s is not a directory", path)
-		}
-		return path, false, nil
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return "", false, fmt.Errorf("inspect worktree path: %w", err)
-	}
-	base, err := codexWorktreeBase(projectRoot)
-	if err != nil {
-		return "", false, err
-	}
-	// Resolve the base to a commit BEFORE creating the tree, so the check
-	// below compares the new HEAD with what the base meant at decision time.
-	baseCommit, err := codexResolveBaseCommit(projectRoot, base)
-	if err != nil {
-		return "", false, err
-	}
-	branch := SessionWorktreeBranchPrefix + value
-	if _, err := codexWorktreeAdd(path, branch, base); err != nil {
-		return "", false, fmt.Errorf("create worktree %q: %w", value, err)
-	}
-	if err := codexWorktreeBaseCheck(path, baseCommit, base); err != nil {
-		return "", true, err
-	}
-	return path, true, nil
 }
 
 // Worktree anchor seams. The capture harness pins them open for the
@@ -485,10 +440,6 @@ var (
 	codexWorktreeWriterCheck = worktreeWriterRefusal
 	// codexWorktreeAnchorLock places this launch's lock on the tree.
 	codexWorktreeAnchorLock = placeCodexAnchorLock
-	// codexResolveBaseCommit resolves the creation base to a commit.
-	codexResolveBaseCommit = resolveBaseCommitReal
-	// codexWorktreeBaseCheck verifies a created tree starts at that commit.
-	codexWorktreeBaseCheck = verifyCodexWorktreeBase
 	// codexAnchorReplaceHook runs between a launcher's first read of a dead
 	// lock and its replacement guard; tests use it to line two launchers up.
 	codexAnchorReplaceHook func()
@@ -500,30 +451,6 @@ var (
 // codexAnchorReplaceGuardName is the per-tree replacement guard, created
 // exclusively inside the tree's private git directory.
 const codexAnchorReplaceGuardName = "moai-anchor-replace"
-
-// resolveBaseCommitReal resolves base to the commit it names now.
-func resolveBaseCommitReal(projectRoot, base string) (string, error) {
-	out, err := runGitCommand(projectRoot, "rev-parse", "--verify", "--quiet", base+"^{commit}")
-	if err != nil {
-		return "", fmt.Errorf("resolve worktree base %q: %w", base, err)
-	}
-	return strings.TrimSpace(out), nil
-}
-
-// verifyCodexWorktreeBase refuses a created tree whose HEAD is not the
-// resolved base commit. The tree is left in place: it is evidence of what the
-// materializer actually did, and deleting it would destroy that evidence.
-func verifyCodexWorktreeBase(tree, baseCommit, base string) error {
-	out, err := runGitCommand(tree, "rev-parse", "HEAD")
-	if err != nil {
-		return fmt.Errorf("verify worktree base of %s: %w", tree, err)
-	}
-	if head := strings.TrimSpace(out); head != baseCommit {
-		return fmt.Errorf("worktree %s HEAD %s does not match the resolved base %s (%s); refusing to launch - the worktree is left in place for inspection",
-			tree, head, base, baseCommit)
-	}
-	return nil
-}
 
 // @MX:WARN: [AUTO] lock replacement is a read-modify-write on shared git state
 // @MX:REASON: two launchers can see the same dead lock at once; without the
@@ -649,8 +576,7 @@ var codexCmd = &cobra.Command{
 		"  moai codex cli        the same launch, named explicitly\n" +
 		"  moai codex status     print the readiness readout (starts nothing)\n" +
 		"  moai codex app        launch the Codex desktop app (codex app)\n" +
-		"  -w [worktree]         re-enter or create a worktree from the remote\n" +
-		"                        default branch; omit name to generate one\n" +
+		"  -w <worktree>         launch in an existing worktree (never creates one)\n" +
 		"  --spawn               open the launch in a new tmux window\n" +
 		"  -- <codex-args...>    arguments after -- pass to codex verbatim",
 	Example: "  # Launch the Codex CLI here\n" +
@@ -662,7 +588,7 @@ var codexCmd = &cobra.Command{
 		"  # Launch, passing arguments through verbatim\n" +
 		"  moai codex -- --model o3\n" +
 		"\n" +
-		"  # Re-enter or create a worktree\n" +
+		"  # Enter an existing worktree\n" +
 		"  moai codex -w feat-login\n" +
 		"\n" +
 		"  # Launch the desktop app in a new tmux window\n" +
@@ -817,13 +743,11 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 	if len(localArgs) > 0 && codexHasDeveloperOverride(tail) {
 		return errors.New(codexDuplicateLocalOverrideDiag)
 	}
-	// Prepare the worktree only after read-only launch validation. A failed
-	// init offer or instruction check must not leave an orphan worktree.
+	// Resolve the existing worktree only after read-only launch validation.
 	dir := projectRoot
 	if worktree.present {
-		resolved, created, werr := resolveOrCreateCodexWorktreeDir(projectRoot, worktree.value)
-		if werr == nil && !created {
-			// An existing tree may already have a writer; refuse to be the second.
+		resolved, werr := resolveCodexWorktreeDir(projectRoot, worktree.value)
+		if werr == nil {
 			werr = codexWorktreeWriterCheck(resolved)
 		}
 		if werr != nil {

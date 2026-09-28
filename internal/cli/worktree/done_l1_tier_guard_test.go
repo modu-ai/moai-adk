@@ -323,6 +323,18 @@ func TestDoneL1TierGuard_PredicateDirections(t *testing.T) {
 	}
 }
 
+func TestDoneL1TierGuard_RefusesMoAIRootWithForce(t *testing.T) {
+	f := newTierRepo(t)
+	l1 := filepath.Join(f.repo, ".moai", "worktrees", "tier-moai")
+	addTierWorktree(t, f, l1, "feature/SPEC-TIER-MOAI")
+	withTierTestEnv(t, f.repo)
+
+	if !isL1WorktreePath(l1) {
+		t.Fatal("new MoAI root must be classified as L1")
+	}
+	assertL1Refusal(t, executeDoneForTierGuard(t, "--auto", "--force", "feature/SPEC-TIER-MOAI"), l1)
+}
+
 // TestDoneL1TierGuard_CWDIndependent pins AC-010 (plan-audit D1/D6): with
 // the PROCESS CWD inside a SECOND linked worktree, done must STILL refuse
 // the L1 target. The resolver is the DEFAULT target-derived mechanism — no
