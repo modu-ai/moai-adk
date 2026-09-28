@@ -171,7 +171,7 @@ run_complete_at: 2026-09-29
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "bcfce260660e9f8570f2852863f08bd05ac7af61"
 
 ### Sync evidence (5-section, VCI §3)
 
