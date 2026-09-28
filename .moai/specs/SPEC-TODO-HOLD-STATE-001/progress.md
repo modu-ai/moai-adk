@@ -191,7 +191,7 @@ phase: run
 run_status: complete
 tier: M
 run_complete_at: 2026-09-29
-run_commit_sha: pending-backfill-run
+run_commit_sha: 751b787f8
 branch: WT-todo-hold-state
 worktree: .moai/worktrees/t1308
 base: 8a969dfc0
@@ -227,7 +227,7 @@ phase: sync
 sync_status: complete
 tier: M
 sync_complete_at: 2026-09-29
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: a374a73f3
 branch: WT-todo-hold-state
 worktree: .moai/worktrees/t1308
 frontmatter_status_transitions:
