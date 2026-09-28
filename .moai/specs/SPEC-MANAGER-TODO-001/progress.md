@@ -133,7 +133,49 @@ Close-out re-measurement 2026-09-29T04:42:18+0900, exit 0. The pre-repair paste 
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — owned by manager-develop>_
+Run-phase lane: `WT-manager-todo-agent`, card t1306, cycle_type=tdd, serial (progress.md §F). Evidence per milestone: command + verbatim decisive output, measured against this tree in this run.
+
+### Pre-flight (2026-09-29, HEAD `02ce44220`)
+
+- `git branch --show-current` → `WT-manager-todo-agent`; `git rev-parse --short HEAD` → `02ce44220` (develop `a62a05764` absorbed, clean tree).
+- `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+- `golangci-lint run --timeout=2m` → `0 issues.` (baseline clean).
+- `make agents-emit-check` exit 0 on base.
+- B2 retired-SPEC pre-scan (`grep -rn 'Retired\|superseded' internal/cli internal/kanban internal/web internal/mission internal/harness`): hits are CG-retirement / model-key-strip / harness-verb prose — no conflict with this SPEC's scope.
+- M2-start reference re-sweep: `git grep -n -i "mission.governor" -- . ':(exclude).moai/reports' ':(exclude).moai/specs'` → **262 hits / 105 unique files — identical to the plan-phase baseline** (no decay in the absorb). Codemaps arm: `git grep -c -i mission.governor -- .moai/project/codemaps/` → data-flow.md 1 + docs-truth.md 6 = **7** (plan-time figure 8; delta explained by t1305 codemaps refresh8 regenerating the files in the absorb — the re-measured 7 is the operative baseline per plan §C item 1).
+
+### M1 — Agent rename/repurpose (with AC-MT-001..003)
+
+- C1 `​.claude/agents/moai/manager-todo.md` authored + C2 mirror hand-edited; C1+C2 `mission-governor.md` deleted; C3 regenerated via `make agents-emit`; orphaned `mission-governor.toml` (source gone) removed — deletion, not a content hand-edit; `make agents-emit-check` exit 0 after.
+- AC-MT-001 mechanical: `grep -c "^name: manager-todo"` = 1 each; `grep -E "^(model|effort):"` exit 1; tools CSV (`awk` → `CSV_OK`); body keywords `todo-queue`=1 (first pass 0 — description carried the capital-T form; body fixed), `jev`=4, `dispatch`=6, `^## .*[Ss]ub-[Rr]ole`=1; `permissionMode: acceptEdits` (D-1: queue role needs more than plan; read-only discipline moved to the sub-role prompt contract).
+- AC-MT-003: `ls` on all three `mission-governor` paths → `No such file or directory` ×3.
+- AC-MT-004 verified at the M1+M2 boundary (Go surfaces are M2 scope) — see below.
+
+### M2 — Reference sweep refresh (with AC-MT-004..008)
+
+- Mechanical rename applied across 29 enumerated Go/yaml surfaces (81 occurrences) + rules/mirrors + CLAUDE.md pair + AGENTS.md.tmpl + goal.md pair + catalogue rule pair.
+- delegationmap fixture: `mission_governor_undesignated.jsonl` → `manager_todo_undesignated.jsonl` (RENAME chosen over FROZEN: freezing leaves the fixture's role outside the renamed retainedCatalog, and the analyzer tests fail either way — rename+filename+tests together is the only green state). Research §B "RENAME-or-FROZEN" resolved to RENAME.
+- `rosterguard`/`axis.go` historical narratives reworded to name the role without asserting the old name as current (t917 line, profile.go creation line).
+- `governance_receipt.go` issuer literal renamed (`"mission-governor"` → `"manager-todo"`) with sealer/validator consistency; receipt schema, path convention, and the `--governor-receipt` flag name unchanged (D-9). Research §C's "receipt binds only to schema" claim was imprecise — the issuer literal is code; corrected here.
+- **D-6 conditional flip FIRED**: rosterguard's `TestRegisteredSitesMatchTheirDeclaredAxis` failed on the stale codemaps (`docs-truth-catalog … absent from the site: manager-todo`). Per design D-6 the disposition flipped to in-milestone regeneration: docs-truth.md (header hand-update note, drift note, §1 table row 12, class breakdown, file-mapping row) and data-flow.md (receipt-issuer line) updated in place — docs-truth.md's own header instructs hand-updating it at each regeneration; codemaps grep now returns **0** (was 7).
+- README 4-locale roster rows pulled forward from M5 (rosterguard readme-* sites failed on the same guard): goal `--auto` prose + roster table row updated in en/ko/ja/zh with section parity; M5 retains the verification duty.
+- `TestManagerTodoJudgmentSubRoleBoundary` (rewritten from the former frontmatter read-only test, per D-1) green; rosterguard suite green (17.782s).
+- AC-MT-004: `grep -rn "mission-governor" .claude/agents/ CLAUDE.md internal/template/retained_agents.go internal/template/catalog.yaml` → exit 1 (zero hits); `manager-todo` present in each; `go test ./internal/template/... ./internal/harness/rosterguard/... ./internal/harness/delegationmap/...` exit 0.
+- Post-sweep live grep: 131 hits remain = docs-site 4-locale 124 (M5 scope) + FROZEN `internal/cli/testdata/codex-rollouts-t1171/**` 12 + HIST (CHANGELOG.md 3, repo-root `reports/moai-dual-harness-*` 2) — all three dispositions recorded in research.md §B.
+
+### M1+M2 commit-granularity decision (plan DP3)
+
+Measured: the interim M1-only state cannot go test-green (rosterguard/delegationmap/mission/template tests read the agent file set, the catalog, and the receipt issuer). Per plan §F M1 risk note and DP3, M1 and M2 land as ONE commit.
+
+### M3 — `/moai:todo --auto` serial mode (+M4 Jev boundary, combined commit — deviation noted)
+
+- RED evidence captured before GREEN: `go vet ./internal/cli/` on the test-first tree → `undefined: autoLiveness / autoRegistryEntry / autoPickTargets / runAutoCycle / autoOptions` (planned API absent — the tests fail because the implementation does not exist).
+- GREEN: `internal/cli/todo_auto.go` (pickup D-5 positive vocabulary; two-channel liveness D-4 with per-decision re-measurement; serial D-11 cycle with evidence-read completion; unpick failure path with labelled non-finding; per-card /clear guidance; display-only Jev consultation with degraded labelled non-finding), wired as `--auto` / `--auto-wait` on the todo parent command tree (gtd spelling shares it — one implementation, both entry points).
+- `TestTodoAuto*` suite green (10 tests: selection table incl. hold-shaped unknown state, liveness 3-scenario + non-cache arm, no-takeover, serial cycle incl. failure arm, guidance-per-card, no-factory-lease, empty-queue zero-target, Jev poisoned-value + degraded, command-surface entry point).
+- Workflow text: gtd.md § `--auto` — the serial batch consumption (both copies) carries the D-8 canonical sentence; kanban-dispatch.md § Entry into the board is an operator act carries the reconciliation clause (both copies).
+- Guard reconciliation: `TestTodoAutoDone_CloseSurfaceExclusivity` allowlist extended to the third close surface (`todo_auto.go` = `auto`) with the D-11 rationale recorded in the test; `TestProductionStringLiteralsUseLeaderLaneVocabulary` hits fixed by rewriting the two consultation strings off the legacy role vocabulary.
+- FROZEN-fixture seam: `codex_role_contract_test.go` maps the t1171 fixtures' historical session label to the current role name AFTER the fingerprint derive (dual-label `role`/`fixtureRole`) — the frozen fixtures and the frozen expectation table keep their recorded names; the mapping lives in the test. The one `mission-governor` literal this introduces is the historical-label reference the frozen-fixture seam requires, recorded as disposition **HIST** in the §B reconciliation.
+- Absorb: local develop moved mid-run (t1326 surface-guard declaration `a59988ad8`, t1300 model-docs sweep) — `TestTodoVerbSurfaceZeroDelta` was failing on the stale base; develop absorbed into the card branch before M5 (see post-absorb entry below).
 
 ## §E.3 Run-phase Audit-Ready Signal
 

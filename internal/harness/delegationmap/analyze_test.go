@@ -111,7 +111,7 @@ func TestAnalyze_OversizedLedgerRefused(t *testing.T) {
 // TestAnalyze_MissionGovernorIsCatalogMember pins the whole retained catalog
 // against the consumer that reads it, rather than against the declaration alone.
 //
-// mission-governor joined the retained catalog after this analyzer was written
+// manager-todo joined the retained catalog after this analyzer was written
 // (CLAUDE.md §4, agent-authoring.md § catalog, agent-patterns.md § static-agent
 // criterion all name it). While it is missing from retainedCatalog the failure
 // is SILENT in both directions: the aggregate records it under
@@ -122,24 +122,24 @@ func TestAnalyze_OversizedLedgerRefused(t *testing.T) {
 func TestAnalyze_MissionGovernorIsCatalogMember(t *testing.T) {
 	t.Parallel()
 
-	res, err := Analyze(opts("mission_governor_undesignated.jsonl"))
+	res, err := Analyze(opts("manager_todo_undesignated.jsonl"))
 	if err != nil {
 		t.Fatalf("Analyze: %v", err)
 	}
 
 	got := findingsOfKind(res, KindUndesignatedAgent)
-	if len(got) != 1 || got[0].Agent != "mission-governor" || got[0].Subcommand != "run" {
-		t.Errorf("undesignated_agent findings = %+v, want exactly one for mission-governor on run", got)
+	if len(got) != 1 || got[0].Agent != "manager-todo" || got[0].Subcommand != "run" {
+		t.Errorf("undesignated_agent findings = %+v, want exactly one for manager-todo on run", got)
 	}
 
 	run := statFor(t, res, "run")
 	for _, nc := range run.NonCatalogAgents {
-		if nc == "mission-governor" {
-			t.Errorf("mission-governor was classified non-catalog: %v", run.NonCatalogAgents)
+		if nc == "manager-todo" {
+			t.Errorf("manager-todo was classified non-catalog: %v", run.NonCatalogAgents)
 		}
 	}
-	if run.AgentCounts["mission-governor"] != 9 {
-		t.Errorf("mission-governor count = %d, want 9", run.AgentCounts["mission-governor"])
+	if run.AgentCounts["manager-todo"] != 9 {
+		t.Errorf("manager-todo count = %d, want 9", run.AgentCounts["manager-todo"])
 	}
 }
 

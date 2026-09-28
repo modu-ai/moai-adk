@@ -19,7 +19,7 @@ func TestLoadGovernanceReceiptsBindsDecisionAndIndependentAudit(t *testing.T) {
 	dir := filepath.Join(root, ".moai", "state", "mission", "governance")
 	governorPath := filepath.Join(dir, "decision.json")
 	auditPath := filepath.Join(dir, "audit.json")
-	decision := GovernanceReceipt{Version: 1, Kind: GovernanceDecision, MissionID: expect.MissionID, ContractHash: expect.ContractHash, SnapshotHash: expect.SnapshotHash, Action: expect.Action, Targets: expect.Targets, ExpiresAt: now.Add(time.Minute), Issuer: "mission-governor", HeadSHA: expect.HeadSHA, Status: GovernanceRecommended}
+	decision := GovernanceReceipt{Version: 1, Kind: GovernanceDecision, MissionID: expect.MissionID, ContractHash: expect.ContractHash, SnapshotHash: expect.SnapshotHash, Action: expect.Action, Targets: expect.Targets, ExpiresAt: now.Add(time.Minute), Issuer: "manager-todo", HeadSHA: expect.HeadSHA, Status: GovernanceRecommended}
 	audit := GovernanceReceipt{Version: 1, Kind: GovernanceAudit, MissionID: expect.MissionID, ContractHash: expect.ContractHash, SnapshotHash: expect.SnapshotHash, Action: expect.Action, Targets: expect.Targets, ExpiresAt: now.Add(time.Minute), Issuer: "sync-auditor", HeadSHA: expect.HeadSHA, Status: GovernancePassed}
 	if err := WriteGovernanceReceipt(root, governorPath, decision); err != nil {
 		t.Fatal(err)
@@ -63,7 +63,7 @@ func TestLoadGovernanceReceiptsRejectsUnsafeMissingStaleAndFailed(t *testing.T) 
 	expect := GovernanceExpectation{MissionID: "018f4f4a-7b7c-7a11-8f4d-222222222222", ContractHash: strings.Repeat("a", 64), SnapshotHash: strings.Repeat("b", 64), Action: ActionPick, Targets: []string{"gtd:gtd-1111111111111111"}, HeadSHA: strings.Repeat("c", 40), Now: now}
 	dir := filepath.Join(root, ".moai", "state", "mission", "governance")
 	decisionPath, auditPath := filepath.Join(dir, "decision.json"), filepath.Join(dir, "audit.json")
-	decision := GovernanceReceipt{Version: 1, Kind: GovernanceDecision, MissionID: expect.MissionID, ContractHash: expect.ContractHash, SnapshotHash: expect.SnapshotHash, Action: expect.Action, Targets: expect.Targets, ExpiresAt: now.Add(time.Minute), Issuer: "mission-governor", HeadSHA: expect.HeadSHA, Status: GovernanceRecommended}
+	decision := GovernanceReceipt{Version: 1, Kind: GovernanceDecision, MissionID: expect.MissionID, ContractHash: expect.ContractHash, SnapshotHash: expect.SnapshotHash, Action: expect.Action, Targets: expect.Targets, ExpiresAt: now.Add(time.Minute), Issuer: "manager-todo", HeadSHA: expect.HeadSHA, Status: GovernanceRecommended}
 	audit := GovernanceReceipt{Version: 1, Kind: GovernanceAudit, MissionID: expect.MissionID, ContractHash: expect.ContractHash, SnapshotHash: expect.SnapshotHash, Action: expect.Action, Targets: expect.Targets, ExpiresAt: now.Add(time.Minute), Issuer: "sync-auditor", HeadSHA: expect.HeadSHA, Status: GovernancePassed}
 	if err := WriteGovernanceReceipt(root, decisionPath, decision); err != nil {
 		t.Fatal(err)
@@ -122,7 +122,7 @@ func TestLoadGovernanceReceiptsRejectsEverySignedLineageAndStatusMutant(t *testi
 	decisionPath, auditPath := filepath.Join(dir, "decision.json"), filepath.Join(dir, "audit.json")
 	base := GovernanceReceipt{Version: 1, MissionID: expect.MissionID, ContractHash: expect.ContractHash, SnapshotHash: expect.SnapshotHash, Action: expect.Action, Targets: []string{"gtd:a", "gtd:b"}, ExpiresAt: now.Add(time.Minute), HeadSHA: expect.HeadSHA}
 	validDecision := base
-	validDecision.Kind, validDecision.Issuer, validDecision.Status = GovernanceDecision, "mission-governor", GovernanceRecommended
+	validDecision.Kind, validDecision.Issuer, validDecision.Status = GovernanceDecision, "manager-todo", GovernanceRecommended
 	validAudit := base
 	validAudit.Kind, validAudit.Issuer, validAudit.Status = GovernanceAudit, "sync-auditor", GovernancePassed
 

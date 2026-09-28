@@ -52,11 +52,11 @@ func Registry() []Site {
 			// line. Anchoring on it made the pattern match 0 times — a stale
 			// anchor, not a stale count, and the guard reported exactly that.
 			CountPattern: `CLAUDE\.md §4 \(the (\d+) retained agents`,
-			// KnownStale deleted: card t917 landed mission-governor here
-			// (origin/develop 8665f9eac), so this roster now equals the
-			// canonical 13 and there is no gap left to declare. Keeping the
-			// marker would have been the silent exemption this package exists
-			// to prevent.
+			// KnownStale deleted: card t917 landed the auto-mission judgment
+			// role here (origin/develop 8665f9eac), so this roster now equals
+			// the canonical 13 and there is no gap left to declare. Keeping
+			// the marker would have been the silent exemption this package
+			// exists to prevent.
 		},
 		{
 			ID:     "retained-agents-test-expectations",
@@ -174,9 +174,9 @@ func Registry() []Site {
 			BlockStart:   "the MoAI agent catalog consists of exactly",
 			CountPattern: `consists of exactly (\d+) retained agents`,
 			KnownStale: &Staleness{
-				Reason:        "Claims completeness while enumerating 11; manager-lead and mission-governor are absent.",
+				Reason:        "Claims completeness while enumerating 11; manager-lead and manager-todo are absent.",
 				FollowUp:      "repair scoped OUT of card t922 by the lead; unassigned",
-				MissingNames:  []string{"manager-lead", "mission-governor"},
+				MissingNames:  []string{"manager-lead", "manager-todo"},
 				DeclaredCount: 11,
 			},
 		},
@@ -190,7 +190,7 @@ func Registry() []Site {
 			KnownStale: &Staleness{
 				Reason:        "Template mirror of the row above, stale identically.",
 				FollowUp:      "repair scoped OUT of card t922 by the lead; unassigned",
-				MissingNames:  []string{"manager-lead", "mission-governor"},
+				MissingNames:  []string{"manager-lead", "manager-todo"},
 				DeclaredCount: 11,
 			},
 		},
@@ -203,9 +203,9 @@ func Registry() []Site {
 			BlockEnd:     "| `Explore` | Read-only codebase exploration",
 			CountPattern: `\*\*(\d+) retained agents\*\*`,
 			KnownStale: &Staleness{
-				Reason:        "Claims completeness (\"11 retained agents: 10 MoAI-custom plus the Anthropic built-in Explore\"); manager-lead and mission-governor are absent.",
+				Reason:        "Claims completeness (\"11 retained agents: 10 MoAI-custom plus the Anthropic built-in Explore\"); manager-lead and manager-todo are absent.",
 				FollowUp:      "repair scoped OUT of card t922 by the lead; unassigned",
-				MissingNames:  []string{"manager-lead", "mission-governor"},
+				MissingNames:  []string{"manager-lead", "manager-todo"},
 				DeclaredCount: 11,
 			},
 		},
@@ -220,7 +220,7 @@ func Registry() []Site {
 			KnownStale: &Staleness{
 				Reason:        "Template mirror of the row above, stale identically.",
 				FollowUp:      "repair scoped OUT of card t922 by the lead; unassigned",
-				MissingNames:  []string{"manager-lead", "mission-governor"},
+				MissingNames:  []string{"manager-lead", "manager-todo"},
 				DeclaredCount: 11,
 			},
 		},
@@ -238,7 +238,7 @@ func Registry() []Site {
 			CountPattern: `the (\d+) retained agents \(CLAUDE\.md section 4\)`,
 			Note: "The CONTENT is a subset by design — the per-subcommand `agents:` lists are " +
 				"partial, and manager-design, manager-lead, super-advisor and " +
-				"mission-governor are all legitimately absent from every designation. Only " +
+				"manager-todo are all legitimately absent from every designation. Only " +
 				"the header's citation of the retained-roster SIZE is asserted, and that " +
 				"citation is now correct.",
 			// KnownStale deleted: the header moved 11 -> 13 while this card
@@ -523,10 +523,10 @@ func readmeSite(id, path, countPattern, numeralUnreachable string) Site {
 		CountPattern:       countPattern,
 		NumeralUnreachable: numeralUnreachable,
 		Note: "Block-scoped to the table rather than the whole file: the README mentions " +
-			"mission-governor in unrelated prose, so a whole-file assertion would pass " +
+			"manager-todo in unrelated prose, so a whole-file assertion would pass " +
 			"while the table omits it — the exact false pass this scoping exists to prevent.",
 		// KnownStale deleted: the four README tables gained their
-		// mission-governor row and their headings moved 12 -> 13 while this card
+		// manager-todo row and their headings moved 12 -> 13 while this card
 		// waited for its merge window. The guard reported both halves per
 		// locale — the membership gap AND the count — which is why the repair
 		// needed no announcement to be seen.

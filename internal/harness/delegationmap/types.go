@@ -79,7 +79,7 @@ func ValidKind(k Kind) bool {
 //
 // The cost is a snapshot that can go stale against a catalog change; this
 // comment is where that change lands. It went stale once already:
-// mission-governor joined the catalog after this map was written, and while it
+// manager-todo joined the catalog after this map was written, and while it
 // was absent the analyzer both recorded it under non_catalog_agents — a false
 // statement about a real catalog agent — and silently withheld every
 // undesignated_agent finding it qualified for. Neither symptom surfaces as an
@@ -93,7 +93,7 @@ func ValidKind(k Kind) bool {
 // produce. manager-design, manager-lead, and super-advisor are designated for
 // no subcommand either and are members on the same footing.
 //
-// When mission-governor DOES first appear, it will produce an
+// When manager-todo DOES first appear, it will produce an
 // undesignated_agent finding. That is intended, not noise: the map's own
 // contract is "the retained agents the workflow spawns", so a workflow that
 // spawns it while the map stays silent is a gap the map should close — by
@@ -104,12 +104,12 @@ func ValidKind(k Kind) bool {
 //
 // Firing condition, should a reader meet it: that subcommand needs
 // MinQualifyingRows success/fail rows of which MinSupportRatio carry
-// mission-governor. Re-measure against DefaultLedgerPath with
+// manager-todo. Re-measure against DefaultLedgerPath with
 //
 //	jq -r 'select(.matched_subcommand != "") |
 //	  "\(.matched_subcommand)\t\(.outcome)"' "$LEDGER" | sort | uniq -c
 //
-// (dated reference, 2026-09-18: 4519 rows; mission-governor in 0; the largest
+// (dated reference, 2026-09-18: 4519 rows; manager-todo in 0; the largest
 // qualifying count of any subcommand was 4, one short of the threshold — so no
 // finding of either kind can be emitted at that volume.)
 var retainedCatalog = map[string]struct{}{
@@ -119,7 +119,7 @@ var retainedCatalog = map[string]struct{}{
 	"manager-git":      {},
 	"manager-design":   {},
 	"manager-lead":     {},
-	"mission-governor": {},
+	"manager-todo": {},
 	"plan-auditor":     {},
 	"sync-auditor":     {},
 	"builder-harness":  {},

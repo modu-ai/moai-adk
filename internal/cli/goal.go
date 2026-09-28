@@ -270,7 +270,7 @@ transcript becomes a model condition the orchestrator evaluates.`,
 	runCmd.Flags().StringVar(&runAction, "action", "", "proposed action")
 	runCmd.Flags().StringVar(&runTarget, "target", "", "proposed target")
 	runCmd.Flags().BoolVar(&governorRecommend, "recommend", false, "compatibility flag only; never grants authority")
-	runCmd.Flags().StringVar(&runGovernorReceipt, "governor-receipt", "", "0600 mission-governor decision receipt")
+	runCmd.Flags().StringVar(&runGovernorReceipt, "governor-receipt", "", "0600 manager-todo decision receipt")
 	runCmd.Flags().StringVar(&runAuditReceipt, "audit-receipt", "", "0600 independent audit receipt")
 	runCmd.Flags().StringVar(&runLane, "lane", "", "leased lane for dispatch")
 	runCmd.Flags().StringVar(&runID, "run-id", "", "stable disk dispatch run identity")

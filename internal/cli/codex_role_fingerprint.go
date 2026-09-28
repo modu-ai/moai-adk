@@ -2,7 +2,7 @@
 //
 // The Codex role-load predicate (SPEC-ROLE-LOAD-PREDICATE-001): a contract-
 // neutral replacement for the nonce-based load check. Instead of asking a
-// role to echo back a nonce (which two roles — manager-lead, mission-governor
+// role to echo back a nonce (which two roles — manager-lead, manager-todo
 // — are contractually obliged to refuse for a delegation naming no work),
 // this predicate reads the role's own session record (rollout JSONL) and
 // compares the sha256 of its "developer" response_item body against the
@@ -13,7 +13,7 @@
 // @MX:ANCHOR: [AUTO] codexRoleLoadPredicate is the SSOT for role-load
 // decisions across every role, including the two contract-refusal roles.
 // @MX:REASON: replaces AC-DHR-012's nonce predicate, which measured contract
-// compliance rather than role load for manager-lead and mission-governor.
+// compliance rather than role load for manager-lead and manager-todo.
 package cli
 
 import (
