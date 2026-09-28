@@ -10,7 +10,7 @@
 
 ## AC-CIG-001 — 설정층 경유 픽스처 신원의 커밋이 거부된다
 
-**Covers**: maps REQ-CIG-002
+**Covers**: maps REQ-CIG-003
 
 **Given** 가드가 켜져 있고, 탐침이 author·committer 이메일로 `t@t.t` 를 돌려주는 상태에서
 **When** 셸 도구가 `git commit -m x` 를 실행하려 할 때
@@ -20,7 +20,7 @@
 
 ## AC-CIG-002 — 트리거 동사 8 종이 모두 검사된다
 
-**Covers**: maps REQ-CIG-001
+**Covers**: maps REQ-CIG-002
 
 **Given** 가드가 켜져 있고 탐침이 픽스처 신원을 돌려주는 상태에서
 **When** `commit`, `merge`, `cherry-pick`, `revert`, `rebase`, `am`, `commit-tree`, `pull` 을 각각
@@ -39,7 +39,7 @@
 
 ## AC-CIG-004 — 명령 수준 재정의가 검사된다
 
-**Covers**: maps REQ-CIG-003
+**Covers**: maps REQ-CIG-004
 
 **Given** 가드가 켜져 있고 탐침은 거부 목록 밖의 신원(예: `dev@real-host.invalid`)을 돌려주는 상태에서
 **When** 다음 명령이 각각 들어올 때 —
@@ -61,7 +61,7 @@ Git 이 그 `EMAIL` 을 쓰지 않으므로 allow, 같은 저장소의 `GIT_AUTH
 
 ## AC-CIG-005 — 실신원은 통과한다 (양성 대조)
 
-**Covers**: maps REQ-CIG-004, REQ-CIG-009
+**Covers**: maps REQ-CIG-005, REQ-CIG-011
 
 **Given** 가드가 켜져 있고, `t.TempDir()` 임시 저장소를 **프로젝트 디렉터리이자 명령 cwd** 로 두고
 (D8 범위 일치), 비병렬 테스트의 실제 `git var` 탐침 seam 에 넘기는 환경 목록(`cmd.Env`)에만
@@ -74,7 +74,7 @@ Git 이 그 `EMAIL` 을 쓰지 않으므로 allow, 같은 저장소의 `GIT_AUTH
 
 ## AC-CIG-006 — 정확 일치만 거부한다
 
-**Covers**: maps REQ-CIG-002, REQ-CIG-004
+**Covers**: maps REQ-CIG-003, REQ-CIG-005
 
 **Given** 가드가 켜져 있다
 **When** 탐침 이메일이 `T@T.T`(대소문자), ` t@t.t `(앞뒤 공백), `t@t.tt`, `xt@t.t`, `t@t.t.example.org`
@@ -83,7 +83,7 @@ Git 이 그 `EMAIL` 을 쓰지 않으므로 allow, 같은 저장소의 `GIT_AUTH
 
 ## AC-CIG-007 — 해석 실패는 통과 + 감사 한 줄
 
-**Covers**: maps REQ-CIG-006
+**Covers**: maps REQ-CIG-007
 
 **Given** 가드가 켜져 있고, 신원 탐침의 (a) 오류 종료, (b) 시간 상한 초과, (c) `<` `>` 가
 없는 출력, (d) 존재하지 않는 cwd, 범위 탐침의 (e) 대상 쪽 실패, (f) 프로젝트 쪽 실패 중
@@ -97,7 +97,7 @@ Git 이 그 `EMAIL` 을 쓰지 않으므로 allow, 같은 저장소의 `GIT_AUTH
 
 ## AC-CIG-008 — 꺼져 있으면 가드가 불리지 않는다
 
-**Covers**: maps REQ-CIG-005
+**Covers**: maps REQ-CIG-006
 
 **Given** 설정의 `workflow.commit_identity_guard.enabled` 가 `false` 인 경우와 키가 없는 경우
 **When** 탐침이 픽스처 신원을 돌려주는 상태에서 pre-tool 핸들러가 `git commit -m x` 를 처리할 때
@@ -106,7 +106,7 @@ Git 이 그 `EMAIL` 을 쓰지 않으므로 allow, 같은 저장소의 `GIT_AUTH
 
 ## AC-CIG-009 — 설정 목록은 내장 목록에 더해진다; 템플릿·로컬 설정
 
-**Covers**: maps REQ-CIG-007, REQ-CIG-005
+**Covers**: maps REQ-CIG-008, REQ-CIG-006
 
 **Given** `deny_emails: ["ops-bot@corp.invalid"]` 를 설정한 상태에서
 **When** 탐침이 `ops-bot@corp.invalid` 를 돌려줄 때와 `t@t.t` 를 돌려줄 때
@@ -118,7 +118,7 @@ Git 이 그 `EMAIL` 을 쓰지 않으므로 allow, 같은 저장소의 `GIT_AUTH
 
 ## AC-CIG-010 — 내장 목록이 저장소 픽스처 열거를 전부 덮는다
 
-**Covers**: maps REQ-CIG-007
+**Covers**: maps REQ-CIG-008
 
 **Given** run base 에서 `plan.md` §B.1 의 열거 명령을 실행한 출력(리터럴 집합 S)이 증거로 보존돼 있다
 **When** 드리프트 테스트가 같은 술어로 저장소 `*_test.go` 중
@@ -131,7 +131,7 @@ Git 이 그 `EMAIL` 을 쓰지 않으므로 allow, 같은 저장소의 `GIT_AUTH
 
 ## AC-CIG-011 — 네 변이가 각각 테스트를 실패시킨다
 
-**Covers**: maps REQ-CIG-009
+**Covers**: maps REQ-CIG-011
 
 **Given** 초록인 `go test ./internal/hook/...`
 **When** 다음 변이를 하나씩 적용한 트리에서 같은 명령을 돌릴 때 —
@@ -146,7 +146,7 @@ Git 이 그 `EMAIL` 을 쓰지 않으므로 allow, 같은 저장소의 `GIT_AUTH
 
 ## AC-CIG-012 — 배선 순서와 PowerShell 분류 불가 구문
 
-**Covers**: maps REQ-CIG-008
+**Covers**: maps REQ-CIG-009, REQ-CIG-010
 
 **Given** 가드가 켜져 있고, (c)는 autonomy `contract` 모드·통합 브랜치 `develop` 설정에서
 push 대상 develop 커밋에 추적 중인 카드 SPEC과 보고서 쌍이 들어 있지만 필수 2차 리뷰 증거가
@@ -164,7 +164,7 @@ push 대상 develop 커밋에 추적 중인 카드 SPEC과 보고서 쌍이 들�
 
 ## AC-CIG-013 — 다른 저장소의 픽스처 신원 커밋은 허용된다 (양성 대조)
 
-**Covers**: maps REQ-CIG-010, REQ-CIG-006
+**Covers**: maps REQ-CIG-012, REQ-CIG-007
 
 **Given** 가드가 켜져 있고, 프로젝트 디렉터리는 `t.TempDir()` 저장소 P, 명령 대상은 별개의
 `t.TempDir()` 저장소 F(`/tmp` 픽스처 저장소 역할, P 와 common dir 이 다름)이며, 실제
@@ -178,7 +178,7 @@ push 대상 develop 커밋에 추적 중인 카드 SPEC과 보고서 쌍이 들�
 
 ## AC-CIG-014 — 이 저장소의 링크드 워크트리 커밋은 거부된다
 
-**Covers**: maps REQ-CIG-010, REQ-CIG-002
+**Covers**: maps REQ-CIG-012, REQ-CIG-003
 
 **Given** 가드가 켜져 있고, 프로젝트 디렉터리는 `t.TempDir()` 저장소 P 의 primary 트리, 명령 대상은
 테스트 안에서 `git -C <P> worktree add <W>` 로 만든 P 의 링크드 워크트리 W 이며(P 와 W 의

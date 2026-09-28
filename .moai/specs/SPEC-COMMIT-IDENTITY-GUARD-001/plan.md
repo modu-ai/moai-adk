@@ -37,7 +37,7 @@ run 페이즈는 run base 에서 같은 명령을 다시 돌려 그 출력을
 `t@t.test` 는 둘 다 목록에 있다.
 
 열거 명령의 한계: 변수로 넘긴 이메일(`"user.email", email`)과 여러 줄에 걸친 리터럴은 잡지 못한다.
-미탐 방향이므로 받아들이며, REQ-CIG-007 의 드리프트 테스트도 **같은 술어**를 쓴다(술어가 달라지면
+미탐 방향이므로 받아들이며, REQ-CIG-008 의 드리프트 테스트도 **같은 술어**를 쓴다(술어가 달라지면
 테스트와 목록이 서로 다른 집합을 재게 된다). `internal/hook/commit_identity_guard*_test.go` 는
 가드의 목록 밖 이메일 대조값을 담으므로 열거와 드리프트 테스트 양쪽에서 제외한다. 테스트는
 제외 후 훑은 파일 수와 발견한 리터럴 수가 모두 1 이상임을 확인한다.
@@ -55,7 +55,7 @@ run 페이즈는 run base 에서 같은 명령을 다시 돌려 그 출력을
 - **결정: (b) 이 저장소 한정.** 명령의 대상 디렉터리와 훅 프로젝트 디렉터리 각각에서
   `git rev-parse --git-common-dir` 를 실행해 절대경로로 정규화한 값이 같을 때만 신원을 검사한다.
   다른 저장소(`/tmp` 픽스처 저장소 등)는 허용, 어느 한쪽이라도 해석 실패면 허용 + 감사 한 줄.
-  spec.md §4 D8, REQ-CIG-010, AC-CIG-013·014 로 반영했다.
+  spec.md §4 D8, REQ-CIG-012, AC-CIG-013·014 로 반영했다.
 - 기각된 (a) 저장소 무관 거부: 버려지는 임시 저장소의 픽스처 신원 커밋이라는 정당한 테스트 활동을
   막는다. 측정된 누출은 이 저장소의 공유 설정층에 한정됐으므로 그 거부는 보호 가치가 없다.
 - 대가: 대상 디렉터리 해석(`-C <path>`, 선두 `cd <path> &&`)이 필요하고, 판별마다
@@ -129,7 +129,7 @@ run 페이즈는 run base 에서 같은 명령을 다시 돌려 그 출력을
 - 트리거 매처(정규화 후 git 동사 8 종), 원문 명령 수준 재정의 추출기, 환경 목록을 받는
   `git var` 탐침 seam(대상 디렉터리에서 실행),
   `<name> <email> <epoch> <tz>` 출력에서 이메일 추출, 정확 일치 비교.
-- 탐침 시간 상한 기본 설계값 2 초(초과 시 REQ-CIG-006 경로). run 페이즈가 근거를 들어 조정할 수 있다.
+- 탐침 시간 상한 기본 설계값 2 초(초과 시 REQ-CIG-007 경로). run 페이즈가 근거를 들어 조정할 수 있다.
 - 실패 시 `.moai/logs/commit-identity-guard-audit.log` advisory 한 줄.
 
 ### M3 — 배선 (우선순위 Medium)
@@ -156,7 +156,7 @@ run 페이즈는 run base 에서 같은 명령을 다시 돌려 그 출력을
 
 ## §H 상호 참조
 
-- `spec.md` §4 결정 D1-D8, §5 REQ-CIG-001..010.
+- `spec.md` §4 결정 D1-D8, §5 REQ-CIG-001..012.
 - `acceptance.md` AC-CIG-001..014.
 - `.moai/reports/t1289/root-cause.md`.
 - `internal/hook/branch_guard.go`, `internal/hook/integration_lock_guard.go`, `internal/hook/pre_tool.go`.
