@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/session"
 )
 
 // factoryCardNow is the clock the factory card commands read; tests replace it
@@ -65,6 +67,25 @@ const (
 func factoryNotALaneError(verb string) error {
 	return fmt.Errorf("factory %s: refused — %s: set %s=%s in a lane session (the launcher stamps it)",
 		verb, factoryNotALaneSentinel, config.EnvFactoryRole, config.FactoryRoleLane)
+}
+
+// factoryCodexMergeSentinel names the REQ-SD-025 refusal: while the backend
+// variable identifies the Codex harness, the merge-ready → merging edge is
+// refused on every path. One wording source, so `complete`, `stage`, and
+// their MCP tools (M3) cannot drift apart.
+const factoryCodexMergeSentinel = "the Codex harness cannot take the merge-ready → merging edge"
+
+// factoryRefuseCodexMergeEdge is the REQ-SD-025 reusable check: it refuses
+// the merge-ready → merging edge when the lane's backend variable identifies
+// the Codex harness (gpt), and returns nil for every other backend. The CLI
+// verbs call it before touching any record; the MCP factory tools (M3) call
+// the same function.
+func factoryRefuseCodexMergeEdge(verb string) error {
+	if os.Getenv(config.EnvMoaiKanbanBackend) != kanban.BackendGPT {
+		return nil
+	}
+	return fmt.Errorf("factory %s: refused — %s: a Codex lane stops at merge-ready; integration is the Claude lane's or the leader's (F3)",
+		verb, factoryCodexMergeSentinel)
 }
 
 // factoryAssertParentCheckout refuses when dir is not the repository's
@@ -361,9 +382,17 @@ func newFactoryStageCommand() *cobra.Command {
 		Use:   "stage <card> <state>",
 		Short: "Apply a card's next stage transition with its evidence (lane session)",
 		Args:  cobra.MinimumNArgs(2),
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			if !factoryLaneAdmission() {
 				return factoryNotALaneError("stage")
+			}
+			// REQ-SD-025: the merge-ready → merging edge is refused on every
+			// path while the backend identifies the Codex harness. The rest of
+			// the transition behavior lands with milestone M3.
+			if len(args) >= 2 && args[1] == homestate.CardMerging {
+				if err := factoryRefuseCodexMergeEdge("stage"); err != nil {
+					return err
+				}
 			}
 			return errors.New("factory stage: not yet implemented (SPEC-FACTORY-SELF-DISPATCH-001 M3)")
 		},
@@ -372,24 +401,315 @@ func newFactoryStageCommand() *cobra.Command {
 	return cmd
 }
 
-// newFactoryCompleteCommand — `moai factory complete <card>` (REQ-SD-013).
-// M1 registers the admission refusal; the merge-gate behavior lands with
-// milestone M2 of this SPEC.
+// newFactoryCompleteCommand — `moai factory complete <card> [remeasure]`
+// (REQ-SD-013/-023): a Claude-harness lane takes a merge-ready card through
+// `merging` to `merged-local` by the F1 merge gate, using as integration
+// branch the branch the integration window records. The optional positional
+// names the lane's re-measure evidence file; when omitted, complete writes
+// the merge record itself under .moai/reports/<card>/ (it names the merge
+// commit — it records the merge identity, never a test-run claim). The
+// window is NOT released here: the lane releases it as its next step.
 func newFactoryCompleteCommand() *cobra.Command {
 	var run string
 	cmd := &cobra.Command{
-		Use:   "complete <card>",
+		Use:   "complete <card> [remeasure]",
 		Short: "Take a merge-ready card through merging to merged-local (lane session)",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(_ *cobra.Command, _ []string) error {
+		Args:  cobra.MaximumNArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if !factoryLaneAdmission() {
 				return factoryNotALaneError("complete")
 			}
-			return errors.New("factory complete: not yet implemented (SPEC-FACTORY-SELF-DISPATCH-001 M2)")
+			if err := factoryRefuseCodexMergeEdge("complete"); err != nil {
+				return err
+			}
+			lane := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanLabel))
+			if lane == "" {
+				return fmt.Errorf("factory complete: %s is empty — a lane session carries its lane label there", config.EnvMoaiKanbanLabel)
+			}
+			remeasure := ""
+			if len(args) > 1 {
+				remeasure = args[1]
+			}
+			ctx := cmd.Context()
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			return factoryCompleteCard(ctx, cmd, args[0], remeasure, run, lane)
 		},
 	}
 	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
 	return cmd
+}
+
+// factoryCompleteCard is the complete body after the lane checks: hold the
+// integration window (the same record acquire writes, never a shell-out),
+// apply the REQ-SD-023 refusals, merge --no-ff inside the worktree that has
+// the integration branch checked out, and record the F1 edges T14 then T16.
+func factoryCompleteCard(ctx context.Context, cmd *cobra.Command, cardID, remeasure, run, lane string) error {
+	root := factoryCardRoot()
+	lockRoot := integrationLockRoot()
+	// The same session identity acquire resolves: a window whose holder is
+	// unresolvable can be neither taken nor re-taken, so an empty id is a
+	// blocker to report, never a value to invent.
+	sessionID := integrationSessionID("")
+	if sessionID == "" {
+		return fmt.Errorf("factory complete: cannot resolve this session's id; the integration window needs a holder address (acquire resolves it from the session environment)")
+	}
+	runID, err := resolveFactoryCardRun(ctx, root, run)
+	if err != nil {
+		return fmt.Errorf("factory complete: %w", err)
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return fmt.Errorf("factory complete: %w", err)
+	}
+	defer func() { _ = db.Close() }()
+	card, err := db.LoadCard(ctx, runID, cardID)
+	if err != nil {
+		return fmt.Errorf("factory complete: %w", err)
+	}
+
+	// REQ-SD-023: the window phase. A window this session already holds
+	// keeps ITS recorded branch — the branch the window records is the
+	// integration branch — so a lane that pre-acquired with --branch is not
+	// re-resolved underneath its own choice. A window held by another live
+	// session refuses naming the holder; a free or stale window is resolved
+	// exactly as acquire resolves it and taken over.
+	lock, err := kanban.ReadIntegrationLock(lockRoot)
+	if err != nil {
+		return fmt.Errorf("factory complete: %w", err)
+	}
+	heldByUs := lock.Held() && lock.SessionID == sessionID && lock.Branch != ""
+	var branch, source string
+	if heldByUs {
+		branch, source = lock.Branch, lock.BranchSource
+	} else {
+		if lock.Held() && lock.SessionID != sessionID && !lock.Stale() {
+			return fmt.Errorf("factory complete: refused — the integration window is held by %s (pid %d) since %s on %s; complete after the holder releases (moai integration status reads it)",
+				factoryHolderLabel(lock), lock.PID, lock.AcquiredAt, lock.Branch)
+		}
+		branch, source = factoryResolveIntegrationBranch(root, card)
+	}
+
+	// REQ-SD-023 refusals — each fires before any record changes.
+	// (1) The caller-source window: acquire fell back to the caller's own
+	// tree, which for a lane is its card worktree — never an integration
+	// branch. The remedy is acquire's --branch.
+	if source == kanban.BranchSourceCaller {
+		return fmt.Errorf("factory complete: refused — the integration window's branch %q is the caller's own tree (source %s); re-acquire with --branch <integration-target> (a card's own tree is not its integration branch)", branch, kanban.BranchSourceCaller)
+	}
+	// (2) A card's own branch never serves as its integration branch.
+	cardBranch := factoryBranchOfWorktree(card.WorktreePath)
+	windowTree := ""
+	if heldByUs {
+		windowTree = lock.Worktree
+	}
+	integTree := factoryWorktreeForBranchIn(factoryRepoDir(root, card), branch)
+	if (cardBranch != "" && branch == cardBranch) || factorySameTree(windowTree, card.WorktreePath) || factorySameTree(integTree, card.WorktreePath) {
+		return fmt.Errorf("factory complete: refused — the integration branch %q is the card's own branch (worktree %s): a card's own branch never serves as its integration branch", branch, card.WorktreePath)
+	}
+	// (3) The integration worktree must be provisioned: the only tree holding
+	// the integration branch may not be the parent checkout (which never
+	// changes branch), and no tree at all is the same refusal.
+	primary, _, err := identifyPrimaryCheckout(root)
+	if err != nil {
+		return fmt.Errorf("factory complete: cannot identify the parent checkout of %s: %w", root, err)
+	}
+	if integTree == "" || factorySameTree(integTree, primary) {
+		return fmt.Errorf("factory complete: refused — the integration worktree for %q is not provisioned: no tree holds it, or only the parent checkout %s does (the parent never changes branch; the leader provisions the integration worktree)", branch, primary)
+	}
+
+	// Hold the window as the lane: the same record acquire writes, resolved
+	// the same way (the owner pid, never this process's). A window already
+	// ours is not re-written — the recorded branch choice stands.
+	if !heldByUs {
+		ownerPID, _ := session.ResolveOwnerPID()
+		replaced, err := kanban.AcquireIntegrationLock(lockRoot, kanban.IntegrationLock{
+			SessionID:    sessionID,
+			SessionName:  lane,
+			PID:          ownerPID,
+			PIDSource:    kanban.PIDSourceSessionOwner,
+			Branch:       branch,
+			BranchSource: source,
+			Worktree:     integTree,
+			Card:         card.CardID,
+		}, false)
+		if err != nil {
+			return fmt.Errorf("factory complete: %w", err)
+		}
+		if replaced != nil {
+			// Never silent, exactly like acquire: the next lane must be able
+			// to say what was cleared.
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  displaced stale window of %s (pid %d), held since %s\n", factoryHolderLabel(replaced), replaced.PID, replaced.AcquiredAt)
+		}
+	}
+
+	// T14 — merge-ready → merging: the lease holder's edge, so a lane that
+	// does not hold this card's lease is refused by F1 verbatim.
+	merging, err := db.Transition(ctx, homestate.TransitionRequest{
+		RunID: runID, CardID: card.CardID, To: homestate.CardMerging,
+		ExpectedVersion: card.Version, Actor: lane, Now: factoryCardNow(),
+	})
+	if err != nil {
+		return fmt.Errorf("factory complete: %w", err)
+	}
+	mergeSHA, err := factoryMergeNoFF(integTree, cardBranch, card.CardID, branch)
+	if err != nil {
+		// The card stays in `merging` — the honest state for a merge in
+		// progress that failed; the lane resolves the tree (T15) or the lease
+		// expiry moves it to blocked. The window stays held by this lane.
+		return fmt.Errorf("factory complete: card %s is in merging; the merge failed: %w", card.CardID, err)
+	}
+	path := remeasure
+	if path == "" {
+		if path, err = factoryWriteMergeRecord(root, card.CardID, mergeSHA, branch, integTree); err != nil {
+			return fmt.Errorf("factory complete: card %s is in merging; recording the merge evidence failed: %w", card.CardID, err)
+		}
+	}
+	done, err := db.Transition(ctx, homestate.TransitionRequest{
+		RunID: runID, CardID: card.CardID, To: homestate.CardMergedLocal,
+		ExpectedVersion: merging.Version, Actor: lane,
+		MergeSHA: mergeSHA, RemeasurePath: path, IntegrationBranch: branch, Now: factoryCardNow(),
+	})
+	if err != nil {
+		return fmt.Errorf("factory complete: card %s is in merging; the F1 merge gate refused: %w", card.CardID, err)
+	}
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %s merge=%s branch=%s worktree=%s\n",
+		done.CardID, done.State, done.MergeSHA, branch, integTree)
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "  the integration window is still held by this session — run moai integration release next")
+	return nil
+}
+
+// factoryResolveIntegrationBranch mirrors acquire's branch resolution
+// (resolveIntegrationTarget) without its $PWD legs: the configured git-flow
+// develop branch decides; with none configured the caller's own tree decided
+// the window, which complete refuses, so the branch is the caller's — taken
+// from the card worktree, the lane's own tree, never from the process cwd.
+func factoryResolveIntegrationBranch(root string, card homestate.Card) (string, string) {
+	if branch := strings.TrimSpace(config.LoadGitFlowIntegrationConfig(root).DevelopBranch); branch != "" {
+		return branch, kanban.BranchSourceConfig
+	}
+	return factoryBranchOfWorktree(card.WorktreePath), kanban.BranchSourceCaller
+}
+
+// factoryRepoDir names the repository directory the worktree lookup runs
+// from: the card's own worktree when the record carries one, else the
+// project root — both answer for the same repository the integration branch
+// lives in.
+func factoryRepoDir(root string, card homestate.Card) string {
+	if p := strings.TrimSpace(card.WorktreePath); p != "" {
+		return p
+	}
+	return root
+}
+
+// factoryBranchOfWorktree reports the branch checked out in dir, or "" when
+// dir is empty or git cannot answer (best-effort, like currentBranch).
+func factoryBranchOfWorktree(dir string) string {
+	if strings.TrimSpace(dir) == "" {
+		return ""
+	}
+	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// factoryWorktreeForBranchIn resolves the worktree holding branch, anchored
+// at repoDir — never at the process cwd (plan B7: the recorded window names
+// the branch; the tree holding it is looked up in the card's repository).
+// It reuses worktreeForBranchFromList, the same parser acquire's resolution
+// reads.
+func factoryWorktreeForBranchIn(repoDir, branch string) string {
+	cmd := exec.Command("git", "worktree", "list", "--porcelain")
+	cmd.Dir = repoDir
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return worktreeForBranchFromList(string(out), branch)
+}
+
+// factorySameTree reports whether a and b name the same directory — by
+// identity when both stat, else by resolved string equality. Empty never
+// matches (an unset worktree is not every worktree).
+func factorySameTree(a, b string) bool {
+	a, b = strings.TrimSpace(a), strings.TrimSpace(b)
+	if a == "" || b == "" {
+		return false
+	}
+	sa, ea := os.Stat(a)
+	sb, eb := os.Stat(b)
+	if ea == nil && eb == nil {
+		return os.SameFile(sa, sb)
+	}
+	if fa, err := filepath.EvalSymlinks(a); err == nil {
+		a = fa
+	}
+	if fb, err := filepath.EvalSymlinks(b); err == nil {
+		b = fb
+	}
+	return filepath.Clean(a) == filepath.Clean(b)
+}
+
+// factoryHolderLabel mirrors kanban's holder label: the human-facing name a
+// lane recognizes its queue position by, else the session id.
+func factoryHolderLabel(lock *kanban.IntegrationLock) string {
+	if lock == nil {
+		return "unknown"
+	}
+	if lock.SessionName != "" {
+		return lock.SessionName
+	}
+	if lock.SessionID != "" {
+		return lock.SessionID
+	}
+	return "unknown"
+}
+
+// factoryMergeNoFF performs `git merge --no-ff` of the card branch inside
+// the worktree holding the integration branch, and returns the resulting
+// HEAD. A branch already merged answers "Already up to date" and leaves HEAD
+// at the existing merge commit — the AC-SD-013 shape where the lane merged
+// before running complete.
+func factoryMergeNoFF(integTree, cardBranch, cardID, branch string) (string, error) {
+	if cardBranch == "" {
+		return "", fmt.Errorf("the card records no worktree, so its branch cannot be resolved")
+	}
+	merge := exec.Command("git", "merge", "--no-ff", "-m",
+		fmt.Sprintf("Merge %s into %s (card %s, factory complete)", cardBranch, branch, cardID), cardBranch)
+	merge.Dir = integTree
+	if out, err := merge.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("git merge in %s: %v: %s", integTree, err, strings.TrimSpace(string(out)))
+	}
+	rev := exec.Command("git", "rev-parse", "HEAD")
+	rev.Dir = integTree
+	out, err := rev.Output()
+	if err != nil {
+		return "", fmt.Errorf("read HEAD of %s: %v", integTree, err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// factoryWriteMergeRecord writes the merge record complete records when the
+// lane passed no re-measure file: it names the merge commit and the tree
+// identity the F1 merge gate verifies. It records the merge identity only —
+// a re-measure the lane ran is the lane's own file, passed as the positional.
+func factoryWriteMergeRecord(root, cardID, mergeSHA, branch, integTree string) (string, error) {
+	dir := filepath.Join(root, ".moai", "reports", cardID)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	path := filepath.Join(dir, "merge-record.txt")
+	body := fmt.Sprintf("merge %s\nbranch %s\nintegration worktree %s\nrecorded by moai factory complete (card %s)\n",
+		mergeSHA, branch, integTree, cardID)
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		return "", err
+	}
+	return path, nil
 }
 
 // resolveFactoryCardRun returns the explicit --run value, or the single active

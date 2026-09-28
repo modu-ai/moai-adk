@@ -63,6 +63,62 @@ Scope: REQ-SD-008..010, -015, -016, -025 (selection half). ACs: AC-SD-008, -009,
   :62-67→:73-78, notice builder `factoryWorkerNotice`:201→`factoryLaneNotice`:212; kanban.go :514→:543, :492-497→:520-526.
 - **E6**: no push (lane does not push; the leader batch-pushes develop).
 
+### M2 — integration surface and Codex merge-edge refusal (2026-09-28)
+
+Scope: REQ-SD-013 (complete through the F1 merge gate), REQ-SD-023 (all four window refusals + the
+lane-holds-then-releases flow), REQ-SD-025 (edge half — `complete`/`stage` CLI paths wire the
+reusable Codex merge-edge check; the MCP tools consume the same check in M3). ACs: AC-SD-013,
+AC-SD-024 (complete/stage CLI halves; the `CodexMergeRefusedMCP` verify command is M3 with the
+tools), AC-SD-025.
+
+- **Pre-flight (C)**: `git branch --show-current` → `WT-factory-self-dispatch`, `git rev-parse HEAD`
+  → `490d64649ae80c2fccc3ae152a4cef5fdbb686c0`; `go build ./...` exit 0;
+  `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `golangci-lint run --timeout=2m
+  ./internal/cli/...` → `0 issues.`; `grep -n 'AskUserQuestion' internal/cli/factory_card.go` →
+  no matches (exit 1).
+- **RED (E8)**: tests written first in `internal/cli/factory_complete_test.go`. Stage-1 run →
+  `undefined: factoryCodexMergeSentinel` ×3, `FAIL ... [build failed]`. After wiring only the
+  sentinel + the stage refusal, behavioral RED: `--- FAIL: TestSD_AC013_ClaudeCompleteViaIntegrationWorktree`
+  (verbatim: `factory_complete_test.go:145: complete: accepts 1 arg(s), received 2`;
+  `:172: factory complete: not yet implemented (SPEC-FACTORY-SELF-DISPATCH-001 M2)`;
+  `:211/:225: want a not-provisioned refusal`; `:242: want a refusal naming --branch`),
+  `--- FAIL: TestSD_AC024_CodexMergeRefusedComplete`, `--- FAIL: TestSD_AC025_IntegrationWindowSerializes`;
+  `TestSD_AC024_CodexMergeRefusedStage` already PASS at this point (the stage wiring was the
+  stage-1 change).
+- **GREEN (E1, env-scrubbed single compound invocations, tree = M2 commit)**:
+  `go test ./internal/cli -run '^TestSD_AC013_ClaudeCompleteViaIntegrationWorktree$|^TestSD_AC024_CodexMergeRefusedComplete$|^TestSD_AC024_CodexMergeRefusedStage$|^TestSD_AC025_IntegrationWindowSerializes$' -count=1 -v`
+  → all four `--- PASS` (AC-013: 6 subtests incl. pre-merged arm, complete-does-the-merge arm,
+  parent-checkout / no-tree / caller-source / card's-own-branch refusals; AC-024 complete+stage;
+  AC-025 serialize-then-succeed with both merges ancestors of develop).
+- **M1 regression**: `go test ./internal/cli -run '^TestSD_AC008|^TestSD_AC009|^TestSD_AC010|^TestSD_AC015|^TestSD_AC016|^TestSD_AC023' -count=1`
+  → `ok github.com/modu-ai/moai-adk/internal/cli 17.167s`.
+- **E2 builds**: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0
+  (single compound `&&` invocation).
+- **E5 lint**: `go vet ./internal/cli/...` + `golangci-lint run --timeout=2m ./internal/cli/...`
+  → `0 issues.` (pre-flight baseline `0 issues.` — no new findings).
+- **E4 boundary**: `grep -n 'AskUserQuestion\|mcp__askuser' internal/cli/factory_card.go
+  internal/cli/factory_complete_test.go` → no matches (exit 1).
+- **E3 coverage**: see the full-package run recorded below (slot `internal-cli-testsuite` held
+  for the run).
+- **Design decisions (design.md D6/D7)**: complete reuses acquire's logic by CALL, never a
+  shell-out — `integrationSessionID`, `session.ResolveOwnerPID`,
+  `kanban.AcquireIntegrationLock`/`ReadIntegrationLock`, and the `worktreeForBranchFromList`
+  parser; `internal/cli/integration.go` is untouched (B10 preference satisfied — no export was
+  needed, same package). The branch resolution mirrors `resolveIntegrationTarget`'s decision
+  order minus its $PWD legs (`factoryResolveIntegrationBranch` reads the card worktree for the
+  caller fallback; `factoryWorktreeForBranchIn` anchors `git worktree list` at the card's repo,
+  plan B7). A window already held by the caller keeps ITS recorded branch (REQ-SD-023: "the
+  branch the integration window records"); a free/stale window is resolved and taken over with
+  the displaced holder reported, never silently. complete does NOT release the window — the
+  success output names `moai integration release` as the lane's next step.
+- **Merge evidence**: the optional positional names the lane's re-measure file; when omitted,
+  complete writes `.moai/reports/<card>/merge-record.txt` naming the merge SHA + tree identity
+  (merge identity only — never a test-run claim).
+- **Files**: `internal/cli/factory_card.go` (complete verb body + `factoryRefuseCodexMergeEdge`
+  + stage Codex-edge wiring + window/branch/worktree helpers),
+  `internal/cli/factory_complete_test.go` (new M2 AC tests).
+- **E6**: no push (lane does not push; the leader batch-pushes develop).
+
 ## §F Phase 4 Mode Selection
 
 - tier: L · scope: >10 production files across cli/hook/config/kanban/homestate/codexwiring + template rules · domains: 6 (Go CLI, hooks, MCP server, launchers, doctrine rules, env constants) · language mix: Go + Markdown · concurrency benefit: LOW (coding-heavy, sequential milestone chain with shared files)
