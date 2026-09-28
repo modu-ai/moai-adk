@@ -73,6 +73,14 @@ Advisory: CLAUDE.local.md is a legacy local instruction file; run `moai migrate 
 
 `RenderHooks` は、適応済みの 8 イベントのコマンドをユーザーの `.codex/hooks.json` に書き込みます。`moai init --llm codex|both` がこの配線を作成し、既存プロジェクトでは `moai tool enable codex` で追加または更新します。
 
+## デスクトップアプリと v3.1.3 のリリース条件
+
+Codex アプリのローカルセッションでは、生成された `.codex/hooks.json` と `.codex/config.toml` を含むプロジェクトを開きます。Codex がプロジェクトのフックと設定を読み込むには、プロジェクトの信頼が必要です。Codex CLI の `/hooks` でフックを確認し、定義が変わった場合は再び信頼してください。同じプロジェクトで `moai doctor` を実行すると MoAI の配線状態を確認できます。アプリの実行環境から `moai` コマンドを実行できることも必要です。信頼の条件は [Codex のフック資料](https://developers.openai.com/codex/hooks)を参照してください。
+
+Claude Code デスクトップアプリの **Local** Code セッションは、CLI と同じプロジェクトの `CLAUDE.md`、`.mcp.json`、フック、スキル、設定を読み込みます。初期化済みのプロジェクトを Code タブで開き、そのセッションから `moai` を実行できることを確認してください。SSH セッションは接続先で動くため、接続先にもプロジェクトと `moai` が必要です。詳しくは [Claude Code Desktop の設定](https://code.claude.com/docs/en/desktop#shared-configuration)を参照してください。
+
+ここで示したのは設定手順であり、v3.1.3 のデスクトップ版リリース判定が完了したという意味ではありません。運用者自身が MoAI、Codex、両デスクトップアプリを検証し、結果を宣言するまでリリースは保留です。
+
 ## 次のステップ
 
 - [マルチモデル監査収束](/ja/advanced/multi-model-audit/) — codex バックエンドが今日すでに監査に参加している経路
