@@ -92,11 +92,29 @@ Iteration 2 returned FAIL. Iteration 3 was granted past the Tier M ceiling of 2 
 | D6 | "no commit count appears in this prose" — refuted six lines above | The `0\t6546` transcript stays (attributed to its command and run, which the carve-out permits); the false claim is replaced by the actual distinction — a transcript carries provenance, a bare sentence does not. |
 | D7 | RED cell named `grep -rc` but quoted `-rl` output and the wrong exit code | Measured: `-rc` prints `<file>:0` per scanned file and exits `0`; `-rl` prints nothing and exits `1`. Cell now names `-rl` with its real output, and the mismatch is recorded rather than quietly swapped. |
 | D8 | § Artifact state false in the present tense | Every row dated, with its command; the HEAD and count rows qualified, since a figure measured before the commit recording it cannot describe the tree after it. |
-| D5 | four pre-renumbering AC ids in live prose | Marked, not rewritten (a dated record describes its own time). One is a **collision**: `AC-IBS-006` resolves today to a different row, so it read as a live cross-reference pointing at the wrong criterion — more dangerous than the dangling ids, because it does not announce itself. |
+| D5 | four pre-renumbering AC ids in live prose | **[corrected 2026-09-28, round 4]** The v0.9.0 disposition on this row — "Marked, not rewritten" — answered a different defect than the one named in the defect column: the marking applied to pre-renumbering ids in HISTORY rows and in this table, while the four **live-prose** sites (spec.md ×3, plan.md ×1) were left untouched. One is a **collision**: the cited id resolves today to a different row, so it read as a live cross-reference pointing at the wrong criterion — more dangerous than the dangling ids, because it does not announce itself. The four live-prose sites are repaired in v0.10.0. |
 | D4 | Folding record arithmetic: `16 - 7 = 9`, not 8 | Recorded as **unrecoverable**. v0.4.0's criterion list was replaced in place, so no copy of the 16-row set survives to diff against; whether the eighth disposition was a fold or a drop cannot be established. Recorded rather than reconstructed, because a plausible reconstruction is indistinguishable from a measured one once written. |
 | D10 | proportionality claim carried a numerator with no denominator | Denominator declared a **Gap** until M4 measures it with its command. `1 of 2` and `1 of 40` share the numerator and support opposite conclusions. |
 
 **Two earlier defects came back resolved and were not re-touched**: the companion roster closed iteration 1's D4 attribution problem, and the affinity falsifier can genuinely falsify. **One claim was checked and left standing**: `plan.md` §A's "no commit count appears in this section" — measured against the section after D6 taught that self-referential claims need measuring like any other; it holds.
+
+### Plan-audit iteration 3 — FAIL (0.7875 / 0.7619), and the round-4 repair
+
+Verdict **FAIL** at 0.7875 arithmetic / 0.7619 harmonic against the Tier M threshold 0.80 — and, independently of the score, FAIL under the Retry Loop Contract because iteration 2's D5 was unresolved (iteration-3 report F0). Report: `.moai/reports/t1180/plan-audit-iter3.md` (in this worktree). The score improved on both means against iteration 2 and no must-pass item failed; what kept the verdict FAIL was D5 unrepaired while three surfaces claimed it repaired.
+
+Repairs landed in v0.10.0:
+
+| # | Defect (iteration-3 report) | Repair |
+|---|---|---|
+| F0 | four mis-resolving ids in live prose, unchanged since iteration 2, with three false repair claims | All four sites repaired: `spec.md` trigger-affinity → REQ-IBS-014/015, structural foreclosure → REQ-IBS-007, same-glob shard → REQ-IBS-005; `plan.md` same-glob shard → REQ-IBS-005 + AC-IBS-002-P. Each mapping re-verified against the REQ definitions in `spec.md` §2 in this round, not inherited from the report. Full sweep re-run: every `REQ-IBS-`/`AC-IBS-` occurrence outside HISTORY resolves against the live sets (REQ 001-015; AC 001-008 with letter sub-conditions) or is an explicitly marked pre-renumbering mention in a dated record. The three false claims corrected: the v0.9.0 HISTORY D5 sentence (amended in place with a dated correction), the D5 row above (amended), and the commit message below (footnote). |
+| F1 | 005b's byte-equality-against-baseline predicate admitted a mutant in M1's window | Predicate restated as the invariant: exactly one hunk, its single content line byte-equal to the recorded content line, no hunk added or removed; only the hunk header's line numbers may move. The M1 re-run note now states that re-recording the baseline REQUIRES demonstrating the content line unchanged — closing the "record whatever the diff says" mutant. |
+| F2 | `acceptance.md`'s headline ("not by dropping checks") contradicted its own Folding record | Restated as what is established: seven dispositions recorded and none of those dropped; one unrecorded and unrecoverable, so the unqualified claim is withdrawn. |
+| F3 | the D2 repair (rung 3 reopened) landed in `plan.md` but not in 002d's green path | 002d's green path now names compression, non-rule relocation, and dedup within the co-loading family (the reopened rung 3), keeping "never a split" with REQ-IBS-007 binding — the cross-layer revision sweep `verification-completeness.md` §3 prescribes. |
+| F4 | `spec.md` §6 cited a transcript permission `plan.md` §G did not carry | The clause added to `plan.md` §G as the carve-out's second limb (a quoted command transcript MAY carry a figure, attributed to its command; it cannot launder a conclusion), so the citation now points at a rule that exists. |
+
+**Correction footnote — the `171089a77` commit message.** That commit's subject says "ten defects, two controls executed" and its body claims D5 among the repairs. The tree it committed did not contain the D5 repair (iteration-3 report F0, measured). The commit is in history and is not rewritten; this footnote is the correction of record: of the ten, **D5 was not repaired at `171089a77`** — the repair is the v0.10.0 commit.
+
+**Not touched, deliberately**: F5 (control clause binds "range" vs "range or tree" — one word, optional-class, nothing actually ungated per the report) and F6 (the 16's unit at the Folding record — optional-class, moot per the report since the gap is unrecoverable either way). Neither was ordered for round 4; both are left as the report filed them.
 
 ### Artifact state
 
@@ -116,6 +134,22 @@ Iteration 2 returned FAIL. Iteration 3 was granted past the Tier M ceiling of 2 
 | `spec.md` | 0.9.0 |
 | `plan.md` | 0.9.0 |
 | `acceptance.md` | 0.9.0 |
+| `progress.md` | (this write) |
+
+**Measured 2026-09-28, round-4 repair (v0.10.0):**
+
+| reading | command | value |
+|---|---|---|
+| tracked state | `git status --short` | the four artifacts modified, uncommitted, at the time of this write; committed by the round-4 commit |
+| worktree HEAD before this round's commit | `git rev-parse --short HEAD` | `171089a77` (the iteration-3 repair commit this round corrects) |
+| card base | `git merge-base develop HEAD` | `088594d6b874933f060bcbadbb833737fd25fb4d` — resolved, not pinned |
+| commit count on branch before this round's commit | `git rev-list --count "$CARD_BASE"..HEAD` | 7 |
+
+| file | version (round 4) |
+|---|---|
+| `spec.md` | 0.10.0 |
+| `plan.md` | 0.10.0 |
+| `acceptance.md` | 0.10.0 |
 | `progress.md` | (this write) |
 
 The HEAD and count rows are deliberately qualified rather than restated as bare values: a figure measured before the commit that records it cannot describe the tree after it, and pretending otherwise is the self-referential hazard the §E.4 SHA-backfill convention exists for.

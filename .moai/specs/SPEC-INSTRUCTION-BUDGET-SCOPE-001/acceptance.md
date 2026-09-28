@@ -7,7 +7,7 @@ created: 2026-09-28
 
 # Acceptance Criteria — SPEC-INSTRUCTION-BUDGET-SCOPE-001
 
-**8 acceptance criteria** against the Tier M ceiling of 16 — unit: **logical criteria**, `AC-IBS-001` … `AC-IBS-008`. The count fell from 16 to 8 in v0.5.0 by folding, not by dropping checks — see § Folding record.
+**8 acceptance criteria** against the Tier M ceiling of 16 — unit: **logical criteria**, `AC-IBS-001` … `AC-IBS-008`. The count fell from 16 to 8 in v0.5.0 by folding: seven dispositions are recorded and none of those was dropped; one disposition is unrecorded and unrecoverable, so "nothing was dropped" is not claimable — see § Folding record.
 
 **Two counts exist for this file, and they measure different things.** The repo's `ac-baseline-guard` pre-commit hook counts **distinct live AC identifiers including a letter suffix** and reports **10** here, because `AC-IBS-002a` and `AC-IBS-002d` appear as prefixed identifiers in their own right. Both numbers are correct under their own unit; neither is the other's error.
 
@@ -102,7 +102,7 @@ This is the SPEC's only budget gate. Everything folded into it is a constraint o
 
 - **Deciding command**: `python3 -c "import io;print(len(io.open('.claude/rules/moai/workflow/session-handoff-examples.md',encoding='utf-8').read()))"`
 - **RED-now**: stdout `41615`, exit `0`. Red because 41,615 > 40,000.
-- **Green path**: M6. 1,615 characters, by compression or non-rule relocation only. Its `paths:` has one pattern, so the only proper subset is empty and no companion can save anything (spec.md §1).
+- **Green path**: M6. 1,615 characters, by compression, non-rule relocation, or dedup within the co-loading family — the reopened rung 3 — and never a split: its `paths:` has one pattern, so the only proper subset is empty and no companion can save anything (spec.md §1; plan.md rung 4 remains "never M6", and REQ-IBS-007 still binds).
 - **Sub-condition 002d-i — no relocation into a new rule file.** Same decider as 002a-i. Relocation to a destination outside `.claude/rules/` is NOT a violation of this sub-condition, because such a destination is not a companion — see M6's precondition on whether the hook measures it at all.
 
 #### Sub-conditions on every arm
@@ -161,7 +161,7 @@ Green at arrival — references resolve today — so this asserts that the work 
 
 **005a — the four workflow files: byte-identical.** **Given** each of the four target files, **when** compared to its `internal/template/templates/.claude/` counterpart, **then** the pair is byte-identical. Decided by `diff <local> <mirror>` per file → exit `0`, no output. Green at arrival, verified by `diff -q` in this run. M1 does not touch these four; M4-M6 do, and this is the row that catches a one-sided reduction.
 
-**005b — the `coding-standards.md` pair: the diff is unchanged from its pre-M1 baseline.** **Given** the pair, **when** diffed, **then** the output equals the baseline recorded below, byte for byte.
+**005b — the `coding-standards.md` pair: the diff's divergence is unchanged from its pre-M1 baseline.** **Given** the pair, **when** diffed, **then** the output consists of exactly one hunk whose single content line equals the baseline content line recorded below, byte for byte — no hunk added, none removed; only the hunk header's line numbers may move, because a correct M1 amendment above line 141 shifts them. This invariant is the predicate; the recorded baseline as a whole (header numbers included) is its evidence, not itself the criterion.
 
 - **Deciding command**: `diff .claude/rules/moai/development/coding-standards.md internal/template/templates/.claude/rules/moai/development/coding-standards.md`
 - **Baseline, measured this run** — exit `1`, two lines of output, one content line:
@@ -187,7 +187,7 @@ Green at arrival — references resolve today — so this asserts that the work 
 
   **[HARD] The exit code was `1` in all three states — baseline, injected, and reverted — so the verdict is the OUTPUT comparison and never the exit code.** This is the finding the control exists to produce: `diff` exits `1` for *any* difference, so a check written as "the diff still exits 1, as it did at baseline" passes an injected one-sided edit without noticing. That is precisely the one-sided edit this row is here to catch, and it is the shape a later reader would most plausibly simplify the row into. The predicate is **byte equality of the diff output against the recorded baseline**; the exit code is recorded as context and carries no verdict.
 
-  Run again at M1 after the doctrine amendment lands, since M1 changes the baseline it is measured against.
+  Run again at M1 after the doctrine amendment lands: M1 may shift the hunk header's line numbers, and **re-recording the baseline at M1 REQUIRES demonstrating the content line unchanged and no hunk added or removed** — recording whatever the diff then says, unverified, would satisfy a byte-equality-against-baseline reading while permitting the one-sided edit this row exists to catch. That is the mutant the invariant above closes: a one-sided edit necessarily changes the content line or the hunk count, so it cannot satisfy the predicate under any re-recorded header.
 - **Scope note.** 005b is the ONLY pair leaving the byte-identity clause. Any further file this SPEC creates under `.claude/` enters 005a, not 005b; an exemption is earned by a measured, explained, permanent divergence, never assumed.
 
 ### AC-IBS-006 — the template and hook packages pass [regression-guard]
