@@ -24,7 +24,7 @@ The lead and lane sessions keep **only orchestration** in their context windows.
 | **lead** | The single coordinating session (`moai cc -k`). Moves cards between columns on evidence it read itself, asks the operator to `/clear` companions between phases, never writes code. | The session that dispatched a card with its worktree instruction. |
 | **companion** | A worker session launched by hand, one terminal at a time (`moai cc -k --name <role>`), owning one column's work at a time. Named by its bare role; a second live session claiming the same role takes the next free number. | `plan`, `run`, `sync`. |
 | **run-id** | The short identifier the lead prints at launch. It lives in `MOAI_KANBAN_ID` and the lead socket path — no session name carries it, the lead's included (t133): every session is named by its role, and a second live claim on a role takes the next free number. | `a1b2c3` — printed in the lead's bootstrap notice; the session itself is named `lead`. |
-| **worktree** | The isolated checkout where a card's work happens — created by `moai worktree new` or a supported launcher and entered through one, never raw `git worktree add`. The directory carries the card id; the branch carries `WT-<slug>` (shape: the stub § Isolation). A worktree outlives a phase: one spans run through sync. | `.claude/worktrees/t0` on branch `WT-todo-queue`. |
+| **worktree** | The isolated checkout where a card's work happens — created by `moai worktree new` or a supported launcher and entered through one, never raw `git worktree add`. The directory carries the card id; the branch carries `WT-<slug>` (shape: the stub § Isolation is provisioned by MoAI). A worktree outlives a phase: one spans run through sync. | `.claude/worktrees/t0` on branch `WT-todo-queue`. |
 | **dispatch** | The lead's instruction to one companion: a pointer (card id, SPEC id, phase command, completion signal), never a copy of the work. Written in the operator's conversation_language. | "card: t0 — wt: EnterWorktree(t0) … evidence: .moai/reports/t0/". |
 
 The pair most easily confused: a **column** names a phase of the work (`run`); a **lane** names who carries one card through those phases (the `run` session in `.claude/worktrees/t0`). One is a stage on the board, the other is a stream through the stages.
@@ -39,7 +39,7 @@ Five columns, fixed and ordered:
 backlog → plan → run → sync → done
 ```
 
-Owners per column below (the definitions live in § Terminology above); `review` is not a column — the verdict is absorbed by the sync gate, which runs the lenses itself (§ Review lens selection).
+Owners per column below (the definitions live in § Terminology — the board vocabulary); `review` is not a column — the verdict is absorbed by the sync gate, which runs the lenses itself (§ Review lens selection).
 
 | Column | Owning role | What happens there |
 |---|---|---|
