@@ -96,3 +96,5 @@ the MoAI launcher test above establishes pre-session injection. Neither
 substitutes for the still-unmeasured Claude post-swap leg. A separate
 minimal GLM API call returned HTTP 429 (`rate_limit_error`); its sanitized
 response is in `.moai/reports/t1290/m2-glm-rate-limit.json`.
+
+**M2+M3 완결 (2026-09-28 14:45 KST, worker-61 audit-read at `646ae8302`).** 재개 지시 시점에 제 트리에 외부 실행분(리드 인지: develop 흡수 6524d26cc + 이관 4커밋 0ab480d9d~a8496d933)이 착지해 있었다 — **재실행하지 않고 감사-판독으로 검증**했다(발산 보고 규율; 리드 보고 참조). 이번 실행·이 트리에서 직접 재검: AC-IFU-007 `git show HEAD:AGENTS.local.md | wc -m` → 37061 (≤39,999) · AC-LIR-007 `git ls-files` → `AGENTS.local.md` 1행 + `git show HEAD:CLAUDE.local.md` exit 128 · **AC-LIR-009 Claude 프로브(GLM 게이트웨이, 1턴/timeout 180): `LOADED` + §0.1 판별값 `develop` — 내용 교체 뒤 수신 생존** (원문 m2-verdict.md 보강절) · 문서 절반: 옛 부정 문장 root+template 전멸(grep exit 2), 실측 지오메트리 문면 확인. `moai spec lint` 0 errors / 0 warnings. **AC-LIR-001~009 전부 통과.** 잔여: develop 통합(병합 창)·CI 판정.
