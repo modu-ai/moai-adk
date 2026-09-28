@@ -611,9 +611,10 @@ var codexCmd = &cobra.Command{
 		"  moai codex status     print the readiness readout (starts nothing)\n" +
 		"  moai codex app        launch the Codex desktop app (codex app)\n" +
 		"  -w <worktree>         launch in an existing worktree (never creates one)\n" +
-		"  -f                   lead a factory run (CLI only)\n" +
+		"  -f                   start a factory run as leader (CLI only)\n" +
 		"  -f lane              join the active factory as the next lane (CLI only)\n" +
 		"  -f lane-<n>          join as a numbered lane (CLI only)\n" +
+		"  Factory sessions show launch_pending until their first prompt binds a session UUID.\n" +
 		"  --spawn               open the launch in a new tmux window\n" +
 		"  -- <codex-args...>    arguments after -- pass to codex verbatim",
 	Example: "  # Launch the Codex CLI here\n" +

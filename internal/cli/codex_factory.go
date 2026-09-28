@@ -103,17 +103,13 @@ func enterCodexFactory(root string, entry factoryFlagParse) (func(), error) {
 	restoreFacts := exportFactoryLaunchFacts("", BackendCodex)
 	restore := func() { restoreFacts(); restoreRun() }
 	if lane {
-		label := entry.LaneLabel
-		if entry.LaneRole {
-			n := kanban.NextFactoryLaneNumber(loadFactoryRegistry(factoryRegistryPath(root)), factoryProcessAlive)
-			label = kanban.FactoryLaneLabel(n)
-		}
-		final, claimErr := resolveFactoryLaneName(root, label, entry.LaneRole, os.Stderr)
+		claim, claimErr := kanban.ClaimFactoryLaneWithin(root, entry.LaneLabel, entry.LaneRole,
+			os.Getpid(), os.Getenv(config.EnvMoaiKanbanID), config.DefaultFactoryLeaderLanes, factoryProcessAlive)
 		if claimErr != nil {
 			restore()
-			return nil, claimErr
+			return nil, fmt.Errorf("claim Codex factory lane: %w", claimErr)
 		}
-		restoreMode := enterFactoryLaneMode(final, 0)
+		restoreMode := enterFactoryLaneMode(claim.Label, 0)
 		return func() { restoreMode(); restore() }, nil
 	}
 	restoreMode := enterFactoryLeaderMode(config.DefaultFactoryLeaderLanes, "")

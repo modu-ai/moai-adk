@@ -151,6 +151,20 @@ func (e *FactoryLegacyRunError) Error() string {
 // refused nor counted as a lane, and it is never rewritten. Dead claims of
 // any shape are pruned as stale.
 func ClaimFactoryLane(root, requested string, auto bool, pid int, runID string, alive func(int) bool) (FactoryClaim, error) {
+	return claimFactoryLane(root, requested, auto, pid, runID, 0, alive)
+}
+
+// ClaimFactoryLaneWithin atomically chooses a free slot in 1..maxSlots or
+// refuses a requested slot outside that range. A full run never claims a
+// higher number, and a conflicting explicit number is never bumped.
+func ClaimFactoryLaneWithin(root, requested string, auto bool, pid int, runID string, maxSlots int, alive func(int) bool) (FactoryClaim, error) {
+	if maxSlots < 1 {
+		return FactoryClaim{}, fmt.Errorf("factory lane limit must be positive")
+	}
+	return claimFactoryLane(root, requested, auto, pid, runID, maxSlots, alive)
+}
+
+func claimFactoryLane(root, requested string, auto bool, pid int, runID string, maxSlots int, alive func(int) bool) (FactoryClaim, error) {
 	claim := FactoryClaim{Label: requested}
 	admissionLock, lockErr := homestate.AcquireAdmissionLock(root)
 	if lockErr != nil {
@@ -170,6 +184,9 @@ func ClaimFactoryLane(root, requested string, auto bool, pid int, runID string, 
 			}
 			return claim, fmt.Errorf("invalid factory lane label %q", requested)
 		}
+	}
+	if maxSlots > 0 && !auto && (n < 1 || n > maxSlots) {
+		return claim, fmt.Errorf("factory lane %q is outside the allowed slots 1..%d", requested, maxSlots)
 	}
 	db, err := homestate.OpenFactory(root)
 	if err != nil {
@@ -226,17 +243,32 @@ func ClaimFactoryLane(root, requested string, auto bool, pid int, runID string, 
 	if err := rows.Close(); err != nil {
 		return claim, err
 	}
+	if maxSlots > 0 {
+		if auto {
+			for candidate := 1; candidate <= maxSlots; candidate++ {
+				if !taken[candidate] {
+					n = candidate
+					break
+				}
+			}
+			if n == 0 {
+				return claim, fmt.Errorf("factory run %s has no free lane slots in 1..%d", runID, maxSlots)
+			}
+		} else if taken[n] {
+			return claim, fmt.Errorf("factory lane %q is already occupied in run %s", requested, runID)
+		}
+	} else {
+		if auto {
+			n = maxCanonical + 1
+		}
+		for taken[n] {
+			n++
+		}
+	}
 	for _, r := range stale {
 		if _, err := tx.Exec(`DELETE FROM workers WHERE label=? AND pid=?`, r.label, r.pid); err != nil {
 			return claim, err
 		}
-	}
-
-	if auto {
-		n = maxCanonical + 1
-	}
-	for taken[n] {
-		n++
 	}
 	// Every surviving row is live and was counted into taken, so the
 	// canonical label for n is free by construction.
