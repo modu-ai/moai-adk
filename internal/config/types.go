@@ -531,6 +531,16 @@ type WorkflowConfig struct {
 	// opt-in shape, same default-OFF neutrality.
 	SubagentWriteGuard SubagentWriteGuardConfig `yaml:"subagent_write_guard"`
 
+	// CommitIdentityGuard gates the PreToolUse commit identity guard
+	// (SPEC-COMMIT-IDENTITY-GUARD-001). Default false: the guard ships INERT —
+	// when off, no repository-scope or identity probe subprocess ever runs and
+	// every shell call is allowed unchanged. A maintainer whose test suites
+	// have been known to poison the shared git config layer opts in via local
+	// config (deny_emails is ADDITIVE to the guard's built-in fixture list, it
+	// never shrinks it). Sibling of BranchGuard — same opt-in shape, same
+	// default-OFF neutrality.
+	CommitIdentityGuard CommitIdentityGuardConfig `yaml:"commit_identity_guard"`
+
 	// Jev gates the TypeSafe System One judgment capability (internal/jev).
 	// Default false: the capability ships INERT, and while it is off the
 	// package constructs no request and makes no network call at all
@@ -839,6 +849,17 @@ type AgentStopGuardConfig struct {
 // internal/template/templates/.
 type SubagentWriteGuardConfig struct {
 	Enabled bool `yaml:"enabled"`
+}
+
+// CommitIdentityGuardConfig mirrors workflow.commit_identity_guard.*
+// (SPEC-COMMIT-IDENTITY-GUARD-001). Enabled gates the whole guard: when false
+// (the distributed default) the pre-tool handler never invokes it, so no
+// `git rev-parse --git-common-dir` or `git var` probe subprocess runs at all.
+// DenyEmails is ADDED to the guard's built-in fixture-email list (REQ-CIG-008
+// — the union, never a replacement).
+type CommitIdentityGuardConfig struct {
+	Enabled    bool     `yaml:"enabled"`
+	DenyEmails []string `yaml:"deny_emails"`
 }
 
 // WorkflowJevConfig mirrors workflow.jev.* — the opt-in gate for the TypeSafe
