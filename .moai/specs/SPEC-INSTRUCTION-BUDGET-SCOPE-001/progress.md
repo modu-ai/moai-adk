@@ -231,6 +231,21 @@ ok  github.com/modu-ai/moai-adk/internal/template 0.333s
 
 **Neutrality sentinel demonstration** — executed at v0.8.0 with its full table in `plan.md` §B.4 (pre-check exit 0 → injected sentinel reported `TEMPLATE_NEUTRALITY_VIOLATION: class=C1-macos-bias-path` exit 1 → reverted, exit 0, tree clean). Confirmed as already executed; not re-run this round.
 
+### M3 — spec-workflow.md compression (measured after edit)
+
+Eight in-body compression edits, all dedup/tightening — no heading touched, no `[HARD]` line touched, frontmatter untouched: the Route A/B trigger vocabulary stated twice (§ SPEC Phase Discipline intro + § Phase Transitions intro) stated once; the per-transition Route A/B trigger pairs merged into single (A)/(B) bullets (Plan→Run, Run→Sync, Sync-close); the Agent Teams genealogy paragraph compressed with a pointer to `orchestration-mode-selection.md` §C.1; the skip-policy record sentence and the concurrent-pipeline tail tightened; the Gate Entry Condition's two mutually-redundant "every invocation" bullets merged. Measured after edit:
+
+```
+$ python3 -c "import io; print(len(io.open('.claude/rules/moai/workflow/spec-workflow.md',encoding='utf-8').read()))"
+39984          # was 40,797 — saved 813, under the 40,000 bound
+$ grep -c '\[HARD\]' .claude/rules/moai/workflow/spec-workflow.md
+4              # unchanged from the M0 baseline — no clause loss
+$ cmp -s <local> <template mirror> && echo identical
+mirror-identical
+```
+
+Anchor check: the externally-referenced headings all survive verbatim — `## SPEC Phase Discipline` (:19), `## Subcommand Classification (Pipeline vs Multi-Agent)` (:75), `## SPEC Complexity Tier (S/M/L)` (:130), `### DDD Mode — ANALYZE-PRESERVE-IMPROVE` (:201), `### TDD Mode — RED-GREEN-REFACTOR (default)` (:209), `## Phase Transitions` (:311). `go test -run '^TestWorkflowRulePathsPinned$' ./internal/template/` → ok (glob unchanged). AC-IBS-002a arm: **green** (40,797 → 39,984 by compression, no split).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
