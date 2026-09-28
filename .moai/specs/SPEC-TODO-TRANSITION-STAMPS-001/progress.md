@@ -157,4 +157,26 @@ residual_risks:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-29
+sync_commit_sha: pending-backfill-sync   # D3 backfill exemption — replaced by a following tiny commit with the real sync-commit SHA
+sync_status: completed
+sync_agent: manager-docs (card t1310)
+changelog_entry_position: [Unreleased] > Added > first entry (line 12 region, above SPEC-COMMIT-IDENTITY-GUARD-001)
+pre_emission_grep_count: 0               # grep -c 'SPEC-TODO-TRANSITION-STAMPS-001' CHANGELOG.md before emission
+ac_count_match: 12 distinct AC-TST-001..012 in acceptance.md == 12 referenced in CHANGELOG entry
+file_path_verification: all 15 implementation/test paths cited in the CHANGELOG entry verified present via ls
+frontmatter_status_transitions:
+  spec.md: in-progress -> implemented -> completed (merged sync close; updated: 2026-09-29, already current date — no edit needed)
+mx_tag_validation:
+  well_formed: yes
+  counts_by_file: {backlog_store.go: 16, backlog_migrate.go: 2}
+  added_by_sync: 0
+  removed_by_sync: 0
+  note: run phase placed all tags; landing_verdict.go exported funcs (EncodeLandingVerdict/DecodeLandingVerdict/LandingVerdictValue) carry no @MX tags — reported, not fixed (source edits out of sync scope)
+observed_context_not_judged:
+  - Security-Scanner flagged 3 sql-injection findings on the migration code (string-built ALTER TABLE with constant column names — ensureLandingColumn precedent pattern); sync-auditor judges
+canary_compliance_check:
+  template_neutrality: run-phase docs changed template gtd.md + mirror + catalog.yaml only; no SPEC ID / card id / internal date / commit SHA classes introduced by sync (sync touched no template files)
+```
+

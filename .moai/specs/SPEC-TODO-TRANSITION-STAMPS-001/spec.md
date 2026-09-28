@@ -2,7 +2,7 @@
 id: SPEC-TODO-TRANSITION-STAMPS-001
 title: "A queue with a time axis: transition stamps (picked_at, dropped_at) on items, an archive-time stamp and a persisted done-verdict landing record on archived_items, exposed through history"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-09-29
 updated: 2026-09-29
 author: manager-spec (card t1310)
