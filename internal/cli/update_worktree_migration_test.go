@@ -23,6 +23,9 @@ func migrationGit(t *testing.T, root string, args ...string) string {
 
 func migrationFixture(t *testing.T) (string, string, string) {
 	t.Helper()
+	previousCWDProbe := activeProcessCWDs
+	activeProcessCWDs = func() ([]string, error) { return nil, nil }
+	t.Cleanup(func() { activeProcessCWDs = previousCWDProbe })
 	root := filepath.Join(t.TempDir(), "project")
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		t.Fatal(err)
@@ -42,6 +45,33 @@ func migrationFixture(t *testing.T) (string, string, string) {
 	modern := filepath.Join(root, ".moai", "worktrees", "card")
 	migrationGit(t, root, "worktree", "add", "-q", "-b", "WT-migrate", old)
 	return root, old, modern
+}
+
+func TestLegacyWorktreeMigrationSkipsActiveProcessWithoutRegistry(t *testing.T) {
+	root, old, _ := migrationFixture(t)
+	if err := os.Mkdir(filepath.Join(old, "nested"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	activeProcessCWDs = func() ([]string, error) { return []string{filepath.Join(old, "nested")}, nil }
+	plans, err := planLegacyWorktreeMigration(root, time.Now())
+	if err != nil || len(plans) != 1 || plans[0].skip != "an active process is inside this worktree" {
+		t.Fatalf("active process was not protected: %#v, %v", plans, err)
+	}
+	if _, err := os.Stat(old); err != nil {
+		t.Fatalf("source lost: %v", err)
+	}
+}
+
+func TestLegacyWorktreeMigrationFailsClosedWhenProcessProbeFails(t *testing.T) {
+	root, old, _ := migrationFixture(t)
+	activeProcessCWDs = func() ([]string, error) { return nil, os.ErrPermission }
+	plans, err := planLegacyWorktreeMigration(root, time.Now())
+	if err != nil || len(plans) != 1 || !strings.Contains(plans[0].skip, "cannot inspect active process") {
+		t.Fatalf("unmeasured process state was not protected: %#v, %v", plans, err)
+	}
+	if _, err := os.Stat(old); err != nil {
+		t.Fatalf("source lost: %v", err)
+	}
 }
 
 func TestLegacyWorktreeMigrationPreservesGitAndWorkingFiles(t *testing.T) {

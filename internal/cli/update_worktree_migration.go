@@ -89,10 +89,17 @@ func planLegacyWorktreeMigration(root string, now time.Time) ([]worktreeMigratio
 	}
 	cwd, _ := os.Getwd()
 	var plans []worktreeMigrationPlan
+	var processCWDs []string
+	var processCWDsRead bool
+	var processCWDErr error
 	for _, entry := range entries {
 		rel, relErr := filepath.Rel(oldRoot, canonicalTreePath(entry.path))
 		if relErr != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 			continue
+		}
+		if !processCWDsRead {
+			processCWDs, processCWDErr = activeProcessCWDs()
+			processCWDsRead = true
 		}
 		plan := worktreeMigrationPlan{
 			source: entry.path, destination: filepath.Join(newRoot, rel),
@@ -105,6 +112,10 @@ func planLegacyWorktreeMigration(root string, now time.Time) ([]worktreeMigratio
 			plan.skip = "Git worktree is locked"
 		case isUnderWorktreePrefix(cwd, entry.path) || canonicalTreePath(cwd) == canonicalTreePath(entry.path):
 			plan.skip = "current process is inside this worktree"
+		case processCWDErr != nil:
+			plan.skip = fmt.Sprintf("cannot inspect active process working directories: %v", processCWDErr)
+		case processUsesWorktree(processCWDs, entry.path):
+			plan.skip = "an active process is inside this worktree"
 		case worktreeMigrationRegistryReadable(root, entry.path) != nil:
 			plan.skip = "session registry cannot be read"
 		case len(session.LiveAnchoredSessionsForProject(entry.path, root, now)) > 0:
@@ -121,6 +132,15 @@ func planLegacyWorktreeMigration(root string, now time.Time) ([]worktreeMigratio
 		plans = append(plans, plan)
 	}
 	return plans, nil
+}
+
+func processUsesWorktree(directories []string, tree string) bool {
+	for _, directory := range directories {
+		if canonicalTreePath(directory) == canonicalTreePath(tree) || isUnderWorktreePrefix(directory, tree) {
+			return true
+		}
+	}
+	return false
 }
 
 // moveLegacyWorktree uses Git's metadata-aware move and checks that the
