@@ -10,6 +10,11 @@ project instruction files only; a personal `~/.codex/AGENTS.md` does not shrink 
 truncated from the **tail**, silently — no warning, no stderr, exit 0. Clauses below are ordered
 most-critical-first for that reason.
 
+**Direct Codex startup.** When using `codex -C <worktree>` directly, read a present
+worktree-root `AGENTS.local.md` in full before other project work and follow it as local
+project guidance. If it exists but cannot be read, stop and report the failure. The
+MoAI Codex launcher injects this file before the session instead; see §8.
+
 This file is the canonical cross-harness contract. Shared detail lives in
 `.moai/policies/**` and `.moai/workflows/**`. When Claude is installed,
 `.claude/rules/moai/**` and `CLAUDE.md` expand Claude-only mechanisms (question
@@ -282,8 +287,9 @@ each input body under its own source header and passes the result as one Codex-s
 `developer_instructions` override. This contract never imports local guidance, which keeps it out of
 Codex's discovered chain. In a linked worktree, Claude Code resolves that import when the local
 file exists inside the worktree's checkout; it skips an absent file or one outside the project.
-Direct `codex -C <worktree>` uses Codex's `AGENTS.md` discovery and does not load a sibling local
-file. Use the MoAI Codex launcher from the existing worktree when local guidance is required.
+Direct `codex -C <worktree>` uses Codex's `AGENTS.md` discovery and does not preload a sibling
+local file. Direct sessions follow the startup rule above. The MoAI Codex launcher instead
+injects that content before the session starts.
 Other harness-local settings and memory remain owned by their harness.
 
 Codex Web sessions read `AGENTS.md`, but local `.codex/hooks.json`, the status line, and the MoAI

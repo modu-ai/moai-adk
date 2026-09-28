@@ -85,3 +85,14 @@ migrated file. The template and root
 post-swap probe required by `AC-LIR-009` has not passed. Do not merge or close this
 card on the structural checks alone. Raw outputs and exact baselines are in the
 same M2 verdict report.
+
+**Direct Codex follow-up (same worktree).** The root and template `AGENTS.md`
+now require a direct `codex -C` session to read a present worktree-root
+`AGENTS.local.md` before other project work. A new read-only Codex session
+with a generic startup-check prompt ran `cat AGENTS.local.md` (exit 0,
+37,061 output characters), then covered all 678 lines through `sed`, and
+replied `READY`. This establishes a tool-mediated direct entry path, while
+the MoAI launcher test above establishes pre-session injection. Neither
+substitutes for the still-unmeasured Claude post-swap leg. A separate
+minimal GLM API call returned HTTP 429 (`rate_limit_error`); its sanitized
+response is in `.moai/reports/t1290/m2-glm-rate-limit.json`.
