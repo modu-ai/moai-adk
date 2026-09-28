@@ -89,7 +89,7 @@ func TestLauncherWorktreeMoAIAbsPath(t *testing.T) {
 		t.Fatalf("project root: %v", err)
 	}
 	path := filepath.Join(root, ".moai", "worktrees", "existing")
-	if err := resolveWorktreeL2Path([]string{"-w", path}); err != nil {
+	if err := resolveWorktreeL2Path([]string{"-w", path}, io.Discard); err != nil {
 		t.Fatalf("MoAI worktree absolute path rejected: %v", err)
 	}
 }
