@@ -183,6 +183,12 @@ MoAI-ADK は上記の Claude Code メモリ基盤の上で動作します。プ�
 
 ファイルベースの永続メモリは、MoAI-ADK の **再帰的な自己学習** の原料でもあります。ループが回りながら残した観察 — ユーザーの訂正、失敗パターン、ルーティングの決定 — がメモリファイルに積み上がり、ハーネスがその蓄積をもとにスキルとエージェント指針を改善します。「ループが観察を蓄積し、ハーネスが学習して指針が進化する」という文の最初の輪が、まさにこのページのメモリメカニズムです。MoAI 固有のメモリ運用ルールとインデックス管理方式は、別のドキュメントで詳しく扱います。
 
+## MoAI-ADK プロジェクトのローカル指示 — `AGENTS.local.md`
+
+Claude Code 自体は `CLAUDE.local.md` を読みますが、MoAI-ADK のプロジェクトでは個人の指示を `AGENTS.local.md` に置きます。`CLAUDE.md` 末尾の `@AGENTS.local.md` の取り込みがこのファイルを Claude Code に読み込ませ、同じファイルを `moai codex` が Codex に渡します。共通の契約は `AGENTS.md`、Claude 専用の層は `CLAUDE.md`、個人の指示は `AGENTS.local.md` — これが 3 ファイル構成です。
+
+`CLAUDE.local.md` と `AGENTS.local.md` を両方置くと、Claude Code は両方を読み、似た指示が二重に読み込まれます。既存の `CLAUDE.local.md` は `moai migrate local-instructions` で移してください。両方のファイルがあるとこのコマンドは拒否するので、その場合は手作業でまとめます。
+
 ## 関連ドキュメント
 
 - [CLAUDE.md ガイド](/ja/advanced/claude-md-guide)

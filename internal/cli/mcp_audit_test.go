@@ -141,9 +141,10 @@ func TestMCPAudit_NoAskUserQuestion(t *testing.T) {
 	}
 }
 
-// TestMCPAudit_NoDirectFrontmatterRead (AC-MCP-015) — the model/effort SSOT
-// invariant: no direct agent-frontmatter or llm.agent_overrides read in the
-// MCP audit package. Resolution MUST go through template.ResolveAgentModelEffort.
+// TestMCPAudit_NoDirectFrontmatterRead (AC-MCP-015) — no agent-frontmatter or
+// llm.agent_overrides read in the MCP audit package: MoAI assigns no per-agent
+// model, so resolution is audit pin > backend default
+// (SPEC-AGENT-MODEL-INHERIT-001 design D5).
 func TestMCPAudit_NoDirectFrontmatterRead(t *testing.T) {
 	files := []string{"mcp_glm.go", "mcp_audit.go", "mcp_codex.go"}
 	for _, f := range files {
@@ -153,7 +154,7 @@ func TestMCPAudit_NoDirectFrontmatterRead(t *testing.T) {
 			if ln == "" || strings.Contains(ln, "//") {
 				continue
 			}
-			t.Errorf("%s: direct frontmatter/override read forbidden (use ResolveAgentModelEffort): %s", f, ln)
+			t.Errorf("%s: frontmatter/override read forbidden (resolution is audit pin > backend default): %s", f, ln)
 		}
 	}
 }

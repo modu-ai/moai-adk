@@ -292,35 +292,6 @@ type LLMConfig struct {
 	// fallback — a pin that silently fell back would re-expose the
 	// broken-release blast radius the pin exists to stop.
 	ClaudeBin string `yaml:"claude_bin,omitempty"`
-	// Performance tier: "high", "medium", "low" (canonical), plus "max" accepted
-	// as the superseded name of the top tier. Controls model selection for all
-	// sub-agents. Since the top column was renamed max -> high this axis shares the
-	// llm.profile vocabulary exactly; the tag keeps "max" so pre-rename configs
-	// still validate, and NormalizeProfile folds it to "high" on read.
-	PerformanceTier string `yaml:"performance_tier" validate:"omitempty,oneof=max high medium low"`
-	// Profile selects the active per-agent model+effort column, one of
-	// {high, medium, low} (REQ-MPM-001). The superseded top-column name "max" is
-	// accepted as a read-time alias. Absent/empty resolves via EffectiveProfile
-	// (profile → performance_tier alias → default medium). Closed-set validated
-	// by validateProfile.
-	Profile string `yaml:"profile"`
-	// Profiles mirrors the default profile matrix for transparency and user
-	// editability (REQ-MPM-010): profile → agent NAME → {model, effort}. The Go
-	// default (template.DefaultProfileMatrix) is the authoritative fallback for
-	// any cell absent from config. Pre-rename configs keyed by agent GROUP name
-	// simply miss on lookup and fall through to the Go default, so a stale
-	// mirror degrades rather than breaking.
-	Profiles map[string]map[string]ModelEffort `yaml:"profiles"`
-	// HarnessAgents is the profile → harness purpose class → {effort} map read by
-	// template.ResolveHarnessAgentModelEffort when /moai:harness generates a
-	// specialist. Only the Effort field is consumed: harness agents are pinned to
-	// template.HarnessAgentModel, so a Model value here is ignored. Absent
-	// entries fall through to the effort of the class's profile-matrix row.
-	HarnessAgents map[string]map[string]ModelEffort `yaml:"harness_agents"`
-	// AgentOverrides is an optional per-agent {model, effort} override keyed by
-	// canonical agent name, applied on top of the active profile's cell
-	// (REQ-MPM-006). Validated by validateAgentOverrides.
-	AgentOverrides map[string]ModelEffort `yaml:"agent_overrides"`
 	// Claude model mapping by tier
 	ClaudeModels ClaudeTierModels `yaml:"claude_models"`
 	// GLM API configuration
@@ -437,7 +408,7 @@ type WorkflowConfig struct {
 	// Config.DriftCacheFillEnabled.
 	//
 	// Default TRUE, and that is a deliberate departure from the workflow.*
-	// guard family (BranchGuard, AgentModelGuard, IntegrationLock, ...). Those
+	// guard family (BranchGuard, AgentStopGuard, IntegrationLock, ...). Those
 	// default to false because they ship INERT — the default is grounded on
 	// NEUTRALITY, not on "adds a deny". This feature is not inert when
 	// enabled: on every cache miss it starts an unsolicited child process. The
@@ -474,17 +445,15 @@ type WorkflowConfig struct {
 	// exemption logic (MOAI_BRANCH_GUARD_EXEMPT + manager-git identity).
 	BranchGuard BranchGuardConfig `yaml:"branch_guard"`
 
-	// AgentModelGuard gates the blocking layer of the PreToolUse agent-model
-	// guard. Default false: the observation and advisory layers always run,
-	// but no spawn is ever denied until a maintainer opts in via local config.
-	// Sibling of BranchGuard — same opt-in shape, same default-OFF neutrality.
-	AgentModelGuard AgentModelGuardConfig `yaml:"agent_model_guard"`
+	// A leftover workflow.agent_model_guard key is ignored on load: subagents
+	// inherit the main session's model, so no spawn is denied on the basis of
+	// its model (SPEC-AGENT-MODEL-INHERIT-001).
 
 	// AgentStopGuard gates the deny layer of the PreToolUse SendMessage
 	// stop-guard. Default false: TaskStop recording and SendMessage
 	// observation + advisory always run, but no send is ever denied until a
-	// maintainer opts in via local config. Sibling of BranchGuard /
-	// AgentModelGuard — same opt-in shape, same default-OFF neutrality.
+	// maintainer opts in via local config. Sibling of BranchGuard — same
+	// opt-in shape, same default-OFF neutrality.
 	AgentStopGuard AgentStopGuardConfig `yaml:"agent_stop_guard"`
 
 	// IntegrationLock gates the PreToolUse release-integration holder guard
@@ -511,8 +480,8 @@ type WorkflowConfig struct {
 	// cannot be determined, the auditor's verdict is refused adoption and the
 	// phase-entry spawns are denied until a later run of the same auditor is
 	// observed on the expected model. Default false: the observation row and
-	// the warning always run regardless of this value. Sibling of
-	// AgentModelGuard rather than a sub-key of it, for the SettingsDriftGate
+	// the warning always run regardless of this value. A bare `enabled` flag
+	// rather than a block, for the SettingsDriftGate
 	// reason — one flag gating two refusals at two surfaces cannot say which
 	// one a maintainer meant to turn off.
 	ServedModelGate ServedModelGateConfig `yaml:"served_model_gate"`
@@ -527,9 +496,19 @@ type WorkflowConfig struct {
 	// destructive-write guard (SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001). Default
 	// false: detection and the audit-log append always run, but no subagent
 	// Write is ever denied until a maintainer opts in via local config.
-	// Sibling of BranchGuard / AgentModelGuard / AgentStopGuard — same
-	// opt-in shape, same default-OFF neutrality.
+	// Sibling of BranchGuard / AgentStopGuard — same opt-in shape, same
+	// default-OFF neutrality.
 	SubagentWriteGuard SubagentWriteGuardConfig `yaml:"subagent_write_guard"`
+
+	// CommitIdentityGuard gates the PreToolUse commit identity guard
+	// (SPEC-COMMIT-IDENTITY-GUARD-001). Default false: the guard ships INERT —
+	// when off, no repository-scope or identity probe subprocess ever runs and
+	// every shell call is allowed unchanged. A maintainer whose test suites
+	// have been known to poison the shared git config layer opts in via local
+	// config (deny_emails is ADDITIVE to the guard's built-in fixture list, it
+	// never shrinks it). Sibling of BranchGuard — same opt-in shape, same
+	// default-OFF neutrality.
+	CommitIdentityGuard CommitIdentityGuardConfig `yaml:"commit_identity_guard"`
 
 	// Jev gates the TypeSafe System One judgment capability (internal/jev).
 	// Default false: the capability ships INERT, and while it is off the
@@ -581,70 +560,12 @@ type WorkflowConfig struct {
 	// Deprecated: use TokenBudget.Sync.
 	SyncTokens int `yaml:"-"`
 
-	// WorkflowAgents는 dynamic-workflow purpose 분류(7종) → {model, effort} 기본값
-	// 맵이다 (SPEC-WEB-CONSOLE-011 REQ-WC11-070/071). config 블록이 기본값의
-	// SSOT이고 per-script 리터럴이 override다 (dynamic-workflows.md §Config
-	// surface — JS 스크립트가 yaml 파일을 직접 읽는다).
-	//
-	// 소비 관계 (M5-a B2 정정 — verification-claim-integrity): 이 typed 필드는
-	// 로더가 채우는 스키마 표면이며, production Go 코드는 이 필드를 읽지
-	// 않는다 (grep 실측 — config/workflow_agents_test.go만 접근). 웹 콘솔은
-	// M5-a B1부터 이 블록을 렌더/쓰기하지 않는다. dynamic-workflow JS가
-	// yaml 파일에서 직접 읽는 소비자다. 블록 부재 시 nil (zero-value, 무오류).
-	WorkflowAgents map[string]WorkflowAgentEntry `yaml:"workflow_agents"`
-
-	// ModelRouting is the Tier x Phase -> {model, effort} routing map read by
-	// RouteModelFor(tier, phase). The key format is "<TIER>-<phase>" (e.g.
-	// "S-sync", "L-run"). This is the per-spawn COST axis, orthogonal to the
-	// Phase 4 mode-shape axis (direct / serial / fanout / sweep) — B (this
-	// field) decides model/effort, Phase 4 decides spawn shape; they compose,
-	// never compete.
-	// When the block is absent the map is nil and RouteModelFor falls back to
-	// the documented default entry with FallbackApplied=true.
-	ModelRouting map[string]ModelRoutingEntry `yaml:"model_routing"`
-
-	// ModelRoutingProfiles is the perfTier -> (Tier x Phase) -> {model, effort}
-	// 3-tier routing map read by RouteModelFor(specTier, phase, perfTier). The
-	// outer key is perfTier in {high, medium, low} (the superseded "max" name is
-	// accepted as a read-time alias); the inner key format is
-	// "<TIER>-<phase>" (e.g. "S-sync", "L-run"). This is the No-Haiku 3-tier
-	// cost axis (SPEC-AGENT-ARCH-V2-001 M3, design.md §D.5) — it supersedes the
-	// flat ModelRouting above for spawn-time routing. When the block is absent
-	// the map is nil and RouteModelFor falls back to the documented default
-	// entry with FallbackApplied=true.
-	ModelRoutingProfiles ModelRoutingProfiles `yaml:"model_routing_profiles"`
-
 	// Audit is the workflow.audit block (SPEC-MOAI-MCP-SERVER-001 REQ-MCP-010 /
 	// SPEC-AUDIT-MULTI-MODEL-001): the active audit_model token plus the
 	// per-auditor gates. When the block is absent the field is the zero value
 	// and callers resolve the distributed default profile via
 	// NewDefaultWorkflowConfig (claude required, codex required, glm advisory).
 	Audit AuditConfig `yaml:"audit"`
-}
-
-// ModelRoutingProfiles is perfTier -> (tier-phase) -> routing entry. perfTier
-// in {high, medium, low}; inner key "<TIER>-<phase>" (Tier in {S,M,L}, Phase in
-// {plan,run,sync,mx}). Loaded from workflow.yaml `model_routing_profiles`.
-type ModelRoutingProfiles map[string]map[string]ModelRoutingEntry
-
-// ModelRoutingEntry is a single Tier x Phase routing recommendation. It is a
-// NEW struct distinct from WorkflowAgentEntry because REQ-TR-002 mandates a
-// FallbackApplied indicator that WorkflowAgentEntry (which carries only
-// {Model, Effort}) does not have.
-type ModelRoutingEntry struct {
-	Model           string `yaml:"model"`
-	Effort          string `yaml:"effort"`
-	FallbackApplied bool   `yaml:"fallback_applied"`
-}
-
-// WorkflowAgentEntry는 dynamic-workflow purpose별 model/effort 기본값이다
-// (REQ-WC11-071 — design.md §C.2). retired된 team role-profile entry와 달리
-// Effort 필드를 가진다: role-profile effort는 Go-invisible opaque node
-// 결정(REQ-WEM-006)이었고, workflow_agents는 신설 typed 표면이라 그 결정의
-// 적용 대상이 아니다.
-type WorkflowAgentEntry struct {
-	Model  string `yaml:"model"`
-	Effort string `yaml:"effort"`
 }
 
 // AutoClearConfig mirrors workflow.auto_clear.* — context-window auto-clear policy.
@@ -806,17 +727,6 @@ type ServedModelGateConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
-// AgentModelGuardConfig mirrors workflow.agent_model_guard.* — the opt-in
-// blocking layer of the PreToolUse agent-model guard. When Enabled is false
-// (the distributed default) the guard still observes every Agent spawn and
-// still emits advisories, but it never returns a deny decision. Only the
-// mismatch verdict is blockable even when enabled; the far more common
-// missing verdict stays advisory, because blocking it would refuse nearly
-// every spawn.
-type AgentModelGuardConfig struct {
-	Enabled bool `yaml:"enabled"`
-}
-
 // AgentStopGuardConfig mirrors workflow.agent_stop_guard.* — the opt-in deny
 // layer of the PreToolUse SendMessage stop-guard. When Enabled is false (the
 // distributed default) the guard still records every TaskStop completion and
@@ -839,6 +749,17 @@ type AgentStopGuardConfig struct {
 // internal/template/templates/.
 type SubagentWriteGuardConfig struct {
 	Enabled bool `yaml:"enabled"`
+}
+
+// CommitIdentityGuardConfig mirrors workflow.commit_identity_guard.*
+// (SPEC-COMMIT-IDENTITY-GUARD-001). Enabled gates the whole guard: when false
+// (the distributed default) the pre-tool handler never invokes it, so no
+// `git rev-parse --git-common-dir` or `git var` probe subprocess runs at all.
+// DenyEmails is ADDED to the guard's built-in fixture-email list (REQ-CIG-008
+// — the union, never a replacement).
+type CommitIdentityGuardConfig struct {
+	Enabled    bool     `yaml:"enabled"`
+	DenyEmails []string `yaml:"deny_emails"`
 }
 
 // WorkflowJevConfig mirrors workflow.jev.* — the opt-in gate for the TypeSafe

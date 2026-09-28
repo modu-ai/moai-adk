@@ -7,8 +7,6 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: writing files, shell or Git execution, queue mutation, dispatch, merge, approval, or PASS/FAIL audit verdicts
 tools: Read, Grep, Glob, Skill
-model: inherit
-effort: high
 color: purple
 permissionMode: plan
 memory: project
@@ -39,4 +37,4 @@ executor owns schema validation and rejects any unrecognized or stale output.
 
 ## Model/effort escalation
 
-> **Model/effort escalation**: deep-reasoning escalation is an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
+> **Model/effort escalation**: this agent declares no `model` or `effort` and inherits the main session's, so deeper reasoning means a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.

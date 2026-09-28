@@ -39,7 +39,7 @@ func AgentDefinitionNames(root string) ([]string, error) {
 
 // AxisMembers returns the canonical membership of axis.
 //
-// retained is the canonical retained roster (template.ProfileMatrixAgents());
+// retained is the canonical retained roster (template.RetainedAgents());
 // definitions is the definition-file population. Both are passed in rather than
 // imported here so the same function is exercised by the control probe with
 // deliberately wrong input.

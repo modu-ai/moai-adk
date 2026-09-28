@@ -43,12 +43,16 @@ fields:
   # manager-git's "sonnet" pin is a documented drop below.
   model:
     emit: false
-  # model_reasoning_effort: identity mapping, P-02 MEASURED (codex-cli
-  # 0.147.0): all four values registered as agents AND belong to the binary's
-  # reasoning-effort enum {minimal, low, medium, high, xhigh}. Unmapped source
-  # effort fails emission (never a silent downgrade).
+  # model_reasoning_effort: NOT emitted. The source agents declare no effort —
+  # a subagent inherits the parent session's model and effort — so there is no
+  # value to map, and inheriting is exactly what an absent key does on Codex
+  # too. The map below is the P-02 MEASURED identity enumeration (codex-cli
+  # 0.147.0: all four values register and belong to the binary's
+  # reasoning-effort enum {minimal, low, medium, high, xhigh}); it stays for a
+  # re-enable, where an unmapped source effort fails emission (never a silent
+  # downgrade).
   model_reasoning_effort:
-    emit: true
+    emit: false
     map:
       low: low
       medium: medium
@@ -225,11 +229,11 @@ classes:
       unavailable — documented drop; the body prose already names which
       tools each agent uses.
   - class: effort
-    disposition: emit-field
-    field: model_reasoning_effort
+    disposition: omit
     rationale: >-
-      effort frontmatter maps to model_reasoning_effort through the measured
-      identity enumeration (P-02-confirmed); unmapped values fail emission.
+      Omitted — inherit the parent. The source agents declare no effort
+      frontmatter: a subagent takes the parent session's model and effort,
+      which is also what an absent model_reasoning_effort key means to Codex.
   - class: model
     disposition: omit
     rationale: >-
@@ -319,9 +323,9 @@ documented_drops:
   #   default_subagent_model: string — a SECOND precedence-winning model
   #     source (dual-source hazard, same shape as fields.model) and
   #     session-global.
-  #   default_subagent_reasoning_effort: string — no-op for moai: all 12
-  #     agents already carry per-agent model_reasoning_effort via the P-02
-  #     identity map, which overrides the global default.
+  #   default_subagent_reasoning_effort: string — not set by moai: a
+  #     subagent inherits the parent session's effort, and a session-global
+  #     default would re-pin it.
   #   interrupt_message: BOOL, default true — the docs' name implies a
   #     message string; MEASURED docs-schema mismatch (string value rc=1
   #     "invalid type: string, expected a boolean"; bool value rc=0).

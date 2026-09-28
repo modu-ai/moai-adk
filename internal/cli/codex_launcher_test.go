@@ -115,7 +115,7 @@ func withCodexLaunchCapture(t *testing.T) *codexLaunchCapture {
 		})
 		return cap.failDirectWith
 	}
-	codexSpawnLaunchFn = func(dir, program string, args []string) error {
+	codexSpawnLaunchFn = func(dir, program string, args, factoryEnv []string) error {
 		cap.add(codexLaunchRecord{
 			Program: program, Argv: append([]string{program}, args...), Dir: dir, Via: "spawn",
 		})
@@ -742,7 +742,7 @@ func TestCodexApp_OutputPassthroughSpawn(t *testing.T) {
 
 	prevLook, prevSpawn := codexLookPath, codexSpawnLaunchFn
 	codexLookPath = func(string) (string, error) { return fixture, nil }
-	codexSpawnLaunchFn = func(dir, program string, args []string) error {
+	codexSpawnLaunchFn = func(dir, program string, args, factoryEnv []string) error {
 		c := exec.Command(program, args...)
 		c.Dir = dir
 		// A new-window child inherits the window's streams — modeled here by
@@ -946,7 +946,7 @@ func TestCodexSpawnUnderLaneEnvRegistersNoFactoryPeer(t *testing.T) {
 	t.Cleanup(func() {
 		tmuxSpawnFn, codexSpawnPaneIdentityFn, codexSpawnCleanupPaneFn = oldSpawn, oldIdentity, oldCleanup
 	})
-	if _, err := withStdoutCapture(t, func() error { return defaultCodexSpawnLaunch(root, "/test/codex", nil) }); err != nil {
+	if _, err := withStdoutCapture(t, func() error { return defaultCodexSpawnLaunch(root, "/test/codex", nil, nil) }); err != nil {
 		t.Fatal(err)
 	}
 	if cleanups != 0 {

@@ -9,7 +9,7 @@ paths: "**/kanban-dispatch*.md,**/.claude/agents/moai/manager-lead.md,**/.claude
 
 ## Design intent — sub-agent-first token discipline
 
-The factory leader and lane sessions keep **only orchestration** in their context windows. Every unit of real work — research, authoring, implementation, verification sweeps — is delegated to `Agent()` sub-agents; the verbose output (tool results, file dumps, test logs) stays in the sub-agent's window, and only summaries return to the session. This is the token rationale for the whole architecture: a session that survives an entire card — or, in Factory Mode, an entire batch — would otherwise accumulate every card's raw output on top of the always-loaded prefix. The sections below (the manager-lead working mode, per-card fan-out, Factory in-lane 3-stage) are this intent expressed structurally.
+The factory leader and lane sessions keep **only orchestration** in their context windows. Every unit of real work — research, authoring, implementation, verification sweeps — is delegated to `Agent()` sub-agents; the verbose output (tool results, file dumps, test logs) stays in the sub-agent's window, and only summaries return to the session. The token rationale: a session surviving an entire card — or, in Factory Mode, a batch — would otherwise accumulate every card's raw output on top of the always-loaded prefix. The sections below express this structurally.
 
 ## Terminology — the board vocabulary
 
@@ -24,12 +24,12 @@ The factory leader and lane sessions keep **only orchestration** in their contex
 | **leader** | The single coordinating session (`moai cc -k`). Moves cards between columns on evidence it read itself, asks the operator to `/clear` companions between phases, never writes code. | The session that dispatched a card with its worktree instruction. |
 | **companion** | A session launched by hand, one terminal at a time (`moai cc -k --name <role>`), owning one column's work at a time. Named by its bare role; a second live session claiming the same role takes the next free number. | `plan`, `run`, `sync`. |
 | **run-id** | The short identifier the leader prints at launch. It lives in `MOAI_KANBAN_ID` and the leader socket path — no session name carries it, the leader's included (t133): every session is named by its role, and a second live claim on a role takes the next free number. | `a1b2c3` — printed in the leader's bootstrap notice; the session itself is named `leader`. |
-| **worktree** | The isolated checkout where a card's work happens, created through `moai worktree new` or a supported native launcher/tool and entered through the launcher (`moai cc -w <name>` / `moai codex -w <name>` / `EnterWorktree`), never raw `git worktree add`. The directory carries the card id; the branch carries a descriptive slug, `WT-<slug>` (≤3 hyphen tokens, ≤24 chars, no card id — `kanban-dispatch.md` § Isolation is provisioned by MoAI, then entered through a launcher). A worktree outlives a phase: one spans run through sync. | `.claude/worktrees/t0` on branch `WT-todo-queue`. |
+| **worktree** | The isolated checkout where a card's work happens — created by `moai worktree new` or a supported launcher and entered through one, never raw `git worktree add`. The directory carries the card id; the branch carries `WT-<slug>` (shape: the stub § Isolation is provisioned by MoAI). A worktree outlives a phase: one spans run through sync. | `.claude/worktrees/t0` on branch `WT-todo-queue`. |
 | **dispatch** | The leader's instruction to one companion: a pointer (card id, SPEC id, phase command, completion signal), never a copy of the work. Written in the operator's conversation_language. | "card: t0 — wt: EnterWorktree(t0) … evidence: .moai/reports/t0/". |
 
 The pair most easily confused: a **column** names a phase of the work (`run`); a **lane** names who carries one card through those phases (the `run` session in `.claude/worktrees/t0`). One is a stage on the board, the other is a stream through the stages.
 
-Factory Mode lanes are labelled `lane-1..lane-N` (`lane-<n>` is the session label, and `-f lane` joins as the next free one). A factory lane owns a card end to end rather than one column (§ Factory in-lane 3-stage); in Kanban Mode a lane is one column's session carrying its column's cards.
+Factory Mode lanes are labelled `lane-1..lane-N` (`lane-<n>` is the session label, and `-f lane` joins as the next free one). a factory lane owns a card end to end (§ Factory in-lane 3-stage), where a Kanban lane carries one column's cards.
 
 ## The board
 
@@ -39,7 +39,7 @@ Five columns, fixed and ordered:
 backlog → plan → run → sync → done
 ```
 
-`backlog` and `done` have no owning session. The three working columns between them each map to exactly one companion role, which is what makes dispatch a lookup rather than a decision. There is no `review` column: the review verdict is absorbed by the sync gate, which runs the review lenses itself (§ Review lens selection).
+Owners per column below (the definitions live in § Terminology — the board vocabulary); `review` is not a column — the verdict is absorbed by the sync gate, which runs the lenses itself (§ Review lens selection).
 
 | Column | Owning role | What happens there |
 |---|---|---|
@@ -51,7 +51,7 @@ backlog → plan → run → sync → done
 
 ## Report milestones ↔ queue cards
 
-The stub's [HARD] rule — a `## Card Cross-Check` section per milestone-bearing report, mapping claims verified against the queue — exists because report→card linkage used to live in one person's memory: a report declared milestones, cards were issued separately, and nothing reconciled the two. Milestones surfaced with no card, and cards claimed milestones that had already landed.
+The stub's [HARD] rule — a `## Card Cross-Check` section per milestone-bearing report, mapping claims verified against the queue — exists because report→card linkage used to live in one person's memory: a report declared milestones, cards were issued separately, and nothing reconciled the two — milestones surfaced with no card, cards claimed milestones already landed.
 
 The mechanical check runs the same comparison the leader states by hand:
 
@@ -73,7 +73,7 @@ Most of what accumulates in the backlog is chores: a one-line fix, a stale refer
 
 The Class-A evidence rule is the same shape as the CodeRabbit section of the stub: a class that skips review on a claim nobody checked is exactly the unobserved-claim hazard this rule forbids everywhere else; writing the justification down is not the same as verifying it.
 
-For Class A this inverts where the parallelism comes from. Handing three sessions a whole card each puts three cards in flight; pipelining one card through three columns puts one. Pipelining repays its handoff cost only when each column does substantial work, which is the Class C case — and research fan-out during `plan` is reserved for Class C for the same reason. Per-card fan-out (§ Per-card fan-out and sub-agent execution) is the across-cards axis layered on top of this; Factory Mode replaces the between-session pipelining entirely (§ Factory in-lane 3-stage).
+Class A inverts where the parallelism comes from: handing three sessions a whole card each puts three cards in flight; pipelining one card through three columns puts one, and pipelining repays its handoff cost only when each column does substantial work — the Class C case (research fan-out during `plan` is Class-C-only for the same reason). Per-card fan-out (§ Per-card fan-out and sub-agent execution) is the across-cards axis layered on top; Factory Mode replaces the between-session pipelining entirely (§ Factory in-lane 3-stage).
 
 ## The dispatch cycle
 
@@ -94,11 +94,11 @@ A bare name fails in two different ways, and only one of them announces itself. 
 | no `routing` object — the result names the peer (`… (another Claude session on this machine)`) | the companion session — **delivered** |
 | a `routing` object, e.g. `routing: {sender: "team-lead", target: "@<name>"}` | an in-process team mailbox — **lost** |
 
-So read a `routing` object as a failure signal and re-send to the `name [ref]` the listing printed. The two rows are not equally measured, and the table should not be read as if they were: the absent-`routing` row is directly observed — dispatches arriving normally, repeatedly — while the present-`routing` row rests on a single reported contrast experiment that sent both forms in one turn. That is enough to act on, because the cost of re-sending a delivered message is one duplicate and the cost of missing a lost one is a stalled board, but it is one measurement rather than a pattern.
+So read a `routing` object as a failure signal and re-send to the `name [ref]` the listing printed. The two rows are not equally measured: the absent-`routing` row is directly observed — dispatches arriving normally, repeatedly — while the present-`routing` row rests on one reported contrast experiment. That is enough to act on (re-sending a delivered message costs one duplicate; missing a lost one stalls a board), but it is one measurement rather than a pattern.
 
 Detecting the collision is the second line of defence. The first is not creating it: the leader spawns its coordination agent unnamed precisely so no in-process teammate ever carries a name a companion session also answers to (§ The leader works through manager-lead). Where that holds, this section never fires.
 
-**The collision is conditional, not universal.** A name no in-process teammate shares still delivers on the bare form, and bare-name dispatch is observed arriving normally in runs with no such teammate — so "always address by reference" would be a false rule, and the binding one is *read the result*. Companion names are role-shaped, and a spawned teammate can carry the same shape; where that overlap is plausible, address by `name [ref]` from the first send rather than after a lost one.
+**The collision is conditional, not universal.** A name no in-process teammate shares still delivers on the bare form — so "always address by reference" would be a false rule, and the binding one is *read the result*. Where a spawned teammate plausibly shares a companion's role-shaped name, address by `name [ref]` from the first send rather than after a lost one.
 
 This does not soften what moves the board. The queue on disk is still the delegation, evidence on disk is still what advances a card, and a dispatch that silently missed shows up as a card that never progressed — the message was only ever a nudge. Messaging-side mechanism: `cross-session-messaging-detail.md` § Addressing, sending, and replying.
 
@@ -133,7 +133,7 @@ The `-k` / `-f` leader session does not draft its own coordination: it spawns th
 
 The leader's turn loop is the scarcest surface on the board: a dispatch send, a CI watch, and a CodeRabbit poll each occupy it serially, and while it is occupied the leader cannot judge anything else. The deputy exists to move that occupancy. The leader session (still through manager-lead, still UNNAMED) delegates coordination duties to a background deputy instance whose charter — the delegable/retained matrix, the delivery-shape verification protocol, the standing messaging hazards — is codified in the agent itself (`.claude/agents/moai/manager-lead.md` § Deputy dispatch surface). This section adds only what the board sees of it.
 
-**Why the deputy is resident rather than optional.** An optional mechanism is one a loaded leader never reaches for: the turn the spawn would cost is the same turn the queue is waiting on, so the delegation is deferred exactly when it would pay most, and the surface goes unused while the serial pressure that motivated it keeps rising. Making the spawn a batch-start obligation (stub § Deputy dispatch surface) removes the decision from the moment of pressure. The cost is one background agent per batch whether or not the batch turns out to need it — deliberately accepted, because an unused deputy costs one spawn while an unspawned one costs every dispatch after it.
+**Why the deputy is resident rather than optional.** An optional mechanism is one a loaded leader never reaches for: the spawn's turn is the same turn the queue waits on, so the delegation is deferred exactly when it would pay most. Making the spawn a batch-start obligation (stub § Deputy dispatch surface) removes the decision from the moment of pressure. The cost is one background agent per batch whether or not the batch turns out to need it — deliberately accepted, because an unused deputy costs one spawn while an unspawned one costs every dispatch after it.
 
 **Reading the completion report.** A lane's completion report names evidence paths; reading those paths is several tool batches, and every one of them sits in the leader's turn. The deputy performs that read and returns a `RECOMMEND:` summary naming what it read. What moves is the occupancy, never the obligation: the leader still reads the evidence before advancing the card, because a deputy report is one more claim until the evidence under it has been read (stub § Completion is read, never trusted). A deputy that returns a conclusion without naming the paths it read has returned nothing usable — the naming is what lets the leader's own read be targeted rather than repeated from scratch.
 
@@ -196,7 +196,7 @@ The stub keeps the norm — the final PASS/FAIL verdict is the leader's, read fr
 
 The CodeRabbit predicate in the stub assumes the **combined** status endpoint, `/commits/{sha}/status`, which returns only the most recent status per context — measured on this repository, exactly one CodeRabbit entry per head. That assumption is the load-bearing part, so it is stated rather than left implicit: do not substitute the plural `/commits/{sha}/statuses`, which returns the full history newest-first. Measured on one head there: five CodeRabbit entries running from `Review queued` through `Review completed`, so a positional pick on that endpoint is wrong in one direction or the other — `last` selects the oldest. Where history is genuinely wanted, select by maximum `created_at` rather than by position.
 
-Branch protection is not the lever here. The status state is `success` in precisely the failing case, so adding CodeRabbit to the required contexts would admit the unreviewed pull request just as readily. The distinction lives in the description, and only a read of the description surfaces it — which is why an automated merge gate closing this hole does not close it on the path a human merges by hand.
+Branch protection is not the lever: the status state is `success` precisely in the failing case, so adding CodeRabbit to the required contexts admits the unreviewed pull request just as readily. The distinction lives in the description — which is why an automated merge gate closing this hole does not close the path a human merges by hand.
 
 ## Review lens selection
 
@@ -223,8 +223,8 @@ The leader's message to the operator states three things, in this order:
 
 Two properties make the shared checkout the wrong place for a card:
 
-- Several sessions read it at once, so a branch switch, a `git stash`, or a `git add -A` there sweeps another session's uncommitted work into a commit that was never meant to carry it.
-- A card outlives a phase. Its worktree spans run through sync, which is why disposal is triggered by the merge rather than by the phase finishing.
+- Several sessions read it at once, so a branch switch, a `git stash`, or a `git add -A` there sweeps another session's uncommitted work into a commit never meant to carry it.
+- A card outlives a phase — its worktree spans run through sync, which is why disposal triggers on the merge rather than the phase finishing.
 
 ## The pre-merge settings-drift assertion
 
@@ -244,7 +244,7 @@ Three properties of it are load-bearing.
 - **The verdict is the match count, never an exit code.** Zero lines is a pass, one or more is drift.
 - **A failed measurement is its own state.** `clean` / `drift` / `undetermined` are three states, not two with a fallback: an unmeasured tree that reports `clean` is precisely the nine-day silence, and the absence of a signal is not evidence of cleanliness.
 
-What happens on a hit, in order: the working copy is copied under the primary checkout's state directory (visible to the leader, who is not in the lane's tree), one row goes into `ledger.jsonl` beside it, and the path plus its sha256 and size are reported. The file's contents are never printed and never committed — it is runtime-written and can carry tokens, absolute paths, and pane ids, so it stays untracked and promoting it into history needs a human secret-scan first.
+On a hit: the working copy is preserved under the primary checkout's state directory (visible to the leader, who is not in the lane's tree), one row goes into `ledger.jsonl` beside it, and the path plus its sha256 and size are reported. Contents are never printed and never committed — the file is runtime-written and can carry tokens, absolute paths, and pane ids; promoting it into history needs a human secret-scan first.
 
 **Nothing is ever restored, reverted, or deleted.** For the same reason: an automatic restore of a file holding machine-specific values is itself data destruction. Disposal is a human decision.
 

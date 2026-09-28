@@ -5,6 +5,7 @@
 > `go.mod`에서 직접 읽었습니다(`go 1.26.8`).
 
 **모듈**: `github.com/modu-ai/moai-adk` · **Go**: 1.26.8
+**현재 부분 재측정**: worktree `.moai/worktrees/t1295`, 브랜치 `WT-codemaps-freshness`, base `cee197917`, 카드 t1295. 앵커 `fdc5361c3` 뒤 비테스트 Go 소스 81개가 바뀌었다. 아래 규모 표는 이 트리에서 `find`와 `go list -deps -json ./...`로 다시 셌다. 이번 내용 갱신은 MoAI 워크트리 위치·이전 경로와 Factory 역할 전환에 한정한다. 과거 판의 변경 설명은 이력으로 남긴다.
 **최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
 **재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — § 규모 표 전체, § 구조 판정의 수치, 레이어 표의 대표 패키지, § 도식에 들어맞지 않는 패키지의 파일 수와 신규 항목(`internal/mission`·`internal/codextools`). 측정 명령은 각 표의 산출 명령 칸에 있습니다. 파일 크기(KB) 서술은 이번에 다시 쟀고, 그 밖의 서술형 판단은 앞 판을 이어받았습니다.
 **정정 재측정**: worktree `.claude/worktrees/t872`, 브랜치 `WT-codemaps-citations`, HEAD `9a8cc4277`, 2026-09-18 — § 규모 표의 다섯 값(비테스트·테스트 파일 수, 패키지 총수, 최상위 디렉터리 수)과 테스트 전용 디렉터리 서술. 위 재측정 직후 한 패키지가 삭제돼 그만큼만 다시 쟀고, 나머지 값(엣지 365/222, 임베드 589)은 같은 명령으로 재확인해 변동이 없었습니다.
@@ -12,7 +13,7 @@
 **정기 재측정**: worktree `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`, 2026-09-22 — § 규모 표의 여섯 값(비테스트·테스트 파일 수, 패키지 총수, 최상위 디렉터리 수, 엣지 둘)과 § 구조 판정의 `internal/cli` import 수, § 들어맞지 않는 패키지의 파일 수 두 곳(`internal/hook` · `internal/homestate`), 신규 패키지 3개(`internal/jev` · `internal/jevcred` · `internal/jevmeasure`)의 서술. 각 값의 산출 명령은 표 안에 있고 전부 이 트리에서 직접 실행했습니다. 임베드 템플릿 파일 수(588)와 테스트 0 패키지 4개·테스트 전용 디렉터리 1개도 같은 명령으로 재확인해 변동이 없었습니다.
 **부분 재측정**: worktree `.claude/worktrees/t1092`, 브랜치 `WT-codemaps-restamp`, base `08113ff0f`, 2026-09-23 — 카드 t1092. § 규모 표 일곱 값을 같은 명령으로 다시 쟀습니다 — 비테스트 1259→1272, 테스트 2155→2190, 패키지 총수 151→152(신규 `internal/factorymsg`), 최상위 디렉터리 77→78(`internal` 73→74), 내부 import 엣지 378→381(패키지 단위)·234→237(최상위 집계), 임베드 템플릿 588→589. § 구조 판정·§ 도식에 들어맞지 않는 패키지 절은 이번 변경과 무관해 손대지 않았습니다.
 
-**현재 재측정**: worktree `.claude/worktrees/t1274`, 브랜치 `WT-codemaps-refresh4`, base `cf4b82755`, 2026-09-26 — 카드 t1274. `find internal cmd pkg`로 비테스트·테스트 Go 파일을, `go list ./...`로 패키지를, `go list -f '{{.ImportPath}} {{join .Imports " "}}' ./...` 후 모듈 경로 필터로 내부 import 엣지를, `find internal/template/templates -type f`로 임베드 원본을 다시 셌습니다. 앵커 `4a05fd3d6`(card t1238) 이후 described-worthy(비테스트 Go·testdata 제외) 끝점 변경은 52개이며, 이번 판은 신규 패키지 `internal/escalation`(+`escalationtest`) 서술과 `internal/cli`·`internal/hook`·`internal/config`·`internal/auditreceipt` 행 갱신으로 반영했습니다. 아래 규모 표의 값은 이 트리의 값으로 갱신했습니다.
+**이전 재측정**: worktree `.claude/worktrees/t1274`, 브랜치 `WT-codemaps-refresh4`, base `cf4b82755`, 2026-09-26 — 카드 t1274. `find internal cmd pkg`로 비테스트·테스트 Go 파일을, `go list ./...`로 패키지를, `go list -f '{{.ImportPath}} {{join .Imports " "}}' ./...` 후 모듈 경로 필터로 내부 import 엣지를, `find internal/template/templates -type f`로 임베드 원본을 다시 셌습니다. 앵커 `4a05fd3d6`(card t1238) 이후 described-worthy(비테스트 Go·testdata 제외) 끝점 변경은 52개이며, 이번 판은 신규 패키지 `internal/escalation`(+`escalationtest`) 서술과 `internal/cli`·`internal/hook`·`internal/config`·`internal/auditreceipt` 행 갱신으로 반영했습니다. 아래 규모 표의 값은 이 트리의 값으로 갱신했습니다.
 
 **이전 재측정**: worktree `.claude/worktrees/t1187`, 브랜치 `WT-codemaps-source-refresh`, HEAD `a8a9b9376`, 2026-09-25 — 카드 t1187. `find internal cmd pkg`로 비테스트·테스트 Go 파일을, `go list ./...`로 패키지를, `go list -f '{{.ImportPath}} {{join .Imports " "}}' ./...`로 내부 import 엣지를, `find internal/template/templates -type f`로 임베드 원본을 다시 셌습니다. 앵커 `bd71c59e4` 이후 끝점 변경은 전체 126개 파일 중 게이트가 세는 비테스트 Go 소스 41개입니다. 아래 규모 표의 값은 이 트리의 값으로 갱신했습니다.
 
@@ -22,19 +23,19 @@
 
 | 값 | 수치 | 산출 명령 |
 |---|---|---|
-| 비테스트 Go 파일 | 1361 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
-| 테스트 Go 파일 | 2439 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
-| Go 패키지 총수 | 157 | `go list ./... \| wc -l` (`scripts/` 하위 main 3개 포함) |
-| 최상위 디렉터리 | 80 | `internal` 76(`ls -d internal/*/`) + `cmd` 2(`moai`, `t657-merge`) + `pkg` 2 |
-| 내부 import 엣지 (패키지 단위) | 409 | `go list -f '{{.ImportPath}} {{join .Imports " "}}' ./...` 후 모듈 경로 필터 |
-| 내부 import 엣지 (최상위 집계) | 256 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
-| 임베드 템플릿 파일 | 592 | `find internal/template/templates -type f \| wc -l` |
+| 비테스트 Go 파일 | 1419 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
+| 테스트 Go 파일 | 2544 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
+| Go 패키지 총수 | 164 | `go list ./... \| wc -l` |
+| 최상위 디렉터리 | 82 | `internal` 78(`ls -d internal/*/`) + `cmd` 2 + `pkg` 2 |
+| 내부 import 엣지 (패키지 단위) | 452 | `go list -deps -json ./...`의 프로젝트 패키지 `Imports` 중 내부 경로 |
+| 내부 import 엣지 (최상위 집계) | 278 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
+| 임베드 템플릿 파일 | 598 | `find internal/template/templates -type f \| wc -l` |
 
-테스트 대 비테스트 비율이 **1.76 : 1**입니다. 테스트 파일이 0인 패키지는 4개이고
-넷 다 main 패키지입니다(§ `modules.md` 참조). `internal` 74개 디렉터리 중
-`internal/skills` 하나만 비테스트 Go 파일이 0개인 테스트 전용 디렉터리입니다. 이 두 서술은
-이번 판에서 `go list -f '{{.ImportPath}} {{len .TestGoFiles}} {{len .XTestGoFiles}}'`와
-`{{len .GoFiles}}`로 각각 다시 확인했습니다.
+테스트 대 비테스트 비율은 **1.79 : 1**입니다. `go list`의 패키지 가운데 테스트 Go 파일이
+0개인 곳은 6개입니다. 그중 `cmd/moai`·`cmd/t657-merge`·`internal/template/scripts`·
+`scripts/convert-nextra-to-hextra`는 실행 파일이고, `internal/closure/closuretest`·
+`internal/escalation/escalationtest`는 다른 패키지의 테스트가 쓰는 픽스처입니다.
+`internal/skills`는 비테스트 Go 파일이 없는 테스트 전용 디렉터리입니다.
 
 > **엣지 수 정정 이력.** 앵커 `25a3212a9` 판은 패키지 단위 엣지를 1638로 적었지만 당시
 > 명령 문자열이 생략형이라 재현할 수 없었습니다. 이후 `52f863f36` 판은 완전한 명령으로
@@ -60,7 +61,7 @@
 
 ### 헥사고날에 부합하는 근거
 
-- `cmd/` · `internal/` · `pkg/` 3분할과 `internal/`의 74개 디렉터리 분해는 표준 레이아웃 그대로입니다.
+- `cmd/` · `internal/` · `pkg/` 3분할과 `internal/`의 78개 디렉터리 분해는 표준 레이아웃 그대로입니다.
 - 합성 루트가 명시적으로 하나 있습니다 — `internal/cli/deps.go`의 `Dependencies` 구조체와
   `InitDependencies()`. `git.Repository`, `hook.Registry`, `hook.Protocol`, `update.Checker`,
   `update.Orchestrator` 같은 인터페이스 타입으로 조립하므로 포트/어댑터 의도가 보입니다.

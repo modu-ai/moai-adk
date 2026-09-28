@@ -304,7 +304,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		}
 	}
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: see cc.go for the rationale.
-	if err := resolveWorktreeL2Path(filteredArgs); err != nil {
+	if err := resolveWorktreeL2Path(filteredArgs, cmd.ErrOrStderr()); err != nil {
 		return err
 	}
 	// Card t295: see cc.go — `-w <name> --branch <existing>` creation path.
@@ -312,6 +312,10 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-006: launcher-entry backfill, at the same
+	// post-validation point the cc flow applies it after its writer precheck —
+	// the glm flow has no moai-side refusal, so this is the admitted point (audit F0).
+	seedAdmittedWorktreeHooks(filteredArgs, cmd.ErrOrStderr())
 	filteredArgs = normalizeWorktreeFlag(filteredArgs)
 
 	// Auto mode is not available with third-party providers (GLM/Z.AI).
@@ -792,15 +796,6 @@ func llmSectionSemanticallyEqual(a, b config.LLMConfig) bool {
 // equivalence: "key absent" and "key present but empty" carry no different
 // intent for these mirrors.
 func normalizeLLMSectionMaps(c *config.LLMConfig) {
-	if c.Profiles == nil {
-		c.Profiles = map[string]map[string]config.ModelEffort{}
-	}
-	if c.HarnessAgents == nil {
-		c.HarnessAgents = map[string]map[string]config.ModelEffort{}
-	}
-	if c.AgentOverrides == nil {
-		c.AgentOverrides = map[string]config.ModelEffort{}
-	}
 	if c.GLM.ContextWindows == nil {
 		c.GLM.ContextWindows = map[string]int{}
 	}

@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
 )
 
@@ -34,7 +33,9 @@ import (
 //
 // REUSE NOTE (card t1051): recordingSeams below is the injection harness for
 // observing save-failure behaviour generally — the logging-surface probe in
-// save_observability_test.go drives it for every one of the nine seams.
+// save_observability_test.go drives it for every persistence seam. Steps 7
+// (applyPerfTierEdits) and 8 (patchAgentFM) left with the agent-settings tab
+// (SPEC-AGENT-MODEL-INHERIT-001); the remaining step numbers are unchanged.
 
 // saveStep names one persistence step of handleSave in execution order.
 type saveStep string
@@ -46,14 +47,12 @@ const (
 	stepWriteProjectCfg  saveStep = "4 writeProjectConfig"
 	stepWriteNested      saveStep = "5 writeProjectNestedConfig"
 	stepApplySchema      saveStep = "6 applySchemaEdits"
-	stepApplyPerfTier    saveStep = "7 applyPerfTierEdits"
-	stepPatchAgentFM     saveStep = "8 patchAgentFM"
 	stepGlmcredSave      saveStep = "9 glmcred.Save"
 	stepJevcredSave      saveStep = "10 jevcred.Save"
 )
 
 // injectableSteps is the execution-ordered list of steps this harness can
-// fail. All nine persistence seams are injectable as of card t1051 — the
+// fail. Every persistence seam is injectable as of card t1051 — the
 // three former package-level calls were promoted to app fields
 // (SPEC-WEB-CONSOLE-017 HARD-2). The original seven-entry numbering is
 // preserved verbatim; the new constants fill the gaps in the inventory.
@@ -63,8 +62,6 @@ var injectableSteps = []saveStep{
 	stepWriteProjectCfg,
 	stepWriteNested,
 	stepApplySchema,
-	stepApplyPerfTier,
-	stepPatchAgentFM,
 	stepGlmcredSave,
 	stepJevcredSave,
 }
@@ -85,10 +82,8 @@ func recordingSeams(a *app, calls *[]saveStep, failAt saveStep) {
 	a.writeProjectConfig = func(string, string, string) error { return record(stepWriteProjectCfg) }
 	a.writeProjectNestedConfig = func(string, projectNestedForm) error { return record(stepWriteNested) }
 	a.applySchemaEdits = func(string, map[string]string) error { return record(stepApplySchema) }
-	a.patchAgentFM = func(string, map[string]config.ModelEffort, []string) error { return record(stepPatchAgentFM) }
-	// Card t1051 (SPEC-WEB-CONSOLE-017 HARD-2): the three former package-level
-	// calls, now app fields — same recorder, no signature change anywhere.
-	a.applyPerfTierEdits = func(string, string) error { return record(stepApplyPerfTier) }
+	// Card t1051 (SPEC-WEB-CONSOLE-017 HARD-2): the former package-level
+	// credential calls, now app fields — same recorder, no signature change.
 	a.glmcredSave = func(string) error { return record(stepGlmcredSave) }
 	a.jevcredSave = func(string) error { return record(stepJevcredSave) }
 }
@@ -135,7 +130,6 @@ func TestPartialApplyOrderPositiveControl(t *testing.T) {
 	want := []saveStep{
 		stepWritePreferences, stepSyncToProject,
 		stepWriteProjectCfg, stepWriteNested, stepApplySchema,
-		stepApplyPerfTier, stepPatchAgentFM,
 		stepGlmcredSave, stepJevcredSave,
 	}
 	if len(calls) != len(want) {

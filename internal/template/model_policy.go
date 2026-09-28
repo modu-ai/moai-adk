@@ -1,15 +1,5 @@
 package template
 
-import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"regexp"
-	"slices"
-
-	"github.com/modu-ai/moai-adk/internal/config"
-)
-
 // ModelPolicy represents the token consumption tier for agent models.
 type ModelPolicy string
 
@@ -172,76 +162,8 @@ const (
 	EffortLevelMax = "max"
 )
 
-// Performance tier tokens — the canonical {high, medium, low} vocabulary of the
-// --model-policy CLI flag and the legacy performance_tier axis (the read-time
-// alias source for llm.profile). Named constants per CLAUDE.local.md §14.
-//
-// Since the top column was renamed max -> high, these tokens are now identical
-// to both the ModelPolicy vocabulary above and config.ValidProfiles(); the three
-// axes no longer disagree, so MapModelPolicyToTier is an identity.
-const (
-	// PerformanceTierHigh is the highest-quality tier column.
-	PerformanceTierHigh = "high"
-	// PerformanceTierMedium is the balanced default tier column.
-	PerformanceTierMedium = "medium"
-	// PerformanceTierLow is the economical tier column.
-	PerformanceTierLow = "low"
-	// LegacyPerformanceTierMax is the superseded name of the top tier, accepted
-	// as a read-time alias and never written back.
-	LegacyPerformanceTierMax = "max"
-)
-
-// performanceTierRegex matches the performance_tier: line in llm.yaml.
-var performanceTierRegex = regexp.MustCompile(`(?m)^(\s*)performance_tier:\s*["']?[\w-]*["']?`)
-
-// ValidPerformanceTiers returns the closed set of valid No-Haiku performance
-// tiers. The legacy max alias is readable but never offered.
-func ValidPerformanceTiers() []string {
-	return []string{PerformanceTierHigh, PerformanceTierMedium, PerformanceTierLow}
-}
-
-// IsValidPerformanceTier checks if the given string is a valid performance tier,
-// accepting the superseded max alias for the top tier.
-func IsValidPerformanceTier(s string) bool {
-	return slices.Contains(ValidPerformanceTiers(), config.NormalizeProfile(s))
-}
-
-// ApplyPerformanceTier patches the performance_tier field in llm.yaml under
-// the given project root. It reads .moai/config/sections/llm.yaml, replaces the
-// performance_tier: line with the new tier value, and writes the file back.
-// Returns nil if the file is absent (graceful no-op). The tier MUST be
-// validated by the caller.
-//
-// @MX:ANCHOR: [AUTO] ApplyPerformanceTier — performance_tier persistence entry point
-// @MX:REASON: fan_in >= 2 (init.go, web save)
-func ApplyPerformanceTier(projectRoot, tier string) error {
-	// The superseded top-tier name is readable but never written back, so the two
-	// persisted axes (profile + performance_tier) cannot disagree.
-	tier = config.NormalizeProfile(tier)
-	llmPath := filepath.Join(projectRoot, ".moai", "config", "sections", "llm.yaml")
-	content, err := os.ReadFile(llmPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return fmt.Errorf("read llm.yaml: %w", err)
-	}
-
-	replacement := "${1}performance_tier: " + tier
-	newContent := performanceTierRegex.ReplaceAll(content, []byte(replacement))
-
-	if string(newContent) == string(content) {
-		return nil
-	}
-
-	if err := os.WriteFile(llmPath, newContent, 0o644); err != nil {
-		return fmt.Errorf("write llm.yaml: %w", err)
-	}
-	return nil
-}
-
-// ModelInherit is the exported "inherit" model sentinel — the profile-matrix
-// vocabulary for "no per-agent model routing". Two surfaces use it: agents
+// ModelInherit is the exported "inherit" model sentinel — the vocabulary for
+// "no per-agent model routing", kept for the served-model expectation logic.
 // whose profile model is inherit (user-added agents with no group membership)
 // are never injected, and under a GLM backend every mapped agent's model is
 // session-inherited (the t66 fold: the launcher maps llm.glm.models onto the
@@ -250,25 +172,6 @@ func ApplyPerformanceTier(projectRoot, tier string) error {
 // built-in Explore now has an explicit explore group cell (sonnet/low) and is
 // no longer an inherit agent.
 const ModelInherit = "inherit"
-
-// MapModelPolicyToTier translates a template.ModelPolicy value
-// ({high, medium, low}) to the canonical performance tier ({high, medium, low}).
-// Since the top tier was renamed max -> high the mapping is now an IDENTITY on
-// every member; the function is retained as the named projection site so call
-// sites keep a single place to reason about the two axes. An empty or
-// unrecognized policy falls back to the medium tier (default-when-absent).
-func MapModelPolicyToTier(policy ModelPolicy) string {
-	switch policy {
-	case ModelPolicyHigh:
-		return PerformanceTierHigh
-	case ModelPolicyMedium:
-		return PerformanceTierMedium
-	case ModelPolicyLow:
-		return PerformanceTierLow
-	default:
-		return PerformanceTierMedium
-	}
-}
 
 // MapModelPolicyToEffort translates a template.ModelPolicy value
 // ({high, medium, low}) to the runtime-LAUNCH effort level vocabulary
@@ -289,39 +192,4 @@ func MapModelPolicyToEffort(policy ModelPolicy) string {
 	default:
 		return ""
 	}
-}
-
-// NormalizeToTier resolves any performance-policy string to the canonical tier
-// vocabulary {high, medium, low}. Canonical tokens pass through; the superseded
-// top-tier name "max" is folded to "high" via config.NormalizeProfile; anything
-// else is bridged through MapModelPolicyToTier, which falls back to the medium
-// tier. This is the call-site resolver used by the init/update apply paths and
-// llm.profile persistence.
-func NormalizeToTier(s string) string {
-	if IsValidPerformanceTier(s) {
-		return config.NormalizeProfile(s)
-	}
-	return MapModelPolicyToTier(ModelPolicy(s))
-}
-
-// performanceTierValueRegex captures the persisted performance_tier value
-// (group 1) from llm.yaml, requiring a non-empty value (an empty
-// `performance_tier: ""` falls through to the medium default).
-var performanceTierValueRegex = regexp.MustCompile(`(?m)^\s*performance_tier:\s*["']?([\w-]+)["']?`)
-
-// ResolveProjectPerformanceTier reads the persisted performance_tier from the
-// project's llm.yaml (the legacy alias axis). An absent file, an absent/commented
-// performance_tier key, or an empty value resolves to the medium default. Any
-// explicit value passes through verbatim; NormalizeToTier at the apply site
-// bridges legacy vocabularies.
-func ResolveProjectPerformanceTier(projectRoot string) string {
-	llmPath := filepath.Join(projectRoot, ".moai", "config", "sections", "llm.yaml")
-	content, err := os.ReadFile(llmPath)
-	if err != nil {
-		return PerformanceTierMedium
-	}
-	if m := performanceTierValueRegex.FindSubmatch(content); len(m) >= 2 && len(m[1]) > 0 {
-		return string(m[1])
-	}
-	return PerformanceTierMedium
 }

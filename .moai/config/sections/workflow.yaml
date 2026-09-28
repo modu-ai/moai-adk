@@ -163,6 +163,15 @@ workflow:
     # the guard is active.
     branch_guard:
         enabled: true
+    # commit_identity_guard: refuse a shell command that would create a commit
+    # under a known test-fixture identity (SPEC-COMMIT-IDENTITY-GUARD-001
+    # root cause: a fixture identity written into the shared .git/config
+    # poisoned thousands of develop commits). deny_emails is additive to the
+    # guard's built-in fixture list. Local opt-in for dogfood; shipped
+    # default-false in template (internal/config/defaults.go enforces this).
+    commit_identity_guard:
+        enabled: true
+        deny_emails: []
     # drift_cache_fill: the out-of-band drift-cache fill started from the
     # SessionStart miss path. Unlike the guard family around it, this key ships
     # ENABLED (internal/config/defaults.go is the SSOT) — the feature is not

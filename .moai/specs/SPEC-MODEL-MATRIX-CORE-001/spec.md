@@ -2,9 +2,10 @@
 id: SPEC-MODEL-MATRIX-CORE-001
 title: "Profile matrix core — 33-cell agent-direct matrix + leaderboard verification"
 version: "0.1.0"
-status: in-progress
+status: superseded
+superseded_by: SPEC-AGENT-MODEL-INHERIT-001
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-29
 author: manager-spec
 priority: P1
 phase: "v3.1.0 target"

@@ -172,63 +172,6 @@ func GLMReasoningStateNames() []string {
 	return []string{GLMStateMax, GLMStateHigh, GLMStateLow}
 }
 
-// glmCodingMaxOverrideAgents is the coding-max override set (REQ-MTP-028): the
-// single code-producing run-phase agent that z.ai recommends reasoning_effort:
-// max for coding tasks. manager-develop runs run-phase implementation at Claude
-// effort xhigh. builder-harness was removed by SPEC-GLM-EFFORT-TUNE-001 P1 — its
-// artifact-scaffolding role falls under the standard collapse (which, post
-// SPEC-GLM-EFFORT-MAX-001, already yields max for every effort above low) per
-// the CG-mode cost-reduction goal. No other retained agent is overridden. Named
-// constant collection per §14.
-var glmCodingMaxOverrideAgents = map[string]bool{
-	"manager-develop": true,
-}
-
-// IsGLMCodingMaxOverrideAgent reports whether the agent is in the coding-max
-// override set (REQ-MTP-028).
-func IsGLMCodingMaxOverrideAgent(agentName string) bool {
-	return glmCodingMaxOverrideAgents[agentName]
-}
-
-// GLMCodingMaxOverrideAgents returns a copy of the coding-max override set as a
-// slice (unordered), for tests and display surfaces to assert the set membership
-// is exactly {manager-develop} (singleton post SPEC-GLM-EFFORT-TUNE-001 P1).
-func GLMCodingMaxOverrideAgents() []string {
-	out := make([]string, 0, len(glmCodingMaxOverrideAgents))
-	for name := range glmCodingMaxOverrideAgents {
-		out = append(out, name)
-	}
-	return out
-}
-
-// ResolveGLMReasoning returns the per-agent GLM reasoning state under a GLM
-// backend (REQ-MTP-028): agents in the coding-max override set force the `max` level
-// REGARDLESS of their collapse result; every other agent uses the collapse of its
-// Claude effort. This is the per-agent overlay logic; it stays defined and
-// unit-tested even when the delivery wire carries only a session-level value (the
-// delivery-granularity limitation, research.md §D).
-func ResolveGLMReasoning(agentName, claudeEffort string) GLMReasoningState {
-	if IsGLMCodingMaxOverrideAgent(agentName) {
-		// Coding-max override (z.ai coding-task recommendation) — lifts the collapse
-		// result to the `max` level for the code-producing run-phase agent (manager-develop).
-		return glmReasoningMax
-	}
-	return CollapseClaudeEffortToGLM(claudeEffort)
-}
-
-// ResolveGLMReasoningForModel is the model-aware per-agent resolution: under
-// glm-5.3-flash the result is the `max` state regardless of agent or effort
-// (flash accepts reasoning_effort: max only — see
-// CollapseClaudeEffortToGLMForModel); for every non-flash model it delegates
-// to the model-unaware ResolveGLMReasoning (coding-max override + collapse)
-// unchanged.
-func ResolveGLMReasoningForModel(model, agentName, claudeEffort string) GLMReasoningState {
-	if IsGLMFlashModel(model) {
-		return glmReasoningMax
-	}
-	return ResolveGLMReasoning(agentName, claudeEffort)
-}
-
 // SessionGLMReasoningState derives the SESSION-GLOBAL GLM reasoning state for the
 // Branch-B explicit-write delivery (REQ-MTP-030, raised to the `max` state by
 // REQ-GEM-002 — leader-ratified 2026-08-22, superseding REQ-GER-004 of the stalled
@@ -249,9 +192,10 @@ func ResolveGLMReasoningForModel(model, agentName, claudeEffort string) GLMReaso
 //  3. `max` is z.ai's own omit-default and its coding-task recommendation — the
 //     session default stops fighting the backend's native default.
 //
-// The per-agent collapse+override logic (ResolveGLMReasoning) remains defined and
-// unit-tested — the wire carries this session-level derived value (the documented
-// delivery-granularity limitation, research.md §D).
+// The former per-agent collapse+override logic (ResolveGLMReasoning, the
+// coding-max override set) was removed with the per-agent model/effort matrix
+// under SPEC-AGENT-MODEL-INHERIT-001: the wire carries this session-level
+// value only, and no per-agent effort source survives to resolve from.
 //
 // Reasoning delivery is MEASURED, with a direction reversal recorded after this
 // SPEC closed: the null-controlled live differential (SPEC-V3R6-AUDIT-MODEL-PIN-001

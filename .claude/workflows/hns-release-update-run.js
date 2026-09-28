@@ -62,7 +62,6 @@ function selectResearchSweepTargets(args) {
   return deltas.map((versionDelta) => ({
     purpose: "read-only-extract",
     agentType: "Explore",
-    effort: "low",
     isolation: "none",
     label: `cc-release-notes:${versionDelta}`,
     prompt:
@@ -99,7 +98,6 @@ async function run(spawnPrimitive, argsIn) {
       spawnPrimitive(target.prompt, {
         label: target.label,
         agentType: target.agentType,
-        effort: target.effort,
         isolation: target.isolation,
       })
     )
@@ -129,7 +127,8 @@ if (typeof agent !== "undefined") {
   const sweepTargets = selectResearchSweepTargets(args);
   log(`research sweep: ${sweepTargets.length} version deltas (2.1.228..2.1.233)`);
 
-  // Non-interactive parallel fan-out: read-only Explore agents, effort low.
+  // Non-interactive parallel fan-out: read-only Explore agents (no model/effort
+  // option — they inherit the main session's).
   // Each returns a markdown impact table. Intermediate results stay in script
   // variables; only the aggregated synthesis returns to the session.
   //
@@ -146,7 +145,6 @@ if (typeof agent !== "undefined") {
       agent(target.prompt, {
         label: target.label,
         agentType: target.agentType,
-        effort: target.effort,
         isolation: target.isolation,
       })
     )

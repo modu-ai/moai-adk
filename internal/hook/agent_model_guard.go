@@ -1,29 +1,26 @@
 // agent_model_guard.go — PreToolUse observation of per-agent model injection.
 //
-// The model-profile resolver (template.ResolveAgentModelEffort) computes a
-// {model, effort} cell for every retained agent, but nothing has ever checked
-// whether that computed model actually reaches a spawn. This file adds the
-// missing inspector: on a PreToolUse event for the Agent (formerly Task) tool it
-// extracts the agent identifier and the declared model from the spawn payload,
-// asks the resolver what the model SHOULD be, and records a structured verdict.
+// Subagents inherit the main session's model and effort, so the expectation for
+// a spawn is DECLARATION-ONLY: what the spawn declares is what it runs. This
+// file is the inspector: on a PreToolUse event for the Agent (formerly Task)
+// tool it extracts the agent identifier and the declared model from the spawn
+// payload, and records a structured verdict — the declared model verbatim, or
+// the `inherit` sentinel when the spawn declares none.
 //
 // Layering (each layer is independently reversible):
 //
 //	observe  — always on; appends one JSONL record per spawn, never blocks.
 //	advise   — always on; emits a non-blocking advisory on missing/mismatch.
-//	block    — opt-in (workflow.agent_model_guard.enabled, default false);
-//	           denies ONLY the mismatch verdict.
 //
-// The dominant real-world verdict is `missing`, not `mismatch`: a payload survey
-// found the model argument present on well under 1% of observed spawns. Blocking
-// `missing` would therefore refuse nearly every spawn, so `missing` stays
-// advisory even when the gate is on.
+// The former opt-in block layer (workflow.agent_model_guard.enabled) is gone:
+// subagents inherit the main session's model and effort
+// (SPEC-AGENT-MODEL-INHERIT-001), so no spawn is denied on the basis of its
+// model. A leftover agent_model_guard key in a user's workflow.yaml is ignored.
+// The observation layer stays until its reader-side rework lands.
 //
-// Fail-open is the house norm (branch_guard.go): a deny fires ONLY on positive
-// evidence — the agent identifier parsed, the resolution mapped, a declared
-// model present, and the two differing. Every other state (unparseable payload,
-// absent subagent_type, unmapped agent, unreadable config, unresolved project
-// root) allows. An enforcement bug must never wedge a session.
+// Fail-open is the house norm (branch_guard.go): every uncertainty
+// (unparseable payload, absent subagent_type, unmapped agent, unreadable
+// config, unresolved project root) records nothing it cannot and never blocks.
 //
 // effort is deliberately out of scope: the Agent tool exposes no effort
 // parameter, so only `model` is observable at spawn time.
@@ -31,21 +28,11 @@ package hook
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
-
-	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/template"
 )
-
-// SentinelAgentModelViolation prefixes every deny emitted by the agent-model
-// guard, so the orchestrator can pattern-match the source without parsing the
-// full reason string. Mirrors the BRANCH_GUARD_VIOLATION precedent.
-const SentinelAgentModelViolation = "AGENT_MODEL_VIOLATION"
 
 // agentModelAuditFileName is the per-spawn audit log under <root>/.moai/logs/.
 // JSON Lines (not .log) because the point is aggregation — per-agent drift
@@ -53,22 +40,17 @@ const SentinelAgentModelViolation = "AGENT_MODEL_VIOLATION"
 // branch-guard-audit.log one.
 const agentModelAuditFileName = "agent-model-audit.jsonl"
 
-// agentModelVerdict is the 4-valued classification of a single spawn.
+// agentModelVerdict is the 2-valued classification of a single spawn under the
+// session-inherit design: what the spawn declared, nothing more.
 type agentModelVerdict string
 
 const (
-	// verdictAgentModelOK — the declared model equals the resolved model.
-	verdictAgentModelOK agentModelVerdict = "ok"
-	// verdictAgentModelMissing — the resolver mapped a concrete alias but the
-	// spawn declared no model at all. The dominant observed case.
-	verdictAgentModelMissing agentModelVerdict = "missing"
-	// verdictAgentModelMismatch — the spawn declared a model that differs from
-	// the resolved one. The only blockable verdict.
-	verdictAgentModelMismatch agentModelVerdict = "mismatch"
-	// verdictAgentModelUnmapped — the agent is outside the retained catalog
-	// (a user-authored harness specialist); the resolver returns the inherit
-	// sentinel and there is nothing to compare against.
-	verdictAgentModelUnmapped agentModelVerdict = "unmapped"
+	// verdictAgentModelDeclared — the spawn carried an explicit model argument,
+	// recorded verbatim.
+	verdictAgentModelDeclared agentModelVerdict = "declared"
+	// verdictAgentModelInherit — the spawn declared no model; it inherits the
+	// main session's model. The expected state.
+	verdictAgentModelInherit agentModelVerdict = "inherit"
 )
 
 // agentSpawn carries the fields the guard reads out of an Agent spawn
@@ -107,53 +89,24 @@ func extractAgentSpawn(toolInput json.RawMessage) (agentSpawn, bool) {
 	return agentSpawn{Agent: parsed.SubagentType, DeclaredModel: parsed.Model, Name: parsed.Name}, true
 }
 
-// resolveAgentModel asks the profile-matrix resolver what model the given agent
-// should run under. It is the ONLY path to that answer — the guard never
-// restates a matrix cell or a model alias (AP-2).
-func resolveAgentModel(llm config.LLMConfig, agent string) (mapped bool, model string) {
-	me, ok := template.ResolveAgentModelEffort(llm, agent)
-	if !ok {
-		return false, ""
+// classifyAgentModel returns the verdict for a spawn plus the model value to
+// record. With the profile matrix gone (SPEC-AGENT-MODEL-INHERIT-001 M5) the
+// observation layer logs what the spawn DECLARED: an explicit model argument
+// is recorded verbatim, and no declaration records `inherit` — subagents
+// inherit the main session's model by design, so an absent argument is the
+// expected state, not a gap. There is no expected model to compare against
+// and no advisory: the record is the product.
+func classifyAgentModel(sp agentSpawn) (agentModelVerdict, string) {
+	if sp.DeclaredModel != "" {
+		return verdictAgentModelDeclared, sp.DeclaredModel
 	}
-	return true, me.Model
+	return verdictAgentModelInherit, "inherit"
 }
 
-// classifyAgentModel returns the verdict for a spawn plus the resolved model
-// alias (empty when the agent is unmapped).
-func classifyAgentModel(sp agentSpawn, llm config.LLMConfig) (agentModelVerdict, string) {
-	mapped, resolved := resolveAgentModel(llm, sp.Agent)
-	if !mapped || resolved == "" {
-		return verdictAgentModelUnmapped, ""
-	}
-	if sp.DeclaredModel == "" {
-		return verdictAgentModelMissing, resolved
-	}
-	// Alias comparison is case-insensitive: a declaration differing only in case
-	// names the same model and must not be reported as drift.
-	if !strings.EqualFold(sp.DeclaredModel, resolved) {
-		return verdictAgentModelMismatch, resolved
-	}
-	return verdictAgentModelOK, resolved
-}
-
-// agentModelAdvisory renders the non-blocking advisory for a verdict. It returns
-// "" for ok and unmapped — there is nothing to correct in either case.
-func agentModelAdvisory(agent, resolved string, v agentModelVerdict) string {
-	switch v {
-	case verdictAgentModelMissing:
-		return fmt.Sprintf(
-			"agent-model: %s spawned without a model argument; the active profile resolves it to %s. "+
-				"Pass model=%s on the spawn so the profile is actually applied.",
-			agent, resolved, resolved)
-	case verdictAgentModelMismatch:
-		return fmt.Sprintf(
-			"agent-model: %s spawned with a model that differs from the active profile, which resolves it to %s. "+
-				"Pass model=%s on the spawn, or adjust the profile.",
-			agent, resolved, resolved)
-	default:
-		return ""
-	}
-}
+// agentModelAdvisory is retired with the profile matrix (M5): both of its
+// messages told the caller to pass a model the resolver expected — advice
+// that inverts under session inheritance, where no declaration is the desired
+// state. The observation log is the product; there is nothing to correct.
 
 // agentModelAuditRecord is one JSONL row. It carries no prompt body and no
 // spawn payload — only the identifiers needed to aggregate drift by agent.
@@ -208,74 +161,25 @@ func appendAuditJSONL(projectRoot string, rec any) {
 	}
 }
 
-// agentModelGuardEnabled reports whether the opt-in blocking gate is on
-// (workflow.agent_model_guard.enabled, distributed default false). A nil
-// provider or nil config returns false so a misconfigured hook can never
-// accidentally reach the deny path — the same defensive shape as
-// branchGuardEnabled.
-func (h *preToolHandler) agentModelGuardEnabled() bool {
-	if h.cfg == nil {
-		return false
-	}
-	cfg := h.cfg.Get()
-	if cfg == nil {
-		return false
-	}
-	return cfg.Workflow.AgentModelGuard.Enabled
-}
-
-// llmConfig returns the LLM config the resolver needs, falling back to the zero
-// value when no config is reachable. The zero value resolves through the
-// matrix defaults, so observation still works without a loaded config.
-func (h *preToolHandler) llmConfig() config.LLMConfig {
-	if h.cfg == nil {
-		return config.LLMConfig{}
-	}
-	cfg := h.cfg.Get()
-	if cfg == nil {
-		return config.LLMConfig{}
-	}
-	return cfg.LLM
-}
-
 // checkAgentModel is the PreToolUse entry point for an Agent/Task spawn. It
-// returns (decision, reason, advisory): decision is DecisionDeny only when the
-// gate is on AND the verdict is mismatch; otherwise it is empty and the caller
-// falls through to allow, optionally surfacing the advisory.
-func (h *preToolHandler) checkAgentModel(input *HookInput) (decision, reason, advisory string) {
+// records the declared-model observation and returns "" — with the profile
+// matrix gone there is no expected model to advise against. It never denies.
+func (h *preToolHandler) checkAgentModel(input *HookInput) (advisory string) {
 	sp, ok := extractAgentSpawn(input.ToolInput)
 	if !ok {
-		// Uncertain payload — nothing to observe, nothing to enforce.
-		return "", "", ""
+		// Uncertain payload — nothing to observe.
+		return ""
 	}
 
-	verdict, resolved := classifyAgentModel(sp, h.llmConfig())
+	verdict, recorded := classifyAgentModel(sp)
 
 	appendAgentModelAudit(h.projectRoot(), agentModelAuditRecord{
 		SessionID:     input.SessionID,
 		Agent:         sp.Agent,
 		DeclaredModel: sp.DeclaredModel,
-		ResolvedModel: resolved,
+		ResolvedModel: recorded,
 		Verdict:       string(verdict),
 	})
 
-	advisory = agentModelAdvisory(sp.Agent, resolved, verdict)
-
-	// Blocking is opt-in AND mismatch-only. `missing` stays advisory even when
-	// the gate is on: blocking it would refuse nearly every spawn.
-	if verdict == verdictAgentModelMismatch && h.agentModelGuardEnabled() {
-		reason = fmt.Sprintf(
-			"%s: %s was spawned with model %q but the active profile resolves it to %q. "+
-				"Pass model=%s on the spawn, or adjust the profile.",
-			SentinelAgentModelViolation, sp.Agent, sp.DeclaredModel, resolved, resolved)
-		slog.Warn("agent model guard denied",
-			"agent", sp.Agent,
-			"declared_model", sp.DeclaredModel,
-			"resolved_model", resolved,
-			"session_id", input.SessionID,
-		)
-		return DecisionDeny, reason, advisory
-	}
-
-	return "", "", advisory
+	return ""
 }

@@ -302,7 +302,7 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 	if herr != nil {
 		return herr
 	}
-	if harnessCodex {
+	if harnessCodex && os.Getenv(config.EnvMoaiKanbanBackend) != BackendCodex {
 		// A Codex session's hook never acts as a Claude lane's factory peer
 		// (SPEC-CODEX-FACTORY-RETIRE-001 REQ-CFR-022).
 		defer unsetLaneEnvForCodexHook()()

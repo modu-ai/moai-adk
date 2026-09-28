@@ -46,15 +46,12 @@ var updateCmd = &cobra.Command{
 }
 
 // validateUpdateFlags validates update flag values before execution.
-// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015/017): an out-of-set --profile value
-// exits non-zero with a usage error naming the closed set {high, medium, low}.
+// --profile is retired (SPEC-AGENT-MODEL-INHERIT-001 D10): any value is
+// accepted and only warned about.
 // SPEC-UPDATE-VERSION-FLAG-001 (REQ-UVF-007 / AC-UVF-007): the --version flag's
 // mutual-exclusion matrix is enforced before any network call.
 func validateUpdateFlags(cmd *cobra.Command, _ []string) error {
-	profileFlag := getStringFlag(cmd, "profile")
-	if profileFlag != "" && !config.IsValidProfile(profileFlag) {
-		return fmt.Errorf("invalid --profile value %q: must be one of: high, medium, low", profileFlag)
-	}
+	warnDeprecatedAgentModelFlags(cmd, "profile")
 	// SPEC-UPDATE-VERSION-FLAG-001 REQ-UVF-007: --version mutual-exclusion matrix.
 	if err := validateUpdateVersionConflicts(
 		getStringFlag(cmd, "version"),
@@ -84,10 +81,9 @@ func init() {
 	updateCmd.Flags().String("restore", "", "Restore .moai/config from a backup directory left by a previous update (works on a tree whose .moai/config/sections/system.yaml was destroyed)")
 	updateCmd.Flags().Bool("verbose", false, "Show all warnings including acknowledged reserved-name and 3-way merge fallback notices (diagnostic mode; SPEC-V3R6-UPDATE-NOISE-001 REQ-UN-005/010)")
 
-	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015/017): --profile override. When
-	// provided, persists the value to llm.profile (no agent frontmatter mutation).
-	// The retired --plan-type flag is no longer exposed.
-	updateCmd.Flags().String("profile", "", "Override the model+effort profile: high, medium, or low (persists to llm.yaml profile)")
+	// Retired --profile (SPEC-AGENT-MODEL-INHERIT-001 D10): accepted for script
+	// compatibility, warns, and has no effect.
+	updateCmd.Flags().String("profile", "", deprecatedAgentModelFlagUsage)
 
 	// SPEC-UPDATE-VERSION-FLAG-001 (REQ-UVF-001): --version <tag> installs a
 	// specific GitHub release tag (stable / rc / previous version) of the moai
@@ -262,6 +258,10 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if err := checkProjectMarker(cwd); err != nil {
 			return err
 		}
+		// Advisory only: update never moves, renames, or deletes either local
+		// instruction file (REQ-IFU-011). The rename is `moai migrate
+		// local-instructions`, run by the operator.
+		emitLocalInstructionsAdvisory(out, cwd)
 	}
 
 	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-005: acquire update lock before any
@@ -538,12 +538,12 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// Pre-fix UX leaked a "Skipping sync" line immediately followed by
 	// "Legacy skill archive failed" because the archive ran unconditionally.
 	if syncSkipped {
-		// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-016): an explicit --profile override
-		// must still persist to llm.profile even when the template sync short-circuits.
-		if p := getStringFlag(cmd, "profile"); p != "" {
-			if err := applyUpdateProfile(".", p); err != nil {
-				return err
-			}
+		// A version-matched update runs no sync and no merge, so the retired
+		// per-agent model/effort keys are stripped here, after its own backup.
+		// A user-cancelled merge returns the same skipped=true; the helper
+		// re-evaluates the version predicate and leaves that case untouched.
+		if err := stripRetiredModelConfigOnVersionMatch(cmd, out, "."); err != nil {
+			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Retired model keys", "removal failed", err.Error(), &th))
 		}
 		return nil
 	}
@@ -588,14 +588,6 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		// behind (a stale hash here is what froze four files user_modified on
 		// the next `init --force`).
 		retrackSectionFiles(".", cmd.ErrOrStderr())
-	}
-
-	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-016): when --profile is given,
-	// persist the override to llm.profile (no agent frontmatter mutation).
-	if p := getStringFlag(cmd, "profile"); p != "" {
-		if err := applyUpdateProfile(".", p); err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -661,30 +653,6 @@ func emitDryRunReinstallPlan(cmd *cobra.Command, cwd string, force bool, th tui.
 		RunMigrateAgency: runAgencyMigrationAdapter,
 	}); runErr != nil {
 		return fmt.Errorf("dry-run clean reinstall plan: %w", runErr)
-	}
-	return nil
-}
-
-// applyUpdateProfile persists a --profile override to llm.profile during
-// `moai update` (SPEC-MODEL-PROFILE-MATRIX-001 REQ-MPM-016/024). The former
-// plan_type × tier agent-frontmatter re-mutation (ApplyTierProfile) is RETIRED —
-// this path writes to llm.yaml only, leaving agent frontmatter at model: inherit.
-// An out-of-set profileFlag returns an error naming the closed set (defensive —
-// the CLI flag is validated by validateUpdateFlags before this is reached).
-func applyUpdateProfile(projectRoot, profileFlag string) error {
-	if profileFlag == "" {
-		return nil
-	}
-	if !config.IsValidProfile(profileFlag) {
-		return fmt.Errorf("invalid --profile value %q: must be one of: high, medium, low", profileFlag)
-	}
-	if err := template.ApplyProfile(projectRoot, profileFlag); err != nil {
-		return fmt.Errorf("persist profile: %w", err)
-	}
-	// Keep the legacy performance_tier alias in sync so the separate Tier x Phase
-	// axis reads a consistent tier.
-	if err := template.ApplyPerformanceTier(projectRoot, profileFlag); err != nil {
-		return fmt.Errorf("persist performance_tier: %w", err)
 	}
 	return nil
 }

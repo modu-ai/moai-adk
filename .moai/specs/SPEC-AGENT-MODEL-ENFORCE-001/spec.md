@@ -4,7 +4,7 @@ title: "서브에이전트 spawn 시 per-agent 모델 프로파일 기계적 관
 version: "0.1.0"
 status: completed
 created: 2026-08-08
-updated: 2026-08-14
+updated: 2026-09-29
 author: manager-spec
 priority: P1
 phase: "v3.1.0"
@@ -14,6 +14,7 @@ tags: "hook, pretooluse, agent-spawn, model-profile, observability, fail-open, o
 tier: M
 era: V3R6
 issue_number: 1376
+partially_superseded_by: [SPEC-AGENT-MODEL-INHERIT-001]
 related_specs: [SPEC-MODEL-PROFILE-MATRIX-001, SPEC-MODEL-PROFILE-MATRIX-002, SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001, SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001]
 ---
 

@@ -276,7 +276,8 @@ MoAI-ADK 업데이트 시 **CLAUDE.md**와 `settings.json`은 새 버전으로 �
 |------|------|--------------|
 | `CLAUDE.md` | 프로젝트 루트 | {{< icon warning warn >}} 업데이트 시 변경됨 (MoAI-ADK 관리) |
 | `settings.json` | `.claude/` | {{< icon warning warn >}} 업데이트 시 변경됨 (MoAI-ADK 관리) |
-| `CLAUDE.local.md` | 프로젝트 루트 | {{< icon check ok >}} 영향 없음 (개인 설정) |
+| `AGENTS.local.md` | 프로젝트 루트 | {{< icon check ok >}} 영향 없음 (개인 지침) |
+| `CLAUDE.local.md` | 프로젝트 루트 | {{< icon check ok >}} 영향 없음 (이전 이름, 안내만 출력) |
 | `.claude/settings.local.json` | 프로젝트 | {{< icon check ok >}} 영향 없음 (개인 설정) |
 
 {{< callout type="info" >}}
@@ -372,6 +373,18 @@ moai update --verbose
 ```bash
 moai update --force
 ```
+
+## 로컬 지침 파일 안내
+
+`moai update`는 `AGENTS.local.md`와 `CLAUDE.local.md`를 옮기거나 이름을 바꾸거나 지우지 않습니다. 대신 프로젝트 루트에 `CLAUDE.local.md`가 남아 있으면 표준 출력에 안내를 한 줄 남깁니다. 지침은 공통 계약 `AGENTS.md`, Claude 전용 층 `CLAUDE.md`, 개인 지침 `AGENTS.local.md`의 세 파일로 나뉘며, `CLAUDE.local.md`는 `AGENTS.local.md`의 이전 이름입니다.
+
+| 프로젝트 상태 | `moai update` 출력 |
+|---------------|--------------------|
+| `CLAUDE.local.md`만 있음 | `moai migrate local-instructions`로 옮기라는 안내 |
+| 두 파일이 모두 있음 | 손으로 합치라는 안내 (이관 명령은 이 상태를 거부) |
+| `AGENTS.local.md`만 있거나 둘 다 없음 | 안내 없음 |
+
+`moai doctor`도 같은 조건에서 같은 안내를 출력합니다. 이름 변경은 운영자가 `moai migrate local-instructions`를 직접 실행할 때만 일어납니다.
 
 ## 다음 단계
 

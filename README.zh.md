@@ -182,7 +182,7 @@ moai-adk 是从外部包裹 Claude Code 的框架（harness）。它不取代 Cl
 | **自主 + 真实边界** | 用 `/moai goal` 声明完成条件，会话就会自主工作直到条件满足。同时绑着四道硬边界 —— 轮次上限（默认 30）、停滞守卫、墙钟预算、事前审批门 —— 不会掉进无限循环。 |
 | **并行安全** | 每个 SPEC 独占一棵工作树，分支状态守卫拦住主检出里误切的分支，启动写入型智能体前先检查与远端的差距。两个可写智能体从不同时运行。 |
 | **长程延续** | 工作跨过 `/clear` 存续。进度留在 `progress.md`，交接消息留在记忆，路由决策留在决策记忆。下一个会话从上一个学会的地方起步，而不是从零开始。 |
-| **成本高效** | 按工作阶段和 SPEC 尺寸声明式地指派模型与推理深度。复用提示缓存、把长输出排到磁盘，保持上下文轻量。 |
+| **成本高效** | 会话的模型与推理强度选定一次，所有智能体就原样继承。复用提示缓存、把长输出排到磁盘，保持上下文轻量。 |
 | **16 种编程语言同等支持** | Go、Python、TypeScript、JavaScript、Rust、Java、Kotlin、C#、Ruby、PHP、Elixir、C++、Scala、R、Flutter、Swift —— 十六种编程语言作为一个集合，用基于标记的自动检测统一处理。没有任何一种受到优待。 |
 | **自我改进** | 观测到反复出现的失败模式就上升为规则修改提案。绝不悄悄应用 —— 先审批再落地。路由决策和门禁证据沉淀进决策记忆，成为下一次运行的材料。 |
 | **母语友好** | 韩语、日语、中文、英语四个语言区在同一 PR 内维护，禁止翻译腔，每种语言各有自己的母语行文。绝不强迫母语用户使用英语。 |
@@ -444,7 +444,7 @@ TRUST 5（Tested · Readable · Unified · Secured · Trackable）作用于每�
   <img src="./assets/images/moai-web-settings.png" alt="moai web 控制台设置画面 —— 档案栏和设置标签页" width="90%">
 </p>
 
-`moai web` 打开一个只监听本地主机的控制台。画面共六个 —— Overview、Kanban、Specs、Monitor、Settings、Todo；设置画面分成以下标签页：Identity、Language、LLM、GLM Settings、Workflow、Git & Worktree、Audit、Codex、Agents、Report、MCP、Cross-Session、Feedback、Quality Gate。Codex 标签页把分散的 codex 设置汇总到一屏，是只读画面，取值仍在各自所属的标签页里修改。档案的创建、改名、删除也在同一画面完成。
+`moai web` 打开一个只监听本地主机的控制台。画面共六个 —— Overview、Kanban、Specs、Monitor、Settings、Todo；设置画面分成以下标签页：Identity、Language、LLM、GLM Settings、Workflow、Git & Worktree、Audit、Codex、Report、MCP、Cross-Session、Feedback、Quality Gate。Codex 标签页把分散的 codex 设置汇总到一屏，是只读画面，取值仍在各自所属的标签页里修改。档案的创建、改名、删除也在同一画面完成。
 
 ### ref / domain 技能
 
@@ -499,25 +499,25 @@ flowchart TD
 
 ### 13 智能体目录
 
-| 分类 | 智能体 | 成本 | 职责 |
-|------|------|------|------|
-| **管理者** | manager-spec | 🔴 | plan 阶段编写 SPEC |
-| | manager-develop | 🔴 | run 阶段 TDD/DDD/autofix 实现 |
-| | manager-docs | 🔵 | sync 阶段文档 |
-| | manager-git | 🩵 | PR 创建与路由 |
-| | manager-design | 🟠 | 设计阶段协作（Claude Design） |
-| | manager-lead | 🔴 | 层级团队 Tier L 协调 + 看板·工厂主导会话派工（唯一的 Agent 携带者，深度 2 封印） |
-| **评审者** | plan-auditor | 🔴 | 独立 plan 审计（防偏） |
-| | sync-auditor | 🔴 | 4 维质量评分（功能性 40 · 安全 25 · 做工 20 · 一致性 15） |
-| **构建者** | builder-harness | 🟠 | 项目专用智能体、技能、命令、钩子的脚手架 |
-| **顾问** | super-advisor | 🔵 | 按需高推理咨询（E1-E4 升级） |
-| **专员** | e2e-tester | 🟠 | Web/移动/桌面 E2E 测试执行（CLI 优先） |
-| | mission-governor | 🔴 | 对已批准的 GTD 自动任务做只读判定 —— 只返回一个判定，从不自己执行（由 GTD 工作流调用，因此不占选择决策树的行） |
-| **内置** | Explore | ⚪ | 只读代码库探查 |
+| 分类 | 智能体 | 职责 |
+|------|------|------|
+| **管理者** | manager-spec | plan 阶段编写 SPEC |
+| | manager-develop | run 阶段 TDD/DDD/autofix 实现 |
+| | manager-docs | sync 阶段文档 |
+| | manager-git | PR 创建与路由 |
+| | manager-design | 设计阶段协作（Claude Design） |
+| | manager-lead | 层级团队 Tier L 协调 + 看板·工厂主导会话派工（唯一的 Agent 携带者，深度 2 封印） |
+| **评审者** | plan-auditor | 独立 plan 审计（防偏） |
+| | sync-auditor | 4 维质量评分（功能性 40 · 安全 25 · 做工 20 · 一致性 15） |
+| **构建者** | builder-harness | 项目专用智能体、技能、命令、钩子的脚手架 |
+| **顾问** | super-advisor | 按需高推理咨询（E1-E4 升级） |
+| **专员** | e2e-tester | Web/移动/桌面 E2E 测试执行（CLI 优先） |
+| | mission-governor | 对已批准的 GTD 自动任务做只读判定 —— 只返回一个判定，从不自己执行（由 GTD 工作流调用，因此不占选择决策树的行） |
+| **内置** | Explore | 只读代码库探查 |
 
-成本颜色跟随默认 `medium` 档位的模型×推理单元（用 `moai model profile` 查看）：🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 继承会话模型（用户自加智能体）。切换档位（`high`/`low`）后指派随之变化。写作和审计从一开始就分给别人 —— 写的人永远不给自己的作业打分。
+所有智能体都原样继承会话的模型与推理强度 —— 会话用什么模型和 effort 起跑，就是全体的指派。写作和审计从一开始就分给别人 —— 写的人永远不给自己的作业打分。
 
-十三个里有十二个是 moai-adk 自造的智能体，`Explore` 是 Claude Code 本来就有的内置智能体。`Explore` 和其他行一样有自己的档案单元 —— 三个档案里都是 `sonnet / low`。所以后面模型档案一节数的也是同样的十三个，13 × 3 = 39 个单元。
+十三个里有十二个是 moai-adk 自造的智能体，`Explore` 是 Claude Code 本来就有的内置智能体。
 
 ### trust-but-verify —— 给完成主张绑上证据
 
@@ -649,22 +649,6 @@ v3.1.1 又多了四个值得一动的切面。
 
 环境变量覆盖文件值。优先级细节和完整切面清单见 [CLI 参考](https://adk.mo.ai.kr/zh/cli-reference)。
 
-### 模型档案 —— high / medium / low
-
-`moai model profile` 解析 13 个智能体 × 3 个档案 = 39 个单元的 `{model, effort}` 组合。
-
-<p align="center">
-  <img src="./assets/images/model-routing-infographic-zh.png" alt="智能体模型路由 —— 每个智能体各配到合适的模型与推理强度" width="85%">
-</p>
-
-| 档案 | 性格 | 何时用 |
-|---|---|---|
-| **high** | 以 Opus 为主、高推理 | 复杂规划 · 安全审计 · 疑难调试 |
-| **medium**（默认） | 均衡 | 常规 SPEC |
-| **low** | Sonnet + 低推理 | 机械重复 · 文档 · 单发任务 |
-
-指派跟着工作阶段（plan / run / sync）和 SPEC 尺寸（Tier S / M / L）走 —— 需要深推理的规划阶段配强推理模型，机械重复的实现阶段配轻量模型。按 No-Haiku 三档策略，单发、输入主导的任务交给 Sonnet low，所有多轮智能体任务一律交给 Opus。
-
 ### settings.json / settings.local.json 分离
 
 | 文件 | 职责 | 模板 |
@@ -775,7 +759,7 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 生命周期工具 |
 | `moai goal <arm\|status\|clear>` | goal 引擎 CLI |
 | `moai harness <status\|apply\|rollback\|disable>` | 框架学习生命周期 |
-| `moai handoff <save\|list>` | 会话交接记录 |
+| `moai handoff <save\|show\|clear>` | 会话交接记录 |
 | `moai preference <list\|decay-scan\|toggle>` | 决策记忆管理 |
 | `moai memory <doctor\|archive>` | 智能体记忆体检与旧条目归档 |
 | `moai tokens record` | 按池记录 token 使用台账 |
