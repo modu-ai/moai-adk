@@ -70,7 +70,7 @@ shift+tab 이전 • enter 다음
 ┃   (project default)                                                           
 ┃   fable[1m] (Fable 5 + 1M 컨텍스트)                                           
 ┃ ▸ opus[1m] (Opus 5.5 + 1M 컨텍스트, 권장)                                     
-┃   sonnet[1m] (Sonnet 5 + 1M 컨텍스트)                                         
+┃   sonnet[1m] (Sonnet 5.5 + 1M 컨텍스트)                                       
 ┃   haiku (Haiku 4.5, 최고 속도)                                                
   세션 모델 정책                                                                
   추론 강도를 따로 고르지 않았을 때, 이 프로필로 실행하는 Claude 세션의 기본    
@@ -94,7 +94,7 @@ shift+tab 이전 • enter 다음
   Claude가 작업 수행 전 권한을 요청하는 방식을 제어합니다.                      
   ▸ 자동 편집 수락 (acceptEdits) - 파일 편집 자동 수락, 명령어만 확인           
     자동 모드 (auto) - 분류기 기반 자동 승인. Max/Team/Enterprise/API 플랜 +    
-    Sonnet 5+ 필수. 미지원 환경에서는 런타임 오류 발생.                         
+    Sonnet 5.5+ 필수. 미지원 환경에서는 런타임 오류 발생.                       
 
 ↑ 위 • ↓ 아래 • / 검색 • shift+tab 이전 • enter 선택
 ● ● ● ● ● ● ● ● ● ● 10 / 10
