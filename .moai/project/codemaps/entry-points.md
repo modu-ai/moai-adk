@@ -167,6 +167,11 @@ LoopController · Logger · PerfTiming을 조립하고 전역 변수 `deps *Depe
 - `moai migrate home-state` — 기본은 읽기 전용 점검입니다. `--apply`만으로는 쓸 수 없고
   `--verified-live`를 함께 줘야 하며, 내부에서 현재 HEAD에 대한 검증 증거와 두 번의
   zero-active runtime census를 다시 확인합니다.
+- `moai migrate local-instructions` — 이전 세대 산 `.claude` 로컬 지시문 흔적을 조사·이관합니다
+  (card t1259). `doctor`·`update`의 로컬 지시문 advisory(REQ-IFU-012)와 같은 판독기를 공유합니다.
+- `moai handoff save --stdin / show [--json] / clear` — 세션 인계 레코드의 저장·재출력·삭제.
+  `show`는 pending을 소비 없이 verbatim 재출력하고(pending 부재 시 최신 consumed 폴백),
+  하네스 중립 경로입니다(card t1273).
 - `moai migrate home-state recover` — 소유 프로세스가 죽은 migration marker만 복구합니다.
   소유자 상태가 불명확하거나 살아 있으면 fail-closed입니다.
 - `moai migrate home-state rollback` — 백업 manifest, SHA-256, 프로젝트 키·루트가 일치하는
