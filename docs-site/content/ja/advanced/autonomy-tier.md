@@ -114,6 +114,6 @@ flowchart TD
 ## 次のステップ
 
 - [3ティアエージェントアーキテクチャ](/ja/advanced/no-haiku-3tier/) — モデルティア(単発・エージェンティック・ピーク)。自律性ティアと直交する「どのモデル」の軸
-- [プロファイルマトリクス](/ja/advanced/profile-matrix/) — エージェント別の `{model, effort}` を選ぶ単一マトリクス
+- [プロファイルマトリクス](/ja/advanced/profile-matrix/) — かつてのモデル割り当てマトリクスが退いた場所: サブエージェントはセッションのモデルと推論深度をそのまま引き継ぎます。
 - [自律ループ](/ja/advanced/autonomous-loops/) — ゴールエンジンに基づく無人連続実行
 - [カンバンモード](/ja/advanced/kanban-mode/) — マルチセッションのカンバンで自律性ティアを並列に運用

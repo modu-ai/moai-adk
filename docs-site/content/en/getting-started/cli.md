@@ -69,9 +69,9 @@ moai init [project-name] [OPTIONS]
 | `--enable-lsp` | Enable LSP integration (default: true) |
 | `--enforce-quality` | Enforce quality gates (default: true) |
 | `--enable-design` | Enable the design workflow (default: true) |
-| `--profile <high\|medium\|low>` | Model+effort profile — stored in `llm.yaml` `profile` (selects the profile matrix column). The legacy value `max` is accepted as input and normalized to `high` |
-| `--model-policy <high\|medium\|low>` | Legacy performance tier — stored in `llm.yaml` `performance_tier` (alias when `profile` is absent) |
-| `--high` | **Deprecated** alias for `--model-policy high` |
+| `--profile <high\|medium\|low>` | **Deprecated stub** — accepted for script compatibility, has no effect, and prints a deprecation warning pointing at `moai profile setup` |
+| `--model-policy <high\|medium\|low>` | **Deprecated stub** — accepted for script compatibility, has no effect, and prints a deprecation warning pointing at `moai profile setup` |
+| `--high` | **Deprecated stub** — alias of the retired `--model-policy high`; prints the same deprecation warning |
 
 ### Examples
 
@@ -84,7 +84,7 @@ cd my-existing-project
 moai init
 
 # Non-interactive (CI/CD)
-moai init --non-interactive --model-policy medium
+moai init --non-interactive
 ```
 
 For detailed wizard steps, see the [Initial Setup](./init-wizard) page.
@@ -113,7 +113,7 @@ moai update [OPTIONS]
 | `--no-hooks` | Skip Git hook installation |
 | `--verbose` | Show all warnings (diagnostic mode) |
 | `--shell-env` | Configure shell environment variables for Claude Code |
-| `--profile <high\|medium\|low>` | Override the model+effort profile (stored in `llm.yaml` `profile`) |
+| `--profile <high\|medium\|low>` | **Deprecated stub** — accepted for script compatibility, has no effect, and prints a deprecation warning pointing at `moai profile setup` |
 
 ### Examples
 
@@ -445,23 +445,23 @@ moai --version    # identical
 
 ## Model policy (performance tier)
 
-MoAI-ADK provides a performance-tier system that assigns the optimal AI model to each agent — the starting point of Tokenomics. It is set via the `performance_tier` field in `llm.yaml`, chosen with the `--model-policy` flag or the initialization wizard.
+The former per-agent performance-tier system is retired. Since v3.2, **subagents inherit the main session's model and effort** — pass neither `model` nor `effort` when spawning a subagent, and MoAI agent definitions declare neither. What remains of the model policy is one session-level choice: the **Session model policy** question in `moai profile setup` sets the default reasoning effort of the Claude session launched with the profile, used when no effort level is chosen.
 
-| Tier | Characteristics |
+| Legacy value | Today's meaning |
 |------|------|
-| **high** | Highest quality — same as medium except that `builder-harness` and `e2e-tester` run one effort level higher |
-| **medium** (default) | Balance of quality and cost — the knee of the cost/score curve |
-| **low** | Lowest cost per task — the auditing and coordinating rows drop to `medium` and `builder-harness` to Opus `low` (`super-advisor` and `mission-governor` stay at `high`), and Sonnet covers the single-shot rows plus `e2e-tester` |
+| **high** | Session effort fallback `high` |
+| **medium** | Session effort fallback `medium` |
+| **low** | Session effort fallback `low` |
 
 ```bash
-# Set at initialization
-moai init my-project --model-policy high
+# Configure the session model policy (and everything else about a profile)
+moai profile setup
 
-# Reconfigure an existing project
-moai update -c
+# The retired per-agent flags print a deprecation warning and do nothing
+moai init my-project --model-policy high
 ```
 
-The profile (`profile`: high/medium/low) selects the active column of the profile matrix, determining each agent's model+effort. For the detailed per-agent mapping, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
+The old `--model-policy`, `--profile`, `--high`, `--medium-alias`, and `--low` flags are deprecated stubs: values are accepted for script compatibility, have no effect, and print a warning pointing at `moai profile setup`. For the session-level model and effort controls, see the [Model Policy](/en/multi-llm/model-policy/) page; for how the matrix was retired, [Profile Matrix](/en/advanced/profile-matrix/).
 
 ---
 
