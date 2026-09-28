@@ -14,8 +14,9 @@
 - requirements: 12 (REQ-SDL-001..012); acceptance criteria: 12 (AC-SDL-001..012)
 - self_check: SPEC ID regex PASS (`SPEC-SESSION-DOUBLELOAD-001`); ID reuse is intentional in place — rationale in spec.md HISTORY (card linkage t1279 + this ID's own t1219 audit-trail continuity); no open clarification markers inside the SPEC (the guard option is a recorded kickoff decision, spec.md §F, not a plan-phase blocker)
 - prior_hold_record: the v0.2.0 HOLD note is superseded by this re-authoring; its full record lives in verdict §⑩ and spec.md HISTORY
-- decision_guard: pending (Implementation Kickoff, operator-answered in the lane; spec.md §F)
-- decision_guard_token_re: pending (recorded at kickoff alongside `decision_guard:`; consumed by AC-SDL-009's not-selected branch, which fails closed when the field is empty)
+- decision_guard: not-selected
+- decision_guard_token_re: movement guard|guard clause|denial message|mechanical guard|detection rule
+- decision_guard_basis: (M2 Gate G0 record, 2026-09-29) the guard option (REQ-SDL-009) was recommended against and not selected — the D scope's least-reversible-first ordering puts the measurement (M1) and the documents (M2) before enforcement, and M1's outcome (skill-list duplication not reproduced in the declared probe mode; result recorded as a Gap) does not quantify a cost that would justify an enforcement clause under this SPEC. If a later measurement quantifies such a cost, a mechanical movement guard is a small follow-up card. Recorded per CLAUDE.local.md §31 autonomous-kickoff policy; the prohibition itself remains documentation-only (REQ-SDL-009 Where-branch: no guard clause, no Go code).
 
 ## §E.2 Run-phase Evidence
 
