@@ -26,6 +26,12 @@ plan-audit iter1 수리(2026-09-29, manager-spec): D1(M3 게이트 확정 + 미�
 0개 적중)·D5(고지 진입점 2건 명시 — `todo_history.go:157` 직접 호출 경로 포함)·D6
 (`state_dir.go` 인용 범위 :62-86 확대) 반영.
 
+codex cross-audit 수리(2026-09-29, manager-spec, v0.1.2): REQ-TSS-001 5동사 고지의 AC
+커버리지 결함 수리(GLM iter2 PASS 0.95를 codex OVERTURN 0.76으로 뒤집은 단일 차단
+결함) — AC-TSS-001을 동사별 시나리오(AC-TSS-001a..e)로 분해, AC-TSS-002를 동사별
+stdout 바이트 동일성·무고지로 확장, plan.md M1 판정 주체 표기 정합(AC-TSS-003 →
+AC-TSS-001a..e).
+
 plan-phase 조사 결과 요약:
 
 - 큐 저장소 계층: `internal/kanban/state_dir.go`(홈 DB·레거시 경로 해석),

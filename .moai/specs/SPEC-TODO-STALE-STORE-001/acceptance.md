@@ -9,8 +9,8 @@
 
 | AC | 마일스톤 | 요구사항 | 검증 형태 |
 |---|---|---|---|
-| AC-TSS-001 | M1 | REQ-TSS-001 | 테스트 + 재현 명령 |
-| AC-TSS-002 | M1 | REQ-TSS-002, REQ-TSS-005 | 테스트(stdout 바이트 비교) |
+| AC-TSS-001 (a-e) | M1 | REQ-TSS-001 | 테스트 + 재현 명령 — 다섯 읽기 동사 각각 1행씩(AC-TSS-001a..e) |
+| AC-TSS-002 | M1 | REQ-TSS-002, REQ-TSS-005 | 테스트(stdout 바이트 비교 — 동사별, --json 포함) |
 | AC-TSS-003 | M1 | REQ-TSS-003 | 테스트(해시/mtime 불변) |
 | AC-TSS-004 | M1 | REQ-TSS-004 | 코드 검사(단일 검출기 호출 그래프) |
 | AC-TSS-010 | M2 | REQ-TSS-010 | 테스트(3상태 table-driven) |
@@ -23,14 +23,27 @@
 
 ## §D.1 수용 시나리오 (Given-When-Then)
 
-- **AC-TSS-001** 스테일 스토어 고지 발화 — **Given** 홈 DB `meta.last_seq`=1305와 레거시
-  스토어 `meta.last_seq`=661이 공존하는 임시 프로젝트, **When** `moai todo list`를
-  실행하면, **Then** stderr에 레거시 스토어 경로와 양쪽 seq 값을 밝히는 한 줄이 나오고
-  종료 코드는 0이다.
-- **AC-TSS-002** stdout 무변경 + 무발산 무고지 — **Given** 같은 임시 프로젝트,
-  **When** `moai todo list --json`을 (a) 레거시 스토어 있음/발산 (b) 레거시 스토어 없음
-  두 상태에서 실행하면, **Then** (a)(b)의 stdout이 바이트 동일하고, (b)에서 stderr에
-  스테일 고지가 없으며, last_seq가 같은 상태에서도 고지가 없다.
+- **AC-TSS-001** 스테일 스토어 고지 발화 — REQ-TSS-001이 커버하는 **다섯 읽기 동사 각각**에
+  대해 독립 판정한다. 공통 **Given**: 홈 DB `meta.last_seq`=1305와 레거시 스토어
+  `meta.last_seq`=661이 공존하는 임시 프로젝트(발산 상태). 공통 **Then**: stderr에 레거시
+  스토어 경로와 양쪽 seq 값을 밝히는 한 줄이 나오고, 종료 코드는 0이며, stdout에는 고지가
+  없다. 동사별 **When**:
+  - **AC-TSS-001a** — **When** `moai todo`(bare)를 실행하면, 공통 Then이 성립한다.
+  - **AC-TSS-001b** — **When** `moai todo list`를 실행하면, 공통 Then이 성립한다.
+  - **AC-TSS-001c** — **When** `moai todo why`(why 동사의 정상 호출 형태)를 실행하면,
+    공통 Then이 성립한다.
+  - **AC-TSS-001d** — **When** `moai todo pr`(pr 동사의 정상 호출 형태)을 실행하면,
+    공통 Then이 성립한다.
+  - **AC-TSS-001e** — **When** `moai todo history`(history 동사의 정상 호출 형태)를
+    실행하면, 공통 Then이 성립한다. (history는 `discloseNonAuthoritativeBacklogJSON`
+    직접 호출 진입점만 거치므로 별도 행으로 고정한다.)
+- **AC-TSS-002** stdout 무변경 + 무발산 무고지 — 같은 임시 프로젝트에서 **다섯 읽기 동사
+  각각**(bare, list, why, pr, history)에 대해: **When** (a) 레거시 스토어 있음/발산
+  상태와 (b) 레거시 스토어 없음 상태에서 `--json` 포함 동일 인자로 실행하면, **Then**
+  (a)(b)의 stdout이 바이트 동일하고, (b)에서 stderr에 스테일 고지가 없다. 또한 다섯 동사
+  각각에 대해 last_seq가 같은 상태에서 실행하면 고지가 없다(REQ-TSS-005). 이 검사는
+  동사별로 수행하므로, 어느 한 동사에서만 stdout 오염이나 무고지 위반이 있어도 해당
+  동사의 판정이 실패한다.
 - **AC-TSS-003** 읽기-경로 순수성 — **Given** 레거시 스토어와 홈 DB가 공존하는 임시
   프로젝트, **When** 읽기 동사(bare/list, why, pr, history)를 모두 실행하면, **Then**
   두 DB 파일의 sha256과 mtime이 실행 전과 동일하고 새 파일이 생기지 않는다(마커 부재

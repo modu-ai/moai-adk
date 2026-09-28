@@ -67,15 +67,19 @@ M1..M3 각 종료 시 본인 변경 패키지 테스트 + 아래 AC 재측정. �
    stderr 전용, stdout 무변경: REQ-TSS-001/002). **진입점은 둘이다** —
    `discloseQueueLayout`(todo.go:573, todo_pr.go:179, todo_why.go:28이 경유)과
    `discloseNonAuthoritativeBacklogJSON` 직접 호출(`todo_history.go:157` — history
-   동사는 이 경로로만 들어온다). 어느 한쪽만 고치면 REQ-TSS-001의 history 범위가
-   누락된다(AC-TSS-003이 history 동사를 실행한다). 확장은 두 진입점 모두에 적용하고,
+   동사는 이 경로로만 들어온다). 어느 한쪽만 고치면 REQ-TSS-001의 해당 동사 범위가
+   누락되며, 이 누락은 **AC-TSS-001a..e가 동사별로 판정하므로** 수용 단계에서 적발된다
+   (bare/why/pr은 `discloseQueueLayout` 경유 행, history는 직접 호출 행 — codex
+   cross-audit 수리 반영: disclosure 커버리지 판정 주체는 AC-TSS-003이 아니라
+   AC-TSS-001a..e다). 확장은 두 진입점 모두에 적용하고,
    기존 backlog.json 고지 문안과 별개 줄로 서로 덮지 않는다.
 3. 검출기에 레거시 디렉터리 둘(`todo`/`kanban`)을 모두 보게 한다.
 
 테스트: `internal/kanban`(검출기 단위 — 발산/일치/부재/0바이트) + `internal/cli`(고지
-stderr 문안, stdout 바이트 동일성, 스토어 mtime·해시 불변 = REQ-TSS-003).
+stderr 문안 — **다섯 읽기 동사 각각**, AC-TSS-001a..e; stdout 바이트 동일성·무고지 —
+동사별, AC-TSS-002; 스토어 mtime·해시 불변 — AC-TSS-003, REQ-TSS-003).
 
-AC: AC-TSS-001, AC-TSS-002, AC-TSS-003, AC-TSS-004.
+AC: AC-TSS-001(a-e), AC-TSS-002, AC-TSS-003, AC-TSS-004.
 
 ### M2 (High) — doctor 발산 점검 + binary_lag 쌍 (항목 ②)
 
