@@ -192,7 +192,7 @@ FAIL
 ```yaml
 run_complete_at: 2026-09-29
 run_status: complete
-run_commit_sha: pending-backfill-run   # M4 커밋은 본 문서를 실어 나른다; 최종 확정 SHA는 §E.2 서두의 M1-M3 SHA와 git log로 검증
+run_commit_sha: 3474bcea8   # M4 커밋 — D3 백필 창 완료(후속 커밋에서 기입); §E.2 서두의 M1-M3 SHA와 git log로 검증 가능
 ac_pass_count: 14
 ac_fail_count: 0
 preserve_list_post_run_count: 0
