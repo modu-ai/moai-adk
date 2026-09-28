@@ -280,9 +280,11 @@ session re-pays the always-loaded prefix. Split only when the benefit justifies 
 `CLAUDE.md` imports last — followed by any legacy local guidance, from the project root. It keeps
 each input body under its own source header and passes the result as one Codex-specific session
 `developer_instructions` override. This contract never imports local guidance, which keeps it out of
-Codex's discovered chain. In a linked worktree the `CLAUDE.md` import points outside the project and
-is skipped silently, so a worktree session does not receive it. Other harness-local settings and
-memory remain owned by their harness.
+Codex's discovered chain. In a linked worktree, Claude Code resolves that import when the local
+file exists inside the worktree's checkout; it skips an absent file or one outside the project.
+Direct `codex -C <worktree>` uses Codex's `AGENTS.md` discovery and does not load a sibling local
+file. Use the MoAI Codex launcher from the existing worktree when local guidance is required.
+Other harness-local settings and memory remain owned by their harness.
 
 Codex Web sessions read `AGENTS.md`, but local `.codex/hooks.json`, the status line, and the MoAI
 launcher injection do not run there. Treat Web sessions as read-and-review first.

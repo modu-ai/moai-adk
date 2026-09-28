@@ -271,8 +271,10 @@ session re-pays the always-loaded prefix. Split only when the benefit justifies 
 `AGENTS.local.md` is the user-owned local instruction file both harnesses read; `CLAUDE.local.md`
 is its legacy predecessor. Claude Code reaches `AGENTS.local.md` through the final
 `@AGENTS.local.md` import in `CLAUDE.md`; this contract never imports either local file, which
-keeps them out of Codex's discovered chain. In a linked worktree that import points outside the
-project and is skipped silently, so a worktree session does not receive `AGENTS.local.md`.
+keeps them out of Codex's discovered chain. A linked worktree receives the import when
+`AGENTS.local.md` exists inside its checkout. An absent file, or one only outside the project,
+is skipped. Direct `codex -C <worktree>` loads this `AGENTS.md` but does not load the sibling
+`AGENTS.local.md`; local guidance requires the MoAI Codex launcher from the existing worktree.
 
 For every local launch shape (bare, `cli`, `app`, `--spawn`, and `-w`), `moai codex` reads the
 non-empty regular files from the project root — `AGENTS.local.md`, then `CLAUDE.local.md` —

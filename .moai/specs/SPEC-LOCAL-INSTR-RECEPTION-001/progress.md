@@ -61,3 +61,23 @@ is t1259's run phase, not started (parent status: draft, plan-audit loop). Per t
 dependency and scope discipline (the verb is t1259's to build; the plan's method step names the
 verb — a manual migration would be an unapproved deviation), **M2 is blocked: blocker reported
 to the lead** with the measured facts. M1's closed state and all its evidence stand unchanged.
+
+**M2 resumed after t1259 landed (2026-09-28).** The isolated card branch absorbed
+`develop` at `9da000bf2`; the parent migration verb is now present in
+`internal/cli/migrate_local_instructions.go`. `./bin/moai migrate local-instructions`
+moved the develop-identical 45,810-character `CLAUDE.local.md` and wrote a byte-identical
+backup. Commit `0ab480d9d` tracks only `AGENTS.local.md` (37,061 characters) and the
+relocated Jev, premise-check, LSEL, and kickoff procedures in `.moai/docs/`.
+`AC-IFU-007`, `AC-IFU-024`, `AC-LIR-007`, and the file-relocation portion of
+`AC-LIR-008` have committed-tree evidence in `.moai/reports/t1290/m2-verdict.md`.
+
+**M2 reception gate remains open.** The no-tool Claude probe returned the account's
+weekly-limit error; the GLM-configured retry timed out after 180 seconds
+without an answer. A direct `codex -C <worktree> exec` control answered the root
+`AGENTS.md` question correctly and the `AGENTS.local.md` question `ABSENT` with no
+tool call. Codex's official discovery rule selects one file per directory, so this
+direct entry does not provide the sibling local file. The template and root
+`AGENTS.md`/`CLAUDE.md` text now state the measured geometry, but the live Claude
+post-swap probe required by `AC-LIR-009` has not passed. Do not merge or close this
+card on the structural checks alone. Raw outputs and exact baselines are in the
+same M2 verdict report.
