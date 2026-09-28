@@ -24,7 +24,7 @@ verification, not edits.
 ## §C Pre-flight
 
 - [ ] `git rev-parse --short HEAD` == `a62a05764` (or absorb develop per gitflow §4.1 before starting)
-- [ ] Confirm t1315 merge state: `gh pr view 1730 --json state,mergedAt` — record in progress.md; determines REQ-SSB-011 direction
+- [ ] Confirm t1315 state: `gh issue view 1730 --json state` (#1730 is an ISSUE, not a PR — it carries no mergedAt). An OPEN issue means the live-resolution change is not on develop; record the state in progress.md and treat REQ-SSB-011's direction as "this SPEC first, t1315 absorbs". The branch-level counterpart is checked at merge time (plan.md §F note), where the actual implementation landings are visible.
 - [ ] Confirm tree anchors: `grep -n '"sonnet"' internal/template/model_policy.go` shows `claude-sonnet-5`
 - [ ] Baseline: `go test ./internal/template/... ./internal/cli/... ./internal/hook/... ./internal/web/...` green before first edit (affected packages only; no local full suite)
 
@@ -105,7 +105,7 @@ M3); then docs prose (derivative, M4).
   row) → derive en/ja/zh; same change-set. REQ-SSB-009.
 - docs-site: enumerate sonnet-mention pages per locale (measured 116 files; start from
   `advanced/profile-matrix.md`, `advanced/no-haiku-3tier.md`, `multi-llm/model-policy.md`,
-  `tokenomics/*`, `cost-optimization/*`); edit only current-generation statements + add the
+  `advanced/tokenomics-overview.md`, `cost-optimization/*`); edit only current-generation statements + add the
   `between_tools` migration note to the model-policy page; 4-locale parity in the same
   milestone. Verify with the hns-oss-docs-verify recipe (hugo build warning-free, 4-locale
   parity).

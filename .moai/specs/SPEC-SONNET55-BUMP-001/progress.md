@@ -6,10 +6,13 @@
 phase: plan
 spec: SPEC-SONNET55-BUMP-001
 status: draft
+plan_status: audit-ready
+plan_complete_at: 2026-09-29
 artifacts: [spec.md, plan.md, acceptance.md, research.md, progress.md]
 tier: M
 anchors_measured_at: a62a05764
 card_anchor_corrections: 3  # spec.md §A.3
+audit_iterations: 2         # iter-1 FAIL (0.825, D1 must-pass) -> fixes applied
 open_research: [context-window figure per official docs — research.md §2]
 needs_clarification: 0
 ```

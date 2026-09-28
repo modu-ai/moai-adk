@@ -1,7 +1,7 @@
 ---
 id: SPEC-SONNET55-BUMP-001
 title: "Promote Claude Sonnet 5.5 (claude-sonnet-5-5) across the moai product — alias table, web labels, template guidance, README/docs-site"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-09-29
 updated: 2026-09-29
@@ -9,7 +9,7 @@ author: manager-spec
 priority: P2
 phase: "v3.2.0 target"
 module: internal/template
-lifecycle: spec-first
+lifecycle: spec-anchored
 tags: model-policy, sonnet-5-5, alias, glm-slot, templates, docs-site
 era: V3R6
 tier: M
@@ -24,6 +24,7 @@ issue_number: null
 | Version | Date | Change |
 |---|---|---|
 | 0.1.0 | 2026-09-29 | Initial draft. Card t1322, operator directive 2026-09-29 ("update sonnet-5 to sonnet-5.5, moai web and settings etc. all"). Anchors re-measured on this tree at `a62a05764`; three card anchors corrected (§A.3). |
+| 0.1.1 | 2026-09-29 | Plan-audit iteration-1 fixes: lifecycle enum corrected (spec-anchored); tier-fit note (§A.4); AC-SSB-011/012 added (t1315 record, production-id grep). |
 
 ## §A Background
 
@@ -72,6 +73,13 @@ sonnet literal. The card's item 2 surface therefore reduces to: `apply_harness.g
 | `profile_matrix.go` carries the profile matrix | Absorbed into `apply_harness.go` (t1246); no sonnet literal there. Verify-only. |
 | GLM slot: "update the claude-sonnet-5→Medium row for claude-sonnet-5-5" | `GLMSlotForModel` is alias-keyed (`model_policy.go` reverse map feeds it); no row edit exists to make. Verification-only milestone item. |
 | `internal/web/agentfm.go` is a sonnet surface | File does not exist; surface is `handlers.go` + `schemaform.go`, alias-driven. Verify-only. |
+
+### A.4 Tier-fit note
+
+The raw touch surface (code + templates + 4-locale docs) exceeds the typical Tier M file count,
+but the decision count is small — one alias-table edit fans out mechanically — and the
+requirement/AC volume (13 REQ / 12 AC) is within Tier M ceilings. Tier M is retained; the docs
+fan-out in M4 is derivative prose, not independent design decisions.
 
 ## §B Requirements (GEARS)
 

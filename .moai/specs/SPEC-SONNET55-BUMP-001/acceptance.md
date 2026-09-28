@@ -11,16 +11,18 @@ Every criterion is mechanically verifiable. Commands run from the worktree root.
 | AC-SSB-003 | REQ-SSB-004, 010 | Affected packages | `go test -timeout 30m ./internal/template/... ./internal/cli/... ./internal/web/... ./internal/hook/...` runs | Exit 0; `launcher_test.go` and `served_model_test.go` / `served_model_stop_test.go` appear in the run unchanged (`git diff --stat -- internal/cli/launcher_test.go internal/hook/served_model_test.go internal/hook/served_model_stop_test.go` is empty) |
 | AC-SSB-004 | REQ-SSB-008 | Template edits landed | `make agents-emit && make agents-emit-check && make build` runs (agents-emit needed only if a `templates/.claude/agents/moai/*.md` changed) | All three exit 0; `git status --porcelain -- internal/template/templates/.codex/` shows no hand-edit beyond the emission |
 | AC-SSB-005 | REQ-SSB-005 | The GLM slot resolver | A table test exercises `GLMSlotForModel` with `claude-sonnet-5-5`, `claude-sonnet-5`, and `sonnet[1m]` | All three return `GLMSlotMedium`; test green in AC-SSB-003's run |
-| AC-SSB-006 | REQ-SSB-006 | User-facing labels | `grep -rn '"Sonnet 5.5"' internal/web/assets/i18n.js internal/cli/profile_setup_translations.go` and `grep -rnE '"Sonnet 5"|Sonnet 5[,\) 、]' internal/web/assets/i18n.js internal/cli/profile_setup_translations.go` run | First grep shows the updated picker labels in every locale block present; second grep returns 0 hits (trailing-quote/punctuation anchor — `"Sonnet 5.5"` must not self-match) |
+| AC-SSB-006 | REQ-SSB-006 | User-facing labels | `grep -rn '"Sonnet 5.5"' internal/web/assets/i18n.js internal/cli/profile_setup_translations.go` and `grep -rnE 'Sonnet 5([^.0-9]|$)' internal/web/assets/i18n.js internal/cli/profile_setup_translations.go` run | First grep shows the updated picker labels in every locale block present; second grep returns 0 hits. The class `Sonnet 5([^.0-9]|$)` covers the measured residual shapes — `Sonnet 5+` (plan-gate prose), full-width `Sonnet 5，` (zh), `Sonnet 5,` — while "Sonnet 5.5" self-excludes (`.` and `5` are both excluded characters) |
 | AC-SSB-007 | REQ-SSB-007, D-3 | Reference mirrors | `git diff --stat -- internal/template/templates/.claude/skills/moai-foundation-cc/reference internal/template/templates/.claude/skills/moai-foundation-core` runs | Empty diff; meanwhile `git diff --name-only -- internal/template/templates | grep -c model-policy` shows the moai-owned rule changed |
 | AC-SSB-008 | REQ-SSB-009 | README 4-locale set | `for f in README.ko.md README.md README.ja.md README.zh.md; do grep -c 'Sonnet 5.5' $f; done` runs | All four counts equal (parity), and each is ≥ the pre-change count for generation statements; benchmark rows retain their historical numbers (`grep -n '54%±4' README.ko.md` still resolves) |
 | AC-SSB-009 | REQ-SSB-009 | docs-site | The hns-oss-docs-verify recipe runs: warning-free hugo build, 4-locale file-existence + section parity | Recipe exits clean; `grep -rlc 'Sonnet 5.5' docs-site/content | wc -l` ≥ 1 and each hit locale set covers en/ja/ko/zh |
 | AC-SSB-010 | REQ-SSB-012, 013 | Research + migration note | (a) `grep -n 'between_tools' internal/template/templates/.claude/rules/moai/development/model-policy.md docs-site/content/*/multi-llm/model-policy.md` (b) research.md §2 | (a) shows the migration note in the template rule and in all 4 docs-site locales; (b) carries the official-docs citation (URL + figure or an explicit "not stated") and the D-5 decision applied or declined |
+| AC-SSB-011 | REQ-SSB-011 | t1315 merge-order clause | Before the develop merge, `grep -n '1730' .moai/specs/SPEC-SONNET55-BUMP-001/progress.md` runs | Output shows a t1315 state record: the `gh issue view 1730 --json state` result and the recorded direction (this SPEC first / absorbed t1315 after a develop absorb). A merge without this record fails the AC |
+| AC-SSB-012 | REQ-SSB-003 | Production-scope id hardcoding | `grep -rn '"claude-sonnet-5-5"' --include='*.go' internal \| grep -v _test.go \| grep -v model_policy.go` runs | 0 hits — the literal id lives only in the alias-table declaration (model_policy.go) and in *_test.go assertions; no production consumer hardcodes it |
 
 ## §D.1 Severity
 
 - **Blocker**: AC-SSB-001, AC-SSB-002, AC-SSB-003, AC-SSB-004 (behavior + build hygiene)
-- **Major**: AC-SSB-005, AC-SSB-006, AC-SSB-010 (user-facing correctness)
+- **Major**: AC-SSB-005, AC-SSB-006, AC-SSB-010, AC-SSB-011, AC-SSB-012 (user-facing correctness + coordination enforcement)
 - **Minor**: AC-SSB-007, AC-SSB-008, AC-SSB-009 (scope discipline + parity; still must pass)
 
 ## §D.2 Edge Cases
@@ -43,4 +45,5 @@ Every criterion is mechanically verifiable. Commands run from the worktree root.
 ## §D.4 Definition of Done
 
 All Blocker + Major ACs pass with cited command output in progress.md §E.2; Minor ACs pass or
-carry an explicit, evidence-cited waiver; the merge-order check (plan.md §F note) is recorded.
+carry an explicit, evidence-cited waiver; the merge-order record (AC-SSB-011) is present before
+the develop merge.
