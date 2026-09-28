@@ -133,3 +133,42 @@ func TestAcquireSpecCloseLock_ForeignErrnoNotHeld(t *testing.T) {
 		t.Fatalf("foreign errno mislabeled as lock held: %v", err)
 	}
 }
+
+// A nonblocking acquire reports the holder seen by its first flock attempt,
+// even when that holder releases before the syscall error reaches the caller.
+// This test deliberately places the release in that narrow window.
+func TestAcquireSpecCloseLock_ShortLivedHolderIsHeld(t *testing.T) {
+	root := t.TempDir()
+	holder, err := AcquireSpecCloseLock(root, "SPEC-SHORT-HOLDER")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = holder.Release() }()
+
+	original := flockAttempt
+	defer func() { flockAttempt = original }()
+	released := false
+	var releaseErr error
+	flockAttempt = func(fd int, how int) error {
+		attemptErr := original(fd, how)
+		if attemptErr == unix.EWOULDBLOCK && !released {
+			released = true
+			releaseErr = holder.Release()
+		}
+		return attemptErr
+	}
+
+	second, err := AcquireSpecCloseLock(root, "SPEC-SHORT-HOLDER")
+	if second != nil {
+		defer func() { _ = second.Release() }()
+	}
+	if releaseErr != nil {
+		t.Fatalf("release holder: %v", releaseErr)
+	}
+	if !released {
+		t.Fatal("second acquire never observed the held lock")
+	}
+	if !IsLockHeldError(err) {
+		t.Fatalf("nonblocking acquire after observing a holder: got lock=%v, err=%v; want held", second, err)
+	}
+}
