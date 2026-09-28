@@ -23,6 +23,11 @@ Baseline branch: `WT-model-docs-sweep` in worktree `.moai/worktrees/t1300`, loca
   en; other locales are unmeasured — M3 verifies all four before declaring no-change.
 - ko/ja/zh A-cluster pages were existence- and symmetry-checked but not line-mapped in phase ①;
   M1 performs the en edit-map → locale transfer at edit time.
+- Survey §5 (H24 rewrite scope) is OBSOLETE: the wizard model-policy rewrite landed pre-baseline
+  in t1246 commit `41cf11c4d`. The 5 `model_policy` occurrences are 1 comment + 4 map keys whose
+  values already carry the inheritance narrative; the init wizard model question itself is retired
+  (`question_removal_test.go` sharedInitRemovedIDs comment). M4 is verify-only (plan-audit iter-1
+  D1 premise-collapse, re-verified on this tree).
 
 ## C. Pre-flight
 
@@ -42,8 +47,10 @@ Baseline branch: `WT-model-docs-sweep` in worktree `.moai/worktrees/t1300`, loca
 - [HARD] Icon shortcode (`{{< icon >}}`) for icons; no body emoji. Mermaid diagrams stay TD-only.
   Emphasis-marker spacing per `.moai/docs/docs-site-i18n-rules.md` §17.2. URL blacklist §17.1.
 - [HARD] Korean copy: clean native written register (문어), no translationese.
-- [HARD] H24 (Go strings) is a separate milestone and a separate delegation from the docs-site
-  milestones — it does not ride a docs commit.
+- [HARD] H24 (Go) is a verify-only regression guard — the run MUST NOT edit
+  `internal/cli/wizard/translations.go` or rename its `model_policy` map keys (shared config
+  keys; renaming breaks config compatibility). It stays a separate milestone from the docs-site
+  milestones and does not ride a docs commit.
 - No time estimates; priority labels and phase ordering only.
 
 ## E. Self-Verification
@@ -68,7 +75,8 @@ work and leads; mechanical string and verification work trails.
   columns at 46/57/66/72/78/91; rewrite frontmatter narrative 96-98); `advanced/no-haiku-3tier.md`
   (93/97/144/160 — tier narrative aligned to inheritance; 39-cell matrix link target replaced);
   `advanced/tokenomics-overview.md` (36/51/106/123/125 — Layer B routing narrative;
-  profile-matrix links at 27/109/131 re-pointed). Per-milestone locale transfer: en map →
+  profile-matrix links re-pointed; inbound profile-matrix links enumerated as 4: en 27/51/109/131
+  (27 and 51 in-body, 109 and 131 link-list entries)). Per-milestone locale transfer: en map →
   ko/ja/zh equivalents located by heading grep, not by line number.
 - **M2 — B-cluster deprecated-stub docs (Priority High)**: 6 pages × 4 locales = 24 files.
   `getting-started/cli.md` (en 72/116/452 — flag rows rewritten to deprecated-stub reality),
@@ -80,13 +88,21 @@ work and leads; mechanical string and verification work trails.
   308, ×4 locales); re-verify the context-memory sibling across all 4 locales; record the
   no-change dispositions for statusline / moai-web-console / decision-memory / agent-teams /
   en `_index` captions in the milestone evidence (a no-change row needs the verification that
-  produced it).
-- **M4 — H24 wizard strings, Go (Priority High, independent of M1-M3)**: rewrite the 5
-  `model_policy` occurrences in `internal/cli/wizard/translations.go` (en/ko/ja/zh question title
-  + description) to main-session wording — the policy feeds only the main-session effort fallback
-  via `MapModelPolicyToEffort` — with native wording per locale; survey §5 line map 444/456/468/480.
-  `go build ./...` + affected `go test ./internal/cli/...`. Separable: M4 may land before, after,
-  or between docs milestones.
+  produced it). OUTSIDE-cluster retirement-narrative dispositions (D2, grep-located, ×4 locales):
+  `advanced/autonomy-tier.md` 16/116/117 (the 117 "single matrix for choosing each agent's
+  {model, effort}" description rewritten; 16 and 116 checked against the 3-tier page's new
+  narrative), `advanced/config-sections.md` 95 (Related links to profile-matrix +
+  no-haiku-3tier — descriptions updated), `advanced/self-evolving.md` 96, `advanced/token-budget.md`
+  107, `advanced/_index.md` 49-50 (table captions updated or no-change recorded).
+- **M4 — H24 regression-guard verification, Go (VERIFY-ONLY, Priority Medium, independent of
+  M1-M3)**: the H24 rewrite is DONE — it landed pre-baseline in t1246 commit `41cf11c4d`; the 5
+  `model_policy` occurrences in `internal/cli/wizard/translations.go` are 1 comment (404) + 4 map
+  keys (417/429/441/453) whose values already carry the main-session inheritance wording (spec.md
+  REQ-AMD-007 quotes them verbatim). The milestone's entire deliverable is the regression-guard
+  verification — the quoted values survive byte-identical, the map keys are NOT renamed (shared
+  config keys; renaming breaks config compatibility), NO edits to `translations.go` — plus
+  `go build ./...` and the affected `go test ./internal/cli/...` packages observed green.
+  Separable: M4 may run before, after, or between docs milestones.
 - **M5 — Verification closure (Priority High)**: run the `hns-oss-docs-verify` recipe + Go
   build/test; assemble the evidence-bearing completion report (five-section format).
 
@@ -95,8 +111,10 @@ work and leads; mechanical string and verification work trails.
 - M1-M3, M5 docs work → `manager-docs`, which spawns the oss-docs harness specialists
   (content-author on ko canonical, locale-translators for en/ja/zh) and loads
   `hns-oss-docs-i18n-rules` first per the harness contract.
-- M4 Go strings → `manager-develop` delegating a per-spawn `Agent(general-purpose)` CLI
-  specialist (internal/cli domain); the wizard string edit is Go-source work, not docs work.
+- M4 is VERIFY-ONLY — no CLI-specialist rewrite work remains (the H24 rewrite landed pre-baseline
+  in t1246 commit `41cf11c4d`). The regression-guard check runs inside `manager-develop`'s own
+  verification batch (grep the quoted values + `go build ./...` + affected `go test`); no separate
+  specialist delegation is needed. `translations.go` is a forbidden-edit file for the whole run.
 - The two delegations may proceed in sequence within the run phase (write-capable agents do not
   run concurrently in the same tree).
 

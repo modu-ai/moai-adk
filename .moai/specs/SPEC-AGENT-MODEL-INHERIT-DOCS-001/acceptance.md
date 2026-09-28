@@ -10,7 +10,7 @@ and the green path (which milestone flips it). All greps run from the repo root;
 
 | # | Command (single invocation) | Verbatim output | Exit | Notes |
 |---|---|---|---|---|
-| R1 | `grep -c 'model_policy' internal/cli/wizard/translations.go` | `5` | 0 | H24 residue |
+| R1 | `grep -c 'model_policy' internal/cli/wizard/translations.go` | `5` | 0 | WRONG-REASON RED, reclassified (plan-audit iter-1 D1, re-verified): the 5 occurrences are 1 comment (line 404) + 4 map keys (417/429/441/453) whose values already carry the landed inheritance narrative — the rewrite landed pre-baseline in t1246 commit `41cf11c4d`. R1 is the regression-guard baseline, not a rewrite red. |
 | R2 | `grep -c 'The three profiles\|Per-agent assignment table\|moai model profile' docs-site/content/en/multi-llm/model-policy.md` | `7` | 0 | A-cluster residue |
 | R3 | `grep -c 'The three profiles\|Per-agent assignment table\|moai model profile' docs-site/content/en/advanced/profile-matrix.md` | `3` | 0 | A-cluster residue |
 | R4 | `grep -cin 'per-spawn model injection' docs-site/content/en/cost-optimization/prompt-caching.md` | `1` | 0 | line 219 |
@@ -44,19 +44,19 @@ Given the default disposition is zero page removals,
 When the run phase completes,
 Then either (a) `git diff docs-site/vercel.json` is empty AND `find docs-site/content -name '*.md' | wc -l` equals its M-start count per locale (no removals), or (b) every removed path has a vercel.json redirect entry in the same diff, recorded as an explicit deviation in the milestone evidence.
 
-### AC-AMD-005 — prompt-caching bullets cleaned (REQ-AMD-006)
+### AC-AMD-005 — prompt-caching bullets cleaned + outside-cluster dispositions recorded (REQ-AMD-006)
 
-Given the per-spawn-injection bullet is measured at en cost-optimization line 219 plus a link description at 308,
+Given the per-spawn-injection bullet is measured at en cost-optimization line 219 plus a link description at 308, and the outside-cluster retirement-narrative references are located at autonomy-tier 16/116/117, config-sections 95, self-evolving 96, token-budget 107, advanced/_index 49-50 (all en, ×4 locales),
 When M3 completes,
-Then `grep -cin 'per-spawn model injection' docs-site/content/<locale>/cost-optimization/prompt-caching.md` returns `0` for all four locales, the "per-agent model injection" link description is reworded, and the context-memory sibling's all-locale verification result is recorded (baseline en: 0 hits).
+Then `grep -cin 'per-spawn model injection' docs-site/content/<locale>/cost-optimization/prompt-caching.md` returns `0` for all four locales, the "per-agent model injection" link description is reworded, the context-memory sibling's all-locale verification result is recorded (baseline en: 0 hits), AND every outside-cluster reference line carries a recorded disposition in the M3 evidence — either the link description rewritten to the inheritance narrative or an explicit no-change with the verification that produced it.
 RED-now: R4.
 
-### AC-AMD-006 — H24 wizard strings rewritten (REQ-AMD-007)
+### AC-AMD-006 — H24 regression guard: landed wording SURVIVES (REQ-AMD-007, verify-only)
 
-Given the 5 `model_policy` occurrences measured in `internal/cli/wizard/translations.go`,
-When M4 completes,
-Then `grep -c 'model_policy' internal/cli/wizard/translations.go` returns `0` (or only the retained map-key identifiers, with every user-visible title/description string carrying main-session wording — the run records which form holds), each locale's string is native wording naming the main-session effort fallback, `go build ./...` exits 0, and the affected `go test ./internal/cli/...` packages pass with observed output.
-RED-now: R1.
+Given the wizard model-policy rewrite landed pre-baseline in t1246 commit `41cf11c4d` (the 5 `model_policy` occurrences are 1 comment at line 404 + 4 map keys at 417/429/441/453 whose values are the landed main-session inheritance wording — verbatim baseline quoted in spec.md REQ-AMD-007),
+When M4 runs,
+Then `git diff -- internal/cli/wizard/translations.go` is EMPTY (no edits to the file), the `model_policy` map keys are unchanged (no key rename — shared config keys; renaming breaks config compatibility), each of the 4 locale values matches its quoted baseline byte-identically, `go build ./...` exits 0, and the affected `go test ./internal/cli/...` packages pass with observed output. There is no rewrite deliverable; a run phase that edits this file FAILS this AC.
+RED-now: R1 (reclassified as regression-guard baseline).
 
 ### AC-AMD-007 — profile_setup regression guard (REQ-AMD-007)
 
@@ -67,7 +67,7 @@ RED-now: R6.
 
 ### AC-AMD-008 — i18n HARD rules hold (REQ-AMD-008, 009)
 
-Given the edits touch 44 docs-site files across 4 locales,
+Given the edits touch the in-scope docs-site files across 4 locales (M1-M3: A-cluster 20 + B-cluster 24 + C/outside-cluster dispositions),
 When the `hns-oss-docs-verify` recipe runs,
 Then it passes: warning-free hugo build, sitemap existence, URL-blacklist grep clean, Mermaid direction grep clean (TD-only), 4-locale file-existence and section parity, body-emoji scan clean — each check's exit code observed, not assumed.
 

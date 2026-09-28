@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-MODEL-INHERIT-DOCS-001
 title: "docs-site model/effort docs rewrite to the inheritance narrative + wizard H24 residue (card t1300)"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-29
 updated: 2026-09-29
@@ -21,6 +21,7 @@ related_specs: [SPEC-AGENT-MODEL-INHERIT-001, SPEC-AGENT-MODEL-ENFORCE-001, SPEC
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-09-29 | manager-spec | Initial draft for card t1300 (Tier M, Class C, split from t1246 M8). Scope measured in `.moai/reports/t1300/phase1-survey.md` (155 pages × 4 locales = 620 surveyed; A/B/C classification with en line-number edit maps) and re-verified on tree `8a969dfc0` at plan authoring. Baseline RED-now counts recorded in acceptance.md. |
+| 0.2.0 | 2026-09-29 | manager-spec | plan-audit iter-1 (FAIL 0.75, Tier M threshold 0.80) delta revision, coordinator-relayed and re-verified on this tree. D1 premise-collapse: REQ-AMD-007 reconceptualized as a pure regression guard — the wizard model-policy rewrite already landed pre-baseline in t1246 commit `41cf11c4d`; the 5 `model_policy` occurrences are 1 comment (translations.go:404) + 4 map keys (417/429/441/453) whose values already carry the main-session inheritance wording in all 4 locales, and the init wizard model question itself is retired (`question_removal_test.go` sharedInitRemovedIDs comment). M4 demoted to verify-only. D2: outside-cluster retirement-narrative pages added to the M3 disposition list (autonomy-tier 16/116/117, config-sections 95, self-evolving 96, token-budget 107, advanced/_index 49-50). D4: tokenomics inbound profile-matrix links corrected to 4 (27/51/109/131). |
 
 ---
 
@@ -30,10 +31,13 @@ SPEC-AGENT-MODEL-INHERIT-001 (t1246, landed) removed per-agent model/effort assi
 product: subagents inherit the main session's model and effort, MoAI agent definitions declare
 neither, and the `moai model profile` accessor is deleted. The docs layer still teaches the retired
 per-agent profile-matrix narrative: the docs-site A-cluster pages (5 pages × 4 locales), the
-getting-started flag docs, the prompt-caching caveats, and the init-wizard UI strings (t1246 design
-H24 residue) all predate the change.
+getting-started flag docs, and the prompt-caching caveats all predate the change. The Go-side
+wizard strings are the exception — the H24 rewrite landed pre-baseline in t1246's own commit
+`41cf11c4d` and needs only regression-guard verification (REQ-AMD-007).
 
-This SPEC is the docs-layer sweep. Its canonical wording source is the landed doctrine sentence at
+This SPEC is the docs-layer sweep. The Go-side H24 wizard rewrite is NOT in scope as new work: it
+landed pre-baseline in t1246's own commit `41cf11c4d` — this SPEC only verifies it survives. Its
+canonical wording source is the landed doctrine sentence at
 `.claude/rules/moai/core/agent-common-protocol.md` § "Subagent Model and Effort":
 
 > Subagents inherit the main session's model and effort: pass neither `model` nor `effort` when
@@ -52,7 +56,14 @@ parallel narrative.
   family (`profile list` / `profile setup` / `profile current`, CLAUDE_CONFIG_DIR isolation) — it
   does NOT document the dead accessor. Measured directly; the phase-① survey's uncertainty about
   this page is resolved by this measurement.
-- `internal/cli/wizard/translations.go` carries 5 `model_policy` occurrences (grep count 5).
+- `internal/cli/wizard/translations.go` carries 5 `model_policy` occurrences: 1 comment listing
+  map keys (line 404) + 4 `model_policy` map keys (417/429/441/453) whose values ALREADY carry the
+  main-session inheritance narrative in all 4 locales (en "Session model policy"; ko "세션 모델 정책";
+  ja "セッションモデルポリシー"; zh "会话模型策略"). The rewrite landed pre-baseline in t1246 commit
+  `41cf11c4d`; per-agent wording count in the file is 0. The init wizard model question itself is
+  retired (the `sharedInitRemovedIDs` comment in `question_removal_test.go`). The phase-① survey
+  §5's rewrite scope for this file is therefore OBSOLETE — what remains is regression-guard
+  verification (REQ-AMD-007).
   `internal/cli/profile_setup_translations.go` is already clean (only line 165
   `"Session model policy"` — main-session wording landed by t1302).
 - A-cluster RED-now hits (en): `multi-llm/model-policy.md` 7 hits for the retired markers
@@ -97,14 +108,28 @@ parallel narrative.
   a live cache-behavior; the measured bullet (`cost-optimization/prompt-caching.md:219` en) and its
   "per-agent model injection" link description (line 308 en) shall be dropped or reduced to the
   inheritance default, and the `claude-code/context-memory/prompt-caching.md` sibling shall be
-  re-verified per locale (0 hits on en at baseline).
+  re-verified per locale (0 hits on en at baseline). Outside the A-cluster, the pages carrying the
+  retirement narrative shall receive a recorded disposition (rewrite the link description to the
+  inheritance narrative, or record no-change with its verifying evidence): en
+  `advanced/autonomy-tier.md` lines 16/116/117, `advanced/config-sections.md` line 95,
+  `advanced/self-evolving.md` line 96, `advanced/token-budget.md` line 107, `advanced/_index.md`
+  lines 49-50 — each located by grep, ×4 locales.
 
-- REQ-AMD-007 (Ubiquitous): The five `model_policy` wizard strings in
-  `internal/cli/wizard/translations.go` (en/ko/ja/zh question title and description, survey §5
-  line map) shall be rewritten to main-session wording — the policy feeds only the main-session
-  effort fallback via `MapModelPolicyToEffort` — in native wording per locale; and
-  `internal/cli/profile_setup_translations.go` shall not regress from its landed main-session
-  wording (baseline: line 165 `"Session model policy"`).
+- REQ-AMD-007 (Regression guard — no rewrite, no churn): The landed wizard model-policy wording in
+  `internal/cli/wizard/translations.go` shall SURVIVE the run phase unchanged. The landed baseline
+  (t1246 commit `41cf11c4d`, measured on tree `8a969dfc0`) is, verbatim — line 417 (en):
+  `"model_policy": {Title: "Session model policy", Description: "Sets the default reasoning effort
+  of the Claude session launched with this profile when no effort level is chosen. Subagents
+  inherit the session's model and effort."}`; line 429 (ko): `"model_policy": {Title: "세션 모델
+  정책", Description: "추론 강도를 따로 고르지 않았을 때, 이 프로필로 실행하는 Claude 세션의 기본 추론
+  강도를 정합니다. 서브에이전트는 세션의 모델과 추론 강도를 그대로 따릅니다."}`; line 441 (ja):
+  `"model_policy": {Title: "セッションモデルポリシー", Description: "推論強度を個別に選ばなかったとき、このプロファイルで起動する
+  Claude セッションの既定の推論強度を決めます。サブエージェントはセッションのモデルと推論強度をそのまま引き継ぎます。"}`;
+  line 453 (zh): `"model_policy": {Title: "会话模型策略", Description: "未单独选择推理强度时，决定使用此配置文件启动的
+  Claude 会话的默认推理强度。子代理沿用会话的模型与推理强度。"}`. The run agent MUST NOT edit
+  `translations.go` at all, and MUST NOT rename the `model_policy` map keys — they are shared
+  config keys; renaming breaks config compatibility. The same guard holds for
+  `internal/cli/profile_setup_translations.go` (baseline: line 165 `"Session model policy"`).
 
 - REQ-AMD-008 (Ubiquitous): Every docs-site edit shall follow the HARD rules of
   `.moai/docs/docs-site-i18n-rules.md`: 4-locale same-PR, ko canonical source chain
