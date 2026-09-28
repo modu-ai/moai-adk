@@ -28,6 +28,8 @@ One boundary: nudge delivery rides on cross-session messaging, absent on native 
 
 [HARD] **Promotion is the operator's act, always.** After a `/clear`, the leader presents the queued cards through `AskUserQuestion` and the operator picks; only then does the leader dispatch according to the card class. The leader never picks for the operator, never reorders by inferred priority, and never silently promotes a backlog item. An empty queue is a state to report, not a prompt to invent work.
 
+The one reconciliation is named, not excepted: `/moai:todo --auto` is the operator's batch approval — the operator who types it has, by that act, authorized serial consumption of the queue in queue order and nothing else. The `--auto` cycle derives its authority solely from that invocation event, never from queue emptiness, card readiness, or a peer's request, so this clause and the cycle state the same rule from two sides. Serial-contract detail: the gtd workflow's `--auto` section.
+
 A card the operator chose to start when it was issued is not a silent promotion: that answer IS the promotion, given explicitly before anything moved, and the same class-based entry follows.
 
 [HARD] **The leader may attach a finding; it may not act on one.** Analysis records a relation between two cards (`moai gtd relate`); the record is evidence the operator reads, never a mandate — the leader never folds the related card away, never reorders the queue around it, and never drops or edits it. Analysis changes exactly one thing on its own authority: it refuses the admission of a card whose normalized text is identical to one already queued or picked.

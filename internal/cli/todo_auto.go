@@ -1,0 +1,347 @@
+package cli
+
+import (
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/session"
+)
+
+// `/moai:todo --auto` — the serial card-processing cycle (SPEC-MANAGER-TODO-001).
+//
+// The cycle is the moai-kanban-foreman contract driven from the CLI surface:
+// pick one card → emit the dispatch directive for ONE isolated in-session
+// worker → judge completion only by reading the worker's disk evidence →
+// record `done` on that evidence → emit the /clear guidance → accept the next
+// card. Cards are processed strictly one at a time; a worker that dies or
+// leaves no readable evidence is unpicked back to `queued` with a labelled
+// non-finding, never silently done. The invocation itself is the operator's
+// batch approval: it authorizes serial consumption of the queue in queue
+// order and nothing else — the cycle never reorders, admits, or drops cards.
+
+// autoEvidenceRelPath is the evidence file the dispatch directive names, per
+// the foreman convention. Completion is judged by reading THIS file, never by
+// the worker's claims.
+func autoEvidencePath(root, cardID string) string {
+	return filepath.Join(root, ".moai", "reports", cardID, "evidence.md")
+}
+
+// autoRegistryEntry is the slice of a session-registry row the liveness
+// registry channel needs.
+type autoRegistryEntry struct {
+	Cwd string
+	PID int
+}
+
+// autoLiveness carries the two owner-measurement channels (design D-4). Both
+// are seams so tests inject fixture state; the production wiring shells out
+// to the session registry and lsof, exactly like the worktree-move guard.
+//
+// Decision rule: EITHER channel showing life means the owner is alive — a
+// false "alive" costs a skipped card, a false "dead" steals a living
+// session's work. Measurement is re-taken at every pickup decision, never
+// cached across cards (AC-MT-011 non-cache arm).
+type autoLiveness struct {
+	registryEntries func() ([]autoRegistryEntry, error)
+	processCWDs     func() ([]string, error)
+	pidAlive        func(pid int) bool
+}
+
+// newAutoLiveness returns the production measurement channels.
+func newAutoLiveness() autoLiveness {
+	return autoLiveness{
+		registryEntries: func() ([]autoRegistryEntry, error) {
+			entries, err := session.QueryActiveWork("")
+			if err != nil {
+				return nil, err
+			}
+			out := make([]autoRegistryEntry, 0, len(entries))
+			for _, e := range entries {
+				out = append(out, autoRegistryEntry{Cwd: e.CWD, PID: e.PID})
+			}
+			return out, nil
+		},
+		processCWDs: activeProcessCWDs,
+		pidAlive: func(pid int) bool {
+			if pid <= 0 {
+				return false
+			}
+			return exec.Command("kill", "-0", fmt.Sprint(pid)).Run() == nil
+		},
+	}
+}
+
+// autoOwnerWorktrees names the candidate owner trees for a card: the tree
+// keeps the card id by convention, under either worktree root.
+func autoOwnerWorktrees(root, cardID string) []string {
+	return []string{
+		filepath.Join(root, ".claude", "worktrees", cardID),
+		filepath.Join(root, ".moai", "worktrees", cardID),
+	}
+}
+
+func autoInsideTree(dir, tree string) bool {
+	rel, err := filepath.Rel(tree, dir)
+	if err != nil {
+		return false
+	}
+	return rel == "." || (!strings.HasPrefix(rel, "..") && rel != "")
+}
+
+// ownerAlive judges one picked card's owner on both channels. The second
+// return reports a degraded measurement (lsof unavailable): the cycle then
+// decides on the registry channel alone and labels the notice. An error from
+// BOTH channels is measurement failure — the conservative default holds and
+// the owner is reported alive (no takeover on an unmeasurable board).
+func (lv autoLiveness) ownerAlive(root, cardID string) (alive bool, degraded bool, err error) {
+	trees := autoOwnerWorktrees(root, cardID)
+	registryLive := false
+	entries, regErr := lv.registryEntries()
+	if regErr == nil {
+		for _, e := range entries {
+			for _, tree := range trees {
+				if autoInsideTree(e.Cwd, tree) && lv.pidAlive(e.PID) {
+					registryLive = true
+				}
+			}
+		}
+	}
+	cwds, procErr := lv.processCWDs()
+	degraded = procErr != nil
+	processLive := false
+	if procErr == nil {
+		for _, dir := range cwds {
+			for _, tree := range trees {
+				if autoInsideTree(dir, tree) {
+					processLive = true
+				}
+			}
+		}
+	}
+	if regErr != nil && procErr != nil {
+		// Nothing was measurable — refuse the takeover.
+		return true, degraded, regErr
+	}
+	return registryLive || processLive, degraded, nil
+}
+
+// autoPickTargets selects the cycle's pickup targets (REQ-MT-008/010):
+// first the unfinished already-picked cards whose owner measures dead, then
+// the unpicked cards in queue order. The predicate is written in POSITIVE
+// state vocabulary — `state == queued` plus the dead-owner `picked`
+// carve-out — so a future card state (a `hold`, say) is excluded from pickup
+// automatically. Liveness is re-measured per decision; the notes slice
+// carries the labelled non-findings (degraded measurement, live-owner skip).
+func autoPickTargets(rec *kanban.BacklogRecord, lv autoLiveness, root string) (targets []kanban.BacklogItem, notes []string, err error) {
+	for _, it := range rec.Items {
+		if it.State != kanban.BacklogStatePicked {
+			continue
+		}
+		alive, degraded, liveErr := lv.ownerAlive(root, it.ID)
+		if liveErr != nil {
+			notes = append(notes, fmt.Sprintf("non-finding: %s owner liveness unmeasurable (%v) — card skipped, no takeover", it.ID, liveErr))
+			continue
+		}
+		if alive {
+			notes = append(notes, fmt.Sprintf("non-finding: %s owner measured alive — card untouchable", it.ID))
+			continue
+		}
+		if degraded {
+			notes = append(notes, fmt.Sprintf("non-finding: %s owner judged from the session registry alone (lsof unavailable — degraded measurement)", it.ID))
+		}
+		targets = append(targets, it)
+	}
+	for _, it := range rec.Items {
+		if it.State == kanban.BacklogStateQueued {
+			targets = append(targets, it)
+		}
+	}
+	return targets, notes, nil
+}
+
+// autoOptions carries the cycle's seams and knobs.
+type autoOptions struct {
+	wait      time.Duration       // evidence deadline per card
+	liveness  autoLiveness        // owner-measurement channels
+	sessionID string              // the invoking (operator) session, named in the guidance
+	sleep     func(time.Duration) // poll-tick seam (tests drive evidence arrival here)
+	now       func() time.Time    // clock seam for the deadline
+	jev       func(root string) string // display-only consultation seam (tests stub it)
+}
+
+// runAutoCycle executes the serial cycle against the store, writing the
+// narrated output (accept → directive → evidence → done/unpick → guidance)
+// to out. Exactly one card is in flight at any time.
+func runAutoCycle(out io.Writer, store *kanban.BacklogStore, root string, opts autoOptions) error {
+	if opts.sleep == nil {
+		opts.sleep = time.Sleep
+	}
+	if opts.now == nil {
+		opts.now = time.Now
+	}
+	if opts.sessionID == "" {
+		opts.sessionID = os.Getenv(config.EnvClaudeCodeSessionID)
+		if opts.sessionID == "" {
+			opts.sessionID = "operator session (id unavailable)"
+		}
+	}
+	if opts.jev == nil {
+		opts.jev = consultJev
+	}
+
+	// Jev consultation is display-only (REQ-MT-014/015): the signal is
+	// rendered verbatim as a labelled line and consumed by NO decision —
+	// never a queue mutation, a completion verdict, a merge approval, or an
+	// operator gate. Absent scripts or an absent key degrade to a labelled
+	// non-finding and the cycle proceeds on lead judgment alone, exit 0.
+	fmt.Fprintln(out, opts.jev(root))
+
+	rec, err := store.LoadPure()
+	if err != nil {
+		return err
+	}
+	targets, notes, err := autoPickTargets(rec, opts.liveness, root)
+	if err != nil {
+		return err
+	}
+	for _, n := range notes {
+		fmt.Fprintln(out, n)
+	}
+	if len(targets) == 0 {
+		fmt.Fprintln(out, "no eligible card: queue is empty or every card is untouched-by-authority (nothing to do)")
+		return nil
+	}
+
+	for _, card := range targets {
+		fmt.Fprintf(out, "accept %s %s\n", card.ID, todoTextPrefix(card.Text))
+		// Claim the card before dispatch: a queued card becomes picked (the
+		// cycle's own pick); a dead-owner picked card is already claimed. The
+		// card this cycle picked is the only one it may later close.
+		if card.State == kanban.BacklogStateQueued {
+			if err := store.Mutate(func(r *kanban.BacklogRecord) error {
+				for i := range r.Items {
+					if r.Items[i].ID == card.ID {
+						if r.Items[i].State != kanban.BacklogStateQueued {
+							return fmt.Errorf("auto: card %s is %s, not queued — refusing the pick", card.ID, r.Items[i].State)
+						}
+						r.Items[i].State = kanban.BacklogStatePicked
+						return nil
+					}
+				}
+				return fmt.Errorf("auto: card %s vanished", card.ID)
+			}); err != nil {
+				fmt.Fprintf(out, "non-finding: %s (%v)\n", card.ID, err)
+				continue
+			}
+		}
+		evidence := autoEvidencePath(root, card.ID)
+		writeAutoDirective(out, card, evidence)
+
+		// One worker in flight: wait for the evidence the directive named,
+		// polling until the per-card deadline. Completion is judged by
+		// reading the file, never by any worker claim.
+		collected := false
+		deadline := opts.now().Add(opts.wait)
+		for opts.now().Before(deadline) {
+			if body, readErr := os.ReadFile(evidence); readErr == nil && len(strings.TrimSpace(string(body))) > 0 {
+				collected = true
+				break
+			}
+			opts.sleep(5 * time.Second)
+		}
+
+		if collected {
+			fmt.Fprintf(out, "evidence collected: %s\n", evidence)
+			err := store.Mutate(func(r *kanban.BacklogRecord) error {
+				for i := range r.Items {
+					if r.Items[i].ID == card.ID {
+						if r.Items[i].State != kanban.BacklogStatePicked {
+							return fmt.Errorf("auto: card %s is %s, not picked — changed hands mid-flight", card.ID, r.Items[i].State)
+						}
+						return r.ArchiveCard(card.ID)
+					}
+				}
+				return fmt.Errorf("auto: card %s vanished", card.ID)
+			})
+			if err != nil {
+				// The card changed hands mid-flight: this cycle's claim is
+				// gone — report the non-finding and move on, never archive.
+				fmt.Fprintf(out, "non-finding: %s (%v)\n", card.ID, err)
+				continue
+			}
+			fmt.Fprintf(out, "done %s\n", card.ID)
+			writeAutoClearGuidance(out, card.ID, opts.sessionID)
+			continue
+		}
+
+		// Failure path: no readable evidence at the deadline — unpick with a
+		// labelled non-finding. Never silently done, never left picked here.
+		if err := store.Mutate(func(r *kanban.BacklogRecord) error {
+			for i := range r.Items {
+				if r.Items[i].ID == card.ID {
+					if r.Items[i].State == kanban.BacklogStatePicked {
+						r.Items[i].State = kanban.BacklogStateQueued
+						r.Items[i].SpecID = nil
+					}
+					return nil
+				}
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "unpick %s non-finding: worker evidence absent at deadline (%s) — card returned to queued, never done\n", card.ID, evidence)
+	}
+	return nil
+}
+
+// consultJev asks the local Jev scripts for a dispatch-order/priority signal.
+// The return value is a labelled display line — the ONLY thing the cycle does
+// with it is print it. No decision reads it: Jev output is never the basis of
+// a queue mutation, a completion verdict, a merge approval, or any
+// operator-gate decision (REQ-MT-015). An absent script, key, or network
+// degrades to a labelled non-finding; degradation is never an error exit.
+func consultJev(root string) string {
+	script := filepath.Join(root, "scripts", "jev", "route.sh")
+	if _, err := os.Stat(script); err != nil {
+		return "jev: unavailable (no local scripts) — labelled non-finding; proceeding on the operator session's own judgment"
+	}
+	out, err := exec.Command(script).Output()
+	if err != nil {
+		return fmt.Sprintf("jev: consultation failed (%v) — labelled non-finding; proceeding on the operator session's own judgment", err)
+	}
+	return "jev signal (display-only): " + strings.TrimSpace(string(out))
+}
+
+// writeAutoDirective emits the fixed-field dispatch address block — a
+// pointer, not a copy, ten lines at most. The directive names ONE isolated
+// in-session Agent() worker (isolation: worktree); it creates no factory
+// lease and claims no slot.
+func writeAutoDirective(out io.Writer, card kanban.BacklogItem, evidence string) {
+	fmt.Fprintln(out, "dispatch (one isolated in-session Agent() worker, isolation: worktree):")
+	fmt.Fprintf(out, "card: %s\n", card.ID)
+	if card.SpecID != nil && *card.SpecID != "" {
+		fmt.Fprintf(out, "spec: %s\n", *card.SpecID)
+	}
+	fmt.Fprintf(out, "evidence: %s\n", evidence)
+	fmt.Fprintln(out, "worker orders: implement the card lane-locally; write the evidence file above (decisions, verbatim output tails, gaps, residual risk); commit by explicit pathspec; never push, never merge.")
+}
+
+// writeAutoClearGuidance emits the per-card /clear guidance (REQ-MT-011):
+// unconditional for every completed card, naming the completed card, the
+// next step, and the invoking (operator) session — this session, the one
+// hosting the cycle and the next card's dispatch, never the worker's.
+func writeAutoClearGuidance(out io.Writer, cardID, sessionID string) {
+	fmt.Fprintf(out, "--- /clear guidance ---\n")
+	fmt.Fprintf(out, "card %s is complete. Clear this session (/clear) before the next card.\n", cardID)
+	fmt.Fprintf(out, "next step: re-run `moai todo --auto` to continue the queue; next pickup follows the same order.\n")
+	fmt.Fprintf(out, "operator session: %s\n", sessionID)
+	fmt.Fprintf(out, "----------------------\n")
+}

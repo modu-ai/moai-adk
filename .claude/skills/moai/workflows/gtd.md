@@ -299,6 +299,30 @@ Once picked:
    run → sync without a SPEC, Class C plan → run → sync with SPEC authoring
    in plan. A pick alone neither creates a SPEC nor requires one.
 
+### `--auto` — the serial batch consumption
+
+`moai todo --auto` (the same verb tree the `gtd` spelling serves) processes
+the queue serially: pick one card, dispatch one isolated in-session worker
+for it, judge completion only by reading the worker's disk evidence, record
+the done transition on that evidence, emit the /clear guidance for the
+completed card, and only then accept the next. Exactly one card is in flight
+at any time; the pickup order is the dead-owner `picked` cards first, then
+the queue order, with owner liveness judged on two channels — the session
+registry and an `lsof` working-directory probe — re-measured at every pickup
+decision, never cached.
+
+[HARD] `/moai:todo --auto` is the operator's batch approval: it authorizes
+serial consumption of the queue in queue order and nothing else. The cycle
+derives its authority solely from the invocation — it never self-promotes,
+reorders, admits, or drops cards beyond that order, and it never takes over a
+picked card whose owning session is measured alive, even when no other pickup
+target exists. A worker that dies or leaves no readable evidence leaves the
+card unpicked back to `queued` with a labelled non-finding — never silently
+done, never left picked by the cycle. Jev consultation inside the cycle is a
+display-only signal for dispatch order and priority; it is never the basis of
+a queue mutation or a completion verdict. See `kanban-dispatch.md` § Entry
+into the board is an operator act (the reconciliation clause).
+
 ## Standing sources
 
 A standing source is a workflow the operator authorized once to issue a card
