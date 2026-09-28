@@ -140,6 +140,28 @@ func TestLegacyWorktreeMigrationSkipsLockAndCollision(t *testing.T) {
 	}
 }
 
+func TestLegacyWorktreeMigrationRechecksOnlySelectedTree(t *testing.T) {
+	root, old, _ := migrationFixture(t)
+	other := filepath.Join(root, ".claude", "worktrees", "other")
+	migrationGit(t, root, "worktree", "add", "-q", "-b", "WT-other", other)
+	plans, err := planLegacyWorktreeMigration(root, time.Now())
+	if err != nil || len(plans) != 2 {
+		t.Fatalf("full migration plan = %#v, %v", plans, err)
+	}
+	migrationGit(t, root, "worktree", "lock", other)
+	focused, err := planLegacyWorktreeMigrationFor(root, time.Now(), old)
+	if err != nil || len(focused) != 1 || canonicalTreePath(focused[0].source) != canonicalTreePath(old) || focused[0].skip != "" {
+		t.Fatalf("selected tree recheck = %#v, %v", focused, err)
+	}
+	migrationGit(t, root, "worktree", "lock", old)
+	if err := moveLegacyWorktree(root, focused[0]); err == nil || !strings.Contains(err.Error(), "changed since migration planning") {
+		t.Fatalf("lock added after planning was not detected: %v", err)
+	}
+	if _, err := os.Stat(old); err != nil {
+		t.Fatalf("source lost after failed recheck: %v", err)
+	}
+}
+
 func TestUpdateWorktreeMigrationDryRunAndRetry(t *testing.T) {
 	root, old, modern := migrationFixture(t)
 	var output bytes.Buffer
