@@ -71,7 +71,10 @@ DP1 (plan-phase entry): approval proxy = operator-approved card t1306 + lead's e
 
 ### Audit-ready signal
 
-_<withheld — the lane appends the audit-ready signal lines after iteration 2 passes; the iter-1 draft carried a provisional signal that was removed at repair time (iter1 FAIL 0.80, so `plan_status: audit-ready` does not hold)_
+- plan_complete_at: 2026-09-29T04:42:18+0900
+- plan_status: audit-ready
+
+Iteration 2 (delta re-audit): **PASS 0.89** @ `b912842df` — Tier L threshold 0.85 met, zero blocking defects; D1–D11 + D9/DP2 all RESOLVED against the `b912842df` diff (+95/−52, 6 files); regression checks hold (MP-1/2/3/5, AC 22, REQ→AC 18/18, lint 0 error/0 warning/1 INFO reproduced). Report `.moai/reports/t1306/plan-audit-iter2.md` (line 1: `레인 백엔드: glm (glm-5.3-flash)`). Non-blocking notes carried to run phase: D12a-c (wording), D13 (AC-MT-015 lease grep — narrow to acquisition identifiers if the D-11 boundary prose becomes code comments), D14 (plan M3 step 2 C2-mirror mention), D15 (transcription corrected in this close-out).
 
 ### Plan-phase artifact set (Tier L)
 
@@ -105,11 +108,14 @@ $ grep -rn "NEEDS CLARIFICATION" .moai/specs/SPEC-MANAGER-TODO-001/
 **Post-repair lint**:
 
 ```
-$ ~/go/bin/moai spec lint SPEC-MANAGER-TODO-001
-✓ No findings — all SPEC documents are valid
+$ moai spec lint SPEC-MANAGER-TODO-001
+INFO  OwnershipTransitionUnmeasured  spec.md:1 — transition "(none)" → "draft" expected owner "manager-spec" but commit e11110c60 has no Authored-By-Agent trailer — ownership transition unmeasured
+0 error(s), 0 warning(s)
 ```
 
-**Repair commit**: <see git log — this section is finalized at commit time; the lane reads the SHA from the commit message trail.>
+Close-out re-measurement 2026-09-29T04:42:18+0900, exit 0. The pre-repair paste above (`✓ No findings`) was the authoring-time output — the INFO row appeared once the ownership rule could measure the landed transition commit; D15 (iter2) corrected this transcription.
+
+**Repair commit**: `b912842df`
 
 - `acceptance.md` — 22 ACs (AC-MT-001..022), all mechanical; edge cases; quality gates; REQ→AC traceability map (complete, 18/18)
 - `research.md` — measured current state, 262-hit baseline enumeration, contract-conflict report (resolved), t1240 seam
