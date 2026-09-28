@@ -18,6 +18,8 @@
   ```
 
 - 공식 SQLite 카드 t1240은 `moai cc|glm|codex -f agent`를 새 자가 배차 역할로 정의한다. 따라서 옛 워커 별칭의 번호 배정을 그대로 되살리면 안 된다. t1292의 `.moai/worktrees` 경로 변경은 `develop`의 `a7190891d`로 병합·게시됐고, CI 테스트 경로 수정은 `2dbf4321b`로 게시됐다.
+- 이 브랜치가 흡수한 `develop` `cee197917`에서는 역할 명칭이 `leader/lane`으로 바뀌었다(t1256). `internal/cli/factory.go`는 현재 `-f lane`에 대해 `NextFactoryLaneNumber`를 호출하고, `internal/kanban/bootstrap.go`의 해당 함수는 살아 있는 최고 번호에 1을 더한다. 이 두 함수 안에는 런의 허용 자리 범위 확인이 보이지 않는다. 실제 합류의 최종 검증은 아직 하지 않았다. Codex의 `-f` 진입은 아직 은퇴 상태다.
+- `gh run view 36367483094 --json headSha,status,conclusion,jobs`의 현재 판정은 `cee197917b83aff5b04761e13d5a6328179cfee1`에 대해 `status=completed`, `conclusion=success`, 실패 잡 0개다. 이는 t1292가 포함된 통합 트리의 판정이며 F2의 미구현 경로를 검증한 것은 아니다.
 
 ## 기준 트리
 
@@ -27,7 +29,7 @@
 
 - t1240의 F2 실행 코드가 아직 통합되지 않아 Codex 자가 배차·워커 슬롯 제한·세션 UUID 연결을 시험할 수 없다.
 - 살아 있는 `tm1saz` 런과 Codex 창은 다시 조회하거나 변경하지 않았다.
-- t1292를 포함한 `develop` CI의 최종 통과 판정은 아직 없다.
+- t1240의 F2 구현과 새 `-f lane` 세션 바인딩은 아직 관측하지 않았다.
 
 ## 남은 위험과 완료 조건
 
