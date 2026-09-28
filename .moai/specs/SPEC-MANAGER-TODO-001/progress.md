@@ -242,7 +242,7 @@ $ grep -c 'SPEC-MANAGER-TODO-001' CHANGELOG.md
 
 ```yaml
 sync_complete_at: 2026-09-29T12:00:00+0900
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 3e8dfcb1c
 sync_status: complete
 b12_self_test_a: pass (duplicate grep = 0)
 b12_self_test_b: pass (AC count 22 == 22, zero non-live markers)
