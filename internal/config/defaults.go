@@ -267,8 +267,6 @@ const (
 	// mode. Used to populate CLAUDE_CODE_AUTO_COMPACT_WINDOW when the High slot
 	// model resolves to the 1M context tier.
 	Default1MContextTokens = 1_000_000
-	// Default performance tier
-	DefaultPerformanceTier = "medium"
 
 	// DefaultHarness is the closed-set default of llm.harness (SPEC-INIT-HARNESS-001
 	// REQ-IH-001/002). Init seeds this value explicitly so an absent key never
@@ -927,7 +925,6 @@ func NewDefaultSystemConfig() SystemConfig {
 func NewDefaultLLMConfig() LLMConfig {
 	return LLMConfig{
 		GLMEnvVar:       DefaultGLMEnvVar,
-		PerformanceTier: DefaultPerformanceTier,
 		Harness:         DefaultHarness,
 		ClaudeModels: ClaudeTierModels{
 			High:   "opus",

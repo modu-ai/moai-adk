@@ -111,14 +111,11 @@ func TestExtractAgentSpawn(t *testing.T) {
 	})
 }
 
-// TestClassifyAgentModel pins AC-AME-013: the 4-valued verdict.
+// TestClassifyAgentModel pins the 2-valued declared-model verdict (M5): the
+// record states what the spawn declared — verbatim when present, `inherit`
+// otherwise — with no expected model to compare against.
 func TestClassifyAgentModel(t *testing.T) {
 	t.Parallel()
-	var llm config.LLMConfig
-
-	// Resolve the catalog expectation through the resolver so the test never
-	// hardcodes a matrix cell (AP-2).
-	_, resolvedExplore := resolveAgentModel(llm, "Explore")
 
 	cases := []struct {
 		name     string
@@ -126,34 +123,21 @@ func TestClassifyAgentModel(t *testing.T) {
 		want     agentModelVerdict
 		wantResv string
 	}{
-		{"unmapped: outside retained catalog", agentSpawn{Agent: "hns-some-user-specialist"}, verdictAgentModelUnmapped, ""},
-		{"missing: resolved concrete, declaration absent", agentSpawn{Agent: "Explore"}, verdictAgentModelMissing, resolvedExplore},
-		{"mismatch: declaration differs from resolution", agentSpawn{Agent: "Explore", DeclaredModel: "haiku"}, verdictAgentModelMismatch, resolvedExplore},
-		{"ok: declaration equals resolution", agentSpawn{Agent: "Explore", DeclaredModel: resolvedExplore}, verdictAgentModelOK, resolvedExplore},
+		{"inherit: no declaration — the expected state", agentSpawn{Agent: "Explore"}, verdictAgentModelInherit, "inherit"},
+		{"declared: explicit model recorded verbatim", agentSpawn{Agent: "Explore", DeclaredModel: "haiku"}, verdictAgentModelDeclared, "haiku"},
+		{"declared: case and context suffix preserved as written", agentSpawn{Agent: "hns-some-user-specialist", DeclaredModel: "opus[1m]"}, verdictAgentModelDeclared, "opus[1m]"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got, resolved := classifyAgentModel(tc.spawn, llm)
+			got, recorded := classifyAgentModel(tc.spawn)
 			if got != tc.want {
 				t.Errorf("verdict: got %q, want %q", got, tc.want)
 			}
-			if tc.want != verdictAgentModelUnmapped && resolved != tc.wantResv {
-				t.Errorf("resolved: got %q, want %q", resolved, tc.wantResv)
+			if recorded != tc.wantResv {
+				t.Errorf("recorded: got %q, want %q", recorded, tc.wantResv)
 			}
 		})
-	}
-}
-
-// TestClassifyAgentModelMismatchIsCaseInsensitive guards against a spurious
-// mismatch when the orchestrator declares the alias in a different case.
-func TestClassifyAgentModelMismatchIsCaseInsensitive(t *testing.T) {
-	t.Parallel()
-	var llm config.LLMConfig
-	_, resolved := resolveAgentModel(llm, "Explore")
-	got, _ := classifyAgentModel(agentSpawn{Agent: "Explore", DeclaredModel: strings.ToUpper(resolved)}, llm)
-	if got != verdictAgentModelOK {
-		t.Errorf("verdict: got %q, want ok (case-insensitive alias comparison)", got)
 	}
 }
 
@@ -167,8 +151,8 @@ func TestAppendAgentModelAudit(t *testing.T) {
 			SessionID:     "sess-1",
 			Agent:         "Explore",
 			DeclaredModel: "",
-			ResolvedModel: "sonnet",
-			Verdict:       string(verdictAgentModelMissing),
+			ResolvedModel: "inherit",
+			Verdict:       string(verdictAgentModelInherit),
 		})
 	}
 
@@ -297,14 +281,10 @@ func TestAgentModelObserveNeverBlocks(t *testing.T) {
 	root := t.TempDir()
 	h := newAgentModelTestHandler(t, root)
 
-	var llm config.LLMConfig
-	_, resolved := resolveAgentModel(llm, "Explore")
-
 	cases := []struct{ name, agent, model string }{
-		{"ok", "Explore", resolved},
-		{"missing", "Explore", ""},
-		{"mismatch", "Explore", "haiku"},
-		{"unmapped", "hns-user-specialist", "opus"},
+		{"inherit", "Explore", ""},
+		{"declared", "Explore", "haiku"},
+		{"declared-unmapped-agent", "hns-user-specialist", "opus"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -317,39 +297,31 @@ func TestAgentModelObserveNeverBlocks(t *testing.T) {
 	}
 }
 
-// TestAgentModelAdvisoryContent pins AC-AME-020.
-func TestAgentModelAdvisoryContent(t *testing.T) {
+// TestAgentModelNoAdvisory pins the M5 shape: with no expected model there is
+// nothing to advise against — the observation record is the product. This
+// replaces AC-AME-020's advisory-content contract.
+func TestAgentModelNoAdvisory(t *testing.T) {
 	t.Parallel()
-	var llm config.LLMConfig
-	_, resolved := resolveAgentModel(llm, "Explore")
+	root := t.TempDir()
+	h := newAgentModelTestHandler(t, root)
 
-	t.Run("missing and mismatch emit an advisory", func(t *testing.T) {
-		t.Parallel()
-		for _, v := range []agentModelVerdict{verdictAgentModelMissing, verdictAgentModelMismatch} {
-			msg := agentModelAdvisory("Explore", resolved, v)
-			if msg == "" {
-				t.Fatalf("verdict %q: advisory is empty", v)
-			}
-			if !strings.Contains(msg, "Explore") {
-				t.Errorf("verdict %q: advisory omits the agent name: %s", v, msg)
-			}
-			if !strings.Contains(msg, resolved) {
-				t.Errorf("verdict %q: advisory omits the resolved alias: %s", v, msg)
-			}
+	for name, model := range map[string]string{
+		"inherit spawn": "",
+		"declared spawn": "haiku",
+	} {
+		out, err := h.Handle(context.Background(), agentInput("Explore", model))
+		if err != nil {
+			t.Fatalf("%s: Handle: %v", name, err)
 		}
-	})
-
-	t.Run("ok and unmapped stay silent", func(t *testing.T) {
-		t.Parallel()
-		for _, v := range []agentModelVerdict{verdictAgentModelOK, verdictAgentModelUnmapped} {
-			if msg := agentModelAdvisory("Explore", resolved, v); msg != "" {
-				t.Errorf("verdict %q: advisory should be empty, got %q", v, msg)
-			}
+		assertNotDeny(t, out)
+		if out.SystemMessage != "" {
+			t.Errorf("%s: advisory should be empty under declared-model logging, got %q", name, out.SystemMessage)
 		}
-	})
+	}
 }
 
-// TestAgentModelAdvisoryDoesNotBlock pins AC-AME-021.
+// TestAgentModelAdvisoryDoesNotBlock pins AC-AME-021 (M5 shape): the hook
+// observes without advising and never blocks.
 func TestAgentModelAdvisoryDoesNotBlock(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -359,8 +331,8 @@ func TestAgentModelAdvisoryDoesNotBlock(t *testing.T) {
 		t.Fatalf("Handle: %v", err)
 	}
 	assertNotDeny(t, out)
-	if out.SystemMessage == "" {
-		t.Errorf("expected a non-blocking advisory on the missing verdict")
+	if out.SystemMessage != "" {
+		t.Errorf("advisory should be empty under declared-model logging, got %q", out.SystemMessage)
 	}
 }
 

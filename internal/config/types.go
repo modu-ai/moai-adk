@@ -292,35 +292,6 @@ type LLMConfig struct {
 	// fallback — a pin that silently fell back would re-expose the
 	// broken-release blast radius the pin exists to stop.
 	ClaudeBin string `yaml:"claude_bin,omitempty"`
-	// Performance tier: "high", "medium", "low" (canonical), plus "max" accepted
-	// as the superseded name of the top tier. Controls model selection for all
-	// sub-agents. Since the top column was renamed max -> high this axis shares the
-	// llm.profile vocabulary exactly; the tag keeps "max" so pre-rename configs
-	// still validate, and NormalizeProfile folds it to "high" on read.
-	PerformanceTier string `yaml:"performance_tier" validate:"omitempty,oneof=max high medium low"`
-	// Profile selects the active per-agent model+effort column, one of
-	// {high, medium, low} (REQ-MPM-001). The superseded top-column name "max" is
-	// accepted as a read-time alias. Absent/empty resolves via EffectiveProfile
-	// (profile → performance_tier alias → default medium). Closed-set validated
-	// by validateProfile.
-	Profile string `yaml:"profile"`
-	// Profiles mirrors the default profile matrix for transparency and user
-	// editability (REQ-MPM-010): profile → agent NAME → {model, effort}. The Go
-	// default (template.DefaultProfileMatrix) is the authoritative fallback for
-	// any cell absent from config. Pre-rename configs keyed by agent GROUP name
-	// simply miss on lookup and fall through to the Go default, so a stale
-	// mirror degrades rather than breaking.
-	Profiles map[string]map[string]ModelEffort `yaml:"profiles"`
-	// HarnessAgents is the profile → harness purpose class → {effort} map read by
-	// template.ResolveHarnessAgentModelEffort when /moai:harness generates a
-	// specialist. Only the Effort field is consumed: harness agents are pinned to
-	// template.HarnessAgentModel, so a Model value here is ignored. Absent
-	// entries fall through to the effort of the class's profile-matrix row.
-	HarnessAgents map[string]map[string]ModelEffort `yaml:"harness_agents"`
-	// AgentOverrides is an optional per-agent {model, effort} override keyed by
-	// canonical agent name, applied on top of the active profile's cell
-	// (REQ-MPM-006). Validated by validateAgentOverrides.
-	AgentOverrides map[string]ModelEffort `yaml:"agent_overrides"`
 	// Claude model mapping by tier
 	ClaudeModels ClaudeTierModels `yaml:"claude_models"`
 	// GLM API configuration
@@ -509,8 +480,8 @@ type WorkflowConfig struct {
 	// cannot be determined, the auditor's verdict is refused adoption and the
 	// phase-entry spawns are denied until a later run of the same auditor is
 	// observed on the expected model. Default false: the observation row and
-	// the warning always run regardless of this value. Sibling of
-	// AgentModelGuard rather than a sub-key of it, for the SettingsDriftGate
+	// the warning always run regardless of this value. A bare `enabled` flag
+	// rather than a block, for the SettingsDriftGate
 	// reason — one flag gating two refusals at two surfaces cannot say which
 	// one a maintainer meant to turn off.
 	ServedModelGate ServedModelGateConfig `yaml:"served_model_gate"`
@@ -579,70 +550,12 @@ type WorkflowConfig struct {
 	// Deprecated: use TokenBudget.Sync.
 	SyncTokens int `yaml:"-"`
 
-	// WorkflowAgents는 dynamic-workflow purpose 분류(7종) → {model, effort} 기본값
-	// 맵이다 (SPEC-WEB-CONSOLE-011 REQ-WC11-070/071). config 블록이 기본값의
-	// SSOT이고 per-script 리터럴이 override다 (dynamic-workflows.md §Config
-	// surface — JS 스크립트가 yaml 파일을 직접 읽는다).
-	//
-	// 소비 관계 (M5-a B2 정정 — verification-claim-integrity): 이 typed 필드는
-	// 로더가 채우는 스키마 표면이며, production Go 코드는 이 필드를 읽지
-	// 않는다 (grep 실측 — config/workflow_agents_test.go만 접근). 웹 콘솔은
-	// M5-a B1부터 이 블록을 렌더/쓰기하지 않는다. dynamic-workflow JS가
-	// yaml 파일에서 직접 읽는 소비자다. 블록 부재 시 nil (zero-value, 무오류).
-	WorkflowAgents map[string]WorkflowAgentEntry `yaml:"workflow_agents"`
-
-	// ModelRouting is the Tier x Phase -> {model, effort} routing map read by
-	// RouteModelFor(tier, phase). The key format is "<TIER>-<phase>" (e.g.
-	// "S-sync", "L-run"). This is the per-spawn COST axis, orthogonal to the
-	// Phase 4 mode-shape axis (direct / serial / fanout / sweep) — B (this
-	// field) decides model/effort, Phase 4 decides spawn shape; they compose,
-	// never compete.
-	// When the block is absent the map is nil and RouteModelFor falls back to
-	// the documented default entry with FallbackApplied=true.
-	ModelRouting map[string]ModelRoutingEntry `yaml:"model_routing"`
-
-	// ModelRoutingProfiles is the perfTier -> (Tier x Phase) -> {model, effort}
-	// 3-tier routing map read by RouteModelFor(specTier, phase, perfTier). The
-	// outer key is perfTier in {high, medium, low} (the superseded "max" name is
-	// accepted as a read-time alias); the inner key format is
-	// "<TIER>-<phase>" (e.g. "S-sync", "L-run"). This is the No-Haiku 3-tier
-	// cost axis (SPEC-AGENT-ARCH-V2-001 M3, design.md §D.5) — it supersedes the
-	// flat ModelRouting above for spawn-time routing. When the block is absent
-	// the map is nil and RouteModelFor falls back to the documented default
-	// entry with FallbackApplied=true.
-	ModelRoutingProfiles ModelRoutingProfiles `yaml:"model_routing_profiles"`
-
 	// Audit is the workflow.audit block (SPEC-MOAI-MCP-SERVER-001 REQ-MCP-010 /
 	// SPEC-AUDIT-MULTI-MODEL-001): the active audit_model token plus the
 	// per-auditor gates. When the block is absent the field is the zero value
 	// and callers resolve the distributed default profile via
 	// NewDefaultWorkflowConfig (claude required, codex required, glm advisory).
 	Audit AuditConfig `yaml:"audit"`
-}
-
-// ModelRoutingProfiles is perfTier -> (tier-phase) -> routing entry. perfTier
-// in {high, medium, low}; inner key "<TIER>-<phase>" (Tier in {S,M,L}, Phase in
-// {plan,run,sync,mx}). Loaded from workflow.yaml `model_routing_profiles`.
-type ModelRoutingProfiles map[string]map[string]ModelRoutingEntry
-
-// ModelRoutingEntry is a single Tier x Phase routing recommendation. It is a
-// NEW struct distinct from WorkflowAgentEntry because REQ-TR-002 mandates a
-// FallbackApplied indicator that WorkflowAgentEntry (which carries only
-// {Model, Effort}) does not have.
-type ModelRoutingEntry struct {
-	Model           string `yaml:"model"`
-	Effort          string `yaml:"effort"`
-	FallbackApplied bool   `yaml:"fallback_applied"`
-}
-
-// WorkflowAgentEntry는 dynamic-workflow purpose별 model/effort 기본값이다
-// (REQ-WC11-071 — design.md §C.2). retired된 team role-profile entry와 달리
-// Effort 필드를 가진다: role-profile effort는 Go-invisible opaque node
-// 결정(REQ-WEM-006)이었고, workflow_agents는 신설 typed 표면이라 그 결정의
-// 적용 대상이 아니다.
-type WorkflowAgentEntry struct {
-	Model  string `yaml:"model"`
-	Effort string `yaml:"effort"`
 }
 
 // AutoClearConfig mirrors workflow.auto_clear.* — context-window auto-clear policy.

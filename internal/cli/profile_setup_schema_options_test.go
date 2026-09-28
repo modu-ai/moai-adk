@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/settings"
-	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // schemaBackedSelects lists the wizard selects whose option lists are derived
@@ -117,95 +116,8 @@ func TestSchemaSelectOptions_Localized(t *testing.T) {
 	}
 }
 
-// effortRank orders the effort vocabulary so the model-policy prose can be checked
-// against the matrix's actual span.
-var effortRank = map[string]int{
-	template.EffortLevelLow:    0,
-	template.EffortLevelMedium: 1,
-	template.EffortLevelHigh:   2,
-	template.EffortLevelXHigh:  3,
-	template.EffortLevelMax:    4,
-}
-
-// TestModelPolicyLabels_AgreeWithProfileMatrix keeps the three hand-written
-// "Agent model policy" tier lines honest against template.defaultProfileMatrix,
-// which is the authoritative per-agent {model, effort} SSOT.
-//
-// The prose is kept hand-written rather than generated: a generated line would
-// have to spell out the sonnet agent names (4 of them in the low column), which is
-// longer than the huh option line usefully holds, and the editorial grouping
-// ("single-shot rows", "docs/e2e") is a human summary, not a matrix fact. This test
-// is the rot guard instead — it derives the opus effort SPAN, the sonnet effort,
-// and the sonnet row membership from the matrix and fails when the prose disagrees.
-func TestModelPolicyLabels_AgreeWithProfileMatrix(t *testing.T) {
-	matrix := template.DefaultProfileMatrix()
-	// The canonical id spells the dotted marketing version with hyphens
-	// (claude-opus-5-5 -> "5.5"); the label must name that version as a whole token.
-	opusVersion := strings.ReplaceAll(strings.TrimPrefix(template.ModelAliasCanonicalID("opus"), "claude-opus-"), "-", ".")
-	opusDisplay := "Opus " + opusVersion
-
-	for _, tc := range []struct {
-		profile string
-		label   func(profileSetupText) string
-	}{
-		{template.PerformanceTierHigh, func(p profileSetupText) string { return p.ModelPolicyHigh }},
-		{template.PerformanceTierMedium, func(p profileSetupText) string { return p.ModelPolicyMedium }},
-		{template.PerformanceTierLow, func(p profileSetupText) string { return p.ModelPolicyLow }},
-	} {
-		t.Run(tc.profile, func(t *testing.T) {
-			cells, ok := matrix[tc.profile]
-			if !ok {
-				t.Fatalf("profile %q absent from the matrix", tc.profile)
-			}
-
-			hi, lo := "", ""
-			sonnetEffort := ""
-			sonnetRows := map[string]bool{}
-			for agent, cell := range cells {
-				switch cell.Model {
-				case "opus":
-					if hi == "" || effortRank[cell.Effort] > effortRank[hi] {
-						hi = cell.Effort
-					}
-					if lo == "" || effortRank[cell.Effort] < effortRank[lo] {
-						lo = cell.Effort
-					}
-				case "sonnet":
-					sonnetRows[agent] = true
-					sonnetEffort = cell.Effort
-				default:
-					t.Fatalf("unexpected model %q for agent %q — the tier prose only describes opus/sonnet", cell.Model, agent)
-				}
-			}
-
-			wantSpan := "(" + hi + "~" + lo + ")"
-			wantSonnet := "Sonnet (" + sonnetEffort
-
-			for _, lang := range fourLocales {
-				label := tc.label(getProfileText(lang))
-				if !namesOpusVersion(label, opusVersion) {
-					t.Errorf("lang=%q label %q should name %q", lang, label, opusDisplay)
-				}
-				if !strings.Contains(label, wantSpan) {
-					t.Errorf("lang=%q label %q should state the matrix opus effort span %s", lang, label, wantSpan)
-				}
-				if !strings.Contains(label, wantSonnet) {
-					t.Errorf("lang=%q label %q should state %q...", lang, label, wantSonnet)
-				}
-				// The editorial row grouping must track which agents are actually on
-				// sonnet in this column.
-				if got, want := strings.Contains(label, "docs"), sonnetRows["manager-docs"]; got != want {
-					t.Errorf("lang=%q label %q mentions docs=%v but manager-docs on sonnet=%v", lang, label, got, want)
-				}
-				if got, want := strings.Contains(label, "e2e"), sonnetRows["e2e-tester"]; got != want {
-					t.Errorf("lang=%q label %q mentions e2e=%v but e2e-tester on sonnet=%v", lang, label, got, want)
-				}
-				for _, retired := range []string{"haiku", "Haiku", "fable", "Fable"} {
-					if strings.Contains(label, retired) {
-						t.Errorf("lang=%q label %q names %q, which has no cell in the matrix", lang, label, retired)
-					}
-				}
-			}
-		})
-	}
-}
+// TestModelPolicyLabels_AgreeWithProfileMatrix was removed with the per-agent
+// profile matrix (SPEC-AGENT-MODEL-INHERIT-001 M5): its derivation source,
+// template.DefaultProfileMatrix, no longer exists. The "Agent model policy"
+// tier lines are now hand-written prose with no matrix to derive from; their
+// main-session rewording is design H24 (doctrine-text surface), outside M5.

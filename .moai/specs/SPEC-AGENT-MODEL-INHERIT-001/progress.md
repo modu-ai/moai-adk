@@ -381,3 +381,11 @@ $ golangci-lint run ./internal/cli/                           → 0 issues.
 Tests the M7 close recorded as red, all now green after absorption + the two fixes: `TestCodexAuditMCPTool`, `TestMCPToolCatalogueFiguresMatchRegistry` (develop's 404 commits), `TestCodexTaskBackgroundHandshakeHonorsTaskBound` (t1288), rosterguard ×3, `TestCodexAuditLaunch*` ×8, `TestCodexTask_ServedModelUnknown` ×3-subtests.
 
 **M5 blocker — unchanged after absorption**: `internal/hook/agent_model_guard.go:106` still calls `template.ResolveAgentModelEffort` (the observation layer's expected-model source), so M5 (resolver/matrix deletion) remains blocked on that call site's rework — recorded as "deferred to post-t1282" at M6 close, and t1282's landing did not remove it. **M8 (docs-site) not started.** Both are the card's remaining run-phase work; §E.3 stays pending until they land.
+
+## §F Phase 4 Mode Selection (worker-71 continuation, 2026-09-28)
+
+- **Input parameters**: tier L continuation (M5 only); scope ~15 files, mostly deletions; domains = Go tests + template YAML + rosterguard registry + project docs; coding-heavy; concurrency benefit LOW; one uncommitted predecessor tree inherited (worker-66, build-verified).
+- **Mode evaluation**: direct — no (multi-file semantic edits) · serial — **selected** · fanout — no (coding-heavy; one writer per tree) · sweep — no (not mechanical-uniform, has inter-file deps).
+- **Decision: serial** — one manager-develop spawn completes M5 on top of the inherited uncommitted work.
+- **Justification**: continuation of an in-flight uncommitted tree admits exactly one writer; coding-heavy per Anthropic caveat; the lead's prescription (declared-model logging + producer/schema deletion) is already half-landed in the tree, so fan-out would split one coherent change.
+- **Gate**: Implementation Kickoff Approval granted by the operator in the lane window, 2026-09-28 (AskUserQuestion, this session).

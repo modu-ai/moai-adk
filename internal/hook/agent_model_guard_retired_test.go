@@ -16,6 +16,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
+// declaredModels are the spawn declarations exercised across both config
+// shapes; with the resolver gone (M5) the observation layer never resolves,
+// so a fixed list replaces the resolver-derived expectation.
+var declaredModels = []string{"haiku", "opus", ""}
+
 func loadProjectConfig(t *testing.T, workflowYAML string) *config.Config {
 	t.Helper()
 	root := t.TempDir()
@@ -40,8 +45,8 @@ func TestAgentModelGuardKey_LoadsAndHasNoEffect(t *testing.T) {
 	withoutKey := loadProjectConfig(t, "workflow: {}\n")
 
 	var llm config.LLMConfig
-	_, resolved := resolveAgentModel(llm, "Explore")
-	for _, model := range []string{"haiku", resolved, ""} {
+	_ = llm
+	for _, model := range declaredModels {
 		var decisions [2]string
 		for i, cfg := range []*config.Config{withKey, withoutKey} {
 			h := &preToolHandler{cfg: &auditConfigProvider{cfg: cfg}, policy: DefaultSecurityPolicy(), projectDir: t.TempDir()}

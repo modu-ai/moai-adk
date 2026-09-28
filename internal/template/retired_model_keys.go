@@ -11,11 +11,13 @@ import (
 )
 
 // retired_model_keys.go — write-time removal of retired configuration keys.
-// It holds the strip used by the llm.profile write path (stripRetiredLLMKeys)
-// and the moai update strip step for the per-agent model/effort keys, which
-// subagents no longer read because they inherit the main session's model and
-// effort. Both are line/indent based rather than YAML round-trips so every
-// line they do not remove survives byte-identical, comments included.
+// It holds the moai update strip step for the per-agent model/effort keys,
+// which subagents no longer read because they inherit the main session's model
+// and effort (SPEC-AGENT-MODEL-INHERIT-001). The strip is line/indent based
+// rather than a YAML round-trip so every line it does not remove survives
+// byte-identical, comments included. The former stripRetiredLLMKeys (plan_type
+// + claude_models removal on the llm.profile write path) left with
+// ApplyProfile in M5: its only caller.
 
 // leadingWS returns the count of leading space/tab characters in a line.
 func leadingWS(line string) int {
@@ -28,38 +30,6 @@ func leadingWS(line string) int {
 		break
 	}
 	return n
-}
-
-// stripRetiredLLMKeys removes the retired `plan_type:` line and the entire
-// `claude_models:` block (header + its more-indented child lines) from llm.yaml
-// content (REQ-MPM-005 write-time removal of retired fields). A line-based
-// processor is used rather than a regex so the multi-line block is handled
-// robustly by indentation depth. Returns the cleaned content.
-func stripRetiredLLMKeys(content []byte) []byte {
-	lines := strings.Split(string(content), "\n")
-	out := make([]string, 0, len(lines))
-	skipBlockIndent := -1 // -1 = not inside a stripped block
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if skipBlockIndent >= 0 {
-			// Inside a stripped block: skip blank lines and lines indented deeper
-			// than the block header; a line at the header's indent or shallower ends
-			// the block.
-			if trimmed == "" || leadingWS(line) > skipBlockIndent {
-				continue
-			}
-			skipBlockIndent = -1 // block ended; fall through to normal handling
-		}
-		if strings.HasPrefix(trimmed, "plan_type:") {
-			continue // drop the retired plan_type line
-		}
-		if strings.HasPrefix(trimmed, "claude_models:") {
-			skipBlockIndent = leadingWS(line) // begin skipping the block
-			continue
-		}
-		out = append(out, line)
-	}
-	return []byte(strings.Join(out, "\n"))
 }
 
 // RetiredModelKey names one key the moai update strip step removed.

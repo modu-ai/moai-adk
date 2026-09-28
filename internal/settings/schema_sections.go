@@ -46,8 +46,8 @@ func v4EffortValues() []string {
 
 // NOTE: 7-purpose taxonomy 슬러그를 반환하던 zero-caller 접근자는
 // SPEC-WEB-CONSOLE-012 M4(REQ-WC12-032)에서 제거되었다 — 전 리포 호출자 0 실측.
-// taxonomy의 canonical SSOT는 dynamic-workflows.md 표 +
-// config.Workflow.WorkflowAgents 맵 키다.
+// taxonomy의 canonical SSOT는 dynamic-workflows.md 표다 (config.workflow_agents
+// 블록은 모델 승계 SPEC의 M5에서 템플릿·스키마 양쪽에서 제거되었다).
 
 // ─── 컴팩트 생성자 ───────────────────────────────────────────────────────────
 

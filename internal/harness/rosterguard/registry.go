@@ -32,49 +32,7 @@ func Registry() []Site {
 				"assumed equal to it, so a defensive-copy or ordering change in the " +
 				"accessor cannot silently decouple the two.",
 		},
-		{
-			ID:         "profile-matrix-order",
-			Path:       "internal/template/profile_matrix.go",
-			Axis:       AxisRetainedRoster,
-			Claims:     ClaimMembership,
-			BlockStart: "var profileMatrixAgentOrder = []string{",
-			BlockEnd:   "}",
-			Note: "The profile matrix display order, exposed as " +
-				"template.ProfileMatrixAgents(). No longer the canonical source: it " +
-				"is asserted against template.RetainedAgents() and leaves together " +
-				"with the matrix.",
-		},
-		{
-			ID:         "profile-matrix-group-membership",
-			Path:       "internal/template/profile_matrix.go",
-			Axis:       AxisRetainedRoster,
-			Claims:     ClaimMembership,
-			BlockStart: "var agentGroupMembership = map[string]string{",
-			BlockEnd:   "}",
-			Note: "The agent→group SSOT in the same file as the canonical order. It is a " +
-				"SECOND roster in one file, which is why a site key is (path, block) " +
-				"rather than path alone.",
-		},
-
 		// ── Go rosters that have drifted ───────────────────────────────────
-		{
-			ID:         "config-retained-agent-names",
-			Path:       "internal/config/profile.go",
-			Axis:       AxisRetainedRoster,
-			Claims:     ClaimMembership,
-			BlockStart: "var retainedAgentNames = map[string]bool{",
-			BlockEnd:   "}",
-			// KnownStale deleted: the marker declared manager-lead absent and named
-			// card t916 (commit 1814bf3e9) as the repair, noting that commit was not
-			// yet an ancestor. It is now, and manager-lead is present in the map, so
-			// the declared gap no longer exists. The marker expired the way Staleness
-			// is designed to — it failed the guard with "delete the marker" rather
-			// than going quietly stale, which is what makes it a record and not a
-			// mute. The forward-only-propagation instance it recorded (mission-governor
-			// registered here by its own creation commit 5ec516165 while manager-lead,
-			// which arrived via the rename 310d75dd2, never was) is preserved in this
-			// package's doc comment, where it is the motivating measurement.
-		},
 		{
 			ID:         "delegationmap-retained-catalog",
 			Path:       "internal/harness/delegationmap/types.go",
@@ -101,18 +59,13 @@ func Registry() []Site {
 			// to prevent.
 		},
 		{
-			ID:     "profile-matrix-test-expectations",
-			Path:   "internal/template/profile_matrix_test.go",
+			ID:     "retained-agents-test-expectations",
+			Path:   "internal/template/retained_agents_test.go",
 			Axis:   AxisRetainedRoster,
 			Claims: ClaimMembership,
-			Note: "Whole-file block: the file is the canonical roster's own test and mentions " +
-				"agent names only inside its expectation maps.",
-			KnownStale: &Staleness{
-				Reason: "The canonical roster's own test carries mission-governor in no expectation " +
-					"map, so the cell added for it is unexercised by these tables.",
-				FollowUp:     "unassigned — reported by card t922, repair not in its scope",
-				MissingNames: []string{"mission-governor"},
-			},
+			Note: "Whole-file block: the file is the canonical roster's own test and names the " +
+				"agents only inside its expectation literal. Successor of the removed " +
+				"profile-matrix-test-expectations site (SPEC-AGENT-MODEL-INHERIT-001 M5).",
 		},
 
 		// ── Definition-file axis (12; the built-in Explore has no file) ────
@@ -191,20 +144,6 @@ func Registry() []Site {
 			CountPattern: `The (\d+) MoAI-custom retained agents`,
 		},
 		{
-			ID:     "shipped-key-inventory",
-			Path:   "internal/config/testdata/shipped_key_inventory.yaml",
-			Axis:   AxisRetainedRoster,
-			Claims: ClaimMembership,
-			Note:   "Derived llm.profiles.* key inventory — one key pair per matrix row, so it tracks the full retained roster.",
-		},
-		{
-			ID:     "template-llm-yaml",
-			Path:   "internal/template/templates/.moai/config/sections/llm.yaml",
-			Axis:   AxisRetainedRoster,
-			Claims: ClaimMembership,
-			Note:   "The shipped per-agent profile cells.",
-		},
-		{
 			ID:           "docs-truth-catalog",
 			Path:         ".moai/project/codemaps/docs-truth.md",
 			Axis:         AxisRetainedRoster,
@@ -226,37 +165,6 @@ func Registry() []Site {
 		// and closing the general hole is card t930 (a numeral-adjacency layer,
 		// the shape internal/web/docs_tab_contract_test.go already implements
 		// for a different subject).
-		{
-			ID:               "product-md-profile-matrix-size",
-			SweepUnreachable: "count-only claim; the sentence names one agent in passing, far below SweepThreshold",
-			Path:             ".moai/project/product.md",
-			Axis:             AxisRetainedRoster,
-			Claims:           ClaimCount,
-			CountPattern:     `(\d+) retained agents x 3 model tiers`,
-			Note: "Count only: the sentence sizes the profile matrix and names one agent in " +
-				"passing, so there is no membership to assert. Invisible to the sweep.",
-			KnownStale: &Staleness{
-				Reason:        "Cites 11 where the retained roster carries 13; the 33-cell figure is sized off that stale count.",
-				FollowUp:      "card t930 (numeral-adjacency layer); the prose repair itself is unassigned",
-				DeclaredCount: 11,
-			},
-		},
-		{
-			ID:               "tech-md-profile-matrix-size",
-			SweepUnreachable: "count-only claim; this file names ZERO agents while sizing the roster",
-			Path:             ".moai/project/tech.md",
-			Axis:             AxisRetainedRoster,
-			Claims:           ClaimCount,
-			CountPattern:     `(\d+) retained agents x 3 model tiers`,
-			Note: "Count only, and the starker case: this file names ZERO agents while " +
-				"claiming a roster size. No enumeration threshold reaches it.",
-			KnownStale: &Staleness{
-				Reason:        "Cites 11 where the retained roster carries 13, identically to product.md.",
-				FollowUp:      "card t930 (numeral-adjacency layer); the prose repair itself is unassigned",
-				DeclaredCount: 11,
-			},
-		},
-
 		// ── Retained-roster sites with a measured stale claim ──────────────
 		{
 			ID:           "spec-workflow-catalog-sentence",
