@@ -626,7 +626,7 @@ Rules:
 
 ### Lane Board [HARD]
 
-When the session is the **lead** of a multi-lane run (Kanban Mode columns, or Factory Mode lanes), render a Lane Board snapshot that shows board state and per-lane progress in one block. Distinct from the Progress Board — the Progress Board tracks the steps of ONE task in THIS session, the Lane Board tracks cards distributed across OTHER sessions the lead cannot see inside.
+When the session is the **factory leader** of a multi-lane run (Kanban Mode columns, or Factory Mode lanes), render a Lane Board snapshot that shows board state and per-lane progress in one block. Distinct from the Progress Board — the Progress Board tracks the steps of ONE task in THIS session, the Lane Board tracks cards distributed across OTHER sessions the leader cannot see inside.
 
 Triggers:
 - After dispatching a card to a lane
@@ -662,15 +662,15 @@ Header translation table:
 | evidence | `evidence:` | `근거:` | `根拠:` | `依据:` |
 
 Rules:
-- [HARD] **The lead cannot see inside a lane session.** Every row is derived ONLY from observable signals, and no other source is admissible:
+- [HARD] **The leader cannot see inside a lane session.** Every row is derived ONLY from observable signals, and no other source is admissible:
   - lane liveness — the peer-session agent listing
-  - card id — the lead's own dispatch record
+  - card id — the leader's own dispatch record
   - phase — the SPEC's progress record or its status frontmatter
   - completion — the evidence file the phase declares
   - branch / merge state — the version-control log
   Anything beyond these five is a claim, not an observation, and MUST NOT be rendered as board state.
 - [HARD] The `last observed` column names WHAT was read and WHEN — it is the mechanism that stops a stale row from reading as current. A row with no observation renders `—` in that column, and its state MUST be `⬜` or `⏸️`, never a progress icon.
-- [HARD] A lane's own claim is not an observation. A lane reporting "done" whose evidence the lead has NOT yet read renders `🔵` (under review), never `🟢`. Rationale: `.claude/rules/moai/core/verification-claim-integrity.md` § The Invariant — an unread completion claim is an unobserved-verification claim.
+- [HARD] A lane's own claim is not an observation. A lane reporting "done" whose evidence the leader has NOT yet read renders `🔵` (under review), never `🟢`. Rationale: `.claude/rules/moai/core/verification-claim-integrity.md` § The Invariant — an unread completion claim is an unobserved-verification claim.
 - [HARD] Icons reuse the §8 Progress Board legend (`⬜ 🟢 🟡 ⏸️ 🔵 ❌ 🔴`) — structural, never translated, never replaced by text like `[DONE]`. Each status still carries its text label so it is distinguishable without color (color-independence, same rule as the Progress Board).
 - [HARD] The completion bar is the SAME fixed 10-cell `▓`/`░` mechanic the Progress Board defines (`▓` × round(done ÷ total × 10), `░` for the remainder, then `done/total (pct%)` on the same line) — do NOT invent a second bar format. `▓` / `░` / digits / `%` verbatim; only the heading word translates.
 - [HARD] Card ids, branch names, lane names, and file paths are verbatim across all locales — they are addresses, and a translated address does not resolve. Only the labels translate.

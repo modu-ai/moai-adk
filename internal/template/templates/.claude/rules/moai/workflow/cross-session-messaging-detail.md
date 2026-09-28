@@ -84,7 +84,7 @@ An arriving message carries **both** the sender's name and a reply address — n
 | `dialogExpiry` | Deadline after which a **default**-held message is dropped — the dialog closes, or in a non-interactive session the held message expires. Five minutes unless set; `never` holds until the session ends. It does not govern a message held by an explicit `hold` |
 | `permissions.deny: ["SendMessage", "ListAgents"]` | Turns off sending and listing. Also removes messaging to subagents and teammates, which share the tool |
 
-A fifth path stops a message and is not a setting at all. Each inbox accepts only so many messages in quick succession; once a rapid burst would exceed what the addressed session takes, further sends to it are **refused up front** rather than reported sent and then dropped. Fan-out is the shape that reaches it — a lead nudging N lanes within one turn (Factory Mode, `moai cc -f <N>`) is precisely a rapid burst. A refusal there is the channel working, not a channel fault, and it costs nothing: delegation rides the queue on disk, never the message (`kanban-dispatch.md` § The delegation channel is the queue). Read the send result rather than assuming it, and where every lane genuinely needs nudging, spread the sends across turns instead of firing them together.
+A fifth path stops a message and is not a setting at all. Each inbox accepts only so many messages in quick succession; once a rapid burst would exceed what the addressed session takes, further sends to it are **refused up front** rather than reported sent and then dropped. Fan-out is the shape that reaches it — a factory leader nudging N lanes within one turn (Factory Mode, `moai cc -f <N>`) is precisely a rapid burst. A refusal there is the channel working, not a channel fault, and it costs nothing: delegation rides the queue on disk, never the message (`kanban-dispatch.md` § The delegation channel is the queue). Read the send result rather than assuming it, and where every lane genuinely needs nudging, spread the sends across turns instead of firing them together.
 
 The two ways a message is held do not expire alike. A message the inbound **default** holds waits on `dialogExpiry` and is then dropped, and the sender is told it expired; a message held by an explicit `crossSessionInbound: hold` does not expire at all, and is delivered only when an `accept` later applies. A non-interactive worker cannot show an approval dialog, but a default-held message there still runs the same deadline rather than waiting indefinitely — so a worker meant to take messages unattended needs `accept` in its own settings. One asymmetry is worth knowing: while a background session has no terminal attached, the default-held dialog stays open past its deadline, and the countdown only runs properly once you attach.
 
@@ -130,7 +130,7 @@ and fall back to the address only when that name does not resolve. Reply routing
 so a message carries enough identification for a human or a peer to route the answer by hand.
 
 Inbound acceptance, cross-machine isolation, dialog expiry, deny rules, and the inbox's rapid-burst
-refusal (the shape a lead's fan-out nudge reaches) are configuration, not doctrine — see
+refusal (the shape a leader's fan-out nudge reaches) are configuration, not doctrine — see
 § Addressing, sending, and replying and § Configuration surface above. The availability trap is
 diagnostic: a session where the peer-listing command is unrecognized does not have the feature at
 all (§ Availability constraints); one where listing works but a send never arrives is being blocked
@@ -143,7 +143,7 @@ by something narrower.
 - **Peer-as-worker.** Offloading work this session should have done — or should have given to a subagent it supervises — onto an independent session, because that session is idle. Distinct from role-boundary dispatch (below), which is permitted.
 - **Reviving a stopped teammate.** Addressing a stopped teammate by name — one delivered message
   resumes it from the transcript as an ownerless writer. Coordination about it goes through the
-  owning orchestrator or lead, never the stopped name (now also mechanically denied — see the
+  owning orchestrator or leader, never the stopped name (now also mechanically denied — see the
   mechanism layer note above).
 - **Silent write race.** Messaging a peer about a shared path and then writing it anyway, without isolation, because the peer answered.
 - **Broadcast noise.** Messaging every listed session rather than the one whose work is affected.

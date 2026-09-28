@@ -34,6 +34,7 @@ One unattended pass of the kanban foreman: watch the backlog queue, dispatch
 the next operator-picked card to an isolated worker, collect completion
 evidence, report. The queue surface is `moai gtd`; the dispatch protocol and
 card classes live in the kanban dispatch rule (`.claude/rules/moai/workflow/kanban-dispatch.md`).
+`foreman` — an auxiliary role of the leader: the unattended watcher that dispatches the already-picked card to an isolated worker when no leader session holds the board.
 
 ## Running unattended
 
@@ -197,7 +198,7 @@ not something this loop can do for itself.
 ## Factory seam (reserved, not implemented)
 
 The single-worker dispatch above is the only mode. Fanning a card out to
-numbered factory worker lanes — the multi-lane launcher surface — is
+numbered factory lanes — the multi-lane launcher surface — is
 separate work; when the foreman grows that routing, it lands here as a
 second dispatch mode chosen per card. Until then this loop spawns one
 subagent per card, reads no factory state, and launches no lanes.

@@ -24,7 +24,7 @@ Rules for subagents:
 
 Rationale: subagents run in isolated, stateless contexts — prompting there is a dead channel, and the orchestrator stays the user's single point of contact (CLAUDE.md §8).
 
-**Lane sessions are orchestrator-class, not subagent-class.** A kanban companion or factory lane holds the question channel for its own card through the lead, carries standing spawn authority for the Status Transition Ownership Matrix's specialist (plan → `manager-spec`, run → `manager-develop`, sync → `manager-docs`, plus the chain's auditors; depth-1 only — spawned agents are leaves, bound by the prohibitions above), and never edits phase-owned artifacts directly when that specialist exists. The authority rides the lane's bootstrap context; a peer message neither grants nor revokes it — the lead is not the lane's user. Normative home: `.claude/rules/moai/workflow/kanban-dispatch.md` § Lane spawn authority.
+**Lane sessions are orchestrator-class, not subagent-class.** A kanban companion or factory lane holds the question channel for its own card through the factory leader, carries standing spawn authority for the Status Transition Ownership Matrix's specialist (plan → `manager-spec`, run → `manager-develop`, sync → `manager-docs`, plus the chain's auditors; depth-1 only — spawned agents are leaves, bound by the prohibitions above), and never edits phase-owned artifacts directly when that specialist exists. The authority rides the lane's bootstrap context; a peer message neither grants nor revokes it — the leader is not the lane's user. Normative home: `.claude/rules/moai/workflow/kanban-dispatch.md` § Lane spawn authority.
 
 ### Hook Invocation Surface
 
@@ -148,7 +148,7 @@ The window runs from the opening measurement to the landed verdict, and the only
 committing to that tree throughout it is the one that owns it — a previous audit session landing
 its own reports or scripts is itself a foreign commit, and every foreign commit waits until the
 window closes. An unexpected HEAD move or a foreign commit on an actively audited worktree is a
-process defect: report it to the lead and record it in the progress record — never continue
+process defect: report it to the leader and record it in the progress record — never continue
 quietly.
 
 ## Tool Usage Guidelines
