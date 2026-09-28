@@ -87,7 +87,7 @@ Run executed 2026-09-29 by lane worker-69 in the card worktree `.claude/worktree
 
 - sync_status: complete
 - sync_complete_at: 2026-09-29
-- sync_commit_sha: pending-backfill-sync
+- sync_commit_sha: ba5b7d9c4
 - b12_self_test_a: duplicate-entry grep `grep -c 'SPEC-SESSION-DOUBLELOAD-001' CHANGELOG.md` → 0 (proceed)
 - b12_self_test_b: distinct AC identifiers in acceptance.md = 12 (AC-SDL-001..012); CHANGELOG entry references all 12 — counts match
 - b12_self_test_c: file paths claimed in the CHANGELOG entry verified existing (`ls` on `.claude/rules/moai/workflow/kanban-dispatch.md`, `internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md`, `.claude/rules/local/gitflow-lane-protocol.md`)
