@@ -51,6 +51,8 @@ After merge: <next-action-or-spec>
 ✂──── 여기까지 복사 ────✂
 ```
 
+The `✂` symbol (U+2702 BLACK SCISSORS) is **preserved verbatim across all locales** — never translate or substitute (full marker spec: `session-handoff-format.md` § Cut-line Marker Specification).
+
 ### Field-by-Field Specification
 
 Per-block detail — the `mode:` enum couplings, the fan-out steering phrase, the two `ultracode` forms, the `source_session_id` fallback, the Block 5 arm-only consequence — is in `session-handoff-examples.md` § Field-by-Field Specification; the binding clauses are summarized here.
@@ -76,7 +78,7 @@ Per-block detail — the `mode:` enum couplings, the fan-out steering phrase, th
 
 [ZONE:Evolvable] [HARD] When generating a resume message, the orchestrator MUST also:
 
-1. Save the message to a memory project entry named `project_<epic>_<spec>_<status>.md` (e.g. `project_epic8_wf002_complete.md`; `<epic>` per sprint-round-naming.md — legacy `<sprint>/<wave>` tokens retired).
+1. Save the message to a memory project entry. Filename pattern: `project_<epic>_<spec>_<status>.md` (e.g. `project_epic8_wf002_complete.md`; `<epic>` per sprint-round-naming.md — legacy `<sprint>/<wave>` tokens retired).
 2. Include the resume message verbatim there under a `## Next Session Entry Point (paste-ready resume message)` heading (locale variant per the Localization Table memory-heading row; ko `## 다음 세션 시작점`).
 3. Update the `MEMORY.md` index with a one-line entry pointing to it.
 4. Mark superseded entries with a `[SUPERSEDED by <new-file>]` prefix per `.claude/rules/moai/core/moai-constitution.md` §Lessons Protocol.

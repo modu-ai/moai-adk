@@ -40,11 +40,11 @@ func TestVerify_DerivedSets(t *testing.T) {
 		if !slices.Equal(r.Scratch, []string{".moai/state/verify/**"}) {
 			t.Errorf("scratch = %v", r.Scratch)
 		}
-		wantFrozen := []string{"**/CLAUDE.local.md", "**/CLAUDE.md", ".claude/rules/moai/core/moai-constitution.md", "internal/x/**"}
+		wantFrozen := []string{"**/AGENTS.local.md", "**/AGENTS.md", "**/CLAUDE.local.md", "**/CLAUDE.md", ".claude/rules/moai/core/moai-constitution.md", "internal/x/**"}
 		if !slices.Equal(r.FrozenFiles, wantFrozen) {
 			t.Errorf("frozen_files = %v, want %v", r.FrozenFiles, wantFrozen)
 		}
-		for _, bare := range []string{"CLAUDE.md", "CLAUDE.local.md"} {
+		for _, bare := range []string{"AGENTS.md", "AGENTS.local.md", "CLAUDE.md", "CLAUDE.local.md"} {
 			if slices.Contains(r.FrozenFiles, bare) {
 				t.Errorf("frozen_files carries the bare basename %q", bare)
 			}
@@ -261,7 +261,7 @@ func TestReport_JSONShape(t *testing.T) {
 }
 
 func TestFrozenInstructionFiles(t *testing.T) {
-	if !slices.Equal(FrozenInstructionFiles, []string{"CLAUDE.md", "CLAUDE.local.md"}) {
+	if !slices.Equal(FrozenInstructionFiles, []string{"CLAUDE.md", "CLAUDE.local.md", "AGENTS.md", "AGENTS.local.md"}) {
 		t.Errorf("FrozenInstructionFiles = %v", FrozenInstructionFiles)
 	}
 }

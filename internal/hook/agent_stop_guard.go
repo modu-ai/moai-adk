@@ -143,7 +143,7 @@ func loadAgentStopRegistry(projectRoot, sessionID string) *AgentStopRegistry {
 
 // upsertAgentStopEntry inserts or refreshes an entry keyed by identity. The
 // file is written whole (read-modify-write); concurrent writers within one
-// session are not expected — the lead stops one teammate at a time.
+// session are not expected — the team lead stops one teammate at a time.
 func upsertAgentStopEntry(projectRoot, sessionID string, entry AgentStopEntry) error {
 	reg := loadAgentStopRegistry(projectRoot, sessionID)
 	if reg == nil {

@@ -15,14 +15,14 @@ import (
 )
 
 type RuntimeCensus struct {
-	ActiveSessions       int
-	ActiveFactoryWorkers int
-	ActiveMCPServers     int
-	Fingerprint          string
+	ActiveSessions     int
+	ActiveFactoryLanes int
+	ActiveMCPServers   int
+	Fingerprint        string
 }
 
 func (c RuntimeCensus) Total() int {
-	return c.ActiveSessions + c.ActiveFactoryWorkers + c.ActiveMCPServers
+	return c.ActiveSessions + c.ActiveFactoryLanes + c.ActiveMCPServers
 }
 
 func ReadRuntimeCensus(projectRoot string) (RuntimeCensus, error) {
@@ -126,7 +126,7 @@ func readRuntimeCensusWithWorktreeList(projectRoot string, listWorktrees func(st
 				return c, fmt.Errorf("factory census indeterminate pid %d", pid)
 			}
 			if state == ProcessIdentityLive {
-				c.ActiveFactoryWorkers++
+				c.ActiveFactoryLanes++
 			}
 		}
 		if err := rows.Err(); err != nil {
@@ -166,6 +166,6 @@ func readRuntimeCensusWithWorktreeList(projectRoot string, listWorktrees func(st
 	} else if !os.IsNotExist(err) {
 		return c, fmt.Errorf("mcp census: %w", err)
 	}
-	c.Fingerprint = strconv.Itoa(c.ActiveSessions) + ":" + strconv.Itoa(c.ActiveFactoryWorkers) + ":" + strconv.Itoa(c.ActiveMCPServers)
+	c.Fingerprint = strconv.Itoa(c.ActiveSessions) + ":" + strconv.Itoa(c.ActiveFactoryLanes) + ":" + strconv.Itoa(c.ActiveMCPServers)
 	return c, nil
 }

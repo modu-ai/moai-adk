@@ -612,21 +612,21 @@ var (
 	DefaultSessionMsgMaxPending = 64
 )
 
-// DefaultFactoryWorkers is the fan-out size the count-less `-k --name
+// DefaultFactoryLanes is the fan-out size the count-less `-k --name
 // lane-<n>` form takes when the operator supplies no count
-// (SPEC-FACTORY-WORKER-FANOUT-001 REQ-FF-001, t85 lead loop). The value 8 is
+// (SPEC-FACTORY-WORKER-FANOUT-001 REQ-FF-001, t85 leader loop). The value 8 is
 // the operator-decided factory default for that legacy entry — large enough to
 // keep a card queue draining, small enough to sit under the session-count a
 // single operator hand-launches comfortably. The t118 `-f` entry has its own,
-// smaller default (DefaultFactoryLeadWorkers).
-const DefaultFactoryWorkers = 8
+// smaller default (DefaultFactoryLeaderLanes).
+const DefaultFactoryLanes = 8
 
-// DefaultFactoryLeadWorkers is the fan-out a bare `-f` / `--factory` (no
+// DefaultFactoryLeaderLanes is the fan-out a bare `-f` / `--factory` (no
 // count) resolves to (t118 launcher axis, v3.1.1): one lane. The revived -f
-// entry starts the minimal factory — lead plus lane-1 — which the operator
+// entry starts the minimal factory — leader plus lane-1 — which the operator
 // then grows one lane at a time with `-f lane-<n>`, so the count-less
-// default is 1, not the legacy form's 8 (DefaultFactoryWorkers).
-const DefaultFactoryLeadWorkers = 1
+// default is 1, not the legacy form's 8 (DefaultFactoryLanes).
+const DefaultFactoryLeaderLanes = 1
 
 // DefaultLaneMaxConcurrentSubagents is the per-lane concurrent-subagent cap
 // the launcher seeds on kanban companion and factory lane sessions (t118,
@@ -1092,6 +1092,15 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 				PushDevelop:  DefaultAutonomyPushDevelop,
 			},
 		},
+		// The served-model gate ships with its ADOPTION-REFUSAL layer off. The
+		// SubagentStop observation row and its warning always run; a
+		// maintainer opts into refusing a gate auditor's verdict via local
+		// config. Template neutrality: no `enabled: true` anywhere under
+		// internal/template/templates/.
+		ServedModelGate: ServedModelGateConfig{
+			Enabled: false,
+		},
+
 		// The SendMessage stop-guard deny layer ships OFF the same way: stop
 		// recording and send observation + advisory always run; a maintainer
 		// opts into denial via local config. Template neutrality: no

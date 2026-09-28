@@ -4,7 +4,7 @@
 // The backlog is the OPERATOR's queue, not the board's: any session may
 // append, pick, or complete a card, so this store deliberately applies NO
 // sole-writer role guard (the explicit contrast with board_store.go — the
-// board has exactly one writer, the lead; the backlog has every writer).
+// board has exactly one writer, the leader; the backlog has every writer).
 // What it does share with the board is the concurrency substrate: mutations
 // serialize on a sibling advisory lock (backlog.lock, the same
 // path-parameterized flock/atomic-create split the board lock uses) across
@@ -473,7 +473,7 @@ func NewBacklogStore(path string) *BacklogStore {
 
 // QueuedCount returns the number of items in state "queued", failing open to
 // 0 (the store already reads a missing file as an empty queue). It is the
-// shared count shape both the kanban notice and the factory lead loop render
+// shared count shape both the kanban notice and the factory leader loop render
 // from, so the notice and the queue command cannot disagree about what
 // "waiting" means: state queued and nothing else — a picked card is in
 // flight on another lane, a dropped card was discarded, and a finished card

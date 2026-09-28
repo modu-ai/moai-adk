@@ -383,15 +383,15 @@ func driveFactoryEntry(t *testing.T, launcher string, args ...string) (int, erro
 	return launches, err
 }
 
-// AC-CFR-008 — a worker join into a codex-led run is refused before any claim.
+// AC-CFR-008 — a lane join into a codex-led run is refused before any claim.
 func TestFactoryJoinRefusesCodexLedRun(t *testing.T) {
 	for _, tc := range []struct {
 		launcher string
 		args     []string
 	}{
-		{"cc", []string{"-f", "worker"}},
-		{"cc", []string{"-f", "worker-2"}},
-		{"glm", []string{"-f", "worker"}},
+		{"cc", []string{"-f", "lane"}},
+		{"cc", []string{"-f", "lane-2"}},
+		{"glm", []string{"-f", "lane"}},
 	} {
 		t.Run(tc.launcher+" "+strings.Join(tc.args, " "), func(t *testing.T) {
 			root := codexLedRun(t, "rc", "codex")
@@ -427,10 +427,10 @@ func TestFactoryJoinRefusesCodexLedRun(t *testing.T) {
 
 // AC-CFR-009 — a claude-led run is joined and led exactly as before.
 func TestFactoryJoinAndLeadAcceptNonCodexRun(t *testing.T) {
-	t.Run("worker", func(t *testing.T) {
+	t.Run("lane", func(t *testing.T) {
 		root := codexLedRun(t, "rc", "claude")
 		rowsBefore := workerRows(t, root)
-		launches, err := driveFactoryEntry(t, "cc", "-f", "worker")
+		launches, err := driveFactoryEntry(t, "cc", "-f", "lane")
 		if err != nil {
 			t.Fatalf("join refused: %v", err)
 		}
@@ -477,14 +477,14 @@ func TestFactoryLeadRefusesCodexLedRun(t *testing.T) {
 	}
 }
 
-// refuseCodexLedRun fails closed when the selected run's lead backend cannot
+// refuseCodexLeaderRun fails closed when the selected run's lead backend cannot
 // be read, rather than letting an unread run be joined as if it were claude-led.
 func TestRefuseCodexLedRunFailsClosedOnUnreadableRun(t *testing.T) {
 	root := codexLedRun(t, "rc", "claude")
-	if err := refuseCodexLedRun(root, "rc"); err != nil {
+	if err := refuseCodexLeaderRun(root, "rc"); err != nil {
 		t.Fatalf("claude-led run refused: %v", err)
 	}
-	err := refuseCodexLedRun(root, "no-such-run")
+	err := refuseCodexLeaderRun(root, "no-such-run")
 	if err == nil || !strings.Contains(err.Error(), "no-such-run") {
 		t.Fatalf("missing run = %v, want a read error naming the run", err)
 	}
@@ -572,8 +572,8 @@ func TestCodexHarnessHooksRegisterNoFactoryPeer(t *testing.T) {
 		slot string
 		env  map[string]string
 	}{
-		{"worker", "worker-1", map[string]string{config.EnvMoaiFactoryWorker: "worker-1"}},
-		{"lead", "lead", map[string]string{config.EnvMoaiFactoryWorkers: "2"}},
+		{"lane", "lane-1", map[string]string{config.EnvMoaiFactoryWorker: "lane-1"}},
+		{"leader", "leader", map[string]string{config.EnvMoaiFactoryWorkers: "2"}},
 	} {
 		t.Run(shape.name, func(t *testing.T) {
 			root := codexLedRun(t, "r1", "claude")

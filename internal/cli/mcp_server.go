@@ -517,6 +517,10 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithString("focus", mcp.Description("Optional focus area (e.g. 'concurrency', 'auth', 'secret handling').")),
 		mcp.WithObject("gates", mcp.Description("Optional per-auditor gate override (keys: claude/codex/glm; values: off|advisory|required). Defaults: claude+codex required, glm advisory.")),
 		mcp.WithString("session_id", mcp.Description("Optional session id for per-session convergence state persistence (.moai/state/audit-multi/<session>.json). Empty ⇒ persistence no-op.")),
+		// A4 (SPEC-AUTONOMY-CLOSURE-001 REQ-CLOSURE-012): binds this fan-out
+		// to the card — one second-review record lands in the card evidence
+		// directory. Empty ⇒ byte-identical pre-change behavior.
+		mcp.WithString("card_id", mcp.Description("Optional card id binding this review as the card's second review (writes second-review.jsonl into the card evidence directory). Empty ⇒ no record.")),
 		// Pass-through semantics: this fan-out handed its backends no root
 		// before the parameter existed, so an absent parameter must keep
 		// handing them none rather than substituting a default.

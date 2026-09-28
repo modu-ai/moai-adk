@@ -1,0 +1,6 @@
+    codex_local_instructions_test.go:434: template must describe common and Codex-specific inputs without enumerating local filenames
+--- FAIL: TestCodexLocalInstructions_TemplateDescribesCommonAndSpecificInputs (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	144.214s
+FAIL
+1762

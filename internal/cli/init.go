@@ -873,7 +873,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// persisted tier selection into the deployed settings immediately after
 	// the initializer returns. Paths are resolved here and passed in (no new
 	// global state); the USER-scope write inside the bundle is a key-scoped
-	// splice limited to the permissions block (spec.md §4 lead ruling). The
+	// splice limited to the permissions block (spec.md §4 leader ruling). The
 	// call is best-effort: semi-auto/unset produces the bounded delta (the
 	// USER-scope acceptEdits record only, SPEC-AUT-PERMMODES-001 REQ-004) and
 	// a failure warns without failing the init.

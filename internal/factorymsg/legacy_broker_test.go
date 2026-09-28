@@ -61,7 +61,7 @@ func buildLegacyBroker(t *testing.T) legacyFixture {
 	exp := now.Add(time.Hour).Format(time.RFC3339Nano)
 	pid := os.Getpid()
 	f := legacyFixture{root: root, path: path, projectKey: pk,
-		lead:   Peer{ProjectKey: pk, RunID: "run", Backend: "codex", Role: "lead", Slot: "lead", SessionUUID: "lead-s1", Generation: 1, PID: pid, ProcessStart: "start-lead"},
+		lead:   Peer{ProjectKey: pk, RunID: "run", Backend: "codex", Role: "leader", Slot: "leader", SessionUUID: "lead-s1", Generation: 1, PID: pid, ProcessStart: "start-lead"},
 		worker: Peer{ProjectKey: pk, RunID: "run", Backend: "codex", Role: "worker", Slot: "lane-1", SessionUUID: "w-s2", Generation: 2, PID: pid, ProcessStart: "start-w2"},
 	}
 	for _, p := range []Peer{f.lead, f.worker} {

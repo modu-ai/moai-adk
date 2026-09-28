@@ -68,7 +68,7 @@ func TestSessionStartKanbanRespectsTodoDisabled(t *testing.T) {
 			t.Setenv(config.EnvMoaiKanban, "1")
 			t.Setenv(config.EnvMoaiKanbanID, "run42")
 
-			got := kanbanLeadNotice("run42", root, lang)
+			got := kanbanLeaderNotice("run42", root, lang)
 			if got == "" {
 				t.Fatalf("[%s] notice empty — the fixture stopped exercising the lead branch", lang)
 			}
@@ -92,7 +92,7 @@ func TestSessionStartKanbanRespectsTodoDisabled(t *testing.T) {
 			t.Setenv(config.EnvMoaiKanban, "1")
 			t.Setenv(config.EnvMoaiKanbanID, "run42")
 
-			got := kanbanLeadNotice("run42", root, lang)
+			got := kanbanLeaderNotice("run42", root, lang)
 			want := backlogLineFor(lang, 1)
 			if !strings.Contains(got, want) {
 				t.Errorf("[%s] control case lost the backlog line\nwant: %s\ngot:\n%s", lang, want, got)
@@ -108,7 +108,7 @@ func TestSessionStartKanbanRespectsTodoDisabled(t *testing.T) {
 		t.Setenv(config.EnvMoaiKanban, "1")
 		t.Setenv(config.EnvMoaiKanbanID, "run42")
 
-		got := kanbanLeadNotice("run42", root, langEnglish)
+		got := kanbanLeaderNotice("run42", root, langEnglish)
 		if want := backlogLineFor(langEnglish, 1); !strings.Contains(got, want) {
 			t.Errorf("explicit true lost the backlog line\nwant: %s\ngot:\n%s", want, got)
 		}

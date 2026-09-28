@@ -172,6 +172,36 @@ func localInstructionPayload(t *testing.T, args []string) string {
 	return body
 }
 
+// TestCodexLocalInstructions_AgentsLocalReadFirst pins the read order
+// (REQ-IFU-006, AC-IFU-010): with both local files present, both reach
+// developer_instructions, AGENTS.local.md's sentinel precedes CLAUDE.local.md's,
+// and the provenance preambles follow the same order.
+func TestCodexLocalInstructions_AgentsLocalReadFirst(t *testing.T) {
+	root := t.TempDir()
+	for name, body := range map[string]string{codexLocalInstructionName: "ALPHA\n", codexClaudeLocalName: "BETA\n"} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	args, err := codexLocalDeveloperInstructionArgs(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload := localInstructionPayload(t, args)
+	alpha, beta := strings.Index(payload, "ALPHA"), strings.Index(payload, "BETA")
+	if alpha < 0 || beta < 0 {
+		t.Fatalf("both sentinels must reach the payload: ALPHA@%d BETA@%d in %q", alpha, beta, payload)
+	}
+	if alpha > beta {
+		t.Errorf("ALPHA (AGENTS.local.md) at %d must precede BETA (CLAUDE.local.md) at %d: %q", alpha, beta, payload)
+	}
+	agentsHead := strings.Index(payload, "<!-- source: "+codexLocalInstructionName+" -->")
+	claudeHead := strings.Index(payload, "<!-- source: "+codexClaudeLocalName+" -->")
+	if agentsHead < 0 || claudeHead < 0 || agentsHead > claudeHead {
+		t.Errorf("provenance order: AGENTS.local.md@%d must precede CLAUDE.local.md@%d", agentsHead, claudeHead)
+	}
+}
+
 func TestCodexLocalInstructions_DualFileMatrix(t *testing.T) {
 	states := []string{"absent", "empty", "body"}
 	for _, claude := range states {
@@ -179,8 +209,9 @@ func TestCodexLocalInstructions_DualFileMatrix(t *testing.T) {
 			t.Run(claude+"/"+agents, func(t *testing.T) {
 				root := t.TempDir()
 				want := ""
-				for i, name := range []string{"CLAUDE.local.md", codexLocalInstructionName} {
-					state := []string{claude, agents}[i]
+				// Read order (REQ-IFU-006): AGENTS.local.md ahead of CLAUDE.local.md.
+				for i, name := range []string{codexLocalInstructionName, "CLAUDE.local.md"} {
+					state := []string{agents, claude}[i]
 					if state == "absent" {
 						continue
 					}
@@ -218,13 +249,14 @@ func TestCodexLocalInstructions_LargeBodySlicesAndFreshRead(t *testing.T) {
 	root := t.TempDir()
 	prefix := "한글🙂<&>\\\"\n"
 	first := prefix + strings.Repeat("x", 61360-len(prefix))
-	second := "AGENTS_MARKER\n"
+	second := "CLAUDE_MARKER\n"
 	for launch := range 2 {
 		if launch == 1 {
-			first = "updated Claude body"
-			second = "updated agents body"
+			first = "updated agents body"
+			second = "updated Claude body"
 		}
-		for i, name := range []string{"CLAUDE.local.md", codexLocalInstructionName} {
+		// Read order (REQ-IFU-006): the first slice is AGENTS.local.md.
+		for i, name := range []string{codexLocalInstructionName, "CLAUDE.local.md"} {
 			if err := os.WriteFile(filepath.Join(root, name), []byte([]string{first, second}[i]), 0o600); err != nil {
 				t.Fatal(err)
 			}
@@ -234,11 +266,11 @@ func TestCodexLocalInstructions_LargeBodySlicesAndFreshRead(t *testing.T) {
 			t.Fatal(err)
 		}
 		payload := localInstructionPayload(t, args)
-		body, ok := strings.CutPrefix(payload, "<!-- source: CLAUDE.local.md -->\n")
+		body, ok := strings.CutPrefix(payload, "<!-- source: AGENTS.local.md -->\n")
 		if !ok {
 			t.Fatal("missing first provenance")
 		}
-		left, right, ok := strings.Cut(body, "\n<!-- source: AGENTS.local.md -->\n")
+		left, right, ok := strings.Cut(body, "\n<!-- source: CLAUDE.local.md -->\n")
 		if !ok || sha256.Sum256([]byte(left)) != sha256.Sum256([]byte(first)) || sha256.Sum256([]byte(right)) != sha256.Sum256([]byte(second)) {
 			t.Fatal("body slice hash differs from source")
 		}
@@ -502,6 +534,59 @@ func TestCodexLocalInstructions_PrelaunchFailuresStartNothing(t *testing.T) {
 			}
 			if _, _, err := runCodexCmd(t, args...); err == nil || cap.count() != 0 {
 				t.Fatalf("%s: %v launches=%d", failure, err, cap.count())
+			}
+		})
+	}
+}
+
+// TestCodexLocalInstructions_FallbackAdvisory pins the fallback branch
+// (REQ-IFU-007, AC-IFU-011) together with the provenance preamble on that same
+// path (REQ-IFU-008, AC-IFU-029): with only CLAUDE.local.md present its body
+// reaches developer_instructions under its literal filename, and the
+// deprecation advisory naming the migration verb goes to the launcher's
+// diagnostic stream — never into the payload, never onto stdout.
+func TestCodexLocalInstructions_FallbackAdvisory(t *testing.T) {
+	const verb = "moai migrate local-instructions"
+	cases := []struct {
+		name   string
+		files  map[string]string
+		advise bool
+	}{
+		{"claude-only", map[string]string{codexClaudeLocalName: "FALLBACK_BODY\n"}, true},
+		{"agents-only", map[string]string{codexLocalInstructionName: "PRIMARY_BODY\n"}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			for name, body := range tc.files {
+				if err := os.WriteFile(filepath.Join(root, name), []byte(body), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			cap := withCodexLaunchCapture(t)
+			withCodexProjectRoot(t, root)
+			stdout, stderr, err := runCodexCmd(t)
+			if err != nil {
+				t.Fatalf("launch: %v", err)
+			}
+			got := codexArgvTail(t, cap)
+			if len(got) < 2 {
+				t.Fatalf("child argv = %#v, want a developer_instructions override", got)
+			}
+			payload := localInstructionPayload(t, got[:2])
+			for name, body := range tc.files {
+				if want := "<!-- source: " + name + " -->\n" + body; !strings.Contains(payload, want) {
+					t.Errorf("payload = %q, want literal preamble and body %q", payload, want)
+				}
+			}
+			if strings.Contains(payload, verb) {
+				t.Errorf("advisory leaked into developer_instructions: %q", payload)
+			}
+			if strings.Contains(stdout, verb) {
+				t.Errorf("advisory written to stdout: %q", stdout)
+			}
+			if gotAdvice := strings.Contains(stderr, verb); gotAdvice != tc.advise {
+				t.Errorf("stderr names %q = %v, want %v; stderr=%q", verb, gotAdvice, tc.advise, stderr)
 			}
 		})
 	}

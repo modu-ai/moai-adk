@@ -64,6 +64,11 @@ import (
 // here should coincide with promoting it back into the byte-parity allowlist.
 var sanitizedPairPaths = []string{
 	".claude/rules/moai/development/manager-develop-prompt-template.md",
+	// worktree-integration-ops.md — split companion of worktree-integration.md.
+	// Authored clean (no internal tokens), so the pair is byte-identical today and
+	// passes structural parity trivially; enrolled here AND in the mirror allowlist
+	// so a later one-sided sanitization of either copy cannot drift silently.
+	".claude/rules/moai/workflow/worktree-integration-ops.md",
 	// ci-watch-protocol.md was removed from this registry when its template
 	// mirror was intentionally deleted: the file is no longer a sanitized PAIR
 	// (only the development-repo copy survives), so the parity assertion no
@@ -94,6 +99,16 @@ var sanitizedPairPaths = []string{
 	// doctrine preserved verbatim). Doctrine parity is enforced here, NOT by
 	// byte-parity (rule_template_mirror_test.go).
 	".claude/rules/moai/workflow/main-checkout-branch-guard.md",
+	// Detail companions (card t1283). Every *-detail.md under the rules tree sat
+	// outside BOTH guards: this registry is an explicit list, and the byte-parity
+	// allowlist in rule_template_mirror_test.go is explicit too, so "no failure"
+	// meant "unmeasured", not "held". The four below are the ones whose two copies
+	// actually differ, so byte-parity cannot apply and doctrine parity is the
+	// right invariant. Measured at enrolment: mirror present, copies differ.
+	".claude/rules/moai/core/moai-constitution-detail.md",
+	".claude/rules/moai/core/verification-claim-integrity-detail.md",
+	".claude/rules/moai/workflow/cross-session-messaging-detail.md",
+	".claude/rules/moai/workflow/main-checkout-branch-guard-detail.md",
 }
 
 // tokenNormalizer pairs a regex matching an intentionally-divergent internal

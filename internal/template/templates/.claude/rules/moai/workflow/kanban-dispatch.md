@@ -78,13 +78,13 @@ What stays verbatim in every language: SPEC IDs, command names and their flags, 
 card: <id>
 spec: <SPEC-ID>
 cmd: /moai run <SPEC-ID>
-wt: .claude/worktrees/<name>
+wt: .moai/worktrees/<name>
 evidence: .moai/specs/<SPEC-ID>/progress.md
 lens: --security --deep
 ```
 
 - `card`, `cmd`, `wt`, and `evidence` are always present. `spec` joins once a SPEC exists; a Class B card, which skips `plan`, carries none, and its `evidence` names whatever record the lead will read instead. `lens` appears only in a `sync` dispatch — the review lenses the sync gate will run, the choice itself stated as an address rather than a sentence.
-- `wt` names the new card's worktree, never a previous card's tree; where the lane may still be anchored elsewhere, it carries the exit-first instruction (`ExitWorktree` → `EnterWorktree(<card-id>)` → `git branch -m WT-<slug>`). The tree keeps the card id; the branch takes a descriptive slug — see the naming rule below.
+- `wt` names the new card's worktree, never a previous card's tree. A Claude lane exits its old tree before entry; a Codex lane starts its next session with `codex -C <absolute-worktree-path>`. The tree keeps the card id; the branch takes a descriptive slug — see the naming rule below.
 - **No explanatory prose.** Procedure, background, and justification live in the card text and the SPEC artifacts the block points at; a dispatch that restates them makes the operator read the same thing twice. What does not fit a field belongs in the card, not around the block.
 - **Ceiling: the block is at most 10 lines.** A dispatch that does not fit is trying to be a handoff; move the payload into the card and send the block.
 - **[HARD] The send is read, not assumed.** The result has three shapes and only one of them delivered:
@@ -149,20 +149,23 @@ The lead's own session is cleared the same way, between cards rather than phases
 | Need | Form |
 |---|---|
 | Create a harness-neutral L1 worktree | `moai worktree new <name>` |
-| Work inside the worktree in this session | `moai cc -w <name>` |
-| Work inside it with Codex | `moai codex -w <name>` |
-| Open it in a new window, keeping this session | `moai cc -w <name> --spawn` |
-| Re-enter one from the current session | `EnterWorktree(<path>)` |
-| Leave it | `ExitWorktree` |
-| Dispose it once the card's work has merged on the remote | L2 tree (`~/.moai/worktrees/…`) only: `moai worktree done`. An L1 tree (`.claude/worktrees/…`) is disposed via the session-end keep/remove prompt — `moai worktree` never registers it |
+| Start Claude Code in a MoAI tree | `moai cc -w <absolute-worktree-path>` (`--spawn` for a new window; Claude may ask to approve an external worktree path) |
+| Start a Claude-native worktree | `moai cc -w <name>` creates or enters `.claude/worktrees/<name>` |
+| Re-enter or leave in the current Claude Code session | `EnterWorktree(<path>)` / `ExitWorktree` |
+| Start a Codex app chat in a new tree | Select Worktree and the starting branch in the new chat |
+| Start a Codex CLI session in an existing tree | `moai codex -w <name-or-absolute-path>`; the flag never creates a tree |
+| Work in a tree from the current Codex session | `git -C <absolute-worktree-path>` and direct file operations there |
+| Dispose it once the card's work has merged on the remote | L2 tree (`~/.moai/worktrees/…`) only: `moai worktree done`. Project L1 trees under `.claude/worktrees/` or `.moai/worktrees/` are removed only after their sessions end |
 
-`moai worktree new <name>` is the sole harness-neutral creation verb — it materializes an L1 tree without entering it; entry stays the launcher's job. A raw `git worktree add` bypasses MoAI's name validation, base selection, and post-create Git configuration.
+`moai worktree new <name>` creates a harness-neutral L1 tree at `.moai/worktrees/<name>` without entering it. A Codex factory lane uses it for each card, then launches the interactive card session with `codex -C <absolute-worktree-path>`; it does not use `moai codex -w` to create the tree. The Codex app's Worktree selector creates a Codex-managed tree separately. A raw `git worktree add` bypasses MoAI's name validation, base selection, and post-create Git configuration.
 
-[HARD] **`moai worktree done` closes L2 trees only.** A worktree entered by short name (`moai cc -w <name>` → `.claude/worktrees/<name>/`) is L1 and is never in `moai worktree`'s registry — `done` on it is a category error, not a disposal. L1 disposal is the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` once the session is done. The full L1/L2 boundary lives in `worktree-integration.md` § Terminology Glossary.
+[HARD] A Codex factory agent must never call `moai cc -w`, `EnterWorktree`, or `ExitWorktree`; those are Claude Code entry mechanisms. `moai codex -w` starts another Codex process and only accepts an existing tree, so an agent already running in Codex works through its current session instead of nesting a launcher.
+
+[HARD] **`moai worktree done` closes L2 trees only.** Project trees under `.claude/worktrees/` and `.moai/worktrees/` are L1 and absent from its registry. `done` refuses both roots. Remove an L1 tree only after its session ends and its branch is integrated, using the session-end prompt where available or `git worktree unlock` + `git worktree remove`. The full L1/L2 boundary lives in `worktree-integration.md` § Terminology Glossary.
 
 [HARD] **The card's branch is unpushed, so its worktree is the work's only instance.** Dispose of no worktree — L1 or L2 — until the lead has integrated the branch and the remote merge has landed; disposal before that destroys the only copy.
 
-[HARD] **A new card starts in a new worktree — exit any previous one first.** `EnterWorktree(<card-id>)` cannot run from inside a worktree session: a lane still anchored in the previous card's tree MUST `ExitWorktree` back to the primary checkout before creating the new one, or it does the new card's work on the old card's branch. The fresh tree is created from the remote default branch rather than reused — reuse without a `/clear` in between carries the old card's context and untracked artifacts into the new card. Where the new card depends on a prior card's unmerged code, merge the prior branch inside the new worktree; a dependency is a reason to merge, never to reuse the tree.
+[HARD] **A new card starts in a new worktree.** A Claude Code lane anchored in the previous card's tree MUST `ExitWorktree` before entering the next one. A Codex factory lane ends the previous interactive card session and the launcher starts the next one with `codex -C <new-tree>`; the agent does not call Claude's entry tools. The fresh tree is created from the configured base rather than reused — reuse carries the old card's context and untracked artifacts into the new card. Where the new card depends on a prior card's unmerged code, merge the prior branch inside the new worktree; a dependency is a reason to merge, never to reuse the tree.
 
 [HARD] **Card worktree branches carry the `WT-` prefix and a descriptive slug — never the card id.** `EnterWorktree(<name>)` auto-names its branch `worktree-<name>`, which is unwieldy and invisible to the worktree lifecycle tooling. Immediately after creating a card worktree, rename in place with `git branch -m WT-<slug>`: safe inside a worktree (tree, lock, anchoring unaffected); `moai cc -w <name>` re-entry resolves by tree name, not branch name, and the rename switches the disposal path (`worktree-integration.md` § Terminology Glossary).
 
@@ -176,7 +179,7 @@ The slug says what the card **does**, so a reader of `git branch` or a pull-requ
 | Alphabet | Lowercase `a-z`, `0-9`, and `-` |
 | Card id | MUST NOT appear — not as a prefix, a suffix, or a token |
 
-The **worktree directory keeps the card id** (`.claude/worktrees/<card-id>`) — only the branch takes the slug, and the tree path is what the disposal tooling and the evidence path key on.
+The **worktree directory keeps the card id** (`.moai/worktrees/<card-id>` for new MoAI trees; `.claude/worktrees/<card-id>` for existing Claude-native trees) — only the branch takes the slug, and the tree path is what the disposal tooling and the evidence path key on.
 
 [HARD] **Dropping the id from the branch moves traceability onto three other carriers, and all three are mandatory.** The branch name no longer answers "which card was this?", so nothing may rely on reading it back:
 

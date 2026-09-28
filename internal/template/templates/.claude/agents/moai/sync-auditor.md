@@ -65,6 +65,8 @@ These 4 verifications are independent and read-only: issue them as ONE single-tu
 
 ## Output Format
 
+[HARD] **Served-model self-report.** The first line of the report file and of your final message MUST be `auditor-model: <served model>` — the identifier of the model actually serving this audit, written before any other content. The runtime separately observes which model served the run; this line is recorded beside that observation and never replaces it, so write the model you are actually running on rather than the one the audit was requested with.
+
 ```
 ## Evaluation Report
 SPEC: {SPEC-ID}
@@ -156,6 +158,24 @@ Evidence gathering for the 4 scoring dimensions runs sequentially within this ag
 This auditor carries single- and multi-backend audit MCP tools in its `tools:` list. Use them before scoring when the project config requests a cross-backend second opinion:
 
 - `mcp__moai__audit_multi` — source-aware convergence: a Claude main session contributes its in-session anchor; GPT/GLM main sessions trigger a fresh subscription-backed Claude audit. Default path when `audit_model: multi`.
+
+<!-- moai:closure-second-review:start -->
+**Contract-mode second review (card-bound).** When the reviewed card runs under a
+contract-based autonomy workflow, invoke `mcp__moai__audit_multi` with the card
+argument so this fan-out is recorded as the card's second review:
+
+- pass `card_id` set to the card identifier from the reviewed card's contract;
+- keep `target: "baseBranch"` — the review must cover the reviewed scope, never
+  uncommitted changes;
+- run the review AFTER the last commit that changes the card's governed paths
+  (the contract's ownership `write` globs, excluding the SPEC's own directory),
+  so the recorded scope is current for the commit that will be judged; a review
+  recorded before that commit is stale for the closure push.
+
+The tool appends one second-review record into the card evidence directory.
+Without `card_id` no record is written and the tool behaves byte-identically to
+the pre-argument surface.
+<!-- moai:closure-second-review:end -->
 - `mcp__moai__claude_audit` — independent Claude subscription audit with read-only isolation and structured provenance.
 - `mcp__moai__codex_audit` — codex-backend single audit (`native` or `adversarial` mode).
 - `mcp__moai__glm_audit` — GLM (z.ai) backend single audit.

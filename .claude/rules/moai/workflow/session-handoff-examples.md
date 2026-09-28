@@ -33,70 +33,9 @@ Read `conversation_language` at render time; substitute the localized text betwe
 
 **Fallback rule for locales not in the table** (binding text: `session-handoff-format.md` § Localization Table): en/ko/ja/zh are listed above; any other ISO-639 code falls back to the English structural skeleton with the label text rendered in the configured language (naturalization, never literal transliteration) — English-skeleton fallback, not English-output.
 
-## Example (Illustrative; substitute project-specific values when adapting)
-
-```
-✂──── 여기부터 복사 ────✂
-
-ultrathink. SPEC-MYPROJ-001 implementation 진입.
-applied lessons: <lesson-id-1>, <lesson-id-2>.
-source_session_id: <not-available — environment-fallback, next session will backfill via /moai session register on activation>
-
-전제 검증:
-1) git log --oneline -1 → <commit-sha> 확인
-2) ls .moai/specs/SPEC-MYPROJ-001/ → N files
-
-실행: /moai run SPEC-MYPROJ-001
-
-머지 후: SPEC-MYPROJ-002 → SPEC-MYPROJ-003
-
-✂──── 여기까지 복사 ────✂
-```
-
-> Block 5 carries the work-starting action. Where the next SPEC declares a machine-verifiable end-state, the orchestrator arms `/moai goal "<condition>"` alongside it after Implementation Kickoff Approval — arm-only, so it never replaces the `실행:` action (§ Canonical Format, Field-by-Field Block 5).
-
-## Example with Block 0 (Illustrative)
-
-```
-✂──── 여기부터 복사 ────✂
-
-[New Terminal — START IN WORKTREE]
-$ moai cc -w ~/.moai/worktrees/<project>/SPEC-MYPROJ-001
-   # (launcher -w accepts L2 absolute paths; or moai glm -w ...)
-
-ultrathink. SPEC-MYPROJ-001 Epic N 진입.
-applied lessons: <lesson-id-1>, <lesson-id-2>.
-
-전제 검증:
-0) git rev-parse --show-toplevel → ~/.moai/worktrees/<project>/SPEC-MYPROJ-001 (★ critical)
-1) gh pr view <PR-number> → MERGED
-
-실행: /moai run SPEC-MYPROJ-001 --team
-
-후속: Milestone M<N+1> (single-SPEC next step) 또는 Epic N+1 (multi-SPEC next grouping)
-
-✂──── 여기까지 복사 ────✂
-```
-
----
-
 # Moved Sections (extracted from session-handoff.md for context diet)
 
-## Goal-first bootstrap variant (documented alternative — NOT the default)
-
-[ZONE:Evolvable] An explicit alternative single-paste form exists: the **goal-first bootstrap** — a one-line `/moai goal` message whose condition text carries both a resume pointer and the compact completion condition. Illustrative:
-
-```text
-/moai goal "resume SPEC-X run: read <handoff-file> from memory and progress.md, then continue. Completion: <machine-verifiable end-state>, or stop after N turns."
-```
-
-(The condition text follows the user's `conversation_language`; shown above in English-canonical form. The `/moai goal` token itself is locale-verbatim.)
-
-Normative content:
-
-- **(a) Selection criterion**: choose goal-first bootstrap when the user wants one-paste + autonomous continuation; the standard 6-block paste (§ Canonical Format) remains the DEFAULT.
-- **(b) Caveats**: effort keywords (`ultrathink` / `ultracode`) placed inside a command argument are NOT documented to fire — the session may run at default effort; and precondition verification shifts from paste-time structure (the Block 4 verifiable commands) to **model discretion** via the directive text.
-- **(c) Invariants preserved**: the condition must stay compact (one measurable end state); the Implementation Kickoff Approval gate is unaffected — arming never authorizes autonomous run-phase entry; the `/moai goal` token stays locale-verbatim (never translated).
+> § Example (Illustrative), § Example with Block 0, and the goal-first bootstrap variant moved to `.moai/docs/session-handoff-appendix.md` (outside the loaded-instruction budget); the pointers below resolve to it.
 
 ## Paste-Time Activation Matrix
 
@@ -229,7 +168,7 @@ Block 0 is REQUIRED only for worktree work. For `--branch` (or no flag — the d
 
 [ZONE:Evolvable] [HARD] If a worktree was used and the user is NOT comfortable with a multi-terminal/multi-session workflow, the orchestrator SHOULD recommend `--branch` in the main checkout for the next SPEC. Forcing Block 0 onto a single-session user is friction without benefit. See the single-session vs multi-session decision rationale below.
 
-> **Example with Block 0**: see § Example with Block 0 (Illustrative) in this file.
+> **Example with Block 0**: see § Example with Block 0 (Illustrative) in `.moai/docs/session-handoff-appendix.md`.
 
 ## V0 Abort Gate Doctrine
 
@@ -316,7 +255,7 @@ Retained in lesson memory, not in this rule body — per AP-D-002, history belon
     - **Single-SPEC close** (no further SPEC/phase queued): omit Block 6 entirely
   - **Single action principle**: `<next-action-or-spec>` MUST be one concrete SPEC ID, one command, or one phase transition — avoid vague "cycle-repeat" / "iteration loop" phrasing that reads as infinite recursion.
 
-> **Example**: see § Example (Illustrative; substitute project-specific values when adapting) in this file.
+> **Example**: see § Example (Illustrative; substitute project-specific values when adapting) in `.moai/docs/session-handoff-appendix.md`.
 
 ---
 

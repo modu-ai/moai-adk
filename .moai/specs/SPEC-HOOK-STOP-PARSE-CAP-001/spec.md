@@ -1,10 +1,10 @@
 ---
 id: SPEC-HOOK-STOP-PARSE-CAP-001
 title: "Claude Stop 파싱 실패 차단의 moai 자체 상한 — 호스트 상한에 기대지 않는 루프 한계와 사유 문구 개정"
-version: "0.2.1"
+version: "0.2.2"
 status: completed
 created: 2026-09-26
-updated: 2026-09-26
+updated: 2026-09-28
 author: manager-spec (card t1272)
 priority: P1
 phase: "v3.2.0 target"
@@ -27,6 +27,7 @@ related_specs:
 | 0.1.0 | 2026-09-26 | manager-spec (card t1272) | 최초 plan-phase 초안. 근거는 t1230 판정서와 이 카드의 LIVE 재현(`.moai/reports/t1272/verdict.md`, 로컬 증거)이고, 설계는 리드 판정 D1(2026-09-26)과 사유 문구 개정 지시를 따른다. 기준 트리 `e464fd5d0`. SPEC-HOOK-STDIN-FAILCLOSED-001 의 낡은 측정 서술(F6)은 같은 카드에서 그 SPEC 0.4.3 으로 정정했고, 그 SPEC 의 REQ-HSF-010 문구는 Claude 하네스에 한해 이 SPEC 의 REQ-SPC-010 이 대체한다. |
 | 0.2.0 | 2026-09-26 | manager-spec (card t1272) | plan-audit 1차(FAIL 0.79, `.moai/reports/t1272/plan-audit.md`) 수리. 리드 판정(2026-09-26): G1 — 만료 60분, 이름 붙은 상수 하나. D3 — 셈 열쇠를 `CLAUDE_CODE_SESSION_ID`(비어 있지 않을 때) 우선, 없으면 정본 세션 소유자 해석으로 바꾸고(REQ-SPC-014 신설), 훅 환경의 그 변수 존재를 실경로에서 재는 AC-SPC-016 을 더했다. D1 — 대체 경로를 원시 부모 pid 가 아닌 래퍼 셸을 건너뛰는 해석으로 고치고, 합성 프로세스 트리 차단 AC(AC-SPC-007 (iii))와 배포 래퍼 사슬 경유 M5 로 바꿨으며, §F 에 Windows 기대 동작을 적었다. D2 — 기록 파일 이름을 열쇠의 일방향 해시로 정하고(REQ-SPC-015 신설) 정리 대상을 그 이름 형식의 일반 파일로 좁혔다. D4·D5·D7·D9·D10 반영, D8 은 D3 으로 해소. REQ 13→15, AC 15→16(옛 AC-SPC-007·008 의 범위를 열쇠 해석과 기록 사용 불가로 재편). |
 | 0.2.1 | 2026-09-26 | manager-spec (card t1272) | plan-audit 2차(FAIL 0.73, `.moai/reports/t1272/plan-audit-iter2.md`) 차단 결함 N1~N4 만 수리했다. 설계(D1·D3·G1)는 바꾸지 않았다. N1 — M5a 실행을 `unset CLAUDE_CODE_SESSION_ID MOAI_SESSION_PID && …` 한 번의 복합 호출로 바꾸고, AC-SPC-016 이 로그 값과 같은 실행의 `session_id` 가 같은지를 판정하게 했다. N2 — AC-SPC-016 (b)(유효 stdin 경로에서 관측할 출력이 명세에 없는 열쇠 종류 stderr)를 없앴다. 열쇠 종류 매핑은 AC-SPC-007 (i)(ii) 가 고정한다. N3 — AC-SPC-007 (iii) 의 필수 RED 변이를 「주입된 이음매 안에서 래퍼 셸을 건너뛰지 않는 구현」으로 다시 정의하고, `os.Getppid` 는 두 구현 파일 대상 `grep -c` 정적 검사로 따로 잡는다. N4 — REQ-SPC-004 의 「차단 쪽으로만 기운다」를 양방향 서술로 고치고 §F 에 「열쇠 공유」 행을 더했다. REQ·AC 개수 변화 없음. |
+| 0.2.2 | 2026-09-28 | manager-spec (card t1233) | REQ-SPC-009 에 날짜가 든 포인터를 달았다 — 「그 사유 문구」는 이 SPEC 작성 시점(0.2.1)의 Codex 사유를 가리키며, 그 문구는 카드 t1233(t1152 sync-audit F7) 에서 개정됐다(마커를 사유에서 떼고 번역 틀이 렌더된 거부에 정확히 한 번 싣는다 — SPEC-HOOK-STDIN-FAILCLOSED-001 REQ-HSF-010 0.4.4 각주가 정본). REQ 본문은 고치지 않았고, acceptance.md §0 의 Codex 기대 사유 옆에는 같은 취지의 주석을 한 줄 더했다(§D·§E 의 옛 인용은 작성 시점 값으로 역사로 남긴다). REQ·AC 문구·수·상태 변화 없음. |
 
 ---
 
@@ -95,7 +96,7 @@ SPEC-HOOK-STDIN-FAILCLOSED-001(이하 「선행 SPEC」)은 훅 stdin 을 파싱
 - **REQ-SPC-006** (Unwanted): The hook dispatcher **shall not** Stop 이외의 이벤트 호출(PreToolUse·PostToolUse 등 도구 사용에 딸린 호출을 포함하며, 그 호출의 파싱 성공·실패를 가리지 않는다)로 셈 기록을 늘리거나 지운다.
 - **REQ-SPC-007** (Event-driven): **When** 셈 기록에 접근할 때 그 기록의 마지막 갱신 시각이 만료 시간(60분)보다 오래됐으면, the hook dispatcher **shall** 그 기록을 없는 것으로 보고 지우며, 같은 접근에서 상태 영역에 남은 다른 열쇠의 만료된 셈 기록도 지운다. 정리 대상은 이름이 기록 파일 이름 형식(REQ-SPC-015)에 정확히 맞고 심볼릭 링크가 아닌 일반 파일로 한정한다 — 심볼릭 링크는 따라가지도 지우지도 않고, 형식에 맞지 않는 이름의 파일과 내용을 해석할 수 없는 다른 열쇠의 파일은 남긴다. 상태 영역 자체가 심볼릭 링크이거나 디렉터리가 아니면 정리를 하지 않는다. 정리는 훅의 응답을 바꾸지 않고, 정리 실패는 stderr 한 줄로만 남는다.
 - **REQ-SPC-008** (Event-driven): **When** 셈 열쇠를 정할 수 없거나(REQ-SPC-014 의 두 순위 모두 값을 주지 못함) 셈 기록을 읽고 쓸 수 없으면(상태 영역 생성·쓰기 실패, 상태 영역이 심볼릭 링크이거나 디렉터리가 아님, 자기 기록 자리가 일반 파일이 아님), the hook dispatcher **shall** 상한을 적용하지 않고 REQ-SPC-002 의 fail-closed 거부를 내며, 셈을 적용하지 못한 사유를 담은 stderr 한 줄을 남긴다. 이때 심볼릭 링크의 대상은 읽거나 고치지 않는다. 일반 파일이지만 내용을 해석할 수 없는 자기 기록은 없는 것으로 보고 새 기록으로 덮어쓴다. 셈 기록의 쓰기는 읽는 쪽이 반쯤 쓰인 내용을 보지 않는 방식으로 한다.
-- **REQ-SPC-009** (Where): **Where** 호출이 `--harness codex` 모드이면, the hook dispatcher **shall** 선행 SPEC 의 동작 — (Codex, Stop) 면제(REQ-HSF-012·013), Codex fail-closed 출력의 바이트, 그 사유 문구 — 을 바꾸지 않으며, 셈 기록을 만들거나 읽지 않는다.
+- **REQ-SPC-009** (Where): **Where** 호출이 `--harness codex` 모드이면, the hook dispatcher **shall** 선행 SPEC 의 동작 — (Codex, Stop) 면제(REQ-HSF-012·013), Codex fail-closed 출력의 바이트, 그 사유 문구 — 을 바꾸지 않으며, 셈 기록을 만들거나 읽지 않는다. **[0.2.2 포인터]** 이 요구가 말하는 「그 사유 문구」는 이 SPEC 작성 시점(0.2.1)의 Codex 사유다. 그 문구는 카드 t1233(t1152 sync-audit F7) 에서 개정됐다 — 마커(`fail-closed: ` 접두)를 사유에서 떼고 번역 틀이 렌더된 거부에 정확히 한 번 싣는다. 정본은 SPEC-HOOK-STDIN-FAILCLOSED-001 REQ-HSF-010 의 0.4.4 각주다.
 - **REQ-SPC-010** (Where): **Where** 호출이 Claude 하네스이면, the fail-closed 거부의 사유 문구 **shall** 다음 고정 문자열과 바이트 단위로 같다 — `fail-closed: hook stdin could not be parsed as JSON. Do not edit hook scripts or settings files to get past this; stop and tell a human operator (.moai/docs/hook-stdin-fail-closed.md)`. 이 문자열은 선행 SPEC REQ-HSF-010 의 (a) `fail-closed` 표시, (b) 원인 고정 문구, (c) 운영자 문서 식별자를 그대로 싣고, 거기에 훅·설정 파일을 편집하지 말고 사람에게 알리라는 지시를 더한다. 복구 절차(moai 갱신, `disableAllHooks` 등 훅 비활성화 방법)와 파싱에 실패한 페이로드에서 유래한 내용은 싣지 않는다. 이 요구는 Claude 하네스의 네 결정 이벤트(PreToolUse·PermissionRequest·Stop·UserPromptSubmit)와 `moai hook agent` 의 Claude 모드 fail-closed 에 적용된다.
 - **REQ-SPC-011** (Unwanted): The 상한 해제 응답의 stderr 줄과 영속 기록 **shall not** 파싱에 실패한 페이로드의 원문이나 그 일부를 싣는다. 입력에서 유래해 허용되는 정보는 선행 SPEC REQ-HSF-011 과 같다(파싱 오류 메시지, stdin 바이트 수).
 - **REQ-SPC-012** (Ubiquitous): The 운영자 문서 `hook-stdin-fail-closed.md`(템플릿 원본 `internal/template/templates/.moai/docs/`) **shall** Claude Stop 의 moai 자체 상한 — N 값, N 을 넘은 뒤 상한 해제 응답이 이어진다는 것, 파싱에 성공한 Stop 과 만료(60분)만이 셈을 되돌린다는 것, 셈 열쇠의 선택 규칙(세션 id 우선, 없으면 세션 소유자 프로세스), 셈 기록이 놓이는 곳 — 과, 이 상한이 호스트 상한 값과 무관하다는 사실을 적는다.

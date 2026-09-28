@@ -1,0 +1,8 @@
+=== RUN   TestFrozenInstructionFilesPinnedInContract
+--- PASS: TestFrozenInstructionFilesPinnedInContract (0.00s)
+=== RUN   TestFrozenInstructionFiles
+    frozen_instruction_files_test.go:17: frozenInstructionFiles = [CLAUDE.md CLAUDE.local.md], want exactly [AGENTS.local.md AGENTS.md CLAUDE.local.md CLAUDE.md]
+--- FAIL: TestFrozenInstructionFiles (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.727s
+FAIL

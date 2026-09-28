@@ -712,6 +712,8 @@ Sections §18-27 were consolidated into external `.moai/docs/` files to reduce l
 
 3등급 항목에서는 Jev 를 호출하지 않는다. 호출해서 참고만 하는 것도 금지다 — 판정서에 「모델이 그렇게 답했다」가 근거로 새어 들어가면 `verification-claim-integrity.md` 의 관측 없는 주장이 된다. 완료 판정의 근거는 언제나 **리드가 읽은 증거 파일**이다.
 
+예외는 한 곳뿐이다 — contract 모드 Kickoff 의 `llm+jev` 교차 확인에서는 `moai contract decide` 가 Jev 를 두 번째 신호로 직접 부를 수 있다. Jev 답은 LLM 의 승인을 확인하거나 사람에게 보낼 뿐 혼자서 시작시키지 못하며, 그 밖의 3등급 항목에 대한 금지는 그대로다.
+
 ### 어떻게 쓰나
 
 ```bash

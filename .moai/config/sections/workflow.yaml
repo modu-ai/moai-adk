@@ -189,6 +189,15 @@ workflow:
     # no `enabled: true` under internal/template/templates/).
     subagent_write_guard:
         enabled: true
+    # served_model_gate: refuse to adopt a plan-auditor / sync-auditor verdict
+    # whose served model (the transcript's assistant-row model) differs from
+    # the expected model or cannot be determined. Observation + warning always
+    # run regardless of this flag; this local opt-in enables the refusal for
+    # dogfood. Shipped default-false in template
+    # (internal/config/defaults.go enforces this; no `enabled: true` under
+    # internal/template/templates/).
+    served_model_gate:
+        enabled: true
     # jev: the TypeSafe System One judgment capability. It answers a typed
     # question about a supplied state and returns a typed answer with a
     # probability; it generates no text and decides nothing. Ships OFF, and
@@ -204,6 +213,9 @@ workflow:
     # The capability is display-only: an answer is a labelled model-produced
     # signal a person reads, never an input to a completion verdict, a merge
     # approval, a queue mutation, or any other decision that is hard to undo.
+    # One exception: the contract-mode Kickoff `llm+jev` cross-check may use
+    # an answer as its second signal, where it can only confirm an LLM
+    # approval or route the Kickoff to a human; it never decides alone.
     #
     # Where this setting is changed, and where it is NOT: `moai init` asks
     # about it once, and after that the `moai web` settings screen is the only

@@ -5,7 +5,7 @@ package hook
 // REQ-AP-009 / REQ-AP-011 / REQ-AP-012; design.md §C).
 //
 // A contract signed by an agent is worthless in any autonomy mode, and
-// `moai contract decide` is the lead session's own path when the decider is
+// `moai contract decide` is the leader session's own path when the decider is
 // `llm` or `llm+jev` — so the two verbs are not one rule but three
 // (design.md §C.2 step 6):
 //
@@ -19,7 +19,7 @@ package hook
 //	            deny only where the calling session's MOAI_FACTORY_ROLE
 //	            equals the role value constant; allowed otherwise
 //	            (REQ-AP-011). The allow direction is a requirement: it is
-//	            the lead's own decide path, and denying it would deny the
+//	            the leader's own decide path, and denying it would deny the
 //	            caller the epic depends on.
 //	FAIL CLOSED an invocation carrying `contract` together with `sign` or
 //	            `decide` whose structure cannot be classified — command
@@ -124,12 +124,13 @@ func checkContractSign(input *HookInput) (decision string, reason string) {
 }
 
 // contractRoleMarker reports whether the calling session claims the factory
-// worker role (REQ-AP-011). The marker's name and value come from the
-// internal/config constants REQ-AP-012 defines, so the retired alias `agent`
-// is not accepted here by construction. A session that sets no marker makes
-// no role claim.
+// lane role (REQ-AP-011; the value follows the leader/lane vocabulary per
+// SPEC-ROLE-NAMING-CODE-001 REQ-RNC-012). The marker's name and value come
+// from the internal/config constants REQ-AP-012 defines, so the legacy
+// spellings `worker` and `agent` are not accepted here by construction. A
+// session that sets no marker makes no role claim.
 func contractRoleMarker() bool {
-	return os.Getenv(config.EnvFactoryRole) == config.FactoryRoleWorker
+	return os.Getenv(config.EnvFactoryRole) == config.FactoryRoleLane
 }
 
 // classifyContractCall parses one command line per design.md §C.2: shell-word

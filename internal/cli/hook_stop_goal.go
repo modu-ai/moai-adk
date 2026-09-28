@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os/exec"
 	"time"
 
@@ -72,45 +73,17 @@ func runStopGoalHook(cmd *cobra.Command, _ []string) error {
 		// No resolvable project root → nothing to evaluate; exit 0 silently.
 		return nil
 	}
-	sessionID := hookInput.SessionID
-	g, err := goal.LoadGoal(root, sessionID)
-	if err != nil {
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "stop-goal load: %v\n", err)
-		return nil // fail-open: never block on a load error
-	}
-	if g == nil {
-		// No armed goal → no block.
-		return nil
-	}
 	// Snapshot source: a fresh shared-diagnostic-snapshot entry exactly matching
 	// a Tier-1 condition command reuses the recorded exit code instead of
 	// re-executing. The lookup is memoized (one key computation per turn-end)
 	// and time-boxed per the Advisory-Check Discipline — on deadline exceed or
 	// any error it degrades to command re-execution; correctness never depends
 	// on the optimization.
-	e := &goal.Eval{Runner: realCmdRunner{}, Snapshot: &verify.Source{ProjectRoot: root}}
-	verdict, block := e.Evaluate(context.Background(), g)
-	if verdict.Diagnostic != "" {
-		// An unrecognised goal status: visible on stderr, never a stdout
-		// decision (SPEC-DUAL-HARNESS-HOOK-PARITY-001 REQ-HPR-015).
-		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), verdict.Diagnostic)
-	}
-	// Persist the updated goal (turns incremented, status set, progress appended).
-	if err := goal.SaveGoal(root, g); err != nil {
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "stop-goal save: %v\n", err)
-		// Continue: the verdict is still emitted; a save failure is best-effort.
-	}
-	// SPEC-GOAL-HTML-WIRING-001 REQ-WIRE-002 / AC-WIRE-013: at-ceiling-ONLY
-	// verdict sidecar write. The evaluator's `*CeilingVerdict` field is non-nil
-	// ONLY on a ceiling / wall-clock / stagnation exit transition (verified
-	// against internal/goal/evaluate.go); non-exiting turns carry nil and write
-	// NOTHING. This is NOT the per-turn Stop-hook `.html` write the user declined
-	// (c2, spec.md §A.3 / §G out-of-scope). Fail-open: a persistence error MUST
-	// NOT block the evaluator's stdout-JSON duty.
-	if verdict.Verdict != nil {
-		if err := saveVerdictFn(root, sessionID, &verdict); err != nil {
-			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "stop-goal save verdict: %v\n", err)
-		}
+	verdict, block, found := evaluateStopGoal(context.Background(), root, hookInput.SessionID,
+		realCmdRunner{}, &verify.Source{ProjectRoot: root}, cmd.ErrOrStderr())
+	if !found {
+		// No armed goal (or a load error, fail-open) → no block.
+		return nil
 	}
 	if !block && !verdict.CeilingExit && !verdict.Stagnation && !verdict.Yielded && !verdict.Unsatisfiable {
 		// All conditions satisfied — nothing to emit.
@@ -126,4 +99,53 @@ func runStopGoalHook(cmd *cobra.Command, _ []string) error {
 	// Code Stop semantics, the runtime honors stdout JSON `decision:"block"` on
 	// exit 0; exit 2 is reserved for sync-phase-quality-gate-style blocking).
 	return nil
+}
+
+// evaluateStopGoal is the goal evaluation shared by `moai hook stop-goal` (the
+// Claude member) and the Codex Stop chain (SPEC-DUAL-HARNESS-HOOK-PARITY-001
+// design §D2: the members are extracted Go functions shared by both paths).
+// The two paths differ only in the runner: the Claude path executes a
+// condition command on a snapshot miss, the Codex path passes a lookup-only
+// runner that never executes (design §D3.3).
+//
+// found is false when no goal is armed or the goal cannot be loaded (fail-open,
+// no block). The goal is persisted, and the at-exit verdict sidecar written,
+// exactly as the stop-goal hook always did.
+func evaluateStopGoal(ctx context.Context, root, sessionID string, runner goal.CmdRunner, snap goal.SnapshotSource, stderr io.Writer) (goal.Verdict, bool, bool) {
+	g, err := goal.LoadGoal(root, sessionID)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "stop-goal load: %v\n", err)
+		return goal.Verdict{}, false, false // fail-open: never block on a load error
+	}
+	if g == nil {
+		return goal.Verdict{}, false, false
+	}
+	e := &goal.Eval{Runner: runner}
+	if snap != nil {
+		e.Snapshot = snap
+	}
+	verdict, block := e.Evaluate(ctx, g)
+	if verdict.Diagnostic != "" {
+		// An unrecognised goal status: visible on stderr, never a stdout
+		// decision (SPEC-DUAL-HARNESS-HOOK-PARITY-001 REQ-HPR-015).
+		_, _ = fmt.Fprintln(stderr, verdict.Diagnostic)
+	}
+	// Persist the updated goal (turns incremented, status set, progress appended).
+	if err := goal.SaveGoal(root, g); err != nil {
+		_, _ = fmt.Fprintf(stderr, "stop-goal save: %v\n", err)
+		// Continue: the verdict is still emitted; a save failure is best-effort.
+	}
+	// SPEC-GOAL-HTML-WIRING-001 REQ-WIRE-002 / AC-WIRE-013: at-ceiling-ONLY
+	// verdict sidecar write. The evaluator's `*CeilingVerdict` field is non-nil
+	// ONLY on a ceiling / wall-clock / stagnation exit transition (verified
+	// against internal/goal/evaluate.go); non-exiting turns carry nil and write
+	// NOTHING. This is NOT the per-turn Stop-hook `.html` write the user declined
+	// (c2, spec.md §A.3 / §G out-of-scope). Fail-open: a persistence error MUST
+	// NOT block the evaluator's stdout-JSON duty.
+	if verdict.Verdict != nil {
+		if err := saveVerdictFn(root, sessionID, &verdict); err != nil {
+			_, _ = fmt.Fprintf(stderr, "stop-goal save verdict: %v\n", err)
+		}
+	}
+	return verdict, block, true
 }

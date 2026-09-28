@@ -580,6 +580,11 @@ func TestGLMTaskFactoryModeIgnoresModelOverride(t *testing.T) {
 
 	t.Run("outside factory mode the override is honored", func(t *testing.T) {
 		clearFactoryTestEnv(t)
+		// The response names the model it served, matching the request, so the
+		// empty-note assertion below isolates the factory note: a response that
+		// named no model would legitimately carry a served-model absence note
+		// (SPEC-MCP-SERVED-MODEL-001 REQ-MSM-004).
+		stub.body = glmTextRespWithModel("ok", "caller-picked-model")
 
 		got := structuredMap(t, callGLMTaskTool(t, map[string]any{
 			"prompt": "do the thing",

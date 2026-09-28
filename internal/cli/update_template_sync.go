@@ -685,7 +685,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					_, _ = fmt.Fprintf(out, "  %s .gitignore merge warning: %v\n", uikit.SymWarning(), mergeErr)
 				} else {
 					_, _ = fmt.Fprintf(out, "  %s .gitignore user patterns preserved\n", uikit.SymSuccess())
-					// card t1276 F1 (lead-approved option A): the EntryMerge
+					// card t1276 F1 (leader-approved option A): the EntryMerge
 					// rewrote .gitignore as template + user entries AFTER the
 					// deploy tracked its render — re-record the merged output
 					// so the manifest matches the tree. Must go through the

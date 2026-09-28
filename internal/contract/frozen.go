@@ -7,7 +7,7 @@ package contract
 // two lists together. The `frozen-files` invariant emits each basename as the
 // glob `**/<basename>` so the basename-anywhere semantics survive (design.md
 // § Frozen Files).
-var FrozenInstructionFiles = []string{"CLAUDE.md", "CLAUDE.local.md"}
+var FrozenInstructionFiles = []string{"CLAUDE.md", "CLAUDE.local.md", "AGENTS.md", "AGENTS.local.md"}
 
 // Invariant tokens (design.md § Contract Schema, invariants).
 const (

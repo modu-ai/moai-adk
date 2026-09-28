@@ -775,7 +775,7 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 生命周期工具 |
 | `moai goal <arm\|status\|clear>` | goal 引擎 CLI |
 | `moai harness <status\|apply\|rollback\|disable>` | 框架学习生命周期 |
-| `moai handoff <save\|list>` | 会话交接记录 |
+| `moai handoff <save\|show\|clear>` | 会话交接记录 |
 | `moai preference <list\|decay-scan\|toggle>` | 决策记忆管理 |
 | `moai memory <doctor\|archive>` | 智能体记忆体检与旧条目归档 |
 | `moai tokens record` | 按池记录 token 使用台账 |

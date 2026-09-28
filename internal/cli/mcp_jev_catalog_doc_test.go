@@ -54,7 +54,7 @@ func TestMCPToolCatalogueDocsStayMirrorIdentical(t *testing.T) {
 // len(MoaiMCPToolNames()), which the registration-equality guard already binds
 // to the live tools/list; the family-coverage figure is checked against the
 // registry's own family arithmetic (total minus the session-messaging family,
-// which the stub documents as following below the table).
+// which the catalogue companion documents as following below the table).
 func TestMCPToolCatalogueFiguresMatchRegistry(t *testing.T) {
 	names := mcpcat.MoaiMCPToolNames()
 	total := len(names)
@@ -86,8 +86,18 @@ func TestMCPToolCatalogueFiguresMatchRegistry(t *testing.T) {
 		if got, _ := strconv.Atoi(m[1]); got != total {
 			t.Errorf("%s says %q tools exposed; the registered set holds %d", pair[0], m[1], total)
 		}
+	}
 
-		m = reFamily.FindStringSubmatch(doc)
+	// The family table (and its coverage header) lives in the catalogue
+	// companion: the always-loaded stub keeps only the total sentence and a
+	// pointer. The header is read where it actually is — a header that moved
+	// is re-pointed here, never dropped from the check.
+	for _, pair := range jevCatalogueDocPairs[1:] {
+		body, err := os.ReadFile(pair[0])
+		if err != nil {
+			t.Fatalf("read %s: %v", pair[0], err)
+		}
+		m := reFamily.FindStringSubmatch(string(body))
 		if m == nil {
 			t.Fatalf("%s no longer carries the family-coverage header this test reads", pair[0])
 		}

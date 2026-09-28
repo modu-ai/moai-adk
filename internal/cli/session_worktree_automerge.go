@@ -7,7 +7,7 @@ package cli
 // materialized a session worktree merges that worktree's branch into the
 // project's configured git-flow develop branch with a LOCAL `git merge
 // --no-ff` — never a push, fetch, or any other remote-mutating command
-// (REQ-WKW-005). Pushing remains the lead/operator's explicit act.
+// (REQ-WKW-005). Pushing remains the leader/operator's explicit act.
 //
 // The integration-window ceremony is BINDING (REQ-WKW-004): the path records
 // the release-integration window through the same kanban lock API the
@@ -129,7 +129,7 @@ var (
 
 	// autoMergeHeadShort reports the integration worktree's short HEAD sha
 	// after a successful merge — the merge commit named in the success notice
-	// so the lead's batch-push flow can read what landed.
+	// so the leader's batch-push flow can read what landed.
 	autoMergeHeadShort = gitHeadShortReal
 )
 
@@ -297,10 +297,10 @@ func sessionExitAutoMerge(cfg *config.Config, wtPath string, cleanExit bool, out
 		return
 	}
 
-	// Success: name the resulting merge commit so the lead's batch-push flow
+	// Success: name the resulting merge commit so the leader's batch-push flow
 	// can read what landed (spec.md §C — local/remote divergence is accepted;
-	// pushing remains the lead's explicit act).
-	autoMergeNoticef(out, "merged %s into %s as %s (local merge only — push remains the lead's explicit act)", branch, develop, autoMergeHeadShort(targetWt))
+	// pushing remains the leader's explicit act).
+	autoMergeNoticef(out, "merged %s into %s as %s (local merge only — push remains the leader's explicit act)", branch, develop, autoMergeHeadShort(targetWt))
 }
 
 // --- real implementations (overridable in tests via the seams above) ---

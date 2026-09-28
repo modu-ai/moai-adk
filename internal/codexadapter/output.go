@@ -82,9 +82,12 @@ type Discard struct {
 }
 
 // additionalContextEvents are the events with a working additionalContext
-// channel. Only UserPromptSubmit was measured delivering it.
+// channel. UserPromptSubmit and SessionStart both measured delivering it
+// (codex-cli 0.157.0, 2026-09-28 LIVE gate (b), controlled two-arm probe —
+// card t1273).
 var additionalContextEvents = map[hook.EventType]bool{
 	hook.EventUserPromptSubmit: true,
+	hook.EventSessionStart:     true,
 }
 
 // MapOutput rewrites a MoAI hook's output for Codex.
@@ -153,9 +156,24 @@ func MapOutput(event hook.EventType, raw []byte) ([]byte, []Discard, error) {
 			return nil, nil, fmt.Errorf("parse %q: %w", "systemMessage", err)
 		}
 		if additionalContextEvents[event] {
-			out["hookSpecificOutput"] = map[string]any{
-				"hookEventName":     string(event),
-				"additionalContext": msg,
+			// A co-occurring hookSpecificOutput (session attribution, factory
+			// notice, injected handoff body) must survive the mapping: APPEND the
+			// systemMessage to an existing additionalContext and keep every other
+			// hookSpecificOutput key — replacing the map silently dropped the
+			// original context (audit F1, sync-audit-opus.md; regression probe in
+			// the audit's E4). Only an absent or non-object hookSpecificOutput
+			// creates the fresh two-key shape.
+			if hso, ok := out["hookSpecificOutput"].(map[string]any); ok {
+				if existing, ok := hso["additionalContext"].(string); ok && existing != "" {
+					hso["additionalContext"] = existing + "\n\n" + msg
+				} else {
+					hso["additionalContext"] = msg
+				}
+			} else {
+				out["hookSpecificOutput"] = map[string]any{
+					"hookEventName":     string(event),
+					"additionalContext": msg,
+				}
 			}
 		} else {
 			discards = append(discards, Discard{

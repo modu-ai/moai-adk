@@ -28,7 +28,7 @@ func newDispatchFixture(t *testing.T) *dispatchFixture {
 	f := &dispatchFixture{t: t, root: t.TempDir(), live: map[string]bool{}, slots: map[string]string{}}
 	f.open()
 	t.Cleanup(func() { _ = f.s.Close() })
-	f.lead = f.register("lead", "lead", "lead-s1", "start-lead")
+	f.lead = f.register("leader", "leader", "lead-s1", "start-lead")
 	return f
 }
 

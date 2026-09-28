@@ -776,7 +776,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC ライフサイクル・ツール |
 | `moai goal <arm\|status\|clear>` | ゴール・エンジン CLI |
 | `moai harness <status\|apply\|rollback\|disable>` | ハーネス学習ライフサイクル |
-| `moai handoff <save\|list>` | セッション・ハンドオフ記録 |
+| `moai handoff <save\|show\|clear>` | セッション・ハンドオフ記録 |
 | `moai preference <list\|decay-scan\|toggle>` | 決定メモリ管理 |
 | `moai memory <doctor\|archive>` | エージェント・メモリの点検と古い項目の保管 |
 | `moai tokens record` | プール別トークン使用の台帳記録 |

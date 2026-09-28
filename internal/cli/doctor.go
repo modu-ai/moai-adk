@@ -101,6 +101,11 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	// Render per-section pass/fail tables + counts + summary (REQ-TUX4-002).
 	_, _ = fmt.Fprintln(out, renderDoctorGroups(out, groups, verbose, th))
 
+	// REQ-IFU-012: the same local-instruction advisory `moai update` prints.
+	if cwd, err := os.Getwd(); err == nil {
+		emitLocalInstructionsAdvisory(out, cwd)
+	}
+
 	failCount := countFailedChecks(allChecks)
 
 	if fix && failCount > 0 {
@@ -211,6 +216,10 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		// Card t1251: hook wrappers log skipped fires here; surface them so a
 		// silently missing hook is not silently forgotten.
 		{hookMissingLogCheckName, func(v bool) DiagnosticCheck { return checkHookMissingLog(cwd, v) }},
+		// Read-only sweep of subagent transcripts for the model that actually
+		// served each run; advisory, never gates doctor. Explicit-only: the
+		// default run shows one info hint row and does not sweep.
+		{servedModelCheckName, servedModelDoctorEntry(cwd, filterCheck)},
 		// SPEC-AGENT-EMIT-LINEAGE-001 REQ-AEL-004: embed-axis judgment point.
 		// Applicable only in a tree carrying the committed emission set — a
 		// deployed project sees one added `ok` row and the same exit status.
@@ -253,6 +262,10 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		// SPEC-GITSTRAT-WORKFLOW-READER-001 REQ-GWS-009: the production
 		// consumer of the git-strategy workflow interpretation table.
 		{"Git Strategy Workflow", func(v bool) DiagnosticCheck { return checkGitStrategyWorkflow(cwd, v) }},
+		// SPEC-ROLE-NAMING-CODE-001 REQ-RNC-001 / AC-RNC-013: the doctor
+		// factory section — the persisted leader role, with the literal
+		// relaunch message for a legacy run.
+		{factoryRunCheckName, func(v bool) DiagnosticCheck { return checkFactoryRun(cwd, v) }},
 		{"BODP Config", func(v bool) DiagnosticCheck { return checkBODPConfig(cwd, v) }},
 		{"Telemetry Config", func(v bool) DiagnosticCheck { return checkTelemetryConfig(cwd, v) }},
 		{"Glamour Cache", checkGlamourCache},
