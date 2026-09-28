@@ -150,13 +150,15 @@ func TestAutonomousKickoffActivationOrder(t *testing.T) {
 // token that shows it amended.
 type linkageMarker struct{ path, token string }
 
+const jevDoctrineToken = "`moai contract decide` 가 Jev 를 두 번째 신호로"
+
 var linkageMarkers = []linkageMarker{
 	{".moai/specs/SPEC-JEV-CORE-001/spec.md", "[AMENDED 2026-09-26"},
 	{".claude/rules/moai/core/moai-mcp-tools-catalogue.md", "contract-mode Kickoff"},
 	{"internal/template/templates/.claude/rules/moai/core/moai-mcp-tools-catalogue.md", "contract-mode Kickoff"},
 	{".moai/config/sections/workflow.yaml", "contract-mode Kickoff"},
 	{"internal/template/templates/.moai/config/sections/workflow.yaml", "contract-mode Kickoff"},
-	{"CLAUDE.local.md", "`moai contract decide` 가 Jev 를 두 번째 신호로"},
+	{"CLAUDE.local.md", jevDoctrineToken},
 	{"internal/contract/kickoff/kickoff.go", "JevDoctrineAmended = true"},
 }
 
@@ -167,7 +169,13 @@ func linkageFindings(t *testing.T, repo string) []string {
 	t.Helper()
 	var present, absent []string
 	for _, m := range linkageMarkers {
-		data, err := os.ReadFile(filepath.Join(repo, filepath.FromSlash(m.path)))
+		currentPath := m.path
+		if m.path == "CLAUDE.local.md" {
+			if _, err := os.Stat(filepath.Join(repo, "AGENTS.local.md")); err == nil {
+				currentPath = ".moai/docs/jev-local-operations.md"
+			}
+		}
+		data, err := os.ReadFile(filepath.Join(repo, filepath.FromSlash(currentPath)))
 		if err == nil && strings.Contains(string(data), m.token) {
 			present = append(present, m.path)
 		} else {
@@ -242,6 +250,34 @@ func TestJevAmendmentLinkage(t *testing.T) {
 	t.Run("all-in-one-commit", func(t *testing.T) {
 		if f := linkageFindings(t, fixture(t, func(linkageMarker) bool { return false })); len(f) != 0 {
 			t.Fatalf("complete linkage rejected: %v", f)
+		}
+	})
+	t.Run("migrated-guide", func(t *testing.T) {
+		repo := fixture(t, func(linkageMarker) bool { return false })
+		if err := os.Rename(filepath.Join(repo, "CLAUDE.local.md"), filepath.Join(repo, "AGENTS.local.md")); err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(repo, ".moai/docs/jev-local-operations.md")
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(jevDoctrineToken), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := git(t, repo, "add", "-A"); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := git(t, repo, "commit", "-q", "-m", "migrate guide"); err != nil {
+			t.Fatal(err)
+		}
+		if f := linkageFindings(t, repo); len(f) != 0 {
+			t.Fatalf("migrated linkage rejected: %v", f)
+		}
+		if err := os.WriteFile(path, []byte("missing marker"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if f := linkageFindings(t, repo); len(f) == 0 {
+			t.Fatal("migrated linkage accepted a missing doctrine marker")
 		}
 	})
 	t.Run("tree", func(t *testing.T) {

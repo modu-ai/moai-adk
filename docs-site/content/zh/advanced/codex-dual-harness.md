@@ -30,7 +30,19 @@ codex-cli 不读 Claude Code 的 `.claude/skills/`,所以技能以**镜像**(复
 
 ## 各 harness 的个人指令
 
-`CLAUDE.local.md` 是与 Claude 工作流共用的本地输入，`AGENTS.local.md` 则是 Codex 专用输入。本地 `moai codex` 的所有启动路径——无参数、`cli`、`app`、`--spawn` 以及 `-w`——都会按此顺序读取项目根目录中非空的常规文件，在每段正文前加入 `<!-- source: <filename> -->` 来源标头，再把合并后的内容作为一个 `developer_instructions` 覆盖项传入。使用 `-w` 时，Codex 虽在工作树中运行，输入来源仍是原项目根目录。共享的 `AGENTS.md` 和 `CLAUDE.md` 都不会导入或链接这两个本地文件。启动器拒绝链接和非常规文件，并从完成检查的同一个文件描述符读取；如果操作者另行提供了 `developer_instructions`，或 direct/spawn 参数过大，启动会提前失败。其他 harness 的本地设置与记忆仍归各自 harness 所有。Codex Web 不经过本地启动器，因此不会收到这些注入内容。
+`AGENTS.local.md` 是两个 harness 共同读取的个人指令文件，`CLAUDE.local.md` 是它的旧名称，仅作为回退输入保留。本地 `moai codex` 的所有启动路径——无参数、`cli`、`app`、`--spawn` 以及 `-w`——都会按此顺序读取项目根目录中非空的常规文件，在每段正文前加入 `<!-- source: <filename> -->` 来源标头，再把合并后的内容作为一个 `developer_instructions` 覆盖项传入。使用 `-w` 时，Codex 虽在工作树中运行，输入来源仍是原项目根目录。共享的 `AGENTS.md` 和 `CLAUDE.md` 都不会导入或链接这两个本地文件。启动器拒绝链接和非常规文件，并从完成检查的同一个文件描述符读取；如果操作者另行提供了 `developer_instructions`，或 direct/spawn 参数过大，启动会提前失败。其他 harness 的本地设置与记忆仍归各自 harness 所有。Codex Web 不经过本地启动器，因此不会收到这些注入内容。
+
+## `CLAUDE.local.md` 回退与迁移提示
+
+项目里只有 `CLAUDE.local.md`、没有 `AGENTS.local.md` 时，`moai codex` 仍会把该文件作为回退读取，放进 `developer_instructions`。来源标头写的是实际读取的文件名——此处为 `<!-- source: CLAUDE.local.md -->`。
+
+走回退路径时，启动器会在标准错误输出一行迁移提示：
+
+```text
+Advisory: CLAUDE.local.md is a legacy local instruction file; run `moai migrate local-instructions` to move it to AGENTS.local.md.
+```
+
+这条提示是写给操作者的，因此不会进入会成为模型上下文的 `developer_instructions`。两个文件同时存在时两者都会被读取，提示改为要求手动合并。在三文件结构中——通用契约在 `AGENTS.md`，Claude 专属层在 `CLAUDE.md`，个人指令在 `AGENTS.local.md`——`CLAUDE.local.md` 只是一个待迁移的旧名称。
 
 ## `internal/codexadapter` —— 钩子适配器库
 
@@ -60,6 +72,14 @@ codex-cli 不读 Claude Code 的 `.claude/skills/`,所以技能以**镜像**(复
 ### 现在的调用方
 
 `RenderHooks` 会把 8 个已适配事件的命令写入用户的 `.codex/hooks.json`。`moai init --llm codex|both` 创建这套配线;已有项目可用 `moai tool enable codex` 添加或刷新。
+
+## 桌面应用与 v3.1.3 发布条件
+
+在 Codex 应用的本地会话中，打开包含已生成的 `.codex/hooks.json` 和 `.codex/config.toml` 的项目。Codex 只有在项目信任后才会加载项目钩子和配置。在 Codex CLI 中使用 `/hooks` 检查钩子；定义发生变化后，需要重新信任。在同一项目中运行 `moai doctor` 可以检查 MoAI 配线状态。应用的运行环境还必须能找到 `moai` 命令。项目信任规则见 [Codex 钩子文档](https://developers.openai.com/codex/hooks)。
+
+Claude Code 桌面应用的 **Local** Code 会话与 CLI 共用项目中的 `CLAUDE.md`、`.mcp.json`、钩子、技能和设置。在 Code 标签页打开已初始化的项目，并确认该会话能运行 `moai`。SSH 会话在远程机器上运行，因此远程机器也需要项目和 `moai`。详见 [Claude Code Desktop 配置说明](https://code.claude.com/docs/en/desktop#shared-configuration)。
+
+以上只是配置步骤，不代表 v3.1.3 的桌面应用发布验证已经完成。在运营者亲自完成 MoAI、Codex 和两款桌面应用的测试并宣布结果之前，发布仍然暂停。
 
 ## 下一步
 

@@ -164,9 +164,10 @@ Debug tools: `claude --debug "hooks"` / `"api,hooks"` / `"mcp"`, or `/debug` in-
 
 ## 18. Local Instructions (imported)
 
-The user-owned `AGENTS.local.md` (gitignored, never deployed) is imported last, so it layers over
-everything above. When the file is absent, or the session runs in a linked worktree where the import
-points outside the project, Claude Code skips the import silently.
+The project-local `AGENTS.local.md` is imported last, so it layers over everything above. This
+repository tracks its maintainer copy; user project copies remain user-owned and undeployed. A
+linked worktree receives the import when the file exists inside that worktree's checkout. When
+the file is absent or only exists outside the project, Claude Code skips the import silently.
 
 @AGENTS.local.md
 

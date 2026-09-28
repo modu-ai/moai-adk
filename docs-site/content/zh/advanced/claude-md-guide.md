@@ -355,6 +355,34 @@ flowchart TD
 | 3. Skills | `.claude/skills/*/skill.md` | 触发匹配时 | 专业知识、模式 |
 | 4. Agents | `.claude/agents/*.md` | 委派时 | 专家角色定义 |
 
+## 三文件结构 —— `AGENTS.md`、`CLAUDE.md`、`AGENTS.local.md`
+
+MoAI-ADK 把指令拆成三个文件：无论由哪个 harness 驱动工作，都读取同一份契约；个人指令只放在一个文件里。
+
+| 文件 | 内容 | Git 跟踪 | 读取方 |
+|------|------|----------|--------|
+| `AGENTS.md` | 各 harness 通用的契约 | 是 | Claude Code（通过 `@AGENTS.md` 导入）和 Codex |
+| `CLAUDE.md` | 承载 Claude 专属机制的薄层 | 是 | Claude Code |
+| `AGENTS.local.md` | 个人指令 | 否（`.gitignore`） | Claude Code（通过 `CLAUDE.md` 末尾的 `@AGENTS.local.md`）和 `moai codex` |
+
+```mermaid
+flowchart TD
+    A["AGENTS.md<br/>通用契约"] --> C["CLAUDE.md<br/>Claude 专属层"]
+    L["AGENTS.local.md<br/>个人指令"] --> C
+    C --> CC["Claude Code"]
+    A --> X["Codex"]
+    L --> R["moai codex 启动器"]
+    R --> X
+```
+
+`CLAUDE.local.md` 是 `AGENTS.local.md` 的旧名称。已有文件请用 `moai migrate local-instructions` 迁移：该命令把内容逐字节写入 `AGENTS.local.md`，将原文件备份到 `.moai/backups/local-instructions/` 下，再从项目根目录删除。只有这条命令会改名，`moai update`、`moai init` 和钩子都不会移动或删除这两个文件。
+
+{{< callout type="warning" >}}
+{{< icon warning warn >}} 两个文件同时存在时，Claude Code 会同时读取两者，相似的指令会被加载两次。此时 `moai migrate local-instructions` 会拒绝执行，不改动任何一个文件——保留哪一份内容，工具无从判断。请手动把 `CLAUDE.local.md` 的内容合并进 `AGENTS.local.md`，然后删除 `CLAUDE.local.md`。
+{{< /callout >}}
+
+在链接的工作树中打开会话时，`@AGENTS.local.md` 导入指向项目之外，Claude Code 会静默跳过。请注意：工作树会话收不到 `AGENTS.local.md`。
+
 ## 相关文档
 
 - [技能指南](/zh/advanced/skill-guide) - 技能系统详解

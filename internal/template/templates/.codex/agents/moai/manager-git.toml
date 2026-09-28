@@ -81,15 +81,14 @@ SPEC/Phase tracking: `SPEC: SPEC-XXX-NNN` and `Phase: [PLAN|RUN-*|SYNC|FIX|LOOP]
 
 ### Late-Branch Invocation Pattern
 
-[HARD] When `team.branch_creation.auto_enabled == false` (Late-branch default), the orchestrator follows a worktree-branch procedure: every git branch-state change (checkout/switch, branch creation, reset, merge) happens INSIDE a launcher-entered worktree (`moai cc -w <name>` or `EnterWorktree(<path>)`) — the primary checkout observes no branch-state mutation at all. Work accumulates as commits on the worktree's own branch, and the branch is promoted at the end through the configured integration path (mode-conditional — see Phase C). `mode: team` is preserved; branch protection (4 required checks) + PR/CI gates remain unchanged.
+[HARD] When `team.branch_creation.auto_enabled == false` (Late-branch default), the orchestrator follows a worktree-branch procedure: every git branch-state change (checkout/switch, branch creation, reset, merge) happens inside a worktree entered through the current harness. Claude Code uses `moai cc -w <name>` or `EnterWorktree(<path>)`. Codex creates the tree with `moai worktree new <name>` and starts a new session with `moai codex -w <name>`; an active Codex session drives the tree with `git -C <absolute-path>`. Codex MUST NOT run `moai cc -w`, `EnterWorktree`, or `ExitWorktree`. The primary checkout observes no branch-state mutation at all. Work accumulates as commits on the worktree's own branch, and the branch is promoted at the end through the configured integration path (mode-conditional — see Phase C). `mode: team` is preserved; branch protection (4 required checks) + PR/CI gates remain unchanged.
 
 A branch can be checked out in only one worktree at a time, so "commits accumulate on main" is structurally incompatible with worktree isolation — under this model `main` receives no Late-branch commits, and no main-alignment step exists or is needed.
 
 Detection cue: `manager-git` recognizes Late-branch via `git rev-list main..HEAD --count > 0 && git branch --show-current matches feat/SPEC-* or worktree-*`. The `worktree-*` arm covers work done in a Claude Code worktree, where `moai cc -w <name>` names the branch `worktree-<name>`. The local branch name is not load-bearing either way — promotion-time renaming inside the worktree (`git branch -m <slug>`) keeps traceability, so commits accumulated on any branch name flow through the same procedure.
 
-Phase A — SPEC creation in the worktree (entered via the launcher):
+Phase A — SPEC creation in the worktree (after the harness-specific entry above; the slash command below is Claude Code syntax):
 ```bash
-moai cc -w <name>                    # or EnterWorktree(<path>) — launcher entry, never a bare cd
 /moai plan SPEC-XXX "description"   # SPEC files written; NO branch creation (auto_enabled: false)
 git add .moai/specs/SPEC-XXX/
 git commit -m "spec(SPEC-XXX): initial plan"   # lands on the worktree's own branch
