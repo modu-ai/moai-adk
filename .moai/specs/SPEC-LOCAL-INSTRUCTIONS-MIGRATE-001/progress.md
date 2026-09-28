@@ -740,6 +740,6 @@ Run complete at `c172b4ed1`. Milestones M1 (migration verb + advisory wiring + 4
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 57a842389
 
 3-phase close: this sync commit carries the `spec.md` `in-progress → implemented → completed` transition and the CHANGELOG entry under `[Unreleased] → Added` (the pre-existing `grep -c` hit for this SPEC-ID was t1243's cross-reference naming this card as the carrier, not an entry — no duplicate; stated in the entry itself). AC state at close: AC-IFU-001..008 live set — release-blocking gates AC-IFU-011 (fallback advisory) and AC-IFU-023 (docs equal-delta + grep) PASS with §E.2 evidence; AC-IFU-029 regression guard PASS; the remaining criteria of the 8-live set are the carve-inherited rows whose verifiers are the anchored test family run green in §E.2 (`MigrateLocalInstructions|LocalInstructionsAdvisory|CodexLocalInstructions` → ok) plus the migration-verb behaviours measured INTACT by the iter5 auditor against the landed code. Debt handed forward (recorded, not inherited silently): the docs-parity general condition (Phase 2 strict flip, `docs-i18n-check.yml:74` — a planned route, no live SPEC); M3's transferred scope lives with card t1290 (SPEC-LOCAL-INSTR-RECEPTION-001), whose M2 re-measurement depends on this card's merge.
