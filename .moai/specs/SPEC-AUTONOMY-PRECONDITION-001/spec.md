@@ -4,7 +4,7 @@ title: "A3 preconditions: serialize develop pushes behind the push-develop slot 
 version: "0.1.3"
 status: completed
 created: 2026-09-26
-updated: 2026-09-26
+updated: 2026-09-29
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -13,6 +13,7 @@ lifecycle: spec-anchored
 tags: "autonomy,contract,precondition,push-serialization,sign-guard,hook,mission"
 tier: M
 related_specs: [SPEC-AUTONOMY-CONTRACT-001, SPEC-AUTONOMY-ESCALATION-001, SPEC-AUTONOMY-TIERS-001]
+partially_superseded_by: [SPEC-FACTORY-SELF-DISPATCH-001]
 ---
 
 # SPEC-AUTONOMY-PRECONDITION-001 — A3 preconditions (card t1245, track A2b)
@@ -87,6 +88,14 @@ related_specs: [SPEC-AUTONOMY-CONTRACT-001, SPEC-AUTONOMY-ESCALATION-001, SPEC-A
   (b) **Scope reduced at R5**: the receipt-path allowance and
   its two criteria are withdrawn (§C.4, §H); `decide` is added to the deny matcher alongside
   `sign`. Requirement count 10 → 9, criteria 14 → 12.
+- **2026-09-29** — **Partial supersession recorded (sync-phase, card t1240).**
+  `SPEC-FACTORY-SELF-DISPATCH-001` widens REQ-AP-011 in the deny direction only (its design.md
+  §7.1): the role gate on the LLM/JEV signing paths and on `decide` also denies where the lane
+  label is set or `MOAI_KANBAN_BACKEND=gpt` (lane refusal, REQ-SD-015/017). The allow direction and
+  the leader's own `decide` path are unchanged — a session carrying none of the three lane
+  variables is allowed exactly as before. This row records the supersession only: REQ bodies,
+  `version:`, and `status:` are untouched (frontmatter gains `partially_superseded_by` and an
+  `updated:` refresh, nothing else).
 
 ## §B — Problem
 
