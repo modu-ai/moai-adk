@@ -110,7 +110,7 @@ m1_to_mN_commit_strategy: per-milestone commits (M1 f97b9bb2b, M2 4f88099d5, M3 
 
 ```yaml
 sync_complete_at: 2026-09-29
-sync_commit_sha: pending-backfill-sync   # placeholder — a commit cannot cite its own SHA; backfilled in a follow-up commit (SHA placeholder backfill exemption, D3)
+sync_commit_sha: 6467daf0c   # backfilled in follow-up commit (placeholder was pending-backfill-sync — SHA placeholder backfill exemption, D3)
 sync_status: complete
 changelog_entry_position: "CHANGELOG.md [Unreleased] § Changed — SPEC-SONNET55-BUMP-001"
 frontmatter_status_transitions.in-progress_to_implemented: sync commit (merged with completed — single 3-phase close, no separate Mx commit)
