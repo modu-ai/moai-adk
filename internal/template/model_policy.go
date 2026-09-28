@@ -53,6 +53,10 @@ const ModelIDOpus48 = "claude-opus-4-8"
 // low→max with Medium as the Claude Code/apps default, and a 1M-token context
 // window per the official models overview.
 // Used by launcher.go to route the model and by profile translations.
+//
+// @MX:NOTE: [SYNC] ModelIDSonnet55 — canonical target of the "sonnet" alias
+// (SPEC-SONNET55-BUMP-001). On the next model bump, move this id into
+// ModelDeprecatedCanonicalIDs and introduce the new id as the alias target.
 const ModelIDSonnet55 = "claude-sonnet-5-5"
 
 // ModelAliasTable is the single source of truth mapping short model aliases
@@ -94,7 +98,7 @@ var ModelDeprecatedCanonicalIDs = map[string]string{
 	"claude-opus-4-6":   "opus",
 	"claude-opus-4-7":   "opus",
 	ModelIDOpus48:       "opus",
-	"claude-opus-5":     "opus", // superseded by ModelIDOpus55
+	"claude-opus-5":     "opus",   // superseded by ModelIDOpus55
 	"claude-sonnet-5":   "sonnet", // superseded by ModelIDSonnet55
 	"claude-sonnet-4-6": "sonnet",
 }

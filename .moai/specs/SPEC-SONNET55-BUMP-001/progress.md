@@ -108,7 +108,20 @@ m1_to_mN_commit_strategy: per-milestone commits (M1 f97b9bb2b, M2 4f88099d5, M3 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-29
+sync_commit_sha: pending-backfill-sync   # placeholder — a commit cannot cite its own SHA; backfilled in a follow-up commit (SHA placeholder backfill exemption, D3)
+sync_status: complete
+changelog_entry_position: "CHANGELOG.md [Unreleased] § Changed — SPEC-SONNET55-BUMP-001"
+frontmatter_status_transitions.in-progress_to_implemented: sync commit (merged with completed — single 3-phase close, no separate Mx commit)
+frontmatter_status_transitions.implemented_to_completed: sync commit (same)
+canary_compliance_check.na: "no forward-looking policy defined by this SPEC"
+mx_tag_check: "ModelAliasTable already carries @MX:ANCHOR/@MX:REASON; @MX:NOTE added on ModelIDSonnet55 (new exported const, MX gate: new exported surface should carry a NOTE naming the alias contract)"
+b12_self_test_a: "grep -c 'SPEC-SONNET55-BUMP-001' CHANGELOG.md = 0 pre-emission (duplicate guard PASS)"
+b12_self_test_b: "acceptance.md distinct AC ids = 12 (AC-SSB-001..012); CHANGELOG entry cites 12 acceptance criteria AC-SSB-001..012 — count match"
+b12_self_test_c: "all file paths named in the CHANGELOG entry verified via ls (model_policy.go, glm_effort_overlay.go alias surface, web i18n, template model-policy, README 4-locale, docs-site)"
+codemap_rotation: "no codemap covers internal/template/model_policy.go alias surface — no rotation owed (verified by absence of a model_policy codemap entry)"
+```
 
 ## §F Phase 4 Mode Selection
 

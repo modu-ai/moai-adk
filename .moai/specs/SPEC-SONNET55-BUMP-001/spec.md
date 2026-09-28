@@ -2,7 +2,7 @@
 id: SPEC-SONNET55-BUMP-001
 title: "Promote Claude Sonnet 5.5 (claude-sonnet-5-5) across the moai product — alias table, web labels, template guidance, README/docs-site"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-09-29
 updated: 2026-09-29
 author: manager-spec
