@@ -86,6 +86,16 @@ type BacklogItem struct {
 	// `operator`) hold on every write rather than at each call site.
 	Landing  *LandingEvidence `json:"landing,omitempty"`
 	CardUUID *string          `json:"card_uuid"`
+	// PickedAt / DroppedAt are ADDITIVE (SPEC-TODO-TRANSITION-STAMPS-001
+	// REQ-TST-001): nullable transition stamps in the added_at TEXT format,
+	// `omitempty` after the Landing precedent so a card carrying none
+	// marshals byte-identically to before. PickedAt answers "when did the
+	// CURRENT picked episode begin" — it is overwritten on every re-pick and
+	// cleared on unpick; DroppedAt is stamped on drop and cleared on undrop.
+	// Absence is a nil pointer here and SQL NULL in the column — never {}
+	// and never "" (the REQ-TLE-006 discipline this SPEC follows).
+	PickedAt  *string `json:"picked_at,omitempty"`
+	DroppedAt *string `json:"dropped_at,omitempty"`
 }
 
 // Relation values a finding may carry. The first two are MECHANICAL — the
@@ -199,6 +209,12 @@ type BacklogArchiveEntry struct {
 	Item     BacklogItem              `json:"item"`
 	Position int                      `json:"position"`
 	Findings []BacklogArchivedFinding `json:"findings"`
+	// ArchivedAt is ADDITIVE (SPEC-TODO-TRANSITION-STAMPS-001 REQ-TST-002):
+	// the archive-time stamp, `omitempty` after the Landing precedent. The
+	// item's own stamps ride inside Item — ArchiveCard copies the row
+	// wholesale — so the archived row is the card's final, readable home
+	// (REQ-TST-007).
+	ArchivedAt *string `json:"archived_at,omitempty"`
 }
 
 // BacklogRecord is the backlog file's document shape. LastSeq is the

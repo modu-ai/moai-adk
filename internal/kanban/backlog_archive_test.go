@@ -52,9 +52,15 @@ func TestBacklogArchive_StateEnumUnchanged(t *testing.T) {
 //     so a card without one marshals byte-identically to before.
 //   - CardUUID — SPEC-TODO-IDENTITY-001 REQ-TID-001/002: a non-omitempty
 //     pointer so legacy cards expose literal null and issued cards expose UUIDv7.
+//   - PickedAt / DroppedAt — SPEC-TODO-TRANSITION-STAMPS-001 REQ-TST-001:
+//     nullable transition stamps in the added_at TEXT format, `omitempty`
+//     after the Landing precedent so a card carrying none marshals
+//     byte-identically to before.
 var permittedItemFieldAdditions = map[string]string{
-	"Landing":  "*kanban.LandingEvidence",
-	"CardUUID": "*string",
+	"Landing":   "*kanban.LandingEvidence",
+	"CardUUID":  "*string",
+	"PickedAt":  "*string",
+	"DroppedAt": "*string",
 }
 
 // frozenItemFields is the pre-addition per-item contract: ordered

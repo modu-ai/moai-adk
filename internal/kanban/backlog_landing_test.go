@@ -16,6 +16,10 @@ import (
 
 // AC-TLE-001 — the items column sequence ends in landing, and that column is
 // nullable TEXT with no default.
+//
+// Extended by SPEC-TODO-TRANSITION-STAMPS-001 (card t1310): the transition
+// stamps picked_at / dropped_at are the columns recorded after landing —
+// the recorded decision the freeze test (AC-TST-011) carries for both tables.
 func TestBacklogLanding_ItemsColumnShape(t *testing.T) {
 	eng := landingEngineFixture(t)
 	const want = "seq:INTEGER:0:NULL " +
@@ -24,7 +28,9 @@ func TestBacklogLanding_ItemsColumnShape(t *testing.T) {
 		"added_at:TEXT:1:NULL " +
 		"spec_id:TEXT:0:NULL " +
 		"state:TEXT:1:NULL " +
-		"landing:TEXT:0:NULL"
+		"landing:TEXT:0:NULL " +
+		"picked_at:TEXT:0:NULL " +
+		"dropped_at:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "items"); got != want {
 		t.Errorf("items column tuples =\n %s\nwant\n %s", got, want)
 	}
@@ -41,6 +47,10 @@ func TestBacklogLanding_ItemsColumnShape(t *testing.T) {
 
 // AC-TLE-002 — archived_items carries the same column, asserted independently
 // of AC-TLE-001 so a migration applied to one table only is caught.
+//
+// Extended by SPEC-TODO-TRANSITION-STAMPS-001 (card t1310): archived_items
+// also carries picked_at / dropped_at (the stamps preserved into the archive,
+// REQ-TST-007) and archived_at.
 func TestBacklogLanding_ArchivedItemsColumnShape(t *testing.T) {
 	eng := landingEngineFixture(t)
 	const want = "seq:INTEGER:0:NULL " +
@@ -50,7 +60,10 @@ func TestBacklogLanding_ArchivedItemsColumnShape(t *testing.T) {
 		"spec_id:TEXT:0:NULL " +
 		"state:TEXT:1:NULL " +
 		"position:INTEGER:1:NULL " +
-		"landing:TEXT:0:NULL"
+		"landing:TEXT:0:NULL " +
+		"picked_at:TEXT:0:NULL " +
+		"dropped_at:TEXT:0:NULL " +
+		"archived_at:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "archived_items"); got != want {
 		t.Errorf("archived_items column tuples =\n %s\nwant\n %s", got, want)
 	}

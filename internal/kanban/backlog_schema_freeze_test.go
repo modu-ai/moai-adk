@@ -10,6 +10,13 @@
 // freeze. It now pins the exact ordered (name, type, notnull, dflt_value)
 // tuple sequence of items AND archived_items, asserted separately per table
 // so a half-applied migration cannot satisfy both.
+//
+// Extended by SPEC-TODO-TRANSITION-STAMPS-001 (card t1310), AC-TST-011 —
+// the recorded schema decision: items gains nullable picked_at and
+// dropped_at; archived_items gains nullable picked_at, dropped_at (the
+// stamps preserved into the archive, REQ-TST-007) and archived_at. Pure
+// additive columns via the pragma_table_info-gated ADD COLUMN pattern; no
+// table rebuild, no constraint change, schema_version stays "1".
 package kanban
 
 import (
@@ -104,7 +111,9 @@ func TestTodoHistoryAddsNoSchemaChange(t *testing.T) {
 		"added_at:TEXT:1:NULL " +
 		"spec_id:TEXT:0:NULL " +
 		"state:TEXT:1:NULL " +
-		"landing:TEXT:0:NULL"
+		"landing:TEXT:0:NULL " +
+		"picked_at:TEXT:0:NULL " +
+		"dropped_at:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "items"); got != wantItemsColumns {
 		t.Errorf("items column tuples =\n %s\nwant\n %s", got, wantItemsColumns)
 	}
@@ -116,7 +125,10 @@ func TestTodoHistoryAddsNoSchemaChange(t *testing.T) {
 		"spec_id:TEXT:0:NULL " +
 		"state:TEXT:1:NULL " +
 		"position:INTEGER:1:NULL " +
-		"landing:TEXT:0:NULL"
+		"landing:TEXT:0:NULL " +
+		"picked_at:TEXT:0:NULL " +
+		"dropped_at:TEXT:0:NULL " +
+		"archived_at:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "archived_items"); got != wantArchivedItemsColumns {
 		t.Errorf("archived_items column tuples =\n %s\nwant\n %s", got, wantArchivedItemsColumns)
 	}

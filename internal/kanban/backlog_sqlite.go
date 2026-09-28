@@ -377,6 +377,9 @@ func (e *backlogEngine) ensureSchema(ctx context.Context) error {
 	if err := e.ensureLandingColumn(ctx); err != nil {
 		return err
 	}
+	if err := e.ensureTransitionStampColumns(ctx); err != nil {
+		return err
+	}
 	version, err := e.schemaVersion(ctx)
 	if err != nil {
 		return err
@@ -438,22 +441,60 @@ var landingCarryingTables = []string{"items", "archived_items"}
 // message.
 func (e *backlogEngine) ensureLandingColumn(ctx context.Context) error {
 	for _, table := range landingCarryingTables {
-		present, err := e.hasColumn(ctx, table, backlogLandingColumn)
-		if err != nil {
+		if err := e.ensureColumn(ctx, table, backlogLandingColumn); err != nil {
 			return err
 		}
-		if present {
-			continue
+	}
+	return nil
+}
+
+// backlogTransitionStampColumns lists the transition-stamp columns
+// (SPEC-TODO-TRANSITION-STAMPS-001) per table, added by the same additive
+// migration discipline as the landing column. items carries picked_at and
+// dropped_at; archived_items carries the same two stamps — the archive
+// preserves them as they stood at archive time (REQ-TST-007) — plus
+// archived_at. Compile-time constants only: nothing here is ever fed from a
+// runtime value.
+var backlogTransitionStampColumns = map[string][]string{
+	"items":          {"picked_at", "dropped_at"},
+	"archived_items": {"picked_at", "dropped_at", "archived_at"},
+}
+
+// ensureTransitionStampColumns runs the stamp columns through the same
+// metadata-gated ADD COLUMN path as the landing column, at the same point in
+// the open sequence, so a fresh and an upgraded database converge on the same
+// column set (REQ-TST-001..003). Iteration order is deterministic (one table
+// at a time, columns in declaration order) so a partially failed open leaves
+// an inspectable shape rather than an arbitrary one.
+func (e *backlogEngine) ensureTransitionStampColumns(ctx context.Context) error {
+	for _, table := range []string{"items", "archived_items"} {
+		for _, column := range backlogTransitionStampColumns[table] {
+			if err := e.ensureColumn(ctx, table, column); err != nil {
+				return err
+			}
 		}
-		// SQLite cannot bind an identifier, so the table and column names are
-		// interpolated. Both are compile-time constants — table ranges over
-		// landingCarryingTables and the column is backlogLandingColumn — and
-		// NEITHER may ever be fed from a runtime value.
-		stmt := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s TEXT", table, backlogLandingColumn)
-		if _, err := e.db.ExecContext(ctx, stmt); err != nil {
-			return mapBacklogEngineError(
-				fmt.Sprintf("add %s.%s %s", table, backlogLandingColumn, e.dbPath), err)
-		}
+	}
+	return nil
+}
+
+// ensureColumn adds one nullable TEXT column to a table when it is absent —
+// the single additive-migration gate both the landing column and the
+// transition stamps run through. The interpolated table and column names are
+// compile-time constants at every call site and may NEVER be fed from a
+// runtime value; idempotence is decided by reading pragma_table_info, never
+// by catching SQLite's duplicate-column error text.
+func (e *backlogEngine) ensureColumn(ctx context.Context, table, column string) error {
+	present, err := e.hasColumn(ctx, table, column)
+	if err != nil {
+		return err
+	}
+	if present {
+		return nil
+	}
+	stmt := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s TEXT", table, column)
+	if _, err := e.db.ExecContext(ctx, stmt); err != nil {
+		return mapBacklogEngineError(
+			fmt.Sprintf("add %s.%s %s", table, column, e.dbPath), err)
 	}
 	return nil
 }
