@@ -159,7 +159,7 @@ residual_risks:
 
 ```yaml
 sync_complete_at: 2026-09-29
-sync_commit_sha: pending-backfill-sync   # D3 backfill exemption — replaced by a following tiny commit with the real sync-commit SHA
+sync_commit_sha: 54973adcc   # D3 backfill exemption — backfilled by the following tiny commit
 sync_status: completed
 sync_agent: manager-docs (card t1310)
 changelog_entry_position: [Unreleased] > Added > first entry (line 12 region, above SPEC-COMMIT-IDENTITY-GUARD-001)
