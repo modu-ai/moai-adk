@@ -293,6 +293,27 @@ $ cmp -s <local> <mirror> → mirror-identical
 
 No split (rung 4) — earlier rungs sufficed; the naming constraint and companion roster therefore never fired for this file. Paths glob unchanged (guard green in M7's sweep).
 
+### M6 — session-handoff-examples.md under 40,000 (foreclosed from splitting; ladder walked)
+
+**Rung 3 measured**: the `session-handoff*` co-loader overlap is pointer-shaped again — `session-handoff-format.md` (5,266) carries en/ko summaries of the Localization Table, Activation Matrix, and Auto-Inject flow and points INTO this file for the full versions; no between-file duplication is removable from THIS file. Closed on that measurement.
+
+**Rung 2 precondition measured (the plan's open premise):** the InstructionsLoaded audit log (`.moai/logs/rule-load-audit.jsonl`, primary checkout) holds 9,937 rows / **2,434 distinct measured `file_path`s**; **0** of them are under `.moai/docs/` — the 203 raw `moai/docs` substring hits are all in the `globs` field (trigger patterns of other rules), never in `file_path`. A destination under `.moai/docs/` is therefore NOT in the hook's measured set: **rung 2 is open.**
+
+**Rung 1 assessed:** the remaining prose is specification tables and already-dieted doctrine text; no cheap in-place redundancy approaches 1,615 characters without clause risk.
+
+**Rung 2 executed**: § Example (Illustrative) (818) + § Example with Block 0 (598) + § Goal-first bootstrap variant (1,423 — zero external references, measured) relocated verbatim to **`.moai/docs/session-handoff-appendix.md`**, mirrored to the template tree as well so the pointer resolves in user projects. One pointer stub added at the removal site; the two internal "see § Example … in this file" references rewired to the appendix. No `[HARD]` token touched (12 before and after). Measured:
+
+```
+$ python3 -c "…len(io.open('.claude/rules/moai/workflow/session-handoff-examples.md',…))"
+39053          # was 41,615 — net -2,562, under 40,000 (AC-IBS-002d green)
+$ grep -c '\[HARD\]' …session-handoff-examples.md
+12             # unchanged from M0
+$ cmp -s <local> <mirror> (examples + appendix) → both-identical
+$ grep -m1 '^paths:' … → paths: "**/session-handoff.md"   # single pattern preserved — still no split
+```
+
+`go test -run 'TestWorkflowRulePathsPinned|TestTemplateNeutralityAudit$|TestRuleTemplateMirror' ./internal/template/` → ok (paths guard, neutrality over the new template appendix, mirror parity). REQ-IBS-007 respected: foreclosed file reduced without any companion.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
