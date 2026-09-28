@@ -65,3 +65,14 @@ Handoff directives by activation mechanism: (a) paste-time keywords (`ultrathink
 
 - `.claude/output-styles/moai/moai.md` §6 (Persistence & Context Awareness)
 - CLAUDE.md §11 (Error Handling) — token-limit recovery
+
+## Block 1 couplings
+
+> Relocated from `session-handoff.md` § Field-by-Field Specification (t1303 always-loaded diet). The [HARD] line order and SEED rule stay in the stub.
+
+- `mode: fanout` appends the locale-verbatim phrase `fan out subagents (<read-only investigation scope>)` to the Block 1 opener.
+- `mode: agent-team` appends `--team` to the Block 5 command.
+- `mode: sweep` appends a bare `ultracode` to the Block 1 opener.
+- `mode:` is omitted entirely for `serial` (the default), keeping the common case byte-identical.
+- `mode:` values and the fan-out phrase are protocol tokens preserved verbatim in every locale; only the parenthesized scope qualifier translates.
+- Legacy pre-rename tokens (`solo-sequential`, `parallel-subagents`, `dynamic-workflow`) remain parse-accepted on read and map to `serial` / `fanout` / `sweep` — new emissions use the new tokens only.

@@ -83,10 +83,10 @@ The five development safeguards (HARD Rules) are the §1 HARD bullets expanded:
 - **Rule 1 — Approach-First Development**: Before non-trivial code, explain the approach + which files change + why; get user approval. Exceptions: typo/single-line/obvious bug fixes. Present the decisions most likely to change first (data-model changes, new type interfaces, user-facing/UX flows), deferring mechanical/refactoring steps to the end.
   - **Proportionality test — "can the diff be stated in one sentence?"** Planning overhead is repaid only when the approach is genuinely uncertain, the change spans multiple files, or the code is unfamiliar. When none hold, the exception list applies and the change proceeds directly — gating an obvious change trains approval without reading, and the gate then fails on the changes that needed it.
   - **The plan is editable, not just approvable.** In Plan Mode `Ctrl+G` opens the plan in an editor — route wording, scope trims, and step reordering there; route genuine either/or decisions through `AskUserQuestion` (§8 Channel Monopoly, unchanged).
-- **Rule 2 — Multi-File Change Decomposition**: When modifying 3+ files, split into logical units (TodoList), execute file-by-file, analyze dependencies before parallel execution, report progress per unit.
-- **Rule 3 — Post-Implementation Review**: After coding, provide potential-issue list (edge cases, error/concurrency scenarios), suggested test cases, known limitations/assumptions, additional-validation recommendations.
-- **Rule 4 — Reproduction-First Bug Fixing**: Write a failing reproduction test first; confirm it fails; challenge the diagnosed root cause once ("How do we know this is the cause, not a symptom?"); fix minimally; verify the test passes.
-- **Rule 5 — Context-First Discovery**: When intent is unclear, conduct a Socratic interview before execution. Trigger conditions, discovery process, exceptions, and the 4-quadrant Unknowns lens are the SSOT at `.claude/rules/moai/core/askuser-protocol.md` § Ambiguity Triggers and Exceptions + § Socratic Interview Structure (+ optional Blind Spot Pass for suspected unknown-unknowns).
+- **Rule 2 — Multi-File Change Decomposition**: 3+ files → logical units (TodoList), file-by-file, dependencies before parallel execution.
+- **Rule 3 — Post-Implementation Review**: potential-issue list, suggested tests, known limitations, additional-validation recommendations.
+- **Rule 4 — Reproduction-First Bug Fixing**: failing reproduction test first; challenge the root cause once; fix minimally; verify the test passes.
+- **Rule 5 — Context-First Discovery**: unclear intent → Socratic interview before execution. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Ambiguity Triggers and Exceptions + § Socratic Interview Structure.
 
 <!-- moai:contract-mode-start id="contract-safe-dev" -->
 Where `workflow.autonomy.mode: contract` — after signing, the Socratic interview and approach approval are satisfied by the contract; assumptions are recorded in `progress.md` and work proceeds, escalating on a contradiction. See `.claude/rules/moai/workflow/contract-autonomy.md` § Gate disposition.
@@ -164,9 +164,10 @@ Debug tools: `claude --debug "hooks"` / `"api,hooks"` / `"mcp"`, or `/debug` in-
 
 ## 18. Local Instructions (imported)
 
-The user-owned `AGENTS.local.md` (gitignored, never deployed) is imported last, so it layers over
-everything above. A linked worktree receives it when the file exists inside that worktree's checkout.
-When the file is absent or only exists outside the project, Claude Code skips the import silently.
+The project-local `AGENTS.local.md` is imported last, so it layers over everything above. This
+repository tracks its maintainer copy; user project copies remain user-owned and undeployed. A
+linked worktree receives the import when the file exists inside that worktree's checkout. When
+the file is absent or only exists outside the project, Claude Code skips the import silently.
 
 @AGENTS.local.md
 

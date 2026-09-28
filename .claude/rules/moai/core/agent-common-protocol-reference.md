@@ -202,7 +202,22 @@ If a per-edit nudge is ever re-proposed, the only defensible variant is stateful
 
 ## Pre-Spawn Sync Check rationale and incident record
 
-> Relocated verbatim from `agent-common-protocol.md` § Pre-Spawn Sync Check to keep the always-loaded file within its size budget. The binding gate (the 2-command batch + active-sessions query), the interpretation matrices, and the read-only exemption remain inline there.
+> Relocated verbatim from `agent-common-protocol.md` § Pre-Spawn Sync Check to keep the always-loaded file within its size budget. The binding gate (the 2-command batch + active-sessions query), the interpretation matrices, and the read-only exemption remain inline there. The two-lane batch script (relocated by the t1303 diet):
+
+```bash
+# Lane A — ordered; wait for fetch completion before reading origin/main.
+git fetch origin main 2>&1
+fetch_status=$?
+if [ "$fetch_status" -ne 0 ]; then
+  printf 'pre-spawn sync blocked: fetch origin/main failed (status=%s)\n' "$fetch_status" >&2
+  exit "$fetch_status"
+fi
+git rev-list --count --left-right origin/main...HEAD
+
+# Lane B — can be started while Lane A is fetching, then joined before the
+# divergence/session decision is surfaced (L1 of the canonical 4-layer policy).
+moai session list --json --filter-spec=<SPEC-ID>
+```
 
 Rationale: when 2+ Claude Code sessions operate on the same project root + same memory hash (`~/.claude/projects/{hash}/memory/`), they may both consume the same paste-ready resume and attempt the same `/moai <subcommand>` work. The git working tree is shared; the memory file is shared. Without a pre-spawn fetch, the second session works on a stale baseline and may produce duplicate commits, conflicting frontmatter edits, or CHANGELOG entry races.
 
