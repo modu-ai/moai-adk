@@ -69,19 +69,29 @@ Milestones are ordered by decision reversibility: the measurement that can still
 
 ### §E.1 Probe 3 — driving the interactive `/clear` (REQ-SDL-003)
 
-A headless `-p` session cannot issue `/clear` and a factory lane has no operator, so probe 3 is driven mechanically in tmux, bounded by an external timeout:
+A headless `-p` session cannot issue `/clear` and a factory lane has no operator, so probe 3 is driven mechanically in tmux. The launched command — not the detached tmux client — carries the scrub and the timeout:
 
 ```bash
-timeout 300 tmux new-session -d -s <probe-unique-name> -c <scratchpad worktree path>
-tmux send-keys -t <probe-unique-name> "<prompt>" Enter      # first turn
-tmux send-keys -t <probe-unique-name> "/clear" Enter        # the one /clear
-tmux send-keys -t <probe-unique-name> "<prompt>" Enter      # turn after the clear
+tmux new-session -d -s <probe-unique-name> -c <scratchpad worktree path> "unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && timeout 300 claude"
+tmux send-keys -t <probe-unique-name> "<prompt>" Enter      # first turn — then the §E.1 wait
+tmux send-keys -t <probe-unique-name> "/clear" Enter        # the one /clear — then the §E.1 wait
+tmux send-keys -t <probe-unique-name> "<prompt>" Enter      # turn after the clear — then the §E.1 wait
 tmux kill-session -t <probe-unique-name>                    # exact probe-unique session name
 ```
 
-- The loaded set is read from the interactive session's own transcript file (path and session id recorded in E); extraction stays transcription-based, same extractors as the headless probes. `claude` runs with default model settings in the interactive probe; the model difference vs the headless probes is recorded in E as a declared limitation, not silently ignored.
+- **Launch and bounding.** The trailing quoted command is what tmux runs inside the session, so `send-keys` types into claude, not into a bare shell. The `MOAI_KANBAN*` scrub lives inside that launched command — the session environment is what REQ-SDL-006 governs, and the outer shell's environment is irrelevant to the probe. `timeout 300` wraps the in-session claude process, so the external bound is real even if the lane dies mid-probe: claude ends at 300 s and nothing is left running.
+- **Turn-boundary waits.** After each `tmux send-keys`, the probe waits for the assistant turn to finish before the next send, using a capped poll on the pane:
+
+  ```bash
+  for i in $(seq 1 60); do tmux capture-pane -p -t <probe-unique-name> | grep -qF "<turn-boundary marker>" && break; sleep 2; done
+  ```
+
+  `<turn-boundary marker>` is declared in E before the probe runs (e.g. the pane's input-prompt line reappearing after the response; the exact marker text is recorded, not improvised at probe time). A marker that never appears within the cap takes the caps path: `gap`.
+- **E-field capture for this probe shape.** `pgid=` is recorded from the pane's process group: `tmux list-panes -t <probe-unique-name> -F '#{pane_pid}'` yields the pane pid, and `ps -o pgid= -p <pane-pid>` yields the group containing the `timeout` → `claude` tree — recorded in the same `pgid=<n>` form the AC-SDL-006 sweep greps. `probe_session_id` comes from the interactive transcript: the newest `.jsonl` under the transcript project directory for the scratchpad cwd, read with `jq -r 'select(.session_id) | .session_id' <file> | head -1`; the transcript directory path is recorded in E. Both extraction routes stay transcription-based.
+- **commands.txt carries both lines:** the tmux wrapper verbatim, and the in-session command on its own line in the anchored `unset MOAI_KANBAN … && timeout 300 claude` form — AC-SDL-006's scrub check accepts both recorded forms.
+- The loaded set is read from the interactive session's own transcript file; extraction stays transcription-based, same extractors as the headless probes. `claude` runs with default model settings in the interactive probe; the model difference vs the headless probes is recorded in E as a declared limitation, not silently ignored.
 - The tmux session is ended with `tmux kill-session -t <probe-unique-name>` — an exact, probe-unique session name. Process-name kills remain prohibited (§G).
-- **Declared gap route:** where tmux is unavailable, or the probe exceeds the caps, the recorded result is `clear_restores_skill_set: gap` with `clear_method: none` — this is an expected outcome, not a failure; AC-SDL-003 passes on the gap branch with the field named under `## Gaps`.
+- **Declared gap route:** where tmux is unavailable, or the probe exceeds the caps (including a turn-boundary marker that never appears within its poll cap), the recorded result is `clear_restores_skill_set: gap` with `clear_method: none` — this is an expected outcome, not a failure; AC-SDL-003 passes on the gap branch with the field named under `## Gaps`.
 
 ## §F Milestones
 

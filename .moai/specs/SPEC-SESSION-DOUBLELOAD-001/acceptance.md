@@ -30,10 +30,10 @@ Checks using `BASE` are pre-merge only. "N/A" means a milestone's gate made the 
   - **Then:** if `FIRST` is empty the check is N/A; otherwise `git merge-base --is-ancestor "$EC" "$FIRST"` exits 0 and `$EC` ≠ `$FIRST`.
 - **AC-SDL-002** (REQ-SDL-002, REQ-SDL-005) — The skill-duplication token cost is recorded with its method — or as a Gap when a cap was reached; the unusable figure is not cited.
   - **Given** `E`,
-  - **Then:** `grep -cxE 'skill_dup_tokens: ([0-9]+|gap)' E` prints `1`; `grep -cE '^skill_dup_method: first-turn-input-delta' E` prints `1`; when the token value is `gap`, the field is named under `## Gaps` (the AC-SDL-005 coupling); and the 2,406 B figure appears only as a rejected figure: `grep -n '2,406' E` prints at least one line, each of which sits under the `## Gaps` or method-declaration heading (`awk`-verified), never as a cost claim.
+  - **Then:** `grep -cxE 'skill_dup_tokens: ([0-9]+|gap)' E` prints `1`; `grep -cE '^skill_dup_method: first-turn-input-delta' E` prints `1`; when the token value is `gap`, the field is named under `## Gaps` (the AC-SDL-005 coupling); and the 2,406 B figure appears only as a rejected figure: `grep -c '2,406' E` prints at least `1`, and `awk '/^## /{sec=$0} /2,406/{print sec}' E | sort -u` names only `## Evidence` and/or `## Gaps` — never `## Claim`, `## Baseline-attribution`, or `## Residual-risk` (E's `## ` lines are exactly the five report sections).
 - **AC-SDL-003** (REQ-SDL-003) — The `/clear` result is recorded with a set-comparison method.
   - **Given** `E`,
-  - **Then:** `grep -cxE 'clear_restores_skill_set: (yes|no|gap)' E` prints `1`; `grep -cxE 'clear_method: (operator-manual-set-compare|none)' E` prints `1`; `grep -cE '^clear_method: operator-manual-set-compare' E` prints `1` whenever the first value is not `gap`.
+  - **Then:** `grep -cxE 'clear_restores_skill_set: (yes|no|gap)' E` prints `1`; `grep -cxE 'clear_method: (tmux-set-compare|none)' E` prints `1`; `grep -cE '^clear_method: tmux-set-compare' E` prints `1` whenever the first value is not `gap`.
 - **AC-SDL-004** (REQ-SDL-004) — Caps committed alone before any probe output.
   - **Given** `CAPS`, `E`, `P`,
   - **When** `C=$(git log --format=%H --diff-filter=A -- CAPS)` and `F=$(git log --reverse --format=%H --diff-filter=A -- P | head -1)` are computed,
@@ -44,7 +44,7 @@ Checks using `BASE` are pre-merge only. "N/A" means a milestone's gate made the 
 - **AC-SDL-006** (REQ-SDL-006) — Probes leave no stray writes, processes, or unscrubbed environments; zero counts carry a positive control.
   - **Given** M1 has finished,
   - **Then** all hold:
-    - `grep -c '^unset MOAI_KANBAN' P/commands.txt` equals `grep -c . P/commands.txt` and is at least `2`;
+    - `grep -cE '^(unset MOAI_KANBAN|tmux new-session .*"unset MOAI_KANBAN)' P/commands.txt` equals `grep -c . P/commands.txt` and is at least `2` (both recorded probe forms — bare headless and tmux-hosted — scrub in their own line);
     - `for g in $(grep -oE 'pgid=[0-9]+' E | cut -d= -f2); do pgrep -g "$g"; done | wc -l` prints `0`, with `grep -c 'pgid=' E` equal to the recorded probe count (non-empty sweep);
     - every `probe_session_id` appears in no `.moai/logs` or `.moai/state` file of the primary checkout or the t1279 worktree;
     - when any duplicate count of `0` is recorded, `E` names a positive-control input and re-running the recorded extractor on it prints a count ≥ `2`;
@@ -57,7 +57,7 @@ Checks using `BASE` are pre-merge only. "N/A" means a milestone's gate made the 
   - **Then:**
     - `sed -n '/^## Isolation is provisioned by MoAI/,/^## /p' T | grep -c 'card worktree into another'` prints at least `1` (the scoped prohibition wording), and the same section names the launcher start and the after-move `/clear` remedy (`| grep -c 'moai cc -w'` ≥ `1`, `| grep -ci '/clear'` ≥ `1`);
     - `cmp T L` exits 0;
-    - `grep -c 'kanban-dispatch' G` prints at least `1` (the pointer) and G contains no restated prohibition sentence longer than one line beyond the pointer (manually verified line count recorded in `progress.md` §E.2);
+    - the G edit is the pointer line only: `git diff "$BASE"..HEAD -- G | grep '^+' | grep -v '^+++' | wc -l` prints `1`, and `git diff "$BASE"..HEAD -- G | grep '^+' | grep -v '^+++' | grep -c 'kanban-dispatch'` prints `1`;
     - negative control at BASE: `git show "$BASE":internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md | sed -n '/^## Isolation is provisioned by MoAI/,/^## /p' | grep -c 'card worktree into another'` prints `0`.
 - **AC-SDL-008** (REQ-SDL-008) — The added doctrine text makes no CLAUDE.local.md claim.
   - **Given** the diff of added lines in T, L, G,
@@ -65,7 +65,7 @@ Checks using `BASE` are pre-merge only. "N/A" means a milestone's gate made the 
   - **Then** it prints `0`.
 - **AC-SDL-009** (REQ-SDL-009) — The guard option follows the kickoff decision.
   - **Given** the recorded kickoff decision `decision_guard: (selected|not-selected)` in `progress.md` §E.1,
-  - **Then:** if `not-selected`, `git diff "$BASE"..HEAD -- T L | grep '^+' | grep -vc '^+++'` counts zero guard-clause lines (recorded; the run report names the guard token it searched); if `selected`, the guard clause exists in both T and L (same-content check via `cmp`) and `git diff --stat "$BASE"..HEAD -- '*.go'` prints nothing.
+  - **Then:** if `not-selected`, with `<RE>` = the literal value of `decision_guard_token_re:` recorded in `progress.md` §E.1 (which must be non-empty whenever `decision_guard: not-selected`), `git diff "$BASE"..HEAD -- T L | grep '^+' | grep -v '^+++' | grep -ciE '<RE>'` prints `0` — the normal path can reach 0 because only guard-token lines are counted, not all added lines; if `selected`, the guard clause exists in both T and L (same-content check via `cmp`) and `git diff --stat "$BASE"..HEAD -- '*.go'` prints nothing.
 
 ### N1 amendment (M3, after Gate G1)
 
