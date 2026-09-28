@@ -71,6 +71,29 @@ func factoryNotALaneError(verb string) error {
 		verb, factoryNotALaneSentinel, config.EnvFactoryRole, config.FactoryRoleLane)
 }
 
+// factoryLaneLabelFromEnv reads the lane-identity variable for a lane verb
+// and refuses legacy spellings before any work is done (AC-SD-021): the
+// refusal mirrors the REQ-RNC-003/-005/-007 producer shapes, naming the
+// canonical lane label. Every lane verb reads its identity through this
+// helper, so a hand-set legacy label cannot reach the factory record.
+func factoryLaneLabelFromEnv(verb string) (string, error) {
+	lane := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
+	if lane == "" {
+		return "", fmt.Errorf("factory %s: %s is empty — a lane session carries its lane label there", verb, config.EnvMoaiFactoryWorker)
+	}
+	lowered := strings.ToLower(lane)
+	if n, ok := kanban.SplitFactoryLegacyLabel(lowered); ok {
+		return "", fmt.Errorf("factory %s: %q is the legacy lane label; use %q (rejoin with -f lane)", verb, lane, kanban.FactoryLaneLabel(n))
+	}
+	if kanban.IsLegacyFactoryRoleValue(lowered) {
+		return "", fmt.Errorf("factory %s: %q is the legacy role token; lane sessions carry lane-<n> labels (rejoin with -f lane)", verb, lane)
+	}
+	if kanban.IsLegacyLeaderSpelling(lowered) {
+		return "", fmt.Errorf("factory %s: %q is the legacy leader spelling; lane sessions carry lane-<n> labels (the leader launches with -f)", verb, lane)
+	}
+	return lane, nil
+}
+
 // factoryCodexMergeSentinel names the REQ-SD-025 refusal: while the backend
 // variable identifies the Codex harness, the merge-ready → merging edge is
 // refused on every path. One wording source, so `complete`, `stage`, and
@@ -432,9 +455,9 @@ func newFactoryNextCommand() *cobra.Command {
 			if !factoryLaneAdmission() {
 				return factoryNotALaneError("next")
 			}
-			lane := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
-			if lane == "" {
-				return fmt.Errorf("factory next: %s is empty — a lane session carries its lane label there", config.EnvMoaiFactoryWorker)
+			lane, err := factoryLaneLabelFromEnv("next")
+			if err != nil {
+				return err
 			}
 			if err := factoryAssertParentCheckout(resolveProjectDir()); err != nil {
 				return err
@@ -518,9 +541,9 @@ func newFactoryStageCommand() *cobra.Command {
 			if !factoryLaneAdmission() {
 				return factoryNotALaneError("stage")
 			}
-			lane := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
-			if lane == "" {
-				return fmt.Errorf("factory stage: %s is empty — a lane session carries its lane label there", config.EnvMoaiFactoryWorker)
+			lane, err := factoryLaneLabelFromEnv("stage")
+			if err != nil {
+				return err
 			}
 			evidence := ""
 			if len(args) > 2 {
@@ -611,9 +634,9 @@ func newFactoryCompleteCommand() *cobra.Command {
 			if !factoryLaneAdmission() {
 				return factoryNotALaneError("complete")
 			}
-			lane := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
-			if lane == "" {
-				return fmt.Errorf("factory complete: %s is empty — a lane session carries its lane label there", config.EnvMoaiFactoryWorker)
+			lane, err := factoryLaneLabelFromEnv("complete")
+			if err != nil {
+				return err
 			}
 			remeasure := ""
 			if len(args) > 1 {

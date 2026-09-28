@@ -706,6 +706,32 @@ const (
 		": moai codex -f lane is the only Codex factory entry; use 'moai cc -f' or 'moai glm -f' for the factory leader"
 )
 
+// codexFactoryLegacyEntryCanonical is the canonical-form clause shared by the
+// lane-shape legacy refusals: on moai codex the only factory entry is the
+// `-f lane` relaunch.
+const codexFactoryLegacyEntryCanonical = "'moai codex -f lane' is the only Codex factory entry"
+
+// codexFactoryLegacyRefusalDiag builds the REQ-RNC-003/-005/-007 refusal for
+// a legacy role spelling at the codex -f value position (AC-SD-021). The
+// message mirrors the REQ-RNC producer shapes (%q is the legacy …; <the
+// canonical form>) and names the canonical form for this surface: `moai
+// codex -f lane` for the lane shapes, `moai cc -f` / `moai glm -f` for the
+// leader (codex launches no leader). ok is false for any non-legacy value —
+// the caller falls through to the REQ-SD-004 line.
+func codexFactoryLegacyRefusalDiag(value string) (diag string, ok bool) {
+	lowered := strings.ToLower(value)
+	if n, isLabel := kanban.SplitFactoryLegacyLabel(lowered); isLabel {
+		return fmt.Sprintf("%q is the legacy lane label; use %q — %s", value, kanban.FactoryLaneLabel(n), codexFactoryLegacyEntryCanonical), true
+	}
+	if kanban.IsLegacyFactoryRoleValue(lowered) {
+		return fmt.Sprintf("%q is the legacy role token; %s", value, codexFactoryLegacyEntryCanonical), true
+	}
+	if kanban.IsLegacyLeaderSpelling(lowered) {
+		return fmt.Sprintf("%q is the legacy leader spelling; the factory leader launches with 'moai cc -f' or 'moai glm -f'", value), true
+	}
+	return "", false
+}
+
 // codexFactoryRunFlag is the --factory-run token; on moai codex it is refused
 // with the other factory entry tokens.
 const codexFactoryRunFlag = "--factory-run"
@@ -726,9 +752,10 @@ const (
 // scan, not a parser: the value tokens it consumes mirror parseFactoryFlag's
 // spellings — a following token that looks like a flag is never a value, and
 // the `=` forms are read in place. A refused shape fires before anything else
-// is read or written (REQ-SD-004). Legacy role tokens (`worker` / `agent`)
-// stay classified Other until t1256's producer reaches this surface (M7,
-// AC-SD-021) — the classification leaves that branch one check away.
+// is read or written (REQ-SD-004). Legacy role tokens (`worker` / `agent`,
+// their numbered labels, and `lead`) refuse with the REQ-RNC-003/-005/-007
+// message naming the canonical form (AC-SD-021) — the REQ-SD-004 line is
+// reserved for non-legacy shapes.
 func codexFactoryEntryClassify(head []string) (codexFactoryEntry, string) {
 	entry := codexFactoryEntryAbsent
 	for i := 0; i < len(head); i++ {
@@ -752,9 +779,18 @@ func codexFactoryEntryClassify(head []string) (codexFactoryEntry, string) {
 		default:
 			continue
 		}
-		if hasValue && value == factoryLaneRoleToken {
-			entry = codexFactoryEntryLane
-			continue
+		if hasValue {
+			if value == factoryLaneRoleToken {
+				entry = codexFactoryEntryLane
+				continue
+			}
+			// AC-SD-021: legacy role spellings refuse with the
+			// REQ-RNC-003/-005/-007 message naming the canonical form — on
+			// moai codex too, not the REQ-SD-004 line. This is the check the
+			// M5 classification left one branch away.
+			if diag, isLegacy := codexFactoryLegacyRefusalDiag(value); isLegacy {
+				return codexFactoryEntryOther, diag
+			}
 		}
 		return codexFactoryEntryOther, codexFactoryRefusalDiag
 	}

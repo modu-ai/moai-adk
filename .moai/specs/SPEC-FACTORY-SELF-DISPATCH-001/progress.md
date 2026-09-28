@@ -666,6 +666,128 @@ Scope: REQ-SD-019, -020. ACs: AC-SD-019, -020. Continuation at `3eeaabe5b` (clea
   `feat(SPEC-FACTORY-SELF-DISPATCH-001): M6 sessionstart next-card rule and clear policies
   (card t1240)`; push = none (the lead pushes develop in batch).
 
+### M7 — invariants, vocabulary, doctrine amendments (2026-09-29)
+
+Scope: REQ-SD-001 (via the AMENDED AC-SD-001 — verification only), REQ-SD-015's doctrine
+amendments, REQ-SD-018, REQ-SD-021, REQ-SD-022. ACs: AC-SD-001 (amended), -015 doctrine
+re-verifies, -018, -021, -022. Continuation at `f37942d79` (clean).
+
+- **Scope-doc amendment record**: `f37942d79` — AC-SD-001 rewritten to the commit-graph-verifiable
+  run-gate form (manager-spec via re-delegation; `go test ./internal/spec -count=1` → `ok 130.298s`;
+  ac-baseline-guard AC COUNT 25 unchanged).
+- **Pre-flight (C)**: `git rev-parse --short HEAD` → `f37942d79`; `git branch --show-current` →
+  `WT-factory-self-dispatch`; `git status --short` → empty; `go build ./...` → `BUILD_LINUX_OK`;
+  `GOOS=windows GOARCH=amd64 go build ./...` → `BUILD_WINDOWS_OK`; `golangci-lint run --timeout=2m
+  ./internal/cli/... ./internal/hook/... ./internal/codexwiring/...` → `0 issues.` (baseline;
+  CI version v2.1.6); anchored regression at the baseline tree → `ok github.com/modu-ai/moai-adk/
+  internal/cli 59.268s`, hook → `ok 0.580s` (slot lease held, released after).
+- **AC-SD-001 (amended form — verification only)**, verbatim outputs at `f37942d79`:
+  - `git merge-base --is-ancestor abb815921 490d64649 && echo OK` → `OK`
+  - `grep -c 'develop_sha.*a7190891d' .moai/specs/SPEC-FACTORY-SELF-DISPATCH-001/progress.md` → `1`
+  - `grep -c 't1256_landed.*: yes' .moai/specs/SPEC-FACTORY-SELF-DISPATCH-001/progress.md` → `1`
+- **RED (E8, verbatim, pre-GREEN tree = `f37942d79`)**:
+  - AC-021 (`go test ./internal/cli -run '^TestSD_AC021_LegacySpellingsRefused$' -count=1 -timeout 10m`):
+    `--- FAIL: TestSD_AC021_LegacySpellingsRefused (3.14s)` with two failing subtests —
+    `moai_codex`: 7× `factory_m7_test.go:99: -f <token>: refused with the REQ-SD-004 line; AC-SD-021
+    wants the REQ-RNC message naming the canonical form:` + `FACTORY_MODE_UNSUPPORTED_BACKEND: moai
+    codex -f lane is the only Codex factory entry; use 'moai cc -f' or 'moai glm -f' for the factory
+    leader` and 7× `:103: … does not name "legacy role token"/"legacy lane label"/"legacy leader
+    spelling"`; `lane_verbs…`: `:131: label "worker-1", stage: refusal "Error: factory stage: no
+    --run given and no single active factory run (NO_ACTIVE_FACTORY)…" does not name the legacy
+    spelling` (stage/complete reached run resolution before any legacy check existed); `next` showed
+    the parent-checkout error — no legacy refusal anywhere. `FAIL
+    github.com/modu-ai/moai-adk/internal/cli 3.903s`.
+  - AC-018 observed-failure evidence (the first two runs, before the fixture mirrored the real
+    checkout's tracked config + runtime gitignore): run 1 —
+    `factory_m7_test.go:440: parent checkout is dirty outside the worktrees directory: "?? .moai/"`;
+    run 2 (judgement switched to `--untracked-files=all`) — four dirty lines verbatim:
+    `?? .moai/config/sections/git-strategy.yaml`, `?? .moai/db/002-eedd77fa/factory/factory.db`,
+    `?? .moai/db/002-eedd77fa/project.json`, `?? .moai/reports/t1/merge-record.txt`. These runs are
+    also the judgement's observed-failure proof: real parent dirt fails it.
+  - AC-022 mutant probes (freeze tests are green at arrival — the observed failure comes from a
+    mutant, verification-completeness §1.1): allowlist mutant (`MOAI_MUTANT_PROBE` appended) →
+    `--- FAIL: TestSD_AC022_EnvVarsAllowlistFrozen (0.00s)` /
+    `factory_freeze_test.go:21: mcpServerEnvVarsValue drifted from the run-start snapshot
+    a7190891d:` / `FAIL github.com/modu-ai/moai-adk/internal/codexwiring 0.503s`; schema mutant
+    (`workers` → `workers_mutant_probe`) → `--- FAIL: TestSD_AC022_SchemaStatementsFrozen (0.03s)` /
+    `factory_m7_test.go:345: schema statement drifted from the a7190891d snapshot (want 1, got 0):` /
+    `factory_m7_test.go:350: schema statement ADDED since the a7190891d snapshot (1 occurrence(s)):`
+    / `FAIL … internal/cli 0.819s`. Both mutants reverted (Edit), re-run green.
+- **GREEN (E1, verbatim)**:
+  - `go test ./internal/cli -run '^TestSD_AC021_LegacySpellingsRefused$' -count=1 -timeout 10m -v`
+    → 5/5 `--- PASS` subtests (launcher parse moai cc/moai glm — 9 rows incl. letter-case; moai
+    codex — 7 legacy tokens each refused with the RNC message, NOT the REQ-SD-004 line, exit 1, no
+    child; lane verbs next/stage/complete refuse a legacy lane-identity label ×5 tokens; verbs take
+    no lane-label positional; negative source scan — role-noun regex over factory*.go +
+    mcp_factory*.go + codex_launcher.go string literals, 2 allowlisted non-role literals with a
+    stale-entry guard and a scanned>0 positive control), `PASS`, `ok … internal/cli 0.786s`.
+  - `go test ./internal/cli -run '^TestSD_AC022_SchemaStatementsFrozen$' -count=1 -timeout 5m` →
+    `ok … internal/cli 0.627s`; `go test ./internal/codexwiring -run
+    '^TestSD_AC022_EnvVarsAllowlistFrozen$' -count=1 -timeout 5m` → `ok … internal/codexwiring
+    0.514s`. Both compare against the `a7190891d` run-start snapshot with the expected content
+    embedded and its provenance named (a test cannot read git at CI time reliably).
+  - `go test ./internal/cli -run '^TestSD_AC018_ParentCheckoutUntouched$' -count=1 -timeout 10m -v`
+    → `--- PASS: TestSD_AC018_ParentCheckoutUntouched (2.31s)` / `ok … internal/cli 3.111s` — the
+    AC-SD-006 full cycle (parent on main, develop provisioned at `.moai/worktrees/develop`, no
+    remote), then the parent judgement: porcelain (untracked enumerated) excluding
+    `.moai/worktrees/` empty, HEAD and branch equal pre-cycle values.
+- **REQ-SD-015 doctrine amendments (the OD-1/OD-2 deliverables)**:
+  - `.claude/rules/moai/workflow/kanban-dispatch.md` + its template twin: a `[HARD] **The
+    self-dispatch lane exception.**` paragraph inserted next to the "Promotion is the operator's
+    act, always" clause — leasing only through `moai factory next`, every other queue mutation
+    (`add`, `drop`, `done`, `edit`, and the rest) and `moai contract sign` stay forbidden to a lane.
+    Neutral wording (no card ids, no SPEC ids, no dates, no SHAs).
+  - `.claude/rules/local/gitflow-lane-protocol.md` §6: the self-dispatch-lane merge-window
+    exception (Claude self-dispatch lane holds the integration window itself through `moai factory
+    complete`) plus the `moai factory next` leasing exception, each stating the other-queue-mutation
+    + `moai contract sign` prohibition.
+  - `CLAUDE.local.md` §4.1: **BLOCKER (lead-applied)** — the file is gitignored (`/CLAUDE.local.md`,
+    .gitignore:276), untracked, and exists ONLY in the primary checkout; this isolated worktree has
+    no copy and the harness refuses the shared-checkout path (`This session is isolated in the
+    worktree … Edit the worktree copy of this file instead`). The lead applies this exact text as a
+    new bullet right after the `Kanban…레인이 스스로 병합 창을 잡지 않는다.` line: `- **self-dispatch
+    lane 예외 — 병합 창.** Claude self-dispatch 팩토리 run의 레인은 위 요청을 하지 않는다 — \`moai
+    factory complete\`의 통합 절차로 스스로 통합 창을 잡고 자기 카드를 \`develop\`에 병합한다(OD-2).
+    Codex 레인은 예외가 아니다 — merge-ready에서 정지한다(REQ-SD-025). 이 예외도 위의 다른 큐
+    변경(\`add\`, \`drop\`, \`done\`, \`edit\` 등) 금지와 \`moai contract sign\` 금지는 바꾸지
+    않는다(카드 임대만 \`moai factory next\`로 허용 — OD-1;
+    \`.claude/rules/local/gitflow-lane-protocol.md\` §6).` — until then the AC-SD-015 three-file
+    grep reads 2/3 in a card worktree (kanban-dispatch 1, gitflow-lane-protocol 2, CLAUDE.local.md
+    absent here) and 3/3 only in the primary checkout after the lead applies it.
+  - **Verifies (verbatim)**: `cmp .claude/rules/moai/workflow/kanban-dispatch.md
+    internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` → exit 0
+    (`TWIN_IDENTICAL`); `grep -c 'self-dispatch lane' …` → `.claude/rules/moai/workflow/
+    kanban-dispatch.md:1`, `.claude/rules/local/gitflow-lane-protocol.md:2` (CLAUDE.local.md —
+    see the blocker above); `go test ./internal/template -run '^TestTemplateNeutralityAudit$'
+    -count=1 -timeout 5m -v` → all subtests `--- PASS`, `ok … internal/template 0.475s`.
+  - Template-First: `make build` exit 0 after the twin edit (agents-emit-check/commands-emit-check
+    pre-steps read-only; catalog.yaml regenerated; binary relinked at `f37942d79`).
+- **Final comprehensive anchored run (the run baseline, this tree, env-scrubbed single compound
+  `unset …` with the slot lease held)**: `go test ./internal/cli -run
+  '^TestSD_AC00[1-9]|^TestSD_AC01[0-9]|^TestSD_AC02[0-5]|^TestSD_WorktreeSlugShape' -count=1
+  -timeout 20m` → `ok github.com/modu-ai/moai-adk/internal/cli 58.311s` (AC-SD-001…025 incl. the
+  M7 additions and AC-014, plus the t1256 legacy family); `go test ./internal/hook -run
+  '^TestSD_AC019_NextCardRuleInjection$|^TestSD_AC017_WidenedRoleGateDenyAndAllow$|^TestContractSignGuard'
+  -count=1 -timeout 5m` → `ok 0.623s`; codexwiring freeze → `ok 0.509s`; template neutrality →
+  `ok 0.341s`. Slot released after.
+- **E2 builds** (final tree): `go build ./...` → `BUILD_OK`; `GOOS=windows GOARCH=amd64 go build
+  ./...` → `BUILD_WIN_OK`; `make build` exit 0.
+- **E3 coverage**: M7 adds tests only plus two small production functions —
+  `factoryLaneLabelFromEnv` 90.9%, `codexFactoryLegacyRefusalDiag` 87.5% (`-coverprofile` over the
+  M7 AC selectors, profile at `.moai/state/verify/t1240-m7/cli-cover.out`); both ≥ 85%. The M7 test
+  code itself is n/a (tests). `codexFactoryEntryClassify` (pre-existing, M5) reads 59.1% under the
+  M7-only selector — its full coverage lives with the M5 AC selectors (AC-SD-004), green in the same
+  final run.
+- **E4 boundary**: `grep -n 'AskUserQuestion'` over the touched production files
+  (factory_card.go, codex_launcher.go, configtoml.go + the two new test files) → no matches
+  (exit 1).
+- **E5 lint**: `golangci-lint run --timeout=2m ./internal/cli/... ./internal/hook/...
+  ./internal/codexwiring/...` → `0 issues.` — no NEW vs baseline (CI version v2.1.6), re-run after
+  the final edits.
+- **E6 commit**: this section and the M7 change land in one commit
+  `feat(SPEC-FACTORY-SELF-DISPATCH-001): M7 invariants, vocabulary, doctrine amendments (card
+  t1240)`; push = none (the lead pushes develop in batch).
+
 ## §F Phase 4 Mode Selection
 
 - tier: L · scope: >10 production files across cli/hook/config/kanban/homestate/codexwiring + template rules · domains: 6 (Go CLI, hooks, MCP server, launchers, doctrine rules, env constants) · language mix: Go + Markdown · concurrency benefit: LOW (coding-heavy, sequential milestone chain with shared files)
@@ -675,7 +797,22 @@ Scope: REQ-SD-019, -020. ACs: AC-SD-019, -020. Continuation at `3eeaabe5b` (clea
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- run_status: audit-ready
+- run_complete_at: 2026-09-29
+- run_commit_sha: pending-backfill-m7
+- run_tree: `.claude/worktrees/t1240`, branch `WT-factory-self-dispatch`, baseline measured at `f37942d79`
+- milestone_commits: M1 `490d64649` · M2 `986e1a8fa` · M3 `ac7b1b87a` · AC-SD-011 amendment `061614bd5` · M4 `4d73ee088` · M5 `48af8d3ae` · label unification `7714fcd9e` · gate disposition `003514807` · §D carrier amendment `3eeaabe5b` · AC-SD-001 rewrite `f37942d79` · M7 `pending-backfill-m7`
+- scope_doc_amendments: `061614bd5` (acceptance.md worktree-root literals → `.moai/worktrees/`) · `3eeaabe5b` (REQ-SD-020 §D carrier carve-out) · `f37942d79` (AC-SD-001 graph-verifiable rewrite)
+- ac_pass_count: 25 (AC-SD-001…025 — final comprehensive anchored run, `ok … internal/cli 58.311s` + hook `ok 0.623s` + codexwiring `ok 0.509s`; AC-SD-015's doctrine third block 2/3 files verified in-tree, CLAUDE.local.md §4.1 pending the lead-applied blocker above)
+- ac_fail_count: 0
+- preserve_list_post_run_count: 0 violations — `internal/codexwiring/configtoml.go` production value untouched (AC-SD-022 freeze test green); schema statements of internal/homestate, internal/factorymsg, internal/kanban untouched (AC-SD-022 green); `internal/cli/integration.go` untouched (not in the diff)
+- l44_pre_commit_fetch: n/a (worktree lane — no push, per the lane protocol)
+- l44_post_push_fetch: n/a (no push; the lead pushes develop in batch)
+- new_warnings_or_lints_introduced: 0 (`golangci-lint run --timeout=2m ./internal/cli/... ./internal/hook/... ./internal/codexwiring/...` → `0 issues.`, CI version v2.1.6)
+- cross_platform_build.linux: exit 0 · cross_platform_build.windows: exit 0 (GOOS=windows GOARCH=amd64)
+- total_run_phase_files: M7 changes 8 files — Go production: factory_card.go, codex_launcher.go; Go tests: factory_m7_test.go (cli), factory_freeze_test.go (codexwiring); doctrine: kanban-dispatch.md + its template twin, gitflow-lane-protocol.md; record: progress.md. The M1–M7 cumulative file list lives in each commit's diff
+- m1_to_m7_commit_strategy: one commit per milestone, each carrying its progress.md section atomically (M1 `490d64649` … M7 this commit); scope-doc amendments and the gate-disposition commit landed interleaved as manager-spec re-delegations and the lead's disposition
+- run_gate: AC-SD-001 amended form verified — `git merge-base --is-ancestor abb815921 490d64649` → OK; `develop_sha.*a7190891d` → 1; `t1256_landed.*: yes` → 1
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
