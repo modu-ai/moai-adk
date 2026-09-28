@@ -69,13 +69,15 @@ $ moai graph check --json --root /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1
 
 `go list -deps -json ./...` 결과를 파싱해 프로젝트 패키지 164개, 내부 import 452개, 최상위로 접은 엣지 278개를 셌다. 최상위 fan-out은 `internal/cli` 70, `internal/hook` 39다.
 
+최신 로컬 `develop` `948a59b6c`를 흡수한 뒤 같은 `graph check`에서 codemaps 계층은 `fresh`, 값 11, 문턱 40이었다(전체 exit 1: 새 워크트리의 `mx-index`·`edges` 부재).
+
 ## Baseline-attribution
 
 위 수치와 freshness는 이 워크트리의 `cee197917` 소스에서 이번 실행에 측정했다. 스탬프가 가리키는 커밋은 브랜치 전용 커밋이 아니라 현재 `develop`의 조상이다. 과거 문서의 상세 fan-in/fan-out 표는 해당 판의 기록이라고 명시했다.
 
 ## Gaps
 
-`mx-index`와 `edges`는 새 워크트리에 런타임 산출물이 없어 `absent`이며 전체 `graph check`는 exit 1이다. 이 카드에서는 두 계층을 생성하거나 신선하다고 주장하지 않는다. 아직 통합·CI 판정·큐 완료 처리는 하지 않았다.
+`mx-index`와 `edges`는 새 워크트리에 런타임 산출물이 없어 `absent`이며 전체 `graph check`는 exit 1이다. 이 카드에서는 두 계층을 생성하거나 신선하다고 주장하지 않는다. 이 보고서 작성 시점에는 새 병합 커밋의 CI 판정과 큐 완료 처리가 없다.
 
 ## Residual-risk
 
