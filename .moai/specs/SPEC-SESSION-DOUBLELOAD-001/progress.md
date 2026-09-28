@@ -57,7 +57,7 @@ Run executed 2026-09-29 by lane worker-69 in the card worktree `.claude/worktree
 
 - run_status: complete
 - run_complete_at: 2026-09-29
-- run_commit_sha: pending-backfill-run
+- run_commit_sha: 3193f0ef2
 - ac_pass_count: 12
 - ac_fail_count: 0
 - ac_matrix: AC-SDL-001..006 PASS (M1); AC-SDL-007..009 PASS on the not-selected branch (M2); AC-SDL-010 PASS after Gate G1 (M3); AC-SDL-011 PASS on the combined M2+M3 template diff; AC-SDL-012 PASS (M4). No N/A rows.
