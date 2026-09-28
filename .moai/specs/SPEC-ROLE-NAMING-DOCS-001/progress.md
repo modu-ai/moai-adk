@@ -282,7 +282,7 @@ blockers: none
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "11c69b193"
 sync_date: 2026-09-29
 sync_status: audit-ready
 close_summary: >-
