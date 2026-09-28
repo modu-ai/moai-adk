@@ -1,28 +1,28 @@
-# t1293 — Stop 체인 간헐 실패 조사
+# t1293 — Stop 체인 예산 경계 수리와 중복 변경 정리
 
-## 주장
+## Claim
 
-CI의 Race 실패는 `1ns` 예산만으로 컷오프를 강제했다고 가정한 테스트의 경쟁 상태다. Ubuntu 실패는 GPT 프로필 테스트의 임시 Git 저장소가 정리되는 동안 `.git/objects`에 쓰기가 발생한 사례다. 수정본의 최종 CI 판정은 아직 없다.
+Race 잡의 컷오프 판정 경쟁은 `budgeted`와 `advisoryMember`가 결과 채널과 기한 완료 채널 중 임의의 준비된 쪽을 선택하던 경계에서 발생했다. 원래 담당자의 수리는 결과 전송 시각을 실제 기한과 비교한다. 별도 작업자가 중복으로 넣었던 테스트 대체와 검증되지 않은 Git 유지보수 설정은 이 병합에서 되돌린다. Ubuntu의 GPT 임시 디렉터리 정리 실패는 t1296에서 별도로 조사한다.
 
-## 근거
+## Evidence
 
-- CI 실행 `36365223880`의 Race Test 로그: `TestStopChainGateCutOffNeverAllows`에서 멤버 3이 `deny/"unmeasured"`를 반환했지만 컷오프 오류 문자열은 비어 있었다. 같은 실행의 Ubuntu 테스트는 t1292의 옛 경로 기대치 2건으로 실패했으며 별도 수정했다.
-- CI 실행 `36361758033`의 Ubuntu 로그: `TestStopChainGPTProfileNoClaudeDependency` 정리 중 `TempDir RemoveAll cleanup: unlinkat .../.git/objects: directory not empty`가 발생했다. 원인이 Git 자동 유지보수인지 남은 체인 작업인지는 로그만으로 확정할 수 없다.
-- `go test ./internal/cli -run '^(TestStopChainGateCutOffNeverAllows|TestStopChainGPTProfileNoClaudeDependency)$' -count=10 -timeout 180s` 출력: `ok github.com/modu-ai/moai-adk/internal/cli 15.701s`.
-- 같은 두 테스트의 `go test -race ... -count=5 -timeout 240s` 출력: `ok github.com/modu-ai/moai-adk/internal/cli 10.600s`.
-- `timeout 25s yes`로 제한한 CPU 부하 아래 `go test -race ... -count=5 -timeout 120s` 출력: `ok github.com/modu-ai/moai-adk/internal/cli 13.853s`.
-- `go test ./internal/cli -run '^TestStopChain' -count=1 -timeout 180s` 출력: `ok github.com/modu-ai/moai-adk/internal/cli 46.441s`.
-- `go vet ./internal/cli` 종료 코드 0, 출력 없음.
+원래 담당자 브랜치 `WT-stopchain-runner-flake`의 수리 커밋 `303e943e1`, 후속 테스트 정리 `cf6e665b9`, `develop` 병합 `733254ef5`. `internal/cli/codex_stop_chain.go`의 `budgeted`와 `advisoryMember`는 결과의 `sentAt`이 컨텍스트 기한보다 이르면 결과를 쓰고, 그렇지 않으면 컷오프를 쓴다. 담당자의 경계 테스트 두 건을 포함한 재측정:
 
-## 기준 트리
+```text
+$ go test -race ./internal/cli -run '^(TestStopChainGateCutOffNeverAllows|TestStopChainBudgetedCutOffBeatsADeadlineEdgeMember|TestStopChainAdvisoryCutOffBeatsADeadlineEdgeMember|TestStopChainGPTProfileNoClaudeDependency)$' -count=2 -timeout 180s
+ok  	github.com/modu-ai/moai-adk/internal/cli	10.558s
+```
 
-위 로컬 검사는 `develop`의 `2dbf4321b`에서 분기한 `WT-stop-chain-budget` 작업 트리에서 수행했다. 이 파일 작성 시점의 변경은 아직 `develop`에 통합되거나 원격에 게시되지 않았다.
+`git diff develop HEAD --name-status`는 이 정리 브랜치에서 `codex_stop_chain_test.go`, `codex_stop_fixture_test.go`, 이 보고서 세 경로만 다른 것으로 나타났다. 두 테스트 파일의 차이는 중복 커밋 `f98fab331`의 테스트 대체와 `gc.auto=0`·`maintenance.auto=false`를 되돌리는 내용이다.
 
-## 미확인 항목
+## Baseline-attribution
 
-- 임시 저장소 정리 실패의 유일한 원인은 특정하지 못했다. 테스트 종료 전 체인 작업 합류와 Git 자동 유지보수 비활성화가 재발 경로를 각각 차단하는지 새 CI에서 확인해야 한다.
-- 수정 커밋의 Ubuntu 및 Race CI 결과는 아직 없다.
+위 테스트는 원래 담당자 병합 `733254ef5`를 흡수한 `WT-stop-chain-budget` 작업 트리에서 이번 실행에 측정했다. 원래 담당자의 생산 코드와 새 경계 테스트는 유지한 상태다. CI의 최종 판정은 아직 받지 않았다.
 
-## 남은 위험과 완료 조건
+## Gaps
 
-새 CI에서 두 테스트가 통과하고, 수정이 다른 Stop 체인 결정이나 임시 저장소 정리를 깨지 않았음을 확인한 뒤 카드를 완료한다. 다른 카드의 실패가 남으면 해당 실행을 전체 통과로 보고하지 않는다.
+Ubuntu 임시 디렉터리 정리 실패의 작성자와 재현 조건은 확인되지 않았다. t1296의 CI 계측·재발 포획 전까지 원인을 확정하지 않는다. `733254ef5` 이후 통합 트리의 새 CI 판정도 아직 없다.
+
+## Residual-risk
+
+원래 `1ns` 예산 테스트는 시스템 부하에 민감한 입력이지만, 결과가 기한 안에 전송됐는지를 코드가 별도로 판별한다. 로컬 race 2회 통과를 반복 CI의 대체 근거로 쓰지 않는다.
