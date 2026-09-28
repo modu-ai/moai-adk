@@ -38,6 +38,22 @@ operator diagnostics to `cmd.ErrOrStderr()` — the install hint at `:804` and t
 `:842`. That is the surface, it pre-dates this SPEC, and it is already the channel for messages
 addressed to the operator rather than the model.
 
+> **v0.2.5 re-measurement, 2026-09-28** (`develop` = `origin/develop` = `37dc766b9`; the transcript above is the
+> 2026-09-26 reading at `553e224f3` and is kept verbatim). The parent SPEC's M2 has since landed and
+> moved every line cited in this section:
+>
+> ```
+> $ grep -rn 'codexLocalDeveloperInstructionArgs' internal/cli/*.go | grep -v _test
+> internal/cli/codex_launcher.go:121:// codexLocalDeveloperInstructionArgs reads both local inputs fresh on each
+> internal/cli/codex_launcher.go:124:func codexLocalDeveloperInstructionArgs(projectRoot string) ([]string, error) {
+> internal/cli/codex_launcher.go:813:	localArgs, err := codexLocalDeveloperInstructionArgs(projectRoot)
+> ```
+>
+> Producer body `:124-145`; its loop (`:126`) now reads `codexLocalInstructionName` **first** — the
+> quoted loop above is the pre-reorder order; the preamble is `:137`; in `runCodexLaunch` the
+> install hint is `:792` and the worktree error `:830`. The conclusion (Q4 closed, caller-side
+> surface) is unaffected: one definition, one call site, same signature.
+
 **Q4 is closed.** plan.md M2 no longer opens with it. Design consequence — which of the two
 plumbing shapes carries the "which file did I read" signal to the caller — is `design.md` §B.
 
@@ -72,6 +88,15 @@ before-value to be measured at the milestone.
 
 At 44,740 the expected reduction is ~4,741 characters (~11%). That is an expectation for planning,
 not a bound.
+
+> **v0.2.5 re-measurement, 2026-09-28** (`.moai/reports/t1259/premise-20260928.md`): `git show
+> develop:CLAUDE.local.md | wc -m` → **45,810** on `develop` = `origin/develop` = `37dc766b9`. The file moved
+> again, by 1,070 characters, exactly as argued above; 44,740 is history, not the current value.
+> Expected reduction now ≥ 5,811 characters (~12.7%) — still an expectation, not a bound.
+
+> **v0.3.0 (2026-09-28) — this section's subject left the SPEC.** M3 (`REQ-IFU-021`/`022`, with
+> `AC-IFU-007`/`024`) was transferred to card t1290 after plan-audit iter4 (spec.md §D). The readings
+> above are kept as that card's input; nothing in this SPEC measures `CLAUDE.local.md` any more.
 
 ## §C The docs-site six pages — the cited path matches nothing, and one stem is ambiguous
 
@@ -154,7 +179,8 @@ is 25,790 bytes, with a 30,580-byte test file beside it.
   neither, and the criterion's own `--- PASS:` assertion is what settles it at run time.
 - The `.moai/docs/` split point for M3 — which sections of `CLAUDE.local.md` are procedure and
   which are rules. That is M3's first act, and doing it here would be re-deciding the document's
-  content, which spec.md §D puts out of scope.
+  content, which spec.md §D puts out of scope. (v0.3.0: M3 is now card t1290's, so this stays open
+  there, not here.)
 
 ## §F Cross-references
 

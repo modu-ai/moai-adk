@@ -12,7 +12,7 @@ A harness (the automated quality-verification apparatus surrounding an agent) im
 
 ## What the Learning Surface Is
 
-The learning surface starts from the **observations** (a line recording a routing decision, gate evidence, or convergence trajectory as a privacy-preserving digest) the harness automatically leaves every turn, follows them as they cluster into **patterns**, and ends at the full path up to the **instruction** promoted and shown to the user as a file. The user directly touches only three surfaces — the temporary auto-memory (session-scoped memory), the Learned section of CLAUDE.local.md (the local development guide) that persists in the project, and the managed block of CLAUDE.md (the project instructions file) that the whole team follows. Observations rise up through these three surfaces, and the user decides which of them to accept as rules.
+The learning surface starts from the **observations** (a line recording a routing decision, gate evidence, or convergence trajectory as a privacy-preserving digest) the harness automatically leaves every turn, follows them as they cluster into **patterns**, and ends at the full path up to the **instruction** promoted and shown to the user as a file. The user directly touches only three surfaces — the temporary auto-memory (session-scoped memory), the Learned section of AGENTS.local.md (the personal instructions file) that persists in the project, and the managed block of CLAUDE.md (the project instructions file) that the whole team follows. Observations rise up through these three surfaces, and the user decides which of them to accept as rules.
 
 The reason this surface matters is that the harness's self-improvement must ultimately happen only on top of "files the user can review." If instructions change in an invisible place, debugging becomes impossible, and routines that worked yesterday quietly shift, making the cause hard to find. So MoAI-ADK fixes the surface where promotion happens at three, and mechanically gates when and how each surface is used. No matter how deep the SPEC (requirements document) workflow goes, the learning result always appears inside these three files.
 
@@ -24,7 +24,7 @@ A single line of observation becomes a user-readable rule by climbing a four-sta
 flowchart TD
     O["per-turn observation record<br/>routing · gate · convergence trajectory"]
     T1["Tier 1-2 — auto-memory<br/>(temporary, session-scoped)"]
-    T3["Tier 3 — CLAUDE.local.md Learned<br/>(append-only)"]
+    T3["Tier 3 — AGENTS.local.md Learned<br/>(append-only)"]
     T4["Tier 4 — CLAUDE.md managed block<br/>(≤3K chars, ≤20 bullets)"]
     T5["Tier 5 — CLAUDE.md / rules / agents<br/>(user approval required)"]
 
@@ -34,16 +34,22 @@ flowchart TD
     T4 -->|≥10 observations + user approval| T5
 ```
 
-The heart of this ladder is the **threshold**. Something observed once may be an exception, but a pattern repeated five times is a rule. So at low tiers, only temporary memory absorbs the noise, and only observations past the threshold rise to a longer-lived surface. The change the user perceives happens mostly at Tier 3 and Tier 4 — one day a new line appears in the Learned section of CLAUDE.local.md, and when the pattern solidifies a single bullet rises into the managed block of CLAUDE.md.
+The heart of this ladder is the **threshold**. Something observed once may be an exception, but a pattern repeated five times is a rule. So at low tiers, only temporary memory absorbs the noise, and only observations past the threshold rise to a longer-lived surface. The change the user perceives happens mostly at Tier 3 and Tier 4 — one day a new line appears in the Learned section of AGENTS.local.md, and when the pattern solidifies a single bullet rises into the managed block of CLAUDE.md.
 
 | Tier | Threshold | Surface reached | Who writes |
 |------|-----------|-----------------|------------|
 | Tier 1-2 | ≥1 observation | auto-memory (temporary) | automatic |
-| Tier 3 | ≥3 observations | CLAUDE.local.md (append-only) | automatic |
+| Tier 3 | ≥3 observations | AGENTS.local.md (append-only) | automatic |
 | Tier 4 | ≥5 observations | CLAUDE.md managed block (≤3K chars, ≤20 bullets) | Curator |
 | Tier 5 | ≥10 observations + user approval | CLAUDE.md / rules / agents | user approval required |
 
 The managed block has character-count and bullet-count ceilings. These ceilings exist to prevent the harness from infinitely inflating instructions under the guise of learning — a file that must be read at every session start growing larger breaks prompt-cache hits and ultimately raises both cost and response time. The Curator (the role that updates instructions) works within these ceilings, adding or removing at the bullet level rather than rewriting existing bullets wholesale.
+
+## Where Tier 3 records land
+
+Tier 3 records are appended to the Learned section of `AGENTS.local.md`. In the three-file structure — the shared contract `AGENTS.md`, the Claude-only layer `CLAUDE.md`, and personal instructions in `AGENTS.local.md` — this file holds the personal instructions, and both Claude Code and `moai codex` read it. A promoted observation therefore applies whichever harness you work in. Git ignores the file and `moai update` never touches it, so records survive updates.
+
+If a project still uses `CLAUDE.local.md`, move it first with `moai migrate local-instructions`. `moai update` and `moai doctor` print the same advisory whenever they find a `CLAUDE.local.md`.
 
 ## The 3-Zone Editing Surface
 

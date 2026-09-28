@@ -304,24 +304,46 @@ func (c *codexStopChain) merge(out1 *hook.HookOutput, members []stopMemberOutcom
 // budgeted runs a member under its declared internal budget. A member that
 // does not return in time is replaced by cutOff's outcome and keeps running
 // in the background; the handler process ends shortly after, which bounds it.
+//
+// The deadline, not channel readiness, decides "in time": when a member
+// returns at or past its deadline, its send and mctx.Done() land in the same
+// instant at the blocked select — or the ctx timer's firing lags the send on
+// a loaded runner — and a select between two ready channels picks randomly.
+// The unfixed select let members 2 and 3 return their real verdicts although
+// their budget had expired (card t1293, CI run 36361758033); the send time
+// carried beside the verdict closes that.
 func (c *codexStopChain) budgeted(ctx context.Context, n int, fn func(context.Context) stopMemberOutcome, cutOff func(context.Context) stopMemberOutcome) stopMemberOutcome {
 	spec := stopMemberSpec(n)
 	budget := c.budgetFor(n)
 	mctx, cancel := context.WithTimeout(ctx, budget)
 	defer cancel()
 	start := time.Now()
-	done := make(chan stopMemberOutcome, 1)
+	type delivered struct {
+		o      stopMemberOutcome
+		sentAt time.Time
+	}
+	done := make(chan delivered, 1)
 	c.orphans.Add(1)
 	go func() {
 		defer c.orphans.Done()
-		done <- fn(mctx)
+		o := fn(mctx)
+		done <- delivered{o, time.Now()}
 	}()
+	dl, hasDL := mctx.Deadline()
+	takeCutOff := func() stopMemberOutcome {
+		o := cutOff(ctx)
+		o.Err = "cut off at its internal budget " + budget.String()
+		return o
+	}
 	var o stopMemberOutcome
 	select {
-	case o = <-done:
+	case r := <-done:
+		o = r.o
+		if hasDL && !r.sentAt.Before(dl) {
+			o = takeCutOff()
+		}
 	case <-mctx.Done():
-		o = cutOff(ctx)
-		o.Err = "cut off at its internal budget " + budget.String()
+		o = takeCutOff()
 	}
 	o.Number, o.Name = n, spec.Name
 	o.ElapsedMS = time.Since(start).Milliseconds()
@@ -393,23 +415,29 @@ func (c *codexStopChain) advisoryMember(ctx context.Context, n int) stopMemberOu
 	mctx, cancel := context.WithTimeout(ctx, budget)
 	defer cancel()
 	type result struct {
-		msg string
-		err error
+		msg    string
+		err    error
+		sentAt time.Time
 	}
 	start := time.Now()
 	done := make(chan result, 1)
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				done <- result{err: fmt.Errorf("panic: %v", r)}
+				done <- result{err: fmt.Errorf("panic: %v", r), sentAt: time.Now()}
 			}
 		}()
 		msg, err := fn(mctx)
-		done <- result{msg, err}
+		done <- result{msg, err, time.Now()}
 	}()
+	// Same deadline-authority rule as budgeted (card t1293): a result sent at
+	// or past the budget reads as cut off, never as the member's real status.
+	dl, hasDL := mctx.Deadline()
 	select {
 	case r := <-done:
 		switch {
+		case hasDL && !r.sentAt.Before(dl):
+			o.Status, o.Err = stopStatusFailed, "cut off at its internal budget "+budget.String()
 		case errors.Is(r.err, errAdvisorySkipped):
 			o.Status = stopStatusNotApplicable
 		case r.err != nil:

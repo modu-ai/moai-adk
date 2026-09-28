@@ -30,7 +30,19 @@ codex-cli does not read Claude Code's `.claude/skills/`, so skills are deployed 
 
 ## Harness-local personal instructions
 
-`CLAUDE.local.md` is the common local input shared with Claude workflows; `AGENTS.local.md` remains Codex-specific. Every local `moai codex` route—bare, `cli`, `app`, `--spawn`, and `-w`—reads the non-empty regular files from the project root in that order, places a `<!-- source: <filename> -->` provenance header before each body, and sends the combined text as one `developer_instructions` override. For `-w`, the source stays the original project root even though Codex runs in the worktree. Neither shared `AGENTS.md` nor `CLAUDE.md` imports or links these local files. The launcher refuses links and non-regular inputs, reads from the same descriptor it checked, and fails before launch if the operator also supplies `developer_instructions` or if the direct/spawn argument is too large. Other harness-local settings and memory remain with their harness. Codex Web does not run the local launcher and receives none of this injection.
+`AGENTS.local.md` is the personal instruction file both harnesses read; `CLAUDE.local.md` is its former name and survives only as a fallback input. Every local `moai codex` route—bare, `cli`, `app`, `--spawn`, and `-w`—reads the non-empty regular files from the project root in that order, places a `<!-- source: <filename> -->` provenance header before each body, and sends the combined text as one `developer_instructions` override. For `-w`, the source stays the original project root even though Codex runs in the worktree. Neither shared `AGENTS.md` nor `CLAUDE.md` imports or links these local files. The launcher refuses links and non-regular inputs, reads from the same descriptor it checked, and fails before launch if the operator also supplies `developer_instructions` or if the direct/spawn argument is too large. Other harness-local settings and memory remain with their harness. Codex Web does not run the local launcher and receives none of this injection.
+
+## The `CLAUDE.local.md` fallback and the migration advisory
+
+In a project that has `CLAUDE.local.md` but no `AGENTS.local.md`, `moai codex` still reads that file as a fallback and places it in `developer_instructions`. The provenance header carries the literal name of the file actually read — here, `<!-- source: CLAUDE.local.md -->`.
+
+When the fallback is taken, the launcher prints a one-line migration advisory on standard error:
+
+```text
+Advisory: CLAUDE.local.md is a legacy local instruction file; run `moai migrate local-instructions` to move it to AGENTS.local.md.
+```
+
+The advisory is addressed to the operator, so it never enters `developer_instructions`, which becomes model context. When both files exist, both are read and the advisory switches to asking for a manual merge. In the three-file structure — the shared contract in `AGENTS.md`, the Claude-only layer in `CLAUDE.md`, personal instructions in `AGENTS.local.md` — `CLAUDE.local.md` is only a former name waiting to be migrated.
 
 ## `internal/codexadapter` — the hook adapter library
 
@@ -60,6 +72,14 @@ Unadapted events are not silently ignored — they are **refused**. An unknown e
 ### What invokes it now
 
 `RenderHooks` writes all eight adapted event commands into the user's `.codex/hooks.json`; `moai init --llm codex|both` creates that wiring, and `moai tool enable codex` adds or refreshes it in an existing project.
+
+## Desktop apps and the v3.1.3 release gate
+
+For a local Codex app session, open the project that contains the generated `.codex/hooks.json` and `.codex/config.toml`. Codex loads project hooks and configuration only after the project is trusted; use `/hooks` in the Codex CLI to review the hooks, and trust them again if their definitions change. Run `moai doctor` in the same project to inspect the MoAI wiring. The `moai` executable must be available to the app's execution environment. See the [Codex hooks documentation](https://developers.openai.com/codex/hooks) for the project trust rules.
+
+Claude Code for Desktop's **Local** Code session reads the same project `CLAUDE.md`, `.mcp.json`, hooks, skills, and settings as the CLI. Open the initialized project in its Code tab and make sure `moai` is available in that session's environment. An SSH session runs on the remote machine, so that machine needs the project and `moai` installation. See [Claude Code Desktop configuration](https://code.claude.com/docs/en/desktop#shared-configuration).
+
+These are setup paths, not a claim that the v3.1.3 desktop release gate has passed. Release remains on hold until the operator completes their own MoAI, Codex, and both desktop-app tests and declares the result.
 
 ## Next steps
 

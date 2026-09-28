@@ -1024,17 +1024,30 @@ func TestJevDoctrineAmendment(t *testing.T) {
 		if want == "" {
 			t.Fatal("design.md carries no §29 amendment text between its markers")
 		}
-		local := grRead(t, root, "CLAUDE.local.md")
+		// Migrated surface (card t1290): the full §29 body, including the
+		// design.md §11.1 amendment text, lives in .moai/docs/jev-local-
+		// operations.md; the tracked AGENTS.local.md carries the compressed
+		// §29 — its principle markers plus the pointer to that document.
+		docs := grRead(t, root, ".moai/docs/jev-local-operations.md")
+		if !strings.Contains(docs, want) {
+			t.Error(".moai/docs/jev-local-operations.md lacks the design.md §11.1 amendment text")
+		}
+		local := grRead(t, root, "AGENTS.local.md")
 		start := strings.Index(local, "\n## 29.")
 		if start < 0 {
-			t.Fatal("CLAUDE.local.md has no §29")
+			t.Fatal("AGENTS.local.md has no §29")
 		}
 		sec := local[start+1:]
 		if end := strings.Index(sec, "\n## "); end >= 0 {
 			sec = sec[:end]
 		}
-		if !strings.Contains(sec, want) {
-			t.Error("CLAUDE.local.md §29 lacks the design.md §11.1 amendment text")
+		if !strings.Contains(sec, ".moai/docs/jev-local-operations.md") {
+			t.Error("AGENTS.local.md §29 does not point at the relocated procedure document")
+		}
+		for _, marker := range []string{"판단 자료일 뿐", "판정 근거로 쓰지 않는다"} {
+			if !strings.Contains(sec, marker) {
+				t.Errorf("AGENTS.local.md §29 compressed principle lacks %q", marker)
+			}
 		}
 		progress := grRead(t, root, grJevProgress)
 		if !strings.Contains(progress, "operator confirmed the §29 line") {

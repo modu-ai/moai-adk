@@ -68,9 +68,9 @@ func newStopFixtureAt(t *testing.T, root string) *stopFixture {
 
 func (f *stopFixture) git(t *testing.T, args ...string) string {
 	t.Helper()
-	// Prevent detached Git auto-maintenance from outliving this temporary
-	// repository. The test owns the repository's entire lifetime.
-	cmd := exec.Command("git", append([]string{"-C", f.root, "-c", "user.name=fx", "-c", "user.email=fx@example.com", "-c", "commit.gpgsign=false", "-c", "gc.auto=0", "-c", "maintenance.auto=false"}, args...)...)
+	// Detached auto-maintenance can repack this temporary repository after the
+	// committing command exits and race with t.TempDir cleanup.
+	cmd := exec.Command("git", append([]string{"-C", f.root, "-c", "user.name=fx", "-c", "user.email=fx@example.com", "-c", "commit.gpgsign=false", "-c", "maintenance.auto=false"}, args...)...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("git %v: %v\n%s", args, err, out)
