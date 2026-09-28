@@ -202,7 +202,9 @@ If a per-edit nudge is ever re-proposed, the only defensible variant is stateful
 
 ## Pre-Spawn Sync Check rationale and incident record
 
-> Relocated verbatim from `agent-common-protocol.md` § Pre-Spawn Sync Check to keep the always-loaded file within its size budget. The binding gate (the 2-command batch + active-sessions query), the interpretation matrices, and the read-only exemption remain inline there. The two-lane batch script (relocated by the t1303 diet):
+> Relocated verbatim from `agent-common-protocol.md` § Pre-Spawn Sync Check to keep the always-loaded file within its size budget. The binding gate (the 2-command batch + active-sessions query), the interpretation matrices, and the read-only exemption remain inline there.
+
+The two-lane batch script (relocated by the always-loaded diet):
 
 ```bash
 # Lane A — ordered; wait for fetch completion before reading origin/main.
@@ -215,7 +217,7 @@ fi
 git rev-list --count --left-right origin/main...HEAD
 
 # Lane B — can be started while Lane A is fetching, then joined before the
-# divergence/session decision is surfaced (L1 of the canonical 4-layer policy).
+# divergence/session decision is surfaced.
 moai session list --json --filter-spec=<SPEC-ID>
 ```
 
@@ -287,7 +289,7 @@ This refines the inline step 3 ("do not retry the identical call") along the sid
 
 ## Attributable diff-check detail
 
-> Relocated from `agent-common-protocol.md` § Parallel Execution → Attributable diff-check doctrinal switch to keep the always-loaded file within its size budget. The switch rule, the three match conditions, the four mismatch names, and the never-silent-skip boundary remain inline there (SPEC-SYNC-PARALLEL-DOCS-001 A9).
+> Relocated from `agent-common-protocol.md` § Parallel Execution → Attributable diff-check doctrinal switch to keep the always-loaded file within its size budget. The switch rule, the three match conditions, the four mismatch names, and the never-silent-skip boundary remain inline there.
 
 The switch consults the shared diagnostic snapshot via `moai verify check --key-current` (the live snapshot surface wired at `.claude/skills/moai/workflows/sync/quality-gates-quality.md` Step 0.5.2, keyed by HEAD SHA) BEFORE re-executing; on all-three attribution match, it consumes the attributable §E evidence (`.claude/rules/moai/development/manager-develop-prompt-template.md` § Section E → attribution discipline clause) for that dimension INSTEAD of re-executing the corresponding command. This is a composition-time doctrinal switch — no mechanical "about to re-run command X" preamble token exists to intercept (the batch is orchestrator-composed single-turn multi-Bash; re-execution is implicit Bash); it binds the orchestrator's batch-composition discipline, not a runtime hook.
 

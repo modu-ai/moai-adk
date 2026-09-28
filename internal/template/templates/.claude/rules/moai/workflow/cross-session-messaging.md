@@ -64,9 +64,7 @@ respawn the name deliberately. Registry path, audit rows, and the entry lifecycl
 | A `routing` object | An in-process mailbox took it; the peer never sees it | Re-send to `name [ref]` |
 | A `[Cross-session delivery notice]` follows | The receiving session's permission policy is **holding** the message for its user's approval, or refused it outright | Treat it as undelivered: surface it to the operator rather than re-sending, because the same policy holds the next copy too |
 
-The third shape is the one that used to leave no trace. A session running in a different permission mode than the sender's holds inbound peer messages until its user approves them, and may let them expire; for a session on this machine the notice reports that, and the notice is the only signal — nothing in the original send result predicts it.
-
-**A notice never arrives for a Remote Control, cloud, or Claude Desktop peer.** Silence there is not agreement and not delivery; it is the absence of a channel to report either. Never read it as a reply.
+The third shape is the one that used to leave no trace: a different permission mode holds inbound peer messages until its user approves them, and the notice is the only signal. **A notice never arrives for a Remote Control, cloud, or Claude Desktop peer** — silence there is the absence of a channel, never a reply. Per-mode detail: `cross-session-messaging-detail.md` § Addressing, sending, and replying.
 
 **The queue is what survives all three shapes.** Because a dispatch is delegated through the queue on disk and completion is read from evidence (`kanban-dispatch.md` § The delegation channel is the queue, § Completion is read, never trusted), a held or lost message costs the board nothing. That is exactly why reading the send result matters: it tells the sender whether a *nudge* landed, and nothing more. Advancing a card because a send reported success is an unobserved completion claim (`verification-claim-integrity.md` §1.1 surface 1).
 

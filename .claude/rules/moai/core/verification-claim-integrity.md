@@ -16,7 +16,7 @@ Symmetrically, inferring a defect, a debt item, a lifecycle drift, or an anomalo
 
 The binding extends to the premise beneath a recommendation. A recommendation to KEEP, retain, or preserve something rests on a premise — that the thing is still live, still reachable, still depended upon. Observing that an artifact is *referenced* establishes only that a reference exists; it does not establish that the referenced capability is still live. **Reachability is not justification.** Before recommending retention, the actor MUST verify the referenced capability's lifecycle status — whether its producer still exists, and whether a completed retirement already covers it. An unverified premise dressed as a reason is an unobserved claim.
 
-This direction is the more dangerous one, because its failure is silent. A wrong "remove it" claim is contradicted by the next build or test run; a wrong "keep it" claim preserves dead code and is never contradicted by any signal at all.
+This direction is the more dangerous one because its failure is silent: a wrong "remove it" claim is contradicted by the next run, but a wrong "keep it" claim is never contradicted by any signal at all.
 
 This is a policy-layer norm, not a mechanical guarantee. For the complementary mechanical-detection layer that surfaces one shape of this violation at runtime, cross-reference SPEC-STOP-EVIDENCE-GATE-001 (the cross-reference table lives in the detail companion, `verification-claim-integrity-detail.md`).
 
@@ -59,13 +59,13 @@ The corrective is **not** "pin every ref". Some claims are *about* the moving th
 
 #### The four remediation branches
 
-The branch table, its cost table, and the exemption-marker syntax live in `verification-claim-integrity-detail.md` § The four remediation branches and § The exemption marker — the same section the [HARD] pointer above already obliges you to open before remediating. The shape, so the classification step reads without them: **R1** pin the literal SHA and **R2** freeze at pre-flight (the anchor-class default) resolve ANCHOR; **R3** keep the ref and declare an author-written exemption with a non-empty reason, and **R4** state the measuring command and demote any value to a dated reference, resolve SUBJECT. Every branch costs the author something, which is what stops the author reaching for the cheapest one.
+The branch table, its cost table, and the exemption-marker syntax live in `verification-claim-integrity-detail.md` § The four remediation branches and § The exemption marker — the same section the [HARD] pointer above already obliges you to open before remediating. **R1**/**R2** resolve ANCHOR (pin the SHA / freeze at pre-flight); **R3**/**R4** resolve SUBJECT (authored exemption with a reason / measuring command + dated reference). Every branch costs the author something — that cost is the full text's subject, and the [HARD] pointer above obliges you to open it before remediating.
 
 ### 2.2 Tool-provenance attribution — which build judged the tree
 
 [ZONE:Evolvable] [HARD] A measurement produced by the project's own tooling is attributed to **two** coordinates, not one: the tree it read, and the build that judged it. §2 binds the first. This clause binds the second, because a tool invoked through a shell path resolves to an *installed* build, which need not be the build the tree describes.
 
-The failure is silent by construction, and its silence is **symmetric**. A build behind the tree simply does not run the rules that landed after it — clean pass, exit zero, empty error stream; a build matching the tree produces *the same three signals*. Nothing in either result says which case occurred, so a green result is not evidence the checks passed, only that whatever checks the invoked build happens to carry reported nothing.
+The silence is **symmetric**: a stale build and a current build produce the same clean pass signals, so a green result is evidence only that whatever checks the invoked build carries reported nothing.
 
 **The obligation.** A tool measurement cited as evidence MUST have been produced by a build made from the tree under measurement. Concretely, either:
 
