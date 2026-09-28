@@ -111,6 +111,6 @@ The factory changes only the shape of how cards flow. The remaining rules stand 
 
 - [Kanban Mode](/en/advanced/kanban-mode) — the first form, three roles carrying one card between columns. Card classes and the board·queue rules shared with the factory
 - [`/moai todo`](/en/utility-commands/moai-todo) — the backlog queue that admits cards onto the board. The operator is the one who picks
-- [manager-lead Lead Coordinator](/en/advanced/manager-lead) — the coordination agent that drives dispatch inside a kanban or factory leader session
+- [manager-lead Leader Coordinator](/en/advanced/manager-lead) — the coordination agent that drives dispatch inside a kanban or factory leader session
 - [`/moai loop`](/en/utility-commands/moai-loop) — the unattended foreman driven by a bare `/loop`. The same "never picks, only routes" boundary as the factory leader
 - [Kanban Board Terms](/en/core-concepts/kanban-board-terms) — the formal glossary with definitions and examples of card, column, lane, and leader

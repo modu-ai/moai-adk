@@ -22,7 +22,7 @@ MoAI-ADK 是一个 **让智能体在 Claude Code 内相互协作进行智能体�
 | AI 开发团队 | MoAI-ADK | 角色 |
 |----------|----------|------|
 | 产品负责人 | 用户(开发者) | 决定要做什么 |
-| 团队领导 / Tech Lead | MoAI 编排器 | 协调整体工作并委派给 13 个智能体 |
+| 团队队长 / Tech Lead | MoAI 编排器 | 协调整体工作并委派给 13 个智能体 |
 | 策划 / Spec Writer | manager-spec | 把需求整理成 SPEC 文档 |
 | 开发者 / Engineers | manager-develop(注入领域上下文) | 用 DDD/TDD 实现实际代码 |
 | QA / 代码评审者 | plan-auditor · sync-auditor | 独立审计计划与产出物 |
