@@ -41,14 +41,6 @@ var expectedMCPCarriers = map[string]bool{
 	"sync-auditor": true,
 }
 
-// expectedEffort is the AC-008 inventory from the template frontmatter.
-var expectedEffort = map[string]string{
-	"builder-harness": "medium", "e2e-tester": "low", "manager-design": "high",
-	"manager-develop": "medium", "manager-docs": "low", "manager-git": "low",
-	"manager-lead": "high", "manager-spec": "medium", "plan-auditor": "high",
-	"super-advisor": "high", "sync-auditor": "high", "mission-governor": "high",
-}
-
 // emitRealSet runs the emitter over the committed template tree.
 func emitRealSet(t *testing.T) *agentemit.Publication {
 	t.Helper()
@@ -166,9 +158,10 @@ func hashMDTree(t *testing.T) map[string]string {
 }
 
 // TestRealSetCodexShape pins the AC-007/AC-008/AC-009 (+ sandbox) shape over
-// the real 12: exactly the 7 inventory carriers declare mcp_servers, every
-// agent carries its manifest-mapped model_reasoning_effort, zero carry a
-// model key, and role-specific sandbox modes match the manifest.
+// the real 12: exactly the 7 inventory carriers declare mcp_servers, zero
+// carry a model_reasoning_effort or a model key (subagents inherit the parent
+// session's model and effort), and role-specific sandbox modes match the
+// manifest.
 func TestRealSetCodexShape(t *testing.T) {
 	pub := emitRealSet(t)
 	for path, data := range pub.CodexTOML {
@@ -197,9 +190,10 @@ func TestRealSetCodexShape(t *testing.T) {
 			}
 		}
 
-		// AC-008: effort mapping per manifest (identity, P-02-locked).
-		if got, _ := doc["model_reasoning_effort"].(string); got != expectedEffort[name] {
-			t.Errorf("%s (%s): model_reasoning_effort = %q, want %q", path, name, got, expectedEffort[name])
+		// AC-008 (inverted by SPEC-AGENT-MODEL-INHERIT-001 D2): no
+		// model_reasoning_effort — the role inherits the parent's effort.
+		if v, has := doc["model_reasoning_effort"]; has {
+			t.Errorf("%s (%s): model_reasoning_effort = %v, want the key omitted", path, name, v)
 		}
 
 		// AC-009: model omitted everywhere (manager-git sonnet = documented drop).

@@ -8,7 +8,7 @@ import (
 )
 
 // tab_layout_test.go — M2 guards for SPEC-WEB-CONSOLE-REDESIGN-001: the current
-// 14-tab Settings contract (AC-WCR-010..013). Tab placement is a RENDER concern; the
+// 13-tab Settings contract (AC-WCR-010..013). Tab placement is a RENDER concern; the
 // persistence section of every moved field is unchanged (AP-4).
 
 // wantTabOrder is the canonical tab order. It is asserted as a SEQUENCE, not
@@ -19,10 +19,11 @@ import (
 // M3 tab removal for that section only); SPEC-PRECOMMIT-GATE-SCOPE-001 M2
 // appends the gate panel as the 14th. SPEC-WEB-CODEX-PANEL-001 inserts the
 // read-only codex mirror immediately after audit — not last, because panelHTML
-// slices the final panel to end-of-document.
+// slices the final panel to end-of-document. SPEC-AGENT-MODEL-INHERIT-001
+// removes the agentfm (agent-settings) tab.
 var wantTabOrder = []string{
 	"identity", "language", "launch", "llm", "workflow",
-	"git-worktree", "audit", "codex", "agentfm", "report", "mcp", "crosssession",
+	"git-worktree", "audit", "codex", "report", "mcp", "crosssession",
 	"feedback", "gate",
 }
 

@@ -20,7 +20,7 @@ func TestNoAgentNameIsASubstringOfAnother(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	universe := union(template.ProfileMatrixAgents(), defs)
+	universe := union(template.RetainedAgents(), defs)
 	for _, a := range universe {
 		for _, b := range universe {
 			if a != b && strings.Contains(b, a) {
@@ -39,7 +39,7 @@ func TestCanonicalSourceIsTheDefinitionFileSetPlusExplore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	retained := template.ProfileMatrixAgents()
+	retained := template.RetainedAgents()
 
 	missing, extra := diff(append(append([]string(nil), defs...), "Explore"), sorted(retained))
 	if len(missing) > 0 || len(extra) > 0 {
@@ -100,7 +100,7 @@ func TestRegisteredSitesMatchTheirDeclaredAxis(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	retained := sorted(template.ProfileMatrixAgents())
+	retained := sorted(template.RetainedAgents())
 
 	for _, s := range Registry() {
 		b, err := os.ReadFile(filepath.Join(root, s.Path))
@@ -126,7 +126,7 @@ func TestSweepFindsNoUndeclaredRosterListing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	universe := union(template.ProfileMatrixAgents(), defs)
+	universe := union(template.RetainedAgents(), defs)
 
 	found, err := Sweep(root, universe)
 	if err != nil {
@@ -349,7 +349,7 @@ func TestSweepFiresOnAnUndeclaredListing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	universe := union(template.ProfileMatrixAgents(), defs)
+	universe := union(template.RetainedAgents(), defs)
 
 	tmp := t.TempDir()
 	if err := os.WriteFile(filepath.Join(tmp, "new-listing.md"), []byte(strings.Join(universe, "\n")), 0o600); err != nil {

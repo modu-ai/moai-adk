@@ -123,9 +123,13 @@ var (
 )
 
 // codexAuditRole is the part of an emitted role file the launcher delivers.
+// Per-agent effort left with the emitter's frontmatter strip
+// (SPEC-AGENT-MODEL-INHERIT-001): the launcher no longer reads
+// model_reasoning_effort from the role file — the audit pin
+// (workflow.audit.codex.effort) is the surviving effort authority, and an
+// unpinned launch omits the directive rather than fabricating a value.
 type codexAuditRole struct {
 	instructions string
-	effort       string
 }
 
 // codexAuditPlan is a validated launch: every refusal has already happened,
@@ -194,10 +198,18 @@ func prepareCodexAudit(ctx context.Context, req codexAuditRequest) *codexAuditPl
 		return fail("cannot list MCP servers to disable: %v", err)
 	}
 
+	// Effort rides the audit pin or nothing: pin > absent (codex applies its
+	// own default). No per-agent source remains to fall back to.
+	effort := workflowAuditPins(root).Codex.Effort
+	if effort != "" && !codexAuditServerName.MatchString(effort) {
+		return fail("workflow.audit.codex effort %q is not a launchable value", effort)
+	}
 	argv := []string{"exec", "-s", codexAuditSandbox,
-		"-c", `approval_policy="never"`,
-		"-c", `model_reasoning_effort="` + role.effort + `"`,
-		"-c", instrToken}
+		"-c", `approval_policy="never"`}
+	if effort != "" {
+		argv = append(argv, "-c", `model_reasoning_effort="`+effort+`"`)
+	}
+	argv = append(argv, "-c", instrToken)
 	for _, n := range names {
 		argv = append(argv, "-c", "mcp_servers."+n+".enabled=false")
 	}
@@ -532,11 +544,7 @@ func codexAuditLoadRole(root, role string) (codexAuditRole, error) {
 	if !ok || instr == "" {
 		return codexAuditRole{}, fmt.Errorf("role %q file carries no developer_instructions", role)
 	}
-	effort := fields["model_reasoning_effort"]
-	if !codexAuditServerName.MatchString(effort) {
-		return codexAuditRole{}, fmt.Errorf("role %q file carries no usable model_reasoning_effort", role)
-	}
-	return codexAuditRole{instructions: instr, effort: effort}, nil
+	return codexAuditRole{instructions: instr}, nil
 }
 
 // codexAuditParseRoleTOML reads the root keys of an emitted role file. It

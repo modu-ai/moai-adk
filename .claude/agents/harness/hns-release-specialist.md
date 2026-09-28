@@ -4,8 +4,6 @@ description: >
   (dev-only) release harness specialist — MoAI-ADK production release for moai-adk-go maintainers. NOT distributed to user projects. Implements the repo's git-flow release path (operator-requested rc build on develop, release/vX.Y.Z cut from develop, version bump, English-only CHANGELOG + composed English release notes, PR to main with merge commit NOT squash, then scripts/release.sh for tag + GoReleaser, then back-merge main into develop). Hotfix support via --hotfix (cut from main, back-merged into develop). All git operations delegated to manager-git. Ported with structural fidelity from .claude/skills/moai/workflows/release.md per SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001.
 
 tools: Read, Write, Edit, Grep, Glob, Bash
-effort: high
-model: opus
 ---
 
 # Specialist: harness-release — Production Release (git-flow)

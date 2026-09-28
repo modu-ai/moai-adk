@@ -8,10 +8,10 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// resolveGLMAuditModelEffort has three fallback returns — an unreadable llm.yaml, an
+// resolveGLMAuditModelEffort once had three fallback returns — an unreadable llm.yaml, an
 // unmapped SSOT lookup, and a non-GLM session whose resolved id is a Claude
-// model z.ai cannot serve. All three hand back the same constant, so the value
-// of that constant is the whole contract.
+// model z.ai cannot serve. All three handed back the same constant, and every
+// unpinned call now does, so the value of that constant is the whole contract.
 //
 // It went stale once: the constant sat on a two-generation-old id while the tier
 // defaults moved on, and the pre-existing test only asserted the result was
@@ -53,7 +53,7 @@ func TestResolveGLMAuditModel_UnreadableLLMYAML(t *testing.T) {
 
 // TestResolveGLMAuditModel_NonGLMSession covers the path a Claude session takes
 // when it calls glm_audit for a cross-model second opinion — the common case.
-// The SSOT resolves a Claude id, which z.ai cannot serve, so the fallback runs.
+// A leftover Claude-id cell never reaches z.ai: without a pin the backend default runs.
 func TestResolveGLMAuditModel_NonGLMSession(t *testing.T) {
 	root := t.TempDir()
 	sections := filepath.Join(root, ".moai", "config", "sections")

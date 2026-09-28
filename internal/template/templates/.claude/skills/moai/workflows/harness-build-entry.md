@@ -130,8 +130,8 @@ On `Build` approval, the orchestrator transitions directly into the Builder — 
 
 **Read the Builder module for the full phase logic**: `.claude/skills/moai/workflows/harness-builder.md`. That module documents:
 
-- **ANALYZE** — orchestrator parallel `Agent(agentType: "Explore", effort: "low")` fan-out across the codebase + docs + existing harness surfaces + SPEC history (read-only, main tree). Produces a domain profile + task-pattern inventory.
-- **PLAN** — orchestrator spawns a single `Agent(model: "opus", effort: "xhigh")` that selects/combines patterns from the 6-pattern catalog, defines specialist roles, maps each to an execution primitive, and drafts the manifest. The orchestrator then runs an **AskUserQuestion approval gate** at the PLAN→GENERATE boundary (first-class, because the orchestrator holds the boundary — this is the self-contradiction resolution that made the Builder orchestrator-direct).
+- **ANALYZE** — orchestrator parallel `Agent(agentType: "Explore")` fan-out across the codebase + docs + existing harness surfaces + SPEC history (read-only, main tree). Produces a domain profile + task-pattern inventory.
+- **PLAN** — orchestrator spawns a single `Agent()` that selects/combines patterns from the 6-pattern catalog, defines specialist roles, maps each to an execution primitive, and drafts the manifest. The orchestrator then runs an **AskUserQuestion approval gate** at the PLAN→GENERATE boundary (first-class, because the orchestrator holds the boundary — this is the self-contradiction resolution that made the Builder orchestrator-direct).
 - **GENERATE** — orchestrator fan-out emits the 5 artifact types (thin-wrapper command, Runner Workflow, specialist sub-agents, companion skills, manifest.json). Conditional `Agent(isolation: "worktree")` per specialist whose manifest declares `isolation: worktree`.
 - **ACTIVATE** — orchestrator-direct dry-run + `/moai goal` autonomous convergence + optional with/without A/B. The A/B is **skipped** for tasks within the model's solo reliable range (load-bearing minimum), with the skip recorded + rationale.
 

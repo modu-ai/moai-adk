@@ -179,7 +179,7 @@ func TestSettingsPageFormContract(t *testing.T) {
 		}
 	}
 	// Every console tab contributes its panel element regardless of active state.
-	for _, id := range []string{"identity", "language", "launch", "agentfm", "mcp", "codex"} {
+	for _, id := range []string{"identity", "language", "launch", "mcp", "codex"} {
 		if !strings.Contains(html, `data-panel="`+id+`"`) {
 			t.Errorf("panel %q is missing from the DOM (atomic-save contract): %s", id, id)
 		}
