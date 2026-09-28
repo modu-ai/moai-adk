@@ -49,7 +49,10 @@ test/coverage work sits at the bottom.
 
 - No destructive migration; idempotence via `pragma_table_info` (spec.md §5).
 - The five frozen fields keep names, types, JSON tags; stamps are additive
-  `omitempty` pointers following the `Landing`/`CardUUID` precedent.
+  nullable pointer fields with `omitempty` following the `Landing` precedent
+  — the struct's only `omitempty` precedent (`CardUUID` at
+  `backlog_store.go:88` is a nullable pointer with NO `omitempty`; the
+  precedent argument works via nullability).
 - English code/comments/godoc; `t.TempDir()` test isolation; affected-package
   tests only locally (`go test -timeout 30m ./internal/kanban/...
   ./internal/cli/...`), full-suite verdict is CI's.
@@ -72,8 +75,9 @@ JSON disclosure fields.
   compile-time-constant table/column interpolation discipline.
 - `internal/kanban/backlog_store.go`: add `PickedAt *string`,
   `DroppedAt *string` to `BacklogItem` and `ArchivedAt *string` to the
-  archive entry, all `json:"...,omitempty"`, NULL-mapped like `Landing` and
-  `CardUUID` (both `omitempty` at `backlog_store.go:83-88`).
+  archive entry, all `json:"...,omitempty"`, NULL-mapped like `Landing` —
+  the struct's only `omitempty` precedent (`CardUUID` at
+  `backlog_store.go:88` is a nullable pointer with NO `omitempty`).
 - Row scan/persist paths in `internal/kanban/backlog_migrate.go` (the
   `LandingEvidenceValue` write funnel) extended for the three columns.
 - Update `backlog_schema_freeze_test.go` as the recorded decision.

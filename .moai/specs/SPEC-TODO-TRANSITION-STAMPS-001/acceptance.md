@@ -158,5 +158,6 @@ workflow-doc change regenerated (`make build`).
 
 AC-TST-012's byte-identity check doubles as the characterization test for
 pre-existing consumers (scripts parsing `history` and `list --json`): the
-regression suite compares against a golden captured from the pre-change
-behavior in the same test run.
+regression suite compares against the pre-committed testdata golden — captured
+from the pre-change struct shape before implementation and committed in a
+separate preceding commit, exactly the AC-TST-012 mechanism.

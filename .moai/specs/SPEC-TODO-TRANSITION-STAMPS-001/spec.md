@@ -28,7 +28,7 @@ related_specs:
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1.0 | 2026-09-29 | Initial plan-phase authoring (card t1310). Schema ground truth measured on the live queue db `/Users/goos/.moai/db/moai-adk-go-1bd3d038/todo/backlog.db` by the dispatching lane, 2026-09-29; code paths re-verified in this tree (`9cc3fdc4d`). |
-| 0.1.1 | 2026-09-29 | Plan-audit revision (FAIL 0.80 → remediation): D1 REQ-TST-008/010/013 rewritten to path (A) — verdict record stores verdict+ref+time, NO query-derived SHA (operator-only SHA authority preserved, `landing_evidence.go`); D2 drop→done corrected (stamps never coexist, drop is queued-only); D3 function names moved out of REQ bodies; D5 precedent wording made precise (Landing and CardUUID both `omitempty`, `backlog_store.go:83-88`). plan.md/acceptance.md follow. |
+| 0.1.1 | 2026-09-29 | Plan-audit revision (FAIL 0.80 → remediation): D1 REQ-TST-008/010/013 rewritten to path (A) — verdict record stores verdict+ref+time, NO query-derived SHA (operator-only SHA authority preserved, `landing_evidence.go`); D2 drop→done corrected (stamps never coexist, drop is queued-only); D3 function names moved out of REQ bodies; D5 corrected in this revision — precedent reworded: `Landing` is the only `omitempty` precedent, `CardUUID` is a nullable pointer field with no `omitempty` (lead re-measurement at HEAD). plan.md/acceptance.md follow. |
 
 ## 1. Overview
 
@@ -68,10 +68,12 @@ against the live db, then re-verified against this tree's DDL
   idempotent `ALTER TABLE ADD COLUMN` gated on `pragma_table_info`, no table
   rebuild, no destructive ALTER in the package's history.
 - The five original `BacklogItem` fields are the frozen per-item contract
-  (REQ-TODO-013); `Landing` and `CardUUID` were added after it as additive,
-  `omitempty` pointer fields (`backlog_store.go:83-88` — `Landing` precedes
-  `CardUUID`, which is also `omitempty`). The transition stamps follow that
-  same precedent.
+  (REQ-TODO-013); `Landing` and `CardUUID` were added after it as additive
+  nullable pointer fields (`backlog_store.go:83-88`). **`Landing` is the only
+  `omitempty` precedent**; `CardUUID` carries `json:"card_uuid"` with NO
+  `omitempty` — the precedent argument works via nullability, not omitempty.
+  The transition stamps follow the `Landing` omitempty precedent for JSON
+  surface hygiene.
 - Sibling card t1308 is reviewing the same migration convention for a
   **state-CHECK** change (a rebuild, since SQLite cannot ALTER a CHECK). This
   SPEC's changes are pure additive columns and do not overlap that scope.
@@ -93,8 +95,10 @@ converge on the same column set.
 **REQ-TST-003** — The backlog store shall not rebuild either table, drop any
 column, or alter any constraint while adding these columns; the frozen
 five-field per-item contract (REQ-TODO-013) keeps its field names, types, and
-JSON tags, and the stamps ride alongside it as `omitempty` additive pointer
-fields, exactly as the `Landing` and `CardUUID` fields already do.
+JSON tags, and the stamps ride alongside it as additive nullable pointer
+fields — `omitempty` after the `Landing` precedent, the only `omitempty`
+field the struct carries (`CardUUID` is a nullable pointer with no
+`omitempty`).
 
 ### 3.2 Transition stamping
 
@@ -135,7 +139,11 @@ plan-audit remediation: the record shape is verdict + ref + time.
 shall not fabricate a query verdict: the archived row's landing record is
 whatever recorded evidence the item already carried (the t665 path, printed
 today and persisted from now on) or NULL. No flag, no query, no invented
-answer.
+answer. **When** an operator-authored landing evidence and a query-derived
+done verdict meet on the same archived row (evidence recorded earlier, flag
+run at done), the record preserves the operator evidence and appends the
+verdict record alongside it — the verdict never overwrites the operator's
+evidence.
 
 **REQ-TST-010** — The store shall not write a persisted verdict as attribution
 evidence absent its answering ref. A stored verdict is a snapshot of what a
