@@ -262,6 +262,7 @@ mentions an id later in the sentence still falls through, and
 	cmd.AddCommand(newTodoAddCmd(), newTodoListCmd(), newTodoDoneCmd(), newTodoUndoneCmd(), newTodoNextCmd(),
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
 		newTodoDropCmd(), newTodoUndropCmd(),
+		newTodoHoldCmd(), newTodoUnholdCmd(),
 		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(),
 		newTodoPRCmd(), newTodoLandedCmd(), newTodoAutoDoneCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd(),
 		newTodoTriageCmd())
@@ -919,6 +920,13 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 					if rec.Items[i].ID == id {
 						if rec.Items[i].State == kanban.BacklogStateDropped {
 							return fmt.Errorf("backlog item %s is dropped — use moai todo undrop %s before picking", id, id)
+						}
+						if rec.Items[i].State == kanban.BacklogStateHold {
+							// A held card is parked out of the queue by an
+							// operator (SPEC-TODO-HOLD-STATE-001): the pick
+							// gate refuses it with the recovery verb named,
+							// writing nothing.
+							return fmt.Errorf("backlog item %s is held — use moai todo unhold %s before picking", id, id)
 						}
 						if expect != "" && !strings.HasPrefix(rec.Items[i].Text, expect) {
 							// Refused mutation: Mutate writes nothing, so the
