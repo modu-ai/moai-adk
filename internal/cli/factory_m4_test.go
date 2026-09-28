@@ -369,12 +369,33 @@ func TestSD_AC007_NoHeadlessEngineArgv(t *testing.T) {
 	// M4 scope: the launch paths that exist are the cc and glm lane launches
 	// (both hand the claude engine its mode). M5 appends the codex relaunch
 	// entry here — the walk below already knows the codex arm.
+	captureCodex := func(t *testing.T) sdLaunchPathArgv {
+		t.Helper()
+		root, store := fcFixture(t)
+		fcQueue(t, store, kanban.BacklogStatePicked)
+		sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
+		t.Chdir(root)
+		sdScrubLauncherEnv(t)
+		var argv []string
+		prevLook, prevDirect := codexLookPath, codexDirectLaunchFn
+		codexLookPath = func(string) (string, error) { return "/sentinel/codex", nil }
+		codexDirectLaunchFn = func(c *exec.Cmd) error {
+			argv = append([]string(nil), c.Args...)
+			return nil
+		}
+		t.Cleanup(func() { codexLookPath, codexDirectLaunchFn = prevLook, prevDirect })
+		if _, _, err := runCodexCmd(t, "-f", "lane"); err != nil {
+			t.Fatalf("codex lane: %v", err)
+		}
+		return sdLaunchPathArgv{name: "codex -f lane", binary: "codex", argv: argv}
+	}
 	paths := []sdLaunchPathArgv{
 		capture(t, "cc -f lane", sdCCEntry),
 		capture(t, "glm -f lane", sdGLMEntry),
+		captureCodex(t),
 	}
-	if len(paths) < 2 {
-		t.Fatalf("the enumeration lost the M4 lane launches: %d entries", len(paths))
+	if len(paths) < 3 {
+		t.Fatalf("the enumeration lost the M4 lane launches or the M5 codex relaunch: %d entries", len(paths))
 	}
 
 	for _, p := range paths {
@@ -450,6 +471,7 @@ func TestSD_AC017_StampedMarkerArmsContractGuard(t *testing.T) {
 	scanned := map[string]string{
 		"factory.go":             stampBody,
 		"factory_card.go":        sdReadSource(t, filepath.Join(cliDir, "factory_card.go")),
+		"codex_launcher.go":      sdReadSource(t, filepath.Join(cliDir, "codex_launcher.go")),
 		"contract_sign_guard.go": sdReadSource(t, filepath.Join(cliDir, "..", "hook", "contract_sign_guard.go")),
 	}
 	for name, body := range scanned {

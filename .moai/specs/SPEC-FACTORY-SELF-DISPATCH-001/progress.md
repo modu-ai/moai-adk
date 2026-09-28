@@ -335,6 +335,111 @@ Continuation at `061614bd5` (clean).
 - **E6**: no push (lane does not push; the leader batch-pushes develop). M4 commit: this commit
   (SHA reported in the completion report; a commit cannot cite itself).
 
+### M5 — codex per-card relaunch and refusal wording (2026-09-29)
+
+Scope: REQ-SD-003, -004. ACs: AC-SD-003, -004, plus the AC-SD-007 enumeration extension and the
+AC-SD-017 scan-map extension (new stamp site). Continuation at `4d73ee088` (clean).
+
+- **Pre-flight (C)**: `git rev-parse --short HEAD` → `4d73ee088`; `git branch --show-current` →
+  `WT-factory-self-dispatch`; `git status --short` → empty; `go build ./...` exit 0;
+  `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `golangci-lint run --timeout=2m
+  ./internal/cli/...` → `0 issues.` (baseline; CI version v2.1.6). Anchored regression before any
+  change: `go test ./internal/cli -run '^TestSD_AC002|^TestSD_AC005|^TestSD_AC006|^TestSD_AC007|^TestSD_AC008|^TestSD_AC009|^TestSD_AC010|^TestSD_AC011|^TestSD_AC012|^TestSD_AC013|^TestSD_AC015|^TestSD_AC016|^TestSD_AC017|^TestSD_AC023|^TestSD_AC024|^TestSD_AC025|^TestSD_WorktreeSlugShape' -count=1 -timeout 15m`
+  → `ok github.com/modu-ai/moai-adk/internal/cli 81.228s` (slot lease `moai slot acquire --resource
+  internal-test-suite` held for the heavy runs, released after).
+- **RED (E8, verbatim, pre-GREEN tree = `4d73ee088`, captured in `/tmp/m5_red.txt`)**:
+  - AC-SD-003: `--- FAIL: TestSD_AC003_CodexRelaunchPerCard` with `factory_m5_test.go:115: codex
+    lane: ` — the pre-M5 `-f lane` scanner refused the entry (exitCodeError{1}, empty message), so
+    the launcher errored before any child.
+  - AC-SD-007 (extension): `--- FAIL: TestSD_AC007_NoHeadlessEngineArgv` with
+    `factory_m4_test.go:395: codex lane: ` — same refusal reached the new enumeration entry.
+  - AC-SD-004: `--- FAIL: TestSD_AC004_CodexOtherFactoryShapesRefused` ×4 with
+    `factory_m5_test.go:198: the refusal line does not name "moai codex -f lane":
+    "FACTORY_MODE_UNSUPPORTED_BACKEND: moai codex no longer enters Factory Mode; use 'moai cc -f'
+    or 'moai glm -f' instead"` — the old wording lacked the only-entry name (all four shapes).
+  - First RED attempt also surfaced a test bug (build failure):
+    `factory_m5_test.go:188:11: errB.String undefined (type string has no field or method String)`
+    — runCodexCmd returns strings, not buffers; fixed in the test before the real RED above.
+- **GREEN (E1, env-scrubbed single compound invocations)**:
+  `go test ./internal/cli -run '^TestSD_AC003_CodexRelaunchPerCard$|^TestSD_AC004_CodexOtherFactoryShapesRefused$|^TestSD_AC007_NoHeadlessEngineArgv$|^TestSD_AC017_StampedMarkerArmsContractGuard$' -count=1 -timeout 10m -v`
+  → `--- PASS` ×4, `PASS`. AC-SD-003's evidence chain: the substituted session is invoked twice;
+  invocation 1 carries `-C <t1 worktree>` + marker `lane` + label + `MOAI_KANBAN_BACKEND=gpt` +
+  `MOAI_KANBAN_CARD=t1` (and `MOAI_KANBAN_LABEL=t1`'s label); invocation 2 the same for t2; both
+  cards end `merge-ready`; the launcher exits 0 after `next` reports no card. The substituted
+  session performs its card's stage chain (T4b → T10 → T11 → T13) inside the launch seam — the
+  real child's own work, simulated per acceptance.md §B (no real codex binary anywhere).
+- **Final anchored regression**: `go test ./internal/cli -run '^TestSD_AC002|^TestSD_AC003|^TestSD_AC004|^TestSD_AC005|^TestSD_AC006|^TestSD_AC007|^TestSD_AC008|^TestSD_AC009|^TestSD_AC010|^TestSD_AC011|^TestSD_AC012|^TestSD_AC013|^TestSD_AC015|^TestSD_AC016|^TestSD_AC017|^TestSD_AC023|^TestSD_AC024|^TestSD_AC025|^TestSD_WorktreeSlugShape|^TestCodex' -count=1 -timeout 15m`
+  → one FAIL: `TestCodexAuditMCPTool` — **pre-existing on this tree, outside this milestone's
+  diff**: the test reads `.claude/rules/moai/core/moai-mcp-tools.md` (says 39 tools) +
+  `internal/mcp` catalogue (45 registered), neither touched by M5 (`git diff --name-only HEAD` →
+  `internal/cli/codex_launcher.go`, `internal/cli/factory_m4_test.go`; `factory_m5_test.go`
+  untracked). A doc-lag from a develop absorption; NEW-vs-baseline classification: pre-existing.
+  Everything else in the combined run is green (the full M1-M5 AC set + the whole `TestCodex`
+  launcher family).
+- **E2 builds**: `go build ./... && GOOS=windows GOARCH=amd64 go build ./...` → both exit 0
+  (compound invocation, final tree). No new syscall use, no process replacement on the relaunch
+  path — the supervising loop keeps the launcher as parent on every platform.
+- **E5 lint**: `golangci-lint run --timeout=2m ./internal/cli/...` → `0 issues.` — no NEW vs
+  baseline (CI version v2.1.6).
+- **E3 coverage** (new M5 functions, `-coverprofile` on the AC selectors, internal/cli):
+  `codexFactoryEntryClassify` 100.0%, `stripCodexFactoryTokens` 87.5%, `runCodexFactoryLane`
+  75.7% (uncovered: the error legs — install hint, parent-checkout refusal, lease/worktree
+  machinery failures — whose machinery the M1-M3 ACs cover where it lives), `launchCodexCardSession`
+  81.2%, `codexCardLaunchEnv` 100.0%.
+- **E4 boundary**: `grep -n 'AskUserQuestion' internal/cli/codex_launcher.go
+  internal/cli/factory_m5_test.go` → no matches (exit 1).
+- **REQ-SD-017 literal scan (production files touched)**:
+  `grep -n '"MOAI_FACTORY_ROLE"\|"MOAI_KANBAN_CARD"\|"MOAI_KANBAN_BACKEND"\|"MOAI_FACTORY_WORKER"\|"MOAI_KANBAN_LABEL"\|"gpt"' internal/cli/codex_launcher.go`
+  → no matches (exit 1). Zero env-name or backend-value literals; every stamp site reads
+  `config.Env*` / `kanban.BackendGPT`. The AC-SD-017 source-scan map now also pins
+  `codex_launcher.go` (the new stamp site) with the same four-literal sweep.
+- **Guard tests (existing family, surfaced by the wider TestCodex regression)**: three first-run
+  failures were M5 text shapes caught by the pre-existing codex guards, fixed in M5's own code:
+  (a) the @MX:NOTE on the loop carried the literal `syscall.Exec` (a comment — but
+  `TestCodexSpecFiles_NoBuildTagsOrSyscall` and the cross-platform property score scan the raw
+  file) → reworded to "no process replacement happens on this path";
+  (b) `TestCodexSpecFiles_ExecPrimitivesCodexOnly` requires every `exec.Command` first argument in
+  codex_launcher.go to be `req.Program` → the child launch now builds `codexLaunchRequest` and
+  starts from `req.Program`/`req.Args`/`req.Dir`, matching the direct path's convention. All
+  three guards re-ran green with the M5 AC set (`ok 10.669s`).
+- **Design decisions**:
+  - **Classifier replaces the scanner**: `codexEntryRefusal` → `codexFactoryEntryClassify`
+    returning (entry, diag): Absent / Lane (`-f lane`, `--factory lane`, `=` forms — value tokens
+    mirror `parseFactoryFlag`'s spellings) / Other (bare `-f`, `--factory`, `--factory-run[=x]`,
+    `-f lane-<n>`, `=` forms with another value, kanban tokens → kanban refusal, any second
+    factory token → refusal wins). Legacy role tokens (`worker`/`agent`) classify Other for now —
+    the shape leaves t1256's producer branch one check away (M7, AC-SD-021).
+  - **Supervising loop placement**: `runCodexFactoryLane` in codex_launcher.go. Per card: lease
+    through the F1 machinery in-process (`factoryNextLeaseOnce` + `factoryEnsureCardWorktree` —
+    the same functions the `next` RunE calls; the launcher runs them on the PARENT checkout and
+    asserts that precondition like the verb does, REQ-SD-010), then ONE interactive child
+    (`codex -C <worktree>` + the worktree's local instruction files) through the existing
+    `codexDirectLaunchFn` seam, stdio = the parent's own, then wait and loop. Stop condition:
+    `next`'s no-card answer, which the REQ-SD-025 merge-ready skip feeds (D2 — no livelock). A
+    child that fails or exits non-zero is reported to stderr and the loop continues (REQ-SD-003:
+    "on that session's exit continue with the next card"). No `--wait`: the loop itself is the
+    wait; when nothing qualifies it exits 0.
+  - **Undefined combinations refuse through the usage constant**: `-f lane` with `--spawn`, `-w`,
+    a verb token, or a `--` tail exits 1 with `codexUsageDiag` — the loop must stay the parent and
+    selects the worktree itself; the closed-set discipline refuses rather than adapts.
+  - **Label carriers, both stamped (the M4 residual, narrowed)**: the factory card verbs
+    (`next`/`stage`/`complete`) and the widened role gate read the lane label from
+    `MOAI_KANBAN_LABEL` (M4's record already noted the gate "does not read" the launcher's
+    carrier), while the launcher stamp and the factory notices read `MOAI_FACTORY_WORKER`
+    (REQ-RNC-011). The AC-SD-003 RED first surfaced this as a live integration gap: the launcher's
+    own stamps left `stage` refusing with "MOAI_KANBAN_LABEL is empty". M5's codex launcher stamps
+    BOTH carriers — in the loop's process environment and in the child environment — so the codex
+    lane is fully functional and the refusal predicates' label clause now catches it too. **Left
+    open for the lead (blocker, M4 territory)**: a cc/glm lane session still carries its label
+    only in `MOAI_FACTORY_WORKER`, so the session's own `next`/`stage`/`complete` refuse with the
+    empty-label error; the one-line fix is the same paired stamp inside `enterFactoryLaneMode`
+    (factory.go — read-only for this dispatch).
+  - **Factory fan-out signal not carried to the child**: `MOAI_FACTORY_WORKERS` feeds the
+    Stop-hook block cap, and a Codex lane has no moai hook peer (REQ-CFR-022) — recorded in the
+    child-env builder's comment.
+- **E6**: no push (lane does not push; the leader batch-pushes develop). M5 commit: this commit
+  (SHA reported in the completion report; a commit cannot cite itself).
+
 ## §F Phase 4 Mode Selection
 
 - tier: L · scope: >10 production files across cli/hook/config/kanban/homestate/codexwiring + template rules · domains: 6 (Go CLI, hooks, MCP server, launchers, doctrine rules, env constants) · language mix: Go + Markdown · concurrency benefit: LOW (coding-heavy, sequential milestone chain with shared files)
