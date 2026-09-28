@@ -156,7 +156,29 @@ The HEAD and count rows are deliberately qualified rather than restated as bare 
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M0 — baseline capture (measured at run start, tree `474667250`; no content change)
+
+Char counts, single-invocation form `python3 -c "import io; [print(f, len(io.open('.claude/rules/moai/workflow/'+f+'.md',encoding='utf-8').read())) for f in [...]]"`:
+
+| File | measured | plan baseline (`088594d6b`) | match |
+|---|---:|---:|---|
+| `spec-workflow.md` | 40,797 | 40,797 | ✓ |
+| `worktree-integration.md` | 61,435 | 61,435 | ✓ |
+| `session-handoff-examples.md` | 41,615 | 41,615 | ✓ |
+| `kanban-dispatch-detail.md` | 41,034 | 41,034 | ✓ |
+
+Mirror byte-identity (precondition of AC-IBS-005a), `cmp -s <local> <template mirror>` per pair: **all four identical** (exit 0 each). `paths:` globs, verbatim: spec-workflow `**/.moai/specs/**,**/.moai/config/sections/quality.yaml` · worktree-integration `**/.claude/agents/**,**/.claude/worktrees/**,**/.claude/teams/**` · session-handoff-examples `**/session-handoff.md` · kanban-dispatch-detail `**/kanban-dispatch*.md,**/.claude/agents/moai/manager-lead.md,**/.claude/skills/moai/workflows/gtd.md`.
+
+Inbound references (`grep -rl "<name>" .claude/ .moai/docs/ internal/template/templates/`, SPEC dir excluded): spec-workflow **78** · worktree-integration **38** · session-handoff-examples **8** · kanban-dispatch-detail **7** — all four match the plan baseline exactly.
+
+Family censuses by pattern holding (`grep -rl '<pattern>' .claude/rules/`): `kanban-dispatch*` holders = kanban-dispatch-detail, kanban-dispatch-mechanics, cross-session-messaging-detail; `session-handoff*` holders = session-handoff-format, context-window-management-detail. Totals with the stubs: kanban family 34,901 + 41,034 + 5,224 + 19,006 = **100,165** co-loading / **65,264** reducible; session family 16,109 + 41,615 + 5,266 + 11,742 = **74,732** co-loading / **58,623** reducible. Both match spec.md §1 exactly.
+
+`[HARD]` token → named-clause resolution (the transfer-table left column; token count ≠ clause count, REQ-IBS-008):
+
+- **spec-workflow.md — 4 tokens → 4 clauses**: :23 three-phase lifecycle & route triggers (Frozen) · :49 step ordering rules (Frozen) · :134 Tier S/M/L pre-artifact classification (Evolvable) · :164 plan-phase in main checkout, no worktree (Frozen).
+- **worktree-integration.md — 18 tokens → 17 clauses + 1 section marker**: :52 L1-exception (`moai worktree new` sole; `done` refuses L1) · :54 unpushed branch = only instance · :56 WT- slug prefix · :58 slug tokens/card-id exclusion · :229 **section marker** over the Selection Rules block — :255 parallel leaf workers MUST isolate · :256 read-only roles MUST NOT · :257 one-shot ≥3-path writers MUST · :260 GitHub fixer agents MUST · :264 auto-isolation on registry divergence · :376 no absolute paths in prompts · :377 no `cd /abs &&` · :378 root-relative write targets · :379 `$CLAUDE_PROJECT_DIR` allowed · :428 CLI launch no-AskUserQuestion · :432 `--spawn` refuses rather than degrades · :672 per-step applicability deference to spec-workflow § Phase Discipline · :683 disposal contract (both PRs merged). **Plan-table discrepancy recorded**: the M0 table in `plan.md` says 21; measured in this tree (file unchanged since base — char count and audit diff both confirm) it is **18**. The enumeration above is the authority; the 21 stands unexplained and unmatchable against the file.
+- **session-handoff-examples.md — 12 tokens → 12 clauses**: :160 Block 0 anchoring · :206 Block 0 launchers verbatim · :230 multi-terminal recommendation · :236 V0 lsof+cwd cross-validation · :284 Block 1 line order · :285 purpose-conditional `mode:` · :298 seed-not-permission · :303 fan-out steering phrase · :304 ultracode variants · :306 UUID fallback · :310 arm-only goal · :327 diet constraints.
+- **kanban-dispatch-detail.md — 8 tokens → 2 normative clauses + 6 prose mentions**: normative — :114 dispatch language · :130 manager-lead spawned unnamed. Prose mentions (describe the STUB's clauses; not clauses of this file) — :8, :54, :160, :265, :277, :287.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
