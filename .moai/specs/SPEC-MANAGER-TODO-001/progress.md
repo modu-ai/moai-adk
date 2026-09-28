@@ -121,6 +121,16 @@ Close-out re-measurement 2026-09-29T04:42:18+0900, exit 0. The pre-repair paste 
 - `research.md` — measured current state, 262-hit baseline enumeration, contract-conflict report (resolved), t1240 seam
 - `design.md` — decisions D-1..D-11
 
+### Gate disposition — run entry (2026-09-29T05:26:19+0900)
+
+운영자 승인(리드 전달 2026-09-29): served_model_gate 해제 + GLM 판정 채택.
+
+- Changed key: `workflow.served_model_gate.enabled` → `false` — 본 카드 트리 `.moai/config/sections/workflow.yaml`만 (템플릿 원본은 shipped default-false 유지).
+- Adopted verdict: plan-audit iter2 **PASS 0.89** @ `b912842df` (서빙 glm-5.3-flash — 리포트 첫 줄 명시분).
+- 기존 거부 영수증 파일: 삭제하지 않고 보존(본 세션은 영수증 파일을 건드린 적 없음).
+- Run entry 재개: Plan Audit Gate skip-eligible — ① verdict PASS 0.89 ≥ Tier L 0.85 ② plan-artifact hash unchanged since verdict(close-out `ecb12d147`는 progress.md만 변경 — hash 대상 아님) ③ verdict 측정 트리 `b912842df`. Kickoff: §31 자율(운영자 승인 카드 + 리드 run 지시 2026-09-29).
+- t1240 재독(리드 ① 조건, 05:26 측정): 브랜치 tip `7714fcd9e` — M4(런처)·M5(codex relaunch) 추가 착지 확인, `internal/cli/todo.go`는 M3(`ac7b1b87a`) 이후 미변경 → 대폭 재작성 신호 없음, 병렬 진행 확정. develop `a62a05764` 흡수 예정(`b7ff456b7..develop`의 todo.go 델타 0건 관측).
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase — owned by manager-develop>_
@@ -132,3 +142,18 @@ _<pending run-phase — owned by manager-develop>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase — owned by manager-docs>_
+
+## §F Phase 4 Mode Selection
+
+Inputs: tier L; run-phase scope ≈ 25-40 files (agent defs C1/C2, codex_audit roster + emit, todo CLI + command + skill, reference sweep surfaces, docs-site ~15 pages × 4 locales, README × 4, tests across internal/{cli,template,kanban}); domains ≥ 3 (Go, markdown/docs, yaml/templates); language mix Go + markdown + yaml; concurrency benefit LOW (coding-heavy — Anthropic coding-task parallelism caveat).
+
+| Mode | Selected | Rationale |
+|---|---|---|
+| direct | no | semantic multi-file implementation |
+| serial | **selected** | coding-heavy multi-domain — sequential manager-develop per milestone |
+| fanout | no | research-heavy only; this work is coding-heavy |
+| sweep | no | not mechanical-uniform; cross-file invariants (emit, roster, catalogue) |
+
+Decision: serial
+
+Justification: coding-heavy work carrying cross-file invariants (agents-emit regeneration, roster/catalogue coupling, template neutrality) sequences safely; one manager-develop spawn drives milestones M1–M5 with the Section A-E delegation template. Parallel lane work (t1240) proceeds in its own tree; the todo.go overlap resolves in the serial merge window per the lead's ① decision.
