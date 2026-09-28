@@ -387,7 +387,7 @@ func DischargeNumeralHits(hits []NumeralHit, sites []Site, exempts []NumeralExem
 			continue
 		}
 		bad = append(bad, fmt.Sprintf(
-			"undeclared count claim: %s:%d states a roster count (%s, in %q) on the %s axis and is not declared. Discharge it either by registering a Registry() row whose Claims carry ClaimCount with its own CountPattern (and a KnownStale marker if the number disagrees with template.ProfileMatrixAgents()), or by declaring a numeral exemption for this path with a non-empty reason",
+			"undeclared count claim: %s:%d states a roster count (%s, in %q) on the %s axis and is not declared. Discharge it either by registering a Registry() row whose Claims carry ClaimCount with its own CountPattern (and a KnownStale marker if the number disagrees with template.RetainedAgents()), or by declaring a numeral exemption for this path with a non-empty reason",
 			h.Path, h.Line, h.Numeral, h.Phrase, h.Axis))
 	}
 	return bad

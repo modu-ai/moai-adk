@@ -33,9 +33,9 @@ func Validate(cfg *Config, loadedSections map[string]bool) error {
 	var errs []ValidationError
 
 	// Run validator/v10 struct validation as the first pass.
-	// Only fields without existing custom checks produce errors here
-	// (currently: LLM.PerformanceTier oneof).  Fields gated by loadedSections
-	// or with existing custom checks are skipped inside runStructValidation.
+	// Only fields without existing custom checks produce errors here.
+	// Fields gated by loadedSections or with existing custom checks are
+	// skipped inside runStructValidation.
 	errs = append(errs, runStructValidation(cfg, loadedSections)...)
 
 	// Check development mode
@@ -55,10 +55,6 @@ func Validate(cfg *Config, loadedSections map[string]bool) error {
 
 	// Check the GLM base_url is a safe, well-formed https endpoint (REQ-CGH-007).
 	errs = append(errs, validateGLMBaseURL(cfg.LLM.GLM.BaseURL)...)
-
-	// Check the llm.profile closed-set enum + agent_overrides (REQ-MPM-007/008).
-	errs = append(errs, validateProfile(cfg)...)
-	errs = append(errs, validateAgentOverrides(cfg)...)
 
 	if len(errs) > 0 {
 		return &ValidationErrors{Errors: errs}
@@ -413,8 +409,8 @@ func developmentModeStrings() []string {
 // contract.  Fields controlled by loadedSections gating are skipped here so
 // that the existing custom checks (validateRequired, validateDevelopmentMode,
 // validateGitConventionConfig) remain the authoritative source for those fields.
-// validator/v10 catches type violations (e.g. oneof) for oneof-only fields like
-// LLM.PerformanceTier where no custom check exists.
+// validator/v10 catches type violations (e.g. oneof) for oneof-only fields
+// where no custom check exists.
 func runStructValidation(cfg *Config, loadedSections map[string]bool) []ValidationError {
 	if err := validate.Struct(cfg); err != nil {
 		var ve validator.ValidationErrors
@@ -443,8 +439,8 @@ func runStructValidation(cfg *Config, loadedSections map[string]bool) []Validati
 				continue
 			}
 
-			// LLM.PerformanceTier oneof: no existing custom check; emit
-			// ConfigTypeError wrapped in ValidationError for AC-05 compliance.
+			// Any oneof field without a custom check: emit ConfigTypeError
+			// wrapped in ValidationError for AC-05 compliance.
 			errs = append(errs, ValidationError{
 				Field:   fieldNamespace(ns),
 				Message: fmt.Sprintf("must be one of valid values (validator tag: %s)", tag),
@@ -462,8 +458,6 @@ func runStructValidation(cfg *Config, loadedSections map[string]bool) []Validati
 // Falls back to the raw namespace when the mapping is unknown.
 func fieldNamespace(ns string) string {
 	switch ns {
-	case "Config.LLM.PerformanceTier":
-		return "llm.performance_tier"
 	case "Config.User.Name":
 		return "user.name"
 	case "Config.Quality.DevelopmentMode":

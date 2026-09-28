@@ -413,41 +413,33 @@ func TestValidateInitFlags_ValidProfile(t *testing.T) {
 	resetInitFlagsForProfile(t)
 }
 
-// TestValidateInitFlags_InvalidProfile (REQ-MPM-015) — an out-of-set value
-// errors, and the message names the closed set {high, medium, low}. Note "high"
-// is now the canonical top column and is therefore VALID.
+// TestValidateInitFlags_InvalidProfile — --profile is retired
+// (SPEC-AGENT-MODEL-INHERIT-001 D10): a value outside the former closed set is
+// accepted like any other, and only a deprecation warning is printed.
 func TestValidateInitFlags_InvalidProfile(t *testing.T) {
 	for _, p := range []string{"bogus", "subscription", "xhigh"} {
 		t.Run(p, func(t *testing.T) {
 			resetInitFlagsForProfile(t)
+			var errBuf bytes.Buffer
+			initCmd.SetErr(&errBuf)
+			t.Cleanup(func() { initCmd.SetErr(nil) })
 			if err := initCmd.Flags().Set("profile", p); err != nil {
 				t.Fatal(err)
 			}
-			err := validateInitFlags(initCmd, []string{})
-			if err == nil {
-				t.Fatalf("validateInitFlags with profile=%q should error, got nil", p)
+			if err := validateInitFlags(initCmd, []string{}); err != nil {
+				t.Fatalf("validateInitFlags with profile=%q must succeed (flag retired), got: %v", p, err)
 			}
-			msg := err.Error()
-			if !strings.Contains(msg, "invalid --profile") {
-				t.Errorf("error should mention 'invalid --profile', got: %v", err)
-			}
-			if !strings.Contains(msg, "high, medium, low") {
-				t.Errorf("error should name the canonical closed set, got: %v", err)
-			}
-			if strings.Contains(msg, "max, medium, low") {
-				t.Errorf("error must not name the superseded top-column set, got: %v", err)
+			if !strings.Contains(errBuf.String(), "--profile is deprecated") || !strings.Contains(errBuf.String(), "moai profile setup") {
+				t.Errorf("expected the --profile deprecation warning, got: %q", errBuf.String())
 			}
 		})
 	}
 	resetInitFlagsForProfile(t)
 }
 
-// TestValidateInitFlags_ModelPolicyVocabulary — --model-policy and --profile are
-// the same axis, so they MUST share one closed set. "high" is the canonical top
-// column and must be accepted; the superseded "max" stays valid as a read-time
-// alias; out-of-set values error with a message naming the canonical set. This
-// pins the regression where --model-policy kept the pre-rename {max, medium,
-// low} set after --profile had already moved to {high, medium, low}.
+// TestValidateInitFlags_ModelPolicyVocabulary — --model-policy is retired
+// (SPEC-AGENT-MODEL-INHERIT-001 D13): every value, in or out of the former
+// {high, medium, low, max} set, is accepted and only warned about.
 func TestValidateInitFlags_ModelPolicyVocabulary(t *testing.T) {
 	valid := []string{"high", "medium", "low", "max"}
 	for _, v := range valid {
@@ -462,31 +454,32 @@ func TestValidateInitFlags_ModelPolicyVocabulary(t *testing.T) {
 		})
 	}
 
+	// Formerly-invalid values are accepted too: the flag is retired and only
+	// warns (SPEC-AGENT-MODEL-INHERIT-001 D13).
 	for _, v := range []string{"bogus", "xhigh", "subscription"} {
-		t.Run("invalid/"+v, func(t *testing.T) {
+		t.Run("former-invalid/"+v, func(t *testing.T) {
 			resetInitFlagsForProfile(t)
+			var errBuf bytes.Buffer
+			initCmd.SetErr(&errBuf)
+			t.Cleanup(func() { initCmd.SetErr(nil) })
 			if err := initCmd.Flags().Set("model-policy", v); err != nil {
 				t.Fatal(err)
 			}
-			err := validateInitFlags(initCmd, []string{})
-			if err == nil {
-				t.Fatalf("--model-policy=%q should error, got nil", v)
+			if err := validateInitFlags(initCmd, []string{}); err != nil {
+				t.Fatalf("--model-policy=%q must be accepted (flag retired), got: %v", v, err)
 			}
-			msg := err.Error()
-			if !strings.Contains(msg, "invalid --model-policy") {
-				t.Errorf("error should mention 'invalid --model-policy', got: %v", err)
-			}
-			if !strings.Contains(msg, "high, medium, low") {
-				t.Errorf("error should name the canonical closed set, got: %v", err)
+			if !strings.Contains(errBuf.String(), "--model-policy is deprecated") {
+				t.Errorf("expected the --model-policy deprecation warning, got: %q", errBuf.String())
 			}
 		})
 	}
 	resetInitFlagsForProfile(t)
 }
 
-// TestInitCmd_ProfilePersistence (SPEC-MODEL-PROFILE-MATRIX-001 REQ-MPM-016,
-// AC-MPM-010) — `moai init --profile max` persists profile: max to the deployed
-// llm.yaml and writes no plan_type key (REQ-MPM-017/032, AC-MPM-011).
+// TestInitCmd_ProfilePersistence — `moai init --profile max` no longer writes
+// the profile (the flag is retired, SPEC-AGENT-MODEL-INHERIT-001 D10): the
+// deployed llm.yaml keeps the template's own profile line, and no plan_type
+// key is written (REQ-MPM-017/032, AC-MPM-011).
 func TestInitCmd_ProfilePersistence(t *testing.T) {
 	root := t.TempDir()
 
@@ -517,8 +510,8 @@ func TestInitCmd_ProfilePersistence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read deployed llm.yaml: %v", err)
 	}
-	if !strings.Contains(string(content), "profile: high") {
-		t.Errorf("deployed llm.yaml should contain 'profile: high', got:\n%s", content)
+	if strings.Contains(string(content), "profile: high") {
+		t.Errorf("the retired --profile flag was written to llm.yaml:\n%s", content)
 	}
 	if strings.Contains(string(content), "plan_type") {
 		t.Errorf("deployed llm.yaml must NOT contain a plan_type key (retired), got:\n%s", content)

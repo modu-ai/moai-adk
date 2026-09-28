@@ -27,9 +27,10 @@ var removedQuietInit = []string{
 	"audit_gate_glm", "codex_audit_enabled", "mcp_provision",
 }
 
-// sharedInitRemovedIDs are the three DefaultQuestions entries the quiet init
+// sharedInitRemovedIDs are the DefaultQuestions entries the quiet init
 // wizard no longer asks but the reconfigure path still does (spec.md §2.3 D1).
-var sharedInitRemovedIDs = []string{"project_name", "model_policy", "report_format"}
+// model_policy left both sets when the agent model-policy question was retired.
+var sharedInitRemovedIDs = []string{"project_name", "report_format"}
 
 // TestInitQuestions_QuietSet pins AC-IQW-001: the init set is exactly the kept
 // questions, in order, each keeping its current group label.
@@ -118,7 +119,7 @@ func TestRemovedQuestionsHaveNoOrphanTranslations(t *testing.T) {
 }
 
 // TestSharedQuestionsRetainedForReconfigure pins the D1 split (AC-IQW-002):
-// project_name, model_policy, and report_format leave the init set but stay in
+// project_name and report_format leave the init set but stay in
 // ReconfigureQuestions with their translations, and their answers still
 // capture on the result.
 func TestSharedQuestionsRetainedForReconfigure(t *testing.T) {
@@ -139,9 +140,8 @@ func TestSharedQuestionsRetainedForReconfigure(t *testing.T) {
 	locale := ""
 	r := &WizardResult{}
 	saveAnswer("project_name", "reconf-proj", r, &locale)
-	saveAnswer("model_policy", "low", r, &locale)
 	saveAnswer("report_format", "md", r, &locale)
-	if r.ProjectName != "reconf-proj" || r.ModelPolicy != "low" || r.ReportFormat != "md" {
+	if r.ProjectName != "reconf-proj" || r.ReportFormat != "md" {
 		t.Errorf("shared capture branches must survive for reconfigure; result = %+v", *r)
 	}
 }

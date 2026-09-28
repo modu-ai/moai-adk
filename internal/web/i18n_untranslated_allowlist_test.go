@@ -256,14 +256,8 @@ type i18nExemptPrefix struct {
 }
 
 // i18nEnExemptPrefixes is the explicit, enumerated registry of key prefixes
-// that may appear in non-en locales without an en counterpart. Its sole initial
-// member is agentdesc. (REQ-I18NGOV-020, C1): English reads the agent .md
-// frontmatter description as the server-rendered baseline, and applyI18n guards
-// its assignment on a non-empty string so an absent key leaves that baseline
-// intact. Adding a prefix is a reviewed act, not a silent one.
-var i18nEnExemptPrefixes = []i18nExemptPrefix{
-	{
-		Prefix:        "agentdesc.",
-		Justification: "English reads the agent .md frontmatter description (the SSOT) as the server-rendered baseline; applyI18n leaves the node untouched when the key is absent, so an en copy would duplicate the .md text into a second surface that silently goes stale.",
-	},
-}
+// that may appear in non-en locales without an en counterpart. It is empty: its
+// only member, agentdesc., left with the agent-settings rows that consumed it
+// (SPEC-AGENT-MODEL-INHERIT-001). Adding a prefix is a reviewed act, not a
+// silent one, and each member must carry a justification.
+var i18nEnExemptPrefixes = []i18nExemptPrefix{}

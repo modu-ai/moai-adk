@@ -401,6 +401,13 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		// EVERY turn carries the policy explicitly — see codexSandboxPolicy.
 		"sandboxPolicy": codexSandboxPolicy(writeGranted),
 	}
+	// An explicit caller model rides the turn params so the same resolution
+	// feeds thread/start and result.Model (resolveCodexModelEffort reads
+	// params["model"]; with no explicit model nothing is sent and codex
+	// applies its own default — the session-inherit design).
+	if explicit, ok := req.GetArguments()["model"].(string); ok && strings.TrimSpace(explicit) != "" {
+		turnParams["model"] = strings.TrimSpace(explicit)
+	}
 	// The requested model is resolved exactly as openCodexSessionOn resolves
 	// the thread/start `model` parameter, so the result names what was sent.
 	result.Model = resolveCodexModelEffort(turnParams).Model

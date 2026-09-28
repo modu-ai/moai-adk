@@ -235,28 +235,23 @@ func TestEmitAllMCPServerMapping(t *testing.T) {
 	}
 }
 
-// TestEmitAllEffortMappingPerManifest is AC-008: each model_reasoning_effort
-// equals the manifest-mapped value for its source effort.
-func TestEmitAllEffortMappingPerManifest(t *testing.T) {
+// TestEmitAllOmitsReasoningEffort is AC-008 as inverted by
+// SPEC-AGENT-MODEL-INHERIT-001 D2: the shipped manifest does not emit
+// model_reasoning_effort, so no role file pins one — even when a source .md
+// still declares an effort — and every role inherits the parent's effort.
+func TestEmitAllOmitsReasoningEffort(t *testing.T) {
 	man := mustManifest(t)
 	pub, err := agentemit.EmitAll(fullFixtureSet(), "agents", man)
 	if err != nil {
 		t.Fatalf("EmitAll: %v", err)
 	}
-	want := map[string]string{
-		".codex/agents/moai/mdcarrier.toml":  "high",
-		".codex/agents/moai/plainagent.toml": "medium",
-		".codex/agents/moai/twoskills.toml":  "low",
+	if len(pub.CodexTOML) == 0 {
+		t.Fatal("no role file emitted — the check would be vacuous")
 	}
-	for path, wantEffort := range want {
+	for path := range pub.CodexTOML {
 		doc := mustDecoded(t, pub, path)
-		got, ok := doc["model_reasoning_effort"].(string)
-		if !ok {
-			t.Errorf("%s: model_reasoning_effort missing/not a string", path)
-			continue
-		}
-		if got != wantEffort {
-			t.Errorf("%s: model_reasoning_effort = %q, want %q", path, got, wantEffort)
+		if v, has := doc["model_reasoning_effort"]; has {
+			t.Errorf("%s: model_reasoning_effort = %v, want the key omitted", path, v)
 		}
 	}
 }
@@ -403,11 +398,6 @@ func TestEmitAllFailClosedNegatives(t *testing.T) {
 			label: "empty tool token from trailing comma",
 			fset:  base("emptytok", "Read, Bash,", "low", "b\n"),
 			want1: "emptytok.md", want2: "empty",
-		},
-		{
-			label: "unmapped effort value (AC-006)",
-			fset:  base("badeffort", "Read, Bash", "ultra", "b\n"),
-			want1: "badeffort.md", want2: "ultra",
 		},
 		{
 			label: "unrepresentable body (TOML literal delimiter)",

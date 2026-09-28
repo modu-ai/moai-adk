@@ -319,7 +319,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithString("mode", mcp.Enum(codexModeNative, codexModeAdversarial), mcp.Description("Audit mode: 'native' (codex review/start) or 'adversarial' (codex turn/start + red-team prompt). Defaults to native.")),
 		mcp.WithString("target", mcp.Enum(codexTargetUncommitted, codexTargetBaseBranch), mcp.Description("What codex reviews: 'uncommittedChanges' or 'baseBranch'. For 'baseBranch' the branch name is resolved SERVER-SIDE and cannot be supplied here — it is read from the reviewed tree, the remote default head first and then 'main', the same chain the GLM backend uses so both review the same change. A tree where neither resolves returns 'inconclusive' naming that cause rather than reviewing something else.")),
 		mcp.WithString("focus", mcp.Description("Adversarial-only focus area (e.g. 'concurrency', 'auth').")),
-		mcp.WithString("model", mcp.Description("Optional model override (resolved via the model/effort SSOT in M3).")),
+		mcp.WithString("model", mcp.Description("Optional model override; omitted ⇒ the workflow.audit.codex pin, else codex's own configured default.")),
 		projectRootOption(),
 		mcp.WithOutputSchema[ReviewOutput](),
 		// Catalog-WRITE tool (card t904): every call files an audit receipt
@@ -447,7 +447,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithDescription("Delegate a task (arbitrary prompt) to GLM (z.ai). Returns the completed text output when background is false, or a job id (observable via glm_job_status / glm_job_result, stoppable via glm_job_cancel) when background is true. Background jobs live inside this server process and do not survive its exit. GLM is OPTIONAL; a missing key or an unavailable z.ai yields a structured fail-open result, never a tool error."),
 		mcp.WithString("prompt", mcp.Required(), mcp.Description("The task to give GLM.")),
 		mcp.WithBoolean("background", mcp.Description("Run the task in the background and return a job id immediately. Background jobs live inside this server process and do not survive its exit.")),
-		mcp.WithString("model", mcp.Description("Optional GLM model override; omitted ⇒ resolved via the model/effort SSOT (ResolveAgentModelEffort).")),
+		mcp.WithString("model", mcp.Description("Optional GLM model override; omitted ⇒ the backend default GLM model (glm_audit reads the workflow.audit.glm pin first).")),
 		mcp.WithString("system", mcp.Description("Optional system prompt for the task.")),
 		mcp.WithInteger("max_tokens", mcp.Description("Optional response token bound; defaults to the server-side glm_task ceiling.")),
 		mcp.WithReadOnlyHintAnnotation(false),
@@ -487,14 +487,14 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	// endpoint directly — NOT the z.ai MCP server, NOT any gateway. Output
 	// adopts the shared review-output.schema.json (§G.4). Fail-open on a
 	// missing/unauthenticated/erroring/malformed GLM (VerdictInconclusive →
-	// claude fallback, REQ-MCP-012). Model/effort resolved via the SSOT
-	// (ResolveAgentModelEffort, REQ-MCP-013) when no explicit model is given.
+	// claude fallback, REQ-MCP-012). With no explicit model the
+	// workflow.audit.glm pin applies, else the backend default GLM model.
 	add("glm_audit", mcp.NewTool(
 		"glm_audit",
 		mcp.WithDescription("Run a GLM (z.ai) code review. Calls the z.ai Anthropic-compatible endpoint directly and returns a review-output schema (verdict/summary/findings/next_steps). GLM is OPTIONAL; a missing/unauthenticated/erroring GLM yields verdict 'inconclusive' (fail-open → fall back to the active auditor)."),
 		mcp.WithString("target", mcp.Enum(codexTargetUncommitted, codexTargetBaseBranch), mcp.Description("What GLM reviews: 'uncommittedChanges' (default) or 'baseBranch'. The named change is collected as a diff and sent in the request — GLM has no filesystem, so a target that yields no diff returns 'inconclusive' rather than a verdict.")),
 		mcp.WithString("focus", mcp.Description("Optional focus area (e.g. 'concurrency', 'auth', 'secret handling').")),
-		mcp.WithString("model", mcp.Description("Optional GLM model override; omitted ⇒ resolved via the model/effort SSOT (ResolveAgentModelEffort).")),
+		mcp.WithString("model", mcp.Description("Optional GLM model override; omitted ⇒ the backend default GLM model (glm_audit reads the workflow.audit.glm pin first).")),
 		projectRootOption(),
 		mcp.WithOutputSchema[ReviewOutput](),
 		// SPEC-CODEX-WIRING-001 (REQ-CW-011 / spec §A.4): catalog-READ tool —

@@ -736,17 +736,12 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 	// Agent/Task spawn model observation. Placed LAST — after every existing
 	// deny path — so inserting it cannot displace an established decision
 	// (the Bash dangerous-pattern deny, the branch guard, the file-access
-	// deny all still win). The observation and advisory layers always run;
-	// the deny below is opt-in via Workflow.AgentModelGuard.Enabled and fires
-	// only on the mismatch verdict. Since v2.1.63 Claude Code renamed
-	// Task → Agent; accept both.
+	// deny all still win). It observes and advises only; no spawn is denied on
+	// the basis of its model (SPEC-AGENT-MODEL-INHERIT-001). Since v2.1.63
+	// Claude Code renamed Task → Agent; accept both.
 	var agentAdvisory string
 	if input.ToolName == "Agent" || input.ToolName == "Task" {
-		decision, reason, advisory := h.checkAgentModel(input)
-		if decision == DecisionDeny {
-			return NewDenyOutput(reason), nil
-		}
-		agentAdvisory = advisory
+		agentAdvisory = h.checkAgentModel(input)
 
 		// Audit-receipt consumer (SPEC-CODEX-AUDIT-GATE-AXES-001 REQ-CAG-014).
 		// Sibling of the model guard: a phase-entry spawn is denied while an

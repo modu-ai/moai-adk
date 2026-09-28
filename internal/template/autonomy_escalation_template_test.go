@@ -50,14 +50,15 @@ func TestTemplateAutonomyEscalationNewAPIDetector(t *testing.T) {
 		t.Errorf("template resolves new_api_detector=%q warnings=%v", s.NewAPIDetector, s.Warnings)
 	}
 
-	// Neutrality of the autonomy block (comments included).
+	// Neutrality of the autonomy block (comments included). The autonomy block
+	// is the LAST block of the file since workflow_agents/model_routing were
+	// removed (SPEC-AGENT-MODEL-INHERIT-001 M5), so the block runs to EOF.
 	text := string(raw)
 	start := strings.Index(text, "    autonomy:")
-	end := strings.Index(text[start:], "    workflow_agents:")
-	if start < 0 || end < 0 {
+	if start < 0 {
 		t.Fatal("autonomy block not found")
 	}
-	block := text[start : start+end]
+	block := text[start:]
 	for _, re := range []*regexp.Regexp{
 		regexp.MustCompile(`\bt\d{2,5}\b`),            // card id
 		regexp.MustCompile(`SPEC-[A-Z0-9-]+`),         // SPEC id

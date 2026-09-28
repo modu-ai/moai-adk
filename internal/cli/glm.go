@@ -796,15 +796,6 @@ func llmSectionSemanticallyEqual(a, b config.LLMConfig) bool {
 // equivalence: "key absent" and "key present but empty" carry no different
 // intent for these mirrors.
 func normalizeLLMSectionMaps(c *config.LLMConfig) {
-	if c.Profiles == nil {
-		c.Profiles = map[string]map[string]config.ModelEffort{}
-	}
-	if c.HarnessAgents == nil {
-		c.HarnessAgents = map[string]map[string]config.ModelEffort{}
-	}
-	if c.AgentOverrides == nil {
-		c.AgentOverrides = map[string]config.ModelEffort{}
-	}
 	if c.GLM.ContextWindows == nil {
 		c.GLM.ContextWindows = map[string]int{}
 	}

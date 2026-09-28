@@ -20,48 +20,19 @@ func Registry() []Site {
 	return []Site{
 		// ── The canonical source ───────────────────────────────────────────
 		{
-			ID:         "profile-matrix-order",
-			Path:       "internal/template/profile_matrix.go",
+			ID:         "retained-agent-roster",
+			Path:       "internal/template/retained_agents.go",
 			Axis:       AxisRetainedRoster,
 			Claims:     ClaimMembership,
-			BlockStart: "var profileMatrixAgentOrder = []string{",
+			BlockStart: "var retainedAgentRoster = []string{",
 			BlockEnd:   "}",
-			Note: "The canonical roster, exposed as template.ProfileMatrixAgents(). " +
-				"Asserted against the accessor rather than assumed equal to it, so a " +
-				"defensive-copy or ordering change in the accessor cannot silently " +
-				"decouple the two.",
+			Note: "The canonical roster, exposed as template.RetainedAgents(). It " +
+				"carries names only — no model or effort — so it outlives the " +
+				"per-agent profile matrix. Asserted against the accessor rather than " +
+				"assumed equal to it, so a defensive-copy or ordering change in the " +
+				"accessor cannot silently decouple the two.",
 		},
-		{
-			ID:         "profile-matrix-group-membership",
-			Path:       "internal/template/profile_matrix.go",
-			Axis:       AxisRetainedRoster,
-			Claims:     ClaimMembership,
-			BlockStart: "var agentGroupMembership = map[string]string{",
-			BlockEnd:   "}",
-			Note: "The agent→group SSOT in the same file as the canonical order. It is a " +
-				"SECOND roster in one file, which is why a site key is (path, block) " +
-				"rather than path alone.",
-		},
-
 		// ── Go rosters that have drifted ───────────────────────────────────
-		{
-			ID:         "config-retained-agent-names",
-			Path:       "internal/config/profile.go",
-			Axis:       AxisRetainedRoster,
-			Claims:     ClaimMembership,
-			BlockStart: "var retainedAgentNames = map[string]bool{",
-			BlockEnd:   "}",
-			// KnownStale deleted: the marker declared manager-lead absent and named
-			// card t916 (commit 1814bf3e9) as the repair, noting that commit was not
-			// yet an ancestor. It is now, and manager-lead is present in the map, so
-			// the declared gap no longer exists. The marker expired the way Staleness
-			// is designed to — it failed the guard with "delete the marker" rather
-			// than going quietly stale, which is what makes it a record and not a
-			// mute. The forward-only-propagation instance it recorded (mission-governor
-			// registered here by its own creation commit 5ec516165 while manager-lead,
-			// which arrived via the rename 310d75dd2, never was) is preserved in this
-			// package's doc comment, where it is the motivating measurement.
-		},
 		{
 			ID:         "delegationmap-retained-catalog",
 			Path:       "internal/harness/delegationmap/types.go",
@@ -88,57 +59,22 @@ func Registry() []Site {
 			// to prevent.
 		},
 		{
-			ID:     "profile-matrix-test-expectations",
-			Path:   "internal/template/profile_matrix_test.go",
+			ID:     "retained-agents-test-expectations",
+			Path:   "internal/template/retained_agents_test.go",
 			Axis:   AxisRetainedRoster,
 			Claims: ClaimMembership,
-			Note: "Whole-file block: the file is the canonical roster's own test and mentions " +
-				"agent names only inside its expectation maps.",
-			KnownStale: &Staleness{
-				Reason: "The canonical roster's own test carries mission-governor in no expectation " +
-					"map, so the cell added for it is unexercised by these tables.",
-				FollowUp:     "unassigned — reported by card t922, repair not in its scope",
-				MissingNames: []string{"mission-governor"},
-			},
+			Note: "Whole-file block: the file is the canonical roster's own test and names the " +
+				"agents only inside its expectation literal. Successor of the removed " +
+				"profile-matrix-test-expectations site (SPEC-AGENT-MODEL-INHERIT-001 M5).",
 		},
 
 		// ── Definition-file axis (12; the built-in Explore has no file) ────
-		{
-			ID:     "v4manifest-agent-tiers",
-			Path:   "internal/harness/v4manifest/schema.go",
-			Axis:   AxisDefinitionFiles,
-			Claims: ClaimMembership,
-			Note: "Tier assignments exist per agent DEFINITION; Explore has no definition file " +
-				"and so no tier. Registering this on AxisRetainedRoster would report a " +
-				"correct file as broken.",
-		},
-		{
-			ID:     "v4manifest-tier-test",
-			Path:   "internal/harness/v4manifest/tier_test.go",
-			Axis:   AxisDefinitionFiles,
-			Claims: ClaimMembership,
-			Note:   "The expectation table pinning the tier map above; same axis for the same reason.",
-		},
-		{
-			ID:     "agentemit-golden",
-			Path:   "internal/template/agentemit/golden_test.go",
-			Axis:   AxisDefinitionFiles,
-			Claims: ClaimMembership,
-			Note:   "The emitter operates on definition files, so its golden set is the file population.",
-		},
 		{
 			ID:     "template-catalog",
 			Path:   "internal/template/catalog.yaml",
 			Axis:   AxisDefinitionFiles,
 			Claims: ClaimMembership,
 			Note:   "An inventory of templates/.claude/agents/moai/*.md — the file population by construction.",
-		},
-		{
-			ID:     "web-i18n-agent-descriptions",
-			Path:   "internal/web/assets/i18n.js",
-			Axis:   AxisDefinitionFiles,
-			Claims: ClaimMembership,
-			Note:   "One agentdesc.* key per definition file, in four locales.",
 		},
 
 		// ── Retained-roster sites that are currently consistent ────────────
@@ -208,20 +144,6 @@ func Registry() []Site {
 			CountPattern: `The (\d+) MoAI-custom retained agents`,
 		},
 		{
-			ID:     "shipped-key-inventory",
-			Path:   "internal/config/testdata/shipped_key_inventory.yaml",
-			Axis:   AxisRetainedRoster,
-			Claims: ClaimMembership,
-			Note:   "Derived llm.profiles.* key inventory — one key pair per matrix row, so it tracks the full retained roster.",
-		},
-		{
-			ID:     "template-llm-yaml",
-			Path:   "internal/template/templates/.moai/config/sections/llm.yaml",
-			Axis:   AxisRetainedRoster,
-			Claims: ClaimMembership,
-			Note:   "The shipped per-agent profile cells.",
-		},
-		{
 			ID:           "docs-truth-catalog",
 			Path:         ".moai/project/codemaps/docs-truth.md",
 			Axis:         AxisRetainedRoster,
@@ -243,37 +165,6 @@ func Registry() []Site {
 		// and closing the general hole is card t930 (a numeral-adjacency layer,
 		// the shape internal/web/docs_tab_contract_test.go already implements
 		// for a different subject).
-		{
-			ID:               "product-md-profile-matrix-size",
-			SweepUnreachable: "count-only claim; the sentence names one agent in passing, far below SweepThreshold",
-			Path:             ".moai/project/product.md",
-			Axis:             AxisRetainedRoster,
-			Claims:           ClaimCount,
-			CountPattern:     `(\d+) retained agents x 3 model tiers`,
-			Note: "Count only: the sentence sizes the profile matrix and names one agent in " +
-				"passing, so there is no membership to assert. Invisible to the sweep.",
-			KnownStale: &Staleness{
-				Reason:        "Cites 11 where the retained roster carries 13; the 33-cell figure is sized off that stale count.",
-				FollowUp:      "card t930 (numeral-adjacency layer); the prose repair itself is unassigned",
-				DeclaredCount: 11,
-			},
-		},
-		{
-			ID:               "tech-md-profile-matrix-size",
-			SweepUnreachable: "count-only claim; this file names ZERO agents while sizing the roster",
-			Path:             ".moai/project/tech.md",
-			Axis:             AxisRetainedRoster,
-			Claims:           ClaimCount,
-			CountPattern:     `(\d+) retained agents x 3 model tiers`,
-			Note: "Count only, and the starker case: this file names ZERO agents while " +
-				"claiming a roster size. No enumeration threshold reaches it.",
-			KnownStale: &Staleness{
-				Reason:        "Cites 11 where the retained roster carries 13, identically to product.md.",
-				FollowUp:      "card t930 (numeral-adjacency layer); the prose repair itself is unassigned",
-				DeclaredCount: 11,
-			},
-		},
-
 		// ── Retained-roster sites with a measured stale claim ──────────────
 		{
 			ID:           "spec-workflow-catalog-sentence",
@@ -362,26 +253,6 @@ func Registry() []Site {
 			// KnownStale deleted with the row above: both copies were repaired
 			// together, which is what registering the mirror separately was for.
 		},
-		{
-			ID:     "web-agentfm-display-rank",
-			Path:   "internal/web/agentfm.go",
-			Axis:   AxisSubsetByDesign,
-			Claims: 0,
-			Note: "agentGroupRank classifies 9 named agents into display buckets and routes " +
-				"everything else — Explore, harness specialists, and anything added later — " +
-				"into a documented trailing bucket. Asserting complete membership here would " +
-				"be wrong. OBSERVED, not adjudicated: manager-lead and mission-governor " +
-				"currently land in that trailing bucket, so two managers render outside the " +
-				"manager group; whether that is the intended degradation or a defect is the " +
-				"owning surface's call, not this guard's.",
-		},
-		{
-			ID:     "web-agentfm-display-rank-test",
-			Path:   "internal/web/agentfm_ordering_test.go",
-			Axis:   AxisSubsetByDesign,
-			Claims: 0,
-			Note:   "The expectation table for the subset above; same boundary, same reason.",
-		},
 
 		// ── Count-only sites reached by the NUMERAL layer (card t930) ──────
 		//
@@ -399,59 +270,9 @@ func Registry() []Site {
 		// twin. Deriving would cost a reviewer one row instead of two and would
 		// blind the guard to a repair landing on only one copy of a pair — the
 		// case recorded a few rows above, firing.
-		// The two rows below carried three declarations written against a
-		// sentence that t1127/t1131/t1140 replaced, and all three had to go
-		// together (card t1141). The document is the party that became CORRECT:
-		// it now reads "13 rows — 12 agents plus `Explore` — × 3 columns = 39
-		// cells", and 13 is what template.ProfileMatrixAgents() carries — the
-		// set CheckSite actually compares against (delegationmap's
-		// retainedCatalog and CLAUDE.md §4 agree, as cross-checks). The
-		// registry was the stale party.
-		//
-		// What each dropped declaration had asserted, and why it is now false:
-		//
-		//   KnownStale (DeclaredCount 11) — the recorded staleness is REPAIRED.
-		//   Leaving the marker is not the safe side: check.go fires on a marker
-		//   whose declared value no longer matches the site, so a resolved
-		//   staleness left behind reads as a fresh drift.
-		//
-		//   SweepUnreachable ("names no agents") — the file now mentions twelve
-		//   of the thirteen roster names, so the sweep reaches it and the
-		//   exemption asserts something measurably untrue.
-		//
-		// The names are NOT replaced by a membership assertion, which is what
-		// the sweep's own message suggests. The reason is a NAMING system, not
-		// an omission — the tier table's effort-baseline cell does partition the
-		// whole roster, but it writes six of the thirteen in shorthand
-		// (`design`, `lead`, `harness`, `e2e`, `docs`, `git`) beside seven
-		// canonical names. NamesIn bounds a name by non-identifier characters,
-		// and `-` is one of them, so `lead` never satisfies `manager-lead`.
-		// A membership claim keyed on canonical names would therefore report
-		// four agents that ARE in the table as absent, and silencing that would
-		// mean either four fabricated KnownStale gaps or expanding the
-		// document's shorthand to suit the test.
-		//
-		// NumeralUnreachable is added rather than widening the numeral layer:
-		// the new sentence counts "rows" and plain "agents", neither of which is
-		// in rosterNounRe's noun class, so the layer cannot reach this claim
-		// without a vocabulary change that would move every other file's breadth
-		// set too.
-		{
-			ID:                 "model-policy-profile-matrix-size",
-			NumeralUnreachable: "the count noun is `rows` (and `agents` unqualified), outside the numeral layer's noun class",
-			Path:               ".claude/rules/moai/development/model-policy.md",
-			Axis:               AxisRetainedRoster,
-			Claims:             ClaimCount,
-			CountPattern:       `\((\d+) rows — \d+ agents plus`,
-		},
-		{
-			ID:                 "model-policy-profile-matrix-size-mirror",
-			NumeralUnreachable: "same noun class miss; template mirror of the row above",
-			Path:               "internal/template/templates/.claude/rules/moai/development/model-policy.md",
-			Axis:               AxisRetainedRoster,
-			Claims:             ClaimCount,
-			CountPattern:       `\((\d+) rows — \d+ agents plus`,
-		},
+		// The two model-policy.md matrix-size rows (and their mirror) left
+		// with the per-agent profile matrix section they measured
+		// (SPEC-AGENT-MODEL-INHERIT-001 H5).
 		{
 			ID:               "foundation-core-skill-catalog-size",
 			SweepUnreachable: "count-only claim: a module-index sentence citing the catalog size",
@@ -831,14 +652,6 @@ func NumeralExemptions() []NumeralExempt {
 			ID:     "agentlint-section-marker",
 			Path:   "internal/cli/agentlint/agent_lint.go",
 			Reason: "MEASURED FALSE POSITIVE: the numeral is the section marker in a comment citing \"CLAUDE.md §4 retained-agent catalog\".",
-		},
-		{
-			ID:   "web-agentfm-subset-count",
-			Path: "internal/web/agentfm.go",
-			Reason: "\"The 9 named retained agents\" counts the SUBSET agentGroupRank names, not the retained " +
-				"roster — the subset-by-design boundary the web-agentfm-display-rank row already records. " +
-				"Registering it as a roster count would report a correct file as broken; this is also the " +
-				"one path the rejected any-row discharge rule would have freed (decision D2).",
 		},
 
 		// ── This package describing itself ─────────────────────────────────

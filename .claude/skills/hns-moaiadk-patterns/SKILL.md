@@ -86,7 +86,7 @@ CLI/Template ──→ quality ──→ workflow ──→ hook/CI
   ├─ manager-docs (sync)
   ├─ plan-auditor (audit)
   ├─ builder-harness (artifact_type=hook|command|plugin)
-  └─ Agent(general-purpose, model: opus, tools: ..., prompt: "...CI specialist...")
+  └─ Agent(general-purpose, tools: ..., prompt: "...CI specialist...")
 ```
 
 ## Template-First Build Cycle
