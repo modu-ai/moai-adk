@@ -60,6 +60,11 @@ const (
 	// REFUSED (REQ-RNC-003) — they survive only as detection values
 	// (kanban.IsLegacyFactoryRoleValue).
 	factoryLaneRoleToken = "lane"
+
+	// clearPolicyFlag is the lane clear-policy selection token (REQ-SD-020):
+	// `--clear-policy <value>` stamps the selected policy into the lane
+	// session's environment through config.EnvFactoryClearPolicy.
+	clearPolicyFlag = "--clear-policy"
 )
 
 // factoryFlagUsageError names every accepted -f shape. It is the error text
@@ -90,13 +95,14 @@ const factoryFlagUsageError = "-f/--factory takes no argument (the factory leade
 // lane label is an error — there is no second interpretation to silently
 // fall into, and hiding the typo would be worse than naming it.
 type factoryFlagParse struct {
-	Enabled    bool     // -f present (any shape)
-	Lanes      int      // always 0 post-N-removal; kept for the merge contract
-	LaneNumber int      // n of `-f lane-<n>`; 0 otherwise
-	LaneLabel  string   // the lane label exactly as typed (`lane-3`)
-	LaneRole   bool     // `-f lane`: join as the next free lane
-	RunID      string   // explicit --factory-run selector (MoAI-owned, pre--- only)
-	Rest       []string // args with -f and its consumed value removed
+	Enabled     bool     // -f present (any shape)
+	Lanes       int      // always 0 post-N-removal; kept for the merge contract
+	LaneNumber  int      // n of `-f lane-<n>`; 0 otherwise
+	LaneLabel   string   // the lane label exactly as typed (`lane-3`)
+	LaneRole    bool     // `-f lane`: join as the next free lane
+	RunID       string   // explicit --factory-run selector (MoAI-owned, pre--- only)
+	ClearPolicy string   // --clear-policy value; a lane-only selection (REQ-SD-020)
+	Rest        []string // args with -f and its consumed value removed
 }
 
 // parseFactoryFlag extracts --factory / -f and its optional value from args.
@@ -127,6 +133,27 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 			}
 			if strings.TrimSpace(p.RunID) == "" {
 				return p, fmt.Errorf("--factory-run requires a run id")
+			}
+			continue
+		}
+
+		if arg == clearPolicyFlag || strings.HasPrefix(arg, clearPolicyFlag+"=") {
+			var value string
+			if strings.HasPrefix(arg, clearPolicyFlag+"=") {
+				value = strings.TrimPrefix(arg, clearPolicyFlag+"=")
+			} else if i+1 < len(args) && args[i+1] != "--" {
+				i++
+				value = args[i]
+			} else {
+				return p, fmt.Errorf("%s requires a clear policy value (%s, %s, or %s)",
+					clearPolicyFlag, config.FactoryClearPolicyEach, config.FactoryClearPolicyWhenFull, config.FactoryClearPolicyRelaunch)
+			}
+			switch value {
+			case config.FactoryClearPolicyEach, config.FactoryClearPolicyWhenFull, config.FactoryClearPolicyRelaunch:
+				p.ClearPolicy = value
+			default:
+				return p, fmt.Errorf("%s takes %s, %s, or %s (got %q)",
+					clearPolicyFlag, config.FactoryClearPolicyEach, config.FactoryClearPolicyWhenFull, config.FactoryClearPolicyRelaunch, value)
 			}
 			continue
 		}
@@ -172,6 +199,20 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 			continue
 		}
 		return p, fmt.Errorf("%s, got %q", factoryFlagUsageError, value)
+	}
+
+	// The clear policy is a LANE selection (REQ-SD-020: a Claude-harness
+	// lane launch). Carrying it on a non-factory launch or on the leader
+	// shape has no defined meaning, so the parser refuses it rather than
+	// silently swallowing the flag — the same typo-honesty as the -f
+	// value refusal above.
+	if p.ClearPolicy != "" {
+		if !p.Enabled {
+			return p, fmt.Errorf("%s selects a factory lane's clear policy; it composes with -f lane or -f lane-<n> only", clearPolicyFlag)
+		}
+		if !p.LaneRole && p.LaneNumber == 0 {
+			return p, fmt.Errorf("%s selects a lane's clear policy; the factory leader takes none", clearPolicyFlag)
+		}
 	}
 
 	return p, nil
@@ -243,6 +284,7 @@ func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
 
 	entry.FactoryEnabled = true
 	entry.FactoryRun = fp.RunID
+	entry.ClearPolicy = fp.ClearPolicy
 	// The stripped args always become the launch args — for every -f shape,
 	// not only the lane form below. (The lane forms append their desugared
 	// --name on top of these.)
@@ -462,20 +504,30 @@ func enterFactoryLeaderMode(lanes int, leaderLabel string) func() {
 // `-f <N>` / `-k <N>` carry it explicitly, and the incremental `-f
 // lane-<n>` form carries 0 ("unknown"), which the lane notice degrades
 // from rather than fabricating a count.
-func enterFactoryLaneMode(label string, lanes int) func() {
+//
+// clearPolicy is the lane's --clear-policy selection (REQ-SD-020): the
+// value stamped into config.EnvFactoryClearPolicy for the SessionStart rule
+// and the `complete` output to read. "" (no selection) is stamped too — the
+// stamp always overwrites, so a policy inherited from an outer session can
+// never leak into a lane launched without one. Codex-harness lanes take no
+// policy and pass "" (REQ-SD-020).
+func enterFactoryLaneMode(label string, lanes int, clearPolicy string) func() {
 	restoreLabel := captureEnvState(config.EnvMoaiFactoryWorker)
 	restoreMarker := captureEnvState(config.EnvFactoryRole)
 	restoreLaneCount := captureEnvState(config.EnvMoaiFactoryWorkers)
+	restorePolicy := captureEnvState(config.EnvFactoryClearPolicy)
 	restoreTier := seedAutonomyTier()
 	restoreCap := seedLaneAgentCap()
 
 	_ = os.Setenv(config.EnvMoaiFactoryWorker, label)
 	_ = os.Setenv(config.EnvFactoryRole, config.FactoryRoleLane)
 	_ = os.Setenv(config.EnvMoaiFactoryWorkers, strconv.Itoa(lanes))
+	_ = os.Setenv(config.EnvFactoryClearPolicy, clearPolicy)
 
 	return func() {
 		restoreCap()
 		restoreTier()
+		restorePolicy()
 		restoreLaneCount()
 		restoreMarker()
 		restoreLabel()

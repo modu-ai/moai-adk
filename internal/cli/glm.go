@@ -265,8 +265,18 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			return claimErr
 		}
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
-		defer enterFactoryLaneMode(finalLabel, entry.FactoryLanes)()
+		defer enterFactoryLaneMode(finalLabel, entry.FactoryLanes, entry.ClearPolicy)()
 		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
+		// See cc.go: the relaunch policy is the supervising loop (design.md
+		// §6) — the launcher stays the parent across every card.
+		if entry.ClearPolicy == config.FactoryClearPolicyRelaunch {
+			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+			defer settingsCleanup()
+			if len(settingsFlag) > 0 {
+				filteredArgs = append(filteredArgs, settingsFlag...)
+			}
+			return runFactoryLaneRelaunch(cmd, finalLabel, filteredArgs)
+		}
 		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)

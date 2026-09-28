@@ -20,6 +20,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/session"
+	"github.com/modu-ai/moai-adk/internal/statusline"
 )
 
 // factoryCardNow is the clock the factory card commands read; tests replace it
@@ -771,7 +772,69 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	_, _ = fmt.Fprintf(out, "%s %s merge=%s branch=%s worktree=%s\n",
 		done.CardID, done.State, done.MergeSHA, branch, integTree)
 	_, _ = fmt.Fprintln(out, "  the integration window is still held by this session — run moai integration release next")
+	// REQ-SD-020: the clear policy the launch selected decides the line the
+	// lane follows now that this card is done.
+	factoryPrintClearPolicyLine(out, root)
 	return nil
+}
+
+// factoryClearPolicySelected reads the lane's clear policy from the carrier
+// constant. Absence — and any value that is not one of the three policies —
+// reads as the default clear-each (REQ-SD-020), matching the hook's
+// fail-open reading of its environment.
+func factoryClearPolicySelected() string {
+	switch p := os.Getenv(config.EnvFactoryClearPolicy); p {
+	case config.FactoryClearPolicyWhenFull, config.FactoryClearPolicyRelaunch:
+		return p
+	default:
+		return config.FactoryClearPolicyEach
+	}
+}
+
+// factoryContextAtHandoffThreshold reports whether the session's
+// context-usage record shows usage at or above the model-specific handoff
+// threshold (context-window-management rule): a large window
+// (>= config.HandoffLargeWindowCutoff) hands off at
+// config.HandoffSoftLargePct, a standard one at
+// config.HandoffSoftStandardPct. A session with no resolvable id, a refused
+// key, or a missing/unparseable record reads as BELOW threshold — the
+// conservative answer that keeps the lane working instead of clearing.
+func factoryContextAtHandoffThreshold(root string) bool {
+	sessionID := strings.TrimSpace(os.Getenv(config.EnvClaudeCodeSessionID))
+	if sessionID == "" {
+		return false
+	}
+	path := statusline.SessionTelemetryPath(filepath.Join(root, ".moai", "state"), sessionID)
+	if path == "" {
+		return false
+	}
+	rec, err := statusline.ReadSessionTelemetry(path)
+	if err != nil || rec == nil {
+		return false
+	}
+	threshold := float64(config.HandoffSoftStandardPct)
+	if rec.ContextWindowSize >= config.HandoffLargeWindowCutoff {
+		threshold = float64(config.HandoffSoftLargePct)
+	}
+	return rec.RawPct >= threshold
+}
+
+// factoryPrintClearPolicyLine prints the one line the lane follows after a
+// completion (REQ-SD-020): clear-each — the default, absence included —
+// asks the operator to /clear; clear-when-full asks only once the session's
+// context-usage record is at or above the handoff threshold and prints
+// nothing below it; relaunch asks the operator to end the session so the
+// supervising launcher starts the next card's session.
+func factoryPrintClearPolicyLine(out io.Writer, root string) {
+	policy := factoryClearPolicySelected()
+	if policy == config.FactoryClearPolicyRelaunch {
+		_, _ = fmt.Fprintln(out, "  clear policy relaunch: end this session; the supervising launcher starts the next card's session")
+		return
+	}
+	if policy == config.FactoryClearPolicyWhenFull && !factoryContextAtHandoffThreshold(root) {
+		return // below the handoff threshold: continue with the next card, no line
+	}
+	_, _ = fmt.Fprintf(out, "  clear policy %s: ask the operator to /clear, then take the next card on the fresh session\n", policy)
 }
 
 // factoryResolveIntegrationBranch mirrors acquire's branch resolution

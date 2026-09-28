@@ -345,6 +345,30 @@ const (
 	// internal/cli back without a cycle, and both carriers are unexported,
 	// which is why the pin lives inside the carrier packages.
 	FactoryRoleLane = "lane"
+
+	// EnvFactoryClearPolicy carries the clear policy a Claude-harness
+	// factory lane launch selected (SPEC-FACTORY-SELF-DISPATCH-001
+	// REQ-SD-020): the launcher stamps it into the lane session's
+	// environment and the `complete` output reads it to pick its
+	// end-of-card line. Codex-harness lanes take no policy and the name
+	// never enters the Codex MCP env_vars allowlist — the §D carve-out of
+	// the same SPEC names this one carrier so REQ-SD-022's frozen surfaces
+	// stay untouched. An absent value reads as FactoryClearPolicyEach.
+	EnvFactoryClearPolicy = "MOAI_FACTORY_CLEAR_POLICY"
+
+	// FactoryClearPolicyEach is the default clear policy: after each
+	// completion the lane asks the operator to /clear and continues on the
+	// fresh session.
+	FactoryClearPolicyEach = "clear-each"
+
+	// FactoryClearPolicyWhenFull asks for /clear only once the session's
+	// context-usage record reaches the model-specific handoff threshold;
+	// below it the lane continues with the next card in the same session.
+	FactoryClearPolicyWhenFull = "clear-when-full"
+
+	// FactoryClearPolicyRelaunch asks the operator to end the session; the
+	// supervising launcher starts a fresh session for the next card.
+	FactoryClearPolicyRelaunch = "relaunch"
 )
 
 // GLM inject/clear env-var names (set onto the process env when entering

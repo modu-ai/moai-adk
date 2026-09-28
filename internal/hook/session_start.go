@@ -528,6 +528,30 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
+	// Factory lane next-card rule (SPEC-FACTORY-SELF-DISPATCH-001
+	// REQ-SD-019). The bootstrap notice above is the launch announcement and
+	// stays startup-only; the rule is the session-cycle half: it fires on
+	// source startup under every clear policy and on clear — where it
+	// re-enters the fresh session and keeps the clear-each loop going. The
+	// rule is chosen by the backend variable (next-card for a Claude-harness
+	// lane, owned-card for a Codex one) and rendered in the session's
+	// conversation language; leader and non-factory sessions receive
+	// nothing. It rides additionalContext alone — the lane session's
+	// orchestrator is the reader that executes it.
+	clock.lap("factory_rule")
+	if rule := factoryLaneRuleForSource(input.Source, operatorLang(h.cfg)); rule != "" {
+		if out.HookSpecificOutput == nil {
+			out.HookSpecificOutput = &HookSpecificOutput{
+				HookEventName: string(EventSessionStart),
+			}
+		}
+		if out.HookSpecificOutput.AdditionalContext == "" {
+			out.HookSpecificOutput.AdditionalContext = rule
+		} else {
+			out.HookSpecificOutput.AdditionalContext += "\n\n" + rule
+		}
+	}
+
 	// Kanban Mode bootstrap announcement. The launcher cannot deliver this —
 	// it syscall.Exec's into claude, so its stdout is overwritten when the TUI
 	// takes the screen. Non-kanban sessions get "" and nothing is injected.

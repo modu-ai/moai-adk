@@ -517,6 +517,155 @@ Commit: this commit (SHA reported in the completion report; a commit cannot cite
   `.moai/worktrees/t1308/.moai/reports/t1308/verdict.md` (their owning trees).
 - Changed at 2026-09-29 (lane worker-70 session time), committed with this record in one commit.
 
+### M6 — sessionstart next-card rule and clear policies (2026-09-29)
+
+Scope: REQ-SD-019, -020. ACs: AC-SD-019, -020. Continuation at `3eeaabe5b` (clean).
+
+- **Blocker resolution (carrier decision)**: the Section A REQ-SD-022 pre-check found NO existing
+  constant carrying a clear-policy value (full `internal/config` enumeration: 42 `MOAI_*` names,
+  none policy-bearing; zero clear-policy code in production cli) and STOPPED with a structured
+  blocker report. The lead post-approved Option A; manager-spec amendment `3eeaabe5b` landed the
+  §D carve-out ("any new environment variable name except the lane clear-policy carrier named in
+  REQ-SD-020"), the REQ-SD-020 carrier sentence, and the design §6 constant naming
+  (`config.EnvFactoryClearPolicy`, `MOAI_FACTORY_CLEAR_POLICY`); `go test ./internal/spec -count=1`
+  → `ok 152.784s` (lead's run). The Codex MCP `env_vars` allowlist stays byte-identical — Codex
+  lanes take no policy and the name never enters it.
+- **Pre-flight (C)**: `git rev-parse --short HEAD` → `3eeaabe5b`; `git branch --show-current` →
+  `WT-factory-self-dispatch`; `git status --short` → empty; `go build ./...` exit 0;
+  `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `golangci-lint run --timeout=2m
+  ./internal/cli/... ./internal/hook/...` → `0 issues.` (baseline; CI version v2.1.6).
+- **RED (E8, verbatim, pre-GREEN tree = `3eeaabe5b`)** — both anchored tests failed to build with
+  the feature absent:
+  - hook: `internal/hook/session_start_factory_rule_test.go:25:10: undefined:
+    config.EnvFactoryClearPolicy` … `:69:21: undefined: config.EnvFactoryClearPolicy` …
+    `:70:13: undefined: factoryLaneRuleForSource` … `FAIL
+    github.com/modu-ai/moai-adk/internal/hook [build failed]`
+  - cli: `internal/cli/factory_m6_test.go:59:2: undefined: factoryPrintClearPolicyLine` …
+    `:90:19: undefined: config.EnvFactoryClearPolicy` … `FAIL
+    github.com/modu-ai/moai-adk/internal/cli [build failed]`
+- **GREEN (E1, verbatim)**:
+  - `go test ./internal/hook -run '^TestSD_AC019_NextCardRuleInjection$' -count=1 -v` → 10/10
+    `--- PASS` subtests (claude × 3 policies × startup × 4 locales; glm; source clear;
+    resume/compact none; gpt owned-card + negatives; gpt no-card none; leader none; keyless none;
+    legacy label none; unknown backend none), `PASS`, `ok
+    github.com/modu-ai/moai-adk/internal/hook 0.582s`.
+  - `go test ./internal/cli -run '^TestSD_AC020_ClearPolicies$' -count=1 -v` → 14/14 `--- PASS`
+    subtests (clear-each one line; absent = clear-each; when-full below/at/large-window/missing-
+    record/refused-key; relaunch end-session line; relaunch supervising loop end-to-end — two
+    cards, each child dir = its card worktree, env carries `MOAI_KANBAN_CARD` + the policy + the
+    lane marker/label + `--name <label>` argv; complete prints the policy line end-to-end through
+    the merge flow; relaunch without the claude binary refused; loop continues after a failed
+    child; non-lane / leader / invalid-value refusals), `PASS`, `ok
+    github.com/modu-ai/moai-adk/internal/cli 9.249s`.
+- **Final anchored regression**: env-scrubbed single compound
+  `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_FACTORY_ROLE MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS MOAI_KANBAN_BACKEND MOAI_KANBAN_CARD MOAI_FACTORY_CLEAR_POLICY && go test ./internal/cli -run '^TestSD_AC002|^TestSD_AC003|^TestSD_AC004|^TestSD_AC005|^TestSD_AC006|^TestSD_AC007|^TestSD_AC008|^TestSD_AC009|^TestSD_AC010|^TestSD_AC011|^TestSD_AC012|^TestSD_AC013|^TestSD_AC015|^TestSD_AC016|^TestSD_AC017|^TestSD_AC023|^TestSD_AC024|^TestSD_AC025|^TestSD_WorktreeSlugShape' -count=1 -timeout 15m`
+  → `ok github.com/modu-ai/moai-adk/internal/cli 51.775s` (slot lease
+  `moai slot acquire --resource internal-test-suite --max-duration 20m` held, released after);
+  hook anchor `go test ./internal/hook -run '^TestSD_AC017_WidenedRoleGateDenyAndAllow$|^TestContractSignGuard' -count=1`
+  → `ok 0.429s`.
+- **E2 builds** (final tree): `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...`
+  exit 0. The relaunch path adds no syscall use and no process replacement — the supervising loop
+  stays the parent (design §6), Windows via the existing child-process form.
+- **E5 lint**: `golangci-lint run --timeout=2m ./internal/cli/... ./internal/hook/...` →
+  `0 issues.` — no NEW vs baseline (CI version v2.1.6), re-run after the final test additions.
+- **E3 coverage** (new/changed M6 functions, `-coverprofile` on the AC selectors; profiles at
+  `.moai/state/verify/t1240-m6/{hook,cli}-cover.out`): `factoryLaneRuleForSource` 92.9% (hook);
+  `factoryClearPolicySelected` 100.0%, `factoryContextAtHandoffThreshold` 92.3%,
+  `factoryPrintClearPolicyLine` 100.0%, `runFactoryLaneRelaunch` 87.0% (uncovered: the
+  lease/worktree machinery error legs, whose machinery the M1-M3 ACs cover where it lives),
+  `launchFactoryLaneCardSession` 100.0%, `enterFactoryLaneMode` (extended signature) 100.0% — all
+  ≥ 85%.
+- **E4 boundary**: `grep -n 'AskUserQuestion'` over all ten touched production files
+  (envkeys/factory/kanban/cc/glm/codex_launcher/factory_card/factory_lane_relaunch +
+  session_start_factory{,_i18n}/session_start) → no matches (exit 1).
+- **REQ-SD-019 negative-content proof** (real handler path: `moai hook session-start` with a
+  startup payload, per-locale `MOAI_CONFIG_DIR`; captures at
+  `.moai/state/verify/t1240-m6/rule-{en,ko,ja,zh,gpt}.json`). The Codex-rule output, quoted
+  verbatim: "Factory lane owned-card rule: this session owns card t9 — the id recorded in
+  MOAI_KANBAN_CARD — and works in the current worktree. Carry that card to merge-ready: record
+  each stage with `moai factory stage` and finish with `moai factory complete`. Then end this
+  session; do not take or lease any other card." Mechanical check (`.moai/state/verify/t1240-m6/
+  gpt-negative-check.txt`): `factory next` absent, `factory_next` absent, `todo_add` absent,
+  `todo_list` absent, `factory_stage` absent, `factory_complete` absent, `factory_decide` absent;
+  `t9` present, `moai factory stage` present, `moai factory complete` present.
+- **REQ-SD-019 4-locale Claude-rule outputs** (quoted once per locale, verbatim from the
+  additionalContext captures):
+  - en: "Factory lane next-card rule: this session is a self-dispatch lane. Leave any kept
+    worktree as it is — never remove a card worktree. Take the next card from the parent checkout:
+    run `moai factory next` (MCP tool `factory_next`); lane queue promotion through `moai factory
+    next` is operator-authorized for the self-dispatch lane mode. Enter the card's worktree, carry
+    the card through plan, run, and sync, integrate it, leave its worktree kept, and record
+    completion with `moai factory complete` (MCP tool `factory_complete`). Then follow the clear
+    policy the completion output prints. Tools and their CLI equivalents: `todo_add` (`moai todo
+    add`), `todo_list` (`moai todo`), `factory_next` (`moai factory next`), `factory_stage`
+    (`moai factory stage`), `factory_complete` (`moai factory complete`), `factory_decide`
+    (`moai factory decide`)."
+  - ko: "팩토리 레인 다음 카드 규칙: 이 세션은 셀프 디스패치 레인입니다. kept 로 남은 워크트리는 그대로
+    둡니다 — 카드 워크트리를 절대 제거하지 않습니다. 부모 체크아웃에서 다음 카드를 가져옵니다. `moai
+    factory next`(MCP 도구 `factory_next`)를 실행하세요. 셀프 디스패치 레인 모드에서 `moai factory
+    next` 를 통한 레인 큐 승격은 운영자가 승인했습니다. 카드의 워크트리에 진입해 plan, run, sync 로
+    카드를 끝까지 수행하고, 통합한 뒤에도 워크트리는 kept 로 남기고, `moai factory complete`(MCP 도구
+    `factory_complete`)로 완료를 기록합니다. 그다음에는 완료 출력이 알려 주는 clear 정책을 따릅니다.
+    도구와 CLI 등가물: `todo_add`(`moai todo add`), `todo_list`(`moai todo`),
+    `factory_next`(`moai factory next`), `factory_stage`(`moai factory stage`),
+    `factory_complete`(`moai factory complete`), `factory_decide`(`moai factory decide`)."
+  - ja: "ファクトリーレーン次カード規則: このセッションはセルフディスパッチレーンです。 kept のワークツリーはそのまま残します
+    — カードのワークツリーを削除してはいけません。 親チェックアウトから次のカードを取得します。`moai factory
+    next`(MCP ツール `factory_next`)を実行してください。 セルフディスパッチレーンモードでは、`moai factory
+    next` によるレーンキューの昇格はオペレーターが承認済みです。 カードのワークツリーに入り、plan・run・sync
+    を通してカードを完遂し、統合したうえでワークツリーを kept のまま残し、 `moai factory complete`(MCP ツール
+    `factory_complete`)で完了を記録します。 その後は、完了出力が示す clear ポリシーに従います。 ツールと CLI
+    の対応: `todo_add`(`moai todo add`)、`todo_list`(`moai todo`)、`factory_next`(`moai factory
+    next`)、 `factory_stage`(`moai factory stage`)、`factory_complete`(`moai factory complete`)、
+    `factory_decide`(`moai factory decide`)。"
+  - zh: "工厂泳道下一张卡规则：本会话是自调度泳道。 保持 kept 状态的工作树原样保留 — 绝不删除卡片的工作树。
+    从父检出获取下一张卡：运行 `moai factory next`（MCP 工具 `factory_next`）。 在自调度泳道模式下，通过
+    `moai factory next` 进行的泳道队列提升已获运营者授权。 进入卡片的工作树，带着卡片走完 plan、run、sync，完成集成后工作树保持
+    kept， 并用 `moai factory complete`（MCP 工具 `factory_complete`）记录完成。 之后遵循完成输出给出的 clear
+    策略。 工具及其 CLI 等价物：`todo_add`（`moai todo add`）、`todo_list`（`moai
+    todo`）、`factory_next`（`moai factory next`）、 `factory_stage`（`moai factory
+    stage`）、`factory_complete`（`moai factory complete`）、`factory_decide`（`moai factory
+    decide`）。"
+  All six MCP tool names with their CLI equivalents appear in every locale; skill/verb/tool names
+  stay English inside every locale (REQ-SD-019 i18n).
+- **Design decisions**:
+  - **One carrier, one stamp site**: `config.EnvFactoryClearPolicy` (+ the three policy value
+    constants) joined `internal/config/envkeys.go` per the approved Option A; the stamp lives in
+    `enterFactoryLaneMode` (now `(label, lanes, clearPolicy)`) and ALWAYS overwrites — a policy
+    inherited from an outer session can never leak into a lane launched without one. Codex passes
+    `""`. Selection enters through `--clear-policy <clear-each|clear-when-full|relaunch>` parsed in
+    `parseFactoryFlag` (both `--flag v` and `--flag=v` forms, value validated against the three
+    constants); a non-factory launch or the leader shape carrying it is REFUSED with one line (the
+    parser's typo-honesty — silence would mask a mistake), and the token is stripped from the claude
+    argv. Absence reads as `clear-each` on every reader (`factoryClearPolicySelected` fail-open).
+  - **Rule vs bootstrap split**: the bootstrap notice stays startup-only; the rule is the
+    session-cycle half — `factoryLaneRuleForSource` fires on startup (the policy value is
+    deliberately never read there, which is what makes "under every clear policy" true by
+    construction) and on clear, re-entering the fresh session to keep the clear-each loop going.
+    Leader/legacy/keyless/unknown-backend/gpt-without-card all receive no rule. Locale =
+    `operatorLang(h.cfg)` (the session's conversation language, REQ-SD-019), not the bootstrap's
+    agent-facing English.
+  - **clear-when-full reads the authoritative record**:
+    `statusline.SessionTelemetryPath` + `ReadSessionTelemetry` on
+    `<root>/.moai/state/context-usage/<session-id>.json` (session id from
+    `config.EnvClaudeCodeSessionID`), `RawPct` compared with the model-specific handoff threshold
+    recomposed from `config.HandoffLargeWindowCutoff` / `HandoffSoftLargePct` /
+    `HandoffSoftStandardPct` (no literals, §14). Missing record, refused key, or unparseable record
+    reads as BELOW (the lane keeps working).
+  - **Relaunch loop** (`factory_lane_relaunch.go`): mirrors the M5 codex loop — parent-checkout
+    assert, `factoryNextLeaseOnce` + `factoryEnsureCardWorktree` in-process, then ONE interactive
+    child per card through the `factoryLaneCardLaunchFn` seam (`claude` with the lane argv the
+    branch built — session name + injected settings — cwd = the card worktree, inherited env +
+    `MOAI_KANBAN_CARD`). Stop condition: `next`'s no-card answer. A child that fails to start or
+    exits non-zero is reported to stderr and the loop continues. No `syscall` on this path.
+  - **Fixture hygiene (t1222/t1217)**: `MOAI_FACTORY_CLEAR_POLICY` joined `sdScrubLauncherEnv`
+    (factory_m4_test.go) and the env-scrub compound unset list; `TestSD_M6_ClearPolicyCarrierConstantOnly`
+    extends the M4 literal-scan pattern to the M6-touched files (the carrier name exists only as
+    the internal/config constant).
+- **E6 commit**: this section and the M6 change land in one commit
+  `feat(SPEC-FACTORY-SELF-DISPATCH-001): M6 sessionstart next-card rule and clear policies
+  (card t1240)`; push = none (the lead pushes develop in batch).
+
 ## §F Phase 4 Mode Selection
 
 - tier: L · scope: >10 production files across cli/hook/config/kanban/homestate/codexwiring + template rules · domains: 6 (Go CLI, hooks, MCP server, launchers, doctrine rules, env constants) · language mix: Go + Markdown · concurrency benefit: LOW (coding-heavy, sequential milestone chain with shared files)
