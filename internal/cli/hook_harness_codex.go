@@ -42,10 +42,9 @@ func harnessModeIsCodex(cmd *cobra.Command) (bool, error) {
 
 // unsetLaneEnvForCodexHook removes the eleven lane launch keys from this hook
 // process and returns the function that restores them. A hook running under
-// --harness codex is a Codex session's hook, never a Claude lane's, so it must
-// not register, bind, or rotate a factory peer in whatever lane environment
-// it inherited (SPEC-CODEX-FACTORY-RETIRE-001 REQ-CFR-022). The hook package
-// has no harness field; this boundary is where the harness is known.
+// --harness codex cannot bind an inherited Claude lane identity. Explicit
+// Codex factory launches carry backend=codex and bypass this scrub in the
+// dispatcher. The hook package has no harness field; this boundary knows it.
 func unsetLaneEnvForCodexHook() func() {
 	restores := make([]func(), 0, len(codexLaneLaunchEnvKeys))
 	for _, key := range codexLaneLaunchEnvKeys {
