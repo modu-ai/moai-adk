@@ -229,12 +229,33 @@ func TestStopChainBudgetedCutOffBeatsADeadlineEdgeMember(t *testing.T) {
 	c.budgetFor = func(int) time.Duration { return budget }
 	res := c.budgeted(context.Background(), 2,
 		func(context.Context) stopMemberOutcome {
-			time.Sleep(budget) // returns at the deadline, never before it
+			time.Sleep(budget)                                             // returns at the deadline, never before it
 			return stopMemberOutcome{Decision: codexadapter.DecisionAllow} // a real verdict
 		},
 		c.cutOffUnmeasured(2, "", ""))
 	if res.Decision != codexadapter.DecisionDeny || res.Class != reasonUnmeasured || !strings.Contains(res.Err, "budget") {
 		t.Fatalf("a member returning at its deadline took a real verdict: got %s/%q err %q, want the cut-off deny/unmeasured naming the budget", res.Decision, res.Class, res.Err)
+	}
+}
+
+// TestStopChainAdvisoryCutOffBeatsADeadlineEdgeMember pins the advisory half
+// of the deadline-authority rule (card t1293, sync-audit F2): an advisory
+// member whose result is sent at its budget records failed with the budget
+// Err, never its real OK status. The audit's removal mutant deleting only the
+// advisory gate survived the suite (86.7% vs 100%); this edge shape — same
+// sleep-exactly-the-budget trick as the budgeted leg — kills it.
+func TestStopChainAdvisoryCutOffBeatsADeadlineEdgeMember(t *testing.T) {
+	f := newStopFixture(t)
+	c := newCodexStopChain(f.root, stopInput("adv-edge-s", false))
+	const budget = 100 * time.Millisecond
+	c.budgetFor = func(int) time.Duration { return budget }
+	c.advisory[4] = func(context.Context) (string, error) {
+		time.Sleep(budget) // sends at the deadline, never before it
+		return "late but real", nil
+	}
+	o := c.advisoryMember(context.Background(), 4)
+	if o.Status != stopStatusFailed || !strings.Contains(o.Err, "budget") {
+		t.Fatalf("an advisory member sending at its deadline recorded %q err %q, want failed naming the budget", o.Status, o.Err)
 	}
 }
 
