@@ -562,7 +562,7 @@ primary 체크아웃을 가리키므로, 그 값을 썼다면 영수증은 카�
 ## M. MoAI 워크트리 생성·기존 트리 이전
 
 `moai worktree new <name>`은 `internal/cli/worktree/new.go`에서
-`internal/cli/session_worktree.go`의 L1 생성기로 내려가 프로젝트의
+세션 워크트리 L1 생성기로 내려가 프로젝트의
 `.moai/worktrees/<name>`을 만든다. Claude Code가 자체 생성한
 `.claude/worktrees/<name>`은 별도 위치로 남는다. `moai codex -w <name>`은
 `internal/cli/codex_launcher.go`에서 두 위치의 **기존** 트리를 조회한다.

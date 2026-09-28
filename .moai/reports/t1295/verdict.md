@@ -71,13 +71,22 @@ $ moai graph check --json --root /Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1
 
 최신 로컬 `develop` `948a59b6c`를 흡수한 뒤 같은 `graph check`에서 codemaps 계층은 `fresh`, 값 11, 문턱 40이었다(전체 exit 1: 새 워크트리의 `mx-index`·`edges` 부재).
 
+CI run `36370657516`의 Ubuntu 잡은 `TestCodemapsFoldPreservationGuard`와 `TestCodemapsFoldGuardFixtures`에서 실패했다. 로그가 지목한 단위는 `data-flow.md:565`의 `internal/cli/session.go`였다. 해당 경로를 생성기 설명으로 바꾼 뒤 재측정했다.
+
+```text
+$ go test ./internal/graph -run '^TestCodemapsFold(GuardFixtures|PreservationGuard)$' -count=1 -timeout 120s
+ok  \tgithub.com/modu-ai/moai-adk/internal/graph\t0.588s
+$ git diff --check
+(출력 없음, exit 0)
+```
+
 ## Baseline-attribution
 
 위 수치와 freshness는 이 워크트리의 `cee197917` 소스에서 이번 실행에 측정했다. 스탬프가 가리키는 커밋은 브랜치 전용 커밋이 아니라 현재 `develop`의 조상이다. 과거 문서의 상세 fan-in/fan-out 표는 해당 판의 기록이라고 명시했다.
 
 ## Gaps
 
-`mx-index`와 `edges`는 새 워크트리에 런타임 산출물이 없어 `absent`이며 전체 `graph check`는 exit 1이다. 이 카드에서는 두 계층을 생성하거나 신선하다고 주장하지 않는다. 이 보고서 작성 시점에는 새 병합 커밋의 CI 판정과 큐 완료 처리가 없다.
+`mx-index`와 `edges`는 새 워크트리에 런타임 산출물이 없어 `absent`이며 전체 `graph check`는 exit 1이다. 이 카드에서는 두 계층을 생성하거나 신선하다고 주장하지 않는다. fold guard 수정 커밋의 CI 재판정은 아직 없다.
 
 ## Residual-risk
 
