@@ -2,9 +2,9 @@
 id: SPEC-ROLE-NAMING-DOCS-001
 title: "Role naming — unify Kanban/Factory role vocabulary to leader · lane in the document layer"
 version: "0.4.0"
-status: in-progress
+status: completed
 created: 2026-09-26
-updated: 2026-09-27
+updated: 2026-09-29
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"

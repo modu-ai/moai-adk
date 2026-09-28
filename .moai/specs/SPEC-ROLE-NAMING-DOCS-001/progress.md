@@ -281,7 +281,17 @@ blockers: none
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_commit_sha: "pending-backfill-sync"
+sync_date: 2026-09-29
+sync_status: audit-ready
+close_summary: >-
+  Doc-only 3-phase close. M1-M7 swept leader/lane role vocabulary unification
+  across docs-site 4 locales, README x4, rules/agents/skills/output-styles
+  doctrine, and root instruction files; M7 verification batch passed (make
+  build 0, hugo 0 warnings, scoped go test ok - progress.md §E.2 M7).
+```
+
 
 ## §F Phase 4 Mode Selection
 
