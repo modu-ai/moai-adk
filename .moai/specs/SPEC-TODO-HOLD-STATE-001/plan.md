@@ -8,11 +8,14 @@ doc edits (M5) close. Priority labels only — no time estimates.
 ## §A Context
 
 The queue carries three states (`backlog_store.go:59-66`) and a CHECK constraint pinning them
-(`backlog_sqlite.go:118`). Holds live in prose today, so every machine selector — including the
-auto-done scan (`todo_autodone.go:283`, NEGATIVE filter) and, after t1240/t1294, the factory/Codex
-machine leasers — treats a held card as pickable. This SPEC adds a fourth state `hold` with
-operator-only verbs, rebuilds the `items` CHECK behind a `schema_version` bump, and converts every
-actionable selection predicate to positive state enumeration.
+(`backlog_sqlite.go:118`). Holds live in prose today, so every machine selector that admits by
+anything other than a strict `queued`/`picked` enumeration treats a held card as pickable — the
+pick gate refuses only `dropped` (`todo.go:920`, the live behavioral defect), and after t1240/t1294
+the factory/Codex machine leasers inherit the same shape. The auto-done scan is the contrast case:
+its filter (`todo_autodone.go:281-285`) already skips hold — behavior correct, form wrong. This
+SPEC adds a fourth state `hold` with operator-only verbs, rebuilds the `items` CHECK behind a
+`schema_version` bump, and converts every actionable selection predicate to positive state
+enumeration.
 
 ## §B Known facts (measured in this tree; full detail + sweep table: `.moai/reports/t1308/predicate-sweep.md`)
 
@@ -27,9 +30,13 @@ actionable selection predicate to positive state enumeration.
 4. **Premise correction (card falsified)**: "internal/kanban 이력상 ALTER TABLE 0건" is false —
    `ensureLandingColumn` (`backlog_sqlite.go:439-455`, t359, `3bcb0c33a`) is one guarded
    `ALTER TABLE ... ADD COLUMN`. Does not change the decision: ADD COLUMN cannot widen a CHECK.
-5. **Known predicate gaps in the CURRENT tree** (both fixed by M3, both RED-now today):
-   a held card is (i) PICKABLE via `next <n>` (`todo.go:920` refuses only `Dropped`) and (ii) an
-   AUTO-DONE candidate (`todo_autodone.go:283`, `!= Queued && != Picked`).
+5. **Known predicate findings in the CURRENT tree** (fixed by M2/M3; iter1 D1 corrected):
+   (i) BEHAVIORAL red-now — a held card is PICKABLE via `next <n>` (`todo.go:920` refuses only
+   `Dropped`; the gate admits hold and every future state). (ii) FORM-only — the auto-done scan
+   (`todo_autodone.go:281-285`) is written as a negative disjunction but already SKIPS hold (it
+   admits only `queued`/`picked`): behavior correct today, form wrong; M3 converts the form and
+   AC-THS-011(c) pins the behavior as a regression guard, green-at-M1 by design. (iii) FORM —
+   `todo.go:903`'s `State != Queued` negative filter, whose default swallows every future state.
 6. **Actor precedent**: drop/undrop define the operator-verb shape — queued-only admission with
    recovery guidance (`todo_drop.go:111-120`), state-is-authority reversal with untouched text
    (`todo_drop.go:141-148`), byte-identical-on-refusal via `Mutate`.
@@ -44,8 +51,12 @@ actionable selection predicate to positive state enumeration.
   sweep inventory absorbs it before any predicate edit.
 - **P2**: re-run the selection-predicate sweep at run-phase HEAD (dispatch S1-S13 list is a
   plan-time starting inventory, not the contract).
-- **P3**: confirm `.moai/reports/todo-logic-review-20260929.md` §P3 premise (prose holds remain
-  pick candidates) still holds on the live queue shape.
+- **P3**: confirm the todo-review P3 premise still holds on the live queue shape. The premise,
+  quoted inline: prose-prefixed holds (t1158 「[보류 — …]」) remain pick candidates; priority
+  Medium; "t1240 착지 전" favorable. (The review report `.moai/reports/todo-logic-review-20260929.md`
+  is **primary-checkout-local evidence, not committed to this tree** — it cannot be resolved from
+  a card worktree and is NOT a run-phase dependency.) Its verifiable in-tree form is §B.5(i): the
+  `todo.go:920` pick gate admits non-`dropped` cards, measured at HEAD `8a969dfc0`.
 
 ## §D Constraints
 
@@ -112,9 +123,10 @@ fail-silent.
 - **M2 (High) — verbs**: `todo hold` / `todo unhold` with drop-isomorphic refusal semantics;
   pick-refusal on held cards (`todo.go:920` gap); `--expect` flag parity with drop/undrop.
 - **M3 (High) — predicate sweep**: convert every actionable-surface predicate to positive
-  enumeration at run-phase HEAD (re-swept inventory); autodone candidate fix; machine-lease
-  queued-only pin (factory next, `-f` lane claim); drift guard test that fails when a new state
-  lands without the sweep re-run (mutation-testable).
+  enumeration at run-phase HEAD (re-swept inventory); autodone FORM conversion (behavior already
+  skips hold — AC-THS-011(c) stays green as the regression guard); machine-lease queued-only pin
+  (factory next, `-f` lane claim); drift guard test that fails when a new state lands without the
+  sweep re-run (mutation-testable).
 - **M4 (Medium) — display truthfulness**: `list` default + `--json` carry `hold`; statusline
   counts exclude held (pin by test); web console passthrough verified.
 - **M5 (Low) — docs**: `gtd.md` verb table + JSON example, `commands/moai/todo.md` stub, both

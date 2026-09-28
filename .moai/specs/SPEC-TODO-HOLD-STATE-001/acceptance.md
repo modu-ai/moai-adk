@@ -7,7 +7,14 @@
 >
 > **RED-now / green-path 규율.** 모든 AC 는 말미의 채택 셀 표에서 RED-now 판별(측정 트리 `8a969dfc0`
 > 기준)과 green 으로 뒤집는 마일스톤을 함께 적는다. 지금 실패하는 것이 무엇인지 명시되지 않은 AC 는
-> 기각된다 — 통과만 가능한 AC 는 드리프트를 못 잡는다.
+> 기각된다 — 통과만 가능한 AC 는 드리프트를 못 잡는다. 단, **회귀 가드로 선언된 행은 예외다**:
+> 기존 코드가 이미 요구 행동을 달성 중인 경우, 그 AC 는 M1 시점부터 GREEN 이어야 하며 green 의
+> 이유가 "올바른 이유" 임을 변이·양성 대조로 시험한다.
+>
+> **통합 기록 (plan-audit iter1 D2).** AC-THS-007→AC-THS-006, AC-THS-009→AC-THS-008,
+> AC-THS-014→AC-THS-011 (c) 로 흡수됐다. 해방된 번호(007, 009, 014)는 의도된 통합 공백이다 —
+> 저작 오류가 아니다. 전체 16/16. 흡수된 AC 의 Given-When-Then 본문은 아래 흡수처에 그대로
+> 보존돼 있다.
 
 ## AC-THS-001 — 네 상태 열거와 CHECK 구속
 
@@ -63,7 +70,7 @@ state·landing 전 필드 동일하게 존재한다, (c) `archived_items` M행�
 행이 하나도 읽히지 않으며, 파일이 쓰이지 않는다(수정 시각·바이트 동일성 단언). 반대 방향 양성 대조:
 같은 바이너리가 `"1"` 스탬프 데이터베이스는 정상 연다.
 
-## AC-THS-006 — hold 동사: queued → hold
+## AC-THS-006 — hold 동사: queued → hold, 및 비-queued 거절
 
 **Covers**: maps REQ-THS-006
 
@@ -73,16 +80,13 @@ state·landing 전 필드 동일하게 존재한다, (c) `archived_items` M행�
 한 줄이 id 와 텍스트 접두어를 운반한다. `--expect <prefix>` 불일치 시는 쓰기 없이 거절된다(drop 과
 같은 `Mutate` 계약).
 
-## AC-THS-007 — hold 거절: queued 가 아닌 카드
-
-**Covers**: maps REQ-THS-007
-
 **Given** picked·dropped·hold 상태의 카드가 각각 있을 때(표 테스트 3행)
 **When** 각각에 `moai todo hold <id>` 를 실행할 때
 **Then** 세 경우 모두 거절이고 오류 메시지가 카드의 현재 상태와 회복 동사(picked → unpick 먼저)를
-이름하며, 저장소 레코드가 실행 전 바이트와 동일하다.
+이름하며, 저장소 레코드가 실행 전 바이트와 동일하다. (구 AC-THS-007 의 본문 — iter1 D2 통합으로
+흡수됨.)
 
-## AC-THS-008 — unhold 동사: hold → queued, 본문 무손상
+## AC-THS-008 — unhold 동사: hold → queued, 본문 무손상, 및 비-held 거절
 
 **Covers**: maps REQ-THS-008
 
@@ -92,13 +96,9 @@ state·landing 전 필드 동일하게 존재한다, (c) `archived_items` M행�
 비교로 단언된다), stdout 한 줄이 id 와 텍스트 접두어를 운반한다. hold → unhold → hold 를 두 번
 되풀이해도 레코드가 동일하게 수렴한다.
 
-## AC-THS-009 — unhold 거절: hold 가 아닌 카드
-
-**Covers**: maps REQ-THS-009
-
 **Given** queued·picked·dropped 상태의 카드가 각각 있을 때
 **When** 각각에 `moai todo unhold <id>` 를 실행할 때
-**Then** 세 경우 모두 거절이고 쓰기는 없다.
+**Then** 세 경우 모두 거절이고 쓰기는 없다. (구 AC-THS-009 의 본문 — iter1 D2 통합으로 흡수됨.)
 
 ## AC-THS-010 — 행위자 경계: 임대 경로에 hold 표면이 없다
 
@@ -125,6 +125,15 @@ state·landing 전 필드 동일하게 존재한다, (c) `archived_items` M행�
 카드는 어떤 actionable 경로로도 선택·종료되지 않는다. (b)가 RED 를 내는 방식이 변이 기반이므로,
 새 상태가 추가돼 스윕을 안 돌리면 이 AC 가 실패한다 — 드리프트 탐지의 축이다.
 
+**(c) 회귀 가드 — autodone 행 (구 AC-THS-014, iter1 D2 통합; REQ-THS-011의 autodone 표면을
+고정).** **Given** landed-by-ref 조건을 만족하는 hold 카드 한 장과 같은 조건의 queued 카드 한 장이
+있고 **When** auto-done 후보 스캔(`planAutoDone` 경로)을 실행할 때 **Then** 결과 집합에 queued 카드만
+있고 hold 카드에 대한 outcome 이 없다. 이 행은 **M1 시점부터 GREEN 이어야 한다** — 기존 필터
+(`todo_autodone.go:281-285`, `!= Queued && != Picked → continue`)가 hold 를 이미 건너뛴다. green 의
+이유가 올바른지는 변이로 시험한다: hold 카드의 상태를 queued 로 되돌리면 결과 집합이 늘어나는 양성
+대조. M3 의 형태 전환(부정 disjunction → 긍정 열거)은 동작을 바꾸지 않고 형태만 바꾸므로, 전환 후에도
+본 (c) 가 동일하게 통과해야 한다 — 그것이 회귀 가드의 판정이다.
+
 ## AC-THS-012 — 기계 임대자는 queued 만 임대한다
 
 **Covers**: maps REQ-THS-013
@@ -142,17 +151,8 @@ state·landing 전 필드 동일하게 존재한다, (c) `archived_items` M행�
 **Given** hold 상태 카드 한 장이 있고
 **When** `moai todo next <id>` 로 픽을 시도할 때
 **Then** 거절이고 오류 메시지가 unhold 를 회복 동사로 이름하며, 쓰기는 없다. 양성 대조: 같은 카드를
-`unhold` 한 뒤 같은 픽은 성공한다.
-
-## AC-THS-014 — autodone 후보에서 hold 제외
-
-**Covers**: maps REQ-THS-015
-
-**Given** landed-by-ref 조건을 만족하는 hold 카드 한 장과 같은 조건의 queued 카드 한 장이 있고
-**When** auto-done 후보 스캔(`planAutoDone` 경로)을 실행할 때
-**Then** 결과 집합에 queued 카드만 있고 hold 카드에 대한 outcome 이 없다. RED-now: 현재 트리에서
-hold 가 없어도 이 AC 의 `!= Queued && != Picked` 스캔은 넷째 상태를 조용히 삼키는 모양이므로, M1 이
-상태를 추가하는 순간 스캔이 hold 를 후보로 삼아 본 AC 가 RED 를 내야 하고 M3 이 뒤집는다.
+`unhold` 한 뒤 같은 픽은 성공한다. 이 AC 의 RED-now 는 이 SPEC 이 닫는 유일한 **행동** 결함이다 —
+`todo.go:920` 의 픽 게이트가 `dropped` 만 거절하므로 hold(및 모든 미래 상태) 카드는 오늘 픽된다.
 
 ## AC-THS-015 — list·--json 의 진실성
 
@@ -213,12 +213,11 @@ hold 카드를 queued 로 바꾸면 `Queued == 3` (양성 대조 — 카운트�
 |----|-------------------------------|----------------|
 | AC-THS-001 | `grep -n "BacklogStateHold" internal/kanban/backlog_store.go` → 0건 | M1 |
 | AC-THS-002..005 | `grep -n "items_new\|schema_version = \"2\"\|backlogSchemaVersion = \"2\"" internal/kanban/` → 0건 (마이그레이션 부재) | M1 |
-| AC-THS-006..009 | `go run . todo hold x` → `Error: unknown command "hold"` | M2 |
+| AC-THS-006, AC-THS-008 | `go run . todo hold x` → `Error: unknown command "hold"` (동사 부재; 007·009 행은 D2 통합으로 006·008 에 흡수됨) | M2 |
 | AC-THS-010 | 표면 부재로 조건부 통과 — M2 에서 hold 동사가 생긴 뒤에야 의미를 가진다(거절 경로 부재의 RED: `todo.go:920` 이 held 픽을 받아들이는 것, §B.5) | M2 |
-| AC-THS-011 | **이미 깨져 있음**: `todo.go:903`의 `State != Queued`, `todo_autodone.go:283`의 부정 disjunction — 넷째 상태가 생기는 순간 조용히 삼킨다 (grep 2건) | M3 |
+| AC-THS-011 | **형태 RED (a)**: 부정 필터 2곳 — `todo.go:903`, `todo_autodone.go:283` (grep 2건). **행동 RED (b)**: `todo.go:920` 픽 게이트가 `dropped` 만 거절해 hold·미래 상태 카드가 오늘 픽된다 — 이 SPEC 의 유일한 live 행동 red-now. **(c) autodone 행은 RED 아니다**: 기존 필터(`todo_autodone.go:281-285`)가 hold 를 이미 건너뛰므로 M1 시점부터 GREEN — 회귀 가드로 선언되며 green 의 이유는 (c) 절의 양성 대조가 시험한다 (iter1 D1 정정) | M3 |
 | AC-THS-012 | 임대 경로가 queued 만 고르는 것은 우연일 뿐 핀돼 있지 않음 — 변이 양성 대조 테스트 부재 (`grep -c "queued" internal/cli/factory_card.go` 는 계약이 아니다) | M3 |
-| AC-THS-013 | **이미 깨져 있음**: `todo.go:920` 을 보면 held 픽 거절 경로가 없다 (거절 분기 부재) | M2 |
-| AC-THS-014 | **이미 깨져 있음**: `todo_autodone.go:283`이 넷째 상태 후보를 삼키는 모양 (상태 추가 시 즉시 RED) | M3 |
+| AC-THS-013 | **이미 깨져 있음**: `todo.go:920` 을 보면 held 픽 거절 경로가 없다 (거절 분기 부재) — AC-THS-011(b)의 행동 red 와 같은 근원 | M2 |
 | AC-THS-015..017 | `"hold"` 상태 값 부재 — list·statusline·web 테스트가 넷째 값을 단언할 수 없다 | M4 |
 | AC-THS-018 | `grep -rn '"hold"' .claude/skills/moai/workflows/gtd.md` → 0건 | M5 |
 | AC-THS-019 | 마이그레이션 부재로 재실행 자체가 불가 — M1 착지 후 형제 테스트 재실행이 green 증거 | M1 |
