@@ -8,7 +8,6 @@ llm:
   # "gpt" means Codex-only deployment: AGENTS.md and Codex surfaces only
   # (no .claude/ tree, no CLAUDE.md, no .mcp.json). A project initialized
   # before this key existed reads as claude (unchanged behavior).
-  # Note: this is NOT harness_agents (the /moai:harness specialist map below).
   harness: "claude"
 
   glm_env_var: "GLM_API_KEY"
@@ -23,186 +22,26 @@ llm:
   # default PATH lookup.
   claude_bin: ""
 
-  # Per-agent model+effort profile selection (set once during init/update).
-  # Selects the active column of the profile matrix below for all sub-agents.
-  #   high   - quality-first column (top)
-  #   medium - balanced default column
-  #   low    - economical column
-  # Absent or empty resolves to medium (backward compatible). The superseded
-  # top-column name "max" is still READ as an alias for "high", but is never
-  # written back.
+  # Sub-agent model/effort: agents inherit the main session's model and
+  # effort. The former per-agent profile
+  # matrix (profile / profiles / performance_tier / harness_agents /
+  # agent_overrides) is retired; `moai update` strips these keys from user
+  # files on the next run. Main-session reasoning effort comes from the
+  # preference profile (`moai profile setup`), never from this file.
   #
   # Under a GLM backend (team_mode: glm), z.ai exposes a 3-level
   # reasoning_effort control (low/high/max; GLM-5.3 reasons ALWAYS — reasoning
-  # cannot be disabled). The agent effort from the profile column above
-  # collapses onto it:
+  # cannot be disabled). The session-global mapping is:
   #   effort low          -> reasoning_effort=low
   #   effort medium/high  -> reasoning_effort=max
   #   effort xhigh/max    -> reasoning_effort=max
-  # So under GLM, every profile column's efforts above "low" converge on
-  # reasoning_effort=max; only "low" stays at the low level. The
-  # code-producing run-phase agent runs at reasoning_effort=max regardless
+  # The code-producing run-phase agent runs at reasoning_effort=max regardless
   # (coding-task recommendation).
   #
   # Delivery field (measured): the top-level reasoning_effort request field is
   # the effective reasoning-control channel; a thinking-budget request object
   # is ignored by the endpoint. Depth is controlled through reasoning_effort
   # only.
-  profile: "medium"
-
-  # Legacy performance tier (read-time alias only — `profile` supersedes it).
-  # Retained so the separate Tier x Phase routing axis keeps a tier source.
-  # Now that the top column is named "high", this axis shares the profile
-  # vocabulary exactly, so no projection is applied (a legacy "max" folds to
-  # "high"). Options: high, medium, low.
-  performance_tier: "medium"
-
-  # Profile matrix (transparency + editability). Each profile column maps each
-  # retained agent NAME to a {model, effort} pair — 13 agents x 3 columns = 39
-  # cells. The Go default (template.DefaultProfileMatrix) is the authoritative
-  # fallback for any cell absent here. Agents not listed (any user-added agent)
-  # stay model: inherit and are never injected.
-  #
-  # Column intent. The cells are settled operator input, not a derivation: the
-  # spend goes to the rows that JUDGE rather than the rows that produce.
-  #   high   - quality first. The auditing/advising rows (plan-auditor,
-  #            sync-auditor, super-advisor) and the coordinating rows
-  #            (manager-design, manager-lead) hold `high`; the authoring and
-  #            implementing rows (manager-spec, manager-develop) sit at
-  #            `medium`. No row currently takes `max`.
-  #   medium - the working default. It differs from `high` in exactly two rows:
-  #            builder-harness steps down to `medium` and e2e-tester to `low`.
-  #   low    - economical. Every opus row lands on `medium` except
-  #            builder-harness (`low`) and super-advisor, which stays `high` —
-  #            the escalation path is what a cheap column most needs to keep
-  #            sound. Opus `low` still outscores Sonnet at any effort and costs
-  #            less per task, so it remains the floor for agentic rows.
-  # Do not re-derive these cells from a cost/score curve; that would silently
-  # walk manager-develop and manager-spec back up.
-  #
-  # Two model rules the matrix encodes:
-  #   - Opus is the model for every multi-turn agentic row. Sonnet needs a
-  #     multiple of the agent steps and output tokens to finish the same
-  #     long-horizon task, so it costs MORE per task despite the lower unit
-  #     token price. Completion efficiency dominates unit price.
-  #   - Sonnet is retained only for single-shot, input-dominated, non-agentic
-  #     rows (Explore search, manager-git mechanics), where that multi-step
-  #     failure does not apply and the lower input price does.
-  #
-  # `xhigh` is absent from the matrix on purpose: on Opus it scores the same as
-  # `high` at materially higher cost, so it is strictly dominated. `max` remains
-  # the only level above `high` and stays available to a row that wants it, but
-  # no row currently takes it.
-  #
-  # Under a GLM backend these cells are NOT what reaches the wire: z.ai's 3-state
-  # reasoning control collapses {medium, high} onto one state and {xhigh, max}
-  # onto another, but the delivery channel is session-global — one
-  # ANTHROPIC_REASONING_EFFORT value per session, never a per-agent one. These
-  # cells record per-agent intent and take effect on Claude-backed sessions,
-  # where agent frontmatter carries the effort; they do not by themselves change
-  # delivered GLM behavior.
-  #
-  # manager-docs / manager-git / Explore are profile-invariant (all sonnet/low).
-  #
-  # The model value is injected as a per-spawn runtime arg ([1m]-safe). The
-  # effort value reaches the agent through its frontmatter `effort:` (the Agent
-  # tool has no effort parameter) or through Workflow `opts.effort`. Explore has
-  # no agent file, so its effort is stated at call time, never persisted.
-  profiles:
-    high:
-      manager-spec:    { model: opus,   effort: medium }
-      plan-auditor:    { model: opus,   effort: high }
-      sync-auditor:    { model: opus,   effort: high }
-      manager-develop: { model: opus,   effort: medium }
-      super-advisor:   { model: opus,   effort: high }
-      mission-governor: { model: opus,  effort: high }
-      manager-design:  { model: opus,   effort: high }
-      manager-lead:    { model: opus,   effort: high }
-      builder-harness: { model: opus,   effort: high }
-      e2e-tester:      { model: opus,   effort: medium }
-      manager-docs:    { model: sonnet, effort: low }
-      manager-git:     { model: sonnet, effort: low }
-      Explore:         { model: sonnet, effort: low }
-    medium:
-      manager-spec:    { model: opus,   effort: medium }
-      plan-auditor:    { model: opus,   effort: high }
-      sync-auditor:    { model: opus,   effort: high }
-      manager-develop: { model: opus,   effort: medium }
-      super-advisor:   { model: opus,   effort: high }
-      mission-governor: { model: opus,  effort: high }
-      manager-design:  { model: opus,   effort: high }
-      manager-lead:    { model: opus,   effort: high }
-      builder-harness: { model: opus,   effort: medium }
-      e2e-tester:      { model: opus,   effort: low }
-      manager-docs:    { model: sonnet, effort: low }
-      manager-git:     { model: sonnet, effort: low }
-      Explore:         { model: sonnet, effort: low }
-    low:
-      manager-spec:    { model: opus,   effort: medium }
-      plan-auditor:    { model: opus,   effort: medium }
-      sync-auditor:    { model: opus,   effort: medium }
-      manager-develop: { model: opus,   effort: medium }
-      super-advisor:   { model: opus,   effort: high }
-      mission-governor: { model: opus,  effort: high }
-      manager-design:  { model: opus,   effort: medium }
-      manager-lead:    { model: opus,   effort: medium }
-      builder-harness: { model: opus,   effort: low }
-      e2e-tester:      { model: sonnet, effort: low }
-      manager-docs:    { model: sonnet, effort: low }
-      manager-git:     { model: sonnet, effort: low }
-      Explore:         { model: sonnet, effort: low }
-
-  # Harness-generation model+effort map, consumed by /moai:harness when it
-  # generates a specialist agent. Keyed profile -> purpose class -> { effort }.
-  #
-  # Harness agents are MODEL-UNIFORM on purpose: they are persistent, user-owned
-  # specialists whose differentiation is reasoning DEPTH, not model tier, so the
-  # effort axis alone separates them. The model is always `opus` — a `model:`
-  # value written here is ignored. Pinning is safe because every current
-  # non-haiku model carries a 1M context window, so an explicit pin no longer
-  # loses the 1M entitlement that inherit-by-default used to preserve.
-  #
-  # The purpose classes are the same 7 names as the `workflow_agents` taxonomy in
-  # workflow.yaml, so the two surfaces share one vocabulary. Each effort is
-  # derived from the profile-matrix row named in the comment; an absent cell
-  # falls through to that row's effort.
-  #
-  # Keep these cells equal to the row they name. The resolver reads a cell here
-  # FIRST and only falls through to the row when the cell is absent, so a stale
-  # cell silently splits the two paths: a project carrying this file would get
-  # the stale value while one without it got the row's current value.
-  harness_agents:
-    high:
-      read-only-extract:    { effort: low }     # <- Explore row
-      mechanical-transform: { effort: low }     # <- manager-git row
-      synthesize:           { effort: low }     # <- manager-docs row
-      research:             { effort: high }    # <- plan-auditor row
-      verify-judge:         { effort: high }    # <- sync-auditor row
-      implement:            { effort: medium }  # <- manager-develop row
-      design-architecture:  { effort: high }    # <- manager-design row
-    medium:
-      read-only-extract:    { effort: low }
-      mechanical-transform: { effort: low }
-      synthesize:           { effort: low }
-      research:             { effort: high }
-      verify-judge:         { effort: high }
-      implement:            { effort: medium }
-      design-architecture:  { effort: high }
-    low:
-      read-only-extract:    { effort: low }
-      mechanical-transform: { effort: low }
-      synthesize:           { effort: low }
-      research:             { effort: medium }
-      verify-judge:         { effort: medium }
-      implement:            { effort: medium }
-      design-architecture:  { effort: medium }
-
-  # Optional per-agent overrides, keyed by canonical agent name. Each override
-  # {model, effort} pair wins over the active profile's cell for that agent.
-  # Example (uncomment + edit to pin an agent):
-  #   agent_overrides:
-  #     manager-develop: { model: opus, effort: xhigh }
-  agent_overrides: {}
 
   # GLM backend configuration
   glm:
@@ -245,11 +84,9 @@ llm:
     # (settings widget), but no Claude effort collapses to it — every effort
     # above low converges on max.
     #
-    # Coding-max override (z.ai "reasoning_effort: max for coding tasks"):
-    #   manager-develop forces max regardless of its collapse result.
-    #
-    # manager-git occupies the low tier (its effort is low across all profile
-    # columns → CollapseClaudeEffortToGLM("low") = low).
+    # The session default is the `max` state (see
+    # SessionGLMReasoningState in glm_effort_overlay.go); a web-set effort
+    # preference collapses onto this same 3-level control.
     #
     # Wire state: the overlay is implemented and wired. Measured (null-controlled
     # live differential): the top-level reasoning_effort request field is the

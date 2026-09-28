@@ -40,7 +40,6 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // codex domain constants (§14 hardcoding prevention — domain identifiers live
@@ -147,22 +146,13 @@ const (
 	// here; dangerFullAccess and externalSandbox are deliberately unreachable.
 	codexSandboxReadOnly       = "readOnly"
 	codexSandboxWorkspaceWrite = "workspaceWrite"
-
-	// codexAuditAgentKey is the profile-matrix agent key the codex backend
-	// resolves its model + effort through (REQ-CX2-002). It is the SAME
-	// auditor-shaped key the GLM sibling uses (mcp_glm.go glmAuditAgentKey), so
-	// both backends read the single interpreter rather than forking a lookup.
-	codexAuditAgentKey = "sync-auditor"
 )
 
 // codexServableModelPrefixes are the model-id families the codex app-server can
 // actually serve (§14 — the families live here as a named constant rather than
-// inline). The profile matrix is Claude-centric: its default cell for
-// codexAuditAgentKey is {opus, high}, and handing "opus" to codex would break
-// the review gate for every project that never opted in. A resolved model
-// outside these families is therefore dropped, leaving the request byte-identical
-// to the pre-M1 shape (C7 no-regression). This mirrors the GLM sibling, which
-// filters its own SSOT result through IsGLMBackend before using it.
+// inline). A workflow.audit.codex pin outside these families is dropped, so a
+// Claude id pinned by mistake cannot break the review gate; the request then
+// carries no model and codex applies its own configured default.
 var codexServableModelPrefixes = []string{"gpt-", "o1", "o3", "o4", "codex"}
 
 // codexServableModel reports whether a model id can plausibly be served by the
@@ -181,62 +171,31 @@ func codexServableModel(model string) bool {
 	return false
 }
 
-// codexSSOTModelEffort resolves the codex model + effort through the model/effort
-// SSOT (template.ResolveAgentModelEffort, REQ-CX2-002) ONLY — it NEVER reads
-// agent frontmatter or the per-agent override map directly (C4; the negative
-// guard is TestMCPAudit_NoDirectFrontmatterRead, the positive one is
-// TestCodexSession_ResolvedModelReachesTransmittedParams).
+// resolveCodexModelEffort resolves the model + effort for one codex request:
+// an explicit caller-supplied `model` is sent verbatim; otherwise the request
+// carries neither field and codex applies its own configured default. MoAI
+// assigns no per-agent model, so no llm.yaml cell is consulted
+// (SPEC-AGENT-MODEL-INHERIT-001 design D5).
 //
-// The cell is returned whole or not at all: when the resolved model is not
-// codex-servable the paired effort is dropped with it, because an effort value
-// from another backend's vocabulary is no more transmittable than its model id
-// (ReasoningEffort is documented as "a non-empty reasoning effort value
-// advertised by the model").
-//
-// projectDir is the tree being reviewed (the review gate passes the hook's
-// project root, which need not equal the server's own cwd); an empty value falls
-// back to the resolver seam.
-func codexSSOTModelEffort(projectDir string) config.ModelEffort {
-	if strings.TrimSpace(projectDir) == "" {
-		projectDir = projectDirResolver()
-	}
-	llm, err := loadLLMSectionOnly(filepath.Join(projectDir, ".moai", "config", "sections"))
-	if err != nil {
-		return config.ModelEffort{}
-	}
-	me, mapped := template.ResolveAgentModelEffort(llm, codexAuditAgentKey)
-	if !mapped || !codexServableModel(me.Model) {
-		return config.ModelEffort{}
-	}
-	return me
-}
-
-// resolveCodexModelEffort resolves the model + effort for one codex request. An
-// explicit caller-supplied `model` wins over the SSOT-resolved value and is sent
-// verbatim — the caller opted into it deliberately, so the servability filter
-// (which exists to protect callers who did NOT choose) does not apply.
-//
-// LEGACY-ONLY: this is the shared body the task path and the Stop-hook review
-// gate resolve through. The audit pin is deliberately NOT read here
+// This is the shared body the task path and the Stop-hook review gate resolve
+// through. The audit pin is deliberately NOT read here
 // (SPEC-V3R6-AUDIT-MODEL-PIN-001 REQ-AMP-008 / plan.md §G AP-1) — a config-file
 // pin is persistent project state and must not leak into delegation tasks.
 func resolveCodexModelEffort(params map[string]any) config.ModelEffort {
-	cwd, _ := params["cwd"].(string)
-	me := codexSSOTModelEffort(cwd)
 	if explicit, ok := params["model"].(string); ok && strings.TrimSpace(explicit) != "" {
-		me.Model = strings.TrimSpace(explicit)
+		return config.ModelEffort{Model: strings.TrimSpace(explicit)}
 	}
-	return me
+	return config.ModelEffort{}
 }
 
 // resolveCodexAuditModelEffort is the AUDIT-scoped resolution
 // (SPEC-V3R6-AUDIT-MODEL-PIN-001 REQ-AMP-002): the workflow.audit.codex pin
-// outranks the SSOT sync-auditor cell; everything else falls through to the
-// legacy resolveCodexModelEffort unchanged (REQ-AMP-004).
+// outranks the backend default; everything else falls through to
+// resolveCodexModelEffort unchanged (REQ-AMP-004).
 //
 // Pin rules: the pin applies only when its Model is non-empty AND
-// codexServable (an unservable pin falls back to the SSOT path — never break
-// the review gate); an explicit caller `model` argument still outranks the
+// codexServable (an unservable pin falls back to the backend default — never
+// break the review gate); an explicit caller `model` argument still outranks the
 // pinned model, mirroring the legacy precedence (the paired pin effort stays).
 // An effort with an empty model pins nothing (the model is the gate).
 func resolveCodexAuditModelEffort(params map[string]any) config.ModelEffort {
@@ -685,13 +644,13 @@ type codexSessionHandle struct {
 	// the injected resolver: the AUDIT flow passes the pin-aware
 	// resolveCodexAuditModelEffort; every other caller (codex_task, the
 	// Stop-hook review gate) passes nil and resolves through the legacy
-	// SSOT-only resolveCodexModelEffort (REQ-AMP-008 isolation). nil here
+	// pin-free resolveCodexModelEffort (REQ-AMP-008 isolation). nil here
 	// means legacy — see effortResolver.
 	resolveME func(params map[string]any) config.ModelEffort
 }
 
 // effortResolver returns the session's {model, effort} resolver, defaulting to
-// the legacy SSOT-only resolution when none was injected.
+// the pin-free resolution when none was injected.
 func (h *codexSessionHandle) effortResolver() func(map[string]any) config.ModelEffort {
 	if h != nil && h.resolveME != nil {
 		return h.resolveME
@@ -765,7 +724,7 @@ func openCodexSessionOn(ctx context.Context, binaryPath string, params map[strin
 
 // openCodexSessionResolved is openCodexSessionOn with an INJECTED {model,
 // effort} resolver (SPEC-V3R6-AUDIT-MODEL-PIN-001 M2). A nil resolver means the
-// legacy SSOT-only resolveCodexModelEffort; the audit flow injects the pin-aware
+// pin-free resolveCodexModelEffort; the audit flow injects the pin-aware
 // resolveCodexAuditModelEffort. This is the seam that keeps the pin
 // audit-entry-only: codex_task and the review gate keep calling
 // openCodexSessionOn, which resolves exactly as before this SPEC (REQ-AMP-008).
@@ -999,7 +958,7 @@ func (h *codexSessionHandle) runTurn(ctx context.Context, method string, params 
 // does not apply to it (REQ-AMP-008).
 var codexReviewRPC = runCodexAuditReviewRPC
 
-// runCodexReviewRPC is the LEGACY single-turn driver: SSOT-only model/effort
+// runCodexReviewRPC is the LEGACY single-turn driver: pin-free model/effort
 // resolution, no audit pin. Serves the Stop-hook review gate and the
 // seam-captured legacy tests.
 func runCodexReviewRPC(ctx context.Context, binaryPath, method string, params map[string]any) (ReviewOutput, error) {
@@ -1009,7 +968,7 @@ func runCodexReviewRPC(ctx context.Context, binaryPath, method string, params ma
 // runCodexAuditReviewRPC is the AUDIT single-turn driver: identical to
 // runCodexReviewRPC except the {model, effort} resolution reads the
 // workflow.audit.codex pin first (REQ-AMP-002), falling back to the legacy
-// SSOT path when the pin is absent/empty/unservable (REQ-AMP-004).
+// backend default when the pin is absent/empty/unservable (REQ-AMP-004).
 func runCodexAuditReviewRPC(ctx context.Context, binaryPath, method string, params map[string]any) (ReviewOutput, error) {
 	return runCodexReviewRPCResolved(ctx, binaryPath, method, params, resolveCodexAuditModelEffort)
 }

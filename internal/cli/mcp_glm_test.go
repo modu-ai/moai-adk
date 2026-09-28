@@ -322,14 +322,11 @@ type boomErr struct{}
 
 func (boomErr) Error() string { return "boom: simulated transport failure" }
 
-func TestResolveGLMAuditModel_SSOT(t *testing.T) {
-	// AC-MCP-015: model resolution MUST go through template.ResolveAgentModelEffort
-	// (the SSOT), never read agent frontmatter / llm.agent_overrides directly.
-	// With no llm.yaml, the resolver returns the documented GLM default.
-	// (SPEC-V3R6-AUDIT-MODEL-PIN-001 M3: the resolver now returns the
-	// {model, effort} pair; without a pin the model is the legacy SSOT
-	// resolution and the effort is EMPTY — the pre-SPEC body carried no
-	// reasoning field.)
+func TestResolveGLMAuditModel_BackendDefault(t *testing.T) {
+	// AC-MCP-015: model resolution never reads agent frontmatter /
+	// llm.agent_overrides. Without a pin the resolver returns the documented
+	// GLM backend default with an EMPTY effort (SPEC-V3R6-AUDIT-MODEL-PIN-001
+	// M3; SPEC-AGENT-MODEL-INHERIT-001 design D5).
 	t.Setenv("CLAUDE_PROJECT_DIR", "")
 	old := projectDirResolver
 	projectDirResolver = func() string { return "" } // no sections dir available
@@ -343,7 +340,7 @@ func TestResolveGLMAuditModel_SSOT(t *testing.T) {
 		t.Errorf("resolveGLMAuditModelEffort model = %q; a Claude id cannot be a GLM default", me.Model)
 	}
 	if me.Effort != "" {
-		t.Errorf("resolveGLMAuditModelEffort effort = %q, want empty (the legacy resolution carries no reasoning directive)", me.Effort)
+		t.Errorf("resolveGLMAuditModelEffort effort = %q, want empty (the backend default carries no reasoning directive)", me.Effort)
 	}
 }
 

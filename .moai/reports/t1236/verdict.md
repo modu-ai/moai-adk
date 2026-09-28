@@ -298,3 +298,10 @@ develop `e9577de4f` CI run 36333964365 적색(Test ubuntu + Race) 두 갈래 수
 - 재측정: `go test -run '^(<cli 4파일 전 테스트>)$' ./internal/cli/` ok(`TestSpecAssembly_RewrittenToCLIPath` PASS 확인) · `./internal/skills/... ./internal/template/... ./internal/harness/...` 20패키지 ok · `MOAI_GR_BASE=5f5840ae4` TestContractMode PASS 40 / FAIL 1(ChangeSetAllowlist/tree, 앞과 같은 타 카드 6경로, 이 수리 경로 0) · lint v2.1.6 0 issues.
 - 변이: 이관된 줄 1개(`limited to 5`→`6`) 변경 → `TestContractModeGuidedPreservation` FAIL, 복원 확인.
 - 이관 절 로드: spec-compact 생성은 Phase 10 단계 — spec-assembly 를 Read 하는 시점에 포인터가 context-discovery Read 를 지시한다(앞과 같은 포인터 의존).
+
+### 템플릿 중립성 적색 수리 (2026-09-28, WT-gate-rewire-ci3, base 37dc766b9)
+- Template Neutrality Check run 36338123669 적색: `TestTemplateNoInternalContentLeak (MOAI_TEMPLATE_LEAK_STRICT=1) — templates/.claude/skills/moai/workflows/plan/context-discovery.md | class=S1-internal-date | match=2026-11-22`.
+- 원 자리 확인: `internal/template/internal_content_leak_test.go` 허용 목록에 같은 날짜가 `plan.md`·`plan/clarity-interview.md`·`plan/spec-assembly.md` 세 파일에 대해 `Category: DC-3`, `Rationale: "functional deadline literal 2026-11-22"` 로 이미 등재돼 있다. spec-assembly.md 는 이관 뒤에도 `:556` 에 같은 기한을 적고 있다. 즉 내부 날짜가 아니라 EARS 유예 종료 기한이라는 기능 문구다.
+- 처리: 리드 우선안 (a)(템플릿 사본만 날짜 중립화) 대신 (b)를 택했다. 같은 기한을 형제 파일 셋이 그대로 적는데 이관 사본만 바꾸면 템플릿 안에서 기한 표기가 갈라지고, 이관 대조 단언에 사본별 치환 규칙이 생긴다. 허용 목록에 `plan/context-discovery.md` 항목을 같은 DC-3 사유로 추가.
+- 재측정: `MOAI_TEMPLATE_LEAK_STRICT=1 go test -v -run TestTemplateNoInternalContentLeak ./internal/template/` → `--- PASS`. 음성 대조는 항목 없는 트리의 CI 실패(run 36338123669). cli 4파일 전 테스트 ok · `MOAI_TEMPLATE_LEAK_STRICT=1` skills·template·harness 20패키지 ok · lint v2.1.6 0 issues.
+- AC-GR(`MOAI_GR_BASE=5f5840ae4`): PASS 40 / FAIL 1(ChangeSetAllowlist/tree) — 17경로 전부 base 이후 타 카드(t1284 11, t1286 3, t1237 2, t1225 1), 이 수리 경로 0. 허용 목록에 `internal/template/internal_content_leak_test.go` 추가.

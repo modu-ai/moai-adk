@@ -70,7 +70,7 @@ func TestIdemScopeLaneMigration(t *testing.T) {
 			wantSlots := map[string]string{
 				"legacy-old-session": "legacy:w-s1",
 				"legacy-restarted":   "lane-1",
-				"legacy-lead":        "lead",
+				"legacy-lead":        "leader",
 				"legacy-ghost":       "legacy:ghost-s1",
 			}
 			if got := senderSlots(t, s.db); !reflect.DeepEqual(got, wantSlots) {

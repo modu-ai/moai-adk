@@ -25,7 +25,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -33,9 +32,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/report"
-	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/defs"
-	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tui"
 )
 
@@ -244,82 +241,4 @@ func TestUpdateRepair_SyncArchivesLegacySkillsBeforeCleanup(t *testing.T) {
 	if string(data) != userCopy {
 		t.Errorf("archived SKILL.md = %q, want the user's copy %q", data, userCopy)
 	}
-}
-
-// TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors asserts that the
-// model-policy persistence step reports a system.yaml it cannot use instead of
-// returning success.
-func TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors(t *testing.T) {
-	isolateHome(t)
-	result := func() *wizard.WizardResult {
-		return &wizard.WizardResult{ModelPolicy: string(template.ModelPolicyHigh)}
-	}
-
-	t.Run("unparseable_file_is_reported_and_kept", func(t *testing.T) {
-		root := setupSectionsDir(t)
-		systemPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.SystemYAML)
-		const broken = "moai: [unclosed\n"
-		if err := os.WriteFile(systemPath, []byte(broken), defs.FilePerm); err != nil {
-			t.Fatalf("write fixture: %v", err)
-		}
-
-		if err := applyWizardConfig(root, result()); err == nil {
-			t.Errorf("applyWizardConfig returned nil for an unparseable system.yaml")
-		}
-		if data, _ := os.ReadFile(systemPath); string(data) != broken {
-			t.Errorf("system.yaml was rewritten after a parse failure: %q", data)
-		}
-	})
-
-	t.Run("unwritable_path_is_reported", func(t *testing.T) {
-		root := setupSectionsDir(t)
-		systemPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.SystemYAML)
-		// A directory at the file's path fails both the read and the write on
-		// every platform.
-		if err := os.MkdirAll(systemPath, defs.DirPerm); err != nil {
-			t.Fatalf("create fixture dir: %v", err)
-		}
-
-		if err := applyWizardConfig(root, result()); err == nil {
-			t.Errorf("applyWizardConfig returned nil when system.yaml could not be read or written")
-		}
-	})
-
-	// The directory fixture above fails at the read, so it never reaches the
-	// write. Here the file stays readable and only its directory refuses new
-	// entries, which isolates the write-error branch.
-	t.Run("unwritable_directory_is_reported", func(t *testing.T) {
-		if runtime.GOOS == "windows" {
-			t.Skip("directory write permission bits are not enforced on Windows")
-		}
-		if os.Geteuid() == 0 {
-			t.Skip("root bypasses directory write permission")
-		}
-		root := setupSectionsDir(t)
-		sectionsDir := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir)
-		systemPath := filepath.Join(sectionsDir, defs.SystemYAML)
-		const valid = "moai:\n  model_policy: low\n"
-		if err := os.WriteFile(systemPath, []byte(valid), defs.FilePerm); err != nil {
-			t.Fatalf("write fixture: %v", err)
-		}
-		if err := os.Chmod(sectionsDir, 0o500); err != nil {
-			t.Fatalf("make sections dir read-only: %v", err)
-		}
-		t.Cleanup(func() { _ = os.Chmod(sectionsDir, defs.DirPerm) })
-		// Reachability: the read must still succeed, or this is the case above.
-		if _, err := os.ReadFile(systemPath); err != nil {
-			t.Fatalf("fixture system.yaml is not readable, so the read fails before the write: %v", err)
-		}
-
-		err := applyWizardConfig(root, result())
-		if err == nil {
-			t.Fatalf("applyWizardConfig returned nil when system.yaml could not be written")
-		}
-		if !strings.Contains(err.Error(), "write system.yaml") {
-			t.Errorf("error = %v, want the system.yaml write failure", err)
-		}
-		if data, _ := os.ReadFile(systemPath); string(data) != valid {
-			t.Errorf("system.yaml changed despite the failed write: %q", data)
-		}
-	})
 }

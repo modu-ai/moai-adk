@@ -240,71 +240,6 @@ func extractToolsFromFrontmatter(content string) string {
 	return ""
 }
 
-// Test LR-03: Missing effort field
-func TestCheckMissingEffort(t *testing.T) {
-	tests := []struct {
-		name        string
-		frontmatter string
-		wantCount   int
-		wantSev     LintSeverity
-	}{
-		{
-			name: "missing effort",
-			frontmatter: `---
-name: test
----
-`,
-			wantCount: 1,
-			wantSev:   SeverityError,
-		},
-		{
-			name: "effort present",
-			frontmatter: `---
-name: test
-effort: high
----
-`,
-			wantCount: 0,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			path := createTempAgentFile(t, tt.frontmatter)
-			content, _ := os.ReadFile(path)
-			parts := strings.SplitN(string(content), "---", 3)
-
-			var fm AgentFrontmatter
-			_ = parseYAMLFrontmatter([]byte(parts[1]), &fm)
-			fm.Effort = extractEffortFromFrontmatter(tt.frontmatter)
-
-			violations := checkMissingEffort(path, fm)
-
-			if len(violations) != tt.wantCount {
-				t.Errorf("got %d violations, want %d", len(violations), tt.wantCount)
-			}
-
-			if tt.wantCount > 0 && violations[0].Severity != tt.wantSev {
-				t.Errorf("severity = %v, want %v", violations[0].Severity, tt.wantSev)
-			}
-		})
-	}
-}
-
-// Helper to extract effort from frontmatter string
-func extractEffortFromFrontmatter(content string) string {
-	lines := strings.Split(content, "\n")
-	for _, line := range lines {
-		if strings.HasPrefix(line, "effort:") {
-			parts := strings.SplitN(line, ":", 2)
-			if len(parts) == 2 {
-				return strings.TrimSpace(parts[1])
-			}
-		}
-	}
-	return ""
-}
-
 // Test LR-05: Missing isolation for write-heavy agents
 func TestCheckMissingIsolation(t *testing.T) {
 	tests := []struct {
@@ -935,126 +870,6 @@ Custom team agent body`
 // These tests FAIL initially and turn GREEN after M2 implementation.
 // ============================================================================
 
-// TestLintLR12_MatrixDrift_DriftedAgent tests LR-12: effort drift from the
-// canonical matrix. Uses a RETAINED agent (manager-spec, medium cell = medium)
-// because canonicalEffortMatrix is derived from template.DefaultProfileMatrix —
-// archived names are out-of-roster and can no longer exercise this rule.
-func TestLintLR12_MatrixDrift_DriftedAgent(t *testing.T) {
-	content := `---
-name: manager-spec
-description: SPEC authoring specialist
-tools: Read, Write, Agent
-effort: low
----
-SPEC agent body`
-
-	tmpDir := t.TempDir()
-	agentPath := filepath.Join(tmpDir, "manager-spec.md")
-
-	if err := os.WriteFile(agentPath, []byte(content), 0644); err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-
-	// This will fail initially because checkEffortMatrixDrift doesn't exist yet
-	// After M2, this will detect that effort: high drifts from canonical xhigh
-	violations, err := lintAgentFile(agentPath, false)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// After M2 implementation, we expect 1 LR-12 violation
-	// For now, this test documents the expected behavior
-	foundLR12 := false
-	for _, v := range violations {
-		if v.Rule == "LR-12" {
-			foundLR12 = true
-			if !strings.Contains(v.Message, "ORC_EFFORT_MATRIX_DRIFT") {
-				t.Errorf("LR-12 message should contain ORC_EFFORT_MATRIX_DRIFT, got: %s", v.Message)
-			}
-			if v.Severity != SeverityError {
-				t.Errorf("LR-12 severity should be Error, got: %s", v.Severity)
-			}
-			break
-		}
-	}
-
-	// TODO: Remove this skip after M2 implementation
-	// For now, this test documents the expected behavior
-
-	if !foundLR12 {
-		t.Error("expected LR-12 violation for manager-spec with effort: low (matrix medium cell is medium)")
-	}
-}
-
-// TestLintLR12_OutOfRosterAgentExempt pins the derivation's exemption boundary:
-// an agent absent from template.DefaultProfileMatrix (an archived name, a
-// harness specialist, or any user-added agent) is out-of-roster, so LR-12 never
-// fires for it regardless of the effort value it declares. Without this the
-// DriftedAgent test above could silently stop discriminating if the roster
-// changed.
-func TestLintLR12_OutOfRosterAgentExempt(t *testing.T) {
-	content := `---
-name: expert-security
-description: Archived agent name, absent from the profile matrix
-tools: Read, Write, Agent
-effort: low
----
-Archived agent body`
-
-	tmpDir := t.TempDir()
-	agentPath := filepath.Join(tmpDir, "expert-security.md")
-
-	if err := os.WriteFile(agentPath, []byte(content), 0644); err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-
-	violations, err := lintAgentFile(agentPath, false)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	for _, v := range violations {
-		if v.Rule == "LR-12" {
-			t.Errorf("LR-12 must not fire for an out-of-roster agent, got: %s", v.Message)
-		}
-	}
-}
-
-// TestLintLR12_MatrixDrift_CleanAgent tests LR-12: a RETAINED agent whose effort
-// matches its matrix cell produces no violation. Previously this used an
-// archived name and therefore passed for the wrong reason (out-of-roster
-// exemption rather than a value match).
-func TestLintLR12_MatrixDrift_CleanAgent(t *testing.T) {
-	content := `---
-name: manager-spec
-description: SPEC authoring specialist
-tools: Read, Write, Agent
-effort: medium
----
-SPEC agent body`
-
-	tmpDir := t.TempDir()
-	agentPath := filepath.Join(tmpDir, "manager-spec.md")
-
-	if err := os.WriteFile(agentPath, []byte(content), 0644); err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-
-	violations, err := lintAgentFile(agentPath, false)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Correct effort value for the medium cell -> no LR-12 violation
-	for _, v := range violations {
-		if v.Rule == "LR-12" {
-			t.Errorf("expected no LR-12 violations for manager-spec with correct effort: medium, got: %s", v.Message)
-		}
-	}
-
-	// TODO: Remove this skip after M2 implementation
-}
-
 // TestLintLR13_InvalidEffortEnum tests LR-13: invalid effort enum value
 // This is a RED test - it will FAIL until checkInvalidEffortEnum is implemented in M2
 func TestLintLR13_InvalidEffortEnum(t *testing.T) {
@@ -1146,234 +961,54 @@ This agent uses budget_tokens: 5000 which is prohibited for Opus 4.7.`
 	}
 }
 
-// TestAuthoringDocHasEffortMatrix tests that agent-authoring.md contains the effort matrix
-// This is a RED test - it will FAIL until M2 adds the matrix table
-func TestAuthoringDocHasEffortMatrix(t *testing.T) {
+// readRuleDoc reads a rule document from the worktree or the main project
+// path, skipping the test when neither exists.
+func readRuleDoc(t *testing.T, rel ...string) string {
+	t.Helper()
 	cwd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("failed to get cwd: %v", err)
 	}
-
-	// Try both worktree and main project paths
-	authoringDocPaths := []string{
-		filepath.Join(cwd, ".claude", "rules", "moai", "development", "agent-authoring.md"),
-		filepath.Join(cwd, "..", "..", "..", ".claude", "rules", "moai", "development", "agent-authoring.md"),
+	candidates := []string{
+		filepath.Join(append([]string{cwd}, rel...)...),
+		filepath.Join(append([]string{cwd, "..", "..", ".."}, rel...)...),
 	}
-
-	var content []byte
-	var docPath string
-	for _, path := range authoringDocPaths {
+	for _, path := range candidates {
 		if data, err := os.ReadFile(path); err == nil {
-			content = data
-			docPath = path
-			break
+			t.Logf("Checked %s", path)
+			return string(data)
 		}
 	}
-
-	if len(content) == 0 {
-		t.Skip("agent-authoring.md not found - will test after M2 implementation")
-		return
-	}
-
-	contentStr := string(content)
-
-	// Check for the section heading
-	if !strings.Contains(contentStr, "## Effort-Level Calibration Matrix") {
-		t.Error("agent-authoring.md should contain '## Effort-Level Calibration Matrix' section")
-	}
-
-	// Check for the canonical 8-retained-agent matrix table (7 MoAI-custom + Explore).
-	// Archived agents (manager-strategy/quality/brain/project, expert-*, researcher, etc.)
-	// are NOT expected here — they appear only in the Archived Agents reference table.
-	expectedAgents := []string{
-		"manager-spec", "manager-develop", "manager-docs", "manager-git",
-		"plan-auditor", "sync-auditor", "builder-harness",
-		"Explore",
-	}
-
-	missingAgents := []string{}
-	for _, agent := range expectedAgents {
-		if !strings.Contains(contentStr, agent) {
-			missingAgents = append(missingAgents, agent)
-		}
-	}
-
-	if len(missingAgents) > 0 {
-		t.Errorf("agent-authoring.md effort matrix missing agents: %v", missingAgents)
-	}
-
-	// Check for effort level values
-	expectedEfforts := []string{"xhigh", "high", "medium"}
-	for _, effort := range expectedEfforts {
-		if !strings.Contains(contentStr, effort) {
-			t.Errorf("agent-authoring.md should contain effort level: %s", effort)
-		}
-	}
-
-	t.Logf("Checked agent-authoring.md at: %s", docPath)
+	t.Skipf("%s not found", filepath.Join(rel...))
+	return ""
 }
 
-// TestConstitutionCrossReference tests that moai-constitution.md cross-references the matrix
-// This is a RED test - it will FAIL until M2 adds the cross-reference
-func TestConstitutionCrossReference(t *testing.T) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("failed to get cwd: %v", err)
+// TestAuthoringDocHasNoEffortMatrix asserts the per-agent effort matrix left
+// agent-authoring.md (SPEC-AGENT-MODEL-INHERIT-001 H7) and that the document
+// states the inheritance rule in its place.
+func TestAuthoringDocHasNoEffortMatrix(t *testing.T) {
+	content := readRuleDoc(t, ".claude", "rules", "moai", "development", "agent-authoring.md")
+
+	if strings.Contains(content, "## Effort-Level Calibration Matrix") {
+		t.Error("agent-authoring.md still carries the retired '## Effort-Level Calibration Matrix' section")
 	}
-
-	// Try both worktree and main project paths
-	constitutionDocPaths := []string{
-		filepath.Join(cwd, ".claude", "rules", "moai", "core", "moai-constitution.md"),
-		filepath.Join(cwd, "..", "..", "..", ".claude", "rules", "moai", "core", "moai-constitution.md"),
-	}
-
-	var content []byte
-	var docPath string
-	for _, path := range constitutionDocPaths {
-		if data, err := os.ReadFile(path); err == nil {
-			content = data
-			docPath = path
-			break
-		}
-	}
-
-	if len(content) == 0 {
-		t.Skip("moai-constitution.md not found - will test after M2 implementation")
-		return
-	}
-
-	contentStr := string(content)
-
-	// Check for cross-reference to agent-authoring.md
-	if !strings.Contains(contentStr, "agent-authoring.md") {
-		t.Error("moai-constitution.md should cross-reference agent-authoring.md for effort matrix")
-	}
-
-	// Check for Opus 4.7 section mentioning effort level selection
-	if !strings.Contains(contentStr, "Opus 4.7") && !strings.Contains(contentStr, "Prompt Philosophy") {
-		t.Error("moai-constitution.md should have Opus 4.7 Prompt Philosophy section")
-	}
-
-	t.Logf("Checked moai-constitution.md at: %s", docPath)
-}
-
-// TestLintLR03_MissingEffortIsError verifies LR-03 is at Error severity (not Warning)
-// Per SPEC-V3R2-ORC-003 REQ-006, LR-03 was promoted from warning to error
-// This test ensures the promotion is in place and prevents future regression
-func TestLintLR03_MissingEffortIsError(t *testing.T) {
-	content := `---
-name: test-agent
-description: Test agent without effort field
-tools: Read, Write
----
-Agent body`
-
-	tmpDir := t.TempDir()
-	agentPath := filepath.Join(tmpDir, "test-agent.md")
-
-	if err := os.WriteFile(agentPath, []byte(content), 0644); err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-
-	violations, err := lintAgentFile(agentPath, false)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Find LR-03 violation
-	foundLR03 := false
-	for _, v := range violations {
-		if v.Rule == "LR-03" {
-			foundLR03 = true
-			// Critical assertion: LR-03 must be Error severity, not Warning
-			if v.Severity != SeverityError {
-				t.Errorf("LR-03 severity must be Error (per SPEC-V3R2-ORC-003 REQ-006), got: %s", v.Severity)
-			}
-			// Verify error message mentions missing effort
-			if !strings.Contains(v.Message, "effort") && !strings.Contains(v.Message, "LR-03") {
-				t.Errorf("LR-03 message should mention missing effort field, got: %s", v.Message)
-			}
-			break
-		}
-	}
-
-	if !foundLR03 {
-		t.Error("expected LR-03 violation for missing effort field")
+	const rule = "MoAI agent definitions omit both `model` and `effort`"
+	if !strings.Contains(content, rule) {
+		t.Errorf("agent-authoring.md should state the inheritance rule %q", rule)
 	}
 }
 
-// TestLintHaikuAgentExemptFromEffortRules verifies that a model: haiku agent
-// with NO effort: field is exempt from BOTH LR-03 (missing effort) and LR-12
-// (effort matrix drift). Haiku does not support the effort field (it is
-// silently inert), so demanding effort on a haiku agent contradicts the
-// canonical haiku_effort_guard invariant (model: haiku ⇒ no effort). The
-// haiku-named agents manager-docs / manager-git are the canonical instances.
-func TestLintHaikuAgentExemptFromEffortRules(t *testing.T) {
-	// manager-docs is in canonicalEffortMatrix with a legacy "medium" value;
-	// the LR-12 haiku early-return must fire before the matrix lookup, and LR-03
-	// must not fire despite the absent effort field.
-	content := `---
-name: manager-docs
-description: Documentation specialist
-tools: Read, Write, Edit
-model: haiku
-permissionMode: bypassPermissions
----
-Docs agent body`
+// TestConstitutionHasNoPerAgentEffortPointer asserts the constitution no
+// longer points at the retired per-agent effort matrix (H8) and still carries
+// the prompt-philosophy section that routes effort by role.
+func TestConstitutionHasNoPerAgentEffortPointer(t *testing.T) {
+	content := readRuleDoc(t, ".claude", "rules", "moai", "core", "moai-constitution.md")
 
-	tmpDir := t.TempDir()
-	agentPath := filepath.Join(tmpDir, "manager-docs.md")
-	if err := os.WriteFile(agentPath, []byte(content), 0644); err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
+	if strings.Contains(content, "Effort-Level Calibration Matrix") {
+		t.Error("moai-constitution.md still points at the retired Effort-Level Calibration Matrix")
 	}
-
-	violations, err := lintAgentFile(agentPath, false)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	for _, v := range violations {
-		if v.Rule == "LR-03" {
-			t.Errorf("haiku agent must be exempt from LR-03 (missing effort), got: %s", v.Message)
-		}
-		if v.Rule == "LR-12" {
-			t.Errorf("haiku agent must be exempt from LR-12 (effort matrix drift), got: %s", v.Message)
-		}
-	}
-}
-
-// TestLintNonHaikuAgentStillRequiresEffort is the negative control for the
-// haiku exemption: a non-haiku agent (or one with no model: field) with no
-// effort: field MUST still trip LR-03. This guards against the exemption being
-// broadened to weaken LR-03/LR-12 for non-haiku agents.
-func TestLintNonHaikuAgentStillRequiresEffort(t *testing.T) {
-	content := `---
-name: manager-spec
-description: Plan-phase specialist
-tools: Read, Write, Edit
-model: inherit
----
-Spec agent body`
-
-	tmpDir := t.TempDir()
-	agentPath := filepath.Join(tmpDir, "manager-spec.md")
-	if err := os.WriteFile(agentPath, []byte(content), 0644); err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-
-	violations, err := lintAgentFile(agentPath, false)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	foundLR03 := false
-	for _, v := range violations {
-		if v.Rule == "LR-03" {
-			foundLR03 = true
-		}
-	}
-	if !foundLR03 {
-		t.Error("non-haiku agent (model: inherit) with no effort field must still trip LR-03")
+	if !strings.Contains(content, "Prompt Philosophy") {
+		t.Error("moai-constitution.md should keep its Prompt Philosophy section")
 	}
 }
 

@@ -18,7 +18,7 @@ func newNewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "new <name>",
 		Short: "Create a worktree through the shared MoAI materializer",
-		Long: `Create one harness-neutral L1 worktree at .claude/worktrees/<name>.
+		Long: `Create one harness-neutral L1 worktree at .moai/worktrees/<name>.
 
 The command delegates to MoAI's existing session-worktree materializer. It
 does not enter the new tree and does not revive the retired base, path, tmux,

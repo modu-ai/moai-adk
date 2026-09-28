@@ -182,7 +182,7 @@ moai-adk は Claude Code を外から包むハーネスである。Claude Code �
 | **自律 + 本物の境界** | `/moai goal` が完了条件を宣言すると、セッションは条件が満たされるまで自力で作業する。ただしターン上限（デフォルト 30）、停滞ガード、実時間予算、事前承認ゲートという 4 つのハードな境界が付いており、無限ループに陥らない。 |
 | **並行安全** | SPEC ごとに独立した作業ツリーを与え、ブランチ状態ガードがプライマリ・チェックアウトでの誤ったブランチ切替を防ぎ、書き込みエージェントの起動前にリモートとの乖離を検査する。書き込み可能なエージェント 2 つが同時に動くことはない。 |
 | **長期の継続** | `/clear` を越えて作業は続く。進行状況は `progress.md` に、ハンドオフ・メッセージはメモリに、ルーティング決定は決定メモリに残る。次のセッションは更地からではなく、前のセッションが学んだ地点から始める。 |
-| **コスト効率** | モデルと推論の深さを作業段階と SPEC サイズに合わせて宣言的に割り当てる。プロンプト・キャッシュを再利用し、長い出力はディスクに流してコンテキストを軽く保つ。 |
+| **コスト効率** | セッションのモデルと推論強度を一度選べば、すべてのエージェントがそれをそのまま引き継ぐ。プロンプト・キャッシュを再利用し、長い出力はディスクに流してコンテキストを軽く保つ。 |
 | **16 プログラミング言語の同等サポート** | Go、Python、TypeScript、JavaScript、Rust、Java、Kotlin、C#、Ruby、PHP、Elixir、C++、Scala、R、Flutter、Swift — 16 のプログラミング言語をマーカー・ベースの自動検出でひとつの集合として扱う。どれか 1 つが優遇されることはない。 |
 | **自己改善** | 繰り返される失敗パターンを観測すると、ルール変更提案として上げる。黙って適用せず、承認を受けて反映する。ルーティング決定とゲート証拠が決定メモリに蓄積され、次の実行の材料になる。 |
 | **母語への配慮** | 韓国語・日本語・中国語・英語の 4 ロケールを同じ PRで扱い、翻訳調を禁じ、母語の文を別に持つ。母語を使うユーザーに英語を強要しない。 |
@@ -445,7 +445,7 @@ AI エージェント同士がコンテキスト・不変条件・危険区域�
   <img src="./assets/images/moai-web-settings.png" alt="moai web コンソール設定画面 — プロファイルバーと設定タブ" width="90%">
 </p>
 
-`moai web` がローカルホスト限定のコンソールを開く。画面は Overview・Kanban・Specs・Monitor・Settings・Todo の 6 つで、設定画面は Identity・Language・LLM・GLM Settings・Workflow・Git & Worktree・Audit・Codex・Agents・Report・MCP・Cross-Session・Feedback・Quality Gate のタブに分かれる。Codex タブは散らばった codex 設定を 1 画面にまとめて見せる読み取り専用の画面で、値の編集は元のタブで行う。プロファイルの作成・改名・削除も同じ画面で行う。
+`moai web` がローカルホスト限定のコンソールを開く。画面は Overview・Kanban・Specs・Monitor・Settings・Todo の 6 つで、設定画面は Identity・Language・LLM・GLM Settings・Workflow・Git & Worktree・Audit・Codex・Report・MCP・Cross-Session・Feedback・Quality Gate のタブに分かれる。Codex タブは散らばった codex 設定を 1 画面にまとめて見せる読み取り専用の画面で、値の編集は元のタブで行う。プロファイルの作成・改名・削除も同じ画面で行う。
 
 ### ref / domain スキル
 
@@ -500,25 +500,25 @@ flowchart TD
 
 ### 13 エージェント・カタログ
 
-| 分類 | エージェント | コスト | 役割 |
-|------|------|------|------|
-| **マネージャー** | manager-spec | 🔴 | plan 段階の SPEC 作成 |
-| | manager-develop | 🔴 | run 段階の TDD/DDD/autofix 実装 |
-| | manager-docs | 🔵 | sync 段階のドキュメント化 |
-| | manager-git | 🩵 | PR 作成・ルーティング |
-| | manager-design | 🟠 | デザイン段階の協業 (Claude Design) |
-| | manager-lead | 🔴 | 階層チーム Tier L 調整 + カンバン・ファクトリーのリードセッション配車（唯一の Agent 保持、深さ 2 封印） |
-| **評価者** | plan-auditor | 🔴 | 独立 plan 監査（偏り防止） |
-| | sync-auditor | 🔴 | 4 次元品質採点（機能性 40 · セキュリティ 25 · 制作 20 · 一貫性 15） |
-| **ビルダー** | builder-harness | 🟠 | プロジェクト専用エージェント・スキル・コマンド・フックのスキャフォールド |
-| **アドバイザー** | super-advisor | 🔵 | 高推論コンサル（E1-E4 エスカレーション） |
-| **スペシャリスト** | e2e-tester | 🟠 | Web/モバイル/デスクトップ E2E テスト実行（CLI ファースト） |
-| | mission-governor | 🔴 | 承認済み GTD 自動ミッションに対する読み取り専用の判定 — 判定を 1 つ返すだけで自ら適用しない（GTD ワークフローが呼ぶため、選択の決定木に行を持たない） |
-| **内蔵** | Explore | ⚪ | 読み取り専用のコードベース探査 |
+| 分類 | エージェント | 役割 |
+|------|------|------|
+| **マネージャー** | manager-spec | plan 段階の SPEC 作成 |
+| | manager-develop | run 段階の TDD/DDD/autofix 実装 |
+| | manager-docs | sync 段階のドキュメント化 |
+| | manager-git | PR 作成・ルーティング |
+| | manager-design | デザイン段階の協業 (Claude Design) |
+| | manager-lead | 階層チーム Tier L 調整 + カンバン・ファクトリーのリードセッション配車（唯一の Agent 保持、深さ 2 封印） |
+| **評価者** | plan-auditor | 独立 plan 監査（偏り防止） |
+| | sync-auditor | 4 次元品質採点（機能性 40 · セキュリティ 25 · 制作 20 · 一貫性 15） |
+| **ビルダー** | builder-harness | プロジェクト専用エージェント・スキル・コマンド・フックのスキャフォールド |
+| **アドバイザー** | super-advisor | 高推論コンサル（E1-E4 エスカレーション） |
+| **スペシャリスト** | e2e-tester | Web/モバイル/デスクトップ E2E テスト実行（CLI ファースト） |
+| | mission-governor | 承認済み GTD 自動ミッションに対する読み取り専用の判定 — 判定を 1 つ返すだけで自ら適用しない（GTD ワークフローが呼ぶため、選択の決定木に行を持たない） |
+| **内蔵** | Explore | 読み取り専用のコードベース探査 |
 
-コスト色はデフォルト `medium` プロファイルのモデル×推論セルに従う (`moai model profile` で確認): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ セッション・モデル継承（ユーザー追加エージェント）。プロファイル (`high`/`low`) を切り替えると配属が変わる。執筆と監査を最初から分けて担わせるので、自分の仕事を自分で採点する事態が起こらない。
+すべてのエージェントはセッションのモデルと推論強度をそのまま引き継ぐ — セッションをどのモデルと effort で起こしたかが、そのまま全員の配属になる。執筆と監査を最初から分けて担わせるので、自分の仕事を自分で採点する事態が起こらない。
 
-13 個のうち 12 個が moai-adk の作ったエージェントで、`Explore` は Claude Code に元からある内蔵エージェントだ。`Explore` も他の行と同じようにプロファイルのセルを持つ — 3 プロファイルすべて `sonnet / low` だ。だから後段のモデル・プロファイル節も同じ 13 個を数え、13 × 3 = 39 セルになる。
+13 個のうち 12 個が moai-adk の作ったエージェントで、`Explore` は Claude Code に元からある内蔵エージェントだ。
 
 ### trust-but-verify — 完了主張に証拠を結び付ける
 
@@ -650,22 +650,6 @@ v3.1.1 で手を入れる価値のあるセクションが 4 つ増えた。
 
 環境変数がファイルの値を上書きする。優先順位の詳細と全セクション一覧は [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference)を参照のこと。
 
-### モデル・プロファイル — high / medium / low
-
-`moai model profile` が 13 エージェント × 3 プロファイル = 39 セルの `{model, effort}` 組を解決する。
-
-<p align="center">
-  <img src="./assets/images/model-routing-infographic-ja.png" alt="エージェント・モデル・ルーティング — エージェントごとに適切なモデルと推論強度が割り当てられる" width="85%">
-</p>
-
-| プロファイル | 性格 | いつ |
-|---|---|---|
-| **high** | Opus 中心、高い推論 | 複雑な計画 · セキュリティ監査 · 難しいデバッグ |
-| **medium** (デフォルト) | バランス | 通常の SPEC |
-| **low** | Sonnet + 低い推論 | 機械的反復 · ドキュメント · 単発作業 |
-
-配属は作業段階 (plan / run / sync) と SPEC サイズ (Tier S / M / L) に従う — 深い推論が必要な計画段階に推論の強いモデルを、機械的反復が続く実装段階に軽いモデルを。No-Haiku 3 層ポリシーにより、単発・入力支配の作業は Sonnet low、マルチターンのエージェンティック作業はすべて Opus が担う。
-
 ### settings.json / settings.local.json の分離
 
 | ファイル | 役割 | テンプレート |
@@ -776,7 +760,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC ライフサイクル・ツール |
 | `moai goal <arm\|status\|clear>` | ゴール・エンジン CLI |
 | `moai harness <status\|apply\|rollback\|disable>` | ハーネス学習ライフサイクル |
-| `moai handoff <save\|list>` | セッション・ハンドオフ記録 |
+| `moai handoff <save\|show\|clear>` | セッション・ハンドオフ記録 |
 | `moai preference <list\|decay-scan\|toggle>` | 決定メモリ管理 |
 | `moai memory <doctor\|archive>` | エージェント・メモリの点検と古い項目の保管 |
 | `moai tokens record` | プール別トークン使用の台帳記録 |

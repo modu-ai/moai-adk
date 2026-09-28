@@ -266,10 +266,6 @@ func init() {
 	// subtree (parent + decay-scan child). M5 will add `toggle` as a sibling.
 	rootCmd.AddCommand(preference.PreferenceCmd)
 
-	// SPEC-MODEL-PROFILE-MATRIX-001 M2: register the read-only `moai model
-	// profile` resolver — the per-agent model+effort profile injection surface.
-	rootCmd.AddCommand(newModelCmd())
-
 	// SPEC-GOAL-HTML-WIRING-001 M3: register the `moai plan` CLI parent + the
 	// `render-html` subcommand (Surface 2 production caller for planhtml.RenderPlanHTML).
 	rootCmd.AddCommand(newPlanCmd())

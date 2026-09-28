@@ -180,20 +180,21 @@ func TestContractSignDeniedBeforeVerbExists(t *testing.T) {
 	if decision != DecisionDeny || !strings.HasPrefix(reason, contractSignViolationPrefix) {
 		t.Fatalf("sign: decision = %q reason = %q, want the deny sentinel despite the unimplemented verb", decision, reason)
 	}
-	t.Setenv(config.EnvFactoryRole, config.FactoryRoleWorker)
+	t.Setenv(config.EnvFactoryRole, config.FactoryRoleLane)
 	decision, reason = checkContractSign(signGuardInput(t, "moai contract decide SPEC-X-001"))
 	if decision != DecisionDeny || !strings.HasPrefix(reason, contractSignViolationPrefix) {
 		t.Fatalf("decide: decision = %q reason = %q, want the deny sentinel despite the unimplemented verb", decision, reason)
 	}
 }
 
-// TestContractRoleScopedDenyUnderWorkerMarker pins AC-AP-015: in a session
-// whose MOAI_FACTORY_ROLE is the worker value (set by this test itself, per
-// REQ-AP-012), the non-interactive sign path and every decide shape —
-// including behind sudo and eval — is denied; the eval case additionally
-// carries the unclassified token; and no supplied case is silently skipped.
-func TestContractRoleScopedDenyUnderWorkerMarker(t *testing.T) {
-	t.Setenv(config.EnvFactoryRole, config.FactoryRoleWorker)
+// TestContractRoleScopedDenyUnderLaneMarker pins AC-AP-015: in a session
+// whose MOAI_FACTORY_ROLE is the lane value (set by this test itself, per
+// REQ-AP-012 / SPEC-ROLE-NAMING-CODE-001 REQ-RNC-012), the non-interactive
+// sign path and every decide shape — including behind sudo and eval — is
+// denied; the eval case additionally carries the unclassified token; and no
+// supplied case is silently skipped.
+func TestContractRoleScopedDenyUnderLaneMarker(t *testing.T) {
+	t.Setenv(config.EnvFactoryRole, config.FactoryRoleLane)
 	cases := []struct {
 		command      string
 		unclassified bool
@@ -225,13 +226,15 @@ func TestContractRoleScopedDenyUnderWorkerMarker(t *testing.T) {
 	}
 }
 
-// TestContractRoleScopedAllowWithoutWorkerMarker pins AC-AP-016: in a session
-// with no marker, and in one whose marker holds a value other than the worker
-// value, every AC-AP-015 call is allowed with empty decision and reason (the
+// TestContractRoleScopedAllowWithoutLaneMarker pins AC-AP-016 and
+// SPEC-ROLE-NAMING-CODE-001 AC-RNC-014's allow branch: in a session with no
+// marker, and in one whose marker holds a value other than the lane value —
+// including the legacy spellings `worker` and `agent`, which carry no role
+// claim — every AC-AP-015 call is allowed with empty decision and reason (the
 // lead session's own decide path) — and the two human-path calls are denied
-// with the sentinel in BOTH runs, the armed control that keeps the allow arm
+// with the sentinel in EVERY run, the armed control that keeps the allow arm
 // from passing on an absent guard.
-func TestContractRoleScopedAllowWithoutWorkerMarker(t *testing.T) {
+func TestContractRoleScopedAllowWithoutLaneMarker(t *testing.T) {
 	roleScoped := []string{
 		"moai contract sign --signer llm --receipt /tmp/r.json",
 		"moai contract sign --signer llm+jev --receipt /tmp/r.json",
@@ -249,9 +252,13 @@ func TestContractRoleScopedAllowWithoutWorkerMarker(t *testing.T) {
 		role string
 	}{
 		// An empty value reads as unset: the marker check is equality with
-		// the worker value constant.
+		// the lane value constant.
 		{"marker unset", ""},
 		{"marker other value", "lead"},
+		// Legacy spellings carry no role claim (AC-RNC-014): only equality
+		// with the lane constant denies, so both are allowed.
+		{"marker legacy worker", "worker"},
+		{"marker legacy agent", "agent"},
 	}
 	for _, run := range runs {
 		t.Run(run.name, func(t *testing.T) {

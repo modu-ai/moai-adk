@@ -86,7 +86,7 @@ func newInteractiveHandoffFixture(t *testing.T, switchPending bool) *interactive
 	ctx := context.Background()
 	pending, err := f.store.RegisterLaunchPending(ctx, factorymsg.Peer{
 		ProjectKey: homestate.ProjectKey(f.primary), RunID: f.run, Backend: "codex",
-		Role: "worker", Slot: "lane-1", PID: owner, ProcessStart: start,
+		Role: "lane", Slot: "lane-1", PID: owner, ProcessStart: start,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -294,7 +294,7 @@ func TestFactoryLaneHandoffInteractiveStateMachine(t *testing.T) {
 		owner, start := factoryHookOwnerIdentity(t)
 		pending, err := f.store.RegisterLaunchPending(ctx, factorymsg.Peer{
 			ProjectKey: homestate.ProjectKey(f.primary), RunID: f.run, Backend: "codex",
-			Role: "worker", Slot: "lane-1", PID: owner, ProcessStart: start,
+			Role: "lane", Slot: "lane-1", PID: owner, ProcessStart: start,
 		})
 		if err != nil {
 			t.Fatalf("launcher registration after the bound owner stopped: %v", err)

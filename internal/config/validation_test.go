@@ -638,53 +638,6 @@ func TestDevelopmentModeStrings(t *testing.T) {
 	}
 }
 
-// TestValidate_OneofViolation exercises the validator/v10 oneof path for
-// LLM.PerformanceTier.  Invalid values must produce an error that wraps
-// ErrInvalidConfig (AC-05 ConfigTypeError alignment).
-func TestValidate_OneofViolation(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name  string
-		tier  string
-		valid bool
-	}{
-		{"max is valid", "max", true},
-		{"high is valid", "high", true},
-		{"medium is valid", "medium", true},
-		{"low is valid", "low", true},
-		{"empty is valid (omitempty)", "", true},
-		{"ultra is invalid", "ultra", false},
-		{"HIGH uppercase is invalid", "HIGH", false},
-		{"extreme is invalid", "extreme", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			cfg := NewDefaultConfig()
-			cfg.User.Name = "TestUser"
-			cfg.LLM.PerformanceTier = tt.tier
-			loaded := map[string]bool{"user": true}
-
-			err := Validate(cfg, loaded)
-			if tt.valid && err != nil {
-				t.Errorf("Validate() expected no error for tier %q, got: %v", tt.tier, err)
-			}
-			if !tt.valid && err == nil {
-				t.Errorf("Validate() expected error for tier %q, got nil", tt.tier)
-			}
-			if !tt.valid && err != nil {
-				// Must be identifiable as a config error.
-				if !errors.Is(err, ErrInvalidConfig) {
-					t.Errorf("expected ErrInvalidConfig for tier %q, got: %v", tt.tier, err)
-				}
-			}
-		})
-	}
-}
-
 // TestValidateGitStrategyMergeMethod covers AC-MMC-005 (invalid value rejected with
 // field path) and AC-MMC-006 (empty value passes, fail-safe to default). It mirrors
 // the validateGitConventionConfig enum-rejection structure, NOT the checkStringField

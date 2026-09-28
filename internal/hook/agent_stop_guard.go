@@ -14,7 +14,7 @@
 //	           non-blocking advisory naming the stopped teammate.
 //	deny     — enforcement layer (M2): opt-in gate, sentinel-prefixed deny.
 //
-// Fail-open is the house norm (branch_guard.go, agent_model_guard.go): the
+// Fail-open is the house norm (branch_guard.go): the
 // guard denies ONLY on positive evidence — a parsed recipient that matches a
 // live entry in the SAME session's registry with the gate enabled. Every
 // uncertain path (unparseable payload, absent recipient, unreadable or
@@ -143,7 +143,7 @@ func loadAgentStopRegistry(projectRoot, sessionID string) *AgentStopRegistry {
 
 // upsertAgentStopEntry inserts or refreshes an entry keyed by identity. The
 // file is written whole (read-modify-write); concurrent writers within one
-// session are not expected — the lead stops one teammate at a time.
+// session are not expected — the team lead stops one teammate at a time.
 func upsertAgentStopEntry(projectRoot, sessionID string, entry AgentStopEntry) error {
 	reg := loadAgentStopRegistry(projectRoot, sessionID)
 	if reg == nil {
@@ -334,7 +334,7 @@ func RecordAgentStop(projectRoot string, input *HookInput) {
 // (workflow.agent_stop_guard.enabled, distributed default false). A nil
 // provider or nil config returns false so a misconfigured hook can never
 // accidentally reach the deny path — the same defensive shape as
-// agentModelGuardEnabled and branchGuardEnabled.
+// branchGuardEnabled.
 func (h *preToolHandler) agentStopGuardEnabled() bool {
 	if h.cfg == nil {
 		return false

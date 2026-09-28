@@ -59,7 +59,6 @@ Anthropic's official prompt guidelines. The binding points:
   never by agent name — `high` minimum for intelligence-sensitive work, `xhigh` for hard coding and
   agentic work, `max` sparingly, `low` only for speed-critical or simple tasks.
 
-Per-agent effort calibration: `agent-authoring.md` § Effort-Level Calibration Matrix.
 Rationale and the model-id table: `moai-constitution-detail.md` § Opus 5.5 Prompt Philosophy.
 
 ## Output Format

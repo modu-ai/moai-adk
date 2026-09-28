@@ -152,7 +152,7 @@ func TestValidate_RejectsInvalidEffort(t *testing.T) {
 		{EffortXhigh, true},
 		{EffortMax, true},
 		{"ultra", false},
-		{"", false},
+		{"", true}, // optional (SPEC-AGENT-MODEL-INHERIT-001 D11)
 		{"HIGH", false}, // case-sensitive
 	}
 	for _, tc := range cases {
@@ -182,7 +182,7 @@ func TestValidate_RejectsInvalidModel(t *testing.T) {
 		{ModelSonnet, true},
 		{ModelOpus, true},
 		{"gpt-4", false},
-		{"", false},
+		{"", true}, // optional (SPEC-AGENT-MODEL-INHERIT-001 D11)
 		{"Sonnet", false}, // case-sensitive
 	}
 	for _, tc := range cases {
@@ -232,8 +232,9 @@ func TestValidate_RejectsInvalidPattern(t *testing.T) {
 }
 
 // TestValidate_RequiresAllFiveSpecialistFields verifies a specialist missing
-// ANY of the 5 sub-fields (role/primitive/isolation/effort/model) is rejected.
-// AC-HV4-005a: 0 specialists missing any of the 5 fields.
+// any of the 3 required sub-fields (role/primitive/isolation) is rejected.
+// effort and model are optional since SPEC-AGENT-MODEL-INHERIT-001 D11
+// (TestValidate_SpecialistModelAndEffortAreOptional).
 func TestValidate_RequiresAllFiveSpecialistFields(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -243,8 +244,6 @@ func TestValidate_RequiresAllFiveSpecialistFields(t *testing.T) {
 		{"missing_role", func(s *Specialist) { s.Role = "" }, "role"},
 		{"missing_primitive", func(s *Specialist) { s.Primitive = "" }, "primitive"},
 		{"missing_isolation", func(s *Specialist) { s.Isolation = "" }, "isolation"},
-		{"missing_effort", func(s *Specialist) { s.Effort = "" }, "effort"},
-		{"missing_model", func(s *Specialist) { s.Model = "" }, "model"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

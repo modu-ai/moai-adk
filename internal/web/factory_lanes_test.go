@@ -24,9 +24,9 @@ import (
 // writeFactoryRegistry writes root's lane registry from a label→pid map.
 func writeFactoryRegistry(t *testing.T, root string, lanes map[string]int) {
 	t.Helper()
-	reg := make(map[string]kanban.FactoryWorkerEntry, len(lanes))
+	reg := make(map[string]kanban.FactoryLaneEntry, len(lanes))
 	for label, pid := range lanes {
-		reg[label] = kanban.FactoryWorkerEntry{PID: pid, RegisteredAt: time.Now().UTC().Format(time.RFC3339)}
+		reg[label] = kanban.FactoryLaneEntry{PID: pid, RegisteredAt: time.Now().UTC().Format(time.RFC3339)}
 	}
 	path := kanban.FactoryRegistryPath(root)
 	if err := kanban.SaveFactoryRegistry(path, reg); err != nil {

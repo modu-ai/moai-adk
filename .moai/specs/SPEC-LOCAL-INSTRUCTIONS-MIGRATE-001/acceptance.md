@@ -40,11 +40,12 @@ when it matches nothing, so a criterion invoking a test names the test's **symbo
 
 > **Carve note.** The seven criteria below are transferred **verbatim** from
 > `SPEC-INSTRUCTION-FILES-UNIFY-001` at commit `1140bcd1d`, retaining their `AC-IFU-*` ids so
-> existing cross-references and audit citations still resolve. `AC-IFU-007` additionally carries
+> existing cross-references and audit citations still resolve. AC-IFU-007 [RETIRED] additionally carries
 > the D3 repair (which copy, and in which unit). The two **recorded debts** below are preserved
-> exactly as authored — including their own statements of what they would split into. The Tier L
-> ceiling that forced each fold no longer binds here (Tier M, 16/16, currently 7 criteria), so
-> the headroom to unfold exists; **spending it is card t1259's plan-phase decision and is
+> exactly as authored — including their own statements of what they would split into. Written at
+> the v0.1.x carve, the file was Tier M (16/16) with 7 criteria; it is **now Tier L (25/25) with
+> 8 criteria** (v0.2.0 raised the tier, v0.3.0 transferred two criteria to card t1290 and left
+> 8), so the headroom to unfold exists; **spending it is card t1259's plan-phase decision and is
 > deliberately not taken by this carve.**
 
 ## §D AC Matrix
@@ -133,8 +134,10 @@ cannot regress the preamble the same payload carries. (REQ-IFU-008)
 > ok  github.com/modu-ai/moai-adk/internal/cli
 > ```
 >
-> `REQ-IFU-008` is already satisfied at `internal/cli/codex_launcher.go:138`
-> (`fmt.Fprintf(&payload, "<!-- source: %s -->\n", name)`). That is the honest reading and it is
+> `REQ-IFU-008` is already satisfied at `internal/cli/codex_launcher.go:137`, inside
+> `codexLocalDeveloperInstructionArgs` (`fmt.Fprintf(&payload, "<!-- source: %s -->\n", name)`) —
+> re-read 2026-09-28 on `develop` = `origin/develop` = `37dc766b9`; the v0.2.4 citation `:138` was wrong even at
+> `5ba87003f`, which reads `:136`. That is the honest reading and it is
 > now stated where it binds: **`REQ-IFU-008` is a preservation requirement, not new behaviour**
 > (`spec.md` §C.1), and `AC-IFU-029` is a **regression guard**, labelled as such above with the
 > passing baseline recorded here — so a *later* failure is meaningful and a run phase reading §D.3
@@ -238,64 +241,21 @@ parity across both commands is the assertion. (REQ-IFU-012)
 > covers that outcome. `AC-IFU-030` stays non-blocking; a missing advisory is recoverable, a
 > mutated file is not.
 
-### D.3 This repository's own migration
+### D.3 This repository's own migration — transferred to card t1290 (v0.3.0)
 
-**AC-IFU-007** — Given this repository's migrated local file, When `wc -m < AGENTS.local.md`
-runs, Then the value is **at most 39,999**; and When the pre-migration canonical copy is
-measured **at the milestone** with `git show origin/develop:CLAUDE.local.md | wc -m`, Then both
-the **before** and the **after** value are recorded with the command that produced each, and the
-reduction reported is their difference. No absolute before-value or reduction floor is asserted
-here — see the v0.2.0 note. (REQ-IFU-021)
+The two criteria this section carried, AC-IFU-007 [RETIRED] and AC-IFU-024 [RETIRED], verified
+only the two requirements that left this SPEC with milestone M3 (`spec.md` §D, "this
+repository's own migration"). They are transferred to card t1290 together with those
+requirements, and their verbatim text — including the v0.2.0 derived-floor note, the D3 repair,
+and the v0.2.1 per-line `grep -n -C1` repair — stays readable at `4441cf1a6` (this file, §D.3).
 
-> **[HARD] v0.2.0 — the fixed floor is withdrawn, because the number it was fixed to moved.**
-> v0.1.1 repaired an off-by-one in a reduction floor ("at least 4,381" → "4,382") derived from a
-> measured before-value of 44,381. Re-measured in this worktree, 2026-09-26:
-> `git show origin/develop:CLAUDE.local.md | wc -m` → **44,740**, and
-> `git show develop:CLAUDE.local.md | wc -m` agrees. The before-value had moved by 359
-> characters, which makes the repaired floor wrong in the other direction — it would now be
-> satisfiable by a migration that lands at 40,358 and fails the cap.
->
-> The class of defect is not arithmetic. `CLAUDE.local.md` is a live maintainer document that
-> sibling cards keep editing, so **any** absolute figure written into a criterion about it is
-> stale by construction, and an arithmetic repair to a stale constant makes it look authoritative.
-> The criterion therefore asserts only the bound that does not drift — `after <= 39,999` — and
-> requires the before-value to be **measured at the milestone** rather than read from here.
->
-> The recording obligation is unchanged and is the load-bearing part: both values, each with its
-> command. That is what stops the criterion being discharged by measuring an already-compliant
-> copy (§F anti-pattern). What is dropped is only the predicted floor, which added no failure
-> mode the `<= 39,999` bound does not already catch.
->
-> Re-checked across every other numeric clause in this SPEC: `AC-IFU-023`'s locale-count equality
-> and `AC-IFU-013`'s exit `0` carry no drifting constant, so this was the only instance.
-
-> **D3 repair, applied at the carve.** The criterion previously asserted only the post-state
-> (`< 40000`) against an unnamed copy. Two things made that dischargeable without doing the
-> work: the SPEC named neither which `CLAUDE.local.md` copy migrates — and that file's §0
-> exists precisely because its copies diverge — nor which unit the 40,000 cap measures, while
-> the surrounding prose mixed 61,908 bytes with 44,381 characters.
->
-> Both are now fixed. The copy is the **`develop`-committed** one, per that file's §0.1
-> discriminant (§0.2 forbids citing an uncommitted working copy; §0.3 records `main`'s copy as
-> a retired model). The unit is **characters** (`wc -m`) throughout. Measured 2026-09-26:
-> `git show origin/develop:CLAUDE.local.md | wc -m` → **44,381**, so the canonical copy does
-> not already satisfy the cap and the requirement is a real ~10% reduction. Requiring the
-> before/after pair is what stops the criterion being discharged by measuring an
-> already-compliant copy.
-
-**AC-IFU-024** — Given the migrated repository-local file, When its §0 is read, Then it names
-`AGENTS.local.md` as the file whose canonical copy it discriminates; and When
-`grep -n -C1 'CLAUDE.local.md' AGENTS.local.md` is run, Then **every numbered occurrence in that
-output** sits within a sentence marking the name as retired or historical. The verdict is read per
-line, not in aggregate: one unmarked occurrence fails the criterion however many marked ones
-surround it. (REQ-IFU-022)
-
-> **v0.2.1 — the named command could not show what the criterion asserted.** It read `grep -c`,
-> which emits a single integer: it cannot say which occurrences they are, and it cannot show the
-> sentence around any of them, so the second half of the assertion was not decidable from the
-> output the verdict was supposedly read from. `grep -n -C1` puts the occurrences and their
-> surrounding lines in that output, and the passing condition is restated per line so a count can
-> no longer stand in for the judgment.
+> **[HARD] Carried with them: plan-audit iter4 D1.** Both read the gitignored working copy of
+> `AGENTS.local.md` (`.gitignore:275`), so a migration committed without `git add -f` passes them
+> while `develop` loses the file. The replacement predicate reads the **committed tree** — the file
+> present in `git show <ref>:AGENTS.local.md`, its `wc -m` at most 39,999, and `CLAUDE.local.md`
+> absent from `<ref>` — and its kill of three mutants, with a passing control, is recorded
+> verbatim in `.moai/reports/t1259/d1-mutant.md`. That is t1290's to adopt; nothing in this SPEC
+> measures either file any more.
 
 ### D.4 Documentation
 
@@ -375,14 +335,14 @@ the `develop` head **carrying this lane's merge SHA** complete, Then:
   push touching `.moai/specs/**` — this SPEC's own artifacts.
 - **`docs i18n parity check` (`.github/workflows/docs-i18n-check.yml`) has RUN and its log is
   read** — recorded, not gated. It is **advisory and non-blocking by construction**: `strict=false`
-  on a push to `main`/`develop` (`docs-i18n-check.yml:71-74`), Phase 1 of a declared rollout with 35
+  on a push to `main`/`develop` (`docs-i18n-check.yml:71-75`), Phase 1 of a declared rollout with 35
   pre-existing drifts. Its verdict is therefore evidence to read, never a pass condition, and its
   `paths: docs-site/content/**` filter means it fires only because M4's own commit touches those
   files — state that coupling when recording it rather than assuming the run happened.
 
 The verdict is read from those runs, identified by the head SHA — a local pass, or a run against a
 `develop` head predating this lane's merge, does not discharge it.
-(REQ-IFU-007 … REQ-IFU-012, REQ-IFU-020 … REQ-IFU-022)
+(REQ-IFU-007 … REQ-IFU-012, REQ-IFU-020)
 
 > **[HARD] Named as workflow runs, not as "required checks", and that wording is load-bearing.**
 > `develop` is **not a protected branch** — measured at `0d7c7e44e`:
@@ -481,8 +441,6 @@ text.
 | REQ-IFU-011 | AC-IFU-015 |
 | REQ-IFU-012 | AC-IFU-030 |
 | REQ-IFU-020 | AC-IFU-023 |
-| REQ-IFU-021 | AC-IFU-007 |
-| REQ-IFU-022 | AC-IFU-024 |
 
 Every requirement is covered by exactly one criterion, and every criterion covers exactly one
 requirement — the one-to-one the two unfolds at v0.2.0 produced. `AC-IFU-031` is deliberately
@@ -501,15 +459,14 @@ diff <(grep -o 'REQ-IFU-[0-9]\{3\}' acceptance.md | sort -u) \
 ```
 
 Empty output is the passing condition. The sixteen requirements retained by
-`SPEC-INSTRUCTION-FILES-UNIFY-001` are absent from both sides, so their absence is not a gap
-here.
+`SPEC-INSTRUCTION-FILES-UNIFY-001` are absent from both sides, and so are the two transferred to
+card t1290 at v0.3.0 (§D.3) — their absence is not a gap here.
 
 ## §D.3 Definition of Done
 
-All ten criteria pass. Every deployed-file criterion is verified separately against both mirrors
+All eight criteria pass. Every deployed-file criterion is verified separately against both mirrors
 with separate exit codes. The §D.2 verification command is run at close and its empty output
-recorded. `AC-IFU-007`'s before-and-after character counts are both recorded with the commands that
-produced them, the before-value measured at the milestone rather than read from this document.
+recorded.
 
 **`AC-IFU-031` is read from the CI runs for the `origin/develop` head carrying this lane's merge
 SHA** — not from a PR head. This lane opens no PR: under the git-flow lane protocol only
@@ -536,11 +493,12 @@ perform:
    the criterion's wording is re-read before the close proceeds.
 4. **The docs-parity residual is restated at close, not quietly inherited.** M4 lands 24 locale
    files whose content no *blocking* check inspects (`AC-IFU-023` is the gate, and it runs in the
-   lane). The general condition has an owner already — **`SPEC-V3R3-DOCS-PARITY-001`**, named in
-   `docs-i18n-check.yml:74` as the Phase 2 strict-flip route. This SPEC does not own that flip and
-   does not take it on; the close names the pointer so the residual is handed over rather than
+   lane). The general condition's planned route — the Phase 2 strict flip named in
+   `docs-i18n-check.yml:74` — has **no existing SPEC directory under `.moai/specs/`** (the name
+   `SPEC-V3R3-DOCS-PARITY-001` is the workflow comment's label for a planned route, not a live
+   SPEC). This SPEC does not own that flip and does not take it on; the close names the pointer
+   so the residual is handed over rather than
    dropped.
 
-**The operator gate on the repository's own migration (M3) is discharged in the lane, by the
-operator, before that milestone starts** — not inferred from the earlier milestones having gone
-well, and not from this document. The lane records the confirmation with the turn it arrived in.
+**No operator gate remains in this SPEC.** The one it carried guarded the repository's own
+migration (M3), which left for card t1290 at v0.3.0 together with that gate (§D.3).

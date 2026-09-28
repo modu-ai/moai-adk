@@ -30,7 +30,19 @@ codex-cli は Claude Code の `.claude/skills/` を読まないため、スキ�
 
 ## ハーネス別の個人指示
 
-`CLAUDE.local.md` は Claude のワークフローと共有する共通ローカル入力で、`AGENTS.local.md` は Codex 専用入力です。ローカルの `moai codex` は、引数なし、`cli`、`app`、`--spawn`、`-w` のどの起動経路でも、プロジェクトルートにある空でない通常ファイルをこの順に読み込みます。各本文の前に `<!-- source: <filename> -->` という出典ヘッダーを置き、結合した内容を 1 つの `developer_instructions` 上書きとして渡します。`-w` でも Codex の実行場所がワークツリーに移るだけで、入力元は元のプロジェクトルートのままです。共有の `AGENTS.md` と `CLAUDE.md` は、これらのローカルファイルを取り込んだりリンクしたりしません。ランチャーはリンクや通常ファイルでない入力を拒否し、検査した同じファイルディスクリプターから読み込みます。また、オペレーターが `developer_instructions` を重ねて指定した場合や direct/spawn 引数が大きすぎる場合は、起動前に失敗します。ほかのハーネス固有設定とメモリは、それぞれのハーネスだけに残ります。Codex Web はローカルランチャーを通らないため、この注入を受けません。
+`AGENTS.local.md` は両方のハーネスが読む個人の指示ファイルで、`CLAUDE.local.md` はその以前の名前として、フォールバックの入力にだけ残っています。ローカルの `moai codex` は、引数なし、`cli`、`app`、`--spawn`、`-w` のどの起動経路でも、プロジェクトルートにある空でない通常ファイルをこの順に読み込みます。各本文の前に `<!-- source: <filename> -->` という出典ヘッダーを置き、結合した内容を 1 つの `developer_instructions` 上書きとして渡します。`-w` でも Codex の実行場所がワークツリーに移るだけで、入力元は元のプロジェクトルートのままです。共有の `AGENTS.md` と `CLAUDE.md` は、これらのローカルファイルを取り込んだりリンクしたりしません。ランチャーはリンクや通常ファイルでない入力を拒否し、検査した同じファイルディスクリプターから読み込みます。また、オペレーターが `developer_instructions` を重ねて指定した場合や direct/spawn 引数が大きすぎる場合は、起動前に失敗します。ほかのハーネス固有設定とメモリは、それぞれのハーネスだけに残ります。Codex Web はローカルランチャーを通らないため、この注入を受けません。
+
+## `CLAUDE.local.md` のフォールバックと移行の案内
+
+`AGENTS.local.md` がなく `CLAUDE.local.md` だけがあるプロジェクトでも、`moai codex` はそのファイルをフォールバックとして読み、`developer_instructions` に入れます。出典ヘッダーには実際に読んだファイル名がそのまま入ります — この場合は `<!-- source: CLAUDE.local.md -->` です。
+
+フォールバックを通ったとき、ランチャーは標準エラーに移行の案内を 1 行出力します。
+
+```text
+Advisory: CLAUDE.local.md is a legacy local instruction file; run `moai migrate local-instructions` to move it to AGENTS.local.md.
+```
+
+この案内はオペレーター向けのメッセージなので、モデルのコンテキストになる `developer_instructions` には入りません。2 つのファイルが両方ある場合はどちらも読み込まれ、案内は手作業でまとめるよう促す文面に変わります。共通の契約は `AGENTS.md`、Claude 専用の層は `CLAUDE.md`、個人の指示は `AGENTS.local.md` という 3 ファイル構成の中で、`CLAUDE.local.md` は移行を待つ以前の名前にすぎません。
 
 ## `internal/codexadapter` — フックアダプターライブラリ
 
@@ -60,6 +72,14 @@ codex-cli は Claude Code の `.claude/skills/` を読まないため、スキ�
 ### 現在の呼び出し元
 
 `RenderHooks` は、適応済みの 8 イベントのコマンドをユーザーの `.codex/hooks.json` に書き込みます。`moai init --llm codex|both` がこの配線を作成し、既存プロジェクトでは `moai tool enable codex` で追加または更新します。
+
+## デスクトップアプリと v3.1.3 のリリース条件
+
+Codex アプリのローカルセッションでは、生成された `.codex/hooks.json` と `.codex/config.toml` を含むプロジェクトを開きます。Codex がプロジェクトのフックと設定を読み込むには、プロジェクトの信頼が必要です。Codex CLI の `/hooks` でフックを確認し、定義が変わった場合は再び信頼してください。同じプロジェクトで `moai doctor` を実行すると MoAI の配線状態を確認できます。アプリの実行環境から `moai` コマンドを実行できることも必要です。信頼の条件は [Codex のフック資料](https://developers.openai.com/codex/hooks)を参照してください。
+
+Claude Code デスクトップアプリの **Local** Code セッションは、CLI と同じプロジェクトの `CLAUDE.md`、`.mcp.json`、フック、スキル、設定を読み込みます。初期化済みのプロジェクトを Code タブで開き、そのセッションから `moai` を実行できることを確認してください。SSH セッションは接続先で動くため、接続先にもプロジェクトと `moai` が必要です。詳しくは [Claude Code Desktop の設定](https://code.claude.com/docs/en/desktop#shared-configuration)を参照してください。
+
+ここで示したのは設定手順であり、v3.1.3 のデスクトップ版リリース判定が完了したという意味ではありません。運用者自身が MoAI、Codex、両デスクトップアプリを検証し、結果を宣言するまでリリースは保留です。
 
 ## 次のステップ
 

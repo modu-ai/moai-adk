@@ -948,6 +948,13 @@ func normalizeWorktreeFlag(args []string) []string {
 // error so the launcher does not silently fall through to creating a new
 // worktree under either prefix (AC-WES-010c).
 //
+// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-006 note: the launcher-entry .codex/hooks.json
+// backfill used to run HERE, but this function is a pre-resolution step that
+// runs BEFORE the concurrent-writer admission — a refused launch was seeding
+// the tree it refused to enter (audit F0, sync-audit-opus.md). The backfill
+// now runs only after admission succeeds, via seedAdmittedWorktreeHooks at the
+// entry flows' post-admission points (cc.go / glm.go) and runCodexLaunch.
+//
 // Tokens after the "--" pass-through marker are not scanned (they are verbatim
 // pass-through to claude). Returns nil when no -w value is present or the
 // value is a short name; returns a non-nil error only for out-of-prefix
@@ -955,7 +962,7 @@ func normalizeWorktreeFlag(args []string) []string {
 //
 // This function is ADDITIVE: normalizeWorktreeFlag is unchanged and remains
 // the owner of short-name token normalization (AC-WES-010b).
-func resolveWorktreeL2Path(args []string) error {
+func resolveWorktreeL2Path(args []string, warn io.Writer) error {
 	value, ok := worktreeFlagValue(args)
 	if !ok || value == "" {
 		// Bare -w (auto-name) or no -w flag: nothing to validate.
@@ -965,14 +972,14 @@ func resolveWorktreeL2Path(args []string) error {
 		// Short name: defer to normalizeWorktreeFlag + claude resolution.
 		return nil
 	}
-
 	// Absolute path: must be under an accepted worktree prefix.
 	var acceptedPrefixes []string
 	if moaiWorktrees, err := paths.WorktreesDir(); err == nil {
 		acceptedPrefixes = append(acceptedPrefixes, moaiWorktrees)
 	}
-	if root, err := findProjectRoot(); err == nil {
+	if root, err := findProjectRootFn(); err == nil {
 		acceptedPrefixes = append(acceptedPrefixes, filepath.Join(root, ".claude", "worktrees"))
+		acceptedPrefixes = append(acceptedPrefixes, filepath.Join(root, ".moai", "worktrees"))
 	}
 
 	for _, prefix := range acceptedPrefixes {
@@ -980,10 +987,9 @@ func resolveWorktreeL2Path(args []string) error {
 			return nil
 		}
 	}
-
 	return fmt.Errorf(
 		"worktree path %q is not under an accepted worktree prefix\n"+
-			"  accepted prefixes: ~/.moai/worktrees/ (L2 persistent), .claude/worktrees/ (L1 Claude-native)\n"+
+			"  accepted prefixes: ~/.moai/worktrees/ (L2 persistent), .claude/worktrees/ and .moai/worktrees/ (L1)\n"+
 			"  use a short name to create a new worktree under .claude/worktrees/<name>, or an\n"+
 			"  absolute path under one of the accepted prefixes to re-enter an existing worktree",
 		value,

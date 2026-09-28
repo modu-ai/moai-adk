@@ -3,7 +3,9 @@ package kanban
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -29,7 +31,7 @@ func TestFactoryFreeSlots(t *testing.T) {
 	t.Run("live claim makes its slot busy", func(t *testing.T) {
 		t.Parallel()
 		root := t.TempDir()
-		if err := SaveFactoryRegistry(FactoryRegistryPath(root), map[string]FactoryWorkerEntry{
+		if err := SaveFactoryRegistry(FactoryRegistryPath(root), map[string]FactoryLaneEntry{
 			"lane-1": {PID: 11100},
 			"lane-3": {PID: 11101},
 		}); err != nil {
@@ -44,7 +46,7 @@ func TestFactoryFreeSlots(t *testing.T) {
 	t.Run("dead claim is pruned and reads free", func(t *testing.T) {
 		t.Parallel()
 		root := t.TempDir()
-		if err := SaveFactoryRegistry(FactoryRegistryPath(root), map[string]FactoryWorkerEntry{
+		if err := SaveFactoryRegistry(FactoryRegistryPath(root), map[string]FactoryLaneEntry{
 			"lane-2": {PID: 11100},
 		}); err != nil {
 			t.Fatalf("seed registry: %v", err)
@@ -58,7 +60,7 @@ func TestFactoryFreeSlots(t *testing.T) {
 	t.Run("claims beyond workers do not widen the result", func(t *testing.T) {
 		t.Parallel()
 		root := t.TempDir()
-		if err := SaveFactoryRegistry(FactoryRegistryPath(root), map[string]FactoryWorkerEntry{
+		if err := SaveFactoryRegistry(FactoryRegistryPath(root), map[string]FactoryLaneEntry{
 			"lane-9": {PID: 11100},
 		}); err != nil {
 			t.Fatalf("seed registry: %v", err)
@@ -70,12 +72,76 @@ func TestFactoryFreeSlots(t *testing.T) {
 	})
 }
 
+func TestClaimFactoryLaneWithinBounds(t *testing.T) {
+	root := t.TempDir()
+	alive := func(int) bool { return true }
+	// An older claim outside the current run's two slots must not make the
+	// automatic join skip the first available in-range number.
+	if _, err := ClaimFactoryLane(root, "lane-9", false, 9009, "old-run", alive); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"lane-1", "lane-2"} {
+		claim, err := ClaimFactoryLaneWithin(root, "", true, os.Getpid(), "run", 2, alive)
+		if err != nil || claim.Label != want {
+			t.Fatalf("automatic claim = (%q, %v), want %s", claim.Label, err, want)
+		}
+	}
+	before := LoadFactoryRegistry(FactoryRegistryPath(root))
+	for _, tc := range []struct {
+		label string
+		auto  bool
+		want  string
+	}{
+		{"", true, "no free lane slots"},
+		{"lane-1", false, "already occupied"},
+		{"lane-3", false, "outside the allowed slots"},
+	} {
+		if _, err := ClaimFactoryLaneWithin(root, tc.label, tc.auto, os.Getpid(), "run", 2, alive); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Fatalf("claim %q auto=%v: err=%v, want %q", tc.label, tc.auto, err, tc.want)
+		}
+		after := LoadFactoryRegistry(FactoryRegistryPath(root))
+		if !reflect.DeepEqual(before, after) {
+			t.Fatalf("failed claim changed registry: before=%v after=%v", before, after)
+		}
+	}
+}
+
+func TestClaimFactoryLaneWithinConcurrentOneSlot(t *testing.T) {
+	root := t.TempDir()
+	results := make(chan error, 2)
+	var wg sync.WaitGroup
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := ClaimFactoryLaneWithin(root, "", true, os.Getpid(), "run", 1, func(int) bool { return true })
+			results <- err
+		}()
+	}
+	wg.Wait()
+	close(results)
+	succeeded, full := 0, 0
+	for err := range results {
+		switch {
+		case err == nil:
+			succeeded++
+		case strings.Contains(err.Error(), "no free lane slots"):
+			full++
+		default:
+			t.Fatalf("unexpected concurrent claim error: %v", err)
+		}
+	}
+	if succeeded != 1 || full != 1 {
+		t.Fatalf("concurrent claims: success=%d full=%d, want 1 each", succeeded, full)
+	}
+}
+
 // TestPruneFactoryDeadClaims pins the shared prune rule on its own: only
 // live, positively-numbered claims survive.
 func TestPruneFactoryDeadClaims(t *testing.T) {
 	t.Parallel()
 
-	reg := map[string]FactoryWorkerEntry{
+	reg := map[string]FactoryLaneEntry{
 		"lane-1": {PID: 11100}, // live
 		"lane-2": {PID: 11101}, // dead
 		"lane-3": {PID: 0},     // non-positive
@@ -142,7 +208,7 @@ func TestFactoryRegistryRoundTrip(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
-	seed := map[string]FactoryWorkerEntry{
+	seed := map[string]FactoryLaneEntry{
 		"lane-1": {PID: os.Getpid(), RegisteredAt: "2026-08-17T00:00:00Z"},
 	}
 	if err := SaveFactoryRegistry(FactoryRegistryPath(root), seed); err != nil {
@@ -172,7 +238,7 @@ func TestClaimFactoryWorkerNameConcurrentClaimsAreUnique(t *testing.T) {
 		wg.Add(1)
 		go func(pid int) {
 			defer wg.Done()
-			label, err := ClaimFactoryWorkerName(root, "lane-1", pid, func(int) bool { return true })
+			label, err := ClaimFactoryLaneName(root, "lane-1", pid, "testrun", func(int) bool { return true })
 			results <- label
 			errs <- err
 		}(10000 + i)

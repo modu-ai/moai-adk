@@ -642,6 +642,16 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					return recovery.fail(step.name, restoreErr)
 				}
 				plRestore.Done("User settings restored")
+				// Strip the retired per-agent model/effort keys the merge just
+				// retained (old-only keys are kept), after the backup holds their
+				// originals. Stripped keys leave the retained list so each is
+				// reported once, as removed. A strip failure warns; the restore
+				// itself already succeeded.
+				removedModelKeys, stripErr := stripRetiredModelConfig(out, projectRoot, configBackupPath)
+				if stripErr != nil {
+					_, _ = fmt.Fprintf(out, "  %s retired model key removal warning: %v\n", uikit.SymWarning(), stripErr)
+				}
+				retainedKeys = withoutStrippedKeys(retainedKeys, removedModelKeys)
 				// t63: one summary line by default; the key list expands only
 				// under --verbose (the same verbose ledger recordMergeFallback
 				// reads), never interleaving with the progress redraw.
@@ -675,7 +685,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					_, _ = fmt.Fprintf(out, "  %s .gitignore merge warning: %v\n", uikit.SymWarning(), mergeErr)
 				} else {
 					_, _ = fmt.Fprintf(out, "  %s .gitignore user patterns preserved\n", uikit.SymSuccess())
-					// card t1276 F1 (lead-approved option A): the EntryMerge
+					// card t1276 F1 (leader-approved option A): the EntryMerge
 					// rewrote .gitignore as template + user entries AFTER the
 					// deploy tracked its render — re-record the merged output
 					// so the manifest matches the tree. Must go through the
@@ -826,7 +836,7 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) (skipped bool, err error) {
 
 		_, _ = fmt.Fprintln(out)
 		_, _ = fmt.Fprintln(out, tui.Section("Analyzing merge changes", tui.SectionOpts{Theme: &th}))
-		proceed, cerr := confirmViaPreview(analysis, projectRoot)
+		proceed, cerr := confirmViaPreviewFn(analysis, projectRoot)
 		if cerr != nil {
 			return false, fmt.Errorf("confirm merge for %d files (risk: %s): %w",
 				len(analysis.Files), analysis.RiskLevel, cerr)
@@ -884,6 +894,9 @@ func toPreviewInputs(analysis merge.MergeAnalysis, projectRoot string) []update.
 // caller did not pass --yes), changing which files get deployed. The
 // preview-fallback's proceed=true semantics belong to the --yes abstraction,
 // which never reaches this helper.
+//
+// runTemplateSyncWithProgress calls it through confirmViaPreviewFn, a seam a
+// test replaces to answer "cancel" without a TTY.
 func confirmViaPreview(analysis merge.MergeAnalysis, projectRoot string) (bool, error) {
 	if !isatty.IsTerminal(os.Stdin.Fd()) {
 		return false, fmt.Errorf("merge confirmation UI requires an interactive terminal; " +

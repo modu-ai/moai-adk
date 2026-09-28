@@ -1,9 +1,10 @@
 package agentlint
 
-// @MX:NOTE: [AUTO] WorkflowLintIntent — moai workflow lint validates .moai/config/sections/workflow.yaml
-// model_routing_profiles entries against the closed sets (perfTier / key structure /
-// model / effort) by reusing config.ValidateModelRoutingProfiles. Repurposed from the
-// retired Agent Teams role-profiles isolation check (SPEC-AGENT-TEAM-RETIRE-001 REQ-ATR-009).
+// @MX:NOTE: [AUTO] WorkflowLintIntent — moai workflow lint parses .moai/config/sections/workflow.yaml
+// (malformed YAML exits 2, a missing file exits 3). Its former rule, the
+// model_routing_profiles closed-set check, was retired with the per-agent model
+// assignment it described (SPEC-AGENT-MODEL-INHERIT-001 D12); a leftover block is
+// ignored, like any other retired key.
 
 import (
 	"encoding/json"
@@ -20,9 +21,9 @@ import (
 
 // WorkflowLintViolation represents a workflow.yaml lint rule violation.
 type WorkflowLintViolation struct {
-	Rule     string `json:"rule"`     // e.g. "MODEL_ROUTING_INVALID"
+	Rule     string `json:"rule"`     // sentinel key of the violated rule
 	Severity string `json:"severity"` // "error" | "warning"
-	Path     string `json:"path"`     // YAML path, e.g. "workflow.model_routing_profiles.max.S-run.model"
+	Path     string `json:"path"`     // YAML path of the offending value
 	Expected string `json:"expected"` // expected value
 	Actual   string `json:"actual"`   // actual value
 	Message  string `json:"message"`
@@ -63,40 +64,6 @@ func loadWorkflowYAML(path string) (*config.WorkflowConfig, error) {
 	}
 
 	return &wrapper.Workflow, nil
-}
-
-// validateModelRoutingProfiles checks every workflow.model_routing_profiles
-// entry against the closed sets (perfTier {max,medium,low}; key <TIER>-<phase>;
-// model {inherit,sonnet,opus,glm}; effort {low,medium,high,xhigh,max}) by
-// reusing the canonical config.(*Config).ValidateModelRoutingProfiles
-// (SPEC-AGENT-TEAM-RETIRE-001 REQ-ATR-009 — replaces the retired Agent Teams
-// role-profiles isolation check). An absent or empty block is valid (every
-// lookup falls back). Returns at most one violation: the canonical validator
-// reports the first offending location.
-func validateModelRoutingProfiles(cfg *config.WorkflowConfig) []WorkflowLintViolation {
-	if cfg == nil {
-		return nil
-	}
-
-	full := &config.Config{Workflow: *cfg}
-	err := full.ValidateModelRoutingProfiles()
-	if err == nil {
-		return nil
-	}
-
-	violation := WorkflowLintViolation{
-		Rule:     SentinelModelRoutingInvalid,
-		Severity: string(SeverityError),
-		Path:     "workflow.model_routing_profiles",
-		Expected: "perfTier {max,medium,low}; key <TIER>-<phase>; model {inherit,sonnet,opus,glm}; effort {low,medium,high,xhigh,max}",
-		Message:  fmt.Sprintf("model_routing_profiles validation failed: %v (SPEC-AGENT-TEAM-RETIRE-001 %s)", err, SentinelModelRoutingInvalid),
-	}
-	var ve *config.ValidationError
-	if errors.As(err, &ve) {
-		violation.Path = "workflow." + ve.Field
-		violation.Actual = fmt.Sprintf("%v", ve.Value)
-	}
-	return []WorkflowLintViolation{violation}
 }
 
 // runWorkflowLint validates .moai/config/sections/workflow.yaml.
@@ -153,7 +120,11 @@ func runWorkflowLint(cmd *cobra.Command, _ []string) error {
 		return &exitCodeError{code: 2, msg: fmt.Sprintf("malformed workflow.yaml: %v", err)}
 	}
 
-	violations := validateModelRoutingProfiles(cfg)
+	// No workflow.yaml rule is active: the model_routing_profiles check was
+	// retired (SPEC-AGENT-MODEL-INHERIT-001 D12). A successful parse is the
+	// whole check today; the violation plumbing stays for the next rule.
+	_ = cfg
+	var violations []WorkflowLintViolation
 
 	errorCount := 0
 	for _, v := range violations {

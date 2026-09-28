@@ -104,8 +104,10 @@ func TestCodexSession_SecondTurnReusesThread(t *testing.T) {
 	}
 }
 
-// writeCodexLLMFixture writes a minimal llm.yaml carrying a per-agent override
-// for the codex audit agent key, and points the project-dir seam at it.
+// writeCodexLLMFixture writes a minimal llm.yaml carrying a leftover per-agent
+// override for the former codex audit agent key ("sync-auditor"), and points the
+// project-dir seam at it. MoAI assigns no per-agent model any more
+// (SPEC-AGENT-MODEL-INHERIT-001 design D5), so the cell must reach nothing.
 func writeCodexLLMFixture(t *testing.T, model, effort string) string {
 	t.Helper()
 	root := t.TempDir()
@@ -113,7 +115,7 @@ func writeCodexLLMFixture(t *testing.T, model, effort string) string {
 	if err := os.MkdirAll(sections, 0o755); err != nil {
 		t.Fatalf("mkdir sections: %v", err)
 	}
-	yaml := "llm:\n  agent_overrides:\n    " + codexAuditAgentKey + ":\n      model: " + model + "\n      effort: " + effort + "\n"
+	yaml := "llm:\n  agent_overrides:\n    sync-auditor:\n      model: " + model + "\n      effort: " + effort + "\n"
 	if err := os.WriteFile(filepath.Join(sections, "llm.yaml"), []byte(yaml), 0o600); err != nil {
 		t.Fatalf("write llm.yaml: %v", err)
 	}
@@ -123,12 +125,10 @@ func writeCodexLLMFixture(t *testing.T, model, effort string) string {
 	return root
 }
 
-// AC-CX2-003 / AC-CX2-004 — the SSOT-resolved model reaches the params ACTUALLY
-// transmitted to codex. thread/start is the destination for the session-level
-// model (ReviewStartParams carries no model field at all); turn/start carries
-// both model and effort. This is the positive counterpart to the vacuous
-// TestMCPAudit_NoDirectFrontmatterRead guard (plan.md §B B3).
-func TestCodexSession_ResolvedModelReachesTransmittedParams(t *testing.T) {
+// A leftover llm.yaml per-agent cell — even a codex-servable one — is not
+// transmitted: with no explicit model the request carries neither model nor
+// effort and codex applies its own configured default (design D5).
+func TestCodexSession_LeftoverLLMCellNotTransmitted(t *testing.T) {
 	root := writeCodexLLMFixture(t, "gpt-5-codex", "high")
 	sess := withCodexSession(t, codexSessionScript("clean"))
 
@@ -139,19 +139,14 @@ func TestCodexSession_ResolvedModelReachesTransmittedParams(t *testing.T) {
 		t.Fatalf("rpc: %v", err)
 	}
 
-	// thread/start (2nd request) carries the resolved model.
-	thread := sentParams(t, sess.sent, 1)
-	if got, _ := thread["model"].(string); got != "gpt-5-codex" {
-		t.Errorf("thread/start model = %q, want %q (resolved via ResolveAgentModelEffort)", got, "gpt-5-codex")
+	if _, ok := sentParams(t, sess.sent, 1)["model"]; ok {
+		t.Error("thread/start must omit the model when the caller named none")
 	}
-
-	// turn/start (3rd request) carries BOTH model and effort.
 	turn := sentParams(t, sess.sent, 2)
-	if got, _ := turn["model"].(string); got != "gpt-5-codex" {
-		t.Errorf("turn/start model = %q, want %q", got, "gpt-5-codex")
-	}
-	if got, _ := turn["effort"].(string); got != "high" {
-		t.Errorf("turn/start effort = %q, want %q", got, "high")
+	for _, field := range []string{"model", "effort"} {
+		if _, ok := turn[field]; ok {
+			t.Errorf("turn/start must omit %q when the caller named no model", field)
+		}
 	}
 }
 
@@ -177,11 +172,9 @@ func TestCodexSession_ExplicitModelOverridesResolved(t *testing.T) {
 	}
 }
 
-// C7 non-regression — the default profile matrix resolves the audit agent to a
-// Claude model ("opus"), which the codex app-server cannot serve. Transmitting
-// it would break the review gate for every project that has not opted in, so a
-// non-codex-servable resolved model is dropped and the request stays
-// byte-identical to the pre-M1 shape (no model, no effort).
+// C7 non-regression — a leftover Claude-model cell ("opus") never reaches the
+// codex app-server, which cannot serve it: the request stays byte-identical to
+// the pre-M1 shape (no model, no effort).
 func TestCodexSession_NonCodexModelNotTransmitted(t *testing.T) {
 	root := writeCodexLLMFixture(t, "opus", "high")
 	sess := withCodexSession(t, codexSessionScript("clean"))
@@ -214,6 +207,7 @@ func TestCodexSession_ReviewStartCarriesNoModelOrEffort(t *testing.T) {
 
 	if _, err := runCodexReviewRPC(context.Background(), "/fake/codex", codexMethodReviewStart, map[string]any{
 		"target": codexTargetUncommitted,
+		"model":  "gpt-5-codex",
 		"cwd":    root,
 	}); err != nil {
 		t.Fatalf("rpc: %v", err)
@@ -225,7 +219,7 @@ func TestCodexSession_ReviewStartCarriesNoModelOrEffort(t *testing.T) {
 			t.Errorf("review/start must not carry %q — ReviewStartParams declares only delivery/target/threadId", field)
 		}
 	}
-	// The session-level model still reaches codex via thread/start.
+	// An explicit session-level model still reaches codex via thread/start.
 	if got, _ := sentParams(t, sess.sent, 1)["model"].(string); got != "gpt-5-codex" {
 		t.Errorf("thread/start model = %q, want %q (the only reachable destination on the review path)", got, "gpt-5-codex")
 	}

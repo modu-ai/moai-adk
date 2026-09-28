@@ -184,8 +184,8 @@ func newLaunchRaceFixture(t *testing.T, hookReady bool, ownerPID int, ownerStart
 	}
 	closeOnCleanup(t, "seed broker", f.seed)
 	key := homestate.ProjectKey(f.root)
-	f.lead = bindThroughLauncher(t, f.seed, factorymsg.Peer{ProjectKey: key, RunID: f.run, Backend: "claude", Role: "lead", Slot: "lead", PID: ownerPID, ProcessStart: ownerStart}, "lead-uuid")
-	f.source = bindThroughLauncher(t, f.seed, factorymsg.Peer{ProjectKey: key, RunID: f.run, Backend: "codex", Role: "worker", Slot: launchRaceSlot, PID: os.Getpid(), ProcessStart: "fake-source-start"}, "src-uuid")
+	f.lead = bindThroughLauncher(t, f.seed, factorymsg.Peer{ProjectKey: key, RunID: f.run, Backend: "claude", Role: "leader", Slot: "leader", PID: ownerPID, ProcessStart: ownerStart}, "lead-uuid")
+	f.source = bindThroughLauncher(t, f.seed, factorymsg.Peer{ProjectKey: key, RunID: f.run, Backend: "codex", Role: "lane", Slot: launchRaceSlot, PID: os.Getpid(), ProcessStart: "fake-source-start"}, "src-uuid")
 	env, err := f.seed.Send(ctx, factorymsg.SendRequest{
 		From: f.lead, To: f.source, Kind: factorymsg.KindDispatchNotice, IdempotencyKey: "dispatch-launch-race", TaskRef: "t1082",
 		CorrelationID: "c-launch-race", TTL: time.Hour, Payload: []byte("dispatch body"),
@@ -253,7 +253,7 @@ func (f *launchRaceFixture) open(t *testing.T) *factorymsg.Store {
 // relaunch is racer A's launcher registration: the relaunched process owned
 // by the identity the production hook path resolves in this test process.
 func (f *launchRaceFixture) relaunch() factorymsg.Peer {
-	return factorymsg.Peer{ProjectKey: homestate.ProjectKey(f.root), RunID: f.run, Backend: "codex", Role: "worker", Slot: launchRaceSlot, PID: f.ownerPID, ProcessStart: f.ownerStart}
+	return factorymsg.Peer{ProjectKey: homestate.ProjectKey(f.root), RunID: f.run, Backend: "codex", Role: "lane", Slot: launchRaceSlot, PID: f.ownerPID, ProcessStart: f.ownerStart}
 }
 
 // evidence is racer B's matching headless evidence: the returned thread id,
@@ -713,7 +713,7 @@ func TestFactoryUserPromptRegistrationSurfacesHandoffRefusals(t *testing.T) {
 		t.Fatal(err)
 	}
 	closeOnCleanup(t, "factory message broker", s)
-	source := bindThroughLauncher(t, s, factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex", Role: "worker", Slot: launchRaceSlot, PID: owner, ProcessStart: start}, "src-uuid")
+	source := bindThroughLauncher(t, s, factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex", Role: "lane", Slot: launchRaceSlot, PID: owner, ProcessStart: start}, "src-uuid")
 	h, err := s.ReserveHandoff(ctx, factorymsg.HandoffReservation{
 		Slot: launchRaceSlot, CardID: "t1082", SpecID: "SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001", Mode: factorymsg.HandoffModeInteractive,
 		DevelopPin: strings.Repeat("a", 40), TargetPath: filepath.Join(root, ".claude", "worktrees", "t1082"), TargetBranch: "WT-lane-handoff",

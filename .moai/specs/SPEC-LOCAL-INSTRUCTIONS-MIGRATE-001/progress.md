@@ -123,7 +123,7 @@ preferred shape: `design.md` §B. plan.md M2 no longer opens with this task.
 **(8) Every carved figure re-measured — and two do not reproduce.**
 
 - **`CLAUDE.local.md` size.** `git show origin/develop:CLAUDE.local.md | wc -m` → **44,740** in
-  this tree, 2026-09-26; `git show develop:CLAUDE.local.md | wc -m` agrees. The carve recorded
+  this tree, 2026-09-26 (**45,810** on 2026-09-28 — see the v0.2.5 section below); `git show develop:CLAUDE.local.md | wc -m` agrees. The carve recorded
   **44,381** — short by 359 characters. The file is a live maintainer document that sibling cards
   keep editing, so **any** absolute figure written into a criterion about it is stale by
   construction. `AC-IFU-007`'s fixed reduction floor is therefore **withdrawn**, not re-repaired:
@@ -146,7 +146,8 @@ preferred shape: `design.md` §B. plan.md M2 no longer opens with this task.
   documented structure untouched. Full readings: `research.md` §C.
 
 - **Symbols still resolve.** `codexLocalInstructionName` / `codexClaudeLocalName`
-  (`codex_contract.go:33-34`), the local-instruction loop (`codex_launcher.go:125`), and the
+  (`codex_contract.go:33-34`; `:35-36` on 2026-09-28), the local-instruction loop
+  (`codex_launcher.go:125`; `:126` on 2026-09-28), and the
   `migrate_agency_*` precedent are all present. plan.md's cite-by-symbol discipline holds.
 
 ### Verification run at plan close
@@ -236,7 +237,7 @@ PASS
 ok  github.com/modu-ai/moai-adk/internal/cli
 ```
 
-`REQ-IFU-008` is satisfied at `codex_launcher.go:138`. It is now declared a **preservation
+`REQ-IFU-008` is satisfied at `codex_launcher.go:138` [v0.2.5: miscited — `5ba87003f` reads `:136`, the current tree `:137`]. It is now declared a **preservation
 requirement** in `spec.md` §C.1 and `AC-IFU-029` is labelled a **regression guard** with that
 baseline recorded — so a later failure is meaningful and §D.3's "all ten criteria pass" no longer
 hands out a free pass. The audit offered declaration *or* extension; both are applied, because
@@ -567,14 +568,192 @@ running it as written rather than trusting the summary of it.
 **Guard for the next span edit**: assert both anchors are unique (`s.count(marker) == 1`) and that
 `a < b`, before splicing. Applied by hand here; worth remembering rather than re-deriving.
 
+### Dispatch-time premise re-measurement, 2026-09-28 (v0.2.5)
+
+Readings: `.moai/reports/t1259/premise-20260928.md` (card t1259, CLAUDE.local.md §30 premise check). Tree for
+the figures below: `develop` = `origin/develop` = `37dc766b9`.
+
+- **Blocking dependencies — now MET.** On `origin/develop`, `SPEC-INSTRUCTION-FILES-UNIFY-001` and
+  `SPEC-ALWAYS-LOADED-DIET-002` both read `status: completed`; the parent's loop at
+  `codex_launcher.go:126` reads `codexLocalInstructionName` first. This supersedes the
+  "both unmet" reading recorded above at `a9e5f9d5a`. `plan.md` §B carries the status note.
+- **Premise still live.** No deprecation advisory and no migrate verb exist in `internal/cli`
+  (premise file §2, with positive controls), so REQ-IFU-007/009/010 remain owed.
+- **`REQ-IFU-008` citation repaired `:138` → `:137`.** `git show 5ba87003f:internal/cli/codex_launcher.go
+  | grep -n 'source: %s'` → `136`: the figure was wrong at the commit it named, not just drifted.
+  Live citations (`spec.md` §C.1, `acceptance.md` §D.2) now name the symbol and the line with its
+  measuring tree; historical records here and in `research.md` are annotated, not rewritten.
+- **Other drifted lines** (all annotated in `research.md` §A): producer `:123`→`:124`, call site
+  `:825`→`:813`, body `:123-143`→`:124-145`, install hint `:804`→`:792`, worktree error
+  `:842`→`:830`, `codex_contract.go` name constants `:33-34`→`:35-36`.
+- **`CLAUDE.local.md` before-value 44,740 → 45,810** (`git show develop:CLAUDE.local.md | wc -m`).
+  Criterion unchanged; `after <= 39,999` now requires a reduction of at least 5,811 characters.
+- **AC count unchanged** after these edits: manager-docs AC counter → `live=10 excluded=3 ambiguous=0`;
+  `grep -c '^\*\*AC-IFU-' acceptance.md` → `10`; `moai spec lint SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001`
+  → no findings; `go test ./internal/spec/ -run TestACCounterFullCorpusMatchesBaseline -count=1` → `ok`.
+
+### plan-audit iter4 — FAIL 0.84, scope reduction by the lead (v0.3.0)
+
+Report: `.moai/reports/t1259/plan-audit-iter4.md` (subject `a73c78d1a`). Score fell 0.88 → 0.84,
+which is the STOP signal; the lead took the tier-3 scope-reduction decision and it is applied here,
+not re-opened. Edits measured on HEAD `4441cf1a6`.
+
+**What moved to card t1290** (spec.md §D "this repository's own migration"):
+
+| Item | Why it moved |
+|---|---|
+| `REQ-IFU-021`, `REQ-IFU-022` | iter4 D2 — worktree sessions do not receive `AGENTS.local.md` (`grep -n 'worktree session does not receive' AGENTS.md` → `262:`, this run); t1290's prerequisite is a reception design |
+| `AC-IFU-007` | verified only `REQ-IFU-021` (§D.2 row, one-to-one) |
+| `AC-IFU-024` | verified only `REQ-IFU-022` (§D.2 row, one-to-one) |
+| plan milestone M3 and its operator gate | the milestone that carried the two requirements |
+
+No other criterion moved: `AC-IFU-031` cites the full requirement set but is not per-requirement
+coverage (§D.2), so it stays, its citation narrowed to `REQ-IFU-007 … REQ-IFU-012, REQ-IFU-020`.
+Remaining milestones keep their ids (M1, M2, M4). Tier stays **L**: the 24 docs-site files alone
+exceed the `> 15` threshold (all 24 exist, re-checked this run); ~31 files in total.
+
+**D1 — moot here, carried to t1290.** Both criteria it named left with M3, so no criterion in this
+SPEC reads `AGENTS.local.md` any more. The replacement committed-tree predicate was demonstrated in
+a temp git repo; verbatim output (full script in `.moai/reports/t1259/d1-mutant.md`):
+
+```
+== MUTANT A: verb run, commit WITHOUT git add -f (git add -A sweep) ==
+git ls-files AGENTS.local.md CLAUDE.local.md -> []
+  PASS (old, working copy): 39000 chars
+  FAIL: HEAD carries no AGENTS.local.md
+  exit=1
+== MUTANT B: verb run, file left only in working tree, deletion not committed either ==
+  PASS (old, working copy): 39000 chars
+  FAIL: HEAD carries no AGENTS.local.md
+  exit=1
+== MUTANT C: AGENTS.local.md force-added, but CLAUDE.local.md deletion left uncommitted ==
+git ls-files AGENTS.local.md CLAUDE.local.md -> [AGENTS.local.md CLAUDE.local.md ]
+  PASS (old, working copy): 39000 chars
+  FAIL: HEAD still carries CLAUDE.local.md
+  exit=1
+== CONTROL: verb run, git add -f AGENTS.local.md, deletion committed ==
+git ls-files AGENTS.local.md CLAUDE.local.md -> [AGENTS.local.md]
+  PASS (old, working copy): 39000 chars
+  PASS: HEAD:AGENTS.local.md = 39000 chars, CLAUDE.local.md absent from HEAD
+  exit=0
+```
+
+Old (working-copy) predicate passes all four cases; the new one kills mutants A/B/C (exit 1 each,
+on three different clauses) and passes the control (exit 0).
+
+**D3 — repaired.** `spec.md`'s status paragraph no longer says "no plan-audit has run", no longer
+calls the dependency unchanged, and the dangling "One" is gone; it now states four audits, both
+dependencies completed, and the M3 split. **N2 — repaired**: `docs-i18n-check.yml:71-74` →
+`:71-75` (line 71 `elif … push`, line 75 `strict=false`, read this run). N3-N8 not taken.
+
+**Verification after these edits** (this run, HEAD `4441cf1a6` plus the uncommitted v0.3.0 edits):
+
+```
+$ AC_FILE=.moai/specs/SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001/acceptance.md bash <manager-docs.md:136-175, indent stripped>
+live=8 excluded=5 ambiguous=0
+8
+exit=0
+$ grep -c '^\*\*AC-IFU-' .moai/specs/SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001/acceptance.md
+8
+$ diff <(grep -o 'REQ-IFU-[0-9]\{3\}' acceptance.md | sort -u) <(grep -o '^- \*\*REQ-IFU-[0-9]\{3\}' spec.md | grep -o 'REQ-IFU-[0-9]\{3\}' | sort -u)
+diff_exit=0
+$ go run ./cmd/moai spec lint SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001; echo exit=$?
+WARNING   VacuousTestAssertion  …/acceptance.md  15    outcome-assertion: '--- PASS: TestFoo' has no whitespace delimiter …
+0 error(s), 1 warning(s)
+exit=0
+```
+
+The one warning is iter4 N3 (the deliberate bad-form illustration at `acceptance.md:15`), present
+before this edit and not introduced by it.
+
+**AC-count baseline cascade** (`.moai/docs/ac-count-baseline-refresh.md` §2 fourth row — in-place
+amendment changed the count 10 → 8): regenerated with
+`MOAI_AC_BASELINE_REGENERATE=1 go test ./internal/spec -run TestACCounterBaselineRegenerate -count=1`
+→ `regenerated … 850 corpus entries from source tree 4441cf1a6`. Diff read line by line: this
+SPEC's row `COUNT 10 live=10 excluded=3` → `COUNT 8 live=8 excluded=5` (cause: this edit); seven
+absent rows absorbed, each a directory absent from the old snapshot (`in_old=0`) with its adding
+commit named in the commit message; 0 HALT rows. Committed in the same commit as `acceptance.md`.
+
+```
+$ go test ./internal/spec/ -count=1 -run 'TestACCounter|TestAC' -v   (output: .moai/state/verify/t1259/ac-tests.out)
+exit=0 · 14 × "--- PASS" · 0 × "--- FAIL" · 0 × "no tests to run" · 1 SKIP (TestACCounterBaselineRegenerate, gate off by default)
+--- PASS: TestACCounterFullCorpusMatchesBaseline (11.72s)
+ok  	github.com/modu-ai/moai-adk/internal/spec	56.626s
+```
+
+### iter5-readiness (2026-09-28, lane session 2 — dispatch items resolved before the audit request)
+
+**Lead's conditional acceptance of the M1 ordering (recorded per its instruction).** The lead accepted the sequence inversion (M1 `c4872e978` landing before the iter5 verdict) conditionally: **if iter5 FAILed in a direction that invalidated M1's premise, the commit would be reverted or reworked.** iter5 returned **PASS-WITH-DEBT 0.95 with the M1 premise measured INTACT** (report `.moai/reports/t1259/plan-audit-iter5.md` § M1-premise statement — requirement-by-requirement exact-match table against the landed code), so **the revert condition is discharged; `c4872e978` stands.** The gate-order question itself (retroactive approval vs revert-and-regate) was the lead's and was resolved by this conditional acceptance, quoted here so the artifact set carries what the dispatch carried.
+
+**Card-first count question ("COUNT 23 vs lane count 20") — conclusion, re-verified at the current tip.** The premise report (`.moai/reports/t1259/premise-20260928.md` §0) measured the discrepancy at its origin: at the split commit `653e53572` the parent acceptance.md carried 3 unmarked sibling-SPEC `AC-` tokens in prose (counter 23 vs 20 declared); `[REF]` marking since then brought the parent to 20 = 20. Re-measured this session at HEAD `c4872e978`: parent (develop read) `grep -c '^\*\*AC-IFU-'` = **20** ✓; this SPEC = **8 declared**, matching the v0.3.0 baseline row (count 10 → 8, AC-count cascade already run and committed — see §E.1 above). No residue on either side; the discrepancy was transient split-time state, since resolved.
+
+**Plan closure state (dispatch item 3).** The v0.3.0 tip commit (`a6f3861cd`) carries the scope-reduction docs: iter4's three blocking defects are dispositioned there — **D2** (M3's premise a known negative: worktree sessions do not receive `AGENTS.local.md`, `AGENTS.md:262`) → M3 (REQ-IFU-021/022, AC-IFU-007/024) transferred to card t1290 (§D Out of Scope, verbatim text preserved at `4441cf1a6`, child SPEC-LOCAL-INSTR-RECEPTION-001 iter2 PASS and already carrying M3); **D1** mooted here (both criteria left with M3) and carried to t1290 with a demonstrated committed-tree predicate (`.moai/reports/t1259/d1-mutant.md`); **D3** rewritten (the status paragraph now states the four-iteration history and the carve). N2 fixed in the same commit. D3-of-the-dispatch (the two-SPEC overlap) resolves at branch merge per the lead's instruction. The audit loop needs its iter5 verdict against this reduced scope — requested from the lead.
+
+**Process disclosure — run M1 landed before the iter5 verdict.** The inherited working tree carried the previous session's uncommitted M1 unit (the migration verb + advisory wiring + 4-locale docs + the `draft → in-progress` transition). Per the dispatch's disposition instruction it was verified coherent (`go build ./internal/cli/` exit 0; anchored test run `MigrateLocalInstructions|LocalInstructionsAdvisory|CodexLocalInstructions` → ok) and committed as M1 (`c4872e978`) — meaning the first run-phase commit predates the iter5 PASS and the Kickoff gate. Disclosed here for the auditor and the lead rather than left in the commit order for someone to find; the gate question (retroactive approval vs revert-and-regate) is the lead's, not this lane's.
+
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — the migration verb (inherited unit, landed `c4872e978`, iter5-measured INTACT)
+
+Landed as the verified inherited unit (see §E.1 iter5-readiness for provenance and the discharged revert condition). The auditor's own requirement-by-requirement read of `internal/cli/migrate_local_instructions.go` at HEAD confirmed the plan contract exactly (verb spelling, move+timestamped-backup+rollback, refusal-first, idempotent no-op, update/doctor advisory-only) — report `.moai/reports/t1259/plan-audit-iter5.md` § M1-premise statement. Lane verification of the same unit before landing:
+
+```
+$ go build ./internal/cli/                       → exit 0
+$ go test ./internal/cli/ -run 'MigrateLocalInstructions|LocalInstructionsAdvisory|CodexLocalInstructions'
+ok  github.com/modu-ai/moai-adk/internal/cli  0.955s
+```
+
+### M2 gates — AC-IFU-011 / AC-IFU-029 (anchored runs, this tree at the gate commit)
+
+```
+$ go test ./internal/cli/ -run '^TestCodexLocalInstructions_FallbackAdvisory$' -v
+--- PASS: TestCodexLocalInstructions_FallbackAdvisory (0.00s)
+ok  github.com/modu-ai/moai-adk/internal/cli  0.790s
+
+$ go test ./internal/cli/ -run '^TestCodexLocalInstructions_DualFileMatrix$' -v
+--- PASS: TestCodexLocalInstructions_DualFileMatrix (0.00s)
+ok  github.com/modu-ai/moai-adk/internal/cli  0.587s
+```
+
+AC-IFU-011: **PASS** (anchored, no `no tests to run`). AC-IFU-029 (regression guard): **PASS** — DualFileMatrix still asserts the literal `CLAUDE.local.md` provenance name on the new fallback-advisory path.
+
+### M4 gate — AC-IFU-023 (baseline anchored at `a6f3861cd` per the lead's dispatch; the acceptance.md table's `5ba87003f` numbers were NOT read as the baseline)
+
+Pre-change baseline re-measured at `a6f3861cd` (`git show a6f3861cd:docs-site/content/<L>/<page> | grep -c '^## '`, per page per locale) and post-change measured on the working tree:
+
+| Page | base ko/en/ja/zh | post ko/en/ja/zh | delta |
+|---|---|---|---|
+| `advanced/claude-md-guide.md` | 10/18/18/18 | 11/19/19/19 | **+1/+1/+1/+1** |
+| `advanced/codex-dual-harness.md` | 6/6/6/6 | 7/7/7/7 | **+1 all** |
+| `advanced/harness-learning.md` | 6/6/6/6 | 7/7/7/7 | **+1 all** |
+| `claude-code/context-memory/memory.md` | 7/7/7/7 | 8/8/8/8 | **+1 all** |
+| `getting-started/quickstart.md` | 14/10/10/10 | 15/11/11/11 | **+1 all** |
+| `cli-reference/update.md` | 7/7/7/7 | 8/8/8/8 | **+1 all** |
+
+Every page moved by the same delta in every locale — the equal-delta assertion holds; the pre-existing two-page inequality (ko claude-md-guide, ko quickstart) is preserved unchanged, matching the recorded shape. **AC-IFU-023 equal-delta half: PASS.**
+
+Non-zero `AGENTS.local.md` grep half — `grep -c 'AGENTS.local.md'` per file, all 24 (counts): claude-md-guide 6/6/6/6 · codex-dual-harness 4/4/4/4 · harness-learning 5/5/5/5 · memory 3/3/3/3 · quickstart 3/3/3/3 · update 3/3/3/3 — **all 24 non-zero. AC-IFU-023: PASS.**
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+Run complete at `c172b4ed1`. Milestones M1 (migration verb + advisory wiring + 4-locale docs, landed `c4872e978` as the verified inherited unit), M2 gates (AC-IFU-011/029 anchored runs PASS — §E.2), and M4 gate (AC-IFU-023 PASS on the `a6f3861cd`-anchored baseline, equal-delta +1 per locale on all six pages, 24/24 greps non-zero — §E.2) all carry measured evidence above. plan-audit iter5 PASS-WITH-DEBT 0.95 (v0.3.0 scope, iteration 1 against the reduced baseline), M1 premise INTACT; the three audit minors repaired in `c172b4ed1` (carve note dated, DOCS-PARITY restated as a planned route, revert-condition recorded). `moai spec lint` — **both build attributions stated (see the §E.4 attribution block)**: installed binary (v3.2.0-rc.16, pre-t1269 build) 0 errors / 0 warnings; tree build 1 advisory (VacuousTestAssertion, `acceptance.md:15` rule-document example false positive). Run commits past base `a6f3861cd`: `c4872e978` (M1) · `10e63847e` (iter5-readiness) · `c172b4ed1` (minors + gate evidence).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_commit_sha: 57a842389
+
+3-phase close: this sync commit carries the `spec.md` `in-progress → implemented → completed` transition and the CHANGELOG entry under `[Unreleased] → Added` (the pre-existing `grep -c` hit for this SPEC-ID was t1243's cross-reference naming this card as the carrier, not an entry — no duplicate; stated in the entry itself). AC state at close — the 8 live criteria are **{AC-IFU-011, AC-IFU-013, AC-IFU-014, AC-IFU-015, AC-IFU-023, AC-IFU-029, AC-IFU-030, AC-IFU-031}** (enumerated per the sync-audit's F1; an earlier draft of this section wrote "AC-IFU-001..008", which named no member of that set — the count 8 was right, the range was wrong): release-blocking gates AC-IFU-011 (fallback advisory) and AC-IFU-023 (docs equal-delta + grep) PASS with §E.2 evidence; AC-IFU-029 regression guard PASS; the remaining criteria are the carve-inherited rows whose verifiers are the anchored test family run green in §E.2 (`MigrateLocalInstructions|LocalInstructionsAdvisory|CodexLocalInstructions` → ok) plus the migration-verb behaviours measured INTACT by the iter5 auditor against the landed code; AC-IFU-031 reads on `origin/develop` CI after this card's merge (post-merge criterion by design). Debt handed forward (recorded, not inherited silently): the docs-parity general condition (Phase 2 strict flip, `docs-i18n-check.yml:74` — a planned route, no live SPEC); M3's transferred scope lives with card t1290 (SPEC-LOCAL-INSTR-RECEPTION-001), whose M2 re-measurement depends on this card's merge.
+
+**Lint verdict attribution (per the sync-audit's F2, VCI §2.2 — which build judged the tree):** two verdicts exist and both are stated. The **installed binary** (`moai` v3.2.0-rc.16, built from commit `a8a9b9376` — a build predating the t1269 VacuousTestAssertion rule) reports **0 errors, 0 warnings** on this SPEC. A **tree build** (this branch's source, which carries the t1269 rule) additionally reports **1 advisory: `VacuousTestAssertion` at `acceptance.md:15`** — the criterion document's own deliberate bad-form illustration (the `[HARD]` anchor-both-ends note quotes the unanchored `'^TestFoo'` as the counter-example), i.e. a known false positive on rule-document prose, present before this card and unchanged by it.
+
+### AC-IFU-031 — post-merge reading
+
+**Claim.** This card's merge `e11afe335` is an ancestor of remote `develop` `d42ccbc6c`. The `CI` and `SPEC Lint` runs for that exact head succeeded. The advisory docs i18n run fired because the merged work touched `docs-site/content/**`; its log was read.
+
+**Evidence.** `gh run view 36374288896 --json headSha,status,conclusion,jobs` returned head `d42ccbc6c`, `completed/success`, failed jobs `[]`; `Test (ubuntu-latest)` and `Race Test` were both `success`. `gh run view 36374288881` returned `completed/success` for `SPEC Lint`. `gh run view 36374288911` returned `completed/success` for `docs i18n parity check`; its `Validate 4-locale parity` log reported `ko=en=ja=zh=155 .md files`, `Errors: 0`, `Warnings: 0`. On a `develop` push, `.github/workflows/docs-i18n-check.yml` sets `strict=false` and the check remains advisory; this success does not turn it into a blocking gate.
+
+**Baseline-attribution.** All three run IDs have head `d42ccbc6c`, which includes merge `e11afe335`. The docs log was read from job `108776828875`; the Ubuntu and Race test streams were downloaded from this same CI run. The earlier `e7eb03517` success predates this card's merge and is not used for AC-IFU-031.
+
+**External reading and limits.** `gh api repos/modu-ai/moai-adk/branches/develop/protection` returned `404 Branch not protected`. `vercel project inspect` from the primary checkout's linked `docs-site` returned project `goos/moai-docs`, root `docs-site`, Hugo preset, and dashboard build-command display ``npm run build` or `hugo --gc``. The repository's `docs-site/vercel.json` specifies `hugo --minify --gc`; [Vercel's documentation](https://vercel.com/docs/project-configuration/vercel-json) says `buildCommand` there overrides the dashboard setting for a deployment. No Vercel deployment was executed or verified in this close.
+
+**Residual-risk.** Workflow configuration, branch protection, and the linked Vercel project can change independently after this reading. The deferred M3 local-instruction reception remains card t1290; this close does not claim it.

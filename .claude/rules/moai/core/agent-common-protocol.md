@@ -116,16 +116,9 @@ fetch, and image read route to the z.ai MCP tools instead of the built-ins. HARD
 
 [ZONE:Evolvable] [HARD] Agents are invoked through MoAI's natural language delegation pattern ("Use the {agent-name} subagent to {task description}") — natural language conveys full context including constraints, dependencies, and rationale.
 
-### Per-Spawn Model Injection
+### Subagent Model and Effort
 
-[ZONE:Evolvable] [HARD] When spawning a subagent, pass the model the active profile resolves for that agent as an explicit `model` argument on the spawn. (Why omitting is not neutral, and the full profile matrix: `agent-common-protocol-reference.md` § Per-Spawn Model Injection rationale; policy SSOT `.claude/rules/moai/development/model-policy.md`.)
-
-- Resolve the value with `moai model profile --json` — a JSON OBJECT whose `agents` array carries the `{model, effort}` cell per retained agent; filter with `jq '.agents[]'`, never a top-level array (`model-policy.md` § Per-Agent Profile Resolver)
-- Pass `model` per spawn. `effort` has no spawn-time parameter — it travels only in the agent file's frontmatter
-- A spawn declaring a different model than the resolved one is drift, not an override — change the profile instead
-- Agents outside the retained catalog resolve to the inherit sentinel and take no injection
-
-A PreToolUse hook records every spawn's outcome to `.moai/logs/agent-model-audit.jsonl` (advisory; blocking is opt-in via `workflow.agent_model_guard.enabled`, refusing only a declared-vs-resolved conflict).
+Subagents inherit the main session's model and effort: pass neither `model` nor `effort` when spawning a subagent, and MoAI agent definitions declare neither. A PreToolUse hook records each Agent spawn to `.moai/logs/agent-model-audit.jsonl` as an observation log; it never blocks a spawn.
 
 ## Background Agent Execution
 

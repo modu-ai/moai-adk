@@ -24,10 +24,11 @@ func auditGLMPinYAML(model, effort string) string {
 }
 
 // glmGLMSessionLLMYAML is an llm.yaml marking the session GLM-backed and
-// pinning the task-family agent (super-advisor) to a NON-pin model, so the
-// task-path isolation test can distinguish pin reads from SSOT reads.
+// carrying a leftover per-agent cell for the former task-family agent
+// (super-advisor) on a NON-pin model, so the task-path isolation test can tell a
+// pin read and a per-agent read apart from the backend default.
 func glmGLMSessionLLMYAML() string {
-	return "llm:\n  team_mode: glm\n  agent_overrides:\n    " + glmTaskAgentKey + ":\n      model: glm-4.6\n      effort: low\n"
+	return "llm:\n  team_mode: glm\n  agent_overrides:\n    super-advisor:\n      model: glm-4.6\n      effort: low\n"
 }
 
 // writeRawSectionYAML writes a raw body as a section file under root.
@@ -166,16 +167,16 @@ func TestGLMAuditPin_RequestBody(t *testing.T) {
 }
 
 // REQ-AMP-008 — glm_task resolution ignores a populated audit.glm pin: the
-// task family resolves through its llm SSOT cell (glm-4.6 on super-advisor),
-// not the pin (glm-5.3), under the SAME config.
+// task family resolves to the backend default, neither the pin (glm-5.3) nor
+// the leftover per-agent cell (glm-4.6, design D5), under the SAME config.
 func TestGLMAuditPin_TaskResolutionUnaffected(t *testing.T) {
 	root := t.TempDir()
 	writeCodexWorkflowYAML(t, root, auditGLMPinYAML("glm-5.3", template.GLMStateMax))
 	writeRawSectionYAML(t, root, "llm.yaml", glmGLMSessionLLMYAML())
 	withCodexProjectDir(t, root)
 
-	if got := resolveGLMTaskModel(); got != "glm-4.6" {
-		t.Errorf("resolveGLMTaskModel = %q, want the SSOT cell glm-4.6 (the audit pin must not leak into glm_task)", got)
+	if got := resolveGLMTaskModel(); got != glmAuditDefaultModel {
+		t.Errorf("resolveGLMTaskModel = %q, want the backend default %q (neither the audit pin nor a per-agent cell reaches glm_task)", got, glmAuditDefaultModel)
 	}
 
 	// The pin DOES apply on the audit resolver under the same config. CR #8:
@@ -183,7 +184,7 @@ func TestGLMAuditPin_TaskResolutionUnaffected(t *testing.T) {
 	// the pin the audit reads.
 	me := resolveGLMAuditModelEffort(root)
 	if me.Model != "glm-5.3" || me.Effort != template.GLMStateMax {
-		t.Errorf("resolveGLMAuditModelEffort(root) = %+v, want {glm-5.3 max} (the pin outranks the SSOT cell on the audit path)", me)
+		t.Errorf("resolveGLMAuditModelEffort(root) = %+v, want {glm-5.3 max} (the pin outranks the backend default on the audit path)", me)
 	}
 }
 

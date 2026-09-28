@@ -63,17 +63,18 @@ func runServedStop(t *testing.T, cfg ConfigProvider, input *HookInput) *HookOutp
 	return out
 }
 
-// AC-SMA-003 — the resolved model comes from the configuration provider the
-// handler was constructed with: active profile and agent_overrides included.
+// AC-SMA-003 (M5 shape) — the expectation is DECLARATION-ONLY: the transcript's
+// declared model is the expected model, and the configuration provider no
+// longer participates. The control inverts with the design: three config
+// shapes (claude-mode, glm-mode, zero) must produce the SAME declaration-based
+// answer — the provider is provably not consulted. (The former profile /
+// agent-override shapes retired with the per-agent profile matrix.)
 func TestServedModel_ResolvedFromActiveProfile(t *testing.T) {
-	profileSonnet := &config.Config{LLM: config.LLMConfig{
-		Profile: "high",
-		Profiles: map[string]map[string]config.ModelEffort{
-			"high": {"manager-develop": {Model: "sonnet", Effort: "low"}},
-		},
+	claudeMode := &config.Config{LLM: config.LLMConfig{
+		Harness: "claude", GLMEnvVar: "GLM_API_KEY",
 	}}
-	overrideHaiku := &config.Config{LLM: config.LLMConfig{
-		AgentOverrides: map[string]config.ModelEffort{"manager-develop": {Model: "haiku", Effort: "low"}},
+	glmMode := &config.Config{LLM: config.LLMConfig{
+		Mode: "glm", TeamMode: "glm", ClaudeBin: "/nonexistent/moai-test-bin",
 	}}
 	zero := &config.Config{}
 
@@ -83,9 +84,9 @@ func TestServedModel_ResolvedFromActiveProfile(t *testing.T) {
 		wantResolved string
 		wantVerdict  string
 	}{
-		{"a_active_profile_resolves_sonnet", profileSonnet, "sonnet", ServedVerdictOK},
-		{"b_agent_override_resolves_haiku", overrideHaiku, "haiku", ServedVerdictDrift},
-		{"control_zero_config_resolves_opus", zero, "opus", ServedVerdictDrift},
+		{"a_claude_mode_config_same_as_declaration", claudeMode, "claude-sonnet-5", ServedVerdictOK},
+		{"b_glm_mode_config_same_as_declaration", glmMode, "claude-sonnet-5", ServedVerdictOK},
+		{"control_zero_config_same_as_declaration", zero, "claude-sonnet-5", ServedVerdictOK},
 	}
 	got := map[string]string{}
 	for _, tc := range cases {
@@ -93,7 +94,7 @@ func TestServedModel_ResolvedFromActiveProfile(t *testing.T) {
 			root := newServedRoot(t)
 			tr := writeSubagentTranscript(t, filepath.Join(t.TempDir(), "subagents"), "a3",
 				repeatRows(assistantRow("claude-sonnet-5"), 2),
-				map[string]string{"agentType": "manager-develop"})
+				map[string]string{"agentType": "manager-develop", "model": "claude-sonnet-5"})
 			runServedStop(t, staticConfigProvider{cfg: tc.cfg}, &HookInput{
 				CWD: root, SessionID: "s-3", AgentID: "a3", AgentType: "manager-develop",
 				AgentTranscriptPath: tr, HookEventName: string(EventSubagentStop),
@@ -111,7 +112,7 @@ func TestServedModel_ResolvedFromActiveProfile(t *testing.T) {
 			got[tc.name] = tc.wantVerdict + "/" + tc.wantResolved
 		})
 	}
-	if got["a_active_profile_resolves_sonnet"] == got["control_zero_config_resolves_opus"] {
-		t.Fatalf("the active-profile result equals the zero-config result (%q) — the provider was not consulted", got["control_zero_config_resolves_opus"])
+	if got["a_claude_mode_config_same_as_declaration"] != got["control_zero_config_same_as_declaration"] {
+		t.Fatalf("the claude-mode result (%q) differs from the zero-config result (%q) — the provider must not participate", got["a_claude_mode_config_same_as_declaration"], got["control_zero_config_same_as_declaration"])
 	}
 }

@@ -32,9 +32,8 @@ on implicit fan-out silently gets a single-agent answer.
 
 **Effort routing by role.** Route effort by what the work demands rather than by which named agent
 is running: coding and agentic work at `xhigh`, intelligence-sensitive work at `high` or above,
-speed-critical or mechanical work stepped down. The per-agent default table lives in
-`.claude/rules/moai/development/agent-authoring.md` § Effort-Level Calibration Matrix, alongside the
-archived-agent legacy reference.
+speed-critical or mechanical work stepped down. Subagents inherit the main session's effort, so
+the choice is made for the session, not per agent.
 
 ## Lessons Protocol
 

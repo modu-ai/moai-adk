@@ -47,10 +47,17 @@ import (
 // (RelocateSession); before that relocation runs they keep their
 // launch-time CWD and stay invisible here.
 func LiveAnchoredSessions(treePath string, now time.Time) []Entry {
+	return LiveAnchoredSessionsForProject(treePath, callerProjectRoot(), now)
+}
+
+// LiveAnchoredSessionsForProject checks the tree-local and explicit project
+// registries. Update migrations use the primary checkout as projectRoot even
+// when invoked from a linked worktree or with CLAUDE_PROJECT_DIR set elsewhere.
+func LiveAnchoredSessionsForProject(treePath, projectRoot string, now time.Time) []Entry {
 	if treePath == "" {
 		return nil
 	}
-	roots := []string{treePath, callerProjectRoot()}
+	roots := []string{treePath, projectRoot}
 	host, _ := os.Hostname()
 	stale := DefaultStaleMinutes * time.Minute
 	seen := make(map[string]bool)

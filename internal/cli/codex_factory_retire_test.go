@@ -41,10 +41,10 @@ func laneKeyFixtureValues() map[string]string {
 	return values
 }
 
-// TestCodexLaneLaunchEnvKeysAreTheElevenLaneKeys pins the scrub list to the
-// eleven keys REQ-CFR-006 names, so a list that loses or gains a key fails here
+// TestCodexLaneLaunchEnvKeys pins the scrub list to the
+// factory identity keys, so a list that loses or gains a key fails here
 // and not only in the per-key assertions below.
-func TestCodexLaneLaunchEnvKeysAreTheElevenLaneKeys(t *testing.T) {
+func TestCodexLaneLaunchEnvKeys(t *testing.T) {
 	want := []string{
 		config.EnvMoaiKanban,
 		config.EnvMoaiKanbanID,
@@ -57,6 +57,7 @@ func TestCodexLaneLaunchEnvKeysAreTheElevenLaneKeys(t *testing.T) {
 		config.EnvMoaiKanbanSettingsInjected,
 		config.EnvMoaiFactoryWorker,
 		config.EnvMoaiFactoryWorkers,
+		config.EnvFactoryRole,
 	}
 	got := append([]string(nil), codexLaneLaunchEnvKeys...)
 	sort.Strings(got)
@@ -75,9 +76,8 @@ func codexRefusalCases(kind string) [][]string {
 		}
 	}
 	return [][]string{
-		{"-f"}, {"--factory"}, {"-f", "worker"}, {"-f", "worker-2"}, {"-f", "agent"},
-		{"-f", "lane-3"}, {"--factory=worker"}, {"-f=worker-1"}, {"--factory-run", "r1"},
-		{"-f", "app"}, {"-f", "status"},
+		{"-f", "worker"}, {"-f", "worker-2"}, {"-f", "agent"},
+		{"--factory=worker"}, {"-f=worker-1"},
 	}
 }
 
@@ -130,15 +130,171 @@ func TestCodexKanbanEntryIsRefused(t *testing.T) {
 	codexWantLaunches(t, cap, 0, 0, 0)
 }
 
-// AC-CFR-002 — every factory entry shape is refused with the factory sentinel.
-func TestCodexFactoryEntryIsRefused(t *testing.T) {
+// Legacy role names remain refused; the canonical lane forms are supported.
+func TestCodexFactoryLegacyEntryIsRefused(t *testing.T) {
 	cap := withCodexLaunchCapture(t)
 	pinCodexRefusalRoot(t)
 	for _, args := range codexRefusalCases("factory") {
 		stdout, stderr, err := runCodexCmd(t, args...)
-		assertCodexRefused(t, args, stdout, stderr, err, factoryUnsupportedBackendSentinel, "moai cc -f", "moai glm -f")
+		if err == nil || stdout != "" || !strings.Contains(stderr+err.Error(), "lane") {
+			t.Fatalf("codex %v: stdout=%q stderr=%q err=%v", args, stdout, stderr, err)
+		}
 	}
 	codexWantLaunches(t, cap, 0, 0, 0)
+}
+
+func TestCodexFactoryLeaderAndLaneLaunch(t *testing.T) {
+	cap := withCodexLaunchCapture(t)
+	root := pinCodexRefusalRoot(t)
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-8")
+	t.Setenv(config.EnvFactoryRole, config.FactoryRoleLane)
+	if _, stderr, err := runCodexCmd(t, "-f"); err != nil {
+		t.Fatalf("leader launch: %v (stderr %q)", err, stderr)
+	}
+	if len(cap.records) != 1 {
+		t.Fatalf("leader launches = %d, want 1", len(cap.records))
+	}
+	leader := cap.records[0]
+	runID, ok := codexEnvLast(leader.Env, config.EnvMoaiKanbanID)
+	if !ok || runID == "" {
+		t.Fatalf("leader run id missing from child environment")
+	}
+	if backend, _ := codexEnvLast(leader.Env, config.EnvMoaiKanbanBackend); backend != BackendCodex {
+		t.Fatalf("leader backend = %q", backend)
+	}
+	if _, ok := codexEnvLast(leader.Env, config.EnvMoaiFactoryWorker); ok {
+		t.Fatal("leader inherited an outer lane slot")
+	}
+	if _, ok := codexEnvLast(leader.Env, config.EnvFactoryRole); ok {
+		t.Fatal("leader inherited an outer lane role")
+	}
+	_ = os.Unsetenv(config.EnvMoaiFactoryWorker)
+	if status, backend, _ := runRow(t, root, runID); status != "active" || backend != BackendCodex {
+		t.Fatalf("run = (%s, %s), want active Codex", status, backend)
+	}
+	if _, stderr, err := runCodexCmd(t, "-f", "lane", "--factory-run", runID); err != nil {
+		t.Fatalf("lane launch: %v (stderr %q)", err, stderr)
+	}
+	if len(cap.records) != 2 {
+		t.Fatalf("launches = %d, want 2", len(cap.records))
+	}
+	lane := cap.records[1]
+	if got, _ := codexEnvLast(lane.Env, config.EnvMoaiFactoryWorker); got != "lane-1" {
+		t.Fatalf("lane slot = %q, want lane-1", got)
+	}
+	if got, _ := codexEnvLast(lane.Env, config.EnvFactoryRole); got != config.FactoryRoleLane {
+		t.Fatalf("factory role = %q, want lane", got)
+	}
+	if got, _ := codexEnvLast(lane.Env, config.EnvMoaiKanbanID); got != runID {
+		t.Fatalf("lane run = %q, want %q", got, runID)
+	}
+	if got := workerRows(t, root); got != 1 {
+		t.Fatalf("claimed lanes = %d, want 1", got)
+	}
+	for _, tc := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"-f", "lane", "--factory-run", runID}, "no free lane slots"},
+		{[]string{"-f", "lane-1", "--factory-run", runID}, "already occupied"},
+		{[]string{"-f", "lane-2", "--factory-run", runID}, "outside the allowed slots"},
+	} {
+		if _, _, err := runCodexCmd(t, tc.args...); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Fatalf("codex %q: err=%v, want %q", tc.args, err, tc.want)
+		}
+		if got := workerRows(t, root); got != 1 {
+			t.Fatalf("failed join changed claimed lanes to %d", got)
+		}
+		if len(cap.records) != 2 {
+			t.Fatalf("failed join launched Codex: launches=%d", len(cap.records))
+		}
+	}
+}
+
+func TestCodexFactoryEntryParsingUsesLaneOnly(t *testing.T) {
+	for _, tc := range []struct {
+		args  []string
+		lane  bool
+		label string
+		verb  string
+	}{
+		{[]string{"-f", "cli"}, false, "", "cli"},
+		{[]string{"-f", "lane", "cli"}, true, "", "cli"},
+		{[]string{"--factory=lane-2", "app"}, false, "lane-2", "app"},
+	} {
+		rest, entry, err := parseCodexFactoryEntry(tc.args)
+		if err != nil || !entry.Enabled || entry.LaneRole != tc.lane || entry.LaneLabel != tc.label || len(rest) != 1 || rest[0] != tc.verb {
+			t.Fatalf("parse %q: rest=%q entry=%+v err=%v", tc.args, rest, entry, err)
+		}
+	}
+	for _, args := range [][]string{{"-f", "agent"}, {"-f", "worker-1"}, {"-f=agent"}} {
+		if _, _, err := parseCodexFactoryEntry(args); err == nil || !strings.Contains(err.Error(), "lane") {
+			t.Fatalf("legacy %q: err=%v, want lane guidance", args, err)
+		}
+	}
+}
+
+func TestCodexFactorySpawnRegistersPendingLane(t *testing.T) {
+	root := codexLedRun(t, "spawn-run", BackendCodex)
+	t.Setenv(config.EnvMoaiKanbanID, "spawn-run")
+	if _, err := resolveFactoryLaneName(root, "lane-1", false, nil); err != nil {
+		t.Fatal(err)
+	}
+	env := []string{
+		config.EnvMoaiKanbanID + "=spawn-run",
+		config.EnvMoaiKanbanBackend + "=codex",
+		config.EnvMoaiFactoryWorker + "=lane-1",
+		config.EnvMoaiFactoryWorkers + "=0",
+	}
+	prevTmux, prevIdentity, prevAnchor := tmuxSpawnFn, codexSpawnPaneIdentityFn, codexSpawnAnchorFn
+	var command string
+	tmuxSpawnFn = func(_ string, cmd string) (string, error) { command = cmd; return "%factory", nil }
+	codexSpawnPaneIdentityFn = func(string) (int, string, error) {
+		return os.Getpid(), homestate.CurrentProcessFingerprint(), nil
+	}
+	codexSpawnAnchorFn = nil
+	t.Cleanup(func() {
+		tmuxSpawnFn, codexSpawnPaneIdentityFn, codexSpawnAnchorFn = prevTmux, prevIdentity, prevAnchor
+	})
+	if _, err := withStdoutCapture(t, func() error {
+		return defaultCodexSpawnLaunch(root, "/test/codex", []string{"--model", "o3"}, env)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(command, config.EnvMoaiFactoryWorker+"='lane-1'") && !strings.Contains(command, config.EnvMoaiFactoryWorker+"=lane-1") {
+		t.Fatalf("spawn command lacks explicit lane identity: %q", command)
+	}
+	if got := peerCount(t, root, "spawn-run", "lane-1"); got != 1 {
+		t.Fatalf("pending lane peers = %d, want 1", got)
+	}
+}
+
+func TestCodexFactorySpawnTransfersLaneClaim(t *testing.T) {
+	root := codexLedRun(t, "claim-run", BackendCodex)
+	t.Setenv(config.EnvMoaiKanbanID, "claim-run")
+	if _, err := resolveFactoryLaneName(root, "lane-1", false, nil); err != nil {
+		t.Fatal(err)
+	}
+	env := []string{
+		config.EnvMoaiKanbanID + "=claim-run",
+		config.EnvMoaiFactoryWorker + "=lane-1",
+	}
+	const childPID = 5678
+	if err := stampCodexLaneClaim(root, env, childPID); err != nil {
+		t.Fatal(err)
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	var got int
+	if err := db.DB.QueryRow(`SELECT pid FROM workers WHERE label='lane-1' AND run_id='claim-run'`).Scan(&got); err != nil {
+		t.Fatal(err)
+	}
+	if got != childPID {
+		t.Fatalf("claim PID = %d, want %d", got, childPID)
+	}
 }
 
 func fileDigest(t *testing.T, path string) string {
@@ -310,7 +466,7 @@ func codexLedRun(t *testing.T, runID, backend string) string {
 		t.Fatal(err)
 	}
 	if err := db.RecordRun(context.Background(), homestate.FactoryRun{
-		RunID: runID, Backend: backend, ManifestJSON: "{}", LeadPID: 424242, LeadProcessStart: "t1242-start",
+		RunID: runID, Backend: backend, ManifestJSON: "{}", LeadPID: os.Getpid(), LeadProcessStart: homestate.CurrentProcessFingerprint(),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -383,43 +539,28 @@ func driveFactoryEntry(t *testing.T, launcher string, args ...string) (int, erro
 	return launches, err
 }
 
-// AC-CFR-008 — a worker join into a codex-led run is refused before any claim.
-func TestFactoryJoinRefusesCodexLedRun(t *testing.T) {
+// A Codex-led run accepts canonical lanes from the other launchers.
+func TestFactoryJoinAcceptsCodexLedRun(t *testing.T) {
 	for _, tc := range []struct {
 		launcher string
 		args     []string
 	}{
-		{"cc", []string{"-f", "worker"}},
-		{"cc", []string{"-f", "worker-2"}},
-		{"glm", []string{"-f", "worker"}},
+		{"cc", []string{"-f", "lane"}},
+		{"cc", []string{"-f", "lane-2"}},
+		{"glm", []string{"-f", "lane"}},
 	} {
 		t.Run(tc.launcher+" "+strings.Join(tc.args, " "), func(t *testing.T) {
 			root := codexLedRun(t, "rc", "codex")
-			dbPath, err := homestate.FactoryDBPath(root)
-			if err != nil {
-				t.Fatal(err)
-			}
-			// Count first: opening the DB may checkpoint it, so the digest is
-			// taken after the last test-side open and before the entry runs.
 			rowsBefore := workerRows(t, root)
-			before := fileDigest(t, dbPath)
 			launches, err := driveFactoryEntry(t, tc.launcher, tc.args...)
-			if err == nil {
-				t.Fatal("join accepted, want a refusal")
+			if err != nil {
+				t.Fatalf("join refused: %v", err)
 			}
-			for _, w := range []string{"rc", "codex", "moai factory runs --retire"} {
-				if !strings.Contains(err.Error(), w) {
-					t.Errorf("refusal %q lacks %q", err.Error(), w)
-				}
+			if launches != 1 {
+				t.Errorf("launches = %d, want 1", launches)
 			}
-			if launches != 0 {
-				t.Errorf("launches = %d, want 0", launches)
-			}
-			if got := fileDigest(t, dbPath); got != before {
-				t.Errorf("worker registry file changed: %s -> %s", before, got)
-			}
-			if got := workerRows(t, root); got != rowsBefore {
-				t.Errorf("worker rows %d -> %d, want no claim", rowsBefore, got)
+			if got := workerRows(t, root); got != rowsBefore+1 {
+				t.Errorf("worker rows %d -> %d, want one claim", rowsBefore, got)
 			}
 		})
 	}
@@ -427,10 +568,10 @@ func TestFactoryJoinRefusesCodexLedRun(t *testing.T) {
 
 // AC-CFR-009 — a claude-led run is joined and led exactly as before.
 func TestFactoryJoinAndLeadAcceptNonCodexRun(t *testing.T) {
-	t.Run("worker", func(t *testing.T) {
+	t.Run("lane", func(t *testing.T) {
 		root := codexLedRun(t, "rc", "claude")
 		rowsBefore := workerRows(t, root)
-		launches, err := driveFactoryEntry(t, "cc", "-f", "worker")
+		launches, err := driveFactoryEntry(t, "cc", "-f", "lane")
 		if err != nil {
 			t.Fatalf("join refused: %v", err)
 		}
@@ -477,14 +618,14 @@ func TestFactoryLeadRefusesCodexLedRun(t *testing.T) {
 	}
 }
 
-// refuseCodexLedRun fails closed when the selected run's lead backend cannot
+// refuseCodexLeaderRun fails closed when the selected run's lead backend cannot
 // be read, rather than letting an unread run be joined as if it were claude-led.
 func TestRefuseCodexLedRunFailsClosedOnUnreadableRun(t *testing.T) {
 	root := codexLedRun(t, "rc", "claude")
-	if err := refuseCodexLedRun(root, "rc"); err != nil {
+	if err := refuseCodexLeaderRun(root, "rc"); err != nil {
 		t.Fatalf("claude-led run refused: %v", err)
 	}
-	err := refuseCodexLedRun(root, "no-such-run")
+	err := refuseCodexLeaderRun(root, "no-such-run")
 	if err == nil || !strings.Contains(err.Error(), "no-such-run") {
 		t.Fatalf("missing run = %v, want a read error naming the run", err)
 	}
@@ -572,8 +713,8 @@ func TestCodexHarnessHooksRegisterNoFactoryPeer(t *testing.T) {
 		slot string
 		env  map[string]string
 	}{
-		{"worker", "worker-1", map[string]string{config.EnvMoaiFactoryWorker: "worker-1"}},
-		{"lead", "lead", map[string]string{config.EnvMoaiFactoryWorkers: "2"}},
+		{"lane", "lane-1", map[string]string{config.EnvMoaiFactoryWorker: "lane-1"}},
+		{"leader", "leader", map[string]string{config.EnvMoaiFactoryWorkers: "2"}},
 	} {
 		t.Run(shape.name, func(t *testing.T) {
 			root := codexLedRun(t, "r1", "claude")
@@ -602,5 +743,22 @@ func TestCodexHarnessHooksRegisterNoFactoryPeer(t *testing.T) {
 				t.Fatalf("after the Claude hooks (positive control): peers for (r1, %s) = %d, want 1", shape.slot, got)
 			}
 		})
+	}
+}
+
+func TestCodexFactoryHarnessHookBindsLane(t *testing.T) {
+	root := codexLedRun(t, "codex-run", BackendCodex)
+	t.Setenv(config.EnvMoaiKanbanID, "codex-run")
+	t.Setenv(config.EnvMoaiKanbanBackend, BackendCodex)
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "0")
+	t.Setenv(config.EnvMoaiSessionPID, strconv.Itoa(os.Getpid()))
+	input := func(event string) *hook.HookInput {
+		return &hook.HookInput{HookEventName: event, SessionID: "codex-lane-uuid", ProjectDir: root, CWD: root, Prompt: "factory lane probe"}
+	}
+	runFactoryHook(t, "session-start", "codex", input("SessionStart"))
+	runFactoryHook(t, "user-prompt-submit", "codex", input("UserPromptSubmit"))
+	if got := peerCount(t, root, "codex-run", "lane-1"); got != 1 {
+		t.Fatalf("Codex lane peers = %d, want 1", got)
 	}
 }

@@ -4,13 +4,14 @@ title: "Per-Agent Model+Effort Profile Matrix (replace plan_type axis)"
 version: "0.1.1"
 status: completed
 created: 2026-07-20
-updated: 2026-07-20
+updated: 2026-09-29
 author: manager-spec
 priority: P1
 phase: "v3.1.0 target"
 module: "internal/config, internal/template, internal/cli, internal/web"
 lifecycle: spec-anchored
 tags: "model-routing, config, llm, profile, init, web-console, glm, migration"
+partially_superseded_by: [SPEC-AGENT-MODEL-INHERIT-001]
 related_specs: [SPEC-MODEL-TIER-PLANTYPE-001, SPEC-WEBCONF-SIMPLIFY-001, SPEC-GLM-EFFORT-TUNE-001]
 tier: L
 ---

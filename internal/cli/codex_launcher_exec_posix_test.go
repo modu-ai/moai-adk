@@ -109,7 +109,7 @@ func TestCodexDirectPOSIXExecRegistersNoFactoryPeer(t *testing.T) {
 		"MOAI_HOME="+home,
 		config.EnvMoaiKanbanID+"="+run,
 		config.EnvMoaiKanbanBackend+"=claude",
-		config.EnvMoaiFactoryWorker+"=worker-1",
+		config.EnvMoaiFactoryWorker+"=lane-1",
 		config.EnvClaudeProjectDir+"="+root,
 		"T1074_CODEX_EXEC_ROOT="+root,
 		"T1074_CODEX_EXEC_ROLE=launcher",

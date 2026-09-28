@@ -39,7 +39,7 @@ func TestLaneNumberIsRecordedDistinctlyFromRole(t *testing.T) {
 		t.Fatalf("role = %q, want %q", lane.Role, RoleLane)
 	}
 
-	lead := NewRecord("sess-lead", "", BackendClaude).WithRole(RoleLead)
+	lead := NewRecord("sess-lead", "", BackendClaude).WithRole(RoleLeader)
 	if lead.Lane != 0 {
 		t.Fatalf("lead lane number = %d, want 0 (not a lane)", lead.Lane)
 	}
@@ -91,7 +91,7 @@ func TestNewFieldsAreOmittedWhenEmpty(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
-	rec := NewRecord("sess-plain", "SPEC-X", BackendGLM).WithRole(RoleLead)
+	rec := NewRecord("sess-plain", "SPEC-X", BackendGLM).WithRole(RoleLeader)
 	if err := Write(root, rec); err != nil {
 		t.Fatalf("Write: %v", err)
 	}

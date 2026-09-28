@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -333,26 +334,68 @@ while IFS= read -r line; do :; done
 	}
 }
 
+// recordingSessionRunner delegates every spawn to the inner (real) runner and
+// records the conns it produced, so a test observes the child process
+// synchronously — cmd.Start returns only after exec succeeded — instead of
+// racing a fixture-written pid file against the task bound (t1288).
+type recordingSessionRunner struct {
+	inner codexSessionRunner
+	mu    sync.Mutex
+	conns []codexConn
+}
+
+func (r *recordingSessionRunner) start(ctx context.Context, binaryPath string, args []string) (codexConn, error) {
+	conn, err := r.inner.start(ctx, binaryPath, args)
+	if err == nil {
+		r.mu.Lock()
+		r.conns = append(r.conns, conn)
+		r.mu.Unlock()
+	}
+	return conn, err
+}
+
+// pids reports the OS pids of every successfully spawned child.
+func (r *recordingSessionRunner) pids() []int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	pids := make([]int, 0, len(r.conns))
+	for _, conn := range r.conns {
+		if pid := codexConnPID(conn); pid > 0 {
+			pids = append(pids, pid)
+		}
+	}
+	return pids
+}
+
 // A live request must not leave a background child waiting forever for
 // initialize. The task's own timeout covers the handshake as well as the turn.
+//
+// The child's existence and death are observed through a recording wrapper
+// around the real session runner rather than a pid file the child writes: the
+// bound is armed before the spawn, and under load a freshly exec'd shell can
+// run its first line after the deadline's kill — a machine-speed property, not
+// a behavior of the code under test. A recorded conn proves the real spawn
+// happened, and the deadline path closes the conn (reaping the child) before
+// the handler returns, so the pid is observably gone right after.
 func TestCodexTaskBackgroundHandshakeHonorsTaskBound(t *testing.T) {
 	root := t.TempDir()
 	withCodexProjectDir(t, root)
 	withCodexTaskTimeout(t, 100*time.Millisecond)
 	bin := filepath.Join(root, "codex-app-server")
-	pidFile := filepath.Join(root, "handshake-bound-child.pid")
-	t.Setenv("MOAI_TEST_CHILD_PID_PATH", pidFile)
-	script := "#!/bin/sh\nprintf '%s\\n' \"$$\" > \"$MOAI_TEST_CHILD_PID_PATH\"\nwhile IFS= read -r line; do :; done\n"
+	// Accepts initialize but never answers it: the handshake stalls until the
+	// task bound ends the session.
+	script := "#!/bin/sh\nwhile IFS= read -r line; do :; done\n"
 	if err := os.WriteFile(bin, []byte(script), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	prevLook, prevSession := codexLookPath, codexSession
+	runner := &recordingSessionRunner{inner: realCodexSessionRunner{}}
 	codexLookPath = func(string) (string, error) { return bin, nil }
-	codexSession = realCodexSessionRunner{}
+	codexSession = runner
 	t.Cleanup(func() { codexLookPath, codexSession = prevLook, prevSession })
-	t.Cleanup(func() {
-		if raw, err := os.ReadFile(pidFile); err == nil {
-			if pid, err := strconv.Atoi(strings.TrimSpace(string(raw))); err == nil && syscall.Kill(pid, 0) == nil {
+	t.Cleanup(func() { // fixture only: never leave a spawned child behind
+		for _, pid := range runner.pids() {
+			if syscall.Kill(pid, 0) == nil {
 				if child, err := os.FindProcess(pid); err == nil {
 					_ = child.Kill()
 					_ = child.Release()
@@ -389,16 +432,22 @@ func TestCodexTaskBackgroundHandshakeHonorsTaskBound(t *testing.T) {
 		if result["job_id"] != nil {
 			t.Fatalf("a failed handshake must not create a job: %+v", result)
 		}
-		raw, err := os.ReadFile(pidFile)
-		if err != nil {
-			t.Fatalf("real child never reached the handshake: %v", err)
+		pids := runner.pids()
+		if len(pids) != 1 {
+			t.Fatalf("expected exactly one spawned app-server, got %d", len(pids))
 		}
-		pid, err := strconv.Atoi(strings.TrimSpace(string(raw)))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := syscall.Kill(pid, 0); err != syscall.ESRCH {
-			t.Fatalf("timed-out handshake child pid %d remains live: %v", pid, err)
+		// conn.close() already reaped the deadline-killed child before the
+		// handler returned; the poll only absorbs scheduling jitter.
+		gone := time.Now().Add(2 * time.Second)
+		for {
+			err := syscall.Kill(pids[0], 0)
+			if err == syscall.ESRCH {
+				break
+			}
+			if time.Now().After(gone) {
+				t.Fatalf("timed-out handshake child pid %d remains live: %v", pids[0], err)
+			}
+			time.Sleep(5 * time.Millisecond)
 		}
 	case <-time.After(700 * time.Millisecond):
 		cancel()
