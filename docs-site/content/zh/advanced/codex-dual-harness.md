@@ -73,6 +73,14 @@ Advisory: CLAUDE.local.md is a legacy local instruction file; run `moai migrate 
 
 `RenderHooks` 会把 8 个已适配事件的命令写入用户的 `.codex/hooks.json`。`moai init --llm codex|both` 创建这套配线;已有项目可用 `moai tool enable codex` 添加或刷新。
 
+## 桌面应用与 v3.1.3 发布条件
+
+在 Codex 应用的本地会话中，打开包含已生成的 `.codex/hooks.json` 和 `.codex/config.toml` 的项目。Codex 只有在项目信任后才会加载项目钩子和配置。在 Codex CLI 中使用 `/hooks` 检查钩子；定义发生变化后，需要重新信任。在同一项目中运行 `moai doctor` 可以检查 MoAI 配线状态。应用的运行环境还必须能找到 `moai` 命令。项目信任规则见 [Codex 钩子文档](https://developers.openai.com/codex/hooks)。
+
+Claude Code 桌面应用的 **Local** Code 会话与 CLI 共用项目中的 `CLAUDE.md`、`.mcp.json`、钩子、技能和设置。在 Code 标签页打开已初始化的项目，并确认该会话能运行 `moai`。SSH 会话在远程机器上运行，因此远程机器也需要项目和 `moai`。详见 [Claude Code Desktop 配置说明](https://code.claude.com/docs/en/desktop#shared-configuration)。
+
+以上只是配置步骤，不代表 v3.1.3 的桌面应用发布验证已经完成。在运营者亲自完成 MoAI、Codex 和两款桌面应用的测试并宣布结果之前，发布仍然暂停。
+
 ## 下一步
 
 - [多模型审计收敛](/zh/advanced/multi-model-audit/) —— codex 后端如今已经参与审计的路径

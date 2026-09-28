@@ -28,3 +28,36 @@ func TestSplitFactoryLaneLabelAdmitsLaneShapesOnly(t *testing.T) {
 		}
 	}
 }
+
+func TestLegacyFactoryValuesAreDetectedWithoutBecomingLanes(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		value       string
+		legacyLabel bool
+		legacyAgent bool
+		legacyValue bool
+		wantNumber  int
+	}{
+		{value: "worker", legacyValue: true},
+		{value: "agent", legacyValue: true},
+		{value: "worker-3", legacyLabel: true, legacyValue: true, wantNumber: 3},
+		{value: "agent-4", legacyLabel: true, legacyAgent: true, legacyValue: true, wantNumber: 4},
+		{value: "lane-3"},
+		{value: "agent-0"},
+		{value: "agent-3-extra"},
+	} {
+		if n, ok := SplitFactoryLegacyLabel(tc.value); ok != tc.legacyLabel || (ok && n != tc.wantNumber) {
+			t.Errorf("SplitFactoryLegacyLabel(%q) = (%d, %v), want (%d, %v)", tc.value, n, ok, tc.wantNumber, tc.legacyLabel)
+		}
+		if n, ok := SplitFactoryLegacyAgentLabel(tc.value); ok != tc.legacyAgent || (ok && n != tc.wantNumber) {
+			t.Errorf("SplitFactoryLegacyAgentLabel(%q) = (%d, %v), want (%d, %v)", tc.value, n, ok, tc.wantNumber, tc.legacyAgent)
+		}
+		if got := IsLegacyFactoryRoleValue(tc.value); got != tc.legacyValue {
+			t.Errorf("IsLegacyFactoryRoleValue(%q) = %v, want %v", tc.value, got, tc.legacyValue)
+		}
+		if _, ok := SplitFactoryLaneLabel(tc.value); ok != (tc.value == "lane-3") {
+			t.Errorf("SplitFactoryLaneLabel(%q) = %v, want canonical lane only", tc.value, ok)
+		}
+	}
+}

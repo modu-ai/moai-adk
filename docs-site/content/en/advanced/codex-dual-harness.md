@@ -73,6 +73,14 @@ Unadapted events are not silently ignored — they are **refused**. An unknown e
 
 `RenderHooks` writes all eight adapted event commands into the user's `.codex/hooks.json`; `moai init --llm codex|both` creates that wiring, and `moai tool enable codex` adds or refreshes it in an existing project.
 
+## Desktop apps and the v3.1.3 release gate
+
+For a local Codex app session, open the project that contains the generated `.codex/hooks.json` and `.codex/config.toml`. Codex loads project hooks and configuration only after the project is trusted; use `/hooks` in the Codex CLI to review the hooks, and trust them again if their definitions change. Run `moai doctor` in the same project to inspect the MoAI wiring. The `moai` executable must be available to the app's execution environment. See the [Codex hooks documentation](https://developers.openai.com/codex/hooks) for the project trust rules.
+
+Claude Code for Desktop's **Local** Code session reads the same project `CLAUDE.md`, `.mcp.json`, hooks, skills, and settings as the CLI. Open the initialized project in its Code tab and make sure `moai` is available in that session's environment. An SSH session runs on the remote machine, so that machine needs the project and `moai` installation. See [Claude Code Desktop configuration](https://code.claude.com/docs/en/desktop#shared-configuration).
+
+These are setup paths, not a claim that the v3.1.3 desktop release gate has passed. Release remains on hold until the operator completes their own MoAI, Codex, and both desktop-app tests and declares the result.
+
 ## Next steps
 
 - [Multi-model Audit Convergence](/en/advanced/multi-model-audit/) — the path where the codex backend already participates in audits today
