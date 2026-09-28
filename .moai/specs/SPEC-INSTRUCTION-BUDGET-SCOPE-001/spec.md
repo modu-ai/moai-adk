@@ -234,6 +234,6 @@ The reusable point, since this is the second time in this card that a reading of
 
 - `internal/hook/instructions_loaded.go` — the enforcing handler (read-only for this SPEC)
 - `.claude/rules/moai/development/coding-standards.md` § File Size Limits — the doctrine amended by REQ-IBS-001/002
-- `internal/template/sanitized_pair_parity_test.go` — `sanitizedPairPaths` registry (REQ-IBS-013)
-- `internal/template/rule_template_mirror_test.go` — `workflowOptMirroredPaths` registry (REQ-IBS-013)
+- `internal/template/sanitized_pair_parity_test.go` — `sanitizedPairPaths` registry (REQ-IBS-011)
+- `internal/template/rule_template_mirror_test.go` — `workflowOptMirroredPaths` registry (REQ-IBS-011)
 - `.moai/reports/t1180/verdict.md` (primary checkout) — premise measurement

@@ -1,7 +1,7 @@
 ---
 id: SPEC-INSTRUCTION-BUDGET-SCOPE-001
 title: "Acceptance criteria — instruction-budget scope alignment and four-file reduction"
-version: "0.9.0"
+version: "0.10.0"
 created: 2026-09-28
 ---
 
