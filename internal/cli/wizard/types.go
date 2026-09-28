@@ -21,10 +21,6 @@ type WizardResult struct {
 	// Development methodology
 	DevelopmentMode string // Development mode: ddd, tdd
 
-	// Model policy (project-level) — the model+effort profile selection
-	// {high, medium, low} normalized to {max, medium, low} at persistence.
-	ModelPolicy string // Token tier: high, medium, low
-
 	// Report format — html+md or md. Persisted to report.yaml at init.
 	// Empty resolves to the html+md default at persistence time.
 	ReportFormat string // Report output format: html+md, md

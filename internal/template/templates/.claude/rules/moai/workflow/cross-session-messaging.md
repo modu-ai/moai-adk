@@ -32,8 +32,8 @@ Where a constraint bites, the failure is quiet — nothing errors, dispatch just
 `TaskStop` keeps a live name address: one message delivered to that name resumes the agent from its
 transcript, reviving it as an ownerless writer mid-card. When composing a message to a teammate by
 name, confirm the addressee is not a stopped teammate before sending, and route coordination about
-a stopped teammate through the owning orchestrator or lead only — never to the stopped name.
-Observing a stopped teammate running again is a process defect: report it to the lead immediately
+a stopped teammate through the owning orchestrator or factory leader only — never to the stopped name.
+Observing a stopped teammate running again is a process defect: report it to the leader immediately
 and record it in the progress record; do not continue quietly or send that teammate more messages.
 
 **Mechanism layer (landed).** The prohibition above is mechanically enforced at the PreToolUse
@@ -46,7 +46,7 @@ route around: it means the doctrine held — route coordination through the owni
 respawn the name deliberately. Registry path, audit rows, and the entry lifecycle:
 `cross-session-messaging-detail.md` § The stopped-teammate registry.
 
-[ZONE:Evolvable] **Role-boundary dispatch is permitted; offloading is not.** Where sessions are standing roles in a declared topology — one coordinating session and workers that each own a stage of the pipeline — a coordinating session may dispatch a work item to the session whose role owns that stage, and may ask for its completion status. Three conditions make this dispatch rather than offloading: the target's role is declared in advance rather than chosen because it happened to be idle, the work item is a **pointer into shared source of truth** (an identifier, a path, a contract section) rather than the work itself, and each worker writes to an isolated tree so concurrent workers cannot collide. All three must hold together; absent any one of them, it is offloading — see the anti-pattern below.
+[ZONE:Evolvable] **Role-boundary dispatch is permitted; offloading is not.** Where sessions are standing roles in a declared topology — one coordinating session and lane sessions that each own a stage of the pipeline — a coordinating session may dispatch a work item to the session whose role owns that stage, and may ask for its completion status. Three conditions make this dispatch rather than offloading: the target's role is declared in advance rather than chosen because it happened to be idle, the work item is a **pointer into shared source of truth** (an identifier, a path, a contract section) rather than the work itself, and each lane writes to an isolated tree so concurrent lanes cannot collide. All three must hold together; absent any one of them, it is offloading — see the anti-pattern below.
 
 [ZONE:Evolvable] **Do not let a dispatch depend on the reply arriving.** Because reply routing is not guaranteed, completion must also be observable in the shared source of truth — a progress record the coordinator can read — with the message serving as prompt notification rather than as the record. A coordinator that advances only on received replies stalls silently when one is lost.
 

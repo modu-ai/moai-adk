@@ -43,10 +43,10 @@
 
 A session holds one context window, and a long SPEC fills it. Everything that comes after carries everything that came before: the plan you no longer need is still in the window while you review, and the review is still there while you write docs. The usual escape is `/clear`, which throws away the thread along with the ballast.
 
-Kanban Mode splits one unit of work across **four terminals instead of one**. A lead session drives the chain; three companion sessions each own a single column — `plan`, `run`, `sync` — and carry **only that column's context**. Review is not a separate column: the sync gate absorbs it, running the review lenses itself to reach the verdict. Nothing is uncapped: each session still has its own limit. What changes is that no session carries three phases' worth of history, so the same budget goes considerably further, and a finished phase is cleared without losing the card.
+Kanban Mode splits one unit of work across **four terminals instead of one**. A factory leader session drives the chain; three companion sessions each own a single column — `plan`, `run`, `sync` — and carry **only that column's context**. Review is not a separate column: the sync gate absorbs it, running the review lenses itself to reach the verdict. Nothing is uncapped: each session still has its own limit. What changes is that no session carries three phases' worth of history, so the same budget goes considerably further, and a finished phase is cleared without losing the card.
 
 <p align="center">
-  <img src="./assets/images/kanban-five-sessions.png" alt="One Kanban Mode run: the five-column board with a lead session and three companion sessions, each in its own terminal, each on its own model and effort level" width="100%">
+  <img src="./assets/images/kanban-five-sessions.png" alt="One Kanban Mode run: the five-column board with a leader session and three companion sessions, each in its own terminal, each on its own model and effort level" width="100%">
 </p>
 
 Each column can run a different backend and effort level. The run above puts Plan on Opus 5 at high effort, Run on GLM 5.2 at xhigh, and Sync on GLM 5.2 — the depth of reasoning a column needs is not the same in every column.
@@ -54,30 +54,30 @@ Each column can run a different backend and effort level. The run above puts Pla
 ### Getting started
 
 ```bash
-moai cc -k                    # lead — announces a run-id, seeds the chain
+moai cc -k                    # leader — announces a run-id, seeds the chain
 moai cc -k --name plan        # companion, in its own terminal
 moai cc -k --name run
 moai cc -k --name sync
 ```
 
-Companion sessions are launched **by hand, one per terminal** — a session never spawns a peer. Companions are named by their bare role: the run-id stays the lead session's identifier and never rides a companion name; a second live session claiming the same role takes the next free number. Swap `moai cc` for `moai glm` on any column to put just that column on the GLM backend.
+Companion sessions are launched **by hand, one per terminal** — a session never spawns a peer. Companions are named by their bare role: the run-id stays the leader session's identifier and never rides a companion name; a second live session claiming the same role takes the next free number. Swap `moai cc` for `moai glm` on any column to put just that column on the GLM backend.
 
 ### Which backend goes where
 
-When you open a kanban run, the bootstrap notice carries a default recommendation — token availability first: lead on `moai glm -k`, plan on `moai cc -k --name plan`, run on `moai glm -k --name run`, sync on `moai cc -k --name sync`. The reasoning is the kind of thinking each lane needs. Plan and sync turn on judgment and review, so they sit on Claude; run is implementation-heavy, so GLM keeps its cost down. The lead is not the seat that renders verdicts — it watches the queue and moves cards — so GLM, cheap to keep waiting, fits it. When a Claude verdict is needed under a GLM lead, escape through a session named `judge` — the only route by which the GLM lead uses Claude. When one account starts hitting 429s, spreading lanes across accounts is the workable move. This mix is only the default — a different combination, or unifying every session on one backend, is equally fine.
+When you open a kanban run, the bootstrap notice carries a default recommendation — token availability first: leader on `moai glm -k`, plan on `moai cc -k --name plan`, run on `moai glm -k --name run`, sync on `moai cc -k --name sync`. The reasoning is the kind of thinking each lane needs. Plan and sync turn on judgment and review, so they sit on Claude; run is implementation-heavy, so GLM keeps its cost down. The leader is not the seat that renders verdicts — it watches the queue and moves cards — so GLM, cheap to keep waiting, fits it. When a Claude verdict is needed under a GLM leader, escape through a session named `judge` — the only route by which the GLM leader uses Claude. When one account starts hitting 429s, spreading lanes across accounts is the workable move. This mix is only the default — a different combination, or unifying every session on one backend, is equally fine.
 
-### Factory Mode — many cards at once across N workers
+### Factory Mode — many cards at once across N lanes
 
-`-f` opens a factory lead, Kanban's second form. Where a kanban card hops between columns, a factory card goes **whole to one worker**, and that worker carries it through `plan → run → sync` serially in-session, each phase spawned as `Agent()` subagents. Workers are labelled `worker-1` … `worker-N`. The old names `agent-<n>` / `lane-<n>` still work as deprecated aliases.
+`-f` opens a factory leader, Kanban's second form. Where a kanban card hops between columns, a factory card goes **whole to one lane**, and that lane carries it through `plan → run → sync` serially in-session, each phase spawned as `Agent()` subagents. Lanes are labelled `lane-1` … `lane-N`.
 
 ```bash
-moai cc -f                    # lead only (one worker, worker-1)
-moai cc -f worker             # a worker, auto-joins the next free number
-moai cc -f worker-3           # a worker, picking the number directly
-moai glm -f worker            # …and one worker on the GLM backend
+moai cc -f                    # leader only (one lane, lane-1)
+moai cc -f lane              # a lane, auto-joins the next free number
+moai cc -f lane-3            # a lane, picking the number directly
+moai glm -f lane             # …and one lane on the GLM backend
 ```
 
-Grow a run one worker at a time with `moai cc -f worker` (auto-join the next free number) or `moai cc -f worker-<n>` (that number exactly). Both forms already name the worker, so passing `--name`/`-n` alongside them is an error. An explicitly-picked number that collides with a live legacy worker (`agent-<n>`/`lane-<n>`) is refused by name; auto-assignment with `-f worker` is never refused, and reports by name which legacy numbers it skipped. A number is otherwise skipped only while a live session holds it — a dead worker's claim no longer blocks its number (an explicit pick reuses it right away), but `-f worker` auto-assignment always takes one past the highest live number and never backfills a gap. Worker ownership is recorded in `~/.moai/db/<project-key>/factory/factory.db` — or, when the launch directory is a temporary one (no absolute `MOAI_HOME` override), project-local under `<base>/.moai/db/<project-key>/factory/`, the same exception the backlog queue follows; a legacy `.moai/state/factory/workers.json` is imported once and retained only as rollback evidence. A worker runs up to 10 concurrent `Agent()` subagents, and write-capable spawns are isolated in their own worktree. Never bring every worker up at once — start the first, confirm it is actually producing output, then activate the rest. Cards are never split across workers. `-k` still drives the three-role kanban chain; one launch takes one entry token, so `-k` with `-f` is an error. CG is retired; use `moai migrate cg` to preview explicit migration choices. A factory run now records the process identity of the session that owns it, so a run whose lead has died is retired automatically the next time a worker joins instead of leaving that join stuck on `AMBIGUOUS_FACTORY`. `moai factory runs` lists every run with its owner's liveness, and `moai factory runs --retire <run-id>` retires one by hand — refused unless that run's owner is actually dead.
+Grow a run one lane at a time with `moai cc -f lane` (auto-join the next free number) or `moai cc -f lane-<n>` (that number exactly). Both forms already name the lane, so passing `--name`/`-n` alongside them is an error. An explicitly-picked number that collides with a live lane bumps to the next free number. A number is otherwise skipped only while a live session holds it — a dead lane's claim no longer blocks its number (an explicit pick reuses it right away), but `-f lane` auto-assignment always takes one past the highest live number and never backfills a gap. Lane ownership is recorded in `~/.moai/db/<project-key>/factory/factory.db` — or, when the launch directory is a temporary one (no absolute `MOAI_HOME` override), project-local under `<base>/.moai/db/<project-key>/factory/`, the same exception the backlog queue follows; a legacy `.moai/state/factory/workers.json` is imported once and retained only as rollback evidence. A lane runs up to 10 concurrent `Agent()` subagents, and write-capable spawns are isolated in their own worktree. Never bring every lane up at once — start the first, confirm it is actually producing output, then activate the rest. Cards are never split across lanes. `-k` still drives the three-role kanban chain; one launch takes one entry token, so `-k` with `-f` is an error. CG is retired; use `moai migrate cg` to preview explicit migration choices. A factory run now records the process identity of the session that owns it, so a run whose leader has died is retired automatically the next time a lane joins instead of leaving that join stuck on `AMBIGUOUS_FACTORY`. `moai factory runs` lists every run with its owner's liveness, and `moai factory runs --retire <run-id>` retires one by hand — refused unless that run's owner is actually dead.
 
 > Details: [Kanban mode — Factory Mode](https://adk.mo.ai.kr/en/advanced/kanban-mode)
 
@@ -90,7 +90,7 @@ The board has five columns, `backlog → plan → run → sync → done`. `backl
 
 `/moai gtd` is the canonical task-management surface. `/moai todo` remains a compatibility name backed by the same SQLite queue, card IDs, order, and archive/restore behavior. `moai gtd capture|clarify|organize|reflect|engage` carries an item through Capture → Clarify → Organize → Reflect → Engage before approved work enters the unchanged `backlog → plan → run → sync → done` development flow. SQLite operation receipts and authoritative readback prevent a retry after a crash from silently duplicating publication, pick, or dispatch.
 
-Two rules keep the board honest. The lead advances a card **only on evidence it read** from the card's `progress.md` — never on a companion's reply, because a reply is a claim and inter-session delivery is not guaranteed. And when a phase ends, the lead asks for that session to be `/clear`-ed, since `/clear` is user-typed and cannot be sent as an instruction.
+Two rules keep the board honest. The leader advances a card **only on evidence it read** from the card's `progress.md` — never on a companion's reply, because a reply is a claim and inter-session delivery is not guaranteed. And when a phase ends, the leader asks for that session to be `/clear`-ed, since `/clear` is user-typed and cannot be sent as an instruction.
 
 ### Words the four sessions share
 
@@ -98,7 +98,7 @@ The recurring vocabulary of the kanban docs, gathered into one picture. A **colu
 
 ```text
 Operator ── /moai todo ──▶ backlog ─▶ plan ─▶ run ─▶ sync ─▶ done
-                          (the lead advances a card only on evidence it read)
+                          (the leader advances a card only on evidence it read)
 
 Lane — card t0:  run session + worktree t0      ┐ the two flows share one board,
 Lane — card t1:  run session + worktree t1      ┘ run side by side, never mix
@@ -110,15 +110,15 @@ Lane — card t1:  run session + worktree t1      ┘ run side by side, never mi
 | column | One stage of the board — five columns in fixed order |
 | backlog | The entrance queue. No owning session, so only a human can add work |
 | lane | The session+worktree pair that carries one card to the end. One parallel work stream |
-| lead | The coordinating session. Advances cards only on evidence it read; never writes code itself |
+| leader | The coordinating session. Advances cards only on evidence it read; never writes code itself |
 | companion | The session seated in a column doing the work. Launched by hand, one per terminal |
-| run-id | Short identifier the lead announces at start. It names the lead session; companions never carry it |
+| run-id | Short identifier the leader announces at start. It names the leader session; companions never carry it |
 | worktree | The card's isolated checkout. The directory carries the card id; the branch carries what the card did (`WT-<slug>`). One carries the card from run through sync |
-| dispatch | The instruction the lead sends a companion — a pointer to the work, never a copy |
+| dispatch | The instruction the leader sends a companion — a pointer to the work, never a copy |
 
 Full glossary with definitions and examples: [Kanban board terms](https://adk.mo.ai.kr/en/core-concepts/kanban-board-terms)
 
-Cards also differ in which columns they pass through, by shape. As a card leaves `backlog`, the lead classifies it into one of the three Card Classes and names the class in the dispatch.
+Cards also differ in which columns they pass through, by shape. As a card leaves `backlog`, the leader classifies it into one of the three Card Classes and names the class in the dispatch.
 
 | Class | Shape | Shortcut |
 |---|---|---|
@@ -138,7 +138,7 @@ Details: [Kanban Mode — card classes](https://adk.mo.ai.kr/en/advanced/kanban-
   <img src="./assets/images/moai-web-overview.png" alt="moai web console — Overview screen with SPEC counts, in-progress SPECs, and session registry" width="90%">
 </p>
 
-Full guide: [Kanban Mode](https://adk.mo.ai.kr/en/advanced/kanban-mode) · [manager-lead Lead Coordinator](https://adk.mo.ai.kr/en/advanced/manager-lead) · [`/moai todo`](https://adk.mo.ai.kr/en/utility-commands/moai-todo)
+Full guide: [Kanban Mode](https://adk.mo.ai.kr/en/advanced/kanban-mode) · [manager-lead Leader Coordinator](https://adk.mo.ai.kr/en/advanced/manager-lead) · [`/moai todo`](https://adk.mo.ai.kr/en/utility-commands/moai-todo)
 
 ### What v3.1.1 adds
 
@@ -182,7 +182,7 @@ This identity organizes into three keys: **cost** (tokenomics — the same quali
 | **Autonomy with real boundaries** | Declare a completion condition with `/moai goal` and the session works on its own until it holds. Four hard boundaries are attached — a turn limit (default 30), a stagnation guard, a wall-clock budget, and pre-approval gates — so it cannot fall into an infinite loop. |
 | **Parallel-safe** | Every SPEC gets its own working tree, a branch-state guard blocks accidental branch switches in the primary checkout, and the gap against the remote is checked before spawning write agents. Two write-capable agents never run at the same time. |
 | **Long-horizon continuity** | Work survives `/clear`. Progress stays in `progress.md`, handoff messages in memory, routing decisions in decision memory. The next session starts from what the last one learned, not from bare ground. |
-| **Cost-efficient** | Models and reasoning depth are assigned declaratively, matched to work phase and SPEC size. Prompt caches are reused and long output is spilled to disk to keep the context light. |
+| **Cost-efficient** | Pick the session's model and reasoning effort once, and every agent inherits it as-is. Prompt caches are reused and long output is spilled to disk to keep the context light. |
 | **Equal support for 16 programming languages** | Go, Python, TypeScript, JavaScript, Rust, Java, Kotlin, C#, Ruby, PHP, Elixir, C++, Scala, R, Flutter, Swift — sixteen programming languages handled as one set via marker-based auto-detection. None receives preferential treatment. |
 | **Self-improving** | Recurring failure patterns observed in the wild rise as proposed rule changes. Nothing is applied silently — approval comes first. Routing decisions and gate evidence accumulate in decision memory as material for the next run. |
 | **Native-language friendly** | Korean, Japanese, Chinese, and English locales are maintained in the same PR, translationese is banned, and each language gets its own native prose. Users are never forced into English. |
@@ -289,7 +289,7 @@ moai init my-project
 cd my-project
 ```
 
-The interactive wizard auto-detects language, framework, and methodology, walks you through model policy, and generates the Claude Code integration files.
+The interactive wizard auto-detects language, framework, and methodology, and generates the Claude Code integration files.
 
 #### Choosing the agent harness
 
@@ -381,7 +381,7 @@ Every SPEC gets its own working tree. Enter with `moai cc -w <name>`; add `--spa
 
 ### Kanban mode
 
-`--kanban` (short `-k`) is a session-launcher switch — under the lead session's coordination it drives a single SPEC through `plan → run → sync` with multi-session board coordination. The board's backbone is the **Origin-Trail Chain**: an append-only JSONL lineage tree that tracks worktree ancestry, solves depth amnesia (root-to-leaf chain recovery after `/clear`), and detects dead leader sessions via heartbeat staleness.
+`--kanban` (short `-k`) is a session-launcher switch — under the leader session's coordination it drives a single SPEC through `plan → run → sync` with multi-session board coordination. The board's backbone is the **Origin-Trail Chain**: an append-only JSONL lineage tree that tracks worktree ancestry, solves depth amnesia (root-to-leaf chain recovery after `/clear`), and detects dead leader sessions via heartbeat staleness.
 
 | Concept | What it does |
 |---------|-------------|
@@ -390,7 +390,7 @@ Every SPEC gets its own working tree. Enter with `moai cc -w <name>`; add `--spa
 | CWD-collision resolution | `(worktree_path, session_id)` pair disambiguates reused paths |
 | Depth ceiling | Caps nesting complexity |
 
-> **Available now**: `moai cc -k` (or `moai glm -k`) starts the lead and `-k --name <role>` joins each companion — launched by hand, one per terminal. `moai chain <status|lineage|back|list|prune>` reads the lineage, and `moai todo` (bare invocation lists the queue; subcommands `add` · `list` · `next` · `done` · `unpick` · `drop` · `undrop` · `edit` · `move` · `analyze`; two or more words become a new card) operates the `backlog` column. The launch sequence is in the "What's New in v3.1 — Kanban Mode" section above.
+> **Available now**: `moai cc -k` (or `moai glm -k`) starts the leader and `-k --name <role>` joins each companion — launched by hand, one per terminal. `moai chain <status|lineage|back|list|prune>` reads the lineage, and `moai todo` (bare invocation lists the queue; subcommands `add` · `list` · `next` · `done` · `unpick` · `drop` · `undrop` · `edit` · `move` · `analyze`; two or more words become a new card) operates the `backlog` column. The launch sequence is in the "What's New in v3.1 — Kanban Mode" section above.
 
 > Details: [Kanban Mode Guide](https://adk.mo.ai.kr/en/advanced/kanban-mode)
 
@@ -445,7 +445,7 @@ Korean, Japanese, Chinese, and English docs are maintained in the same PR. Trans
   <img src="./assets/images/moai-web-settings.png" alt="moai web console — Settings screen with profile bar and setting tabs" width="90%">
 </p>
 
-`moai web` opens a console bound to localhost. Six screens — Overview, Kanban, Specs, Monitor, Settings, Todo; the settings screen splits into these tabs: Identity, Language, LLM, GLM Settings, Workflow, Git & Worktree, Audit, Codex, Agents, Report, MCP, Cross-Session, Feedback, Quality Gate. The Codex tab is a read-only screen that gathers the scattered codex settings in one place — each value is still edited on its owning tab. Profile create/rename/delete lives on the same screen.
+`moai web` opens a console bound to localhost. Six screens — Overview, Kanban, Specs, Monitor, Settings, Todo; the settings screen splits into these tabs: Identity, Language, LLM, GLM Settings, Workflow, Git & Worktree, Audit, Codex, Report, MCP, Cross-Session, Feedback, Quality Gate. The Codex tab is a read-only screen that gathers the scattered codex settings in one place — each value is still edited on its owning tab. Profile create/rename/delete lives on the same screen.
 
 ### ref / domain skills
 
@@ -500,25 +500,25 @@ flowchart TD
 
 ### The 13-agent catalog
 
-| Category | Agent | Cost | Role |
-|----------|-------|------|------|
-| **Manager** | manager-spec | 🔴 | Plan-phase SPEC authoring |
-| | manager-develop | 🔴 | Run-phase TDD/DDD/autofix implementation |
-| | manager-docs | 🔵 | Sync-phase documentation |
-| | manager-git | 🩵 | PR creation and routing |
-| | manager-design | 🟠 | Design-phase collaboration (Claude Design) |
-| | manager-lead | 🔴 | Hierarchical-team Tier L coordination + kanban/factory lead-session dispatch (sole Agent-carrier, depth-2 sealed) |
-| **Evaluator** | plan-auditor | 🔴 | Independent plan audit (bias prevention) |
-| | sync-auditor | 🔴 | 4-dimensional quality scoring (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
-| **Builder** | builder-harness | 🟠 | Project-specific agents, skills, commands, hooks scaffolding |
-| **Advisor** | super-advisor | 🔵 | On-demand high-reasoning consultation (E1-E4 escalation) |
-| **Specialist** | e2e-tester | 🟠 | Web/mobile/desktop E2E test execution (CLI-first) |
-| | mission-governor | 🔴 | Read-only decision for an approved GTD auto mission — returns one bounded decision, never applies it (dispatched by the GTD workflow, so it carries no selection-tree row) |
-| **Built-in** | Explore | ⚪ | Read-only codebase exploration |
+| Category | Agent | Role |
+|----------|-------|------|
+| **Manager** | manager-spec | Plan-phase SPEC authoring |
+| | manager-develop | Run-phase TDD/DDD/autofix implementation |
+| | manager-docs | Sync-phase documentation |
+| | manager-git | PR creation and routing |
+| | manager-design | Design-phase collaboration (Claude Design) |
+| | manager-lead | Hierarchical-team Tier L coordination + kanban/factory leader-session dispatch (sole Agent-carrier, depth-2 sealed) |
+| **Evaluator** | plan-auditor | Independent plan audit (bias prevention) |
+| | sync-auditor | 4-dimensional quality scoring (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
+| **Builder** | builder-harness | Project-specific agents, skills, commands, hooks scaffolding |
+| **Advisor** | super-advisor | On-demand high-reasoning consultation (E1-E4 escalation) |
+| **Specialist** | e2e-tester | Web/mobile/desktop E2E test execution (CLI-first) |
+| | mission-governor | Read-only decision for an approved GTD auto mission — returns one bounded decision, never applies it (dispatched by the GTD workflow, so it carries no selection-tree row) |
+| **Built-in** | Explore | Read-only codebase exploration |
 
-Cost colors follow the default `medium` profile's model×effort cells (inspect via `moai model profile`): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ session-model inherit (user-added agents). Assignments shift when switching profiles (`high`/`low`). Authoring and auditing are separated from the start, so the writing side never grades its own work.
+Every agent inherits the session's model and reasoning effort — the model and effort the session starts with are the assignment for all of them. Authoring and auditing are separated from the start, so the writing side never grades its own work.
 
-Twelve of the thirteen are agents moai-adk built; `Explore` is a built-in that already ships with Claude Code. It carries a profile cell like every other row — `sonnet / low` in all three profiles — so the model profile section further down counts the same thirteen agents: 13 × 3 = 39 cells.
+Twelve of the thirteen are agents moai-adk built; `Explore` is a built-in that already ships with Claude Code.
 
 ### trust-but-verify — binding evidence to completion claims
 
@@ -649,22 +649,6 @@ v3.1.1 adds four more sections worth touching.
 `gate.yaml`'s `ast_grep_gate.rules_dir` is not a new key — it is a key whose **default changed**. What used to default to an empty string now defaults to `.moai/config/astgrep-rules`, and `moai init` / `moai update` lay the bundled ruleset down at that path. The fallback path on the code side is gone, so this key is now the only source of truth for where the ruleset lives — move the rules elsewhere and this value has to move with them, or the gate will not find them.
 
 Environment variables override file values. For precedence details and the full section list, see the [CLI reference](https://adk.mo.ai.kr/en/cli-reference).
-
-### Model profiles — high / medium / low
-
-`moai model profile` resolves 13 agents × 3 profiles = 39 cells of `{model, effort}` pairs.
-
-<p align="center">
-  <img src="./assets/images/model-routing-infographic-en.png" alt="Agent model routing — each agent gets the right model and reasoning effort" width="85%">
-</p>
-
-| Profile | Character | When |
-|---|---|---|
-| **high** | Opus-heavy, deep reasoning | Complex planning · security audits · hard debugging |
-| **medium** (default) | Balanced | Typical SPECs |
-| **low** | Sonnet + low effort | Mechanical repetition · docs · one-shot work |
-
-Assignment follows work phase (plan / run / sync) and SPEC size (Tier S / M / L) — deep-reasoning models for planning phases that need inference, lighter models for mechanical implementation phases. Under the No-Haiku 3-tier policy, single-shot input-dominated work goes to Sonnet low, and every multi-turn agentic task goes to Opus.
 
 ### settings.json / settings.local.json separation
 

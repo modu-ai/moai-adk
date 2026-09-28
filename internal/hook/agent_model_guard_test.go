@@ -111,14 +111,11 @@ func TestExtractAgentSpawn(t *testing.T) {
 	})
 }
 
-// TestClassifyAgentModel pins AC-AME-013: the 4-valued verdict.
+// TestClassifyAgentModel pins the 2-valued declared-model verdict (M5): the
+// record states what the spawn declared — verbatim when present, `inherit`
+// otherwise — with no expected model to compare against.
 func TestClassifyAgentModel(t *testing.T) {
 	t.Parallel()
-	var llm config.LLMConfig
-
-	// Resolve the catalog expectation through the resolver so the test never
-	// hardcodes a matrix cell (AP-2).
-	_, resolvedExplore := resolveAgentModel(llm, "Explore")
 
 	cases := []struct {
 		name     string
@@ -126,34 +123,21 @@ func TestClassifyAgentModel(t *testing.T) {
 		want     agentModelVerdict
 		wantResv string
 	}{
-		{"unmapped: outside retained catalog", agentSpawn{Agent: "hns-some-user-specialist"}, verdictAgentModelUnmapped, ""},
-		{"missing: resolved concrete, declaration absent", agentSpawn{Agent: "Explore"}, verdictAgentModelMissing, resolvedExplore},
-		{"mismatch: declaration differs from resolution", agentSpawn{Agent: "Explore", DeclaredModel: "haiku"}, verdictAgentModelMismatch, resolvedExplore},
-		{"ok: declaration equals resolution", agentSpawn{Agent: "Explore", DeclaredModel: resolvedExplore}, verdictAgentModelOK, resolvedExplore},
+		{"inherit: no declaration — the expected state", agentSpawn{Agent: "Explore"}, verdictAgentModelInherit, "inherit"},
+		{"declared: explicit model recorded verbatim", agentSpawn{Agent: "Explore", DeclaredModel: "haiku"}, verdictAgentModelDeclared, "haiku"},
+		{"declared: case and context suffix preserved as written", agentSpawn{Agent: "hns-some-user-specialist", DeclaredModel: "opus[1m]"}, verdictAgentModelDeclared, "opus[1m]"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got, resolved := classifyAgentModel(tc.spawn, llm)
+			got, recorded := classifyAgentModel(tc.spawn)
 			if got != tc.want {
 				t.Errorf("verdict: got %q, want %q", got, tc.want)
 			}
-			if tc.want != verdictAgentModelUnmapped && resolved != tc.wantResv {
-				t.Errorf("resolved: got %q, want %q", resolved, tc.wantResv)
+			if recorded != tc.wantResv {
+				t.Errorf("recorded: got %q, want %q", recorded, tc.wantResv)
 			}
 		})
-	}
-}
-
-// TestClassifyAgentModelMismatchIsCaseInsensitive guards against a spurious
-// mismatch when the orchestrator declares the alias in a different case.
-func TestClassifyAgentModelMismatchIsCaseInsensitive(t *testing.T) {
-	t.Parallel()
-	var llm config.LLMConfig
-	_, resolved := resolveAgentModel(llm, "Explore")
-	got, _ := classifyAgentModel(agentSpawn{Agent: "Explore", DeclaredModel: strings.ToUpper(resolved)}, llm)
-	if got != verdictAgentModelOK {
-		t.Errorf("verdict: got %q, want ok (case-insensitive alias comparison)", got)
 	}
 }
 
@@ -167,8 +151,8 @@ func TestAppendAgentModelAudit(t *testing.T) {
 			SessionID:     "sess-1",
 			Agent:         "Explore",
 			DeclaredModel: "",
-			ResolvedModel: "sonnet",
-			Verdict:       string(verdictAgentModelMissing),
+			ResolvedModel: "inherit",
+			Verdict:       string(verdictAgentModelInherit),
 		})
 	}
 
@@ -234,7 +218,7 @@ func TestAgentModelAuditWriteFailureFailsOpen(t *testing.T) {
 
 	t.Run("handler allows despite unwritable root", func(t *testing.T) {
 		t.Parallel()
-		h := newAgentModelTestHandler(t, "", false)
+		h := newAgentModelTestHandler(t, "")
 		out, err := h.Handle(context.Background(), agentInput("Explore", "haiku"))
 		if err != nil {
 			t.Fatalf("Handle returned error: %v", err)
@@ -258,12 +242,11 @@ func agentInput(agent, model string) *HookInput {
 	}
 }
 
-// newAgentModelTestHandler builds a preToolHandler with the guard gate set to
-// the requested state and the project root pinned to root.
-func newAgentModelTestHandler(t *testing.T, root string, gateEnabled bool) *preToolHandler {
+// newAgentModelTestHandler builds a preToolHandler on the default config with
+// the project root pinned to root.
+func newAgentModelTestHandler(t *testing.T, root string) *preToolHandler {
 	t.Helper()
 	cfg := config.NewDefaultConfig()
-	cfg.Workflow.AgentModelGuard.Enabled = gateEnabled
 	return &preToolHandler{
 		cfg:        &auditConfigProvider{cfg: cfg},
 		policy:     DefaultSecurityPolicy(),
@@ -291,21 +274,17 @@ func assertDeny(t *testing.T, out *HookOutput) {
 	}
 }
 
-// TestAgentModelObserveNeverBlocks pins AC-AME-015 + AC-AME-031: with the gate
-// off (the distributed default) every verdict falls through to allow.
+// TestAgentModelObserveNeverBlocks pins AC-AME-015 + AC-AME-031: every verdict
+// falls through to allow — the hook has no model-based deny.
 func TestAgentModelObserveNeverBlocks(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	h := newAgentModelTestHandler(t, root, false)
-
-	var llm config.LLMConfig
-	_, resolved := resolveAgentModel(llm, "Explore")
+	h := newAgentModelTestHandler(t, root)
 
 	cases := []struct{ name, agent, model string }{
-		{"ok", "Explore", resolved},
-		{"missing", "Explore", ""},
-		{"mismatch", "Explore", "haiku"},
-		{"unmapped", "hns-user-specialist", "opus"},
+		{"inherit", "Explore", ""},
+		{"declared", "Explore", "haiku"},
+		{"declared-unmapped-agent", "hns-user-specialist", "opus"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -318,117 +297,43 @@ func TestAgentModelObserveNeverBlocks(t *testing.T) {
 	}
 }
 
-// TestAgentModelGuardDisabledNeverBlocks is the AC-AME-031 alias pin.
-func TestAgentModelGuardDisabledNeverBlocks(t *testing.T) {
+// TestAgentModelNoAdvisory pins the M5 shape: with no expected model there is
+// nothing to advise against — the observation record is the product. This
+// replaces AC-AME-020's advisory-content contract.
+func TestAgentModelNoAdvisory(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	h := newAgentModelTestHandler(t, root, false)
-	out, err := h.Handle(context.Background(), agentInput("Explore", "haiku"))
-	if err != nil {
-		t.Fatalf("Handle: %v", err)
+	h := newAgentModelTestHandler(t, root)
+
+	for name, model := range map[string]string{
+		"inherit spawn": "",
+		"declared spawn": "haiku",
+	} {
+		out, err := h.Handle(context.Background(), agentInput("Explore", model))
+		if err != nil {
+			t.Fatalf("%s: Handle: %v", name, err)
+		}
+		assertNotDeny(t, out)
+		if out.SystemMessage != "" {
+			t.Errorf("%s: advisory should be empty under declared-model logging, got %q", name, out.SystemMessage)
+		}
 	}
-	assertNotDeny(t, out)
 }
 
-// TestAgentModelAdvisoryContent pins AC-AME-020.
-func TestAgentModelAdvisoryContent(t *testing.T) {
-	t.Parallel()
-	var llm config.LLMConfig
-	_, resolved := resolveAgentModel(llm, "Explore")
-
-	t.Run("missing and mismatch emit an advisory", func(t *testing.T) {
-		t.Parallel()
-		for _, v := range []agentModelVerdict{verdictAgentModelMissing, verdictAgentModelMismatch} {
-			msg := agentModelAdvisory("Explore", resolved, v)
-			if msg == "" {
-				t.Fatalf("verdict %q: advisory is empty", v)
-			}
-			if !strings.Contains(msg, "Explore") {
-				t.Errorf("verdict %q: advisory omits the agent name: %s", v, msg)
-			}
-			if !strings.Contains(msg, resolved) {
-				t.Errorf("verdict %q: advisory omits the resolved alias: %s", v, msg)
-			}
-		}
-	})
-
-	t.Run("ok and unmapped stay silent", func(t *testing.T) {
-		t.Parallel()
-		for _, v := range []agentModelVerdict{verdictAgentModelOK, verdictAgentModelUnmapped} {
-			if msg := agentModelAdvisory("Explore", resolved, v); msg != "" {
-				t.Errorf("verdict %q: advisory should be empty, got %q", v, msg)
-			}
-		}
-	})
-}
-
-// TestAgentModelAdvisoryDoesNotBlock pins AC-AME-021.
+// TestAgentModelAdvisoryDoesNotBlock pins AC-AME-021 (M5 shape): the hook
+// observes without advising and never blocks.
 func TestAgentModelAdvisoryDoesNotBlock(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	h := newAgentModelTestHandler(t, root, false)
+	h := newAgentModelTestHandler(t, root)
 	out, err := h.Handle(context.Background(), agentInput("Explore", ""))
 	if err != nil {
 		t.Fatalf("Handle: %v", err)
 	}
 	assertNotDeny(t, out)
-	if out.SystemMessage == "" {
-		t.Errorf("expected a non-blocking advisory on the missing verdict")
+	if out.SystemMessage != "" {
+		t.Errorf("advisory should be empty under declared-model logging, got %q", out.SystemMessage)
 	}
-}
-
-// TestAgentModelGuardEnabledDenyMatrix pins AC-AME-032: the (gate x verdict)
-// 8-row matrix. Only (enabled, mismatch) denies.
-func TestAgentModelGuardEnabledDenyMatrix(t *testing.T) {
-	t.Parallel()
-	var llm config.LLMConfig
-	_, resolved := resolveAgentModel(llm, "Explore")
-
-	cases := []struct {
-		name     string
-		enabled  bool
-		agent    string
-		model    string
-		wantDeny bool
-	}{
-		{"off/ok", false, "Explore", resolved, false},
-		{"off/missing", false, "Explore", "", false},
-		{"off/mismatch", false, "Explore", "haiku", false},
-		{"off/unmapped", false, "hns-user-specialist", "opus", false},
-		{"on/ok", true, "Explore", resolved, false},
-		{"on/missing", true, "Explore", "", false},
-		{"on/mismatch", true, "Explore", "haiku", true},
-		{"on/unmapped", true, "hns-user-specialist", "opus", false},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			h := newAgentModelTestHandler(t, t.TempDir(), tc.enabled)
-			out, err := h.Handle(context.Background(), agentInput(tc.agent, tc.model))
-			if err != nil {
-				t.Fatalf("Handle: %v", err)
-			}
-			if tc.wantDeny {
-				assertDeny(t, out)
-				if !strings.Contains(reasonOf(out), SentinelAgentModelViolation+":") {
-					t.Errorf("deny reason lacks the %q sentinel prefix: %s", SentinelAgentModelViolation, reasonOf(out))
-				}
-			} else {
-				assertNotDeny(t, out)
-			}
-		})
-	}
-}
-
-// TestAgentModelGuardMissingNeverBlocked pins AC-AME-034 (AP-3 regression pin).
-func TestAgentModelGuardMissingNeverBlocked(t *testing.T) {
-	t.Parallel()
-	h := newAgentModelTestHandler(t, t.TempDir(), true)
-	out, err := h.Handle(context.Background(), agentInput("Explore", ""))
-	if err != nil {
-		t.Fatalf("Handle: %v", err)
-	}
-	assertNotDeny(t, out)
 }
 
 // TestAgentModelGuardFailsOpen pins AC-AME-033: every uncertainty allows.
@@ -442,7 +347,7 @@ func TestAgentModelGuardFailsOpen(t *testing.T) {
 
 	t.Run("payload uncertainties", func(t *testing.T) {
 		t.Parallel()
-		h := newAgentModelTestHandler(t, t.TempDir(), true)
+		h := newAgentModelTestHandler(t, t.TempDir())
 		for name, in := range map[string]*HookInput{
 			"unparseable tool_input": unparseable,
 			"absent subagent_type":   noSubagent,
@@ -479,7 +384,7 @@ func TestAgentModelGuardFailsOpen(t *testing.T) {
 
 	t.Run("unresolved project root", func(t *testing.T) {
 		t.Parallel()
-		h := newAgentModelTestHandler(t, "", true)
+		h := newAgentModelTestHandler(t, "")
 		out, err := h.Handle(context.Background(), agentInput("Explore", "haiku"))
 		if err != nil {
 			t.Fatalf("Handle: %v", err)
@@ -492,12 +397,12 @@ func TestAgentModelGuardFailsOpen(t *testing.T) {
 	})
 }
 
-// TestAgentModelGuardDisabledNoExtraIO pins AC-AME-035: the gate-off path
+// TestAgentModelGuardDisabledNoExtraIO pins AC-AME-035: an Agent spawn
 // writes only the audit log and performs no other file I/O under the root.
 func TestAgentModelGuardDisabledNoExtraIO(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	h := newAgentModelTestHandler(t, root, false)
+	h := newAgentModelTestHandler(t, root)
 
 	if _, err := h.Handle(context.Background(), agentInput("Explore", "")); err != nil {
 		t.Fatalf("Handle: %v", err)
@@ -550,7 +455,7 @@ func TestPruneObservationLogsIncludesAgentModelAudit(t *testing.T) {
 // does not disturb the existing Bash deny precedence.
 func TestPreToolDecisionPrecedence(t *testing.T) {
 	t.Parallel()
-	h := newAgentModelTestHandler(t, t.TempDir(), true)
+	h := newAgentModelTestHandler(t, t.TempDir())
 
 	raw, _ := json.Marshal(map[string]any{"command": "rm -rf /"})
 	out, err := h.Handle(context.Background(), &HookInput{
@@ -562,7 +467,7 @@ func TestPreToolDecisionPrecedence(t *testing.T) {
 		t.Fatalf("Handle: %v", err)
 	}
 	assertDeny(t, out)
-	if strings.Contains(reasonOf(out), SentinelAgentModelViolation) {
+	if strings.Contains(reasonOf(out), "AGENT_MODEL_VIOLATION") {
 		t.Errorf("Bash dangerous-pattern deny was displaced by the agent-model guard: %s", reasonOf(out))
 	}
 }

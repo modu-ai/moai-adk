@@ -19,10 +19,9 @@
 > Window Targets — consult it before applying any figure below. The
 > `sonnet-4.5` / `haiku-4.5` `model_selection` config shown later in this
 > file is RETIRED in favor of **effort-routing** (`effortLevel`:
-> low/medium/high/xhigh/max per agent role — see
-> `.claude/rules/moai/development/agent-authoring.md` § Effort-Level
-> Calibration Matrix); the cost-lever is now effort, not a hardcoded
-> sonnet/haiku model swap.
+> low/medium/high/xhigh/max for the session; subagents inherit it — see
+> `.claude/rules/moai/development/model-policy.md`); the cost-lever is now
+> effort, not a hardcoded sonnet/haiku model swap.
 
 Purpose: Efficient token-budget management through strategic context loading, phase separation, and effort-routing for cost-effective AI development.
 
@@ -54,7 +53,7 @@ Effort Routing (replaces the retired sonnet/haiku model_selection):
 - xhigh / max: Quality-critical (SPEC authoring, security review, Opus-tier reasoning)
 - high: Default for run-phase implementation
 - medium / low: Speed/cost (simple edits, tests, mechanical sweeps)
-- See agent-authoring.md § Effort-Level Calibration Matrix for the per-agent default
+- Subagents inherit the session's effort; MoAI sets no per-agent default (model-policy.md)
 
 Context Optimization:
 - Target: 20-30K tokens per agent

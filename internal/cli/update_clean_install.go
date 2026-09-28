@@ -508,11 +508,20 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		// `--verbose` "3-way merge fallback notices" structurally unreachable on
 		// the clean-reinstall path: a 3-way merge could fall back to the 2-way
 		// merge and the user was never told, on any verbosity level.
-		if restoreErr := backup.RestoreMoaiConfig(projectRoot, configBackupPath, func(pr, relPath string, success bool, errOut io.Writer) {
+		// The Retained variant returns the retained-key refs instead of printing
+		// them, so the retired per-agent model/effort keys can be stripped first
+		// and then left out of the advisory — each is reported once, as removed.
+		retainedKeys, restoreErr := backup.RestoreMoaiConfigRetained(projectRoot, configBackupPath, func(pr, relPath string, success bool, errOut io.Writer) {
 			recordMergeFallback(pr, relPath, success, updateVerboseMode, errOut)
-		}); restoreErr != nil {
+		})
+		if restoreErr != nil {
 			return result, recovery.fail("step 5.5: restore .moai/config sections", restoreErr)
 		}
+		removedModelKeys, stripErr := stripRetiredModelConfig(out, projectRoot, configBackupPath)
+		if stripErr != nil {
+			_, _ = fmt.Fprintf(out, "[clean-reinstall] retired model key removal warning: %v\n", stripErr)
+		}
+		writeRetainedKeyAdvisoryLines(errOut, withoutStrippedKeys(retainedKeys, removedModelKeys))
 		_, _ = fmt.Fprintln(out, "[clean-reinstall] .moai/config/sections/*.yaml merge-restored (user values preserved)")
 		// Backup-dir accumulation cap — the same pruning the normal path
 		// performs after its restore step (backup.CleanupOldBackups). Only

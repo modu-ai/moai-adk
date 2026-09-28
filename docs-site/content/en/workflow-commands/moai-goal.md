@@ -137,6 +137,6 @@ At every turn end the evaluator runs the mechanical-condition command. So the co
 ## Related docs
 
 - [Autonomous continuation loop](/en/advanced/autonomous-loops) — the goal engine's stagnation guard and ceiling semantics
-- [Kanban mode](/en/advanced/kanban-mode) — the 3-stage chain driven by the lead session
+- [Kanban mode](/en/advanced/kanban-mode) — the 3-stage chain driven by the leader session
 - [`/moai loop`](/en/utility-commands/moai-loop) — the diagnostics-driven decisive loop (sibling command)
 - [Harness engineering](/en/core-concepts/harness-engineering) — the path by which loops and observation flow into harness learning

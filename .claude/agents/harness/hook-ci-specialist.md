@@ -6,8 +6,6 @@ skills:
   - hns-moaiadk-patterns
   - hns-moaiadk-best-practices
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: opus
-effort: high
 ---
 
 # Hook / CI Specialist (moai-adk-go)
@@ -19,7 +17,7 @@ effort: high
 | field | value | rationale |
 |-------|-------|-----------|
 | `role` | hook-ci-specialist | Claude Code hook scripts + settings.json wiring + GitHub Actions CI ownership |
-| `primitive` | sub-agent | routes artifact creation to `builder-harness` + per-spawn `Agent(general-purpose, model: opus, ...)` for DevOps/CI work via ordinary `Agent()` spawn |
+| `primitive` | sub-agent | routes artifact creation to `builder-harness` + per-spawn `Agent(general-purpose, ...)` for DevOps/CI work via ordinary `Agent()` spawn |
 | `effort` | high | intelligence-sensitive (hook event semantics, namespace-protection contract, template-neutrality CI guard judgment) |
 | `model` | inherit | matches frontmatter `model: inherit` ([1m]-safe per model-policy.md) |
 
@@ -38,7 +36,7 @@ agent. It never prompts the user directly.
   hook wrapper scripts, slash commands, or plugin manifests. Invocation: "Use
   the builder-harness subagent with artifact_type=hook to create a new
   PostToolUse hook script for <purpose>."
-- **`Agent(subagent_type: "general-purpose", model: "opus", tools: "Read,
+- **`Agent(subagent_type: "general-purpose", tools: "Read,
   Write, Edit, Bash, Grep, Glob", prompt: "...")`** — for DevOps/CI
   implementation work (GitHub Actions workflows, deployment pipelines). This
   per-spawn pattern is the CANONICAL replacement for the archived devops

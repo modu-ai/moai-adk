@@ -14,7 +14,7 @@ Prompt-caching-aware ordering rules for orchestrator execution. Caching is a **p
 
 4. **Consider `/clear` before large batches** [ZONE:Evolvable] `/clear` discards the warm cache but shrinks the prefix. When a large multi-spawn batch is about to start and the current context is bloated with completed unrelated work, a `/clear` + paste-ready resume BEFORE the batch is cheaper than carrying the bloated prefix through N spawns — even below the model-specific handoff threshold in `context-window-management.md`. When only short follow-up work remains, keep the warm cache instead.
 
-5. **Inherit the session model on spawns** [ZONE:Evolvable] Caches are model-scoped: a per-spawn model override splits the spawn off from every cache the session has built. Omit model overrides unless the task genuinely requires a different tier (already the default per agent-authoring guidance); this directive records the caching cost of violating it.
+5. **Inherit the session model on spawns** [ZONE:Evolvable] Caches are model-scoped: a per-spawn model override splits the spawn off from every cache the session has built. MoAI passes no model on a spawn and its agent definitions declare none, so every subagent shares the session's model; this directive records the caching cost of overriding it.
 
 6. **Pass files by `@`-mention, not by name** [ZONE:Evolvable] [HARD] When a prompt needs a file's content, pass it with an `@`-mention or a Read call rather than citing the filename for the model to fetch — one deterministic load beats a fetch-retry cycle. Use `/context` only as a one-shot audit of what is loaded, not a routine check.
 
@@ -24,7 +24,7 @@ Prompt-caching-aware ordering rules for orchestrator execution. Caching is a **p
 
 9. **Weigh session length as a cost axis** [ZONE:Evolvable] [HARD] One long session is cheaper than several short ones for the same work — every fresh session re-pays the always-loaded prefix at write price, a continuing one reads it from cache — if it stays warm: a >5-min idle gap or prefix edit reverts it to write price. Treat session splitting as directive 4 treats `/clear`: a cost to justify, not a default.
 
-10. **A mid-session model or effort switch busts the cache** [ZONE:Evolvable] [HARD] Changing model or effort mid-session (thinking budget included — `MAX_THINKING_TOKENS`) discards the prompt cache; prefer a natural boundary for the switch. Directive 5 and this one govern the main session's cache; `agent-common-protocol.md` § Per-Spawn Model Injection governs which model a subagent runs on — different axes, not a contradiction.
+10. **A mid-session model or effort switch busts the cache** [ZONE:Evolvable] [HARD] Changing model or effort mid-session (thinking budget included — `MAX_THINKING_TOKENS`) discards the prompt cache; prefer a natural boundary for the switch.
 
 ## Non-goals
 

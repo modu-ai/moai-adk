@@ -4,13 +4,14 @@
 // FORWARD ONLY, by whoever made it, to the sites they happened to know about;
 // earlier gaps are never backfilled. Two measured instances:
 //
-//   - `mission-governor` was registered in internal/config/profile.go by its own
+//   - `mission-governor` was registered in the former internal/config/profile.go
+//     (deleted by SPEC-AGENT-MODEL-INHERIT-001 M5) by its own
 //     creation commit 5ec516165, but `manager-lead` (which arrived via the
 //     rename 310d75dd2) never was.
-//   - internal/template/profile_matrix.go records the SAME agent falling
-//     through the SAME crack once before: "manager-lead was absent from this
-//     list until t205 and therefore resolved to the unmapped-agent `inherit`
-//     sentinel".
+//   - the former internal/template/profile_matrix.go (deleted in the same
+//     milestone) records the SAME agent falling through the SAME crack once
+//     before: "manager-lead was absent from this list until t205 and therefore
+//     resolved to the unmapped-agent `inherit` sentinel".
 //
 // # Why this guard compares SETS and never counts
 //
@@ -61,7 +62,7 @@ type Axis string
 const (
 	// AxisRetainedRoster is the CLAUDE.md section 4 retained roster — every
 	// retained agent including the Anthropic built-in Explore. The canonical
-	// membership is template.ProfileMatrixAgents().
+	// membership is template.RetainedAgents().
 	AxisRetainedRoster Axis = "retained-roster"
 
 	// AxisDefinitionFiles is the population of .claude/agents/moai/*.md

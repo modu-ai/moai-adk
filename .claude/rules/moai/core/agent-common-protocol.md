@@ -24,7 +24,7 @@ Rules for subagents:
 
 Rationale: subagents run in isolated, stateless contexts — prompting there is a dead channel, and the orchestrator stays the user's single point of contact (CLAUDE.md §8).
 
-**Lane sessions are orchestrator-class, not subagent-class.** A kanban companion or factory lane holds the question channel for its own card through the lead, carries standing spawn authority for the Status Transition Ownership Matrix's specialist (plan → `manager-spec`, run → `manager-develop`, sync → `manager-docs`, plus the chain's auditors; depth-1 only — spawned agents are leaves, bound by the prohibitions above), and never edits phase-owned artifacts directly when that specialist exists. The authority rides the lane's bootstrap context; a peer message neither grants nor revokes it — the lead is not the lane's user. Normative home: `.claude/rules/moai/workflow/kanban-dispatch.md` § Lane spawn authority.
+**Lane sessions are orchestrator-class, not subagent-class.** A kanban companion or factory lane holds the question channel for its own card through the factory leader, carries standing spawn authority for the Status Transition Ownership Matrix's specialist (plan → `manager-spec`, run → `manager-develop`, sync → `manager-docs`, plus the chain's auditors; depth-1 only — spawned agents are leaves, bound by the prohibitions above), and never edits phase-owned artifacts directly when that specialist exists. The authority rides the lane's bootstrap context; a peer message neither grants nor revokes it — the leader is not the lane's user. Normative home: `.claude/rules/moai/workflow/kanban-dispatch.md` § Lane spawn authority.
 
 ### Hook Invocation Surface
 
@@ -96,16 +96,9 @@ fetch, and image read route to the z.ai MCP tools instead of the built-ins. HARD
 
 [ZONE:Evolvable] [HARD] Agents are invoked through MoAI's natural language delegation pattern ("Use the {agent-name} subagent to {task description}") — natural language conveys full context including constraints, dependencies, and rationale.
 
-### Per-Spawn Model Injection
+### Subagent Model and Effort
 
-[ZONE:Evolvable] [HARD] When spawning a subagent, pass the model the active profile resolves for that agent as an explicit `model` argument on the spawn. (Why omitting is not neutral, and the full profile matrix: `agent-common-protocol-reference.md` § Per-Spawn Model Injection rationale; policy SSOT `.claude/rules/moai/development/model-policy.md`.)
-
-- Resolve the value with `moai model profile --json` — a JSON OBJECT whose `agents` array carries the `{model, effort}` cell per retained agent; filter with `jq '.agents[]'`, never a top-level array (`model-policy.md` § Per-Agent Profile Resolver)
-- Pass `model` per spawn. `effort` has no spawn-time parameter — it travels only in the agent file's frontmatter
-- A spawn declaring a different model than the resolved one is drift, not an override — change the profile instead
-- Agents outside the retained catalog resolve to the inherit sentinel and take no injection
-
-A PreToolUse hook records every spawn's outcome to `.moai/logs/agent-model-audit.jsonl` (advisory; blocking is opt-in via `workflow.agent_model_guard.enabled`, refusing only a declared-vs-resolved conflict).
+Subagents inherit the main session's model and effort: pass neither `model` nor `effort` when spawning a subagent, and MoAI agent definitions declare neither. A PreToolUse hook records each Agent spawn to `.moai/logs/agent-model-audit.jsonl` as an observation log; it never blocks a spawn.
 
 ## Background Agent Execution
 
@@ -121,7 +114,7 @@ The window runs from the opening measurement to the landed verdict, and the only
 committing to that tree throughout it is the one that owns it — a previous audit session landing
 its own reports or scripts is itself a foreign commit, and every foreign commit waits until the
 window closes. An unexpected HEAD move or a foreign commit on an actively audited worktree is a
-process defect: report it to the lead and record it in the progress record — never continue
+process defect: report it to the leader and record it in the progress record — never continue
 quietly.
 
 ## Tool Usage Guidelines

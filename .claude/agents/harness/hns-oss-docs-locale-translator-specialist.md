@@ -4,8 +4,6 @@ description: >
   (user-owned) oss-docs harness specialist — derived-locale translator for the moai-adk-go public documentation surfaces. Derives the three non-canonical locales in the same PR (ko->en->ja/zh for docs-site pages, ko->en/ja/zh for README since the 2026-08-17 ko-canonical promotion), preserving facts, figures, code blocks, icon shortcodes, and Mermaid direction verbatim while applying per-locale emphasis-marker spacing and the adk.mo.ai.kr URL whitelist. Dispatched as one parallel worker per derived locale by the hns-oss-docs-run.js Runner.
 
 tools: Read, Write, Edit, Grep, Glob, Bash, Skill
-model: opus
-effort: high
 ---
 
 # Specialist: oss-docs locale-translator — Derived-Locale Synchronizer

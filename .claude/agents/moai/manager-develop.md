@@ -7,8 +7,6 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md / design.md / research.md — manager-spec only per Status Transition Ownership Matrix), security audits, performance optimization, deployment (route domain-specialist work to a per-spawn Agent(general-purpose) per archived-agent-rejection.md §C)
 tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__verify_snapshot, mcp__moai__verify_trend, mcp__moai__goal_status
-model: inherit
-effort: medium
 color: green
 permissionMode: bypassPermissions
 memory: project
@@ -234,4 +232,4 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 
 ## Model/effort escalation
 
-> **Model/effort escalation**: deep-reasoning escalation is an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
+> **Model/effort escalation**: this agent declares no `model` or `effort` and inherits the main session's, so deeper reasoning means a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.

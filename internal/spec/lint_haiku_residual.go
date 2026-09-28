@@ -1,14 +1,17 @@
 package spec
 
 // lint_haiku_residual.go — HaikuResidualRule (SPEC-AGENT-ARCH-V2-001 M3c,
-// REQ-AA2-012). A HARD cross-SPEC lint gate that scans four enumerated
-// surfaces for residual "haiku" references and emits a finding per hit.
+// REQ-AA2-012). A HARD cross-SPEC lint gate that scans enumerated surfaces
+// for residual "haiku" references and emits a finding per hit.
 //
-// The four surfaces (acceptance.md AC-AA2-012 verification block):
+// The surfaces (acceptance.md AC-AA2-012 verification block):
 //  1. Agent frontmatter/body in .claude/agents/moai/*.md (+ template mirror)
 //  2. claude_models block in llm.yaml (X2-exempt: glm.models block excluded)
-//  3. model_routing_profiles / workflow_agents / role_profiles in workflow.yaml
-//  4. validRoutingModels Go map in internal/config/model_routing.go
+//
+// Surfaces 3 (workflow.yaml model_routing_profiles / workflow_agents) and 4
+// (the validRoutingModels map in internal/config/model_routing.go) are retired
+// with the per-agent model routing they policed
+// (SPEC-AGENT-MODEL-INHERIT-001, design D12).
 //
 // Four exemption surfaces (carry "haiku" but are NOT violations):
 //   - X1: _test.go fixtures — test code may reference haiku for regressions.
@@ -29,7 +32,7 @@ import (
 	"strings"
 )
 
-// HaikuResidualRule scans the four REQ-AA2-012 surfaces for residual "haiku"
+// HaikuResidualRule scans the REQ-AA2-012 surfaces for residual "haiku"
 // references. It is a cross-SPEC rule: CheckAll runs once per Lint() call
 // against the project tree rooted at baseDir.
 type HaikuResidualRule struct {
@@ -46,7 +49,7 @@ func (r *HaikuResidualRule) Check(_ *SPECDoc, _ []*SPECDoc) []Finding {
 	return nil
 }
 
-// CheckAll scans the four REQ-AA2-012 surfaces and emits one finding per
+// CheckAll scans the REQ-AA2-012 surfaces and emits one finding per
 // residual haiku hit. Findings from cross-SPEC rules are NOT filtered by
 // applylintSkip, making this a HARD gate.
 func (r *HaikuResidualRule) CheckAll(_ []*SPECDoc) []Finding {
@@ -57,8 +60,6 @@ func (r *HaikuResidualRule) CheckAll(_ []*SPECDoc) []Finding {
 	var findings []Finding
 	findings = append(findings, r.scanAgentFrontmatter(base)...)
 	findings = append(findings, r.scanClaudeModelsBlock(base)...)
-	findings = append(findings, r.scanWorkflowRouting(base)...)
-	findings = append(findings, r.scanValidRoutingModels(base)...)
 	return findings
 }
 
@@ -97,59 +98,6 @@ func (r *HaikuResidualRule) scanClaudeModelsBlock(base string) []Finding {
 		}
 	}
 	return findings
-}
-
-// scanWorkflowRouting implements surface 3: grep-equivalent scan of
-// workflow.yaml (live + template) for "haiku" anywhere in the file — the
-// routing matrices, workflow_agents, and role_profiles are all in one file.
-func (r *HaikuResidualRule) scanWorkflowRouting(base string) []Finding {
-	paths := []string{
-		filepath.Join(base, ".moai", "config", "sections", "workflow.yaml"),
-		filepath.Join(base, "internal", "template", "templates", ".moai", "config", "sections", "workflow.yaml"),
-	}
-	var findings []Finding
-	for _, p := range paths {
-		data, err := os.ReadFile(p)
-		if err != nil {
-			continue
-		}
-		if strings.Contains(string(data), "haiku") {
-			findings = append(findings, Finding{
-				File:     p,
-				Line:     1,
-				Severity: SeverityWarning,
-				Code:     r.Code(),
-				Message:  "workflow.yaml routing matrices carry a haiku reference (REQ-AA2-012 surface 3); use sonnet/low for former low-cost slots under the No-Haiku policy",
-			})
-		}
-	}
-	return findings
-}
-
-// scanValidRoutingModels implements surface 4: a scan of the single file
-// REQ-AA2-012 enumerates for this surface — internal/config/model_routing.go,
-// which holds the validRoutingModels map. AC-AA2-012's own verification greps
-// exactly that file, so the scan names it directly rather than walking the
-// internal/config directory: every sibling production file there is outside
-// surface 4. Naming one non-test file also keeps X1 structurally satisfied —
-// model_routing_test.go is unreachable from this surface. A missing file is
-// silent, as on every other surface.
-func (r *HaikuResidualRule) scanValidRoutingModels(base string) []Finding {
-	path := filepath.Join(base, "internal", "config", "model_routing.go")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil
-	}
-	if !strings.Contains(string(data), "haiku") {
-		return nil
-	}
-	return []Finding{{
-		File:     path,
-		Line:     1,
-		Severity: SeverityWarning,
-		Code:     r.Code(),
-		Message:  "residual haiku reference found (REQ-AA2-012 No-Haiku policy); replace with sonnet/low or remove the reference",
-	}}
 }
 
 // scanFilesForHaiku walks the given directories, reads files matching the

@@ -103,13 +103,24 @@ func TestServedModel_GateOffWarnsOnly(t *testing.T) {
 			if out == nil || out.Decision != "" {
 				t.Fatalf("stop output = %+v, want no decision", out)
 			}
-			for _, want := range []string{"plan-auditor", "opus"} {
-				if !strings.Contains(out.SystemMessage, want) {
-					t.Fatalf("warning %q does not name %q", out.SystemMessage, want)
+			// The missing-transcript case is `unknown` (transcript unreadable)
+			// — its warning names the agent and the cause, not a declared
+			// model or served set. The drift cases name both.
+			if tc.name == "b_gate_absent_unknown" {
+				for _, want := range []string{"plan-auditor", "transcript absent or unreadable"} {
+					if !strings.Contains(out.SystemMessage, want) {
+						t.Fatalf("warning %q does not name %q", out.SystemMessage, want)
+					}
 				}
-			}
-			if !strings.Contains(out.SystemMessage, "served") {
-				t.Fatalf("warning %q does not name the served set", out.SystemMessage)
+			} else {
+				for _, want := range []string{"plan-auditor", "opus"} {
+					if !strings.Contains(out.SystemMessage, want) {
+						t.Fatalf("warning %q does not name %q", out.SystemMessage, want)
+					}
+				}
+				if !strings.Contains(out.SystemMessage, "served") {
+					t.Fatalf("warning %q does not name the served set", out.SystemMessage)
+				}
 			}
 			got := rejectionsOfKind(t, root, auditreceipt.KindServed)
 			if tc.wantRefuse {

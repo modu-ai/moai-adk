@@ -33,13 +33,13 @@ func TestUnifiedForm_MultiGroupSinglePage(t *testing.T) {
 	form := buildUnifiedForm(questions, result, "")
 	d := newFormDriver(t, form)
 
-	// Initial page is the merged "Basic" group (question 1 of 5 visible:
-	// conversation_language, user_name, project_name, model_policy,
-	// report_format — the init set asks nothing about Git, and the
-	// advanced_bridge gate is retired by C1).
-	// The stepper note renders the dynamic denominator "1 / 5" (REQ-TUX2-008).
-	if initial := d.View(); !strings.Contains(initial, "1 / 5") {
-		t.Errorf("initial stepper note must render dynamic denominator '1 / 5', frame:\n%s", initial)
+	// Initial page is the merged "Basic" group (question 1 of 4 visible:
+	// conversation_language, user_name, project_name, report_format — the
+	// init set asks nothing about Git, the advanced_bridge gate is retired by
+	// C1, and the agent model-policy question is retired).
+	// The stepper note renders the dynamic denominator "1 / 4" (REQ-TUX2-008).
+	if initial := d.View(); !strings.Contains(initial, "1 / 4") {
+		t.Errorf("initial stepper note must render dynamic denominator '1 / 4', frame:\n%s", initial)
 	}
 
 	// Page 1 "Basic" renders all three of its fields together.
@@ -61,7 +61,6 @@ func TestUnifiedForm_MultiGroupSinglePage(t *testing.T) {
 
 	frame = d.View()
 	for _, want := range []string{
-		"Select model policy",
 		"Select report format",
 	} {
 		if !strings.Contains(frame, want) {
@@ -93,8 +92,7 @@ func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 		d.Backspace()
 	}
 	d.TypeText("uniproj")
-	d.Enter() // project_name -> model_policy
-	d.Enter() // model_policy (medium — the new default)
+	d.Enter() // project_name -> report_format
 	d.Enter() // report_format (html+md) -> next group
 
 	// Group (Git): git_mode manual -> personal (one cursor down).
@@ -109,12 +107,12 @@ func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 	if !strings.Contains(frame, "Select your Git provider") {
 		t.Fatalf("conditional git_provider group must appear for personal mode, frame:\n%s", frame)
 	}
-	// Dynamic denominator: base 6 (language, user_name, project_name,
-	// model_policy, report_format, git_mode) + git_provider = 7;
-	// git_provider is question 7. Provider answer pending so github/gitlab
+	// Dynamic denominator: base 5 (language, user_name, project_name,
+	// report_format, git_mode) + git_provider = 6;
+	// git_provider is question 6. Provider answer pending so github/gitlab
 	// sub-questions are still hidden.
-	if !strings.Contains(frame, "7 / 7") {
-		t.Errorf("git_provider stepper must render '7 / 7' (dynamic), frame:\n%s", frame)
+	if !strings.Contains(frame, "6 / 6") {
+		t.Errorf("git_provider stepper must render '6 / 6' (dynamic), frame:\n%s", frame)
 	}
 	d.Enter() // git_provider = github -> github_username group
 
@@ -123,10 +121,10 @@ func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 		t.Fatalf("github_username group must appear for github provider, frame:\n%s", frame)
 	}
 	// Provider answered: github_username + github_token now visible. Total = base
-	// 6 + git_provider + github_username + github_token = 9;
-	// github_username is question 8.
-	if !strings.Contains(frame, "8 / 9") {
-		t.Errorf("github_username stepper must render '8 / 9' (dynamic), frame:\n%s", frame)
+	// 5 + git_provider + github_username + github_token = 8;
+	// github_username is question 7.
+	if !strings.Contains(frame, "7 / 8") {
+		t.Errorf("github_username stepper must render '7 / 8' (dynamic), frame:\n%s", frame)
 	}
 	d.TypeText("octocat")
 	d.Enter() // github_username
@@ -140,7 +138,6 @@ func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 		ConversationLang: "en",
 		UserName:         "octo-dev",
 		ProjectName:      "uniproj",
-		ModelPolicy:      "medium",
 		ReportFormat:     "html+md",
 		GitMode:          "personal",
 		GitProvider:      "github",
@@ -161,8 +158,7 @@ func TestUnifiedForm_ManualModeSkipsConditionals(t *testing.T) {
 
 	d.Enter() // conversation_language = en -> Identity page
 	d.Enter() // user_name (empty) -> Project page
-	d.Enter() // project_name (keep default) -> model_policy
-	d.Enter() // model_policy
+	d.Enter() // project_name (keep default) -> report_format
 	d.Enter() // report_format -> Git page
 
 	frame := d.View()
@@ -187,7 +183,7 @@ func TestBuildFormGroups_Partition(t *testing.T) {
 	locale := ""
 
 	// Init set: "Basic" (conversation_language, user_name, project_name) +
-	// "Model & Report" (model_policy, report_format) = 1 + 1 = 2 groups.
+	// "Model & Report" (report_format) = 1 + 1 = 2 groups.
 	// No Git groups, and the advanced_bridge group is retired by C1.
 	initGroups := buildFormGroups(DefaultQuestions("/tmp/unified-partition"), result, &locale)
 	if len(initGroups) != 2 {

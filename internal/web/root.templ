@@ -77,8 +77,6 @@ templ page(vm ShellVM, view pageView) {
 							@fieldsetLanguage(view)
 						case "launch":
 							@fieldsetLaunch(view)
-						case "agentfm":
-							@fieldsetAgentFrontmatter(view)
 						case "mcp":
 							@fieldsetMCP(view)
 						case "codex":
@@ -101,7 +99,7 @@ templ page(vm ShellVM, view pageView) {
 
 // settingsPageHeader makes the active setting legible before a user reaches
 // the field rows: what this page owns, when its values take effect, and how
-// many sibling pages remain available in the 14-page contract.
+// many sibling pages remain available in the settings contract.
 templ settingsPageHeader(vm ShellVM, view pageView) {
 	<section class="settings-page-head" aria-labelledby="settings-page-title">
 		<div class="settings-page-head__copy">

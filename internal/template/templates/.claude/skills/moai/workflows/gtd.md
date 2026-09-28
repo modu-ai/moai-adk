@@ -14,7 +14,7 @@
 ## What It Is
 
 A plain queue of things to work on next. An item is one line of intent — not a
-SPEC, not a plan, not an estimate. After the operator picks it, the lead follows
+SPEC, not a plan, not an estimate. After the operator picks it, the factory leader follows
 the card class: Class A direct close, Class B run → sync, Class C plan → run → sync.
 Only Class C requires SPEC authoring.
 
@@ -24,7 +24,7 @@ nothing that a SPEC, a git history, or a board would record better.
 State lives at `~/.moai/db/<project-key>/todo/backlog.db`, keyed from the PRIMARY checkout
 (home-scoped, not committed) — a SQLite database, not a JSON file. A
 linked worktree resolves to the same primary queue — one repository, one
-queue: a card worktree's `moai gtd` adds to and reads the store the lead
+queue: a card worktree's `moai gtd` adds to and reads the store the leader
 and the foreman loop see. A project without git metadata keeps its queue at
 the same project-keyed home path — the first run there adopts
 an existing project-local queue (same items, same states) rather than
@@ -63,7 +63,7 @@ When the operator says `/moai gtd "<description>"`, run
 | `moai gtd history [<id\|n>]` | Answer what became of a card — read-only, lock-free, writes nothing. One line per lookup: `live` with the card's current state (`queued`\|`picked`\|`dropped`), `archived` with the state it held when it was closed, or `absent` when the queue holds no record — an id at or below the issued-id mark qualifies its `absent` on stderr, because a card closed by a binary predating the archive leaves none. Each `live` and `archived` line carries a landing column before the card text — `landing=<delivering commit>` when the operator recorded one, `landing=ref-head` when the record holds only the observed ref position, `landing=-` when no record was made, and `landing=malformed` when a stored record fails validation. The SHA is rendered in full here, unlike the abbreviated cell `pr` renders into its aligned table, so a closed card's delivering commit is readable without a second lookup. The card text stays LAST, so a consumer reading the tail is unaffected by the added column. A bare lookup id accepts the bare `<n>` form too. With no id, the archive lists newest-first, bounded at 20 (`--limit <n>` adjusts, `--limit 0` unbounded; a truncated listing states the withheld count on stderr). A store that cannot vouch for an archive — a database predating the archive tables, or a legacy `backlog.json` serving with no `backlog.db` — names itself on stderr and says no archive is available, rather than letting `absent` read as authoritative. |
 | `moai gtd pr [<id>]` | Report each card's open pull request or landed state — read-only, and it writes nothing. The landed question is asked about the branch this project INTEGRATES on: the ref resolves from the configured worktree base branch (`origin/<that branch>`) and falls back to `origin/main` when none is configured. A project that integrates elsewhere would otherwise read every card that shipped as not-landed — silently, because an empty commit set and a wrong ref look identical. Five outcomes: `linked` (one open PR carries the card id; confidence `exact` from the PR title, `inferred` from a single PR body), `ambiguous` (several PR bodies carry it — every candidate is listed and none is chosen), `landed` (no open PR, but the resolved ref's history names the card), `no-link` (nobody has started it), and `unknown` (the landing question could not be asked — no such ref, no git, a failed query). Two limits belong to THIS list, not to the opt-in guard alone. `landed` means SOMETHING naming the card landed on that ref — NOT that the card's LAST step landed; a card whose run commit shipped reads as landed while its sync commit is still unpushed. And `unknown` is NOT evidence of not-landed: it says the question went unasked, which is a different fact from an answer of no. The row carries seven tab-separated columns — card id, outcome, pull requests, confidence, queue state, landing evidence, card text — so a `picked` card with no commits and a `queued`, never-started one no longer render alike, and an operator's recorded landing reads beside the resolver's own verdict instead of nowhere. The evidence cell is empty for a card with no record, and the marker in it says which kind of SHA is being shown: `(operator)` for a delivering commit the operator asserted, `(ref-head)` for the machine's observation of where the ref stood. `--json` carries the same record under a `landing` key, present only on a card that has one. The card text stays the LAST field, so a consumer reading the tail is unaffected by either added column. One `gh` query per invocation, never one per card, which is why the link is a separate verb rather than a column on `list`: the queue's cheapest read stays free of the network. When `gh` is absent, unauthenticated, or offline the link column renders empty, the degradation is noted on stderr, and the exit code stays 0 — the landed check is local git and keeps running. |
 | `moai gtd landed <n> [--sha <sha>] [--ref <ref>]` · `--clear` | Record — or clear — what the operator observed about a card's landing, as one locked write of one column. The record carries the ref the observation was made against, that ref's head at the observation instant, the instant itself, and the SPEC status read at record time (an explicit `unknown` when it could not be read, never a guess). `--sha` adds the delivering commit **on the operator's authority**, stored together with the fact that an operator asserted it — the machine never fills this in, because a commit that mentions a card is not a commit that delivered it. A `--sha` is checked for referential integrity before anything is stored (the object must exist, and be reachable from the ref) and the check names which half failed; a check that cannot be run at all refuses rather than degrades, because a read that cannot answer may stay permissive but a write that cannot validate may not. Recording changes nothing else — not the card's state, not its position, not its text. A second `landed` replaces the record; `--clear` removes it, and the two are mutually exclusive. |
-| `moai gtd auto-done [--fetch] [--dry-run] [--json]` | The lead's post-push batch closer — never a lane surface. After a batch push is confirmed on the remote (`git fetch origin develop && git rev-parse origin/develop` shows the ref moved), the lead runs it `--dry-run` first to read the planned closes, then live. The scan closes cards whose SPEC reads `completed` and whose landing is proven by one of two evidence forms — a recorded delivering SHA, or a landing commit whose subject attributes the card id (a subject carrying two distinct card tokens attributes nothing; a reissued id skips `ambiguous-id`). Everything else skips with a stated reason from the closed four-token vocabulary (`skip <id> reason=<reason>`); a close prints `done <id> landing=landed source=auto-land ref=<ref> form=<form>`. Closes apply in one locked write, an append-only JSONL log under the runtime state dir records every execution, and `undone` reverses any close. `--fetch` runs exactly one `git fetch`; absent the flag, zero network fetches. `--dry-run` writes nothing. Exit 0 covers closes and skips alike; exit 1 only when the store is unreadable. |
+| `moai gtd auto-done [--fetch] [--dry-run] [--json]` | The leader's post-push batch closer — never a lane surface. After a batch push is confirmed on the remote (`git fetch origin develop && git rev-parse origin/develop` shows the ref moved), the leader runs it `--dry-run` first to read the planned closes, then live. The scan closes cards whose SPEC reads `completed` and whose landing is proven by one of two evidence forms — a recorded delivering SHA, or a landing commit whose subject attributes the card id (a subject carrying two distinct card tokens attributes nothing; a reissued id skips `ambiguous-id`). Everything else skips with a stated reason from the closed four-token vocabulary (`skip <id> reason=<reason>`); a close prints `done <id> landing=landed source=auto-land ref=<ref> form=<form>`. Closes apply in one locked write, an append-only JSONL log under the runtime state dir records every execution, and `undone` reverses any close. `--fetch` runs exactly one `git fetch`; absent the flag, zero network fetches. `--dry-run` writes nothing. Exit 0 covers closes and skips alike; exit 1 only when the store is unreadable. |
 
 [HARD] `edit`, `move`, `drop`, `undrop`, `done`, and `undone` are operator
 acts, exactly like `add` and the pick. Correct a card's wording, move it, or discard it because
@@ -76,7 +76,7 @@ transition. Recording that a card's work landed does not close the card, move it
 done — the operator still decides that, with `done`. The queue stores what the operator
 observed; it never acts on it.
 
-[HARD] `auto-done` is a LEAD surface, never a lane one. It closes cards the operator already picked, after the remote landing is confirmed; a lane never runs it, and it is never a substitute for reading the evidence — the printed close and skip lines plus the audit log are what the lead reads.
+[HARD] `auto-done` is a LEADER surface, never a lane one. It closes cards the operator already picked, after the remote landing is confirmed; a lane never runs it, and it is never a substitute for reading the evidence — the printed close and skip lines plus the audit log are what the leader reads.
 
 [HARD] `--require-landed` is OPT-IN and honestly limited. It asks whether ANY
 commit on the landed ref names the card — not whether the card's LAST step
@@ -194,7 +194,7 @@ reaches it only when the operator approves the queue effect explicitly.
 - `moai gtd answer <t-id> <text>` answers a gate-blocked card; it is not a stage.
 
 The verb belongs to the dispatch loop rather than to the GTD progression: a
-lead reads the response on its next poll. It takes no flags of its own.
+leader reads the response on its next poll. It takes no flags of its own.
 
 ## Reading the records
 
@@ -265,7 +265,7 @@ moai gtd list --json | jq '.[0]'                                            # WR
 
 ## Picking the next card
 
-`moai gtd next` (and the lead's own post-`/clear` opening move) presents the
+`moai gtd next` (and the leader's own post-`/clear` opening move) presents the
 queued items through `AskUserQuestion` — one option per queued item, capped at
 the four the tool allows, oldest first, with the remainder summarized in the
 response body so nothing is hidden behind the cap.
@@ -277,7 +277,7 @@ invent work.
 
 An operator may authorize several cards at once — naming them, or saying to work
 the queue in order until it empties. That is still their pick, made once instead
-of one at a time, and the lead then admits those cards in the authorized order
+of one at a time, and the leader then admits those cards in the authorized order
 without asking again. It grants nothing else: no additions to the queue, no
 reordering, and no cover for a card that turns out to need a decision the
 authorization never covered. See `kanban-dispatch.md` § Entry into the board is
@@ -380,7 +380,7 @@ Say this plainly when it applies rather than implying a board exists.
 
 - **Not a task tracker.** No priorities, no assignees, no due dates, no
   dependencies. Anything needing those belongs in an issue tracker or a SPEC.
-- **Not a board.** Column position lives with the lead and the SPEC status, not
+- **Not a board.** Column position lives with the leader and the SPEC status, not
   in this file.
 - **Not a source of truth for work in flight.** Once a card has a SPEC, the SPEC
   artifacts are authoritative; the backlog item is only a pointer to it.

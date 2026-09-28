@@ -46,7 +46,7 @@ const (
 	servedCauseTranscriptUnreadable = "transcript absent or unreadable"
 	servedCauseNoAssistantModel     = "no assistant row carries a model value"
 	servedCauseOverBudget           = "transcript exceeds the read budget"
-	servedCauseNoExpectation        = "no declared model and no configuration to resolve one"
+	servedCauseNoExpectation        = "no declared model — the subagent inherits the session model"
 )
 
 // syntheticServedModel is the model value the runtime writes on rows it
@@ -106,39 +106,30 @@ func readSubagentMeta(transcriptPath string) subagentMeta {
 type expectationState int
 
 const (
-	expectationKnown    expectationState = iota // expected model is set
-	expectationUnmapped                         // no declaration, agent outside the profile
-	expectationAbsent                           // no declaration and no configuration
+	expectationKnown  expectationState = iota // expected model is set
+	expectationAbsent                         // no declaration — the subagent inherits the session model
 )
 
-// expectedServedModel returns the model a subagent's responses are expected to
-// come from, plus the profile-resolved model recorded alongside it. Today the
-// expectation is the declared model when the spawn declared one, and the
-// profile-resolved model otherwise (resolved through the same resolver and
-// configuration provider the PreToolUse guard uses). With no declaration and
-// no configuration there is no expectation, and the caller records `unknown`
-// rather than resolving against a default the active profile may not share.
+// expectedServedModel returns the model a subagent's responses are expected
+// to come from, plus the recorded expectation basis. With the profile matrix
+// gone (SPEC-AGENT-MODEL-INHERIT-001 M5), the expectation is purely
+// declaration-based: a declared model is the expectation, and no declaration
+// means the subagent inherits the main session's model — which this hook
+// cannot see — so there is no expectation and the caller records `unknown`.
+// cfg is accepted for signature stability (the @MX:ANCHOR below) and no
+// longer participates.
 //
 // @MX:ANCHOR: [AUTO] the single coupling point between served-model observation and the notion of an expected model
 // @MX:REASON: fan_in = SubagentStop observer + doctor served-model sweep via ObserveServedModel; replacing the declared-model expectation (for example with a session-inherited or gate-agent expectation) must change only this function
 func expectedServedModel(declared, agentType string, cfg *config.Config) (expected, resolved string, state expectationState) {
-	if cfg != nil {
-		if mapped, r := resolveAgentModel(cfg.LLM, agentType); mapped && r != "" && r != template.ModelInherit {
-			resolved = r
-		}
-	}
+	_ = cfg
+	_ = agentType
 	// A declared "inherit" names the parent session's model, which this hook
 	// cannot see, so it is treated like no declaration at all.
 	if declared = normalizeModelDeclaration(declared); declared != "" && declared != template.ModelInherit {
-		return declared, resolved, expectationKnown
+		return declared, declared, expectationKnown
 	}
-	if cfg == nil {
-		return "", "", expectationAbsent
-	}
-	if resolved == "" {
-		return "", "", expectationUnmapped
-	}
-	return resolved, resolved, expectationKnown
+	return "", "inherit", expectationAbsent
 }
 
 // normalizeModelDeclaration trims whitespace and drops a trailing bracketed
@@ -266,9 +257,6 @@ func observeServedModel(transcriptPath, agentTypeHint string, cfg *config.Config
 	switch state {
 	case expectationAbsent:
 		return unknownObservation(obs, servedCauseNoExpectation)
-	case expectationUnmapped:
-		obs.Verdict = ServedVerdictUnmapped
-		return obs
 	}
 	obs.Verdict = ServedVerdictOK
 	for _, m := range served {

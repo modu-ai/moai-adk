@@ -303,10 +303,14 @@ func TestCodexTask_ServedModelUnknown(t *testing.T) {
 	}
 
 	t.Run("a configured model — sync", func(t *testing.T) {
+		// The llm.yaml per-agent cell is a leftover-cell control: with the
+		// model-inherit card it no longer resolves (session model applies),
+		// so the requested model must arrive as an explicit argument — and
+		// the fixture proves the dead cell does not leak into the result.
 		writeCodexLLMFixture(t, "gpt-5-codex", "high")
 		sess := withCodexSession(t, codexTaskScript("trn-a", "done-a"))
 
-		got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p"}))
+		got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "model": "gpt-5-codex"}))
 		if st, _ := got["status"].(string); st != codexJobStatusCompleted {
 			t.Fatalf("status = %q, want completed (%v)", st, got)
 		}
@@ -334,7 +338,7 @@ func TestCodexTask_ServedModelUnknown(t *testing.T) {
 		root := writeCodexLLMFixture(t, "gpt-5-codex", "high")
 		withCodexSession(t, codexTaskScript("trn-c", "done-c"))
 
-		got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "background": true}))
+		got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "background": true, "model": "gpt-5-codex"}))
 		jobID, _ := got["job_id"].(string)
 		if jobID == "" {
 			t.Fatalf("no job id: %v", got)
@@ -351,7 +355,7 @@ func TestCodexTask_ServedModelUnknown(t *testing.T) {
 		writeCodexLLMFixture(t, "gpt-5-codex", "high")
 		withCodexSession(t, codexTaskScript("trn-d", "done-d"))
 
-		got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "resume_last": true}))
+		got := structuredMap(t, callCodexTask(t, map[string]any{"prompt": "p", "resume_last": true, "model": "gpt-5-codex"}))
 		note, _ := got["note"].(string)
 		if note == "" || !strings.Contains(note, codexTaskNoPriorThreadNote) {
 			t.Fatalf("note = %q, want it to carry codexTaskNoPriorThreadNote", note)

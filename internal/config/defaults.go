@@ -267,8 +267,6 @@ const (
 	// mode. Used to populate CLAUDE_CODE_AUTO_COMPACT_WINDOW when the High slot
 	// model resolves to the 1M context tier.
 	Default1MContextTokens = 1_000_000
-	// Default performance tier
-	DefaultPerformanceTier = "medium"
 
 	// DefaultHarness is the closed-set default of llm.harness (SPEC-INIT-HARNESS-001
 	// REQ-IH-001/002). Init seeds this value explicitly so an absent key never
@@ -927,7 +925,6 @@ func NewDefaultSystemConfig() SystemConfig {
 func NewDefaultLLMConfig() LLMConfig {
 	return LLMConfig{
 		GLMEnvVar:       DefaultGLMEnvVar,
-		PerformanceTier: DefaultPerformanceTier,
 		Harness:         DefaultHarness,
 		ClaudeModels: ClaudeTierModels{
 			High:   "opus",
@@ -1069,6 +1066,15 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			Enabled:            false,
 			DefaultMaxDuration: DefaultSlotLeaseMaxDuration,
 		},
+		// The commit identity guard ships inert (SPEC-COMMIT-IDENTITY-GUARD-001
+		// REQ-CIG-006): when off, the pre-tool handler never invokes it, so no
+		// repository-scope or identity probe subprocess runs. Maintainers opt
+		// in via local config after their own test suites have been known to
+		// poison the shared git config layer. Template neutrality: no
+		// `enabled: true` under internal/template/templates/.
+		CommitIdentityGuard: CommitIdentityGuardConfig{
+			Enabled: false,
+		},
 		// The TypeSafe System One judgment capability ships inert
 		// (REQ-JEVC-016). While off, internal/jev constructs no request and
 		// makes no network call, so a project that never opts in pays nothing
@@ -1092,13 +1098,6 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 				PushDevelop:  DefaultAutonomyPushDevelop,
 			},
 		},
-		// The agent-model guard ships with its BLOCKING layer off. Observation
-		// and advisory always run; a maintainer opts into denial via local
-		// config. Template neutrality: no `enabled: true` anywhere under
-		// internal/template/templates/.
-		AgentModelGuard: AgentModelGuardConfig{
-			Enabled: false,
-		},
 		// The served-model gate ships with its ADOPTION-REFUSAL layer off. The
 		// SubagentStop observation row and its warning always run; a
 		// maintainer opts into refusing a gate auditor's verdict via local
@@ -1107,6 +1106,7 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		ServedModelGate: ServedModelGateConfig{
 			Enabled: false,
 		},
+
 		// The SendMessage stop-guard deny layer ships OFF the same way: stop
 		// recording and send observation + advisory always run; a maintainer
 		// opts into denial via local config. Template neutrality: no

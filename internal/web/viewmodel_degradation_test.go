@@ -126,8 +126,6 @@ func TestNewAppWiresEverySeam(t *testing.T) {
 		"schemaCurrentValues":      a.schemaCurrentValues == nil,
 		"rawBlockValues":           a.rawBlockValues == nil,
 		"applySchemaEdits":         a.applySchemaEdits == nil,
-		"listAgentFMs":             a.listAgentFMs == nil,
-		"patchAgentFM":             a.patchAgentFM == nil,
 		"createProfile":            a.createProfile == nil,
 		"deleteProfile":            a.deleteProfile == nil,
 		"renameProfile":            a.renameProfile == nil,

@@ -148,10 +148,14 @@ type Specialist struct {
 	Isolation string `json:"isolation"`
 
 	// Effort is the reasoning effort level (low/medium/high/xhigh/max).
-	Effort string `json:"effort"`
+	// OPTIONAL: absent means the specialist inherits the main session's
+	// effort; generated manifests omit it.
+	Effort string `json:"effort,omitempty"`
 
-	// Model is the model tier (inherit/haiku/sonnet/opus).
-	Model string `json:"model"`
+	// Model is the model tier (inherit/haiku/sonnet/opus). OPTIONAL: absent
+	// means the specialist inherits the main session's model; generated
+	// manifests omit it.
+	Model string `json:"model,omitempty"`
 }
 
 // SprintContract is the Generator-Evaluator separation contract

@@ -160,7 +160,7 @@ func TestReconfigureMembershipExcludesPage3(t *testing.T) {
 	// The pre-restructure member set is retained (Basic + Model + Git).
 	for _, id := range []string{
 		"conversation_language", "user_name", "project_name",
-		"model_policy", "report_format",
+		"report_format",
 		"git_mode", "git_provider", "gitlab_instance_url",
 		"github_username", "github_token", "gitlab_username", "gitlab_token",
 	} {

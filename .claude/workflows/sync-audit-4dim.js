@@ -160,7 +160,7 @@ Return the audit surface as an object with EXACTLY these fields:
 Report only what you can VERIFY from the artifacts. If a field cannot be determined, return it empty
 rather than guessing.`
 
-const context = await agent(CONTEXT_PROMPT, { label: `context:${SPEC_ID}`, phase: 'Context', agentType: 'Explore', effort: 'medium', schema: CONTEXT_SCHEMA })
+const context = await agent(CONTEXT_PROMPT, { label: `context:${SPEC_ID}`, phase: 'Context', agentType: 'Explore', schema: CONTEXT_SCHEMA })
 
 // ---------------------------------------------------------------------------
 phase('Judge')
@@ -193,19 +193,15 @@ Dimension focus for "${dimension}":
 Return an object with EXACTLY: dimension, score (0..1), findings[{severity,summary,file,evidence}],
 evidence_gaps[]. If you cannot evaluate this dimension at all, return score as null (do NOT fabricate a score).`
 
-// Four judge agent calls in parallel — ALL read-only (agentType 'Explore'). The
-// orchestrator resolves the verify-judge effort profile through args; this
-// script clamps it to the supported runtime policy and never hardcodes xhigh.
+// Four judge agent calls in parallel — ALL read-only (agentType 'Explore'), no model/effort option:
+// the judges inherit the main session's model and effort.
 // Thunk order MUST match DIMENSIONS so judges[i] aligns with DIMENSIONS[i] in the Verdict phase.
-const allowedJudgeEfforts = new Set(['low', 'medium', 'high'])
-const requestedJudgeEffort = (args && typeof args.judge_effort === 'string') ? args.judge_effort : 'high'
-const JUDGE_EFFORT = allowedJudgeEfforts.has(requestedJudgeEffort) ? requestedJudgeEffort : 'high'
 
 const judges = await parallel([
-  () => agent(JUDGE_PROMPT('Functionality'), { label: 'judge:Functionality', phase: 'Judge', agentType: 'Explore', effort: JUDGE_EFFORT, schema: JUDGE_SCHEMA }),
-  () => agent(JUDGE_PROMPT('Security'),      { label: 'judge:Security',      phase: 'Judge', agentType: 'Explore', effort: JUDGE_EFFORT, schema: JUDGE_SCHEMA }),
-  () => agent(JUDGE_PROMPT('Craft'),         { label: 'judge:Craft',         phase: 'Judge', agentType: 'Explore', effort: JUDGE_EFFORT, schema: JUDGE_SCHEMA }),
-  () => agent(JUDGE_PROMPT('Consistency'),   { label: 'judge:Consistency',   phase: 'Judge', agentType: 'Explore', effort: JUDGE_EFFORT, schema: JUDGE_SCHEMA }),
+  () => agent(JUDGE_PROMPT('Functionality'), { label: 'judge:Functionality', phase: 'Judge', agentType: 'Explore', schema: JUDGE_SCHEMA }),
+  () => agent(JUDGE_PROMPT('Security'),      { label: 'judge:Security',      phase: 'Judge', agentType: 'Explore', schema: JUDGE_SCHEMA }),
+  () => agent(JUDGE_PROMPT('Craft'),         { label: 'judge:Craft',         phase: 'Judge', agentType: 'Explore', schema: JUDGE_SCHEMA }),
+  () => agent(JUDGE_PROMPT('Consistency'),   { label: 'judge:Consistency',   phase: 'Judge', agentType: 'Explore', schema: JUDGE_SCHEMA }),
 ])
 
 // ---------------------------------------------------------------------------

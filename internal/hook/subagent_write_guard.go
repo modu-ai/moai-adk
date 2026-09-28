@@ -9,7 +9,7 @@
 // agent_id (NOT agent_type — spec.md §A.5: a `claude --agent <name>` main
 // session carries agent_type but no agent_id).
 //
-// Family contract (settings_drift_gate / agent_model_guard / agent_stop_guard
+// Family contract (settings_drift_gate / agent_stop_guard
 // in internal/config/defaults.go): detection and observation run
 // unconditionally; only the deny layer is gated on
 // workflow.subagent_write_guard.enabled, shipped default-false.

@@ -117,29 +117,9 @@ While a workflow run is active, the `/workflows` TUI lets you manage it: list ac
   - **User-owned Runner Workflows** — the `hns-*` and `harness-*` prefixes are **not template-managed**. MoAI never ships them, and `moai update` preserves whatever the user has authored there.
 - **Plan / provider availability**: dynamic workflows require a paid plan and are available on the Claude API, Amazon Bedrock, Google Vertex AI, and Microsoft Foundry; on the Pro plan the feature is enabled via `/config`.
 
-## Purpose-driven model+effort selection
+## Workflow agent model and effort
 
-The dynamic workflow `agent()` primitive accepts an opts object `{model, effort, agentType, isolation, phase, schema, label}` (per `https://code.claude.com/docs/en/workflows`). Omitting `model` inherits the main-loop model; omitting `effort` inherits the session effort. Because a paste-ready resume message's `ultrathink.` opener commonly leaves the session at `xhigh`, a workflow `agent()` call that omits `effort` silently runs every spawned agent at `xhigh` — including mechanical read-only extraction, which the official guidance recommends at `low`. That silent inheritance is a cost leak.
-
-[ZONE:Evolvable] [HARD] When a `.claude/workflows/*.js` script invokes `agent()`, the script author SHALL set `effort` explicitly per the purpose taxonomy below rather than inheriting the session default. Set `model` explicitly only when the purpose demands a specific tier (sonnet with `effort: low` for mechanical extraction; opus for deep architectural reasoning); otherwise omit it to inherit the main-loop model.
-
-The official effort levels are `low`, `medium`, `high` (default on most models; `medium` on Opus 5.5, `xhigh` on Opus 4.7), `xhigh`, `max` (`https://platform.claude.com/docs/en/build-with-claude/effort`). The taxonomy below maps each workflow-agent purpose to a recommended `(model, effort)`.
-
-> **Config surface.** The `workflow_agents:` block in `.moai/config/sections/workflow.yaml` is the SSOT for these per-purpose `(model, effort)` DEFAULTS — the web console and tooling read/write that block, and per-script literals in `.claude/workflows/*.js` remain overrides that win over the config defaults. Values are validated against the closed sets above (model: inherit/sonnet/opus; effort: low/medium/high/xhigh/max — the Go validator additionally tolerates a retired legacy model value for backward compatibility).
-
-| Purpose | Example surfaces | Recommended model | Recommended effort | Official citation |
-|---------|------------------|-------------------|--------------------|-------------------|
-| **read-only-extract** | per-package dep-graph + public-surface extraction; mechanical AST/grep sweeps | sonnet | **low** | "`low` — Simpler tasks that need the best speed and lowest costs, such as subagents" |
-| **mechanical-transform** | large migrations (call-site rename, API shape change); mechanical refactors | sonnet | **medium** | "`medium` — Balanced reasoning for general tasks" |
-| **synthesize** | architectural synthesis layered on deterministic extraction; multi-source research synthesis | sonnet | **high** | "`high` — Most tasks; good balance of quality and speed" |
-| **research** | cross-checked research with adversarial voting; deep single-topic investigation | sonnet or opus | **high** or **xhigh** | research effort should scale with claim density the research must adjudicate (project-internal heuristic, not a verbatim prescription) |
-| **verify-judge** | code review (security/perf/arch dimensions); independent plan/spec audit; quality scoring | sonnet or opus | **xhigh** | "minimum `high` for intelligence-sensitive work" |
-| **implement** | code generation (backend/frontend/full-stack); test writing | sonnet or opus | **xhigh** | "`xhigh` for coding/agentic work" |
-| **design-architecture** | solution architecture decisions; system design; deep reasoning over trade-offs | opus | **xhigh** | "`xhigh` for coding/agentic work" + "minimum `high` for intelligence-sensitive work" |
-
-**Reading order.** When a workflow agent serves multiple purposes, pick the highest-effort purpose in the table. When purpose is ambiguous, prefer the cheaper effort — the cost of over-efforting a read-only extraction is a silent token leak; the cost of under-efforting a verify-judge is a missed defect.
-
-**Worked example — codemaps-extract.js.** The bundled `.claude/workflows/codemaps-extract.js` fans out one `Explore` agent per source package for read-only dep-graph + public-surface extraction plus an architectural-synthesis layer. Each per-package `agent()` call carries `agentType: 'Explore'` and `effort: 'low'` — the read-only-extract purpose, per the official "`low` — such as subagents" guidance. The synthesis layer's architecture-insight value comes from the prompt, not from raising effort; raising effort on the extraction step would multiply token cost without improving the mechanical baseline (see the script's VERDICT SCOPING header). This is the canonical pattern for mechanical read-only fan-out.
+The dynamic workflow `agent()` primitive accepts an opts object that includes `model` and `effort` (per `https://code.claude.com/docs/en/workflows`). MoAI's shipped workflow scripts pass neither, so every workflow agent inherits the main session's model and effort, the same rule MoAI agent definitions follow (`.claude/rules/moai/development/model-policy.md`).
 
 ## Disabling Workflows
 

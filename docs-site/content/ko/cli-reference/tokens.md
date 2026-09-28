@@ -32,7 +32,7 @@ $ moai tokens record --transcript <경로> --json
 | `--transcript <경로>` | 집계할 Claude Code 트랜스크립트 파일 |
 | `--session <id>` | 세션 식별자로 트랜스크립트를 지정 |
 | `--card <카드>` | 이 사용량을 묶을 칸반 카드(예: `t12`) |
-| `--role <역할>` | 세션의 역할(예: `run`, `sync`, `worker-3`) |
+| `--role <역할>` | 세션의 역할(예: `run`, `sync`, `lane-3`) |
 | `--json` | 표준 출력으로도 레코드를 JSON으로 내보냅니다 |
 
 ## 기록의 생김새

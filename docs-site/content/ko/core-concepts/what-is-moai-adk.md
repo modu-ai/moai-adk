@@ -22,7 +22,7 @@ MoAI-ADK는 **Claude Code 안에서 에이전트들이 서로 협력하며 에�
 | AI 개발팀 | MoAI-ADK | 역할 |
 |----------|----------|------|
 | 프로덕트 오너 | 사용자 (개발자) | 무엇을 만들지 결정합니다 |
-| 팀 리드 / Tech Lead | MoAI 오케스트레이터 | 전체 작업을 조율하고 13개 에이전트에게 위임합니다 |
+| 팀 리더 / Tech Lead | MoAI 오케스트레이터 | 전체 작업을 조율하고 13개 에이전트에게 위임합니다 |
 | 기획자 / Spec Writer | manager-spec | 요구사항을 SPEC 문서로 정리합니다 |
 | 개발자 / Engineers | manager-develop (도메인 컨텍스트 주입) | 실제 코드를 DDD/TDD로 구현합니다 |
 | QA / 코드 리뷰어 | plan-auditor · sync-auditor | 계획과 결과물을 독립적으로 감사합니다 |

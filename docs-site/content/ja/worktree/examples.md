@@ -293,7 +293,7 @@ $ moai worktree done feature/SPEC-BE-001 --delete-branch
 #### PR マージおよび統合
 
 ```bash
-# チームリードまたは CI システムで
+# チームリーダーまたは CI システムで
 gh pr list
 # FE-001  Login UI Component          Ready
 # BE-001  Authentication API Service  Ready

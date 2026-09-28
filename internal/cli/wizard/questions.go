@@ -98,33 +98,6 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:     defaultProjectName,
 			Required:    true,
 		},
-		// 2. Model Policy
-		{
-			ID:          "model_policy",
-			Group:       "Model & Report",
-			Type:        QuestionTypeSelect,
-			Title:       "Select model policy",
-			Description: "Controls which Claude model tier is assigned to each agent. Match to your Claude plan.",
-			// Labels use the v3.0.1 tier naming (Max / Medium / Low). Values stay
-			// "high"/"medium"/"low": the internal ModelPolicy vocabulary
-			// (internal/template/model_policy.go IsValidModelPolicy) expects those
-			// values and NormalizeToTier maps high→max downstream.
-			// Descriptions mirror the actual per-tier assignments in the profile
-			// matrix SSOT (internal/template/profile_matrix.go defaultProfileMatrix,
-			// Matrix A): max leans on Fable + Opus for core agents; medium/low mix
-			// Opus and Sonnet across effort levels. Keep these in sync with that
-			// matrix, not with a marketing summary.
-			// The (Recommended) marker tracks the Default below: Medium is the default
-			// for new projects (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-008). Max/High
-			// remains a fully selectable tier — only the DEFAULT moved.
-			Options: []Option{
-				{Label: "Max", Value: "high", Desc: "Opus 5.5 (high~medium) + Sonnet (low, docs/single-shot rows) — Max $200 plan"},
-				{Label: "Medium (Recommended)", Value: "medium", Desc: "Opus 5.5 (high~low) + Sonnet (low, docs/single-shot rows) — Max $100 plan"},
-				{Label: "Low", Value: "low", Desc: "Opus 5.5 (high~low) + Sonnet (low, docs/e2e/single-shot rows) — Plus $20 plan"},
-			},
-			Default:  "medium",
-			Required: true,
-		},
 		// 3. Report Format — html+md vs md.
 		// The value set mirrors internal/settings reportFormatValues (the closed
 		// set {"html+md", "md"} consumed by the moai-domain-html-report skill via
@@ -290,7 +263,7 @@ func ReconfigureQuestions(projectRoot string) []Question {
 }
 
 // initSharedQuestionIDs are the DefaultQuestions entries the `moai init` wizard
-// still asks, in order. project_name, model_policy, and report_format stay in
+// still asks, in order. project_name and report_format stay in
 // DefaultQuestions for the reconfigure path only.
 var initSharedQuestionIDs = []string{"conversation_language", "user_name"}
 

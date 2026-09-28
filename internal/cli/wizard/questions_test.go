@@ -99,7 +99,6 @@ func TestQuestionOrder(t *testing.T) {
 		"conversation_language",
 		"user_name",
 		"project_name",
-		"model_policy",
 		"report_format",
 	}
 
@@ -188,7 +187,6 @@ func TestReconfigureQuestionsOrder(t *testing.T) {
 		"conversation_language",
 		"user_name",
 		"project_name",
-		"model_policy",
 		"report_format",
 		"git_mode",
 		"git_provider",
@@ -267,7 +265,9 @@ func TestRemovedQuestionsAbsent(t *testing.T) {
 		"git_commit_lang",
 		"code_comment_lang",
 		"doc_lang",
-		// model_policy intentionally NOT listed here: it was re-added as a project-level question
+		// model_policy: the agent model-policy question was retired
+		// (subagents inherit the main session's model and effort).
+		"model_policy",
 		// plan_type and development_mode were removed as interactive questions; they
 		// now default silently (subscription / tdd) and are flag-only overrides.
 		"plan_type",
@@ -297,7 +297,6 @@ func TestQuestionsAllPresent(t *testing.T) {
 		"conversation_language",
 		"user_name",
 		"project_name",
-		"model_policy",
 		"report_format",
 	}
 
@@ -496,21 +495,5 @@ func TestPrefillLocaleDefault(t *testing.T) {
 	prefillLocaleDefault(questions2, "")
 	if q := QuestionByID(questions2, "conversation_language"); q == nil || q.Default != "en" {
 		t.Errorf("empty locale should keep the static 'en' default, got %+v", q)
-	}
-}
-
-// TestSaveAnswerModelPolicy verifies saveAnswer routes the model_policy answer
-// (the profile selection) into WizardResult.ModelPolicy.
-func TestSaveAnswerModelPolicy(t *testing.T) {
-	result := &WizardResult{}
-	locale := ""
-
-	saveAnswer("model_policy", "high", result, &locale)
-	if result.ModelPolicy != "high" {
-		t.Errorf("expected ModelPolicy 'high', got %q", result.ModelPolicy)
-	}
-	saveAnswer("model_policy", "low", result, &locale)
-	if result.ModelPolicy != "low" {
-		t.Errorf("expected ModelPolicy 'low', got %q", result.ModelPolicy)
 	}
 }

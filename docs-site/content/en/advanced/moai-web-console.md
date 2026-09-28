@@ -53,7 +53,7 @@ flowchart TD
 
 Overview opens with four stat tiles: **SPEC** (total count and how many are in progress), **drift** (MUST-FIX count), **session** (PID-confirmed count / registry count), and **verify** (the last verification result and the number of keys).
 
-Below them, the **Kanban chain bar** shows in one line how far the current card has travelled through the four roles `lead → plan → run → sync`. If a role has no session, that point is marked as where the chain stops. Then come the **in-progress SPECs** list, the **Needs attention** panel (which collects only MUST-FIX drift, failed verification, stalled goals and idle roles), and the **Sessions** panel on the right.
+Below them, the **Kanban chain bar** shows in one line how far the current card has travelled through the four roles `leader → plan → run → sync`. If a role has no session, that point is marked as where the chain stops. Then come the **in-progress SPECs** list, the **Needs attention** panel (which collects only MUST-FIX drift, failed verification, stalled goals and idle roles), and the **Sessions** panel on the right.
 
 ## Kanban — two boards
 
@@ -135,12 +135,11 @@ Choosing Settings in the rail unfolds the tabs below as a vertical list.
 6. **Git & Worktree** — `git_strategy.mode`, per-profile `merge_method`, worktree and branch-guard toggles
 7. **Audit** — the audit model and the per-backend gates
 8. **Codex** — a **read-only mirror** gathering the twelve scattered codex settings onto one screen: the audit backend and the codex pins, the codex opt-ins, the codex MCP tool toggles, and the detected binary. Nothing is edited here; each row links to the tab that actually owns the value
-9. **Agents** — per-agent profile and model assignment
-10. **Report** — report format and output preferences
-11. **MCP** — per-tool activation toggles for `moai mcp-server`. Write-capable tools carry a distinguishing mark
-12. **Cross-Session** — the inbound posture for cross-session messaging: how inbound messages are handled (`accept` · `hold` · `refuse`), cross-machine sending isolation, and held-dialog expiry. It edits `crosssession.yaml`, and the launcher injects this value into sessions from the next `moai cc`/`glm` run — sessions already running keep the posture they were launched with
-13. **Feedback** — the repository the feedback workflow files against, and the pre-submission confirmation toggle
-14. **Quality Gate** — whether the commit-time heavy gate runs. The runner honors this value only under `MOAI_PRECOMMIT=1`
+9. **Report** — report format and output preferences
+10. **MCP** — per-tool activation toggles for `moai mcp-server`. Write-capable tools carry a distinguishing mark
+11. **Cross-Session** — the inbound posture for cross-session messaging: how inbound messages are handled (`accept` · `hold` · `refuse`), cross-machine sending isolation, and held-dialog expiry. It edits `crosssession.yaml`, and the launcher injects this value into sessions from the next `moai cc`/`glm` run — sessions already running keep the posture they were launched with
+12. **Feedback** — the repository the feedback workflow files against, and the pre-submission confirmation toggle
+13. **Quality Gate** — whether the commit-time heavy gate runs. The runner honors this value only under `MOAI_PRECOMMIT=1`
 
 The number beside each tab is how many fields that tab renders. A tab with errors carries a warning mark instead of the number, so the list itself tells you which tab to open.
 

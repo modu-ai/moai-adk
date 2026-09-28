@@ -213,7 +213,6 @@ func TestInitGitFlagOverridesDetection(t *testing.T) {
 	runWizardFn = func(_, _, _ string) (*wizard.WizardResult, error) {
 		return &wizard.WizardResult{
 			ProjectName:  "flag-proj",
-			ModelPolicy:  "high",
 			ReportFormat: "html+md",
 		}, nil
 	}
@@ -266,7 +265,6 @@ func TestInitGitDetectionFillsConfig(t *testing.T) {
 	runWizardFn = func(_, _, _ string) (*wizard.WizardResult, error) {
 		return &wizard.WizardResult{
 			ProjectName:  "detect-proj",
-			ModelPolicy:  "high",
 			ReportFormat: "html+md",
 		}, nil
 	}
