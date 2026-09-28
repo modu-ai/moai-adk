@@ -63,3 +63,11 @@ _<pending sync-phase>_
   회귀 가드 재분류), D2 16/16 통합 처분 (위 tier_ceiling_disposition), D3 Event-detected →
   Event-driven 재표기 (REQ-THS-003/005/014), D4 P3 전제 인라인 인용+primary-checkout-local 표기.
   재측정: REQ 16 / AC 16, lint 0 error. 커밋 없음 — 리드 검토 후 커밋.
+- 2026-09-29 (run 진입 게이트 처분, card t1308): **운영자 승인(리드 전달 2026-09-29):
+  served_model_gate 해제 + GLM 채택, OVERTURN 시 제외.** 근거: 비GLM 독립 경로 3종이 구조적
+  불가로 실측 — claude_audit CLAUDE_CAPACITY_UNAVAILABLE / codex_role_audit 서버 루트 결속
+  (codex_audit_launch.go:309, worker-66 소스 확인) / worker-63 "opus" 배차도 GLM 서빙. 채택
+  사슬: GLM iter2 PASS 0.96 + worker-63 무변경 재확인 + codex(GPT-6) RECONFIRM(샌드박스
+  거부로 계측은 레인이 수행) + 레인 자체 무변경 계측(팁==d69b71c6d·이후 0커밋·4파일 체크섬
+  일치 — plan-audit-codex.md). 카드 트리 workflow.yaml의 served_model_gate.enabled를 false로
+  (이 트리만; 기존 거부 영수증 보존). OVERTURN 발생 시 채택 제외.
