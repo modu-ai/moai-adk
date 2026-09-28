@@ -22,6 +22,7 @@
 package cli
 
 import (
+	"io"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -42,7 +43,7 @@ func runResolveWorktreeL2Path(t *testing.T, homeDir string, args []string) error
 	t.Helper()
 	t.Setenv("HOME", homeDir)
 	t.Setenv("USERPROFILE", homeDir)
-	return resolveWorktreeL2Path(args)
+	return resolveWorktreeL2Path(args, io.Discard)
 }
 
 // TestLauncherWorktreeL2AbsPath covers AC-WES-010a: absolute paths under
@@ -88,7 +89,7 @@ func TestLauncherWorktreeMoAIAbsPath(t *testing.T) {
 		t.Fatalf("project root: %v", err)
 	}
 	path := filepath.Join(root, ".moai", "worktrees", "existing")
-	if err := resolveWorktreeL2Path([]string{"-w", path}); err != nil {
+	if err := resolveWorktreeL2Path([]string{"-w", path}, io.Discard); err != nil {
 		t.Fatalf("MoAI worktree absolute path rejected: %v", err)
 	}
 }
