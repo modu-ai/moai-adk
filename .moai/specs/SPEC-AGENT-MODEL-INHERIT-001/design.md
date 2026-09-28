@@ -62,7 +62,7 @@ command and output: research.md §F.
 
 | # | File (local + template) | Old clause head | Marker | Disposition | Reason |
 |---|---|---|---|---|---|
-| H1 | `rules/moai/core/agent-common-protocol.md` § Per-Spawn Model Injection | "When spawning a subagent, pass the model the active profile resolves for that agent as an explicit `model` argument on the spawn." + 4 bullets + audit-hook paragraph | `[ZONE:Evolvable] [HARD]` | **Removed** (−1). Section replaced by one plain sentence: subagents inherit the main session's model and effort; pass neither on spawn. | The resolver, `moai model profile`, and the audit hook it names are deleted (REQ-AMI-008/009). |
+| H1 | `rules/moai/core/agent-common-protocol.md` § Per-Spawn Model Injection | "When spawning a subagent, pass the model the active profile resolves for that agent as an explicit `model` argument on the spawn." + 4 bullets + audit-hook paragraph | `[ZONE:Evolvable] [HARD]` | **Removed** (−1). Section replaced by one plain sentence: subagents inherit the main session's model and effort; pass neither on spawn. | The resolver and `moai model profile` are deleted (REQ-AMI-008); the audit hook the paragraph named is retained as a declaration-only observer, not deleted (REQ-AMI-009 as amended 2026-09-29, sync-audit F1 — §G). |
 | H2 | `rules/moai/core/agent-common-protocol-reference.md` § Per-Spawn Model Injection rationale | rationale body | none | Removed. | Rationale for H1. |
 | H3 | `rules/moai/development/model-policy.md:34` § Inherit-by-Default Convention | "All MoAI agents SHOULD declare `model: inherit` unless…" | `[HARD]` | **Rewritten** (0): agents declare no `model:`/`effort:`; an absent field resolves to the main session (Claude Code order), with the `CLAUDE_CODE_SUBAGENT_MODEL` residual. | Same intent, new mechanism (D1). |
 | H4 | `model-policy.md:245` § Rules | "New agent definitions SHOULD use `model: inherit` (default)…" | `[HARD]` | **Rewritten** (0): new MoAI agent definitions omit `model:` and `effort:`. | D1. |
@@ -98,7 +98,7 @@ for H1, H3, H4, H9, or H17 (measured), so no registry row is deleted.
 | config | `LLMConfig.{Profile,Profiles,HarnessAgents,AgentOverrides,PerformanceTier}`, `profile.go` (profile enum, overrides validation), `AgentModelGuard*`, `model_routing.go` + `WorkflowAgents`/`ModelRouting*` fields (D12), `retainedAgentNames` with its last consumer (D4) | `ModelEffort` (profile.go:73) — still used by the retained audit pins (`config/audit_models.go:67/75/82`, `config/defaults.go:1120`, `cli/mcp_claude.go:181-182`, `cli/mcp_codex.go:211-254`, `cli/mcp_glm.go:172-180`); relocated beside `audit_models.go` when `profile.go` is deleted |
 | template | `profile_matrix.go` (matrix, groups, resolvers, `ApplyProfile`, harness classes); `model_policy.go` perf-tier helpers (`ApplyPerformanceTier`, `IsValidPerformanceTier`, `ValidPerformanceTiers`, `ResolveProjectPerformanceTier`, `MapModelPolicyToTier`, `NormalizeToTier`) once their callers are gone; per-agent GLM helpers if orphaned | `ApplyHarness`, strip step (relocated, D14), `MapModelPolicyToEffort`, `IsValidModelPolicy`, session GLM helpers |
 | cli | `model.go` + root registration; flag handling reduced to deprecation warnings (D10/D13); wizard `model_policy` question in init/update; `update_wizard` `ApplyProfile` + system.yaml `model_policy` write; agentlint LR-03/LR-12 and routing checks; nil-map normalisation for removed maps; MCP tool descriptions citing the resolver | main-session model policy path; codex/GLM default resolution (D5); `moai profile setup` wizard |
-| hook | `agent_model_guard.go`, its `pre_tool.go` wiring, `prune_logs` audit-file entry | comment references in sibling guards reworded |
+| hook | (amended 2026-09-29, sync-audit F1 — §G) `agent_model_guard.go` is **not** deleted: it stays as a declaration-only observer (`classifyAgentModel` → declared/inherit; no enforcement, no model/effort resolution); its `pre_tool.go` wiring and the `prune_logs` audit-file entry (`prune_logs.go:169`) stay with it | comment references in sibling guards reworded |
 | web | agentfm panel, handlers, app seams, settings tab, templ blocks, `settings/agentfm`, schema entries for removed keys | preference-profile CRUD, main-session controls |
 | harness | `cellguard` package (D6); required-field checks for specialist `model`/`effort` (D11) | `rosterguard` (re-pointed), `v4manifest` validator with optional fields |
 | workflows / docs | `agent()` model/effort literals in `.claude/workflows/*.js` (D12); docs-site pages (M8) | everything else |
@@ -126,3 +126,34 @@ stays green at every boundary.
 | `model-policy-profile-matrix-size` (:432), `-mirror` (:440) | `model-policy.md` Per-Agent Profile Resolver row count (H5) | Removed | M7 |
 | `agent-authoring-catalog` (:164), `docs-truth-catalog` (:217), `manager-design-catalog-citation` (:575), exemptions `manager-docs-then-8` / `manager-spec-then-8` (:736-737) | catalog sections not removed by this SPEC | Kept; re-run in M7 to confirm the anchors survive H7/H15/H23 | M7 check |
 | numeral exemption `agentlint-section-marker` (:817) | a comment in `agent_lint.go` | Kept if the comment survives LR-03/LR-12 retirement; removed otherwise | M4 |
+
+## §G Amendment — REQ-AMI-009 declaration-only observer (2026-09-29, sync-audit F1)
+
+The sync audit (`.moai/reports/t1246/sync-audit.md`, FAIL 77.2) found the landed tree retains
+`internal/hook/agent_model_guard.go` as a declaration-only observer where plan.md M3 and the §E
+hook row prescribed deletion. The lead's dispatch of 2026-09-29 chose repair option (i): a formal
+manager-spec amendment adopting the observer design (spec.md v0.6.0), not observer-layer deletion.
+Rationale: the M5 declared/inherit transition proved superior to full deletion — deleting the
+observer would lose the observation capability — and the auditor assessed the removal work itself
+as verified; the failure was close-out truthfulness, not execution.
+
+**Prune/audit-file fate (sync-audit recommendation 2, measured in this commit).** The audit
+prescribed the command `grep -rn "agent-model-audit" internal/cli/ --include="*.go"` to establish
+whether any `prune_logs` entry covers the audit file. Observed output (this run, this tree, HEAD
+at amendment time): **exactly one hit**, and it is not a prune entry —
+
+```
+internal/cli/doctor_served_model_test.go:67:	logPath := filepath.Join(project, ".moai", "logs", "agent-model-audit.jsonl")
+```
+
+That line is a test fixture path in the served-model doctor test (the doctor scan reads the audit
+log as an input fixture); `internal/cli` carries **no** prune entry for the file. Reading further,
+the age-out entry does survive where `prune_logs` actually lives: `internal/hook/prune_logs.go`
+branches on `name == agentModelAuditFileName` (:169, stats field `AgentModelAuditAged` :59-62)
+and removes a stale audit file past the retention cutoff at SessionEnd. Consequence for the
+observer design: under the amended REQ-AMI-009 the file stays unwritten, so the entry is a dormant
+safety net rather than a growth bound; if a future change ever made the guard write again, the
+existing SessionEnd age-out — not a new card — bounds the accumulation. **No follow-up prune-policy
+card is required on the evidence above**; the audit's "log accumulates indefinitely" residual is
+closed by the measured surviving entry. If the guard's write path is ever re-enabled, revisit this
+section before relying on the prune entry's retention threshold.
