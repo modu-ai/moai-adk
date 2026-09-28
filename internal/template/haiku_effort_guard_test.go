@@ -8,15 +8,9 @@ import (
 	"testing"
 )
 
-// haikuModelFrontmatterRegex matches a `model: haiku` line in YAML frontmatter.
-// The invariant keys on the model FIELD VALUE (haiku), not on hardcoded agent
-// names, so it generalizes to any future haiku-tier agent (REQ-HEI-002).
-var haikuModelFrontmatterRegex = regexp.MustCompile(`(?m)^model:\s*haiku\b`)
-
-// haikuEffortLineRegex matches an effort: field line in YAML frontmatter (local
-// to this guard test; the former shared effortLineRegex was retired with the
-// ApplyTierProfile frontmatter-mutation pass).
-var haikuEffortLineRegex = regexp.MustCompile(`(?m)^effort:\s*\S+`)
+// agentModelEffortLineRegex matches a model: or effort: key at the start of a
+// frontmatter line.
+var agentModelEffortLineRegex = regexp.MustCompile(`(?m)^(model|effort):`)
 
 // findProjectRootForHaikuGuard walks up from the test's working directory
 // (the package dir internal/template) until it finds go.mod, returning the
@@ -58,33 +52,34 @@ func extractAgentFrontmatter(content string) string {
 	return rest[:closingIdx]
 }
 
-// TestHaikuAgentsHaveNoEffort enforces the `model: haiku ⇒ no effort` invariant
-// (REQ-HEI-002 / REQ-HEI-006 / AC-HEI-004) across BOTH agent trees:
-//   - the local mirror at .claude/agents/moai/*.md
-//   - the template source at internal/template/templates/.claude/agents/moai/*.md
+// TestAgentsDeclareNoModelOrEffort enforces the inheritance invariant
+// (SPEC-AGENT-MODEL-INHERIT-001 REQ-AMI-003, AC-AMI-003): no MoAI agent
+// definition declares a model: or effort: frontmatter key, so every subagent
+// inherits the main session's model and effort (Claude Code resolves an absent
+// model to the main conversation's model and an absent effort to the session's).
+// It scans the template source, the local mirror, and the local harness
+// agents. It supersedes the former `model: haiku ⇒ no effort` guard, which this
+// invariant implies.
 //
-// Haiku does not support the `effort` frontmatter field (per
-// code.claude.com/docs/en/model-config: "Models not listed here do not support
-// effort"; Haiku is not listed). An `effort:` field on a `model: haiku` agent is
-// therefore silently inert — a misleading configuration. This guard fails when
-// any file declaring `model: haiku` in EITHER tree also declares an `effort:`
-// field, keyed on the model value (not agent names) so a future haiku agent is
-// covered automatically.
-//
-// Sentinel on failure: HAIKU_EFFORT_INERT.
-func TestHaikuAgentsHaveNoEffort(t *testing.T) {
+// Sentinel on failure: AGENT_MODEL_EFFORT_DECLARED.
+func TestAgentsDeclareNoModelOrEffort(t *testing.T) {
 	t.Parallel()
 
 	projectRoot := findProjectRootForHaikuGuard(t)
 
 	agentDirs := []string{
 		filepath.Join(projectRoot, ".claude", "agents", "moai"),
+		filepath.Join(projectRoot, ".claude", "agents", "harness"),
 		filepath.Join(projectRoot, "internal", "template", "templates", ".claude", "agents", "moai"),
 	}
 
+	scanned := 0
 	for _, dir := range agentDirs {
 		entries, err := os.ReadDir(dir)
 		if err != nil {
+			if os.IsNotExist(err) && strings.HasSuffix(dir, "harness") {
+				continue // the local harness tree is optional
+			}
 			t.Fatalf("read agents dir %q: %v", dir, err)
 		}
 		for _, entry := range entries {
@@ -98,15 +93,15 @@ func TestHaikuAgentsHaveNoEffort(t *testing.T) {
 			}
 			fm := extractAgentFrontmatter(string(content))
 			if fm == "" {
-				continue // no frontmatter — invariant does not apply
+				continue
 			}
-			if !haikuModelFrontmatterRegex.MatchString(fm) {
-				continue // not a haiku agent — invariant does not apply
-			}
-			if haikuEffortLineRegex.Match([]byte(fm)) {
-				t.Errorf("HAIKU_EFFORT_INERT: agent %q declares model: haiku AND an effort: field; "+
-					"Haiku does not support effort levels (effort is silently inert). Remove the effort: line.", path)
+			scanned++
+			if m := agentModelEffortLineRegex.FindAllString(fm, -1); len(m) > 0 {
+				t.Errorf("AGENT_MODEL_EFFORT_DECLARED: agent %q declares %v; subagents inherit the main session's model and effort — remove the key(s)", path, m)
 			}
 		}
+	}
+	if scanned == 0 {
+		t.Fatal("scanned no agent frontmatter — the guard read nothing")
 	}
 }

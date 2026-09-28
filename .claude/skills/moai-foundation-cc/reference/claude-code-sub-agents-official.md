@@ -76,7 +76,7 @@ Optional Fields:
 
 - tools: Comma-separated tool list. If omitted, inherits all available tools.
 
-- model: Model alias (sonnet, opus, haiku) or 'inherit' to use same model as main conversation. If omitted, uses configured default (usually sonnet).
+- model: Model alias (sonnet, opus, haiku) or 'inherit' to use same model as main conversation. If omitted, the model resolves as spawn-time `model` → frontmatter `model` → `CLAUDE_CODE_SUBAGENT_MODEL` → the main conversation's model.
 
 - permissionMode: Controls permission handling. Valid values: `default`, `plan`, `acceptEdits`, `bypassPermissions` (these are the only real Claude Code permission modes). The earlier list also named `dontAsk` and `ignore` — those are NOT real Claude Code modes and have been removed. NOTE: the spawn-time `mode` parameter on `Task`/`Agent` is **deprecated and ignored since Claude Code v2.1.213** — subagents inherit the parent session's permission mode, and a parent in `bypassPermissions`/`acceptEdits` takes precedence and cannot be overridden. A spawned child's read-only scoping therefore rests on **tool restriction**, and the criterion is that no tool in the list can write — never on the deprecated spawn-time `mode` parameter. Omitting Write/Edit/NotebookEdit is necessary but NOT sufficient: `Bash`, a write-capable MCP tool, and `Agent` each reach the working tree, and `Explore` — despite its read-only mission — carries `Bash`.
 
@@ -161,7 +161,7 @@ Available model options:
 - haiku: Fastest, most cost-effective
 - inherit: Use same model as main conversation
 
-If model field is omitted, uses the configured default (usually sonnet).
+If the model field is omitted, the subagent's model resolves as spawn-time `model` → frontmatter `model` → `CLAUDE_CODE_SUBAGENT_MODEL` → the main conversation's model, so it normally runs on the main conversation's model.
 
 ## Built-in Sub-agents
 

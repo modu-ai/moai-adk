@@ -8,8 +8,6 @@ description: |
   Match intent language-independently — do not require literal keyword matches.
   NOT for: writing code itself (delegated to leaf workers / lanes), Tier S/M single-milestone runs (orchestrator-direct serial is simpler), acting as the Agent Teams static layer (separate explicit-request experimental surface; `MODE_TEAM_UNAVAILABLE` is documented history), or invoking the orchestrator-exclusive user-question tool (return blocker reports; the orchestrator owns the user channel).
 tools: Read, Write, Edit, Bash, Grep, Glob, Agent, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__session_list, mcp__moai__goal_status, SendMessage, ListAgents
-model: inherit
-effort: high
 color: violet
 permissionMode: bypassPermissions
 memory: project
@@ -284,4 +282,4 @@ Static `skills:` preload stays minimal (token diet); load on demand with `Skill`
 
 ## Model/effort escalation
 
-> **Model/effort escalation**: deep-reasoning escalation is an ORCHESTRATOR decision (this agent cannot spawn further sub-agents beyond its chartered leaf-worker fan-out — the depth-2 seal binds). See `.claude/rules/moai/development/model-policy.md`.
+> **Model/effort escalation**: this agent declares no `model` or `effort` and inherits the main session's, so deeper reasoning means a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn further sub-agents beyond its chartered leaf-worker fan-out — the depth-2 seal binds). See `.claude/rules/moai/development/model-policy.md`.

@@ -219,9 +219,8 @@ func TestFlagBeatsWizard_MatchesProfilePrecedence(t *testing.T) {
 	}
 
 	opts := seedOptsFromFlags(cmd)
-	// Stand-in for the --profile seed at the same point in runInit; the helper
-	// must leave it alone (it is resolved by its own documented rule).
-	opts.Profile = "low"
+	// A field outside Page 3; the helper must leave it alone.
+	opts.ReportFormat = "md"
 	before := opts
 
 	// A wizard result that disagrees with every supplied flag.
@@ -236,10 +235,10 @@ func TestFlagBeatsWizard_MatchesProfilePrecedence(t *testing.T) {
 		opts.DesignEnabled != before.DesignEnabled {
 		t.Errorf("explicitly-supplied flags must survive the wizard result (the --profile rule):\n before: %+v\n after:  %+v", before, opts)
 	}
-	// The --profile seed is untouched by the Page-3 application — the helper
+	// A non-Page-3 field is untouched by the Page-3 application — the helper
 	// must not reach outside its own fields.
-	if opts.Profile != "low" {
-		t.Errorf("Profile = %q, want %q (applyWizardPage3ToOpts must not touch it)", opts.Profile, "low")
+	if opts.ReportFormat != "md" {
+		t.Errorf("ReportFormat = %q, want %q (applyWizardPage3ToOpts must not touch it)", opts.ReportFormat, "md")
 	}
 }
 

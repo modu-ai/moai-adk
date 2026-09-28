@@ -2,9 +2,10 @@
 id: SPEC-MODEL-MATRIX-CONFIG-001
 title: "Config retirement + effort actualization — 36-cell axis, profiles mirror, both effort channels"
 version: "0.1.0"
-status: draft
+status: superseded
+superseded_by: SPEC-AGENT-MODEL-INHERIT-001
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-29
 author: manager-spec
 priority: P1
 phase: "v3.1.0 target"
