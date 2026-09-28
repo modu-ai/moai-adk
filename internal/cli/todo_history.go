@@ -71,6 +71,15 @@ text: 'landing=<sha>' for a delivering commit the operator recorded with
 observed ref position, 'landing=-' when no record was made, and
 'landing=malformed' when a stored record fails validation.
 
+Before the card text, appended after the landing column, the time axis
+follows (SPEC-TODO-TRANSITION-STAMPS-001): 'live' lines carry picked_at and
+dropped_at; 'archived' lines carry picked_at, dropped_at, archived_at, and
+the done-time verdict record as 'verdict=<kind>@<ref>' ('verdict=-' when
+done closed the card without --require-landed, so no query answered). Every
+absent value renders '-'. The card text is always the LAST field, and the
+pre-existing fields keep their order and content, so scripts reading the
+prefix fields are unaffected.
+
 'moai todo history' with no id lists the archive most-recently-archived
 first, bounded at 20 entries ('--limit 0' lifts the bound).
 
@@ -116,6 +125,29 @@ func todoHistoryLandingCell(e *kanban.LandingEvidence) string {
 		return "landing=" + kanban.LandingMarkerRefHead
 	}
 	return "landing=" + e.SHA
+}
+
+// todoHistoryStampCell renders one transition stamp: the stored TEXT value,
+// or "-" when the stamp is absent — the same absent-value convention the
+// landing cell's `landing=-` established (SPEC-TODO-TRANSITION-STAMPS-001
+// REQ-TST-011).
+func todoHistoryStampCell(s *string) string {
+	if s == nil || *s == "" {
+		return "-"
+	}
+	return *s
+}
+
+// todoHistoryVerdictCell renders the done-time landing verdict record
+// (REQ-TST-011): `verdict=<kind>@<ref>` when the row carries a record, or
+// "verdict=-" when it does not. The ref rides in the SAME cell — the record
+// is the answer's coordinates, kind and ref together — and contains no tab,
+// so the line stays machine-parseable.
+func todoHistoryVerdictCell(v *kanban.LandingVerdict) string {
+	if v == nil {
+		return "verdict=-"
+	}
+	return "verdict=" + string(v.Verdict) + "@" + v.Ref
 }
 
 // runTodoHistory renders the fate answer or the archive listing.
@@ -183,15 +215,22 @@ func runTodoHistory(cmd *cobra.Command, args []string, limit int) error {
 func renderTodoHistoryLookup(out, errOut io.Writer, rec *kanban.BacklogRecord, id string) error {
 	for _, it := range rec.Items {
 		if it.ID == id {
-			_, err := fmt.Fprintf(out, "%s\tlive\t%s\t%s\t%s\n",
-				it.ID, it.State, todoHistoryLandingCell(it.Landing), todoPRCell(it.Text))
+			// The live line appends the time axis before the card text
+			// (REQ-TST-012): picked_at and dropped_at, "-" marking absence.
+			_, err := fmt.Fprintf(out, "%s\tlive\t%s\t%s\t%s\t%s\t%s\n",
+				it.ID, it.State, todoHistoryLandingCell(it.Landing),
+				todoHistoryStampCell(it.PickedAt), todoHistoryStampCell(it.DroppedAt),
+				todoPRCell(it.Text))
 			return err
 		}
 	}
 	if at := rec.ArchivedIndex(id); at >= 0 {
 		entry := rec.Archived[at]
-		_, err := fmt.Fprintf(out, "%s\tarchived\t%s\t%s\t%s\n",
-			entry.Item.ID, entry.Item.State, todoHistoryLandingCell(entry.Item.Landing), todoPRCell(entry.Item.Text))
+		_, err := fmt.Fprintf(out, "%s\tarchived\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			entry.Item.ID, entry.Item.State, todoHistoryLandingCell(entry.Item.Landing),
+			todoHistoryStampCell(entry.Item.PickedAt), todoHistoryStampCell(entry.Item.DroppedAt),
+			todoHistoryStampCell(entry.ArchivedAt), todoHistoryVerdictCell(entry.LandingVerdict),
+			todoPRCell(entry.Item.Text))
 		return err
 	}
 	_, err := fmt.Fprintf(out, "%s\tabsent\n", id)
@@ -222,8 +261,11 @@ func renderTodoHistoryListing(out, errOut io.Writer, rec *kanban.BacklogRecord, 
 	}
 	for i := 0; i < shown; i++ {
 		entry := rec.Archived[total-1-i]
-		if _, err := fmt.Fprintf(out, "%s\tarchived\t%s\t%s\t%s\n",
-			entry.Item.ID, entry.Item.State, todoHistoryLandingCell(entry.Item.Landing), todoPRCell(entry.Item.Text)); err != nil {
+		if _, err := fmt.Fprintf(out, "%s\tarchived\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			entry.Item.ID, entry.Item.State, todoHistoryLandingCell(entry.Item.Landing),
+			todoHistoryStampCell(entry.Item.PickedAt), todoHistoryStampCell(entry.Item.DroppedAt),
+			todoHistoryStampCell(entry.ArchivedAt), todoHistoryVerdictCell(entry.LandingVerdict),
+			todoPRCell(entry.Item.Text)); err != nil {
 			return err
 		}
 	}

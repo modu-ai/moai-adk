@@ -66,30 +66,72 @@ func seedHistoryFates(t *testing.T) {
 // point this line shape was designed around; `-` is the no-record case these
 // fixtures hold. The round trip that gives the column a value lives in
 // todo_landing_roundtrip_test.go.
+//
+// Extended by SPEC-TODO-TRANSITION-STAMPS-001 (card t1310): the live line
+// appends picked_at and dropped_at before the text (REQ-TST-012). The
+// pre-existing fields are still pinned byte-for-byte — the prefix contract —
+// while the stamps are asserted by shape: a queued card carries neither, and
+// the picked and dropped cards carry exactly the stamp their transition
+// wrote.
 func TestTodoHistoryReportsLiveCard(t *testing.T) {
 	seedHistoryFates(t)
 
-	cases := []struct {
-		id   string
-		want string
-	}{
-		{"t1", "t1\tlive\tqueued\tlanding=-\twrite the parser for the config file\n"},
-		{"t2", "t2\tlive\tpicked\tlanding=-\tpolish the docs landing page\n"},
-		{"t3", "t3\tlive\tdropped\tlanding=-\t[DROPPED — superseded by the parser rewrite] drop the legacy cache layer\n"},
+	// The queued card carries no stamps: exact line, stamps rendered '-'.
+	out, _, err := runTodo(t, "history", "t1")
+	if err != nil {
+		t.Fatalf("history t1: %v", err)
 	}
-	for _, tc := range cases {
+	want := "t1\tlive\tqueued\tlanding=-\t-\t-\twrite the parser for the config file\n"
+	if out != want {
+		t.Errorf("history t1 stdout = %q, want %q", out, want)
+	}
+
+	for _, tc := range []struct {
+		id      string
+		state   kanban.BacklogState
+		text    string
+		stampAt int // index of the field that must be a real stamp
+	}{
+		{"t2", kanban.BacklogStatePicked, "polish the docs landing page", 4},
+		{"t3", kanban.BacklogStateDropped, "[DROPPED — superseded by the parser rewrite] drop the legacy cache layer", 5},
+	} {
 		out, _, err := runTodo(t, "history", tc.id)
 		if err != nil {
 			t.Fatalf("history %s: %v", tc.id, err)
 		}
-		if out != tc.want {
-			t.Errorf("history %s stdout = %q, want %q", tc.id, out, tc.want)
+		fields := historyFields(out)
+		if len(fields) != 7 {
+			t.Fatalf("history %s carries %d fields, want 7: %q", tc.id, len(fields), out)
+		}
+		if fields[0] != tc.id || fields[1] != "live" || fields[2] != string(tc.state) || fields[3] != "landing=-" {
+			t.Errorf("history %s prefix fields = %v, want the pinned shape", tc.id, fields[:4])
+		}
+		// picked_at is field 4 and dropped_at field 5; the transition's own
+		// stamp is real, the other one renders '-'.
+		absent := 5
+		if tc.stampAt == 5 {
+			absent = 4
+		}
+		if fields[absent] != "-" {
+			t.Errorf("history %s stamp field %d = %q, want '-'", tc.id, absent, fields[absent])
+		}
+		if fields[tc.stampAt] == "" || fields[tc.stampAt] == "-" {
+			t.Errorf("history %s stamp field %d = %q, want a timestamp", tc.id, tc.stampAt, fields[tc.stampAt])
+		}
+		if fields[6] != tc.text {
+			t.Errorf("history %s text = %q, want %q (text stays last)", tc.id, fields[6], tc.text)
 		}
 	}
 }
 
 // AC-TAQ-002 — an archived card reports `archived` and the state it held at
 // archive time.
+//
+// Extended by SPEC-TODO-TRANSITION-STAMPS-001 (card t1310): the archived
+// line appends picked_at, dropped_at, archived_at, and the verdict cell
+// before the text (REQ-TST-011). This fixture card was archived without
+// stamps and without --require-landed, so the stamps read '-' and the
+// verdict reads 'verdict=-'; archived_at carries the archive instant.
 func TestTodoHistoryReportsArchivedCard(t *testing.T) {
 	seedHistoryFates(t)
 
@@ -97,9 +139,24 @@ func TestTodoHistoryReportsArchivedCard(t *testing.T) {
 	if err != nil {
 		t.Fatalf("history t4: %v", err)
 	}
-	want := "t4\tarchived\tqueued\tlanding=-\twire the banner into the shell\n"
-	if out != want {
-		t.Errorf("history t4 stdout = %q, want %q", out, want)
+	fields := historyFields(out)
+	if len(fields) != 9 {
+		t.Fatalf("history t4 carries %d fields, want 9: %q", len(fields), out)
+	}
+	if fields[0] != "t4" || fields[1] != "archived" || fields[2] != "queued" || fields[3] != "landing=-" {
+		t.Errorf("history t4 prefix fields = %v, want the pinned shape", fields[:4])
+	}
+	if fields[4] != "-" || fields[5] != "-" {
+		t.Errorf("history t4 picked/dropped fields = %v, want '-' (archived without stamps)", fields[4:6])
+	}
+	if fields[6] == "" || fields[6] == "-" {
+		t.Errorf("history t4 archived_at = %q, want the archive instant", fields[6])
+	}
+	if fields[7] != "verdict=-" {
+		t.Errorf("history t4 verdict field = %q, want 'verdict=-' (no --require-landed ran)", fields[7])
+	}
+	if fields[8] != "wire the banner into the shell" {
+		t.Errorf("history t4 text = %q, want the card text last", fields[8])
 	}
 }
 
@@ -330,7 +387,7 @@ func TestTodoHistoryDegradesWithoutArchiveTables(t *testing.T) {
 		if err != nil {
 			t.Fatalf("history t1: %v (stderr %q)", err, errOut)
 		}
-		if out != "t1\tlive\tqueued\tlanding=-\talpha work\n" {
+		if out != "t1\tlive\tqueued\tlanding=-\t-\t-\talpha work\n" {
 			t.Errorf("history t1 stdout = %q, want the live line — the degraded lookup must still answer", out)
 		}
 		if !strings.Contains(errOut, todoHistoryDegradedStoreNote) {
