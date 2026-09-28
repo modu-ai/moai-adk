@@ -32,3 +32,20 @@
 ## Residual-risk
 
 Claude 수신 재검사 없이 이관 브랜치를 `develop`에 합치면 새 카드 레인이 유지자 지침을 실제로 읽는지 확인되지 않는다. 직접 `codex -C`의 첫 도구 읽기는 런처의 사전 developer-instructions 주입과 우선순위·도구 가용성이 다르다. 현재 이관은 카드 브랜치에만 있으며, 이 판정서는 t1290 완료 또는 배포 승인으로 쓰지 않는다.
+
+## M2 완결 보강 (worker-61, 14:45 KST — AC-LIR-009 클로즈)
+
+재개 지시 수령 후 제 머지 HEAD `646ae8302` 에서 외부 실행분(6524d26cc 흡수 + 0ab480d9d~a8496d933, 리드 인지 상태)을 **감사-판독으로 검증**했다(재실행 아님 — 발산 보고 규율, 리드 보고에 명시):
+
+- `git show HEAD:AGENTS.local.md | wc -m` → `37061` (≤39,999, AC-IFU-007 ✓) · `git ls-files AGENTS.local.md CLAUDE.local.md` → `AGENTS.local.md` 1행 (AC-LIR-007 ✓) · `git show HEAD:CLAUDE.local.md` → exit 128 (구파일 소멸 ✓) — 모두 이번 실행·이 트리.
+- **AC-LIR-009 Claude 프로브 (GLM 게이트웨이, 429 리셋 13:17 이후, 1턴·timeout 180)**:
+  ```
+  $ timeout 180 claude -p "…(1) is AGENTS.md loaded…; (2) quote the exact branch name that AGENTS.local.md §0.1 names as the tree whose copy is canonical…, or NOT_PRESENT…" --model claude-haiku-4-5-20251001
+  LOADED
+  `develop`
+  probe-exit=0
+  ```
+  → control present + §0.1 판별값 `develop` 수신 — **내용 교체 뒤에도 수신 생존**. 판별값은 이관된 실제 파일에서만 얻을 수 있다(TANGO9 fixture 는 소멸 상태).
+- 문서 절반: 옛 부정 문장 `worktree session does not receive` → root+template AGENTS.md/CLAUDE.md 전면 grep 0 (exit 2) · 새 문면 「worktree-root AGENTS.local.md 를 다른 작업 전에 전문 읽는다 + MoAI Codex launcher 는 주입」 확인.
+
+**M2+M3 상태: AC-LIR-001~009 전부 통과.** 잔여: develop 통합(병합 창)과 그 CI 판정. 본 보강은 원 판정서(외부 실행분)의 Gaps 중 AC-LIR-009 행을 닫는다.
