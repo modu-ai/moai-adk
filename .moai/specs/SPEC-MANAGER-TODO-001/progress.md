@@ -22,7 +22,7 @@ $ git grep -i "mission.governor" -- . | wc -l
      373
 ```
 
-Live-surface baseline: 262 hits / 95 files, enumerated per file:line in research.md §B. The 111-hit remainder under `.moai/reports/**` + `.moai/specs/**` is historical and dispositioned out of scope.
+Live-surface baseline: 262 hits / 105 unique files (hit count: the sweep piped to `wc -l` = 262; unique-file aggregation: same command piped through `cut -d: -f1 | sort -u | wc -l` = 105 — the iter-1 draft's "95 files" was an under-count, corrected per audit finding D7), enumerated per file:line in research.md §B. The 111-hit remainder under `.moai/reports/**` + `.moai/specs/**` is historical and dispositioned out of scope.
 
 3. **Three-copy confirmation**:
 
@@ -63,7 +63,7 @@ $ git grep -n -i "mission.governor" -- internal/web/
 
 ### Phase-1 SKIP rationale
 
-Cross-reference: plan.md §I DP1. The plan-phase discovery round (Socratic/clarify, workflow phase 1) is satisfied by the approval proxy — the operator-approved card plus the lead's explicit plan-commencement directive dated 2026-09-29 — recorded verbatim in plan.md §I; no AskUserQuestion channel exists inside a lane, so no clarification round was run. The one genuinely open decision is not guessed: it is carried as `[NEEDS CLARIFICATION: codex read-only role roster disposition]` in plan.md §B/§I and research.md §C (never in spec.md/acceptance.md), and gates run-phase M2 step 3.
+Cross-reference: plan.md §I DP1. The plan-phase discovery round (Socratic/clarify, workflow phase 1) is satisfied by the approval proxy — the operator-approved card plus the lead's explicit plan-commencement directive dated 2026-09-29 — recorded verbatim in plan.md §I; no AskUserQuestion channel exists inside a lane, so no clarification round was run. The one open decision (DP2, roster disposition) was escalated, not guessed — it was carried as a clarification marker through iteration 1 and is now RESOLVED by the lead (2026-09-29, rename-registered, zero removals; plan.md §I DP2, research.md §C, design D-3). Zero `[NEEDS CLARIFICATION]` markers remain in the artifact set (measured post-repair: grep returns nothing).
 
 ### Decision Point 1 disposition
 
@@ -71,20 +71,49 @@ DP1 (plan-phase entry): approval proxy = operator-approved card t1306 + lead's e
 
 ### Audit-ready signal
 
-```yaml
-plan_complete_at: 2026-09-29T00:00:00Z
-plan_status: audit-ready
-```
-
-(`plan_complete_at` timestamp is set to the plan-phase authoring date; the exact commit SHA lands with the artifact commit — the sync-phase audit reads the SPEC directory's git history.)
+_<withheld — the lane appends the audit-ready signal lines after iteration 2 passes; the iter-1 draft carried a provisional signal that was removed at repair time (iter1 FAIL 0.80, so `plan_status: audit-ready` does not hold)_
 
 ### Plan-phase artifact set (Tier L)
 
 - `spec.md` — 12-field frontmatter, 18 REQs (GEARS), Out of Scope (5 H3 topics)
-- `plan.md` — milestones M1-M5, pre-flight, self-verification, decision points DP1-DP3, 1 clarification marker
+- `plan.md` — milestones M1-M5, pre-flight, self-verification, decision points DP1-DP3 (DP2 resolved at repair round)
+
+### Iteration 1 verdict + repair round (2026-09-29)
+
+**Iter-1 verdict**: FAIL 0.80 (Tier L threshold 0.85) + 3 blocking defects; report `.moai/reports/t1306/plan-audit-iter1.md` (measured against `e11110c60`). Repair round authorized by the lane.
+
+**DP2 resolution applied** (lead decision 2026-09-29, option a — rename-registered, never removed): plan.md §I DP2 carries the verbatim decision + the four surfaces (`codex_audit_mcp.go:199`, `agents-codex.yaml:83,489`, catalogue rule row, fingerprint prose); plan.md §B item 1 rewritten; M2 step 3 gate reads resolved; design D-3 rewritten (removal disposition superseded); research.md §C + §G updated; acceptance.md DoD item 3 updated; spec.md REQ-MT-006/017 reworded to zero-removals. Zero `[NEEDS CLARIFICATION]` markers remain:
+
+```
+$ grep -rn "NEEDS CLARIFICATION" .moai/specs/SPEC-MANAGER-TODO-001/
+(no output — exit 1)
+```
+
+**Defect repairs**:
+
+- D1 (blocking): REQ-MT-005 + AC-MT-005 now carry the third allowed disposition **RENAME-at-next-regen** with a mechanical codemaps arm (count equals baseline 8, disposition literal present in the §B table, D-6 conditional-flip arm); research.md §G's "either is consistent" claim corrected.
+- D2 (blocking): REQ-MT-003's sweep-refresh clause removed (property owned by REQ-MT-005/AC-MT-005 at M2 closure); AC-MT-003 relabeled to verify the deletion clause it claims.
+- D3 (blocking): design D-11 added — processing means = `moai-kanban-foreman` pattern (pick → isolated in-session Agent() worker → completion judged on disk evidence read → done; failure path unpicks to `queued` with labelled non-finding; explicit no-factory-run/lease/slot boundary); REQ-MT-007 reworded onto that contract; AC-MT-009 extended with the evidence-absent failure arm and the entry-point arm (D6).
+- D4: REQ-MT-009 active prohibition form; REQ-MT-012 `Where`→`When`; REQ-MT-014 capability-gate phrasing.
+- D5: AC-MT-001 body checks made mechanical (keyword counts + sub-role heading grep); AC-MT-014 pins the D-8 canonical string; AC-MT-015 converted to counted grep (0 hits, exit 1) + lease-dir snapshot; AC-MT-017 converted to call-site consumption grep + poisoned-value behavior test.
+- D6: AC-MT-009 entry-point arm (alias routing check + `--auto` in help output).
+- D7: "95 files" corrected to 105 unique files with the aggregation command, re-measured this session before the edit (262 hits / 105 files) — research.md §B + progress.md above.
+- D8: plan.md M4 verify row corrected to REQ-MT-014..017 / AC-MT-017..019.
+- D10: plan.md §B rewritten (marker removed; acceptance.md citation restated accurately).
+- D11: AC-MT-011 non-cache arm added (revived-owner re-measurement between consecutive decisions).
+
+**Post-repair lint**:
+
+```
+$ ~/go/bin/moai spec lint SPEC-MANAGER-TODO-001
+✓ No findings — all SPEC documents are valid
+```
+
+**Repair commit**: <see git log — this section is finalized at commit time; the lane reads the SHA from the commit message trail.>
+
 - `acceptance.md` — 22 ACs (AC-MT-001..022), all mechanical; edge cases; quality gates; REQ→AC traceability map (complete, 18/18)
-- `research.md` — measured current state, 262-hit baseline enumeration, contract-conflict report, t1240 seam
-- `design.md` — decisions D-1..D-10
+- `research.md` — measured current state, 262-hit baseline enumeration, contract-conflict report (resolved), t1240 seam
+- `design.md` — decisions D-1..D-11
 
 ## §E.2 Run-phase Evidence
 

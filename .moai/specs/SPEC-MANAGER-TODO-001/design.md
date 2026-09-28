@@ -12,9 +12,9 @@ Frontmatter disposition: `tools` widens beyond the judgment-only set to support 
 
 Measured: `/moai:todo` is a thin alias routing to `gtd` (`.claude/commands/moai/todo.md` → `Skill("moai") with arguments: gtd $ARGUMENTS`), and the CLI verbs live under `moai todo` / the gtd surface (`internal/cli/todo.go`). The `--auto` flag is implemented once on the todo CLI command tree and works through both entry points (`/moai:todo --auto` and the gtd skill routing). No second implementation at the skill layer: the slash command stays a thin router (thin-command pattern), the skill/workflow text documents the serial contract, the CLI owns the mechanics.
 
-## D-3 — Codex read-only role roster: remove manager-todo (reported conflict — needs lead confirmation)
+## D-3 — Codex read-only role roster: RESOLVED — rename-registered, never removed (lead decision 2026-09-29)
 
-Full analysis in research.md §C. Chosen disposition: manager-todo exits the four-role read-only roster (`codex_audit_mcp.go`, `codex_role_fingerprint.go`, `rosterguard`, `agents-codex.yaml` role_sandbox, and the catalogue rule row). The roster shrinks to three read-only roles. Consequence (capability removal on the Codex path) is reported to the lead; `[NEEDS CLARIFICATION: codex read-only role roster disposition]` gates run-phase entry on this decision. The judgment sub-role itself remains reachable: goal workflow dispatch (Claude path), receipt schema unchanged.
+The measured conflict (all four surfaces put `mission-governor` in the read-only role roster: `codex_audit_mcp.go:199`, `agents-codex.yaml:83/489`, the catalogue rule row, the fingerprint prose) is resolved by lead decision 2026-09-29, option (a): **the roster keeps the role — mission-governor is renamed-registered as `manager-todo`, never removed.** The sealed-snapshot + read-only contract continues as manager-todo's sub-role, including on the Codex path. All four measured surfaces update in the rename direction with zero removals. The roster-renewal coupling cost of keeping a dispatch-owning agent registered in a read-only roster is explicitly accepted by the lead (the sub-role stays read-only by prompt contract; roster entries are re-affirmed at the next roster review rather than re-derived). The earlier removal disposition recorded in the iter-1 draft is superseded; research.md §C carries the same resolution. No run-entry blocker remains from this decision.
 
 ## D-4 — Pickup ownership: two-channel liveness measurement, conservative default
 
@@ -39,7 +39,17 @@ The per-card /clear guidance (REQ-MT-011) is emitted by the `--auto` command its
 
 ## D-8 — Batch approval reconciliation (operator-act doctrine)
 
-The existing doctrine: "promotion is the operator's act, always." `--auto` reconciles by making the **invocation** the operator's act: the operator who types `--auto` has, by that act, approved serial consumption of the queue in queue order — nothing else is promoted. The command derives its authority exclusively from the invocation event, never from queue emptiness, card readiness, or a peer's request (the anti-patterns the doctrine names). The skill text states this explicitly; the CLI implements no reordering or admission logic beyond queue order.
+The existing doctrine: "promotion is the operator's act, always." `--auto` reconciles by making the **invocation** the operator's act: the operator who types `--auto` has, by that act, approved serial consumption of the queue in queue order — nothing else is promoted. The command derives its authority exclusively from the invocation event, never from queue emptiness, card readiness, or a peer's request (the anti-patterns the doctrine names). The skill text states this explicitly, carrying this canonical sentence (the string AC-MT-014 pins): "`/moai:todo --auto` is the operator's batch approval: it authorizes serial consumption of the queue in queue order and nothing else." The CLI implements no reordering or admission logic beyond queue order.
+
+## D-11 — Card processing means: the foreman pattern (in-session worker dispatch, evidence-read completion)
+
+REQ-MT-007's "process" stage is defined by reusing the existing `moai-kanban-foreman` precedent (reuse-ladder step 2 — the pattern already exists at `.claude/skills/moai-kanban-foreman/`): **pick → dispatch one isolated in-session `Agent()` worker for the card → judge completion by reading the worker's disk evidence (progress record / verdict path), never on the worker's own claims → record the `done` transition on that evidence.** The completion-observation mechanism is read-on-read: the cycle transitions a card to `done` only after reading evidence the worker wrote to disk, per the completion-is-read-never-trusted doctrine.
+
+Failure path: a worker that dies mid-card, or whose evidence file is absent or unreadable at collection, leaves the card **unpicked** (returned to `queued` via the existing `unpick` verb) with a labelled non-finding in the cycle output — never silently `done`, never left picked by the `--auto` session.
+
+Boundary (restates REQ-MT-013): this dispatch is **in-session `Agent()` fan-out owned by the `--auto` CLI process — it creates no factory run, no factory lease, and no factory slot**, and it is not the factory messaging path; the factory integration remains a seam for a follow-up card only.
+
+Session reference for guidance emission (closes the iter-1 residual-risk note on D-7): the per-card /clear guidance names the session that invoked `--auto` — the operator's session hosting the cycle and the next card's dispatch — not the ephemeral worker session.
 
 ## D-9 — GTD absorption: sub-role, receipt schema frozen
 
@@ -47,4 +57,4 @@ The goal workflow's judgment clause names manager-todo; the judgment sub-role se
 
 ## D-10 — Milestone order (decision-reversibility note)
 
-The card's suggested order M1→M5 is kept with one justification: M1 (rename) is mechanically the lowest-uncertainty milestone but is a **naming dependency of every other milestone** — M2's sweep checklist, M3's CLI prose, M4's roster and goal-workflow text, and M5's docs all reference the post-rename name, so landing the rename first prevents every later milestone from re-touching files. The genuinely high-change-likelihood decisions (pickup semantics D-4/D-5, roster disposition D-3) are front-loaded in this design document and in plan.md §F's milestone risk notes, so human review lands there first.
+The card's suggested order M1→M5 is kept with one justification: M1 (rename) is mechanically the lowest-uncertainty milestone but is a **naming dependency of every other milestone** — M2's sweep checklist, M3's CLI prose, M4's roster and goal-workflow text, and M5's docs all reference the post-rename name, so landing the rename first prevents every later milestone from re-touching files. The genuinely high-change-likelihood decisions (pickup semantics D-4/D-5, processing means D-11) are front-loaded in this design document and in plan.md §F's milestone risk notes, so human review lands there first.

@@ -10,7 +10,7 @@ Method: DDD (ANALYZE-PRESERVE-IMPROVE) — the rename preserves the judgment sub
 
 ## B. Known Issues
 
-- `[NEEDS CLARIFICATION: codex read-only role roster disposition]` — design D-3 removes manager-todo from the Codex read-only role roster, which removes the mission-judgment role from the Codex path. The lead must confirm this removal (or elect the larger sub-role-sandbox redesign) before run-phase entry. Tracked here and in research.md §C; **not** in spec.md/acceptance.md.
+- **DP2 (roster disposition) — RESOLVED (lead, 2026-09-29):** the codex read-only role roster keeps the role renamed-registered as `manager-todo`, zero removals; sealed-snapshot + read-only continues as the sub-role. See plan.md §I DP2, research.md §C, design D-3. acceptance.md §D.8 cites it as a DoD gate — resolved there. No run-entry blocker remains.
 - Parallel factory card (`WT-factory-self-dispatch`, M4-M7 pending) overlaps `internal/cli/todo.go` — absorbed by the serial merge window; a semantic clash is a run-phase blocker report, never a forced merge (research.md §D).
 - rosterguard fixture strings and delegationmap staleness comments enumerate the old name in prose that also encodes test expectations — renaming them is test-editing, not prose editing; run-phase must re-run the affected package tests, not trust the sweep.
 
@@ -50,15 +50,15 @@ Risk: rosterguard/delegationmap/retained-agents Go surfaces break at compile/tes
 
 1. Re-run the baseline sweep; reconcile per-file against research.md §B (dispositions: RENAME / FROZEN / HIST).
 2. Update every RENAME hit: Go role registries (`codex_audit_mcp.go`, `codex_role_fingerprint.go`, rosterguard, delegationmap, `retained_agents.go`, `catalog.yaml`, mission receipt prose, `goal.go` flag help), test expectations, rules files + template mirrors, CLAUDE.md/AGENTS.md.tmpl, goal workflow skill + mirror.
-3. Apply the D-3 roster disposition consistently across the four roster surfaces (gated on the clarification being resolved).
+3. Apply the D-3 resolution (rename-registered, zero removals — lead decision 2026-09-29) consistently across the four roster surfaces; the DP2 gate is satisfied and no longer blocks this step.
 4. Codemaps: record pending-regen (design D-6).
 5. Verify REQ-MT-005..006 / AC-MT-005..008 — the sweep grep returns only dispositioned hits.
 
 ### M3 — `/moai:todo --auto` serial mode (Priority High)
 
-1. CLI: `--auto` flag on the todo command tree (design D-2); serial cycle implementation against current verbs only; pickup selection per REQ-MT-008/010 (two-channel liveness per D-4; positive state vocabulary per D-5); /clear guidance emission per D-7; batch-approval semantics per D-8.
-2. Skill/command text: document the serial contract and the batch-approval reconciliation in the todo/gtd workflow text (thin-command pattern — mechanics in CLI).
-3. RED-first: table-driven tests for the pickup predicate over all known states; liveness fixtures for registry-dead/lsof-clean, registry-alive, lsof-hit; serial-order test; guidance-emission test; no-factory-lease assertion (grep + behavior test).
+1. CLI: `--auto` flag on the todo command tree (design D-2); serial cycle implementation following the D-11 foreman contract (pick → isolated in-session `Agent()` worker dispatch → completion judged on disk evidence read → done; failure path unpicks back to `queued` with a labelled non-finding); pickup selection per REQ-MT-008/010 (two-channel liveness per D-4; positive state vocabulary per D-5); /clear guidance emission per D-7/D-11 (names the invoking session); batch-approval semantics per D-8.
+2. Skill/command text: document the serial contract and the batch-approval reconciliation in the todo/gtd workflow text, carrying the D-8 canonical sentence; add the cross-reference from the kanban-dispatch doctrine side so its "promotion is the operator's act" readers learn the `--auto` invocation-is-batch-approval reconciliation (iter-1 residual-risk recommendation).
+3. RED-first: table-driven tests for the pickup predicate over all known states; liveness fixtures for registry-dead/lsof-clean, registry-alive, lsof-hit, plus the revived-owner non-cache arm (AC-MT-011); serial-order test including the worker-death/evidence-absent failure arm (AC-MT-009b); guidance-emission test; no-factory-lease counted grep + behavior test; poisoned-Jev-value test (AC-MT-017).
 4. Verify REQ-MT-007..013 / AC-MT-009..016.
 
 Risk: highest-change-likelihood milestone (new interface + user-visible behavior) — plan review should focus here and on D-4/D-5.
@@ -68,7 +68,7 @@ Risk: highest-change-likelihood milestone (new interface + user-visible behavior
 1. Agent body Jev boundary section (REQ-MT-014/015) — already drafted in M1's body; this milestone verifies it against the grade-3 list with a body-content test (forbidden-authority phrases absent).
 2. Goal workflow text + mirror name manager-todo (REQ-MT-016); receipt contract prose updated; `--governor-receipt` flag help updated (schema untouched, D-9).
 3. Codex roster disposition applied (from M2 step 3); conflict report finalized in research.md §C.
-4. Verify REQ-MT-016..017 / AC-MT-017..019.
+4. Verify REQ-MT-014..017 / AC-MT-017..019.
 
 ### M5 — docs-site 4-locale + README 4-locale sync (Priority Medium)
 
@@ -101,5 +101,5 @@ M1 → M2 → {M3, M4} → M5. M3 and M4 are independent of each other. M5 depen
 ## I. Decision Points
 
 - **DP1 — plan-phase entry (approval proxy).** The card was operator-approved, and the lead issued the explicit plan-commencement directive dated 2026-09-29 ("plan 착수"). Recorded as the approval proxy; no AskUserQuestion is available or required inside a lane. Disposition: plan-phase proceeded on this proxy; run-phase entry still requires the standing kickoff gate.
-- **DP2 — codex read-only role roster disposition.** Open; `[NEEDS CLARIFICATION: codex read-only role roster disposition]` (research.md §C, design D-3). Must be resolved by the lead before run-phase M2 step 3.
+- **DP2 — codex read-only role roster disposition.** RESOLVED (lead, 2026-09-29, verbatim obligation): the roster **keeps the role — mission-governor is renamed-registered as `manager-todo`, never removed**; the sealed-snapshot + read-only contract continues as manager-todo's sub-role; all four measured surfaces update in the rename direction with zero removals (`internal/cli/codex_audit_mcp.go:199` · `agents-codex.yaml:83,489` · the catalogue rule row · the fingerprint prose); the roster-renewal coupling cost is explicitly accepted by the lead. Gate wiring unchanged — it now reads resolved; no run-entry blocker remains from DP2. Carried in design D-3 and research.md §C; acceptance.md §D.8 DoD item 3 cites the resolution.
 - **DP3 — M1/M2 commit granularity.** One unit or two commits depending on whether the interim state can go test-green; run-phase decides on measurement (M1 risk note).
