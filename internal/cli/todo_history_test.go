@@ -618,6 +618,12 @@ func goldenReplay(t *testing.T, root string) map[string]string {
 // deliberate repair that card dispatched). The other five goldens are
 // untouched pre-verb captures; list.txt now pins the post-t384 render, and
 // a future silent drift of the default render still fails here.
+//
+// Provenance update — card t1310: list-json.txt was RE-CAPTURED after the
+// `list --json` record gained the transition-stamp keys (picked_at /
+// dropped_at on items, archived_at on archive entries) — the deliberate,
+// AC-tested extension this SPEC dispatched. The other five goldens are
+// unchanged; a future silent drift of the JSON disclosure still fails here.
 func TestLiveReadersUnchangedByHistoryVerb(t *testing.T) {
 	root := replayGoldenFixture(t)
 	streams := goldenReplay(t, root)
