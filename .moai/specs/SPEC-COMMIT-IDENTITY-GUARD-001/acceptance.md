@@ -32,10 +32,10 @@
 
 **Covers**: maps REQ-CIG-001
 
-**Given** 가드가 켜져 있고 탐침 seam 이 호출 횟수를 센다
+**Given** 가드가 켜져 있고 저장소 범위·신원 탐침 seam 이 각각 호출 횟수를 센다
 **When** `git status`, `git log --oneline`, `git diff`, `echo 'git commit -m x'`, 주석
 `# git commit`, heredoc 본문 안의 `git commit` 이 각각 들어올 때
-**Then** 모든 경우 결정은 allow 이고 탐침 호출 수는 **0** 이다.
+**Then** 모든 경우 결정은 allow 이고 범위·신원 탐침 호출 수는 각각 **0** 이다.
 
 ## AC-CIG-004 — 명령 수준 재정의가 검사된다
 
@@ -49,16 +49,28 @@
 (d) `git -c user.email=t@t.t commit -m x`,
 (e) `git commit --author="t <t@t.t>" -m x`
 **Then** 다섯 경우 모두 deny 다. 같은 모양에 목록 밖 이메일을 넣은 대조 5 행은 모두 allow 다.
+추가 짝 대조는 우선순위를 구분한다: 저장소 `user.email` 설정이 `t@t.t` 이고 명령 밖
+`GIT_*_EMAIL` 환경 값은 없는 상태에서
+`GIT_AUTHOR_EMAIL=dev@real-host.invalid GIT_COMMITTER_EMAIL=dev@real-host.invalid git commit -m x`
+와 `git -c user.email=dev@real-host.invalid commit -m x` 는 두 역할이 모두 대체돼 allow 다.
+저장소 `user.email=dev@real-host.invalid` 가 있는 상태에서 `EMAIL=t@t.t git commit -m x` 는
+Git 이 그 `EMAIL` 을 쓰지 않으므로 allow, 같은 저장소의 `GIT_AUTHOR_EMAIL=t@t.t git commit -m x`
+는 deny 다. 반대로 기본 author 만 `t@t.t` 인 상태에서
+`git commit --author="t <dev@real-host.invalid>" -m x` 는 author 가 대체되고 committer 가
+목록 밖이면 allow 다. 대조값은 가드 자신의 테스트 파일에만 두고 AC-CIG-010 열거에서 제외한다.
 
 ## AC-CIG-005 — 실신원은 통과한다 (양성 대조)
 
 **Covers**: maps REQ-CIG-004, REQ-CIG-009
 
 **Given** 가드가 켜져 있고, `t.TempDir()` 임시 저장소를 **프로젝트 디렉터리이자 명령 cwd** 로 두고
-(D8 범위 일치), 그 저장소에 `cmd.Env` 로만 비픽스처 신원을 준 상태에서 (설정 파일 쓰기 없음)
+(D8 범위 일치), 비병렬 테스트의 실제 `git var` 탐침 seam 에 넘기는 환경 목록(`cmd.Env`)에만
+비픽스처 신원을 준 상태에서 (훅 프로세스 환경·설정 파일 쓰기 없음)
 **When** 실제 `git var` 탐침으로 `git commit -m x` 를 평가할 때
-**Then** 결정은 allow 다. 같은 저장소에 `cmd.Env` 로 `t@t.t` 를 준 짝 테스트는 deny 다 — 두 테스트가
-짝으로 있어야 실제 해석 경로가 판별에 쓰였음이 선다.
+**Then** 결정은 allow 이고, 탐침이 실제로 돌려준 author·committer 이메일이 주입한 비픽스처
+이메일과 같으며, `.moai/logs/commit-identity-guard-audit.log` 에 추가된 줄은 0 이다. 같은
+저장소의 탐침 `cmd.Env` 로 `t@t.t` 를 준 짝 테스트는 deny 다 — 두 테스트가 짝으로 있어야
+실제 해석 경로가 판별에 쓰였음이 선다.
 
 ## AC-CIG-006 — 정확 일치만 거부한다
 
@@ -73,13 +85,15 @@
 
 **Covers**: maps REQ-CIG-006
 
-**Given** 가드가 켜져 있고, 탐침이 (a) 오류 종료, (b) 시간 상한 초과, (c) `<` `>` 가 없는 출력,
-(d) 존재하지 않는 cwd, (e) 대상 쪽 `git rev-parse --git-common-dir` 실패, (f) 프로젝트 쪽
-`git rev-parse --git-common-dir` 실패 중 하나를 겪도록 만든 상태에서(모든 경우 신원 탐침이 돌려주는
-이메일은 `t@t.t` — 실패가 거부로 새지 않음을 보이기 위해)
+**Given** 가드가 켜져 있고, 신원 탐침의 (a) 오류 종료, (b) 시간 상한 초과, (c) `<` `>` 가
+없는 출력, (d) 존재하지 않는 cwd, 범위 탐침의 (e) 대상 쪽 실패, (f) 프로젝트 쪽 실패 중
+하나를 겪도록 만든 상태에서(유효한 명령 수준 거부 이메일 없음)
 **When** `git commit -m x` 가 들어올 때
 **Then** 여섯 경우 모두 결정은 allow 이고, `t.TempDir()` 프로젝트 루트의
 `.moai/logs/commit-identity-guard-audit.log` 에 원인을 담은 줄이 정확히 1 줄 추가된다.
+짝 대조는 범위 탐침이 같은 common dir 을 돌려준 뒤 신원 탐침이 실패하는 상태에서
+`GIT_AUTHOR_EMAIL=t@t.t git commit -m x` 를 넣는다. 이 경우 명령 수준 author 거부 이메일이
+양성 증거이므로 deny 이고, 위 감사 로그에 탐침 실패 줄은 추가되지 않는다.
 
 ## AC-CIG-008 — 꺼져 있으면 가드가 불리지 않는다
 
@@ -87,7 +101,7 @@
 
 **Given** 설정의 `workflow.commit_identity_guard.enabled` 가 `false` 인 경우와 키가 없는 경우
 **When** 탐침이 픽스처 신원을 돌려주는 상태에서 pre-tool 핸들러가 `git commit -m x` 를 처리할 때
-**Then** 두 경우 모두 결정은 allow 이고 탐침 호출 수는 0 이다. 또한 `internal/config` 기본값 테스트가
+**Then** 두 경우 모두 결정은 allow 이고 범위·신원 탐침 호출 수는 각각 0 이다. 또한 `internal/config` 기본값 테스트가
 `Workflow.CommitIdentityGuard.Enabled == false` 를 단언한다.
 
 ## AC-CIG-009 — 설정 목록은 내장 목록에 더해진다; 템플릿·로컬 설정
@@ -107,11 +121,13 @@
 **Covers**: maps REQ-CIG-007
 
 **Given** run base 에서 `plan.md` §B.1 의 열거 명령을 실행한 출력(리터럴 집합 S)이 증거로 보존돼 있다
-**When** 드리프트 테스트가 같은 술어로 저장소 `*_test.go` 를 훑을 때
+**When** 드리프트 테스트가 같은 술어로 저장소 `*_test.go` 중
+`internal/hook/commit_identity_guard*_test.go` 를 제외한 파일을 훑을 때
 **Then** 테스트는 통과하고, 내장 목록 ⊇ S 이다. 변이 대조로 내장 목록에서 `t@t.t` 한 줄을 지운
 트리에서는 드리프트 테스트가 실패하며 실패 메시지가 `t@t.t` 를 이름으로 지목한다. 드리프트
-테스트가 0 개 파일을 훑고 통과하는 경우는 실패로 처리한다(빈 결과집합 통과 금지 — 테스트가 훑은
-파일 수 ≥ 1 과 찾은 리터럴 수 ≥ 1 을 단언).
+테스트가 0 개 파일을 훑고 통과하는 경우는 실패로 처리한다(빈 결과집합 통과 금지 — 제외 후
+훑은 파일 수 ≥ 1 과 찾은 리터럴 수 ≥ 1 을 단언). 대조 이메일은 제외된 가드 테스트 파일에
+존재해도 내장 목록으로 승격되지 않는다.
 
 ## AC-CIG-011 — 네 변이가 각각 테스트를 실패시킨다
 
@@ -132,12 +148,17 @@
 
 **Covers**: maps REQ-CIG-008
 
-**Given** 가드가 켜져 있다
-**When** (a) 파괴 명령 거부 목록에도 걸리는 명령, (b) 브랜치 가드에 걸리는 명령이 픽스처 신원으로
-들어올 때, 그리고 (c) PowerShell 도구로 분류 불가 간접 구문(예: 호출 연산자로 계산된 명령 이름)을
+**Given** 가드가 켜져 있고, (c)는 autonomy `contract` 모드·통합 브랜치 `develop` 설정에서
+push 대상 develop 커밋에 추적 중인 카드 SPEC과 보고서 쌍이 들어 있지만 필수 2차 리뷰 증거가
+없는 상태다(`checkClosurePush` 가 `second_review_not_performed` 로 거부하는 fixture)
+**When** (a) 파괴 명령 거부 목록에도 걸리는 명령, (b) 브랜치 가드에 걸리는 명령,
+(c) 통합 잠금 가드 뒤에 배선된 기존 셸 가드 중 push readiness 가 거부하는
+`git commit -m x && git push origin develop` 이 픽스처 신원으로
+들어올 때, 그리고 (d) PowerShell 도구로 분류 불가 간접 구문(예: 호출 연산자로 계산된 명령 이름)을
 통해 커밋하려는 명령이 들어올 때
-**Then** (a)(b) 의 거부 사유는 앞선 가드의 것이고 `TEST_IDENTITY_VIOLATION:` 이 아니다; (c) 는
-allow 이며 감사 로그에 분류 불가 구문 한 줄이 남는다. 또한
+**Then** (a)(b)(c) 의 거부 사유는 앞선 가드의 것이고 `TEST_IDENTITY_VIOLATION:` 이 아니다;
+(d) 는 allow, 범위·신원 탐침 호출 수 각각 0 이며
+`.moai/logs/commit-identity-guard-audit.log` 에 분류 불가 구문 한 줄만 추가된다. 또한
 `grep -rn '"TEST_IDENTITY_VIOLATION"' internal/hook --include=*.go` 가 비테스트 파일에서 정확히 1 건
 (정의 1 곳)을 적중한다.
 

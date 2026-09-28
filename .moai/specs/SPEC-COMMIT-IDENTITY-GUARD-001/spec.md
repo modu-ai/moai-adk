@@ -1,7 +1,7 @@
 ---
 id: SPEC-COMMIT-IDENTITY-GUARD-001
 title: "커밋 시점 테스트 신원 가드 — 테스트 픽스처 신원으로 커밋을 만드는 셸 명령을 PreToolUse 에서 거부한다"
-version: "0.1.1"
+version: "0.1.3"
 status: draft
 created: 2026-09-28
 updated: 2026-09-28
@@ -22,6 +22,8 @@ tags: "hook, pretooluse, guard, git-identity, commit, test-fixture, fail-open"
 |---------|------|--------|--------|
 | 0.1.0 | 2026-09-28 | manager-spec | 최초 plan-phase 초안 (card t1289). 원인 규명 `.moai/reports/t1289/root-cause.md` 의 측정을 입력으로 삼고, 레인이 이미 내린 설계 결정 7건(§4)을 결정으로 기록했다 |
 | 0.1.1 | 2026-09-28 | manager-spec | 레인 결정으로 저장소 범위 `[NEEDS CLARIFICATION]` 해소 — (b) 이 프로젝트와 git common dir 을 공유하는 저장소만 거부(D8). REQ-CIG-010 추가, REQ-CIG-006 실패 원인에 common dir 해석 실패 추가, AC-CIG-013·014 추가 |
+| 0.1.2 | 2026-09-28 | manager-spec | 계획 감사 D1-D9 해소: 열거 제외, 탐침 게이트, 역할별 재정의 우선순위, 원문 추출, 배선·감사 경로를 일치시킴 |
+| 0.1.3 | 2026-09-28 | manager-spec | 2차 계획 감사 D14 해소: REQ-CIG-001·008·010을 각 한 가지 GEARS 패턴의 단일 응답으로 정리 |
 
 ## 1. 문제
 
@@ -98,39 +100,56 @@ git 의 pre-commit 훅이 아니라 PreToolUse 에 두는 이유: 이 사고의 
 트리거 동사는 `commit`, `merge`, `cherry-pick`, `revert`, `rebase`, `am`, `commit-tree`, `pull`
 이다. `merge`(비 fast-forward)·`pull`(병합 경로)은 커밋을 만들 수 있으므로 포함한다. 명령 문자열
 정규화는 `branch_guard.go` 의 기존 도우미(따옴표 구간 치환, heredoc 본문 치환, 셸 주석 치환,
-`.exe` 접미사 정규화)를 재사용하고 새 파서를 만들지 않는다. 미탐(under-match)은 받아들이는
+`.exe` 접미사 정규화)를 재사용한다. 트리거 판정에는 정규화된 문자열을 쓰고, 재정의와 대상 경로는
+트리거가 확인된 git 실행 세그먼트 및 그 실행에 직접 이어지는 선두 `cd ... &&`·
+`export ... &&` 접두부의 **원문**에서만 추출한다. 다른 명령의 재정의·경로는 섞지 않는다.
+따옴표를 치환한 문자열에는
+`--author="t <t@t.t>"` 의 이메일이 남지 않기 때문이다. git 전역 옵션(`-C <path>`,
+`-c <key=value>`, `--git-dir` 등)을 건너뛰어 동사를 찾는 최소 로직과 원문 추출은 새로 필요하다.
+미탐(under-match)은 받아들이는
 fail-open 방향이다 — 과탐은 정상 작업을 막고, 미탐은 기존 상태(가드 없음)로 돌아갈 뿐이다.
 
 ### D3 — 신원 해석: 명령의 작업 디렉터리에서 git 이 **실제로 쓸** 신원을 묻는다
 
-훅 입력의 cwd 에서 `git var GIT_AUTHOR_IDENT` 와 `git var GIT_COMMITTER_IDENT` 를 실행해 git 이
-그 자리에서 쓸 신원을 얻는다. 이 방식은 설정층(system/global/common/worktree)과 환경 변수를 git
-자신의 우선순위대로 합성하므로, 어느 층이 오염됐는지 가드가 따로 알 필요가 없다. 여기에 더해
-명령 문자열 안의 **명령 수준 재정의** — 인라인 환경 변수 대입(`GIT_AUTHOR_EMAIL=… git commit`,
-같은 명령 안의 `export GIT_COMMITTER_EMAIL=…`), `git -c user.email=…`, `--author=…` — 를 읽는다.
-이 재정의는 훅 프로세스의 `git var` 탐침이 볼 수 없는 값이기 때문이다. 탐침 실행은 테스트에서
-대체할 수 있는 seam 뒤에 둔다.
+명령의 대상 디렉터리에서 `git var GIT_AUTHOR_IDENT` 와 `git var GIT_COMMITTER_IDENT` 를 실행해
+설정층과 훅 환경에서 해석한 기본 author·committer 신원을 얻는다. 명령 문자열 안의 재정의는
+트리거가 확인된 git 실행 세그먼트와 직접 이어지는 접두부의 원문에서 읽어 해당 역할의
+기본값을 **대체**한다. author 는
+`--author` 또는 `GIT_AUTHOR_EMAIL`, committer 는 `GIT_COMMITTER_EMAIL` 이 직접 지정하며,
+`git -c user.email` 은 더 높은 우선순위의 역할별 값이 없는 역할을 대체한다. `EMAIL` 은 그
+역할에 `user.email` 설정과 더 높은 우선순위의 재정의가 없을 때만 쓰는 최후 값이다. 충돌하는
+재정의는 git 의 실제 우선순위로 해석하고 가려진 값은 판정하지 않는다. 따라서 설정에 정상
+`user.email` 이 있으면 명령의 `EMAIL=t@t.t` 만으로 거부하지 않는다. 이 우선순위를 판별할
+수 없는 경우는 불확실한 역할을 허용하고 감사한다(D5). 탐침은 테스트에서 대체할 수 있는
+seam 뒤에 둔다. 실제로 적용될 거부 이메일이 명령 원문에서 확정되면 탐침이 실패하더라도
+그 양성 증거로 거부한다. 거부 사유의 처치는 그 역할의 실제 설정 또는 명령 재정의를 고치도록
+안내한다.
 
 ### D4 — 거부 목록: 정확 일치 이메일, 설정으로 확장, 내장 기본값은 이 저장소 픽스처 전수
 
 판별 키는 이메일이다(§2.1 부수 관측 — 이름은 다른 층에서 따로 해석될 수 있다). 비교는 앞뒤
 공백을 걷고 대소문자를 무시한 **정확 일치**이며, 정규식·도메인 패턴 같은 휴리스틱은 쓰지 않는다.
-내장 기본 목록은 이 저장소 `*_test.go` 가 실제로 쓰는 픽스처 이메일 리터럴 전수이고, 열거 명령과
+내장 기본 목록은 이 저장소 `*_test.go` 가 실제로 쓰는 픽스처 이메일 리터럴 전수(가드 자신의
+`internal/hook/commit_identity_guard*_test.go` 는 양성·음성 대조값 때문에 제외)이고, 열거 명령과
 plan-time 측정값은 `plan.md` §B 에 있다. 설정 키 `workflow.commit_identity_guard.deny_emails` 는
 내장 목록에 **더하는** 추가 목록이다(내장 목록을 줄이지 않는다).
 
 ### D5 — 활성화와 실패 방향: 형제 가드와 같은 opt-in, 불확실하면 통과 + 감사 기록
 
 `workflow.commit_identity_guard.enabled` 의 배포 기본값은 `false`(`internal/config/defaults.go`
-가 강제), 이 저장소 로컬 설정은 `true`. 꺼져 있으면 탐침 서브프로세스가 하나도 돌지 않는다.
-신원 해석 실패(탐침 오류·시간 초과·출력 파싱 실패·cwd 부재)는 통과로 끝나며, 그 사실을
+가 강제), 이 저장소 로컬 설정은 `true`. 꺼져 있으면 저장소 범위·신원 탐침 서브프로세스가
+하나도 돌지 않는다.
+신원 해석 실패(탐침 오류·시간 초과·출력 파싱 실패·cwd 부재)는 같은 저장소에서 이미 확정된
+명령 수준 거부 이메일이 없을 때 통과로 끝나며, 그 사실을
 `.moai/logs/commit-identity-guard-audit.log` 에 한 줄로 남긴다(`branch-guard-audit.log` 와 같은
-advisory 관례).
+advisory 관례). 저장소 범위 해석 실패는 명령 재정의가 있어도 대상 저장소를 확정할 수 없으므로
+통과·감사한다.
 
 ### D6 — 이빨: 변이 증거를 인수 기준에 넣는다
 
-거부 검사 제거, 트리거 동사 제거, 신원 해석 파손 — 세 변이(D8 이후 저장소 범위 비교 상수화를 더해 네 변이, REQ-CIG-009) 각각이 이름 붙은 테스트 하나 이상을
-실패시켜야 한다. 실신원이 통과하는 양성 대조도 함께 둔다. 동작하지 않는 가드가 초록불을 내는
+거부 검사 제거, 트리거 동사 제거, 신원 해석 파손, 저장소 범위 비교 상수화(항상 같음·항상 다름)의
+네 변이 각각이 이름 붙은 테스트 하나 이상을 실패시켜야 한다. 실신원이 통과하는 양성 대조도
+함께 둔다. 동작하지 않는 가드가 초록불을 내는
 상태(공허 초록)를 막기 위해서다.
 
 ### D7 — Template-First
@@ -149,7 +168,8 @@ advisory 관례).
 링크드 워크트리) 신원 검사를 진행하고, 다르면(`/tmp` 픽스처 저장소 등) 허용한다. 어느 한쪽이라도
 해석에 실패하면 허용하고 감사 한 줄을 남긴다(D5 와 같은 fail-open).
 
-대상 디렉터리는 훅 입력의 cwd 를 기본으로 하되, 명령 문자열에 리터럴 `git -C <path>` 나 선두
+대상 디렉터리는 훅 입력의 cwd 를 기본으로 하되, 트리거가 확인된 실행과 직접 이어지는 원문에
+리터럴 `git -C <path>` 나 선두
 `cd <path> &&` 가 있으면 그 경로를 쓴다(상대경로는 cwd 기준으로 절대화). 이 해석으로 풀 수 없는
 형태는 cwd 로 남으며, 그 결과의 미탐·과탐 방향은 잔여 위험으로 기록한다. 신원 탐침(D3)도 같은 대상
 디렉터리에서 실행한다.
@@ -160,22 +180,23 @@ advisory 관례).
 
 ## 5. 요구사항 (GEARS)
 
-- REQ-CIG-001 (Event-driven): **When** a shell tool call's normalized command invokes a commit-creating git verb (`commit`, `merge`, `cherry-pick`, `revert`, `rebase`, `am`, `commit-tree`, `pull`), the commit identity guard shall evaluate the identity that command would commit under; for any other command it shall return allow without spawning an identity probe.
+- REQ-CIG-001 (Ubiquitous): The commit identity guard shall classify each shell call by its normalized command: allow a call without repository-scope or identity probes unless it invokes a commit-creating git verb (`commit`, `merge`, `cherry-pick`, `revert`, `rebase`, `am`, `commit-tree`, `pull`); for a listed verb, probe repository scope and evaluate identity only if REQ-CIG-010 finds equal git common dirs.
 - REQ-CIG-002 (Event-driven): **When** the resolved author email or the resolved committer email exactly matches (whitespace-trimmed, case-insensitive) an entry of the effective deny list, the commit identity guard shall return a deny decision whose reason begins with `TEST_IDENTITY_VIOLATION:` and names the matched email, the identity role (author or committer), and a remedy.
-- REQ-CIG-003 (Event-driven): **When** the command text carries a command-level identity override — an inline `GIT_AUTHOR_EMAIL=` / `GIT_COMMITTER_EMAIL=` / `EMAIL=` assignment or `export` of one, a `-c user.email=` option, or an `--author=` option — the commit identity guard shall evaluate the overriding email in addition to the probed identity.
-- REQ-CIG-004 (Ubiquitous): The commit identity guard shall allow a commit-creating command whose resolved and overriding emails all fall outside the effective deny list.
-- REQ-CIG-005 (Capability gate): **Where** `workflow.commit_identity_guard.enabled` is false or absent, the pre-tool handler shall not invoke the commit identity guard, and no identity probe subprocess shall run.
-- REQ-CIG-006 (Event-driven): **When** identity resolution or repository-scope resolution fails — probe error, probe timeout, unparseable probe output, missing working directory, or a `git rev-parse --git-common-dir` failure on either the target side or the project side — the commit identity guard shall allow the command and append one advisory line naming the cause to `.moai/logs/commit-identity-guard-audit.log`.
-- REQ-CIG-007 (Ubiquitous): The effective deny list shall be the union of the built-in fixture list and `workflow.commit_identity_guard.deny_emails`; the built-in list shall contain every fixture email literal the repository's `*_test.go` files assign through `user.email`, `GIT_AUTHOR_EMAIL`, or `GIT_COMMITTER_EMAIL`, and an in-repository test shall fail when a literal found by that enumeration is missing from the built-in list.
-- REQ-CIG-008 (Ubiquitous): The commit identity guard shall run after the destructive-command check and the existing shell-tool guards in the pre-tool handler, so an earlier deny takes precedence, and shall treat a PowerShell indirection construct it cannot classify as allow-plus-audit rather than deny.
+- REQ-CIG-003 (Event-driven): **When** the triggered git invocation or its directly chained `export ... &&` prefix carries an inline or exported `GIT_AUTHOR_EMAIL=` / `GIT_COMMITTER_EMAIL=` / `EMAIL=`, a `git -c user.email=` option, or an `--author=` option, the commit identity guard shall extract that value from the original text, replace only the affected role's probed email according to D3's git precedence, ignore masked values, and deny an effective deny-listed override even if a later identity probe fails.
+- REQ-CIG-004 (Ubiquitous): The commit identity guard shall allow a commit-creating command whose effective author and committer emails both fall outside the effective deny list.
+- REQ-CIG-005 (Capability gate): **Where** `workflow.commit_identity_guard.enabled` is false or absent, the pre-tool handler shall not invoke the commit identity guard, and no repository-scope or identity probe subprocess shall run.
+- REQ-CIG-006 (Event-driven): **When** identity resolution or repository-scope resolution fails — probe error, probe timeout, unparseable probe output, missing working directory, or a `git rev-parse --git-common-dir` failure on either the target side or the project side — and no effective deny-listed command-level override has already been established in an equal-common-dir target, the commit identity guard shall allow the command and append one advisory line naming the cause to `.moai/logs/commit-identity-guard-audit.log`.
+- REQ-CIG-007 (Ubiquitous): The effective deny list shall be the union of the built-in fixture list and `workflow.commit_identity_guard.deny_emails`; the built-in list shall contain every fixture email literal the repository's `*_test.go` files assign through `user.email`, `GIT_AUTHOR_EMAIL`, or `GIT_COMMITTER_EMAIL`, excluding `internal/hook/commit_identity_guard*_test.go` because those tests carry out-of-list controls, and an in-repository test shall fail when a literal found by that same nonempty enumeration is missing from the built-in list.
+- REQ-CIG-008 (Ubiquitous): The commit identity guard shall handle shell calls after the destructive-command check and all existing shell-tool guards in the pre-tool handler, preserving an earlier deny and, for a PowerShell indirection construct it cannot classify as a trigger, allowing without repository-scope or identity probes while appending exactly one unclassified-command line to `.moai/logs/commit-identity-guard-audit.log`.
 - REQ-CIG-009 (Ubiquitous): The guard's test suite shall fail under each of four mutations — removal of the deny-list comparison, removal of any single trigger verb, breakage of identity resolution, and replacement of the repository-scope comparison by a constant (always-equal or always-different) — and shall carry a positive control in which a non-fixture identity passes.
-- REQ-CIG-010 (State-driven): **While** the command's target directory (the hook input cwd, or the path named by a literal `git -C <path>` or leading `cd <path> &&`) resolves to a git common dir different from the git common dir of the hook's project directory, both compared as absolute cleaned paths, the commit identity guard shall allow the command regardless of the identity it would commit under; it shall evaluate the identity only when the two common dirs are equal.
+- REQ-CIG-010 (State-driven): **While** the triggered git invocation's target directory (the hook input cwd, or the path named by a literal `git -C <path>` or a directly chained leading `cd <path> &&` in the original text) resolves to a git common dir different from the git common dir of the hook's project directory, both compared as absolute cleaned paths, the commit identity guard shall allow the command regardless of its identity and without an identity probe.
 
 ## 6. 제약
 
 - 가드는 판별 불가 상황에서 절대 거부하지 않는다(fail-open). 거부는 목록 일치라는 양성 증거가
   있을 때만 난다.
-- 탐침은 트리거가 맞은 명령에서만 돈다. 트리거가 아닌 셸 호출의 비용은 문자열 정규화뿐이다.
+- 범위·신원 탐침은 트리거가 맞은 명령에서만 돈다. 트리거가 아닌 셸 호출의 비용은 문자열
+  정규화뿐이다(분류 불가 PowerShell 구문의 감사 기록은 예외).
 - 탐침 서브프로세스는 시간 상한을 갖는다(기본 설계값은 `plan.md` §F 에 있다). 상한 초과는
   REQ-CIG-006 의 실패로 취급한다.
 - 탐침은 `internal/gitenv` 로 저장소 범위 git 환경 변수를 걷어낸 환경에서 실행한다 — 훅 프로세스에
