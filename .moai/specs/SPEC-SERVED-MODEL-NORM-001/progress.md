@@ -38,3 +38,18 @@ drift_detail_rows=706 legacy_false_drift_rows=0
 ```
 
 마지막 두 줄은 doctor 출력을 `/tmp/t1287-served-doctor.log`에 저장한 뒤 요약과 drift 상세 행을 집계한 결과다. doctor exit 0. 이 결과는 현재 로컬 프로필 스냅샷에만 적용한다.
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_status: completed
+spec_id: SPEC-SERVED-MODEL-NORM-001
+card: t1287
+source_commit: 73d900b97
+integration_commit: 13481c8ba
+audit_artifact: .moai/reports/t1287/sync-audit.md
+ac_pass_count: 4
+ac_fail_count: 0
+```
+
+독립 감사와 통합 재측정은 위 감사 파일에 기록했다. `CHANGELOG.md`의 Unreleased/Fixed에 사용자 영향 한 줄을 추가하고 `spec.md` 상태를 `completed`로 전환했다. 원격 CI 결과와 `develop` 병합 SHA는 병합 뒤 확인한다.
