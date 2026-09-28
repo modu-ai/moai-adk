@@ -2,7 +2,7 @@
 
 ## Claim
 
-로컬 Trace2에서 임시 저장소의 두 `git commit`이 각각 분리된 자동 maintenance와 `repack`을 시작하는 것을 확인했다. 이 작업이 테스트 종료 후 `.git/objects`를 쓸 수 있으므로 fixture의 Git 명령에만 `maintenance.auto=false`를 적용했다. 원래 실패한 CI 실행에는 Trace2가 없어 그 순간의 작성자를 직접 특정할 수 없으며, 수정 커밋의 CI 판정도 아직 없다.
+로컬 Trace2에서 임시 저장소의 두 `git commit`이 각각 분리된 자동 maintenance와 `repack`을 시작하는 것을 확인했다. 이 작업이 테스트 종료 후 `.git/objects`를 쓸 수 있으므로 fixture의 Git 명령에만 `maintenance.auto=false`를 적용했다. 수정 커밋의 통합 CI는 성공했다. 원래 실패한 CI 실행에는 Trace2가 없어 그 순간의 작성자를 직접 특정할 수는 없다.
 
 ## Evidence
 
@@ -63,6 +63,13 @@ $ go test -race ./internal/cli -run '^TestStopChainGPTProfileNoClaudeDependency$
 ok  \tgithub.com/modu-ai/moai-adk/internal/cli\t3.927s
 ```
 
+원격 `develop` `d42ccbc6c`의 CI run `36374288896`은 `status=completed`, `conclusion=success`, 실패 잡 0개였다. 해당 run의 보존된 Go test JSON 스트림에서 이 테스트의 실제 실행을 확인했다.
+
+```text
+Ubuntu test-stream: TestStopChainGPTProfileNoClaudeDependency run → pass 0.92s
+Race test-stream:   TestStopChainGPTProfileNoClaudeDependency run → pass 2.64s
+```
+
 최신 로컬 `develop` `2e34b99b5`를 흡수한 뒤 재측정:
 
 ```text
@@ -82,7 +89,7 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	2.060s
 
 ## Gaps
 
-로컬 실행에서는 정리 실패가 재현되지 않았다. 실패한 CI 실행 자체에는 Trace2가 없으므로 그 순간의 정확한 작성자는 미확정이다. 수정 커밋의 통합 CI 결과도 아직 없다.
+로컬 실행에서는 정리 실패가 재현되지 않았다. 실패한 CI 실행 자체에는 Trace2가 없으므로 그 순간의 정확한 작성자는 미확정이다. 성공한 CI 한 번으로 다른 `.git/objects` 작성 경로까지 배제하지 않는다.
 
 ## Residual-risk
 
