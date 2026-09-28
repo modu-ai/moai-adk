@@ -202,7 +202,22 @@ If a per-edit nudge is ever re-proposed, the only defensible variant is stateful
 
 ## Pre-Spawn Sync Check rationale and incident record
 
-> Relocated verbatim from `agent-common-protocol.md` § Pre-Spawn Sync Check to keep the always-loaded file within its size budget. The binding gate (the 2-command batch + active-sessions query), the interpretation matrices, and the read-only exemption remain inline there.
+> Relocated verbatim from `agent-common-protocol.md` § Pre-Spawn Sync Check to keep the always-loaded file within its size budget. The binding gate (the 2-command batch + active-sessions query), the interpretation matrices, and the read-only exemption remain inline there. The two-lane batch script (relocated by the t1303 diet):
+
+```bash
+# Lane A — ordered; wait for fetch completion before reading origin/main.
+git fetch origin main 2>&1
+fetch_status=$?
+if [ "$fetch_status" -ne 0 ]; then
+  printf 'pre-spawn sync blocked: fetch origin/main failed (status=%s)\n' "$fetch_status" >&2
+  exit "$fetch_status"
+fi
+git rev-list --count --left-right origin/main...HEAD
+
+# Lane B — can be started while Lane A is fetching, then joined before the
+# divergence/session decision is surfaced (L1 of the canonical 4-layer policy).
+moai session list --json --filter-spec=<SPEC-ID>
+```
 
 Rationale: when 2+ Claude Code sessions operate on the same project root + same memory hash (`~/.claude/projects/{hash}/memory/`), they may both consume the same paste-ready resume and attempt the same `/moai <subcommand>` work. The git working tree is shared; the memory file is shared. Without a pre-spawn fetch, the second session works on a stale baseline and may produce duplicate commits, conflicting frontmatter edits, or CHANGELOG entry races.
 
@@ -272,7 +287,7 @@ This refines the inline step 3 ("do not retry the identical call") along the sid
 
 ## Attributable diff-check detail
 
-> Relocated from `agent-common-protocol.md` § Parallel Execution → Attributable diff-check doctrinal switch to keep the always-loaded file within its size budget. The switch rule, the three match conditions, the four mismatch names, and the never-silent-skip boundary remain inline there.
+> Relocated from `agent-common-protocol.md` § Parallel Execution → Attributable diff-check doctrinal switch to keep the always-loaded file within its size budget. The switch rule, the three match conditions, the four mismatch names, and the never-silent-skip boundary remain inline there (SPEC-SYNC-PARALLEL-DOCS-001 A9).
 
 The switch consults the shared diagnostic snapshot via `moai verify check --key-current` (the live snapshot surface wired at `.claude/skills/moai/workflows/sync/quality-gates-quality.md` Step 0.5.2, keyed by HEAD SHA) BEFORE re-executing; on all-three attribution match, it consumes the attributable §E evidence (`.claude/rules/moai/development/manager-develop-prompt-template.md` § Section E → attribution discipline clause) for that dimension INSTEAD of re-executing the corresponding command. This is a composition-time doctrinal switch — no mechanical "about to re-run command X" preamble token exists to intercept (the batch is orchestrator-composed single-turn multi-Bash; re-execution is implicit Bash); it binds the orchestrator's batch-composition discipline, not a runtime hook.
 

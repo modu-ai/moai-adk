@@ -30,21 +30,9 @@ Rationale: subagents run in isolated, stateless contexts — prompting there is 
 
 Three hook scripts enforce orchestrator-discipline obligations — `status-transition-ownership.sh` (PostToolUse on SPEC-artifact writes), `sync-phase-quality-gate.sh` (Stop on sync-phase commit, blocking only under `MOAI_SYNC_GATE_BLOCKING=1`), `team-ac-verify.sh` (TaskCompleted in team mode; registered in no settings surface, so no flag activates it). All three exit 0 always and signal through stdout JSON, honored only on exit 0 — on exit 2 it is discarded and only stderr surfaces. Per-row triggers, JSON shapes, owning policy, and the subagent-boundary criterion: `agent-common-protocol-reference.md` § Hook Invocation Surface detail.
 
-#### Orchestrator translation responsibility
+Hooks return exit codes and structured JSON; they MUST NOT invoke `AskUserQuestion` directly. When a hook signals a block (stdout JSON `"decision":"block"` on exit 0, or a legacy exit-2), the orchestrator MUST parse the JSON (`decision`, `reason`, plus optional `ledger_note` / `systemMessage` / `details`), preload `AskUserQuestion` via `ToolSearch`, and compose a round offering at least: (a) accept the block and address the failed gate, (b) override with `--skip-hook` (logged to `.moai/logs/hook-skip.log`), (c) abort.
 
-Hooks return exit codes and structured JSON; they MUST NOT invoke `AskUserQuestion` directly. When a hook signals a block (stdout JSON `"decision":"block"` on exit 0, or a legacy exit-2), the orchestrator MUST:
-
-1. Parse the hook's structured JSON output (`decision`, `reason`, plus optional `ledger_note` / `systemMessage` / `details`)
-2. Preload `AskUserQuestion` via `ToolSearch(query: "select:AskUserQuestion")`
-3. Compose an `AskUserQuestion` round presenting the user with at least: (a) accept the block and address the failed gate, (b) override with `--skip-hook` opt-out (logged to `.moai/logs/hook-skip.log`), (c) abort the workflow
-
-#### Stop self-gate caveat
-
-The Stop hook fires on every turn-end, not only on completion, so it self-gates: inspect state, exit 0 unless the turn is a genuine completion point. It does NOT fire on user interrupt — not a guaranteed end-of-work signal.
-
-#### Recovery-Signal Carve-Out
-
-[ZONE:Evolvable] **While** a turn is itself a **recovery signal** — its `stopReason` or context names a sync failure, a compact, `prompt_too_long`, `max_output_tokens` exhaustion, or `media_size` / `compact-failure` — Stop/PostToolUse hooks SHOULD exit 0 rather than 2, so recovery turns do not enter the `error → stop-hook-blocks → retry → error` **death spiral**. SHOULD is policy guidance, not a mechanical gate. SSOT: `runtime-recovery-doctrine.md` §4.
+The Stop hook fires on every turn-end, so it self-gates: inspect state, exit 0 unless the turn is a genuine completion point. It does NOT fire on user interrupt. [ZONE:Evolvable] **While** a turn is itself a **recovery signal** — its `stopReason` or context names a sync failure, a compact, `prompt_too_long`, `max_output_tokens` exhaustion, or `media_size` / `compact-failure` — Stop/PostToolUse hooks SHOULD exit 0 rather than 2, so recovery turns do not enter the `error → stop-hook-blocks → retry → error` **death spiral**. SHOULD is policy guidance, not a mechanical gate. SSOT: `runtime-recovery-doctrine.md` §4.
 
 ### Blocker Report Format
 
@@ -68,20 +56,12 @@ The **ledger-closure invariant**: an aborted `Agent()` delegation leaves no **da
 an open promise with no matching result — in the orchestrator's context. It is the in-session
 analogue of the model-API rule that every `tool_use` receives a `tool_result`.
 
-[ZONE:Evolvable] [HARD] The orchestrator MUST close the ledger on any aborted delegation. Four
-clauses bind it (bodies + grounding: `agent-common-protocol-reference.md` § Ledger Closure clause
-bodies):
+[ZONE:Evolvable] [HARD] The orchestrator MUST close the ledger on any aborted delegation. Four clauses bind it (bodies + grounding: `agent-common-protocol-reference.md` § Ledger Closure clause bodies):
 
-- **(a) Synthetic result on aborted `Agent()` delegation** — on abort (user interrupt, parent-abort
-  propagation, or timeout), emit a short prose synthetic ledger-closing artifact naming what was
-  delegated, that it did not return, and the abort reason, before the next delegation. A blocker
-  report is a *return*, not an *abort*; this clause covers no-return-at-all.
-- **(b) `team-ac-verify.sh` reject-path `ledger_note`** — on a TaskCompleted rejection, inject the
-  hook's `ledger_note` as that task's ledger-closing artifact.
-- **(c) TeammateIdle exit-2 task closure** — a rejected task is never left open without a
-  reassignment owner (new teammate, refined re-delegation, or close-as-obsolete with a closing note).
-- **(d) Truthfulness** — the artifact is a real summary, never a fabricated "success"
-  (`verification-claim-integrity.md` §1.1 surface 1).
+- **(a) Synthetic result on aborted `Agent()` delegation** — emit a short prose ledger-closing artifact naming what was delegated, that it did not return, and the abort reason, before the next delegation. A blocker report is a *return*, not an *abort*; this clause covers no-return-at-all.
+- **(b) `team-ac-verify.sh` reject-path `ledger_note`** — inject the hook's `ledger_note` as that task's ledger-closing artifact.
+- **(c) TeammateIdle exit-2 task closure** — a rejected task is never left open without a reassignment owner (new teammate, refined re-delegation, or close-as-obsolete with a closing note).
+- **(d) Truthfulness** — the artifact is a real summary, never a fabricated "success" (`verification-claim-integrity.md` §1.1 surface 1).
 
 **Scope-boundary note.** Ledger Closure is a sibling of (not nested in) Hook Invocation Surface
 under the User Interaction Boundary H2.
@@ -108,7 +88,7 @@ Output language rules:
 WebSearch for targeted queries, WebFetch to verify each URL and read the official documentation,
 then continue — architecture and analysis quality must not depend on MCP availability.
 
-GLM-backend routing: under `moai glm`, web search, web
+GLM-backend routing: under `moai glm` or the GLM teammate panes of `moai cg`, web search, web
 fetch, and image read route to the z.ai MCP tools instead of the built-ins. HARD routing table:
 `.claude/rules/moai/core/glm-web-tooling.md`.
 
@@ -134,14 +114,7 @@ the runtime chooses foreground only when it needs the result. The default change
 subagent runs, not *what* it may do — permission prompts still surface in the main session. MoAI
 takes the default and does not set the `background:` frontmatter field.
 
-The retained safeguard is **concurrency, not backgrounding**: the hazard is a file-write race, and
-a write race is scoped to a **working tree**, not to a session. **One writer per tree** — two
-write-capable agents may run at once only when each writes a different tree, and orchestrator work
-concurrent with a write-capable agent in the **same** tree stays read-only. Shared-path writes and
-integration into a shared branch serialize through the integration window. Read-only tasks are safe
-in the background; for write tasks let the runtime pick the mode. Pre-approved write paths in
-settings.json `permissions.allow` reduce prompts. Rationale:
-`agent-common-protocol-reference.md` § Background Agent Execution rationale.
+The retained safeguard is **concurrency, not backgrounding**: a write race is scoped to a **working tree**, not to a session. **One writer per tree** — two write-capable agents run at once only when each writes a different tree; orchestrator work concurrent with a write-capable agent in the **same** tree stays read-only. Rationale: `agent-common-protocol-reference.md` § Background Agent Execution rationale.
 
 [ZONE:Evolvable] [HARD] **While a worktree is being actively audited, it has exactly one writer.**
 The window runs from the opening measurement to the landed verdict, and the only session
@@ -167,53 +140,17 @@ Three of its obligations bind here and are restated so they hold without it:
 
 - **Batch in one turn.** Independent read-only verifications are separate Bash tool calls within one assistant turn — never serialized across turns. Serialize only for a genuine dependency: one command's output feeding another, writes to the same path, or shared-state mutation.
 - **File-redirect contract.** Output exceeding the bounded-tail ceiling (50 lines or 2KB, whichever is smaller) is redirected to a file, and only the exit code plus a bounded tail is surfaced. Below the ceiling, inline quotation is fine. This removes the double-burn of quoting output twice, never the evidence itself.
-- **Evidence export.** The cited path must still resolve at audit time, and surviving `/tmp` clearance is not the same thing. `.moai/state/verify/<session>/` is **machine-local scratch**: it outlives `/tmp`, and it is gitignored, so it reaches no clone, no CI runner, and no other machine. The verdict file is the **local** record a claim cites — in this repository `.moai/reports/<card-id>/verdict.md`. It reaches no clone and no other machine, so citing it states where the deciding evidence was written, not where a reader elsewhere can fetch it. The obligation is therefore unchanged and its reason is narrower: **carry the deciding evidence into the verdict** — the command that decided a claim and the lines of output that decided it are written into the verdict file, and the claim cites that file. The converse binds equally: material left in scratch MUST NOT be cited — it is named in Residual-risk as a known loss, never offered as a verdict basis. A claim whose cited evidence path no longer resolves is an unattributed claim (`verification-claim-integrity.md` §2). Export width, the selection criterion, and the machine-consumer carve-outs: `agent-common-protocol-reference.md` § Evidence export obligation.
+- **Evidence export.** `.moai/state/verify/<session>/` is machine-local scratch — gitignored, reaching no clone and no other machine; it is never a citation target. **Carry the deciding evidence into the verdict** — the command and the output lines that decided a claim are written into the verdict file (`.moai/reports/<card-id>/verdict.md`), and the claim cites that file. The converse binds equally: material left in scratch MUST NOT be cited — it is named in Residual-risk as a known loss. Export width, the selection criterion, and the machine-consumer carve-outs: `agent-common-protocol-reference.md` § Evidence export obligation.
 
 ### Pre-Spawn Sync Check (Multi-Session Race Mitigation)
 
 [ZONE:Evolvable] [HARD] Before spawning any implementation `Agent()` (manager-develop / manager-docs / per-spawn `Agent(general-purpose)` with a domain whitelist) that will commit or modify shared working-tree files, the orchestrator MUST execute the following two-lane batch and surface any divergence to the user.
 
-One deliberate dependency boundary:
+One deliberate dependency boundary: **Lane A (ordered)** — `git fetch origin main` MUST finish and its exit status be observed before `git rev-list --count --left-right origin/main...HEAD` starts (the divergence count is only attributable to the ref the completed fetch installed; never run the two as one indistinguishable shell line; on fetch failure, block and exit with its status). **Lane B (independent)** — `moai session list --json --filter-spec=<SPEC-ID>` may run concurrently; join it with Lane A after both complete. The full two-lane batch: `agent-common-protocol-reference.md` § Canonical 7-item example. Retain the fetch completion status beside the divergence output, so a delayed or failed fetch is not mistaken for a current baseline.
 
-* **Lane A (ordered):** `git fetch origin main` MUST finish and its exit status be observed before `git rev-list --count --left-right origin/main...HEAD` starts. The divergence count is only attributable to the ref that the completed fetch installed; never run these two commands as one parallel batch or as a shell line whose completion cannot be distinguished.
-* **Lane B (independent):** `moai session list --json --filter-spec=<SPEC-ID>` may run concurrently with Lane A's fetch — it does not read `origin/main`. Join its result with Lane A after both complete.
+Interpretation matrix (git divergence): `0 N` / `0 0` → proceed; `N 0` (origin ahead — **race detected**) → STOP, surface via AskUserQuestion: rebase / inspect / abort; `N M` (diverged) → STOP, MUST resolve before spawn.
 
-```bash
-# Lane A — ordered; wait for fetch completion before reading origin/main.
-git fetch origin main 2>&1
-fetch_status=$?
-if [ "$fetch_status" -ne 0 ]; then
-  printf 'pre-spawn sync blocked: fetch origin/main failed (status=%s)\n' "$fetch_status" >&2
-  exit "$fetch_status"
-fi
-git rev-list --count --left-right origin/main...HEAD
-
-# Lane B — can be started while Lane A is fetching, then joined before the
-# divergence/session decision is surfaced (L1 of the canonical 4-layer policy).
-moai session list --json --filter-spec=<SPEC-ID>
-```
-
-The orchestrator MUST retain the fetch completion status (and, where the
-runner exposes it, the fetched-ref timestamp) beside the divergence output,
-so a delayed or failed fetch is not mistaken for a current baseline.
-
-Interpretation matrix (git divergence):
-
-| Output | Meaning | Action |
-|--------|---------|--------|
-| `0 N` | Local ahead by N (clean — your commits not yet pushed) | Proceed normally |
-| `0 0` | Synced (local == origin/main) | Proceed normally |
-| `N 0` | Origin ahead by N — **parallel session race detected** | STOP, surface via AskUserQuestion: rebase / inspect / abort |
-| `N M` | Diverged (both ahead) | STOP, MUST resolve before spawn |
-
-Interpretation matrix (active-sessions query):
-
-| Output | Meaning | Action |
-|--------|---------|--------|
-| `[]` | No other session on this SPEC | Proceed normally |
-| `[{...}]` (≥1 entry from another session) | **Concurrent session race detected on same SPEC** | STOP, surface entries, AskUserQuestion: **wait** / **override** / **abort** |
-
-The 3rd command is additive only. Sessions predating the registry hook emit `[]` — no false positives. Rationale + the originating race incident: `agent-common-protocol-reference.md` § Pre-Spawn Sync Check rationale and incident record.
+Interpretation matrix (active-sessions query): `[]` → proceed; one or more entries from another session → **concurrent session race detected on same SPEC** — STOP, surface entries, AskUserQuestion: **wait** / **override** / **abort**. Sessions predating the registry hook emit `[]` — no false positives. Rationale + the originating race incident: `agent-common-protocol-reference.md` § Pre-Spawn Sync Check rationale and incident record.
 
 Exemption: read-only agents (`Explore`, or a read-only-scoped `Agent(general-purpose)`) need no pre-spawn fetch — they cannot trigger a race.
 
@@ -225,31 +162,11 @@ Exemption: read-only agents (`Explore`, or a read-only-scoped `Agent(general-pur
 
 #### The rule, at the moment of the edit
 
-**TRIGGER** — the gate fires when ALL three hold:
+**TRIGGER** — the gate fires when ALL three hold: the tool is an `Edit`, `Write`, or file-mutating `Bash` call; the target is a shared path another session could also mutate (`.claude/`, `.moai/`, `internal/`, `pkg/`, `cmd/`, or repo-root config files); and CWD is the primary checkout (exempt: an already-isolated worktree, `/tmp`, a session-private scratch dir).
 
-| Condition | Test |
-|---|---|
-| Tool | an `Edit`, `Write`, or file-mutating `Bash` call |
-| Target | a shared path another session could also mutate: `.claude/`, `.moai/`, `internal/`, `pkg/`, `cmd/`, or repo-root config files |
-| Location | CWD is the primary checkout. Exempt: an already-isolated worktree, `/tmp`, or a session-private scratch dir |
+**CHECK** — before the FIRST triggered edit of a task, as one parallel batch: (1) live foreign sessions — `moai session list --json | jq '[.[] | select(.cwd == "<project-root>" and .session_id != "<own>")] | length'`, then liveness-probe each PID (`kill -0`; ignore confirmed-dead, treat indeterminate as live); (2) divergence vs origin/main — `git fetch origin main 2>&1; git rev-list --count --left-right origin/main...HEAD`.
 
-**CHECK** — before the FIRST triggered edit of a task, as one parallel batch:
-```bash
-# 1. live foreign sessions (own session filtered out; then liveness-probe each PID)
-moai session list --json | jq '[.[] | select(.cwd == "<project-root>" and .session_id != "<own>")] | length'
-# 2. divergence vs origin/main
-git fetch origin main 2>&1; git rev-list --count --left-right origin/main...HEAD
-```
-
-**DECIDE and ACT** — no outcome permits "proceed in the shared checkout anyway":
-
-| Probe result | Required action |
-|---|---|
-| 0 live foreign sessions AND `0 0` / `0 N` | Proceed in the shared checkout |
-| ≥1 live foreign session | **ISOLATE before editing**: `moai cc -w <name>` / `EnterWorktree(<path>)` / `Agent(isolation: "worktree")`. If isolation is impossible, surface via `AskUserQuestion` (isolate / wait / abort) |
-| `N 0` / `N M` divergence | STOP; `AskUserQuestion` (rebase / inspect / abort) per the Pre-Spawn Sync Check matrix |
-
-> **Stale-registry caveat**: registry entries can hold dead PIDs. Probe each foreign entry with `kill -0 <pid>`; ignore confirmed-dead, treat indeterminate as live. ANY live-or-indeterminate foreign entry ⇒ isolate (`worktree-integration.md` § Parallel-Session Branch Conflict Auto-Isolation).
+**DECIDE and ACT** — no outcome permits "proceed in the shared checkout anyway": 0 live foreign sessions AND `0 0` / `0 N` → proceed; any live-or-indeterminate foreign entry → **ISOLATE before editing** (`moai cc -w` / `EnterWorktree` / `Agent(isolation: "worktree")`; if impossible, `AskUserQuestion`: isolate / wait / abort); `N 0` / `N M` divergence → STOP; `AskUserQuestion` per the Pre-Spawn matrix. (`worktree-integration.md` § Parallel-Session Branch Conflict Auto-Isolation.)
 
 **RE-CHECK** — the probe decays. Re-run it before ANY commit in the shared checkout, and after any long pause.
 
