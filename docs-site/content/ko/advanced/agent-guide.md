@@ -105,7 +105,7 @@ MoAI-ADK는 **13개 에이전트** (12개 MoAI 사용자 정의 + 1개 Anthropic
 | `Explore` | 읽기 전용 코드 탐색 · 분석 (Anthropic 내장, 파일 없음) |
 
 {{< callout type="info" title="모델과 추론 깊이" >}}
-각 에이전트의 `model`/`effort` 값은 배포되는 frontmatter이며, [프로필 매트릭스](/ko/advanced/profile-matrix/)의 설정에 따라 함께 바뀝니다. `model: inherit`은 부모 세션 모델을 그대로 이어받고, `effort`가 추론 토큰 예산을 결정합니다. 프로필을 바꾸면 이 값이 다시 쓰입니다 — `high`에서는 `builder-harness`와 `e2e-tester`만 한 단계 올라가고(`max`를 쓰는 칸은 없음), `low`에서는 감사·조율 행이 `medium`으로, `builder-harness`가 `low`로 내려가며 `e2e-tester`는 Sonnet으로 바뀝니다. 활성 프로필에서 실제 값을 확인하려면 `moai model profile`을 실행하세요.
+에이전트마다 모델과 effort를 배정하는 예전 방식은 물러났습니다. **서브에이전트는 메인 세션의 모델과 추론 깊이를 그대로 따릅니다** — 서브에이전트를 부를 때 `model`도 `effort`도 넘기지 않으며, MoAI 에이전트 정의는 어느 쪽도 선언하지 않습니다. 세션의 effort를 바꾸면(`/effort`, `ultrathink`) 그 세션의 모든 에이전트가 함께 따라갑니다.
 {{< /callout >}}
 
 ## 계획과 감사의 분리 — 왜 만든 쪽이 검사하지 않는가
@@ -220,7 +220,7 @@ sync 단계의 `sync-auditor`와는 역할이 다릅니다. `sync-auditor`는 �
 MoAI 사용자 정의 에이전트는 모두 `.claude/agents/moai/` 디렉터리에 마크다운 파일로 있습니다. 12개 MoAI 커스텀 파일이 여기에 들어 있고, `Explore`는 Anthropic 내장이라 디스크에 파일이 없습니다.
 
 {{< callout type="info" title="정의 형식" >}}
-각 파일은 YAML frontmatter와 본문으로 됩니다. frontmatter에 `name`, `description`, `tools`(CSV 문자열), `model`, `effort`를 적고, 본문에 역할 · 책임 · 사용 스킬을 문장으로 씁니다. 새 에이전트를 직접 만들 때는 `builder-harness` 에이전트를 쓰거나 에이전트 작성 규칙(`.claude/rules/moai/development/agent-authoring.md`)을 따르세요.
+각 파일은 YAML frontmatter와 본문으로 됩니다. frontmatter에 `name`, `description`, `tools`(CSV 문자열)를 적고, 본문에 역할 · 책임 · 사용 스킬을 문장으로 씁니다. model과 effort는 적지 않습니다 — 서브에이전트는 세션의 모델과 추론 깊이를 그대로 따르므로 에이전트 정의가 선언할 필요가 없습니다. 새 에이전트를 직접 만들 때는 `builder-harness` 에이전트를 쓰거나 에이전트 작성 규칙(`.claude/rules/moai/development/agent-authoring.md`)을 따르세요.
 {{< /callout >}}
 
 ## Sub-agent 시스템 기초
@@ -264,7 +264,7 @@ MoAI-ADK 에이전트 구조의 바탕은 Claude Code 공식 하위 에이전트
 - [빌더 에이전트와 하네스 v4](/ko/advanced/builder-agents) — 동적 에이전트 팀 생성
 - [스킬 가이드](/ko/advanced/skill-guide) — 에이전트가 쓰는 스킬 체계
 - [SPEC 기반 개발](/ko/workflow-commands/moai-plan) — SPEC 워크플로 상세
-- [프로필 매트릭스](/ko/advanced/profile-matrix/) — 모델 · effort 배정 전체
+- [프로필 매트릭스](/ko/advanced/profile-matrix/) — 모델 · effort가 이제 세션 상속으로 결정되는 방식
 
 {{< callout type="info" >}}
 **팁**: 에이전트를 직접 가리키지 않아도 됩니다. MoAI에게 자연어로 요청하면 Analyze-First 라우팅이 의도를 분석해 적임자를 자동으로 고릅니다.
