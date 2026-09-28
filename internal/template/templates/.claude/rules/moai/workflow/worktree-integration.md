@@ -8,22 +8,15 @@ Integration guide for MoAI Worktree and Claude Code Native Worktree systems.
 
 ## Overview
 
-MoAI-ADK supports two complementary worktree systems for isolated development:
+MoAI-ADK supports two complementary worktree systems:
 
 `moai worktree new <name>` creates a project-local L1 tree at
 `.moai/worktrees/<name>`. Claude Code's native worktrees continue to use
 `.claude/worktrees/`; the global L2 registry remains under `~/.moai/worktrees/`.
 
-**Claude Code Native Worktree** (`.claude/worktrees/`):
-- Ephemeral, session-scoped isolation
-- Automatic cleanup when session ends
-- Used for subagent isolation via `isolation: worktree` in agent definitions (v2.1.49+)
-- CLI access: `claude --worktree` or `claude -w` (user-level flag)
+**Claude Code Native Worktree** (`.claude/worktrees/`): ephemeral, session-scoped isolation with automatic cleanup; subagent isolation via `isolation: worktree` (v2.1.49+); CLI access `claude --worktree` / `claude -w`.
 
-**MoAI Worktree** (`~/.moai/worktrees/{ProjectName}/`):
-- Persistent, SPEC-scoped workspaces in global home directory
-- Managed via `moai worktree` CLI commands
-- Used for multi-session SPEC development and team collaboration
+**MoAI Worktree** (`~/.moai/worktrees/{ProjectName}/`): persistent, SPEC-scoped workspaces managed via the `moai worktree` CLI; multi-session SPEC development and team collaboration.
 
 ## Comparison Table
 
@@ -32,7 +25,7 @@ MoAI-ADK supports two complementary worktree systems for isolated development:
 | **Path** | `.claude/worktrees/<name>/` | `~/.moai/worktrees/{Project}/{SPEC}/` |
 | **Lifetime** | Ephemeral (session-scoped) | Persistent |
 | **Purpose** | Session isolation for subagents | SPEC development, PR creation |
-| **CLI** | `claude -w` (user) or `isolation: worktree` (agent) | `moai cc -w <name>` to enter; `moai worktree clean/done/remove` to dispose |
+| **CLI** | `claude -w` / `isolation: worktree` | `moai cc -w <name>` enter; `moai worktree clean/done/remove` dispose |
 | **Cleanup** | Automatic on session end | Manual via `moai worktree remove` |
 | **Branch Strategy** | Temporary branches | Feature branches linked to SPEC |
 | **Team Use** | Single agent isolation | Multi-developer collaboration |
@@ -45,13 +38,13 @@ This glossary is the canonical definition surface for the L1 / L2 worktree-layer
 
 | Layer | Name | What it is | Path / Trigger | Lifetime | Owner |
 |-------|------|-----------|----------------|----------|-------|
-| **L1** | Session worktree | Session-scoped isolation created by `moai worktree new <name>`, a Claude launcher/tool, or an isolated subagent. Claude short-name `-w` resolves the native root; Codex short-name `-w` resolves an existing tree in either project root. | `.moai/worktrees/<name>/` for MoAI creation; `.claude/worktrees/<name>/` for Claude-native creation. Kanban/team card branches use `WT-<slug>`. | Session-scoped; disposed only after the session ends and the branch is integrated, via the session-end prompt where available or `git worktree unlock` + `git worktree remove` | Creating harness or MoAI shared materializer. L1 trees are not in the L2 lifecycle registry, so `done` refuses them |
-| **L2** | MoAI persistent SPEC worktree | A persistent, SPEC-scoped working directory entered **by absolute path** — `moai cc -w ~/.moai/worktrees/<project>/<SPEC>`. Used for multi-session SPEC development (run + sync phases reuse the same L2 worktree). | `~/.moai/worktrees/<project>/<SPEC>/` | Persistent — lifecycle owned by the `moai worktree` verbs (`sync`, `remove`, `clean`, `recover`, `done`, plus the guard trio `snapshot` / `verify` / `restore`); disposed only via `moai worktree done SPEC-XXX` after both run + sync PRs merge | MoAI (user-managed via `moai worktree` CLI) |
+| **L1** | Session worktree | Session-scoped isolation created by `moai worktree new <name>`, a Claude launcher/tool, or an isolated subagent. Claude short-name `-w` resolves the native root; Codex `-w` an existing tree in either root. | `.moai/worktrees/<name>/` for MoAI creation; `.claude/worktrees/<name>/` for Claude-native creation. Kanban/team card branches use `WT-<slug>`. | Session-scoped; disposed after the session ends and the branch integrates — session-end prompt, or `git worktree unlock` + `git worktree remove` | Creating harness or MoAI shared materializer. L1 trees are not in the L2 lifecycle registry, so `done` refuses them |
+| **L2** | MoAI persistent SPEC worktree | A persistent, SPEC-scoped working directory entered **by absolute path** (`moai cc -w ~/.moai/worktrees/<project>/<SPEC>`); run + sync phases reuse the same tree. | `~/.moai/worktrees/<project>/<SPEC>/` | Persistent — lifecycle owned by the `moai worktree` verbs (`sync`/`remove`/`clean`/`recover`/`done` + guards `snapshot`/`verify`/`restore`); disposed only via `moai worktree done SPEC-XXX` after both PRs merge | MoAI (user-managed via `moai worktree` CLI) |
 
 Relationships:
-- `moai worktree new <name>` creates an **L1** tree at `.moai/worktrees/<name>` and returns its absolute path; it never enters the tree and carries none of the retired `--base`, `--from-current`, BODP, tmux, or team behavior. Enter this tree from a new Codex CLI session with `codex -C <absolute-path>` or from Claude with `moai cc -w <absolute-path>`. Claude short-name `-w` continues to resolve `.claude/worktrees/<name>`. The separate `moai cc -w <name> --branch <existing>` form remains the existing-branch path used for the gitflow integration worktree.
-- `moai update` in the primary Git checkout moves registered legacy `.claude/worktrees/` trees to `.moai/worktrees/` with `git worktree move`. `--dry-run` lists planned moves without changing them. Locked trees, trees with registered active sessions or an active process working inside them, and destination collisions stay at their old paths with a reason; rerun update after resolving the reason. If process working directories cannot be inspected, no tree moves. Updates launched from a linked worktree leave sibling trees in place. Modified, untracked, and ignored files move with their tree. Do not copy a worktree directory by hand.
-- An **L1** ephemeral worktree is materialized autonomously by the Claude Code runtime for an isolated subagent; it is independent of L2 and may occur inside either the main checkout or an L2 worktree.
+- `moai worktree new <name>` creates an **L1** tree at `.moai/worktrees/<name>`, returns its absolute path, never enters it, and carries none of the retired `--base`, `--from-current`, BODP, tmux, or team behavior. Enter it from a new Codex CLI session with `codex -C <absolute-path>` or from Claude with `moai cc -w <absolute-path>` (short-name `-w` still resolves `.claude/worktrees/<name>`; `moai cc -w <name> --branch <existing>` remains the existing-branch path for the gitflow integration worktree).
+- `moai update` (primary checkout) moves registered legacy `.claude/worktrees/` trees to `.moai/worktrees/` via `git worktree move` (`--dry-run` lists planned moves only). Trees that are locked, session-anchored, process-occupied, or collision-blocked stay put with a reason — rerun after resolving it; if process working directories cannot be inspected, no tree moves; a linked-worktree launch leaves sibling trees in place. Modified, untracked, and ignored files move with their tree. Never copy a worktree directory by hand.
+- An **L1** ephemeral worktree is materialized autonomously by the runtime for an isolated subagent; independent of L2, it may occur inside the main checkout or an L2 worktree.
 - When work happens inside an L2 worktree, the paste-ready resume MUST anchor the next session there (Block 0) per `session-handoff.md` § Worktree-Anchored Resume Pattern.
 
 [HARD] **`moai worktree new` creates L1; `done` refuses both L1 roots by code.** Project trees under `.claude/worktrees/` and `.moai/worktrees/` are outside the L2 lifecycle registry. `done` refuses either root — with or without `--force` — and `recover` is unchanged by that guard. `clean --merged-only`'s WT- sweep (below) is the documented exception to the L2-only lifecycle. L1 disposal is the session-end keep/remove prompt where available, or `git worktree unlock` + `git worktree remove` after the session releases its lock and the branch is integrated.
@@ -199,12 +192,12 @@ Applies to `claude --worktree`, subagent `isolation: worktree` worktrees, and de
 
 `EnterWorktree(<path>)` is the canonical mechanism for entering an existing worktree in the current session. The orchestrator's emitted guidance (paste-ready resume messages, Block 0 of the Worktree-Anchored Resume Pattern, in-session instructions) SHALL use `EnterWorktree(<path>)` for current-session worktree re-entry, replacing the shell-`cd`, `git -C <path>`, and subshell-`cd` patterns. A bare `cd` instruction SHALL NOT appear in orchestrator-emitted current-session-entry guidance; it remains valid only for human-typed, manual-shell contexts.
 
-Claude can move the session into a worktree mid-session via the `EnterWorktree` tool (e.g. when the user says "work in a worktree"), creating one under `.claude/worktrees/`. Once inside, Claude can switch directly to another worktree by calling `EnterWorktree` with a target path; the previous worktree stays on disk untouched. `ExitWorktree` returns to the originating checkout. These are Claude Code runtime tools — MoAI does not mandate their use; they are the interactive counterpart to the launcher `-w` flag and `isolation: worktree` frontmatter. A MoAI-created L1 tree under `.moai/worktrees/` is entered by absolute path, which Claude may ask the user to approve. A new Codex CLI session uses `codex -C <absolute-path>`; an active Codex session uses `git -C <absolute-path>` and direct file operations. `moai codex -w` launches another Codex process in an existing tree and never creates one.
+Claude can move the session into a worktree mid-session via `EnterWorktree` (e.g. on "work in a worktree"), creating one under `.claude/worktrees/`; inside, `EnterWorktree` with a target path switches trees directly (the previous one stays on disk), and `ExitWorktree` returns to the originating checkout. These are Claude Code runtime tools — MoAI does not mandate them; they are the interactive counterpart to the launcher `-w` flag and `isolation: worktree`. A MoAI-created `.moai/worktrees/` L1 tree is entered by absolute path, which Claude may ask the user to approve. Codex: a new CLI session uses `codex -C <absolute-path>`; an active session uses `git -C <absolute-path>` and direct file operations; `moai codex -w` launches another Codex process in an existing tree and never creates one.
 
 `EnterWorktree` is complementary to, not replaced by, the launcher flag `moai cc -w <name-or-abs-path>`:
 
 - **`EnterWorktree(<path>)`** — current-session re-entry (no `/clear`, same session continuing). Use this when the orchestrator is mid-turn and needs to move the active session into an existing worktree.
-- **`moai cc -w <name>` (or `moai glm -w`)** — new Claude-session launch (post-`/clear` or new terminal). Short names resolve against `.claude/worktrees/<name>/`; use an absolute path for a project-local `.moai/worktrees/` tree or a global `~/.moai/worktrees/` L2 tree.
+- **`moai cc -w <name>` (or `moai glm -w`)** — new Claude-session launch (post-`/clear` or new terminal). Short names resolve `.claude/worktrees/<name>/`; use an absolute path for `.moai/worktrees/` (project-local) or `~/.moai/worktrees/` (L2).
 
 The shell-`cd` form (`cd <path> && <launcher>`), the `git -C <path>` form, and the subshell-`cd` form (`(cd <path> && ...)`) are DEPRECATED for orchestrator-emitted current-session worktree entry guidance on harnesses that carry a native current-session entry tool (Claude Code: `EnterWorktree`). They break `Agent(isolation: "worktree")` CWD isolation (the agent's CWD is the worktree root; a `cd /absolute/path` bypasses it) and were the root cause of prior incidents where a sub-agent used `git -C` instead of `EnterWorktree` and was corrected mid-run. On a harness without a native current-session entry tool (Codex), `git -C <path>` remains the documented means of driving a worktree from the current session — the root `AGENTS.md` worktrees contract mandates exactly that form — and is not deprecated there.
 
