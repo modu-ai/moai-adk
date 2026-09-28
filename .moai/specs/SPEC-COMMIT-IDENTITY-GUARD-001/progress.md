@@ -211,7 +211,7 @@ m1_to_mN_commit_strategy: milestone-shaped M1-M4 (M1 config+transition 30947f28f
 ```yaml
 sync_complete_at: 2026-09-29
 sync_status: complete
-sync_commit_sha: pending-backfill-sync   # D3 placeholder — a commit cannot cite its own SHA; backfilled in a follow-up commit
+sync_commit_sha: 8d0cc46f1   # sync commit — D3 backfill window completed (follow-up commit); verifiable via git log
 b12_self_test_a: pass   # grep -c 'SPEC-COMMIT-IDENTITY-GUARD-001' CHANGELOG.md → 0 (pre-emission; emission-safe)
 b12_self_test_b: pass   # AC count 14 (AC-CIG-001..014, all live — no [RETIRED]/[REF] markers) matches CHANGELOG entry
 b12_self_test_c: pass   # all 12 cited implementation file paths verified via ls before drafting
