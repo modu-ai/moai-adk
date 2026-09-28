@@ -24,12 +24,12 @@ var WorktreeCmd = &cobra.Command{
 	Long: `Manage Git worktrees for parallel SPEC development: new, sync, remove, clean, recover and done, plus the guard verbs snapshot, verify and restore.
 
 Create a harness-neutral L1 worktree through MoAI's shared materializer:
-  moai worktree new <name>     create .claude/worktrees/<name>
+  moai worktree new <name>     create .moai/worktrees/<name>
 
 Entering an existing worktree remains the launchers' job:
-  moai cc -w <name>            work inside the worktree
+  moai cc -w <absolute-path>  work inside an existing MoAI worktree
   moai codex -w <name>         start Codex inside the worktree
-  moai cc -w <name> --spawn    open it in a new tmux window, keep this session
+  moai cc -w <absolute-path> --spawn  open it in a new tmux window
 
 For inspection, use git directly: git worktree list`,
 }

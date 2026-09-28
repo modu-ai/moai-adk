@@ -17,7 +17,12 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 
 [HARD] **로컬 `main`은 동기화만 하는 참조점이고, 아무도 거기서 분기하지 않는다.** 이 모델에서 `main`을 갱신하는 유일한 경로는 릴리스 PR이며, 로컬 `main`이 `origin/main`보다 뒤처져 있어도 작업에는 지장이 없다 — `develop`이 `origin/main`을 포함하기 때문이다. 따라서 로컬 `main`을 앞당기지 못하는 상황(예: 공유 체크아웃의 미커밋 작업과 충돌)은 작업을 막는 사유가 아니다. 상태줄의 `↓N` 표시는 그 사실의 반영일 뿐이다.
 
-- 런처를 경유한다: `moai cc -w <card-id>` 또는 현재 세션에서 `EnterWorktree(<card-id>)`. **맨손 `git worktree add` 금지** — git은 아는데 MoAI는 모르는 트리가 생겨 `done`/`clean`/`recover`가 닫을 대상이 없어진다.
+- 하네스에 맞는 경로로 들어간다:
+  - Claude Code 레인: `moai cc -w <card-id>` 또는 현재 세션의 `EnterWorktree(<card-id>)`.
+  - Codex 레인: 기존 트리에 새 세션으로 들어갈 때 `moai codex -w <card-id>`.
+  - Codex의 `-f agent`(구 명칭)·`-f lane` 레인: 감독 런처가 카드 워크트리를 고르고 `codex -C <워크트리 절대경로>`로 자식 세션을 시작한다. 자식 세션은 해당 트리의 `CLAUDE.local.md`를 읽고 작업하며 `moai cc -w`를 호출하지 않는다. `moai codex` 런처로 시작한 세션은 이 파일을 `developer_instructions`에 싣는다.
+  - 트리가 없으면 `moai worktree new <card-id>`로 먼저 만든다. **맨손 `git worktree add` 금지** — git은 아는데 MoAI는 모르는 트리가 생겨 `done`/`clean`/`recover`가 닫을 대상이 없어진다.
+- 생성 직후 카드 트리의 `HEAD`와 로컬 `develop`의 커밋이 같은지 확인한다. 다르면 작업을 시작하지 않고 분기 기준을 바로잡는다.
 - 생성 직후 브랜치를 제자리에서 개명한다: `git branch -m WT-<slug>`. slug은 카드가 **하는 일**에서 뽑고(소문자 `a-z0-9-`, 토큰 3개 이하, 24자 이하), **카드 id를 넣지 않는다**. 워크트리 디렉터리는 카드 id를 유지한다(`.claude/worktrees/<card-id>`).
 - 새 카드는 새 워크트리다. 이전 카드 트리에 앵커돼 있으면 `ExitWorktree`로 primary 체크아웃에 돌아온 뒤 만든다 — 안 그러면 새 카드 작업이 옛 카드 브랜치에 얹힌다.
 - **추적성 운반체 3종은 그대로다**: dispatch의 `card:` 필드, 브랜치 위 **모든** 커밋 메시지 안의 카드 id, 증거 경로(`.moai/reports/<card-id>/…`). 브랜치 이름은 더 이상 카드를 식별하지 않으므로 셋 중 무엇도 생략하지 않는다.

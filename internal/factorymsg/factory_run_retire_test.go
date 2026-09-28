@@ -233,7 +233,7 @@ func TestResolveActiveRunMigratesAndReapsLegacyRowsViaPeerFallback(t *testing.T)
 	}
 }
 
-// AC-016 (peer-agreement half) — LeadPeerIdentity reports the identity the
+// AC-016 (peer-agreement half) — LeaderPeerIdentity reports the identity the
 // run's role='lead' peer carries, including a launch-pending peer, which is
 // the state a lead sits in until its SessionStart hook binds a session UUID.
 func TestLeadPeerIdentityReadsLaunchPendingLead(t *testing.T) {
@@ -241,13 +241,13 @@ func TestLeadPeerIdentityReadsLaunchPendingLead(t *testing.T) {
 	recordRun(t, root, "run-p", 0, "")
 	registerLeadPeer(t, root, "run-p", 4321, "peer-start")
 
-	pid, start, ok := LeadPeerIdentity(root, "run-p")
+	pid, start, ok := LeaderPeerIdentity(root, "run-p")
 	if !ok || pid != 4321 || start != "peer-start" {
-		t.Fatalf("LeadPeerIdentity = (%d, %q, %v), want (4321, \"peer-start\", true)", pid, start, ok)
+		t.Fatalf("LeaderPeerIdentity = (%d, %q, %v), want (4321, \"peer-start\", true)", pid, start, ok)
 	}
 
-	if _, _, ok := LeadPeerIdentity(root, "run-absent"); ok {
-		t.Fatal("LeadPeerIdentity reported an identity for a run with no broker")
+	if _, _, ok := LeaderPeerIdentity(root, "run-absent"); ok {
+		t.Fatal("LeaderPeerIdentity reported an identity for a run with no broker")
 	}
 }
 
@@ -297,7 +297,7 @@ func registerLeadPeer(t *testing.T, root, runID string, pid int, processStart st
 	defer func() { _ = s.Close() }()
 	if _, err := s.RegisterLaunchPending(context.Background(), Peer{
 		ProjectKey: "project", RunID: runID, Backend: "claude",
-		Role: "lead", Slot: "lead", Generation: 1, PID: pid, ProcessStart: processStart,
+		Role: "leader", Slot: "leader", Generation: 1, PID: pid, ProcessStart: processStart,
 	}); err != nil {
 		t.Fatalf("register lead peer for %s: %v", runID, err)
 	}

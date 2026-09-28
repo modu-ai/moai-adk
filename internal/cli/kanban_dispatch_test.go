@@ -43,10 +43,10 @@ func TestResolveKanbanBranchTruthTable(t *testing.T) {
 		isCompanion   bool
 		want          kanbanBranch
 	}{
-		{"row1: -k alone → lead", true, false, kanbanBranchLead},
+		{"row1: -k alone → lead", true, false, kanbanBranchLeader},
 		{"row2: -k --name <companion> → companion", true, true, kanbanBranchCompanion},
 		{"row3: --name <non-companion> alone → no-op", false, false, kanbanBranchNone},
-		{"row4: -k --name <non-companion> → lead", true, false, kanbanBranchLead},
+		{"row4: -k --name <non-companion> → lead", true, false, kanbanBranchLeader},
 		{"row5 (BREAKING): --name <companion-shape> alone → no-op", false, true, kanbanBranchNone},
 	}
 	for _, c := range cases {
@@ -62,11 +62,11 @@ func TestResolveKanbanBranchTruthTable(t *testing.T) {
 }
 
 // TestDispatchOutcome_LeadEnvState is AC-FB-001 / AC-FB-006 / AC-FB-007: driving
-// the lead branch (kanbanBranchLead) through the real enterKanbanMode produces the correct env
+// the lead branch (kanbanBranchLeader) through the real enterKanbanMode produces the correct env
 // state (MOAI_KANBAN set, MOAI_KANBAN_ID set, MOAI_KANBAN_LABEL unset).
 func TestDispatchOutcome_LeadEnvState(t *testing.T) {
 	clearAllKanbanEnv(t)
-	if resolveKanbanBranch(true, false) != kanbanBranchLead {
+	if resolveKanbanBranch(true, false) != kanbanBranchLeader {
 		t.Fatal("expected lead branch")
 	}
 	restore := enterKanbanMode("SPEC-FOO-001", "")

@@ -183,6 +183,12 @@ MoAI-ADK 运行在上述 Claude Code 记忆基础之上。它把项目根的 CLA
 
 基于文件的持久记忆也是 MoAI-ADK **递归式自我学习**的原料。循环运转中留下的观察 —— 用户纠正、失败模式、路由决策 —— 累积在记忆文件里，挽具再基于这些积累改进技能与智能体指引。"循环积累观察，挽具学习进化指引"这句话的第一环，正是本页的记忆机制。MoAI 特有的记忆运营规则与索引管理方式在单独文档中详述。
 
+## MoAI-ADK 项目中的本地指令 —— `AGENTS.local.md`
+
+Claude Code 本身读取 `CLAUDE.local.md`，但 MoAI-ADK 项目把个人指令放在 `AGENTS.local.md`。`CLAUDE.md` 末尾的 `@AGENTS.local.md` 导入把它加载进 Claude Code，`moai codex` 则把同一个文件交给 Codex。通用契约是 `AGENTS.md`，Claude 专属层是 `CLAUDE.md`，个人指令是 `AGENTS.local.md`——这就是三文件结构。
+
+同时保留 `CLAUDE.local.md` 和 `AGENTS.local.md` 会让 Claude Code 两者都读，相似的指令被加载两次。已有的 `CLAUDE.local.md` 请用 `moai migrate local-instructions` 迁移。两个文件都存在时该命令会拒绝执行，此时请手动合并。
+
 ## 相关文档
 
 - [CLAUDE.md 指南](/zh/advanced/claude-md-guide)

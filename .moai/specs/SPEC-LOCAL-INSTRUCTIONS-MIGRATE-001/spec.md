@@ -1,12 +1,12 @@
 ---
 id: SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001
 title: "Local-instruction migration — CLAUDE.local.md to AGENTS.local.md, with advisories and docs"
-version: "0.2.4"
-status: draft
+version: "0.3.0"
+status: completed
 priority: P1
 phase: "v3.3.0 target"
 created: 2026-09-26
-updated: 2026-09-26
+updated: 2026-09-28
 author: manager-spec
 module: "internal/cli, docs-site/content"
 lifecycle: spec-anchored
@@ -25,20 +25,23 @@ tier: L
 | 0.2.2 | 2026-09-26 | **plan-audit iter2 repairs (PASS-WITH-DEBT 0.92, report `.moai/reports/t1259/plan-audit-iter2.md` at `28476f1a9`).** Five of six iter1 repairs confirmed; two items remained. **D3-residual** — `AC-IFU-031` still asserted a docs-site build no workflow performs (`grep -rn 'hugo\|vercel' .github/workflows/` → nothing across 19 files). The whole clause is now grounded against the workflow files once, as the audit asked: `CI` and `spec-lint` named as the checks that actually run on a `develop` push, the docs-site build clause **dropped** rather than re-sited onto an unmeasured Vercel behaviour, and `docs i18n parity check` named in its true weight — it fires on this head but is **advisory, `strict=false`** by construction, so it is read, never gated. **N1** — the v0.2.1 alternation silenced this file's own `no tests to run` guard; split into two commands, and the marker is documented as the discriminator since `go test` exits `0` on a selector matching nothing. |
 | 0.2.3 | 2026-09-26 | **plan-audit iter3 repairs (FAIL 0.88 — the audit ceiling; report `.moai/reports/t1259/plan-audit-iter3.md` at `8d73a2a88`).** N1 and the D3 reasoning were both confirmed repaired; the FAIL is that the D3 repair **stopped at the criterion body**. `grep -rn "PR head"` found four live normative sites it never reached — `acceptance.md` §D.3 and `plan.md` §D/§E ×2 — so two sections of one file gave different close instructions for the same criterion and `plan.md` agreed with the superseded one. All four now name the `origin/develop` head carrying the lane's merge SHA. §D.3 additionally gains the four close-time duties the earlier repairs established but never propagated out of the notes that produced them: the `no tests to run` marker read, a named home for recording the docs-i18n log reading, the close-time re-read of the two decaying external readings, and a handover pointer to `SPEC-V3R3-DOCS-PARITY-001` for the docs-parity residual this SPEC does not own. **N2** — two miscited figures corrected: `strict=false` is at `docs-i18n-check.yml:75`, and there are **19** workflow files, not 20. |
 | 0.2.4 | 2026-09-26 | **Repair of a defect introduced by the v0.2.3 commit itself.** `da0df2113` shipped `progress.md` with the iter3 block duplicated (113 lines), carrying a second copy of the iter2 verification section and a surviving copy of the brittle-count table v0.2.3 had just replaced — so the file both argued against the count and retained it. Cause: a span-replacing edit whose end anchor was not unique resolved *before* its start anchor, re-emitting the span instead of removing it. No content change to `spec.md`, `plan.md`, or `acceptance.md`; the v0.2.3 repairs are unaffected. Found by the lead's close grep, not by the no-regression trio — all three were green over the duplicated file, because none reads prose structure. |
+| 0.2.5 | 2026-09-28 | **Dispatch-time premise re-measurement repairs (card t1259; readings in `.moai/reports/t1259/premise-20260928.md`).** Three stale statements repaired, no requirement or criterion changed. **(1)** `REQ-IFU-008`'s preamble citation `codex_launcher.go:138` → **`:137`** on `develop` = `origin/develop` = `37dc766b9`. The old figure did not merely drift: `git show 5ba87003f:internal/cli/codex_launcher.go \| grep -n 'source: %s'` → `136`, so `:138` was already wrong at the commit it was attributed to. Corrected in `spec.md` §C.1 and `acceptance.md` §D.2; the historical records in `progress.md` and `research.md` are kept and annotated, together with the other drifted `codex_launcher.go` / `codex_contract.go` lines (producer `:123`→`:124`, call site `:825`→`:813`, loop `:125`→`:126`, name constants `:33-34`→`:35-36`, install hint `:804`→`:792`, worktree error `:842`→`:830`). **(2)** `REQ-IFU-021` / `AC-IFU-007` before-value re-measured: `git show develop:CLAUDE.local.md \| wc -m` → **45,810** (44,740 at v0.2.0). The derived floor still yields a satisfiable, non-vacuous criterion: `after <= 39,999` demands a reduction of at least 5,811 characters (~12.7%). The v0.2.0 notes keep their 44,740 as history and now carry a dated pointer. **(3)** Both run-phase blocking dependencies read `status: completed` on `origin/develop` (`SPEC-INSTRUCTION-FILES-UNIFY-001`, `SPEC-ALWAYS-LOADED-DIET-002`), and the parent's loop now iterates `codexLocalInstructionName` first — recorded in `plan.md` §B and `progress.md` §E.1. Status stays `draft`. |
+| 0.3.0 | 2026-09-28 | **Scope reduction after plan-audit iter4 (FAIL 0.84, report `.moai/reports/t1259/plan-audit-iter4.md` at `a73c78d1a`); the lead's tier-3 decision, not re-opened here.** Milestone M3 — `REQ-IFU-021`, `REQ-IFU-022`, and the two criteria that verified only them (`AC-IFU-007`, `AC-IFU-024`) — is **transferred to card t1290**, whose prerequisite is a design guaranteeing that worktree sessions receive `AGENTS.local.md` (`AGENTS.md:262` states they currently do not; iter4 D2). Moved to §D Out of Scope with that reason; the verbatim requirement and criterion text stays readable at `4441cf1a6`. **D1** is moot here because both criteria it named left with M3, and it is carried to t1290 with a demonstrated committed-tree predicate (`.moai/reports/t1259/d1-mutant.md`). **D3** — the self-contradicting status paragraph under this table is rewritten to the current state. **N2** — `docs-i18n-check.yml:71-74` → `:71-75` in `AC-IFU-031`. Requirement ids and the remaining milestone ids are kept stable (M1, M2, M4; no renumber). Criteria 10 → **8**; Tier stays **L** (24 docs-site files alone exceed the >15 threshold). Status stays `draft`. |
 
-> **Plan phase complete (v0.2.4, card t1259; plan-audit iter1-iter3 repairs applied).** Every item the carve left open is now either
-> applied or explicitly deferred with a reason; `progress.md` §E.1 is the itemised record. The
-> Tier judgment is taken (L, on measured file count), the milestones are re-sequenced for this
-> SPEC's own dependency order, both recorded debts are unfolded, and the parent `research.md`
-> Q4 is answered. What remains open by design: no plan-audit has run against this SPEC yet, and
-> the `SPEC-INSTRUCTION-FILES-UNIFY-001` M2 sequencing dependency (plan.md §B) is unchanged. One
-> Three plan-audits have run — iter1 PASS-WITH-DEBT 0.85, iter2 PASS-WITH-DEBT 0.92, iter3 (scoped)
-> FAIL 0.88. Every defect from all three is repaired (v0.2.1 - v0.2.3). **iter3 was the audit
-> ceiling**, so no fourth iteration runs: the close condition in its place is a mechanical one —
-> `grep -rn "PR head"` over this directory returning only past-tense historical hits, plus a read of
-> the amended §D.3. The passing condition is **no live normative hit**, judged per hit — NOT "no
-> output": this sentence contains the search string by construction, and every repair record must
-> quote the wording it removed. Classification table: `progress.md` §E.1, iter3 section.
+> **Plan phase state (v0.3.0, card t1259).** Four plan-audits have run against this SPEC —
+> iter1 PASS-WITH-DEBT 0.85, iter2 PASS-WITH-DEBT 0.92, iter3 (scoped) FAIL 0.88, iter4
+> (dispatch-time) FAIL 0.84 — and every blocking defect from all four is either repaired or
+> transferred with its requirement (v0.2.1 - v0.3.0; itemised in `progress.md` §E.1). Both run-phase
+> dependencies are **completed** on `origin/develop` (`SPEC-INSTRUCTION-FILES-UNIFY-001`,
+> `SPEC-ALWAYS-LOADED-DIET-002`; plan.md §B). iter4 found that the landed parent turned M3's premise
+> into a known negative — a worktree session does not receive `AGENTS.local.md` (`AGENTS.md:262`) —
+> so M3 (`REQ-IFU-021`, `REQ-IFU-022`) is **split out to card t1290** (§D). What remains — M1 verb
+> and advisories, M2 launcher advisory, M4 docs — is implementable on the current tree.
+>
+> The iter3 close condition still holds as history: `grep -rn "PR head"` over this directory is
+> judged per hit, and the passing condition is **no live normative hit** — NOT "no output", since
+> every repair record must quote the wording it removed (`progress.md` §E.1, iter3 section).
+
 ---
 
 ## §A Context
@@ -49,8 +52,9 @@ harness-neutral `AGENTS.md`, a thin per-harness `CLAUDE.md`, and a user-owned
 
 This SPEC owns the other half: everything that touches a file the **user** owns. Concretely,
 the Codex-side `CLAUDE.local.md` fallback and its deprecation advisory, the explicit migration
-verb, the no-coexistence invariant, the `moai update` / `moai doctor` advisories, the docs-site
-rewrite across four locales, and this repository's own `CLAUDE.local.md` migration.
+verb, the no-coexistence invariant, the `moai update` / `moai doctor` advisories, and the
+docs-site rewrite across four locales. (This repository's own `CLAUDE.local.md` migration was
+carved out of this SPEC at v0.3.0 and belongs to card t1290 — §D.)
 
 The discriminator is exactly that — **whether the work touches a user-owned file**. It is what
 keeps the one milestone requiring explicit operator confirmation out of the branch that carries
@@ -69,8 +73,7 @@ budget the tier rule forbids relaxing.
 
 Retire `CLAUDE.local.md` as a live read path — through an explicit operator-invoked migration,
 never an implicit one — leaving exactly one user-owned local instruction file that both
-harnesses read, with the transition documented in all four locales and performed on this
-repository's own copy.
+harnesses read, with the transition documented in all four locales.
 
 ---
 
@@ -78,8 +81,9 @@ repository's own copy.
 
 > Ids are transferred verbatim from `SPEC-INSTRUCTION-FILES-UNIFY-001` and retain the `IFU`
 > infix. The gaps (`001~006`, `013~019`, `023~025`) are the carve's footprint: those
-> requirements remain with the parent SPEC. Renumbering would break every cross-reference and
-> the audit history that already cites these ids by name.
+> requirements remain with the parent SPEC. `021~022` are a second, later gap: they left this
+> SPEC for card t1290 at v0.3.0 (§D). Renumbering would break every cross-reference and the
+> audit history that already cites these ids by name.
 
 ### C.1 Codex fallback and provenance
 
@@ -89,8 +93,11 @@ repository's own copy.
   file it actually read, never a normalized or substituted name.
 
   > **[HARD] This is a preservation requirement, not new behaviour.** It is already satisfied at
-  > `internal/cli/codex_launcher.go:138` (`fmt.Fprintf(&payload, "<!-- source: %s -->\n", name)`),
-  > measured at `5ba87003f`. `AC-IFU-029` is therefore labelled a **regression guard** rather than
+  > `internal/cli/codex_launcher.go:137`, inside `codexLocalDeveloperInstructionArgs`
+  > (`fmt.Fprintf(&payload, "<!-- source: %s -->\n", name)`), measured 2026-09-28 on
+  > `develop` = `origin/develop` = `37dc766b9` with `grep -n 'source: %s' internal/cli/codex_launcher.go`. (v0.2.4 and
+  > earlier cited `:138` "at `5ba87003f`"; that commit reads `:136`, so the figure was wrong when
+  > written. The symbol is the durable anchor; the line number is re-read before use.) `AC-IFU-029` is therefore labelled a **regression guard** rather than
   > a verification, with its passing baseline recorded, and is extended to the new
   > fallback-advisory path — the advisory is emitted from the same launch path that builds the
   > payload, so the change most likely to break this preamble is this SPEC's own.
@@ -113,7 +120,7 @@ repository's own copy.
 - **REQ-IFU-012** — When both local instruction files exist, or when only `CLAUDE.local.md`
   exists, `moai doctor` shall report the same advisory as `moai update`.
 
-### C.3 Documentation and this repository
+### C.3 Documentation
 
 - **REQ-IFU-020** — The six docs-site pages named below shall describe the three-file
   structure in all four locales (ko, en, ja, zh), naming each by its **path** rather than its
@@ -121,44 +128,6 @@ repository's own copy.
   `advanced/claude-md-guide.md`, `advanced/codex-dual-harness.md`,
   `advanced/harness-learning.md`, `claude-code/context-memory/memory.md`,
   `getting-started/quickstart.md`, `cli-reference/update.md`.
-- **REQ-IFU-021** — This repository's own `CLAUDE.local.md` — specifically **the copy
-  committed on the `develop` branch**, which that file's own §0.1 declares canonical (the tree
-  the lanes branch from) — shall migrate to `AGENTS.local.md` at **under 40,000 characters**
-  (`wc -m`, i.e. at most 39,999), with operational procedure relocated to `.moai/docs/`. The
-  pre-migration value shall be **re-measured at the milestone** rather than carried from this
-  document.
-- **REQ-IFU-022** — The migrated `AGENTS.local.md` §0 shall name `AGENTS.local.md` as the
-  file whose canonical copy it discriminates.
-
-> **[HARD] Which copy, and in which unit — the D3 repair.** Both halves of this were ambiguous
-> in the parent SPEC, and the ambiguity was not incidental: that file's §0 exists precisely
-> because its copies diverge.
->
-> **The copy.** §0.1 declares the canonical copy to be the one on the tree the lanes branch
-> from, currently `develop`; §0.2 states that an uncommitted working copy may never be cited as
-> canonical; §0.3 records the copy committed on `main` as a retired third model. The migration
-> target is therefore the `develop`-committed copy, and nothing else. (The plan-audit measured a
-> third value, 39,258, from the primary checkout's *working* copy — which §0.2 excludes from
-> citation and §0.4 documents as permanently modified by design. That reading is not the
-> canonical copy, and this SPEC does not rest on it.)
->
-> **The unit is characters throughout** — the parent SPEC mixed 61,908 **bytes** with a
-> character count and a 40,000 cap, so the measuring command is stated: `wc -m`.
->
-> **[HARD] v0.2.0 — the before-value moved, and the fixed floor is withdrawn.** Re-measured in
-> the t1259 worktree, 2026-09-26: `git show origin/develop:CLAUDE.local.md | wc -m` → **44,740**
-> (`git show develop:CLAUDE.local.md | wc -m` agrees), not the **44,381** the carve recorded. The
-> canonical copy is a live maintainer document that other cards keep editing, so **any** absolute
-> before-value written into a SPEC is stale the moment a sibling card lands. The v0.1.1 repair
-> corrected the arithmetic of a constant that should not have been a constant: a floor of "at
-> least 4,382" is now wrong by 359 characters, and would have been read as authoritative.
->
-> The floor is therefore **derived, not fixed**: the binding condition is `after <= 39999`, and
-> the reduction is whatever `before - after` turns out to be, with `before` re-measured at the
-> milestone by the command named above. Both values are still recorded — that obligation is what
-> stops the criterion being discharged against an already-compliant copy — but neither is
-> predicted here. At 44,740 the reduction is ~4,741 characters, roughly 11%; that figure is an
-> expectation, not a bound.
 
 ---
 
@@ -188,16 +157,33 @@ This SPEC deliberately does not build the following.
 
 - Deduplicating the local-instruction load in a worktree session. Open card **t1219 item (1)**
   covers it. What this SPEC owes is only not making the duplicate worse: REQ-IFU-010's
-  no-coexistence invariant is what keeps a worktree session from carrying up to four
-  local-instruction loads.
+  no-coexistence invariant bounds the set of local-instruction files the verb leaves in any
+  project to one. Whether a worktree session receives that one file at all is a separate
+  question — the landed contract says it does not (`AGENTS.md:262`) — and it is card t1290's
+  prerequisite, not this SPEC's (next section).
 
-### Out of Scope — adjacent work
+### Out of Scope — this repository's own migration (transferred to card t1290)
 
-- Rewriting the substance of any maintainer rule while relocating it. REQ-IFU-021 splits
-  procedure out of a document; it does not re-decide what the document says.
-- Retiring the `CLAUDE.local.md` filename from historical references. REQ-IFU-022 requires the
-  migrated §0 to name the new file; occurrences of the old name that mark it as retired are
-  expected to remain.
+- The migration of this repository's own `CLAUDE.local.md` to `AGENTS.local.md` —
+  requirements `REQ-IFU-021` (the `develop`-committed copy, under 40,000 characters by `wc -m`,
+  procedure relocated to `.moai/docs/`) and `REQ-IFU-022` (the migrated §0 names
+  `AGENTS.local.md`), with the two criteria that verified only them, `AC-IFU-007` and
+  `AC-IFU-024`, and plan milestone M3. **Transferred to card t1290** by the lead's decision on
+  plan-audit iter4. Their verbatim text, including the D3 "which copy, which unit" note and the
+  v0.2.0 / v0.2.5 before-value readings, is preserved at `4441cf1a6` (`spec.md` §C.3,
+  `acceptance.md` §D.3, `plan.md` M3).
+- **Why it left (iter4 D2).** This repository's lanes are worktree sessions, and the landed
+  parent contract states that a worktree session does not receive `AGENTS.local.md`
+  (`AGENTS.md:262`, measured again at v0.3.0). Migrating the file lanes read today into one they
+  would not receive strips the maintainer doctrine from every lane while every criterion stays
+  green. t1290's prerequisite is therefore a design that guarantees worktree reception first.
+- **What t1290 inherits (iter4 D1).** Both transferred criteria read a gitignored working copy
+  (`.gitignore:275` ignores `/AGENTS.local.md`), so a migration that never `git add -f`s the new
+  file passes them. The committed-tree predicate that kills that mutant — and its demonstrated
+  mutant/control runs — is recorded in `.moai/reports/t1259/d1-mutant.md` for t1290 to adopt.
+- **Constraints that travel with it.** Relocating procedure out of the document does not
+  re-decide what any rule says; occurrences of the old filename that mark it as retired are
+  expected to remain after the rename.
 
 ---
 
@@ -206,9 +192,11 @@ This SPEC deliberately does not build the following.
 - `SPEC-INSTRUCTION-FILES-UNIFY-001` — the parent SPEC this was carved from; holds the
   contract, the guards, and the ceilings.
 - `.moai/reports/t1243/plan-audit-iter1.md` — the audit of `1140bcd1d` whose D2 arithmetic
-  forced the carve and whose D3 finding this SPEC repairs.
+  forced the carve and whose D3 finding was repaired in `REQ-IFU-021` (transferred to card t1290
+  at v0.3.0).
 - `.moai/reports/t1243/m0/verdict.md` — the M0 measurement the parent SPEC's design rests on.
 - `internal/cli/codex_contract.go`, `internal/cli/codex_launcher.go` — the fallback branch and
   the provenance preamble.
 - `internal/cli/` `migrate_agency_*` — the existing move-plus-backup verb precedent.
-- `CLAUDE.local.md` §0 — the canonical-copy discriminant REQ-IFU-021 names.
+- `CLAUDE.local.md` §0 — the canonical-copy discriminant the transferred REQ-IFU-021 names (card
+  t1290).

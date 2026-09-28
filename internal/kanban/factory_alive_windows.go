@@ -11,11 +11,11 @@ package kanban
 // STILL_ACTIVE (259) meaning live.
 //
 // Indeterminate observations resolve to LIVE — guessing "dead" is precisely
-// what would let two sessions share one worker name. The one positively-dead
+// what would let two sessions share one lane name. The one positively-dead
 // signal is ERROR_INVALID_PARAMETER from OpenProcess (no such process);
 // access-denied and every other open failure mean the process MAY be alive.
 //
-// Moved from internal/cli (t85 lead loop) unchanged in behavior; the cli
+// Moved from internal/cli (t85 leader loop) unchanged in behavior; the cli
 // package keeps a package var seam over it.
 
 import (

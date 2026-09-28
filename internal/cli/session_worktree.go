@@ -42,11 +42,12 @@ import (
 // check-ref-format exit evidence.
 const SessionWorktreeBranchPrefix = "WT-"
 
-// sessionWorktreeSubdir is the worktree landing directory relative to the
-// primary checkout's project root, matching the Claude-native L1 convention
-// (`.claude/worktrees/<name>/`) from worktree-integration.md § Terminology
-// Glossary.
-const sessionWorktreeSubdir = ".claude" + string(filepath.Separator) + "worktrees"
+// sessionWorktreeSubdir is MoAI's harness-neutral worktree landing directory
+// relative to the primary checkout's project root.
+const sessionWorktreeSubdir = ".moai" + string(filepath.Separator) + "worktrees"
+
+// Claude's short-name -w flag still resolves inside this native directory.
+const claudeNativeWorktreeSubdir = ".claude" + string(filepath.Separator) + "worktrees"
 
 // Function-variable seams for test injection. Each has a Real counterpart
 // below; tests swap these via swapSessionWorktreeSeams and restore on cleanup.
@@ -248,6 +249,12 @@ func materializeSessionWorktree(branch string, out io.Writer) (string, error) {
 	// the M2 direct call above. A helper result is best-effort and never
 	// aborts materialization (the worktree is already on disk and usable).
 	_ = applyWorktreeGitConfig(wtPath, out)
+
+	// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-005: seed .codex/hooks.json (MoAI-owned
+	// entries only) so a Codex session inside the new tree loads the moai
+	// hooks. Fail-open by construction — seeding is additive, never a gate
+	// (REQ-HN-007).
+	sessionWorktreeSeedCodexHooks(wtPath, out)
 	return wtPath, nil
 }
 
@@ -880,7 +887,7 @@ func ccWorktreeWriterPrecheck(args []string) error {
 				return nil
 			}
 		}
-		tree = filepath.Join(root, sessionWorktreeSubdir, value)
+		tree = filepath.Join(root, claudeNativeWorktreeSubdir, value)
 	}
 	if info, err := os.Stat(tree); err != nil || !info.IsDir() {
 		return nil // Claude Code creates it; there is no writer to collide with

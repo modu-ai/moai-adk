@@ -136,8 +136,8 @@ func TestFactoryLaneRecordsItsNumberAndLeadRecordsZero(t *testing.T) {
 		if rec.Lane != 0 {
 			t.Fatalf("lead lane = %d, want 0", rec.Lane)
 		}
-		if rec.Role != kanban.RoleLead {
-			t.Fatalf("role = %q, want %q", rec.Role, kanban.RoleLead)
+		if rec.Role != kanban.RoleLeader {
+			t.Fatalf("role = %q, want %q", rec.Role, kanban.RoleLeader)
 		}
 	})
 }
@@ -247,7 +247,7 @@ func TestFactoryLaneJoinClosesOnTheThirdHop(t *testing.T) {
 	root := t.TempDir()
 
 	// Hop 1: the factory registry entry for lane-5.
-	reg := map[string]kanban.FactoryWorkerEntry{
+	reg := map[string]kanban.FactoryLaneEntry{
 		kanban.FactoryLaneLabel(5): {PID: lanePID, RegisteredAt: "2026-08-24T09:22:12Z"},
 	}
 	regPath := kanban.FactoryRegistryPath(root)
@@ -403,7 +403,7 @@ func TestExistingRecordIsNotClobbered(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanban, "1")
 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
 
-	seeded := kanban.NewRecord("s", "SPEC-SEED", kanban.BackendGLM).WithRole(kanban.RoleLead)
+	seeded := kanban.NewRecord("s", "SPEC-SEED", kanban.BackendGLM).WithRole(kanban.RoleLeader)
 	seeded.DeepScanDir = "/tmp/scan"
 	seeded.VerifyReentries = 2
 	if err := kanban.Write(root, seeded); err != nil {

@@ -583,7 +583,7 @@ func (r *homeStateRunner) Run(ctx context.Context) error {
 		return fmt.Errorf("source census: %w", err)
 	}
 	runtimeReport, runtimeReportErr := homestate.ReadRuntimeCensus(root)
-	runtimeLine := fmt.Sprintf("sessions=%d factory=%d mcp=%d fingerprint=%s", runtimeReport.ActiveSessions, runtimeReport.ActiveFactoryWorkers, runtimeReport.ActiveMCPServers, runtimeReport.Fingerprint)
+	runtimeLine := fmt.Sprintf("sessions=%d factory=%d mcp=%d fingerprint=%s", runtimeReport.ActiveSessions, runtimeReport.ActiveFactoryLanes, runtimeReport.ActiveMCPServers, runtimeReport.Fingerprint)
 	if runtimeReportErr != nil {
 		runtimeLine = "indeterminate: " + runtimeReportErr.Error()
 	}
@@ -636,7 +636,7 @@ func (r *homeStateRunner) Run(ctx context.Context) error {
 		return fmt.Errorf("active runtime census: %w", err)
 	}
 	if firstCensus.Total() != 0 {
-		return fmt.Errorf("active runtime census is not zero: sessions=%d factory=%d mcp=%d", firstCensus.ActiveSessions, firstCensus.ActiveFactoryWorkers, firstCensus.ActiveMCPServers)
+		return fmt.Errorf("active runtime census is not zero: sessions=%d factory=%d mcp=%d", firstCensus.ActiveSessions, firstCensus.ActiveFactoryLanes, firstCensus.ActiveMCPServers)
 	}
 	if authorization != nil {
 		headReader := r.headReader
