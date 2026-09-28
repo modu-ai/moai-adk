@@ -6,6 +6,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -184,4 +185,85 @@ func TestTransitionStamps_DropThenDoneCarriesDroppedStampOnly(t *testing.T) {
 	if stampOf(entry.Item.PickedAt) != "" {
 		t.Errorf("archived picked_at = %q, want NULL — the two stamps never coexist", stampOf(entry.Item.PickedAt))
 	}
+}
+
+// TestTransitionStamps_GtdEngagePickAndGoalMissionPick — sync-audit F1
+// repair: REQ-TST-004's "or any other transition that sets state='picked'"
+// clause covers two pick paths beyond the two todo verbs, and both stamped
+// nothing before this repair:
+//
+//  1. `moai gtd engage --pick` — the published-card pick in the gtd engage
+//     verb (internal/cli/gtd.go, the engage Mutate callback).
+//  2. the goal auto-mission ActionPick owner-adapter pick (internal/cli/
+//     goal.go, the mission supervise path).
+//
+// Each subtest is named after its entry point so a selector sweep cannot
+// silently pass on one path alone. Both are asserted through the persisted
+// record — the card ends picked AND carries a non-empty picked_at.
+func TestTransitionStamps_GtdEngagePickAndGoalMissionPick(t *testing.T) {
+	t.Run("gtd engage --pick", func(t *testing.T) {
+		_, store := todoFixture(t)
+		// capture → clarify → organize → engage --pick (no --dispatch: the
+		// pick stamp is what is under test, and isolating it keeps the
+		// dispatch machinery — lanes, leases — out of this test).
+		out, _, err := runGTDCapture(t, "capture", "engaged pick stamp card", "--event", "fr-stamp-gtd", "--source", "user", "--sensitivity", "private", "--json")
+		if err != nil {
+			t.Fatalf("capture: %v", err)
+		}
+		var captured struct {
+			ItemID string `json:"item_id"`
+		}
+		if err := json.Unmarshal([]byte(out), &captured); err != nil || captured.ItemID == "" {
+			t.Fatalf("capture output=%q err=%v", out, err)
+		}
+		if _, _, err := runGTDCapture(t, "clarify", captured.ItemID, "--disposition", "action", "--outcome", "landed", "--evidence", "CI", "--authority", "queue,dispatch", "--trusted"); err != nil {
+			t.Fatalf("clarify: %v", err)
+		}
+		if _, _, err := runGTDCapture(t, "organize", captured.ItemID, "--class", "action", "--context", "computer"); err != nil {
+			t.Fatalf("organize: %v", err)
+		}
+		if _, stderr, err := runGTDCapture(t, "engage", captured.ItemID, "--approve", "--fresh", "--dependencies-ready", "--lane", "worker-4", "--resources", "--pick", "--json"); err != nil {
+			t.Fatalf("engage: %v (stderr %s)", err, stderr)
+		}
+		rec, err := store.Load()
+		if err != nil {
+			t.Fatalf("load: %v", err)
+		}
+		for i := range rec.Items {
+			if rec.Items[i].ID == "t1" {
+				if rec.Items[i].State != kanban.BacklogStatePicked {
+					t.Fatalf("state = %s, want picked after gtd engage --pick", rec.Items[i].State)
+				}
+				if stampOf(rec.Items[i].PickedAt) == "" {
+					t.Fatalf("picked_at is NULL after `gtd engage --pick`, want a stamp (REQ-TST-004 covers this transition)")
+				}
+				return
+			}
+		}
+		t.Fatalf("no live card t1 after gtd engage --pick: %d items", len(rec.Items))
+	})
+
+	t.Run("goal auto-mission ActionPick", func(t *testing.T) {
+		root, store := todoFixture(t)
+		// fcGoalDispatch walks publish → pick → dispatch through the mission
+		// supervise path; the pick owner-adapter (goal.go) is the transition
+		// under test, so the picked card must carry a picked_at stamp.
+		_, cardID, _ := fcGoalDispatch(t, root, store, "goal mission pick stamp card", "fr-stamp-goal", "018f4f4a-7b7c-7a11-8f4d-f33333333333", "worker-4", "auto-run-stamp")
+		rec, err := store.Load()
+		if err != nil {
+			t.Fatalf("load: %v", err)
+		}
+		for i := range rec.Items {
+			if rec.Items[i].ID == cardID {
+				if rec.Items[i].State != kanban.BacklogStatePicked {
+					t.Fatalf("state = %s, want picked after the mission pick", rec.Items[i].State)
+				}
+				if stampOf(rec.Items[i].PickedAt) == "" {
+					t.Fatalf("picked_at is NULL after the goal auto-mission ActionPick, want a stamp (REQ-TST-004 covers this transition)")
+				}
+				return
+			}
+		}
+		t.Fatalf("no live card %s after the mission pick: %d items", cardID, len(rec.Items))
+	})
 }

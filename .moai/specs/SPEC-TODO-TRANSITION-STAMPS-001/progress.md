@@ -112,6 +112,33 @@ this tree, HEAD at measurement time)
     suite run during run1/run2 was observed via lsof cwd and waited out):
     the only failure is that same pre-existing doctor test.
 
+### §E.2 delta — sync-audit F1 repair (2026-09-29, commit of this note)
+
+**Claim**: the two additional `state='picked'` transitions the sync-audit's
+F1 finding named — `moai gtd engage --pick` (internal/cli/gtd.go engage
+Mutate callback) and the goal auto-mission ActionPick owner-adapter
+(internal/cli/goal.go mission supervise path) — now stamp picked_at in the
+same locked write, closing REQ-TST-004's "or any other transition" clause.
+
+**Evidence** (this run, this tree):
+- RED (pre-fix tree): `go test ./internal/cli/ -run
+  'TestTransitionStamps_GtdEngagePickAndGoalMissionPick' -count=1 -v` →
+  `--- FAIL: …/gtd_engage_--pick` AND
+  `--- FAIL: …/goal_auto-mission_ActionPick`
+  (`picked_at is NULL after the goal auto-mission ActionPick, want a
+  stamp (REQ-TST-004 covers this transition)`) — both named entry points
+  observed failing before the fix.
+- GREEN (post-fix): the same command → `--- PASS` on BOTH named subtests;
+  bounded sweep `go test -timeout 30m ./internal/cli/... -count=1 -run
+  'TestGtdEngage|TestGoal.*Pick|TestTransitionStamps'` → `ok
+  github.com/modu-ai/moai-adk/internal/cli` (subpackages: no matching
+  tests, the matching set is the root package).
+- The fix: one `todoStampNow()` line in each Mutate callback
+  (gtd.go engage pick block; goal.go ActionPick apply).
+
+**Baseline-attribution**: this run, this tree, measured at the commit
+carrying this note.
+
 ### Merge-order notes (plan.md §B bounded obligations)
 
 - t1308 (state-CHECK rebuild): different columns; this SPEC's changes are

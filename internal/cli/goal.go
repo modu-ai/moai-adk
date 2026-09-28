@@ -839,6 +839,9 @@ func runGoalMissionOperation(cmd *cobra.Command, sessionID string, jsonOutput bo
 							return errors.New("auto mission: card_not_queued")
 						}
 						record.Items[i].State = kanban.BacklogStatePicked
+						// REQ-TST-004: the mission pick is a picked
+						// transition — stamp it in the same locked write.
+						record.Items[i].PickedAt = todoStampNow()
 						return nil
 					}
 				}
