@@ -159,6 +159,18 @@ Each auxiliary role keeps its name and gains one line defining it as an auxiliar
 
 No run-3 echo output was needed: no file in the echo scan set changed in this pass (only `progress.md` and `ledger.tsv`, neither scanned by `echoes.py`); run-2 remains the current basis.
 
+### M3 — amendment application (2026-09-28, HEAD 67fd6a1ae → M3 commit)
+
+Pre-flight (all PASS, this run, tree @ 67fd6a1ae): branch `WT-role-naming-docs`; `cmp` byte-identity of both file pairs exit 0 pre-edit; `internal/cli/factory.go:61` `factoryLaneRoleToken = "lane"` confirmed; [HARD] baseline kanban-dispatch.md 39/39 (both copies), mechanics 0/0 (fresh measure). All 10 anchors located BY CONTENT (grep, single hit each) at the M2-R2 remapped keys — kanban-dispatch.md L25/L29/L31/L35/L37/L39/L47/L249 + mechanics L34, both copies each; no M2 line key used.
+
+Applied (10 draft blocks verbatim; template copy first, then local copy; both copies byte-identical after edit, `cmp` exit 0): D-RND-019 (L25), D-RND-018a (L29), D-RND-018d′ (L31), D-RND-018b-1 (L35), D-RND-018b-2 (L37), D-RND-018b-3 (L39) + D-RND-018c appended to the same paragraph, D-RND-018b-4 (L47), D-RND-018e-1′ (L249), D-RND-018e-2′ (mechanics L34). All edits single-line replacements — line count unchanged. Stale tokens post-edit: `worker-1..worker-N` and `-f worker` → 0 hits in all 4 files. Superseded blocks (D-RND-018d, D-RND-018e) NOT applied.
+
+REQ-RND-007 [HARD] counts before→after: kanban-dispatch.md 39→39 (local), 39→39 (template); mechanics 0→0 (local), 0→0 (template) — no decrease.
+
+Ledger resolution (REQ-RND-006/020): 12 `amendment-target` rows resolved — `<pending M3 …>` placeholders replaced with the applied AFTER text (rows for old keys kd L27/31/33/41/266 ×2 + mechanics L34 ×2; the kd L33 rows carry the D-RND-018d′ AFTER, the kd L266 rows the D-RND-018e-1′ AFTER). Consistent-row verification notes recorded for the 4 echo rows inside M3-edited files (kd L61 ×2, mechanics L28 ×2): post-edit read confirms agreement with the amended clauses, no text change. Remaining classes untouched: `consistent-with-amended-clause` 48 (in M4-substitution files), `role-noun-echo` 14 (M4), `other-meaning` 58, `kept` 28, `routed-to-code-layer` 4, stale/line-shift 4. Ledger stays 172 data rows.
+
+Build: `make build` exit 0 (embedded template recompile; binary NOT installed; catalog.yaml unchanged — no hash delta to commit).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
