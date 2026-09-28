@@ -3,7 +3,9 @@ package kanban
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -68,6 +70,70 @@ func TestFactoryFreeSlots(t *testing.T) {
 			t.Errorf("FactoryFreeSlots with out-of-range claim = %v, want [1 2]", got)
 		}
 	})
+}
+
+func TestClaimFactoryLaneWithinBounds(t *testing.T) {
+	root := t.TempDir()
+	alive := func(int) bool { return true }
+	// An older claim outside the current run's two slots must not make the
+	// automatic join skip the first available in-range number.
+	if _, err := ClaimFactoryLane(root, "lane-9", false, 9009, "old-run", alive); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"lane-1", "lane-2"} {
+		claim, err := ClaimFactoryLaneWithin(root, "", true, os.Getpid(), "run", 2, alive)
+		if err != nil || claim.Label != want {
+			t.Fatalf("automatic claim = (%q, %v), want %s", claim.Label, err, want)
+		}
+	}
+	before := LoadFactoryRegistry(FactoryRegistryPath(root))
+	for _, tc := range []struct {
+		label string
+		auto  bool
+		want  string
+	}{
+		{"", true, "no free lane slots"},
+		{"lane-1", false, "already occupied"},
+		{"lane-3", false, "outside the allowed slots"},
+	} {
+		if _, err := ClaimFactoryLaneWithin(root, tc.label, tc.auto, os.Getpid(), "run", 2, alive); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Fatalf("claim %q auto=%v: err=%v, want %q", tc.label, tc.auto, err, tc.want)
+		}
+		after := LoadFactoryRegistry(FactoryRegistryPath(root))
+		if !reflect.DeepEqual(before, after) {
+			t.Fatalf("failed claim changed registry: before=%v after=%v", before, after)
+		}
+	}
+}
+
+func TestClaimFactoryLaneWithinConcurrentOneSlot(t *testing.T) {
+	root := t.TempDir()
+	results := make(chan error, 2)
+	var wg sync.WaitGroup
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := ClaimFactoryLaneWithin(root, "", true, os.Getpid(), "run", 1, func(int) bool { return true })
+			results <- err
+		}()
+	}
+	wg.Wait()
+	close(results)
+	succeeded, full := 0, 0
+	for err := range results {
+		switch {
+		case err == nil:
+			succeeded++
+		case strings.Contains(err.Error(), "no free lane slots"):
+			full++
+		default:
+			t.Fatalf("unexpected concurrent claim error: %v", err)
+		}
+	}
+	if succeeded != 1 || full != 1 {
+		t.Fatalf("concurrent claims: success=%d full=%d, want 1 each", succeeded, full)
+	}
 }
 
 // TestPruneFactoryDeadClaims pins the shared prune rule on its own: only

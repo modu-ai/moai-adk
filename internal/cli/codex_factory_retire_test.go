@@ -191,6 +191,24 @@ func TestCodexFactoryLeaderAndLaneLaunch(t *testing.T) {
 	if got := workerRows(t, root); got != 1 {
 		t.Fatalf("claimed lanes = %d, want 1", got)
 	}
+	for _, tc := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"-f", "lane", "--factory-run", runID}, "no free lane slots"},
+		{[]string{"-f", "lane-1", "--factory-run", runID}, "already occupied"},
+		{[]string{"-f", "lane-2", "--factory-run", runID}, "outside the allowed slots"},
+	} {
+		if _, _, err := runCodexCmd(t, tc.args...); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Fatalf("codex %q: err=%v, want %q", tc.args, err, tc.want)
+		}
+		if got := workerRows(t, root); got != 1 {
+			t.Fatalf("failed join changed claimed lanes to %d", got)
+		}
+		if len(cap.records) != 2 {
+			t.Fatalf("failed join launched Codex: launches=%d", len(cap.records))
+		}
+	}
 }
 
 func TestCodexFactoryEntryParsingUsesLaneOnly(t *testing.T) {
