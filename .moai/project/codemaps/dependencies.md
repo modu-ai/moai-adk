@@ -1,5 +1,14 @@
 # 의존성 그래프
 
+**현재 부분 재측정 — t1295, `develop` `cee197917` (2026-09-28).**
+`go list -deps -json ./...`가 성공한 트리의 내부 import는 패키지 단위 452개,
+`internal/<X>`·`cmd/<X>`·`pkg/<X>`로 접고 자기 엣지를 뺀 고유 쌍은 278개다.
+현재 최상위 fan-out은 `internal/cli` 70, `internal/hook` 39이며 fan-in은
+`internal/config` 25, `internal/paths` 14, `internal/defs`와 `internal/atomicfile` 각 13이다.
+아래 상세 표와 판별 설명의 수치는 각 절에 적힌 **이전 재측정 판의 기록**이다.
+이번 갱신의 구조 변화인 MoAI L1 워크트리·Factory 역할 전환은 기존 패키지 안에서
+일어났으며 새 패키지 경계를 만들지 않았다.
+
 **현재 재측정 — t1187, `origin/develop` `a8a9b9376` (2026-09-25).**
 아래 import 엣지는 같은 `go list -f` 명령으로 다시 셌다. 비테스트 소스
 변경 41개 중 Codex 감사 런처와 Factory 런 은퇴가 기존 `internal/cli`·

@@ -1,5 +1,10 @@
 # 데이터 흐름
 
+**현재 갱신 — t1295, `develop` `cee197917` (2026-09-28).**
+MoAI가 만드는 L1 워크트리 경로와 기존 트리의 이전 경로를 § M에 추가했다.
+Factory 런 은퇴의 `lead` 표기는 이전 런의 저장 역할값이다. 현재 런은 `leader/lane`을 쓰며,
+옛 역할을 가진 세션은 `internal/hook/session_stale_run.go`에서 재등록하지 않고 안내한다.
+
 **현재 갱신 — t1187, `origin/develop` `a8a9b9376` (2026-09-25).**
 앵커 `bd71c59e4` 뒤 끝점 변경 41개 비테스트 Go 파일을 확인했다.
 이번 판에서 아래 두 경로를 보강했다.
@@ -16,7 +21,7 @@
 
 ### Factory 런 은퇴
 
-`internal/factorymsg/factory_run_retire.go`가 등록된 lead peer의 PID와
+`internal/factorymsg/factory_run_retire.go`가 등록된 이전 런의 `lead` peer PID와
 프로세스 시작 지문을 이전 런의 fallback 신원으로 건넨다.
 `internal/homestate/factory_run_retire.go`는 소유자를 분류하고,
 정상적인 신원이 없는 런에 대해서는 부팅 시각보다 모든 기록 활동이
@@ -551,3 +556,20 @@ primary 체크아웃을 가리키므로, 그 값을 썼다면 영수증은 카�
 호출점 N곳의 게이트는 N곳이 잊힐 수 있지만, 비활성 상태에서 요청 자체가 조립되지 않는 성질은
 한 곳에서 검증된다. **표시 전용이다** — 이 패키지들이 파일을 쓰거나 큐를 바꾸거나 git을 만지는
 경로가 없어서, 표시가 판정으로 오독되더라도 그 오독이 상태를 바꿀 수 없습니다.
+
+---
+
+## M. MoAI 워크트리 생성·기존 트리 이전
+
+`moai worktree new <name>`은 `internal/cli/worktree/new.go`에서
+`internal/cli/session_worktree.go`의 L1 생성기로 내려가 프로젝트의
+`.moai/worktrees/<name>`을 만든다. Claude Code가 자체 생성한
+`.claude/worktrees/<name>`은 별도 위치로 남는다. `moai codex -w <name>`은
+`internal/cli/codex_launcher.go`에서 두 위치의 **기존** 트리를 조회한다.
+둘 다 있으면 이름만으로 고르지 않고 절대 경로를 요구한다. 없는 이름은 만들지 않는다.
+
+`moai update`는 템플릿 배포 전에 `internal/cli/update_worktree_migration.go`를 호출한다.
+이 경로는 Git에 등록된 기존 `.claude/worktrees` 항목만 계획하고,
+잠금·활성 세션·사용 중인 프로세스·대상 충돌을 확인해 이동 가능 항목에만
+`git worktree move`를 실행한다. 이동 뒤 HEAD·브랜치·상태를 재확인한다.
+건너뛴 항목은 원래 위치에 남아 다음 update에서 재시도할 수 있다.
