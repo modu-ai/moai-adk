@@ -63,6 +63,8 @@ func readItemsRows(ctx context.Context, q interface {
 	return out, rows.Err()
 }
 
+// @MX:NOTE: [AUTO] parity is deliberately exhaustive (every column tuple), not count-based — a count check would pass a rebuild that silently drops a spec id or landing evidence
+// @MX:SPEC: SPEC-TODO-HOLD-STATE-001
 // assertRebuildParity compares the copied rows against the source rows —
 // deliberately exhaustive rather than count-based, for the same reason the
 // JSON→SQLite parity is: a rebuild that moved the right NUMBER of rows while
@@ -81,6 +83,9 @@ func assertRebuildParity(source, copied []backlogItemRow) error {
 	return nil
 }
 
+// @MX:WARN: [AUTO] rebuildItemsTable drops and renames the live items table inside a migration transaction — a fault past the copy step is recoverable only by rollback, never by repair
+// @MX:REASON: destructive DROP/RENAME sequence over operator data; every step after the copy must abort through the single error path so the original table and file stand untouched (REQ-THS-003)
+// @MX:SPEC: SPEC-TODO-HOLD-STATE-001
 // rebuildItemsTable migrates a stamped-v1 items table to the current
 // four-state CHECK inside ONE transaction. On any failure the transaction
 // rolls back and the original table (and file) stand exactly as they were.

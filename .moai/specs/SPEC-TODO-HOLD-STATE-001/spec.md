@@ -2,7 +2,7 @@
 id: SPEC-TODO-HOLD-STATE-001
 title: "A held card the machine cannot pick — a fourth backlog state with operator-only hold/unhold verbs, a rebuilt CHECK constraint behind a schema_version bump, and positive state enumeration on every lease surface"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-09-29
 updated: 2026-09-29
 author: manager-spec (card t1308)

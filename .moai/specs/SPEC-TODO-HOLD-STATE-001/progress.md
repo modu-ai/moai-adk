@@ -221,7 +221,36 @@ evidence_paths:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+spec: SPEC-TODO-HOLD-STATE-001
+phase: sync
+sync_status: complete
+tier: M
+sync_complete_at: 2026-09-29
+sync_commit_sha: pending-backfill-sync
+branch: WT-todo-hold-state
+worktree: .moai/worktrees/t1308
+frontmatter_status_transitions:
+  in_progress_to_implemented: merged-close
+  implemented_to_completed: merged-close
+  carrier: "single sync commit (docs(SPEC-TODO-HOLD-STATE-001): sync-phase artifacts)"
+changelog_entry_position: "CHANGELOG.md [Unreleased] § Added, first entry"
+changelog_emission:
+  pre_emission_grep_count: 0        # grep -c 'SPEC-TODO-HOLD-STATE-001' CHANGELOG.md → 0 before append
+  ac_count_live: 16                 # heading-anchored: grep -cE '^## AC-THS-' acceptance.md → 16
+  ac_count_note: "unique-identifier grep returns 19; AC-THS-007/009/014 occur only inside the iter1-D2 absorption prose that explicitly declares them absorbed — resolved as deliberate gaps per acceptance.md header, not ambiguous"
+  path_verification: "internal/cli/todo_hold.go, internal/cli/todo.go, internal/cli/todo_autodone.go, internal/kanban/backlog_rebuild.go, internal/kanban/backlog_sqlite.go — all verified via ls"
+b12_self_test_a: pass
+b12_self_test_b: pass
+b12_self_test_c: pass
+mx_tag_compliance_check:
+  rebuildItemsTable: "@MX:WARN [AUTO] + @MX:REASON + @MX:SPEC added (destructive DROP/RENAME migration sequence); fan_in=1 (< 3, no ANCHOR)"
+  assertRebuildParity: "@MX:NOTE [AUTO] + @MX:SPEC added (exhaustive parity invariant); fan_in=1 (< 3, no ANCHOR)"
+  todo_hold_verbs: "no tag — unexported cobra constructors, godoc complete, no danger pattern, fan_in=1"
+  readItemsRows: "no tag — fan_in=2 (< 3)"
+readme_docs_site_assessment: "no edit — M5 covered the in-repo skill/command doc surfaces (REQ-THS-019); README/docs-site are CLI-reference/4-locale depth out of scope per spec §D; no stale todo-verb enumeration surface found (hold documented on gtd.md + todo.md + template mirrors at M5)"
+sanity_build: "go build ./internal/kanban ./internal/cli → exit 0 (after MX comment edits)"
+```
 
 ## 진행 기록
 
@@ -252,3 +281,10 @@ _<pending sync-phase>_
   변이 3건(패리티 제거+행 손실 / 픽 게이트 default 제거 / autodone default 제거) 각각
   실패 출력 기록 후 복원 — mutation-evidence.md. 최종 스코프드 스위트 전부 green,
   lint 0, windows 빌드 pass, push 없음(리드 통합 대기).
+- 2026-09-29 (sync, card t1308, lane worker-72): 단일 싱크 커밋 — CHANGELOG [Unreleased]
+  Added 선두 항목 (B12 3-셀프테스트 통과: 사전 grep 0건·AC 16 라이브·경로 ls 검증),
+  MX 패스 (backlog_rebuild.go 에 WARN+NOTE [AUTO] 추가, REASON/SPEC 서브라인; fan_in
+  1-2 로 ANCHOR 대상 없음), spec.md frontmatter `completed` 전환 (본문 동결),
+  §E.4 기입 (sync_commit_sha: pending-backfill-sync, D3 백필 예정). README/docs-site
+  무편집 판정 — M5 가 REQ-THS-019 표면을 이미 커버, stale 동사 열거 표면 없음.
+  산빌드 `go build ./internal/kanban ./internal/cli` exit 0. push 없음.
