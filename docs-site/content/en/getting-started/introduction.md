@@ -30,7 +30,7 @@ MoAI-ADK is an Agentic Development Kit that wraps Claude Code around **three pil
 
 ### Cost — tokenomics
 
-The same quality for fewer tokens. Cost is decided not by unit price but by **model assignment** — in the DeepSWE benchmark, Opus at its lowest reasoning outscored Sonnet at its highest while costing one sixteenth as much. The 3-tier model policy · prompt caching · Token Circuit Breaker put the budget under the system's management.
+The same quality for fewer tokens. Cost is decided not by unit price but by **model choice** — in the DeepSWE benchmark, Opus at its lowest reasoning outscored Sonnet at its highest while costing one sixteenth as much. The session-level model policy · prompt caching · Token Circuit Breaker put the budget under the system's management.
 
 ### Self-improvement — agentic loop engineering
 
@@ -50,7 +50,7 @@ Each pillar is covered in detail in the [Core Concepts](/en/core-concepts/) sect
 - **manager-lead** — coordinates large-scale work: Tier L milestone fan-out inside a SPEC, plus kanban and factory leader-session dispatch.
 - **multi-model audit** — cross-validates with multiple models to catch bias.
 - **autonomy tier** — dials the autonomy level so things run safely.
-- **profile matrix** — assigns models across 13 agents × 3 profiles.
+- **session model policy** — one choice sets the session's default reasoning effort; subagents inherit the session's model and effort.
 
 ## Core concepts
 
@@ -140,16 +140,16 @@ The MoAI orchestrator does not implement directly; it delegates work to 13 speci
 
 ### Model policy (tokenomics)
 
-MoAI-ADK assigns each agent the optimal model and reasoning depth. The goal is to pull quality as high as possible within your plan's usage limits. So instead of switching to a weaker model class, it tunes only each agent's reasoning depth within the same Opus — because on long-horizon agentic work, a weaker model burns more steps and the per-task cost actually rises.
+The goal is to pull quality as high as possible within your plan's usage limits. On long-horizon agentic work a weaker model burns more steps and the per-task cost actually rises — so the lever is reasoning depth inside the same model, not a weaker model class. Since v3.2, the model and effort are decided at the **session** level: subagents inherit the main session's model and effort, agent definitions declare neither, and the profile's **Session model policy** (`moai profile setup`) sets the default reasoning effort used when none is chosen.
 
-| Tier | Characteristics |
+| Session model policy | Meaning |
 |------|------|
-| **high** | Highest quality — same as medium except that `builder-harness` and `e2e-tester` run one effort level higher |
-| **medium** (default) | Balance of quality and cost |
-| **low** | Lowest cost per task — the auditing and coordinating rows drop to `medium` and `builder-harness` to Opus `low` (`super-advisor` and `mission-governor` stay at `high`), and Sonnet covers the single-shot rows plus `e2e-tester` |
+| **high** | Session effort fallback `high` |
+| **medium** (default) | Session effort fallback `medium` — the knee of the cost/score curve |
+| **low** | Session effort fallback `low` — economical within the same model |
 
 {{< callout type="info" >}}
-The default tier is **medium**. Changing the tier mostly moves each agent's Opus reasoning depth; the only model change is `e2e-tester`, which moves to Sonnet under `low`. `low` drops the auditing and coordinating rows to `medium` and `builder-harness` to `low`, and uses Sonnet only on single-shot rows and `e2e-tester`; `high` raises only `builder-harness` and `e2e-tester` one effort level above medium. No tier assigns `max` to any agent. Set it with the `--model-policy` flag or in the initialization wizard.
+The retired `--model-policy` / `--profile` flags are deprecated stubs: they print a warning pointing at `moai profile setup` and do nothing. Set the session's effort as you go with `/effort` or `ultrathink`; the model with `/model`. Details: [Model Policy](/en/multi-llm/model-policy/).
 {{< /callout >}}
 
 ### Execution modes and orchestration
@@ -272,7 +272,7 @@ To start with MoAI-ADK, follow this order:
 | Advantage | Description |
 |------|------|
 | **Quality assurance** | Consistent quality maintained by the TRUST 5 framework |
-| **Token efficiency** | Cost managed by the system via model policy + Token Circuit Breaker |
+| **Token efficiency** | Cost managed by the system via session model policy + Token Circuit Breaker |
 | **Higher productivity** | Shorter development time through AI-agent automation |
 | **Extensible** | Flexible extension with a modular architecture and the harness builder |
 | **Multilingual** | 4 languages supported |

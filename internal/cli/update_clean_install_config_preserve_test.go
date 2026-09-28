@@ -102,8 +102,9 @@ func makeConfigPreserveFixture(t *testing.T) string {
 		"design:\n    default_framework: flutter\n")
 	// llm.yaml joins the fixture family (SPEC-LLMCFG-PRESERVE-001 AC-LCP-005)
 	// with the same user-edit pattern the template-sync path pins: a
-	// glm.models.high re-pin, an agent_overrides entry, and a marker comment
-	// above a user-added key — derived from the REAL embedded template bytes.
+	// glm.models.high re-pin and a marker comment above a user-added key —
+	// derived from the REAL embedded template bytes. (The agent_overrides
+	// entry retired with the key — t1246.)
 	writeTestFile(t, root, ".moai/config/sections/llm.yaml",
 		string(buildLLMUserYAML(t, embeddedLLMYAMLBytes(t), false)))
 
@@ -226,19 +227,18 @@ func TestCleanReinstall_AllSectionsYAMLPreserved(t *testing.T) {
 // TestCleanReinstallLLMYAMLPreserved covers AC-LCP-005
 // (SPEC-LLMCFG-PRESERVE-001): llm.yaml joins the protection class AC-RIL-006
 // already grants user/language/design.yaml — the same user-edit pattern (value
-// change + agent_overrides entry + marker comment above a user-added key)
-// survives the clean-reinstall's force-deploy clobber + restore. The deployer
-// clobbers llm.yaml with the REAL embedded template bytes, so survival proves
-// the restore's 3-way merge, not a clobber that never happened.
+// change + marker comment above a user-added key) survives the
+// clean-reinstall's force-deploy clobber + restore. (The agent_overrides
+// fixture edit retired with the key — t1246 removed it from the template and
+// the update strips it from user files.) The deployer clobbers llm.yaml with
+// the REAL embedded template bytes, so survival proves the restore's 3-way
+// merge, not a clobber that never happened.
 func TestCleanReinstallLLMYAMLPreserved(t *testing.T) {
 	root := makeConfigPreserveFixture(t)
 	runConfigPreserveReinstall(t, root)
 
 	if got := llmYAMLString(t, root, "llm", "glm", "models", "high"); got != llmUserPinnedHigh {
 		t.Errorf("clean-reinstall lost user llm.glm.models.high = %q; want %q (clobbered to template default?)", got, llmUserPinnedHigh)
-	}
-	if got := llmYAMLString(t, root, "llm", "agent_overrides", "manager-develop", "model"); got != "opus" {
-		t.Errorf("clean-reinstall lost user agent_overrides entry: manager-develop.model = %q; want opus", got)
 	}
 	if got := llmYAMLString(t, root, "llm", llmUserMarkerKey); got != llmUserMarkerKeyValue {
 		t.Errorf("clean-reinstall lost user-added key llm.%s = %q; want %q", llmUserMarkerKey, got, llmUserMarkerKeyValue)

@@ -8,11 +8,14 @@
 // cannot happen by accident, which is the property the doctrine's
 // prohibition needs in order to be more than a promise.
 //
-// The four semantic relations (contains / absorbs / replaces / conflicts)
-// are the judgements a text analyser cannot reach. Recording one causes
-// nothing: the operator reads it and decides. That asymmetry is deliberate —
-// a wrong mechanical refusal costs a card, a wrong record costs a line of
-// output.
+// The semantic relations are the judgements a text analyser cannot reach.
+// contains / absorbs / replaces / conflicts came first; blocks / depends
+// joined them (card t1309) so card sequencing stops living in prose alone —
+// `A blocks B` reads "A must land before B proceeds", `A depends B` reads
+// "A waits on B". Recording one causes nothing: no scheduler, dispatcher, or
+// self-dispatch path reads these findings, and the operator decides. That
+// asymmetry is deliberate — a wrong mechanical refusal costs a card, a wrong
+// record costs a line of output.
 //
 // SUBAGENT BOUNDARY (REQ-TA-015): nothing here prompts.
 package cli
@@ -33,7 +36,7 @@ import (
 func newTodoRelateCmd() *cobra.Command {
 	var relation, note string
 	cmd := &cobra.Command{
-		Use:   "relate <a> <b> --relation <contains|absorbs|replaces|conflicts>",
+		Use:   "relate <a> <b> --relation <contains|absorbs|replaces|conflicts|blocks|depends>",
 		Short: "Record a relation between two cards (records only — changes no card)",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {

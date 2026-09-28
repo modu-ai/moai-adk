@@ -61,19 +61,15 @@ delegation:
 
 Related: [Agent Guide](/en/advanced/agent-guide), [Skill Guide](/en/advanced/skill-guide).
 
-## llm.yaml — backend·profile matrix
+## llm.yaml — backend·GLM mappings
 
-Defines the profile, the profile matrix, per-agent overrides, and GLM model mappings.
+Defines the harness backend, the GLM environment, and GLM model mappings. The model and effort that agents run on are decided at the **session** level — subagents inherit the main session's model and effort — so this file no longer carries a per-agent model assignment. The former per-agent profile-matrix keys (`profile`, `profiles`, `performance_tier`, `harness_agents`, `agent_overrides`) are retired; `moai update` strips them from user files on the next run. Main-session reasoning effort comes from the preference profile (`moai profile setup`), never from this file.
 
 ```yaml
 llm:
-  profile: "medium"            # high | medium | low (active matrix column; max read as high)
-  performance_tier: "medium"   # legacy alias (read when profile absent; same vocabulary)
-  profiles:                    # profile column → 13 agents → {model, effort}
-    high: { ... }              # detailed table: Profile Matrix page
-    medium: { ... }
-    low: { ... }
-  agent_overrides: {}          # per-agent {model, effort} override (optional)
+  harness: "claude"            # claude | gpt | both — agent harness selected at init time
+  team_mode: ""                # glm switches the backend to z.ai
+  glm_env_var: "GLM_API_KEY"
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
@@ -85,10 +81,9 @@ llm:
 
 | Key | Description |
 |-----|-------------|
-| `profile` | Active profile matrix column (`high`/`medium`/`low`; the former `max` is read as an alias of `high`). An empty value is interpreted as `medium`. The model+effort source for every subagent spawn |
-| `performance_tier` | Legacy alias field. Read only when `profile` is absent; shares the same `high`/`medium`/`low` vocabulary, so no normalization step is needed |
-| `profiles` | The per-agent → `{model, effort}` matrix per profile column (13 agents × 3 columns = 39 cells). The Go default (`template.DefaultProfileMatrix`) is the authoritative fallback for missing cells |
-| `agent_overrides` | Per-canonical-agent-name `{model, effort}` override. Takes precedence over the active profile's agent cell (catalog+enum validated) |
+| `harness` | The agent harness deployed at init (`claude` default; `gpt` means Codex-only deployment) |
+| `team_mode` | Empty runs Claude; `glm` routes the session to the z.ai backend |
+| `claude_bin` | Optional explicit Claude Code binary pin (environment variable `MOAI_CLAUDE_BIN` overrides per launch) |
 | `glm.base_url` | Z.AI Anthropic-compatible proxy endpoint |
 | `glm.models` | Per-slot GLM model mapping. GLM collapses Claude's 5-step effort into 3 reasoning states (thinking-off / reasoning-high / reasoning-max) |
 

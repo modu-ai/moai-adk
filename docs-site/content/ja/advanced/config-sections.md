@@ -61,19 +61,15 @@ delegation:
 
 関連: [エージェントガイド](/ja/advanced/agent-guide), [スキルガイド](/ja/advanced/skill-guide).
 
-## llm.yaml — バックエンド・プロファイルマトリクス
+## llm.yaml — バックエンド·GLM マッピング
 
-プロファイル、プロファイルマトリクス、エージェント別 override、GLM モデルマッピングを定義します。
+ハーネスバックエンド、GLM 環境、GLM モデルマッピングを定義します。エージェントが動くモデルと effort は**セッション**レベルで決まります — サブエージェントはメインセッションのモデルと推論深度をそのまま引き継ぐため、このファイルがエージェント別モデル割り当てを担うことはなくなりました。かつてのプロファイルマトリクス系キー (`profile`、`profiles`、`performance_tier`、`harness_agents`、`agent_overrides`) は退いており、`moai update` が次回実行時にユーザーファイルからこれらのキーを取り除きます。メインセッションの推論強度は設定プロファイル (`moai profile setup`) から来ます — このファイルからではありません。
 
 ```yaml
 llm:
-  profile: "medium"            # high | medium | low (アクティブマトリクス列、max は high として読み込み)
-  performance_tier: "medium"   # legacy エイリアス (profile 不在時に読み込み、同じ語彙)
-  profiles:                    # プロファイル列 → 13 エージェント → {model, effort}
-    high: { ... }              # 詳細表: プロファイルマトリクスページ
-    medium: { ... }
-    low: { ... }
-  agent_overrides: {}          # エージェント別 {model, effort} override (任意)
+  harness: "claude"            # claude | gpt | both — 初期化時に選んだエージェントハーネス
+  team_mode: ""                # glm なら z.ai バックエンドへ切替
+  glm_env_var: "GLM_API_KEY"
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
@@ -85,10 +81,9 @@ llm:
 
 | キー | 説明 |
 |------|------|
-| `profile` | アクティブなプロファイルマトリクス列 (`high`/`medium`/`low`。旧 `max` は `high` のエイリアスとして読み込まれる)。空なら `medium` として解釈。全サブエージェント spawn の model+effort のソース |
-| `performance_tier` | legacy エイリアスフィールド。`profile` がない場合のみ読み込まれ、`high`/`medium`/`low` の同じ語彙を共有するため正規化ステップは不要 |
-| `profiles` | プロファイル列別のエージェント単位 → `{model, effort}` マトリクス (13 エージェント × 3 列 = 39 セル)。Go デフォルト値 (`template.DefaultProfileMatrix`) が欠落セルの権威ある fallback |
-| `agent_overrides` | 正規エージェント名別 `{model, effort}` override。アクティブプロファイルのエージェントセルより優先 (カタログ+enum 検証) |
+| `harness` | 初期化時にデプロイしたエージェントハーネス (`claude` がデフォルト、`gpt` は Codex 専用デプロイ) |
+| `team_mode` | 空なら Claude、`glm` ならセッションを z.ai バックエンドへ送ります |
+| `claude_bin` | Claude Code バイナリの明示ピン (任意; 環境変数 `MOAI_CLAUDE_BIN` が起動ごとに優先) |
 | `glm.base_url` | Z.AI Anthropic互換プロキシエンドポイント |
 | `glm.models` | スロット別GLMモデルマッピング。GLMはClaudeの5段階effortを3個reasoning状態 (thinking-off / reasoning-high / reasoning-max) にcollapse |
 

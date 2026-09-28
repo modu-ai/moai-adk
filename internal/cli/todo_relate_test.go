@@ -376,3 +376,79 @@ func TestRelateAndUnrelateRefusals(t *testing.T) {
 		t.Errorf("findings = %d, want the single seeded one", got)
 	}
 }
+
+// TestTodoRelateSequencingKinds — card t1309: the sequencing pair blocks /
+// depends is accepted by relate, recorded with the exact kinds, rendered by
+// `why` and the `list` finding lines, and named in the flag help. Record-only
+// is asserted structurally: the queue digest is taken after a full
+// record-and-render round and must equal the digest taken right after the
+// recording — rendering adds nothing and scheduling reads nothing.
+func TestTodoRelateSequencingKinds(t *testing.T) {
+	_, store := todoFixture(t)
+	seedItems(t, store, "Alpha card", "Beta card", "Gamma card")
+
+	if _, _, err := runTodo(t, "relate", "t1", "t2", "--relation", "blocks",
+		"--note", "t1 must land before t2 proceeds"); err != nil {
+		t.Fatalf("relate blocks: %v", err)
+	}
+	if _, _, err := runTodo(t, "relate", "t3", "t2", "--relation", "depends"); err != nil {
+		t.Fatalf("relate depends: %v", err)
+	}
+
+	findings := loadFindings(t, store)
+	if len(findings) != 2 {
+		t.Fatalf("findings = %d, want 2: %+v", len(findings), findings)
+	}
+	seen := map[string]kanban.BacklogFinding{}
+	for _, f := range findings {
+		seen[f.SubjectID+"|"+f.Relation+"|"+f.RelatedID] = f
+	}
+	blocks, ok := seen["t1|blocks|t2"]
+	if !ok {
+		t.Fatalf("no {t1, blocks, t2} finding recorded: %+v", findings)
+	}
+	if blocks.Note != "t1 must land before t2 proceeds" {
+		t.Errorf("blocks finding note = %q; want the recorded note", blocks.Note)
+	}
+	if _, ok := seen["t3|depends|t2"]; !ok {
+		t.Errorf("no {t3, depends, t2} finding recorded: %+v", findings)
+	}
+
+	// `why` renders each finding from the addressed card's perspective —
+	// relation word + the other card — so both recorded edges surface on t2's
+	// view regardless of which side was the subject when written.
+	whyOut, _, err := runTodo(t, "why", "t2")
+	if err != nil {
+		t.Fatalf("why t2: %v", err)
+	}
+	for _, want := range []string{"blocks t1", "depends t3"} {
+		if !strings.Contains(whyOut, want) {
+			t.Errorf("why t2 output missing %q:\n%s", want, whyOut)
+		}
+	}
+
+	// The flag help names every accepted relation — the discovery surface a
+	// dispatching agent reads.
+	helpOut, _, err := runTodo(t, "relate", "--help")
+	if err != nil {
+		t.Fatalf("relate --help: %v", err)
+	}
+	for _, kind := range kanban.BacklogSemanticRelations {
+		if !strings.Contains(helpOut, kind) {
+			t.Errorf("relate help missing accepted relation %q:\n%s", kind, helpOut)
+		}
+	}
+
+	// Record-only, structurally: a render round between two digests moves
+	// nothing.
+	before := queueDigest(t, store)
+	if _, _, err := runTodo(t, "why", "t1"); err != nil {
+		t.Fatalf("why t1: %v", err)
+	}
+	if _, _, err := runTodo(t, "list"); err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if after := queueDigest(t, store); after != before {
+		t.Errorf("a render round wrote to the queue: %s -> %s", before, after)
+	}
+}

@@ -5,11 +5,12 @@
 > `go.mod`에서 직접 읽었습니다(`go 1.26.8`).
 
 **모듈**: `github.com/modu-ai/moai-adk` · **Go**: 1.26.8
-**현재 부분 재측정**: worktree `.moai/worktrees/t1295`, 브랜치 `WT-codemaps-freshness`, base `cee197917`, 카드 t1295. 앵커 `fdc5361c3` 뒤 비테스트 Go 소스 81개가 바뀌었다. 아래 규모 표는 이 트리에서 `find`와 `go list -deps -json ./...`로 다시 셌다. 이번 내용 갱신은 MoAI 워크트리 위치·이전 경로와 Factory 역할 전환에 한정한다. 과거 판의 변경 설명은 이력으로 남긴다.
+**현재 부분 재측정**: worktree `.claude/worktrees/t1305`, 브랜치 `WT-codemaps-refresh8`, base `afecf81e9e96`, 카드 t1305. 스탬프 앵커 `a3a9e653e`(t1295 판) 뒤 비테스트 Go 소스 변경 75개(`IsDescribedWorthy` 술어)를 대조했다. § 규모 표의 다섯 값(비테스트·테스트 파일 수, 패키지 총수, 엣지 둘)을 같은 명령으로 다시 쟀다 — 비테스트 1419→1422, 테스트 2544→2545, 패키지 164→162(하네스의 cellguard 가드 패키지와 settings의 agentfm 스키마 패키지 둘이 소멸 — t1246 배치가 에이전트 모델 표면을 은퇴시키며 함께 갔다), 내부 import 엣지 452→449·278→277. 임베드 템플릿 598은 같은 명령으로 재확인해 변동이 없었다. 최상위 디렉터리 82(internal 78 + cmd 2 + pkg 2)와 테스트 0 패키지 6도 재확인해 변동이 없었다. § 들어맞지 않는 패키지의 스테일 파일 수 세 곳(`internal/template` 31→36, `internal/homestate` 15→27, `internal/harness` 87→86)과 `cellguard` 은퇴 산문을 이 트리 실측으로 정정했다.
+**이전 재측정**: worktree `.moai/worktrees/t1295`, 브랜치 `WT-codemaps-freshness`, base `cee197917`, 카드 t1295. 앵커 `fdc5361c3` 뒤 비테스트 Go 소스 81개가 바뀌었다. 아래 규모 표는 이 트리에서 `find`와 `go list -deps -json ./...`로 다시 셌다. 이번 내용 갱신은 MoAI 워크트리 위치·이전 경로와 Factory 역할 전환에 한정한다. 과거 판의 변경 설명은 이력으로 남긴다.
 **최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
 **재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — § 규모 표 전체, § 구조 판정의 수치, 레이어 표의 대표 패키지, § 도식에 들어맞지 않는 패키지의 파일 수와 신규 항목(`internal/mission`·`internal/codextools`). 측정 명령은 각 표의 산출 명령 칸에 있습니다. 파일 크기(KB) 서술은 이번에 다시 쟀고, 그 밖의 서술형 판단은 앞 판을 이어받았습니다.
 **정정 재측정**: worktree `.claude/worktrees/t872`, 브랜치 `WT-codemaps-citations`, HEAD `9a8cc4277`, 2026-09-18 — § 규모 표의 다섯 값(비테스트·테스트 파일 수, 패키지 총수, 최상위 디렉터리 수)과 테스트 전용 디렉터리 서술. 위 재측정 직후 한 패키지가 삭제돼 그만큼만 다시 쟀고, 나머지 값(엣지 365/222, 임베드 589)은 같은 명령으로 재확인해 변동이 없었습니다.
-**정기 재측정**: worktree `.claude/worktrees/t999`, 브랜치 `WT-codemaps-remediation`, HEAD `56c64891a`, 2026-09-20 — § 규모 표 **일곱 값 전부**와 `internal/cli` fan-out, § `modules.md`의 패키지별 파일 수, 그리고 신규 패키지 3개(`internal/auditreceipt` · `internal/harness/rosterguard` · `internal/harness/cellguard`)의 서술. 각 값의 산출 명령은 표 안에 있고, 전부 이 트리에서 직접 실행했습니다. 서술형 판단 중 이번에 다시 확인한 것은 테스트 0 패키지 4개와 테스트 전용 디렉터리 1개뿐이며, 나머지 구조 판정은 앞 판을 이어받았습니다.
+**정기 재측정**: worktree `.claude/worktrees/t999`, 브랜치 `WT-codemaps-remediation`, HEAD `56c64891a`, 2026-09-20 — § 규모 표 **일곱 값 전부**와 `internal/cli` fan-out, § `modules.md`의 패키지별 파일 수, 그리고 신규 패키지 3개(`internal/auditreceipt` · 하네스의 `rosterguard` · `cellguard`)의 서술. 각 값의 산출 명령은 표 안에 있고, 전부 이 트리에서 직접 실행했습니다. 서술형 판단 중 이번에 다시 확인한 것은 테스트 0 패키지 4개와 테스트 전용 디렉터리 1개뿐이며, 나머지 구조 판정은 앞 판을 이어받았습니다.
 **정기 재측정**: worktree `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`, 2026-09-22 — § 규모 표의 여섯 값(비테스트·테스트 파일 수, 패키지 총수, 최상위 디렉터리 수, 엣지 둘)과 § 구조 판정의 `internal/cli` import 수, § 들어맞지 않는 패키지의 파일 수 두 곳(`internal/hook` · `internal/homestate`), 신규 패키지 3개(`internal/jev` · `internal/jevcred` · `internal/jevmeasure`)의 서술. 각 값의 산출 명령은 표 안에 있고 전부 이 트리에서 직접 실행했습니다. 임베드 템플릿 파일 수(588)와 테스트 0 패키지 4개·테스트 전용 디렉터리 1개도 같은 명령으로 재확인해 변동이 없었습니다.
 **부분 재측정**: worktree `.claude/worktrees/t1092`, 브랜치 `WT-codemaps-restamp`, base `08113ff0f`, 2026-09-23 — 카드 t1092. § 규모 표 일곱 값을 같은 명령으로 다시 쟀습니다 — 비테스트 1259→1272, 테스트 2155→2190, 패키지 총수 151→152(신규 `internal/factorymsg`), 최상위 디렉터리 77→78(`internal` 73→74), 내부 import 엣지 378→381(패키지 단위)·234→237(최상위 집계), 임베드 템플릿 588→589. § 구조 판정·§ 도식에 들어맞지 않는 패키지 절은 이번 변경과 무관해 손대지 않았습니다.
 
@@ -23,12 +24,12 @@
 
 | 값 | 수치 | 산출 명령 |
 |---|---|---|
-| 비테스트 Go 파일 | 1419 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
-| 테스트 Go 파일 | 2544 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
-| Go 패키지 총수 | 164 | `go list ./... \| wc -l` |
+| 비테스트 Go 파일 | 1422 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
+| 테스트 Go 파일 | 2545 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
+| Go 패키지 총수 | 162 | `go list ./... \| wc -l` |
 | 최상위 디렉터리 | 82 | `internal` 78(`ls -d internal/*/`) + `cmd` 2 + `pkg` 2 |
-| 내부 import 엣지 (패키지 단위) | 452 | `go list -deps -json ./...`의 프로젝트 패키지 `Imports` 중 내부 경로 |
-| 내부 import 엣지 (최상위 집계) | 278 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
+| 내부 import 엣지 (패키지 단위) | 449 | `go list -deps -json ./...`의 프로젝트 패키지 `Imports` 중 내부 경로 |
+| 내부 import 엣지 (최상위 집계) | 277 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
 | 임베드 템플릿 파일 | 598 | `find internal/template/templates -type f \| wc -l` |
 
 테스트 대 비테스트 비율은 **1.79 : 1**입니다. `go list`의 패키지 가운데 테스트 Go 파일이
@@ -123,7 +124,7 @@
 - **`internal/codextools` (2 파일)** — 비테스트 import가 0인 패키지입니다. 네이티브·지연 디스패처
   도구 레지스트리를 인증된 대화 하나에 묶는 역할을 패키지 주석이 밝히지만, 트리 안의 소비자는
   자기 테스트뿐입니다(§ `modules.md` 네거티브 스페이스).
-- **`internal/template` (31 파일)** — 도메인(카탈로그·모델 정책), 데이터(591개 파일의
+- **`internal/template` (36 파일)** — 도메인(카탈로그·모델 정책), 데이터(598개 파일의
   `//go:embed all:templates` 트리), 인프라(배포기)를 동시에 수행하고, 하위에 두 개의
   **기계 방출기**(`agentemit` · `commandemit`)를 품습니다.
 - **`internal/core`** — 이름과 달리 응집된 core가 아닙니다. `core/git`은 인프라,
@@ -136,15 +137,16 @@
 - **`internal/stateanchor` (1 파일)** — 정책이 없는 leaf처럼 보이지만 담는 것은 **결정 규칙**
   입니다(어느 프로젝트 루트가 상태의 앵커인가). cross-cutting에 두되, 우선순위 사슬 자체가
   요건으로 고정돼 있다는 점에서 순수 leaf와 다릅니다.
-- **`internal/harness` (87 파일)** — **레이어가 아니라 네임스페이스입니다.** 이 판에서
-  하위에 `rosterguard`(4 파일)와 `cellguard`(1 파일)가 더해졌는데, 둘은 런타임 경로가 없는
-  **테스트 시점 문서 드리프트 가드**입니다 — `go test`가 유일한 발화 경로이고 CLI·훅·MCP
-  어디에도 배선돼 있지 않습니다. 같은 디렉터리의 `delegationmap`은 반대로 라우팅 원장을 읽어
+- **`internal/harness` (86 파일)** — **레이어가 아니라 네임스페이스입니다.** 하위의
+  `rosterguard`(4 파일)는 런타임 경로가 없는 **테스트 시점 문서 드리프트 가드**입니다 —
+  `go test`가 유일한 발화 경로이고 CLI·훅·MCP 어디에도 배선돼 있지 않습니다. 형제였던
+  `cellguard`는 docs-site profile-matrix 셀 감시 가드였으나 t1246 배치가 profile-matrix 표면을
+  은퇴시키면서 함께 사라졌습니다(§ `modules.md` 네거티브 스페이스). 같은 디렉터리의 `delegationmap`은 반대로 라우팅 원장을 읽어
   제안을 내는 프로덕션 분석기입니다. 공유하는 인터페이스도, 도달 경로도, 데이터 흐름도
   없습니다. `internal/harness/` 전체를 묶는 계약을 선언한 패키지 주석은 트리에서 찾지
   못했으므로, 이것은 인용이 아니라 **증거로부터의 추론**으로 적습니다 — 「에이전트·하네스
   메타데이터에 관한 것들」이라는 주제어가 디렉터리를 만들었을 뿐 층을 만들지는 않았습니다.
-- **`internal/homestate` (15 파일)** — `~/.moai` 아래 프로젝트별 SQLite 경로와 스키마를
+- **`internal/homestate` (27 파일)** — `~/.moai` 아래 프로젝트별 SQLite 경로와 스키마를
   소유하는 data/persistence 패키지이면서, Unix `flock`·Windows `LockFileEx`, PID 지문,
   런타임 진입 차단까지 함께 다룹니다. 이 판에서 비정준 트리 변이 게이트(`noncanonical_tree_guard.go`
   — 호출자 트리가 canonical 프로젝트 루트가 아니면 mutation 진입을 거절한다. `MOAI_HOME`은
