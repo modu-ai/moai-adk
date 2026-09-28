@@ -389,3 +389,32 @@ Tests the M7 close recorded as red, all now green after absorption + the two fix
 - **Decision: serial** — one manager-develop spawn completes M5 on top of the inherited uncommitted work.
 - **Justification**: continuation of an in-flight uncommitted tree admits exactly one writer; coding-heavy per Anthropic caveat; the lead's prescription (declared-model logging + producer/schema deletion) is already half-landed in the tree, so fan-out would split one coherent change.
 - **Gate**: Implementation Kickoff Approval granted by the operator in the lane window, 2026-09-28 (AskUserQuestion, this session).
+
+### M5 completion (worker-66 → committed 3fa8bd2ab, 2026-09-28)
+
+**Producer/schema deletion landed as one set with the observation-layer switch** (declared/inherit
+verdicts in agent_model_guard.go, declaration-only served-model expectations). 39 files,
++319/−4213. Deletions: config profile.go + model_routing.go + 3 dead test files;
+template profile_matrix.go + embedded_llm_yaml_test.go; model_policy.go perf-tier helpers;
+orphaned per-agent GLM helpers (coding-max override set, ResolveGLMReasoning*); ModelEffort
+relocated beside audit_models.go (audit pins keep it). Templates: llm.yaml drops
+profile/performance_tier/profiles/harness_agents/agent_overrides; workflow.yaml drops
+workflow_agents/model_routing/model_routing_profiles; shipped_key_inventory regenerated
+977→795; NFR-CKH-002 floor re-derived 875→700 against the measured 730-key surface.
+Rosterguard: 8 M5 sites removed, new retained-agents-test-expectations site registered
+(the guard itself caught the unregistered roster literal — positive control observed);
+axis.go doc re-anchored. product.md/tech.md rewritten.
+
+**§E.2 evidence (this run, this tree 3fa8bd2ab)**:
+- `go build ./...` → exit 0 (no output) · `GOOS=windows GOARCH=amd64 go build ./...` → exit 0
+- `go vet` config/template/settings/harness/cli → clean
+- `golangci-lint run --timeout=2m` (v2.1.6, CI version) config/template/harness/settings → `0 issues.`
+- `go test ./internal/config/ ./internal/template/ -count=1` → both `ok`
+- `go test ./internal/hook/ -run 'ServedModel|AgentModel|Validate|Section|LLM' -count=1` → `ok 5.003s`
+- `go test ./internal/cli/ -run 'ModelPolicy|Profile|ServedModel|AgentModel|CodexAuditLaunch|CodexTask|GlmModel|InitQuietWizard|ProfileSetupSchema' -count=1` → `ok 36.466s`, re-run → `ok 21.378s`
+- `go test ./internal/harness/rosterguard/ -count=1` → `ok 18.540s`
+
+**Gaps**: full `internal/hook` suite re-run still executing in background at commit time
+(targeted observation-layer family already green; pre-M5 full hook suite was green at
+343.026s). Full `internal/cli` suite not re-run locally — CI on develop push owns it.
+**Not in this commit**: M8 (docs-site) — separate card per lead instruction.
