@@ -310,15 +310,13 @@ Progressive Disclosure:
 
 ## Phase Transitions
 
-Each transition below is stated per route (per § SPEC Phase Discipline). Route A (Hybrid Trunk main-direct, Tier S/M default) triggers on commit/push events; Route B (PR route, Tier L OR `--pr`) triggers on PR merges. The phase *ordering* (plan → run → sync) is identical on both routes; only the trigger vocabulary differs.
+Each transition below is stated per route (§ SPEC Phase Discipline): Route A triggers on commit/push events, Route B on PR merges; the phase *ordering* is identical on both routes.
 
 Plan to Run:
-- Trigger (Route A): plan-phase artifacts committed + pushed to `main` AND SPEC document approved (annotation cycle completed, user confirmed "Proceed").
-- Trigger (Route B): Plan PR merged into main (squash) AND SPEC document approved (annotation cycle completed, user confirmed "Proceed").
+- Trigger: (A) plan-phase artifacts committed + pushed to `main`, or (B) plan PR merged (squash) — each AND SPEC approval (annotation cycle completed, user confirmed "Proceed").
 - Pre-condition: plan.md records `plan_complete_at` + `plan_status: audit-ready` in progress.md; on Route B the plan PR is additionally in MERGED state.
-- Action: Execute /clear, then `/moai run SPEC-XXX`. Route A runs directly on `main` in main checkout. Route B runs on `feat/SPEC-XXX` branch in main checkout (default); OR if the user opted into a worktree: `moai cc -w SPEC-XXX`, then `/moai run SPEC-XXX` inside it.
-- Gate: `/moai run` Phase 1 (Plan Audit Gate) executes automatically before any implementation.
-  See "Phase 1: Plan Audit Gate" section below for details.
+- Action: Execute /clear, then `/moai run SPEC-XXX` — on `main` (Route A) or `feat/SPEC-XXX` (Route B default), or inside `moai cc -w SPEC-XXX` where the user opted into a worktree (§ SPEC Phase Discipline Step 2).
+- Gate: `/moai run` Phase 1 (Plan Audit Gate) executes automatically before any implementation (details below).
 - [ZONE:Evolvable] Plan Audit Gate skip policy (single authoritative contract):
   the orchestrator MAY skip Phase 1 re-execution and proceed directly to
   Phase 1 **IF AND ONLY IF ALL THREE** of the following hold for the most recent
@@ -338,7 +336,7 @@ Plan to Run:
   harness level; see Gate Entry Condition below). When the skip is taken, the
   skip decision AND the three satisfied conditions MUST be recorded in the
   run-phase delegation prompt (Section A: Context) so downstream actors
-  (manager-develop, auditors) can verify the skip rationale. This is the ONE
+  can verify the rationale. This is the ONE
   authoritative skip contract — any other surface (e.g. the skill-layer
   `run/phase-execution.md`) MUST cite this contract rather than restating a
   divergent condition set. Origin: the workflow-optimization layer (redundant
@@ -355,8 +353,8 @@ Plan to Run:
   (Section C of the manager-develop prompt) on a feature branch while the plan
   PR is still in CI/review, PROVIDED the SPEC plan-auditor verdict is already
   PASS and no manager-develop commit lands on the feature branch until the
-  plan PR is in MERGED state. This overlap reduces serial CI wait.
-  Route A has no plan PR to wait on, so this overlap does not apply — run-phase
+  plan PR is in MERGED state. This overlap reduces serial CI wait;
+  Route A has no plan PR to wait on — run-phase
   begins directly after the plan-phase push + plan-auditor PASS + Implementation
   Kickoff Approval.
 
@@ -369,8 +367,7 @@ the implementation phase.
 
 ### Gate Entry Condition
 
-- Triggered on every `/moai run <SPEC-ID>` invocation
-- Applies to every `/moai run` invocation (workflows/run.md)
+- Triggered on every `/moai run <SPEC-ID>` invocation (workflows/run.md)
 - Cannot be skipped by harness level — gate is never disabled, not even on `minimal`
 
 ### Depends_on Pre-flight Check
@@ -422,13 +419,11 @@ not blocking. After grace window expires, FAIL verdicts block Phase 1 unconditio
 Grace window start: `.moai/state/audit-gate-merge-at.txt` (ISO-8601 timestamp).
 
 Run to Sync:
-- Trigger (Route A): run-phase commits pushed to `main` AND tests passing (green CI on `main`).
-- Trigger (Route B): Run PR merged into main, tests passing.
-- Action: Execute `/moai sync SPEC-XXX`. Route A runs directly on `main`. Route B runs on the same branch/location as run — in the SAME L2 worktree if L2 was used (do NOT create a new L2 worktree); otherwise on the same feature branch in main checkout.
+- Trigger: (A) run-phase commits pushed to `main` with green CI, or (B) run PR merged with tests passing.
+- Action: Execute `/moai sync SPEC-XXX` on the same branch/location as run (Route A: `main`; Route B: the SAME L2 worktree if used, else the same feature branch — never a new L2 worktree).
 
 Sync (close):
-- Trigger (Route A): the single sync commit — carrying the `implemented → completed` transition (manager-docs) and populating `sync_commit_sha` in progress.md §E.4 — is pushed to `main`. This is the 3-phase close: there is NO separate Mx-phase commit (MX Tag validation is a sync sub-step). The SPEC is `completed` once this commit lands.
-- Trigger (Route B): sync PR merged into main. The sync PR carries the same single sync commit (the `implemented → completed` transition + `sync_commit_sha` population).
+- Trigger: (A) the single sync commit — carrying the `implemented → completed` transition (manager-docs) and populating `sync_commit_sha` in progress.md §E.4 — pushed to `main`; or (B) the sync PR carrying that same commit, merged. This is the 3-phase close: NO separate Mx-phase commit (MX Tag validation is a sync sub-step); the SPEC is `completed` once it lands.
 - **What the slot holds in the sync commit itself.** A commit cannot cite its own hash, so the sync commit writes the canonical placeholder `pending-backfill` — a `-`-suffixed member of that family (`pending-backfill-sync`) is equally admitted — and the real SHA is backfilled in a following commit. This is the schema doctrine's D3 backfill window (`spec-frontmatter-schema.md` § SHA placeholder backfill exemption), and the slot-format lint is silent on a recognized placeholder by design: it is a sanctioned intermediate state, not a defect.
 - **Leaving the slot empty is not the alternative, and the reason is not tidiness.** An empty value is neither a SHA nor a recognized placeholder, so the slot-format rule reports a warning on it. The warning is the mild consequence. The costly one is that an empty slot records no owed work: the SPEC is `completed` once the sync commit lands, so no further close ever runs against it and nothing schedules the repair — and because a terminal-status document has its warnings demoted to advisory, no gate blocks on the signal either. A placeholder names the debt and the phase that owes it; an empty slot names nothing, and outlives everyone who knew what belonged there.
 
@@ -442,7 +437,7 @@ Sync to Cleanup (Route B only):
 
 Agent Teams usage is ALLOWED as an experimental surface (operator decision): the flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships enabled in `.claude/settings.json` and the distributed template, and `agent-team` is selectable via an explicit `--team` / `--mode team` request (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.1). The Phase 4 decision tree still never auto-selects it.
 
-Genealogy: agent-team was previously RETIRED (tombstone; `--team` emitted `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode; the former team-mode plan/run/fix/review skill files and the `workflow.yaml` team-config block were removed). The sentinel string is retained as documented history. Re-allow evidence: 5 named workers completed normally with result returns under the enabled flag.
+Genealogy: previously RETIRED (`--team` emitted `MODE_TEAM_UNAVAILABLE` with a sub-agent fallback; the team-mode skill files and the `workflow.yaml` team-config block were removed); re-allowed on 5 named-worker completions with result returns — full history in `orchestration-mode-selection.md` §C.1.
 
 The default multi-agent surface remains:
 - Multi-domain research/review → fanout (parallel fan-out: 3-5 concurrent read-only `Agent()` in one turn — advisory band; hard bound is the runtime subagent cap, per orchestration-mode-selection.md §C.2).

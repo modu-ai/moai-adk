@@ -23,7 +23,7 @@ func TestNew_CreatesThroughInjectedCurrentPlumbing(t *testing.T) {
 	var gotName string
 	withWorktreeCreator(t, func(name string, _ io.Writer) (string, error) {
 		gotName = name
-		return "/repo/.claude/worktrees/WT-card", nil
+		return "/repo/.moai/worktrees/WT-card", nil
 	})
 
 	cmd := newNewCmd()
@@ -37,7 +37,7 @@ func TestNew_CreatesThroughInjectedCurrentPlumbing(t *testing.T) {
 	if gotName != "WT-card" {
 		t.Fatalf("creator name = %q, want WT-card", gotName)
 	}
-	if got := out.String(); !strings.Contains(got, "WT-card") || !strings.Contains(got, "/repo/.claude/worktrees/WT-card") {
+	if got := out.String(); !strings.Contains(got, "WT-card") || !strings.Contains(got, "/repo/.moai/worktrees/WT-card") {
 		t.Fatalf("stdout = %q, want branch and path", got)
 	}
 }

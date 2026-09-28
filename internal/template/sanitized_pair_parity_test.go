@@ -64,6 +64,11 @@ import (
 // here should coincide with promoting it back into the byte-parity allowlist.
 var sanitizedPairPaths = []string{
 	".claude/rules/moai/development/manager-develop-prompt-template.md",
+	// worktree-integration-ops.md — split companion of worktree-integration.md.
+	// Authored clean (no internal tokens), so the pair is byte-identical today and
+	// passes structural parity trivially; enrolled here AND in the mirror allowlist
+	// so a later one-sided sanitization of either copy cannot drift silently.
+	".claude/rules/moai/workflow/worktree-integration-ops.md",
 	// ci-watch-protocol.md was removed from this registry when its template
 	// mirror was intentionally deleted: the file is no longer a sanitized PAIR
 	// (only the development-repo copy survives), so the parity assertion no

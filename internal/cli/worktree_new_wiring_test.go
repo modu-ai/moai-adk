@@ -55,7 +55,7 @@ func TestWorktreeNew_WiresTheSharedMaterializer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create through adapter: %v", err)
 	}
-	wantPath := filepath.Join(root, ".claude", "worktrees", "probe-card")
+	wantPath := filepath.Join(root, ".moai", "worktrees", "probe-card")
 	if gotPath != wantPath || gotDest != wantPath || gotBranch != "probe-card" {
 		t.Fatalf("path=%q dest=%q branch=%q, want path/dest=%q branch=probe-card", gotPath, gotDest, gotBranch, wantPath)
 	}
@@ -66,7 +66,7 @@ func TestWorktreeNew_WiresTheSharedMaterializer(t *testing.T) {
 
 func TestWorktreeNew_RefusesPlainDirectoryBeforeGit(t *testing.T) {
 	root := t.TempDir()
-	dest := filepath.Join(root, ".claude", "worktrees", "plain-dir")
+	dest := filepath.Join(root, ".moai", "worktrees", "plain-dir")
 	if err := os.MkdirAll(dest, 0o755); err != nil {
 		t.Fatal(err)
 	}
