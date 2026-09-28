@@ -30,7 +30,19 @@ codex-cli は Claude Code の `.claude/skills/` を読まないため、スキ�
 
 ## ハーネス別の個人指示
 
-`CLAUDE.local.md` は Claude のワークフローと共有する共通ローカル入力で、`AGENTS.local.md` は Codex 専用入力です。ローカルの `moai codex` は、引数なし、`cli`、`app`、`--spawn`、`-w` のどの起動経路でも、プロジェクトルートにある空でない通常ファイルをこの順に読み込みます。各本文の前に `<!-- source: <filename> -->` という出典ヘッダーを置き、結合した内容を 1 つの `developer_instructions` 上書きとして渡します。`-w` でも Codex の実行場所がワークツリーに移るだけで、入力元は元のプロジェクトルートのままです。共有の `AGENTS.md` と `CLAUDE.md` は、これらのローカルファイルを取り込んだりリンクしたりしません。ランチャーはリンクや通常ファイルでない入力を拒否し、検査した同じファイルディスクリプターから読み込みます。また、オペレーターが `developer_instructions` を重ねて指定した場合や direct/spawn 引数が大きすぎる場合は、起動前に失敗します。ほかのハーネス固有設定とメモリは、それぞれのハーネスだけに残ります。Codex Web はローカルランチャーを通らないため、この注入を受けません。
+`AGENTS.local.md` は両方のハーネスが読む個人の指示ファイルで、`CLAUDE.local.md` はその以前の名前として、フォールバックの入力にだけ残っています。ローカルの `moai codex` は、引数なし、`cli`、`app`、`--spawn`、`-w` のどの起動経路でも、プロジェクトルートにある空でない通常ファイルをこの順に読み込みます。各本文の前に `<!-- source: <filename> -->` という出典ヘッダーを置き、結合した内容を 1 つの `developer_instructions` 上書きとして渡します。`-w` でも Codex の実行場所がワークツリーに移るだけで、入力元は元のプロジェクトルートのままです。共有の `AGENTS.md` と `CLAUDE.md` は、これらのローカルファイルを取り込んだりリンクしたりしません。ランチャーはリンクや通常ファイルでない入力を拒否し、検査した同じファイルディスクリプターから読み込みます。また、オペレーターが `developer_instructions` を重ねて指定した場合や direct/spawn 引数が大きすぎる場合は、起動前に失敗します。ほかのハーネス固有設定とメモリは、それぞれのハーネスだけに残ります。Codex Web はローカルランチャーを通らないため、この注入を受けません。
+
+## `CLAUDE.local.md` のフォールバックと移行の案内
+
+`AGENTS.local.md` がなく `CLAUDE.local.md` だけがあるプロジェクトでも、`moai codex` はそのファイルをフォールバックとして読み、`developer_instructions` に入れます。出典ヘッダーには実際に読んだファイル名がそのまま入ります — この場合は `<!-- source: CLAUDE.local.md -->` です。
+
+フォールバックを通ったとき、ランチャーは標準エラーに移行の案内を 1 行出力します。
+
+```text
+Advisory: CLAUDE.local.md is a legacy local instruction file; run `moai migrate local-instructions` to move it to AGENTS.local.md.
+```
+
+この案内はオペレーター向けのメッセージなので、モデルのコンテキストになる `developer_instructions` には入りません。2 つのファイルが両方ある場合はどちらも読み込まれ、案内は手作業でまとめるよう促す文面に変わります。共通の契約は `AGENTS.md`、Claude 専用の層は `CLAUDE.md`、個人の指示は `AGENTS.local.md` という 3 ファイル構成の中で、`CLAUDE.local.md` は移行を待つ以前の名前にすぎません。
 
 ## `internal/codexadapter` — フックアダプターライブラリ
 
