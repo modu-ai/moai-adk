@@ -2,7 +2,7 @@
 id: SPEC-AGENT-MODEL-INHERIT-DOCS-001
 title: "docs-site model/effort docs rewrite to the inheritance narrative + wizard H24 residue (card t1300)"
 version: "0.2.1"
-status: draft
+status: in-progress
 created: 2026-09-29
 updated: 2026-09-29
 author: manager-spec
