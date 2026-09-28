@@ -30,6 +30,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -927,6 +928,9 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 								id, todoTextPrefix(rec.Items[i].Text), expect)
 						}
 						rec.Items[i].State = kanban.BacklogStatePicked
+						// REQ-TST-004: the current picked episode begins now;
+						// any stamp from a previous episode is overwritten.
+						rec.Items[i].PickedAt = todoStampNow()
 						pickedText = rec.Items[i].Text
 						if specID != "" {
 							// Recorded as-is: the store is not a SPEC registry;
@@ -979,6 +983,8 @@ func newTodoUnpickCmd() *cobra.Command {
 						return fmt.Errorf("backlog item %s is %s, not picked", id, rec.Items[i].State)
 					}
 					rec.Items[i].State = kanban.BacklogStateQueued
+					// REQ-TST-005: a queued card carries no picked stamp.
+					rec.Items[i].PickedAt = nil
 					rec.Items[i].SpecID = nil
 					text = rec.Items[i].Text
 					return nil
@@ -1017,6 +1023,16 @@ func normalizeTodoRef(arg string) string {
 		return "t" + arg
 	}
 	return arg
+}
+
+// todoStampNow returns a pointer to the current instant in the store's
+// added_at TEXT format (RFC 3339 UTC) — the value every transition stamp
+// carries (SPEC-TODO-TRANSITION-STAMPS-001 REQ-TST-004..007). It is set
+// inside the Mutate callback at the moment the transition happens, so the
+// stamp and the state change land in one locked write.
+func todoStampNow() *string {
+	v := time.Now().UTC().Format(time.RFC3339)
+	return &v
 }
 
 // todoTextPrefixMax bounds the card text carried in a pick confirmation —

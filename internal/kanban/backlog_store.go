@@ -282,6 +282,11 @@ func (r *BacklogRecord) ArchiveCard(id string) error {
 		Position: at,
 		Findings: []BacklogArchivedFinding{},
 	}
+	// REQ-TST-007: the archive is the row's final home and carries its own
+	// archive-time stamp. The item's picked_at / dropped_at stamps ride
+	// inside the copied Item, as they stood at archive time.
+	now := time.Now().UTC().Format(time.RFC3339)
+	entry.ArchivedAt = &now
 	kept := make([]BacklogFinding, 0, len(r.Findings))
 	for i, f := range r.Findings {
 		if f.Names(id) {
