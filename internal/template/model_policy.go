@@ -47,6 +47,14 @@ const ModelIDOpus55 = "claude-opus-5-5"
 // ModelDeprecatedCanonicalIDs (deprecated-id normalization).
 const ModelIDOpus48 = "claude-opus-4-8"
 
+// ModelIDSonnet55 is the canonical model ID for Claude Sonnet 5.5 — the
+// current target of the "sonnet" alias. Same input/output price as Sonnet 5
+// ($2/$10 per MTok; cache read $0.20, cache write $2.50), effort supported
+// low→max with Medium as the Claude Code/apps default, and a 1M-token context
+// window per the official models overview.
+// Used by launcher.go to route the model and by profile translations.
+const ModelIDSonnet55 = "claude-sonnet-5-5"
+
 // ModelAliasTable is the single source of truth mapping short model aliases
 // (the user-facing wizard picker values) to their canonical Claude Code model
 // ids. Add a new row whenever a new alias is introduced; every call site that
@@ -67,7 +75,7 @@ const ModelIDOpus48 = "claude-opus-4-8"
 // @MX:REASON: [AUTO] fan_in >= 3 (launcher.go expandModelString + profile_setup.go normalizeModel + settings/schema.go modelOptions); hardcoding-prevention per CLAUDE.local.md §14
 var ModelAliasTable = map[string]string{
 	"opus":     ModelIDOpus55,
-	"sonnet":   "claude-sonnet-5",
+	"sonnet":   ModelIDSonnet55,
 	"fable":    "claude-fable-5",
 	"haiku":    "claude-haiku-4-5",
 	"opusplan": "opusplan", // CC-native routing alias, no full-id expansion
@@ -87,6 +95,7 @@ var ModelDeprecatedCanonicalIDs = map[string]string{
 	"claude-opus-4-7":   "opus",
 	ModelIDOpus48:       "opus",
 	"claude-opus-5":     "opus", // superseded by ModelIDOpus55
+	"claude-sonnet-5":   "sonnet", // superseded by ModelIDSonnet55
 	"claude-sonnet-4-6": "sonnet",
 }
 
