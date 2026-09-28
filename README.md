@@ -289,7 +289,7 @@ moai init my-project
 cd my-project
 ```
 
-The interactive wizard auto-detects language, framework, and methodology, walks you through model policy, and generates the Claude Code integration files.
+The interactive wizard auto-detects language, framework, and methodology, and generates the Claude Code integration files.
 
 #### Choosing the agent harness
 

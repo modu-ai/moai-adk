@@ -289,7 +289,7 @@ moai init my-project
 cd my-project
 ```
 
-交互式向导自动检测语言、框架和方法论，选好模型策略后一直生成到 Claude Code 集成文件。
+交互式向导自动检测语言、框架和方法论，一直生成到 Claude Code 集成文件。
 
 #### 选择代理框架
 
