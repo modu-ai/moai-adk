@@ -507,6 +507,36 @@ func TestTodoAutoJevDegradedNonFinding(t *testing.T) {
 	}
 }
 
+// The production consultation reads a present script's stdout verbatim as a
+// display-only signal.
+func TestTodoAutoJevScriptPresentSignal(t *testing.T) {
+	root := t.TempDir()
+	script := filepath.Join(root, "scripts", "jev", "route.sh")
+	if err := os.MkdirAll(filepath.Dir(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	body := "#!/bin/sh\necho LOCAL-SIGNAL\n"
+	if err := os.WriteFile(script, []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	got := consultJev(root)
+	if !strings.Contains(got, "display-only") || !strings.Contains(got, "LOCAL-SIGNAL") {
+		t.Errorf("script consultation = %q, want the labelled verbatim signal", got)
+	}
+}
+
+// The production liveness wiring exposes a working PID probe on both the
+// live-process and invalid-id paths.
+func TestTodoAutoProductionPidProbe(t *testing.T) {
+	lv := newAutoLiveness()
+	if !lv.pidAlive(os.Getpid()) {
+		t.Errorf("pidAlive(current pid) = false, want true")
+	}
+	if lv.pidAlive(-1) {
+		t.Errorf("pidAlive(-1) = true, want false")
+	}
+}
+
 // AC-MT-009 entry-point arm — the flag is reachable through the todo command
 // surface (the gtd spelling shares this verb tree), and help lists it.
 func TestTodoAutoEntryPointFlag(t *testing.T) {

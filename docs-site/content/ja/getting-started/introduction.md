@@ -134,7 +134,7 @@ MoAI オーケストレーターは自ら実装せず、13 個の専門エージ
 | **Evaluator** | 2 個 | plan-auditor, sync-auditor |
 | **Builder** | 1 個 | builder-harness |
 | **Advisor** | 1 個 | super-advisor (高推論の助言) |
-| **Specialist** | 2 個 | e2e-tester (Web/モバイル/デスクトップの E2E テスト実行), mission-governor (GTD 自動ミッション判定、読み取り専用) |
+| **Specialist** | 2 個 | e2e-tester (Web/モバイル/デスクトップの E2E テスト実行), manager-todo (タスクキュー管理、GTD 自動ミッション判定は読み取り専用サブロール) |
 | **ビルトイン** | 1 個 | Explore (Anthropic 内蔵、読み取り専用のコード分析) |
 
 ### モデルポリシー (トークノミクス)

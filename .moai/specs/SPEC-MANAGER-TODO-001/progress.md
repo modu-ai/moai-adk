@@ -175,11 +175,39 @@ Measured: the interim M1-only state cannot go test-green (rosterguard/delegation
 - Workflow text: gtd.md § `--auto` — the serial batch consumption (both copies) carries the D-8 canonical sentence; kanban-dispatch.md § Entry into the board is an operator act carries the reconciliation clause (both copies).
 - Guard reconciliation: `TestTodoAutoDone_CloseSurfaceExclusivity` allowlist extended to the third close surface (`todo_auto.go` = `auto`) with the D-11 rationale recorded in the test; `TestProductionStringLiteralsUseLeaderLaneVocabulary` hits fixed by rewriting the two consultation strings off the legacy role vocabulary.
 - FROZEN-fixture seam: `codex_role_contract_test.go` maps the t1171 fixtures' historical session label to the current role name AFTER the fingerprint derive (dual-label `role`/`fixtureRole`) — the frozen fixtures and the frozen expectation table keep their recorded names; the mapping lives in the test. The one `mission-governor` literal this introduces is the historical-label reference the frozen-fixture seam requires, recorded as disposition **HIST** in the §B reconciliation.
-- Absorb: local develop moved mid-run (t1326 surface-guard declaration `a59988ad8`, t1300 model-docs sweep) — `TestTodoVerbSurfaceZeroDelta` was failing on the stale base; develop absorbed into the card branch before M5 (see post-absorb entry below).
+- Absorb: local develop moved mid-run (t1326 surface-guard declaration `a59988ad8`, t1300 model-docs sweep) — `TestTodoVerbSurfaceZeroDelta` was failing on the stale base; develop absorbed into the card branch before M5 (merge `a94c273fb`, no conflicts).
+
+### M5 — docs-site 4-locale + verification
+
+- Post-absorb re-sweep: docs-site hits reduced 124 → 69 by the absorbed t1300 model-docs sweep (model-policy.md, profile-matrix.md, faq.md, cli.md hits already gone); README hits already 0 (pulled forward in M2).
+- All 69 remaining docs-site hits updated across en/ja/ko/zh: judgment-role prose reframed to the manager-todo sub-role framing (agent-guide table + 2 paragraphs per locale, no-haiku-3tier verdict passages, moai-goal receipt + proposer prose, moai-gtd proposals line, sub-agents catalog enumeration, what-is-moai-adk table, introduction, claude-md-guide); simple hits (roster tables, mermaid tree diagrams, file-tree listings) token-swapped. Residual: **0** (`git grep -i mission.governor -- docs-site README.*` → 0).
+- 4-locale parity: all 8 touched pages exist in all 4 locales; heading-count parity verified equal in en/ja/zh for every page. Pre-existing divergence measured at the card base and NOT introduced by this card: ko agent-guide 22 vs 37 headings, ko claude-md-guide 21 vs 46, ja/zh sub-agents 14 vs 23 (identical counts at base `02ce44220`; this card changes prose lines only, never headings) — recorded as a pre-existing baseline Gap, out of this SPEC's scope.
+- Hugo build: `hugo --quiet` exit 0, sitemap emitted (warning-free).
+- Template neutrality: forbidden-class spot grep over `git diff 02ce44220..HEAD -- internal/template/templates/` added lines → 0 hits (no card ids, no internal dates, no commit SHAs, no macOS-bias paths, no local-instruction references).
+- Post-absorb gates: `make build` exit 0, `make agents-emit-check` exit 0, `make commands-emit-check` exit 0, `GOOS=windows GOARCH=amd64 go build ./...` exit 0; template/harness/mission/graph suites 21 packages ok.
+- Lint final: `golangci-lint run` (4 changed package groups) → `0 issues.` after fixing 19 NEW errcheck findings (unchecked `fmt.Fprint*` in todo_auto.go — blank-assigned per the file family's convention).
+- Final cli suite on the merged tree: `go test -timeout 30m -count=1 -cover ./internal/cli/...` → only `TestLocalInstructions_UpdateDoctorPreserveFile` failed (pre-existing doctor Constitution Registry DRIFT baseline; see verdict Gaps). All rename/auto/roster/surface/guidance/liveness tests green.
+- Coverage: internal/mission 88.1%, rosterguard 93.8%, delegationmap 87.7%, internal/template 83.8% (pre-existing package baseline; new/changed surfaces measured separately), internal/cli main package 84.0% (pre-existing package baseline). New `todo_auto.go` function coverage from the focused suite: consultation 85.7%, ownerAlive 94.7%, pickup 82.4%, cycle 81.4%, guidance/directive/writer paths 83–100%; the uncovered remainder is the production `lsof`/registry process wrappers, which are seam-covered in behavior tests.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — owned by manager-develop>_
+```yaml
+run_complete_at: 2026-09-29T06:20:00+0900
+run_commit_sha: pending-backfill-run
+run_status: complete
+ac_pass_count: 22
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: not-run (worktree lane; no primary-checkout fetch permitted)
+l44_post_push_fetch: not-run (lane does not push; lead batch-pushes develop)
+new_warnings_or_lints_introduced: 0
+cross_platform_build.darwin: pass
+cross_platform_build.windows: pass
+total_run_phase_files: 77
+m1_to_m5_commit_strategy: M1+M2 combined (DP3 measured interim red), M3+M4 combined (shared todo_auto.go surface), M5 evidence/docs
+```
+
+Notes: AC-MT-016 PASS is conditional on the recorded pre-existing baseline row (`TestLocalInstructions_UpdateDoctorPreserveFile`, Constitution Registry DRIFT predating this card). Evidence file: `.moai/reports/t1306/verdict.md` (machine-local record; decisive lines transcribed there).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

@@ -134,7 +134,7 @@ MoAI 编排器不亲自实现，而是把工作委派给 13 个专业智能体�
 | **Evaluator** | 2 个 | plan-auditor, sync-auditor |
 | **Builder** | 1 个 | builder-harness |
 | **Advisor** | 1 个 | super-advisor（高推理咨询） |
-| **Specialist** | 2 个 | e2e-tester（执行 Web/移动/桌面 E2E 测试）、mission-governor（GTD 自动任务判定，只读） |
+| **Specialist** | 2 个 | e2e-tester（执行 Web/移动/桌面 E2E 测试）、manager-todo（任务队列管理；GTD 自动任务判定为其只读子角色） |
 | **内置** | 1 个 | Explore（Anthropic 内置，只读代码分析） |
 
 ### 模型策略（代币经济学）

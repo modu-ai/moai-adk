@@ -82,11 +82,11 @@ flowchart TD
 
     T1["Tier 1 — 機械 · 探索<br/>Sonnet low<br/>manager-docs · manager-git · Explore"]
     T2["Tier 2 — 生産<br/>Opus、行ごとに違う段階<br/>manager-spec · manager-develop<br/>builder-harness · e2e-tester"]
-    T3["Tier 3 — 判断 · 調整<br/>Opus、主に high<br/>plan-auditor · sync-auditor · manager-design<br/>manager-lead · super-advisor · mission-governor"]
+    T3["Tier 3 — 判断 · 調整<br/>Opus、主に high<br/>plan-auditor · sync-auditor · manager-design<br/>manager-lead · super-advisor · manager-todo"]
 
     T1 --> NOTE["3 つのプロファイルすべてで固定"]
     T2 --> NOTE2["2 行は 3 列とも medium で固定<br/>プロファイルに従って下がるのは 2 行だけ"]
-    T3 --> NOTE3["super-advisor · mission-governor は<br/>経済列でも high を保つ"]
+    T3 --> NOTE3["super-advisor · manager-todo は<br/>経済列でも high を保つ"]
 ```
 
 ### Tier 1 — 機械 · 探索
@@ -116,11 +116,11 @@ flowchart TD
 |---|---|---|---|
 | `plan-auditor` · `sync-auditor` | `opus / high` | `opus / high` | `opus / medium` |
 | `manager-design` · `manager-lead` | `opus / high` | `opus / high` | `opus / medium` |
-| `super-advisor` · `mission-governor` | `opus / high` | `opus / high` | `opus / high` |
+| `super-advisor` · `manager-todo` | `opus / high` | `opus / high` | `opus / high` |
 
-`super-advisor` (エスカレーション経路) と `mission-governor` (封印されたミッションの判定) だけが、**経済列でも `high` を保ちます**。安い列でこそ健全に保つ価値がある場所が、まさにその 2 つだからです。
+`super-advisor` (エスカレーション経路) と `manager-todo` (封印されたミッションの判定サブロール) だけが、**経済列でも `high` を保ちます**。安い列でこそ健全に保つ価値がある場所が、まさにその 2 つだからです。
 
-`mission-governor` は、この軸が「マルチターンかどうか」より優れている理由を示します。1 回読んで決定を 1 つ返す**単発**の行なので、マルチターン基準なら Sonnet 側にあるはずですが、実際には 3 列とも `opus / high` です。**判断する行だから**です。
+`manager-todo` の判定サブロールは、この軸が「マルチターンかどうか」より優れている理由を示します。1 回読んで決定を 1 つ返す**単発**の行なので、マルチターン基準なら Sonnet 側にあるはずですが、実際には 3 列とも `opus / high` です。**判断する行だから**です。
 
 `max` は**どの行も受け取りません**。`high` の上にある唯一の段階として語彙には残っていますが、現在それを持つセルは 0 です。`xhigh` もどこにも使いません — Opus で `high` とスコアが同じながら、コストだけ 49% 余分にかかります。
 

@@ -201,7 +201,7 @@ func runAutoCycle(out io.Writer, store *kanban.BacklogStore, root string, opts a
 	// never a queue mutation, a completion verdict, a merge approval, or an
 	// operator gate. Absent scripts or an absent key degrade to a labelled
 	// non-finding and the cycle proceeds on lead judgment alone, exit 0.
-	fmt.Fprintln(out, opts.jev(root))
+	_, _ = fmt.Fprintln(out, opts.jev(root))
 
 	rec, err := store.LoadPure()
 	if err != nil {
@@ -212,15 +212,15 @@ func runAutoCycle(out io.Writer, store *kanban.BacklogStore, root string, opts a
 		return err
 	}
 	for _, n := range notes {
-		fmt.Fprintln(out, n)
+		_, _ = fmt.Fprintln(out, n)
 	}
 	if len(targets) == 0 {
-		fmt.Fprintln(out, "no eligible card: queue is empty or every card is untouched-by-authority (nothing to do)")
+		_, _ = fmt.Fprintln(out, "no eligible card: queue is empty or every card is untouched-by-authority (nothing to do)")
 		return nil
 	}
 
 	for _, card := range targets {
-		fmt.Fprintf(out, "accept %s %s\n", card.ID, todoTextPrefix(card.Text))
+		_, _ = fmt.Fprintf(out, "accept %s %s\n", card.ID, todoTextPrefix(card.Text))
 		// Claim the card before dispatch: a queued card becomes picked (the
 		// cycle's own pick); a dead-owner picked card is already claimed. The
 		// card this cycle picked is the only one it may later close.
@@ -237,7 +237,7 @@ func runAutoCycle(out io.Writer, store *kanban.BacklogStore, root string, opts a
 				}
 				return fmt.Errorf("auto: card %s vanished", card.ID)
 			}); err != nil {
-				fmt.Fprintf(out, "non-finding: %s (%v)\n", card.ID, err)
+				_, _ = fmt.Fprintf(out, "non-finding: %s (%v)\n", card.ID, err)
 				continue
 			}
 		}
@@ -258,7 +258,7 @@ func runAutoCycle(out io.Writer, store *kanban.BacklogStore, root string, opts a
 		}
 
 		if collected {
-			fmt.Fprintf(out, "evidence collected: %s\n", evidence)
+			_, _ = fmt.Fprintf(out, "evidence collected: %s\n", evidence)
 			err := store.Mutate(func(r *kanban.BacklogRecord) error {
 				for i := range r.Items {
 					if r.Items[i].ID == card.ID {
@@ -273,10 +273,10 @@ func runAutoCycle(out io.Writer, store *kanban.BacklogStore, root string, opts a
 			if err != nil {
 				// The card changed hands mid-flight: this cycle's claim is
 				// gone — report the non-finding and move on, never archive.
-				fmt.Fprintf(out, "non-finding: %s (%v)\n", card.ID, err)
+				_, _ = fmt.Fprintf(out, "non-finding: %s (%v)\n", card.ID, err)
 				continue
 			}
-			fmt.Fprintf(out, "done %s\n", card.ID)
+			_, _ = fmt.Fprintf(out, "done %s\n", card.ID)
 			writeAutoClearGuidance(out, card.ID, opts.sessionID)
 			continue
 		}
@@ -297,7 +297,7 @@ func runAutoCycle(out io.Writer, store *kanban.BacklogStore, root string, opts a
 		}); err != nil {
 			return err
 		}
-		fmt.Fprintf(out, "unpick %s non-finding: worker evidence absent at deadline (%s) — card returned to queued, never done\n", card.ID, evidence)
+		_, _ = fmt.Fprintf(out, "unpick %s non-finding: worker evidence absent at deadline (%s) — card returned to queued, never done\n", card.ID, evidence)
 	}
 	return nil
 }
@@ -325,13 +325,13 @@ func consultJev(root string) string {
 // in-session Agent() worker (isolation: worktree); it creates no factory
 // lease and claims no slot.
 func writeAutoDirective(out io.Writer, card kanban.BacklogItem, evidence string) {
-	fmt.Fprintln(out, "dispatch (one isolated in-session Agent() worker, isolation: worktree):")
-	fmt.Fprintf(out, "card: %s\n", card.ID)
+	_, _ = fmt.Fprintln(out, "dispatch (one isolated in-session Agent() worker, isolation: worktree):")
+	_, _ = fmt.Fprintf(out, "card: %s\n", card.ID)
 	if card.SpecID != nil && *card.SpecID != "" {
-		fmt.Fprintf(out, "spec: %s\n", *card.SpecID)
+		_, _ = fmt.Fprintf(out, "spec: %s\n", *card.SpecID)
 	}
-	fmt.Fprintf(out, "evidence: %s\n", evidence)
-	fmt.Fprintln(out, "worker orders: implement the card lane-locally; write the evidence file above (decisions, verbatim output tails, gaps, residual risk); commit by explicit pathspec; never push, never merge.")
+	_, _ = fmt.Fprintf(out, "evidence: %s\n", evidence)
+	_, _ = fmt.Fprintln(out, "worker orders: implement the card lane-locally; write the evidence file above (decisions, verbatim output tails, gaps, residual risk); commit by explicit pathspec; never push, never merge.")
 }
 
 // writeAutoClearGuidance emits the per-card /clear guidance (REQ-MT-011):
@@ -339,9 +339,9 @@ func writeAutoDirective(out io.Writer, card kanban.BacklogItem, evidence string)
 // next step, and the invoking (operator) session — this session, the one
 // hosting the cycle and the next card's dispatch, never the worker's.
 func writeAutoClearGuidance(out io.Writer, cardID, sessionID string) {
-	fmt.Fprintf(out, "--- /clear guidance ---\n")
-	fmt.Fprintf(out, "card %s is complete. Clear this session (/clear) before the next card.\n", cardID)
-	fmt.Fprintf(out, "next step: re-run `moai todo --auto` to continue the queue; next pickup follows the same order.\n")
-	fmt.Fprintf(out, "operator session: %s\n", sessionID)
-	fmt.Fprintf(out, "----------------------\n")
+	_, _ = fmt.Fprintf(out, "--- /clear guidance ---\n")
+	_, _ = fmt.Fprintf(out, "card %s is complete. Clear this session (/clear) before the next card.\n", cardID)
+	_, _ = fmt.Fprintf(out, "next step: re-run `moai todo --auto` to continue the queue; next pickup follows the same order.\n")
+	_, _ = fmt.Fprintf(out, "operator session: %s\n", sessionID)
+	_, _ = fmt.Fprintf(out, "----------------------\n")
 }

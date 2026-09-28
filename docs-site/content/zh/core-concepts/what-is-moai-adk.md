@@ -258,7 +258,7 @@ MoAI 是 **战略编排器**。它不亲自写代码,而是把工作委派给 13
 | **Builder** | builder-harness | 🟠 | 生成项目专用 harness(智能体/技能/命令) |
 | **Advisor** | super-advisor | 🔵 | 高推理咨询(E1-E4 升级) |
 | **Specialist** | e2e-tester | 🟠 | 执行 Web/移动/桌面 E2E 测试 |
-| | mission-governor | 🔴 | 读取已批准的 GTD 自动任务的封存快照，只返回一条判定(只读；实际动作由确定性执行器完成) |
+| | manager-todo | 🔴 | 管理待办队列；其只读判定子角色读取已批准的 GTD 自动任务的封存快照，只返回一条判定(实际动作由确定性执行器完成) |
 | **内置** | Explore | ⚪ | 只读代码库探索 |
 
 成本颜色反映各智能体工作所用模型的深度：🔴 Opus 深度推理 · 🟠 Opus 标准推理 · 🔵 浅推理 · ⚪ 只读探索。v3.2 起所有智能体都以**会话的模型与推理深度**运行 —— 子代理沿用主会话的模型与推理深度，因此看到的颜色跟随当时启动的会话，而不是逐智能体分配表（已退役）。
@@ -288,7 +288,7 @@ flowchart TD
 
     subgraph Specialist["Specialist (2 个)"]
         S1["e2e-tester\n执行 E2E 测试"]
-        S2["mission-governor\nGTD 自动任务判定"]
+        S2["manager-todo\nGTD 自动任务判定"]
     end
 
     subgraph Explore["内置 (1 个)"]
