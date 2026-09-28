@@ -20,3 +20,21 @@ Decision: direct — Tier S, one function plus one test table, lane-executed und
 - RED: `go test ./internal/hook/ -run TestServedModel_Classify -count=1` → 3 FAIL (e, f, h: `verdict = "served_drift"`); control g passed.
 - GREEN: `go test ./internal/hook/ -run TestServedModel -count=1` → `ok github.com/modu-ai/moai-adk/internal/hook 5.241s`.
 - Sweep with fixed binary: `swept 2335 …: ok 1592, served_drift 684, unknown 12, unmapped 47`; drift rows with `expected=…[1m]` or `expected=inherit`: 0.
+
+## §E.3 Run-phase Audit-Ready Signal
+
+이 통합 브랜치에 원 담당자 구현 커밋 `73d900b97`을 `-x`로 가져온 결과는 `13481c8ba`다. 최신 `develop` 위에서 재측정했다.
+
+```text
+$ go test ./internal/hook -run '^TestServedModel_(Classify|UnknownNeverOK)$' -count=1 -timeout 180s
+ok  \tgithub.com/modu-ai/moai-adk/internal/hook\t0.609s
+$ go test ./internal/cli -run 'TestRunDiagnosticChecks|TestServedModelCheck_|TestBinaryLag_' -count=1 -timeout 180s
+ok  \tgithub.com/modu-ai/moai-adk/internal/cli\t8.318s
+$ go vet ./internal/hook
+(출력 없음, exit 0)
+$ CLAUDE_CONFIG_DIR=/Users/goos/.moai/claude-profiles/moai-adk /tmp/moai-t1287-doctor doctor --check 'Served Model' --verbose
+swept 2363 subagent transcripts: ok 1599, served_drift 706, unknown 11, unmapped 47
+drift_detail_rows=706 legacy_false_drift_rows=0
+```
+
+마지막 두 줄은 doctor 출력을 `/tmp/t1287-served-doctor.log`에 저장한 뒤 요약과 drift 상세 행을 집계한 결과다. doctor exit 0. 이 결과는 현재 로컬 프로필 스냅샷에만 적용한다.

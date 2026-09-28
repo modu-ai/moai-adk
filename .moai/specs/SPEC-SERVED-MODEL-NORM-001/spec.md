@@ -2,7 +2,7 @@
 id: SPEC-SERVED-MODEL-NORM-001
 title: "서빙 모델 판정의 선언 정규화 — [1m] 접미와 inherit 선언을 drift 로 세지 않기"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-28
 updated: 2026-09-28
 author: manager-spec
