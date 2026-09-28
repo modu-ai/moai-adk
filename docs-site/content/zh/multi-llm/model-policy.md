@@ -209,6 +209,11 @@ flowchart TD
 
 观察记录逐行累积在 `<项目根>/.moai/logs/agent-model-audit.jsonl`。每行包含时间 · 会话 · 智能体 · 声明的 model · 解读的 model · 判定，绝不记录提示正文。用这份日志可以统计各智能体的漂移比例。
 
+这份记录只看调用时**声明**的模型——实际应答的模型要等响应返回后才能知道。因此在子智能体停止时（SubagentStop），MoAI 从其转录中读取实际服务的模型，并在同一文件中追加一行 `"source":"subagent_stop"` 记录。判定为 `ok`、`served_drift`（应答的模型与预期不同）或 `unknown`（无法读取服务模型）之一，非 `ok` 时发出警告。这条记录不会拦截。
+
+- 开启 `workflow.served_model_gate.enabled`（默认 `false`）后，仅对 plan-auditor 与 sync-auditor **不采纳**非 `ok` 运行的判定。已结束的运行不会被撤销，只拒绝进入下一阶段。
+- 要一次性扫描历史记录，运行 `moai doctor --check "Served Model"`。普通的 `moai doctor` 不执行这次扫描，只显示一行提示。
+
 拦截只在有**确凿证据**时发出（fail-open 原则）。智能体标识符可解析、解读已映射、声明的 model 存在、且两者不同——只有这些齐备才拒绝。其余所有不确定状态（解析失败、无标识符、未映射、config 读取失败、项目根无法定位）一律放行。强制机制不该因为自己的 bug 把会话卡停。
 
 > **effort 不在这个钩子的范围内。** 调用智能体的工具根本不暴露 effort 参数，调用时刻能观察到的只有 `model`。effort 是否落实，只能靠 frontmatter 与覆盖层把关。

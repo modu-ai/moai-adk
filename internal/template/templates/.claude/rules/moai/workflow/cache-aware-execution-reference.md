@@ -1,6 +1,6 @@
 ---
 description: "Reference companion for cache-aware-execution.md — cited cache-cost numbers, per-directive rationale, and worked examples for directives 6-10"
-paths: "**/cache-aware-execution.md"
+paths: "**/cache-aware-execution.md,**/.claude/agents/moai/*.md,**/.claude/rules/moai/workflow/*.md"
 ---
 
 # Cache-Aware Execution — Reference Companion

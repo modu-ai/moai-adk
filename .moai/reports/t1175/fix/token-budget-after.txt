@@ -1,0 +1,19 @@
+=== RUN   TestAlwaysLoadedTokenBudget
+    token_budget_guard_test.go:70: always-loaded surface = 65648 tokens (budget 77600, headroom 11952, 16 entries)
+--- PASS: TestAlwaysLoadedTokenBudget (0.02s)
+=== RUN   TestAlwaysLoadedTokenBudget_OverBudgetFails
+=== RUN   TestAlwaysLoadedTokenBudget_OverBudgetFails/contract-at-ceiling
+=== RUN   TestAlwaysLoadedTokenBudget_OverBudgetFails/contract-one-byte-over
+=== RUN   TestAlwaysLoadedTokenBudget_OverBudgetFails/mirror-over-live-under
+=== RUN   TestAlwaysLoadedTokenBudget_OverBudgetFails/both-over
+=== RUN   TestAlwaysLoadedTokenBudget_OverBudgetFails/over-budget
+=== RUN   TestAlwaysLoadedTokenBudget_OverBudgetFails/under-budget
+--- PASS: TestAlwaysLoadedTokenBudget_OverBudgetFails (0.01s)
+    --- PASS: TestAlwaysLoadedTokenBudget_OverBudgetFails/contract-at-ceiling (0.00s)
+    --- PASS: TestAlwaysLoadedTokenBudget_OverBudgetFails/contract-one-byte-over (0.00s)
+    --- PASS: TestAlwaysLoadedTokenBudget_OverBudgetFails/mirror-over-live-under (0.00s)
+    --- PASS: TestAlwaysLoadedTokenBudget_OverBudgetFails/both-over (0.00s)
+    --- PASS: TestAlwaysLoadedTokenBudget_OverBudgetFails/over-budget (0.00s)
+    --- PASS: TestAlwaysLoadedTokenBudget_OverBudgetFails/under-budget (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/config	0.319s

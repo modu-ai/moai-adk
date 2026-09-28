@@ -1,6 +1,7 @@
 package escalation_test
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -19,14 +20,36 @@ func TestObserveInertUnderGuided(t *testing.T) {
 	w.WriteMode("guided", false)
 	w.AddSpec("SPEC-A-001", escalationtest.SpecOptions{})
 	s := contractSettings(t, w)
+	// Signing the fixture contract records events under MOAI_HOME; the
+	// assertion covers only what Observe adds or changes.
+	before := treeDigest(t, home)
 	preWrite(s, w, "internal/bar/x.go")
 	escalation.Observe(s, escalation.Event{Hook: escalation.HookPostToolUse, CWD: w.Root, ToolName: "Bash", Command: "ls"})
-	if entries, _ := os.ReadDir(home); len(entries) != 0 {
-		t.Errorf("guided mode wrote under MOAI_HOME: %v", entries)
+	if after := treeDigest(t, home); after != before {
+		t.Errorf("guided mode wrote under MOAI_HOME:\n before %s\n  after %s", before, after)
 	}
 	if got := records(t, w); len(got) != 0 {
 		t.Errorf("guided mode wrote records: %v", got)
 	}
+}
+
+// treeDigest lists every entry under root with its size, in walk order.
+func treeDigest(t *testing.T, root string) string {
+	t.Helper()
+	var b strings.Builder
+	_ = filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		rel, _ := filepath.Rel(root, p)
+		size := int64(-1)
+		if fi, err := d.Info(); err == nil && !d.IsDir() {
+			size = fi.Size()
+		}
+		b.WriteString(filepath.ToSlash(rel) + ":" + strconv.FormatInt(size, 10) + ";")
+		return nil
+	})
+	return b.String()
 }
 
 // The M2 class 3 predicate: a write inside the worktree root that no

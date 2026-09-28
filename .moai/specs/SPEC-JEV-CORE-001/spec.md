@@ -1,10 +1,10 @@
 ---
 id: SPEC-JEV-CORE-001
 title: "Jev core capability — package, config gate, credential, fail-open"
-version: "0.2.0"
+version: "0.3.0"
 status: completed
 created: 2026-09-20
-updated: 2026-09-21
+updated: 2026-09-26
 author: manager-spec
 priority: P2
 phase: "v3.1.0 target"
@@ -20,6 +20,7 @@ tier: L
 
 | Date | Version | Change | Author |
 |---|---|---|---|
+| 2026-09-26 | 0.3.0 | **Narrow amendment to a `completed` SPEC, card t1236 (`SPEC-AUTONOMY-GATE-REWIRE-001` REQ-GR-013/025).** Operator decision, relayed by the lead: 「Kickoff 는 LLM·Jev 도 할 수 있게」 (let the LLM and Jev also decide Kickoff) — then the operator's same-day re-decision of 2026-09-26: **no Jev-alone decider; the cross-check only.** REQ-JEVC-011 and REQ-JEVC-012 each gain exactly one exception, the same one in both: **the second signal of the contract-mode Kickoff `llm+jev` cross-check**, where `moai contract decide` may call Jev directly and Jev's answer can only confirm an LLM approval or route the Kickoff to a human — it never starts a Kickoff alone. REQ-JEVC-011 additionally allows moai to record that answer in the Kickoff receipt and the contract store. Both `### Out of Scope — authority` items name the same exception so the SPEC does not contradict its own REQ-JEVC-012. Every other prohibition stands unchanged: completion verdicts, merge approvals, `moai todo`/`moai gtd` mutations, every other operator gate, user-surface behaviour changes, CodeRabbit slot-wait adjudication, and any Jev-alone decision. No requirement was removed, no id renumbered, no AC mapping changed. This amendment lands in one commit with the code constant that lifts the interim rule and with the matching rule, config, and local-guide sentences (REQ-GR-025). As with v0.2.0, `sync_commit_sha` is NOT rewritten and `status` stays `completed` — this is a non-transition correction. | manager-spec |
 | 2026-09-21 | 0.2.0 | **Clarifying amendment to a `completed` SPEC, card t1066.** REQ-JEVC-011 and REQ-JEVC-012 were reconciled with `SPEC-JEV-CONSUMERS-001` REQ-JEVN-001, which authorises an inert finding append during `moai todo add` and which a plain reading of both clauses forbade. REQ-JEVC-011 gains a bounded inert-sibling-record carve-out with three binding conditions; REQ-JEVC-012 gains a definition of "for" that separates *reaching* a listed act from merely *co-occurring* with one. No requirement was removed, no id renumbered, no AC mapping changed, and the scope this SPEC closed is unchanged. **This amendment postdates the sync commit `c8731f965`** recorded in `progress.md` §E.4, so the SPEC body no longer byte-matches the tree that was synced; `sync_commit_sha` is NOT rewritten, because it records which tree was synced and not which text currently stands. `status` stays `completed`. | manager-spec |
 | 2026-09-20 | 0.1.0 | Split from SPEC-JEV-INTEGRATION-001 (card t1020) on the M1 seam, after that SPEC exceeded the Tier L REQ/AC ceilings (68/56 against 25/25). Carries M1: the single implementation, the config gate, the credential, the display-only invariant, fail-open, and the doctor check. Requirements re-numbered `REQ-JEVC-*`; no requirement was dropped. | manager-spec |
 
@@ -77,7 +78,9 @@ One Go package owning the single call path; one config gate defaulting to off; o
 
 ### C.4 — Display-only invariant
 
-**REQ-JEVC-011** (Ubiquitous) **[AMENDED 2026-09-21 — v0.2.0; see HISTORY]** A Jev answer shall not mutate the backlog queue, a card's state, a card's text, a file, a branch, or a merge. The capability is display-only.
+**REQ-JEVC-011** (Ubiquitous) **[AMENDED 2026-09-21 — v0.2.0; see HISTORY]** **[AMENDED 2026-09-26 — v0.3.0; see HISTORY]** A Jev answer shall not mutate the backlog queue, a card's state, a card's text, a file, a branch, or a merge. The capability is display-only, with exactly one exception, stated below under "The one gate exception".
+
+**The one gate exception (v0.3.0).** When Jev is used as **the second signal of the contract-mode Kickoff `llm+jev` cross-check**, moai records Jev's answer in the Kickoff receipt and in the contract store. That recording is the single place where a Jev answer is written into a file that a gate reads, and it is permitted only there. Its bounds: the answer is recorded next to the LLM signal it was checked against, never in place of it; the answer can only confirm an LLM approval or route the Kickoff to a human — it never starts a Kickoff alone; and a consumer relying on this exception is authorised by name in `SPEC-AUTONOMY-GATE-REWIRE-001`. The inert-sibling-record carve-out below is a separate, unchanged permission and does not extend to this case.
 
 **What "mutate the backlog queue" means.** It means change a card — its existence, its identity, its ordering, its state, or its text — or change what the queue *asserts* about a card's disposition. It does **not** mean "write the queue file at all", and the enumerated "a file" above does not reach the queue file on the single path carved out below.
 
@@ -93,7 +96,9 @@ A consumer relying on this carve-out is authorised **by name** in a downstream S
 
 **The reading that was rejected, and why it is recorded rather than deleted.** "Mutate the backlog queue" could be read as "write the queue file at all", and that reading had real textual support before this amendment: the enumeration lists "a file", and the queue file is a file. Under it, `SPEC-JEV-CONSUMERS-001` would be building something this SPEC forbids. It is rejected on three grounds. First, the queue's own governing doctrine already separates the two acts: `.claude/rules/moai/workflow/kanban-dispatch.md` § Entry into the board is an operator act states that analysis "records a relation between two cards" and that "analysis changes exactly one thing on its own authority — it refuses the admission of a card whose normalized text is identical to one already queued or picked" — so recording a relation is, by that doctrine, not a queue change, and the one act that is remains mechanical and untouched. Second, the pre-existing mechanical analyser already appends a finding on `todo add` (`internal/cli/todo_analysis.go:58-76`) and no SPEC in this chain treats that as a queue mutation; the strict reading would retroactively classify the non-Jev baseline as one. Third, the strict reading forbids the act on the basis of *which file bytes changed* rather than *what the change can cause*, which is the axis every other clause in §C.4 is written on. The rejection is recorded here rather than argued away so a later reader can disagree with the choice by reading it.
 
-**REQ-JEVC-012** (Unwanted) **[AMENDED 2026-09-21 — v0.2.0; see HISTORY]** The system shall not consult Jev — not as a decision, and **not as an input** — for any of: a completion verdict, a merge approval, a `moai todo` or `moai gtd` mutation, an operator gate, a user-surface behaviour change, or a CodeRabbit slot-wait adjudication.
+**REQ-JEVC-012** (Unwanted) **[AMENDED 2026-09-21 — v0.2.0; see HISTORY]** **[AMENDED 2026-09-26 — v0.3.0; see HISTORY]** The system shall not consult Jev — not as a decision, and **not as an input** — for any of: a completion verdict, a merge approval, a `moai todo` or `moai gtd` mutation, an operator gate, a user-surface behaviour change, or a CodeRabbit slot-wait adjudication. The single exception is the operator gate at Kickoff, and only when Jev is used as **the second signal of the contract-mode Kickoff `llm+jev` cross-check**.
+
+**The one gate exception (v0.3.0), and what it does not open.** In the contract-mode Kickoff `llm+jev` cross-check, `moai contract decide` may call Jev directly as a second signal next to an LLM judgement. Jev's answer can only confirm an LLM approval or route the Kickoff to a human; it never starts a Kickoff alone, and a Jev-alone decider is refused. This exception is outside the "determined first / unread after" discriminator below by design — there the answer does reach the gate, which is why the exception is named rather than derived. Every other prohibition in this requirement stands: a completion verdict, a merge approval, a `moai todo` or `moai gtd` mutation, every other operator gate, a user-surface behaviour change, and a CodeRabbit slot-wait adjudication remain closed to Jev both as a decision and as an input.
 
 **"For" names the role the answer plays, not the moment it is asked.** A consultation is *for* a listed act when its answer **can reach** that act — as the decision, as an input to it, or as something a surface presenting it selects on. A consultation that happens **during a command that also performs a listed act, while its answer cannot reach that act**, is not a consultation *for* it.
 
@@ -152,8 +157,8 @@ A consumer relying on this carve-out is authorised **by name** in a downstream S
 
 ### Out of Scope — authority
 
-- Any path by which a Jev answer reaches a completion verdict, a merge approval, a queue mutation, an operator gate, a user-surface behaviour change, or a CodeRabbit slot-wait adjudication. REQ-JEVC-012 forbids it as an input, not merely as a decision.
-- **Still excluded after the v0.2.0 amendment:** a Jev answer that a queue mutation, a verdict, a gate, or a mark **selects on**. The REQ-JEVC-011 carve-out covers an inert sibling record and nothing else, and condition (iii) makes the carve-out lapse the moment anything selects on the record. The amendment narrows the wording; it does not widen the boundary.
+- Any path by which a Jev answer reaches a completion verdict, a merge approval, a queue mutation, an operator gate, a user-surface behaviour change, or a CodeRabbit slot-wait adjudication — except when Jev is used as the second signal of the contract-mode Kickoff `llm+jev` cross-check, the one exception REQ-JEVC-012 names, where the answer can only confirm an LLM approval or route the Kickoff to a human. REQ-JEVC-012 forbids every other such path as an input, not merely as a decision; a Jev-alone decision is excluded everywhere, Kickoff included.
+- **Still excluded after the v0.2.0 and v0.3.0 amendments:** a Jev answer that a queue mutation, a verdict, a gate, or a mark **selects on** — except when Jev is used as the second signal of the contract-mode Kickoff `llm+jev` cross-check, where the Kickoff outcome selects on the answer only to confirm an LLM approval or route to a human. The REQ-JEVC-011 carve-out covers an inert sibling record and nothing else, and condition (iii) makes the carve-out lapse the moment anything selects on the record. v0.2.0 narrowed the wording; v0.3.0 opens that one Kickoff exception and nothing wider.
 
 ---
 

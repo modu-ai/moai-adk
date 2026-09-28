@@ -1,0 +1,1 @@
+--- project-doc ---\n\nCONTRACT_HEAD\n\n# Fixture contract\n\nThis is the fixture standing contract body.\n\nCONTRACT_TAIL\n\n</INSTRUCTIONS>

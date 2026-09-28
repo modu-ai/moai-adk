@@ -99,6 +99,25 @@ func init() {
 		hookCmd.AddCommand(cmd)
 	}
 
+	// Codex-only subcommands (SPEC-DUAL-HARNESS-HOOK-PARITY-001 M2e, design.md
+	// §D7). They carry no internal/hook event type, so they bypass the event
+	// dispatcher; each refuses to run outside --harness codex.
+	codexOnlySubcommands := []struct {
+		use   string
+		short string
+		run   func(*cobra.Command, []string) error
+	}{
+		{"interrupt", "Handle the Codex Interrupt event (records a user cancellation; --harness codex only)", runHookInterrupt},
+	}
+	for _, sub := range codexOnlySubcommands {
+		hookCmd.AddCommand(&cobra.Command{
+			Use:          sub.use,
+			Short:        sub.short,
+			SilenceUsage: true,
+			RunE:         sub.run,
+		})
+	}
+
 	// Add "list" subcommand
 	hookCmd.AddCommand(&cobra.Command{
 		Use:   "list",
@@ -355,7 +374,17 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 
 	// SPEC-HOOK-PRETOOL-PERF-001 M0: env-gated dispatch timing.
 	dispatchStart := time.Now()
-	output, err := deps.HookRegistry.Dispatch(ctx, event, input)
+	var output *hook.HookOutput
+	if harnessCodex && event == hook.EventStop {
+		// SPEC-DUAL-HARNESS-HOOK-PARITY-001 M2d (design §D2): the one Codex
+		// Stop handler runs the whole Claude Stop chain. Member 1 is this
+		// registry's own dispatch, so a dispatch fault still reaches the
+		// fail-closed branch below unchanged.
+		res := newCodexStopChain(resolveCodexStopRoot(input), input).run(ctx)
+		output, err = res.Output, res.Fault
+	} else {
+		output, err = deps.HookRegistry.Dispatch(ctx, event, input)
+	}
 	if deps.PerfTiming != nil {
 		deps.PerfTiming.MarkDispatch(dispatchStart, time.Now())
 	}
@@ -870,8 +899,15 @@ func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
 	// Read + normalize stdin JSON: LastAssistantMessage (native lastAssistantMessage
 	// or flat last_assistant_message) + SessionID (native nested session.id or flat
 	// top-level session_id) both decode correctly via normalizeHookInput.
-	hookInput := readNormalizedHookInput()
+	harnessObserveStop(root, readNormalizedHookInput(), cmd.ErrOrStderr())
+	return nil
+}
 
+// harnessObserveStop is the body of `moai hook harness-observe-stop` after its
+// two gates, shared with the Codex Stop chain's member 8
+// (SPEC-DUAL-HARNESS-HOOK-PARITY-001 design §D2). Every failure is written to
+// errOut and swallowed; the observer never blocks session end.
+func harnessObserveStop(root string, hookInput *hook.HookInput, errOut io.Writer) {
 	// subject: detect SPEC-ID from the project root (empty string when not found)
 	subject := detectSpecIDFromCwd(root)
 
@@ -895,7 +931,7 @@ func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
 	harness.EstimateContextWeight(&evt, root)
 
 	if err := obs.RecordExtendedEvent(evt); err != nil {
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-stop: event recording failed: %v\n", err)
+		_, _ = fmt.Fprintf(errOut, "harness-observe-stop: event recording failed: %v\n", err)
 	}
 
 	// SPEC-HARNESS-EVO-PIPE-REPAIR-001 REQ-HEP-003: auto-classify on the Stop path.
@@ -906,9 +942,9 @@ func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
 	// single usage-log aggregation + promotion append, O(log lines)).
 	// Precondition (isHarnessLearningEnabled) already satisfied above.
 	if patternCount, promoCount, classifyErr := classifyHarnessPatterns(root); classifyErr != nil {
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-stop: auto-classify failed (non-blocking): %v\n", classifyErr)
+		_, _ = fmt.Fprintf(errOut, "harness-observe-stop: auto-classify failed (non-blocking): %v\n", classifyErr)
 	} else {
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-stop: auto-classify %d patterns → %d promotions\n", patternCount, promoCount)
+		_, _ = fmt.Fprintf(errOut, "harness-observe-stop: auto-classify %d patterns → %d promotions\n", patternCount, promoCount)
 
 		// SPEC-HARNESS-RATCHET-REWIRE-001 REQ-HRR-004: auto-propose on the Stop
 		// path. Chains proposal generation after classify when promotions > 0 so
@@ -919,9 +955,9 @@ func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
 		// read-promotions + map + mkdir+write, O(promotions)).
 		if promoCount > 0 {
 			if n, pErr := generateProposals(root); pErr != nil {
-				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-stop: auto-propose failed (non-blocking): %v\n", pErr)
+				_, _ = fmt.Fprintf(errOut, "harness-observe-stop: auto-propose failed (non-blocking): %v\n", pErr)
 			} else if n > 0 {
-				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-stop: auto-propose generated %d proposal(s)\n", n)
+				_, _ = fmt.Fprintf(errOut, "harness-observe-stop: auto-propose generated %d proposal(s)\n", n)
 			}
 		}
 	}
@@ -938,9 +974,7 @@ func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
 	// leaves the row pending exactly as before.
 	hook.RoutingSeamStopEvidence(root, hookInput.SessionID)
 
-	finalizeRoutingLedgerOnStop(root, hookInput.SessionID, cmd.ErrOrStderr())
-
-	return nil
+	finalizeRoutingLedgerOnStop(root, hookInput.SessionID, errOut)
 }
 
 // finalizeRoutingLedgerOnStop is the additive routing-ledger Stop finalizer

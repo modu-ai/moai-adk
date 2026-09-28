@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/contract"
+	"github.com/modu-ai/moai-adk/internal/contract/receipt"
 )
 
 // KickoffNotice is the REQ-CONTRACT-019 notice printed after every successful
@@ -66,6 +67,11 @@ type Options struct {
 	// A1 receipt validator does not evaluate them.
 	JevEnabled       bool
 	JevMinConfidence float64
+	// JevDoctrineAmended conditions the interim A1 rule: while false, an
+	// effective llm+jev receipt is refused as receipt_requires_human. The CLI
+	// passes the kickoff package's JevDoctrineAmended constant; tests inject
+	// both values.
+	JevDoctrineAmended bool
 	// BudgetDefault fills an absent contract budget.
 	BudgetDefault contract.Budget
 
@@ -104,6 +110,11 @@ type Seams struct {
 	// WriteFile replaces path atomically. Default: temp file in the same
 	// directory, then internal/atomicfile.Replace.
 	WriteFile func(path string, data []byte, perm os.FileMode) error
+	// RecordEvent appends one signing event (sign-human, sign-receipt, or
+	// reseal) to the contract store. It runs before the contract file is
+	// written; an error leaves every file unwritten. Default: the project's
+	// contract store under MOAI_HOME (receipt.Open).
+	RecordEvent func(root, kind string, ev receipt.SignEvent) error
 }
 
 // Result reports what Sign did.
@@ -150,6 +161,7 @@ type target struct {
 	digest   string             // body digest = signature.contract_sha256
 	signable string             // Verify(original).SignableContractSHA256
 	final    []byte             // body plus signature
+	sig      contract.Signature // the sealed signature written into final
 }
 
 // Sign signs the contracts named in opts, following design.md § Signing
@@ -235,7 +247,37 @@ func Sign(opts Options, seams Seams) (Result, error) {
 			return Result{}, err
 		}
 	}
+	if err := recordEvents(opts, s, targets, human); err != nil {
+		return Result{}, err
+	}
 	return write(s, targets)
+}
+
+// recordEvents appends one signing event per target to the contract store
+// before any contract file is written, so a signature never exists without
+// its event: a failed append returns before the first write.
+func recordEvents(opts Options, s Seams, targets []*target, human bool) error {
+	kind := receipt.KindSignReceipt
+	switch {
+	case opts.Resign:
+		kind = receipt.KindReseal
+	case human:
+		kind = receipt.KindSignHuman
+	}
+	for _, t := range targets {
+		ev := receipt.SignEvent{
+			Spec: t.id, Card: t.orig.Card, SignerKind: t.sig.SignerKind, Method: t.sig.Method,
+			Seal: t.sig.Seal, ContractSHA256: t.sig.ContractSHA256, AcceptanceSHA256: t.sig.AcceptanceSHA256,
+			Supersedes: t.sig.Supersedes,
+		}
+		if t.sig.Receipt != nil {
+			ev.ReceiptSHA256 = t.sig.Receipt.SHA256
+		}
+		if err := s.RecordEvent(opts.ProjectRoot, kind, ev); err != nil {
+			return fmt.Errorf("contract sign: record the signing event for %s (nothing written): %w", t.id, err)
+		}
+	}
+	return nil
 }
 
 // checkUsage rejects an invocation the CLI should not have made.
@@ -516,7 +558,7 @@ func checkReceipt(opts Options, t *target) *refusal {
 	if code != "" {
 		return refuse(code, t.id, "the kickoff receipt %s fails validation", chk.Path)
 	}
-	if code, ok := contract.ReceiptOutcome(r); !ok {
+	if code, ok := contract.ReceiptOutcome(r, opts.JevDoctrineAmended); !ok {
 		return refuse(code, t.id, "the kickoff receipt records outcome %q from effective decider %s", r.Outcome, r.EffectiveDecider)
 	}
 	return nil
@@ -537,6 +579,7 @@ func seal(t *target, base contract.Signature, resign bool) error {
 	if t.final, err = appendSignature(t.body, sig); err != nil {
 		return fmt.Errorf("%w: %v", ErrInternal, err)
 	}
+	t.sig = sig
 	fin := t.in
 	fin.Contract = t.final
 	if rep := contract.Verify(fin); rep.State != contract.StateSignedValid {

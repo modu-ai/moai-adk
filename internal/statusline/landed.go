@@ -1,5 +1,5 @@
-// landed.go — how many picked cards are already named in the branch the
-// project integrates on.
+// landed.go — how many picked cards already have a landing commit on the
+// branch the project integrates on.
 //
 // Shaped exactly like github.go, and deliberately so: one small cache read on
 // the render path, a detached child past a TTL, the cache file's own timestamp
@@ -10,21 +10,43 @@
 // kanban.GitLandedQuerier.Landed asks git ONCE PER CARD (measured 0.174s per
 // query — about fourteen seconds across eighty cards), and backlog.go's read is
 // contracted to stay constant-cost per render. The child therefore folds every
-// card into ONE `git log <ref> --format=%B` and intersects in memory.
+// card into ONE subject-stream query — kanban's own landed scan
+// (kanban.LandedScanArgs) — and attributes in memory through kanban's own
+// predicate (kanban.LandedAttributions) and generation boundary
+// (kanban.AutoDoneSubjectFresh). The count is the same subject criterion
+// `moai todo auto-done` evaluates; this file owns no matcher of its own.
+//
+// The count answers "a landing commit exists", not "this card may close": a
+// plan-only landing counts, and the auto-done close guards (reissued-id,
+// SPEC-status) are not applied. That is why the render annotates with a
+// verify-before-done glyph and never subtracts.
 package statusline
 
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
+
+// landedCriterion names the counting criterion a cache's number was produced
+// under. A cache carrying any other value — including none, which is what the
+// retired body-mention criterion wrote — is not a judgment under this one:
+// it reads as unknown and is refreshed at once. Change the value whenever the
+// criterion changes, so an old number can never render under a new meaning.
+const landedCriterion = "subject-attribution/v1"
+
+// landedGlyph prefixes the landed count in the TODO segment: U+2691 BLACK
+// FLAG, "flagged — verify before done". Chosen to carry no completion
+// connotation, to render as text in one cell (no Emoji property, East Asian
+// Width N), and to read the same in every locale because it has no words.
+const landedGlyph = "⚑"
 
 // LandedCountsTTL is how long a measurement is served before a refresh is
 // triggered. The integration branch moves on the scale of a card's lifetime,
@@ -39,12 +61,12 @@ const LandedCountsTTL = 10 * time.Minute
 // it.
 const landedScanBudget = 20 * time.Second
 
-// landedCardToken bounds what may be interpolated into the matching pattern,
-// mirroring kanban's own card-token rule.
+// landedCardToken bounds which picked ids are considered at all, mirroring
+// kanban's own card-token rule.
 var landedCardToken = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
-// LandedCounts is how many picked cards the integration branch already names,
-// as of the last successful measurement.
+// LandedCounts is how many picked cards the integration branch already carries
+// a landing commit for, as of the last successful measurement.
 //
 // Available and Measured answer two different questions and only their
 // combination is renderable. Available says a cache was read; Measured says
@@ -54,10 +76,11 @@ var landedCardToken = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 // GitHubCounts renders "-/-" instead of "0/0", and the same reason
 // kanban.LandingUnknown exists beside landed and not-landed.
 type LandedCounts struct {
-	// Landed is how many picked cards are named in Ref's history. It counts
-	// MENTIONS, not authorship: the shipped criterion is `\b<id>\b` over the
-	// full commit message, so another card's report commit naming this one
-	// counts. That is why the render annotates and never subtracts.
+	// Landed is how many picked cards Ref's subject stream attributes, through
+	// kanban's subject-attribution predicate, to a commit no older than the
+	// card itself. A body mention does not count. A landing is not a close —
+	// a plan-only landing counts too — which is why the render annotates with
+	// a verify-before-done glyph and never subtracts.
 	Landed int `json:"landed"`
 	// Ref is the ref the count was measured against, recorded so a reader can
 	// tell which branch answered.
@@ -66,13 +89,19 @@ type LandedCounts struct {
 	// before it starts. Not a latch — every successful measurement sets it.
 	Measured  bool  `json:"measured"`
 	FetchedAt int64 `json:"fetched_at"` // unix seconds; 0 when never written
-	Available bool  `json:"-"`          // false when no cache could be read
+	// Criterion names the counting criterion that produced Landed (see
+	// landedCriterion). Empty in caches written before it existed.
+	Criterion string `json:"criterion,omitempty"`
+	Available bool   `json:"-"` // false when no cache could be read
 }
 
-// Known reports whether a landed judgment actually exists. Everything else —
-// absent cache, corrupt cache, un-measured placeholder — is UNKNOWN, and
+// Known reports whether a landed judgment actually exists under the current
+// criterion. Everything else — absent cache, corrupt cache, un-measured
+// placeholder, a number produced by a different criterion — is UNKNOWN, and
 // unknown renders nothing at all.
-func (c LandedCounts) Known() bool { return c.Available && c.Measured }
+func (c LandedCounts) Known() bool {
+	return c.Available && c.Measured && c.Criterion == landedCriterion
+}
 
 // landedCachePath returns where the landed cache lives for a board root.
 func landedCachePath(boardRoot string) string {
@@ -109,18 +138,21 @@ func resolveLandedCounts(boardRoot string) LandedCounts {
 var landedSpawnProbe func(boardRoot string)
 
 // maybeRefreshLandedCounts triggers a background refresh when the cache is
-// missing or older than LandedCountsTTL, and returns immediately either way.
-// The caller keeps rendering the previous value — stale-while-revalidate.
+// missing, older than LandedCountsTTL, or written under a different criterion,
+// and returns immediately either way. The caller keeps rendering the previous
+// value — stale-while-revalidate.
 //
 // The stampede guard is the cache file's own timestamp: the child writes a
-// fresh FetchedAt before it starts, so every render between the spawn and the
-// result sees a fresh cache and spawns nothing.
+// fresh FetchedAt (under the current criterion) before it starts, so every
+// render between the spawn and the result sees a fresh cache and spawns
+// nothing.
 func maybeRefreshLandedCounts(boardRoot string) {
 	if boardRoot == "" {
 		return
 	}
 	cur := resolveLandedCounts(boardRoot)
-	if cur.Available && time.Since(time.Unix(cur.FetchedAt, 0)) < LandedCountsTTL {
+	if cur.Available && cur.Criterion == landedCriterion &&
+		time.Since(time.Unix(cur.FetchedAt, 0)) < LandedCountsTTL {
 		return
 	}
 
@@ -153,11 +185,26 @@ var landedGitRunner = func(ctx context.Context, dir string, args ...string) (str
 	return string(out), err
 }
 
+// landedScanRunner adapts landedGitRunner to kanban's CommandRunner contract,
+// so kanban.ScanLandedSubjects runs its one query through the same seam the
+// tests count. kanban's contract carries a command name; the adapter only
+// ever runs git and refuses anything else rather than silently running git in
+// its place.
+func landedScanRunner(ctx context.Context, dir string) kanban.CommandRunner {
+	return func(name string, args ...string) (string, error) {
+		if name != "git" {
+			return "", fmt.Errorf("statusline: landed scan runs git only, got %q", name)
+		}
+		return landedGitRunner(ctx, dir, args...)
+	}
+}
+
 // RefreshLandedCounts measures how many picked cards the project's integration
-// branch already names, and writes the cache under boardRoot. It is the
-// detached child's entry point, never called on the render path.
+// branch already carries a subject-attributed landing commit for, and writes
+// the cache under boardRoot. It is the detached child's entry point, never
+// called on the render path.
 //
-// ONE git invocation, whatever the card count. The per-card form
+// ONE git query, whatever the card count. The per-card form
 // (kanban.GitLandedQuerier.Landed) is correct and is what `moai todo pr` uses;
 // it is simply the wrong shape behind a status bar.
 func RefreshLandedCounts(ctx context.Context, boardRoot string) error {
@@ -166,87 +213,82 @@ func RefreshLandedCounts(ctx context.Context, boardRoot string) error {
 	}
 
 	// The timestamp goes down first so concurrent renders stop spawning
-	// immediately. The previous measurement rides through unchanged: a failed
-	// query below must degrade to a stale-but-observed number, and a first-ever
-	// failure must stay UNKNOWN rather than become a zero.
+	// immediately. A previous measurement under the CURRENT criterion rides
+	// through unchanged: a failed query below must degrade to a
+	// stale-but-observed number, and a first-ever failure must stay UNKNOWN
+	// rather than become a zero. A previous measurement under any OTHER
+	// criterion is dropped here, so a failure below cannot relabel the old
+	// number as a current one.
 	prev := resolveLandedCounts(boardRoot)
+	if prev.Criterion != landedCriterion {
+		prev = LandedCounts{Criterion: landedCriterion}
+	}
 	prev.FetchedAt = time.Now().Unix()
 	if err := writeLandedCache(boardRoot, prev); err != nil {
 		return err
 	}
 
-	picked := pickedCardIDs(boardRoot)
+	picked := pickedCards(boardRoot)
 	ref := kanban.LandedRefFor(boardRoot)
 	if len(picked) == 0 {
 		// Nothing in flight is an OBSERVED zero, reached without asking git
 		// anything — renderable, unlike the unknowns above.
 		return writeLandedCache(boardRoot, LandedCounts{
 			Landed: 0, Ref: ref, Measured: true, FetchedAt: time.Now().Unix(),
+			Criterion: landedCriterion,
 		})
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, landedScanBudget)
 	defer cancel()
 
-	out, err := landedGitRunner(ctx, boardRoot, "log", ref, "--format=%B")
+	commits, err := kanban.ScanLandedSubjects(landedScanRunner(ctx, boardRoot), ref)
 	if err != nil {
-		// Keep the stale-but-timestamped cache; try again next TTL. Writing a
-		// zero here is exactly the fabricated fact this segment refuses.
+		// A failed or malformed query: keep the stale-but-timestamped cache and
+		// try again next TTL. Writing a zero here is exactly the fabricated
+		// fact this segment refuses.
 		return nil
 	}
 
+	attributed := kanban.LandedAttributions(commits, kanban.LandedBranchFromRef(ref))
+	landed := 0
+	for _, c := range picked {
+		if hit, ok := attributed[c.ID]; ok && kanban.AutoDoneSubjectFresh(hit, c.AddedAt) {
+			landed++
+		}
+	}
+
 	return writeLandedCache(boardRoot, LandedCounts{
-		Landed:    countNamed(out, picked),
+		Landed:    landed,
 		Ref:       ref,
 		Measured:  true,
 		FetchedAt: time.Now().Unix(),
+		Criterion: landedCriterion,
 	})
 }
 
-// pickedCardIDs returns the ids of the cards in flight, read PURELY: a status
-// refresh must never perform the queue's one-time storage cutover, which is why
-// this uses LoadPure rather than Load.
-func pickedCardIDs(boardRoot string) []string {
+// pickedCard is the part of a picked backlog item the landed count reads: its
+// id, and the added_at the generation boundary judges against.
+type pickedCard struct {
+	ID      string
+	AddedAt string
+}
+
+// pickedCards returns the cards in flight, read PURELY: a status refresh must
+// never perform the queue's one-time storage cutover, which is why this uses
+// LoadPure rather than Load.
+func pickedCards(boardRoot string) []pickedCard {
 	rec, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(boardRoot)).LoadPure()
 	if err != nil || rec == nil {
 		return nil
 	}
-	var ids []string
+	var cards []pickedCard
 	for _, it := range rec.Items {
 		if it.State == kanban.BacklogStatePicked && landedCardToken.MatchString(it.ID) {
-			ids = append(ids, it.ID)
+			cards = append(cards, pickedCard{ID: it.ID, AddedAt: it.AddedAt})
 		}
 	}
-	return ids
-}
-
-// countNamed reports how many of ids the log body names, under the same
-// word-boundary criterion `moai todo pr` ships (`\b<id>\b`). One alternation
-// over one pass: the cost stays in the child either way, but a per-id scan
-// would re-introduce the shape this file exists to avoid.
-func countNamed(logBody string, ids []string) int {
-	if len(ids) == 0 {
-		return 0
-	}
-	quoted := make([]string, 0, len(ids))
-	for _, id := range ids {
-		quoted = append(quoted, regexp.QuoteMeta(id))
-	}
-	re, err := regexp.Compile(`\b(?:` + strings.Join(quoted, "|") + `)\b`)
-	if err != nil {
-		return 0
-	}
-	wanted := make(map[string]bool, len(ids))
-	for _, id := range ids {
-		wanted[id] = true
-	}
-	seen := make(map[string]bool, len(ids))
-	for _, m := range re.FindAllString(logBody, -1) {
-		if wanted[m] {
-			seen[m] = true
-		}
-	}
-	return len(seen)
+	return cards
 }
 
 // writeLandedCache writes the cache atomically so a render never reads a

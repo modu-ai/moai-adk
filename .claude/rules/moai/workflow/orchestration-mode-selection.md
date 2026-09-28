@@ -17,6 +17,10 @@ Canonical 4-mode autonomous decision tree for the MoAI orchestrator. Activated a
 
 [ZONE:Frozen] [HARD] All Phase 4 execution modes are strictly downstream of Implementation Kickoff Approval (renamed from GATE-2) (the plan→run HUMAN GATE). The orchestrator reaches Phase 4 ONLY after Implementation Kickoff Approval user approval has already been obtained. Mode selection — including `sweep` — is never a substitute for Implementation Kickoff Approval and never a path that crosses the plan→run boundary ahead of the human gate. Implementation Kickoff Approval is mandatory and score-independent (a plan-auditor PASS or a high skip-eligible score never auto-bypasses it; skip-eligibility applies only to Phase 1 verdict re-execution, not to Implementation Kickoff Approval) per the Implementation Kickoff Approval mandatory-restoration policy.
 
+<!-- moai:contract-mode-start id="contract-signing" -->
+Where `workflow.autonomy.mode: contract` — a human signature of the SPEC's contract (`signer_kind: human`, `method: interactive-tty`) for which `moai contract kickoff-check` exits 0 is the Implementation Kickoff Approval this paragraph requires; no other signature is equivalent by this block. See `.claude/rules/moai/workflow/contract-autonomy.md` § Equivalence clause (human signature only).
+
+<!-- moai:contract-mode-end -->
 > Cross-reference: `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification covers the `--mode` flag matrix (autopilot / loop / team / pipeline) which interacts with — but is separate from — the 4-mode catalog below. The run-phase `ac_converge` autonomy wiring point lives in `.claude/skills/moai/workflows/run.md` § Run-phase Autonomy (ac_converge); `.claude/rules/moai/workflow/dynamic-workflows.md` is the source for the sweep primitive (16-concurrent / 1000-total cap) and the named-script-API prohibition.
 
 ---

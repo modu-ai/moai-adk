@@ -216,6 +216,9 @@ var namesAddedAfterBaseline = map[string]bool{
 	// "Factory Run" leader-role diagnostic. Registered through a constant,
 	// hence bare.
 	"factoryRunCheckName": true,
+	// servedModelCheckName — card t1282, the "Served Model" read-only sweep of
+	// subagent transcripts. Registered through a constant, hence bare.
+	"servedModelCheckName": true,
 }
 
 // TestBinaryLag_AllowlistKeysAreLiveNames asserts that every key of

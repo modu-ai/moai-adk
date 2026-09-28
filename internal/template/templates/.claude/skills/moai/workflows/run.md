@@ -140,6 +140,10 @@ This section wires the run-phase autonomy mechanisms — the Implementation Kick
 
 Because Implementation Kickoff Approval also drains all user preferences (Tier, mode preference, PR strategy), the orchestrator collects every preference at this gate BEFORE launching any autonomy — goal-loop turn agents and sweep Workflow agents cannot prompt the user mid-run, so the one decision that must involve the user is taken here.
 
+<!-- moai:contract-mode-start id="contract-signing-run" -->
+Where `workflow.autonomy.mode: contract` — the gate above is `moai contract kickoff-check <SPEC-ID> --card <card>` exiting 0, and no Kickoff question is emitted. A kickoff decision outcome of reject or human refuses the receipt signature and needs a human decision, so follow the human signing procedure for both. A non-zero exit is escalated, never downgraded to guided mode. See `.claude/rules/moai/workflow/contract-autonomy.md` § The signing gate.
+
+<!-- moai:contract-mode-end -->
 ### 2. The `ac_converge` goal condition (armed only after Implementation Kickoff Approval approval)
 
 ONLY after Implementation Kickoff Approval approval is obtained, the orchestrator MAY arm the `ac_converge` goal via `/moai goal "<condition>"` to grant phase-internal autonomy (it removes per-turn STOP prompts so the run-phase loop continues until convergence). Because arming is **arm-only** — it records the condition but starts no work — the orchestrator arms it ALONGSIDE the run-phase work it is driving, never in place of that work (`goal-directive.md` § Goal-Presentation Timing). The condition is hard-coded inline (no registry dependency) and is authored entirely as **model conditions** — every predicate references a line the orchestrator surfaces in the conversation, so the evaluator judges it against the transcript rather than by opening a file:
@@ -158,15 +162,7 @@ auto-fix semantic failures.
 ```
 > **Actual turn ceiling:** the legacy "Max 20 turns" clause above is NOT parsed — `parseCondition` matches only a trailing `exits <N>`, so a "Max 20 turns" / "stop after N turns" suffix has no mechanical effect. The `ac_converge` goal therefore arms at the default 30-turn ceiling and actually runs up to 30 turns (subject to `min(30, block cap)` and the stagnation guard). The literal is retained only as the historical reference for the author's intent. To bound a goal at a specific turn count, use `--max-turns N`; for an effectively-unbounded goal, use `--max-turns 0 --max-duration <seconds>`.
 
-### 3. Autonomy invariants (cite, do not restate — full doctrine in canonical rules)
-
-The following HARD invariants govern the `ac_converge` loop. Each is the canonical rule's render surface here; the rule is the SSOT.
-
-- **Transcript-measurability**: the `acceptance.md` reference NAMES where the AC list lives — it is NOT a path the evaluator opens. Because every predicate above is a model condition, the `stop-goal` evaluator judges only what the orchestrator SURFACES into the transcript (per-AC PASS line, `go test ./...` exit 0, `git status`).
-- **Semantic-failure escalation (HARD)**: on a data race / deadlock / panic / test assertion failure surfaced during the loop, clear the goal (`/moai goal clear`) and escalate via `AskUserQuestion` — NEVER auto-fix a semantic failure (per `ci-autofix-protocol.md` semantic-failure-handling).
-- **Non-substitution (HARD)**: the goal removes per-turn STOP prompts only. It does NOT authorize bypassing Implementation Kickoff Approval (already cleared), PR creation, or any destructive operation — those remain separately-surfaced explicit gates.
-- **Blocker reports, never user prompts**: a goal-loop turn or sweep Workflow agent lacking input returns a structured blocker report; the orchestrator runs `AskUserQuestion` and re-delegates (asymmetric boundary per `agent-common-protocol.md` § User Interaction Boundary).
-- **Graceful degradation**: the goal engine's evaluator IS a Stop hook (`moai hook stop-goal`), so `/moai goal` is unavailable when hooks are disabled (`disableAllHooks`, or `allowManagedHooksOnly` permitting only managed hooks). It carries no runtime-version floor of its own. When the engine is unavailable, run-phase autonomy degrades to the standard manual per-turn flow rather than failing.
+Autonomy invariants for the `ac_converge` loop (HARD): Read `workflows/run/phase-execution.md` § 3. Autonomy invariants.
 
 ### Cross-references (cite, do not restate)
 
@@ -178,6 +174,10 @@ The following HARD invariants govern the `ac_converge` loop. Each is the canonic
 
 ---
 
+<!-- moai:contract-mode-start id="contract-lifecycle-run" -->
+Where `workflow.autonomy.mode: contract` — the run phase carries the first four stages of the one-pass lifecycle: Discovery (re-observe the contract's `reobserve` list), RED (commit the failing tests first), GREEN (the same tests pass), Qualification (scoped tests, lint, coverage, mutation check, second-model review). Record each stage's evidence and run `moai contract kickoff-check` at every stage boundary; an open escalation record or a revocation stops the run there. See `.claude/rules/moai/workflow/contract-autonomy.md` § One-pass lifecycle.
+
+<!-- moai:contract-mode-end -->
 ## Recursive Self-Diagnosis Loop (bounded — DIAGNOSE-PATCH-VERIFY)
 
 The bounded self-diagnosis loop handles MECHANICAL run-phase failures fast (DIAGNOSE-PATCH-VERIFY, max 3 iterations) and escalates SEMANTIC failures immediately. It is the run-phase projection of the `cycle_type=autofix` DIAGNOSE-PATCH-VERIFY contract; the canonical doctrine lives in the cross-referenced rules above. Summary contract:

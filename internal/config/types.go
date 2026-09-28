@@ -505,6 +505,18 @@ type WorkflowConfig struct {
 	// meant to turn off.
 	SettingsDriftGate SettingsDriftGateConfig `yaml:"settings_drift_gate"`
 
+	// ServedModelGate gates the ADOPTION-REFUSAL layer of the SubagentStop
+	// served-model observer: when the model that actually answered a gate
+	// auditor (plan-auditor / sync-auditor) differs from the expected one, or
+	// cannot be determined, the auditor's verdict is refused adoption and the
+	// phase-entry spawns are denied until a later run of the same auditor is
+	// observed on the expected model. Default false: the observation row and
+	// the warning always run regardless of this value. Sibling of
+	// AgentModelGuard rather than a sub-key of it, for the SettingsDriftGate
+	// reason — one flag gating two refusals at two surfaces cannot say which
+	// one a maintainer meant to turn off.
+	ServedModelGate ServedModelGateConfig `yaml:"served_model_gate"`
+
 	// SlotLease carries the resource slot lease settings (card t607): the
 	// opt-in PreToolUse guard flag, the default declared maximum duration, and
 	// the per-resource command patterns. Default OFF; the `moai slot` verbs
@@ -783,6 +795,15 @@ type SlotLeaseConfig struct {
 type SlotLeaseResourceConfig struct {
 	Commands []string `yaml:"commands"`
 	Invalid  string   `yaml:"-"`
+}
+
+// ServedModelGateConfig mirrors workflow.served_model_gate.* — the opt-in
+// adoption-refusal layer of the served-model observer. When Enabled is false
+// (the distributed default) the SubagentStop hook still records the served
+// model and still warns on drift or an undeterminable model; it never
+// persists a served-kind refusal and never causes a spawn to be denied.
+type ServedModelGateConfig struct {
+	Enabled bool `yaml:"enabled"`
 }
 
 // AgentModelGuardConfig mirrors workflow.agent_model_guard.* — the opt-in

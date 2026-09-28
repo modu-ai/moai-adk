@@ -462,7 +462,7 @@ moai constitution list --format json
 - id: CONST-V3R2-049
   zone: Evolvable
   zone_class: evolvable-tuning
-  file: .claude/rules/moai/core/agent-common-protocol.md
+  file: .claude/rules/moai/core/agent-common-protocol-reference.md
   anchor: "#skeptical-evaluation-stance"
   clause: "The reviewer mode operates as a fresh-judgment auditor"
   canary_gate: false

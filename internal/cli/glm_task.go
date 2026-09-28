@@ -107,9 +107,16 @@ type GLMTaskResult struct {
 	JobID      string `json:"job_id,omitempty"`
 	Output     string `json:"output,omitempty"`
 
-	// Model is the z.ai model id the task ran on (the caller's override or the
-	// resolved default), echoed so the caller knows what produced the output.
+	// Model is the z.ai model id the task was SENT to (the caller's override or
+	// the resolved default) — the requested model.
 	Model string `json:"model"`
+
+	// ServedModel is the model id the z.ai response envelope named for itself
+	// on a completed foreground call; empty when the response named none, and
+	// for a call that did not complete (SPEC-MCP-SERVED-MODEL-001 REQ-MSM-002).
+	// A served-model mismatch or absence is reported in Note, never as a
+	// failure.
+	ServedModel string `json:"served_model"`
 
 	// Note carries a human-readable statement; Error names a failure the tool
 	// absorbed rather than raised.
@@ -187,7 +194,7 @@ func handleGLMTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 		// carry no deadline at all and the task-path HTTP client carries none.
 		ctx, cancel := context.WithTimeout(ctx, config.DefaultGLMTaskTimeout)
 		defer cancel()
-		output, err := callGLMTask(ctx, key, model, prompt, system, maxTokens, token)
+		output, served, err := callGLMTask(ctx, key, model, prompt, system, maxTokens, token)
 		if err != nil {
 			result.Status = glmJobStatusFailed
 			result.Error = err.Error()
@@ -195,6 +202,12 @@ func handleGLMTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 		}
 		result.Status = glmJobStatusCompleted
 		result.Output = output
+		result.ServedModel = served
+		if warning := glmServedModelWarning(model, served); warning != "" {
+			// Appended, never replacing: a factory-mode note already on the
+			// result must survive (REQ-MSM-004).
+			result.Note = appendCodexNote(result.Note, warning)
+		}
 		return toolJSON(glmTaskToolName, result), nil
 	}
 
@@ -255,7 +268,7 @@ func runGLMBackgroundJob(ctx context.Context, cancel context.CancelFunc, registr
 	ctx, cancelTimeout := context.WithTimeout(ctx, config.DefaultGLMTaskTimeout)
 	defer cancelTimeout()
 
-	output, err := callGLMTask(ctx, key, model, prompt, system, maxTokens, nil)
+	output, served, err := callGLMTask(ctx, key, model, prompt, system, maxTokens, nil)
 
 	// A job cancelled while the call was in flight keeps its cancelled status:
 	// the call returning afterwards must not overwrite it with completed or
@@ -270,15 +283,20 @@ func runGLMBackgroundJob(ctx context.Context, cancel context.CancelFunc, registr
 		})
 		return
 	}
+	// Only a completed job carries the served model and its warning; the
+	// failed and cancelled paths above never do (REQ-MSM-005).
 	_, _ = registry.updateUnlessCancelled(jobID, func(r *GLMJobRecord) {
 		r.Status = glmJobStatusCompleted
 		r.Output = output
+		r.ServedModel = served
+		r.ServedModelWarning = glmServedModelWarning(model, served)
 	})
 }
 
 // callGLMTask posts the prompt to z.ai and returns the model's first text
 // content block as-is — a task produces plain text, not a ReviewOutput, so no
-// JSON-schema parsing or fence-stripping applies. Every failure is a named
+// JSON-schema parsing or fence-stripping applies — together with the served
+// model the response envelope named (glmServedModel; "" when it named none). Every failure is a named
 // error the caller renders into a structured failed result (fail-open); a
 // deadline expiry is reported by name via glmTaskTimeoutMessage.
 //
@@ -291,7 +309,7 @@ func runGLMBackgroundJob(ctx context.Context, cancel context.CancelFunc, registr
 // and fails open to VerdictInconclusive; task returns raw text and reports
 // errors upward), which is why the send cores are siblings rather than one
 // shared function.
-func callGLMTask(ctx context.Context, key, model, prompt, system string, maxTokens int, token mcp.ProgressToken) (string, error) {
+func callGLMTask(ctx context.Context, key, model, prompt, system string, maxTokens int, token mcp.ProgressToken) (output, served string, err error) {
 	body, err := json.Marshal(glmMessagesRequest{
 		Model:     model,
 		MaxTokens: maxTokens,
@@ -299,13 +317,13 @@ func callGLMTask(ctx context.Context, key, model, prompt, system string, maxToke
 		Messages:  []glmMessage{{Role: "user", Content: prompt}},
 	})
 	if err != nil {
-		return "", fmt.Errorf("cannot build z.ai request: %w", err)
+		return "", "", fmt.Errorf("cannot build z.ai request: %w", err)
 	}
 
 	url := config.DefaultGLMBaseURL + glmMessagesPath
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
-		return "", fmt.Errorf("cannot build z.ai request: %w", err)
+		return "", "", fmt.Errorf("cannot build z.ai request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("x-api-key", key)
@@ -317,29 +335,29 @@ func callGLMTask(ctx context.Context, key, model, prompt, system string, maxToke
 		// The task bound firing is a named, structured failure — never a raw
 		// "Client.Timeout exceeded" and never a Go error escaping the handler.
 		if errors.Is(err, context.DeadlineExceeded) {
-			return "", errors.New(glmTaskTimeoutMessage())
+			return "", "", errors.New(glmTaskTimeoutMessage())
 		}
-		return "", fmt.Errorf("z.ai request failed: %w", err)
+		return "", "", fmt.Errorf("z.ai request failed: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		// Unauthenticated (401/403) / rate-limited / server error ⇒ named failure.
-		return "", fmt.Errorf("z.ai returned HTTP %d", resp.StatusCode)
+		return "", "", fmt.Errorf("z.ai returned HTTP %d", resp.StatusCode)
 	}
 
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("cannot read z.ai response: %w", err)
+		return "", "", fmt.Errorf("cannot read z.ai response: %w", err)
 	}
 	notifyMCPProgress(ctx, token, 0.8, "z.ai 응답 수신 — 텍스트 추출 중...")
 
 	var env glmMessagesResponse
 	if err := json.Unmarshal(raw, &env); err != nil {
-		return "", fmt.Errorf("malformed z.ai response: %w", err)
+		return "", "", fmt.Errorf("malformed z.ai response: %w", err)
 	}
 	if len(env.Content) == 0 || env.Content[0].Text == "" {
-		return "", errors.New("z.ai response carried no content")
+		return "", "", errors.New("z.ai response carried no content")
 	}
-	return env.Content[0].Text, nil
+	return env.Content[0].Text, glmServedModel(env.Model), nil
 }

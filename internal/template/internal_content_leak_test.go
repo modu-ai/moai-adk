@@ -1133,6 +1133,12 @@ var dateAllowlist = []dateAllowlistEntry{
 		Rationale: "functional deadline literal 2026-11-22",
 	},
 	{
+		File:      ".claude/skills/moai/workflows/plan/context-discovery.md",
+		Date:      "2026-11-22",
+		Category:  "DC-3",
+		Rationale: "functional deadline literal 2026-11-22 (spec-compact section relocated verbatim from spec-assembly.md)",
+	},
+	{
 		File:      ".claude/output-styles/moai/moai-learn.md",
 		Date:      "2026-04-11",
 		Category:  "DC-5",

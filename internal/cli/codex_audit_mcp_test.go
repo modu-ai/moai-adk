@@ -101,6 +101,15 @@ func TestCodexAuditMCPTool(t *testing.T) {
 		if n, _ := strconv.Atoi(m[1]); n != registered {
 			t.Errorf("%s says %d tools; %d are registered", p, n, registered)
 		}
+	}
+	// The per-tool names live in the catalogue companion (the family table and
+	// the tool catalogue); the always-loaded stub keeps the total and a pointer.
+	// Both mirrors of the companion must name all three role-audit tools.
+	for _, p := range jevCatalogueDocPairs[1] {
+		body, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatal(err)
+		}
 		for _, name := range []string{codexRoleAuditToolName, codexRoleAuditStatusToolName, codexRoleAuditResultToolName} {
 			if !strings.Contains(string(body), "`"+name+"`") {
 				t.Errorf("%s does not name %s", p, name)

@@ -148,17 +148,25 @@ func Registry() []Site {
 			Axis:         AxisRetainedRoster,
 			Claims:       ClaimMembership | ClaimCount,
 			BlockStart:   "**Retained agents (",
-			CountPattern: `consists of exactly \*\*(\d+) retained agents\*\*`,
-			Note:         "Single-line block: the §4 enumeration sentence. Repaired by card t909.",
+			CountPattern: `\*\*Retained agents \((\d+)\)\*\*`,
+			NumeralUnreachable: "the §4 count is the heading form `**Retained agents (N)**`: rosterNounRe is case-sensitive, " +
+				"so the capitalized `Retained agents` is outside its noun class, and the numeral follows the " +
+				"noun rather than preceding it. The prose " +
+				"sentence the layer used to reach (\"consists of exactly N retained agents\") duplicated this " +
+				"heading and was removed by the always-loaded diet; the count claim itself is still asserted " +
+				"here through CountPattern.",
+			Note: "Single-line block: the §4 enumeration sentence. Repaired by card t909; count anchor " +
+				"re-pointed to the heading form by card t1175.",
 		},
 		{
-			ID:           "claude-md-section-4-mirror",
-			Path:         "internal/template/templates/CLAUDE.md",
-			Axis:         AxisRetainedRoster,
-			Claims:       ClaimMembership | ClaimCount,
-			BlockStart:   "**Retained agents (",
-			CountPattern: `consists of exactly \*\*(\d+) retained agents\*\*`,
-			Note:         "Template mirror of the row above; both copies are registered so a repair to one cannot leave the other behind.",
+			ID:                 "claude-md-section-4-mirror",
+			Path:               "internal/template/templates/CLAUDE.md",
+			Axis:               AxisRetainedRoster,
+			Claims:             ClaimMembership | ClaimCount,
+			BlockStart:         "**Retained agents (",
+			CountPattern:       `\*\*Retained agents \((\d+)\)\*\*`,
+			NumeralUnreachable: "same heading-form count as the row above; template mirror",
+			Note:               "Template mirror of the row above; both copies are registered so a repair to one cannot leave the other behind.",
 		},
 		{
 			ID:           "agent-authoring-catalog",
@@ -802,16 +810,6 @@ func NumeralExemptions() []NumeralExempt {
 			ID:     "spec-frontmatter-schema-best-practice-number-mirror",
 			Path:   "internal/template/templates/.claude/rules/moai/development/spec-frontmatter-schema.md",
 			Reason: "Template mirror of the row above; same two hits, same reason.",
-		},
-		{
-			ID:     "skill-routing-section-marker",
-			Path:   ".claude/rules/moai/workflow/skill-routing.md",
-			Reason: "MEASURED FALSE POSITIVE: the numeral is the section marker in \"`CLAUDE.md` §4 — the retained agent catalog\".",
-		},
-		{
-			ID:     "skill-routing-section-marker-mirror",
-			Path:   "internal/template/templates/.claude/rules/moai/workflow/skill-routing.md",
-			Reason: "Template mirror of the row above; same section marker.",
 		},
 		{
 			ID:     "foundation-quality-reference-section-marker",

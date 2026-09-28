@@ -77,6 +77,21 @@ const (
 	CauseVerdictLineMissing    = "verdict line missing"
 )
 
+// Served-model refusal causes. The served-model gate appends the expected
+// model and the served set after the base text.
+const (
+	CauseServedModelDrift   = "served model differs from the expected model"
+	CauseServedModelUnknown = "served model could not be determined"
+)
+
+// Refusal kinds. A record carries the kind of the guard that wrote it, so one
+// guard's acceptance clears only its own refusals. A record written before
+// kinds existed carries none and reads as KindReceipt.
+const (
+	KindReceipt = "receipt"
+	KindServed  = "served"
+)
+
 // codexVerdictInconclusive is the verdict a codex audit records when it never
 // produced one (a missing binary, a broken RPC, a blank review). It is spelled
 // here rather than imported because the store is the leaf package: internal/cli
@@ -134,6 +149,19 @@ type Rejection struct {
 	// (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-003). A record without it was
 	// written before that change and belongs to the store root's own tree.
 	TreeRoot string `json:"tree_root,omitempty"`
+	// Kind names the guard that wrote the refusal (KindReceipt or KindServed).
+	// Empty on every record written before kinds existed; RejectionKind reads
+	// such a record as KindReceipt.
+	Kind string `json:"kind,omitempty"`
+}
+
+// RejectionKind returns the refusal's kind, reading a kind-less record as
+// KindReceipt: every such record was written by the audit-receipt guard.
+func RejectionKind(r Rejection) string {
+	if r.Kind == "" {
+		return KindReceipt
+	}
+	return r.Kind
 }
 
 // VerdictLine is a parsed auditor verdict line.
@@ -161,6 +189,31 @@ func IsAuditorAgent(agentType string) bool {
 // an opt-in.
 func CodexGateRequired(treeRoot string) bool {
 	return rawCodexGate(treeRoot) == gateRequired
+}
+
+// ServedGateEnabled reports whether the tree EXPLICITLY sets
+// workflow.served_model_gate.enabled: true. A missing file, an unreadable or
+// malformed file, a missing key, and false all read as disabled — the same
+// explicit-opt-in reading CodexGateRequired applies to its own key.
+func ServedGateEnabled(treeRoot string) bool {
+	if strings.TrimSpace(treeRoot) == "" {
+		return false
+	}
+	data, err := os.ReadFile(filepath.Join(treeRoot, ".moai", "config", "sections", "workflow.yaml"))
+	if err != nil {
+		return false
+	}
+	var wrapper struct {
+		Workflow struct {
+			ServedModelGate struct {
+				Enabled bool `yaml:"enabled"`
+			} `yaml:"served_model_gate"`
+		} `yaml:"workflow"`
+	}
+	if err := yaml.Unmarshal(data, &wrapper); err != nil {
+		return false
+	}
+	return wrapper.Workflow.ServedModelGate.Enabled
 }
 
 func rawCodexGate(treeRoot string) string {
@@ -347,7 +400,18 @@ func ownTree(recorded, storeRoot, treeRoot string) bool {
 // that is the store's own keeps the pre-existing name, so a root that is not a
 // config-orphaned worktree reads and writes exactly the paths it always has.
 func rejectionPathIn(storeRoot, treeRoot, agentType, specID string) string {
+	return rejectionPathInKind(storeRoot, treeRoot, KindReceipt, agentType, specID)
+}
+
+// rejectionPathInKind is rejectionPathIn for one refusal kind. A receipt-kind
+// record keeps the pre-existing name, so every record written before kinds
+// existed is still found where it always was; a served-kind record carries a
+// kind suffix, so the two kinds for one role and SPEC never share a file.
+func rejectionPathInKind(storeRoot, treeRoot, kind, agentType, specID string) string {
 	name := rejectionFileName(agentType, specID)
+	if kind == KindServed {
+		name = strings.TrimSuffix(name, ".json") + "--" + KindServed + ".json"
+	}
 	if treeRoot != "" && treeRoot != storeRoot {
 		name = strings.TrimSuffix(name, ".json") + "--" + TreeKey(treeRoot) + ".json"
 	}
@@ -361,13 +425,20 @@ func WriteRejectionIn(storeRoot string, r *Rejection) error {
 	if r.RejectedAt.IsZero() {
 		r.RejectedAt = Now()
 	}
-	return writeJSON(rejectionPathIn(storeRoot, r.TreeRoot, r.AgentType, r.SpecID), r)
+	return writeJSON(rejectionPathInKind(storeRoot, r.TreeRoot, RejectionKind(*r), r.AgentType, r.SpecID), r)
 }
 
 // ReadRejectionIn loads the rejection record of one tree.
 func ReadRejectionIn(storeRoot, treeRoot, agentType, specID string) (Rejection, error) {
 	var r Rejection
 	err := readJSON(rejectionPathIn(storeRoot, treeRoot, agentType, specID), &r)
+	return r, err
+}
+
+// ReadRejectionInKind loads the refusal record of one kind for one tree.
+func ReadRejectionInKind(storeRoot, treeRoot, kind, agentType, specID string) (Rejection, error) {
+	var r Rejection
+	err := readJSON(rejectionPathInKind(storeRoot, treeRoot, kind, agentType, specID), &r)
 	return r, err
 }
 
@@ -407,6 +478,36 @@ func ClearRejectionsForRoleInTree(storeRoot, treeRoot, agentType string) error {
 		}
 		var r Rejection
 		if err := readJSON(filepath.Join(dir, e.Name()), &r); err != nil || !ownTree(r.TreeRoot, storeRoot, treeRoot) {
+			continue
+		}
+		if err := os.Remove(filepath.Join(dir, e.Name())); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("remove rejection %s: %w", e.Name(), err)
+		}
+	}
+	return nil
+}
+
+// ClearRejectionsForRoleInTreeKind removes the refusal records of one kind,
+// one auditor role, and one tree. A kind-less record counts as KindReceipt.
+// Records of the other kind, of another role, or of another tree are left in
+// place, as is a record that cannot be read.
+func ClearRejectionsForRoleInTreeKind(storeRoot, treeRoot, agentType, kind string) error {
+	dir := filepath.Join(StateDir(storeRoot), rejectionsRel)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read rejections dir %s: %w", dir, err)
+	}
+	prefix := sanitizeKey(agentType) + "--"
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasPrefix(e.Name(), prefix) || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		var r Rejection
+		if err := readJSON(filepath.Join(dir, e.Name()), &r); err != nil ||
+			!ownTree(r.TreeRoot, storeRoot, treeRoot) || r.AgentType != agentType || RejectionKind(r) != kind {
 			continue
 		}
 		if err := os.Remove(filepath.Join(dir, e.Name())); err != nil && !os.IsNotExist(err) {

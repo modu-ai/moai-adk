@@ -48,6 +48,11 @@ const (
 	// lease takes when the caller omits --max-duration. A chosen value, not a
 	// measured one (plan.md §B3, OQ-3); this is the one place it is defined.
 	DefaultSlotLeaseMaxDuration = "30m"
+	// DefaultFactoryLeaseDuration is how long a factory worker's card lease
+	// lasts past its last heartbeat. It bounds worker liveness only: the
+	// decision-pending card states hold no lease, so a human decision is never
+	// raced by it. A chosen value, not a measured one; no config key reads it.
+	DefaultFactoryLeaseDuration = 15 * time.Minute
 
 	DefaultTestCoverageTarget    = 85
 	DefaultMaxTransformationSize = "small"
@@ -1092,6 +1097,14 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// config. Template neutrality: no `enabled: true` anywhere under
 		// internal/template/templates/.
 		AgentModelGuard: AgentModelGuardConfig{
+			Enabled: false,
+		},
+		// The served-model gate ships with its ADOPTION-REFUSAL layer off. The
+		// SubagentStop observation row and its warning always run; a
+		// maintainer opts into refusing a gate auditor's verdict via local
+		// config. Template neutrality: no `enabled: true` anywhere under
+		// internal/template/templates/.
+		ServedModelGate: ServedModelGateConfig{
 			Enabled: false,
 		},
 		// The SendMessage stop-guard deny layer ships OFF the same way: stop

@@ -128,6 +128,17 @@ type GLMJobRecord struct {
 	// the resolved default).
 	Model string `json:"model"`
 
+	// ServedModel is the model id the z.ai response envelope named for itself,
+	// set only when the job completes; empty when the response named none, on
+	// every non-completed status, and on records written before the field
+	// existed (SPEC-MCP-SERVED-MODEL-001 REQ-MSM-003).
+	ServedModel string `json:"served_model"`
+
+	// ServedModelWarning is set on a completed job whose served model differs
+	// from Model (case-insensitive) or is absent. It is informational: the
+	// job's status, output, and error are never changed on its account.
+	ServedModelWarning string `json:"served_model_warning,omitempty"`
+
 	// RequestSummary is a redacted, bounded description of what was asked.
 	RequestSummary string `json:"request_summary"`
 

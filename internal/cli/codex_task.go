@@ -64,6 +64,14 @@ const (
 		"The turn ran read-only."
 	codexTaskNoPriorThreadNote = "resume_last was requested but no prior thread is recorded for this project; " +
 		"a new thread was opened."
+
+	// codexServedModelUnknown is the served model every codex task result and
+	// job record carries (SPEC-MCP-SERVED-MODEL-001 REQ-MSM-006). No response
+	// the tool consumes (thread/start, turn notifications) is established to
+	// carry a model identifier, so the served model is recorded as this
+	// literal rather than guessed or copied from the requested model. Being
+	// structural, it carries no warning (REQ-MSM-007).
+	codexServedModelUnknown = "unknown"
 )
 
 // Resume selection (SPEC-CODEX-RESUME-SCOPE-001). resume_basis names WHICH rule
@@ -223,6 +231,13 @@ type CodexTaskResult struct {
 	// ResumedThread reports whether a previously-recorded thread was continued.
 	ResumedThread bool `json:"resumed_thread"`
 
+	// Model is the requested model the session sent in its thread request
+	// (resolveCodexModelEffort — the same resolver thread/start uses); absent
+	// when none was sent and codex applied its own configured default.
+	// ServedModel is always codexServedModelUnknown (REQ-MSM-006).
+	Model       string `json:"model,omitempty"`
+	ServedModel string `json:"served_model"`
+
 	// ResumeThreadID is the thread id SENT in thread/resume and ResumeBasis the
 	// rule that chose it (thread_id / work_key / sole_thread). Both are set once
 	// the request is written — so a rejected resume still names what was asked —
@@ -312,6 +327,7 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		Background:     background,
 		WriteRequested: writeRequested,
 		WriteGranted:   writeGranted,
+		ServedModel:    codexServedModelUnknown,
 	}
 	if writeRequested && !writeGranted {
 		result.Note = codexTaskWriteRefusedNote
@@ -385,6 +401,9 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		// EVERY turn carries the policy explicitly — see codexSandboxPolicy.
 		"sandboxPolicy": codexSandboxPolicy(writeGranted),
 	}
+	// The requested model is resolved exactly as openCodexSessionOn resolves
+	// the thread/start `model` parameter, so the result names what was sent.
+	result.Model = resolveCodexModelEffort(turnParams).Model
 
 	// The SESSION's context decides the codex child's lifetime: the production
 	// runner spawns it with exec.CommandContext and stops reading stdout when
@@ -456,6 +475,8 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		Mode:           codexTaskMode,
 		RequestSummary: prompt,
 		WorkKey:        workKey, // recorded whichever selector decided (REQ-CRS-005)
+		Model:          result.Model,
+		ServedModel:    result.ServedModel,
 	})
 	if err != nil {
 		_ = session.close()

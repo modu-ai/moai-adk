@@ -2,16 +2,30 @@ package template
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 )
+
+// obligationsYAML is the whole-catalog registry (design.md §D4, operator
+// decision Q1), embedded so the registry travels with the binary.
+//
+//go:embed obligations.yaml
+var obligationsYAML []byte
+
+// LoadObligationRegistry parses the embedded registry.
+func LoadObligationRegistry() (*ObligationRegistry, error) {
+	return ParseObligations(obligationsYAML)
+}
 
 // Obligation is one row of the dual-harness obligation registry
 // (SPEC-DUAL-HARNESS-HOOK-PARITY-001 REQ-HPR-020, design.md §D4): a required
@@ -247,4 +261,74 @@ func isTestingTParam(fn *ast.FuncDecl) bool {
 	}
 	pkg, ok := sel.X.(*ast.Ident)
 	return ok && pkg.Name == "testing" && sel.Sel.Name == "T"
+}
+
+// SourceResolver resolves application paths statically: a `moai …` path
+// resolves when every command word is a cobra command registered in the CLI
+// sources, and any other path resolves when it names a file or directory in
+// the template tree. Flags (from the first "--") are not part of the command.
+type SourceResolver struct {
+	Commands      map[string]bool
+	TemplatesRoot string
+	Tests         TestIndex
+}
+
+// TestExists implements CoverageResolver.
+func (r SourceResolver) TestExists(name string) bool { return r.Tests.TestExists(name) }
+
+// PathExists implements CoverageResolver.
+func (r SourceResolver) PathExists(_ string, path string) bool {
+	fields := strings.Fields(path)
+	if len(fields) > 0 && fields[0] == "moai" {
+		words := 0
+		for _, w := range fields[1:] {
+			if strings.HasPrefix(w, "--") {
+				break
+			}
+			if !r.Commands[w] {
+				return false
+			}
+			words++
+		}
+		return words > 0
+	}
+	if path == "" || filepath.IsAbs(path) || strings.Contains(path, "..") {
+		return false
+	}
+	_, err := os.Stat(filepath.Join(r.TemplatesRoot, filepath.FromSlash(path)))
+	return err == nil
+}
+
+var (
+	cobraUseLit     = regexp.MustCompile(`Use:\s*"([a-z][a-z0-9-]*)`)
+	hookTableUseLit = regexp.MustCompile(`\{"([a-z][a-z0-9-]*)",\s*"Handle `)
+)
+
+// IndexCLICommands collects the command words registered in the non-test Go
+// sources of cliDir: every cobra `Use:` first word and every table-driven hook
+// subcommand.
+func IndexCLICommands(cliDir string) (map[string]bool, error) {
+	cmds := map[string]bool{}
+	err := filepath.WalkDir(cliDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		b, rerr := os.ReadFile(path)
+		if rerr != nil {
+			return fmt.Errorf("index cli commands: %w", rerr)
+		}
+		for _, re := range []*regexp.Regexp{cobraUseLit, hookTableUseLit} {
+			for _, m := range re.FindAllSubmatch(b, -1) {
+				cmds[string(m[1])] = true
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return cmds, nil
 }

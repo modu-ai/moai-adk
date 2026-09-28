@@ -118,6 +118,18 @@ func snapshotRel(t *testing.T, root string) map[string]bool {
 	return out
 }
 
+// sizesRel maps every file under root (slash, root-relative) to its size.
+func sizesRel(t *testing.T, root string) map[string]int64 {
+	t.Helper()
+	out := map[string]int64{}
+	for rel := range snapshotRel(t, root) {
+		if fi, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); err == nil {
+			out[rel] = fi.Size()
+		}
+	}
+	return out
+}
+
 // AC-AE-004 (REQ-AE-003, REQ-AE-021): with every class tripped, no hook
 // output differs from the guided-mode output of the same input, no call
 // waits, the detector writes only records, the card log, and the card state,
@@ -150,6 +162,10 @@ func TestDetectorNeverAltersToolCall(t *testing.T) {
 		w.Git("checkout", "-q", "-b", "WT-x")
 		t.Setenv(config.EnvClaudeProjectDir, w.Root)
 		hs := escalationHookSet(t, w)
+		// Contract signing during fixture setup records events in the
+		// MOAI_HOME store; only what the hook calls add or grow is the
+		// detector's.
+		setupHome := sizesRel(t, home)
 
 		var outs []string
 		call := func(h Handler, in *HookInput) {
@@ -193,7 +209,13 @@ func TestDetectorNeverAltersToolCall(t *testing.T) {
 		w.Replace(".moai/specs/SPEC-A-001/acceptance.md", "then it passes.", "then it passed.")
 		call(hs.post, escBashInput(w, "git commit -m two")) // 1 acceptance-change, 10 disarm
 
-		return result{outs: outs, files: snapshotRel(t, w.Root), home: snapshotRel(t, home), w: w}
+		runHome := snapshotRel(t, home)
+		for f, size := range sizesRel(t, home) {
+			if old, ok := setupHome[f]; ok && old == size {
+				delete(runHome, f)
+			}
+		}
+		return result{outs: outs, files: snapshotRel(t, w.Root), home: runHome, w: w}
 	}
 
 	contract := runOnce(t, "contract")
