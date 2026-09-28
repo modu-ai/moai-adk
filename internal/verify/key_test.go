@@ -132,6 +132,28 @@ func TestSnapshotKeyUntrackedContentChanges(t *testing.T) {
 	}
 }
 
+// Git reports an embedded repository as one untracked directory. Its contents
+// still need to contribute to the key without treating the directory as a file.
+func TestSnapshotKeyEmbeddedUntrackedRepo(t *testing.T) {
+	t.Parallel()
+	dir := initTestRepo(t)
+	gitRun(t, dir, "init", "-q", "nested")
+	writeFile(t, dir, "nested/new.go", "package demo\n// first\n")
+
+	first, err := Key(context.Background(), dir)
+	if err != nil {
+		t.Fatalf("Key(embedded repo): %v", err)
+	}
+	writeFile(t, dir, "nested/new.go", "package demo\n// second\n")
+	second, err := Key(context.Background(), dir)
+	if err != nil {
+		t.Fatalf("Key(edited embedded repo): %v", err)
+	}
+	if first == second {
+		t.Fatalf("editing an embedded repo must change the key: %s", first)
+	}
+}
+
 // TestSnapshotKeyNonRepo asserts a non-git directory returns an error (callers
 // fall back to re-execution — fail-open).
 func TestSnapshotKeyNonRepo(t *testing.T) {
