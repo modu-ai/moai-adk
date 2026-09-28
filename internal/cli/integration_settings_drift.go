@@ -14,7 +14,7 @@ package cli
 //     acceptable, measuring one quietly is not.
 //
 //   - `moai integration preflight [path]` runs it alone, so a human can ask
-//     the question outside a window and a lead can put the answer in a report.
+//     the question outside a window and a leader can put the answer in a report.
 //
 // Neither surface can be dropped. Without the acquire precondition, running
 // the check is a social protocol — the exact gap card t181 named when it wrote
@@ -126,7 +126,7 @@ func settingsDriftReportText(r kanban.SettingsDriftResult) string {
 		if r.Bypassed {
 			b.WriteString("  bypassed: --allow-settings-drift was given; the window was recorded anyway and the bypass is in the lock record\n")
 		}
-		b.WriteString("  report this to the lead with the preserved path and sha256. Nothing was restored, reverted or deleted; disposal is a human decision.\n")
+		b.WriteString("  report this to the leader with the preserved path and sha256. Nothing was restored, reverted or deleted; disposal is a human decision.\n")
 	}
 	return b.String()
 }

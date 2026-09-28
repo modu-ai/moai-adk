@@ -36,7 +36,7 @@ func TestResolveCompanionName_FreeLabelUnchanged(t *testing.T) {
 func TestResolveCompanionName_LiveClaimBumps(t *testing.T) {
 	root := t.TempDir()
 	// Simulate two live holders: plan and plan-1.
-	if err := saveFactoryRegistry(companionRegistryPath(root), map[string]factoryWorkerEntry{
+	if err := saveFactoryRegistry(companionRegistryPath(root), map[string]factoryLaneEntry{
 		"plan":   {PID: 11100},
 		"plan-1": {PID: 11101},
 	}); err != nil {
@@ -65,7 +65,7 @@ func TestResolveCompanionName_LiveClaimBumps(t *testing.T) {
 // of counting up forever.
 func TestResolveCompanionName_DeadClaimReclaimed(t *testing.T) {
 	root := t.TempDir()
-	if err := saveFactoryRegistry(companionRegistryPath(root), map[string]factoryWorkerEntry{
+	if err := saveFactoryRegistry(companionRegistryPath(root), map[string]factoryLaneEntry{
 		"plan": {PID: 11100},
 	}); err != nil {
 		t.Fatalf("seed registry: %v", err)
@@ -84,7 +84,7 @@ func TestResolveCompanionName_DeadClaimReclaimed(t *testing.T) {
 // numbered form for the role — never a second hyphen.
 func TestResolveCompanionName_LegacySuffixHeldBumpsToNumbered(t *testing.T) {
 	root := t.TempDir()
-	if err := saveFactoryRegistry(companionRegistryPath(root), map[string]factoryWorkerEntry{
+	if err := saveFactoryRegistry(companionRegistryPath(root), map[string]factoryLaneEntry{
 		"plan-abc123": {PID: 11100},
 	}); err != nil {
 		t.Fatalf("seed registry: %v", err)

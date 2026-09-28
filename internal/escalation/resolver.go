@@ -167,7 +167,7 @@ type claimant struct {
 // A returned error is an unreadable input — a detector fault (REQ-AE-004).
 //
 // @MX:ANCHOR: [AUTO] the single contract resolver — card id from the worktree name, SPEC from the contract's card field
-// @MX:REASON: lead ruling 09-26 (3) #1 keeps resolution in one function so F1's worktree↔card record can replace step 1 later without touching any class detector; arming (REQ-AE-023), the disarm check (REQ-AE-017), and every class detector consume its answer
+// @MX:REASON: leader ruling 09-26 (3) #1 keeps resolution in one function so F1's worktree↔card record can replace step 1 later without touching any class detector; arming (REQ-AE-023), the disarm check (REQ-AE-017), and every class detector consume its answer
 func Resolve(cwd string, env VerifyEnv) (Resolution, error) {
 	root, ok := FindWorktreeRoot(cwd)
 	if !ok {

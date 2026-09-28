@@ -3,7 +3,7 @@
 // Thin cobra wiring over internal/kanban.BacklogStore: every mutation
 // delegates to the store's locked Mutate path, reads go through the
 // lock-free Load. The verbs serve the kanban dispatch protocol's entry rule
-// (`/moai todo` is the operator's act — the lead never picks for the
+// (`/moai todo` is the operator's act — the leader never picks for the
 // operator): `add` and `done` mutate, `list` and bare `next` observe, and
 // `next <n> [--spec]` records the operator's pick as one locked write.
 //
@@ -198,7 +198,7 @@ func newTodoCmd() *cobra.Command {
 
 The queue resolves against the PRIMARY checkout even when this command runs
 inside a linked worktree — one repository, one queue; a card worktree adds
-to and reads the same store the lead and the foreman loop see. A project
+to and reads the same store the leader and the foreman loop see. A project
 without git metadata uses the same project-keyed home layout. A backlog.json
 left at the former project-local path is NOT the queue — it is
 an export or a legacy leftover, and its contents can be arbitrarily stale.
@@ -880,8 +880,10 @@ func newTodoNextCmd() *cobra.Command {
 		Use:   "next [<n>]",
 		Short: "List queued cards (bare) or pick one (<n>)",
 		Long: `Bare ` + "`moai todo next`" + ` prints the queued items oldest-first as
-read-only candidates — the selection remains the operator's act performed
-through the lead session's question channel. ` + "`moai todo next <n> [--spec <SPEC-ID>]`" + `
+read-only candidates. A queued card is promoted to picked either by the
+operator's pick made through the leader session or by a lane's own
+self-dispatch — a lane may pick a queued card itself to start on it.
+` + "`moai todo next <n> [--spec <SPEC-ID>]`" + `
 marks the addressed item picked (attaching spec_id when given) as one
 locked write, confirming with the card text prefix. ` + "`--expect <prefix>`" + `
 refuses the pick unless the addressed card's text starts with the prefix.`,
@@ -1000,7 +1002,7 @@ func recordFactoryCardState(cardID, specID, state, eventKind string) {
 	}
 	owner := os.Getenv(config.EnvMoaiFactoryWorker)
 	if owner == "" {
-		owner = "lead"
+		owner = kanban.RoleLeader // the factory card owner vocabulary: `leader` (REQ-RNC-010)
 	}
 	// Queue mutations resolve through the primary checkout, but provenance must
 	// describe the lane checkout that actually selected and executed the card.
