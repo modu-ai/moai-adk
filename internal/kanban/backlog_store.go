@@ -63,6 +63,12 @@ const (
 	BacklogStatePicked BacklogState = "picked"
 	// BacklogStateDropped marks a card the operator discarded.
 	BacklogStateDropped BacklogState = "dropped"
+	// BacklogStateHold marks a card an OPERATOR parked out of the queue
+	// (SPEC-TODO-HOLD-STATE-001). It is the state, not a text marker: every
+	// actionable surface enumerates accepted states positively, so a held
+	// card is invisible to every machine selector by construction, and no
+	// lease path gains a verb that sets or clears it.
+	BacklogStateHold BacklogState = "hold"
 )
 
 // BacklogItem is one queued card. The five original fields are the frozen
