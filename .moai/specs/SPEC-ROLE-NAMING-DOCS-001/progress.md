@@ -216,6 +216,20 @@ Build: `make build` exit 0 (embedded template recompile; binary NOT installed; c
 
 **Residual-risk.** The DIFFER-pair files were edited on both copies independently; their pre-existing divergences (card-id provenance in local copies, `subagent-spawn` phrasing) mean the pairs were byte-different before and after — parity is by equivalent vocabulary substitution, not by `cmp`. The Korean 리드→리더 sweep is a plain-string replacement; a compound word containing 리드 as a substring other than 리포/레인 would have been renamed — full-file diff reviewed, none found.
 
+### M5 — root instruction files (2026-09-28; in-session completion after subagent 429)
+
+| Row | Detail |
+|---|---|
+| Execution path | The manager-develop M5 delegation died at the 5-hour usage limit (API 429, glm-5.3-flash channel, reset 13:17:58) mid-milestone with 3 complete hunks applied (verified against the M5 spec before adoption). Per the operator's continue instruction, the lane session completed the milestone in-session under the same spec; the commit trailer names the true author. |
+| Files edited | root CLAUDE.md + template CLAUDE.md (byte-identical pair preserved; 2 hunks each: `-f factory lead session`→`-f factory leader session`; REQ-RND-011 kept-name sentence appended to the Retained-agents paragraph) · root AGENTS.md (alias disclosure removed at the Codex factory-lanes parenthetical — REQ-RND-025; `the lead pushes`→`the factory leader pushes`, first-occurrence qualifier REQ-RND-021) · CLAUDE.local.md worktree develop copy (REQ-RND-015): 23 lines swept 리드→리더 (27 occurrences; first occurrence L188 qualified 팩토리 리더). |
+| Dead path note | Plan M5 target `AGENTS.md.tmpl` does not exist on this tree — the distributed template carries no AGENTS file at all (root AGENTS.md is repo-local, edited directly). Recorded, not substituted. |
+| Scope note | Plan scoped CLAUDE.local.md to §4.1; the sweep was extended file-wide for intra-file consistency (M4 local-file precedent) — every occurrence measured role-sense before replacement (23/23 lines). |
+| Residue check | `\blead\b` residue in CLAUDE.md/template: 3 occurrences each, all the kept agent name `manager-lead` (REQ-RND-011 protected). `worker` role-sense residue: 0 in all M5 files. CLAUDE.local.md 리드 residue: 0. |
+| [HARD] counts (REQ-RND-007) | AGENTS.md 0→0 · CLAUDE.md 3→3 · template CLAUDE.md 3→3 · CLAUDE.local.md 48→48. |
+| Ledger | +29 rows (23 ko role-noun incl. 1 first-qualifier, 1 en alias-rewrite, 1 en role-noun+qualifier, 2 kept-name-sentence, 2 en role-noun). Total 435 lines. |
+| Neutrality | Template CLAUDE.md touched hunks: SPEC-ID/card-id/date grep 0 new hits (kept-name sentence is neutral prose). |
+| Build | `make build` exit **0** (catalog.yaml regenerated — included in this commit, same-SPEC cascade). Binary not installed. |
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

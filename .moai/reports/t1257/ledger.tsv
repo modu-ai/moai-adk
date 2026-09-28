@@ -404,3 +404,32 @@ internal/cli/todo.go	883	<stale-row-note 2026-09-28: the line this row keyed on 
 .claude/rules/moai/workflow/orchestration-mode-selection.md	187			role-noun-substitution
 .claude/rules/moai/workflow/orchestration-mode-selection.md	188	`moai glm -k <N>` factory mode runs a fleet of independent lane sessions (tmux panes) — N is an operator-side fleet size (the count-less lane entry, a bare `-k --name lane-<i>`, defaults to 8), not su	`moai glm -k <N>` factory mode runs a fleet of independent lane sessions (tmux panes) — N is an operator-side fleet size (the count-less lane entry, a bare `-k --name lane-<i>`, defaults to 8), not su	role-noun-substitution
 .claude/rules/moai/workflow/orchestration-mode-selection.md	300	Version: 2.0.0 (catalog renamed onto the single concurrent-spawn-count axis: `trivial`→`direct`, `sub-agent`→`serial`, `parallel`→`fanout`, `workflow`→`sweep`; `background` demoted to an execution opt	Version: 2.0.0 (catalog renamed onto the single concurrent-spawn-count axis: `trivial`→`direct`, `sub-agent`→`serial`, `parallel`→`fanout`, `workflow`→`sweep`; `background` demoted to an execution opt	role-noun-substitution
+AGENTS.md	115	(`-f agent` legacy spelling or `-f lane`)	(`-f lane`)	alias-rewrite
+AGENTS.md	140	the lead pushes	the factory leader pushes	role-noun-substitution+first-qualifier
+CLAUDE.md	61	-f factory lead session	-f factory leader session	role-noun-substitution
+CLAUDE.md	63	(no kept-name sentence)	The agent name `manager-lead` is kept unchanged in every file name, path, identifier, and configuration key, while the role it plays is called the leader	kept-name-sentence
+internal/template/templates/CLAUDE.md	61	-f factory lead session	-f factory leader session	role-noun-substitution
+internal/template/templates/CLAUDE.md	63	(no kept-name sentence)	kept-name sentence appended (same as root CLAUDE.md)	kept-name-sentence
+CLAUDE.local.md	188	병합 후 리드가 1회 설치	병합 후 팩토리 리더가 1회 설치	role-noun-substitution-ko+first-qualifier
+CLAUDE.local.md	319	push는 **리드가 일괄**로	push는 **리더가 일괄**로	role-noun-substitution-ko
+CLAUDE.local.md	321	창 밖이다(리드 일괄	창 밖이다(리더 일괄	role-noun-substitution-ko
+CLAUDE.local.md	336	반드시 리드에게 로컬 develop 병합을	반드시 리더에게 로컬 develop 병합을	role-noun-substitution-ko
+CLAUDE.local.md	339	리드의 창 지명만이	리더의 창 지명만이	role-noun-substitution-ko
+CLAUDE.local.md	340	SHA를 리드에게 보고 — push는 리드가 일괄로	SHA를 리더에게 보고 — push는 리더가 일괄로	role-noun-substitution-ko
+CLAUDE.local.md	341	리드가 창 밖에서 레인 병합 SHA를	리더가 창 밖에서 레인 병합 SHA를	role-noun-substitution-ko
+CLAUDE.local.md	342	적중 보고를 받으면 리드가 처분을	적중 보고를 받으면 리더가 처분을	role-noun-substitution-ko
+CLAUDE.local.md	346	리드 develop 일괄 push 절차	리더 develop 일괄 push 절차	role-noun-substitution-ko
+CLAUDE.local.md	680	레인 발견 → 리드 판정	레인 발견 → 리더 판정	role-noun-substitution-ko
+CLAUDE.local.md	692	### [HARD] 리드는 손으로	### [HARD] 리더는 손으로	role-noun-substitution-ko
+CLAUDE.local.md	694	`-k` / `-f` 리드 세션은	`-k` / `-f` 리더 세션은	role-noun-substitution-ko
+CLAUDE.local.md	705	리드가 이미 권한을 가진	리더가 이미 권한을 가진	role-noun-substitution-ko
+CLAUDE.local.md	707	모델이 초안, 리드가 확정 … 리드가 증거를	모델이 초안, 리더가 확정 … 리더가 증거를	role-noun-substitution-ko
+CLAUDE.local.md	713	언제나 **리드가 읽은 증거 파일**	언제나 **리더가 읽은 증거 파일**	role-noun-substitution-ko
+CLAUDE.local.md	750	이 절은 **리드 운용 지침**이며	이 절은 **리더 운용 지침**이며	role-noun-substitution-ko
+CLAUDE.local.md	751	리드가 도는 절차를 정한다	리더가 도는 절차를 정한다	role-noun-substitution-ko
+CLAUDE.local.md	800	판정 사항이다(리드가 단독으로	판정 사항이다(리더가 단독으로	role-noun-substitution-ko
+CLAUDE.local.md	856	리드 창 경유	리더 창 경유	role-noun-substitution-ko
+CLAUDE.local.md	861	리드가 리드 창에서 운영자에게	리더가 리더 창에서 운영자에게	role-noun-substitution-ko
+CLAUDE.local.md	868	리드 소관이며	리더 소관이며	role-noun-substitution-ko
+CLAUDE.local.md	873	레인이 리드에게 올리고, 리드는 Jev 로	레인이 리더에게 올리고, 리더는 Jev 로	role-noun-substitution-ko
+CLAUDE.local.md	875	레인·리드 운용에	레인·리더 운용에	role-noun-substitution-ko
