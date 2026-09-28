@@ -38,7 +38,10 @@ import (
 // Bumped to 9 when WorkflowConfig gained ServedModelGate
 // (workflow.served_model_gate.*): an older cache would serve enabled=false
 // over a workflow.yaml that opts the served-model gate in.
-const configCacheSchemaVersion = 9
+// Bumped to 10 when WorkflowConfig gained CommitIdentityGuard
+// (workflow.commit_identity_guard.*, SPEC-COMMIT-IDENTITY-GUARD-001): an older
+// cache would serve enabled=false over a workflow.yaml that opts the guard in.
+const configCacheSchemaVersion = 10
 
 // cacheFileName is the fixed cache file name under the state directory.
 // Fixed name ensures predictable gitignore and cleanup (REQ-PERF-009).

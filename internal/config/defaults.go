@@ -1066,6 +1066,15 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			Enabled:            false,
 			DefaultMaxDuration: DefaultSlotLeaseMaxDuration,
 		},
+		// The commit identity guard ships inert (SPEC-COMMIT-IDENTITY-GUARD-001
+		// REQ-CIG-006): when off, the pre-tool handler never invokes it, so no
+		// repository-scope or identity probe subprocess runs. Maintainers opt
+		// in via local config after their own test suites have been known to
+		// poison the shared git config layer. Template neutrality: no
+		// `enabled: true` under internal/template/templates/.
+		CommitIdentityGuard: CommitIdentityGuardConfig{
+			Enabled: false,
+		},
 		// The TypeSafe System One judgment capability ships inert
 		// (REQ-JEVC-016). While off, internal/jev constructs no request and
 		// makes no network call, so a project that never opts in pays nothing
