@@ -359,7 +359,7 @@ target (PASS-WITH-DEBT).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-SYNC-PHASE CLOSE (2026-09-29, card t1246 sync lane). Sync commit subject: `docs(SPEC-AGENT-MODEL-INHERIT-001): sync-phase close — card t1246` (`sync_commit_sha: "pending-backfill-sync"` — a commit cannot cite its own SHA; backfilled in the immediately following commit, which carries the real hash). This close consolidates the `spec.md` status transition `in-progress → implemented → completed` on the single sync commit (the intermediate `implemented` state is disclosed rather than backdated) and refreshes `updated: 2026-09-29`.
+SYNC-PHASE CLOSE (2026-09-29, card t1246 sync lane). Sync commit subject: `docs(SPEC-AGENT-MODEL-INHERIT-001): sync-phase close — card t1246` (`sync_commit_sha: "770cb02a9"` — backfilled per the placeholder contract; the placeholder line above is superseded by this hash). This close consolidates the `spec.md` status transition `in-progress → implemented → completed` on the single sync commit (the intermediate `implemented` state is disclosed rather than backdated) and refreshes `updated: 2026-09-29`.
 
 Live-criteria basis (B12 self-test 2): 25 distinct AC-AMI identifiers in `acceptance.md` (no `[RETIRED]`/`[REF]` markers present, no ambiguity), so the CHANGELOG entry counts 25 live criteria; the M8 (docs-site) split to card t1300 (lead dispatch 2026-09-28) is disclosed in prose in the CHANGELOG entry and in §E.3 above rather than marked on AC-AMI-025 in acceptance.md, which this phase may not edit.
 
