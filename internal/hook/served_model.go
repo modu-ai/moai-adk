@@ -127,7 +127,9 @@ func expectedServedModel(declared, agentType string, cfg *config.Config) (expect
 			resolved = r
 		}
 	}
-	if declared = strings.TrimSpace(declared); declared != "" {
+	// A declared "inherit" names the parent session's model, which this hook
+	// cannot see, so it is treated like no declaration at all.
+	if declared = normalizeModelDeclaration(declared); declared != "" && declared != template.ModelInherit {
 		return declared, resolved, expectationKnown
 	}
 	if cfg == nil {
@@ -137,6 +139,20 @@ func expectedServedModel(declared, agentType string, cfg *config.Config) (expect
 		return "", "", expectationUnmapped
 	}
 	return resolved, resolved, expectationKnown
+}
+
+// normalizeModelDeclaration trims whitespace and drops a trailing bracketed
+// context-window suffix such as "[1m]": "opus[1m]" and "claude-opus-5[1m]"
+// select the same model as their bare forms, and responses never carry the
+// suffix, so comparing it verbatim reported every such spawn as drift.
+func normalizeModelDeclaration(model string) string {
+	model = strings.TrimSpace(model)
+	if strings.HasSuffix(model, "]") {
+		if i := strings.LastIndexByte(model, '['); i > 0 {
+			model = strings.TrimSpace(model[:i])
+		}
+	}
+	return model
 }
 
 // servedMatches reports whether one served model satisfies the expectation:
