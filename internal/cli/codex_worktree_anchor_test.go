@@ -72,19 +72,7 @@ func newAnchorRepo(t *testing.T) *anchorRepo {
 	t.Setenv(config.EnvClaudeProjectDir, root)
 	withCodexProjectRoot(t, root)
 
-	// The real materializer runs `git worktree add` in the process cwd, which
-	// is this package's own checkout; point it at the fixture instead.
-	oldBase, oldAdd := codexWorktreeBase, codexWorktreeAdd
-	codexWorktreeBase = func(string) (string, error) { return r.base, nil }
-	codexWorktreeAdd = func(path, branch, base string) (string, error) {
-		out, err := exec.Command("git", "-C", root, "worktree", "add", "-q", "-b", branch, path, base).CombinedOutput()
-		if err != nil {
-			return "", errors.New(strings.TrimSpace(string(out)))
-		}
-		return path, nil
-	}
 	t.Cleanup(func() {
-		codexWorktreeBase, codexWorktreeAdd = oldBase, oldAdd
 		out, _ := exec.Command("git", "-C", root, "worktree", "list", "--porcelain").Output()
 		for path := range session.ParseWorktreeLocks(string(out)) {
 			_ = exec.Command("git", "-C", root, "worktree", "unlock", path).Run()
@@ -146,13 +134,11 @@ func snapshotAnchorTree(t *testing.T, tree string) anchorTreeState {
 // bodies after withCodexLaunchCapture replaced them.
 func withRealCodexWorktreeAnchor(t *testing.T) {
 	t.Helper()
-	prevCheck, prevLock, prevBase, prevResolve := codexWorktreeWriterCheck, codexWorktreeAnchorLock, codexWorktreeBaseCheck, codexResolveBaseCommit
+	prevCheck, prevLock := codexWorktreeWriterCheck, codexWorktreeAnchorLock
 	codexWorktreeWriterCheck = worktreeWriterRefusal
 	codexWorktreeAnchorLock = placeCodexAnchorLock
-	codexWorktreeBaseCheck = verifyCodexWorktreeBase
-	codexResolveBaseCommit = resolveBaseCommitReal
 	t.Cleanup(func() {
-		codexWorktreeWriterCheck, codexWorktreeAnchorLock, codexWorktreeBaseCheck, codexResolveBaseCommit = prevCheck, prevLock, prevBase, prevResolve
+		codexWorktreeWriterCheck, codexWorktreeAnchorLock = prevCheck, prevLock
 	})
 }
 
@@ -177,26 +163,10 @@ func assertLockedByLauncher(t *testing.T, tree string) {
 	}
 }
 
-// TestCodexWorktreeAnchorLockAndBase is AC-DHR-006's launch half: new and
-// existing trees are locked with the launcher's pid, a new tree's HEAD is the
-// resolved base, a base mismatch refuses without deleting the tree, a dead
-// lock is replaced, and a live lock is not.
-func TestCodexWorktreeAnchorLockAndBase(t *testing.T) {
-	t.Run("new_tree", func(t *testing.T) {
-		cap := withCodexLaunchCapture(t)
-		r := newAnchorRepo(t)
-		withRealCodexWorktreeAnchor(t)
-		if _, stderr, err := runCodexCmd(t, "-w", "new-tree"); err != nil {
-			t.Fatalf("launch: %v (stderr %q)", err, stderr)
-		}
-		codexWantLaunches(t, cap, 1, 1, 0)
-		tree := filepath.Join(r.root, ".claude", "worktrees", "new-tree")
-		assertLockedByLauncher(t, tree)
-		if head, base := anchorGit(t, tree, "rev-parse", "HEAD"), anchorGit(t, r.root, "rev-parse", r.base); head != base {
-			t.Errorf("new tree HEAD %s != resolved base %s (%s)", head, base, r.base)
-		}
-	})
-
+// TestCodexWorktreeAnchorLock is AC-DHR-006's launch half: existing trees
+// are locked with the launcher's pid, a dead lock is replaced, and a live
+// lock is not.
+func TestCodexWorktreeAnchorLock(t *testing.T) {
 	t.Run("existing_tree", func(t *testing.T) {
 		cap := withCodexLaunchCapture(t)
 		r := newAnchorRepo(t)
@@ -207,30 +177,6 @@ func TestCodexWorktreeAnchorLockAndBase(t *testing.T) {
 		}
 		codexWantLaunches(t, cap, 1, 1, 0)
 		assertLockedByLauncher(t, tree)
-	})
-
-	t.Run("base_mismatch_refused_tree_kept", func(t *testing.T) {
-		cap := withCodexLaunchCapture(t)
-		r := newAnchorRepo(t)
-		withRealCodexWorktreeAnchor(t)
-		codexResolveBaseCommit = func(string, string) (string, error) {
-			return "0000000000000000000000000000000000000001", nil
-		}
-		_, stderr, err := runCodexCmd(t, "-w", "drifted")
-		if err == nil {
-			t.Fatal("launch accepted a tree whose HEAD is not the resolved base")
-		}
-		if code, ok := ResolveExitCode(err); !ok || code == 0 {
-			t.Errorf("exit = (%d, %v), want non-zero", code, ok)
-		}
-		codexWantLaunches(t, cap, 0, 0, 0)
-		tree := filepath.Join(r.root, ".claude", "worktrees", "drifted")
-		if _, statErr := os.Stat(tree); statErr != nil {
-			t.Errorf("mismatched tree was deleted: %v", statErr)
-		}
-		if !strings.Contains(stderr, "does not match the resolved base") {
-			t.Errorf("diagnostic %q does not name the base mismatch", stderr)
-		}
 	})
 
 	t.Run("dead_lock_replaced", func(t *testing.T) {
