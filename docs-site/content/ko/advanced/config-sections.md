@@ -61,19 +61,21 @@ delegation:
 
 관련: [에이전트 가이드](/ko/advanced/agent-guide), [스킬 가이드](/ko/advanced/skill-guide).
 
-## llm.yaml — 백엔드·프로필 매트릭스
+## llm.yaml — 백엔드·GLM 매핑
 
-프로필, 프로필 매트릭스, 에이전트별 override, GLM 모델 매핑을 정의합니다.
+하네스 백엔드, GLM 환경, GLM 모델 매핑을 정의합니다. 에이전트가 실행되는 모델과
+effort는 **세션** 수준에서 정해집니다 — 서브에이전트는 메인 세션의 모델과 추론
+깊이를 그대로 따르므로, 이 파일이 에이전트별 모델 배정을 담는 일은 없어졌습니다.
+예전의 프로필 매트릭스 키들(`profile`, `profiles`, `performance_tier`,
+`harness_agents`, `agent_overrides`)은 물러났으며, `moai update`가 다음 실행 때
+사용자 파일에서 이 키들을 걷어 냅니다. 메인 세션의 추론 강도는 선호 프로필
+(`moai profile setup`)에서 옵니다 — 이 파일에서 오지 않습니다.
 
 ```yaml
 llm:
-  profile: "medium"            # high | medium | low (활성 매트릭스 열, max는 high로 읽힘)
-  performance_tier: "medium"   # legacy 별칭 (profile 부재 시 읽힘, 동일 어휘)
-  profiles:                    # 프로필 열 → 13개 에이전트 → {model, effort}
-    high: { ... }              # 상세 표: 프로필 매트릭스 페이지
-    medium: { ... }
-    low: { ... }
-  agent_overrides: {}          # 에이전트별 {model, effort} override (선택)
+  harness: "claude"            # claude | gpt | both — 초기화 때 고른 에이전트 하네스
+  team_mode: ""                # glm이면 z.ai 백엔드로 전환
+  glm_env_var: "GLM_API_KEY"
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
@@ -85,10 +87,9 @@ llm:
 
 | 키 | 설명 |
 |----|------|
-| `profile` | 활성 프로필 매트릭스 열 (`high`/`medium`/`low`, 과거 `max`는 `high`의 별칭으로 읽힘). 비어 있으면 `medium`으로 해석. 모든 서브에이전트 spawn의 model+effort 출처 |
-| `performance_tier` | legacy 별칭 필드. `profile`이 없을 때만 읽히며, `high`/`medium`/`low` 어휘를 그대로 쓰므로 별도 정규화가 필요 없음 |
-| `profiles` | 프로필 열마다 에이전트 → `{model, effort}`를 적은 매트릭스 (에이전트 13개 × 열 3개 = 39셀). 빠진 셀은 Go 기본값(`template.DefaultProfileMatrix`)이 최종 fallback |
-| `agent_overrides` | 정규 에이전트 이름을 키로 하는 `{model, effort}` override. 활성 프로필의 에이전트 셀보다 우선 (카탈로그+enum 검증) |
+| `harness` | 초기화 때 배포한 에이전트 하네스 (`claude` 기본값, `gpt`는 Codex 전용 배포) |
+| `team_mode` | 비어 있으면 Claude, `glm`이면 세션을 z.ai 백엔드로 보냅니다 |
+| `claude_bin` | Claude Code 바이너리 고정 핀 (선택; 환경변수 `MOAI_CLAUDE_BIN`이 실행별로 우선) |
 | `glm.base_url` | Z.AI Anthropic 호환 프록시 엔드포인트 |
 | `glm.models` | 슬롯별 GLM 모델 매핑. GLM은 Claude의 5단계 effort를 3개 reasoning 상태(thinking-off / reasoning-high / reasoning-max)로 collapse |
 

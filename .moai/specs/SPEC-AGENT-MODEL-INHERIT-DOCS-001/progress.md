@@ -77,6 +77,25 @@ M2 — B-cluster deprecated-surface docs (6 pages × 4 locales = 24 files), auth
 - AC-AMD-008 emoji scan: only pre-existing hits — 🗿/🔅 inside statusline example output blocks (i18n rule §4 preserved branding examples), 🔴🟠🔵⚪ cost-color glyphs in what-is tables (7 per locale, count unchanged); zero new emoji introduced.
 - Locale chain honored: ko first, then en, then ja/zh, same work session; 24 files + progress.md in one commit.
 
+M3 — C-cluster treatment + outside-cluster dispositions. Evidence captured on merged tree `4321c28fe`, 2026-09-29.
+
+- AC-AMD-005 prompt-caching pair (before → after):
+  - Before: `grep -cin 'per-spawn model injection'` — cost-optimization en=1 (~line 216-221 "two devices" pair: profile-matrix pinning + per-spawn injection) ; ko/ja/zh carry the same pair in native phrasing (measured: ko 203 "에이전트별 모델 주입", ja 147 "エージェント別モデル注入", zh 147 "逐智能体的模型注入"); plus the Model Policy link description teaching "per-agent model injection" in all 4 (en 308, ko 286, ja 204, zh 204).
+  - After: pair rewritten ×4 to the inheritance narrative ("subagents inherit the session's model and effort, so all spawns share one cache; the retired devices are gone; the remaining rule is don't switch the session model mid-session") + link descriptions reworded to "session model policy and effort fallback". Post-edit residue grep over all 4 caching pages: only retired-framing mentions remain (zero live-teaching).
+  - context-memory sibling (`claude-code/context-memory/prompt-caching.md`): 0 injection-related hits in ALL FOUR locales (measured with en + native patterns) → recorded NO-CHANGE.
+- Outside-cluster dispositions (measured per line, ×4 locales where the sentence exists):
+  - REWRITE: `advanced/config-sections.md` — the whole llm.yaml section taught retired config keys; measured against the shipped template (`internal/template/templates/.moai/config/sections/llm.yaml`: "the former per-agent profile matrix (profile / profiles / performance_tier / harness_agents / agent_overrides) is retired; `moai update` strips these keys") → section rewritten ×4 to the current keys (harness/team_mode/claude_bin/glm) with the retirement note and `moai profile setup` pointer.
+  - REWRITE: `advanced/autonomy-tier.md` 117 — link description "the single matrix for choosing each agent's {model, effort}" taught the retired matrix → reworded to "what replaced the former model-assignment matrix: session inheritance" ×4.
+  - REWRITE: `advanced/_index.md` 50 — table caption "13 agents × {model, effort} across 39 cells" → "what replaced the model-assignment matrix — session inheritance" ×4.
+  - NO-CHANGE: `advanced/autonomy-tier.md` 16/116 — the "model tier" orthogonality explanation and its link description make no per-agent assignment claim (the "user picks a model tier" sentence holds at session level); verified by read.
+  - NO-CHANGE: `advanced/self-evolving.md` 96 — link description "the model architecture substrate" is historical framing, no per-agent claim.
+  - NO-CHANGE: `advanced/token-budget.md` 107 — link description "the model-policy foundation of Layer B routing" names the linked page without teaching per-agent assignment.
+  - NO-CHANGE: `advanced/_index.md` 49 — "DeepSWE-leaderboard rationale and the 3-tier policy" describes the (now intent-framed) 3-tier page, no per-agent claim.
+  - NO-CHANGE: `multi-llm/_index.md` en/ja/zh — zero hits for `moai model profile` / `profile matrix` / プロファイルマトリクス / 配置矩阵 (measured); only the ko page taught the retired narrative.
+  - TREAT: `multi-llm/_index.md` ko — measured retired teaching (matrix column narrative, `moai model profile --json` inspection, spawn-time injection/drift story, 33-cell references) → matrix section replaced with the session-selection narrative (model/effort/session-model-policy table + revised mermaid TD), model-policy section rewritten to "세션이 정하고 에이전트가 따른다", description/links updated. en/ja/zh siblings have no such content, so the 4-locale same-change obligation is satisfied vacuously (recorded disposition, not an omission).
+  - NO-CHANGE: statusline, moai-web-console, decision-memory, agent-teams, best-practices, features-overview — measured grep (`moai model profile|profile matrix|per-agent|agent별 모델|エージェント別のモデル|逐智能体`) returns zero hits on all of them.
+- AC-AMD-008 on M3-touched pages: heading parity — prompt-caching 13/3 ×4, config-sections 12/0 ×4, autonomy-tier 7/0 ×4, advanced/_index 2/4 ×4; multi-llm/_index ko 7/4 vs en/ja/zh 4/1 is a pre-existing locale-content divergence (the ko page is a fuller section index; en/ja/zh carry different thinner content, verified at baseline). Emoji scan on all 17 M3 files: 0 hits each.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
