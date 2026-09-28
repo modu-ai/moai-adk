@@ -14,7 +14,7 @@
 | AC-TSS-003 | M1 | REQ-TSS-003 | 테스트(해시/mtime 불변) |
 | AC-TSS-004 | M1 | REQ-TSS-004 | 코드 검사(단일 검출기 호출 그래프) |
 | AC-TSS-010 | M2 | REQ-TSS-010 | 테스트(3상태 table-driven) |
-| AC-TSS-011 | M2 | REQ-TSS-011 | `go test -run '^TestBinaryLag$'` |
+| AC-TSS-011 | M2 | REQ-TSS-011 | binary_lag 스위트 테스트(§D.1 AC-TSS-011 본문 명령 — 비공허: ≥1 적중) |
 | AC-TSS-012 | M2 | REQ-TSS-012 | 골든 스냅샷 파일 존재 + 골든 테스트 녹색 |
 | AC-TSS-013 | M2 | REQ-TSS-013 | 테스트(검증 중 파일 불변) |
 | AC-TSS-020 | M3 | REQ-TSS-020 | progress.md §E.2 측정 기록 존재 |
@@ -42,21 +42,24 @@
   **When** doctor 점검 함수를 실행하면, **Then** 각각 실패(양쪽 seq 포함 메시지) /
   실패 / PASS로 판정된다.
 - **AC-TSS-011** binary_lag 쌍 — **Given** M2 착지 커밋, **When**
-  `go test ./internal/cli/ -run '^TestBinaryLag$'`을 실행하면, **Then** 전부 통과하고
+  `go test ./internal/cli/ -run '^(TestBinaryLag_OneSeamServesBothSurfaces|TestBinaryLag_NonGitDirectoryKeepsDoctorExitZero|TestBinaryLag_AllowlistKeysAreLiveNames|TestBinaryLag_DoctorCheckNameSetIsUnchanged)$'`을 실행하면(비공허성 요건: 이 열거 패턴은 실행 시점에 최소 1개 테스트를 적중해야 한다 — 빈 적중은 exit 0이라 녹색으로 위장한다. 단일 이름 형태 `'^TestBinaryLag$'`는 일치하는 실제 테스트가 없어 0개 적중이라 금지), **Then** 전부 통과하고
   `namesAddedAfterBaseline`에 새 점검 상수의 bare 키가 존재한다.
 - **AC-TSS-012** 골든 동기화 — **Given** M2 착지 커밋, **When**
-  `go test ./internal/cli/ -run '^TestDoctorGolden$'`을 실행하면, **Then** 통과하고 재생성된
-  골든 파일이 같은 커밋에 포함돼 있다(커밋에 testdata/*.golden 델타 존재).
+  `go test ./internal/cli/ -run '^(TestDoctorGolden_Light|TestDoctorGolden_Dark|TestDoctorGolden_NoColor)$'`을 실행하면(비공허성 요건: 이 열거 패턴은
+  `TestDoctorGolden_Light`/`_Dark`/`_NoColor` 3개를 적중한다. 단일 이름 형태
+  `'^TestDoctorGolden$'`는 0개 적중이라 금지), **Then** 통과하고 재생성된 골든 파일이
+  같은 커밋에 포함돼 있다(커밋에 testdata/*.golden 델타 존재).
 - **AC-TSS-013** doctor 읽기 전용 — **Given** 발산 상태의 임시 트리, **When** doctor
   점검을 실행하면, **Then** 어떤 DB 파일의 sha256/mtime도 변하지 않고 lock 파일이
   남지 않는다.
 - **AC-TSS-020** 측정 먼저 — **Given** M3 시작, **When** 처분 절차를 진행하면,
   **Then** progress.md §E.2에 대상 4개(0바이트 쌍 2 + 백업 쌍 2) 각각의 측정 기록
   (크기·참조 판정·보존 필요성 결론)이 삭제 판정보다 먼저 기록돼 있다.
-- **AC-TSS-021** 확인 게이트 전제조건 — **Given** 운영자/리드의 명시적 확인 기록이
-  없는 상태, **When** 처분 절차를 실행하면, **Then** 대상 파일이 하나도
+- **AC-TSS-021** 확인 게이트 전제조건 — **Given** 운영자와 리드 양쪽의 명시적 확인
+  기록이 없는 상태(어느 한쪽의 단독 승인도 불충분 — 카드 t1307 본문 「파기 전
+  운영자·리드 확인」), **When** 처분 절차를 실행하면, **Then** 대상 파일이 하나도
   삭제되지 않았음이 파일 존재 검사로 증명되고 측정 기록만 남는다. 삭제 실행의
-  **전제조건은 확인 기록 자체**다(사후 비고 아님).
+  **전제조건은 양쪽 확인 기록 자체**다(사후 비고 아님).
 - **AC-TSS-022** 처분 증거 — **Given** 확인 기록이 존재하고 처분이 실행된 상태,
   **When** progress.md §E.2를 읽으면, **Then** 삭제된 경로, 삭제 전 sha256(또는 보존
   이동 목적지), 확인 주체와 시점이 기록돼 있다.

@@ -30,9 +30,9 @@
 | 대상 | 위치 |
 |---|---|
 | 홈 DB 경로 해석 | `internal/kanban/state_dir.go` `StateDirForRoot`; `internal/homestate/paths.go` `ProjectKey`/`BacklogDBPath` |
-| 레거시 로컬 스토어 경로 | `internal/kanban/state_dir.go:57-63` — `projectStateDirForRoot`(`.moai/state/todo`), `LegacyStateDirForRoot`(`.moai/state/kanban`) |
+| 레거시 로컬 스토어 경로 | `internal/kanban/state_dir.go:62-86` — `projectStateDirForRoot`(:62, `.moai/state/todo`), `LegacyStateDirForRoot`(:84, `.moai/state/kanban`) |
 | `meta.last_seq` 판독 | `internal/kanban/backlog_sqlite.go:65` `backlogMetaKeyLastSeq`; `internal/kanban/backlog_migrate.go:305` `readLastSeq`(비공개 — 검출기는 별도 읽기전용 판독이 필요) |
-| 기존 고지 표면 | `internal/cli/todo_disclosure.go` — `discloseNonAuthoritativeBacklogJSON` + `discloseQueueLayout`; 호출부 `internal/cli/todo.go:573`, `todo_pr.go:179`, `todo_why.go:28`, `todo_history.go:157` |
+| 기존 고지 표면 | `internal/cli/todo_disclosure.go` — `discloseNonAuthoritativeBacklogJSON` + `discloseQueueLayout`; 호출부 `internal/cli/todo.go:573`, `todo_pr.go:179`, `todo_why.go:28`(이 셋은 `discloseQueueLayout` 경유), `todo_history.go:157`(직접 `discloseNonAuthoritativeBacklogJSON` 호출 — **두 번째 진입점**) |
 | vouch 팩트 구조 | `internal/kanban/backlog_archive_vouch.go` `BacklogArchiveVouch`/`InspectBacklogArchiveVouch` |
 | doctor 점검 등록 | `internal/cli/doctor.go:187` `runGroupedChecksObserved` — `{상수, func(v bool) DiagnosticCheck}` 행 추가. 선례 상수: `hookMissingLogCheckName`(t1251), `servedModelCheckName`(t1282), `factoryRunCheckName`(t1256) |
 | binary_lag 쌍 | `internal/cli/binary_lag_test.go` `namesAddedAfterBaseline` 맵 + `TestBinaryLag_AllowlistKeysAreLiveNames`(키 모양 검증 — 상수 등록이면 bare 식별자 키) |
@@ -63,9 +63,13 @@ M1..M3 각 종료 시 본인 변경 패키지 테스트 + 아래 AC 재측정. �
    `meta.last_seq` 판독은 기존 `backlog_sqlite.go`의 meta 키 상수를 재사용하는 별도
    read-only 오픈(마이그레이션·lock·DDL 없음 — REQ-TSS-013 성격 공유). 스토어 부재·
    비SQLite 파일·0바이트 파일은 "판독 불가"로 발산과 구분해 보고한다.
-2. `internal/cli/todo_disclosure.go`의 고지 경로가 이 팩트를 추가로 전한다 — 기존
-   `discloseQueueLayout` 진입점에 한 줄 확장(verb 접두어, stderr 전용, stdout 무변경:
-   REQ-TSS-001/002). 기존 backlog.json 고지 문안과 별개 줄로, 서로 덮지 않는다.
+2. `internal/cli/todo_disclosure.go`의 고지 경로가 이 팩트를 추가로 전한다(verb 접두어,
+   stderr 전용, stdout 무변경: REQ-TSS-001/002). **진입점은 둘이다** —
+   `discloseQueueLayout`(todo.go:573, todo_pr.go:179, todo_why.go:28이 경유)과
+   `discloseNonAuthoritativeBacklogJSON` 직접 호출(`todo_history.go:157` — history
+   동사는 이 경로로만 들어온다). 어느 한쪽만 고치면 REQ-TSS-001의 history 범위가
+   누락된다(AC-TSS-003이 history 동사를 실행한다). 확장은 두 진입점 모두에 적용하고,
+   기존 backlog.json 고지 문안과 별개 줄로 서로 덮지 않는다.
 3. 검출기에 레거시 디렉터리 둘(`todo`/`kanban`)을 모두 보게 한다.
 
 테스트: `internal/kanban`(검출기 단위 — 발산/일치/부재/0바이트) + `internal/cli`(고지
@@ -88,10 +92,19 @@ AC: AC-TSS-001, AC-TSS-002, AC-TSS-003, AC-TSS-004.
 4. doctor 골든 스냅샷이 새 점검 이름을 포함하면 `UPDATE_GOLDEN=1 go test`로 재생성해
    같은 커밋에 넣는다(REQ-TSS-012).
 
-테스트: 점검 단위(임시 트리에서 3상태 table-driven) + `go test ./internal/cli/ -run
-TestBinaryLag` + 골든 재생성 후 `go test ./internal/cli/ -run '^TestDoctorGolden$'`.
+테스트: 점검 단위(임시 트리에서 3상태 table-driven) + binary_lag 스위트 + 골든 재생성
+후 골든 테스트. 명령은 **각 분기가 anchored된 열거형**이어야 한다(plan-audit iter1
+D3/D4):
 
-AC: AC-TSS-010, AC-TSS-011, AC-TSS-012, AC-TSS-013, AC-TSS-014.
+- `go test ./internal/cli/ -run '^(TestBinaryLag_OneSeamServesBothSurfaces|TestBinaryLag_NonGitDirectoryKeepsDoctorExitZero|TestBinaryLag_AllowlistKeysAreLiveNames|TestBinaryLag_DoctorCheckNameSetIsUnchanged)$'`
+- `go test ./internal/cli/ -run '^(TestDoctorGolden_Light|TestDoctorGolden_Dark|TestDoctorGolden_NoColor)$'`
+
+**비공허성 요건**: `-run` 패턴은 실행 시점에 최소 1개 테스트를 적중해야 한다 — 빈
+적중도 exit 0이라 녹색으로 위장한다. 단일 이름 전체 anchored 형태(`'^TestBinaryLag$'`
+류)는 실제 테스트 이름이 모두 접미사를 가져 0개 적중이므로 금지다. 테스트 이름이
+바뀌면 패턴 열거를 같은 커밋에서 갱신한다.
+
+AC: AC-TSS-010, AC-TSS-011, AC-TSS-012, AC-TSS-013.
 
 ### M3 (Medium) — 잔존 저장소 처분: 측정 먼저, 확인 게이트, 증거 (항목 ③)
 
@@ -102,13 +115,16 @@ AC: AC-TSS-010, AC-TSS-011, AC-TSS-012, AC-TSS-013, AC-TSS-014.
    (크기, 내부 스키마, 최종 수정 시각). 각각에 대해 "홈 DB 백업/검증이 이 스냅샷을
    필요로 하는가"를 판정한다(참조 검색: 저장소 문서·코드 경로 grep).
 2. **확인 게이트**(REQ-TSS-021): 삭제 후보 목록과 측정 결과를 리드에게 보고하고
-   **운영자/리드의 명시적 확인을 전제조건으로 받는다**. 확인이 없으면 여기서 멈추고
-   측정 기록만 남긴다. 자동 삭제 경로를 만들지 않는다.
+   **운영자와 리드 양쪽의 명시적 확인을 전제조건으로 받는다** — 카드 t1307 본문의
+   「파기 전 운영자·리드 확인」이 근거다(어느 한쪽의 단독 승인은 불충분). 확인이
+   없으면 여기서 멈추고 측정 기록만 남긴다. 자동 삭제 경로를 만들지 않는다.
 3. **처분 + 증거**(REQ-TSS-022): 확인된 대상만 삭제(또는 `.moai/reports/t1307/` 아래
   보존 이동)하고 — 경로, 삭제 전 sha256/크기, 확인 주체·시점 — 을 SPEC progress 기록
   §E.2에 남긴다.
 
-[NEEDS CLARIFICATION: 0바이트 쌍과 백업 쌍의 삭제 승인 주체가 운영자 직답인지 리드 대행인지 — 실행 시점에 확인 게이트에서 확정]
+(해결됨 — plan-audit iter1 D1: 삭제 승인 주체는 **운영자·리드 양쪽 확인**으로 확정.
+근거는 카드 t1307 본문 「파기 전 운영자·리드 확인」. 확인 기록은 경로·sha256·확인
+주체·시점과 함께 progress.md §E.2에 남긴다.)
 
 AC: AC-TSS-020, AC-TSS-021, AC-TSS-022.
 

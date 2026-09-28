@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-STALE-STORE-001
 title: "트리 안 유령 큐 저장소 — 스테일 프로젝트-로컬 스토어 고지, doctor 발산 점검, 잔존 저장소 처분"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-09-29
 updated: 2026-09-29
@@ -20,6 +20,7 @@ related_specs: [SPEC-TODO-QUEUE-HOME-CANON-001, SPEC-TODO-SQLITE-001, SPEC-BACKL
 ## HISTORY
 
 - 2026-09-29 v0.1.0 — manager-spec 최초 작성 (카드 t1307, plan-phase). 측정 근거: `.moai/reports/todo-logic-review-20260929.md` P1(2026-09-29 오독 사고 포함), 운영자 제공 실측(홈 DB `~/.moai/db/moai-adk-go-1bd3d038/todo/backlog.db` last_seq 1305 vs 유령 스토어 `.moai/state/todo/backlog.db` seq 661).
+- 2026-09-29 v0.1.1 — manager-spec plan-audit iter1 수리 (카드 t1307). D1: M3 삭제 승인 주체 확정(운영자·리드 양쪽 확인 — 카드 t1307 본문 근거, REQ-TSS-021 정합 수정). D3/D4: `-run` 패턴 비공허화(§C.3). D2/D5/D6는 plan.md/acceptance.md 쪽 수리.
 
 ## A. 배경과 문제 정의
 
@@ -77,9 +78,10 @@ related_specs: [SPEC-TODO-QUEUE-HOME-CANON-001, SPEC-TODO-SQLITE-001, SPEC-BACKL
 
 - **REQ-TSS-020**: The 처분 절차 shall **삭제 전에** 각 잔존 저장소의 보존 필요성을
   측정하고 그 결과를 기록한다 — 크기·참조 유무·홈 DB 백업/검증 상태.
-- **REQ-TSS-021**: The 시스템 shall **운영자 또는 리드의 명시적 확인 없이는** 잔존 저장소를
-  삭제하지 않는다. 자동 삭제 경로는 존재하지 않는다. **Where** 확인이 기록되지 않았으면,
-  the 처분 shall 증거 기록까지만 진행하고 멈춘다.
+- **REQ-TSS-021**: The 시스템 shall **운영자와 리드 양쪽의 명시적 확인(카드 t1307 본문
+  「파기 전 운영자·리드 확인」) 없이는** 잔존 저장소를 삭제하지 않는다. 자동 삭제
+  경로는 존재하지 않는다. **Where** 확인이 기록되지 않았으면, the 처분 shall 증거
+  기록까지만 진행하고 멈춘다.
 - **REQ-TSS-022**: The 처분 shall 측정 내용, 확인 주체와 시점, 삭제된 경로를 SPEC
   progress 기록(§E.2)에 남긴다.
 
@@ -88,7 +90,7 @@ related_specs: [SPEC-TODO-QUEUE-HOME-CANON-001, SPEC-TODO-SQLITE-001, SPEC-BACKL
 1. 유령 스토어가 읽히는 상황에서 읽기 표면이 stderr로 경고한다(오독 사고 재발 차단 —
    2026-09-29 사고의 재발 방지가 이 SPEC의 존재 이유다).
 2. `moai doctor`가 발산을 재현 가능하게 판정한다(명령 한 줄로 증명).
-3. binary_lag 쌍이 기계적으로 검증된다(`go test ./internal/cli/ -run '^TestBinaryLag$'`).
+3. binary_lag 쌍이 기계적으로 검증된다 — `go test ./internal/cli/ -run '^(TestBinaryLag_OneSeamServesBothSurfaces|TestBinaryLag_NonGitDirectoryKeepsDoctorExitZero|TestBinaryLag_AllowlistKeysAreLiveNames|TestBinaryLag_DoctorCheckNameSetIsUnchanged)$'`(각 분기 anchored 열거형. 실행 시점에 최소 1개 테스트 적중이 필수다 — 빈 적중도 exit 0이라 녹색으로 위장하며, 단일 이름 형태 `'^TestBinaryLag$'`는 일치하는 실제 테스트가 없어 0개 적중이라 금지).
 4. 잔존 저장소는 측정·확인·증거 3단계를 통과한 뒤에만 사라진다.
 
 ## D. 제약
