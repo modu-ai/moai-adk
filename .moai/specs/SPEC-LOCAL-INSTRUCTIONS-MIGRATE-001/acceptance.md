@@ -42,9 +42,10 @@ when it matches nothing, so a criterion invoking a test names the test's **symbo
 > `SPEC-INSTRUCTION-FILES-UNIFY-001` at commit `1140bcd1d`, retaining their `AC-IFU-*` ids so
 > existing cross-references and audit citations still resolve. AC-IFU-007 [RETIRED] additionally carries
 > the D3 repair (which copy, and in which unit). The two **recorded debts** below are preserved
-> exactly as authored — including their own statements of what they would split into. The Tier L
-> ceiling that forced each fold no longer binds here (Tier M, 16/16, currently 7 criteria), so
-> the headroom to unfold exists; **spending it is card t1259's plan-phase decision and is
+> exactly as authored — including their own statements of what they would split into. Written at
+> the v0.1.x carve, the file was Tier M (16/16) with 7 criteria; it is **now Tier L (25/25) with
+> 8 criteria** (v0.2.0 raised the tier, v0.3.0 transferred two criteria to card t1290 and left
+> 8), so the headroom to unfold exists; **spending it is card t1259's plan-phase decision and is
 > deliberately not taken by this carve.**
 
 ## §D AC Matrix
@@ -492,9 +493,11 @@ perform:
    the criterion's wording is re-read before the close proceeds.
 4. **The docs-parity residual is restated at close, not quietly inherited.** M4 lands 24 locale
    files whose content no *blocking* check inspects (`AC-IFU-023` is the gate, and it runs in the
-   lane). The general condition has an owner already — **`SPEC-V3R3-DOCS-PARITY-001`**, named in
-   `docs-i18n-check.yml:74` as the Phase 2 strict-flip route. This SPEC does not own that flip and
-   does not take it on; the close names the pointer so the residual is handed over rather than
+   lane). The general condition's planned route — the Phase 2 strict flip named in
+   `docs-i18n-check.yml:74` — has **no existing SPEC directory under `.moai/specs/`** (the name
+   `SPEC-V3R3-DOCS-PARITY-001` is the workflow comment's label for a planned route, not a live
+   SPEC). This SPEC does not own that flip and does not take it on; the close names the pointer
+   so the residual is handed over rather than
    dropped.
 
 **No operator gate remains in this SPEC.** The one it carried guarded the repository's own

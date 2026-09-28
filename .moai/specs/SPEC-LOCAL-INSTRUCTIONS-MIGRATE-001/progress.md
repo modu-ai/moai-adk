@@ -683,6 +683,8 @@ ok  	github.com/modu-ai/moai-adk/internal/spec	56.626s
 
 ### iter5-readiness (2026-09-28, lane session 2 — dispatch items resolved before the audit request)
 
+**Lead's conditional acceptance of the M1 ordering (recorded per its instruction).** The lead accepted the sequence inversion (M1 `c4872e978` landing before the iter5 verdict) conditionally: **if iter5 FAILed in a direction that invalidated M1's premise, the commit would be reverted or reworked.** iter5 returned **PASS-WITH-DEBT 0.95 with the M1 premise measured INTACT** (report `.moai/reports/t1259/plan-audit-iter5.md` § M1-premise statement — requirement-by-requirement exact-match table against the landed code), so **the revert condition is discharged; `c4872e978` stands.** The gate-order question itself (retroactive approval vs revert-and-regate) was the lead's and was resolved by this conditional acceptance, quoted here so the artifact set carries what the dispatch carried.
+
 **Card-first count question ("COUNT 23 vs lane count 20") — conclusion, re-verified at the current tip.** The premise report (`.moai/reports/t1259/premise-20260928.md` §0) measured the discrepancy at its origin: at the split commit `653e53572` the parent acceptance.md carried 3 unmarked sibling-SPEC `AC-` tokens in prose (counter 23 vs 20 declared); `[REF]` marking since then brought the parent to 20 = 20. Re-measured this session at HEAD `c4872e978`: parent (develop read) `grep -c '^\*\*AC-IFU-'` = **20** ✓; this SPEC = **8 declared**, matching the v0.3.0 baseline row (count 10 → 8, AC-count cascade already run and committed — see §E.1 above). No residue on either side; the discrepancy was transient split-time state, since resolved.
 
 **Plan closure state (dispatch item 3).** The v0.3.0 tip commit (`a6f3861cd`) carries the scope-reduction docs: iter4's three blocking defects are dispositioned there — **D2** (M3's premise a known negative: worktree sessions do not receive `AGENTS.local.md`, `AGENTS.md:262`) → M3 (REQ-IFU-021/022, AC-IFU-007/024) transferred to card t1290 (§D Out of Scope, verbatim text preserved at `4441cf1a6`, child SPEC-LOCAL-INSTR-RECEPTION-001 iter2 PASS and already carrying M3); **D1** mooted here (both criteria left with M3) and carried to t1290 with a demonstrated committed-tree predicate (`.moai/reports/t1259/d1-mutant.md`); **D3** rewritten (the status paragraph now states the four-iteration history and the carve). N2 fixed in the same commit. D3-of-the-dispatch (the two-SPEC overlap) resolves at branch merge per the lead's instruction. The audit loop needs its iter5 verdict against this reduced scope — requested from the lead.
@@ -691,7 +693,46 @@ ok  	github.com/modu-ai/moai-adk/internal/spec	56.626s
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — the migration verb (inherited unit, landed `c4872e978`, iter5-measured INTACT)
+
+Landed as the verified inherited unit (see §E.1 iter5-readiness for provenance and the discharged revert condition). The auditor's own requirement-by-requirement read of `internal/cli/migrate_local_instructions.go` at HEAD confirmed the plan contract exactly (verb spelling, move+timestamped-backup+rollback, refusal-first, idempotent no-op, update/doctor advisory-only) — report `.moai/reports/t1259/plan-audit-iter5.md` § M1-premise statement. Lane verification of the same unit before landing:
+
+```
+$ go build ./internal/cli/                       → exit 0
+$ go test ./internal/cli/ -run 'MigrateLocalInstructions|LocalInstructionsAdvisory|CodexLocalInstructions'
+ok  github.com/modu-ai/moai-adk/internal/cli  0.955s
+```
+
+### M2 gates — AC-IFU-011 / AC-IFU-029 (anchored runs, this tree at the gate commit)
+
+```
+$ go test ./internal/cli/ -run '^TestCodexLocalInstructions_FallbackAdvisory$' -v
+--- PASS: TestCodexLocalInstructions_FallbackAdvisory (0.00s)
+ok  github.com/modu-ai/moai-adk/internal/cli  0.790s
+
+$ go test ./internal/cli/ -run '^TestCodexLocalInstructions_DualFileMatrix$' -v
+--- PASS: TestCodexLocalInstructions_DualFileMatrix (0.00s)
+ok  github.com/modu-ai/moai-adk/internal/cli  0.587s
+```
+
+AC-IFU-011: **PASS** (anchored, no `no tests to run`). AC-IFU-029 (regression guard): **PASS** — DualFileMatrix still asserts the literal `CLAUDE.local.md` provenance name on the new fallback-advisory path.
+
+### M4 gate — AC-IFU-023 (baseline anchored at `a6f3861cd` per the lead's dispatch; the acceptance.md table's `5ba87003f` numbers were NOT read as the baseline)
+
+Pre-change baseline re-measured at `a6f3861cd` (`git show a6f3861cd:docs-site/content/<L>/<page> | grep -c '^## '`, per page per locale) and post-change measured on the working tree:
+
+| Page | base ko/en/ja/zh | post ko/en/ja/zh | delta |
+|---|---|---|---|
+| `advanced/claude-md-guide.md` | 10/18/18/18 | 11/19/19/19 | **+1/+1/+1/+1** |
+| `advanced/codex-dual-harness.md` | 6/6/6/6 | 7/7/7/7 | **+1 all** |
+| `advanced/harness-learning.md` | 6/6/6/6 | 7/7/7/7 | **+1 all** |
+| `claude-code/context-memory/memory.md` | 7/7/7/7 | 8/8/8/8 | **+1 all** |
+| `getting-started/quickstart.md` | 14/10/10/10 | 15/11/11/11 | **+1 all** |
+| `cli-reference/update.md` | 7/7/7/7 | 8/8/8/8 | **+1 all** |
+
+Every page moved by the same delta in every locale — the equal-delta assertion holds; the pre-existing two-page inequality (ko claude-md-guide, ko quickstart) is preserved unchanged, matching the recorded shape. **AC-IFU-023 equal-delta half: PASS.**
+
+Non-zero `AGENTS.local.md` grep half — `grep -c 'AGENTS.local.md'` per file, all 24 (counts): claude-md-guide 6/6/6/6 · codex-dual-harness 4/4/4/4 · harness-learning 5/5/5/5 · memory 3/3/3/3 · quickstart 3/3/3/3 · update 3/3/3/3 — **all 24 non-zero. AC-IFU-023: PASS.**
 
 ## §E.3 Run-phase Audit-Ready Signal
 
