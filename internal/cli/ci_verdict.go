@@ -4,7 +4,7 @@ package cli
 // SPEC-CI-VERDICT-PRODUCER-001. It records remote CI conclusions per head
 // SHA as on-disk evidence (.moai/state/ci-verdicts/<head>.json) that the
 // escalation detector's contradictory-evidence CI limb consumes. Its natural
-// caller is the lead session after its batch push of origin/develop — the
+// caller is the leader session after its batch push of origin/develop — the
 // only actor in the git-flow that can observe remote CI for a pushed head.
 //
 // This CLI surface writes evidence files and nothing else (REQ-CV-005): it

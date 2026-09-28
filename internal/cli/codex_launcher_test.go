@@ -932,7 +932,7 @@ func TestCodexSpawnUnderLaneEnvRegistersNoFactoryPeer(t *testing.T) {
 	_ = db.Close()
 	t.Setenv(config.EnvMoaiKanbanID, run)
 	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
-	t.Setenv(config.EnvMoaiFactoryWorker, "worker-1")
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	start, state := homestate.ProbeProcessIdentity(os.Getpid())
 	if state != homestate.ProcessIdentityLive || start == "" {

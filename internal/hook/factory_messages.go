@@ -13,6 +13,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
@@ -56,12 +57,21 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 	if runID == "" || root == "" || input.SessionID == "" {
 		return ""
 	}
-	role, slot := "lead", "lead"
-	if label := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker)); label != "" {
-		role = "worker"
-		slot = label
+	// The persisted vocabulary is `leader` for the run's leader and
+	// `lane`/`lane-<n>` for a lane (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-010).
+	// A lane label in the legacy vocabulary never registers — the stale-run
+	// notice is the hook's whole answer for that session (REQ-RNC-022).
+	label := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
+	if label != "" {
+		if kanban.IsLegacyFactoryRoleValue(label) {
+			return legacyFactoryHookNotice(label, runID, langEnglish)
+		}
 	} else if os.Getenv(config.EnvMoaiFactoryWorkers) == "" {
 		return ""
+	}
+	role, slot := kanban.RoleLeader, kanban.RoleLeader
+	if label != "" {
+		role, slot = kanban.RoleLane, label
 	}
 	backend := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanBackend))
 	if backend == "" {

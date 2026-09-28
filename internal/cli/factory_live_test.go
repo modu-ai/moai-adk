@@ -22,7 +22,7 @@ import (
 
 // The codex-backed live cases were removed with the codex factory path
 // (SPEC-CODEX-FACTORY-RETIRE-001); the claude cases remain.
-type factoryLiveCase struct{ name, lead, worker string }
+type factoryLiveCase struct{ name, leader, lane string }
 
 func TestFactoryLiveClaudeClaudeCompletionSeparation(t *testing.T) {
 	runFactoryLiveCase(t, factoryLiveCase{"claude-claude", "claude", "claude"})
@@ -31,7 +31,7 @@ func TestFactoryLiveClaudeClaudeCompletionSeparation(t *testing.T) {
 func TestFactoryLiveHookBoundaryIdleTruth(t *testing.T) {
 	requireFactoryLive(t, "idle-boundary")
 	fx := newFactoryLiveFixture(t, "claude", "claude")
-	msg, err := fx.store.Send(context.Background(), factorymsg.SendRequest{From: fx.lead, To: fx.worker, Kind: factorymsg.KindStatusRequest, IdempotencyKey: "idle-" + fx.nonce, TaskRef: "t1074", CorrelationID: "idle-" + fx.nonce, TTL: time.Minute, Payload: []byte("nonce=" + fx.nonce)})
+	msg, err := fx.store.Send(context.Background(), factorymsg.SendRequest{From: fx.leader, To: fx.lane, Kind: factorymsg.KindStatusRequest, IdempotencyKey: "idle-" + fx.nonce, TaskRef: "t1074", CorrelationID: "idle-" + fx.nonce, TTL: time.Minute, Payload: []byte("nonce=" + fx.nonce)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestFactoryLiveHookBoundaryIdleTruth(t *testing.T) {
 	if err != nil || st.Pending != 1 || st.NextDelivery != "pending-until-next-turn" {
 		t.Fatalf("idle status=%+v err=%v", st, err)
 	}
-	fx.runModel(t, fx.worker, "Read the factory inbox for run "+fx.runID+", read message "+msg.ID+", persist accepted disposition, and receipt it. Do not invent ids.")
+	fx.runModel(t, fx.lane, "Read the factory inbox for run "+fx.runID+", read message "+msg.ID+", persist accepted disposition, and receipt it. Do not invent ids.")
 	st, err = fx.store.Status(context.Background())
 	if err != nil || st.Pending != 0 || st.Acknowledged != 1 {
 		t.Fatalf("boundary delivery status=%+v err=%v", st, err)
@@ -49,14 +49,14 @@ func TestFactoryLiveHookBoundaryIdleTruth(t *testing.T) {
 
 func runFactoryLiveCase(t *testing.T, tc factoryLiveCase) {
 	requireFactoryLive(t, tc.name)
-	fx := newFactoryLiveFixture(t, tc.lead, tc.worker)
-	fx.runModel(t, fx.lead, fmt.Sprintf("Use factory_msg_send exactly once: run_id=%s to_slot=agent-1 kind=status_request idempotency_key=lead-%s task_ref=t1074 correlation_id=req-%s ttl_seconds=120 body=nonce:%s. Report only the returned message id.", fx.runID, fx.nonce, fx.nonce, fx.nonce))
+	fx := newFactoryLiveFixture(t, tc.leader, tc.lane)
+	fx.runModel(t, fx.leader, fmt.Sprintf("Use factory_msg_send exactly once: run_id=%s to_slot=lane-1 kind=status_request idempotency_key=leader-%s task_ref=t1074 correlation_id=req-%s ttl_seconds=120 body=nonce:%s. Report only the returned message id.", fx.runID, fx.nonce, fx.nonce, fx.nonce))
 	st, err := fx.store.Status(context.Background())
 	if err != nil || st.Pending != 1 {
 		t.Fatalf("lead send status=%+v err=%v", st, err)
 	}
-	fx.runModel(t, fx.worker, fmt.Sprintf("For run_id=%s call factory_msg_list, read every body with factory_msg_body, then factory_msg_receipt disposition=accepted. Send exactly one status_report reply to slot lead with idempotency_key=worker-%s task_ref=t1074 correlation_id=reply-%s ttl_seconds=120 and body=reply:%s.", fx.runID, fx.nonce, fx.nonce, fx.nonce))
-	fx.runModel(t, fx.lead, "For run_id="+fx.runID+" list the inbox, read every body, and receipt every claim with disposition=accepted.")
+	fx.runModel(t, fx.lane, fmt.Sprintf("For run_id=%s call factory_msg_list, read every body with factory_msg_body, then factory_msg_receipt disposition=accepted. Send exactly one status_report reply to slot leader with idempotency_key=lane-%s task_ref=t1074 correlation_id=reply-%s ttl_seconds=120 and body=reply:%s.", fx.runID, fx.nonce, fx.nonce, fx.nonce))
+	fx.runModel(t, fx.leader, "For run_id="+fx.runID+" list the inbox, read every body, and receipt every claim with disposition=accepted.")
 	st, err = fx.store.Status(context.Background())
 	if err != nil || st.Pending != 0 || st.Claimed != 0 || st.Acknowledged < 2 {
 		t.Fatalf("round-trip status=%+v err=%v", st, err)
@@ -79,12 +79,12 @@ type factoryLiveFixture struct {
 	// codexHome and workers are set only by the card-flow fixture.
 	codexHome, workers string
 	store              *factorymsg.Store
-	lead, worker       factorymsg.Peer
+	leader, lane       factorymsg.Peer
 }
 
 var factoryLiveOperatorHomeFn = os.UserHomeDir
 
-func newFactoryLiveFixture(t *testing.T, leadBackend, workerBackend string) *factoryLiveFixture {
+func newFactoryLiveFixture(t *testing.T, leadBackend, laneBackend string) *factoryLiveFixture {
 	t.Helper()
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o700); err != nil {
@@ -115,7 +115,7 @@ func newFactoryLiveFixture(t *testing.T, leadBackend, workerBackend string) *fac
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := registry.RecordRun(context.Background(), homestate.FactoryRun{RunID: runID, LeadSessionID: "live-lead", Backend: leadBackend, ManifestJSON: "{}"}); err != nil {
+	if err := registry.RecordRun(context.Background(), homestate.FactoryRun{RunID: runID, LeadSessionID: "live-leader", Backend: leadBackend, ManifestJSON: "{}"}); err != nil {
 		_ = registry.Close()
 		t.Fatal(err)
 	}
@@ -146,22 +146,22 @@ func newFactoryLiveFixture(t *testing.T, leadBackend, workerBackend string) *fac
 		}
 		return pid, fp
 	}
-	leadPID, leadFP := owner(leadBackend)
-	workerPID, workerFP := owner(workerBackend)
+	leaderPID, leaderFP := owner(leadBackend)
+	lanePID, laneFP := owner(laneBackend)
 	base := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: runID, Generation: 1}
-	lead := base
-	lead.PID, lead.ProcessStart = leadPID, leadFP
-	lead.Backend, lead.Role, lead.Slot, lead.SessionUUID = leadBackend, "lead", "lead", "live-lead-"+factoryLiveID()
-	worker := base
-	worker.PID, worker.ProcessStart = workerPID, workerFP
-	worker.Backend, worker.Role, worker.Slot, worker.SessionUUID = workerBackend, "worker", "agent-1", "live-worker-"+factoryLiveID()
-	if lead, err = s.RegisterPeer(context.Background(), lead); err != nil {
+	leader := base
+	leader.PID, leader.ProcessStart = leaderPID, leaderFP
+	leader.Backend, leader.Role, leader.Slot, leader.SessionUUID = leadBackend, "leader", "leader", "live-leader-"+factoryLiveID()
+	lane := base
+	lane.PID, lane.ProcessStart = lanePID, laneFP
+	lane.Backend, lane.Role, lane.Slot, lane.SessionUUID = laneBackend, "lane", "lane-1", "live-lane-"+factoryLiveID()
+	if leader, err = s.RegisterPeer(context.Background(), leader); err != nil {
 		t.Fatal(err)
 	}
-	if worker, err = s.RegisterPeer(context.Background(), worker); err != nil {
+	if lane, err = s.RegisterPeer(context.Background(), lane); err != nil {
 		t.Fatal(err)
 	}
-	return &factoryLiveFixture{root: root, runID: runID, nonce: factoryLiveID(), moai: moai, store: s, lead: lead, worker: worker}
+	return &factoryLiveFixture{root: root, runID: runID, nonce: factoryLiveID(), moai: moai, store: s, leader: leader, lane: lane}
 }
 
 func factoryLiveID() string {
@@ -214,7 +214,7 @@ func (f *factoryLiveFixture) writePeerMCPConfig(p factorymsg.Peer) error {
 		config.EnvMoaiFactoryWorker:   "",
 		config.EnvMoaiFactoryWorkers:  "1",
 	}
-	if p.Role == "worker" {
+	if p.Role == "lane" {
 		roleEnv[config.EnvMoaiFactoryWorker] = p.Slot
 		roleEnv[config.EnvMoaiFactoryWorkers] = ""
 	}
@@ -381,9 +381,9 @@ type factoryCardFixture struct {
 }
 
 // newFactoryCardFixture builds an isolated repository, MOAI_HOME and
-// CODEX_HOME with a lead and two worker lanes. Every process it spawns goes
+// CODEX_HOME with a leader and two lanes. Every process it spawns goes
 // through procs, whose cleanup the caller registered before this call.
-func newFactoryCardFixture(t *testing.T, procs *liveProcs, leadBackend, workerBackend string) *factoryCardFixture {
+func newFactoryCardFixture(t *testing.T, procs *liveProcs, leadBackend, laneBackend string) *factoryCardFixture {
 	t.Helper()
 	t.Setenv(config.EnvHome, t.TempDir())
 	root := canonicalDir(t, t.TempDir())
@@ -391,7 +391,7 @@ func newFactoryCardFixture(t *testing.T, procs *liveProcs, leadBackend, workerBa
 		t.Fatal(err)
 	}
 	codexHome := ""
-	if leadBackend == "codex" || workerBackend == "codex" {
+	if leadBackend == "codex" || laneBackend == "codex" {
 		codexHome, _ = isolatedCodexHome(t, root)
 	}
 	moai := buildLiveMoai(t, procs)
@@ -400,7 +400,7 @@ func newFactoryCardFixture(t *testing.T, procs *liveProcs, leadBackend, workerBa
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := registry.RecordRun(context.Background(), homestate.FactoryRun{RunID: runID, LeadSessionID: "live-lead", Backend: leadBackend, ManifestJSON: "{}"}); err != nil {
+	if err := registry.RecordRun(context.Background(), homestate.FactoryRun{RunID: runID, LeadSessionID: "live-leader", Backend: leadBackend, ManifestJSON: "{}"}); err != nil {
 		_ = registry.Close()
 		t.Fatal(err)
 	}
@@ -435,11 +435,11 @@ func newFactoryCardFixture(t *testing.T, procs *liveProcs, leadBackend, workerBa
 		}
 		return got
 	}
-	lead := register(leadBackend, "lead", "lead")
-	first := register(workerBackend, "worker", "agent-1")
-	second := register(workerBackend, "worker", "agent-2")
+	leader := register(leadBackend, "leader", "leader")
+	first := register(laneBackend, "lane", "lane-1")
+	second := register(laneBackend, "lane", "lane-2")
 	nonce := factoryLiveID()
-	base := &factoryLiveFixture{root: root, runID: runID, nonce: nonce, moai: moai, store: s, lead: lead, worker: first, codexHome: codexHome, workers: "2"}
+	base := &factoryLiveFixture{root: root, runID: runID, nonce: nonce, moai: moai, store: s, leader: leader, lane: first, codexHome: codexHome, workers: "2"}
 	return &factoryCardFixture{factoryLiveFixture: base, procs: procs, first: first, second: second, dispatchID: "d-" + nonce[:12]}
 }
 
@@ -517,7 +517,7 @@ func runFactoryCardFlow(t *testing.T, tc factoryLiveCase) {
 	budget := newLiveBudget(factoryCardLiveInvocations, factoryCardLiveWindow)
 	// Cleanup is registered here, before the first spawned process.
 	procs := newLiveProcs(t)
-	f := newFactoryCardFixture(t, procs, tc.lead, tc.worker)
+	f := newFactoryCardFixture(t, procs, tc.leader, tc.lane)
 	ctx := context.Background()
 	id, n := f.dispatchID, f.nonce
 	ev := map[string]any{"case": tc.name, "nonce": n, "dispatch_id": id, "run_id": f.runID, "budget_invocations": factoryCardLiveInvocations, "budget_seconds": factoryCardLiveWindow.Seconds(), "harness_role": "lane runtime: explicit assignee transitions, reassignment with revoke, result application before receipt"}
@@ -535,7 +535,7 @@ func runFactoryCardFlow(t *testing.T, tc factoryLiveCase) {
 		result := func(attempt int64, preface string) string {
 			return fmt.Sprintf("%sUse factory_msg_send exactly once: run_id=%s to_slot=lead kind=status_report idempotency_key=%s task_ref=t1100 correlation_id=result-%d-%s ttl_seconds=1200 body=result;dispatch=%s;attempt=%d;nonce=%s (pass this body value exactly, as one unbroken string). Report only the returned message id.", preface, f.runID, factorymsg.ResultKey(id, attempt), attempt, n, id, attempt, n)
 		}
-		if err := f.step(t, budget, "lead assigns attempt 1", f.lead, send("agent-1", 1), f.expectStatus(1, 0, 0)); err != nil {
+		if err := f.step(t, budget, "leader assigns attempt 1", f.leader, send("lane-1", 1), f.expectStatus(1, 0, 0)); err != nil {
 			return err
 		}
 		if err := f.step(t, budget, "worker 1 receives", f.first, receive, f.expectStatus(0, 0, 1)); err != nil {
@@ -547,11 +547,11 @@ func runFactoryCardFlow(t *testing.T, tc factoryLiveCase) {
 		if _, err := f.store.StartDispatch(ctx, f.first, id, 1); err != nil {
 			return fmt.Errorf("start 1: %v", err)
 		}
-		// Worker 1 is interrupted after started: the lead revokes and reassigns.
+		// Lane 1 is interrupted after started: the leader revokes and reassigns.
 		if d, err := f.store.ReassignDispatch(ctx, id, 1, f.second, true); err != nil || d.Attempt != 2 {
 			return fmt.Errorf("reassign: %+v %v", d, err)
 		}
-		if err := f.step(t, budget, "lead assigns attempt 2", f.lead, send("agent-2", 2), f.expectStatus(1, 0, 1)); err != nil {
+		if err := f.step(t, budget, "leader assigns attempt 2", f.leader, send("lane-2", 2), f.expectStatus(1, 0, 1)); err != nil {
 			return err
 		}
 		if err := f.step(t, budget, "worker 2 receives", f.second, receive, f.expectStatus(0, 0, 2)); err != nil {
@@ -569,12 +569,12 @@ func runFactoryCardFlow(t *testing.T, tc factoryLiveCase) {
 		if err := f.step(t, budget, "worker 1 reports late", f.first, result(1, "You are worker agent-1 resuming after an interruption. "), f.expectStatus(2, 0, 2)); err != nil {
 			return err
 		}
-		claims, err := f.store.Claim(ctx, f.lead, factorymsg.MaxBatch, time.Minute)
+		claims, err := f.store.Claim(ctx, f.leader, factorymsg.MaxBatch, time.Minute)
 		if err != nil || len(claims) != 2 {
 			return fmt.Errorf("lead claim=%d err=%v, want 2 results", len(claims), err)
 		}
 		for _, cl := range claims {
-			body, err := f.store.ReadBody(ctx, f.lead, cl.ID, cl.ClaimToken)
+			body, err := f.store.ReadBody(ctx, f.leader, cl.ID, cl.ClaimToken)
 			if err != nil {
 				return err
 			}
@@ -593,10 +593,10 @@ func runFactoryCardFlow(t *testing.T, tc factoryLiveCase) {
 			if outcome == factorymsg.ApplyAccepted {
 				applied++
 			}
-			if err := f.store.RecordDisposition(ctx, f.lead, cl.ID, cl.ClaimToken, factorymsg.DispositionAccepted); err != nil {
+			if err := f.store.RecordDisposition(ctx, f.leader, cl.ID, cl.ClaimToken, factorymsg.DispositionAccepted); err != nil {
 				return err
 			}
-			if err := f.store.Receipt(ctx, f.lead, cl.ID, cl.ClaimToken); err != nil {
+			if err := f.store.Receipt(ctx, f.leader, cl.ID, cl.ClaimToken); err != nil {
 				return err
 			}
 		}
@@ -609,8 +609,8 @@ func runFactoryCardFlow(t *testing.T, tc factoryLiveCase) {
 	}
 	flowErr := flow()
 	ev["applied_results"] = applied
-	ev["late_result_outcome"] = outcomes["agent-1"]
-	ev["current_result_outcome"] = outcomes["agent-2"]
+	ev["late_result_outcome"] = outcomes["lane-1"]
+	ev["current_result_outcome"] = outcomes["lane-2"]
 	ev["invocations"] = budget.used
 	ev["elapsed_seconds"] = budget.elapsedSeconds()
 	ev["aborted"] = errors.Is(flowErr, errLiveAborted)
@@ -628,7 +628,7 @@ func runFactoryCardFlow(t *testing.T, tc factoryLiveCase) {
 	if flowErr != nil {
 		t.Fatal(flowErr)
 	}
-	if applied != 1 || outcomes["agent-1"] != factorymsg.ApplyStale || ev["final_state"] != factorymsg.DispatchIntegrated || ev["result_attempt"] != int64(2) {
+	if applied != 1 || outcomes["lane-1"] != factorymsg.ApplyStale || ev["final_state"] != factorymsg.DispatchIntegrated || ev["result_attempt"] != int64(2) {
 		t.Fatalf("card flow result: applied=%d outcomes=%v state=%v attempt=%v", applied, outcomes, ev["final_state"], ev["result_attempt"])
 	}
 }

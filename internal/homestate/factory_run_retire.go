@@ -43,11 +43,11 @@ var ErrRunOwnerNotDead = errors.New("factory run owner is not dead")
 // OwnerClassifier maps a recorded owner identity to a classification.
 type OwnerClassifier func(pid int, processStart string) OwnerClassification
 
-// LeadIdentityLookup resolves a run's registered role='lead' peer identity.
+// LeaderIdentityLookup resolves a run's registered role='lead' peer identity.
 // It is a function parameter rather than an import because the peer lives in a
 // factorymsg broker database and factorymsg imports homestate — the direction
 // is fixed and Go will not permit it to be closed.
-type LeadIdentityLookup func(runID string) (pid int, processStart string, ok bool)
+type LeaderIdentityLookup func(runID string) (pid int, processStart string, ok bool)
 
 // RunOwner is one run row together with its owner classification.
 type RunOwner struct {
@@ -76,14 +76,14 @@ type Reconciliation struct {
 // boot proof. A zero value uses the default classifier, no fallback, and no
 // boot proof.
 type ReconcileOptions struct {
-	Fallback LeadIdentityLookup
+	Fallback LeaderIdentityLookup
 	Classify OwnerClassifier
 	// BootTime reports when the host last booted. Nil, or a false second
 	// result, disables the boot proof.
 	BootTime func() (time.Time, bool)
-	// LeadRecordAbsent reports that the run has no lead-peer record at all —
+	// LegacyPeerRecordAbsent reports that the run has no lead-peer record at all —
 	// not merely one the Fallback failed to read. Nil disables the boot proof.
-	LeadRecordAbsent func(runID string) bool
+	LegacyPeerRecordAbsent func(runID string) bool
 }
 
 // SystemBootTime reports when this host last booted, or false where the
@@ -205,22 +205,22 @@ func (f *FactoryDB) classifyRuns(ctx context.Context, opts ReconcileOptions, sta
 }
 
 // predatesBoot is the boot proof for a run with no owner identity: when the
-// run has no lead-peer record and every timestamp recorded for it — the run
+// run has no legacy peer record and every timestamp recorded for it — the run
 // row, its events, cards, workers, and dead letters — is strictly earlier than
 // the host's last boot, whatever process owned it existed before that boot
 // and cannot be alive now. It is a positive proof of death, not an inference
 // from age: a run with any activity after boot, an unreadable timestamp, an
-// unknown boot time, or a possible lead record is not proven and stays
+// unknown boot time, or a possible legacy peer record is not proven and stays
 // indeterminate (REQ-003b).
 //
 // @MX:WARN: [AUTO] retires a run with no identity at all; every premise must hold or the row stays indeterminate
 // @MX:REASON: a wrong dead verdict retires a live lead's run and has no operator undo (REQ-005)
 func (f *FactoryDB) predatesBoot(ctx context.Context, opts ReconcileOptions, runID string) (_ bool, err error) {
-	if opts.BootTime == nil || opts.LeadRecordAbsent == nil {
+	if opts.BootTime == nil || opts.LegacyPeerRecordAbsent == nil {
 		return false, nil
 	}
 	boot, ok := opts.BootTime()
-	if !ok || boot.IsZero() || !opts.LeadRecordAbsent(runID) {
+	if !ok || boot.IsZero() || !opts.LegacyPeerRecordAbsent(runID) {
 		return false, nil
 	}
 	rows, err := f.DB.QueryContext(ctx, runActivityQuery, runID)
