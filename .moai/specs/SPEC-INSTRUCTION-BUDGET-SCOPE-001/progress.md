@@ -277,6 +277,22 @@ $ go test -v -run 'TestSanitizedPairParity|TestRuleTemplateMirror|TestWorkflowRu
 
 Inbound-anchor burden: zero external files named either moved section (measured pre-move); the companion's internal `§` references all resolve inside it or to the one named parent section. Companion content is template-clean by construction — the neutrality audit over the mirrored companion passes.
 
+### M5 — kanban-dispatch-detail.md under 40,000 (ladder applied in order)
+
+**Rung 3 measured first (the promising instrument):** the overlap between this file and its `kanban-dispatch*` co-loaders is POINTER-shaped — `kanban-dispatch-mechanics.md` (5,224 chars) summarizes each topic in 2-3 sentences and points INTO this file (§ The board, § Review lens selection, § The dispatch cycle, § Factory in-lane 3-stage), so no between-file duplication is removable FROM this file; the measured duplication on the trigger (mechanics' summaries and Boundaries block vs the always-loaded stub) lives in other files, out of this arm's scope. Rung 3 closes for this file with that measurement recorded.
+
+**Rung 1 landed it** — in-place dedup/compression, ten edits: § The board intro no longer repeats the Terminology definitions and its own table; the worktree Terminology row and the Factory labelling paragraph tightened; the dispatch-cycle mailbox prose (measurement-weighting, conditional-collision), Design intent, Card-classes parallelism, settings-drift on-hit, CodeRabbit branch-protection, Report-milestones rationale, Isolation rationale, and the deputy-residency rationale each compressed without losing a clause or a measurement. Measured after edit:
+
+```
+$ python3 -c "…len(io.open('.claude/rules/moai/workflow/kanban-dispatch-detail.md',…))"
+39933          # was 41,034 — saved 1,101, under 40,000 (AC-IBS-002c green)
+$ grep -c '\[HARD\]' …kanban-dispatch-detail.md
+8              # unchanged from M0 — both normative clauses and all six prose mentions intact
+$ cmp -s <local> <mirror> → mirror-identical
+```
+
+No split (rung 4) — earlier rungs sufficed; the naming constraint and companion roster therefore never fired for this file. Paths glob unchanged (guard green in M7's sweep).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
