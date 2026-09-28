@@ -418,3 +418,8 @@ axis.go doc re-anchored. product.md/tech.md rewritten.
 (targeted observation-layer family already green; pre-M5 full hook suite was green at
 343.026s). Full `internal/cli` suite not re-run locally — CI on develop push owns it.
 **Not in this commit**: M8 (docs-site) — separate card per lead instruction.
+
+**Gap closed (post-commit)**: the background full-suite re-run completed —
+`go test ./internal/hook/ -count=1` → `ok 396.204s`, exit 0 (2026-09-29, this tree
+3fa8bd2ab). The full hook package is green on the M5 observation layer. Remaining
+Gap: full `internal/cli` suite — CI on develop push owns it.
