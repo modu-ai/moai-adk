@@ -257,6 +257,10 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		// SPEC-GITSTRAT-WORKFLOW-READER-001 REQ-GWS-009: the production
 		// consumer of the git-strategy workflow interpretation table.
 		{"Git Strategy Workflow", func(v bool) DiagnosticCheck { return checkGitStrategyWorkflow(cwd, v) }},
+		// SPEC-ROLE-NAMING-CODE-001 REQ-RNC-001 / AC-RNC-013: the doctor
+		// factory section — the persisted leader role, with the literal
+		// relaunch message for a legacy run.
+		{factoryRunCheckName, func(v bool) DiagnosticCheck { return checkFactoryRun(cwd, v) }},
 		{"BODP Config", func(v bool) DiagnosticCheck { return checkBODPConfig(cwd, v) }},
 		{"Telemetry Config", func(v bool) DiagnosticCheck { return checkTelemetryConfig(cwd, v) }},
 		{"Glamour Cache", checkGlamourCache},

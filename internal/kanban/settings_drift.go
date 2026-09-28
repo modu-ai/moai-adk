@@ -188,7 +188,7 @@ func DetectSettingsDrift(worktree string, runner SettingsDriftRunner) (int, stri
 // SettingsDriftParams carries what the gate needs. Dir is the caller's working
 // directory (the tree being measured); Root is the PRIMARY checkout, whose
 // state directory receives the preserved copy — a preserved copy inside the
-// card's own worktree is invisible to the lead, who is not in that tree.
+// card's own worktree is invisible to the leader, who is not in that tree.
 type SettingsDriftParams struct {
 	Dir      string
 	Root     string

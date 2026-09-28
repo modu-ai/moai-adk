@@ -1,50 +1,72 @@
 package factorymsg
 
+// worker_slot_test.go — the broker's auto-slot allocator, updated to the
+// SPEC-ROLE-NAMING-CODE-001 vocabulary: the bare `lane` role input takes the
+// next free `lane-<n>` slot probing ONLY the canonical shape; bare legacy
+// role inputs (`worker`, `agent`) are refused, and legacy slots are not
+// addressable (REQ-RNC-009, REQ-RNC-013).
+
 import (
 	"context"
+	"strings"
 	"testing"
 )
 
-// TestRegisterPeerAllocatesWorkerSlots pins the auto-slot allocator on the
-// worker vocabulary: the bare `worker` sentinel (and the legacy bare `agent`
-// sentinel) take the next free `worker-<n>` slot.
-func TestRegisterPeerAllocatesWorkerSlots(t *testing.T) {
+// TestRegisterPeerAllocatesLaneSlots: the bare `lane` sentinel takes the next
+// free `lane-<n>` slot, probing only the canonical shape — a legacy row in
+// the run holds no number.
+func TestRegisterPeerAllocatesLaneSlots(t *testing.T) {
 	store := openTestStore(t)
 	ctx := context.Background()
-	for i, sentinel := range []string{"worker", "agent"} {
-		p := testPeer("run", "alloc-"+sentinel, 0)
-		p.Slot = sentinel
+	for i, want := range []string{"lane-1", "lane-2"} {
+		p := testPeer("run", "alloc-"+want, 0)
+		p.Slot = "lane"
 		got, err := store.RegisterPeer(ctx, p)
 		if err != nil {
-			t.Fatalf("register %s: %v", sentinel, err)
+			t.Fatalf("register lane %d: %v", i+1, err)
 		}
-		want := []string{"worker-1", "worker-2"}[i]
 		if got.Slot != want {
-			t.Errorf("sentinel %q allocated %q, want %q", sentinel, got.Slot, want)
+			t.Errorf("bare lane allocated %q, want %q", got.Slot, want)
 		}
 	}
 }
 
-// TestRegisterPeerLegacySlotRowsStayReadableAndBlockTheirNumber is the
-// persisted-format compat read: a broker.db row written under the legacy
-// `agent-<n>` slot (an older launcher in the same run) keeps its number and
-// stays addressable by its session.
-func TestRegisterPeerLegacySlotRowsStayReadableAndBlockTheirNumber(t *testing.T) {
+// TestRegisterPeerRefusesBareLegacyRoleInputs: `worker` / `agent` as a slot
+// input are refused, never numbered (writers write the new vocabulary).
+func TestRegisterPeerRefusesBareLegacyRoleInputs(t *testing.T) {
+	store := openTestStore(t)
+	ctx := context.Background()
+	for _, sentinel := range []string{"worker", "agent"} {
+		p := testPeer("run", "refused-"+sentinel, 0)
+		p.Slot = sentinel
+		if _, err := store.RegisterPeer(ctx, p); err == nil || !strings.Contains(err.Error(), "lane") {
+			t.Errorf("bare %q = %v, want refusal naming lane", sentinel, err)
+		}
+	}
+}
+
+// TestRegisterPeerLegacySlotRowsIgnoredByLaneNumbering: a broker row written
+// under the legacy `agent-<n>` slot (an older launcher in the run) is never
+// rewritten, and the canonical lane numbering does not step around it — the
+// same-run refusal replaced the shared number space (design §4).
+func TestRegisterPeerLegacySlotRowsIgnoredByLaneNumbering(t *testing.T) {
 	store := openTestStore(t)
 	ctx := context.Background()
 
-	legacy := testPeer("run", "legacy-session", 1) // Slot "agent-1"
+	legacy := testPeer("run", "legacy-session", 1) // Slot "lane-1" via the fixture
+	legacy.Role = "worker"
+	legacy.Slot = "agent-1"
 	if _, err := store.RegisterPeer(ctx, legacy); err != nil {
 		t.Fatalf("seed legacy row: %v", err)
 	}
 	fresh := testPeer("run", "fresh-session", 0)
-	fresh.Slot = "worker"
+	fresh.Slot = "lane"
 	got, err := store.RegisterPeer(ctx, fresh)
 	if err != nil {
-		t.Fatalf("register worker: %v", err)
+		t.Fatalf("register lane: %v", err)
 	}
-	if got.Slot != "worker-2" {
-		t.Errorf("worker allocated %q beside a legacy agent-1 row, want worker-2", got.Slot)
+	if got.Slot != "lane-1" {
+		t.Errorf("lane allocated %q beside a legacy agent-1 row, want lane-1 (legacy holds no number)", got.Slot)
 	}
 	read, err := store.Peer(ctx, "legacy-session")
 	if err != nil || read.Slot != "agent-1" {

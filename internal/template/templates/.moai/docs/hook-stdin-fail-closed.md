@@ -2,9 +2,12 @@
 
 Operator document named in the hook's own denial reason by its path,
 `.moai/docs/hook-stdin-fail-closed.md`. When a hook denies a decision with a
-reason that starts `fail-closed: hook stdin could not be parsed as JSON` and
-ends `(.moai/docs/hook-stdin-fail-closed.md)`, this page explains what
-happened and how to recover.
+reason that names a stdin parse failure and ends
+`(.moai/docs/hook-stdin-fail-closed.md)` — under Claude Code the reason
+itself starts `fail-closed: hook stdin could not be parsed as JSON`, while
+under Codex the wrapping template already says the call was denied
+fail-closed and the reason carries `hook stdin could not be parsed as
+JSON` — this page explains what happened and how to recover.
 
 ## What changed
 
@@ -70,8 +73,11 @@ exempt, as described above.
 
 ## What the denial reason tells you, and does not
 
-The denial's reason string carries the `fail-closed` marker, a fixed
-statement that the cause was a stdin parse failure, and this document's path.
+The denial's reason carries a fixed statement that the cause was a stdin
+parse failure and this document's path. Under Claude Code the reason string
+also carries the `fail-closed` marker; under Codex the marker rides the
+wrapping template's fixed phrase, so the rendered denial says fail-closed
+exactly once.
 Under Claude Code it also tells the model not to edit hook scripts or
 settings files to get past the denial, and to stop and tell a human
 operator: a model handed the bare denial has been seen reading the hook

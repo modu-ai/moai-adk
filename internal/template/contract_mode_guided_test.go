@@ -87,8 +87,76 @@ func grPreservationFindings(rel, stripped, base string) []string {
 	return []string{fmt.Sprintf("%s: text outside the blocks differs from the base (line count %d vs %d)", rel, len(sl), len(bl))}
 }
 
+// grRelocation is one run of text moved verbatim out of a block-bearing
+// target to keep it under its skill LOC ceiling. The source keeps a single
+// pointer line; the moved lines sit at the end of dst, after dstHeader and
+// one blank line. Only these relocations are exempt from byte preservation,
+// and only because the moved lines are put back before the comparison.
+type grRelocation struct {
+	src, pointer, dst, dstHeader string
+}
+
+var grRelocations = []grRelocation{
+	{
+		src:       ".claude/skills/moai/workflows/run.md",
+		pointer:   "Autonomy invariants for the `ac_converge` loop (HARD): Read `workflows/run/phase-execution.md` § 3. Autonomy invariants.",
+		dst:       ".claude/skills/moai/workflows/run/phase-execution.md",
+		dstHeader: "## Run-phase Autonomy invariants (moved from run.md, verbatim)",
+	},
+	{
+		src:       ".claude/skills/moai/workflows/plan/spec-assembly.md",
+		pointer:   "### spec-compact.md Auto-Generation — Read `workflows/plan/context-discovery.md` § spec-compact.md Auto-Generation.",
+		dst:       ".claude/skills/moai/workflows/plan/context-discovery.md",
+		dstHeader: "## spec-compact.md Auto-Generation (moved from spec-assembly.md, verbatim)",
+	},
+}
+
+// grMovedLines returns the lines after dstHeader and its blank line up to
+// the end of dst, trailing newline removed.
+func grMovedLines(dst, dstHeader string) ([]string, bool) {
+	lines := strings.Split(strings.TrimRight(dst, "\n"), "\n")
+	for i, l := range lines {
+		if l == dstHeader && i+2 <= len(lines) && lines[i+1] == "" {
+			return lines[i+2:], true
+		}
+	}
+	return nil, false
+}
+
+// grRestore puts relocated lines back in place of the pointer line; it
+// reports a finding when the pointer or the destination section is missing.
+func grRestore(rel, stripped, dst string, r grRelocation) (string, []string) {
+	moved, ok := grMovedLines(dst, r.dstHeader)
+	if !ok {
+		return stripped, []string{fmt.Sprintf("%s: relocation section %q missing in %s", rel, r.dstHeader, r.dst)}
+	}
+	lines := strings.Split(stripped, "\n")
+	for i, l := range lines {
+		if l == r.pointer {
+			out := append(append(append([]string{}, lines[:i]...), moved...), lines[i+1:]...)
+			return strings.Join(out, "\n"), nil
+		}
+	}
+	return stripped, []string{fmt.Sprintf("%s: relocation pointer line missing", rel)}
+}
+
+// grRelocationFor returns the relocation whose source is rel (either copy).
+func grRelocationFor(rel string) (grRelocation, string, bool) {
+	prefix := ""
+	if strings.HasPrefix(rel, grTemplatePrefix) {
+		prefix = grTemplatePrefix
+	}
+	for _, r := range grRelocations {
+		if prefix+r.src == rel {
+			return r, prefix, true
+		}
+	}
+	return grRelocation{}, "", false
+}
+
 // TestContractModeGuidedPreservation strips every block and requires the
-// result to equal the base copy byte for byte (AC-GR-001).
+// result to equal the base copy byte for byte (AC-GR-001). Relocated runs
+// are restored from their destination first, so a changed moved line fails.
 func TestContractModeGuidedPreservation(t *testing.T) {
 	t.Run("falsifier/word-changed-outside-block", func(t *testing.T) {
 		base := "alpha\nbeta\n"
@@ -98,6 +166,17 @@ func TestContractModeGuidedPreservation(t *testing.T) {
 		}
 		if f := grPreservationFindings("fixture.md", grStrip("alpha\n"+grBlockText("a", grCondition+" x")+"\nbeta\n"), base); len(f) != 0 {
 			t.Fatalf("preservation check rejected a clean additive block: %v", f)
+		}
+	})
+	t.Run("falsifier/relocated-line-changed", func(t *testing.T) {
+		r := grRelocation{pointer: "-> see dst", dstHeader: "## moved"}
+		base := "alpha\nbeta\ngamma\n"
+		if got, f := grRestore("fixture.md", "alpha\n-> see dst\ngamma\n", "x\n\n## moved\n\nbeta\n", r); len(f) != 0 || got != base {
+			t.Fatalf("clean relocation not restored: %q %v", got, f)
+		}
+		got, _ := grRestore("fixture.md", "alpha\n-> see dst\ngamma\n", "x\n\n## moved\n\nbetta\n", r)
+		if f := grPreservationFindings("fixture.md", got, base); len(f) == 0 {
+			t.Fatal("preservation check accepted a changed relocated line")
 		}
 	})
 	t.Run("tree", func(t *testing.T) {
@@ -113,7 +192,15 @@ func TestContractModeGuidedPreservation(t *testing.T) {
 				t.Errorf("%s: absent at the base ref", rel)
 				continue
 			}
-			for _, f := range grPreservationFindings(rel, grStrip(cur), want) {
+			got := grStrip(cur)
+			if r, prefix, ok := grRelocationFor(rel); ok {
+				var rf []string
+				got, rf = grRestore(rel, got, grRead(t, root, prefix+r.dst), r)
+				for _, f := range rf {
+					t.Error(f)
+				}
+			}
+			for _, f := range grPreservationFindings(rel, got, want) {
 				t.Error(f)
 			}
 		}
@@ -185,6 +272,14 @@ func grAllowed(p string) bool {
 	for _, tg := range grTargets {
 		exact = append(exact, tg.path)
 	}
+	// Post-merge CI repair: the relocation destinations (skill LOC ceiling)
+	// and the two MOAI_HOME inertness tests re-scoped to detector writes.
+	for _, r := range grRelocations {
+		exact = append(exact, r.dst)
+	}
+	exact = append(exact, "internal/escalation/detector_paths_test.go", "internal/hook/escalation_m5_test.go",
+		// The relocated spec-compact section carries an allowlisted deadline.
+		"internal/template/internal_content_leak_test.go")
 	for _, e := range exact {
 		if p == e || p == grTemplatePrefix+e {
 			return true

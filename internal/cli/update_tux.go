@@ -133,9 +133,9 @@ func renderClassificationSummary(add, update, conflict int, th tui.Theme) string
 // "N/M steps" count. It replaces the legacy "N/M steps complete" plain text
 // with the block bar (REQ-TUXIU-014, AC-TUXIU-005).
 func renderDeployProgress(done, total int, th tui.Theme) string {
-	lead := deployStepStateIcon(stepDone, th)
+	prefix := deployStepStateIcon(stepDone, th)
 	bar := tui.Progress(done, total, tui.ProgressOpts{Theme: &th, Width: 10})
-	return fmt.Sprintf("  %s %s %d/%d steps", lead, bar, done, total)
+	return fmt.Sprintf("  %s %s %d/%d steps", prefix, bar, done, total)
 }
 
 // renderUpdateOutcome writes the completion outcome as a solid success pill

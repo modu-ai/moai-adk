@@ -131,7 +131,7 @@ func guardLivenessSinkOption() guardliveness.Option {
 // reader sees the most recent COMPLETED refresh with its age disclosed.
 //
 // The operator supplies nothing. No guard name, no workflow file, no query —
-// which is precisely the input the lead session of spec.md §A.4 did not have
+// which is precisely the input the leader session of spec.md §A.4 did not have
 // and could not have produced. A verdict that answers only when asked has
 // relocated the defect into whoever is expected to already know the question.
 //

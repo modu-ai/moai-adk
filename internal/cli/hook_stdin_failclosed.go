@@ -63,16 +63,19 @@ func harnessOf(codex bool) codexadapter.Harness {
 }
 
 // stdinParseFailClosedReason is the reason a fail-closed deny carries for
-// harness: the marker, the fixed cause, and the operator document identifier —
-// nothing derived from the payload and no recovery steps (REQ-HSF-010,
-// REQ-HSF-011). Under Claude the reason also tells the model not to edit hooks
-// or settings and to stop and tell a human (SPEC-HOOK-STOP-PARSE-CAP-001
-// REQ-SPC-010); the Codex reason is unchanged (REQ-SPC-009).
+// harness: the fixed cause and the operator document identifier — nothing
+// derived from the payload and no recovery steps (REQ-HSF-010 as amended by
+// card t1233, REQ-HSF-011). Under Claude the reason also carries the
+// fail-closed marker and tells the model not to edit hooks or settings and to
+// stop and tell a human (SPEC-HOOK-STOP-PARSE-CAP-001 REQ-SPC-010). The Codex
+// reason carries neither: TranslateCodex wraps it in the fatal_error
+// template, which already says the call was denied fail-closed, so a marker
+// here rendered it twice (card t1233, t1152 sync-audit F7).
 func stdinParseFailClosedReason(harness codexadapter.Harness) string {
 	if harness == codexadapter.HarnessClaude {
 		return "fail-closed: " + stdinParseFailureCause + ". " + stdinParseFailClosedInstruction + " (" + stdinParseFailClosedDocID + ")"
 	}
-	return "fail-closed: " + stdinParseFailureCause + " (" + stdinParseFailClosedDocID + ")"
+	return stdinParseFailureCause + " (" + stdinParseFailClosedDocID + ")"
 }
 
 // @MX:WARN: [AUTO] a Stop that fails to parse is blocked under Claude on every turn, and the host's Stop block cap does not reliably end that loop — measured on Claude Code 2.1.283 (t1230, t1272): at the default cap the host ended the turn after 9 blocks only when no tool use came in between (tool use appears to restart its count), and at the raised cap of 200 the launcher injects for kanban/factory sessions and for sessions with an infinite goal armed at launch (launcher_blockcap_infinite.go) the loop ran to the turn limit; so moai's own cap (applyStopParseCap, N=8 consecutive parse-failure Stops per counting key) releases the ninth; under Codex the same Stop is exempt because Codex was measured with no cap

@@ -334,6 +334,10 @@ func TestRunDiagnosticChecks_AllChecksHaveValidStatus(t *testing.T) {
 		uikit.CheckOK:   true,
 		uikit.CheckWarn: true,
 		uikit.CheckFail: true,
+		// CheckInfo is a valid terminal status: the Factory Run check reports
+		// "no session records" as informational (SPEC-ROLE-NAMING-CODE-001
+		// M3), and the codex-only downgrade path rewrites absence warnings
+		// to info.
 		uikit.CheckInfo: true,
 	}
 	for i, check := range checks {

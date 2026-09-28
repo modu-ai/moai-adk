@@ -9,7 +9,7 @@ package kanban
 // Indeterminate never arises here, so there is no conservative default to
 // pick — unlike the Windows twin.
 //
-// Moved from internal/cli (t85 lead loop) unchanged in behavior; the cli
+// Moved from internal/cli (t85 leader loop) unchanged in behavior; the cli
 // package keeps a package var seam over it.
 
 import (

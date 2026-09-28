@@ -126,14 +126,12 @@ func withCodexLaunchCapture(t *testing.T) *codexLaunchCapture {
 	// launch-mechanics cells use plain directories, so they are pinned open
 	// here. Cells that measure the anchor restore the real bodies with
 	// withRealCodexWorktreeAnchor.
-	prevCheck, prevLock, prevBase, prevResolve := codexWorktreeWriterCheck, codexWorktreeAnchorLock, codexWorktreeBaseCheck, codexResolveBaseCommit
+	prevCheck, prevLock := codexWorktreeWriterCheck, codexWorktreeAnchorLock
 	codexWorktreeWriterCheck = func(string) error { return nil }
 	codexWorktreeAnchorLock = func(string, int, string) error { return nil }
-	codexWorktreeBaseCheck = func(string, string, string) error { return nil }
-	codexResolveBaseCommit = func(string, string) (string, error) { return "", nil }
 	t.Cleanup(func() {
 		codexDirectLaunchFn, codexSpawnLaunchFn, codexLookPath = prevDirect, prevSpawn, prevLook
-		codexWorktreeWriterCheck, codexWorktreeAnchorLock, codexWorktreeBaseCheck, codexResolveBaseCommit = prevCheck, prevLock, prevBase, prevResolve
+		codexWorktreeWriterCheck, codexWorktreeAnchorLock = prevCheck, prevLock
 	})
 	return cap
 }
@@ -934,7 +932,7 @@ func TestCodexSpawnUnderLaneEnvRegistersNoFactoryPeer(t *testing.T) {
 	_ = db.Close()
 	t.Setenv(config.EnvMoaiKanbanID, run)
 	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
-	t.Setenv(config.EnvMoaiFactoryWorker, "worker-1")
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	start, state := homestate.ProbeProcessIdentity(os.Getpid())
 	if state != homestate.ProcessIdentityLive || start == "" {

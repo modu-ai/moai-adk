@@ -64,7 +64,7 @@ func newBindSeed(t *testing.T) *bindFixture {
 	}
 	t.Cleanup(func() { _ = f.s.Close() })
 	f.ownerStart = currentOwnerStart(t)
-	f.lead = seedBoundPeer(t, f.s, Peer{ProjectKey: "project", RunID: f.run, Backend: "claude", Role: "lead", Slot: "lead", PID: os.Getpid(), ProcessStart: f.ownerStart}, "lead-uuid")
+	f.lead = seedBoundPeer(t, f.s, Peer{ProjectKey: "project", RunID: f.run, Backend: "claude", Role: "leader", Slot: "leader", PID: os.Getpid(), ProcessStart: f.ownerStart}, "lead-uuid")
 	f.source = seedBoundPeer(t, f.s, Peer{ProjectKey: "project", RunID: f.run, Backend: "codex", Role: "worker", Slot: bindSlot, PID: os.Getpid(), ProcessStart: "fake-source-start"}, "src-uuid")
 	return f
 }

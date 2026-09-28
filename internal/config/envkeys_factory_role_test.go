@@ -9,6 +9,10 @@ package config
 // inside the closed set REQ-AP-009 names: {EnvFactoryRole} ∪
 // {CLAUDECODE, CLAUDE_CODE_SESSION_ID}, with no literal re-spelled anywhere
 // in internal/hook.
+//
+// SPEC-ROLE-NAMING-CODE-001 M4 (REQ-RNC-012): the role value constant is
+// FactoryRoleLane = "lane" — the value follows the leader/lane vocabulary.
+// The legacy spellings `worker` and `agent` are not accepted.
 
 import (
 	"os"
@@ -20,16 +24,17 @@ import (
 
 // TestFactoryRoleEnvConstant pins AC-AP-017: the name constant's value is
 // exactly MOAI_FACTORY_ROLE, the role-value constant's value is exactly the
-// canonical CLI spelling `worker` (the retired alias `agent` is not accepted,
-// spec.md §F O5), the guard carries no repeated literal, and the guard reads
-// no environment variable outside the closed set.
+// canonical `lane` spelling (the legacy `worker` and `agent` spellings are
+// not accepted, SPEC-ROLE-NAMING-CODE-001 REQ-RNC-012), the guard carries no
+// repeated literal, and the guard reads no environment variable outside the
+// closed set.
 func TestFactoryRoleEnvConstant(t *testing.T) {
 	if EnvFactoryRole != "MOAI_FACTORY_ROLE" {
 		t.Fatalf("EnvFactoryRole = %q, want %q", EnvFactoryRole, "MOAI_FACTORY_ROLE")
 	}
-	if FactoryRoleWorker != "worker" {
-		t.Fatalf("FactoryRoleWorker = %q, want %q — the canonical CLI role spelling; the retired alias `agent` is not accepted (spec.md §F O5)",
-			FactoryRoleWorker, "worker")
+	if FactoryRoleLane != "lane" {
+		t.Fatalf("FactoryRoleLane = %q, want %q — the canonical lane spelling; the legacy `worker` and `agent` spellings are not accepted (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-012)",
+			FactoryRoleLane, "lane")
 	}
 
 	// AC-AP-017 limb: the guard and its tests reference the constants, not a

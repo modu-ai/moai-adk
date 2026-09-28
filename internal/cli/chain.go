@@ -8,7 +8,7 @@ package cli
 // moai chain list     — enumerate all nodes with staleness status
 // moai chain prune    — fold old exited nodes into archive (M5)
 //
-// All subcommands are flag-agnostic (no kanban/factory/lead dependency).
+// All subcommands are flag-agnostic (no kanban/factory/leader dependency).
 // The CLI preserves the orchestrator-only interaction boundary (REQ-CHAIN-018).
 
 import (
