@@ -14,9 +14,10 @@
 // Extended by SPEC-TODO-TRANSITION-STAMPS-001 (card t1310), AC-TST-011 —
 // the recorded schema decision: items gains nullable picked_at and
 // dropped_at; archived_items gains nullable picked_at, dropped_at (the
-// stamps preserved into the archive, REQ-TST-007) and archived_at. Pure
-// additive columns via the pragma_table_info-gated ADD COLUMN pattern; no
-// table rebuild, no constraint change, schema_version stays "1".
+// stamps preserved into the archive, REQ-TST-007), archived_at, and the
+// done-time landing_verdict record (REQ-TST-008). Pure additive columns via
+// the pragma_table_info-gated ADD COLUMN pattern; no table rebuild, no
+// constraint change, schema_version stays "1".
 package kanban
 
 import (
@@ -128,7 +129,8 @@ func TestTodoHistoryAddsNoSchemaChange(t *testing.T) {
 		"landing:TEXT:0:NULL " +
 		"picked_at:TEXT:0:NULL " +
 		"dropped_at:TEXT:0:NULL " +
-		"archived_at:TEXT:0:NULL"
+		"archived_at:TEXT:0:NULL " +
+		"landing_verdict:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "archived_items"); got != wantArchivedItemsColumns {
 		t.Errorf("archived_items column tuples =\n %s\nwant\n %s", got, wantArchivedItemsColumns)
 	}

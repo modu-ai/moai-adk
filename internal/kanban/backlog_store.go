@@ -215,6 +215,12 @@ type BacklogArchiveEntry struct {
 	// wholesale — so the archived row is the card's final, readable home
 	// (REQ-TST-007).
 	ArchivedAt *string `json:"archived_at,omitempty"`
+	// LandingVerdict is ADDITIVE (SPEC-TODO-TRANSITION-STAMPS-001
+	// REQ-TST-008): the done-time landing query's answer — verdict, answering
+	// ref, verdict time — persisted alongside, never instead of, the
+	// operator-authored evidence in Item.Landing (REQ-TST-009). It carries no
+	// SHA by construction; see kanban/landing_verdict.go.
+	LandingVerdict *LandingVerdict `json:"landing_verdict,omitempty"`
 }
 
 // BacklogRecord is the backlog file's document shape. LastSeq is the

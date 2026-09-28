@@ -63,7 +63,8 @@ func TestBacklogLanding_ArchivedItemsColumnShape(t *testing.T) {
 		"landing:TEXT:0:NULL " +
 		"picked_at:TEXT:0:NULL " +
 		"dropped_at:TEXT:0:NULL " +
-		"archived_at:TEXT:0:NULL"
+		"archived_at:TEXT:0:NULL " +
+		"landing_verdict:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "archived_items"); got != want {
 		t.Errorf("archived_items column tuples =\n %s\nwant\n %s", got, want)
 	}

@@ -122,7 +122,7 @@ func TestTransitionStampColumns_FreshUpgradedConverge(t *testing.T) {
 	if got := strings.Join(columnNames(t, freshEng, "items"), " "); got != wantItems {
 		t.Errorf("items columns = %q, want %q (old columns as a prefix, in order)", got, wantItems)
 	}
-	const wantArchived = "seq id text added_at spec_id state position landing picked_at dropped_at archived_at"
+	const wantArchived = "seq id text added_at spec_id state position landing picked_at dropped_at archived_at landing_verdict"
 	if got := strings.Join(columnNames(t, freshEng, "archived_items"), " "); got != wantArchived {
 		t.Errorf("archived_items columns = %q, want %q (old columns as a prefix, in order)", got, wantArchived)
 	}

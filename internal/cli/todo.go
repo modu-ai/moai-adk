@@ -726,7 +726,28 @@ func newTodoDoneCmd() *cobra.Command {
 					}
 					verdict = answer
 				}
-				return rec.ArchiveCard(id)
+				if err := rec.ArchiveCard(id); err != nil {
+					return err
+				}
+				if requireLanded {
+					// REQ-TST-008: the answering path persists what the query
+					// said — verdict, answering ref, verdict time — onto the
+					// entry ArchiveCard just appended, alongside (never
+					// instead of) any operator-recorded evidence the row
+					// already carried (REQ-TST-009). Without the flag nothing
+					// is persisted here: no query ran, so no invented answer
+					// and no fabricated record. The record carries no SHA —
+					// a query-derived SHA is outside the evidence store's
+					// write authority, and the delivering SHA is re-derived
+					// at re-adjudication by re-running the predicate against
+					// the recorded ref (REQ-TST-013).
+					rec.Archived[len(rec.Archived)-1].LandingVerdict = &kanban.LandingVerdict{
+						Verdict: verdict,
+						Ref:     ref,
+						At:      time.Now().UTC().Format(time.RFC3339),
+					}
+				}
+				return nil
 			}); err != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err

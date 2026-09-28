@@ -453,11 +453,11 @@ func (e *backlogEngine) ensureLandingColumn(ctx context.Context) error {
 // migration discipline as the landing column. items carries picked_at and
 // dropped_at; archived_items carries the same two stamps — the archive
 // preserves them as they stood at archive time (REQ-TST-007) — plus
-// archived_at. Compile-time constants only: nothing here is ever fed from a
-// runtime value.
+// archived_at and the done-time landing verdict record (REQ-TST-008).
+// Compile-time constants only: nothing here is ever fed from a runtime value.
 var backlogTransitionStampColumns = map[string][]string{
 	"items":          {"picked_at", "dropped_at"},
-	"archived_items": {"picked_at", "dropped_at", "archived_at"},
+	"archived_items": {"picked_at", "dropped_at", "archived_at", "landing_verdict"},
 }
 
 // ensureTransitionStampColumns runs the stamp columns through the same

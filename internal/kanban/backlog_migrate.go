@@ -230,9 +230,13 @@ func (e *backlogEngine) readArchive(ctx context.Context, rec *BacklogRecord) err
 	if err != nil {
 		return err
 	}
+	verdictExpr, err := e.columnExpr(ctx, "archived_items", "landing_verdict")
+	if err != nil {
+		return err
+	}
 	rows, err := e.queryDB().QueryContext(ctx,
 		`SELECT seq, id, text, added_at, spec_id, state, position, `+landingColumn+`, `+
-			pickedAtExpr+`, `+droppedAtExpr+`, `+archivedAtExpr+` FROM archived_items ORDER BY seq`)
+			pickedAtExpr+`, `+droppedAtExpr+`, `+archivedAtExpr+`, `+verdictExpr+` FROM archived_items ORDER BY seq`)
 	if err != nil {
 		return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
 	}
@@ -246,8 +250,9 @@ func (e *backlogEngine) readArchive(ctx context.Context, rec *BacklogRecord) err
 		var landing sql.NullString
 		var state string
 		var pickedAt, droppedAt, archivedAt sql.NullString
+		var verdict sql.NullString
 		if err := rows.Scan(&seq, &entry.Item.ID, &entry.Item.Text, &entry.Item.AddedAt,
-			&specID, &state, &entry.Position, &landing, &pickedAt, &droppedAt, &archivedAt); err != nil {
+			&specID, &state, &entry.Position, &landing, &pickedAt, &droppedAt, &archivedAt, &verdict); err != nil {
 			return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
 		}
 		if specID.Valid {
@@ -276,6 +281,16 @@ func (e *backlogEngine) readArchive(ctx context.Context, rec *BacklogRecord) err
 		if archivedAt.Valid {
 			v := archivedAt.String
 			entry.ArchivedAt = &v
+		}
+		if verdict.Valid {
+			// Same surfaced-not-dropped contract as the landing evidence: the
+			// encoder is the column's only writer and refuses every invalid
+			// shape, so an undecodable value is external corruption.
+			v, decErr := DecodeLandingVerdict(verdict.String)
+			if decErr != nil {
+				return fmt.Errorf("load backlog archive %s: item %s: %w", e.dbPath, entry.Item.ID, decErr)
+			}
+			entry.LandingVerdict = &v
 		}
 		entry.Item.State = BacklogState(state)
 		entry.Findings = []BacklogArchivedFinding{}
@@ -353,12 +368,20 @@ func (e *backlogEngine) writeArchive(ctx context.Context, tx *sql.Tx, rec *Backl
 		if entry.ArchivedAt != nil {
 			archivedAt = *entry.ArchivedAt
 		}
+		// The verdict record is written ONLY through its own seam, so
+		// REQ-TST-010's "no verdict without its ref" holds by the type: a
+		// record without its answering ref is refused here, aborting the
+		// write, rather than reaching the column.
+		verdict, verdictErr := LandingVerdictValue(entry.LandingVerdict)
+		if verdictErr != nil {
+			return fmt.Errorf("write backlog archive %s: item %s: %w", e.dbPath, entry.Item.ID, verdictErr)
+		}
 		seq := i + 1
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO archived_items(seq, id, text, added_at, spec_id, state, position, landing, picked_at, dropped_at, archived_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO archived_items(seq, id, text, added_at, spec_id, state, position, landing, picked_at, dropped_at, archived_at, landing_verdict)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			seq, entry.Item.ID, entry.Item.Text, entry.Item.AddedAt, specID,
-			string(entry.Item.State), entry.Position, landing, pickedAt, droppedAt, archivedAt); err != nil {
+			string(entry.Item.State), entry.Position, landing, pickedAt, droppedAt, archivedAt, verdict); err != nil {
 			return mapBacklogWriteError(e.dbPath, entry.Item.ID, err)
 		}
 		for _, af := range entry.Findings {
@@ -851,6 +874,10 @@ func assertBacklogParity(source, migrated *BacklogRecord) error {
 			return fmt.Errorf("archived %d (%s): archived_at %v != %v", i, want.Item.ID,
 				derefSpecID(want.ArchivedAt), derefSpecID(got.ArchivedAt))
 		}
+		if !equalLandingVerdict(want.LandingVerdict, got.LandingVerdict) {
+			return fmt.Errorf("archived %d (%s): landing_verdict %v != %v", i, want.Item.ID,
+				derefLandingVerdict(want.LandingVerdict), derefLandingVerdict(got.LandingVerdict))
+		}
 		if len(want.Findings) != len(got.Findings) {
 			return fmt.Errorf("archived %d (%s): finding count %d != %d", i, want.Item.ID,
 				len(want.Findings), len(got.Findings))
@@ -909,6 +936,24 @@ func derefLandingEvidence(p *LandingEvidence) any {
 
 // derefSpecID renders a spec-id pointer for an error message.
 func derefSpecID(p *string) any {
+	if p == nil {
+		return nil
+	}
+	return *p
+}
+
+// equalLandingVerdict compares two verdict-record pointers by null-shape AND
+// value, the same two-part test equalLandingEvidence applies — every field is
+// a string, so == is exact, and a field added later is covered automatically.
+func equalLandingVerdict(a, b *LandingVerdict) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return *a == *b
+}
+
+// derefLandingVerdict renders a verdict-record pointer for an error message.
+func derefLandingVerdict(p *LandingVerdict) any {
 	if p == nil {
 		return nil
 	}
