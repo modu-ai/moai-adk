@@ -117,7 +117,7 @@ func TestSchemaSelectOptions_Localized(t *testing.T) {
 }
 
 // TestModelPolicyLabels_AgreeWithProfileMatrix was removed with the per-agent
-// profile matrix (SPEC-AGENT-MODEL-INHERIT-001 M5): its derivation source,
-// template.DefaultProfileMatrix, no longer exists. The "Agent model policy"
-// tier lines are now hand-written prose with no matrix to derive from; their
+// profile matrix (SPEC-AGENT-MODEL-INHERIT-001 M5): its derivation source (the
+// deleted template matrix) no longer exists. The "Agent model policy" tier
+// lines are now hand-written prose with no matrix to derive from; their
 // main-session rewording is design H24 (doctrine-text surface), outside M5.

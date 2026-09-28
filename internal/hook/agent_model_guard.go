@@ -1,11 +1,11 @@
 // agent_model_guard.go — PreToolUse observation of per-agent model injection.
 //
-// The model-profile resolver (template.ResolveAgentModelEffort) computes a
-// {model, effort} cell for every retained agent, but nothing has ever checked
-// whether that computed model actually reaches a spawn. This file adds the
-// missing inspector: on a PreToolUse event for the Agent (formerly Task) tool it
-// extracts the agent identifier and the declared model from the spawn payload,
-// asks the resolver what the model SHOULD be, and records a structured verdict.
+// Subagents inherit the main session's model and effort, so the expectation for
+// a spawn is DECLARATION-ONLY: what the spawn declares is what it runs. This
+// file is the inspector: on a PreToolUse event for the Agent (formerly Task)
+// tool it extracts the agent identifier and the declared model from the spawn
+// payload, and records a structured verdict — the declared model verbatim, or
+// the `inherit` sentinel when the spawn declares none.
 //
 // Layering (each layer is independently reversible):
 //

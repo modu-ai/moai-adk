@@ -349,7 +349,13 @@ in doctrine; no text claims a deny or opt-in exists or that the log is gone.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — see §E.2 succession block for the current state>_
+RUN-PHASE AUDIT-READY (2026-09-29, worker-71 lane). M0-M4·M6·M7 (prior sessions) + M5 (worker-66
+`3fa8bd2ab`·`c9f98c374`·`f68c867ff` + the delegation remainder landed by the lane) are on the
+branch; §E.2 carries both writers' evidence. M8 (docs-site) is split to card t1300 (lead dispatch
+2026-09-28) and is no longer run-phase work of this SPEC. Remaining gap: full `internal/cli` suite
+— CI on develop push owns it. Two residuals flagged for sync-audit adjudication: AC-AMI-008's
+self-referential literal (see the delegation addendum below) and coverage 81.7%/83.8% vs the 85%
+target (PASS-WITH-DEBT).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
@@ -423,3 +429,51 @@ axis.go doc re-anchored. product.md/tech.md rewritten.
 `go test ./internal/hook/ -count=1` → `ok 396.204s`, exit 0 (2026-09-29, this tree
 3fa8bd2ab). The full hook package is green on the M5 observation layer. Remaining
 Gap: full `internal/cli` suite — CI on develop push owns it.
+
+### M5 completion — delegation addendum (worker-71 → manager-develop; landed 2026-09-29)
+
+**Dual-writer record.** The M5 edit set was executed twice in parallel on this tree: the original
+owner (worker-66) and a delegated manager-develop spawned by the succession lane (worker-71,
+kickoff-approved in the lane window 2026-09-28). The two edit sets substantially coincided;
+worker-66's `3fa8bd2ab` swept in most of the delegation's in-flight edits. The delegation committed
+nothing and stopped on collision detection; the residue below is its uncommitted remainder, landed
+by the lane in this commit. Lead adjudication of the dual dispatch is pending (second occurrence;
+precedent t1295).
+
+**Delegation remainder landed in this commit (+9/−9, comment-only)**: `internal/hook/agent_model_guard.go`
+header rewritten from the deleted-resolver description to the declared/inherit semantics;
+`internal/cli/profile_setup_schema_options_test.go` removal-note reworded to drop the literal
+`DefaultProfileMatrix` token.
+
+**Complementary evidence (delegated manager-develop, measured on tree `522b33737` + the uncommitted
+M5 set — NOT on `3fa8bd2ab`; attribution per VCI §2)**:
+- RED (the residue the landed set missed): `go vet` at the pre-fix tree reported
+  `served_model_stop_test.go:73-79` unknown fields `Profile/Profiles/AgentOverrides` and
+  `profile_setup_schema_options_test.go:141-153` undefined `template.DefaultProfileMatrix`,
+  `PerformanceTierHigh/Medium/Low` — resolved by adaptation (selector
+  `TestModelPolicyLabels_AgreeWithProfileMatrix` + `effortRank` removed), not symbol restoration.
+- Coverage: `go test -cover ./internal/config/ ./internal/template/` → **81.7% / 83.8% — below the
+  85% target**; PASS-WITH-DEBT for sync-audit (deleting producers together with their tests moves
+  numerator and denominator together; no in-card prior figure exists to attribute a delta).
+- Budget: `TestAlwaysLoadedTokenBudget` PASS — surface 66,925 / 77,600, headroom 10,675 (down from
+  12,293; the template key removal worked as predicted).
+- Rosterguard: the three tests red since M1 (`TestNumeralResidualArithmeticCloses`,
+  `TestNumeralBreadthSetEqualsTheDeclaredUnion`, `TestRegisteredSitesMatchTheirDeclaredAxis`) →
+  **0 red** after the M5 site removals; suite ran non-empty (18-24s).
+- Lint (v2.1.6, CI version): 0 issues on config/template/hook/web/rosterguard + cli (equals
+  baseline). Subagent-boundary grep: no output. `TestServedModel*|AgentModelGuard*` incl.
+  declared→records-model / no-declaration→`inherit` cases: PASS.
+
+**Final-HEAD re-measurement (this commit's tree)**: AC-AMI-008 grep
+(`grep -rnE 'ResolveAgentModelEffort|DefaultProfileMatrix|ResolveHarnessAgentModelEffort' --include=*.go internal cmd pkg`)
+→ exactly one residual line, `internal/web/mcp_audit_surface_test.go:92` — the absence-assertion
+test that searches MCP tool descriptions FOR these symbols; the literal is the search term itself,
+so the criterion as written is self-referential (the proof of absence carries the symbol name).
+Recorded as PASS-with-deviation for sync-audit adjudication; no grep was gamed. The two comment
+hits are gone — both arms observed: HEAD pre-commit → 2 hits; working tree → 0 outside the literal.
+`go build ./...` → exit 0. Tree-built binary `model profile --json` → exits non-zero
+(unknown-command). Raw outputs under `.moai/state/verify/t1246/`.
+
+**Unassigned residual**: design H24 (profile-setup "Agent model policy" label rewording, 4 locales)
+was skipped by the landed M7 and is stale under inheritance — lead to assign (candidate: t1300's
+documentation scope).
