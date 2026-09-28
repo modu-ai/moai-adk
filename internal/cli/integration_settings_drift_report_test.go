@@ -62,7 +62,7 @@ func TestSettingsDriftReportNamesTheTreeInEveryState(t *testing.T) {
 	for _, want := range []string{
 		"DRIFT", "/tmp/lane-tree/.claude/settings.json", "abc123",
 		"settings.json.t488.x.abc123", "bypassed", "preserve failed", "disk full",
-		"report this to the lead", "Nothing was restored",
+		"report this to the leader", "Nothing was restored",
 	} {
 		if !strings.Contains(drift, want) {
 			t.Errorf("drift report is missing %q:\n%s", want, drift)

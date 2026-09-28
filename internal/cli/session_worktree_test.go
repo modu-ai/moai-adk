@@ -175,6 +175,9 @@ func TestEnterSessionWorktree_EnvForcesOn(t *testing.T) {
 	if !strings.HasPrefix(got, wantPrefix) {
 		t.Fatalf("worktree path %q does not start with %q", got, wantPrefix)
 	}
+	if want := filepath.Join("/repo", ".moai", "worktrees", "WT-abcdef12-init"); got != want {
+		t.Fatalf("MoAI worktree path = %q, want %q", got, want)
+	}
 }
 
 // TestEnterSessionWorktree_AlreadyInWorktreeSkips is REQ-SW-012: when cwd is

@@ -26,7 +26,7 @@ import (
 //
 // The pin lives in workflow.yaml — NOT llm.yaml — because llm.yaml is
 // gitignored and wiped by `moai update`, so a pin there would be uncommitable
-// and non-durable (plan-audit MF1 / lead ruling C).
+// and non-durable (plan-audit MF1 / leader ruling C).
 func loadWorkflowAuditSection(projectDir string) (config.AuditConfig, error) {
 	workflowPath := filepath.Join(projectDir, ".moai", "config", "sections", "workflow.yaml")
 

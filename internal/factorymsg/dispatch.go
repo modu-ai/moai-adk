@@ -148,17 +148,17 @@ func (s *Store) assigneeTransition(ctx context.Context, assignee Peer, dispatchI
 	})
 }
 
-// IntegrateDispatch is the lead's result_recorded -> integrated transition.
+// IntegrateDispatch is the leader's result_recorded -> integrated transition.
 func (s *Store) IntegrateDispatch(ctx context.Context, dispatchID string) (Dispatch, error) {
-	return s.leadTransition(ctx, dispatchID, DispatchIntegrated, DispatchResultRecorded)
+	return s.leaderTransition(ctx, dispatchID, DispatchIntegrated, DispatchResultRecorded)
 }
 
-// AbandonDispatch is the lead's give-up transition from any non-terminal state.
+// AbandonDispatch is the leader's give-up transition from any non-terminal state.
 func (s *Store) AbandonDispatch(ctx context.Context, dispatchID string) (Dispatch, error) {
-	return s.leadTransition(ctx, dispatchID, DispatchAbandoned, DispatchAssigned, DispatchDelivered, DispatchStarted)
+	return s.leaderTransition(ctx, dispatchID, DispatchAbandoned, DispatchAssigned, DispatchDelivered, DispatchStarted)
 }
 
-func (s *Store) leadTransition(ctx context.Context, dispatchID, to string, from ...string) (Dispatch, error) {
+func (s *Store) leaderTransition(ctx context.Context, dispatchID, to string, from ...string) (Dispatch, error) {
 	return s.dispatchTx(ctx, dispatchID, func(_ *sql.Tx, d Dispatch, err error) (string, []any, error) {
 		if err != nil {
 			return "", nil, err
@@ -171,7 +171,7 @@ func (s *Store) leadTransition(ctx context.Context, dispatchID, to string, from 
 }
 
 // ReassignDispatch starts a new attempt on another (or the same) lane. The
-// previous owner must be confirmed not live, or the lead must revoke it
+// previous owner must be confirmed not live, or the leader must revoke it
 // explicitly. Results reported for the previous attempt are stale afterwards.
 func (s *Store) ReassignDispatch(ctx context.Context, dispatchID string, attempt int64, to Peer, revoke bool) (Dispatch, error) {
 	return s.dispatchTx(ctx, dispatchID, func(tx *sql.Tx, d Dispatch, err error) (string, []any, error) {

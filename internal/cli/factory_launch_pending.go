@@ -10,6 +10,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 func launchEnvValue(env []string, key string) string {
@@ -33,9 +34,9 @@ func factoryLaunchEnabled(env []string) bool {
 // actual session UUID through Store.RegisterPeer's owner-preserving upsert.
 func registerFactoryLaunchPending(ctx context.Context, root string, env []string, pid int, processStart string) (_ factorymsg.Peer, err error) {
 	runID := strings.TrimSpace(launchEnvValue(env, config.EnvMoaiKanbanID))
-	worker := strings.TrimSpace(launchEnvValue(env, config.EnvMoaiFactoryWorker))
-	workers := strings.TrimSpace(launchEnvValue(env, config.EnvMoaiFactoryWorkers))
-	if runID == "" || (worker == "" && workers == "") {
+	laneLabel := strings.TrimSpace(launchEnvValue(env, config.EnvMoaiFactoryWorker))
+	laneCountEnv := strings.TrimSpace(launchEnvValue(env, config.EnvMoaiFactoryWorkers))
+	if runID == "" || (laneLabel == "" && laneCountEnv == "") {
 		return factorymsg.Peer{}, nil
 	}
 	if root == "" || pid < 1 || strings.TrimSpace(processStart) == "" {
@@ -44,9 +45,15 @@ func registerFactoryLaunchPending(ctx context.Context, root string, env []string
 	if err := factorymsg.ValidateActiveRun(ctx, root, runID); err != nil {
 		return factorymsg.Peer{}, err
 	}
-	role, slot := "lead", "lead"
-	if worker != "" {
-		role, slot = "worker", worker
+	// Persisted vocabulary: `leader` for the run's leader, `lane`/`lane-<n>`
+	// for a lane (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-010). A legacy label in
+	// the launch environment is refused — never registered.
+	role, slot := kanban.RoleLeader, kanban.RoleLeader
+	if laneLabel != "" {
+		if kanban.IsLegacyFactoryRoleValue(laneLabel) {
+			return factorymsg.Peer{}, fmt.Errorf("factory lane label %q is legacy vocabulary; relaunch under the lane vocabulary (lane-<n>)", laneLabel)
+		}
+		role, slot = kanban.RoleLane, laneLabel
 	}
 	backend := strings.TrimSpace(launchEnvValue(env, config.EnvMoaiKanbanBackend))
 	if backend == "" {

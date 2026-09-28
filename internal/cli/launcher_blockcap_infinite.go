@@ -47,7 +47,7 @@ func injectStopHookBlockCapForGoal(ctx context.Context, base []string, projectRo
 	// A COMPANION of a kanban run has the same problem — it arms its own goal
 	// mid-session too — so it takes the same raise. It is signalled by the label
 	// variable rather than the kanban one because it must not be seeded with
-	// the chain, which only the lead drives.
+	// the chain, which only the leader drives.
 	//
 	// A FACTORY session (lead or worker, SPEC-FACTORY-WORKER-FANOUT-001) takes
 	// the same raise for the same reason: a factory turn chain is dispatch-

@@ -20,7 +20,7 @@ func testPeer(run, session string, generation int64) Peer {
 	if start == "" {
 		start = "test-process-start"
 	}
-	return Peer{ProjectKey: "project", RunID: run, Backend: "codex", Role: "worker", Slot: "agent-1", SessionUUID: session, Generation: generation, PID: os.Getpid(), ProcessStart: start}
+	return Peer{ProjectKey: "project", RunID: run, Backend: "codex", Role: "lane", Slot: "lane-1", SessionUUID: session, Generation: generation, PID: os.Getpid(), ProcessStart: start}
 }
 
 func TestFactoryCanonicalNamespaceAndIsolation(t *testing.T) {
@@ -117,8 +117,8 @@ func TestFactorySessionGenerationOwnership(t *testing.T) {
 		t.Fatal(err)
 	}
 	to := p
-	to.Slot = "lead"
-	to.Role = "lead"
+	to.Slot = "leader"
+	to.Role = "leader"
 	to.SessionUUID = "lead"
 	if _, err := store.RegisterPeer(context.Background(), to); err != nil {
 		t.Fatal(err)
@@ -459,7 +459,7 @@ func TestConcurrentPeerSlots(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			p := testPeer("run", "", 0)
-			p.Slot = "agent"
+			p.Slot = "lane"
 			p.SessionUUID = "s" + newID()
 			got, err := store.RegisterPeer(context.Background(), p)
 			if err == nil {
@@ -495,8 +495,8 @@ func openTestStore(t *testing.T) *Store {
 func registerPair(t *testing.T, s *Store) (Peer, Peer) {
 	t.Helper()
 	a := testPeer(s.runID, "a", 1)
-	a.Role = "lead"
-	a.Slot = "lead"
+	a.Role = "leader"
+	a.Slot = "leader"
 	b := testPeer(s.runID, "b", 1)
 	if _, err := s.RegisterPeer(context.Background(), a); err != nil {
 		t.Fatal(err)

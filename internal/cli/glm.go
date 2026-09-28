@@ -37,7 +37,7 @@ func init() {
 }
 
 var glmCmd = &cobra.Command{
-	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role> | -f | -f worker | -f worker-<n>] [-- claude-args...]",
+	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role> | -f | -f lane | -f lane-<n>] [-- claude-args...]",
 	Short: "Launch Claude Code with GLM backend",
 	Long: `Launch Claude Code with GLM backend.
 
@@ -63,10 +63,10 @@ Flags:
                                 replacing the current session (requires tmux)
 
 Kanban Mode:
-  -k, --kanban [SPEC-ID]       Enter as the LEAD of a kanban run. Seeds a
+  -k, --kanban [SPEC-ID]       Enter as the LEADER of a kanban run. Seeds a
                                 plan -> run -> sync chain in this
                                 session. The optional SPEC-ID ties the run to a
-                                SPEC. The lead drives the whole chain; three
+                                SPEC. The leader drives the whole chain; three
                                 companion sessions are launched by hand.
   -k --name <role>             Enter as a COMPANION of an existing kanban run.
                                 Joins the run without seeding a chain. The three
@@ -75,28 +75,29 @@ Kanban Mode:
                                 free number (plan-1, plan-2, ...).
 
 Factory Mode (dedicated -f entry):
-  -f, --factory                Enter as the LEAD of a factory run (one
-                                worker, worker-1, grown afterwards with the
-                                forms below). The lead routes operator-picked
-                                cards to free workers over cross-session
-                                messages — each card goes WHOLE to one
-                                worker, which carries it through
+  -f, --factory                Enter as the LEADER of a factory run (one
+                                lane, lane-1, grown afterwards with the
+                                forms below). The leader routes
+                                operator-picked cards to free lanes over
+                                cross-session messages — each card goes
+                                WHOLE to one lane, which carries it through
                                 plan -> run -> sync in-session.
-  -f worker                    Join the running factory as a WORKER: the
-                                next free worker-<n> label is claimed for
-                                this session.
-  -f worker-<n>                Launch exactly one additional worker —
-                                worker n — and connect it to the lead socket
-                                of the running factory. A number whose
-                                label is held by a live session is
-                                bumped to the next free number.
-  -k <N> / -k <N> --name worker-<i>
+  -f lane                      Join the running factory as a LANE: the next
+                                free lane-<n> label is claimed for this
+                                session.
+  -f lane-<n>                  Launch exactly one additional lane — lane n —
+                                and connect it to the leader socket of the
+                                running factory. A number whose label is held by
+                                a live session is bumped to the next free number.
+  -k <N> / -k <N> --name lane-<i>
                                 The v1.2.0 unified -k factory shapes, still
-                                valid: -k N is the lead of an N-worker run,
-                                -k N --name worker-<i> is worker i of it (a
-                                bare -k --name worker-<i> defaults to 8).
+                                valid: -k N is the leader of an N-lane run,
+                                -k N --name lane-<i> is lane i of it (a
+                                bare -k --name lane-<i> defaults to 8).
                                 One entry token per launch: -k and -f
                                 together is an error.
+  Legacy role and label spellings (the pre-rename nouns, any letter case)
+  are refused — the error names the canonical -f lane / lane-<n> form.
 
   Genealogy: the pre-3.1 "factory" flag (-f/--factory) was RENAMED to
   -k/--kanban in #1513 (7f61332ef) and now drives the three-role kanban chain
@@ -116,11 +117,11 @@ Examples:
   moai glm setup sk-xxx    # Save API key (one-time)
   moai glm                 # Launch with GLM backend
   moai glm -p work         # Use 'work' profile with GLM
-  moai glm -k              # Kanban lead on GLM: seeds the chain
+  moai glm -k              # Kanban leader on GLM: seeds the chain
   moai glm -k --name run           # Kanban companion on GLM (the GLM-recommended role)
-  moai glm -f              # Factory lead on GLM: one worker (worker-1)
-  moai glm -f worker       # Join the running factory as the next free worker (GLM backend)
-  moai glm -f worker-2     # Add worker 2 to the running factory (GLM backend)
+  moai glm -f              # Factory leader on GLM: one lane (lane-1)
+  moai glm -f lane         # Join the running factory as the next free lane (GLM backend)
+  moai glm -f lane-2       # Add lane 2 to the running factory (GLM backend)
 
 Mixed Claude/GLM teammate roles require verified teammate routing support.
 Use 'moai cc' to switch back to Claude backend.`,
@@ -227,31 +228,31 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	label, isCompanion := parseCompanionLabel(filteredArgs)
 	factoryLabel, isFactoryLane := parseFactoryLaneLabel(filteredArgs)
 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
-	case factoryBranchLead:
-		leadLabel, _ := parseLeadLabel(filteredArgs)
-		restoreFactory := enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)
+	case factoryBranchLeader:
+		leaderLabel, _ := parseLeaderLabel(filteredArgs)
+		restoreFactory := enterFactoryLeaderMode(entry.FactoryLanes, leaderLabel)
 		defer restoreFactory()
 		restoreRun, runErr := enterSelectedFactoryRun(launchProjectRoot(), entry.FactoryRun, false)
 		if runErr != nil {
 			return runErr
 		}
 		defer restoreRun()
-		// Same recording as the cc lead: the kanban store AND the factory state
+		// Same recording as the cc leader: the kanban store AND the factory state
 		// a lane's -f lane-<n> join resolves. Recording only the former left
 		// every GLM-led run unjoinable (NO_ACTIVE_FACTORY).
 		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), kanban.BackendGLM, entry.Spec); err != nil {
 			return fmt.Errorf("record factory run: %w", err)
 		}
 		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
-		var leadName string
-		filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
-		defer exportLeadSessionName(leadName)()
+		var leaderName string
+		filteredArgs, leaderName = appendLeaderName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+		defer exportLeaderSessionName(leaderName)()
 		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
 		defer settingsCleanup()
-	case factoryBranchWorker:
+	case factoryBranchLane:
 		restoreRun, runErr := enterSelectedFactoryRun(launchProjectRoot(), entry.FactoryRun, true)
 		if runErr != nil {
 			return runErr
@@ -259,12 +260,12 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		defer restoreRun()
 		// See cc.go: a live-held lane number is bumped, and the bumped value
 		// must reach the backend argv.
-		finalLabel, claimErr := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, entry.FactoryAutoNumber, cmd.ErrOrStderr())
+		finalLabel, claimErr := resolveFactoryLaneName(launchProjectRoot(), factoryLabel, entry.FactoryAutoNumber, cmd.ErrOrStderr())
 		if claimErr != nil {
 			return claimErr
 		}
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
-		defer enterFactoryWorkerMode(finalLabel, entry.FactoryWorkers)()
+		defer enterFactoryLaneMode(finalLabel, entry.FactoryLanes)()
 		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
 		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 		if len(settingsFlag) > 0 {
@@ -274,15 +275,15 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	}
 	if !entry.FactoryEnabled {
 		switch resolveKanbanBranch(entry.KanbanEnabled, isCompanion) {
-		case kanbanBranchLead:
-			// See cc.go: the operator's lead run id is adopted rather than replaced.
-			leadLabel, _ := parseLeadLabel(filteredArgs)
-			defer enterKanbanMode(entry.Spec, leadLabel)()
+		case kanbanBranchLeader:
+			// See cc.go: the operator's leader run id is adopted rather than replaced.
+			leaderLabel, _ := parseLeaderLabel(filteredArgs)
+			defer enterKanbanMode(entry.Spec, leaderLabel)()
 			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
-			// See cc.go: glm mirrors the lead branch exactly.
-			var leadName string
-			filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
-			defer exportLeadSessionName(leadName)()
+			// See cc.go: glm mirrors the leader branch exactly.
+			var leaderName string
+			filteredArgs, leaderName = appendLeaderName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+			defer exportLeaderSessionName(leaderName)()
 			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)
@@ -426,7 +427,7 @@ func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 // removed with its dead caller enableTeamMode in #1531.)
 //
 // Delivery status MEASURED, direction reversed post-close (SPEC-V3R6-AUDIT-MODEL-PIN-001
-// acceptance.md AC-AMP-006 amendment, 2026-08-24, lead-approved; closes the
+// acceptance.md AC-AMP-006 amendment, 2026-08-24, leader-approved; closes the
 // AC-MTP-032b residual of SPEC-MODEL-TIER-PLANTYPE-001): the null-controlled
 // live differential proved the top-level `reasoning_effort` request field is
 // the effective delivery channel (ratios 1.34/1.85/1.48 against the 1.25 bound;

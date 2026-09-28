@@ -25,7 +25,7 @@ func TestRoleDeclaration_WorkersReadLead(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 
-	if err := DeclareRole(root, "lead-sess-1", RoleLead, "plan-host"); err != nil {
+	if err := DeclareRole(root, "lead-sess-1", RoleLeader, "plan-host"); err != nil {
 		t.Fatalf("DeclareRole(lead): %v", err)
 	}
 
@@ -38,8 +38,8 @@ func TestRoleDeclaration_WorkersReadLead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveDeclaredRole(lead from worker context): %v", err)
 	}
-	if role != RoleLead {
-		t.Fatalf("resolved lead role = %q, want %q", role, RoleLead)
+	if role != RoleLeader {
+		t.Fatalf("resolved lead role = %q, want %q", role, RoleLeader)
 	}
 }
 
@@ -51,7 +51,7 @@ func TestRoleDeclaration_LeadReadsWorkers(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 
-	if err := DeclareRole(root, "lead-sess-1", RoleLead, "plan-host"); err != nil {
+	if err := DeclareRole(root, "lead-sess-1", RoleLeader, "plan-host"); err != nil {
 		t.Fatalf("DeclareRole(lead): %v", err)
 	}
 	if err := DeclareRole(root, "worker-sess-2", "run", "run-beta"); err != nil {
@@ -72,7 +72,7 @@ func TestRoleDeclaration_LeadReadsWorkers(t *testing.T) {
 // the lead" means operationally: sessions are distinct processes.
 func TestRoleDeclaration_CrossProcessResolution(t *testing.T) {
 	root := t.TempDir()
-	if err := DeclareRole(root, "lead-sess-1", RoleLead, "plan-host"); err != nil {
+	if err := DeclareRole(root, "lead-sess-1", RoleLeader, "plan-host"); err != nil {
 		t.Fatalf("DeclareRole: %v", err)
 	}
 
@@ -80,8 +80,8 @@ func TestRoleDeclaration_CrossProcessResolution(t *testing.T) {
 		"HELPER_ROOT":    root,
 		"HELPER_SESSION": "lead-sess-1",
 	})
-	if strings.TrimSpace(got) != RoleLead {
-		t.Fatalf("subprocess resolved role = %q, want %q", strings.TrimSpace(got), RoleLead)
+	if strings.TrimSpace(got) != RoleLeader {
+		t.Fatalf("subprocess resolved role = %q, want %q", strings.TrimSpace(got), RoleLeader)
 	}
 }
 

@@ -179,7 +179,8 @@ func canonicalTierPath(path string) string {
 }
 
 // isL1WorktreePath reports whether targetPath is a session-scoped L1 tree
-// under <mainRoot>/.claude/worktrees/. The main root is resolved FROM THE
+// under <mainRoot>/.claude/worktrees/ or <mainRoot>/.moai/worktrees/.
+// The main root is resolved FROM THE
 // TARGET PATH (see gitMainRootFromTargetFunc); both sides are canonicalized
 // before the separator-safe prefix comparison. A resolver failure is not
 // evidence of tier: the predicate reports false and the command proceeds
@@ -194,11 +195,17 @@ func isL1WorktreePath(targetPath string) bool {
 		return false
 	}
 	target := canonicalTierPath(targetPath)
-	l1Root := canonicalTierPath(filepath.Join(mainRoot, ".claude", "worktrees"))
-	// Separator-safe boundary: a path equal to the L1 root itself, or a
-	// sibling whose name merely shares the prefix as a substring, is not an
-	// L1 tree.
-	return strings.HasPrefix(target, l1Root+string(os.PathSeparator))
+	for _, root := range []string{
+		filepath.Join(mainRoot, ".claude", "worktrees"),
+		filepath.Join(mainRoot, ".moai", "worktrees"),
+	} {
+		l1Root := canonicalTierPath(root)
+		// Separator-safe: a sibling sharing the root's text is not L1.
+		if strings.HasPrefix(target, l1Root+string(os.PathSeparator)) {
+			return true
+		}
+	}
+	return false
 }
 
 // l1Guidance renders the two exits an L1 session worktree leaves the user:
@@ -206,7 +213,7 @@ func isL1WorktreePath(targetPath string) bool {
 // after the tree so the command lines are copy-pasteable, matching the
 // lockGuidance style.
 func l1Guidance(path string) string {
-	return fmt.Sprintf("\n\nThe worktree is an L1 session worktree under .claude/worktrees/ — session-scoped, not owned by moai worktree verbs:\n"+
+	return fmt.Sprintf("\n\nThe worktree is an L1 session worktree — session-scoped, not owned by moai worktree done:\n"+
 		"  session-end keep/remove prompt:  choose when the owning session exits\n"+
 		"  remove manually:                 git worktree unlock %s\n"+
 		"                                   git worktree remove %s",

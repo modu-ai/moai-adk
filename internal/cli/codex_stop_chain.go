@@ -61,6 +61,7 @@ const (
 const (
 	stopCapGateSync   = "sync-gate"
 	stopCapGateReview = "codex-review"
+	stopCapGoal       = "goal" // the goal member's unmeasured continuations count too (t1280 F4)
 )
 
 // stopChainRecordDir holds the per-session verdict record of the last run.
@@ -245,7 +246,7 @@ func (c *codexStopChain) run(ctx context.Context) codexStopChainResult {
 
 	res.Members = append(res.Members,
 		c.budgeted(ctx, 2, c.syncGateMember, c.cutOffUnmeasured(2, stopCapGateSync, codexwiring.SyncGateReceiptCommand)),
-		c.budgeted(ctx, 3, c.goalMember, c.cutOffUnmeasured(3, "", codexwiring.GoalReceiptCommand)),
+		c.budgeted(ctx, 3, c.goalMember, c.cutOffUnmeasured(3, stopCapGoal, codexwiring.GoalReceiptCommand)),
 		c.advisoryMember(ctx, 4),
 		c.advisoryMember(ctx, 5),
 		c.budgeted(ctx, 6, c.codexReviewMember, c.cutOffUnmeasured(6, stopCapGateReview, codexwiring.CodexReviewReceiptCommand)),
@@ -341,7 +342,8 @@ func (c *codexStopChain) budgeted(ctx context.Context, n int, fn func(context.Co
 func (c *codexStopChain) waitOrphans() { c.orphans.Wait() }
 
 // cutOffUnmeasured is the cut-off outcome of a goal or required gate:
-// unmeasured, never an allow (design §D3.5). For a capped gate the cut-off
+// unmeasured, never an allow below the §D3.8 cap (design §D3.5). For a capped
+// member (a required gate, and the goal member since t1280 F4) the cut-off
 // counts toward the §D3.8 cap like any other unmeasured continuation.
 func (c *codexStopChain) cutOffUnmeasured(n int, capGate, command string) func(context.Context) stopMemberOutcome {
 	return func(ctx context.Context) stopMemberOutcome {
@@ -469,21 +471,41 @@ func (c *codexStopChain) goalMember(ctx context.Context) stopMemberOutcome {
 		return c.currentKey(ctx)
 	}}
 	verdict, block, found := evaluateStopGoal(ctx, c.root, c.input.SessionID, runner, src, os.Stderr)
+	runner.mu.Lock()
+	missed := append([]string(nil), runner.missed...)
+	runner.mu.Unlock()
 	switch {
 	case !found:
 		return stopMemberOutcome{Decision: codexadapter.DecisionAllow, Status: stopStatusNotApplicable}
 	case !block:
+		c.capReset(ctx, stopCapGoal)
 		return stopMemberOutcome{Decision: codexadapter.DecisionAllow, Status: c.goalAllowStatus()}
 	}
 	reason := verdict.Reason
 	if reason == "" {
 		reason = "goal: conditions not yet satisfied"
 	}
-	runner.mu.Lock()
-	missed := append([]string(nil), runner.missed...)
-	runner.mu.Unlock()
 	if len(missed) == 0 {
+		// A measured evaluation (met, unmet, cancelled, or budget-terminated)
+		// breaks the consecutive-unmeasured streak.
+		c.capReset(ctx, stopCapGoal)
 		return stopMemberOutcome{Decision: codexadapter.DecisionDeny, Class: reasonUnmet, Reason: reason}
+	}
+	// The unmeasured continuation counts toward the §D3.8 cap (t1280 F4): the
+	// goal's own turn ceiling advances only when an evaluation saves, so a
+	// member that is cut off — or whose receipt never appears — on every Stop
+	// would otherwise continue forever, bounded only by the host (design §D3.4
+	// mapping row: neither `unmeasured` nor `unmet` may allow below the cap).
+	key, ok := c.cachedKey()
+	if !ok {
+		key = "tree-unread"
+	}
+	count := c.capStep(ctx, stopCapGoal, key)
+	if count >= codexwiring.StopUnmeasuredCap {
+		note := fmt.Sprintf("goal: unverified — %d consecutive Stops found no receipt for this tree and the goal condition was never measured. The stop is allowed to bound the loop; the goal is NOT satisfied (its state is unchanged). Run `%s`, then end the turn again — or re-arm the goal.",
+			count, codexwiring.GoalReceiptCommand)
+		return stopMemberOutcome{Decision: codexadapter.DecisionAllow, Class: reasonUnverified, Reason: note, Advisory: note,
+			Discards: []codexadapter.Discard{{Event: hook.EventStop, Key: "codex-stop-chain/goal/unverified", Reason: note}}}
 	}
 	var steps []string
 	for _, cmd := range missed {
@@ -491,7 +513,8 @@ func (c *codexStopChain) goalMember(ctx context.Context) stopMemberOutcome {
 			cmd, codexwiring.GoalReceiptCommand, strings.ReplaceAll(cmd, "'", `'\''`)))
 	}
 	return stopMemberOutcome{Decision: codexadapter.DecisionDeny, Class: reasonUnmeasured,
-		Reason: "goal: condition not measured on this tree. " + strings.Join(steps, "; ") + "; then end the turn again.\n" + reason}
+		Reason: "goal: condition not measured on this tree. " + strings.Join(steps, "; ") + "; then end the turn again.\n" + reason +
+			fmt.Sprintf(" (continuation %d of %d before the stop is allowed as unverified)", count, codexwiring.StopUnmeasuredCap)}
 }
 
 // goalAllowStatus records why the goal member allowed, read from the goal
@@ -594,6 +617,14 @@ func (c *codexStopChain) codexReviewMember(ctx context.Context) stopMemberOutcom
 	if chk.Receipt.Verdict == codexReviewVerdictFail {
 		return stopMemberOutcome{Decision: codexadapter.DecisionDeny, Class: reasonGateFailed, ReceiptRead: true,
 			Reason: fmt.Sprintf("codex review gate: the codex review recorded for this tree failed. Run `%s` to see the findings, address them, and end the turn again.", codexwiring.CodexReviewReceiptCommand)}
+	}
+	if chk.Receipt.Verdict == codexReviewVerdictInconclusive {
+		// Design §D3 step 5: pass OR inconclusive allows (fail-open, mirroring
+		// Claude's erroring-reviewer path). But the record must not read pass:
+		// an inconclusive review never evaluated to a pass (t1280 F3).
+		note := fmt.Sprintf("codex review gate: the receipt recorded for this tree is inconclusive — the review ran but produced no verdict. The stop was allowed fail-open, as on Claude; this is NOT a passing review. Run `%s` after the reviewer is healthy to record a real verdict.", codexwiring.CodexReviewReceiptCommand)
+		return stopMemberOutcome{Decision: codexadapter.DecisionAllow, Status: stopStatusFailOpen, ReceiptRead: true, Reason: note, Advisory: note,
+			Discards: []codexadapter.Discard{{Event: hook.EventStop, Key: "codex-stop-chain/codex-review/inconclusive", Reason: note}}}
 	}
 	return stopMemberOutcome{Decision: codexadapter.DecisionAllow, Status: stopStatusPass, ReceiptRead: true}
 }
@@ -702,8 +733,8 @@ func (c *codexStopChain) capReset(ctx context.Context, gate string) {
 	c.saveCap(s)
 }
 
-// @MX:WARN: [AUTO] the Nth consecutive unmeasured Stop allows without the check having run — the only Codex allow on a required gate that is not a verdict
-// @MX:REASON: [AUTO] design §D3.8 bounds the continuation loop; the allow must stay paired with the unverified record and status, or a capped gate reads as passed
+// @MX:WARN: [AUTO] the Nth consecutive unmeasured Stop allows without the check having run — the only Codex allow on a required gate or the goal member that is not a verdict
+// @MX:REASON: [AUTO] design §D3.8 bounds the continuation loop; the allow must stay paired with the unverified record and status, or a capped member reads as passed
 
 // unmeasured is the continuation of a required gate whose receipt is missing
 // or stale, subject to the §D3.8 cap.

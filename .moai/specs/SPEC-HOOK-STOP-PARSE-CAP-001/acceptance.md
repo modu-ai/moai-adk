@@ -9,7 +9,7 @@
 - **열쇠 K**: 따로 적지 않으면 세션 열쇠다 — 테스트가 `t.Setenv("CLAUDE_CODE_SESSION_ID", <K>)` 로 정한다(그 테스트는 병렬로 돌리지 않는다). 새 열쇠 = 아직 쓰지 않은 세션 id. 프로세스 열쇠가 필요한 AC(AC-SPC-006 대조, AC-SPC-007)는 변수를 빈 값으로 두고 대체 해석의 조상 표를 주입한다(plan.md §C 6). 셈 기록 위치는 `t.TempDir()` 아래 프로젝트 루트로 돌린다.
 - **기록 파일 이름 형식**: `^[0-9a-f]{64}\.json$` (plan.md §B.2).
 - **Claude Stop 거부 바이트**: `Render(Stop, Lookup(HarnessClaude, Stop, DecisionFatalError).Outcome, <REQ-SPC-010 문자열>)` — 기대 사유는 테스트가 REQ-SPC-010 의 리터럴로 조립한다(구현이 넘긴 값을 되받지 않는다).
-- **Codex 기대 사유**: `fail-closed: hook stdin could not be parsed as JSON (.moai/docs/hook-stdin-fail-closed.md)` — 테스트가 이 리터럴을 Claude 기대 사유와 **별개로** 적는다(§D).
+- **Codex 기대 사유**: `fail-closed: hook stdin could not be parsed as JSON (.moai/docs/hook-stdin-fail-closed.md)` — 테스트가 이 리터럴을 Claude 기대 사유와 **별개로** 적는다(§D). (0.2.2 — t1233 이후 Codex 기대 사유는 `fail-closed: ` 접두 없이 원인 고정 문구와 운영자 문서 식별자만 담는다 — SPEC-HOOK-STDIN-FAILCLOSED-001 REQ-HSF-010 0.4.4 각주. 위 인용과 §D·§E 의 인용은 이 SPEC 작성 시점 값이다.)
 - **상한 해제 응답**: stdout 이 정확히 `{}` + 개행, `RunE` 가 nil.
 - **분류**: 「차단」은 run-phase 완료를 막는 AC, 「회귀 가드」는 구현 뒤에만 의미 있는 판정이 나오는 AC 다(verification-completeness.md §2.1 의 판정 불가 처분).
 

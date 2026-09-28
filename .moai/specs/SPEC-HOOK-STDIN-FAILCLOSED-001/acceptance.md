@@ -76,7 +76,7 @@ depth 형태는 run 착수 시 대조군을 함께 잰다: 같은 구성의 깊�
 
 ### AC-HSF-002 — Codex 하네스: 결정 이벤트 × 파손 4 형태 → 거부
 
-**Given** `--harness codex`, 나머지는 AC-HSF-001 과 같은 조건, **When** Codex 의 fail-closed 쌍(PreToolUse, PermissionRequest, UserPromptSubmit — §0 에서 술어로 계산) × 파손 4 형태 = 12 경우를 실행하면, **Then** (a)~(c) 가 성립하고, (d) stdout 바이트가 `codexadapter.TranslateCodex(ev, DecisionFatalError, <AC-HSF-001(e4) 의 기대 사유>)` 의 출력과 같고 거부 필드를 가지며 — 기대 사유는 테스트가 조립한 값이므로, 이 바이트 일치가 구현이 `TranslateCodex` 에 넘긴 원인 문자열이 기대 사유와 같다는 것의 관측이다 — (e) AC-HSF-001(e1)~(e5) 가 `TranslateCodex` 에 넘긴 원인 문자열에 대해 같은 방식으로 성립한다. PermissionRequest 는 Codex EventTable 에서 미적응(U)이지만 하위 명령은 존재하므로 같은 기준을 적용한다. Codex 의 Stop 은 면제 쌍이므로 이 기준이 아니라 AC-HSF-011 을 따른다(운영자 판정 A1, plan.md §B.1 Q1).
+**Given** `--harness codex`, 나머지는 AC-HSF-001 과 같은 조건, **When** Codex 의 fail-closed 쌍(PreToolUse, PermissionRequest, UserPromptSubmit — §0 에서 술어로 계산) × 파손 4 형태 = 12 경우를 실행하면, **Then** (a)~(c) 가 성립하고, (d) stdout 바이트가 `codexadapter.TranslateCodex(ev, DecisionFatalError, <AC-HSF-001(e4) 의 기대 사유>)` 의 출력과 같고 거부 필드를 가지며 — 기대 사유는 테스트가 조립한 값이므로, 이 바이트 일치가 구현이 `TranslateCodex` 에 넘긴 원인 문자열이 기대 사유와 같다는 것의 관측이다 — (e) AC-HSF-001(e1)~(e5) 가 `TranslateCodex` 에 넘긴 원인 문자열에 대해 같은 방식으로 성립한다. PermissionRequest 는 Codex EventTable 에서 미적응(U)이지만 하위 명령은 존재하므로 같은 기준을 적용한다. Codex 의 Stop 은 면제 쌍이므로 이 기준이 아니라 AC-HSF-011 을 따른다(운영자 판정 A1, plan.md §B.1 Q1). (0.4.4 — t1233 이후 테스트가 조립하는 기대 사유는 하네스에 따라 갈린다: Claude 는 위 (d) 가 인용하는 형태 그대로, Codex 는 마커 없는 리터럴 — 원인 고정 문구 + 운영자 문서 식별자 — 로 조립한다. 마커는 `TranslateCodex` 의 번역 틀이 렌더된 거부에 정확히 한 번 싣는다. spec.md REQ-HSF-010 0.4.4 각주 참조.)
 
 ### AC-HSF-003 — 결정 이벤트 목록은 하나뿐이다
 

@@ -83,6 +83,17 @@ func TestLauncherWorktreeL2AbsPath(t *testing.T) {
 	}
 }
 
+func TestLauncherWorktreeMoAIAbsPath(t *testing.T) {
+	root, err := findProjectRoot()
+	if err != nil {
+		t.Fatalf("project root: %v", err)
+	}
+	path := filepath.Join(root, ".moai", "worktrees", "existing")
+	if err := resolveWorktreeL2Path([]string{"-w", path}); err != nil {
+		t.Fatalf("MoAI worktree absolute path rejected: %v", err)
+	}
+}
+
 // TestLauncherWorktreeShortNamePreserved covers AC-WES-010b: short-name
 // values (non-absolute paths) MUST pass through the pre-resolution step
 // without error so normalizeWorktreeFlag can handle the token rewriting and

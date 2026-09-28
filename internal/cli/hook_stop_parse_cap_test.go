@@ -42,8 +42,10 @@ const (
 
 	// claudeFailClosedReasonLiteral is REQ-SPC-010, byte for byte.
 	claudeFailClosedReasonLiteral = "fail-closed: hook stdin could not be parsed as JSON. Do not edit hook scripts or settings files to get past this; stop and tell a human operator (.moai/docs/hook-stdin-fail-closed.md)"
-	// codexFailClosedReasonLiteral is the unchanged Codex reason (REQ-SPC-009).
-	codexFailClosedReasonLiteral = "fail-closed: hook stdin could not be parsed as JSON (.moai/docs/hook-stdin-fail-closed.md)"
+	// codexFailClosedReasonLiteral is the Codex reason as revised by card
+	// t1233: the marker rides the fatal_error template, the reason carries
+	// only cause + operator document identifier.
+	codexFailClosedReasonLiteral = "hook stdin could not be parsed as JSON (.moai/docs/hook-stdin-fail-closed.md)"
 
 	// capReleasedMarker identifies the released-cap stderr line.
 	capReleasedMarker = "stop-parse cap released"
