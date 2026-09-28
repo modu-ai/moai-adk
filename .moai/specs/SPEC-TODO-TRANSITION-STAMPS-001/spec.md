@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-TRANSITION-STAMPS-001
 title: "A queue with a time axis: transition stamps (picked_at, dropped_at) on items, an archive-time stamp and a persisted done-verdict landing record on archived_items, exposed through history"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-09-29
 updated: 2026-09-29
@@ -28,6 +28,7 @@ related_specs:
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1.0 | 2026-09-29 | Initial plan-phase authoring (card t1310). Schema ground truth measured on the live queue db `/Users/goos/.moai/db/moai-adk-go-1bd3d038/todo/backlog.db` by the dispatching lane, 2026-09-29; code paths re-verified in this tree (`9cc3fdc4d`). |
+| 0.1.1 | 2026-09-29 | Plan-audit revision (FAIL 0.80 → remediation): D1 REQ-TST-008/010/013 rewritten to path (A) — verdict record stores verdict+ref+time, NO query-derived SHA (operator-only SHA authority preserved, `landing_evidence.go`); D2 drop→done corrected (stamps never coexist, drop is queued-only); D3 function names moved out of REQ bodies; D5 precedent wording made precise (Landing and CardUUID both `omitempty`, `backlog_store.go:83-88`). plan.md/acceptance.md follow. |
 
 ## 1. Overview
 
@@ -68,7 +69,9 @@ against the live db, then re-verified against this tree's DDL
   rebuild, no destructive ALTER in the package's history.
 - The five original `BacklogItem` fields are the frozen per-item contract
   (REQ-TODO-013); `Landing` and `CardUUID` were added after it as additive,
-  `omitempty` pointer fields. The transition stamps follow that precedent.
+  `omitempty` pointer fields (`backlog_store.go:83-88` — `Landing` precedes
+  `CardUUID`, which is also `omitempty`). The transition stamps follow that
+  same precedent.
 - Sibling card t1308 is reviewing the same migration convention for a
   **state-CHECK** change (a rebuild, since SQLite cannot ALTER a CHECK). This
   SPEC's changes are pure additive columns and do not overlap that scope.
@@ -90,8 +93,8 @@ converge on the same column set.
 **REQ-TST-003** — The backlog store shall not rebuild either table, drop any
 column, or alter any constraint while adding these columns; the frozen
 five-field per-item contract (REQ-TODO-013) keeps its field names, types, and
-JSON tags, and the stamps ride alongside it as `omitempty` additive fields the
-way `Landing` and `CardUUID` already do.
+JSON tags, and the stamps ride alongside it as `omitempty` additive pointer
+fields, exactly as the `Landing` and `CardUUID` fields already do.
 
 ### 3.2 Transition stamping
 
@@ -118,10 +121,15 @@ row.
 ### 3.3 The done-time landing verdict record
 
 **REQ-TST-008** — **When** `done` runs with `--require-landed` and the landing
-query answers, the archived row shall persist the verdict — landed (with the
-delivering SHA), not-landed, or unknown-as-answered — together with the
-answering ref and the verdict time, so `history` can reproduce what the query
-said without re-running it.
+query answers, the archived row shall persist the verdict — landed,
+not-landed, or unknown-as-answered — together with the answering ref and the
+verdict time, so `history` can reproduce what the query said. The persisted
+record holds NO SHA: a query-derived SHA is outside the landing evidence
+store's write authority (operator-recorded SHAs are the only SHA source it
+accepts — `internal/kanban/landing_evidence.go:96-114,143-145`), so the
+delivering SHA is re-derived at re-adjudication time by re-running the
+attribution predicate against the recorded ref (REQ-TST-013). Path (A) of the
+plan-audit remediation: the record shape is verdict + ref + time.
 
 **REQ-TST-009** — **When** `done` runs WITHOUT `--require-landed`, the store
 shall not fabricate a query verdict: the archived row's landing record is
@@ -132,8 +140,9 @@ answer.
 **REQ-TST-010** — The store shall not write a persisted verdict as attribution
 evidence absent its answering ref. A stored verdict is a snapshot of what a
 NAMED ref answered at a NAMED time; it never becomes an independent
-attribution claim, and every write path funnels through the existing
-`LandingEvidenceValue` discipline (typed NULL, never `{}` or `""`).
+attribution claim. Every write path funnels through the existing evidence
+write discipline, so an absent record is typed NULL — never `{}` and never
+`""`.
 
 ### 3.4 History exposure
 
@@ -152,8 +161,9 @@ computable from the queue surface itself (t472 axis E's detection need).
 
 **REQ-TST-013** — The persisted verdict record shall carry the answering ref
 so the t472 axis-F attribution predicate (title-attribution position within
-commit subjects, `internal/kanban/prlink_landed.go`) can be RE-RUN against
-that ref later; the stored verdict supplements the discriminator and shall not
+commit subjects) can be RE-RUN against that ref later — including the
+re-derivation of the delivering SHA that the record itself does not store;
+the stored verdict supplements the discriminator and shall not
 replace, bypass, or short-circuit it. **Conclusion recorded by this SPEC: the
 new columns CONFIRM the axis-F discriminator rather than changing it** —
 attribution is decided at query time by the subject-position predicate;
@@ -189,10 +199,14 @@ predicate against the recorded ref.
   subcommand; the stamps make detection computable by the surfaces that
   already exist (`history`, `list --json`, SQL over the queue db).
 
-### Out of Scope — dropped_at semantics beyond the drop/undrop pair
+### Out of Scope — stamp combination semantics
 
-- A dropped card that is later done'd directly (drop → done) carries both
-  stamps; no re-definition of what "dropped then done" means is attempted.
+- A dropped card that is later done'd directly (drop → done) carries the
+  `dropped_at` stamp into the archive with `picked_at` already NULL: drop is
+  refused for anything but a queued card (`todo_drop.go:79-80`) and unpick
+  clears the pick stamp (REQ-TST-005). An archived row therefore carries at
+  most ONE of the two stamps; no re-definition of what "dropped then done"
+  means is attempted.
 
 ## 5. Constraints
 
@@ -224,6 +238,8 @@ history-output assertions via tab-field greps.
 - `internal/cli/todo.go` — `done` verb, `--require-landed`, verdict line
 - `internal/cli/todo_history.go` — `history` rendering, `landing=-` cell
 - `internal/kanban/prlink_landed.go` — the axis-F attribution predicate
+- `internal/kanban/landing_evidence.go` — the evidence write authority
+  (operator-only SHA source) that REQ-TST-008's no-stored-SHA rule preserves
 - `.moai/specs/SPEC-TODO-LANDING-ATTRIBUTION-001/spec.md` — the durable
   t472 axis record in this tree
 - `.moai/specs/SPEC-TODO-LANDING-EVIDENCE-001/spec.md` — the landing column

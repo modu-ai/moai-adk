@@ -25,7 +25,16 @@ test/coverage work sits at the bottom.
   must append columns, never reorder existing ones (REQ-TST-011).
 - Sibling card t1308 may touch the same DDL region for the state-CHECK
   question. Merge-order note: whichever lands second absorbs and re-runs the
-  freeze test; no semantic conflict is expected (different columns).
+  freeze test; no semantic conflict is expected (different columns). If a
+  rebase is needed, the schema-freeze test is the backstop that catches any
+  accidental region drift — no coordination mechanism beyond the normal
+  absorb-and-rerun is required.
+- Sibling card t1311 (P5 spec_id backfill) edits the SAME pick transition M2
+  stamps (`todo add --pick` / `todo next`): t1311 backfills `spec_id` at pick
+  time, M2 stamps `picked_at` in the same mutation. The columns are disjoint
+  and the behaviors are independent, but the pick code path itself is shared —
+  whichever card lands second absorbs and resolves the pick-path overlap in
+  its own mutation block. Bound the merge explicitly in the completion report.
 
 ## §C Pre-flight
 
@@ -63,7 +72,8 @@ JSON disclosure fields.
   compile-time-constant table/column interpolation discipline.
 - `internal/kanban/backlog_store.go`: add `PickedAt *string`,
   `DroppedAt *string` to `BacklogItem` and `ArchivedAt *string` to the
-  archive entry, all `json:"...,omitempty"`, NULL-mapped like `Landing`.
+  archive entry, all `json:"...,omitempty"`, NULL-mapped like `Landing` and
+  `CardUUID` (both `omitempty` at `backlog_store.go:83-88`).
 - Row scan/persist paths in `internal/kanban/backlog_migrate.go` (the
   `LandingEvidenceValue` write funnel) extended for the three columns.
 - Update `backlog_schema_freeze_test.go` as the recorded decision.
@@ -79,10 +89,18 @@ JSON disclosure fields.
 ### M3 — Done-time verdict persistence
 
 - In the `done` verb (`internal/cli/todo.go`), persist the
-  `--require-landed` answer — verdict, answering ref, verdict time — into the
-  archived row's landing record through the existing evidence machinery;
-  without the flag, persist only pre-existing recorded evidence or NULL
-  (REQ-TST-008..010). The printed verdict line stays byte-identical.
+  `--require-landed` answer — verdict kind (landed / not-landed /
+  unknown-as-answered), answering ref, verdict time — into the archived row.
+  NO SHA is stored: query-derived SHAs are outside the evidence store's write
+  authority (`landing_evidence.go` accepts operator-recorded SHAs only), so
+  the record shape is verdict + ref + time and the SHA is re-derived at
+  re-adjudication by re-running the predicate against the stored ref
+  (REQ-TST-008/013, plan-audit path A).
+  This verdict record is a NEW record shape alongside — not inside — the
+  operator-authored `LandingEvidence` machinery; the existing machinery's
+  validation is untouched.
+  Without the flag, persist only pre-existing recorded evidence or NULL
+  (REQ-TST-009). The printed verdict line stays byte-identical.
 
 ### M4 — History and list exposure
 

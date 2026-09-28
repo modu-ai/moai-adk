@@ -8,11 +8,12 @@ spec: SPEC-TODO-TRANSITION-STAMPS-001
 status: draft
 artifacts: [spec.md, plan.md, acceptance.md, progress.md]
 tier: M
+revision: "0.1.1 — plan-audit FAIL 0.80 remediated (D1 path A: verdict+ref+time, no stored SHA; D2 stamps never coexist; D3-D7 addressed)"
 schema_ground_truth: live db backlog.db, lane-measured 2026-09-29; DDL re-read in this tree at 9cc3fdc4d
-axis_f_conclusion: columns CONFIRM the title-attribution discriminator; storage records answers + ref, never re-derives attribution
+axis_f_conclusion: columns CONFIRM the title-attribution discriminator; storage records answers + ref, never re-derives attribution; SHA re-derived at re-adjudication
 known_gaps:
   - .moai/reports/t472/ not present in this tree; axis record cited from SPEC-TODO-LANDING-ATTRIBUTION-001 instead
-open_questions: 2 (see plan.md §B t1308 merge-order note; verdict-record type shape deferred to run phase)
+open_questions: 1 (plan.md §B — t1308/t1311 merge-order notes are bounded; verdict record shape is now pinned by D1 path A, no run-phase decision remains on it)
 ```
 
 ## §E.2 Run-phase Evidence

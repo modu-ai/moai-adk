@@ -51,14 +51,16 @@ When `todo done <id>` archives it,
 Then the archived row carries picked_at = T1 unchanged and a non-NULL
 `archived_at`, and the live table no longer holds the row.
 
-**AC-TST-005** — The require-landed verdict is persisted.
+**AC-TST-005** — The require-landed verdict is persisted, without a stored SHA.
 Given a queue seeded so that the landing query against a controlled ref
 answers `landed` (a commit whose subject attributes the card, per the
 axis-F predicate),
 When `todo done <id> --require-landed` runs,
-Then the archived row's landing record holds verdict `landed`, the delivering
-SHA, the answering ref, and the verdict time — all four fields readable from
-the archived row without re-running any git command.
+Then the archived row's verdict record holds verdict `landed`, the answering
+ref, and the verdict time — three fields readable from the archived row
+without re-running any git command — and the record carries NO SHA field
+(query-derived SHAs are outside the evidence store's write authority; the
+delivering SHA is re-derived at re-adjudication, AC-TST-010).
 
 **AC-TST-006** — No fabricated verdict without the flag.
 Given a card carrying NO recorded landing evidence,
@@ -88,12 +90,13 @@ renders `picked_at`; When `todo list --json` runs, Then the card's JSON
 object carries a non-empty `picked_at` key, and a never-picked card's JSON
 object omits the key entirely (`omitempty`).
 
-**AC-TST-010** — Stored verdict cites the axis-F ref.
-Given AC-TST-005's archived row, When the landing record is read, Then its
+**AC-TST-010** — Stored verdict cites the axis-F ref; the SHA is re-derivable.
+Given AC-TST-005's archived row, When the verdict record is read, Then its
 ref equals the ref the printed line named (`ref=<ref>` on stdout), and
-re-running the axis-F predicate against that recorded ref reproduces the
-stored verdict for the seeded commit (consistency of storage with the
-predicate, not a replacement of it).
+re-running the axis-F predicate against that recorded ref reproduces both
+the stored verdict and the delivering SHA for the seeded commit (consistency
+of storage with the predicate, not a replacement of it — the record stores
+the answer's coordinates, the re-run supplies the SHA).
 
 **AC-TST-011** — The freeze test records the decision.
 Given the updated `backlog_schema_freeze_test.go`, When
@@ -102,11 +105,16 @@ three new columns recorded in its expectation set, and the diff shows the
 freeze test's change is exactly the column additions.
 
 **AC-TST-012** — Existing JSON disclosure is byte-identical.
-Given the pre-change binary's `todo list --json` output for a queue holding
-a queued, a picked, a dropped, and an archived card, When the post-change
-binary renders the same queue, Then every pre-existing JSON key and value is
-byte-identical and the only diff is the three new `omitempty` keys on the
-objects that have them.
+Given a fixture queue db (a checked-in `testdata` seed script building a
+queue holding a queued, a picked, a dropped, and an archived card) and a
+golden `list --json` snapshot captured from the PRE-change struct shape and
+committed as a `testdata` file BEFORE the implementation lands (the ordering
+rule of verification-claim-integrity §2.3: baseline commit precedes the
+change commit),
+When the post-change binary renders `todo list --json` against the fixture,
+Then every pre-existing JSON key and value is byte-identical to the golden
+file and the only diff is the three new `omitempty` keys on the objects that
+have them.
 
 ## §D.2 Severity
 
@@ -122,8 +130,10 @@ spec.md.
 
 ## §D.4 Edge cases
 
-- Drop → done directly (both stamps present on the archived row; AC-TST-004
-  covers the general preservation).
+- Drop → done directly: the archived row carries `dropped_at` with
+  `picked_at` NULL — drop is queued-only (`todo_drop.go:79-80`), so the two
+  stamps never coexist on one row (AC-TST-004 covers the general
+  preservation).
 - Re-picked card: second stamp overwrites the first (AC-TST-002 third step).
 - `--require-landed` refusing (not-landed): the refusal path archives
   nothing; only the answering path persists a verdict (AC-TST-005's seeded
