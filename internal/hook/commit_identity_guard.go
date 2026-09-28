@@ -685,6 +685,13 @@ func normalizeRepoPath(p string) string {
 // list; otherwise ("", "") (allow fall-through). denyEmails is the effective
 // list (built-in ∪ config), resolved by the caller's wiring.
 //
+// @MX:WARN: cyclomatic complexity well above 15 — pipeline of classification,
+// scope, and identity stages, each with its own fail-open exit.
+// @MX:REASON: every early return is a deliberate fail-open/allow path, not
+// dead branching; a refactor must preserve the exact allow/deny boundary set
+// (SPEC-COMMIT-IDENTITY-GUARD-001 REQ-CIG-007).
+// @MX:SPEC:SPEC-COMMIT-IDENTITY-GUARD-001
+//
 // Decision order: unclassifiable PowerShell indirection (allow + one audit
 // line) → trigger classification (no trigger: allow, zero probes) →
 // repository scope (different common dir: allow, no identity probe) →

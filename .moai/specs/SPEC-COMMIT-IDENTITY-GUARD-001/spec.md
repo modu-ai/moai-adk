@@ -2,7 +2,7 @@
 id: SPEC-COMMIT-IDENTITY-GUARD-001
 title: "커밋 시점 테스트 신원 가드 — 테스트 픽스처 신원으로 커밋을 만드는 셸 명령을 PreToolUse 에서 거부한다"
 version: "0.1.4"
-status: in-progress
+status: completed
 created: 2026-09-28
 updated: 2026-09-29
 author: manager-spec

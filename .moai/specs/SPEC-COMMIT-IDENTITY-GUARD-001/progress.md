@@ -208,7 +208,23 @@ m1_to_mN_commit_strategy: milestone-shaped M1-M4 (M1 config+transition 30947f28f
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-29
+sync_status: complete
+sync_commit_sha: pending-backfill-sync   # D3 placeholder — a commit cannot cite its own SHA; backfilled in a follow-up commit
+b12_self_test_a: pass   # grep -c 'SPEC-COMMIT-IDENTITY-GUARD-001' CHANGELOG.md → 0 (pre-emission; emission-safe)
+b12_self_test_b: pass   # AC count 14 (AC-CIG-001..014, all live — no [RETIRED]/[REF] markers) matches CHANGELOG entry
+b12_self_test_c: pass   # all 12 cited implementation file paths verified via ls before drafting
+changelog_entry_position: "[Unreleased] → ### Added (first bullet)"
+frontmatter_status_transitions.spec: in-progress → completed (merged 3-phase close, single sync commit)
+frontmatter_status_transitions.updated: 2026-09-29 (unchanged — already current)
+mx_tag_changes.added: 1   # @MX:WARN on checkCommitIdentity (complexity ≥ 15), [AUTO] + @MX:REASON + @MX:SPEC
+mx_tag_changes.updated: 0
+mx_tag_changes.removed: 0
+mx_tag_anchor_check: checkCommitIdentity fan_in = 1 (pre_tool.go:689 sole caller, measured by grep over internal/ non-test) — no ANCHOR; no exported symbols; no goroutines
+readme_docs_site_assessment: no-edit — sibling guards (branch_guard, integration_lock) have no README/docs-site sections; no doc surface enumerating guard keys found (workflow.yaml comments are the only config surface)
+sanity_build: go build ./internal/hook ./internal/config → exit 0 (post-MX-edit)
+```
 
 ## 진행 기록
 
