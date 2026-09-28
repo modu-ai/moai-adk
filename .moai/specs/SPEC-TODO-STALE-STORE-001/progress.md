@@ -186,7 +186,25 @@ m1_to_mN_commit_strategy: per-milestone commits (M1 b363e54b5, M2 08ed325ac, M3 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-29
+sync_commit_sha: "pending-backfill-sync"
+sync_status: complete
+b12_self_test_a: "PASS — grep -c 'SPEC-TODO-STALE-STORE-001' CHANGELOG.md = 0 before emission (no duplicate from parallel BATCH-SYNC)"
+b12_self_test_b: "PASS — acceptance.md SSOT: 11 distinct AC identifiers (AC-TSS-001 counted once with five per-verb sub-rows a–e); executable scope 13 PASS / 0 FAIL; AC-TSS-022 awaiting-disposition BY DESIGN (disposal is an operator decision record, out of executed scope) — CHANGELOG entry states this split verbatim"
+b12_self_test_c: "PASS — every cited path verified via ls before emission (internal/kanban/todo_stale_store.go, internal/cli/todo_disclosure.go, internal/cli/todo_history.go, internal/cli/doctor_todo_store.go, internal/cli/binary_lag_test.go, internal/cli/testdata/doctor-*.golden)"
+changelog_entry_position: "[Unreleased] > Added"
+frontmatter_status_transitions:
+  implemented_completed: "merged into THIS sync commit (3-phase close; status: in-progress → completed + updated: 2026-09-29, spec.md frontmatter only)"
+canary_compliance_check: "n/a — this SPEC defines no forward-looking policy requiring its own sync tests"
+mx_tag_validation: "pass — 1 ANCHOR (+REASON) on InspectStaleLocalStores (fan_in=3: todo_disclosure.go:99, todo_history.go:165, doctor_todo_store.go:37); 0 TODO resolved (no RED-phase TODO survived to GREEN); no WARN required (no goroutine/complexity>=15 construct in new code)"
+```
+
+AC-TSS-022 disposition note (honest close): the SPEC completes its executable
+scope with REQ-TSS-021's confirmation gate intact — no deletion was executed,
+so AC-TSS-022's disposal evidence does not exist and is recorded as an operator
+decision record (lead+operator confirmation per card t1307), not as a failed AC.
+The §E.2 M3 measurement table is the input that decision consumes.
 
 ## §G Gate Disposition Log
 

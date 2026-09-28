@@ -2,7 +2,7 @@
 id: SPEC-TODO-STALE-STORE-001
 title: "트리 안 유령 큐 저장소 — 스테일 프로젝트-로컬 스토어 고지, doctor 발산 점검, 잔존 저장소 처분"
 version: "0.1.2"
-status: in-progress
+status: completed
 created: 2026-09-29
 updated: 2026-09-29
 author: manager-spec
