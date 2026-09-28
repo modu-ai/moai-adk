@@ -54,6 +54,15 @@ $ go vet ./internal/cli && git diff --check && gofmt -l internal/cli/codex_stop_
 (출력 없음, exit 0)
 ```
 
+로컬 `develop` `38c019810`을 흡수한 병합 트리 `de8a5e542`에서도 다음을 확인했다.
+
+```text
+$ go test ./internal/cli -run '^TestStopChainGPTProfileNoClaudeDependency$' -count=2 -timeout 180s
+ok  \tgithub.com/modu-ai/moai-adk/internal/cli\t3.202s
+$ go test -race ./internal/cli -run '^TestStopChainGPTProfileNoClaudeDependency$' -count=1 -timeout 180s
+ok  \tgithub.com/modu-ai/moai-adk/internal/cli\t3.927s
+```
+
 최신 로컬 `develop` `2e34b99b5`를 흡수한 뒤 재측정:
 
 ```text
