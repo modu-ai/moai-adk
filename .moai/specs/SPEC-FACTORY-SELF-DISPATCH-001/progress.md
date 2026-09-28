@@ -208,6 +208,132 @@ across the boundary at `cb1f2c226`).
   are M7 deliverables and do not exist yet — both selectors returned `[no tests to run]` and are NOT
   counted as a pass here.
 - **E6**: no push (lane does not push; the leader batch-pushes develop).
+- Amendment (2026-09-29, manager-spec via re-delegation): `061614bd5` — acceptance.md stale
+  worktree-root references amended (5 literals `.claude/worktrees/` → `.moai/worktrees/`: the §B
+  fixture-layout line, AC-SD-011 ×2, AC-SD-013, AC-SD-018 exclusion; spec.md `updated:` bumped to
+  2026-09-29; no REQ/AC renumbering, AC count 25 unchanged); `go test ./internal/spec -count=1` →
+  `ok 137.078s` under the internal-test-suite slot.
+
+### M4 — cc/glm lane launcher, marker stamp, git requirement (2026-09-29)
+
+Scope: REQ-SD-002, -005, -006, -007, -017. ACs: AC-SD-002, -005, -006, -007, -017 (both arms).
+Continuation at `061614bd5` (clean).
+
+- **Pre-flight (C)**: `git rev-parse --short HEAD` → `061614bd5`; `git branch --show-current` →
+  `WT-factory-self-dispatch`; `git status --short` → empty; `go build ./...` exit 0;
+  `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `golangci-lint run --timeout=2m
+  ./internal/cli/... ./internal/hook/...` → `0 issues.` (baseline; CI version v2.1.6, measured
+  `golangci-lint version` → v2.1.6). The anchored M1-M3 baseline was measured immediately after
+  GREEN instead of before (order deviation, recorded): the first sweep surfaced exactly the four
+  pre-M4 lane-join tests whose non-git fixtures the new REQ-SD-005 guard legitimately refuses
+  (see the cascade note below) and nothing else; after the fixture cascade the full anchored set
+  went green and stayed green through the final run.
+- **RED (E8, verbatim, pre-GREEN tree = `061614bd5`)**:
+  - AC-SD-002: `go test ./internal/cli -run '^TestSD_AC002_LaneLaunchStampsMarkerAndLabel$|...'` →
+    `--- FAIL: TestSD_AC002_LaneLaunchStampsMarkerAndLabel` with `factory_m4_test.go:147: child env
+    MOAI_FACTORY_ROLE = "", want the value constant "lane" (the marker name and value travel only
+    through the internal/config constants)` (cc and glm subtests, both).
+  - AC-SD-005: same selector family → `--- FAIL: TestSD_AC005_LaneLaunchRequiresGitRepo` with
+    `factory_m4_test.go:202: refusal does not name the git requirement: NO_ACTIVE_FACTORY`
+    (cc and glm subtests, both — the pre-M4 launch refused for the wrong reason and left the
+    git requirement unnamed).
+  - AC-SD-017 hook arm: `go test ./internal/hook -run '^TestSD_AC017_WidenedRoleGateDenyAndAllow$'`
+    → `--- FAIL` with `factory_m4_test.go:40: label-only: decision = "" (reason ""), want deny`.
+  - AC-SD-017 cli arm (compile RED — the test's seam is the new exported classifier):
+    `internal/cli/factory_m4_test.go:424:27: undefined: hook.CheckContractSignClassify` →
+    `FAIL github.com/modu-ai/moai-adk/internal/cli [build failed]`.
+  - AC-SD-006 and AC-SD-007 are constraint ACs over machinery M1-M3 already landed: their
+    instruments are the M4 deliverable (the recording git wrapper with positive controls; the
+    launch-path enumeration walk), and both passed on first run of their final text — there is no
+    production change for REQ-SD-006/-007 to RED against, and manufacturing one was not done.
+    AC-SD-006's two intermediate failures were test-walk bugs fixed in the test itself (a fresh
+    queue-promoted lease resumes through T4b `stage run` before T10; the E-VERDICT PASS file is
+    read from the worktree uncommitted and must name the T11-recorded evidence commit), not
+    production behavior changes.
+- **GREEN (E1, env-scrubbed single compound invocations, final test text)**:
+  `go test ./internal/cli -run '^TestSD_AC002_LaneLaunchStampsMarkerAndLabel$|^TestSD_AC005_LaneLaunchRequiresGitRepo$|^TestSD_AC006_LaneCycleWithoutRemote$|^TestSD_AC007_NoHeadlessEngineArgv$|^TestSD_AC017_StampedMarkerArmsContractGuard$' -count=1 -v -timeout 15m` →
+  `--- PASS` ×5, `PASS`, `ok github.com/modu-ai/moai-adk/internal/cli 9.249s`. The 017 log line
+  records the captured launch environment: `MOAI_FACTORY_ROLE="lane" MOAI_FACTORY_WORKER="lane-1"
+  MOAI_KANBAN_BACKEND="claude"`, and the guard classifies `moai contract sign SPEC-X --signer llm`
+  under it as `CONTRACT_SIGN_AGENT_VIOLATION:` deny.
+  Hook arm: `go test ./internal/hook -run '^TestSD_AC017_WidenedRoleGateDenyAndAllow$|^TestContractSignGuard' -count=1 -v -timeout 5m`
+  → `--- PASS: TestSD_AC017_WidenedRoleGateDenyAndAllow` (label-only deny, Codex MCP deny, no-vars
+  allow, marker deny) + the guard's own family `--- PASS`, `ok ... 0.631s`.
+- **Final anchored regression**: `go test ./internal/cli -run '^TestSD_AC008|...|^TestSD_WorktreeSlugShape|^TestFactoryRoleTokenPinsGuardConstant$|^TestRunCC|^TestFactoryJoin...' -count=1 -timeout 15m`
+  → `ok github.com/modu-ai/moai-adk/internal/cli 92.264s`.
+- **E2 builds**: `go build ./... && GOOS=windows GOARCH=amd64 go build ./...` → both exit 0
+  (compound invocation, final tree).
+- **E5 lint**: `golangci-lint run --timeout=2m ./internal/cli/... ./internal/hook/...` → after the
+  first GREEN run reported 1 NEW govet finding (a self-assignment leftover in the new test, cleaned
+  by simplifying the during-callback seam to `func()`), final → `0 issues.` — baseline restored.
+  CI version v2.1.6.
+- **E3 coverage** (new M4 functions): `-coverprofile` on the M4 selectors —
+  `factoryLaneRequiresGitTree` 100.0%, `enterFactoryLaneMode` 100.0% (internal/cli, selector
+  AC-SD-002+005); `contractLaneGate` 100.0% (internal/hook, selector AC-SD-017 hook arm + guard
+  family — the marker clause is pinned by the hook arm's marker subtest). `CheckContractSignClassify`
+  reads 0% under the hook-package selector (its only caller is the cli-arm test) and 75.0% under
+  the cli run with `-coverpkg=./internal/hook` (the uncovered line is the `json.Marshal` error
+  branch, unreachable for a plain command string). `enterSelectedFactoryRun` 70.6% — pre-existing
+  function; the M4-added requireActive guard branch is covered by both AC-SD-002 (guard passes)
+  and AC-SD-005 (guard refuses); the remaining legs are the leader/explicit-run branches outside
+  M4 scope. Package-wide 5.3%/1.2% under the AC selectors only (whole-package runs prohibited by
+  acceptance.md §B — CI owns the full figure).
+- **E4 boundary**: `grep -n 'AskUserQuestion' internal/cli/factory.go internal/hook/contract_sign_guard.go`
+  → no matches (exit 1).
+- **REQ-SD-017 literal scan (production files touched)**:
+  `grep -n '"MOAI_FACTORY_ROLE"\|"lane"\|"MOAI_KANBAN_BACKEND"\|"MOAI_FACTORY_WORKER"' internal/cli/factory.go internal/hook/contract_sign_guard.go internal/cli/factory_card.go`
+  → exactly one hit: `internal/cli/factory.go:62: factoryLaneRoleToken = "lane"` — the pre-existing
+  REQ-AP-013 pin declaration (existing constant, allowed). Zero env-name literals; the stamp is
+  `os.Setenv(config.EnvFactoryRole, config.FactoryRoleLane)` and the widened gate compares through
+  `config.EnvFactoryRole`/`config.EnvMoaiKanbanLabel`/`config.EnvMoaiKanbanBackend` +
+  `kanban.BackendGPT` only. The scan is additionally enforced in-tree by the AC-SD-017 source-scan
+  arm, which pins the stamp line verbatim and fails on any new literal.
+- **Design decisions**:
+  - **Marker stamp placement**: `enterFactoryLaneMode` gains the stamp
+    (`config.EnvFactoryRole = config.FactoryRoleLane`, restored on return) — the one function both
+    launchers' lane branches call, so cc.go and glm.go stay untouched (cc.go is on the PRESERVE
+    list). The leader path (`enterFactoryLeaderMode`) stamps no marker — REQ-SD-002's "the leader
+    session gets no marker" holds by construction.
+  - **Git requirement placement**: `factoryLaneRequiresGitTree` (one `git -C <root> rev-parse
+    --is-inside-work-tree`, one-line refusal naming the git requirement) fires inside
+    `enterSelectedFactoryRun` when `requireActive` is set — the parameter is the lane-join
+    discriminator (both launchers pass true only on the lane branch), and the check precedes
+    `ResolveActiveRun`'s `OpenFactory`, so the refusal writes no registry, factory, or queue file.
+    cc.go being read-only forced the shared-entry placement; the leader path (requireActive=false)
+    is unaffected.
+  - **Widened role gate**: `contractRoleMarker` → `contractLaneGate` — the exact three clauses of
+    the cli side's `factoryLaneRefusal` (marker, `EnvMoaiKanbanLabel` non-empty, backend gpt),
+    because hook cannot import cli. The Codex MCP environment (the frozen allowlist forwards
+    `MOAI_FACTORY_WORKER`, not `MOAI_KANBAN_LABEL`) denies through the backend clause. Known
+    residual, shared with the cli side: a cc/glm lane that unsets its marker is not caught by the
+    label clause (the lane's label rides `MOAI_FACTORY_WORKER`, which the gate does not read) —
+    the M1 predicate's own shape, mirrored not widened here.
+  - **CheckContractSignClassify (new exported hook seam)**: the cli arm must classify a captured
+    launch environment from the cli package, and `checkContractSign` is unexported; the wrapper
+    builds the Bash PreToolUse input and delegates. The deny/allow decision logic stays in the
+    unexported guard.
+  - **AC-SD-006 instrument**: the §B fixture per the amended acceptance prose — parent on `main`,
+    `develop` configured via git-strategy.yaml and checked out in `.moai/worktrees/develop`
+    (the t1292 root), no remote; the cycle is next → T4b/T10/T11/T13 stages → window → complete,
+    under a PATH-recording git wrapper (the TestFR_AC018 precedent, windows-skipped with the same
+    reason) whose positive controls require the log to carry the cycle's own `merge` and `worktree`
+    calls, so "no fetch/push" cannot pass on an empty recorder.
+  - **AC-SD-007 enumeration**: `sdLaunchPathArgv` entries (cc lane, glm lane) + a walk that already
+    knows the codex arm (M5 appends one entry; the walk is unchanged). The swept set is guarded
+    (`len(paths) < 2` fails).
+- **Fixture cascade (attributable to REQ-SD-005)**: the M4 git requirement tightens the lane-launch
+  precondition, so four pre-M4 lane-join tests whose fixtures were plain temp dirs gained
+  `initGitRepo`: `TestRunCCFactoriesEntryWritesLane1`, `TestRunCCLiveLegacyClaimRefusedThroughCLI`,
+  `TestRunCCDeadLegacyClaimProceedsThroughCLI` (factory_role_refusal_m2_test.go) and
+  `codexLedRun` (codex_factory_retire_test.go — one fixture fix covers its five callers). Their
+  assertions are unchanged; only the fixture precondition moved. All edited-file families re-ran
+  green (`^TestCodex...|^TestFactoryEntry...|^TestRunCC...` selector set → `ok 21.940s`).
+- **Stale-doc note (sync-phase concern, not edited here)**:
+  `.claude/rules/moai/workflow/contract-sign-guard.md` still describes the role gate as
+  "MOAI_FACTORY_ROLE=worker"; the widened deny is described in the guard's own comments and this
+  record until manager-docs' sync pass.
+- **E6**: no push (lane does not push; the leader batch-pushes develop). M4 commit: this commit
+  (SHA reported in the completion report; a commit cannot cite itself).
 
 ## §F Phase 4 Mode Selection
 

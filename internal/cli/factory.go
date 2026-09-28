@@ -32,6 +32,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 
@@ -272,7 +273,29 @@ func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
 	return entry, nil
 }
 
+// factoryLaneRequiresGitTree is the REQ-SD-005 lane-launch precondition: the
+// session a lane joins from must be a git working tree — the repository the
+// lane will carry cards for. The refusal is one line naming the git
+// requirement, and it fires before any registry, factory, or queue record
+// can be written.
+func factoryLaneRequiresGitTree(root string) error {
+	cmd := exec.Command("git", "-C", root, "rev-parse", "--is-inside-work-tree")
+	out, err := cmd.Output()
+	if err == nil && strings.TrimSpace(string(out)) == "true" {
+		return nil
+	}
+	return fmt.Errorf("factory lane launch: refused — %s is not a git working tree, and a lane session needs the git repository it will carry cards for (run the lane inside the project checkout)", root)
+}
+
 func enterSelectedFactoryRun(root, explicit string, requireActive bool) (func(), error) {
+	// REQ-SD-005: a LANE join needs a git working tree, refused before any
+	// write. requireActive is the lane discriminator here — the leader passes
+	// false and is unaffected.
+	if requireActive {
+		if err := factoryLaneRequiresGitTree(root); err != nil {
+			return func() {}, err
+		}
+	}
 	if explicit == "" && !requireActive {
 		return func() {}, nil
 	}
@@ -429,7 +452,11 @@ func enterFactoryLeaderMode(lanes int, leaderLabel string) func() {
 // exists to seed one), the raised Stop-hook block cap reaches the session
 // through EnvMoaiFactoryWorkers, and the autonomy tier and the per-lane
 // agent cap are seeded because the lane is where dispatched cards are
-// actually implemented.
+// actually implemented. It also stamps the factory ROLE MARKER
+// (config.EnvFactoryRole = config.FactoryRoleLane, name and value through
+// the internal/config constants only — REQ-SD-002/-017): the stamp is what
+// arms lane admission and the contract guard's widened role gate in the
+// launched session, and it is restored on return like the other keys.
 //
 // lanes is the run's fan-out size from the lane's own entry token —
 // `-f <N>` / `-k <N>` carry it explicitly, and the incremental `-f
@@ -437,17 +464,20 @@ func enterFactoryLeaderMode(lanes int, leaderLabel string) func() {
 // from rather than fabricating a count.
 func enterFactoryLaneMode(label string, lanes int) func() {
 	restoreLabel := captureEnvState(config.EnvMoaiFactoryWorker)
+	restoreMarker := captureEnvState(config.EnvFactoryRole)
 	restoreLaneCount := captureEnvState(config.EnvMoaiFactoryWorkers)
 	restoreTier := seedAutonomyTier()
 	restoreCap := seedLaneAgentCap()
 
 	_ = os.Setenv(config.EnvMoaiFactoryWorker, label)
+	_ = os.Setenv(config.EnvFactoryRole, config.FactoryRoleLane)
 	_ = os.Setenv(config.EnvMoaiFactoryWorkers, strconv.Itoa(lanes))
 
 	return func() {
 		restoreCap()
 		restoreTier()
 		restoreLaneCount()
+		restoreMarker()
 		restoreLabel()
 	}
 }

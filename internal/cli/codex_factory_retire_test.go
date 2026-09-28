@@ -305,6 +305,9 @@ func codexLedRun(t *testing.T, runID, backend string) string {
 	t.Helper()
 	t.Setenv("MOAI_HOME", t.TempDir())
 	root := t.TempDir()
+	// SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-005: a lane join needs a git
+	// working tree, so the entry-test fixture is one.
+	initGitRepo(t, root)
 	db, err := homestate.OpenFactory(root)
 	if err != nil {
 		t.Fatal(err)

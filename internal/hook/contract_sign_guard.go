@@ -16,11 +16,15 @@ package hook
 //	            mode-independent — active under `guided` too (design.md
 //	            §C.7).
 //	ROLE GATE   `sign --signer llm` / `--signer llm+jev`, and `decide` →
-//	            deny only where the calling session's MOAI_FACTORY_ROLE
-//	            equals the role value constant; allowed otherwise
-//	            (REQ-AP-011). The allow direction is a requirement: it is
+//	            deny wherever the calling session is lane-refused: the
+//	            MOAI_FACTORY_ROLE marker equals the role value constant, or
+//	            the lane-label variable is set, or MOAI_KANBAN_BACKEND names
+//	            the Codex harness (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-017,
+//	            widening REQ-AP-011 in the deny direction only); allowed
+//	            otherwise. The allow direction is a requirement: it is
 //	            the leader's own decide path, and denying it would deny the
-//	            caller the epic depends on.
+//	            caller the epic depends on — a session carrying none of the
+//	            three lane variables is allowed exactly as before.
 //	FAIL CLOSED an invocation carrying `contract` together with `sign` or
 //	            `decide` whose structure cannot be classified — command
 //	            substitution, a variable in program position, eval, an
@@ -42,12 +46,14 @@ package hook
 // the no-guard baseline and writes no audit line.
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // contractSignViolationPrefix is the deny sentinel the orchestrator matches.
@@ -103,8 +109,9 @@ func checkContractSign(input *HookInput) (decision string, reason string) {
 			// (REQ-AP-003). --receipt is never read (design.md §C.5).
 			return deny()
 		case "llm", "llm+jev":
-			// The non-interactive path: gated on the role marker (REQ-AP-011).
-			if !contractRoleMarker() {
+			// The non-interactive path: gated on the lane refusal (REQ-AP-011
+			// as widened by REQ-SD-017).
+			if !contractLaneGate() {
 				return "", ""
 			}
 			return deny()
@@ -116,21 +123,50 @@ func checkContractSign(input *HookInput) (decision string, reason string) {
 			return deny()
 		}
 	default: // decide
-		if !contractRoleMarker() {
+		if !contractLaneGate() {
 			return "", ""
 		}
 		return deny()
 	}
 }
 
-// contractRoleMarker reports whether the calling session claims the factory
-// lane role (REQ-AP-011; the value follows the leader/lane vocabulary per
-// SPEC-ROLE-NAMING-CODE-001 REQ-RNC-012). The marker's name and value come
-// from the internal/config constants REQ-AP-012 defines, so the legacy
-// spellings `worker` and `agent` are not accepted here by construction. A
-// session that sets no marker makes no role claim.
-func contractRoleMarker() bool {
-	return os.Getenv(config.EnvFactoryRole) == config.FactoryRoleLane
+// contractLaneGate reports whether the calling session is lane-refused
+// (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-017, widening SPEC-AUTONOMY-
+// PRECONDITION-001 REQ-AP-011 in the deny direction only): the factory role
+// marker set, or a non-empty lane-label variable, or the backend variable
+// naming the Codex harness — the same three clauses the cli side's
+// factoryLaneRefusal evaluates, so both surfaces refuse on one rule. The
+// marker's name and value come from the internal/config constants REQ-AP-012
+// defines, so the legacy spellings `worker` and `agent` are not accepted
+// here by construction. A session that sets none of the three makes no lane
+// claim and is allowed exactly as before — the leader's own decide path
+// rides that allow direction.
+func contractLaneGate() bool {
+	if os.Getenv(config.EnvFactoryRole) == config.FactoryRoleLane {
+		return true
+	}
+	if os.Getenv(config.EnvMoaiKanbanLabel) != "" {
+		return true
+	}
+	return os.Getenv(config.EnvMoaiKanbanBackend) == kanban.BackendGPT
+}
+
+// CheckContractSignClassify classifies one command line under the contract
+// sign guard exactly as the PreToolUse boundary does — the guard reads the
+// calling session's environment for the lane gate. Exported for the launcher
+// side of SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-017 (AC-SD-017), which must
+// classify a captured lane-launch environment from the cli package.
+func CheckContractSignClassify(command string) (string, string) {
+	raw, err := json.Marshal(map[string]any{"command": command})
+	if err != nil {
+		return "", ""
+	}
+	return checkContractSign(&HookInput{
+		SessionID:     "s-contract-classify",
+		HookEventName: "PreToolUse",
+		ToolName:      "Bash",
+		ToolInput:     raw,
+	})
 }
 
 // classifyContractCall parses one command line per design.md §C.2: shell-word
