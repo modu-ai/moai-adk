@@ -47,3 +47,17 @@ _<pending sync-phase>_
 | 쿼터/자격 불가 leg | 나머지 완료 후 그 leg 만 「측정 불가·사유 명시」 기록 → M2 진입 게이트에서 정지·리드 보고 (리드 지침 3, AC-LIR-006 준수) |
 
 킥오프 승인 근거: 운영자 09-28 전력 완수 지시 + CLAUDE.local.md §31 (리드 메시지로 수령, iter2 PASS 1.00 판정서 .moai/reports/t1290/plan-audit-iter2.md).
+
+**M2 — step ① done, then BLOCKED on the parent's M1 verb (2026-09-28 10:4x KST).**
+Step ① re-measured before-value: `git show develop:CLAUDE.local.md | wc -m` → **45,810** (the
+plan's expectation at `514ac7abe`, stable at this milestone). Step ② requires `moai migrate
+local-instructions` — **the verb does not exist**: `moai migrate --help` lists agency / cg /
+home-state / profiles / restore-skill only, and `git grep -c "local-instructions" a6f3861cd --
+internal/cli/` exits 1 with no output (checked on the parent branch tip too). The t1259 branch's
+merged part (`2812287eb`, an ancestor of this tree) carried plan artifacts only, and its unmerged
+tip `a6f3861cd` is docs-only (v0.3.0 scope reduction). This is the dependency manager-spec
+recorded at plan time ("this SPEC's M2 needs the parent's M1 migration verb") — the parent's M1
+is t1259's run phase, not started (parent status: draft, plan-audit loop). Per the recorded
+dependency and scope discipline (the verb is t1259's to build; the plan's method step names the
+verb — a manual migration would be an unapproved deviation), **M2 is blocked: blocker reported
+to the lead** with the measured facts. M1's closed state and all its evidence stand unchanged.
