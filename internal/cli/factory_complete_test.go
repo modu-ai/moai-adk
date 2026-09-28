@@ -298,14 +298,18 @@ func TestSD_AC024_CodexMergeRefusedStage(t *testing.T) {
 	}
 	sdCardUnchanged(t, "codex stage", root, "t1", before)
 
-	// Negative control: a Claude backend does not take this refusal (the
-	// stage behavior itself is the M3 stub).
+	// Negative control: a Claude backend does not take this refusal. With
+	// the M3 stage behavior in place (REQ-SD-012), the holder's T14 edge
+	// goes through — the card reaches `merging`, proving the refusal is
+	// Codex-specific rather than a dead stub.
 	sdLaneEnv(t, "lane-1", "")
 	_, _, err = runFactory(t, "stage", "t1", "merging", "--run", fcRun)
 	if err != nil && strings.Contains(err.Error(), factoryCodexMergeSentinel) {
 		t.Errorf("claude stage merging took the Codex refusal: %v", err)
 	}
-	sdCardUnchanged(t, "claude stage", root, "t1", before)
+	if c := fcCard(t, root, "t1"); c.State != homestate.CardMerging {
+		t.Errorf("claude stage merging = %s, want merging (the Codex refusal is backend-specific)", c.State)
+	}
 }
 
 // AC-SD-025 — the integration window serializes lanes.

@@ -14,6 +14,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/cli/worktree"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
@@ -155,6 +156,117 @@ func factoryNextLeaseOnce(ctx context.Context, root, runID, lane string) (homest
 	return homestate.Card{}, false, nil
 }
 
+// factoryRefuseForeignWorktree is the REQ-SD-011 refusal: the card's landing
+// directory already exists and no card record names it (the card itself
+// records no worktree), so `next` refuses before any claim edge and the card
+// row stays unchanged. The leaf name belongs to the card id, so an existing
+// directory there can only be a foreign tree — never one the materializer
+// created for this card.
+func factoryRefuseForeignWorktree(root, cardID string) error {
+	dir := filepath.Join(root, sessionWorktreeSubdir, cardID)
+	if info, err := os.Lstat(dir); err != nil || !info.IsDir() {
+		return nil
+	}
+	return fmt.Errorf("factory next: refused — the worktree directory %s already exists and no card record names it; a card never adopts another card's tree (remove or rename the directory first)", dir)
+}
+
+// factoryWorktreeSlug derives the card worktree's WT- branch slug from the
+// card's queue title (the kanban-dispatch branch-naming rule): lowercase
+// [a-z0-9-], at most three tokens, at most 24 characters, and never
+// containing the card id — a token carrying the id is dropped. A title with
+// no usable token falls back to "card".
+func factoryWorktreeSlug(cardID, title string) string {
+	id := strings.ToLower(strings.TrimSpace(cardID))
+	var tokens []string
+	cur := &strings.Builder{}
+	flush := func() {
+		if cur.Len() == 0 {
+			return
+		}
+		tok := cur.String()
+		cur.Reset()
+		if id != "" && strings.Contains(tok, id) {
+			return
+		}
+		tokens = append(tokens, tok)
+	}
+	for _, r := range strings.ToLower(title) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			cur.WriteRune(r)
+		} else {
+			flush()
+		}
+	}
+	flush()
+	if len(tokens) > 3 {
+		tokens = tokens[:3]
+	}
+	slug := strings.Join(tokens, "-")
+	if len(slug) > 24 {
+		slug = slug[:24]
+	}
+	if slug == "" {
+		return "card"
+	}
+	return slug
+}
+
+// factoryCardQueueTitle reads the card's queue title (the text `todo add`
+// recorded), anchored at root like every other queue read of the verb; a
+// card absent from the queue derives the slug from no title.
+func factoryCardQueueTitle(root, cardID string) string {
+	rec, err := todoReadStoreAt(root).LoadPure()
+	if err != nil {
+		return ""
+	}
+	for _, it := range rec.Items {
+		if it.ID == cardID {
+			return it.Text
+		}
+	}
+	for _, entry := range rec.Archived {
+		if entry.Item.ID == cardID {
+			return entry.Item.Text
+		}
+	}
+	return ""
+}
+
+// factoryEnsureCardWorktree is the REQ-SD-011 record step of a successful
+// lease: a card with a recorded worktree reuses that card's own tree; a card
+// without one gains a worktree created through the shared worktree
+// materializer (worktree.WorktreeCreator, wired to the session-worktree
+// materializer — never a bare `git worktree add`), whose directory leaf is
+// the card id and whose branch is renamed in place to WT-<slug> from the
+// card's queue title, and records the created path on the card. It returns
+// the card's worktree path and whether a new tree was created.
+func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card homestate.Card, lane string, out io.Writer) (string, bool, error) {
+	if p := strings.TrimSpace(card.WorktreePath); p != "" {
+		return p, false, nil
+	}
+	if worktree.WorktreeCreator == nil {
+		return "", false, errors.New("worktree creator is not initialized")
+	}
+	slug := factoryWorktreeSlug(card.CardID, factoryCardQueueTitle(root, card.CardID))
+	wt, err := worktree.WorktreeCreator(card.CardID, out)
+	if err != nil {
+		return "", false, fmt.Errorf("create the card worktree: %w", err)
+	}
+	rename := exec.Command("git", "-C", wt, "branch", "-m", SessionWorktreeBranchPrefix+slug)
+	if outb, err := rename.CombinedOutput(); err != nil {
+		return "", false, fmt.Errorf("rename the card worktree branch: %v: %s", err, strings.TrimSpace(string(outb)))
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return "", false, fmt.Errorf("record the card worktree: %w", err)
+	}
+	defer func() { _ = db.Close() }()
+	if _, err := db.RecordCardWorktree(ctx, runID, card.CardID, wt, lane, factoryCardNow()); err != nil {
+		return "", false, fmt.Errorf("record the card worktree: %w", err)
+	}
+	return wt, true, nil
+}
+
 // factoryNextSelectAndLease runs one selection pass. raced reports that
 // another lane moved the candidate first and the caller should re-select.
 func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, skip func(homestate.Card) bool) (homestate.Card, bool, bool, error) {
@@ -174,7 +286,7 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 		if skip(c) {
 			continue
 		}
-		return factoryNextClaim(ctx, db, runID, c, lane)
+		return factoryNextClaim(ctx, db, root, runID, c, lane)
 	}
 	// (b) an operator-picked card assigned to no lane. The record row sits at
 	// `picked` with no owner; the queue item must still be picked, so an
@@ -186,17 +298,17 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 		if skip(c) {
 			continue
 		}
-		state, inQueue, err := queueItemState(c.CardID)
+		state, inQueue, err := queueItemState(root, c.CardID)
 		if err != nil {
 			return homestate.Card{}, false, false, err
 		}
 		if !inQueue || state != kanban.BacklogStatePicked {
 			continue
 		}
-		return factoryNextClaim(ctx, db, runID, c, lane)
+		return factoryNextClaim(ctx, db, root, runID, c, lane)
 	}
 	// (b2) a queue-picked card with no record row yet: record it, then claim.
-	rec, err := newTodoReadStore().LoadPure()
+	rec, err := todoReadStoreAt(root).LoadPure()
 	if err != nil {
 		return homestate.Card{}, false, false, err
 	}
@@ -204,13 +316,13 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 		if it.State != kanban.BacklogStatePicked || recorded[it.ID] {
 			continue
 		}
-		return factoryNextRecordAndClaim(ctx, db, runID, it.ID, lane)
+		return factoryNextRecordAndClaim(ctx, db, root, runID, it.ID, lane)
 	}
 	// (c) the oldest queued card: promote it to picked in the queue FIRST,
 	// then record — a record-write failure leaves it a plain unowned picked
 	// card the next `next` takes at arm (b) (design.md §3).
 	var promoted string
-	if err := newTodoStore().Mutate(func(r *kanban.BacklogRecord) error {
+	if err := todoStoreAt(root).Mutate(func(r *kanban.BacklogRecord) error {
 		for i := range r.Items {
 			if r.Items[i].State == kanban.BacklogStateQueued {
 				r.Items[i].State = kanban.BacklogStatePicked
@@ -227,23 +339,30 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 		// write; re-select against the new state.
 		return homestate.Card{}, false, true, nil
 	}
-	return factoryNextRecordAndClaim(ctx, db, runID, promoted, lane)
+	return factoryNextRecordAndClaim(ctx, db, root, runID, promoted, lane)
 }
 
 // factoryNextRecordAndClaim records a queue-picked card (T1) and claims it.
-func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, runID, cardID, lane string) (homestate.Card, bool, bool, error) {
+func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, root, runID, cardID, lane string) (homestate.Card, bool, bool, error) {
 	fresh, err := db.RecordPicked(ctx, runID, cardID, homestate.CardFields{}, "factory-next", factoryCardNow())
 	if err != nil {
 		return factoryNextClaimRefused(err)
 	}
-	return factoryNextClaim(ctx, db, runID, fresh, lane)
+	return factoryNextClaim(ctx, db, root, runID, fresh, lane)
 }
 
 // factoryNextClaim takes a card from `picked` or `assigned` to `leased` for
 // lane through the version-checked F1 edges (T2 then T3), with the lane's
-// label as the lease holder.
-func factoryNextClaim(ctx context.Context, db *homestate.FactoryDB, runID string, cur homestate.Card, lane string) (homestate.Card, bool, bool, error) {
+// label as the lease holder. The REQ-SD-011 worktree refusal fires before
+// the edges: a card with no recorded worktree whose landing directory is
+// already taken by a foreign tree is refused, and no row changes.
+func factoryNextClaim(ctx context.Context, db *homestate.FactoryDB, root, runID string, cur homestate.Card, lane string) (homestate.Card, bool, bool, error) {
 	c := cur
+	if strings.TrimSpace(c.WorktreePath) == "" {
+		if err := factoryRefuseForeignWorktree(root, c.CardID); err != nil {
+			return homestate.Card{}, false, false, err
+		}
+	}
 	if c.State == homestate.CardPicked {
 		next, err := db.Transition(ctx, homestate.TransitionRequest{
 			RunID: runID, CardID: c.CardID, To: homestate.CardAssigned,
@@ -335,6 +454,11 @@ func newFactoryNextCommand() *cobra.Command {
 					return fmt.Errorf("factory next: %w", err)
 				}
 				if leased {
+					wt, _, err := factoryEnsureCardWorktree(ctx, root, runID, card, lane, cmd.OutOrStdout())
+					if err != nil {
+						return fmt.Errorf("factory next: %w", err)
+					}
+					card.WorktreePath = wt
 					return factoryNextPrint(cmd, card)
 				}
 				if !wait || !factoryCardNow().Before(deadline) {
@@ -353,52 +477,119 @@ func newFactoryNextCommand() *cobra.Command {
 	return cmd
 }
 
-// factoryNextPrint reports the leased card (REQ-SD-008, plan B9): its id,
-// its stage, its worktree name, and its pull-request and landed state
-// exactly as `moai todo pr` prints them — the pre-dispatch cross-check the
-// leader performs, reported by the lane itself for a self-dispatched card.
+// factoryNextPrint reports the leased card (REQ-SD-008, plan B9) on the
+// command's streams; the writer form is what the MCP factory_next handler
+// shares (design.md §3 — one implementation per verb).
 func factoryNextPrint(cmd *cobra.Command, card homestate.Card) error {
-	out := cmd.OutOrStdout()
-	worktree := dash("")
+	return factoryNextWriteOutput(cmd.OutOrStdout(), cmd.ErrOrStderr(), factoryCardRoot(), card)
+}
+
+// factoryNextWriteOutput reports the leased card: its id, its stage, its
+// worktree name, and its pull-request and landed state exactly as
+// `moai todo pr` prints them — the pre-dispatch cross-check the leader
+// performs, reported by the lane itself for a self-dispatched card. The
+// queue read is anchored at root, the tree the verb resolved.
+func factoryNextWriteOutput(out, errOut io.Writer, root string, card homestate.Card) error {
+	wtName := dash("")
 	if p := strings.TrimSpace(card.WorktreePath); p != "" {
-		worktree = filepath.Base(p)
+		wtName = filepath.Base(p)
 	}
-	_, _ = fmt.Fprintf(out, "%s stage=%s worktree=%s\n", card.CardID, dash(card.Stage), worktree)
-	rec, err := newTodoReadStore().LoadPure()
+	_, _ = fmt.Fprintf(out, "%s stage=%s worktree=%s\n", card.CardID, dash(card.Stage), wtName)
+	rec, err := todoReadStoreAt(root).LoadPure()
 	if err != nil {
 		return fmt.Errorf("factory next: read the queue for the pr line: %w", err)
 	}
-	rows := computeTodoPRRows(cmd.ErrOrStderr(), rec, card.CardID)
+	rows := computeTodoPRRows(errOut, rec, card.CardID)
 	writeTodoPRRows(out, rec, rows)
 	return nil
 }
 
-// newFactoryStageCommand — `moai factory stage <card> <state>` (REQ-SD-012).
-// M1 registers the admission refusal; the transition behavior lands with
-// milestone M3 of this SPEC.
+// newFactoryStageCommand — `moai factory stage <card> <state> [evidence]`
+// (REQ-SD-012): the lane applies the card's next F1 stage transition, the
+// evidence positional feeding the guards that need it.
 func newFactoryStageCommand() *cobra.Command {
 	var run string
 	cmd := &cobra.Command{
-		Use:   "stage <card> <state>",
+		Use:   "stage <card> <state> [evidence]",
 		Short: "Apply a card's next stage transition with its evidence (lane session)",
 		Args:  cobra.MinimumNArgs(2),
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if !factoryLaneAdmission() {
 				return factoryNotALaneError("stage")
 			}
-			// REQ-SD-025: the merge-ready → merging edge is refused on every
-			// path while the backend identifies the Codex harness. The rest of
-			// the transition behavior lands with milestone M3.
-			if len(args) >= 2 && args[1] == homestate.CardMerging {
-				if err := factoryRefuseCodexMergeEdge("stage"); err != nil {
-					return err
-				}
+			lane := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanLabel))
+			if lane == "" {
+				return fmt.Errorf("factory stage: %s is empty — a lane session carries its lane label there", config.EnvMoaiKanbanLabel)
 			}
-			return errors.New("factory stage: not yet implemented (SPEC-FACTORY-SELF-DISPATCH-001 M3)")
+			evidence := ""
+			if len(args) > 2 {
+				evidence = args[2]
+			}
+			ctx := cmd.Context()
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			card, err := factoryStageCard(ctx, factoryCardRoot(), args[0], args[1], evidence, run, lane)
+			if err != nil {
+				return err
+			}
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %s v%d lease renewed\n", card.CardID, card.State, card.Version)
+			return nil
 		},
 	}
 	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
 	return cmd
+}
+
+// factoryStageCard applies one stage transition as the lane (REQ-SD-012):
+// the F1 edge through the Transition API with the lane's label as actor, the
+// evidence positional (`<sha>` for the commit-only guards,
+// `<sha>:<repo-relative-artifact>` where the guard also names the artifact)
+// feeding the guards that read evidence themselves, and a lease renewal on
+// success. It is the one implementation both the cobra RunE and the MCP
+// factory_stage handler call (design.md §3); the REQ-SD-025 Codex
+// merge-edge refusal rides inside, so every surface refuses it identically.
+// The returned error carries the "factory stage:" prefix with the F1
+// refusal verbatim inside.
+func factoryStageCard(ctx context.Context, root, cardID, state, evidence, run, lane string) (homestate.Card, error) {
+	refuse := func(err error) (homestate.Card, error) {
+		return homestate.Card{}, fmt.Errorf("factory stage: %w", err)
+	}
+	if state == homestate.CardMerging {
+		if err := factoryRefuseCodexMergeEdge("stage"); err != nil {
+			return refuse(err)
+		}
+	}
+	runID, err := resolveFactoryCardRun(ctx, root, run)
+	if err != nil {
+		return refuse(err)
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return refuse(err)
+	}
+	defer func() { _ = db.Close() }()
+	card, err := db.LoadCard(ctx, runID, cardID)
+	if err != nil {
+		return refuse(err)
+	}
+	req := homestate.TransitionRequest{
+		RunID: runID, CardID: cardID, To: state,
+		ExpectedVersion: card.Version, Actor: lane, Now: factoryCardNow(),
+	}
+	if sha, artifact, ok := strings.Cut(evidence, ":"); ok {
+		req.SHA, req.ArtifactPath = strings.TrimSpace(sha), strings.TrimSpace(artifact)
+	} else if strings.TrimSpace(evidence) != "" {
+		req.SHA = strings.TrimSpace(evidence)
+	}
+	next, err := db.Transition(ctx, req)
+	if err != nil {
+		return refuse(err)
+	}
+	if _, err := db.RenewLease(ctx, runID, cardID, lane, factoryCardNow()); err != nil {
+		return refuse(err)
+	}
+	return next, nil
 }
 
 // newFactoryCompleteCommand — `moai factory complete <card> [remeasure]`
@@ -419,9 +610,6 @@ func newFactoryCompleteCommand() *cobra.Command {
 			if !factoryLaneAdmission() {
 				return factoryNotALaneError("complete")
 			}
-			if err := factoryRefuseCodexMergeEdge("complete"); err != nil {
-				return err
-			}
 			lane := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanLabel))
 			if lane == "" {
 				return fmt.Errorf("factory complete: %s is empty — a lane session carries its lane label there", config.EnvMoaiKanbanLabel)
@@ -434,7 +622,7 @@ func newFactoryCompleteCommand() *cobra.Command {
 			if ctx == nil {
 				ctx = context.Background()
 			}
-			return factoryCompleteCard(ctx, cmd, args[0], remeasure, run, lane)
+			return factoryCompleteCard(ctx, cmd.OutOrStdout(), factoryCardRoot(), integrationLockRoot(), args[0], remeasure, run, lane)
 		},
 	}
 	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
@@ -445,9 +633,15 @@ func newFactoryCompleteCommand() *cobra.Command {
 // integration window (the same record acquire writes, never a shell-out),
 // apply the REQ-SD-023 refusals, merge --no-ff inside the worktree that has
 // the integration branch checked out, and record the F1 edges T14 then T16.
-func factoryCompleteCard(ctx context.Context, cmd *cobra.Command, cardID, remeasure, run, lane string) error {
-	root := factoryCardRoot()
-	lockRoot := integrationLockRoot()
+// root and lockRoot name the tree the record and the window live in — the
+// resolved project root on the MCP path (design.md §3, one implementation).
+func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, cardID, remeasure, run, lane string) error {
+	// REQ-SD-025: the merge-ready → merging edge is refused on every path
+	// while the backend identifies the Codex harness — inside the shared
+	// body, so the CLI verb and the MCP tool refuse identically.
+	if err := factoryRefuseCodexMergeEdge("complete"); err != nil {
+		return err
+	}
 	// The same session identity acquire resolves: a window whose holder is
 	// unresolvable can be neither taken nor re-taken, so an empty id is a
 	// blocker to report, never a value to invent.
@@ -540,7 +734,7 @@ func factoryCompleteCard(ctx context.Context, cmd *cobra.Command, cardID, remeas
 		if replaced != nil {
 			// Never silent, exactly like acquire: the next lane must be able
 			// to say what was cleared.
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  displaced stale window of %s (pid %d), held since %s\n", factoryHolderLabel(replaced), replaced.PID, replaced.AcquiredAt)
+			_, _ = fmt.Fprintf(out, "  displaced stale window of %s (pid %d), held since %s\n", factoryHolderLabel(replaced), replaced.PID, replaced.AcquiredAt)
 		}
 	}
 
@@ -574,9 +768,9 @@ func factoryCompleteCard(ctx context.Context, cmd *cobra.Command, cardID, remeas
 	if err != nil {
 		return fmt.Errorf("factory complete: card %s is in merging; the F1 merge gate refused: %w", card.CardID, err)
 	}
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %s merge=%s branch=%s worktree=%s\n",
+	_, _ = fmt.Fprintf(out, "%s %s merge=%s branch=%s worktree=%s\n",
 		done.CardID, done.State, done.MergeSHA, branch, integTree)
-	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "  the integration window is still held by this session — run moai integration release next")
+	_, _ = fmt.Fprintln(out, "  the integration window is still held by this session — run moai integration release next")
 	return nil
 }
 
@@ -725,10 +919,11 @@ func resolveFactoryCardRun(ctx context.Context, root, explicit string) (string, 
 	return run, nil
 }
 
-// queueItemState reads the queue state of cardID; ok is false when the id is
-// not in the queue at all. The factory record never writes the queue.
-func queueItemState(cardID string) (kanban.BacklogState, bool, error) {
-	record, err := newTodoReadStore().LoadPure()
+// queueItemState reads the queue state of cardID, anchored at root; ok is
+// false when the id is not in the queue at all. The factory record never
+// writes the queue.
+func queueItemState(root, cardID string) (kanban.BacklogState, bool, error) {
+	record, err := todoReadStoreAt(root).LoadPure()
 	if err != nil {
 		return "", false, err
 	}
@@ -747,8 +942,8 @@ func queueItemState(cardID string) (kanban.BacklogState, bool, error) {
 
 // requireQueuePicked is the REQ-FR-022 precondition: only a card whose queue
 // item is `picked` is admitted to the factory record.
-func requireQueuePicked(cardID string) error {
-	state, ok, err := queueItemState(cardID)
+func requireQueuePicked(root, cardID string) error {
+	state, ok, err := queueItemState(root, cardID)
 	if err != nil {
 		return fmt.Errorf("read queue: %w", err)
 	}
@@ -797,7 +992,7 @@ func newFactoryAssignCommand() *cobra.Command {
 				}
 				fields.Contract = &ref
 			}
-			if err := requireQueuePicked(cardID); err != nil {
+			if err := requireQueuePicked(factoryCardRoot(), cardID); err != nil {
 				return fmt.Errorf("factory assign: %w", err)
 			}
 			root := factoryCardRoot()
@@ -982,6 +1177,44 @@ func writeFactoryStatusText(w io.Writer, r factoryStatusReport) {
 	}
 }
 
+// factoryDecideLaneRefusal is the REQ-SD-016 refusal — one wording source
+// for the CLI decide guard and the MCP factory_decide handler.
+func factoryDecideLaneRefusal() error {
+	return fmt.Errorf("factory decide: refused — %s: decide records the operator's decisions; a lane session cannot (on the Codex MCP path the same refusal covers factory_decide)", factoryLaneBoundarySentinel)
+}
+
+// factoryDecideCards applies one gate/choice decision to each named card —
+// the operator loop both the cobra RunE and the MCP factory_decide handler
+// run (design.md §3, one implementation per verb). The queue-independent
+// parts (the lane guard, the decider and gate/choice shape) stay with the
+// callers; this is the record-writing body, anchored at root.
+func factoryDecideCards(ctx context.Context, root string, out io.Writer, cards []string, gate, choice, run string) error {
+	runID, err := resolveFactoryCardRun(ctx, root, run)
+	if err != nil {
+		return fmt.Errorf("factory decide: %w", err)
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return fmt.Errorf("factory decide: %w", err)
+	}
+	defer func() { _ = db.Close() }()
+	integration := config.LoadGitFlowIntegrationConfig(root).IntegrationTarget
+	refused := 0
+	for _, cardID := range cards {
+		card, err := decideOne(ctx, db, runID, cardID, gate, choice, integration)
+		if err != nil {
+			refused++
+			_, _ = fmt.Fprintf(out, "%s: refused: %v\n", cardID, err)
+			continue
+		}
+		_, _ = fmt.Fprintf(out, "%s: %s (v%d)\n", cardID, card.State, card.Version)
+	}
+	if refused > 0 {
+		return fmt.Errorf("factory decide: %d of %d cards refused", refused, len(cards))
+	}
+	return nil
+}
+
 func newFactoryDecideCommand() *cobra.Command {
 	var gate, choice, decider, run string
 	cmd := &cobra.Command{
@@ -993,7 +1226,7 @@ func newFactoryDecideCommand() *cobra.Command {
 			// marker, label, or Codex backend — cannot record decisions. The
 			// guard runs before any card row is read or written.
 			if factoryLaneRefusal() {
-				return fmt.Errorf("factory decide: refused — %s: decide records the operator's decisions; a lane session cannot (on the Codex MCP path the same refusal covers factory_decide)", factoryLaneBoundarySentinel)
+				return factoryDecideLaneRefusal()
 			}
 			if decider != homestate.DeciderHuman {
 				return fmt.Errorf("factory decide: decider %q is not accepted; F1 records only %q decisions", decider, homestate.DeciderHuman)
@@ -1005,35 +1238,11 @@ func newFactoryDecideCommand() *cobra.Command {
 			default:
 				return fmt.Errorf("factory decide: want --gate kickoff --choice approve|reject, --gate push, or --choice resume|block|unblock|abandon")
 			}
-			root := factoryCardRoot()
 			ctx := cmd.Context()
 			if ctx == nil {
 				ctx = context.Background()
 			}
-			runID, err := resolveFactoryCardRun(ctx, root, run)
-			if err != nil {
-				return fmt.Errorf("factory decide: %w", err)
-			}
-			db, err := homestate.OpenFactory(root)
-			if err != nil {
-				return fmt.Errorf("factory decide: %w", err)
-			}
-			defer func() { _ = db.Close() }()
-			integration := config.LoadGitFlowIntegrationConfig(root).IntegrationTarget
-			refused := 0
-			for _, cardID := range args {
-				card, err := decideOne(ctx, db, runID, cardID, gate, choice, integration)
-				if err != nil {
-					refused++
-					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s: refused: %v\n", cardID, err)
-					continue
-				}
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s: %s (v%d)\n", cardID, card.State, card.Version)
-			}
-			if refused > 0 {
-				return fmt.Errorf("factory decide: %d of %d cards refused", refused, len(args))
-			}
-			return nil
+			return factoryDecideCards(ctx, factoryCardRoot(), cmd.OutOrStdout(), args, gate, choice, run)
 		},
 	}
 	cmd.Flags().StringVar(&gate, "gate", "", "decision gate: kickoff or push")

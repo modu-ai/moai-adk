@@ -114,6 +114,19 @@ func newTodoReadStore() *kanban.BacklogStore {
 	return kanban.NewBacklogStore(kanban.BacklogPathForRoot(root))
 }
 
+// todoStoreAt and todoReadStoreAt anchor the queue at an explicit root — the
+// MCP tool path, whose caller names its tree with the project_root argument
+// (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-024). The CLI verbs keep resolving
+// through resolveTodoQueueRoot; the two shapes share the same path builders,
+// so a root both surfaces agree on sees the same queue file.
+func todoStoreAt(root string) *kanban.BacklogStore {
+	return kanban.NewBacklogStore(todoBacklogPath(root))
+}
+
+func todoReadStoreAt(root string) *kanban.BacklogStore {
+	return kanban.NewBacklogStore(kanban.BacklogPathForRoot(root))
+}
+
 // todoLandedRef is the single place the todo surface resolves the ref the
 // landing question is asked about, so the help text, the flag description, the
 // refusal, and the query itself can never name different refs.
@@ -320,8 +333,15 @@ func todoRefuseLaneMutation(root, run *cobra.Command, args []string) error {
 	} else if todoLaneReadOnlyVerbs[run.Name()] {
 		return nil
 	}
-	return fmt.Errorf("moai %s: refused — %s: a lane session cannot mutate the queue (read-only here: bare todo, list, history, why, pr, triage); a lane takes its next card through moai factory next",
-		todoSurfaceName(run), factoryLaneBoundarySentinel)
+	return fmt.Errorf("%s", todoLaneMutationRefusalText(todoSurfaceName(run)))
+}
+
+// todoLaneMutationRefusalText is the one wording source for the REQ-SD-015
+// queue-mutation refusal, shared by the CLI guard and the MCP todo_add tool
+// so the two surfaces cannot drift (AC-SD-014 refusal equality).
+func todoLaneMutationRefusalText(surface string) string {
+	return fmt.Sprintf("moai %s: refused — %s: a lane session cannot mutate the queue (read-only here: bare todo, list, history, why, pr, triage); a lane takes its next card through moai factory next",
+		surface, factoryLaneBoundarySentinel)
 }
 
 // todoVerbShaped matches a first token that reads as a command verb: one
@@ -554,12 +574,19 @@ func newTodoAddCmd() *cobra.Command {
 // append, "<id> <position>" stdout line. `--pick` stays add-only — the
 // fallthrough path has no flags.
 func runTodoAddAppend(cmd *cobra.Command, text string, force bool) error {
+	return runTodoAddAppendRoot(resolveTodoQueueRoot(), cmd, text, force)
+}
+
+// runTodoAddAppendRoot is runTodoAddAppend anchored at an explicit root —
+// the shape the MCP todo_add tool calls (REQ-SD-024), so both surfaces run
+// one implementation.
+func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bool) error {
 	if strings.TrimSpace(text) == "" {
 		return fmt.Errorf("todo add: text must be non-empty")
 	}
 	var item kanban.BacklogItem
 	var pos int
-	err := newTodoStore().Mutate(func(rec *kanban.BacklogRecord) error {
+	err := todoStoreAt(root).Mutate(func(rec *kanban.BacklogRecord) error {
 		var mutErr error
 		item, pos, mutErr = appendAnalyzedCard(rec, text, kanban.BacklogStateQueued, force)
 		return mutErr
@@ -620,10 +647,17 @@ const todoListDefaultLimit = 20
 // structured record is the full read, and a bounded JSON would be the same
 // silent truncation.
 func runTodoList(cmd *cobra.Command, jsonOutput bool, droppedOnly bool, limit int) error {
+	return runTodoListRoot(resolveTodoQueueRoot(), cmd, jsonOutput, droppedOnly, limit)
+}
+
+// runTodoListRoot is runTodoList anchored at an explicit root — the shape
+// the MCP todo_list tool calls (REQ-SD-024), so both surfaces render one
+// implementation.
+func runTodoListRoot(root string, cmd *cobra.Command, jsonOutput bool, droppedOnly bool, limit int) error {
 	if !jsonOutput && limit < 0 {
 		return fmt.Errorf("todo list: --limit must be >= 0 (got %d)", limit)
 	}
-	store := newTodoReadStore()
+	store := todoReadStoreAt(root)
 	// REQ-BJD-002 — probed before the read. stderr only: stdout is what the
 	// foreman reads.
 	_ = discloseQueueLayout(cmd, "todo")

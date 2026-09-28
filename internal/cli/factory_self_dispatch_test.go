@@ -130,6 +130,10 @@ func TestSD_AC008_NextSelectionOrderAndOutput(t *testing.T) {
 			homestate.Card{CardID: "t2", State: homestate.CardPicked},
 		)
 		sdLaneEnv(t, "lane-1", "")
+		// M3 (REQ-SD-011): a leased card with no recorded worktree gains one
+		// through the materializer, anchored at the parent checkout — the
+		// cwd `next` runs from, per REQ-SD-010.
+		t.Chdir(root)
 		out, _, err := runFactory(t, "next", "--run", fcRun)
 		if err != nil {
 			t.Fatalf("next: %v\nstderr: %s", err, out)
@@ -140,7 +144,7 @@ func TestSD_AC008_NextSelectionOrderAndOutput(t *testing.T) {
 		if c := fcCard(t, root, "t2"); c.State != homestate.CardPicked {
 			t.Fatalf("t2 = %s, want still picked", c.State)
 		}
-		sdAssertLeasedOutput(t, out, "t1", homestate.CardRun, "-")
+		sdAssertLeasedOutput(t, out, "t1", homestate.CardRun, "t1")
 	})
 
 	t.Run("unowned picked wins over older queued", func(t *testing.T) {
@@ -149,6 +153,7 @@ func TestSD_AC008_NextSelectionOrderAndOutput(t *testing.T) {
 		sdRegisterLane(t, root, "lane-1")
 		fcPlace(t, root, homestate.Card{CardID: "t2", State: homestate.CardPicked})
 		sdLaneEnv(t, "lane-1", "")
+		t.Chdir(root)
 		out, _, err := runFactory(t, "next", "--run", fcRun)
 		if err != nil {
 			t.Fatalf("next: %v", err)
@@ -166,7 +171,7 @@ func TestSD_AC008_NextSelectionOrderAndOutput(t *testing.T) {
 		if rec.Items[0].State != kanban.BacklogStateQueued {
 			t.Errorf("queued card promoted although a picked card existed: %s", rec.Items[0].State)
 		}
-		sdAssertLeasedOutput(t, out, "t2", "-", "-")
+		sdAssertLeasedOutput(t, out, "t2", "-", "t2")
 	})
 
 	t.Run("card assigned to another lane is never taken; exit 3", func(t *testing.T) {
@@ -192,6 +197,7 @@ func TestSD_AC008_NextSelectionOrderAndOutput(t *testing.T) {
 		fcQueue(t, store, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
 		sdRegisterLane(t, root, "lane-1")
 		sdLaneEnv(t, "lane-1", "")
+		t.Chdir(root)
 		out, _, err := runFactory(t, "next", "--run", fcRun)
 		if err != nil {
 			t.Fatalf("next: %v", err)
@@ -206,7 +212,7 @@ func TestSD_AC008_NextSelectionOrderAndOutput(t *testing.T) {
 		if c := fcCard(t, root, "t1"); c.State != homestate.CardLeased || c.LeaseHolder != "lane-1" {
 			t.Fatalf("t1 = %s holder=%q, want leased/lane-1", c.State, c.LeaseHolder)
 		}
-		sdAssertLeasedOutput(t, out, "t1", "-", "-")
+		sdAssertLeasedOutput(t, out, "t1", "-", "t1")
 	})
 
 	t.Run("empty queue prints no-card and exits 3", func(t *testing.T) {
@@ -254,6 +260,7 @@ func TestSD_AC009_NextWaitLeasesOrTimesOut(t *testing.T) {
 		root, store := fcFixture(t)
 		sdRegisterLane(t, root, "lane-1")
 		sdLaneEnv(t, "lane-1", "")
+		t.Chdir(root)
 		sleeps := 0
 		prevSleep := factoryNextWaitSleep
 		factoryNextWaitSleep = func(time.Duration) {
@@ -538,8 +545,10 @@ func TestSD_AC023_CodexNextSkipsUnadvanceableCard(t *testing.T) {
 		t.Errorf("card row changed: %+v → %+v", before, after)
 	}
 
-	// A Claude lane owning the same card leases it.
+	// A Claude lane owning the same card leases it (M3: and gains its
+	// worktree, anchored at the parent checkout the CLI runs from).
 	sdLaneEnv(t, "lane-1", "")
+	t.Chdir(root)
 	if _, _, err := runFactory(t, "next", "--run", fcRun); err != nil {
 		t.Fatalf("claude next on merge-ready-returned card: %v", err)
 	}

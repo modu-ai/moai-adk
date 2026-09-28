@@ -640,6 +640,13 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleGraphShortestPath)
 
+	// SPEC-FACTORY-SELF-DISPATCH-001 M3 (REQ-SD-014): the four factory card
+	// tools and the two todo tools, each a thin wrapper over the same
+	// function its CLI counterpart calls (mcp_factory_card.go /
+	// mcp_todo.go).
+	registerFactoryCardMCPTools(add)
+	registerTodoMCPTools(add)
+
 	// --- jev_ask → jev.Client.Ask (internal/jev) — the gated judgment wrapper.
 	// A thin caller over the ONE call path (no transport code here), inert
 	// behind workflow.jev.enabled (shipped default false): gate off → no client

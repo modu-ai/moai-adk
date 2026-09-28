@@ -119,6 +119,96 @@ tools), AC-SD-025.
   `internal/cli/factory_complete_test.go` (new M2 AC tests).
 - **E6**: no push (lane does not push; the leader batch-pushes develop).
 
+### Absorption (2026-09-28, worker-70 continuation)
+
+- Absorbed local develop `1ea627832` → merge `cb1f2c226`, conflicts 0.
+- WorktreeNew re-adjudication — `go test ./internal/cli -run '^TestWorktreeNew_WiresTheSharedMaterializer$|^TestWorktreeNew_RefusesPlainDirectoryBeforeGit$' -count=1 -v` → both `--- PASS`, `ok github.com/modu-ai/moai-adk/internal/cli 0.833s`; the pre-existing-failure premise (worker-62 report: both red on develop `a7190891d`) is dissolved — fix `ea13cb094 test(worktree): expect neutral L1 root in CLI wiring (t1292)` landed on develop between a7190891d and 1ea627832.
+- Scoped remeasure at cb1f2c226: `go test ./internal/homestate/... ./internal/kanban/... ./internal/config/... ./internal/spec/... -count=1` → homestate ok 45.312s, kanban ok 176.833s, config ok 5.617s/0.334s/0.315s, spec ok 119.073s (slot internal-test-suite acquired/released).
+- M1/M2 regression at cb1f2c226: `ok github.com/modu-ai/moai-adk/internal/cli 25.711s`.
+
+### M3 — worktree per card, stage, MCP tools (2026-09-28)
+
+Scope: REQ-SD-011, -012, -014, -024. ACs: AC-SD-011, -012, -014 in full, plus the M3 arms of
+AC-SD-010 (MCP half), -015 (todo_add), -016 (factory_decide), -024 (CodexMergeRefusedMCP).
+Work ran 2026-09-28 through 2026-09-29 (429 quota reset continuation; tree unchanged and clean
+across the boundary at `cb1f2c226`).
+
+- **Pre-flight (C)**: `git rev-parse --short HEAD` → `cb1f2c226`; `git branch --show-current` →
+  `WT-factory-self-dispatch`; `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...`
+  exit 0; `golangci-lint run --timeout=2m ./internal/cli/...` → `0 issues.` (baseline; CI version
+  v2.1.6 per t1235/t1271); M1/M2 anchored regression → `ok github.com/modu-ai/moai-adk/internal/cli 25.711s`.
+- **RED (E8)**: `factory_m3_test.go` written first; pre-implementation `go vet ./internal/cli`
+  → build failure naming the missing production symbols (`undefined: handleTodoAdd`, `handleTodoList`,
+  `handleFactoryNext`, `handleFactoryStage`, `handleFactoryComplete`, `handleFactoryDecide`), the M1/M2
+  RED shape. AC-011/-012 were additionally behavioral RED at that point (no worktree creation; stage
+  was the M2 stub returning "not yet implemented").
+- **GREEN (E1, env-scrubbed single compound invocations, tree = M3 commit)**:
+  - `go test ./internal/cli -run '^TestSD_AC011_CardWorktreeCreateReuseRefuse$|^TestSD_AC012_StageAppliesEdgeAndRenews$|^TestSD_WorktreeSlugShape$' -count=1 -v -timeout 10m` → `--- PASS` ×3 (AC-011: create/reuse/refuse; AC-012: holder edge + actor + renewal, lane-2 F1 refusal), `PASS`, `ok ... 5.436s`.
+  - `go test ./internal/cli -run '^TestSD_AC014_MCPMatchesCLIWithProjectRoot$|^TestSD_AC014_ProjectRootRequired$|^TestSD_AC010_MCPNextParentCheck$|^TestSD_AC015_MCPTodoAddRefused$|^TestSD_AC016_MCPDecideRefused$|^TestSD_AC024_CodexMergeRefusedMCP$' -count=1 -timeout 10m` → `ok github.com/modu-ai/moai-adk/internal/cli 13.626s` (AC-014: six tools, twin fixtures, success + refusal each; required project_root rejections; the four M3 arms).
+  - Full anchored set (M1+M2+M3): `go test ./internal/cli -run '^TestSD_AC008|...|^TestSD_WorktreeSlugShape' -count=1 -timeout 15m` → `ok github.com/modu-ai/moai-adk/internal/cli 59.505s`.
+- **Regression**: `go test ./internal/cli -run '^TestFR_' -count=1 -timeout 10m` → `ok 47.176s`;
+  `go test ./internal/mcp -count=1 -timeout 5m` → `ok 0.251s` (catalog size 45 + write-capable set 20);
+  `go test ./internal/cli -run '^TestTodoAdd|^TestTodoList|^TestMoaiMCPServer_RegistrationMatchesCatalog' -count=1 -timeout 10m` → `ok 67.752s`.
+- **E2 builds**: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (compound `&&` invocation).
+- **E5 lint**: `golangci-lint run --timeout=2m ./internal/cli/... ./internal/homestate/... ./internal/mcp/...` → `0 issues.` — after 2 NEW errcheck findings (test-only `os.Unsetenv` unchecked) were fixed by restructuring the factory_next twin without an env switch; pre-flight baseline `0 issues.` restored. CI version v2.1.6.
+- **E4 boundary**: `grep -n 'AskUserQuestion' internal/cli/factory_card.go internal/cli/mcp_factory_card.go internal/cli/mcp_todo.go internal/cli/factory_m3_test.go internal/cli/factory_self_dispatch_test.go internal/cli/factory_complete_test.go` → no matches (exit 1).
+- **E3 coverage** (`go test ./internal/cli -run '^TestSD_' -count=1 -coverpkg=./internal/cli,./internal/homestate -coverprofile=/tmp/m3cover.out`): new M3 functions — factoryRefuseForeignWorktree 100%, factoryWorktreeSlug 95.8%, factoryNextWriteOutput 90%, handleTodoList 85.7%, handleFactoryStage 84.6%, factoryStageCard 81.5%, handleFactoryComplete 80%, handleFactoryNext 76.9%, handleFactoryDecide 75%, handleTodoAdd 75%, factoryEnsureCardWorktree 73.7%, factoryDecideCards 70% (its refused-card loop is exercised by the TestFR_ decide set, outside this selector), RecordCardWorktree 67.7%, factoryCardQueueTitle 50% (archived-queue + read-error branches), mcpRequiredProjectRoot 100%, newBufferedCommand 100%, factoryDecideLaneRefusal 100%; registration/schema one-liners (registerFactoryCardMCPTools, registerTodoMCPTools, requiredProjectRootOption) 0% under the selector — exercised by TestMoaiMCPServer_RegistrationMatchesCatalog, which ran green in its own anchored run. Package-wide 9.4% under the AC selector only (whole-package runs prohibited by acceptance.md §B — CI owns the full figure).
+- **Design decisions**:
+  - **Worktree landing path (t1292 absorption)**: the shared materializer's L1 root on this tree is
+    `<root>/.moai/worktrees/<name>` — `sessionWorktreeSubdir` was moved from `.claude/worktrees` to
+    `.moai/worktrees` by t1292 (commit `8c23dca9f`), which was absorbed AFTER acceptance.md was
+    authored, so AC-SD-011's literal `.claude/worktrees/<card-id>` names the pre-absorption root. The
+    implementation creates through the shared materializer seam (`worktree.WorktreeCreator` →
+    `materializeSessionWorktree`, root.go:137 — never a bare `git worktree add`), leaf = card id,
+    branch renamed in place to `WT-<slug>`; the AC test asserts the materializer's actual landing
+    directory. **PASS-WITH-DEBT for leader adjudication** — the AC's discriminative content (leaf is
+    the card id; WT- branch without the card id; record path equals the created directory; reuse never
+    creates twice; a foreign directory refuses with the row unchanged) is verified in full; the parent
+    directory naming is stale relative to the absorbed tree. Same dissolution shape the leader already
+    adjudicated for `TestWorktreeNew_*` at absorption (fix ea13cb094).
+  - **homestate.RecordCardWorktree (new API)**: recording the created path needs a post-lease record
+    write; no F1 API existed (RecordPicked updates fields only while `picked`). Added the minimal
+    version-checked, event-logged writer (appends one `card.fields` event, refuses moving a card onto
+    a different tree, idempotent on the same path) rather than a direct SQL write in cli — the F1
+    writer discipline (version compare + event) is kept. plan.md §D.2 estimated "at most a selection
+    query helper" for internal/homestate — exceeded deliberately; no schema statement touched.
+  - **One implementation per verb (design.md §3)**: the MCP handlers call the same functions the cobra
+    RunE bodies call — factoryNextLeaseOnce + factoryEnsureCardWorktree + factoryNextWriteOutput,
+    factoryStageCard, factoryCompleteCard, factoryDecideCards. The REQ-SD-025 Codex merge-edge check
+    moved INSIDE factoryStageCard/factoryCompleteCard so every surface refuses identically (the M2
+    RunE-level wiring was the only place it lived). The REQ-SD-015 queue guard and the REQ-SD-016
+    decide refusal are the same guard functions; todo_add's refusal text comes from
+    todoLaneMutationRefusalText (one wording source extracted from todoRefuseLaneMutation).
+  - **project_root (REQ-SD-024)**: factory_next/stage/complete REQUIRE it (missing → rejected naming
+    the argument; present → validateProjectRoot, the existing rejection behavior naming the path);
+    factory_next's parent-checkout check evaluates the argument. todo_add/todo_list/factory_decide
+    follow the existing optional convention (resolveToolProjectRoot). The todo verbs gained
+    Root-anchored variants (runTodoAddAppendRoot/runTodoListRoot/todoStoreAt/todoReadStoreAt) sharing
+    the CLI bodies.
+  - **stage evidence positional**: `<sha>` where the edge reads a commit only, `<sha>:<repo-relative-artifact>`
+    where the guard also names the artifact (T5/T11); a missing artifact is an F1 refusal verbatim.
+  - **Catalog**: six tools registered (todo_add, todo_list, factory_next, factory_stage,
+    factory_complete, factory_decide); internal/mcp catalog size 39 → 45, write-capable set 15 → 20;
+    registration/catalog equality guard green.
+- **M1/M2 test updates (behavior legitimately moved by M3)**: AC-SD-008/-009/-023 fixtures anchor
+  cwd at the parent checkout (t.Chdir) and expect the freshly created worktree name in the head line
+  ("t1"/"t2" instead of "-"); AC-SD-024 stage negative control now asserts the Claude-backend
+  `stage <card> merging` SUCCEEDS (card → merging) instead of asserting a stub refusal — the M2
+  comment explicitly deferred the stage behavior to M3.
+- **Incident (test pollution, cleaned)**: the first regression run leaked two worktrees into the
+  primary checkout (`.moai/worktrees/t1`, `.moai/worktrees/t2`, branches `WT-factory-card-1/-2`) —
+  the M1 fixtures ran `next` without anchoring cwd, and the materializer resolves its root from the
+  process cwd. Cleaned precisely (`git worktree remove --force` ×2 + `git branch -D` ×2 from this
+  worktree; no other lane's tree touched), then the fixtures were anchored (the t.Chdir updates above).
+- **REQ-SD-022 (frozen surfaces)**: diff-based evidence at this tree — `git status --short` names no
+  file under internal/factorymsg or internal/kanban; the only homestate addition (card_worktree.go)
+  carries no CREATE TABLE/ALTER TABLE/index statement; `internal/codexwiring/configtoml.go` untouched;
+  no new environment variable name (the lane predicates read the existing constants). Gap: the
+  mechanical AC-SD-022 tests (`TestSD_AC022_EnvVarsAllowlistFrozen` / `TestSD_AC022_SchemaStatementsFrozen`)
+  are M7 deliverables and do not exist yet — both selectors returned `[no tests to run]` and are NOT
+  counted as a pass here.
+- **E6**: no push (lane does not push; the leader batch-pushes develop).
+
 ## §F Phase 4 Mode Selection
 
 - tier: L · scope: >10 production files across cli/hook/config/kanban/homestate/codexwiring + template rules · domains: 6 (Go CLI, hooks, MCP server, launchers, doctrine rules, env constants) · language mix: Go + Markdown · concurrency benefit: LOW (coding-heavy, sequential milestone chain with shared files)
