@@ -256,7 +256,7 @@ flowchart TD
 {{< icon warning warn >}} 두 파일이 함께 있으면 Claude Code가 둘 다 읽어 비슷한 지침이 두 번 실립니다. 이 상태에서 `moai migrate local-instructions`는 어느 파일도 건드리지 않고 거부합니다 — 어느 쪽 내용을 남길지는 도구가 판단할 수 없기 때문입니다. `CLAUDE.local.md`의 내용을 손으로 `AGENTS.local.md`에 합친 뒤 `CLAUDE.local.md`를 지우세요.
 {{< /callout >}}
 
-링크된 워크트리에서 세션을 열면 `@AGENTS.local.md` 가져오기가 프로젝트 밖을 가리키게 되어 Claude Code가 조용히 건너뜁니다. 워크트리 세션은 `AGENTS.local.md`를 받지 않는다는 점을 염두에 두세요.
+링크된 워크트리에서 연 세션은 `AGENTS.local.md`가 그 워크트리 체크아웃 안에 있을 때만 받습니다. 이 파일은 기본적으로 gitignore돼 있고 보통 프로젝트 루트에만 있으므로, 추적하지 않은 사본이면 워크트리 세션은 이 파일 없이 돌아갑니다 — `@AGENTS.local.md` 가져오기는 아무것도 찾지 못하고 Claude Code가 조용히 건너뜁니다. 파일을 커밋하면(ignore 규칙을 우회해 force-add) git이 모든 워크트리 체크아웃에 파일을 배달하고, 가져오기가 프로젝트 안에서 풀려 세션이 로컬 지침을 불러옵니다.
 
 ## 관련 문서
 
