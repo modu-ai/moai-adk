@@ -125,14 +125,14 @@ mixed observations of named-worker result return are not current capability
 evidence; verify per session through the resolver before relying on them.
 
 **Constraints (conditional — apply and re-measure if the teammate conversion resurfaces on a future CC version)**:
-- No nested teams; one team per session; the lead is fixed
+- No nested teams; one team per session; the team lead is fixed
 - In-process teammates cannot spawn background subagents (request-time error)
 - `/resume` does not restore in-process teammates
 - Permissions are fixed at spawn time
 - `/model` IS inherited from the leader by default since CC 2.1.234 (the former Default teammate model `/config` setting was removed; a spawn-named model overrides; effort inheritance unchanged since v2.1.186)
 - Team state `~/.claude/teams/{name}` and `~/.claude/tasks/{name}` is runtime-managed — never hand-edit
 - Defining a subagent as a teammate skips `skills:` / `mcpServers:` frontmatter (loaded from project/user settings instead)
-- GLM inheritance (load-bearing for cost): whether teammates inherit the lead's `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN` is not officially documented — `moai cg`'s tmux env injection is a separate path and does not answer it; measure before relying on GLM-billed teammates
+- GLM inheritance (load-bearing for cost): whether teammates inherit the team lead's `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN` is not officially documented — `moai cg`'s tmux env injection is a separate path and does not answer it; measure before relying on GLM-billed teammates
 - Background subagents (the non-teammate path) have the Task tool family stripped from their schema (measured: TaskCreate/TaskUpdate/TaskList/TaskGet and ToolSearch absent from an unnamed background subagent; SendMessage present) — teammates reportedly regain the Task tool, so Task-based coordination is a teammate-path capability
 
 ### §C.2 `fanout` compound preference — three concurrency limits (SSOT)
@@ -145,7 +145,7 @@ evidence; verify per session through the resolver before relying on them.
 
 | # | Limit | Binds | Value | Grounding |
 |---|-------|-------|-------|-----------|
-| 1 | Subagent fan-out — **HARD bound** | Concurrent subagents per turn: every `Agent()` spawn surface, incl. `fanout` and any fan-out from a team lead or factory lead | `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`, default **20** per turn (env-tunable; per-session total cap removed) | Claude Code runtime default, recorded in `CLAUDE.md` §14 and `moai-constitution.md` § Parallel Execution |
+| 1 | Subagent fan-out — **HARD bound** | Concurrent subagents per turn: every `Agent()` spawn surface, incl. `fanout` and any fan-out from a team lead or factory leader | `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`, default **20** per turn (env-tunable; per-session total cap removed) | Claude Code runtime default, recorded in `CLAUDE.md` §14 and `moai-constitution.md` § Parallel Execution |
 | 2 | Workflow agent concurrency | Agents within ONE dynamic workflow (`sweep` only) | **16** concurrent per workflow — runtime-documented as `min(16, available CPUs − 2)`; repo-recorded as "up to 16 concurrent agents (fewer on machines with limited CPU cores)" — plus the 1,000-total per-run backstop | `.claude/rules/moai/workflow/dynamic-workflows.md` |
 | 3 | Team size — **ADVISORY** | Named teammates in ONE Agent Team (`agent-team`, experimental) | **3-5** teammates | Anthropic Agent Teams guidance: *"Start with 3-5 teammates for most workflows."* — team-composition advice, not a subagent cap. Second, independent ground: each teammate carries a standing I/O cost (below) |
 
@@ -183,9 +183,9 @@ The official Claude Code documentation does not document a typed named-script Wo
 
 When a `sweep` Workflow agent or a goal-loop turn agent lacks a required input, that agent returns a structured blocker report; the orchestrator runs an `AskUserQuestion` round and re-delegates with the answers injected. Agents never prompt the user directly — this is the asymmetric orchestrator-subagent boundary (`.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary). The run-phase `ac_converge` wiring point and its semantic-failure escalation live in `.claude/skills/moai/workflows/run.md` § Run-phase Autonomy (ac_converge).
 
-### §C.4 Factory workers (default 8) are not `fanout`
+### §C.4 Factory lanes (default 8) are not `fanout`
 
-`moai glm -k <N>` factory mode runs a fleet of independent worker sessions (tmux panes) — N is an operator-side fleet size (the count-less worker entry, a bare `-k --name worker-<i>`, defaults to 8), not subagent fan-out. The count sits under the factory's own workers-registry / free-slot discipline (registry prune, live-claim probe, staggered activation), not under `fanout`'s advisory band: 8 is a legal fleet size precisely because these workers are queue-polling sessions, not `Agent()` calls inside one orchestrator turn. Where a factory lead (or any worker session) DOES invoke `glm_task` / `Agent()` fan-out from its own session, that spawn surface is ordinary subagent fan-out: limit 1 (the runtime subagent cap, default 20) is the hard bound and the stagger-spawn discipline governs same-type spawns, exactly as for `fanout` (§C.2).
+`moai glm -k <N>` factory mode runs a fleet of independent lane sessions (tmux panes) — N is an operator-side fleet size (the count-less lane entry, a bare `-k --name lane-<i>`, defaults to 8), not subagent fan-out. The count sits under the factory's own lane-registry / free-slot discipline (registry prune, live-claim probe, staggered activation), not under `fanout`'s advisory band: 8 is a legal fleet size precisely because these lanes are queue-polling sessions, not `Agent()` calls inside one orchestrator turn. Where a factory leader (or any lane session) DOES invoke `glm_task` / `Agent()` fan-out from its own session, that spawn surface is ordinary subagent fan-out: limit 1 (the runtime subagent cap, default 20) is the hard bound and the stagger-spawn discipline governs same-type spawns, exactly as for `fanout` (§C.2).
 
 ---
 
@@ -272,7 +272,7 @@ The following patterns violate the orchestration mode selection contract:
 
 | `--mode` value | Corresponds to catalog mode | Notes |
 |----------------|------------------------------|-------|
-| `autopilot` | `serial` | Default single-lead orchestration; the Phase 4 scale-based selection chooses the envelope (see scale-label rows below). |
+| `autopilot` | `serial` | Default single-leader orchestration; the Phase 4 scale-based selection chooses the envelope (see scale-label rows below). |
 | `loop` | `serial` | Ralph-engine diagnostic fix-loop variant — sequential per-iteration delegation. The granularity differs (diagnostics, not phases) but the spawn shape is the sequential sub-agent. |
 | `team` | `agent-team` — experimental (re-allowed) | `--mode team` selects the Agent Teams layer (operator decision; flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships on). Historical: the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back per the Mode Resolver — the sentinel string is retained in `run.md` for the CI audit and as genealogy. |
 | `pipeline` | `serial` — utility subcommands only | Rejected on multi-agent subcommands (`MODE_PIPELINE_ONLY_UTILITY`); the utility subcommands are intrinsically sequential, so `pipeline` names their fixed direct / sequential execution shape — the `--mode pipeline` flag itself is ignored there (`MODE_FLAG_IGNORED_FOR_UTILITY`), not honored. |
@@ -297,6 +297,6 @@ Every `--mode` value and every scale label corresponds to exactly one catalog mo
 
 ---
 
-Version: 2.0.0 (catalog renamed onto the single concurrent-spawn-count axis: `trivial`→`direct`, `sub-agent`→`serial`, `parallel`→`fanout`, `workflow`→`sweep`; `background` demoted to an execution option (subagents default background since CC v2.1.198); `agent-team` moved to the §A footnote + §C.1; legacy-token mapping added at the top; stagger-spawn scoped to `fanout` with the workflow runtime's own auto-stagger excluded; §A/§B/§C/§D/§E/§F/§G aligned. Prior 1.4.0: §C.2 rebuilt — three distinct concurrency limits; §C.4 factory-workers reconciliation; §G.2 manager-lead non-regression note)
+Version: 2.0.0 (catalog renamed onto the single concurrent-spawn-count axis: `trivial`→`direct`, `sub-agent`→`serial`, `parallel`→`fanout`, `workflow`→`sweep`; `background` demoted to an execution option (subagents default background since CC v2.1.198); `agent-team` moved to the §A footnote + §C.1; legacy-token mapping added at the top; stagger-spawn scoped to `fanout` with the workflow runtime's own auto-stagger excluded; §A/§B/§C/§D/§E/§F/§G aligned. Prior 1.4.0: §C.2 rebuilt — three distinct concurrency limits; §C.4 factory-lane reconciliation; §G.2 manager-lead non-regression note)
 Origin: derived from the canonical agent catalog and IGGDA policies.
 Status: Active — applies to all `/moai run` Phase 4 invocations

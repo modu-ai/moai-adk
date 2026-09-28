@@ -1,0 +1,42 @@
+docs-site/content/ja/advanced/kanban-mode.md:128:- **`-f` / `--factory` ランチャースイッチ** — ファクトリーモード専用の進入です。`moai cc -f` はファクトリーリードを開きます(ワーカー 1 人、`worker-1`)。`moai cc -f worker` で次の空き番号にワーカーを1人ずつ合流させます(番号を
+docs-site/content/ja/advanced/kanban-mode.md:217:カンバンが「3つのロールが1枚のカードを段階ごとに運ぶ」形なら、**ファクトリーモード**は「番号付きワーカー N 人が複数のカードを同時に運ぶ」形です。カードは列の間を移り歩かず、空きワーカー1人へ**丸ごと**入り、そのワーカーがセッションの中で `plan → run → sync` を順番に通
+docs-site/content/ja/advanced/factory-mode.md:53:**番号が生存中のレガシーワーカーと重なると。** `agent-<n>` や `lane-<n>` といった旧綴りで立ち上げたワーカーも、同じ番号空間を使います。`-f worker-<n>` で直接選んだ番号を生存中のレガシー行が握っていると、合流は名前を挙げて拒否されます — 例: `worke
+docs-site/content/ja/advanced/factory-mode.md:55:**レガシー綴りは非推奨エイリアスです。** `-f agent`(および `agent-<n>` という名前)と `-f lane-<n>` / `--name lane-<n>` はそのまま解析され、正確に同じ結果を出しますが、正規形(`-f worker`、`worker-<n>`)への移行に向
+docs-site/content/ja/advanced/factory-mode.md:99:どの番号をどのワーカーが握っているかは、`~/.moai/db/<project-key>/factory/factory.db` に記録されます。起点ディレクトリが一時ディレクトリであるプロジェクト（絶対 `MOAI_HOME` オーバーライドなし）は、このデータベースをプロジェクトローカルの `<
+docs-site/content/ja/cli-reference/launchers.md:37:| `-f worker-<n>` | その番号ちょうど(`worker-<n>`)のワーカーを1人追加で立ち上げ。番号が生存中の正規ワーカーと重なれば次の空き番号に、生存中のレガシーワーカー(`agent-<n>`/`lane-<n>`)と重なれば名前を挙げて拒否されます。`moai glm -
+docs-site/content/ja/cli-reference/launchers.md:39:| `-f agent` · `-f lane-<n>` · `--name lane-<n>` | **非推奨エイリアス。** それぞれ `-f worker` / `-f worker-<n>` / `--name worker-<n>` と全く同じに動作しますが、起動のたびに正規の綴りへの切
+docs-site/content/zh/advanced/kanban-mode.md:128:- **`-f` / `--factory` 启动器开关** —— 工厂模式的专用入口。`moai cc -f` 打开工厂主控（一名工作者，`worker-1`）。`moai cc -f worker` 一次让一名工作者加入下一个空号（要指定编号则用 `-f worker-<n>`）。旧式的 `-f 
+docs-site/content/zh/advanced/kanban-mode.md:217:如果说看板的形态是“三个角色接力搬运一张卡片”，那么**工厂模式**就是“N 名编号工作者同时搬运多张卡片”。卡片不在列与列之间移动，而是**整张**进入一名空闲工作者，由那名工作者在会话内按顺序通过 `plan → run → sync` —— 各阶段作为 `Agent()` 子智能体执行。进入用的
+docs-site/content/zh/advanced/factory-mode.md:53:**当编号与存活的旧式工作者撞上时。** 用 `agent-<n>`、`lane-<n>` 这类旧拼写启动的工作者，用的是同一个编号空间。`-f worker-<n>` 直接选定的编号若被存活的旧式行占着，加入会被点名拒绝 —— 例如：`worker-3 is held by legacy label
+docs-site/content/zh/advanced/factory-mode.md:55:**旧式拼写是已弃用别名。** `-f agent`（以及 `agent-<n>` 这个名字）和 `-f lane-<n>` / `--name lane-<n>` 仍然照常解析，产出与以前完全相同的结果，但随着规范形式（`-f worker`、`worker-<n>`）落地，每次启动都会打印一条“已
+docs-site/content/zh/advanced/factory-mode.md:99:哪个编号被哪名工作者握着，记录在 `~/.moai/db/<project-key>/factory/factory.db` 里。启动目录是临时目录的项目（没有绝对 `MOAI_HOME` 覆盖）会把这一数据库放在项目本地的 `<base>/.moai/db/<project-key>/factory
+docs-site/content/zh/cli-reference/launchers.md:37:| `-f worker-<n>` | 精确启动那个编号（`worker-<n>`）的工作者。编号与存活的正规工作者冲突时顺延到下一个空号；与存活的旧式工作者（`agent-<n>`/`lane-<n>`）冲突则会被点名拒绝。`moai glm -f worker` / `-f worker-<n
+docs-site/content/zh/cli-reference/launchers.md:39:| `-f agent` · `-f lane-<n>` · `--name lane-<n>` | **已弃用别名。** 各自与 `-f worker` / `-f worker-<n>` / `--name worker-<n>` 行为完全相同，但每次启动都会提示改用规范拼写 |
+docs-site/content/ko/advanced/kanban-mode.md:128:- **`-f` / `--factory` 런처 스위치** — 팩토리 모드 전용 진입. `moai cc -f`는 팩토리 리드를 엽니다(워커 하나, `worker-1`). `moai cc -f worker`로 다음 빈 번호에 워커를 한 명씩 늘립니다(정확한 번호를 고르려면 
+docs-site/content/ko/advanced/kanban-mode.md:217:칸반이 "역할 3개가 한 카드를 단계별로 나르는" 모양이라면, **팩토리 모드**는 "번호 붙은 워커 N명이 카드 여러 장을 동시에 나르는" 모양입니다. 카드는 칸을 옮겨 다니지 않고 빈 워커 하나에 **통째로** 들어가, 그 워커가 세션 안에서 `plan → run →
+docs-site/content/ko/advanced/factory-mode.md:53:**번호가 살아 있는 레거시 워커와 겹치면.** `agent-<n>`·`lane-<n>` 같은 옛 철자로 띄운 워커도 같은 번호 공간을 씁니다. `-f worker-<n>`으로 직접 고른 번호를 살아 있는 레거시 행이 쥐고 있으면 합류가 이름을 대며 거부됩니다 — 예: 
+docs-site/content/ko/advanced/factory-mode.md:55:**레거시 철자는 지원 중단 예정 별칭입니다.** `-f agent`(그리고 `agent-<n>` 이름)와 `-f lane-<n>` / `--name lane-<n>`은 그대로 파싱되어 정확히 같은 결과를 내지만, 정식 형태(`-f worker`, `worker-<n>`
+docs-site/content/ko/advanced/factory-mode.md:99:어느 번호를 어느 워커가 쥐고 있는지는 `~/.moai/db/<project-key>/factory/factory.db`에 기록됩니다. 기점 디렉터리가 임시 디렉터리인 프로젝트(절대 `MOAI_HOME` 오버라이드 없음)는 이 데이터베이스를 프로젝트 로컬 `<base>/
+docs-site/content/ko/cli-reference/launchers.md:37:| `-f worker-<n>` | 정확히 그 번호(`worker-<n>`)로 워커 하나를 추가로 띄움. 번호가 살아 있는 정식 워커와 겹치면 다음 빈 번호로 붙고, 살아 있는 레거시 워커(`agent-<n>`/`lane-<n>`)와 겹치면 이름을 대며 거부됨. `m
+docs-site/content/ko/cli-reference/launchers.md:39:| `-f agent` · `-f lane-<n>` · `--name lane-<n>` | **지원 중단 예정 별칭.** 각각 `-f worker` / `-f worker-<n>` / `--name worker-<n>` 과 똑같이 동작하지만, 실행마다 정식 철자로 바
+docs-site/content/en/advanced/factory-mode.md:53:**When a number collides with a live legacy worker.** A worker launched under an old spelling — `agent-<n>` or `lane-<n>` — shares the same number spac
+docs-site/content/en/advanced/factory-mode.md:55:**The legacy spellings are deprecated aliases.** `-f agent` (and the `agent-<n>` label) and `-f lane-<n>` / `--name lane-<n>` still parse and produce e
+docs-site/content/en/advanced/factory-mode.md:99:Which worker holds which number is recorded in `~/.moai/db/<project-key>/factory/factory.db`. A project whose launch directory is a temporary one (no a
+docs-site/content/en/advanced/kanban-mode.md:128:- **`-f` / `--factory` launcher switch** — the dedicated Factory Mode entry. `moai cc -f` opens the factory lead (one worker, `worker-1`), and `moai cc
+docs-site/content/en/advanced/kanban-mode.md:217:If kanban is the shape where "three roles carry one card through the phases," **Factory Mode** is the shape where "N numbered workers carry several car
+docs-site/content/en/cli-reference/launchers.md:37:| `-f worker-<n>` | Bring up exactly that worker (`worker-<n>`) as one more. A number already held by a live canonical worker bumps to the next free 
+docs-site/content/en/cli-reference/launchers.md:39:| `-f agent` · `-f lane-<n>` · `--name lane-<n>` | **Deprecated aliases.** Each behaves exactly like `-f worker` / `-f worker-<n>` / `--name worker-<
+README.zh.md:71:`-f` 打开工厂主控，这是看板的第二种形态。看板里的卡片在各列之间跳，而工厂里的卡片**整张进一名工作者**，由那名工作者在会话内串行走完 `plan → run → sync`，每个阶段都以 `Agent()` 子智能体的形式启动。工作者名为 `worker-1` … `worker-N`。旧名 `agent-<n>` / `lane-<n>` 也会继续以已弃用
+README.zh.md:80:用 `moai cc -f worker`（自动加入下一个空号）或 `moai cc -f worker-<n>`（精确那个编号）一名一名地加工作者。两种写法都已经指定了工作者名，再给 `--name`/`-n` 会报错。直接指定的编号若与存活的旧式工作者（`agent-<n>`/`lane-<n>`）相撞，会被点名拒绝；`-f worker` 的自动分配不会被拒绝
+README.md:71:`-f` opens a factory lead, Kanban's second form. Where a kanban card hops between columns, a factory card goes **whole to one worker**, and that worker carries it through `plan → run → sy
+README.md:80:Grow a run one worker at a time with `moai cc -f worker` (auto-join the next free number) or `moai cc -f worker-<n>` (that number exactly). Both forms already name the worker, so passing 
+README.ja.md:71:`-f` はファクトリーリードを開く。これがカンバンの 2 つ目の形態だ。カンバンのカードが列を渡り歩くのに対し、ファクトリーのカードは**丸ごと 1 人のワーカー**へ入り、そのワーカーがセッション内で `plan → run → sync` を直列に運ぶ。各段階は `Agent()` サブエージェントとしてスポーンされる。ワーカーのラベルは `worker-1`
+README.ja.md:80:ワーカーは `moai cc -f worker`（次の空き番号に自動合流）または `moai cc -f worker-<n>`（その番号ちょうど）で 1 人ずつ増やす。どちらの形もワーカー名を既に決めているので、`--name`/`-n` を併せて渡すとエラーになる。直接指定した番号が生存中のレガシーワーカー（`agent-<n>`/`lane-<n>`）と重な
+README.ko.md:71:`-f`는 칸반의 두 번째 형태인 팩토리 리드를 연다. 칸반 카드가 칸을 옮겨 다니는 것과 달리, 팩토리 카드는 **통째로 워커 하나**에 들어가 그 워커가 세션 안에서 `plan → run → sync`를 순서대로 지나간다. 단계마다 `Agent()` 서브에이전트로 띄운다. 워커 이름은 `worker-1` … `worker-N
+README.ko.md:80:워커는 `-f worker`(다음 빈 번호로 자동 합류) 또는 `-f worker-<n>`(정확히 그 번호)로 하나씩 늘린다. 두 형태 모두 워커 이름을 이미 정하므로 `--name`/`-n`을 함께 주면 에러다. `-f worker-<n>`으로 직접 고른 번호가 살아 있는 레거시 워커(`agent-<n>`/`lane-<n>`)
+internal/template/templates/.claude/agents/moai/manager-lead.md:6:  Role B (cross-session dispatch): the -k/-f lead role. Kanban Mode (`moai cc -k`): moves a card across the board via the operator-lau
+internal/template/templates/.claude/agents/moai/manager-lead.md:30:| Workers | leaf `Agent()` spawns it creates | companion sessions (-k: plan/run/sync) and lanes (-f: worker-1..worker-N; legacy agent
+internal/template/templates/.codex/agents/moai/manager-lead.toml:7:Role B (cross-session dispatch): the -k/-f lead role. Kanban Mode (`moai cc -k`): moves a card across the board via the operator-laun
+internal/template/templates/.codex/agents/moai/manager-lead.toml:23:| Workers | leaf `Agent()` spawns it creates | companion sessions (-k: plan/run/sync) and lanes (-f: worker-1..worker-N; legacy agen
+.claude/agents/moai/manager-lead.md:6:  Role B (cross-session dispatch): the -k/-f lead role. Kanban Mode (`moai cc -k`): moves a card across the board via the operator-launched chain lead > plan > ru
+.claude/agents/moai/manager-lead.md:30:| Workers | leaf `Agent()` spawns it creates | companion sessions (-k: plan/run/sync) and lanes (-f: worker-1..worker-N; legacy agent-<n>/lane-<n> still parses) 

@@ -30,19 +30,19 @@ Removes GLM-specific environment variables from `.claude/settings.local.json`, r
 | `-m, --model <model>` | Override the model selection |
 | `-w, --worktree [name]` | Launch inside an isolated git worktree (`.claude/worktrees/<name>/`) — name omitted means auto-generated |
 | `--chrome` / `--no-chrome` | Passed through to Claude Code unchanged; the launcher adds neither, so `/chrome` can attach unless you pass `--no-chrome` |
-| `-k, --kanban [SPEC-ID]` | Enter as the kanban lead — seeds the `plan → run → sync` chain in this session. With a SPEC-ID attached, that SPEC is the target |
+| `-k, --kanban [SPEC-ID]` | Enter as the **factory leader** — seeds the kanban `plan → run → sync` chain in this session. With a SPEC-ID attached, that SPEC is the target |
 | `-k --name <role>` | Join an open kanban run as a companion session. Roles are `plan` · `run` · `sync`. If a live session already holds the role name, the next number is attached (`plan-1`, `plan-2`, …) |
-| `-f, --factory` | Enter as the **factory lead** — opens a factory run with one worker (`worker-1`). The lead deals the cards the operator picks to free workers over cross-session messages |
-| `-f worker` | Auto-join one more worker at the next free number and attach it to the lead socket of a running factory |
-| `-f worker-<n>` | Bring up exactly that worker (`worker-<n>`) as one more. A number already held by a live canonical worker bumps to the next free number; a number held by a live legacy worker (`agent-<n>`/`lane-<n>`) is refused by name. `moai glm -f worker` / `-f worker-<n>` behave the same on the GLM backend |
-| `-k <N>` / `-k <N> --name worker-<i>` | The v1.2.0 combined form, still valid — `-k <N>` is the lead of an N-worker run, `-k <N> --name worker-<i>` is worker `<i>` within it. `-k --name worker-<i>` without N defaults to 8 workers |
-| `-f agent` · `-f lane-<n>` · `--name lane-<n>` | **Deprecated aliases.** Each behaves exactly like `-f worker` / `-f worker-<n>` / `--name worker-<n>`, but every launch prints a hint to switch to the canonical spelling |
+| `-f, --factory` | Enter as the **factory leader** — opens a factory run with one lane (`lane-1`). The leader deals the cards the operator picks to free lanes over cross-session messages |
+| `-f lane` | Auto-join one more lane at the next free number and attach it to the leader socket of a running factory |
+| `-f lane-<n>` | Bring up exactly that lane (`lane-<n>`) as one more. A number already held by a live lane bumps to the next free number. `moai glm -f lane` / `-f lane-<n>` behave the same on the GLM backend |
+| `-k <N>` / `-k <N> --name lane-<i>` | The v1.2.0 combined form, still valid — `-k <N>` is the leader of an N-lane run, `-k <N> --name lane-<i>` is lane `<i>` within it. `-k --name lane-<i>` without N defaults to 8 lanes |
+| Former spellings | No longer parsed — joining with a former spelling errors, naming the canonical `-f lane` / `-f lane-<n>` |
 
-{{< callout type="info" >}} `-k` is the kanban chain token, and `-f` is the dedicated entry token for **Factory Mode**. One `-k` is still read three ways — no argument or a SPEC-ID is the kanban lead, `--name <role>` is a kanban companion, and a number is a worker run. A launch takes one entry token only, so `-k` together with `-f` is an error. For the full contract see [Kanban Mode](/en/advanced/kanban-mode) and [manager-lead Lead Coordinator](/en/advanced/manager-lead). {{< /callout >}}
+{{< callout type="info" >}} `-k` is the kanban chain token, and `-f` is the dedicated entry token for **Factory Mode**. One `-k` is still read three ways — no argument or a SPEC-ID is the kanban leader, `--name <role>` is a kanban companion, and a number is a lane run. A launch takes one entry token only, so `-k` together with `-f` is an error. For the full contract see [Kanban Mode](/en/advanced/kanban-mode) and [manager-lead Leader Coordinator](/en/advanced/manager-lead). {{< /callout >}}
 
-A card travels differently here than in kanban. In kanban one card moves across the `plan → run → sync` columns, while in a factory one card goes whole to one worker and passes the three phases serially inside it. Each phase is spawned by that session as `Agent()` subagents, and write-capable spawns are isolated with `isolation: "worktree"`. A worker runs at most 10 concurrent subagents, and the launcher seeds that value into workers and companion sessions through `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`, so N workers sharing one machine's capacity is guaranteed by configuration rather than by operator restraint. Never bring the workers up all at once — start the first, confirm it is actually producing output, then activate the rest.
+A card travels differently here than in kanban. In kanban one card moves across the `plan → run → sync` columns, while in a factory one card goes whole to one lane and passes the three phases serially inside it. Each phase is spawned by that session as `Agent()` subagents, and write-capable spawns are isolated with `isolation: "worktree"`. A lane runs at most 10 concurrent subagents, and the launcher seeds that value into lanes and companion sessions through `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`, so N lanes sharing one machine's capacity is guaranteed by configuration rather than by operator restraint. Never bring the lanes up all at once — start the first, confirm it is actually producing output, then activate the rest.
 
-The backend mix is decided by token availability first. One starting point is the lead on GLM, plan on Claude (Opus), run on GLM, and sync on Claude (Opus), placing Opus only on the phases where judgment is heavy. A different combination, or unifying on a single backend, is equally fine.
+The backend mix is decided by token availability first. One starting point is the leader on GLM, plan on Claude (Opus), run on GLM, and sync on Claude (Opus), placing Opus only on the phases where judgment is heavy. A different combination, or unifying on a single backend, is equally fine.
 
 The permission mode is one of `default`, `acceptEdits` (the `moai init` default), `plan`, `auto`, `bypassPermissions`, `dontAsk`. The `auto` mode runs a background classifier that inspects actions; supported plans and models are listed in the [Claude Code permission modes documentation](https://code.claude.com/docs/en/permission-modes).
 
@@ -75,7 +75,7 @@ moai migrate cg
 moai migrate cg --target claude-only --apply --accept-role-change
 ```
 
-This writes `llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, and `llm.gateway.teammate_provider: inherit`. It removes the old hybrid role assignment; it does not preserve a Claude leader with GLM teammate panes.
+This writes `llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, and `llm.gateway.teammate_provider: inherit`. It removes the old hybrid role assignment; it does not preserve a Claude leader (CG leader) with GLM teammate panes.
 
 The `claude-glm` target describes a Claude leader with GLM teammates in tmux. Its apply and launch paths are currently unavailable because the TEAMMATE integration gate has not passed. Preview is available. Installing tmux or setting `verified: true` does not open this gate.
 

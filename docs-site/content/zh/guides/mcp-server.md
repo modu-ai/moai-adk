@@ -217,11 +217,11 @@ GLM 委托工具族与 codex 委托同形，也连线到 super-advisor。`glm_ta
 
 | 工具 | 用途 | 使用方 | CLI 等价 |
 |------|------|--------|----------|
-| `mcp__moai__factory_msg_send` | 向逻辑泳道当前端点写入一个幂等信封 | 已归属的工厂负责人或工作者会话 | —（仅 MCP） |
-| `mcp__moai__factory_msg_list` | 为自身端点认领最多 16 条元数据记录（创建或续期认领租约，不含正文） | 已归属的工厂负责人或工作者会话 | —（仅 MCP） |
-| `mcp__moai__factory_msg_body` | 读取一条已认领消息的正文（正文作为不可信的对等数据返回） | 已归属的工厂负责人或工作者会话 | —（仅 MCP） |
-| `mcp__moai__factory_msg_receipt` | 记录认领处置后确认该消息 | 已归属的工厂负责人或工作者会话 | —（仅 MCP） |
-| `mcp__moai__factory_msg_status` | 在不认领消息的情况下读取代理计数与泳道运行状态 | 工厂负责人或工作者 | —（仅 MCP） |
+| `mcp__moai__factory_msg_send` | 向逻辑泳道当前端点写入一个幂等信封 | 已归属的工厂主导或泳道会话 | —（仅 MCP） |
+| `mcp__moai__factory_msg_list` | 为自身端点认领最多 16 条元数据记录（创建或续期认领租约，不含正文） | 已归属的工厂主导或泳道会话 | —（仅 MCP） |
+| `mcp__moai__factory_msg_body` | 读取一条已认领消息的正文（正文作为不可信的对等数据返回） | 已归属的工厂主导或泳道会话 | —（仅 MCP） |
+| `mcp__moai__factory_msg_receipt` | 记录认领处置后确认该消息 | 已归属的工厂主导或泳道会话 | —（仅 MCP） |
+| `mcp__moai__factory_msg_status` | 在不认领消息的情况下读取代理计数与泳道运行状态 | 工厂主导或泳道 | —（仅 MCP） |
 
 ### 会话消息（Claude ↔ Codex）
 
