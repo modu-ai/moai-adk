@@ -29,7 +29,25 @@ import (
 // AC-TAQ-012 — the queue database a reader opens carries exactly the
 // physical schema the writers built: five tables, the one non-auto index,
 // the three-state CHECK, schema_version "1".
+//
+// AC-TST-011 — the transition-stamp SPEC names its mechanical check as
+// `go test ./internal/kanban/ -run SchemaFreeze`, and a selector matching
+// zero tests would exit 0 without sweeping anything (the vacuous-green
+// shape verification-completeness names), so the shared assertion body
+// below is entered by BOTH names: the historical one and the AC's own.
 func TestTodoHistoryAddsNoSchemaChange(t *testing.T) {
+	assertBacklogSchemaFrozen(t)
+}
+
+// TestSchemaFreezeRecordsTransitionStamps is the AC-TST-011 entry point —
+// the same assertions, reachable under the AC's own `-run SchemaFreeze`
+// selector.
+func TestSchemaFreezeRecordsTransitionStamps(t *testing.T) {
+	assertBacklogSchemaFrozen(t)
+}
+
+func assertBacklogSchemaFrozen(t *testing.T) {
+	t.Helper()
 	store := archiveFixture(t)
 	if _, _, err := store.Add("alpha work"); err != nil {
 		t.Fatalf("add: %v", err)
