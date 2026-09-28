@@ -28,16 +28,16 @@ Checks using `BASE` are pre-merge only. "N/A" means a milestone's gate made the 
   - **Given** the branch,
   - **When** `FIRST=$(git log --reverse --format=%H "$BASE"..HEAD -- T L G | head -1)` and `EC=$(git log --format=%H --diff-filter=A -- E | head -1)` are computed,
   - **Then:** if `FIRST` is empty the check is N/A; otherwise `git merge-base --is-ancestor "$EC" "$FIRST"` exits 0 and `$EC` ≠ `$FIRST`.
-- **AC-SDL-002** (REQ-SDL-002) — The skill-duplication token cost is recorded with its method; the unusable figure is not cited.
+- **AC-SDL-002** (REQ-SDL-002, REQ-SDL-005) — The skill-duplication token cost is recorded with its method — or as a Gap when a cap was reached; the unusable figure is not cited.
   - **Given** `E`,
-  - **Then:** `grep -cxE 'skill_dup_tokens: [0-9]+' E` prints `1`; `grep -cE '^skill_dup_method: first-turn-input-delta' E` prints `1`; and the 2,406 B figure appears only as a rejected figure: `grep -n '2,406' E` prints at least one line, each of which sits under the `## Gaps` or method-declaration heading (`awk`-verified), never as a cost claim.
+  - **Then:** `grep -cxE 'skill_dup_tokens: ([0-9]+|gap)' E` prints `1`; `grep -cE '^skill_dup_method: first-turn-input-delta' E` prints `1`; when the token value is `gap`, the field is named under `## Gaps` (the AC-SDL-005 coupling); and the 2,406 B figure appears only as a rejected figure: `grep -n '2,406' E` prints at least one line, each of which sits under the `## Gaps` or method-declaration heading (`awk`-verified), never as a cost claim.
 - **AC-SDL-003** (REQ-SDL-003) — The `/clear` result is recorded with a set-comparison method.
   - **Given** `E`,
   - **Then:** `grep -cxE 'clear_restores_skill_set: (yes|no|gap)' E` prints `1`; `grep -cxE 'clear_method: (operator-manual-set-compare|none)' E` prints `1`; `grep -cE '^clear_method: operator-manual-set-compare' E` prints `1` whenever the first value is not `gap`.
 - **AC-SDL-004** (REQ-SDL-004) — Caps committed alone before any probe output.
   - **Given** `CAPS`, `E`, `P`,
   - **When** `C=$(git log --format=%H --diff-filter=A -- CAPS)` and `F=$(git log --reverse --format=%H --diff-filter=A -- P | head -1)` are computed,
-  - **Then:** `git show --name-only --format= "$C" | grep -c 'probes/'` prints `0`; `git merge-base --is-ancestor "$C" "$F"` exits 0 and `$C` ≠ `$F`; `grep -cxE 'caps: probes<=6 turns<=2 timeout>=1 wall-declared model=haiku' CAPS` prints `1`.
+  - **Then:** `git show --name-only --format= "$C" | grep -c 'probes/'` prints `0`; `git merge-base --is-ancestor "$C" "$F"` exits 0 and `$C` ≠ `$F`; `grep -cxE 'caps: probes<=6 turns<=2 model=haiku' CAPS` prints `1`; `grep -cE '^timeout_s: ([3-9][0-9]{2}|[1-9][0-9]{3,})' CAPS` prints `1` (an integer ≥ 300); `grep -cE '^wall_cap_minutes: [1-9][0-9]*' CAPS` prints `1`.
 - **AC-SDL-005** (REQ-SDL-005) — Every Gap is named.
   - **Given** `E` and any field of AC-SDL-002 / AC-SDL-003 holding `gap`,
   - **Then:** `grep -c '^## Gaps' E` prints `1` and the `## Gaps` section names each such field at least once.
@@ -55,13 +55,13 @@ Checks using `BASE` are pre-merge only. "N/A" means a milestone's gate made the 
 - **AC-SDL-007** (REQ-SDL-007) — The prohibition is stated in both copies and pointed to from the lane protocol.
   - **Given** T, L, G,
   - **Then:**
-    - `grep -c 'mid-session' T | true` is not the check — the check is content: `sed -n '/^## Isolation is provisioned by MoAI/,/^## /p' T | grep -ciE 'mid-session|in-session' ` prints at least `1`, and the same section names the launcher start and the after-move `/clear` remedy (`| grep -c 'moai cc -w'` ≥ `1`, `| grep -ci '/clear'` ≥ `1`);
+    - `sed -n '/^## Isolation is provisioned by MoAI/,/^## /p' T | grep -c 'card worktree into another'` prints at least `1` (the scoped prohibition wording), and the same section names the launcher start and the after-move `/clear` remedy (`| grep -c 'moai cc -w'` ≥ `1`, `| grep -ci '/clear'` ≥ `1`);
     - `cmp T L` exits 0;
     - `grep -c 'kanban-dispatch' G` prints at least `1` (the pointer) and G contains no restated prohibition sentence longer than one line beyond the pointer (manually verified line count recorded in `progress.md` §E.2);
-    - negative control at BASE: `git show "$BASE":internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md | sed -n '/^## Isolation is provisioned by MoAI/,/^## /p' | grep -ci 'mid-session'` prints `0`.
+    - negative control at BASE: `git show "$BASE":internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md | sed -n '/^## Isolation is provisioned by MoAI/,/^## /p' | grep -c 'card worktree into another'` prints `0`.
 - **AC-SDL-008** (REQ-SDL-008) — The added doctrine text makes no CLAUDE.local.md claim.
   - **Given** the diff of added lines in T, L, G,
-  - **When** `git diff "$BASE"..HEAD -- T L G | grep '^+' | grep -v '^+++' | grep -c 'CLAUDE.local.md'` runs,
+  - **When** `git diff "$BASE"..HEAD -- T L G | grep '^+' | grep -v '^+++' | grep -cE 'CLAUDE\.local\.md|CLAUDE\.md|instruction file|instruction set|local instructions'` runs,
   - **Then** it prints `0`.
 - **AC-SDL-009** (REQ-SDL-009) — The guard option follows the kickoff decision.
   - **Given** the recorded kickoff decision `decision_guard: (selected|not-selected)` in `progress.md` §E.1,
@@ -104,6 +104,8 @@ Checks using `BASE` are pre-merge only. "N/A" means a milestone's gate made the 
 | AC-SDL-010 | REQ-SDL-010, REQ-SDL-011 | M3 (Gate G1) |
 | AC-SDL-011 | REQ-SDL-012 | M2/M3 |
 | AC-SDL-012 | (Out of Scope + quality gate) | M4 |
+
+AC-SDL-012 is a **scope-guard criterion** (Out-of-Surface + quality gate) and intentionally maps to no REQ; every other AC traces to at least one.
 
 ## §D.2 Edge Cases
 
