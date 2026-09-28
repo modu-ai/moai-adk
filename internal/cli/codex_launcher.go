@@ -23,10 +23,10 @@ package cli
 // the shared probe, so no second classification path forks here (REQ-CL-007).
 // The status readout never writes; -w requires an existing worktree. POSIX direct
 // launch replaces moai with Codex (the -w lock names that one pid); Windows
-// retains the child Start/wait path. The kanban/factory entries (-k, -f,
-// --factory-run) are retired and refused (SPEC-CODEX-FACTORY-RETIRE-001).
+// retains the child Start/wait path. Kanban (-k) remains unsupported.
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -39,6 +39,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/execerr"
+	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
@@ -50,7 +51,7 @@ const (
 	// codexUsageDiag is the one-line usage diagnostic every unknown token
 	// receives (AC-CL-002). Byte-identical for all six probe tokens so the
 	// rejection cannot leak which token was seen.
-	codexUsageDiag = "unknown verb - usage: moai codex [cli] [-w <worktree>] [-- codex-args...] | moai codex status | moai codex app"
+	codexUsageDiag = "unknown verb - usage: moai codex [cli] [-w <worktree>] [-f [lane|lane-<n>]] [--factory-run <id>] [-- codex-args...] | moai codex status | moai codex app"
 
 	// Codex only enters an already-created worktree; -w needs its name or path.
 	codexWorktreeValueDiag = "-w requires an existing worktree name or path"
@@ -203,9 +204,10 @@ func (v codexVerb) launches() bool { return v == codexVerbLaunchCli || v == code
 // resolved codex binary, the argv tail handed to it, and the working
 // directory (the PROJECT ROOT, not the process cwd — AC-CL-002's cwd axis).
 type codexLaunchRequest struct {
-	Program string
-	Args    []string // argv AFTER the program token: [verb, passthrough...]
-	Dir     string
+	Program    string
+	Args       []string // argv AFTER the program token: [verb, passthrough...]
+	Dir        string
+	FactoryEnv []string
 }
 
 // codexDirectLaunchFn is the direct-launch seam: it receives the fully
@@ -228,8 +230,8 @@ var codexSpawnCleanupPaneFn = tmuxKillPane
 // defaultCodexSpawnLaunch opens a detached tmux window running codex
 // directly. The command string is shell-quoted token-by-token so a tail
 // containing spaces, quotes, or $ survives the round trip.
-func defaultCodexSpawnLaunch(dir, program string, args []string) error {
-	command := buildCodexSpawnCommand(program, args)
+func defaultCodexSpawnLaunch(dir, program string, args, factoryEnv []string) error {
+	command := buildCodexSpawnCommandWithEnv(program, args, factoryEnv)
 	if err := checkCodexInstructionSize(len(command), "spawn command"); err != nil {
 		return err
 	}
@@ -237,17 +239,31 @@ func defaultCodexSpawnLaunch(dir, program string, args []string) error {
 	if err != nil {
 		return fmt.Errorf("spawn tmux window: %w", err)
 	}
-	if codexSpawnAnchorFn != nil {
+	if codexSpawnAnchorFn != nil || codexExplicitFactoryEnv(factoryEnv) {
+		var pending factorymsg.Peer
 		// -w: the pane's process is the one that becomes Codex, so the worktree
 		// lock is placed on its identity. A pane left running without its lock
 		// would be an unanchored writer; close it instead.
 		pid, start, identityErr := codexSpawnPaneIdentityFn(paneID)
-		if identityErr == nil {
+		if identityErr == nil && codexSpawnAnchorFn != nil {
 			identityErr = codexSpawnAnchorFn(pid, start)
+		}
+		if identityErr == nil && codexExplicitFactoryEnv(factoryEnv) {
+			pending, identityErr = registerFactoryLaunchPending(context.Background(), dir, factoryEnv, pid, start)
+		}
+		if identityErr == nil && codexExplicitFactoryEnv(factoryEnv) && launchEnvValue(factoryEnv, config.EnvMoaiFactoryWorker) != "" {
+			identityErr = stampCodexLaneClaim(dir, factoryEnv, pid)
+		}
+		if identityErr == nil && launchEnvValue(factoryEnv, config.EnvMoaiFactoryWorker) == "" && codexExplicitFactoryEnv(factoryEnv) {
+			identityErr = stampFactoryRunOwner(dir, launchEnvValue(factoryEnv, config.EnvMoaiKanbanID), pid, start)
 		}
 		if identityErr != nil {
 			cleanupErr := codexSpawnCleanupPaneFn(paneID)
-			return fmt.Errorf("anchor spawned Codex worktree: %w", errors.Join(identityErr, cleanupErr))
+			cleanupErr = errors.Join(cleanupErr, rollbackFactoryLaunchPending(context.Background(), dir, pending))
+			if codexExplicitFactoryEnv(factoryEnv) && launchEnvValue(factoryEnv, config.EnvMoaiFactoryWorker) == "" {
+				cleanupErr = errors.Join(cleanupErr, clearFactoryRunOwner(dir, launchEnvValue(factoryEnv, config.EnvMoaiKanbanID)))
+			}
+			return fmt.Errorf("prepare spawned Codex: %w", errors.Join(identityErr, cleanupErr))
 		}
 	}
 	_, _ = fmt.Fprintf(os.Stdout, "Spawned pane %s running `%s` in %s\n", paneID, command, dir)
@@ -272,12 +288,9 @@ func defaultCodexSpawnPaneIdentity(paneID string) (int, string, error) {
 	}
 }
 
-// codexLaneLaunchEnvKeys are the eleven lane launch keys a Claude kanban or
-// factory lane exports. A codex child started by this launcher must never
-// present them: neither the direct child environment nor the spawn command
-// carries their values (SPEC-CODEX-FACTORY-RETIRE-001 REQ-CFR-006/007), and a
-// codex-harness hook runs without them (REQ-CFR-022). One list serves every
-// path so the three cannot drift apart.
+// codexLaneLaunchEnvKeys are the lane launch keys an outer session may
+// export. A plain Codex launch scrubs them. An explicit -f launch supplies a
+// freshly selected factory identity after the scrub.
 var codexLaneLaunchEnvKeys = []string{
 	config.EnvMoaiKanban,
 	config.EnvMoaiKanbanID,
@@ -290,6 +303,7 @@ var codexLaneLaunchEnvKeys = []string{
 	config.EnvMoaiKanbanSettingsInjected,
 	config.EnvMoaiFactoryWorker,
 	config.EnvMoaiFactoryWorkers,
+	config.EnvFactoryRole,
 }
 
 // codexSpawnForwardedEnv lists the variables buildCodexSpawnCommand copies
@@ -297,8 +311,8 @@ var codexLaneLaunchEnvKeys = []string{
 // assert the exact command pin each of them, so a lane session's exports
 // cannot change the expected string.
 //
-// No lane key is forwarded: buildCodexSpawnCommand blanks every one of
-// codexLaneLaunchEnvKeys instead (REQ-CFR-007).
+// The plain spawn command blanks every lane key; the explicit factory path
+// adds its selected values afterward.
 var codexSpawnForwardedEnv = []string{
 	config.EnvHome,
 	config.EnvClaudeProjectDir,
@@ -313,6 +327,10 @@ var codexSpawnForwardedEnv = []string{
 // the new window could resolve a different CODEX_HOME than the direct path
 // put on its child.
 func buildCodexSpawnCommand(program string, args []string) string {
+	return buildCodexSpawnCommandWithEnv(program, args, nil)
+}
+
+func buildCodexSpawnCommandWithEnv(program string, args, factoryEnv []string) string {
 	parts := make([]string, 0, len(args)+len(codexLaneLaunchEnvKeys)+10)
 	// resolveCodexHomeDir's second result is the source label, not an error.
 	if home, _ := resolveCodexHomeDir(); home != "" {
@@ -327,6 +345,10 @@ func buildCodexSpawnCommand(program string, args []string) string {
 	// present itself as a peer of the lane's run.
 	for _, key := range codexLaneLaunchEnvKeys {
 		parts = append(parts, key+"=")
+	}
+	for _, entry := range factoryEnv {
+		key, value, _ := strings.Cut(entry, "=")
+		parts = append(parts, key+"="+shellQuote(value))
 	}
 	for _, key := range codexSpawnForwardedEnv {
 		if value := os.Getenv(key); value != "" {
@@ -541,10 +563,9 @@ func lockCodexTree(tree, reason string, pid int) error {
 // default independently of the value the readout reports.
 //
 // Removed from the inherited environment: the foreign attribution pair
-// (CLAUDE_CODE_SESSION_ID, MOAI_SESSION_PID) and the eleven lane launch keys,
+// (CLAUDE_CODE_SESSION_ID, MOAI_SESSION_PID) and the lane launch keys,
 // so a codex run inside a Claude lane never presents that lane's identity
-// (REQ-CFR-006). Posture keys such as MOAI_AUTONOMY_TIER carry no identity and
-// pass through (REQ-CFR-009).
+// Posture keys such as MOAI_AUTONOMY_TIER carry no identity and pass through.
 func codexChildEnv() []string {
 	drop := map[string]bool{config.EnvClaudeCodeSessionID: true, config.EnvMoaiSessionPID: true}
 	for _, key := range codexLaneLaunchEnvKeys {
@@ -590,6 +611,10 @@ var codexCmd = &cobra.Command{
 		"  moai codex status     print the readiness readout (starts nothing)\n" +
 		"  moai codex app        launch the Codex desktop app (codex app)\n" +
 		"  -w <worktree>         launch in an existing worktree (never creates one)\n" +
+		"  -f                   start a factory run as leader (CLI only)\n" +
+		"  -f lane              join the active factory as the next lane (CLI only)\n" +
+		"  -f lane-<n>          join as a numbered lane (CLI only)\n" +
+		"  Factory sessions show launch_pending until their first prompt binds a session UUID.\n" +
 		"  --spawn               open the launch in a new tmux window\n" +
 		"  -- <codex-args...>    arguments after -- pass to codex verbatim",
 	Example: "  # Launch the Codex CLI here\n" +
@@ -636,11 +661,14 @@ func runCodex(cmd *cobra.Command, args []string) error {
 
 	args, spawn := stripSpawnFlag(args)
 	head, tail, hasTail := splitCodexDashDash(args)
-	// The retired kanban/factory entries are refused before anything else is
-	// read or written (REQ-CFR-001..005). Tokens after -- are codex's own.
+	// Kanban remains unsupported. Tokens after -- are Codex's own.
 	if diag := codexEntryRefusal(head); diag != "" {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), diag)
 		return &exitCodeError{code: 1}
+	}
+	head, factoryEntry, err := parseCodexFactoryEntry(head)
+	if err != nil {
+		return err
 	}
 	// -w is consumed before the verb lookup so its tokens can never be
 	// mistaken for a verb, and so the verb position keeps its one-token shape.
@@ -656,11 +684,14 @@ func runCodex(cmd *cobra.Command, args []string) error {
 	if !ok {
 		return codexUsageFailure(cmd)
 	}
+	if factoryEntry.Enabled && kind == codexVerbLaunchApp {
+		return fmt.Errorf("-f/--factory requires the Codex CLI launch")
+	}
 
 	if kind.launches() {
-		return runCodexLaunch(cmd, kind, tail, spawn, worktree)
+		return runCodexLaunch(cmd, kind, tail, spawn, worktree, factoryEntry)
 	}
-	if worktree.present {
+	if worktree.present || factoryEntry.Enabled {
 		// A readout starts no process, so it has no working directory to
 		// point anywhere.
 		return codexUsageFailure(cmd)
@@ -675,32 +706,19 @@ func runCodex(cmd *cobra.Command, args []string) error {
 	return runCodexReadout(cmd)
 }
 
-// The refusal lines for the retired `moai codex -k` / `-f` entries. They carry
-// the same sentinels as the `moai cg` refusals (D2), so one grep finds both.
+// The Kanban entry remains unsupported by the Codex launcher.
 const (
 	codexKanbanRefusalDiag = kanbanUnsupportedBackendSentinel +
 		": moai codex no longer enters Kanban Mode; use 'moai cc -k' or 'moai glm -k' instead"
-	codexFactoryRefusalDiag = factoryUnsupportedBackendSentinel +
-		": moai codex no longer enters Factory Mode; use 'moai cc -f' or 'moai glm -f' instead"
 )
 
-// codexFactoryRunFlag is the --factory-run token; on moai codex it is refused
-// with the other factory entry tokens.
-const codexFactoryRunFlag = "--factory-run"
-
-// codexEntryRefusal scans the head (the tokens before --) for a retired entry
-// token and returns its refusal line, or "" when none is present. It is a
-// scan, not a parser: any value after the token is irrelevant to the answer.
+// codexEntryRefusal scans the head (the tokens before --) for Kanban entry.
 func codexEntryRefusal(head []string) string {
 	for _, a := range head {
 		switch {
 		case a == kanbanFlagShort || a == kanbanFlagLong ||
 			strings.HasPrefix(a, kanbanFlagShort+"=") || strings.HasPrefix(a, kanbanFlagLong+"="):
 			return codexKanbanRefusalDiag
-		case a == factoryFlagShort || a == factoryFlagLong || a == codexFactoryRunFlag ||
-			strings.HasPrefix(a, factoryFlagShort+"=") || strings.HasPrefix(a, factoryFlagLong+"=") ||
-			strings.HasPrefix(a, codexFactoryRunFlag+"="):
-			return codexFactoryRefusalDiag
 		}
 	}
 	return ""
@@ -725,7 +743,7 @@ func runCodexReadout(cmd *cobra.Command) error {
 // runCodexLaunch resolves the binary and hands off to the direct or spawn
 // path. A missing binary is a single-line install hint, launch count 0
 // (AC-CL-011).
-func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn bool, worktree codexWorktreeArg) error {
+func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn bool, worktree codexWorktreeArg, factoryEntry factoryFlagParse) error {
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), codexInstallHint)
@@ -778,6 +796,20 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 	childArgs := append(localArgs, codexChildArgs(kind, tail)...)
 	req := codexLaunchRequest{Program: binaryPath, Args: childArgs, Dir: dir}
 	if spawn {
+		if err := checkSpawnPrereqs(); err != nil {
+			return err
+		}
+	}
+	if factoryEntry.Enabled {
+		// The run is project-scoped even when Codex enters an existing worktree.
+		restore, ferr := enterCodexFactory(projectRoot, factoryEntry)
+		if ferr != nil {
+			return ferr
+		}
+		defer restore()
+		req.FactoryEnv = codexFactoryEnv(factoryEntry)
+	}
+	if spawn {
 		if worktree.present {
 			// The process that becomes Codex is the pane's; it exists only
 			// after the spawn, so the lock is placed from inside it.
@@ -811,6 +843,7 @@ func codexDirectLaunch(req codexLaunchRequest) error {
 	c := exec.Command(req.Program, req.Args...)
 	c.Dir = req.Dir
 	c.Env = codexChildEnv()
+	c.Env = append(c.Env, req.FactoryEnv...)
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
@@ -844,13 +877,13 @@ func codexPropagateLaunchError(err error) error {
 // diagnostics moai cc --spawn emits, byte-identical — AC-CL-003) and opens
 // the new window through the seam.
 func codexSpawnLaunch(req codexLaunchRequest) error {
-	if err := checkCodexInstructionSize(len(buildCodexSpawnCommand(req.Program, req.Args)), "spawn command"); err != nil {
+	if err := checkCodexInstructionSize(len(buildCodexSpawnCommandWithEnv(req.Program, req.Args, req.FactoryEnv)), "spawn command"); err != nil {
 		return err
 	}
 	if err := checkSpawnPrereqs(); err != nil {
 		return err
 	}
-	if err := codexSpawnLaunchFn(req.Dir, req.Program, req.Args); err != nil {
+	if err := codexSpawnLaunchFn(req.Dir, req.Program, req.Args, req.FactoryEnv); err != nil {
 		return fmt.Errorf("spawn tmux window: %w", err)
 	}
 	return nil

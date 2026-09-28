@@ -2,7 +2,7 @@
 
 > **Purpose**: Essential guide for local moai-adk-go development
 > **Audience**: GOOS (local developer only)
-> **Last Updated**: 2026-08-27
+> **Last Updated**: 2026-09-28
 
 ---
 
@@ -24,17 +24,17 @@
 
 ### 0.3 [HARD] `main` 의 커밋본은 폐기된 제3의 모델이다
 
-**`main` 에 커밋돼 있는 이 파일의 사본은 폐기된 모델이며 인용 대상이 아니다.** 그 판은 「`develop` 을 원격에 올리지 않고 카드마다 `main` 으로 PR 을 낸다」는 체제를 서술하는데, 현행 체제(§4.1)와 정면으로 다르다. 다음 사람이 `main` 사본을 정본으로 집는 것이 2026-09-07 실패의 재현이다.
+**`main`에 커밋된 옛 `CLAUDE.local.md`는 폐기된 모델이며 인용 대상이 아니다.** 그 판은 「`develop`을 원격에 올리지 않고 카드마다 `main`으로 PR을 낸다」는 체제를 서술하는데, 현행 체제(§4.1)와 정면으로 다르다. 다음 사람이 `main` 사본을 정본으로 집는 것이 2026-09-07 실패의 재현이다.
 
-### 0.4 [HARD] ` M CLAUDE.local.md` 는 의도된 상태다
+### 0.4 [HARD] primary `main` 의 구형 로컬 파일은 정본이 아니다
 
-primary 체크아웃이 `main` 에 체크아웃돼 있는 동안 `git status` 는 `M CLAUDE.local.md` 를 **영구적으로, 설계대로** 보여준다. 워킹 사본이 develop 판이고 `main` 의 커밋본은 §0.3 의 폐기 모델이므로, main 대비로는 언제나 modified 로 읽힌다. 사본이 또 갈라진 것이 아니다.
+이 이관이 `develop`에 병합되면 그 커밋의 `AGENTS.local.md`가 정본이다. primary 체크아웃이 아직 `main`인 동안 보이는 `M CLAUDE.local.md`는 전환 이전부터 유지한 공유 워킹 사본이다. 그 상태를 새 워크트리의 수신 증거로 인용하지 않는다.
 
 > **[HARD] 이 표식은 정리 대상이 아니다.**
 >
-> **`git restore CLAUDE.local.md` 를 실행하지 마라** — 워킹 사본을 §0.3 의 폐기 모델로 되돌리는 회귀다.
+> **primary에서 `git restore CLAUDE.local.md`를 실행하지 마라** — 공유 워킹 사본을 §0.3의 폐기 모델로 되돌리는 회귀다.
 >
-> 되돌리면 표식은 사라지지만 레인이 읽는 문서가 옛 체제로 바뀌고, 그 사실은 `git status` 어디에도 나타나지 않는다. 이 파일을 정말 고쳐야 하면 카드 워크트리에서 고쳐 `develop` 으로 병합한다(§4.1).
+> 이 파일을 고칠 때는 카드 워크트리에서 고쳐 `develop`으로 병합한다(§4.1). primary의 구형 파일은 별도 전환 전까지 보존한다.
 
 ---
 
@@ -190,7 +190,7 @@ scripts/ac-baseline/           # Dev-only: 커밋타임 AC-snapshot 가드(check
 .claude/skills/hns-workflow-ci-loop/                       # Dev-only: CI watch+autofix skill (removed from template; mirror kept). §2.3에 따라 moai-workflow-ci-loop → hns-* 로 이동(2026-08-15): `.claude/skills/moai*` 글롭이 매 update마다 삭제했음
 .claude/rules/local/ci-watch-protocol.md                     # Dev-only: governs scripts/ci-watch (removed from template; mirror kept)
 .claude/rules/local/ci-autofix-protocol.md                 # Dev-only 원본: scripts/ci-autofix 를 지배. 배포판(.claude/rules/moai/workflow/ 의 같은 이름, script-free)과 **의도적 쌍둥이** — SPEC-CI-LOOP-DEVONLY-001 의 결정이며 미해결 상태가 아니다. 둘은 `paths:` 범위가 서로 겹치지 않아 함께 로드되지 않는다(로컬판=데브 스킬 SKILL.md, 배포판=manager-develop + .github/workflows/**). #1557(ed04e40e6)이 이 파일을 관리 대상 뿌리 밖으로 옮겨 §2.3 경로 충돌도 해소됐다. 다만 배포판이 update 때마다 `.claude/rules/moai/workflow/` 에 미추적으로 재생성돼 git status 노이즈로 남는다
-CLAUDE.local.md                # This file
+AGENTS.local.md                # This file
 .moai/state/last-cc-version.json # Dev-only: CC tracking state (§21)
 .moai/research/cc-update-*.md  # Dev-only: CC update reports (§21)
 .moai/cache/                   # Cache
@@ -201,8 +201,8 @@ CLAUDE.local.md                # This file
 .moai/reports/                 # Generated reports — 내용물만 로컬 전용(템플릿에 reports/plan-audit/ 스캐폴드 존재) [2026-08-27 감사 정정]
 .moai/manifest.json            # Generated at runtime
 .moai/status_line.sh           # Rendered from .sh.tmpl
-.moai/docs/update-local-file-survival.md  # Dev-only: moai update 관리 대상 삭제 실측·생존 규칙 (CLAUDE.local.md §2.3 본문 이관, card t750; no template mirror)
-.moai/docs/gitflow-integration-chain.md   # Dev-only: GitFlow 통합 체인 운영 절차·실측 근거 (CLAUDE.local.md §4.1 절차 본문 이관, card t750; no template mirror)
+.moai/docs/update-local-file-survival.md  # Dev-only: moai update 관리 대상 삭제 실측·생존 규칙 (이 파일 §2.3 본문 이관, card t750; no template mirror)
+.moai/docs/gitflow-integration-chain.md   # Dev-only: GitFlow 통합 체인 운영 절차·실측 근거 (이 파일 §4.1 절차 본문 이관, card t750; no template mirror)
 .moai/astgrep-rules/                                                       # Dogfood-only: 실험적 ast-grep 룰셋 전체. §2.3에 따라 .moai/config/astgrep-rules → .moai/astgrep-rules 로 이동(2026-08-15): `.moai/config` 통째 삭제가 로컬 전용 6개(go/{concurrency,error-handling,idioms,resource-safety}.yml, security/{secrets,web}.yml)를 매번 지웠음. gate.yaml `ast_grep_gate.rules_dir` 로 연결. 주의: (2026-08-27 감사 정정) `moai ast-grep`/`moai ast-edit` CLI의 `--rules-dir` 기본값은 현재 `gate.yaml`의 `ast_grep_gate.rules_dir`이며, 빈 값이면 기본 경로 폴백 없이 0룰 스캔을 한다(t50)
 ```
 
@@ -554,7 +554,7 @@ MoAI-ADK를 사용하다 버그나 개선이 필요한 부분을 발견하는 �
 
 ### 하드코딩 허용 영역
 
-`CLAUDE.local.md`, `settings.local.json`, `_test.go` (t.TempDir() 내).
+`AGENTS.local.md`, `settings.local.json`, `_test.go` (t.TempDir() 내).
 
 ---
 
@@ -575,7 +575,7 @@ MoAI-ADK를 사용하다 버그나 개선이 필요한 부분을 발견하는 �
 
 도구의 구현 언어(Go)와 사용자 프로젝트의 프로그래밍 언어는 별개. 템플릿은 모든 사용자를 위한 것.
 
-- 프로그래밍-언어 편향 허용: `CLAUDE.local.md`, `settings.local.json`, 로컬 `.moai/config/`
+- 프로그래밍-언어 편향 허용: `AGENTS.local.md`, `settings.local.json`, 로컬 `.moai/config/`
 - 프로그래밍-언어 편향 금지: `internal/template/templates/**` 전체
 
 ### 16개 지원 프로그래밍 언어 (모두 동등)
@@ -661,216 +661,18 @@ Sections §18-27 were consolidated into external `.moai/docs/` files to reduce l
 
 ## 28. LSEL 드레인 운영 (지역 자가진화 루프)
 
-> 복원 2026-08-26 (SPEC-LSEL-DRAIN-STALL-001 M2). 이 섹션이 과거 진행 문서들이 참조하던 "§28" 앵커의 실체다 — 3주 드레인 정지(2026-08-04~25) 당시 이 섹션이 소실돼 있었다. 정본은 `.claude/skills/hns-lsel-curator/SKILL.md` § Durable operations.
-
-### [HARD] 내구 트리거 — 세션 시작 배선
-
-드레인은 어떤 Claude 세션의 생사에도 의존하지 않는다. `.claude/settings.local.json` `.hooks.SessionStart`에 2개 lsel 항목이 배선돼 있다(각 `"timeout": 30`): (1) `session_drain.sh` 래퍼 — 배타잠금 → 기존 clusters.json 무조건 보존(`clusters-history/`) → `drain.sh` 실행 → 1행 상태 → fail-open. (2) `backlog_check.sh` advisory — 읽지 않은 백로그가 임계(기본 25, `LSEL_BACKLOG_THRESHOLD`) 초과면 system-reminder 발화. **이 배선이 settings.local.json(로컬 전용)에 있는 것은 의도적이다** — tracked `settings.json`은 `moai update`가 통째 재배포해 배선이 매 업데이트 유실된다(§2.3). 검증: `jq '.hooks.SessionStart' .claude/settings.local.json`.
-
-### [HARD] 모든 드레인은 래퍼 경로로
-
-`drain.sh`를 **직접** 호출하지 않는다 — 직접 호출은 호출-전 보존을 우회해 스테이징된 후보를 조용히 유실시킨다(drain.sh는 드레인 경로든 no-op 경로든 clusters.json을 덮어쓴다). 항상 `session_drain.sh --inbox .moai/lessons-inbox.jsonl --state-dir .moai/state/lsel`.
-
-### PROPOSE는 archived 사본 판독
-
-세션 시작마다 드레인이 도는 체제에서 live `clusters.json`은 휘발성이다(no-op 드레인조차 `candidates: []`로 덮어쓴다). 후보 제안(PROPOSE)은 `.moai/state/lsel/clusters-history/`의 사본(최신순)을 읽는다. 검증 레시피·mutant guard 포함 전체 절차는 SKILL.md § Verification.
-
-### 인박스 유용성 범위 (경계 선언 — anchor: `.moai/docs/learning-channel-scope.md`)
-
-`.moai/lessons-inbox.jsonl`은 실패 이벤트 스텁만 기록한다 — 배선된 2패밀리 `tool_failure:<tool>:<sig>`와 `test_fail:<pkg>:`뿐이다. 도구 실패와 테스트 실패 어느 쪽으로도 나타나지 않는 결함 계열(공허 초록, 판정 전 skip, 빈 결과집합 통과, 형제 수리 누락, 이동 ref 고정, 스테일 값 인용)은 이 인박스에 담기지 않으며, 그 학습 채널은 인간 매개 루프다 — 레인 발견 → 리드 판정 → auto-memory `feedback_*.md` + `MEMORY.md` 기록. 측정 구성과 dated baseline은 anchor doc에만 두고 산문에 수치를 두지 않는다.
+[HARD] `.claude/settings.local.json`의 SessionStart 배선이 `session_drain.sh`와 `backlog_check.sh`를 실행한다. `drain.sh`를 직접 호출하지 말고 보존 래퍼 `session_drain.sh --inbox .moai/lessons-inbox.jsonl --state-dir .moai/state/lsel`만 쓴다. 후보 제안은 휘발성 live 파일이 아닌 `clusters-history/` 보존본에서 읽는다. 인박스는 도구·테스트 실패 스텁에 한정된다. 배선·검증·학습 경계는 `.moai/docs/lsel-drain-operations.md`와 `.moai/docs/learning-channel-scope.md`에 있다.
 
 ---
 
 ## 29. Jev (TypeSafe System One) — 로컬 전용
 
-> 도입 2026-09-19. 실측·설계 근거: `.moai/reports/jev-lead-integration-20260919.md` (HTML 쌍둥이 동반). 카드 **t943** 이 CLI 편입을 다룬다.
+[HARD] `scripts/jev/`는 이 저장소의 로컬 도구이며 제품에 배선되지 않았다. `-k`/`-f` 리드는 묵은 카드 배차 전에 `scripts/jev/triage.sh <id>`, 레인 질문으로 멈췄을 때 `scripts/jev/route.sh < 질문`을 자율 실행한다. 출력은 판단 자료일 뿐이다. 완료·병합·큐 변경·운영자 게이트에는 Jev를 판정 근거로 쓰지 않는다. 키는 `~/.moai/.env.typesafe`에만 두고, 외부 전송 전에 카드의 비밀·고객 데이터를 확인한다. 키나 네트워크가 없으면 독트린과 직접 읽은 증거로 판단한다. 0.50 신뢰도 문턱은 잠정값이다. 등급·명령·측정 한계는 `.moai/docs/jev-local-operations.md`에 있다.
 
-### [HARD] 지금은 **로컬 전용**이다 — 제품에 배선돼 있지 않다
-
-`scripts/jev/` 는 **`internal/template/templates/` 에 미러가 없다.** 따라서 `moai init` / `moai update` 가 사용자 프로젝트에 배포하지 않으며, `moai` 바이너리의 어떤 경로도 Jev 를 호출하지 않는다. 이 저장소에서 사람이 손으로 돌리는 도구이고, 그 이상은 아직 아니다. 제품 편입은 t943 의 일이다.
-
-### [HARD] 리드는 손으로 돌리지 말고 **자율 운용**한다
-
-`-k` / `-f` 리드 세션은 아래 두 계기에서 **묻지 않고 먼저 돌린다.** 사람이 생각한 뒤 호출하는 도구가 아니라, 판단이 필요한 순간에 자동으로 끼는 계측기다.
-
-| 계기 | 즉시 실행 | 무엇을 얻나 |
-|---|---|---|
-| 며칠 지난 카드를 배차하기 **전** | `scripts/jev/triage.sh <id>` | 전제가 살아 있는가 + confidence |
-| 레인이 질문을 보내 **멈췄을 때** | `scripts/jev/route.sh < 질문` | 누가 결정하는 일인가 · 측정이 먼저인가 · 되돌리기 싼가 |
-
-두 도구 모두 읽기 전용이다. 실행이 곧 결정이 아니며, 결정은 아래 3등급으로 갈린다.
-
-### [HARD] 자율 등급 — 무엇을 모델 답만 보고 처리하는가
-
-**1등급 — 즉시 처리(운영자에게 묻지 않는다).** `route.sh` 가 `LEAD-ANSWER-NOW` 를 내고 owner confidence ≥ 0.50 일 때. 리드가 이미 권한을 가진 되돌리기 싼 결정이다: 리뷰 렌즈 선택, `WT-` 슬러그, 재측정 범위, 배차 순서, 문안 선택, 레인 질문 중 독트린으로 답이 나오는 것. **답하고 진행하며, 사후에 한 줄로 보고한다.**
-
-**2등급 — 모델이 초안, 리드가 확정.** `triage.sh` 의 `[auto]` 판정, 근접 중복 의심, PR 귀속 모호. 리드가 **증거를 직접 읽고** 확정한 뒤 진행한다. 모델 답은 어디를 먼저 볼지 정하는 데만 쓴다.
-
-**3등급 — 절대 위임하지 않는다.** 완료 판정(`FINAL VERDICT`), 병합 승인(`LEAD-MERGE-APPROVED`), 큐 변경(`moai todo` add/next/done/drop/edit), 운영자 게이트, 사용자 표면 동작 변경, CodeRabbit 슬롯 대기 판정. `route.sh` 가 `ASK-OPERATOR` 를 내거나 owner confidence < 0.50 이면 **그 자체로 3등급**이다.
-
-### [HARD] 되돌릴 수 없는 판정은 모델 답을 입력으로도 쓰지 않는다
-
-3등급 항목에서는 Jev 를 호출하지 않는다. 호출해서 참고만 하는 것도 금지다 — 판정서에 「모델이 그렇게 답했다」가 근거로 새어 들어가면 `verification-claim-integrity.md` 의 관측 없는 주장이 된다. 완료 판정의 근거는 언제나 **리드가 읽은 증거 파일**이다.
-
-예외는 한 곳뿐이다 — contract 모드 Kickoff 의 `llm+jev` 교차 확인에서는 `moai contract decide` 가 Jev 를 두 번째 신호로 직접 부를 수 있다. Jev 답은 LLM 의 승인을 확인하거나 사람에게 보낼 뿐 혼자서 시작시키지 못하며, 그 밖의 3등급 항목에 대한 금지는 그대로다.
-
-### 어떻게 쓰나
-
-```bash
-scripts/jev/triage.sh t784 t787          # 카드 전제 판정 (읽기 전용)
-JEV_VERBOSE=1 scripts/jev/triage.sh t784 # 기계 측정 관측문까지 출력
-scripts/jev/route.sh < question.txt      # 레인 질문 → 결정 등급
-echo "<state>" | scripts/jev/ask.sh noul "<질문>"   # 임의 텍스트 1문항 프로브
-```
-
-`triage.sh` 출력의 `[auto]` 는 confidence ≥ 0.50, `[ask human]` 은 그 미만이다. **`[ask human]` 을 「살아있음」으로 읽지 마라** — 「측정되지 않음」이다.
-
-`route.sh` 는 다섯 값 중 하나를 낸다: `LEAD-ANSWER-NOW`(1등급) · `LEAD-DECIDE-CAREFULLY`(되돌리기 비쌈 → 2등급으로 내려 증거부터) · `MEASURE-FIRST`(레인에게 측정을 먼저 시킨다) · `RETURN-TO-LANE`(레인이 스스로 답할 수 있다) · `ASK-OPERATOR`(3등급).
-
-### 실패해도 배치가 멈추지 않는다
-
-키·네트워크가 없으면 두 도구 모두 「독트린을 읽고 판단하라」는 한 줄을 내고 **exit 0** 한다. 자율 운용은 **가속 장치이지 의존 대상이 아니다** — 도구가 없을 때의 정답은 오늘까지 하던 방식 그대로다.
-
-### [HARD] 키와 경계
-
-- 키는 `~/.moai/.env.typesafe` **한 곳**(chmod 600). `.claude/settings*.json`·`.moai/config/`·템플릿·커밋에 넣지 않는다.
-- 키·네트워크가 없으면 기계 측정만 출력하고 **exit 0** — 실패가 아니라 기능 저하(`glm_audit` 의 fail-open 과 같은 자세).
-- 큐를 변경하지 않는다. 카드를 닫지 않는다. 판정만 출력한다.
-- 카드 본문이 외부로 나간다. 비밀·고객 데이터가 섞이지 않는지 전송 전에 확인한다.
-
-### 신뢰도 게이트는 잠정값이다
-
-0.50 은 **16장 표본**에서 얻은 값이고, 그 표본은 한국어 카드를 **영어로 옮겨** 잰 것이다. TypeSafe 모델 카드가 비영어·CJK 정확도 저하를 명시하므로, **한국어 원문 기준으로 재측정하기 전에는 이 수치를 근거로 인용하지 않는다.** 재측정은 t943 의 첫 일이다.
-
-### 요금
-
-입력 토큰만 과금(모델 카드 표기 `$42 / Btok`, `$0.042 / Mtok`), **출력 토큰 무료**. 카드 1장 triage 가 약 2,000 입력 토큰이므로 배치 하나가 1센트 미만이다. 결제 수단·무료 한도는 **공식 문서에 없다** — 콘솔에서 확인할 사항이다.
 ## 30. 배차 전 전제 판정 (며칠 지난 카드)
 
-> 신설 2026-09-19 (card t950, 운영자 판정). 이 절은 **리드 운용 지침**이며, 며칠 묵은 카드를 레인에
-> 넘기기 전에 리드가 도는 절차를 정한다. 오늘 t759·t810·t811 에서 전제 소멸을 실제로 잡아낸 방법이
-> 그대로 여기 있다.
->
-> 번호 경위: 저작 시점의 커밋본은 §28 이 마지막이라 이 절이 §29 로 들어갔다. 그 뒤 primary 미커밋
-> 워킹 사본에만 있던 §29(Jev 자율 운용)를 card t953 이 develop 에 저작하기로 판정돼(§0.2 위반 해소),
-> 아직 아무도 인용하지 않은 이 절을 §30 으로 내렸다. 내용 우열이 아니라 인용 비용이 판별식이었다.
-
-### 왜 기계로 재는가
-
-카드는 발행된 시점의 트리를 스냅샷으로 찍어 좌표를 적는다. 며칠이 지나면 그 좌표가 가리키던 것이
-사라지거나 옮겨가는데, **그 사실은 어디에서도 신호를 내지 않는다.** 카드는 그대로 읽히고, 배차되고,
-레인이 착수한 뒤에야 전제가 없음이 드러난다.
-
-위험의 방향이 중요하다. 죽은 전제를 살아 있다고 읽으면 레인이 한 번 헛돌고 끝나지만, 살아 있는 전제를
-죽었다고 읽으면 **카드가 조용히 건너뛰어지고 아무 신호도 남지 않는다.** 후자가 훨씬 비싸므로, 판정은
-「건너뛸 근거가 기계로 확립됐는가」를 묻는 방향으로 기운다.
-
-[HARD] **이 판정에 모델 신뢰도 점수를 쓰지 않는다.** 근거는 § 측정 출처.
-
-### [HARD] 기계 3단 — 순서대로, 셋 다
-
-세 단계가 각각 **다른 질문**에 답한다. 하나로 다른 하나를 대신할 수 없다.
-
-| 단 | 명령 | 답하는 질문 |
-|---|---|---|
-| ① 심볼 교차 | `git log --all --oneline -S "<심볼>" -- <경로>` | 카드가 지목한 것이 **어느 ref 에서든 존재한 적이 있는가** |
-| ② 귀속 | `git merge-base --is-ancestor <수리커밋> <카드 base>` | 그 수리가 **이 카드의 기준 트리에 이미 들어와 있는가** |
-| ③ 양성 대조 | 수리 이전 커밋에서 ①을 다시 실행 | **계측기가 그 경로에서 실제로 동작하는가** |
-
-- **①의 심볼은 카드 본문의 한국어 문구가 아니라 식별자·경로·절번호로 잡는다.** 번역된 문구로 grep 하면
-  0 적중이 「이미 수리됨」으로 읽혀 멀쩡한 작업을 취소시킨다.
-- **②는 `echo $?` 로 읽는다** — 이 verb 는 출력이 없고 종료 코드가 답이다(0 = 조상, 1 = 아님).
-- **③은 생략 가능한 단계가 아니다.** ①이 무출력을 냈을 때 그것이 부재인지 계측기 고장인지 가르는 것은
-  ③뿐이다.
-
-### [HARD] 빈 결과를 단독 근거로 쓰지 마라
-
-**양성 대조 없는 무출력은 「부재」가 아니라 「미측정」이다.** 오타 난 경로, 잘못 고른 심볼, 범위가 빗나간
-`--` 인자는 모두 성공적으로 0 행을 낸다 — 종료 코드까지 0 이라 실패로도 보이지 않는다.
-
-그래서 ①의 무출력을 판정의 근거로 인용하려면 ③의 **비어 있지 않은** 출력을 나란히 인용해야 한다.
-한쪽만 있는 보고는 Gap 이지 Claim 이 아니다(`verification-claim-integrity.md` §1).
-
-세 점이 모두 같은 결론을 낼 때만 「전제 소멸」로 닫는다. 어긋나면 닫지 말고 무엇이 어긋났는지를 적어라 —
-측정 범위 탓인지 트리 탓인지를 먼저 가르는 것이 다음 사람의 출발점이다.
-
-### 판정 결과를 어떻게 쓰는가
-
-- **전제 소멸 확정** → 카드를 취소하지 말고 **판정서를 먼저 남긴다.** 카드 취소는 큐 변경이므로
-  운영자 판정 사항이다(리드가 단독으로 닫지 않는다).
-- **전제 생존** → 그대로 배차하되, 측정한 base SHA 를 배차문에 적는다. 레인이 다른 트리에서 재는 것을
-  막는 것은 그 한 줄이다.
-- **판별 불가** → 「살아 있음」으로 읽지 마라. 측정되지 않았다고 적고 무엇이 막았는지를 남긴다.
-
-### 측정 출처 (재실험 금지)
-
-triage 신뢰도 점수를 배차 판정에 쓰는 방식은 **측정으로 기각됐다.** 같은 실험을 다시 하지 마라 —
-수치와 조건이 모두 아래에 있다.
-
-**수치마다 어느 측정의 것인지 붙여 읽어라.** M1 과 M2 는 같은 124 장을 쟀지만 관측 설계가 다르고,
-게이트 표는 **재는 대상 자체가 다르다**(M1 = 자동 구간 정확도, M2 = `premise_dead` 호출 정밀도).
-귀속 없이 옮기면 두 측정이 한 줄로 뭉개진다.
-
-[HARD] **이 표의 행을 따로 떼어 인용하지 마라.** 특히 47.6% 를 단독으로 옮기면 「수리로 성공했다」로
-읽히는데, 같은 표 맨 아랫줄의 불변 기준선과 나란히 놓아야 결론이 선다 — **아무것도 재지 않고 「항상
-살아있다」고 답하는 상수 응답이 75.0% 이고, 수리 후 모델의 2-class 58.9% 는 여전히 그 아래다.**
-
-| 측정 | M1 | M2 (관측 설계 수리 후) | 이동 |
-|---|---|---|---|
-| 3-class 정확도 (한국어 원문 124장) | 39/124 = **31.5%** | 59/124 = **47.6%** | +16.1%p |
-| 2-class(dead/not-dead) 정확도 | 41/124 = 33.1% | 73/124 = **58.9%** | +25.8%p |
-| `premise_dead` 호출 정밀도 | 29/110 = **26.4%** | 14/48 = **29.2%** | **+2.8%p** (기저율 25%) |
-| 잘못된 dead 표시 (절대수) | 81 | **34** | −47 |
-| 「항상 not-dead」 상수 응답 | **93/124 = 75.0%** | **93/124 = 75.0%** | **불변 기준선** |
-
-[HARD] **정밀도 행을 「개선됐다」로 요약하지 마라.** 이동은 **2.8%p** 이고 기저율이 25% 다 — 수리 전
-26.4% 도 수리 후 29.2% 도 **아무렇게나 찍는 것보다 3%p 안팎 나을 뿐이다.** 행동을 바꾸는 유일한 출력이
-이것이므로, 이 행이 자동 판정을 기각하는 근거다. 3-class 가 16%p 오른 것과 같은 크기로 읽으면 안 된다.
-
-게이트를 올려도 회복되지 않는다. **M1** 은 0.30~0.80 전 구간에서 자동 구간 정확도가 **30-33% 로
-평평**했고, 게이트를 올리면 채택률만 줄었다. **M2** 의 게이트별 dead 호출 정밀도는 0.60 까지 기저율
-근방이며, 0.70/0.80 에서 60%/75% 로 오르지만 **표본이 각각 5 건·4 건**이라 근거로 인용할 수 없다 —
-한 건이 뒤집히면 60% 가 40% 가 된다.
-
-종전에 기대던 성질(「오답은 전부 낮은 신뢰도에 몰린다」)도 깨졌다 — **M1** 에서 오답 85 건 중
-67 건(79%)이 0.30 을 넘었고 최고 0.93 이었다. 즉 **높은 신뢰도가 정답률을 보증하지 않는다.**
-
-[HARD] 이 기각은 **판정으로 쓰는 것**에 대한 기각이다. t943 §9 는 같은 도구를 **표시**로 쓰는 용법은
-남겨 두었다 — M2 에서 dead 표시 48 장을 확인해 14 장을 얻는 꼴이라 전수 124 장 대비 2.6 배 좁혀 준다.
-다만 **그 표시를 판정으로 읽으면 34 장을 잘못 건너뛴다.** 「표시만 한다」가 지켜져야만 성립하는
-유용성이므로, 위 3 단을 대신하는 용도로는 쓰지 않는다.
-
-**「카드를 영어로 옮겨 재면 낫지 않겠는가」는 이미 쟀다** — 하지 마라. M2 의 영어 대조군(40 장 무작위,
-seed 943)에서 3-class 는 KO 50.0% · EN 60.0%, 2-class 는 KO 57.5% · EN 67.5% 였다. 언어 효과는
-실재하지만 **10%p 규모**이고, 종전 16 장 비교가 시사하던 ~50%p 가 아니다. 60% 는 상수 응답 75% 에
-여전히 못 미치므로 **번역은 결론을 바꾸지 못한다.**
-
-[HARD] 다만 이 대조군 수치를 **124 장으로 일반화하지 마라** — 40 장 부분표본이고, 번역을 수행한 것도
-같은 모델 계열의 에이전트다. 그 두 가지가 이 대조군의 약한 지점이며 t943 자신이 그렇게 적었다.
-
-판정서: `.moai/reports/t943/verdict.md` (로컬 증거 — `.gitignore` 로 미추적).
-이 절의 신설 경위와 전제 붕괴 측정: `.moai/reports/t950/verdict.md`.
+[HARD] 묵은 카드의 전제를 배차 전에 `git log --all -S` 심볼 교차, `git merge-base --is-ancestor` 귀속, 수리 이전 커밋의 양성 대조로 순서대로 잰다. 양성 대조 없는 무출력은 부재가 아니라 미측정이다. 모델 신뢰도 점수로 카드를 자동 취소하거나 전제 소멸을 확정하지 않는다. 소멸 근거는 판정서에 남기고 큐 변경은 운영자 판정을 따른다. 측정법과 기각 실험은 `.moai/docs/stale-card-premise-check.md`에 있다.
 
 ## 31. 킥오프 자율·의사결정 위임 (운영자 정책)
 
-> 신설 2026-09-26 (card t1266, 운영자 지시 — 리드 창 경유). 이 파일의 §0 정본 규율대로 이 절은
-> 카드 워크트리에서 develop 판에 고쳐 병합된 것이다.
-
-[HARD] **모든 킥오프 승인은 자율로 진행한다.** Implementation Kickoff Approval(plan→run 인간 게이트)과
-진행 모드(자율)를 레인이 레인 창 질문 없이 적용한다. 예외는 카드 본문이 운영자 게이트를 명시할 때뿐이며,
-그런 카드는 리드가 리드 창에서 운영자에게 올린다. **운영자가 레인 창에서 이미 고른 모드는 덮지 않는다.**
-카드 고유 조건(인수 기준 처분·설계 후보 선택·LIVE 예산)은 권장안을 택하고, 그 선택과 근거를 판정서에
-기록한다.
-
-[HARD] **의사결정은 Jev 에 질의한 뒤 선택한다. 운영자에게 질문·선택을 요청하지 않는다.** (운영자 지시
-2026-09-26.) §29 의 자율 등급이 그대로 적용된다: 1등급(LEAD-ANSWER-NOW)은 답하고 진행하며 사후 한 줄
-보고, 2등급은 Jev 초안에 증거를 보태 확정, 3등급(완료 판정·병합 승인·큐 변경·운영자 게이트)은 여전히
-리드 소관이며 Jev 답을 입력으로도 쓰지 않는다 — 독트린과 읽은 증거로 판정한다. Jev 를 돌릴 수 없으면
-오늘까지 하던 방식(독트린 판단 + 사후 보고)이 그대로 정답이다.
-
-> **같은 날 두 지시의 선후(모순 아님)**: 카드 본문의 「사용자 표면 동작 변경·되돌리기 비싼 결정만
-> 운영자에게」는 같은 날 앞선 안이고, 뒤에 나온 「운영자에게 질문·선택 요청 금지」가 이를 **대체**했다.
-> 그런 결정은 이제 레인이 리드에게 올리고, 리드는 Jev 로 정한 뒤 사후 보고한다.
-
-적용 범위: 이 정책은 이 저장소의 팩토리·칸반 레인·리드 운용에 묶인다. 이 파일 자체가 로컬 전용(§2)이므로
-배포 템플릿에는 미러하지 않는다.
+[HARD] 킥오프는 카드가 운영자 게이트를 명시하지 않는 한 자율로 진행한다. 레인 창에서 운영자가 이미 고른 모드는 덮지 않는다. 레인은 선택을 운영자에게 되묻지 않고 리드에게 올린다. 리드는 Jev를 쓰더라도 완료·병합·큐 변경·운영자 게이트를 모델 답으로 판정하지 않는다. 근거와 적용 범위는 `.moai/docs/kickoff-autonomy.md`에 있다.

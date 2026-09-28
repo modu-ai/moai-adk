@@ -140,6 +140,28 @@ func TestLegacyWorktreeMigrationSkipsLockAndCollision(t *testing.T) {
 	}
 }
 
+func TestLegacyWorktreeMigrationRechecksOnlySelectedTree(t *testing.T) {
+	root, old, _ := migrationFixture(t)
+	other := filepath.Join(root, ".claude", "worktrees", "other")
+	migrationGit(t, root, "worktree", "add", "-q", "-b", "WT-other", other)
+	plans, err := planLegacyWorktreeMigration(root, time.Now())
+	if err != nil || len(plans) != 2 {
+		t.Fatalf("full migration plan = %#v, %v", plans, err)
+	}
+	migrationGit(t, root, "worktree", "lock", other)
+	focused, err := planLegacyWorktreeMigrationFor(root, time.Now(), old, nil)
+	if err != nil || len(focused) != 1 || canonicalTreePath(focused[0].source) != canonicalTreePath(old) || focused[0].skip != "" {
+		t.Fatalf("selected tree recheck = %#v, %v", focused, err)
+	}
+	migrationGit(t, root, "worktree", "lock", old)
+	if err := moveLegacyWorktree(root, focused[0]); err == nil || !strings.Contains(err.Error(), "changed since migration planning") {
+		t.Fatalf("lock added after planning was not detected: %v", err)
+	}
+	if _, err := os.Stat(old); err != nil {
+		t.Fatalf("source lost after failed recheck: %v", err)
+	}
+}
+
 func TestUpdateWorktreeMigrationDryRunAndRetry(t *testing.T) {
 	root, old, modern := migrationFixture(t)
 	var output bytes.Buffer
@@ -156,6 +178,10 @@ func TestUpdateWorktreeMigrationDryRunAndRetry(t *testing.T) {
 	if err := runUpdateWorktreeMigration(root, false, &output); err != nil {
 		t.Fatal(err)
 	}
+	if !strings.Contains(output.String(), "1 legacy worktree detected") ||
+		!strings.Contains(output.String(), "Worktree migration safety check: 1/1 inspected") {
+		t.Fatalf("live migration did not announce its size: %q", output.String())
+	}
 	if !strings.Contains(output.String(), "1 moved, 0 skipped, 0 failed") {
 		t.Fatalf("update did not move tree: %q", output.String())
 	}
@@ -165,6 +191,23 @@ func TestUpdateWorktreeMigrationDryRunAndRetry(t *testing.T) {
 	output.Reset()
 	if err := runUpdateWorktreeMigration(root, false, &output); err != nil || output.Len() != 0 {
 		t.Fatalf("idempotent retry: %v, %q", err, output.String())
+	}
+}
+
+func TestUpdateWorktreeMigrationReportsProgress(t *testing.T) {
+	root, _, _ := migrationFixture(t)
+	for _, name := range []string{"two", "three", "four", "five"} {
+		old := filepath.Join(root, ".claude", "worktrees", name)
+		migrationGit(t, root, "worktree", "add", "-q", "-b", "WT-"+name, old)
+	}
+	var output bytes.Buffer
+	if err := runUpdateWorktreeMigration(root, false, &output); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output.String(), "5 legacy worktrees detected") ||
+		!strings.Contains(output.String(), "Worktree migration safety check: 5/5 inspected") ||
+		!strings.Contains(output.String(), "Worktree migration progress: 5/5 checked, 5 moved, 0 skipped, 0 failed") {
+		t.Fatalf("live migration progress missing: %q", output.String())
 	}
 }
 

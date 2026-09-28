@@ -139,11 +139,10 @@ func assertStampMatchesPeer(t *testing.T, root, runID string) {
 func TestRestampSeamIsCalledAtEveryNonReplaceCallSite(t *testing.T) {
 	const seamCall = "stampFactoryRunOwner("
 
-	// The codex doors (codex_direct_windows.go spawn, codex_launcher.go pane)
-	// are no longer factory doors (SPEC-CODEX-FACTORY-RETIRE-001 REQ-CFR-008);
-	// they appear in the absent set below instead.
 	required := []string{
-		"launch_exec_windows.go", // spawn
+		"launch_exec_windows.go",  // spawn
+		"codex_direct_windows.go", // Codex child
+		"codex_launcher.go",       // Codex tmux pane
 	}
 	for _, name := range required {
 		t.Run("required/"+name, func(t *testing.T) {
@@ -154,9 +153,8 @@ func TestRestampSeamIsCalledAtEveryNonReplaceCallSite(t *testing.T) {
 	}
 
 	// A replace-shaped door needs no restamp, and demanding one there would
-	// make this leg false about the design it is checking. A codex door writes
-	// no factory state at all, so a restamp there would be a regression.
-	for _, name := range []string{"launch_exec_posix.go", "codex_direct_posix.go", "codex_direct_windows.go", "codex_launcher.go"} {
+	// make this leg false about the design it is checking.
+	for _, name := range []string{"launch_exec_posix.go", "codex_direct_posix.go"} {
 		t.Run("absent/"+name, func(t *testing.T) {
 			if strings.Contains(readCallSite(t, name), seamCall) {
 				t.Fatalf("%s calls %s, but a replace-shaped door has nothing to correct", name, seamCall)
@@ -207,7 +205,7 @@ func TestCodexPaneDoorIdentityRefusalLeavesRunOwner(t *testing.T) {
 	codexSpawnCleanupPaneFn = func(string) error { cleaned = true; return nil }
 	codexSpawnAnchorFn = func(int, string) error { t.Fatal("anchor called without a pane identity"); return nil }
 
-	err := defaultCodexSpawnLaunch(root, "codex", []string{"--version"})
+	err := defaultCodexSpawnLaunch(root, "codex", []string{"--version"}, nil)
 	if !errors.Is(err, errIdentity) {
 		t.Fatalf("launch error = %v, want the identity refusal", err)
 	}
@@ -255,7 +253,7 @@ func TestCodexPaneDoorAnchorRefusalLeavesRunOwner(t *testing.T) {
 	anchorCalls := 0
 	codexSpawnAnchorFn = func(int, string) error { anchorCalls++; return errAnchor }
 
-	err := defaultCodexSpawnLaunch(root, "codex", []string{"--version"})
+	err := defaultCodexSpawnLaunch(root, "codex", []string{"--version"}, nil)
 	if !errors.Is(err, errAnchor) {
 		t.Fatalf("launch error = %v, want the anchor refusal", err)
 	}
