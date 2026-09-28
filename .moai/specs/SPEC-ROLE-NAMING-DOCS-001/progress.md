@@ -230,9 +230,54 @@ Build: `make build` exit 0 (embedded template recompile; binary NOT installed; c
 | Neutrality | Template CLAUDE.md touched hunks: SPEC-ID/card-id/date grep 0 new hits (kept-name sentence is neutral prose). |
 | Build | `make build` exit **0** (catalog.yaml regenerated — included in this commit, same-SPEC cascade). Binary not installed. |
 
+### M6 — docs-site 4 locales + README ×4 (2026-09-28/29, HEAD 609ac419e; in-session completion)
+
+| Row | Detail |
+|---|---|
+| Execution path | Succession chain: the preceding lane session (worker-65) authored the partial M6 sweep and died; worker-69 reviewed all 18 inherited files against the M2 term table and committed them as the checkpoint `e0fb1f567` (adoption recorded in that commit message). The M6-completion + M7 manager-develop delegation (opus, per the resolved profile) died at birth on a 429 usage-limit error with zero tree contribution (verified: `git status` clean, HEAD unchanged). Per the operator's continue instruction (M5 precedent), the lane completed M6+M7 in-session under the same SPEC, committing per group so a mid-flight death loses nothing. |
+| Commit list | `e0fb1f567` checkpoint (18 files, adopted) · `708ce9592` kanban-mode en/ja/zh derivation (97 exact-string edits, verify-1:1 before apply) · `e8f4e6acf` cli-reference/launchers ×4 (41 edits) · `fc0eabf7d` utility-commands/moai-todo ×4 (32 edits) · `cb6988882` wide sweep 20 pages (105 lines) · `720eebada` README ×4 (128 edits) · `609ac419e` M7 residue fixes (4 lines). |
+| Method | Every page swept ko-first where ko existed, else ko authored first then derived; every scripted edit an exact old→new pair verified to occur exactly once before any write (regex sweeps only after a per-file trap check for 그리드/하이브리드/ワークツリード substrings — two earlier pipeline greps that returned a bogus uniform count of 248 were re-measured per-word). 4-locale line-count parity verified per group (kanban-mode 321×4, launchers 113×4). |
+| Launchers L39 alias row | The "deprecated aliases" row (REQ-RND-017/025 target) rewritten to current code behavior: former spellings are refused naming the canonical `-f lane` / `-f lane-<n>`, matching the t1256 compatibility matrix; no old-token literals remain on any docs surface (AC-RND-017 grep clean of factory spellings — the remaining grep hits are the `--merge`/`--auto-merge` CLI-flag alias and `performance_tier`, other meanings, kept). |
+| Launchers L37 / README L80 legacy-collision clauses | The pre-rename legacy-label collision sentences (agent-<n>/lane-<n> refused by name; skipped-legacy-numbers reporting) dropped as they describe pre-t1256 label semantics; the general collision behavior kept in current form ("bumps to the next free number"). Recorded here as the reason; re-documenting the post-rename number-collision detail needs a code-fact pass and is a follow-up candidate for the leader. |
+| owner_label code fact | The moai-todo JSON example `"owner_label": "worker-1"` → `"lane-1"`: emission verified by source read — the value is written from `FactoryLaneLabel` (`internal/kanban/bootstrap.go:267`, "joins the lane prefix and a number"); the `owner_label` column name itself is an identifier and stays (REQ-RND-016 respected, no Go edit). |
+| zh disposition summary | Role-sense 主控/领导/负责人 → 主导 across pages (per-word counts re-measured: 43/9/11 pre-sweep → role-sense 0 post-sweep); kept rows: moai-todo L160 负责人 (task fields, non-role), agent-guide L10/L23 corporate-analogy 负责人, book.md L37 human readers, agent-teams 领导权 (abstract), cg pane tables; zh 工作者 hits all protected Agent()/leaf/foreman-worker senses (0 changes). |
+| vercel.json | `docs-site/vercel.json` carries only manager-lead path destinations (L204/L209); no page paths renamed and no role-word display text present → no redirect changes needed. Check: grep over the file this run. |
+
+### M7 — verification batch (2026-09-29, this run, this tree @ 609ac419e)
+
+| Row | Command | Verbatim output | Reading |
+|---|---|---|---|
+| inv.py re-run (REQ-RND-024) | `git ls-files > /tmp/t1257-sp/files.txt && python3 .moai/reports/t1257/raw/scripts/inv.py /tmp/t1257-sp .moai/reports/t1257/raw-final` | exit 0; `TOKEN TOTALS {'companion': 424, 'worker': 360, 'lane': 1018, 'leader': 769, 'lead': 816, ...}`; lead role-class 137 (plan-time 711) | Lead-role residue decomposed line-by-line: all `manager-lead` identifier matches (hyphen boundary), the required REQ-RND-014 disambiguation lines and REQ-RND-021 qualifiers, agent-teams `team lead` sense (tabled form), classifier misfires (`lead` as verb). Real residues found and fixed in `609ac419e` (en factory-mode link text; ko/ja/zh what-is-moai-adk team-lead rows). Worker-role hits all protected senses (leaf workers, Agent() workers, foreman's isolated worker, cg pane tables). |
+| echoes re-run (AC-RND-020) | `python3 .moai/reports/t1257/raw/scripts/echoes.py > .moai/reports/t1257/raw/q3-clause-echoes-run5.tsv` | exit 0, stderr `# total lines 151, files 64, mirror-added 18`; `diff` of `cut -f1,2` vs run-4: empty, exit 0 | Echo set unchanged by M6 — no clause echo moved or re-opened. run-5 is the final basis. |
+| anchors (AC-RND-008) | `cp raw/headings.tsv raw-anchor-check/ && python3 raw/scripts/anchors.py /tmp/t1257-sp .moai/reports/t1257/raw-anchor-check` | exit 0; `headings 133 referenced-elsewhere 13 total ref-files 78` | Totals equal the plan-time baseline. Renamed-heading old-text references (`리드 진입`, `リード進入`) re-grepped: 0 hits. |
+| Q1 grep (AC-RND-017) | `grep -rnE -- '-f (agent|worker)\b\|(agent\|worker)-<n>\|legacy label\|legacy (agent\|lane\|worker)\|deprecated alias' <surfaces>` | factory-token alternations: **0 hits**; `deprecated alias` hits only `--merge` (alias of `--auto-merge`) ×7 and `performance_tier` ×1 | No factory session spelling is described anywhere; the flag-alias lines are other meanings (kept). |
+| `-f` extraction (AC-RND-004) | `grep -rhoE -- 'moai (cc\|glm)( -[a-z-]+( [A-Za-z0-9<>._/-]+)?)* (-f\|--name) [a-z]+(-<n>\|-[0-9]+)?' <docs+READMEs> \| sort \| uniq -c` | `moai cc -f lane` 28 · `moai glm -f lane` 16 · `moai cc -f lane-3` 8 · `moai cc -f lane-<n>` 3 — zero `-f worker`/`-f agent` forms | Every extracted lane-join form is canonical and appears in the code-layer compatibility matrix rows read from develop at the gate. Plan-time RED state (`-f worker` ×43 etc.) resolved. |
+| [HARD] counts (REQ-RND-007) | `grep -rl '\[HARD\]'` over M6 surfaces, intersected with `git diff --name-only 333109996..HEAD` | 14 docs files carry [HARD]; intersection with the M6-touched file list: **0** | No touched file carries a marker → no marker lost (trivially equal before/after). |
+| Builds | `make build` → exit 0 (agents-emit-check runs first: passed; no agent .md changed in M6 → no C3 drift; catalog.yaml no hash delta). `make embed-check` → exit 0. | | |
+| Scoped tests | `moai slot acquire --resource go-test-heavy --max-duration 20m` → held until 17:34Z, released after; one compound `unset MOAI_KANBAN … MOAI_FACTORY_ID && go test -timeout 30m ./internal/template/... ./internal/kanban/...` | `ok internal/template 92.532s` · `ok internal/template/agentemit 0.312s` · `ok internal/template/commandemit 0.124s` · `ok internal/kanban 198.952s` | All scoped packages pass (doc-only SPEC; this is the plan §F M7 confirmation that no doc line broke a pinned test). |
+| hugo build | `hugo -s docs-site` | exit 0, warn/error grep count **0**, `Total in 5689 ms` | Warning-free build; 4-locale parity held through the sweep. |
+| Ledger (REQ-RND-006) | diff-parse backfill of `333109996..e0fb1f567` (class checkpoint-adopted) + `e0fb1f567..HEAD` (auto-classed role-noun/alias-rewrite) | +639 rows: 295 checkpoint-adopted (exactly the checkpoint's 295 changed lines) + 325 role-noun + 19 alias-rewrite; ledger 434 → 1073 data rows | Every M6 changed line now has a ledger row keyed by post-edit path+line. Kept dispositions for protected senses are recorded in the M6 rows above and the pre-existing M4 kept rows. |
+
+**Gaps.** The owner_label code fact was verified by source read, not by running the binary and observing `moai todo` output. The AC-RND-006 join against the full `<plan-commit>..HEAD` range relies on the pre-existing M2–M5 ledger rows for those milestones (not re-generated here). Per-page cross-locale section-count parity was verified for the swept page groups by line counts, not by an exhaustive all-pages pairwise diff.
+
+**Residual-risk.** The ledger's auto-classed rows carry heuristic classes (role-noun vs alias-rewrite) that a reader should confirm against the recorded old/new text; the path+line join keys are mechanical and exact. The dropped legacy-collision clauses mean the docs no longer document pre-rename label collision behavior — intentional (REQ-RND-017) but a behavior-documentation regression a future card may want to restore from the t1256 implementation.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+spec_id: SPEC-ROLE-NAMING-DOCS-001
+card: t1257
+branch: WT-role-naming-docs
+head: 609ac419e
+milestones_complete: [M1, M2, M3, M4, M5, M6, M7]
+execution_mode: serial (delegated M3/M4; in-session completion of M5 and M6+M7 under operator continue instruction after 429 delegation deaths)
+commits: [e0fb1f567, 708ce9592, e8f4e6acf, fc0eabf7d, cb6988882, 720eebada, 609ac419e]
+ledger_rows: 1073
+residue: "lead role-class 137 all protected/kept (decomposition in M7 table); factory-token greps 0; echoes delta 0; anchors at plan-time totals"
+verification: "make build 0; make embed-check 0; go test ./internal/template/... ./internal/kanban/... ok; hugo 0 warnings"
+blockers: none
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
