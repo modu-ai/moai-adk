@@ -171,7 +171,19 @@ run_complete_at: 2026-09-29
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_commit_sha: "pending-backfill-sync"
+
+### Sync evidence (5-section, VCI §3)
+
+**Claim**: The 3-phase close lands on one sync commit — `spec.md` `in-progress → completed` (with the HISTORY 1.0.0 row), `progress.md` §E.4, and the CHANGELOG `[Unreleased]` entry for the docs-site session-inheritance sweep. The run's deliverable is markdown-only; no Go source, codemap, or MX-tag surface was touched.
+
+**Evidence**: B12 duplicate check `grep -c 'SPEC-AGENT-MODEL-INHERIT-DOCS-001' CHANGELOG.md` → `0` (exit=1) before appending; cited paths verified by `ls` (ko/en/ja/zh A/B/C pages, translations.go, profile_setup_translations.go, m5-verification.md — all resolve); the entry cites the 9 AC (matching acceptance.md's AC-AMD-001..009), the 4 clusters (20+24+17 files), the H24 verify-only guard, and the M5 gate outcomes (hugo warning-free, 620/620 parity, zero NEW divergence).
+
+**Baseline-attribution**: this run, worktree `.moai/worktrees/t1300`, branch `WT-model-docs-sweep`, absorb check `git rev-parse --short develop` = `a62a05764` immediately before the close commit.
+
+**Gaps**: `sync_commit_sha` carries the `pending-backfill-sync` placeholder (D3 — a commit cannot cite its own hash); the lane backfills the real SHA in a follow-up commit. The run-level Gaps (a)-(c) from §E.3 carry over unchanged.
+
+**Residual-risk**: MX-tag and codemap rotation recorded N/A by rationale (markdown-only deliverable, zero Go source changes) — if a future sync gate keys MX validation on non-Go deliverables, this rationale is the record to revisit. The CHANGELOG entry's claims are traceable to §E.2 command evidence; the two judgment calls (version-sync upgrade-example reading; pre-existing parity divergences) remain flagged for lead disposition.
 
 ## §F Phase 4 Mode Selection
 

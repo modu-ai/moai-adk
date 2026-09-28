@@ -2,7 +2,7 @@
 id: SPEC-AGENT-MODEL-INHERIT-DOCS-001
 title: "docs-site model/effort docs rewrite to the inheritance narrative + wizard H24 residue (card t1300)"
 version: "0.2.1"
-status: in-progress
+status: completed
 created: 2026-09-29
 updated: 2026-09-29
 author: manager-spec
@@ -23,6 +23,7 @@ related_specs: [SPEC-AGENT-MODEL-INHERIT-001, SPEC-AGENT-MODEL-ENFORCE-001, SPEC
 | 0.1.0 | 2026-09-29 | manager-spec | Initial draft for card t1300 (Tier M, Class C, split from t1246 M8). Scope measured in `.moai/reports/t1300/phase1-survey.md` (155 pages × 4 locales = 620 surveyed; A/B/C classification with en line-number edit maps) and re-verified on tree `8a969dfc0` at plan authoring. Baseline RED-now counts recorded in acceptance.md. |
 | 0.2.0 | 2026-09-29 | manager-spec | plan-audit iter-1 (FAIL 0.75, Tier M threshold 0.80) delta revision, coordinator-relayed and re-verified on this tree. D1 premise-collapse: REQ-AMD-007 reconceptualized as a pure regression guard — the wizard model-policy rewrite already landed pre-baseline in t1246 commit `41cf11c4d`; the 5 `model_policy` occurrences are 1 comment (translations.go:404) + 4 map keys (417/429/441/453) whose values already carry the main-session inheritance wording in all 4 locales, and the init wizard model question itself is retired (`question_removal_test.go` sharedInitRemovedIDs comment). M4 demoted to verify-only. D2: outside-cluster retirement-narrative pages added to the M3 disposition list (autonomy-tier 16/116/117, config-sections 95, self-evolving 96, token-budget 107, advanced/_index 49-50). D4: tokenomics inbound profile-matrix links corrected to 4 (27/51/109/131). |
 | 0.2.1 | 2026-09-29 | coordinator (lead-relayed audit D3+D6) | D3 related-specs re-adjustment recorded: this SPEC absorbs the docs surface of SPEC-MODEL-MATRIX-DOCS-001, which the parent SPEC §C Supersession reverses — "This SPEC reverses the target of … SPEC-MODEL-MATRIX-CORE-001 (in-progress), SPEC-MODEL-MATRIX-CONFIG-001 (draft), SPEC-MODEL-MATRIX-SURFACES-001 (draft), and SPEC-MODEL-MATRIX-DOCS-001 (in-progress)" (SPEC-AGENT-MODEL-INHERIT-001/spec.md:106). D6: REQ-AMD-005 label typo `(Event-detected)` → `(Event-driven)` (label harmonized with REQ-AMD-002/003/010). |
+| 1.0.0 | 2026-09-29 | manager-docs | 3-phase close (card t1300). Run: M1 A-cluster inheritance rewrite `5f4f199ef`, M2 B-cluster deprecated-surface docs `7d3b2be5b`, M3 C-cluster dispositions + caching docs `fbd13bbfc`, M4 verify-only H24 guard `23b84510e`, M5 verification closure `5c7bf16c4`; one develop absorb (`a62a05764` → `4321c28fe`). All 9 AC PASS (§E.2, `.moai/reports/t1300/m5-verification.md`). |
 
 ---
 
