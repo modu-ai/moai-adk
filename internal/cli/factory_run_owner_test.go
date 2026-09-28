@@ -207,7 +207,7 @@ func TestCodexPaneDoorIdentityRefusalLeavesRunOwner(t *testing.T) {
 	codexSpawnCleanupPaneFn = func(string) error { cleaned = true; return nil }
 	codexSpawnAnchorFn = func(int, string) error { t.Fatal("anchor called without a pane identity"); return nil }
 
-	err := defaultCodexSpawnLaunch(root, "codex", []string{"--version"})
+	err := defaultCodexSpawnLaunch(root, "codex", []string{"--version"}, nil)
 	if !errors.Is(err, errIdentity) {
 		t.Fatalf("launch error = %v, want the identity refusal", err)
 	}
@@ -255,7 +255,7 @@ func TestCodexPaneDoorAnchorRefusalLeavesRunOwner(t *testing.T) {
 	anchorCalls := 0
 	codexSpawnAnchorFn = func(int, string) error { anchorCalls++; return errAnchor }
 
-	err := defaultCodexSpawnLaunch(root, "codex", []string{"--version"})
+	err := defaultCodexSpawnLaunch(root, "codex", []string{"--version"}, nil)
 	if !errors.Is(err, errAnchor) {
 		t.Fatalf("launch error = %v, want the anchor refusal", err)
 	}

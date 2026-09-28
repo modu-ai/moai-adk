@@ -280,8 +280,12 @@ func enterSelectedFactoryRun(root, explicit string, requireActive bool) (func(),
 	if err != nil {
 		return func() {}, err
 	}
-	if err := refuseCodexLeaderRun(root, runID); err != nil {
-		return func() {}, err
+	if !requireActive {
+		// An existing run may be joined across backends, but its leader
+		// remains its owner until the run is retired.
+		if err := refuseCodexLeaderRun(root, runID); err != nil {
+			return func() {}, err
+		}
 	}
 	// REQ-RNC-022 run boundary: a LIVE legacy record in the run's broker
 	// database refuses the launch/join with the retire-and-relaunch message.
@@ -297,12 +301,8 @@ func enterSelectedFactoryRun(root, explicit string, requireActive bool) (func(),
 	return restore, nil
 }
 
-// refuseCodexLeaderRun refuses a selected run whose recorded leader backend is
-// codex (SPEC-CODEX-FACTORY-RETIRE-001 REQ-CFR-010). The codex factory path is
-// retired, so such a run is left over from before the retirement: joining it
-// would make a lane of a leader that no longer exists, and adopting it with a
-// claude leader would re-own it silently. It runs before any registry claim or
-// run-row write; every other backend passes unchanged (REQ-CFR-011).
+// refuseCodexLeaderRun prevents a different leader from adopting an active
+// Codex-led run. Lane joins are handled separately and may cross backends.
 func refuseCodexLeaderRun(root, runID string) (err error) {
 	db, err := homestate.OpenFactory(root)
 	if err != nil {
@@ -316,9 +316,8 @@ func refuseCodexLeaderRun(root, runID string) (err error) {
 	if backend != BackendCodex {
 		return nil
 	}
-	return fmt.Errorf("%s: factory run %s is led by %s, and the codex factory path is retired; "+
-		"it cannot be joined or adopted — retire it with 'moai factory runs --retire %s', then start a new run with 'moai cc -f' or 'moai glm -f'",
-		factoryUnsupportedBackendSentinel, runID, BackendCodex, runID)
+	return fmt.Errorf("factory run %s is led by %s and cannot be adopted by another leader; retire it with 'moai factory runs --retire %s' before starting a new run",
+		runID, BackendCodex, runID)
 }
 
 func recordFactoryRunStart(root, runID, backend, specID string) (err error) {

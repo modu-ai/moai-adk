@@ -516,7 +516,7 @@ func TestCodexLocalInstructions_DefaultSpawnChecksActualCommand(t *testing.T) {
 	calls := 0
 	tmuxSpawnFn = func(string, string) (string, error) { calls++; return "%1", nil }
 	t.Cleanup(func() { tmuxSpawnFn = previous })
-	err := defaultCodexSpawnLaunch(t.TempDir(), "codex", []string{strings.Repeat("'", 40000)})
+	err := defaultCodexSpawnLaunch(t.TempDir(), "codex", []string{strings.Repeat("'", 40000)}, nil)
 	if err == nil || calls != 0 {
 		t.Fatalf("overflow reached tmux: %v calls=%d", err, calls)
 	}
