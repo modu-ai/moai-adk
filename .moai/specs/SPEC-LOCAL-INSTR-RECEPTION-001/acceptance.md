@@ -6,9 +6,17 @@
 > execute it, first-act-of-M1 with the expectation stated and the measured precedent cited)
 > and a green-path cell naming the milestone that flips it. 11 criteria; Tier L ceiling 25.
 
-**Reading rule (inherited from the parent's audit history):** every probe leg is judged on
-three signals — exit code, the control token, and the local token line. A leg whose control
-token is absent proves nothing about reception; it proves the leg measured nothing.
+**Reading rule (inherited from the parent's audit history; extended to four signals per the
+plan-audit D1 repair):** every probe leg is judged on four signals — **(1) the
+file-presence precondition**: `git -C <probe-tree> show HEAD:AGENTS.local.md >/dev/null`
+must exit 0 BEFORE the probe output is read; **(2)** the exit code; **(3)** the control
+token; **(4)** the local token line. A leg whose tree lacks the file at HEAD is "measured
+nothing" — the same standing as a leg whose control token is absent: never a reception
+failure, never a pass. (Why the precondition comes first: with `worktree.baseRef` unset in
+both settings files, launcher-created trees branch from `origin/HEAD` = `origin/develop`,
+whose HEAD does not carry the fixture commit — probing such a tree prints control-present +
+`LOCAL_AGENTS_TOKEN = NOT_PRESENT`, byte-identical to AC-LIR-005(b)'s expected negative, so
+the raw output alone cannot separate a false reception failure from a real one.)
 
 ---
 
@@ -17,11 +25,15 @@ token is absent proves nothing about reception; it proves the leg measured nothi
 ### Reception gate (M1) — release-blocking
 
 **AC-LIR-001 — `moai cc -w` reception.**
-- **Given** the repository carries a force-added `AGENTS.local.md` containing
-  `LOCAL_AGENTS_TOKEN = <value>` on the lane's branch, **When** a worktree is created via
-  `moai cc -w <probe-name>` and the Claude probe (plan.md §D M1 recipe) runs from that
-  worktree's root, **Then** the probe exits 0, prints the `AGENTS.md` version line (control),
-  and prints the `LOCAL_AGENTS_TOKEN` value — not `NOT_PRESENT`.
+- **Given** a worktree created via `moai cc -w <probe-name>` **whose own HEAD carries the
+  fixture** — a force-added `AGENTS.local.md` containing `LOCAL_AGENTS_TOKEN = <value>` at
+  `git -C <probe-tree> show HEAD:AGENTS.local.md` (launcher-created trees branch from
+  `origin/HEAD` = `origin/develop`, whose HEAD does not carry the fixture, so plan.md §D M1
+  step 3 lands the fixture on the probe tree's branch before probing; the file-presence
+  precondition — `git -C <probe-tree> show HEAD:AGENTS.local.md >/dev/null` exits 0 — passes
+  before the probe output is read), **When** the Claude probe (plan.md §D M1 recipe) runs
+  from that worktree's root, **Then** the probe exits 0, prints the `AGENTS.md` version line
+  (control), and prints the `LOCAL_AGENTS_TOKEN` value — not `NOT_PRESENT`.
 - RED-now: the same probe on today's geometry (no file) prints `NOT_PRESENT` for the token
   with the control present. Measured precedent: §M1a, `LOCAL_AGENTS_TOKEN = NOT_PRESENT`
   (`claude 2.1.283`, real nested worktree, gitignored fixture); static facts measured at
@@ -30,19 +42,22 @@ token is absent proves nothing about reception; it proves the leg measured nothi
 - Green path: M1 steps 2-3 (fixture + leg).
 
 **AC-LIR-002 — `claude --worktree` (native) reception.**
-- **Given** the same fixture, **When** a worktree is created via Claude Code's native
-  `claude --worktree` entry and the probe runs from that worktree's root, **Then** the same
-  three-signal outcome as AC-LIR-001 holds.
+- **Given** a worktree created via Claude Code's native `claude --worktree` entry **whose
+  own HEAD carries the fixture** — `git -C <probe-tree> show HEAD:AGENTS.local.md` resolves
+  (fixture landed per plan.md §D M1 step 3; file-presence precondition passes before
+  reading), **When** the probe runs from that worktree's root, **Then** the same four-signal
+  outcome as AC-LIR-001 holds.
 - RED-now / green path: same shape as AC-LIR-001. `.worktreeinclude`'s header claims this path
   copies gitignored files at creation; the force-tracked geometry makes that claim inert here
   (tracked files are never duplicated) — the leg measures the tracked-file-plus-import path on
   a native-created tree.
 
 **AC-LIR-003 — `EnterWorktree` re-entry reception.**
-- **Given** a worktree created by `moai cc -w` in AC-LIR-001's leg, **When** the session
-  re-enters it via `EnterWorktree(<path>)` and the probe runs, **Then** the same three-signal
-  outcome holds. This leg is why the design prefers git-tracked delivery over creation-time
-  copy: re-entry into an existing tree gets no copy step, only git's own checkout.
+- **Given** the AC-LIR-001 probe tree **whose HEAD carries the fixture** (the file-presence
+  precondition passed in that leg), **When** the session re-enters it via
+  `EnterWorktree(<path>)` and the probe runs, **Then** the same four-signal outcome holds.
+  This leg is why the design prefers git-tracked delivery over creation-time copy: re-entry
+  into an existing tree gets no copy step, only git's own checkout.
 
 **AC-LIR-004 — `moai codex -w` child reception.**
 - **Given** the same fixture, **When** a `moai codex -w` child session is launched and the
@@ -57,9 +72,10 @@ token is absent proves nothing about reception; it proves the leg measured nothi
 **AC-LIR-005 — the probe can fail (negative control).**
 - **Given** the probe has gone green on AC-LIR-001~004, **When** the probe runs (a) on the
   pre-fixture geometry (M1 step 1's recorded observation) and (b) in a worktree created from a
-  base commit without the file, **Then** in both it prints `NOT_PRESENT` for the local token
-  while the control reads present. A probe green that has never seen its own red is
-  uninterpreted output.
+  base commit without the file — its HEAD lacks the fixture, the deliberate opposite of
+  AC-LIR-001~003's file-presence precondition (signal 1) — **Then** in both it prints
+  `NOT_PRESENT` for the local token while the control reads present. A probe green that has
+  never seen its own red is uninterpreted output.
 
 ### Vacuous-green guard
 

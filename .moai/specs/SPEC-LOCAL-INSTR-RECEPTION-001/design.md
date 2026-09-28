@@ -13,10 +13,14 @@ import resolves inside the project.**
 Why this is the recommended option, in the order the reasons weigh:
 
 1. **Coverage is git's, not a tool's.** A tracked file is present at the root of every
-   worktree, from every entry path — `moai cc -w`, `claude --worktree`, `EnterWorktree`
-   re-entry into existing trees, `moai codex -w` children, even raw `git worktree add`. No
-   copy step, no creation-time window, no list of launchers to keep in sync. Every competing
-   mechanism covers a subset of these; git covers all of them by semantics.
+   worktree **whose checkout contains the commit**, from every entry path — `moai cc -w`,
+   `claude --worktree`, `EnterWorktree` re-entry into existing trees, `moai codex -w`
+   children, even raw `git worktree add`. No copy step, no creation-time window, no list of
+   launchers to keep in sync. Every competing mechanism covers a subset of these; git covers
+   every worktree whose checkout contains the commit, by semantics. A tree created from a
+   base that lacks the commit is outside this coverage — exactly the geometry AC-LIR-005(b)
+   measures as the negative control, and why plan.md §D M1 lands the fixture on each probe
+   tree's own branch before probing.
 2. **Content flows, not snapshots.** Tracked content updates through the normal merge/absorb
    path (this repository's develop integration). A copied gitignored file is frozen at
    creation — a long-lived tree silently diverges from the canonical copy. With tracking, the
@@ -80,7 +84,9 @@ independent of file tracking, because it reads the original project root directl
 
 ## §E Probe design
 
-Two tokens, one probe, three signals (exit code, control, local token):
+Two tokens, one probe, four signals per leg (the file-presence precondition on the tree —
+`git -C <probe-tree> show HEAD:AGENTS.local.md >/dev/null` — then exit code, control, local
+token):
 
 - **Control token** — the `AGENTS.md` version line ("Version: …"). It is tracked content that
   reaches every worktree session through `CLAUDE.md`'s `@AGENTS.md` import — the same import

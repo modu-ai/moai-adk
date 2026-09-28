@@ -87,13 +87,26 @@ Sequence, in this order:
    REQ-LIR-004's gate is what M2 owes, not M1.
 3. **Reception legs, one per entry path** (`AC-LIR-001`~`004`): a fresh `moai cc -w` worktree; a
    `claude --worktree` worktree; `EnterWorktree` re-entry into an M1-created tree; a
-   `moai codex -w` child. Each Claude-side leg runs the token probe from the new session's cwd;
-   the Codex leg runs the Codex probe. The tracked-contract token (design.md §E) must read
-   present in every leg — a leg where both tokens are absent measured a broken probe, not a
-   reception failure.
+   `moai codex -w` child. **Before probing, each Claude-side leg lands the fixture on the
+   probe tree's own branch and commits it there.** Launcher-created trees branch from
+   `origin/HEAD` = `origin/develop` (`worktree.baseRef` unset in both settings files), whose
+   HEAD does not contain the fixture commit (measured: `git cat-file -e
+   HEAD:AGENTS.local.md` fails on `origin/develop`) — a tree probed before the landing prints
+   control-present + `LOCAL_AGENTS_TOKEN = NOT_PRESENT`, which is AC-LIR-005(b)'s own
+   negative output, not a measurement. Inside the probe tree:
+   `git show <lane-branch>:AGENTS.local.md > AGENTS.local.md && git add -f AGENTS.local.md
+   && git commit -m "fixture: reception probe"` (force-add — `.gitignore:275` ignores it);
+   where the launcher supports creating the tree from a given branch, create from the lane
+   branch instead of landing afterwards. The `EnterWorktree` leg re-enters the `moai cc -w`
+   tree, whose branch already carries the landed commit. The Codex leg reads the original
+   project root directly (design.md §C) and needs no per-tree landing. Each Claude-side leg
+   then runs the token probe from the new session's cwd; the Codex leg runs the Codex probe.
+   The tracked-contract token (design.md §E) must read present in every leg — a leg where
+   both tokens are absent measured a broken probe, not a reception failure.
 4. **Negative control (`AC-LIR-005`, second half).** Create one worktree from a base commit
-   without the file and observe `NOT_PRESENT` while the fixture-carrying legs read present —
-   the probe can fail, and fails for the right reason.
+   without the file — its HEAD lacks the fixture, the deliberate opposite of the Claude
+   legs' file-presence precondition — and observe `NOT_PRESENT` while the fixture-carrying
+   legs read present — the probe can fail, and fails for the right reason.
 5. **Mechanism verdict.** If any Claude-side leg is red, design.md §C's fallback ladder applies
    (`.worktreeinclude` entry, Template-First, then re-probe). If the gate cannot close after
    the ladder, return a blocker report with the measured matrix; do not proceed to M2.
@@ -103,7 +116,9 @@ Sequence, in this order:
 anywhere in this tree (measured at `514ac7abe`), `AGENTS.md:262` states the import-skip for the
 worktree geometry, and §M1a measured `NOT_PRESENT` for a gitignored `AGENTS.local.md` in a real
 nested worktree (`claude 2.1.283`, fixture `PAPA6`). The green path: the force-tracked fixture
-makes the file present at every worktree root via git itself, and the `@AGENTS.local.md` import
+makes the file present at the root of every worktree whose checkout contains the fixture
+commit — which is why M1 step 3 lands the fixture on each probe tree's own branch before
+probing — and the `@AGENTS.local.md` import
 in the tracked `CLAUDE.md` resolves in-project — the one link M1 measures that no prior
 measurement covers.
 
@@ -117,9 +132,12 @@ if AGENTS.md is not loaded; (2) the exact value of LOCAL_AGENTS_TOKEN, or NOT_PR
 absent." --model claude-haiku-4-5-20251001
 ```
 
-Run from the probe session's cwd. Read on three signals: exit 0, the version line present
-(control), and the token value line. The version line is the control token (design.md §E);
-`ABSENT` on line 1 means the leg measured nothing.
+Run from the probe session's cwd — only after the leg's file-presence precondition has
+passed (`git -C <probe-tree> show HEAD:AGENTS.local.md >/dev/null` exits 0; M1 step 3's
+landing is what makes it pass). Read on four signals: the file-presence precondition, exit
+0, the version line present (control), and the token value line. The version line is the
+control token (design.md §E); `ABSENT` on line 1 means the leg measured nothing, and so does
+a failed precondition.
 
 **Probe recipe (Codex side, `AC-LIR-004`)** — primary form:
 `moai codex -w <probe-name> -- exec "<same two-line token question>"`; record the child's
@@ -165,8 +183,9 @@ card worktree; the launcher-mandatory rule governs card work, not probe instrume
 
 ## §E Self-verification
 
-Per-milestone, affected surfaces only. Every probe leg is read on three signals (exit 0,
-control token present, local token line) — a leg missing the control measured nothing. Every
+Per-milestone, affected surfaces only. Every probe leg is read on four signals (file-presence
+precondition, exit 0, control token present, local token line) — a leg failing the
+precondition or missing the control measured nothing. Every
 `go test`-shaped check (none planned in M1-M3; the verb's tests belong to the parent) would
 carry the `-v` + `--- PASS:` + no-`no tests to run` discipline. At close: the §D.2
 traceability diff, plus re-read of `git ls-files` postcondition on the merge head.
