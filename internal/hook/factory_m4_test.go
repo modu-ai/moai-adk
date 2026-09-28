@@ -34,7 +34,7 @@ func TestSD_AC017_WidenedRoleGateDenyAndAllow(t *testing.T) {
 	t.Setenv(config.EnvFactoryRole, "")
 
 	// Label-only environment: the marker is unset, the lane label is set.
-	t.Setenv(config.EnvMoaiKanbanLabel, "lane-1")
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
 	t.Setenv(config.EnvMoaiKanbanBackend, "")
 	decision, reason := checkContractSign(signGuardInput(t, call))
 	assertDeny("label-only", decision, reason)
@@ -42,8 +42,7 @@ func TestSD_AC017_WidenedRoleGateDenyAndAllow(t *testing.T) {
 	// Codex MCP environment: exactly the variables the frozen Codex MCP
 	// env_vars allowlist forwards for a lane — a lane label and
 	// MOAI_KANBAN_BACKEND=gpt, no role marker. The deny here rides the
-	// backend clause.
-	t.Setenv(config.EnvMoaiKanbanLabel, "")
+	// label and backend clauses.
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendGPT)
 	decision, reason = checkContractSign(signGuardInput(t, call))

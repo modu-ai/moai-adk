@@ -112,9 +112,9 @@ func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 	if !factoryLaneAdmission() {
 		return toolErr("factory_next", factoryNotALaneError("next")), nil
 	}
-	lane := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanLabel))
+	lane := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
 	if lane == "" {
-		return toolErr("factory_next", fmt.Errorf("factory next: %s is empty — a lane session carries its lane label there", config.EnvMoaiKanbanLabel)), nil
+		return toolErr("factory_next", fmt.Errorf("factory next: %s is empty — a lane session carries its lane label there", config.EnvMoaiFactoryWorker)), nil
 	}
 	if err := factoryAssertParentCheckout(root); err != nil {
 		return toolErr("factory_next", err), nil
@@ -156,7 +156,7 @@ func handleFactoryStage(ctx context.Context, req mcp.CallToolRequest) (*mcp.Call
 	if cardID == "" || state == "" {
 		return toolErr("factory_stage", errors.New("factory stage: card and state are required")), nil
 	}
-	card, err := factoryStageCard(ctx, root, cardID, state, req.GetString("evidence", ""), req.GetString("run", ""), strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanLabel)))
+	card, err := factoryStageCard(ctx, root, cardID, state, req.GetString("evidence", ""), req.GetString("run", ""), strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker)))
 	if err != nil {
 		return toolErr("factory_stage", err), nil
 	}
@@ -172,9 +172,9 @@ func handleFactoryComplete(ctx context.Context, req mcp.CallToolRequest) (*mcp.C
 	if !factoryLaneAdmission() {
 		return toolErr("factory_complete", factoryNotALaneError("complete")), nil
 	}
-	lane := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanLabel))
+	lane := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
 	if lane == "" {
-		return toolErr("factory_complete", fmt.Errorf("factory complete: %s is empty — a lane session carries its lane label there", config.EnvMoaiKanbanLabel)), nil
+		return toolErr("factory_complete", fmt.Errorf("factory complete: %s is empty — a lane session carries its lane label there", config.EnvMoaiFactoryWorker)), nil
 	}
 	cardID := strings.TrimSpace(req.GetString("card", ""))
 	if cardID == "" {

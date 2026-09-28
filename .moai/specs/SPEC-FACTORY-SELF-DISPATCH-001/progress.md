@@ -440,6 +440,60 @@ AC-SD-017 scan-map extension (new stamp site). Continuation at `4d73ee088` (clea
 - **E6**: no push (lane does not push; the leader batch-pushes develop). M5 commit: this commit
   (SHA reported in the completion report; a commit cannot cite itself).
 
+### Label-carrier unification (2026-09-29)
+
+Defect: the lane-label reads in the factory card verbs and the widened role gate used
+`config.EnvMoaiKanbanLabel` while the design's canonical carrier is `config.EnvMoaiFactoryWorker`
+(design.md §3/§5; `MOAI_KANBAN_LABEL` is absent from the frozen Codex MCP env_vars allowlist,
+`internal/codexwiring/configtoml.go:21`), so a cc/glm lane stamped `MOAI_FACTORY_WORKER` only
+could not run its own next/stage/complete (the M5 "Left open for the lead" blocker, closed here).
+
+Fix sites (reads converged to the carrier; stamps unchanged — the M5 dual stamp stays
+deliberately):
+
+- `internal/cli/factory_card.go:52` (laneRefuse label clause — covers the todo queue guard and the
+  decide guard via `factoryLaneRefusal`), `:434`/`:436` (next), `:520`/`:522` (stage),
+  `:613`/`:615` (complete) — error texts renamed with the same sentence shape.
+- `internal/cli/mcp_factory_card.go:115`/`:117` (factory_next), `:159` (factory_stage),
+  `:175`/`:177` (factory_complete) — same defect on the M3 MCP surface, found by the ordered
+  re-grep (the dispatch's read-site list was not complete; included as the same defect class).
+- `internal/hook/contract_sign_guard.go:148` (M4 gate label clause).
+- Fixtures switched to `config.EnvMoaiFactoryWorker`: `factory_self_dispatch_test.go:44`/`:53`
+  (sdLaneEnv/sdClearLaneEnv) and `:458` (AC-SD-015 label-only); `factory_m3_test.go:338`/`:628`/
+  `:661`; `internal/hook/factory_m4_test.go:37`/`:46` (+ one comment sentence). Kept as-is per
+  dispatch: the M5 dual-stamp assertion (`factory_m5_test.go:145-146`), stamp/scrub lists,
+  kanban-surface tests, `launcher_blockcap_infinite` (different predicate).
+- Doc lag (pre-existing, M3 catalogue growth 39→45): `.claude/rules/moai/core/moai-mcp-tools.md`
+  (39→45 ×2, project_root section 13→16 optional-root tools + the three required-root lane verbs)
+  and `moai-mcp-tools-catalogue.md` (45-tool frontmatter/intro/header, family header 41-of-45, new
+  Factory card verbs family row + per-tool section) — both mirrored byte-identical to
+  `internal/template/templates/` and `make build` rerun. `internal/mcp/catalog.go` untouched.
+
+Evidence (env-scrubbed single compound invocations, slot lease `internal-test-suite` held and
+released):
+
+1. Full anchored set M1-M5 + `^TestCodex`: `go test ./internal/cli -run '^TestSD_AC002|^TestSD_AC003|^TestSD_AC004|^TestSD_AC005|^TestSD_AC006|^TestSD_AC007|^TestSD_AC008|^TestSD_AC009|^TestSD_AC010|^TestSD_AC011|^TestSD_AC012|^TestSD_AC013|^TestSD_AC015|^TestSD_AC016|^TestSD_AC017|^TestSD_AC023|^TestSD_AC024|^TestSD_AC025|^TestSD_WorktreeSlugShape|^TestCodex' -count=1 -timeout 15m`
+   → `ok github.com/modu-ai/moai-adk/internal/cli 125.735s`.
+2. Hook arm: `go test ./internal/hook -run '^TestSD_AC017_WidenedRoleGateDenyAndAllow$|^TestContractSignGuard' -count=1`
+   → `ok github.com/modu-ai/moai-adk/internal/hook 0.668s`.
+3. `go test ./internal/cli -run '^TestCodexAuditMCPTool$|^TestMCPToolCatalogueFiguresMatchRegistry$|^TestMCPToolCatalogueDocsStayMirrorIdentical$' -count=1 -v`
+   → `--- PASS: TestCodexAuditMCPTool (3.98s)`, `--- PASS: TestMCPToolCatalogueDocsStayMirrorIdentical (0.00s)`,
+   `--- PASS: TestMCPToolCatalogueFiguresMatchRegistry (0.00s)`.
+4. `go build ./... && GOOS=windows GOARCH=amd64 go build ./...` → both exit 0.
+5. `golangci-lint run --timeout=2m ./internal/cli/... ./internal/hook/...` (v2.1.6, the CI version)
+   → `0 issues.`
+6. `cmp` stub pair and companion pair → identical, both.
+7. Carrier end-to-end: `go test ./internal/cli -run '^TestSD_AC015_LabelOnlyIsNotALane$|^TestSD_AC002_LaneLaunchStampsMarkerAndLabel$' -count=1 -v`
+   → `--- PASS: TestSD_AC002_LaneLaunchStampsMarkerAndLabel (1.98s)` (launcher-stamped env feeds the
+   actor path), `--- PASS: TestSD_AC015_LabelOnlyIsNotALane (0.49s)` (label-only fixture now denies
+   via `MOAI_FACTORY_WORKER`).
+8. Post-edit readback of every edited region quoted (production 12 sites, fixtures 9 lines, docs 6
+   regions); residual grep `EnvMoaiKanbanLabel` over production files → only the legitimate
+   kanban-surface/dual-stamp sites remain (launcher_blockcap, codex_launcher ×3, kanban.go ×2,
+   ptycaptest, session_start_kanban/record).
+
+Commit: this commit (SHA reported in the completion report; a commit cannot cite itself).
+
 ## §F Phase 4 Mode Selection
 
 - tier: L · scope: >10 production files across cli/hook/config/kanban/homestate/codexwiring + template rules · domains: 6 (Go CLI, hooks, MCP server, launchers, doctrine rules, env constants) · language mix: Go + Markdown · concurrency benefit: LOW (coding-heavy, sequential milestone chain with shared files)

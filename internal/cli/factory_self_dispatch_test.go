@@ -41,7 +41,7 @@ func sdRegisterLane(t *testing.T, root, label string) {
 func sdLaneEnv(t *testing.T, label, backend string) {
 	t.Helper()
 	t.Setenv(config.EnvFactoryRole, config.FactoryRoleLane)
-	t.Setenv(config.EnvMoaiKanbanLabel, label)
+	t.Setenv(config.EnvMoaiFactoryWorker, label)
 	t.Setenv(config.EnvMoaiKanbanBackend, backend)
 }
 
@@ -50,7 +50,7 @@ func sdLaneEnv(t *testing.T, label, backend string) {
 func sdClearLaneEnv(t *testing.T) {
 	t.Helper()
 	t.Setenv(config.EnvFactoryRole, "")
-	t.Setenv(config.EnvMoaiKanbanLabel, "")
+	t.Setenv(config.EnvMoaiFactoryWorker, "")
 	t.Setenv(config.EnvMoaiKanbanBackend, "")
 }
 
@@ -455,7 +455,7 @@ func TestSD_AC015_LabelOnlyIsNotALane(t *testing.T) {
 
 	// Label-only environment: the marker is unset.
 	sdClearLaneEnv(t)
-	t.Setenv(config.EnvMoaiKanbanLabel, "lane-1")
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
 	for _, tc := range []struct {
 		verb string
 		args []string

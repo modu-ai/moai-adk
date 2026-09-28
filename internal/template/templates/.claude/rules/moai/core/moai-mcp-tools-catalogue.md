@@ -1,5 +1,5 @@
 ---
-description: "Detail companion for moai-mcp-tools.md — the full 39-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
+description: "Detail companion for moai-mcp-tools.md — the full 45-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
 paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moai/*.md"
 ---
 
@@ -7,11 +7,11 @@ paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moa
 
 > Detail companion of `moai-mcp-tools.md` (the always-loaded stub). The stub owns the
 > MCP-over-CLI preference rule, the family index, and the unwired-by-design note. This file owns
-> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 39 tools.
+> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 45 tools.
 > Load it when wiring a tool into an agent's `tools:` list, or when choosing between an MCP tool
 > and its Bash equivalent for a specific capability.
 
-## Tool catalogue (39 tools)
+## Tool catalogue (45 tools)
 
 ### SPEC lifecycle
 
@@ -144,6 +144,22 @@ surface presents it as available. The question-design rules for authoring
 well-formed questions live in the reference skill; the call path lives in
 `internal/jev` and the tool wraps it without a second implementation.
 
+### Factory card verbs (lane-scoped)
+
+| Tool | Purpose | Consumer | CLI equivalent |
+|------|---------|----------|----------------|
+| `mcp__moai__factory_next` | Lease the lane's next card and ensure its per-card worktree (MCP form of `moai factory next`; `project_root` required) | factory lane session — refused outside one | `moai factory next` |
+| `mcp__moai__factory_stage` | Apply a card's next stage transition with its evidence (MCP form of `moai factory stage`; `project_root` required) | factory lane session — refused outside one | `moai factory stage` |
+| `mcp__moai__factory_complete` | Take a merge-ready card through merging to merged-local (MCP form of `moai factory complete`; `project_root` required) | factory lane session — refused outside one | `moai factory complete` |
+| `mcp__moai__factory_decide` | Record one operator decision (MCP form of `moai factory decide`); inverted gate — refused FOR a lane session | attributed factory lead | `moai factory decide` |
+| `mcp__moai__todo_add` | Append one card to the backlog queue; lane-refused like the CLI guard | factory lead or lane session | `moai todo add` |
+| `mcp__moai__todo_list` | Render the backlog queue, lock-free; read-only, no lane guard | any session | `moai todo list` |
+
+The lane verbs read the caller's lane identity from `MOAI_FACTORY_ROLE` and
+`MOAI_FACTORY_WORKER` — the carrier the frozen Codex MCP env_vars allowlist
+forwards — plus `MOAI_KANBAN_BACKEND=gpt`, and refuse outside a lane session;
+`factory_decide` inverts the gate so decisions stay the operator's.
+
 ### Factory messaging (run/session/generation bound)
 
 | Tool | Purpose | Consumer | CLI equivalent |
@@ -201,7 +217,7 @@ Classification: Lazy companion — catalogue tables and per-family guidance only
 stays in `moai-mcp-tools.md`. Update this file whenever a tool is added, removed, or renamed on the
 `moai mcp-server` (the Go producer lives in `internal/cli/mcp_server.go`).
 
-## Tool families (35 of the 39 tools; the session-messaging family follows below)
+## Tool families (41 of the 45 tools; the session-messaging family follows below)
 
 | Family | Tools | Wired consumers |
 |---|---|---|
@@ -214,6 +230,7 @@ stays in `moai-mcp-tools.md`. Update this file whenever a tool is added, removed
 | GLM delegation | `glm_task`, `glm_job_{status,result,cancel}` | super-advisor |
 | Code queries | `graph_file_api`, `graph_find_code`, `graph_trace_calls`, `graph_shortest_path` | any agent (signature-level code navigation from the code-derived edge layer; every answer carries tree+commit provenance) |
 | Judgment (gated) | `jev_ask` | gated-unavailable at the shipped default (`workflow.jev.enabled: false`) — no request constructed, no network call; while the chain's fitness gate stands unrun it is not presented as available. Display-only: a labelled model signal a person reads, never a completion predicate, merge approval, queue mutation, or gate input, except as the second signal of the contract-mode Kickoff `llm+jev` cross-check, where it can only confirm an LLM approval or route the Kickoff to a human and never decides alone |
+| Factory card verbs | `factory_next`, `factory_stage`, `factory_complete`, `factory_decide`, `todo_add`, `todo_list` | factory lane sessions (lane verbs, `project_root` required on next/stage/complete); `factory_decide` inverts the gate; `todo_list` is the family's read-only surface |
 | Factory messaging | `factory_msg_send`, `factory_msg_list`, `factory_msg_body`, `factory_msg_receipt`, `factory_msg_status` | attributed factory lead/worker sessions; `status` is the read-only operational roster/count surface |
 
 Per-tool purpose, consumer, and CLI equivalent: `moai-mcp-tools-catalogue.md`. Claude, codex, and

@@ -49,7 +49,7 @@ func factoryLaneAdmission() bool {
 // lane-label variable, or the backend variable naming the Codex harness.
 func factoryLaneRefusal() bool {
 	return factoryLaneAdmission() ||
-		os.Getenv(config.EnvMoaiKanbanLabel) != "" ||
+		os.Getenv(config.EnvMoaiFactoryWorker) != "" ||
 		os.Getenv(config.EnvMoaiKanbanBackend) == kanban.BackendGPT
 }
 
@@ -431,9 +431,9 @@ func newFactoryNextCommand() *cobra.Command {
 			if !factoryLaneAdmission() {
 				return factoryNotALaneError("next")
 			}
-			lane := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanLabel))
+			lane := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
 			if lane == "" {
-				return fmt.Errorf("factory next: %s is empty — a lane session carries its lane label there", config.EnvMoaiKanbanLabel)
+				return fmt.Errorf("factory next: %s is empty — a lane session carries its lane label there", config.EnvMoaiFactoryWorker)
 			}
 			if err := factoryAssertParentCheckout(resolveProjectDir()); err != nil {
 				return err
@@ -517,9 +517,9 @@ func newFactoryStageCommand() *cobra.Command {
 			if !factoryLaneAdmission() {
 				return factoryNotALaneError("stage")
 			}
-			lane := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanLabel))
+			lane := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
 			if lane == "" {
-				return fmt.Errorf("factory stage: %s is empty — a lane session carries its lane label there", config.EnvMoaiKanbanLabel)
+				return fmt.Errorf("factory stage: %s is empty — a lane session carries its lane label there", config.EnvMoaiFactoryWorker)
 			}
 			evidence := ""
 			if len(args) > 2 {
@@ -610,9 +610,9 @@ func newFactoryCompleteCommand() *cobra.Command {
 			if !factoryLaneAdmission() {
 				return factoryNotALaneError("complete")
 			}
-			lane := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanLabel))
+			lane := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
 			if lane == "" {
-				return fmt.Errorf("factory complete: %s is empty — a lane session carries its lane label there", config.EnvMoaiKanbanLabel)
+				return fmt.Errorf("factory complete: %s is empty — a lane session carries its lane label there", config.EnvMoaiFactoryWorker)
 			}
 			remeasure := ""
 			if len(args) > 1 {

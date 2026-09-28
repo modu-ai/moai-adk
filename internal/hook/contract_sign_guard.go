@@ -145,7 +145,7 @@ func contractLaneGate() bool {
 	if os.Getenv(config.EnvFactoryRole) == config.FactoryRoleLane {
 		return true
 	}
-	if os.Getenv(config.EnvMoaiKanbanLabel) != "" {
+	if os.Getenv(config.EnvMoaiFactoryWorker) != "" {
 		return true
 	}
 	return os.Getenv(config.EnvMoaiKanbanBackend) == kanban.BackendGPT

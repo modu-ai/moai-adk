@@ -1,6 +1,6 @@
 # moai-mcp Tool Catalogue
 
-> Single source of truth for the 39 tools exposed by the self-hosted `moai` MCP
+> Single source of truth for the 45 tools exposed by the self-hosted `moai` MCP
 > server (`.mcp.json` → `{command: "moai", args: ["mcp-server"]}`). Each tool is
 > prefixed `mcp__moai__` at the call site. This rule tells agents and the
 > orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.
@@ -19,11 +19,13 @@ the CLI form reads more naturally inline.
 
 ## The `project_root` input — name your own tree
 
-Thirteen tools accept an optional `project_root` string: `spec_progress`,
+Sixteen tools accept an optional `project_root` string: `spec_progress`,
 `spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`,
 `glm_audit`, `claude_audit`, `audit_multi`, `graph_file_api`, `graph_find_code`,
-`graph_shortest_path`, and `graph_trace_calls`. It names the tree the call
-should act on.
+`graph_shortest_path`, `graph_trace_calls`, `factory_decide`, `todo_add`, and
+`todo_list`. It names the tree the call should act on. Three lane verbs —
+`factory_next`, `factory_stage`, and `factory_complete` — REQUIRE it instead:
+a call without it is rejected naming the argument.
 
 [HARD] **An agent working inside a worktree MUST pass it**, and the value is its
 own `git rev-parse --show-toplevel`. This is not a convenience. The server cannot
@@ -63,7 +65,7 @@ opinions about the same tree.
 ## Cross-reference
 
 `moai-mcp-tools-catalogue.md` — the lazy companion. Load it for § Tool catalogue
-(39 tools) · § Tool families (the family-to-consumer map) · § Session messaging
+(45 tools) · § Tool families (the family-to-consumer map) · § Session messaging
 broker (Claude ↔ Codex) · § Unwired-by-design (why `goal_arm` reaches no agent).
 
 ---

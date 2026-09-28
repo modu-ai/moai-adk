@@ -335,7 +335,7 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 
 		// Refusal twin: label-only is not a lane, on either surface.
 		sdClearLaneEnv(t)
-		t.Setenv(config.EnvMoaiKanbanLabel, "lane-1")
+		t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
 		_, _, cliErr := runFactory(t, "next", "--run", fcRun)
 		if cliErr == nil || !strings.Contains(cliErr.Error(), "not a lane session") {
 			t.Fatalf("cli label-only next: err = %v", cliErr)
@@ -625,7 +625,7 @@ func TestSD_AC015_MCPTodoAddRefused(t *testing.T) {
 
 	// Codex MCP environment: lane label + backend gpt, no role marker.
 	sdClearLaneEnv(t)
-	t.Setenv(config.EnvMoaiKanbanLabel, "lane-1")
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendGPT)
 	before = sdQueueBytes(t, store)
 	if _, err := sdCallTool(t, handleTodoAdd, map[string]any{"text": "codex card", "project_root": root}); err == nil || !strings.Contains(err.Error(), "lane boundary") {
@@ -658,7 +658,7 @@ func TestSD_AC016_MCPDecideRefused(t *testing.T) {
 	}
 
 	sdClearLaneEnv(t)
-	t.Setenv(config.EnvMoaiKanbanLabel, "lane-1")
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
 	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendGPT)
 	if _, err := sdCallTool(t, handleFactoryDecide, args); err == nil || !strings.Contains(err.Error(), "refused") {
 		t.Fatalf("codex-mcp factory_decide: err = %v, want a refusal", err)
