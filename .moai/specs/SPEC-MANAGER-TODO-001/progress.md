@@ -211,7 +211,47 @@ Notes: AC-MT-016 PASS is conditional on the recorded pre-existing baseline row (
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+Sync-phase lane: `WT-manager-todo-agent`, card t1306, manager-docs. Evidence per command: verbatim output, measured against this tree in this run (tree clean at sync entry, HEAD `c024772b9` — unchanged since the run close, so run-phase suite evidence below is reused, key-matched).
+
+### B12 CHANGELOG self-tests
+
+1. **Pre-emission duplicate grep**:
+```
+$ grep -c 'SPEC-MANAGER-TODO-001' CHANGELOG.md
+0            # (exit 1 — zero prior mentions; emission proceeds)
+```
+2. **AC count match**: `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/SPEC-MANAGER-TODO-001/acceptance.md | sort -u | wc -l` → **22** (non-zero, plausible); non-live markers `grep -nE 'RETIRED|\[REF\]' acceptance.md` → 0 hits (all 22 live). CHANGELOG entry states 22.
+3. **File path verification**: every path named in the entry verified to exist — `.claude/agents/moai/manager-todo.md`, `internal/template/templates/.claude/agents/moai/manager-todo.md`, `internal/template/templates/.codex/agents/moai/manager-todo.toml`, `internal/cli/todo_auto.go`, `internal/cli/codex_audit_mcp.go`, `internal/cli/codex_role_fingerprint.go`, `internal/harness/rosterguard/`, `internal/template/agentemit/agents-codex.yaml`, `internal/mission/governance_receipt.go`, `internal/cli/testdata/codex-rollouts-t1171/` — all `ls`-confirmed present.
+
+### Sync-phase diagnostics
+
+- `go build ./...` → exit 0 (`BUILD_OK`).
+- `go test -count=1 -run 'TestTodoAuto|TestManagerTodo' ./internal/cli/` → `ok github.com/modu-ai/moai-adk/internal/cli 34.279s`.
+- `golangci-lint run --timeout=2m ./internal/cli/... ./internal/harness/... ./internal/mission/... ./internal/template/...` → `0 issues.` (NEW-vs-baseline: 0 new findings).
+- Test reuse attribution: full milestone suites (`internal/template/...`, `rosterguard`, `delegationmap`, `internal/mission/...`, final `internal/cli/...` 21-package run) are reused from §E.2 (reused_from: manager-develop run-phase, measured on this same HEAD `c024772b9` with a clean tree); no drift re-run needed — build/lint/focused-suite re-verified fresh this phase (above).
+
+### Docs parity verification (verify-only — run M5 authored the surfaces)
+
+- README ×4: `grep -c 'manager-todo'` → README.md 2, README.ko.md 2, README.ja.md 2, README.zh.md 2.
+- Residual old name: `grep -rin 'mission-governor' README.md README.ko.md README.ja.md README.zh.md docs-site/content` → **0 hits**.
+- docs-site touched pages per locale (`grep -rl manager-todo docs-site/content/<loc>`): en 8, ja 8, zh 8, ko 7. The ko delta is `advanced/claude-md-guide.md`: the ko page is a pre-existing condensed divergence (ko 266 vs en 393 lines, heading-count gap already recorded at the card base as a known baseline Gap) and its base copy carried **zero** `mission-governor` mentions (`git show a62a05764:...` → 0) — the ko page never had the row this card renamed, so there is no ko surface to update. Classified pre-existing baseline, not this card's defect.
+
+### MX validation (sync sub-step)
+
+- `git diff a62a05764..HEAD -- internal/cli/todo_auto.go internal/cli/todo.go internal/harness/rosterguard/ internal/mission/governance_receipt.go` → all new functions are **unexported** (`autoEvidencePath`, `newAutoLiveness`, `ownerAlive`, `autoPickTargets`, `runAutoCycle`, `consultJev`, `writeAutoDirective`, `writeAutoClearGuidance`, …); grep for `^\+func`/`^\+type` with an exported identifier → 0. No new exported surface → no `@MX:NOTE`/`@MX:ANCHOR` obligation; the auto functions carry no goroutines/complexity-≥15 patterns (11 dedicated tests, §E.2); no dangerous-pattern tag triggered. Actions taken: none (no bulk-annotation of unchanged files).
+
+```yaml
+sync_complete_at: 2026-09-29T12:00:00+0900
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+b12_self_test_a: pass (duplicate grep = 0)
+b12_self_test_b: pass (AC count 22 == 22, zero non-live markers)
+b12_self_test_c: pass (all entry paths ls-verified)
+changelog_entry_position: [Unreleased]/Added, first entry
+frontmatter_status_transitions.spec_md: in-progress → implemented → completed (merged into this sync commit)
+canary_compliance_check.docs_parity: pass (README ×4 = 2/2/2/2; docs-site residual 0; ko 7-file delta = pre-existing condensed-page baseline)
+mx_actions: none-required (zero new exported symbols)
+```
 
 ## §F Phase 4 Mode Selection
 

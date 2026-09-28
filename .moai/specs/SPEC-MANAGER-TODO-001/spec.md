@@ -2,7 +2,7 @@
 id: SPEC-MANAGER-TODO-001
 title: "Rename and repurpose mission-governor into manager-todo — todo-queue management, Jev decision wiring, dispatch ownership, and /moai:todo --auto serial mode"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-29
 updated: 2026-09-29
 author: manager-spec
