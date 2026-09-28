@@ -32,13 +32,26 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	2.219s
 
 `GIT_TRACE2_EVENT`은 테스트의 별도 `t.TempDir` 파일에만 기록한다. 실패 시 프로젝트 임시 디렉터리의 정리가 끝난 뒤 최대 12000바이트를 테스트 로그에 남기고, 마지막에 trace 디렉터리를 정리한다.
 
+최신 로컬 `develop` `2e34b99b5`를 흡수한 뒤 재측정:
+
+```text
+$ go test -race ./internal/cli -run '^TestStopChainGPTProfileNoClaudeDependency$' -count=2 -timeout 180s
+ok  	github.com/modu-ai/moai-adk/internal/cli	5.064s
+$ go test ./internal/cli -run '^TestStopChainGPTProfileNoClaudeDependency$' -count=1 -v -timeout 120s | rg '^(=== RUN|    codex_stop_chain_test.go:|--- PASS|PASS|ok)'
+=== RUN   TestStopChainGPTProfileNoClaudeDependency
+    codex_stop_chain_test.go:94: git trace active after fixture setup: 64183 bytes
+--- PASS: TestStopChainGPTProfileNoClaudeDependency (1.29s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.060s
+```
+
 ## Baseline-attribution
 
 실패는 `517ec51ba`의 해당 CI 로그에서, 계측 활성화와 로컬 통과는 이 브랜치 시작점 `cee197917`에 계측 변경을 얹어 이번 실행에서 확인했다.
 
 ## Gaps
 
-로컬 실행에서는 정리 실패가 재현되지 않았다. CI에서 계측이 적용된 뒤 같은 실패가 다시 나타난 로그를 아직 보지 못했다. 따라서 어떤 Git 명령 또는 다른 프로세스가 `.git/objects`를 썼는지는 미확정이다.
+로컬 실행에서는 정리 실패가 재현되지 않았다. CI에서 계측이 적용된 뒤 같은 실패가 다시 나타난 로그를 아직 보지 못했다. 따라서 어떤 Git 명령 또는 다른 프로세스가 `.git/objects`를 썼는지는 미확정이다. 이 브랜치 병합 뒤에도 카드는 원인 확정과 수리가 끝날 때까지 열어 둔다.
 
 ## Residual-risk
 
