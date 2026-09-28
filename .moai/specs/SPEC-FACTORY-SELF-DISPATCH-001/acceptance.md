@@ -14,7 +14,7 @@ and vocabulary. F1 record behavior and F3 controller behavior are not verified h
   MoAI home is redirected to a temporary directory. No test reads or writes the real `~/.moai`.
 - **Fixture layout (binds AC-SD-006, -013, -018, -025):** the parent checkout has `main` checked out;
   the integration branch is `develop`, configured as the project's integration branch and checked out
-  in a provisioned integration worktree `.claude/worktrees/develop`; the repository has no remote.
+  in a provisioned integration worktree `.moai/worktrees/develop`; the repository has no remote.
 - `./internal/cli` and `./internal/hook` run only with an anchored `-run` selector naming one AC test
   (`-run '^TestSD_AC0NN_Name$'`). Whole-package runs of those two packages are prohibited for this card.
 - **Pass convention:** an AC passes only when every command it names exits 0 and each test's verbose
@@ -145,8 +145,8 @@ REQ-SD-025, AC-SD-025 ↔ REQ-SD-023). The matrix above is authoritative.
 
 ### AC-SD-011 — worktree per card
 - **Given** a leased card with no recorded worktree, **When** `next` completes, **Then**
-  `.claude/worktrees/<card-id>` exists, its branch starts with `WT-` and does not contain the card id, and
-  the card record's worktree path equals that directory; **Given** `.claude/worktrees/<card-id>` already
+  `.moai/worktrees/<card-id>` exists, its branch starts with `WT-` and does not contain the card id, and
+  the card record's worktree path equals that directory; **Given** `.moai/worktrees/<card-id>` already
   exists and no card record names it, **Then** `next` refuses and the card row version is unchanged;
   **Given** a card whose record names its own tree, **Then** `next` reuses it without creating another.
 - Verify: `go test ./internal/cli -run '^TestSD_AC011_CardWorktreeCreateReuseRefuse$' -count=1 -v`
@@ -160,7 +160,7 @@ REQ-SD-025, AC-SD-025 ↔ REQ-SD-023). The matrix above is authoritative.
 
 ### AC-SD-013 — Claude `complete` through the integration worktree
 - **Given** the §B fixture and a Claude lane holding the integration window, with the card's branch merged
-  `--no-ff` into `develop` inside `.claude/worktrees/develop` and a re-measure file naming the merge commit,
+  `--no-ff` into `develop` inside `.moai/worktrees/develop` and a re-measure file naming the merge commit,
   **When** the lane runs `complete`, **Then** the card is `merged-local` with that merge SHA recorded and
   the window is still held by the lane (release is the lane's next step, not part of `complete`);
   **Given** the integration branch is checked out only in the parent checkout, or in no tree at all,
@@ -227,7 +227,7 @@ REQ-SD-025, AC-SD-025 ↔ REQ-SD-023). The matrix above is authoritative.
 
 ### AC-SD-018 — parent checkout untouched
 - **Given** the §B fixture (parent on `main`), **When** the full lane cycle of AC-SD-006 ends, **Then** in
-  the parent checkout `git status --porcelain` (excluding `.claude/worktrees/`) is empty, and `HEAD` and
+  the parent checkout `git status --porcelain` (excluding `.moai/worktrees/`) is empty, and `HEAD` and
   the checked-out branch (`main`) equal their values before the cycle.
 - Verify: `go test ./internal/cli -run '^TestSD_AC018_ParentCheckoutUntouched$' -count=1 -v`
 

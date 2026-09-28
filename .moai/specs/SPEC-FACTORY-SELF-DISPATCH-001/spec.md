@@ -4,7 +4,7 @@ title: "Harness-neutral factory F2 — self-dispatching lane"
 version: "0.5.1"
 status: in-progress
 created: 2026-09-27
-updated: 2026-09-28
+updated: 2026-09-29
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
