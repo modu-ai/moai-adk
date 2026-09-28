@@ -159,8 +159,8 @@ func TestLeadRecordAbsentForTreatsStatErrorAsPossibleRecord(t *testing.T) {
 		t.Fatalf("stat %s = %v, want an error other than not-exist (the leg's premise)", path, err)
 	}
 
-	if LeadRecordAbsentFor(root)("run-blocked") {
-		t.Fatal("LeadRecordAbsentFor reported absence on a failed broker check")
+	if LegacyPeerRecordAbsentFor(root)("run-blocked") {
+		t.Fatal("LegacyPeerRecordAbsentFor reported absence on a failed broker check")
 	}
 	rec := reconcileProduction(t, root)
 	assertDeclined(t, root, rec, "run-blocked")
@@ -178,8 +178,8 @@ func TestLeadRecordAbsentForRejectsUnderivableBrokerPath(t *testing.T) {
 	seedPreBootRun(t, root, unsafeID, 0, "")
 	seedPreBootRun(t, root, "run-control", 0, "")
 
-	if LeadRecordAbsentFor(root)(unsafeID) {
-		t.Fatal("LeadRecordAbsentFor reported absence for an underivable broker path")
+	if LegacyPeerRecordAbsentFor(root)(unsafeID) {
+		t.Fatal("LegacyPeerRecordAbsentFor reported absence for an underivable broker path")
 	}
 	rec := reconcileProduction(t, root)
 	assertDeclined(t, root, rec, unsafeID)

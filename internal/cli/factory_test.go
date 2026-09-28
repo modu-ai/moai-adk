@@ -160,11 +160,11 @@ func TestParseKanbanFlagUnifiedEntry(t *testing.T) {
 		{name: "--kanban=N", args: []string{"--kanban=1"}, wantKanban: true, wantFactory: true, wantWorkers: 1},
 		{name: "-k N with lane name is factory lane", args: []string{"-k", "4", "--name", "worker-2"}, wantKanban: true, wantFactory: true, wantWorkers: 4, wantRest: []string{"--name", "worker-2"}},
 		{
-			// The count-less factory entry: the worker-shape NAME selects the
+			// The count-less factory entry: the lane-shape NAME selects the
 			// factory, so the operator default applies. A count-less FACTORY
-			// LEAD does not exist — a bare -k is the kanban lead.
-			name: "bare -k with lane name takes the default", args: []string{"-k", "--name", "worker-2"},
-			wantKanban: true, wantFactory: true, wantWorkers: config.DefaultFactoryWorkers, wantRest: []string{"--name", "worker-2"},
+			// LEADER does not exist — a bare -k is the kanban leader.
+			name: "bare -k with lane name takes the default", args: []string{"-k", "--name", "lane-2"},
+			wantKanban: true, wantFactory: true, wantWorkers: config.DefaultFactoryLanes, wantRest: []string{"--name", "lane-2"},
 		},
 		{name: "companion name stays kanban", args: []string{"-k", "--name", "plan"}, wantKanban: true, wantRest: []string{"--name", "plan"}},
 		{name: "zero count errors", args: []string{"-k", "0"}, wantErr: true, errMarker: "lane count of 1 or more"},
@@ -186,9 +186,9 @@ func TestParseKanbanFlagUnifiedEntry(t *testing.T) {
 				t.Fatalf("parseKanbanFlag(%v) unexpected error: %v", c.args, err)
 			}
 			if p.Spec != c.wantSpec || p.KanbanEnabled != c.wantKanban ||
-				p.FactoryEnabled != c.wantFactory || p.FactoryWorkers != c.wantWorkers {
+				p.FactoryEnabled != c.wantFactory || p.FactoryLanes != c.wantWorkers {
 				t.Errorf("parseKanbanFlag(%v) = (spec %q, kanban %v, factory %v, workers %d), want (%q, %v, %v, %d)",
-					c.args, p.Spec, p.KanbanEnabled, p.FactoryEnabled, p.FactoryWorkers,
+					c.args, p.Spec, p.KanbanEnabled, p.FactoryEnabled, p.FactoryLanes,
 					c.wantSpec, c.wantKanban, c.wantFactory, c.wantWorkers)
 			}
 			wantRest := c.wantRest
@@ -220,10 +220,12 @@ func TestParseKanbanFlagPassThroughBoundary(t *testing.T) {
 }
 
 // TestParseFactoryFlag is the t118 -f truth table: bare -f is enabled with
-// no count, -f N carries the count, -f worker-<n> carries the lane number,
+// no count, -f N carries the count, -f lane-<n> carries the lane number,
 // the `=`-joined forms work, and a SUPPLIED value that is neither a positive
 // integer nor a lane label errors (the factory has no SPEC shape to fall
-// into). Lookalike tokens are not stolen.
+// into). Legacy spellings are refused on any letter case
+// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-003/-005). Lookalike tokens are not
+// stolen.
 func TestParseFactoryFlag(t *testing.T) {
 	t.Parallel()
 
@@ -243,25 +245,27 @@ func TestParseFactoryFlag(t *testing.T) {
 		{name: "long form bare", args: []string{"--factory", "-b"}, wantEnabled: true, wantRest: []string{"-b"}},
 		// The numeric count forms are RETIRED (operator goal 2026-09-16):
 		// a supplied number now errors naming the accepted shapes.
-		{name: "-f N errors post-N-removal", args: []string{"-f", "4"}, wantErr: true, errMarker: "worker role token"},
-		{name: "-f=N errors post-N-removal", args: []string{"-f=3"}, wantErr: true, errMarker: "worker role token"},
-		{name: "--factory N errors post-N-removal", args: []string{"--factory", "12"}, wantErr: true, errMarker: "worker role token"},
-		{name: "--factory=N errors post-N-removal", args: []string{"--factory=1"}, wantErr: true, errMarker: "worker role token"},
-		{name: "-f worker", args: []string{"-f", "worker"}, wantEnabled: true, wantRole: true},
-		{name: "-f=worker", args: []string{"-f=worker"}, wantEnabled: true, wantRole: true},
-		// Legacy spellings (keep-alias): still parse onto the worker shapes.
-		{name: "-f agent legacy alias", args: []string{"-f", "agent"}, wantEnabled: true, wantRole: true},
-		{name: "-f=agent legacy alias", args: []string{"-f=agent"}, wantEnabled: true, wantRole: true},
-		{name: "-f lane-2 legacy alias", args: []string{"-f", "lane-2"}, wantEnabled: true, wantWorkerNum: 2},
-		{name: "-f worker-2", args: []string{"-f", "worker-2"}, wantEnabled: true, wantWorkerNum: 2},
-		{name: "-f=worker-3", args: []string{"-f=worker-3"}, wantEnabled: true, wantWorkerNum: 3},
-		{name: "--factory=worker-7", args: []string{"--factory=worker-7"}, wantEnabled: true, wantWorkerNum: 7},
+		{name: "-f N errors post-N-removal", args: []string{"-f", "4"}, wantErr: true, errMarker: "role token -f lane"},
+		{name: "-f=N errors post-N-removal", args: []string{"-f=3"}, wantErr: true, errMarker: "role token -f lane"},
+		{name: "--factory N errors post-N-removal", args: []string{"--factory", "12"}, wantErr: true, errMarker: "role token -f lane"},
+		{name: "--factory=N errors post-N-removal", args: []string{"--factory=1"}, wantErr: true, errMarker: "role token -f lane"},
+		// Legacy spellings are REFUSED (REQ-RNC-003), any letter case.
+		{name: "-f worker refused", args: []string{"-f", "worker"}, wantErr: true, errMarker: "-f lane"},
+		{name: "-f=worker refused", args: []string{"-f=worker"}, wantErr: true, errMarker: "-f lane"},
+		{name: "-f agent refused", args: []string{"-f", "agent"}, wantErr: true, errMarker: "-f lane"},
+		{name: "-f=agent refused", args: []string{"-f=agent"}, wantErr: true, errMarker: "-f lane"},
+		{name: "-f WORKER refused", args: []string{"-f", "WORKER"}, wantErr: true, errMarker: "-f lane"},
+		{name: "-f AGENT refused", args: []string{"-f", "AGENT"}, wantErr: true, errMarker: "-f lane"},
+		{name: "-f lane role token", args: []string{"-f", "lane"}, wantEnabled: true, wantRole: true},
+		{name: "-f lane-2", args: []string{"-f", "lane-2"}, wantEnabled: true, wantWorkerNum: 2},
+		{name: "-f worker-2 refused naming lane-2", args: []string{"-f", "worker-2"}, wantErr: true, errMarker: "lane-2"},
+		{name: "-f=worker-3 refused naming lane-3", args: []string{"-f=worker-3"}, wantErr: true, errMarker: "lane-3"},
+		{name: "--factory=worker-7 refused naming lane-7", args: []string{"--factory=worker-7"}, wantErr: true, errMarker: "lane-7"},
 		{name: "positional flag is not a value", args: []string{"-f", "-b"}, wantEnabled: true, wantRest: []string{"-b"}},
-		{name: "zero count errors", args: []string{"-f", "0"}, wantErr: true, errMarker: "worker role token"},
-		{name: "negative joined count errors", args: []string{"-f=-2"}, wantErr: true, errMarker: "worker role token"},
-		{name: "non-numeric non-lane errors", args: []string{"-f", "SPEC-X-001"}, wantErr: true, errMarker: "worker label"},
-		{name: "unnumbered legacy lane errors", args: []string{"-f", "lane"}, wantErr: true, errMarker: "worker label"},
-		{name: "worker zero errors", args: []string{"-f", "worker-0"}, wantErr: true, errMarker: "worker label"},
+		{name: "zero count errors", args: []string{"-f", "0"}, wantErr: true, errMarker: "role token -f lane"},
+		{name: "negative joined count errors", args: []string{"-f=-2"}, wantErr: true, errMarker: "role token -f lane"},
+		{name: "non-numeric non-lane errors", args: []string{"-f", "SPEC-X-001"}, wantErr: true, errMarker: "lane label"},
+		{name: "worker zero errors", args: []string{"-f", "worker-0"}, wantErr: true, errMarker: "lane label"},
 		{name: "lookalike long flag not stolen", args: []string{"--factory-reset"}, wantRest: []string{"--factory-reset"}},
 	}
 
@@ -278,9 +282,9 @@ func TestParseFactoryFlag(t *testing.T) {
 			if err != nil {
 				t.Fatalf("parseFactoryFlag(%v) unexpected error: %v", c.args, err)
 			}
-			if p.Enabled != c.wantEnabled || p.Workers != c.wantWorkers || p.WorkerNumber != c.wantWorkerNum || p.WorkerRole != c.wantRole {
+			if p.Enabled != c.wantEnabled || p.Lanes != c.wantWorkers || p.LaneNumber != c.wantWorkerNum || p.LaneRole != c.wantRole {
 				t.Errorf("parseFactoryFlag(%v) = (enabled %v, workers %d, workerNum %d, agent %v), want (%v, %d, %d, %v)",
-					c.args, p.Enabled, p.Workers, p.WorkerNumber, p.WorkerRole, c.wantEnabled, c.wantWorkers, c.wantWorkerNum, c.wantRole)
+					c.args, p.Enabled, p.Lanes, p.LaneNumber, p.LaneRole, c.wantEnabled, c.wantWorkers, c.wantWorkerNum, c.wantRole)
 			}
 			wantRest := c.wantRest
 			if wantRest == nil {
@@ -323,8 +327,8 @@ func TestParseLauncherEntryMerge(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parseLauncherEntry(-f): %v", err)
 		}
-		if !p.FactoryEnabled || p.FactoryWorkers != config.DefaultFactoryLeadWorkers {
-			t.Errorf("bare -f = (factory %v, workers %d), want (true, %d)", p.FactoryEnabled, p.FactoryWorkers, config.DefaultFactoryLeadWorkers)
+		if !p.FactoryEnabled || p.FactoryLanes != config.DefaultFactoryLeaderLanes {
+			t.Errorf("bare -f = (factory %v, workers %d), want (true, %d)", p.FactoryEnabled, p.FactoryLanes, config.DefaultFactoryLeaderLanes)
 		}
 		if len(p.Rest) != 0 {
 			t.Errorf("bare -f rest = %v, want empty (the token must not reach the launcher)", p.Rest)
@@ -337,8 +341,8 @@ func TestParseLauncherEntryMerge(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parseLauncherEntry(-f): %v", err)
 		}
-		if !p.FactoryEnabled || p.FactoryWorkers != 1 {
-			t.Errorf("-f = (factory %v, workers %d), want (true, 1 default)", p.FactoryEnabled, p.FactoryWorkers)
+		if !p.FactoryEnabled || p.FactoryLanes != 1 {
+			t.Errorf("-f = (factory %v, workers %d), want (true, 1 default)", p.FactoryEnabled, p.FactoryLanes)
 		}
 		if len(p.Rest) != 0 {
 			t.Errorf("-f rest = %v, want empty (the token must not reach the launcher)", p.Rest)
@@ -347,43 +351,43 @@ func TestParseLauncherEntryMerge(t *testing.T) {
 
 	t.Run("-f N is retired post-N-removal", func(t *testing.T) {
 		t.Parallel()
-		if _, err := parseLauncherEntry([]string{"-f", "4"}); err == nil || !strings.Contains(err.Error(), "worker role token") {
+		if _, err := parseLauncherEntry([]string{"-f", "4"}); err == nil || !strings.Contains(err.Error(), "role token -f lane") {
 			t.Errorf("parseLauncherEntry(-f 4) = %v, want the retired-count error", err)
 		}
 	})
 
-	t.Run("-f worker-n desugars to the lane form with unknown count", func(t *testing.T) {
+	t.Run("-f lane-n desugars to the lane form with unknown count", func(t *testing.T) {
 		t.Parallel()
-		p, err := parseLauncherEntry([]string{"-f", "worker-2", "-b"})
+		p, err := parseLauncherEntry([]string{"-f", "lane-2", "-b"})
 		if err != nil {
-			t.Fatalf("parseLauncherEntry(-f worker-2): %v", err)
+			t.Fatalf("parseLauncherEntry(-f lane-2): %v", err)
 		}
-		if !p.FactoryEnabled || p.FactoryWorkers != 0 {
-			t.Errorf("-f worker-2 = (factory %v, workers %d), want (true, 0 unknown)", p.FactoryEnabled, p.FactoryWorkers)
+		if !p.FactoryEnabled || p.FactoryLanes != 0 {
+			t.Errorf("-f lane-2 = (factory %v, workers %d), want (true, 0 unknown)", p.FactoryEnabled, p.FactoryLanes)
 		}
 		label, ok := parseFactoryLaneLabel(p.Rest)
-		if !ok || label != "worker-2" {
-			t.Errorf("desugared rest %v carries label (%q, %v), want worker-2", p.Rest, label, ok)
+		if !ok || label != "lane-2" {
+			t.Errorf("desugared rest %v carries label (%q, %v), want lane-2", p.Rest, label, ok)
 		}
-		if !slices.Equal(p.Rest, []string{"-b", "--name", "worker-2"}) {
-			t.Errorf("desugared rest = %v, want [-b --name worker-2]", p.Rest)
+		if !slices.Equal(p.Rest, []string{"-b", "--name", "lane-2"}) {
+			t.Errorf("desugared rest = %v, want [-b --name lane-2]", p.Rest)
 		}
 	})
 
-	t.Run("-f N --name worker-i is retired with the count form", func(t *testing.T) {
+	t.Run("-f N --name lane-i is retired with the count form", func(t *testing.T) {
 		t.Parallel()
-		if _, err := parseLauncherEntry([]string{"-f", "5", "--name", "worker-2"}); err == nil || !strings.Contains(err.Error(), "worker role token") {
-			t.Errorf("parseLauncherEntry(-f 5 --name worker-2) = %v, want the retired-count error", err)
+		if _, err := parseLauncherEntry([]string{"-f", "5", "--name", "lane-2"}); err == nil || !strings.Contains(err.Error(), "role token -f lane") {
+			t.Errorf("parseLauncherEntry(-f 5 --name lane-2) = %v, want the retired-count error", err)
 		}
 	})
 
 	t.Run("-k shapes untouched without -f", func(t *testing.T) {
 		t.Parallel()
-		p, err := parseLauncherEntry([]string{"-k", "4", "--name", "worker-2"})
+		p, err := parseLauncherEntry([]string{"-k", "4", "--name", "lane-2"})
 		if err != nil {
-			t.Fatalf("parseLauncherEntry(-k 4 --name worker-2): %v", err)
+			t.Fatalf("parseLauncherEntry(-k 4 --name lane-2): %v", err)
 		}
-		if !p.FactoryEnabled || p.FactoryWorkers != 4 || !p.KanbanEnabled {
+		if !p.FactoryEnabled || p.FactoryLanes != 4 || !p.KanbanEnabled {
 			t.Errorf("-k shape altered by the merge: %+v", p)
 		}
 	})
@@ -391,9 +395,9 @@ func TestParseLauncherEntryMerge(t *testing.T) {
 	t.Run("-f with -k is a conflict", func(t *testing.T) {
 		t.Parallel()
 		for _, args := range [][]string{
-			{"-f", "agent", "-k"},
+			{"-f", "lane", "-k"},
 			{"-f", "-k", "SPEC-X-001"},
-			{"--factory=worker-2", "-k", "3"},
+			{"--factory=lane-2", "-k", "3"},
 		} {
 			if _, err := parseLauncherEntry(args); err == nil || !strings.Contains(err.Error(), "at most one") {
 				t.Errorf("parseLauncherEntry(%v) = %v, want the one-entry-token conflict", args, err)
@@ -401,11 +405,11 @@ func TestParseLauncherEntryMerge(t *testing.T) {
 		}
 	})
 
-	t.Run("-f worker-n plus an operator --name is a conflict", func(t *testing.T) {
+	t.Run("-f lane-n plus an operator --name is a conflict", func(t *testing.T) {
 		t.Parallel()
-		if _, err := parseLauncherEntry([]string{"-f", "worker-2", "--name", "worker-3"}); err == nil ||
-			!strings.Contains(err.Error(), "already names the worker") {
-			t.Errorf("parseLauncherEntry(-f worker-2 --name worker-3) = %v, want the naming conflict", err)
+		if _, err := parseLauncherEntry([]string{"-f", "lane-2", "--name", "lane-3"}); err == nil ||
+			!strings.Contains(err.Error(), "already names the lane") {
+			t.Errorf("parseLauncherEntry(-f lane-2 --name lane-3) = %v, want the naming conflict", err)
 		}
 	})
 
@@ -434,8 +438,8 @@ func TestResolveFactoryBranch(t *testing.T) {
 		isWorker bool
 		want     factoryBranch
 	}{
-		{true, false, factoryBranchLead},
-		{true, true, factoryBranchWorker},
+		{true, false, factoryBranchLeader},
+		{true, true, factoryBranchLane},
 		{false, false, factoryBranchNone},
 		{false, true, factoryBranchNone},
 	}
@@ -457,16 +461,16 @@ func TestParseFactoryLaneLabelRecognizesWithoutConsuming(t *testing.T) {
 		args []string
 		want string
 	}{
-		{"long form", []string{"--name", "worker-1"}, "worker-1"},
-		{"short form", []string{"-n", "worker-12"}, "worker-12"},
-		{"long equals", []string{"--name=worker-3"}, "worker-3"},
-		{"short equals", []string{"-n=worker-2"}, "worker-2"},
+		{"long form", []string{"--name", "lane-1"}, "lane-1"},
+		{"short form", []string{"-n", "lane-12"}, "lane-12"},
+		{"long equals", []string{"--name=lane-3"}, "lane-3"},
+		{"short equals", []string{"-n=lane-2"}, "lane-2"},
 
 		{"absent", []string{"-f", "4"}, ""},
 		{"non-lane name", []string{"--name", "run-tjlgt1"}, ""},
-		{"lead shape", []string{"--name", "lead-abc123"}, ""},
-		{"unnumbered", []string{"--name", "worker"}, ""},
-		{"suffix not a number", []string{"--name", "worker-a"}, ""},
+		{"leader shape", []string{"--name", "leader-abc123"}, ""},
+		{"unnumbered", []string{"--name", "lane"}, ""},
+		{"suffix not a number", []string{"--name", "lane-a"}, ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -491,7 +495,7 @@ func TestParseFactoryLaneLabelRecognizesWithoutConsuming(t *testing.T) {
 func TestEnterFactoryLeadModeEnv(t *testing.T) {
 	clearFactoryTestEnv(t)
 
-	restore := enterFactoryLeadMode(4, "lead-abc123")
+	restore := enterFactoryLeaderMode(4, "leader-abc123")
 	defer restore()
 
 	if got := os.Getenv(config.EnvMoaiFactoryWorkers); got != "4" {
@@ -520,14 +524,14 @@ func TestEnterFactoryLeadModeEnv(t *testing.T) {
 func TestEnterFactoryLeadModeMintsRunID(t *testing.T) {
 	clearFactoryTestEnv(t)
 
-	restore := enterFactoryLeadMode(2, "")
+	restore := enterFactoryLeaderMode(2, "")
 	defer restore()
 
 	runID := os.Getenv(config.EnvMoaiKanbanID)
 	if runID == "" {
 		t.Fatal("MOAI_KANBAN_ID empty for a bare factory lead; expected a minted run id")
 	}
-	if _, ok := kanban.SplitLeadLabel(kanban.RoleLead + "-" + runID); !ok {
+	if _, ok := kanban.SplitLeaderLabel(kanban.RoleLeader + "-" + runID); !ok {
 		t.Errorf("minted run id %q does not round-trip through the lead label shape", runID)
 	}
 }
@@ -540,7 +544,7 @@ func TestEnterFactoryLeadModeMintsRunID(t *testing.T) {
 func TestEnterFactoryWorkerModeEnv(t *testing.T) {
 	clearFactoryTestEnv(t)
 
-	restore := enterFactoryWorkerMode("worker-3", 5)
+	restore := enterFactoryLaneMode("worker-3", 5)
 	defer restore()
 
 	if got := os.Getenv(config.EnvMoaiFactoryWorker); got != "worker-3" {
@@ -576,7 +580,7 @@ func TestEnterFactoryWorkerModeUnknownCount(t *testing.T) {
 	clearFactoryTestEnv(t)
 	t.Setenv(config.EnvClaudeCodeMaxConcurrentSubagents, "3")
 
-	restore := enterFactoryWorkerMode("worker-5", 0)
+	restore := enterFactoryLaneMode("worker-5", 0)
 	defer restore()
 
 	if got := os.Getenv(config.EnvMoaiFactoryWorkers); got != "0" {
@@ -597,21 +601,21 @@ func TestEnterFactoryWorkerModeUnknownCount(t *testing.T) {
 func TestResolveFactoryWorkerName(t *testing.T) {
 	t.Run("free name is kept and registered", func(t *testing.T) {
 		root := t.TempDir()
-		if got, err := resolveFactoryWorkerName(root, "worker-1", false, nil); err != nil || got != "worker-1" {
-			t.Fatalf("free name = %q, want worker-1", got)
+		if got, err := resolveFactoryLaneName(root, "lane-1", false, nil); err != nil || got != "lane-1" {
+			t.Fatalf("free name = %q, want lane-1", got)
 		}
 		reg := loadFactoryRegistry(factoryRegistryPath(root))
-		if e, ok := reg["worker-1"]; !ok || e.PID != os.Getpid() {
-			t.Errorf("worker-1 not registered to this pid: %+v", reg)
+		if e, ok := reg["lane-1"]; !ok || e.PID != os.Getpid() {
+			t.Errorf("lane-1 not registered to this pid: %+v", reg)
 		}
 	})
 
 	t.Run("live claim bumps to the next free number", func(t *testing.T) {
 		root := t.TempDir()
-		// Simulate two live holders: worker-2 and worker-3.
-		reg := map[string]factoryWorkerEntry{
-			"worker-2": {PID: 11100},
-			"worker-3": {PID: 11101},
+		// Simulate two live holders: lane-2 and lane-3.
+		reg := map[string]factoryLaneEntry{
+			"lane-2": {PID: 11100},
+			"lane-3": {PID: 11101},
 		}
 		if err := saveFactoryRegistry(factoryRegistryPath(root), reg); err != nil {
 			t.Fatalf("seed registry: %v", err)
@@ -621,22 +625,22 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 		defer func() { factoryProcessAlive = probe }()
 
 		var notes bytes.Buffer
-		got, err := resolveFactoryWorkerName(root, "worker-2", false, &notes)
+		got, err := resolveFactoryLaneName(root, "lane-2", false, &notes)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got != "worker-4" {
-			t.Fatalf("bumped name = %q, want worker-4 (2 and 3 are live)", got)
+		if got != "lane-4" {
+			t.Fatalf("bumped name = %q, want lane-4 (2 and 3 are live)", got)
 		}
-		if !strings.Contains(notes.String(), "worker-4") {
+		if !strings.Contains(notes.String(), "lane-4") {
 			t.Errorf("operator note missing the final name: %q", notes.String())
 		}
 	})
 
 	t.Run("dead claim frees the name and is pruned", func(t *testing.T) {
 		root := t.TempDir()
-		if err := saveFactoryRegistry(factoryRegistryPath(root), map[string]factoryWorkerEntry{
-			"worker-2": {PID: 11100},
+		if err := saveFactoryRegistry(factoryRegistryPath(root), map[string]factoryLaneEntry{
+			"lane-2": {PID: 11100},
 		}); err != nil {
 			t.Fatalf("seed registry: %v", err)
 		}
@@ -644,16 +648,16 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 		factoryProcessAlive = func(int) bool { return false }
 		defer func() { factoryProcessAlive = probe }()
 
-		got, err := resolveFactoryWorkerName(root, "worker-2", false, nil)
+		got, err := resolveFactoryLaneName(root, "lane-2", false, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got != "worker-2" {
+		if got != "lane-2" {
 			t.Fatalf("dead claim should free the name, got %q", got)
 		}
 		reg := loadFactoryRegistry(factoryRegistryPath(root))
-		if e, ok := reg["worker-2"]; !ok || e.PID != os.Getpid() {
-			t.Errorf("worker-2 should be re-registered to this pid after pruning: %+v", reg)
+		if e, ok := reg["lane-2"]; !ok || e.PID != os.Getpid() {
+			t.Errorf("lane-2 should be re-registered to this pid after pruning: %+v", reg)
 		}
 	})
 
@@ -665,7 +669,7 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 		}
 		root := blocker // .moai/state/factory/ resolves under a file → fails
 
-		if got, err := resolveFactoryWorkerName(root, "worker-7", false, nil); err == nil || got != "" {
+		if got, err := resolveFactoryLaneName(root, "lane-7", false, nil); err == nil || got != "" {
 			t.Fatalf("fail-closed name = %q err=%v", got, err)
 		}
 	})
@@ -678,7 +682,7 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer func() { _ = release(true) }()
-		if got, err := resolveFactoryWorkerName(root, "worker-1", false, nil); err == nil || got != "" {
+		if got, err := resolveFactoryLaneName(root, "lane-1", false, nil); err == nil || got != "" {
 			t.Fatalf("resolver admitted marker: got=%q err=%v", got, err)
 		}
 	})
@@ -738,11 +742,11 @@ func TestRejectFactoryOnCG(t *testing.T) {
 
 	for _, args := range [][]string{
 		{"-k", "4"},
-		{"-k", "--name", "worker-1"},
+		{"-k", "--name", "lane-1"},
 		{"-f"},
-		{"-f", "agent"},
-		{"-f", "worker-2"},
-		{"--factory=worker-3"},
+		{"-f", "lane"},
+		{"-f", "lane-2"},
+		{"--factory=lane-3"},
 	} {
 		if err := rejectFactoryOnCG(args); err == nil || !strings.Contains(err.Error(), factoryUnsupportedBackendSentinel) {
 			t.Errorf("factory form %v on cg must carry the sentinel, got %v", args, err)
@@ -754,14 +758,14 @@ func TestRejectFactoryOnCG(t *testing.T) {
 	if err := rejectFactoryOnCG([]string{"-k", "0"}); err == nil || !strings.Contains(err.Error(), "lane count of 1 or more") {
 		t.Errorf("invalid factory count must surface the parse error, got %v", err)
 	}
-	if err := rejectFactoryOnCG([]string{"-f", "SPEC-X-001"}); err == nil || !strings.Contains(err.Error(), "worker label") {
+	if err := rejectFactoryOnCG([]string{"-f", "SPEC-X-001"}); err == nil || !strings.Contains(err.Error(), "lane label") {
 		t.Errorf("invalid -f value must surface the parse error, got %v", err)
 	}
 	// The retired numeric count form surfaces the parse error on cg too.
-	if err := rejectFactoryOnCG([]string{"-f", "4"}); err == nil || !strings.Contains(err.Error(), "worker role token") {
+	if err := rejectFactoryOnCG([]string{"-f", "4"}); err == nil || !strings.Contains(err.Error(), "role token -f lane") {
 		t.Errorf("retired -f N on cg must surface the parse error, got %v", err)
 	}
-	if err := rejectFactoryOnCG([]string{"-f", "worker-2", "-k"}); err == nil || !strings.Contains(err.Error(), "at most one") {
+	if err := rejectFactoryOnCG([]string{"-f", "lane-2", "-k"}); err == nil || !strings.Contains(err.Error(), "at most one") {
 		t.Errorf("-f plus -k on cg must surface the conflict, got %v", err)
 	}
 	// The plain kanban forms belong to the kanban rejection, not this one.
@@ -787,7 +791,7 @@ func TestRejectKanbanOnCGLeavesFactoryForms(t *testing.T) {
 	}
 	for _, args := range [][]string{
 		{"-k", "4"},
-		{"-k", "--name", "worker-2"},
+		{"-k", "--name", "lane-2"},
 	} {
 		if err := rejectKanbanOnCG(args); err != nil {
 			t.Errorf("factory form %v is the factory rejection's, not kanban's, got %v", args, err)
@@ -807,7 +811,7 @@ func TestFactoryGenealogyInHelp(t *testing.T) {
 		for _, marker := range []string{
 			"--factory", "#1513", "7f61332ef", "RENAMED", "RETIRED",
 			"-f, --factory", // the lead entry (numeric count retired 2026-09-16)
-			"-f worker-<n>", // the incremental single-lane form
+			"-f lane-<n>",   // the incremental single-lane form
 			"-k <N>",        // the v1.2.0 unified shapes remain documented
 			"t118",          // the revival names its own card
 		} {
@@ -825,11 +829,11 @@ func TestFactoryGenealogyInHelp(t *testing.T) {
 func TestFactoryDefaultWorkersConstant(t *testing.T) {
 	t.Parallel()
 
-	if config.DefaultFactoryWorkers != 8 {
-		t.Errorf("DefaultFactoryWorkers = %d, want the operator-decided 8 (legacy -k form)", config.DefaultFactoryWorkers)
+	if config.DefaultFactoryLanes != 8 {
+		t.Errorf("DefaultFactoryLanes = %d, want the operator-decided 8 (legacy -k form)", config.DefaultFactoryLanes)
 	}
-	if config.DefaultFactoryLeadWorkers != 1 {
-		t.Errorf("DefaultFactoryLeadWorkers = %d, want 1 (t118 bare -f: one worker, grown incrementally)", config.DefaultFactoryLeadWorkers)
+	if config.DefaultFactoryLeaderLanes != 1 {
+		t.Errorf("DefaultFactoryLeaderLanes = %d, want 1 (t118 bare -f: one worker, grown incrementally)", config.DefaultFactoryLeaderLanes)
 	}
 }
 
@@ -936,7 +940,7 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 			}
 		}
 		if c.workers != "1" {
-			t.Errorf("MOAI_FACTORY_WORKERS at launch = %q, want 1 (DefaultFactoryLeadWorkers)", c.workers)
+			t.Errorf("MOAI_FACTORY_WORKERS at launch = %q, want 1 (DefaultFactoryLeaderLanes)", c.workers)
 		}
 		if !strings.HasPrefix(c.addr, "/tmp/moai-socket-factory/") {
 			t.Errorf("leader socket at launch = %q, want the /tmp/moai-socket-factory/ scheme", c.addr)
@@ -968,12 +972,12 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		buf := new(bytes.Buffer)
 		ccCmd.SetOut(buf)
 		ccCmd.SetErr(buf)
-		if err := runCC(ccCmd, []string{"-f", "4"}); err == nil || !strings.Contains(err.Error(), "worker role token") {
+		if err := runCC(ccCmd, []string{"-f", "4"}); err == nil || !strings.Contains(err.Error(), "role token -f lane") {
 			t.Errorf("runCC(-f 4) = %v, want the retired-count error", err)
 		}
 	})
 
-	t.Run("-f worker-2 desugars into the lane branch", func(t *testing.T) {
+	t.Run("-f lane-2 desugars into the lane branch", func(t *testing.T) {
 		// A lane joins exactly one active factory run and fails closed on zero
 		// (NO_ACTIVE_FACTORY) or several (AMBIGUOUS_FACTORY). The bare -f
 		// subtests above share the parent's project dir and each record a lead
@@ -994,19 +998,19 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		buf := new(bytes.Buffer)
 		ccCmd.SetOut(buf)
 		ccCmd.SetErr(buf)
-		if err := runCC(ccCmd, []string{"-f", "worker-2"}); err != nil {
-			t.Fatalf("runCC(-f worker-2): %v", err)
+		if err := runCC(ccCmd, []string{"-f", "lane-2"}); err != nil {
+			t.Fatalf("runCC(-f lane-2): %v", err)
 		}
 		if c.runID != run {
 			t.Errorf("%s at launch = %q, want the active run %q", config.EnvMoaiKanbanID, c.runID, run)
 		}
-		if c.worker != "worker-2" {
-			t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want worker-2", c.worker)
+		if c.worker != "lane-2" {
+			t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want lane-2", c.worker)
 		}
 		if c.workers != "0" {
 			t.Errorf("MOAI_FACTORY_WORKERS at launch = %q, want 0 (count unknown on the incremental form)", c.workers)
 		}
-		if !slices.Contains(c.args, "worker-2") {
+		if !slices.Contains(c.args, "lane-2") {
 			t.Errorf("the desugared --name must reach the launcher, got %v", c.args)
 		}
 		if c.cap != "10" {
@@ -1021,24 +1025,21 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		buf := new(bytes.Buffer)
 		ccCmd.SetOut(buf)
 		ccCmd.SetErr(buf)
-		if err := runCC(ccCmd, []string{"-f", "worker", "-k"}); err == nil || !strings.Contains(err.Error(), "at most one") {
-			t.Errorf("runCC(-f worker -k) = %v, want the one-entry-token conflict", err)
+		if err := runCC(ccCmd, []string{"-f", "lane", "-k"}); err == nil || !strings.Contains(err.Error(), "at most one") {
+			t.Errorf("runCC(-f lane -k) = %v, want the one-entry-token conflict", err)
 		}
 	})
 
-	// Keep-alias coverage: the legacy `-f lane-<n>` spelling still launches,
-	// under the canonical worker label, with a deprecation hint on stderr.
-	t.Run("-f lane-5 legacy alias launches as worker-5 with a hint", func(t *testing.T) {
-		// Same isolation as the worker-2 subtest: its own project and the one
-		// active run it joins, so the bare -f subtests above cannot make the
-		// join ambiguous.
+	// REQ-RNC-009/-005 (early rejection via the claim): a legacy label typed on
+	// the input path is refused naming the canonical lane-<n>; nothing launches.
+	t.Run("-f worker-5 legacy label is refused naming lane-5", func(t *testing.T) {
 		root := t.TempDir()
 		t.Setenv(config.EnvClaudeProjectDir, root)
 		t.Setenv("MOAI_HOME", t.TempDir())
 		clearFactoryTestEnv(t)
 		c := installFactoryLaunchSeam(t)
 
-		const run = "run-cc-legacy-lane-entry"
+		const run = "run-cc-legacy-worker-entry"
 		if err := recordFactoryRunStart(root, run, kanban.BackendClaude, ""); err != nil {
 			t.Fatalf("record factory run: %v", err)
 		}
@@ -1046,28 +1047,19 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		buf := new(bytes.Buffer)
 		ccCmd.SetOut(buf)
 		ccCmd.SetErr(buf)
-		if err := runCC(ccCmd, []string{"-f", "lane-5"}); err != nil {
-			t.Fatalf("runCC(-f lane-5): %v", err)
+		if err := runCC(ccCmd, []string{"-f", "worker-5"}); err == nil || !strings.Contains(err.Error(), "lane-5") {
+			t.Fatalf("runCC(-f worker-5) = %v, want an error naming lane-5", err)
 		}
-		if c.runID != run {
-			t.Errorf("%s at launch = %q, want the active run %q", config.EnvMoaiKanbanID, c.runID, run)
-		}
-		if c.worker != "worker-5" {
-			t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want worker-5", c.worker)
-		}
-		if !slices.Contains(c.args, "worker-5") || slices.Contains(c.args, "lane-5") {
-			t.Errorf("the canonical label must replace the legacy one in the launch args, got %v", c.args)
-		}
-		if !strings.Contains(buf.String(), "deprecated") || !strings.Contains(buf.String(), "-f worker-<n>") {
-			t.Errorf("legacy spelling launched without its deprecation hint; stderr = %q", buf.String())
+		if c.worker != "" {
+			t.Errorf("a refused legacy label must not launch, MOAI_FACTORY_WORKER = %q", c.worker)
 		}
 	})
 }
 
-// TestGLM_FactoryWorkerEntry mirrors the cc case for the glm command: the -f
+// TestGLM_FactoryLaneEntry mirrors the cc case for the glm command: the -f
 // lane form selects the lane branch there too (same parse, same
 // environment contract, GLM backend constant).
-func TestGLM_FactoryWorkerEntry(t *testing.T) {
+func TestGLM_FactoryLaneEntry(t *testing.T) {
 	// SPEC-CLI-TEST-CWD-ISOLATION-001: the lane entry claims the worker name
 	// via launchProjectRoot -> resolveProjectDir ($CLAUDE_PROJECT_DIR or cwd),
 	// a resolver the findProjectRootFn stub does not intercept — redirect it to
@@ -1090,14 +1082,14 @@ func TestGLM_FactoryWorkerEntry(t *testing.T) {
 	buf := new(bytes.Buffer)
 	glmCmd.SetOut(buf)
 	glmCmd.SetErr(buf)
-	if err := runGLM(glmCmd, []string{"-f", "worker-3"}); err != nil {
-		t.Fatalf("runGLM(-f worker-3): %v", err)
+	if err := runGLM(glmCmd, []string{"-f", "lane-3"}); err != nil {
+		t.Fatalf("runGLM(-f lane-3): %v", err)
 	}
 	if c.runID != run {
 		t.Errorf("%s at launch = %q, want the active run %q", config.EnvMoaiKanbanID, c.runID, run)
 	}
-	if c.worker != "worker-3" {
-		t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want worker-3", c.worker)
+	if c.worker != "lane-3" {
+		t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want lane-3", c.worker)
 	}
 	if c.cap != "10" {
 		t.Errorf("%s at launch = %q, want 10 (the per-lane cap)", config.EnvClaudeCodeMaxConcurrentSubagents, c.cap)

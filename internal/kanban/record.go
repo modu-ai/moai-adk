@@ -62,11 +62,12 @@ type Record struct {
 	// the chain heads at plan-phase from the operator's first prompt.
 	SpecID string `json:"spec_id"`
 
-	// Role is the chain role this session occupies: lead | plan | run
+	// Role is the chain role this session occupies: leader | plan | run
 	// | sync, or "lane" for a factory run's numbered lane. It is derived
 	// from the companion label (the bare role name, or its bumped
-	// `<role>-<n>` form) or the factory worker label (`worker-<n>`) at
-	// launch, or "lead" for the session that elected the run.
+	// `<role>-<n>` form) or the factory lane label (`lane-<n>`) at
+	// launch, or "leader" for the session that elected the run
+	// (SPEC-ROLE-NAMING-CODE-001).
 	//
 	// Empty is legitimate and load-bearing: a record written before this field
 	// existed, or a launch whose label could not be parsed, leaves it blank —
@@ -140,14 +141,14 @@ func NewRecord(sessionID, specID, backend string) *Record {
 // WithRole returns rec with the chain role attached. A role outside the known
 // set is discarded rather than stored, so a consumer never has to defend
 // against an arbitrary string arriving from a launch label. The known set is
-// the kanban roles (lead + the three companions) plus RoleLane, which a
+// the kanban roles (leader + the three companions) plus RoleLane, which a
 // factory run's numbered lanes record (SPEC-FACTORY-WORKER-FANOUT-001).
 func (r *Record) WithRole(role string) *Record {
 	if r == nil {
 		return nil
 	}
 	role = strings.ToLower(strings.TrimSpace(role))
-	if role == RoleLead || role == RoleLane || isCompanionRole(role) {
+	if role == RoleLeader || role == RoleLane || isCompanionRole(role) {
 		r.Role = role
 	}
 	return r
@@ -247,6 +248,37 @@ func Read(projectRoot, sessionID string) (*Record, error) {
 		return nil, fmt.Errorf("read kanban record: decoding: %w", err)
 	}
 	return &rec, nil
+}
+
+// ReadAll loads every session record under projectRoot. Per-record failures
+// (unreadable, malformed) skip that record rather than failing the sweep — a
+// display surface asking "what runs here" loses one row, not the listing. An
+// absent state directory returns an empty slice, not an error: no records is
+// a state, not a failure.
+func ReadAll(projectRoot string) ([]Record, error) {
+	entries, err := os.ReadDir(RuntimeStateDirForRoot(projectRoot))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []Record{}, nil
+		}
+		return nil, fmt.Errorf("read kanban records: %w", err)
+	}
+	out := make([]Record, 0, len(entries))
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		raw, err := os.ReadFile(filepath.Join(RuntimeStateDirForRoot(projectRoot), e.Name()))
+		if err != nil {
+			continue
+		}
+		var rec Record
+		if err := json.Unmarshal(raw, &rec); err != nil {
+			continue
+		}
+		out = append(out, rec)
+	}
+	return out, nil
 }
 
 // validateSessionID rejects identifiers that cannot safely name a file. The

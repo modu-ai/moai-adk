@@ -22,12 +22,12 @@ const (
 	securityPolicyReportVia = "Email the security report to the maintainers via GitHub Security Advisories."
 )
 
-// blockedLead states the verdict before the quotation, so the message reads as
+// blockedOpening states the verdict before the quotation, so the message reads as
 // a decision with a citation rather than as a bare policy excerpt.
-const blockedLead = "This report is classified as a security vulnerability disclosure and must not be submitted to the public issue tracker."
+const blockedOpening = "This report is classified as a security vulnerability disclosure and must not be submitted to the public issue tracker."
 
 // blockedReason is the whole Result.Reason for a blocked report.
-const blockedReason = blockedLead + " " + securityPolicyDoNotOpen + " " + securityPolicyReportVia + " " + advisoriesURL
+const blockedReason = blockedOpening + " " + securityPolicyDoNotOpen + " " + securityPolicyReportVia + " " + advisoriesURL
 
 // @MX:NOTE: [AUTO] the threshold is deliberately biased toward false positives
 //

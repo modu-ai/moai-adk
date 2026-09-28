@@ -24,18 +24,18 @@ func TestFactoryLeadProviderLaunchLines(t *testing.T) {
 				clearKanbanEnv(t)
 				t.Setenv(config.EnvMoaiLaunchProvider, tc.provider)
 				t.Setenv(config.EnvMoaiKanbanBackend, tc.backend)
-				notice := factoryLeadNotice("provider-test", 2, "", lang)
+				notice := factoryLeaderNotice("provider-test", 2, "", lang)
 				var launch []string
 				for _, line := range strings.Split(notice, "\n") {
 					if strings.HasPrefix(line, "moai ") {
 						launch = append(launch, line)
 					}
 				}
-				want := "moai " + tc.want + " -f worker-1\nmoai " + tc.want + " -f worker-2"
+				want := "moai " + tc.want + " -f lane-1\nmoai " + tc.want + " -f lane-2"
 				if strings.Join(launch, "\n") != want {
 					t.Errorf("launch lines = %q; want %q", strings.Join(launch, "\n"), want)
 				}
-				if !strings.Contains(notice, "`moai "+tc.want+" -f worker-<n>`") {
+				if !strings.Contains(notice, "`moai "+tc.want+" -f lane-<n>`") {
 					t.Error("same-provider incremental entry missing")
 				}
 				if strings.Contains(notice, "marker") || strings.Contains(notice, "%!") {

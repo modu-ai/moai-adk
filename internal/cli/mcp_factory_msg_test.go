@@ -35,7 +35,7 @@ func TestFactoryMCPIdentityAttribution(t *testing.T) {
 		return "", homestate.ProcessIdentityDead
 	}
 	t.Cleanup(func() { factoryProbeProcessIdentity = oldProbe })
-	peer, err := s.RegisterPeer(context.Background(), factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: "run", Backend: "codex", Role: "worker", Slot: "agent-1", SessionUUID: "owner-session", Generation: 1, PID: pid, ProcessStart: fingerprint})
+	peer, err := s.RegisterPeer(context.Background(), factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: "run", Backend: "codex", Role: "lane", Slot: "lane-1", SessionUUID: "owner-session", Generation: 1, PID: pid, ProcessStart: fingerprint})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,13 +143,13 @@ func TestFactoryMsgStatusReadOnlyRoster(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = s.Close() })
-	p := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex", Role: "lead", Slot: "lead", SessionUUID: "own-session", Generation: 1, PID: os.Getpid(), ProcessStart: homestate.CurrentProcessFingerprint()}
+	p := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex", Role: "leader", Slot: "leader", SessionUUID: "own-session", Generation: 1, PID: os.Getpid(), ProcessStart: homestate.CurrentProcessFingerprint()}
 	p, err = s.RegisterPeer(context.Background(), p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	w := p
-	w.Slot = "agent-1"
+	w.Slot = "lane-1"
 	w.Role = "worker"
 	w.SessionUUID = "worker-session"
 	w, err = s.RegisterPeer(context.Background(), w)
@@ -215,7 +215,7 @@ func TestFactoryLeadNoticeUsesOperationalStatus(t *testing.T) {
 	t.Cleanup(func() { _ = s.Close() })
 	if _, err := s.RegisterLaunchPending(context.Background(), factorymsg.Peer{
 		ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex",
-		Role: "lead", Slot: "lead", PID: os.Getpid(), ProcessStart: start,
+		Role: "leader", Slot: "leader", PID: os.Getpid(), ProcessStart: start,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -270,7 +270,7 @@ func TestFactoryMCPIdentityFallsBackToDirectParent(t *testing.T) {
 		return "", homestate.ProcessIdentityDead
 	}
 	t.Cleanup(func() { factoryProbeProcessIdentity = oldProbe })
-	peer, err := s.RegisterPeer(context.Background(), factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: "run", Backend: "codex", Role: "worker", Slot: "agent-1", SessionUUID: "parent-owned-session", Generation: 1, PID: pid, ProcessStart: fingerprint})
+	peer, err := s.RegisterPeer(context.Background(), factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: "run", Backend: "codex", Role: "lane", Slot: "lane-1", SessionUUID: "parent-owned-session", Generation: 1, PID: pid, ProcessStart: fingerprint})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/kanban"
 	_ "modernc.org/sqlite"
 )
 
@@ -395,23 +396,26 @@ func (s *Store) RegisterPeer(ctx context.Context, p Peer) (Peer, error) {
 		return Peer{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	// The bare `worker` sentinel (and its legacy spelling `agent`) takes the
-	// next free `worker-<n>` slot. A number is taken when a row exists under
-	// the canonical slot or either legacy spelling (`agent-<n>`, `lane-<n>`),
-	// so rows an older launcher wrote into this run keep their number.
-	if p.Slot == "worker" || p.Slot == "agent" {
+	// The bare `lane` role input takes the next free `lane-<n>` slot, probing
+	// ONLY the canonical shape — legacy rows (`worker-<n>`, `agent-<n>`) hold
+	// no number; a live one refuses the join instead
+	// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-013, design §4). Bare legacy role
+	// inputs are refused, never numbered.
+	if p.Slot == "lane" {
 		for n := 1; ; n++ {
 			var count int
-			e := tx.QueryRowContext(ctx, `SELECT count(*) FROM peers WHERE slot IN (?,?,?)`,
-				fmt.Sprintf("worker-%d", n), fmt.Sprintf("agent-%d", n), fmt.Sprintf("lane-%d", n)).Scan(&count)
+			e := tx.QueryRowContext(ctx, `SELECT count(*) FROM peers WHERE slot = ?`,
+				kanban.FactoryLaneLabel(n)).Scan(&count)
 			if e != nil {
 				return Peer{}, e
 			}
 			if count == 0 {
-				p.Slot = fmt.Sprintf("worker-%d", n)
+				p.Slot = kanban.FactoryLaneLabel(n)
 				break
 			}
 		}
+	} else if p.Slot == "worker" || p.Slot == "agent" {
+		return Peer{}, errors.New("legacy slot \"worker\"/\"agent\" is not addressable; use \"lane\"")
 	}
 	if !safeID.MatchString(p.Slot) {
 		return Peer{}, errors.New("invalid slot")
@@ -595,7 +599,26 @@ func (s *Store) Peer(ctx context.Context, sessionUUID string) (Peer, error) {
 }
 
 // ResolveLane returns the sole current physical endpoint for a stable slot.
+// canonicalSlotName maps a legacy slot input onto the canonical slot name the
+// error must advertise (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-013). ok is false
+// for anything that is not a legacy spelling.
+func canonicalSlotName(slot string) (canonical string, ok bool) {
+	switch slot {
+	case "lead":
+		return "leader", true
+	case "worker", "agent":
+		return "lane", true
+	}
+	if n, isLegacy := kanban.SplitFactoryLegacyLabel(slot); isLegacy {
+		return kanban.FactoryLaneLabel(n), true
+	}
+	return "", false
+}
+
 func (s *Store) ResolveLane(ctx context.Context, slot string) (Peer, error) {
+	if canonical, legacy := canonicalSlotName(slot); legacy {
+		return Peer{}, fmt.Errorf("legacy slot %q is not addressable; use %q", slot, canonical)
+	}
 	if !safeID.MatchString(slot) {
 		return Peer{}, errors.New("invalid logical lane")
 	}
@@ -704,6 +727,11 @@ func (s *Store) Send(ctx context.Context, r SendRequest) (Envelope, error) {
 	}
 	if err := s.verifyPeer(ctx, r.From); err != nil {
 		return Envelope{}, err
+	}
+	// A legacy slot input delivers nothing and names the canonical slot
+	// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-013).
+	if canonical, legacy := canonicalSlotName(r.To.Slot); legacy {
+		return reject("poison:legacy-slot", fmt.Errorf("legacy slot %q is not addressable; use %q", r.To.Slot, canonical))
 	}
 	if err := s.verifyPeer(ctx, r.To); err != nil {
 		return Envelope{}, err

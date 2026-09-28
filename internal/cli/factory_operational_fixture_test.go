@@ -112,7 +112,7 @@ func TestFactoryOperationalFixtureUsesProductionInit(t *testing.T) {
 	closeOnCleanup(t, "factory message broker", store)
 	if _, err := store.RegisterLaunchPending(context.Background(), factorymsg.Peer{
 		ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "claude",
-		Role: "lead", Slot: "lead", PID: os.Getpid(), ProcessStart: start,
+		Role: "leader", Slot: "leader", PID: os.Getpid(), ProcessStart: start,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +155,7 @@ func TestFactoryOperationalFixtureUsesProductionInit(t *testing.T) {
 	if bytes.Contains(hookOut, []byte("factory messaging bound")) {
 		t.Fatalf("Codex UserPromptSubmit bound a factory peer: %s", hookOut)
 	}
-	if _, err := store.ResolveLane(context.Background(), "lead"); !errors.Is(err, factorymsg.ErrEndpointLaunchPending) {
+	if _, err := store.ResolveLane(context.Background(), "leader"); !errors.Is(err, factorymsg.ErrEndpointLaunchPending) {
 		t.Fatalf("lead endpoint after the codex hook = %v, want still launch-pending; output=%s", err, hookOut)
 	}
 }

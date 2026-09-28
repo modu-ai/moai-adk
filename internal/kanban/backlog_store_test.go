@@ -523,7 +523,7 @@ func TestBacklogConcurrentAdd_UniqueIDs(t *testing.T) {
 }
 
 // TestBacklogStore_NoLeadRoleGuard — REQ-TODO-011: the backlog applies no
-// requireLeadRole-equivalent gate. This test process declares no role and
+// requireLeaderRole-equivalent gate. This test process declares no role and
 // holds no kanban identity at all; the write must succeed anyway (explicit
 // contrast with the board's sole-writer guard — board files untouched).
 func TestBacklogStore_NoLeadRoleGuard(t *testing.T) {

@@ -112,7 +112,7 @@ func TestRunOwnerAndLeadPeerNameOneProcessOnEveryShape(t *testing.T) {
 func assertStampMatchesPeer(t *testing.T, root, runID string) {
 	t.Helper()
 	pid, start := runOwnerStamp(t, root, runID)
-	peerPID, peerStart, ok := factorymsg.LeadPeerIdentity(root, runID)
+	peerPID, peerStart, ok := factorymsg.LeaderPeerIdentity(root, runID)
 	if !ok {
 		t.Fatalf("%s: no lead peer identity", runID)
 	}
