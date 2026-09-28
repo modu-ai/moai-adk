@@ -48,3 +48,9 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §G Gate Disposition Log
+
+- 2026-09-29 — served_model_gate 해제(이 트리 한정): 운영자 승인(리드 전달 2026-09-29) — 게이트 해제 + GLM iter2 PASS 0.95 채택, 단 codex 재감사 OVERTURN 시 채택 제외. plan-auditor 정의 선언 모델(opus)과 실제 서빙 모델(glm-5.3-flash) 불일치로 served-kind 거절이 서서 페이즈 진입 스폰이 차단되던 것에 대한 처분.
+- 2026-09-29 — 제외 조항 소진: codex(GPT-6) 재감사 OVERTURN 0.76(REQ-TSS-001 5동사 고지 vs AC 커버리지 결함)으로 GLM 채택은 제외됨. GLM plan-audit 반복 상한 2/2 소진 — 수리 후 codex 델타 재감사가 유일 재심 경로이며, RECONFIRM 시 run 진입.
+- 거부 영수증 파일(`.moai/state/audit-receipts/rejections/plan-auditor--unknown-spec--served.json`)은 지시에 따라 보존(삭제하지 않음). opus 클리어 감시 루프는 경로 폐쇄 확정으로 종료.
