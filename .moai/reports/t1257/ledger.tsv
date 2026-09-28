@@ -1072,3 +1072,8 @@ docs-site/content/zh/utility-commands/moai-todo.md	196	# 批量关闭已落地�
 docs-site/content/zh/utility-commands/moai-todo.md	252	在链接型 worktree 里执行时，队列也**归属到 primary 检出的同一个项目键**——一个仓库一条队列的契约。在卡片 worktree 里执行 `moai todo add`，追加的就是主控和工头循环读取的同一个数据库。没有 git 元数据的项目也使用同一套主目录结构——不过起点位于临时目录的项目，在没有绝对路径 `MOAI_HOME` 覆盖时使用 `<base>/.moai/state/todo/backlog.db`。	在链接型 worktree 里执行时，队列也**归属到 primary 检出的同一个项目键**——一个仓库一条队列的契约。在卡片 worktree 里执行 `moai todo add`，追加的就是主导和工头循环读取的同一个数据库。没有 git 元数据的项目也使用同一套主目录结构——不过起点位于临时目录的项目，在没有绝对路径 `MOAI_HOME` 覆盖时使用 `<base>/.moai/state/todo/backlog.db`。	role-noun
 docs-site/content/zh/worktree/examples.md	293	# 在团队负责人或 CI 系统上	# 在团队队长或 CI 系统上	role-noun
 docs-site/content/zh/worktree/faq.md	104	# 以 Claude 领导 + GLM 队友的混合模式进入	# 以 Claude 领队 + GLM 队友的混合模式进入	role-noun
+docs-site/content/en/cli-reference/tokens.md	35	(e.g. `run`, `sync`, `worker-3`)	(e.g. `run`, `sync`, `lane-3`)	role-noun
+docs-site/content/ko/cli-reference/tokens.md	35	(예: `run`, `sync`, `worker-3`)	(예: `run`, `sync`, `lane-3`)	role-noun
+docs-site/content/ja/cli-reference/tokens.md	35	(例: `run`, `sync`, `worker-3`)	(例: `run`, `sync`, `lane-3`)	role-noun
+docs-site/content/zh/cli-reference/tokens.md	35	（如 `run`, `sync`, `worker-3`）	（如 `run`, `sync`, `lane-3`）	role-noun
+.claude/rules/local/gitflow-lane-protocol.md	23	Codex의 `-f agent`(구 명칭)·`-f lane` 레인:	Codex의 `-f lane` 레인:	alias-rewrite

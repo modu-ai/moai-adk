@@ -32,7 +32,7 @@ $ moai tokens record --transcript <パス> --json
 | `--transcript <パス>` | 集計する Claude Code トランスクリプトファイル |
 | `--session <id>` | セッション識別子でトランスクリプトを指定 |
 | `--card <カード>` | この使用量を束ねるカンバンカード(例: `t12`) |
-| `--role <役割>` | セッションの役割(例: `run`, `sync`, `worker-3`) |
+| `--role <役割>` | セッションの役割(例: `run`, `sync`, `lane-3`) |
 | `--json` | 標準出力にもレコードを JSON で出力します |
 
 ## 記録の姿

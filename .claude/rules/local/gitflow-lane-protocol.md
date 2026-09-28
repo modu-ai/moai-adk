@@ -20,7 +20,7 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 - 하네스에 맞는 경로로 들어간다:
   - Claude Code 레인: `moai cc -w <card-id>` 또는 현재 세션의 `EnterWorktree(<card-id>)`.
   - Codex 레인: 기존 트리에 새 세션으로 들어갈 때 `moai codex -w <card-id>`.
-  - Codex의 `-f agent`(구 명칭)·`-f lane` 레인: 감독 런처가 카드 워크트리를 고르고 `codex -C <워크트리 절대경로>`로 자식 세션을 시작한다. 자식 세션은 해당 트리의 `CLAUDE.local.md`를 읽고 작업하며 `moai cc -w`를 호출하지 않는다. `moai codex` 런처로 시작한 세션은 이 파일을 `developer_instructions`에 싣는다.
+  - Codex의 `-f lane` 레인: 감독 런처가 카드 워크트리를 고르고 `codex -C <워크트리 절대경로>`로 자식 세션을 시작한다. 자식 세션은 해당 트리의 `CLAUDE.local.md`를 읽고 작업하며 `moai cc -w`를 호출하지 않는다. `moai codex` 런처로 시작한 세션은 이 파일을 `developer_instructions`에 싣는다.
   - 트리가 없으면 `moai worktree new <card-id>`로 먼저 만든다. **맨손 `git worktree add` 금지** — git은 아는데 MoAI는 모르는 트리가 생겨 `done`/`clean`/`recover`가 닫을 대상이 없어진다.
 - 생성 직후 카드 트리의 `HEAD`와 로컬 `develop`의 커밋이 같은지 확인한다. 다르면 작업을 시작하지 않고 분기 기준을 바로잡는다.
 - 생성 직후 브랜치를 제자리에서 개명한다: `git branch -m WT-<slug>`. slug은 카드가 **하는 일**에서 뽑고(소문자 `a-z0-9-`, 토큰 3개 이하, 24자 이하), **카드 id를 넣지 않는다**. 워크트리 디렉터리는 카드 id를 유지한다(`.claude/worktrees/<card-id>`).
