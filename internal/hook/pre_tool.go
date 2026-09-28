@@ -674,6 +674,28 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		}
 	}
 
+	// Commit identity guard (SPEC-COMMIT-IDENTITY-GUARD-001). Sits after the
+	// destructive-command check and EVERY existing shell-tool guard — the
+	// branch guard, the integration lock, the slot lease, the push serializer,
+	// the contract sign/verdict guards, and the closure push readiness — so an
+	// earlier deny is preserved and this layer never displaces one (REQ-CIG-
+	// 009), and before the Write/Edit block. Gated by
+	// Workflow.CommitIdentityGuard.Enabled (default false) at the call site:
+	// when disabled, NO repository-scope or identity probe subprocess runs and
+	// every shell call is allowed unchanged (REQ-CIG-006). Denies a shell
+	// command whose resolved commit identity exactly matches a known
+	// test-fixture email; fails OPEN on every uncertainty.
+	if IsShellTool(input.ToolName) && len(input.ToolInput) > 0 && h.commitIdentityGuardEnabled() {
+		if decision, reason := checkCommitIdentity(input, h.projectRoot(), h.commitIdentityDenyEmails()); decision == DecisionDeny {
+			slog.Warn("commit identity guard denied",
+				"tool_name", input.ToolName,
+				"session_id", input.SessionID,
+				"reason", reason,
+			)
+			return NewDenyOutput(reason), nil
+		}
+	}
+
 	// Handle Write and Edit tools
 	if (input.ToolName == "Write" || input.ToolName == "Edit") && len(input.ToolInput) > 0 {
 		// Harness-learner FROZEN zone guard (Vision §3.4, W3 first implementer).
@@ -994,6 +1016,38 @@ func (h *preToolHandler) slotLeaseConfig() (config.SlotLeaseConfig, bool) {
 		return config.SlotLeaseConfig{}, false
 	}
 	return cfg.Workflow.SlotLease, cfg.Workflow.SlotLease.Enabled
+}
+
+// commitIdentityGuardEnabled reports whether the commit identity guard
+// (SPEC-COMMIT-IDENTITY-GUARD-001 REQ-CIG-006) is opted in via
+// Workflow.CommitIdentityGuard.Enabled. Defensive in the same shape as
+// branchGuardEnabled: a nil ConfigProvider or nil Config returns false, so a
+// misconfigured hook is inert rather than accidentally probing — when
+// disabled, NO repository-scope or identity probe subprocess runs. Read at
+// the call site so the probe cost stays entirely off the disabled path.
+func (h *preToolHandler) commitIdentityGuardEnabled() bool {
+	if h.cfg == nil {
+		return false
+	}
+	cfg := h.cfg.Get()
+	if cfg == nil {
+		return false
+	}
+	return cfg.Workflow.CommitIdentityGuard.Enabled
+}
+
+// commitIdentityDenyEmails returns the guard's effective deny list: the
+// built-in fixture enumeration plus the configured deny_emails (the config
+// list ADDS, it never shrinks the built-in list — REQ-CIG-008).
+func (h *preToolHandler) commitIdentityDenyEmails() []string {
+	if h.cfg == nil {
+		return effectiveDenyEmails(nil)
+	}
+	cfg := h.cfg.Get()
+	if cfg == nil {
+		return effectiveDenyEmails(nil)
+	}
+	return effectiveDenyEmails(cfg.Workflow.CommitIdentityGuard.DenyEmails)
 }
 
 // loadGateConfig reads gate configuration from the config provider.
