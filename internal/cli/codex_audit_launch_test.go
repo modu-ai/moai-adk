@@ -152,15 +152,6 @@ func roleLiteral(t *testing.T, src, key string) string {
 	return rest[:j]
 }
 
-func roleBasic(t *testing.T, src, key string) string {
-	t.Helper()
-	m := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(key) + ` = "([^"]*)"$`).FindStringSubmatch(src)
-	if m == nil {
-		t.Fatalf("role file has no %s", key)
-	}
-	return m[1]
-}
-
 // fakeCodex is the PATH-first `codex` stand-in.
 type fakeCodex struct{ dir string }
 
