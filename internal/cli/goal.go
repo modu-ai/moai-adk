@@ -835,11 +835,16 @@ func runGoalMissionOperation(cmd *cobra.Command, sessionID string, jsonOutput bo
 			return store.Mutate(func(record *kanban.BacklogRecord) error {
 				for i := range record.Items {
 					if record.Items[i].ID == linkedCardID {
-						if record.Items[i].State != kanban.BacklogStateQueued {
+						// POSITIVE enumeration (SPEC-TODO-HOLD-STATE-001
+						// REQ-THS-011): the --auto admission pick names the
+						// one state it admits.
+						switch record.Items[i].State {
+						case kanban.BacklogStateQueued:
+							record.Items[i].State = kanban.BacklogStatePicked
+							return nil
+						default:
 							return errors.New("auto mission: card_not_queued")
 						}
-						record.Items[i].State = kanban.BacklogStatePicked
-						return nil
 					}
 				}
 				return errors.New("auto mission: card_not_live")
