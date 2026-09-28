@@ -99,9 +99,11 @@ func replaceOnce(t *testing.T, s, old, replacement string) string {
 }
 
 // buildLLMUserYAML derives a user-edited llm.yaml from the embedded template
-// bytes: glm.models.high re-pinned by the user, an agent_overrides entry the
-// template default ({}) does not contain, and the marker comment + user-added
-// key inserted under the template's agent_overrides comment block. With
+// bytes: glm.models.high re-pinned by the user, and the marker comment +
+// user-added key inserted under the template's claude_bin line. (The earlier
+// agent_overrides fixture edit retired with the key itself — t1246 removed
+// agent_overrides from the template and the update pipeline now strips it
+// from user files, so there is nothing left to preserve.) With
 // dropPerformanceTier, the template-carried llm.performance_tier line is
 // removed — the delivery fixture for AC-LCP-002.
 func buildLLMUserYAML(t *testing.T, base []byte, dropPerformanceTier bool) []byte {
@@ -109,14 +111,17 @@ func buildLLMUserYAML(t *testing.T, base []byte, dropPerformanceTier bool) []byt
 	s := string(base)
 
 	s = replaceOnce(t, s, `high: "glm-5.3-flash"`, `high: "`+llmUserPinnedHigh+`"`)
-	s = replaceOnce(t, s, "  agent_overrides: {}",
-		"  agent_overrides:\n"+
-			"    manager-develop: { model: opus, effort: xhigh }\n"+
+	s = replaceOnce(t, s, "  claude_bin: \"\"",
+		"  claude_bin: \"\"\n"+
 			llmMarkerComment+"\n"+
 			"  "+llmUserMarkerKey+": "+llmUserMarkerKeyValue)
 
 	if dropPerformanceTier {
-		s = replaceOnce(t, s, "  performance_tier: \"medium\"\n", "")
+		// The delivery fixture removes a live template key so AC-LCP-002 can
+		// assert the update delivers it back. (It originally dropped
+		// performance_tier; t1246 retired that key from the template, so the
+		// drop re-anchored to llm.mode.)
+		s = replaceOnce(t, s, "  mode: \"\"\n", "")
 	}
 	return []byte(s)
 }
@@ -218,17 +223,15 @@ func readLLMYAML(t *testing.T, root string) []byte {
 
 // TestUpdateLLMYAMLPreserveTemplateSync covers AC-LCP-001: the template-sync
 // update cycle preserves the user's divergent llm.yaml values (re-pinned
-// glm.models.high, a user agent_overrides entry) and the marker comment, all
-// against the REAL embedded template.
+// glm.models.high) and the marker comment above the user-added key, all
+// against the REAL embedded template. (The agent_overrides preservation
+// assertion retired with the key — t1246.)
 func TestUpdateLLMYAMLPreserveTemplateSync(t *testing.T) {
 	root := makeLLMPreserveFixture(t, true, false)
 	runTemplateSyncAt(t, root)
 
 	if got := llmYAMLString(t, root, "llm", "glm", "models", "high"); got != llmUserPinnedHigh {
 		t.Errorf("llm.glm.models.high = %q; want user pin %q (template default reset the user's value?)", got, llmUserPinnedHigh)
-	}
-	if got := llmYAMLString(t, root, "llm", "agent_overrides", "manager-develop", "model"); got != "opus" {
-		t.Errorf("llm.agent_overrides.manager-develop.model = %q; want opus (user's agent_overrides entry lost?)", got)
 	}
 	if got := llmYAMLString(t, root, "llm", llmUserMarkerKey); got != llmUserMarkerKeyValue {
 		t.Errorf("llm.%s = %q; want %q (user-added key lost?)", llmUserMarkerKey, got, llmUserMarkerKeyValue)
@@ -240,16 +243,17 @@ func TestUpdateLLMYAMLPreserveTemplateSync(t *testing.T) {
 }
 
 // TestUpdateLLMYAMLNewKeyDelivery covers AC-LCP-002: a template-carried key
-// the user's file lacks (performance_tier removed from the fixture) is
-// delivered back with its template default — preservation must never
-// fossilize the file — and the delivery does not cost the user's divergent
-// values (both hold in the same update pass).
+// the user's file lacks (llm.mode removed from the fixture; originally
+// performance_tier until t1246 retired that key) is delivered back with its
+// template default — preservation must never fossilize the file — and the
+// delivery does not cost the user's divergent values (both hold in the same
+// update pass).
 func TestUpdateLLMYAMLNewKeyDelivery(t *testing.T) {
 	root := makeLLMPreserveFixture(t, true, true)
 	runTemplateSyncAt(t, root)
 
-	if got := llmYAMLString(t, root, "llm", "performance_tier"); got != "medium" {
-		t.Errorf("llm.performance_tier = %q; want template default \"medium\" (removed key not delivered?)", got)
+	if got := llmYAMLString(t, root, "llm", "mode"); got != "" {
+		t.Errorf("llm.mode = %q; want template default \"\" (removed key not delivered?)", got)
 	}
 	if got := llmYAMLString(t, root, "llm", "glm", "models", "high"); got != llmUserPinnedHigh {
 		t.Errorf("delivery cost preservation: llm.glm.models.high = %q; want user pin %q", got, llmUserPinnedHigh)
@@ -281,8 +285,9 @@ func TestUpdateLLMYAMLFirstDeployCalm(t *testing.T) {
 }
 
 // TestUpdateLLMYAMLCommentsSurvive covers AC-LCP-004: the merged llm.yaml
-// retains the template's comment documentation — the Profile matrix block
-// header and the GLM reasoning-effort collapse comment — the issue #1243
+// retains the template's comment documentation — the GLM backend-configuration
+// block header and the GLM reasoning-effort collapse comment (the Profile
+// matrix sentinel retired with its block in t1246) — the issue #1243
 // comment-preservation class, asserted against REAL template bytes.
 func TestUpdateLLMYAMLCommentsSurvive(t *testing.T) {
 	root := makeLLMPreserveFixture(t, true, false)
@@ -290,8 +295,8 @@ func TestUpdateLLMYAMLCommentsSurvive(t *testing.T) {
 
 	content := string(readLLMYAML(t, root))
 	for _, sentinel := range []string{
-		"Profile matrix (transparency + editability)",
-		"GLM reasoning-effort mapping",
+		"GLM backend configuration",
+		"GLM-5.3 reasons ALWAYS",
 		llmMarkerComment,
 	} {
 		if !strings.Contains(content, sentinel) {
