@@ -65,6 +65,18 @@ M1 — A-cluster inheritance rewrite (5 pages × 4 locales = 20 files), authored
 - AC-AMD-006/007 partial (guards): `git diff -- internal/cli/wizard/translations.go` and `... profile_setup_translations.go` EMPTY (never touched).
 - Locale chain honored: ko authored first per page, en derived, ja/zh derived in the same work session; all 20 files in one commit.
 
+M2 — B-cluster deprecated-surface docs (6 pages × 4 locales = 24 files), authored ko→en→ja/zh in one work session (resumed once after a transient 429; tree unchanged at HEAD `5f4f199ef` across the interruption). Evidence captured 2026-09-29.
+
+- Measured CLI surface before writing (commands + verbatim outputs):
+  - `grep -n 'model-policy' internal/cli/init.go` → lines 105-109: `--model-policy`, `--high`, `--medium-alias`, `--low`, `--profile` all registered with `deprecatedAgentModelFlagUsage`; line 355 `warnDeprecatedAgentModelFlags(cmd, "profile", ...)` — warning points at `moai profile setup`.
+  - `sed -n '415,460p' internal/cli/wizard/translations.go` → `model_policy` / `effort_level` / `model` keys carry the "Session model policy / Session effort level / Default model override" wording in 4 locales — these serve the PROFILE SETUP wizard screen (per-profile fields, "launched with this profile"), which is what the docs now document.
+  - `sharedInitRemovedIDs` (question_removal_test.go:33) = `["project_name", "report_format"]` — the init wizard's model question is retired (per SPEC §2, t1246 commit 41cf11c4d).
+- AC-AMD-002: deprecated-stub framing present per locale — the 5 flags documented as stubs that print a warning naming `moai profile setup`; example fences no longer pass `--model-policy medium` / `--profile medium`; the retired `Select model policy:` wizard screen and tier tables removed from all 4 locales. Residue grep `Select model policy|모델 정책 선택:|モデルポリシーを選択|选择模型策略|Max - Opus 5.5` → single hit zh faq.md:80, which is the FAQ question heading (parallel to en "How do I choose a model policy?"), not the retired wizard screen.
+- AC-AMD-003: cli-reference/profile.md retained in all 4 locales, rewritten in place — wizard config items now list "default model override / session model policy / session effort level" (matching the measured translations.go) plus a session-inheritance callout; `grep -rn 'moai model profile'` over the B-cluster → no output, exit=1 (zero dead-command documentation); no vercel.json diff.
+- AC-AMD-008: 4-locale file existence 24/24; heading parity — cli 17/13 all four, introduction 15/12 all four, faq 8/6 all four, what-is-moai-adk 18/24/9 all four, cli-reference/profile 8/4 all four; init-wizard ko 10/8 vs en/ja/zh 11/8 — PRE-EXISTING at baseline (git show HEAD: ko 10/8, en 11/8; M2 changed no headings).
+- AC-AMD-008 emoji scan: only pre-existing hits — 🗿/🔅 inside statusline example output blocks (i18n rule §4 preserved branding examples), 🔴🟠🔵⚪ cost-color glyphs in what-is tables (7 per locale, count unchanged); zero new emoji introduced.
+- Locale chain honored: ko first, then en, then ja/zh, same work session; 24 files + progress.md in one commit.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

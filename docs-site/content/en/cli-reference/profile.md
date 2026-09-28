@@ -46,8 +46,12 @@ moai profile setup work     # Set up the "work" profile
 **Wizard configuration items:**
 - **Identity**: user name, role
 - **Languages**: conversation language, code comment language
-- **Model Settings**: default model, 1M context model selection
+- **Model Settings**: default model override, session model policy (the session's default effort fallback), session effort level
 - **Display**: output style, status line settings
+
+{{< callout type="info" >}}
+The model and effort configured here are **session-level** values: the Claude session launched with this profile runs on them, and subagents inherit the session's model and effort. The former per-agent assignment (profile matrix) is retired — see [Profile Matrix](/en/advanced/profile-matrix/).
+{{< /callout >}}
 
 ### moai profile current
 

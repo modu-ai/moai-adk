@@ -260,7 +260,7 @@ MoAI is the **strategic orchestrator**. It does not write code directly — it d
 | | mission-governor | 🔴 | Reads the sealed snapshot of an approved GTD auto mission and returns one decision (read-only; a deterministic executor performs any action) |
 | **Built-in** | Explore | ⚪ | Read-only codebase exploration |
 
-Cost colors follow the default `medium` profile's model×effort cells (inspect via `moai model profile`): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ session-model inherit (user-added agents). Assignments shift when switching profiles (`high`/`low`).
+Cost colors reflect the model behind each agent's work: 🔴 deep reasoning on Opus · 🟠 standard reasoning on Opus · 🔵 light reasoning · ⚪ read-only exploration. Since v3.2 every agent runs on the **session's model and effort** — subagents inherit the main session's model and effort, so the color you see follows the session you launched, not a per-agent assignment table (retired).
 
 ```mermaid
 flowchart TD
@@ -519,26 +519,26 @@ The @MX tag system is designed to **mark only the most dangerous and important c
 
 ## Model Policy (the Heart of Tokenomics)
 
-MoAI-ADK assigns the optimal model and reasoning depth to each agent. The goal is maximizing quality within the plan's usage limits — the policy moves each agent along the Opus effort ladder rather than swapping in a weaker model class, because on long-horizon agentic work a weaker model spends more steps and costs more per task.
+The goal is maximizing quality within the plan's usage limits. On long-horizon agentic work a weaker model spends more steps and costs more per task — so the lever is reasoning depth inside the same model, not a weaker model class. Since v3.2 this lever lives at the **session** level: subagents inherit the main session's model and effort, agent definitions declare neither, and the per-agent assignment table of earlier versions is retired.
 
-| Policy | Characteristics |
+| Session model policy | Characteristics |
 |------|------|
-| **high** | Highest quality — same as medium except that `builder-harness` and `e2e-tester` run one effort level higher |
-| **medium** (default) | Balance of quality and cost — the knee of the cost/score curve |
-| **low** | Lowest cost per task — the auditing and coordinating rows drop to `medium` and `builder-harness` to Opus `low` (`super-advisor` and `mission-governor` stay at `high`), and Sonnet covers the single-shot rows plus `e2e-tester` |
+| **high** | Session effort fallback `high` |
+| **medium** (default) | Session effort fallback `medium` — the knee of the cost/score curve |
+| **low** | Session effort fallback `low` — economical within the same model |
 
 ### How to Configure
 
 ```bash
-# During project initialization
-moai init my-project          # Select the model policy in the interactive wizard
+# Configure the session model policy (Session model policy question)
+moai profile setup
 
-# Reconfigure an existing project
-moai update                   # Interactive prompts for each setup step
+# Adjust the session effort as you go
+# /effort low|medium|high|xhigh|max  ·  ultrathink
 ```
 
 {{< callout type="info" >}}
-The default policy is `medium`. GLM settings are isolated in `settings.local.json` (never committed to Git). The config key is `profile: high | medium | low` (the profile matrix column) in `llm.yaml`, and the legacy `performance_tier` field is read as an alias when `profile` is absent (`--high`/`--low` are deprecated aliases of `--model-policy high`/`low`). You can set it directly with the `--profile high|medium|low` flag; the legacy `max` value is also accepted as input and normalized to `high`.
+The default effort fallback is `medium`. GLM settings are isolated in `settings.local.json` (never committed to Git). The retired `--model-policy` / `--profile` / `--high` / `--medium-alias` / `--low` flags are deprecated stubs: they print a warning pointing at `moai profile setup` and have no effect.
 {{< /callout >}}
 
 ## Task Metrics Logging
