@@ -28,6 +28,9 @@ pgid=25674 (probe 5 positive control; extractor invocation process group)
 primary_branch_before: main
 primary_branch_after: main
 positive_control: probes/transcripts/probe5-fixture-two-sources.jsonl (two skill sources); re-running the recorded extractor_skills on it prints 4 (fixture-wt 2, fixture-outer 2), i.e. >= 2
+g1_t1175_ancestor: yes
+anchor_T: 140
+anchor_L: 140
 
 Launch accounting: the five matrix probes consumed 6 launches — probe 1 ran twice (first run
 predates the process-group capture segment and is superseded by the identical-geometry
@@ -90,6 +93,13 @@ committed in m1-caps.md; probe 5 is the extractor positive control (no claude pr
   auth source served model glm-5.3-flash for every probe identically (model-id line recorded in
   each stream file). The interactive probes ran with default model settings (same resolved model).
   Token figures rest on the serving backend's reported usage.
+- Gate G1 (M3 premise re-measurement, run at M3 time in this run): t1175 landed on develop
+  (`git log --format=%H --grep='t1175' develop` → `67fd6a1ae9f8d04319cfb6bd726cd4618e245a32`)
+  AND `git merge-base --is-ancestor 7fe658815 HEAD` exits 0 (absorbed). The ANCHOR paragraph is
+  re-located by content in both copies at fresh line 140 / 140 (the M2 insertion sits after it,
+  so the number did not move). The value the amendment rewords was re-read at the current tip:
+  the phase-end paragraph ("asks the operator to `/clear` that session") and the leader-session
+  clearing paragraph, both verbatim-preserved by the substitution.
 
 ## Baseline-attribution
 

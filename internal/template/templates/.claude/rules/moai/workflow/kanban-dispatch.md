@@ -139,6 +139,8 @@ Anything else is a gap, not a pass. `Review rate limited` means the review never
 
 [HARD] A companion session does not carry one card's context into the next card. When a phase completes and the leader has read its evidence, the leader **asks the operator to `/clear` that session** — `/clear` is a user-typed command and cannot be sent as an instruction. The leader's message states, in order: what closed (card, phase, evidence read), which session to `/clear` (by name), and what happens next (the next column, and which session is instructed once the clear is done).
 
+[HARD] On a card transition inside a lane session, `/clear` happens exactly once, **after** the session has moved into the next card's worktree — not before the move. A phase end that is not a card transition clears at the phase boundary exactly as stated above. The count is not reduced: one card transition, one `/clear`.
+
 Where the next phase reuses a just-cleared session, the leader re-sends the full pointer instruction rather than assuming the session remembers.
 
 The leader's own session is cleared the same way, between cards rather than phases: once a card reaches `done`, the operator is asked to `/clear` the leader session, and the next turn presents the queue again.
