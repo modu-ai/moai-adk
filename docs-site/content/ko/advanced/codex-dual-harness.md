@@ -73,6 +73,14 @@ Advisory: CLAUDE.local.md is a legacy local instruction file; run `moai migrate 
 
 `RenderHooks`가 적응된 이벤트 명령 여덟 개를 사용자 `.codex/hooks.json`에 기록합니다. `moai init --llm codex|both`가 이 배선을 만들고, 기존 프로젝트에서는 `moai tool enable codex`로 추가하거나 갱신합니다.
 
+## 데스크톱 앱과 v3.1.3 배포 조건
+
+Codex 앱의 로컬 세션에서는 생성된 `.codex/hooks.json`과 `.codex/config.toml`이 있는 프로젝트를 엽니다. Codex는 프로젝트를 신뢰한 뒤에야 프로젝트 훅과 설정을 읽습니다. Codex CLI의 `/hooks`에서 훅을 확인하고, 훅 정의가 바뀌면 다시 신뢰 처리하세요. 같은 프로젝트에서 `moai doctor`를 실행하면 MoAI 배선 상태를 점검할 수 있습니다. 앱의 실행 환경에서도 `moai` 명령을 찾을 수 있어야 합니다. 프로젝트 신뢰 규칙은 [Codex 훅 문서](https://developers.openai.com/codex/hooks)를 참고하세요.
+
+Claude Code 데스크톱 앱의 **Local** Code 세션은 CLI와 프로젝트의 `CLAUDE.md`, `.mcp.json`, 훅, 스킬, 설정을 함께 사용합니다. 초기화한 프로젝트를 Code 탭에서 열고 해당 세션에서 `moai`를 실행할 수 있는지 확인하세요. SSH 세션은 원격 머신에서 실행되므로 그 머신에도 프로젝트와 `moai`가 필요합니다. 자세한 내용은 [Claude Code 데스크톱 설정](https://code.claude.com/docs/en/desktop#shared-configuration)을 참고하세요.
+
+위 내용은 설정 방법이며 v3.1.3 데스크톱 배포 검증을 마쳤다는 뜻은 아닙니다. 운영자가 직접 MoAI·Codex·두 데스크톱 앱을 시험하고 결과를 선언할 때까지 배포는 보류됩니다.
+
 ## 다음 단계
 
 - [다중 모델 감사 수렴](/ko/advanced/multi-model-audit/) — codex 백엔드가 감사에 참여하는 지금의 경로
