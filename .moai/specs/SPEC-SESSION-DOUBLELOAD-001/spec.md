@@ -2,7 +2,7 @@
 id: SPEC-SESSION-DOUBLELOAD-001
 title: "Lanes start a card inside its worktree — mid-session movement prohibition, skill-list duplication measurement, and the card-transition /clear amendment"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-09-26
 updated: 2026-09-29
 author: manager-spec

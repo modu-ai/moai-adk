@@ -73,4 +73,26 @@ Run executed 2026-09-29 by lane worker-69 in the card worktree `.claude/worktree
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+### Sync-phase disposition records (2026-09-29)
+
+- **M4 measurement-gap disposition (factory leader ruling)**: the factory leader accepted option (b) on 2026-09-29 — both recorded M4 gaps (`skill_dup_tokens`, `clear_restores_skill_set`) are accepted as-is and recorded as follow-up material. The 1-line `clear_restores` driver fix is already documented in §E.2's Residual-risk; recording it as the first step of a follow-up card, to be taken up when that measurement becomes necessary, is sufficient. Ruling attributed to the factory leader, 2026-09-29.
+- **Post-absorb state (card t1279)**: absorb merge commit `0be00a3c1` (develop `7703513f2` absorbed — diet structure vs N1 amendments; the two N1 amendment paragraphs were re-inserted verbatim into develop's always-loaded diet structure in BOTH copies of `.claude/rules/moai/workflow/kanban-dispatch.md` and `internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md`). Merged-tree re-measurements, lane-measured this run:
+  - AC-SDL-007 wording grep `card worktree into another` = 1 within the Isolation section.
+  - AC-SDL-010 greps: `exactly once` = 2, `after the move|after the session has moved` = 1, `asks the operator to \`/clear\` that session` = 1.
+  - `cmp` of the template/local pair: identical (byte-equal).
+  - `go test ./internal/template/ -run '^TestTemplateNoInternalContentLeak$|^TestLanguageNeutrality$' -count=1` → `ok`, exit 0. RuleTemplateMirror test → `ok`.
+- **Known re-measurement divergence — AC-SDL-011 (disclosed, NOT fixed)**: AC-SDL-011's recorded diff regex over `git diff <BASE>..HEAD -- internal/template/templates/` now counts 3 hits after the absorb — three `Relocated from ... (t1303 always-loaded diet)` pointer lines carrying a card id in body text. Provenance is develop-side (another card's commit, t1303), NOT this card's delta; the Go guard `TestTemplateNoInternalContentLeak` still passes on the merged tree (re-run above). These lines are deliberately left untouched (scope discipline — sync phase does not modify implementation files).
+
+### Sync signal
+
+- sync_status: complete
+- sync_complete_at: 2026-09-29
+- sync_commit_sha: pending-backfill-sync
+- b12_self_test_a: duplicate-entry grep `grep -c 'SPEC-SESSION-DOUBLELOAD-001' CHANGELOG.md` → 0 (proceed)
+- b12_self_test_b: distinct AC identifiers in acceptance.md = 12 (AC-SDL-001..012); CHANGELOG entry references all 12 — counts match
+- b12_self_test_c: file paths claimed in the CHANGELOG entry verified existing (`ls` on `.claude/rules/moai/workflow/kanban-dispatch.md`, `internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md`, `.claude/rules/local/gitflow-lane-protocol.md`)
+- frontmatter_status_transitions.in_progress_to_implemented: this sync commit
+- frontmatter_status_transitions.implemented_to_completed: this sync commit (merged close)
+- canary_compliance_check.commit_subject: `chore(SPEC-SESSION-DOUBLELOAD-001): sync-phase artifacts — 3-phase close` (exactly one full SPEC-ID per the close-subject convention)
+- canary_compliance_check.authored_by_agent: manager-docs (OwnershipTransitionRule trailer)
+- changelog_entry_position: CHANGELOG.md `[Unreleased]` → `### Changed` (with the disciplinary scope under `### Fixed` where the disposition is a clarification)
