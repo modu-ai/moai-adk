@@ -22,7 +22,7 @@ harness driving this contract lacks the capability.
 | question-channel | `AskUserQuestion` | Return a blocker report naming the missing input instead of asking in prose |
 | task-list | `TaskCreate` / `TaskUpdate` / `TaskList` / `TaskGet` | Track the work and report progress in prose |
 | design-sync | `DesignSync` | Skip the design-sync surface; say so in the report |
-| worktree-entry | `moai cc -w <name>`; Codex: `moai codex -w <worktree>` — resolves an existing tree and never creates one | Report the missing isolation; never create a tree by hand |
+| worktree-entry | Claude: `moai cc -w <name>`; Codex: `moai worktree new <name>` then `moai codex -w <name>` to re-enter | Report the missing isolation; never create a tree by hand |
 
 **`Skill("<name>")` instructions carry no row, and are read literally.** Every harness driving
 this contract can load a skill, so it earns no row above; what is Claude-only is the per-agent
@@ -104,9 +104,18 @@ and resolve the remote default branch instead of assuming `main`.
 
 **Work inside a worktree, entered through your harness's launcher** — Claude Code:
 `moai cc -w <name>` (`--spawn` for a new window), `EnterWorktree(<path>)` to re-enter,
-`ExitWorktree` to leave; Codex: `moai codex -w <worktree>`, which enters an existing tree and never
-creates one. Create a tree with `moai worktree new <name>`, never with a bare `git worktree add`.
+`ExitWorktree` to leave; Codex: `moai worktree new <name>` to create and `moai codex -w <name>`
+to re-enter. Never create a tree with a bare `git worktree add`.
 Drive a worktree with `git -C <path>`, not `cd`.
+
+**Codex factory lanes (`-f agent` legacy spelling or `-f lane`)** use the card worktree
+selected by their supervising launcher. The launcher starts each interactive Codex child
+with that worktree as its working directory (`codex -C <absolute-worktree-path>`). A Codex
+child already in the card worktree continues there; a new session re-enters an existing
+tree with `moai codex -w <worktree>`. `moai cc -w` launches Claude Code and MUST NOT be
+given as a Codex worktree instruction. A direct `codex -C` child reads the worktree's
+`CLAUDE.local.md` before card work; the `moai codex` launcher loads that file into
+`developer_instructions` automatically when `AGENTS.local.md` is absent.
 
 **From inside a worktree session, `<path>` must be that worktree's absolute path.** Measured on
 Claude Code 2.1.275: the guard refuses `-C .`, a relative path, a runtime-computed path, and any
@@ -121,10 +130,12 @@ from the registry, and is disposed by the session-end prompt or by `git worktree
 **A card's branch is unpushed, so its worktree holds the only copy of the work.** Dispose of no
 worktree — L1 or L2 — until the branch is integrated and the remote merge has landed.
 
-**Start a new card in a new worktree.** Exit any previous worktree back to the primary checkout
-first, or the new card's work lands on the old card's branch. Create the fresh tree from the remote
-default branch; never reuse the previous card's tree. Where the new card depends on a prior card's
-unmerged code, merge that branch inside the new worktree.
+**Start a new card in a new worktree from local `develop`.** Exit any previous worktree back to the
+primary checkout first, or the new card's work lands on the old card's branch. Verify the new
+tree's HEAD equals the local `develop` tip before editing; never reuse the previous card's tree.
+Where the new card depends on a prior card's unmerged code, merge that branch inside the new
+worktree. When complete, merge the card branch into local `develop` through the serial integration
+window; the lead pushes `develop` after the local merges.
 
 **Card worktree branches carry the `WT-` prefix and a descriptive slug, never the card id.** Rename
 in place immediately after creating the tree: `git branch -m WT-<slug>`; re-entry resolves by tree
