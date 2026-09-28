@@ -335,6 +335,7 @@ local/main
 
 Kanban(`moai cc -k`) / Factory(`moai cc -f N`) 모드에서 레인은 카드 작업이 끝나면 **반드시 리드에게 로컬 develop 병합을 요청한다.** 레인이 스스로 병합 창을 잡지 않는다.
 
+- **self-dispatch lane 예외 — 병합 창.** Claude self-dispatch 팩토리 run의 레인은 위 요청을 하지 않는다 — `moai factory complete`의 통합 절차로 스스로 통합 창을 잡고 자기 카드를 `develop`에 병합한다(OD-2). Codex 레인은 예외가 아니다 — merge-ready에서 정지한다(REQ-SD-025). 이 예외도 위의 다른 큐 변경(`add`, `drop`, `done`, `edit` 등) 금지와 `moai contract sign` 금지는 바꾸지 않는다(카드 임대만 `moai factory next`로 허용 — OD-1; `.claude/rules/local/gitflow-lane-protocol.md` §6).
 - 완료 보고에 담을 것: 카드 id · 브랜치와 HEAD · 로컬 병합 SHA · 미푸시 커밋 수 · 증거 경로(primary 반출 여부) · 재측정 범위
 - `moai integration status`가 `free`인 것은 **승인이 아니다.** 리드의 창 지명만이 근거다.
 - 창을 받으면: `moai integration acquire --name <lane> --card <card-id>` → 본인 워크트리에서 `git merge develop` 흡수(대상은 **로컬** `develop` — 원격이 아니다. 흡수 **전에** 그 로컬 develop 이 최신인지부터 본다 — 판정식과 갱신 경로는 `.claude/rules/local/gitflow-lane-protocol.md` §11) → **병합 트리에서 재측정** → `EnterWorktree(.claude/worktrees/develop)` → `git merge --no-ff <WT-브랜치>` → `moai integration release` → `ExitWorktree keep` → 완료 보고(로컬 병합 SHA를 리드에게 보고 — push는 리드가 일괄로 한다)
