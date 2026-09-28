@@ -5,7 +5,7 @@ MoAI가 만드는 L1 워크트리 경로와 기존 트리의 이전 경로를 §
 Factory 런 은퇴의 `lead` 표기는 이전 런의 저장 역할값이다. 현재 런은 `leader/lane`을 쓰며,
 옛 역할을 가진 세션은 `internal/hook/session_stale_run.go`에서 재등록하지 않고 안내한다.
 
-**현재 갱신 — t1187, `origin/develop` `a8a9b9376` (2026-09-25).**
+**이전 갱신 — t1187, `origin/develop` `a8a9b9376` (2026-09-25).**
 앵커 `bd71c59e4` 뒤 끝점 변경 41개 비테스트 Go 파일을 확인했다.
 이번 판에서 아래 두 경로를 보강했다.
 

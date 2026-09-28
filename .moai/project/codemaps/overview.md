@@ -13,7 +13,7 @@
 **정기 재측정**: worktree `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`, 2026-09-22 — § 규모 표의 여섯 값(비테스트·테스트 파일 수, 패키지 총수, 최상위 디렉터리 수, 엣지 둘)과 § 구조 판정의 `internal/cli` import 수, § 들어맞지 않는 패키지의 파일 수 두 곳(`internal/hook` · `internal/homestate`), 신규 패키지 3개(`internal/jev` · `internal/jevcred` · `internal/jevmeasure`)의 서술. 각 값의 산출 명령은 표 안에 있고 전부 이 트리에서 직접 실행했습니다. 임베드 템플릿 파일 수(588)와 테스트 0 패키지 4개·테스트 전용 디렉터리 1개도 같은 명령으로 재확인해 변동이 없었습니다.
 **부분 재측정**: worktree `.claude/worktrees/t1092`, 브랜치 `WT-codemaps-restamp`, base `08113ff0f`, 2026-09-23 — 카드 t1092. § 규모 표 일곱 값을 같은 명령으로 다시 쟀습니다 — 비테스트 1259→1272, 테스트 2155→2190, 패키지 총수 151→152(신규 `internal/factorymsg`), 최상위 디렉터리 77→78(`internal` 73→74), 내부 import 엣지 378→381(패키지 단위)·234→237(최상위 집계), 임베드 템플릿 588→589. § 구조 판정·§ 도식에 들어맞지 않는 패키지 절은 이번 변경과 무관해 손대지 않았습니다.
 
-**현재 재측정**: worktree `.claude/worktrees/t1274`, 브랜치 `WT-codemaps-refresh4`, base `cf4b82755`, 2026-09-26 — 카드 t1274. `find internal cmd pkg`로 비테스트·테스트 Go 파일을, `go list ./...`로 패키지를, `go list -f '{{.ImportPath}} {{join .Imports " "}}' ./...` 후 모듈 경로 필터로 내부 import 엣지를, `find internal/template/templates -type f`로 임베드 원본을 다시 셌습니다. 앵커 `4a05fd3d6`(card t1238) 이후 described-worthy(비테스트 Go·testdata 제외) 끝점 변경은 52개이며, 이번 판은 신규 패키지 `internal/escalation`(+`escalationtest`) 서술과 `internal/cli`·`internal/hook`·`internal/config`·`internal/auditreceipt` 행 갱신으로 반영했습니다. 아래 규모 표의 값은 이 트리의 값으로 갱신했습니다.
+**이전 재측정**: worktree `.claude/worktrees/t1274`, 브랜치 `WT-codemaps-refresh4`, base `cf4b82755`, 2026-09-26 — 카드 t1274. `find internal cmd pkg`로 비테스트·테스트 Go 파일을, `go list ./...`로 패키지를, `go list -f '{{.ImportPath}} {{join .Imports " "}}' ./...` 후 모듈 경로 필터로 내부 import 엣지를, `find internal/template/templates -type f`로 임베드 원본을 다시 셌습니다. 앵커 `4a05fd3d6`(card t1238) 이후 described-worthy(비테스트 Go·testdata 제외) 끝점 변경은 52개이며, 이번 판은 신규 패키지 `internal/escalation`(+`escalationtest`) 서술과 `internal/cli`·`internal/hook`·`internal/config`·`internal/auditreceipt` 행 갱신으로 반영했습니다. 아래 규모 표의 값은 이 트리의 값으로 갱신했습니다.
 
 **이전 재측정**: worktree `.claude/worktrees/t1187`, 브랜치 `WT-codemaps-source-refresh`, HEAD `a8a9b9376`, 2026-09-25 — 카드 t1187. `find internal cmd pkg`로 비테스트·테스트 Go 파일을, `go list ./...`로 패키지를, `go list -f '{{.ImportPath}} {{join .Imports " "}}' ./...`로 내부 import 엣지를, `find internal/template/templates -type f`로 임베드 원본을 다시 셌습니다. 앵커 `bd71c59e4` 이후 끝점 변경은 전체 126개 파일 중 게이트가 세는 비테스트 Go 소스 41개입니다. 아래 규모 표의 값은 이 트리의 값으로 갱신했습니다.
 
@@ -61,7 +61,7 @@
 
 ### 헥사고날에 부합하는 근거
 
-- `cmd/` · `internal/` · `pkg/` 3분할과 `internal/`의 74개 디렉터리 분해는 표준 레이아웃 그대로입니다.
+- `cmd/` · `internal/` · `pkg/` 3분할과 `internal/`의 78개 디렉터리 분해는 표준 레이아웃 그대로입니다.
 - 합성 루트가 명시적으로 하나 있습니다 — `internal/cli/deps.go`의 `Dependencies` 구조체와
   `InitDependencies()`. `git.Repository`, `hook.Registry`, `hook.Protocol`, `update.Checker`,
   `update.Orchestrator` 같은 인터페이스 타입으로 조립하므로 포트/어댑터 의도가 보입니다.

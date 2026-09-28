@@ -8,7 +8,7 @@ Git 등록 트리를 옮길 수 있는지 검사해 안전한 항목만 `git wor
 이전한다(§ `data-flow.md` M). `moai doctor`의 Factory 런 진단은
 `internal/cli/doctor_factory_run.go`에서 현재 `leader` 기록을 읽는다.
 
-**현재 갱신 — t1286, worktree `.claude/worktrees/t1286`, 브랜치 `WT-codemaps-refresh6`, base `c000a1fcb` (2026-09-28).**
+**이전 갱신 — t1286, worktree `.claude/worktrees/t1286`, 브랜치 `WT-codemaps-refresh6`, base `c000a1fcb` (2026-09-28).**
 이 판의 새 표면: CLI 동사 `moai factory assign <card>`·`status`·`decide <card>...`(`internal/cli/factory_card.go`, card t1239 — F1 카드 기록층의 CLI 표면. `decide --gate push` 는 `git fetch` 를 돌리지 않는다), `moai verify sync-gate`·`moai verify codex-review`(card t1099 — 훅 밖 Go 코어로 옮긴 sync-gate 검사와 codex 리뷰 러너, 각자 영수증 생산), doctor 의 Served Model 스윕(card t1282 — 감사자·서브에이전트 자기 신고 표기 모음, explicit-only), 훅의 served-model 삼형제(분류·채택-거부 게이트·SubagentStop 행, card t1282), Codex Stop 체인(`codex_stop_chain.go` — Claude Stop 멤버들을 Codex Stop 핸들러 하나로, card t1099), codex 네 이벤트 적응(PreCompact·PostCompact·PermissionRequest·Interrupt, `internal/codexadapter/events.go`), statusline 착지 깃발 문자(✓→⚑, card t1281).
 
 **이전 갱신 — t1278, worktree `.claude/worktrees/t1278`, 브랜치 `WT-codemaps-refresh5`, base `6d514f9b7` (2026-09-27).**

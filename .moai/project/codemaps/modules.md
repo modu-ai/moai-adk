@@ -8,7 +8,7 @@
 `internal/hook/session_stale_run.go`가 이전 역할의 세션 재등록을 막는다.
 과거 판의 `lead/worker/agent` 설명은 당시 동작의 이력이다.
 
-**현재 갱신 — t1286, worktree `.claude/worktrees/t1286`, 브랜치 `WT-codemaps-refresh6`, base `c000a1fcb` (2026-09-28).**
+**이전 갱신 — t1286, worktree `.claude/worktrees/t1286`, 브랜치 `WT-codemaps-refresh6`, base `c000a1fcb` (2026-09-28).**
 스탬프 앵커 `6d514f9b7`(t1278 판) 뒤 비테스트 Go 소스 변경 46개(`git diff --name-only 6d514f9b7..HEAD -- internal cmd pkg`에
 같은 `IsDescribedWorthy` 술어)를 대조했다. 여섯 카드의 몫이다. ① **t1239(SPEC-FACTORY-RECORD-001)** — `internal/homestate` 의
 F1 카드 기록층(신규 6파일 `card_record.go`·`card_transition.go`·`card_evidence.go`·`card_evidence_readers.go`·

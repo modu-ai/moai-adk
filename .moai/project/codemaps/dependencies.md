@@ -9,7 +9,7 @@
 이번 갱신의 구조 변화인 MoAI L1 워크트리·Factory 역할 전환은 기존 패키지 안에서
 일어났으며 새 패키지 경계를 만들지 않았다.
 
-**현재 재측정 — t1187, `origin/develop` `a8a9b9376` (2026-09-25).**
+**이전 재측정 — t1187, `origin/develop` `a8a9b9376` (2026-09-25).**
 아래 import 엣지는 같은 `go list -f` 명령으로 다시 셌다. 비테스트 소스
 변경 41개 중 Codex 감사 런처와 Factory 런 은퇴가 기존 `internal/cli`·
 `internal/homestate`·`internal/factorymsg` 경계를 사용하며, 새 Go 패키지는
