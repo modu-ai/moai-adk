@@ -202,7 +202,10 @@ so document order is not numeric order.
   operator to `/clear`; `clear-when-full` asks for `/clear` only once the session's context-usage record
   shows usage at or above the model-specific handoff threshold and otherwise continues with the next
   card; `relaunch` asks the operator to end the session and has the supervising launcher start a fresh
-  session for the next card.
+  session for the next card. The selected policy value travels from the launcher to the lane session's
+  environment under the lane clear-policy carrier constant (`config.EnvFactoryClearPolicy`,
+  `MOAI_FACTORY_CLEAR_POLICY`); Codex-harness lanes take no policy and the name never enters the Codex
+  MCP `env_vars` allowlist.
 
 ### B.6 Integration, MCP tree, harness
 
@@ -284,8 +287,8 @@ the rest of the doctrine is out of scope; only the two exceptions REQ-SD-015 nam
 
 ### Out of Scope — storage and wiring
 
-- Any schema change, any new environment variable name, and any change to the Codex MCP `env_vars`
-  allowlist (REQ-SD-022).
+- Any schema change, any new environment variable name except the lane clear-policy carrier named in
+  REQ-SD-020, and any change to the Codex MCP `env_vars` allowlist (REQ-SD-022).
 - Hook-based factory peer registration for Codex lanes (REQ-CFR-022 stays as is).
 
 ## §E Residual risk and hand-offs

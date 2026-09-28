@@ -103,7 +103,9 @@ launcher go through t1256's REQ-RNC-003/-005/-007 producer.
 ## §6 Launcher shapes and clear policies
 
 - `clear-each` / `clear-when-full`: unchanged exec model (`launch_exec_posix.go:37`); the policy value
-  travels in the lane session's environment for the SessionStart rule and the `complete` output to read.
+  travels in the lane session's environment (the lane clear-policy carrier constant
+  `config.EnvFactoryClearPolicy`, `MOAI_FACTORY_CLEAR_POLICY`) for the SessionStart rule and the
+  `complete` output to read.
 - `clear-when-full` reads the session's record at `<project>/.moai/state/context-usage/<session-id>.json`
   (`internal/statusline/context_usage.go:13-20`) and compares it with the model-specific handoff
   threshold (context-window-management rule); a missing record reads as below threshold.
