@@ -49,12 +49,18 @@ description: 작업 성격과 품질/비용 목표에 맞춰 에이전트마다 
 |------|--------|----------|------|
 | Claude Fable 5 | `claude-fable-5` | 1M | 신규 Mythos-tier 범용 최상위. 가장 깊은 추론과 복잡한 코딩 |
 | Claude Opus 5.5 | `opus` | 1M | 복잡한 아키텍처, 고난도 추론 |
-| Claude Sonnet 5 | `sonnet` | 1M | 속도와 지능의 균형, 일상 코딩 |
+| Claude Sonnet 5.5 | `sonnet` | 1M | 속도와 지능의 균형, 일상 코딩 |
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 가장 빠르고 경제적, 단순·대량 작업 |
 
 > MoAI의 모델 정책은 이 라인업 전체를 쓰지 않습니다. **No-Haiku 정책**에 따라 Haiku는
 > 에이전트 매트릭스 어디에도 등장하지 않으며, 멀티턴 에이전틱 행은 Opus가
 > 맡습니다(`low` 프로필의 `e2e-tester`만 예외). 이유는 바로 다음 절에 나옵니다.
+
+{{< callout type="warning" >}}
+**Sonnet 5.5로 넘어가기 전에**: thinking을 끈 상태로 Sonnet을 쓰고 있다면, 올라가기 전에
+thinking 설정을 `between_tools`로 바꿔야 합니다 — Sonnet 5.5에서도 사전(thinking) thinking은
+계속 꺼져 있습니다.
+{{< /callout >}}
 
 ### 추론 깊이(effort)
 
@@ -65,7 +71,7 @@ description: 작업 성격과 품질/비용 목표에 맞춰 에이전트마다 
 | `low` | 가장 얕은 추론. 빠르고 쌈 |
 | `medium` | 균형. 기본 프로필의 기준점 |
 | `high` | 깊은 추론 |
-| `xhigh` | 더 깊은 추론 (Opus 5.5 · Opus 5 · 4.8 · Sonnet 5 · Opus 4.7 지원) |
+| `xhigh` | 더 깊은 추론 (Opus 5.5 · Opus 5 · 4.8 · Sonnet 5.5 · Opus 4.7 지원) |
 | `max` | 가장 깊은 추론 |
 
 > **기본 effort**: Opus 5.5의 기본 effort는 `medium`이고, effort를 지원하는 다른 모델은 대부분 `high`가 기본입니다.
