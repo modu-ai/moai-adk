@@ -681,6 +681,14 @@ exit=0 · 14 × "--- PASS" · 0 × "--- FAIL" · 0 × "no tests to run" · 1 SKI
 ok  	github.com/modu-ai/moai-adk/internal/spec	56.626s
 ```
 
+### iter5-readiness (2026-09-28, lane session 2 — dispatch items resolved before the audit request)
+
+**Card-first count question ("COUNT 23 vs lane count 20") — conclusion, re-verified at the current tip.** The premise report (`.moai/reports/t1259/premise-20260928.md` §0) measured the discrepancy at its origin: at the split commit `653e53572` the parent acceptance.md carried 3 unmarked sibling-SPEC `AC-` tokens in prose (counter 23 vs 20 declared); `[REF]` marking since then brought the parent to 20 = 20. Re-measured this session at HEAD `c4872e978`: parent (develop read) `grep -c '^\*\*AC-IFU-'` = **20** ✓; this SPEC = **8 declared**, matching the v0.3.0 baseline row (count 10 → 8, AC-count cascade already run and committed — see §E.1 above). No residue on either side; the discrepancy was transient split-time state, since resolved.
+
+**Plan closure state (dispatch item 3).** The v0.3.0 tip commit (`a6f3861cd`) carries the scope-reduction docs: iter4's three blocking defects are dispositioned there — **D2** (M3's premise a known negative: worktree sessions do not receive `AGENTS.local.md`, `AGENTS.md:262`) → M3 (REQ-IFU-021/022, AC-IFU-007/024) transferred to card t1290 (§D Out of Scope, verbatim text preserved at `4441cf1a6`, child SPEC-LOCAL-INSTR-RECEPTION-001 iter2 PASS and already carrying M3); **D1** mooted here (both criteria left with M3) and carried to t1290 with a demonstrated committed-tree predicate (`.moai/reports/t1259/d1-mutant.md`); **D3** rewritten (the status paragraph now states the four-iteration history and the carve). N2 fixed in the same commit. D3-of-the-dispatch (the two-SPEC overlap) resolves at branch merge per the lead's instruction. The audit loop needs its iter5 verdict against this reduced scope — requested from the lead.
+
+**Process disclosure — run M1 landed before the iter5 verdict.** The inherited working tree carried the previous session's uncommitted M1 unit (the migration verb + advisory wiring + 4-locale docs + the `draft → in-progress` transition). Per the dispatch's disposition instruction it was verified coherent (`go build ./internal/cli/` exit 0; anchored test run `MigrateLocalInstructions|LocalInstructionsAdvisory|CodexLocalInstructions` → ok) and committed as M1 (`c4872e978`) — meaning the first run-phase commit predates the iter5 PASS and the Kickoff gate. Disclosed here for the auditor and the lead rather than left in the commit order for someone to find; the gate question (retroactive approval vs revert-and-regate) is the lead's, not this lane's.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
