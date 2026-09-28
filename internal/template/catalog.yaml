@@ -132,7 +132,7 @@ catalog:
             - name: manager-git
               tier: core
               path: templates/.claude/agents/moai/manager-git.md
-              hash: 395424bcdc32d9cc90adad0b726dd00588928ef2789e0c42eb1a8b4878c10e63
+              hash: f085e1ba5775a2217b8f3b356edf7dea2e044e4cb4b6b21443bcef8019f6e3e9
               version: 1.0.0
             - name: manager-lead
               tier: core
@@ -142,7 +142,7 @@ catalog:
             - name: manager-spec
               tier: core
               path: templates/.claude/agents/moai/manager-spec.md
-              hash: d9e44f067572c2ed30da701ab67ce277b281061424b355fdff79eb97d7970fb3
+              hash: e13b5a08a61bea99827bf9d86e87f9a03a5d9cacafc865a129cf59a7e6380303
               version: 1.0.0
             - name: plan-auditor
               tier: core
