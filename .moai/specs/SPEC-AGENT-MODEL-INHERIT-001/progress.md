@@ -349,8 +349,35 @@ in doctrine; no text claims a deny or opt-in exists or that the log is gone.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+_<pending run-phase — see §E.2 succession block for the current state>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+### Succession session — develop absorption + stranded-consumer repairs (2026-09-28, worker-66; commits `3b29dfcea`·`b822c7d00`·`9eb125a73`)
+
+**Absorption**: develop 404 commits absorbed (merge `3b29dfcea`), four conflict families resolved with documented rationale — ① `AgentModelGuardConfig` dropped (M3 removed the block layer; the hook file's own header says the opt-in key is gone and a leftover key is ignored) while `ServedModelGateConfig` is kept (develop/t1282 addition with live consumers: `internal/hook/served_model.go`, `internal/auditreceipt/store.go`, `internal/config/served_model_gate_test.go`); ② i18n.js `agentdesc.*` deleted with the card's M2 panel removal (develop's t1256 additions to a deleted surface are dead); ③ catalog.yaml hash conflicts regenerated via `go run ./internal/template/scripts/gen-catalog-hashes.go --all`; ④ no other content conflicts.
+
+**Stranded consumer 1 — the audit launcher (`b822c7d00`)**: M6's emission change (no `model_reasoning_effort` in role TOMLs) left `codex_audit_launch.go` as the sole remaining reader, requiring the key — 8 `TestCodexAuditLaunch*` red. Fixed per the card design: the launcher reads effort from the audit pin (`workflow.audit.codex.effort`), an unpinned launch **omits** the `-c model_reasoning_effort` directive rather than fabricating a value, and an unlaunchable pin refuses before spawning. Tests: the Argv fixture writes the pin and asserts the token; the argv judge treats an unpinned launch as must-be-absent; the ceiling fixture's handwritten key is inert by design.
+
+**Stranded consumer 2 — the explicit model argument (`9eb125a73`)**: t1284's served-model tests (absorbed from develop) failed because the card's `resolveCodexModelEffort` rewrite (explicit-only) left `handleCodexTask` building `turnParams` without the caller's `model` argument — the deleted SSOT cell path had been the only source. Fixed by piping a non-empty explicit model into `turnParams` (feeding both thread/start and `result.Model`); the three configured-model subtests now pass the model explicitly, with the llm.yaml fixture retained as a leftover-cell control proving the dead cell does not leak.
+
+**Verification (this tree, this session)**:
+
+```
+$ go build ./...                                              → exit 0
+$ GOOS=windows GOARCH=amd64 go build ./...                    → exit 0
+$ go test ./internal/cli/ -run 'ModelPolicy|Profile|AgentModel|ServedModel|Init|CodexAuditLaunch' -count=1 -timeout 20m
+ok  github.com/modu-ai/moai-adk/internal/cli  95.274s         (slot-leased)
+$ go test ./internal/config/ ./internal/harness/rosterguard/ ./internal/web/ -count=1
+ok ×3 (4.160s / 18.171s / 29.423s)
+$ go test ./internal/template/... -count=1                     → ok ×3
+$ go test ./internal/hook/ -count=1 -timeout 15m
+ok  github.com/modu-ai/moai-adk/internal/hook  343.026s
+$ golangci-lint run ./internal/cli/                           → 0 issues.
+```
+
+Tests the M7 close recorded as red, all now green after absorption + the two fixes: `TestCodexAuditMCPTool`, `TestMCPToolCatalogueFiguresMatchRegistry` (develop's 404 commits), `TestCodexTaskBackgroundHandshakeHonorsTaskBound` (t1288), rosterguard ×3, `TestCodexAuditLaunch*` ×8, `TestCodexTask_ServedModelUnknown` ×3-subtests.
+
+**M5 blocker — unchanged after absorption**: `internal/hook/agent_model_guard.go:106` still calls `template.ResolveAgentModelEffort` (the observation layer's expected-model source), so M5 (resolver/matrix deletion) remains blocked on that call site's rework — recorded as "deferred to post-t1282" at M6 close, and t1282's landing did not remove it. **M8 (docs-site) not started.** Both are the card's remaining run-phase work; §E.3 stays pending until they land.
