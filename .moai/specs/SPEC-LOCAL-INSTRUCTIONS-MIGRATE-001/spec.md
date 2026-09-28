@@ -2,7 +2,7 @@
 id: SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001
 title: "Local-instruction migration — CLAUDE.local.md to AGENTS.local.md, with advisories and docs"
 version: "0.3.0"
-status: draft
+status: in-progress
 priority: P1
 phase: "v3.3.0 target"
 created: 2026-09-26

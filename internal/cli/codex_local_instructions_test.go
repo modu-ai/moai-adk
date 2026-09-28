@@ -538,3 +538,56 @@ func TestCodexLocalInstructions_PrelaunchFailuresStartNothing(t *testing.T) {
 		})
 	}
 }
+
+// TestCodexLocalInstructions_FallbackAdvisory pins the fallback branch
+// (REQ-IFU-007, AC-IFU-011) together with the provenance preamble on that same
+// path (REQ-IFU-008, AC-IFU-029): with only CLAUDE.local.md present its body
+// reaches developer_instructions under its literal filename, and the
+// deprecation advisory naming the migration verb goes to the launcher's
+// diagnostic stream — never into the payload, never onto stdout.
+func TestCodexLocalInstructions_FallbackAdvisory(t *testing.T) {
+	const verb = "moai migrate local-instructions"
+	cases := []struct {
+		name   string
+		files  map[string]string
+		advise bool
+	}{
+		{"claude-only", map[string]string{codexClaudeLocalName: "FALLBACK_BODY\n"}, true},
+		{"agents-only", map[string]string{codexLocalInstructionName: "PRIMARY_BODY\n"}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			for name, body := range tc.files {
+				if err := os.WriteFile(filepath.Join(root, name), []byte(body), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			cap := withCodexLaunchCapture(t)
+			withCodexProjectRoot(t, root)
+			stdout, stderr, err := runCodexCmd(t)
+			if err != nil {
+				t.Fatalf("launch: %v", err)
+			}
+			got := codexArgvTail(t, cap)
+			if len(got) < 2 {
+				t.Fatalf("child argv = %#v, want a developer_instructions override", got)
+			}
+			payload := localInstructionPayload(t, got[:2])
+			for name, body := range tc.files {
+				if want := "<!-- source: " + name + " -->\n" + body; !strings.Contains(payload, want) {
+					t.Errorf("payload = %q, want literal preamble and body %q", payload, want)
+				}
+			}
+			if strings.Contains(payload, verb) {
+				t.Errorf("advisory leaked into developer_instructions: %q", payload)
+			}
+			if strings.Contains(stdout, verb) {
+				t.Errorf("advisory written to stdout: %q", stdout)
+			}
+			if gotAdvice := strings.Contains(stderr, verb); gotAdvice != tc.advise {
+				t.Errorf("stderr names %q = %v, want %v; stderr=%q", verb, gotAdvice, tc.advise, stderr)
+			}
+		})
+	}
+}

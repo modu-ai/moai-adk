@@ -33,6 +33,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -115,18 +116,28 @@ func codexChildArgs(kind codexVerb, tail []string) []string {
 	return append(args, tail...)
 }
 
+// codexLocalDeveloperInstructionArgs is codexLocalDeveloperInstructions without
+// the list of files read, for callers that only need the argv pair.
+func codexLocalDeveloperInstructionArgs(projectRoot string) ([]string, error) {
+	args, _, err := codexLocalDeveloperInstructions(projectRoot)
+	return args, err
+}
+
 // @MX:ANCHOR: [AUTO] Single local-instruction producer for every launch form.
 // @MX:REASON: Compose source order and framing before encoding exactly one override.
 // @MX:SPEC: SPEC-CODEX-LOCALMD-001
-// codexLocalDeveloperInstructionArgs reads both local inputs fresh on each
+// codexLocalDeveloperInstructions reads both local inputs fresh on each
 // launch, AGENTS.local.md ahead of CLAUDE.local.md (SPEC-INSTRUCTION-FILES-UNIFY-001
 // REQ-IFU-006). JSON string encoding preserves UTF-8 in a TOML basic string.
-func codexLocalDeveloperInstructionArgs(projectRoot string) ([]string, error) {
+// It stays pure: it returns the names it read so the caller, which holds the
+// diagnostic stream, decides on any advisory (REQ-IFU-007) — nothing addressed
+// to the operator enters the payload.
+func codexLocalDeveloperInstructions(projectRoot string) (args, read []string, err error) {
 	var payload strings.Builder
 	for _, name := range []string{codexLocalInstructionName, codexClaudeLocalName} {
 		body, err := readCodexLocalInstruction(projectRoot, name)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if len(body) == 0 {
 			continue
@@ -134,14 +145,16 @@ func codexLocalDeveloperInstructionArgs(projectRoot string) ([]string, error) {
 		if payload.Len() > 0 {
 			payload.WriteByte('\n')
 		}
+		// REQ-IFU-008: the literal name of the file actually read.
 		fmt.Fprintf(&payload, "<!-- source: %s -->\n", name)
 		payload.Write(body)
+		read = append(read, name)
 	}
 	if payload.Len() == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 	encoded, _ := json.Marshal(payload.String()) // A string is always JSON-encodable.
-	return []string{"-c", "developer_instructions=" + string(encoded)}, nil
+	return []string{"-c", "developer_instructions=" + string(encoded)}, read, nil
 }
 
 // codexHasDeveloperOverride scans the operator's config options, including
@@ -810,9 +823,15 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 	if err := codexInitOfferGate(cmd, projectRoot); err != nil {
 		return err
 	}
-	localArgs, err := codexLocalDeveloperInstructionArgs(projectRoot)
+	localArgs, localRead, err := codexLocalDeveloperInstructions(projectRoot)
 	if err != nil {
 		return fmt.Errorf("load Codex local instructions: %w", err)
+	}
+	// REQ-IFU-007: the fallback advisory goes to the diagnostic stream, never
+	// into developer_instructions.
+	if msg := localInstructionsAdvisory(slices.Contains(localRead, codexLocalInstructionName),
+		slices.Contains(localRead, codexClaudeLocalName)); msg != "" {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), msg)
 	}
 	if len(localArgs) > 0 && codexHasDeveloperOverride(tail) {
 		return errors.New(codexDuplicateLocalOverrideDiag)

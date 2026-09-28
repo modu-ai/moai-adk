@@ -101,6 +101,11 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	// Render per-section pass/fail tables + counts + summary (REQ-TUX4-002).
 	_, _ = fmt.Fprintln(out, renderDoctorGroups(out, groups, verbose, th))
 
+	// REQ-IFU-012: the same local-instruction advisory `moai update` prints.
+	if cwd, err := os.Getwd(); err == nil {
+		emitLocalInstructionsAdvisory(out, cwd)
+	}
+
 	failCount := countFailedChecks(allChecks)
 
 	if fix && failCount > 0 {

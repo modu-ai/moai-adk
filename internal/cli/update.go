@@ -262,6 +262,10 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if err := checkProjectMarker(cwd); err != nil {
 			return err
 		}
+		// Advisory only: update never moves, renames, or deletes either local
+		// instruction file (REQ-IFU-011). The rename is `moai migrate
+		// local-instructions`, run by the operator.
+		emitLocalInstructionsAdvisory(out, cwd)
 	}
 
 	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-005: acquire update lock before any
