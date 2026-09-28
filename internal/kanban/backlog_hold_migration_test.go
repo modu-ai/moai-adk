@@ -502,3 +502,39 @@ func modTime(t *testing.T, path string) time.Time {
 	}
 	return info.ModTime()
 }
+
+// assertRebuildParity is the rebuild's load-bearing comparison; its mismatch
+// branches are unit-tested directly so every tuple field's divergence is
+// observed failing, not just the row-count one the mutation exercises.
+func TestAssertRebuildParityDetectsEveryTupleMismatch(t *testing.T) {
+	base := backlogItemRow{
+		Seq: 1, ID: "t1", Text: "card", AddedAt: "2026-09-29T00:00:00Z",
+		SpecID:  sql.NullString{String: "SPEC-X-001", Valid: true},
+		Landing: sql.NullString{String: `{"ref":"r"}`, Valid: true},
+		State:   "queued",
+	}
+	mutations := map[string]func(*backlogItemRow){
+		"seq":      func(r *backlogItemRow) { r.Seq = 2 },
+		"id":       func(r *backlogItemRow) { r.ID = "t2" },
+		"text":     func(r *backlogItemRow) { r.Text = "changed" },
+		"added_at": func(r *backlogItemRow) { r.AddedAt = "2026-09-29T01:00:00Z" },
+		"spec_id":  func(r *backlogItemRow) { r.SpecID = sql.NullString{} },
+		"landing":  func(r *backlogItemRow) { r.Landing = sql.NullString{} },
+		"state":    func(r *backlogItemRow) { r.State = "hold" },
+	}
+	for name, mutate := range mutations {
+		got := base
+		mutate(&got)
+		if err := assertRebuildParity([]backlogItemRow{base}, []backlogItemRow{got}); err == nil {
+			t.Errorf("%s mismatch: parity must fail", name)
+		}
+	}
+	// The count mismatch fires before any tuple comparison.
+	if err := assertRebuildParity([]backlogItemRow{base}, nil); err == nil {
+		t.Error("row-count mismatch: parity must fail")
+	}
+	// Identical rows pass.
+	if err := assertRebuildParity([]backlogItemRow{base}, []backlogItemRow{base}); err != nil {
+		t.Errorf("identical rows must pass: %v", err)
+	}
+}

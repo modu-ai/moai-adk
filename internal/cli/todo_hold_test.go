@@ -9,6 +9,7 @@
 package cli
 
 import (
+	"database/sql"
 	"os"
 	"strings"
 	"testing"
@@ -82,6 +83,35 @@ func TestTodoHold_RefusesNonQueuedStates(t *testing.T) {
 		}
 	}
 	_ = store
+}
+
+// AC-THS-006 — a card in a state the enum does not know (hand-corrupted db)
+// refuses with an honest message: no recovery verb is invented for a state
+// this binary never issued.
+func TestTodoHold_RefusesUnknownState(t *testing.T) {
+	root, store := todoFixture(t)
+	seedTodo(t, "corrupted card")
+	db, err := sql.Open("sqlite", store.EnginePath())
+	if err != nil {
+		t.Fatalf("open engine: %v", err)
+	}
+	if _, err := db.Exec(`PRAGMA ignore_check_constraints = ON`); err != nil {
+		t.Fatalf("suspend checks: %v", err)
+	}
+	if _, err := db.Exec(`UPDATE items SET state = 'future_state' WHERE id = 't1'`); err != nil {
+		t.Fatalf("corrupt state: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close engine: %v", err)
+	}
+	before := readBacklogBytes(t, root)
+
+	if _, _, err := runTodo(t, "hold", "1"); err == nil {
+		t.Fatal("holding a card in an unknown state must be refused")
+	}
+	if got := readBacklogBytes(t, root); string(got) != string(before) {
+		t.Error("refused unknown-state hold must leave the queue file byte-identical")
+	}
 }
 
 // AC-THS-006 — `--expect` mismatch refuses the hold, writing nothing (the
