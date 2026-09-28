@@ -9,6 +9,10 @@ package cli
 // without a cycle, and both carriers are unexported besides (spec.md
 // REQ-AP-013). The assertion guarantees the failure — a one-sided rename
 // turns this test RED — not the derivation.
+//
+// SPEC-ROLE-NAMING-CODE-001 M4: the full three-way equality (guard constant
+// == -f role token == lane-label prefix) is restored — the M1 tripwire is
+// gone (REQ-RNC-012).
 
 import (
 	"testing"
@@ -16,17 +20,25 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// TestFactoryRoleTokenPinsGuardConstant pins AC-AP-018 (CLI limb): the
-// guard's role-value constant equals the live `-f` role token this package
-// parses, and equals no retired alias — the rename that merely swaps the live
-// and legacy spellings must not pass.
+// TestFactoryRoleTokenPinsGuardConstant pins AC-AP-018 (CLI limb): the live
+// `-f` role token this package parses equals the guard's role-value constant
+// (REQ-RNC-012's three-way equality, CLI carrier), the token is the canonical
+// `lane`, and the retired spellings are not accepted anywhere on the token
+// path — a rename that merely swaps the live and legacy spellings must not
+// pass.
 func TestFactoryRoleTokenPinsGuardConstant(t *testing.T) {
-	if factoryWorkerRoleToken != config.FactoryRoleWorker {
-		t.Fatalf("factory role token %q != guard constant %q — a one-sided rename must turn this test RED (AC-AP-018)",
-			factoryWorkerRoleToken, config.FactoryRoleWorker)
+	if factoryLaneRoleToken != config.FactoryRoleLane {
+		t.Fatalf("-f role token %q != guard value constant %q — the REQ-AP-013 equality (marker value == -f token, SPEC-ROLE-NAMING-CODE-001 REQ-RNC-012) regressed",
+			factoryLaneRoleToken, config.FactoryRoleLane)
 	}
-	if config.FactoryRoleWorker == factoryLegacyAgentRoleToken {
-		t.Fatalf("guard constant %q equals the retired alias %q — swapping the live and legacy spellings must not pass (AC-AP-018)",
-			config.FactoryRoleWorker, factoryLegacyAgentRoleToken)
+	if factoryLaneRoleToken != "lane" {
+		t.Fatalf("factory role token %q != %q — the canonical token must stay lane (AC-AP-018)",
+			factoryLaneRoleToken, "lane")
+	}
+	for _, legacy := range []string{"worker", "agent"} {
+		p, err := parseFactoryFlag([]string{"-f", legacy})
+		if err == nil {
+			t.Fatalf("-f %s parsed as %+v, want the legacy-token refusal (AC-AP-018)", legacy, p)
+		}
 	}
 }

@@ -327,10 +327,18 @@ func TestRunDiagnosticChecks_AllChecksHaveNames(t *testing.T) {
 
 func TestRunDiagnosticChecks_AllChecksHaveValidStatus(t *testing.T) {
 	checks := runDiagnosticChecks(false, "")
+	// CheckInfo is a defined non-gating status: the renderer maps it to
+	// "info", groupCounts ignores it, and the exit code counts only fails.
+	// The default run emits it for the opt-in "Served Model" hint row.
 	validStatuses := map[uikit.CheckStatus]bool{
 		uikit.CheckOK:   true,
 		uikit.CheckWarn: true,
 		uikit.CheckFail: true,
+		// CheckInfo is a valid terminal status: the Factory Run check reports
+		// "no session records" as informational (SPEC-ROLE-NAMING-CODE-001
+		// M3), and the codex-only downgrade path rewrites absence warnings
+		// to info.
+		uikit.CheckInfo: true,
 	}
 	for i, check := range checks {
 		if !validStatuses[check.Status] {

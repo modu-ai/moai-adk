@@ -111,10 +111,9 @@ func TestAC_CONTRACT_016(t *testing.T) {
 		}, contract.RefuseReceiptSignerMismatch},
 		{"r_configured_decider_jev", "jev", "llm", true, "", nil, contract.RefuseKickoffDeciderJevSole},
 		{"s_llm_with_jev_answer", "llm", "llm", false, "", jevApprove, contract.RefuseReceiptInvalid},
-		{"t_llm_jev_both_approve_interim_rule", "llm+jev", "llm+jev", false, "", func(r *contract.KickoffReceipt) {
-			r.RequestedDecider, r.EffectiveDecider = "llm+jev", "llm+jev"
-			jevApprove(r)
-		}, contract.RefuseReceiptRequiresHuman},
+		// Row (t) — the interim A1 rule — is replaced by
+		// TestSignInterimRuleFollowsDoctrine, which injects both doctrine
+		// states at every head.
 	}
 	for _, tc := range receiptCases {
 		t.Run(tc.name, func(t *testing.T) {

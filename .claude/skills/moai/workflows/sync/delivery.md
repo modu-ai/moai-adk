@@ -427,6 +427,10 @@ Tool: AskUserQuestion with options tailored to delivery result (single-phase con
 - Return to Main Directory
 - Remove This Worktree
 
+<!-- moai:contract-mode-start id="contract-next-steps" -->
+Where `workflow.autonomy.mode: contract` — no next-step question is asked; close with the completion report. A Phase 13 local CI mirror failure (Step 3.1.5) is an escalation report, not a question. See `.claude/rules/moai/workflow/contract-autonomy.md` § Escalation routing.
+
+<!-- moai:contract-mode-end -->
 ---
 
 ## Graceful Exit
@@ -491,6 +495,10 @@ All of the following must be verified:
 - If user confirms, syncs based on git diff
 - If no changes found, reports "Nothing to sync"
 
+<!-- moai:contract-mode-start id="contract-error-flow" -->
+Where `workflow.autonomy.mode: contract` — the current-branch confirmation is not asked: sync only the signed SPEC's changes, and escalate when uncommitted changes fall outside the contract's ownership. See `.claude/rules/moai/workflow/contract-autonomy.md` § Escalation routing.
+
+<!-- moai:contract-mode-end -->
 ---
 
 Version: 4.0.0

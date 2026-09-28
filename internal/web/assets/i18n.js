@@ -1091,7 +1091,7 @@ window.MOAI_I18N = {
     "agentdesc.manager-develop": "구현 전담 (run 단계) — tdd / ddd / autofix 세 가지 사이클을 지원합니다.",
     "agentdesc.super-advisor": "고심도 추론 자문 — 모든 단계에서 구속력 없는 진단과 선택지를 제시합니다.",
     "agentdesc.manager-design": "Claude Design 연동 담당 — 디자인 시스템 생성·동기화와 화면 산출물, 핸드오프를 맡습니다.",
-    "agentdesc.manager-lead": "대규모 작업 조율 — Tier L 팬아웃과 칸반·팩토리 리드 세션의 카드 배차를 맡습니다.",
+    "agentdesc.manager-lead": "대규모 작업 조율 — Tier L 팬아웃과 칸반·팩토리 리더 세션의 카드 배차를 맡습니다.",
     "agentdesc.builder-harness": "산출물 메타 생성 — 에이전트·스킬·플러그인·커맨드·훅·MCP/LSP 서버의 뼈대를 만듭니다.",
     "agentdesc.mission-governor": "읽기 전용 판단 에이전트 — 승인된 GTD 자동 미션의 봉인된 스냅숏에서 유계의 구조화된 결정을 내립니다. 상태 변경은 결정적 실행자가 검증·수행합니다.",
     "agentdesc.e2e-tester": "종단 간(E2E) 테스트 실행 — 웹·모바일·데스크톱 앱의 사용자 여정을 검증합니다.",

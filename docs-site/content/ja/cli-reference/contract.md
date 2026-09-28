@@ -17,6 +17,9 @@ draft: false
 | `moai contract verify <SPEC-ID>` | 契約を検査します。読み取り専用なのでフックから呼んでも安全です | 0 有効 · 1 無効 · 2 使い方/入出力エラー |
 | `moai contract show <SPEC-ID>` | 契約のセクション、署名状態、派生集合（実効の書き込み禁止パスなど）を表示します | 0 表示 · 2 使い方/入出力エラー |
 | `moai contract sign <SPEC-ID>...` | 契約に署名します | 0 署名 · 1 拒否 · 2 使い方/入出力エラー |
+| `moai contract kickoff-check <SPEC-ID> --card <card>` | contract モードの plan→run ゲートを判定します。読み取り専用です | 0 通過 · 1 不通過 · 2 使い方/入出力エラー |
+| `moai contract decide <card> --spec <SPEC-ID> --judgement <file\|->` | 着手の決定を判定し、契約ストアに記録します | 0 記録 · 1 ストア整合性エラー · 2 使い方/入出力エラー |
+| `moai contract revoke <card> --spec <SPEC-ID>` | 署名済み契約の署名を取り消します | 0 取り消し（取り消し済みを含む） · 1 署名なし · 2 使い方/入出力エラー |
 
 `verify` と `show` は `--json` で機械可読な JSON オブジェクトを出力します。`verify` の無効理由は閉じたコード集合（`unsigned`、`acceptance_hash_mismatch`、`contract_digest_mismatch` など）でのみ報告されます。
 
@@ -40,6 +43,24 @@ moai contract sign SPEC-AUTH-001 --signer llm \
 **レシート経路。** `--signer llm` または `--signer llm+jev` と `--receipt` を併せて指定すると、端末での確認なしに着手レシートを根拠として署名します。この経路は `workflow.autonomy.mode` が `contract` のときだけ使え、一度に署名できる SPEC は一つです。
 
 **拒否。** 署名が拒否されるとファイルは一切変更されず、`refused <code> (<SPEC-ID>): <理由>` の一行が出力されます。コードは閉じた集合（`not_tty`、`confirmation_mismatch`、`already_signed`、`plan_audit_not_passing`、`verify_failed` など）です。署名対象のファイルは書き込み前に再検証され、有効な署名と確認できた場合にのみ書き込まれます。作成者のコメントや空行は保持されます。
+
+## moai contract kickoff-check · decide · revoke
+
+```bash
+moai contract kickoff-check SPEC-AUTH-001 --card t42
+moai contract decide t42 --spec SPEC-AUTH-001 --judgement judgement.json
+moai contract revoke t42 --spec SPEC-AUTH-001
+```
+
+**kickoff-check.** カードが契約の `card` フィールドと一致するか、`verify` が有効な署名を報告するか、契約ストアにその署名が記録されているか、署名を覆う取り消しがないかを確認します。何も書き込まず、不通過の場合は理由をすべて列挙します。
+
+**decide.** 判断役 LLM の判断（JSON ファイル、または標準入力を表す `-`）を受け取り、着手の前提条件と決定規則を評価して、結果（`approve`・`reject`・`human`）をストアに記録します。決定が出ると `.moai/specs/<SPEC-ID>/kickoff-receipt.json` に領収書を書きます。`decide` 自身は LLM を呼ばず、署名もしません。
+
+**revoke.** ストアに取り消しイベントを追記し、`kind: revoke` のエスカレーション記録を 1 件書きます。実行中の run は次のステージ境界で止まります。ワークツリーやブランチの削除、push、キューの変更、契約や SPEC 文書の編集は行いません。
+
+{{< callout type="warning" >}}
+自律着手は**無効の状態で出荷されます。** 現在のバージョンの `kickoff-check` は `llm` · `llm+jev` の署名を `autonomous-kickoff-inactive` として拒否するため、run に入るには引き続き人間の署名が必要です。
+{{< /callout >}}
 
 ## 関連ドキュメント
 

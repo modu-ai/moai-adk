@@ -1,12 +1,12 @@
 ---
 id: SPEC-INSTRUCTION-FILES-UNIFY-001
 title: "Instruction-file unification — AGENTS.md as the harness-neutral contract"
-version: "0.3.4"
-status: draft
+version: "0.3.6"
+status: completed
 priority: P1
 phase: "v3.3.0 target"
 created: 2026-09-26
-updated: 2026-09-26
+updated: 2026-09-27
 author: manager-spec
 module: "internal/cli, internal/config, internal/hook, internal/harness/curator, internal/template/templates"
 lifecycle: spec-anchored
@@ -28,6 +28,8 @@ tier: L
 | 0.3.3 | 2026-09-26 | **Card t1270 — D21 and D22 closed in `acceptance.md`, one clause per criterion, no criterion id added (count stays 20).** D21: `AC-IFU-009` gains a positive grep for the replacement statement, run separately against `AGENTS.md` and `internal/template/templates/AGENTS.md.tmpl` (`grep -c 'project instruction files only'`, expected `>= 1` each), measured RED at tree `20c73990d` (both print `0`, exit `1`) — a phrase the superseded sentence cannot satisfy. D22: `AC-IFU-020` gains a `moai update` leg on the same fixture; `AC-IFU-027` gains an `AGENTS.md` sentinel reached through `@AGENTS.md` under all three launchers; and `REQ-IFU-023` is met rather than narrowed — `AC-IFU-019` now requires a durable test, `TestClaudeImportResolution_AgentsLocalSentinel` (0 declarations at `20c73990d`), anchored and asserted by its `--- PASS:` line. That test needs a live `claude`, so CI records it skipped rather than passed; `acceptance.md` §D.3.1 states this. No requirement text changed. |
 
 | 0.3.4 | 2026-09-26 | **Card t1270 — delta plan-audit N1 closed, plus the REQ-IFU-023 debt condition.** N1 (major, blocking): `AC-IFU-019` required `TestClaudeImportResolution_AgentsLocalSentinel` but no milestone owned it. `plan.md` M3 now carries a task that creates the test, states its environment (a real `claude` binary with credentials; CI records a skip), and records its local `--- PASS:` line in `progress.md` §E.2; a second M3 task owns the headless measurements of `AC-IFU-019`, `AC-IFU-020`, and `AC-IFU-027`, which previously had no owner (M1 owns only `021`/`022`). Condition: `acceptance.md` §D.3.1 gains named debt item 3 — CI never executes the test; `.github/workflows/ci.yml:229` and `:311` record the skip in the `go test -json` stream and the census lists it, but nothing fails or alerts on it, so its evidence is local-run only. The deferred items renumber 3-5 → 4-6. No requirement text changed; the criterion count stays 20. |
+| 0.3.5 | 2026-09-27 | **Card t1243 — plan correction after a run-phase deviation, lead-approved.** `plan.md` M2 instructed inverting the `codex_contract_link_test.go` `@AGENTS.local.md`-imports assertion at M2. Run-phase M2 (commits `108be044f` / `6d07b91c8` / `fbf513df4`; `progress.md` §E.2 M2, Deviation 1) inverted the `codex_local_instructions_test.go` read-order assertions but deferred the link-test inversion, and the same inversion in `TestCodexLocalSeparation`, because the `CLAUDE.md` half (`@AGENTS.local.md` = 1) holds only after `codexCreatedClaudeBody` changes — M3 scope — and `acceptance.md` `AC-IFU-012` already assigns that test to M3. The lead approved the deviation. `plan.md` M2 now states the move and its reason; M3 gains the corresponding task. No requirement or criterion text changed; the criterion count stays 20. |
+| 0.3.6 | 2026-09-27 | **Card t1243 — traceability residue for the requirement retired at v0.3.2, raised by manager-develop at M3.** `acceptance.md` §D.2's set-membership command printed `10d9 / < REQ-IFU-016` because three prose passages (the `AC-IFU-003` proxy note, the `AC-IFU-012` v0.3.2 repair record, and the §D.2 derivation paragraph) still named the retired id by its token, and the command extracts every token in the file as a coverage row. The passages now name it in prose — the convention `AC-IFU-010`'s note already stated — and §D.2 records that convention next to the command. The command itself is unchanged, so its sensitivity is too: a scratch mutant with every `REQ-IFU-013` token removed makes it print `> REQ-IFU-013`. Also, one sentence each: `AC-IFU-002` and `AC-IFU-018` now state why they are declared proxies (progress.md noun-table rows 2 and 10), and §D.3.1 debt item 2 records that t1269's rule has landed. No requirement text changed; no criterion added or removed; the criterion count stays 20. |
 
 > **[HARD] The id gaps in this SPEC are the carve's footprint, not an error.** `REQ-IFU-007~012`
 > and `REQ-IFU-020~022` are absent here because they live in

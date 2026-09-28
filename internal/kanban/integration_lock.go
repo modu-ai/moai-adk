@@ -2,7 +2,7 @@
 //
 // The doctrine this backs (`kanban-dispatch.md` § Integration into the release
 // branch is self-served) serializes lanes by ANNOUNCEMENT: a lane tells the
-// lead before entering the release worktree, the lead broadcasts the hold, and
+// leader before entering the release worktree, the leader broadcasts the hold, and
 // no other session enters until the completion report. Card t181 wrote that
 // rule and named its own gap in the same breath — announcement is a social
 // protocol, so nothing stops a lane that skips it, and the check such a lane

@@ -16,7 +16,7 @@ import (
 //
 // — matches none of them, so it never entered doc.REQs at all. As with the
 // heading axis, it did not fail a rule; it was never visited by one, and that
-// silence was indistinguishable from a pass. The lead measured the asymmetry
+// silence was indistinguishable from a pass. The leader measured the asymmetry
 // through the binary: the line above produced zero REQ-coverage findings, and
 // prefixing it with `- ` produced one. Two lanes (cards t1020 and t1057)
 // reproduced it independently before it was carded.

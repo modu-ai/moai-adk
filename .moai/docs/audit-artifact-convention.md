@@ -79,6 +79,20 @@ An exported audit artifact carries at minimum:
   Claim / Evidence / Baseline-attribution / Gaps / Residual-risk
 - Iteration history when the audit ran more than once — what changed between
   iterations and why
+- Two machine-readable lines, each at the start of its own line, which the
+  factory card record reads to decide whether a card may leave audit (the prose
+  verdict stays; these lines are added, not substituted):
+
+  ```
+  verdict: <PASS|PASS-WITH-DEBT|FAIL>
+  audited_sha: <full commit SHA the audit read>
+  ```
+
+  `audited_sha` names the commit the audit read — the commit recorded when the
+  card entered audit. Write each line exactly once; two different values make
+  the file unreadable to the gate. These lines belong in the exported file
+  only, never in the auditor's final chat message, whose last line stays the
+  receipt-citation verdict line where that gate applies.
 
 An inline response summary alone does not satisfy this convention. The
 summary points to the file; it does not substitute for it.

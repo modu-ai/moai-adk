@@ -231,7 +231,7 @@ func ResolveGLMReasoningForModel(model, agentName, claudeEffort string) GLMReaso
 
 // SessionGLMReasoningState derives the SESSION-GLOBAL GLM reasoning state for the
 // Branch-B explicit-write delivery (REQ-MTP-030, raised to the `max` state by
-// REQ-GEM-002 — lead-ratified 2026-08-22, superseding REQ-GER-004 of the stalled
+// REQ-GEM-002 — leader-ratified 2026-08-22, superseding REQ-GER-004 of the stalled
 // SPEC-GLM-EFFORT-REBALANCE-001 draft; spec.md §1.3). Env vars and the
 // settings.local.json env block are session-global (no per-agent reasoning-control
 // channel through the z.ai shim), so the per-agent overlay collapses to ONE session
@@ -255,7 +255,7 @@ func ResolveGLMReasoningForModel(model, agentName, claudeEffort string) GLMReaso
 //
 // Reasoning delivery is MEASURED, with a direction reversal recorded after this
 // SPEC closed: the null-controlled live differential (SPEC-V3R6-AUDIT-MODEL-PIN-001
-// acceptance.md AC-AMP-006 amendment, 2026-08-24, lead-approved; four runs)
+// acceptance.md AC-AMP-006 amendment, 2026-08-24, leader-approved; four runs)
 // proved the top-level `reasoning_effort` request field is the effective
 // delivery channel (ratios 1.34/1.85/1.48 against the 1.25 bound) while the
 // thinking-budget request object is IGNORED (null 1.02). The earlier t175 shim

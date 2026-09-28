@@ -1,0 +1,10 @@
+WARNING: moai glm uses GLM models for the MAIN SESSION. Known limitations:
+  - Main session context window: 1M (glm-5.3, glm-5.3-flash)
+  - Z.AI concurrency is limited (1-3 in-flight requests per paid tier)
+Mixed Claude/GLM teammate roles require verified teammate routing support.
+Using project profile 'moai-adk' (recorded for this project). Use -p default to override.
+Launching Claude Code with GLM backend...
+Profile: moai-adk
+Ignoring 111 permissions.allow entries from .claude/settings.json: this workspace has not been trusted. Run Claude Code interactively here once and accept the trust dialog, or set projects["/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/a424fc26-39f5-4b5e-a0f1-a8b767c73688/scratchpad/ifu/ac027"].hasTrustDialogAccepted: true in /Users/goos/.moai/claude-profiles/moai-adk/.claude.json.
+⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization's connectors
+[claude-code:unrecognized_model] {"model":"glm-5.3-flash[1m]","query_source":"sdk"}

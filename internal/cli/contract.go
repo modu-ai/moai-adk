@@ -400,6 +400,7 @@ func runContractSign(cmd *cobra.Command, ids []string, f contractSignFlags) erro
 		DeciderJevSole:      errors.Is(s.DeciderError, config.ErrKickoffDeciderJevSole),
 		JevEnabled:          s.JevEnabled,
 		JevMinConfidence:    s.JevMinConfidence,
+		JevDoctrineAmended:  contractDoctrineAmended(),
 		BudgetDefault:       env.budgetDefault,
 		RegistryRuleIDs:     env.ruleIDs,
 		RegistryFrozenFiles: env.frozenFiles,
@@ -513,7 +514,7 @@ Exit codes:
 	signCmd.Flags().BoolVar(&sf.resign, "resign", false,
 		"Re-sign a signed contract after its acceptance.md changed (records supersedes)")
 
-	cmd.AddCommand(verifyCmd, showCmd, signCmd)
+	cmd.AddCommand(verifyCmd, showCmd, signCmd, newContractKickoffCheckCmd(), newContractDecideCmd(), newContractRevokeCmd())
 	return cmd
 }
 

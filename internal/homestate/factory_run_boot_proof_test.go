@@ -54,8 +54,8 @@ func seedOperatorLegacyRows(t *testing.T, db *FactoryDB) {
 
 func operatorBootOpts() ReconcileOptions {
 	return ReconcileOptions{
-		BootTime:         func() (time.Time, bool) { return operatorBoot, true },
-		LeadRecordAbsent: func(string) bool { return true },
+		BootTime:               func() (time.Time, bool) { return operatorBoot, true },
+		LegacyPeerRecordAbsent: func(string) bool { return true },
 	}
 }
 
@@ -93,13 +93,13 @@ func TestBootProofDeclinesWithoutEveryPremise(t *testing.T) {
 		extra func(t *testing.T, db *FactoryDB)
 	}{
 		{"boot time unknown", ReconcileOptions{
-			BootTime:         func() (time.Time, bool) { return time.Time{}, false },
-			LeadRecordAbsent: func(string) bool { return true },
+			BootTime:               func() (time.Time, bool) { return time.Time{}, false },
+			LegacyPeerRecordAbsent: func(string) bool { return true },
 		}, nil},
-		{"boot probe not wired", ReconcileOptions{LeadRecordAbsent: func(string) bool { return true }}, nil},
+		{"boot probe not wired", ReconcileOptions{LegacyPeerRecordAbsent: func(string) bool { return true }}, nil},
 		{"lead record may exist", ReconcileOptions{
-			BootTime:         func() (time.Time, bool) { return operatorBoot, true },
-			LeadRecordAbsent: func(string) bool { return false },
+			BootTime:               func() (time.Time, bool) { return operatorBoot, true },
+			LegacyPeerRecordAbsent: func(string) bool { return false },
 		}, nil},
 		{"lead-record check not wired", ReconcileOptions{
 			BootTime: func() (time.Time, bool) { return operatorBoot, true },

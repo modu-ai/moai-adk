@@ -317,6 +317,9 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("get working directory: %w", err)
 		}
+		if migrationErr := runUpdateWorktreeMigration(lockRoot, true, out); migrationErr != nil {
+			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Worktree migration preview", "failed", migrationErr.Error(), &th))
+		}
 		// SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-009): surface the worktree
 		// advisory on the dry-run path too, so `moai update --dry-run` smoke
 		// runs (AC-WBG-009) observe it without mutating the filesystem.
@@ -342,6 +345,13 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		// ABOVE stripRetiredV2DenyEntries, which rewrites settings.json.
 		//
 		return emitDryRunReinstallPlan(cmd, cwd, getBoolFlag(cmd, "force"), th)
+	}
+
+	// This is after the dry-run return and under the update lock. It also runs
+	// when template sync is version-matched, so a later update can retry trees
+	// that were locked or active on an earlier pass.
+	if migrationErr := runUpdateWorktreeMigration(lockRoot, false, out); migrationErr != nil {
+		_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Worktree migration", "failed", migrationErr.Error(), &th))
 	}
 
 	// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-005): settle a

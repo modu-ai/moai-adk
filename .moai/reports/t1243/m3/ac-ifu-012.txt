@@ -1,0 +1,46 @@
+=== RUN   TestCodexContractLinkCreation
+=== RUN   TestCodexContractLinkCreation/fixture=i1_both_absent
+=== RUN   TestCodexContractLinkCreation/fixture=i2_agents_only
+=== RUN   TestCodexContractLinkCreation/fixture=i3_claude_only
+=== RUN   TestCodexContractLinkCreation/fixture=i4_both_no_link
+=== RUN   TestCodexContractLinkCreation/fixture=i5a_line_front
+=== RUN   TestCodexContractLinkCreation/fixture=i5b_line_middle
+=== RUN   TestCodexContractLinkCreation/fixture=i5c_line_end
+=== RUN   TestCodexContractLinkCreation/fixture=i5d_crlf
+=== RUN   TestCodexContractLinkCreation/fixture=i6_fenced_only
+=== RUN   TestCodexContractLinkCreation/fixture=i7_quoted_only
+=== RUN   TestCodexContractLinkCreation/fixture=i8_agents_link_only
+=== RUN   TestCodexContractLinkCreation/fixture=i9_local_link_only
+--- PASS: TestCodexContractLinkCreation (0.04s)
+    --- PASS: TestCodexContractLinkCreation/fixture=i1_both_absent (0.00s)
+    --- PASS: TestCodexContractLinkCreation/fixture=i2_agents_only (0.00s)
+    --- PASS: TestCodexContractLinkCreation/fixture=i3_claude_only (0.00s)
+    --- PASS: TestCodexContractLinkCreation/fixture=i4_both_no_link (0.00s)
+    --- PASS: TestCodexContractLinkCreation/fixture=i5a_line_front (0.00s)
+    --- PASS: TestCodexContractLinkCreation/fixture=i5b_line_middle (0.00s)
+    --- PASS: TestCodexContractLinkCreation/fixture=i5c_line_end (0.00s)
+    --- PASS: TestCodexContractLinkCreation/fixture=i5d_crlf (0.00s)
+    --- PASS: TestCodexContractLinkCreation/fixture=i6_fenced_only (0.00s)
+    --- PASS: TestCodexContractLinkCreation/fixture=i7_quoted_only (0.00s)
+    --- PASS: TestCodexContractLinkCreation/fixture=i8_agents_link_only (0.01s)
+    --- PASS: TestCodexContractLinkCreation/fixture=i9_local_link_only (0.01s)
+=== RUN   TestCodexContractLink_LocalImportMatrix
+=== RUN   TestCodexContractLink_LocalImportMatrix/claude=claude_absent/local_present=true
+=== RUN   TestCodexContractLink_LocalImportMatrix/claude=claude_absent/local_present=false
+=== RUN   TestCodexContractLink_LocalImportMatrix/claude=claude_unlinked/local_present=true
+=== RUN   TestCodexContractLink_LocalImportMatrix/claude=claude_unlinked/local_present=false
+=== RUN   TestCodexContractLink_LocalImportMatrix/claude=claude_agents_link_only/local_present=true
+=== RUN   TestCodexContractLink_LocalImportMatrix/claude=claude_agents_link_only/local_present=false
+=== RUN   TestCodexContractLink_LocalImportMatrix/claude=claude_both_links/local_present=true
+=== RUN   TestCodexContractLink_LocalImportMatrix/claude=claude_both_links/local_present=false
+--- PASS: TestCodexContractLink_LocalImportMatrix (0.13s)
+    --- PASS: TestCodexContractLink_LocalImportMatrix/claude=claude_absent/local_present=true (0.02s)
+    --- PASS: TestCodexContractLink_LocalImportMatrix/claude=claude_absent/local_present=false (0.02s)
+    --- PASS: TestCodexContractLink_LocalImportMatrix/claude=claude_unlinked/local_present=true (0.02s)
+    --- PASS: TestCodexContractLink_LocalImportMatrix/claude=claude_unlinked/local_present=false (0.02s)
+    --- PASS: TestCodexContractLink_LocalImportMatrix/claude=claude_agents_link_only/local_present=true (0.02s)
+    --- PASS: TestCodexContractLink_LocalImportMatrix/claude=claude_agents_link_only/local_present=false (0.01s)
+    --- PASS: TestCodexContractLink_LocalImportMatrix/claude=claude_both_links/local_present=true (0.02s)
+    --- PASS: TestCodexContractLink_LocalImportMatrix/claude=claude_both_links/local_present=false (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.070s

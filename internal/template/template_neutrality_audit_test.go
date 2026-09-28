@@ -157,6 +157,12 @@ var neutralityClasses = []neutralityClass{
 		),
 	},
 	{
+		// C5 names the maintainer-only legacy local file. `AGENTS.local.md` —
+		// the user-owned local file the deployed CLAUDE.md imports last — is an
+		// ALLOWED template reference (SPEC-INSTRUCTION-FILES-UNIFY-001
+		// REQ-IFU-015), so the pattern is the literal filename and never a
+		// `*.local.md` family match. TestTemplateNeutralityC5_LocalFileNames
+		// pins both halves.
 		name:      "C5-claude-local-ref",
 		severity:  neutralityBinary,
 		pattern:   regexp.MustCompile(`CLAUDE\.local\.md`),
@@ -432,5 +438,49 @@ func TestTemplateNeutralityAuditC8Preserve(t *testing.T) {
 		}
 		t.Errorf("C8 GOOS= PRESERVE expected 2 files, got %d: %s",
 			len(preserved), strings.Join(files, ", "))
+	}
+}
+
+// TestTemplateNeutralityC5_LocalFileNames pins REQ-IFU-015 on fixtures rather
+// than on the live tree: a template file referencing `AGENTS.local.md` (the
+// deployed CLAUDE.md's final import) produces NO C5 hit, and one referencing
+// `CLAUDE.local.md` does — so widening C5 to a `*.local.md` family pattern, or
+// dropping it, turns this test red.
+func TestTemplateNeutralityC5_LocalFileNames(t *testing.T) {
+	t.Parallel()
+
+	var c5 neutralityClass
+	for _, c := range neutralityClasses {
+		if c.name == "C5-claude-local-ref" {
+			c5 = c
+		}
+	}
+	if c5.pattern == nil {
+		t.Fatal("C5-claude-local-ref class not registered")
+	}
+
+	cases := []struct {
+		name    string
+		body    string
+		wantHit bool
+	}{
+		{name: "agents_local_allowed", body: "# CLAUDE.md\n\n@AGENTS.md\n\n@AGENTS.local.md\n", wantHit: false},
+		{name: "claude_local_forbidden", body: "Read CLAUDE.local.md for local rules.\n", wantHit: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte(tc.body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			hits, err := scanSimpleClass(root, c5)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, hit := hits["CLAUDE.md"]
+			if hit != tc.wantHit {
+				t.Errorf("C5 hit on %q = %v, want %v", tc.body, hit, tc.wantHit)
+			}
+		})
 	}
 }

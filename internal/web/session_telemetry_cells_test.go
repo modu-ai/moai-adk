@@ -128,7 +128,7 @@ func TestChainCellsTolerateSchemaV1Record(t *testing.T) {
 		liveEntry("sess-old", pid),
 		liveEntry("sess-new", pid+100001),
 	})
-	writeKanbanRecord(t, root, kanban.Record{SessionID: "sess-old", Role: "lead", Backend: kanban.BackendClaude})
+	writeKanbanRecord(t, root, kanban.Record{SessionID: "sess-old", Role: "leader", Backend: kanban.BackendClaude})
 	writeKanbanRecord(t, root, kanban.Record{SessionID: "sess-new", Role: "sync", Backend: kanban.BackendClaude})
 	// Pre-dependency shape: schema 1, no model, no effort.
 	writeTelemetry(t, root, statusline.SessionTelemetryRecord{
@@ -144,7 +144,7 @@ func TestChainCellsTolerateSchemaV1Record(t *testing.T) {
 	_, byID := loadSessions(root, time.Now())
 	chain := buildChain(root, loadKanbanRecords(root), byID, "")
 
-	old := roleByName(t, chain.Roles, "lead")
+	old := roleByName(t, chain.Roles, "leader")
 	if old.Model != "" || old.Effort != "" {
 		t.Errorf("pre-dependency record invented model/effort: %+v", old)
 	}
