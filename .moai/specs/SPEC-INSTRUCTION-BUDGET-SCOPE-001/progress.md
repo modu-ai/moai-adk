@@ -180,6 +180,30 @@ Family censuses by pattern holding (`grep -rl '<pattern>' .claude/rules/`): `kan
 - **session-handoff-examples.md — 12 tokens → 12 clauses**: :160 Block 0 anchoring · :206 Block 0 launchers verbatim · :230 multi-terminal recommendation · :236 V0 lsof+cwd cross-validation · :284 Block 1 line order · :285 purpose-conditional `mode:` · :298 seed-not-permission · :303 fan-out steering phrase · :304 ultracode variants · :306 UUID fallback · :310 arm-only goal · :327 diet constraints.
 - **kanban-dispatch-detail.md — 8 tokens → 2 normative clauses + 6 prose mentions**: normative — :114 dispatch language · :130 manager-lead spawned unnamed. Prose mentions (describe the STUB's clauses; not clauses of this file) — :8, :54, :160, :265, :277, :287.
 
+### M1 — doctrine amendment, measured after edit (tree pre-commit; both copies edited identically)
+
+`§ File Size Limits` third sentence replaced: the budget now names **every instruction file the InstructionsLoaded hook measures** (always-loaded and `paths:`-scoped alike); the "Move detailed content to path-scoped rules" bullet carries the same-budget qualifier. AC-IBS-001 predicates, re-run after the edit (verbatim):
+
+```
+$ grep -c "also loads in full at every session launch" .claude/rules/moai/development/coding-standards.md
+0
+$ grep -c "InstructionsLoaded" .claude/rules/moai/development/coding-standards.md
+1
+$ grep -c "also loads in full at every session launch" internal/template/templates/.claude/rules/moai/development/coding-standards.md
+0
+```
+
+AC-IBS-001 is **green** (limiting clause 0 in both copies; InstructionsLoaded ≥ 1). 005b invariant, re-measured — the diff output is **byte-identical to the recorded baseline including the hunk header** (the amendment replaced sentences in place without changing line counts, so `141d140` did not move):
+
+```
+$ diff .claude/rules/moai/development/coding-standards.md internal/template/templates/.claude/rules/moai/development/coding-standards.md ; echo $?
+141d140
+< - `git commit --no-verify` — bypasses the relocated pre-commit quality gate (the harness safety net at the commit tier; enforced mechanically by the PreToolUse guard at `internal/hook/pre_tool.go` per SPEC-PRETOOL-GATE-MOVE-001 REQ-PGM-006 / F5)
+1
+```
+
+One hunk, its single content line byte-equal to the baseline content line, no hunk added or removed — the 005b predicate holds at its strongest form (header unmoved). REQ-IBS-003 satisfied: both copies carry the identical amendment.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
