@@ -45,7 +45,24 @@ func readTodoQueue(projectRoot string) TodoVM {
 		if it.SpecID != nil {
 			row.SpecID = *it.SpecID
 		}
+		for _, f := range rec.Findings {
+			if f.Names(it.ID) {
+				row.Relations = append(row.Relations, todoRelationCell(f, it.ID))
+			}
+		}
 		vm.Items = append(vm.Items, row)
 	}
 	return vm
+}
+
+// todoRelationCell renders one recorded finding as the display line the todo
+// row shows. The addressed card is implied by its own row: on the subject's
+// row the recorded direction reads forward ("blocks t2"), and on the
+// counterpart's row the original direction is kept and marked as the other
+// side of the record ("t1 blocks this").
+func todoRelationCell(f kanban.BacklogFinding, self string) string {
+	if f.SubjectID == self {
+		return f.Relation + " " + f.RelatedID + " (" + f.Source + ")"
+	}
+	return f.SubjectID + " " + f.Relation + " this (" + f.Source + ")"
 }
