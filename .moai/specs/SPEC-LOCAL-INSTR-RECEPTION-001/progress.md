@@ -76,7 +76,11 @@ weekly-limit error; the GLM-configured retry timed out after 180 seconds
 without an answer. A direct `codex -C <worktree> exec` control answered the root
 `AGENTS.md` question correctly and the `AGENTS.local.md` question `ABSENT` with no
 tool call. Codex's official discovery rule selects one file per directory, so this
-direct entry does not provide the sibling local file. The template and root
+direct entry does not provide the sibling local file. After seeding the
+worktree's missing runtime `.codex/hooks.json` from the primary project's
+MoAI-only hook commands, `moai codex -- exec` returned `session_drain.sh` and
+`git log --all -S` with no tool call: the MoAI launcher path received the
+migrated file. The template and root
 `AGENTS.md`/`CLAUDE.md` text now state the measured geometry, but the live Claude
 post-swap probe required by `AC-LIR-009` has not passed. Do not merge or close this
 card on the structural checks alone. Raw outputs and exact baselines are in the

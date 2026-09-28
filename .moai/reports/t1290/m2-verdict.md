@@ -2,7 +2,7 @@
 
 ## Claim
 
-`t1259`의 이관 명령을 사용해 카드 작업 트리의 실제 유지자 지침을 옮겼다. 커밋 `0ab480d9d`에는 `AGENTS.local.md`만 로컬 지침 파일로 남고, 길이는 39,999자 이하이다. 네 절의 절차 본문은 `.moai/docs/`에 보존했다. 이 결과는 파일 이관의 구조적 조건을 뒷받침하지만, 새 내용에 대한 Claude Code 수신 조건 `AC-LIR-009`는 아직 통과하지 못했다. 직접 `codex -C` 진입에서도 이 로컬 파일은 수신되지 않았다.
+`t1259`의 이관 명령을 사용해 카드 작업 트리의 실제 유지자 지침을 옮겼다. 커밋 `0ab480d9d`에는 `AGENTS.local.md`만 로컬 지침 파일로 남고, 길이는 39,999자 이하이다. 네 절의 절차 본문은 `.moai/docs/`에 보존했다. MoAI Codex 런처는 새 내용을 실제로 수신했다. Claude Code 수신 조건 `AC-LIR-009`는 아직 통과하지 못했다. 직접 `codex -C` 진입에서는 이 로컬 파일이 수신되지 않았다.
 
 ## Evidence
 
@@ -14,6 +14,7 @@
 - `go test ./internal/cli -run 'TestMigrateLocalInstructions|TestCodexLocalInstructions|TestLocalInstructionsAdvisory' -count=1` → `ok github.com/modu-ai/moai-adk/internal/cli 0.710s`. 템플릿·루트 문구 갱신 후 `make build` exit 0 (`/tmp/t1290-build.log`).
 - 도구를 끈 Claude Code 수신 검사: `timeout 180 claude -p ... --tools '' --output-format json` → exit 1, `You've hit your weekly limit · resets Oct 1 at 12pm (Asia/Seoul)` (`m2-claude-probe.json`). GLM 환경으로 재시도한 동일 질문 → `glm-5.3-flash` 미인식 진단 뒤 `timeout` exit 124, 결과 파일 0바이트 (`m2-claude-glm-probe.json`). 응답이 없어 GLM 서버 도달 여부도 확정할 수 없다. 어느 실행도 내용 수신 PASS가 아니다.
 - `codex -C <t1290 worktree> exec --sandbox read-only --json`의 도구 없는 응답은 첫 시도 `ABSENT / ABSENT`, 양성 대조 시도 `tail / ABSENT`였다 (`m2-codex-events.jsonl`, `m2-codex-control-events.jsonl` 및 각 `*-last.txt`). 이벤트에는 `item.completed`의 도구 항목이 없었다. 두 실행 모두 스킬 설명 컨텍스트 예산 초과 진단을 동반했다. `tail`은 루트 `AGENTS.md`의 Budget warning에 있고, 드레인 래퍼는 `AGENTS.local.md` §28에만 있다.
+- t1290 작업 트리에는 `.codex/hooks.json`이 없었다. primary의 훅 파일이 `moai hook ... --harness codex` 8개 명령만 담은 것을 `jq`로 읽은 뒤, 이 작업 트리의 런타임 경로로 복사했다(추적·커밋하지 않음). `./bin/moai codex status` → `wiring   wired (.codex/hooks.json, .codex/config.toml)` 및 `agents   0 TOML`. `timeout 120 ./bin/moai codex -- exec --sandbox read-only --json ...` → exit 0, 도구 없는 답변 `session_drain.sh` / `git log --all -S` (`m2-moai-codex-events.jsonl`, `m2-moai-codex-last.txt`). 호출에 `-w`나 `--worktree` 인자는 주지 않았다. 이벤트에 스킬 설명 컨텍스트 예산 초과 진단은 있으나, 답변의 두 값은 새 로컬 지침 §28·§30과 일치한다.
 - [Codex 공식 지침 파일 탐색 문서](https://learn.chatgpt.com/docs/agent-configuration/agents-md)는 한 디렉터리에서 `AGENTS.override.md`, `AGENTS.md`, 설정된 fallback 중 하나만 읽는다고 명시한다. 기본 제한은 32 KiB이며, sibling `AGENTS.local.md`는 자동 합쳐지지 않는다. 위 직접 실행 결과와 부합한다.
 
 ## Baseline-attribution
@@ -23,7 +24,7 @@
 ## Gaps
 
 - 새 `AGENTS.local.md`를 실은 Claude Code의 답변은 계정 한도와 GLM 응답 시간 때문에 관측하지 못했다. `AC-LIR-009`는 열린 상태다.
-- 직접 `codex -C`에서 로컬 지침 수신이 관측되지 않았다. 현재 작업 트리의 `moai codex status`는 `.codex/hooks.json` 누락으로 `wiring partial`, `agents 0 TOML`을 반환하므로 MoAI 런처 실세션의 새 내용 수신도 확인하지 못했다.
+- 직접 `codex -C`에서 로컬 지침 수신이 관측되지 않았다. MoAI Codex 런처의 실제 수신은 위 테스트로 확인했으나, 런타임 훅 파일을 복사한 이 작업 트리에서만 잰 것이다. 기본 worktree 생성 경로가 그 파일을 심는지는 이 테스트의 범위가 아니다.
 - 템플릿 문구 수정은 아직 커밋·병합·CI 판정을 받지 않았다. primary `main` 체크아웃의 구형 공유 워킹 사본은 건드리지 않았다.
 
 ## Residual-risk
