@@ -56,7 +56,7 @@ added_in: "v3.1"
 
 ```mermaid
 flowchart TD
-    Orch["编排器<br/>(主会话)"] -->|"/moai run SPEC-XXX<br/>Tier L 委派"| Lead["manager-lead<br/>只做协调的领导者"]
+    Orch["编排器<br/>(主会话)"] -->|"/moai run SPEC-XXX<br/>Tier L 委派"| Lead["manager-lead<br/>只做协调的主导角色"]
     Lead -->|"M1 实现"| W1["叶子智能体 1<br/>manager-develop"]
     Lead -->|"M1 侦察"| W2["叶子智能体 2<br/>只读 Agent(general-purpose)"]
     Lead -->|"M1 同事验证"| W3["叶子智能体 3<br/>只读（非作者）"]

@@ -52,7 +52,7 @@ $ moai glm -f lane
 
 **当编号与存活的泳道撞上时。** `-f lane-<n>` 直接选定的编号若被存活的会话占着，加入会被拒绝。用 `-f lane` 自动领取下一个空号时不会被拒绝，只会告知跳过了哪些被占用的编号 —— 例如：`factory: lane-2 is held by a live session; launching as lane-3`。
 
-**旧拼写不再被解析。** `-f worker`、`-f worker-<n>`、`--name worker-<n>` 会点名规范形式并报错 —— 请用 `-f lane` 加入，或用 `-f lane-<n>` 选定精确编号。改名前的二进制留下的存活运行记录同样会拒绝加入并说明原因。
+**旧拼写不再被解析。** 用旧拼写加入会点名规范形式并报错 —— 请用 `-f lane` 加入，或用 `-f lane-<n>` 选定精确编号。改名前的二进制留下的存活运行记录同样会拒绝加入并说明原因。
 
 一次运行只能带一个进入标记 —— `-k` 与 `-f` 同时给出会报错。v1.2.0 的统一进入形式 —— `-k <N>`（主导）和 `-k <N> --name lane-<i>`（泳道）—— 仍然有效（不带 N、只写 `-k --name lane-<i>` 时默认 8 条泳道）。看板主导的套接字开在 `/tmp/moai-socket-kanban/<run-id>`，工厂主导的套接字开在 `/tmp/moai-socket-factory/<run-id>`，引导信息会一并给出实际路径。CG 已停用，请用 `moai migrate cg` 预览迁移选项。
 

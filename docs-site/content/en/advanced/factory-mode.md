@@ -52,7 +52,7 @@ Attach no value to `-f` and the factory leader opens. To join as a lane, use `-f
 
 **When a number collides with a live lane.** When `-f lane-<n>` names a number a live session already holds, the join is refused. Auto-assigning the next free number with `-f lane` is never refused; it reports which held numbers it skipped — e.g. `factory: lane-2 is held by a live session; launching as lane-3`.
 
-**The former spellings no longer parse.** `-f worker`, `-f worker-<n>`, and `--name worker-<n>` error naming the canonical form — join with `-f lane`, or pick an exact number with `-f lane-<n>`. A live run record left by a pre-rename binary also refuses the join and says so.
+**The former spellings no longer parse.** Joining with a former spelling errors, naming the canonical form — join with `-f lane`, or pick an exact number with `-f lane-<n>`. A live run record left by a pre-rename binary also refuses the join and says so.
 
 One launch takes one entry token — passing `-k` and `-f` together is an error. The v1.2.0 unified entry forms — `-k <N>` (leader) and `-k <N> --name lane-<i>` (lane) — remain valid (a bare `-k --name lane-<i>` with no N defaults to 8 lanes). As the kanban leader's socket opens at `/tmp/moai-socket-kanban/<run-id>`, the factory leader's socket opens at `/tmp/moai-socket-factory/<run-id>`, and the bootstrap notice carries the actual path. CG is retired; use `moai migrate cg` to preview explicit migration choices.
 

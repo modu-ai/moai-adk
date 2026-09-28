@@ -137,6 +137,6 @@ v3.1からは`moai goal arm --max-turns 0`で武装するかカンバンモー�
 ## 関連文書
 
 - [自律連続ループ](/ja/advanced/autonomous-loops) — ゴールエンジンの停滞ガードと上限の意味論
-- [カンバンモード](/ja/advanced/kanban-mode) — リードセッションが率いる3段階チェーン
+- [カンバンモード](/ja/advanced/kanban-mode) — リーダーセッションが率いる3段階チェーン
 - [`/moai loop`](/ja/utility-commands/moai-loop) — 診断主導の決定的ループ (兄弟コマンド)
 - [ハーネスエンジニアリング](/ja/core-concepts/harness-engineering) — ループと観察がハーネス学習へと流れる経路

@@ -5,7 +5,7 @@ draft: false
 ---
 
 {{< callout type="info" >}}
-看板模式的完整概要和 Origin-Trail Chain 设计方向请看 [看板模式](/zh/advanced/kanban-mode)。本页只讲多会话（主导 + 同伴）的运用流程。
+看板模式的完整概要和 Origin-Trail Chain 设计方向请看 [看板模式](/zh/advanced/kanban-mode)。本页只讲多会话（工厂主导 + 同伴）的运用流程。
 {{< /callout >}}
 
 ## 什么是看板模式？
