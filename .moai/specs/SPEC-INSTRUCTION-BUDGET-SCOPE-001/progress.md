@@ -246,6 +246,37 @@ mirror-identical
 
 Anchor check: the externally-referenced headings all survive verbatim — `## SPEC Phase Discipline` (:19), `## Subcommand Classification (Pipeline vs Multi-Agent)` (:75), `## SPEC Complexity Tier (S/M/L)` (:130), `### DDD Mode — ANALYZE-PRESERVE-IMPROVE` (:201), `### TDD Mode — RED-GREEN-REFACTOR (default)` (:209), `## Phase Transitions` (:311). `go test -run '^TestWorkflowRulePathsPinned$' ./internal/template/` → ok (glob unchanged). AC-IBS-002a arm: **green** (40,797 → 39,984 by compression, no split).
 
+### M4 — worktree-integration.md split (measured after edit)
+
+Per the M2 roster: companion **`worktree-integration-ops.md`** created with `paths: "**/.claude/worktrees/**"` (single pattern ⊊ parent's 3; complement {`**/.claude/agents/**`, `**/.claude/teams/**`} non-empty). Moved verbatim: § Disposing a Worktree the Automatic Sweep Does Not Reach (2,897 chars) + § Refused Commands in a Worktree-Isolated Session (19,194 chars) = 22,091. **Transfer table — [HARD] clauses moved: 0.** Both moved sections carried zero `[HARD]` tokens (M0 enumeration); all 18 parent tokens stay: parent `grep -c '\[HARD\]'` = **18** before and after, companion = **0**. One reference rewired on move: the disposal section's "the unpushed-branch rule above" now names `worktree-integration.md` § Terminology Glossary explicitly. Parent keeps two one-line redirect stubs at the removal sites plus a version-footer note (4.5.0 → 5.0.0, split recorded).
+
+Measured after edit:
+
+```
+$ python3 -c "…len(io.open('.claude/rules/moai/workflow/worktree-integration.md',…))"
+39681          # was 61,435 — saved 21,754, under 40,000 (AC-IBS-002b green)
+$ …worktree-integration-ops.md…
+22877          # companion, under 40,000
+$ grep -m1 '^paths:' …worktree-integration.md
+paths: "**/.claude/agents/**,**/.claude/worktrees/**,**/.claude/teams/**"   # parent glob unchanged
+$ cmp -s <local> <mirror> (both files)
+both-mirrors-identical
+```
+
+**Registration (REQ-IBS-011 / AC-IBS-002-G)**: companion path added to BOTH registries — `sanitizedPairPaths` (sanitized_pair_parity_test.go) and `workflowOptMirroredPaths` (rule_template_mirror_test.go), each entry commented with the byte-identical-from-birth status (no cross-registry exclusivity assertion exists; an identical pair passes structural parity trivially, so both memberships hold mechanically and the AC's ≥1-in-each is satisfied literally).
+
+Tests, all four observed PASS by name (empty-sweep checked):
+
+```
+$ go test -v -run 'TestSanitizedPairParity|TestRuleTemplateMirror|TestWorkflowRulePathsPinned|TestTemplateNeutralityAudit$' ./internal/template/
+--- PASS: TestWorkflowRulePathsPinned
+--- PASS: TestRuleTemplateMirrorDrift
+--- PASS: TestSanitizedPairParity
+--- PASS: TestTemplateNeutralityAudit
+```
+
+Inbound-anchor burden: zero external files named either moved section (measured pre-move); the companion's internal `§` references all resolve inside it or to the one named parent section. Companion content is template-clean by construction — the neutrality audit over the mirrored companion passes.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
