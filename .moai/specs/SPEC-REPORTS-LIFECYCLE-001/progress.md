@@ -142,7 +142,7 @@ sync_should_verify:
 
 ```yaml
 sync_complete_at: 2026-09-29
-sync_commit_sha: "pending-backfill-sync"   # replaced with the real sync commit SHA in the follow-up chore commit (D3 exemption)
+sync_commit_sha: "4517665ab"   # backfilled with the sync commit SHA in this follow-up chore commit (D3 exemption)
 sync_status: complete
 b12_self_test_a: "pre-emission grep SPEC-REPORTS-LIFECYCLE-001=0, t1320=0 in CHANGELOG.md — cleared for emission"
 b12_self_test_b: "AC count match — acceptance.md live identifiers AC-RLC-001..012 = 12 (reserved-token rows excluded by the live-identifier rule); CHANGELOG entry cites 12 AC"
