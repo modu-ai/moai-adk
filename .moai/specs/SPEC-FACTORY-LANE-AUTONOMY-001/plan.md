@@ -1,4 +1,4 @@
-# plan.md — SPEC-FACTORY-LANE-AUTOMY-001 (card t1338)
+# plan.md — SPEC-FACTORY-LANE-AUTONOMY-001 (card t1338)
 
 ## §A. Context
 

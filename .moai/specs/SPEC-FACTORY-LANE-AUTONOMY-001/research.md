@@ -23,8 +23,8 @@ Verified in THIS tree (develop `145c3d98c`): `SPEC-FACTORY-SELF-DISPATCH-001` an
 - **`todo --auto` foreman (t1306 / SPEC-MANAGER-TODO-001, merge `6af4d4ca3`)**: `--auto` flag
   (`internal/cli/todo.go:289`), `--auto-wait` 30m default, serial foreman (`internal/cli/todo_auto.go`):
   pick one → dispatch directive → judge completion ONLY by reading
-  `.moai/reports/<card>/evidence.md` (`autoEvidencePath` :36) → done → /clear guidance → next.
-  Liveness `autoLiveness` (:47) via registry+lsof. Invocation is currently the operator's batch
+  `.moai/reports/<card>/evidence.md` (`autoEvidencePath` :32) → done → /clear guidance → next.
+  Liveness `autoLiveness` (:51) via registry+lsof. Invocation is currently the operator's batch
   approval. **NO messaging-availability input anywhere in the path** (grep 0 hits).
 - **Factory F1 record layer (t1239 / SPEC-FACTORY-RECORD-001, merge `ed506740b`)**: verbs `factory
   handoff recover-resume / abandon-lane`, `factory runs [--retire]`, `factory assign`, `factory
