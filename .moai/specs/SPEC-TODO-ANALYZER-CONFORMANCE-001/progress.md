@@ -90,7 +90,7 @@ blockers: none
 phase: sync
 spec: SPEC-TODO-ANALYZER-CONFORMANCE-001
 sync_status: ready
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "547f3d61658f8d594d9854ad5d6c02ae34983e55"
 b12_self_test_a: "grep -c SPEC-TODO-ANALYZER-CONFORMANCE-001 CHANGELOG.md → 0 (exit 1) — emission allowed"
 b12_self_test_b: "AC count in CHANGELOG entry = 6 (AC-TAC-001..006), matches spec.md §C — live identifiers only"
 b12_self_test_c: "all file paths named in the CHANGELOG entry verified to exist this tree"
