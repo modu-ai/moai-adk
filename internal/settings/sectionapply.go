@@ -99,7 +99,8 @@ func ApplySchemaEdits(projectRoot string, edits map[string]string) error {
 		}
 	}
 
-	// typed 섹션: 단일 LoadRaw → 전 필드 적용 → 실변경 섹션만 SetSection → 단일 Save.
+	// typed 섹션: 필드별 yamlpatch 라인-스플라이스 (SPEC-WEB-SAVE-LOSSLESS-001
+	// M1 — SetSection → Save 전체-재마샬은 폐기).
 	if len(typedEdits) > 0 {
 		if err := applyTypedEdits(projectRoot, typedEdits, typedValues); err != nil {
 			return err
