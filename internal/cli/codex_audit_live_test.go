@@ -151,7 +151,7 @@ func (f *codexAuditLiveFixture) runDirect(t *testing.T, budget *liveBudget, role
 	var out, diag bytes.Buffer
 	authBefore, start := fileSHA256OrEmpty(f.realAuth), time.Now()
 	res, _ := runCodexAudit(context.Background(), codexAuditRequest{
-		Role: role, ProjectRoot: f.root, CallerDir: f.root, Root: f.root,
+		Role: role, ProjectRoot: f.root, Root: f.root,
 		Route: codexAuditRouteDirect, Program: f.codexBin, Task: strings.NewReader(task),
 		Timeout: bound, Stdout: &out, Stderr: &diag,
 	})

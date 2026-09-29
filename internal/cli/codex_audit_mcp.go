@@ -14,7 +14,8 @@
 //   - codex_role_audit_status and codex_role_audit_result read the job.
 //
 // The worktree root is an explicit input and is confined by the core: it must
-// be the worktree this server process started in.
+// be a worktree registered in the repository this server serves. There is no
+// default — a request without one is refused.
 package cli
 
 import (
@@ -45,7 +46,8 @@ const (
 )
 
 // codexRoleAuditServerDir is the directory this server process started in; it
-// names the caller's own worktree. A seam so tests can place the server.
+// anchors the repository boundary the presented root is verified against. A
+// seam so tests can place the server.
 var codexRoleAuditServerDir = os.Getwd
 
 // codexRoleAuditJob is one background launch.
@@ -106,7 +108,7 @@ func handleCodexRoleAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	}
 	job := &codexRoleAuditJob{id: id, role: role, state: codexRoleAuditRunning, startedAt: codexAuditNow().UTC()}
 	plan := prepareCodexAudit(ctx, codexAuditRequest{
-		Role: role, ProjectRoot: top, CallerDir: serverDir, Root: root, Out: out,
+		Role: role, ProjectRoot: top, Root: root, Out: out,
 		Route: codexAuditRouteMCP, Task: strings.NewReader(task),
 		Stdout: lockedWriter{&job.mu, &job.output}, Stderr: lockedWriter{&job.mu, &job.diag},
 	})
@@ -196,9 +198,9 @@ func codexRoleAuditTools() []struct {
 		handler func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)
 	}{
 		{mcp.NewTool(codexRoleAuditToolName,
-			mcp.WithDescription("Start a role whose permission contract is read-only (plan-auditor, sync-auditor, mission-governor, super-advisor) as one top-level codex exec process with the read-only sandbox and every MCP server disabled. Returns a job id at once; read it with codex_role_audit_status and codex_role_audit_result. When out is given, the launcher writes that file with exactly the returned text. The worktree root must be the worktree this server started in; the destination must stay under its .moai/reports/ directory. Use this instead of spawn_agent for these roles."),
+			mcp.WithDescription("Start a role whose permission contract is read-only (plan-auditor, sync-auditor, mission-governor, super-advisor) as one top-level codex exec process with the read-only sandbox and every MCP server disabled. Returns a job id at once; read it with codex_role_audit_status and codex_role_audit_result. When out is given, the launcher writes that file with exactly the returned text. Pass worktree_root explicitly: your own worktree root (git rev-parse --show-toplevel) — any worktree registered in this server's repository is accepted, the primary checkout included, and there is no default. The destination must stay under that root's .moai/reports/ directory. Use this instead of spawn_agent for these roles."),
 			mcp.WithString("role", mcp.Required(), mcp.Description("A read-only contract role name.")),
-			mcp.WithString("worktree_root", mcp.Required(), mcp.Description("Your own worktree root (git rev-parse --show-toplevel).")),
+			mcp.WithString("worktree_root", mcp.Required(), mcp.Description("Your own worktree root (git rev-parse --show-toplevel). Must be registered in this server's repository; a linked worktree or the primary checkout, never another repository, and never omitted.")),
 			mcp.WithString("task", mcp.Required(), mcp.Description("The task text given to the role on its stdin.")),
 			mcp.WithString("out", mcp.Description("Optional verdict or report path under the worktree's .moai/reports/ directory.")),
 			mcp.WithReadOnlyHintAnnotation(false),

@@ -73,8 +73,7 @@ var codexAuditServerName = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 // codexAuditRequest is one launch intent.
 type codexAuditRequest struct {
 	Role        string        // role name, e.g. plan-auditor
-	ProjectRoot string        // the launcher's own project root
-	CallerDir   string        // a directory inside the caller's worktree
+	ProjectRoot string        // the serving checkout's root (repository boundary)
 	Root        string        // requested working root
 	Out         string        // verdict destination; empty returns on stdout
 	Route       string        // direct | shell | mcp
@@ -170,7 +169,7 @@ func prepareCodexAudit(ctx context.Context, req codexAuditRequest) *codexAuditPl
 		return nil
 	}
 
-	root, err := codexAuditValidateRoot(ctx, req.ProjectRoot, req.CallerDir, req.Root)
+	root, err := codexAuditValidateRoot(ctx, req.ProjectRoot, req.Root)
 	if err != nil {
 		return fail("working root rejected: %v", err)
 	}
@@ -287,26 +286,22 @@ func (p *codexAuditPlan) run(ctx context.Context) codexAuditResult {
 }
 
 // codexAuditValidateRoot accepts root only when, after symlink resolution, it
-// is the top of the caller's own worktree and a worktree registered in the
-// same repository as projectRoot. A sibling worktree or the primary checkout
-// is refused even though it is registered.
-func codexAuditValidateRoot(ctx context.Context, projectRoot, callerDir, root string) (string, error) {
-	if root == "" || callerDir == "" || projectRoot == "" {
-		return "", errors.New("root, caller directory, and project root are all required")
+// is a worktree registered in the same repository as projectRoot — the serving
+// checkout. The caller presents its own tree explicitly: a sibling worktree
+// and the primary checkout are accepted when registered, and the root is never
+// required to equal the toplevel of the directory this server process started
+// in (SPEC-CODEX-ROLE-AUDIT-ROOT-001 REQ-001). An absent root is refused, so
+// no call ever falls back to a default tree (REQ-002).
+func codexAuditValidateRoot(ctx context.Context, projectRoot, root string) (string, error) {
+	if root == "" {
+		return "", errors.New("worktree root is required")
+	}
+	if projectRoot == "" {
+		return "", errors.New("project root is required")
 	}
 	resolved, err := codexAuditResolve(root)
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", root, err)
-	}
-	callerTop, err := codexAuditGit(ctx, callerDir, "rev-parse", "--show-toplevel")
-	if err != nil {
-		return "", fmt.Errorf("caller directory is not inside a git worktree: %w", err)
-	}
-	if callerTop, err = codexAuditResolve(callerTop); err != nil {
-		return "", err
-	}
-	if resolved != callerTop {
-		return "", fmt.Errorf("%s is not the caller's own worktree (%s)", resolved, callerTop)
 	}
 	rootCommon, err := codexAuditGit(ctx, resolved, "rev-parse", "--path-format=absolute", "--git-common-dir")
 	if err != nil {
@@ -825,7 +820,7 @@ func newCodexAuditCmd() *cobra.Command {
 				ctx = context.Background()
 			}
 			res, _ := runCodexAudit(ctx, codexAuditRequest{
-				Role: args[0], ProjectRoot: top, CallerDir: cwd, Root: top, Out: dest,
+				Role: args[0], ProjectRoot: top, Root: top, Out: dest,
 				Route: codexAuditRouteShell, Task: cmd.InOrStdin(),
 				Stdout: cmd.OutOrStdout(), Stderr: cmd.ErrOrStderr(),
 			})

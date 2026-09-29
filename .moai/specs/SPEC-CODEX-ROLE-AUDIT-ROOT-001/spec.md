@@ -2,7 +2,7 @@
 id: SPEC-CODEX-ROLE-AUDIT-ROOT-001
 title: "codex_role_audit caller-tree verification repair — presented-root registration check replaces the server-cwd equality, optional CLI role-audit verb, codex_task project_root"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-09-29
 updated: 2026-09-29
 author: manager-spec
