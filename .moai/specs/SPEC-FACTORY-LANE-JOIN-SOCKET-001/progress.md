@@ -85,7 +85,7 @@ m1_to_m5_commit_strategy: one commit per milestone (M1 757255ff4, M2 c8a0d9137, 
 ## §E.4 Sync-phase Audit-Ready Signal
 
 - sync_complete_at: 2026-09-30
-- sync_commit_sha: pending-backfill-sync
+- sync_commit_sha: 8883ed975
 - sync_status: complete
 - sync_phase_scope: artifact-only close (spec/plan/acceptance frontmatter, §E.3 run_commit_sha backfill per the D3 placeholder exemption, this §E.4, CHANGELOG entry) — no code, no template source, no docs edits; the documentation surface was already cleared in-run by M5 (c8c671a68) and the sync-phase spot-check found no drift
 - b12_self_test_a: pass — `grep -c 'SPEC-FACTORY-LANE-JOIN-SOCKET-001' CHANGELOG.md` = 0 pre-emission
