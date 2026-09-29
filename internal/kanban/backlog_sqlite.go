@@ -458,6 +458,12 @@ func (e *backlogEngine) ensureSchema(ctx context.Context) error {
 			return err
 		}
 	}
+	// SPEC-TODO-CLAIM-LEASE-001 REQ-TCL-002: the lease retrofit is the LAST
+	// additive pass, strictly after version reconciliation — a v1 database
+	// rebuilds first, and only then do the lease columns arrive.
+	if err := e.ensureLeaseColumns(ctx); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -537,6 +543,45 @@ const backlogClassificationColumn = "classification"
 func (e *backlogEngine) ensureTransitionStampColumns(ctx context.Context) error {
 	for _, table := range []string{"items", "archived_items"} {
 		for _, column := range backlogTransitionStampColumns[table] {
+			if err := e.ensureColumn(ctx, table, column); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// backlogLeaseColumns lists the lease columns (SPEC-TODO-CLAIM-LEASE-001
+// REQ-TCL-001) per table, added by the same additive migration discipline as
+// the landing column and the transition stamps. items carries picked_by and
+// lease_expires_at (RFC 3339); archived_items mirrors the same two — an
+// archived card keeps the holder and expiry it held when it left the queue.
+// They are deliberately NOT members of backlogItemsTableColumns: the v1→v2
+// rebuild must never see them, and the retrofit runs only AFTER version
+// reconciliation for the same reason (ensureSchema, REQ-TCL-002). Compile-
+// time constants only.
+var backlogLeaseColumns = map[string][]string{
+	"items":          {"picked_by", "lease_expires_at"},
+	"archived_items": {"picked_by", "lease_expires_at"},
+}
+
+// ensureLeaseColumns runs the lease columns through the metadata-gated ADD
+// COLUMN path at the same point in the open sequence as the stamp columns,
+// immediately after them so the physical order converges identically on a
+// fresh and an upgraded database: the freeze test pins picked_by and
+// lease_expires_at as the final two tuples of both card-bearing tables
+// (REQ-TCL-015).
+func (e *backlogEngine) ensureLeaseColumns(ctx context.Context) error {
+	for _, table := range []string{"items", "archived_items"} {
+		for _, column := range backlogLeaseColumns[table] {
+			// SECURITY DISPOSITION (sync-phase scan pre-disposition): the
+			// ALTER TABLE inside ensureColumn interpolates its table and
+			// column identifiers rather than parameterizing them — SQLite
+			// cannot parameterize DDL identifiers. Both values here are
+			// compile-time constants from backlogLeaseColumns above; no user
+			// or runtime input reaches the statement text. This is the
+			// established in-repo additive-DDL pattern every retrofit
+			// (landing, transition stamps) already runs through.
 			if err := e.ensureColumn(ctx, table, column); err != nil {
 				return err
 			}

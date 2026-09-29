@@ -16,6 +16,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -40,6 +41,47 @@ func registerTodoMCPTools(add func(name string, tool mcp.Tool, handler server.To
 		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleTodoList)
+
+	add("todo_claim", mcp.NewTool(
+		"todo_claim",
+		mcp.WithDescription("Claim the oldest queued card under a lease (atomic CAS + lease), or renew a held card's lease with --renew. Same implementation as `moai todo claim`. "+projectRootDesc),
+		mcp.WithString("lane", mcp.Description("Attribute the claim to this operator/lead-supplied lane label (optional).")),
+		mcp.WithString("renew", mcp.Description("Renew the addressed card's lease (id) instead of claiming a new card (optional).")),
+		projectRootOption(),
+		mcp.WithReadOnlyHintAnnotation(false),
+	), handleTodoClaim)
+}
+
+// handleTodoClaim wraps runTodoClaimRoot (todo_claim.go) — the same body
+// `moai todo claim` runs, anchored at the resolved root. The REQ-SD-015
+// refusal rides in the handler (an MCP call never crosses the todo tree's
+// PersistentPreRunE) and is the SAME predicate and the SAME one-line text
+// the CLI guard prints — the flag form grants nothing here either
+// (SPEC-TODO-CLAIM-LEASE-001 REQ-TCL-013; the surface name comes from the
+// claim command itself, the value todoRefuseLaneMutation reads off the
+// executing subcommand).
+func handleTodoClaim(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	root, err := resolveToolProjectRoot(req)
+	if err != nil {
+		return toolErr("todo_claim", err), nil
+	}
+	if factoryLaneRefusal() {
+		return toolErr("todo_claim", errors.New(todoLaneMutationRefusalText(newTodoClaimCmd().Name()))), nil
+	}
+	lane := strings.TrimSpace(req.GetString("lane", ""))
+	renew := strings.TrimSpace(req.GetString("renew", ""))
+	out, errBuf := &bytes.Buffer{}, &bytes.Buffer{}
+	cmd := newBufferedCommand(out, errBuf)
+	if err := runTodoClaimRoot(root, cmd, lane, renew); err != nil {
+		// runTodoClaimRoot writes its own output (reclaim lines, the no-card
+		// message) before the error returns — surface both faithfully.
+		if out.Len() > 0 {
+			_ = errBuf
+			return toolErr("todo_claim", fmt.Errorf("%s%v", out.String(), err)), nil
+		}
+		return toolErr("todo_claim", err), nil
+	}
+	return mcp.NewToolResultText(strings.TrimRight(out.String(), "\n")), nil
 }
 
 // handleTodoAdd wraps runTodoAddAppendRoot (todo.go) — the same body

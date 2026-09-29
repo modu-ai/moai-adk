@@ -109,8 +109,20 @@ func (e *backlogEngine) readSnapshot(ctx context.Context) (*BacklogRecord, error
 	if err != nil {
 		return nil, err
 	}
+	pickedByExpr, err := e.columnExpr(ctx, "items", "picked_by")
+	if err != nil {
+		return nil, err
+	}
+	leaseExpiresExpr, err := e.columnExpr(ctx, "items", "lease_expires_at")
+	if err != nil {
+		return nil, err
+	}
 	itemRows, err := e.queryDB().QueryContext(ctx,
-		`SELECT id, text, added_at, spec_id, state, `+landingColumn+`, `+pickedAtExpr+`, `+droppedAtExpr+`, `+classificationExpr+` FROM items ORDER BY seq`)
+		// SECURITY DISPOSITION: the concatenated fragments are compile-time
+		// constants — columnExpr returns only a bare column name or the
+		// literal NULL, never a runtime value; row VALUES travel through Scan,
+		// never string interpolation.
+		`SELECT id, text, added_at, spec_id, state, `+landingColumn+`, `+pickedAtExpr+`, `+droppedAtExpr+`, `+classificationExpr+`, `+pickedByExpr+`, `+leaseExpiresExpr+` FROM items ORDER BY seq`)
 	if err != nil {
 		return nil, mapBacklogEngineError(fmt.Sprintf("load backlog %s", e.dbPath), err)
 	}
@@ -122,7 +134,8 @@ func (e *backlogEngine) readSnapshot(ctx context.Context) (*BacklogRecord, error
 		var state string
 		var pickedAt, droppedAt sql.NullString
 		var classification sql.NullString
-		if err := itemRows.Scan(&it.ID, &it.Text, &it.AddedAt, &specID, &state, &landing, &pickedAt, &droppedAt, &classification); err != nil {
+		var pickedBy, leaseExpiresAt sql.NullString
+		if err := itemRows.Scan(&it.ID, &it.Text, &it.AddedAt, &specID, &state, &landing, &pickedAt, &droppedAt, &classification, &pickedBy, &leaseExpiresAt); err != nil {
 			return nil, mapBacklogEngineError(fmt.Sprintf("load backlog %s", e.dbPath), err)
 		}
 		if specID.Valid {
@@ -165,6 +178,16 @@ func (e *backlogEngine) readSnapshot(ctx context.Context) (*BacklogRecord, error
 				return nil, fmt.Errorf("load backlog %s: item %s: %w", e.dbPath, it.ID, decErr)
 			}
 			it.Classification = &c
+		}
+		// Lease columns read through the same null-pointer mapping (REQ-TCL-
+		// 003): an absent lease is nil, never a pointer to an empty string.
+		if pickedBy.Valid {
+			v := pickedBy.String
+			it.PickedBy = &v
+		}
+		if leaseExpiresAt.Valid {
+			v := leaseExpiresAt.String
+			it.LeaseExpiresAt = &v
 		}
 		it.State = BacklogState(state)
 		rec.Items = append(rec.Items, it)
@@ -254,9 +277,20 @@ func (e *backlogEngine) readArchive(ctx context.Context, rec *BacklogRecord) err
 	if err != nil {
 		return err
 	}
+	pickedByExpr, err := e.columnExpr(ctx, "archived_items", "picked_by")
+	if err != nil {
+		return err
+	}
+	leaseExpiresExpr, err := e.columnExpr(ctx, "archived_items", "lease_expires_at")
+	if err != nil {
+		return err
+	}
 	rows, err := e.queryDB().QueryContext(ctx,
+		// SECURITY DISPOSITION: same constant-fragment concatenation as the
+		// live read above — columnExpr yields a bare column name or literal
+		// NULL only; no runtime value enters the statement text.
 		`SELECT seq, id, text, added_at, spec_id, state, position, `+landingColumn+`, `+
-			pickedAtExpr+`, `+droppedAtExpr+`, `+archivedAtExpr+`, `+verdictExpr+`, `+classificationExpr+` FROM archived_items ORDER BY seq`)
+			pickedAtExpr+`, `+droppedAtExpr+`, `+archivedAtExpr+`, `+verdictExpr+`, `+classificationExpr+`, `+pickedByExpr+`, `+leaseExpiresExpr+` FROM archived_items ORDER BY seq`)
 	if err != nil {
 		return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
 	}
@@ -272,8 +306,9 @@ func (e *backlogEngine) readArchive(ctx context.Context, rec *BacklogRecord) err
 		var pickedAt, droppedAt, archivedAt sql.NullString
 		var verdict sql.NullString
 		var classification sql.NullString
+		var pickedBy, leaseExpiresAt sql.NullString
 		if err := rows.Scan(&seq, &entry.Item.ID, &entry.Item.Text, &entry.Item.AddedAt,
-			&specID, &state, &entry.Position, &landing, &pickedAt, &droppedAt, &archivedAt, &verdict, &classification); err != nil {
+			&specID, &state, &entry.Position, &landing, &pickedAt, &droppedAt, &archivedAt, &verdict, &classification, &pickedBy, &leaseExpiresAt); err != nil {
 			return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
 		}
 		if specID.Valid {
@@ -319,6 +354,16 @@ func (e *backlogEngine) readArchive(ctx context.Context, rec *BacklogRecord) err
 				return fmt.Errorf("load backlog archive %s: item %s: %w", e.dbPath, entry.Item.ID, decErr)
 			}
 			entry.Item.Classification = &c
+		}
+		// The archive mirrors the lease columns (REQ-TCL-001): a restored
+		// card comes back with the holder and expiry it held at archive time.
+		if pickedBy.Valid {
+			v := pickedBy.String
+			entry.Item.PickedBy = &v
+		}
+		if leaseExpiresAt.Valid {
+			v := leaseExpiresAt.String
+			entry.Item.LeaseExpiresAt = &v
 		}
 		entry.Item.State = BacklogState(state)
 		entry.Findings = []BacklogArchivedFinding{}
@@ -396,6 +441,15 @@ func (e *backlogEngine) writeArchive(ctx context.Context, tx *sql.Tx, rec *Backl
 		if entry.ArchivedAt != nil {
 			archivedAt = *entry.ArchivedAt
 		}
+		// The lease columns mirror the live write (REQ-TCL-001): the archive
+		// preserves the holder and expiry the card held when it left.
+		var pickedBy, leaseExpiresAt any
+		if entry.Item.PickedBy != nil {
+			pickedBy = *entry.Item.PickedBy
+		}
+		if entry.Item.LeaseExpiresAt != nil {
+			leaseExpiresAt = *entry.Item.LeaseExpiresAt
+		}
 		// The verdict record is written ONLY through its own seam, so
 		// REQ-TST-010's "no verdict without its ref" holds by the type: a
 		// record without its answering ref is refused here, aborting the
@@ -412,10 +466,10 @@ func (e *backlogEngine) writeArchive(ctx context.Context, tx *sql.Tx, rec *Backl
 		}
 		seq := i + 1
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO archived_items(seq, id, text, added_at, spec_id, state, position, landing, picked_at, dropped_at, archived_at, landing_verdict, classification)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO archived_items(seq, id, text, added_at, spec_id, state, position, landing, picked_at, dropped_at, archived_at, landing_verdict, classification, picked_by, lease_expires_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			seq, entry.Item.ID, entry.Item.Text, entry.Item.AddedAt, specID,
-			string(entry.Item.State), entry.Position, landing, pickedAt, droppedAt, archivedAt, verdict, classification); err != nil {
+			string(entry.Item.State), entry.Position, landing, pickedAt, droppedAt, archivedAt, verdict, classification, pickedBy, leaseExpiresAt); err != nil {
 			return mapBacklogWriteError(e.dbPath, entry.Item.ID, err)
 		}
 		for _, af := range entry.Findings {
@@ -512,14 +566,25 @@ func (e *backlogEngine) writeRecordArchive(ctx context.Context, rec *BacklogReco
 		if it.DroppedAt != nil {
 			droppedAt = *it.DroppedAt
 		}
+		// The lease columns ride the same typed-NULL discipline (REQ-TCL-001):
+		// a nil pointer stores SQL NULL, a present one its exact TEXT.
+		var pickedBy, leaseExpiresAt any
+		if it.PickedBy != nil {
+			pickedBy = *it.PickedBy
+		}
+		if it.LeaseExpiresAt != nil {
+			leaseExpiresAt = *it.LeaseExpiresAt
+		}
+		// The classification rides the same typed-NULL seam as the archive
+		// write: a card keeps the judgment it held when it left the live queue.
 		classification, classErr := CardClassificationValue(it.Classification)
 		if classErr != nil {
 			err = fmt.Errorf("write backlog %s: item %s: %w", e.dbPath, it.ID, classErr)
 			return err
 		}
 		if _, err = tx.ExecContext(ctx,
-			`INSERT INTO items(seq, id, text, added_at, spec_id, state, landing, picked_at, dropped_at, classification) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			i+1, it.ID, it.Text, it.AddedAt, specID, string(it.State), landing, pickedAt, droppedAt, classification); err != nil {
+			`INSERT INTO items(seq, id, text, added_at, spec_id, state, landing, picked_at, dropped_at, classification, picked_by, lease_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			i+1, it.ID, it.Text, it.AddedAt, specID, string(it.State), landing, pickedAt, droppedAt, classification, pickedBy, leaseExpiresAt); err != nil {
 			err = mapBacklogWriteError(e.dbPath, it.ID, err)
 			return err
 		}

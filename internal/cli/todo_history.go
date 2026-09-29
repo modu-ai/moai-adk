@@ -225,10 +225,13 @@ func renderTodoHistoryLookup(out, errOut io.Writer, rec *kanban.BacklogRecord, i
 		if it.ID == id {
 			// The live line appends the time axis before the card text
 			// (REQ-TST-012): picked_at and dropped_at, "-" marking absence.
-			_, err := fmt.Fprintf(out, "%s\tlive\t%s\t%s\t%s\t%s\t%s\n",
+			// SPEC-TODO-CLAIM-LEASE-001 REQ-TCL-010: a claimed card also
+			// carries the by=/lease= cells before the text; an un-claimed
+			// card renders none, keeping its historical shape.
+			_, err := fmt.Fprintf(out, "%s\tlive\t%s\t%s\t%s\t%s\t%s%s\n",
 				it.ID, it.State, todoHistoryLandingCell(it.Landing),
 				todoHistoryStampCell(it.PickedAt), todoHistoryStampCell(it.DroppedAt),
-				todoPRCell(it.Text))
+				todoLeaseCells(it), todoPRCell(it.Text))
 			return err
 		}
 	}
