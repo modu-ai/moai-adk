@@ -103,7 +103,7 @@ still uncommitted — no PRESERVE-list path appears anywhere in it.
 ```yaml
 run_status: complete
 run_complete_at: 2026-09-30
-run_commit_sha: "pending-backfill"  # = M3 commit; backfilled in the follow-up commit (self-reference physics, D3 exemption)
+run_commit_sha: "4cbab45d7"  # M3 commit; backfilled here per the D3 exemption (a commit cannot cite its own hash)
 red_green_pair: M1 existence-RED (read-fail, tree 235fcfd12, exit 1) -> M2 GREEN (ok, internal/cli, exit 0)
 milestone_commits: M1 guard-test-first, M2 skill body + mirror, M3 catalog registration + build matrix
 ac_pass_count: 11
