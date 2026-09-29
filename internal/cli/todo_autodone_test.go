@@ -860,7 +860,7 @@ func TestTodoAutoDone_FetchBoundary(t *testing.T) {
 // and a `todo landed` control run transitions nothing.
 func TestTodoAutoDone_CloseSurfaceExclusivity(t *testing.T) {
 	t.Run("structural allowlist", func(t *testing.T) {
-		allowed := map[string]bool{"done": true, "auto-done": true}
+		allowed := map[string]bool{"done": true, "auto-done": true, "auto": true}
 		files, err := filepath.Glob("todo*.go")
 		if err != nil {
 			t.Fatalf("glob: %v", err)
@@ -880,18 +880,23 @@ func TestTodoAutoDone_CloseSurfaceExclusivity(t *testing.T) {
 		}
 		// The store's own definition site is internal/kanban, outside this
 		// glob; every CALL SITE in the CLI surface must sit in a file the
-		// allowlist's verb owns.
+		// allowlist's verb owns. The third close surface is the `--auto`
+		// serial cycle: it records the done transition on the worker's disk
+		// evidence (the foreman contract — the cycle judges completion by
+		// reading evidence, never by a worker's claim), so its ArchiveCard
+		// call site is owned, not ad hoc.
 		verbOfFile := map[string]string{
 			"todo.go":          "done",
 			"todo_autodone.go": "auto-done",
+			"todo_auto.go":     "auto",
 		}
 		for f := range hits {
 			if _, ok := verbOfFile[f]; !ok {
-				t.Errorf("file %s reaches .ArchiveCard( and is owned by no allowlisted verb (%v) — a third close surface", f, allowed)
+				t.Errorf("file %s reaches .ArchiveCard( and is owned by no allowlisted verb (%v) — an unowned close surface", f, allowed)
 			}
 		}
-		if len(hits) != 2 {
-			t.Errorf("ArchiveCard call sites = %v, want exactly the two close surfaces", hits)
+		if len(hits) != 3 {
+			t.Errorf("ArchiveCard call sites = %v, want exactly the three close surfaces", hits)
 		}
 	})
 

@@ -14,6 +14,14 @@
 // freeze. It now pins the exact ordered (name, type, notnull, dflt_value)
 // tuple sequence of items AND archived_items, asserted separately per table
 // so a half-applied migration cannot satisfy both.
+//
+// Extended by SPEC-TODO-TRANSITION-STAMPS-001 (card t1310), AC-TST-011 —
+// the recorded schema decision: items gains nullable picked_at and
+// dropped_at; archived_items gains nullable picked_at, dropped_at (the
+// stamps preserved into the archive, REQ-TST-007), archived_at, and the
+// done-time landing_verdict record (REQ-TST-008). Pure additive columns via
+// the pragma_table_info-gated ADD COLUMN pattern; no table rebuild, no
+// constraint change, schema_version stays "1".
 package kanban
 
 import (
@@ -25,7 +33,25 @@ import (
 // AC-TAQ-012 — the queue database a reader opens carries exactly the
 // physical schema the writers built: five tables, the one non-auto index,
 // the four-state CHECK, schema_version "2".
+//
+// AC-TST-011 — the transition-stamp SPEC names its mechanical check as
+// `go test ./internal/kanban/ -run SchemaFreeze`, and a selector matching
+// zero tests would exit 0 without sweeping anything (the vacuous-green
+// shape verification-completeness names), so the shared assertion body
+// below is entered by BOTH names: the historical one and the AC's own.
 func TestTodoHistoryAddsNoSchemaChange(t *testing.T) {
+	assertBacklogSchemaFrozen(t)
+}
+
+// TestSchemaFreezeRecordsTransitionStamps is the AC-TST-011 entry point —
+// the same assertions, reachable under the AC's own `-run SchemaFreeze`
+// selector.
+func TestSchemaFreezeRecordsTransitionStamps(t *testing.T) {
+	assertBacklogSchemaFrozen(t)
+}
+
+func assertBacklogSchemaFrozen(t *testing.T) {
+	t.Helper()
 	store := archiveFixture(t)
 	if _, _, err := store.Add("alpha work"); err != nil {
 		t.Fatalf("add: %v", err)
@@ -42,7 +68,8 @@ func TestTodoHistoryAddsNoSchemaChange(t *testing.T) {
 	ctx := context.Background()
 
 	// The table set is exactly the five core tables plus the additive identity
-	// side table — no more, no less. The core schema stamp remains version 1.
+	// side table — no more, no less. The schema stamp rides the four-state
+	// CHECK rebuild (schema_version "2").
 	var tables []string
 	rows, err := eng.db.QueryContext(ctx,
 		`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name`)
@@ -108,7 +135,9 @@ func TestTodoHistoryAddsNoSchemaChange(t *testing.T) {
 		"added_at:TEXT:1:NULL " +
 		"spec_id:TEXT:0:NULL " +
 		"state:TEXT:1:NULL " +
-		"landing:TEXT:0:NULL"
+		"landing:TEXT:0:NULL " +
+		"picked_at:TEXT:0:NULL " +
+		"dropped_at:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "items"); got != wantItemsColumns {
 		t.Errorf("items column tuples =\n %s\nwant\n %s", got, wantItemsColumns)
 	}
@@ -120,7 +149,11 @@ func TestTodoHistoryAddsNoSchemaChange(t *testing.T) {
 		"spec_id:TEXT:0:NULL " +
 		"state:TEXT:1:NULL " +
 		"position:INTEGER:1:NULL " +
-		"landing:TEXT:0:NULL"
+		"landing:TEXT:0:NULL " +
+		"picked_at:TEXT:0:NULL " +
+		"dropped_at:TEXT:0:NULL " +
+		"archived_at:TEXT:0:NULL " +
+		"landing_verdict:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "archived_items"); got != wantArchivedItemsColumns {
 		t.Errorf("archived_items column tuples =\n %s\nwant\n %s", got, wantArchivedItemsColumns)
 	}

@@ -134,7 +134,7 @@ MoAI 오케스트레이터는 직접 구현하지 않고 13개의 전문 에이�
 | **Evaluator** | 2개 | plan-auditor, sync-auditor |
 | **Builder** | 1개 | builder-harness |
 | **Advisor** | 1개 | super-advisor (고추론 자문) |
-| **Specialist** | 2개 | e2e-tester (웹/모바일/데스크탑 E2E 테스트 실행), mission-governor (GTD 자동 미션 판정, 읽기 전용) |
+| **Specialist** | 2개 | e2e-tester (웹/모바일/데스크탑 E2E 테스트 실행), manager-todo (GTD 자동 미션 판정, 읽기 전용) |
 | **빌트인** | 1개 | Explore (Anthropic 내장, 읽기 전용 코드 분석) |
 
 ### 모델 정책 (토크노믹스)

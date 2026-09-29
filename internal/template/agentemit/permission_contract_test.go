@@ -139,8 +139,8 @@ func TestRolePermissionContractNoSilentDrop(t *testing.T) {
 	}
 
 	broad := mustManifest(t)
-	broad.Fields["sandbox_mode"].RoleValues["mission-governor"] = "workspace-write"
-	if _, err := agentemit.EmitAll(fsys, agentMDRoot, broad); err == nil || !strings.Contains(err.Error(), "mission-governor") {
+	broad.Fields["sandbox_mode"].RoleValues["manager-todo"] = "workspace-write"
+	if _, err := agentemit.EmitAll(fsys, agentMDRoot, broad); err == nil || !strings.Contains(err.Error(), "manager-todo") {
 		t.Errorf("read-only contract role emitted workspace-write: emitter must refuse, got %v", err)
 	}
 
@@ -171,16 +171,20 @@ func TestRolePermissionContractNoSilentDrop(t *testing.T) {
 	}
 
 	// An enforced mapping naming a field the emitter never writes is refused
-	// in memory too (bypassing manifest validation).
+	// in memory too (bypassing manifest validation). The mutated axis is
+	// subagent/deny: every retained role except manager-lead lacks the Agent
+	// tool, so at least one role derives this requirement and walks the row.
+	// (The shell axis became dead with the manager-todo repurpose — that role
+	// now legitimately carries Bash — so shell no longer exercises the check.)
 	fake := mustManifest(t)
 	for i, m := range fake.PermissionContract.Axes {
-		if m.Axis == "shell" {
+		if m.Axis == "subagent" {
 			fake.PermissionContract.Axes[i].Mapping = "enforced"
 			fake.PermissionContract.Axes[i].Basis = "measured"
-			fake.PermissionContract.Axes[i].Field = "shell_enabled"
+			fake.PermissionContract.Axes[i].Field = "subagent_enabled"
 		}
 	}
-	if _, err := agentemit.EmitAll(fsys, agentMDRoot, fake); err == nil || !strings.Contains(err.Error(), "shell") {
+	if _, err := agentemit.EmitAll(fsys, agentMDRoot, fake); err == nil || !strings.Contains(err.Error(), "subagent") {
 		t.Errorf("enforced mapping through a field the emitter never writes must be refused, got %v", err)
 	}
 }
@@ -269,9 +273,12 @@ func TestRolePermissionUnsupportedNeverPass(t *testing.T) {
 		t.Errorf("PASS %d + UNSUPPORTED %d != verdicts %d", len(report.Pass), len(report.Unsupported), len(report.Verdicts))
 	}
 
-	// Anchors that keep the computation honest in both directions.
+	// Anchors that keep the computation honest in both directions. The
+	// manager-todo anchor is subagent/deny: the repurposed role carries Bash,
+	// so it no longer derives shell/deny (pinned by the negative anchor below),
+	// but it still lacks the Agent tool and derives subagent/deny.
 	for _, k := range []roleAxis{
-		{"mission-governor", "shell", "deny"},
+		{"manager-todo", "subagent", "deny"},
 		{"manager-develop", "write-path-scope", "path-scope"},
 		{"plan-auditor", "mcp-tool", "subset"},
 	} {
@@ -281,6 +288,7 @@ func TestRolePermissionUnsupportedNeverPass(t *testing.T) {
 	}
 	for _, k := range []roleAxis{
 		{"manager-lead", "subagent", "deny"},
+		{"manager-todo", "shell", "deny"},
 		{"plan-auditor", "write-path-scope", "path-scope"},
 		{"sync-auditor", "write-path-scope", "path-scope"},
 	} {

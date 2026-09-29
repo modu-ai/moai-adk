@@ -52,7 +52,7 @@ Only `depends_on` blocks execution. `part_of`, `supported_by`, and `related_to` 
 
 ## Autonomous operation and safety boundaries
 
-The LLM and `mission-governor` produce structured proposals; they do not directly change files, Git, the queue, or dispatch state. Deterministic code checks the user-approved sealed goal, scope, allowed actions, completion evidence, resource limits, stop conditions, and current snapshot before preparing an operation. Scope expansion, stale evidence, and unauthorized actions stop as `blocked` rather than gaining implicit approval.
+The LLM and the read-only judgment sub-role of `manager-todo` produce structured proposals; they do not directly change files, Git, the queue, or dispatch state. Deterministic code checks the user-approved sealed goal, scope, allowed actions, completion evidence, resource limits, stop conditions, and current snapshot before preparing an operation. Scope expansion, stale evidence, and unauthorized actions stop as `blocked` rather than gaining implicit approval.
 
 The current implementation supplies owner adapters for deterministic policy, recovery, dispatch, explicit-path commits, and local develop `--no-ff` merges. A commit requires a repository-local `0600` test receipt for the current HEAD; a local merge rechecks the manager-git role, `WT-*` branch, base SHA, and a `0600` lease below `.git`. Backup, restore, and export include GTD extensions only through explicit opt-in, while private projections rebuild from the SQLite revision. It does not promise operation after the session ends or completed remote pushes, pull requests, and merges until a real provider has demonstrated every required start, reconnect, replacement, credential, and process-identity capability.
 

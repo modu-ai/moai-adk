@@ -270,7 +270,7 @@ transcript becomes a model condition the orchestrator evaluates.`,
 	runCmd.Flags().StringVar(&runAction, "action", "", "proposed action")
 	runCmd.Flags().StringVar(&runTarget, "target", "", "proposed target")
 	runCmd.Flags().BoolVar(&governorRecommend, "recommend", false, "compatibility flag only; never grants authority")
-	runCmd.Flags().StringVar(&runGovernorReceipt, "governor-receipt", "", "0600 mission-governor decision receipt")
+	runCmd.Flags().StringVar(&runGovernorReceipt, "governor-receipt", "", "0600 manager-todo decision receipt")
 	runCmd.Flags().StringVar(&runAuditReceipt, "audit-receipt", "", "0600 independent audit receipt")
 	runCmd.Flags().StringVar(&runLane, "lane", "", "leased lane for dispatch")
 	runCmd.Flags().StringVar(&runID, "run-id", "", "stable disk dispatch run identity")
@@ -841,6 +841,9 @@ func runGoalMissionOperation(cmd *cobra.Command, sessionID string, jsonOutput bo
 						switch record.Items[i].State {
 						case kanban.BacklogStateQueued:
 							record.Items[i].State = kanban.BacklogStatePicked
+							// REQ-TST-004: the mission pick is a picked
+							// transition — stamp it in the same locked write.
+							record.Items[i].PickedAt = todoStampNow()
 							return nil
 						default:
 							return errors.New("auto mission: card_not_queued")

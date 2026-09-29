@@ -239,11 +239,11 @@ DeepSWE 리더보드 (과제 113개, 노력도별 보기)가 이를 보여준다
 | opus-5 [xhigh] | 73%±3 | $9.07 | 순손실 — high와 동점, 비용만 +49% |
 | opus-5 [max] | 74%±4 | $11.84 | |
 | glm-5.2 [max] | 44%±2 | $3.92 | API 과금에서 불리 · z.ai 정액제에서는 유용 |
-| sonnet-5 [max] | 54%±4 | $26.40 | opus-5 [low]에 지배된다 |
+| sonnet-5 [max] (Sonnet 5) | 54%±4 | $26.40 | opus-5 [low]에 지배된다 |
 
 Opus 5를 가장 낮은 노력으로 돌린 쪽이 Sonnet 5를 가장 높은 노력으로 돌린 쪽보다 점수가 높고 (58% vs 54%), 과제당 비용은 16분의 1이다 ($1.66 vs $26.40) — Sonnet의 토큰 단가가 더 싸다는 점은 이길 수 없다. 원인은 268 스텝 대 36 스텝이다. 청구서를 쓰는 것은 토큰 요율이 아니라 재시도 루프다. 비용은 **과제마다 알맞은 모델과 추론 깊이를 배정**하는 것으로 결정된다.
 
-위 표는 Opus 5에서 측정한 값이다. MoAI의 `opus` 별칭은 이제 Opus 5.5를 가리키며 (Claude Code v2.1.280 이상 필요, 기본 effort `medium`), Opus 5.5는 아직 재측정하지 않았다.
+위 표는 Opus 5에서 측정한 값이다. MoAI의 `opus` 별칭은 이제 Opus 5.5를 가리키며 (Claude Code v2.1.280 이상 필요, 기본 effort `medium`), `sonnet` 별칭은 이제 Sonnet 5.5를 가리킨다(공식 문서 기준 1M 컨텍스트). 둘 다 아직 재측정하지 않았다.
 
 <p align="center">
   <img src="./assets/images/why-tokenomics-infographic-ko.png" alt="토크노믹스의 역설 — 가격은 98% 하락, 지출은 320% 상승. 해법은 측정→배정→다이어트→중단의 4단계" width="80%">
@@ -370,7 +370,7 @@ Codex가 활성화된 하네스(`moai init --llm gpt|both`)에서 Codex의 상�
 
 완료 조건을 선언하면 세션이 조건을 채울 때까지 알아서 일한다. 턴 한도, 정체 가드, 벽시계 예산, 사전 승인 게이트가 묶여 있어 무한 루프에 빠지지 않는다. 기계적 조건(명령 종료 코드)과 모델 조건(대화 기록의 주장)을 같이 쓴다. `--max-turns 0`으로 auto-compact 기반 무한 골을 무장할 수도 있다 — 이때는 `--max-duration`과 정체 가드가 경계를 만든다.
 
-`moai goal --auto "<임무>"`는 별도의 `mission_mode=auto` 초안을 만들고, `approve`가 범위·행위·근거·한도를 한 번 봉인한다. 이후 `run`, `status`, `revoke`, 정책으로 제한된 `resume`가 그 저장 계약을 사용한다. `super-advisor`는 비구속 조언자이고 읽기 전용 `mission-governor`가 구조화된 결정을 내며, 결정적 owner adapter가 receipt 기반 대기열·배차, 명시 경로 커밋, lease가 있는 local develop `--no-ff` 병합을 수행한다. 지속 실행 능력이 실제 공급자에서 입증되지 않으면 `active-session-only`로 낮아지고, 원격 push·PR·병합 완료는 아직 입증되지 않았다. [GTD와 auto 임무 안내](https://adk.mo.ai.kr/ko/utility-commands/moai-gtd)
+`moai goal --auto "<임무>"`는 별도의 `mission_mode=auto` 초안을 만들고, `approve`가 범위·행위·근거·한도를 한 번 봉인한다. 이후 `run`, `status`, `revoke`, 정책으로 제한된 `resume`가 그 저장 계약을 사용한다. `super-advisor`는 비구속 조언자이고 `manager-todo`의 읽기 전용 판정 하위 역할이 구조화된 결정을 내며, 결정적 owner adapter가 receipt 기반 대기열·배차, 명시 경로 커밋, lease가 있는 local develop `--no-ff` 병합을 수행한다. 지속 실행 능력이 실제 공급자에서 입증되지 않으면 `active-session-only`로 낮아지고, 원격 push·PR·병합 완료는 아직 입증되지 않았다. [GTD와 auto 임무 안내](https://adk.mo.ai.kr/ko/utility-commands/moai-gtd)
 
 최종 실행 경계는 더 엄격하다. `run --supervise`는 publish→pick→lease 기반 디스크 배차→commit→local develop `--no-ff` 계획을 제한 반복한다. 감독 Git 효과에는 분리된 `--card-worktree`와 `--develop-worktree` 경로가 필요하며, 기존 `--repo`만 쓰면 효과는 0건이다. 완료에는 참으로 판정된 typed evidence와 병합 ancestry를 봉인한 `0600` `--completion-receipt`가 추가로 필요하므로, 행동 목록 소진만으로 완료되지 않는다. 완료 상태 재실행도 효과 0건이다. `--recommend`는 권한이 아니며 각 효과에는 저장소 안의 `0600` governor receipt와 독립 감사 PASS receipt가 모두 필요하다. 미구성 원격·release provider는 성공을 흉내 내지 않고 `provider_unsupported`를 반환한다.
 
@@ -512,7 +512,7 @@ flowchart TD
 | **빌더** | builder-harness | 프로젝트 전용 에이전트·스킬·커맨드·훅 스캐폴딩 |
 | **자문** | super-advisor | 고추론 자문 (E1-E4 에스컬레이션) |
 | **스페셜리스트** | e2e-tester | 웹/모바일/데스크톱 E2E 테스트 실행 (CLI 우선) |
-| | mission-governor | 승인된 GTD 자동 임무에 대한 읽기 전용 판정 — 판정 하나만 돌려주고 직접 적용하지 않는다 (GTD 워크플로가 부르므로 선택 결정 트리에 행이 없다) |
+| | manager-todo | 투두 큐 관리(큐 수명 주기, `/moai:todo --auto` 직렬 사이클, 배차 안내) — 봉인 스냅숏에 대한 읽기 전용 판정 하위 역할은 판정 하나만 돌려주고 직접 적용하지 않는다 (GTD 워크플로가 부르므로 선택 결정 트리에 행이 없다) |
 | **내장** | Explore | 읽기 전용 코드베이스 탐색 |
 
 모든 에이전트는 세션의 모델과 추론 강도를 그대로 상속한다 — 세션을 어떤 모델·effort로 띄웠는지가 곧 전체 에이전트의 배정이다. 작성과 감사를 처음부터 나눠 맡기니 자기 일을 자기가 채점하는 일이 없다.

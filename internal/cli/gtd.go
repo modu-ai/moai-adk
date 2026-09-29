@@ -221,6 +221,9 @@ func newGTDEngageCmd() *cobra.Command {
 						if record.Items[i].ID == result.CardID {
 							if record.Items[i].State == kanban.BacklogStateQueued {
 								record.Items[i].State = kanban.BacklogStatePicked
+								// REQ-TST-004: this is a picked transition too,
+								// so the stamp rides the same locked write.
+								record.Items[i].PickedAt = todoStampNow()
 							}
 							return nil
 						}

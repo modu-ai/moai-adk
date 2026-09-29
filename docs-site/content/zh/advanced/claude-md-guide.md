@@ -108,7 +108,7 @@ MoAI-ADK 由 **13 个保留智能体**（12 个 MoAI-custom + 1 个 Anthropic bu
 | Evaluator (2) | plan-auditor, sync-auditor | 计划/完成阶段独立质量评估 |
 | Builder (1) | builder-harness | 生成按项目的动态 Harness |
 | Advisor (1) | super-advisor | 高推理咨询（E1-E4 升级） |
-| Specialist (2) | e2e-tester, mission-governor | 网页/移动/桌面 E2E 测试执行（`/moai e2e`）；已批准 GTD 自动任务的只读判定 |
+| Specialist (2) | e2e-tester, manager-todo | 网页/移动/桌面 E2E 测试执行（`/moai e2e`）；任务队列管理 —— 已批准 GTD 自动任务的只读封存快照判定为其子角色 |
 | Built-in (1) | Explore (Anthropic) | 只读代码库探索 |
 
 ### 5. SPEC 工作流
