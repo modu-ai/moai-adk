@@ -28,4 +28,14 @@
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: complete — 단일 sync 커밋으로 CHANGELOG [Unreleased] > Added 등재, spec.md frontmatter `implemented → completed` 전환, 본 §E.4 기록을 함께 실어 착지. `sync_commit_sha`는 커밋이 자기 해시를 인용할 수 없으므로 `pending-backfill-sync` 플레이스홀더로 적고 직후 커밋에서 백필(D3 면제).
+- sync_commit_sha: "pending-backfill-sync"
+- changelog_entry_position: [Unreleased] > Added 최상단 (B12 선방출 grep `grep -c 'SPEC-DOCS-HEADING-PARITY-001' CHANGELOG.md` = 0 확인 후 편입)
+- b12_self_test_a: PASS — 선방출 grep 0건 (중복 편입 없음)
+- b12_self_test_b: PASS — acceptance.md SSOT 기준 고유 AC 9건(AC-DOCS-001..009) = CHANGELOG 기재 수 9건 일치
+- b12_self_test_c: PASS — CHANGELOG가 인용하는 문서 경로 9파일 + 래칫 베이스라인 파일 실존 확인(`ls` 재검증), 3페이지 × 4로케일 헤딩 카운터 `grep -rc '^#\{2,\} '`로 본 트리에서 재측정: agent-guide 22/22/22/22 · tokenomics 12/12/12/12 · multi-llm 11/11/11/11
+- canary_compliance_check: n/a — 본 SPEC이 정의하는 선향 정책 없음
+- mx_tag_validation: n/a — docs 전용 SPEC, Go 표면 변경 없음(RUN §E.3 참조)
+- README/docs-site 결정: README 4파일은 이번 SPEC이 손대지 않았고 M6에서 H2 12/12/12/12 패리티 재확인 — CHANGELOG·README 추가 항목 없음. 인도물 자체가 docs-site 콘텐츠이므로 별도 문서 동기화 대상 없음.
+- reviewer-attention 이월(run §E.3 ①): m6-verify-gate.md §5의 version-sync faq 🗿 4건 분류(업데이트 플로 예시)는 기록된 검토자 주의 항목으로 유지 — 실패 아님, sync-auditor 재판정 여지 명시
+- AC 상태: 9/9 PASS (AC-TSS형 이월 편차 없음)
