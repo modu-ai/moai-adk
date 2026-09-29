@@ -154,6 +154,10 @@ func TestFactoryWorkerNoticeNamesLabel(t *testing.T) {
 // the two sentence shapes across all four locales: every rendering must name
 // the label and the count (or just the label, count-less) with no %!verb
 // artifact, whatever order the locale's natural prose puts them in.
+// Card t1335 (M3) adds the two checks the composition tests lacked: the zh
+// label-first order pin (the one locale whose %[n] order flips, asserted
+// against the en count-first contrast) and leading/trailing-newline hygiene
+// on every join-line i18n field in both tables.
 func TestFactoryWorkerNoticeLocaleWordOrders(t *testing.T) {
 	clearKanbanEnv(t)
 
@@ -166,6 +170,38 @@ func TestFactoryWorkerNoticeLocaleWordOrders(t *testing.T) {
 		gotNoCount := factoryLaneNotice("lane-2", 0, lang)
 		if !strings.Contains(gotNoCount, "lane-2") || strings.Contains(gotNoCount, "%!") {
 			t.Errorf("locale %q count-less join rendered wrong: %q", lang, gotNoCount)
+		}
+	}
+
+	// zh label-first order pin: zh is the one locale whose laneJoin places
+	// %[1]s (the label) BEFORE %[2]d (the count); en pins the flipped
+	// contrast (count first). A later format-string reorder in either
+	// direction fails here.
+	zhJoin := factoryLaneNotice("lane-2", 5, "zh")
+	if labelAt, countAt := strings.Index(zhJoin, "lane-2"), strings.Index(zhJoin, "5"); !(labelAt >= 0 && countAt >= 0 && labelAt < countAt) {
+		t.Errorf("zh join must render the label before the count (label at %d, count at %d):\n%s", labelAt, countAt, zhJoin)
+	}
+	enJoin := factoryLaneNotice("lane-2", 5, "en")
+	if labelAt, countAt := strings.Index(enJoin, "lane-2"), strings.Index(enJoin, "5"); !(labelAt >= 0 && countAt >= 0 && countAt < labelAt) {
+		t.Errorf("en join must render the count before the label (label at %d, count at %d):\n%s", labelAt, countAt, enJoin)
+	}
+
+	// Newline hygiene: no join-line i18n field in either table may lead or
+	// trail with a newline — the builders join with "\n\n" themselves, so a
+	// stray newline in a field would double the separator.
+	for _, lang := range []string{"en", "ko", "ja", "zh"} {
+		fm := factoryMessagesFor(lang)
+		for name, field := range map[string]string{
+			"laneJoin":        fm.laneJoin,
+			"laneJoinNoCount": fm.laneJoinNoCount,
+		} {
+			if strings.HasPrefix(field, "\n") || strings.HasSuffix(field, "\n") {
+				t.Errorf("factory %s for locale %q has a leading/trailing newline: %q", name, lang, field)
+			}
+		}
+		km := kanbanMessagesFor(lang)
+		if strings.HasPrefix(km.companionJoin, "\n") || strings.HasSuffix(km.companionJoin, "\n") {
+			t.Errorf("kanban companionJoin for locale %q has a leading/trailing newline: %q", lang, km.companionJoin)
 		}
 	}
 }

@@ -61,6 +61,12 @@ var permittedItemFieldAdditions = map[string]string{
 	"CardUUID":  "*string",
 	"PickedAt":  "*string",
 	"DroppedAt": "*string",
+	// SPEC-TODO-CLASSIFY-DISPATCH-001 (card t1332) REQ-TCD-002: the ONE
+	// additive classification field — priority, blocked, mode, decider
+	// identity, classified-at stamp, one-line reason — in one nullable
+	// struct, after the Landing precedent (omitempty pointer, absence as
+	// JSON null / SQL NULL).
+	"Classification": "*kanban.CardClassification",
 }
 
 // frozenItemFields is the pre-addition per-item contract: ordered

@@ -102,6 +102,16 @@ type BacklogItem struct {
 	// and never "" (the REQ-TLE-006 discipline this SPEC follows).
 	PickedAt  *string `json:"picked_at,omitempty"`
 	DroppedAt *string `json:"dropped_at,omitempty"`
+	// Classification is ADDITIVE (SPEC-TODO-CLASSIFY-DISPATCH-001
+	// REQ-TCD-002): the creation-time judgment recorded through the add
+	// path's decider seam — priority, blocked, mode, decider identity,
+	// classified-at stamp, one-line reason — in ONE nullable field after the
+	// Landing precedent, so a card with no classification marshals
+	// byte-identically to the pre-SPEC record. Absence is a nil pointer here
+	// and SQL NULL in the classification column — never `{}` and never `""`.
+	// Every reader derives the defaults through EffectiveCardClassification
+	// (REQ-TCD-014); no consumer tests the pointer itself.
+	Classification *CardClassification `json:"classification,omitempty"`
 }
 
 // Relation values a finding may carry. The first two are MECHANICAL — the
@@ -864,12 +874,14 @@ func (s *BacklogStore) addWithCardUUID(text string, cardUUID *string) (*BacklogI
 			CardUUID: cloneIdentity(cardUUID),
 		}
 		rec.Items = append(rec.Items, item)
-		pos = 0
-		for _, it := range rec.Items {
-			if it.State == BacklogStateQueued {
-				pos++
-			}
-		}
+		// REQ-TCD-005: the sort is re-established inside the same locked
+		// write as every add that may change it — an append to a sorted queue
+		// leaves it sorted (an unclassified append ranks normal/non-blocked
+		// and may move ahead of existing low-priority cards). The printed
+		// position is the SORTED queued position (REQ-TCD-006), which an
+		// append to the end no longer implies.
+		rec.SortByClassification()
+		pos = rec.QueuedPosition(item.ID)
 		return nil
 	})
 	if err != nil {

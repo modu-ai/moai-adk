@@ -453,6 +453,11 @@ func (e *backlogEngine) ensureSchema(ctx context.Context) error {
 	if err := e.ensureTransitionStampColumns(ctx); err != nil {
 		return err
 	}
+	for _, table := range []string{"items", "archived_items"} {
+		if err := e.ensureColumn(ctx, table, backlogClassificationColumn); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -515,6 +520,13 @@ var backlogTransitionStampColumns = map[string][]string{
 	"items":          {"picked_at", "dropped_at"},
 	"archived_items": {"picked_at", "dropped_at", "archived_at", "landing_verdict"},
 }
+
+// backlogClassificationColumn is the card-classification column
+// (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-002), appended to both
+// card-bearing tables AFTER the stamp columns by the same
+// pragma_table_info-gated ADD COLUMN path — a fresh and an upgraded database
+// converge on the identical tuple (the freeze test pins it).
+const backlogClassificationColumn = "classification"
 
 // ensureTransitionStampColumns runs the stamp columns through the same
 // metadata-gated ADD COLUMN path as the landing column, at the same point in

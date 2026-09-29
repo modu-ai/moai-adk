@@ -102,6 +102,14 @@ func factoryLaneRuleForSource(source, lang string) string {
 	}
 	switch os.Getenv(config.EnvMoaiKanbanBackend) {
 	case kanban.BackendClaude, kanban.BackendGLM:
+		// REQ-TCD-011 (SPEC-TODO-CLASSIFY-DISPATCH-001): the launcher's
+		// stamped dispatch selection picks the rule — manual mode receives a
+		// manual-mode rule, never the self-dispatch instruction. Any other
+		// value (the code default, absence included) reads as auto-dispatch:
+		// the default is fail-open.
+		if os.Getenv(config.EnvFactoryAutoDispatch) == config.FactoryDispatchManual {
+			return factoryMessagesFor(lang).laneManualDispatchRule
+		}
 		return factoryMessagesFor(lang).laneNextCardRule
 	case kanban.BackendGPT:
 		cardID := os.Getenv(config.EnvMoaiKanbanCard)

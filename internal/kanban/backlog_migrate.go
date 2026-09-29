@@ -105,8 +105,12 @@ func (e *backlogEngine) readSnapshot(ctx context.Context) (*BacklogRecord, error
 	if err != nil {
 		return nil, err
 	}
+	classificationExpr, err := e.columnExpr(ctx, "items", backlogClassificationColumn)
+	if err != nil {
+		return nil, err
+	}
 	itemRows, err := e.queryDB().QueryContext(ctx,
-		`SELECT id, text, added_at, spec_id, state, `+landingColumn+`, `+pickedAtExpr+`, `+droppedAtExpr+` FROM items ORDER BY seq`)
+		`SELECT id, text, added_at, spec_id, state, `+landingColumn+`, `+pickedAtExpr+`, `+droppedAtExpr+`, `+classificationExpr+` FROM items ORDER BY seq`)
 	if err != nil {
 		return nil, mapBacklogEngineError(fmt.Sprintf("load backlog %s", e.dbPath), err)
 	}
@@ -117,7 +121,8 @@ func (e *backlogEngine) readSnapshot(ctx context.Context) (*BacklogRecord, error
 		var landing sql.NullString
 		var state string
 		var pickedAt, droppedAt sql.NullString
-		if err := itemRows.Scan(&it.ID, &it.Text, &it.AddedAt, &specID, &state, &landing, &pickedAt, &droppedAt); err != nil {
+		var classification sql.NullString
+		if err := itemRows.Scan(&it.ID, &it.Text, &it.AddedAt, &specID, &state, &landing, &pickedAt, &droppedAt, &classification); err != nil {
 			return nil, mapBacklogEngineError(fmt.Sprintf("load backlog %s", e.dbPath), err)
 		}
 		if specID.Valid {
@@ -149,6 +154,17 @@ func (e *backlogEngine) readSnapshot(ctx context.Context) (*BacklogRecord, error
 		if droppedAt.Valid {
 			v := droppedAt.String
 			it.DroppedAt = &v
+		}
+		// The classification column reads through the same null-pointer
+		// mapping as the stamps; a PRESENT value that will not decode is
+		// surfaced, never dropped (the landing contract — the column's only
+		// writer validates on write, so an undecodable value is corruption).
+		if classification.Valid {
+			c, decErr := decodeCardClassification(classification.String)
+			if decErr != nil {
+				return nil, fmt.Errorf("load backlog %s: item %s: %w", e.dbPath, it.ID, decErr)
+			}
+			it.Classification = &c
 		}
 		it.State = BacklogState(state)
 		rec.Items = append(rec.Items, it)
@@ -234,9 +250,13 @@ func (e *backlogEngine) readArchive(ctx context.Context, rec *BacklogRecord) err
 	if err != nil {
 		return err
 	}
+	classificationExpr, err := e.columnExpr(ctx, "archived_items", backlogClassificationColumn)
+	if err != nil {
+		return err
+	}
 	rows, err := e.queryDB().QueryContext(ctx,
 		`SELECT seq, id, text, added_at, spec_id, state, position, `+landingColumn+`, `+
-			pickedAtExpr+`, `+droppedAtExpr+`, `+archivedAtExpr+`, `+verdictExpr+` FROM archived_items ORDER BY seq`)
+			pickedAtExpr+`, `+droppedAtExpr+`, `+archivedAtExpr+`, `+verdictExpr+`, `+classificationExpr+` FROM archived_items ORDER BY seq`)
 	if err != nil {
 		return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
 	}
@@ -251,8 +271,9 @@ func (e *backlogEngine) readArchive(ctx context.Context, rec *BacklogRecord) err
 		var state string
 		var pickedAt, droppedAt, archivedAt sql.NullString
 		var verdict sql.NullString
+		var classification sql.NullString
 		if err := rows.Scan(&seq, &entry.Item.ID, &entry.Item.Text, &entry.Item.AddedAt,
-			&specID, &state, &entry.Position, &landing, &pickedAt, &droppedAt, &archivedAt, &verdict); err != nil {
+			&specID, &state, &entry.Position, &landing, &pickedAt, &droppedAt, &archivedAt, &verdict, &classification); err != nil {
 			return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
 		}
 		if specID.Valid {
@@ -291,6 +312,13 @@ func (e *backlogEngine) readArchive(ctx context.Context, rec *BacklogRecord) err
 				return fmt.Errorf("load backlog archive %s: item %s: %w", e.dbPath, entry.Item.ID, decErr)
 			}
 			entry.LandingVerdict = &v
+		}
+		if classification.Valid {
+			c, decErr := decodeCardClassification(classification.String)
+			if decErr != nil {
+				return fmt.Errorf("load backlog archive %s: item %s: %w", e.dbPath, entry.Item.ID, decErr)
+			}
+			entry.Item.Classification = &c
 		}
 		entry.Item.State = BacklogState(state)
 		entry.Findings = []BacklogArchivedFinding{}
@@ -376,12 +404,18 @@ func (e *backlogEngine) writeArchive(ctx context.Context, tx *sql.Tx, rec *Backl
 		if verdictErr != nil {
 			return fmt.Errorf("write backlog archive %s: item %s: %w", e.dbPath, entry.Item.ID, verdictErr)
 		}
+		// The classification rides the same typed-NULL seam: an archived card
+		// keeps the judgment it held when it left the live queue.
+		classification, classErr := CardClassificationValue(entry.Item.Classification)
+		if classErr != nil {
+			return fmt.Errorf("write backlog archive %s: item %s: %w", e.dbPath, entry.Item.ID, classErr)
+		}
 		seq := i + 1
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO archived_items(seq, id, text, added_at, spec_id, state, position, landing, picked_at, dropped_at, archived_at, landing_verdict)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO archived_items(seq, id, text, added_at, spec_id, state, position, landing, picked_at, dropped_at, archived_at, landing_verdict, classification)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			seq, entry.Item.ID, entry.Item.Text, entry.Item.AddedAt, specID,
-			string(entry.Item.State), entry.Position, landing, pickedAt, droppedAt, archivedAt, verdict); err != nil {
+			string(entry.Item.State), entry.Position, landing, pickedAt, droppedAt, archivedAt, verdict, classification); err != nil {
 			return mapBacklogWriteError(e.dbPath, entry.Item.ID, err)
 		}
 		for _, af := range entry.Findings {
@@ -478,9 +512,14 @@ func (e *backlogEngine) writeRecordArchive(ctx context.Context, rec *BacklogReco
 		if it.DroppedAt != nil {
 			droppedAt = *it.DroppedAt
 		}
+		classification, classErr := CardClassificationValue(it.Classification)
+		if classErr != nil {
+			err = fmt.Errorf("write backlog %s: item %s: %w", e.dbPath, it.ID, classErr)
+			return err
+		}
 		if _, err = tx.ExecContext(ctx,
-			`INSERT INTO items(seq, id, text, added_at, spec_id, state, landing, picked_at, dropped_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			i+1, it.ID, it.Text, it.AddedAt, specID, string(it.State), landing, pickedAt, droppedAt); err != nil {
+			`INSERT INTO items(seq, id, text, added_at, spec_id, state, landing, picked_at, dropped_at, classification) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			i+1, it.ID, it.Text, it.AddedAt, specID, string(it.State), landing, pickedAt, droppedAt, classification); err != nil {
 			err = mapBacklogWriteError(e.dbPath, it.ID, err)
 			return err
 		}

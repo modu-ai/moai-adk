@@ -217,7 +217,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 			return claimErr
 		}
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
-		defer enterFactoryLaneMode(finalLabel, entry.FactoryLanes, entry.ClearPolicy)()
+		defer enterFactoryLaneMode(finalLabel, entry.FactoryLanes, entry.ClearPolicy, laneDispatchSelection(entry))()
 		defer exportFactoryLaunchFacts(entry.Spec, backend)()
 		// REQ-SD-020: the relaunch policy turns this launcher into the
 		// supervising loop — it stays the parent, leases the next card,
