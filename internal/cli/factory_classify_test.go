@@ -117,23 +117,33 @@ func TestFactoryNextSerialMutualExclusivity(t *testing.T) {
 		}
 	}
 
-	// The boundary arm: t1 at merged-local — a LATE but NON-terminal state —
-	// still holds the serial slot.
-	fcSetCardState(t, root, "t1", homestate.CardMergedLocal)
+	// The boundary arm: t1 at sync-audit — still INSIDE the implementation
+	// pipeline — holds the serial slot.
+	fcSetCardState(t, root, "t1", homestate.CardSyncAudit)
 	if _, _, err := runFactory(t, "next", "--run", fcRun); err == nil {
-		t.Fatalf("next succeeded with t1 at merged-local; a non-terminal state must keep the serial slot held")
+		t.Fatalf("next succeeded with t1 at sync-audit; an implementation-pipeline state must keep the serial slot held")
 	} else if !strings.Contains(outOf(err), "no card") {
-		t.Fatalf("expected the no-card exit at merged-local, got: %v", err)
+		t.Fatalf("expected the no-card exit at sync-audit, got: %v", err)
 	}
-
-	// (c) t1 reaches a positively-enumerated terminal state (abandoned — an
-	// irreversible state): the low serial card is then served.
-	fcSetCardState(t, root, "t1", homestate.CardAbandoned)
+	// t1 reaching merge-ready — the enumerated boundary, where the card's
+	// implementation is finished and the integration window takes over the
+	// ordering — releases the slot for the low serial card.
+	fcSetCardState(t, root, "t1", homestate.CardMergeReady)
 	if _, _, err := runFactory(t, "next", "--run", fcRun); err != nil {
-		t.Fatalf("next after terminal: %v", err)
+		t.Fatalf("next after merge-ready: %v", err)
 	}
 	if c := fcCard(t, root, "t2"); c.State != homestate.CardLeased {
-		t.Fatalf("t2 = %s, want the low serial leased after the high serial reached a terminal state", c.State)
+		t.Fatalf("t2 = %s, want the low serial leased once the high serial's implementation finished (merge-ready)", c.State)
+	}
+
+	// (c) a fully terminal state (abandoned — an irreversible exit) also
+	// re-admits selection; here the low card is already served, so a further
+	// next finds no card and exits 3.
+	fcSetCardState(t, root, "t1", homestate.CardAbandoned)
+	out, _, err := runFactory(t, "next", "--run", fcRun)
+	sdExit3(t, "exhausted queue", err)
+	if !strings.Contains(out, "no card") {
+		t.Errorf("stdout = %q, want a no-card line", out)
 	}
 }
 

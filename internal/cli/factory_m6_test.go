@@ -166,6 +166,14 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 	t.Run("relaunch supervising loop starts one session per card", func(t *testing.T) {
 		root, store := fcFixture(t)
 		fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
+		// SPEC-TODO-CLASSIFY-DISPATCH-001: this scenario pins the LOOP's
+		// continuation mechanics, and its stub children exit WITHOUT working
+		// their card (the crashed-lane shape, whose recovery is lease
+		// expiry). Unclassified cards read serial by default, so the
+		// serial-vs-serial gate would stop the loop after one card — the
+		// mode-neutral intent of this scenario maps to parallelizable.
+		fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
+		fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
 		sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
 		wantLabel := sdNextFreeLaneLabel(t, root)
 		t.Chdir(root)
@@ -283,6 +291,12 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 	t.Run("relaunch continues after a failed child session", func(t *testing.T) {
 		root, store := fcFixture(t)
 		fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
+		// SPEC-TODO-CLASSIFY-DISPATCH-001: same mode-neutral mapping as the
+		// per-card subtest above — the subject is the loop's continuation
+		// after a failed child, not exclusivity; the failed card stays leased
+		// until expiry either way.
+		fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
+		fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
 		sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
 		t.Chdir(root)
 		t.Setenv(config.EnvClaudeProjectDir, root)

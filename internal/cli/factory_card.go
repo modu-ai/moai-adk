@@ -161,15 +161,28 @@ const factoryNextSelectionAttempts = 5
 const factoryNextNoCardExit = 3
 
 // factorySerialSlotFree positively enumerates the card states that re-admit
-// serial selection (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-008): done and
-// abandoned — the only states from which a card can never again hold a
-// lease. Everything else — a state added later included — keeps the serial
-// slot held. The enumeration names the RELEASING states and never the
-// holding ones (plan G2): a negative check (`state != done && ...`) would
-// silently release the slot for every state added after it was written.
+// serial selection (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-008). The slot
+// protects the ORDERING OF IMPLEMENTATION WORK: it is held from the moment a
+// serial card is recorded until its implementation pipeline ends — every
+// state at or after merge-ready (cardStageAtOrAfterMergeReady: the card's
+// implementation is finished and what remains is the integration pipeline,
+// which the integration window serializes on its own) plus abandoned, the
+// one irreversible exit. A state added later keeps the slot held — the
+// enumeration names the RELEASING states and never the holding ones (plan
+// G2): a negative check (`state != done && ...`) would silently release the
+// slot for every state added after it was written.
+//
+// merge-ready and later release the slot because that is the recorded
+// behavior the absorbed self-dispatch suite pins: a Codex lane's relaunch
+// loop leases its next card while the previous one sits at merge-ready
+// awaiting integration (factory_m5_test.go) — a merge-ready card is not
+// being worked, and blocking the fleet on it would cost the factory its
+// throughput without protecting any ordering the integration window does not
+// already protect.
 func factorySerialSlotFree(state string) bool {
 	switch state {
-	case homestate.CardDone, homestate.CardAbandoned:
+	case homestate.CardMergeReady, homestate.CardMerging, homestate.CardMergedLocal,
+		homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone, homestate.CardAbandoned:
 		return true
 	default:
 		return false
@@ -451,20 +464,22 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 	if err := todoStoreAt(root).Mutate(func(r *kanban.BacklogRecord) error {
 		for i := range r.Items {
 			it := &r.Items[i]
-			if it.State != kanban.BacklogStateQueued {
-				continue
+			// Positive enumeration (REQ-THS-012): the state this arm promotes
+			// is named; every other state — a state added later included —
+			// falls through.
+			if it.State == kanban.BacklogStateQueued {
+				sawQueued++
+				cls := kanban.EffectiveCardClassification(*it)
+				if cls.Blocked {
+					continue
+				}
+				if cls.Mode == kanban.ClassModeSerial && serialInFlightExcluding(it.ID) {
+					continue
+				}
+				it.State = kanban.BacklogStatePicked
+				promoted = it.ID
+				return nil
 			}
-			sawQueued++
-			cls := kanban.EffectiveCardClassification(*it)
-			if cls.Blocked {
-				continue
-			}
-			if cls.Mode == kanban.ClassModeSerial && serialInFlightExcluding(it.ID) {
-				continue
-			}
-			it.State = kanban.BacklogStatePicked
-			promoted = it.ID
-			return nil
 		}
 		return nil
 	}); err != nil {

@@ -114,7 +114,7 @@ var factoryLocales = map[string]factoryMessages{
 			"and works in the current worktree. Carry that card to merge-ready: record each stage with `moai factory stage` " +
 			"and finish with `moai factory complete`. Then end this session; do not take or lease any other card.",
 		laneManualDispatchRule: "Factory lane manual-dispatch rule: this session launched with --no-auto-dispatch — " +
-			"manual dispatch mode. Do not lease cards yourself: a lead or the operator routes each card to you explicitly. " +
+			"manual dispatch mode. Do not lease cards yourself: the operator (or the factory leader) routes each card to you explicitly. " +
 			"When a card is routed to you, work it in the current worktree and record its stages with `moai factory stage`.",
 	},
 	"ko": {
@@ -156,7 +156,7 @@ var factoryLocales = map[string]factoryMessages{
 			"그 카드를 merge-ready 까지 진행하세요. 각 단계를 `moai factory stage` 로 기록하고 `moai factory complete` 로 마칩니다. " +
 			"그런 다음 이 세션을 종료합니다. 다른 카드를 가져오거나 임대하지 않습니다.",
 		laneManualDispatchRule: "팩토리 레인 수동 디스패치 규칙: 이 세션은 --no-auto-dispatch 로 시작했습니다 — 수동 디스패치 모드입니다. " +
-			"카드를 임대하려고 `moai factory next` 를 실행하지 마세요: 리드나 운영자가 카드를 명시적으로 배분합니다. " +
+			"카드를 임대하려고 `moai factory next` 를 실행하지 마세요: 운영자(또는 팩토리 리더)가 카드를 명시적으로 배분합니다. " +
 			"배분받은 카드는 현재 워크트리에서 작업하고 각 단계를 `moai factory stage` 로 기록합니다.",
 	},
 	"ja": {
@@ -198,7 +198,7 @@ var factoryLocales = map[string]factoryMessages{
 			"そのカードを merge-ready まで進めます。各段階を `moai factory stage` で記録し、`moai factory complete` で締めます。 " +
 			"その後、このセッションを終了してください。他のカードを取得したりリースしたりしません。",
 		laneManualDispatchRule: "ファクトリーレーン手動ディスパッチ規則：このセッションは --no-auto-dispatch で起動しました — 手動ディスパッチモードです。 " +
-			"カードをリースするために `moai factory next` を実行しないでください：リードまたはオペレーターがカードを明示的に割り当てます。 " +
+			"カードをリースするために `moai factory next` を実行しないでください：オペレーター（またはファクトリーリーダー）がカードを明示的に割り当てます。 " +
 			"割り当てられたカードは現在のワークツリーで作業し、各段階を `moai factory stage` で記録します。",
 	},
 	"zh": {
@@ -239,7 +239,7 @@ var factoryLocales = map[string]factoryMessages{
 			"把该卡推进到 merge-ready：用 `moai factory stage` 记录各阶段，用 `moai factory complete` 收尾。 " +
 			"然后结束本会话；不要领取或租用其他卡片。",
 		laneManualDispatchRule: "工厂泳道手动调度规则：本会话以 --no-auto-dispatch 启动 — 手动调度模式。 " +
-			"不要运行 `moai factory next` 去租用卡片：由主导会话或操作者显式分配每张卡片。 " +
+			"不要运行 `moai factory next` 去租用卡片：由操作者（或工厂主导会话）显式分配每张卡片。 " +
 			"被分配的卡片在当前工作树中处理，各阶段用 `moai factory stage` 记录。",
 	},
 }
