@@ -156,3 +156,58 @@ git rev-parse main            # primary HEAD state, AC-13 falsifiable read (expe
   lanes needing those forms must use the documented substitutes; the anchor
   contamination incident (card t1339) could recur to any concurrently spawning
   lane
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+- sync_status: audit-ready
+- sync_complete_at: 2026-09-29
+- sync_commit_sha: pending-backfill-sync
+- Sync commit scope (the single 3-phase close commit): spec.md frontmatter
+  `in-progress → completed` (merged transition per the Status Transition
+  Ownership Matrix — no separate Mx chore commit), this §E.4 section, and the
+  CHANGELOG.md Unreleased entry. No `.go` file is touched at sync; run-phase
+  evidence stands at `815ba7e8b`.
+- CHANGELOG judgment — entry ADDED under `## [Unreleased] → ### Added` (top
+  position, newest-first like the t1312/t1311 entries): the commit deny is a
+  shipped-code behavior change (new deny class behind
+  `workflow.branch_guard.deny_commits_on`, ships `[]`) and
+  `git_strategy.manual.lead_push_threshold` is a shipped key — both inside the
+  file's established scope (the card t1312 session-record retention entry is
+  the same shape). Pre-emission duplicate check:
+  `grep -c 'SPEC-MAIN-COMMIT-BAN-001' CHANGELOG.md` → `0` before drafting.
+  Entry content verified against the tree: symbol names
+  (`matchProtectedCommitCommand`, `checkProtectedCommit`, `ResolveHeadBranch`)
+  and every cited path read back from the implementation files, not from the
+  plan.
+- User-doc impact — ZERO wrong-text hits; no user-doc edit required:
+  - `grep -rn 'already-checked-out\|already checked out'` over `README.md`
+    `README.ko.md` `README.ja.md` `README.zh.md` + `docs-site/content` → 0
+    matches (the old AGENTS.md §2 wording is maintainer-internal; the template
+    AGENTS.md clause is generic, not user-doc surface).
+  - docs-site `advanced/config-sections.md` (4 locales) documents the
+    BranchGuard's legacy deny set (`switch` / `checkout` / `reset --hard` /
+    `stash` / `rebase`) — still accurate: none of that text becomes false, and
+    the commit deny ships inactive (`deny_commits_on: []`). The new key's
+    documentation ships inline in the template `workflow.yaml` itself.
+    `advanced/autonomous-loops.md` mentions the BranchGuard only as a
+    pattern-sibling reference — unaffected.
+  - Coverage of the new keys in docs-site would be a docs-completeness
+    follow-up (4-locale same-PR obligation), not a sync correctness blocker —
+    left to the lead's discretion.
+- Codemaps: none exist in this tree — `ls codemaps` → absent (verified during
+  t1315, re-verified this sync). Nothing to rotate.
+- Lead-run pending checklist (PENDING-LEAD — primary-only probes, LEAD/OPERATOR
+  owned; the lane did NOT execute them and MUST NOT: the primary checkout is
+  outside this worktree and the probes are disposition-coupled):
+  - `grep -l 'commit-dead' /Users/goos/MoAI/moai-adk-go/CLAUDE.local.md` —
+    AC-3/AC-16 primary probe; expected hit POST-disposition only (the
+    CLAUDE.local.md §4.1 clause is the operator-side step per REQ-1.4/REQ-4.6).
+  - `git rev-parse main` (run at the primary checkout) — AC-13 falsifiable
+    read; expected `c8f245c2c9a58083518f0b7cbebff0542848e033` pre-disposition.
+  - Both rows stay lead-owned past this SPEC's close: AC-3's full pass and
+    AC-16's primary set complete at disposition time, not at sync time.
+- sync_commit_sha backfill note: recorded as the `pending-backfill-sync`
+  placeholder in the sync commit itself (a commit cannot reference its own
+  hash; SHA-placeholder backfill exemption,
+  spec-frontmatter-schema.md § D3) and backfilled with the real SHA in the
+  follow-up commit immediately after.
