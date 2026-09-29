@@ -2,7 +2,7 @@
 id: SPEC-DOCS-HEADING-PARITY-001
 title: "docs-site 4로케일 헤딩 패리티 정렬 — 표적 3페이지 구조 재유도 + 래칫 프루닝"
 version: "0.1.1"
-status: draft
+status: implemented
 created: 2026-09-29
 updated: 2026-09-29
 author: manager-spec
