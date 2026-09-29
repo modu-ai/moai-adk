@@ -154,10 +154,12 @@ are regression guards over current behavior, adopted as-is).
 - **Given** a join performed through discovery (AC-001 shape),
 - **When** the child session's env and its SessionStart hook bind are examined,
 - **Then** the env carries `MOAI_KANBAN_ID` = the resumed run id and `MOAI_KANBAN_LEAD_NAME` =
-  the target leader's name, and the hook binds the lane peer (generation 1) into that run's
-  broker — the run identity and broker bind an ordinary join produces, with the leader name
-  added by this SPEC on the discovery path (ordinary joins export no leader name and are
-  unchanged).
+  the target leader's name, and the hook binds the lane peer into that run's broker at the bind
+  an ordinary join produces (pending+1 — launch-pending 1 → bind 2, the measured chain; the
+  literal `Generation: 1` is the want-shape at `factory_messages.go:96`, not the measured bind;
+  evidence in progress.md §E.2) — the run identity and broker outcome of an ordinary join, with
+  the leader name added by this SPEC on the discovery path (ordinary joins export no leader
+  name and are unchanged).
 
 ### AC-013 — Mirror parity across the join point
 
