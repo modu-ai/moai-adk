@@ -50,6 +50,12 @@ to the primary checkout and would lock out legitimate worktree flows.
   Disabled, no `git rev-parse` subprocess runs at all.
 - **Deny sentinel.** Every deny on this path is prefixed `BRANCH_GUARD_VIOLATION:`, so the
   orchestrator can match the source without parsing the reason string.
+- **Protected-branch commit deny.** A second, branch-conditional deny class in the same family:
+  the commit-creating verbs (`git commit` / `git revert` / `git cherry-pick`) are denied in the
+  primary checkout when the resolved HEAD branch is listed in
+  `workflow.branch_guard.deny_commits_on` — an empty list short-circuits before any subprocess.
+  Same sentinel, same opt-in gate, same fail-open norm; detached HEAD allows (no named branch to
+  protect).
 - **Query-vs-mutate discrimination.** The `git branch` matcher denies every mutating form and
   passes read-only queries; an unclassifiable form under-matches and passes, under-match being the
   accepted fail-open direction.
@@ -79,5 +85,5 @@ scope: `main-checkout-branch-guard-detail.md` § Mechanical enforcement.
 
 ---
 
-Version: 1.3.3
+Version: 1.4.0
 Classification: Evolvable operational rule — branch-state isolation; changes no gate semantics.
