@@ -2,7 +2,7 @@
 id: SPEC-JEV-SKILL-SUGGESTION-001
 title: "Jev skill-suggestion guidance skill — explicit opt-in surface, display-only, no call path"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-09-30
 updated: 2026-09-30
 author: manager-spec

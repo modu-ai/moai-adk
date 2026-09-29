@@ -20,7 +20,38 @@ next: delta re-audit, then Implementation Kickoff Approval gate, then /moai run 
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — manager-develop 소관>_
+Convention (VCI §3 + plan-audit D4): every evidence entry carries (a) the
+command, (b) its verbatim output, (c) the tree HEAD SHA measured against, and
+(d) that command's exit code — `grep -c` zero-hits exit 1, so code and count
+travel as a pair.
+
+### M1 — guard test first (RED observed before any deliverable exists)
+
+Pre-flight baseline (tree `235fcfd12`): `go build ./...` → exit 0
+(observed `BUILD_EXIT_0`); skill file absent (`ls .claude/skills/ | grep
+moai-jev-skill-suggestion` → 0 hits, exit 1); catalog entry absent
+(`grep -c "moai-jev-skill-suggestion" internal/template/catalog.yaml` → `0`,
+exit 1).
+
+E8 (RED evidence) — tree `235fcfd12` (pre-M1-commit), exit 1:
+
+```
+$ go test ./internal/cli/ -run '^TestJevSkillSuggestionSkill(CarriesNoCallPath|CopiesStayIdentical)$' -count=1
+--- FAIL: TestJevSkillSuggestionSkillCarriesNoCallPath (0.00s)
+    jev_skill_suggestion_skill_test.go:61: read ../../.claude/skills/moai-jev-skill-suggestion/SKILL.md: open ../../.claude/skills/moai-jev-skill-suggestion/SKILL.md: no such file or directory
+--- FAIL: TestJevSkillSuggestionSkillCopiesStayIdentical (0.00s)
+    jev_skill_suggestion_skill_test.go:81: read ../../.claude/skills/moai-jev-skill-suggestion/SKILL.md: open ../../.claude/skills/moai-jev-skill-suggestion/SKILL.md: no such file or directory
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.051s
+FAIL
+```
+
+RED is an **existence RED**: both tests fail on the skill file's absence
+(read-fail) — the right stated reason. The positive controls read and matched
+before the failure line, proving the scan fires on files that legitimately
+carry the tokens; the sweep counts exactly 2 tests (the anchored selector), so
+the green after M2 will not be an empty sweep. Full output also persisted at
+`/tmp/t1340-red.log` in this run.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
