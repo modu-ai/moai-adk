@@ -5,6 +5,8 @@ paths: "**/agent-common-protocol.md,**/.claude/agents/moai/*.md,**/.claude/skill
 
 # Agent Common Protocol — Reference Detail
 
+<!-- mirror-fork: intentional — this copy is deliberately divergent from the local dogfood copy; do not sync mechanically -->
+
 > Detail companion to `agent-common-protocol.md` (the SSOT). That file carries the
 > binding obligations; this file carries the verbatim command batch, the worked
 > contracts, and the CLI idiom catalogue. Loaded only when

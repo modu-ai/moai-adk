@@ -1,5 +1,7 @@
 # Verification-Claim Integrity
 
+<!-- mirror-fork: intentional — local retains [ZONE:Evolvable] governance tags and internal provenance (SPEC-IDs, concrete per-instance examples) the neutral template omits; sync requires a deliberate allowlist change (card t1319) -->
+
 Doctrine establishing the **"no unobserved-verification-claim" invariant** for all MoAI actors. This rule is automatically loaded for the orchestrator and all agents. It is a policy-layer (codification) doctrine — it defines the norm; it does not itself run a runtime detector.
 
 > Provenance: SPEC-EVIDENCE-CLAIM-INVARIANT-001. §2.2 from SPEC-BINLAG-INVOCATION-001.

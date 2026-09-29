@@ -5,6 +5,8 @@ paths: "**/cross-session-messaging*.md,**/kanban-dispatch*.md"
 
 # Cross-Session Messaging — Detail Companion
 
+<!-- mirror-fork: intentional — this copy is deliberately divergent from the local dogfood copy; do not sync mechanically -->
+
 > Detail companion of `cross-session-messaging.md` (the always-loaded stub). The stub owns what the
 > channel is, its availability constraints, every rule, the concurrency-check integration, the
 > idle-notice clause, and the anti-pattern list. This file owns the mechanism-selection table, the
