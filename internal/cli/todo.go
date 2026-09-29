@@ -191,7 +191,17 @@ func withResolvedLandedRef(cmd *cobra.Command, apply func(ref string)) {
 }
 
 // newTodoCmd creates the `moai todo` parent command.
+//
+// Construction is serialized behind a mutex: the flag registrations below
+// bind package-level variables (`todoAutoFlag` · `todoAutoWait`), so pflag
+// writes those globals at REGISTRATION time — and concurrent constructors
+// (the landed-verb concurrency test builds one command per goroutine) race
+// on them. The per-call command instances themselves share nothing.
+var newTodoCmdMu sync.Mutex
+
 func newTodoCmd() *cobra.Command {
+	newTodoCmdMu.Lock()
+	defer newTodoCmdMu.Unlock()
 	cmd := &cobra.Command{
 		Use:   "todo",
 		Short: "Operate the kanban backlog queue",

@@ -113,19 +113,19 @@ func ValidKind(k Kind) bool {
 // qualifying count of any subcommand was 4, one short of the threshold — so no
 // finding of either kind can be emitted at that volume.)
 var retainedCatalog = map[string]struct{}{
-	"manager-spec":     {},
-	"manager-develop":  {},
-	"manager-docs":     {},
-	"manager-git":      {},
-	"manager-design":   {},
-	"manager-lead":     {},
-	"manager-todo": {},
-	"plan-auditor":     {},
-	"sync-auditor":     {},
-	"builder-harness":  {},
-	"super-advisor":    {},
-	"e2e-tester":       {},
-	"Explore":          {},
+	"manager-spec":    {},
+	"manager-develop": {},
+	"manager-docs":    {},
+	"manager-git":     {},
+	"manager-design":  {},
+	"manager-lead":    {},
+	"manager-todo":    {},
+	"plan-auditor":    {},
+	"sync-auditor":    {},
+	"builder-harness": {},
+	"super-advisor":   {},
+	"e2e-tester":      {},
+	"Explore":         {},
 }
 
 // IsRetainedAgent reports whether name exactly matches a retained-catalog agent.
