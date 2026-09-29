@@ -35,6 +35,12 @@ author: manager-spec
 - `ls internal/cli/ | grep -c jev_skill_suggestion` → `0`
 - `grep -rln "REQ-JSK" .moai/specs/ internal/` → 공백 (REQ-JSK 접두사 유일성)
 
+**RED-now 셀 채택 완비 항목 (run-phase, plan-audit D4).** 위 셀들은 plan-phase 시점의
+명령+출력+트리 핀을 갖추되 명령별 exit code 를 별도 필드로 두지 않았다(`grep -c`
+0-적중은 exit 1 — 카운트만으로는 코드가 유실된다). Blocker 급 AC 채택 시점(run-phase)에
+네 요소를 완비한다: exit code 를 쌍으로 기록하고, 필요 시 표 셀 또는 fenced
+evidence-ledger 형태로 운반한다 (verification-completeness §2.1; plan §E (d) 항 참조).
+
 ## D.1 AC-JSK-001 — 두 사본 존재 + 바이트 동일
 
 **Given** M2 가 적용된 트리, **When** `cmp .claude/skills/moai-jev-skill-suggestion/SKILL.md internal/template/templates/.claude/skills/moai-jev-skill-suggestion/SKILL.md` 가 실행되면, **Then** exit 0 (차등 0)이고 두 파일 모두 비어 있지 않다(`wc -c` 각각 > 0). flip 은 옳은 이유로: RED-now 셀은 "파일 없음(카운트 0)"이고, 추가된 것이 곧 파일 2개다.
@@ -48,11 +54,15 @@ author: manager-spec
 **Given** M2 트리, **When** 다음을 양 사본에 대해 실행하면, **Then** 각각 `0`:
 
 ```bash
-grep -Ec 'SPEC-[A-Z]{2,}-[0-9]{3}|REQ-[A-Z]{2,}-[0-9]{3}|t1340|[0-9a-f]{40}' <copy>
+grep -Ec 'SPEC-[A-Z][A-Z0-9-]*-[0-9]{3}|REQ-[A-Z][A-Z0-9-]*-[0-9]{3}|t1340|[0-9a-f]{40}|20[0-9]{2}-[0-9]{2}-[0-9]{2}' <copy>
 grep -c 'jev-suggest' <copy>
 ```
 
-`<copy>` 는 로컬·템플릿 양쪽. 내부 흔적 클래스와 철수된 명령명이 어느 사본에도 없다.
+`<copy>` 는 로컬·템플릿 양쪽. 내부 흔적 클래스 — 다중 세그먼트 SPEC ID(본 SPEC 자체
+형태 `SPEC-JEV-SKILL-SUGGESTION-001` 포함), REQ 토큰, 카드 id, 40-hex 커밋 SHA, 내부
+ISO 날짜 — 와 철수된 명령명이 어느 사본에도 없다. (plan-audit D1: ID 패턴을 다중
+세그먼트 형태로 확폭하고 내부 날짜 검출기를 추가했다 — REQ-JSK-003 의 금지 클래스 전부에
+검출기가 대응하며, 이 SPEC 자체 ID 가 패턴을 빠져나가던 변이 통로를 닫았다.)
 
 ## D.4 AC-JSK-004 — display-only 계약 산문
 
@@ -80,7 +90,16 @@ grep -c 'jev-suggest' <copy>
 
 ## D.10 AC-JSK-010 — 비테스트 Go 무접촉 + 기존 가드 green
 
-**Given** 본 SPEC 의 전체 diff, **When** (a) `git diff --name-only <base>..HEAD -- 'internal/**/*.go' | grep -v _test` 실행하면, **Then** 공백(비테스트 Go 변경 0 — 신설은 `_test.go` 하나뿐); (b) `go test ./internal/jevmeasure/ -run '^TestNoConsumerCallPathShips$'` green; (c) `git diff <base>..HEAD -- internal/jevmeasure/` 공백 (기존 가드 zero-edit).
+**Given** 본 SPEC 의 전체 diff, **When** 측정 시점에 `CARD_BASE=$(git merge-base develop HEAD)` 를 재계산한 뒤 (a) `git diff --name-only "$CARD_BASE"..HEAD -- 'internal/**/*.go' | grep -v _test` 실행하면, **Then** 공백(비테스트 Go 변경 0 — 신설은 `_test.go` 하나뿐); (b) `go test ./internal/jevmeasure/ -run '^TestNoConsumerCallPathShips$'` green; (c) `git diff "$CARD_BASE"..HEAD -- internal/jevmeasure/` 공백 (기존 가드 zero-edit).
+
+**기준(`<base>` → `CARD_BASE`) 정의 (plan-audit D2).** 측정 기준은 리터럴
+`develop @ 7a713a9a8` 이 아니라 **측정 시점에 재계산한 `git merge-base develop HEAD`** 이고,
+이 판정식은 병합 전 평가 전용이다. 사유: pre-merge develop 흡수 뒤 리터럴 base 범위는 타
+카드의 커밋을 끌어들여 오측정(거짓 FAIL 또는 조용한 범위 어긋남)을 낳는다. 근거:
+`.claude/rules/local/gitflow-lane-protocol.md` §8 — 「이 카드가 무엇을 바꿨는가」는
+흡수한 ref 와의 merge-base 부터 잰다(리터럴 base SHA 로 재지 않는다); 병합 뒤에는 이
+판정식이 비워지므로 트리 항등으로 대체한다. §D.0 의 `7a713a9a8` 핀은 plan-phase 관측
+기록이지 이 AC 의 측정 기준이 아니다 — 두 표면은 역할이 다르다.
 
 ## D.11 AC-JSK-011 — lint
 

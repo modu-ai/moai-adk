@@ -60,7 +60,8 @@ golangci-lint run --timeout=2m ./internal/cli/... 2>&1 | tail -3    # baseline �
 ## §E. Self-Verification (run-phase 인도물)
 
 §E 항목은 VCI 5-절 형식(주장/증거/귀속/미검증/잔여위험)으로, (a) 명령 (b) verbatim 출력
-(c) 트리 HEAD SHA 를 함께 보고한다.
+(c) 트리 HEAD SHA (d) 각 명령의 exit code 를 함께 보고한다 — `grep -c` 0-적중은 exit 1
+이므로 코드와 카운트를 쌍으로 기록한다 (plan-audit D4).
 
 - E1: AC-JSK-001..011 PASS/FAIL 매트릭스 (acceptance.md §D)
 - E2: `go build ./...` + `GOOS=windows GOARCH=amd64 go build ./...` 양쪽 exit 0

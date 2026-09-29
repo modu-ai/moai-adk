@@ -1,7 +1,7 @@
 ---
 id: SPEC-JEV-SKILL-SUGGESTION-001
 title: "Jev skill-suggestion guidance skill — explicit opt-in surface, display-only, no call path"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-09-30
 updated: 2026-09-30
@@ -23,6 +23,7 @@ related_specs: [SPEC-JEV-CONSUMERS-001, SPEC-JEV-OPTIN-MEASURE-001, SPEC-JEV-COR
 | Date | Version | Change | Author |
 |------|---------|--------|--------|
 | 2026-09-30 | 0.1.0 | Initial plan-phase artifacts (card t1340, Class C). Input: 09-22 aitmpl 분석 보고서. 배경 §A 에서 dispatch 전제(consumer B 존재)가 SPEC-JEV-GUARD-001 에 의해 철수된 상태임을 관측·정정하고, 설계를 호출-경로-없는 가이던스 스킬로 확정. | manager-spec |
+| 2026-09-30 | 0.1.1 | plan-audit iter-1 CONDITIONAL 0.875 반영 — D1(acceptance D.3 검출기 확폭: 다중 세그먼트 SPEC/REQ ID + 내부 날짜 클래스), D2(acceptance D.10 기준을 merge-base 재계산으로 재정의, lane protocol §8 인용), D3(research NEEDS-CLARIFICATION 어휘 정리), D4(RED-now 셀 런페이즈 완비 항목 명시), D5(§D.2 고려-제외 토큰 2종 기록). | manager-spec |
 
 ## A. 배경 (Background)
 
@@ -110,6 +111,13 @@ mod 를 분석하고 (a) 목록 은닉 + SKILL.md 직접 주입 기제를 기각
 (`mcp_jev.go` → `internal/jev`, `moai-mcp-tools-catalogue.md` → `jev_ask`). 토큰 집합을
 늘리지 않는다 — 철수된 명령명 부재 검사는 일회성 AC grep(AC-JSK-003 별행)이 담당하고,
 영구 가드는 형제와 같은 모양을 유지한다.
+
+고려하고 제외한 토큰 2종 (plan-audit D5): `scripts/jev` — 운영자 로컬 전용 경로로 사용자
+프로젝트에 배포되지 않고 제품 호출 경로가 아니며, 형제 본문도 0회 참조한다 (관측:
+plan-audit verified-tree 3번 항). `SkillSuggest` — Go 측 walk 가드
+(`TestNoConsumerCallPathShips`)가 소유하는 마커 계열로, 스킬 본문 위생이 아니라 가드의
+소관이고(해당 walk 는 비테스트 `.go` 만 훑는다), 본문 검사 토큰으로 편입하면 소유자가
+다른 두 검사가 한 집합에서 갈라진다.
 
 ### D.3 스킬 명명 — dispatch literal 유지
 

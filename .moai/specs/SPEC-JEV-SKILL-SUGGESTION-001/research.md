@@ -60,7 +60,7 @@ Dispatch 전제 "consumer B 가 존재하고 스킬이 감싼다" → **관측 �
   (`workflow.jev.enabled`), 자격증명 파일, doctor 준비성 체크. 판단 래퍼의 도달성은
   카탈로그 소유이므로 스킬은 이름조차 대지 않는다(형제 분할 상속).
 
-이 정정은 [NEEDS CLARIFICATION] 을 만들지 않는다 — 철수 사실이 관측되고, dispatch 자체가
+이 정정은 운영자 확인 항목(NEEDS-CLARIFICATION 마커)을 만들지 않는다 — 철수 사실이 관측되고, dispatch 자체가
 "NO product Go code changes" 를 경계로 정해 뒀으며, 복원 경로는 기존 계약(REQ-JEVG-006)이
 이미 소유한다. 운영자 결정 신규 필요 없음.
 
