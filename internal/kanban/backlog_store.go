@@ -205,6 +205,42 @@ func (f BacklogFinding) Names(id string) bool {
 	return f.SubjectID == id || f.RelatedID == id
 }
 
+// WaitsOnOf normalizes a sequencing finding to one directed waits-on edge:
+// the WAITER (the blocked side) and the card it waits on (its predecessor).
+// `depends {S,R}` means S waits on R; `blocks {S,R}` means R waits on S
+// (SPEC-RELATION-PICKUP-FILTER-001 spec.md B.3). Non-sequencing relations
+// return ok=false — the pickup filter and the cycle guard consume exactly
+// blocks and depends (REQ-RPF-006).
+//
+// @MX:NOTE: single normalization point for both sequencing consumers —
+// the pickup filter and the todo-relate cycle guard read direction ONLY
+// through this function.
+func WaitsOnOf(f BacklogFinding) (waiter, target string, ok bool) {
+	switch f.Relation {
+	case BacklogRelationDepends:
+		return f.SubjectID, f.RelatedID, true
+	case BacklogRelationBlocks:
+		return f.RelatedID, f.SubjectID, true
+	}
+	return "", "", false
+}
+
+// FindingsBlocking returns the live findings whose blocked side (the
+// waits-on waiter) names id. The finding's EXISTENCE in the live record is
+// the whole unresolved predicate (REQ-RPF-001): a predecessor's done moves
+// the finding into the archive through ArchiveCard, so resolution needs no
+// card-state scan — and a dropped or held predecessor keeps the finding, so
+// the successor conservatively keeps waiting (spec.md B.1).
+func (r *BacklogRecord) FindingsBlocking(id string) []BacklogFinding {
+	var out []BacklogFinding
+	for _, f := range r.Findings {
+		if waiter, _, ok := WaitsOnOf(f); ok && waiter == id {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
 // SamePairAs reports whether two findings refer to the same UNORDERED pair.
 // The comparison is unordered because a relation between two cards is a
 // property of the pair, not of the direction it happened to be written in —

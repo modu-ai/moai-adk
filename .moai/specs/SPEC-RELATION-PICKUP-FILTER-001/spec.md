@@ -2,9 +2,9 @@
 id: SPEC-RELATION-PICKUP-FILTER-001
 title: "blocks/depends relations consumed as a self-dispatch pickup filter — relation-blocked cards excluded from todo --auto pickup, and a cycle guard on todo relate"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-29
-updated: 2026-09-29
+updated: 2026-09-30
 author: manager-spec (card t1343)
 priority: P2
 phase: "v3.2.0 target"
