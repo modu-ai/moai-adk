@@ -132,3 +132,17 @@ run_commit_sha: 5d58d51c4
 reword of two new-test doc-comment lines that would otherwise have tripped AC-ALP-006's
 0-hit grep — the reword is comment-only and the captured RED output above quotes the
 original line numbers.)
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+- sync_complete_at: 2026-09-29
+- sync_commit_sha: pending-backfill-sync
+- sync_status: complete
+- changelog_entry_position: [Unreleased] → `### Fixed`, first entry (newest-first per section convention)
+- b12_self_test_a: pass — `grep -c 'SPEC-ALIAS-PASSTHROUGH-001' CHANGELOG.md` = 0 pre-emission
+- b12_self_test_b: pass — 12 distinct live AC identifiers in acceptance.md (AC-ALP-001..012; 0 `[RETIRED]`/`[REF]` markers); the CHANGELOG entry references the same 12
+- b12_self_test_c: pass — the entry's one cited path (`.moai/specs/SPEC-ALIAS-PASSTHROUGH-001/spec.md`) verified present via ls
+- user_doc_impact: none to edit — mechanism greps `expandModelString` and `ModelAliasTable` over README×4 + docs-site/content return 0 hits (grep exit 1 both); behavioral sweep (별칭/エイリアス/别名 in README×4; alias-mention inventory across docs-site/content; the 4-locale `multi-llm/model-policy.md` resolution notes; the 4-locale `cli-reference/launchers.md` `--model` rows; `cli-reference/profile.md` "Selectable model aliases"; the init-wizard model step) found only Claude-Code-attributed mapping notes (model-policy ×4: "the `opus` alias resolves to Opus 5.5 on Claude Code v2.1.280 or newer") and current-target statements (README:246 t1322 bump footnote) — neither describes the launch-path alias→ID expansion this SPEC removed, so per the sync dispatch no README/docs-site edit was invented
+- codemap_check: no action — `codemaps/` is absent from this worktree and from the primary checkout (`ls -d codemaps` → No such file or directory in both), so no codemap misdescribes launcher.go/model_policy.go; the launcher.go comment + `@MX:REASON` consumer-list updates were already landed in run commit 5d58d51c4
+- frontmatter_status_transitions.spec_md: in-progress → implemented → completed (merged into the single sync commit; `updated:` unchanged 2026-09-29 — same day)
+- canary_compliance_check.mx_tags: no MX surface touched — sync changes are markdown-only (CHANGELOG.md, spec.md frontmatter `status:`, progress.md §E.4); no .go file is modified in this phase

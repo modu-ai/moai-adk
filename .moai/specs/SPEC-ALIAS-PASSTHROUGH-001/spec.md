@@ -2,7 +2,7 @@
 id: SPEC-ALIAS-PASSTHROUGH-001
 title: "Pass profile model aliases through to Claude Code --model verbatim — fix the compile-time alias-snapshot substitution in moai cc"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-29
 updated: 2026-09-29
 author: manager-spec
