@@ -147,6 +147,73 @@ func TestFactoryNextSerialMutualExclusivity(t *testing.T) {
 	}
 }
 
+// TestFactoryNextSkipsClassificationBlocked — AC-TCD-007's blocked-exclusion
+// pin (sync-audit finding F3): the `cls.Blocked → continue` skip in the
+// auto-promotion arm (factoryNextSelectAndLease, factory_card.go) is the only
+// thing standing between a high-priority blocked card and a lane's lease.
+// Removing that skip turns this test red. The pin: repeated `next` leases
+// only eligible cards in priority order, the blocked card is never leased
+// while it stays blocked (and gains no record row), the only-blocked-candidate
+// queue ends on the existing no-card exit 3 (the REQ-TCD-008-shaped
+// ineligible-candidates boundary — a no-card answer, never a spin or a
+// blocked lease), and the lease arrives only after the block lifts.
+func TestFactoryNextSkipsClassificationBlocked(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, kanban.BacklogStateQueued, kanban.BacklogStateQueued, kanban.BacklogStateQueued)
+	// The blocked card carries the HIGHEST priority: without the skip, the
+	// promotion loop would take it first and every assertion below fails.
+	fcClassify(t, store, "t1", kanban.ClassPriorityHigh, true, kanban.ClassModeParallelizable)
+	fcClassify(t, store, "t2", kanban.ClassPriorityLow, false, kanban.ClassModeParallelizable)
+	fcClassify(t, store, "t3", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
+	sdRegisterLane(t, root, "lane-1")
+	sdLaneEnv(t, "lane-1", "")
+	t.Chdir(root)
+
+	// Repeated next leases only the eligible cards, in priority order —
+	// never the blocked high card ahead of them.
+	for _, want := range []string{"t3", "t2"} {
+		if _, _, err := runFactory(t, "next", "--run", fcRun); err != nil {
+			t.Fatalf("next (%s expected): %v", want, err)
+		}
+		if c := fcCard(t, root, want); c.State != homestate.CardLeased || c.LeaseHolder != "lane-1" {
+			t.Fatalf("%s = %s holder=%q, want lane-1's lease", want, c.State, c.LeaseHolder)
+		}
+	}
+	if fcHasCard(t, root, "t1") {
+		t.Fatalf("t1 gained a record row while blocked — a blocked card must never be auto-selected")
+	}
+	rec, err := store.LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, it := range rec.Items {
+		if it.ID == "t1" && it.State != kanban.BacklogStateQueued {
+			t.Fatalf("t1 queue state = %s while blocked, want still queued", it.State)
+		}
+	}
+
+	// Only the blocked candidate remains: the no-card exit (exit 3) — the
+	// ineligible-candidates answer, never a blocked lease.
+	out, _, err := runFactory(t, "next", "--run", fcRun)
+	sdExit3(t, "only-blocked-candidate", err)
+	if !strings.Contains(out, "no card") {
+		t.Errorf("stdout = %q, want a no-card line", out)
+	}
+	if fcHasCard(t, root, "t1") {
+		t.Errorf("t1 gained a record row on the only-blocked-candidate attempt")
+	}
+
+	// The block lifts (the operator unblock path): the promotion arm now
+	// leases the formerly blocked card.
+	fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
+	if _, _, err := runFactory(t, "next", "--run", fcRun); err != nil {
+		t.Fatalf("next after unblock: %v", err)
+	}
+	if c := fcCard(t, root, "t1"); c.State != homestate.CardLeased || c.LeaseHolder != "lane-1" {
+		t.Fatalf("t1 = %s holder=%q after unblock, want lane-1's lease", c.State, c.LeaseHolder)
+	}
+}
+
 // outOf renders an error's message (test helper).
 func outOf(err error) string { return fmt.Sprint(err) }
 

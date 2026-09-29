@@ -108,13 +108,22 @@ milestones and the absorbed t1240 surface; all repaired in the same run:
    present-or-absent per row (never a third shape).
 
 NOT repaired here — pre-existing at this branch's base `51f3e9878`,
-attributed by graph (`git diff 51f3e9878..HEAD` touches none of the files;
-fixtures unchanged from base): the launcher trio
+attributed by graph: the launcher trio
 (TestCC_FactoryEntryThroughRunCC, TestGLM_FactoryLaneEntry,
 TestGLM_FactoryLeadRunIsJoinableByLane — the REQ-SD-005 git-tree refusal
 against non-git temp fixtures) and the i18n dictionary pair in
-internal/hook + internal/web (TestDataI18nKeysSubsetOfDictionary,
-TestI18nKeySetParity). Reported to the lead as baseline debt outside this
+internal/web + internal/cli (TestDataI18nKeysSubsetOfDictionary in
+internal/web/i18n_test.go; TestI18nKeySetParity in
+internal/web/schema_label_test.go AND internal/cli/schema_bridge_test.go).
+Attribution correction (sync-audit remediation, 2026-09-29): the earlier
+"diff touches none of the files" claim was wrong for one file —
+internal/cli/factory_test.go IS in this card's diff, carrying 2 mechanical
+signature fixes (the M4 default-on dispatch parameter added to its two
+`enterFactoryLaneMode` call sites in TestEnterFactoryWorkerModeEnv and
+TestEnterFactoryWorkerModeUnknownCount, commit `9b39ccb88`). Those are
+call-site updates on the entry-mode axis, not on the REQ-SD-005 refusal path
+the launcher trio exercises, so the trio's base-debt conclusion is
+unchanged. Reported to the lead as baseline debt outside this
 SPEC's scope envelope.
 
 ### Verification results (this run, this tree — HEAD at measurement noted per line)
@@ -144,6 +153,26 @@ SPEC's scope envelope.
 - MX tags: @MX:ANCHOR added on `EffectiveCardClassification` (sole absent-field default seam) and
   `SortByClassification` (sole queue-order restorer), each with @MX:REASON + @MX:SPEC. No tags
   removed; no existing tag touched.
+
+### Sync-audit remediation F3 — AC-TCD-007 blocked-exclusion pin (post-run, 2026-09-29)
+
+The sync audit flagged AC-TCD-007's blocked-exclusion clause as implemented
+but unpinned: removing the `cls.Blocked → continue` skip in the
+auto-promotion arm (factory_card.go, factoryNextSelectAndLease) passed the
+whole suite. Armed the pin as TestFactoryNextSkipsClassificationBlocked
+(internal/cli/factory_classify_test.go): a HIGH-priority blocked card plus
+two eligible cards; repeated `next` leases only the eligible cards in
+priority order, the blocked card never leases and never gains a record row
+while blocked, the only-blocked-candidate queue ends on the no-card exit 3
+(the REQ-TCD-008-shaped ineligible-candidates boundary), and the lease
+arrives only after the block lifts. Mutant observed (verification
+completeness §1.1): with the skip removed the test is RED
+(`--- FAIL: TestFactoryNextSkipsClassificationBlocked ...
+only-blocked-candidate: expected an error, got nil`); with the skip restored
+all five `-run 'TestFactoryNext'` tests are GREEN
+(`ok github.com/modu-ai/moai-adk/internal/cli 10.657s`, -count=1 -timeout
+30m, this run, this tree — factory_card.go verified byte-identical to HEAD
+`0543ca214` after the probe, `git diff` empty).
 
 ### Guardian adjudication — sql-injection flag on the backlog DDL path (post-run, 2026-09-29)
 
