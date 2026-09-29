@@ -12,7 +12,6 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
-	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // TestCleanupMoaiWorktrees_GlobalPath verifies that cleanupMoaiWorktrees
@@ -671,47 +670,6 @@ func TestContainsPermissionMode(t *testing.T) {
 	}
 }
 
-func TestExpandModelString(t *testing.T) {
-	// The test exercises the central ModelAliasTable via expandModelString.
-	// Short aliases (opus/sonnet/haiku) MUST resolve to their canonical CC ids;
-	// the [1m] suffix MUST be preserved across resolution; full ids and unknown
-	// values pass through unchanged. opusplan is a CC-native routing alias with
-	// no full-id expansion, so it resolves to itself.
-	tests := []struct {
-		name  string
-		model string
-		want  string
-	}{
-		{"empty string", "", ""},
-		// Short alias → canonical id resolution (forward map via central table)
-		{"opus alias resolves", "opus", template.ModelIDOpus55},
-		{"sonnet alias resolves", "sonnet", template.ModelAliasCanonicalID("sonnet")},
-		{"haiku alias resolves", "haiku", template.ModelAliasCanonicalID("haiku")},
-		// [1m] suffix preserved across resolution
-		{"opus alias 1m resolves", "opus[1m]", template.ModelIDOpus55 + "[1m]"},
-		{"sonnet alias 1m resolves", "sonnet[1m]", template.ModelAliasCanonicalID("sonnet") + "[1m]"},
-		// opusplan is its own canonical form (CC-native routing alias, no full-id)
-		{"opusplan resolves to self", "opusplan", "opusplan"},
-		// Full canonical ids pass through unchanged
-		{"full opus 4-7 passthrough", "claude-opus-4-7", "claude-opus-4-7"},
-		{"full opus 4-6 passthrough", "claude-opus-4-6", "claude-opus-4-6"},
-		{"full sonnet passthrough", "claude-sonnet-4-6", "claude-sonnet-4-6"},
-		{"full haiku passthrough", "claude-haiku-4-5", "claude-haiku-4-5"},
-		{"full opus 1m passthrough", "claude-opus-4-6[1m]", "claude-opus-4-6[1m]"},
-		// Unknown values pass through unchanged
-		{"arbitrary model passthrough", "some-model", "some-model"},
-		{"arbitrary 1m passthrough", "future-model[1m]", "future-model[1m]"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := expandModelString(tt.model)
-			if got != tt.want {
-				t.Errorf("expandModelString(%q) = %q, want %q", tt.model, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestUnifiedLaunch_NotInProject(t *testing.T) {
 	tmpDir := t.TempDir()
 	// No .moai directory
@@ -901,6 +859,82 @@ func TestUnifiedLaunch_GlobalLedgerDoesNotBleed(t *testing.T) {
 	}
 }
 
+// TestLaunchModelAliasPassthrough (SPEC-ALIAS-PASSTHROUGH-001 AC-ALP-001)
+// verifies that a stored profile alias reaches `claude --model` VERBATIM on
+// the Claude-backend launch path. The harness drives the real
+// runUnifiedLaunch flow with the launch captured at the execOrSpawnClaudeFunc
+// seam (its doc comment names exactly this test use — the default would
+// syscall.Exec and replace the test process). The expectation is a literal:
+// no compile-time model-table reference, so the next upstream alias move
+// cannot re-break this regression proof (REQ-ALP-006).
+//
+// NOTE: does not call t.Parallel() — it chdirs, overrides findProjectRootFn
+// and profile.BaseDirOverride, and replaces execOrSpawnClaudeFunc.
+func TestLaunchModelAliasPassthrough(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Isolated profile base: bare-launch preferences carry the alias literal.
+	profileBase := t.TempDir()
+	origBase := profile.BaseDirOverride
+	defer func() { profile.BaseDirOverride = origBase }()
+	profile.BaseDirOverride = profileBase
+	if err := os.WriteFile(filepath.Join(profileBase, "preferences.yaml"), []byte("model: opus[1m]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("CLAUDE_CONFIG_DIR", "")
+
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+
+	origRoot := findProjectRootFn
+	defer func() { findProjectRootFn = origRoot }()
+	findProjectRootFn = func() (string, error) { return tmpDir, nil }
+
+	// Stub claude binary pinned via MOAI_CLAUDE_BIN (precedent:
+	// launcher_chrome_test.go). The launcher never execs for real — the exec
+	// seam below swallows the handoff — the pin only has to pass the
+	// executable validation in resolveLaunchClaudeBinary.
+	t.Setenv(config.EnvClaudeBin, writeExecutable(t, filepath.Join(t.TempDir(), "claude-stub")))
+
+	var capturedBin string
+	var capturedArgs []string
+	origExec := execOrSpawnClaudeFunc
+	defer func() { execOrSpawnClaudeFunc = origExec }()
+	execOrSpawnClaudeFunc = func(bin string, args []string, env []string) error {
+		capturedBin = bin
+		capturedArgs = args
+		return nil
+	}
+
+	if err := runUnifiedLaunch("", "claude", nil); err != nil {
+		t.Fatalf("unifiedLaunch error: %v", err)
+	}
+
+	found := false
+	for i, a := range capturedArgs {
+		if a == "--model" && i+1 < len(capturedArgs) {
+			if capturedArgs[i+1] != "opus[1m]" {
+				t.Fatalf("captured argv carries --model %q, want the stored alias literal \"opus[1m]\" (full argv: %q)",
+					capturedArgs[i+1], capturedArgs)
+			}
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("captured argv carries no --model flag (bin=%q, argv=%q)", capturedBin, capturedArgs)
+	}
+}
+
 func TestResolveLaunchEffort(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -923,6 +957,46 @@ func TestResolveLaunchEffort(t *testing.T) {
 	}
 }
 
+// TestResolveMainSessionModel_ClaudePassthrough (SPEC-ALIAS-PASSTHROUGH-001
+// AC-ALP-002) verifies that the Claude-backend branch of resolveMainSessionModel
+// is a TOTAL passthrough: the resolved string is the input, byte-identical,
+// for every stored or flagged form — base aliases, their [1m] variants (the
+// picker surface), the opusplan CC-native routing alias, full canonical ids
+// (current and legacy), unknown values, and the empty string. Expectations
+// are literals only: no compile-time table or id-constant reference, so the
+// next upstream alias move cannot flip these rows (REQ-ALP-006). The
+// empty-stays-empty no-flag behavior of buildArgs is pinned by the existing
+// launch tests; this table pins the resolution identity itself.
+func TestResolveMainSessionModel_ClaudePassthrough(t *testing.T) {
+	cases := []struct {
+		name  string
+		model string
+	}{
+		{"base alias opus", "opus"},
+		{"alias opus with 1m", "opus[1m]"},
+		{"base alias sonnet", "sonnet"},
+		{"alias sonnet with 1m", "sonnet[1m]"},
+		{"base alias fable", "fable"},
+		{"alias fable with 1m", "fable[1m]"},
+		{"base alias haiku", "haiku"},
+		{"opusplan routing alias", "opusplan"},
+		{"opusplan with 1m", "opusplan[1m]"},
+		{"full current id", "claude-opus-5-5"},
+		{"full current id with 1m", "claude-opus-5-5[1m]"},
+		{"full legacy id", "claude-opus-4-8"},
+		{"unknown value", "custom-xyz"},
+		{"empty string", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := resolveMainSessionModel(tc.model, false)
+			if got != tc.model {
+				t.Errorf("resolveMainSessionModel(%q, false) = %q, want the input verbatim", tc.model, got)
+			}
+		})
+	}
+}
+
 func TestResolveMainSessionModel_GLMAvoidsCanonicalID(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -935,7 +1009,7 @@ func TestResolveMainSessionModel_GLMAvoidsCanonicalID(t *testing.T) {
 		{"glm alias with 1m suffix preserved", "opus[1m]", true, "opus[1m]"},
 		{"glm canonical id reverse-mapped to alias", "claude-opus-4-8", true, "opus"},
 		{"glm deprecated canonical id reverse-mapped", "claude-opus-4-7", true, "opus"},
-		{"claude backend alias expands to canonical id", "opus", false, template.ModelIDOpus55},
+		{"claude backend alias passes through verbatim", "opus", false, "opus"},
 		{"claude backend canonical passes through", "claude-opus-4-8", false, "claude-opus-4-8"},
 		{"glm empty stays empty", "", true, ""},
 		{"glm unknown value passes through", "custom-xyz", true, "custom-xyz"},
