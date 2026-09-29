@@ -86,4 +86,26 @@ blockers: none
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+```yaml
+phase: sync
+spec: SPEC-TODO-ANALYZER-CONFORMANCE-001
+sync_status: ready
+sync_commit_sha: "pending-backfill-sync"
+b12_self_test_a: "grep -c SPEC-TODO-ANALYZER-CONFORMANCE-001 CHANGELOG.md → 0 (exit 1) — emission allowed"
+b12_self_test_b: "AC count in CHANGELOG entry = 6 (AC-TAC-001..006), matches spec.md §C — live identifiers only"
+b12_self_test_c: "all file paths named in the CHANGELOG entry verified to exist this tree"
+changelog_entry_position: "top of [Unreleased] § Added"
+frontmatter_status_transitions:
+  draft_to_in_progress: consolidated into the sync commit, disclosed in HISTORY (t1180 precedent)
+  implemented_to_completed: carried by this sync commit (consolidated draft → completed)
+```
+
+### Sync evidence (5 sections)
+
+- **Claim** — the doc conformance deliverable is synced: CHANGELOG entry emitted under B12 discipline, spec.md closed `completed`, §E.2/§E.3 evidence committed.
+- **Evidence** — duplicate check: `grep -c 'SPEC-TODO-ANALYZER-CONFORMANCE-001' CHANGELOG.md` → `0`, exit 1. Run-phase §E.2 matrix 6/6 PASS (this file). Commits: `0cc2f16ac` (M1+M2, 3 files), `ed51e78a4` (M3 guard), `f9f0fcee7` (§E.2/§E.3). Absorb check at sync: `develop` = `02ad57bbe`, descendant of `68e37864a`.
+- **Baseline-attribution** — all checks this run, against this worktree (`WT-jev-enum-backfill`), HEAD `f9f0fcee7` at sync start.
+- **Gaps** — no sync-auditor verdict yet (runs post-merge, lead-owned); CI not read (no push from the lane).
+- **Residual-risk** — `pending-backfill-sync` placeholder until the lane backfills; develop absorb at merge window may require catalog.yaml hash regeneration if other template edits landed first.
+- **MX tag surface** — N/A: deliverable is markdown (gtd.md ×2) plus one `_test.go`; no production Go source touched, no exported functions added. Measured fact: `git diff --name-only 3a4c558f7..ed51e78a4` names only the two gtd.md surfaces, `internal/template/catalog.yaml` (build output), and `internal/cli/todo_skill_doc_parity_test.go`.
+- **Codemap rotation** — N/A: no Go source change beyond the new test file; no module/entry-point surface changed. Measured, not assumed — same diff basis as above.
