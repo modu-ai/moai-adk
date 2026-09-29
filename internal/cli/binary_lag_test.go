@@ -219,6 +219,10 @@ var namesAddedAfterBaseline = map[string]bool{
 	// servedModelCheckName — card t1282, the "Served Model" read-only sweep of
 	// subagent transcripts. Registered through a constant, hence bare.
 	"servedModelCheckName": true,
+	// todoStoreDivergenceCheckName — SPEC-TODO-STALE-STORE-001 M2 (card
+	// t1307), the stale project-local queue store divergence diagnostic.
+	// Registered through a constant, hence bare.
+	"todoStoreDivergenceCheckName": true,
 }
 
 // TestBinaryLag_AllowlistKeysAreLiveNames asserts that every key of
