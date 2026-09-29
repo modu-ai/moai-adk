@@ -1,7 +1,7 @@
 ---
 id: SPEC-WEB-SAVE-LOSSLESS-001
 title: "moai web 설정 Save 무손실 — 편집 없으면 무기록, 편집은 해당 필드만, 미모델링 키·주석 영생존"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-09-29
 updated: 2026-09-29
@@ -22,6 +22,7 @@ related_specs: [SPEC-WEB-WRITE-SAFETY-001, SPEC-GITSTRATEGY-SAVE-ISOLATION-001, 
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-09-29 | manager-spec | 최초 draft. 카드 t1314 (GitHub issue #1731 — 외부 사용자 michaelleone 재현 보고). 워크트리 `WT-web-save-lossless` (develop `2b1233b13` 기점)에서 plan-phase 산출 작성. 코드 근거 12곳 plan-phase 직접 확인. |
 | 0.1.1 | 2026-09-29 | manager-spec | plan-audit iter-1 (FAIL 0.85) 정정. **F1(차단)** — D2 수리 재설계: UserConfig가 `name`만 모델링(`pkg/models/config.go:32-37`)하므로 구조체 복사 수리는 공허 — user.yaml `name:` 행의 seam 라인-스플라이스로 전환(REQ-WSL-005/AC-WSL-005 개정). **F2(차단)** — quality_extras save-time 강제 폐기 결정 확정(plan §A.4, `schema_sections_test.go:285-290` M4 전환 목록 추가). **F3(차단)** — AC-WSL-002 술어를 line-splice/upsert-폴백 변이로 분리(C3 정합). **F4** — M1에 seam 허용 확장(`sectionwrite.go:56-64`) 명시. Q1-Q3 감사 판정 기록(plan §A.4). |
+| 0.1.2 | 2026-09-29 | manager-spec | plan-audit iter-2 (CONCERNS 0.90 — PASS-with-debt, F1-F4 해소 확인) 처분 반영. **F5(major, 처분 (a))** — 잔여 재마샬 3경로(devMode/convention 스칼라 쓰기 seam, 중첩 쓰기 seam)를 M1 공동 범위로 편입: REQ-WSL-002/003 범위 문구에 명시적 포괄, 신규 AC-WSL-009로 이슈 지목 키(`constitution.session_effort_default`) 생존 고정. **F6(minor)** — AC-WSL-005 name-부재 최초 설정 변이에 C3 허용 1행 추가. |
 
 ---
 
@@ -62,8 +63,8 @@ workflow.yaml 감사 pin 필드(`workflow.audit.{claude,codex,glm}.model/effort`
 ### §2.1 무손실 계약 (lossless contract)
 
 - REQ-WSL-001 (Ubiquitous): 제출된 값이 영속된 값과 하나도 다르지 않으면, The save flow shall 어떤 설정 파일도 기록하지 않는다 (mtime 변경 포함).
-- REQ-WSL-002 (Event): 제출이 정확히 한 필드의 값을 변경할 때, The save flow shall 그 필드가 영속되는 행(또는 노드)만 디스크에서 변경한다 — 동일 파일의 다른 행과 다른 파일의 내용은 불변이어야 한다.
-- REQ-WSL-003 (Ubiquitous): The save flow shall 구조체가 모델링하지 않는 키와 주석을, 편집 대상 파일을 포함해 항상 보존한다.
+- REQ-WSL-002 (Event): 제출이 정확히 한 필드의 값을 변경할 때, The save flow shall 그 필드가 영속되는 행(또는 노드)만 디스크에서 변경한다 — 동일 파일의 다른 행과 다른 파일의 내용은 불변이어야 한다. 이 계약의 대상에는 development_mode·git_convention 스칼라 쓰기 seam과 중첩(nested) 프로젝트-설정 쓰기 seam의 잔여 전체-재마샬 경로가 명시적으로 포함된다 — 해당 경로의 편집도 본 요구의 무손실 술어에서 예외가 아니다 (plan-audit iter-2 F5).
+- REQ-WSL-003 (Ubiquitous): The save flow shall 구조체가 모델링하지 않는 키와 주석을, 편집 대상 파일을 포함해 항상 보존한다. 이 보존 의무는 schema-field 경로뿐 아니라 development_mode·git_convention 스칼라 쓰기 seam과 중첩(nested) 쓰기 seam을 포함한 Save 흐름의 모든 writer에 적용된다 (plan-audit iter-2 F5).
 - REQ-WSL-004 (Event-detected): 편집 대상 키가 파일에 부재하고 제출값이 빈 문자열일 때(빈 제출이 허용되는 필드 포함), The save flow shall 키를 새로 기록하지 않는다 — 부재는 이미 해당 필드의 미설정 상태로 해석된다.
 - REQ-WSL-005 (Event): 사용자 이름 편집이 user 섹션을 변경할 때, The save flow shall user.yaml의 `name:` 행만 변경하고 나머지 모든 바이트(미모델링 키·주석·빈 줄 포함)를 원문으로 보존한다 — 구조체 재마샬이 아닌 행 단위 치환으로.
 

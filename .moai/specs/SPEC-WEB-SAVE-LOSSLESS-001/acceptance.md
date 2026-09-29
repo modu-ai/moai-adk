@@ -15,6 +15,7 @@
 | AC-WSL-006 | REQ-WSL-006, REQ-WSL-007, REQ-WSL-008 | 파일-부재/기록-실패 시 부분-저장 상태 판독 가능 + per-file 원자 쓰기 | S3 |
 | AC-WSL-007 | REQ-WSL-010 | 손실-행위 단언 테스트 소멸 | S3 |
 | AC-WSL-008 | REQ-WSL-009 | 선행 SPEC 게이트 회귀 없음 | S2 |
+| AC-WSL-009 | REQ-WSL-002, REQ-WSL-003 | 잔여 재마샬 경로(devMode/convention/중첩) 편집에서 이슈 지목 키 생존 | S2 |
 
 ## §D.1 AC-WSL-001 — 무편집 Save는 모든 섹션에서 byte-identical (S2)
 
@@ -53,6 +54,7 @@
 - **When** 웹 폼에서 사용자 이름을 변경해 Save하면,
 - **Then** user.yaml에서 `name:` 행 1행만 변경되고, 나머지 모든 행(미모델링 키·주석·빈 줄 포함)이 원문 바이트로 생존한다.
 - **검증 전제(기제 — plan.md §A.1 개정)**: 이 AC는 구조체 재마샬로는 도달 불가하다 — `models.UserConfig`가 `name`만 모델링(`pkg/models/config.go:32-37`)하므로 재마샬(`saveSection`, `internal/config/manager.go:462-470`)은 미모델링 키를 원천적으로 소실시킨다. user 이름 동기화는 seam 라인-스플라이스(`name:` 스칼라 치환)로 수행돼야 하며, 본 AC는 그 결과 바이트를 검증한다.
+- **변이(name-부재 최초 설정 — plan-audit iter-2 F6)**: user.yaml에 `name` 키가 아예 없는 최초 설정은 upsert 폴백을 통과한다 — 이 변이의 Then은 데이터 수준으로 완화한다(기존 키·값·주석 생존, 빈 줄·들여쓰기 정규화 허용 — §D.2 upsert 변이와 동일한 C3 허용).
 
 ## §D.6 AC-WSL-006 — 부분-저장 보증 (S3)
 
@@ -73,6 +75,15 @@
 - **When** 영향 패키지 4개(`internal/settings`, `internal/config`, `internal/profile`, `internal/web`)의 기존 테스트를 실행하면,
 - **Then** SPEC-WEB-WRITE-SAFETY-001의 값-불변 게이트 테스트(`write_safety_test.go` — settings 13건, web 7건), SPEC-GITSTRATEGY-SAVE-ISOLATION-001 게이트, `TestCrossSessionEmptySubmitsRoundTrip`, `TestPatchFileValueInvariantPreservesBytes`가 전부 통과한다.
 
+## §D.9 AC-WSL-009 — 이슈 지목 키는 잔여 재마샬 경로 편집에서도 생존한다 (S2 — plan-audit iter-2 F5)
+
+- **Given** quality.yaml에 `constitution.session_effort_default: xhigh  # local note`(미모델링 키 + 주석)가 시드돼 있고,
+- **When** development_mode 한 필드만 변경해 Save하면,
+- **Then** quality.yaml에서 `development_mode` 행만 변경되고, `constitution.session_effort_default` 키와 그 주석이 행 원문 그대로 생존한다(나머지 quality.yaml 바이트 불변).
+- **변이(convention 편집)**: git_convention.convention 한 필드만 변경하면, git-convention.yaml의 해당 행만 변경되고 quality.yaml 전체가 불변이다 — `session_effort_default`는 물론이다.
+
+- **검증 전제(기제 — plan.md §F M1 공동 범위)**: 본 AC는 잔여 `SetSection → Save` 전체-재마샬 3경로 — devMode 편집(`internal/web/projectconfig.go:231-238`), convention 편집(`internal/web/projectconfig.go:240-247`), 중첩 쓰기 seam 실변경 편집(`internal/settings/nested.go:112-156`) — 이 M1의 동일 라인-스플라이스 원시로 전환돼야 충족된다. GitHub #1731이 이름으로 지목한 키의 도달성 차단이 목적이다(REQ-WSL-002/003의 명시적 포괄 대상).
+
 ## §E Quality Gates
 
 - 영향 패키지 4개 `go test` 통과 (전체 스위트는 CI — CLAUDE.local.md §4).
@@ -82,6 +93,6 @@
 
 ## §F Definition of Done
 
-- AC-WSL-001..008 전부 PASS (근거: 실측 출력 인용 — verification-claim-integrity §2).
+- AC-WSL-001..009 전부 PASS (근거: 실측 출력 인용 — verification-claim-integrity §2).
 - 이슈 재현 절차(GitHub #1731)를 본 트리에서 재실행해 3대 손실(user/quality/llm)·빈 키(workflow) 모두 미발생 실측.
 - 회귀 테스트 전환 목록(§D.7)이 plan-audit에서 검증 가능한 형태로 남는다.

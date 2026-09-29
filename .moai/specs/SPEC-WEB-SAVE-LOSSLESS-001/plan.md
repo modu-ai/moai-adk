@@ -54,7 +54,7 @@ D2는 별도 수리(**개정 — plan-audit iter-1 F1**): 초안의 "구조체 �
 
 ## §E Self-Verification
 
-- [ ] AC-WSL-001..008 전 행이 acceptance.md의 Given-When-Then과 1:1 대응
+- [ ] AC-WSL-001..009 전 행이 acceptance.md의 Given-When-Then과 1:1 대응
 - [ ] C1 위반(grep: web 패키지 내 `yaml.Marshal`/`os.WriteFile` 신규 호출) 0건
 - [ ] REQ-WSL-010: 손실 행위를 단언하던 기존 테스트 목록화 + 전환 증거
 - [ ] 영향 패키지 4개 `go test` 통과 출력 인용
@@ -68,7 +68,8 @@ D2는 별도 수리(**개정 — plan-audit iter-1 F1**): 초안의 "구조체 �
 - **seam 허용 확장(plan-audit F4)**: `WriteSectionViaSeam`의 RouteSeam 가드(`internal/settings/sectionwrite.go:56-64`)와 `sectionRootKeys` 맵이 현재 typed 섹션을 "not seam-writable"로 거부한다 — seam-라우팅 대상 섹션(git_strategy/llm/quality)과 D2의 user를 허용 목록에 추가한다.
 - `applyTypedEdits`를 `WriteSectionViaSeam` 호출로 교체. `LoadRaw/SetSection/Save` 잔여 사용 여부를 M1 종료 시점에 명시(잔여 시 백스톱이 맡는다).
 - D2: `SyncToProjectConfig`의 user 전체-교체를 폐기하고 `name:` 행 스플라이스로 전환(§A.1 개정).
-- 검증: 한 필드 편집 diff가 그 행만(AC-WSL-002 line-splice 변이), 미모델링 키·주석 생존(AC-WSL-003), user 이름 편집 행 고립(AC-WSL-005).
+- **공동 범위 — 잔여 재마샬 3경로의 동일 원시 전환(plan-audit iter-2 F5, 처분 (a))**: M1 본체가 확립한 라인-스플라이스 원시를 잔여 `SetSection → Save` 전체-재마샬 호출점에 재사용한다 — (1) `writeProjectConfig`의 devMode 편집(`internal/web/projectconfig.go:231-238`), (2) 같은 함수의 convention 편집(`internal/web/projectconfig.go:240-247`), (3) 중첩 쓰기 seam의 실변경 quality/git-convention 편집(`internal/settings/nested.go:112-156` — 웹/TUI 공유 seam, TUI 호출점 `internal/cli/profile_setup.go:226`). **사유**: GitHub #1731이 이름으로 지목한 `constitution.session_effort_default`(quality.yaml 미모델링 키 + 주석)는 devMode 편집 1회만으로 이 경로들에서 소실될 수 있다 — 도달성 차단이 목적이며, 원시 재사용이므로 별도 마일스톤으로 쪼개지 않는다.
+- 검증: 한 필드 편집 diff가 그 행만(AC-WSL-002 line-splice 변이), 미모델링 키·주석 생존(AC-WSL-003), user 이름 편집 행 고립(AC-WSL-005), 잔여 3경로 편집에서 이슈 지목 키 생존(AC-WSL-009).
 - **판정 게이트(해소 — §A.4 Q1)**: `quality_extras_enabled` save-time 강제는 **폐기**한다 — M1의 교체가 `applyTypedEdits:165-167` 분기를 재현하지 않음으로써 실행된다. 마이그레이션이 필요해지면 loader/init 경로 별도 과제로 발의한다.
 
 ### M2 (High) — 차이-게이트 확장 [D3 수리]
