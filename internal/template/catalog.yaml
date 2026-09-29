@@ -152,7 +152,7 @@ catalog:
             - name: super-advisor
               tier: core
               path: templates/.claude/agents/moai/super-advisor.md
-              hash: a6cf13e4a7060aca36982ecd0a5e21639ccfbba4b555f105f2769b99f24ef30a
+              hash: b803cf227d57aaaeea8033514d33592a2301602d46baf3c9fa2e6870569b3f26
               version: 1.0.0
             - name: manager-todo
               tier: core

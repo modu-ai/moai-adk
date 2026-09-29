@@ -146,7 +146,7 @@ func startCtxBoundBackgroundJob(t *testing.T) (string, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	res, err := handleCodexTask(ctx, mcp.CallToolRequest{
-		Params: mcp.CallToolParams{Arguments: map[string]any{"prompt": "audit the module", "background": true}},
+		Params: mcp.CallToolParams{Arguments: map[string]any{"prompt": "audit the module", "background": true, "project_root": thisRepoRoot(t)}},
 	})
 	if err != nil {
 		t.Fatalf("handleCodexTask returned a Go error: %v", err)
@@ -297,7 +297,7 @@ func TestCodexTask_ForegroundSessionStillBoundToRequest(t *testing.T) {
 	done := make(chan *mcp.CallToolResult, 1)
 	go func() {
 		res, _ := handleCodexTask(ctx, mcp.CallToolRequest{
-			Params: mcp.CallToolParams{Arguments: map[string]any{"prompt": "x"}},
+			Params: mcp.CallToolParams{Arguments: map[string]any{"prompt": "x", "project_root": thisRepoRoot(t)}},
 		})
 		done <- res
 	}()
@@ -330,7 +330,7 @@ func TestCodexTask_BackgroundHandshakeStillBoundToRequest(t *testing.T) {
 	sess.onStart = cancel // the request ends mid-handshake
 
 	res, err := handleCodexTask(ctx, mcp.CallToolRequest{
-		Params: mcp.CallToolParams{Arguments: map[string]any{"prompt": "x", "background": true}},
+		Params: mcp.CallToolParams{Arguments: map[string]any{"prompt": "x", "background": true, "project_root": thisRepoRoot(t)}},
 	})
 	if err != nil {
 		t.Fatalf("Go error: %v", err)

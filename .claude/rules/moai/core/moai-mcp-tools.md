@@ -19,11 +19,13 @@ the CLI form reads more naturally inline.
 
 ## The `project_root` input — name your own tree
 
-Thirteen tools accept an optional `project_root` string: `spec_progress`,
+Fourteen tools accept an optional `project_root` string: `spec_progress`,
 `spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`,
-`glm_audit`, `claude_audit`, `audit_multi`, `graph_file_api`, `graph_find_code`,
-`graph_shortest_path`, and `graph_trace_calls`. It names the tree the call
-should act on.
+`codex_task`, `glm_audit`, `claude_audit`, `audit_multi`, `graph_file_api`,
+`graph_find_code`, `graph_shortest_path`, and `graph_trace_calls`. It names the tree the call
+should act on. On `codex_task` the input is required rather than
+optional — pass your own toplevel or the call is refused
+(`project_root is required ...`); it is never defaulted.
 
 [HARD] **An agent working inside a worktree MUST pass it**, and the value is its
 own `git rev-parse --show-toplevel`. This is not a convenience. The server cannot

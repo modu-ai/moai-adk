@@ -2,7 +2,6 @@
 # The gate fails on any divergent page NOT listed here (new divergence), never on these.
 # Regenerate ONLY to prune converged pages; adding a line is admitting new debt.
 # Blank lines and lines starting with # are ignored.
-advanced/agent-guide.md
 advanced/autonomous-loops.md
 advanced/builder-agents.md
 advanced/catalog-system.md
@@ -16,7 +15,6 @@ advanced/self-evolving.md
 advanced/settings-json.md
 advanced/skill-guide.md
 advanced/token-budget.md
-advanced/tokenomics-overview.md
 advanced/ultracode-workflows.md
 claude-code/agentic/_index.md
 claude-code/agentic/agent-teams.md
@@ -48,7 +46,6 @@ getting-started/quickstart.md
 getting-started/windows-guide.md
 guides/ci-autonomy.md
 guides/github-integration.md
-multi-llm/_index.md
 utility-commands/moai-codemaps.md
 utility-commands/moai.md
 workflow-commands/moai-design.md
