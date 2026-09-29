@@ -191,6 +191,10 @@ func truncateClassification(s string) string {
 // G5: two orderings that can disagree is the defect this SPEC exists to
 // close). Every state takes its rank position; selection filters states,
 // sorting only positions them (constraint C3).
+//
+// @MX:ANCHOR: [AUTO] SortByClassification — the sole queue-order restorer (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-005)
+// @MX:REASON: expected fan_in >= 3 (CLI append add, CLI add --pick, store.Add/GTD publication, tests); a write path that appends without re-sorting here leaves the queue unsorted and every position-reading consumer lies
+// @MX:SPEC: SPEC-TODO-CLASSIFY-DISPATCH-001
 func (r *BacklogRecord) SortByClassification() {
 	items := r.Items
 	sort.SliceStable(items, func(i, j int) bool {
