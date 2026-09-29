@@ -136,7 +136,7 @@ original line numbers.)
 ## §E.4 Sync-phase Audit-Ready Signal
 
 - sync_complete_at: 2026-09-29
-- sync_commit_sha: pending-backfill-sync
+- sync_commit_sha: 70bf36130
 - sync_status: complete
 - changelog_entry_position: [Unreleased] → `### Fixed`, first entry (newest-first per section convention)
 - b12_self_test_a: pass — `grep -c 'SPEC-ALIAS-PASSTHROUGH-001' CHANGELOG.md` = 0 pre-emission
