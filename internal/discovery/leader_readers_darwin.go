@@ -12,9 +12,19 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 )
+
+// readerDeadline bounds one platform reader invocation (a `ps` or `lsof`
+// subprocess).
+const readerDeadline = 3 * time.Second
+
+// readerContext bounds one platform reader invocation.
+func readerContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, readerDeadline)
+}
 
 // platformArgv reads the candidate's command line.
 func platformArgv(ctx context.Context, pid int) ([]string, bool) {
