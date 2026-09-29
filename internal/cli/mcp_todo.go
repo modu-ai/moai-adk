@@ -62,7 +62,7 @@ func handleTodoAdd(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolRes
 		return toolErr("todo_add", errors.New("todo add: text must be non-empty")), nil
 	}
 	out, errBuf := &bytes.Buffer{}, &bytes.Buffer{}
-	if err := runTodoAddAppendRoot(root, newBufferedCommand(out, errBuf), text, false); err != nil {
+	if err := runTodoAddAppendRoot(root, newBufferedCommand(out, errBuf), text, false, todoCardDecider); err != nil {
 		return toolErr("todo_add", err), nil
 	}
 	return mcp.NewToolResultText(strings.TrimRight(out.String(), "\n")), nil

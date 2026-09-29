@@ -280,7 +280,7 @@ mentions an id later in the sentence still falls through, and
 			if len(args) == 0 {
 				return runTodoList(cmd, false, false, todoListDefaultLimit)
 			}
-			return runTodoAddAppend(cmd, strings.Join(args, " "), false)
+			return runTodoAddAppend(cmd, strings.Join(args, " "), false, todoCardDecider)
 		},
 		// PersistentPreRun fires once per `moai todo ...` invocation, for the
 		// parent and every subcommand alike, which is why the guidance lives
@@ -577,10 +577,15 @@ func todoVerbNames(cmd *cobra.Command) []string {
 
 // newTodoAddCmd — `moai todo add "<text>"` (REQ-TODO-002): append under the
 // lock, print the issued id and its 1-based queue position. `--pick` (t71)
-// folds the pick into the same locked write.
+// folds the pick into the same locked write. `--classification-file`
+// (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-004) supplies a validated
+// classification judgement — `<path>` or `-` for standard input; it is the
+// ONLY classification injection seam, and the product computes no judgment
+// of its own beyond the deterministic default (plan D.3).
 func newTodoAddCmd() *cobra.Command {
 	var pick bool
 	var force bool
+	var classificationFile string
 	cmd := &cobra.Command{
 		Use:   "add <text>",
 		Short: "Append a card to the backlog queue",
@@ -590,16 +595,29 @@ func newTodoAddCmd() *cobra.Command {
 			if strings.TrimSpace(text) == "" {
 				return fmt.Errorf("todo add: text must be non-empty")
 			}
-			if pick {
-				return runTodoAddPick(cmd, newTodoStore(), text, force)
+			// REQ-TCD-004: the supplied classification is validated BEFORE
+			// the locked write — an out-of-set value or the jev identity is
+			// a usage refusal with nothing written.
+			dec := todoCardDecider
+			if cmd.Flags().Changed("classification-file") {
+				resolved, err := todoDeciderFromClassificationFile(classificationFile)
+				if err != nil {
+					return err
+				}
+				dec = resolved
 			}
-			return runTodoAddAppend(cmd, text, force)
+			if pick {
+				return runTodoAddPick(cmd, newTodoStore(), text, force, dec)
+			}
+			return runTodoAddAppend(cmd, text, force, dec)
 		},
 	}
 	cmd.Flags().BoolVar(&pick, "pick", false,
 		"Append AND mark picked as one locked write, printing the issued id")
 	cmd.Flags().BoolVar(&force, "force", false,
 		"Admit a card the analyser reads as an exact duplicate, recording that it was forced")
+	cmd.Flags().StringVar(&classificationFile, "classification-file", "",
+		"Classification judgement JSON (<path> or - for stdin); validated against the closed value sets before the write")
 	return cmd
 }
 
@@ -607,14 +625,18 @@ func newTodoAddCmd() *cobra.Command {
 // parent's natural-language fallthrough (t69): non-empty guard, locked
 // append, "<id> <position>" stdout line. `--pick` stays add-only — the
 // fallthrough path has no flags.
-func runTodoAddAppend(cmd *cobra.Command, text string, force bool) error {
-	return runTodoAddAppendRoot(resolveTodoQueueRoot(), cmd, text, force)
+func runTodoAddAppend(cmd *cobra.Command, text string, force bool, dec kanban.CardDecider) error {
+	return runTodoAddAppendRoot(resolveTodoQueueRoot(), cmd, text, force, dec)
 }
 
 // runTodoAddAppendRoot is runTodoAddAppend anchored at an explicit root —
 // the shape the MCP todo_add tool calls (REQ-SD-024), so both surfaces run
-// one implementation.
-func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bool) error {
+// one implementation. The decider argument is the classification seam this
+// invocation resolves; the MCP surface passes the package default.
+func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bool, dec kanban.CardDecider) error {
+	if dec == nil {
+		dec = todoCardDecider
+	}
 	if strings.TrimSpace(text) == "" {
 		return fmt.Errorf("todo add: text must be non-empty")
 	}
@@ -636,7 +658,18 @@ func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bo
 	err := todoStoreAt(root).Mutate(func(rec *kanban.BacklogRecord) error {
 		var mutErr error
 		item, pos, mutErr = appendAnalyzedCard(rec, text, kanban.BacklogStateQueued, force)
-		return mutErr
+		if mutErr != nil {
+			return mutErr
+		}
+		// REQ-TCD-001: the classification is resolved INSIDE the same locked
+		// write — no card becomes visible to a machine selector unclassified,
+		// and no two-step window exists (plan G1).
+		todoApplyClassification(rec, item.ID, todoClassifyInLock(dec, text, cmd.ErrOrStderr()))
+		// REQ-TCD-005/-006: the sort is re-established inside the same locked
+		// write, and the printed position is the sorted 1-based position.
+		rec.SortByClassification()
+		pos = rec.QueuedPosition(item.ID)
+		return nil
 	})
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
@@ -655,7 +688,10 @@ func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bo
 // race that mis-picked t67 on 2026-08-16. The confirmation prints the
 // issued id and the card text prefix; the caller never has to guess what
 // `--pick` just picked.
-func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string, force bool) error {
+func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string, force bool, dec kanban.CardDecider) error {
+	if dec == nil {
+		dec = todoCardDecider
+	}
 	// Card t1313: the same stale-store disclosure the append path carries —
 	// the issued id is a receipt for the store that answered. Scoped to the
 	// t1307 divergence line only (see the append-path comment).
@@ -667,7 +703,13 @@ func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string,
 	err := store.Mutate(func(rec *kanban.BacklogRecord) error {
 		var mutErr error
 		item, _, mutErr = appendAnalyzedCard(rec, text, kanban.BacklogStatePicked, force)
-		return mutErr
+		if mutErr != nil {
+			return mutErr
+		}
+		// REQ-TCD-001: same locked write, same seam, same sort duty.
+		todoApplyClassification(rec, item.ID, todoClassifyInLock(dec, text, cmd.ErrOrStderr()))
+		rec.SortByClassification()
+		return nil
 	})
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)

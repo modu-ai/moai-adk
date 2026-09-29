@@ -874,12 +874,14 @@ func (s *BacklogStore) addWithCardUUID(text string, cardUUID *string) (*BacklogI
 			CardUUID: cloneIdentity(cardUUID),
 		}
 		rec.Items = append(rec.Items, item)
-		pos = 0
-		for _, it := range rec.Items {
-			if it.State == BacklogStateQueued {
-				pos++
-			}
-		}
+		// REQ-TCD-005: the sort is re-established inside the same locked
+		// write as every add that may change it — an append to a sorted queue
+		// leaves it sorted (an unclassified append ranks normal/non-blocked
+		// and may move ahead of existing low-priority cards). The printed
+		// position is the SORTED queued position (REQ-TCD-006), which an
+		// append to the end no longer implies.
+		rec.SortByClassification()
+		pos = rec.QueuedPosition(item.ID)
 		return nil
 	})
 	if err != nil {

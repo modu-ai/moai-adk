@@ -21,6 +21,7 @@ package kanban
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -181,4 +182,90 @@ func truncateClassification(s string) string {
 		return s
 	}
 	return strings.Clone(s[:64]) + "..."
+}
+
+// SortByClassification re-establishes the queue's classification order
+// (REQ-TCD-005): non-blocked before blocked, then priority high > normal >
+// low, then insertion order stable within a rank. It runs inside the same
+// locked write as the add that may change the order — never on read (plan
+// G5: two orderings that can disagree is the defect this SPEC exists to
+// close). Every state takes its rank position; selection filters states,
+// sorting only positions them (constraint C3).
+func (r *BacklogRecord) SortByClassification() {
+	items := r.Items
+	sort.SliceStable(items, func(i, j int) bool {
+		a := EffectiveCardClassification(items[i])
+		b := EffectiveCardClassification(items[j])
+		if a.Blocked != b.Blocked {
+			return !a.Blocked
+		}
+		ra, rb := classPriorities[a.Priority], classPriorities[b.Priority]
+		return ra > rb
+	})
+}
+
+// QueuedPosition returns the id's 1-based position among the queued items in
+// the record's (sorted) order, or 0 when the id is absent or not queued. The
+// position add prints is THIS position — the count of queued cards that
+// precede it in sorted order plus one — never the append index.
+func (r *BacklogRecord) QueuedPosition(id string) int {
+	pos := 0
+	for _, it := range r.Items {
+		if it.State != BacklogStateQueued {
+			continue
+		}
+		pos++
+		if it.ID == id {
+			return pos
+		}
+	}
+	return 0
+}
+
+// CardDecider is the classification decider seam (REQ-TCD-001/-012): the
+// add path resolves every admitted card's judgment through Classify INSIDE
+// the locked write that appends the card. An error means the decider is
+// unavailable or failed — the add path then promotes the fail-safe default
+// (REQ-TCD-003) and never blocks admission on classification.
+type CardDecider interface {
+	Classify(text string) (CardClassification, error)
+}
+
+// DefaultCardDecider is the deterministic shipped implementation
+// (REQ-TCD-012): with no judgment supplied, it answers with the fail-safe
+// defaults under the default decider identity. It is a judgment, not a
+// failure — it never errors and prints no fallback notice.
+type DefaultCardDecider struct{}
+
+// Classify returns the deterministic default classification.
+func (DefaultCardDecider) Classify(string) (CardClassification, error) {
+	c := DefaultCardClassification()
+	c.Reason = "deterministic default: no classification judgment supplied"
+	return c, nil
+}
+
+// StaticCardDecider carries one pre-validated supplied judgment — the
+// --classification-file transport (REQ-TCD-004). The judgment was validated
+// and its decider identity recorded before it reached the seam; Classify
+// hands it through verbatim.
+type StaticCardDecider struct {
+	Class CardClassification
+}
+
+// Classify returns the carried judgment.
+func (d StaticCardDecider) Classify(string) (CardClassification, error) {
+	return d.Class, nil
+}
+
+// UnavailableCardDecider is the transport-unavailable shape (REQ-TCD-003):
+// every Classify call fails with the wrapped cause, so the add path's
+// single fallback branch promotes the defaults and prints the one-line
+// notice regardless of which transport failed.
+type UnavailableCardDecider struct {
+	Cause error
+}
+
+// Classify always fails with the carried cause.
+func (d UnavailableCardDecider) Classify(string) (CardClassification, error) {
+	return CardClassification{}, d.Cause
 }
