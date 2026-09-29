@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-CLASSIFY-DISPATCH-001
 title: "LLM-classified card metadata at creation — priority·blocked·execution-mode on every card, a priority-sorted queue, mode-aware factory lane leases, and default-on auto-dispatch for -f lanes"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-09-29
 updated: 2026-09-29
@@ -25,6 +25,7 @@ related_specs: [SPEC-MANAGER-TODO-001, SPEC-TODO-HOLD-STATE-001, SPEC-AUTONOMY-C
 |---------|------|--------|
 | 0.1.0 | 2026-09-29 | Initial plan-phase authoring (card t1332, operator directive 2026-09-29), measured in worktree `.moai/worktrees/t1332`, branch `WT-card-autodispatch`, at HEAD `145c3d98c` (== local develop tip). The measured surface basis is exported at `.moai/reports/t1332/surface-notes.md`. Card premises verified against the tree: the t1240 self-dispatch surface (`factory next`/`stage`/`complete`) exists on branch `WT-factory-self-dispatch` (tip `d43e50bb3`, 28 commits ahead of develop at plan time — the card said 25; the difference is an absorb of develop, and the surface matches the card's description) and is NOT merged to develop; `internal/cli/contract_decide.go` and the `homestate`/`contract` decider vocabulary are the t1261 layer this SPEC reuses rather than re-plans; t1306's `/moai:todo --auto` serial cycle is merged on develop. No card premise was falsified. |
 | 0.2.0 | 2026-09-29 | **Leader-ruling revision** (plan-audit PASS 0.875 iter 1; D1 + OD rulings folded, one repair pass). **D1 (provenance-only)**: the t1240-only `--clear-policy` citations in plan.md §B.5/§F M4 and surface-notes.md items 5/8 now carry the `WT-factory-self-dispatch:` prefix (the flag is absent from this tree's develop — measured 0 `ClearPolicy` hits); no REQ/AC content changed. **OD-1 REVISED (operator ruling 2026-09-29)**: pipeline exclusivity REJECTED; serial-card mutual exclusivity ADOPTED — a serial card blocks only OTHER SERIAL cards, served one at a time in priority order; parallelizable selection is unaffected while a serial card is in flight. Rationale recorded: a full `next` refusal costs half the throughput benefit that classification exists to deliver. REQ-TCD-008 rewritten, REQ-TCD-009 extended, AC-TCD-008 re-derived (three clauses). **OD-3 REVISED (same ruling)**: decider-failure default is now `serial` (fail-safe — a parallelizable failure default could run true-serial cards concurrently and violate ordering; the serial default costs throughput only); REQ-TCD-003 rewritten. The new serial failure-default vs REQ-TCD-014's parallelizable absent-field read default is a recorded TENSION, flagged for the lead in plan.md §C — not silently resolved. Provenance: leader Jev doctrine-fallback rulings, noul below threshold (OD-1 0.31, OD-3 0.36), dated 2026-09-29. REQ and AC counts unchanged (14 / 14). |
+| 0.3.0 | 2026-09-29 | **Tension resolved (leader ruling 2026-09-29, OD-3 extension).** REQ-TCD-014's absent-field READ default for the MODE axis flips `parallelizable` → `serial`; the PRIORITY axis default (`normal`) and BLOCKED axis default (`false`) are untouched. Rationale recorded: absent = unclassified = conservative treatment; a parallelizable absence default would silently bypass OD-3's serial failure default (a fail-safe bypassed through silence). plan.md §C FLAGGED item becomes RESOLVED with this provenance. No new read-default AC added (auditor optional D4 stays run-phase discretion); no existing AC asserted the old parallelizable absence default (measured: zero default-value hits in acceptance.md). REQ and AC counts unchanged (14 / 14). |
 
 > **Provenance discipline.** Every `file:line` citation was measured at HEAD `145c3d98c` in this
 > worktree. t1240-branch citations are prefixed `WT-factory-self-dispatch:` and were read via
@@ -153,8 +154,10 @@ path; the local dogfood seam is stated in plan.md §D.3.
 
 - **REQ-TCD-014 (Event-driven)** — When a queue recorded before this SPEC is read, every
   classification consumer shall derive the no-judgment default for a card whose classification
-  field is absent, by positive default derivation at read — never by treating absence as a fourth
-  priority or a third mode.
+  field is absent by positive default derivation at read — priority `normal`, blocked `false`,
+  mode `serial` (leader ruling 2026-09-29, OD-3 extension: absent = unclassified = conservative
+  treatment; a parallelizable absence default would silently bypass the serial failure default
+  through silence) — never by treating absence as a fourth priority or a third mode.
 
 ## §C Constraints
 

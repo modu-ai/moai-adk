@@ -13,6 +13,10 @@ Tier M · card t1332 · plan-phase artifact set authored 2026-09-29 at HEAD `145
   (pipeline exclusivity rejected), OD-3 serial failure default; provenance recorded in plan.md
   §C (noul OD-1 0.31 / OD-3 0.36). D1 citation-prefix repair applied. Post-repair lint:
   0 findings.
+- Revision 0.3.0 resolved the flagged tension by leader ruling (2026-09-29, OD-3 extension):
+  REQ-TCD-014's absent-field READ mode default flips parallelizable → serial (priority/blocked
+  defaults untouched); plan.md §C records the resolution. No read-default AC added; no existing
+  AC asserted the old default. Post-revision lint: 0 findings; REQ/AC 14/14 unchanged.
 - Measured surface basis exported: `.moai/reports/t1332/surface-notes.md` (all card premises
   verified; measured corrections recorded — t1240 branch 28 commits ahead of develop, tip
   `d43e50bb3`, `9866ca25e` an ancestor).

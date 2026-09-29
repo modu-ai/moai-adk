@@ -70,13 +70,15 @@ targets and is NOT on develop yet — its absorption is an entry precondition (�
   cards concurrently and violate the ordering the mode exists to protect; the serial default
   costs throughput only. The 1-line stderr notice stays. Provenance: leader Jev doctrine-fallback
   ruling, noul below threshold (OD-3 0.36), dated 2026-09-29.
-- **FLAGGED — failure-default vs read-default tension (lead follow-up; NOT silently resolved).**
-  REQ-TCD-003's decider-failure default is now `serial` (write-time record), while REQ-TCD-014's
-  absent-field read default stays `parallelizable` (read-time derivation for legacy/unrecorded
-  cards): a card admitted during a decider outage runs serial, a card with no classification
-  field at all reads parallelizable. Whether the read default should follow the fail-safe
-  direction is the lead's follow-up question; this SPEC records the interaction and defers — the
-  run phase must not resolve it by silently picking one side.
+- **RESOLVED — failure-default vs read-default tension (leader ruling 2026-09-29, OD-3
+  extension).** REQ-TCD-014's absent-field READ default for the MODE axis flips
+  `parallelizable` → `serial`; the PRIORITY axis default (`normal`) and BLOCKED axis default
+  (`false`) are untouched. Rationale: absent = unclassified = conservative treatment — a
+  parallelizable absence default would silently bypass OD-3's serial failure default (a fail-safe
+  bypassed through silence). Interaction reflected minimally: a legacy unclassified card reads
+  serial, so an unclassified card in flight participates in the serial-vs-serial mutual
+  exclusivity of REQ-TCD-008; no other REQ text depended on the old read default. Provenance:
+  leader ruling, dated 2026-09-29 (OD-3 extension).
 
 ## §D Constraints
 
