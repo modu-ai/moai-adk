@@ -109,7 +109,7 @@ func enterCodexFactory(root string, entry factoryFlagParse) (func(), error) {
 			restore()
 			return nil, fmt.Errorf("claim Codex factory lane: %w", claimErr)
 		}
-		restoreMode := enterFactoryLaneMode(claim.Label, 0)
+		restoreMode := enterFactoryLaneMode(claim.Label, 0, "")
 		return func() { restoreMode(); restore() }, nil
 	}
 	restoreMode := enterFactoryLeaderMode(config.DefaultFactoryLeaderLanes, "")

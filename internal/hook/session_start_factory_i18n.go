@@ -48,6 +48,16 @@ type factoryMessages struct {
 	settingsVerify    string
 	laneJoin          string // lane label %[1]s, lane count %[2]d
 	laneJoinNoCount   string // lane label only — the incremental form
+
+	// laneNextCardRule is the Claude-harness lane's next-card rule
+	// (REQ-SD-019): the rule names the six REQ-SD-014 MCP tools and their
+	// CLI equivalents, so those tokens stay verbatim in every locale the
+	// same way the launch commands do. laneOwnedCardRule is the
+	// Codex-harness lane's owned-card rule; it names only the two CLI verbs
+	// and interpolates the card id (%[1]s) — it never carries an MCP tool
+	// name of any kind (REQ-SD-019's negative constraint).
+	laneNextCardRule  string
+	laneOwnedCardRule string // card id %[1]s
 }
 
 // factoryLocales is the conversation-language table; its four entries are the
@@ -84,6 +94,19 @@ var factoryLocales = map[string]factoryMessages{
 		settingsVerify:    "Verify \"crossSessionInbound\": \"accept\" is present in your --settings file so cross-session messages are accepted.",
 		laneJoin:          "Factory Mode: joined the leader's %[2]d-lane run as %[1]s.",
 		laneJoinNoCount:   "Factory Mode: joined the leader's factory run as %[1]s.",
+		laneNextCardRule: "Factory lane next-card rule: this session is a self-dispatch lane. " +
+			"Leave any kept worktree as it is — never remove a card worktree. " +
+			"Take the next card from the parent checkout: run `moai factory next` (MCP tool `factory_next`); " +
+			"lane queue promotion through `moai factory next` is operator-authorized for the self-dispatch lane mode. " +
+			"Enter the card's worktree, carry the card through plan, run, and sync, integrate it, leave its worktree kept, " +
+			"and record completion with `moai factory complete` (MCP tool `factory_complete`). " +
+			"Then follow the clear policy the completion output prints. " +
+			"Tools and their CLI equivalents: `todo_add` (`moai todo add`), `todo_list` (`moai todo`), " +
+			"`factory_next` (`moai factory next`), `factory_stage` (`moai factory stage`), " +
+			"`factory_complete` (`moai factory complete`), `factory_decide` (`moai factory decide`).",
+		laneOwnedCardRule: "Factory lane owned-card rule: this session owns card %[1]s — the id recorded in MOAI_KANBAN_CARD — " +
+			"and works in the current worktree. Carry that card to merge-ready: record each stage with `moai factory stage` " +
+			"and finish with `moai factory complete`. Then end this session; do not take or lease any other card.",
 	},
 	"ko": {
 		leaderHeader:   "팩토리 모드: run %s, 리더 세션.",
@@ -111,6 +134,18 @@ var factoryLocales = map[string]factoryMessages{
 		settingsVerify:    "--settings 파일에 \"crossSessionInbound\": \"accept\" 가 있는지 확인하세요. 세션 간 메시지 수락에 필요합니다.",
 		laneJoin:          "팩토리 모드: 리더의 레인 %[2]d개 런에 %[1]s 로 합류했습니다.",
 		laneJoinNoCount:   "팩토리 모드: 리더의 팩토리 run 에 %[1]s 로 합류했습니다.",
+		laneNextCardRule: "팩토리 레인 다음 카드 규칙: 이 세션은 셀프 디스패치 레인입니다. " +
+			"kept 로 남은 워크트리는 그대로 둡니다 — 카드 워크트리를 절대 제거하지 않습니다. " +
+			"부모 체크아웃에서 다음 카드를 가져옵니다. `moai factory next`(MCP 도구 `factory_next`)를 실행하세요. " +
+			"셀프 디스패치 레인 모드에서 `moai factory next` 를 통한 레인 큐 승격은 운영자가 승인했습니다. " +
+			"카드의 워크트리에 진입해 plan, run, sync 로 카드를 끝까지 수행하고, 통합한 뒤에도 워크트리는 kept 로 남기고, " +
+			"`moai factory complete`(MCP 도구 `factory_complete`)로 완료를 기록합니다. " +
+			"그다음에는 완료 출력이 알려 주는 clear 정책을 따릅니다. " +
+			"도구와 CLI 등가물: `todo_add`(`moai todo add`), `todo_list`(`moai todo`), `factory_next`(`moai factory next`), " +
+			"`factory_stage`(`moai factory stage`), `factory_complete`(`moai factory complete`), `factory_decide`(`moai factory decide`).",
+		laneOwnedCardRule: "팩토리 레인 담당 카드 규칙: 이 세션은 카드 %[1]s — MOAI_KANBAN_CARD 에 기록된 id — 를 담당하며 현재 워크트리에서 작업합니다. " +
+			"그 카드를 merge-ready 까지 진행하세요. 각 단계를 `moai factory stage` 로 기록하고 `moai factory complete` 로 마칩니다. " +
+			"그런 다음 이 세션을 종료합니다. 다른 카드를 가져오거나 임대하지 않습니다.",
 	},
 	"ja": {
 		leaderHeader:   "ファクトリーモード: run %s、リーダーセッション。",
@@ -138,6 +173,18 @@ var factoryLocales = map[string]factoryMessages{
 		settingsVerify:    "--settings ファイルに \"crossSessionInbound\": \"accept\" があることを確認してください。セッション間メッセージの受理に必要です。",
 		laneJoin:          "ファクトリーモード: リーダーのレーン %[2]d 本の run に %[1]s として参加しました。",
 		laneJoinNoCount:   "ファクトリーモード: リーダーのファクトリー run に %[1]s として参加しました。",
+		laneNextCardRule: "ファクトリーレーン次カード規則: このセッションはセルフディスパッチレーンです。 " +
+			"kept のワークツリーはそのまま残します — カードのワークツリーを削除してはいけません。 " +
+			"親チェックアウトから次のカードを取得します。`moai factory next`(MCP ツール `factory_next`)を実行してください。 " +
+			"セルフディスパッチレーンモードでは、`moai factory next` によるレーンキューの昇格はオペレーターが承認済みです。 " +
+			"カードのワークツリーに入り、plan・run・sync を通してカードを完遂し、統合したうえでワークツリーを kept のまま残し、 " +
+			"`moai factory complete`(MCP ツール `factory_complete`)で完了を記録します。 " +
+			"その後は、完了出力が示す clear ポリシーに従います。 " +
+			"ツールと CLI の対応: `todo_add`(`moai todo add`)、`todo_list`(`moai todo`)、`factory_next`(`moai factory next`)、 " +
+			"`factory_stage`(`moai factory stage`)、`factory_complete`(`moai factory complete`)、`factory_decide`(`moai factory decide`)。",
+		laneOwnedCardRule: "ファクトリーレーン担当カード規則: このセッションはカード %[1]s — MOAI_KANBAN_CARD に記録された id — を担当し、現在のワークツリーで作業します。 " +
+			"そのカードを merge-ready まで進めます。各段階を `moai factory stage` で記録し、`moai factory complete` で締めます。 " +
+			"その後、このセッションを終了してください。他のカードを取得したりリースしたりしません。",
 	},
 	"zh": {
 		leaderHeader:   "工厂模式：run %s，主导会话。",
@@ -164,6 +211,18 @@ var factoryLocales = map[string]factoryMessages{
 		settingsVerify:    "请确认 --settings 文件中包含 \"crossSessionInbound\": \"accept\"，跨会话消息的接受依赖该配置。",
 		laneJoin:          "工厂模式：已以 %[1]s 身份加入主导会话的 %[2]d 条泳道的 run。",
 		laneJoinNoCount:   "工厂模式：已以 %[1]s 身份加入主导会话的工厂 run。",
+		laneNextCardRule: "工厂泳道下一张卡规则：本会话是自调度泳道。 " +
+			"保持 kept 状态的工作树原样保留 — 绝不删除卡片的工作树。 " +
+			"从父检出获取下一张卡：运行 `moai factory next`（MCP 工具 `factory_next`）。 " +
+			"在自调度泳道模式下，通过 `moai factory next` 进行的泳道队列提升已获运营者授权。 " +
+			"进入卡片的工作树，带着卡片走完 plan、run、sync，完成集成后工作树保持 kept， " +
+			"并用 `moai factory complete`（MCP 工具 `factory_complete`）记录完成。 " +
+			"之后遵循完成输出给出的 clear 策略。 " +
+			"工具及其 CLI 等价物：`todo_add`（`moai todo add`）、`todo_list`（`moai todo`）、`factory_next`（`moai factory next`）、 " +
+			"`factory_stage`（`moai factory stage`）、`factory_complete`（`moai factory complete`）、`factory_decide`（`moai factory decide`）。",
+		laneOwnedCardRule: "工厂泳道负责卡规则：本会话负责卡片 %[1]s — MOAI_KANBAN_CARD 中记录的 id — 并在当前工作树中工作。 " +
+			"把该卡推进到 merge-ready：用 `moai factory stage` 记录各阶段，用 `moai factory complete` 收尾。 " +
+			"然后结束本会话；不要领取或租用其他卡片。",
 	},
 }
 

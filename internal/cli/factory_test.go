@@ -544,7 +544,7 @@ func TestEnterFactoryLeadModeMintsRunID(t *testing.T) {
 func TestEnterFactoryWorkerModeEnv(t *testing.T) {
 	clearFactoryTestEnv(t)
 
-	restore := enterFactoryLaneMode("worker-3", 5)
+	restore := enterFactoryLaneMode("worker-3", 5, "")
 	defer restore()
 
 	if got := os.Getenv(config.EnvMoaiFactoryWorker); got != "worker-3" {
@@ -580,7 +580,7 @@ func TestEnterFactoryWorkerModeUnknownCount(t *testing.T) {
 	clearFactoryTestEnv(t)
 	t.Setenv(config.EnvClaudeCodeMaxConcurrentSubagents, "3")
 
-	restore := enterFactoryLaneMode("worker-5", 0)
+	restore := enterFactoryLaneMode("worker-5", 0, "")
 	defer restore()
 
 	if got := os.Getenv(config.EnvMoaiFactoryWorkers); got != "0" {

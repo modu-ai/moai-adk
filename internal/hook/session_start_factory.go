@@ -77,6 +77,46 @@ func factoryBootstrapNoticeForSource(source, root, sessionID, lang string) strin
 	return factoryBootstrapNotice(root, sessionID, lang)
 }
 
+// factoryLaneRuleForSource returns the lane SessionStart rule
+// (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-019) for this session, or "" when
+// the session receives none. The rule fires on source startup — under every
+// clear policy, which is why the policy value is never read here — and on
+// clear, where it re-enters the fresh session and keeps the clear-each loop
+// going; resume and compact receive nothing, matching the bootstrap gate's
+// re-entry discipline. The rule is chosen by the backend variable: a
+// Claude-harness lane (claude or glm) gets the next-card rule, a
+// Codex-harness lane (gpt) the owned-card rule naming its leased card. A
+// leader (no lane label), a legacy label, a keyless environment, a gpt lane
+// without a card id, and an unknown backend value all receive no rule.
+// lang is the session's conversation language (REQ-SD-019).
+func factoryLaneRuleForSource(source, lang string) string {
+	if source != "" && source != "startup" && source != "clear" {
+		return ""
+	}
+	label := os.Getenv(config.EnvMoaiFactoryWorker)
+	if label == "" || kanban.IsLegacyFactoryRoleValue(label) {
+		return ""
+	}
+	if _, ok := kanban.SplitFactoryLaneLabel(label); !ok {
+		return ""
+	}
+	switch os.Getenv(config.EnvMoaiKanbanBackend) {
+	case kanban.BackendClaude, kanban.BackendGLM:
+		return factoryMessagesFor(lang).laneNextCardRule
+	case kanban.BackendGPT:
+		cardID := os.Getenv(config.EnvMoaiKanbanCard)
+		if cardID == "" {
+			// An owned-card rule without a card id names nothing the lane
+			// could carry; the M5 launcher always stamps the id, so this is
+			// the degraded edge, not the expected shape.
+			return ""
+		}
+		return fmt.Sprintf(factoryMessagesFor(lang).laneOwnedCardRule, cardID)
+	default:
+		return ""
+	}
+}
+
 // factoryLanesEnv reads the run's fan-out size from the environment the
 // launcher published. A missing or malformed value reads as 0, which the
 // notice builders treat as "count unknown" rather than as an error.
