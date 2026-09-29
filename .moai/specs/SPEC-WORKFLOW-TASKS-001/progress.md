@@ -159,4 +159,27 @@ m1_to_mN_commit_strategy: "M2(Go+골든테스트+spec 전이, 6d658ef64) → M1(
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-29
+sync_commit_sha: pending-backfill-sync
+sync_status: "complete — 3-phase close; CHANGELOG entry added; spec.md status in-progress → completed"
+changelog_entry_position: "[Unreleased] / ### Added (1st entry)"
+b12_self_test_a: "pre-emission grep -c SPEC-WORKFLOW-TASKS-001 CHANGELOG.md → 0 (exit 1, no match) — proceed"
+b12_self_test_b: "AC live-identifier count via spec.md §3 (SSOT) → 6 (AC-TASKS-001..006); CHANGELOG entry cites 6 AC (3 PASS, 3 PASS-WITH-DEBT) — match"
+b12_self_test_c: "all cited paths ls-verified — kanban-dispatch.md, mirror, internal/hook/session_start_factory_i18n.go, progress.md, CHANGELOG.md all exist"
+frontmatter_status_transitions.in-progress_to_implemented: merged into sync commit (sync-commit transition)
+frontmatter_status_transitions.implemented_to_completed: merged into sync commit
+canary_compliance_check.public_docs: "no change — see divergence findings"
+canary_compliance_check.codemaps: "skipped — see divergence findings"
+canary_compliance_check.mx_tags: "no new tags — see divergence findings"
+```
+
+### Close summary
+
+- **What synced**: run-phase commits `2c9ec1c20` (M1 doctrine clause + template mirror) + `6d658ef64` (M2 factory i18n 4-locale) + `341292a5d` (M3 evidence) closed with ONE sync commit carrying the CHANGELOG entry, the spec.md `status: in-progress → completed` transition, and this §E.4 signal.
+- **CHANGELOG entry added** under `[Unreleased] / ### Added`, after B12 self-tests a/b/c (results in the YAML block above).
+- **Divergence findings (verify-don't-assume, this run / this tree @ `341292a5d` + staged sync edits)**:
+  - **(a) README / docs-site**: NO public docs surface change required, as expected. Measured: `grep -l TaskCreate README.md README.ko.md README.ja.md README.zh.md` → 0 matched files (the doctrine + hook bootstrap text is internal lane discipline, not a user-facing feature); no docs-site directory in this tree. Approved scope (CHANGELOG + close only) held — no blocker.
+  - **(b) codemaps**: SKIPPED, expected. The change surface is doctrine text + i18n string constants + test files — no API signatures, no package structure, no exported symbol changes → no codemap regeneration warranted.
+  - **(c) MX tags**: NO new tags, expected. `grep -c "@MX"` across the 4 changed Go files → 0. Text-only i18n string and test-assertion changes add no exported functions, no high fan-in symbols, no dangerous patterns.
+- **Note for sync-auditor** (carried from §E.2): plan.md §E4 selector wildcard arms (`TestFactory.*Lane$` / `TestKanban.*Lane$` end-anchored) match 0 top-level tests in this tree — selector wildcards idle; effective measured set is the two explicit golden tests, which cover the full golden assertion. plan.md body is run-phase-immutable, recorded here for the audit trail.

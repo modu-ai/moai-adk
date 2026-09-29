@@ -2,7 +2,7 @@
 id: SPEC-WORKFLOW-TASKS-001
 title: "카드 수행 레인의 tasks 도구 진행 표시 의무화 (TaskCreate/TaskUpdate 레인 규율)"
 version: "1.0.0"
-status: in-progress
+status: completed
 created: 2026-09-29
 updated: 2026-09-29
 author: manager-spec
