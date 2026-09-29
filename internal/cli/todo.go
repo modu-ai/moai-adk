@@ -535,6 +535,19 @@ func runTodoAddAppend(cmd *cobra.Command, text string, force bool) error {
 	if strings.TrimSpace(text) == "" {
 		return fmt.Errorf("todo add: text must be non-empty")
 	}
+	// Card t1313 (GitHub #1732): the WRITE verb discloses the store
+	// DIVERGENCE the read verbs disclose (SPEC-TODO-STALE-STORE-001
+	// REQ-TSS-001 family) — the response's issued id is a receipt for the
+	// store that ANSWERED, and a divergent project-local store beside it is
+	// exactly the silent split the incident reported (ids issued by one
+	// store, queue read from another). Scoped to the stale-store line only:
+	// the t395 backlog.json note stays read-surface by its operator decision
+	// (TestTodoWriteVerbs_CarryNoDisclosure). Runs before the Mutate, on
+	// stderr; stdout stays the bare "id position" machine line.
+	if err := discloseStaleLocalStores(cmd.ErrOrStderr(), "add",
+		kanban.InspectStaleLocalStores(todoQueueRootForDisclosure())); err != nil {
+		return err
+	}
 	var item kanban.BacklogItem
 	var pos int
 	err := newTodoStore().Mutate(func(rec *kanban.BacklogRecord) error {
@@ -560,6 +573,13 @@ func runTodoAddAppend(cmd *cobra.Command, text string, force bool) error {
 // issued id and the card text prefix; the caller never has to guess what
 // `--pick` just picked.
 func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string, force bool) error {
+	// Card t1313: the same stale-store disclosure the append path carries —
+	// the issued id is a receipt for the store that answered. Scoped to the
+	// t1307 divergence line only (see the append-path comment).
+	if err := discloseStaleLocalStores(cmd.ErrOrStderr(), "add --pick",
+		kanban.InspectStaleLocalStores(todoQueueRootForDisclosure())); err != nil {
+		return err
+	}
 	var item kanban.BacklogItem
 	err := store.Mutate(func(rec *kanban.BacklogRecord) error {
 		var mutErr error
