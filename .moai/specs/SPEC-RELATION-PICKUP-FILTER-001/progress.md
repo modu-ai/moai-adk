@@ -277,7 +277,7 @@ lower a package figure) and is noted as a bounded gap in §E.3.
 
 ```yaml
 run_complete_at: "2026-09-30"
-run_commit_sha: "pending-backfill-run"
+run_commit_sha: "2a93aa9b7"
 run_status: "all milestones landed, all gates green"
 ac_pass_count: 7
 ac_fail_count: 0
