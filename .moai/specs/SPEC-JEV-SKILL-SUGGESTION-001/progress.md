@@ -121,10 +121,6 @@ m1_to_mN_commit_strategy: one commit per milestone (test-first RED, then GREEN, 
 blockers: none
 ```
 
-## §E.3 Run-phase Audit-Ready Signal
-
-_<pending run-phase — manager-develop 소관>_
-
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
