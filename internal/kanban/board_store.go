@@ -107,18 +107,27 @@ const (
 	boardLockCIMutationCost = 33 * time.Millisecond
 
 	// boardLockHeadroom is the stated headroom factor over the product
-	// above. Five means: survive roughly five consecutive rounds of losing
+	// above. Ten means: survive roughly ten consecutive rounds of losing
 	// to every peer before a stuck holder is declared.
 	//
-	// The product boardLockSupportedWriters * boardLockHeadroom = 50 is the
-	// serialized-mutation count this policy budgets for, and it sits barely
-	// above the 8 x 6 = 48 mutations TestConcurrencyStress serializes through
+	// The product boardLockSupportedWriters * boardLockHeadroom = 100 is the
+	// serialized-mutation count this policy budgets for, comfortably above
+	// the 8 x 6 = 48 mutations TestConcurrencyStress serializes through
 	// one flock. That near-coincidence used to be accidental;
 	// TestBoardLockWaitBudgetCoversSerializedMutations (board_lock_wait_test.go,
 	// SPEC-STRESS-INVARIANT-VERDICT-001) now pins it, so lowering either
 	// constant here fails that guard. It is a constant-coherence relation and
 	// asserts nothing about the wait a real machine needs.
-	boardLockHeadroom = 5
+	//
+	// Headroom history: 5 budgeted 1.65s, and CI run 36475337568 (9cc3fdc4d)
+	// starved a contender past it — TestBacklogConcurrentAdd_UniqueIDs lost
+	// the flock for the whole window under -race load with 8 contenders
+	// (flock is not FIFO-fair, so a descheduled goroutine can lose the
+	// wake-up race repeatedly). This is the second exhaustion of this class:
+	// the retired 1.025s window was the first. 10 doubles the window; if a
+	// third exhaustion lands, the fix is lock fairness (a real queue), not
+	// another raise.
+	boardLockHeadroom = 10
 
 	// boardLockWaitBudget is the derived elapsed window a contender polls
 	// before giving up. Bounding by elapsed time rather than by an attempt
