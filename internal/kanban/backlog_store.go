@@ -241,6 +241,42 @@ func (r *BacklogRecord) FindingsBlocking(id string) []BacklogFinding {
 	return out
 }
 
+// WaitsOnClosesCycle reports whether the record's live sequencing findings
+// already connect target back to waiter — adding the waiter→target edge
+// would then close a directed cycle (SPEC-RELATION-PICKUP-FILTER-001
+// REQ-RPF-005). Same-pair opposite spellings normalize to the SAME edge
+// through WaitsOnOf and never form a cycle (spec.md B.3).
+func (r *BacklogRecord) WaitsOnClosesCycle(waiter, target string) bool {
+	edges := map[string][]string{}
+	for _, f := range r.Findings {
+		if w, t, ok := WaitsOnOf(f); ok {
+			edges[w] = append(edges[w], t)
+		}
+	}
+	return waitsOnReaches(edges, target, waiter)
+}
+
+// waitsOnReaches reports whether to is reachable from from over the directed
+// waits-on edges.
+func waitsOnReaches(edges map[string][]string, from, to string) bool {
+	seen := map[string]bool{from: true}
+	queue := []string{from}
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		if cur == to {
+			return true
+		}
+		for _, next := range edges[cur] {
+			if !seen[next] {
+				seen[next] = true
+				queue = append(queue, next)
+			}
+		}
+	}
+	return false
+}
+
 // SamePairAs reports whether two findings refer to the same UNORDERED pair.
 // The comparison is unordered because a relation between two cards is a
 // property of the pair, not of the direction it happened to be written in —

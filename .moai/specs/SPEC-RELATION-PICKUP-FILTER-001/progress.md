@@ -99,6 +99,52 @@ $ go vet ./internal/cli/... ./internal/kanban/...
 (no output) exit 0
 ```
 
+### M2 — the cycle guard (REQ-RPF-005, AC-RPF-005/006)
+
+**RED (observed on the tree at M1 HEAD `938e43f61`, tests added first):**
+
+```
+$ go test -timeout 30m -count=1 ./internal/cli/ -run 'TestTodoRelateRefusesCycle|TestTodoRelateCycleGuardShapes'
+--- FAIL: TestTodoRelateRefusesCycle (0.61s)
+    todo_relation_filter_test.go:137: todo relate t2 t1 depends closed a 2-cycle and was accepted, want a refusal
+--- FAIL: TestTodoRelateCycleGuardShapes (2.72s)
+    --- FAIL: TestTodoRelateCycleGuardShapes/3-cycle_through_an_intermediate_card_is_refused (0.90s)
+        todo_relation_filter_test.go:200: candidate [t3 t1 depends] was accepted, want a refusal
+    --- FAIL: TestTodoRelateCycleGuardShapes/blocks_spelling_closes_a_cycle_like_depends (0.52s)
+        todo_relation_filter_test.go:200: candidate [t2 t1 blocks] was accepted, want a refusal
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	4.192s
+```
+
+RED for the right stated reason: every refused-expected cycle shape (direct
+2-cycle, 3-cycle through an intermediate, blocks spelling) was ACCEPTED —
+the write path has no graph walk (F-3). The allowed shapes (open chain,
+same-pair opposite spelling) passed already, as expected with no guard.
+
+**GREEN (same command plus the pre-existing relate regression surface):**
+
+```
+$ go test -timeout 30m -count=1 ./internal/cli/ -run 'TestTodoRelateRefusesCycle|TestTodoRelateCycleGuardShapes|TestTodoRelate|TestRelateAndUnrelate'
+ok  	github.com/modu-ai/moai-adk/internal/cli	9.008s
+```
+
+Implementation: `BacklogRecord.WaitsOnClosesCycle` + `waitsOnReaches` in
+`internal/kanban/backlog_store.go` (BFS from the candidate's target back to
+its waiter over WaitsOnOf edges); the check runs in `runTodoRelate`
+(`internal/cli/todo_relate.go`) before `AppendFindingOnce`, and the refusal
+names both endpoints. One interim defect found by GREEN and fixed in place:
+the guard was first seeded with a finding lacking the endpoint ids, so the
+empty waiter==target self-reach refused every write — caught by the allowed
+shapes' seed relates, corrected to seed the guard with the real
+{subject, related, relation} before any GREEN verdict was taken.
+
+**kanban package suite (M1+M2 changes together):**
+
+```
+$ go test -timeout 30m -count=1 ./internal/kanban/
+ok  	github.com/modu-ai/moai-adk/internal/kanban	191.542s
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

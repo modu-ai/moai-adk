@@ -72,6 +72,22 @@ func runTodoRelate(cmd *cobra.Command, subject, related, relation, note string) 
 				return fmt.Errorf("todo relate: no card %s in the queue", id)
 			}
 		}
+		// SPEC-RELATION-PICKUP-FILTER-001 (REQ-RPF-005): a candidate
+		// sequencing relation is refused BEFORE the write when it would
+		// close a directed cycle in the waits-on graph formed by the
+		// recorded findings — the record stays unchanged, and the error
+		// names both endpoints (waiter and target are exactly the two
+		// argument ids, whichever spelling the caller used).
+		if waiter, target, ok := kanban.WaitsOnOf(kanban.BacklogFinding{
+			SubjectID: subject,
+			RelatedID: related,
+			Relation:  relation,
+		}); ok {
+			if rec.WaitsOnClosesCycle(waiter, target) {
+				return fmt.Errorf("todo relate: %s %s %s would close a dependency cycle (%s already waits on %s through recorded relations)",
+					subject, relation, related, waiter, target)
+			}
+		}
 		finding := kanban.BacklogFinding{
 			SubjectID: subject,
 			RelatedID: related,
