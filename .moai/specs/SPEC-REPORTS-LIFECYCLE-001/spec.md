@@ -86,7 +86,7 @@ Tier M — AC 본문은 `acceptance.md` §D 를 본다. 요약 매트릭스:
 | AC | REQ | 판정 요지 |
 |---|---|---|
 | AC-RLC-001 | REQ-RLC-001 | `git ls-files reports/` → 0, `git ls-files .moai/reports/historical/` → 이동 전 511 과 동일 집합 |
-| AC-RLC-002 | REQ-RLC-001 | blob SHA 총합 불변 + `git log --follow` 로 이동 전 이력 도달 |
+| AC-RLC-002 | REQ-RLC-001 | 정렬 blob-SHA 목록 동일성(diff 0) + `git log --follow` 로 이동 전 이력 도달 |
 | AC-RLC-003 | REQ-RLC-002 | check-ignore 매트릭스: 신규 파일은 무시, tracked 이행 파일은 추적 유지, `git status` 에 D 없음 |
 | AC-RLC-004 | REQ-RLC-008 | 가드 테스트 통과 + 변이 주입(규칙 삭제) 시 실패 관측 |
 | AC-RLC-005 | REQ-RLC-003, 009 | 양 미러에서 `<cwd>/reports/` 0건·`.moai/reports/` 존재 + `make build` 드리프트 클린 |

@@ -7,7 +7,7 @@
 | AC | REQ | RED (6879cfa5e, 실측) | GREEN (목표) |
 |---|---|---|---|
 | AC-RLC-001 | REQ-RLC-001 | `git ls-files reports/` = **511** / historical = 0 | reports/ = 0 / historical = 이동 전 집합과 동일 |
-| AC-RLC-002 | REQ-RLC-001 | — (이동 전 상태) | blob SHA 총합 불변 + `--follow` 이력 도달 |
+| AC-RLC-002 | REQ-RLC-001 | — (이동 전 상태) | 정렬 blob-SHA 목록 동일(diff 0) + `--follow` 이력 도달 |
 | AC-RLC-003 | REQ-RLC-002 | historical 부재 | 신규 파일 무시 + tracked 유지 + D 0건 |
 | AC-RLC-004 | REQ-RLC-008 | reports 무시행 가드 테스트 **부재** | 가드 통과 + 변이에서 붉음 |
 | AC-RLC-005 | REQ-RLC-003, 009 | `<cwd>/reports/` 양 미러 **각 2건** (65·74행) | 0건 + `.moai/reports/` 존재 + build 드리프트 클린 |
