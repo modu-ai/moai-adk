@@ -5,6 +5,7 @@
 ## Phase Log
 
 - 2026-09-29 plan-phase: manager-spec이 4종 산출(spec/plan/acceptance/progress) 초안 작성. 코드 근거 12곳 워크트리 직접 확인 (develop `2b1233b13`). 설계 결정 A+B+백스톱 확정 (plan.md §A). 다음: plan-audit.
+- 2026-09-29 plan-audit iter-1: **FAIL 0.85** (차단 3건) → v0.1.1 정정 (커밋 `8feb4bcdc` 대상). F1 — D2 수리 공허성(UserConfig `name` 전용, `saveSection` 무병합 재마샬) → user.yaml `name:` 행 seam 스플라이스로 재설계. F2 — quality_extras 강제 폐기 결정 확정(§A.4 Q1). F3 — AC-WSL-002 술어 변이 분리. F4 — M1 seam 허용 확장(`sectionwrite.go:56-64`) 명시. Q2/Q3 판정 승인 기록. 정정 근거 신규 실측: `manager.go:462-470`, `schema_sections_test.go:285-290`, `sectionwrite.go:56-64`, `config.go:32-37`. 다음: delta re-audit (iter-2/2).
 
 ## §E.1 Plan-phase Audit-Ready Signal
 

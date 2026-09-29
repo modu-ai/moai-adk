@@ -1,7 +1,7 @@
 ---
 id: SPEC-WEB-SAVE-LOSSLESS-001
 title: "moai web 설정 Save 무손실 — 편집 없으면 무기록, 편집은 해당 필드만, 미모델링 키·주석 영생존"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-09-29
 updated: 2026-09-29
@@ -21,6 +21,7 @@ related_specs: [SPEC-WEB-WRITE-SAFETY-001, SPEC-GITSTRATEGY-SAVE-ISOLATION-001, 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-09-29 | manager-spec | 최초 draft. 카드 t1314 (GitHub issue #1731 — 외부 사용자 michaelleone 재현 보고). 워크트리 `WT-web-save-lossless` (develop `2b1233b13` 기점)에서 plan-phase 산출 작성. 코드 근거 12곳 plan-phase 직접 확인. |
+| 0.1.1 | 2026-09-29 | manager-spec | plan-audit iter-1 (FAIL 0.85) 정정. **F1(차단)** — D2 수리 재설계: UserConfig가 `name`만 모델링(`pkg/models/config.go:32-37`)하므로 구조체 복사 수리는 공허 — user.yaml `name:` 행의 seam 라인-스플라이스로 전환(REQ-WSL-005/AC-WSL-005 개정). **F2(차단)** — quality_extras save-time 강제 폐기 결정 확정(plan §A.4, `schema_sections_test.go:285-290` M4 전환 목록 추가). **F3(차단)** — AC-WSL-002 술어를 line-splice/upsert-폴백 변이로 분리(C3 정합). **F4** — M1에 seam 허용 확장(`sectionwrite.go:56-64`) 명시. Q1-Q3 감사 판정 기록(plan §A.4). |
 
 ---
 
@@ -54,7 +55,7 @@ workflow.yaml 감사 pin 필드(`workflow.audit.{claude,codex,glm}.model/effort`
 
 ### §1.4 설계 결정 (plan.md §A에 1급 항목으로 상세)
 
-채택: **A+B 결합** — (A) typed 섹션 스키마 편집을 yamlpatch seam 라인-스플라이스로 라우팅(구조 보존), (B) 차이-게이트 확장(무차이 무기록, 부재-키 빈 제출 no-op), 그리고 잔여 `Save()` 호출 경로를 막는 **Save 더티-게이트 백스톱**(git-strategy 선례의 4섹션 확장). 기각: 순수 B(편집된 섹션 자체의 손실이 남음), 순수 A(동치 재기록·user/language 미커버). 근거와 기각 사유는 plan.md §A.1.
+채택: **A+B 결합** — (A) typed 섹션 스키마 편집을 yamlpatch seam 라인-스플라이스로 라우팅(구조 보존), (B) 차이-게이트 확장(무차이 무기록, 부재-키 빈 제출 no-op), 그리고 잔여 `Save()` 호출 경로를 막는 **Save 더티-게이트 백스톱**(git-strategy 선례의 4섹션 확장) + **user.yaml `name:` 행의 seam 라인-스플라이스**(D2 — plan-audit F1 재설계). 기각: 순수 B(편집된 섹션 자체의 손실이 남음), 순수 A(동치 재기록·user/language 미커버), 구조체-복사 기반 user 수리(UserConfig가 `name`만 모델링해 재마샬 시점에 손실 — plan.md §A.1). 근거와 기각 사유는 plan.md §A.1, 결정·판정 기록은 plan.md §A.4.
 
 ## §2 Requirements (GEARS)
 
@@ -64,7 +65,7 @@ workflow.yaml 감사 pin 필드(`workflow.audit.{claude,codex,glm}.model/effort`
 - REQ-WSL-002 (Event): 제출이 정확히 한 필드의 값을 변경할 때, The save flow shall 그 필드가 영속되는 행(또는 노드)만 디스크에서 변경한다 — 동일 파일의 다른 행과 다른 파일의 내용은 불변이어야 한다.
 - REQ-WSL-003 (Ubiquitous): The save flow shall 구조체가 모델링하지 않는 키와 주석을, 편집 대상 파일을 포함해 항상 보존한다.
 - REQ-WSL-004 (Event-detected): 편집 대상 키가 파일에 부재하고 제출값이 빈 문자열일 때(빈 제출이 허용되는 필드 포함), The save flow shall 키를 새로 기록하지 않는다 — 부재는 이미 해당 필드의 미설정 상태로 해석된다.
-- REQ-WSL-005 (Event): 사용자 이름 편집이 user 섹션을 변경할 때, The save flow shall user 섹션에서 로드된 모델링된 비(非)대상 필드와 미모델링 키를 보존한다.
+- REQ-WSL-005 (Event): 사용자 이름 편집이 user 섹션을 변경할 때, The save flow shall user.yaml의 `name:` 행만 변경하고 나머지 모든 바이트(미모델링 키·주석·빈 줄 포함)를 원문으로 보존한다 — 구조체 재마샬이 아닌 행 단위 치환으로.
 
 ### §2.2 부분 저장 보증
 
@@ -75,7 +76,7 @@ workflow.yaml 감사 pin 필드(`workflow.audit.{claude,codex,glm}.model/effort`
 ### §2.3 게이트 위계 (기존 수리의 회귀 금지)
 
 - REQ-WSL-009 (Ubiquitous): The regression suite shall SPEC-WEB-WRITE-SAFETY-001이 정립한 값-불변 게이트들(typed/nested `DeepEqual`, seam 스칼라 동치, 부재 bool 유효 기본값)을 본 SPEC의 변경 후에도 동일하게 유지한다.
-- REQ-WSL-010 (Ubiquitous): The regression suite shall 손실 행위(무편집 재기록, 미모델링 키 소실, 주석 제거, 빈 키 추가)를 단언하는 테스트를 포함하지 않는다 — 그런 단언은 RED여야 하며, 해당 행위의 부정(무손실)을 단언하는 테스트로 교체된다.
+- REQ-WSL-010 (Ubiquitous): The regression suite shall 손실 행위(무편집 재기록, 미모델링 키 소실, 주석 제거, 빈 키 추가)를 단언하는 테스트를 포함하지 않는다 — 그런 단언은 RED여야 하며, 해당 행위의 부정(무손실)을 단언하는 테스트로 교체된다. 본 SPEC이 전환하는 기존 동작의 단언 테스트(save-time `quality_extras_enabled` 강제 포함 — plan.md §A.4)도 전환 목록에 명시적으로 포함한다.
 
 ## §3 Acceptance Criteria
 

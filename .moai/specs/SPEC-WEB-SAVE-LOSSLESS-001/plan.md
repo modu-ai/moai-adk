@@ -14,7 +14,7 @@
 | **B — 차이-게이트 확장** | (i) seam no-op 게이트에 "부재 키 + `""` 제출 → skip" 분기를 추가한다(`internal/settings/sectionapply.go:68-80` — 현행은 존재-키 동치와 부재-bool만 검사). (ii) "제출 == 영속 → 무기록" 불변식을 전 경로에서 유지한다(기존 REQ-WWS-003 게이트 승계). | D3 (workflow.yaml 빈 키 추가), 무편집 재기록 |
 | **백스톱 — Save 더티-게이트 확장** | `ConfigManager.Save`가 user/language/quality/llm 4개를 무조건 재마샬하는 것(`internal/config/manager.go:215-225,263`)을 git-strategy/git-convention 선례(`manager.go:236-260`)와 동일한 `dirty-or-absent` 게이트로 전환한다. seam 라우팅 후에도 `Save()`를 호출하는 잔여 경로(`SyncToProjectConfig` user/language, `writeProjectConfig`, `WriteProjectNestedConfig`)가 미변형 섹션을 재기록하지 못 하는 방어선. | D1의 미편집 섹션 3개 손실 |
 
-D2는 별도 수리: `internal/profile/sync.go:28`의 user 섹션 전체-교체(`cfg.User = models.UserConfig{Name: ...}`)를 "로드된 구조체 복사 + Name 필드만 변경"으로 수정한다. (user 섹션에 seam 쓰기 경로가 없으므로 A의 직접 대상이 아니고, 백스톱만으로는 전체-교체 자체가 막히지 않는다.)
+D2는 별도 수리(**개정 — plan-audit iter-1 F1**): 초안의 "구조체 복사 + Name 필드만 변경"은 공허한 수리다 — `models.UserConfig`가 `name` 하나만 모델링하므로(`pkg/models/config.go:32-37`) 구조체를 어떻게 조립하든 재마샬 시점(`saveSection`은 원문 병합 없이 `yaml.Marshal`만 수행 — `internal/config/manager.go:462-470`)에 미모델링 키·주석이 소실된다. user 이름 동기화를 **행 단위 치환으로 전환**한다: `SyncToProjectConfig`의 user 섹션 `SetSection` + 전체-교체(`internal/profile/sync.go:27-33`)를 폐기하고, 이름 변경 시 user.yaml의 `name:` 스칼라만 seam 라인-스플라이스(`PatchFile`/`WriteSectionViaSeam`)로 치환한다. user 섹션의 seam 허용 확장(F4)이 전제다.
 
 ### §A.2 기각 대안과 사유
 
@@ -25,12 +25,20 @@ D2는 별도 수리: `internal/profile/sync.go:28`의 user 섹션 전체-교체(
 ### §A.3 D4 부분-저장 보증의 성취 가능 수준 (명시적 비(非)목표 포함)
 
 - 보증: 폼 검증(EC-2 atomic reject)·사전-플라이트(대상 파일 판독 가능성) 통과 전에는 어떤 파일도 기록 없음 + per-file 원자 쓰기(`atomicWrite`, `saveSection`).
-- 비보증: 다중 파일 트랜잭션 원자성. 뒤 단계 실패 시 앞선 기록은 남으며, 응답이 어디까지 기록됐는지 판독 가능하게 한다(REQ-WSL-008 — 현행 `renderErrorPage` 관관 계승). 500-class 부분 저장의 근원이던 파일-부재 seam은 SPEC-SEAM-GREENFIELD-001/002로 이미 소멸(착지 `e365c2d30`) — 본 SPEC은 회귀 가드만 추가한다.
+- 비보증: 다중 파일 트랜잭션 원자성. 뒤 단계 실패 시 앞선 기록은 남으며, 응답이 어디까지 기록됐는지 판독 가능하게 한다(REQ-WSL-008 — 현행 `renderErrorPage` 관행 계승). 500-class 부분 저장의 근원이던 파일-부재 seam은 SPEC-SEAM-GREENFIELD-001/002로 이미 소멸(착지 `e365c2d30`) — 본 SPEC은 회귀 가드만 추가한다.
+
+### §A.4 plan-audit iter-1 결정·판정 기록 (2026-09-29 — 감사 판정은 구속 입력으로 반영)
+
+| # | 결정 | 근거·반영 위치 |
+|---|---|---|
+| Q1 = F2 | save-time `quality_extras_enabled` 강제-true를 **폐기(RETIRE)**한다. 유지 대안은 기각 — (a) 강제 분기(`internal/settings/sectionapply.go:165-167`)는 M1의 seam 라우팅 교체와 함께 소멸하며, seam 경로에 재현하면 미제출 키를 기록해 REQ-WSL-002 위반이고, (b) 템플릿에 absent 키를 기록하는 것은 구조적으로 AC-WSL-002를 깬다. 마이그레이션(구형 false 잔존 설정의 true 전환)이 필요하면 loader/init 경로의 별도 과제다 — 본 SPEC 밖. | plan §B 해소, M1 판정 게이트 → 실행 항목 전환, M4 전환 목록에 `TestApplySchemaEditsForcesQualityExtrasTrue`(`internal/settings/schema_sections_test.go:285-290`) 포함 |
+| Q2 | EmptySubmits 경계는 본문 그대로 **승인**: 키 **존재** 시 `""` 기록(삭제 시맨틱 — `TestCrossSessionEmptySubmitsRoundTrip` 계승), 키 **부재** 시 no-op(D3 수리). | AC-WSL-004 변이 (a)/(b)에 고정 — SPEC 텍스트 변경 없음 |
+| Q3 | 부분-저장 보증 수준은 본문 그대로 **승인**: 다중 파일 트랜잭션 원자성은 비목표, 실패 시 판독 가능한 진행 상태 응답. | REQ-WSL-006/007/008 + AC-WSL-006 — SPEC 텍스트 변경 없음 |
 
 ## §B Known Issues
 
-- `quality_extras_enabled` 강제-true(`internal/settings/sectionapply.go:165-167`)는 문서화된 의도 동작이다 — 무손실 대상에서 제외하되, quality 섹션을 seam으로 라우팅한 뒤에도 이 강제가 유지되는지 M1에서 명시적 판정이 필요하다.
-- yamlpatch 재직렬화 폴백은 빈 줄을 정규화한다 — TestPatchFileValueInvariantPreservesBytes가 이 분기를 감시한다(C3).
+- ~~`quality_extras_enabled` 강제-true 유지 여부 미판정~~ — **해소(§A.4 Q1)**: 폐기 결정 확정. 잔여 작업은 M4의 테스트 전환뿐이다.
+- yamlpatch 재직렬화 폴백은 빈 줄을 정규화한다 — TestPatchFileValueInvariantPreservesBytes가 이 분기를 감시한다(C3). AC-WSL-002는 이 한계를 변이-별 술어로 분리해 반영한다(plan-audit F3).
 
 ## §C Pre-flight
 
@@ -57,9 +65,11 @@ D2는 별도 수리: `internal/profile/sync.go:28`의 user 섹션 전체-교체(
 ### M1 (High) — typed 섹션 편집의 yamlpatch seam 라우팅 [설계 핵심, 가장 변경 가능성 높음]
 
 - `FieldDef.Persist`에 typed 필드의 yamlpatch 경로 노출(또는 `Persist.Key` → dot-path 변환기) — git_strategy(mode, worktree_base_branch, {manual,personal,team}.hooks.pre_push/merge_method), llm(glm.models.{high,medium,low,fable}, glm.effort.*), quality(4개 bool) 전 표면 매핑.
+- **seam 허용 확장(plan-audit F4)**: `WriteSectionViaSeam`의 RouteSeam 가드(`internal/settings/sectionwrite.go:56-64`)와 `sectionRootKeys` 맵이 현재 typed 섹션을 "not seam-writable"로 거부한다 — seam-라우팅 대상 섹션(git_strategy/llm/quality)과 D2의 user를 허용 목록에 추가한다.
 - `applyTypedEdits`를 `WriteSectionViaSeam` 호출로 교체. `LoadRaw/SetSection/Save` 잔여 사용 여부를 M1 종료 시점에 명시(잔여 시 백스톱이 맡는다).
-- 검증: 한 필드 편집 diff가 그 행만(AC-WSL-002), 미모델링 키·주석 생존(AC-WSL-003).
-- **판정 게이트**: `quality_extras_enabled` 강제 동작의 승계 방식 결정(§B 첫 항) — 이 결정이 M1의 착지 조건이다.
+- D2: `SyncToProjectConfig`의 user 전체-교체를 폐기하고 `name:` 행 스플라이스로 전환(§A.1 개정).
+- 검증: 한 필드 편집 diff가 그 행만(AC-WSL-002 line-splice 변이), 미모델링 키·주석 생존(AC-WSL-003), user 이름 편집 행 고립(AC-WSL-005).
+- **판정 게이트(해소 — §A.4 Q1)**: `quality_extras_enabled` save-time 강제는 **폐기**한다 — M1의 교체가 `applyTypedEdits:165-167` 분기를 재현하지 않음으로써 실행된다. 마이그레이션이 필요해지면 loader/init 경로 별도 과제로 발의한다.
 
 ### M2 (High) — 차이-게이트 확장 [D3 수리]
 
@@ -78,7 +88,7 @@ D2는 별도 수리: `internal/profile/sync.go:28`의 user 섹션 전체-교체(
 
 - `ApplySchemaEdits`/`WriteSectionViaSeam` 계약에 "첫 기록 전 대상 파일 판독 가능성 검증" 추가(PatchFile은 이미 부재-허용이므로 판독 불능은 파손 파일 케이스만).
 - 회귀 가드 테스트: 파일-부재 seam 저장이 200으로 완결(e365c2d30 착지 고정), 검증-실패 시 디스크 무변경(EC-2 고정), 기록 실패 시 오류 응답에 진행 상태 표기(REQ-WSL-008).
-- 손실-행위 회귀 테스트 정리(REQ-WSL-010): 기존 테스트 중 손실을 단언/허용하는 케이스 목록화 → 무손실 단언으로 교체.
+- 손실-행위 회귀 테스트 정리(REQ-WSL-010): 기존 테스트 중 손실을 단언/허용하는 케이스 목록화 → 무손실 단언으로 교체. **§A.4 Q1 전환 포함**: `TestApplySchemaEditsForcesQualityExtrasTrue`(`internal/settings/schema_sections_test.go:285-290`)의 강제 단언을 "강제 분기 부재" 단언으로 교체한다(quality 편집 Save가 미제출 `quality_extras_enabled` 키를 기록하지 않음).
 
 ### M5 (Medium) — 재검증·마감
 
