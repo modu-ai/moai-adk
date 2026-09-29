@@ -109,7 +109,7 @@ m1_to_mn_commit_strategy: "행위 단일 통합 커밋 9be71a4f1 (M1+M2+M3+M4 �
 
 ```yaml
 sync_complete_at: 2026-09-29
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "6470b61df"
 sync_status: complete
 b12_self_test_a: "PASS — grep -c 'SPEC-WEB-SAVE-LOSSLESS-001' CHANGELOG.md = 1 (기존 run 문서 커밋 687bac776에 이미 착지, 중복 emission 없음)"
 b12_self_test_b: "PASS — acceptance.md 고유 AC 수 9건 (AC-WSL-001..009, grep -oE | sort -u | wc -l 실측) = run §E.2 AC 매트릭스 9/9와 일치"
