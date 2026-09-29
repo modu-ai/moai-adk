@@ -538,3 +538,133 @@ func TestAssertRebuildParityDetectsEveryTupleMismatch(t *testing.T) {
 		t.Errorf("identical rows must pass: %v", err)
 	}
 }
+
+// SPEC-TODO-CLAIM-LEASE-001 REQ-TCL-001/002 (AC-TCL-007 convergence half) —
+// opening a stamped-v1 database converges on the same 11-column items tuple
+// a fresh database carries, with the lease columns appended AFTER the
+// version reconciliation: the v1→v2 rebuild runs against exactly the column
+// set it knows (a retrofit that ran first would be silently dropped by the
+// rebuild, card t1310's inverted-ordering defect), and the ensure pass adds
+// picked_by / lease_expires_at only once the stamp reads "2".
+func TestBacklogLeaseRetrofitConvergesAfterRebuild(t *testing.T) {
+	root, dbPath := holdFixtureRoot(t)
+	seedV1Database(t, dbPath)
+	store := v1FixtureStore(t, root)
+
+	rec, err := store.Load()
+	if err != nil {
+		t.Fatalf("open v1 store: %v", err)
+	}
+	if got := readStampedVersion(t, dbPath); got != "2" {
+		t.Fatalf("schema_version = %q, want %q (rebuild completed before the retrofit)", got, "2")
+	}
+	if len(rec.Items) != len(v1FixtureRows) {
+		t.Fatalf("item count = %d, want %d — the retrofit must not disturb rows", len(rec.Items), len(v1FixtureRows))
+	}
+
+	eng, err := openBacklogEngine(dbPath)
+	if err != nil {
+		t.Fatalf("reopen engine: %v", err)
+	}
+	defer func() { _ = eng.close() }()
+
+	// The 11-column items tuple, identical in shape to the freeze test's
+	// pin: the lease columns sit at the END — after dropped_at on items and
+	// after the archive-only landing_verdict on archived_items — so a fresh
+	// and an upgraded database converge on the exact physical order.
+	wantTails := map[string]string{
+		"items":          "picked_at:TEXT:0:NULL dropped_at:TEXT:0:NULL picked_by:TEXT:0:NULL lease_expires_at:TEXT:0:NULL",
+		"archived_items": "archived_at:TEXT:0:NULL landing_verdict:TEXT:0:NULL picked_by:TEXT:0:NULL lease_expires_at:TEXT:0:NULL",
+	}
+	for table, wantTail := range wantTails {
+		got := columnTupleSequence(t, eng, table)
+		if !strings.HasSuffix(got, wantTail) {
+			t.Errorf("%s column tuples = %q, want them to end with %q", table, got, wantTail)
+		}
+	}
+	// The items CHECK survived the retrofit untouched — the retrofit is
+	// additive and must not have forced or implied a rebuild.
+	if itemsSQL := readItemsCheckSQL(t, dbPath); !strings.Contains(itemsSQL, "CHECK (state IN ('queued','picked','dropped','hold'))") {
+		t.Errorf("items CHECK after retrofit = %s, want the four-value tuple preserved", itemsSQL)
+	}
+
+	// Idempotent: reopening adds nothing a second time.
+	again, err := store.Load()
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	if len(again.Items) != len(v1FixtureRows) {
+		t.Errorf("item count after reopen = %d, want %d", len(again.Items), len(v1FixtureRows))
+	}
+	eng2, err := openBacklogEngine(dbPath)
+	if err != nil {
+		t.Fatalf("reopen engine for idempotence: %v", err)
+	}
+	defer func() { _ = eng2.close() }()
+	if got := columnTupleSequence(t, eng2, "items"); !strings.HasSuffix(got, wantTails["items"]) {
+		t.Errorf("items column tuples after reopen = %q, want the same 11-column convergence", got)
+	}
+}
+
+// SPEC-TODO-CLAIM-LEASE-001 REQ-TCL-003 (AC-TCL-007 tolerance half) — a
+// pre-retrofit database that carries neither the lease columns nor even the
+// transition stamps still READS through the pure reader: every read consumer
+// tolerates their absence via the columnExpr NULL fallback, and the item's
+// lease pointers come back nil, never a pointer to an empty string. The
+// fixture is materialized with the raw driver, deliberately not through the
+// engine — openBacklogEngine would run the additive retrofit before the
+// read, which would weaken this into exercising nothing.
+func TestBacklogReadToleratesMissingLeaseColumns(t *testing.T) {
+	_, dbPath := holdFixtureRoot(t)
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0o700); err != nil {
+		t.Fatalf("mkdir fixture dir: %v", err)
+	}
+	db, err := sql.Open(sqliteDriverName, dbPath)
+	if err != nil {
+		t.Fatalf("open fixture: %v", err)
+	}
+	ctx := context.Background()
+	if _, err := db.ExecContext(ctx, `
+CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS items (
+  seq      INTEGER PRIMARY KEY,
+  id       TEXT    NOT NULL UNIQUE,
+  text     TEXT    NOT NULL,
+  added_at TEXT    NOT NULL,
+  spec_id  TEXT,
+  state    TEXT    NOT NULL CHECK (state IN ('queued','picked','dropped','hold'))
+);
+CREATE TABLE IF NOT EXISTS findings (
+  subject_id TEXT  NOT NULL,
+  related_id TEXT  NOT NULL,
+  relation   TEXT  NOT NULL,
+  source     TEXT  NOT NULL,
+  score      REAL  NOT NULL,
+  note       TEXT  NOT NULL DEFAULT '',
+  at         TEXT  NOT NULL
+);
+INSERT INTO items(seq, id, text, added_at, spec_id, state) VALUES (1, 't1', 'pre-retrofit card', '2026-09-29T00:00:00Z', NULL, 'queued');
+INSERT INTO meta(key, value) VALUES ('schema_version', '2'), ('last_seq', '1');`); err != nil {
+		t.Fatalf("materialize pre-retrofit fixture: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close fixture: %v", err)
+	}
+
+	eng, err := openBacklogReader(dbPath)
+	if err != nil {
+		t.Fatalf("open pure reader: %v", err)
+	}
+	defer func() { _ = eng.close() }()
+	rec, err := eng.readRecord(ctx)
+	if err != nil {
+		t.Fatalf("readRecord over a pre-retrofit database: %v", err)
+	}
+	if len(rec.Items) != 1 || rec.Items[0].ID != "t1" {
+		t.Fatalf("items = %+v, want the one pre-retrofit row readable", rec.Items)
+	}
+	if rec.Items[0].PickedBy != nil || rec.Items[0].LeaseExpiresAt != nil {
+		t.Errorf("lease pointers = %v/%v, want nil on a database without the columns (never a pointer to an empty string)",
+			rec.Items[0].PickedBy, rec.Items[0].LeaseExpiresAt)
+	}
+}

@@ -280,8 +280,14 @@ internal/cli (moai chain)              조회 표면
 ```
 internal/settings/*                     두 표면(moai web 콘솔 / moai profile setup TUI)이
                                           공유하는 설정 스키마
-  ├ Save() 경로가 있는 섹션              ConfigManager.Save() — typed struct 재직렬화
-  │                                       (주석과 미모델링 키를 파괴한다)
+  ├ Save() 경로가 있는 6개 섹션         ConfigManager.Save() — 단, 섹션별 dirty 게이트
+  │   git-strategy · git-convention       (t1351 판, SPEC-WEB-SAVE-LOSSLESS-001): 이번 세션에
+  │   user · language · quality · llm      SetSection 으로 변형된 섹션 파일(또는 애초에 없는
+  │                                        파일)만 다시 쓴다 — 미변형 파일은 통째로
+  │                                        재마샬되지 않아 주석·미모델링 키가 살아 남는다
+  ├ 스칼라 편집(devMode·convention)      internal/settings/projectscalars.go — 웹·TUI 공유
+  │                                        yamlpatch 라인 스플라이스 seam(빈 제출값은 기존
+  │                                        영속값을 덮지 않는다)
   └ Save() 경로가 없는 8개 섹션          internal/settings/yamlpatch
       workflow · harness · ralph ·         gopkg.in/yaml.v3 노드 트리 수술로 대상 스칼라만 upsert
       research · feedback ·                → 주석 · 미모델링 키(team.patterns, role-profile effort) ·
@@ -289,6 +295,15 @@ internal/settings/*                     두 표면(moai web 콘솔 / moai profil
                                           byte-stability 는 보증이 아니라 검증 대상 —
                                           섹션별 골든 round-trip 테스트가 그 범위를 고정한다
 ```
+
+이 그림의 첫 갈래는 역사가 있다. `Save()`의 typed struct 재직렬화는 원래 주석과 미모델링 키를
+파괴했고(GitHub issue #1731 — quality.yaml 의 `constitution.session_effort_default` 같은 키가
+devMode 편집 한 번에 사라졌다), 그 결함의 수리가 지금의 모양이다: git-strategy 선례였던 섹션별
+dirty 게이트가 여섯 Save() 섹션 전부로 확장됐고(`config/manager.go` — 변형 추적은 `Load`·`Reload`·
+성공한 `Save()` 에서 리셋된다), 재마샬이 남아 있던 마지막 자리들도 스플라이스로 갈렸다 — 프로필
+동기화(`internal/profile/sync.go`)는 user·language 를 **행 치환**으로, 웹·TUI의 devMode·convention
+편집은 `projectscalars.go` seam 한 곳으로 모인다. 설정 파일의 바이트 대부분은 이제 어느 편집도
+만지지 않는다.
 
 그리고 **저장이 실패할 때**, 콘솔의 아홉 persistence seam은 하나의 모양으로 실패합니다.
 
@@ -367,6 +382,30 @@ token 비교는 ABA를 막는 CAS 경계입니다. 주입과 완료 기록 사�
 다시 전달될 수 있으므로 이 계약은 exactly-once가 아니라 **at-least-once**입니다. v1 레거시
 claim이 자동 판정 불가능할 때만 `moai factory handoff recover-resume`으로 운영자가
 `fail` 또는 `requeue`를 명시합니다.
+
+### F1 자가 배차 루프 (t1351 판, SPEC-FACTORY-SELF-DISPATCH-001)
+
+lane 세션이 운영자 개입 없이 다음 카드를 집는 순환입니다. 모든 진입은 같은 승인·거부 술어
+(`factoryLaneAdmission`·`factoryLaneRefusal` — CLI·MCP·todo 가드가 공유)를 통과합니다.
+
+```
+moai cc|glm -f lane [--clear-policy each|when-full|relaunch]
+  └ 런처가 lane 스탬프를 환경에 심는다 (역할·라벨·백엔드·정책)
+moai factory next (CLI 또는 MCP factory_next)
+  ├ factoryNextLeaseOnce          카드 임대 + 큐 승격 (merge-ready 스킵·백엔드별 스킵)
+  ├ factoryEnsureCardWorktree     카드 워크트리 보장 — 만드는 유일한 경로
+  └ homestate RecordCardWorktree  카드 기록에 트리 경로 남김 (다른 트리 이동은 거절)
+  → 레인 세션이 그 트리에서 일한다 (SessionStart 룰이 다음 카드 절차를 싣는다 — REQ-SD-019)
+moai factory stage                엣지 적용 + 임대 갱신 (병합 준비→병합 중 엣지는 거부)
+moai factory complete             통합 브랜치 해석 → merge --no-ff → 병합 기록 → 종료 문장
+  └ clear-policy 별로: each = /clear 요청, when-full = 문턱 도달 시에만, relaunch = 세션 종료
+     후 런처(factory_lane_relaunch.go)가 다음 카드로 새 세션을 기동
+```
+
+정책 기본값은 `clear-each`다. Codex 레인은 정책을 받지 않고 소유 카드 룰로 움직이며,
+`moai codex` 쪽 공장 진입은 `-f lane` 하나뿐이다. 운영자 결정이 필요한 카드는
+`factory decide`(CLI·MCP `factory_decide`)가 기록층에 남긴다 — 임대는 결정 대기 상태에서
+잡지 않는다.
 
 ### 전역 프로필 lease
 
