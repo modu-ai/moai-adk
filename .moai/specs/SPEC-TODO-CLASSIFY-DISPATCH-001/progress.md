@@ -190,4 +190,14 @@ m1_to_mN_commit_strategy: per-milestone commits M1..M5 + catalog cascade + AC-00
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+- sync_status: complete — 단일 sync 커밋으로 CHANGELOG [Unreleased] > Added 최상단 등재, spec.md frontmatter `in-progress → completed` 전환(in-progress → implemented → completed 3페이즈 클로즈 병합), 본 §E.4 기록을 함께 실어 착지. `sync_commit_sha`는 커밋이 자기 해시를 인용할 수 없으므로 `pending-backfill-sync` 플레이스홀더로 적고 직후 커밋에서 백필(t1240·t1328 선례와 동일).
+- sync_commit_sha: "pending-backfill-sync"
+- changelog_entry_position: [Unreleased] > Added 최상단 (B12 선방출 grep `grep -c 'SPEC-TODO-CLASSIFY-DISPATCH-001' CHANGELOG.md` = 0 확인 후 편입)
+- b12_self_test_a: PASS — 선방출 grep 0건 (중복 편입 없음)
+- b12_self_test_b: PASS — acceptance.md 고유 AC 14건(AC-TCD-001..014) = CHANGELOG 기재 수 14건 일치
+- b12_self_test_c: PASS — CHANGELOG가 인용하는 경로 실존 확인(`ls`): `.moai/specs/SPEC-TODO-CLASSIFY-DISPATCH-001/{spec,plan,acceptance,progress}.md` 4파일, `internal/kanban/classification.go`, `internal/config/envkeys.go`, `.moai/reports/t1332/`
+- canary_compliance_check: n/a — 본 SPEC이 정의하는 선향(forward-looking) 정책 없음
+- mx_tag_validation: PASS — run 페이즈에서 `SortByClassification`에 `@MX:ANCHOR` 부여 완료(커밋 `56c3dd61e`); sync 페이즈 추가 태그 회전 없음
+- README/docs-site 결정: **의도적 미수정** — 선례 카드 t1240(SPEC-FACTORY-SELF-DISPATCH-001, 유사 사용자 대면 CLI 표면)의 sync 클로즈(f2c44360a)도 CHANGELOG·spec.md·progress.md 3파일만 손대 README 4파일과 docs-site를 만지지 않았으며, 동일 관례를 따른다. t1240 선례에서 README/docs-site 기재는 별도 카드(t1257) 스코프로 이관된 전례가 있다 — 본 카드도 동일하게 리드에게 이관 후보로 보고.
+- reviewer-attention 이월(run §E.3): security-guardian guarded-DDL 적중은 오탐 판정(guarded DDL·base 코드 t359·이중 가드)으로 기각됐으며 본 카드 코드 변경 없음 — base-debt 원장 등재는 리드 처분.
+- AC 상태: 14/14 PASS (run §E.2 재측정분, 이월 편차 없음)
