@@ -1,6 +1,9 @@
 # 진입점
 
-**현재 부분 갱신 — t1333, worktree `.moai/worktrees/t1333`, 브랜치 `WT-codemaps-refresh9`, base `145c3d98c` (2026-09-29).**
+**현재 부분 갱신 — t1351, worktree `.moai/worktrees/t1351`, 브랜치 `WT-codemaps-refresh10`, base `145c3d98c` (2026-09-29).**
+스탬프 앵커 `145c3d98c`(t1333 판) 이후 착지분을 반영. SPEC-FACTORY-SELF-DISPATCH-001 배치가 F1 자가 배차 표면을 놓았다 — CLI 동사 `moai factory next`·`stage`·`complete`(`internal/cli/factory_card.go` 본체, 등록은 `factory_handoff_recover.go` — 기존 assign·status·decide 줄에 이어 붙었다)와 lane 런처의 `--clear-policy`(clear-each·clear-when-full·relaunch — relaunch 는 `internal/cli/factory_lane_relaunch.go` 의 슈퍼바이징 루프로 `cc`·`glm` 런처가 부모로 남아 카드마다 대화형 세션을 하나씩 띄운다), `moai codex` 쪽 공장 진입은 `-f lane` 하나로 좁혔다(`codex_launcher.go` — `codexFactoryEntryClassify`, 나머지 형태는 전부 거부 문장 하나). todo 표면에는 레인 큐 가드가 더했다(`todo.go`의 `PersistentPreRunE` — 읽기 허용 목록 list·history·why·pr·triage 와 맨인자 렌더만 통과). MCP 표면에 여섯 도구가 더했다 — `factory_{next,stage,complete,decide}`(`internal/cli/mcp_factory_card.go`)와 `todo_add`·`todo_list`(`internal/cli/mcp_todo.go`), 총 39→45. 훅에는 보호 브랜치 커밋 거부(card t1337, SPEC-MAIN-COMMIT-BAN-001 — § 훅)와 lane SessionStart 룰(`session_start_factory.go`·`session_start_factory_i18n.go` — backend 변수로 Claude·GLM 레인엔 next-card 룰을, Codex 레인엔 owned-card 룰을 골라 additionalContext 로 싣는다. startup·clear 에만 발화)이 더했다. SPEC-REPORTS-LIFECYCLE-001(card t1320)이 `moai clean --reports-archive`(보존창 지난 증거 디렉터리를 `.moai/reports/archive/<YYYY-MM>/` 으로 이동 전용 — `internal/cli/clean_reports_archive.go`, `--reports-archive-days` 기본 90)와 `moai worktree hoist`(폐기 전 증거 구조 — `internal/cli/worktree/hoist.go`, done 에도 배선 + `--no-hoist`)를 얹었다. SPEC-WEB-SAVE-LOSSLESS-001이 설정 저장을 무손실로 갈았다 — `internal/settings/projectscalars.go`(신규 공유 쓰기 seam), `config/manager.go`의 섹션별 dirty 게이트 6 섹션 확장, `profile/sync.go`의 user·language 행 치환 스플라이스(§ `data-flow.md` G 정정). 런처는 alias 를 그대로 통과시킨다(`launcher.go`의 `resolveMainSessionModel` — Claude 백엔드에서 플래그·설정값을 벗슬하지 않고 넘긴다, SPEC-ALIAS-PASSTHROUGH-001). `AddCommand(` 등록 수치 231·`rootCmd.AddCommand(` 66은 재확인 결과 변동 없었다(hoist 등록은 기존 `WorktreeCmd.AddCommand(` 호출의 인자 행이고 factory 신규 셋은 기존 한 줄에 합류했다).
+
+**이전 갱신 — t1333, worktree `.moai/worktrees/t1333`, 브랜치 `WT-codemaps-refresh9`, base `145c3d98c` (2026-09-29).**
 앵커 `afecf81e9` 이후 착지분을 반영. card t1306가 `moai todo --auto`를 더했다 — 운영자의 명령 1회가 큐를 순서대로 소비하는 상시 발화원이고, 같은 카드가 manager-todo 에이전트 정의를 에이전트 목록에 더하며 mission-governor 에이전트 정의를 은퇴시켰다(template 미러). card t1308가 `moai todo hold <id>`·`unhold <id>` 주차 동사를, card t1307(+t1313)가 유령 스토어 공개를 읽기 5동사와 add 쓰기 경로에, doctor에는 Todo Store 진단을 얹었다. 비테스트 `AddCommand(` 등록은 230→231(t1308의 hold/unhold; `--auto`는 새 커맨드가 아니라 todo 명령의 옵셔다)이고, `rootCmd.AddCommand(` 66·root.go init() 30회·훅 설정 엔트리 34는 재확인 결과 변동 없었다.
 
 **이전 갱신 — t1305, worktree `.claude/worktrees/t1305`, 브랜치 `WT-codemaps-refresh8`, base `afecf81e9e96` (2026-09-29).**
@@ -119,6 +122,19 @@ root.go Execute()
      골라 제거하고, 증명 못 하는 부분은 사유와 함께 그대로 남긴다(`internal/codexwiring/unwire.go`).
      `--dry-run`은 아무것도 쓰지 않고 계획만 출력한다. `moai update`는 disable 이후
      다시 wiring하지 않으며, 재활성화는 `moai tool enable codex`(기존 verb) 몫이다.
+   - **t1351 판에서 더해진 등록 세 곳** — ① `factory` 트리에 `next`·`stage`·`complete` 동사가
+     합류했다(`factory_handoff_recover.go`의 기존 `factory.AddCommand(...)` 한 줄에 이어 붙어
+     등록 수치는 그대로다. 본체는 `factory_card.go` — next 는 임대+큐 승격+카드 워크트리
+     보장(`factoryEnsureCardWorktree`)까지, stage 는 F1 엣지 적용+임대 갱신, complete 는 병합
+     기록(`factoryMergeNoFF`·`factoryWriteMergeRecord`)과 clear-policy 별 end-of-card 문장까지
+     진다). ② `worktree` 트리에 `hoist <tree-path>`가 더했다(`worktree/root.go`의 기존
+     `WorktreeCmd.AddCommand(` 인자 목록 — `worktree/hoist.go`. 폐기 전 카드 트리의
+     `.moai/reports/` 증거를 프로젝트 루트로 구조하고, `done` 도 같은 루틴을 폐기 직전에 부른다
+     — `--no-hoist` 로 끌 수 있다). ③ `clean`에 세 번째 스코프 플래그 `--reports-archive`가
+     더했다(`clean.go` — 커맨드가 아니라 스코프 선택 플래그라 등록 수치에 세지 않는다.
+     `clean_reports_archive.go`: 증거 형태 이름(t<숫자>·SPEC-…)이고 mtime 이 보존창
+     (`--reports-archive-days`, 기본 90)보다 오래되고 git 추적 파일이 없는 최상위 항목만
+     `archive/<YYYY-MM>/` 으로 **이동**한다 — 삭제는 없다).
 2. **자기 파일의 `init()`에서 스스로 등록** — `AddCommand`를 호출하는 파일이 **73개**입니다
    (`grep -rl "AddCommand" internal/cli --include='*.go' | grep -v _test`).
    `hook.go`, `todo.go`, `kanban.go`, `glm.go`, `cc.go`, `update.go`, `doctor.go`, `spec.go`,
@@ -269,6 +285,27 @@ agent-stop-audit 선례대록대로 침묵하고 계속합니다.
 함수의 첫 문장이라 guided 에서는 파일 읽기·서브프로세스 전에 반환해 훅 출력이 바이트 동일하게 유지되고,
 `--all`/`--mirror`·명령 치환·래퍼 셸·변수 피연산자·풀 수 없는 목적지는 전부 `push_check_undetermined` —
 undetermined 는 허용이 아니라 거부다(fail-closed).
+**t1351 판에서 더해진 셋** — ⑨ 보호 브랜치 커밋 거부(card t1337, SPEC-MAIN-COMMIT-BAN-001,
+`branch_guard.go`): BranchGuard 가족의 제2 거부 클래스로, 브랜치 **조건부**다 —
+`git commit`·`revert`·`cherry-pick`(`protectedCommitPattern`)이 매치되고, 호출 에이전트가 면제
+축 밖이며, 명령의 실제 cwd 가 primary 체크아웃(Seam A)이고, 그 cwd 에서 `HEAD` 가 해석한 브랜치가
+`workflow.branch_guard.deny_commits_on` 목록에 있을 때 거부한다. HEAD 해석은 `core/git`의
+`ResolveHeadBranch`(`git branch --show-current` — detached HEAD 는 ("", nil) 로 **의도적 허용**,
+오류는 fail-open + 감사 행), 목록이 비으면 명령 추출 전에 단락한다(REQ-2.5 — 미설정 사용자 비용은
+len() 하나). 정규화 파이프라인은 브랜치 상태 스캔과 **하나의 함수**(`normalizeCommandForScan`)을
+공유해 quoted span·heredoc·PowerShell 형태가 같은 판정을 받는다. ⑩ lane SessionStart 룰
+(SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-019, `session_start_factory.go` + `session_start_factory_i18n.go`):
+lane 라벨을 단 세션의 startup·clear 소스 기동에만 additionalContext 로 룰 한 줄을 싣는다 — backend
+변수가 룰을 고른다(Claude·GLM 레인엔 REQ-SD-014 MCP 도구 여섯과 CLI 등가물을 이름 대는 next-card
+룰, Codex 레인엔 임대 카드 id 만 보간하는 owned-card 룰). leader·레거시 라벨·키 없는 환경은 아무것도
+받지 않고, 산문은 대화 언어별 메시지 표에서 온다. ⑪ 계약 서명 가드의 lane gate 확장
+(`contract_sign_guard.go` — 구 `contractRoleMarker` 하나의 조건이 `contractLaneGate` 세 조항으로:
+역할 마커, lane 라벨 변수, backend 변수가 Codex 하네스를 이름 대는 것. REQ-AP-011 을 거부 방향으로만
+넓힌 것이고 세 변수를 안 단 세션은 전과 같이 허용된다). 같은 카드에서 `CheckContractSignClassify` 가
+export 돼 런처 쪽이 포착한 lane 환경을 같은 판정기로 분류한다. 런처 쪽: `launcher.go`의
+`resolveMainSessionModel` 이 Claude 백엔드에서 모델 alias 를 컴파일 시점 id 로 치환하지 않고 그대로
+통과시킨다(card t1315, SPEC-ALIAS-PASSTHROUGH-001 — Claude Code 가 런치 시점 alias 의미를 결정한다).
+
 
 ---
 
@@ -278,9 +315,10 @@ undetermined 는 허용이 아니라 거부다(fail-closed).
   JSON-RPC이고 `mark3labs/mcp-go` SDK는 전송만 담당합니다. **기본 off**이며 `.mcp.json`
   프로비저닝은 opt-in입니다.
 - **도구 수**: `mcp_server.go` 안 `add(...)` 호출 35회 +
+  `registerFactoryCardMCPTools(add)` 4회 + `registerTodoMCPTools(add)` 2회 +
   `registerJevAskTool(add)` 1회 + `codexRoleAuditTools()` 루프 3회로
-  총 **39개**입니다. 카탈로그 `internal/mcp/catalog.go`의 `Name:` 선언도
-  **39개**입니다(2026-09-25 재측정).
+  총 **45개**입니다(t1351 판 재측정). 카탈로그 `internal/mcp/catalog.go`의 `Name:` 선언도
+  **45개**입니다(2026-09-29 재측정).
 - **도구 목록**: `session_list`, `goal_status`, `goal_arm`, `spec_progress`, `verify_snapshot`,
   `verify_trend`, `spec_audit`, `spec_drift`, `audit_cache`,
   `codex_{audit,setup,task,job_status,job_result,job_cancel}`,
@@ -288,12 +326,15 @@ undetermined 는 허용이 아니라 거부다(fail-closed).
   `glm_{task,job_status,job_result,job_cancel,audit}`, `audit_multi`,
   `session_msg_{register,list,send,poll}`,
   `factory_msg_{send,list,body,receipt,status}`, `jev_ask`,
-  `graph_{file_api,find_code,trace_calls,shortest_path}`.
-- **이 판에서 신규 6개**: `factory_msg_{send,list,body,receipt,status}`(`internal/factorymsg` 위의
-  factory 전용 런-스코프 메시지 브로커 표면 — 발신은 현재 MCP 서버 프로세스의 세션/PID로
-  귀속되고, `factory_msg_body`가 반환하는 본문만 신뢰되지 않는 데이터로 취급된다)와 `jev_ask`
-  (`workflow.jev.enabled` 뒤에 게이트된 표시 전용 TypeSafe System One 판단 — 게이트가 꺼져
-  있으면 요청을 조립하지 않는다. `internal/cli/mcp_jev.go`).
+  `graph_{file_api,find_code,trace_calls,shortest_path}`,
+  `todo_add`, `todo_list`, `factory_{next,stage,complete,decide}`.
+- **t1351 판에서 신규 6개**: `factory_{next,stage,complete,decide}`(card t1240,
+  SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-014/-024 — `internal/cli/mcp_factory_card.go`. 넷 모두
+  cobra `RunE` 가 부르는 것과 **같은 함수**의 얇은 포장이라 두 표면이 갈릴 수 없고, 레인 거부도
+  CLI 가드가 같이 찍는다. 레인 동사 셋은 호출자 제공 `project_root` 를 요구하며, `factory_next` 의
+  부모 체크아웃 판정도 그 인수로 평가한다)와 `todo_add`·`todo_list`(`internal/cli/mcp_todo.go` —
+  add 는 쓰기 도구로 CLI 레인 가드와 **같은 한 줄 거부 문장**을 공유하고, list 는 읽기 전용
+  허용 목록에 있다).
 - **가드**: `mcp.yaml`에서 도구별 활성화를 읽고, `add()` 헬퍼의 첫 인자가 `mcp.NewTool` 이름 및
   카탈로그와 일치해야 한다는 계약을 가드 테스트가 강제합니다
   (`mcp_annotation_guard_test.go`, `mcp_boundary_test.go`).
