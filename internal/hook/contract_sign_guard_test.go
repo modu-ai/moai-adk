@@ -56,6 +56,12 @@ func signGuardInput(t *testing.T, command string) *HookInput {
 // reason whose first token is the sentinel, and no supplied case is silently
 // skipped.
 func TestContractSignAgentInvocationDenied(t *testing.T) {
+	// Pin all three lane-gate axes to "" so a factory-lane session's ambient
+	// env cannot flow in — the "no lane claim" baseline this test asserts
+	// must not depend on the runner's environment (lane env inflow, card t1354).
+	t.Setenv(config.EnvFactoryRole, "")
+	t.Setenv(config.EnvMoaiFactoryWorker, "")
+	t.Setenv(config.EnvMoaiKanbanBackend, "")
 	cases := []string{
 		"moai contract sign SPEC-X-001",
 		"moai contract sign --signer human SPEC-X-001",
@@ -235,6 +241,12 @@ func TestContractRoleScopedDenyUnderLaneMarker(t *testing.T) {
 // with the sentinel in EVERY run, the armed control that keeps the allow arm
 // from passing on an absent guard.
 func TestContractRoleScopedAllowWithoutLaneMarker(t *testing.T) {
+	// Pin all three lane-gate axes to "" so a factory-lane session's ambient
+	// env cannot flip the allow cases into denies — only the marker axis is
+	// under test, so the other two must be hermetic (lane env inflow, card t1354).
+	t.Setenv(config.EnvFactoryRole, "")
+	t.Setenv(config.EnvMoaiFactoryWorker, "")
+	t.Setenv(config.EnvMoaiKanbanBackend, "")
 	roleScoped := []string{
 		"moai contract sign --signer llm --receipt /tmp/r.json",
 		"moai contract sign --signer llm+jev --receipt /tmp/r.json",
