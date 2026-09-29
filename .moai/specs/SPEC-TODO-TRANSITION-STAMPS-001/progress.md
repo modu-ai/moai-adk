@@ -112,6 +112,33 @@ this tree, HEAD at measurement time)
     suite run during run1/run2 was observed via lsof cwd and waited out):
     the only failure is that same pre-existing doctor test.
 
+### §E.2 delta — merge-window ordering repair (2026-09-29, commit of this note)
+
+**Claim**: absorbing develop (t1308's v1→v2 items-table rebuild) inverted the
+open-sequence ordering this SPEC's migration relied on — the additive stamp
+ensures ran BEFORE the rebuild, so the rebuild (written against the v1 column
+set) silently dropped picked_at/dropped_at on the upgraded path
+(TestTransitionStampColumns_FreshUpgradedConverge: fresh 9 columns vs upgraded
+7), and an ALTER that preceded a forced rebuild failure touched the database
+file before the failure could be observed
+(TestBacklogMigrationFailureLeavesOriginalFileUntouched).
+
+**Evidence** (this run, this tree, merged HEAD b6850cb08 + this fix):
+- repair: `ensureSchema` (internal/kanban/backlog_sqlite.go) now runs the
+  version switch — including t1308's rebuild — FIRST, and both additive
+  ensures (`ensureLandingColumn`, `ensureTransitionStampColumns`) AFTER it,
+  with the ordering rationale in a comment.
+- `go test ./internal/kanban/ -count=1 -run
+  'TestBacklogMigrationFailureLeavesOriginalFileUntouched|TestTransitionStampColumns_FreshUpgradedConverge|TestSchemaFreezeRecordsTransitionStamps|TestTodoHistoryAddsNoSchemaChange'`
+  → `ok github.com/modu-ai/moai-adk/internal/kanban 0.416s`.
+
+**Gaps**: three internal/cli failures observed on the merged tree
+(TestAuditLagUsesBinlagSeam, TestTodoSelectionPredicatesPositivelyEnumerateStates,
+TestProductionStringLiteralsUseLeaderLaneVocabulary) are develop-inherited,
+not this card's: the six files involved carry zero commits in
+9cc3fdc4de57..0dfc21db7 and are byte-identical to develop (t1306×t1308
+cross-card interactions). Reported to the lead; batch CI owns the verdict.
+
 ### §E.2 delta — sync-audit F1 repair (2026-09-29, commit of this note)
 
 **Claim**: the two additional `state='picked'` transitions the sync-audit's

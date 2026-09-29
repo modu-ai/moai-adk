@@ -413,12 +413,6 @@ func (e *backlogEngine) ensureSchema(ctx context.Context) error {
 	if _, err := e.db.ExecContext(ctx, backlogDDL); err != nil {
 		return mapBacklogEngineError(fmt.Sprintf("schema %s", e.dbPath), err)
 	}
-	if err := e.ensureLandingColumn(ctx); err != nil {
-		return err
-	}
-	if err := e.ensureTransitionStampColumns(ctx); err != nil {
-		return err
-	}
 	version, err := e.schemaVersion(ctx)
 	if err != nil {
 		return err
@@ -444,6 +438,20 @@ func (e *backlogEngine) ensureSchema(ctx context.Context) error {
 	default:
 		return fmt.Errorf("schema %s: unsupported schema_version %q (want %q): %w",
 			e.dbPath, version, current, ErrBacklogCorrupt)
+	}
+	// Additive retrofits run AFTER the version reconciliation, never before
+	// it: the v1→v2 rebuild must see exactly the column set it was written
+	// against (a rebuild that runs after a retrofit would silently drop the
+	// retrofitted columns it does not know), and a forced rebuild failure
+	// must leave the database file byte-identical — an ALTER that ran first
+	// would touch it before the failure could be observed. Fresh databases
+	// carry every column in backlogDDL, so the ensures below are no-ops
+	// there. Merge ordering fix, card t1310 (ensure-before-rebuild inverted).
+	if err := e.ensureLandingColumn(ctx); err != nil {
+		return err
+	}
+	if err := e.ensureTransitionStampColumns(ctx); err != nil {
+		return err
 	}
 	return nil
 }
