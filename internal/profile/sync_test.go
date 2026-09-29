@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"gopkg.in/yaml.v3"
 )
 
@@ -94,7 +95,14 @@ func TestSyncToProjectConfig_Languages(t *testing.T) {
 		t.Fatalf("SyncToProjectConfig: %v", err)
 	}
 
-	// Verify language.yaml was updated
+	// Verify language.yaml was updated. SPEC-WEB-SAVE-LOSSLESS-001 (sync-audit
+	// F-1) moved language persistence to the row splice: only rows whose value
+	// actually CHANGES are written. git_commit_messages/code_comments prefs
+	// equal the config DEFAULTS for their (absent) rows — the resolved value
+	// already matches, so the splice correctly does not materialize them (the
+	// old re-marshal wrote the whole struct, materializing defaults). The
+	// contract asserted is therefore data-level: the rows that changed are on
+	// disk, and every submitted preference resolves to its submitted value.
 	data, err := os.ReadFile(filepath.Join(projectRoot, ".moai", "config", "sections", "language.yaml"))
 	if err != nil {
 		t.Fatalf("read language.yaml: %v", err)
@@ -110,14 +118,33 @@ func TestSyncToProjectConfig_Languages(t *testing.T) {
 	if wrapper.Language.ConversationLanguageName != "ko" {
 		t.Errorf("conversation_language_name = %q, want %q", wrapper.Language.ConversationLanguageName, "ko")
 	}
-	if wrapper.Language.GitCommitMessages != "en" {
-		t.Errorf("git_commit_messages = %q, want %q", wrapper.Language.GitCommitMessages, "en")
-	}
-	if wrapper.Language.CodeComments != "en" {
-		t.Errorf("code_comments = %q, want %q", wrapper.Language.CodeComments, "en")
-	}
 	if wrapper.Language.Documentation != "ko" {
 		t.Errorf("documentation = %q, want %q", wrapper.Language.Documentation, "ko")
+	}
+	// git_commit_messages / code_comments prefs equal the defaults — their
+	// absent rows must NOT be materialized by the splice.
+	if wrapper.Language.GitCommitMessages != "" {
+		t.Errorf("git_commit_messages = %q, want absent (default-equal pref must not materialize a row)", wrapper.Language.GitCommitMessages)
+	}
+	if wrapper.Language.CodeComments != "" {
+		t.Errorf("code_comments = %q, want absent (default-equal pref must not materialize a row)", wrapper.Language.CodeComments)
+	}
+
+	// Data-level contract: every submitted preference resolves to its
+	// submitted value through the config loader.
+	mgr := config.NewConfigManager()
+	resolved, err := mgr.LoadRaw(projectRoot)
+	if err != nil {
+		t.Fatalf("load resolved config: %v", err)
+	}
+	if resolved.Language.GitCommitMessages != "en" {
+		t.Errorf("resolved git_commit_messages = %q, want %q", resolved.Language.GitCommitMessages, "en")
+	}
+	if resolved.Language.CodeComments != "en" {
+		t.Errorf("resolved code_comments = %q, want %q", resolved.Language.CodeComments, "en")
+	}
+	if resolved.Language.Documentation != "ko" {
+		t.Errorf("resolved documentation = %q, want %q", resolved.Language.Documentation, "ko")
 	}
 }
 

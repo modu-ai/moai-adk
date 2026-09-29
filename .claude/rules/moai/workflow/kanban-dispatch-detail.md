@@ -9,7 +9,7 @@ paths: "**/kanban-dispatch*.md,**/.claude/agents/moai/manager-lead.md,**/.claude
 
 ## Design intent — sub-agent-first token discipline
 
-The factory leader and lane sessions keep **only orchestration** in their context windows. Every unit of real work — research, authoring, implementation, verification sweeps — is delegated to `Agent()` sub-agents; the verbose output (tool results, file dumps, test logs) stays in the sub-agent's window, and only summaries return to the session. The token rationale: a session surviving an entire card — or, in Factory Mode, a batch — would otherwise accumulate every card's raw output on top of the always-loaded prefix. The sections below express this structurally.
+The factory leader and lane sessions keep **only orchestration** in their context windows. Every unit of real work — research, authoring, implementation, verification sweeps — is delegated to `Agent()` sub-agents; the verbose output (tool results, file dumps, test logs) stays in their window, and only summaries return to the session. The token rationale: a session surviving an entire card — or a Factory Mode batch — would otherwise accumulate every card's raw output on the always-loaded prefix. The sections below express this structurally.
 
 ## Terminology — the board vocabulary
 
@@ -17,7 +17,7 @@ The factory leader and lane sessions keep **only orchestration** in their contex
 
 | Term | Definition | Example |
 |---|---|---|
-| **lane** | One parallel work stream that carries a card end to end: one session paired with one worktree. A lane is a swimlane — a band reserved for one stream of work so parallel streams never interleave, and never share a working tree. "Lane-local verification" = that lane runs only the tests its own change can affect. | The `run` session working in worktree `.claude/worktrees/t0` is one lane. |
+| **lane** | One parallel work stream that carries a card end to end: one session paired with one worktree. A lane is a swimlane — a band reserved for one stream of work; parallel streams never interleave and never share a working tree. "Lane-local verification" = that lane runs only the tests its own change can affect. | The `run` session working in worktree `.claude/worktrees/t0` is one lane. |
 | **card** | One unit of work on the board, entered by the operator via `/moai gtd "<description>"` and referred to by a short id. A card owns one worktree, one progress record, and its completion evidence. | `t0` — a one-line fix card. |
 | **column** | One stage of the board, in fixed order `backlog → plan → run → sync → done`. The three working columns each map to exactly one companion role; the review verdict lives inside the sync gate. | `/moai run <SPEC-ID>` happens in the `run` column. |
 | **backlog** | The entry queue of the board. No session owns it by design — work enters only when the operator puts it there. | `/moai gtd "rename hint is stale"` appends a card to the backlog. |
@@ -83,7 +83,7 @@ Each arrow below is one dispatch from the leader to one companion session:
 [operator picks a card]  →  plan  →  run  →  sync  →  [leader marks done]
 ```
 
-Dispatch is addressed by session name. Companions are named by their bare role; a name held by a live session is bumped to the next free number, and no run id travels in any session name, the leader's included (one run per machine; the id lives in `MOAI_KANBAN_ID` and the leader socket path). `ListAgents` lists live sessions and says when it could not check them all; send with `SendMessage({to: "<name>", message: "…"})`, using the short reference the listing prints when a bare name is ambiguous.
+Dispatch is addressed by session name. Companions are named by their bare role; a name held by a live session is bumped to the next free number, and no run id travels in any session name, the leader's included (one run per machine; the id lives in `MOAI_KANBAN_ID` and the leader socket). `ListAgents` lists live sessions and says when it could not check them all; send with `SendMessage({to: "<name>", message: "…"})`, using the short reference the listing prints when a bare name is ambiguous.
 
 A bare name fails in two different ways, and only one of them announces itself. The refusal case is the harmless one: the runtime cannot pick between same-named sessions, says so, and the send is re-issued with the short reference the listing prints. The other case says nothing at all.
 
@@ -131,15 +131,15 @@ The `-k` / `-f` leader session does not draft its own coordination: it spawns th
 
 ### Deputy mode — background coordination off the leader's turn
 
-The leader's turn loop is the scarcest surface on the board: a dispatch send, a CI watch, and a CodeRabbit poll each occupy it serially, and while it is occupied the leader cannot judge anything else. The deputy exists to move that occupancy. The leader session (still through manager-lead, still UNNAMED) delegates coordination duties to a background deputy instance whose charter — the delegable/retained matrix, the delivery-shape verification protocol, the standing messaging hazards — is codified in the agent itself (`.claude/agents/moai/manager-lead.md` § Deputy dispatch surface). This section adds only what the board sees of it.
+The leader's turn loop is the scarcest surface on the board: a dispatch send, a CI watch, and a CodeRabbit poll each occupy it serially, and an occupied leader judges nothing else. The deputy exists to move that occupancy. The leader session (still through manager-lead, still UNNAMED) delegates coordination duties to a background deputy instance whose charter — the delegable/retained matrix, the delivery-shape verification protocol, the standing messaging hazards — is codified in the agent itself (`.claude/agents/moai/manager-lead.md` § Deputy dispatch surface).
 
-**Why the deputy is resident rather than optional.** An optional mechanism is one a loaded leader never reaches for: the spawn's turn is the same turn the queue waits on, so the delegation is deferred exactly when it would pay most. Making the spawn a batch-start obligation (stub § Deputy dispatch surface) removes the decision from the moment of pressure. The cost is one background agent per batch whether or not the batch turns out to need it — deliberately accepted, because an unused deputy costs one spawn while an unspawned one costs every dispatch after it.
+**Why the deputy is resident rather than optional.** An optional mechanism is one a loaded leader never reaches for: the spawn's turn is the same turn the queue waits on, so the delegation is deferred exactly when it would pay most. Making the spawn a batch-start obligation (stub § Deputy dispatch surface) removes the decision from the moment of pressure. The cost is one background agent per batch whether or not it is needed — an unused deputy costs one spawn; an unspawned one costs every dispatch after it.
 
-**Reading the completion report.** A lane's completion report names evidence paths; reading those paths is several tool batches, and every one of them sits in the leader's turn. The deputy performs that read and returns a `RECOMMEND:` summary naming what it read. What moves is the occupancy, never the obligation: the leader still reads the evidence before advancing the card, because a deputy report is one more claim until the evidence under it has been read (stub § Completion is read, never trusted). A deputy that returns a conclusion without naming the paths it read has returned nothing usable — the naming is what lets the leader's own read be targeted rather than repeated from scratch.
+**Reading the completion report.** A lane's completion report names evidence paths; reading those paths is several tool batches, and every one of them sits in the leader's turn. The deputy performs that read and returns a `RECOMMEND:` summary naming what it read. What moves is the occupancy, never the obligation: the leader still reads the evidence before advancing the card, because a deputy report is one more claim until the evidence under it has been read (stub § Completion is read, never trusted). A deputy that returns a conclusion without naming the paths it read has returned nothing usable.
 
-**Round-report drafting.** The measurement batches and the table scaffolding are mechanical and belong to the deputy; the figures the leader will personally assert are re-authored by the leader, because a cited figure carries its measurer's attribution and an unattributed one is a defect (`verification-claim-integrity.md` §2). In the report this shows as two attributions side by side — deputy-measured values naming the deputy and the path, leader-asserted values naming the leader. Keeping the report as per-round files plus an index is the structural half of the same rule: a single file rewritten from its header every round makes each round's authoring cost grow with the batch's age, which is a drafting cost the delegation cannot remove.
+**Round-report drafting.** The measurement batches and the table scaffolding are mechanical and belong to the deputy; the figures the leader will personally assert are re-authored by the leader, because a cited figure carries its measurer's attribution and an unattributed one is a defect (`verification-claim-integrity.md` §2). In the report the two attributions sit side by side — deputy-measured values naming the deputy and the path, leader-asserted values naming the leader. Per-round files plus an index is the structural half: a single file rewritten from its header every round makes each round's authoring cost grow with the batch's age — a drafting cost the delegation cannot remove.
 
-**Watching without polling.** Repeated listing rounds to learn whether a lane has finished are pure turn occupancy that returns no information most of the time. One `notify_when_idle` request replaces the loop (`cross-session-messaging.md` § An idle notice is a scheduling hint) — opt-in, one-shot, so a second notice needs a second request. Its boundary is inherited by citation and not restated: the notice says *when to go look* and nothing about what the evidence says, because a session goes idle when it finishes, when it stops at a permission prompt, and when it dies, and the notice cannot separate those. Advancing a card on the notice alone is an unobserved completion claim.
+**Watching without polling.** Repeated listing rounds to learn whether a lane has finished are pure turn occupancy that returns no information most of the time. One `notify_when_idle` request replaces the loop (`cross-session-messaging.md` § An idle notice is a scheduling hint) — opt-in, one-shot, so a second notice needs a second request. Its boundary is inherited by citation and not restated: the notice says *when to go look* and nothing about what the evidence says — a session goes idle on finish, on a permission prompt, and on death, and the notice cannot separate those. Advancing a card on the notice alone is an unobserved completion claim.
 
 **What the deputy does in the background:**
 
@@ -147,9 +147,9 @@ The leader's turn loop is the scarcest surface on the board: a dispatch send, a 
 - **Bounded CI-watch polls.** The deputy polls a card's checks to terminal states and returns those states — the states, never a judgement about them.
 - **CodeRabbit two-condition reads.** The deputy reads the combined-status `CodeRabbit` entry (state `success` AND description `Review completed`) plus the `Merge Risk:` line matching the current `headRefOid`, and REPORTS both conditions to the leader. It never adjudicates the slot-wait outcome: a card carrying `Review rate limited` is reported as exactly that, and the leader decides what it means.
 - **First-pass evidence reading.** The deputy reads a card's completion evidence and returns findings as recommendations, each prefixed `RECOMMEND:` — never a verdict token.
-- **Summary reporting.** The deputy folds its observations into a single report addressed to the leader session.
+- **Summary reporting.** The deputy folds its observations into a single report addressed to the leader.
 
-**What returns to the leader's turn:** `RECOMMEND:`-prefixed recommendations, terminal CI states, delivery confirmations and refusals, and the two-condition CodeRabbit read. That is the entire return surface — the deputy's report is input to the leader's judgement, never a substitute for it.
+**What returns to the leader's turn:** `RECOMMEND:`-prefixed recommendations, terminal CI states, delivery confirmations and refusals, and the two-condition CodeRabbit read — the deputy's report is input to the leader's judgement, never a substitute for it.
 
 **What does not change — the structural principles:**
 
@@ -159,7 +159,7 @@ The leader's turn loop is the scarcest surface on the board: a dispatch send, a 
 
 The retained powers — final verdicts, final merge approval, operator gates, card issuance and `done`, CodeRabbit adjudication, cross-session dispute coordination — are enumerated under the `DEPUTY-RETAINED-BY-LEAD` marker in the agent charter; the stub carries the [HARD] boundary clauses.
 
-The queue on disk remains the delegation channel and completion remains evidence-read (stub § The delegation channel is the queue, § Completion is read, never trusted) — messaging stays a nudge. The rename changes who drafts the coordination, not what counts as delegated or as done.
+Messaging stays a nudge (stub § The delegation channel is the queue, § Completion is read, never trusted). The rename changes who drafts the coordination, not what counts as delegated or as done.
 
 ## Per-card fan-out and sub-agent execution
 

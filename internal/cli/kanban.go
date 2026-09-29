@@ -71,7 +71,11 @@ type kanbanEntryParse struct {
 	// (`-f lane`), as opposed to one the operator typed (`-f lane-<n>`,
 	// `--name lane-<n>`); the claim reports legacy collisions differently.
 	FactoryAutoNumber bool
-	Rest              []string // args with -k and its consumed value removed
+	// ClearPolicy carries the lane's --clear-policy selection (REQ-SD-020,
+	// factory entry only): "" when none was given, which the lane reads as
+	// the default clear-each.
+	ClearPolicy string
+	Rest        []string // args with -k and its consumed value removed
 }
 
 // parseKanbanFlag extracts --kanban / -k and its optional value from args.
