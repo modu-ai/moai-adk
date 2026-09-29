@@ -232,7 +232,7 @@ exactly one column.
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-09-30
-run_commit_sha: "pending-backfill-m3"
+run_commit_sha: "5d3389913"
 run_status: complete
 ac_pass_count: 15
 ac_fail_count: 0
@@ -242,7 +242,7 @@ l44_post_push_fetch: not-run (push is the leader's batch act)
 new_warnings_or_lints_introduced: 0
 cross_platform_build.darwin_arm64: pass (go build ./... exit 0, final tree)
 cross_platform_build.windows_amd64: pass (GOOS=windows GOARCH=amd64 go build ./... exit 0, final tree)
-total_run_phase_files: 25
+total_run_phase_files: 30
 m1_to_m3_commit_strategy: one commit per milestone (M1 surface, M2 ghost stores, M3 label vocabulary), explicit pathspec staging; the doctor surface files shared by M2+M3 were landed in their respective milestone commits with the tree held at each milestone's state (goldens regenerated per state)
 verification_scope: lane-local (internal/cli, internal/kanban full suites; no go test ./... per the lane load discipline)
 suite_results: internal/cli 1 pre-existing load-sensitive timing flake (TestStopChainMemberCostWithinBudget, failed under concurrent-lane load, green on isolated re-run: --- PASS 8.63s, exit 0); every other package and scoped suite green
