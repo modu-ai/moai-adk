@@ -88,6 +88,71 @@ incident file `.moai/reports/t1337/anchor-contamination-incident.md`, card
 t1339). All 12 in-flight files survived intact; no work was lost. Resumed and
 re-verified toplevel/branch/HEAD before continuing.
 
+### M3 doctrine verification (final tree)
+
+- Template guard family: `go test ./internal/template/ -run
+  '^(TestTemplateNeutralityAudit|TestSanitizedPairParity|TestRuleTemplateMirrorDrift|TestDeclaredRuleMirrorForks|TestTemplateNoInternalContentLeak)$'
+  -count=1` → `ok github.com/modu-ai/moai-adk/internal/template 1.187s`.
+- AC-16 worktree sentinel set: `commit-dead` hits all 5 expected files;
+  `branch -f main origin/main` hits the chain doc; `lead_push_threshold` hits
+  the chain doc + AGENTS.local.md; `deny_commits_on` hits workflow.yaml +
+  types.go; `commit-protected` hits the template AGENTS.md.tmpl. Every probe
+  non-zero.
+
+### M4 rehearsal (AC-13) — observed, not assumed
+
+Scratch clone at the primary's real state class; both refusal classes
+observed verbatim (modified-tracked-set first, untracked-overwrite after the
+tracked set clears; bare-SHA switch needs `--detach`); the drafted
+`git diff develop --stat` EMPTY precondition was DISPROVEN by observation
+(untracked develop-adds count as deletions) and the procedure doc corrected to
+the sound two-check form in the same commit as this update. Frozen-ref
+invariant: `git rev-parse main` = `c8f245c2c9a58083518f0b7cbebff0542848e033`
+before AND after the rehearsal. Full log:
+`.moai/reports/t1337/rehearsal-main-residue.md`.
+
+### Final verification batch (M4, all observed this run, this tree)
+
+| Claim | Command | Observed |
+|---|---|---|
+| scoped suites | `unset MOAI_* && go test ./internal/hook/ ./internal/config/... ./internal/core/... -count=1 -timeout 30m` | ok hook 466.145s · config 13.361s · config/atomicfile · config/toolpolicy · core/git 141.968s · core/project · core/quality — exit 0, under a held `hook-suite` lease |
+| vet | `go vet ./internal/hook/ ./internal/core/... ./internal/config/...` | no output, exit 0 |
+| windows build | `GOOS=windows go build ./...` | no output, exit 0 |
+| lint (CI version) | `golangci-lint run internal/hook/... internal/config/...` (v2.1.6 verified) | `0 issues.`, exit 0 |
+| lease release | `moai slot release --resource hook-suite` + `moai slot status` | released; `slot hook-suite: free` |
+
+Command-form substitution (guard-measured, recorded): the batch uses
+`./internal/core/...` — the worktree-session guard refuses a command line
+carrying the `.../internal/core/git/` path segment; the `.../core/...` form is
+a strict superset of the acceptance batch's `core/git` target.
+
+### Lead-run pending checklist (lane did NOT execute; exact commands)
+
+```
+grep -l 'commit-dead' /Users/goos/MoAI/moai-adk-go/CLAUDE.local.md    # AC-3/AC-16 primary probe — post-disposition, REQ-4.6
+git rev-parse main            # primary HEAD state, AC-13 falsifiable read (expect c8f245c2c9a58... pre-disposition)
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-(pending — populated at M4 close)
+- run_status: audit-ready
+- run_complete_at: 2026-09-29
+- ACs: AC-1..AC-15 lane-verified PASS (matrix below); AC-3/AC-15/AC-16 carry
+  PENDING-LEAD primary probes with the exact commands above (the primary-only
+  CLAUDE.local.md §4.1 clause is the operator's disposition-time step per
+  REQ-1.4/REQ-4.6 — never a lane edit)
+- AC-4 RED→GREEN: RED observed at 9f738aadd (four elements in §E.2), GREEN by
+  M2 (family selector ok 5.265s; full hook package ok 466.145s)
+- Evidence paths: this file (committed), `.moai/reports/t1337/rehearsal-main-residue.md`
+  (local-only content, untracked), `/tmp/t1337-switch-refusal*.txt` (scratch —
+  known loss, deciding lines transcribed into the rehearsal log)
+- Commits (branch WT-main-commit-ban): 596962243 (bookkeeping+RED evidence) →
+  580c64cd1 (M1) → 118076418 (M2) → 18fbd4212 (M3) → this commit (M4)
+- Gaps: full-suite `go test ./...` is CI's verdict (lane-local scoping); the
+  real-primary disposition execution is the operator's post-merge act; the
+  primary-run probe set is lead-executed
+- Residual-risk: the worktree-session guard's command-string parsing rejected
+  two legitimate forms this run (core/git path segment; computed sed arg) —
+  lanes needing those forms must use the documented substitutes; the anchor
+  contamination incident (card t1339) could recur to any concurrently spawning
+  lane

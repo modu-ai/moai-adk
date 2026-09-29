@@ -59,9 +59,9 @@ git rev-parse origin/develop   # 원격 착지 확인 — 카드 done/폐기 승
 
 **전제 — 보존 사본 확인(참조 전용).** primary의 `.moai/state/retired/CLAUDE.local.md` (sha256 `1db8d302…`) 존재를 확인한다. 이 절차는 새 보존 물건을 만들지 않는다 — develop 측에서 그 파일은 비추적+gitignore가 정상 상태다.
 
-**1단계 — 재고 + 내용 안전 전제(primary에서, 운영자).** `git status --porcelain`으로 수정·비추적 목록을 재고하고, `git diff develop --stat`이 **비어 있어야** 진행한다 — 워킹 트리가 이미 develop 트리와 같다는 뜻이며, 그래야 전환이 내용 보존적이다. 비어 있지 않으면 중단하고 각 항목을 운영자가 판별한다.
+**1단계 — 재고 + 내용 안전 전제(primary에서, 운영자).** 두 검사가 모두 통과해야 진행한다(리허설 실측: `.moai/reports/t1337/rehearsal-main-residue.md`): (a) `git diff --stat`(unstaged, HEAD 대비)이 이름 붙이는 수정 파일들이 모두 `git diff --name-only c8f245c2c origin/develop`의 변경 집합 안에 있고, (b) `git status --porcelain`의 `??` 행들이 develop-추가 경로(`git diff --name-only --diff-filter=A c8f245c2c origin/develop`)와 대응한다. 그래야 워킹 사본의 모든 내용이 develop 것이라 내용 보존적 전환이 된다. 벗어나는 항목이 하나라도 있으면 중단하고 운영자가 항목마다 판별한다. (주의: `git diff develop --stat`이 비어 있어야 한다는 형태는 리허설에서 반증됐다 — develop-추가 파일이 비추적이면 그 diff가 '삭제'로 셈하므로 이 상태 등급에서는 절대 비지 않는다.)
 
-**전환이 실제로 건너는 경계(관측된 모델).** `main`은 `CLAUDE.local.md`를 추적하지 않는다(`c8f245c2c`가 추적에서 삭제; `git cat-file -e main:CLAUDE.local.md` → 부재) — 그 파일은 전환 양쪽에서 모두 비추적+gitignore라 조용히 살아남는다. 실제 경계는 primary의 develop 상태 워킹 사본이다: (a) main이 여전히 추적하는 파일들에 대한 미커밋 수정 — **modified-tracked-set 거부**, (b) develop이 추적하는 파일을 비추적으로 들고 있는 경우 — **untracked-overwrite 거부**.
+**전환이 실제로 건너는 경계(리허설 관측).** `main`은 `CLAUDE.local.md`를 추적하지 않는다(`c8f245c2c`가 추적에서 삭제; `git cat-file -e main:CLAUDE.local.md` → 부재) — 그 파일은 전환 양쪽에서 모두 비추적+gitignore라 조용히 살아남는다. 실제 경계는 primary의 develop 상태 워킹 사본이다: (a) main이 여전히 추적하는 파일들에 대한 미커밋 수정 — **modified-tracked-set 거부**("Your local changes ... would be overwritten by checkout", 워킹 내용이 develop 것과 같아도 git은 거부한다 — 검사는 HEAD 대비 수정 여부이지 목표와의 동일성이 아니다), (b) 수정 집합을 정리한 뒤에야 드러나는 — **untracked-overwrite 거부**("The following untracked working tree files would be overwritten").
 
 **2단계 — primary를 `develop`으로 먼저 전환** (`git switch develop`). `develop`이 다른 워크트리(통합 워크트리)에 체크아웃돼 있으면 먼저 그쪽을 정리한다 — develop은 이중 체크아웃될 수 없다. git의 거부 문구는 관측된 대로 그대로 기록한다(아래 리허설).
 
