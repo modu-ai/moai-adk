@@ -31,6 +31,7 @@ related_specs: [SPEC-SESSION-DOUBLELOAD-001]
   - REQ-SMM-020 now sits after REQ-SMM-019.
 
   The settled decisions (N1 (a), DP-1/2/3, A hold, B out) are unchanged.
+- **2026-09-29** — Disposition note (orchestrator-routed, card t1279 fresh-budget round 2). The lead's 2026-09-29 order re-authored the D scope under **SPEC-SESSION-DOUBLELOAD-001 v0.3.0**; this SPEC's D scope is thereby **superseded by that SPEC**. This SPEC remains `status: draft` + HOLD per verdict §⑩, with its residual defects (delta D1/D3/D4) owned by queued candidate #2. The v0.1.0 line above ("SPEC-SESSION-DOUBLELOAD-001 stays on HOLD and is not modified") is superseded by this note: DOUBLELOAD-001 was re-authored on 2026-09-29 under the lead's order. Prior-round audits of this SPEC (0.55/0.74/0.83/0.83) remain this SPEC's history, not DOUBLELOAD-001's.
 
 ## §A — Problem
 
