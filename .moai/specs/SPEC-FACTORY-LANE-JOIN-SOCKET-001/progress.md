@@ -34,6 +34,20 @@ Baseline (pre-flight, this tree @ c961c4d4a): `go build ./...` + `GOOS=windows G
 - Build: `go build ./...` + `GOOS=linux` + `GOOS=windows` on internal/discovery — all exit 0; `go vet ./internal/discovery` clean.
 - Design note: REQ-002's fingerprint predicate in the discovery direction has no recorded side to mismatch (the measured fingerprint IS the resume stamp); the "together with" leg is pinned by TestDiscoverLeaderDeclinesIndeterminateIdentity (live pid + unreadable fingerprint declines).
 
+### M3 — join-point integration + flag + env (REQ-001/004/005/006/008/009/010; AC-001..AC-004, AC-009..AC-013)
+
+- RED (`enterFactoryLaneRun` stubbed to the plain gate, discovery absent): `go test ./internal/cli -run '...' -count=1` → 6 `--- FAIL` blocks verbatim (TestCCFactoryLaneJoinsDiscoveredLeader / TestGLMFactoryLaneJoinsDiscoveredLeader `NO_ACTIVE_FACTORY`; TestFactoryLaneJoinZeroLeadersRefuses `discovery asked 0 time(s)`; TestFactoryLaneJoinMultiLeaderFailsClosed; TestFactoryLaneJoinLeadTargeting ×2; TestFactoryLaneJoinMirrorParity `does not carry "discoverFactoryLeader("`).
+- GREEN: `go test ./internal/cli -run 'TestCCFactoryLaneJoinsDiscoveredLeader|TestGLMFactoryLaneJoinsDiscoveredLeader|TestFactoryLaneJoin|TestCCFactoryLeadFlagLegacyRefused|TestFactoryLeadFlagSurfaceGates' -count=1` → `ok github.com/modu-ai/moai-adk/internal/cli 12.302s`.
+- Files: `internal/cli/factory.go` (enterFactoryLaneRun shared gate + discoverFactoryLeader seam + AMBIGUOUS_FACTORY_LEADER sentinel + resumeDiscoveredRun + `-l/--lead` parse with legacy refusal and surface gates + @MX:ANCHOR/@MX:NOTE), `internal/cli/kanban.go` (kanbanEntryParse.FactoryLead), `internal/cli/cc.go` + `internal/cli/glm.go` (lane branch → enterFactoryLaneRun; help text `-l, --lead` line + record-absence tolerance), `internal/cli/codex_factory.go` (parse --lead + lane branch → enterFactoryLaneRun + lead-name forwarding in codexFactoryEnv), `internal/discovery/factory_discovery.go` (DescribeVerifiedLeaders exported), `internal/cli/factory_test.go` (capture.leadName field — additive), `internal/cli/factory_join_discovery_test.go` (new, 10 tests), `internal/hook/factory_resumed_bind_test.go` (new — AC-012's hook half: the unchanged bind chain binds a lane peer generation-1 into a RESUMED run's broker).
+- Build/vet: `go build ./...` + `go vet ./internal/cli ./internal/discovery` clean.
+
+### M5 — docs and help (REQ-008/001; AC-016)
+
+- Help text: `internal/cli/glm.go` + `internal/cli/cc.go` — `-f lane` block gains the record-absence tolerance line and the `-l, --lead <name>` row (twins in parity).
+- docs-site 12 files: `content/{en,ja,zh,ko}/advanced/factory-mode.md` (new paragraph 「실행 기록이 없어도 리더가 살아 있으면 합류합니다」 and locale equivalents), `content/{en,ja,zh,ko}/advanced/kanban-mode.md` (factory entry bullet extended), `content/{en,ja,zh,ko}/cli-reference/launchers.md` (new `-l, --lead <name>` table row).
+- README 4 occurrences: `README.md`, `README.ko.md`, `README.ja.md`, `README.zh.md` — factory paragraph gains the inverse-direction coverage sentence (verify + restore + fail-closed-on-many) with the `--lead` flag.
+- Parity check: `grep -c -- '--lead'` → 1 per locale in each of factory-mode.md / kanban-mode.md / launchers.md / README (12+4 files all 1).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase — owned by manager-develop)_

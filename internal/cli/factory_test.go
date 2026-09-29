@@ -841,12 +841,13 @@ func TestFactoryDefaultWorkersConstant(t *testing.T) {
 // at the moment the launch happens (the deferred restores are still live
 // there, which is the point — the signal REQ-FM-023 transports).
 type factoryLaunchCapture struct {
-	args    []string
-	runID   string
-	workers string
-	worker  string
-	addr    string
-	cap     string
+	args     []string
+	runID    string
+	workers  string
+	worker   string
+	addr     string
+	cap      string
+	leadName string
 }
 
 // installFactoryLaunchSeam swaps unifiedLaunchFunc, findProjectRootFn, and
@@ -862,6 +863,7 @@ func installFactoryLaunchSeam(t *testing.T) *factoryLaunchCapture {
 		c.worker = os.Getenv(config.EnvMoaiFactoryWorker)
 		c.addr = os.Getenv(config.EnvMoaiKanbanLeadAddr)
 		c.cap = os.Getenv(config.EnvClaudeCodeMaxConcurrentSubagents)
+		c.leadName = os.Getenv(config.EnvMoaiKanbanLeadName)
 		return nil
 	}
 	origFn := findProjectRootFn

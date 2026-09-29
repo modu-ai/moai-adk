@@ -76,11 +76,19 @@ Factory Mode (dedicated -f entry):
                                 in-session.
   -f lane                      Join the running factory as a LANE: the next
                                 free lane-<n> label is claimed for this
-                                session.
+                                session. If the run's record is missing or
+                                retired while a live leader session exists,
+                                the join verifies that leader (pid +
+                                process-start) and restores its run, so the
+                                lane still lands on the live factory.
   -f lane-<n>                  Launch exactly one additional lane — lane n —
                                 and connect it to the leader socket of the
                                 running factory. A number whose label is held by
                                 a live session is bumped to the next free number.
+  -l, --lead <name>            With -f lane / -f lane-<n>: which leader session
+                                the record-absence verification targets
+                                (default: leader). The legacy spelling lead /
+                                lead-<suffix> is refused.
   -k <N> / -k <N> --name lane-<i>
                                 The v1.2.0 unified -k factory shapes, still
                                 valid: -k N is the leader of an N-lane run,
@@ -204,7 +212,11 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		}
 		defer settingsCleanup()
 	case factoryBranchLane:
-		restoreRun, runErr := enterSelectedFactoryRun(launchProjectRoot(), entry.FactoryRun, true)
+		// The shared lane join: record-absence refusal falls back to
+		// verified leader discovery + resume, then re-enters the gate
+		// (SPEC-FACTORY-LANE-JOIN-SOCKET-001). One implementation for cc,
+		// glm, and the codex twin (REQ-010).
+		restoreRun, runErr := enterFactoryLaneRun(launchProjectRoot(), entry.FactoryRun, entry.FactoryLead)
 		if runErr != nil {
 			return runErr
 		}

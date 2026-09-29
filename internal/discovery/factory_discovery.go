@@ -370,10 +370,10 @@ func readerContext(ctx context.Context) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(ctx, readerDeadline)
 }
 
-// describeVerifiedLeaders renders verified candidates for the multi-leader
+// DescribeVerifiedLeaders renders verified candidates for the multi-leader
 // fail-closed refusal (REQ-005): each candidate with its run id and pid, no
 // selection among them.
-func describeVerifiedLeaders(verified []VerifiedLeader) string {
+func DescribeVerifiedLeaders(verified []VerifiedLeader) string {
 	parts := make([]string, 0, len(verified))
 	for _, v := range verified {
 		parts = append(parts, fmt.Sprintf("%s (leader pid %d, %s)", v.RunID, v.PID, v.Name))
