@@ -82,6 +82,12 @@ git branch --show-current
 
 **원격 CI(`origin/develop`)가 통합 판정의 주체다.** 로컬 통과는 조기 신호일 뿐이다 — 깨끗한 환경도, darwin/windows 매트릭스도 아니다.
 
+**배치 닫기 트리거 — 임계값은 설정이 운반한다(SPEC-LEAD-AUTOPUSH-001).** 배치를 닫을 시점은 리더의 재량이 아니라 계수 트리거가 정한다: `git rev-list --count origin/develop..develop`이 `git_strategy.manual.lead_push_threshold`에 닿으면 배치를 닫고 `git push origin develop`을 **한 번** 실행한다. 값의 원천은 `.moai/config/sections/git-strategy.yaml`이며 이 문서는 그 수를 다시 쓰지 않는다 — 키와 계수 명령만 명명한다. 트리거는 병합 창이 닫힌 뒤에만 평가한다 — 창(`moai integration acquire`/`release`) 안에서 push하지 않는다.
+
+**초록 조건부 — push는 green일 때만 다시 연다.** 두 층이 있다. (i) 카드별 사전 게이트: 통합 창의 병합 트리 재측정을 통과하지 못한 병합은 배치에 넣지 않는다(지난 3건의 적색은 전부 이 재측정이 push 전에 잡았다). (ii) 배치 단위 보류: 마지막 push의 `origin/develop` CI가 red면 다음 push를 보류한다 — 수리되어 green으로 돌아온 뒤에야 트리거가 다시 유효하다. 초록 조건부가 계수 트리거보다 우선한다. 마지막 push의 CI 판정이 아직 없으면(새 develop의 첫 push 등) red가 아니므로 보류 사유가 아니다.
+
+**임계값 0(또는 키 부재)은 오류가 아니라 비활성이다.** `lead_push_threshold`가 0이면 트리거는 꺼진 것으로, 배치 닫기 시점은 리더의 판단으로 돌아간다 — 오류 조건으로 취급하지 않는다.
+
 ## 5. 충돌 — 변경을 소유한 레인의 몫
 
 병합이 일으킨 충돌은 그 병합을 하는 레인이 해결한다. 해결할 수 없는 충돌(다른 레인이 이미 합친 변경과의 의미적 충돌)은 **리더에게 blocker 보고**다. 강제 병합이 아니다.
@@ -99,7 +105,7 @@ git branch --show-current
 - 병합 판정(무엇이 `develop`에 들어갔는가)은 리더의 것이다. 작업을 만든 레인에게 자기 결과를 판정하게 하지 않는다.
 - 증거 파일이 없거나 읽히지 않거나 낡았으면 **gap**이다 — 카드는 그대로 두고 이유를 보고한다.
 - 병합이 확인되면 다음 카드를 **지금 비어 있는 레인**에 dispatch 한다.
-- **develop push는 리더의 일괄 소관이다(2026-09-02).** 레인 완료 보고에서 카드 id와 로컬 병합 SHA를 모은다 → 배치를 닫을 시점을 리더가 판단한다 → `git push origin develop`을 **한 번** 실행한다 → `git fetch`와 `git rev-parse origin/develop`으로 원격 착지를 검증한다 → 그 뒤에야 카드 done과 워크트리 폐기 승인을 낸다.
+- **develop push는 리더의 일괄 소관이다(2026-09-02).** 레인 완료 보고에서 카드 id와 로컬 병합 SHA를 모은다 → 배치를 닫을 시점은 §4의 임계 트리거와 초록 조건부가 정한다(리더 재량 단독이 아니다) → `git push origin develop`을 **한 번** 실행한다 → `git fetch`와 `git rev-parse origin/develop`으로 원격 착지를 검증한다 → 그 뒤에야 카드 done과 워크트리 폐기 승인을 낸다.
 
 ## 8. 검증은 레인-로컬
 

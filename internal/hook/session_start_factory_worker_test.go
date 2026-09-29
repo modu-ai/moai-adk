@@ -37,6 +37,16 @@ func TestFactoryGuideTeachesLaneFormsInEveryLocale(t *testing.T) {
 				}
 			}
 		}
+		// SPEC-WORKFLOW-TASKS-001 REQ-TASKS-005: both lane rules teach the
+		// TaskCreate/TaskUpdate discipline in every locale, the protocol
+		// tokens verbatim the same way the MCP tool names are.
+		for field, text := range map[string]string{"laneNextCardRule": m.laneNextCardRule, "laneOwnedCardRule": m.laneOwnedCardRule} {
+			for _, token := range []string{"TaskCreate", "TaskUpdate"} {
+				if !strings.Contains(text, token) {
+					t.Errorf("%s %s lacks the tasks-discipline token %s:\n%s", lang, field, token, text)
+				}
+			}
+		}
 	}
 }
 

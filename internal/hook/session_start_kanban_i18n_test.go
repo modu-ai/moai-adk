@@ -263,6 +263,28 @@ func TestSessionStartKanbanChannelsCarryTheirOwnLanguage(t *testing.T) {
 	}
 }
 
+// TestKanbanCompanionSurfaceCarriesNoLaneRuleSentence pins the
+// SPEC-WORKFLOW-TASKS-001 M2 conditional finding: the kanban companion
+// surface carries no lane-role rule sentence — its companion notice is a
+// single role-less join line plus the English-only spawn authority. A lane
+// session (including a kanban-launched `lane-N`) reads its lane rule, and
+// with it the TaskCreate/TaskUpdate discipline, through
+// factoryLaneRuleForSource (the factory i18n table), so the discipline lives
+// in exactly one place and the kanban notice must not duplicate it.
+func TestKanbanCompanionSurfaceCarriesNoLaneRuleSentence(t *testing.T) {
+	for lang := range kanbanLocales {
+		m := kanbanMessagesFor(lang)
+		for _, token := range []string{"TaskCreate", "TaskUpdate"} {
+			if strings.Contains(m.companionJoin, token) {
+				t.Errorf("locale %q: kanban companionJoin duplicates the lane tasks-discipline token %s — the discipline lives only in the factory lane rule (SPEC-WORKFLOW-TASKS-001)", lang, token)
+			}
+		}
+		if got := kanbanCompanionNotice("lane-4", lang); strings.Contains(got, "TaskCreate") || strings.Contains(got, "TaskUpdate") {
+			t.Errorf("locale %q: kanbanCompanionNotice duplicates the tasks discipline:\n%s", lang, got)
+		}
+	}
+}
+
 // TestKanbanRecommendationTableMatchesLaunchLines pins the agreement the
 // recommendation redesign exists for: each locale's recommendation table names
 // the same backend for a role that the role's launch line launches with. The
