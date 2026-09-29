@@ -69,9 +69,9 @@ moai init [project-name] [OPTIONS]
 | `--enable-lsp` | 启用 LSP 联动(默认: true) |
 | `--enforce-quality` | 强制质量门禁(默认: true) |
 | `--enable-design` | 启用 design 工作流(默认: true) |
-| `--profile <high\|medium\|low>` | 模型+effort 配置文件 —— 保存到 `llm.yaml` `profile` (选择配置矩阵列)。legacy 值 `max` 也接受作为输入并规范化为 `high` |
-| `--model-policy <high\|medium\|low>` | legacy 性能层级 —— 保存到 `llm.yaml` `performance_tier` (`profile` 缺失时作为别名) |
-| `--high` | **将被删除** `--model-policy high` 的别名 |
+| `--profile <high\|medium\|low>` | **已弃用的桩** —— 为脚本兼容仍接受值，但没有任何效果，并打印指向 `moai profile setup` 的弃用警告 |
+| `--model-policy <high\|medium\|low>` | **已弃用的桩** —— 为脚本兼容仍接受值，但没有任何效果，并打印指向 `moai profile setup` 的弃用警告 |
+| `--high` | **已弃用的桩** —— 已退役的 `--model-policy high` 的别名，打印同样的弃用警告 |
 
 ### 示例
 
@@ -84,7 +84,7 @@ cd my-existing-project
 moai init
 
 # 非交互(CI/CD)
-moai init --non-interactive --model-policy medium
+moai init --non-interactive
 ```
 
 详细的向导步骤请参阅[初始设置](./init-wizard)页面。
@@ -113,7 +113,7 @@ moai update [OPTIONS]
 | `--no-hooks` | 跳过 Git 钩子安装 |
 | `--verbose` | 显示所有警告(诊断模式) |
 | `--shell-env` | 为 Claude Code 配置 shell 环境变量 |
-| `--profile <high\|medium\|low>` | 覆盖模型+effort 配置文件(保存到 `llm.yaml` `profile`) |
+| `--profile <high\|medium\|low>` | **已弃用的桩** —— 为脚本兼容仍接受值，但没有任何效果，并打印指向 `moai profile setup` 的弃用警告 |
 
 ### 示例
 
@@ -445,23 +445,23 @@ moai --version    # 相同
 
 ## 模型策略(性能层级)
 
-MoAI-ADK 提供为智能体分配最优 AI 模型的性能层级系统 —— 这是代币经济学的起点。通过 `llm.yaml` 的 `performance_tier` 字段设置,用 `--model-policy` 标志或初始化向导选择。
+按智能体逐一分配模型的旧性能层级系统已经退役。v3.2 起，**子代理沿用主会话的模型与推理深度** —— 生成子代理时不传 `model` 也不传 `effort`，MoAI 智能体定义对两者都不作声明。模型策略的位置上剩下的，是会话层面的一个选择：`moai profile setup` 的**会话模型策略**问题，决定以此配置文件启动的 Claude 会话的默认推理强度（未单独选择推理强度时的回退值）。
 
-| 层级 | 特点 |
+| 旧值 | 今天的含义 |
 |------|------|
-| **high** | 最高质量 —— 与 medium 相同，只有 `builder-harness` 和 `e2e-tester` 两个智能体的 effort 高一级 |
-| **medium** (默认) | 质量与成本的平衡 —— 成本/评分曲线的拐点 |
-| **low** | 每任务成本最低 —— 审计与协调行降到 `medium`，`builder-harness` 降到 Opus `low`(`super-advisor` 与 `mission-governor` 保持 `high`)，Sonnet 用于单发行和 `e2e-tester` |
+| **high** | 会话 effort 回退 `high` |
+| **medium** | 会话 effort 回退 `medium` |
+| **low** | 会话 effort 回退 `low` |
 
 ```bash
-# 初始化时设置
-moai init my-project --model-policy high
+# 配置会话模型策略（以及配置文件的其余全部）
+moai profile setup
 
-# 在既有项目中重新设置
-moai update -c
+# 已退役的逐智能体旗标只打印弃用警告，没有任何效果
+moai init my-project --model-policy high
 ```
 
-配置文件(`profile`: high/medium/low)选择配置矩阵的活动列，确定每个代理的 model+effort。详细的每个代理映射请参阅[配置矩阵](/zh/advanced/profile-matrix/)页面。
+旧的 `--model-policy`、`--profile`、`--high`、`--medium-alias`、`--low` 旗标是已弃用的桩：为脚本兼容仍接受值，但没有任何效果，并打印指向 `moai profile setup` 的警告。会话级模型·effort 调节见[模型策略](/zh/multi-llm/model-policy/)页面，矩阵的退役见[配置矩阵](/zh/advanced/profile-matrix/)页面。
 
 ---
 

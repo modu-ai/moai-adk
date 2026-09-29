@@ -44,8 +44,12 @@ moai profile setup work     # 设置 "work" 配置文件
 **向导设置项:**
 - **Identity**:用户名、角色
 - **Languages**:对话语言、代码注释语言
-- **Model Settings**:默认模型、1M 上下文模型选择
+- **Model Settings**:默认模型覆盖、会话模型策略（会话的默认 effort 回退）、会话推理强度
 - **Display**:输出风格、状态栏设置
+
+{{< callout type="info" >}}
+这里设置的模型与 effort 是**会话层面**的值：以此配置启动的 Claude 会话以它们运行，子代理沿用会话的模型与推理深度。曾经的逐智能体分配（配置矩阵）已退役 —— 参见[配置矩阵](/zh/advanced/profile-matrix/)页面。
+{{< /callout >}}
 
 ### moai profile current
 

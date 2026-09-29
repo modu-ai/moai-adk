@@ -56,11 +56,9 @@ Paste-ready, no editing required.
 ## Detection Heuristics
 
 The orchestrator estimates context usage **state-file-first**: it reads
-`<projectDir>/.moai/state/context-usage/<session-id>.json`, the snapshot the statusline writes each
-render, and prefers its `raw_pct` and `stage` fields over any proxy. The record is per session, so
-the one named for the current session belongs to it by construction — no cross-session validity
-check is needed. When it is absent or unparseable, usage is estimated from cumulative output bytes,
-system-reminder volume, large tool results, and completed `Agent()` returns — under-estimating when
+`<projectDir>/.moai/state/context-usage/<session-id>.json` (the statusline's per-session snapshot)
+and prefers its `raw_pct` and `stage` fields. Absent or unparseable, usage is estimated from
+cumulative output, system-reminder volume, and completed `Agent()` returns — under-estimating when
 uncertain, since a premature `/clear` costs one paste and a missed one costs a stalled stream.
 
 **Where the number comes from, and how far to trust it.** The snapshot does not measure the window

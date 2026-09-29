@@ -183,7 +183,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: CLAUDE.md
   anchor: "#7-safe-development-protocol"
-  clause: "When intent is unclear, conduct a Socratic interview before execution"
+  clause: "unclear intent → Socratic interview before execution"
   canary_gate: false
 
 - id: CONST-V3R2-014
@@ -199,7 +199,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: CLAUDE.md
   anchor: "#7-safe-development-protocol"
-  clause: "When modifying 3+ files, split into logical units (TodoList), execute file-by-file, analyze dependencies before parallel execution, report progress per unit"
+  clause: "3+ files → logical units (TodoList), file-by-file, dependencies before parallel execution"
   canary_gate: false
 
 - id: CONST-V3R2-016
@@ -207,7 +207,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: CLAUDE.md
   anchor: "#7-safe-development-protocol"
-  clause: "After coding, provide potential-issue list (edge cases, error/concurrency scenarios), suggested test cases, known limitations/assumptions, additional-validation recommendations"
+  clause: "potential-issue list, suggested tests, known limitations, additional-validation recommendations"
   canary_gate: false
 
 - id: CONST-V3R2-017
@@ -215,7 +215,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: CLAUDE.md
   anchor: "#7-safe-development-protocol"
-  clause: "Write a failing reproduction test first; confirm it fails; challenge the diagnosed root cause once"
+  clause: "failing reproduction test first; challenge the root cause once; fix minimally; verify the test passes"
   canary_gate: false
 
 - id: CONST-V3R2-018
@@ -384,7 +384,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/core/agent-common-protocol.md
   anchor: "#user-interaction-boundary"
-  clause: "Preload `AskUserQuestion` via `ToolSearch(query:"
+  clause: "preload `AskUserQuestion` via `ToolSearch`"
   canary_gate: true
 
 - id: CONST-V3R2-038

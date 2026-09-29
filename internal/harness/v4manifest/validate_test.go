@@ -152,7 +152,7 @@ func TestValidate_RejectsInvalidEffort(t *testing.T) {
 		{EffortXhigh, true},
 		{EffortMax, true},
 		{"ultra", false},
-		{"", true}, // optional (SPEC-AGENT-MODEL-INHERIT-001 D11)
+		{"", true},      // optional (SPEC-AGENT-MODEL-INHERIT-001 D11)
 		{"HIGH", false}, // case-sensitive
 	}
 	for _, tc := range cases {
@@ -182,7 +182,7 @@ func TestValidate_RejectsInvalidModel(t *testing.T) {
 		{ModelSonnet, true},
 		{ModelOpus, true},
 		{"gpt-4", false},
-		{"", true}, // optional (SPEC-AGENT-MODEL-INHERIT-001 D11)
+		{"", true},        // optional (SPEC-AGENT-MODEL-INHERIT-001 D11)
 		{"Sonnet", false}, // case-sensitive
 	}
 	for _, tc := range cases {

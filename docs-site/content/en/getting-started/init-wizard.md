@@ -129,31 +129,16 @@ The values below are saved with their defaults without asking. To change them, p
 
 | Setting | Default | How to change |
 |---------|---------|---------------|
-| Performance tier (model policy) | Medium | `--model-policy` or `--profile`, `moai update -c` |
+| Session model policy (effort fallback) | Medium | `moai profile setup`, `moai update -c` |
 | Report format | HTML + Markdown | `moai update -c` |
 | LSP integration | On | `--enable-lsp` |
 | Enforce quality gates | On | `--enforce-quality` |
 | Design workflow and Claude Design integration | On | `--enable-design` |
 | Git automation mode and provider | Detected from the repository's remotes | `--git-mode`, `--git-provider`, `moai update -c` |
 
-### Performance tier (model policy)
+### Session model policy (effort fallback)
 
-`moai init` does not ask for the model policy; it saves Medium. The screen below appears when you reconfigure with `moai update -c`.
-
-```bash
-? Select model policy:
-  Max - Opus 5.5 (high~medium) + Sonnet (low, docs/single-shot rows) — Max $200 plan
-▸ Medium (Recommended) - Opus 5.5 (high~low) + Sonnet (low, docs/single-shot rows) — Max $100 plan
-  Low - Opus 5.5 (high~low) + Sonnet (low, docs/e2e/single-shot rows) — Plus $20 plan
-```
-
-| Tier | Characteristics |
-|------|------|
-| **Max** | Quality first — same as Medium except that `builder-harness` and `e2e-tester` run one effort level higher |
-| **Medium** (default, recommended) | Balance of quality and cost — the knee of the cost/score curve |
-| **Low** | Lowest cost per task — most agentic agents drop to Opus `medium` |
-
-This setting is saved in the `performance_tier` field of `.moai/config/sections/llm.yaml` and is read as a legacy alias of the `profile` field (the profile matrix column). Specifying the `--profile high|medium|low` flag directly stores it in the `profile` field (the legacy value `max` is accepted as input and normalized to `high`). For the per-profile agent model+effort mapping, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
+The per-agent model-assignment wizard question is retired. Since v3.2, subagents inherit the main session's model and effort, so `moai init` does not ask for a model policy — there is nothing per-agent left to choose. What the profile keeps is the **Session model policy**: the default reasoning effort of the Claude session launched with this profile, applied when no effort level is chosen. Configure it with `moai profile setup` (the "Session model policy" question), not with the retired `--model-policy` / `--profile` flags — those are deprecated stubs that only print a warning. For the inheritance rule, see [Model Policy](/en/multi-llm/model-policy/); for how the per-agent matrix was retired, [Profile Matrix](/en/advanced/profile-matrix/).
 
 ## Non-interactive mode (CI/CD)
 
@@ -164,7 +149,6 @@ moai init my-project \
   --non-interactive \
   --llm claude \
   --autonomy-tier semi-auto \
-  --profile medium \
   --enable-lsp=false \
   --enforce-quality
 ```
@@ -199,8 +183,8 @@ vim .moai/config/sections/user.yaml
 # Language settings
 vim .moai/config/sections/language.yaml
 
-# Model policy (performance tier)
-vim .moai/config/sections/llm.yaml
+# Session model policy (effort fallback)
+moai profile setup
 
 # Quality settings
 vim .moai/config/sections/quality.yaml

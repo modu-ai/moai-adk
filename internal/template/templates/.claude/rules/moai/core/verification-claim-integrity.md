@@ -65,7 +65,7 @@ The branch table, its cost table, and the exemption-marker syntax live in `verif
 
 [ZONE:Evolvable] [HARD] A measurement produced by the project's own tooling is attributed to **two** coordinates, not one: the tree it read, and the build that judged it. §2 binds the first. This clause binds the second, because a tool invoked through a shell path resolves to an *installed* build, which need not be the build the tree describes.
 
-The failure is silent by construction, and its silence is **symmetric**. A build behind the tree simply does not run the rules that landed after it — clean pass, exit zero, empty error stream; a build matching the tree produces *the same three signals*. Nothing in either result says which case occurred, so a green result is not evidence the checks passed, only that whatever checks the invoked build happens to carry reported nothing.
+The silence is **symmetric**: a stale build and a current build produce the same clean-pass signals, so a green result is evidence only that whatever checks the invoked build carries reported nothing.
 
 **The obligation.** A tool measurement cited as evidence MUST have been produced by a build made from the tree under measurement. Concretely, either:
 

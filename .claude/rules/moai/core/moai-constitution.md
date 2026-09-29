@@ -45,10 +45,7 @@ Anthropic's official prompt guidelines. The binding points:
   single agent prompt.
 - **Adaptive Thinking**: never set a fixed `budget_tokens` (Opus 4.7+ rejects it with HTTP 400);
   enable `thinking: {type: "adaptive"}`.
-- **State scope explicitly**: instructions are followed literally and not silently generalized —
-  say "apply to every section, not just the first" when that is meant.
-- **Remove 4.6-era defensive scaffolding**: "double-check X", "verify N times", "explicitly confirm
-  before proceeding" are counterproductive under literal instruction following.
+- **State scope explicitly** and **remove 4.6-era defensive scaffolding** ("double-check X" is counterproductive under literal instruction following): full guidance `moai-constitution-detail.md` § Opus 5.5 Prompt Philosophy.
 - [ZONE:Evolvable] [HARD] **Principle 4 — fewer subagents by default**: 4.7+ does not auto-spawn.
   Steer it explicitly when fan-out helps: "spawn multiple subagents in the same turn when fanning
   out across items or files; do not spawn one for work completable in a single response."
@@ -164,14 +161,11 @@ Capture and reuse learnings from user corrections and agent failures across sess
   one index line per topic file, removal still prohibited, and every secondary index itself
   reachable from `MEMORY.md`. Criterion and rationale:
   `.claude/rules/moai/workflow/moai-memory.md` § Admission.
-- Each entry records category, the incorrect pattern, the correct approach, and the date; review
-  the relevant ones before starting work in the same domain.
-- Lessons are additive: never overwrite one — append corrections as updates, supersede by prefixing
-  the old entry `[SUPERSEDED by #{new}]`, and archive rather than delete.
+- Each entry records category, incorrect pattern, correct approach, date. Lessons are additive —
+  never overwrite; supersede by prefixing `[SUPERSEDED by #{new}]` and archive rather than delete.
 - **Harness edit discipline**: a lesson motivating a harness edit records a falsifiable
-  `prediction:` and later `verified: true|false`. An edit is accepted only when it demonstrably
-  addresses the motivating failure **and** existing guards still pass; a rejected or reverted edit
-  is kept with `verified: false` and its reason, so a known-bad edit is not re-attempted.
+  `prediction:` and later `verified: true|false`; a rejected edit is kept with its reason.
+  Full entry anatomy, review-before-work rule, and the file cap: `moai-memory.md`.
 
 Categories, the file cap and archive path, the repo-local inbox drain contract, auto-capture
 triggers, the domain-matching algorithm, and the workflow integration points:

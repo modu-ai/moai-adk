@@ -276,6 +276,24 @@ Trigger detected
 - [ ] Do the findings live in the response body (not only inside option previews)?
 - [ ] If a report was promised earlier in the task, has it actually been rendered?
 
+### Report Completeness Criteria + preview-as-report anti-pattern
+
+> Relocated from `askuser-protocol.md` § Report-Before-Ask Gate (t1303 always-loaded diet). The binding gate and its one-line pointers stay in the stub.
+
+1. **Per-source coverage**: name each investigation source (agent, lens, audit dimension) and state its key findings with quantification (N findings, severity breakdown). A single-line completion claim, in any locale, is NOT a report.
+2. **Option-to-report traceability**: every codename, identifier, or finding referenced in the question's option labels / descriptions / previews MUST have been introduced and explained in the preceding report body — the user cannot evaluate what was never explained.
+3. **Structured rendering**: the Discovery banner (`.claude/output-styles/moai/moai.md` §8 Discovery Report) or equivalent structured markdown with per-source subsections, scaled to the investigation.
+
+[HARD] Option `preview` / `description` fields MUST NOT be the sole carrier of investigation findings. The preview compresses a comparison; the report explains the evidence. Compressing all findings into an option preview table while the response body carries only a one-line completion claim is the named anti-pattern **preview-as-report substitution**.
+
+### Pre-emit self-check (completion report) — 3 items
+
+> Relocated from `askuser-protocol.md` § Completion-Report Next-Step Discipline (t1303 always-loaded diet). The two-valid-closes rule stays in the stub.
+
+- [ ] Does the report end with a `?`-bearing prose next-step prompt? If yes → convert to `AskUserQuestion`, or drop the prompt entirely.
+- [ ] If a next-step decision is genuinely needed, is it routed through `AskUserQuestion` (not prose, not a markdown option list)?
+- [ ] If no decision is needed, does the report close cleanly with no manufactured question?
+
 ---
 
 Version: 1.3.0

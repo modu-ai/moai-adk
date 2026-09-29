@@ -129,31 +129,16 @@ Jev 针对传入的状态回答类型化问题并返回概率，它本身不做�
 
 | 项目 | 默认值 | 更改方式 |
 |------|--------|----------|
-| 性能层级(模型策略) | Medium | `--model-policy` 或 `--profile`、`moai update -c` |
+| 会话模型策略 (effort 回退) | Medium | `moai profile setup`、`moai update -c` |
 | 报告格式 | HTML + Markdown | `moai update -c` |
 | LSP 集成 | 开启 | `--enable-lsp` |
 | 强制质量门禁 | 开启 | `--enforce-quality` |
 | 设计工作流与 Claude Design 集成 | 开启 | `--enable-design` |
 | Git 自动化模式与提供商 | 根据远程仓库设置判断 | `--git-mode`、`--git-provider`、`moai update -c` |
 
-### 性能层级(模型策略)
+### 会话模型策略 (effort 回退)
 
-`moai init` 不询问模型策略，直接保存为 Medium。使用 `moai update -c` 重新设置时会显示下面的界面。
-
-```bash
-? 选择模型策略:
-  Max - Opus 5.5 (high~medium) + Sonnet (low, 文档/一次性任务) — Max $200 套餐
-▸ Medium (推荐) - Opus 5.5 (high~low) + Sonnet (low, 文档/一次性任务) — Max $100 套餐
-  Low - Opus 5.5 (high~low) + Sonnet (low, 文档/E2E/一次性任务) — Plus $20 套餐
-```
-
-| 层级 | 特点 |
-|------|------|
-| **Max** | 质量优先 —— 与 Medium 相同，只有 `builder-harness` 和 `e2e-tester` 两个代理的 effort 高一级 |
-| **Medium**（默认，推荐） | 质量与成本的平衡 —— 成本/分数曲线的膝点 |
-| **Low** | 每任务最低成本 —— 大多数智能体类代理降至 Opus `medium` |
-
-该设置保存到 `.moai/config/sections/llm.yaml` 的 `performance_tier` 字段，并作为 `profile` 字段(配置矩阵列)的 legacy 别名读取。用 `--profile high|medium|low` 标志直接指定则保存到 `profile` 字段。每个配置文件的代理 model+effort 映射请参阅[配置矩阵](/zh/advanced/profile-matrix/)页面。
+询问逐智能体模型分配的向导问题已经退役。v3.2 起子代理沿用主会话的模型与推理深度，所以 `moai init` 不再询问模型策略 —— 已经没有需要逐智能体挑选的东西了。配置文件保留的是**会话模型策略**一项：以此配置启动的 Claude 会话的默认推理强度，仅在未单独选择推理强度时生效。请在 `moai profile setup` 的"会话模型策略"问题中设置。已退役的 `--model-policy` / `--profile` 旗标是只打印警告的弃用桩。继承规则见[模型策略](/zh/multi-llm/model-policy/)页面，逐智能体矩阵的退役见[配置矩阵](/zh/advanced/profile-matrix/)页面。
 
 ## 非交互模式(CI/CD)
 
@@ -164,7 +149,6 @@ moai init my-project \
   --non-interactive \
   --llm claude \
   --autonomy-tier semi-auto \
-  --profile medium \
   --enable-lsp=false \
   --enforce-quality
 ```
@@ -199,8 +183,8 @@ vim .moai/config/sections/user.yaml
 # 语言设置
 vim .moai/config/sections/language.yaml
 
-# 模型策略(性能层级)
-vim .moai/config/sections/llm.yaml
+# 会话模型策略 (effort 回退)
+moai profile setup
 
 # 质量设置
 vim .moai/config/sections/quality.yaml

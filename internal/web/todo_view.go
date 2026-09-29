@@ -19,12 +19,17 @@ type TodoVM struct {
 }
 
 // TodoItemVM is one backlog card. The five-field item contract the store holds
-// is consumed as it stands; no field is added or renamed.
+// is consumed as it stands; no field is added or renamed. Relations is the
+// display-only rendering of the recorded findings that name this card
+// (card t1309): one pre-rendered line per finding, in the store's order —
+// the operator reads a relation here and decides; the console changes
+// nothing.
 type TodoItemVM struct {
-	ID     string
-	Text   string
-	State  string
-	SpecID string
+	ID        string
+	Text      string
+	State     string
+	SpecID    string
+	Relations []string
 }
 
 // buildTodo loads the backlog queue for the served project through the read

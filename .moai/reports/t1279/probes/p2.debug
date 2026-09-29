@@ -1,0 +1,221 @@
+2026-09-28T20:42:37.536Z [DEBUG] MDM settings load completed in 0ms
+2026-09-28T20:42:37.550Z [DEBUG] Broken symlink or missing file encountered for settings.json at path: /Library/Application Support/ClaudeCode/managed-settings.json
+2026-09-28T20:42:37.551Z [DEBUG] Broken symlink or missing file encountered for settings.json at path: /private/tmp/t1279-m1/outer/.claude/settings.json
+2026-09-28T20:42:37.552Z [DEBUG] Broken symlink or missing file encountered for settings.json at path: /private/tmp/t1279-m1/outer/.claude/settings.local.json
+2026-09-28T20:42:37.553Z [DEBUG] CA certs: Config fallback - globalEnv keys: , settingsEnv keys: none
+2026-09-28T20:42:37.560Z [DEBUG] [init] configureGlobalMTLS starting
+2026-09-28T20:42:37.560Z [DEBUG] [init] configureGlobalMTLS complete
+2026-09-28T20:42:37.560Z [DEBUG] [init] configureGlobalAgents starting
+2026-09-28T20:42:37.560Z [DEBUG] CA certs: stores=bundled,system, extraCertsPath=undefined
+2026-09-28T20:42:37.560Z [DEBUG] CA certs: Loaded 121 bundled root certificates
+2026-09-28T20:42:37.625Z [DEBUG] CA certs: Loaded 1 system CA certificates
+2026-09-28T20:42:37.625Z [DEBUG] mTLS: Creating HTTPS agent with custom certificates
+2026-09-28T20:42:37.625Z [DEBUG] [init] configureGlobalAgents complete
+2026-09-28T20:42:37.666Z [DEBUG] Git remote URL: null
+2026-09-28T20:42:37.666Z [DEBUG] No git remote URL found
+2026-09-28T20:42:37.671Z [DEBUG] Error log sink initialized
+2026-09-28T20:42:37.771Z [DEBUG] [ToolSearch:optimistic] mode=standard, ENABLE_TOOL_SEARCH=1, result=false
+2026-09-28T20:42:37.773Z [DEBUG] [claudeai-mcp] Disabled: API-key auth precedence active
+2026-09-28T20:42:37.773Z [DEBUG] [STARTUP] Loading MCP configs...
+2026-09-28T20:42:37.776Z [DEBUG] [STARTUP] Running setup()...
+2026-09-28T20:42:37.791Z [DEBUG] Loading skills from: managed=/Library/Application Support/ClaudeCode/.claude/skills, user=/Users/goos/.moai/claude-profiles/moai-adk/skills, project=[/private/tmp/t1279-m1/outer/.claude/skills]
+2026-09-28T20:42:37.816Z [DEBUG] Loaded 3 installed plugins from /Users/goos/.moai/claude-profiles/moai-adk/plugins/installed_plugins.json
+2026-09-28T20:42:37.818Z [DEBUG] [skills] skipping reserved dir name 'synced' under /Users/goos/.moai/claude-profiles/moai-adk/skills: 'synced' is the sync-owned root
+2026-09-28T20:42:37.818Z [DEBUG] Failed to stat directory /Library/Application Support/ClaudeCode/.claude/agents: ENOENT: no such file or directory, stat '/Library/Application Support/ClaudeCode/.claude/agents'
+2026-09-28T20:42:37.818Z [DEBUG] Failed to stat directory /Users/goos/.moai/claude-profiles/moai-adk/agents: ENOENT: no such file or directory, stat '/Users/goos/.moai/claude-profiles/moai-adk/agents'
+2026-09-28T20:42:37.819Z [DEBUG] Failed to stat directory /Library/Application Support/ClaudeCode/.claude/commands: ENOENT: no such file or directory, stat '/Library/Application Support/ClaudeCode/.claude/commands'
+2026-09-28T20:42:37.819Z [DEBUG] Failed to stat directory /Users/goos/.moai/claude-profiles/moai-adk/commands: ENOENT: no such file or directory, stat '/Users/goos/.moai/claude-profiles/moai-adk/commands'
+2026-09-28T20:42:37.821Z [DEBUG] [plugins] skipping skills-dir entry 'synced': the sync-owned root name is never adopted as a plugin
+2026-09-28T20:42:37.821Z [DEBUG] [plugins] skipping hidden skills-dir entry '.trash': dot-prefixed dirs are never adopted as plugins
+2026-09-28T20:42:37.830Z [DEBUG] Loaded 12 unique skills (12 unconditional, 0 conditional, managed: 0, user: 0, project: 12, additional: 0, legacy commands: 0)
+2026-09-28T20:42:37.847Z [INFO] [uds-messaging] Listening: /tmp/cc-socks/39351.sock
+2026-09-28T20:42:37.847Z [INFO] [uds-messaging] Inject messages (auth line optional here): { echo '{"type":"auth","token":"[REDACTED]"$CLAUDE_CODE_MESSAGING_TOKEN"'"}'; echo '{"type":"user","message":{"role":"user","content":"hello"}}'; } | socat - UNIX-CONNECT:/tmp/cc-socks/39351.sock
+2026-09-28T20:42:37.848Z [INFO] [uds-messaging] Connect when the data is ready (e.g. out=$(cmd); printf '%s\n' "$out" | nc -U "$CLAUDE_CODE_MESSAGING_SOCKET" — or the socat form above): a connection that sends no complete line within 30000 ms is closed
+2026-09-28T20:42:37.849Z [DEBUG] [TeammateModeSnapshot] Captured from config: in-process
+2026-09-28T20:42:37.850Z [DEBUG] Error log sink initialized
+2026-09-28T20:42:37.868Z [DEBUG] [STARTUP] setup() completed in 92ms
+2026-09-28T20:42:37.868Z [DEBUG] Cleared mTLS configuration cache
+2026-09-28T20:42:37.868Z [DEBUG] Cleared proxy agent cache
+2026-09-28T20:42:37.868Z [DEBUG] mTLS: Creating HTTPS agent with custom certificates
+2026-09-28T20:42:37.886Z [DEBUG] [STARTUP] Loading commands and agents...
+2026-09-28T20:42:37.898Z [DEBUG] Acquired PID lock for 2.1.284 (PID 39351)
+2026-09-28T20:42:37.898Z [DEBUG] Acquired PID lock on running version: /Users/goos/.local/share/claude/versions/2.1.284
+2026-09-28T20:42:37.898Z [DEBUG] Read hooks.json for plugin vercel (enabled=true): /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-plugins-official/vercel/0.50.0/hooks/hooks.json
+2026-09-28T20:42:37.899Z [DEBUG] Git remote URL: null
+2026-09-28T20:42:37.899Z [DEBUG] No git remote URL found
+2026-09-28T20:42:37.907Z [DEBUG] Found 5 plugins (5 enabled, 0 disabled)
+2026-09-28T20:42:37.908Z [DEBUG] getPluginSkills: Processing 5 enabled plugins
+2026-09-28T20:42:37.908Z [DEBUG] Checking plugin gopls-lsp: skillsPath=none, skillsPaths=0 paths
+2026-09-28T20:42:37.908Z [DEBUG] Checking plugin vercel: skillsPath=exists, skillsPaths=0 paths
+2026-09-28T20:42:37.908Z [DEBUG] Attempting to load skills from plugin vercel default skillsPath: /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-plugins-official/vercel/0.50.0/skills
+2026-09-28T20:42:37.908Z [DEBUG] Checking plugin typesafe: skillsPath=exists, skillsPaths=0 paths
+2026-09-28T20:42:37.908Z [DEBUG] Attempting to load skills from plugin typesafe default skillsPath: /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/typesafe-ai/typesafe/0.5.7/skills
+2026-09-28T20:42:37.908Z [DEBUG] Checking plugin agents-md: skillsPath=none, skillsPaths=0 paths
+2026-09-28T20:42:37.908Z [DEBUG] Checking plugin telemetry: skillsPath=none, skillsPaths=0 paths
+2026-09-28T20:42:37.908Z [DEBUG] Plugin vercel has commandsPaths: /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-plugins-official/vercel/0.50.0/commands/bootstrap.md, /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-plugins-official/vercel/0.50.0/commands/deploy.md, /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-plugins-official/vercel/0.50.0/commands/env.md, /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-plugins-official/vercel/0.50.0/commands/status.md
+2026-09-28T20:42:37.908Z [DEBUG] Total plugin workflows loaded: 0
+2026-09-28T20:42:37.909Z [DEBUG] installed plugins' hooks modules not loaded: rollout flag (tengu_plugin_hooks_modules) is off, from the default (a cold GrowthBook cache, no payload yet); built-in plugins load regardless
+2026-09-28T20:42:37.909Z [DEBUG] Loading hooks from plugin: vercel
+2026-09-28T20:42:37.909Z [DEBUG] sec-default@builtin not seated: installed plugins' hooks modules are off in this process
+2026-09-28T20:42:37.910Z [WARN] plugin telemetry: options requested but its manifest declares no userConfig; every option reads as absent
+2026-09-28T20:42:37.910Z [DEBUG] telemetry: hooks telemetry for: anthropic, collector
+2026-09-28T20:42:37.912Z [DEBUG] hooks module agents-md@builtin loaded (native, environment 1, tier builtin); events: session.start,prompt.context,agent.spawn,tool.call
+2026-09-28T20:42:37.912Z [DEBUG] hooks module telemetry@builtin loaded (native, environment 2, tier builtin); events: telemetry.*,telemetry.log,telemetry.mark,session.start,session.end,engine.create
+2026-09-28T20:42:37.914Z [DEBUG] hooks module telemetry@builtin engine.create settled in 0.7ms (native hop, next() included)
+2026-09-28T20:42:37.914Z [DEBUG] engine.create: no plugin-provided interfaces; $ built for agents-md,telemetry
+2026-09-28T20:42:37.914Z [DEBUG] plugin.register: agents-md (builtin, agents-md@builtin), judged by core alone: admitted
+2026-09-28T20:42:37.914Z [DEBUG] plugin.register: telemetry (builtin, telemetry@builtin), judged by core alone: admitted
+2026-09-28T20:42:37.915Z [DEBUG] Registered 5 hooks from 5 plugins
+2026-09-28T20:42:37.916Z [DEBUG] Checking commandPath /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-plugins-official/vercel/0.50.0/commands/deploy.md - isDirectory: false, isFile: true
+2026-09-28T20:42:37.916Z [DEBUG] Checking commandPath /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-plugins-official/vercel/0.50.0/commands/status.md - isDirectory: false, isFile: true
+2026-09-28T20:42:37.916Z [DEBUG] Checking commandPath /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-plugins-official/vercel/0.50.0/commands/env.md - isDirectory: false, isFile: true
+2026-09-28T20:42:37.916Z [DEBUG] Checking commandPath /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-plugins-official/vercel/0.50.0/commands/bootstrap.md - isDirectory: false, isFile: true
+2026-09-28T20:42:37.922Z [DEBUG] $.session (agents-md): no session bound; id, cwd and model answered from the process
+2026-09-28T20:42:37.922Z [DEBUG] hooks module telemetry@builtin (native): telemetry.log nested in agents-md#1
+2026-09-28T20:42:37.923Z [DEBUG] hooks module telemetry@builtin (native): telemetry.mark nested in agents-md#1
+2026-09-28T20:42:37.923Z [DEBUG] hooks module telemetry@builtin telemetry.log settled in 1.0ms (native link, next() included)
+2026-09-28T20:42:37.923Z [DEBUG] hooks module telemetry@builtin telemetry.mark settled in 0.1ms (native link, next() included)
+2026-09-28T20:42:37.923Z [DEBUG] telemetry (builtin) answered telemetry.log without next() in 1.1ms; nothing beneath it ran for this dispatch
+2026-09-28T20:42:37.923Z [DEBUG] telemetry (builtin) answered telemetry.mark without next() in 0.2ms; nothing beneath it ran for this dispatch
+2026-09-28T20:42:37.923Z [DEBUG] hooks module agents-md@builtin prompt.context settled in 1.9ms (native link, next() included)
+2026-09-28T20:42:37.924Z [DEBUG] $.session.surfaces (telemetry): nothing attached draws; []
+2026-09-28T20:42:37.924Z [DEBUG] $.session (telemetry): no session bound; id, cwd and model answered from the process
+2026-09-28T20:42:37.927Z [DEBUG] Loaded command from plugin vercel custom file: /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-plugins-official/vercel/0.50.0/commands/env.md
+2026-09-28T20:42:37.928Z [DEBUG] Loaded agent from plugin vercel custom file: /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-plugins-official/vercel/0.50.0/agents/ai-architect.md
+2026-09-28T20:42:37.928Z [DEBUG] Loaded command from plugin vercel custom file: /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-plugins-official/vercel/0.50.0/commands/bootstrap.md
+2026-09-28T20:42:37.928Z [DEBUG] Loaded agent from plugin vercel custom file: /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-plugins-official/vercel/0.50.0/agents/deployment-expert.md
+2026-09-28T20:42:37.928Z [DEBUG] Loaded command from plugin vercel custom file: /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-plugins-official/vercel/0.50.0/commands/status.md
+2026-09-28T20:42:37.928Z [DEBUG] Loaded agent from plugin vercel custom file: /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-plugins-official/vercel/0.50.0/agents/performance-optimizer.md
+2026-09-28T20:42:37.928Z [DEBUG] Total plugin agents loaded: 3
+2026-09-28T20:42:37.929Z [DEBUG] Loaded command from plugin vercel custom file: /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-plugins-official/vercel/0.50.0/commands/deploy.md
+2026-09-28T20:42:37.929Z [DEBUG] Total plugin commands loaded: 4
+2026-09-28T20:42:37.936Z [DEBUG] Loaded 1 skills from plugin typesafe default directory
+2026-09-28T20:42:37.936Z [DEBUG] Loaded 37 skills from plugin vercel default directory
+2026-09-28T20:42:37.936Z [DEBUG] Total plugin skills loaded: 38 (0 duplicate/user-owned entries skipped)
+2026-09-28T20:42:37.936Z [DEBUG] getSkills returning: 12 skill dir commands, 38 plugin skills, 39 bundled skills, 0 builtin plugin skills
+2026-09-28T20:42:37.940Z [DEBUG] [STARTUP] Commands and agents loaded in 54ms
+2026-09-28T20:42:37.941Z [DEBUG] [LSP MANAGER] initializeLspServerManager() called
+2026-09-28T20:42:37.941Z [DEBUG] [LSP MANAGER] Created manager instance, state=pending
+2026-09-28T20:42:37.941Z [DEBUG] [LSP MANAGER] Starting async initialization (generation 1)
+2026-09-28T20:42:37.941Z [DEBUG] Starting background startup prefetches
+2026-09-28T20:42:37.942Z [DEBUG] [Bootstrap] Fetching
+2026-09-28T20:42:37.947Z [DEBUG] [STARTUP] MCP configs resolved in 144ms (awaited at +174ms)
+2026-09-28T20:42:37.948Z [DEBUG] mcp runtime arm: v2 (source: growthbook)
+2026-09-28T20:42:37.963Z [DEBUG] Cleared mTLS configuration cache
+2026-09-28T20:42:37.963Z [DEBUG] Cleared proxy agent cache
+2026-09-28T20:42:37.963Z [DEBUG] mTLS: Creating HTTPS agent with custom certificates
+2026-09-28T20:42:37.965Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-09-28T20:42:37.965Z [DEBUG] [MCP] --mcp-config servers running fully async (nonblocking)
+2026-09-28T20:42:37.965Z [DEBUG] [MCP] claude.ai connectors running fully async (nonblocking)
+2026-09-28T20:42:37.965Z [DEBUG] All plugins already exist, skipping migration
+2026-09-28T20:42:37.967Z [DEBUG] Initialized versioned plugins system with 3 plugins
+2026-09-28T20:42:37.970Z [DEBUG] [auto-mode] verifyAutoModeGateAccess: enabledState=enabled disabledBySettings=false model=glm-5.3-flash modelSupported=true disableFastModeBreakerFires=false carouselAvailable=true canEnterAuto=true
+2026-09-28T20:42:37.970Z [DEBUG] [servedCatalog] off (not_first_party)
+2026-09-28T20:42:37.981Z [DEBUG] [Perfetto] initializePerfettoTracing called, env value: undefined
+2026-09-28T20:42:37.981Z [DEBUG] [3P telemetry] isTelemetryEnabled=false (CLAUDE_CODE_ENABLE_TELEMETRY=undefined)
+2026-09-28T20:42:37.988Z [DEBUG] [event-loop-stall] detector started (interval=200ms, threshold=500ms)
+2026-09-28T20:42:38.020Z [DEBUG] Loaded 1 LSP server(s) from plugin: gopls-lsp
+2026-09-28T20:42:38.020Z [DEBUG] Total LSP servers loaded: 1
+2026-09-28T20:42:38.020Z [DEBUG] [LSP SERVER MANAGER] getAllLspServers returned 1 server(s)
+2026-09-28T20:42:38.023Z [DEBUG] LSP manager initialized with 1 servers
+2026-09-28T20:42:38.023Z [DEBUG] LSP server manager initialized successfully
+2026-09-28T20:42:38.023Z [DEBUG] Registered notification handler for plugin:gopls-lsp:gopls.textDocument/publishDiagnostics (connection not ready)
+2026-09-28T20:42:38.023Z [DEBUG] Registered diagnostics handler for plugin:gopls-lsp:gopls
+2026-09-28T20:42:38.023Z [DEBUG] LSP notification handlers registered successfully for all 1 server(s)
+2026-09-28T20:42:38.046Z [WARN] [3P telemetry] Event dropped (no event logger initialized): hook_registered
+2026-09-28T20:42:38.072Z [DEBUG] $.process.run (telemetry): sh with 2 args in /private/tmp/t1279-m1/outer (pid 39426)
+2026-09-28T20:42:38.072Z [DEBUG] Watching for changes in skill/command directories: /Users/goos/.moai/claude-profiles/moai-adk/skills, /Users/goos/.moai/claude-profiles/moai-adk/skills/synced, /private/tmp/t1279-m1/outer/.claude/skills...
+2026-09-28T20:42:38.076Z [DEBUG] Watching for changes in setting files /Users/goos/.moai/claude-profiles/moai-adk/settings.json, /private/tmp/t1279-m1/outer/.claude/settings.json, /private/tmp/t1279-m1/outer/.claude/settings.local.json...
+2026-09-28T20:42:38.078Z [DEBUG] Keeping /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-community/eli5: it still holds a directory, a symlink, a versioned archive or an entry of unknown type
+2026-09-28T20:42:38.094Z [DEBUG] Keeping /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-community: it still holds a directory, a symlink, a versioned archive or an entry of unknown type
+2026-09-28T20:42:38.104Z [DEBUG] $.process.run (telemetry): sh exited 0 in 33ms, 40 + 0 chars
+2026-09-28T20:42:38.107Z [DEBUG] Keeping /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/typesafe-ai/typesafe: it still holds a directory, a symlink, a versioned archive or an entry of unknown type
+2026-09-28T20:42:38.109Z [DEBUG] Keeping /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/typesafe-ai: it still holds a directory, a symlink, a versioned archive or an entry of unknown type
+2026-09-28T20:42:38.112Z [DEBUG] Hook output does not start with {, treating as plain text
+2026-09-28T20:42:38.181Z [DEBUG] Hook output does not start with {, treating as plain text
+2026-09-28T20:42:38.182Z [DEBUG] Keeping /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-plugins-official/gopls-lsp: it still holds a directory, a symlink, a versioned archive or an entry of unknown type
+2026-09-28T20:42:38.185Z [DEBUG] [sessionRegistry] sweep permitted (domain darwin)
+2026-09-28T20:42:38.504Z [DEBUG] Keeping /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-plugins-official/vercel: it still holds a directory, a symlink, a versioned archive or an entry of unknown type
+2026-09-28T20:42:38.506Z [DEBUG] Hook output does not start with {, treating as plain text
+2026-09-28T20:42:38.509Z [DEBUG] [print.ts] MCP task sidecar restore skipped: tasks gate off after the flag settle
+2026-09-28T20:42:38.542Z [DEBUG] [ScheduledTasks] scheduler start() — enabled=false, hasTasks=false
+2026-09-28T20:42:38.545Z [DEBUG] session.start: raised (surface none, not interactive)
+2026-09-28T20:42:38.547Z [DEBUG] hooks module telemetry@builtin (native): telemetry.log nested in agents-md#0
+2026-09-28T20:42:38.549Z [DEBUG] hooks module telemetry@builtin telemetry.log settled in 1.7ms (native link, next() included)
+2026-09-28T20:42:38.549Z [DEBUG] hooks module telemetry@builtin session.start settled in 3.2ms (native link, next() included)
+2026-09-28T20:42:38.550Z [DEBUG] hooks module agents-md@builtin session.start settled in 5.0ms (native link, next() included)
+2026-09-28T20:42:38.558Z [DEBUG] Keeping /Users/goos/.moai/claude-profiles/moai-adk/plugins/cache/claude-plugins-official: it still holds a directory, a symlink, a versioned archive or an entry of unknown type
+2026-09-28T20:42:38.560Z [DEBUG] installPluginsForHeadless: starting
+2026-09-28T20:42:38.561Z [DEBUG] Failed to stat directory /Library/Application Support/ClaudeCode/.claude/output-styles: ENOENT: no such file or directory, stat '/Library/Application Support/ClaudeCode/.claude/output-styles'
+2026-09-28T20:42:38.561Z [DEBUG] Failed to stat directory /Users/goos/.moai/claude-profiles/moai-adk/output-styles: ENOENT: no such file or directory, stat '/Users/goos/.moai/claude-profiles/moai-adk/output-styles'
+2026-09-28T20:42:38.561Z [DEBUG] Total plugin output styles loaded: 0
+2026-09-28T20:42:38.563Z [DEBUG] Org fast mode: disabled (extra_usage_disabled)
+2026-09-28T20:42:38.565Z [DEBUG] [Bootstrap] Fetch ok
+2026-09-28T20:42:38.565Z [DEBUG] [Bootstrap] Cache unchanged, skipping write
+2026-09-28T20:42:38.571Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-09-28T20:42:38.571Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-09-28T20:42:38.571Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-09-28T20:42:38.572Z [DEBUG] Sending 65 skills via attachment (initial)
+2026-09-28T20:42:38.572Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-09-28T20:42:38.575Z [DEBUG] Ripgrep first use test: PASSED (mode=embedded, path=/Users/goos/.local/share/claude/versions/2.1.284)
+2026-09-28T20:42:38.579Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-09-28T20:42:38.579Z [DEBUG] [session-notices] advertise=false mode=default flag=true(disk) pollChannel=false remote=false remoteEnv=false nonInteractive=true
+2026-09-28T20:42:38.580Z [DEBUG] [engine] turn 1 start
+2026-09-28T20:42:38.584Z [DEBUG] autocompact: tokens=[REDACTED] level=ok effectiveWindow=980000
+2026-09-28T20:42:38.594Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.284.857; cc_entrypoint=sdk-cli;
+2026-09-28T20:42:38.595Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-09-28T20:42:38.596Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-09-28T20:42:38.597Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-09-28T20:42:38.598Z [DEBUG] [API:timing] dispatching to firstParty model=glm-5.3-flash
+2026-09-28T20:42:38.598Z [DEBUG] [API REQUEST] /api/anthropic/v1/messages source=sdk
+2026-09-28T20:42:38.671Z [DEBUG] [mcp-registry] Loaded 294 official MCP URLs (legacy)
+2026-09-28T20:42:38.970Z [DEBUG] [fs.watch probe] verdict: delivers
+2026-09-28T20:42:42.924Z [DEBUG] $.session.authorize (telemetry): no first-party credential (No API key available)
+2026-09-28T20:42:42.924Z [DEBUG] [telemetry] $.ui.log (to debug): telemetry: 3 row(s) not sent: this session has no first-party credential to authorize
+2026-09-28T20:42:44.326Z [DEBUG] Stream started - received first chunk
+2026-09-28T20:42:44.326Z [DEBUG] [API:timing] first byte after 5729ms
+2026-09-28T20:42:44.387Z [INFO] [Stall] tool_dispatch_start tool=EnterWorktree toolUseId=call_aba6749394124fc9a8f0fc92 permissionDecisionMs=53
+2026-09-28T20:42:44.540Z [DEBUG] Broken symlink or missing file encountered for settings.json at path: /private/tmp/t1279-m1/outer/.claude/worktrees/w1/.claude/settings.local.json
+2026-09-28T20:42:44.542Z [INFO] [Stall] tool_dispatch_end tool=EnterWorktree toolUseId=call_aba6749394124fc9a8f0fc92 outcome=ok durationMs=155
+2026-09-28T20:42:44.544Z [DEBUG] Preserving file permissions: 100600
+2026-09-28T20:42:44.544Z [DEBUG] Writing to temp file: /Users/goos/.moai/claude-profiles/moai-adk/.claude.json.tmp.39351.015fd8ec8529
+2026-09-28T20:42:44.545Z [DEBUG] Applied original permissions to temp file
+2026-09-28T20:42:44.547Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-09-28T20:42:44.547Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-09-28T20:42:44.547Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-09-28T20:42:44.547Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-09-28T20:42:44.548Z [DEBUG] Temp file written successfully, size: 93039 bytes
+2026-09-28T20:42:44.548Z [DEBUG] Renaming /Users/goos/.moai/claude-profiles/moai-adk/.claude.json.tmp.39351.015fd8ec8529 to /Users/goos/.moai/claude-profiles/moai-adk/.claude.json
+2026-09-28T20:42:44.549Z [DEBUG] Failed to stat directory /Library/Application Support/ClaudeCode/.claude/output-styles: ENOENT: no such file or directory, stat '/Library/Application Support/ClaudeCode/.claude/output-styles'
+2026-09-28T20:42:44.549Z [DEBUG] Failed to stat directory /private/tmp/t1279-m1/outer/.claude/output-styles: ENOENT: no such file or directory, stat '/private/tmp/t1279-m1/outer/.claude/output-styles'
+2026-09-28T20:42:44.549Z [DEBUG] Failed to stat directory /Users/goos/.moai/claude-profiles/moai-adk/output-styles: ENOENT: no such file or directory, stat '/Users/goos/.moai/claude-profiles/moai-adk/output-styles'
+2026-09-28T20:42:44.550Z [DEBUG] autocompact: tokens=[REDACTED] level=ok effectiveWindow=980000
+2026-09-28T20:42:44.553Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.284.857; cc_entrypoint=sdk-cli;
+2026-09-28T20:42:44.553Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-09-28T20:42:44.553Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-09-28T20:42:44.554Z [DEBUG] File /Users/goos/.moai/claude-profiles/moai-adk/.claude.json written atomically
+2026-09-28T20:42:44.555Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-09-28T20:42:44.555Z [DEBUG] [API:timing] dispatching to firstParty model=glm-5.3-flash
+2026-09-28T20:42:44.556Z [DEBUG] [API REQUEST] /api/anthropic/v1/messages source=sdk
+2026-09-28T20:42:47.924Z [DEBUG] telemetry (builtin) answered telemetry.log without next() 1 more times in the last 10s (the last in 2.8ms)
+2026-09-28T20:42:48.557Z [DEBUG] Stream started - received first chunk
+2026-09-28T20:42:48.557Z [DEBUG] [API:timing] first byte after 4002ms
+2026-09-28T20:42:48.573Z [DEBUG] [engine] turn 1 end (turns=2 usage in=53155 out=108 cost=$0.2693 api=9759ms stop=end_turn resultLen=5)
+2026-09-28T20:42:48.573Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-09-28T20:42:48.579Z [DEBUG] [uds-messaging] Shutting down
+2026-09-28T20:42:48.676Z [DEBUG] LSP server manager shut down successfully
+2026-09-28T20:42:48.677Z [ERROR] [Anthropic telemetry] Failed to check metrics opt-out status: Auth error: no credential usable for the metrics opt-out check
+2026-09-28T20:42:48.678Z [DEBUG] [Anthropic telemetry] BigQuery metrics export failed (metrics opt-out check failed; skipping export). This is Anthropic's own telemetry pipeline, not your OTel collector; further failures are counted and summarised at shutdown.
+2026-09-28T20:42:48.678Z [DEBUG] [Anthropic telemetry] BigQuery metrics export: 1 failure(s) this session (last: metrics opt-out check failed; skipping export)
+2026-09-28T20:42:48.678Z [DEBUG] [Anthropic telemetry] BigQuery metrics exporter flush complete
+2026-09-28T20:42:48.678Z [DEBUG] [Anthropic telemetry] BigQuery metrics exporter flush complete
+2026-09-28T20:42:48.678Z [DEBUG] [Anthropic telemetry] BigQuery metrics exporter shutdown complete
+2026-09-28T20:42:50.266Z [DEBUG] SessionEnd:other [node "${CLAUDE_PLUGIN_ROOT}/hooks/session-end-cleanup.mjs"] cancelled
+2026-09-28T20:42:50.267Z [DEBUG] hooks module telemetry@builtin session.end settled in 0.3ms (native link, next() included)
+2026-09-28T20:42:50.267Z [DEBUG] Released PID lock for 2.1.284
+2026-09-28T20:42:50.269Z [DEBUG] Preserving file permissions: 100600
+2026-09-28T20:42:50.269Z [DEBUG] Writing to temp file: /Users/goos/.moai/claude-profiles/moai-adk/.claude.json.tmp.39351.6e8a53a450bf
+2026-09-28T20:42:50.270Z [DEBUG] Applied original permissions to temp file
+2026-09-28T20:42:50.270Z [DEBUG] Temp file written successfully, size: 93039 bytes
+2026-09-28T20:42:50.270Z [DEBUG] Renaming /Users/goos/.moai/claude-profiles/moai-adk/.claude.json.tmp.39351.6e8a53a450bf to /Users/goos/.moai/claude-profiles/moai-adk/.claude.json
+2026-09-28T20:42:50.270Z [DEBUG] File /Users/goos/.moai/claude-profiles/moai-adk/.claude.json written atomically

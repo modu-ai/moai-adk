@@ -108,22 +108,11 @@ and MUST NOT re-encode the same preference through option ordering, description 
 carries no question-type field, so an obligation scoped to a class the runtime cannot distinguish
 could not be measured.
 
-The mode resolves at output-composition time, per surface — never latched at session start, so a
-change takes effect on the next composed output and never rewrites or re-renders a round already
-emitted.
-
-`pull` withholds a recommendation and nothing else. The observation, the evidence, the enumerated
-options, and every gate and evidence obligation elsewhere in this file stay binding in both modes —
-including the mandatory, score-independent Implementation Kickoff Approval gate, which under `pull`
-asks the same question with an unlabeled first option.
+The mode resolves at output-composition time, per surface — never latched at session start. `pull` withholds a recommendation and nothing else: the observation, the evidence, the enumerated options, and every gate and evidence obligation elsewhere in this file stay binding in both modes — including the mandatory, score-independent Implementation Kickoff Approval gate, which under `pull` asks the same question with an unlabeled first option.
 
 ### On-request emission
 
-[ZONE:Evolvable] [HARD] When the user explicitly asks for a recommendation, a preference, or an
-analysis, the orchestrator MUST emit the withheld recommendation on the requested surface, in the
-same form it would carry under `push` — the `(권장)` / `(Recommended)` label included where the
-request concerns an `AskUserQuestion` round. `pull` defers a recommendation until it is asked for;
-it does not abolish it.
+[ZONE:Evolvable] [HARD] When the user explicitly asks for a recommendation, a preference, or an analysis, the orchestrator MUST emit the withheld recommendation on the requested surface, in the same form it would carry under `push` — the `(권장)` / `(Recommended)` label included where the request concerns an `AskUserQuestion` round. `pull` defers a recommendation until it is asked for; it does not abolish it.
 
 ### The three adopted conditions
 
@@ -157,19 +146,13 @@ When to use it, when to skip it, and a worked example: `askuser-protocol-referen
 - **No question-as-epilogue**: a next-step question appended to a requested report demotes the report to a preamble
 - **Deferred pipeline questions**: they surface in a LATER turn, after the user reacts or says to proceed
 
-### Report Completeness Criteria (all mandatory)
+### Report Completeness Criteria (all mandatory) — relocated
 
-1. **Per-source coverage**: name each investigation source (agent, lens, audit dimension) and state its key findings with quantification (N findings, severity breakdown). A single-line completion claim, in any locale, is NOT a report.
-2. **Option-to-report traceability**: every codename, identifier, or finding referenced in the question's option labels / descriptions / previews MUST have been introduced and explained in the preceding report body — the user cannot evaluate what was never explained.
-3. **Structured rendering**: the Discovery banner (`.claude/output-styles/moai/moai.md` §8 Discovery Report) or equivalent structured markdown with per-source subsections, scaled to the investigation.
-
-### Preview-as-Report Substitution (named anti-pattern)
-
-[HARD] Option `preview` / `description` fields MUST NOT be the sole carrier of investigation findings. The preview compresses a comparison; the report explains the evidence. Compressing all findings into an option preview table while the response body carries only a one-line completion claim is the named anti-pattern **preview-as-report substitution**.
+The three criteria (per-source coverage with quantification · option-to-report traceability · structured rendering) and the named anti-pattern **preview-as-report substitution** live in `askuser-protocol-reference.md` § Report Completeness Criteria. The binding rule they serve: a decision-type question is preceded by a substantive findings report in the same turn's response body, and option fields are never the sole carrier of investigation findings.
 
 ### Report-Promise Fulfillment
 
-[HARD] When prior narration in the same task promised a consolidated report ("I will consolidate and report", or its equivalent in any locale), the report MUST be rendered before any subsequent decision AskUserQuestion. Claiming the report was delivered when none was rendered is an unobserved completion claim (`verification-claim-integrity.md` §1.1 surface 1).
+[HARD] When prior narration in the same task promised a consolidated report, the report MUST be rendered before any subsequent decision AskUserQuestion. Claiming the report was delivered when none was rendered is an unobserved completion claim (`verification-claim-integrity.md` §1.1 surface 1).
 
 ### Exceptions (gate does not apply)
 
@@ -228,17 +211,9 @@ Free-form interrogative prose in the response body MUST NOT be used as a substit
 
 [ZONE:Evolvable] [HARD] A completion report (a "done" / "All Done" summary) MUST NOT end with a free-form prose next-step question — "What would you like to do next?", "무엇을 도와드릴까요? (예: A / B / C)", or the same idea in any `conversation_language`, optionally trailed by parenthetical or dashed option examples. This is a Channel Monopoly violation even when the report body itself is correct.
 
-A completion report has exactly TWO valid closes:
+A completion report has exactly TWO valid closes: route the decision through `AskUserQuestion` (preload, then ask), or close with NO question — what was done, the evidence, the current state. Where no decision is required, do NOT manufacture one. "Ask through `AskUserQuestion`, or do not ask" — there is no third "ask in prose" option.
 
-1. **Route the decision through `AskUserQuestion`** — preload, then ask, so the user selects instead of typing. The recommended option carries the `(Recommended)` / `(권장)` label.
-2. **Close with NO question** — what was done, the evidence, the current state. Where no decision is required, do NOT manufacture one; an unneeded prompt is noise.
-
-"Ask through `AskUserQuestion`, or do not ask" — there is no third "ask in prose" option. The rationalization that a short trailing next-step question on a finished report can be plain prose is the exact failure mode this clause forbids.
-
-**Pre-emit self-check (completion report)** — before sending any "done" report:
-- [ ] Does the report end with a `?`-bearing prose next-step prompt? If yes → convert to `AskUserQuestion`, or drop the prompt entirely.
-- [ ] If a next-step decision is genuinely needed, is it routed through `AskUserQuestion` (not prose, not a markdown option list)?
-- [ ] If no decision is needed, does the report close cleanly with no manufactured question?
+**Pre-emit self-check (completion report)** — the three checks (a `?`-bearing prose prompt must become `AskUserQuestion` or be dropped; a needed decision routes through the tool; no manufactured question) live in `askuser-protocol-reference.md` § Pre-emit self-check (completion report).
 
 ## Non-ASCII Tool-Call Encoding
 
