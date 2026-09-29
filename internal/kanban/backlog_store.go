@@ -102,6 +102,16 @@ type BacklogItem struct {
 	// and never "" (the REQ-TLE-006 discipline this SPEC follows).
 	PickedAt  *string `json:"picked_at,omitempty"`
 	DroppedAt *string `json:"dropped_at,omitempty"`
+	// PickedBy / LeaseExpiresAt are ADDITIVE (SPEC-TODO-CLAIM-LEASE-001
+	// REQ-TCL-001): the claim lease's holder label and its RFC 3339 expiry,
+	// `omitempty` after the stamp precedent so a card carrying neither
+	// marshals byte-identically to before — the `todo list --json` golden
+	// gate (REQ-TCL-014) rests on this. Absence is a nil pointer here and
+	// SQL NULL in the column — never {} and never "" (REQ-TLE-006). A card
+	// in any state other than picked carries neither field; the claim-family
+	// operations are their only writers.
+	PickedBy       *string `json:"picked_by,omitempty"`
+	LeaseExpiresAt *string `json:"lease_expires_at,omitempty"`
 }
 
 // Relation values a finding may carry. The first two are MECHANICAL — the

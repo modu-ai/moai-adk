@@ -75,3 +75,12 @@ _<pending sync-phase>_
 - plan-audit iteration 1: FAIL 0.60 (기준 0.80) — `.moai/reports/plan-audit/SPEC-TODO-CLAIM-LEASE-001-review-1.md`.
 - D1-D10 전건 수정. 결정적 2건의 구속 방향 반영: D2+D3 — REQ-TCL-013에 `factoryLaneRefusal()` 참 보유 시 `--lane`형도 기존 거부 텍스트로 거부하는 절 추가 + "carve" 용어를 "flag-form guard extension inside todoRefuseLaneMutation; REQ-SD-015 bare-refusal semantics unchanged"로 전면 치환(C6·REQ-013·Out of Scope·spec §E·plan M3 상호 일치). D1 — 모든 AC observable을 실존 테스트(9개 이름 트리 검증 완료) 또는 [NEW]+정확한 함수명으로 재고정.
 - 기타: D4(신규 AC-TCL-011 live-lease 가드 + unpick carve-out 기존 가드 인용), D5(신규 AC-TCL-012 human 표면 + REQ-010 human-vs-JSON 재조정), D6(경합 AC에 카드당 N≥2·pre/post 전체 튜플 비교 검출기·raced byte-identity 고정), D7(claim-family 열거·cleared-field 집합·seq 순서·renew-expired observable), D8(C3을 DP1 결정이 아닌 연구 발견으로 재표기), D9(spec §E delta 마커가 plan [MODIFY] 표면 전체 커버 — todo_disclosure.go·golden/concurrency/migration 테스트 포함), D10(backlog_migrate.go 인용을 writeArchive ~:337-401/:381과 writeRecordArchive :422-515/:482 이원 범위로 정정, REQ-006 Event-driven 재표기, todo.go :303 정정).
+
+## §F Phase 4 Mode Selection (run-phase)
+
+- **Input parameters**: tier M · scope ~12 파일 (kanban 스키마/스토어 + cli verb/MCP + 테스트 6파일) · 도메인 2 (internal/kanban, internal/cli) · 언어 혼합 Go+markdown 없음(순 Go) · 병렬 이익 LOW (coding-heavy) · Agent Teams 사전 요건 미요청.
+- **Mode evaluation**: direct — 아님(다중 파일 의미 변경) / serial — **selected** / fanout — 아님(coding-heavy, Anthropic 병렬화 경고) / sweep — 아님(기계적 균일 변환 아님) / agent-team — 미요청.
+- **Decision**: serial
+- **Justification**: 단일 도메인 밀착 코딩 작업(스키마→스토어→CLI→MCP→테스트가 순차 의존)이라 단일 manager-develop 스폰이 마일스톤 M1-M5를 순서로 수행하는 것이 병렬 팬아웃보다 낫다(Anthropic coding-task caveat). 팬아웃 리서치는 plan 단계에서 이미 별도 수행됐다.
+- **Run-gate skip 기록 (Phase 1)**: plan-audit PASS 0.86 ≥ Tier M 임계 0.80 + plan-artifact 해시 불변(review-2 이후 spec/plan/acceptance 무변경 — progress.md는 해시 대상 아님) + depends_on SPEC-TODO-RUNTIME-STORE-001 completed → 3조건 충족으로 Phase 1 재실행 스킵.
+- **진행 축**: 운영자가 Kickoff에서 자율(골 무장) 선택 — 기계 종료 조건 무장됨(세션 ed6e9938…, max_turns 30).
