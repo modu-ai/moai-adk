@@ -155,10 +155,10 @@ func TestTodoAutoLivenessChannels(t *testing.T) {
 	cardID := rec.Items[0].ID
 
 	cases := []struct {
-		name          string
-		registryDead  bool
-		processDead   bool
-		wantSelected  bool
+		name         string
+		registryDead bool
+		processDead  bool
+		wantSelected bool
 	}{
 		{"registry-dead + lsof-clean selects", true, true, true},
 		{"registry-live rejects", false, true, false},
@@ -256,8 +256,8 @@ func TestTodoAutoSerialCycle(t *testing.T) {
 	lv := autoTestLiveness(root, ids[1], true, true, nil)
 	tick := 0
 	opts := autoOptions{
-		wait:     5 * time.Minute,
-		liveness: lv,
+		wait:      5 * time.Minute,
+		liveness:  lv,
 		sessionID: "operator-session-fixture",
 		// Each poll tick completes the current card's evidence; the third
 		// card never receives evidence — the failure arm.

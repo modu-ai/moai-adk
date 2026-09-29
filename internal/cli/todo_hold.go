@@ -9,7 +9,7 @@
 // callback so the file stays byte-identical, `--expect` guards against an id
 // typed from a stale listing, and nothing is inferred.
 //
-// [HARD] The hold decision is the OPERATOR's (or the lead speaking for the
+// [HARD] The hold decision is the OPERATOR's (or the leader speaking for the
 // operator). No lease path, lane session, or machine consumer gains a verb
 // that sets or clears the state — the actor boundary is surface absence, and
 // the queue's machine selectors exclude held cards by positive enumeration
@@ -57,7 +57,7 @@ is invisible to ` + "`next`" + `, the auto-done scan, and every lease path by
 construction.
 
 ` + "`moai todo unhold <n>`" + ` returns the card to queued. Only an operator (or
-the lead speaking for one) holds a card; no lane or machine leaser can reach
+the leader speaking for one) holds a card; no lane or machine leaser can reach
 this verb's effect. ` + "`--expect <prefix>`" + ` refuses the hold unless the
 addressed card's text starts with the prefix, leaving the file untouched.`,
 		Args: cobra.ExactArgs(1),

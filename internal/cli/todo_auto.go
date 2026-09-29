@@ -141,22 +141,23 @@ func (lv autoLiveness) ownerAlive(root, cardID string) (alive bool, degraded boo
 // carries the labelled non-findings (degraded measurement, live-owner skip).
 func autoPickTargets(rec *kanban.BacklogRecord, lv autoLiveness, root string) (targets []kanban.BacklogItem, notes []string, err error) {
 	for _, it := range rec.Items {
-		if it.State != kanban.BacklogStatePicked {
-			continue
+		// REQ-THS-012: machine selectors enumerate the states they accept
+		// positively — this scan admits exactly `picked` (dead-owner rescue).
+		if it.State == kanban.BacklogStatePicked {
+			alive, degraded, liveErr := lv.ownerAlive(root, it.ID)
+			if liveErr != nil {
+				notes = append(notes, fmt.Sprintf("non-finding: %s owner liveness unmeasurable (%v) — card skipped, no takeover", it.ID, liveErr))
+				continue
+			}
+			if alive {
+				notes = append(notes, fmt.Sprintf("non-finding: %s owner measured alive — card untouchable", it.ID))
+				continue
+			}
+			if degraded {
+				notes = append(notes, fmt.Sprintf("non-finding: %s owner judged from the session registry alone (lsof unavailable — degraded measurement)", it.ID))
+			}
+			targets = append(targets, it)
 		}
-		alive, degraded, liveErr := lv.ownerAlive(root, it.ID)
-		if liveErr != nil {
-			notes = append(notes, fmt.Sprintf("non-finding: %s owner liveness unmeasurable (%v) — card skipped, no takeover", it.ID, liveErr))
-			continue
-		}
-		if alive {
-			notes = append(notes, fmt.Sprintf("non-finding: %s owner measured alive — card untouchable", it.ID))
-			continue
-		}
-		if degraded {
-			notes = append(notes, fmt.Sprintf("non-finding: %s owner judged from the session registry alone (lsof unavailable — degraded measurement)", it.ID))
-		}
-		targets = append(targets, it)
 	}
 	for _, it := range rec.Items {
 		if it.State == kanban.BacklogStateQueued {
@@ -168,11 +169,11 @@ func autoPickTargets(rec *kanban.BacklogRecord, lv autoLiveness, root string) (t
 
 // autoOptions carries the cycle's seams and knobs.
 type autoOptions struct {
-	wait      time.Duration       // evidence deadline per card
-	liveness  autoLiveness        // owner-measurement channels
-	sessionID string              // the invoking (operator) session, named in the guidance
-	sleep     func(time.Duration) // poll-tick seam (tests drive evidence arrival here)
-	now       func() time.Time    // clock seam for the deadline
+	wait      time.Duration            // evidence deadline per card
+	liveness  autoLiveness             // owner-measurement channels
+	sessionID string                   // the invoking (operator) session, named in the guidance
+	sleep     func(time.Duration)      // poll-tick seam (tests drive evidence arrival here)
+	now       func() time.Time         // clock seam for the deadline
 	jev       func(root string) string // display-only consultation seam (tests stub it)
 }
 
@@ -228,11 +229,14 @@ func runAutoCycle(out io.Writer, store *kanban.BacklogStore, root string, opts a
 			if err := store.Mutate(func(r *kanban.BacklogRecord) error {
 				for i := range r.Items {
 					if r.Items[i].ID == card.ID {
-						if r.Items[i].State != kanban.BacklogStateQueued {
-							return fmt.Errorf("auto: card %s is %s, not queued — refusing the pick", card.ID, r.Items[i].State)
+						// REQ-THS-012: positive enumeration — the pick
+						// admits exactly `queued`, refuses everything else
+						// by name.
+						if r.Items[i].State == kanban.BacklogStateQueued {
+							r.Items[i].State = kanban.BacklogStatePicked
+							return nil
 						}
-						r.Items[i].State = kanban.BacklogStatePicked
-						return nil
+						return fmt.Errorf("auto: card %s is %s, not queued — refusing the pick", card.ID, r.Items[i].State)
 					}
 				}
 				return fmt.Errorf("auto: card %s vanished", card.ID)
@@ -262,10 +266,13 @@ func runAutoCycle(out io.Writer, store *kanban.BacklogStore, root string, opts a
 			err := store.Mutate(func(r *kanban.BacklogRecord) error {
 				for i := range r.Items {
 					if r.Items[i].ID == card.ID {
-						if r.Items[i].State != kanban.BacklogStatePicked {
-							return fmt.Errorf("auto: card %s is %s, not picked — changed hands mid-flight", card.ID, r.Items[i].State)
+						// REQ-THS-012: positive enumeration — the done
+						// admits exactly `picked`, refuses everything else
+						// by name.
+						if r.Items[i].State == kanban.BacklogStatePicked {
+							return r.ArchiveCard(card.ID)
 						}
-						return r.ArchiveCard(card.ID)
+						return fmt.Errorf("auto: card %s is %s, not picked — changed hands mid-flight", card.ID, r.Items[i].State)
 					}
 				}
 				return fmt.Errorf("auto: card %s vanished", card.ID)
