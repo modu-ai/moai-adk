@@ -52,13 +52,19 @@ description: 메인 세션이 쓰는 모델과 추론 깊이를 정하는 모델
 |------|--------|----------|------|
 | Claude Fable 5 | `claude-fable-5` | 1M | 신규 Mythos-tier 범용 최상위. 가장 깊은 추론과 복잡한 코딩 |
 | Claude Opus 5.5 | `opus` | 1M | 복잡한 아키텍처, 고난도 추론 |
-| Claude Sonnet 5 | `sonnet` | 1M | 속도와 지능의 균형, 일상 코딩 |
+| Claude Sonnet 5.5 | `sonnet` | 1M | 속도와 지능의 균형, 일상 코딩 |
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 가장 빠르고 경제적, 단순·대량 작업 |
 
 > MoAI의 세션 라인업은 기본적으로 Haiku를 쓰지 않습니다. 긴 호흡의 에이전틱
 > 작업에서 Haiku를 끼워 넣으면 과제당 비용이 오히려 커진다는 것이 DeepSWE
 > 리더보드 실측으로 확인된 **No-Haiku 정책**입니다. 근거는
 > [3-티어 에이전트 아키텍처](/ko/advanced/no-haiku-3tier/) 페이지에 있습니다.
+
+{{< callout type="warning" >}}
+**Sonnet 5.5로 넘어가기 전에**: thinking을 끈 상태로 Sonnet을 쓰고 있다면, 올라가기 전에
+thinking 설정을 `between_tools`로 바꿔야 합니다 — Sonnet 5.5에서도 사전(thinking) thinking은
+계속 꺼져 있습니다.
+{{< /callout >}}
 
 ### 추론 깊이(effort)
 
@@ -69,7 +75,7 @@ description: 메인 세션이 쓰는 모델과 추론 깊이를 정하는 모델
 | `low` | 가장 얕은 추론. 빠르고 쌈 |
 | `medium` | 균형. 세션 기본값의 기준점 |
 | `high` | 깊은 추론 |
-| `xhigh` | 더 깊은 추론 (Opus 5.5 · Opus 5 · 4.8 · Sonnet 5 · Opus 4.7 지원) |
+| `xhigh` | 더 깊은 추론 (Opus 5.5 · Opus 5 · 4.8 · Sonnet 5.5 · Opus 4.7 지원) |
 | `max` | 가장 깊은 추론 |
 
 > **기본 effort**: Opus 5.5의 기본 effort는 `medium`이고, effort를 지원하는 다른 모델은 대부분 `high`가 기본입니다.

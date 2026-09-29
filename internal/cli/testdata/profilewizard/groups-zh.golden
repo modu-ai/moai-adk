@@ -70,7 +70,7 @@ shift+tab 返回 • enter 下一步
 ┃   (project default)                                                           
 ┃   fable[1m] (Fable 5 + 1M 上下文)                                             
 ┃ ▸ opus[1m] (Opus 5.5 + 1M 上下文，推荐)                                       
-┃   sonnet[1m] (Sonnet 5 + 1M 上下文)                                           
+┃   sonnet[1m] (Sonnet 5.5 + 1M 上下文)                                         
 ┃   haiku (Haiku 4.5，最快)                                                     
   会话模型策略                                                                  
   未单独选择推理强度时，决定使用此配置文件启动的 Claude                         
@@ -92,7 +92,7 @@ shift+tab 返回 • enter 下一步
   控制Claude在执行操作前如何请求权限。                                          
   ▸ 自动接受编辑 (acceptEdits) - 自动接受文件编辑，仅确认命令                   
     自动模式 (auto) - 分类器把关自动批准。需要 Max/Team/Enterprise/API 计划 +   
-    Sonnet 5+。不支持时会产生运行时错误。                                       
+    Sonnet 5.5+。不支持时会产生运行时错误。                                     
     请求权限 (default) - 每次文件编辑和命令都需确认                             
     计划模式 (plan) - 只读探索和规划                                            
 

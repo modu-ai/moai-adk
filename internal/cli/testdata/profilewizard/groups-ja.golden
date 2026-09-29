@@ -70,7 +70,7 @@ shift+tab 戻る • enter 次へ
 ┃   (project default)                                                           
 ┃   fable[1m] (Fable 5 + 1Mコンテキスト)                                        
 ┃ ▸ opus[1m] (Opus 5.5 + 1Mコンテキスト、推奨)                                  
-┃   sonnet[1m] (Sonnet 5 + 1Mコンテキスト)                                      
+┃   sonnet[1m] (Sonnet 5.5 + 1Mコンテキスト)                                    
 ┃   haiku (Haiku 4.5、最速)                                                     
   セッションモデルポリシー                                                      
   推論強度を個別に選ばなかったとき、このプロファイルで起動する Claude           
@@ -94,7 +94,7 @@ shift+tab 戻る • enter 次へ
   Claudeがアクション実行前に権限を要求する方法を制御します。                    
   ▸ 編集を自動承認 (acceptEdits) - ファイル編集を自動承認、コマンドのみ確認     
     オートモード (auto) - 分類器による自動承認。Max/Team/Enterprise/APIプラン + 
-    Sonnet 5+ 必須。未対応環境では実行時エラーが発生します。                    
+    Sonnet 5.5+ 必須。未対応環境では実行時エラーが発生します。                  
 
 ↑ 上 • ↓ 下 • / 絞り込み • shift+tab 戻る • enter 選択
 ● ● ● ● ● ● ● ● ● ● 10 / 10

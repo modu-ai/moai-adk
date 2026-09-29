@@ -150,7 +150,7 @@ semi-auto 下，等待任务开工批准或回答问题很容易停超过 5 分�
 | Claude Fable 5 | 1M | 512 |
 | Claude Opus 5.5 | 1M | 512 |
 | Claude Opus 5 | 1M | 1,024 |
-| Claude Sonnet 5 | 1M | 1,024 |
+| Claude Sonnet 5.5 | 1M | 1,024 |
 | Claude Opus 4.7 | 1M | 2,048 |
 | Claude Haiku 4.5 | 200K | 4,096 |
 

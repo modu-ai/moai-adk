@@ -100,14 +100,14 @@ func TestChainCellsDoNotBorrowAnotherSessionsValues(t *testing.T) {
 	writeTelemetry(t, root, statusline.SessionTelemetryRecord{
 		SchemaVersion: 2, SessionID: "sess-a",
 		ContextWindowSize: 200000, TokensUsed: 110000, RawPct: 55,
-		Model: "claude-sonnet-5", Effort: "high",
+		Model: "claude-sonnet-5-5", Effort: "high",
 	})
 
 	_, byID := loadSessions(root, time.Now())
 	chain := buildChain(root, loadKanbanRecords(root), byID, "")
 
 	a := roleByName(t, chain.Roles, "plan")
-	if a.Model != "claude-sonnet-5" || a.Effort != "high" || a.ContextPct != 55 {
+	if a.Model != "claude-sonnet-5-5" || a.Effort != "high" || a.ContextPct != 55 {
 		t.Fatalf("recorded session lost its own values: %+v", a)
 	}
 	b := roleByName(t, chain.Roles, "run")

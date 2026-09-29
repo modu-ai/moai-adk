@@ -56,13 +56,19 @@ the lineup below runs the session, and at which reasoning depth.
 |------|--------|----------|------|
 | Claude Fable 5 | `claude-fable-5` | 1M | New Mythos-tier general flagship. Deepest reasoning and complex coding |
 | Claude Opus 5.5 | `opus` | 1M | Complex architecture, high-difficulty reasoning |
-| Claude Sonnet 5 | `sonnet` | 1M | Balance of speed and intelligence, everyday coding |
+| Claude Sonnet 5.5 | `sonnet` | 1M | Balance of speed and intelligence, everyday coding |
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | Fastest and most economical, simple bulk work |
 
 > The MoAI session lineup does not use Haiku by default. Slotting Haiku into
 > long-horizon agentic work raises the per-task cost — confirmed by the DeepSWE
 > leaderboard as the **No-Haiku policy**. The evidence lives on the
 > [3-Tier Agent Architecture](/en/advanced/no-haiku-3tier/) page.
+
+{{< callout type="warning" >}}
+**Moving to Sonnet 5.5**: if you run Sonnet with thinking turned off, switch to
+the `between_tools` thinking setting before moving up — up-front thinking
+stays off under Sonnet 5.5.
+{{< /callout >}}
 
 ### Reasoning depth (effort)
 
@@ -73,7 +79,7 @@ How deeply the model thinks is chosen from five levels.
 | `low` | Shallowest reasoning. Fast and cheap |
 | `medium` | Balanced. The reference point for session defaults |
 | `high` | Deep reasoning |
-| `xhigh` | Deeper reasoning (supported on Opus 5.5 · Opus 5 · 4.8 · Sonnet 5 · Opus 4.7) |
+| `xhigh` | Deeper reasoning (supported on Opus 5.5 · Opus 5 · 4.8 · Sonnet 5.5 · Opus 4.7) |
 | `max` | Deepest reasoning |
 
 > **Default effort**: Opus 5.5 defaults to `medium`; most other models that
