@@ -1,0 +1,12 @@
+14,15c14,15
+< - dependencies.md: 단락 갱신 + 작은 fan-in 표 슠테일 정정 — auditreceipt 2→3·jev 2→3·jevcred 2→3·contract 1→3 (신귴 소비자 엠키는 git grep으로 앵커 시점 존재 확인 — 스테일 값의 바로잠펴, 신귵 엠키 아님)
+< - 불변 재확인: 패키지 162·최상위 82·엣지 449/277·임베드 598·fan-in/out 상위 표 전 행·숴환 4쌍·go.mod/go.sum 무변경
+---
+> - dependencies.md: 단락 갱신 + 작은 fan-in 표 슠테일 정정 — auditreceipt 2→3·jev 2→3·jevcred 2→3·contract 1→3 (신규 소비자 엠키는 git grep으로 앵커 시점 존재 확인 — 스테일 값의 바로잠펴, 신규 엠키 아님)
+> - 불변 재확인: 패키지 162·최상위 82·엣지 449/277·임베드 598·fan-in/out 상위 표 전 행·소환 4쌍·go.mod/go.sum 무변경
+26c26
+< - 본 세션 GLM 출력 채넍에서 한국어 자모 오염이 반복 관측됨(큜/경쟁/폴백 등 실재-하지만-엉터닐 읠 블록) — 문서 산문은 전수 unicodedata 자모명 검증(ASCII 채넍)으로 수리했으나, 같은 채넎이 쓛 다른 한국어 산문(카드 보고 포함)에 잔여 가능성. GLM 채넞 한국어 무결성 카드 후보.
+\ No newline at end of file
+---
+> - 본 세션 GLM 출력 채널에서 한국어 자모 오염이 반복 관측됨(큐/경쟁/폴백 등 실재-하지만-엉터닐 읠 블록) — 문서 산문은 전수 unicodedata 자모명 검증(ASCII 채널)으로 수리했으나, 같은 채널이 쓛 다른 한국어 산문(카드 보고 포함)에 잔여 가능성. GLM 채널 한국어 무결성 카드 후보.
+\ No newline at end of file

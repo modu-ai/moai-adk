@@ -143,8 +143,13 @@ func TestWriteSectionViaSeamRejectsNonSeamSections(t *testing.T) {
 	root := t.TempDir()
 
 	for _, section := range []string{
-		// typed 경로.
-		"llm", "git-strategy", "quality", "user", "language", "git-convention",
+		// typed 경로 — language만 잔류 거부다 (SPEC-WEB-SAVE-LOSSLESS-001:
+		// llm/git-strategy/quality/user/git-convention은 typedSeamFiles로
+		// seam 라인-스플라이스에 개방됐고, 수락 케이스는
+		// TestWriteSectionViaSeamAcceptsTypedFiles가 담당한다). language는
+		// 편집 FieldDef가 없어 콘솔 폼이 만지지 않는 완전 typed 파일로
+		// Seam 대상에서 의도적으로 제외다 (sectionwrite.go typedSeamFiles 주석).
+		"language",
 		// 전용 경로.
 		"statusline",
 		// 기존 제외군.
@@ -170,6 +175,53 @@ func TestWriteSectionViaSeamRejectsNonSeamSections(t *testing.T) {
 	// 거부 경로는 파일을 일절 만들지 않는다.
 	if entries, err := os.ReadDir(root); err != nil || len(entries) != 0 {
 		t.Errorf("rejected writes must not touch the filesystem: entries=%v err=%v", entries, err)
+	}
+}
+
+// TestWriteSectionViaSeamAcceptsTypedFiles는 SPEC-WEB-SAVE-LOSSLESS-001의
+// typedSeamFiles 개방을 검증한다: user/quality/git-strategy/git-convention/llm
+// 5파일은 이제 seam 라인-스플라이스로 쓰인다(REQ-WSL-002/003). 최상위 키 가드는
+// 유지된다 — 각 파일의 래퍼 키(quality.yaml만 constitution) 외 키는 거부된다.
+func TestWriteSectionViaSeamAcceptsTypedFiles(t *testing.T) {
+	t.Parallel()
+	cases := map[string]string{ // file → root key
+		"user":           "user",
+		"quality":        "constitution",
+		"git-strategy":   "git_strategy",
+		"git-convention": "git_convention",
+		"llm":            "llm",
+	}
+	for file, rootKey := range cases {
+		t.Run(file, func(t *testing.T) {
+			root := t.TempDir()
+			path := filepath.Join(root, ".moai", "config", "sections", file+".yaml")
+			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, []byte(rootKey+":\n    existing: keep\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := WriteSectionViaSeam(root, file, []yamlpatch.KeyEdit{
+				{Path: []string{rootKey, "existing"}, Value: "changed"},
+			}); err != nil {
+				t.Fatalf("typed file %q: want seam acceptance, got %v", file, err)
+			}
+			raw, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(raw), "existing: changed") {
+				t.Errorf("seam edit not persisted in %s.yaml:\n%s", file, raw)
+			}
+
+			// 최상위 키 가드는 유지된다.
+			err = WriteSectionViaSeam(root, file, []yamlpatch.KeyEdit{
+				{Path: []string{"foreign_root", "key"}, Value: "x"},
+			})
+			if err == nil {
+				t.Errorf("foreign root key accepted for %s.yaml", file)
+			}
+		})
 	}
 }
 

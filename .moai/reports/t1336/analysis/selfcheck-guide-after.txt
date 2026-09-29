@@ -1,0 +1,66 @@
+SUSPICIOUS: 13 finding(s)  [heuristic detector — candidates, not verdicts]
+vocab: 77477 words from git-tracked prose (targets excluded)
+.moai/docs/jamo-integrity-guide.md:7:42: 초성
+    d=1  조성  (freq 2)
+    d=2  고정  (freq 1050)
+    d=2  구성  (freq 374)
+    d=2  추정  (freq 297)
+    d=2  조상  (freq 259)
+    ... 16 more candidate(s)
+.moai/docs/jamo-integrity-guide.md:7:45: 중성
+    d=1  정성  (freq 5)
+    d=2  생성  (freq 1937)
+    d=2  정정  (freq 1749)
+    d=2  작성  (freq 1524)
+    d=2  주석  (freq 1378)
+    ... 15 more candidate(s)
+.moai/docs/jamo-integrity-guide.md:7:48: 종성
+    d=1  정성  (freq 5)
+    d=1  조성  (freq 2)
+    d=2  생성  (freq 1937)
+    d=2  정정  (freq 1749)
+    d=2  작성  (freq 1524)
+    ... 20 more candidate(s)
+.moai/docs/jamo-integrity-guide.md:7:70: 음절은
+    d=2  음성은  (freq 3)
+.moai/docs/jamo-integrity-guide.md:7:80: 조합형
+    d=2  조합한  (freq 6)
+    d=2  조합당  (freq 3)
+    d=2  조합해  (freq 3)
+    d=2  조합별  (freq 2)
+.moai/docs/jamo-integrity-guide.md:7:99: 정규화로는
+    d=2  정규화하는  (freq 4)
+.moai/docs/jamo-integrity-guide.md:7:124: 정상형과
+    d=2  정방향과  (freq 3)
+.moai/docs/jamo-integrity-guide.md:7:177: 재오염
+    d=2  재위임  (freq 40)
+    d=2  무오염  (freq 9)
+    d=2  비오염  (freq 3)
+.moai/docs/jamo-integrity-guide.md:16:43: 물릴
+    d=1  물리  (freq 17)
+    d=1  물린  (freq 6)
+    d=1  굴릴  (freq 3)
+    d=1  밀릴  (freq 2)
+    d=1  풀릴  (freq 2)
+    ... 24 more candidate(s)
+.moai/docs/jamo-integrity-guide.md:28:21: 유일할
+    d=1  유일한  (freq 647)
+    d=2  유지할  (freq 19)
+    d=2  유발할  (freq 11)
+    d=2  위임할  (freq 4)
+    d=2  오인할  (freq 3)
+    ... 1 more candidate(s)
+.moai/docs/jamo-integrity-guide.md:28:40: 파싱되는
+    d=1  파생되는  (freq 3)
+    d=2  파싱하는  (freq 16)
+    d=2  표시되는  (freq 15)
+.moai/docs/jamo-integrity-guide.md:29:100: 재료에서
+    d=2  자리에서  (freq 128)
+    d=2  좌표에서  (freq 8)
+    d=2  재개에서  (freq 2)
+.moai/docs/jamo-integrity-guide.md:36:19: 수리하려
+    d=2  수리하지  (freq 59)
+    d=2  수리하고  (freq 6)
+    d=2  수리하면  (freq 3)
+    d=2  무시하려  (freq 2)
+exit=1

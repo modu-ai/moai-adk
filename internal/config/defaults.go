@@ -323,6 +323,19 @@ const (
 	DefaultProfileUnusedDays            = 90
 	DefaultProfileMaxBytes              = 5 * 1024 * 1024 * 1024
 
+	// Reports-archive defaults (SPEC-REPORTS-LIFECYCLE-001 REQ-RLC-007) for
+	// `moai clean --reports-archive`. Age-based, not volume-based: machine-
+	// local accumulation under .moai/reports/ differs per checkout, so the
+	// retention window is the only policy axis. The window is a conservatively
+	// adopted documented default (card card-evidence reopen cycle), adjustable
+	// per invocation via --reports-archive-days; no new config file is
+	// introduced.
+	DefaultReportsArchiveRetentionDays = 90
+
+	// DefaultReportsArchiveWarnBytes is the candidate byte total above which
+	// the reports-archive action warns before moving.
+	DefaultReportsArchiveWarnBytes int64 = 1 << 30 // 1 GiB
+
 	// DefaultSessionRecordRetentionDays is the shipped default for the
 	// project-tier `state.session_record_retention_days` key (card t1312):
 	// the age bound past which SessionStart prunes kanban session records.
@@ -877,6 +890,10 @@ func NewDefaultGitStrategyConfig() GitStrategyConfig {
 			PushToRemote:      false,
 			AutoCheckpoint:    "disabled",
 			MergeMethod:       "squash",
+			// SPEC-MAIN-COMMIT-BAN-001 REQ-3.3: 0 disables the batch-push
+			// trigger (template-neutral — manual mode ships push_to_remote:
+			// false, so a nonzero default would push a workflow choice).
+			LeadPushThreshold: 0,
 			BranchCreation:    BranchCreationConfig{AutoEnabled: false, PromptAlways: true},
 			Automation:        AutomationConfig{AutoBranch: false, AutoCommit: true, AutoPR: false, AutoPush: false},
 			CommitStyle:       CommitStyleConfig{Format: "conventional", ScopeRequired: false},
@@ -1051,6 +1068,12 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// anywhere under internal/template/templates/.
 		BranchGuard: BranchGuardConfig{
 			Enabled: false,
+			// SPEC-MAIN-COMMIT-BAN-001 REQ-3.1: the protected-branch commit
+			// deny ships with an EMPTY list (template-neutral, the sibling of
+			// Enabled: false above). A project that declares a
+			// commit-protected mainline names it in its local config; the
+			// empty list also short-circuits the check before any subprocess.
+			DenyCommitsOn: []string{},
 		},
 		// The release-integration holder guard ships inert for the same
 		// reason: a single-developer repository has no integration window to

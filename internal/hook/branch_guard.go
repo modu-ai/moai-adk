@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -384,9 +385,7 @@ func matchBranchStateCommand(command string) (string, bool) {
 // matchNormalizedBranchState runs the collapse pipeline and the pattern set
 // over one text (the outer command, or a -Command payload).
 func matchNormalizedBranchState(command string) (string, bool) {
-	scanned := substituteShellComments(normalizeGitExeSuffix(
-		substituteCommandBackticks(substituteQuotedArguments(
-			substituteCallOperatorTargets(substituteHeredocBodies(command))))))
+	scanned := normalizeCommandForScan(command)
 	for _, p := range branchStatePatterns {
 		if p.match != nil {
 			if p.match(scanned) {
@@ -399,6 +398,134 @@ func matchNormalizedBranchState(command string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// normalizeCommandForScan applies the command normalization pipeline every
+// branch-state-class scan shares: heredoc-body collapse, PowerShell
+// call-operator unquoting, quoted-argument collapse, backtick de-escaping,
+// .exe-suffix normalization, and comment elision — in the fixed order the
+// individual functions document. Extracted verbatim from
+// matchNormalizedBranchState so the protected-commit matcher
+// (SPEC-MAIN-COMMIT-BAN-001 D1) shares the EXACT pipeline rather than a
+// hand-copied sequence that could drift.
+func normalizeCommandForScan(command string) string {
+	return substituteShellComments(normalizeGitExeSuffix(
+		substituteCommandBackticks(substituteQuotedArguments(
+			substituteCallOperatorTargets(substituteHeredocBodies(command))))))
+}
+
+// --- Protected-branch commit deny (SPEC-MAIN-COMMIT-BAN-001) ---
+//
+// The second, branch-CONDITIONAL deny class of the BranchGuard family
+// (REQ-2.4): where branchStatePatterns above are branch-AGNOSTIC (they deny in
+// the primary checkout on any branch), this class additionally requires the
+// resolved HEAD branch to be in the configured deny_commits_on list. It runs
+// inside the same family: same opt-in gate (Workflow.BranchGuard.Enabled —
+// REQ-3.4, no new flag), same Seam A discriminant, same exemption axes, same
+// fail-open advisory path, same normalization pipeline.
+
+// protectedCommitPattern matches a commit-CREATING git command (D2's chosen
+// matcher): git commit (covering --amend and -a by the word anchor), git
+// revert, git cherry-pick. The \b word anchors keep "precommit"-style prose
+// from matching; case-insensitive like branchStatePatterns. Evaluated ONLY
+// for the protected-branch deny — pull/fetch/tag of a protected branch stay
+// legitimate (spec §D Non-Goals).
+var protectedCommitPattern = regexp.MustCompile(`(?i)\bgit\s+(commit|revert|cherry-pick)\b`)
+
+// resolveHeadBranch is the package-level indirection over
+// gitcore.ResolveHeadBranch. Tests swap it with a counting stub (the M6
+// deny-origin package-var idiom) to prove WHICH path resolved HEAD — notably
+// the empty-list short-circuit, whose subtest asserts a stub invocation count
+// of exactly zero (AC-7, REQ-2.5).
+var resolveHeadBranch = gitcore.ResolveHeadBranch
+
+// matchProtectedCommitCommand reports whether the command invokes a
+// commit-CREATING git verb, sharing the exact normalization pipeline
+// matchBranchStateCommand uses (normalizeCommandForScan) so quoted spans,
+// heredoc bodies, comments, and PowerShell forms classify identically: the
+// quoted text of `git commit -m "git switch main"` is data, but the command
+// verb IS a commit and still matches; `moai todo add "git commit -m x"`
+// collapses to a foreign command carrying no commit verb and does not. A pwsh
+// -Command payload is scanned as executed code (REQ-HGF-004 parity).
+func matchProtectedCommitCommand(command string) bool {
+	if protectedCommitPattern.MatchString(normalizeCommandForScan(command)) {
+		return true
+	}
+	if payload := extractPowerShellCommandPayload(command); payload != "" {
+		return protectedCommitPattern.MatchString(normalizeCommandForScan(payload))
+	}
+	return false
+}
+
+// checkProtectedCommit denies a commit-CREATING git command (git commit /
+// revert / cherry-pick) when ALL of these hold, evaluated in this order so
+// the cost is bounded to the positive path (D3):
+//
+//  0. the deny list is non-empty — REQ-2.5: checked FIRST, before the command
+//     is even extracted; unconfigured users pay one len();
+//  1. the command matches protectedCommitPattern;
+//  2. the invoking agent is not exempt (both axes, unchanged);
+//  3. the command's actual cwd is the primary checkout (Seam A discriminant);
+//  4. HEAD resolves AT THAT CWD to a branch in the deny list.
+//
+// Fail-open (REQ-2.3): a HEAD-resolution error or any git-context uncertainty
+// allows + writes the stderr advisory + appends the audit-log entry. Detached
+// HEAD resolves to ("", nil) — no named branch to protect — and ALLOWS
+// deliberately (not an uncertainty path, no advisory requirement).
+//
+// The deny reason carries the BRANCH_GUARD_VIOLATION sentinel prefix with the
+// protected branch named (REQ-2.2), and — per the t43 rule checkBranchState
+// already implements — never suggests delegating to a manager-git agent.
+func checkProtectedCommit(input *HookInput, projectDir string, denyList []string) (decision string, reason string) {
+	if input == nil || len(input.ToolInput) == 0 {
+		return "", ""
+	}
+	if len(denyList) == 0 {
+		// REQ-2.5: the zero-cost short-circuit. An empty configured list means
+		// the workflow declares no protected branch; nothing here may run.
+		return "", ""
+	}
+	command := extractBranchStateCommand(input.ToolInput)
+	if command == "" {
+		return "", ""
+	}
+	if !matchProtectedCommitCommand(command) {
+		return "", ""
+	}
+	if isExemptAgent(input) {
+		return "", ""
+	}
+	// Seam A: query the git context at the command's actual cwd — the same
+	// discriminant checkBranchState uses (see its comment for why the
+	// audit-log project dir must NOT feed this query).
+	gitContextCwd := resolveProjectRootFromInputOrEnv(input, "branch_guard")
+	isPrimary, err := isPrimaryCheckout(gitContextCwd)
+	if err != nil {
+		// Fail OPEN with advisory (REQ-2.3): uncertainty never denies.
+		appendBranchGuardAdvisory(input, projectDir, command, err, gitContextCwd)
+		return "", ""
+	}
+	if !isPrimary {
+		return "", ""
+	}
+	branch, err := resolveHeadBranch(gitContextCwd)
+	if err != nil {
+		// Fail OPEN with advisory (REQ-2.3): a failed HEAD query is
+		// uncertainty, not evidence of a protected branch.
+		appendBranchGuardAdvisory(input, projectDir, command, err, gitContextCwd)
+		return "", ""
+	}
+	if branch == "" {
+		// Detached HEAD: `git branch --show-current` prints empty output. No
+		// named branch to protect — ALLOW, deliberately (REQ-2.3).
+		return "", ""
+	}
+	if !slices.Contains(denyList, branch) {
+		return "", ""
+	}
+	reason = fmt.Sprintf("%s: commit on protected branch %q in primary checkout (use a worktree; do not route around this by naming a spawned agent manager-git - the identity exemption does reach spawned agents, and using it that way defeats the guard; the %s sentinel is main-thread-only)",
+		branchGuardViolationPrefix, branch, branchGuardExemptEnv)
+	return DecisionDeny, reason
 }
 
 // --- PowerShell form expansions (SPEC-HOOK-GUARD-POWERSHELL-FORMS-001) ---

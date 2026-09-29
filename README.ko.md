@@ -754,7 +754,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 | `moai graph <build\|query>` | 코드베이스 그래프(edges.jsonl) 생성·조회 — 호출자 찾기, 폭발 반경, 마일스톤 교차검사 |
 | `moai cc` / `moai glm` | Claude 전용 / GLM 전용 세션 |
 | `moai codex [cli\|status\|app]` | Codex 런처 — 인자 없이 부르면 Codex CLI를 기동한다. `status`는 준비 상태만 보여주고 아무것도 띄우지 않는다 |
-| `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 유지 관리 (워크트리 진입은 런처의 몫) |
+| `moai worktree <sync\|done\|hoist\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 유지 관리 (워크트리 진입은 런처의 몫) |
 | `moai session <list\|register\|current>` | 멀티 세션 조율 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 라이프사이클 도구 |
 | `moai goal <arm\|status\|clear>` | Goal 엔진 CLI |
@@ -763,7 +763,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 | `moai preference <list\|decay-scan\|toggle>` | 결정 메모리 관리 |
 | `moai memory <doctor\|archive>` | 에이전트 메모리 점검과 오래된 항목 보관 |
 | `moai tokens record` | 풀별 토큰 사용 원장 기록 |
-| `moai clean [--home] [--codex-skills]` | 오래된 실행 산출물 정리. `--home`을 붙이면 `~/.moai`를 허용목록 범위 안에서 치우고, `--codex-skills`를 붙이면 `~/.codex/config.toml`에서 선언된 경로가 부재로 증명된 `[[skills.config]]` 등록을 지운다. 스코프는 한 번에 하나만 고른다. 기본은 dry-run이고 `--force`를 줘야 실제로 지운다 |
+| `moai clean [--home] [--codex-skills] [--reports-archive]` | 오래된 실행 산출물 정리. `--home`을 붙이면 `~/.moai`를 허용목록 범위 안에서 치우고, `--codex-skills`를 붙이면 `~/.codex/config.toml`에서 선언된 경로가 부재로 증명된 `[[skills.config]]` 등록을 지운다. `--reports-archive`를 붙이면 `.moai/reports/`의 오래된 증거 디렉터리를 `archive/<YYYY-MM>/`로 옮긴다 — 삭제는 없고 이동만 한다(기본 보존 90일, `--reports-archive-days`). 스코프는 한 번에 하나만 고른다. 기본은 dry-run이고 `--force`를 줘야 실제로 지운다 |
 | `moai web` | 웹 콘솔 — 6개 화면(Overview · Kanban · Specs · Monitor · Settings · Todo), 설정 탭 |
 
 > 전체 49개 커맨드: [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference)

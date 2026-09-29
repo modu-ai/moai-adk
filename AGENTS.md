@@ -69,8 +69,13 @@ global.
 `git branch` (same, plus an unexpected branch); `git reset --hard` / `git checkout -- <path>`
 (discards work of unknown provenance); `git stash` (repository-global — absorbs another session's
 uncommitted changes); `git rebase` / `git merge` onto the checked-out branch (rewrites or advances
-shared history mid-operation). Read-only inspection, `git fetch`, commits to the
-already-checked-out branch, and pushing it are permitted.
+shared history mid-operation). Read-only inspection, `git fetch`, and pushing the
+already-checked-out branch are permitted. Commits to the already-checked-out branch are permitted
+EXCEPT on `main` — in this repository `main` is commit-dead (no session commits there; the
+BranchGuard refuses commit-creating commands on branches listed in
+`workflow.branch_guard.deny_commits_on`), card work flows on develop-based worktrees, and
+reviving `main` is the operator-side residue procedure in
+`.moai/docs/gitflow-integration-chain.md`.
 
 **Re-read branch and commit state immediately before any commit or push** — never a value read
 earlier in the turn, never the branch reported at session start:
