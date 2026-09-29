@@ -48,11 +48,11 @@ flowchart TD
 
 ### Layer B — Routing
 
-{{< icon package >}} The session's model and reasoning depth (effort) are chosen — and since v3.2 the unit of routing is the **session**, not the agent. The main session's model and effort are inherited by every subagent; the session effort is adjusted with `/effort` and `ultrathink`, and the profile wizard's session model policy sets the default effort fallback for when no depth is chosen. There is no per-agent assignment table to maintain anymore. The cost/quality judgment standards — concentrating deep reasoning on heavy judgment work — are kept, and the details are on the [Profile Matrix](/en/advanced/profile-matrix/) and [Model Policy](/en/multi-llm/model-policy/) pages.
+{{< icon package >}} The session's model and reasoning depth (effort) are chosen — and since v3.2 the unit of routing is the **session**, not the agent. The main session's model and effort are inherited by every subagent; the session effort is adjusted with `/effort` and `ultrathink`, and the profile wizard's session model policy sets the default effort fallback for when no depth is chosen. There is no per-agent assignment table to maintain anymore. MoAI-ADK v3.0 excludes Haiku from the routing model set, and the 3-tier structure keyed to task character — Sonnet for single-shot work, Opus across the agentic ladder, with the higher effort levels concentrated on judgment work (auditing, advising, coordinating) — remains the judgment standard for choosing a session model. The rationale for this design and the inheritance rule are covered in the [3-Tier Agent Architecture](/en/advanced/no-haiku-3tier/), [Profile Matrix](/en/advanced/profile-matrix/), and [Model Policy](/en/multi-llm/model-policy/) pages.
 
 ### Layer C — Verify-diet
 
-{{< icon wrench >}} Long verification-command output is redirected to disk files, and only the exit code and a bounded tail (max 50 lines) remain in context. This file-redirect contract reduces context consumption while maintaining verification-evidence integrity. For the detailed mechanism, see the [Token Budget Management and Graceful Stop](/en/advanced/token-budget/) page.
+{{< icon wrench >}} Long verification-command output is redirected to disk files, and only the exit code and a bounded tail (max 50 lines) remain in context. This file-redirect contract reduces context consumption while maintaining verification-evidence integrity. Dieting is not limited to verification output — minimizing always-loaded instructions and raising the prompt-cache hit rate also belong to this layer. For the detailed mechanism, see the [Token Budget Management and Graceful Stop](/en/advanced/token-budget/) page.
 
 ### Layer D — Budget defense
 
@@ -100,13 +100,6 @@ The operational threshold at which the budget guard stops is model-specific. Lar
 | Sonnet 4.5 and earlier (200K) | 200,000 tokens | 90% | ~180,000 tokens |
 
 The 1M-context models (Opus 5.5, GLM-5.3) recommend handoff at 50%. A wider window does not mean using it to the end — folding earlier to protect cache and headroom is the more stable choice. Watch the statusline context gauge (CW%) and prepare a `/clear` as you approach the threshold. For the detailed procedure and handoff-message structure, see the [Token Budget Management and Graceful Stop](/en/advanced/token-budget/) page.
-
-## Model Tier Routing
-
-What concretizes Layer B's routing is the session model policy. MoAI-ADK v3.0 excludes Haiku from the routing model set, and the 3-tier structure keyed to task character — Sonnet for single-shot work, Opus across the agentic ladder, higher effort concentrated on judgment work (auditing, advising, coordinating) — remains the judgment standard for choosing a session model. Since v3.2 the assignment itself is session inheritance: the main session's model and effort are what every subagent runs. The rationale and the inheritance rule are covered in the next two pages.
-
-- [3-Tier Agent Architecture](/en/advanced/no-haiku-3tier/) — why Haiku is excluded, DeepSWE leaderboard rationale
-- [Profile Matrix](/en/advanced/profile-matrix/) — what replaced the matrix, and today's session-inheritance rule
 
 ## CG retirement and migration
 
