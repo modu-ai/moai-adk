@@ -143,73 +143,8 @@ func TestCodexFactoryLegacyEntryIsRefused(t *testing.T) {
 	codexWantLaunches(t, cap, 0, 0, 0)
 }
 
-func TestCodexFactoryLeaderAndLaneLaunch(t *testing.T) {
-	cap := withCodexLaunchCapture(t)
-	root := pinCodexRefusalRoot(t)
-	t.Setenv(config.EnvMoaiFactoryWorker, "lane-8")
-	t.Setenv(config.EnvFactoryRole, config.FactoryRoleLane)
-	if _, stderr, err := runCodexCmd(t, "-f"); err != nil {
-		t.Fatalf("leader launch: %v (stderr %q)", err, stderr)
-	}
-	if len(cap.records) != 1 {
-		t.Fatalf("leader launches = %d, want 1", len(cap.records))
-	}
-	leader := cap.records[0]
-	runID, ok := codexEnvLast(leader.Env, config.EnvMoaiKanbanID)
-	if !ok || runID == "" {
-		t.Fatalf("leader run id missing from child environment")
-	}
-	if backend, _ := codexEnvLast(leader.Env, config.EnvMoaiKanbanBackend); backend != BackendCodex {
-		t.Fatalf("leader backend = %q", backend)
-	}
-	if _, ok := codexEnvLast(leader.Env, config.EnvMoaiFactoryWorker); ok {
-		t.Fatal("leader inherited an outer lane slot")
-	}
-	if _, ok := codexEnvLast(leader.Env, config.EnvFactoryRole); ok {
-		t.Fatal("leader inherited an outer lane role")
-	}
-	_ = os.Unsetenv(config.EnvMoaiFactoryWorker)
-	if status, backend, _ := runRow(t, root, runID); status != "active" || backend != BackendCodex {
-		t.Fatalf("run = (%s, %s), want active Codex", status, backend)
-	}
-	if _, stderr, err := runCodexCmd(t, "-f", "lane", "--factory-run", runID); err != nil {
-		t.Fatalf("lane launch: %v (stderr %q)", err, stderr)
-	}
-	if len(cap.records) != 2 {
-		t.Fatalf("launches = %d, want 2", len(cap.records))
-	}
-	lane := cap.records[1]
-	if got, _ := codexEnvLast(lane.Env, config.EnvMoaiFactoryWorker); got != "lane-1" {
-		t.Fatalf("lane slot = %q, want lane-1", got)
-	}
-	if got, _ := codexEnvLast(lane.Env, config.EnvFactoryRole); got != config.FactoryRoleLane {
-		t.Fatalf("factory role = %q, want lane", got)
-	}
-	if got, _ := codexEnvLast(lane.Env, config.EnvMoaiKanbanID); got != runID {
-		t.Fatalf("lane run = %q, want %q", got, runID)
-	}
-	if got := workerRows(t, root); got != 1 {
-		t.Fatalf("claimed lanes = %d, want 1", got)
-	}
-	for _, tc := range []struct {
-		args []string
-		want string
-	}{
-		{[]string{"-f", "lane", "--factory-run", runID}, "no free lane slots"},
-		{[]string{"-f", "lane-1", "--factory-run", runID}, "already occupied"},
-		{[]string{"-f", "lane-2", "--factory-run", runID}, "outside the allowed slots"},
-	} {
-		if _, _, err := runCodexCmd(t, tc.args...); err == nil || !strings.Contains(err.Error(), tc.want) {
-			t.Fatalf("codex %q: err=%v, want %q", tc.args, err, tc.want)
-		}
-		if got := workerRows(t, root); got != 1 {
-			t.Fatalf("failed join changed claimed lanes to %d", got)
-		}
-		if len(cap.records) != 2 {
-			t.Fatalf("failed join launched Codex: launches=%d", len(cap.records))
-		}
-	}
-}
+// codex factory entry shapes are pinned by AC-SD-004 (REQ-SD-004); the
+// interim lane-join restoration was superseded by SPEC-FACTORY-SELF-DISPATCH-001.
 
 func TestCodexFactoryEntryParsingUsesLaneOnly(t *testing.T) {
 	for _, tc := range []struct {
