@@ -888,7 +888,7 @@ func runCodexFactoryLane(cmd *cobra.Command) error {
 	// The stamps arm the loop's own next calls (lane admission, the
 	// merge-ready skip) and identify the lane; the backend value rides the
 	// same export the cc/glm launches use (REQ-SD-002's stamp set, gpt).
-	restoreLane := enterFactoryLaneMode(label, 0, "")
+	restoreLane := enterFactoryLaneMode(label, 0, "", config.FactoryDispatchAuto)
 	defer restoreLane()
 	restoreBackend := exportFactoryLaunchFacts("", kanban.BackendGPT)
 	defer restoreBackend()

@@ -56,8 +56,14 @@ type factoryMessages struct {
 	// Codex-harness lane's owned-card rule; it names only the two CLI verbs
 	// and interpolates the card id (%[1]s) — it never carries an MCP tool
 	// name of any kind (REQ-SD-019's negative constraint).
-	laneNextCardRule  string
-	laneOwnedCardRule string // card id %[1]s
+	//
+	// laneManualDispatchRule is the manual-mode rule a --no-auto-dispatch
+	// launch carries (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-011): it
+	// states the manual mode and carries NO self-dispatch instruction — it
+	// names no lease verb, so a manual lane cannot drift into the loop.
+	laneNextCardRule       string
+	laneOwnedCardRule      string // card id %[1]s
+	laneManualDispatchRule string
 }
 
 // factoryLocales is the conversation-language table; its four entries are the
@@ -107,6 +113,9 @@ var factoryLocales = map[string]factoryMessages{
 		laneOwnedCardRule: "Factory lane owned-card rule: this session owns card %[1]s — the id recorded in MOAI_KANBAN_CARD — " +
 			"and works in the current worktree. Carry that card to merge-ready: record each stage with `moai factory stage` " +
 			"and finish with `moai factory complete`. Then end this session; do not take or lease any other card.",
+		laneManualDispatchRule: "Factory lane manual-dispatch rule: this session launched with --no-auto-dispatch — " +
+			"manual dispatch mode. Do not lease cards yourself: a lead or the operator routes each card to you explicitly. " +
+			"When a card is routed to you, work it in the current worktree and record its stages with `moai factory stage`.",
 	},
 	"ko": {
 		leaderHeader:   "팩토리 모드: run %s, 리더 세션.",
@@ -146,6 +155,9 @@ var factoryLocales = map[string]factoryMessages{
 		laneOwnedCardRule: "팩토리 레인 담당 카드 규칙: 이 세션은 카드 %[1]s — MOAI_KANBAN_CARD 에 기록된 id — 를 담당하며 현재 워크트리에서 작업합니다. " +
 			"그 카드를 merge-ready 까지 진행하세요. 각 단계를 `moai factory stage` 로 기록하고 `moai factory complete` 로 마칩니다. " +
 			"그런 다음 이 세션을 종료합니다. 다른 카드를 가져오거나 임대하지 않습니다.",
+		laneManualDispatchRule: "팩토리 레인 수동 디스패치 규칙: 이 세션은 --no-auto-dispatch 로 시작했습니다 — 수동 디스패치 모드입니다. " +
+			"카드를 임대하려고 `moai factory next` 를 실행하지 마세요: 리드나 운영자가 카드를 명시적으로 배분합니다. " +
+			"배분받은 카드는 현재 워크트리에서 작업하고 각 단계를 `moai factory stage` 로 기록합니다.",
 	},
 	"ja": {
 		leaderHeader:   "ファクトリーモード: run %s、リーダーセッション。",
@@ -185,6 +197,9 @@ var factoryLocales = map[string]factoryMessages{
 		laneOwnedCardRule: "ファクトリーレーン担当カード規則: このセッションはカード %[1]s — MOAI_KANBAN_CARD に記録された id — を担当し、現在のワークツリーで作業します。 " +
 			"そのカードを merge-ready まで進めます。各段階を `moai factory stage` で記録し、`moai factory complete` で締めます。 " +
 			"その後、このセッションを終了してください。他のカードを取得したりリースしたりしません。",
+		laneManualDispatchRule: "ファクトリーレーン手動ディスパッチ規則：このセッションは --no-auto-dispatch で起動しました — 手動ディスパッチモードです。 " +
+			"カードをリースするために `moai factory next` を実行しないでください：リードまたはオペレーターがカードを明示的に割り当てます。 " +
+			"割り当てられたカードは現在のワークツリーで作業し、各段階を `moai factory stage` で記録します。",
 	},
 	"zh": {
 		leaderHeader:   "工厂模式：run %s，主导会话。",
@@ -223,6 +238,9 @@ var factoryLocales = map[string]factoryMessages{
 		laneOwnedCardRule: "工厂泳道负责卡规则：本会话负责卡片 %[1]s — MOAI_KANBAN_CARD 中记录的 id — 并在当前工作树中工作。 " +
 			"把该卡推进到 merge-ready：用 `moai factory stage` 记录各阶段，用 `moai factory complete` 收尾。 " +
 			"然后结束本会话；不要领取或租用其他卡片。",
+		laneManualDispatchRule: "工厂泳道手动调度规则：本会话以 --no-auto-dispatch 启动 — 手动调度模式。 " +
+			"不要运行 `moai factory next` 去租用卡片：由主导会话或操作者显式分配每张卡片。 " +
+			"被分配的卡片在当前工作树中处理，各阶段用 `moai factory stage` 记录。",
 	},
 }
 
