@@ -76,7 +76,7 @@ git branch -f main origin/main
 
 **금지(그대로 유효).** `git restore CLAUDE.local.md`는 금지다(CLAUDE.local.md §0.4) — 워킹 사본을 폐기된 제3 모델로 되돌리는 회귀다. 이 절차는 그 파일을 만지지 않는다.
 
-**리허설 필수 — 실제 상태 등급을 재현할 것.** origin/main에서의 깨끗한 클론(그 파일이 tracked+clean)은 전환 시 거부가 아니라 **조용한 삭제**를 관측하므로 리허설 대상이 아니다. 레시피: 클론 → `git switch c8f245c2c` → develop 상태 내용을 main 추적집합 위에 unstaged 수정으로 재현(`git restore --source=develop -- <develop-tracked 경로들>`)하고 develop이 추적하는 비추적 파일을 만든다 → 절차 단계를 실행 → 실제 거부 집합(modified-tracked-set / untracked-overwrite 형태)을 기록한다. git이 무엇을 하든 그것이 절차가 문서화하는 것이다. 실측 로그: `.moai/reports/t1337/`.
+**리허설 필수 — 실제 상태 등급을 재현할 것.** origin/main에서의 깨끗한 클론(그 파일이 tracked+clean)은 전환 시 거부가 아니라 **조용한 삭제**를 관측하므로 리허설 대상이 아니다. 레시피: 클론 → `git switch --detach c8f245c2c`(bare SHA 전환은 관측상 거부된다 — git이 `--detach`를 제안; 리허설 Observed 0) → develop 상태 내용을 main 추적집합 위에 unstaged 수정으로 재현(`git restore --source=develop -- <develop-tracked 경로들>`)하고 develop이 추적하는 비추적 파일을 만든다 → 절차 단계를 실행 → 실제 거부 집합(modified-tracked-set / untracked-overwrite 형태)을 기록한다. git이 무엇을 하든 그것이 절차가 문서화하는 것이다. 실측 로그: `.moai/reports/t1337/`.
 
 **후속 — 운영자 문서 동기(REQ-4.6).** 절차 후 primary 전용 `CLAUDE.local.md` §4.1 워킹 사본에 위 commit-dead 규율과 `lead_push_threshold` 키 인용을 운영자가 직접 반영한다(비추적 파일 — primary에서만 도달 가능; 레인이 쓰지 않는다).
 
