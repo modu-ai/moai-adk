@@ -161,7 +161,7 @@ m1_to_mN_commit_strategy: "M2(Go+골든테스트+spec 전이, 6d658ef64) → M1(
 
 ```yaml
 sync_complete_at: 2026-09-29
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 203075eca
 sync_status: "complete — 3-phase close; CHANGELOG entry added; spec.md status in-progress → completed"
 changelog_entry_position: "[Unreleased] / ### Added (1st entry)"
 b12_self_test_a: "pre-emission grep -c SPEC-WORKFLOW-TASKS-001 CHANGELOG.md → 0 (exit 1, no match) — proceed"
