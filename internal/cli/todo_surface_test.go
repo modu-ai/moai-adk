@@ -114,6 +114,12 @@ var permittedVerbAdditions = []string{"export-json", "undone", "history", "lande
 var permittedFlagAdditions = map[string][]string{
 	"done <n>": {"expect=string()", "require-landed=bool(false)"},
 	"list":     {"dropped=bool(false)", "limit=int(20)"},
+	// add --classification-file — SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-004:
+	// the validated classification judgement input (<path> or - for stdin),
+	// the ONLY classification injection seam. Opt-in: absent, `add` classifies
+	// through the deterministic default decider and behaves as the frozen
+	// surface says.
+	"add <text>": {"classification-file=string()"},
 }
 
 // permittedUsageRewrites records usage-string widenings of ALREADY-FROZEN

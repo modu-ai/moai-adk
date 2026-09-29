@@ -118,20 +118,27 @@ func TestTransitionStampColumns_FreshUpgradedConverge(t *testing.T) {
 	}
 
 	// The new columns exist on BOTH and are nullable TEXT with no default.
-	const wantItems = "seq id text added_at spec_id state landing picked_at dropped_at"
+	// The classification column (SPEC-TODO-CLASSIFY-DISPATCH-001) is appended
+	// after the stamps by the same convergence contract, so it appears in the
+	// expected sequences here too — a fresh and an upgraded database must
+	// carry the identical tuple for every additive column, not only the
+	// stamps this test was written for.
+	const wantItems = "seq id text added_at spec_id state landing picked_at dropped_at classification"
 	if got := strings.Join(columnNames(t, freshEng, "items"), " "); got != wantItems {
 		t.Errorf("items columns = %q, want %q (old columns as a prefix, in order)", got, wantItems)
 	}
-	const wantArchived = "seq id text added_at spec_id state position landing picked_at dropped_at archived_at landing_verdict"
+	const wantArchived = "seq id text added_at spec_id state position landing picked_at dropped_at archived_at landing_verdict classification"
 	if got := strings.Join(columnNames(t, freshEng, "archived_items"), " "); got != wantArchived {
 		t.Errorf("archived_items columns = %q, want %q (old columns as a prefix, in order)", got, wantArchived)
 	}
 	for _, tc := range []struct{ table, column string }{
 		{"items", "picked_at"},
 		{"items", "dropped_at"},
+		{"items", "classification"},
 		{"archived_items", "picked_at"},
 		{"archived_items", "dropped_at"},
 		{"archived_items", "archived_at"},
+		{"archived_items", "classification"},
 	} {
 		tuple := columnTupleSequence(t, freshEng, tc.table)
 		matched := false

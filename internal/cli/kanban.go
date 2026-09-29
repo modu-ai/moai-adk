@@ -75,7 +75,12 @@ type kanbanEntryParse struct {
 	// factory entry only): "" when none was given, which the lane reads as
 	// the default clear-each.
 	ClearPolicy string
-	Rest        []string // args with -k and its consumed value removed
+	// AutoDispatchManual marks the lane's --no-auto-dispatch opt-out
+	// (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-011, factory entry only):
+	// false (the code default) launches a self-dispatch lane, true launches
+	// a manual-mode lane.
+	AutoDispatchManual bool
+	Rest               []string // args with -k and its consumed value removed
 }
 
 // parseKanbanFlag extracts --kanban / -k and its optional value from args.
