@@ -31,8 +31,147 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 )
+
+// declaredForkedPairs lists the local↔template rule pairs that are
+// INTENTIONALLY forked (card t1319): both copies are maintained by hand, the
+// local dogfood copy carries internal provenance the neutral distribution
+// copy must not, and byte-parity deliberately does NOT hold. Enrollment here
+// is the recurrence guard for t1303's P3/P6 defect class — an unauthorized
+// local→template copy on an unenrolled pair was invisible because the byte-
+// parity allowlists above check only enrolled paths (an unenrolled pair gets
+// NO check at all, which is the hole). Every declared fork MUST carry the
+// 'mirror-fork: intentional' HTML-comment marker in BOTH copies, so a
+// mechanical copy-sync is visible at review time in either direction.
+//
+// Adding an entry here is a deliberate code change: state WHY byte-parity
+// does not hold (the reason field is asserted non-empty) and never
+// simultaneously enroll the path in workflowOptMirroredPaths or
+// lateBranchMirroredPaths — a pair cannot claim byte-parity and fork
+// exemption at once (asserted by TestDeclaredRuleMirrorForks).
+var declaredForkedPairs = []struct {
+	path   string
+	reason string
+}{
+	{
+		path:   ".claude/rules/moai/core/verification-claim-integrity.md",
+		reason: "local retains [ZONE:Evolvable] governance tags and internal provenance (SPEC-IDs, concrete per-instance examples) that the neutral template copy omits",
+	},
+	{
+		path:   ".claude/rules/moai/core/agent-common-protocol-reference.md",
+		reason: "local carries internal provenance markers (SPEC-IDs, card ids) stripped from the neutral distribution copy",
+	},
+	{
+		path:   ".claude/rules/moai/workflow/cross-session-messaging-detail.md",
+		reason: "local carries internal provenance (card ids, GLM-pane specifics) stripped from the neutral distribution copy",
+	},
+}
+
+// mirrorForkMarker is the HTML-comment declaration substring that must open
+// every intentionally-forked pair (after the title/heading line). Both copies
+// carry it: the local copy may name the authorizing card, the template copy
+// must stay neutral (no card ids, no SPEC-IDs, no dates).
+const mirrorForkMarker = "mirror-fork: intentional"
+
+// mirrorForkLeakPattern is a self-contained duplicate of the internal-token
+// leak classes the template layer is held clean of (card ids, SPEC-IDs,
+// internal dates) — same shape as the sibling leak tests
+// (TestTemplateNoInternalContentLeak / contract_sign_guard_rule_test.go's
+// card-id pattern). It guards the TEMPLATE copy's marker line only; the local
+// copy may legitimately name cards.
+var mirrorForkLeakPattern = regexp.MustCompile(`\bt[0-9]{3,5}\b|\bSPEC-[A-Z]|20[0-9]{2}-[0-9]{2}-[0-9]{2}`)
+
+// TestDeclaredRuleMirrorForks verifies that every declared intentionally-
+// forked rule pair (declaredForkedPairs) satisfies the fork declaration
+// contract:
+//
+//  1. both copies exist (local + internal/template/templates/ mirror);
+//  2. the 'mirror-fork: intentional' marker is present in BOTH copies;
+//  3. the TEMPLATE copy's marker line carries no internal-token leak (the
+//     local copy may name cards; the distribution copy must not);
+//  4. the path is NOT enrolled in workflowOptMirroredPaths or
+//     lateBranchMirroredPaths (no double enrollment);
+//  5. the declaration carries a non-empty reason.
+//
+// Sentinel on failure: DECLARED_FORK_* (per assertion kind).
+func TestDeclaredRuleMirrorForks(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := findProjectRootForMirrorTest(t)
+
+	enrolled := make(map[string]bool, len(workflowOptMirroredPaths)+len(lateBranchMirroredPaths))
+	for _, p := range workflowOptMirroredPaths {
+		enrolled[p] = true
+	}
+	for _, p := range lateBranchMirroredPaths {
+		enrolled[p] = true
+	}
+
+	for _, pair := range declaredForkedPairs {
+		pair := pair // capture
+		t.Run(filepath.Base(pair.path), func(t *testing.T) {
+			t.Parallel()
+
+			if pair.reason == "" {
+				t.Errorf(
+					"DECLARED_FORK_MISSING_REASON: declared fork %s carries an empty reason; "+
+						"a fork declaration must state why byte-parity does not hold",
+					pair.path,
+				)
+			}
+
+			if enrolled[pair.path] {
+				t.Errorf(
+					"DECLARED_FORK_DOUBLE_ENROLLED: %s is declared a fork but is also enrolled in "+
+						"workflowOptMirroredPaths or lateBranchMirroredPaths; a pair cannot "+
+						"simultaneously claim byte-parity and fork exemption",
+					pair.path,
+				)
+			}
+
+			for _, copy := range []struct{ label, path string }{
+				{"local", filepath.Join(projectRoot, pair.path)},
+				{"template", filepath.Join(projectRoot, "internal", "template", "templates", pair.path)},
+			} {
+				content, err := os.ReadFile(copy.path)
+				if err != nil {
+					if os.IsNotExist(err) {
+						t.Errorf(
+							"DECLARED_FORK_MISSING: %s copy of declared fork %s does not exist at %s",
+							copy.label, pair.path, copy.path,
+						)
+						continue
+					}
+					t.Fatalf("%s copy unreadable %s: %v", copy.label, copy.path, err)
+				}
+				if !bytes.Contains(content, []byte(mirrorForkMarker)) {
+					t.Errorf(
+						"DECLARED_FORK_MARKER_MISSING: %s copy %s lacks the %q declaration line; "+
+							"a deliberately-forked pair must declare its fork in BOTH copies so an "+
+							"unauthorized local-to-template copy-sync is visible at review",
+						copy.label, copy.path, mirrorForkMarker,
+					)
+				}
+			}
+
+			templateContent, err := os.ReadFile(filepath.Join(projectRoot, "internal", "template", "templates", pair.path))
+			if err != nil {
+				return // already reported by the copy loop above
+			}
+			for _, line := range bytes.Split(templateContent, []byte("\n")) {
+				if bytes.Contains(line, []byte(mirrorForkMarker)) && mirrorForkLeakPattern.Match(line) {
+					t.Errorf(
+						"DECLARED_FORK_MARKER_LEAK: template copy carries an internal token inside its "+
+							"fork declaration (%s): %q",
+						pair.path, line,
+					)
+				}
+			}
+		})
+	}
+}
 
 // SPEC-V3R5-WORKFLOW-OPT-001 mirrored files. Each entry MUST have a byte-identical
 // mirror at internal/template/templates/<path>.
