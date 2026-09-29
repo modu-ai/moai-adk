@@ -34,7 +34,7 @@
 >
 > **primary에서 `git restore CLAUDE.local.md`를 실행하지 마라** — 공유 워킹 사본을 §0.3의 폐기 모델로 되돌리는 회귀다.
 >
-> 이 파일을 고칠 때는 카드 워크트리에서 고쳐 `develop`으로 병합한다(§4.1). primary의 구형 파일은 별도 전환 전까지 보존한다.
+> 이 파일을 고칠 때는 카드 워크트리에서 고쳐 `develop`으로 병합한다(§4.1). primary의 구형 파일은 별도 전환을 마쳤다(card t1317, 2026-09-29 — 보존 사본은 primary의 `.moai/state/retired/`).
 
 ---
 
