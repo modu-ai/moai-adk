@@ -9,8 +9,10 @@
 package cli
 
 import (
+	"bytes"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
@@ -203,5 +205,88 @@ func TestTodoRelateCycleGuardShapes(t *testing.T) {
 				t.Fatalf("candidate %v was refused: %v", tc.candidate, err)
 			}
 		})
+	}
+}
+
+// TestRunAutoCycleSkipsBlockedCards — AC-RPF-004 (REQ-RPF-004, M3): a fully
+// relation-blocked queue gets one labelled non-finding per skipped card
+// naming the card id, the relation, and the blocking predecessor id; no card
+// is accepted; the cycle ends with the no-eligible report and a nil error
+// (the exit-0 contract).
+//
+// The fully-blocked Given is, by definition, a relation cycle — a shape only
+// a pre-guard legacy record can carry (the M2 cycle guard refuses NEW
+// circular writes). Direct seeding bypasses relate exactly like a record the
+// operator edited by hand; the filter must consume that record too.
+func TestRunAutoCycleSkipsBlockedCards(t *testing.T) {
+	root, store := todoFixture(t)
+	seedItems(t, store, "alpha card", "beta card") // t1, t2
+	seedFindings(t, store,
+		kanban.BacklogFinding{SubjectID: "t1", RelatedID: "t2",
+			Relation: kanban.BacklogRelationDepends, Source: kanban.BacklogSourceAgent},
+		kanban.BacklogFinding{SubjectID: "t2", RelatedID: "t1",
+			Relation: kanban.BacklogRelationDepends, Source: kanban.BacklogSourceAgent},
+	)
+
+	// The clock seam advances on each poll tick, so a cycle that (wrongly)
+	// accepts a blocked card hits the evidence deadline after ONE tick
+	// instead of polling a frozen clock forever.
+	clock := time.Unix(0, 0)
+	opts := autoOptions{
+		wait:      time.Minute,
+		liveness:  autoTestLiveness(root, "t1", true, true, nil),
+		sessionID: "operator-session-fixture",
+		now:       func() time.Time { return clock },
+		sleep:     func(time.Duration) { clock = clock.Add(time.Minute) },
+	}
+	var out bytes.Buffer
+	if err := runAutoCycle(&out, store, root, opts); err != nil {
+		t.Fatalf("cycle errored: %v", err)
+	}
+	got := out.String()
+	if !strings.Contains(got, "non-finding: t1 skipped (relation-blocked: t1 depends t2) — waiting for predecessor t2") {
+		t.Errorf("t1 skip label missing or wrong:\n%s", got)
+	}
+	if !strings.Contains(got, "non-finding: t2 skipped (relation-blocked: t2 depends t1) — waiting for predecessor t1") {
+		t.Errorf("t2 skip label missing or wrong:\n%s", got)
+	}
+	if strings.Contains(got, "accept ") {
+		t.Errorf("a blocked card was accepted:\n%s", got)
+	}
+	if !strings.Contains(got, "no eligible") {
+		t.Errorf("fully blocked cycle did not print the no-eligible report:\n%s", got)
+	}
+	findings := loadFindings(t, store)
+	if len(findings) != 2 {
+		t.Errorf("findings = %d, want the 2 seeded ones", len(findings))
+	}
+
+	// The blocks spelling labels the same way, naming the blocked card, the
+	// relation, and the predecessor: t1 blocks t2 keeps t2 waiting with a
+	// label while the free predecessor t1 is still a candidate.
+	root2, store2 := todoFixture(t)
+	seedItems(t, store2, "free predecessor", "blocked successor")
+	seedFindings(t, store2, kanban.BacklogFinding{
+		SubjectID: "t1", RelatedID: "t2",
+		Relation: kanban.BacklogRelationBlocks, Source: kanban.BacklogSourceAgent,
+	})
+	clock2 := time.Unix(0, 0)
+	opts2 := autoOptions{
+		wait:      time.Minute,
+		liveness:  autoTestLiveness(root2, "t1", true, true, nil),
+		sessionID: "operator-session-fixture",
+		now:       func() time.Time { return clock2 },
+		sleep:     func(time.Duration) { clock2 = clock2.Add(time.Minute) },
+	}
+	var out2 bytes.Buffer
+	if err := runAutoCycle(&out2, store2, root2, opts2); err != nil {
+		t.Fatalf("second cycle errored: %v", err)
+	}
+	got2 := out2.String()
+	if !strings.Contains(got2, "non-finding: t2 skipped (relation-blocked: t1 blocks t2) — waiting for predecessor t1") {
+		t.Errorf("blocks skip label missing or wrong:\n%s", got2)
+	}
+	if !strings.Contains(got2, "accept t1 ") {
+		t.Errorf("the free predecessor t1 was not accepted:\n%s", got2)
 	}
 }

@@ -145,6 +145,57 @@ $ go test -timeout 30m -count=1 ./internal/kanban/
 ok  	github.com/modu-ai/moai-adk/internal/kanban	191.542s
 ```
 
+### M3 — labelled skips + doctrine text (REQ-RPF-004/007, AC-RPF-004)
+
+**Test-side Given corrections observed before RED (recorded for honesty):**
+the first M3 test draft built the "fully blocked queue" through `todo relate`
+(two independent blocks/depends pairs) — wrong on two counts: the free
+predecessors were legitimately still candidates (so no-eligible could never
+fire), and a fully-blocked queue is BY DEFINITION a relation cycle, which the
+M2 guard refuses to record through relate at all. The corrected Given seeds
+the mutual-depends record directly (seedFindings), i.e. the pre-guard legacy
+record the filter must still consume. A first RED run of the draft also
+exposed a test-clock defect: a frozen `now` seam with `wait: 1ns` never let
+the evidence deadline expire, polling forever — the clock seam now advances
+one minute per poll tick.
+
+**RED (labels reverted; observed on the tree at M2 HEAD `46e3ec0da` plus the
+corrected test):**
+
+```
+$ go test -timeout 30m -count=1 ./internal/cli/ -run 'TestRunAutoCycleSkipsBlockedCards'
+--- FAIL: TestRunAutoCycleSkipsBlockedCards (0.27s)
+    todo_relation_filter_test.go:248: t1 skip label missing or wrong:
+    todo_relation_filter_test.go:251: t2 skip label missing or wrong:
+    todo_relation_filter_test.go:287: blocks skip label missing or wrong:
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.061s
+```
+
+RED for the right stated reason: the filter and the no-eligible report
+already worked (no `accept` line, no-eligible present) — ONLY the labelled
+skip lines were absent.
+
+**GREEN (same command + the AC-RPF-004 green-path command surface):**
+
+```
+$ go test -timeout 30m -count=1 ./internal/cli/ -run 'TestRunAutoCycleSkipsBlockedCards'
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.058s
+$ go test -timeout 30m -count=1 ./internal/cli/ -run 'TestAutoPickTargets|TestRunAutoCycle'
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.318s
+```
+
+Implementation: the queued arm of `autoPickTargets` emits one labelled
+non-finding per blocking finding — `non-finding: <card> skipped
+(relation-blocked: <subject> <relation> <related>) — waiting for predecessor
+<target>` — card id, relation, and predecessor id all named (REQ-RPF-004);
+the no-eligible path keeps its exit-0 contract. Doctrine text B-I-1
+rewritten in both blocks: `backlog_store.go` blocks/depends constant comments
+now name `autoPickTargets` as the consuming pickup path and
+`WaitsOnClosesCycle` as the write-time check; `todo_relate.go` header comment
+states the sequencing pair is no longer purely observational while the other
+four relations stay record-only.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

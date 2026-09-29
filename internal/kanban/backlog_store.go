@@ -137,14 +137,17 @@ const (
 	// other. No resolution is proposed — both may be legitimate.
 	BacklogRelationConflicts = "conflicts"
 	// BacklogRelationBlocks records that the subject must land before the
-	// related card can proceed (card t1309). Record-only, like every agent
-	// relation: no scheduler, dispatcher, or self-dispatch path reads it —
-	// whether factory self-dispatch ever consults the blocks graph is a
-	// separate adjudication (t1240), and until that lands the record exists
-	// for the operator to read.
+	// related card can proceed (card t1309). Since
+	// SPEC-RELATION-PICKUP-FILTER-001 the sequencing pair is no longer
+	// purely observational: the todo --auto pickup selection
+	// (internal/cli autoPickTargets) excludes the blocked-side card while
+	// the finding is live, and todo relate refuses a write that would close
+	// a waits-on cycle (BacklogRecord.WaitsOnClosesCycle). Factory-lease
+	// consumption stays the separate adjudication named in the code (t1240).
 	BacklogRelationBlocks = "blocks"
 	// BacklogRelationDepends is the inverse spelling of blocks: the subject
-	// waits on the related card. Same record-only posture.
+	// waits on the related card. Consumed by the same two paths as blocks —
+	// WaitsOnOf is the single direction normalization.
 	BacklogRelationDepends = "depends"
 )
 

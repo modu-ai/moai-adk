@@ -12,10 +12,12 @@
 // contains / absorbs / replaces / conflicts came first; blocks / depends
 // joined them (card t1309) so card sequencing stops living in prose alone —
 // `A blocks B` reads "A must land before B proceeds", `A depends B` reads
-// "A waits on B". Recording one causes nothing: no scheduler, dispatcher, or
-// self-dispatch path reads these findings, and the operator decides. That
-// asymmetry is deliberate — a wrong mechanical refusal costs a card, a wrong
-// record costs a line of output.
+// "A waits on B". Since SPEC-RELATION-PICKUP-FILTER-001 the sequencing pair
+// is no longer purely observational: the todo --auto pickup selection reads
+// it (a relation-blocked card is skipped with a labelled non-finding), and
+// the write path below refuses a relation that would close a waits-on
+// cycle. The other four relations stay record-only — the operator decides,
+// exactly as before.
 //
 // SUBAGENT BOUNDARY (REQ-TA-015): nothing here prompts.
 package cli
