@@ -47,6 +47,18 @@ iter2 delta 수리 내역: AC-RLC-002 판정 명령 교체(16진 SHA 수치 강�
 
 AC-RLC-004 판정 보강 — 가드의 RED 관측 기록(구현 과정에서 실측): ① 최초 변이 셀 설계(방어행 단독 삭제)에서는 매트릭스가 뒤집히지 않았다(`.moai/reports/*`가 전 케이스를 이미 커버) — 방어행의 존재 이유(spec §A.2)대로 **재포함 규칙 삽입 하에서의 방어행 부재** 변이로 재설계하자 뒤집힘을 관측. ② 이 git의 `check-ignore -v`는 결정 규칙이 negation이어도 exit 0을 낸다(실측: negation 매치 출력 `.gitignore:399:!.moai/reports/**/*.md` + exit 0, `-v` 없이는 exit 1) — 판정축을 exit code에서 `--non-matching` 출력 해석으로 교체. 가드의 실패 관측성 자체가 이 과정에서 두 번 검증됐다.
 
+### M2 — html-report skill 기본 경로 (전수 전사)
+
+| AC | 판정 명령 | 관측 출력 |
+|---|---|---|
+| AC-RLC-005 | `grep -c '<cwd>/reports/' .claude/skills/moai-domain-html-report/SKILL.md internal/template/templates/.claude/skills/moai-domain-html-report/SKILL.md` | `…:0` / `…:0` (exit 1 — 매치 없음) |
+| AC-RLC-005 | 양 미러 바이트 동일성 `diff` | 무출력 (BYTE-IDENTICAL) |
+| AC-RLC-005 | `make build` | emit-check 통과 + `catalog.yaml updated successfully (13400 bytes)` + 바이너리 빌드 성공 |
+| AC-RLC-005 | `go test -run TestHtmlReportOutputPathParity ./internal/template/` | PASS (양 미러 관례 고정 + 변이 셀: 구 기본값 복원 변이가 실패 집합을 내는 것 관측) |
+| AC-RLC-006 | 임시 프로젝트 렌더 관측 (`/tmp/rlc006-render-observe.sh`, 전사: `.moai/reports/t1320/m2-render-observation.txt`) | pre-condition `.moai exists? no` → `mkdir -p` 후 `.moai/reports/status-report-20260929.html`·`.md` 생성 확인 |
+
+AC-RLC-006 성격 주기: html-report skill 은 AI 실행 지침이라 Go 테스트 불가점이며, 본 관측은 편집된 SKILL.md 의 절차(기본 경로 해석 → 디렉터리 자동 생성 → html+md 트윈 출력)를 임시 프로젝트에서 그대로 실행해 경로 관례와 자동 생성 동작을 확인한 것이다 — 렌더 품질(spec §E 예외: 렌더링 동작 전부 현행 유지)은 대상 밖이다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

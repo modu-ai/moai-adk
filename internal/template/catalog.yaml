@@ -101,7 +101,7 @@ catalog:
             - name: moai-domain-html-report
               tier: core
               path: templates/.claude/skills/moai-domain-html-report/
-              hash: 60ca28ace617f022939d4728292303ddfb130c4239144ec4ab0cf340bc94b3ff
+              hash: b19cb8061d2116d5feb8ff280e0cd057969a451cd3df8e1f4d300a73f2dae949
               version: 1.0.0
             - name: moai-domain-svg-infographic
               tier: core
