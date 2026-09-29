@@ -227,6 +227,10 @@ var namesAddedAfterBaseline = map[string]bool{
 	// t1349), the non-SQLite ghost artifact inventory diagnostic.
 	// Registered through a constant, hence bare.
 	"todoGhostInventoryCheckName": true,
+	// ownerLabelDriftCheckName — SPEC-TODO-SURFACE-POLISH-001 M3 (card
+	// t1349), the owner_label vocabulary drift diagnostic. Registered
+	// through a constant, hence bare.
+	"ownerLabelDriftCheckName": true,
 }
 
 // TestBinaryLag_AllowlistKeysAreLiveNames asserts that every key of

@@ -274,6 +274,11 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		// factory section — the persisted leader role, with the literal
 		// relaunch message for a legacy run.
 		{factoryRunCheckName, func(v bool) DiagnosticCheck { return checkFactoryRun(cwd, v) }},
+		// SPEC-TODO-SURFACE-POLISH-001 (card t1349): the owner_label
+		// vocabulary drift — legacy spellings left in the runtime
+		// assignments table, counted from the same detectors the refusal
+		// paths use (REQ-TSP-051). Read-only.
+		{ownerLabelDriftCheckName, func(v bool) DiagnosticCheck { return checkOwnerLabelDrift(cwd, v) }},
 		{"BODP Config", func(v bool) DiagnosticCheck { return checkBODPConfig(cwd, v) }},
 		{"Telemetry Config", func(v bool) DiagnosticCheck { return checkTelemetryConfig(cwd, v) }},
 		{"Glamour Cache", checkGlamourCache},

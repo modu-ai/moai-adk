@@ -192,9 +192,63 @@ byte-identical to the tracked `.moai/docs/todo-queue-storage.md` in this
 branch (`cmp` → identical). Greps: `backlog.db` ×10, `~/.moai/db/` ×2,
 both paths tracked by git.
 
+### M3 — owner_label vocabulary (⑤ migration, doctor drift, write normalization)
+
+**One-time locked migration (AC-TSP-050)** — `TestOwnerLabelMigration` in
+internal/kanban: a fixture table carrying lead ×3 / worker-67 ×2 / lane-1
+×1 migrates 5 rows in one locked write to leader ×3 / lane-67 ×2, leaves
+the canonical row untouched, keeps the items table fingerprint
+byte-identical, and a second run migrates 0 rows (idempotence). Command:
+`go test ./internal/kanban/ -run '^(TestOwnerLabelMigration|TestOwnerLabelWritesCanonical)$' -count=1`
+→ `ok github.com/modu-ai/moai-adk/internal/kanban 1.995s` (final tree).
+Operator-facing counts for the measured production table (lead 453 /
+worker-67 13, 2026-09-29): the migration is value-only (no column or
+schema change), so it is safe to run against the home DB through
+`BacklogStore.MigrateOwnerLabelVocabulary` whenever the operator invokes
+it; the doctor check below is the reproducible verdict that it happened.
+
+**Doctor label drift (AC-TSP-051)** — `TestDoctorOwnerLabelDrift` (0 rows
+→ OK; legacy rows → WARN naming the labels and counts), counting through
+the SAME detectors the refusal paths use (kanban.IsLegacyLeaderSpelling /
+kanban.IsLegacyFactoryRoleValue — no second detector). The same commit
+carries `ownerLabelDriftCheckName` registration + allowlist bare key +
+regenerated goldens (verified with the binary_lag and TestDoctorGolden_*
+commands above, final tree `ok`).
+
+**Write normalization (AC-TSP-052)** — `TestOwnerLabelWritesCanonical`: a
+legacy label carried into the write path lands relabeled (worker-12 →
+lane-12); the table stays legacy-free. The existing readback test's
+expectation moved to the canonical value (see the M1 test-evolution
+record), post-fix `ok ... 2.995s` family above.
+
+**Migration traceability note.** The migration rides
+`BacklogStore.MigrateOwnerLabelVocabulary` (locked, idempotent,
+value-only) and is additionally invoked inside `recordRuntime`'s locked
+transaction, so the next runtime event on any queue completes the relabel;
+the doctor "Owner Label Drift" check reports the remaining count either
+way. No column, schema, or other table changes — REQ-TSP-050's scope is
+exactly one column.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_complete_at: 2026-09-30
+run_commit_sha: "pending-backfill-m3"
+run_status: complete
+ac_pass_count: 15
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: not-run (card-worktree stacking; no push by lane per git-flow lane protocol)
+l44_post_push_fetch: not-run (push is the leader's batch act)
+new_warnings_or_lints_introduced: 0
+cross_platform_build.darwin_arm64: pass (go build ./... exit 0, final tree)
+cross_platform_build.windows_amd64: pass (GOOS=windows GOARCH=amd64 go build ./... exit 0, final tree)
+total_run_phase_files: 25
+m1_to_m3_commit_strategy: one commit per milestone (M1 surface, M2 ghost stores, M3 label vocabulary), explicit pathspec staging; the doctor surface files shared by M2+M3 were landed in their respective milestone commits with the tree held at each milestone's state (goldens regenerated per state)
+verification_scope: lane-local (internal/cli, internal/kanban full suites; no go test ./... per the lane load discipline)
+suite_results: internal/cli 1 pre-existing load-sensitive timing flake (TestStopChainMemberCostWithinBudget, failed under concurrent-lane load, green on isolated re-run: --- PASS 8.63s, exit 0); every other package and scoped suite green
+coverage: internal/cli 85.1%, internal/kanban 85.1% (measured with -cover on the full touched-package suites this run; >= 85% threshold met)
+lint: golangci-lint v2.1.6 (CI-pinned) on internal/cli + internal/kanban — 0 issues, final tree
+boundary_grep: AskUserQuestion/mcp__askuser in internal/cli+internal/kanban non-test non-comment lines: 44, all pre-existing baseline (help texts and transcript fixtures), 0 in files this SPEC touched
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
