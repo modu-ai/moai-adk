@@ -216,13 +216,6 @@ are regression guards over current behavior, adopted as-is).
   row is absent → two verified candidates → AC-004 fail-closed.
 - Unreadable candidate env (platform/privilege) → candidate declined (REQ-003); refusal stands
   (AC-017 leg b).
-- Candidate matches the label but is a lane (`lane-<n>`), not a leader → declined (label
-  evidence is leader-specific).
-- Run row exists `active` but its leader is dead → REQ-007: no discovery involvement (the gate
-  passed on the record); the existing reconciliation machinery owns that case, unchanged.
-- Discovery finds a live leader whose run id row is `retired` **and** another live leader whose
-  row is absent → two verified candidates → AC-004 fail-closed.
-- Unreadable candidate env (platform/privilege) → candidate declined (REQ-003); refusal stands.
 - Operator passes `--lead` on a leader entry, or `--lead` with `--factory-run` → parse error
   (REQ-008).
 

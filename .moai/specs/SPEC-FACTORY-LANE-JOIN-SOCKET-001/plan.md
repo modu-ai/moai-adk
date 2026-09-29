@@ -78,7 +78,7 @@ github.com/modu-ai/moai-adk/internal/cli 3.531s`); lint baseline recorded before
 
 ## §E Self-Verification deliverables (run phase)
 
-Per manager-develop template §E with VCI §3 attribution: E1 AC matrix (16 rows), E2 both-GOOS
+Per manager-develop template §E with VCI §3 attribution: E1 AC matrix (17 rows), E2 both-GOOS
 build, E3 targeted-package coverage, E4 subagent-boundary grep for touched packages, E5 lint
 NEW-vs-baseline, E6 branch HEAD + commits (lane does NOT push — lead batch-pushes develop), E7
 blockers, E8 RED output for the first GREEN flip (verbatim pre-implementation R-1/R-2/R-3 are
