@@ -160,6 +160,42 @@ const factoryNextSelectionAttempts = 5
 // (REQ-SD-008): 3, so a supervising launcher can distinguish it from failure.
 const factoryNextNoCardExit = 3
 
+// factorySerialSlotFree positively enumerates the card states that re-admit
+// serial selection (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-008): done and
+// abandoned — the only states from which a card can never again hold a
+// lease. Everything else — a state added later included — keeps the serial
+// slot held. The enumeration names the RELEASING states and never the
+// holding ones (plan G2): a negative check (`state != done && ...`) would
+// silently release the slot for every state added after it was written.
+func factorySerialSlotFree(state string) bool {
+	switch state {
+	case homestate.CardDone, homestate.CardAbandoned:
+		return true
+	default:
+		return false
+	}
+}
+
+// factoryQueueClassification reads one card's classification from a queue
+// record snapshot. A card absent from the queue reads as the absent-field
+// default derivation (REQ-TCD-014): serial, normal, non-blocked.
+func factoryQueueClassification(rec *kanban.BacklogRecord, cardID string) kanban.CardClassification {
+	if rec == nil {
+		return kanban.DefaultCardClassification()
+	}
+	for _, it := range rec.Items {
+		if it.ID == cardID {
+			return kanban.EffectiveCardClassification(it)
+		}
+	}
+	for _, entry := range rec.Archived {
+		if entry.Item.ID == cardID {
+			return kanban.EffectiveCardClassification(entry.Item)
+		}
+	}
+	return kanban.DefaultCardClassification()
+}
+
 // factoryNextLeaseOnce selects and leases one card for lane through the F1
 // transition API (REQ-SD-008): a card assigned to this lane, then an
 // operator-picked card assigned to no lane, then the oldest queued card
@@ -305,6 +341,13 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 
 // factoryNextSelectAndLease runs one selection pass. raced reports that
 // another lane moved the candidate first and the caller should re-select.
+//
+// Classification eligibility (SPEC-TODO-CLASSIFY-DISPATCH-001): one pure
+// queue read anchors every mode lookup; a serial card recorded in a
+// non-terminal state holds the serial slot, so no lane leases another serial
+// card through ANY arm — while parallelizable candidates stay leasable
+// throughout (REQ-TCD-008). The auto-promotion arm additionally never
+// selects a blocked card (REQ-TCD-007).
 func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, skip func(homestate.Card) bool) (homestate.Card, bool, bool, error) {
 	cards, err := db.ListCards(ctx, runID)
 	if err != nil {
@@ -314,12 +357,48 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 	for _, c := range cards {
 		recorded[c.CardID] = true
 	}
+	// One pure queue read for the classification snapshot. A failed read is
+	// not silently swallowed: selection refuses rather than guessing modes
+	// (a nil record would read every card as its default — silent, wrong).
+	queueRec, err := todoReadStoreAt(root).LoadPure()
+	if err != nil {
+		return homestate.Card{}, false, false, fmt.Errorf("read the queue for classification: %w", err)
+	}
+	classOf := func(cardID string) kanban.CardClassification {
+		return factoryQueueClassification(queueRec, cardID)
+	}
+	// serialInFlightExcluding reports whether a serial card OTHER than
+	// cardID sits in the record in a non-terminal state. The candidate's own
+	// row is excluded by identity: a lane re-leasing ITS OWN assigned/picked
+	// serial card is not a second serial card in flight — the exclusivity
+	// holds against DISTINCT cards (REQ-TCD-008), and a self-blocked
+	// candidate would wedge every lease of a legacy serial row.
+	serialInFlightExcluding := func(cardID string) bool {
+		for _, c := range cards {
+			if c.CardID == cardID {
+				continue
+			}
+			if !factorySerialSlotFree(c.State) && classOf(c.CardID).Mode == kanban.ClassModeSerial {
+				return true
+			}
+		}
+		return false
+	}
+	modeEligible := func(cardID string) bool {
+		if classOf(cardID).Mode != kanban.ClassModeSerial {
+			return true
+		}
+		return !serialInFlightExcluding(cardID)
+	}
 	// (a) a card assigned to this lane — the lease edge alone (T3).
 	for _, c := range cards {
 		if c.State != homestate.CardAssigned || c.OwnerLabel != lane {
 			continue
 		}
 		if skip(c) {
+			continue
+		}
+		if !modeEligible(c.CardID) {
 			continue
 		}
 		return factoryNextClaim(ctx, db, root, runID, c, lane)
@@ -332,6 +411,9 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 			continue
 		}
 		if skip(c) {
+			continue
+		}
+		if !modeEligible(c.CardID) {
 			continue
 		}
 		state, inQueue, err := queueItemState(root, c.CardID)
@@ -352,31 +434,55 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 		// Positive enumeration (SPEC-TODO-HOLD-STATE-001 REQ-THS-012): the
 		// state this arm claims is named; every other state falls through.
 		if it.State == kanban.BacklogStatePicked && !recorded[it.ID] {
+			if !modeEligible(it.ID) {
+				continue
+			}
 			return factoryNextRecordAndClaim(ctx, db, root, runID, it.ID, lane)
 		}
 	}
-	// (c) the oldest queued card: promote it to picked in the queue FIRST,
-	// then record — a record-write failure leaves it a plain unowned picked
-	// card the next `next` takes at arm (b) (design.md §3).
+	// (c) the highest-ranked eligible queued card (REQ-TCD-007/-008). The
+	// queue is kept sorted by classification inside the add's locked write
+	// (REQ-TCD-005), so stored order IS priority order — selection reads it,
+	// it never re-sorts (plan G5). A blocked card is never auto-selected (an
+	// operator pick or unblock is the only path that dispatches one); a
+	// serial card is skipped while another serial card is in flight.
 	var promoted string
+	sawQueued := 0
 	if err := todoStoreAt(root).Mutate(func(r *kanban.BacklogRecord) error {
 		for i := range r.Items {
-			if r.Items[i].State == kanban.BacklogStateQueued {
-				r.Items[i].State = kanban.BacklogStatePicked
-				promoted = r.Items[i].ID
-				return nil
+			it := &r.Items[i]
+			if it.State != kanban.BacklogStateQueued {
+				continue
 			}
+			sawQueued++
+			cls := kanban.EffectiveCardClassification(*it)
+			if cls.Blocked {
+				continue
+			}
+			if cls.Mode == kanban.ClassModeSerial && serialInFlightExcluding(it.ID) {
+				continue
+			}
+			it.State = kanban.BacklogStatePicked
+			promoted = it.ID
+			return nil
 		}
 		return nil
 	}); err != nil {
 		return homestate.Card{}, false, false, err
 	}
-	if promoted == "" {
-		// Another lane promoted the oldest card between the read and the
-		// write; re-select against the new state.
+	switch {
+	case promoted != "":
+		return factoryNextRecordAndClaim(ctx, db, root, runID, promoted, lane)
+	case sawQueued > 0:
+		// Queued cards existed but none was eligible (blocked, or serial with
+		// the slot held). That is the no-card answer, not a race: re-selecting
+		// would spin on the same ineligible candidates.
+		return homestate.Card{}, false, false, nil
+	default:
+		// No queued card at all — another lane promoted the one the read saw
+		// between the read and the write; re-select against the new state.
 		return homestate.Card{}, false, true, nil
 	}
-	return factoryNextRecordAndClaim(ctx, db, root, runID, promoted, lane)
 }
 
 // factoryNextRecordAndClaim records a queue-picked card (T1) and claims it.
@@ -1158,6 +1264,13 @@ type factoryCardView struct {
 	SpecID         string                 `json:"spec_id"`
 	FailureReason  string                 `json:"failure_reason"`
 	Contract       *homestate.ContractRef `json:"contract"`
+	// Mode and Priority are the card's recorded classification
+	// (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-010), read from the queue so a
+	// status reader sees the mode-aware dispatch state without opening the
+	// queue. An absent classification reads as the derived default
+	// (serial / normal — REQ-TCD-014), never as empty cells.
+	Mode     string `json:"mode"`
+	Priority string `json:"priority"`
 }
 
 type factoryStatusReport struct {
@@ -1171,12 +1284,13 @@ type factoryStatusReport struct {
 	Unavailable []homestate.RecordUnavailableEntry `json:"unavailable"`
 }
 
-func factoryCardViewOf(c homestate.Card, now time.Time) factoryCardView {
+func factoryCardViewOf(c homestate.Card, now time.Time, cls kanban.CardClassification) factoryCardView {
 	v := factoryCardView{
 		RunID: c.RunID, CardID: c.CardID, State: c.State, Legacy: c.Legacy(), Stage: c.Stage, Version: c.Version,
 		Owner: c.OwnerLabel, LeaseHolder: c.LeaseHolder, LeaseExpiresAt: c.LeaseExpiresAt, LeaseExpired: c.LeaseExpired(now),
 		DecisionGate: c.DecisionGate, Question: c.DecisionQuestion, Resume: c.DecisionResume,
 		Prefer: c.HintPrefer, After: c.HintAfter, SpecID: c.SpecID, FailureReason: c.FailureReason,
+		Mode: cls.Mode, Priority: cls.Priority,
 	}
 	if c.ContractSpecID != "" {
 		v.Contract = &homestate.ContractRef{SpecID: c.ContractSpecID, SHA256: c.ContractSHA256, SignedAt: c.ContractSignedAt, Event: c.ContractEvent}
@@ -1209,6 +1323,11 @@ func newFactoryStatusCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("factory status: %w", err)
 			}
+			// The classification snapshot for the mode/priority cells
+			// (REQ-TCD-010): one pure queue read; a failed read degrades the
+			// cells to the derived defaults rather than failing the whole
+			// status surface (the lease rows survive a queue read fault).
+			queueRec, queueErr := todoReadStoreAt(root).LoadPure()
 			// Never create a database just to report that it is empty.
 			if _, statErr := os.Stat(path); statErr == nil {
 				db, err := homestate.OpenFactory(root)
@@ -1222,7 +1341,11 @@ func newFactoryStatusCommand() *cobra.Command {
 				}
 				now := factoryCardNow()
 				for _, c := range cards {
-					report.Cards = append(report.Cards, factoryCardViewOf(c, now))
+					cls := kanban.DefaultCardClassification()
+					if queueErr == nil {
+						cls = factoryQueueClassification(queueRec, c.CardID)
+					}
+					report.Cards = append(report.Cards, factoryCardViewOf(c, now, cls))
 				}
 			} else if !errors.Is(statErr, os.ErrNotExist) {
 				return fmt.Errorf("factory status: %w", statErr)
@@ -1267,8 +1390,8 @@ func writeFactoryStatusText(w io.Writer, r factoryStatusReport) {
 		if c.Contract != nil {
 			contract = strings.Join([]string{c.Contract.SpecID, c.Contract.SHA256, c.Contract.SignedAt, dash(c.Contract.Event)}, ",")
 		}
-		_, _ = fmt.Fprintf(w, "%s run=%s state=%s stage=%s version=%d owner=%s lease=%s gate=%s prefer=%s after=%s contract=%s\n",
-			c.CardID, c.RunID, state, dash(c.Stage), c.Version, dash(c.Owner), lease, dash(c.DecisionGate), dash(c.Prefer), dash(c.After), contract)
+		_, _ = fmt.Fprintf(w, "%s run=%s state=%s stage=%s version=%d owner=%s lease=%s gate=%s prefer=%s after=%s contract=%s mode=%s priority=%s\n",
+			c.CardID, c.RunID, state, dash(c.Stage), c.Version, dash(c.Owner), lease, dash(c.DecisionGate), dash(c.Prefer), dash(c.After), contract, dash(c.Mode), dash(c.Priority))
 		if c.Question != "" {
 			_, _ = fmt.Fprintf(w, "  question: %s (resumes to %s)\n", c.Question, dash(c.Resume))
 		}
