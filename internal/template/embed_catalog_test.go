@@ -1,6 +1,8 @@
 package template
 
 import (
+	"os"
+	"regexp"
 	"testing"
 	"testing/fstest"
 )
@@ -64,7 +66,15 @@ func TestLoadEmbeddedCatalog_Success(t *testing.T) {
 	// domain skill, core.skills, and manager-todo), net +2 = 46.
 	// moai-ref-jev-question-design added (question-design rules reference for
 	// the gated judgment capability, core.skills), net +1 = 47.
-	const wantTotal = 47
+	// Ground truth is DERIVED from the catalog.yaml source text (the same file
+	// //go:embed packages), not a hand-maintained constant: the loader still
+	// reddens if it drops an entry, and a new entry needs no bump (card t1367
+	// — the 47-vs-48 stale constant this replaces).
+	rawCatalog, err := os.ReadFile("catalog.yaml")
+	if err != nil {
+		t.Fatalf("read catalog.yaml: %v", err)
+	}
+	wantTotal := len(regexp.MustCompile(`(?m)^[ \t]*- name:`).FindAll(rawCatalog, -1))
 	all := cat.AllEntries()
 	if len(all) != wantTotal {
 		t.Errorf("LoadEmbeddedCatalog() AllEntries() = %d, want %d", len(all), wantTotal)

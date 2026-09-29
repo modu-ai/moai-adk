@@ -178,9 +178,15 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	// generation domain skill, core.skills), net +1 = 34.
 	// moai-ref-jev-question-design added (question-design rules reference for
 	// the gated judgment capability; core.skills), net +1 = 35.
-	const expectedSkillCount = 35
-	if len(diskSkills) != expectedSkillCount {
-		t.Errorf("expected %d skill directories on disk, found %d: %v", expectedSkillCount, len(diskSkills), diskSkills)
+	// The expectation is DERIVED from the catalog, not hardcoded: the disk
+	// count must equal the catalog's skill-entry count, and every directory
+	// must be a catalog entry (loop below). A hand-maintained constant went
+	// stale at every catalog addition — the 35-vs-36 red of card t1367 was
+	// its latest recurrence; this conversion follows the dispatch's
+	// recommendation.
+	if len(diskSkills) != len(catalogSkills) {
+		t.Errorf("expected %d skill directories per catalog, found %d on disk: %v",
+			len(catalogSkills), len(diskSkills), diskSkills)
 	}
 
 	for _, skillName := range diskSkills {
