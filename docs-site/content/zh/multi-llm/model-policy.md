@@ -35,10 +35,15 @@ description: 讲解如何决定主会话使用的模型与推理深度的模型�
 |------|--------|----------|------|
 | Claude Fable 5 | `claude-fable-5` | 1M | 新的 Mythos 级通用旗舰。最深的推理与复杂编码 |
 | Claude Opus 5.5 | `opus` | 1M | 复杂架构、高难度推理 |
-| Claude Sonnet 5 | `sonnet` | 1M | 速度与智能的平衡，日常编码 |
+| Claude Sonnet 5.5 | `sonnet` | 1M | 速度与智能的平衡，日常编码 |
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 最快最经济，简单·批量任务 |
 
 > MoAI 的会话清单默认不使用 Haiku。把 Haiku 塞进长周期智能体任务反而抬高每任务成本 —— 这一点已由 DeepSWE 排行榜实测确认，即 **No-Haiku 策略**。依据见[三层智能体架构](/zh/advanced/no-haiku-3tier/)页面。
+
+{{< callout type="warning" >}}
+**迁移到 Sonnet 5.5**：如果你在关闭 thinking 的状态下使用 Sonnet，升级前请先把 thinking 设置改为
+`between_tools` —— 在 Sonnet 5.5 上，前置 thinking 仍然是关闭的。
+{{< /callout >}}
 
 ### 推理深度 (effort)
 
@@ -49,7 +54,7 @@ description: 讲解如何决定主会话使用的模型与推理深度的模型�
 | `low` | 最浅推理。快且便宜 |
 | `medium` | 平衡。会话默认值的基准点 |
 | `high` | 深推理 |
-| `xhigh` | 更深推理（Opus 5.5 · Opus 5 · 4.8 · Sonnet 5 · Opus 4.7 支持） |
+| `xhigh` | 更深推理（Opus 5.5 · Opus 5 · 4.8 · Sonnet 5.5 · Opus 4.7 支持） |
 | `max` | 最深推理 |
 
 > **默认 effort**：Opus 5.5 默认 `medium`，其他支持 effort 的模型大多默认 `high`。
