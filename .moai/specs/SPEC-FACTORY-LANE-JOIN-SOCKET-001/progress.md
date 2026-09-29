@@ -62,6 +62,7 @@ Baseline (pre-flight, this tree @ c961c4d4a): `go build ./...` + `GOOS=windows G
 - Coverage (targeted packages, this run): `internal/discovery` 87.3% (after adding DescribeVerifiedLeaders + broker-peer enumeration tests); `internal/homestate` 85.0% (full package); `internal/cli` 7.1% and `internal/hook` 4.3% under SELECTIVE selectors only (the packages are far larger than the selector sweeps; package-wide figures are CI's to report — recorded as a Gap, not a pass).
 - Lint: `golangci-lint run --timeout=2m` over internal/{cli,homestate,discovery,hook,kanban} → `0 issues.` (baseline was 0; no NEW findings).
 - gofmt: `gofmt -l` over the four packages → clean after formatting factory_discovery_test.go.
+- Preserved-invariant closure (AC-014/015): `go test ./internal/kanban -run 'TestNextFactoryLaneNumber|TestClaimFactoryLane|TestPruneFactoryDeadClaims|TestFactoryLaneLabel|TestSplitFactoryLegacyLabel' -count=1` → `ok github.com/modu-ai/moai-adk/internal/kanban 4.087s`; the ENTIRE cli factory test family `go test ./internal/cli -run 'TestFactory' -count=1 -timeout 20m` → `ok github.com/modu-ai/moai-adk/internal/cli 55.587s` (entry truth tables, legacy refusals, mixed-slot selection, and the new join tests together).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
