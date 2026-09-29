@@ -249,17 +249,27 @@ moai gtd list --json | jq '.[0]'                                            # WR
 
 - `id` — assigned on append, never reused after removal (`last_seq` is the
   persisted high-water mark that guarantees it).
-- `spec_id` — filled in when the item is picked; until then it is `null`, which
-  is what distinguishes a backlog item from a card already on the board.
+- `spec_id` — a record-only, optional annotation attached only when
+  `next --spec` is explicitly given. An empty `spec_id` on a picked card is
+  the normal state; it is the `state` field (`queued` | `picked`), never
+  `spec_id`, that distinguishes a backlog item from a card already on the
+  board. The card↔SPEC association lives in the dispatch fields and the
+  commit-message card id, not in this column.
 - `findings` — the records the analysis layer keeps ABOUT pairs of cards; a
   relation belongs to the pair rather than to either card, which is why it
   lives here and not in an item. Always an array: a file written before the
   field loads with an empty one, so "no findings" never has to be told apart
-  from "no such feature". `source` is `mechanical` (measured text similarity)
-  or `agent` (a judgement written through `relate`), and a mechanical finding
+  from "no such feature". `source` is `mechanical` (measured text similarity),
+  `agent` (a judgement written through `relate`), or `jev` — emitted at card
+  admission only, when the `workflow.jev.enabled` gate is on, as a model
+  answer naming an existing queued card a near-duplicate. A mechanical finding
   with no agent finding on the same pair renders marked `machine-only` — which
   records that nothing agent-sourced was written, never that anyone reviewed
-  it. A finding leaves the file when its card does.
+  it. A `jev` finding is a third thing: its confidence renders as `p=` (a
+  model confidence, never a measured similarity), it neither claims nor clears
+  the `machine-only` mark, and it is a record a person reads — never an input
+  to a queue mutation or a completion verdict. A finding leaves the file when
+  its card does.
 - `state` — `queued` | `picked` | `dropped`. Three values, and `done` is not a
   fourth: a finished card leaves the live queue entirely and moves to the
   archive. A picked item stays in the file so the operator can see what is in
