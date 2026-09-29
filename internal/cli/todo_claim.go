@@ -1,5 +1,5 @@
 // todo_claim.go — SPEC-TODO-CLAIM-LEASE-001 M3: `moai todo claim
-// [--lane <label>] [--renew <id>]`, the operator/lead-side atomic claim
+// [--lane <label>] [--renew <id>]`, the operator/leader-side atomic claim
 // verb over the store's Mutate-callback claim family.
 //
 // One implementation per verb (design.md §3): runTodoClaimRoot is the body
@@ -27,7 +27,7 @@ import (
 // newTodoClaimCmd — `moai todo claim [--lane <label>] [--renew <id>]`.
 // Bare: claim the oldest queued card under a fresh lease
 // (DefaultFactoryLeaseDuration). --lane attributes the claim to an
-// operator/lead-supplied lane label. --renew <id> extends the addressed
+// operator/leader-supplied lane label. --renew <id> extends the addressed
 // card's lease instead of claiming a new one (holder label must match).
 func newTodoClaimCmd() *cobra.Command {
 	var lane, renew string
@@ -44,7 +44,7 @@ Before selecting, every lapsed lease in the queue is returned to queued
 holder, then the claim takes the oldest — which may be the card just
 returned. An unparseable expiry is judged expired.
 
-` + "`--lane <label>`" + ` attributes the claim to an operator/lead-supplied lane
+` + "`--lane <label>`" + ` attributes the claim to an operator/leader-supplied lane
 label; without it the claim is the operator's own (picked_by=operator).
 The flag grants nothing to a lane session: a session for which the lane
 boundary holds is refused with or without --lane.
@@ -62,7 +62,7 @@ supervising launcher can distinguish it from failure.`,
 		},
 	}
 	cmd.Flags().StringVar(&lane, "lane", "",
-		"Attribute the claim to this operator/lead-supplied lane label")
+		"Attribute the claim to this operator/leader-supplied lane label")
 	cmd.Flags().StringVar(&renew, "renew", "",
 		"Renew the addressed card's lease instead of claiming a new card")
 	return cmd
