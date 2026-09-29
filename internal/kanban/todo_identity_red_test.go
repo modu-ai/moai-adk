@@ -523,7 +523,8 @@ func TestTodoIdentityAC003SchemaCreationFaultRollsBack(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = rows.Close()
-	if ddl != identityDDL || coreVersion != "1" || identityVersion != "1" || (runtimeVersion != "absent" && runtimeVersion != "1") || len(indexes) != 2 {
+	// coreVersion is "2" since SPEC-TODO-HOLD-STATE-001 (four-state CHECK).
+	if ddl != identityDDL || coreVersion != "2" || identityVersion != "1" || (runtimeVersion != "absent" && runtimeVersion != "1") || len(indexes) != 2 {
 		t.Errorf("identity schema readback ddl=%q core=%q runtime=%q identity=%q indexes=%v", ddl, coreVersion, runtimeVersion, identityVersion, indexes)
 	}
 	t.Logf("AC-TID-003 schema fault retry=1 ddl=%q meta=schema:%s/runtime:%s/identity:%s indexes=%v", ddl, coreVersion, runtimeVersion, identityVersion, indexes)
