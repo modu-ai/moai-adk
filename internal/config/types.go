@@ -917,6 +917,16 @@ type SecuritySandbox struct {
 // coverage, diagnostics) is stored.
 type StateConfig struct {
 	RetentionDays int `yaml:"retention_days"` // SPEC-V3R2-RT-004 REQ-031: retention days for the runs/ directory
+
+	// SessionRecordRetentionDays bounds the age of kanban session records
+	// (<state-dir>/<session>.json), pruned at SessionStart (card t1312). It
+	// is a pointer so an explicit 0 ("disable retention") stays
+	// distinguishable from a key the user omitted, which retains the
+	// DefaultSessionRecordRetentionDays shipped default — the same
+	// pointer-for-explicit-zero shape as the home tier's home_retention_days.
+	// Consumed by the SessionStart prune path via a targeted state.yaml read
+	// (the clean.go precedent), not through the full config load.
+	SessionRecordRetentionDays *int `yaml:"session_record_retention_days"`
 }
 
 // SessionConfig holds session state management configuration.

@@ -295,6 +295,9 @@ func TestRunCCRefusesLegacyLeaderNameLeadsJSONSeeded(t *testing.T) {
 // label is lane-1, and the command succeeds.
 func TestRunCCFactoriesEntryWritesLane1(t *testing.T) {
 	root := t.TempDir()
+	// SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-005: the lane join needs a git
+	// working tree, so this fixture is one.
+	initGitRepo(t, root)
 	t.Setenv(config.EnvClaudeProjectDir, root)
 	t.Setenv("MOAI_HOME", t.TempDir())
 	clearFactoryTestEnv(t)
@@ -349,6 +352,9 @@ func containsArg(args []string, flag, value string) bool {
 // stale and the join proceeds exactly as with no claim.
 func TestRunCCLiveLegacyClaimRefusedThroughCLI(t *testing.T) {
 	root := t.TempDir()
+	// SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-005: the lane join needs a git
+	// working tree, so this fixture is one.
+	initGitRepo(t, root)
 	t.Setenv(config.EnvClaudeProjectDir, root)
 	t.Setenv("MOAI_HOME", t.TempDir())
 	clearFactoryTestEnv(t)
@@ -383,6 +389,9 @@ func TestRunCCLiveLegacyClaimRefusedThroughCLI(t *testing.T) {
 
 func TestRunCCDeadLegacyClaimProceedsThroughCLI(t *testing.T) {
 	root := t.TempDir()
+	// SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-005: the lane join needs a git
+	// working tree, so this fixture is one.
+	initGitRepo(t, root)
 	t.Setenv(config.EnvClaudeProjectDir, root)
 	t.Setenv("MOAI_HOME", t.TempDir())
 	clearFactoryTestEnv(t)

@@ -323,6 +323,16 @@ const (
 	DefaultProfileUnusedDays            = 90
 	DefaultProfileMaxBytes              = 5 * 1024 * 1024 * 1024
 
+	// DefaultSessionRecordRetentionDays is the shipped default for the
+	// project-tier `state.session_record_retention_days` key (card t1312):
+	// the age bound past which SessionStart prunes kanban session records.
+	// It mirrors DefaultHomeCleanRetentionDays — the same 30-day window the
+	// home tier already ships — because the consumers (doctor Factory Run,
+	// the web ops console, the stale-run hook) need liveness only and no
+	// reader needs history older than any live run could be. An explicit 0
+	// in state.yaml disables the sweep.
+	DefaultSessionRecordRetentionDays = 30
+
 	// Lessons-inbox lifecycle defaults (SPEC-INBOX-DRAIN-GAP-001 REQ-IBX-001 /
 	// REQ-IBX-004 — single source of truth; CLAUDE.local.md §14 — no duplicate
 	// literals). DefaultInboxMaxBytes is the collector-side write-time size cap
@@ -1183,7 +1193,8 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 // The state directory itself is not configurable: the hardcoded ".moai/state"
 // literal in internal/cli/state.go and internal/worktree/state_guard.go is the SSOT.
 func NewDefaultStateConfig() StateConfig {
-	return StateConfig{}
+	days := DefaultSessionRecordRetentionDays
+	return StateConfig{SessionRecordRetentionDays: &days}
 }
 
 // NewDefaultSessionConfig returns a SessionConfig with default values.
