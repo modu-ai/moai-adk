@@ -20,6 +20,10 @@ git_strategy:
         required_reviews: 0
         branch_protection: false
         merge_method: squash
+        # SPEC-MAIN-COMMIT-BAN-001 (card t1337): lead closes the develop push
+        # batch when `git rev-list --count origin/develop..develop` reaches
+        # this count. Operator-given initial value 20 — recorded, not derived.
+        lead_push_threshold: 20
         automation:
             auto_branch: false
             auto_commit: true

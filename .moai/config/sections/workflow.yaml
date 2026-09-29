@@ -163,6 +163,10 @@ workflow:
     # the guard is active.
     branch_guard:
         enabled: true
+        # SPEC-MAIN-COMMIT-BAN-001 (card t1337): local main is commit-dead —
+        # commit/revert/cherry-pick in the primary checkout while HEAD is on a
+        # listed branch are denied. Doctrine: .moai/docs/gitflow-integration-chain.md
+        deny_commits_on: [main]
     # commit_identity_guard: refuse a shell command that would create a commit
     # under a known test-fixture identity (SPEC-COMMIT-IDENTITY-GUARD-001
     # root cause: a fixture identity written into the shared .git/config

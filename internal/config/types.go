@@ -130,6 +130,15 @@ type ModeProfile struct {
 	ReleaseBranchPrefix string `yaml:"release_branch_prefix"` // manual mode, git-flow only
 	RCVersionFormat     string `yaml:"rc_version_format"`     // manual mode, git-flow only
 
+	// LeadPushThreshold is the manual-mode batch-push trigger (SPEC-MAIN-COMMIT-BAN-001
+	// REQ-3.3): the lead closes the push batch when
+	// `git rev-list --count origin/<develop>..<develop>` reaches this count.
+	// 0 disables the trigger — the neutral default, since manual mode also
+	// ships push_to_remote: false, which makes a push threshold meaningless.
+	// The threshold decides the batch-close timing only; it never authorizes a
+	// lane push and never interrupts an open integration window (REQ-5.2).
+	LeadPushThreshold int `yaml:"lead_push_threshold"` // manual mode only; 0 = disabled
+
 	DraftPR          bool `yaml:"draft_pr"`          // team mode only
 	RequiredReviews  int  `yaml:"required_reviews"`  // team mode only
 	BranchProtection bool `yaml:"branch_protection"` // team mode only
@@ -673,6 +682,15 @@ type WorkflowProjectConfig struct {
 // remains unchanged and is consulted only on the enabled path (REQ-6).
 type BranchGuardConfig struct {
 	Enabled bool `yaml:"enabled"`
+
+	// DenyCommitsOn lists the branch names the protected-branch commit deny
+	// refuses commits on (SPEC-MAIN-COMMIT-BAN-001 REQ-3.1): while Enabled is
+	// true, `git commit` / `git revert` / `git cherry-pick` in the PRIMARY
+	// checkout are denied when the resolved HEAD branch is listed here. The
+	// empty list (the distributed default) short-circuits the check before any
+	// subprocess — unconfigured users pay one len() (REQ-2.5). There is no
+	// separate opt-in flag: the deny rides Enabled (REQ-3.4).
+	DenyCommitsOn []string `yaml:"deny_commits_on"`
 }
 
 // IntegrationLockConfig mirrors workflow.integration_lock.* — the opt-in gate
