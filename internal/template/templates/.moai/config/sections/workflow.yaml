@@ -166,6 +166,18 @@ workflow:
     # undone, re-run, or rewritten. Ships OFF.
     served_model_gate:
         enabled: false
+    # branch_guard: the primary-checkout BranchGuard family. enabled gates both
+    # deny classes: branch-state mutations, and commits on the branches listed
+    # in deny_commits_on (git commit / revert / cherry-pick in the primary
+    # checkout while HEAD names one of them). Both fail open on uncertainty and
+    # both are consulted only while enabled is true. Ships OFF with an empty
+    # list: a single-developer repository has no shared-checkout hazard and no
+    # declared protected branch. The list is yours to write — a workflow that
+    # declares a commit-protected mainline (the git-strategy mode decides
+    # which) names it here.
+    branch_guard:
+        enabled: false
+        deny_commits_on: []
     # commit_identity_guard: refuse a shell command that would create a commit
     # under a known test-fixture identity (an email your test suites use for
     # throwaway repositories). The guard reads the identity the commit would

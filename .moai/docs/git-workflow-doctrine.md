@@ -62,6 +62,8 @@
 ### §18.1 브랜치 구조
 
 > **[HARD] 2026-08-27 개정 — git-flow.** 카드 작업은 `develop`에서 갈라져 `develop`으로 돌아오고, `main`을 갱신하는 유일한 경로는 릴리스 PR이다. 종전 구조(모든 단기 브랜치가 `main`에서 분기)는 `[RETIRED 2026-08-27]`.
+>
+> **[HARD] 2026-09-29 보강 (SPEC-MAIN-COMMIT-BAN-001).** 로컬 `main`은 commit-dead다 — 릴리스 PR로 갱신되기만 하는 게 아니라, 어느 세션도 그 안에서 커밋하지 않는다(BranchGuard `workflow.branch_guard.deny_commits_on` 거부). 절차는 `.claude/rules/local/gitflow-lane-protocol.md` §1과 `.moai/docs/gitflow-integration-chain.md`가 소유한다.
 
 ```
 main ─────●───────────────●──  (protected, 릴리스 PR로만 갱신, tags 부착)

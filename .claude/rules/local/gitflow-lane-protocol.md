@@ -17,6 +17,8 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 
 [HARD] **로컬 `main`은 동기화만 하는 참조점이고, 아무도 거기서 분기하지 않는다.** 이 모델에서 `main`을 갱신하는 유일한 경로는 릴리스 PR이며, 로컬 `main`이 `origin/main`보다 뒤처져 있어도 작업에는 지장이 없다 — `develop`이 `origin/main`을 포함하기 때문이다. 따라서 로컬 `main`을 앞당기지 못하는 상황(예: 공유 체크아웃의 미커밋 작업과 충돌)은 작업을 막는 사유가 아니다. 상태줄의 `↓N` 표시는 그 사실의 반영일 뿐이다.
 
+[HARD] **로컬 `main`은 commit-dead다 — 어느 세션도 그 안에서 커밋하지 않는다 (SPEC-MAIN-COMMIT-BAN-001, 카드 t1337).** primary 체크아웃의 `main`에서 `git commit` / `git revert` / `git cherry-pick`은 BranchGuard(`workflow.branch_guard.deny_commits_on: [main]`)가 거부한다. 커밋은 `develop`에서 분기한 카드 워크트리에서만 만들고, main의 잔여물 처분(되살리기)은 운영자 터미널 전용 절차로 `.moai/docs/gitflow-integration-chain.md`가 소유한다.
+
 - 하네스에 맞는 경로로 들어간다:
   - Claude Code 레인: `moai cc -w <card-id>` 또는 현재 세션의 `EnterWorktree(<card-id>)`.
   - Codex 레인: 기존 트리에 새 세션으로 들어갈 때 `moai codex -w <card-id>`.

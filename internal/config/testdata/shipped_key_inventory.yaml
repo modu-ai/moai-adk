@@ -491,6 +491,9 @@
 - path: "git_strategy.manual.hooks.pre_push"
   class: W
   evidence: reader
+- path: "git_strategy.manual.lead_push_threshold"
+  class: P
+  evidence: "prose consumer: .moai/docs/gitflow-integration-chain.md step 2 + AGENTS.local.md §4.1 (lead batch-push trigger; config authoritative); Go presence assertion TestTemplateConfigCarriesMainCommitBanKeys (SPEC-MAIN-COMMIT-BAN-001)"
 - path: "git_strategy.manual.merge_method"
   class: W
   evidence: reader
@@ -2331,6 +2334,12 @@
 - path: "workflow.audit.glm.model"
   class: W
   evidence: reader
+- path: "workflow.branch_guard.deny_commits_on"
+  class: W
+  evidence: "reader: internal/hook preToolHandler.protectedCommitDenyList + checkProtectedCommit (SPEC-MAIN-COMMIT-BAN-001); empty list short-circuits before any subprocess"
+- path: "workflow.branch_guard.enabled"
+  class: W
+  evidence: "reader: internal/hook preToolHandler.branchGuardEnabled (SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001); gates both BranchGuard deny classes since SPEC-MAIN-COMMIT-BAN-001"
 - path: "workflow.commit_identity_guard.deny_emails"
   class: W
   evidence: reader

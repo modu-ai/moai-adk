@@ -890,6 +890,10 @@ func NewDefaultGitStrategyConfig() GitStrategyConfig {
 			PushToRemote:      false,
 			AutoCheckpoint:    "disabled",
 			MergeMethod:       "squash",
+			// SPEC-MAIN-COMMIT-BAN-001 REQ-3.3: 0 disables the batch-push
+			// trigger (template-neutral — manual mode ships push_to_remote:
+			// false, so a nonzero default would push a workflow choice).
+			LeadPushThreshold: 0,
 			BranchCreation:    BranchCreationConfig{AutoEnabled: false, PromptAlways: true},
 			Automation:        AutomationConfig{AutoBranch: false, AutoCommit: true, AutoPR: false, AutoPush: false},
 			CommitStyle:       CommitStyleConfig{Format: "conventional", ScopeRequired: false},
@@ -1064,6 +1068,12 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// anywhere under internal/template/templates/.
 		BranchGuard: BranchGuardConfig{
 			Enabled: false,
+			// SPEC-MAIN-COMMIT-BAN-001 REQ-3.1: the protected-branch commit
+			// deny ships with an EMPTY list (template-neutral, the sibling of
+			// Enabled: false above). A project that declares a
+			// commit-protected mainline names it in its local config; the
+			// empty list also short-circuits the check before any subprocess.
+			DenyCommitsOn: []string{},
 		},
 		// The release-integration holder guard ships inert for the same
 		// reason: a single-developer repository has no integration window to
