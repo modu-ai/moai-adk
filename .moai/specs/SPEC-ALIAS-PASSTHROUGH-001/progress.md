@@ -126,7 +126,7 @@ Actual (`git status --short` at commit time): the same 3 code files + `spec.md`
 
 run_status: audit-ready
 run_complete_at: 2026-09-29T15:55:00+09:00
-run_commit_sha: pending-backfill-run
+run_commit_sha: 5d58d51c4
 
 (Gaps: E3 coverage not measured — no AC requires it; the M1 RED capture pre-dates the
 reword of two new-test doc-comment lines that would otherwise have tripped AC-ALP-006's
