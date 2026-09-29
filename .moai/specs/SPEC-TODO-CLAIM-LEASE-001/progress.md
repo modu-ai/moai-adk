@@ -92,7 +92,7 @@ sync_phase:
   card: t1342
   spec: SPEC-TODO-CLAIM-LEASE-001
   sync_complete_at: 2026-09-30T00:00:00+09:00
-  sync_commit_sha: "pending-backfill-sync"
+  sync_commit_sha: "f7417e42f"
   sync_status: complete
   changelog_entry_position: "[Unreleased] › Added › first bullet (SPEC-TODO-CLAIM-LEASE-001)"
   mx_tag_validation: performed as sync sub-step — no new MX tags owed; BacklogItem ANCHOR advisory exceedance documented in §E.2 known limitations
