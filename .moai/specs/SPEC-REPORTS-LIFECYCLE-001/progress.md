@@ -140,4 +140,31 @@ sync_should_verify:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-29
+sync_commit_sha: "pending-backfill-sync"   # replaced with the real sync commit SHA in the follow-up chore commit (D3 exemption)
+sync_status: complete
+b12_self_test_a: "pre-emission grep SPEC-REPORTS-LIFECYCLE-001=0, t1320=0 in CHANGELOG.md — cleared for emission"
+b12_self_test_b: "AC count match — acceptance.md live identifiers AC-RLC-001..012 = 12 (reserved-token rows excluded by the live-identifier rule); CHANGELOG entry cites 12 AC"
+b12_self_test_c: "file path verification — hoist.go, done.go, clean.go, clean_reports_archive.go(+test), worktree/hoist_test.go, defaults.go, both SKILL.md mirrors, 4 README locales: all confirmed via ls/grep"
+changelog_entry_position: "CHANGELOG.md [Unreleased] > Added (first entry)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (merged into the single sync commit)"
+  plan_md: "n/a (this SPEC carries no separate plan.md frontmatter transition; plan.md untouched)"
+  acceptance_md: "untouched — body frozen per ownership policy"
+  progress_md: "no status field; §E.4 authored in this sync"
+canary_compliance_check:
+  spec_body_untouched: true   # N1 already repaired in 7aaa5bb03 before sync; no body edits in sync phase
+  stage_by_pathspec: true
+  no_push_no_merge: true      # lane defers to the leader's batch push + integration window
+sync_should_verify_dispositions:
+  - item: "AC 전수 판정 명령·출력 §E.2 전사 (§D.5 클로저 게이트 1)"
+    result: "confirmed — §E.2 carries command+output transcriptions for all 12 AC"
+  - item: "run_commit_sha 백필"
+    result: "already landed pre-sync — commit 503ec2e8f backfilled §E.3 with 292cf70f8 (M-final)"
+  - item: "N1 cosmetic 잔여 (spec.md:89/acceptance.md:10)"
+    result: "already repaired pre-sync — commit 7aaa5bb03 reworded AC-RLC-002 cells to sorted blob-SHA list identity"
+  - item: "미러 변경분 중립성 재판정"
+    result: "SKILL.md mirrors carry no SPEC IDs, dates, SHAs, or internal paths (verified by read); CI template-neutrality-check remains the safety net"
+readme_docs_site_decision: "README 4-locale verb-table rows updated (worktree row gains hoist, clean row gains --reports-archive) — existing rows documenting the new verbs, no invented sections; docs-site deferred (worktree guide/faq + moai-clean pages need authored 4-locale sections + hugo build — follow-up card)"
+```
