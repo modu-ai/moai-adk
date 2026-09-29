@@ -200,6 +200,11 @@ func TestTodoClaim_Renew(t *testing.T) {
 	if _, _, err := runTodo(t, "claim", "--lane", "lane-1"); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
+	// Stamp the live lease deterministically 3 minutes out: a renewal in the
+	// same RFC 3339 second as the claim would otherwise format an identical
+	// expiry and read as "did not extend" — a test-timing artifact, not a
+	// renewal semantics question.
+	claimSeedRecord(t, store, "t1", "picked", "lane-1", time.Now().Add(3*time.Minute).UTC().Format(time.RFC3339))
 	rec, err := store.LoadPure()
 	if err != nil {
 		t.Fatalf("reload: %v", err)

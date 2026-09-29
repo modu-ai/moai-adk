@@ -370,6 +370,7 @@ func TestSD_AC015_LaneQueueAllowlistWalk(t *testing.T) {
 		"list":        nil,
 		"done":        {"t1"},
 		"next":        {"1"},
+		"claim":       nil,
 		"unpick":      {"t1"},
 		"edit":        {"1", "text"},
 		"move":        {"1"},

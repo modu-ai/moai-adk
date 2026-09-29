@@ -26,11 +26,64 @@ plan_phase:
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### AC matrix (manager-develop, run-phase; measured at branch WT-todo-claim-lease, HEAD c982f763d + M5 repairs, 2026-09-29/30)
+
+| AC | Status | Command (env-scrubbed compound form) | Observed result |
+|----|--------|--------------------------------------|-----------------|
+| AC-TCL-001 | PASS | `go test ./internal/cli -run '^TestTodoClaim_Success$' -count=1` | ok — oldest card claimed, picked_by/lease_expires_at(≈15m)/picked_at stamped, id+text+expiry output |
+| AC-TCL-002 | PASS | `go test ./internal/kanban -run '^TestConcurrencyStress$' -count=1` (also `-race`) | ok — 8 actors over 4 cards: 4 wins, raced losses ErrClaimRaced, partial writes 0, raced rows byte-identical; green under -race |
+| AC-TCL-003 | PASS | `go test ./internal/cli -run '^TestTodoClaim_RefusesNonQueued$' -count=1` | ok — picked/hold/dropped/future-state arms refuse distinctly, engine artifact sha256 identical around every refusal |
+| AC-TCL-004 | PASS | `go test ./internal/kanban -run '^TestBacklogClaim_ReclaimsExpired$' -count=1` | ok — lapsed lease returned to queued with the 4-field cleared set, id+prev-holder surfaced, reclaimed card re-claimed |
+| AC-TCL-005 | PASS | `go test ./internal/kanban -run '^TestBacklogClaim_UnparseableExpiryExpired$' -count=1` | ok — unparseable expiry judged EXPIRED (C4), reclaimed by both ReclaimExpired and claim |
+| AC-TCL-006 | PASS | `go test ./internal/cli -run '^TestTodoClaim_Renew$' -count=1` + `go test ./internal/kanban -run '^TestBacklogClaim_RenewAfterExpiry$' -count=1` | ok — renewal resets to now+15m (homestate absolute-reset shape), no other field moves, foreign holder refused, renew-after-expiry commits the return then refuses |
+| AC-TCL-007 | PASS | `go test ./internal/kanban -run '^(TestSchemaFreezeRecordsTransitionStamps\|TestBacklogV1ToV2MigrationRoundTrip\|TestTodoHistoryAddsNoSchemaChange)$' -count=1` + new `TestBacklogLeaseRetrofitConvergesAfterRebuild` / `TestBacklogReadToleratesMissingLeaseColumns` | ok — 11-column items / 14-column archived_items tuples converge fresh↔upgraded, retrofit strictly after version reconciliation, pre-retrofit databases read with nil lease pointers |
+| AC-TCL-008 | PASS | `go test ./internal/cli -run '^TestTodoListJSON_GoldenByteIdentity$' -count=1` | ok — golden byte-identity held with NO fixture regeneration; lease fields excluded from the JSON render via todoJSONProjection |
+| AC-TCL-009 | PASS | `go test ./internal/cli -run '^TestTodoClaim_LaneGovernance$' -count=1` + `TestTodoClaimMCP_Mirror` | ok — arms 1/3 refuse with the identical todoLaneMutationRefusalText("claim") (CLI and MCP carry the same text), arm 2 attributes picked_by=lane-9, queue byte-identical on refusals |
+| AC-TCL-010 | PASS | `go test ./internal/cli -run '^TestTodoClaim_NoCardExit$' -count=1` | ok — exitCodeError code 3 (factoryNextNoCardExit), non-error stdout message |
+| AC-TCL-011 | PASS | `go test ./internal/kanban -run '^TestBacklogClaim_LiveLeaseGuard$' -count=1` + existing `TestTodoUnpick_RevertsPickedToQueued` / `TestTodoUnpick_RefusalsLeaveFileUntouched` | ok — raced refusal byte-identical, A's reclamation leaves live-leased B untouched, unpick guards stay green name-invariant |
+| AC-TCL-012 | PASS | `go test ./internal/cli -run '^TestTodoClaim_ListHistoryExposesLeaseColumns$' -count=1` | ok — human list/history carry by=/lease= cells on lease-holding rows (text stays last, no-lease rows keep historical shape), JSON face exposes nothing |
+
+### E8 RED evidence (verbatim pre-GREEN, captured per milestone)
+
+- M1: freeze + convergence asserted 9/12-column tuples vs expected 11/14 (`--- FAIL: TestBacklogLeaseRetrofitConvergesAfterRebuild ... want them to end with "picked_at:TEXT:0:NULL dropped_at:TEXT:0:NULL picked_by:TEXT:0:NULL lease_expires_at:TEXT:0:NULL"`, plus both freeze failures); mutant probe on the NULL-fallback guard observed failing (`lease pointers = 0x…/<nil>, want nil`) before revert.
+- M2: verbatim compile failure — `store.Claim undefined`, `undefined: ErrClaimRaced`, `store.RenewLease undefined`, `undefined: ErrLeaseExpired`, `store2.ReclaimExpired undefined`.
+- M3: verbatim run failures — `unknown command "claim" for "todo"`, `unknown flag: --lane`, no-card arm not an exitCodeError.
+- M4: verbatim compile failure — `undefined: handleTodoClaim`.
+- M5: the full-suite cascade observed four pre-existing column/verb pins red before their additive re-records (`TestTransitionStampColumns_FreshUpgradedConverge`, `TestBacklogLanding_ItemsColumnShape`, `TestBacklogLanding_ArchivedItemsColumnShape`, `TestBacklogArchive_PerItemContractFrozen`) and two walk/parity pins (`TestSD_AC015_LaneQueueAllowlistWalk`, `TestGTDAllTodoVerbsParity`).
+
+### Security-scan pre-disposition (run-phase, for the sync-phase Phase 8 scan)
+
+The MoAI Security Guardian flagged "sql-injection (high): SQL built by string concatenation" on the M1 edits. Disposition: NOT a finding. The flagged interpolations are (a) `ensureColumn`'s `ALTER TABLE %s ADD COLUMN %s TEXT` — SQLite cannot parameterize DDL identifiers, and every table/column value is a compile-time constant from `backlogLeaseColumns`/`backlogTransitionStampColumns`; (b) the widened SELECT column lists in `readSnapshot`/`readArchive` — every fragment comes from `columnExpr`, which returns only a bare column name or the literal `NULL`; (c) the INSERT statements — fully static column lists, every VALUE through a `?` placeholder. No user or runtime input reaches any statement text; the pattern is the in-repo additive-DDL discipline every prior retrofit (landing, transition stamps) runs through. Disposition documented in code comments at the flagged sites (backlog_sqlite.go ensureLeaseColumns, backlog_migrate.go both SELECTs).
+
+### Known limitations / post-implementation review
+
+- 구버전 바이너리 downgrade: an old binary's whole-record rewrite drops lease column data (documented edge case; no runtime defense per plan §C).
+- `todo unpick` keeps its exact historical semantics — it does not clear picked_by/lease_expires_at (PRESERVE constraint); a queued card can carry stale lease fields until its next claim overwrites them. Reclamation's cleared-field set covers the lease fields; noted as cosmetic residue, flagged to sync/docs.
+- Full `./internal/cli` suite on this host runs past go's default 10m package timeout (~20m observed); load-induced flakes observed once (`TestGateCmd_SecondRunWaitsForFirst` — execution windows overlapping by 0ms under full-suite load; passes solo and touches none of this SPEC's code). CI is the verdict surface.
+- BacklogItem's ANCHOR count in backlog_store.go is now 8 vs the mx.yaml advisory limit 3 — the file already carried 5 pre-SPEC; per scope discipline no pre-existing tags were demoted.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_phase:
+  card: t1342
+  spec: SPEC-TODO-CLAIM-LEASE-001
+  run_complete_at: 2026-09-30T00:30:00+09:00
+  run_commit_sha: "pending-backfill-run"
+  run_status: complete
+  ac_pass_count: 12
+  ac_fail_count: 0
+  preserve_list_post_run_count: 5
+  l44_pre_commit_fetch: n/a (worktree lane; no push per lane protocol)
+  l44_post_push_fetch: n/a (lane does not push)
+  new_warnings_or_lints_introduced: 0
+  cross_platform_build:
+    native: exit 0
+    windows_amd64: exit 0
+  total_run_phase_files: 12
+  m1_to_mn_commit_strategy: "5 commits (M1 schema+freeze / M2 store ops / M3 CLI verb / M4 MCP mirror / M5 test cascade + repairs)"
+  red_evidence: captured verbatim per milestone (see §E.2 E8)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

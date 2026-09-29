@@ -56,11 +56,17 @@ func TestBacklogArchive_StateEnumUnchanged(t *testing.T) {
 //     nullable transition stamps in the added_at TEXT format, `omitempty`
 //     after the Landing precedent so a card carrying none marshals
 //     byte-identically to before.
+//   - PickedBy / LeaseExpiresAt — SPEC-TODO-CLAIM-LEASE-001 REQ-TCL-001:
+//     the claim lease's holder label and RFC 3339 expiry, `omitempty` after
+//     the stamp precedent; absence is nil/SQL NULL (REQ-TLE-006) and the
+//     JSON face renders through the lease-free projection (REQ-TCL-014).
 var permittedItemFieldAdditions = map[string]string{
-	"Landing":   "*kanban.LandingEvidence",
-	"CardUUID":  "*string",
-	"PickedAt":  "*string",
-	"DroppedAt": "*string",
+	"Landing":        "*kanban.LandingEvidence",
+	"CardUUID":       "*string",
+	"PickedAt":       "*string",
+	"DroppedAt":      "*string",
+	"PickedBy":       "*string",
+	"LeaseExpiresAt": "*string",
 }
 
 // frozenItemFields is the pre-addition per-item contract: ordered

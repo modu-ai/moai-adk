@@ -251,13 +251,10 @@ func TestConcurrencyStress(t *testing.T) {
 	// the add phase tolerates it — it is neither a win nor a raced loss.
 	const claimCards = 4
 	claimStore := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
-	claimIDs := make([]string, 0, claimCards)
 	for i := 0; i < claimCards; i++ {
-		item, _, err := claimStore.Add(fmt.Sprintf("claim card %d", i))
-		if err != nil {
+		if _, _, err := claimStore.Add(fmt.Sprintf("claim card %d", i)); err != nil {
 			t.Fatalf("seed claim card %d: %v", i, err)
 		}
-		claimIDs = append(claimIDs, item.ID)
 	}
 	pre := backlogItemTuples(t, claimStore)
 
