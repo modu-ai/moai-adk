@@ -121,6 +121,8 @@ leaving the file untouched.`,
 					original = rec.Items[i].Text
 					rec.Items[i].Text = todoDropMarkerOpen + reason + todoDropMarkerClose + original
 					rec.Items[i].State = kanban.BacklogStateDropped
+					// REQ-TST-006: the drop is stamped at the transition.
+					rec.Items[i].DroppedAt = todoStampNow()
 					return nil
 				}
 				return fmt.Errorf("no backlog item %s", id)
@@ -184,6 +186,10 @@ form a listing shows, marker included) and refuses the undrop on a mismatch.`,
 					restored = stripTodoDropMarker(rec.Items[i].Text)
 					rec.Items[i].Text = restored
 					rec.Items[i].State = kanban.BacklogStateQueued
+					// REQ-TST-006: undrop clears the stamp — a queued card
+					// carries no dropped stamp, and a later re-drop stamps
+					// afresh.
+					rec.Items[i].DroppedAt = nil
 					return nil
 				}
 				return fmt.Errorf("no backlog item %s", id)

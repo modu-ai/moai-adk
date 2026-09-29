@@ -749,7 +749,28 @@ func newTodoDoneCmd() *cobra.Command {
 					}
 					verdict = answer
 				}
-				return rec.ArchiveCard(id)
+				if err := rec.ArchiveCard(id); err != nil {
+					return err
+				}
+				if requireLanded {
+					// REQ-TST-008: the answering path persists what the query
+					// said — verdict, answering ref, verdict time — onto the
+					// entry ArchiveCard just appended, alongside (never
+					// instead of) any operator-recorded evidence the row
+					// already carried (REQ-TST-009). Without the flag nothing
+					// is persisted here: no query ran, so no invented answer
+					// and no fabricated record. The record carries no SHA —
+					// a query-derived SHA is outside the evidence store's
+					// write authority, and the delivering SHA is re-derived
+					// at re-adjudication by re-running the predicate against
+					// the recorded ref (REQ-TST-013).
+					rec.Archived[len(rec.Archived)-1].LandingVerdict = &kanban.LandingVerdict{
+						Verdict: verdict,
+						Ref:     ref,
+						At:      time.Now().UTC().Format(time.RFC3339),
+					}
+				}
+				return nil
 			}); err != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
@@ -973,6 +994,9 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 								id, todoTextPrefix(rec.Items[i].Text), expect)
 						}
 						rec.Items[i].State = kanban.BacklogStatePicked
+						// REQ-TST-004: the current picked episode begins now;
+						// any stamp from a previous episode is overwritten.
+						rec.Items[i].PickedAt = todoStampNow()
 						pickedText = rec.Items[i].Text
 						if specID != "" {
 							// Recorded as-is: the store is not a SPEC registry;
@@ -1032,6 +1056,8 @@ func newTodoUnpickCmd() *cobra.Command {
 						return fmt.Errorf("backlog item %s is %s, not picked", id, rec.Items[i].State)
 					}
 					rec.Items[i].State = kanban.BacklogStateQueued
+					// REQ-TST-005: a queued card carries no picked stamp.
+					rec.Items[i].PickedAt = nil
 					rec.Items[i].SpecID = nil
 					text = rec.Items[i].Text
 					return nil
@@ -1070,6 +1096,16 @@ func normalizeTodoRef(arg string) string {
 		return "t" + arg
 	}
 	return arg
+}
+
+// todoStampNow returns a pointer to the current instant in the store's
+// added_at TEXT format (RFC 3339 UTC) — the value every transition stamp
+// carries (SPEC-TODO-TRANSITION-STAMPS-001 REQ-TST-004..007). It is set
+// inside the Mutate callback at the moment the transition happens, so the
+// stamp and the state change land in one locked write.
+func todoStampNow() *string {
+	v := time.Now().UTC().Format(time.RFC3339)
+	return &v
 }
 
 // todoTextPrefixMax bounds the card text carried in a pick confirmation —
