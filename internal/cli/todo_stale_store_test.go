@@ -190,6 +190,27 @@ func TestTodoStaleStoreDisclosure_NoDisclosureWithoutDivergence(t *testing.T) {
 	}
 }
 
+// TestTodoStaleStoreDisclosure_AddVerb — card t1313 (GitHub #1732): the
+// WRITE verb discloses the divergence too. The add response prints an issued
+// id as its receipt; when the answering store is the home database while a
+// divergent project-local store exists, the response must say so on stderr —
+// the observed incident was an id printed by the home store read back against
+// a divergent store with no signal at all. Stdout keeps the bare
+// "id position" line (machine surface), and the write lands on the answering
+// store exactly as it would without the disclosure.
+func TestTodoStaleStoreDisclosure_AddVerb(t *testing.T) {
+	_, _, legacyDB := staleStoreFixture(t)
+	stdout, stderr, err := runTodo(t, "add", "alpha one")
+	if err != nil {
+		t.Fatalf("add: %v", err)
+	}
+	assertStaleDisclosure(t, "add", stdout, stderr, err, legacyDB)
+	id, _, ok := strings.Cut(strings.TrimSpace(stdout), " ")
+	if !ok || !strings.HasPrefix(id, "t") {
+		t.Errorf("add stdout %q does not open with the issued id — the receipt line must stay the machine surface", stdout)
+	}
+}
+
 // TestTodoStaleStoreDisclosure_ReadPathPurity — AC-TSS-003: running all
 // five read verbs leaves both database files byte- and mtime-identical and
 // creates no new files in either directory (no marker, no stray artifact).
