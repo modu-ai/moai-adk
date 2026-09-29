@@ -296,7 +296,7 @@ m1_to_m4_commit_strategy: "one commit per milestone (M1 938e43f61, M2 46e3ec0da,
 
 ```yaml
 sync_complete_at: 2026-09-30T01:58:24+09:00
-sync_commit_sha: "pending-backfill-sync"  # a commit cannot cite its own hash; backfilled in the following commit
+sync_commit_sha: "dcf744fdc"  # the single sync commit (3-phase close); backfilled per convention
 sync_status: complete
 b12_self_test_a: pass  # grep -c 'SPEC-RELATION-PICKUP-FILTER-001' CHANGELOG.md → 0 before emission (no duplicate entry)
 b12_self_test_b: pass  # distinct AC ids in acceptance.md = 7 (AC-RPF-001..007); CHANGELOG entry cites 7/7 PASS
