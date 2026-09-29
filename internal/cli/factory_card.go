@@ -42,12 +42,20 @@ func factoryCardRoot() string { return resolveTodoQueueRoot() }
 // factoryLaneAdmission reports lane admission: the role marker equals the
 // role-value constant, read through the internal/config constants only
 // (REQ-SD-017 forbids string literals at stamp/compare sites).
+//
+// @MX:ANCHOR: [AUTO] Lane admission predicate — every lane-gated surface funnels through it.
+// @MX:REASON: 7 call sites across factory_card.go and mcp_factory_card.go; a queue-writing verb that skips this predicate breaks the lane permission boundary (REQ-SD-015/-016/-017).
+// @MX:SPEC: SPEC-FACTORY-SELF-DISPATCH-001
 func factoryLaneAdmission() bool {
 	return os.Getenv(config.EnvFactoryRole) == config.FactoryRoleLane
 }
 
 // factoryLaneRefusal reports lane refusal: admission, or a non-empty
 // lane-label variable, or the backend variable naming the Codex harness.
+//
+// @MX:ANCHOR: [AUTO] Lane refusal predicate — one wording source for the queue guard, the decide guard, and the todo guard.
+// @MX:REASON: 4 call sites (factory_card.go, mcp_factory_card.go, mcp_todo.go, todo.go); widening one path alone would let a lane queue mutation slip past its siblings (REQ-SD-015).
+// @MX:SPEC: SPEC-FACTORY-SELF-DISPATCH-001
 func factoryLaneRefusal() bool {
 	return factoryLaneAdmission() ||
 		os.Getenv(config.EnvMoaiFactoryWorker) != "" ||
@@ -264,6 +272,10 @@ func factoryCardQueueTitle(root, cardID string) string {
 // the card id and whose branch is renamed in place to WT-<slug> from the
 // card's queue title, and records the created path on the card. It returns
 // the card's worktree path and whether a new tree was created.
+//
+// @MX:ANCHOR: [AUTO] Per-card worktree materialization — the only path that creates a card worktree.
+// @MX:REASON: 4 callers (factory_card, mcp_factory_card, factory_lane_relaunch, codex_launcher); a caller bypassing it would create a bare `git worktree add` outside the shared materializer (REQ-SD-011).
+// @MX:SPEC: SPEC-FACTORY-SELF-DISPATCH-001
 func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card homestate.Card, lane string, out io.Writer) (string, bool, error) {
 	if p := strings.TrimSpace(card.WorktreePath); p != "" {
 		return p, false, nil

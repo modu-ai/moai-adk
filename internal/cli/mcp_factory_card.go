@@ -94,6 +94,10 @@ func requiredProjectRootOption() mcp.ToolOption {
 // (REQ-SD-024): absent is a rejection naming the argument, present runs the
 // same validation the existing project_root tools run (validateProjectRoot,
 // which rejects a non-MoAI-project-root naming the path).
+//
+// @MX:ANCHOR: [AUTO] REQUIRED project_root resolver for the factory MCP tools.
+// @MX:REASON: 3 call sites (factory_next/stage/complete handlers); a new tool handler skipping it would act on the server's working directory instead of the caller's tree (REQ-SD-024).
+// @MX:SPEC: SPEC-FACTORY-SELF-DISPATCH-001
 func mcpRequiredProjectRoot(req mcp.CallToolRequest, tool string) (string, error) {
 	raw := strings.TrimSpace(req.GetString(projectRootArg, ""))
 	if raw == "" {

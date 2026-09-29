@@ -816,4 +816,28 @@ re-verifies, -018, -021, -022. Continuation at `f37942d79` (clean).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-29
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+b12_self_test_a: "grep -c SPEC-FACTORY-SELF-DISPATCH-001 CHANGELOG.md -> 0 before emission (re-run by this sync; post-insertion the entry is the only matching line)"
+b12_self_test_b: "distinct AC ids in acceptance.md -> 25 (AC-SD-001..025; zero [RETIRED]/[REF] markers — every identifier live); CHANGELOG entry cites 25"
+b12_self_test_c: "every path cited in the entry verified with ls — internal/cli/{factory_card,codex_launcher,mcp_factory_card,mcp_todo,todo}.go, internal/hook/{session_start_factory,session_start_factory_i18n,pre_tool}.go, internal/config/envkeys.go"
+changelog_entry_position: "[Unreleased] ### Added, first entry"
+verification_baseline:
+  anchored_sweep: "go test ./internal/cli -run '^TestSD_AC00|^TestSD_AC01|^TestSD_AC02|^TestSD_WorktreeSlugShape' -count=1 -> ok github.com/modu-ai/moai-adk/internal/cli 55.976s (pre-sync, slot-leased) · re-run after the MX comment edits -> ok … 58.230s, exit 0"
+  build: "go build ./... exit 0 · GOOS=windows GOARCH=amd64 go build ./... exit 0"
+  lint: "golangci-lint run --timeout=2m ./internal/cli/... ./internal/hook/... ./internal/codexwiring/... -> 0 issues. (v2.1.6, the CI-pinned version)"
+  spec_lint: |
+    moai spec lint --strict reports exactly one finding for this SPEC (full-scan grep; no non-Info row names this SPEC):
+    INFO OwnershipTransitionUnmeasured — SPEC SPEC-FACTORY-SELF-DISPATCH-001 transition "draft" → "in-progress" expected owner "manager-develop" but commit 490d64649 (M1, feat(SPEC-FACTORY-SELF-DISPATCH-001): M1 lane predicate, selection, permission boundary) has no Authored-By-Agent trailer — ownership transition unmeasured.
+    LEAD DISPOSITION (Option A — accept and record, lane decision 2026-09-29): the finding is Info-severity measurement-state by design, not a violation (Info never changes the lint exit status per the frontmatter-schema ownership rule); the transition's substance is correct — manager-develop authored M1 per the run-phase delegation, matching the ownership matrix; the trailer cannot be added without rewriting 490d64649 and every descendant SHA, breaking §E.2/§E.3/CHANGELOG/superseded_by SHA citations — the prohibited direction. acceptance.md §F's "reports no finding" letter is unmet by this one Info finding; the severity-qualified interpretation is recorded here for the sync-auditor.
+ac_pass_count: 25
+mx_rotation: "4 @MX:ANCHOR added on the fan_in>=3 surfaces the run phase left untagged — factoryLaneAdmission (7 non-test callers), factoryLaneRefusal (4), factoryEnsureCardWorktree (4), mcpRequiredProjectRoot (3); counts measured with grep over non-test sources. No @MX:WARN added (no goroutines/channels in the new files; complexity unmeasured — blanket adds declined). Existing run-phase tags verified in place (codex_launcher.go, envkeys.go)."
+codemap_rotation: "no codemap regeneration — the workflow drift check (doc-execution.md D5) gates on new directories / dependency-graph change / module reorganization, none produced by this card; the t1239-era factory verb enumeration in codemaps (assign|status|decide) is stale and is carried to card t1257's documentation layer and the next codemaps refresh, not hand-patched in a generated file"
+scope_decision: "conscious scope decision per the sync dispatch — acceptance.md §F DoD = CHANGELOG + clean gates + the partially_superseded_by records; docs-site pages and README text for the new verbs are card t1257's scope (spec.md §E.2 hand-off list), skipped deliberately"
+frontmatter_status_transitions:
+  spec.md: in-progress -> implemented -> completed (merged into this single sync commit; updated: 2026-09-29 already current)
+sync_audit: "Tier L sync-audit follows this commit (lane task #8); the lead reports the Option A disposition alongside the audit verdict"
+```
+
