@@ -77,7 +77,7 @@ plan_audit_iter2: PASS 1.0 (Tier M threshold 0.80), .moai/reports/t1346/plan-aud
 
 ```yaml
 sync_complete_at: 2026-09-30
-sync_commit_sha: pending-backfill-sync   # D3 placeholder — backfilled in the follow-up commit
+sync_commit_sha: b7a5fbd68               # backfilled: the sync close commit cannot cite its own SHA (D3)
 sync_status: complete
 b12_self_test_a: not-applicable          # CHANGELOG emission not owed — docs-only SPEC, plan.md §C D1 (docs surface), no CHANGELOG requirement in plan.md; no entry emitted (per delegation: do not invent entries)
 b12_self_test_b: not-applicable          # same — no CHANGELOG entry drafted, no AC-count comparison owed
@@ -85,7 +85,7 @@ b12_self_test_c: not-applicable          # same — no file paths claimed in any
 changelog_entry_position: none           # no [Unreleased] entry — docs-only lane-protocol wording, local-only files (plan.md carries no sync CHANGELOG requirement)
 frontmatter_status_transitions:
   draft_to_in_progress: 286712396        # manager-develop, M1 commit
-  in_progress_to_completed: pending-backfill-sync   # this sync commit (3-phase close, merged transition)
+  in_progress_to_completed: b7a5fbd68   # sync close commit (3-phase close, merged transition)
 canary_compliance_check:
   template_mirror: clean                 # .claude/rules/local/ + AGENTS.local.md carry no template mirror by design (plan.md §D)
   neutral_surface: clean                 # zero files under internal/template/ in card delta (run §E.2 re-verified)
