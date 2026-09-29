@@ -99,6 +99,20 @@ var moaiMCPTools = []ToolDef{
 	// workflow.jev.enabled — the shipped default is false, and while the
 	// chain's fitness gate stands unrun no surface may present it as available.
 	{Name: "jev_ask", WriteCapable: false},
+	// Factory card + queue tools (SPEC-FACTORY-SELF-DISPATCH-001
+	// REQ-SD-014): the MCP forms of `moai factory next/stage/complete/decide`
+	// and `moai todo add/list`, each the same implementation its CLI
+	// counterpart calls. todo_add mutates the queue; factory_next leases,
+	// promotes the queue, and creates a card worktree; factory_stage applies
+	// an F1 edge and renews the lease; factory_complete records the merge;
+	// factory_decide records an operator decision. todo_list is a read-only
+	// render (on the lane read-only allowlist, like its CLI verb).
+	{Name: "todo_add", WriteCapable: true},
+	{Name: "todo_list", WriteCapable: false},
+	{Name: "factory_next", WriteCapable: true},
+	{Name: "factory_stage", WriteCapable: true},
+	{Name: "factory_complete", WriteCapable: true},
+	{Name: "factory_decide", WriteCapable: true},
 }
 
 // MoaiMCPTools returns the single shared declaration of the moai MCP server's

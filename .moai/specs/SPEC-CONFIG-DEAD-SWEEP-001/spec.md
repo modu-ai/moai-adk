@@ -9,7 +9,7 @@ author: manager-spec
 priority: P1
 phase: "v3.x target"
 module: config-dead-sweep
-lifecycle: spec-first
+lifecycle: spec-anchored
 tags: "dead-config, research-yaml, state-dir, revert-recovery, template-neutrality, config-honesty"
 tier: S
 related_specs: [SPEC-RALPH-CONFIG-REDESIGN-001, SPEC-CONFIG-KEY-HONESTY-001, SPEC-WEBCONF-SIMPLIFY-001]

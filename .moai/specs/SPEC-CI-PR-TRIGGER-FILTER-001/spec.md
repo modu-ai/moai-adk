@@ -9,7 +9,7 @@ author: manager-spec
 priority: P3
 phase: "v3.1.4 target"
 module: ".github/workflows"
-lifecycle: spec-first
+lifecycle: spec-anchored
 tags: "ci, github-actions, trigger, git-flow, graph-freshness"
 tier: S
 era: V3R6

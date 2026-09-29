@@ -1,5 +1,7 @@
 # Verification-Claim Integrity
 
+<!-- mirror-fork: intentional — this copy is deliberately divergent from the local dogfood copy; do not sync mechanically -->
+
 Doctrine establishing the **"no unobserved-verification-claim" invariant** for all MoAI actors. This rule is automatically loaded for the orchestrator and all agents. It is a policy-layer doctrine — it defines the norm; it does not itself run a runtime detector.
 
 > The motivating defect class is general: an actor claiming a verification or completion it did not actually observe. A complementary runtime layer (advisory, warn-first, fail-open) may detect one shape of this violation; this doctrine codifies the policy norm that binds every actor regardless of whether such a runtime layer is present.
