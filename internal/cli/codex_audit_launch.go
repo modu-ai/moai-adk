@@ -73,8 +73,7 @@ var codexAuditServerName = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 // codexAuditRequest is one launch intent.
 type codexAuditRequest struct {
 	Role        string        // role name, e.g. plan-auditor
-	ProjectRoot string        // the launcher's own project root
-	CallerDir   string        // a directory inside the caller's worktree
+	ProjectRoot string        // the serving checkout's root (repository boundary)
 	Root        string        // requested working root
 	Out         string        // verdict destination; empty returns on stdout
 	Route       string        // direct | shell | mcp
@@ -170,7 +169,7 @@ func prepareCodexAudit(ctx context.Context, req codexAuditRequest) *codexAuditPl
 		return nil
 	}
 
-	root, err := codexAuditValidateRoot(ctx, req.ProjectRoot, req.CallerDir, req.Root)
+	root, err := codexAuditValidateRoot(ctx, req.ProjectRoot, req.Root)
 	if err != nil {
 		return fail("working root rejected: %v", err)
 	}
@@ -287,26 +286,22 @@ func (p *codexAuditPlan) run(ctx context.Context) codexAuditResult {
 }
 
 // codexAuditValidateRoot accepts root only when, after symlink resolution, it
-// is the top of the caller's own worktree and a worktree registered in the
-// same repository as projectRoot. A sibling worktree or the primary checkout
-// is refused even though it is registered.
-func codexAuditValidateRoot(ctx context.Context, projectRoot, callerDir, root string) (string, error) {
-	if root == "" || callerDir == "" || projectRoot == "" {
-		return "", errors.New("root, caller directory, and project root are all required")
+// is a worktree registered in the same repository as projectRoot — the serving
+// checkout. The caller presents its own tree explicitly: a sibling worktree
+// and the primary checkout are accepted when registered, and the root is never
+// required to equal the toplevel of the directory this server process started
+// in (SPEC-CODEX-ROLE-AUDIT-ROOT-001 REQ-001). An absent root is refused, so
+// no call ever falls back to a default tree (REQ-002).
+func codexAuditValidateRoot(ctx context.Context, projectRoot, root string) (string, error) {
+	if root == "" {
+		return "", errors.New("worktree root is required")
+	}
+	if projectRoot == "" {
+		return "", errors.New("project root is required")
 	}
 	resolved, err := codexAuditResolve(root)
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", root, err)
-	}
-	callerTop, err := codexAuditGit(ctx, callerDir, "rev-parse", "--show-toplevel")
-	if err != nil {
-		return "", fmt.Errorf("caller directory is not inside a git worktree: %w", err)
-	}
-	if callerTop, err = codexAuditResolve(callerTop); err != nil {
-		return "", err
-	}
-	if resolved != callerTop {
-		return "", fmt.Errorf("%s is not the caller's own worktree (%s)", resolved, callerTop)
 	}
 	rootCommon, err := codexAuditGit(ctx, resolved, "rev-parse", "--path-format=absolute", "--git-common-dir")
 	if err != nil {
@@ -789,6 +784,41 @@ func codexAuditGit(ctx context.Context, dir string, args ...string) (string, err
 	return strings.TrimSpace(string(out)), nil
 }
 
+// runCodexAuditVerb is the shared launcher path of the two CLI verbs
+// (`moai codex audit` and `moai codex role-audit`): the working root is the
+// git worktree containing the current directory, and every refusal travels
+// through the same codexAuditValidateRoot as the MCP route.
+func runCodexAuditVerb(cmd *cobra.Command, role string, out string) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	top, err := codexAuditGit(cmd.Context(), cwd, "rev-parse", "--show-toplevel")
+	if err != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "codex audit %s: current directory is not inside a git worktree\n", role)
+		return &exitCodeError{code: 1}
+	}
+	dest := out
+	if dest != "" {
+		if dest, err = filepath.Abs(dest); err != nil {
+			return err
+		}
+	}
+	ctx := cmd.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	res, _ := runCodexAudit(ctx, codexAuditRequest{
+		Role: role, ProjectRoot: top, Root: top, Out: dest,
+		Route: codexAuditRouteShell, Task: cmd.InOrStdin(),
+		Stdout: cmd.OutOrStdout(), Stderr: cmd.ErrOrStderr(),
+	})
+	if res.ExitCode != 0 {
+		return &exitCodeError{code: res.ExitCode}
+	}
+	return nil
+}
+
 // newCodexAuditCmd builds `moai codex audit <role> [--out <path>]`.
 func newCodexAuditCmd() *cobra.Command {
 	var out string
@@ -805,34 +835,34 @@ func newCodexAuditCmd() *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cwd, err := os.Getwd()
-			if err != nil {
-				return err
-			}
-			top, err := codexAuditGit(cmd.Context(), cwd, "rev-parse", "--show-toplevel")
-			if err != nil {
-				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "codex audit %s: current directory is not inside a git worktree\n", args[0])
-				return &exitCodeError{code: 1}
-			}
-			dest := out
-			if dest != "" {
-				if dest, err = filepath.Abs(dest); err != nil {
-					return err
-				}
-			}
-			ctx := cmd.Context()
-			if ctx == nil {
-				ctx = context.Background()
-			}
-			res, _ := runCodexAudit(ctx, codexAuditRequest{
-				Role: args[0], ProjectRoot: top, CallerDir: cwd, Root: top, Out: dest,
-				Route: codexAuditRouteShell, Task: cmd.InOrStdin(),
-				Stdout: cmd.OutOrStdout(), Stderr: cmd.ErrOrStderr(),
-			})
-			if res.ExitCode != 0 {
-				return &exitCodeError{code: res.ExitCode}
-			}
-			return nil
+			return runCodexAuditVerb(cmd, args[0], out)
+		},
+	}
+	cmd.Flags().StringVar(&out, "out", "", "write the returned text to this path instead of stdout")
+	return cmd
+}
+
+// newCodexRoleAuditCmd builds `moai codex role-audit <role> [--out <path>]`
+// (SPEC-CODEX-ROLE-AUDIT-ROOT-001 REQ-004): the CLI twin of the MCP
+// codex_role_audit tool, so a session in its own linked-worktree working
+// directory can launch the read-only role audit directly, without the MCP
+// server, under the same refusal semantics.
+func newCodexRoleAuditCmd() *cobra.Command {
+	var out string
+	cmd := &cobra.Command{
+		Use:   "role-audit <role>",
+		Short: "Run a read-only role against this worktree (the codex_role_audit MCP tool's CLI twin)",
+		Long: "The CLI twin of the codex_role_audit MCP tool: run a role whose\n" +
+			"permission contract is read-only as one top-level codex exec process\n" +
+			"with the read-only sandbox and every MCP server disabled, task text\n" +
+			"read from stdin. The working root is the git worktree containing the\n" +
+			"current directory, verified against the same registration rules as\n" +
+			"the MCP route; --out must stay inside that worktree's report tree.",
+		Args:          cobra.ExactArgs(1),
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runCodexAuditVerb(cmd, args[0], out)
 		},
 	}
 	cmd.Flags().StringVar(&out, "out", "", "write the returned text to this path instead of stdout")
@@ -841,4 +871,5 @@ func newCodexAuditCmd() *cobra.Command {
 
 func init() {
 	codexCmd.AddCommand(newCodexAuditCmd())
+	codexCmd.AddCommand(newCodexRoleAuditCmd())
 }
