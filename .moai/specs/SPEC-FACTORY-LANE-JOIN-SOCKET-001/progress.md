@@ -48,9 +48,38 @@ Baseline (pre-flight, this tree @ c961c4d4a): `go build ./...` + `GOOS=windows G
 - README 4 occurrences: `README.md`, `README.ko.md`, `README.ja.md`, `README.zh.md` — factory paragraph gains the inverse-direction coverage sentence (verify + restore + fail-closed-on-many) with the `--lead` flag.
 - Parity check: `grep -c -- '--lead'` → 1 per locale in each of factory-mode.md / kanban-mode.md / launchers.md / README (12+4 files all 1).
 
+### M4 — regression, parity matrix, mutant verification
+
+- Full-suite classification: 3 local `go test ./internal/cli` attempts (600s default timeout / 1401s / 1800s -timeout 30m) all died to the global time ceiling with ZERO test-level failures — `grep -cE "^--- FAIL" /tmp/t1330-cli-full-suite.log` → `0` over 5250 lines; `panic: test timed out after 30m0s` fired while `TestUpdateForce_InitOriginNamesSurvive` (UPDATE subsystem, untouched by this card) was 1m41s in. Classification: load/time event on a machine running parallel factory lanes; the package-wide verdict is CI's (lane-local discipline, CLAUDE.local §4/§6/§8).
+- Targeted evidence (this run, this tree @ HEAD below): regression pair + new join/parse/codex-twin cluster `go test ./internal/cli -run '^(TestCCFactoryLaneJoinsDiscoveredLeader|TestGLMFactoryLaneJoinsDiscoveredLeader|TestCodexFactoryLaneJoinsDiscoveredLeader|TestCodexFactoryLeadFlagSurface|TestFactoryLaneJoin.*|TestCCFactoryLeadFlagLegacyRefused|TestFactoryLeadFlagSurfaceGates|TestFactoryRunSelectionAtomicSlotsAndArgv|TestGLM_FactoryLeadRunIsJoinableByLane)$' -count=1 -timeout 10m` → `ok github.com/modu-ai/moai-adk/internal/cli 16.198s`; `go test ./internal/discovery -count=1` → `ok ... 2.188s`; `go test ./internal/homestate -count=1` → `ok ... 47.736s` (85.0% coverage).
+- Mutant probes (each: patch → single test → verbatim RED → revert → package re-green):
+  - AC-005 (liveness check deleted): `--- FAIL: TestDiscoverLeaderDeclinesDeadPidDespiteRecordPresence ... dead-pid candidate verified = [{RunID:runlead1 ... ProcessStart:mutant-stamp ...}], want none`.
+  - AC-007 (resume stamps the caller — recordFactoryRunStart semantics): `--- FAIL: TestCCFactoryLaneJoinsDiscoveredLeader ... resumed row owner = (24446,"1790701220.017243"), want the verdict's verified identity (424242,1700000000.004242)` — the lane's own pid, exactly the hazard REQ-004 forbids.
+  - AC-017 leg a (membership check deleted): `--- FAIL: TestDiscoverLeaderDeclinesCrossProjectCandidate ... cross-project candidate verified = [...], want none`.
+  - AC-017 leg b (readable-identity requirement deleted; run id minted): `--- FAIL: TestDiscoverLeaderDeclinesUnreadableEnv ... verified = [{RunID:mutant00 ...}], want none`.
+- AC-013 mirror parity: TestFactoryLaneJoinMirrorParity (source-level: cc.go/glm.go/codex_factory.go all route through enterFactoryLaneRun; no launcher carries DiscoverLeader/ResumeRun/discoverFactoryLeader) — green in the targeted cluster run; AC-001/AC-002 shape verified through cc AND glm AND the codex twin (TestCodexFactoryLaneJoinsDiscoveredLeader).
+- AC-012 evidence note: the AC's "generation 1" parenthetical reflects `want.Generation:1` at factory_messages.go:96; the MEASURED ordinary chain binds the peer at launch-pending+1 (staged pending generation 1 → bound generation 2). The test pins the substance — "the bind an ordinary join produces" — asserted as pending+1 against the resumed run. acceptance.md body untouched (not run-phase scope); flagged for manager-spec if the auditor wants the parenthetical updated.
+- Coverage (targeted packages, this run): `internal/discovery` 87.3% (after adding DescribeVerifiedLeaders + broker-peer enumeration tests); `internal/homestate` 85.0% (full package); `internal/cli` 7.1% and `internal/hook` 4.3% under SELECTIVE selectors only (the packages are far larger than the selector sweeps; package-wide figures are CI's to report — recorded as a Gap, not a pass).
+- Lint: `golangci-lint run --timeout=2m` over internal/{cli,homestate,discovery,hook,kanban} → `0 issues.` (baseline was 0; no NEW findings).
+- gofmt: `gofmt -l` over the four packages → clean after formatting factory_discovery_test.go.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_(pending run-phase — owned by manager-develop)_
+run_complete_at: 2026-09-30
+run_commit_sha: pending-backfill-run
+run_status: complete (M1-M5 landed; no blockers)
+ac_pass_count: 17
+ac_fail_count: 0
+preserve_list_post_run_count: 7 (factorymsg/store.go resolver+refusals, homestate/factory_run_retire.go, kanban/bootstrap.go, kanban/factory_slots.go, cli/factory.go parse truth table, hook/factory_messages.go, existing regression assertions — untouched; ResolveActiveRun/ReconcileActiveRuns/RetireRunIfDead read-only from discovery)
+l44_pre_commit_fetch: (lane worktree — no fetch performed; integration is the lead's window)
+l44_post_push_fetch: (lane never pushes — lead batch-pushes develop)
+new_warnings_or_lints_introduced: 0 (golangci-lint 0 issues over internal/{cli,homestate,discovery,hook,kanban}; gofmt clean)
+cross_platform_build.darwin: pass (go build ./... exit 0)
+cross_platform_build.windows: pass (GOOS=windows GOARCH=amd64 go build ./... exit 0, pre-flight and post-M3)
+cross_platform_build.linux: pass (GOOS=linux go build ./internal/discovery/ exit 0)
+total_run_phase_files: 29 (Go 12 + tests 4 + SPEC artifacts 2 + docs-site 12 + README 4, minus overlaps — see commits)
+m1_to_m5_commit_strategy: one commit per milestone (M1 757255ff4, M2 c8a0d9137, M3 f892907c1, M5 c8c671a68; M4 was verification — its test additions ride the final commit)
+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

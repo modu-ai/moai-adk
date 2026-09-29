@@ -2,12 +2,17 @@ package discovery
 
 import (
 	"context"
+	"database/sql"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
+	_ "modernc.org/sqlite"
+
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
@@ -19,14 +24,14 @@ import (
 // fakeProcess is one staged candidate: what the injected readers answer for a
 // pid.
 type fakeProcess struct {
-	fingerprint  string
-	state        homestate.ProcessIdentityState
-	argv         []string
-	argvOK       bool
-	env          map[string]string
-	envOK        bool
-	cwd          string
-	cwdOK        bool
+	fingerprint string
+	state       homestate.ProcessIdentityState
+	argv        []string
+	argvOK      bool
+	env         map[string]string
+	envOK       bool
+	cwd         string
+	cwdOK       bool
 }
 
 // stageFakes swaps every probe seam for fakes answering the staged processes.
@@ -361,4 +366,60 @@ func freq(pids []int, pid int) int {
 		}
 	}
 	return n
+}
+
+// DescribeVerifiedLeaders renders every candidate with its run id — the
+// multi-leader fail-closed refusal's payload (REQ-005: naming candidates, no
+// selection among them).
+func TestDescribeVerifiedLeadersNamesEachCandidate(t *testing.T) {
+	out := DescribeVerifiedLeaders([]VerifiedLeader{
+		{RunID: "runaaaa1", PID: 4242, Name: "leader"},
+		{RunID: "runbbbb2", PID: 4243, Name: "leader"},
+	})
+	if !strings.Contains(out, "runaaaa1") || !strings.Contains(out, "runbbbb2") {
+		t.Errorf("DescribeVerifiedLeaders = %q, want both run ids named", out)
+	}
+	if !strings.Contains(out, "4242") || !strings.Contains(out, "4243") {
+		t.Errorf("DescribeVerifiedLeaders = %q, want both pids named", out)
+	}
+	if DescribeVerifiedLeaders(nil) != "" {
+		t.Errorf("DescribeVerifiedLeaders(nil) = %q, want empty", DescribeVerifiedLeaders(nil))
+	}
+}
+
+// The broker-peer enumeration source: peer pids recorded in a run's broker
+// database surface as candidates (candidacy only — the probe decides).
+func TestBrokerPeerPIDsReadsBrokerDatabase(t *testing.T) {
+	ctx := context.Background()
+	root := t.TempDir()
+	t.Setenv("HOME", root)
+	t.Setenv("MOAI_HOME", filepath.Join(root, ".moai"))
+
+	path, err := factorymsg.BrokerPath(root, "runpeer01")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`CREATE TABLE peers(slot TEXT PRIMARY KEY, project_key TEXT NOT NULL, run_id TEXT NOT NULL, backend TEXT NOT NULL, role TEXT NOT NULL, session_uuid TEXT NOT NULL UNIQUE, generation INTEGER NOT NULL, pid INTEGER NOT NULL, process_start TEXT NOT NULL, updated_at TEXT NOT NULL)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO peers VALUES('lane-1','pk','runpeer01','glm','lane','uuid-1',1,777005,'1700000000.5','2026-09-29T00:00:00Z')`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if pids := brokerPeerPIDs(ctx, root, "runpeer01"); len(pids) != 1 || pids[0] != 777005 {
+		t.Errorf("brokerPeerPIDs = %v, want [777005]", pids)
+	}
+	if pids := brokerPeerPIDs(ctx, root, "runabsent"); pids != nil {
+		t.Errorf("brokerPeerPIDs(absent broker) = %v, want nil (fail-open enumeration)", pids)
+	}
 }
