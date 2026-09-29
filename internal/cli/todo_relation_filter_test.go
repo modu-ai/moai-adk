@@ -290,3 +290,57 @@ func TestRunAutoCycleSkipsBlockedCards(t *testing.T) {
 		t.Errorf("the free predecessor t1 was not accepted:\n%s", got2)
 	}
 }
+
+// TestAutoPickTargetsRescueArmUnfiltered — AC-RPF-007 (REQ-RPF-006, M4): the
+// dead-owner rescue arm is NOT gated on relations — a picked card whose owner
+// measures dead is taken over even while a sequencing finding names it on
+// its blocked side. Gating the rescue arm would strand in-flight SPECs
+// (spec.md B.2).
+func TestAutoPickTargetsRescueArmUnfiltered(t *testing.T) {
+	root, store := todoFixture(t)
+	seedItems(t, store, "predecessor", "in-flight card") // t1, t2
+	autoSetState(t, store, "t2", kanban.BacklogStatePicked)
+	seedFindings(t, store, kanban.BacklogFinding{
+		SubjectID: "t1", RelatedID: "t2",
+		Relation: kanban.BacklogRelationBlocks, Source: kanban.BacklogSourceAgent,
+	})
+
+	lv := autoTestLiveness(root, "t2", true, true, nil) // t2's owner measures dead
+	targets, _, err := autoPickTargets(mustAutoRecord(t, store), lv, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rescued := false
+	for _, it := range targets {
+		if it.ID == "t2" {
+			rescued = true
+		}
+	}
+	if !rescued {
+		t.Fatalf("dead-owner rescue arm lost the relation-blocked card t2: %+v", targets)
+	}
+}
+
+// TestAutoPickTargetsNonSequencingRelation — AC-RPF-007 (REQ-RPF-006, M4): a
+// queued card named only by a non-sequencing relation (contains) stays a
+// candidate — the filter consumes exactly blocks and depends.
+func TestAutoPickTargetsNonSequencingRelation(t *testing.T) {
+	root, store := todoFixture(t)
+	seedItems(t, store, "bigger card", "smaller card") // t1, t2
+	seedFindings(t, store, kanban.BacklogFinding{
+		SubjectID: "t1", RelatedID: "t2",
+		Relation: kanban.BacklogRelationContains, Source: kanban.BacklogSourceAgent,
+	})
+
+	rec, err := store.LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	targets, _, err := autoPickTargets(rec, autoTestLiveness(root, "t1", true, true, nil), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(targets) != 2 {
+		t.Fatalf("a contains-only finding changed the candidate set: %+v", targets)
+	}
+}

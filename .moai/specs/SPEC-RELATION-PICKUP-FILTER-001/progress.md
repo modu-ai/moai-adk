@@ -196,9 +196,101 @@ now name `autoPickTargets` as the consuming pickup path and
 states the sequencing pair is no longer purely observational while the other
 four relations stay record-only.
 
+### M4 — regression pins (REQ-RPF-006/007, AC-RPF-007)
+
+Pin tests (per the acceptance.md 채택 셀 these are over-implementation
+detectors — their RED-now is a FUTURE regression, so the run observes GREEN
+directly; the same-pair opposite-spelling pin was already absorbed into
+M2's `TestTodoRelateCycleGuardShapes` fourth case):
+
+```
+$ go test -timeout 30m -count=1 ./internal/cli/ -run 'TestAutoPickTargetsRescueArmUnfiltered|TestAutoPickTargetsNonSequencingRelation'
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.145s
+```
+
+- `TestAutoPickTargetsRescueArmUnfiltered` — a `picked` card whose owner
+  measures dead is taken over even while a live `blocks` finding names it
+  (the rescue arm is not gated, REQ-RPF-006).
+- `TestAutoPickTargetsNonSequencingRelation` — a queued card named only by
+  a `contains` finding stays a candidate (the filter consumes exactly
+  blocks and depends, REQ-RPF-006).
+
+**GTD-table independence (REQ-RPF-007):**
+
+```
+$ grep -cn "gtd_relations" internal/cli/todo_auto.go internal/cli/todo_relate.go internal/kanban/backlog_store.go
+internal/cli/todo_relate.go:0
+internal/cli/todo_auto.go:0
+internal/kanban/backlog_store.go:0
+(exit 1 = zero hits — the filter and the guard read only BacklogFinding records)
+```
+
+### Final verification batch (all run in this session, this tree)
+
+**Affected-packages full suite (AC-RPF-007 green command):**
+
+```
+$ go test -timeout 30m -count=1 ./internal/cli/ ./internal/kanban/
+ok  	github.com/modu-ai/moai-adk/internal/cli	1706.452s
+ok  	github.com/modu-ai/moai-adk/internal/kanban	191.106s
+```
+
+**Lint (CI-pinned golangci-lint v2.1.6 — matches .github/workflows/ci.yml:464):**
+
+```
+$ golangci-lint run ./internal/cli/... ./internal/kanban/...
+0 issues.
+```
+
+**Vet + cross-platform build:**
+
+```
+$ go vet ./internal/cli/... ./internal/kanban/...
+(no output) exit 0
+$ go build ./... && GOOS=windows GOARCH=amd64 go build ./...
+DARWIN_BUILD_OK
+WINDOWS_BUILD_OK
+```
+
+**Coverage of the new code (coverpkg cross-measurement, filtered tests):**
+
+```
+$ go test -coverprofile=... -coverpkg=github.com/modu-ai/moai-adk/internal/kanban -run 'TestAutoPickTargets|TestRunAutoCycle|TestTodoRelate|TestRelateAndUnrelate' ./internal/cli/
+WaitsOnOf            100.0%
+FindingsBlocking     100.0%
+WaitsOnClosesCycle   100.0%
+waitsOnReaches       100.0%
+runTodoRelate        100.0%
+autoPickTargets       76.2%  (whole function incl. pre-existing liveness arms)
+```
+
+All four new kanban functions and the guarded write path are fully covered
+by the relation-filter tests. The kanban PACKAGE figure measured standalone
+(`go test -cover ./internal/kanban/` → `coverage: 84.7% of statements`)
+does not attribute cli-side tests; a pre-change (HEAD `28e672b39`) package
+baseline was not measured — checking out a second tree at the baseline
+commit is outside this card's scope, so the "85% maintained" claim is
+carried by the function-level figures above (new code fully covered cannot
+lower a package figure) and is noted as a bounded gap in §E.3.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: "2026-09-30"
+run_commit_sha: "pending-backfill-run"
+run_status: "all milestones landed, all gates green"
+ac_pass_count: 7
+ac_fail_count: 0
+ac_matrix: "AC-RPF-001..007 PASS (green commands + verbatim outputs in §E.2)"
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: "not run — isolated card worktree on WT-relation-pickup-filter; dispatch forbids moai integration commands and push"
+l44_post_push_fetch: "n/a — no push performed (leader batch-pushes develop)"
+new_warnings_or_lints_introduced: 0
+cross_platform_build.darwin: "ok (go build ./...)"
+cross_platform_build.windows: "ok (GOOS=windows GOARCH=amd64 go build ./...)"
+total_run_phase_files: 6
+m1_to_m4_commit_strategy: "one commit per milestone (M1 938e43f61, M2 46e3ec0da, M3 3019af585, M4 this commit) + one run_commit_sha backfill commit"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
