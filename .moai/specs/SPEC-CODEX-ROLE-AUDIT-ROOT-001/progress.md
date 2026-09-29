@@ -71,7 +71,16 @@
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_Pending sync-phase._
+- sync_complete_at: 2026-09-29
+- sync_commit_sha: pending-backfill-sync
+- sync_status: complete
+- expected_sync_debt: cleared — `TestProjectRootDocMatchesServer` + `TestDocsSiteProjectRootMatchesServer` (4 locale arms) now `ok`; repair = the project_root-family documentation updated to the post-M2 server schema (`codex_task` joins, 14 tools, codex_task's input required-never-defaulted): `.claude/rules/moai/core/moai-mcp-tools.md` + byte-identical template mirror (`cmp` → identical; `make build` exit 0, catalog.yaml 13408 bytes) + `docs-site/content/{en,ko,ja,zh}/guides/mcp-server.md`. The doc-conformance test's own count vocabulary (`docCountWords` map, 4 locale count phrases in `internal/cli/mcp_project_root_doc_test.go`) extended to fourteen/14 per lead authorization (coordinator message 2026-09-29) — the alternative of keeping the Thirteen phrase while listing 14 names was refused as a false published count.
+- b12_self_test_a: pass — `grep -c 'SPEC-CODEX-ROLE-AUDIT-ROOT-001' CHANGELOG.md` = 0 pre-emission
+- b12_self_test_b: pass — 7 distinct live AC identifiers in acceptance.md (AC-001..AC-007); the CHANGELOG entry references the same 7
+- b12_self_test_c: pass — every file path cited in the CHANGELOG entry verified with `ls`
+- changelog_entry_position: [Unreleased] → `### Added`, first entry
+- frontmatter_status_transitions.spec_md: in-progress → implemented → completed (merged into the single sync commit; `updated:` refreshed 2026-09-29)
+- canary_compliance_check.mx_tags: no MX tag surface touched — sync-phase repair is documentation-only (rule file + mirror + docs-site + doc-conformance test vocabulary)
 
 ## §F Phase 4 Mode Selection
 
