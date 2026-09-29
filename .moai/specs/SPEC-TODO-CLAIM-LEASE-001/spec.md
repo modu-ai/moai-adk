@@ -2,9 +2,9 @@
 id: SPEC-TODO-CLAIM-LEASE-001
 title: "Todo 카드 원자 클레임 API — CAS+임대"
 version: "1.0.0"
-status: in-progress
+status: completed
 created: 2026-09-29
-updated: 2026-09-29
+updated: 2026-09-30
 author: GOOS
 priority: P1
 phase: "v3.3.0 target"

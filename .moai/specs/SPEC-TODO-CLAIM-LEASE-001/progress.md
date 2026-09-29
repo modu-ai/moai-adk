@@ -87,7 +87,22 @@ run_phase:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_phase:
+  card: t1342
+  spec: SPEC-TODO-CLAIM-LEASE-001
+  sync_complete_at: 2026-09-30T00:00:00+09:00
+  sync_commit_sha: "pending-backfill-sync"
+  sync_status: complete
+  changelog_entry_position: "[Unreleased] › Added › first bullet (SPEC-TODO-CLAIM-LEASE-001)"
+  mx_tag_validation: performed as sync sub-step — no new MX tags owed; BacklogItem ANCHOR advisory exceedance documented in §E.2 known limitations
+  frontmatter_status_transitions:
+    in_progress_to_implemented: sync commit
+    implemented_to_completed: sync commit (merged close)
+  docs_sync:
+    changelog: "[Unreleased]/Added entry emitted (B12 pre-emission grep count 0 before write; AC live count 12 = acceptance.md)"
+    doc_parity: "DocParity selector 0 tests; real pins TestGTDAllTodoVerbsParity + TestSD_AC015_LaneQueueAllowlistWalk PASS; claim row added to gtd.md live + template mirror in same commit"
+```
 
 ## §F.1 Plan-phase 기록 (Plan-Phase Record)
 
