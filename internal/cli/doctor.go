@@ -220,6 +220,10 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		// served each run; advisory, never gates doctor. Explicit-only: the
 		// default run shows one info hint row and does not sweep.
 		{servedModelCheckName, servedModelDoctorEntry(cwd, filterCheck)},
+		// SPEC-TODO-STALE-STORE-001 (card t1307): the stale project-local
+		// queue store a rollback snapshot left behind, judged from the same
+		// detector the read verbs disclose through (REQ-TSS-004). Read-only.
+		{todoStoreDivergenceCheckName, func(v bool) DiagnosticCheck { return checkTodoStoreDivergence(cwd, v) }},
 		// SPEC-AGENT-EMIT-LINEAGE-001 REQ-AEL-004: embed-axis judgment point.
 		// Applicable only in a tree carrying the committed emission set — a
 		// deployed project sees one added `ok` row and the same exit status.

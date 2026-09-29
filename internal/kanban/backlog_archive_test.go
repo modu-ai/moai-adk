@@ -52,9 +52,15 @@ func TestBacklogArchive_StateEnumUnchanged(t *testing.T) {
 //     so a card without one marshals byte-identically to before.
 //   - CardUUID — SPEC-TODO-IDENTITY-001 REQ-TID-001/002: a non-omitempty
 //     pointer so legacy cards expose literal null and issued cards expose UUIDv7.
+//   - PickedAt / DroppedAt — SPEC-TODO-TRANSITION-STAMPS-001 REQ-TST-001:
+//     nullable transition stamps in the added_at TEXT format, `omitempty`
+//     after the Landing precedent so a card carrying none marshals
+//     byte-identically to before.
 var permittedItemFieldAdditions = map[string]string{
-	"Landing":  "*kanban.LandingEvidence",
-	"CardUUID": "*string",
+	"Landing":   "*kanban.LandingEvidence",
+	"CardUUID":  "*string",
+	"PickedAt":  "*string",
+	"DroppedAt": "*string",
 }
 
 // frozenItemFields is the pre-addition per-item contract: ordered
@@ -106,12 +112,13 @@ func TestBacklogArchive_PerItemContractFrozen(t *testing.T) {
 	}
 }
 
-// AC-TDG-005 — the stamped schema version is not bumped. An older binary
-// aborts on ANY mismatch, a newer stamp included, so bumping would make the
-// downgrade route refuse to open the database rather than degrade.
+// AC-TDG-005 — the stamped schema version is pinned. Originally pinned at
+// "1" (an older binary aborts on ANY mismatch); SPEC-TODO-HOLD-STATE-001
+// re-pins it at "2": the four-state CHECK is a layout change an older binary
+// must refuse at open rather than misread (REQ-THS-005).
 func TestBacklogArchive_SchemaVersionNotBumped(t *testing.T) {
-	if backlogSchemaVersion != "1" {
-		t.Fatalf("backlogSchemaVersion = %q, want \"1\" — a bump breaks every older binary", backlogSchemaVersion)
+	if backlogSchemaVersion != "2" {
+		t.Fatalf("backlogSchemaVersion = %q, want \"2\" — the current layout stamp", backlogSchemaVersion)
 	}
 
 	store := archiveFixture(t)
@@ -131,8 +138,8 @@ func TestBacklogArchive_SchemaVersionNotBumped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read schema_version: %v", err)
 	}
-	if got != "1" {
-		t.Errorf("stamped schema_version = %q on a database holding an archived row, want \"1\"", got)
+	if got != "2" {
+		t.Errorf("stamped schema_version = %q on a database holding an archived row, want \"2\"", got)
 	}
 }
 

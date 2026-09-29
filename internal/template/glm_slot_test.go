@@ -27,7 +27,9 @@ func TestGLMSlotForModel(t *testing.T) {
 		{"fable[1m]", GLMSlotFable},             //
 		{ModelIDOpus55, GLMSlotHigh},            // canonical id reverse-mapped
 		{"claude-opus-5", GLMSlotHigh},          // superseded id reverse-mapped
-		{"claude-sonnet-5", GLMSlotMedium},      //
+		{"claude-sonnet-5-5", GLMSlotMedium},    // promoted canonical id reverse-mapped
+		{"sonnet[1m]", GLMSlotMedium},           // 1M suffix split before lookup
+		{"claude-sonnet-5", GLMSlotMedium},      // superseded id reverse-mapped
 		{"claude-haiku-4-5", GLMSlotLow},        //
 		{"", ""},                                // no model pinned
 		{config.DefaultGLM53, ""},               // a raw GLM id is not an alias

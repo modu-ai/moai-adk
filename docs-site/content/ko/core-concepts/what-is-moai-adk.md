@@ -258,7 +258,7 @@ MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 쓰지 �
 | **Builder** | builder-harness | 🟠 | 프로젝트 전용 하네스 (에이전트/스킬/커맨드) 생성 |
 | **Advisor** | super-advisor | 🔵 | 고추론 자문 (E1-E4 에스컬레이션) |
 | **Specialist** | e2e-tester | 🟠 | 웹/모바일/데스크탑 E2E 테스트 실행 |
-| | mission-governor | 🔴 | 승인된 GTD 자동 미션의 봉인된 스냅샷을 읽고 판정 하나만 반환 (읽기 전용, 실행은 결정론적 실행기가 담당) |
+| | manager-todo | 🔴 | 승인된 GTD 자동 미션의 봉인된 스냅샷을 읽고 판정 하나만 반환 (읽기 전용, 실행은 결정론적 실행기가 담당) |
 | **빌트인** | Explore | ⚪ | 읽기 전용 코드베이스 탐색 |
 
 비용 색상은 각 에이전트가 일하는 모델의 깊이를 반영합니다: 🔴 Opus 깊은 추론 · 🟠 Opus 표준 추론 · 🔵 얕은 추론 · ⚪ 읽기 전용 탐색. v3.2부터 모든 에이전트는 **세션의 모델과 추론 깊이**로 돕니다 — 서브에이전트는 메인 세션의 모델과 추론 깊이를 그대로 따르므로, 보이는 색은 에이전트별 배정표(물러남)가 아니라 그때 시작한 세션을 따라갑니다.
@@ -288,7 +288,7 @@ flowchart TD
 
     subgraph Specialist["Specialist (2개)"]
         S1["e2e-tester\nE2E 테스트 실행"]
-        S2["mission-governor\nGTD 자동 미션 판정"]
+        S2["manager-todo\nGTD 자동 미션 판정"]
     end
 
     subgraph Explore["빌트인 (1개)"]

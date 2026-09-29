@@ -206,7 +206,7 @@ func TestRealSetCodexShape(t *testing.T) {
 		// writes their verdict file from the returned text.
 		wantSandbox := "workspace-write"
 		switch name {
-		case "mission-governor", "super-advisor", "plan-auditor", "sync-auditor":
+		case "manager-todo", "super-advisor", "plan-auditor", "sync-auditor":
 			wantSandbox = "read-only"
 		}
 		if got, _ := doc["sandbox_mode"].(string); got != wantSandbox {

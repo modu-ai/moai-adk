@@ -90,7 +90,7 @@ The table above is for quick reference. This section covers five commands most c
 | :--- | :--- |
 | Fable 5 (`claude-fable-5`) | Currently top-tier (Mythos-tier). Deepest reasoning |
 | Opus 5.5 | Next-tier. Complex coding and design |
-| Sonnet 5 | Balanced. Everyday work |
+| Sonnet 5.5 | Balanced. Everyday work |
 | Haiku 4.5 | Light, fast, lightweight work |
 
 Each model has a different reasoning depth, speed, and cost. Hand heavy design work to Fable or Opus, and fast repetitive work to Sonnet or Haiku — pick by the weight of the task. The shortcut `Option+P` (macOS) or `Alt+P` also switches quickly.

@@ -16,8 +16,11 @@
 package hook
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
@@ -91,6 +94,16 @@ func checkServedModelStop(input *HookInput, obs ServedObservation) string {
 	specID := auditreceipt.UnknownSpec
 	if line, parsed := auditreceipt.ParseVerdictLine(input.LastAssistantMessage); parsed {
 		specID = line.SpecID
+	} else {
+		// The verdict line did not parse, so the verdict-line attribution
+		// failed. Fall back to the AUDITED SPEC the auditor was spawned for —
+		// the spawn prompt is the first user message of its transcript and
+		// names the audit's SPEC. Attributing from the spawner session's cwd
+		// instead is what produced card t1323's defect: a refusal recorded
+		// under the spawning tree denied that tree's unrelated milestones.
+		if audited := transcriptAuditedSpec(subagentTranscriptPath(input)); audited != "" {
+			specID = audited
+		}
 	}
 	cause := servedRefusalCause(obs)
 	rj, err := auditreceipt.ReadRejectionInKind(g.store, g.tree, auditreceipt.KindServed, input.AgentType, specID)
@@ -105,6 +118,54 @@ func checkServedModelStop(input *HookInput, obs ServedObservation) string {
 	return fmt.Sprintf(
 		"%s: the %s verdict for %s is not adopted — %s. Phase-entry spawns (manager-develop / manager-docs / manager-git) stay denied in %s until a later %s run is observed on the expected model.",
 		servedModelViolation, input.AgentType, specID, cause, g.tree, input.AgentType)
+}
+
+// transcriptAuditedSpec extracts the audited SPEC id from an auditor
+// transcript's spawn prompt — the first user row's message content. The scan
+// is bounded like the served-model read so the SubagentStop hook stays inside
+// its wrapper timeout; a transcript that names no SPEC yields "".
+func transcriptAuditedSpec(path string) string {
+	if path == "" {
+		return ""
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer func() { _ = f.Close() }()
+
+	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 0, 64<<10), 1<<20)
+	for i := 0; scanner.Scan() && i < 4096; i++ {
+		var row struct {
+			Type    string `json:"type"`
+			Message struct {
+				Content json.RawMessage `json:"content"`
+			} `json:"message"`
+		}
+		if json.Unmarshal(scanner.Bytes(), &row) != nil || row.Type != "user" {
+			continue
+		}
+		var spec string
+		if err := json.Unmarshal(row.Message.Content, new(string)); err == nil {
+			spec = auditreceipt.SpecIDFromText(string(row.Message.Content))
+		} else {
+			var blocks []struct {
+				Text string `json:"text"`
+			}
+			if json.Unmarshal(row.Message.Content, &blocks) == nil {
+				for _, b := range blocks {
+					if spec = auditreceipt.SpecIDFromText(b.Text); spec != "" {
+						break
+					}
+				}
+			}
+		}
+		if spec != "" {
+			return spec
+		}
+	}
+	return ""
 }
 
 // checkServedModelSpawn is the PreToolUse consumer of served-kind refusals. It
@@ -126,11 +187,21 @@ func checkServedModelSpawn(input *HookInput) (decision, reason string) {
 			"%s: the refusal records in %s cannot be read, so %s cannot be cleared to spawn: %v",
 			servedModelViolation, g.store, sp.Agent, err)
 	}
+	// Attribution axis (card t1323): the spawn's own prompt names the SPEC the
+	// milestone belongs to. A refusal attributes to the AUDITED SPEC, so an
+	// unrelated milestone's spawn is not blocked by it; a refusal that could
+	// not be attributed at all (unknown-spec — its verdict line and transcript
+	// both named no SPEC) stays conservative and denies the spawn.
+	spawnSpec := auditreceipt.SpecIDFromText(sp.Prompt)
 	var parts []string
 	for _, r := range all {
-		if auditreceipt.RejectionKind(r) == auditreceipt.KindServed {
-			parts = append(parts, fmt.Sprintf("%s / %s / %s", r.AgentType, r.SpecID, r.Cause))
+		if auditreceipt.RejectionKind(r) != auditreceipt.KindServed {
+			continue
 		}
+		if spawnSpec != "" && r.SpecID != auditreceipt.UnknownSpec && r.SpecID != spawnSpec {
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%s / %s / %s", r.AgentType, r.SpecID, r.Cause))
 	}
 	if len(parts) == 0 {
 		return "", ""

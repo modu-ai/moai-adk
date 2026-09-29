@@ -1,31 +1,33 @@
-// backlog_downgrade_test.go — SPEC-TODO-LANDING-EVIDENCE-001 (card t359) M5:
-// AC-TLE-018 — a binary built before the landing column still serves a
-// database that carries it.
+// backlog_downgrade_test.go — the old-binary compat gate, REPOINTED by
+// SPEC-TODO-HOLD-STATE-001.
 //
-// The criterion has three clauses and they are NOT interchangeable:
+// Under SPEC-TODO-LANDING-EVIDENCE-001 (card t359) this test proved that a
+// pre-change binary STILL SERVES a database carrying the new column: the
+// landing column was additive, so serving on was safe. The hold state is NOT
+// additive — it is a table rebuild behind a schema_version bump — and the
+// SPEC fixes the doctrine in the opposite direction (REQ-THS-005 /
+// AC-THS-005): a binary that knows only the previous stamp REFUSES the
+// database at open, refuse-to-operate, never repair-by-delete. The clauses
+// below keep the frozen-replica machinery and assert the new direction:
 //
-//	(a) the pre-change production statements, verbatim, still run.
-//	(b) a reconstruction of the pre-change OPEN path — DDL exec, schema_version
-//	    read, version switch — still opens the database without classifying it
-//	    as corrupt. This is the path clause (a) never reaches.
-//	(c) the frozen replica has not drifted from the live source.
+//	(a) the pre-"2" STATEMENTS, verbatim, still run against the v2 database —
+//	    what changed is the version gate, not statement shape.
+//	(b) the reconstructed pre-change OPEN path — DDL exec, schema_version
+//	    read, version switch — refuses the stamped-"2" database with
+//	    ErrBacklogCorrupt naming unsupported schema_version, and (positive
+//	    control) accepts a stamped-"1" database. This is AC-THS-005 enforced
+//	    without any test seam: the frozen switch's accepted set IS the old
+//	    binary's.
+//	(c) the frozen replica has not drifted: its items CHECK is the
+//	    THREE-value tuple the v1 stamp marks, while the live backlogDDL
+//	    carries the FOUR-value tuple — both halves pinned, so an accidental
+//	    edit to either trips.
 //
-// Clause (c) is what makes (b) a detector rather than a coverage assertion.
-// Without it the replica goes stale silently while the test keeps reporting
-// that it exercises the pre-change open path. Its RED is: edit the live
-// backlogDDL and leave the frozen copy untouched — (a) and (b) both stay
-// green and only (c) fails.
-//
-// One conjunct of (c) was WITHDRAWN as unrealisable at v0.3.1 and is
-// deliberately NOT reconstructed here: comparing the frozen switch's accepted
-// version set against the live one. The live set is control flow, not a
-// structure a test can extract, and its cheapest runnable reading (comparing
-// the version const) leaves the named drift undetected, because adding a case
-// to the live switch changes no const.
-//
-// What this does NOT demonstrate: the replica is compiled from TODAY's source.
-// A divergence between it and a genuinely older released binary is invisible
-// to all three clauses.
+// The clause (c) withdrawn at v0.3.1 (comparing accepted version SETS against
+// the live switch) stays withdrawn — control flow is still not a structure a
+// test can extract, and clause (b) now reds on exactly the drift that
+// comparison existed to catch: the live gate's behavior versus a frozen
+// prior-version gate, exercised on real databases.
 package kanban
 
 import (
@@ -33,10 +35,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 )
 
-// The frozen pre-change constants. They are LITERALS, deliberately not
+// The frozen pre-"2" constants. They are LITERALS, deliberately not
 // references to the live consts: a reference would track a bump instead of
 // refusing it, which is the whole failure this criterion exists to detect.
 const (
@@ -45,8 +48,9 @@ const (
 )
 
 // frozenPreChangeDDL is a verbatim copy of the live backlogDDL as it stood
-// before the landing column was introduced. Clause (c) asserts it still
-// equals the live const byte for byte.
+// before the hold state: the three-state items CHECK, no landing column in
+// the CREATE (t359's ALTER appended it to databases in the field). Clause
+// (c) pins it as the layout the "1" stamp marks.
 const frozenPreChangeDDL = `
 CREATE TABLE IF NOT EXISTS meta (
   key   TEXT PRIMARY KEY,
@@ -92,8 +96,8 @@ CREATE TABLE IF NOT EXISTS archived_findings (
 CREATE INDEX IF NOT EXISTS idx_items_state ON items(state);
 `
 
-// AC-TLE-018 — all three clauses, against one post-change database.
-func TestBacklogDowngrade_PreChangeBinaryStillServes(t *testing.T) {
+// The old-binary compat gate, all three clauses.
+func TestBacklogDowngrade_OldBinaryRefusesTheNewStamp(t *testing.T) {
 	dbPath := postChangeDatabaseWithEvidence(t)
 
 	t.Run("(a) pre-change statements run verbatim", func(t *testing.T) {
@@ -126,8 +130,9 @@ func TestBacklogDowngrade_PreChangeBinaryStillServes(t *testing.T) {
 		}
 
 		// The INSERT a pre-change binary issued, character for character. It
-		// names no landing column, so it can only succeed while that column
-		// stays nullable and defaulted.
+		// names no landing column and writes a three-legal state, so it
+		// succeeds against the v2 schema: statement shape is compatible even
+		// where the version gate is not.
 		if _, err := db.Exec(
 			`INSERT INTO items(seq, id, text, added_at, spec_id, state) VALUES (?, ?, ?, ?, ?, ?)`,
 			99, "t99", "written by a pre-change binary", "2026-01-05T00:00:00Z", nil, "queued"); err != nil {
@@ -139,39 +144,51 @@ func TestBacklogDowngrade_PreChangeBinaryStillServes(t *testing.T) {
 			`SELECT value FROM meta WHERE key = ?`, frozenMetaKeySchemaVer).Scan(&version); err != nil {
 			t.Fatalf("read schema_version: %v", err)
 		}
-		if version != frozenSchemaVersion {
-			t.Errorf("schema_version = %q, want %q — a bump breaks every older binary", version, frozenSchemaVersion)
+		if version != "2" {
+			t.Errorf("schema_version = %q, want %q — the fixture must be the current layout", version, "2")
 		}
 	})
 
-	t.Run("(b) the reconstructed pre-change open path accepts the database", func(t *testing.T) {
-		if err := frozenPreChangeOpen(t, dbPath); err != nil {
-			t.Fatalf("reconstructed pre-change open failed: %v", err)
+	t.Run("(b) the reconstructed pre-change open path refuses the v2 stamp", func(t *testing.T) {
+		err := frozenPreChangeOpen(t, dbPath)
+		if !errors.Is(err, ErrBacklogCorrupt) {
+			t.Fatalf("pre-change open over a stamped-v2 database: err = %v, want ErrBacklogCorrupt (REQ-THS-005: refuse-to-operate)", err)
 		}
-		// Named separately from the error check: the criterion asks not merely
-		// that the open succeeded but that the database was not classified
-		// corrupt, and a future refactor could return a non-nil non-corrupt
-		// error without that distinction being visible.
-		if err := frozenPreChangeOpen(t, dbPath); errors.Is(err, ErrBacklogCorrupt) {
-			t.Errorf("reconstructed open classified the database as corrupt: %v", err)
+		if !strings.Contains(err.Error(), "unsupported schema_version") {
+			t.Errorf("refusal error = %v, want it to name unsupported schema_version", err)
+		}
+
+		// Positive control: the SAME frozen path accepts the stamp it knows —
+		// the refusal is about the version, not the replica.
+		_, v1Path := holdFixtureRoot(t)
+		seedV1Database(t, v1Path)
+		if err := frozenPreChangeOpen(t, v1Path); err != nil {
+			t.Fatalf("pre-change open over a stamped-v1 database must succeed: %v", err)
 		}
 	})
 
-	t.Run("(c) the frozen replica has not drifted from the live source", func(t *testing.T) {
-		if frozenPreChangeDDL != backlogDDL {
-			t.Errorf("frozen DDL replica has drifted from the live backlogDDL const.\nfrozen:\n%s\nlive:\n%s",
-				frozenPreChangeDDL, backlogDDL)
+	t.Run("(c) the frozen replica has not drifted from the v1 layout", func(t *testing.T) {
+		// The frozen DDL is the layout the "1" stamp marks: its items CHECK
+		// is the THREE-value tuple.
+		const frozenCheck = "CHECK (state IN ('queued','picked','dropped'))"
+		if !strings.Contains(frozenPreChangeDDL, frozenCheck) {
+			t.Error("frozen v1 DDL replica lost the three-state items CHECK")
+		}
+		// The live DDL is the layout the "2" stamp marks: its items CHECK is
+		// the FOUR-value tuple. Together the two pins mean no state can be
+		// added to either layout without tripping this test.
+		const liveCheck = "CHECK (state IN ('queued','picked','dropped','hold'))"
+		if !strings.Contains(backlogDDL, liveCheck) {
+			t.Errorf("live backlogDDL lost the four-state items CHECK.\nlive:\n%s", backlogDDL)
 		}
 	})
 }
 
 // frozenPreChangeOpen reconstructs the pre-change open path: DDL exec, then
-// the schema_version read, then the version switch — the sequence the live
-// ensureSchema still runs, minus the landing-column step that did not exist.
-//
-// It references the FROZEN constants throughout, so a bump of the live
-// schemaVersion reds this path exactly as it would reject a real older
-// binary's open.
+// the schema_version read, then the version switch. It references the FROZEN
+// constants throughout, so it behaves exactly as a binary that knows only
+// stamp "1" behaves — which is what makes clause (b) an enforcement of
+// REQ-THS-005 rather than a rehearsal.
 func frozenPreChangeOpen(t *testing.T, dbPath string) error {
 	t.Helper()
 	db := openRawBacklogDB(t, dbPath)

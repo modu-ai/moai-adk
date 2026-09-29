@@ -132,14 +132,14 @@ func buildFixtures() map[string][]byte {
 		return []string{"manager-develop"}
 	})...)
 
-	// mission_governor_undesignated — 10 qualifying `run` rows. mission-governor
+	// manager_todo_undesignated — 10 qualifying `run` rows. manager-todo
 	// appears in 9 of 10 (clear of both thresholds) and is designated for no
 	// subcommand, so it is exactly the undesignated_agent case. run's own
 	// designated manager-develop appears in all 10, so no never-spawned finding
 	// competes with it and the assertion pins one finding rather than a set.
-	f["mission_governor_undesignated.jsonl"] = jsonl(repeat(0, 10, "run", routing.OutcomeSuccess, func(i int) []string {
+	f["manager_todo_undesignated.jsonl"] = jsonl(repeat(0, 10, "run", routing.OutcomeSuccess, func(i int) []string {
 		if i < 9 {
-			return []string{"manager-develop", "mission-governor"}
+			return []string{"manager-develop", "manager-todo"}
 		}
 		return []string{"manager-develop"}
 	})...)

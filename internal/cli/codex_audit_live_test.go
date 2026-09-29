@@ -390,7 +390,7 @@ func TestCodexAuditLaunchLiveReadOnlyRoles(t *testing.T) {
 	f := newCodexAuditLiveFixture(t, true) // the same isolated environment as AC-CAR-010
 	budget := newLiveBudget(codexAuditLive011Budget, codexAuditLive011Window)
 	var roles []liveAuditItem
-	for _, role := range []string{"mission-governor", "super-advisor"} {
+	for _, role := range []string{"manager-todo", "super-advisor"} {
 		probe := "audit-probe-" + role + ".txt"
 		item, ok := f.runDirect(t, budget, role, codexAuditProbeTask(role, probe, ""), probe)
 		if !ok {

@@ -239,11 +239,11 @@ The DeepSWE leaderboard (113 tasks, per-effort view) demonstrates this. Within t
 | opus-5 [xhigh] | 73%±3 | $9.07 | **net loss** — ties high, +49% cost only |
 | opus-5 [max] | 74%±4 | $11.84 | |
 | glm-5.2 [max] | 44%±2 | $3.92 | API-metered disadvantage · valuable under z.ai flat-fee |
-| sonnet-5 [max] | 54%±4 | $26.40 | Pareto-dominated by opus-5 [low] |
+| sonnet-5 [max] (Sonnet 5) | 54%±4 | $26.40 | Pareto-dominated by opus-5 [low] |
 
 Opus 5 at its **lowest** effort scores higher than Sonnet 5 at its **highest** (58% vs 54%) while costing one-sixteenth as much per task ($1.66 vs $26.40) — even though Sonnet's per-token price is lower. The cause is 268 steps against 36: retry loops, not token rates, write the invoice. Cost is determined by **assigning the right model and reasoning depth to each task**, not by unit price.
 
-The table above was measured on Opus 5. MoAI's `opus` alias now points to Opus 5.5 (requires Claude Code v2.1.280 or later; default effort `medium`), which has not been re-measured yet.
+The table above was measured on Opus 5. MoAI's `opus` alias now points to Opus 5.5 (requires Claude Code v2.1.280 or later; default effort `medium`), and the `sonnet` alias now points to Sonnet 5.5 (1M context per the official docs); neither has been re-measured yet.
 
 <p align="center">
   <img src="./assets/images/why-tokenomics-infographic-en.png" alt="The Tokenomics Paradox — price down 98%, spend up 320%. The response: measure → route → diet → stop" width="80%">
@@ -371,7 +371,7 @@ In the Codex-enabled harness (`moai init --llm gpt|both`), Codex supports only b
 
 Declare a completion condition and the session works on its own until it holds. A turn limit, a stagnation guard, a wall-clock budget, and pre-approval gates are attached, so it cannot fall into an infinite loop. Mechanical conditions (a command's exit code) and model conditions (a claim in the transcript) are both supported. `--max-turns 0` arms an auto-compact-driven infinite goal — in that case `--max-duration` and the stagnation guard provide the boundary.
 
-`moai goal --auto "<mission>"` creates a separate `mission_mode=auto` draft; `approve` seals scope, actions, evidence, and limits once, while `run`, `status`, `revoke`, and policy-bounded `resume` operate on that persisted contract. Mission text is data, never shell or a goal condition. `super-advisor` remains non-binding, the read-only `mission-governor` proposes a structured decision, and deterministic owner adapters perform receipt-backed queue/dispatch effects, explicit-path commits, and leased local develop `--no-ff` merges. Without a provider proven to support durable start, reconnect, replacement, credentials, and process identity, the workflow falls back to `active-session-only`; remote push, PR, and merge completion remain unproven. [GTD and auto-mission guide](https://adk.mo.ai.kr/en/utility-commands/moai-gtd)
+`moai goal --auto "<mission>"` creates a separate `mission_mode=auto` draft; `approve` seals scope, actions, evidence, and limits once, while `run`, `status`, `revoke`, and policy-bounded `resume` operate on that persisted contract. Mission text is data, never shell or a goal condition. `super-advisor` remains non-binding, the read-only judgment sub-role of `manager-todo` proposes a structured decision, and deterministic owner adapters perform receipt-backed queue/dispatch effects, explicit-path commits, and leased local develop `--no-ff` merges. Without a provider proven to support durable start, reconnect, replacement, credentials, and process identity, the workflow falls back to `active-session-only`; remote push, PR, and merge completion remain unproven. [GTD and auto-mission guide](https://adk.mo.ai.kr/en/utility-commands/moai-gtd)
 
 The final execution boundary is stricter: `run --supervise` follows the bounded publish→pick→leased disk dispatch→commit→local develop `--no-ff` plan. Supervised Git effects require separate `--card-worktree` and `--develop-worktree` paths; legacy `--repo` produces zero effects. Completion additionally requires a sealed `0600` `--completion-receipt` with true typed evidence and merged ancestry—exhausting the action list alone is not completion—and replay after completion has zero effects. `--recommend` grants no authority; every effect needs contained `0600` governor and independent-audit receipts. Unconfigured remote/release providers return `provider_unsupported` instead of simulating success.
 
@@ -513,7 +513,7 @@ flowchart TD
 | **Builder** | builder-harness | Project-specific agents, skills, commands, hooks scaffolding |
 | **Advisor** | super-advisor | On-demand high-reasoning consultation (E1-E4 escalation) |
 | **Specialist** | e2e-tester | Web/mobile/desktop E2E test execution (CLI-first) |
-| | mission-governor | Read-only decision for an approved GTD auto mission — returns one bounded decision, never applies it (dispatched by the GTD workflow, so it carries no selection-tree row) |
+| | manager-todo | Todo-queue management (queue lifecycle, `/moai:todo --auto` serial cycle, dispatch guidance) — its read-only sealed-snapshot judgment sub-role returns one bounded decision and never applies it (dispatched by the GTD workflow, so it carries no selection-tree row) |
 | **Built-in** | Explore | Read-only codebase exploration |
 
 Every agent inherits the session's model and reasoning effort — the model and effort the session starts with are the assignment for all of them. Authoring and auditing are separated from the start, so the writing side never grades its own work.

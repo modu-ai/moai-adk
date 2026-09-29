@@ -84,7 +84,10 @@ var frozenTodoSurface = map[string][]string{
 //     schema and takes no queue mutation lock, which
 //     TestTodoTriage_QueueUnchanged asserts rather than assumes. It renders
 //     mechanical observations of the tree and reaches no verdict.
-var permittedVerbAdditions = []string{"export-json", "undone", "history", "landed", "auto-done", "triage"}
+//
+// permittedVerbAdditions — SPEC-TODO-HOLD-STATE-001 declares `hold` / `unhold`
+// (the operator park verbs, REQ-THS-006/008).
+var permittedVerbAdditions = []string{"export-json", "undone", "history", "landed", "auto-done", "triage", "hold", "unhold"}
 
 // permittedFlagAdditions records flags added to an ALREADY-FROZEN verb, which
 // is a re-flagging and therefore needs its own declaration rather than an edit

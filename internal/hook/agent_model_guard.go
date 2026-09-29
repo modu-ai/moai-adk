@@ -54,8 +54,9 @@ const (
 )
 
 // agentSpawn carries the fields the guard reads out of an Agent spawn
-// payload. The prompt body is deliberately NOT captured — it never reaches the
-// audit log or a fixture.
+// payload. The prompt body is captured ONLY where a consumer needs it in
+// memory (the served-model gate matches the spawn's SPEC against outstanding
+// refusals, card t1323) — it still never reaches the audit log or a fixture.
 type agentSpawn struct {
 	// Agent is the subagent_type argument (the agent identifier).
 	Agent string
@@ -66,6 +67,10 @@ type agentSpawn struct {
 	// carrying a stopped name clears the stop record before the spawn
 	// proceeds.
 	Name string
+	// Prompt is the spawn prompt body, empty when the spawn carried none.
+	// In-memory only: the served-model gate reads it to attribute the spawn to
+	// its SPEC; it is never written to any log or fixture.
+	Prompt string
 }
 
 // extractAgentSpawn parses an Agent/Task tool_input payload. It returns ok=false
@@ -79,6 +84,7 @@ func extractAgentSpawn(toolInput json.RawMessage) (agentSpawn, bool) {
 		SubagentType string `json:"subagent_type"`
 		Model        string `json:"model"`
 		Name         string `json:"name"`
+		Prompt       string `json:"prompt"`
 	}
 	if err := json.Unmarshal(toolInput, &parsed); err != nil {
 		return agentSpawn{}, false
@@ -86,7 +92,7 @@ func extractAgentSpawn(toolInput json.RawMessage) (agentSpawn, bool) {
 	if parsed.SubagentType == "" {
 		return agentSpawn{}, false
 	}
-	return agentSpawn{Agent: parsed.SubagentType, DeclaredModel: parsed.Model, Name: parsed.Name}, true
+	return agentSpawn{Agent: parsed.SubagentType, DeclaredModel: parsed.Model, Name: parsed.Name, Prompt: parsed.Prompt}, true
 }
 
 // classifyAgentModel returns the verdict for a spawn plus the model value to

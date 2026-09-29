@@ -135,7 +135,7 @@ The MoAI orchestrator does not implement directly; it delegates work to 13 speci
 | **Evaluator** | 2 | plan-auditor, sync-auditor |
 | **Builder** | 1 | builder-harness |
 | **Advisor** | 1 | super-advisor (high-reasoning consultation) |
-| **Specialist** | 2 | e2e-tester (web/mobile/desktop E2E test execution), mission-governor (GTD auto-mission decision, read-only) |
+| **Specialist** | 2 | e2e-tester (web/mobile/desktop E2E test execution), manager-todo (todo-queue management; GTD auto-mission judgment as its read-only sub-role) |
 | **Built-in** | 1 | Explore (Anthropic built-in, read-only code analysis) |
 
 ### Model policy (tokenomics)

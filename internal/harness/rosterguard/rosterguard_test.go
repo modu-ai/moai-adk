@@ -213,8 +213,8 @@ func TestKnownStaleInventory(t *testing.T) {
 // green verdict above is evidence that the assertions ran rather than evidence
 // that nothing was checked.
 func TestGuardFiresOnDeliberatelyWrongInput(t *testing.T) {
-	retained := []string{"Explore", "manager-lead", "manager-spec", "mission-governor"}
-	defs := []string{"manager-lead", "manager-spec", "mission-governor"}
+	retained := []string{"Explore", "manager-lead", "manager-spec", "manager-todo"}
+	defs := []string{"manager-lead", "manager-spec", "manager-todo"}
 
 	membershipSite := Site{
 		ID: "probe", Path: "probe.md", Axis: AxisRetainedRoster,
@@ -234,13 +234,13 @@ func TestGuardFiresOnDeliberatelyWrongInput(t *testing.T) {
 		{
 			name: "a roster missing one member is reported by name",
 			site: membershipSite,
-			body: "ROSTER\nExplore manager-spec mission-governor\nEND\n",
+			body: "ROSTER\nExplore manager-spec manager-todo\nEND\n",
 			want: "absent from the site: manager-lead",
 		},
 		{
 			name: "a roster carrying a name the axis does not have is reported",
 			site: membershipSite,
-			body: "ROSTER\nExplore manager-lead manager-spec mission-governor expert-backend\nEND\n",
+			body: "ROSTER\nExplore manager-lead manager-spec manager-todo expert-backend\nEND\n",
 			// expert-backend is outside the universe, so the observable
 			// violation is the extra-name path exercised via a stale marker
 			// below; here the roster is complete and must NOT fire.
@@ -253,7 +253,7 @@ func TestGuardFiresOnDeliberatelyWrongInput(t *testing.T) {
 			// and every typo was invisible to the guard.
 			name: "a renamed entry does not satisfy membership by substring",
 			site: membershipSite,
-			body: "ROSTER\nExplore manager-leadXX manager-spec mission-governor\nEND\n",
+			body: "ROSTER\nExplore manager-leadXX manager-spec manager-todo\nEND\n",
 			want: "absent from the site: manager-lead",
 		},
 		{
@@ -293,7 +293,7 @@ func TestGuardFiresOnDeliberatelyWrongInput(t *testing.T) {
 			site: withStale(membershipSite, &Staleness{
 				Reason: "probe", FollowUp: "probe", MissingNames: []string{"manager-lead"},
 			}),
-			body: "ROSTER\nExplore manager-lead manager-spec mission-governor\nEND\n",
+			body: "ROSTER\nExplore manager-lead manager-spec manager-todo\nEND\n",
 			want: "present at the site but not on the axis: manager-lead",
 		},
 		{
@@ -313,13 +313,13 @@ func TestGuardFiresOnDeliberatelyWrongInput(t *testing.T) {
 		{
 			name: "a KnownStale marker that records no gap is refused",
 			site: withStale(membershipSite, &Staleness{Reason: "probe", FollowUp: "probe"}),
-			body: "ROSTER\nExplore manager-lead manager-spec mission-governor\nEND\n",
+			body: "ROSTER\nExplore manager-lead manager-spec manager-todo\nEND\n",
 			want: "a marker that records no gap is a mute",
 		},
 		{
 			name: "a correct site produces no violation",
 			site: membershipSite,
-			body: "ROSTER\nExplore manager-lead manager-spec mission-governor\nEND\n",
+			body: "ROSTER\nExplore manager-lead manager-spec manager-todo\nEND\n",
 			want: "",
 		},
 	}

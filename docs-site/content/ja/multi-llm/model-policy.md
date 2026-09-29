@@ -35,10 +35,15 @@ description: メインセッションが使うモデルと推論深度を決め�
 |------|--------|----------|------|
 | Claude Fable 5 | `claude-fable-5` | 1M | 新しい Mythos-tier 汎用フラッグシップ。最も深い推論と複雑なコーディング |
 | Claude Opus 5.5 | `opus` | 1M | 複雑なアーキテクチャ、高難度の推論 |
-| Claude Sonnet 5 | `sonnet` | 1M | 速度と知性のバランス、日常のコーディング |
+| Claude Sonnet 5.5 | `sonnet` | 1M | 速度と知性のバランス、日常のコーディング |
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 最も速く経済的。単純・大量処理向け |
 
 > MoAI のセッションラインナップは既定で Haiku を使いません。長丁場のエージェンティック作業に Haiku を組み込むとタスクあたりコストがかえって膨らむことが DeepSWE リーダーボードの実測で確認された**No-Haiku ポリシー**です。根拠は[3 層エージェントアーキテクチャ](/ja/advanced/no-haiku-3tier/)ページにあります。
+
+{{< callout type="warning" >}}
+**Sonnet 5.5 への移行**： thinking をオフにして Sonnet を使っている場合は、移行前に thinking 設定を
+`between_tools` に切り替えてください — Sonnet 5.5 でも事前(アップフロント)の thinking はオフのままです。
+{{< /callout >}}
 
 ### 推論深度 (effort)
 
@@ -49,7 +54,7 @@ description: メインセッションが使うモデルと推論深度を決め�
 | `low` | 最も浅い推論。速くて安い |
 | `medium` | バランス。セッション既定値の基準点 |
 | `high` | 深い推論 |
-| `xhigh` | さらに深い推論 (Opus 5.5 · Opus 5 · 4.8 · Sonnet 5 · Opus 4.7 が対応) |
+| `xhigh` | さらに深い推論 (Opus 5.5 · Opus 5 · 4.8 · Sonnet 5.5 · Opus 4.7 が対応) |
 | `max` | 最も深い推論 |
 
 > **既定の effort**: Opus 5.5 の既定 effort は `medium` で、effort に対応する他のモデルの大半は `high` が既定です。

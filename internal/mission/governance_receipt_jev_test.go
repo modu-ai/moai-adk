@@ -1,5 +1,5 @@
 // governance_receipt_jev_test.go — SPEC-JEV-GOAL-DIST-001 M7b (AC-JEVG-003,
-// AC-JEVG-005). A Jev Noul answer supplied to mission-governor is an auxiliary
+// AC-JEVG-005). A Jev Noul answer supplied to manager-todo is an auxiliary
 // input signal recorded as a SEPARATE item in the governance receipt; it is
 // never a binding field, never a completion-predicate element, and never part
 // of the landed-ancestry or authoritative-readback evidence the receipt binds.
@@ -69,7 +69,7 @@ func governanceDirForTest(t *testing.T, root string) string {
 // pre-existing binding field present and unchanged, file mode 0600.
 func TestGovernanceReceiptRecordsJevNoulAsSeparateItem(t *testing.T) {
 	root := t.TempDir()
-	decision := jevReceiptFixture(ActionPublish, "mission-governor", GovernanceDecision, GovernanceRecommended)
+	decision := jevReceiptFixture(ActionPublish, "manager-todo", GovernanceDecision, GovernanceRecommended)
 	decision.AuxiliarySignals = []AuxiliarySignal{
 		{QuestionID: "premise-alive", Kind: "noul", Noul: true, Probability: 0.62},
 	}
@@ -114,7 +114,7 @@ func TestGovernanceReceiptRecordsJevNoulAsSeparateItem(t *testing.T) {
 // digest still covers it (the item cannot be edited off the record).
 func TestGovernanceReceiptAuxiliaryItemIsNotABindingField(t *testing.T) {
 	rootA, rootB := t.TempDir(), t.TempDir()
-	base := jevReceiptFixture(ActionPublish, "mission-governor", GovernanceDecision, GovernanceRecommended)
+	base := jevReceiptFixture(ActionPublish, "manager-todo", GovernanceDecision, GovernanceRecommended)
 
 	withNoul := base
 	withNoul.AuxiliarySignals = []AuxiliarySignal{{QuestionID: "premise-alive", Kind: "noul", Noul: true, Probability: 0.62}}
@@ -156,7 +156,7 @@ func TestGovernanceReceiptAuxiliaryItemIsNotABindingField(t *testing.T) {
 // so pre-SPEC digests still validate) and still load.
 func TestGovernanceReceiptWithoutAuxiliaryItemKeepsPreSpecShape(t *testing.T) {
 	root := t.TempDir()
-	decision := jevReceiptFixture(ActionPublish, "mission-governor", GovernanceDecision, GovernanceRecommended)
+	decision := jevReceiptFixture(ActionPublish, "manager-todo", GovernanceDecision, GovernanceRecommended)
 
 	decisionPath := filepath.Join(governanceDirForTest(t, root), "decision.json")
 	if err := WriteGovernanceReceipt(root, decisionPath, decision); err != nil {

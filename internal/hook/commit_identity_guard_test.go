@@ -652,12 +652,22 @@ func TestAC_CIG_009_WorkflowYamlCarriesKey(t *testing.T) {
 					}
 					if strings.HasPrefix(trimmed, "enabled:") {
 						got := strings.TrimSpace(strings.TrimPrefix(trimmed, "enabled:"))
+						// The FIRST enabled: under the key is this block's
+						// verdict. The guards section continues below with
+						// more guard blocks whose enabled values are their
+						// own — reading past the first made this guard's
+						// verdict the last enabled in the file (card t1323:
+						// the operator's served_model_gate.enabled=false
+						// flip turned this scan red through a block that
+						// never terminates under the indented guards
+						// section).
 						if tc.wantOn && got != "true" {
 							t.Fatalf("local workflow.yaml commit_identity_guard.enabled = %s, want true", got)
 						}
 						if !tc.wantOn && got != "false" {
 							t.Fatalf("template workflow.yaml commit_identity_guard.enabled = %s, want false", got)
 						}
+						break
 					}
 				}
 			}
