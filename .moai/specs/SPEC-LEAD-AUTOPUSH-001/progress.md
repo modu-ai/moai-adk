@@ -58,7 +58,7 @@ All verifications this run, worktree `.moai/worktrees/t1346`, measured at post-M
 
 ```yaml
 run_complete_at: 2026-09-30
-run_commit_sha: pending-backfill-run   # the M4 evidence commit cannot cite its own SHA
+run_commit_sha: b3441ed58   # backfilled: the M4 evidence commit cannot cite its own SHA
 run_status: complete
 ac_pass_count: 8
 ac_fail_count: 0
