@@ -5,7 +5,8 @@
 > `go.mod`에서 직접 읽었습니다(`go 1.26.8`).
 
 **모듈**: `github.com/modu-ai/moai-adk` · **Go**: 1.26.8
-**현재 부분 재측정**: worktree `.moai/worktrees/t1333`, 브랜치 `WT-codemaps-refresh9`, base `145c3d98c`, 카드 t1333. 스탬프 앵커 `afecf81e9`(t1257 문서층 병합판) 뒤 비테스트 Go 소스 변경 44개(`IsDescribedWorthy` 술어)를 대조했다. § 규모 표의 일곱 값을 같은 명령으로 다시 졌다 — 비테스트 1422→1429(신규 7 — `internal/cli` 3·`internal/kanban` 4), 테스트 2545→2569, 패키지 162·최상위 디렉터리 82(`internal` 78)·내부 import 엣지 449/277·임베드 템플릿 598은 재확인 결과 변동 없었다. § 도식 절의 스테일 파일 수 한 곳(`internal/hook` 141→155 — 앵커 이전부트 스테일)을 이 트리 실측으로 정정했다.
+**현재 부분 재측정**: worktree `.moai/worktrees/t1351`, 브랜치 `WT-codemaps-refresh10`, base `145c3d98c`, 카드 t1351. 스탬프 앵커 `145c3d98c`(t1333 판의 트리) 뒤 비테스트 Go 소스 변경 54개를 대조했다. § 규모 표의 값 중 셋이 움직였다 — 비테스트 1429→1436(`internal/cli` +4: `clean_reports_archive.go`·`factory_lane_relaunch.go`·`mcp_factory_card.go`·`mcp_todo.go`, `internal/homestate` +1: `card_worktree.go`, `internal/settings` +1: `projectscalars.go`), 테스트 2569→2590, 패키지 단위 내부 import 엣지 449→448. 같은 명령으로 재확인해 변동 없음: 패키지 162 · 최상위 디렉터리 82(internal 78) · 최상위 집계 엣지 277(`internal/cli` 70·`internal/hook` 39 포함) · 임베드 템플릿 598. § 규모 표의 나머지 넷은 이 값들로 갱신했고, 본문 내용 갱신(F1 자가 배차 표면·main 커밋 금지 제2 거부 클래스·reports 생명주기·무손실 설정 저장)은 § `modules.md`·`entry-points.md`·`data-flow.md`의 해당 절이 나른다.
+**이전 부분 재측정**: worktree `.moai/worktrees/t1333`, 브랜치 `WT-codemaps-refresh9`, base `145c3d98c`, 카드 t1333. 스탬프 앵커 `afecf81e9`(t1257 문서층 병합판) 뒤 비테스트 Go 소스 변경 44개(`IsDescribedWorthy` 술어)를 대조했다. § 규모 표의 일곱 값을 같은 명령으로 다시 졌다 — 비테스트 1422→1429(신규 7 — `internal/cli` 3·`internal/kanban` 4), 테스트 2545→2569, 패키지 162·최상위 디렉터리 82(`internal` 78)·내부 import 엣지 449/277·임베드 템플릿 598은 재확인 결과 변동 없었다. § 도식 절의 스테일 파일 수 한 곳(`internal/hook` 141→155 — 앵커 이전부트 스테일)을 이 트리 실측으로 정정했다.
 **이전 재측정**: worktree `.claude/worktrees/t1305`, 브랜치 `WT-codemaps-refresh8`, base `afecf81e9e96`, 카드 t1305. 스탬프 앵커 `a3a9e653e`(t1295 판) 뒤 비테스트 Go 소스 변경 75개(`IsDescribedWorthy` 술어)를 대조했다. § 규모 표의 다섯 값(비테스트·테스트 파일 수, 패키지 총수, 엣지 둘)을 같은 명령으로 다시 쟀다 — 비테스트 1419→1422, 테스트 2544→2545, 패키지 164→162(하네스의 cellguard 가드 패키지와 settings의 agentfm 스키마 패키지 둘이 소멸 — t1246 배치가 에이전트 모델 표면을 은퇴시키며 함께 갔다), 내부 import 엣지 452→449·278→277. 임베드 템플릿 598은 같은 명령으로 재확인해 변동이 없었다. 최상위 디렉터리 82(internal 78 + cmd 2 + pkg 2)와 테스트 0 패키지 6도 재확인해 변동이 없었다. § 들어맞지 않는 패키지의 스테일 파일 수 세 곳(`internal/template` 31→36, `internal/homestate` 15→27, `internal/harness` 87→86)과 `cellguard` 은퇴 산문을 이 트리 실측으로 정정했다.
 **이전 재측정**: worktree `.moai/worktrees/t1295`, 브랜치 `WT-codemaps-freshness`, base `cee197917`, 카드 t1295. 앵커 `fdc5361c3` 뒤 비테스트 Go 소스 81개가 바뀌었다. 아래 규모 표는 이 트리에서 `find`와 `go list -deps -json ./...`로 다시 셌다. 이번 내용 갱신은 MoAI 워크트리 위치·이전 경로와 Factory 역할 전환에 한정한다. 과거 판의 변경 설명은 이력으로 남긴다.
 **최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
@@ -25,15 +26,15 @@
 
 | 값 | 수치 | 산출 명령 |
 |---|---|---|
-| 비테스트 Go 파일 | 1429 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
-| 테스트 Go 파일 | 2569 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
+| 비테스트 Go 파일 | 1436 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
+| 테스트 Go 파일 | 2590 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
 | Go 패키지 총수 | 162 | `go list ./... \| wc -l` |
 | 최상위 디렉터리 | 82 | `internal` 78(`ls -d internal/*/`) + `cmd` 2 + `pkg` 2 |
-| 내부 import 엣지 (패키지 단위) | 449 | `go list -deps -json ./...`의 프로젝트 패키지 `Imports` 중 내부 경로 |
+| 내부 import 엣지 (패키지 단위) | 448 | `go list -deps -json ./...`의 프로젝트 패키지 `Imports` 중 내부 경로 |
 | 내부 import 엣지 (최상위 집계) | 277 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
 | 임베드 템플릿 파일 | 598 | `find internal/template/templates -type f \| wc -l` |
 
-테스트 대 비테스트 비율은 **1.79 : 1**입니다. `go list`의 패키지 가운데 테스트 Go 파일이
+테스트 대 비테스트 비율은 **1.80 : 1**입니다. `go list`의 패키지 가운데 테스트 Go 파일이
 0개인 곳은 6개입니다. 그중 `cmd/moai`·`cmd/t657-merge`·`internal/template/scripts`·
 `scripts/convert-nextra-to-hextra`는 실행 파일이고, `internal/closure/closuretest`·
 `internal/escalation/escalationtest`는 다른 패키지의 테스트가 쓰는 픽스처입니다.
