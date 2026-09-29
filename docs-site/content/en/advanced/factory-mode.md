@@ -54,6 +54,8 @@ Attach no value to `-f` and the factory leader opens. To join as a lane, use `-f
 
 **The former spellings no longer parse.** Joining with a former spelling errors, naming the canonical form — join with `-f lane`, or pick an exact number with `-f lane-<n>`. A live run record left by a pre-rename binary also refuses the join and says so.
 
+**When the run's record is missing but the leader is alive.** A lane join reads the run records first. If zero active records exist — a run retired automatically, or a leader that never recorded one — the join does not stop at the refusal: it verifies the live leader session for this project (pid plus process-start fingerprint), restores the leader's run record with the leader's own identity as the owner stamp, and joins through the ordinary gate. `-l, --lead <name>` names which leader session that verification targets (default `leader`; the former spelling `lead` is refused). Two or more verified leaders fail closed naming each candidate; none, and the refusal stands.
+
 One launch takes one entry token — passing `-k` and `-f` together is an error. The v1.2.0 unified entry forms — `-k <N>` (leader) and `-k <N> --name lane-<i>` (lane) — remain valid (a bare `-k --name lane-<i>` with no N defaults to 8 lanes). As the kanban leader's socket opens at `/tmp/moai-socket-kanban/<run-id>`, the factory leader's socket opens at `/tmp/moai-socket-factory/<run-id>`, and the bootstrap notice carries the actual path. CG is retired; use `moai migrate cg` to preview explicit migration choices.
 
 ## The leader's routing — whole cards to free lanes
