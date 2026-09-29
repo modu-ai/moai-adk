@@ -323,6 +323,19 @@ const (
 	DefaultProfileUnusedDays            = 90
 	DefaultProfileMaxBytes              = 5 * 1024 * 1024 * 1024
 
+	// Reports-archive defaults (SPEC-REPORTS-LIFECYCLE-001 REQ-RLC-007) for
+	// `moai clean --reports-archive`. Age-based, not volume-based: machine-
+	// local accumulation under .moai/reports/ differs per checkout, so the
+	// retention window is the only policy axis. The window is a conservatively
+	// adopted documented default (card card-evidence reopen cycle), adjustable
+	// per invocation via --reports-archive-days; no new config file is
+	// introduced.
+	DefaultReportsArchiveRetentionDays = 90
+
+	// DefaultReportsArchiveWarnBytes is the candidate byte total above which
+	// the reports-archive action warns before moving.
+	DefaultReportsArchiveWarnBytes int64 = 1 << 30 // 1 GiB
+
 	// Lessons-inbox lifecycle defaults (SPEC-INBOX-DRAIN-GAP-001 REQ-IBX-001 /
 	// REQ-IBX-004 — single source of truth; CLAUDE.local.md §14 — no duplicate
 	// literals). DefaultInboxMaxBytes is the collector-side write-time size cap

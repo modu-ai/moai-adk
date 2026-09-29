@@ -74,6 +74,22 @@ RED 증거(GREEN 이전 실측, `.moai/reports/t1320/m3-red-evidence.txt` 전사
 
 판정 과정 실측 정정 2건: ① 이 git의 `check-ignore -v` negation exit 0 동작(M1 기록 재확인)과 무관하게, done 배선 테스트의 초기 실패 2건은 테스트 픽스처 설계 오류(tree 가 main temp 밖 — 거부가 정답 / 선행 서브테스트의 목적지 재사용)로 구현과 무관. ② AC-RLC-012 조항은 사본 간 바이트 동일 유지(cp 동기화, 편집 전 IDENTICAL 확인).
 
+### M4 — moai clean reports-archive 액션 (전수 전사)
+
+RED 증거(GREEN 이전 실측, `.moai/reports/t1320/m4-red-evidence.txt` 전사): `go test -run 'TestCleanReportsArchive' ./internal/cli/` → `undefined: runCleanReportsArchiveWithRoot / reportsArchiveWarnNeeded` + `[build failed]`.
+
+| AC | 판정 명령 | 관측 출력 |
+|---|---|---|
+| AC-RLC-009 | `go test -run TestCleanReportsArchive_MovesOnlyEligibleCandidates ./internal/cli/` | PASS — 술어 적합 후보가 `archive/<YYYY-MM>/` 로 move(원본 부재 + shard 내용 관측), 신선한 항목·이름 비적합 항목 무영향, 출력 건수/바이트 |
+| AC-RLC-009(dry-run) | `TestCleanReportsArchive_DryRunMovesNothing` | PASS — 무 force 시 이동·shard 생성 없음 + 후보 건수 보고 |
+| AC-RLC-010 | `TestCleanReportsArchive_ProtectedEntriesUntouched` | PASS — historical/·plan-audit/.gitkeep·worktrees/·archive/ 기존분 전수 제자리 |
+| AC-RLC-010 | `TestCleanReportsArchive_TrackedEntriesAutoProtected` | PASS — 이름·나이 적중 t338형도 tracked 조건으로 배제 |
+| AC-RLC-010(1GB) | `TestCleanReportsArchive_WarnAboveThreshold` | PASS — 경고 임계 경계 양방향 (`config.DefaultReportsArchiveWarnBytes` = 1GiB) |
+| 보조 | `go test -count=1 -timeout 30m ./internal/config/` | `ok … 5.719s` — defaults.go 신설 상수 2건 (`DefaultReportsArchiveRetentionDays=90`, `DefaultReportsArchiveWarnBytes=1<<30`) |
+| 불변 | `grep -n 'RemoveAll\|os.Remove' clean_reports_archive.go hoist.go` | 0건 — move 전용 불변의 정적 확인 |
+
+구현 노트: ① dry-run 기본은 `moai clean` 의 기존 스코프 관례(--home/--codex-skills)와의 일관성이며 `--force` 가 move 를 수행한다 — REQ-RLC-007 의 move 의무는 force 경로에서 이행된다. ② AC-RLC-009 픽스처명 `t-old`/`t-new` 은 술어 1조(`^t[0-9]+$`)가 이름 형상을 요구하므로 술어 적합 실현명 `t100`/`t101` 로 구현했다(리터럴 t-old 는 술어에 의해 배제돼 AC 의도「술어 적합 후보」와 모순). ③ shard 는 후보 mtime 의 `YYYY-MM` 이다. ④ tracked 판정은 `git ls-files` — 판독 불가도 tracked 로 보는 보수적 default-deny.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
