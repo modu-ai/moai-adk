@@ -24,7 +24,12 @@ import (
 // seedWriteSafetyFixture writes minimal section fixtures into a test project
 // root, mirroring the two files the live reproduction saw rewritten. The
 // feedback fixture carries a blank line and comments (presentation elements
-// REQ-WWS-005 protects); git-strategy carries mode: team.
+// REQ-WWS-005 protects); git-strategy carries mode: team PLUS a comment and
+// an unmodeled sibling key (sync-audit F-5-note hardening: the original bare
+// `mode: team` fixture was blind to the comment/unmodeled-key loss family —
+// the same blindness that let the language re-marshal path (sync-audit F-1)
+// hide — so this fixture now carries both loss shapes and the byte-identity
+// assertion below guards them).
 func seedWriteSafetyFixture(t *testing.T, root string) (feedbackBefore, gitStrategyBefore string) {
 	t.Helper()
 	dir := filepath.Join(root, ".moai", "config", "sections")
@@ -40,7 +45,11 @@ func seedWriteSafetyFixture(t *testing.T, root string) (feedbackBefore, gitStrat
 	if err := os.WriteFile(filepath.Join(dir, "feedback.yaml"), []byte(feedbackBefore), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	gitStrategyBefore = "git_strategy:\n    mode: team\n"
+	gitStrategyBefore = "git_strategy:\n" +
+		"    # integration posture comment (user-maintained)\n" +
+		"    mode: team\n" +
+		"    # unmodeled sibling key — must survive a value-invariant save\n" +
+		"    custom_merge_note: keep-me\n"
 	if err := os.WriteFile(filepath.Join(dir, "git-strategy.yaml"), []byte(gitStrategyBefore), 0o644); err != nil {
 		t.Fatal(err)
 	}

@@ -13,6 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // newCleanCmd creates the clean subcommand.
@@ -20,6 +21,8 @@ func newCleanCmd() *cobra.Command {
 	var force bool
 	var home bool
 	var codexSkills bool
+	var reportsArchive bool
+	var reportsArchiveDays int
 
 	cmd := &cobra.Command{
 		Use:   "clean",
@@ -29,8 +32,8 @@ Default: dry-run mode (no actual deletion). Use --force to actually delete.
 
 retention_days is read from .moai/config/sections/state.yaml.
 
-Exactly one scope is cleaned per invocation. --home and --codex-skills select
-different files and may not be combined.
+Exactly one scope is cleaned per invocation. --home, --codex-skills and
+--reports-archive select different files and may not be combined.
 
 With --home, clean the ~/.moai home directory instead of the project scope.
 The default is a report-only dry-run. --force removes per-profile projects/
@@ -48,14 +51,25 @@ is kept whenever its absence cannot be proven: a relative or oddly-formed
 path, an unresolvable home, a stat that did not complete, a path that
 resolves, or a line range holding anything the parser did not recognise.
 Under --force the file is backed up first and the backup path and sha256 are
-reported.`,
+reported.
+
+With --reports-archive, move aging evidence directories out of
+.moai/reports/ into .moai/reports/archive/<YYYY-MM>/ (move-only — nothing is
+ever deleted). A candidate is a top-level entry whose name is
+evidence-shaped (t<digits> or SPEC-<DOMAIN>-<NNN>), whose mtime is older
+than the retention window (--reports-archive-days, default 90), and that
+holds no git-tracked files. historical/, plan-audit/, worktrees/ and
+archive/ are never candidates. Dry-run by default.`,
 		GroupID: "tools",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Status output routes through the Printer to stderr
 			// (SPEC-CLI-TUX-V3-001 REQ-CTX-012/017 ratchet migration).
 			p := printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr()))
-			if home && codexSkills {
-				return fmt.Errorf("--home and --codex-skills select different scopes; pass exactly one")
+			if (home && codexSkills) || (home && reportsArchive) || (codexSkills && reportsArchive) {
+				return fmt.Errorf("--home, --codex-skills and --reports-archive select different scopes; pass exactly one")
+			}
+			if reportsArchive {
+				return runCleanReportsArchive(p, force, reportsArchiveDays)
 			}
 			if codexSkills {
 				return runCleanCodexSkills(p, force)
@@ -70,6 +84,8 @@ reported.`,
 	cmd.Flags().BoolVar(&force, "force", false, "Actually delete files (default: dry-run)")
 	cmd.Flags().BoolVar(&home, "home", false, "Clean the ~/.moai home directory (allowlist-only; dry-run by default)")
 	cmd.Flags().BoolVar(&codexSkills, "codex-skills", false, "Remove provably-absent [[skills.config]] entries from ~/.codex/config.toml (dry-run by default)")
+	cmd.Flags().BoolVar(&reportsArchive, "reports-archive", false, "Move aging evidence directories from .moai/reports/ into archive/<YYYY-MM>/ (move-only; dry-run by default)")
+	cmd.Flags().IntVar(&reportsArchiveDays, "reports-archive-days", config.DefaultReportsArchiveRetentionDays, "Retention window in days for --reports-archive candidates")
 
 	return cmd
 }

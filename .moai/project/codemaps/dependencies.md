@@ -1,6 +1,9 @@
 # 의존성 그래프
 
-**현재 부분 재측정 — t1305, worktree `.claude/worktrees/t1305`, 브랜치 `WT-codemaps-refresh8`, base `afecf81e9e96` (2026-09-29).**
+**현재 부분 재측정 — t1333, worktree `.moai/worktrees/t1333`, 브랜치 `WT-codemaps-refresh9`, base `145c3d98c` (2026-09-29).**
+문서의 산출 명령으로 내부 import를 다시 졌다 — 패키지 단위 449개, 최상위 접기 + self-edge 제거 고유 쌍은 277개으로 앞 판과 같았다. fan-in·fan-out 상위 표 전 행(`internal/cli` 70·`internal/hook` 39 포함)과 순환 4쌍은 재확인 결과 변동이 없었고, go.mod·go.sum도 앵커 이후 한 줄도 바뀌지 않았다. 이 판의 유일한 갱신지는 작은 fan-in 표의 스테일 수치 정정이다 — `internal/auditreceipt` 2→3(`internal/closure` 합류 — git grep으로 앵커 시점에 이미 존재하는 엇키였음이 확인된 스테일 값), `internal/jev` 2→3·`internal/jevcred` 2→3(`internal/contract` 합류 — 같은 성격), `internal/contract` 1→3(`internal/closure`·`internal/escalation` — 역시 같은 성격). civerdict 2·mission 2·chain 2·stateanchor 3은 변동 없었다.
+
+**이전 재측정 — t1305, worktree `.claude/worktrees/t1305`, 브랜치 `WT-codemaps-refresh8`, base `afecf81e9e96` (2026-09-29).**
 문서의 산출 명령(`go list -f` + 모듈 경로 필터)으로 내부 import를 다시 쟀다 — 패키지 단위 449개,
 최상위 접기 + self-edge 제거 고유 쌍은 277개다. 현재 최상위 fan-out은 `internal/cli` 70,
 `internal/hook` 39이며 fan-in은 `internal/config` 25, `internal/paths` 14,
@@ -103,11 +106,11 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 |---|---|---|
 | `internal/stateanchor` | 3 | 상태 앵커 seam. 소비자는 `internal/statusline`, `internal/cli`, 그리고 이 판에 합류한 `internal/session` — 레지스트리 경로 해석이 같은 seam을 쓰기 시작했다(워크트리마다 갈라지던 레지스트리 하나로 모으기) |
 | `internal/chain` | 2 | 워크트리 세션 origin-trail 원장. 소비자는 `internal/cli`와 `internal/hook` |
-| `internal/auditreceipt` | 2 | **t999 판에서 새로 들어왔다.** 소비자는 `internal/cli`와 `internal/hook` — 생산 쪽(MCP 도구 호출)과 소비 쪽(훅 가드)이 각각 하나씩이며, 그 비대칭이 아니라 대칭이 이 패키지의 설계다 |
-| `internal/jev` | 2 | **이 판에서 새로 들어왔다.** 소비자는 `internal/cli`(doctor·todo admission·숨은 suggest 앵커 세 파일)와 `internal/jevmeasure`(살아 있는 `Answerer` 구현) |
-| `internal/jevcred` | 2 | **이 판에서 새로 들어왔다.** 소비자는 `internal/cli`와 `internal/web` — 위자드·doctor 쪽과 콘솔 Jev 패널이 각각 하나씩이며, 두 표면이 하나의 reader를 공유하는 것이 이 패키지의 요건이다 |
+| `internal/auditreceipt` | 3 | **t999 판에서 새로 들어왔다.** 소비자는 `internal/cli`와 `internal/hook` — 생산 쪽(MCP 도구 호출)과 소비 쪽(훅 가드)이 각각 하나씩이며, 그 비대칭이 아니라 대칭이 이 패키지의 설계다 **t1333 판 정정: 소비자는 cli·hook·closure 셋이다 — closure 엇키는 앵컰 이전부터 존재했고 이 판이 스테일 값을 바로잛었다** |
+| `internal/jev` | 3 | **이 판에서 새로 들어왔다.** 소비자는 `internal/cli`(doctor·todo admission·숨은 suggest 앵커 세 파일)와 `internal/jevmeasure`(살아 있는 `Answerer` 구현) **t1333 판 정정: 소비자는 cli·contract·jevmeasure 셋이다 — contract 엇키는 앵컰 이전부터 존재했다** |
+| `internal/jevcred` | 3 | **이 판에서 새로 들어왔다.** 소비자는 `internal/cli`와 `internal/web` — 위자드·doctor 쪽과 콘솔 Jev 패널이 각각 하나씩이며, 두 표면이 하나의 reader를 공유하는 것이 이 패키지의 요건이다 **t1333 판 정정: 소비자는 cli·web·contract 셋이다 — contract 엇키는 앵컰 이전부터 존재했다** |
 | `internal/mission` | 2 | 소비자는 `internal/cli`(실제로는 `internal/cli/goal.go` 한 파일)와 — t1278 판 합류 — `internal/contract`(`projection_mission.go` 의 단방향 투영이 import 한다)다 |
-| `internal/contract` | 1 | **t1238 판에서 새로 들어왔다.** 비테스트 소비자는 `internal/cli/contract.go` 한 파일과 같은 계열의 `internal/contract/sign`뿐이다. 코어는 표준 라이브러리와 `gopkg.in/yaml.v3` — **t1278 판부터 `internal/mission` 이 그 옆에 더해졌다**(`projection_mission.go` 의 단방향 투영; 더 이상 순수 leaf가 아니다) — 만 import 하며, 부수효과를 지는 `internal/contract/sign`은 코어와 `internal/atomicfile`을 import 한다 — 방향은 sign→core 한쪽뿐이다. `internal/hook`은 Frozen 지시 파일 목록을 테스트에서만 고정하므로 이 칸에 들어오지 않는다 |
+| `internal/contract` | 3 | **t1238 판에서 새로 들어왔다.** 비테스트 소비자는 `internal/cli/contract.go` 한 파일과 같은 계열의 `internal/contract/sign`뿐이다. 코어는 표준 라이브러리와 `gopkg.in/yaml.v3` — **t1278 판부터 `internal/mission` 이 그 옆에 더해졌다**(`projection_mission.go` 의 단방향 투영; 더 이상 순수 leaf가 아니다) — 만 import 하며, 부수효과를 지는 `internal/contract/sign`은 코어와 `internal/atomicfile`을 import 한다 — 방향은 sign→core 한쪽뿐이다. `internal/hook`은 Frozen 지시 파일 목록을 테스트에서만 고정하므로 이 칸에 들어오지 않는다 **t1333 판 정정: 비테스트 소비자는 cli·closure·escalation 셋이다 — closure·escalation 엇키는 앵컰 이전부터 존재했다** |
 | **`internal/civerdict`** | **2** | **t1278 판에서 새로 들어왔다.** 비테스트 소비자는 `internal/cli`(`ci_verdict.go` — `moai ci-verdict` 저장 경로)와 `internal/escalation`(`ciLimb` 판정)둘이며, 패키지 스스로는 내부 import 0인 순수 leaf다 |
 | `internal/codextools` | 0 | 비테스트 소비자 없음(`modules.md` §네거티브 스페이스) |
 | `internal/jevmeasure` | 0 | **이 판에서 새로 들어왔고, 0은 설계다 — 그러나 종류가 다른 0이다.** 테스트 시점 가드도 빌드타임 도구도 아니고, 측정 게이트가 실행되지 않은 **게이트 미실행 상태**라 소비자가 원리상 아직 없다. 게이트가 통과하면 소비자가 붙는 것이 이 0의 의미다(`modules.md` §네거티브 스페이스) |

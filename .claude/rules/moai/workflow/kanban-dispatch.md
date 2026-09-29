@@ -30,6 +30,8 @@ One boundary: nudge delivery rides on cross-session messaging, absent on native 
 
 The one reconciliation is named, not excepted: `/moai:todo --auto` is the operator's batch approval — the operator who types it has, by that act, authorized serial consumption of the queue in queue order and nothing else. The `--auto` cycle derives its authority solely from that invocation event, never from queue emptiness, card readiness, or a peer's request, so this clause and the cycle state the same rule from two sides. Serial-contract detail: the gtd workflow's `--auto` section.
 
+[HARD] **The self-dispatch lane exception.** In a self-dispatch factory run, a lane session may lease the next queued card — the one promotion a lane performs — only through `moai factory next`, whose lease lands in the factory record the way a leader's dispatch lands in the queue. Every other queue mutation (`add`, `drop`, `done`, `edit`, and the rest) and `moai contract sign` stay forbidden to a lane: the lane works the operator's queue, it never authors it.
+
 A card the operator chose to start when it was issued is not a silent promotion: that answer IS the promotion, given explicitly before anything moved, and the same class-based entry follows.
 
 [HARD] **The leader may attach a finding; it may not act on one.** Analysis records a relation between two cards (`moai gtd relate`); the record is evidence the operator reads, never a mandate — the leader never folds the related card away, never reorders the queue around it, and never drops or edits it. Analysis changes exactly one thing on its own authority: it refuses the admission of a card whose normalized text is identical to one already queued or picked.

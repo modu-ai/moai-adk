@@ -33,6 +33,7 @@ Note: Merging to base branch should be done separately via git merge or PR.`,
 	cmd.Flags().Bool("force", false, "Force removal even with uncommitted changes")
 	cmd.Flags().Bool("delete-branch", false, "Delete the branch after removing worktree")
 	cmd.Flags().Bool("auto", false, "Auto mode: no success output for automation (e.g., after PR merge); failures still exit non-zero")
+	cmd.Flags().Bool("no-hoist", false, "Skip hoisting .moai/reports/ evidence into the project root before removal")
 	return cmd
 }
 
@@ -40,7 +41,8 @@ Note: Merging to base branch should be done separately via git merge or PR.`,
 // Used by sync workflow to trigger cleanup after PR merge.
 const AutoCleanupFlag = "auto"
 
-// runDoneWorktreeCleanup is the shared removal core for the done command.
+// runDoneWorktreeCleanup is the shared removal core for the done command
+// with evidence hoisting enabled (the historical three-argument form).
 // Auto mode (--auto) suppresses the SUCCESS output only: a failed removal
 // returns an error so automation sees a non-zero exit instead of a silent
 // rc=0 (t41 c, 2026-08-15). The two intentional non-error exits are the
@@ -50,6 +52,15 @@ const AutoCleanupFlag = "auto"
 // @MX:NOTE: SPEC-WORKTREE-002 R2 implementation - auto-cleanup for PR merge workflow
 // @MX:SPEC: SPEC-WORKTREE-002
 func runDoneWorktreeCleanup(branchName string, force, deleteBranch bool) (success bool, err error) {
+	return runDoneWorktreeCleanupWithOptions(branchName, force, deleteBranch, true)
+}
+
+// runDoneWorktreeCleanupWithOptions is the removal core with explicit
+// hoist control (SPEC-REPORTS-LIFECYCLE-001 REQ-RLC-005): when hoist is
+// true, the tree's .moai/reports/ evidence is copied into the project root
+// BEFORE removal — the tree is the only copy of that evidence. A hoist
+// failure blocks the removal; a tree without evidence is a no-op.
+func runDoneWorktreeCleanupWithOptions(branchName string, force, deleteBranch, hoist bool) (success bool, err error) {
 	if WorktreeProvider == nil {
 		return false, fmt.Errorf("worktree manager not initialized (git module not available)")
 	}
@@ -87,6 +98,15 @@ func runDoneWorktreeCleanup(branchName string, force, deleteBranch bool) (succes
 		fmt.Fprintf(os.Stderr, "moai: worktree %s kept: %d live anchored session(s):\n%s\n",
 			targetPath, len(anchored), formatAnchored(anchored))
 		return false, nil
+	}
+
+	// Evidence hoist (SPEC-REPORTS-LIFECYCLE-001 REQ-RLC-005): retrieve the
+	// tree's .moai/reports/ into the project root BEFORE removal. Blocks the
+	// removal on failure — removing the tree would destroy the only copy.
+	if hoist {
+		if err := hoistBeforeDisposal(os.Stderr, targetPath); err != nil {
+			return false, err
+		}
 	}
 
 	// Remove the worktree.
@@ -249,10 +269,15 @@ func runDone(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("get auto flag: %w", err)
 	}
 
+	noHoist, err := cmd.Flags().GetBool("no-hoist")
+	if err != nil {
+		return fmt.Errorf("get no-hoist flag: %w", err)
+	}
+
 	// Handle auto mode: success stays output-silent; failures propagate so
 	// the process exits non-zero instead of swallowing the error (t41 c).
 	if autoMode {
-		_, err := runDoneWorktreeCleanup(branchName, force, deleteBranch)
+		_, err := runDoneWorktreeCleanupWithOptions(branchName, force, deleteBranch, !noHoist)
 		return err
 	}
 
@@ -295,6 +320,14 @@ func runDone(cmd *cobra.Command, args []string) error {
 		}
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: --force removing %s while %d live session(s) are anchored there:\n%s\n",
 			targetPath, len(anchored), formatAnchored(anchored))
+	}
+
+	// Evidence hoist (SPEC-REPORTS-LIFECYCLE-001 REQ-RLC-005): same routine
+	// as the --auto core, before removal.
+	if !noHoist {
+		if err := hoistBeforeDisposal(out, targetPath); err != nil {
+			return err
+		}
 	}
 
 	// Remove the worktree.

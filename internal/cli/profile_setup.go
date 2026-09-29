@@ -13,7 +13,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
 	"github.com/modu-ai/moai-adk/internal/template"
-	"github.com/modu-ai/moai-adk/pkg/models"
 	"github.com/spf13/cobra"
 )
 
@@ -178,46 +177,14 @@ func readCurrentProjectConfig(projectRoot string) (devMode, convention string, e
 }
 
 // persistProjectConfig writes the selected development_mode + git_convention
-// values into the project config via the config-manager API (LoadRaw → mutate
-// only non-empty → SetSection → Save). It writes ONLY the quality
-// (development_mode) and git_convention (convention) sections; every other
-// section round-trips unchanged. Empty values keep the existing persisted value
-// (EC-1). This is the TUI counterpart to the web layer's writeProjectConfig —
-// same canonical persistence path, no direct yaml.Marshal/os.WriteFile.
-// SPEC-WEB-CONSOLE-003 REQ-WC3-006/007.
+// values into the project config through the shared settings seam
+// (SPEC-WEB-SAVE-LOSSLESS-001 — settings.WriteProjectScalars, a yamlpatch
+// line-splice that rewrites only the target rows). Empty values keep the
+// existing persisted value (EC-1). This is the TUI counterpart to the web
+// layer's writeProjectConfig — ONE shared seam, no direct
+// yaml.Marshal/os.WriteFile. SPEC-WEB-CONSOLE-003 REQ-WC3-006/007.
 func persistProjectConfig(projectRoot, devMode, convention string) error {
-	mgr := config.NewConfigManager()
-	cfg, err := mgr.LoadRaw(projectRoot)
-	if err != nil {
-		return fmt.Errorf("load project config: %w", err)
-	}
-
-	changed := false
-
-	if devMode != "" && string(cfg.Quality.DevelopmentMode) != devMode {
-		quality := cfg.Quality
-		quality.DevelopmentMode = models.DevelopmentMode(devMode)
-		if err := mgr.SetSection("quality", quality); err != nil {
-			return fmt.Errorf("set quality section: %w", err)
-		}
-		changed = true
-	}
-
-	if convention != "" && cfg.GitConvention.Convention != convention {
-		gc := cfg.GitConvention
-		gc.Convention = convention
-		if err := mgr.SetSection("git_convention", gc); err != nil {
-			return fmt.Errorf("set git_convention section: %w", err)
-		}
-		changed = true
-	}
-
-	if changed {
-		if err := mgr.Save(); err != nil {
-			return fmt.Errorf("save project config: %w", err)
-		}
-	}
-	return nil
+	return settings.WriteProjectScalars(projectRoot, devMode, convention)
 }
 
 // The 7 nested project-config fields (quality coverage targets + git-convention
