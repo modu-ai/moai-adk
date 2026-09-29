@@ -29,7 +29,7 @@
 ## §E.4 Sync-phase Audit-Ready Signal
 
 - sync_status: complete — 단일 sync 커밋으로 CHANGELOG [Unreleased] > Added 등재, spec.md frontmatter `implemented → completed` 전환, 본 §E.4 기록을 함께 실어 착지. `sync_commit_sha`는 커밋이 자기 해시를 인용할 수 없으므로 `pending-backfill-sync` 플레이스홀더로 적고 직후 커밋에서 백필(D3 면제).
-- sync_commit_sha: "pending-backfill-sync"
+- sync_commit_sha: "4c0d46d0c"
 - changelog_entry_position: [Unreleased] > Added 최상단 (B12 선방출 grep `grep -c 'SPEC-DOCS-HEADING-PARITY-001' CHANGELOG.md` = 0 확인 후 편입)
 - b12_self_test_a: PASS — 선방출 grep 0건 (중복 편입 없음)
 - b12_self_test_b: PASS — acceptance.md SSOT 기준 고유 AC 9건(AC-DOCS-001..009) = CHANGELOG 기재 수 9건 일치
