@@ -75,10 +75,12 @@ var sectionRootKeys = map[string]map[string]bool{
 // 무관하게 WriteSectionViaSeam이 이 파일들을 수락한다 — 편집 경로의 선택은
 // 호출자(ApplySchemaEdits/WriteProjectScalars/WriteProjectNestedConfig)가
 // 하며, 여기서 거부하면 그 편집이 전체-재마샬로 되돌아가 REQ-WSL-002를
-// 위반한다. language.yaml은 의도적으로 제외다: 유일한 쓰기 경로가
-// profile.SyncToProjectConfig의 typed SetSection("language")이고(편집
-// FieldDef가 없어 콘솔 폼이 언어 파일을 만지지 않는다), 그 전체-재마샬은
-// 완전 typed 커버리지라 무손실 계약의 잔여 경로가 아니다 (plan.md §A.2).
+// 위반한다. language.yaml은 이 목록에 없지만 무손실 계약의 예외가 아니다:
+// 그 쓰기 경로는 profile.SyncToProjectConfig의 행-스플라이스다 (sync-audit
+// F-1 — 구 SetSection("language")+Save() 재마샬은 콘솔 언어 셀렉트 4종이
+// 실제로 도달하는 다섯 번째 잔여 재마샬 경로였고, 주석·미모델링 키를
+// 파괴했다. seam 직접 호출 대신 yamlpatch를 profile에서 직접 쓰는 것은
+// user.yaml name-스플라이스와 같은 import-cycle 회피 선행이다).
 var typedSeamFiles = map[string]bool{
 	"user":           true,
 	"quality":        true,

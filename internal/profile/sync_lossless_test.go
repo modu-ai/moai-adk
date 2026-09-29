@@ -121,6 +121,112 @@ func TestSyncToProjectConfig_NameUnchangedNoWrite(t *testing.T) {
 	}
 }
 
+// SPEC-WEB-SAVE-LOSSLESS-001 — sync-audit F-1: language.yaml was the FIFTH
+// residual re-marshal path — SyncToProjectConfig applied language preferences
+// via SetSection("language") + Save(), a full struct re-marshal that wipes
+// comments and unmodeled keys. The web console's four language selects reach
+// this path, so the writer-universal clause of REQ-WSL-002/003 was violated.
+// The auditor probe-reproduced the loss; this test is that probe as a
+// regression guard, on the same byte-level assertion shape as the user.yaml
+// splice tests above.
+
+const richLanguageYAML = `# language — hand-maintained
+language:
+  # conversation locale (user comment)
+  conversation_language: ko
+  conversation_language_name: Korean (한국어)
+  agent_prompt_language: en
+  git_commit_messages: en
+  code_comments: ko
+  documentation: ko
+  # user-added unmodeled key — must survive a language edit
+  custom_locale_note: keep-me
+
+# trailing note
+`
+
+// seedLanguageFixture writes a language.yaml carrying comments and an
+// unmodeled key — the loss shape the sync-audit probe observed on the
+// re-marshal path.
+func seedLanguageFixture(t *testing.T, root, content string) {
+	t.Helper()
+	dir := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "language.yaml"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func readLanguageFixture(t *testing.T, root string) string {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(root, ".moai", "config", "sections", "language.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(raw)
+}
+
+// TestSyncToProjectConfig_LanguageEditSplicesRows carries the sync-audit F-1
+// regression: a conversation-language edit must change ONLY the
+// conversation_language + conversation_language_name rows (seam line-splice);
+// comments, unmodeled keys, and untouched language scalars survive verbatim.
+func TestSyncToProjectConfig_LanguageEditSplicesRows(t *testing.T) {
+	projectRoot := t.TempDir()
+	seedLanguageFixture(t, projectRoot, richLanguageYAML)
+
+	if err := SyncToProjectConfig(projectRoot, ProfilePreferences{ConversationLang: "en"}); err != nil {
+		t.Fatalf("SyncToProjectConfig: %v", err)
+	}
+
+	after := readLanguageFixture(t, projectRoot)
+	changed := changedLineIndexes(t, richLanguageYAML, after)
+	if len(changed) != 2 {
+		t.Fatalf("language edit changed %d lines, want 2 (conversation_language + conversation_language_name)\n--- before ---\n%s\n--- after ---\n%s", len(changed), richLanguageYAML, after)
+	}
+	for _, want := range []string{
+		"# language — hand-maintained",
+		"# conversation locale (user comment)",
+		"# user-added unmodeled key — must survive a language edit",
+		"custom_locale_note: keep-me",
+		"git_commit_messages: en",
+		"code_comments: ko",
+		"# trailing note",
+	} {
+		if !strings.Contains(after, want) {
+			t.Errorf("language edit lost %q:\n%s", want, after)
+		}
+	}
+}
+
+// TestSyncToProjectConfig_LanguageUnchangedNoWrite carries REQ-WSL-001 on the
+// language path: a submission equal to the persisted values writes nothing.
+func TestSyncToProjectConfig_LanguageUnchangedNoWrite(t *testing.T) {
+	projectRoot := t.TempDir()
+	seedLanguageFixture(t, projectRoot, richLanguageYAML)
+	path := filepath.Join(projectRoot, ".moai", "config", "sections", "language.yaml")
+	beforeStat, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := SyncToProjectConfig(projectRoot, ProfilePreferences{ConversationLang: "ko"}); err != nil {
+		t.Fatalf("SyncToProjectConfig: %v", err)
+	}
+
+	afterStat, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !afterStat.ModTime().Equal(beforeStat.ModTime()) {
+		t.Error("unchanged language value still rewrote language.yaml (mtime moved — REQ-WSL-001)")
+	}
+	if got := readLanguageFixture(t, projectRoot); got != richLanguageYAML {
+		t.Errorf("unchanged language value rewrote language.yaml\n--- before ---\n%s\n--- after ---\n%s", richLanguageYAML, got)
+	}
+}
+
 // TestSyncToProjectConfig_NameAbsentUpsert carries the AC-WSL-005 F6 variant:
 // a user.yaml without a `name:` key gets one via the upsert fallback. The Then
 // is relaxed to the data level (C3): existing keys, values, and comments must

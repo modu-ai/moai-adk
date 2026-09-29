@@ -1,5 +1,14 @@
 package settings
 
+// @MX:WARN: [AUTO] WriteProjectScalars는 프로필 스토어가 아닌 *프로젝트 설정*
+// (.moai/config/sections/quality.yaml + git-convention.yaml)을 디스크에 쓰는
+// 영속화 경계다 (SPEC-WEB-SAVE-LOSSLESS-001 M1). 웹 콘솔과 TUI가 공유한다.
+// @MX:REASON: [AUTO] 이 경계에 typed struct 재직렬화(ConfigManager.SetSection/Save
+// 계열)를 되돌리면 quality.yaml 미모델링 키(constitution.session_effort_default
+// 등)와 주석 전량이 devMode/convention 편집 한 번에 파괴된다 — GitHub issue
+// #1731의 원래 결함이다 (REQ-WSL-002/003). 영속화는 반드시
+// WriteSectionViaSeam/yamlpatch 라인-스플라이스로만 수행한다.
+
 // 이 파일은 development_mode + git_convention.convention 스칼라 편집의 공유
 // 쓰기 seam이다 (SPEC-WEB-SAVE-LOSSLESS-001 M1 — plan-audit iter-2 F5 처분
 // (a), REQ-WSL-002/003 + AC-WSL-009). 구 경로는 internal/web
