@@ -349,10 +349,11 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 		return homestate.Card{}, false, false, err
 	}
 	for _, it := range rec.Items {
-		if it.State != kanban.BacklogStatePicked || recorded[it.ID] {
-			continue
+		// Positive enumeration (SPEC-TODO-HOLD-STATE-001 REQ-THS-012): the
+		// state this arm claims is named; every other state falls through.
+		if it.State == kanban.BacklogStatePicked && !recorded[it.ID] {
+			return factoryNextRecordAndClaim(ctx, db, root, runID, it.ID, lane)
 		}
-		return factoryNextRecordAndClaim(ctx, db, root, runID, it.ID, lane)
 	}
 	// (c) the oldest queued card: promote it to picked in the queue FIRST,
 	// then record — a record-write failure leaves it a plain unowned picked
