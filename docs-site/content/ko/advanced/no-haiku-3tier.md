@@ -82,11 +82,11 @@ flowchart TD
 
     T1["Tier 1 — 기계·탐색<br/>Sonnet low<br/>manager-docs · manager-git · Explore"]
     T2["Tier 2 — 생산<br/>Opus, 행마다 다른 단계<br/>manager-spec · manager-develop<br/>builder-harness · e2e-tester"]
-    T3["Tier 3 — 판단·조율<br/>Opus high 중심<br/>plan-auditor · sync-auditor · manager-design<br/>manager-lead · super-advisor · mission-governor"]
+    T3["Tier 3 — 판단·조율<br/>Opus high 중심<br/>plan-auditor · sync-auditor · manager-design<br/>manager-lead · super-advisor · manager-todo"]
 
     T1 --> NOTE["세 프로필 모두에서 고정"]
     T2 --> NOTE2["두 행은 세 열 모두 medium 고정<br/>두 행만 프로필을 따라 내려감"]
-    T3 --> NOTE3["super-advisor · mission-governor는<br/>경제 열에서도 high를 지킴"]
+    T3 --> NOTE3["super-advisor · manager-todo는<br/>경제 열에서도 high를 지킴"]
 ```
 
 ### Tier 1 — 기계·탐색
@@ -116,11 +116,11 @@ flowchart TD
 |---|---|---|---|
 | `plan-auditor` · `sync-auditor` | `opus / high` | `opus / high` | `opus / medium` |
 | `manager-design` · `manager-lead` | `opus / high` | `opus / high` | `opus / medium` |
-| `super-advisor` · `mission-governor` | `opus / high` | `opus / high` | `opus / high` |
+| `super-advisor` · `manager-todo` | `opus / high` | `opus / high` | `opus / high` |
 
-`super-advisor`(에스컬레이션 경로)와 `mission-governor`(봉인된 미션 판정)만 **경제 열에서도 `high`를 지킵니다**. 싼 열에서 가장 건전하게 유지할 가치가 있는 자리가 바로 그 둘이기 때문입니다.
+`super-advisor`(에스컬레이션 경로)와 `manager-todo`(봉인된 미션 판정)만 **경제 열에서도 `high`를 지킵니다**. 싼 열에서 가장 건전하게 유지할 가치가 있는 자리가 바로 그 둘이기 때문입니다.
 
-`mission-governor`는 이 축이 왜 「멀티턴이냐 아니냐」보다 나은지를 보여 줍니다. 한 번 읽고 결정 하나를 돌려주는 **단발** 행이라 멀티턴 기준으로는 Sonnet 쪽에 가 있어야 하지만, 실제로는 세 열 모두 `opus / high`입니다. **판단하는 행이기 때문**입니다.
+`manager-todo`는 이 축이 왜 「멀티턴이냐 아니냐」보다 나은지를 보여 줍니다. 한 번 읽고 결정 하나를 돌려주는 **단발** 행이라 멀티턴 기준으로는 Sonnet 쪽에 가 있어야 하지만, 실제로는 세 열 모두 `opus / high`입니다. **판단하는 행이기 때문**입니다.
 
 `max`는 **어느 행도 받지 않습니다.** `high` 위의 유일한 단계로 어휘에는 남아 있지만 현재 배정된 셀은 0개입니다. `xhigh`도 어디에도 쓰지 않습니다 — Opus에서 `high`와 점수가 같으면서 비용만 49% 더 듭니다.
 

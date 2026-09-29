@@ -70,7 +70,7 @@ func TestLoadCatalog(t *testing.T) {
 	// moai-kanban-foreman added (kanban foreman loop-iteration skill driving the
 	// bare /loop backlog dispatch cycle, core.skills), net +1 = 44.
 	// moai-domain-design-dna added (reference-design deconstruction + generation
-	// domain skill, core.skills, and mission-governor), net +2 = 46.
+	// domain skill, core.skills, and manager-todo), net +2 = 46.
 	// moai-ref-jev-question-design added (question-design rules reference for
 	// the gated judgment capability, core.skills), net +1 = 47.
 	const expectedTotal = 47

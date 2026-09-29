@@ -257,7 +257,7 @@ MoAI is the **strategic orchestrator**. It does not write code directly — it d
 | **Builder** | builder-harness | 🟠 | Project-specific harness (agents/skills/commands) generation |
 | **Advisor** | super-advisor | 🔵 | High-reasoning consultation (E1-E4 escalation) |
 | **Specialist** | e2e-tester | 🟠 | E2E test execution across web/mobile/desktop |
-| | mission-governor | 🔴 | Reads the sealed snapshot of an approved GTD auto mission and returns one decision (read-only; a deterministic executor performs any action) |
+| | manager-todo | 🔴 | Manages the todo queue; its read-only judgment sub-role reads the sealed snapshot of an approved GTD auto mission and returns one decision (a deterministic executor performs any action) |
 | **Built-in** | Explore | ⚪ | Read-only codebase exploration |
 
 Cost colors reflect the model behind each agent's work: 🔴 deep reasoning on Opus · 🟠 standard reasoning on Opus · 🔵 light reasoning · ⚪ read-only exploration. Since v3.2 every agent runs on the **session's model and effort** — subagents inherit the main session's model and effort, so the color you see follows the session you launched, not a per-agent assignment table (retired).
@@ -287,7 +287,7 @@ flowchart TD
 
     subgraph Specialist["Specialist (2)"]
         S1["e2e-tester\nE2E test execution"]
-        S2["mission-governor\nGTD auto-mission decision"]
+        S2["manager-todo\nGTD auto-mission decision"]
     end
 
     subgraph Explore["Built-in (1)"]

@@ -280,7 +280,16 @@ func planAutoDone(snapshot *kanban.BacklogRecord, root, ref string, subjectKnown
 	outcomes := make([]autoDoneOutcome, 0, len(snapshot.Items))
 	for i := range snapshot.Items {
 		it := snapshot.Items[i]
-		if it.State != kanban.BacklogStateQueued && it.State != kanban.BacklogStatePicked {
+		// POSITIVE enumeration (SPEC-TODO-HOLD-STATE-001 REQ-THS-011): the
+		// candidate scan names the states it evaluates. The behavior is
+		// unchanged — the previous negative disjunction already skipped every
+		// other state — but the form is the contract: a state added later
+		// must not be able to slip into the candidate set through a
+		// comparison the code forgot to negate.
+		switch it.State {
+		case kanban.BacklogStateQueued, kanban.BacklogStatePicked:
+			// the only auto-done candidate states (REQ-AD-001)
+		default:
 			continue
 		}
 		o := autoDoneOutcome{id: it.ID}

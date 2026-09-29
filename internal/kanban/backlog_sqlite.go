@@ -45,9 +45,19 @@ const (
 	backlogDBFileNameSuffix = ".db"
 
 	// backlogSchemaVersion stamps the physical layout in meta. Bumped ONLY by
-	// a future SPEC redefining the DDL; the runtime reads it and refuses an
-	// unrecognized version rather than guessing.
-	backlogSchemaVersion = "1"
+	// a SPEC that redefines the DDL; the runtime reads it and refuses an
+	// unrecognized version rather than guessing. The "2" stamp (SPEC-TODO-
+	// HOLD-STATE-001) marks the four-state items CHECK — a layout change
+	// SQLite cannot ALTER into place, which is why it rides the rebuild
+	// migration rather than an ADD COLUMN.
+	backlogSchemaVersion = "2"
+
+	// backlogSchemaVersionV1 is the previous stamp. It is a KNOWN version,
+	// not a current one: the pure reader accepts it (an un-migrated queue is
+	// readable), and the adopting open migrates it to the current stamp by
+	// rebuilding the items table (backlog_rebuild.go). A stamp the binary
+	// knows as neither current nor previous still refuses at open.
+	backlogSchemaVersionV1 = "1"
 
 	// backlogBusyTimeoutMS is the per-connection busy timeout (REQ-TOSQ-003
 	// mandates >= 5000): how long a writer blocked on another process's lock
@@ -80,10 +90,43 @@ const (
 	backlogMetaKeyQuarantinePending = "legacy_quarantine_pending"
 )
 
+// backlogSchemaVersionOverride, when non-empty, replaces the version the
+// reader and the schema switch treat as current (test-only seam for
+// REQ-THS-005's old-binary simulation — the AC sanctions reader-path version
+// injection; always empty in production).
+var backlogSchemaVersionOverride string
+
+// backlogCurrentSchemaVersion returns the schema stamp this binary treats as
+// current, honoring the test-only override.
+func backlogCurrentSchemaVersion() string {
+	if backlogSchemaVersionOverride != "" {
+		return backlogSchemaVersionOverride
+	}
+	return backlogSchemaVersion
+}
+
 // backlogLandingColumn is the landing-evidence column carried by both
 // card-bearing tables. It is added by ensureLandingColumn rather than by
 // backlogDDL — see that function for why.
 const backlogLandingColumn = "landing"
+
+// backlogItemsTableColumns is the items table's physical column list — the
+// single source shared by backlogDDL (fresh databases) and the v1→v2 rebuild
+// (existing ones), so the two shapes cannot drift. The four-value state
+// CHECK is the layout the "2" stamp marks; widening it is the change that
+// forces the rebuild, because SQLite cannot ALTER a CHECK constraint.
+// The landing column sits AFTER state, not before: upgraded databases carry
+// it there (ensureLandingColumn's ALTER appends it), and a fresh database
+// must converge on the identical physical order — the column-tuple freeze
+// test pins the sequence.
+const backlogItemsTableColumns = `
+  seq      INTEGER PRIMARY KEY,
+  id       TEXT    NOT NULL UNIQUE,
+  text     TEXT    NOT NULL,
+  added_at TEXT    NOT NULL,
+  spec_id  TEXT,
+  state    TEXT    NOT NULL CHECK (state IN ('queued','picked','dropped','hold')),
+  landing  TEXT`
 
 // backlogDDL is the physical schema (design.md §2). Everything is IF NOT
 // EXISTS so opening any existing database is idempotent. seq carries the
@@ -96,26 +139,22 @@ const backlogLandingColumn = "landing"
 // GUARD-001 REQ-TDG-003/004). They are ADDITIVE and cost nothing on an
 // existing database: this whole DDL runs on every open and every statement is
 // IF NOT EXISTS, so a queue created by an earlier binary gains the tables the
-// first time a newer one opens it — which is precisely why the archive is a
-// pair of tables rather than a fourth `state` value. SQLite cannot ALTER a
-// CHECK constraint, so admitting a fourth state would need a table rebuild on
-// every operator queue in the field.
+// first time a newer one opens it. This DDL once carried a THREE-state items
+// CHECK and the comment warned that admitting a fourth state "would need a
+// table rebuild on every operator queue in the field" — that rebuild is now
+// exactly how the fourth state (`hold`) arrived: a transactional, parity-
+// verified rebuild behind the schema_version bump to "2"
+// (SPEC-TODO-HOLD-STATE-001, backlog_rebuild.go).
 //
 // archived_items deliberately carries NO state CHECK: an archived row is
 // history rather than a live lifecycle position, and leaving the constraint
-// off keeps the live three-value enum the single constrained surface.
+// off keeps the live four-value enum the single constrained surface.
 const backlogDDL = `
 CREATE TABLE IF NOT EXISTS meta (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
-CREATE TABLE IF NOT EXISTS items (
-  seq      INTEGER PRIMARY KEY,
-  id       TEXT    NOT NULL UNIQUE,
-  text     TEXT    NOT NULL,
-  added_at TEXT    NOT NULL,
-  spec_id  TEXT,
-  state    TEXT    NOT NULL CHECK (state IN ('queued','picked','dropped'))
+CREATE TABLE IF NOT EXISTS items (` + backlogItemsTableColumns + `
 );
 CREATE TABLE IF NOT EXISTS findings (
   subject_id TEXT  NOT NULL,
@@ -286,7 +325,7 @@ func openBacklogReader(dbPath string) (*backlogEngine, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), backlogOpenTimeout)
 	defer cancel()
 	version, err := e.schemaVersion(ctx)
-	if err == nil && version != "" && version != backlogSchemaVersion {
+	if err == nil && version != "" && version != backlogCurrentSchemaVersion() && version != backlogSchemaVersionV1 {
 		err = fmt.Errorf("unsupported schema_version %q: %w", version, ErrBacklogCorrupt)
 	}
 	if err == nil {
@@ -374,25 +413,45 @@ func (e *backlogEngine) ensureSchema(ctx context.Context) error {
 	if _, err := e.db.ExecContext(ctx, backlogDDL); err != nil {
 		return mapBacklogEngineError(fmt.Sprintf("schema %s", e.dbPath), err)
 	}
-	if err := e.ensureLandingColumn(ctx); err != nil {
-		return err
-	}
 	version, err := e.schemaVersion(ctx)
 	if err != nil {
 		return err
 	}
+	current := backlogCurrentSchemaVersion()
 	switch version {
 	case "":
 		if _, err := e.db.ExecContext(ctx,
 			`INSERT INTO meta(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`,
-			backlogMetaKeySchemaVersion, backlogSchemaVersion); err != nil {
+			backlogMetaKeySchemaVersion, current); err != nil {
 			return mapBacklogEngineError(fmt.Sprintf("stamp schema_version %s", e.dbPath), err)
 		}
-	case backlogSchemaVersion:
+	case current:
 		// current layout
+	case backlogSchemaVersionV1:
+		// Reached only when the previous stamp is NOT this binary's current
+		// one (the case above matches first): rebuild the items table to the
+		// current CHECK and stamp — one transaction, parity-verified before
+		// the switch (backlog_rebuild.go).
+		if err := e.rebuildItemsTable(ctx); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("schema %s: unsupported schema_version %q (want %q): %w",
-			e.dbPath, version, backlogSchemaVersion, ErrBacklogCorrupt)
+			e.dbPath, version, current, ErrBacklogCorrupt)
+	}
+	// Additive retrofits run AFTER the version reconciliation, never before
+	// it: the v1→v2 rebuild must see exactly the column set it was written
+	// against (a rebuild that runs after a retrofit would silently drop the
+	// retrofitted columns it does not know), and a forced rebuild failure
+	// must leave the database file byte-identical — an ALTER that ran first
+	// would touch it before the failure could be observed. Fresh databases
+	// carry every column in backlogDDL, so the ensures below are no-ops
+	// there. Merge ordering fix, card t1310 (ensure-before-rebuild inverted).
+	if err := e.ensureLandingColumn(ctx); err != nil {
+		return err
+	}
+	if err := e.ensureTransitionStampColumns(ctx); err != nil {
+		return err
 	}
 	return nil
 }
@@ -438,22 +497,60 @@ var landingCarryingTables = []string{"items", "archived_items"}
 // message.
 func (e *backlogEngine) ensureLandingColumn(ctx context.Context) error {
 	for _, table := range landingCarryingTables {
-		present, err := e.hasColumn(ctx, table, backlogLandingColumn)
-		if err != nil {
+		if err := e.ensureColumn(ctx, table, backlogLandingColumn); err != nil {
 			return err
 		}
-		if present {
-			continue
+	}
+	return nil
+}
+
+// backlogTransitionStampColumns lists the transition-stamp columns
+// (SPEC-TODO-TRANSITION-STAMPS-001) per table, added by the same additive
+// migration discipline as the landing column. items carries picked_at and
+// dropped_at; archived_items carries the same two stamps — the archive
+// preserves them as they stood at archive time (REQ-TST-007) — plus
+// archived_at and the done-time landing verdict record (REQ-TST-008).
+// Compile-time constants only: nothing here is ever fed from a runtime value.
+var backlogTransitionStampColumns = map[string][]string{
+	"items":          {"picked_at", "dropped_at"},
+	"archived_items": {"picked_at", "dropped_at", "archived_at", "landing_verdict"},
+}
+
+// ensureTransitionStampColumns runs the stamp columns through the same
+// metadata-gated ADD COLUMN path as the landing column, at the same point in
+// the open sequence, so a fresh and an upgraded database converge on the same
+// column set (REQ-TST-001..003). Iteration order is deterministic (one table
+// at a time, columns in declaration order) so a partially failed open leaves
+// an inspectable shape rather than an arbitrary one.
+func (e *backlogEngine) ensureTransitionStampColumns(ctx context.Context) error {
+	for _, table := range []string{"items", "archived_items"} {
+		for _, column := range backlogTransitionStampColumns[table] {
+			if err := e.ensureColumn(ctx, table, column); err != nil {
+				return err
+			}
 		}
-		// SQLite cannot bind an identifier, so the table and column names are
-		// interpolated. Both are compile-time constants — table ranges over
-		// landingCarryingTables and the column is backlogLandingColumn — and
-		// NEITHER may ever be fed from a runtime value.
-		stmt := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s TEXT", table, backlogLandingColumn)
-		if _, err := e.db.ExecContext(ctx, stmt); err != nil {
-			return mapBacklogEngineError(
-				fmt.Sprintf("add %s.%s %s", table, backlogLandingColumn, e.dbPath), err)
-		}
+	}
+	return nil
+}
+
+// ensureColumn adds one nullable TEXT column to a table when it is absent —
+// the single additive-migration gate both the landing column and the
+// transition stamps run through. The interpolated table and column names are
+// compile-time constants at every call site and may NEVER be fed from a
+// runtime value; idempotence is decided by reading pragma_table_info, never
+// by catching SQLite's duplicate-column error text.
+func (e *backlogEngine) ensureColumn(ctx context.Context, table, column string) error {
+	present, err := e.hasColumn(ctx, table, column)
+	if err != nil {
+		return err
+	}
+	if present {
+		return nil
+	}
+	stmt := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s TEXT", table, column)
+	if _, err := e.db.ExecContext(ctx, stmt); err != nil {
+		return mapBacklogEngineError(
+			fmt.Sprintf("add %s.%s %s", table, column, e.dbPath), err)
 	}
 	return nil
 }

@@ -36,7 +36,7 @@ func TestGoalAutoWorkflowContractAndMirrorParity(t *testing.T) {
 		"moai goal run",
 		"super-advisor",
 		"non-binding",
-		"mission-governor",
+		"manager-todo",
 		"deterministic validator",
 		"publish → pick → disk dispatch",
 		"manager-develop",

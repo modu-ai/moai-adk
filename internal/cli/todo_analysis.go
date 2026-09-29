@@ -50,6 +50,12 @@ func appendAnalyzedCard(rec *kanban.BacklogRecord, text string, state kanban.Bac
 		AddedAt: time.Now().UTC().Format(time.RFC3339),
 		State:   state,
 	}
+	// REQ-TST-004: entering the picked state stamps picked_at — add --pick
+	// is one of the two pick transitions, so its one locked write carries
+	// the stamp the live pick would.
+	if state == kanban.BacklogStatePicked {
+		item.PickedAt = todoStampNow()
+	}
 	rec.Items = append(rec.Items, item)
 
 	// The finding names the NEW card as the subject: it is the card whose

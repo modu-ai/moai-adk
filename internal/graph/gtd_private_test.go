@@ -322,7 +322,7 @@ func TestPrivateGTDProjectionAccountAndCanonicalCollectorIsolation(t *testing.T)
 	outputs["application-log"] = mustRead(t, filepath.Join(repo, ".moai", "logs", kanban.SlotLeaseAuditFileName))
 
 	now := time.Now().UTC()
-	if err := telemetry.RecordSkillUsage(repo, telemetry.UsageRecord{Timestamp: now, SessionID: "collector-telemetry", SkillID: "moai-gtd", Trigger: telemetry.TriggerAuto, ContextHash: telemetry.HashContext("ordinary"), AgentType: "mission-governor", Phase: "run", Outcome: telemetry.OutcomeSuccess}); err != nil {
+	if err := telemetry.RecordSkillUsage(repo, telemetry.UsageRecord{Timestamp: now, SessionID: "collector-telemetry", SkillID: "moai-gtd", Trigger: telemetry.TriggerAuto, ContextHash: telemetry.HashContext("ordinary"), AgentType: "manager-todo", Phase: "run", Outcome: telemetry.OutcomeSuccess}); err != nil {
 		t.Fatal(err)
 	}
 	report, err := telemetry.GenerateReport(repo, 1)

@@ -239,11 +239,11 @@ DeepSWE 排行榜（113 项任务、按努力度分视图）证明了这一点�
 | opus-5 [xhigh] | 73%±3 | $9.07 | 纯亏损 —— 与 high 持平，只多花 49% |
 | opus-5 [max] | 74%±4 | $11.84 | |
 | glm-5.2 [max] | 44%±2 | $3.92 | API 计费下吃亏 · z.ai 包月制下有用 |
-| sonnet-5 [max] | 54%±4 | $26.40 | 被 opus-5 [low] 支配 |
+| sonnet-5 [max] (Sonnet 5) | 54%±4 | $26.40 | 被 opus-5 [low] 支配 |
 
 Opus 5 用最低努力度跑，得分反而高于 Sonnet 5 用最高努力度（58% vs 54%），单任务成本只有十六分之一（$1.66 vs $26.40）—— 尽管 Sonnet 的 token 单价更便宜。原因是 268 步对 36 步：写账单的是重试循环，不是 token 费率。成本由**给每个任务指派合适的模型和推理深度**决定。
 
-上表是在 Opus 5 上测得的数值。MoAI 的 `opus` 别名现在指向 Opus 5.5（需要 Claude Code v2.1.280 或更高版本，默认 effort 为 `medium`），Opus 5.5 尚未重新测量。
+上表是在 Opus 5 上测得的数值。MoAI 的 `opus` 别名现在指向 Opus 5.5（需要 Claude Code v2.1.280 或更高版本，默认 effort 为 `medium`），`sonnet` 别名现在指向 Sonnet 5.5（按官方文档为 1M 上下文）。两者都尚未重新测量。
 
 <p align="center">
   <img src="./assets/images/why-tokenomics-infographic-zh.png" alt="token 经济学悖论 —— 价格跌 98%、支出涨 320%。对策是 测量→指派→瘦身→刹停 四步" width="80%">
@@ -370,7 +370,7 @@ claude        # 或者 moai cc —— 在项目里运行 Claude Code
 
 声明完成条件，会话就自主工作直到条件满足。轮次上限、停滞守卫、墙钟预算、事前审批门一起绑着，掉不进无限循环。机械条件（命令退出码）和模型条件（对话记录里的主张）都能用。`--max-turns 0` 还能武装 auto-compact 驱动的无限 goal —— 此时由 `--max-duration` 和停滞守卫提供边界。
 
-`moai goal --auto "<任务>"` 会另建一个 `mission_mode=auto` 草案，`approve` 一次封存范围、行为、证据与上限，之后由 `run`、`status`、`revoke` 和受策略限制的 `resume` 使用该持久合同。`super-advisor` 仅提供不具约束力的建议，只读 `mission-governor` 生成结构化决策，确定性 owner adapter 执行带 receipt 的队列与调度、显式路径提交以及带 lease 的 local develop `--no-ff` 合并。若真实供应方尚未证明持久运行能力，模式会降为 `active-session-only`；远程 push、PR 与合并完成仍未经证明。[GTD 与 auto 任务指南](https://adk.mo.ai.kr/zh/utility-commands/moai-gtd)
+`moai goal --auto "<任务>"` 会另建一个 `mission_mode=auto` 草案，`approve` 一次封存范围、行为、证据与上限，之后由 `run`、`status`、`revoke` 和受策略限制的 `resume` 使用该持久合同。`super-advisor` 仅提供不具约束力的建议，`manager-todo` 的只读判定子角色生成结构化决策，确定性 owner adapter 执行带 receipt 的队列与调度、显式路径提交以及带 lease 的 local develop `--no-ff` 合并。若真实供应方尚未证明持久运行能力，模式会降为 `active-session-only`；远程 push、PR 与合并完成仍未经证明。[GTD 与 auto 任务指南](https://adk.mo.ai.kr/zh/utility-commands/moai-gtd)
 
 最终执行边界更严格：`run --supervise` 有界执行 publish→pick→带 lease 的磁盘调度→commit→local develop `--no-ff`。受监督的 Git 效果必须分别提供 `--card-worktree` 与 `--develop-worktree`；仅使用旧 `--repo` 时效果数为 0。完成还需要 `0600` `--completion-receipt` 封存判定为 true 的 typed evidence 与合并 ancestry，不能仅因动作列表耗尽而完成；重放已完成任务的效果数同样为 0。`--recommend` 不授予权限，每项效果都必须同时持有仓库内 `0600` governor receipt 与独立审计 PASS receipt。未配置的远程与 release provider 返回 `provider_unsupported`，不会伪装成功。
 
@@ -512,7 +512,7 @@ flowchart TD
 | **构建者** | builder-harness | 项目专用智能体、技能、命令、钩子的脚手架 |
 | **顾问** | super-advisor | 按需高推理咨询（E1-E4 升级） |
 | **专员** | e2e-tester | Web/移动/桌面 E2E 测试执行（CLI 优先） |
-| | mission-governor | 对已批准的 GTD 自动任务做只读判定 —— 只返回一个判定，从不自己执行（由 GTD 工作流调用，因此不占选择决策树的行） |
+| | manager-todo | 待办队列管理（队列生命周期、`/moai:todo --auto` 串行循环、调度指导）— 对已封存快照的只读判定子角色只返回一个判定，从不自己执行（由 GTD 工作流调用，因此不占选择决策树的行） |
 | **内置** | Explore | 只读代码库探查 |
 
 所有智能体都原样继承会话的模型与推理强度 —— 会话用什么模型和 effort 起跑，就是全体的指派。写作和审计从一开始就分给别人 —— 写的人永远不给自己的作业打分。

@@ -78,12 +78,12 @@ The key point is that planning and auditing are separated — the one who built 
 | Agent | Role | Characteristics |
 |----------|------|------|
 | `e2e-tester` | E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs, artifact management) | Execution owner of the `/moai e2e` workflow — selection questions stay with the orchestrator |
-| `mission-governor` | Reads the sealed snapshot of an approved GTD auto mission and returns exactly one structured decision (read-only) | Decides but never acts — a deterministic executor validates the decision and performs any state change |
+| `manager-todo` | Manages the todo queue (queue lifecycle, `/moai:todo --auto` serial cycle, dispatch guidance); its read-only judgment sub-role reads the sealed snapshot of an approved GTD auto mission and returns exactly one structured decision | In the judgment sub-role it decides but never acts — a deterministic executor validates the decision and performs any state change |
 
-`mission-governor` **decides; it does not execute**. It writes no files, runs no shell or Git commands, touches no queue, dispatches no work to a lane, and neither commits, merges, approves, nor issues an audit verdict. The side that inspects the returned decision and actually changes state is a deterministic executor (an automated handler that moves only along fixed rules). Its tool list is just four — `Read`, `Grep`, `Glob`, `Skill` — and it returns a blocker decision whenever a request falls outside the sealed scope, or the evidence it needs to judge is missing or stale.
+In its read-only judgment sub-role, `manager-todo` **decides; it does not execute**. There it writes no files, runs no shell or Git commands, touches no queue, dispatches no work to a lane, and neither commits, merges, approves, nor issues an audit verdict. The side that inspects the returned decision and actually changes state is a deterministic executor (an automated handler that moves only along fixed rules). Its tool list is just four — `Read`, `Grep`, `Glob`, `Skill` — and it returns a blocker decision whenever a request falls outside the sealed scope, or the evidence it needs to judge is missing or stale.
 
 {{< callout type="info" >}}
-`mission-governor` has **deliberately no place** in the [Agent Selection Decision Tree](#agent-selection-decision-tree) below. It is not an agent the orchestrator picks and calls; it is a decision role the GTD auto-mission workflow invokes directly. Its absence from the tree is by design, not an omission.
+`manager-todo` has **deliberately no place** in the [Agent Selection Decision Tree](#agent-selection-decision-tree) below. It is not an agent the orchestrator picks and calls; its judgment sub-role is a decision role the GTD auto-mission workflow invokes directly. Its absence from the tree is by design, not an omission.
 {{< /callout >}}
 
 ### Built-in Agent (1, Anthropic)
@@ -238,7 +238,7 @@ The 12 MoAI custom agents are defined as markdown files in the `.claude/agents/m
 ├── builder-harness.md
 ├── super-advisor.md
 ├── e2e-tester.md
-├── mission-governor.md
+├── manager-todo.md
 └── (Explore: Anthropic built-in, no file)
 ```
 

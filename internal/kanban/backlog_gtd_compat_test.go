@@ -33,8 +33,10 @@ func TestMigrateGTDSchemaIdempotent(t *testing.T) {
 	if err := db.QueryRow(`SELECT value FROM gtd_meta WHERE key='schema_version'`).Scan(&gtd); err != nil {
 		t.Fatal(err)
 	}
-	if core != "1" || gtd != "1" {
-		t.Fatalf("versions core=%q gtd=%q, want 1/1", core, gtd)
+	// core is "2" since SPEC-TODO-HOLD-STATE-001 (four-state items CHECK);
+	// the GTD runtime schema has its own version axis and stays "1".
+	if core != "2" || gtd != "1" {
+		t.Fatalf("versions core=%q gtd=%q, want 2/1", core, gtd)
 	}
 	var before int
 	if err := db.QueryRow(`SELECT count(*) FROM gtd_meta`).Scan(&before); err != nil {
