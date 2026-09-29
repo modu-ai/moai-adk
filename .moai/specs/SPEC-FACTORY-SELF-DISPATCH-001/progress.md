@@ -788,6 +788,26 @@ re-verifies, -018, -021, -022. Continuation at `f37942d79` (clean).
   `feat(SPEC-FACTORY-SELF-DISPATCH-001): M7 invariants, vocabulary, doctrine amendments (card
   t1240)`; push = none (the lead pushes develop in batch).
 
+### Integration absorption (2026-09-29, worker-70)
+
+- Absorbed local develop `145c3d98c` → commit `d43e50bb3` (9 conflicts resolved, both sides
+  survive: CHANGELOG combined; gitflow-lane-protocol §6 exceptions + leader vocabulary;
+  kanban-dispatch + twin exception paragraph + t1321 diet; moai-mcp-tools + twin 20-tool combined
+  surface; factory_card.go/todo.go/codex_launcher.go semantic coexistence), repair `844fa42a8`
+  (t1308 positive-enumeration guard integration).
+- Test alignment `d7a78aeaa` — D2 (a): two F1-era pick-mirror tests re-homed to the neutral
+  operator surface (assertions intact, REQ-SD-015 note added); D3 (a): `TestFactoryRoleEnvConstant`
+  closure-set pin updated to the contractLaneGate trio (superseding source partially_superseded_by
+  9866ca25e noted); D1 (a) per lead adjudication (Jev choice 422 / noul re-query 0.46 below
+  threshold → doctrine-fallback ruling (a)): superseded codex factory-entry test removed with
+  supersession comment; foreign commit `6f14e64b2` carries a wrong t1240 label (t1294-lineage,
+  pushed, unamendable — recorded batch-end; this branch's records are the true t1240 carriers).
+- Gates at `d7a78aeaa` (final): `make build` exit 0 churn 0; both builds exit 0; `golangci-lint`
+  `0 issues.`; AC anchored sweep `ok … internal/cli 70.715s` (lane final run) and `ok … 66.745s`
+  (post-absorption); families `^TestTodo|^TestFR_` `ok 442.536s`; internal/config `ok 4.193s`;
+  codex retire family `ok 26.849s`; cmp twins identical; self-dispatch grep 1/1/2; boundary
+  grep 0. Residual red: 0.
+
 ## §F Phase 4 Mode Selection
 
 - tier: L · scope: >10 production files across cli/hook/config/kanban/homestate/codexwiring + template rules · domains: 6 (Go CLI, hooks, MCP server, launchers, doctrine rules, env constants) · language mix: Go + Markdown · concurrency benefit: LOW (coding-heavy, sequential milestone chain with shared files)
