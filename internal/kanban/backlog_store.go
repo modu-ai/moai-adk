@@ -29,6 +29,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // backlogLockFileName names the lock artifact sibling to the backlog file.
@@ -896,6 +898,255 @@ func (s *BacklogStore) addWithCardUUID(text string, cardUUID *string) (*BacklogI
 		}
 	}
 	return nil, 0, fmt.Errorf("added backlog item %s missing from committed record", item.ID)
+}
+
+// Claim-family sentinels (SPEC-TODO-CLAIM-LEASE-001). Each is a DISTINCT
+// indication so the CLI can map them onto separate exit surfaces
+// (REQ-TCL-006's raced indication, REQ-TCL-012's no-card code, the renew
+// refusals REQ-TCL-008 states).
+var (
+	// ErrClaimRaced reports that the claim lost a race or a live lease
+	// guards every candidate: the queue holds picked cards and none of them
+	// is claimable. The record is byte-identical — Mutate wrote nothing.
+	ErrClaimRaced = errors.New("kanban backlog claim raced: the queue's cards are already picked (live lease or concurrent claim)")
+	// ErrClaimNoCard reports that no eligible card exists at all — no queued
+	// card, and no picked card either (queue empty, or only held/dropped
+	// cards). Non-eligible states refuse by POSITIVE enumeration
+	// (REQ-TCL-011): only state=='queued' is ever selected, so a state added
+	// later is refused by the same fall-through.
+	ErrClaimNoCard = errors.New("kanban backlog claim: no eligible card (nothing queued)")
+	// ErrLeaseExpired reports a renew against a lapsed lease. The
+	// expiry-first return has COMMITTED (the homestate committedRefusal
+	// shape); the card is queued again and the renew did not extend.
+	ErrLeaseExpired = errors.New("kanban backlog lease expired")
+	// ErrLeaseHolder reports a renew by a label that does not hold the
+	// lease — refused with no change (REQ-TCL-008).
+	ErrLeaseHolder = errors.New("kanban backlog lease holder refused")
+)
+
+// BacklogOperatorHolder is the holder label a bare (non---lane) claim
+// carries — the operator's own act, in the same actor vocabulary the
+// factory record's operator decisions use.
+const BacklogOperatorHolder = "operator"
+
+// BacklogReclamation is one expired lease the expiry-first pass returned to
+// queued. It is the C5 audit surface: id plus the previous holder, rendered
+// by the CLI/MCP claim output — no events table (C5).
+type BacklogReclamation struct {
+	ItemID     string
+	PrevHolder string
+	Text       string
+}
+
+// BacklogClaim is the outcome of a successful claim-family operation: the
+// claimed card and the reclamation lines this operation's expiry-first pass
+// produced (usually empty; a claim that reclaims takes the reclaimed card
+// itself, since it is the oldest after the pass).
+type BacklogClaim struct {
+	Item      BacklogItem
+	Reclaimed []BacklogReclamation
+}
+
+// backlogLeaseExpired reports whether the item's lease has lapsed at now.
+// Only a picked card can hold a lease; C4 pins an unparseable expiry as
+// EXPIRED — a corrupt value cannot be trusted as a live lease (the
+// card_record.go LeaseExpired default this SPEC adopts).
+func backlogLeaseExpired(it *BacklogItem, now time.Time) bool {
+	if it.State != BacklogStatePicked || it.LeaseExpiresAt == nil {
+		return false
+	}
+	at, err := time.Parse(time.RFC3339, *it.LeaseExpiresAt)
+	if err != nil {
+		return true
+	}
+	return !now.Before(at)
+}
+
+// clearBacklogLease applies reclamation's cleared-field set: the lease
+// fields (picked_by, lease_expires_at) plus the pick-time picked_at and
+// spec_id — the generalized unpick (REQ-TCL-009; the operator's manual
+// unpick keeps its existing semantics).
+func clearBacklogLease(it *BacklogItem) {
+	it.PickedBy = nil
+	it.LeaseExpiresAt = nil
+	it.PickedAt = nil
+	it.SpecID = nil
+}
+
+// reclaimExpiredBacklogLeases runs the expiry-first pass over the record:
+// every picked card whose lease has lapsed (C4: unparseable counts) returns
+// to queued with the cleared-field set, and each return is surfaced as a
+// BacklogReclamation for the human audit line (C5). Only LAPSED cards are
+// mutated — a live lease is never crossed (REQ-TCL-007).
+func reclaimExpiredBacklogLeases(rec *BacklogRecord, now time.Time) []BacklogReclamation {
+	var out []BacklogReclamation
+	for i := range rec.Items {
+		it := &rec.Items[i]
+		if !backlogLeaseExpired(it, now) {
+			continue
+		}
+		prev := ""
+		if it.PickedBy != nil {
+			prev = *it.PickedBy
+		}
+		clearBacklogLease(it)
+		it.State = BacklogStateQueued
+		out = append(out, BacklogReclamation{ItemID: it.ID, PrevHolder: prev, Text: it.Text})
+	}
+	return out
+}
+
+// @MX:ANCHOR: [AUTO] Claim — the atomic compare-and-set card claim every claim surface calls
+// @MX:REASON: expected fan_in >= 3 (CLI claim verb, MCP todo_claim mirror, reclamation paths, tests); the whole operation rides ONE Mutate so the flock — not a version column (C2) — supplies the CAS atomicity, and a claim routed around it would race the read-modify-write this method serializes
+//
+// @MX:WARN: [TID:TX] claim-family engine access lives ONLY inside the Mutate callback
+// @MX:REASON: [TID:TX] a row-level update issued outside the callback's whole-record write races writeRecordArchive's delete-and-rewrite in BOTH directions (silent lost update, REQ-TCL-004); every claim statement must run inside this Mutate or not at all
+//
+// Claim takes the oldest queued card (stored order — the seq ORDER the
+// reader returns) as one compare-and-set inside a single Mutate: the
+// callback's freshly-loaded record IS the post-race state, so the state
+// predicate on it is the CAS and the flock is the atomicity (C2). The pass
+// runs expiry-first (REQ-TCL-009): lapsed leases return to queued before
+// selection, so a claim immediately re-takes a card whose holder lapsed.
+// The winner's card is stamped picked_by=holder, lease_expires_at=
+// now+DefaultFactoryLeaseDuration, picked_at=now. Failures write nothing:
+// a live-leased queue refuses with ErrClaimRaced (REQ-TCL-006), an empty
+// one with ErrClaimNoCard. An empty holder reads as the operator's own act.
+func (s *BacklogStore) Claim(holder string) (*BacklogClaim, error) {
+	if strings.TrimSpace(holder) == "" {
+		holder = BacklogOperatorHolder
+	}
+	now := time.Now().UTC()
+	expiry := now.Add(config.DefaultFactoryLeaseDuration).Format(time.RFC3339)
+	stamp := now.Format(time.RFC3339)
+	var result *BacklogClaim
+	err := s.Mutate(func(rec *BacklogRecord) error {
+		reclaimed := reclaimExpiredBacklogLeases(rec, now)
+		for i := range rec.Items {
+			// POSITIVE enumeration (REQ-TCL-011): only state=='queued' is
+			// claimable; every other state — a future one included — falls
+			// through the selection and refuses below.
+			if rec.Items[i].State != BacklogStateQueued {
+				continue
+			}
+			it := &rec.Items[i]
+			it.State = BacklogStatePicked
+			it.PickedBy = &holder
+			it.LeaseExpiresAt = &expiry
+			it.PickedAt = &stamp
+			result = &BacklogClaim{Item: *it, Reclaimed: reclaimed}
+			return nil
+		}
+		if reclaimed != nil {
+			// Unreachable: a reclaim leaves a queued card, which the loop
+			// above would have claimed. Kept as the race-free guarantee that
+			// a claim over its own reclamation never reports failure.
+			result = &BacklogClaim{Item: rec.Items[0], Reclaimed: reclaimed}
+			return nil
+		}
+		for _, it := range rec.Items {
+			if it.State == BacklogStatePicked {
+				// A picked card survived the expiry-first pass: its lease is
+				// live — this claim lost (REQ-TCL-006).
+				return fmt.Errorf("%w: %s is held by %s until %s", ErrClaimRaced,
+					it.ID, derefOr(it.PickedBy, "unknown"), derefOr(it.LeaseExpiresAt, "unknown"))
+			}
+		}
+		return ErrClaimNoCard
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// @MX:ANCHOR: [AUTO] RenewLease — the holder-checked lease extension
+// @MX:REASON: expected fan_in >= 3 (CLI claim --renew, MCP mirror, factory stage integration, tests); a renewal that skipped the holder predicate would let any session extend another holder's lease (REQ-TCL-007/008)
+//
+// @MX:WARN: [TID:TX] claim-family engine access lives ONLY inside the Mutate callback
+// @MX:REASON: [TID:TX] same chokepoint discipline as Claim — the renewal and its expiry-first pass commit as one whole-record write or not at all
+//
+// RenewLease extends the holder's lease by the lease duration and changes
+// no other field (REQ-TCL-008). The pass runs expiry-first: a lapsed lease
+// is returned to queued (committed — the homestate committedRefusal shape)
+// and the renew refuses with ErrLeaseExpired WITHOUT extending
+// (AC-TCL-006 arm 3). A foreign holder is refused with ErrLeaseHolder and
+// nothing is written. Renewal does not move picked_at, picked_by, state,
+// or spec_id.
+func (s *BacklogStore) RenewLease(id, holder string) (*BacklogClaim, error) {
+	now := time.Now().UTC()
+	var result *BacklogClaim
+	var committedRefusal error
+	err := s.Mutate(func(rec *BacklogRecord) error {
+		reclaimed := reclaimExpiredBacklogLeases(rec, now)
+		for i := range rec.Items {
+			if rec.Items[i].ID != id {
+				continue
+			}
+			it := &rec.Items[i]
+			for _, r := range reclaimed {
+				if r.ItemID == id {
+					// The addressed card's own lease had lapsed: the return
+					// commits (callback returns nil) and the caller still
+					// sees the refusal — renew-after-expiry never extends.
+					committedRefusal = fmt.Errorf("%w: %s lapsed at %s and was returned to queued",
+						ErrLeaseExpired, id, derefOr(it.LeaseExpiresAt, "unknown"))
+					return nil
+				}
+			}
+			if it.State != BacklogStatePicked {
+				return fmt.Errorf("backlog item %s is %s, not picked — nothing to renew", id, it.State)
+			}
+			if it.PickedBy == nil || strings.TrimSpace(holder) != *it.PickedBy {
+				return fmt.Errorf("%w: %q does not hold the lease on %s (holder %s)",
+					ErrLeaseHolder, holder, id, derefOr(it.PickedBy, "none"))
+			}
+			extended := now.Add(config.DefaultFactoryLeaseDuration).Format(time.RFC3339)
+			it.LeaseExpiresAt = &extended
+			result = &BacklogClaim{Item: *it, Reclaimed: reclaimed}
+			return nil
+		}
+		return fmt.Errorf("no backlog item %s", id)
+	})
+	if err != nil {
+		return nil, err
+	}
+	if committedRefusal != nil {
+		return nil, committedRefusal
+	}
+	return result, nil
+}
+
+// @MX:ANCHOR: [AUTO] ReclaimExpired — the queue-wide expiry-first return
+// @MX:REASON: expected fan_in >= 3 (claim/renew run the same pass internally; surfaces call it for the standalone reclaim audit sweep); an out-of-Mutate variant would race the whole-record write (REQ-TCL-004)
+//
+// @MX:WARN: [TID:TX] claim-family engine access lives ONLY inside the Mutate callback
+// @MX:REASON: [TID:TX] the pass mutates only lapsed cards, but it must still commit through the single whole-record write the flock serializes
+//
+// ReclaimExpired returns every lapsed lease to queued and surfaces each as
+// a reclamation (id + previous holder, C5). Live leases are never crossed
+// (REQ-TCL-007): only a card whose own expiry has passed — C4: unparseable
+// counts as passed — is mutated.
+func (s *BacklogStore) ReclaimExpired() ([]BacklogReclamation, error) {
+	now := time.Now().UTC()
+	var out []BacklogReclamation
+	err := s.Mutate(func(rec *BacklogRecord) error {
+		out = reclaimExpiredBacklogLeases(rec, now)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// derefOr renders a nullable stamp for a refusal message; absence reads as
+// the named fallback rather than an empty cell.
+func derefOr(s *string, fallback string) string {
+	if s == nil {
+		return fallback
+	}
+	return *s
 }
 
 // acquireBacklogLockSerialized acquires the backlog's sibling lock, retrying

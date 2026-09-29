@@ -240,6 +240,104 @@ func TestConcurrencyStress(t *testing.T) {
 		tally.successes, tally.starved, len(tally.hardFailures),
 		issuedCount, len(rec.Items), rec.LastSeq,
 		elapsed/time.Duration(tally.successes), elapsed, tally.successes)
+
+	// --- Claim contention phase (SPEC-TODO-CLAIM-LEASE-001 AC-TCL-002) ---
+	//
+	// N = 2×M actors race Claim over M queued cards: exactly M claims win
+	// (one per card), every loser receives the store's distinct raced
+	// indication having written NOTHING (the pre/post full-table tuple
+	// comparison detects a partial write, and every untouched row stays
+	// byte-identical). A lock-budget starvation is tolerated the same way
+	// the add phase tolerates it — it is neither a win nor a raced loss.
+	const claimCards = 4
+	claimStore := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
+	claimIDs := make([]string, 0, claimCards)
+	for i := 0; i < claimCards; i++ {
+		item, _, err := claimStore.Add(fmt.Sprintf("claim card %d", i))
+		if err != nil {
+			t.Fatalf("seed claim card %d: %v", i, err)
+		}
+		claimIDs = append(claimIDs, item.ID)
+	}
+	pre := backlogItemTuples(t, claimStore)
+
+	const claimActors = 2 * claimCards
+	var claimMu sync.Mutex
+	claimWins, claimStarved := 0, 0
+	var claimRaced, claimOther []error
+	var claimStart, claimDone sync.WaitGroup
+	claimStart.Add(1)
+	for a := 0; a < claimActors; a++ {
+		claimDone.Add(1)
+		go func(a int) {
+			defer claimDone.Done()
+			claimStart.Wait()
+			_, err := claimStore.Claim(fmt.Sprintf("lane-%d", a))
+			claimMu.Lock()
+			defer claimMu.Unlock()
+			switch {
+			case err == nil:
+				claimWins++
+			case IsBoardLockHeld(err):
+				claimStarved++
+			case errors.Is(err, ErrClaimRaced):
+				claimRaced = append(claimRaced, err)
+			default:
+				claimOther = append(claimOther, err)
+			}
+		}(a)
+	}
+	claimStart.Done()
+	claimDone.Wait()
+
+	if n := len(claimOther); n != 0 {
+		t.Fatalf("claim contention: %d/%d claims failed with an unexpected error; first: %v",
+			n, claimActors, claimOther[0])
+	}
+	if claimWins+claimStarved+len(claimRaced) != claimActors {
+		t.Fatalf("claim contention accounting broken: wins(%d) + starved(%d) + raced(%d) != %d",
+			claimWins, claimStarved, len(claimRaced), claimActors)
+	}
+	if claimWins != claimCards {
+		t.Errorf("claim contention: %d claims won, want exactly %d (one per card)", claimWins, claimCards)
+	}
+	if len(claimRaced) == 0 && claimStarved == 0 {
+		t.Errorf("claim contention produced no raced indication at all — %d losers over %d cards must surface ErrClaimRaced",
+			claimActors-claimCards, claimCards)
+	}
+
+	post := backlogItemTuples(t, claimStore)
+	// (a) partial-write detector: every post row is a valid terminal tuple.
+	assertNoPartialClaimWrite(t, post, claimCards)
+	// (b) raced byte-identity: no row lost or rewrote its pre-contention
+	// identity fields, and every claim-stamped field moved only once — the
+	// losers wrote nothing.
+	for id, before := range pre {
+		after, ok := post[id]
+		if !ok {
+			t.Errorf("raced byte-identity: row %s present before, absent after", id)
+			continue
+		}
+		for _, field := range []string{"seq", "text", "added_at"} {
+			if before[field] != after[field] {
+				t.Errorf("raced byte-identity: row %s field %s = %q after, was %q before",
+					id, field, after[field], before[field])
+			}
+		}
+	}
+	// (c) each card was stamped by exactly one holder: distinct picked_by
+	// values across the picked rows.
+	holders := map[string]bool{}
+	for _, row := range post {
+		if row["state"] == "picked" {
+			if holders[row["picked_by"]] {
+				t.Errorf("holder %q stamped two cards — a claim family write escaped the flock", row["picked_by"])
+			}
+			holders[row["picked_by"]] = true
+		}
+	}
+	t.Logf("SPEC-TODO-CLAIM-LEASE-001 AC-TCL-002: %d actors over %d cards — %d won, %d raced (ErrClaimRaced), %d starved; partial writes 0, raced rows byte-identical",
+		claimActors, claimCards, claimWins, len(claimRaced), claimStarved)
 }
 
 // AC-SIV-001 / REQ-SIV-001: a starved add is tolerated, produced
