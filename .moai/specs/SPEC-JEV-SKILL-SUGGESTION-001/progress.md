@@ -127,4 +127,20 @@ _<pending run-phase — manager-develop 소관>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs 소관. sync_commit_sha: (pending-backfill at sync commit)>_
+```yaml
+sync_status: complete
+sync_complete_at: 2026-09-30
+sync_commit_sha: "pending-backfill-sync"  # D3 placeholder — a commit cannot cite its own hash; backfilled in the follow-up commit
+sync_phase_scope: artifact-only close (spec.md in-progress -> completed frontmatter, this §E.4, CHANGELOG [Unreleased] entry) — no code, no template source; docs-site/README outside SPEC scope by design (the skill is the user-facing doc)
+b12_self_test_a: pass — `grep -c 'SPEC-JEV-SKILL-SUGGESTION-001' CHANGELOG.md` = 0 pre-emission (exit 1, zero-hit)
+b12_self_test_b: pass — 11 distinct AC identifiers in acceptance.md (AC-JSK-001..011, zero [RETIRED]/[REF] markers); the CHANGELOG entry references the same 11
+b12_self_test_c: pass — every file path cited in the CHANGELOG entry verified with ls (.claude/skills/moai-jev-skill-suggestion/SKILL.md, internal/template/templates/.claude/skills/moai-jev-skill-suggestion/SKILL.md — cmp-identical, internal/cli/jev_skill_suggestion_skill_test.go, internal/template/catalog.yaml); the catalog entry grep-verified (tier core, hash 65bc0679…, version 1.0.0)
+changelog_entry_position: [Unreleased] -> `### Added`, first entry
+frontmatter_status_transitions.spec_md: in-progress -> implemented -> completed (merged into the single sync commit; `updated:` already 2026-09-30)
+frontmatter_status_transitions.plan_acceptance: untouched — neither carries `status:` or `updated:` (status-axis statelessness per spec-frontmatter-schema.md § Artifact Statelessness); nothing to refresh
+canary_compliance_check.mx_tags: no MX tag surface arises — deliverables are 2 markdown skill copies + 1 _test.go guard + catalog.yaml; no new exported Go symbols, no non-test Go change (H9/H10 of §E.2)
+carried_observations:
+  - security guardian: 6 advisory path-traversal findings on internal/cli/jev_skill_suggestion_skill_test.go (lines 21/23/29/30/44/45) — test-fixture relative paths to the sibling skill copies; the sibling precedent test (jev_question_design) carries the same shape and shipped; left for sync-auditor disposition, no code change per lane discipline
+  - progress.md carries a stale duplicate "§E.3 Run-phase Audit-Ready Signal" pending-placeholder section below the real §E.3 (run-phase scaffold leftover); manager-docs must not rewrite §E.1–§E.3, so it is left untouched — lead/sync-auditor to disposition
+carried_gap: package-wide suite verdicts are CI's; embedded-binary runtime smoke of the new catalog entry not executed; hash determinism proven same-host only (all from §E.3, unchanged by this artifact-only sync)
+```
