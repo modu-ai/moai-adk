@@ -47,24 +47,29 @@ func discloseNonAuthoritativeBacklogJSON(w io.Writer, verb string, vouch kanban.
 // a stale project-local queue store diverges from it, one stderr line per
 // divergent store names the store's path and BOTH last_seq values. A tree
 // with no legacy store, or one whose last_seq matches the home database,
-// discloses nothing at all (REQ-TSS-005). stderr only (REQ-TSS-002) — the
-// line is separate from the backlog.json disclosure above, never instead
-// of it.
+// discloses no divergence line (REQ-TSS-005). stderr only (REQ-TSS-002) —
+// the line is separate from the backlog.json disclosure above, never
+// instead of it.
+//
+// SPEC-TODO-SURFACE-POLISH-001 REQ-TSP-041: the same entry point carries
+// the once-per-class ghost artifact notice — every read and write verb
+// passes through here, so the ghost discovery cannot be silent on one
+// surface and loud on another, and the once-only marker cannot drift
+// between verbs.
 func discloseStaleLocalStores(w io.Writer, verb string, fact kanban.StaleStoreFact) error {
-	if !fact.Divergent {
-		return nil
-	}
-	for _, st := range fact.Stores {
-		if !st.Readable || st.LastSeq == fact.HomeLastSeq {
-			continue
+	if fact.Divergent {
+		for _, st := range fact.Stores {
+			if !st.Readable || st.LastSeq == fact.HomeLastSeq {
+				continue
+			}
+			if _, err := fmt.Fprintf(w,
+				"%s: a stale project-local queue store exists at %s (last_seq %d) while the home database answered (last_seq %d) — the store is NOT the queue; a rollback snapshot whose contents can be arbitrarily stale\n",
+				verb, st.Path, st.LastSeq, fact.HomeLastSeq); err != nil {
+				return err
+			}
 		}
-		if _, err := fmt.Fprintf(w,
-			"%s: a stale project-local queue store exists at %s (last_seq %d) while the home database answered (last_seq %d) — the store is NOT the queue; a rollback snapshot whose contents can be arbitrarily stale\n",
-			verb, st.Path, st.LastSeq, fact.HomeLastSeq); err != nil {
-			return err
-		}
 	}
-	return nil
+	return discloseGhostStoresOnce(w, verb, fact)
 }
 
 // todoQueueRootForDisclosure is the queue root every read-verb disclosure
@@ -75,10 +80,11 @@ func todoQueueRootForDisclosure() string {
 	return kanban.ResolveTodoQueueRoot(resolveProjectDir())
 }
 
-// @MX:ANCHOR fan_in=3 - SPEC-BACKLOG-JSON-DISCLOSURE-001 REQ-BJD-002 sole
+// @MX:ANCHOR fan_in=5 - SPEC-BACKLOG-JSON-DISCLOSURE-001 REQ-BJD-002 sole
 // disclosure entry point for the read verbs that do not already hold a vouch
-// (bare/list, why, pr); history calls discloseNonAuthoritativeBacklogJSON
-// directly with the vouch it already holds.
+// (bare/list, show, why, pr, triage); history calls
+// discloseNonAuthoritativeBacklogJSON directly with the vouch it already
+// holds.
 // discloseQueueLayout probes the queue layout and discloses, for the read
 // verbs that do not already hold a vouch.
 //

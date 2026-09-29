@@ -208,19 +208,30 @@ func runTodoHistory(cmd *cobra.Command, args []string, limit int) error {
 	return renderTodoHistoryLookup(out, errOut, rec, normalizeTodoRef(args[0]))
 }
 
-// renderTodoHistoryLookup prints the one fate line for id. An absent id at
-// or below the queue's issued-id mark additionally qualifies the answer on
-// stderr (REQ-TAQ-004): the mark is the queue's durable record of how many
-// ids were ever issued, so such an id MAY have been issued and destroyed —
-// keyed on last_seq, never on archive emptiness (an emptiness key would go
-// silent after the first done while destroyed cards stay destroyed).
+// renderTodoHistoryLookup prints the one fate line for id on behalf of the
+// history verb. See renderTodoLookup — the machine is shared with `show`
+// (SPEC-TODO-SURFACE-POLISH-001 REQ-TSP-001), and only the stderr
+// qualifier's verb name differs.
+func renderTodoHistoryLookup(out, errOut io.Writer, rec *kanban.BacklogRecord, id string) error {
+	return renderTodoLookup(out, errOut, rec, id, "history")
+}
+
+// renderTodoLookup prints the one fate line for id, the shared lookup
+// machine behind `history <id>` and `show <id>`. An absent id at or below
+// the queue's issued-id mark additionally qualifies the answer on stderr
+// (REQ-TAQ-004, extended to show by REQ-TSP-002): the mark is the queue's
+// durable record of how many ids were ever issued, so such an id MAY have
+// been issued and destroyed — keyed on last_seq, never on archive emptiness
+// (an emptiness key would go silent after the first done while destroyed
+// cards stay destroyed). The qualifier names the verb that answered, so a
+// reader tracing a stderr line back to its surface is never misled.
 //
 // Ordering coupling (plan §F M2): rec.LastSeq is populated by readRecord's
 // readLastSeq (backlog_migrate.go:106-110), which runs after readArchive on
 // every completed read. Every reachable degraded path here — the probe-keyed
 // disclosure and the legacy-JSON load — completes that read, so the mark is
 // present exactly where the note is most needed.
-func renderTodoHistoryLookup(out, errOut io.Writer, rec *kanban.BacklogRecord, id string) error {
+func renderTodoLookup(out, errOut io.Writer, rec *kanban.BacklogRecord, id, verb string) error {
 	for _, it := range rec.Items {
 		if it.ID == id {
 			// The live line appends the time axis before the card text
@@ -247,8 +258,8 @@ func renderTodoHistoryLookup(out, errOut io.Writer, rec *kanban.BacklogRecord, i
 	_, err := fmt.Fprintf(out, "%s\tabsent\n", id)
 	if n, ok := kanban.ParseBacklogSeq(id); ok && n <= rec.LastSeq {
 		if _, werr := fmt.Fprintf(errOut,
-			"history: %s is at or below this queue's issued-id mark (last_seq %d) — it may have been issued and its record destroyed; absent does not establish never-issued\n",
-			id, rec.LastSeq); werr != nil {
+			"%s: %s is at or below this queue's issued-id mark (last_seq %d) — it may have been issued and its record destroyed; absent does not establish never-issued\n",
+			verb, id, rec.LastSeq); werr != nil {
 			return werr
 		}
 	}

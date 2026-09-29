@@ -23,6 +23,8 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strconv"
 )
 
@@ -37,18 +39,59 @@ type StaleLocalStore struct {
 	Readable bool
 }
 
+// Ghost artifact classes (SPEC-TODO-SURFACE-POLISH-001 REQ-TSP-040). Each
+// names one non-SQLite shape the home-DB cutover left behind, reported as
+// its own fact — never folded into the SQLite divergence verdict.
+const (
+	// GhostClassLegacyJSON is a `backlog.json` at a queue path the SQLite
+	// engine no longer reads: the downgrade route's file name surviving as
+	// a byte document in the home queue directory or a project-local
+	// todo/kanban directory.
+	GhostClassLegacyJSON = "legacy-json"
+	// GhostClassMigratedJSON is a `backlog.json.migrated` — the quarantine
+	// rename the lazy migration left behind.
+	GhostClassMigratedJSON = "migrated-json"
+	// GhostClassSessionRecord is a `<uuid>.json` session-record file in a
+	// todo state directory — the pre-factory-database registry entries.
+	GhostClassSessionRecord = "session-record"
+)
+
+// ghostSessionRecordShaped matches the session-record file name the
+// launcher writes (`<uuid>.json`) — the shape that separates registry
+// entries from the named artifacts (companions.json, leads.json, the
+// autodone log) sharing the same directory.
+var ghostSessionRecordShaped = regexp.MustCompile(
+	`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\.json$`)
+
+// GhostArtifact is one non-SQLite ghost artifact the probe found on disk.
+// Bytes is the size the probe measured; a negative Bytes marks an artifact
+// that could not be stat'd — its own contradiction fact (REQ-TSP-042's
+// FAIL state), never a silent zero.
+type GhostArtifact struct {
+	Path  string
+	Class string
+	Bytes int64
+}
+
 // StaleStoreFact is the divergence fact one project root yields. Divergent
 // is true only when the home database is present and readable AND at least
 // one legacy store is present, readable, and carries a different
 // meta.last_seq — every other shape must stay silent on the disclosure
 // surface (REQ-TSS-005).
+//
+// Ghosts (SPEC-TODO-SURFACE-POLISH-001 REQ-TSP-040) are the non-SQLite
+// ghost artifacts found beside those SQLite facts — each class its own
+// entry, sorted by path, and never a second detector: the same probe that
+// walks the queue directories reports them.
 type StaleStoreFact struct {
+	Root         string
 	HomePath     string
 	HomePresent  bool
 	HomeReadable bool
 	HomeLastSeq  int
 	Stores       []StaleLocalStore
 	Divergent    bool
+	Ghosts       []GhostArtifact
 }
 
 // @MX:ANCHOR: [AUTO] InspectStaleLocalStores — the single divergence detector both disclosure surfaces and the doctor check consume
@@ -56,11 +99,14 @@ type StaleStoreFact struct {
 //
 // InspectStaleLocalStores reports the stale-local-store fact for root: the
 // home database's presence and meta.last_seq, every project-local legacy
-// store found (both the todo-named and kanban-named directories), and
-// whether any readable pair diverges. Read-only on every branch: no
-// migration, no DDL, no lock, no marker file.
+// store found (both the todo-named and kanban-named directories), whether
+// any readable pair diverges, and the non-SQLite ghost artifacts in the
+// same directories (REQ-TSP-040). Read-only on every branch: no migration,
+// no DDL, no lock, no marker file — a ghost is a rollback snapshot and
+// every byte of it stays exactly where the probe found it.
 func InspectStaleLocalStores(root string) StaleStoreFact {
 	fact := StaleStoreFact{
+		Root:     root,
 		HomePath: backlogSQLitePath(filepath.Join(StateDirForRoot(root), backlogFileName)),
 	}
 	if _, err := os.Stat(fact.HomePath); err == nil {
@@ -90,7 +136,78 @@ func InspectStaleLocalStores(root string) StaleStoreFact {
 			break
 		}
 	}
+	fact.Ghosts = inspectGhostArtifacts(root)
+	sort.Slice(fact.Ghosts, func(i, j int) bool { return fact.Ghosts[i].Path < fact.Ghosts[j].Path })
 	return fact
+}
+
+// inspectGhostArtifacts walks the same queue directories the SQLite probe
+// walks — the resolved (home or temporary) state directory, the
+// project-local todo directory, and the legacy kanban directory — and
+// reports the non-SQLite ghost classes found in each: a plain backlog.json,
+// its .migrated quarantine sibling, and UUID-shaped session-record files.
+//
+// One precision rule keeps a LIVE queue from being reported as its own
+// ghost: in the CANONICAL state directory, a backlog.json without a
+// sibling backlog.db is the live pre-SQLite JSON queue (the lazy
+// migration has simply never run for it) — the layout and archive-vouch
+// disclosures already speak for that shape, and calling it a ghost would
+// name the answering store stale. With the sibling .db present the JSON
+// is a leftover, and in every NON-canonical directory it is one
+// unconditionally. The .migrated quarantine is always a leftover — the
+// migration that produced it wrote the engine's database.
+//
+// Read-only: every observation is a stat or a directory read.
+func inspectGhostArtifacts(root string) []GhostArtifact {
+	canonical := StateDirForRoot(root)
+	seen := map[string]bool{}
+	var ghosts []GhostArtifact
+	dirs := []string{canonical, projectStateDirForRoot(root), LegacyStateDirForRoot(root)}
+	for _, dir := range dirs {
+		if seen[dir] {
+			continue
+		}
+		seen[dir] = true
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			// An absent or unreadable directory holds no artifacts to name;
+			// the SQLite probe reports its own absence facts already.
+			continue
+		}
+		// The engine artifact decides the canonical directory's json class.
+		_, dbErr := os.Stat(backlogSQLitePath(filepath.Join(dir, backlogFileName)))
+		engineOwns := dbErr == nil
+		for _, e := range entries {
+			name := e.Name()
+			class := ""
+			switch {
+			case name == backlogFileName:
+				if dir == canonical && !engineOwns {
+					continue // the live pre-SQLite JSON queue, not a ghost
+				}
+				class = GhostClassLegacyJSON
+			case name == backlogFileName+backlogMigratedSuffix:
+				class = GhostClassMigratedJSON
+			case ghostSessionRecordShaped.MatchString(name):
+				class = GhostClassSessionRecord
+			default:
+				continue
+			}
+			info, statErr := e.Info()
+			var size int64
+			if statErr != nil || !info.Mode().IsRegular() {
+				size = -1 // unreadable-or-not-regular is its own fact
+			} else {
+				size = info.Size()
+			}
+			ghosts = append(ghosts, GhostArtifact{
+				Path:  filepath.Join(dir, name),
+				Class: class,
+				Bytes: size,
+			})
+		}
+	}
+	return ghosts
 }
 
 // readStaleStoreLastSeq reads meta.last_seq from one queue database

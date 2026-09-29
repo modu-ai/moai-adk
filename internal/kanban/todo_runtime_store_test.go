@@ -112,7 +112,12 @@ func TestTodoRuntimeStorePublicReadbackSurvivesCardEdit(t *testing.T) {
 			t.Errorf("run provenance: %+v", manifest)
 		}
 		assignment := runtime.Assignments[0]
-		for key, want := range map[string]string{"run_id": "fixture-run", "card_id": card.ID, "owner_label": "worker-2", "reported_state": "completed", "event_kind": "card.completed"} {
+		// owner_label is expected in the CANONICAL vocabulary: the write
+		// path relabels the seeded legacy `worker-2` at the choke point
+		// (SPEC-TODO-SURFACE-POLISH-001 REQ-TSP-052) — the readback
+		// contract under test (upserted values survive a card edit) is
+		// unchanged.
+		for key, want := range map[string]string{"run_id": "fixture-run", "card_id": card.ID, "owner_label": "lane-2", "reported_state": "completed", "event_kind": "card.completed"} {
 			if assignment[key] != want {
 				t.Errorf("assignment %s=%q want %q", key, assignment[key], want)
 			}

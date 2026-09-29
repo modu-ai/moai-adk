@@ -224,6 +224,10 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		// queue store a rollback snapshot left behind, judged from the same
 		// detector the read verbs disclose through (REQ-TSS-004). Read-only.
 		{todoStoreDivergenceCheckName, func(v bool) DiagnosticCheck { return checkTodoStoreDivergence(cwd, v) }},
+		// SPEC-TODO-SURFACE-POLISH-001 (card t1349): the non-SQLite ghost
+		// artifact inventory (legacy backlog.json, .migrated, session
+		// records), judged from the same detector (REQ-TSP-042). Read-only.
+		{todoGhostInventoryCheckName, func(v bool) DiagnosticCheck { return checkTodoGhostInventory(cwd, v) }},
 		// SPEC-AGENT-EMIT-LINEAGE-001 REQ-AEL-004: embed-axis judgment point.
 		// Applicable only in a tree carrying the committed emission set — a
 		// deployed project sees one added `ok` row and the same exit status.
@@ -270,6 +274,11 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		// factory section — the persisted leader role, with the literal
 		// relaunch message for a legacy run.
 		{factoryRunCheckName, func(v bool) DiagnosticCheck { return checkFactoryRun(cwd, v) }},
+		// SPEC-TODO-SURFACE-POLISH-001 (card t1349): the owner_label
+		// vocabulary drift — legacy spellings left in the runtime
+		// assignments table, counted from the same detectors the refusal
+		// paths use (REQ-TSP-051). Read-only.
+		{ownerLabelDriftCheckName, func(v bool) DiagnosticCheck { return checkOwnerLabelDrift(cwd, v) }},
 		{"BODP Config", func(v bool) DiagnosticCheck { return checkBODPConfig(cwd, v) }},
 		{"Telemetry Config", func(v bool) DiagnosticCheck { return checkTelemetryConfig(cwd, v) }},
 		{"Glamour Cache", checkGlamourCache},
