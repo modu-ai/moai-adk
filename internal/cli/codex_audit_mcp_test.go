@@ -56,15 +56,9 @@ func newRoleAuditClient(t *testing.T) *client.Client {
 	return c
 }
 
-func roleAuditResultText(res *mcp.CallToolResult) string {
-	var b strings.Builder
-	for _, c := range res.Content {
-		if tc, ok := c.(mcp.TextContent); ok {
-			b.WriteString(tc.Text)
-		}
-	}
-	return b.String()
-}
+// roleAuditResultText lives in codex_audit_helpers_test.go (untagged):
+// codex_task_test.go references it too, so it must compile on every
+// platform (card t1353).
 
 func TestCodexAuditMCPTool(t *testing.T) {
 	// 1. Registration and annotations: start writes, status and result read.
