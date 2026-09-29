@@ -371,7 +371,7 @@ Codex を有効にしたハーネス（`moai init --llm gpt|both`）では、Cod
 
 完了条件を宣言すると、セッションは条件が満たされるまで自力で作業する。ターン上限、停滞ガード、実時間予算、事前承認ゲートが付いており、無限ループに陥らない。機械的条件（コマンドの終了コード）とモデル条件（対話記録の主張）を併用できる。`--max-turns 0` で auto-compact 駆動の無限ゴールを武装することもできる — その場合は `--max-duration` と停滞ガードが境界を作る。
 
-`moai goal --auto "<ミッション>"` は別の `mission_mode=auto` 草案を作り、`approve` が範囲・行為・根拠・上限を一度封印します。その後は `run`、`status`、`revoke`、ポリシー制約付き `resume` が保存契約を使います。`super-advisor` は非拘束の助言者で、読み取り専用 `mission-governor` が構造化判断を作り、決定論的 owner adapter が receipt 付きキュー・配車、明示パスのコミット、lease 付き local develop `--no-ff` マージを実行します。持続実行能力が実プロバイダーで確認されなければ `active-session-only` に下がり、リモート push・PR・マージ完了はまだ実証されていません。[GTD と auto ミッションの案内](https://adk.mo.ai.kr/ja/utility-commands/moai-gtd)
+`moai goal --auto "<ミッション>"` は別の `mission_mode=auto` 草案を作り、`approve` が範囲・行為・根拠・上限を一度封印します。その後は `run`、`status`、`revoke`、ポリシー制約付き `resume` が保存契約を使います。`super-advisor` は非拘束の助言者で、`manager-todo` の読み取り専用判定サブロールが構造化判断を作り、決定論的 owner adapter が receipt 付きキュー・配車、明示パスのコミット、lease 付き local develop `--no-ff` マージを実行します。持続実行能力が実プロバイダーで確認されなければ `active-session-only` に下がり、リモート push・PR・マージ完了はまだ実証されていません。[GTD と auto ミッションの案内](https://adk.mo.ai.kr/ja/utility-commands/moai-gtd)
 
 最終実行境界はさらに厳格です。`run --supervise` は publish→pick→lease 付きディスク配車→commit→local develop `--no-ff` を有限実行します。監督下の Git 効果には分離した `--card-worktree` と `--develop-worktree` が必要で、従来の `--repo` だけでは効果は 0 件です。完了には true と判定された typed evidence とマージ ancestry を封印した `0600` `--completion-receipt` も必要で、行為リストの消化だけでは完了しません。完了状態の再実行も効果 0 件です。`--recommend` は権限を与えず、各効果にはリポジトリ内 `0600` governor receipt と独立監査 PASS receipt の両方が必要です。未構成の remote/release provider は成功を装わず `provider_unsupported` を返します。
 
@@ -513,7 +513,7 @@ flowchart TD
 | **ビルダー** | builder-harness | プロジェクト専用エージェント・スキル・コマンド・フックのスキャフォールド |
 | **アドバイザー** | super-advisor | 高推論コンサル（E1-E4 エスカレーション） |
 | **スペシャリスト** | e2e-tester | Web/モバイル/デスクトップ E2E テスト実行（CLI ファースト） |
-| | mission-governor | 承認済み GTD 自動ミッションに対する読み取り専用の判定 — 判定を 1 つ返すだけで自ら適用しない（GTD ワークフローが呼ぶため、選択の決定木に行を持たない） |
+| | manager-todo | タスクキュー管理（キュー ライフサイクル、`/moai:todo --auto` 直列サイクル、ディスパッチ支援）— 封印スナップショットに対する読み取り専用判定サブロールは判定を 1 つ返すだけで自ら適用しない（GTD ワークフローが呼ぶため、選択の決定木に行を持たない） |
 | **内蔵** | Explore | 読み取り専用のコードベース探査 |
 
 すべてのエージェントはセッションのモデルと推論強度をそのまま引き継ぐ — セッションをどのモデルと effort で起こしたかが、そのまま全員の配属になる。執筆と監査を最初から分けて担わせるので、自分の仕事を自分で採点する事態が起こらない。

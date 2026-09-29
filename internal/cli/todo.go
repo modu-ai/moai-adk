@@ -30,6 +30,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -244,6 +245,15 @@ mentions an id later in the sentence still falls through, and
 			return cobra.NoArgs(cmd, args)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if todoAutoFlag {
+				if len(args) > 0 {
+					return fmt.Errorf("--auto takes no card arguments; the invocation is the operator's batch approval of the queue in queue order, never an admission")
+				}
+				return runAutoCycle(cmd.OutOrStdout(), newTodoStore(), resolveTodoQueueRoot(), autoOptions{
+					wait:     todoAutoWait,
+					liveness: newAutoLiveness(),
+				})
+			}
 			if len(args) == 0 {
 				return runTodoList(cmd, false, false, todoListDefaultLimit)
 			}
@@ -266,8 +276,21 @@ mentions an id later in the sentence still falls through, and
 		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(),
 		newTodoPRCmd(), newTodoLandedCmd(), newTodoAutoDoneCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd(),
 		newTodoTriageCmd())
+	cmd.Flags().BoolVar(&todoAutoFlag, "auto", false,
+		"process the queue serially: pick one card, dispatch one isolated worker, judge completion on disk evidence, then accept the next; the invocation is the operator's batch approval of the queue in queue order and nothing else")
+	cmd.Flags().DurationVar(&todoAutoWait, "auto-wait", 30*time.Minute,
+		"per-card deadline for the worker evidence file before the card is unpicked with a labelled non-finding")
 	return cmd
 }
+
+// todoAutoFlag / todoAutoWait back the `--auto` serial-processing cycle. They
+// live on the parent command so the gtd compatibility spelling (the same verb
+// tree, NewGTDCommand) carries them identically — one implementation, both
+// entry points.
+var (
+	todoAutoFlag bool
+	todoAutoWait time.Duration
+)
 
 // todoVerbShaped matches a first token that reads as a command verb: one
 // ASCII word, optionally carrying digits, hyphens, or underscores. Bounded in

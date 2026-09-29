@@ -196,7 +196,7 @@ func codexRoleAuditTools() []struct {
 		handler func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)
 	}{
 		{mcp.NewTool(codexRoleAuditToolName,
-			mcp.WithDescription("Start a role whose permission contract is read-only (plan-auditor, sync-auditor, mission-governor, super-advisor) as one top-level codex exec process with the read-only sandbox and every MCP server disabled. Returns a job id at once; read it with codex_role_audit_status and codex_role_audit_result. When out is given, the launcher writes that file with exactly the returned text. The worktree root must be the worktree this server started in; the destination must stay under its .moai/reports/ directory. Use this instead of spawn_agent for these roles."),
+			mcp.WithDescription("Start a role whose permission contract is read-only (plan-auditor, sync-auditor, manager-todo, super-advisor) as one top-level codex exec process with the read-only sandbox and every MCP server disabled. Returns a job id at once; read it with codex_role_audit_status and codex_role_audit_result. When out is given, the launcher writes that file with exactly the returned text. The worktree root must be the worktree this server started in; the destination must stay under its .moai/reports/ directory. Use this instead of spawn_agent for these roles."),
 			mcp.WithString("role", mcp.Required(), mcp.Description("A read-only contract role name.")),
 			mcp.WithString("worktree_root", mcp.Required(), mcp.Description("Your own worktree root (git rev-parse --show-toplevel).")),
 			mcp.WithString("task", mcp.Required(), mcp.Description("The task text given to the role on its stdin.")),
