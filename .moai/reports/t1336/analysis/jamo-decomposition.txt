@@ -1,0 +1,73 @@
+== 나먲지 -> 나머지   jamo-levenshtein=2
+   먲 = cho:ㅁ jung:ㅒ jong:ㅈ   vs   머 = cho:ㅁ jung:ㅓ jong:-
+
+== 엄트리 -> 엔트리   jamo-levenshtein=2
+   엄 = cho:ㅇ jung:ㅓ jong:ㅁ   vs   엔 = cho:ㅇ jung:ㅔ jong:ㄴ
+
+== 불볇확인 -> 불변확인   jamo-levenshtein=1
+   볇 = cho:ㅂ jung:ㅕ jong:ㄼ   vs   변 = cho:ㅂ jung:ㅕ jong:ㄴ
+
+== 신귴 -> 신규   jamo-levenshtein=1
+   귴 = cho:ㄱ jung:ㅠ jong:ㅋ   vs   규 = cho:ㄱ jung:ㅠ jong:-
+
+== 바로잠펴 -> 바로잡기   jamo-levenshtein=3
+   잠 = cho:ㅈ jung:ㅏ jong:ㅁ   vs   잡 = cho:ㅈ jung:ㅏ jong:ㅂ
+   펴 = cho:ㅍ jung:ㅕ jong:-   vs   기 = cho:ㄱ jung:ㅣ jong:-
+
+== 신귵 -> 신규   jamo-levenshtein=1
+   귵 = cho:ㄱ jung:ㅠ jong:ㅌ   vs   규 = cho:ㄱ jung:ㅠ jong:-
+
+== 숴환 -> 순환   jamo-levenshtein=2
+   숴 = cho:ㅅ jung:ㅝ jong:-   vs   순 = cho:ㅅ jung:ㅜ jong:ㄴ
+
+== 브랿치 -> 브랜치   jamo-levenshtein=2
+   랿 = cho:ㄹ jung:ㅑ jong:ㄼ   vs   랜 = cho:ㄹ jung:ㅐ jong:ㄴ
+
+== 바이넄리 -> 바이너리   jamo-levenshtein=2
+   넄 = cho:ㄴ jung:ㅒ jong:ㅋ   vs   너 = cho:ㄴ jung:ㅓ jong:-
+
+== 채넍 -> 채널   jamo-levenshtein=1
+   넍 = cho:ㄴ jung:ㅓ jong:ㄵ   vs   널 = cho:ㄴ jung:ㅓ jong:ㄹ
+
+== 큜 -> 및   jamo-levenshtein=3
+   큜 = cho:ㅋ jung:ㅠ jong:ㄽ   vs   및 = cho:ㅁ jung:ㅣ jong:ㅊ
+
+== 엉터닐 -> 엉터리   jamo-levenshtein=2
+   닐 = cho:ㄴ jung:ㅣ jong:ㄹ   vs   리 = cho:ㄹ jung:ㅣ jong:-
+
+== 채넎 -> 채널   jamo-levenshtein=1
+   넎 = cho:ㄴ jung:ㅓ jong:ㄶ   vs   널 = cho:ㄴ jung:ㅓ jong:ㄹ
+
+== 채넞 -> 채널   jamo-levenshtein=1
+   넞 = cho:ㄴ jung:ㅓ jong:ㅈ   vs   널 = cho:ㄴ jung:ㅓ jong:ㄹ
+
+== 팕 -> 판   jamo-levenshtein=1
+   팕 = cho:ㅍ jung:ㅏ jong:ㄺ   vs   판 = cho:ㅍ jung:ㅏ jong:ㄴ
+
+== 팕 -> 점   jamo-levenshtein=3
+   팕 = cho:ㅍ jung:ㅏ jong:ㄺ   vs   점 = cho:ㅈ jung:ㅓ jong:ㅁ
+
+== 팍 -> 과   jamo-levenshtein=3
+   팍 = cho:ㅍ jung:ㅏ jong:ㄱ   vs   과 = cho:ㄱ jung:ㅘ jong:-
+
+== 밖라 -> 뿐   jamo-levenshtein=5
+   밖 = cho:ㅂ jung:ㅏ jong:ㄲ   vs   뿐 = cho:ㅃ jung:ㅜ jong:ㄴ
+
+== 밖라 -> 밖   jamo-levenshtein=2
+
+== 읠 -> 일부   jamo-levenshtein=3
+   읠 = cho:ㅇ jung:ㅢ jong:ㄹ   vs   일 = cho:ㅇ jung:ㅣ jong:ㄹ
+
+== 쓛 -> 몇   jamo-levenshtein=3
+   쓛 = cho:ㅆ jung:ㅠ jong:ㄷ   vs   몇 = cho:ㅁ jung:ㅕ jong:ㅊ
+
+== 엠키 -> 엣지   jamo-levenshtein=2
+   엠 = cho:ㅇ jung:ㅔ jong:ㅁ   vs   엣 = cho:ㅇ jung:ㅔ jong:ㅅ
+   키 = cho:ㅋ jung:ㅣ jong:-   vs   지 = cho:ㅈ jung:ㅣ jong:-
+
+== 엠키는 -> 엣지는   jamo-levenshtein=2
+   엠 = cho:ㅇ jung:ㅔ jong:ㅁ   vs   엣 = cho:ㅇ jung:ㅔ jong:ㅅ
+   키 = cho:ㅋ jung:ㅣ jong:-   vs   지 = cho:ㅈ jung:ㅣ jong:-
+
+== 스테일 -> 스테일   jamo-levenshtein=0
+

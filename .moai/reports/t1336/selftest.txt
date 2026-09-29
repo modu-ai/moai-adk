@@ -1,0 +1,11 @@
+PASS  corrupt fixtures are valid precomposed syllables (non-NFD class)
+PASS  NFC normalization does not repair the corruption
+PASS  check flags all 4 corrupted forms
+PASS  restore resolves all corrupted forms to their originals (unique d=1)
+PASS  apply rewrites prose line
+PASS  apply never rewrites fenced block
+PASS  apply never rewrites inline code span
+PASS  no false positive on clean vocabulary words
+PASS  stray jamo (NFD flavor) detected
+selftest: 9/9 assertions passed
+selftest_exit=0
