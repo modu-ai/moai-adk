@@ -201,9 +201,11 @@ func TestBacklogClassificationSQLiteMirror(t *testing.T) {
 }
 
 // TestSchemaFreezeCarriesClassificationColumn — M1's recorded schema decision:
-// the classification TEXT column is appended LAST on both card-bearing tables
-// through the pragma_table_info-gated ADD COLUMN path (the landing/stamp
-// precedent), so a fresh and an upgraded database converge on one tuple.
+// the classification TEXT column lands additively on both card-bearing
+// tables through the pragma_table_info-gated ADD COLUMN path (the
+// landing/stamp precedent), followed later by the claim-lease pair
+// picked_by/lease_expires_at, so a fresh and an upgraded database converge
+// on one tuple.
 // This is the classification sibling of AC-TST-011's recorded check.
 func TestSchemaFreezeCarriesClassificationColumn(t *testing.T) {
 	store := archiveFixture(t)
@@ -217,14 +219,16 @@ func TestSchemaFreezeCarriesClassificationColumn(t *testing.T) {
 	defer func() { _ = eng.close() }()
 	wantItems := "seq:INTEGER:0:NULL id:TEXT:1:NULL text:TEXT:1:NULL added_at:TEXT:1:NULL " +
 		"spec_id:TEXT:0:NULL state:TEXT:1:NULL landing:TEXT:0:NULL " +
-		"picked_at:TEXT:0:NULL dropped_at:TEXT:0:NULL classification:TEXT:0:NULL"
+		"picked_at:TEXT:0:NULL dropped_at:TEXT:0:NULL classification:TEXT:0:NULL " +
+		"picked_by:TEXT:0:NULL lease_expires_at:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "items"); got != wantItems {
 		t.Errorf("items column tuples =\n %s\nwant\n %s", got, wantItems)
 	}
 	wantArchived := "seq:INTEGER:0:NULL id:TEXT:1:NULL text:TEXT:1:NULL added_at:TEXT:1:NULL " +
 		"spec_id:TEXT:0:NULL state:TEXT:1:NULL position:INTEGER:1:NULL landing:TEXT:0:NULL " +
 		"picked_at:TEXT:0:NULL dropped_at:TEXT:0:NULL archived_at:TEXT:0:NULL " +
-		"landing_verdict:TEXT:0:NULL classification:TEXT:0:NULL"
+		"landing_verdict:TEXT:0:NULL classification:TEXT:0:NULL " +
+		"picked_by:TEXT:0:NULL lease_expires_at:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "archived_items"); got != wantArchived {
 		t.Errorf("archived_items column tuples =\n %s\nwant\n %s", got, wantArchived)
 	}
