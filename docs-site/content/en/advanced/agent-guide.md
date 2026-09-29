@@ -90,12 +90,12 @@ An agent other than the maker does the inspection. This separation is the backbo
 | `builder-harness` | Builds project-specific dynamic agent teams (from a user interview) |
 | `super-advisor` | High-reasoning consultation — deadlocks, design decision points, second opinions (E1-E4 escalation) |
 | `e2e-tester` | Runs web/mobile/desktop E2E tests |
-| `mission-governor` | Reads the sealed snapshot of an approved GTD auto mission and returns exactly one structured decision (read-only) |
+| `manager-todo` | Manages the todo queue (queue lifecycle, `/moai:todo --auto` serial cycle, dispatch guidance); its read-only judgment sub-role reads the sealed snapshot of an approved GTD auto mission and returns exactly one structured decision (read-only) |
 
-`mission-governor` returns a decision and **does not execute anything itself**. It writes no files, runs no shell or Git commands, touches no queue, dispatches no work to lanes, and performs no commits, merges, approvals, or audit verdicts. The side that inspects the returned decision and actually changes state is a deterministic executor (an automated handler that moves only along fixed rules). Its tool list is just four — `Read`, `Grep`, `Glob`, `Skill` — and it returns a blocker decision whenever a request falls outside the sealed scope, or the evidence it needs to judge is missing or stale.
+In its read-only judgment sub-role, `manager-todo` returns a decision and **does not execute anything itself**. It writes no files, runs no shell or Git commands, touches no queue, dispatches no work to lanes, and performs no commits, merges, approvals, or audit verdicts. The side that inspects the returned decision and actually changes state is a deterministic executor (an automated handler that moves only along fixed rules). Its tool list is just four — `Read`, `Grep`, `Glob`, `Skill` — and it returns a blocker decision whenever a request falls outside the sealed scope, or the evidence it needs to judge is missing or stale.
 
 {{< callout type="info" >}}
-`mission-governor` **deliberately has no place** in the [Agent Selection Decision Tree](#agent-selection-decision-tree) below. It is not an agent the orchestrator picks and calls; it is a decision role the GTD auto-mission workflow invokes directly. Its absence from the tree is by design, not an omission.
+`manager-todo` **deliberately has no place** in the [Agent Selection Decision Tree](#agent-selection-decision-tree) below. It is not an agent the orchestrator picks and calls; its judgment sub-role is a decision role the GTD auto-mission workflow invokes directly. Its absence from the tree is by design, not an omission.
 {{< /callout >}}
 
 ### Built-in Agent — 1

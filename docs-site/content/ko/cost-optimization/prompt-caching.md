@@ -208,7 +208,7 @@ v3.2부터 이 일관성은 구조가 만들어 줍니다 — 서브에이전트
 | Claude Fable 5 | 1M | 512 |
 | Claude Opus 5.5 | 1M | 512 |
 | Claude Opus 5 | 1M | 1,024 |
-| Claude Sonnet 5 | 1M | 1,024 |
+| Claude Sonnet 5.5 | 1M | 1,024 |
 | Claude Opus 4.7 | 1M | 2,048 |
 | Claude Haiku 4.5 | 200K | 4,096 |
 

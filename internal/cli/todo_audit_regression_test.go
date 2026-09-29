@@ -68,7 +68,10 @@ func TestTodoAuditMultilineRows(t *testing.T) {
 			if err != nil || strings.Count(out, "\n") != 1 || strings.Contains(out, "\r") {
 				t.Fatalf("stdout=%q err=%v", out, err)
 			}
-			wantTabs := map[string]int{"pr": 6, "list": 2, "next": 1, "history": 4}[verb]
+			// history carries two appended stamp fields (picked_at,
+			// dropped_at) on the live line — the recorded extension of the
+			// line shape, still one row and never a forged separator.
+			wantTabs := map[string]int{"pr": 6, "list": 2, "next": 1, "history": 6}[verb]
 			if strings.Count(out, "\t") != wantTabs {
 				t.Fatalf("row separators=%q", out)
 			}

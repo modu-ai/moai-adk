@@ -1049,9 +1049,9 @@ func TestCodexAuditLaunchRecord(t *testing.T) {
 		cases := map[string]codexAuditRequest{
 			"destination": {Role: "plan-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1, Out: filepath.Join(repo.a1, "AGENTS.md")},
 			"eligibility": {Role: "manager-docs", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1},
-			"ceiling":     {Role: "mission-governor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1},
+			"ceiling":     {Role: "manager-todo", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1},
 		}
-		roleFile := filepath.Join(repo.a1, ".codex", "agents", "moai", "mission-governor.toml")
+		roleFile := filepath.Join(repo.a1, ".codex", "agents", "moai", "manager-todo.toml")
 		orig, err := os.ReadFile(roleFile)
 		if err != nil {
 			t.Fatal(err)

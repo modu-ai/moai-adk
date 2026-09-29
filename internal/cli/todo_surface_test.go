@@ -84,6 +84,7 @@ var frozenTodoSurface = map[string][]string{
 //     schema and takes no queue mutation lock, which
 //     TestTodoTriage_QueueUnchanged asserts rather than assumes. It renders
 //     mechanical observations of the tree and reaches no verdict.
+//
 // permittedVerbAdditions — SPEC-TODO-HOLD-STATE-001 declares `hold` / `unhold`
 // (the operator park verbs, REQ-THS-006/008).
 var permittedVerbAdditions = []string{"export-json", "undone", "history", "landed", "auto-done", "triage", "hold", "unhold"}

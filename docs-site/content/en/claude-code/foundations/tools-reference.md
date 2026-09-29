@@ -170,7 +170,7 @@ One strong rule binds this. When the parent is in `acceptEdits` or `bypassPermis
 
 ### State the Model per Call
 
-When calling a subagent with `Agent`, it is recommended to state explicitly **which model** to run it on, via the `model` argument (per-spawn model injection). Most agent definitions default to `model: inherit`, so omitting `model` makes the subagent simply inherit the parent session's model — the model the profile assigned can be silently ignored. As of August 2026, the Claude Code lineup includes Fable 5, Opus 5, Sonnet 5, and Haiku 4.5; pick per the subagent's role (a light, fast model for exploration, a stronger model for complex reasoning) and pass it in to balance cost and quality.
+When calling a subagent with `Agent`, it is recommended to state explicitly **which model** to run it on, via the `model` argument (per-spawn model injection). Most agent definitions default to `model: inherit`, so omitting `model` makes the subagent simply inherit the parent session's model — the model the profile assigned can be silently ignored. As of September 2026, the Claude Code lineup includes Fable 5, Opus 5.5, Sonnet 5.5, and Haiku 4.5; pick per the subagent's role (a light, fast model for exploration, a stronger model for complex reasoning) and pass it in to balance cost and quality.
 
 ## Built-in Tools vs MCP Tools
 

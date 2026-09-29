@@ -12,7 +12,7 @@ Long-horizon session continuity guidance for both users and the MoAI orchestrato
 | Opus 4.8 on the Anthropic API (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | GLM-5.3 via `moai glm`/`moai cg` (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Fable (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
-| Sonnet 5 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
+| Sonnet 5.5 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | 200K sessions — Sonnet 4.6 / Opus 4.6 without `[1m]`; Opus 4.8+ running with a 200K window (e.g. on Bedrock / Google Cloud / Foundry); any native-1M model under `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`; `sonnet` behind an LLM gateway (non-Anthropic `ANTHROPIC_BASE_URL`) unless `sonnet[1m]` is selected; Sonnet 4.5 / Opus 4.5 and earlier | 200,000 tokens | **90%** | ~180,000 tokens |
 | Haiku (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
 

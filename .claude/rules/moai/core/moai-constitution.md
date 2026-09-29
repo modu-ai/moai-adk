@@ -52,7 +52,7 @@ Anthropic's official prompt guidelines. The binding points:
 - [ZONE:Evolvable] [HARD] **Principle 5 — fewer tool calls by default**: specify when and why each
   tool applies, and raise effort to high/xhigh when more tool use is wanted.
 - **Effort defaults**: Opus 5.5 defaults to `effort: medium`, MoAI's recommended session effort;
-  `xhigh`/`max` are available on Opus 5.5, Sonnet 5, Opus 4.8, and Opus 4.7. Route effort by role,
+  `xhigh`/`max` are available on Opus 5.5, Sonnet 5.5, Opus 4.8, and Opus 4.7. Route effort by role,
   never by agent name — `high` minimum for intelligence-sensitive work, `xhigh` for hard coding and
   agentic work, `max` sparingly, `low` only for speed-critical or simple tasks.
 

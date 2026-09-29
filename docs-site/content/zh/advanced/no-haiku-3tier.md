@@ -82,11 +82,11 @@ flowchart TD
 
     T1["Tier 1 — 机械 · 探索<br/>Sonnet low<br/>manager-docs · manager-git · Explore"]
     T2["Tier 2 — 生产<br/>Opus，逐行档位不同<br/>manager-spec · manager-develop<br/>builder-harness · e2e-tester"]
-    T3["Tier 3 — 判断 · 协调<br/>Opus，以 high 为主<br/>plan-auditor · sync-auditor · manager-design<br/>manager-lead · super-advisor · mission-governor"]
+    T3["Tier 3 — 判断 · 协调<br/>Opus，以 high 为主<br/>plan-auditor · sync-auditor · manager-design<br/>manager-lead · super-advisor · manager-todo"]
 
     T1 --> NOTE["三个配置下全部固定"]
     T2 --> NOTE2["两行在三列都固定在 medium<br/>只有两行随配置下降"]
-    T3 --> NOTE3["super-advisor · mission-governor<br/>在经济列也保持 high"]
+    T3 --> NOTE3["super-advisor · manager-todo<br/>在经济列也保持 high"]
 ```
 
 ### Tier 1 — 机械 · 探索
@@ -116,11 +116,11 @@ flowchart TD
 |---|---|---|---|
 | `plan-auditor` · `sync-auditor` | `opus / high` | `opus / high` | `opus / medium` |
 | `manager-design` · `manager-lead` | `opus / high` | `opus / high` | `opus / medium` |
-| `super-advisor` · `mission-governor` | `opus / high` | `opus / high` | `opus / high` |
+| `super-advisor` · `manager-todo` | `opus / high` | `opus / high` | `opus / high` |
 
-只有 `super-advisor`（升级通道）与 `mission-governor`（密封任务的判定）**在经济列也保持 `high`**。因为最值得在便宜的一列里保持稳健的，恰恰是这两个位置。
+只有 `super-advisor`（升级通道）与 `manager-todo`（密封任务的判定）**在经济列也保持 `high`**。因为最值得在便宜的一列里保持稳健的，恰恰是这两个位置。
 
-`mission-governor` 说明了这条轴为什么好过"是不是多轮"。它读一次、返回一个决定，是**单发**的行，按多轮标准本该落在 Sonnet 一侧；实际上它三列都是 `opus / high`。**因为它是判断的行。**
+`manager-todo` 说明了这条轴为什么好过"是不是多轮"。它读一次、返回一个决定，是**单发**的行，按多轮标准本该落在 Sonnet 一侧；实际上它三列都是 `opus / high`。**因为它是判断的行。**
 
 `max` **没有任何一行拿到**。它作为 `high` 之上唯一的档位留在词汇里，但当前持有它的格子是 0 个。`xhigh` 也哪里都不用 —— 在 Opus 上得分与 `high` 相同，成本却多 49%。
 

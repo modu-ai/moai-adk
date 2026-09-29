@@ -45,7 +45,8 @@ func TestGLMSlotEffortForModel(t *testing.T) {
 		{"opus[1m]", "e-high"},                           // 1M suffix split before lookup
 		{"sonnet[1m]", "e-medium"},                       //
 		{template.ModelIDOpus55, "e-high"},               // canonical id reverse-mapped
-		{"claude-sonnet-5", "e-medium"},                  //
+		{"claude-sonnet-5-5", "e-medium"},                // promoted canonical id reverse-mapped
+		{"claude-sonnet-5", "e-medium"},                  // superseded id reverse-mapped
 		{"", ""},                                         // no model pinned → no slot claim
 		{config.DefaultGLM53, ""},                        // raw GLM id is not an alias → ""
 		{template.ModelAliasCanonicalID("opusplan"), ""}, // routing alias owns no tier slot

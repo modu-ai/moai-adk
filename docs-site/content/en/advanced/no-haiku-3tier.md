@@ -83,11 +83,11 @@ flowchart TD
 
     T1["Tier 1 — Mechanical & search<br/>Sonnet low<br/>manager-docs · manager-git · Explore"]
     T2["Tier 2 — Produce<br/>Opus, a different step per row<br/>manager-spec · manager-develop<br/>builder-harness · e2e-tester"]
-    T3["Tier 3 — Judge & coordinate<br/>Opus, mostly high<br/>plan-auditor · sync-auditor · manager-design<br/>manager-lead · super-advisor · mission-governor"]
+    T3["Tier 3 — Judge & coordinate<br/>Opus, mostly high<br/>plan-auditor · sync-auditor · manager-design<br/>manager-lead · super-advisor · manager-todo"]
 
     T1 --> NOTE["Fixed across all three profiles"]
     T2 --> NOTE2["Two rows stay at medium in all three columns<br/>only two step down with the profile"]
-    T3 --> NOTE3["super-advisor · mission-governor hold high<br/>even in the economical column"]
+    T3 --> NOTE3["super-advisor · manager-todo hold high<br/>even in the economical column"]
 ```
 
 ### Tier 1 — Mechanical & search
@@ -117,11 +117,11 @@ The authoring and implementing rows — `manager-spec` and `manager-develop` —
 |---|---|---|---|
 | `plan-auditor` · `sync-auditor` | `opus / high` | `opus / high` | `opus / medium` |
 | `manager-design` · `manager-lead` | `opus / high` | `opus / high` | `opus / medium` |
-| `super-advisor` · `mission-governor` | `opus / high` | `opus / high` | `opus / high` |
+| `super-advisor` · `manager-todo` | `opus / high` | `opus / high` | `opus / high` |
 
-Only `super-advisor` (the escalation path) and `mission-governor` (the sealed-mission verdict) **hold `high` even in the economical column** — those two are exactly what a cheap column most needs to keep sound.
+Only `super-advisor` (the escalation path) and `manager-todo` (whose judgment sub-role is the sealed-mission verdict) **hold `high` even in the economical column** — those two are exactly what a cheap column most needs to keep sound.
 
-`mission-governor` is what shows why this axis beats "multi-turn or not". It reads once and returns a single decision, so by a multi-turn test it would belong on the Sonnet side; in fact it is `opus / high` in all three columns. **Because it is a row that judges.**
+The `manager-todo` judgment sub-role is what shows why this axis beats "multi-turn or not". It reads once and returns a single decision, so by a multi-turn test it would belong on the Sonnet side; in fact it is `opus / high` in all three columns. **Because it is a row that judges.**
 
 `max` is assigned to **no row**. It survives in the vocabulary as the only step above `high`, but the count of cells holding it is zero. `xhigh` is used nowhere either — on Opus it scores the same as `high` at 49% more cost.
 
