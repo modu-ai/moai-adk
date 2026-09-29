@@ -32,9 +32,9 @@ abolish the promise, keep the column record-only (rationale: spec.md §A.3).
 - Worktree `.moai/worktrees/t1311`, branch `WT-jev-enum-backfill`, HEAD `68e37864a` — clean at
   session start (measured). Isolated worktree, so the shared-checkout pre-edit probe is exempt;
   re-read HEAD immediately before the run-phase commit per the standing staleness rule.
-- Baseline to cite in §E: `go test ./internal/cli/ -run 'TestTodoSkillDocument'` and
-  `go test ./internal/kanban/ -run 'SchemaFreeze|JevFinding'` pass at plan HEAD (run before M1
-  touches anything; record verbatim output).
+- Baseline to cite in §E: `go test ./internal/cli/ -run '^(TestTodoSkillDocumentsHistoryVerb|TestJevFinding_WrittenAtAdmission)$'`
+  and `go test ./internal/kanban/ -run '^TestSchemaFreezeRecordsTransitionStamps$'` pass at plan
+  HEAD (run before M1 touches anything; record verbatim output).
 
 ## §D Constraints
 

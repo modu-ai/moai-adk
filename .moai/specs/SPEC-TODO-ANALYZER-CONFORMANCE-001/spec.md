@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-ANALYZER-CONFORMANCE-001
 title: "Todo-analyzer documentation conformance: the findings.source enum documents the measured jev value, and the spec_id pick-time promise is abolished in favor of a record-only posture"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-29
 updated: 2026-09-29
@@ -25,6 +25,7 @@ related_specs:
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1.0 | 2026-09-29 | Initial plan-phase authoring (card t1311, Class C, todo 로직 개선 review §P5 — `.moai/reports/todo-logic-review-20260929.md`, primary-checkout-local). Measured in worktree `.moai/worktrees/t1311`, branch `WT-jev-enum-backfill`, HEAD `68e37864a` (local develop tip). Live-queue figures (findings 3/3 source=jev at confidence 0.82/0.28/0.59; picked 9/9 spec_id empty; t472 axis D 53/53 persistent) are carried from the review report's 2026-09-29 measurement of the live queue `~/.moai/db/moai-adk-go-1bd3d038/todo/backlog.db` (seq=1305) and cited, not re-measured. Every `file:line` citation below was measured in this tree at plan time. |
+| 0.2.0 | 2026-09-29 | **Plan-audit iteration 1 remediation** (PASS 0.875 vs Tier S 0.75, iteration 1/1 — no re-audit mandated; 3 fix-before-run findings, applied as delta on top of committed `25996dad4`, no REQ or decision changes — REQ-2 abolition stands, audit-verified grounded). **D1 (major)**: AC-TAC-006's diff-scope check "no `internal/` path outside the new test file" was unachievable — the M2 mirror edit itself lands under `internal/template/templates/`; the check now names the exact expected 3-file diff set. **D2 (minor)**: AC→REQ linkage made machine-readable — AC entries converted to leading-list-marker form citing their REQs (spec-lint REQ collection is blind without a leading list marker — t1020/t1057 lesson family), AC-TAC-006 now cites REQ-TAC-005; §B REQ entries likewise carry leading list markers. **D3 (minor)**: REQ-TAC-004's three-carrier enumeration replaced with the audit-recommended thin form ("the association lives in the dispatch and commit carriers") — kanban-dispatch mandates four carriers (PR title included), so the enumeration under-counted; the thin form resolves D3 without doctrine duplication. **D4 (adopted)**: the two `-run` patterns anchored to verified test-name literals (`TestTodoSkillDocument`, `TestJevFinding`, `TestSchemaFreeze` — names grep-verified this tree). **D5 (adopted)**: mid-command line-wraps inside AC checkable text unwrapped. §F open questions closed by the audit: keep P3; take the thin AC-TAC-004 form. spec.md only; plan.md untouched per the delta scope. |
 
 > **Provenance discipline.** Doc-surface and code citations were measured in this worktree at HEAD
 > `68e37864a`. Queue-population figures are attributed to the review report's measurement, named as
@@ -98,31 +99,31 @@ The alternative (a) auto-backfill at plan completion is recorded as REJECTED in 
 
 ## §B Requirements (GEARS)
 
-REQ-TAC-001 (Event-driven): **When** a reader consults the queue documentation's `findings`
+- REQ-TAC-001 (Event-driven): **When** a reader consults the queue documentation's `findings`
 field description in `.claude/skills/moai/workflows/gtd.md` § "Reading the records", the
 documentation shall enumerate all three `source` values the analyzer emits — `mechanical`,
 `agent`, and `jev` — with no fourth value implied.
 
-REQ-TAC-002 (Ubiquitous): The `jev` wording shall describe WHEN the value is emitted: at card
+- REQ-TAC-002 (Ubiquitous): The `jev` wording shall describe WHEN the value is emitted: at card
 admission only, when the `workflow.jev.enabled` capability gate is on, and the model answer names
 an existing card as a near-duplicate; and shall carry the two properties the code pins — the score
 is a model confidence rendered `p=`, never labelled a measured similarity, and a `jev` finding is
 a record a person reads, never an input to a queue mutation, dispatch decision, or completion
 verdict.
 
-REQ-TAC-003 (Ubiquitous): The template mirror
+- REQ-TAC-003 (Ubiquitous): The template mirror
 (`internal/template/templates/.claude/skills/moai/workflows/gtd.md`) shall carry the identical
 enum wording as the live skill document, while remaining internally neutral (no SPEC ID, no REQ
 token, no internal date, no commit SHA — the template-neutrality contract enforced by
 `todo_skill_doc_test.go`).
 
-REQ-TAC-004 (Ubiquitous): The `spec_id` field description on both surfaces shall state the
+- REQ-TAC-004 (Ubiquitous): The `spec_id` field description on both surfaces shall state the
 record-only posture: it is an optional annotation attached only when `next --spec` is explicitly
-given; an empty spec_id on a picked card is the normal state; the card↔SPEC association's
-authoritative carriers are the commit-message card id, the dispatch fields, and the evidence path
-— and the "filled in when the item is picked" promise shall not appear on either surface.
+given; an empty spec_id on a picked card is the normal state; the card↔SPEC association lives in
+the dispatch and commit carriers — and the "filled in when the item is picked" promise shall not
+appear on either surface.
 
-REQ-TAC-005 (Event-driven): **When** the doc surfaces are edited in a future change, a
+- REQ-TAC-005 (Event-driven): **When** the doc surfaces are edited in a future change, a
 doc-parity guard test in `internal/cli` (modeled on `TestTodoSkillDocumentsHistoryVerb`,
 `todo_skill_doc_test.go`) shall fail unless BOTH gtd.md surfaces enumerate the `jev` source value
 and neither carries the abolished pick-time promise — so the two-cell conformance cannot silently
@@ -131,66 +132,58 @@ regress.
 ## §C Acceptance Criteria (inline, Tier S)
 
 Two-cell discipline: every AC names the RED-now state observed on this tree at plan time, and the
-green path naming the milestone that flips it.
+green path naming the milestone that flips it. Each AC cites its covering REQ(s) in the corpus
+canonical `(maps REQ-…)` list-marker form so spec-lint collects the linkage (D2).
 
-AC-TAC-001 — REQ-TAC-001/002 (live surface documents jev)
-- Given this tree at HEAD `68e37864a`, When the source-enum sentence of
-  `.claude/skills/moai/workflows/gtd.md` § "Reading the records" is read,
-- **RED-now (observed)**: lines 258-259 name only `mechanical` and `agent`; `jev` appears in
-  gtd.md only at line 330 (the `--auto` display-only mention) — grep evidence:
-  `grep -n "jev\|Jev" .claude/skills/moai/workflows/gtd.md` → single hit at :330.
-- **Green path (M2)**: the findings bullet enumerates `mechanical`, `agent`, and `jev`, and the
+- AC-TAC-001: maps REQ-TAC-001, REQ-TAC-002 — live surface documents jev. Given this tree at HEAD
+  `68e37864a`, When the source-enum sentence of `.claude/skills/moai/workflows/gtd.md` § "Reading
+  the records" is read: **RED-now (observed)** — lines 258-259 name only `mechanical` and
+  `agent`; `jev` appears in gtd.md only at line 330 (the `--auto` display-only mention); grep
+  evidence: `grep -n "jev\|Jev" .claude/skills/moai/workflows/gtd.md` → single hit at :330.
+  **Green path (M2)**: the findings bullet enumerates `mechanical`, `agent`, and `jev`, and the
   `jev` clause states the admission-only, gate-on, model-confidence, record-only properties of
-  §A.2. Binary check: the same grep returns a hit inside the findings field description.
-- Then: PASS when the enumeration sentence contains all three values and the WHEN clause names
-  admission + gate.
+  §A.2. Then: PASS when `grep -n "jev\|Jev" .claude/skills/moai/workflows/gtd.md` returns a hit
+  inside the findings field description AND the enumeration sentence contains all three values.
 
-AC-TAC-002 — REQ-TAC-003 (mirror parity)
-- Given the template mirror `internal/template/templates/.claude/skills/moai/workflows/gtd.md`,
-- **RED-now (observed)**: mirror lines 258-259 carry the same two-value enum wording as the live
-  surface.
-- **Green path (M2)**: the mirror's findings bullet carries the identical (modulo mirror-neutrality)
-  enum wording; binary check: `grep -c "jev"` over the mirror's findings-description region ≥ 1.
-- Then: PASS when both surfaces' enum sentences enumerate the same three values.
+- AC-TAC-002: maps REQ-TAC-003 — mirror parity. Given the template mirror
+  `internal/template/templates/.claude/skills/moai/workflows/gtd.md`: **RED-now (observed)** —
+  mirror lines 258-259 carry the same two-value enum wording as the live surface. **Green path
+  (M2)**: the mirror's findings bullet carries the identical (modulo mirror-neutrality) enum
+  wording. Then: PASS when `grep -c "jev" internal/template/templates/.claude/skills/moai/workflows/gtd.md`
+  over the findings-description region is ≥ 1 on both surfaces' enum sentences.
 
-AC-TAC-003 — REQ-TAC-003 (mirror neutrality preserved)
-- Given the edited mirror,
-- **RED-now (observed)**: the neutrality scan in `TestTodoSkillDocumentsHistoryVerb`
-  (`todo_skill_doc_test.go:45-50`) passes today; it must still pass after the edit.
-- **Green path (M2/M3)**: the mirror carries no SPEC ID, REQ token, internal date, or commit SHA
-  (the doc's wording references the capability-gate config key and the CLI surface, not this
-  repository's internal state). Binary check: `go test ./internal/cli/
-  -run TestTodoSkillDocumentsHistoryVerb` exits 0 post-edit.
-- Then: PASS when the neutrality regex scan reports zero hits on the edited mirror.
+- AC-TAC-003: maps REQ-TAC-003 — mirror neutrality preserved. Given the edited mirror: **RED-now
+  (observed)** — the neutrality scan in `TestTodoSkillDocumentsHistoryVerb`
+  (`todo_skill_doc_test.go:45-50`) passes today; it must still pass after the edit. **Green path
+  (M2/M3)**: the mirror carries no SPEC ID, REQ token, internal date, or commit SHA. Then: PASS
+  when `go test ./internal/cli/ -run '^TestTodoSkillDocumentsHistoryVerb$'` exits 0 post-edit.
 
-AC-TAC-004 — REQ-TAC-004 (pick-time promise abolished)
-- Given both gtd.md surfaces,
-- **RED-now (observed)**: `grep -n "filled in when the item is picked" <live> <mirror>` returns
-  one hit each, both at :252 (exit=0 measured).
-- **Green path (M1)**: the grep returns zero hits on both surfaces; the replacement bullet states
-  the record-only posture and names the authoritative carriers. Binary check: same grep, exit 1
-  (zero matches) on both paths.
-- Then: PASS when the promise sentence is absent and the record-only wording is present on both.
+- AC-TAC-004: maps REQ-TAC-004 — pick-time promise abolished. Given both gtd.md surfaces: **RED-now
+  (observed)** — `grep -n "filled in when the item is picked" .claude/skills/moai/workflows/gtd.md internal/template/templates/.claude/skills/moai/workflows/gtd.md`
+  returns one hit each, both at :252 (exit=0 measured). **Green path (M1)**: the grep returns
+  zero hits on both surfaces; the replacement bullet states the record-only posture. Then: PASS
+  when the same grep exits 1 (zero matches) on both paths AND the record-only wording is present
+  on both.
 
-AC-TAC-005 — REQ-TAC-005 (parity guard)
-- Given `internal/cli/todo_jev_finding_test.go` (measured: no doc-surface coverage today — the
-  guard is genuinely new),
-- **RED-now (observed)**: no test in `internal/cli` asserts the gtd.md surfaces' findings-source
-  or spec_id wording; reverting the doc edit would break nothing.
-- **Green path (M3)**: a new doc-parity test (pattern of `todo_skill_doc_test.go`) fails when
-  either surface drops the `jev` enumeration or regains the pick-time promise. Binary check:
-  introduce the doc regression in a scratch copy → test fails; restore → test passes; then
-  `go test ./internal/cli/ -run 'TestTodoSkillDocument'` exits 0 on the edited tree.
-- Then: PASS when the guard fails on a seeded regression and passes on the conforming tree.
+- AC-TAC-005: maps REQ-TAC-005 — parity guard. Given `internal/cli/todo_jev_finding_test.go`
+  (measured: no doc-surface coverage today — the guard is genuinely new): **RED-now (observed)**
+  — no test in `internal/cli` asserts the gtd.md surfaces' findings-source or spec_id wording;
+  reverting the doc edit would break nothing. **Green path (M3)**: a new doc-parity test named
+  `TestTodoSkillDocumentsJevSource` (pattern of `todo_skill_doc_test.go`) fails when either
+  surface drops the `jev` enumeration or regains the pick-time promise. Then: PASS when the
+  seeded-regression proof holds — doc regression in a scratch copy → test fails; restore →
+  `go test ./internal/cli/ -run '^TestTodoSkillDocumentsJevSource$'` exits 0 on the edited tree.
 
-AC-TAC-006 — regression containment
-- Given this SPEC is documentation plus one new test file,
-- **RED-now (observed)**: tree clean at plan HEAD `68e37864a` (git status clean, measured).
-- **Green path (M3)**: the affected-package measurement `go test ./internal/cli/... -run
-  'Document|Skill|Landed|Hold'` and `go test ./internal/kanban/... -run 'Schema|Finding'` exit 0;
-  no production Go file is modified (the only Go change is the new `_test.go`). Binary check:
-  `git diff --name-only` post-run contains no `internal/` path outside the new test file.
-- Then: PASS when the affected-package tests pass and the diff scope holds.
+- AC-TAC-006: maps REQ-TAC-005 — regression containment and diff scope. Given this SPEC is
+  documentation plus one new test file: **RED-now (observed)** — tree clean at plan HEAD
+  `68e37864a` (git status clean, measured). **Green path (M3)**: the anchored affected-package
+  measurements `go test ./internal/cli/ -run '^(TestTodoSkillDocumentsHistoryVerb|TestTodoSkillDocumentsJevSource|TestJevFinding_WrittenAtAdmission)$'`
+  and `go test ./internal/kanban/ -run '^TestSchemaFreezeRecordsTransitionStamps$'` exit 0
+  (test-name literals verified to exist this tree for the first, third, and fourth anchors; the
+  second is the M3-created guard pinned by AC-TAC-005). Then: PASS when those exit 0 AND
+  `git diff --name-only` against the base names exactly the expected 3-file set —
+  `.claude/skills/moai/workflows/gtd.md`, `internal/template/templates/.claude/skills/moai/workflows/gtd.md`,
+  and the one new `internal/cli/*_test.go` — and nothing else.
 
 ## §D Constraints
 
@@ -223,8 +216,8 @@ AC-TAC-006 — regression containment
 
 ## §F Open Questions
 
-1. Priority recorded P3 vs the review's "Low" triage of §P5 — the operator's card issuance is the
-   effective priority; flagging the delta for the plan auditor only.
-2. AC-TAC-004's replacement wording names the three authoritative carriers inline; if the plan
-   auditor reads that as doctrine duplication of `kanban-dispatch.md`, the thinner form ("the
-   association lives in the dispatch and commit carriers") passes the same binary check.
+Both open questions from v0.1.0 were closed by plan-audit iteration 1 (no open questions remain):
+
+1. Priority P3 vs the review's "Low" triage of §P5 — CLOSED: keep P3 (audit adjudication).
+2. AC-TAC-004 carrier enumeration vs thin form — CLOSED: take the thin form ("the association
+   lives in the dispatch and commit carriers"), applied to REQ-TAC-004 in v0.2.0 (D3).
