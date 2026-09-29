@@ -2,7 +2,7 @@
 id: SPEC-REPORTS-LIFECYCLE-001
 title: "Reports directory lifecycle: root reports/ relocation into .moai/reports/historical/, html-report skill default path fix, worktree evidence hoist, and .moai/reports archive policy"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-29
 updated: 2026-09-29
 author: manager-spec (card t1320)
