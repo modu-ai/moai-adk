@@ -14,8 +14,8 @@
 > 통과하는 동안 이 파일만 조용히 낡을 수 있다. **재생성 때마다 이 파일을 손으로
 > 함께 갱신하고, 그 사실을 재생성 증거와 분리해 기록한다.**
 >
-> **마지막 손 갱신**: 2026-09-22, 워크트리 `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`.
-> §1 에이전트 파일 목록(13 retained로 정정 — mission-governor가 카탈로그에 편입됐다), §2 상태 enum 개수,
+> **마지막 손 갱신**: 2026-09-22, 워크트리 `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`; 2026-09-29 자동 임무 판정 역할의 manager-todo 개명 반영.
+> §1 에이전트 파일 목록(13 retained — 자동 임무 판정 역할이 manager-todo로 개명·재정의됨), §2 상태 enum 개수,
 > §3 필수 필드 12개와 줄 위치, §4.1 `moai --help` 렌더 그룹(HEAD에서 빌드한 바이너리로 다시 렌더 — 그룹 불변)과
 > 등록 수치, §4.2 명령 파일 목록, §5 GLM 상수 값을 이 트리에서 다시 검증했다.
 > §4.1의 `codex` 런처 서술(verb 라우팅·init-offer 게이트)은 이번에 다시 읽지 않았고, 그 Source 문구의
@@ -40,10 +40,10 @@ The MoAI agent catalog consists of exactly **13 retained agents** (12 MoAI-custo
 | 9 | `manager-design` | core/manager | Design-phase collaboration (Claude Design bidirectional sync, D1-D5) |
 | 10 | `e2e-tester` | core/specialist | E2E test execution (web/mobile/desktop journey scripting) |
 | 11 | `manager-lead` | core/manager (sole Agent-carrier) | Multi-milestone Tier L coordination + kanban/factory lead role (depth-2 sealed) |
-| 12 | `mission-governor` | MoAI-custom — no Selection Decision Tree row | GTD auto-mission decision role: read-only decision from a sealed mission snapshot, dispatched by that workflow rather than selected by the tree |
+| 12 | `manager-todo` | MoAI-custom — no Selection Decision Tree row | Todo-queue management (queue lifecycle, `/moai:todo --auto` serial cycle, dispatch guidance, Jev display-only consultation); the read-only decision from a sealed mission snapshot continues as its judgment sub-role, dispatched by that workflow |
 | 13 | `Explore` | Anthropic built-in | Read-only codebase exploration (no MoAI file — invoked directly) |
 
-Class breakdown: Manager ×6 (`manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `manager-design`, `manager-lead`) · Evaluator ×2 (`plan-auditor`, `sync-auditor`) · Builder ×1 (`builder-harness`) · Advisor ×1 (`super-advisor`) · Specialist ×1 (`e2e-tester`) · Mission decision ×1 (`mission-governor` — deliberately classless in the Selection Decision Tree; CLAUDE.md §4 states it is dispatched by the GTD auto-mission workflow) · Anthropic built-in ×1 (`Explore`).
+Class breakdown: Manager ×6 (`manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `manager-design`, `manager-lead`) · Evaluator ×2 (`plan-auditor`, `sync-auditor`) · Builder ×1 (`builder-harness`) · Advisor ×1 (`super-advisor`) · Specialist ×1 (`e2e-tester`) · Mission decision ×1 (`manager-todo` — deliberately classless in the Selection Decision Tree; CLAUDE.md §4 states its judgment sub-role is dispatched by the GTD auto-mission workflow) · Anthropic built-in ×1 (`Explore`).
 
 **Archived agents**: 12 legacy agent names are archived and MUST NOT be spawned. The full archived-name list + per-archived-agent migration table lives in `.claude/rules/moai/workflow/archived-agent-rejection.md` (consult that file rather than naming the archived agents here, to keep this checklist free of archived-name leakage).
 
@@ -51,11 +51,10 @@ Class breakdown: Manager ×6 (`manager-spec`, `manager-develop`, `manager-docs`,
 
 **Re-verified 2026-09-22 (HEAD `0314801c2`) — exhaustive, no sampling.** `find .claude/agents/moai -maxdepth 1 -name '*.md' | wc -l` → **12**. The tree listing and the §1 table rows 1-12 are compared name-by-name below; row 13 (`Explore`) is an Anthropic built-in with no file, so it is expected to be absent from the tree.
 
-> **[미결 드리프트 해소]** 앞 판(2026-09-18, HEAD `a851b205c`)은 `mission-governor.md`가 트리에는
-> 있지만 `CLAUDE.md` §4 retained 목록에 없는 것을 미결 드리프트로 적어 뒀다. 이번 검증에서
-> `CLAUDE.md` §4는 "exactly **13 retained agents** (12 MoAI-custom + 1 built-in `Explore`)"로
-> 갱신돼 있고 retained 열거에 `mission-governor`를 명시한다 — 카탈로그 소유 문서가 판정을
-> 내렸으므로 이 파일이 §1을 그 결정에 맞춰 13으로 정정한다.
+> **[미결 드리프트 해소]** 앞 판(2026-09-18, HEAD `a851b205c`)은 자동 임무 판정 에이전트 파일이 트리에는
+> 있지만 `CLAUDE.md` §4 retained 목록에 없는 것을 미결 드리프트로 적어 뒀다. 카탈로그 소유 문서가
+> 13 retained 판정을 내려 §1을 13으로 정정했고, 이후 그 역할은 manager-todo로 개명·재정의됐다
+> (todo-queue 관리 주 임무 + 읽기 전용 봉인 스냅숏 판정 하위 역할) — 이 표는 그 현행 이름을 따른다.
 
 | Tree file (`.claude/agents/moai/`) | §1 table row |
 |---|---|
@@ -67,7 +66,7 @@ Class breakdown: Manager ×6 (`manager-spec`, `manager-develop`, `manager-docs`,
 | `manager-git.md` | 4 `manager-git` |
 | `manager-lead.md` | 11 `manager-lead` |
 | `manager-spec.md` | 1 `manager-spec` |
-| `mission-governor.md` | 12 `mission-governor` |
+| `manager-todo.md` | 12 `manager-todo` |
 | `plan-auditor.md` | 5 `plan-auditor` |
 | `super-advisor.md` | 8 `super-advisor` |
 | `sync-auditor.md` | 6 `sync-auditor` |

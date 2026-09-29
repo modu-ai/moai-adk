@@ -33,7 +33,7 @@ v3.0 的价值可归纳为三大核心。
 
 ### 代币经济学(Token Economics)
 
-最大化性价比的智能资源分配。按作业阶段与 SPEC 大小声明式地分配模型与推理深度的 **3 层模型策略**,在超预算前正常停止的 **Token Circuit Breaker**,以及缩减常驻加载上下文的 **上下文瘦身** —— 这些构成了这一核心。
+最大化性价比的智能资源分配。决定会话的模型与推理深度的 **会话模型策略**（子代理沿用会话的模型与推理深度）,在超预算前正常停止的 **Token Circuit Breaker**,以及缩减常驻加载上下文的 **上下文瘦身** —— 这些构成了这一核心。
 
 ### 智能体循环工程(Agentic Loop Engineering)
 
@@ -122,7 +122,7 @@ flowchart TD
 | 破坏既有代码 | 用 **DDD/TDD** 先写测试来保护既有功能 |
 | 重复说明 | 用 **CLAUDE.md 与技能系统** 自动加载项目上下文 |
 | 缺少验证 | 用 **LSP 质量门禁** 自动验证代码质量 |
-| 浪费 token | 用 **模型策略 + Token Circuit Breaker** 让系统管理成本 |
+| 浪费 token | 用 **会话模型策略 + Token Circuit Breaker** 让系统管理成本 |
 
 ## 系统要求
 
@@ -258,10 +258,10 @@ MoAI 是 **战略编排器**。它不亲自写代码,而是把工作委派给 13
 | **Builder** | builder-harness | 🟠 | 生成项目专用 harness(智能体/技能/命令) |
 | **Advisor** | super-advisor | 🔵 | 高推理咨询(E1-E4 升级) |
 | **Specialist** | e2e-tester | 🟠 | 执行 Web/移动/桌面 E2E 测试 |
-| | mission-governor | 🔴 | 读取已批准的 GTD 自动任务的封存快照，只返回一条判定(只读；实际动作由确定性执行器完成) |
+| | manager-todo | 🔴 | 管理待办队列；其只读判定子角色读取已批准的 GTD 自动任务的封存快照，只返回一条判定(实际动作由确定性执行器完成) |
 | **内置** | Explore | ⚪ | 只读代码库探索 |
 
-成本颜色以默认 `medium` 配置文件的 model×effort 单元为准（用 `moai model profile` 查看）：🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 继承会话模型（用户自行添加的智能体）。切换配置文件（`high`/`low`）时分配会变化。
+成本颜色反映各智能体工作所用模型的深度：🔴 Opus 深度推理 · 🟠 Opus 标准推理 · 🔵 浅推理 · ⚪ 只读探索。v3.2 起所有智能体都以**会话的模型与推理深度**运行 —— 子代理沿用主会话的模型与推理深度，因此看到的颜色跟随当时启动的会话，而不是逐智能体分配表（已退役）。
 
 ```mermaid
 flowchart TD
@@ -288,7 +288,7 @@ flowchart TD
 
     subgraph Specialist["Specialist (2 个)"]
         S1["e2e-tester\n执行 E2E 测试"]
-        S2["mission-governor\nGTD 自动任务判定"]
+        S2["manager-todo\nGTD 自动任务判定"]
     end
 
     subgraph Explore["内置 (1 个)"]
@@ -520,26 +520,26 @@ MoAI-ADK 使用 **@MX 代码级注释系统** 在 AI 智能体间传递上下文
 
 ## 模型策略(代币经济学的核心)
 
-MoAI-ADK 为每个智能体分配最优的模型与推理深度。目标是在套餐用量限制内最大化质量 —— 策略调整的是每个智能体在 Opus effort 阶梯上的位置,而不是换成更弱的模型级别,因为在长时程 agentic 作业中,更弱的模型会消耗更多步骤,每任务成本反而更高。
+目标是在套餐用量限制内最大化质量。在长时程 agentic 作业中，更弱的模型会消耗更多步骤、每任务成本反而更高，所以不去换更弱的模型级别，而是在同一个模型内部只调节推理深度。v3.2 起这个调节以**会话**为单位：子代理沿用主会话的模型与推理深度，智能体定义对两者都不作声明，旧版本的逐智能体分配表已经退役。
 
-| 策略 | 特点 |
+| 会话模型策略 | 特点 |
 |------|------|
-| **high** | 最高质量 —— 与 medium 相同，只有 `builder-harness` 和 `e2e-tester` 两个智能体的 effort 高一级 |
-| **medium** (默认) | 质量与成本的平衡 —— 成本/评分曲线的拐点 |
-| **low** | 每任务成本最低 —— 审计与协调行降到 `medium`，`builder-harness` 降到 Opus `low`(`super-advisor` 与 `mission-governor` 保持 `high`)，Sonnet 用于单发行和 `e2e-tester` |
+| **high** | 会话 effort 回退 `high` |
+| **medium** (默认) | 会话 effort 回退 `medium` —— 成本/评分曲线的拐点 |
+| **low** | 会话 effort 回退 `low` —— 同一个模型内部的节省用法 |
 
 ### 设置方法
 
 ```bash
-# 项目初始化时
-moai init my-project          # 在交互式向导中选择模型策略
+# 设置会话模型策略（会话模型策略问题）
+moai profile setup
 
-# 既有项目重新设置
-moai update                   # 对各设置步骤给出交互式提示
+# 随时调整会话 effort
+# /effort low|medium|high|xhigh|max  ·  ultrathink
 ```
 
 {{< callout type="info" >}}
-默认策略是 `medium`。GLM 设置隔离在 `settings.local.json` 中(不提交到 Git)。设置键是 `llm.yaml` 的 `profile: high | medium | low`(配置矩阵列)，legacy `performance_tier` 字段在 `profile` 缺失时作为别名读取(`--high`/`--low` 分别是 `--model-policy high`/`low` 的 deprecated 别名)。可用 `--profile high|medium|low` 标志直接指定，legacy 的 `max` 值也可作为输入并规范化为 `high`。
+默认 effort 回退为 `medium`。GLM 设置隔离在 `settings.local.json` 中(不提交到 Git)。已退役的 `--model-policy` / `--profile` / `--high` / `--medium-alias` / `--low` 旗标是弃用桩 —— 只打印指向 `moai profile setup` 的警告，没有任何效果。
 {{< /callout >}}
 
 ## Task 指标日志

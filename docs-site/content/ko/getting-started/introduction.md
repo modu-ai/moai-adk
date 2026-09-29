@@ -29,7 +29,7 @@ MoAI-ADK는 Claude Code를 **세 축**으로 감싸는 Agentic Development Kit�
 
 ### 비용 — 토크노믹스
 
-같은 품질을 더 적은 토큰으로. 비용은 단가가 아니라 **모델 배정**이 정합니다 — DeepSWE 벤치마크에서 Opus 최저 추론이 Sonnet 최고 추론보다 점수가 높으면서 16분의 1 비용이었습니다. 3-계층 모델 정책 · 프롬프트 캐싱 · Token Circuit Breaker가 예산을 시스템이 관리합니다.
+같은 품질을 더 적은 토큰으로. 비용은 단가가 아니라 **모델 선택**이 정합니다 — DeepSWE 벤치마크에서 Opus 최저 추론이 Sonnet 최고 추론보다 점수가 높으면서 16분의 1 비용이었습니다. 세션 모델 정책 · 프롬프트 캐싱 · Token Circuit Breaker가 예산을 시스템이 관리합니다.
 
 ### 자기 개선 — 에이전틱 루프 엔지니어링
 
@@ -49,7 +49,7 @@ MoAI-ADK는 Claude Code를 **세 축**으로 감싸는 Agentic Development Kit�
 - **manager-lead** — SPEC 안의 Tier L 마일스톤 팬아웃은 물론, 칸반·팩토리 리더 세션 디스패치까지 아우르는 조율 에이전트입니다.
 - **multi-model audit** — 다중 모델 교차 검증으로 편향을 잡습니다.
 - **autonomy tier** — 자율성 단계를 조절해 안전하게 돌립니다.
-- **profile matrix** — 13 에이전트 × 3 프로필로 모델을 배정합니다.
+- **세션 모델 정책** — 한 번의 선택으로 세션 기본 추론 강도를 정합니다. 서브에이전트는 세션의 모델과 추론 깊이를 그대로 따릅니다.
 
 ## 핵심 개념
 
@@ -134,21 +134,21 @@ MoAI 오케스트레이터는 직접 구현하지 않고 13개의 전문 에이�
 | **Evaluator** | 2개 | plan-auditor, sync-auditor |
 | **Builder** | 1개 | builder-harness |
 | **Advisor** | 1개 | super-advisor (고추론 자문) |
-| **Specialist** | 2개 | e2e-tester (웹/모바일/데스크탑 E2E 테스트 실행), mission-governor (GTD 자동 미션 판정, 읽기 전용) |
+| **Specialist** | 2개 | e2e-tester (웹/모바일/데스크탑 E2E 테스트 실행), manager-todo (GTD 자동 미션 판정, 읽기 전용) |
 | **빌트인** | 1개 | Explore (Anthropic 내장, 읽기 전용 코드 분석) |
 
 ### 모델 정책 (토크노믹스)
 
-MoAI-ADK는 각 에이전트에 최적의 모델과 추론 깊이를 할당합니다. 목표는 요금제의 사용량 한도 안에서 품질을 최대한 끌어올리는 것입니다. 그래서 모델 클래스를 더 약한 쪽으로 바꾸는 대신, 같은 Opus 안에서 각 에이전트의 추론 깊이만 조절합니다. 오래 이어지는 에이전틱 작업에서는 약한 모델이 스텝을 더 많이 소모해 작업당 비용이 오히려 올라가기 때문입니다.
+목표는 요금제의 사용량 한도 안에서 품질을 최대한 끌어올리는 것입니다. 오래 이어지는 에이전틱 작업에서는 약한 모델이 스텝을 더 많이 소모해 작업당 비용이 오히려 올라가기 때문에, 모델 클래스를 바꾸는 대신 같은 모델 안에서 추론 깊이만 조절합니다. v3.2부터 이 조절은 **세션** 단위입니다. 서브에이전트는 메인 세션의 모델과 추론 깊이를 그대로 따르고, 에이전트 정의는 어느 쪽도 선언하지 않으며, 프로필의 **세션 모델 정책** (`moai profile setup`)이 추론 강도를 따로 고르지 않았을 때의 기본값을 정합니다.
 
-| 티어 | 특징 |
+| 세션 모델 정책 | 의미 |
 |------|------|
-| **high** | 최고 품질 — medium과 같되 `builder-harness`·`e2e-tester` 두 에이전트만 effort 한 단계 위 |
-| **medium** (기본값) | 품질과 비용의 균형 |
-| **low** | 작업당 최저 비용 — 감사·조율 행은 `medium`, `builder-harness`는 Opus `low`로 내려가고(`super-advisor`·`mission-governor`는 `high` 유지), Sonnet은 단발성 행과 `e2e-tester`에 |
+| **high** | 세션 effort 폴백 `high` |
+| **medium** (기본값) | 세션 effort 폴백 `medium` — 비용/점수 곡선의 무릎 |
+| **low** | 세션 effort 폴백 `low` — 같은 모델 안에서의 경제 운용 |
 
 {{< callout type="info" >}}
-기본 티어는 **medium** 입니다. 티어를 조절하면 주로 각 에이전트의 Opus 추론 깊이가 달라지며, 모델이 바뀌는 곳은 `low`에서 Sonnet으로 내려가는 `e2e-tester` 한 행뿐입니다. `low`는 감사·조율 행을 `medium`으로, `builder-harness`를 `low`로 내리고 단발성 행과 `e2e-tester`에만 Sonnet을 쓰며, `high`는 medium에서 `builder-harness`와 `e2e-tester` 두 에이전트의 effort만 한 단계 올립니다. 어느 티어에도 `max` 셀은 없습니다. `--model-policy` 플래그 또는 초기화 마법사에서 설정합니다.
+사라진 `--model-policy` / `--profile` 플래그는 지원 종료 스텁입니다. `moai profile setup`을 안내하는 경고를 낼 뿐 아무 효과가 없습니다. 세션의 effort는 `/effort`나 `ultrathink`로, 모델은 `/model`로 그때그때 바꿀 수 있습니다. 자세한 내용은 [모델 정책](/ko/multi-llm/model-policy/) 페이지를 참조하세요.
 {{< /callout >}}
 
 ### 실행 모드와 오케스트레이션
@@ -271,7 +271,7 @@ MoAI-ADK를 시작하려면 다음 순서로 진행하세요:
 | 장점 | 설명 |
 |------|------|
 | **품질 보장** | TRUST 5 프레임워크로 일관된 품질 유지 |
-| **토큰 효율** | 모델 정책 + Token Circuit Breaker로 비용을 시스템이 관리 |
+| **토큰 효율** | 세션 모델 정책 + Token Circuit Breaker로 비용을 시스템이 관리 |
 | **생산성 향상** | AI 에이전트 자동화로 개발 시간 단축 |
 | **확장 가능** | 모듈형 아키텍처와 하네스 빌더로 유연하게 확장 |
 | **다국어** | 4개 언어 지원 |

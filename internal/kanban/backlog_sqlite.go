@@ -45,9 +45,19 @@ const (
 	backlogDBFileNameSuffix = ".db"
 
 	// backlogSchemaVersion stamps the physical layout in meta. Bumped ONLY by
-	// a future SPEC redefining the DDL; the runtime reads it and refuses an
-	// unrecognized version rather than guessing.
-	backlogSchemaVersion = "1"
+	// a SPEC that redefines the DDL; the runtime reads it and refuses an
+	// unrecognized version rather than guessing. The "2" stamp (SPEC-TODO-
+	// HOLD-STATE-001) marks the four-state items CHECK — a layout change
+	// SQLite cannot ALTER into place, which is why it rides the rebuild
+	// migration rather than an ADD COLUMN.
+	backlogSchemaVersion = "2"
+
+	// backlogSchemaVersionV1 is the previous stamp. It is a KNOWN version,
+	// not a current one: the pure reader accepts it (an un-migrated queue is
+	// readable), and the adopting open migrates it to the current stamp by
+	// rebuilding the items table (backlog_rebuild.go). A stamp the binary
+	// knows as neither current nor previous still refuses at open.
+	backlogSchemaVersionV1 = "1"
 
 	// backlogBusyTimeoutMS is the per-connection busy timeout (REQ-TOSQ-003
 	// mandates >= 5000): how long a writer blocked on another process's lock
@@ -80,10 +90,43 @@ const (
 	backlogMetaKeyQuarantinePending = "legacy_quarantine_pending"
 )
 
+// backlogSchemaVersionOverride, when non-empty, replaces the version the
+// reader and the schema switch treat as current (test-only seam for
+// REQ-THS-005's old-binary simulation — the AC sanctions reader-path version
+// injection; always empty in production).
+var backlogSchemaVersionOverride string
+
+// backlogCurrentSchemaVersion returns the schema stamp this binary treats as
+// current, honoring the test-only override.
+func backlogCurrentSchemaVersion() string {
+	if backlogSchemaVersionOverride != "" {
+		return backlogSchemaVersionOverride
+	}
+	return backlogSchemaVersion
+}
+
 // backlogLandingColumn is the landing-evidence column carried by both
 // card-bearing tables. It is added by ensureLandingColumn rather than by
 // backlogDDL — see that function for why.
 const backlogLandingColumn = "landing"
+
+// backlogItemsTableColumns is the items table's physical column list — the
+// single source shared by backlogDDL (fresh databases) and the v1→v2 rebuild
+// (existing ones), so the two shapes cannot drift. The four-value state
+// CHECK is the layout the "2" stamp marks; widening it is the change that
+// forces the rebuild, because SQLite cannot ALTER a CHECK constraint.
+// The landing column sits AFTER state, not before: upgraded databases carry
+// it there (ensureLandingColumn's ALTER appends it), and a fresh database
+// must converge on the identical physical order — the column-tuple freeze
+// test pins the sequence.
+const backlogItemsTableColumns = `
+  seq      INTEGER PRIMARY KEY,
+  id       TEXT    NOT NULL UNIQUE,
+  text     TEXT    NOT NULL,
+  added_at TEXT    NOT NULL,
+  spec_id  TEXT,
+  state    TEXT    NOT NULL CHECK (state IN ('queued','picked','dropped','hold')),
+  landing  TEXT`
 
 // backlogDDL is the physical schema (design.md §2). Everything is IF NOT
 // EXISTS so opening any existing database is idempotent. seq carries the
@@ -96,26 +139,22 @@ const backlogLandingColumn = "landing"
 // GUARD-001 REQ-TDG-003/004). They are ADDITIVE and cost nothing on an
 // existing database: this whole DDL runs on every open and every statement is
 // IF NOT EXISTS, so a queue created by an earlier binary gains the tables the
-// first time a newer one opens it — which is precisely why the archive is a
-// pair of tables rather than a fourth `state` value. SQLite cannot ALTER a
-// CHECK constraint, so admitting a fourth state would need a table rebuild on
-// every operator queue in the field.
+// first time a newer one opens it. This DDL once carried a THREE-state items
+// CHECK and the comment warned that admitting a fourth state "would need a
+// table rebuild on every operator queue in the field" — that rebuild is now
+// exactly how the fourth state (`hold`) arrived: a transactional, parity-
+// verified rebuild behind the schema_version bump to "2"
+// (SPEC-TODO-HOLD-STATE-001, backlog_rebuild.go).
 //
 // archived_items deliberately carries NO state CHECK: an archived row is
 // history rather than a live lifecycle position, and leaving the constraint
-// off keeps the live three-value enum the single constrained surface.
+// off keeps the live four-value enum the single constrained surface.
 const backlogDDL = `
 CREATE TABLE IF NOT EXISTS meta (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
-CREATE TABLE IF NOT EXISTS items (
-  seq      INTEGER PRIMARY KEY,
-  id       TEXT    NOT NULL UNIQUE,
-  text     TEXT    NOT NULL,
-  added_at TEXT    NOT NULL,
-  spec_id  TEXT,
-  state    TEXT    NOT NULL CHECK (state IN ('queued','picked','dropped'))
+CREATE TABLE IF NOT EXISTS items (` + backlogItemsTableColumns + `
 );
 CREATE TABLE IF NOT EXISTS findings (
   subject_id TEXT  NOT NULL,
@@ -286,7 +325,7 @@ func openBacklogReader(dbPath string) (*backlogEngine, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), backlogOpenTimeout)
 	defer cancel()
 	version, err := e.schemaVersion(ctx)
-	if err == nil && version != "" && version != backlogSchemaVersion {
+	if err == nil && version != "" && version != backlogCurrentSchemaVersion() && version != backlogSchemaVersionV1 {
 		err = fmt.Errorf("unsupported schema_version %q: %w", version, ErrBacklogCorrupt)
 	}
 	if err == nil {
@@ -384,18 +423,27 @@ func (e *backlogEngine) ensureSchema(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	current := backlogCurrentSchemaVersion()
 	switch version {
 	case "":
 		if _, err := e.db.ExecContext(ctx,
 			`INSERT INTO meta(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`,
-			backlogMetaKeySchemaVersion, backlogSchemaVersion); err != nil {
+			backlogMetaKeySchemaVersion, current); err != nil {
 			return mapBacklogEngineError(fmt.Sprintf("stamp schema_version %s", e.dbPath), err)
 		}
-	case backlogSchemaVersion:
+	case current:
 		// current layout
+	case backlogSchemaVersionV1:
+		// Reached only when the previous stamp is NOT this binary's current
+		// one (the case above matches first): rebuild the items table to the
+		// current CHECK and stamp — one transaction, parity-verified before
+		// the switch (backlog_rebuild.go).
+		if err := e.rebuildItemsTable(ctx); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("schema %s: unsupported schema_version %q (want %q): %w",
-			e.dbPath, version, backlogSchemaVersion, ErrBacklogCorrupt)
+			e.dbPath, version, current, ErrBacklogCorrupt)
 	}
 	return nil
 }

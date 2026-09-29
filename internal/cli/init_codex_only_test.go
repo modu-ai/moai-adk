@@ -57,7 +57,7 @@ func TestInitCodexOnlyRequiredSurfaces(t *testing.T) {
 		}
 	}
 
-	// .codex/agents/moai/*.toml — 12 template TOMLs (mission-governor added).
+	// .codex/agents/moai/*.toml — 12 template TOMLs (manager-todo added).
 	tomls, err := filepath.Glob(filepath.Join(projectDir, ".codex", "agents", "moai", "*.toml"))
 	if err != nil {
 		t.Fatalf("glob codex agent tomls: %v", err)

@@ -63,6 +63,12 @@ const (
 	BacklogStatePicked BacklogState = "picked"
 	// BacklogStateDropped marks a card the operator discarded.
 	BacklogStateDropped BacklogState = "dropped"
+	// BacklogStateHold marks a card an OPERATOR parked out of the queue
+	// (SPEC-TODO-HOLD-STATE-001). It is the state, not a text marker: every
+	// actionable surface enumerates accepted states positively, so a held
+	// card is invisible to every machine selector by construction, and no
+	// lease path gains a verb that sets or clears it.
+	BacklogStateHold BacklogState = "hold"
 )
 
 // BacklogItem is one queued card. The five original fields are the frozen
@@ -120,6 +126,16 @@ const (
 	// BacklogRelationConflicts records that two cards pull against each
 	// other. No resolution is proposed — both may be legitimate.
 	BacklogRelationConflicts = "conflicts"
+	// BacklogRelationBlocks records that the subject must land before the
+	// related card can proceed (card t1309). Record-only, like every agent
+	// relation: no scheduler, dispatcher, or self-dispatch path reads it —
+	// whether factory self-dispatch ever consults the blocks graph is a
+	// separate adjudication (t1240), and until that lands the record exists
+	// for the operator to read.
+	BacklogRelationBlocks = "blocks"
+	// BacklogRelationDepends is the inverse spelling of blocks: the subject
+	// waits on the related card. Same record-only posture.
+	BacklogRelationDepends = "depends"
 )
 
 // Source values a finding may carry.
@@ -142,14 +158,19 @@ const (
 	BacklogSourceJev = "jev"
 )
 
-// BacklogSemanticRelations lists the four relations `todo relate` accepts.
+// BacklogSemanticRelations lists the six relations `todo relate` accepts.
 // The two mechanical relations are deliberately absent: a caller must not be
-// able to record a measurement it did not take.
+// able to record a measurement it did not take. The sequencing pair
+// (blocks / depends) is a judgement the operator or a dispatching agent
+// makes, recorded so the sequencing stops living in card prose alone —
+// recording one changes nothing (card t1309).
 var BacklogSemanticRelations = []string{
 	BacklogRelationContains,
 	BacklogRelationAbsorbs,
 	BacklogRelationReplaces,
 	BacklogRelationConflicts,
+	BacklogRelationBlocks,
+	BacklogRelationDepends,
 }
 
 // BacklogFinding is one recorded relation between two cards.

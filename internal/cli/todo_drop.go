@@ -175,7 +175,12 @@ form a listing shows, marker included) and refuses the undrop on a mismatch.`,
 						return fmt.Errorf("backlog item %s is %q, not matching --expect %q",
 							id, todoTextPrefix(rec.Items[i].Text), expect)
 					}
-					if rec.Items[i].State != kanban.BacklogStateDropped {
+					// POSITIVE enumeration (SPEC-TODO-HOLD-STATE-001
+					// REQ-THS-012): the gate names the state it reverts.
+					switch rec.Items[i].State {
+					case kanban.BacklogStateDropped:
+						// the only undroppable-into-queued state
+					default:
 						return fmt.Errorf("backlog item %s is %s, not dropped", id, rec.Items[i].State)
 					}
 					restored = stripTodoDropMarker(rec.Items[i].Text)

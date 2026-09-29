@@ -65,11 +65,13 @@ MTok당 정가(입력/출력): Opus 5 $5/$25 · Sonnet 5 $2/$10 (도입 가격, 
 
 Sonnet조차 긴 호흡의 과제에서는 Opus보다 과제당 비용이 더 듭니다. Haiku는 Sonnet보다 더 약합니다. 그러니 Haiku를 라우팅에 넣어봐야 역량은 늘지 않고 스텝 낭비만 늘어납니다 — Sonnet에서 이미 관측된 완주 실패 패턴이 Haiku에서는 더 가파르게 나타납니다.
 
-그래서 MoAI는 Haiku를 라우팅 모델 세트에서 완전히 제외합니다 (No-Haiku 정책, SPEC-AGENT-ARCH-V2-001 §D). Haiku는 모델 enum에서 여전히 유효한 값이라 문서·예시 YAML에는 등장하지만, 실제 에이전트 배정 매트릭스의 어떤 칸에도 들어가지 않습니다. Haiku를 빼고도 비용을 줄이는 축은 남습니다 — 모델 클래스를 바꾸는 대신 effort(추론 깊이)를 단계별로 조절하는 쪽입니다. 이것이 3-티어 구조의 출발점입니다.
+그래서 MoAI는 Haiku를 라우팅 모델 세트에서 완전히 제외합니다 (No-Haiku 정책, SPEC-AGENT-ARCH-V2-001 §D). Haiku는 모델 enum에서 여전히 유효한 값이라 문서·예시 YAML에는 등장하지만, 세션 모델 라인업의 기본 조합 어디에도 들어가지 않습니다. Haiku를 빼고도 비용을 줄이는 축은 남습니다 — 모델 클래스를 바꾸는 대신 effort(추론 깊이)를 단계별로 조절하는 쪽입니다. 이것이 3-티어 구조의 출발점입니다.
 
 ## 3-티어 배정 규칙
 
 남은 모델(Opus, Sonnet)과 effort를 작업의 성격에 따라 세 단계로 배정합니다. '티어'는 여기서 *작업 종류에 따른 모델·effort 배정 단계*를 뜻합니다.
+
+> 이 절부터의 배정 표는 **설계 의도이자 v3.1까지의 실제 규칙**입니다(에이전트별 프로필 매트릭스 시절). v3.2부터 구현된 동작은 세션 상속이므로, 이 배정은 현재 동작이 아니라 모델을 고르는 판단 기준의 기록으로 읽습니다. 두 세계의 구분은 아래 "설계 의도와 구현된 동작을 갈라 읽기" 절에 있습니다.
 
 ```mermaid
 flowchart TD
@@ -80,11 +82,11 @@ flowchart TD
 
     T1["Tier 1 — 기계·탐색<br/>Sonnet low<br/>manager-docs · manager-git · Explore"]
     T2["Tier 2 — 생산<br/>Opus, 행마다 다른 단계<br/>manager-spec · manager-develop<br/>builder-harness · e2e-tester"]
-    T3["Tier 3 — 판단·조율<br/>Opus high 중심<br/>plan-auditor · sync-auditor · manager-design<br/>manager-lead · super-advisor · mission-governor"]
+    T3["Tier 3 — 판단·조율<br/>Opus high 중심<br/>plan-auditor · sync-auditor · manager-design<br/>manager-lead · super-advisor · manager-todo"]
 
     T1 --> NOTE["세 프로필 모두에서 고정"]
     T2 --> NOTE2["두 행은 세 열 모두 medium 고정<br/>두 행만 프로필을 따라 내려감"]
-    T3 --> NOTE3["super-advisor · mission-governor는<br/>경제 열에서도 high를 지킴"]
+    T3 --> NOTE3["super-advisor · manager-todo는<br/>경제 열에서도 high를 지킴"]
 ```
 
 ### Tier 1 — 기계·탐색
@@ -114,11 +116,11 @@ flowchart TD
 |---|---|---|---|
 | `plan-auditor` · `sync-auditor` | `opus / high` | `opus / high` | `opus / medium` |
 | `manager-design` · `manager-lead` | `opus / high` | `opus / high` | `opus / medium` |
-| `super-advisor` · `mission-governor` | `opus / high` | `opus / high` | `opus / high` |
+| `super-advisor` · `manager-todo` | `opus / high` | `opus / high` | `opus / high` |
 
-`super-advisor`(에스컬레이션 경로)와 `mission-governor`(봉인된 미션 판정)만 **경제 열에서도 `high`를 지킵니다**. 싼 열에서 가장 건전하게 유지할 가치가 있는 자리가 바로 그 둘이기 때문입니다.
+`super-advisor`(에스컬레이션 경로)와 `manager-todo`(봉인된 미션 판정)만 **경제 열에서도 `high`를 지킵니다**. 싼 열에서 가장 건전하게 유지할 가치가 있는 자리가 바로 그 둘이기 때문입니다.
 
-`mission-governor`는 이 축이 왜 「멀티턴이냐 아니냐」보다 나은지를 보여 줍니다. 한 번 읽고 결정 하나를 돌려주는 **단발** 행이라 멀티턴 기준으로는 Sonnet 쪽에 가 있어야 하지만, 실제로는 세 열 모두 `opus / high`입니다. **판단하는 행이기 때문**입니다.
+`manager-todo`는 이 축이 왜 「멀티턴이냐 아니냐」보다 나은지를 보여 줍니다. 한 번 읽고 결정 하나를 돌려주는 **단발** 행이라 멀티턴 기준으로는 Sonnet 쪽에 가 있어야 하지만, 실제로는 세 열 모두 `opus / high`입니다. **판단하는 행이기 때문**입니다.
 
 `max`는 **어느 행도 받지 않습니다.** `high` 위의 유일한 단계로 어휘에는 남아 있지만 현재 배정된 셀은 0개입니다. `xhigh`도 어디에도 쓰지 않습니다 — Opus에서 `high`와 점수가 같으면서 비용만 49% 더 듭니다.
 
@@ -140,13 +142,13 @@ flowchart TD
 
 **설계 단계** (`.moai/reports/agent-architecture-redesign-v2-20260709.html`) — v2 아키텍처의 설계 의도입니다. 3-티어 모델 정책의 원칙과 DeepSWE 근거를 제시합니다.
 
-**구현된 동작** — 실제 라우팅은 단일 프로필 매트릭스가 수행합니다. 활성 프로필 (`high` / `medium` / `low`) 이 매트릭스의 한 열을 고르면 리졸버가 각 에이전트의 `{model, effort}` 를 정하고, spawn 시점에 model을 런타임 인자로 넣습니다. 자세한 매트릭스는 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 보세요.
+**구현된 동작** — v3.2부터 실제 동작은 **세션 상속**입니다. 서브에이전트는 메인 세션의 모델과 추론 깊이를 그대로 따릅니다 — 서브에이전트를 부를 때 `model`도 `effort`도 넘기지 않으며, MoAI 에이전트 정의는 어느 쪽도 선언하지 않습니다. 예전의 프로필 매트릭스(에이전트 13개 × 프로필 3개 = 39칸 배정표)와 그 값을 부름에 주입하던 리졸버는 물러났습니다. 세션 모델 정책이 하는 일은 `moai profile setup`에서 세션의 기본 추론 강도 폴백을 정하는 것뿐입니다. 현재 동작의 상세는 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 보세요.
 
-읽는 쪽에서도 설계 의도 (이 페이지의 DeepSWE 근거) 와 구현된 동작 (단일 프로필 매트릭스) 을 구분해서 봐야 합니다.
+읽는 쪽에서도 설계 의도 (이 페이지의 DeepSWE 근거와 3-티어 배정 기준) 와 구현된 동작 (세션 상속) 을 구분해서 봐야 합니다.
 
 ## 이 벤치마크가 재지 못하는 것
 
-{{< icon info >}} **한계 고지**: 이 벤치마크가 측정하는 대상은 **코딩** 에이전트입니다. 문서 저작, 감사 판단, SPEC(요구사항 명세서) 저작 품질은 직접 측정하지 않았으므로, 해당 행 배치는 관측이 아니라 멀티턴 에이전틱 작업과 비슷하리라는 추론에 기댑니다. 신뢰구간도 함께 봐야 합니다 — `medium` (69%±1) 과 `high` (73%±2) 는 겹치지 않지만 `max` (74%±4) 는 `high`와 겹칩니다. 이것이 `max`를 어느 셀에도 배정하지 않은 이유입니다 — 겹치는 구간을 위해 더 내는 셈이 되기 때문입니다. 모든 기본값은 `llm.agent_overrides`로 에이전트마다 되돌릴 수 있습니다.
+{{< icon info >}} **한계 고지**: 이 벤치마크가 측정하는 대상은 **코딩** 에이전트입니다. 문서 저작, 감사 판단, SPEC(요구사항 명세서) 저작 품질은 직접 측정하지 않았으므로, 해당 행 배치는 관측이 아니라 멀티턴 에이전틱 작업과 비슷하리라는 추론에 기댑니다. 신뢰구간도 함께 봐야 합니다 — `medium` (69%±1) 과 `high` (73%±2) 는 겹치지 않지만 `max` (74%±4) 는 `high`와 겹칩니다. 이것이 `max`를 어느 셀에도 배정하지 않은 이유입니다 — 겹치는 구간을 위해 더 내는 셈이 되기 때문입니다. 모든 기본값은 세션 단위로 조절할 수 있습니다 — 모델은 Claude Code의 모델 선택이, effort는 `/effort`나 프로필 위자드의 세션 모델 정책이 정합니다.
 
 {{< icon info >}} **Fable 5에 대하여**: Fable은 코딩 작업에서 모든 effort에 걸쳐 밀립니다. Fable `high` (69%, $9.18) 는 Opus `medium` (69%, $3.29) 과 같은 점수를 거의 3배 비용에 냅니다. 그래서 어떤 매트릭스 칸에도 넣지 않았습니다. 모델 enum에서는 여전히 유효한 값이고 GLM 백엔드의 Fable 슬롯 배선도 그대로 살아 있습니다 — 바뀐 것은 기본값뿐입니다.
 
@@ -156,6 +158,6 @@ flowchart TD
 
 ## 다음 단계
 
-- [프로필 매트릭스](/ko/advanced/profile-matrix/) — 단일 3-열 per-agent 프로필 매트릭스 (13 에이전트 × 3 프로필 = 39 셀)
+- [프로필 매트릭스](/ko/advanced/profile-matrix/) — 예전 39셀 매트릭스가 물러난 자리, 지금의 세션 상속 규칙
 - [자율성 티어](/ko/advanced/autonomy-tier/) — 모델 티어와 직교하는, 권한·통제 대상의 자율성 등급
 - [토크노믹스 개요](/ko/advanced/tokenomics-overview/) — 4-층 토크노믹스 구조의 라우팅 층

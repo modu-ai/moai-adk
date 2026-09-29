@@ -1,8 +1,12 @@
 // backlog_schema_freeze_test.go — SPEC-TODO-ARCHIVE-QUERY-001 (card t394):
 // AC-TAQ-012, the schema-identity assertion. The history verb is a reader;
-// its landing must add no table, admit no fourth state, and leave
-// schema_version stamped at "1" (REQ-TAQ-012, REQ-TDG-004/005 — a fourth
-// state would force a table rebuild on every operator queue in the field).
+// its landing must add no table and leave schema_version at the current
+// stamp. Originally the freeze pinned the THREE-state CHECK at stamp "1"
+// precisely because a fourth state would force a table rebuild on every
+// operator queue in the field (REQ-TAQ-012, REQ-TDG-004/005);
+// SPEC-TODO-HOLD-STATE-001 paid that stated cost deliberately — the rebuild
+// landed behind the bump to "2" — and the freeze now pins the FOUR-state
+// tuple so no further state can arrive without tripping it again.
 //
 // Extended by SPEC-TODO-LANDING-EVIDENCE-001 (card t359), AC-TLE-019: the
 // guard was column-blind — a planted column on either table left all four of
@@ -28,7 +32,7 @@ import (
 
 // AC-TAQ-012 — the queue database a reader opens carries exactly the
 // physical schema the writers built: five tables, the one non-auto index,
-// the three-state CHECK, schema_version "1".
+// the four-state CHECK, schema_version "2".
 //
 // AC-TST-011 — the transition-stamp SPEC names its mechanical check as
 // `go test ./internal/kanban/ -run SchemaFreeze`, and a selector matching
@@ -64,7 +68,8 @@ func assertBacklogSchemaFrozen(t *testing.T) {
 	ctx := context.Background()
 
 	// The table set is exactly the five core tables plus the additive identity
-	// side table — no more, no less. The core schema stamp remains version 1.
+	// side table — no more, no less. The schema stamp rides the four-state
+	// CHECK rebuild (schema_version "2").
 	var tables []string
 	rows, err := eng.db.QueryContext(ctx,
 		`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name`)
@@ -86,14 +91,14 @@ func assertBacklogSchemaFrozen(t *testing.T) {
 		t.Errorf("table set = %q, want %q", got, wantTables)
 	}
 
-	// The items.state CHECK still admits exactly the three live states —
-	// read from the database's own stored SQL, not from the source DDL.
+	// The items.state CHECK admits exactly the four live states — read from
+	// the database's own stored SQL, not from the source DDL.
 	var itemsSQL string
 	if err := eng.db.QueryRowContext(ctx,
 		`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'items'`).Scan(&itemsSQL); err != nil {
 		t.Fatalf("read items DDL: %v", err)
 	}
-	const wantCheck = "CHECK (state IN ('queued','picked','dropped'))"
+	const wantCheck = "CHECK (state IN ('queued','picked','dropped','hold'))"
 	if !strings.Contains(itemsSQL, wantCheck) {
 		t.Errorf("items.state CHECK drifted.\n got: %s\nwant it to contain: %s", itemsSQL, wantCheck)
 	}
@@ -153,8 +158,8 @@ func assertBacklogSchemaFrozen(t *testing.T) {
 		t.Errorf("archived_items column tuples =\n %s\nwant\n %s", got, wantArchivedItemsColumns)
 	}
 
-	// schema_version is still stamped "1" — an older binary refuses any
-	// other value, so a bump is a downgrade break, not a feature.
+	// schema_version is stamped at the current "2" — an older binary refuses
+	// any other value, so the stamp and the CHECK widen together.
 	version, err := eng.schemaVersion(ctx)
 	if err != nil {
 		t.Fatalf("read schema_version: %v", err)

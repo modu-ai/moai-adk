@@ -1,7 +1,7 @@
 // Package cli — codex_role_contract_test.go
 //
 // AC-RLP-004 for SPEC-ROLE-LOAD-PREDICATE-001: the load predicate judges
-// manager-lead and mission-governor true even though their contract obliges
+// manager-lead and manager-todo true even though their contract obliges
 // them to refuse a delegation naming no work — proving load and behaviour
 // are genuinely distinct axes.
 package cli
@@ -114,9 +114,10 @@ func TestCodexRoleLoadPredicateContractNeutral(t *testing.T) {
 	}
 
 	type roleCase struct {
-		path      string
-		role      string
-		nonceTrue bool
+		path        string
+		role        string // current catalog name (post-rename)
+		fixtureRole string // the label the frozen t1171 fixture records
+		nonceTrue   bool
 	}
 	var cases []roleCase
 	for _, p := range realFiles {
@@ -127,9 +128,19 @@ func TestCodexRoleLoadPredicateContractNeutral(t *testing.T) {
 		if !hasLabel {
 			continue
 		}
+		// The frozen t1171 rollout fixtures record sessions under the role's
+		// name at recording time, and the frozen expectation table keys the
+		// same historical names; the role has since been renamed (the same
+		// role, zero removals). Derive against the historical label, THEN map
+		// it to the current one on the case record — in the test, never in
+		// the fixture.
 		text := codexRoleLastAssistantText(t, p)
 		nonceTrue := strings.HasPrefix(text, "NONCE ")
-		cases = append(cases, roleCase{path: p, role: role, nonceTrue: nonceTrue})
+		fixtureRole := role
+		if role == "mission-governor" {
+			role = "manager-todo"
+		}
+		cases = append(cases, roleCase{path: p, role: role, fixtureRole: fixtureRole, nonceTrue: nonceTrue})
 	}
 	if len(cases) != 12 {
 		t.Fatalf("expected 12 labeled real sessions, got %d", len(cases))
@@ -144,7 +155,7 @@ func TestCodexRoleLoadPredicateContractNeutral(t *testing.T) {
 		if err != nil {
 			t.Fatalf("derive %s: %v", c.path, err)
 		}
-		load := codexRoleLoadPredicate(codexRoleLoadInput{Role: c.role, Matched: matched})
+		load := codexRoleLoadPredicate(codexRoleLoadInput{Role: c.fixtureRole, Matched: matched})
 		if !load {
 			t.Fatalf("%s (role=%s): expected load == true (contract-neutral), got false", c.path, c.role)
 		}
@@ -155,7 +166,7 @@ func TestCodexRoleLoadPredicateContractNeutral(t *testing.T) {
 		if c.role == "manager-lead" {
 			leadCase = c
 		}
-		if c.role == "mission-governor" {
+		if c.role == "manager-todo" {
 			governorCase = c
 		}
 	}
@@ -176,12 +187,12 @@ func TestCodexRoleLoadPredicateContractNeutral(t *testing.T) {
 		}
 	})
 
-	t.Run("mission-governor", func(t *testing.T) {
+	t.Run("manager-todo", func(t *testing.T) {
 		if governorCase == nil {
-			t.Fatal("mission-governor fixture not found among the 12 labeled sessions")
+			t.Fatal("manager-todo fixture not found among the 12 labeled sessions")
 		}
 		if governorCase.nonceTrue {
-			t.Fatal("mission-governor was expected to refuse the nonce (contract obligation), but returned one")
+			t.Fatal("manager-todo was expected to refuse the nonce (contract obligation), but returned one")
 		}
 	})
 
@@ -213,13 +224,13 @@ func TestCodexRoleLoadPredicateContractNeutral(t *testing.T) {
 
 		// Positive controls: the same check rejects both branch directions.
 		forceTrue := func(in codexRoleLoadInput) bool {
-			if in.Role == "manager-lead" || in.Role == "mission-governor" {
+			if in.Role == "manager-lead" || in.Role == "manager-todo" {
 				return true
 			}
 			return in.Matched[in.Role]
 		}
 		forceFalse := func(in codexRoleLoadInput) bool {
-			if in.Role == "manager-lead" || in.Role == "mission-governor" {
+			if in.Role == "manager-lead" || in.Role == "manager-todo" {
 				return false
 			}
 			return in.Matched[in.Role]

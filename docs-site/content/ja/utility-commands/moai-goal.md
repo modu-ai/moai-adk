@@ -64,11 +64,11 @@ moai goal resume
 
 `approve` は目標・範囲・許可行為・完了根拠・資源上限を一度だけ封印します。その後の workflow loop は、範囲内の各操作で最新 snapshot と receipt を再確認し、同じ承認を繰り返し尋ねません。`status` は保存状態を読み、`revoke` は新しい効果を止めつつ進行中の調整状態を残します。`resume` は保存済みの **承認済み・ポリシーで blocked** のミッションだけを同じ契約で再開し、新しい範囲は承認しません。
 
-`--recommend` は旧呼び出しとの互換構文にすぎず、権限を与えません。実操作には、リポジトリ内の `0600` mission-governor 判断 receipt と、別の独立監査 PASS receipt の両方が必要で、ミッション・契約・snapshot・行為・対象・有効期限・発行者・HEAD・true と判定された typed evidence に結び付きます。`run --supervise` は封印済み計画を `publish → pick → lease 付きディスク配車 → commit → local develop --no-ff merge` の順で有限実行します。監督下の Git 効果には分離した `--card-worktree` と `--develop-worktree` が必要で、従来の `--repo` だけでは効果 0 件のまま拒否されます。完了にはマージ ancestry を含む `0600` 完了 receipt が必要で、行為リストの消化だけでは完了しません。blocked または completed で止まり、完了済みミッションの再実行は効果 0 件です。
+`--recommend` は旧呼び出しとの互換構文にすぎず、権限を与えません。実操作には、リポジトリ内の `0600` manager-todo 判断 receipt と、別の独立監査 PASS receipt の両方が必要で、ミッション・契約・snapshot・行為・対象・有効期限・発行者・HEAD・true と判定された typed evidence に結び付きます。`run --supervise` は封印済み計画を `publish → pick → lease 付きディスク配車 → commit → local develop --no-ff merge` の順で有限実行します。監督下の Git 効果には分離した `--card-worktree` と `--develop-worktree` が必要で、従来の `--repo` だけでは効果 0 件のまま拒否されます。完了にはマージ ancestry を含む `0600` 完了 receipt が必要で、行為リストの消化だけでは完了しません。blocked または completed で止まり、完了済みミッションの再実行は効果 0 件です。
 
-承認後も、封印された目標・完了根拠・範囲・許可行為・資源上限・停止条件を決定論的なコードが各操作の前に検査します。`mission-governor` は読み取り専用の提案役です。範囲拡大や新しい権限が必要なら、承認を暗黙に広げず、副作用を止めて `blocked` を記録します。
+承認後も、封印された目標・完了根拠・範囲・許可行為・資源上限・停止条件を決定論的なコードが各操作の前に検査します。`manager-todo` の読み取り専用判定サブロールが提案役です。範囲拡大や新しい権限が必要なら、承認を暗黙に広げず、副作用を止めて `blocked` を記録します。
 
-`super-advisor` の意見は非拘束の助言で、読み取り専用の `mission-governor` が構造化された判断を作ります。決定論的 validator と所有役割 adapter だけが効果を実行します。コミットには現在 HEAD のテスト receipt、ローカルマージには manager-git 役割・基準 SHA・lease が必要です。持続 runtime 能力が未確認なら `active-session-only` です。remote batch push・release branch・release PR・main merge の provider は未構成なので、成功を装わず `provider_unsupported` で停止します。GTD の境界は [`/moai gtd`](/ja/utility-commands/moai-gtd) を参照してください。
+`super-advisor` の意見は非拘束の助言で、`manager-todo` の読み取り専用判定サブロールが構造化された判断を作ります。決定論的 validator と所有役割 adapter だけが効果を実行します。コミットには現在 HEAD のテスト receipt、ローカルマージには manager-git 役割・基準 SHA・lease が必要です。持続 runtime 能力が未確認なら `active-session-only` です。remote batch push・release branch・release PR・main merge の provider は未構成なので、成功を装わず `provider_unsupported` で停止します。GTD の境界は [`/moai gtd`](/ja/utility-commands/moai-gtd) を参照してください。
 
 ## 進行モード (自律 / 半自律)
 

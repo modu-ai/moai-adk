@@ -13,7 +13,7 @@ var retainedAgentRoster = []string{
 	"sync-auditor",
 	"manager-develop",
 	"super-advisor",
-	"mission-governor",
+	"manager-todo",
 	"manager-design",
 	"manager-lead",
 	"builder-harness",

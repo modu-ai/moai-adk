@@ -71,9 +71,9 @@ moai init [project-name] [OPTIONS]
 | `--enable-lsp` | LSP 연동 활성화 (기본값: true) |
 | `--enforce-quality` | 품질 게이트 강제 (기본값: true) |
 | `--enable-design` | 디자인 워크플로우 활성화 (기본값: true) |
-| `--profile <high\|medium\|low>` | 모델+effort 프로필 — `llm.yaml` `profile` 에 저장 (프로필 매트릭스 열 선택). legacy 값 `max` 도 입력으로 받아 `high` 로 정규화 |
-| `--model-policy <high\|medium\|low>` | legacy 성능 티어 — `llm.yaml` `performance_tier` 에 저장 (`profile` 부재 시 별칭) |
-| `--high` | **삭제 예정** `--model-policy high` 의 별칭 |
+| `--profile <high\|medium\|low>` | **지원 종료 스텁** — 스크립트 호환을 위해 값만 받고 아무 효과가 없으며, `moai profile setup`을 가리키는 지원 종료 경고를 냅니다 |
+| `--model-policy <high\|medium\|low>` | **지원 종료 스텁** — 스크립트 호환을 위해 값만 받고 아무 효과가 없으며, `moai profile setup`을 가리키는 지원 종료 경고를 냅니다 |
+| `--high` | **지원 종료 스텁** — 사라진 `--model-policy high`의 별칭. 같은 지원 종료 경고를 냅니다 |
 
 ### 예시
 
@@ -86,7 +86,7 @@ cd my-existing-project
 moai init
 
 # 비대화형 (CI/CD)
-moai init --non-interactive --model-policy medium
+moai init --non-interactive
 ```
 
 자세한 마법사 단계는 [초기 설정](/ko/getting-started/init-wizard) 페이지를 참조하세요.
@@ -115,7 +115,7 @@ moai update [OPTIONS]
 | `--no-hooks` | Git 훅 설치 건너뛰기 |
 | `--verbose` | 모든 경고 표시 (진단 모드) |
 | `--shell-env` | Claude Code 용 셸 환경변수 구성 |
-| `--profile <high\|medium\|low>` | 모델+effort 프로필 덮어쓰기 (`llm.yaml` `profile` 에 저장) |
+| `--profile <high\|medium\|low>` | **지원 종료 스텁** — 스크립트 호환을 위해 값만 받고 아무 효과가 없으며, `moai profile setup`을 가리키는 지원 종료 경고를 냅니다 |
 
 ### 예시
 
@@ -447,23 +447,23 @@ moai --version    # 동일
 
 ## 모델 정책 (성능 티어)
 
-MoAI-ADK에는 에이전트마다 최적의 AI 모델을 배정하는 성능 티어 시스템이 있습니다. 토크노믹스의 출발점입니다. `llm.yaml` 의 `performance_tier` 필드로 설정하며, `--model-policy` 플래그나 초기화 마법사에서 선택합니다.
+에이전트마다 모델을 배정하던 예전의 성능 티어 시스템은 물러났습니다. v3.2부터 **서브에이전트는 메인 세션의 모델과 추론 깊이를 그대로 따릅니다** — 서브에이전트를 부를 때 `model`도 `effort`도 넘기지 않으며, MoAI 에이전트 정의는 어느 쪽도 선언하지 않습니다. 모델 정책의 자리에 남은 것은 세션 수준 선택 하나입니다. `moai profile setup`의 **세션 모델 정책** 질문은 이 프로필로 실행하는 Claude 세션의 기본 추론 강도(추론 강도를 따로 고르지 않았을 때의 폴백)를 정합니다.
 
-| 티어 | 특징 |
+| 예전 값 | 지금의 의미 |
 |------|------|
-| **high** | 최고 품질 — medium과 같되 `builder-harness`·`e2e-tester` 두 에이전트만 effort 한 단계 위 |
-| **medium** (기본값) | 품질과 비용의 균형 |
-| **low** | 작업당 최저 비용 — 감사·조율 행은 `medium`, `builder-harness`는 Opus `low`로 내려가고(`super-advisor`·`mission-governor`는 `high` 유지), Sonnet은 단발성 행과 `e2e-tester`에 |
+| **high** | 세션 effort 폴백 `high` |
+| **medium** | 세션 effort 폴백 `medium` |
+| **low** | 세션 effort 폴백 `low` |
 
 ```bash
-# 초기화 시 설정
-moai init my-project --model-policy high
+# 세션 모델 정책을 포함한 프로필 전체 설정
+moai profile setup
 
-# 기존 프로젝트에서 재설정
-moai update -c
+# 사라진 에이전트별 플래그는 지원 종료 경고만 내고 아무 효과가 없습니다
+moai init my-project --model-policy high
 ```
 
-프로필(`profile`: high/medium/low)은 프로필 매트릭스에서 활성 열을 골라 각 에이전트의 model+effort를 결정합니다. 자세한 에이전트별 매핑은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
+예전의 `--model-policy`, `--profile`, `--high`, `--medium-alias`, `--low` 플래그는 지원 종료 스텁입니다. 값은 스크립트 호환을 위해 받아들이지만 아무 효과가 없고 `moai profile setup`을 안내하는 경고를 냅니다. 세션 수준의 모델·effort 조절은 [모델 정책](/ko/multi-llm/model-policy/) 페이지, 매트릭스의 물러남은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
 
 ---
 

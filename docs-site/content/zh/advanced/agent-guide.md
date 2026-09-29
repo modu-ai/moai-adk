@@ -43,59 +43,57 @@ MoAI-ADK 使用 **13 个核心智能体**（12 个 MoAI 自定义 + 1 个 Anthro
 
 ### Manager 智能体（6 个）
 
-| 智能体 | 角色 | 阶段 | 模型 / effort | 主要技能 |
-|----------|------|------|---------------|----------|
-| `manager-spec` | 生成 SPEC 文档、GEARS 格式需求 | Plan | inherit / medium {{< icon flash primary >}} | `moai-workflow-spec` |
-| `manager-develop` | DDD/TDD/autofix 循环实现（quality.yaml 的 cycle_type） | Run | inherit / medium {{< icon flash primary >}} | `moai-workflow-ddd`, `moai-workflow-tdd` |
-| `manager-docs` | 文档生成、CHANGELOG、README 同步 | Sync | inherit / low {{< icon flash muted >}} | `moai-workflow-project` |
-| `manager-git` | PR 创建、Git 分支、合并策略 | PR (Tier L) | sonnet / low {{< icon flash muted >}} | `moai-foundation-core` |
-| `manager-design` | Claude Design 双向协作（D1-D5 管线） | Design | inherit / medium {{< icon flash primary >}} | `moai-foundation-core` |
-| `manager-lead` | 层级团队 Tier L 协调（唯一 Agent-carrier，depth-2 封闭） | Run (Tier L) | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core`, `moai-workflow-project` |
+| 智能体 | 角色 | 阶段 | 主要技能 |
+|----------|------|------|----------|
+| `manager-spec` | 生成 SPEC 文档、GEARS 格式需求 | Plan | `moai-workflow-spec` |
+| `manager-develop` | DDD/TDD/autofix 循环实现（quality.yaml 的 cycle_type） | Run | `moai-workflow-ddd`, `moai-workflow-tdd` |
+| `manager-docs` | 文档生成、CHANGELOG、README 同步 | Sync | `moai-workflow-project` |
+| `manager-git` | PR 创建、Git 分支、合并策略 | PR (Tier L) | `moai-foundation-core` |
+| `manager-design` | Claude Design 双向协作（D1-D5 管线） | Design | `moai-foundation-core` |
+| `manager-lead` | 层级团队 Tier L 协调（唯一 Agent-carrier，depth-2 封闭） | Run (Tier L) | `moai-foundation-core`, `moai-workflow-project` |
 
 ### Evaluator 智能体（2 个）
 
-| 智能体 | 角色 | 评估对象 | 模型 / effort | 主要技能 |
-|----------|------|---------|---------------|----------|
-| `plan-auditor` | Plan 阶段独立审计、GEARS 遵循、偏差防范 | SPEC 完成度 | inherit / medium {{< icon flash primary >}} | `moai-foundation-core`, `moai-foundation-thinking` |
-| `sync-auditor` | Sync 阶段质量评分（4 维：Functionality、Security、Craft、Consistency） | 实现质量 | inherit / medium {{< icon flash primary >}} | `moai-foundation-quality`, `moai-foundation-core` |
+| 智能体 | 角色 | 评估对象 | 主要技能 |
+|----------|------|---------|----------|
+| `plan-auditor` | Plan 阶段独立审计、GEARS 遵循、偏差防范 | SPEC 完成度 | `moai-foundation-core`, `moai-foundation-thinking` |
+| `sync-auditor` | Sync 阶段质量评分（4 维：Functionality、Security、Craft、Consistency） | 实现质量 | `moai-foundation-quality`, `moai-foundation-core` |
 
 核心在于计划与审计是分离的 — 做的人不检查自己的工作。审计智能体以怀疑立场（fresh-judgment）介入，分数按调和平均而非简单平均计算，一个维度塌了整体分数就跟着掉——这种设计正是 TRUST 5 质量框架所支撑的信任。
 
 ### Builder 智能体（1 个）
 
-| 智能体 | 角色 | 模型 / effort | 产物 |
-|----------|------|---------------|--------|
-| `builder-harness` | 生成项目专属的动态智能体团队（基于苏格拉底式访谈） | inherit / medium {{< icon flash primary >}} | `.claude/agents/harness/`, `.moai/harness/manifest.json` |
+| 智能体 | 角色 | 产物 |
+|----------|------|--------|
+| `builder-harness` | 生成项目专属的动态智能体团队（基于苏格拉底式访谈） | `.claude/agents/harness/`, `.moai/harness/manifest.json` |
 
 ### Advisor 智能体（1 个）
 
-| 智能体 | 角色 | 模型 / effort | 特点 |
-|----------|------|---------------|------|
-| `super-advisor` | 高推理咨询 — 僵局、设计决策点、第二意见（E1-E4 升级） | inherit / high {{< icon flash warn >}} | 非约束性处方 — 最终决定权在编排器 |
+| 智能体 | 角色 | 特点 |
+|----------|------|------|
+| `super-advisor` | 高推理咨询 — 僵局、设计决策点、第二意见（E1-E4 升级） | 非约束性处方 — 最终决定权在编排器 |
 
 ### Specialist 智能体（2 个）
 
-| 智能体 | 角色 | 模型 / effort | 特点 |
-|----------|------|---------------|------|
-| `e2e-tester` | 网页/移动/桌面 E2E 测试执行（旅程脚本、CLI 优先套件执行、产物管理） | inherit / low {{< icon flash muted >}} | `/moai e2e` 工作流的执行主体 — 选择问题由编排器负责 |
-| `mission-governor` | 读取已批准的 GTD 自动任务的封存快照，只返回一条结构化判定（只读） | inherit / high {{< icon flash warn >}} | 只判定、不执行 — 由确定性执行器校验判定并完成状态变更 |
+| 智能体 | 角色 | 特点 |
+|----------|------|------|
+| `e2e-tester` | 网页/移动/桌面 E2E 测试执行（旅程脚本、CLI 优先套件执行、产物管理） | `/moai e2e` 工作流的执行主体 — 选择问题由编排器负责 |
+| `manager-todo` | 管理待办队列（队列生命周期、`/moai:todo --auto` 串行循环、调度指导）；其只读判定子角色读取已批准的 GTD 自动任务的封存快照，只返回一条结构化判定 | 在判定子角色中只判定、不执行 — 由确定性执行器校验判定并完成状态变更 |
 
-`mission-governor` **只下判定，不亲自执行**。它不写文件、不跑 shell 或 Git 命令、不碰队列、不向泳道派活，也不做提交、合并、批准或审计判定。检查返回的判定并真正改变状态的，是确定性执行器（只按既定规则行动的自动处理器）。它的工具清单只有 `Read`、`Grep`、`Glob`、`Skill` 四项；一旦请求超出封存范围，或判定所需的证据缺失、过期，它就返回 blocker 判定。
+在其只读判定子角色中，`manager-todo` **只下判定，不亲自执行**。在该角色中它不写文件、不跑 shell 或 Git 命令、不碰队列、不向泳道派活，也不做提交、合并、批准或审计判定。检查返回的判定并真正改变状态的，是确定性执行器（只按既定规则行动的自动处理器）。它的工具清单只有 `Read`、`Grep`、`Glob`、`Skill` 四项；一旦请求超出封存范围，或判定所需的证据缺失、过期，它就返回 blocker 判定。
 
 {{< callout type="info" >}}
-`mission-governor` 在下面的[智能体选择决策树](#智能体选择决策树)中**有意没有位置**。它不是编排器挑选后调用的智能体，而是由 GTD 自动任务工作流直接调用的判定角色。它没出现在决策树里是设计使然，并非遗漏。
+`manager-todo` 在下面的[智能体选择决策树](#智能体选择决策树)中**有意没有位置**。它不是编排器挑选后调用的智能体，其判定子角色是由 GTD 自动任务工作流直接调用的判定角色。它没出现在决策树里是设计使然，并非遗漏。
 {{< /callout >}}
 
 ### 内置智能体（1 个，Anthropic）
 
-| 智能体 | 角色 | 模型 / effort | 特点 |
-|----------|------|---------------|------|
-| `Explore` | 只读代码探索与分析 | sonnet / low（调用时默认值） | 只读工具；磁盘上没有智能体文件，因此 effort 在 spawn 提示词中说明，而非固定在 frontmatter 中 |
+| 智能体 | 角色 | 特点 |
+|----------|------|------|
+| `Explore` | 只读代码探索与分析 | 只读工具；Anthropic 内置，磁盘上没有智能体文件 |
 
 {{< callout type="info" >}}
-**4 级 token 成本层级**（{{< icon flash danger >}} max · {{< icon flash warn >}} high · {{< icon flash primary >}} medium · {{< icon flash muted >}} low）：`model: inherit` 继承父会话模型，effort 决定推理 token 的预算。
-
-上表数值是**随附的 frontmatter**，它固定在[配置矩阵](/zh/advanced/profile-matrix/)的 `medium` 列上，使全新部署与默认配置文件保持一致。切换配置文件会重写这些数值 — 在 `high` 下只有 `builder-harness` 与 `e2e-tester` 提高一级（没有任何一格使用 `max`），在 `low` 下审计与协调行降到 `medium`，`builder-harness` 降到 `low`，`e2e-tester` 改用 Sonnet。可用 `moai model profile` 查看活动配置文件下解析出的数值。
+**模型与推理深度**：按智能体逐一分配模型的旧方式已退役。**子代理沿用主会话的模型与推理深度** — 生成子代理时不传 `model` 也不传 `effort`，MoAI 智能体定义对两者都不作声明。更改会话的 effort（`/effort`、`ultrathink`），该会话中的所有智能体都会一并跟随。
 {{< /callout >}}
 
 ## Manager-Develop 领域上下文注入
@@ -240,7 +238,7 @@ flowchart TD
 ├── builder-harness.md
 ├── super-advisor.md
 ├── e2e-tester.md
-├── mission-governor.md
+├── manager-todo.md
 └── (Explore: Anthropic 内置，无文件)
 ```
 
@@ -252,7 +250,6 @@ name: my-specialist
 description: >
   本项目的专家。描述特定领域的专业性。
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: inherit
 ---
 
 你是本项目的 [领域] 专家。

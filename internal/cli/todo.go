@@ -245,6 +245,15 @@ mentions an id later in the sentence still falls through, and
 			return cobra.NoArgs(cmd, args)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if todoAutoFlag {
+				if len(args) > 0 {
+					return fmt.Errorf("--auto takes no card arguments; the invocation is the operator's batch approval of the queue in queue order, never an admission")
+				}
+				return runAutoCycle(cmd.OutOrStdout(), newTodoStore(), resolveTodoQueueRoot(), autoOptions{
+					wait:     todoAutoWait,
+					liveness: newAutoLiveness(),
+				})
+			}
 			if len(args) == 0 {
 				return runTodoList(cmd, false, false, todoListDefaultLimit)
 			}
@@ -263,11 +272,25 @@ mentions an id later in the sentence still falls through, and
 	cmd.AddCommand(newTodoAddCmd(), newTodoListCmd(), newTodoDoneCmd(), newTodoUndoneCmd(), newTodoNextCmd(),
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
 		newTodoDropCmd(), newTodoUndropCmd(),
+		newTodoHoldCmd(), newTodoUnholdCmd(),
 		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(),
 		newTodoPRCmd(), newTodoLandedCmd(), newTodoAutoDoneCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd(),
 		newTodoTriageCmd())
+	cmd.Flags().BoolVar(&todoAutoFlag, "auto", false,
+		"process the queue serially: pick one card, dispatch one isolated worker, judge completion on disk evidence, then accept the next; the invocation is the operator's batch approval of the queue in queue order and nothing else")
+	cmd.Flags().DurationVar(&todoAutoWait, "auto-wait", 30*time.Minute,
+		"per-card deadline for the worker evidence file before the card is unpicked with a labelled non-finding")
 	return cmd
 }
+
+// todoAutoFlag / todoAutoWait back the `--auto` serial-processing cycle. They
+// live on the parent command so the gtd compatibility spelling (the same verb
+// tree, NewGTDCommand) carries them identically — one implementation, both
+// entry points.
+var (
+	todoAutoFlag bool
+	todoAutoWait time.Duration
+)
 
 // todoVerbShaped matches a first token that reads as a command verb: one
 // ASCII word, optionally carrying digits, hyphens, or underscores. Bounded in
@@ -922,11 +945,15 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 				}
 				queued := 0
 				for _, it := range rec.Items {
-					if it.State != kanban.BacklogStateQueued {
-						continue
+					// POSITIVE enumeration (SPEC-TODO-HOLD-STATE-001
+					// REQ-THS-011): the candidate list selects by naming the
+					// state it accepts, never by refusing the ones it knows —
+					// a state added later must not fall through a negative's
+					// default.
+					if it.State == kanban.BacklogStateQueued {
+						queued++
+						_, _ = fmt.Fprintf(out, "%s\t%s\n", it.ID, todoPRCell(it.Text))
 					}
-					queued++
-					_, _ = fmt.Fprintf(out, "%s\t%s\n", it.ID, todoPRCell(it.Text))
 				}
 				if queued == 0 {
 					_, _ = fmt.Fprintln(out, "queue is empty")
@@ -939,8 +966,26 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
 				for i := range rec.Items {
 					if rec.Items[i].ID == id {
-						if rec.Items[i].State == kanban.BacklogStateDropped {
+						// The pick gate enumerates POSITIVELY
+						// (SPEC-TODO-HOLD-STATE-001 REQ-THS-011/012): only a
+						// queued card is pickable, and every other state —
+						// including any state added after this code was
+						// written — is refused by the switch's default rather
+						// than admitted by a negative's fall-through. This
+						// gate was the SPEC's one behavioral red-now: it used
+						// to refuse only `dropped`, so a held card (and any
+						// future state) was pickable.
+						switch rec.Items[i].State {
+						case kanban.BacklogStateQueued:
+							// the only pickable state
+						case kanban.BacklogStateDropped:
 							return fmt.Errorf("backlog item %s is dropped — use moai todo undrop %s before picking", id, id)
+						case kanban.BacklogStateHold:
+							return fmt.Errorf("backlog item %s is held — use moai todo unhold %s before picking", id, id)
+						case kanban.BacklogStatePicked:
+							return fmt.Errorf("backlog item %s is already picked — use moai todo unpick %s before picking it again", id, id)
+						default:
+							return fmt.Errorf("backlog item %s is %q — not a pickable state", id, rec.Items[i].State)
 						}
 						if expect != "" && !strings.HasPrefix(rec.Items[i].Text, expect) {
 							// Refused mutation: Mutate writes nothing, so the
@@ -998,7 +1043,14 @@ func newTodoUnpickCmd() *cobra.Command {
 					if rec.Items[i].ID != id {
 						continue
 					}
-					if rec.Items[i].State != kanban.BacklogStatePicked {
+					// POSITIVE enumeration (SPEC-TODO-HOLD-STATE-001
+					// REQ-THS-012): the gate names the state it reverts, and
+					// every other state refuses — no negated comparison whose
+					// default could swallow a state added later.
+					switch rec.Items[i].State {
+					case kanban.BacklogStatePicked:
+						// the only unpickable-into-queued state
+					default:
 						// Refused mutation: Mutate writes nothing, so the
 						// file stays byte-identical on a refusal.
 						return fmt.Errorf("backlog item %s is %s, not picked", id, rec.Items[i].State)
