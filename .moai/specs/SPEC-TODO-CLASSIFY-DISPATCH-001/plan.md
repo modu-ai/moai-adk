@@ -49,7 +49,7 @@ targets and is NOT on develop yet — its absorption is an entry precondition (�
    (`todo_auto.go:24`); once the queue is sorted, the serial cycle is priority-ordered with zero
    changes (constraint C2).
 
-## §C Decision records (OD-1/OD-3 = leader rulings 2026-09-29, folded; OD-2 open for run Kickoff)
+## §C Decision records (OD-1/OD-2/OD-3 = leader rulings 2026-09-29; all resolved)
 
 - **OD-1 — serial semantics = serial-card MUTUAL exclusivity (operator ruling 2026-09-29;
   supersedes this plan's 0.1.0 pipeline-exclusive choice).** A serial card in flight blocks only
@@ -59,12 +59,16 @@ targets and is NOT on develop yet — its absorption is an entry precondition (�
   choice, recorded): pipeline exclusivity — a full `next` refusal costs half the throughput
   benefit that classification exists to deliver (leader rationale). Provenance: leader Jev
   doctrine-fallback ruling, noul below threshold (OD-1 0.31), dated 2026-09-29.
-- **OD-2 — `Decider(llm)` transport (RECOMMENDATION, run-phase detail).** The seam is the
-  interface; the product LLM implementation's transport — shelling to the signing backend vs.
-  accepting an agent-supplied judgement file as the primary path with the deterministic fallback
-  for unattended adds — is chosen at run Kickoff. The judgement-file input (REQ-TCD-004) is
-  mandatory either way: it is the only product surface that keeps an LLM out of the CLI's
-  critical write path while still recording its judgment.
+- **OD-2 — RESOLVED: judgment-file transport (leader ruling 2026-09-29; supersedes this entry's
+  0.1.0 open RECOMMENDATION).** The adopted transport is the judgment file: the product ships the
+  Decider seam (`--classification-file` judgment-file injection, the sole injection path) +
+  `DefaultCardDecider` (identity `default`) as the in-product default; the LLM-backed
+  `Decider(llm)` implementation is explicitly OUT OF SCOPE for this SPEC (deferred to a follow-up
+  card). REQ-TCD-012 reworded to shipped reality (spec.md v0.3.1). The judgement-file input
+  (REQ-TCD-004) remains mandatory — it is the only product surface that keeps an LLM out of the
+  CLI's critical write path while still recording its judgment; the plan's own OD-2 candidate
+  list anticipated this adoption. Provenance: operator standing-delegation path, Jev ask noul
+  0.8 (gate 0.50), 2026-09-29.
 - **OD-3 — failure default = `serial` (operator ruling 2026-09-29; supersedes this plan's 0.1.0
   parallelizable choice).** Fail-safe: a parallelizable failure default could run true-serial
   cards concurrently and violate the ordering the mode exists to protect; the serial default
