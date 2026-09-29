@@ -191,7 +191,7 @@ m1_to_mN_commit_strategy: per-milestone commits M1..M5 + catalog cascade + AC-00
 ## §E.4 Sync-phase Audit-Ready Signal
 
 - sync_status: complete — 단일 sync 커밋으로 CHANGELOG [Unreleased] > Added 최상단 등재, spec.md frontmatter `in-progress → completed` 전환(in-progress → implemented → completed 3페이즈 클로즈 병합), 본 §E.4 기록을 함께 실어 착지. `sync_commit_sha`는 커밋이 자기 해시를 인용할 수 없으므로 `pending-backfill-sync` 플레이스홀더로 적고 직후 커밋에서 백필(t1240·t1328 선례와 동일).
-- sync_commit_sha: "pending-backfill-sync"
+- sync_commit_sha: "34f09f34d"
 - changelog_entry_position: [Unreleased] > Added 최상단 (B12 선방출 grep `grep -c 'SPEC-TODO-CLASSIFY-DISPATCH-001' CHANGELOG.md` = 0 확인 후 편입)
 - b12_self_test_a: PASS — 선방출 grep 0건 (중복 편입 없음)
 - b12_self_test_b: PASS — acceptance.md 고유 AC 14건(AC-TCD-001..014) = CHANGELOG 기재 수 14건 일치
