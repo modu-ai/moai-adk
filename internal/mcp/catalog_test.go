@@ -14,7 +14,9 @@ import (
 // itself stays gated (workflow.jev.enabled ships false).
 // The factory message family contributes five further registered tools, and
 // the Codex read-only role launcher three (start, status, result).
-const wantCatalogSize = 39
+// SPEC-FACTORY-SELF-DISPATCH-001 M3 (REQ-SD-014) contributes the six
+// factory card + queue tools.
+const wantCatalogSize = 45
 
 // TestMoaiMCPTools_CatalogSize asserts the catalog declares exactly
 // wantCatalogSize tools, matching the registration count in
@@ -26,8 +28,8 @@ func TestMoaiMCPTools_CatalogSize(t *testing.T) {
 	}
 }
 
-// TestMoaiMCPTools_WriteCapableSet asserts exactly the fifteen write-capable
-// tools carry WriteCapable=true (REQ-C-3 / AC-C-003), and the other 24 are
+// TestMoaiMCPTools_WriteCapableSet asserts exactly the twenty write-capable
+// tools carry WriteCapable=true (REQ-C-3 / AC-C-003), and the other 25 are
 // read-only. session_msg_list is read-only: it enumerates registered peers
 // without touching the store, unlike register/send/poll which write an agent
 // record, append a message, and claim an inbox respectively.
@@ -38,6 +40,11 @@ func TestMoaiMCPTools_CatalogSize(t *testing.T) {
 // behavioral evidence for that claim is pinned in internal/cli
 // (TestMCPAuditTools_DeclaredWriteCapableActuallyWrite) — this test pins the
 // declaration, that one pins the behavior it must match.
+//
+// SPEC-FACTORY-SELF-DISPATCH-001 M3 adds todo_add (queue insert),
+// factory_next (lease + queue promotion + card worktree), factory_stage (F1
+// edge + lease renewal), factory_complete (merge record), and
+// factory_decide (operator decision).
 func TestMoaiMCPTools_WriteCapableSet(t *testing.T) {
 	want := map[string]bool{
 		"goal_arm":             true,
@@ -55,6 +62,11 @@ func TestMoaiMCPTools_WriteCapableSet(t *testing.T) {
 		"factory_msg_send":     true,
 		"factory_msg_list":     true,
 		"factory_msg_receipt":  true,
+		"todo_add":             true,
+		"factory_next":         true,
+		"factory_stage":        true,
+		"factory_complete":     true,
+		"factory_decide":       true,
 	}
 	var got []string
 	for _, tool := range MoaiMCPTools() {

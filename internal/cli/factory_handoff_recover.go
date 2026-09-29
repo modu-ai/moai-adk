@@ -52,7 +52,8 @@ func newFactoryCommand() *cobra.Command {
 	handoff.AddCommand(newAbandonLaneCommand())
 	factory.AddCommand(handoff)
 	factory.AddCommand(newFactoryRunsCommand())
-	factory.AddCommand(newFactoryAssignCommand(), newFactoryStatusCommand(), newFactoryDecideCommand())
+	factory.AddCommand(newFactoryAssignCommand(), newFactoryStatusCommand(), newFactoryDecideCommand(),
+		newFactoryNextCommand(), newFactoryStageCommand(), newFactoryCompleteCommand())
 	return factory
 }
 

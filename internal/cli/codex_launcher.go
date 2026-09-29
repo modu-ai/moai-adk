@@ -23,7 +23,12 @@ package cli
 // the shared probe, so no second classification path forks here (REQ-CL-007).
 // The status readout never writes; -w requires an existing worktree. POSIX direct
 // launch replaces moai with Codex (the -w lock names that one pid); Windows
-// retains the child Start/wait path. Kanban (-k) remains unsupported.
+// retains the child Start/wait path. The kanban entry (-k) stays refused
+// (SPEC-CODEX-FACTORY-RETIRE-001). The factory surface narrowed to exactly
+// `-f lane` (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-003): a supervising loop
+// that leases each card on the parent checkout and starts one interactive
+// Codex session in the card's own worktree; every other factory shape keeps
+// its refusal (REQ-SD-004).
 
 import (
 	"context"
@@ -41,6 +46,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/execerr"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
 )
@@ -661,8 +667,13 @@ func runCodex(cmd *cobra.Command, args []string) error {
 
 	args, spawn := stripSpawnFlag(args)
 	head, tail, hasTail := splitCodexDashDash(args)
-	// Kanban remains unsupported. Tokens after -- are Codex's own.
-	if diag := codexEntryRefusal(head); diag != "" {
+	// The factory entries classify before anything else is read or written
+	// (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-003/-004, narrowing
+	// REQ-CFR-001..005): `-f lane` routes to the per-card relaunch, every
+	// other factory shape prints its one refusal line. Tokens after -- are
+	// codex's own.
+	entry, diag := codexFactoryEntryClassify(head)
+	if diag != "" {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), diag)
 		return &exitCodeError{code: 1}
 	}
@@ -673,6 +684,16 @@ func runCodex(cmd *cobra.Command, args []string) error {
 	// -w is consumed before the verb lookup so its tokens can never be
 	// mistaken for a verb, and so the verb position keeps its one-token shape.
 	head, worktree := stripCodexWorktreeFlag(head)
+	if entry == codexFactoryEntryLane {
+		// The relaunch stays the parent and selects each card's worktree
+		// itself: no --spawn, no -w, and no verb or passthrough composes
+		// with it — the closed-set discipline refuses the combination
+		// rather than adapting it.
+		if spawn || worktree.present || hasTail || len(stripCodexFactoryTokens(head)) > 0 {
+			return codexUsageFailure(cmd)
+		}
+		return runCodexFactoryLane(cmd)
+	}
 	if len(head) > 1 {
 		return codexUsageFailure(cmd)
 	}
@@ -706,22 +727,255 @@ func runCodex(cmd *cobra.Command, args []string) error {
 	return runCodexReadout(cmd)
 }
 
-// The Kanban entry remains unsupported by the Codex launcher.
+// The refusal lines. They carry the same sentinels as the `moai cg` refusals
+// (D2), so one grep finds both. The factory line is the ONE wording source
+// REQ-SD-004 names: every Codex factory shape except `-f lane` prints it
+// byte-identically (AC-SD-004 compares stderr against this constant).
 const (
 	codexKanbanRefusalDiag = kanbanUnsupportedBackendSentinel +
 		": moai codex no longer enters Kanban Mode; use 'moai cc -k' or 'moai glm -k' instead"
+	codexFactoryRefusalDiag = factoryUnsupportedBackendSentinel +
+		": moai codex -f lane is the only Codex factory entry; use 'moai cc -f' or 'moai glm -f' for the factory leader"
 )
 
-// codexEntryRefusal scans the head (the tokens before --) for Kanban entry.
-func codexEntryRefusal(head []string) string {
-	for _, a := range head {
+// codexFactoryLegacyEntryCanonical is the canonical-form clause shared by the
+// lane-shape legacy refusals: on moai codex the only factory entry is the
+// `-f lane` relaunch.
+const codexFactoryLegacyEntryCanonical = "'moai codex -f lane' is the only Codex factory entry"
+
+// codexFactoryLegacyRefusalDiag builds the REQ-RNC-003/-005/-007 refusal for
+// a legacy role spelling at the codex -f value position (AC-SD-021). The
+// message mirrors the REQ-RNC producer shapes (%q is the legacy …; <the
+// canonical form>) and names the canonical form for this surface: `moai
+// codex -f lane` for the lane shapes, `moai cc -f` / `moai glm -f` for the
+// leader (codex launches no leader). ok is false for any non-legacy value —
+// the caller falls through to the REQ-SD-004 line.
+func codexFactoryLegacyRefusalDiag(value string) (diag string, ok bool) {
+	lowered := strings.ToLower(value)
+	if n, isLabel := kanban.SplitFactoryLegacyLabel(lowered); isLabel {
+		return fmt.Sprintf("%q is the legacy lane label; use %q — %s", value, kanban.FactoryLaneLabel(n), codexFactoryLegacyEntryCanonical), true
+	}
+	if kanban.IsLegacyFactoryRoleValue(lowered) {
+		return fmt.Sprintf("%q is the legacy role token; %s", value, codexFactoryLegacyEntryCanonical), true
+	}
+	if kanban.IsLegacyLeaderSpelling(lowered) {
+		return fmt.Sprintf("%q is the legacy leader spelling; the factory leader launches with 'moai cc -f' or 'moai glm -f'", value), true
+	}
+	return "", false
+}
+
+// codexFactoryRunFlag is the --factory-run token; on moai codex it is refused
+// with the other factory entry tokens.
+const codexFactoryRunFlag = "--factory-run"
+
+// codexFactoryEntry classifies the head's factory-entry tokens
+// (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-003/-004).
+type codexFactoryEntry int
+
+const (
+	codexFactoryEntryAbsent codexFactoryEntry = iota // no factory token in the head
+	codexFactoryEntryLane                            // -f lane / --factory lane: the per-card relaunch
+	codexFactoryEntryOther                           // every other factory shape: refused
+)
+
+// codexFactoryEntryClassify scans the head (the tokens before --) for a
+// factory entry and returns its classification plus the refusal line for the
+// refused shapes ("" when the head carries none or the lane entry). It is a
+// scan, not a parser: the value tokens it consumes mirror parseFactoryFlag's
+// spellings — a following token that looks like a flag is never a value, and
+// the `=` forms are read in place. A refused shape fires before anything else
+// is read or written (REQ-SD-004). Legacy role tokens (`worker` / `agent`,
+// their numbered labels, and `lead`) refuse with the REQ-RNC-003/-005/-007
+// message naming the canonical form (AC-SD-021) — the REQ-SD-004 line is
+// reserved for non-legacy shapes.
+func codexFactoryEntryClassify(head []string) (codexFactoryEntry, string) {
+	entry := codexFactoryEntryAbsent
+	for i := 0; i < len(head); i++ {
+		token := head[i]
+		var value string
+		hasValue := false
 		switch {
-		case a == kanbanFlagShort || a == kanbanFlagLong ||
-			strings.HasPrefix(a, kanbanFlagShort+"=") || strings.HasPrefix(a, kanbanFlagLong+"="):
-			return codexKanbanRefusalDiag
+		case token == kanbanFlagShort || token == kanbanFlagLong ||
+			strings.HasPrefix(token, kanbanFlagShort+"=") || strings.HasPrefix(token, kanbanFlagLong+"="):
+			return codexFactoryEntryOther, codexKanbanRefusalDiag
+		case token == codexFactoryRunFlag || strings.HasPrefix(token, codexFactoryRunFlag+"="):
+			return codexFactoryEntryOther, codexFactoryRefusalDiag
+		case token == factoryFlagLong || token == factoryFlagShort:
+			if i+1 < len(head) && !strings.HasPrefix(head[i+1], "-") {
+				value, hasValue = head[i+1], true
+				i++
+			}
+		case strings.HasPrefix(token, factoryFlagLong+"="), strings.HasPrefix(token, factoryFlagShort+"="):
+			value = strings.TrimPrefix(strings.TrimPrefix(token, factoryFlagShort+"="), factoryFlagLong+"=")
+			hasValue = true
+		default:
+			continue
+		}
+		if hasValue {
+			if value == factoryLaneRoleToken {
+				entry = codexFactoryEntryLane
+				continue
+			}
+			// AC-SD-021: legacy role spellings refuse with the
+			// REQ-RNC-003/-005/-007 message naming the canonical form — on
+			// moai codex too, not the REQ-SD-004 line. This is the check the
+			// M5 classification left one branch away.
+			if diag, isLegacy := codexFactoryLegacyRefusalDiag(value); isLegacy {
+				return codexFactoryEntryOther, diag
+			}
+		}
+		return codexFactoryEntryOther, codexFactoryRefusalDiag
+	}
+	return entry, ""
+}
+
+// stripCodexFactoryTokens removes the `-f`/`--factory` token and its lane
+// value from the verb-position tokens. codexFactoryEntryClassify has already
+// validated the shape, so the strip is mechanical.
+func stripCodexFactoryTokens(head []string) []string {
+	rest := make([]string, 0, len(head))
+	for i := 0; i < len(head); i++ {
+		token := head[i]
+		switch {
+		case token == factoryFlagLong || token == factoryFlagShort:
+			if i+1 < len(head) && !strings.HasPrefix(head[i+1], "-") {
+				i++
+			}
+		case strings.HasPrefix(token, factoryFlagLong+"="), strings.HasPrefix(token, factoryFlagShort+"="):
+		default:
+			rest = append(rest, token)
 		}
 	}
-	return ""
+	return rest
+}
+
+// @MX:NOTE: the supervising loop stays the parent (design.md §6): lease the
+// next card through the F1 machinery on the parent checkout, ensure its
+// worktree, start ONE interactive Codex child there, wait, repeat. The stop
+// condition is `next`'s no-card answer — which the REQ-SD-025 merge-ready
+// skip rule feeds, so a card the Codex harness cannot advance never
+// livelocks the loop. The child learns its card through MOAI_KANBAN_CARD
+// (REQ-SD-019); no process replacement happens on this path (design.md §6) —
+// the launcher stays the parent across every card.
+// @MX:SPEC: SPEC-FACTORY-SELF-DISPATCH-001
+func runCodexFactoryLane(cmd *cobra.Command) error {
+	// The loop drives the F1 lease machinery itself, so it inherits the
+	// `next` verb's own precondition: the parent checkout (REQ-SD-010).
+	if err := factoryAssertParentCheckout(resolveProjectDir()); err != nil {
+		return err
+	}
+	binaryPath, err := codexLookPath(codexBinaryName)
+	if err != nil {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), codexInstallHint)
+		return &exitCodeError{code: 1}
+	}
+	root := factoryCardRoot()
+	// The run id and the git requirement arrive together: a lane join
+	// resolves the single active run and refuses outside a git working tree
+	// before any write (REQ-SD-005) — the same door the cc/glm lane join uses.
+	restoreRun, err := enterSelectedFactoryRun(root, "", true)
+	if err != nil {
+		return err
+	}
+	defer restoreRun()
+	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
+	// The label is claimed atomically — the next free lane-<n>, bumped past a
+	// live hold — so two codex lanes cannot start under one label.
+	label, err := resolveFactoryLaneName(root, "", true, cmd.ErrOrStderr())
+	if err != nil {
+		return err
+	}
+	// The stamps arm the loop's own next calls (lane admission, the
+	// merge-ready skip) and identify the lane; the backend value rides the
+	// same export the cc/glm launches use (REQ-SD-002's stamp set, gpt).
+	restoreLane := enterFactoryLaneMode(label, 0, "")
+	defer restoreLane()
+	restoreBackend := exportFactoryLaunchFacts("", kanban.BackendGPT)
+	defer restoreBackend()
+	// The factory card verbs (next/stage/complete) read the lane label from
+	// MOAI_KANBAN_LABEL — the carrier their refusal predicates and the
+	// widened role guard read — while the launcher stamp and the factory
+	// notices read MOAI_FACTORY_WORKER (REQ-RNC-011's kept name). One label,
+	// both carriers, stamped together so no reader of either sees an empty
+	// one; the child environment carries the same pair.
+	restoreKanbanLabel := captureEnvState(config.EnvMoaiKanbanLabel)
+	_ = os.Setenv(config.EnvMoaiKanbanLabel, label)
+	defer restoreKanbanLabel()
+
+	ctx := cmd.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	for {
+		card, leased, err := factoryNextLeaseOnce(ctx, root, runID, label)
+		if err != nil {
+			return fmt.Errorf("codex lane: %w", err)
+		}
+		if !leased {
+			return nil // no card available: the loop's stop condition (REQ-SD-003)
+		}
+		wt, _, err := factoryEnsureCardWorktree(ctx, root, runID, card, label, cmd.ErrOrStderr())
+		if err != nil {
+			return fmt.Errorf("codex lane: %w", err)
+		}
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s stage=%s worktree=%s\n", card.CardID, dash(card.Stage), filepath.Base(wt))
+		if err := launchCodexCardSession(binaryPath, wt, label, card.CardID); err != nil {
+			// On that session's exit, continue with the next card
+			// (REQ-SD-003): a child that failed to start or exited non-zero
+			// does not stop the loop; its card stays leased until expiry.
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "codex lane: card %s session: %v\n", card.CardID, err)
+		}
+	}
+}
+
+// launchCodexCardSession starts ONE interactive Codex session whose working
+// directory is the card worktree (design.md D1): `codex -C <worktree>`, the
+// card worktree's local instruction files attached. The launcher stays the
+// parent and waits; the existing child-process launch form serves every
+// platform (design.md §6 — Windows needs no new syscall).
+func launchCodexCardSession(binaryPath, wt, label, cardID string) error {
+	localArgs, err := codexLocalDeveloperInstructionArgs(wt)
+	if err != nil {
+		return fmt.Errorf("load Codex local instructions: %w", err)
+	}
+	args := append([]string{"-C", wt}, localArgs...)
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "developer_instructions=") {
+			if err := checkCodexInstructionSize(len(arg), "lane instruction token"); err != nil {
+				return err
+			}
+		}
+	}
+	req := codexLaunchRequest{Program: binaryPath, Args: args, Dir: wt}
+	c := exec.Command(req.Program, req.Args...)
+	c.Dir = req.Dir
+	c.Env = codexCardLaunchEnv(label, cardID)
+	c.Stdin = os.Stdin
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	return codexDirectLaunchFn(c)
+}
+
+// codexCardLaunchEnv is the per-card child environment (design.md §4): the
+// eleven-key scrub of codexChildEnv, then the entries the owned-card session
+// reads — the role marker, the lane label (both carriers: the factory card
+// verbs read MOAI_KANBAN_LABEL, the factory notices read
+// MOAI_FACTORY_WORKER), the Codex backend value, and the leased card's id in
+// the card-identifier variable (REQ-SD-003, -019). Appending after the scrub
+// is what keeps them authoritative: the inherited environment lost every
+// lane key before the lane values land. The factory fan-out signal
+// (MOAI_FACTORY_WORKERS) is deliberately not carried — it feeds the Stop-hook
+// block cap, and a Codex lane has no moai hook peer (REQ-CFR-022).
+// @MX:SPEC: SPEC-FACTORY-SELF-DISPATCH-001
+func codexCardLaunchEnv(label, cardID string) []string {
+	env := codexChildEnv()
+	return append(env,
+		config.EnvFactoryRole+"="+config.FactoryRoleLane,
+		config.EnvMoaiFactoryWorker+"="+label,
+		config.EnvMoaiKanbanLabel+"="+label,
+		config.EnvMoaiKanbanBackend+"="+kanban.BackendGPT,
+		config.EnvMoaiKanbanCard+"="+cardID,
+	)
 }
 
 // codexUsageFailure prints the usage constant to stderr and fails with rc 1.

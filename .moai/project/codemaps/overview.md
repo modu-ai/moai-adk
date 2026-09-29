@@ -5,7 +5,8 @@
 > `go.mod`에서 직접 읽었습니다(`go 1.26.8`).
 
 **모듈**: `github.com/modu-ai/moai-adk` · **Go**: 1.26.8
-**현재 부분 재측정**: worktree `.claude/worktrees/t1305`, 브랜치 `WT-codemaps-refresh8`, base `afecf81e9e96`, 카드 t1305. 스탬프 앵커 `a3a9e653e`(t1295 판) 뒤 비테스트 Go 소스 변경 75개(`IsDescribedWorthy` 술어)를 대조했다. § 규모 표의 다섯 값(비테스트·테스트 파일 수, 패키지 총수, 엣지 둘)을 같은 명령으로 다시 쟀다 — 비테스트 1419→1422, 테스트 2544→2545, 패키지 164→162(하네스의 cellguard 가드 패키지와 settings의 agentfm 스키마 패키지 둘이 소멸 — t1246 배치가 에이전트 모델 표면을 은퇴시키며 함께 갔다), 내부 import 엣지 452→449·278→277. 임베드 템플릿 598은 같은 명령으로 재확인해 변동이 없었다. 최상위 디렉터리 82(internal 78 + cmd 2 + pkg 2)와 테스트 0 패키지 6도 재확인해 변동이 없었다. § 들어맞지 않는 패키지의 스테일 파일 수 세 곳(`internal/template` 31→36, `internal/homestate` 15→27, `internal/harness` 87→86)과 `cellguard` 은퇴 산문을 이 트리 실측으로 정정했다.
+**현재 부분 재측정**: worktree `.moai/worktrees/t1333`, 브랜치 `WT-codemaps-refresh9`, base `145c3d98c`, 카드 t1333. 스탬프 앵커 `afecf81e9`(t1257 문서층 병합판) 뒤 비테스트 Go 소스 변경 44개(`IsDescribedWorthy` 술어)를 대조했다. § 규모 표의 일곱 값을 같은 명령으로 다시 졌다 — 비테스트 1422→1429(신규 7 — `internal/cli` 3·`internal/kanban` 4), 테스트 2545→2569, 패키지 162·최상위 디렉터리 82(`internal` 78)·내부 import 엣지 449/277·임베드 템플릿 598은 재확인 결과 변동 없었다. § 도식 절의 스테일 파일 수 한 곳(`internal/hook` 141→155 — 앵커 이전부트 스테일)을 이 트리 실측으로 정정했다.
+**이전 재측정**: worktree `.claude/worktrees/t1305`, 브랜치 `WT-codemaps-refresh8`, base `afecf81e9e96`, 카드 t1305. 스탬프 앵커 `a3a9e653e`(t1295 판) 뒤 비테스트 Go 소스 변경 75개(`IsDescribedWorthy` 술어)를 대조했다. § 규모 표의 다섯 값(비테스트·테스트 파일 수, 패키지 총수, 엣지 둘)을 같은 명령으로 다시 쟀다 — 비테스트 1419→1422, 테스트 2544→2545, 패키지 164→162(하네스의 cellguard 가드 패키지와 settings의 agentfm 스키마 패키지 둘이 소멸 — t1246 배치가 에이전트 모델 표면을 은퇴시키며 함께 갔다), 내부 import 엣지 452→449·278→277. 임베드 템플릿 598은 같은 명령으로 재확인해 변동이 없었다. 최상위 디렉터리 82(internal 78 + cmd 2 + pkg 2)와 테스트 0 패키지 6도 재확인해 변동이 없었다. § 들어맞지 않는 패키지의 스테일 파일 수 세 곳(`internal/template` 31→36, `internal/homestate` 15→27, `internal/harness` 87→86)과 `cellguard` 은퇴 산문을 이 트리 실측으로 정정했다.
 **이전 재측정**: worktree `.moai/worktrees/t1295`, 브랜치 `WT-codemaps-freshness`, base `cee197917`, 카드 t1295. 앵커 `fdc5361c3` 뒤 비테스트 Go 소스 81개가 바뀌었다. 아래 규모 표는 이 트리에서 `find`와 `go list -deps -json ./...`로 다시 셌다. 이번 내용 갱신은 MoAI 워크트리 위치·이전 경로와 Factory 역할 전환에 한정한다. 과거 판의 변경 설명은 이력으로 남긴다.
 **최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
 **재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — § 규모 표 전체, § 구조 판정의 수치, 레이어 표의 대표 패키지, § 도식에 들어맞지 않는 패키지의 파일 수와 신규 항목(`internal/mission`·`internal/codextools`). 측정 명령은 각 표의 산출 명령 칸에 있습니다. 파일 크기(KB) 서술은 이번에 다시 쟀고, 그 밖의 서술형 판단은 앞 판을 이어받았습니다.
@@ -24,8 +25,8 @@
 
 | 값 | 수치 | 산출 명령 |
 |---|---|---|
-| 비테스트 Go 파일 | 1422 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
-| 테스트 Go 파일 | 2545 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
+| 비테스트 Go 파일 | 1429 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
+| 테스트 Go 파일 | 2569 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
 | Go 패키지 총수 | 162 | `go list ./... \| wc -l` |
 | 최상위 디렉터리 | 82 | `internal` 78(`ls -d internal/*/`) + `cmd` 2 + `pkg` 2 |
 | 내부 import 엣지 (패키지 단위) | 449 | `go list -deps -json ./...`의 프로젝트 패키지 `Imports` 중 내부 경로 |
@@ -111,7 +112,7 @@
 
 분류가 어긋나는 자리는 반올림이 아니라 **발견**이므로 그대로 적습니다.
 
-- **`internal/hook` (141 파일)** — 가장 큰 불일치입니다. 겉으로는 Claude Code 훅 JSON을
+- **`internal/hook` (155 파일)** — 가장 큰 불일치입니다. 겉으로는 Claude Code 훅 JSON을
   stdin에서 읽어 stdout으로 내보내는 인바운드 어댑터지만, 안에 브랜치 가드·세션 시작
   오케스트레이션·증거 기록기 같은 순수 정책이 함께 삽니다. presentation으로 부르면 정책이
   감춰지고 domain으로 부르면 stdin/stdout 계약이 감춰집니다. 어느 쪽이든 손실이 있습니다.
