@@ -1,0 +1,22 @@
+OK  나먲지      material=True characterization=True
+OK  엄트리      material=True characterization=True
+OK  불볇확인     material=True characterization=True
+OK  신귴       material=True characterization=True
+OK  바로잠펴     material=True characterization=True
+OK  신귵       material=True characterization=True
+OK  숴환       material=True characterization=True
+OK  브랿치      material=True characterization=True
+OK  바이너리     material=True characterization=True
+OK  채넍       material=True characterization=True
+OK  채넎이      material=True characterization=True
+OK  채넞       material=True characterization=True
+OK  엉터닐      material=True characterization=True
+OK  바이넄리     material=True characterization=True
+OK  큜        material=True characterization=True
+OK  팕        material=True characterization=True
+OK  밖라       material=True characterization=True
+OK  읠        material=True characterization=True
+OK  쓛        material=True characterization=True
+material stale-variant form: 슠테일 (codepoints ['0xc2a0', '0xd14c', '0xc77c'])
+stale corrupt syllable 슠 present in characterization: True
+CROSS-VERIFY: PASS

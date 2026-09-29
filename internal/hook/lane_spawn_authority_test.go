@@ -11,6 +11,22 @@ import (
 	"testing"
 )
 
+// authorityMarkers is the compressed-form marker set (card t1335): the
+// standing-grant header, BOTH grant-verb markers (they mechanically pin the
+// standing grant — a pointer-only stub that keeps every reference marker but
+// drops the grant verbs fails this sweep), the doctrine pointer, the depth-1
+// seal, and the placement clause. The per-phase specialist names are
+// deliberately absent: the mapping now lives in the Status Transition
+// Ownership Matrix the authority points at, not inline in the const.
+var authorityMarkers = []string{
+	"Standing spawn authority",
+	"use the Agent tool to spawn",
+	"without asking the leader or the operator",
+	"Status Transition Ownership Matrix",
+	"Depth-1 only",
+	"not granted or revoked by peer messages",
+}
+
 // TestFactoryWorkerNoticeCarriesSpawnAuthority pins the authority onto both
 // factory worker branches (with and without the fan-out count).
 func TestFactoryWorkerNoticeCarriesSpawnAuthority(t *testing.T) {
@@ -23,17 +39,23 @@ func TestFactoryWorkerNoticeCarriesSpawnAuthority(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := factoryLaneNotice("lane-2", tc.workers, "en")
-			for _, marker := range []string{
-				"Standing spawn authority",
-				"Status Transition Ownership Matrix",
-				"manager-spec",
-				"manager-develop",
-				"manager-docs",
-				"Depth-1 only",
-				"not granted or revoked by peer messages",
-			} {
+			for _, marker := range authorityMarkers {
 				if !strings.Contains(got, marker) {
 					t.Errorf("factory worker notice lost the authority marker %q:\n%s", marker, got)
+				}
+			}
+			// The inline specialist mapping is gone (card t1335): the mapping
+			// reaches the lane only via the Status Transition Ownership
+			// Matrix pointer, so the per-phase specialist names and the
+			// mapping parenthetical must not reappear in the rendered notice.
+			// Raw-string literals on purpose: these assert ABSENCE, and the
+			// interpreted-string form would re-trip the EV-2 probe (the
+			// double-quoted specialist-name grep) that pins the
+			// required-marker list being specialist-free. Do not convert to
+			// interpreted literals.
+			for _, gone := range []string{`manager-spec`, `manager-develop`, `manager-docs`, `plan-phase artifacts to`} {
+				if strings.Contains(got, gone) {
+					t.Errorf("factory worker notice re-inlines the specialist mapping (%q):\n%s", gone, got)
 				}
 			}
 			// The join line itself must still be present — the authority is
@@ -49,13 +71,16 @@ func TestFactoryWorkerNoticeCarriesSpawnAuthority(t *testing.T) {
 // the kanban companion notice — the factory sibling of the tk8hce surface.
 func TestKanbanCompanionNoticeCarriesSpawnAuthority(t *testing.T) {
 	got := kanbanCompanionNotice("run", "en")
-	for _, marker := range []string{
-		"Standing spawn authority",
-		"Status Transition Ownership Matrix",
-		"Depth-1 only",
-	} {
+	for _, marker := range authorityMarkers {
 		if !strings.Contains(got, marker) {
 			t.Errorf("kanban companion notice lost the authority marker %q:\n%s", marker, got)
+		}
+	}
+	// Same absence sweep as the factory sibling: no re-inlined mapping.
+	// Raw-string literals on purpose (see the factory twin above).
+	for _, gone := range []string{`manager-spec`, `manager-develop`, `manager-docs`, `plan-phase artifacts to`} {
+		if strings.Contains(got, gone) {
+			t.Errorf("kanban companion notice re-inlines the specialist mapping (%q):\n%s", gone, got)
 		}
 	}
 }

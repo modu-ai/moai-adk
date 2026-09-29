@@ -32,6 +32,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 
@@ -64,6 +65,18 @@ const (
 	// REFUSED (REQ-RNC-003) — they survive only as detection values
 	// (kanban.IsLegacyFactoryRoleValue).
 	factoryLaneRoleToken = "lane"
+
+	// clearPolicyFlag is the lane clear-policy selection token (REQ-SD-020):
+	// `--clear-policy <value>` stamps the selected policy into the lane
+	// session's environment through config.EnvFactoryClearPolicy.
+	clearPolicyFlag = "--clear-policy"
+
+	// noAutoDispatchFlag is the lane auto-dispatch opt-out token
+	// (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-011): a boolean flag, no
+	// value. Absent, a lane launch is a SELF-DISPATCH lane — the default is
+	// recorded in code, and the flag is the only way to select the manual
+	// mode.
+	noAutoDispatchFlag = "--no-auto-dispatch"
 )
 
 // factoryFlagUsageError names every accepted -f shape. It is the error text
@@ -94,14 +107,18 @@ const factoryFlagUsageError = "-f/--factory takes no argument (the factory leade
 // lane label is an error — there is no second interpretation to silently
 // fall into, and hiding the typo would be worse than naming it.
 type factoryFlagParse struct {
-	Enabled    bool     // -f present (any shape)
-	Lanes      int      // always 0 post-N-removal; kept for the merge contract
-	LaneNumber int      // n of `-f lane-<n>`; 0 otherwise
-	LaneLabel  string   // the lane label exactly as typed (`lane-3`)
-	LaneRole   bool     // `-f lane`: join as the next free lane
-	RunID      string   // explicit --factory-run selector (MoAI-owned, pre--- only)
-	Lead       string   // `-l/--lead <name>`: which leader session discovery targets (lane joins only)
-	Rest       []string // args with -f and its consumed value removed
+	Enabled     bool   // -f present (any shape)
+	Lanes       int    // always 0 post-N-removal; kept for the merge contract
+	LaneNumber  int    // n of `-f lane-<n>`; 0 otherwise
+	LaneLabel   string // the lane label exactly as typed (`lane-3`)
+	LaneRole    bool   // `-f lane`: join as the next free lane
+	RunID       string // explicit --factory-run selector (MoAI-owned, pre--- only)
+	ClearPolicy string // --clear-policy value; a lane-only selection (REQ-SD-020)
+	// NoAutoDispatch marks the --no-auto-dispatch opt-out
+	// (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-011); a lane-only boolean.
+	NoAutoDispatch bool
+	Lead           string   // `-l/--lead <name>`: which leader session discovery targets (lane joins only)
+	Rest           []string // args with -f and its consumed value removed
 }
 
 // parseFactoryFlag extracts --factory / -f and its optional value from args.
@@ -162,6 +179,35 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 			continue
 		}
 
+		if arg == noAutoDispatchFlag || strings.HasPrefix(arg, noAutoDispatchFlag+"=") {
+			if strings.HasPrefix(arg, noAutoDispatchFlag+"=") {
+				return p, fmt.Errorf("%s takes no value; it is a boolean opt-out", noAutoDispatchFlag)
+			}
+			p.NoAutoDispatch = true
+			continue
+		}
+
+		if arg == clearPolicyFlag || strings.HasPrefix(arg, clearPolicyFlag+"=") {
+			var value string
+			if strings.HasPrefix(arg, clearPolicyFlag+"=") {
+				value = strings.TrimPrefix(arg, clearPolicyFlag+"=")
+			} else if i+1 < len(args) && args[i+1] != "--" {
+				i++
+				value = args[i]
+			} else {
+				return p, fmt.Errorf("%s requires a clear policy value (%s, %s, or %s)",
+					clearPolicyFlag, config.FactoryClearPolicyEach, config.FactoryClearPolicyWhenFull, config.FactoryClearPolicyRelaunch)
+			}
+			switch value {
+			case config.FactoryClearPolicyEach, config.FactoryClearPolicyWhenFull, config.FactoryClearPolicyRelaunch:
+				p.ClearPolicy = value
+			default:
+				return p, fmt.Errorf("%s takes %s, %s, or %s (got %q)",
+					clearPolicyFlag, config.FactoryClearPolicyEach, config.FactoryClearPolicyWhenFull, config.FactoryClearPolicyRelaunch, value)
+			}
+			continue
+		}
+
 		var value string
 		hasValue := false
 		switch {
@@ -217,8 +263,42 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 			return p, fmt.Errorf("%s applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target", leadFlagLong)
 		}
 	}
+	// The clear policy is a LANE selection (REQ-SD-020: a Claude-harness
+	// lane launch). Carrying it on a non-factory launch or on the leader
+	// shape has no defined meaning, so the parser refuses it rather than
+	// silently swallowing the flag — the same typo-honesty as the -f
+	// value refusal above.
+	if p.ClearPolicy != "" {
+		if !p.Enabled {
+			return p, fmt.Errorf("%s selects a factory lane's clear policy; it composes with -f lane or -f lane-<n> only", clearPolicyFlag)
+		}
+		if !p.LaneRole && p.LaneNumber == 0 {
+			return p, fmt.Errorf("%s selects a lane's clear policy; the factory leader takes none", clearPolicyFlag)
+		}
+	}
+	// The auto-dispatch opt-out is a LANE selection too (REQ-TCD-011), on
+	// the same typo-honesty terms as the clear policy: a leader shape or a
+	// non-factory launch refuses it rather than silently swallowing the flag.
+	if p.NoAutoDispatch {
+		if !p.Enabled {
+			return p, fmt.Errorf("%s selects a factory lane's dispatch mode; it composes with -f lane or -f lane-<n> only", noAutoDispatchFlag)
+		}
+		if !p.LaneRole && p.LaneNumber == 0 {
+			return p, fmt.Errorf("%s selects a lane's dispatch mode; the factory leader takes none", noAutoDispatchFlag)
+		}
+	}
 
 	return p, nil
+}
+
+// laneDispatchSelection resolves the dispatch value a lane launch stamps
+// into config.EnvFactoryAutoDispatch (REQ-TCD-011): the opt-out selects the
+// manual mode; the code default is auto-dispatch.
+func laneDispatchSelection(entry kanbanEntryParse) string {
+	if entry.AutoDispatchManual {
+		return config.FactoryDispatchManual
+	}
+	return config.FactoryDispatchAuto
 }
 
 // refuseLegacyEntryNames refuses the legacy spellings on the operator-name
@@ -288,6 +368,8 @@ func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
 	entry.FactoryEnabled = true
 	entry.FactoryRun = fp.RunID
 	entry.FactoryLead = fp.Lead
+	entry.ClearPolicy = fp.ClearPolicy
+	entry.AutoDispatchManual = fp.NoAutoDispatch
 	// The stripped args always become the launch args — for every -f shape,
 	// not only the lane form below. (The lane forms append their desugared
 	// --name on top of these.)
@@ -318,7 +400,29 @@ func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
 	return entry, nil
 }
 
+// factoryLaneRequiresGitTree is the REQ-SD-005 lane-launch precondition: the
+// session a lane joins from must be a git working tree — the repository the
+// lane will carry cards for. The refusal is one line naming the git
+// requirement, and it fires before any registry, factory, or queue record
+// can be written.
+func factoryLaneRequiresGitTree(root string) error {
+	cmd := exec.Command("git", "-C", root, "rev-parse", "--is-inside-work-tree")
+	out, err := cmd.Output()
+	if err == nil && strings.TrimSpace(string(out)) == "true" {
+		return nil
+	}
+	return fmt.Errorf("factory lane launch: refused — %s is not a git working tree, and a lane session needs the git repository it will carry cards for (run the lane inside the project checkout)", root)
+}
+
 func enterSelectedFactoryRun(root, explicit string, requireActive bool) (func(), error) {
+	// REQ-SD-005: a LANE join needs a git working tree, refused before any
+	// write. requireActive is the lane discriminator here — the leader passes
+	// false and is unaffected.
+	if requireActive {
+		if err := factoryLaneRequiresGitTree(root); err != nil {
+			return func() {}, err
+		}
+	}
 	if explicit == "" && !requireActive {
 		return func() {}, nil
 	}
@@ -565,25 +669,51 @@ func enterFactoryLeaderMode(lanes int, leaderLabel string) func() {
 // exists to seed one), the raised Stop-hook block cap reaches the session
 // through EnvMoaiFactoryWorkers, and the autonomy tier and the per-lane
 // agent cap are seeded because the lane is where dispatched cards are
-// actually implemented.
+// actually implemented. It also stamps the factory ROLE MARKER
+// (config.EnvFactoryRole = config.FactoryRoleLane, name and value through
+// the internal/config constants only — REQ-SD-002/-017): the stamp is what
+// arms lane admission and the contract guard's widened role gate in the
+// launched session, and it is restored on return like the other keys.
 //
 // lanes is the run's fan-out size from the lane's own entry token —
 // `-f <N>` / `-k <N>` carry it explicitly, and the incremental `-f
 // lane-<n>` form carries 0 ("unknown"), which the lane notice degrades
 // from rather than fabricating a count.
-func enterFactoryLaneMode(label string, lanes int) func() {
+//
+// clearPolicy is the lane's --clear-policy selection (REQ-SD-020): the
+// value stamped into config.EnvFactoryClearPolicy for the SessionStart rule
+// and the `complete` output to read. "" (no selection) is stamped too — the
+// stamp always overwrites, so a policy inherited from an outer session can
+// never leak into a lane launched without one. Codex-harness lanes take no
+// policy and pass "" (REQ-SD-020).
+//
+// dispatch is the lane's auto-dispatch selection
+// (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-011): config.FactoryDispatchAuto
+// (the code default) or config.FactoryDispatchManual (--no-auto-dispatch).
+// The stamp always overwrites, like the policy's — nothing leaks from an
+// outer session.
+func enterFactoryLaneMode(label string, lanes int, clearPolicy string, dispatch string) func() {
 	restoreLabel := captureEnvState(config.EnvMoaiFactoryWorker)
+	restoreMarker := captureEnvState(config.EnvFactoryRole)
 	restoreLaneCount := captureEnvState(config.EnvMoaiFactoryWorkers)
+	restorePolicy := captureEnvState(config.EnvFactoryClearPolicy)
+	restoreDispatch := captureEnvState(config.EnvFactoryAutoDispatch)
 	restoreTier := seedAutonomyTier()
 	restoreCap := seedLaneAgentCap()
 
 	_ = os.Setenv(config.EnvMoaiFactoryWorker, label)
+	_ = os.Setenv(config.EnvFactoryRole, config.FactoryRoleLane)
 	_ = os.Setenv(config.EnvMoaiFactoryWorkers, strconv.Itoa(lanes))
+	_ = os.Setenv(config.EnvFactoryClearPolicy, clearPolicy)
+	_ = os.Setenv(config.EnvFactoryAutoDispatch, dispatch)
 
 	return func() {
 		restoreCap()
 		restoreTier()
+		restoreDispatch()
+		restorePolicy()
 		restoreLaneCount()
+		restoreMarker()
 		restoreLabel()
 	}
 }

@@ -44,12 +44,13 @@ When the operator says `/moai gtd "<description>"`, run
 
 | Command | Effect |
 |---|---|
-| `moai gtd add "<text>"` | Append an item under the lock. Prints the issued id (`t<n>`) and its queue position. |
+| `moai gtd add "<text>"` | Append an item under the lock. Prints the issued id (`t<n>`) and its queue position — the position in the SORTED queue order, never the append index. Every card is classified at creation as one locked write: `priority` (`high` > `normal` > `low`), a `blocked` flag, and an execution `mode` (`serial` | `parallelizable`), recorded under `classification` in the record with the deciding identity and a one-line reason. `--classification-file <path|->` supplies a classification judgement (`-` reads standard input); it is validated against the closed value sets before the write — an out-of-set value or the `jev` decider identity is a usage refusal with nothing written. Without it the deterministic default decider records `priority=normal, blocked=false, mode=serial, decider=default`; an unavailable or failed decider admits the card with those same fail-safe defaults and exactly one stderr notice — admission never blocks on classification. The queue is kept sorted non-blocked first, then priority, then insertion order within a rank; `blocked` cards sink behind every non-blocked card. |
 | `moai gtd list` | Render the queue, lock-free. The default view is the live load: `queued` and `picked` cards, with the dropped set collapsed into one count line naming `--dropped`. `moai gtd list --dropped` renders the discarded set with its markers — the surface `undrop` reads. The render is bounded at 20 rows (`--limit <n>` adjusts, `0` lifts the bound); a truncated listing states the withheld count on stderr, because a truncated read must never be mistaken for a complete one. `--json` emits the structured records — every card, dropped included, and never bounded — so a machine consumer filters by the `state` field rather than by absence — a held card renders with its literal `hold` state, never disguised as queued. |
 | `moai gtd done <n> [--expect <prefix>] [--require-landed]` | Take the addressed row out of the live queue under the lock. A bare `<n>` means `t<n>`; the explicit id (`moai gtd done t3`) is the preferred form because positions move. The card and every finding naming it are ARCHIVED rather than discarded, so `undone` restores both; archived rows are invisible to `list`, `next`, `why`, `analyze`, and the counts. `--expect <prefix>` refuses unless the card's text starts with the prefix — the guard against closing the wrong card. `--require-landed` refuses unless a commit on the landed ref names the card; see the note below for what it can and cannot answer. Every successful `done` prints exactly one landing verdict on stdout — `done <id> landing=landed|not-landed|unknown`. Absent the flag the verdict is `unknown` because no query ran, UNLESS the card already carries landing evidence recorded by `moai gtd landed`: a validated record naming a delivering commit IS an answer, obtained earlier and stored, so the verdict reads `landed` and the line appends `sha=<delivering commit> source=operator`. The provenance travels with the value, so a stored assertion is never read as an answer this run produced. A record holding only the observed ref position appends nothing — it asserts no delivering commit. The printed line is byte-identical to before, and the answer is now PERSISTED too: a `done --require-landed` close stores the verdict — its kind, the answering ref, and the instant — onto the archived row, so `history` can reproduce what the query said. The record carries no SHA: a query-derived SHA is outside the landing evidence store's write authority (operator-recorded SHAs are its only SHA source), and the delivering SHA is re-derived at re-adjudication by re-running the landing predicate against the stored ref. Without the flag nothing is stored — no query ran, so no answer is fabricated — and an operator-recorded evidence and a query verdict coexist on the same archived row, the verdict never overwriting the evidence. |
 | `moai gtd undone <n>` | Restore an archived card to the live queue at the position it held, together with every finding that named it, and empty the archive entry. `done` + `undone` returns the queue record to the same bytes. Refused when the id has since been reissued to a different live card — the collision is named and the live card is left alone. |
 | `moai gtd next` | Print the queued items oldest-first — read-only candidates. |
 | `moai gtd next <n> [--spec <SPEC-ID>]` | Mark the addressed item `picked` (attaching `spec_id` when given) as one locked write. |
+| `moai gtd claim [--lane <label>] [--renew <id>]` | Claim the oldest **queued** card as one atomic compare-and-set under a lease: the card moves to `picked` with `picked_by`, `lease_expires_at` (now + the default lease duration), and `picked_at` stamped, and the confirmation carries the card id, its text prefix, and the expiry instant. Before selecting, every lapsed lease is returned to `queued` (expiry-first) — each return announced with its id and previous holder — and the claim then takes the oldest, which may be the card just returned; an unparseable expiry is judged expired. A card under a live lease is not a claim candidate, and no claim-family operation touches another holder's lease; the operator `unpick` stays the manual recovery. `--lane <label>` attributes the claim to an operator/lead-supplied lane label, and the flag grants nothing to a lane session — a session inside the lane boundary is refused with the existing refusal text, with or without the flag. `--renew <id>` extends the addressed card's lease instead of claiming: only the current holder's label may renew, a foreign label is refused with no change, and renewing a lapsed lease returns the card to `queued` (committed) and refuses — it never extends. No eligible card exits with status 3 and a non-error message, so a supervising launcher can tell that from failure. `list` and `history` render the lease columns on lease-holding rows; the JSON face excludes them. |
 | `moai gtd edit <n> "<text>" [--expect <prefix>]` | Rewrite the addressed card's text under the lock. `id`, `added_at`, `state`, and `spec_id` are preserved, so a correction never churns the card's identity the way `done` + re-add does. The confirmation carries the prior text as well as the new one, so a wrong edit is reversed by editing back. |
 | `moai gtd move <n> (--top\|--bottom\|--before <m>\|--after <m>)` | Reposition the card within the queue order under the lock. Exactly one destination is required. The move permutes the order and nothing else — no card is dropped, duplicated, or altered — so a wrong move is reversed by another move. |
 
@@ -249,17 +250,27 @@ moai gtd list --json | jq '.[0]'                                            # WR
 
 - `id` — assigned on append, never reused after removal (`last_seq` is the
   persisted high-water mark that guarantees it).
-- `spec_id` — filled in when the item is picked; until then it is `null`, which
-  is what distinguishes a backlog item from a card already on the board.
+- `spec_id` — a record-only, optional annotation attached only when
+  `next --spec` is explicitly given. An empty `spec_id` on a picked card is
+  the normal state; it is the `state` field (`queued` | `picked`), never
+  `spec_id`, that distinguishes a backlog item from a card already on the
+  board. The card↔SPEC association lives in the dispatch fields and the
+  commit-message card id, not in this column.
 - `findings` — the records the analysis layer keeps ABOUT pairs of cards; a
   relation belongs to the pair rather than to either card, which is why it
   lives here and not in an item. Always an array: a file written before the
   field loads with an empty one, so "no findings" never has to be told apart
-  from "no such feature". `source` is `mechanical` (measured text similarity)
-  or `agent` (a judgement written through `relate`), and a mechanical finding
+  from "no such feature". `source` is `mechanical` (measured text similarity),
+  `agent` (a judgement written through `relate`), or `jev` — emitted at card
+  admission only, when the `workflow.jev.enabled` gate is on, as a model
+  answer naming an existing queued card a near-duplicate. A mechanical finding
   with no agent finding on the same pair renders marked `machine-only` — which
   records that nothing agent-sourced was written, never that anyone reviewed
-  it. A finding leaves the file when its card does.
+  it. A `jev` finding is a third thing: its confidence renders as `p=` (a
+  model confidence, never a measured similarity), it neither claims nor clears
+  the `machine-only` mark, and it is a record a person reads — never an input
+  to a queue mutation or a completion verdict. A finding leaves the file when
+  its card does.
 - `state` — `queued` | `picked` | `dropped`. Three values, and `done` is not a
   fourth: a finished card leaves the live queue entirely and moves to the
   archive. A picked item stays in the file so the operator can see what is in
@@ -321,7 +332,11 @@ registry and an `lsof` working-directory probe — re-measured at every pickup
 decision, never cached.
 
 [HARD] `/moai:todo --auto` is the operator's batch approval: it authorizes
-serial consumption of the queue in queue order and nothing else. The cycle
+serial consumption of the queue in queue order and nothing else. Queue order
+is the classification order the queue is kept sorted in — non-blocked cards
+first, then priority `high` > `normal` > `low`, then insertion order within a
+rank — so the cycle's first pickup is the highest-ranked queued card with no
+ordering logic of its own. The cycle
 derives its authority solely from the invocation — it never self-promotes,
 reorders, admits, or drops cards beyond that order, and it never takes over a
 picked card whose owning session is measured alive, even when no other pickup

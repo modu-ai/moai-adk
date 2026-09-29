@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -27,6 +28,12 @@ func discoveryTestRoot(t *testing.T) string {
 	root := filepath.Join(t.TempDir(), "join-project")
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		t.Fatal(err)
+	}
+	// REQ-SD-005 (card t1240, absorbed from develop): a lane join requires
+	// the project to be a git working tree — the fixture satisfies the
+	// precondition so the tests reach the join gate's own verdicts.
+	if err := exec.Command("git", "init", "-q", root).Run(); err != nil {
+		t.Fatalf("git init fixture project: %v", err)
 	}
 	t.Setenv(config.EnvClaudeProjectDir, root)
 	t.Setenv("MOAI_HOME", t.TempDir())

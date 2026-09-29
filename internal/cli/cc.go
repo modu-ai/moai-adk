@@ -229,8 +229,21 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 			return claimErr
 		}
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
-		defer enterFactoryLaneMode(finalLabel, entry.FactoryLanes)()
+		defer enterFactoryLaneMode(finalLabel, entry.FactoryLanes, entry.ClearPolicy, laneDispatchSelection(entry))()
 		defer exportFactoryLaunchFacts(entry.Spec, backend)()
+		// REQ-SD-020: the relaunch policy turns this launcher into the
+		// supervising loop — it stays the parent, leases the next card,
+		// starts one interactive session per card, and never exec's in
+		// place (design.md §6). The stamps above are live for the loop's
+		// own `next` calls and reach every child through the environment.
+		if entry.ClearPolicy == config.FactoryClearPolicyRelaunch {
+			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+			defer settingsCleanup()
+			if len(settingsFlag) > 0 {
+				filteredArgs = append(filteredArgs, settingsFlag...)
+			}
+			return runFactoryLaneRelaunch(cmd, finalLabel, filteredArgs)
+		}
 		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)

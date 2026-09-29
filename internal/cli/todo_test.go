@@ -145,15 +145,21 @@ func TestTodoPickInFactoryRecordsCardAndEvent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// REQ-SD-015: lane sessions pick through `moai factory next`; this test
+	// exercises the operator surface, so the environment is lane-neutral
+	// (no role, no label, no backend marker) and the mirror owner records as
+	// the REQ-RNC-010 `leader` spelling.
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	t.Setenv(config.EnvMoaiKanbanID, "run-card-test")
-	t.Setenv(config.EnvMoaiFactoryWorker, "lane-2")
+	t.Setenv(config.EnvFactoryRole, "")
+	t.Setenv(config.EnvMoaiFactoryWorker, "")
+	t.Setenv(config.EnvMoaiKanbanBackend, "")
 	if _, _, err := runTodo(t, "next", "--spec", "SPEC-CARD-001", "1"); err != nil {
 		t.Fatal(err)
 	}
 	assignment := todoRuntimeAssignment(t, root, "run-card-test", "t1")
-	if assignment.OwnerLabel != "lane-2" || assignment.ReportedState != "picked" || assignment.EventKind != "card.assigned" {
-		t.Fatalf("assignment=(%q,%q,%q), want (lane-2,picked,card.assigned)", assignment.OwnerLabel, assignment.ReportedState, assignment.EventKind)
+	if assignment.OwnerLabel != kanban.RoleLeader || assignment.ReportedState != "picked" || assignment.EventKind != "card.assigned" {
+		t.Fatalf("assignment=(%q,%q,%q), want (leader,picked,card.assigned)", assignment.OwnerLabel, assignment.ReportedState, assignment.EventKind)
 	}
 	payloadRaw := assignment.ProvenanceJSON
 	var payload map[string]string
@@ -169,8 +175,8 @@ func TestTodoPickInFactoryRecordsCardAndEvent(t *testing.T) {
 		t.Fatal(err)
 	}
 	assignment = todoRuntimeAssignment(t, root, "run-card-test", "t1")
-	if assignment.OwnerLabel != "lane-2" || assignment.ReportedState != "queued" || assignment.EventKind != "card.unpicked" {
-		t.Fatalf("updated assignment=(%q,%q,%q), want (lane-2,queued,card.unpicked)", assignment.OwnerLabel, assignment.ReportedState, assignment.EventKind)
+	if assignment.OwnerLabel != kanban.RoleLeader || assignment.ReportedState != "queued" || assignment.EventKind != "card.unpicked" {
+		t.Fatalf("updated assignment=(%q,%q,%q), want (leader,queued,card.unpicked)", assignment.OwnerLabel, assignment.ReportedState, assignment.EventKind)
 	}
 }
 
@@ -242,9 +248,13 @@ func TestTodoPickInFactoryCapturesLinkedWorktreeSpecAndHEAD(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("CLAUDE_PROJECT_DIR", lane)
+	// REQ-SD-015: lane sessions pick through `moai factory next`; the pick
+	// here runs on the operator surface in a lane-neutral environment.
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 	t.Setenv(config.EnvMoaiKanbanID, "run-linked-lane")
-	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
+	t.Setenv(config.EnvFactoryRole, "")
+	t.Setenv(config.EnvMoaiFactoryWorker, "")
+	t.Setenv(config.EnvMoaiKanbanBackend, "")
 	if _, _, err := runTodo(t, "next", "--spec", "SPEC-LANE-001", "1"); err != nil {
 		t.Fatal(err)
 	}

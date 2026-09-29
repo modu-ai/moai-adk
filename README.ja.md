@@ -755,7 +755,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | `moai graph <build\|query>` | コードベースグラフ (edges.jsonl) の生成・照会 — 呼び出し元の検索、影響半径、マイルストーンの交差検査 |
 | `moai cc` / `moai glm` | Claude 専用 / GLM 専用のセッション |
 | `moai codex [cli\|status\|app]` | Codex ランチャー — 引数なしで呼ぶと Codex CLI を起動する。`status` は準備状態を表示するだけで何も起動しない |
-| `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree の保守 (ワークツリーへの出入りはランチャーの仕事) |
+| `moai worktree <sync\|done\|hoist\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree の保守 (ワークツリーへの出入りはランチャーの仕事) |
 | `moai session <list\|register\|current>` | マルチセッション調整 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC ライフサイクル・ツール |
 | `moai goal <arm\|status\|clear>` | ゴール・エンジン CLI |
@@ -764,7 +764,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | `moai preference <list\|decay-scan\|toggle>` | 決定メモリ管理 |
 | `moai memory <doctor\|archive>` | エージェント・メモリの点検と古い項目の保管 |
 | `moai tokens record` | プール別トークン使用の台帳記録 |
-| `moai clean [--home] [--codex-skills]` | 古い実行成果物の整理。`--home` を付けると `~/.moai` を許可リストの範囲で片付け、`--codex-skills` を付けると `~/.codex/config.toml` から、宣言されたパスが不在と証明された `[[skills.config]]` 登録を削除する。スコープは一度に一つだけ。既定は dry-run で、`--force` を与えて初めて実際に消す |
+| `moai clean [--home] [--codex-skills] [--reports-archive]` | 古い実行成果物の整理。`--home` を付けると `~/.moai` を許可リストの範囲で片付け、`--codex-skills` を付けると `~/.codex/config.toml` から、宣言されたパスが不在と証明された `[[skills.config]]` 登録を削除する。`--reports-archive` を付けると `.moai/reports/` の古い証跡ディレクトリを `archive/<YYYY-MM>/` へ移す — 削除はせず移動のみ(既定保持 90 日、`--reports-archive-days`)。スコープは一度に一つだけ。既定は dry-run で、`--force` を与えて初めて実際に消す |
 | `moai web` | Web コンソール — 6 画面 (Overview · Kanban · Specs · Monitor · Settings · Todo)、設定タブ |
 
 > 全 49 コマンド: [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference)

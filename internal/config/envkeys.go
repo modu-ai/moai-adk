@@ -345,6 +345,48 @@ const (
 	// internal/cli back without a cycle, and both carriers are unexported,
 	// which is why the pin lives inside the carrier packages.
 	FactoryRoleLane = "lane"
+
+	// EnvFactoryClearPolicy carries the clear policy a Claude-harness
+	// factory lane launch selected (SPEC-FACTORY-SELF-DISPATCH-001
+	// REQ-SD-020): the launcher stamps it into the lane session's
+	// environment and the `complete` output reads it to pick its
+	// end-of-card line. Codex-harness lanes take no policy and the name
+	// never enters the Codex MCP env_vars allowlist — the §D carve-out of
+	// the same SPEC names this one carrier so REQ-SD-022's frozen surfaces
+	// stay untouched. An absent value reads as FactoryClearPolicyEach.
+	EnvFactoryClearPolicy = "MOAI_FACTORY_CLEAR_POLICY"
+
+	// FactoryClearPolicyEach is the default clear policy: after each
+	// completion the lane asks the operator to /clear and continues on the
+	// fresh session.
+	FactoryClearPolicyEach = "clear-each"
+
+	// EnvFactoryAutoDispatch carries the auto-dispatch selection a factory
+	// lane launch made (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-011): the
+	// launcher stamps it into the lane session's environment and the
+	// SessionStart lane rule reads it. The DEFAULT is auto-dispatch and is
+	// recorded in code, not in this carrier — the stamp always overwrites
+	// (the clear-policy discipline) so an outer session's value cannot leak
+	// into a lane launched without one. Any value other than
+	// FactoryDispatchManual reads as the default.
+	EnvFactoryAutoDispatch = "MOAI_FACTORY_AUTO_DISPATCH"
+
+	// FactoryDispatchAuto is the stamped default: the lane enters its
+	// factory-next self-dispatch loop without a per-card lead routing step.
+	FactoryDispatchAuto = "auto"
+
+	// FactoryDispatchManual is the --no-auto-dispatch opt-out stamp: the lane
+	// receives a manual-mode rule instead of the next-card rule.
+	FactoryDispatchManual = "manual"
+
+	// FactoryClearPolicyWhenFull asks for /clear only once the session's
+	// context-usage record reaches the model-specific handoff threshold;
+	// below it the lane continues with the next card in the same session.
+	FactoryClearPolicyWhenFull = "clear-when-full"
+
+	// FactoryClearPolicyRelaunch asks the operator to end the session; the
+	// supervising launcher starts a fresh session for the next card.
+	FactoryClearPolicyRelaunch = "relaunch"
 )
 
 // GLM inject/clear env-var names (set onto the process env when entering

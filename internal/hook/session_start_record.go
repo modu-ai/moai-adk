@@ -27,9 +27,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/kanban"
+	"gopkg.in/yaml.v3"
 )
 
 // worktreeRootDirName is the directory a card worktree's root must sit
@@ -110,6 +112,54 @@ func writeKanbanSessionRecord(input *HookInput) {
 	).WithRole(role).WithLane(lane).WithCard(resolveSessionCardID(dir))
 
 	kanban.WriteBestEffort(root, rec)
+	pruneSessionRecordsBestEffort(root)
+}
+
+// pruneSessionRecordsBestEffort sweeps session records older than the
+// configured retention window (card t1312) at the one point every kanban
+// session already touches this directory: its own record write. Fail-open in
+// both directions — the sweep never gates the launch (the WriteBestEffort
+// precedent), and an UNREADABLE config never enables a sweep either: deleting
+// data on a guessed default is the one direction this path must not fail
+// open in, so a config read or parse error disables the sweep for that
+// launch instead of falling back to the shipped window.
+func pruneSessionRecordsBestEffort(root string) {
+	days, ok := sessionRecordRetentionDays(root)
+	if !ok {
+		return
+	}
+	_, _ = kanban.PruneExpiredRecords(root, days, time.Now())
+}
+
+// sessionRecordRetentionDays reads state.session_record_retention_days from
+// the project's state.yaml with a targeted unmarshal — the clean.go
+// loadRetentionDays precedent, kept off the full config load so the hook's 5s
+// budget carries one small file read. An ABSENT file is the shipped-default
+// case (default-on out of the box). ok is false when a PRESENT file cannot be
+// read or parsed — the caller treats that as "no sweep this launch", because
+// deleting data on a guessed default is the one direction this path must not
+// fail open in. An omitted key retains the config package's shipped default;
+// an explicit 0 disables.
+func sessionRecordRetentionDays(root string) (days int, ok bool) {
+	data, err := os.ReadFile(filepath.Join(root, ".moai", "config", "sections", "state.yaml")) // #nosec G304 -- root is the hook's resolved project dir; the join is the fixed section path
+	if err != nil {
+		if os.IsNotExist(err) {
+			return config.DefaultSessionRecordRetentionDays, true
+		}
+		return 0, false
+	}
+	var wrapper struct {
+		State struct {
+			SessionRecordRetentionDays *int `yaml:"session_record_retention_days"`
+		} `yaml:"state"`
+	}
+	if err := yaml.Unmarshal(data, &wrapper); err != nil {
+		return 0, false
+	}
+	if wrapper.State.SessionRecordRetentionDays == nil {
+		return config.DefaultSessionRecordRetentionDays, true
+	}
+	return *wrapper.State.SessionRecordRetentionDays, true
 }
 
 // kanbanRoleFromEnv reports the chain role this session occupies and, for a

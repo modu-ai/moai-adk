@@ -34,7 +34,7 @@
 >
 > **primary에서 `git restore CLAUDE.local.md`를 실행하지 마라** — 공유 워킹 사본을 §0.3의 폐기 모델로 되돌리는 회귀다.
 >
-> 이 파일을 고칠 때는 카드 워크트리에서 고쳐 `develop`으로 병합한다(§4.1). primary의 구형 파일은 별도 전환 전까지 보존한다.
+> 이 파일을 고칠 때는 카드 워크트리에서 고쳐 `develop`으로 병합한다(§4.1). primary의 구형 파일은 별도 전환을 마쳤다(card t1317, 2026-09-29 — 보존 사본은 primary의 `.moai/state/retired/`).
 
 ---
 
@@ -203,6 +203,7 @@ local/main
 3. **main으로는 release 브랜치의 PR만 올라간다.** 카드가 직접 main으로 PR을 내지 않는다.
 4. **통합 창은 직렬이다.** `moai integration acquire --card <card-id>` → 병합 → `release` — push는 창 밖이다(리더 일괄, 2026-09-02). 락은 병합을 직렬화하는 장치이지 수리를 직렬화하는 장치가 아니므로, 수리가 남았으면 준비된 뒤에 잡는다.
 5. **판정은 CI.** 로컬 통과는 조기 신호일 뿐이다 — 깨끗한 환경도, darwin/windows 매트릭스도 아니다. 병합 전 검증을 병합 후 근거로 재사용하지 않는다: 병합 트리에서 다시 재거나, 병합 커밋의 `git rev-parse <merge>^{tree}`가 재측정한 트리와 동일함을 보인다.
+6. **로컬 `main`은 commit-dead다 (SPEC-MAIN-COMMIT-BAN-001, 카드 t1337).** 어느 세션도 primary 체크아웃의 `main` 안에서 커밋하지 않는다 — `git commit` / `git revert` / `git cherry-pick`은 BranchGuard(`workflow.branch_guard.deny_commits_on: [main]`)가 거부하고, 커밋은 `develop`에서 분기한 카드 워크트리에서만 만든다. main의 잔여물을 처분하는 절차(운영자 터미널 전용)는 `.moai/docs/gitflow-integration-chain.md`가 소유한다. 리더의 develop push는 배치 트리거로 닫는다 — `git rev-list --count origin/develop..develop`이 `git_strategy.manual.lead_push_threshold`에 닿으면 배치를 닫는다. 현재값의 원천은 설정 파일이고 이 규율은 키와 계수 명령을 명명할 뿐이다. push는 초록 조건부를 따른다 — 카드 병합마다 통합 창의 병합 트리 재측정이 사전 게이트이고, 마지막 push의 `origin/develop` CI가 red인 동안 다음 push는 보류된다. 상세는 `.claude/rules/local/gitflow-lane-protocol.md` §4.
 
 **[SUPERSEDED by 위 체인 — 2026-08-29]** 종전 규위(develop 원격 미푸시 · 카드별 main PR · 일회용 develop)은 폐기됐다 — 폐기 사실과 사유의 보존은 두 문서가 반대 지시를 하지 않게 하기 위함이며, 전문은 `.moai/docs/gitflow-integration-chain.md` 에 있다.
 
@@ -215,6 +216,7 @@ local/main
 
 Kanban(`moai cc -k`) / Factory(`moai cc -f N`) 모드에서 레인은 카드 작업이 끝나면 **반드시 리더에게 로컬 develop 병합을 요청한다.** 레인이 스스로 병합 창을 잡지 않는다.
 
+- **self-dispatch lane 예외 — 병합 창.** Claude self-dispatch 팩토리 run의 레인은 위 요청을 하지 않는다 — `moai factory complete`의 통합 절차로 스스로 통합 창을 잡고 자기 카드를 `develop`에 병합한다(OD-2). Codex 레인은 예외가 아니다 — merge-ready에서 정지한다(REQ-SD-025). 이 예외도 위의 다른 큐 변경(`add`, `drop`, `done`, `edit` 등) 금지와 `moai contract sign` 금지는 바꾸지 않는다(카드 임대만 `moai factory next`로 허용 — OD-1; `.claude/rules/local/gitflow-lane-protocol.md` §6).
 - 완료 보고에 담을 것: 카드 id · 브랜치와 HEAD · 로컬 병합 SHA · 미푸시 커밋 수 · 증거 경로(primary 반출 여부) · 재측정 범위
 - `moai integration status`가 `free`인 것은 **승인이 아니다.** 리더의 창 지명만이 근거다.
 - 창을 받으면: `moai integration acquire --name <lane> --card <card-id>` → 본인 워크트리에서 `git merge develop` 흡수(대상은 **로컬** `develop` — 원격이 아니다. 흡수 **전에** 그 로컬 develop 이 최신인지부터 본다 — 판정식과 갱신 경로는 `.claude/rules/local/gitflow-lane-protocol.md` §11) → **병합 트리에서 재측정** → `EnterWorktree(.claude/worktrees/develop)` → `git merge --no-ff <WT-브랜치>` → `moai integration release` → `ExitWorktree keep` → 완료 보고(로컬 병합 SHA를 리더에게 보고 — push는 리더가 일괄로 한다)

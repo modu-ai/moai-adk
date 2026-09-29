@@ -1,0 +1,3 @@
+L237: **Tier 2 trigger 근거 (user directive 2026-05-17)**: "macOS/Windows 검증은 릴리즈 PR 때 처리르 하는게 맞지 않을까?" — release branch PR 시 회귀가 just-in-time 으로 가시화되어 동일 PR에서 수정 가능. nightly cron (async) / release tag (post-merge) 보다 우수.
+
+L274: > **[변경 이력 2026-07-20]** `enforce_admins`: `false` → **`true`** (admin bypass 제거 → main direct push 전면 차단). `required_approving_review_count`: `1` → **`0`** (1인 OSS self-merge — 4개 CI check 통과 시 리뷰어 없이 본인 머지). 이 조합 = **PR-mandatory + self-merge**: 모든 변경 (daily Tier S/M 포함)은 PR을 열되, CI green이면 즉시 self-merge 가능. `vX.Y.Z` tag push는 branch protection 대상이 아니므로 `scripts/release.sh` tag flow는 무영향.

@@ -115,6 +115,19 @@ func newTodoReadStore() *kanban.BacklogStore {
 	return kanban.NewBacklogStore(kanban.BacklogPathForRoot(root))
 }
 
+// todoStoreAt and todoReadStoreAt anchor the queue at an explicit root — the
+// MCP tool path, whose caller names its tree with the project_root argument
+// (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-024). The CLI verbs keep resolving
+// through resolveTodoQueueRoot; the two shapes share the same path builders,
+// so a root both surfaces agree on sees the same queue file.
+func todoStoreAt(root string) *kanban.BacklogStore {
+	return kanban.NewBacklogStore(todoBacklogPath(root))
+}
+
+func todoReadStoreAt(root string) *kanban.BacklogStore {
+	return kanban.NewBacklogStore(kanban.BacklogPathForRoot(root))
+}
+
 // todoLandedRef is the single place the todo surface resolves the ref the
 // landing question is asked about, so the help text, the flag description, the
 // refusal, and the query itself can never name different refs.
@@ -267,19 +280,28 @@ mentions an id later in the sentence still falls through, and
 			if len(args) == 0 {
 				return runTodoList(cmd, false, false, todoListDefaultLimit)
 			}
-			return runTodoAddAppend(cmd, strings.Join(args, " "), false)
+			return runTodoAddAppend(cmd, strings.Join(args, " "), false, todoCardDecider)
 		},
 		// PersistentPreRun fires once per `moai todo ...` invocation, for the
 		// parent and every subcommand alike, which is why the guidance lives
 		// here rather than inside resolveTodoQueueRoot: that helper is called
 		// several times per run (store, landed ref, ...) and would repeat the
 		// notice once per call.
-		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
-			warnTempOriginQueueRefusal(cmd)
+		//
+		// The lane queue guard (REQ-SD-015) rides the same hook, ahead of
+		// every subcommand's RunE, so a refused lane session never reaches a
+		// mutation and the queue file stays byte-identical.
+		PersistentPreRunE: func(run *cobra.Command, args []string) error {
+			if err := todoRefuseLaneMutation(todoTreeRoot(run), run, args); err != nil {
+				return err
+			}
+			warnTempOriginQueueRefusal(run)
+			return nil
 		},
 		GroupID: "tools",
 	}
 	cmd.AddCommand(newTodoAddCmd(), newTodoListCmd(), newTodoDoneCmd(), newTodoUndoneCmd(), newTodoNextCmd(),
+		newTodoClaimCmd(),
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
 		newTodoDropCmd(), newTodoUndropCmd(),
 		newTodoHoldCmd(), newTodoUnholdCmd(),
@@ -301,6 +323,71 @@ var (
 	todoAutoFlag bool
 	todoAutoWait time.Duration
 )
+
+// todoLaneReadOnlyVerbs is the REQ-SD-015 read-only allowlist: the only
+// `moai todo` forms a lane session may run. Everything else — including
+// `next <n>`, which the operator's pick path shares — is refused; the one
+// queue write a lane performs is the promotion inside `moai factory next`
+// (OD-1, operator-authorized for the self-dispatch lane mode).
+var todoLaneReadOnlyVerbs = map[string]bool{
+	"list":    true,
+	"history": true,
+	"why":     true,
+	"pr":      true,
+	"triage":  true,
+}
+
+// todoTreeRoot returns the todo tree's own root for run: the nearest
+// ancestor (run included) that defines this PersistentPreRunE. Inside the
+// todo tree that is the `moai todo` command itself, so the lane guard can
+// tell "the parent invoked bare" from "a subcommand" without closing over
+// the not-yet-defined root variable.
+func todoTreeRoot(run *cobra.Command) *cobra.Command {
+	for p := run; p != nil; p = p.Parent() {
+		if p.PersistentPreRunE != nil {
+			return p
+		}
+	}
+	return run
+}
+
+// todoRefuseLaneMutation guards the todo surface against a lane session
+// (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-015): when lane refusal holds, only
+// the read-only allowlist — and a bare parent render with no arguments — may
+// proceed. The parent-with-args form is refused because it falls through to
+// `add`, a mutation. root is the tree the hook was defined on; run is the
+// command actually executing.
+//
+// @MX:NOTE: [AUTO] SPEC-TODO-CLAIM-LEASE-001 C6 flag-form guard extension:
+// `todo claim` is deliberately NOT exempted from this guard in either form.
+// A bare claim from a lane session and a `--lane <label>` claim while
+// factoryLaneRefusal() holds BOTH refuse with the same text below — the
+// flag form grants nothing, because the refusal predicate assumes nothing
+// about caller identity (REQ-TCL-013 arms 1/3). REQ-SD-015 bare-refusal
+// semantics are unchanged by the claim verb's arrival, and lane self-claim
+// governance remains t1338's decision; this guard is where that decision
+// would land if it ever widens the allowlist.
+func todoRefuseLaneMutation(root, run *cobra.Command, args []string) error {
+	if !factoryLaneRefusal() {
+		return nil
+	}
+	if run == root {
+		if len(args) == 0 {
+			return nil
+		}
+	} else if todoLaneReadOnlyVerbs[run.Name()] {
+		return nil
+	}
+	return fmt.Errorf("%s", todoLaneMutationRefusalText(todoSurfaceName(run)))
+}
+
+// todoLaneMutationRefusalText is the one wording source for the REQ-SD-015
+// queue-mutation refusal, shared by the CLI guard and the MCP todo_add tool
+// so the two surfaces cannot drift (AC-SD-014 refusal equality).
+func todoLaneMutationRefusalText(surface string) string {
+	return fmt.Sprintf("moai %s: refused — %s: a lane session cannot mutate the queue (read-only here: bare todo, list, history, why, pr, triage); a lane takes its next card through moai factory next",
+		surface, factoryLaneBoundarySentinel)
+}
 
 // todoVerbShaped matches a first token that reads as a command verb: one
 // ASCII word, optionally carrying digits, hyphens, or underscores. Bounded in
@@ -501,10 +588,15 @@ func todoVerbNames(cmd *cobra.Command) []string {
 
 // newTodoAddCmd — `moai todo add "<text>"` (REQ-TODO-002): append under the
 // lock, print the issued id and its 1-based queue position. `--pick` (t71)
-// folds the pick into the same locked write.
+// folds the pick into the same locked write. `--classification-file`
+// (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-004) supplies a validated
+// classification judgement — `<path>` or `-` for standard input; it is the
+// ONLY classification injection seam, and the product computes no judgment
+// of its own beyond the deterministic default (plan D.3).
 func newTodoAddCmd() *cobra.Command {
 	var pick bool
 	var force bool
+	var classificationFile string
 	cmd := &cobra.Command{
 		Use:   "add <text>",
 		Short: "Append a card to the backlog queue",
@@ -514,16 +606,29 @@ func newTodoAddCmd() *cobra.Command {
 			if strings.TrimSpace(text) == "" {
 				return fmt.Errorf("todo add: text must be non-empty")
 			}
-			if pick {
-				return runTodoAddPick(cmd, newTodoStore(), text, force)
+			// REQ-TCD-004: the supplied classification is validated BEFORE
+			// the locked write — an out-of-set value or the jev identity is
+			// a usage refusal with nothing written.
+			dec := todoCardDecider
+			if cmd.Flags().Changed("classification-file") {
+				resolved, err := todoDeciderFromClassificationFile(classificationFile)
+				if err != nil {
+					return err
+				}
+				dec = resolved
 			}
-			return runTodoAddAppend(cmd, text, force)
+			if pick {
+				return runTodoAddPick(cmd, newTodoStore(), text, force, dec)
+			}
+			return runTodoAddAppend(cmd, text, force, dec)
 		},
 	}
 	cmd.Flags().BoolVar(&pick, "pick", false,
 		"Append AND mark picked as one locked write, printing the issued id")
 	cmd.Flags().BoolVar(&force, "force", false,
 		"Admit a card the analyser reads as an exact duplicate, recording that it was forced")
+	cmd.Flags().StringVar(&classificationFile, "classification-file", "",
+		"Classification judgement JSON (<path> or - for stdin); validated against the closed value sets before the write")
 	return cmd
 }
 
@@ -531,16 +636,51 @@ func newTodoAddCmd() *cobra.Command {
 // parent's natural-language fallthrough (t69): non-empty guard, locked
 // append, "<id> <position>" stdout line. `--pick` stays add-only — the
 // fallthrough path has no flags.
-func runTodoAddAppend(cmd *cobra.Command, text string, force bool) error {
+func runTodoAddAppend(cmd *cobra.Command, text string, force bool, dec kanban.CardDecider) error {
+	return runTodoAddAppendRoot(resolveTodoQueueRoot(), cmd, text, force, dec)
+}
+
+// runTodoAddAppendRoot is runTodoAddAppend anchored at an explicit root —
+// the shape the MCP todo_add tool calls (REQ-SD-024), so both surfaces run
+// one implementation. The decider argument is the classification seam this
+// invocation resolves; the MCP surface passes the package default.
+func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bool, dec kanban.CardDecider) error {
+	if dec == nil {
+		dec = todoCardDecider
+	}
 	if strings.TrimSpace(text) == "" {
 		return fmt.Errorf("todo add: text must be non-empty")
 	}
+	// Card t1313 (GitHub #1732): the WRITE verb discloses the store
+	// DIVERGENCE the read verbs disclose (SPEC-TODO-STALE-STORE-001
+	// REQ-TSS-001 family) — the response's issued id is a receipt for the
+	// store that ANSWERED, and a divergent project-local store beside it is
+	// exactly the silent split the incident reported (ids issued by one
+	// store, queue read from another). Scoped to the stale-store line only:
+	// the t395 backlog.json note stays read-surface by its operator decision
+	// (TestTodoWriteVerbs_CarryNoDisclosure). Runs before the Mutate, on
+	// stderr; stdout stays the bare "id position" machine line.
+	if err := discloseStaleLocalStores(cmd.ErrOrStderr(), "add",
+		kanban.InspectStaleLocalStores(todoQueueRootForDisclosure())); err != nil {
+		return err
+	}
 	var item kanban.BacklogItem
 	var pos int
-	err := newTodoStore().Mutate(func(rec *kanban.BacklogRecord) error {
+	err := todoStoreAt(root).Mutate(func(rec *kanban.BacklogRecord) error {
 		var mutErr error
 		item, pos, mutErr = appendAnalyzedCard(rec, text, kanban.BacklogStateQueued, force)
-		return mutErr
+		if mutErr != nil {
+			return mutErr
+		}
+		// REQ-TCD-001: the classification is resolved INSIDE the same locked
+		// write — no card becomes visible to a machine selector unclassified,
+		// and no two-step window exists (plan G1).
+		todoApplyClassification(rec, item.ID, todoClassifyInLock(dec, text, cmd.ErrOrStderr()))
+		// REQ-TCD-005/-006: the sort is re-established inside the same locked
+		// write, and the printed position is the sorted 1-based position.
+		rec.SortByClassification()
+		pos = rec.QueuedPosition(item.ID)
+		return nil
 	})
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
@@ -559,12 +699,28 @@ func runTodoAddAppend(cmd *cobra.Command, text string, force bool) error {
 // race that mis-picked t67 on 2026-08-16. The confirmation prints the
 // issued id and the card text prefix; the caller never has to guess what
 // `--pick` just picked.
-func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string, force bool) error {
+func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string, force bool, dec kanban.CardDecider) error {
+	if dec == nil {
+		dec = todoCardDecider
+	}
+	// Card t1313: the same stale-store disclosure the append path carries —
+	// the issued id is a receipt for the store that answered. Scoped to the
+	// t1307 divergence line only (see the append-path comment).
+	if err := discloseStaleLocalStores(cmd.ErrOrStderr(), "add --pick",
+		kanban.InspectStaleLocalStores(todoQueueRootForDisclosure())); err != nil {
+		return err
+	}
 	var item kanban.BacklogItem
 	err := store.Mutate(func(rec *kanban.BacklogRecord) error {
 		var mutErr error
 		item, _, mutErr = appendAnalyzedCard(rec, text, kanban.BacklogStatePicked, force)
-		return mutErr
+		if mutErr != nil {
+			return mutErr
+		}
+		// REQ-TCD-001: same locked write, same seam, same sort duty.
+		todoApplyClassification(rec, item.ID, todoClassifyInLock(dec, text, cmd.ErrOrStderr()))
+		rec.SortByClassification()
+		return nil
 	})
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
@@ -598,10 +754,17 @@ const todoListDefaultLimit = 20
 // structured record is the full read, and a bounded JSON would be the same
 // silent truncation.
 func runTodoList(cmd *cobra.Command, jsonOutput bool, droppedOnly bool, limit int) error {
+	return runTodoListRoot(resolveTodoQueueRoot(), cmd, jsonOutput, droppedOnly, limit)
+}
+
+// runTodoListRoot is runTodoList anchored at an explicit root — the shape
+// the MCP todo_list tool calls (REQ-SD-024), so both surfaces render one
+// implementation.
+func runTodoListRoot(root string, cmd *cobra.Command, jsonOutput bool, droppedOnly bool, limit int) error {
 	if !jsonOutput && limit < 0 {
 		return fmt.Errorf("todo list: --limit must be >= 0 (got %d)", limit)
 	}
-	store := newTodoReadStore()
+	store := todoReadStoreAt(root)
 	// REQ-BJD-002 — probed before the read. stderr only: stdout is what the
 	// foreman reads.
 	_ = discloseQueueLayout(cmd, "todo")
@@ -612,7 +775,11 @@ func runTodoList(cmd *cobra.Command, jsonOutput bool, droppedOnly bool, limit in
 	}
 	out := cmd.OutOrStdout()
 	if jsonOutput {
-		data, err := json.Marshal(rec)
+		// REQ-TCL-014: the JSON face renders through the lease-free
+		// projection — the new columns are excluded from this
+		// serialization entirely, keeping the frozen golden gate
+		// byte-identical and the machine contract lease-blind.
+		data, err := json.Marshal(todoJSONProjection(rec))
 		if err != nil {
 			return err
 		}
@@ -640,7 +807,10 @@ func runTodoList(cmd *cobra.Command, jsonOutput bool, droppedOnly bool, limit in
 		shown = limit
 	}
 	for _, it := range visible[:shown] {
-		_, _ = fmt.Fprintf(out, "%s\t%s\t%s\n", it.ID, it.State, todoPRCell(it.Text))
+		// REQ-TCL-010: a card carrying lease fields exposes them on the
+		// human surface (by=/lease= cells before the text, which stays the
+		// last field); a card without them keeps the historical line shape.
+		_, _ = fmt.Fprintf(out, "%s\t%s\t%s%s\n", it.ID, it.State, todoLeaseCells(it), todoPRCell(it.Text))
 		for _, f := range rec.Findings {
 			if !f.Names(it.ID) {
 				continue

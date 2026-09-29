@@ -161,6 +161,27 @@ func autoPickTargets(rec *kanban.BacklogRecord, lv autoLiveness, root string) (t
 	}
 	for _, it := range rec.Items {
 		if it.State == kanban.BacklogStateQueued {
+			// SPEC-RELATION-PICKUP-FILTER-001 (REQ-RPF-001/002): a queued
+			// card on the blocked side of a live sequencing finding waits
+			// for its predecessor — it is not a pickup candidate while the
+			// finding exists in the live record (the predecessor's done
+			// archives the finding, resolving the block with no relation
+			// bookkeeping). The dead-owner rescue arm above is deliberately
+			// NOT gated on relations (REQ-RPF-006).
+			if blockers := rec.FindingsBlocking(it.ID); len(blockers) > 0 {
+				// REQ-RPF-004: one labelled non-finding per skipped card,
+				// naming the card id, the relation, and the blocking
+				// predecessor id. FindingsBlocking returns only findings
+				// whose blocked side (the waits-on waiter) IS this card, so
+				// the edge's target is always the predecessor.
+				for _, f := range blockers {
+					_, predecessor, _ := kanban.WaitsOnOf(f)
+					notes = append(notes, fmt.Sprintf(
+						"non-finding: %s skipped (relation-blocked: %s %s %s) — waiting for predecessor %s",
+						it.ID, f.SubjectID, f.Relation, f.RelatedID, predecessor))
+				}
+				continue
+			}
 			targets = append(targets, it)
 		}
 	}

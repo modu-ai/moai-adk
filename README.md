@@ -755,7 +755,7 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 | `moai graph <build\|query>` | Build/query the codebase graph (edges.jsonl) — caller lookup, blast radius, milestone cross-checks |
 | `moai cc` / `moai glm` | Claude-only / GLM-only sessions |
 | `moai codex [cli\|status\|app]` | Codex launcher — called with no verb it launches the Codex CLI; `status` prints the readiness readout and starts nothing |
-| `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree maintenance (entering a worktree is the launchers' job) |
+| `moai worktree <sync\|done\|hoist\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree maintenance (entering a worktree is the launchers' job) |
 | `moai session <list\|register\|current>` | Multi-session coordination |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC lifecycle tools |
 | `moai goal <arm\|status\|clear>` | Goal engine CLI |
@@ -764,7 +764,7 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 | `moai preference <list\|decay-scan\|toggle>` | Decision memory management |
 | `moai memory <doctor\|archive>` | Agent memory checks and archiving of stale entries |
 | `moai tokens record` | Per-pool token usage ledger records |
-| `moai clean [--home] [--codex-skills]` | Clear leftovers from past runs. With `--home` it sweeps `~/.moai` inside the allowlist; with `--codex-skills` it removes the `[[skills.config]]` registrations in `~/.codex/config.toml` whose declared path is provably absent. Exactly one scope per invocation. Dry run by default; `--force` to actually delete |
+| `moai clean [--home] [--codex-skills] [--reports-archive]` | Clear leftovers from past runs. With `--home` it sweeps `~/.moai` inside the allowlist; with `--codex-skills` it removes the `[[skills.config]]` registrations in `~/.codex/config.toml` whose declared path is provably absent. With `--reports-archive` it moves aging evidence directories from `.moai/reports/` into `archive/<YYYY-MM>/` (move-only, never deletes; default retention 90 days via `--reports-archive-days`). Exactly one scope per invocation. Dry run by default; `--force` to actually delete |
 | `moai web` | Web console — 6 screens (Overview · Kanban · Specs · Monitor · Settings · Todo), settings tabs |
 
 > All 49 commands: [CLI reference](https://adk.mo.ai.kr/en/cli-reference)

@@ -4,7 +4,7 @@ title: "Retire the interactive-TUI codex factory path (moai codex -k / -f)"
 version: "0.3.0"
 status: completed
 created: 2026-09-26
-updated: 2026-09-27
+updated: 2026-09-29
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -14,6 +14,7 @@ tags: "codex, factory, kanban, retirement, lane-env, handoff, launcher"
 tier: L
 card: t1242
 related_specs: [SPEC-DUAL-HARNESS-RECOVERY-001, SPEC-FACTORY-MIXED-HOOK-001, SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001, SPEC-FACTORY-RUN-RETIRE-001, SPEC-CODEX-LOCALMD-001]
+partially_superseded_by: [SPEC-FACTORY-SELF-DISPATCH-001]
 ---
 
 # SPEC-CODEX-FACTORY-RETIRE-001 — retire the interactive-TUI codex factory path
@@ -37,6 +38,13 @@ related_specs: [SPEC-DUAL-HARNESS-RECOVERY-001, SPEC-FACTORY-MIXED-HOOK-001, SPE
   (AC-017/021/023), RESERVED exemption in AC-020, lead env shape in AC-025, REQ-023
   narrowed to the six foreign paths, lead-authored M5 confirmation file and AC-024
   reclassified as a regression-guard; per `…-review-2.md`.
+- 2026-09-29 · sync-record · manager-spec · **Partial supersession recorded — sync-phase, card
+  t1240.** `SPEC-FACTORY-SELF-DISPATCH-001` narrows two clause groups (its design.md §7):
+  REQ-CFR-002 is narrowed to accept the `-f lane` shape while other factory shapes keep a refusal
+  under the new REQ-SD-004 wording, and REQ-CFR-006/007 are narrowed so the `-f lane` child carries
+  the lane keys while a bare codex keeps the scrub. REQ-CFR-010/020/022 are unchanged. This row
+  records the supersession only: REQ bodies, `version:`, and `status:` are untouched (frontmatter
+  gains `partially_superseded_by` and an `updated:` refresh, nothing else).
 
 ## §0 Governing principle [HARD]
 
