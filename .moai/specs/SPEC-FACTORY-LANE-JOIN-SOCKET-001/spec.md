@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-LANE-JOIN-SOCKET-001
 title: "Factory lane join tolerates run-record absence via verified leader discovery; -l/--lead target flag"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-29
 updated: 2026-09-29
@@ -136,8 +136,9 @@ excluded. Lane slot numbering semantics are preserved unchanged.
   then proceeds through the existing run gate.
 - **REQ-005** (Event-driven): **When** discovery verifies more than one live leader, the launcher
   shall fail closed naming each verified candidate with its run id, and shall not select among
-  them — the same prohibition REQ-014 applies to picking among active runs applies to picking
-  among live leaders, and no run state shall be mutated on that refusal.
+  them — the same prohibition SPEC-FACTORY-RUN-RETIRE-001 REQ-014 applies to picking among
+  active runs applies to picking among live leaders, and no run state shall be mutated on that
+  refusal.
 - **REQ-006** (Unwanted): The discovery path shall not weaken run-resolution fail-closed
   semantics: `ResolveActiveRun` shall remain unchanged; zero active runs with zero verified live
   leaders remains `NO_ACTIVE_FACTORY`; two or more active runs after reconciliation remains
@@ -215,12 +216,13 @@ Alternatives rejected:
 
 ## §D Acceptance criteria
 
-The authoritative AC set lives in `acceptance.md` (16 criteria, AC-001..AC-016, Given-When-Then
+The authoritative AC set lives in `acceptance.md` (17 criteria, AC-001..AC-017, Given-When-Then
 with RED-now / green-path cells). Summary: the defect contrast (AC-001), fail-closed
 preservation (AC-002/003/004), liveness discipline in both directions (AC-005/007), resume
 correctness and owner stamping (AC-006/007/008), operator flag surface (AC-009/010/011), env and
-bind-chain outcome (AC-012), mirror parity (AC-013), preserved invariants (AC-014/015), and
-documentation (AC-016).
+bind-chain outcome (AC-012), mirror parity (AC-013), preserved invariants (AC-014/015),
+documentation (AC-016), and the identity-proof decline branches — cross-project candidate,
+unreadable run-id env (AC-017).
 
 ## §E Exclusions
 
@@ -277,3 +279,13 @@ documentation (AC-016).
   authored from the four-lens research fan-out (workflow run wf_7795d774-54e,
   `.moai/reports/t1330/research-draft.md`, relocated to `research.md`) plus plan-phase
   re-verification in this tree at `68e37864a`.
+- 2026-09-29 — v0.2.0 — manager-spec — plan-audit iter-1 annotation revision (CONDITIONAL PASS
+  0.88, `.moai/reports/t1330/plan-audit.md`). **D1**: REQ-003 attached to AC-001's Requirement
+  cell and a new executable AC-017 added covering both decline branches (cross-project
+  candidate, unreadable run-id env) with a two-leg mutant probe; §B matrix, §C red-range and
+  the §E edge-case cross-links updated; AC count 16 → 17. **D2**: design.md §F scoped down to
+  the discovery path (ordinary lane joins export no leader name today and are unchanged) and
+  AC-012's closing phrase aligned. **D3**: research.md regression anchors refreshed to
+  `factory_test.go:1103` / `:1099-1102` / `factory_mixed_test.go:87`. **D4**: REQ-005's bare
+  `REQ-014` cross-reference given its owning-SPEC prefix. No requirement semantics changed;
+  the `--lead` default recommendation text is untouched pending the operator gate.

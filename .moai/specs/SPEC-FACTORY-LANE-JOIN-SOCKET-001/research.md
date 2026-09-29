@@ -41,9 +41,10 @@ author: manager-spec
    (no weakening, no newest/first pick); rejected alternative (d) forbids widening
    `ResolveActiveRun`. `enterSelectedFactoryRun` is the single join point (pinned by
    SPEC-CODEX-FACTORY-RETIRE-001 design.md:53). Regression pins:
-   `factory_test.go` `TestGLM_FactoryLeadRunIsJoinableByLane` (~:1075), the recording-only
-   leaves-`NO_ACTIVE_FACTORY` test (~:1102), `factory_mixed_test.go:88-91`
-   (`TestFactoryRunSelectionAtomicSlotsAndArgv` asserts the string).
+   `TestGLM_FactoryLeadRunIsJoinableByLane` (`internal/cli/factory_test.go:1103`; the
+   recording-only-leaves-`NO_ACTIVE_FACTORY` guard is its `:1099-1102` comment block) and
+   `TestFactoryRunSelectionAtomicSlotsAndArgv` (`internal/cli/factory_mixed_test.go:87`,
+   asserts the string).
 3. **The defect state was produced deliberately** — auto-retire has no operator undo:
    `ReconcileActiveRuns` (`factory_run_retire.go:264-336`), `retirable()` positive gate with
    `@MX:WARN` "a wrong dead verdict retires a live lead's run and has no operator undo

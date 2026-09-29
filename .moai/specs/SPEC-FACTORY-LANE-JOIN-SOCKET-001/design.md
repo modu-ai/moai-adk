@@ -107,10 +107,11 @@ discovery, it widens the reader behind the same seam. Pre-merge verification is 
   or `--lead` with `--factory-run`, are parse errors. Legacy value check
   (`kanban.IsLegacyLeaderSpelling`) runs at parse time with the canonical-form error message
   shape `refuseLegacyEntryNames` uses (AC-010).
-- Default resolution: empty `--lead` = `kanban.LeaderLabel()`; resolved value exported to the
-  child as `MOAI_KANBAN_LEAD_NAME` (existing envkeys constant) on BOTH the ordinary and the
-  discovery path (REQ-009; today's ordinary path does not export it for lanes — the flag's
-  arrival makes the export unconditional for lane joins, which AC-012 pins).
+- Default resolution: empty `--lead` = `kanban.LeaderLabel()`; the resolved value is exported to
+  the child as `MOAI_KANBAN_LEAD_NAME` (existing envkeys constant) **on the discovery path
+  only** — the scope REQ-009 binds and AC-012 pins. Ordinary lane joins export no leader name
+  today (the export lives on the leader path, `kanban.go:720-721`) and are unchanged by this
+  SPEC.
 - `--name` and `--lead` name different sessions (self vs target); no interaction beyond the
   existing `-f lane` + `--name` conflict.
 

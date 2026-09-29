@@ -22,7 +22,7 @@ pin; criteria carrying no pin of their own bind to it).
 
 | AC | Subject | Requirement | Verification verb | Release-blocking |
 |---|---|---|---|---|
-| AC-001 | Defect contrast: live leader + zero active runs joins | REQ-001 | executed test | yes |
+| AC-001 | Defect contrast: live leader + zero active runs joins | REQ-001/003 | executed test | yes |
 | AC-002 | Zero leader refusal stands | REQ-001/006 | executed test | yes |
 | AC-003 | Explicit run id skips discovery | REQ-006 | executed test | yes |
 | AC-004 | Multi-leader ambiguity fails closed | REQ-005 | executed test | yes |
@@ -38,11 +38,12 @@ pin; criteria carrying no pin of their own bind to it).
 | AC-014 | Parse invariants preserved | REQ-011 | executed test (existing) | yes |
 | AC-015 | Lane auto-assignment unchanged | REQ-011 | executed test (existing) | yes |
 | AC-016 | Docs and help updated | REQ-008/001 | file check | yes |
+| AC-017 | Non-member and unreadable-identity candidates declined | REQ-003 | executed test (two legs) | yes |
 
 ## §C RED-now evidence ledger (tree pin 68e37864a)
 
 Measured during plan phase on this worktree. The new-behavior criteria (AC-001..AC-013,
-AC-016) are red today for one stated reason: **the discovery surface does not exist** — the
+AC-016, AC-017) are red today for one stated reason: **the discovery surface does not exist** — the
 launcher's lane join consults no live-leader source whatsoever, so the refusal is unconditional.
 Three observations establish that jointly:
 
@@ -154,7 +155,9 @@ are regression guards over current behavior, adopted as-is).
 - **When** the child session's env and its SessionStart hook bind are examined,
 - **Then** the env carries `MOAI_KANBAN_ID` = the resumed run id and `MOAI_KANBAN_LEAD_NAME` =
   the target leader's name, and the hook binds the lane peer (generation 1) into that run's
-  broker — the same observable outcome as an ordinary join.
+  broker — the run identity and broker bind an ordinary join produces, with the leader name
+  added by this SPEC on the discovery path (ordinary joins export no leader name and are
+  unchanged).
 
 ### AC-013 — Mirror parity across the join point
 
@@ -187,12 +190,32 @@ are regression guards over current behavior, adopted as-is).
   4 README occurrences describe the record-absence tolerance and the new flag, all locales in
   parity.
 
+### AC-017 — Decline branches of the identity proof fail closed (REQ-003)
+
+- **Given** zero `active` runs and a candidate that is live and carries the targeted leader
+  label but fails one of the remaining REQ-003 facts — leg (a): the candidate's cwd
+  canonicalizes to a **different** project key, so it is not this project's leader; leg (b):
+  the candidate's `MOAI_KANBAN_ID` env **cannot be read** (platform or privilege),
+- **When** the lane join runs (one fixture per leg),
+- **Then** in both legs the candidate is declined, the join fails with `NO_ACTIVE_FACTORY`,
+  and no run row is created or modified. Mutation probe: removing the membership check (leg a)
+  or the readable-identity requirement (leg b) must turn the respective leg red — a mutant
+  that joins across projects or resumes an unverified run id fails here.
+
 ## §E Edge cases
 
 - Leader alive but its run row is `active` already → ordinary gate path, no discovery (discovery
   fires only on the refusal branch).
 - Candidate leader belongs to a **different** canonical project (cwd or run-id env evidence) →
-  declined; zero-leader refusal stands.
+  declined; zero-leader refusal stands (AC-017 leg a).
+- Candidate matches the label but is a lane (`lane-<n>`), not a leader → declined (label
+  evidence is leader-specific).
+- Run row exists `active` but its leader is dead → REQ-007: no discovery involvement (the gate
+  passed on the record); the existing reconciliation machinery owns that case, unchanged.
+- Discovery finds a live leader whose run id row is `retired` **and** another live leader whose
+  row is absent → two verified candidates → AC-004 fail-closed.
+- Unreadable candidate env (platform/privilege) → candidate declined (REQ-003); refusal stands
+  (AC-017 leg b).
 - Candidate matches the label but is a lane (`lane-<n>`), not a leader → declined (label
   evidence is leader-specific).
 - Run row exists `active` but its leader is dead → REQ-007: no discovery involvement (the gate

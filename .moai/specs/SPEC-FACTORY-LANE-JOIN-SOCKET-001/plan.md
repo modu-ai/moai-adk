@@ -15,7 +15,7 @@ author: manager-spec
   auto-dispatch defaulting.
 - **Worktree**: `.moai/worktrees/t1330`, branch `WT-join-lead-socket`, base develop `68e37864a`.
 - **Tier**: L (rationale: run scope ~20+ files across three packages plus a 16-file docs surface;
-  new shared mechanism at the join point; 12 REQ / 16 AC inside Tier L ceilings of 25/25;
+  new shared mechanism at the join point; 12 REQ / 17 AC inside Tier L ceilings of 25/25;
   constitutional-adjacent — it layers beside two settled fail-closed SPEC contracts).
 - **Cycle**: tdd (RED-GREEN-REFACTOR). RED baseline for the new behavior is in `acceptance.md` §C.
 - **Authority chain**: this SPEC layers beside SPEC-FACTORY-MIXED-HOOK-001 REQ-FMH-001 and
