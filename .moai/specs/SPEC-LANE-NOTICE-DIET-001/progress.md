@@ -32,11 +32,117 @@ plan_status: audit-ready
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run-phase tree pin: implementation landed at `f5583700c`; the final probe
+alignment landed at `1958e6a18` (branch `WT-bootstrap-notice-diet`, worktree
+t1335). Every probe below was executed in this run against this tree
+(env-scrubbed per-invocation form). Commit chain: M1 `fd7ae7ed4` (assertion
+sweep RED + SPEC status flip) → M2 `dff54c2b9` (const rewrite GREEN) → M3
+`f5583700c` (locale test extension) → M4 `1958e6a18` (EV-2 probe alignment).
+
+### AC verdict matrix (per verification-claim-integrity §2 attribution)
+
+| AC | Verdict | Command (verbatim) | Observed output | Tree |
+|----|---------|--------------------|-----------------|------|
+| AC-LND-001 | PASS (RED flipped) | `grep -c "plan-phase artifacts to manager-spec" internal/hook/lane_spawn_authority.go` | RED-now: stdout `2`, exit 0 (at 7bef423c0) → post-diet: stdout `0`, exit 1 (at f5583700c) — both occurrences (comment + const) gone | 7bef423c0 → f5583700c |
+| AC-LND-002 | PASS (RED flipped) | `grep -c '"manager-spec"' internal/hook/lane_spawn_authority_test.go` | RED-now: stdout `1`, exit 0 (at 7bef423c0) → post-sweep: stdout `0`, exit 1 (at 1958e6a18); the required-marker list asserts only the six compressed markers incl. both grant-verb markers | 7bef423c0 → 1958e6a18 |
+| AC-LND-003 | PASS (regression-guard re-observed) | `go test ./internal/hook -run '^(TestFactoryWorkerNoticeCarriesSpawnAuthority\|TestKanbanCompanionNoticeCarriesSpawnAuthority\|TestLaneSpawnAuthorityFailOpenPreserved)$' -count=1 -timeout 120s` | `ok  	github.com/modu-ai/moai-adk/internal/hook	0.588s`, exit 0 (at 1958e6a18; post-M2 first observation `0.683s` at f5583700c) | f5583700c / 1958e6a18 |
+| AC-LND-004 | PASS (regression-guard re-observed) | `grep -rc laneSpawnAuthority internal/hook/session_start_factory_i18n.go internal/hook/session_start_kanban_i18n.go` | both files `:0`, exit 1 (no-match exit = green for an absence probe, matching EV-4's recorded semantics) | f5583700c |
+| AC-LND-005 | PASS (M3 deliverable) | `go test ./internal/hook -run '^TestFactoryWorkerNoticeLocaleWordOrders$' -count=1 -timeout 120s` | `ok  	github.com/modu-ai/moai-adk/internal/hook	0.581s`, exit 0 — the test now pins zh label-first order (against the en count-first contrast) and leading/trailing-newline hygiene on `laneJoin`/`laneJoinNoCount`/`companionJoin` across en/ko/ja/zh | f5583700c |
+| AC-LND-006 | PASS (regression-guard re-observed) | `TestLaneSpawnAuthorityFailOpenPreserved` (inside the EV-3 selector) | `ok` (see AC-LND-003 row) — fail-open empty-notice behavior unchanged | 1958e6a18 |
+| AC-LND-007 | PASS with disclosure | `git status --porcelain -- internal cmd pkg` | empty, exit 0 at f5583700c; the run-phase diff surface is exactly `lane_spawn_authority.go`, `lane_spawn_authority_test.go`, `session_start_factory_test.go` — see Disclosure 2 below (the third path is beyond acceptance.md's whitelist enumeration but inside plan.md §F M3's named deliverable) | f5583700c |
+
+### Quality gates
+
+- `go vet ./internal/hook/` — exit 0, no output (at f5583700c).
+- `GOOS=windows GOARCH=amd64 go build ./internal/hook/` — `windows build ok`,
+  exit 0 (at f5583700c).
+- Blast-radius sweep `go test ./internal/hook -run 'Notice\|SpawnAuthority'
+  -count=1 -timeout 300s` — `PASS` / `ok ... 24.750s`, exit 0 (at 1958e6a18):
+  every notice-composition test in the package, factory and kanban, lead and
+  lane, is green on the compressed authority.
+- Full package suite `go test ./internal/hook/ -count=1 -timeout 900s` — FAIL
+  after 452.970s on exactly 2 tests: `TestContractRoleScopedAllowWithoutLaneMarker`
+  (contract_sign_guard_test.go) and `TestHMPSourceGuardGoLiterals`
+  (hmp_source_guard_test.go, hits in `contract_sign_guard.go:167,283` +
+  `shell_tool.go:19`). **Not introduced by this work**: both subject files are
+  outside this run's diff surface (`git diff 7bef423c0..HEAD --name-only`
+  lists none of them), and the HMP SourceGuard red is already tracked by card
+  t1350 at this base tree (recorded in 7bef423c0's own commit message).
+  Recorded as pre-existing baseline red, not an AC failure of this SPEC.
+
+### E8 — verbatim pre-GREEN evidence (TDD)
+
+M1 landed the sweep as a literal RED against the unchanged const (observed
+before M2, at fd7ae7ed4's working-tree state):
+
+```
+--- FAIL: TestFactoryWorkerNoticeCarriesSpawnAuthority (0.00s)
+    lane_spawn_authority_test.go:53: factory worker notice re-inlines the specialist mapping ("manager-spec"):
+    lane_spawn_authority_test.go:53: factory worker notice re-inlines the specialist mapping ("manager-develop"):
+    lane_spawn_authority_test.go:53: factory worker notice re-inlines the specialist mapping ("manager-docs"):
+    lane_spawn_authority_test.go:53: factory worker notice re-inlines the specialist mapping ("plan-phase artifacts to"):
+--- FAIL: TestKanbanCompanionNoticeCarriesSpawnAuthority (0.00s)
+    lane_spawn_authority_test.go:77: kanban companion notice re-inlines the specialist mapping ("manager-spec"):
+    ... (same four absence hits on the kanban twin)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.575s
+```
+
+(The rendered-notice tails are elided here for brevity; each failure printed
+the full long-form authority as its got-value. Red for the right reason: the
+const still carried the inline mapping when this run was captured.)
+
+### Deviations and disclosures
+
+1. **M1 literal-RED expectation.** plan.md §F M1 expected the compressed
+   marker tests to be literal RED against the unchanged const. Observed: they
+   PASSED — the long-form const is a superset containing every compressed
+   marker as a substring. The sweep therefore ALSO added absence assertions
+   (`manager-spec` / `manager-develop` / `manager-docs` /
+   `plan-phase artifacts to` must not appear in the rendered notice), which
+   produce the honest literal RED (captured above) and pin AC-LND-001 at the
+   notice-output level in addition to the EV-1 source grep. The pointer-only
+   stub mutant remains killed by the two grant-verb markers (audit D2).
+2. **EV-5 whitelist enumeration gap (plan-phase artifact defect).**
+   acceptance.md's EV-5 whitelist names `lane_spawn_authority.go`,
+   `lane_spawn_authority_test.go`, and the two i18n files "(only if M3
+   trims)" — but plan.md §F M3's own deliverable extends
+   `TestFactoryWorkerNoticeLocaleWordOrders`, which lives in
+   `session_start_factory_test.go`, and the dispatch change surface names the
+   same file. That test file is therefore in the sanctioned scope despite the
+   whitelist omission; REQ-LND-008 (out-of-scope surfaces untouched) holds —
+   no leader-notice i18n field, `session_stale_run.go`, launcher, or
+   `internal/cli/` file was modified. The whitelist enumeration should be
+   reconciled at sync; manager-develop is barred from editing acceptance.md
+   body and reports the gap instead.
+3. **EV-2 probe alignment (1958e6a18).** The M1 absence sweep initially
+   carried the forbidden names as interpreted Go string literals, so the EV-2
+   probe still hit the test file (2 hits). The forbidden-substring literals
+   were switched to raw strings — assertions byte-identical (absence), probe
+   honestly reads 0 hits / exit 1. Comments in the test name the constraint.
+4. **Join-line trim (M3 verification item).** No trim made: all 4 locales'
+   join lines are already single-sentence core form; `%[n]` pins, the
+   count/no-count split, and the 4-locale set are untouched. Outcome recorded
+   per plan.md §F M3: "no change needed".
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-29T21:40:00+09:00
+run_commit_sha: "1958e6a18"
+run_status: complete
+ac_pass_count: 7
+ac_fail_count: 0
+preserve_list_post_run_count: 4  # leader-notice i18n fields (both tables), laneNextCardRule/laneOwnedCardRule, session_stale_run.go, launcher+internal/cli — all byte-identical (EV-5 probe + diff surface)
+l44_pre_commit_fetch: n/a  # card worktree lane; no push per dispatch, leader batch-pushes
+l44_post_push_fetch: n/a   # same — no push performed by this run
+new_warnings_or_lints_introduced: 0  # go vet clean; golangci-lint deferred to CI verdict (lane lint uses CI golangci version)
+cross_platform_build:
+  windows_amd64: ok
+total_run_phase_files: 3  # lane_spawn_authority.go, lane_spawn_authority_test.go, session_start_factory_test.go
+m1_to_mn_commit_strategy: per-milestone commits (M1 fd7ae7ed4 / M2 dff54c2b9 / M3 f5583700c / M4 1958e6a18)
+```
+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
