@@ -53,6 +53,26 @@ carry the tokens; the sweep counts exactly 2 tests (the anchored selector), so
 the green after M2 will not be an empty sweep. Full output also persisted at
 `/tmp/t1340-red.log` in this run.
 
+### M2 — skill body + mirror (GREEN, sentinel sweep, neutrality)
+
+Deliverables: `internal/template/templates/.claude/skills/moai-jev-skill-suggestion/SKILL.md`
+(template source, authored first) + `.claude/skills/moai-jev-skill-suggestion/SKILL.md`
+(local copy, `cp`-mirrored). 115 lines, English body, `user-invocable: true`.
+
+| # | Claim | Command | Observed output (verbatim) | Exit | Tree |
+|---|-------|---------|---------------------------|------|------|
+| G1 | Both copies byte-identical | `cmp .claude/skills/.../SKILL.md internal/template/templates/.claude/skills/.../SKILL.md` | (no output — identical) | 0 | this run |
+| G2 | Guard test green after deliverables (RED→GREEN pair closes) | `go test ./internal/cli/ -run '^TestJevSkillSuggestionSkill(CarriesNoCallPath\|CopiesStayIdentical)$' -count=1` | `ok  	github.com/modu-ai/moai-adk/internal/cli	0.846s` (final re-run after the one sentinel prose fix; first green was `1.263s`) | 0 | this run |
+| G3 | All 13 sentinels (AC-JSK-004..007) ≥ 1 on both copies | `grep -c` loop over the sentinel set × 2 copies | each sentinel → `1` (both copies identical counts; `NO SIGNAL` → `2`, `function-hook` ci → `1`, `a signal a person` → `1` after one prose fix) | 0 per grep | this run |
+| G4 | Neutrality + withdrawn-name absent (AC-JSK-003) on both copies | `grep -Ec 'SPEC-...-\|REQ-...-\|t1340\|[0-9a-f]{40}\|20[0-9]{2}-...' <copy>` + `grep -c 'jev-suggest' <copy>` | `0` / `0` per copy (grep -Ec zero-hit exits 1 — code and count recorded as a pair) | 1 per grep | this run |
+
+One sentinel prose fix during M2: the first body draft carried "a labelled
+model **signal a person** reads", which misses the AC-JSK-004 sentinel
+`a signal a person` for want of its leading article; rephrased to "A
+suggestion is a signal a person reads: a labelled model answer…" in the
+template source first, then re-mirrored (`cp`) and re-verified — identity,
+sentinels, and guard test all re-observed after the fix.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — manager-develop 소관>_
