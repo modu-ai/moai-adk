@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-ROLE-AUDIT-ROOT-001
 title: "codex_role_audit caller-tree verification repair — presented-root registration check replaces the server-cwd equality, optional CLI role-audit verb, codex_task project_root"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-09-29
 updated: 2026-09-29
@@ -16,7 +16,6 @@ card: t1324
 related_specs:
   - SPEC-CODEX-AUDIT-READONLY-001  # owns the read-only role launcher this SPEC repairs the root gate of
   - SPEC-CODEX-AUDIT-GATE-AXES-001
-  - SPEC-CODEX-AUDIT-READONLY-002
 ---
 
 # SPEC-CODEX-ROLE-AUDIT-ROOT-001
@@ -24,10 +23,11 @@ related_specs:
 ## HISTORY
 
 - v0.1.0 (2026-09-29): plan-phase authoring by manager-spec (card t1324, Class C). Cause analysis was lead-verified before delegation; this SPEC designs the repair, not the investigation.
+- v0.1.1 (2026-09-29): plan-audit iter1 repairs (D1-D6) — D1 marker resolved in place by measured caller sweep (super-advisor is the only shipped caller; its update requirement added to M2), D2 trace map aligned to acceptance.md §D.2, D3 AC-003 gating observable added, D4 dangling related_specs entry removed, D5 live-stdio-session requirement added to M0 pre-flight, D6 anchor citation aligned to 293-338.
 
 ## §A 배경과 목적
 
-`codexAuditValidateRoot`(`internal/cli/codex_audit_launch.go:291-309`, HEAD `7ca01df35`)은 요청된 `root`가 심볼릭 링크 해석 뒤 `callerTop` — `callerDir`에서 실행한 `git rev-parse --show-toplevel` — 과 **동일할 때만** 받는다. MCP stdio 호출에서는 `callerDir`가 요청 세션의 cwd가 아니라 MCP 서버 프로세스의 고정 cwd(통상 primary 체크아웃)이므로, 서버가 primary에서 시작된 한 카드 워크트리를 소유한 레인도 자기 트리를 제시하면 거부된다. 관측된 거부문: `<root> is not the caller's own worktree (/Users/goos/MoAI/moai-adk-go)`. 주석이 서술하는 설계 의도("the caller's own worktree; a sibling worktree or the primary checkout is refused even though it is registered")는 세션 신원을 알 수 없는 공유 서버에서 **불가능한 계약**이다.
+`codexAuditValidateRoot`(`internal/cli/codex_audit_launch.go:293-338`, HEAD `7ca01df35`)은 요청된 `root`가 심볼릭 링크 해석 뒤 `callerTop` — `callerDir`에서 실행한 `git rev-parse --show-toplevel` — 과 **동일할 때만** 받는다. MCP stdio 호출에서는 `callerDir`가 요청 세션의 cwd가 아니라 MCP 서버 프로세스의 고정 cwd(통상 primary 체크아웃)이므로, 서버가 primary에서 시작된 한 카드 워크트리를 소유한 레인도 자기 트리를 제시하면 거부된다. 관측된 거부문: `<root> is not the caller's own worktree (/Users/goos/MoAI/moai-adk-go)`. 주석이 서술하는 설계 의도("the caller's own worktree; a sibling worktree or the primary checkout is refused even though it is registered")는 세션 신원을 알 수 없는 공유 서버에서 **불가능한 계약**이다.
 
 카드가 추가로 확인한 축소 표면: (1) `codex_task`에는 `project_root` 인수가 없어 primary에 고정돼 있다; (2) CLI에는 role-audit 동사가 없어(`moai codex audit` 만 존재) 레인이 MCP를 거치지 않고 감사를 직접 실행할 경로가 없다.
 
@@ -46,7 +46,7 @@ related_specs:
 
 ## §D 추적
 
-- REQ-001 → AC-001 (M1에서 뒤집힘), REQ-002/REQ-005 후반 → AC-003 (M2), REQ-004 → AC-002 (M3), REQ-003/REQ-006 → AC-004..AC-007 (regression-guard).
+- REQ-001→AC-001 · REQ-002→AC-006 · REQ-003→AC-004/AC-005 · REQ-004→AC-002 · REQ-005→AC-003 · REQ-006→AC-007 (acceptance.md §D.2와 동일; 플립 마일스톤은 각 AC의 green-path 셀 참조).
 - RED 기준선의 측정 귀속은 acceptance.md 각 셀에 명시한다 — 리드 검증 실측(카드 본문)과 본 워크트리 직접 측정(이진 빌드 `@7ca01df35`)을 구분한다.
 - 계약 문서 정합: `.claude/rules/moai/core/moai-mcp-tools.md` § The `project_root` input — 본 SPEC은 그 규약을 role-audit 표면으로 확장한다. 규약 문서 갱신은 sync-phase 소관이다.
 

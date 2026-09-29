@@ -22,7 +22,7 @@ Two-cell discipline (verification-completeness rule): every release-blocking cri
 
 - **RED-now** `[local]` — command: MCP stdio `tools/list` against `/tmp/t1324-moai mcp-server`; verbatim property lists:
   `codex_task -> ['background', 'prompt', 'resume_last', 'thread_id', 'work_key', 'write']` (no `project_root`); exit code `0`; tree `7ca01df35`.
-- **Green path** — M2 flips: `project_root` appears in the schema and is gated by the same validator; an argument-less request returns `isError: true` naming the missing argument.
+- **Green path** — M2 flips: `project_root` appears in the schema and an argument-less request returns `isError: true` naming the missing argument. The gating arm carries its own observable (defeats the schema-only mutant that adds the argument without wiring the validator): a `codex_task` request whose `project_root` resolves to a path outside the serving checkout's repository returns `isError: true` carrying the verbatim refusal fragment `belongs to a different repository` (`codex_audit_launch.go:322`).
 
 ### AC-004 — Same-repository refusals survive (regression-guard)
 
