@@ -506,6 +506,14 @@ func factoryNextRecordAndClaim(ctx context.Context, db *homestate.FactoryDB, roo
 	if err != nil {
 		return factoryNextClaimRefused(err)
 	}
+	// RecordPicked returns the existing row unchanged when fields are empty —
+	// whatever state it is in (card_picked.go). Both callers are queue-picked
+	// arms, so a non-picked row means another lane recorded and advanced the
+	// card between the ListCards snapshot and the queue read: a race to
+	// re-select, not a fresh picked row to claim.
+	if fresh.State != homestate.CardPicked {
+		return homestate.Card{}, false, true, nil
+	}
 	return factoryNextClaim(ctx, db, root, runID, fresh, lane)
 }
 

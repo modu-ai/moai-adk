@@ -270,6 +270,63 @@ func TestFactoryNextParallelizableConcurrentLeases(t *testing.T) {
 	}
 }
 
+// TestFactoryNextRecordAndClaimRaceOnLeasedRow — the CI interleaving from
+// run 36577159420, pinned by construction instead of goroutines: lane-1
+// leases t1 behind lane-2's back (between the ListCards snapshot and the
+// queue-picked read), then lane-2's b2 arm calls RecordAndClaim on the
+// already-leased card. RecordPicked returns the existing row unchanged when
+// fields are empty — whatever state it is in — and the claimer must read
+// that as "another lane took it", a race to re-select, not a hard error.
+func TestFactoryNextRecordAndClaimRaceOnLeasedRow(t *testing.T) {
+	root, store := fcFixture(t)
+	fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStateQueued)
+	fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
+	fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
+	sdRegisterLane(t, root, "lane-1")
+	sdRegisterLane(t, root, "lane-2")
+
+	// The other lane's progress, exactly as the CI interleaving left it:
+	// t1 recorded and driven picked → assigned → leased (v3) behind
+	// lane-2's back, while the queue item still reads picked.
+	db := fcOpen(t, root)
+	ctx := context.Background()
+	picked, err := db.RecordPicked(ctx, fcRun, "t1", homestate.CardFields{}, "factory-next", factoryCardNow())
+	if err != nil {
+		t.Fatalf("record t1: %v", err)
+	}
+	assigned, err := db.Transition(ctx, homestate.TransitionRequest{
+		RunID: fcRun, CardID: "t1", To: homestate.CardAssigned,
+		ExpectedVersion: picked.Version, Actor: "factory-next", Owner: "lane-1", Now: factoryCardNow(),
+	})
+	if err != nil {
+		t.Fatalf("assign t1: %v", err)
+	}
+	if _, err := db.Transition(ctx, homestate.TransitionRequest{
+		RunID: fcRun, CardID: "t1", To: homestate.CardLeased,
+		ExpectedVersion: assigned.Version, Actor: "lane-1", Now: factoryCardNow(),
+	}); err != nil {
+		t.Fatalf("lease t1: %v", err)
+	}
+
+	// lane-2 claims t1 through the b2 arm: no error, a race signal.
+	card, owned, raced, err := factoryNextRecordAndClaim(ctx, db, root, fcRun, "t1", "lane-2")
+	if err != nil {
+		t.Fatalf("RecordAndClaim on an already-leased card: %v", err)
+	}
+	if owned || raced == false {
+		t.Fatalf("RecordAndClaim = (%s, owned=%v, raced=%v), want no ownership and raced=true", card.CardID, owned, raced)
+	}
+
+	// The re-select leases the OTHER card, not the taken one.
+	leased, owned2, err := factoryNextLeaseOnce(ctx, root, fcRun, "lane-2")
+	if err != nil {
+		t.Fatalf("re-select after race: %v", err)
+	}
+	if !owned2 || leased.CardID != "t2" || leased.LeaseHolder != "lane-2" {
+		t.Fatalf("lane-2 holds %s holder=%s owned=%v after re-select, want t2/lane-2", leased.CardID, leased.LeaseHolder, owned2)
+	}
+}
+
 // TestFactoryNextDuplicateDispatchGuard — AC-TCD-010 (regression guard over
 // the t1240 version-check machinery): two lanes racing the SAME queued card
 // end with exactly one holder; the loser converges elsewhere or no-card.
