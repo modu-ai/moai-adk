@@ -2,9 +2,9 @@
 id: SPEC-LEAD-AUTOPUSH-001
 title: "Lead develop push automation — config-carried 20-commit threshold trigger + green-conditional (docs surface)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-29
-updated: 2026-09-29
+updated: 2026-09-30
 author: manager-spec
 priority: High
 phase: "v3.2.0 target"
