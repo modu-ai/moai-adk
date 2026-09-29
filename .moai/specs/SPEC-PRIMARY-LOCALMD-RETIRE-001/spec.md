@@ -2,7 +2,7 @@
 id: SPEC-PRIMARY-LOCALMD-RETIRE-001
 title: "Retire the primary checkout's legacy CLAUDE.local.md — preserve under .moai/state, land as one policy commit"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-29
 updated: 2026-09-29
 author: manager-spec

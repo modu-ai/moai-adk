@@ -120,7 +120,21 @@ m1_to_mn_commit_strategy: M1 = orchestrator session-level primary act (c8f245c2c
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+sync_status: completed
+sync_close_at: 2026-09-29T15:35+09:00
+sync_commit_sha: pending-backfill-sync
+b12_self_test_a: pre-emission grep -c 'SPEC-PRIMARY-LOCALMD-RETIRE-001' CHANGELOG.md → 0 (no duplicate entry)
+b12_self_test_b: distinct AC count in acceptance.md = 8 (grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' | sort -u | wc -l) — matches run-phase 8/8 PASS matrix; CHANGELOG entry references 8 AC
+b12_self_test_c: all paths claimed in the CHANGELOG entry verified to exist via ls (.moai/specs/SPEC-PRIMARY-LOCALMD-RETIRE-001/, AGENTS.local.md §0.4 in-tree, .moai/reports/t1317/m1-primary-act.md is a primary-checkout artifact recorded by run phase, not re-verified from this worktree — primary access out of lane scope)
+docs_surface_decision: CHANGELOG — YES. Evidence: `grep -n "AGENTS.local.md\|CLAUDE.local.md" CHANGELOG.md | head -5` shows the repo convention logs maintainer-local instruction-file changes (SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001 line 33, SPEC-CODEX-LOCALMD-001 line 85, SPEC-INSTRUCTION-FILES-UNIFY-001 line 118). README/docs-site: out of scope — this card touched no product surface (no CLI behavior, no template output, no user-facing artifact; one sentence in AGENTS.local.md §0.4 develop-side plus the primary checkout's local `main` policy commit c8f245c2c landed by the orchestrator).
+mx_validation: trivial PASS — sync diff touches AGENTS.local.md + SPEC artifacts only; no Go code, no exported functions, no goroutines, no complexity surface; no @MX annotation surface exists.
+frontmatter_status_transitions:
+  spec.md: in-progress → implemented → completed (merged into this single sync commit, 3-phase close)
+  updated: refreshed to 2026-09-29 (unchanged — already today)
+canary_compliance_check:
+  close_subject_full_id: PASS — `chore(SPEC-PRIMARY-LOCALMD-RETIRE-001): sync-phase — 3-phase close (card t1317)` names exactly one full SPEC-ID
+  backfill_exemption: sync_commit_sha uses the sanctioned `pending-backfill-sync` placeholder (D3 — a commit cannot cite its own SHA); backfill in a follow-up commit
+  staging: explicit pathspec only — .moai/specs/SPEC-PRIMARY-LOCALMD-RETIRE-001/{spec,progress}.md + CHANGELOG.md
 
 ## §F Phase 4 Mode Selection
 
