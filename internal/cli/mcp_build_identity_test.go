@@ -626,7 +626,7 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 	// binary identity with source freshness, so binlag.Evaluate is not the
 	// correct owner for either check.
 	//
-	// todo_autodone.go:340 is the auto-done scan's DECLARED addition
+	// todo_autodone.go:349 is the auto-done scan's DECLARED addition
 	// (SPEC-TODO-LAND-AUTO-DONE-001): it re-asks the recorded delivering
 	// SHA's reachability from the landed ref at scan time — the same
 	// referential-integrity question about two operator-named revisions the
@@ -652,7 +652,7 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		"home_state_coverage.go:272": true,
 		"mcp_review_material.go:95":  true,
 		"todo_landed.go:231":         true,
-		"todo_autodone.go:340":       true,
+		"todo_autodone.go:349":       true,
 	}
 	got := map[string]bool{}
 	entries, err := os.ReadDir(".")
