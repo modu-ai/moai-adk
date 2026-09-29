@@ -179,7 +179,7 @@ func TestFR_AC024_CharacterizeGTDDispatch(t *testing.T) {
 	if cardID != "t1" {
 		t.Fatalf("published card = %q, want t1", cardID)
 	}
-	want := []fcRuntimeRow{{"run-gtd", "t1", "worker-2", "picked", "card.assigned"}}
+	want := []fcRuntimeRow{{"run-gtd", "t1", "lane-2", "picked", "card.assigned"}}
 	if got := fcRuntimeRows(t, store); len(got) != 1 || got[0] != want[0] {
 		t.Fatalf("runtime rows = %+v, want %+v", got, want)
 	}
@@ -193,7 +193,7 @@ func TestFR_AC024_CharacterizeGTDDispatch(t *testing.T) {
 func TestFR_AC025_CharacterizeGoalDispatch(t *testing.T) {
 	root, store := todoFixture(t)
 	op, cardID, _ := fcGoalDispatch(t, root, store, "characterize goal dispatch", "fr-char-goal", "018f4f4a-7b7c-7a11-8f4d-f22222222222", "worker-3", "auto-run-2")
-	want := []fcRuntimeRow{{"auto-run-2", cardID, "worker-3", "picked", "card.assigned"}}
+	want := []fcRuntimeRow{{"auto-run-2", cardID, "lane-3", "picked", "card.assigned"}}
 	if got := fcRuntimeRows(t, store); len(got) != 1 || got[0] != want[0] {
 		t.Fatalf("runtime rows = %+v, want %+v", got, want)
 	}

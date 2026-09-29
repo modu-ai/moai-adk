@@ -162,7 +162,7 @@ func TestFR_AC024_GTDDispatchMirrorsFactoryRecord(t *testing.T) {
 	if c, ok := fcCardIn(t, root, run, d1); !ok || c.State != homestate.CardAssigned || c.OwnerLabel != "worker-2" {
 		t.Fatalf("factory record for %s = %+v (present=%v), want assigned to worker-2", d1, c, ok)
 	}
-	if got := fcRuntimeRows(t, store); len(got) != 1 || got[0] != (fcRuntimeRow{run, d1, "worker-2", "picked", "card.assigned"}) {
+	if got := fcRuntimeRows(t, store); len(got) != 1 || got[0] != (fcRuntimeRow{run, d1, "lane-2", "picked", "card.assigned"}) {
 		t.Fatalf("runtime rows = %+v", got)
 	}
 
@@ -175,7 +175,7 @@ func TestFR_AC024_GTDDispatchMirrorsFactoryRecord(t *testing.T) {
 		t.Fatalf("stderr lacks %s:\n%s", fcUnavailableTag, stderr)
 	}
 	rows := fcRuntimeRows(t, store)
-	if len(rows) != 2 || rows[1] != (fcRuntimeRow{run, d3, "worker-2", "picked", "card.assigned"}) {
+	if len(rows) != 2 || rows[1] != (fcRuntimeRow{run, d3, "lane-2", "picked", "card.assigned"}) {
 		t.Fatalf("runtime rows after failed mirror = %+v", rows)
 	}
 	log := fcUnavailableLog(t, root)
@@ -216,7 +216,7 @@ func TestFR_AC025_GoalDispatchMirrorsFactoryRecord(t *testing.T) {
 	if c, ok := fcCardIn(t, rootA, "auto-run-3", d2); !ok || c.State != homestate.CardAssigned || c.OwnerLabel != "worker-3" {
 		t.Fatalf("factory record for %s = %+v (present=%v), want assigned to worker-3", d2, c, ok)
 	}
-	if got := fcRuntimeRows(t, storeA); len(got) != 1 || got[0] != (fcRuntimeRow{"auto-run-3", d2, "worker-3", "picked", "card.assigned"}) {
+	if got := fcRuntimeRows(t, storeA); len(got) != 1 || got[0] != (fcRuntimeRow{"auto-run-3", d2, "lane-3", "picked", "card.assigned"}) {
 		t.Fatalf("runtime rows = %+v", got)
 	}
 	fcAssertGoalDispatchOp(t, op, sessionA)
@@ -228,7 +228,7 @@ func TestFR_AC025_GoalDispatchMirrorsFactoryRecord(t *testing.T) {
 	opB, d4, stderr := fcGoalDispatch(t, rootB, storeB, "mirror goal dispatch failing", "fr-goal-2", sessionB, "worker-3", runB)
 	restore()
 	fcAssertGoalDispatchOp(t, opB, sessionB)
-	if got := fcRuntimeRows(t, storeB); len(got) != 1 || got[0] != (fcRuntimeRow{runB, d4, "worker-3", "picked", "card.assigned"}) {
+	if got := fcRuntimeRows(t, storeB); len(got) != 1 || got[0] != (fcRuntimeRow{runB, d4, "lane-3", "picked", "card.assigned"}) {
 		t.Fatalf("runtime rows after failed mirror = %+v", got)
 	}
 	if !strings.Contains(stderr, fcUnavailableTag) {

@@ -390,6 +390,7 @@ func TestSD_AC015_LaneQueueAllowlistWalk(t *testing.T) {
 		"relate":      {"t1", "t2"},
 		"unrelate":    {"1"},
 		"why":         {"t1"},
+		"show":        {"t1"},
 		"pr":          nil,
 		"landed":      {"t1"},
 		"auto-done":   nil,
@@ -397,7 +398,7 @@ func TestSD_AC015_LaneQueueAllowlistWalk(t *testing.T) {
 		"history":     nil,
 		"triage":      {"t1"},
 	}
-	allow := map[string]bool{"list": true, "history": true, "why": true, "pr": true, "triage": true}
+	allow := map[string]bool{"list": true, "history": true, "why": true, "pr": true, "triage": true, "show": true}
 
 	todoRoot := newTodoCmd()
 	walked := 0

@@ -513,7 +513,9 @@ func TestGTDAutonomyEndToEndProductionCLIWithGovernanceReceipts(t *testing.T) {
 		t.Fatalf("record=%+v err=%v", record, err)
 	}
 	assignment := record.Runtime.Assignments[0]
-	if assignment.CardID != record.Items[0].ID || assignment.OwnerLabel != "worker-10" || assignment.RunID != "auto-run-1" {
+	// REQ-TSP-052 (card t1349): assignments store the canonical vocabulary —
+	// the legacy-seeded "worker-10" lane records as "lane-10".
+	if assignment.CardID != record.Items[0].ID || assignment.OwnerLabel != "lane-10" || assignment.RunID != "auto-run-1" {
 		t.Fatalf("assignment=%+v card=%+v", assignment, record.Items[0])
 	}
 }

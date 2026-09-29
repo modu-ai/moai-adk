@@ -242,8 +242,13 @@ func newGTDEngageCmd() *cobra.Command {
 				if err != nil {
 					return false, err
 				}
+				// card t1349 integration repair: assignments are stored through
+				// the REQ-TSP-052 canonical write normalization, so the readback
+				// maps the caller's lane label onto the same canonical form
+				// before comparing — a legacy-spelled lane keeps its authority.
+				want := kanban.NormalizeOwnerLabel(lane)
 				for _, a := range record.Runtime.Assignments {
-					if a.RunID == runID && a.CardID == result.CardID && a.OwnerLabel == lane {
+					if a.RunID == runID && a.CardID == result.CardID && a.OwnerLabel == want {
 						return true, nil
 					}
 				}

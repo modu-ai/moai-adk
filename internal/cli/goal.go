@@ -625,6 +625,14 @@ func publishDependenciesReady(ctx context.Context, store *kanban.BacklogStore, i
 }
 
 func authoritativeDispatchEvidence(ctx context.Context, store *kanban.BacklogStore, root, sessionID, itemID, cardID, lane, runID string, expectedRevision int64) (map[string]string, error) {
+	// card t1349 integration repair: stored assignments carry the canonical
+	// vocabulary only (REQ-TSP-052 write normalization), so the ASSIGNMENT
+	// comparison maps the caller's lane label onto the same canonical form —
+	// a legacy-spelled lane keeps its dispatch authority. The slot-lease
+	// lookup keeps the caller's spelling: the lease registry keys on the
+	// label the caller acquired with, which the vocabulary migration does
+	// not touch.
+	canonicalLane := kanban.NormalizeOwnerLabel(lane)
 	item, err := kanban.LoadGTDItem(ctx, store, itemID)
 	if err != nil {
 		return nil, err
@@ -643,10 +651,10 @@ func authoritativeDispatchEvidence(ctx context.Context, store *kanban.BacklogSto
 		}
 	}
 	for _, assignment := range record.Runtime.Assignments {
-		if assignment.CardID == cardID && (assignment.RunID != runID || assignment.OwnerLabel != lane) {
+		if assignment.CardID == cardID && (assignment.RunID != runID || assignment.OwnerLabel != canonicalLane) {
 			laneOwnerFree = false
 		}
-		if assignment.OwnerLabel == lane && assignment.CardID != cardID {
+		if assignment.OwnerLabel == canonicalLane && assignment.CardID != cardID {
 			laneOwnerFree = false
 		}
 	}
@@ -859,8 +867,13 @@ func runGoalMissionOperation(cmd *cobra.Command, sessionID string, jsonOutput bo
 			if err != nil {
 				return false, err
 			}
+			// card t1349 integration repair: assignments are stored through
+			// the REQ-TSP-052 canonical write normalization, so the readback
+			// maps the caller's lane label onto the same canonical form
+			// before comparing — a legacy-spelled lane keeps its authority.
+			want := kanban.NormalizeOwnerLabel(gitOpts.Lane)
 			for _, a := range record.Runtime.Assignments {
-				if a.RunID == gitOpts.RunID && a.CardID == linkedCardID && a.OwnerLabel == gitOpts.Lane {
+				if a.RunID == gitOpts.RunID && a.CardID == linkedCardID && a.OwnerLabel == want {
 					return true, nil
 				}
 			}

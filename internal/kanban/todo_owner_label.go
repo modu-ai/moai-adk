@@ -50,6 +50,16 @@ func canonicalOwnerLabel(label string) string {
 	}
 }
 
+// NormalizeOwnerLabel exposes the canonical-vocabulary mapper to callers
+// outside the store (card t1349 integration repair): the mission dispatch
+// authority compares a caller-supplied lane label against stored
+// assignments, so the comparison side maps through the same canonical form
+// the REQ-TSP-052 write normalization records. Idempotent — mapping a
+// canonical label is a no-op.
+func NormalizeOwnerLabel(label string) string {
+	return canonicalOwnerLabel(label)
+}
+
 // migrateOwnerLabelVocabularyTx relabels every legacy owner_label row
 // inside the caller's transaction — the locked-write discipline: the
 // migration commits atomically with whatever write it rides, and a failure
