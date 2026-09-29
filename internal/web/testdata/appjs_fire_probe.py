@@ -83,7 +83,9 @@ import urllib.request
 # loses a registration group, the Go driver's inventory cross-check goes red
 # and this manifest must be updated — a stale manifest is never silently green.
 
-INVENTORY_TOTAL = 13
+# The three agent-settings groups (profile matrix, tier radio, haiku lock) left
+# with that tab (SPEC-AGENT-MODEL-INHERIT-001), taking the total from 13 to 10.
+INVENTORY_TOTAL = 10
 
 # Reversible effect kinds a manifest entry may exercise unconditionally
 # (REQ-AFG-012). Save- and submit-family controls are outside this family: the
@@ -231,27 +233,12 @@ EXCLUSIONS = [
         "reason": "persisting side effect: writes the locale to browser localStorage; excluded by default per REQ-AFG-012 / plan §C",
     },
     {
-        "line_group": 406,
-        "selector": 'select[name^="agentfm."]',
-        "reason": "unsaved form dirty-state mutation (radio/check state) — effect kind outside the reversible allowlist",
-    },
-    {
-        "line_group": 414,
-        "selector": 'input[name="performance_tier"]',
-        "reason": "rewrites multiple unsaved form select values from the tier matrix — outside the allowlist",
-    },
-    {
-        "line_group": 473,
-        "selector": 'select[name^="agentfm."][name$=".model"]',
-        "reason": "haiku effort lock: option disabled-state pairing — form state outside the allowlist",
-    },
-    {
-        "line_group": 513,
+        "line_group": 412,
         "selector": 'select[name^="llm.glm.models."]',
         "reason": "GLM flash effort lock: option disabled-state pairing — form state outside the allowlist",
     },
     {
-        "line_group": 530,
+        "line_group": 430,
         "selector": 'select[name="statusline_preset"]',
         "reason": "dead surface: no served template renders select[name=statusline_preset] or #custom-segments today; listener is inert (guard inside app.js)",
     },

@@ -108,7 +108,7 @@ MoAI-ADK consists of **13 retained agents** (12 MoAI-custom + 1 Anthropic built-
 | Evaluator (2) | plan-auditor, sync-auditor | Independent quality assessment at plan/completion stages |
 | Builder (1) | builder-harness | Dynamic per-project harness generation |
 | Advisor (1) | super-advisor | High-reasoning consultation (E1-E4 escalation) |
-| Specialist (2) | e2e-tester, mission-governor | E2E test execution across web/mobile/desktop (`/moai e2e`); read-only decision for approved GTD auto missions |
+| Specialist (2) | e2e-tester, manager-todo | E2E test execution across web/mobile/desktop (`/moai e2e`); todo-queue management, with the read-only sealed-snapshot judgment for approved GTD auto missions as its sub-role |
 | Built-in (1) | Explore (Anthropic) | Read-only codebase exploration |
 
 ### 5. SPEC Workflow
@@ -379,7 +379,7 @@ flowchart TD
 {{< icon warning warn >}} When both files exist, Claude Code reads both and similar instructions load twice. In that state `moai migrate local-instructions` refuses and touches neither file, because a tool cannot know which content you mean to keep. Merge the content of `CLAUDE.local.md` into `AGENTS.local.md` by hand, then delete `CLAUDE.local.md`.
 {{< /callout >}}
 
-In a session opened inside a linked worktree, the `@AGENTS.local.md` import points outside the project and Claude Code skips it silently — a worktree session does not receive `AGENTS.local.md`.
+Inside a linked worktree, a session receives `AGENTS.local.md` only when the file exists inside that worktree's checkout. As shipped the file is gitignored and normally lives only at the project root, so an untracked copy leaves worktree sessions without it — the `@AGENTS.local.md` import finds nothing and Claude Code skips it silently. Commit the file (force-add it past the ignore rule) and git delivers it into every worktree checkout; the import then resolves in-project and the session loads your local instructions.
 
 ## Related Documents
 

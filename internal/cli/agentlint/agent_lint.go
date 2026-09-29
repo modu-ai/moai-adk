@@ -13,7 +13,6 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/modu-ai/moai-adk/internal/defs"
-	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tui"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -120,9 +119,7 @@ var agentLintCmd = &cobra.Command{
 
 	  LR-01: Reject literal AskUserQuestion in body text (excluding code blocks)
 	  LR-02: Reject Agent token in tools: CSV list (except the sanctioned read-only nesting-pilot allowlist)
-	  LR-03: Error on missing effort: field (promoted from warning per SPEC-V3R2-ORC-003)
-	  LR-12: Reject effort drift from SPEC-V3R2-ORC-003 canonical matrix
-	  LR-13: Reject invalid effort enum value (must be one of low/medium/high/xhigh/max)
+	  LR-13: Reject invalid effort enum value when effort: is declared (must be one of low/medium/high/xhigh/max)
 	  LR-14: Reject fixed budget_tokens (Opus 4.7 Adaptive Thinking rejects HTTP 400)
 	  LR-04: Reject dead hook entries (matcher tool absent from tools:)
 	  LR-05: Warn on missing isolation: worktree for write-heavy role profiles and standalone agents (SPEC-V3R2-ORC-004)
@@ -321,13 +318,11 @@ func lintAgentFile(path string, strict bool) ([]LintViolation, error) {
 	// LR-02: Agent token in tools: CSV
 	violations = append(violations, checkAgentInTools(path, frontmatter)...)
 
-	// LR-03: Missing effort: field
-	violations = append(violations, checkMissingEffort(path, frontmatter)...)
+	// LR-03 (missing effort) and LR-12 (effort drift from the per-agent matrix)
+	// are retired: agents declare no effort and inherit the main session's
+	// (SPEC-AGENT-MODEL-INHERIT-001 D3).
 
-	// LR-12: Effort drift from canonical matrix (SPEC-V3R2-ORC-003)
-	violations = append(violations, checkEffortMatrixDrift(path, frontmatter)...)
-
-	// LR-13: Invalid effort enum value (SPEC-V3R2-ORC-003)
+	// LR-13: Invalid effort enum value on an optional, declared effort: key.
 	violations = append(violations, checkInvalidEffortEnum(path, frontmatter)...)
 
 	// LR-04: Dead hook entries
@@ -523,45 +518,6 @@ func checkAgentInTools(file string, fm AgentFrontmatter) []LintViolation {
 	return violations
 }
 
-// isHaikuAgent reports whether the agent declares model: haiku.
-// Haiku does not support the effort frontmatter field (per
-// code.claude.com/docs/en/model-config — Haiku is not listed among the
-// effort-supporting models, so an effort: value is silently inert). The
-// canonical `model: haiku ⇒ no effort` invariant is authoritatively enforced
-// by the haiku_effort_guard (internal/template/haiku_effort_guard_test.go,
-// TestHaikuAgentsHaveNoEffort). LR-03 and LR-12 therefore MUST NOT demand an
-// effort field on haiku agents — doing so contradicts that guard.
-func isHaikuAgent(fm AgentFrontmatter) bool {
-	return strings.TrimSpace(fm.Model) == "haiku"
-}
-
-// checkMissingEffort checks for LR-03.
-func checkMissingEffort(file string, fm AgentFrontmatter) []LintViolation {
-	var violations []LintViolation
-
-	// Haiku agents must NOT declare effort (it is silently inert on Haiku).
-	// Exempt them from LR-03 so the lint does not demand a field the canonical
-	// haiku_effort_guard forbids. See isHaikuAgent.
-	if isHaikuAgent(fm) {
-		return violations
-	}
-
-	if fm.Effort == "" {
-		severity := SeverityError
-
-		lineNum := findFrontmatterLine(file, "name:")
-		violations = append(violations, LintViolation{
-			Rule:     "LR-03",
-			Severity: severity,
-			File:     file,
-			Line:     lineNum,
-			Message:  "Missing effort: field in frontmatter (add 'effort: low/medium/high/xhigh' for explicit session effort control)",
-		})
-	}
-
-	return violations
-}
-
 // checkDeadHooks checks for LR-04.
 func checkDeadHooks(file string, fm AgentFrontmatter) []LintViolation {
 	var violations []LintViolation
@@ -605,40 +561,6 @@ func checkDeadHooks(file string, fm AgentFrontmatter) []LintViolation {
 	return violations
 }
 
-// ============================================================================
-// Effort-Level Calibration Matrix
-// Derived from the profile matrix — NOT a second hand-maintained copy
-// ============================================================================
-
-// canonicalEffortMatrix is the agent -> baseline effort map consumed by
-// checkEffortMatrixDrift (LR-12). It is DERIVED from the medium column of
-// template.DefaultProfileMatrix, which is the single source of truth for
-// per-agent {model, effort}; agent frontmatter records that same medium column
-// as its baseline, so the two cannot disagree.
-//
-// It replaces a hand-maintained 17-entry literal that had drifted: it still
-// carried archived agents (manager-strategy, manager-cycle, manager-quality,
-// manager-project, expert-*, builder-platform, researcher) and pre-rename effort
-// values, so a matrix change had to be mirrored here by hand or LR-12 would
-// reject the very values the matrix produced. Agents absent from the matrix
-// (archived names, harness specialists, user-added agents) are out-of-roster and
-// LR-12 does not apply to them.
-//
-// @MX:ANCHOR @MX:REASON: LR-12 effort baseline; derived from template.DefaultProfileMatrix
-// so the lint rule and the runtime resolver share one source.
-var canonicalEffortMatrix = buildCanonicalEffortMatrix()
-
-// buildCanonicalEffortMatrix projects the medium column of the profile matrix
-// onto the agent -> effort shape LR-12 needs.
-func buildCanonicalEffortMatrix() map[string]string {
-	medium := template.DefaultProfileMatrix()[template.PerformanceTierMedium]
-	out := make(map[string]string, len(medium))
-	for agent, me := range medium {
-		out[agent] = me.Effort
-	}
-	return out
-}
-
 // validEffortValues defines the 5-value enum for effort levels
 var validEffortValues = map[string]struct{}{
 	"low":    {},
@@ -648,56 +570,11 @@ var validEffortValues = map[string]struct{}{
 	"max":    {},
 }
 
-// checkEffortMatrixDrift checks for LR-12: effort drift from canonical matrix
-// @MX:NOTE: LR-12 — 17-agent matrix drift detection; blocks the 32% drift ratio in spec.md §1.1 R5 audit to 0%; out-of-roster agents (e.g., manager-brain) are exempt from LR-12
-func checkEffortMatrixDrift(file string, fm AgentFrontmatter) []LintViolation {
-	var violations []LintViolation
-
-	// Haiku agents must NOT declare effort (it is silently inert on Haiku).
-	// This early-return fires BEFORE the canonicalEffortMatrix lookup so no
-	// drift is reported for haiku agents (manager-docs / manager-git) even
-	// though the matrix still lists a legacy effort value for them. See
-	// isHaikuAgent and the haiku_effort_guard invariant.
-	if isHaikuAgent(fm) {
-		return violations
-	}
-
-	// Extract agent name from file path (e.g., "expert-security.md" -> "expert-security")
-	baseName := filepath.Base(file)
-	agentName := strings.TrimSuffix(baseName, ".md")
-
-	// Check if agent is in the canonical matrix
-	expectedEffort, inMatrix := canonicalEffortMatrix[agentName]
-	if !inMatrix {
-		// Out-of-roster agent (e.g., manager-brain, claude-code-guide) - LR-12 does not apply
-		return violations
-	}
-
-	// If effort field is empty, LR-03 already covers it - LR-12 does not double-fire
-	if fm.Effort == "" {
-		return violations
-	}
-
-	// Check for drift
-	if fm.Effort != expectedEffort {
-		lineNum := findFrontmatterLine(file, "effort:")
-		violations = append(violations, LintViolation{
-			Rule:     "LR-12",
-			Severity: SeverityError,
-			File:     file,
-			Line:     lineNum,
-			Message:  fmt.Sprintf("ORC_EFFORT_MATRIX_DRIFT: effort: %s drifts from canonical matrix value %s for agent %s (SPEC-V3R2-ORC-003 canonical matrix)", fm.Effort, expectedEffort, agentName),
-		})
-	}
-
-	return violations
-}
-
 // checkInvalidEffortEnum checks for LR-13: invalid effort enum value
 func checkInvalidEffortEnum(file string, fm AgentFrontmatter) []LintViolation {
 	var violations []LintViolation
 
-	// If effort field is empty, LR-03 already covers it
+	// effort: is optional; an absent key is not a finding.
 	if fm.Effort == "" {
 		return violations
 	}

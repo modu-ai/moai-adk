@@ -622,16 +622,17 @@ func TestStepperTotal_DynamicDenominator(t *testing.T) {
 		result *WizardResult
 		want   int
 	}{
-		// Git manual: 6 unconditional questions (conversation_language,
-		// user_name, project_name, model_policy, report_format, git_mode) = 6.
-		// The advanced_bridge gate is retired by C1, so it no longer contributes.
-		{"manual", &WizardResult{GitMode: "manual"}, 6},
+		// Git manual: 5 unconditional questions (conversation_language,
+		// user_name, project_name, report_format, git_mode) = 5.
+		// The advanced_bridge gate is retired by C1, and the agent model-policy
+		// question is retired, so neither contributes.
+		{"manual", &WizardResult{GitMode: "manual"}, 5},
 		// personal+github reveals git_provider + github_username + github_token
-		// (6 base + 3 = 9).
-		{"personal-github", &WizardResult{GitMode: "personal", GitProvider: "github"}, 9},
+		// (5 base + 3 = 8).
+		{"personal-github", &WizardResult{GitMode: "personal", GitProvider: "github"}, 8},
 		// personal+gitlab reveals git_provider + gitlab_instance_url +
-		// gitlab_username + gitlab_token (6 base + 4 = 10).
-		{"personal-gitlab", &WizardResult{GitMode: "personal", GitProvider: "gitlab"}, 10},
+		// gitlab_username + gitlab_token (5 base + 4 = 9).
+		{"personal-gitlab", &WizardResult{GitMode: "personal", GitProvider: "gitlab"}, 9},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -642,15 +643,15 @@ func TestStepperTotal_DynamicDenominator(t *testing.T) {
 		})
 	}
 
-	// Adding page 3 expands the denominator further: 6 unconditional defaults
-	// (git conditionals hidden for manual) + 3 page-3 questions = 9.
+	// Adding page 3 expands the denominator further: 5 unconditional defaults
+	// (git conditionals hidden for manual) + 3 page-3 questions = 8.
 	// SPEC-INIT-QUIET-WIZARD-001 left page 3 with agent_wiring and
 	// autonomy_tier only (13 -> 2); SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005
 	// added jev_enabled (2 -> 3).
 	all := append(ReconfigureQuestions("/tmp/steppertotal"), Page3Questions("/tmp/steppertotal")...)
 	std := &WizardResult{GitMode: "manual", DesignEnabled: true}
-	if got := stepperDenominator(all, std); got != 9 {
-		t.Errorf("page-3 denominator: expected 9 (6 + 3 page-3), got %d", got)
+	if got := stepperDenominator(all, std); got != 8 {
+		t.Errorf("page-3 denominator: expected 8 (5 + 3 page-3), got %d", got)
 	}
 	// Single dynamic source invariant: stepperDenominator == TotalVisibleQuestions.
 	if stepperDenominator(all, std) != TotalVisibleQuestions(all, std) {

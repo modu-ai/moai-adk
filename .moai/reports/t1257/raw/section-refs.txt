@@ -1,0 +1,20 @@
+   9 § The lead works through manager-lead
+   9 § Factory in-lane 3-stage
+   7 §C). manager-lead NEVER writes implementation code itself
+   7 § Lane spawn authority). A lead does not grant, withdraw, or re
+   6 § Lane spawn authority
+   3 §G.2 manager-lead non-regression note
+   3 §C.4 factory-workers reconciliation
+   3 §C.4 Factory workers (default 8) are not `fanout
+   3 §C.1): no nested teams, one team per session with a fixed lead
+   3 §A. `manager-lead` is a serial-shaped delegation target: the o
+   3 § Verification load is lane-local
+   3 § The lead works through manager-lead). Where that holds, this
+   3 § Deputy dispatch surface). This section adds only what the boa
+   3 § Deputy dispatch surface) removes the decision from the moment
+   3 § Deputy dispatch surface
+   3 § Completion is read, never trusted). A deputy that returns a c
+   3 § Claude Code Settings for the companion `--safe-mode` launch f
+   3 § Blocker Report Format): manager-lead returns blocker reports
+   1 §D). The hidden companion input (name
+   1 §A.2.1 / AC-FB-027): a companion-

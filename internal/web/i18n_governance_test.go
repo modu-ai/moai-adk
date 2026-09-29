@@ -433,10 +433,7 @@ func TestI18nKeyCoverageReverse(t *testing.T) {
 			}
 		}
 	}
-	// The registry must be non-empty and every member justified.
-	if len(i18nEnExemptPrefixes) == 0 {
-		t.Error("en-exempt prefix registry is empty")
-	}
+	// Every registry member must be justified. The registry may be empty.
 	for _, p := range i18nEnExemptPrefixes {
 		if strings.TrimSpace(p.Prefix) == "" || strings.TrimSpace(p.Justification) == "" {
 			t.Errorf("exempt-prefix registry entry %+v has an empty prefix or justification", p)

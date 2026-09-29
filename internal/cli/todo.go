@@ -30,6 +30,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -203,7 +204,17 @@ func withResolvedLandedRef(cmd *cobra.Command, apply func(ref string)) {
 }
 
 // newTodoCmd creates the `moai todo` parent command.
+//
+// Construction is serialized behind a mutex: the flag registrations below
+// bind package-level variables (`todoAutoFlag` · `todoAutoWait`), so pflag
+// writes those globals at REGISTRATION time — and concurrent constructors
+// (the landed-verb concurrency test builds one command per goroutine) race
+// on them. The per-call command instances themselves share nothing.
+var newTodoCmdMu sync.Mutex
+
 func newTodoCmd() *cobra.Command {
+	newTodoCmdMu.Lock()
+	defer newTodoCmdMu.Unlock()
 	cmd := &cobra.Command{
 		Use:   "todo",
 		Short: "Operate the kanban backlog queue",
@@ -257,6 +268,15 @@ mentions an id later in the sentence still falls through, and
 			return cobra.NoArgs(cmd, args)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if todoAutoFlag {
+				if len(args) > 0 {
+					return fmt.Errorf("--auto takes no card arguments; the invocation is the operator's batch approval of the queue in queue order, never an admission")
+				}
+				return runAutoCycle(cmd.OutOrStdout(), newTodoStore(), resolveTodoQueueRoot(), autoOptions{
+					wait:     todoAutoWait,
+					liveness: newAutoLiveness(),
+				})
+			}
 			if len(args) == 0 {
 				return runTodoList(cmd, false, false, todoListDefaultLimit)
 			}
@@ -283,11 +303,25 @@ mentions an id later in the sentence still falls through, and
 	cmd.AddCommand(newTodoAddCmd(), newTodoListCmd(), newTodoDoneCmd(), newTodoUndoneCmd(), newTodoNextCmd(),
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
 		newTodoDropCmd(), newTodoUndropCmd(),
+		newTodoHoldCmd(), newTodoUnholdCmd(),
 		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(),
 		newTodoPRCmd(), newTodoLandedCmd(), newTodoAutoDoneCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd(),
 		newTodoTriageCmd())
+	cmd.Flags().BoolVar(&todoAutoFlag, "auto", false,
+		"process the queue serially: pick one card, dispatch one isolated worker, judge completion on disk evidence, then accept the next; the invocation is the operator's batch approval of the queue in queue order and nothing else")
+	cmd.Flags().DurationVar(&todoAutoWait, "auto-wait", 30*time.Minute,
+		"per-card deadline for the worker evidence file before the card is unpicked with a labelled non-finding")
 	return cmd
 }
+
+// todoAutoFlag / todoAutoWait back the `--auto` serial-processing cycle. They
+// live on the parent command so the gtd compatibility spelling (the same verb
+// tree, NewGTDCommand) carries them identically — one implementation, both
+// entry points.
+var (
+	todoAutoFlag bool
+	todoAutoWait time.Duration
+)
 
 // todoLaneReadOnlyVerbs is the REQ-SD-015 read-only allowlist: the only
 // `moai todo` forms a lane session may run. Everything else — including
@@ -584,6 +618,19 @@ func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bo
 	if strings.TrimSpace(text) == "" {
 		return fmt.Errorf("todo add: text must be non-empty")
 	}
+	// Card t1313 (GitHub #1732): the WRITE verb discloses the store
+	// DIVERGENCE the read verbs disclose (SPEC-TODO-STALE-STORE-001
+	// REQ-TSS-001 family) — the response's issued id is a receipt for the
+	// store that ANSWERED, and a divergent project-local store beside it is
+	// exactly the silent split the incident reported (ids issued by one
+	// store, queue read from another). Scoped to the stale-store line only:
+	// the t395 backlog.json note stays read-surface by its operator decision
+	// (TestTodoWriteVerbs_CarryNoDisclosure). Runs before the Mutate, on
+	// stderr; stdout stays the bare "id position" machine line.
+	if err := discloseStaleLocalStores(cmd.ErrOrStderr(), "add",
+		kanban.InspectStaleLocalStores(todoQueueRootForDisclosure())); err != nil {
+		return err
+	}
 	var item kanban.BacklogItem
 	var pos int
 	err := todoStoreAt(root).Mutate(func(rec *kanban.BacklogRecord) error {
@@ -609,6 +656,13 @@ func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bo
 // issued id and the card text prefix; the caller never has to guess what
 // `--pick` just picked.
 func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string, force bool) error {
+	// Card t1313: the same stale-store disclosure the append path carries —
+	// the issued id is a receipt for the store that answered. Scoped to the
+	// t1307 divergence line only (see the append-path comment).
+	if err := discloseStaleLocalStores(cmd.ErrOrStderr(), "add --pick",
+		kanban.InspectStaleLocalStores(todoQueueRootForDisclosure())); err != nil {
+		return err
+	}
 	var item kanban.BacklogItem
 	err := store.Mutate(func(rec *kanban.BacklogRecord) error {
 		var mutErr error
@@ -815,7 +869,28 @@ func newTodoDoneCmd() *cobra.Command {
 					}
 					verdict = answer
 				}
-				return rec.ArchiveCard(id)
+				if err := rec.ArchiveCard(id); err != nil {
+					return err
+				}
+				if requireLanded {
+					// REQ-TST-008: the answering path persists what the query
+					// said — verdict, answering ref, verdict time — onto the
+					// entry ArchiveCard just appended, alongside (never
+					// instead of) any operator-recorded evidence the row
+					// already carried (REQ-TST-009). Without the flag nothing
+					// is persisted here: no query ran, so no invented answer
+					// and no fabricated record. The record carries no SHA —
+					// a query-derived SHA is outside the evidence store's
+					// write authority, and the delivering SHA is re-derived
+					// at re-adjudication by re-running the predicate against
+					// the recorded ref (REQ-TST-013).
+					rec.Archived[len(rec.Archived)-1].LandingVerdict = &kanban.LandingVerdict{
+						Verdict: verdict,
+						Ref:     ref,
+						At:      time.Now().UTC().Format(time.RFC3339),
+					}
+				}
+				return nil
 			}); err != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
@@ -990,11 +1065,15 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 				}
 				queued := 0
 				for _, it := range rec.Items {
-					if it.State != kanban.BacklogStateQueued {
-						continue
+					// POSITIVE enumeration (SPEC-TODO-HOLD-STATE-001
+					// REQ-THS-011): the candidate list selects by naming the
+					// state it accepts, never by refusing the ones it knows —
+					// a state added later must not fall through a negative's
+					// default.
+					if it.State == kanban.BacklogStateQueued {
+						queued++
+						_, _ = fmt.Fprintf(out, "%s\t%s\n", it.ID, todoPRCell(it.Text))
 					}
-					queued++
-					_, _ = fmt.Fprintf(out, "%s\t%s\n", it.ID, todoPRCell(it.Text))
 				}
 				if queued == 0 {
 					_, _ = fmt.Fprintln(out, "queue is empty")
@@ -1007,8 +1086,26 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
 				for i := range rec.Items {
 					if rec.Items[i].ID == id {
-						if rec.Items[i].State == kanban.BacklogStateDropped {
+						// The pick gate enumerates POSITIVELY
+						// (SPEC-TODO-HOLD-STATE-001 REQ-THS-011/012): only a
+						// queued card is pickable, and every other state —
+						// including any state added after this code was
+						// written — is refused by the switch's default rather
+						// than admitted by a negative's fall-through. This
+						// gate was the SPEC's one behavioral red-now: it used
+						// to refuse only `dropped`, so a held card (and any
+						// future state) was pickable.
+						switch rec.Items[i].State {
+						case kanban.BacklogStateQueued:
+							// the only pickable state
+						case kanban.BacklogStateDropped:
 							return fmt.Errorf("backlog item %s is dropped — use moai todo undrop %s before picking", id, id)
+						case kanban.BacklogStateHold:
+							return fmt.Errorf("backlog item %s is held — use moai todo unhold %s before picking", id, id)
+						case kanban.BacklogStatePicked:
+							return fmt.Errorf("backlog item %s is already picked — use moai todo unpick %s before picking it again", id, id)
+						default:
+							return fmt.Errorf("backlog item %s is %q — not a pickable state", id, rec.Items[i].State)
 						}
 						if expect != "" && !strings.HasPrefix(rec.Items[i].Text, expect) {
 							// Refused mutation: Mutate writes nothing, so the
@@ -1017,6 +1114,9 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 								id, todoTextPrefix(rec.Items[i].Text), expect)
 						}
 						rec.Items[i].State = kanban.BacklogStatePicked
+						// REQ-TST-004: the current picked episode begins now;
+						// any stamp from a previous episode is overwritten.
+						rec.Items[i].PickedAt = todoStampNow()
 						pickedText = rec.Items[i].Text
 						if specID != "" {
 							// Recorded as-is: the store is not a SPEC registry;
@@ -1063,12 +1163,21 @@ func newTodoUnpickCmd() *cobra.Command {
 					if rec.Items[i].ID != id {
 						continue
 					}
-					if rec.Items[i].State != kanban.BacklogStatePicked {
+					// POSITIVE enumeration (SPEC-TODO-HOLD-STATE-001
+					// REQ-THS-012): the gate names the state it reverts, and
+					// every other state refuses — no negated comparison whose
+					// default could swallow a state added later.
+					switch rec.Items[i].State {
+					case kanban.BacklogStatePicked:
+						// the only unpickable-into-queued state
+					default:
 						// Refused mutation: Mutate writes nothing, so the
 						// file stays byte-identical on a refusal.
 						return fmt.Errorf("backlog item %s is %s, not picked", id, rec.Items[i].State)
 					}
 					rec.Items[i].State = kanban.BacklogStateQueued
+					// REQ-TST-005: a queued card carries no picked stamp.
+					rec.Items[i].PickedAt = nil
 					rec.Items[i].SpecID = nil
 					text = rec.Items[i].Text
 					return nil
@@ -1107,6 +1216,16 @@ func normalizeTodoRef(arg string) string {
 		return "t" + arg
 	}
 	return arg
+}
+
+// todoStampNow returns a pointer to the current instant in the store's
+// added_at TEXT format (RFC 3339 UTC) — the value every transition stamp
+// carries (SPEC-TODO-TRANSITION-STAMPS-001 REQ-TST-004..007). It is set
+// inside the Mutate callback at the moment the transition happens, so the
+// stamp and the state change land in one locked write.
+func todoStampNow() *string {
+	v := time.Now().UTC().Format(time.RFC3339)
+	return &v
 }
 
 // todoTextPrefixMax bounds the card text carried in a pick confirmation —

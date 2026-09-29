@@ -195,7 +195,7 @@ done
 
 	ctx, cancel := context.WithCancel(context.Background())
 	res, err := handleCodexTask(ctx, mcp.CallToolRequest{Params: mcp.CallToolParams{
-		Arguments: map[string]any{"prompt": "say ready", "background": true},
+		Arguments: map[string]any{"prompt": "say ready", "background": true, "project_root": thisRepoRoot(t)},
 	}})
 	if err != nil {
 		t.Fatal(err)
@@ -255,7 +255,7 @@ done
 	})
 
 	stdio.send(t, 2, "tools/call", map[string]any{
-		"name": "codex_task", "arguments": map[string]any{"prompt": "stall", "background": true},
+		"name": "codex_task", "arguments": map[string]any{"prompt": "stall", "background": true, "project_root": thisRepoRoot(t)},
 	})
 	jobID := mcpCodexJobID(t, stdio.receive(t, 2))
 	_ = stdio.in.Close() // real MCP stdin EOF, not a direct call to the cleanup helper
@@ -307,7 +307,7 @@ while IFS= read -r line; do :; done
 		}
 	})
 	stdio.send(t, 2, "tools/call", map[string]any{
-		"name": "codex_task", "arguments": map[string]any{"prompt": "stall handshake", "background": true},
+		"name": "codex_task", "arguments": map[string]any{"prompt": "stall handshake", "background": true, "project_root": thisRepoRoot(t)},
 	})
 	deadline := time.Now().Add(5 * time.Second)
 	for {
@@ -413,7 +413,7 @@ func TestCodexTaskBackgroundHandshakeHonorsTaskBound(t *testing.T) {
 	done := make(chan outcome, 1)
 	go func() {
 		res, err := handleCodexTask(ctx, mcp.CallToolRequest{Params: mcp.CallToolParams{
-			Arguments: map[string]any{"prompt": "stall handshake", "background": true},
+			Arguments: map[string]any{"prompt": "stall handshake", "background": true, "project_root": thisRepoRoot(t)},
 		}})
 		done <- outcome{res, err}
 	}()
@@ -483,7 +483,7 @@ done
 	t.Cleanup(func() { codexLookPath, codexSession = prevLook, prevSession })
 
 	res, err := handleCodexTask(context.Background(), mcp.CallToolRequest{Params: mcp.CallToolParams{
-		Arguments: map[string]any{"prompt": "stall", "background": true},
+		Arguments: map[string]any{"prompt": "stall", "background": true, "project_root": thisRepoRoot(t)},
 	}})
 	if err != nil {
 		t.Fatal(err)

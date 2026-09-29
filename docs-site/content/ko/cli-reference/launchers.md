@@ -30,19 +30,19 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-m, --model <model>` | 모델 선택 재정의 |
 | `-w, --worktree [name]` | 격리된 git worktree(`.claude/worktrees/<name>/`)에서 실행 — 이름 생략 시 자동 생성 |
 | `--chrome` / `--no-chrome` | Claude Code 에 그대로 전달합니다. 런처가 스스로 붙이지 않으므로 `--no-chrome` 을 넘기지 않는 한 `/chrome` 으로 연결할 수 있습니다 |
-| `-k, --kanban [SPEC-ID]` | 칸반 리드 진입 — `plan → run → sync` 체인을 이 세션에 시드. SPEC-ID를 붙이면 그 SPEC을 목표로 |
+| `-k, --kanban [SPEC-ID]` | **팩토리 리더** 진입 — 칸반 `plan → run → sync` 체인을 이 세션에 시드. SPEC-ID를 붙이면 그 SPEC을 목표로 |
 | `-k --name <role>` | 열린 칸반 런에 동반 세션으로 합류. 역할은 `plan` · `run` · `sync`. 같은 역할 이름이 살아 있는 세션이면 다음 번호로 붙음 (`plan-1`, `plan-2`, …) |
-| `-f, --factory` | **팩토리 리드** 진입 — 워커 하나(`worker-1`)로 팩토리 런을 엽니다. 리드는 운영자가 고른 카드를 교차 세션 메시지로 빈 워커에 배분 |
-| `-f worker` | 다음 빈 번호로 팩토리 워커 하나를 자동 합류시켜 실행 중인 팩토리의 리드 소켓에 연결 |
-| `-f worker-<n>` | 정확히 그 번호(`worker-<n>`)로 워커 하나를 추가로 띄움. 번호가 살아 있는 정식 워커와 겹치면 다음 빈 번호로 붙고, 살아 있는 레거시 워커(`agent-<n>`/`lane-<n>`)와 겹치면 이름을 대며 거부됨. `moai glm -f worker` / `-f worker-<n>` 도 GLM 백엔드에서 같게 동작 |
-| `-k <N>` / `-k <N> --name worker-<i>` | v1.2.0 통합 형태로 지금도 유효 — `-k <N>` 은 워커 N명 런의 리드, `-k <N> --name worker-<i>` 는 그중 워커 `<i>`. N 없이 `-k --name worker-<i>` 만 쓰면 기본 8워커 |
-| `-f agent` · `-f lane-<n>` · `--name lane-<n>` | **지원 중단 예정 별칭.** 각각 `-f worker` / `-f worker-<n>` / `--name worker-<n>` 과 똑같이 동작하지만, 실행마다 정식 철자로 바꿔 쓰라는 힌트를 출력함 |
+| `-f, --factory` | **팩토리 리더** 진입 — 레인 하나(`lane-1`)로 팩토리 런을 엽니다. 리더는 운영자가 고른 카드를 교차 세션 메시지로 빈 레인에 배분 |
+| `-f lane` | 다음 빈 번호로 팩토리 레인 하나를 자동 합류시켜 실행 중인 팩토리의 리더 소켓에 연결 |
+| `-f lane-<n>` | 정확히 그 번호(`lane-<n>`)로 레인 하나를 추가로 띄움. 번호가 살아 있는 레인과 겹치면 다음 빈 번호로 붙음. `moai glm -f lane` / `-f lane-<n>` 도 GLM 백엔드에서 같게 동작 |
+| `-k <N>` / `-k <N> --name lane-<i>` | v1.2.0 통합 형태로 지금도 유효 — `-k <N>` 은 레인 N개 런의 리더, `-k <N> --name lane-<i>` 는 그중 레인 `<i>`. N 없이 `-k --name lane-<i>` 만 쓰면 기본 8레인 |
+| 옛 철자 | 더 이상 해석되지 않습니다 — 옛 철자로 합류하려 하면 정식형(`-f lane` / `-f lane-<n>`)을 이름대는 오류가 출력됩니다 |
 
-{{< callout type="info" >}} `-k` 는 칸반 체인 토큰이고, `-f` 는 **팩토리 모드** (Factory Mode) 전용 진입 토큰입니다. `-k` 하나가 세 모양으로 해석되는 것은 그대로입니다 — 인자 없음·SPEC-ID는 칸반 리드, `--name <역할>`은 칸반 동반, 숫자는 워커 런. 한 번의 실행에 진입 토큰은 하나뿐이라 `-k` 와 `-f` 를 함께 쓰면 에러입니다. 자세한 계약은 [칸반 모드](/ko/advanced/kanban-mode)와 [manager-lead 리드 코디네이터](/ko/advanced/manager-lead)를 참고하세요. {{< /callout >}}
+{{< callout type="info" >}} `-k` 는 칸반 체인 토큰이고, `-f` 는 **팩토리 모드** (Factory Mode) 전용 진입 토큰입니다. `-k` 하나가 세 모양으로 해석되는 것은 그대로입니다 — 인자 없음·SPEC-ID는 칸반 리더, `--name <역할>`은 칸반 동반, 숫자는 레인 런. 한 번의 실행에 진입 토큰은 하나뿐이라 `-k` 와 `-f` 를 함께 쓰면 에러입니다. 자세한 계약은 [칸반 모드](/ko/advanced/kanban-mode)와 [manager-lead 리더 코디네이터](/ko/advanced/manager-lead)를 참고하세요. {{< /callout >}}
 
-카드가 도는 방식은 칸반과 다릅니다. 칸반에서는 카드 하나가 `plan → run → sync` 열을 옮겨 다니지만, 팩토리에서는 카드 하나가 통째로 워커 하나에 들어가 그 워커 안에서 세 단계를 순서대로 지나갑니다. 단계마다 그 세션이 `Agent()` 서브에이전트를 띄우며, 쓰기 작업을 맡는 스폰은 `isolation: "worktree"` 로 격리합니다. 워커 하나가 동시에 띄울 수 있는 서브에이전트는 최대 10개이고, 런처가 워커·동반 세션에 `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` 로 이 값을 심어 두므로 워커 N명이 머신 용량을 나눠 쓰는 구조는 운영자의 자제가 아니라 설정으로 보장됩니다. 워커는 한꺼번에 켜지 마세요 — 첫 워커를 먼저 올리고, 실제로 출력이 나오기 시작한 것을 확인한 뒤에 나머지를 띄웁니다.
+카드가 도는 방식은 칸반과 다릅니다. 칸반에서는 카드 하나가 `plan → run → sync` 열을 옮겨 다니지만, 팩토리에서는 카드 하나가 통째로 레인 하나에 들어가 그 레인 안에서 세 단계를 순서대로 지나갑니다. 단계마다 그 세션이 `Agent()` 서브에이전트를 띄우며, 쓰기 작업을 맡는 스폰은 `isolation: "worktree"` 로 격리합니다. 레인 하나가 동시에 띄울 수 있는 서브에이전트는 최대 10개이고, 런처가 레인·동반 세션에 `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` 로 이 값을 심어 두므로 레인 N개가 머신 용량을 나눠 쓰는 구조는 운영자의 자제가 아니라 설정으로 보장됩니다. 레인은 한꺼번에 켜지 마세요 — 첫 레인을 먼저 올리고, 실제로 출력이 나오기 시작한 것을 확인한 뒤에 나머지를 띄웁니다.
 
-백엔드 조합은 토큰 여력을 먼저 보고 정합니다. 한 가지 출발점은 리드는 GLM, plan은 Claude(Opus), run은 GLM, sync는 Claude(Opus) 로 두어 판단이 무거운 단계에만 Opus를 배치하는 방식입니다. 다른 조합을 쓰거나 한쪽 백엔드로 통일하는 것도 똑같이 괜찮습니다.
+백엔드 조합은 토큰 여력을 먼저 보고 정합니다. 한 가지 출발점은 리더는 GLM, plan은 Claude(Opus), run은 GLM, sync는 Claude(Opus) 로 두어 판단이 무거운 단계에만 Opus를 배치하는 방식입니다. 다른 조합을 쓰거나 한쪽 백엔드로 통일하는 것도 똑같이 괜찮습니다.
 
 권한 모드는 `default`, `acceptEdits`(`moai init` 기본값), `plan`, `auto`, `bypassPermissions`, `dontAsk` 중 하나입니다. `auto` 모드에서는 백그라운드 분류기가 동작을 검사합니다. 지원하는 플랜과 모델은 [Claude Code 권한 모드 문서](https://code.claude.com/docs/en/permission-modes)에서 확인할 수 있습니다.
 
@@ -75,7 +75,7 @@ moai migrate cg
 moai migrate cg --target claude-only --apply --accept-role-change
 ```
 
-`llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, `llm.gateway.teammate_provider: inherit`을 저장합니다. 기존 혼합 역할 배정을 없애는 변경이며, Claude 리더와 GLM 팀원 창의 분업을 보존하는 이전이 아닙니다.
+`llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, `llm.gateway.teammate_provider: inherit`을 저장합니다. 기존 혼합 역할 배정을 없애는 변경이며, Claude 리더(CG 리더)와 GLM 팀원 창의 분업을 보존하는 이전이 아닙니다.
 
 `claude-glm` 대상은 Claude 리더와 tmux의 GLM 팀원 구성을 뜻합니다. 현재 TEAMMATE 통합 검증을 통과하지 않아 적용과 실행은 사용할 수 없으며 미리보기만 가능합니다. tmux를 설치하거나 `verified: true`를 적어도 이 제한은 해제되지 않습니다.
 

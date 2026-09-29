@@ -5,6 +5,8 @@ paths: "**/agent-common-protocol.md,**/.claude/agents/moai/*.md,**/.claude/skill
 
 # Agent Common Protocol — Reference Detail
 
+<!-- mirror-fork: intentional — this copy is deliberately divergent from the local dogfood copy; do not sync mechanically -->
+
 > Detail companion to `agent-common-protocol.md` (the SSOT). That file carries the
 > binding obligations; this file carries the verbatim command batch, the worked
 > contracts, and the CLI idiom catalogue. Loaded only when
@@ -204,6 +206,23 @@ If a per-edit nudge is ever re-proposed, the only defensible variant is stateful
 
 > Relocated verbatim from `agent-common-protocol.md` § Pre-Spawn Sync Check to keep the always-loaded file within its size budget. The binding gate (the 2-command batch + active-sessions query), the interpretation matrices, and the read-only exemption remain inline there.
 
+The two-lane batch script (relocated by the always-loaded diet):
+
+```bash
+# Lane A — ordered; wait for fetch completion before reading origin/main.
+git fetch origin main 2>&1
+fetch_status=$?
+if [ "$fetch_status" -ne 0 ]; then
+  printf 'pre-spawn sync blocked: fetch origin/main failed (status=%s)\n' "$fetch_status" >&2
+  exit "$fetch_status"
+fi
+git rev-list --count --left-right origin/main...HEAD
+
+# Lane B — can be started while Lane A is fetching, then joined before the
+# divergence/session decision is surfaced.
+moai session list --json --filter-spec=<SPEC-ID>
+```
+
 Rationale: when 2+ Claude Code sessions operate on the same project root + same memory hash (`~/.claude/projects/{hash}/memory/`), they may both consume the same paste-ready resume and attempt the same `/moai <subcommand>` work. The git working tree is shared; the memory file is shared. Without a pre-spawn fetch, the second session works on a stale baseline and may produce duplicate commits, conflicting frontmatter edits, or CHANGELOG entry races.
 
 Origin: an earlier sync-phase race incident — a parallel session committed a spec.md frontmatter status update between manager-develop's final run-phase commit and manager-docs' sync commit. Detection occurred retrospectively when `git push` succeeded with an unexpected intermediate commit in the push range. The parallel-session-race-during-long-agent-runs lesson was reinforced and a pre-spawn-fetch-discipline lesson added.
@@ -247,14 +266,6 @@ The persistence-layer analogue is `session-handoff.md` Block 3-4 preconditions; 
 - **(c) TeammateIdle exit-2 task closure.** When the TeammateIdle hook rejects a task's completion via exit-2 ("keep working"), the rejected task's TaskList entry MUST NOT be left in an open state without a reassignment owner. The orchestrator re-assigns the task (spawn a new teammate, re-delegate to the same teammate with a refined prompt, or close it as obsolete with a synthetic closing note). This binds the orchestrator's TaskList hygiene, not the hook's exit-2 emission. The parent-abort propagation that book1 ch07 names — cleanup handlers registered to avoid orphan tasks — is the source for this clause.
 - **(d) Cross-references.** book1 ch04 (账本闭环 — the ledger-closure invariant); book1 ch07 (parent-abort propagates to forked children; agents are observable lifecycle objects via SubagentStart/SubagentStop hooks, exit-code-2 stderr feedback); `.claude/rules/moai/workflow/session-handoff.md` Block 3-4 preconditions (the persistence-layer analogue across `/clear`); and the ledger-closing artifact's truthfulness bound — `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 1 (orchestrator self-report): the artifact MUST be a real summary, not a fabricated "success".
 
-## Per-Spawn Model Injection rationale
-
-> Relocated from `agent-common-protocol.md` § Per-Spawn Model Injection to keep the always-loaded file within its size budget. The [HARD] rule and the four operative bullets remain inline there.
-
-Omitting the `model` argument is not neutral. Nearly every agent definition carries `model: inherit`, so a spawn without an explicit model silently runs the agent on the parent session's model rather than its profiled one. The profile is still computed — nothing reports that it was never applied, which is why the rule is stated in the always-loaded file rather than left to the detailed policy file that only loads while agent files are being edited.
-
-Full profile matrix, precedence order, and channel table: `.claude/rules/moai/development/model-policy.md`.
-
 ## Background Agent Execution rationale
 
 > Relocated from `agent-common-protocol.md` § Background Agent Execution to keep the always-loaded file within its size budget. The [HARD] default alignment and the four spawning rules remain inline there.
@@ -293,7 +304,7 @@ Entry conditions (exhaustive):
 | **E3 — second-opinion request** | Orchestrator uncertainty: < 80% confidence in the next delegation step | ambiguous blocker-report; re-spawn vs user-escalation |
 | **E4 — loop-deadlock** | `/moai loop` or `/moai fix` ceiling-exit per the loop-verdict contract | auto-fix iterations exhausted without green CI |
 
-On trigger: spawn `Agent(general-purpose)` with the super-advisor role profile (Opus + xhigh at max/medium tier; Sonnet + xhigh at low tier — GLM-backed sessions fall back to the session model), receive the prescription, then re-seed the executor or escalate to the user via `AskUserQuestion`. Agent file: `.claude/agents/moai/super-advisor.md`.
+On trigger: spawn `Agent(general-purpose)` with the super-advisor role profile (it inherits the session's model and effort), receive the prescription, then re-seed the executor or escalate to the user via `AskUserQuestion`. Agent file: `.claude/agents/moai/super-advisor.md`.
 
 ## Hook Invocation Surface — per-row table
 

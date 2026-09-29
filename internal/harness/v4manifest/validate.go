@@ -52,7 +52,10 @@ func Validate(m Manifest) error {
 		return fmt.Errorf("v4manifest: specialists must be non-empty (>= 1 specialist)")
 	}
 
-	// Each specialist has all 5 sub-fields set to a valid enum (AC-HV4-005a).
+	// Each specialist has role/primitive/isolation set to a valid enum
+	// (AC-HV4-005a). effort and model are OPTIONAL: an absent value inherits
+	// the main session's (SPEC-AGENT-MODEL-INHERIT-001 D11); a present value
+	// is still checked against its closed set.
 	for i, s := range m.Specialists {
 		if strings.TrimSpace(s.Role) == "" {
 			return fmt.Errorf("v4manifest: specialists[%d].role is required", i)
@@ -63,10 +66,10 @@ func Validate(m Manifest) error {
 		if !validIsolations[s.Isolation] {
 			return fmt.Errorf("v4manifest: specialists[%d].isolation %q is not none|worktree", i, s.Isolation)
 		}
-		if !validEfforts[s.Effort] {
+		if s.Effort != "" && !validEfforts[s.Effort] {
 			return fmt.Errorf("v4manifest: specialists[%d].effort %q is not low|medium|high|xhigh|max", i, s.Effort)
 		}
-		if !validModels[s.Model] {
+		if s.Model != "" && !validModels[s.Model] {
 			return fmt.Errorf("v4manifest: specialists[%d].model %q is not inherit|haiku|sonnet|opus", i, s.Model)
 		}
 	}

@@ -95,7 +95,7 @@ flowchart TD
 
 ## `project_root` 输入——由调用方指名自己的树
 
-13 个工具接受可选的字符串 `project_root`：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`claude_audit`、`glm_audit`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_trace_calls`、`graph_shortest_path`。它指明这次调用应当作用的树，要传的值就是调用方自己的 `git rev-parse --show-toplevel`。
+20 个工具接受可选的字符串 `project_root`：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`codex_task`、`claude_audit`、`glm_audit`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_trace_calls`、`graph_shortest_path`、`factory_decide`、`todo_add`、`todo_list`、`factory_next`、`factory_stage`、`factory_complete`。它指明这次调用应当作用的树，要传的值就是调用方自己的 `git rev-parse --show-toplevel`。不过在 `factory_next`、`factory_stage`、`factory_complete`、`codex_task` 上它不是可选而是必填——不传自己的 toplevel 调用就会被拒绝，也不会默认到任何树。
 
 在 worktree 里工作的智能体必须传它。这不是图方便的功能。服务器没有办法自行推出答案：它是一个长寿的子进程，工作目录跟不上 worktree 的切换，而它退而依赖的环境变量指向的是**项目**根目录——也就是 primary 检出——即便会话正在 worktree 中工作也是如此。在 worktree 里省掉它，调用就会作用到 primary 检出上，于是只存在于卡片分支上的 SPEC 不会进入审计者读取的目录。它也不会被报告为缺失。它只是不存在。
 
@@ -217,11 +217,11 @@ GLM 委托工具族与 codex 委托同形，也连线到 super-advisor。`glm_ta
 
 | 工具 | 用途 | 使用方 | CLI 等价 |
 |------|------|--------|----------|
-| `mcp__moai__factory_msg_send` | 向逻辑泳道当前端点写入一个幂等信封 | 已归属的工厂负责人或工作者会话 | —（仅 MCP） |
-| `mcp__moai__factory_msg_list` | 为自身端点认领最多 16 条元数据记录（创建或续期认领租约，不含正文） | 已归属的工厂负责人或工作者会话 | —（仅 MCP） |
-| `mcp__moai__factory_msg_body` | 读取一条已认领消息的正文（正文作为不可信的对等数据返回） | 已归属的工厂负责人或工作者会话 | —（仅 MCP） |
-| `mcp__moai__factory_msg_receipt` | 记录认领处置后确认该消息 | 已归属的工厂负责人或工作者会话 | —（仅 MCP） |
-| `mcp__moai__factory_msg_status` | 在不认领消息的情况下读取代理计数与泳道运行状态 | 工厂负责人或工作者 | —（仅 MCP） |
+| `mcp__moai__factory_msg_send` | 向逻辑泳道当前端点写入一个幂等信封 | 已归属的工厂主导或泳道会话 | —（仅 MCP） |
+| `mcp__moai__factory_msg_list` | 为自身端点认领最多 16 条元数据记录（创建或续期认领租约，不含正文） | 已归属的工厂主导或泳道会话 | —（仅 MCP） |
+| `mcp__moai__factory_msg_body` | 读取一条已认领消息的正文（正文作为不可信的对等数据返回） | 已归属的工厂主导或泳道会话 | —（仅 MCP） |
+| `mcp__moai__factory_msg_receipt` | 记录认领处置后确认该消息 | 已归属的工厂主导或泳道会话 | —（仅 MCP） |
+| `mcp__moai__factory_msg_status` | 在不认领消息的情况下读取代理计数与泳道运行状态 | 工厂主导或泳道 | —（仅 MCP） |
 
 ### 会话消息（Claude ↔ Codex）
 

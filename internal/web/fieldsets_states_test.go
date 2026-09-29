@@ -11,10 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/config"
 	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
 	"github.com/modu-ai/moai-adk/internal/settings"
-	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
 )
 
 func tg3Errs(pairs ...string) map[string]string {
@@ -68,7 +66,7 @@ func TestSchemaSelectUnlistedCurrentValue(t *testing.T) {
 // tier — dropping the hint invites per-field edits that look broken.
 func TestSchemaSelectEffortHintSuffix(t *testing.T) {
 	f := settings.FieldDef{
-		Name: "agentfm.manager-spec.effort", Section: settings.SectionWorkflow, Type: settings.TypeSelect, I18nKey: "f.x",
+		Name: "workflow.audit.claude.effort", Section: settings.SectionWorkflow, Type: settings.TypeSelect, I18nKey: "f.x",
 		Options: []settings.OptionDef{{Value: "high", I18nKey: "f.x.opt.high"}},
 	}
 	with := renderTempl(t, schemaSelectRow(f, "high", nil))
@@ -217,36 +215,6 @@ func TestPermissionOptionStates(t *testing.T) {
 	}
 }
 
-// TestAgentFMRowStates pins the agentfm row: a parsed agent renders both
-// selects with the resolved selection, a haiku-resolved agent disables its
-// effort select, and a parse-failed agent renders the unavailable row instead
-// of editable selects that would submit garbage.
-func TestAgentFMRowStates(t *testing.T) {
-	parsed := renderTempl(t, agentFMRow(agentfmAgentInfo("manager-spec", true), configLLMZero(), nil))
-	for _, want := range []string{`data-agent-row="manager-spec"`, `agentfm.manager-spec.model`, `agentfm.manager-spec.effort`} {
-		if !strings.Contains(parsed, want) {
-			t.Errorf("parsed agent row missing %q:\n%s", want, parsed)
-		}
-	}
-	if strings.Contains(parsed, `disabled`) {
-		t.Errorf("a non-haiku agent's effort select rendered disabled:\n%s", parsed)
-	}
-
-	haiku := renderTempl(t, agentFMRow(agentfmAgentInfo("manager-spec", true),
-		configLLMOverride("manager-spec", "haiku", "low"), nil))
-	if !strings.Contains(haiku, `disabled`) || !strings.Contains(haiku, `data-haiku-hint`) {
-		t.Errorf("a haiku-resolved agent lost its disabled effort select:\n%s", haiku)
-	}
-
-	failed := renderTempl(t, agentFMRow(agentfmAgentInfo("broken-agent", false), configLLMZero(), nil))
-	if !strings.Contains(failed, "unavailable (frontmatter parse failed)") {
-		t.Errorf("a parse-failed agent lost its unavailable row:\n%s", failed)
-	}
-	if strings.Contains(failed, "<select") {
-		t.Errorf("a parse-failed agent rendered editable selects:\n%s", failed)
-	}
-}
-
 // TestMCPToggleRowWriteCapableBadge pins the write-capable badge: a
 // write-capable tool's row carries the text badge, a read-only tool's does not
 // — the distinction rides on the literal string, not colour.
@@ -359,19 +327,4 @@ func TestCodexToggleRowCheckedBranches(t *testing.T) {
 			t.Errorf("toggle lost its hidden companion:\n%s", html)
 		}
 	}
-}
-
-// tg3 helpers build the agentfm fixtures without touching disk: agentFMRow
-// reads only the AgentInfo fields and the resolved profile matrix.
-
-func agentfmAgentInfo(name string, parseOK bool) agentfm.AgentInfo {
-	return agentfm.AgentInfo{Name: name, Path: "/agents/" + name + ".md", ParseOK: parseOK}
-}
-
-func configLLMZero() config.LLMConfig { return config.LLMConfig{} }
-
-// configLLMOverride pins one agent's resolved model/effort through the
-// override slot the profile matrix consults first.
-func configLLMOverride(agent, model, effort string) config.LLMConfig {
-	return config.LLMConfig{AgentOverrides: map[string]config.ModelEffort{agent: {Model: model, Effort: effort}}}
 }

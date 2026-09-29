@@ -124,7 +124,7 @@ func fcGoalDispatch(t *testing.T, root string, store *kanban.BacklogStore, conte
 		snapshot := autoSnapshotHash(state.ContractHash, target, revision)
 		base := mission.GovernanceReceipt{Version: 1, MissionID: session, ContractHash: state.ContractHash, SnapshotHash: snapshot, Action: action, Targets: []string{target}, ExpiresAt: time.Now().Add(time.Hour), HeadSHA: head}
 		decision := base
-		decision.Kind, decision.Issuer, decision.Status = mission.GovernanceDecision, "mission-governor", mission.GovernanceRecommended
+		decision.Kind, decision.Issuer, decision.Status = mission.GovernanceDecision, "manager-todo", mission.GovernanceRecommended
 		audit := base
 		audit.Kind, audit.Issuer, audit.Status = mission.GovernanceAudit, "sync-auditor", mission.GovernancePassed
 		if err := mission.WriteGovernanceReceipt(root, filepath.Join(dir, string(action)+"-decision.json"), decision); err != nil {

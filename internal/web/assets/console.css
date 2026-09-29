@@ -276,11 +276,6 @@ html[lang="en"] .nav__en{display:none}
 .monitor-row__backend{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tr__name{font-family:var(--font-mono);font-size:12.5px;display:flex;align-items:center;gap:7px}
 .tr__desc{color:var(--fg-3);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* 에이전트 frontmatter 표 — 이름+설명 / 모델 / effort 3열. 행 높이를 셀렉트에
-   맞춰 늘린다. */
-.tr--afm{grid-template-columns:minmax(0,1fr) 200px 136px;min-height:44px}
-.tr--afm .sel{width:100%}
-.tr__sub{display:flex;flex-direction:column;gap:2px;min-width:0}
 /* 자격증명 상태 블록 — 값이 아니라 상태만 읽는 자리다. 입력도 제출도 없다. */
 .cred{border:1px solid var(--line);border-radius:var(--r-md);background:var(--bg-2);padding:11px 14px;margin-top:14px}
 .cred__t{font:var(--text-label);letter-spacing:var(--ls-label);display:block}

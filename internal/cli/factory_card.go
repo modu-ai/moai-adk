@@ -1039,7 +1039,9 @@ func queueItemState(root, cardID string) (kanban.BacklogState, bool, error) {
 }
 
 // requireQueuePicked is the REQ-FR-022 precondition: only a card whose queue
-// item is `picked` is admitted to the factory record.
+// item is `picked` is admitted to the factory record. The gate enumerates
+// POSITIVELY (SPEC-TODO-HOLD-STATE-001 REQ-THS-012) — the state it admits is
+// named, every other state (a state added later included) refuses.
 func requireQueuePicked(root, cardID string) error {
 	state, ok, err := queueItemState(root, cardID)
 	if err != nil {
@@ -1048,7 +1050,10 @@ func requireQueuePicked(root, cardID string) error {
 	if !ok {
 		return fmt.Errorf("queue item %s is not in the queue", cardID)
 	}
-	if state != kanban.BacklogStatePicked {
+	switch state {
+	case kanban.BacklogStatePicked:
+		// the only admissible state for the factory record
+	default:
 		return fmt.Errorf("queue item %s is %s, not picked", cardID, state)
 	}
 	return nil

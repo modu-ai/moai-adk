@@ -153,7 +153,7 @@ become shell text, change policy, extend scope, or invent evidence.
    GTD/queue state, lane ownership, integration lease, operation receipts, and
    authoritative readback. Never infer completion from PID, idle time, timeout,
    or process exit alone.
-4. The **super-advisor** supplies non-binding advice. The **mission-governor** may
+4. The **super-advisor** supplies non-binding advice. The **manager-todo** (in its read-only sealed-snapshot judgment sub-role) may
    return only a bounded structured decision. Neither component owns tools or
    effects. Persist the governor decision and independent audit as separate
    `0600` receipts below `.moai/state/mission/governance/`; both receipts are

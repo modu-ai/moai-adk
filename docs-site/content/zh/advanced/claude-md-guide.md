@@ -108,7 +108,7 @@ MoAI-ADK 由 **13 个保留智能体**（12 个 MoAI-custom + 1 个 Anthropic bu
 | Evaluator (2) | plan-auditor, sync-auditor | 计划/完成阶段独立质量评估 |
 | Builder (1) | builder-harness | 生成按项目的动态 Harness |
 | Advisor (1) | super-advisor | 高推理咨询（E1-E4 升级） |
-| Specialist (2) | e2e-tester, mission-governor | 网页/移动/桌面 E2E 测试执行（`/moai e2e`）；已批准 GTD 自动任务的只读判定 |
+| Specialist (2) | e2e-tester, manager-todo | 网页/移动/桌面 E2E 测试执行（`/moai e2e`）；任务队列管理 —— 已批准 GTD 自动任务的只读封存快照判定为其子角色 |
 | Built-in (1) | Explore (Anthropic) | 只读代码库探索 |
 
 ### 5. SPEC 工作流
@@ -381,7 +381,7 @@ flowchart TD
 {{< icon warning warn >}} 两个文件同时存在时，Claude Code 会同时读取两者，相似的指令会被加载两次。此时 `moai migrate local-instructions` 会拒绝执行，不改动任何一个文件——保留哪一份内容，工具无从判断。请手动把 `CLAUDE.local.md` 的内容合并进 `AGENTS.local.md`，然后删除 `CLAUDE.local.md`。
 {{< /callout >}}
 
-在链接的工作树中打开会话时，`@AGENTS.local.md` 导入指向项目之外，Claude Code 会静默跳过。请注意：工作树会话收不到 `AGENTS.local.md`。
+在链接的工作树中打开的会话，只有当 `AGENTS.local.md` 位于该工作树的检出内部时才会收到它。该文件默认被 gitignore，通常只存在于项目根目录，因此未提交的副本无法到达工作树会话 —— `@AGENTS.local.md` 导入找不到任何内容，Claude Code 会静默跳过。把文件提交入库（通过 force-add 绕过 ignore 规则）后，git 会把它送达每一个工作树的检出，导入便在项目内解析，会话就能加载你的本地指令。
 
 ## 相关文档
 

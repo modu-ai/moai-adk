@@ -46,8 +46,12 @@ moai profile setup work     # "work" 프로필 설정
 **마법사가 묻는 항목:**
 - **Identity**: 사용자 이름, 역할
 - **Languages**: 대화 언어, 코드 주석 언어
-- **Model Settings**: 기본 모델, 1M 컨텍스트 모델 선택
+- **Model Settings**: 기본 모델 오버라이드, 세션 모델 정책 (세션의 기본 effort 폴백), 세션 추론 강도
 - **Display**: 출력 스타일, 상태 표시줄 설정
+
+{{< callout type="info" >}}
+여기서 정하는 모델과 effort는 **세션 수준** 값입니다. 이 프로필로 실행하는 Claude 세션이 그 값으로 돌고, 서브에이전트는 세션의 모델과 추론 깊이를 그대로 따릅니다. 예전의 에이전트별 배정(프로필 매트릭스)은 물러났습니다 — [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
+{{< /callout >}}
 
 ### moai profile current
 

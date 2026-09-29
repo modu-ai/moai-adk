@@ -54,6 +54,19 @@ type AuditGates struct {
 	GLM string `yaml:"glm,omitempty" json:"glm,omitempty"`
 }
 
+// ModelEffort carries a {model, effort} assignment for one audit pin (or any
+// other single-recipient {model, effort} pair that survives the retirement of
+// the per-agent profile matrix under SPEC-AGENT-MODEL-INHERIT-001). Model is a
+// Claude Code short alias (opus/sonnet/fable/inherit) or a backend-specific
+// model id; Effort is a reasoning effort level (low/medium/high/xhigh/max, or
+// the z.ai {low, high, max} vocabulary on the GLM pin). It lived in profile.go
+// until that file was deleted; it is relocated here because the audit pins are
+// its remaining consumers.
+type ModelEffort struct {
+	Model  string `yaml:"model"`
+	Effort string `yaml:"effort"`
+}
+
 // AuditConfig is the workflow.audit block: the active audit_model, the
 // per-auditor gates, and the per-backend {model, effort} pins. Loaded from
 // workflow.yaml; defaults live in NewDefaultWorkflowConfig.

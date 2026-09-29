@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -69,9 +70,35 @@ func codexTaskScript(turnID, output string) []string {
 	}
 }
 
-// callCodexTask invokes the handler with the given arguments.
+// thisRepoRoot returns the toplevel of the repository containing the test's
+// cwd — a registered worktree of the default (real) serving repository, so raw
+// handler calls that bypass callCodexTask can pass the project_root gate.
+func thisRepoRoot(t *testing.T) string {
+	t.Helper()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	top, err := codexAuditGit(context.Background(), cwd, "rev-parse", "--show-toplevel")
+	if err != nil {
+		t.Fatalf("test cwd is not inside a git worktree: %v", err)
+	}
+	return top
+}
+
+// callCodexTask invokes the handler with the given arguments. When the caller
+// supplies no project_root, this repository's own toplevel — a registered
+// worktree of the test server's repository — is injected, so tests exercising
+// behavior OTHER than the project_root gate keep exercising it. Gate tests
+// needing an absent project_root must call the handler raw.
 func callCodexTask(t *testing.T, args map[string]any) *mcp.CallToolResult {
 	t.Helper()
+	if args == nil {
+		args = map[string]any{}
+	}
+	if _, ok := args["project_root"]; !ok {
+		args["project_root"] = thisRepoRoot(t)
+	}
 	res, err := handleCodexTask(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{Arguments: args},
 	})
@@ -493,4 +520,108 @@ func TestCodexTask_MissingPromptIsStructuredError(t *testing.T) {
 	if !res.IsError {
 		t.Fatalf("a missing prompt must be a structured error result; got %+v", res)
 	}
+}
+
+// TestCodexTaskProjectRootGate pins the codex_task project_root contract
+// (SPEC-CODEX-ROLE-AUDIT-ROOT-001 REQ-005): the argument is required — an
+// absent or empty value is refused naming the argument, never defaulted to the
+// primary checkout — and the presented root passes the same registered-
+// same-repository verification as codex_role_audit. An accepted root becomes
+// the tree the turn acts on: the thread's cwd is the canonical accepted root.
+func TestCodexTaskProjectRootGate(t *testing.T) {
+	repo := newAuditRepo(t)
+	orig := codexServingDir
+	codexServingDir = func() (string, error) { return repo.a1, nil }
+	t.Cleanup(func() { codexServingDir = orig })
+	withCodexProjectDir(t, repo.a1)
+
+	// A registered worktree of a DIFFERENT repository (the gating arm observable).
+	foreign := filepath.Join(repo.base, "FB")
+	foreignWt := filepath.Join(repo.base, "FB1")
+	for _, d := range []string{foreign, foreignWt} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	auditGit(t, foreign, "init", "-q", "-b", "main")
+	auditGit(t, foreign, "commit", "-q", "--allow-empty", "-m", "init")
+	auditGit(t, foreign, "worktree", "add", "-q", "-b", "wt-fb", foreignWt)
+	// An unregistered directory inside the serving repository.
+	unreg := filepath.Join(repo.a, "unregistered")
+	if err := os.MkdirAll(unreg, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("absent project_root refused", func(t *testing.T) {
+		withCodexSession(t, nil)
+		res, herr := handleCodexTask(context.Background(), mcp.CallToolRequest{
+			Params: mcp.CallToolParams{Arguments: map[string]any{"prompt": "task"}},
+		})
+		if herr != nil {
+			t.Fatal(herr)
+		}
+		if !res.IsError {
+			t.Fatalf("an absent project_root must be refused; got %+v", res)
+		}
+		if s := roleAuditResultText(res); !strings.Contains(s, "project_root") {
+			t.Fatalf("refusal must name the missing argument; got %q", s)
+		}
+	})
+	t.Run("empty project_root refused", func(t *testing.T) {
+		withCodexSession(t, nil)
+		res := callCodexTask(t, map[string]any{"prompt": "task", "project_root": "  "})
+		if !res.IsError {
+			t.Fatalf("an empty project_root must be refused; got %+v", res)
+		}
+	})
+	t.Run("foreign repository refused", func(t *testing.T) {
+		withCodexSession(t, nil)
+		res := callCodexTask(t, map[string]any{"prompt": "task", "project_root": foreignWt})
+		if !res.IsError {
+			t.Fatalf("a foreign repository must be refused; got %+v", res)
+		}
+		if s := roleAuditResultText(res); !strings.Contains(s, "belongs to a different repository") {
+			t.Fatalf("refusal must carry the same-repo fragment; got %q", s)
+		}
+	})
+	t.Run("unregistered directory refused", func(t *testing.T) {
+		withCodexSession(t, nil)
+		res := callCodexTask(t, map[string]any{"prompt": "task", "project_root": unreg})
+		if !res.IsError {
+			t.Fatalf("an unregistered directory must be refused; got %+v", res)
+		}
+		if s := roleAuditResultText(res); !strings.Contains(s, "is not a registered worktree of this repository") {
+			t.Fatalf("refusal must carry the registration fragment; got %q", s)
+		}
+	})
+	t.Run("registered worktree accepted and acted on", func(t *testing.T) {
+		withCodexTaskTimeout(t, 10*time.Second)
+		sess := withCodexSession(t, codexTaskScript("trn-pr", "done on the presented tree"))
+
+		res := callCodexTask(t, map[string]any{"prompt": "task", "project_root": repo.a2})
+		if res.IsError {
+			t.Fatalf("a registered sibling worktree must be accepted: %s", roleAuditResultText(res))
+		}
+		out := structuredMap(t, res)
+		if out["status"] != codexJobStatusCompleted {
+			t.Fatalf("the turn did not complete: %v", out)
+		}
+		// The thread must have been opened on the ACCEPTED root, not on the
+		// serving checkout and not on a default.
+		for _, line := range sess.sent {
+			var m map[string]any
+			if json.Unmarshal([]byte(line), &m) != nil {
+				continue
+			}
+			if params, ok := m["params"].(map[string]any); ok {
+				if cwd, ok := params["cwd"].(string); ok && cwd != "" {
+					if cwd != repo.a2 {
+						t.Fatalf("thread cwd = %q, want the accepted root %q", cwd, repo.a2)
+					}
+					return
+				}
+			}
+		}
+		t.Fatal("no cwd found in the sent thread requests")
+	})
 }

@@ -266,7 +266,7 @@ func LoadGovernanceReceipts(root, decisionPath, auditPath string, exp Governance
 	if err != nil {
 		return GovernanceEvidence{}, err
 	}
-	if err := validateGovernanceBinding(decision, GovernanceDecision, GovernanceRecommended, "mission-governor", exp); err != nil {
+	if err := validateGovernanceBinding(decision, GovernanceDecision, GovernanceRecommended, "manager-todo", exp); err != nil {
 		return GovernanceEvidence{}, err
 	}
 	if err := validateGovernanceBinding(audit, GovernanceAudit, GovernancePassed, "sync-auditor", exp); err != nil {

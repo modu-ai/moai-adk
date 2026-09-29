@@ -53,7 +53,7 @@ func governanceCLIArgs(t *testing.T, root, session string, action mission.Action
 	auditPath := filepath.Join(dir, string(action)+"-audit.json")
 	base := mission.GovernanceReceipt{Version: 1, MissionID: session, ContractHash: state.ContractHash, SnapshotHash: snapshot, Action: action, Targets: []string{target}, ExpiresAt: time.Now().Add(time.Hour), HeadSHA: head}
 	decision := base
-	decision.Kind, decision.Issuer, decision.Status = mission.GovernanceDecision, "mission-governor", mission.GovernanceRecommended
+	decision.Kind, decision.Issuer, decision.Status = mission.GovernanceDecision, "manager-todo", mission.GovernanceRecommended
 	audit := base
 	audit.Kind, audit.Issuer, audit.Status = mission.GovernanceAudit, "sync-auditor", mission.GovernancePassed
 	if err := mission.WriteGovernanceReceipt(root, decisionPath, decision); err != nil {
@@ -461,7 +461,7 @@ func TestGTDAutonomyEndToEndProductionCLIWithGovernanceReceipts(t *testing.T) {
 		base := mission.GovernanceReceipt{Version: 1, MissionID: session, ContractHash: state.ContractHash, SnapshotHash: snapshot, Action: action, Targets: []string{target}, ExpiresAt: time.Now().Add(time.Hour), HeadSHA: head}
 		decision := base
 		decision.Kind = mission.GovernanceDecision
-		decision.Issuer = "mission-governor"
+		decision.Issuer = "manager-todo"
 		decision.Status = mission.GovernanceRecommended
 		audit := base
 		audit.Kind = mission.GovernanceAudit
@@ -564,7 +564,7 @@ func TestAutoMissionSupervisorSplitWorktreesCommitMergeAndCompletion(t *testing.
 	writeGovernance := func(action mission.Action, snapshot, head string) {
 		base := mission.GovernanceReceipt{Version: 1, MissionID: session, ContractHash: state.ContractHash, SnapshotHash: snapshot, Action: action, Targets: []string{target}, ExpiresAt: time.Now().Add(time.Hour), HeadSHA: head}
 		decision := base
-		decision.Kind, decision.Issuer, decision.Status = mission.GovernanceDecision, "mission-governor", mission.GovernanceRecommended
+		decision.Kind, decision.Issuer, decision.Status = mission.GovernanceDecision, "manager-todo", mission.GovernanceRecommended
 		audit := base
 		audit.Kind, audit.Issuer, audit.Status = mission.GovernanceAudit, "sync-auditor", mission.GovernancePassed
 		if err := mission.WriteGovernanceReceipt(root, strings.ReplaceAll(governorPattern, "{action}", string(action)), decision); err != nil {

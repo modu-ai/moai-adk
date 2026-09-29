@@ -35,6 +35,7 @@ package cli
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -320,8 +321,42 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		return toolErr(codexTaskToolName, errors.New("prompt is required")), nil
 	}
 
-	projectDir := projectDirResolver()
-	writeGranted := writeRequested && readCodexTaskAllowWrite(projectDir)
+	// project_root is REQUIRED and gates through the same registered-
+	// same-repository verification as codex_role_audit
+	// (SPEC-CODEX-ROLE-AUDIT-ROOT-001 REQ-005). An absent or empty value is
+	// refused naming the argument — the tool never defaults to the primary
+	// checkout, because the server's own resolution names the primary even for
+	// a session working inside a worktree. The accepted root becomes the
+	// turn's cwd: codex works on the tree the caller presented. The job
+	// registry and the write opt-in stay bound to the serving project — the
+	// records remain server-scoped wherever the caller sits, and the opt-in
+	// remains the serving project's policy.
+	raw := strings.TrimSpace(req.GetString("project_root", ""))
+	if raw == "" {
+		return toolErr(codexTaskToolName,
+			errors.New("project_root is required (pass your own git rev-parse --show-toplevel); codex_task does not default to any tree")), nil
+	}
+	serverDir, err := codexServingDir()
+	if err != nil {
+		return toolErr(codexTaskToolName, fmt.Errorf("cannot read the server's start directory: %w", err)), nil
+	}
+	// The serving anchor is the SERVER's identity, not the request's: a
+	// request cancelled mid-handshake must not turn the anchor lookup into a
+	// misleading refusal, so the git query runs on the background context.
+	servingTop, err := codexAuditGit(context.Background(), serverDir, "rev-parse", "--show-toplevel")
+	if err != nil {
+		return toolErr(codexTaskToolName,
+			errors.New("the server did not start inside a git worktree; cannot verify project_root")), nil
+	}
+	// The gate is a precondition decided BEFORE any session work starts, so it
+	// answers deterministically even for an already-cancelled request: the
+	// git verification runs on the background context, and the cancellation
+	// surfaces later, at the session, where it belongs.
+	workRoot, err := codexAuditValidateRoot(context.Background(), servingTop, raw)
+	if err != nil {
+		return toolErr(codexTaskToolName, err), nil
+	}
+	writeGranted := writeRequested && readCodexTaskAllowWrite(projectDirResolver())
 
 	result := CodexTaskResult{
 		Background:     background,
@@ -341,7 +376,7 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		return toolJSON(codexTaskToolName, result), nil
 	}
 
-	registry := newCodexJobRegistry(projectDir)
+	registry := newCodexJobRegistry(projectDirResolver())
 
 	// Every refusal below is decided BEFORE the session opens, so a refused call
 	// starts no codex process (REQ-CRS-003/005/006).
@@ -397,9 +432,16 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 
 	turnParams := map[string]any{
 		"prompt": prompt,
-		"cwd":    projectDir,
+		"cwd":    workRoot,
 		// EVERY turn carries the policy explicitly — see codexSandboxPolicy.
 		"sandboxPolicy": codexSandboxPolicy(writeGranted),
+	}
+	// An explicit caller model rides the turn params so the same resolution
+	// feeds thread/start and result.Model (resolveCodexModelEffort reads
+	// params["model"]; with no explicit model nothing is sent and codex
+	// applies its own default — the session-inherit design).
+	if explicit, ok := req.GetArguments()["model"].(string); ok && strings.TrimSpace(explicit) != "" {
+		turnParams["model"] = strings.TrimSpace(explicit)
 	}
 	// The requested model is resolved exactly as openCodexSessionOn resolves
 	// the thread/start `model` parameter, so the result names what was sent.

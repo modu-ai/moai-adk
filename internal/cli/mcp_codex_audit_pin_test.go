@@ -18,8 +18,8 @@ func auditCodexPinYAML(model, effort string) string {
 	return "workflow:\n  audit:\n    codex:\n      model: " + model + "\n      effort: " + effort + "\n"
 }
 
-// writeLLMYAML writes an llm.yaml agent-overrides SSOT cell for the codex audit
-// agent key INTO the given root (unlike writeCodexLLMFixture, which creates its
+// writeLLMYAML writes a leftover llm.yaml agent-overrides cell for the former
+// codex audit agent key ("sync-auditor") INTO the given root (unlike writeCodexLLMFixture, which creates its
 // own temp dir — here the llm cell and the workflow pin must share one tree).
 func writeLLMYAML(t *testing.T, root, model, effort string) {
 	t.Helper()
@@ -27,7 +27,7 @@ func writeLLMYAML(t *testing.T, root, model, effort string) {
 	if err := os.MkdirAll(sections, 0o755); err != nil {
 		t.Fatalf("mkdir sections: %v", err)
 	}
-	body := "llm:\n  agent_overrides:\n    " + codexAuditAgentKey + ":\n      model: " + model + "\n      effort: " + effort + "\n"
+	body := "llm:\n  agent_overrides:\n    sync-auditor:\n      model: " + model + "\n      effort: " + effort + "\n"
 	if err := os.WriteFile(filepath.Join(sections, "llm.yaml"), []byte(body), 0o600); err != nil {
 		t.Fatalf("write llm.yaml: %v", err)
 	}
@@ -63,13 +63,13 @@ func TestCodexAuditPin_ReachesTransmittedParams(t *testing.T) {
 
 // AC-AMP-002 MF2 negative arm (REQ-AMP-008) — under the SAME populated pin, a
 // codex_task turn carries NO pinned model/effort: the task path keeps the
-// legacy SSOT-only resolution. This is the regression test for the shared-seam
+// pin-free resolution. This is the regression test for the shared-seam
 // leak path codex_task.go → openCodexSessionOn → resolveCodexModelEffort.
 func TestCodexAuditPin_TaskTurnCarriesNoPin(t *testing.T) {
 	root := t.TempDir()
-	// The pin IS resolvable in this tree (workflow.yaml present) AND an llm
-	// SSOT cell is present too — so the task path's legacy resolution would
-	// transmit the SSOT pair, proving it read llm.yaml and NOT the pin.
+	// The pin IS resolvable in this tree (workflow.yaml present) AND a leftover
+	// llm.yaml cell is present too — the task path must transmit neither: no
+	// pin (audit-entry-only) and no per-agent cell (design D5).
 	writeCodexWorkflowYAML(t, root, auditCodexPinYAML("gpt-5.6-sol", "high"))
 	writeLLMYAML(t, root, "gpt-5-codex", "medium")
 	withCodexProjectDir(t, root)
@@ -85,18 +85,17 @@ func TestCodexAuditPin_TaskTurnCarriesNoPin(t *testing.T) {
 		t.Error("codex_task thread/start must NOT carry the audit pin — the pin is audit-entry-only (REQ-AMP-008)")
 	}
 	turn := sentParams(t, sess.sent, 2)
-	if got, _ := turn["model"].(string); got != "gpt-5-codex" {
-		t.Errorf("codex_task turn/start model = %q, want the legacy SSOT %q (not the pin)", got, "gpt-5-codex")
-	}
-	if got, _ := turn["effort"].(string); got != "medium" {
-		t.Errorf("codex_task turn/start effort = %q, want the legacy SSOT %q (not the pin)", got, "medium")
+	for _, field := range []string{"model", "effort"} {
+		if _, ok := turn[field]; ok {
+			t.Errorf("codex_task turn/start carries %q = %v; want it omitted (neither the pin nor a per-agent cell reaches the task path)", field, turn[field])
+		}
 	}
 }
 
 // AC-AMP-003 state (c) — an unservable pinned model (a Claude id) falls back
-// through the SSOT path; the servability filter holds for the pin exactly as
-// it does for the SSOT cell.
-func TestCodexAuditPin_UnservableFallsBackToSSOT(t *testing.T) {
+// to the backend default: the request carries no model and no effort, and a
+// leftover llm.yaml cell does not step in (design D5).
+func TestCodexAuditPin_UnservableFallsBackToBackendDefault(t *testing.T) {
 	root := writeCodexLLMFixture(t, "gpt-5-codex", "medium")
 	writeCodexWorkflowYAML(t, root, auditCodexPinYAML("opus", "high"))
 	sess := withCodexSession(t, codexSessionScript("clean"))
@@ -108,20 +107,19 @@ func TestCodexAuditPin_UnservableFallsBackToSSOT(t *testing.T) {
 		t.Fatalf("audit rpc: %v", err)
 	}
 
-	if got, _ := sentParams(t, sess.sent, 1)["model"].(string); got != "gpt-5-codex" {
-		t.Errorf("thread/start model = %q, want the SSOT fallback %q (unservable pin must not break the gate)", got, "gpt-5-codex")
+	if _, ok := sentParams(t, sess.sent, 1)["model"]; ok {
+		t.Error("thread/start must omit the model when the pin is unservable (the backend default applies)")
 	}
 	turn := sentParams(t, sess.sent, 2)
-	if got, _ := turn["model"].(string); got != "gpt-5-codex" {
-		t.Errorf("turn/start model = %q, want the SSOT fallback %q", got, "gpt-5-codex")
-	}
-	if got, _ := turn["effort"].(string); got != "medium" {
-		t.Errorf("turn/start effort = %q, want the SSOT fallback %q (the unservable pin's paired effort drops with it)", got, "medium")
+	for _, field := range []string{"model", "effort"} {
+		if _, ok := turn[field]; ok {
+			t.Errorf("turn/start carries %q; the unservable pin's pair drops whole and no llm.yaml cell steps in", field)
+		}
 	}
 }
 
 // Edge case (§D.2) — effort set with an EMPTY model is no pin (the model is
-// the gate): resolution falls through to the legacy SSOT path unchanged.
+// the gate): resolution falls through to the backend default.
 func TestCodexAuditPin_EffortAlonePinsNothing(t *testing.T) {
 	root := writeCodexLLMFixture(t, "gpt-5-codex", "medium")
 	writeCodexWorkflowYAML(t, root, "workflow:\n  audit:\n    codex:\n      model: \"\"\n      effort: high\n")
@@ -134,11 +132,11 @@ func TestCodexAuditPin_EffortAlonePinsNothing(t *testing.T) {
 		t.Fatalf("audit rpc: %v", err)
 	}
 
-	if got, _ := sentParams(t, sess.sent, 1)["model"].(string); got != "gpt-5-codex" {
-		t.Errorf("thread/start model = %q, want the SSOT %q (empty model = no pin)", got, "gpt-5-codex")
+	if _, ok := sentParams(t, sess.sent, 1)["model"]; ok {
+		t.Error("thread/start must omit the model (empty pin model = no pin)")
 	}
-	if got, _ := sentParams(t, sess.sent, 2)["effort"].(string); got != "medium" {
-		t.Errorf("turn/start effort = %q, want the SSOT %q (pin effort is inert without a model)", got, "medium")
+	if _, ok := sentParams(t, sess.sent, 2)["effort"]; ok {
+		t.Error("turn/start must omit the effort (pin effort is inert without a model)")
 	}
 }
 
@@ -186,13 +184,13 @@ func TestCodexAuditPin_AbsentPinEqualsLegacyResolution(t *testing.T) {
 
 	thread := sentParams(t, sess.sent, 1)
 	if _, ok := thread["model"]; ok {
-		t.Error("thread/start must omit model when no pin and no SSOT cell resolve (byte-identical legacy shape)")
+		t.Error("thread/start must omit model when no pin resolves (byte-identical legacy shape)")
 	}
 	turn := sentParams(t, sess.sent, 2)
 	if _, ok := turn["model"]; ok {
-		t.Error("turn/start must omit model when no pin and no SSOT cell resolve")
+		t.Error("turn/start must omit model when no pin resolves")
 	}
 	if _, ok := turn["effort"]; ok {
-		t.Error("turn/start must omit effort when no pin and no SSOT cell resolve")
+		t.Error("turn/start must omit effort when no pin resolves")
 	}
 }

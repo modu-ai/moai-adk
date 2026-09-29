@@ -108,7 +108,7 @@ MoAI-ADK は **13 個の保存エージェント** (12 個 MoAI-custom + 1 個 A
 | Evaluator (2) | plan-auditor, sync-auditor | 計画/完了ステップの独立した品質評価 |
 | Builder (1) | builder-harness | 動的なプロジェクト別ハーネス生成 |
 | Advisor (1) | super-advisor | 高推論の助言 (E1-E4 エスカレーション) |
-| Specialist (2) | e2e-tester, mission-governor | Web/モバイル/デスクトップの E2E テスト実行 (`/moai e2e`)、承認済み GTD 自動ミッションに対する読み取り専用の判定 |
+| Specialist (2) | e2e-tester, manager-todo | Web/モバイル/デスクトップの E2E テスト実行 (`/moai e2e`)、タスクキュー管理 — 承認済み GTD 自動ミッションに対する読み取り専用の封印スナップショット判定はそのサブロール |
 | Built-in (1) | Explore (Anthropic) | 読み取り専用のコードベース探索 |
 
 ### 5. SPEC ワークフロー
@@ -379,7 +379,7 @@ flowchart TD
 {{< icon warning warn >}} 2 つのファイルが両方あると、Claude Code は両方を読み、似た指示が二重に読み込まれます。この状態では `moai migrate local-instructions` はどちらのファイルにも触れずに拒否します。どちらの内容を残すかはツールには判断できないためです。`CLAUDE.local.md` の内容を手作業で `AGENTS.local.md` にまとめてから、`CLAUDE.local.md` を削除してください。
 {{< /callout >}}
 
-リンクされたワークツリーでセッションを開くと、`@AGENTS.local.md` の取り込みがプロジェクトの外を指すため、Claude Code は何も言わずにスキップします。ワークツリーのセッションには `AGENTS.local.md` が届かない点に注意してください。
+リンクされたワークツリーで開いたセッションは、`AGENTS.local.md` がそのワークツリーのチェックアウト内にあるときにだけ受け取ります。このファイルは既定で gitignore されており、通常はプロジェクトルートにしかないため、追跡していないコピーではワークツリーのセッションに届きません — `@AGENTS.local.md` の取り込みは何も見つけられず、Claude Code は何も言わずにスキップします。ファイルをコミットすれば（ignore 規則を force-add で迂回して）、git がすべてのワークツリーのチェックアウトにファイルを届け、取り込みはプロジェクト内で解決されてセッションがローカル指示を読み込みます。
 
 ## 関連ドキュメント
 

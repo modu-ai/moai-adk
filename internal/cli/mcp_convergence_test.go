@@ -524,16 +524,15 @@ func TestConvergence_NoAskUserQuestion_AC_AMM_024(t *testing.T) {
 	}
 }
 
-// AC-AMM-005 / C6 (REQ-AMM-005): the convergence engine resolves model/effort
-// ONLY through template.ResolveAgentModelEffort — it does NOT read agent
-// frontmatter or llm.agent_overrides directly (fork risk). Since the engine
-// delegates the actual backend calls to the existing codex/glm handlers (which
-// already go through the SSOT), the engine itself MUST contain no direct
-// frontmatter/override read.
+// AC-AMM-005 / C6 (REQ-AMM-005): the convergence engine does NOT read agent
+// frontmatter or llm.agent_overrides (fork risk). It delegates the actual
+// backend calls to the existing codex/glm handlers, which resolve audit pin >
+// backend default, so the engine itself MUST contain no frontmatter/override
+// read.
 func TestConvergence_NoDirectFrontmatterRead_AC_AMM_005(t *testing.T) {
 	matches := grepRepo(t, []string{"internal/cli/mcp_convergence.go"}, `agent_overrides|frontmatter|ReadAgentFrontmatter`)
 	if len(matches) > 0 {
-		t.Errorf("direct frontmatter/override read in convergence engine (SSOT violation — ResolveAgentModelEffort is the sole interpreter):\n%s", strings.Join(matches, "\n"))
+		t.Errorf("direct frontmatter/override read in convergence engine (resolution belongs to the codex/glm handlers):\n%s", strings.Join(matches, "\n"))
 	}
 }
 

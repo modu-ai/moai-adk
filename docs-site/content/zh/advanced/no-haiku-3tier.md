@@ -65,11 +65,13 @@ flowchart TD
 
 连 Sonnet 在长周期任务上都比 Opus 贵，Haiku 比 Sonnet 更弱。把 Haiku 放进路由，能力不会增加，只是步数浪费增加 —— Sonnet 上已经观测到的完赛失败模式，在 Haiku 上只会更陡峭。
 
-所以 MoAI 把 Haiku 从路由模型集合中完全排除（No-Haiku 策略，SPEC-AGENT-ARCH-V2-001 §D）。Haiku 在模型 enum 中仍是合法值，因此会出现在文档 · 示例 YAML 里，但不会进入实际智能体分配矩阵的任何一格。移除 Haiku 之后，降低成本的轴仍在 —— 不改模型等级，而是按档调节 effort（推理深度）。这就是三层结构的起点。
+所以 MoAI 把 Haiku 从路由模型集合中完全排除（No-Haiku 策略，SPEC-AGENT-ARCH-V2-001 §D）。Haiku 在模型 enum 中仍是合法值，因此会出现在文档 · 示例 YAML 里，但不会进入会话模型组合的任何默认搭配。移除 Haiku 之后，降低成本的轴仍在 —— 不改模型等级，而是按档调节 effort（推理深度）。这就是三层结构的起点。
 
 ## 三档分配规则
 
 把剩下的模型（Opus、Sonnet）与 effort 按任务性质分成三档。这里的"级别"指*按任务种类分配模型 · effort 的档位*。
+
+> 本节之后的分配表是**设计意图，同时也是 v3.1 之前的实际规则**（按智能体逐一分配的配置矩阵时代）。v3.2 起已实现的行为是会话继承，所以这份分配表要当作模型选择标准的记录来读，而不是当前行为。两者的区分见下文"把设计意图与已实现行为分开读"一节。
 
 ```mermaid
 flowchart TD
@@ -80,11 +82,11 @@ flowchart TD
 
     T1["Tier 1 — 机械 · 探索<br/>Sonnet low<br/>manager-docs · manager-git · Explore"]
     T2["Tier 2 — 生产<br/>Opus，逐行档位不同<br/>manager-spec · manager-develop<br/>builder-harness · e2e-tester"]
-    T3["Tier 3 — 判断 · 协调<br/>Opus，以 high 为主<br/>plan-auditor · sync-auditor · manager-design<br/>manager-lead · super-advisor · mission-governor"]
+    T3["Tier 3 — 判断 · 协调<br/>Opus，以 high 为主<br/>plan-auditor · sync-auditor · manager-design<br/>manager-lead · super-advisor · manager-todo"]
 
     T1 --> NOTE["三个配置下全部固定"]
     T2 --> NOTE2["两行在三列都固定在 medium<br/>只有两行随配置下降"]
-    T3 --> NOTE3["super-advisor · mission-governor<br/>在经济列也保持 high"]
+    T3 --> NOTE3["super-advisor · manager-todo<br/>在经济列也保持 high"]
 ```
 
 ### Tier 1 — 机械 · 探索
@@ -114,11 +116,11 @@ flowchart TD
 |---|---|---|---|
 | `plan-auditor` · `sync-auditor` | `opus / high` | `opus / high` | `opus / medium` |
 | `manager-design` · `manager-lead` | `opus / high` | `opus / high` | `opus / medium` |
-| `super-advisor` · `mission-governor` | `opus / high` | `opus / high` | `opus / high` |
+| `super-advisor` · `manager-todo` | `opus / high` | `opus / high` | `opus / high` |
 
-只有 `super-advisor`（升级通道）与 `mission-governor`（密封任务的判定）**在经济列也保持 `high`**。因为最值得在便宜的一列里保持稳健的，恰恰是这两个位置。
+只有 `super-advisor`（升级通道）与 `manager-todo`（密封任务的判定）**在经济列也保持 `high`**。因为最值得在便宜的一列里保持稳健的，恰恰是这两个位置。
 
-`mission-governor` 说明了这条轴为什么好过"是不是多轮"。它读一次、返回一个决定，是**单发**的行，按多轮标准本该落在 Sonnet 一侧；实际上它三列都是 `opus / high`。**因为它是判断的行。**
+`manager-todo` 说明了这条轴为什么好过"是不是多轮"。它读一次、返回一个决定，是**单发**的行，按多轮标准本该落在 Sonnet 一侧；实际上它三列都是 `opus / high`。**因为它是判断的行。**
 
 `max` **没有任何一行拿到**。它作为 `high` 之上唯一的档位留在词汇里，但当前持有它的格子是 0 个。`xhigh` 也哪里都不用 —— 在 Opus 上得分与 `high` 相同，成本却多 49%。
 
@@ -140,13 +142,13 @@ flowchart TD
 
 **设计阶段** (`.moai/reports/agent-architecture-redesign-v2-20260709.html`) —— v2 架构的设计意图。提出三层模型策略的原则与 DeepSWE 依据。
 
-**已实现的行为** —— 实际路由由单一配置矩阵执行。活动配置（`high` / `medium` / `low`）选出矩阵的一列，解析器定下各智能体的 `{model, effort}`，在 spawn 时把 model 作为运行时参数注入。详细矩阵请看[配置矩阵](/zh/advanced/profile-matrix/)页面。
+**已实现的行为** —— v3.2 起的实际行为是**会话继承**。子代理沿用主会话的模型与推理深度 —— 生成子代理时不传 `model` 也不传 `effort`，MoAI 智能体定义对两者都不作声明。曾经的配置矩阵（13 个智能体 × 3 个配置 = 39 格的分配表）和把矩阵值注入 spawn 的解析器都已退役。会话模型策略今天要做的事，只剩在 `moai profile setup` 里决定会话的默认推理强度回退。当前行为的详情请看[配置矩阵](/zh/advanced/profile-matrix/)页面。
 
 阅读侧同样要把设计意图（本页的 DeepSWE 依据）与已实现的行为（单一配置矩阵）分开看。
 
 ## 这个基准测不到的东西
 
-{{< icon info >}} **局限声明**： 这个基准测量的是**编码**智能体。文档撰写、审计判断、SPEC（需求规格书）撰写质量未被直接测量，这些行的安排不是观测，而是建立在"与多轮智能体工作相似"的推断上。置信区间也要一起看 —— `medium`（69%±1）与 `high`（73%±2）不重叠，但 `max`（74%±4）与 `high` 重叠。这正是不把 `max` 分配给任何一格的原因 —— 那等于为重叠的区间多付钱。所有默认值都可以用 `llm.agent_overrides` 按智能体逐个回退。
+{{< icon info >}} **局限声明**： 这个基准测量的是**编码**智能体。文档撰写、审计判断、SPEC（需求规格书）撰写质量未被直接测量，这些行的安排不是观测，而是建立在"与多轮智能体工作相似"的推断上。置信区间也要一起看 —— `medium`（69%±1）与 `high`（73%±2）不重叠，但 `max`（74%±4）与 `high` 重叠。这正是不把 `max` 分配给任何一格的原因 —— 那等于为重叠的区间多付钱。所有默认值都可以在会话层面调整 —— 模型由 Claude Code 的模型选择决定，effort 由 `/effort` 或配置向导的会话模型策略决定。
 
 {{< icon info >}} **关于 Fable 5**： Fable 在编码工作上被全面压制。Fable `high`（69%，$9.18）与 Opus `medium`（69%，$3.29）得分相同，成本近 3 倍。所以没有放进任何矩阵格。它在模型 enum 中仍是合法值，GLM 后端的 Fable 槽位接线也原样保留 —— 变的只是默认值。
 
@@ -156,6 +158,6 @@ flowchart TD
 
 ## 下一步
 
-- [配置矩阵](/zh/advanced/profile-matrix/) —— 单一 3 列 per-agent 配置矩阵（13 个智能体 × 3 个配置 = 39 格）
+- [配置矩阵](/zh/advanced/profile-matrix/) —— 39 格矩阵退役后的位置，以及现在的会话继承规则
 - [自主级别](/zh/advanced/autonomy-tier/) —— 与模型级别正交、以权限 · 控制为对象的自主等级
 - [代币经济学概述](/zh/advanced/tokenomics-overview/) —— 四层代币经济学结构的路由层

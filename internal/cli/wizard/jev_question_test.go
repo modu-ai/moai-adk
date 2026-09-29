@@ -65,7 +65,7 @@ func TestJevQuestion_AbsentFromDefaultAndReconfigure(t *testing.T) {
 	// GitQuestions spliced after report_format; spelling it out here is what
 	// makes "unchanged" a measurement rather than an assertion.
 	wantReconfigure := []string{
-		"conversation_language", "user_name", "project_name", "model_policy", "report_format",
+		"conversation_language", "user_name", "project_name", "report_format",
 		"git_mode", "git_provider", "gitlab_instance_url",
 		"github_username", "github_token", "gitlab_username", "gitlab_token",
 	}

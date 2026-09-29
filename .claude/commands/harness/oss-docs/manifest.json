@@ -9,27 +9,21 @@
       "description": "Author/rewrite canonical-locale source content (ko for docs-site pages, en for README): README section redesign per SSOT report, new docs pages, heading hierarchy, TD-only Mermaid, icon shortcodes over body emoji. Produces the single source of truth; does not translate.",
       "agent_file": ".claude/agents/harness/hns-oss-docs-content-author-specialist.md",
       "primitive": "sub-agent",
-      "isolation": "none",
-      "effort": "high",
-      "model": "opus"
+      "isolation": "none"
     },
     {
       "role": "locale-translator",
       "description": "Derive the 3 non-canonical locales in the same PR (ko->en->ja/zh for docs, en->ko/ja/zh for README), preserving facts/figures/code/icon-shortcodes/Mermaid direction, applying per-locale emphasis-marker spacing and URL-blacklist compliance. One parallel worker per derived locale.",
       "agent_file": ".claude/agents/harness/hns-oss-docs-locale-translator-specialist.md",
       "primitive": "adversarial-fan-out",
-      "isolation": "none",
-      "effort": "medium",
-      "model": "sonnet"
+      "isolation": "none"
     },
     {
       "role": "structure-curator",
       "description": "Maintain docs-site structure/navigation: per-locale _meta.yaml section order, data/menu/main.yaml 4-locale name maps + icons, matching SVG cases in layouts/partials/menu.html, vercel.json redirects for moved pages; reconcile _meta.yaml/main.yaml divergences. Single-writer on shared config.",
       "agent_file": ".claude/agents/harness/hns-oss-docs-structure-curator-specialist.md",
       "primitive": "sub-agent",
-      "isolation": "none",
-      "effort": "medium",
-      "model": "sonnet"
+      "isolation": "none"
     }
   ],
   "sprint_contract": {

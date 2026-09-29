@@ -114,6 +114,6 @@ In every tier, the `deny` list is unchanged and Implementation Kickoff Approval 
 ## Next Steps
 
 - [3-Tier Agent Architecture](/en/advanced/no-haiku-3tier/) — the model tier (single-shot, agentic, peak). The orthogonal "which model" axis to the autonomy tier.
-- [Profile Matrix](/en/advanced/profile-matrix/) — the single matrix for choosing each agent's `{model, effort}`.
+- [Profile Matrix](/en/advanced/profile-matrix/) — what replaced the former model-assignment matrix: subagents inherit the session's model and effort.
 - [Autonomous Loops](/en/advanced/autonomous-loops/) — unattended continuous execution on top of the goal engine.
 - [Kanban Mode](/en/advanced/kanban-mode/) — running autonomy tiers in parallel across a multi-session board.

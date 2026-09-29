@@ -1,6 +1,9 @@
 # 진입점
 
-**현재 부분 갱신 — t1295, `develop` `cee197917` (2026-09-28).**
+**현재 부분 갱신 — t1305, worktree `.claude/worktrees/t1305`, 브랜치 `WT-codemaps-refresh8`, base `afecf81e9e96` (2026-09-29).**
+스탬프 앵커 `a3a9e653e` 이후 착지분을 반영. card t1246이 CLI 표면에서 에이전트 모델을 은퇴시켰다 — `moai model` 명령이 사라지고(`root.go` 등록 목록에서 제외), `cc`·`glm`·`codex` 런처의 per-agent `--model`·`--effort` 플래그가 은퇴 안내로 대체됐다(`agent_model_flags_retired.go`), `moai update`가 설정에 남은 에이전트 모델 키를 걷는다(`update_model_key_strip.go`). card t1240이 codex factory lane 진입을 복원했고(`codex_factory.go` 재추가), card t1294가 codex lane claim을 run slot 상한으로 묶었다. § 훅의 설정 엔트리 수를 다시 쟀다 — 38이 아니라 34였다(앵커 이전부터 스테일).
+
+**이전 갱신 — t1295, `develop` `cee197917` (2026-09-28).**
 `moai worktree new <name>`은 MoAI L1을 `.moai/worktrees`에 만들고,
 `moai codex -w <name>`은 기존 `.moai/worktrees`와 `.claude/worktrees` 중
 한 곳에만 있는 이름을 열며 새 트리를 만들지 않는다. `moai update`는 기존
@@ -92,7 +95,7 @@ root.go Execute()
    worktree, agentlint(agent/workflow 2종), statusline, ast-grep, ast-edit, telemetry,
    constitution, state, tokens, clean, **skills**, navigator 5종(enrich/sync/tiers/route/fix),
    migration, **chain**, harness-router, tool-policy, tool, mcp-server, mcp, inventory, preference,
-   model, plan, feedback, inbox.
+   plan, feedback, inbox. (t1305 판: `model`이 목록에서 빠졌다 — card t1246이 `moai model`을 은퇴시켰다.)
    - `skills`(`newSkillsCmd()`, `root.go:187`) — `moai skills disable <name> --codex` 형태로
      **계층을 플래그로 명명**하는 스킬 노출 제어 트리. `--codex`가 필수인 것이 opt-in의
      기계적 형태이며, 어떤 프로젝트 설정 키도 이 verb를 구동하지 않습니다(사용자 HOME에
@@ -119,7 +122,11 @@ root.go Execute()
    `gate.go`, `graph.go`, `goal.go`, `integration.go` 등이 이 방식이고, 앞선 판 사이에
    `gtd.go`(`NewGTDCommand()` — todo 명령 트리를 감싸 `Use`만 `gtd`로 바꾼 두 번째 이름)와
    `slot.go`(`moai slot` — 무거운 실행용 세션 간 자원 임대)가 더해진 바 있습니다.
-   비테스트 `AddCommand(` 호출은 모두 **231회**, 그중 `rootCmd.AddCommand(`는 **67회**입니다(t1286 판 병합 트리 재측정 — t1237 판 236 은 테스트 파일까지 선 계수였고 이 판 같은 명령으로 231; t1286 몫 +3 은 `moai factory assign`·`status`·`decide`, t1237 몫은 `contract_report.go` 의 `c.AddCommand(` 등록. `verify sync-gate`·`verify codex-review` 는 verify 트리 안의 서브커맨드다)   (card t1083 재측정 2026-09-22 — Consumer B 등록 철수 -1. 카운팅 명령:
+   비테스트 `AddCommand(` 호출은 모두 **230회**, 그중 `rootCmd.AddCommand(`는 **66회**입니다(t1305 판
+   병합 트리 재측정 — t1286 판 231/67에서 card t1246의 `moai model` 은퇴가 −1. 이력: t1286 판 같은
+   명령으로 231 — t1286 몫 +3 은 `moai factory assign`·`status`·`decide`, t1237 몫은
+   `contract_report.go` 의 `c.AddCommand(` 등록 — , t1237 판 236 은 테스트 파일까지 선 계수.
+   `verify sync-gate`·`verify codex-review` 는 verify 트리 안의 서브커맨드다)   (card t1083 재측정 2026-09-22 — Consumer B 등록 철수 -1. 카운팅 명령:
    `find internal/cli -name '*.go' -not -name '*_test.go' -print0 | xargs -0 grep -h 'AddCommand(' | wc -l`;
    같은 파이프에 `rootCmd\.AddCommand(` 패턴 = 67. 이 판 앞의 238회는 테스트 파일까지 선 값으로 정정).
 
@@ -192,7 +199,7 @@ enrich하고 SessionEnd에서 release하는 흐름입니다.
 네 층으로 내려갑니다.
 
 **1. 바깥쪽 배선** — `internal/template/templates/.claude/settings.json.tmpl`.
-훅 엔트리 38개가 모두 같은 모양입니다:
+훅 엔트리 34개가 모두 같은 모양입니다(t1305 판 재측정 정정 — 앞 판의 38은 스테일이었다):
 
 ```
 "command": "bash"

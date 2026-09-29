@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // t696: agents consuming `moai todo list --json` and `moai model profile --json`
@@ -99,36 +97,6 @@ func TestTodoListJSONShapeMatchesDoc(t *testing.T) {
 	for _, rel := range docSurfaces(t, root,
 		".claude/skills/moai/workflows/gtd.md",
 		"internal/template/templates/.claude/skills/moai/workflows/gtd.md") {
-		assertDocKeysCovered(t, rel, docJSONFenceKeys(t, root, rel), actual)
-	}
-}
-
-// TestModelProfileJSONShapeMatchesDoc pins `moai model profile --json` to the
-// object shape documented in model-policy.md: `{profile, backend, agents}` —
-// the per-agent cells under the `agents` array, never a top-level array. The
-// marshalled report is exactly what runModelProfile emits through
-// json.NewEncoder on the --json path, so asserting the marshalled shape
-// asserts the emitted bytes.
-func TestModelProfileJSONShapeMatchesDoc(t *testing.T) {
-	rpt := resolveModelProfileReport(config.LLMConfig{Profile: "high"})
-	data, err := json.Marshal(rpt)
-	if err != nil {
-		t.Fatalf("marshal report: %v", err)
-	}
-	var actual map[string]json.RawMessage
-	if err := json.Unmarshal(data, &actual); err != nil {
-		t.Fatalf("report is not a JSON object: %v", err)
-	}
-	for _, want := range []string{"profile", "backend", "agents"} {
-		if _, ok := actual[want]; !ok {
-			t.Errorf("actual output missing documented key %q; top-level keys: %v", want, topLevelKeysOf(actual))
-		}
-	}
-
-	root := repoRootForTest(t)
-	for _, rel := range docSurfaces(t, root,
-		".claude/rules/moai/development/model-policy.md",
-		"internal/template/templates/.claude/rules/moai/development/model-policy.md") {
 		assertDocKeysCovered(t, rel, docJSONFenceKeys(t, root, rel), actual)
 	}
 }

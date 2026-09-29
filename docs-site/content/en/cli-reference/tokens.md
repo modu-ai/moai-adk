@@ -32,7 +32,7 @@ $ moai tokens record --transcript <path> --json
 | `--transcript <path>` | The Claude Code transcript file to account |
 | `--session <id>` | Point at the transcript by session identifier |
 | `--card <card>` | The kanban card to book this usage against (e.g. `t12`) |
-| `--role <role>` | The session's role (e.g. `run`, `sync`, `worker-3`) |
+| `--role <role>` | The session's role (e.g. `run`, `sync`, `lane-3`) |
 | `--json` | Also emit the record as JSON on standard output |
 
 ## What the record looks like

@@ -95,7 +95,7 @@ flowchart TD
 
 ## `project_root` 入力 — 呼び出し側が自分のツリーを指名する
 
-13個のツールがオプションの文字列 `project_root` を受け取ります：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`claude_audit`、`glm_audit`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_trace_calls`、`graph_shortest_path`。この呼び出しが対象とするツリーを指す値で、渡す値は呼び出し側自身の `git rev-parse --show-toplevel` の結果です。
+20個のツールがオプションの文字列 `project_root` を受け取ります：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`codex_task`、`claude_audit`、`glm_audit`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_trace_calls`、`graph_shortest_path`、`factory_decide`、`todo_add`、`todo_list`、`factory_next`、`factory_stage`、`factory_complete`。この呼び出しが対象とするツリーを指す値で、渡す値は呼び出し側自身の `git rev-parse --show-toplevel` の結果です。ただし `factory_next`・`factory_stage`・`factory_complete`・`codex_task` ではオプションではなく必須です — 自分の toplevel を渡さないと呼び出しは拒否され、どのツリーも既定値になりません。
 
 ワークツリーの中で作業するエージェントは、必ずこれを渡さなければなりません。利便性のための機能ではありません。サーバーには自力で答えを導く手段がないからです。MCP サーバーは長命なサブプロセスなので、作業ディレクトリがワークツリーの切り替えに追従できず、代わりに参照する環境変数は、セッションがワークツリーで作業していても**プロジェクト**ルート — つまり primary チェックアウト — を指します。ワークツリーでこれを省くと、呼び出しは primary チェックアウトを対象に動作し、カードのブランチにしか存在しない SPEC は監査者が読むカタログに入りません。欠落として報告もされません。ただ存在しないだけです。
 
@@ -217,11 +217,11 @@ GLM 委任ツール群は codex 委任と同じ形で super-advisor に配線さ
 
 | ツール | 目的 | 利用エージェント | CLI 等価物 |
 |--------|------|------------------|------------|
-| `mcp__moai__factory_msg_send` | 論理レーンの現在のエンドポイントへ、冪等なエンベロープを1つ書き込む | 帰属したファクトリーのリード・ワーカーセッション | — （MCP 専用） |
-| `mcp__moai__factory_msg_list` | 自分のエンドポイントのメタデータを最大16件占有（占有リースの作成・更新、本文なし） | 帰属したファクトリーのリード・ワーカーセッション | — （MCP 専用） |
-| `mcp__moai__factory_msg_body` | 占有済みのメッセージ本文を1つ読む（本文は信頼できないピアデータとして返る） | 帰属したファクトリーのリード・ワーカーセッション | — （MCP 専用） |
-| `mcp__moai__factory_msg_receipt` | 占有の処分を記録してから、メッセージを確認済みにする | 帰属したファクトリーのリード・ワーカーセッション | — （MCP 専用） |
-| `mcp__moai__factory_msg_status` | メッセージを占有せずに、ブローカーの件数とレーンの運用状態を読む | ファクトリーのリード・ワーカー | — （MCP 専用） |
+| `mcp__moai__factory_msg_send` | 論理レーンの現在のエンドポイントへ、冪等なエンベロープを1つ書き込む | 帰属したファクトリーのリーダー・レーンセッション | — （MCP 専用） |
+| `mcp__moai__factory_msg_list` | 自分のエンドポイントのメタデータを最大16件占有（占有リースの作成・更新、本文なし） | 帰属したファクトリーのリーダー・レーンセッション | — （MCP 専用） |
+| `mcp__moai__factory_msg_body` | 占有済みのメッセージ本文を1つ読む（本文は信頼できないピアデータとして返る） | 帰属したファクトリーのリーダー・レーンセッション | — （MCP 専用） |
+| `mcp__moai__factory_msg_receipt` | 占有の処分を記録してから、メッセージを確認済みにする | 帰属したファクトリーのリーダー・レーンセッション | — （MCP 専用） |
+| `mcp__moai__factory_msg_status` | メッセージを占有せずに、ブローカーの件数とレーンの運用状態を読む | ファクトリーのリーダー・レーン | — （MCP 専用） |
 
 ### セッションメッセージング（Claude ↔ Codex）
 

@@ -210,17 +210,16 @@ question but a question of **review responsibility**.
 
 The model is part of the cache key. Change the model and the same content gets
 recomputed in full. So keeping the model consistent is itself a way to save
-cache cost. MoAI-ADK protects this consistency with two devices.
+cache cost. Since v3.2, session inheritance provides this consistency by
+construction — subagents inherit the main session's model and effort, so all
+spawns share the session's cache naturally.
 
-- **Profile matrix**: the max · medium · low 3-tier profiles fix a
-  `{model, effort}` cell per agent. Query it with `moai model profile --json`.
-  When each agent's model is pinned, spawning several agents does not shake
-  the cache.
-- **Per-spawn model injection** (model-policy): name the model explicitly
-  every time you spawn `Agent()`. Agent definitions default to
-  `model: inherit`, so omitting the model quietly drops the spawn to the
-  parent session's model — a common cause of cache shake. A declared model
-  that differs from the actually resolved one is caught as drift.
+- **Session inheritance**: subagents inherit the main session's model and
+  effort, so every spawn in a session runs on one model — and therefore
+  shares one cache — by construction. The former devices that pinned a
+  `{model, effort}` cell per agent (profile matrix) or injected a model at
+  each spawn are retired. The one rule left is simple: do not switch the
+  session model (`/model`) mid-session.
 
 The **minimum token count** for content to enter the cache also differs per
 model. A prefix shorter than this is simply not cached (processed normally,
@@ -231,7 +230,7 @@ no error).
 | Claude Fable 5 | 1M | 512 |
 | Claude Opus 5.5 | 1M | 512 |
 | Claude Opus 5 | 1M | 1,024 |
-| Claude Sonnet 5 | 1M | 1,024 |
+| Claude Sonnet 5.5 | 1M | 1,024 |
 | Claude Opus 4.7 | 1M | 2,048 |
 | Claude Haiku 4.5 | 200K | 4,096 |
 
@@ -305,7 +304,7 @@ the one-time slow, expensive penalty.
 - [Prompt Caching](/en/claude-code/context-memory/prompt-caching) — how it works, prefix matching, context management (context-management perspective)
 - [Context Window](/en/claude-code/context-memory/context-window) — context window sizes and per-model differences
 - [CG retirement and migration](/en/multi-llm/cg-mode/)
-- [Model Policy](/en/multi-llm/model-policy) — per-agent model injection and drift prevention
+- [Model Policy](/en/multi-llm/model-policy) — the session model policy and effort fallback that subagents inherit
 
 ## Sources (official documentation)
 

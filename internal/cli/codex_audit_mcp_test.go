@@ -117,15 +117,18 @@ func TestCodexAuditMCPTool(t *testing.T) {
 		}
 	}
 
-	// 3. Confinement: the server's own worktree is the only acceptable root.
+	// 3. Confinement: a root is accepted when it is a registered worktree of
+	// the server's repository (sibling worktrees and the primary checkout
+	// included, per SPEC-CODEX-ROLE-AUDIT-ROOT-001 REQ-001); unregistered
+	// directories, foreign repositories, and bad destinations are refused.
 	repo := newAuditRepo(t)
 	fake := installFakeCodex(t)
-	orig := codexRoleAuditServerDir
-	codexRoleAuditServerDir = func() (string, error) { return repo.a1, nil }
-	t.Cleanup(func() { codexRoleAuditServerDir = orig })
+	orig := codexServingDir
+	codexServingDir = func() (string, error) { return repo.a1, nil }
+	t.Cleanup(func() { codexServingDir = orig })
 	c := newRoleAuditClient(t)
 
-	u := filepath.Join(repo.base, "U")
+	u := filepath.Join(repo.a, "unregistered") // inside the serving repo, not registered
 	b := filepath.Join(repo.base, "B")
 	b1 := filepath.Join(repo.base, "B1")
 	for _, d := range []string{u, b} {
@@ -145,8 +148,6 @@ func TestCodexAuditMCPTool(t *testing.T) {
 	}
 	legalOut := ".moai/reports/mcp/v.md"
 	rejected := map[string]map[string]any{
-		"primary checkout":     {"worktree_root": repo.a, "out": legalOut},
-		"sibling worktree":     {"worktree_root": repo.a2, "out": legalOut},
 		"unregistered dir":     {"worktree_root": u, "out": legalOut},
 		"other repository":     {"worktree_root": b1, "out": legalOut},
 		"symlink to other":     {"worktree_root": l, "out": legalOut},
@@ -242,5 +243,27 @@ func TestCodexAuditMCPTool(t *testing.T) {
 	// 5. Unknown job ids are reported as errors.
 	if res, _ := callRoleAuditTool(t, c, codexRoleAuditStatusToolName, map[string]any{"job_id": "nope"}); !res.IsError {
 		t.Error("unknown job id accepted by status")
+	}
+
+	// 6. Acceptance (SPEC-CODEX-ROLE-AUDIT-ROOT-001 REQ-001): a sibling
+	// registered worktree and the primary checkout are accepted when presented
+	// explicitly, each launching against its own tree.
+	fake.setExec("## Verdict\n\nACCEPT PASS\n", 0)
+	for name, root := range map[string]string{
+		"sibling worktree": repo.a2,
+		"primary checkout": repo.a,
+	} {
+		t.Run("accepts/"+name, func(t *testing.T) {
+			res, m := callRoleAuditTool(t, c, codexRoleAuditToolName, map[string]any{
+				"role": "sync-auditor", "worktree_root": root, "task": "accept probe",
+				"out": ".moai/reports/mcp/accept/v.md",
+			})
+			if res.IsError {
+				t.Fatalf("registered root %s refused: %s", root, roleAuditResultText(res))
+			}
+			if id, _ := m["job_id"].(string); id == "" {
+				t.Fatalf("no job id in result: %v", m)
+			}
+		})
 	}
 }

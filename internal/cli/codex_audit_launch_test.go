@@ -152,15 +152,6 @@ func roleLiteral(t *testing.T, src, key string) string {
 	return rest[:j]
 }
 
-func roleBasic(t *testing.T, src, key string) string {
-	t.Helper()
-	m := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(key) + ` = "([^"]*)"$`).FindStringSubmatch(src)
-	if m == nil {
-		t.Fatalf("role file has no %s", key)
-	}
-	return m[1]
-}
-
 // fakeCodex is the PATH-first `codex` stand-in.
 type fakeCodex struct{ dir string }
 
@@ -387,9 +378,19 @@ func TestCodexAuditLaunchArgv(t *testing.T) {
 	}
 	wantInstr := roleLiteral(t, string(roleSrc), "developer_instructions")
 	wantInstrJSON, _ := json.Marshal(wantInstr)
-	wantEffort := roleBasic(t, string(roleSrc), "model_reasoning_effort")
+	// Effort comes from the audit pin, not the role file (the emitter stopped
+	// publishing model_reasoning_effort with the frontmatter strip). Pin the
+	// caller tree and expect that value on the argv.
+	if err := os.MkdirAll(filepath.Join(repo.a1, ".moai", "config", "sections"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pin := "workflow:\n  audit:\n    codex:\n      model: gpt-5-codex\n      effort: high\n"
+	if err := os.WriteFile(filepath.Join(repo.a1, ".moai", "config", "sections", "workflow.yaml"), []byte(pin), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	wantEffort := "high"
 
-	r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1, Task: strings.NewReader("check SPEC X")})
+	r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, Root: repo.a1, Task: strings.NewReader("check SPEC X")})
 	if r.err != nil || r.res.ExitCode != 0 {
 		t.Fatalf("launch failed: err=%v code=%d stderr=%s", r.err, r.res.ExitCode, r.stderr)
 	}
@@ -445,7 +446,7 @@ func TestCodexAuditLaunchArgv(t *testing.T) {
 			set()
 			before := len(fake.calls(t))
 			snap := auditSnapshotTree(t, repo.base)
-			r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1, Out: filepath.Join(repo.a1, ".moai", "reports", "neg", "v.md")})
+			r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, Root: repo.a1, Out: filepath.Join(repo.a1, ".moai", "reports", "neg", "v.md")})
 			if r.res.ExitCode == 0 {
 				t.Fatalf("launcher succeeded despite %s", name)
 			}
@@ -466,7 +467,7 @@ func TestCodexAuditLaunchArgv(t *testing.T) {
 
 	t.Run("empty list adds no mcp overrides", func(t *testing.T) {
 		fake.setMCP(`[]`, 0)
-		r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1})
+		r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, Root: repo.a1})
 		if r.res.ExitCode != 0 {
 			t.Fatalf("launch failed: %s", r.stderr)
 		}
@@ -527,7 +528,9 @@ func codexAuditArgvViolations(argv []string, root, instrJSON, effort string, nam
 					v = append(v, "approval_policy="+val)
 				}
 			case key == "model_reasoning_effort":
-				if val != effort {
+				if effort == "" {
+					v = append(v, "model_reasoning_effort present with no audit pin")
+				} else if val != effort {
 					v = append(v, "model_reasoning_effort="+val)
 				}
 			case key == "developer_instructions":
@@ -572,10 +575,13 @@ func codexAuditArgvViolations(argv []string, root, instrJSON, effort string, nam
 	if roots != 1 || jsons != 1 || stdins != 1 {
 		v = append(v, fmt.Sprintf("-C=%d --json=%d -=%d, want 1 each", roots, jsons, stdins))
 	}
-	for _, k := range []string{"approval_policy", "model_reasoning_effort", "developer_instructions"} {
+	for _, k := range []string{"approval_policy", "developer_instructions"} {
 		if keys[k] != 1 {
 			v = append(v, fmt.Sprintf("-c %s appears %d times, want 1", k, keys[k]))
 		}
+	}
+	if effort != "" && keys["model_reasoning_effort"] != 1 {
+		v = append(v, fmt.Sprintf("-c model_reasoning_effort appears %d times, want 1", keys["model_reasoning_effort"]))
 	}
 	for n, c := range wantNames {
 		if c != 1 {
@@ -643,7 +649,7 @@ func TestCodexAuditLaunchRoleEligibility(t *testing.T) {
 	got := map[string]bool{}
 	for _, role := range append(append([]string{}, roles...), "no-such-role") {
 		before := len(fake.calls(t))
-		r := runAudit(t, codexAuditRequest{Role: role, ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1})
+		r := runAudit(t, codexAuditRequest{Role: role, ProjectRoot: repo.a, Root: repo.a1})
 		after := len(fake.calls(t))
 		if r.res.ExitCode == 0 {
 			got[role] = true
@@ -685,7 +691,7 @@ func TestCodexAuditLaunchRoleEligibility(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := len(fake.calls(t))
-	if r := runAudit(t, codexAuditRequest{Role: writer, ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1}); r.res.ExitCode == 0 || len(fake.calls(t)) != before {
+	if r := runAudit(t, codexAuditRequest{Role: writer, ProjectRoot: repo.a, Root: repo.a1}); r.res.ExitCode == 0 || len(fake.calls(t)) != before {
 		t.Fatalf("%s with a tampered read-only file was launched", writer)
 	}
 
@@ -706,7 +712,7 @@ func TestCodexAuditLaunchRoleEligibility(t *testing.T) {
 	if err := os.WriteFile(readerFile, []byte(drifted), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if r := runAudit(t, codexAuditRequest{Role: reader, ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1}); r.res.ExitCode == 0 || len(fake.calls(t)) != before {
+	if r := runAudit(t, codexAuditRequest{Role: reader, ProjectRoot: repo.a, Root: repo.a1}); r.res.ExitCode == 0 || len(fake.calls(t)) != before {
 		t.Fatalf("%s with a drifted writing file was launched", reader)
 	}
 	if err := os.WriteFile(readerFile, readerSrc, 0o644); err != nil {
@@ -718,7 +724,7 @@ func TestCodexAuditLaunchRoleEligibility(t *testing.T) {
 	if err := os.Remove(filepath.Join(repo.a1, ".codex", "agents", "moai", missing+".toml")); err != nil {
 		t.Fatal(err)
 	}
-	r := runAudit(t, codexAuditRequest{Role: missing, ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1})
+	r := runAudit(t, codexAuditRequest{Role: missing, ProjectRoot: repo.a, Root: repo.a1})
 	if r.res.ExitCode == 0 || len(fake.calls(t)) != before || !strings.Contains(r.stderr, missing) {
 		t.Fatalf("role with no emitted file: code=%d calls %d→%d stderr=%q", r.res.ExitCode, before, len(fake.calls(t)), r.stderr)
 	}
@@ -744,7 +750,7 @@ func TestCodexAuditLaunchVerbatimWrite(t *testing.T) {
 	dest := filepath.Join(repo.a1, ".moai", "reports", "x", "v.md")
 
 	t.Run("fresh destination", func(t *testing.T) {
-		r := runAudit(t, codexAuditRequest{Role: "sync-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1, Out: dest})
+		r := runAudit(t, codexAuditRequest{Role: "sync-auditor", ProjectRoot: repo.a, Root: repo.a1, Out: dest})
 		if r.res.ExitCode != 0 {
 			t.Fatalf("launch failed: %s", r.stderr)
 		}
@@ -757,7 +763,7 @@ func TestCodexAuditLaunchVerbatimWrite(t *testing.T) {
 		if err := os.WriteFile(dest, []byte(strings.Repeat("old verdict line\n", 500)), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		r := runAudit(t, codexAuditRequest{Role: "sync-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1, Out: dest})
+		r := runAudit(t, codexAuditRequest{Role: "sync-auditor", ProjectRoot: repo.a, Root: repo.a1, Out: dest})
 		if r.res.ExitCode != 0 {
 			t.Fatalf("launch failed: %s", r.stderr)
 		}
@@ -774,7 +780,7 @@ func TestCodexAuditLaunchVerbatimWrite(t *testing.T) {
 		orig := codexAuditRename
 		codexAuditRename = func(*os.Root, string, string) error { return errors.New("simulated interruption") }
 		t.Cleanup(func() { codexAuditRename = orig })
-		r := runAudit(t, codexAuditRequest{Role: "sync-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1, Out: dest})
+		r := runAudit(t, codexAuditRequest{Role: "sync-auditor", ProjectRoot: repo.a, Root: repo.a1, Out: dest})
 		codexAuditRename = orig
 		if r.res.ExitCode == 0 {
 			t.Fatal("launcher reported success although the write was interrupted")
@@ -830,7 +836,7 @@ func TestCodexAuditLaunchFailureWritesNothing(t *testing.T) {
 					beforeSHA = auditFileSHA(t, dest)
 				}
 				start := time.Now()
-				r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1, Out: dest, Timeout: m.timeout})
+				r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, Root: repo.a1, Out: dest, Timeout: m.timeout})
 				if r.res.ExitCode == 0 {
 					t.Fatal("launcher succeeded on a failed audit")
 				}
@@ -939,11 +945,16 @@ func TestCodexAuditLaunchDestinationConfinement(t *testing.T) {
 				dest := d.rel(root)
 				before := len(fake.calls(t))
 				snap := auditSnapshotTree(t, repo.base)
-				r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: root, Out: dest})
-				if rootName == "A1" && d.name == "reports/x/v.md" {
+				r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, Root: root, Out: dest})
+				// Registered serving-repo roots (the server's own worktree, the
+				// primary checkout, and the sibling) accept a destination inside
+				// their own report tree; every other root/destination pair is
+				// illegal (SPEC-CODEX-ROLE-AUDIT-ROOT-001 REQ-001/003/006).
+				legalRoot := rootName == "A1" || rootName == "A" || rootName == "A2"
+				if legalRoot && d.name == "reports/x/v.md" {
 					accepted++
 					if r.res.ExitCode != 0 {
-						t.Fatalf("the one legal combination was rejected: %s", r.stderr)
+						t.Fatalf("legal combination was rejected: %s", r.stderr)
 					}
 					if len(fake.calls(t))-before != 2 {
 						t.Fatalf("legal combination: %d codex calls, want 2", len(fake.calls(t))-before)
@@ -971,8 +982,8 @@ func TestCodexAuditLaunchDestinationConfinement(t *testing.T) {
 			})
 		}
 	}
-	if accepted != 1 {
-		t.Fatalf("legal combination ran %d times, want 1", accepted)
+	if accepted != 3 {
+		t.Fatalf("legal combinations ran %d times, want 3 (A1, A, A2 with an in-tree destination)", accepted)
 	}
 	if _, err := os.Lstat(evil); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("a path named in the returned message was created: %v", err)
@@ -1006,7 +1017,7 @@ func TestCodexAuditLaunchInstructionCeiling(t *testing.T) {
 		t.Fatalf("over-ceiling fixture token is %d bytes, want %d", got, ceiling+1)
 	}
 	before := len(fake.calls(t))
-	r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1})
+	r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, Root: repo.a1})
 	if r.res.ExitCode == 0 {
 		t.Fatal("over-ceiling instructions were launched")
 	}
@@ -1020,7 +1031,7 @@ func TestCodexAuditLaunchInstructionCeiling(t *testing.T) {
 	if got := writeRole(base); got != ceiling {
 		t.Fatalf("at-ceiling fixture token is %d bytes, want %d", got, ceiling)
 	}
-	r = runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1})
+	r = runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, Root: repo.a1})
 	if r.res.ExitCode != 0 {
 		t.Fatalf("at-ceiling instructions rejected: %s", r.stderr)
 	}
@@ -1041,11 +1052,11 @@ func TestCodexAuditLaunchRecord(t *testing.T) {
 	t.Run("rejections leave no file", func(t *testing.T) {
 		big := strings.Repeat("b", config.DefaultCodexInstructionArgBytes)
 		cases := map[string]codexAuditRequest{
-			"destination": {Role: "plan-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1, Out: filepath.Join(repo.a1, "AGENTS.md")},
-			"eligibility": {Role: "manager-docs", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1},
-			"ceiling":     {Role: "mission-governor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1},
+			"destination": {Role: "plan-auditor", ProjectRoot: repo.a, Root: repo.a1, Out: filepath.Join(repo.a1, "AGENTS.md")},
+			"eligibility": {Role: "manager-docs", ProjectRoot: repo.a, Root: repo.a1},
+			"ceiling":     {Role: "manager-todo", ProjectRoot: repo.a, Root: repo.a1},
 		}
-		roleFile := filepath.Join(repo.a1, ".codex", "agents", "moai", "mission-governor.toml")
+		roleFile := filepath.Join(repo.a1, ".codex", "agents", "moai", "manager-todo.toml")
 		orig, err := os.ReadFile(roleFile)
 		if err != nil {
 			t.Fatal(err)
@@ -1160,7 +1171,7 @@ func TestCodexAuditLaunchRecord(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		fake.setExec("PASS\n", 0)
 		dest := filepath.Join(repo.a1, ".moai", "reports", "rec", "v.md")
-		r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1, Out: dest})
+		r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, Root: repo.a1, Out: dest})
 		if r.res.ExitCode != 0 {
 			t.Fatalf("launch failed: %s", r.stderr)
 		}
@@ -1177,7 +1188,7 @@ func TestCodexAuditLaunchRecord(t *testing.T) {
 	t.Run("failure", func(t *testing.T) {
 		fake.setExec("half", 2)
 		dest := filepath.Join(repo.a1, ".moai", "reports", "rec", "fail.md")
-		r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1, Out: dest})
+		r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, Root: repo.a1, Out: dest})
 		if r.res.ExitCode == 0 {
 			t.Fatal("failing audit reported success")
 		}
@@ -1207,7 +1218,7 @@ func TestCodexAuditLaunchRecord(t *testing.T) {
 			t.Fatal(err)
 		}
 		execBefore := len(fake.execCalls(t))
-		r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1})
+		r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, Root: repo.a1})
 		if r.res.ExitCode == 0 {
 			t.Fatal("launch succeeded although the record name was taken")
 		}
@@ -1234,6 +1245,62 @@ func TestCodexAuditVerbRegistered(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("moai codex audit is not registered")
+	}
+}
+
+// TestCodexRoleAuditVerbRegistered pins the CLI role-audit verb
+// (SPEC-CODEX-ROLE-AUDIT-ROOT-001 REQ-004): a session in its own worktree can
+// launch the read-only role audit directly, without the MCP server, under the
+// same name the MCP tool carries.
+func TestCodexRoleAuditVerbRegistered(t *testing.T) {
+	var found bool
+	for _, c := range codexCmd.Commands() {
+		if c.Name() == "role-audit" {
+			found = true
+			if c.Flags().Lookup("out") == nil {
+				t.Error("role-audit verb has no --out flag")
+			}
+		}
+	}
+	if !found {
+		t.Fatal("moai codex role-audit is not registered")
+	}
+}
+
+func TestCodexRoleAuditVerbRunsInCallerWorktree(t *testing.T) {
+	repo := newAuditRepo(t)
+	fake := installFakeCodex(t)
+	fake.setExec("role-audit verdict\n", 0)
+	t.Chdir(repo.a1)
+	var out, errb bytes.Buffer
+	cmd := newCodexRoleAuditCmd()
+	cmd.SetOut(&out)
+	cmd.SetErr(&errb)
+	cmd.SetIn(strings.NewReader("role-audit task"))
+	cmd.SetArgs([]string{"plan-auditor", "--out", ".moai/reports/role/v.md"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("role-audit failed: %v\n%s", err, errb.String())
+	}
+	got, err := os.ReadFile(filepath.Join(repo.a1, ".moai", "reports", "role", "v.md"))
+	if err != nil || string(got) != "role-audit verdict\n" {
+		t.Fatalf("verdict = %q (%v)", got, err)
+	}
+	ex := fake.execCalls(t)
+	if len(ex) != 1 || replaceAfter(ex[0], "-C", "X")[0] != "exec" {
+		t.Fatalf("exec calls = %v", ex)
+	}
+	lines := launchRecordLines(errb.String())
+	if len(lines) != 1 {
+		t.Fatalf("role-audit printed %d LAUNCH_RECORD lines", len(lines))
+	}
+	raw, err := os.ReadFile(filepath.Join(repo.a1, filepath.FromSlash(lines[0])))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rec map[string]any
+	_ = json.Unmarshal(raw, &rec)
+	if rec["route"] != "shell" {
+		t.Errorf("role-audit route = %v, want shell", rec["route"])
 	}
 }
 
@@ -1271,5 +1338,72 @@ func TestCodexAuditVerbRunsInCallerWorktree(t *testing.T) {
 	_ = json.Unmarshal(raw, &rec)
 	if rec["route"] != "shell" {
 		t.Errorf("verb route = %v, want shell", rec["route"])
+	}
+}
+
+// TestCodexAuditRootAcceptsRegisteredServingRepoWorktrees pins the presented-
+// root registration contract (SPEC-CODEX-ROLE-AUDIT-ROOT-001 REQ-001/002/003):
+// the presented root is accepted when, after symlink resolution, it is a
+// registered worktree of the same repository as projectRoot — the serving
+// checkout. The caller's own directory plays no role in the decision: a
+// sibling worktree and the primary checkout are accepted when presented
+// explicitly, an unregistered directory and a foreign repository are refused.
+// projectRoot is the server's own toplevel, wired exactly as the MCP handler
+// wires it, so the acceptance arms measure the contract a real lane hits.
+func TestCodexAuditRootAcceptsRegisteredServingRepoWorktrees(t *testing.T) {
+	repo := newAuditRepo(t)
+	// An unregistered directory INSIDE the serving repository: git resolves it
+	// to the parent repo's common dir, so the same-repo comparison passes and
+	// the refusal comes from the registered-worktree scan.
+	u := filepath.Join(repo.a, "unregistered")
+	if err := os.MkdirAll(u, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	b := filepath.Join(repo.base, "B")
+	b1 := filepath.Join(repo.base, "B1")
+	for _, d := range []string{b, b1} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	auditGit(t, b, "init", "-q", "-b", "main")
+	auditGit(t, b, "commit", "-q", "--allow-empty", "-m", "init")
+	auditGit(t, b, "worktree", "add", "-q", "-b", "wt-b", b1)
+	l := filepath.Join(repo.base, "L")
+	if err := os.Symlink(repo.a2, l); err != nil {
+		t.Fatal(err)
+	}
+
+	cases := map[string]struct {
+		projectRoot string
+		root        string
+		wantErr     string // empty means the root must be accepted
+		wantRoot    string // the resolved root on acceptance
+	}{
+		"sibling registered worktree accepted": {projectRoot: repo.a1, root: repo.a2, wantRoot: repo.a2},
+		"primary checkout accepted":            {projectRoot: repo.a1, root: repo.a, wantRoot: repo.a},
+		"server primary anchor, lane root":     {projectRoot: repo.a, root: repo.a2, wantRoot: repo.a2},
+		"symlinked lane root resolves":         {projectRoot: repo.a1, root: l, wantRoot: repo.a2},
+		"empty root refused":                   {projectRoot: repo.a1, root: "", wantErr: "required"},
+		"empty project root refused":           {projectRoot: "", root: repo.a2, wantErr: "required"},
+		"unregistered directory refused":       {projectRoot: repo.a1, root: u, wantErr: "is not a registered worktree of this repository"},
+		"other repository refused":             {projectRoot: repo.a1, root: b1, wantErr: "belongs to a different repository"},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			got, err := codexAuditValidateRoot(context.Background(), c.projectRoot, c.root)
+			if c.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), c.wantErr) {
+					t.Fatalf("codexAuditValidateRoot(root=%q) err = %v, want fragment %q", c.root, err, c.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("codexAuditValidateRoot(root=%q) refused: %v", c.root, err)
+			}
+			if got != c.wantRoot {
+				t.Fatalf("codexAuditValidateRoot(root=%q) = %q, want %q", c.root, got, c.wantRoot)
+			}
+		})
 	}
 }

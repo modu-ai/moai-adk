@@ -232,7 +232,7 @@ func TestCodexRoleLiveLoadAndReadOnly(t *testing.T) {
 			var diag bytes.Buffer
 			authBefore, start := fileSHA256OrEmpty(realAuth), time.Now()
 			res, _ := runCodexAudit(context.Background(), codexAuditRequest{
-				Role: role, ProjectRoot: root, CallerDir: root, Root: root, Out: verdictPath,
+				Role: role, ProjectRoot: root, Root: root, Out: verdictPath,
 				Route: codexAuditRouteDirect, Program: codexBin, Task: strings.NewReader(task),
 				Timeout: bound, Stdout: io.Discard, Stderr: &diag,
 			})

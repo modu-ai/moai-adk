@@ -1,5 +1,7 @@
 # Verification-Claim Integrity
 
+<!-- mirror-fork: intentional — this copy is deliberately divergent from the local dogfood copy; do not sync mechanically -->
+
 Doctrine establishing the **"no unobserved-verification-claim" invariant** for all MoAI actors. This rule is automatically loaded for the orchestrator and all agents. It is a policy-layer doctrine — it defines the norm; it does not itself run a runtime detector.
 
 > The motivating defect class is general: an actor claiming a verification or completion it did not actually observe. A complementary runtime layer (advisory, warn-first, fail-open) may detect one shape of this violation; this doctrine codifies the policy norm that binds every actor regardless of whether such a runtime layer is present.
@@ -65,7 +67,7 @@ The branch table, its cost table, and the exemption-marker syntax live in `verif
 
 [ZONE:Evolvable] [HARD] A measurement produced by the project's own tooling is attributed to **two** coordinates, not one: the tree it read, and the build that judged it. §2 binds the first. This clause binds the second, because a tool invoked through a shell path resolves to an *installed* build, which need not be the build the tree describes.
 
-The failure is silent by construction, and its silence is **symmetric**. A build behind the tree simply does not run the rules that landed after it — clean pass, exit zero, empty error stream; a build matching the tree produces *the same three signals*. Nothing in either result says which case occurred, so a green result is not evidence the checks passed, only that whatever checks the invoked build happens to carry reported nothing.
+The silence is **symmetric**: a stale build and a current build produce the same clean-pass signals, so a green result is evidence only that whatever checks the invoked build carries reported nothing.
 
 **The obligation.** A tool measurement cited as evidence MUST have been produced by a build made from the tree under measurement. Concretely, either:
 

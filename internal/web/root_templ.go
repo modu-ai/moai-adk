@@ -209,11 +209,6 @@ func page(vm ShellVM, view pageView) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-				case "agentfm":
-					templ_7745c5c3_Err = fieldsetAgentFrontmatter(view).Render(ctx, templ_7745c5c3_Buffer)
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
 				case "mcp":
 					templ_7745c5c3_Err = fieldsetMCP(view).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
@@ -255,7 +250,7 @@ func page(vm ShellVM, view pageView) templ.Component {
 
 // settingsPageHeader makes the active setting legible before a user reaches
 // the field rows: what this page owns, when its values take effect, and how
-// many sibling pages remain available in the 14-page contract.
+// many sibling pages remain available in the settings contract.
 func settingsPageHeader(vm ShellVM, view pageView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -284,7 +279,7 @@ func settingsPageHeader(vm ShellVM, view pageView) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(activeSettingsTabLabelKey(vm))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `root.templ`, Line: 109, Col: 107}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `root.templ`, Line: 107, Col: 107}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 		if templ_7745c5c3_Err != nil {
@@ -297,7 +292,7 @@ func settingsPageHeader(vm ShellVM, view pageView) templ.Component {
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(activeSettingsTabLabel(vm))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `root.templ`, Line: 109, Col: 138}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `root.templ`, Line: 107, Col: 138}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -310,7 +305,7 @@ func settingsPageHeader(vm ShellVM, view pageView) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(activeSettingsTabDescKey(vm))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `root.templ`, Line: 110, Col: 79}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `root.templ`, Line: 108, Col: 79}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 		if templ_7745c5c3_Err != nil {
@@ -323,7 +318,7 @@ func settingsPageHeader(vm ShellVM, view pageView) templ.Component {
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(activeSettingsTabDesc(vm))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `root.templ`, Line: 110, Col: 109}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `root.templ`, Line: 108, Col: 109}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
@@ -336,7 +331,7 @@ func settingsPageHeader(vm ShellVM, view pageView) templ.Component {
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(view.SelectedProfile)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `root.templ`, Line: 113, Col: 107}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `root.templ`, Line: 111, Col: 107}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
@@ -349,7 +344,7 @@ func settingsPageHeader(vm ShellVM, view pageView) templ.Component {
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(len(vm.Tabs)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `root.templ`, Line: 114, Col: 101}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `root.templ`, Line: 112, Col: 101}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
@@ -362,7 +357,7 @@ func settingsPageHeader(vm ShellVM, view pageView) templ.Component {
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue(activeSettingsTabEffectKey(vm))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `root.templ`, Line: 115, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `root.templ`, Line: 113, Col: 80}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
 		if templ_7745c5c3_Err != nil {
@@ -375,7 +370,7 @@ func settingsPageHeader(vm ShellVM, view pageView) templ.Component {
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(activeSettingsTabEffect(vm))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `root.templ`, Line: 115, Col: 112}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `root.templ`, Line: 113, Col: 112}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
@@ -388,7 +383,7 @@ func settingsPageHeader(vm ShellVM, view pageView) templ.Component {
 		var templ_7745c5c3_Var20 templ.SafeURL
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/settings?tab=" + vm.Tab))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `root.templ`, Line: 116, Col: 86}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `root.templ`, Line: 114, Col: 86}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
@@ -491,7 +486,7 @@ func banner(view pageView) templ.Component {
 		var templ_7745c5c3_Var24 string
 		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(view.Banner)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `root.templ`, Line: 151, Col: 21}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `root.templ`, Line: 149, Col: 21}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 		if templ_7745c5c3_Err != nil {

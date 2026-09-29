@@ -97,7 +97,6 @@ export async function run({ agent, args }) {
   // Scope — one read-only agent classifies the task.
   const scopeRaw = await agent({
     agentType: "Explore",
-    effort: "low",
     isolation: "none",
     label: "oss-docs:scope",
     prompt:
@@ -115,7 +114,6 @@ export async function run({ agent, args }) {
   // Canonical: ko for BOTH surfaces — README.ko.md and docs-site/content/ko/.
   const authorResult = await agent({
     agentType: "hns-oss-docs-content-author-specialist",
-    effort: "high",
     isolation: "none",
     label: "oss-docs:author",
     prompt:
@@ -141,7 +139,6 @@ export async function run({ agent, args }) {
     localeGroups.map((group) =>
       agent({
         agentType: "hns-oss-docs-locale-translator-specialist",
-        effort: "medium",
         isolation: "none",
         label: `oss-docs:translate:${group.locale}`,
         prompt:
@@ -162,7 +159,6 @@ export async function run({ agent, args }) {
   // Verify — run the verify recipe and score the sprint_contract dimensions.
   const verifyRaw = await agent({
     agentType: "hns-oss-docs-content-author-specialist",
-    effort: "medium",
     isolation: "none",
     label: "oss-docs:verify",
     prompt:

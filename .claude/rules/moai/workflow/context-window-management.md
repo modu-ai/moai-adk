@@ -12,7 +12,7 @@ Long-horizon session continuity guidance for both users and the MoAI orchestrato
 | Opus 4.8 on the Anthropic API (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | GLM-5.3 via `moai glm`/`moai cg` (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Fable (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
-| Sonnet 5 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
+| Sonnet 5.5 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | 200K sessions — Sonnet 4.6 / Opus 4.6 without `[1m]`; Opus 4.8+ running with a 200K window (e.g. on Bedrock / Google Cloud / Foundry); any native-1M model under `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`; `sonnet` behind an LLM gateway (non-Anthropic `ANTHROPIC_BASE_URL`) unless `sonnet[1m]` is selected; Sonnet 4.5 / Opus 4.5 and earlier | 200,000 tokens | **90%** | ~180,000 tokens |
 | Haiku (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
 
@@ -56,11 +56,9 @@ Paste-ready, no editing required.
 ## Detection Heuristics
 
 The orchestrator estimates context usage **state-file-first**: it reads
-`<projectDir>/.moai/state/context-usage/<session-id>.json`, the snapshot the statusline writes each
-render, and prefers its `raw_pct` and `stage` fields over any proxy. The record is per session, so
-the one named for the current session belongs to it by construction — no cross-session validity
-check is needed. When it is absent or unparseable, usage is estimated from cumulative output bytes,
-system-reminder volume, large tool results, and completed `Agent()` returns — under-estimating when
+`<projectDir>/.moai/state/context-usage/<session-id>.json` (the statusline's per-session snapshot)
+and prefers its `raw_pct` and `stage` fields. Absent or unparseable, usage is estimated from
+cumulative output, system-reminder volume, and completed `Agent()` returns — under-estimating when
 uncertain, since a premature `/clear` costs one paste and a missed one costs a stalled stream.
 
 **Where the number comes from, and how far to trust it.** The snapshot does not measure the window

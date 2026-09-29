@@ -64,7 +64,7 @@ func TestCodexAuditLaunchWriteRaceConfined(t *testing.T) {
 	fake.write(t, "swap.dir", mid)
 	fake.write(t, "swap.to", outside)
 
-	r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1, Out: dest})
+	r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, Root: repo.a1, Out: dest})
 
 	if fi, err := os.Lstat(mid); err != nil || fi.Mode()&os.ModeSymlink == 0 {
 		t.Fatalf("the race was not created: %s is not a symlink (%v)", mid, err)
@@ -104,7 +104,7 @@ func TestCodexAuditLaunchRecordAliasRefused(t *testing.T) {
 	fake := installFakeCodex(t)
 	fake.setExec("genuine verdict\n", 0)
 	legal := filepath.Join(repo.a1, ".moai", "reports", "x", "v.md")
-	first := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1, Out: legal})
+	first := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, Root: repo.a1, Out: legal})
 	if first.res.ExitCode != 0 {
 		t.Fatalf("genuine audit failed: %s", first.stderr)
 	}
@@ -124,7 +124,7 @@ func TestCodexAuditLaunchRecordAliasRefused(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			before := len(fake.calls(t))
 			snap := auditSnapshotTree(t, repo.base)
-			r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1, Out: dest})
+			r := runAudit(t, codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, Root: repo.a1, Out: dest})
 			if r.res.ExitCode == 0 {
 				t.Fatalf("alias destination accepted: %s", dest)
 			}
@@ -165,7 +165,7 @@ func TestCodexAuditLaunchSymlinkedRecordDir(t *testing.T) {
 			if err := os.Symlink(outside, link); err != nil {
 				t.Fatal(err)
 			}
-			req := codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1}
+			req := codexAuditRequest{Role: "plan-auditor", ProjectRoot: repo.a, Root: repo.a1}
 			if c.out {
 				req.Out = filepath.Join(repo.a1, ".moai", "reports", "x", "v.md")
 			}

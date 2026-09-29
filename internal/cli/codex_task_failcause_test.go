@@ -125,7 +125,7 @@ func TestCodexTask_BackgroundJobSurvivesRequestContextEnd(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	res, err := handleCodexTask(ctx, mcp.CallToolRequest{
 		Params: mcp.CallToolParams{Arguments: map[string]any{
-			"prompt": "audit the module", "background": true,
+			"prompt": "audit the module", "background": true, "project_root": thisRepoRoot(t),
 		}},
 	})
 	cancel()

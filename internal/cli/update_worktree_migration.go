@@ -74,6 +74,12 @@ func worktreeMigrationRegistryReadable(root, tree string) error {
 // planLegacyWorktreeMigration never writes. It names every registered tree
 // below the old root and explains why a tree cannot be moved now.
 func planLegacyWorktreeMigration(root string, now time.Time) ([]worktreeMigrationPlan, error) {
+	return planLegacyWorktreeMigrationFor(root, now, "", nil)
+}
+
+// planLegacyWorktreeMigrationFor checks one source when revalidating a move.
+// An empty source retains the full preview used before migration begins.
+func planLegacyWorktreeMigrationFor(root string, now time.Time, source string, progress func(int)) ([]worktreeMigrationPlan, error) {
 	entries, err := listRegisteredWorktrees(root)
 	if err != nil {
 		return nil, err
@@ -93,6 +99,9 @@ func planLegacyWorktreeMigration(root string, now time.Time) ([]worktreeMigratio
 	var processCWDsRead bool
 	var processCWDErr error
 	for _, entry := range entries {
+		if source != "" && canonicalTreePath(entry.path) != canonicalTreePath(source) {
+			continue
+		}
 		rel, relErr := filepath.Rel(oldRoot, canonicalTreePath(entry.path))
 		if relErr != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 			continue
@@ -130,6 +139,9 @@ func planLegacyWorktreeMigration(root string, now time.Time) ([]worktreeMigratio
 			}
 		}
 		plans = append(plans, plan)
+		if progress != nil {
+			progress(len(plans))
+		}
 	}
 	return plans, nil
 }
@@ -150,7 +162,7 @@ func moveLegacyWorktree(root string, plan worktreeMigrationPlan) error {
 	if plan.skip != "" {
 		return fmt.Errorf("worktree %s is not movable: %s", plan.source, plan.skip)
 	}
-	current, err := planLegacyWorktreeMigration(root, time.Now())
+	current, err := planLegacyWorktreeMigrationFor(root, time.Now(), plan.source, nil)
 	if err != nil {
 		return err
 	}
@@ -229,7 +241,36 @@ func runUpdateWorktreeMigration(root string, dryRun bool, out io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("inspect Git directory: %w", err)
 	}
-	plans, err := planLegacyWorktreeMigration(root, time.Now())
+	legacyCount := 0
+	if !dryRun {
+		entries, listErr := listRegisteredWorktrees(root)
+		if listErr != nil {
+			return listErr
+		}
+		oldRoot := canonicalTreePath(filepath.Join(root, claudeNativeWorktreeSubdir))
+		for _, entry := range entries {
+			rel, relErr := filepath.Rel(oldRoot, canonicalTreePath(entry.path))
+			if relErr == nil && rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				legacyCount++
+			}
+		}
+		if legacyCount > 0 {
+			label := "worktrees"
+			if legacyCount == 1 {
+				label = "worktree"
+			}
+			_, _ = fmt.Fprintf(out, "Worktree migration: %d legacy %s detected; safety checks and moves can take time; progress follows\n", legacyCount, label)
+		}
+	}
+	var reportPlanProgress func(int)
+	if legacyCount > 0 {
+		reportPlanProgress = func(checked int) {
+			if checked%10 == 0 || checked == legacyCount {
+				_, _ = fmt.Fprintf(out, "Worktree migration safety check: %d/%d inspected\n", checked, legacyCount)
+			}
+		}
+	}
+	plans, err := planLegacyWorktreeMigrationFor(root, time.Now(), "", reportPlanProgress)
 	if err != nil {
 		return err
 	}
@@ -237,22 +278,21 @@ func runUpdateWorktreeMigration(root string, dryRun bool, out io.Writer) error {
 		return nil
 	}
 	var moved, skipped, failed int
-	for _, plan := range plans {
+	for index, plan := range plans {
 		if plan.skip != "" {
 			skipped++
 			_, _ = fmt.Fprintf(out, "Worktree migration skipped %s: %s\n", plan.source, plan.skip)
-			continue
-		}
-		if dryRun {
+		} else if dryRun {
 			_, _ = fmt.Fprintf(out, "Worktree migration planned %s -> %s\n", plan.source, plan.destination)
-			continue
-		}
-		if err := moveLegacyWorktree(root, plan); err != nil {
+		} else if err := moveLegacyWorktree(root, plan); err != nil {
 			failed++
 			_, _ = fmt.Fprintf(out, "Worktree migration failed %s: %v\n", plan.source, err)
-			continue
+		} else {
+			moved++
 		}
-		moved++
+		if !dryRun && (index+1)%5 == 0 {
+			_, _ = fmt.Fprintf(out, "Worktree migration progress: %d/%d checked, %d moved, %d skipped, %d failed\n", index+1, len(plans), moved, skipped, failed)
+		}
 	}
 	if !dryRun {
 		_, _ = fmt.Fprintf(out, "Worktree migration: %d moved, %d skipped, %d failed\n", moved, skipped, failed)

@@ -38,10 +38,11 @@ func TestPrimaryRailKeepsThreeSurfaceIA(t *testing.T) {
 	}
 }
 
-// TestSettingsPageHeaderKeepsAllFourteenTabs checks the runtime-rendered
+// TestSettingsPageHeaderKeepsAllThirteenTabs checks the runtime-rendered
 // detail header for every current settings tab. The header must identify the
-// active page, its effect timing, and the complete 14-page sibling count.
-func TestSettingsPageHeaderKeepsAllFourteenTabs(t *testing.T) {
+// active page, its effect timing, and the complete 13-page sibling count (the agent-settings tab was removed by
+// SPEC-AGENT-MODEL-INHERIT-001).
+func TestSettingsPageHeaderKeepsAllThirteenTabs(t *testing.T) {
 	a := newTestApp(t)
 	for _, tab := range consoleTabs() {
 		req := httptest.NewRequest(http.MethodGet, "/settings?tab="+tab.ID, nil)
@@ -63,8 +64,8 @@ func TestSettingsPageHeaderKeepsAllFourteenTabs(t *testing.T) {
 				t.Errorf("tab %q header is missing %s", tab.ID, want)
 			}
 		}
-		if !strings.Contains(body, `>14<`) {
-			t.Errorf("tab %q header does not disclose the 14-page settings contract", tab.ID)
+		if !strings.Contains(body, `>13<`) {
+			t.Errorf("tab %q header does not disclose the 13-page settings contract", tab.ID)
 		}
 	}
 }

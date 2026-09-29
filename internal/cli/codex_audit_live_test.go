@@ -151,7 +151,7 @@ func (f *codexAuditLiveFixture) runDirect(t *testing.T, budget *liveBudget, role
 	var out, diag bytes.Buffer
 	authBefore, start := fileSHA256OrEmpty(f.realAuth), time.Now()
 	res, _ := runCodexAudit(context.Background(), codexAuditRequest{
-		Role: role, ProjectRoot: f.root, CallerDir: f.root, Root: f.root,
+		Role: role, ProjectRoot: f.root, Root: f.root,
 		Route: codexAuditRouteDirect, Program: f.codexBin, Task: strings.NewReader(task),
 		Timeout: bound, Stdout: &out, Stderr: &diag,
 	})
@@ -390,7 +390,7 @@ func TestCodexAuditLaunchLiveReadOnlyRoles(t *testing.T) {
 	f := newCodexAuditLiveFixture(t, true) // the same isolated environment as AC-CAR-010
 	budget := newLiveBudget(codexAuditLive011Budget, codexAuditLive011Window)
 	var roles []liveAuditItem
-	for _, role := range []string{"mission-governor", "super-advisor"} {
+	for _, role := range []string{"manager-todo", "super-advisor"} {
 		probe := "audit-probe-" + role + ".txt"
 		item, ok := f.runDirect(t, budget, role, codexAuditProbeTask(role, probe, ""), probe)
 		if !ok {

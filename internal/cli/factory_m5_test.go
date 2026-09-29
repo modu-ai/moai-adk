@@ -183,7 +183,7 @@ func TestSD_AC004_CodexOtherFactoryShapesRefused(t *testing.T) {
 			t.Errorf("shape %v: the direct launch ran; the refusal must start no child", shape)
 			return nil
 		}
-		codexSpawnLaunchFn = func(string, string, []string) error {
+		codexSpawnLaunchFn = func(string, string, []string, []string) error {
 			t.Errorf("shape %v: the spawn launch ran; the refusal must start no child", shape)
 			return nil
 		}

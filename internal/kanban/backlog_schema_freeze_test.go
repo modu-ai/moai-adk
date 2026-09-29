@@ -1,8 +1,12 @@
 // backlog_schema_freeze_test.go — SPEC-TODO-ARCHIVE-QUERY-001 (card t394):
 // AC-TAQ-012, the schema-identity assertion. The history verb is a reader;
-// its landing must add no table, admit no fourth state, and leave
-// schema_version stamped at "1" (REQ-TAQ-012, REQ-TDG-004/005 — a fourth
-// state would force a table rebuild on every operator queue in the field).
+// its landing must add no table and leave schema_version at the current
+// stamp. Originally the freeze pinned the THREE-state CHECK at stamp "1"
+// precisely because a fourth state would force a table rebuild on every
+// operator queue in the field (REQ-TAQ-012, REQ-TDG-004/005);
+// SPEC-TODO-HOLD-STATE-001 paid that stated cost deliberately — the rebuild
+// landed behind the bump to "2" — and the freeze now pins the FOUR-state
+// tuple so no further state can arrive without tripping it again.
 //
 // Extended by SPEC-TODO-LANDING-EVIDENCE-001 (card t359), AC-TLE-019: the
 // guard was column-blind — a planted column on either table left all four of
@@ -10,6 +14,14 @@
 // freeze. It now pins the exact ordered (name, type, notnull, dflt_value)
 // tuple sequence of items AND archived_items, asserted separately per table
 // so a half-applied migration cannot satisfy both.
+//
+// Extended by SPEC-TODO-TRANSITION-STAMPS-001 (card t1310), AC-TST-011 —
+// the recorded schema decision: items gains nullable picked_at and
+// dropped_at; archived_items gains nullable picked_at, dropped_at (the
+// stamps preserved into the archive, REQ-TST-007), archived_at, and the
+// done-time landing_verdict record (REQ-TST-008). Pure additive columns via
+// the pragma_table_info-gated ADD COLUMN pattern; no table rebuild, no
+// constraint change, schema_version stays "1".
 package kanban
 
 import (
@@ -20,8 +32,26 @@ import (
 
 // AC-TAQ-012 — the queue database a reader opens carries exactly the
 // physical schema the writers built: five tables, the one non-auto index,
-// the three-state CHECK, schema_version "1".
+// the four-state CHECK, schema_version "2".
+//
+// AC-TST-011 — the transition-stamp SPEC names its mechanical check as
+// `go test ./internal/kanban/ -run SchemaFreeze`, and a selector matching
+// zero tests would exit 0 without sweeping anything (the vacuous-green
+// shape verification-completeness names), so the shared assertion body
+// below is entered by BOTH names: the historical one and the AC's own.
 func TestTodoHistoryAddsNoSchemaChange(t *testing.T) {
+	assertBacklogSchemaFrozen(t)
+}
+
+// TestSchemaFreezeRecordsTransitionStamps is the AC-TST-011 entry point —
+// the same assertions, reachable under the AC's own `-run SchemaFreeze`
+// selector.
+func TestSchemaFreezeRecordsTransitionStamps(t *testing.T) {
+	assertBacklogSchemaFrozen(t)
+}
+
+func assertBacklogSchemaFrozen(t *testing.T) {
+	t.Helper()
 	store := archiveFixture(t)
 	if _, _, err := store.Add("alpha work"); err != nil {
 		t.Fatalf("add: %v", err)
@@ -38,7 +68,8 @@ func TestTodoHistoryAddsNoSchemaChange(t *testing.T) {
 	ctx := context.Background()
 
 	// The table set is exactly the five core tables plus the additive identity
-	// side table — no more, no less. The core schema stamp remains version 1.
+	// side table — no more, no less. The schema stamp rides the four-state
+	// CHECK rebuild (schema_version "2").
 	var tables []string
 	rows, err := eng.db.QueryContext(ctx,
 		`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name`)
@@ -60,14 +91,14 @@ func TestTodoHistoryAddsNoSchemaChange(t *testing.T) {
 		t.Errorf("table set = %q, want %q", got, wantTables)
 	}
 
-	// The items.state CHECK still admits exactly the three live states —
-	// read from the database's own stored SQL, not from the source DDL.
+	// The items.state CHECK admits exactly the four live states — read from
+	// the database's own stored SQL, not from the source DDL.
 	var itemsSQL string
 	if err := eng.db.QueryRowContext(ctx,
 		`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'items'`).Scan(&itemsSQL); err != nil {
 		t.Fatalf("read items DDL: %v", err)
 	}
-	const wantCheck = "CHECK (state IN ('queued','picked','dropped'))"
+	const wantCheck = "CHECK (state IN ('queued','picked','dropped','hold'))"
 	if !strings.Contains(itemsSQL, wantCheck) {
 		t.Errorf("items.state CHECK drifted.\n got: %s\nwant it to contain: %s", itemsSQL, wantCheck)
 	}
@@ -104,7 +135,9 @@ func TestTodoHistoryAddsNoSchemaChange(t *testing.T) {
 		"added_at:TEXT:1:NULL " +
 		"spec_id:TEXT:0:NULL " +
 		"state:TEXT:1:NULL " +
-		"landing:TEXT:0:NULL"
+		"landing:TEXT:0:NULL " +
+		"picked_at:TEXT:0:NULL " +
+		"dropped_at:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "items"); got != wantItemsColumns {
 		t.Errorf("items column tuples =\n %s\nwant\n %s", got, wantItemsColumns)
 	}
@@ -116,13 +149,17 @@ func TestTodoHistoryAddsNoSchemaChange(t *testing.T) {
 		"spec_id:TEXT:0:NULL " +
 		"state:TEXT:1:NULL " +
 		"position:INTEGER:1:NULL " +
-		"landing:TEXT:0:NULL"
+		"landing:TEXT:0:NULL " +
+		"picked_at:TEXT:0:NULL " +
+		"dropped_at:TEXT:0:NULL " +
+		"archived_at:TEXT:0:NULL " +
+		"landing_verdict:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "archived_items"); got != wantArchivedItemsColumns {
 		t.Errorf("archived_items column tuples =\n %s\nwant\n %s", got, wantArchivedItemsColumns)
 	}
 
-	// schema_version is still stamped "1" — an older binary refuses any
-	// other value, so a bump is a downgrade break, not a feature.
+	// schema_version is stamped at the current "2" — an older binary refuses
+	// any other value, so the stamp and the CHECK widen together.
 	version, err := eng.schemaVersion(ctx)
 	if err != nil {
 		t.Fatalf("read schema_version: %v", err)

@@ -19,13 +19,16 @@ the CLI form reads more naturally inline.
 
 ## The `project_root` input — name your own tree
 
-Sixteen tools accept an optional `project_root` string: `spec_progress`,
+Twenty tools accept an optional `project_root` string: `spec_progress`,
 `spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`,
-`glm_audit`, `claude_audit`, `audit_multi`, `graph_file_api`, `graph_find_code`,
-`graph_shortest_path`, `graph_trace_calls`, `factory_decide`, `todo_add`, and
-`todo_list`. It names the tree the call should act on. Three lane verbs —
-`factory_next`, `factory_stage`, and `factory_complete` — REQUIRE it instead:
-a call without it is rejected naming the argument.
+`codex_task`, `glm_audit`, `claude_audit`, `audit_multi`, `graph_file_api`,
+`graph_find_code`, `graph_shortest_path`, `graph_trace_calls`, `factory_decide`,
+`todo_add`, `todo_list`, `factory_next`, `factory_stage`, and
+`factory_complete`. It names the tree the call should act on. Four of the twenty
+REQUIRE it rather than accept it: the lane verbs `factory_next`, `factory_stage`,
+and `factory_complete` reject a call without it naming the argument, and
+`codex_task` is required rather than optional — pass your own toplevel or the
+call is refused (`project_root is required ...`); it is never defaulted.
 
 [HARD] **An agent working inside a worktree MUST pass it**, and the value is its
 own `git rev-parse --show-toplevel`. This is not a convenience. The server cannot

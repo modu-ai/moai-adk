@@ -5,8 +5,6 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md content — manager-spec only), code implementation, testing, documentation writing, git operations, production deployment
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
-model: inherit
-effort: medium
 color: purple
 permissionMode: bypassPermissions
 memory: user
@@ -35,7 +33,7 @@ Create standards-compliant Claude Code artifacts (agents, skills, plugins, comma
 
 | artifact_type | Output Location | Key Standards |
 |---------------|----------------|---------------|
-| `agent` | `.claude/agents/` or `.claude/agents/moai/` (with `--moai`) | Frontmatter: name, description, tools, model, permissionMode, memory, skills |
+| `agent` | `.claude/agents/` or `.claude/agents/moai/` (with `--moai`) | Frontmatter: name, description, tools, permissionMode, memory, skills (no `model` / `effort`) |
 | `skill` | `.claude/skills/{skill-name}/SKILL.md` | 500-line limit, progressive disclosure, YAML frontmatter schema |
 | `plugin` | `{plugin-name}/.claude-plugin/plugin.json` + components at root | manifest + component directories at plugin root |
 | `command` | `.claude/commands/{name}.md` | Frontmatter: allowed-tools, argument-hint, description |
@@ -139,22 +137,16 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 
 ## Model/effort escalation
 
-> **Model/effort escalation**: deep-reasoning escalation is an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
+> **Model/effort escalation**: this agent declares no `model` or `effort` and inherits the main session's, so deeper reasoning means a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
 
 ## Harness Generation Model Policy
 
 When generating new agents (slash command, sub-agent, harness specialist),
 apply the canonical MoAI agent model policy per
-`.claude/rules/moai/development/model-policy.md` — that rule is the SSOT for the
-`model:` / `effort:` defaults (inherit-by-default and its 1M-context-entitlement
-rationale, the mechanical-agent speed slot, and effort tiering), so do not restate
-its tiers in generated bodies. Two builder-side constraints apply on top of it:
-`permissionMode:` follows the agent's role (`default` for read-mostly agents,
-`bypassPermissions` for trusted write-agents), and generated agents MUST NOT
-declare an explicit `model: sonnet` or `model: opus` unless the user explicitly
-opts into the 1M-context-incompatible path (accepting that the agent will fail to
-spawn from `[1m]` parent sessions until the upstream issues are resolved OR the
-user disables `[1m]` context).
+`.claude/rules/moai/development/model-policy.md`: generated agents declare no
+`model:` and no `effort:`, so they inherit the main session's model and effort
+(and its 1M-context entitlement). `permissionMode:` follows the agent's role
+(`default` for read-mostly agents, `bypassPermissions` for trusted write-agents).
 
 Additionally, every generated agent body MUST include the canonical
 one-line "Model/effort escalation" cross-reference at body tail — see
@@ -163,6 +155,6 @@ one-line "Model/effort escalation" cross-reference at body tail — see
 ```text
 ## Model/effort escalation
 
-> **Model/effort escalation**: deep-reasoning escalation is an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
+> **Model/effort escalation**: this agent declares no `model` or `effort` and inherits the main session's, so deeper reasoning means a session run at that level — an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
 ```
 

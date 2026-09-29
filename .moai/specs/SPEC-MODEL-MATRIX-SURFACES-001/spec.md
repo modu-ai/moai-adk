@@ -2,9 +2,10 @@
 id: SPEC-MODEL-MATRIX-SURFACES-001
 title: "User-facing surfaces — init wizard question + web console cleanup"
 version: "0.1.0"
-status: draft
+status: superseded
+superseded_by: SPEC-AGENT-MODEL-INHERIT-001
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-29
 author: manager-spec
 priority: P2
 phase: "v3.1.0 target"

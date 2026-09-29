@@ -1,64 +1,22 @@
 package web
 
-// SPEC-WEB-CONSOLE-011 M3 sub-agent frontmatter AC 바인딩 테스트:
-// AC-WC11-020(잔존 표면 렌더), 025(frontmatter round-trip),
-// 026(workflow_agents 숨김 + taxonomy 참조), 028(지속 경고 + i18n ×4),
-// 029(검증/부재 보존).
-// (구 AC-WC11-023 컴파일 계층 테스트는 SPEC-AGENT-TEAM-RETIRE-001 M1에서 제거.
-// team.role_profiles 웹 렌더 표면(구 surface (b), AC-WC11-022/024/071)은
-// SPEC-AGENT-TEAM-RETIRE-001 M2에서 제거 — 웹 콘솔은 더 이상 Agent Teams 설정을
-// 렌더하지 않는다. sub-agent frontmatter 편집(agentfm)은 무관하게 유지된다.)
+// Settings-page tests that outlived the agent-settings tab: the retired Agent
+// Teams role_profiles controls stay unrendered, and a forged workflow_agents
+// submission stays ignored. The per-agent model/effort panel itself was removed
+// (SPEC-AGENT-MODEL-INHERIT-001 REQ-AMI-011).
 
 import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// 테스트용 agent 파일 2종: effort 보유 + effort 부재 (manager-docs 선례, EC-7).
-const testAgentWithEffort = `---
-name: dev-a
-model: inherit
-effort: xhigh
-memory: project
----
-# dev-a body
-
-Sentinel body content (byte-preservation).
-`
-
-const testAgentNoEffort = `---
-name: docs-b
-model: haiku
-memory: project
----
-docs-b body sentinel.
-`
-
-// newAgentTestApp은 섹션 fixture + agent 파일이 시드된 앱을 만든다.
+// newAgentTestApp builds the schema test app used by the settings-page tests.
 func newAgentTestApp(t *testing.T) (*app, string) {
 	t.Helper()
-	// 런처 환경 고정: MOAI_LAUNCH_PROVIDER 가 세션에 남아 있으면 렌더가
-	// 게이트웨이 백엔드로 접혀 모델 셀렉트 단언이 무너진다 (t840).
-	t.Setenv(config.EnvMoaiLaunchProvider, "")
-	a, root := newSchemaTestApp(t)
-	agentsDir := filepath.Join(root, ".claude", "agents", "moai")
-	if err := os.MkdirAll(agentsDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(agentsDir, "dev-a.md"), []byte(testAgentWithEffort), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(agentsDir, "docs-b.md"), []byte(testAgentNoEffort), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	return a, root
+	return newSchemaTestApp(t)
 }
 
 func getIndex(t *testing.T, a *app) string {
@@ -73,66 +31,6 @@ func getIndex(t *testing.T, a *app) string {
 	return rec.Body.String()
 }
 
-// TestAgentSettingsFourSurfacesRendered는 AC-WC11-020을 검증한다: 단일 뷰에
-// 잔존 표면 렌더 — (a) llm tiers, (c) sub-agent frontmatter, (d) workflow_agents.
-// 구 surface (b) team.role_profiles(7)는 SPEC-AGENT-TEAM-RETIRE-001 M2에서 제거
-// (웹 콘솔은 더 이상 Agent Teams 설정을 렌더하지 않는다). M5-a B1부터 (d)
-// workflow_agents는 웹 렌더에서 숨김 — 폼 컨트롤이 렌더되지 않는다 (struct/yaml
-// 키는 유지). AC-WC11-026의 taxonomy 참조와 AC-WC11-028의 지속 경고 렌더도 함께
-// 고정한다.
-func TestAgentSettingsFourSurfacesRendered(t *testing.T) {
-	a, _ := newAgentTestApp(t)
-	body := getIndex(t, a)
-
-	// (a) llm tiers — M4 다이어트 후 GLM tier 매핑만 잔류 (claude_models 제거됨).
-	for _, marker := range []string{`name="llm.glm.models.high"`, `data-i18n="agentfm.llmnote"`} {
-		if !strings.Contains(body, marker) {
-			t.Errorf("surface (a) marker missing: %s", marker)
-		}
-	}
-	// 구 surface (b) team.role_profiles 렌더 검증은 Agent Teams 정적 레이어와 함께
-	// 제거되었다 (SPEC-AGENT-TEAM-RETIRE-001 M2 — workflow.team.role_profiles.* 폼
-	// 컨트롤은 더 이상 렌더되지 않는다). 잔존 확인은 아래 TestNoTeamRoleProfileRender.
-	// (c) sub-agent frontmatter rows.
-	for _, marker := range []string{`name="agentfm.dev-a.model"`, `name="agentfm.docs-b.effort"`} {
-		if !strings.Contains(body, marker) {
-			t.Errorf("surface (c) marker missing: %s", marker)
-		}
-	}
-	// (d) workflow_agents — M5-a B1부터 웹 렌더에서 숨김. 7 purposes의 폼 컨트롤이
-	// 렌더되지 않는다 (struct 필드 + yaml 키는 유지, dynamic-workflow JS가 yaml
-	// 파일을 직접 읽는다).
-	for _, purpose := range []string{
-		"read-only-extract", "mechanical-transform", "synthesize",
-		"research", "verify-judge", "implement", "design-architecture",
-	} {
-		if strings.Contains(body, `name="workflow.workflow_agents.`+purpose+`.model"`) {
-			t.Errorf("surface (d) purpose %q control should be hidden (M5-a B1)", purpose)
-		}
-	}
-	// AC-WC11-026: taxonomy 참조 잔존 (agentfm 섹션 설명에 잔류).
-	if !strings.Contains(body, ".claude/rules/moai/workflow/dynamic-workflows.md") {
-		t.Error("dynamic-workflows.md taxonomy reference missing")
-	}
-	// AC-WC11-028: 지속 경고 렌더.
-	if !strings.Contains(body, `data-i18n="agentfm.warn"`) {
-		t.Error("persistent moai-update warning missing")
-	}
-	// M5-a B5: effort 필드 "declarative" 배지 렌더 (agentfm effort — 구
-	// role_profiles.effort 표면은 SPEC-AGENT-TEAM-RETIRE-001 M2에서 제거, 배지는
-	// agentfm이 계속 렌더). 서버측 baseline은 영어다 (console UX fix G1-3 —
-	// 종전 하드코딩 한국어 "(Go 미독)"는 모든 로케일에 한국어를 노출했다).
-	if !strings.Contains(body, `data-i18n="hint.effort.go_unbound"`) {
-		t.Error("effort hint badge missing")
-	}
-	if !strings.Contains(body, "Resolved from the performance tier above — per-agent edits save as overrides.") {
-		t.Error("effort hint badge does not render the reworded English baseline text (G3-6)")
-	}
-}
-
-// TestNoTeamRoleProfileRender는 SPEC-AGENT-TEAM-RETIRE-001 M2의 절대-부재를
-// 검증한다: 웹 콘솔은 더 이상 Agent Teams team.role_profiles 폼 컨트롤을 렌더하지
-// 않는다 (REQ-ATR-008 — "shall not render Agent Teams configuration").
 func TestNoTeamRoleProfileRender(t *testing.T) {
 	a, _ := newAgentTestApp(t)
 	body := getIndex(t, a)
@@ -151,87 +49,6 @@ func TestNoTeamRoleProfileRender(t *testing.T) {
 }
 
 // TestAgentFMWarnI18nParity는 AC-WC11-028의 4-locale half다: agentfm 신규 키가
-// 4개 locale 전부에 존재한다.
-func TestAgentFMWarnI18nParity(t *testing.T) {
-	dict := readEmbeddedAsset(t, "i18n.js")
-	for _, key := range []string{
-		"agentfm.warn", "agentfm.keep", "agentfm.absent", "agentfm.llmnote",
-		"agentfm.taxonomy", "agentfm.unavailable",
-		"sec.agentfm.title", "sec.agentfm.desc",
-		"sec.agent_settings.title", "sec.agent_settings.desc",
-	} {
-		if strings.Count(dict, `"`+key+`":`) < 4 {
-			t.Errorf("i18n key %q not present in all 4 locales", key)
-		}
-	}
-}
-
-// NOTE: TestRoleProfileEditRoutesThroughSeam (구 AC-WC11-022 role_profile seam
-// diff)와 TestAgentSettingsEnumReject (구 AC-WC11-024/071 role_profiles +
-// workflow_agents enum reject)는 SPEC-AGENT-TEAM-RETIRE-001 M2에서 제거되었다 —
-// 두 테스트의 대상 표면(workflow.team.role_profiles 편집)이 Agent Teams 정적
-// 레이어와 함께 retired. agentfm enum reject 커버리지는
-// TestAgentFMValidationAndAbsent가 유지한다.
-
-// TestAgentFMEditDoesNotTouchFrontmatter (G3-2): a sub-agent model/effort edit no
-// longer patches the agent .md file — persistence moved to llm.agent_overrides. The
-// agent file (frontmatter + body) is byte-identical after a save. (dev-a is a
-// non-matrix fixture, so its submission is a no-op; the override round-trip for a
-// matrix agent is covered by TestG3SaveWritesAgentOverrideNotFrontmatter.)
-func TestAgentFMEditDoesNotTouchFrontmatter(t *testing.T) {
-	a, root := newAgentTestApp(t)
-	agentPath := filepath.Join(root, ".claude", "agents", "moai", "dev-a.md")
-	before, err := os.ReadFile(agentPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	rec := postSave(t, a, url.Values{"agentfm.dev-a.effort": {"high"}})
-	if rec.Code != http.StatusOK {
-		t.Fatalf("POST /save status = %d, want 200 (body: %.300s)", rec.Code, rec.Body.String())
-	}
-	after, err := os.ReadFile(agentPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(after) != string(before) {
-		t.Errorf("agent .md mutated by the console — writes must go to llm.agent_overrides, not frontmatter\nbefore:\n%s\nafter:\n%s", before, after)
-	}
-}
-
-// TestAgentFMValidationRejectsOutOfSet (G3-2): an out-of-set model/effort
-// submission is rejected 4xx (atomic reject) and mutates no agent file — even for a
-// non-matrix agent (validation runs before the matrix-membership skip). A valid but
-// non-matrix submission is a no-op that leaves the file byte-identical.
-func TestAgentFMValidationRejectsOutOfSet(t *testing.T) {
-	a, root := newAgentTestApp(t)
-	devPath := filepath.Join(root, ".claude", "agents", "moai", "dev-a.md")
-	docsPath := filepath.Join(root, ".claude", "agents", "moai", "docs-b.md")
-	devBefore, _ := os.ReadFile(devPath)
-
-	// (i) out-of-set → 4xx, no file change.
-	rec := postSave(t, a, url.Values{
-		"agentfm.dev-a.model":  {"gpt5"},
-		"agentfm.dev-a.effort": {"superhigh"},
-	})
-	if rec.Code != http.StatusOK {
-		t.Fatalf("out-of-set submission status = %d, want 200", rec.Code)
-	}
-	assertValidationRejectBanner(t, rec.Body.String())
-	if devAfter, _ := os.ReadFile(devPath); string(devAfter) != string(devBefore) {
-		t.Error("agent file changed despite validation reject")
-	}
-
-	// (ii) valid but non-matrix submission is a no-op — the agent .md is untouched.
-	docsBefore, _ := os.ReadFile(docsPath)
-	rec = postSave(t, a, url.Values{"agentfm.docs-b.model": {"sonnet"}})
-	if rec.Code != http.StatusOK {
-		t.Fatalf("valid non-matrix submission status = %d, want 200", rec.Code)
-	}
-	if docsAfter, _ := os.ReadFile(docsPath); string(docsAfter) != string(docsBefore) {
-		t.Errorf("non-matrix agent file mutated by the console (must be a no-op):\nbefore:\n%s\nafter:\n%s", docsBefore, docsAfter)
-	}
-}
 
 // TestWorkflowAgentsWebSubmissionIgnored는 M5-a B1의 행동 완결이다: workflow_agents
 // 폼 제출은 웹에서 더 이상 렌더/쓰기하지 않으므로 무시된다 — 블록은 생성되지 않고

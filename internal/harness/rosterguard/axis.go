@@ -4,20 +4,22 @@
 // FORWARD ONLY, by whoever made it, to the sites they happened to know about;
 // earlier gaps are never backfilled. Two measured instances:
 //
-//   - `mission-governor` was registered in internal/config/profile.go by its own
+//   - the role now named `manager-todo` (the auto-mission judgment sub-role)
+//     was registered in the former internal/config/profile.go
+//     (deleted by SPEC-AGENT-MODEL-INHERIT-001 M5) by its own
 //     creation commit 5ec516165, but `manager-lead` (which arrived via the
 //     rename 310d75dd2) never was.
-//   - internal/template/profile_matrix.go records the SAME agent falling
-//     through the SAME crack once before: "manager-lead was absent from this
-//     list until t205 and therefore resolved to the unmapped-agent `inherit`
-//     sentinel".
+//   - the former internal/template/profile_matrix.go (deleted in the same
+//     milestone) records the SAME agent falling through the SAME crack once
+//     before: "manager-lead was absent from this list until t205 and therefore
+//     resolved to the unmapped-agent `inherit` sentinel".
 //
 // # Why this guard compares SETS and never counts
 //
 // At the time this package was written the agent-definition file count was 12
-// (11 MoAI-custom + mission-governor; the built-in Explore has no file) and
+// (11 MoAI-custom + manager-todo; the built-in Explore has no file) and
 // delegationmap.retainedCatalog was ALSO 12 (11 MoAI-custom + Explore; no
-// mission-governor). Two different 12s whose intersection is 11. A guard that
+// manager-todo). Two different 12s whose intersection is 11. A guard that
 // compared numbers would have passed vacuously on exactly the drift it exists
 // to catch. Every membership assertion here is therefore a set comparison, and
 // a count assertion is only ever an ADDITIONAL claim on a named axis — never
@@ -61,7 +63,7 @@ type Axis string
 const (
 	// AxisRetainedRoster is the CLAUDE.md section 4 retained roster — every
 	// retained agent including the Anthropic built-in Explore. The canonical
-	// membership is template.ProfileMatrixAgents().
+	// membership is template.RetainedAgents().
 	AxisRetainedRoster Axis = "retained-roster"
 
 	// AxisDefinitionFiles is the population of .claude/agents/moai/*.md
@@ -75,7 +77,7 @@ const (
 	// the roster — a per-subcommand designation list, for instance. Such a site
 	// gets NO membership assertion, because asserting complete membership on it
 	// would be wrong: manager-design, manager-lead, super-advisor and
-	// mission-governor are all legitimately absent from every delegation
+	// manager-todo are all legitimately absent from every delegation
 	// designation.
 	AxisSubsetByDesign Axis = "subset-by-design"
 )

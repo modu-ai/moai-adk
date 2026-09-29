@@ -139,6 +139,6 @@ v3.1부터 `moai goal arm --max-turns 0`으로 무장하거나 칸반 모드 진
 ## 관련 문서
 
 - [자율 연속 루프](/ko/advanced/autonomous-loops) — goal 엔진의 정체 가드와 상한 의미론
-- [칸반 모드](/ko/advanced/kanban-mode) — 리드 세션이 이끄는 3-단계 체인
+- [칸반 모드](/ko/advanced/kanban-mode) — 리더 세션이 이끄는 3-단계 체인
 - [`/moai loop`](/ko/utility-commands/moai-loop) — 진단 주도의 결정적 루프 (형제 명령)
 - [하네스 엔지니어링](/ko/core-concepts/harness-engineering) — 루프와 관찰이 하네스 학습으로 흐르는 경로

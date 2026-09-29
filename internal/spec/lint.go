@@ -1243,6 +1243,27 @@ var phaseWorkflowStageTokens = map[string]bool{
 	"mx":   true,
 }
 
+// lifecycleValidValues is the canonical lifecycle enum from the schema SSOT
+// (spec-frontmatter-schema.md § Field Reference): exactly three values, matched
+// exactly (case variants are non-canonical spellings and are flagged).
+//
+// lifecycleLegacyAccepted is the documented exception set: `completed` mirrors the
+// status field into lifecycle across 97 corpus rows from pre-consolidation practice,
+// and closed-SPEC frontmatter is immutable by doctrine. The lint accepts the spelling
+// rather than demanding a 97-file sweep outside card t1327's scope; the residue is
+// measured (65 implemented / 27 completed / 15 archived / 1 planned / 1 superseded)
+// and tracked for a follow-up sweep. Like FrontmatterPhaseInvalid, the finding this
+// drives (FrontmatterLifecycleInvalid) is deliberately absent from eraDemotableCodes.
+var lifecycleValidValues = map[string]bool{
+	"spec-anchored": true,
+	"spec-lite":     true,
+	"exploratory":   true,
+}
+
+var lifecycleLegacyAccepted = map[string]bool{
+	"completed": true,
+}
+
 func (r *FrontmatterSchemaRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	fm := doc.Frontmatter
 	var findings []Finding
@@ -1310,6 +1331,31 @@ func (r *FrontmatterSchemaRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 			Message: fmt.Sprintf(
 				"phase %q is a workflow-stage token, not a release target; use the target release version (e.g. \"v3.0.2\")",
 				fm.Phase),
+		})
+	}
+
+	// lifecycle enum membership: the schema SSOT (spec-frontmatter-schema.md §
+	// Field Reference) admits exactly three values. Matching is exact — a case
+	// variant of a canonical value is itself a non-canonical spelling. Placed
+	// after the phase check for the same empty-field ordering reason: an empty
+	// lifecycle yields only the required-field finding above.
+	//
+	// Legacy exception: `completed` mirrors the status field into lifecycle
+	// across 97 corpus rows from pre-consolidation practice, and closed-SPEC
+	// frontmatter is immutable by doctrine — so the spelling is accepted here
+	// instead of demanding a 97-file sweep. The residue is measured and tracked
+	// for a follow-up sweep (card t1327 verdict); this acceptance is deliberately
+	// narrow and documented rather than silent.
+	if lifecycle := strings.TrimSpace(fm.Lifecycle); lifecycle != "" &&
+		!lifecycleValidValues[lifecycle] && !lifecycleLegacyAccepted[lifecycle] {
+		findings = append(findings, Finding{
+			File:     doc.Path,
+			Line:     1,
+			Severity: SeverityError,
+			Code:     "FrontmatterLifecycleInvalid",
+			Message: fmt.Sprintf(
+				"lifecycle %q is not a canonical value; use one of spec-anchored, spec-lite, exploratory",
+				fm.Lifecycle),
 		})
 	}
 

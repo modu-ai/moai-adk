@@ -108,9 +108,26 @@ var Now = func() time.Time { return time.Now().UTC() }
 
 var receiptIDPattern = regexp.MustCompile(`^rcpt-[a-z0-9]{20,40}$`)
 
+// specIDBody is the SPEC-id grammar the verdict line embeds. It is the single
+// source of the pattern so a free-text SPEC extraction (e.g. attributing a
+// refusal from the auditor transcript's spawn prompt) cannot drift from the
+// verdict-line grammar's SPEC span.
+const specIDBody = `SPEC(?:-[A-Z][A-Z0-9]*)+-[0-9]{3}`
+
+// specIDPattern finds a SPEC id anywhere in free text.
+var specIDPattern = regexp.MustCompile(specIDBody)
+
+// SpecIDFromText returns the first SPEC id occurring in text, or "" when the
+// text names none. It is the fallback attribution signal for refusal records
+// whose verdict line could not be parsed.
+func SpecIDFromText(text string) string {
+	m := specIDPattern.FindString(text)
+	return m
+}
+
 // verdictLinePattern is plan.md §B.6 verbatim.
 var verdictLinePattern = regexp.MustCompile(
-	`^AUDIT-VERDICT: (PASS|PASS-WITH-DEBT|FAIL) spec=(SPEC(?:-[A-Z][A-Z0-9]*)+-[0-9]{3}) receipts=(none|rcpt-[a-z0-9]{20,40}(?:,rcpt-[a-z0-9]{20,40})*)[ \t\r]*$`)
+	`^AUDIT-VERDICT: (PASS|PASS-WITH-DEBT|FAIL) spec=(` + specIDBody + `) receipts=(none|rcpt-[a-z0-9]{20,40}(?:,rcpt-[a-z0-9]{20,40})*)[ \t\r]*$`)
 
 // Receipt records one audit call the runtime actually made.
 type Receipt struct {

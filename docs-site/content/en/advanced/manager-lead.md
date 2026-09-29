@@ -1,5 +1,5 @@
 ---
-title: "manager-lead Lead Coordinator"
+title: "manager-lead Leader Coordinator"
 weight: 30
 draft: false
 added_in: "v3.1"
@@ -7,7 +7,7 @@ added_in: "v3.1"
 
 {{< new-badge v3.1 >}}
 
-# manager-lead Lead Coordinator
+# manager-lead Leader Coordinator
 
 {{< callout type="info" >}}
 {{< icon target primary >}} <strong>Value home</strong>: agentic loop engineering · agentic harness
@@ -16,9 +16,9 @@ added_in: "v3.1"
 
 Work that is too large for one agent to carry usually runs into two limits. The first is the context window. Once you pass five milestones (the sequential stages inside a SPEC), the file contents read early in implementation and the agent's outputs pile up, until you reach a point where you cannot go further without `/clear`. The second is trust. When the agent doing the implementation reports on its own that "the acceptance criteria passed," and no independent eye sits beside it to verify that report, we have no choice but to take the claim at its word.
 
-`manager-lead` is the twelfth manager agent — an agent that coordinates other agents — and it handles both limits plus the coordination of multiple sessions and multiple cards as a single skill set. It was renamed from `manager-kanban` in v3.1.1, and with the rename its role widened to include coordinating kanban and factory lead sessions. It never writes code itself; it only coordinates.
+`manager-lead` is the twelfth manager agent — an agent that coordinates other agents — and it handles both limits plus the coordination of multiple sessions and multiple cards as a single skill set. It was renamed from `manager-kanban` in v3.1.1, and with the rename its role widened to include coordinating kanban and factory leader sessions. It never writes code itself; it only coordinates. `manager-lead` is an auxiliary coordination role of the leader — the name is kept, the role is defined as serving the leader.
 
-This is an advanced page. It goes one layer deeper into the boundary between the two roles, the hierarchical structure, the entry conditions, per-milestone context folding, peer validation, the posture of a lead session, and what does _not_ change.
+This is an advanced page. It goes one layer deeper into the boundary between the two roles, the hierarchical structure, the entry conditions, per-milestone context folding, peer validation, the posture of a leader session, and what does _not_ change.
 
 ## What this page covers — two roles, one skill set
 
@@ -26,21 +26,21 @@ This is an advanced page. It goes one layer deeper into the boundary between the
 
 | | Role A — in-session fan-out | Role B — cross-session dispatch |
 |---|---|---|
-| Unit of work | A milestone inside one SPEC | A card on the kanban board (-k), or a card assigned to a factory worker (-f) |
-| Who does the work | Leaf `Agent()` spawns it creates directly | Companion sessions the operator launched by hand (-k: plan · run · sync) and workers (-f: worker-1…worker-N) |
-| Entry | Orchestrator delegation at the Tier L threshold | A -k/-f session whose SessionStart context declares the lead role |
+| Unit of work | A milestone inside one SPEC | A card on the kanban board (-k), or a card assigned to a factory lane (-f) |
+| Who does the work | Leaf `Agent()` spawns it creates directly | Companion sessions the operator launched by hand (-k: plan · run · sync) and lanes (-f: lane-1…lane-N) |
+| Entry | Orchestrator delegation at the Tier L threshold | A -k/-f session whose SessionStart context declares the leader role |
 
 Role A takes the execution of a Tier-L-scale SPEC, folds context at every milestone (Context-Folding) to keep the window light, and runs peer cross-validation on every acceptance criterion (AC — the criterion for a pass verdict) that has been marked pass, so the run survives end-to-end in a single window.
 
-Role B is the work in which the **lead session owns the dispatch cycle** in kanban mode (`moai cc -k`) and factory mode (`moai cc -f`). The kanban lead moves cards across the board along the `lead > plan > run > sync` chain — the `plan` session fans per-card SPEC authoring out to parallel `Agent()` workers — while the factory lead assigns an operator-picked card to an empty worker as a whole. Neither one creates a session. The operator launches companion sessions and workers by hand, one per terminal, and the lead addresses them by name to send messages.
+Role B is the work in which the **leader session owns the dispatch cycle** in kanban mode (`moai cc -k`) and factory mode (`moai cc -f`). The kanban leader moves cards across the board along the `leader > plan > run > sync` chain — the `plan` session fans per-card SPEC authoring out to parallel `Agent()` workers — while the factory leader assigns an operator-picked card to an empty lane as a whole. Neither one creates a session. The operator launches companion sessions and lanes by hand, one per terminal, and the leader addresses them by name to send messages.
 
 Three disciplines run through both roles. Work proceeds **in order rather than in competition**, completion is judged **only on evidence that was read, never on a claim**, and the user-question channel belongs to the orchestrator — when this agent is blocked, it returns a blocker report.
 
-## The posture of a lead session — the conversation continues, the work runs behind it
+## The posture of a leader session — the conversation continues, the work runs behind it
 
-In Role B the lead session's posture is non-blocking in both directions. The conversation with the user keeps flowing while parallel work runs behind it, and worker and companion-session coordination never stalls waiting for the user's next answer. The lead session talks to the user over the orchestrator channel (the agent itself only returns blocker reports), and everything that can run in parallel — read-only verification batches, cross-checking reports, per-card SPEC authoring the lead holds directly — is pushed out as background `Agent()` spawns.
+In Role B the leader session's posture is non-blocking in both directions. The conversation with the user keeps flowing while parallel work runs behind it, and lane and companion-session coordination never stalls waiting for the user's next answer. The leader session talks to the user over the orchestrator channel (the agent itself only returns blocker reports), and everything that can run in parallel — read-only verification batches, cross-checking reports, per-card SPEC authoring the leader holds directly — is pushed out as background `Agent()` spawns.
 
-Layered on top of this is the **subagent-first token discipline**. Only coordination stays in the context of the lead and the workers; all substantive work is pushed down to child agents. If per-card authoring, verification, and report writing happen inside the lead's window, four windows grow heavy at once; pushed down to child agents, each finishes in its own window and only a summary comes back to the lead. The concurrent-spawn ceiling is 10 per session, and on the GLM backend spawns are launched **without a name** — a named spawn can turn into an in-process teammate that returns no result under `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`.
+Layered on top of this is the **subagent-first token discipline**. Only coordination stays in the context of the leader and the lanes; all substantive work is pushed down to child agents. If per-card authoring, verification, and report writing happen inside the leader's window, four windows grow heavy at once; pushed down to child agents, each finishes in its own window and only a summary comes back to the leader. The concurrent-spawn ceiling is 10 per session, and on the GLM backend spawns are launched **without a name** — a named spawn can turn into an in-process teammate that returns no result under `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`.
 
 ## Why it is needed
 
@@ -50,7 +50,7 @@ First, the context fills up. Files read early in implementation, tests written i
 
 Second, the limit of self-reporting surfaces. When an agent reports "AC-003 passed," and the orchestrator does not re-check the command output behind that verdict one by one, a false report is only caught at the sync stage. A defect that would be cheap to catch mid-run goes all the way to the end.
 
-`manager-lead` answers each of these two phenomena. Context is folded at milestone boundaries to keep the window light, and each AC verdict is re-checked on the spot by a peer agent that is not the author. That way a Tier L run survives end-to-end within one session, and the claim "it passed" moves to the next milestone structurally verified. Role B extends the same discipline outside the session — the lead, too, reads the evidence in the progress record itself before moving a card, and stops the card where it is if it could not read that evidence.
+`manager-lead` answers each of these two phenomena. Context is folded at milestone boundaries to keep the window light, and each AC verdict is re-checked on the spot by a peer agent that is not the author. That way a Tier L run survives end-to-end within one session, and the claim "it passed" moves to the next milestone structurally verified. Role B extends the same discipline outside the session — the leader, too, reads the evidence in the progress record itself before moving a card, and stops the card where it is if it could not read that evidence.
 
 ## The hierarchy at a glance
 
@@ -69,7 +69,7 @@ flowchart TD
     NextM -->|No| Done["Consolidated §E.2 + AC matrix<br/>returned to orchestrator"]
 ```
 
-The thing to watch in this diagram is the direction of the arrows. The orchestrator calls only as far as `manager-lead`, and the only caller of the leaf agents below it is `manager-lead`. A leaf agent cannot call another agent (the seal the dotted lines point to). This is the "depth-2 seal," a structural safety net that prevents the hierarchy from deepening without limit. The same holds in Role B — the lead's background `Agent()` spawns go one level only, and companion sessions and workers were never created by the lead in the first place; they are independent sessions the operator launched.
+The thing to watch in this diagram is the direction of the arrows. The orchestrator calls only as far as `manager-lead`, and the only caller of the leaf agents below it is `manager-lead`. A leaf agent cannot call another agent (the seal the dotted lines point to). This is the "depth-2 seal," a structural safety net that prevents the hierarchy from deepening without limit. The same holds in Role B — the leader's background `Agent()` spawns go one level only, and companion sessions and lanes were never created by the leader in the first place; they are independent sessions the operator launched.
 
 ## Step 1 — check that the entry conditions hold
 
@@ -83,7 +83,7 @@ Role A is not a path that underlies every run by default. The orchestrator hands
 
 These three conditions are "all must be true," not "any one is true." A single-milestone, 10-file refactor touching one domain looks as if only one condition is missing, but in fact none of the three hold, so it does not enter the `manager-lead` path. That is by design — sequential mode is cheaper and faster.
 
-Role B's entry is simpler. If the session's SessionStart context declares the `lead` role of kanban mode (`moai cc -k`) or factory mode (`moai cc -f`), that is all it takes, and the thresholds do not apply — because the board (or the set of workers) is itself the work. A subagent spawn has no SessionStart context, so Role B cannot be entered by spawning.
+Role B's entry is simpler. If the session's SessionStart context declares the `leader` role of kanban mode (`moai cc -k`) or factory mode (`moai cc -f`), that is all it takes, and the thresholds do not apply — because the board (or the set of lanes) is itself the work. A subagent spawn has no SessionStart context, so Role B cannot be entered by spawning.
 
 Before calling `manager-lead`, the orchestrator records this choice in the `§F Phase 4 Mode Selection` field of `progress.md`. Users can grep this record to confirm which path the current run took.
 
@@ -191,10 +191,10 @@ The arrival of `manager-lead` does not increase the number of Phase 4 execution 
 - **New modes** — there are none. `manager-lead` is a serial-shaped sequential delegation target.
 - **`--mode` values** — `autopilot`, `loop`, `team`, `pipeline` are unchanged. No new value was added, and agent-team remains an experimental surface available by explicit request only (the `MODE_TEAM_UNAVAILABLE` sentinel is kept as documented history).
 
-This promise answers the natural worry: "does adding one more agent make the orchestration layer more complex?" `manager-lead` is one agent that fits inside the existing serial vessel; it does not create a new vessel. The same holds in kanban and factory lead sessions — the dispatch cycle runs on the cross-session messaging and backlog queue that already exist, and installs no new runtime.
+This promise answers the natural worry: "does adding one more agent make the orchestration layer more complex?" `manager-lead` is one agent that fits inside the existing serial vessel; it does not create a new vessel. The same holds in kanban and factory leader sessions — the dispatch cycle runs on the cross-session messaging and backlog queue that already exist, and installs no new runtime.
 
 ## Summary
 
-`manager-lead` is an agent that only coordinates, across two surfaces. In Role A it pushes a Tier-L-scale run end-to-end within one session — it steps in only when all three conditions (≥ 3 milestones, ≥ 10 files, cross-domain fan-out) are true, and once it does, it folds context at every milestone to keep the window light and adds trust with peer cross-validation on every AC that passes. In Role B it owns dispatch for kanban and factory lead sessions — cards move only on evidence that was read, parallel work is pushed out as background spawns so the user conversation never stalls, and `/clear` is requested between stages.
+`manager-lead` is an agent that only coordinates, across two surfaces. In Role A it pushes a Tier-L-scale run end-to-end within one session — it steps in only when all three conditions (≥ 3 milestones, ≥ 10 files, cross-domain fan-out) are true, and once it does, it folds context at every milestone to keep the window light and adds trust with peer cross-validation on every AC that passes. In Role B it owns dispatch for kanban and factory leader sessions — cards move only on evidence that was read, parallel work is pushed out as background spawns so the user conversation never stalls, and `/clear` is requested between stages.
 
 It does not write code itself and does not ask the user directly; when work blocks, it returns a blocker report to the orchestrator. Thanks to the depth-2 seal the hierarchy never exceeds two levels, thanks to schema-based fan-out several recon results merge mechanically, and thanks to worktree isolation on write spawns, parallelism is safe. And all of this happens without adding a single line to the execution mode list.

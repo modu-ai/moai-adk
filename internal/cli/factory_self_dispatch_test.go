@@ -376,6 +376,8 @@ func TestSD_AC015_LaneQueueAllowlistWalk(t *testing.T) {
 		"drop":        {"1", "reason"},
 		"undone":      {"t1"},
 		"undrop":      {"1"},
+		"hold":        {"1"},
+		"unhold":      {"1"},
 		"analyze":     nil,
 		"relate":      {"t1", "t2"},
 		"unrelate":    {"1"},

@@ -166,6 +166,19 @@ workflow:
     # undone, re-run, or rewritten. Ships OFF.
     served_model_gate:
         enabled: false
+    # commit_identity_guard: refuse a shell command that would create a commit
+    # under a known test-fixture identity (an email your test suites use for
+    # throwaway repositories). The guard reads the identity the commit would
+    # actually use — configuration layers plus command-level overrides — and
+    # denies only on an exact email match against its built-in fixture list;
+    # uncertainty always allows. Commands aimed at another repository (a
+    # different git common dir, such as a temp fixture repository) are allowed
+    # without probing. While it is off no probe subprocess ever runs.
+    # Ships OFF; deny_emails adds entries to the built-in list, it never
+    # removes from it.
+    commit_identity_guard:
+        enabled: false
+        deny_emails: []
     # jev: the TypeSafe System One judgment capability. It answers a typed
     # question about a supplied state and returns a typed answer with a
     # probability; it generates no text and decides nothing. Ships OFF, and
@@ -215,84 +228,3 @@ workflow:
             # check only. It runs at an on-demand checkpoint whose invocation
             # surface is pending, never inside a tool-call hook.
             new_api_detector: graph   # graph | off
-    # workflow_agents: dynamic-workflow purpose taxonomy -> {model, effort}
-    # DEFAULTS. This block is the SSOT for workflow agent() model/effort
-    # defaults; per-script literals in .claude/workflows/*.js override it.
-    # Values are validated against the closed sets: model in
-    # {inherit, sonnet, opus}, effort in {low, medium, high, xhigh, max}.
-    workflow_agents:
-        read-only-extract: { model: sonnet, effort: low }
-        mechanical-transform: { model: opus, effort: low }
-        synthesize: { model: opus, effort: low }
-        research: { model: opus, effort: medium }
-        verify-judge: { model: opus, effort: medium }
-        implement: { model: opus, effort: medium }
-        design-architecture: { model: opus, effort: high }
-    # model_routing: LEGACY flat block (Tier x Phase -> {model, effort}).
-    # DEPRECATED — retained as a `medium` profile alias for one backward-compat
-    # cycle. Values mirror the
-    # `medium` profile below. New code reads `model_routing_profiles` via
-    # RouteModelFor(specTier, phase, perfTier); this flat key is NOT read by
-    # the 3-arg accessor. Existing external readers continue to work.
-    # Key format: <TIER>-<phase> where Tier in {S, M, L} and Phase in
-    # {plan, run, sync, mx}. Closed sets: model in
-    # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
-    model_routing:
-        S-plan: { model: opus, effort: low }
-        S-run: { model: opus, effort: medium }
-        S-sync: { model: opus, effort: low }
-        S-mx: { model: sonnet, effort: low }
-        M-plan: { model: opus, effort: medium }
-        M-run: { model: opus, effort: medium }
-        M-sync: { model: opus, effort: low }
-        M-mx: { model: sonnet, effort: low }
-        L-plan: { model: opus, effort: high }
-        L-run: { model: opus, effort: medium }
-        L-sync: { model: opus, effort: medium }
-        L-mx: { model: sonnet, effort: low }
-    # model_routing_profiles: No-Haiku 3-tier policy — perfTier -> (Tier x Phase) -> {model, effort}.
-    # 3 perfTiers (high/medium/low) × 12 cells (S/M/L × plan/run/sync/mx) = 36
-    # entries. The orchestrator consults RouteModelFor(specTier, phase,
-    # perfTier) at spawn time. `medium` is the default performance tier
-    # (populated by `moai init --model-policy`). Closed sets: model in
-    # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
-    model_routing_profiles:
-        high:
-            S-plan: { model: opus, effort: medium }
-            S-run: { model: opus, effort: high }
-            S-sync: { model: opus, effort: low }
-            S-mx: { model: sonnet, effort: low }
-            M-plan: { model: opus, effort: high }
-            M-run: { model: opus, effort: high }
-            M-sync: { model: opus, effort: medium }
-            M-mx: { model: sonnet, effort: low }
-            L-plan: { model: opus, effort: high }
-            L-run: { model: opus, effort: max }
-            L-sync: { model: opus, effort: medium }
-            L-mx: { model: sonnet, effort: low }
-        medium:
-            S-plan: { model: opus, effort: low }
-            S-run: { model: opus, effort: medium }
-            S-sync: { model: opus, effort: low }
-            S-mx: { model: sonnet, effort: low }
-            M-plan: { model: opus, effort: medium }
-            M-run: { model: opus, effort: medium }
-            M-sync: { model: opus, effort: low }
-            M-mx: { model: sonnet, effort: low }
-            L-plan: { model: opus, effort: high }
-            L-run: { model: opus, effort: medium }
-            L-sync: { model: opus, effort: medium }
-            L-mx: { model: sonnet, effort: low }
-        low:
-            S-plan: { model: opus, effort: low }
-            S-run: { model: opus, effort: low }
-            S-sync: { model: sonnet, effort: low }
-            S-mx: { model: sonnet, effort: low }
-            M-plan: { model: opus, effort: low }
-            M-run: { model: opus, effort: low }
-            M-sync: { model: sonnet, effort: low }
-            M-mx: { model: sonnet, effort: low }
-            L-plan: { model: opus, effort: low }
-            L-run: { model: opus, effort: medium }
-            L-sync: { model: sonnet, effort: low }
-            L-mx: { model: sonnet, effort: low }

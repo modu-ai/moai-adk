@@ -6,8 +6,6 @@ skills:
   - hns-moaiadk-patterns
   - hns-moaiadk-best-practices
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: opus
-effort: high
 ---
 
 # Quality Specialist (moai-adk-go)

@@ -84,7 +84,10 @@ var frozenTodoSurface = map[string][]string{
 //     schema and takes no queue mutation lock, which
 //     TestTodoTriage_QueueUnchanged asserts rather than assumes. It renders
 //     mechanical observations of the tree and reaches no verdict.
-var permittedVerbAdditions = []string{"export-json", "undone", "history", "landed", "auto-done", "triage"}
+//
+// permittedVerbAdditions — SPEC-TODO-HOLD-STATE-001 declares `hold` / `unhold`
+// (the operator park verbs, REQ-THS-006/008).
+var permittedVerbAdditions = []string{"export-json", "undone", "history", "landed", "auto-done", "triage", "hold", "unhold"}
 
 // permittedFlagAdditions records flags added to an ALREADY-FROZEN verb, which
 // is a re-flagging and therefore needs its own declaration rather than an edit
@@ -111,6 +114,30 @@ var permittedVerbAdditions = []string{"export-json", "undone", "history", "lande
 var permittedFlagAdditions = map[string][]string{
 	"done <n>": {"expect=string()", "require-landed=bool(false)"},
 	"list":     {"dropped=bool(false)", "limit=int(20)"},
+}
+
+// permittedUsageRewrites records usage-string widenings of ALREADY-FROZEN
+// verbs: the verb keeps its identity and flag set, but its Use line changes.
+// The frozen table stays at the branch point (same rule as
+// permittedVerbAdditions), so the rewrite is declared here rather than
+// silently substituted into the frozen key.
+//
+//   - relate --relation +blocks|depends — card t1309 (932645f1c): the relation
+//     enum gains the blocks/depends pair. The flag set (note, relation) and
+//     the verb's identity are unchanged; only the rendered enum widens.
+var permittedUsageRewrites = map[string]string{
+	"relate <a> <b> --relation <contains|absorbs|replaces|conflicts>": "relate <a> <b> --relation <contains|absorbs|replaces|conflicts|blocks|depends>",
+}
+
+// isPermittedUsageRewrite reports whether a live usage string is the declared
+// target of a frozen verb's usage rewrite.
+func isPermittedUsageRewrite(use string) bool {
+	for _, rewritten := range permittedUsageRewrites {
+		if use == rewritten {
+			return true
+		}
+	}
+	return false
 }
 
 // isPermittedVerbAddition reports whether a live verb is a declared addition.
@@ -158,6 +185,13 @@ func TestTodoVerbSurfaceZeroDelta(t *testing.T) {
 	for use, wantFlags := range frozenTodoSurface {
 		gotFlags, ok := live[use]
 		if !ok {
+			// A declared usage rewrite moves the verb to a new key without
+			// touching its flags — look the frozen entry up through it.
+			if rewritten, declared := permittedUsageRewrites[use]; declared {
+				gotFlags, ok = live[rewritten]
+			}
+		}
+		if !ok {
 			t.Errorf("verb %q is GONE from the surface — renamed or removed; every script that types it breaks", use)
 			continue
 		}
@@ -171,6 +205,9 @@ func TestTodoVerbSurfaceZeroDelta(t *testing.T) {
 	// (2) Nothing was added except the one addition this SPEC declares.
 	for use := range live {
 		if _, frozen := frozenTodoSurface[use]; frozen {
+			continue
+		}
+		if isPermittedUsageRewrite(use) {
 			continue
 		}
 		if !isPermittedVerbAddition(use) {

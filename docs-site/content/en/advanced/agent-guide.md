@@ -2,349 +2,270 @@
 title: Agent Guide
 weight: 30
 draft: false
+description: "MoAI-ADK's 13-agent catalog — roles, phase scope, the plan-audit separation principle, and the hierarchy."
 ---
 
-A detailed guide to the catalog of 13 core agents in MoAI-ADK v3.0.
+This page walks through the 13-agent (self-directed AI helpers) catalog MoAI-ADK uses, step by step from the ground up. It untangles "what an agent is, why there are several, and how they collaborate" clearly enough to explain to a friend.
 
 {{< callout type="info" >}}
-**One-line summary**: Agents are a **team of specialists**, one for each field. MoAI, as team leader, distributes work to the right specialist — and the agent that authors a plan is always separated from the agent that audits it.
-{{< /callout >}}
-
-{{< callout type="info" title="Platform basics" >}}
-Background on the platform layer is in [Subagents](/en/claude-code/agentic/sub-agents). This page is the MoAI-ADK account of it.
+**One-line summary**: Agents are specialists in their own fields. MoAI, as the team leader, hands work to the right specialist — and **the agent that authors a plan is always a different agent from the one that audits it**. The design exists so the maker never grades their own work.
 {{< /callout >}}
 
 ## What Is an Agent?
 
-An agent is an **AI task performer** specialized in a particular field.
+An agent is an AI task performer specialized in a specific field. Instead of one big AI doing everything, MoAI-ADK splits the work across multiple agents matched to the nature of the task, each with its own context window (memory space), system instructions, and tool permissions.
 
-Built on Claude Code's **Sub-agent** system, each agent has an independent context window, a custom system prompt, specific tool access, and independent permissions.
+Mapped onto a company, the structure falls into place naturally. The user is the owner deciding the product, the MoAI orchestrator (the central coordinator of all work) is the team leader, the manager agents are department heads, and the evaluator agents are quality inspectors. This analogy carries straight into the structure.
 
-In a company analogy, MoAI is the CEO, Manager agents are department heads, Evaluator agents are quality inspectors, the Builder agent is the new-team creation officer, and the Advisor agent is an external consultant.
+```mermaid
+flowchart TD
+    USER["User (developer)<br>decides what to build"] --> MOAI["MoAI orchestrator<br>team leader · work distribution"]
+    MOAI --> MGR["6 manager agents<br>plan · implement · docs · PR · design · coordination"]
+    MOAI --> EVAL["2 evaluator agents<br>plan audit · quality audit"]
+    MOAI --> ETC["The remaining 5<br>team creation · high-reasoning advice · E2E testing · mission judgment · code exploration"]
+```
 
-The agent count was refined over the v3 period from 22 → 17 → 8 → 10 → 12 → **13**. More agents is not better — every delegation carries a context cost, so shrinking the catalog is itself part of tokenomics.
+Every agent runs on Claude Code's Sub-agent system. Each sub-agent gets an independent context window, a custom system prompt, a selected toolset, and separate permissions. MoAI-ADK places its 13 specialist roles on top of this foundation.
 
-## The MoAI Orchestrator
+## Why Multiple Agents?
 
-MoAI is the **top-level coordinator** of MoAI-ADK. It analyzes user requests and delegates work to the appropriate agents.
+One agent handling everything looks convenient, but in practice quality and cost collapse together.
 
-### MoAI's Core Rules
+First, **quality**. If the agent that authored a plan also judges whether the plan turned out well, it goes easy on its own work. Humans are the same — proofreading your own writing hides the errors. That is why MoAI-ADK separates the manager family (planning and implementation) from the evaluator family (inspection) at the design stage.
 
-| Rule | Description |
-|------|------|
-| Delegation only | Complex work is delegated to specialist agents rather than performed directly |
-| Sole user channel | Only MoAI interacts with the user (sub-agents cannot) |
-| Parallel execution | Independent read-only tasks are delegated to multiple agents simultaneously |
-| Result consolidation | Agent execution results are aggregated and reported to the user |
+Second, **cost**. Each agent fills a fresh context and runs its own reasoning, so every delegation costs tokens. "More is better" does not hold. The catalog was refined over the v3 cycle from 22 → 17 → 8 → 10 → 12 → 13, and is now kept at the minimum where the roles do not overlap. Shrinking the agent count is itself part of tokenomics (spending tokens wisely).
 
-## The 13-Agent Core Catalog
+{{< callout type="info" title="Four terms, decoded" >}}
+Four words this page uses constantly, up front.
 
-MoAI-ADK uses **13 core agents** (12 MoAI custom + 1 Anthropic built-in).
-
-### Manager Agents (6)
-
-| Agent | Role | Phase | Model / effort | Key skills |
-|----------|------|------|---------------|----------|
-| `manager-spec` | SPEC document creation, GEARS-format requirements | Plan | inherit / medium {{< icon flash primary >}} | `moai-workflow-spec` |
-| `manager-develop` | DDD/TDD/autofix cycle implementation (cycle_type in quality.yaml) | Run | inherit / medium {{< icon flash primary >}} | `moai-workflow-ddd`, `moai-workflow-tdd` |
-| `manager-docs` | Documentation generation, CHANGELOG, README sync | Sync | inherit / low {{< icon flash muted >}} | `moai-workflow-project` |
-| `manager-git` | PR creation, Git branching, merge strategy | PR (Tier L) | sonnet / low {{< icon flash muted >}} | `moai-foundation-core` |
-| `manager-design` | Claude Design bidirectional collaboration (D1-D5 pipeline) | Design | inherit / medium {{< icon flash primary >}} | `moai-foundation-core` |
-| `manager-lead` | Hierarchical-team Tier L coordination (sole Agent-carrier, depth-2 sealed) | Run (Tier L) | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core`, `moai-workflow-project` |
-
-### Evaluator Agents (2)
-
-| Agent | Role | Evaluates | Model / effort | Key skills |
-|----------|------|---------|---------------|----------|
-| `plan-auditor` | Independent plan-phase audit, GEARS compliance, bias prevention | SPEC completeness | inherit / medium {{< icon flash primary >}} | `moai-foundation-core`, `moai-foundation-thinking` |
-| `sync-auditor` | Sync-phase quality scoring (4 dimensions: Functionality, Security, Craft, Consistency) | Implementation quality | inherit / medium {{< icon flash primary >}} | `moai-foundation-quality`, `moai-foundation-core` |
-
-The key point is that planning and auditing are separated — the one who built it does not inspect their own work. Audit agents approach with a skeptical (fresh-judgment) stance — doubting every claim until evidence appears, and accepting only reproducible results rather than "it seems to pass." Scores are computed as the harmonic mean rather than the simple average, so if one dimension collapses, the overall score falls with it. This design upholds the reliability of the TRUST 5 quality framework.
-
-### Builder Agent (1)
-
-| Agent | Role | Model / effort | Produces |
-|----------|------|---------------|--------|
-| `builder-harness` | Creates project-specific dynamic specialist teams (based on a Socratic interview) | inherit / medium {{< icon flash primary >}} | `.claude/agents/harness/`, `.moai/harness/manifest.json` |
-
-### Advisor Agent (1)
-
-| Agent | Role | Model / effort | Characteristics |
-|----------|------|---------------|------|
-| `super-advisor` | High-reasoning consultation — deadlocks, design decision points, second opinions (E1-E4 escalation) | inherit / high {{< icon flash warn >}} | Non-binding prescriptions — the orchestrator makes the final call |
-
-### Specialist Agents (2)
-
-| Agent | Role | Model / effort | Characteristics |
-|----------|------|---------------|------|
-| `e2e-tester` | E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs, artifact management) | inherit / low {{< icon flash muted >}} | Execution owner of the `/moai e2e` workflow — selection questions stay with the orchestrator |
-| `mission-governor` | Reads the sealed snapshot of an approved GTD auto mission and returns exactly one structured decision (read-only) | inherit / high {{< icon flash warn >}} | Decides but never acts — a deterministic executor validates the decision and performs any state change |
-
-`mission-governor` **decides; it does not execute**. It writes no files, runs no shell or Git commands, touches no queue, dispatches no work to a lane, and neither commits, merges, approves, nor issues an audit verdict. The side that inspects the returned decision and actually changes state is a deterministic executor (an automated handler that moves only along fixed rules). Its tool list is just four — `Read`, `Grep`, `Glob`, `Skill` — and it returns a blocker decision whenever a request falls outside the sealed scope, or the evidence it needs to judge is missing or stale.
-
-{{< callout type="info" >}}
-`mission-governor` has **deliberately no place** in the [Agent Selection Decision Tree](#agent-selection-decision-tree) below. It is not an agent the orchestrator picks and calls; it is a decision role the GTD auto-mission workflow invokes directly. Its absence from the tree is by design, not an omission.
+- **Agent** (a self-directed AI helper) — the AI performer charged with a specific field's work
+- **Harness** (the automated quality apparatus) — the rules and gates that keep agents working well
+- **Skill** (a bundle of reusable task instructions) — the domain knowledge an agent calls in and uses
+- **SPEC** (a requirements specification) — the document that says what to build, why, and how
 {{< /callout >}}
 
-### Built-in Agent (1, Anthropic)
+## The MoAI Orchestrator — Team Leader
 
-| Agent | Role | Model / effort | Characteristics |
-|----------|------|---------------|------|
-| `Explore` | Read-only code exploration and analysis | sonnet / low (call-time default) | Read-only tools; no agent file on disk, so effort is stated in the spawn prompt rather than pinned |
+The MoAI orchestrator is the top-level coordinator: it receives the user's request, analyzes intent (Analyze-First routing), delegates work to the right agents, then collects the results and reports back. Its core rule is not to do complex work itself but to delegate it.
+
+| Rule | What it does |
+|------|--------|
+| Delegation only | Complex work goes to specialist agents |
+| Single channel | Only the orchestrator talks to the user; sub-agents never address the user |
+| Parallel execution | Independent read-only work is delegated to several agents at once |
+| Result consolidation | Agent results are gathered and reported to the user |
+
+Which agent the orchestrator calls is defaulted by the delegation map in `.moai/config/sections/delegation.yaml`. The map is a default, not a barrier — the orchestrator can judge from the work's context and change it.
+
+## The 13-Agent Catalog
+
+MoAI-ADK runs **13 agents** (12 MoAI custom + 1 Anthropic built-in `Explore`). Here is the full list, grouped by role.
+
+### Manager Agents — 6
+
+The workhorses that produce the actual deliverables. Each owns one stage of the SPEC workflow.
+
+| Agent | Role | Stage |
+|----------|--------|------|
+| `manager-spec` | Writes the SPEC document, shapes requirements into rule-conforming form | Plan |
+| `manager-develop` | Implements code through DDD/TDD/autofix cycles | Implement |
+| `manager-docs` | CHANGELOG · README · frontmatter synchronization | Docs |
+| `manager-git` | PR creation, branch strategy, merges | PR |
+| `manager-design` | Exchanges design back and forth with the design tools | Design |
+| `manager-lead` | Coordinates Tier L-scale implementation milestone by milestone | Implement (Tier L) |
+
+### Evaluator Agents — 2
+
+An agent other than the maker does the inspection. This separation is the backbone of quality.
+
+| Agent | What it evaluates | When |
+|----------|----------|------|
+| `plan-auditor` | SPEC completeness, requirements-rule compliance, bias | Right after planning |
+| `sync-auditor` | 4-dimension implementation quality score (functionality · security · craft · consistency) | Docs stage |
+
+### Builder · Advisor · Specialist Agents — 4
+
+| Agent | Role |
+|----------|--------|
+| `builder-harness` | Builds project-specific dynamic agent teams (from a user interview) |
+| `super-advisor` | High-reasoning consultation — deadlocks, design decision points, second opinions (E1-E4 escalation) |
+| `e2e-tester` | Runs web/mobile/desktop E2E tests |
+| `manager-todo` | Manages the todo queue (queue lifecycle, `/moai:todo --auto` serial cycle, dispatch guidance); its read-only judgment sub-role reads the sealed snapshot of an approved GTD auto mission and returns exactly one structured decision (read-only) |
+
+In its read-only judgment sub-role, `manager-todo` returns a decision and **does not execute anything itself**. It writes no files, runs no shell or Git commands, touches no queue, dispatches no work to lanes, and performs no commits, merges, approvals, or audit verdicts. The side that inspects the returned decision and actually changes state is a deterministic executor (an automated handler that moves only along fixed rules). Its tool list is just four — `Read`, `Grep`, `Glob`, `Skill` — and it returns a blocker decision whenever a request falls outside the sealed scope, or the evidence it needs to judge is missing or stale.
 
 {{< callout type="info" >}}
-**4-tier token-cost tiers** ({{< icon flash danger >}} max · {{< icon flash warn >}} high · {{< icon flash primary >}} medium · {{< icon flash muted >}} low): `model: inherit` inherits the parent session model, and effort determines the reasoning-token budget.
-
-The values above are the **shipped frontmatter**, which is pinned to the `medium` column of the [profile matrix](/en/advanced/profile-matrix/) so a fresh deployment matches the default profile. Switching the profile rewrites these values — under `high`, only `builder-harness` and `e2e-tester` move up one level (no cell uses `max`), and under `low` the auditing and coordinating rows drop to `medium`, `builder-harness` drops to `low`, and `e2e-tester` moves to Sonnet. Inspect the resolved values for the active profile with `moai model profile`.
+`manager-todo` **deliberately has no place** in the [Agent Selection Decision Tree](#agent-selection-decision-tree) below. It is not an agent the orchestrator picks and calls; its judgment sub-role is a decision role the GTD auto-mission workflow invokes directly. Its absence from the tree is by design, not an omission.
 {{< /callout >}}
 
-## Manager-Develop Domain Context Injection
+### Built-in Agent — 1
 
-Rather than keeping one agent per domain, a single `manager-develop` is invoked with domain-specific context injected.
+| Agent | Role |
+|----------|--------|
+| `Explore` | Read-only code exploration · analysis (Anthropic built-in, no file) |
 
-- **Backend work**: `manager-develop` + backend domain context + the `moai-domain-backend` skill
-- **Frontend work**: `manager-develop` + frontend domain context + the `moai-domain-frontend` skill
-- **Other domains**: per-language skills + expertise prompts
+{{< callout type="info" title="Model and reasoning depth" >}}
+The old way of assigning each agent a model and effort has retired. **Subagents follow the main session's model and reasoning depth as-is** — you pass neither `model` nor `effort` when calling a subagent, and MoAI agent definitions declare neither. Change the session's effort (`/effort`, `ultrathink`) and every agent in that session follows.
+{{< /callout >}}
+
+## The Separation of Planning and Auditing — Why the Maker Does Not Inspect
+
+This principle is the design philosophy running through the whole catalog. When `manager-spec` writes a plan, `plan-auditor` inspects it in a separate context; when `manager-develop` finishes an implementation, `sync-auditor` assigns the 4-dimension score. Because the building agent and the auditing agent differ, self-report failures — miscounting grep results, citing a stale baseline, skipping one verification step — surface on the inspection side.
+
+Audit agents approach with a fresh-judgment (skeptical) stance — doubting every claim until evidence appears, and accepting only reproducible results, never "seems to pass." Scores use a harmonic mean rather than a simple average, so when one dimension collapses the overall score falls with it. This design upholds the trust of the TRUST 5 quality framework.
+
+## How Domain Expertise Comes In
+
+There is no per-domain agent for backend, frontend, security, and so on. Instead, a single `manager-develop` is invoked with domain knowledge and skills injected to match the work's context.
+
+- Backend work → `manager-develop` + backend context + the `moai-domain-backend` skill
+- Frontend work → `manager-develop` + frontend context + the `moai-domain-frontend` skill
+- Other domains → the language's skills + expertise instructions
+
+This keeps the catalog small at 13 while filling domain depth through skill injection. Instead of growing the agent count and the token cost, you swap in skills (bundles of reusable task instructions).
 
 ## Agent Selection Decision Tree
 
-The process by which MoAI analyzes a user request and selects the appropriate agent.
+How the orchestrator receives a request and decides which agent to call. Most of the time Analyze-First routing classifies on natural-language intent alone, so you rarely need to point at an agent yourself.
 
 ```mermaid
 flowchart TD
-    START[User request] --> Q1{Read-only<br>code exploration?}
-
-    Q1 -->|Yes| EXPLORE["Explore sub-agent<br>Understand code structure"]
-    Q1 -->|No| Q2{External docs/API<br>research needed?}
-
-    Q2 -->|Yes| WEB["WebSearch / WebFetch"]
-    Q2 -->|No| Q3{Workflow<br>coordination needed?}
-
-    Q3 -->|Yes| MANAGER["Manager-* agents<br>Process management"]
-    Q3 -->|No| Q4{Quality verification<br>needed?}
-
-    Q4 -->|Yes| EVAL["plan-auditor or<br>sync-auditor"]
-    Q4 -->|No| Q5{High-reasoning<br>consultation needed?}
-
-    Q5 -->|Yes| ADVISOR["super-advisor<br>E1-E4 escalation"]
-    Q5 -->|No| DIRECT["MoAI handles directly<br>Simple tasks"]
+    START["User request"] --> Q1{"Read-only<br>code exploration?"}
+    Q1 -->|"Yes"| EXPLORE["Explore agent<br>understand code structure"]
+    Q1 -->|"No"| Q2{"A SPEC workflow<br>task?"}
+    Q2 -->|"Yes"| Q3{"Which stage?"}
+    Q3 -->|"Plan"| SPEC["manager-spec"]
+    Q3 -->|"Implement"| DEV["manager-develop"]
+    Q3 -->|"Docs"| DOCS["manager-docs"]
+    Q2 -->|"No"| Q4{"Quality verification<br>needed?"}
+    Q4 -->|"Yes"| EV["plan-auditor<br>or sync-auditor"]
+    Q4 -->|"No"| Q5{"High-reasoning<br>consultation needed?"}
+    Q5 -->|"Yes"| ADV["super-advisor<br>E1-E4"]
+    Q5 -->|"No"| DIRECT["Orchestrator handles directly<br>simple work"]
 ```
 
-## Hierarchical Teams — How manager-lead Works
+## Working Together — Plan-Run-Sync
 
-`manager-lead` is a dedicated agent for coordinating Tier L run phases. It writes no code itself. Instead, it splits the work into milestones, hands each one to a leaf worker, then folds context and runs cross-verification at every milestone boundary. Leaf workers are created on demand via `Agent(general-purpose)` and run on worktree-isolated branches so their write surfaces never overlap.
-
-This delegation path is a variant of serial (sequential sub-agents), not a new execution mode. It is also unrelated to the Agent Teams layer — now an experimental explicit-request surface; the `MODE_TEAM_UNAVAILABLE` sentinel remains documented history.
-
-### Entry Conditions — All Three Must Hold
-
-The orchestrator spawns `manager-lead` only when **all** three conditions below hold. If any one falls short, the orchestrator processes the milestones sequentially itself in serial. Attaching `manager-lead` to work that does not meet the bar only adds coordination cost that is never recovered.
-
-| Axis | Threshold |
-|------|-----------|
-| Milestone count | 3 or more in the plan.md §F milestone list |
-| File surface | 10 or more write targets across all milestones |
-| Domain span | 3 or more distinct domains (e.g. backend + frontend + devops) |
-
-The three conditions are AND, not OR. The thresholds are deliberately narrow so that work touching only one axis — a single-milestone 10-file refactor, for instance — is not pulled in. The orchestrator records its finding that all three conditions are satisfied in `progress.md` § Mode Selection before spawning.
+The basic flow showing how the agents chain together. Independent audits insert themselves between stages — that is the point. You drive this flow with `/moai plan`, `/moai run`, and `/moai sync`.
 
 ```mermaid
 flowchart TD
-    START["Run-phase delegation request"] --> Q1{"3 or more milestones?"}
-    Q1 -->|"No"| MODE5["Orchestrator handles serial directly<br>manager-develop sequentially"]
-    Q1 -->|"Yes"| Q2{"10 or more write-target files?"}
-    Q2 -->|"No"| MODE5
-    Q2 -->|"Yes"| Q3{"3 or more domains?"}
-    Q3 -->|"No"| MODE5
-    Q3 -->|"Yes"| LEAD["Spawn manager-lead<br>Coordinate leaf-worker fan-out"]
+    PLAN["1 Plan<br>manager-spec → SPEC written"] --> A1{"2 Independent audit<br>plan-auditor"}
+    A1 -->|"Sent back"| PLAN
+    A1 -->|"Pass"| RUN["3 Implement<br>manager-develop → DDD/TDD"]
+    RUN --> A2{"4 Quality audit<br>sync-auditor (4 dimensions)"}
+    A2 -->|"Sent back"| RUN
+    A2 -->|"Pass"| SYNC["5 Docs<br>manager-docs → CHANGELOG/README"]
+    SYNC --> PR["6 PR creation<br>manager-git"]
 ```
 
-### The depth-2 Seal
+A rejection at audit sends the work back one stage. This "going back" pays rework costs earlier — quality problems are caught right after each stage, not right before the PR. That is what stops the same mistake from flowing into the next stage and becoming expensive.
 
-`manager-lead` is the **only** catalog agent that carries `Agent` in its `tools:` list. Every other agent omits `Agent`, which is how the flat hierarchy is maintained — and this is the single place where that exception is opened, one layer deep. So orchestrator → `manager-lead` is depth 1, `manager-lead` → leaf worker is depth 2, and no depth 3 is ever created.
+## Retired Agents and the Rejection Rule
 
-Leaf workers receive their `tools:` list at spawn time, and `Agent` is always excluded from it. Should leaf workers later be defined as files, declaring themselves via the frontmatter field `leaf_of: manager-lead` or the body marker `<!-- manager-lead leaf-worker -->` makes the CI guard in `internal/template/manager_lead_depth_test.go` check that file's `tools:` for `Agent` and fail the build if it is present.
+Names of agents from the past may survive in old documents or copied messages. The following 12 names are **retired (archived)**, and spawning them is rejected.
+
+`manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide` (MoAI custom file only), `researcher`, `expert-backend`, `expert-frontend`, `expert-security`, `expert-devops`, `expert-performance`, `expert-refactoring`.
 
 {{< callout type="warning" >}}
-This seal is a **MoAI policy invariant, not a runtime invariant**. The Claude Code runtime itself permits deeper recursion — nested spawning is enabled by default as of v2.1.219, with a default depth ceiling of 3. Since the runtime will not stop it, the only two things actually holding the depth are the practice of omitting `Agent` from `tools:` and the CI guard above.
+**Caution**: if a resume message copied from an old session carries one of these names, the orchestrator refuses the spawn. In that case, run the same work on `Agent(general-purpose)` with domain instructions attached, or on one of the 13 current agents. The replacement paths are collected in `.claude/rules/moai/workflow/archived-agent-rejection.md`.
 {{< /callout >}}
 
+One point is easy to confuse. A Claude Code built-in helper shares its name with the retired MoAI custom file `claude-code-guide`. Calling the built-in helper is not rejected — the rejection applies to the MoAI custom file only.
+
+## Hierarchical Teams — manager-lead
+
+`manager-lead` is the dedicated agent that coordinates Tier L-scale implementation. It writes no code itself: it splits the work into milestones, hands each to leaf workers, then folds context and runs cross-verification at every milestone boundary. Leaf workers are created on demand via `Agent(general-purpose)` and run on worktree-isolated branches so their write surfaces never overlap.
+
+### Only When All Three Conditions Hold
+
+The orchestrator creates `manager-lead` only when **all (AND)** three conditions below hold. If any one falls short, the orchestrator processes the milestones sequentially itself — attaching a coordinator to work below the bar only adds cost that is never recovered.
+
+| Condition | Bar |
+|------|------|
+| Milestone count | 3 or more |
+| Write-target files | 10 or more |
+| Domain span | 3 or more distinct domains (e.g. backend + frontend + devops) |
+
+The three conditions are AND, not OR. The values are deliberately narrow so that work clearing only one condition — a single-milestone 10-file refactor, say — is not pulled in.
+
+### The depth-2 Seal — Why the Hierarchy Opens Only Two Layers
+
+Of the 13 agents, only `manager-lead` carries the `Agent` tool in its `tools:` list. Everyone else omits `Agent`, keeping the hierarchy flat. So orchestrator → `manager-lead` is layer 1, `manager-lead` → leaf workers is layer 2, and layer 3 never comes into existence.
+
 ```mermaid
 flowchart TD
-    ORCH["Orchestrator"] -->|"depth 1"| LEAD["manager-lead<br>Agent in tools (only one)"]
-    LEAD -->|"depth 2"| W1["Leaf worker A<br>no Agent in tools"]
-    LEAD -->|"depth 2"| W2["Leaf worker B<br>no Agent in tools"]
-    W1 -.->|"blocked"| X["depth 3 recursion"]
+    ORCH["Orchestrator"] -->|"layer 1"| LEAD["manager-lead<br>Agent in tools (the one exception)"]
+    LEAD -->|"layer 2"| W1["Leaf worker A<br>no Agent in tools"]
+    LEAD -->|"layer 2"| W2["Leaf worker B<br>no Agent in tools"]
+    W1 -.->|"blocked"| X["layer 3 recursion<br>never created"]
     W2 -.->|"blocked"| X
-    GUARD["manager_lead_depth_test.go<br>CI guard"] -.->|"caught by build failure"| X
+    GUARD["CI guard<br>manager_lead_depth_test.go"] -.->|"build fails on violation"| X
 ```
 
-### Context Folding in Three Steps
+{{< callout type="warning" >}}
+This seal is a **policy invariant, not a runtime invariant**. The Claude Code runtime itself permits deeper recursion — nested spawning has been enabled by default since v2.1.219, with a default depth ceiling of 3. So the only two things actually holding the depth are the practice of omitting `Agent` from `tools:`, and the CI guard that fails the build when a leaf worker file carries `Agent`.
+{{< /callout >}}
 
-Once every AC row for milestone Mn is PASS and the cross-verification of those rows also comes back PASS, `manager-lead` takes three steps before moving to the next milestone. The procedure **composes only existing tooling** — it introduces no new Go code, no new hooks, and no new CLI subcommands.
+### Context Folding and Cross-Verification
 
-1. **Capture, then carry it into the verdict** — redirect each AC's verification command output to `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}`. `/tmp` is not used because the OS clears it, but surviving `/tmp` is not the same as being reachable at audit time: that directory is gitignored **machine-local scratch**. Before an AC row cites its evidence, write the lines that decided the verdict into the tracked verdict file `.moai/reports/<card-id>/verdict.md`, and let the citation name that one file — it is the only tracked name under a card directory. An AC whose evidence could not be captured is marked `GAP`, not `PASS`.
-2. **Append a fold row** — add one line to `progress.md` §E.2 in the existing row format: `M<n>: <AC-id-1>=PASS, ... | evidence: .moai/reports/<card-id>/verdict.md | fold-at: <ISO-8601>`. The `M<n>:` prefix was chosen so it does not collide with the §E heading matcher in `internal/spec/era.go`, letting the two coexist without touching the matcher.
-3. **Run `/compact`** — compact with explicit retain instructions: retain-current-milestone (the milestone just finished and its fold row), retain-fold-rows (every earlier fold row in §E.2), and retain-armed-goal (the condition armed via `/moai goal`, if any).
+When one milestone ends, three steps run before moving on. First, each acceptance criterion's (AC) verification output is captured into machine-local scratch, and only the lines that decided the verdict are written into the tracked verdict file `.moai/reports/<card-id>/verdict.md` so they open at audit time — that verdict is the only tracked name under a card directory. Next, the progress record gains a one-line summary row naming that verdict. Finally, `/compact` compresses the context. Only when tokens drop after compaction and fall below the handoff threshold (50% for the 1M class, 90% for the 200K class) does the next milestone begin — if it did not drop, the fold is treated as failed and re-planned.
 
-Two invariants hold after the fold: post-compaction token usage must be lower than it was before compaction, and it must simultaneously sit below the model-specific handoff threshold (50% for the 1M class, 90% for the 200K class). If it did not drop, treat the fold as failed and re-plan. When `/compact` is unavailable in a sub-agent context, return a blocker report so the orchestrator can compact on its behalf or route around it via `/clear` plus a resume message.
+When a leaf worker marks an AC as PASS, a second worker that **did not do the work** is called in read-only (its `tools:` minus the write tools) and re-runs the same verification commands. The second worker has no stake in the result, so self-report failures surface as they are. If the verdicts diverge, the milestone stops and a blocker report goes back to the orchestrator — asking the user is the orchestrator's job. Tier S skips this step: its scope is small enough that cross-verification costs more than it returns.
 
-```mermaid
-flowchart TD
-    MN["Milestone Mn complete<br>all ACs PASS + cross-verification PASS"] --> S1["Step 1: Capture to scratch<br>then export to .moai/reports/card-id/"]
-    S1 --> S2["Step 2: Append fold row<br>progress.md §E.2"]
-    S2 --> S3["Step 3: Run /compact<br>3 retain instructions"]
-    S3 --> CHECK{"Usage dropped and<br>below threshold?"}
-    CHECK -->|"Yes"| NEXT["Enter milestone M(n+1)"]
-    CHECK -->|"No"| REPLAN["Treat as failed fold<br>re-plan"]
-```
-
-### Peer Cross-Verification
-
-When a leaf worker marks an AC as PASS, `manager-lead` spawns a second read-only `Agent(general-purpose)` that **did not do that work**. Its `tools:` omits Write/Edit/NotebookEdit, which removes the direct editing path. That narrows the worker; it does not seal it — an agent still carrying `Bash` can write through it, so read-only is decided by the absence of write *capability*, not by the absence of those tool names. That worker re-runs the Given-When-Then commands from `acceptance.md` §D verbatim and returns one of `PASS` / `PARTIAL` / `FAIL`.
-
-The second worker has no stake in the author's claim. That is what exposes self-report failures such as miscounting a grep result, citing a stale baseline, or skipping one verification command.
-
-On `FAIL` or `PARTIAL`, `manager-lead` does not advance to the next milestone. It returns a blocker report to the orchestrator carrying the AC ID, the evidence the author offered, the cross-verifying worker's evidence, and the point where the two diverged. Asking the user is the orchestrator's job — sub-agents do not use the user channel. Tier S skips cross-verification (the scope is small enough that verification costs more than it returns).
-
-The role differs from `sync-auditor` in the sync phase. `sync-auditor` is a final skeptical read that scores four dimensions after implementation is done; peer cross-verification is a binary verdict attached to each individual AC during implementation. Neither substitutes for the other.
-
-```mermaid
-flowchart TD
-    AUTHOR["Leaf worker reports AC-X as PASS"] --> TIER{"Tier S?"}
-    TIER -->|"Yes"| SKIP["Skip cross-verification"]
-    TIER -->|"No"| PEER["Spawn second worker<br>no Write/Edit tools"]
-    PEER --> RERUN["Re-run acceptance.md §D GWT commands"]
-    RERUN --> VERDICT{"Verdict"}
-    VERDICT -->|"PASS"| NEXT["Fold, then next milestone"]
-    VERDICT -->|"PARTIAL or FAIL"| BLOCK["Return blocker report<br>halt milestone progression"]
-    BLOCK --> ORCH["Orchestrator queries the user"]
-```
+This differs in role from the sync stage's `sync-auditor`. `sync-auditor` is the final skeptical read scoring four dimensions after implementation is done; peer cross-verification is the binary judgment attached to each AC during implementation. Neither substitutes for the other.
 
 ## Agent Definition Files
 
-The 12 MoAI custom agents are defined as markdown files in the `.claude/agents/moai/` directory. `Explore` is an Anthropic built-in, so it has no file on disk.
+All 12 MoAI custom agents live as markdown files under `.claude/agents/moai/`. `Explore` is an Anthropic built-in, so it has no file on disk.
 
-### File Structure
-
-```
-.claude/agents/moai/
-├── manager-spec.md
-├── manager-develop.md
-├── manager-docs.md
-├── manager-git.md
-├── manager-design.md
-├── manager-lead.md
-├── plan-auditor.md
-├── sync-auditor.md
-├── builder-harness.md
-├── super-advisor.md
-├── e2e-tester.md
-├── mission-governor.md
-└── (Explore: Anthropic built-in, no file)
-```
-
-### Agent Definition Format
-
-```markdown
----
-name: my-specialist
-description: >
-  A specialist for this project. Describe the specific domain expertise.
-tools: Read, Write, Edit, Grep, Glob, Bash
-model: inherit
----
-
-You are this project's [domain] specialist.
-
-## Role
-
-- Responsibility 1
-- Responsibility 2
-- Responsibility 3
-
-## Skills Used
-
-- moai-domain-[domain]
-- Language-specific skills
-```
-
-## Inter-Agent Collaboration Patterns
-
-### The Plan-Run-Sync Sequential Workflow
-
-The most fundamental collaboration flow. An independent audit is inserted between each phase.
-
-```bash
-# 1. manager-spec creates the SPEC
-/moai plan "feature description"
-
-# 2. plan-auditor validates SPEC quality
-# (runs automatically)
-
-# 3. manager-develop implements with DDD/TDD
-/moai run SPEC-XXX
-
-# 4. sync-auditor scores quality across 4 dimensions
-# (runs automatically)
-
-# 5. manager-docs synchronizes documentation
-/moai sync SPEC-XXX
-```
+{{< callout type="info" title="Definition format" >}}
+Each file is a YAML frontmatter plus a body. The frontmatter carries `name`, `description`, and `tools` (a CSV string); the body states the role, responsibilities, and skills used in prose. `model` and `effort` are not written — subagents follow the session's model and reasoning depth as-is, so an agent definition has no need to declare them. To create a new agent yourself, use the `builder-harness` agent or follow the agent-authoring rule (`.claude/rules/moai/development/agent-authoring.md`).
+{{< /callout >}}
 
 ## Sub-agent System Fundamentals
 
-Claude Code's official Sub-agent system is the foundation of the MoAI-ADK agent architecture.
+The foundation of the MoAI-ADK agent structure is Claude Code's official sub-agent system.
 
-### Sub-agent Characteristics
-
-| Characteristic | Description |
+| Trait | Description |
 |------|------|
-| **Independent context** | Each sub-agent runs in its own model-dependent context window (model-dependent — 1M-class models also exist) |
-| **Custom prompt** | Role and behavior defined via a specialized system prompt |
-| **Specific tool access** | Only the necessary tools are selectively provided |
-| **Independent permissions** | Individual permission modes can be configured |
+| Independent context | Each agent runs in its own model-dependent context window |
+| Custom instructions | A specialized system prompt defines the role and behavior |
+| Selected tools | Only the needed tools are picked |
+| Separate permissions | Individual permission modes can be set |
 
-### Sub-agent Constraints
-
-| Constraint | Description |
-|------|------|
-| Nested sub-agent limits | Nested sub-agent spawning is governed by whether the `Agent` tool is allowed — MoAI agents do not nest |
-| AskUserQuestion restriction | Sub-agents cannot interact with the user directly (they return blocker reports instead) |
-| No skill inheritance | Skills from the parent conversation are not inherited |
-| Independent context | Each agent has its own model-dependent independent context window (model-dependent) |
+Sub-agents cannot talk to the user directly — when required input is missing they return a blocker report, and the orchestrator asks the user and re-delegates with the answer. This boundary upholds the "single channel" rule.
 
 ## Sub-agent Tool Filtering — Two Stages
 
-Which tools a sub-agent can use is not decided by a single setting but by a two-stage filter: a static allowlist applied at spawn time is stage 1, and runtime deferred loading is stage 2.
+Which tools a sub-agent may use is decided not by one setting but by a two-stage filter: the static allowlist at spawn time is stage 1, and runtime deferred loading is stage 2.
 
-**Stage 1 — the spawn-time static filter.** Every agent definition carries a `tools:` allowlist in its frontmatter (a CSV string, e.g. `tools: Read, Write, Edit`), and tools outside the list cannot be invoked. Read-only roles earn their restriction by shrinking this very list — auditors and cross-verification workers drop the write tools (Write, Edit) from the list, cutting off the very path by which they could accidentally modify a file.
+**Stage 1 — the spawn-time static filter.** Every agent definition carries a `tools:` allowlist in its frontmatter (a CSV string, e.g. `tools: Read, Write, Edit`), and tools outside the list cannot be invoked. Read-only roles earn their restriction by shrinking this list itself — auditors and cross-verification workers drop the write tools (Write, Edit), removing the path that could modify a file. But this is narrowing, not sealing — if `Bash` remains on the list, writing can happen through it, so read-only must be judged by the absence of write capability, not the absence of tool names.
 
-**Stage 2 — runtime deferred loading.** Some tools do not have their schema loaded at spawn time. `AskUserQuestion` (the tool that presents options to the user) and the `Task*` family (task-list management) are like this. These deferred tools can be invoked only after their schema is explicitly loaded at the moment of need via a ToolSearch `select:` query, which makes this a second gate that narrows the field once more even among the tools that passed stage 1.
+**Stage 2 — runtime deferred loading.** Some tools do not have their schema loaded at spawn time. `AskUserQuestion` (the tool that asks the user to choose) and the `Task*` (task-list management) family are like this. These deferred tools can be invoked only after their schema is explicitly loaded at the moment of need via a ToolSearch `select:` query — a second gate that narrows the field once more even among tools that passed stage 1.
 
-Two rules emerge from these two stages combined:
+Two rules emerge from these two stages combined.
 
-| Rule | Description |
+| Rule | Content |
 |------|------|
-| User questions are orchestrator-only | `AskUserQuestion` is used by the orchestrator alone, and the runtime enforces this boundary. A sub-agent that needs user input returns a structured blocker report instead of prompting, and the orchestrator asks the user and re-delegates with the answer attached |
-| Sweep sub-agents cannot ask either | Sub-agents of a dynamic workflow (sweep) run under the main session and cannot prompt the user. When a question is needed, it routes through the orchestrator's channel |
+| User questions are orchestrator-only | `AskUserQuestion` is used by the orchestrator alone, and the runtime enforces this boundary. A sub-agent needing user input returns a structured blocker report instead of a prompt, and the orchestrator asks the user and re-delegates with the answer |
+| Sweep sub-agents cannot ask either | Sub-agents of a dynamic workflow (sweep) run under the main session and cannot prompt the user. A needed question routes through the orchestrator's channel |
 
-The rule from the previous section — that sub-agents cannot interact with the user directly — is upheld at runtime by exactly this two-stage filter.
+The earlier rule — sub-agents cannot talk to the user directly — is upheld at runtime by exactly this two-stage filter.
 
 ## Agent Teams Static Layer — Retired in v3.0, Re-allowed as Experimental
 
-The Agent Teams static orchestration layer from earlier versions (the `workflow.team.*` settings and the `--team` force flag) was **retired** in v3.0.0, then re-allowed later as an experimental explicit-request surface (selectable only via an explicit `--team` request; never auto-selected).
+The earlier Agent Teams static orchestration layer (the `workflow.team.*` settings, the `--team` force flag) was retired in v3.0.0, then re-allowed as an experimental surface (selected only by an explicit `--team` request; never auto-selected). During the retirement era, forcing `--team` announced `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode; that sentinel survives as documented history.
 
-- Historical: during the retirement era, forcing `--team` announced `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode; the sentinel string survives as documented history.
-- Research and review work that needs parallelism is handled with parallel sub-agent fan-out; sequential coding work is handled with a sub-agent chain.
- CG is retired; use `moai migrate cg` to preview explicit migration choices.
+Parallel research and review run as parallel sub-agent fan-out; sequential coding runs as a sub-agent chain. CG is retired. Check the migration options first with `moai migrate cg`.
 
 ## Related Documents
 
-- [Builder Agents and Harness v4](/en/advanced/builder-agents) - dynamic agent team creation
-- [Skill Guide](/en/advanced/skill-guide) - the skill system agents draw on
-- [SPEC-Based Development](/en/workflow-commands/moai-plan) - SPEC workflow details
+- [Builder Agents and Harness v4](/en/advanced/builder-agents) — dynamic agent team creation
+- [Skill Guide](/en/advanced/skill-guide) — the skill system agents draw on
+- [SPEC-Based Development](/en/workflow-commands/moai-plan) — SPEC workflow details
+- [Profile Matrix](/en/advanced/profile-matrix/) — how model · effort are now decided by session inheritance
 
 {{< callout type="info" >}}
-**Tip**: You do not need to specify agents directly. Ask MoAI in natural language and Analyze-First routing will analyze your intent and automatically select the optimal agent.
+**Tip**: You do not need to point at agents yourself. Ask MoAI in natural language and Analyze-First routing analyzes the intent and picks the right specialist automatically.
 {{< /callout >}}

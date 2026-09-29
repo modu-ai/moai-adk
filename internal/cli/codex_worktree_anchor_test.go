@@ -582,7 +582,7 @@ func checkCodexSpawnAnchorsToPanePID(t *testing.T) {
 	var gotPID int
 	var gotStart string
 	codexSpawnAnchorFn = func(pid int, start string) error { gotPID, gotStart = pid, start; return nil }
-	if err := defaultCodexSpawnLaunch(t.TempDir(), "/test/codex", nil); err != nil {
+	if err := defaultCodexSpawnLaunch(t.TempDir(), "/test/codex", nil, nil); err != nil {
 		t.Fatalf("spawn: %v", err)
 	}
 	if gotPID != 4242 || gotStart != "start-x" || cleanups != 0 {
@@ -590,7 +590,7 @@ func checkCodexSpawnAnchorsToPanePID(t *testing.T) {
 	}
 
 	codexSpawnAnchorFn = func(int, string) error { return errors.New("lock refused") }
-	if err := defaultCodexSpawnLaunch(t.TempDir(), "/test/codex", nil); err == nil {
+	if err := defaultCodexSpawnLaunch(t.TempDir(), "/test/codex", nil, nil); err == nil {
 		t.Fatal("spawn succeeded although the anchor lock was refused")
 	}
 	if cleanups != 1 {

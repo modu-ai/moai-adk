@@ -95,7 +95,7 @@ Users never hand-edit `.mcp.json`. The `moai mcp add|remove|list` CLI manages th
 
 ## The `project_root` input — the caller names its own tree
 
-Thirteen tools accept an optional `project_root` string: `spec_progress`, `spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`, `claude_audit`, `glm_audit`, `audit_multi`, `graph_file_api`, `graph_find_code`, `graph_trace_calls`, and `graph_shortest_path`. It names the tree the call should act on, and the value to pass is the caller's own `git rev-parse --show-toplevel`.
+Twenty tools accept an optional `project_root` string: `spec_progress`, `spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`, `codex_task`, `claude_audit`, `glm_audit`, `audit_multi`, `graph_file_api`, `graph_find_code`, `graph_trace_calls`, `graph_shortest_path`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`, `factory_stage`, and `factory_complete`. It names the tree the call should act on, and the value to pass is the caller's own `git rev-parse --show-toplevel`. On `factory_next`, `factory_stage`, `factory_complete`, and `codex_task` the input is required rather than optional — pass your own toplevel or the call is refused; it is never defaulted.
 
 An agent working inside a worktree must pass it. This is not a convenience. The server has no way to work the answer out for itself: it is a long-lived subprocess, so its working directory cannot follow a worktree switch, and the environment variable it falls back on names the **project** root — the primary checkout — even for a session working in a worktree. Omit it from a worktree and the call acts on the primary checkout instead, which means a SPEC that exists only on the card's branch is not in the catalog the auditor reads. It is not reported missing. It is simply absent.
 
@@ -217,11 +217,11 @@ The tool is always registered, but with the gate off it builds no request and ma
 
 | Tool | Purpose | Consumer | CLI equivalent |
 |------|---------|----------|----------------|
-| `mcp__moai__factory_msg_send` | Write one idempotent envelope to the current endpoint of a logical lane | attributed factory lead or worker session | — (MCP-only) |
-| `mcp__moai__factory_msg_list` | Claim up to 16 metadata records for the caller's endpoint (creating or renewing the claim lease; no body) | attributed factory lead or worker session | — (MCP-only) |
-| `mcp__moai__factory_msg_body` | Read one already-claimed message body (returned as untrusted peer data) | attributed factory lead or worker session | — (MCP-only) |
-| `mcp__moai__factory_msg_receipt` | Record the claim disposition, then acknowledge the message | attributed factory lead or worker session | — (MCP-only) |
-| `mcp__moai__factory_msg_status` | Read broker counts and lane operational state without claiming messages | factory lead or worker | — (MCP-only) |
+| `mcp__moai__factory_msg_send` | Write one idempotent envelope to the current endpoint of a logical lane | attributed factory leader or lane session | — (MCP-only) |
+| `mcp__moai__factory_msg_list` | Claim up to 16 metadata records for the caller's endpoint (creating or renewing the claim lease; no body) | attributed factory leader or lane session | — (MCP-only) |
+| `mcp__moai__factory_msg_body` | Read one already-claimed message body (returned as untrusted peer data) | attributed factory leader or lane session | — (MCP-only) |
+| `mcp__moai__factory_msg_receipt` | Record the claim disposition, then acknowledge the message | attributed factory leader or lane session | — (MCP-only) |
+| `mcp__moai__factory_msg_status` | Read broker counts and lane operational state without claiming messages | factory leader or lane | — (MCP-only) |
 
 ### Session messaging (Claude ↔ Codex)
 

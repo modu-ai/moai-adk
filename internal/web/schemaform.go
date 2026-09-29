@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/modu-ai/moai-adk/internal/config"
 	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
@@ -60,7 +59,6 @@ func consoleTabs() []consoleTab {
 		// would silently widen every panel-scoped assertion into a whole-page
 		// one.
 		{ID: "codex", LabelKey: "tab.codex.title", Baseline: "Codex"},
-		{ID: "agentfm", LabelKey: "sec.agentfm.title", Baseline: "Agents"},
 		{ID: "report", LabelKey: "sec.report.title", Baseline: "Report"},
 		// SPEC-MCP-CONSOLE-001 M2: the per-tool MCP enablement panel. Each of the
 		// 17 tools renders as an individually-toggleable bool; the 4 write-capable
@@ -418,36 +416,6 @@ func (a *app) applySchemaCurrent(view *pageView) error {
 	}
 	view.SchemaValues = values
 	view.RawBlocks = blocks
-
-	// goal-to-test (non-SPEC): seed the profile selector (hosted as the
-	// performance_tier wire field) rendered at the top of the agentfm panel.
-	// llm.yaml is read directly — this field is deliberately NOT part of the
-	// generic schema. The plan_type display was removed
-	// (SPEC-MODEL-PROFILE-MATRIX-001 REQ-MPM-019); the save persists to
-	// llm.profile only and no longer mutates agent frontmatter (REQ-MPM-040).
-	cfg, err := config.NewConfigManager().LoadRaw(a.cfg.ProjectRoot)
-	if err != nil {
-		return err
-	}
-	// Prefer the new llm.profile; fall back to the legacy performance_tier alias.
-	activeProfile := cfg.LLM.EffectiveProfile()
-	view.PerfTier = activeProfile
-	view.PerfTierIsEmpty = strings.TrimSpace(cfg.LLM.Profile) == "" && strings.TrimSpace(cfg.LLM.PerformanceTier) == ""
-
-	// M3: sub-agent frontmatter 현재 상태 시딩 (REQ-WC11-020/025). 목록 실패는
-	// 빈 목록으로 저하 — 페이지 전체 실패 금지 (design.md §C.1 견고성). 정렬은
-	// profile-matrix-resolved model/effort를 기준으로 하므로 cfg.LLM 을 같이 넘긴다.
-	if agents, err := a.listAllAgentFMs(a.cfg.ProjectRoot, cfg.LLM); err == nil {
-		view.AgentFMs = agents
-	}
-
-	// G3-1/G3-4: seed the loaded LLM config so the agentfm rows resolve each
-	// agent's model/effort through the profile matrix, and preselect the Custom
-	// pseudo-tier when any per-agent override is present. t840: fold the
-	// launcher-owned gateway signal so a console started inside a gpt session
-	// renders the inherit cell (llm.yaml carries no gpt signal of its own).
-	view.LLM = cfg.LLM
-	view.PerfTierCustom = len(cfg.LLM.AgentOverrides) > 0
 	return nil
 }
 

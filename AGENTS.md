@@ -117,7 +117,7 @@ session operates through `git -C <absolute-worktree-path>` and direct file opera
 invoke `moai cc -w`, `EnterWorktree`, or `ExitWorktree`. Never create a tree with bare
 `git worktree add`.
 
-**Codex factory lanes (`-f agent` legacy spelling or `-f lane`)** use the card worktree
+**Codex factory lanes (`-f lane`)** use the card worktree
 selected by their supervising launcher. The launcher starts each interactive Codex child
 with that worktree as its working directory (`codex -C <absolute-worktree-path>`). A Codex
 child already in the card worktree continues there. A direct `codex -C` child reads the worktree's
@@ -142,7 +142,7 @@ previous worktree first; a Codex lane starts a new session in the new card tree.
 tree's HEAD equals the local `develop` tip before editing; never reuse the previous card's tree.
 Where the new card depends on a prior card's unmerged code, merge that branch inside the new
 worktree. When complete, merge the card branch into local `develop` through the serial integration
-window; the lead pushes `develop` after the local merges.
+window; the factory leader pushes `develop` after the local merges.
 
 **Card worktree branches carry the `WT-` prefix and a descriptive slug, never the card id.** Rename
 in place immediately after creating the tree: `git branch -m WT-<slug>`; re-entry resolves by tree
