@@ -1,0 +1,687 @@
+$ python3 scripts/jamo_integrity.py check .moai/docs/git-workflow-doctrine.md
+swept Hangul words (code regions excluded): 1195
+SUSPICIOUS: 9 finding(s)  [heuristic detector — candidates, not verdicts]
+vocab: 77467 words from git-tracked prose (targets excluded)
+.moai/docs/git-workflow-doctrine.md:39:73: 분류용
+    d=2  분류의  (freq 22)
+    d=2  분류표  (freq 21)
+    d=2  분류와  (freq 14)
+    d=2  분류상  (freq 7)
+    d=2  분류에  (freq 7)
+    ... 1 more candidate(s)
+.moai/docs/git-workflow-doctrine.md:120:182: 통합되며
+    d=2  통합되어  (freq 8)
+.moai/docs/git-workflow-doctrine.md:141:200: 경유다
+    d=1  경우다  (freq 18)
+    d=1  경유라  (freq 3)
+    d=2  경로다  (freq 133)
+    d=2  경우가  (freq 59)
+    d=2  경유로  (freq 28)
+    ... 12 more candidate(s)
+.moai/docs/git-workflow-doctrine.md:237:80: 처리르
+    d=1  처리를  (freq 39)
+    d=1  처리로  (freq 7)
+    d=2  처리는  (freq 44)
+    d=2  처리가  (freq 30)
+    d=2  처리에  (freq 8)
+    ... 10 more candidate(s)
+.moai/docs/git-workflow-doctrine.md:237:91: 않을까
+    d=2  않으나  (freq 23)
+    d=2  않은가  (freq 9)
+.moai/docs/git-workflow-doctrine.md:274:224: 열되
+    d=1  열쇠  (freq 59)
+    d=1  열두  (freq 6)
+    d=2  별도  (freq 2526)
+    d=2  열거  (freq 340)
+    d=2  였다  (freq 204)
+    ... 26 more candidate(s)
+.moai/docs/git-workflow-doctrine.md:303:38: 실패율
+    d=2  실패를  (freq 204)
+    d=2  실패의  (freq 62)
+    d=2  실패할  (freq 55)
+    d=2  실패와  (freq 33)
+    d=2  실파일  (freq 12)
+    ... 1 more candidate(s)
+.moai/docs/git-workflow-doctrine.md:366:10: 따서
+    d=1  파서  (freq 274)
+    d=1  라서  (freq 23)
+    d=1  나서  (freq 16)
+    d=1  떠서  (freq 6)
+    d=1  가서  (freq 4)
+    ... 36 more candidate(s)
+.moai/docs/git-workflow-doctrine.md:378:28: 머지하여
+    d=2  처리하여  (freq 8)
+    d=2  유지하여  (freq 6)
+    d=2  머지하면  (freq 2)
+exit=1
+
+$ python3 scripts/jamo_integrity.py check .moai/docs/harness-namespace-doctrine.md
+swept Hangul words (code regions excluded): 368
+SUSPICIOUS: 2 finding(s)  [heuristic detector — candidates, not verdicts]
+vocab: 77471 words from git-tracked prose (targets excluded)
+.moai/docs/harness-namespace-doctrine.md:18:81: 세대로
+    d=1  제대로  (freq 33)
+    d=1  시대로  (freq 2)
+    d=2  그대로  (freq 2835)
+    d=2  세므로  (freq 20)
+    d=2  헤더로  (freq 16)
+    ... 16 more candidate(s)
+.moai/docs/harness-namespace-doctrine.md:44:104: 손실됨
+    d=1  손실될  (freq 2)
+    d=2  신설됨  (freq 3)
+exit=1
+
+$ python3 scripts/jamo_integrity.py check .moai/docs/jev-local-operations.md
+swept Hangul words (code regions excluded): 472
+SUSPICIOUS: 7 finding(s)  [heuristic detector — candidates, not verdicts]
+vocab: 77467 words from git-tracked prose (targets excluded)
+.moai/docs/jev-local-operations.md:11:48: 생각한
+    d=2  생략한  (freq 12)
+    d=2  승격한  (freq 10)
+    d=2  심각한  (freq 3)
+    d=2  생각해  (freq 2)
+.moai/docs/jev-local-operations.md:11:85: 끼는
+    d=1  이는  (freq 453)
+    d=1  키는  (freq 182)
+    d=1  끄는  (freq 31)
+    d=1  지는  (freq 29)
+    d=1  깨는  (freq 17)
+    ... 91 more candidate(s)
+.moai/docs/jev-local-operations.md:15:13: 배차하기
+    d=2  배치하고  (freq 4)
+    d=2  대체하기  (freq 3)
+    d=2  배치하지  (freq 3)
+    d=2  배제하기  (freq 2)
+    d=2  배차자가  (freq 2)
+.moai/docs/jev-local-operations.md:16:39: 일인가
+    d=2  일이다  (freq 69)
+    d=2  일치가  (freq 26)
+    d=2  길이가  (freq 22)
+    d=2  일이고  (freq 15)
+    d=2  일이라  (freq 9)
+.moai/docs/jev-local-operations.md:16:61: 싼가
+    d=1  단가  (freq 23)
+    d=1  한가  (freq 2)
+    d=2  한다  (freq 5827)
+    d=2  단계  (freq 1841)
+    d=2  쓴다  (freq 658)
+    ... 35 more candidate(s)
+.moai/docs/jev-local-operations.md:49:102: 정답은
+    d=1  정합은  (freq 14)
+    d=2  응답은  (freq 41)
+    d=2  전달은  (freq 11)
+    d=2  정합을  (freq 9)
+    d=2  중단은  (freq 5)
+    ... 2 more candidate(s)
+.moai/docs/jev-local-operations.md:64:83: 센트
+    d=1  세트  (freq 66)
+    d=2  린트  (freq 165)
+    d=2  센다  (freq 133)
+    d=2  렌즈  (freq 60)
+    d=2  힌트  (freq 44)
+    ... 7 more candidate(s)
+exit=1
+
+$ python3 scripts/jamo_integrity.py check README.ko.md
+swept Hangul words (code regions excluded): 4610
+SUSPICIOUS: 120 finding(s)  [heuristic detector — candidates, not verdicts]
+vocab: 77318 words from git-tracked prose (targets excluded)
+README.ko.md:36:17: 나아가는
+    d=2  나타나는  (freq 26)
+    d=2  따라가는  (freq 5)
+README.ko.md:36:26: 작업자다
+    d=1  작업마다  (freq 15)
+    d=1  작업자가  (freq 3)
+    d=2  작업이다  (freq 49)
+    d=2  작업보다  (freq 2)
+    d=2  작업자의  (freq 2)
+README.ko.md:42:51: 일하던
+    d=2  일하는  (freq 44)
+    d=2  일하면  (freq 2)
+README.ko.md:42:84: 없어지는
+    d=1  없애지는  (freq 3)
+    d=2  이어지는  (freq 41)
+    d=2  떨어지는  (freq 12)
+    d=2  넓어지는  (freq 3)
+    d=2  벌어지는  (freq 3)
+README.ko.md:44:126: 탈출구인
+    d=2  탈출구는  (freq 2)
+README.ko.md:44:135: 짐과
+    d=1  팀과  (freq 13)
+    d=1  점과  (freq 3)
+    d=2  임계  (freq 313)
+    d=2  집계  (freq 184)
+    d=2  줄과  (freq 97)
+    ... 22 more candidate(s)
+README.ko.md:46:239: 점이고
+    d=1  절이고  (freq 3)
+    d=2  것이고  (freq 144)
+    d=2  줄이고  (freq 43)
+    d=2  건이고  (freq 40)
+    d=2  참이고  (freq 32)
+    ... 15 more candidate(s)
+README.ko.md:63:149: 칸이든
+    d=1  안이든  (freq 5)
+    d=2  값이든  (freq 9)
+    d=2  차이든  (freq 6)
+    d=2  밖이든  (freq 4)
+    d=2  칸이다  (freq 4)
+    ... 3 more candidate(s)
+README.ko.md:65:13: 나눌까
+    d=2  나눈다  (freq 25)
+README.ko.md:67:1: 칸반을
+    d=2  판단을  (freq 47)
+    d=2  판본을  (freq 7)
+    d=2  칸반이  (freq 3)
+    d=2  전반을  (freq 2)
+    d=2  칸반의  (freq 2)
+README.ko.md:67:88: 그림의
+    d=1  그림이  (freq 2)
+    d=2  트리의  (freq 385)
+    d=2  흐름의  (freq 51)
+    d=2  그룹의  (freq 23)
+    d=2  그림은  (freq 8)
+    ... 4 more candidate(s)
+README.ko.md:80:683: 회수되므로
+    d=2  해소되므로  (freq 2)
+README.ko.md:93:153: 해달라고
+    d=2  해당하고  (freq 4)
+README.ko.md:97:89: 단계들
+    d=1  단계를  (freq 182)
+    d=2  단계는  (freq 199)
+    d=2  한계를  (freq 60)
+    d=2  단계별  (freq 59)
+    d=2  단계도  (freq 25)
+    ... 2 more candidate(s)
+README.ko.md:115:50: 이름이고
+    d=2  이름으로  (freq 326)
+    d=2  이름이다  (freq 13)
+    d=2  이름이나  (freq 5)
+    d=2  이름이며  (freq 5)
+    d=2  이름이라  (freq 3)
+    ... 2 more candidate(s)
+README.ko.md:126:25: 분명한데
+    d=2  분명하게  (freq 2)
+README.ko.md:147:89: 지워질지
+    d=1  지워지지  (freq 12)
+README.ko.md:147:317: 자격증명과
+    d=2  자격증명이  (freq 7)
+README.ko.md:159:80: 리모트
+    d=1  리포트  (freq 107)
+    d=2  리스트  (freq 74)
+    d=2  리소스  (freq 19)
+    d=2  리포터  (freq 10)
+    d=2  리프트  (freq 3)
+README.ko.md:161:12: 포먼이
+    d=2  조건이  (freq 294)
+    d=2  표면이  (freq 192)
+    d=2  패턴이  (freq 145)
+    d=2  포맷이  (freq 9)
+    d=2  조문이  (freq 6)
+README.ko.md:161:42: 지켜보다
+    d=2  지켜보지  (freq 4)
+    d=2  지켜보고  (freq 2)
+README.ko.md:161:78: 배차하고
+    d=1  배치하고  (freq 4)
+    d=2  배포하고  (freq 9)
+    d=2  대체하고  (freq 6)
+    d=2  매치하고  (freq 3)
+    d=2  배제하고  (freq 2)
+    ... 1 more candidate(s)
+README.ko.md:161:168: 포먼은
+    d=2  조건은  (freq 205)
+    d=2  표면은  (freq 164)
+    d=2  패턴은  (freq 144)
+    d=2  조문은  (freq 2)
+README.ko.md:165:14: 인가요
+    d=2  인자에  (freq 10)
+    d=2  있나요  (freq 9)
+    d=2  인자와  (freq 6)
+    d=2  인자의  (freq 4)
+    d=2  인간이  (freq 3)
+    ... 3 more candidate(s)
+README.ko.md:167:18: 왔지만
+    d=1  있지만  (freq 86)
+    d=1  였지만  (freq 4)
+    d=2  이지만  (freq 100)
+    d=2  않지만  (freq 60)
+    d=2  없지만  (freq 41)
+    ... 13 more candidate(s)
+README.ko.md:169:113: 검증할지
+    d=1  검증하지  (freq 108)
+    d=2  검증하기  (freq 7)
+README.ko.md:169:174: 떠맡는다
+    d=2  떠안는다  (freq 2)
+README.ko.md:175:93: 잘되는
+    d=2  잘리는  (freq 4)
+    d=2  작다는  (freq 3)
+README.ko.md:182:55: 일한다
+    d=2  읽힌다  (freq 120)
+    d=2  말한다  (freq 89)
+    d=2  피한다  (freq 14)
+    d=2  이하다  (freq 11)
+    d=2  원한다  (freq 9)
+    ... 1 more candidate(s)
+README.ko.md:182:97: 게이트라는
+    d=1  게이트하는  (freq 3)
+    d=2  게이트에는  (freq 5)
+    d=2  게이트되는  (freq 2)
+README.ko.md:184:89: 맨땅이
+    d=2  문장이  (freq 223)
+    d=2  문항이  (freq 3)
+README.ko.md:186:157: 집단으로
+    d=1  진단으로  (freq 12)
+    d=2  집합으로  (freq 38)
+    d=2  중단으로  (freq 3)
+README.ko.md:186:191: 우대를
+    d=2  부재를  (freq 186)
+    d=2  의도를  (freq 63)
+    d=2  부채를  (freq 40)
+    d=2  아래를  (freq 34)
+    d=2  기대를  (freq 29)
+    ... 10 more candidate(s)
+README.ko.md:188:5: 모국어
+    d=2  다국어  (freq 41)
+    d=2  개국어  (freq 32)
+README.ko.md:188:61: 모국어
+    d=2  다국어  (freq 41)
+    d=2  개국어  (freq 32)
+README.ko.md:188:65: 글말을
+    d=2  그물을  (freq 5)
+README.ko.md:188:76: 모국어를
+    d=2  모국어로  (freq 3)
+README.ko.md:216:42: 재작업은
+    d=1  재작업을  (freq 6)
+    d=2  재작성은  (freq 21)
+    d=2  재작업이  (freq 5)
+README.ko.md:216:206: 포착해
+    d=1  도착해  (freq 2)
+    d=2  포함해  (freq 56)
+    d=2  포착한  (freq 4)
+    d=2  포착기  (freq 3)
+    d=2  포착이  (freq 2)
+README.ko.md:226:52: 기업의
+    d=2  시접의  (freq 19)
+    d=2  기전의  (freq 5)
+    d=2  기억이  (freq 4)
+    d=2  기아의  (freq 3)
+    d=2  기업용  (freq 3)
+    ... 5 more candidate(s)
+README.ko.md:228:30: 명에게
+    d=2  명세가  (freq 5)
+    d=2  명세에  (freq 4)
+    d=2  명제가  (freq 4)
+README.ko.md:228:48: 년치
+    d=1  년차  (freq 2)
+    d=2  변이  (freq 684)
+    d=2  편이  (freq 65)
+    d=2  논리  (freq 62)
+    d=2  런치  (freq 60)
+    ... 12 more candidate(s)
+README.ko.md:228:58: 태웠고
+    d=2  세웠고  (freq 12)
+    d=2  지웠고  (freq 7)
+    d=2  개였고  (freq 4)
+    d=2  태우고  (freq 2)
+README.ko.md:228:124: 과제에
+    d=1  기제에  (freq 9)
+    d=1  과제의  (freq 2)
+    d=2  구조에  (freq 23)
+    d=2  가지에  (freq 9)
+    d=2  기제의  (freq 9)
+    ... 7 more candidate(s)
+README.ko.md:228:135: 배정해
+    d=2  고정해  (freq 17)
+    d=2  지정해  (freq 9)
+    d=2  배정할  (freq 7)
+    d=2  배정의  (freq 6)
+    d=2  수정해  (freq 6)
+    ... 7 more candidate(s)
+README.ko.md:228:165: 업계의
+    d=2  설계의  (freq 61)
+    d=2  입구의  (freq 5)
+    d=2  집계의  (freq 4)
+    d=2  임계의  (freq 2)
+    d=2  접기의  (freq 2)
+README.ko.md:230:15: 상승에
+    d=1  상승이  (freq 2)
+    d=2  상수에  (freq 8)
+    d=2  상황에  (freq 8)
+    d=2  생성에  (freq 6)
+    d=2  상승은  (freq 4)
+    ... 2 more candidate(s)
+README.ko.md:230:64: 병목은
+    d=1  병목을  (freq 2)
+    d=2  항목은  (freq 527)
+    d=2  병목의  (freq 4)
+    d=2  영속은  (freq 3)
+    d=2  병목이  (freq 2)
+README.ko.md:232:76: 얼마에
+    d=2  얼마나  (freq 69)
+    d=2  절차에  (freq 17)
+    d=2  얼마로  (freq 4)
+README.ko.md:232:80: 파는지가
+    d=1  하는지가  (freq 4)
+    d=2  오는지가  (freq 2)
+README.ko.md:232:101: 끝내는지
+    d=2  끝났는지  (freq 6)
+README.ko.md:237:47: 가성비
+    d=2  가설이  (freq 29)
+    d=2  구성이  (freq 26)
+    d=2  가정이  (freq 24)
+README.ko.md:239:48: 동점
+    d=1  동적  (freq 175)
+    d=1  독점  (freq 26)
+    d=1  동정  (freq 3)
+    d=2  동작  (freq 1373)
+    d=2  종전  (freq 332)
+    ... 12 more candidate(s)
+README.ko.md:241:44: 불리
+    d=1  분리  (freq 928)
+    d=1  불릿  (freq 103)
+    d=1  물리  (freq 17)
+    d=1  불러  (freq 17)
+    d=1  불린  (freq 2)
+    ... 50 more candidate(s)
+README.ko.md:242:62: 지배된다
+    d=2  지배한다  (freq 19)
+README.ko.md:244:161: 스텝이다
+    d=1  스텁이다  (freq 3)
+    d=2  스윕이다  (freq 2)
+README.ko.md:249:121: 중단의
+    d=1  중단이  (freq 3)
+    d=1  중단에  (freq 2)
+    d=2  문단의  (freq 38)
+    d=2  중간에  (freq 33)
+    d=2  진단의  (freq 10)
+    ... 8 more candidate(s)
+README.ko.md:281:148: 재배포에
+    d=2  재배포가  (freq 2)
+    d=2  재배포로  (freq 2)
+    d=2  재배포해  (freq 2)
+README.ko.md:283:85: 가입하면
+    d=2  도입하면  (freq 13)
+    d=2  주입하면  (freq 12)
+    d=2  대입하면  (freq 2)
+README.ko.md:283:97: 보너스로
+    d=2  코퍼스로  (freq 10)
+    d=2  보내므로  (freq 7)
+README.ko.md:283:131: 후원하는
+    d=2  지원하는  (freq 23)
+README.ko.md:305:39: 게이트웨이로
+    d=1  게이트웨이도  (freq 2)
+    d=2  게이트웨이가  (freq 9)
+    d=2  게이트웨이의  (freq 5)
+    d=2  게이트웨이를  (freq 3)
+    d=2  게이트웨이에  (freq 2)
+README.ko.md:305:67: 얹던
+    d=1  없던  (freq 108)
+    d=2  어떤  (freq 1363)
+    d=2  있던  (freq 199)
+    d=2  얹는  (freq 22)
+    d=2  않던  (freq 18)
+    ... 8 more candidate(s)
+README.ko.md:306:30: 하네스인
+    d=2  하네스의  (freq 62)
+    d=2  하네스는  (freq 50)
+    d=2  하네스에  (freq 22)
+    d=2  하네스와  (freq 5)
+    d=2  하네스만  (freq 3)
+    ... 1 more candidate(s)
+README.ko.md:326:6: 던져도
+    d=2  전제도  (freq 8)
+    d=2  꺼져도  (freq 2)
+README.ko.md:346:58: 주축이고
+    d=2  주석이고  (freq 2)
+    d=2  주체이고  (freq 2)
+README.ko.md:352:104: 그룹만
+    d=2  그룹은  (freq 17)
+    d=2  그룹인  (freq 3)
+README.ko.md:352:319: 손편집할
+    d=2  손편집을  (freq 4)
+README.ko.md:363:43: 선택적이며
+    d=2  선택지이며  (freq 2)
+README.ko.md:365:33: 표시줄은
+    d=2  표시줄의  (freq 2)
+README.ko.md:365:113: 표시줄을
+    d=2  표시줄의  (freq 2)
+README.ko.md:371:32: 일한다
+    d=2  읽힌다  (freq 120)
+    d=2  말한다  (freq 89)
+    d=2  피한다  (freq 14)
+    d=2  이하다  (freq 11)
+    d=2  원한다  (freq 9)
+    ... 1 more candidate(s)
+README.ko.md:373:255: 낮아지고
+    d=2  나아지게  (freq 2)
+README.ko.md:383:31: 지휘
+    d=1  지위  (freq 11)
+    d=2  이후  (freq 1129)
+    d=2  지시  (freq 466)
+    d=2  직후  (freq 449)
+    d=2  조회  (freq 311)
+    ... 31 more candidate(s)
+README.ko.md:383:63: 보드로
+    d=1  코드로  (freq 150)
+    d=1  모드로  (freq 78)
+    d=1  보므로  (freq 36)
+    d=1  노드로  (freq 6)
+    d=1  로드로  (freq 3)
+    ... 29 more candidate(s)
+README.ko.md:383:177: 해결하며
+    d=1  해결하면  (freq 2)
+    d=2  해결하지  (freq 13)
+    d=2  해결하기  (freq 4)
+    d=2  해결하고  (freq 3)
+README.ko.md:419:50: 팬인이
+    d=2  원인이  (freq 84)
+    d=2  편입이  (freq 5)
+    d=2  본인이  (freq 4)
+    d=2  개인이  (freq 3)
+README.ko.md:419:54: 높거나
+    d=2  논거가  (freq 21)
+    d=2  넣거나  (freq 5)
+    d=2  남거나  (freq 4)
+    d=2  내거나  (freq 4)
+    d=2  넘거나  (freq 4)
+    ... 3 more candidate(s)
+README.ko.md:419:58: 복잡하거나
+    d=2  복사하거나  (freq 5)
+README.ko.md:439:43: 모국어
+    d=2  다국어  (freq 41)
+    d=2  개국어  (freq 32)
+README.ko.md:439:47: 글말을
+    d=2  그물을  (freq 5)
+README.ko.md:455:70: 린트와
+    d=2  루트와  (freq 26)
+    d=2  린트가  (freq 14)
+    d=2  링크와  (freq 12)
+    d=2  린터의  (freq 11)
+    d=2  리드와  (freq 3)
+    ... 2 more candidate(s)
+README.ko.md:518:93: 맡기니
+    d=1  맡기지  (freq 13)
+    d=1  맡기기  (freq 5)
+    d=2  맡기는  (freq 13)
+    d=2  맡기고  (freq 11)
+    d=2  맡기려  (freq 2)
+README.ko.md:524:58: 일괄을
+    d=2  이관을  (freq 10)
+    d=2  일감을  (freq 4)
+    d=2  일곱을  (freq 2)
+README.ko.md:530:14: 출력까지
+    d=1  출력하지  (freq 32)
+    d=2  출력되지  (freq 12)
+README.ko.md:530:25: 앉을
+    d=1  않을  (freq 164)
+    d=1  안을  (freq 23)
+    d=1  얹을  (freq 3)
+    d=2  않음  (freq 1588)
+    d=2  않은  (freq 1543)
+    ... 62 more candidate(s)
+README.ko.md:532:13: 차단기가
+    d=2  차단이다  (freq 3)
+    d=2  차단이고  (freq 2)
+README.ko.md:532:149: 띈
+    d=1  뜬  (freq 13)
+    d=1  뗀  (freq 5)
+    d=2  의  (freq 24340)
+    d=2  는  (freq 19595)
+    d=2  은  (freq 12601)
+    ... 75 more candidate(s)
+README.ko.md:552:21: 워크트리면
+    d=1  워크트리만  (freq 4)
+    d=2  워크트리는  (freq 80)
+    d=2  워크트리별  (freq 2)
+    d=2  워크트리엔  (freq 2)
+README.ko.md:582:32: 일한다
+    d=2  읽힌다  (freq 120)
+    d=2  말한다  (freq 89)
+    d=2  피한다  (freq 14)
+    d=2  이하다  (freq 11)
+    d=2  원한다  (freq 9)
+    ... 1 more candidate(s)
+README.ko.md:620:68: 패스에
+    d=2  소스에  (freq 61)
+    d=2  캐시에  (freq 17)
+    d=2  개수에  (freq 10)
+    d=2  파서에  (freq 9)
+    d=2  태그에  (freq 8)
+    ... 6 more candidate(s)
+README.ko.md:639:16: 단면이
+    d=2  단언이  (freq 242)
+    d=2  산문이  (freq 44)
+    d=2  문면이  (freq 30)
+    d=2  답변이  (freq 22)
+README.ko.md:643:64: 요구할지
+    d=1  요구하지  (freq 110)
+    d=2  요구받지  (freq 2)
+    d=2  요구하기  (freq 2)
+README.ko.md:643:74: 보류된
+    d=2  오래된  (freq 111)
+    d=2  분류된  (freq 30)
+    d=2  보고된  (freq 23)
+    d=2  보호된  (freq 21)
+    d=2  보류한  (freq 7)
+    ... 3 more candidate(s)
+README.ko.md:646:19: 토글에
+    d=1  토글이  (freq 3)
+    d=1  토글의  (freq 2)
+    d=2  로그에  (freq 111)
+    d=2  토큰에  (freq 16)
+    d=2  태그에  (freq 8)
+    ... 4 more candidate(s)
+README.ko.md:646:69: 호스팅에서
+    d=2  호스트에서  (freq 15)
+README.ko.md:646:96: 리모트
+    d=1  리포트  (freq 107)
+    d=2  리스트  (freq 74)
+    d=2  리소스  (freq 19)
+    d=2  리포터  (freq 10)
+    d=2  리프트  (freq 3)
+README.ko.md:648:36: 문자열이던
+    d=2  문자열이다  (freq 9)
+    d=2  문자열이면  (freq 8)
+README.ko.md:648:91: 사라졌으니
+    d=2  사라졌으며  (freq 2)
+README.ko.md:648:132: 옮겼다면
+    d=2  옮겼으면  (freq 3)
+README.ko.md:659:51: 커밋했으면
+    d=1  커밋했으며  (freq 3)
+README.ko.md:674:19: 감지해서
+    d=2  감지해야  (freq 3)
+README.ko.md:674:115: 우대를
+    d=2  부재를  (freq 186)
+    d=2  의도를  (freq 63)
+    d=2  부채를  (freq 40)
+    d=2  아래를  (freq 34)
+    d=2  기대를  (freq 29)
+    ... 10 more candidate(s)
+README.ko.md:685:59: 모국어
+    d=2  다국어  (freq 41)
+    d=2  개국어  (freq 32)
+README.ko.md:685:63: 글말을
+    d=2  그물을  (freq 5)
+README.ko.md:697:36: 환경변수만
+    d=2  환경변수가  (freq 29)
+    d=2  환경변수는  (freq 11)
+README.ko.md:737:46: 자율화
+    d=2  자율로  (freq 5)
+    d=2  파일화  (freq 4)
+    d=2  효율화  (freq 3)
+    d=2  자연화  (freq 2)
+    d=2  자율의  (freq 2)
+README.ko.md:740:4: 기여하기
+    d=1  기여하지  (freq 7)
+    d=1  기여하고  (freq 5)
+    d=1  기여하게  (freq 2)
+    d=2  이어하기  (freq 4)
+    d=2  기여자가  (freq 3)
+README.ko.md:751:55: 불었는지
+    d=1  물었는지  (freq 2)
+    d=2  훑었는지  (freq 4)
+    d=2  비었는지  (freq 2)
+README.ko.md:777:70: 모서리
+    d=2  미수리  (freq 19)
+    d=2  미처리  (freq 13)
+    d=2  무처리  (freq 3)
+    d=2  모수로  (freq 2)
+README.ko.md:777:223: 프로파일도
+    d=1  프로파일로  (freq 4)
+    d=2  프로파일이  (freq 8)
+    d=2  프로파일의  (freq 6)
+    d=2  프로파일과  (freq 4)
+    d=2  프로파일에  (freq 4)
+README.ko.md:793:11: 팬인이
+    d=2  원인이  (freq 84)
+    d=2  편입이  (freq 5)
+    d=2  본인이  (freq 4)
+    d=2  개인이  (freq 3)
+README.ko.md:793:15: 높거나
+    d=2  논거가  (freq 21)
+    d=2  넣거나  (freq 5)
+    d=2  남거나  (freq 4)
+    d=2  내거나  (freq 4)
+    d=2  넘거나  (freq 4)
+    ... 3 more candidate(s)
+README.ko.md:793:20: 복잡하거나
+    d=2  복사하거나  (freq 5)
+README.ko.md:793:44: 프로젝트든
+    d=1  프로젝트는  (freq 89)
+    d=2  프로젝트를  (freq 100)
+    d=2  프로젝트당  (freq 7)
+    d=2  프로젝트도  (freq 6)
+    d=2  프로젝트만  (freq 5)
+    ... 2 more candidate(s)
+README.ko.md:801:23: 버전이고
+    d=2  버전으로  (freq 29)
+    d=2  버전이다  (freq 5)
+    d=2  거절이고  (freq 4)
+    d=2  버전이며  (freq 3)
+    d=2  버전이나  (freq 2)
+README.ko.md:813:7: 만들어요
+    d=1  만들어야  (freq 26)
+    d=2  만들어도  (freq 12)
+    d=2  만들어서  (freq 2)
+    d=2  만들어져  (freq 2)
+    d=2  만들어줘  (freq 2)
+README.ko.md:815:5: 기여하기
+    d=1  기여하지  (freq 7)
+    d=1  기여하고  (freq 5)
+    d=1  기여하게  (freq 2)
+    d=2  이어하기  (freq 4)
+    d=2  기여자가  (freq 3)
+README.ko.md:817:9: 환영한다
+    d=2  반영한다  (freq 44)
+    d=2  운영한다  (freq 4)
+    d=2  활용한다  (freq 4)
+README.ko.md:842:4: 스타
+    d=2  수가  (freq 383)
+    d=2  스텁  (freq 125)
+    d=2  기타  (freq 87)
+    d=2  세트  (freq 66)
+    d=2  스텝  (freq 64)
+    ... 22 more candidate(s)
+exit=1
+
+TOTAL: 4 files, 6645 Hangul words swept, 138 findings (all reviewed: 1 true positive '처리르' at git-workflow-doctrine.md:237 — real corruption already living in a tracked doc; rest are legitimate inflections/compounds absent from the corpus vocabulary)

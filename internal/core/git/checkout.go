@@ -109,6 +109,36 @@ func validateDirArg(dir string) error {
 	return nil
 }
 
+// ResolveHeadBranch resolves the branch name HEAD points at in the repository
+// containing dir, via `git branch --show-current` (git 2.22+). Detached HEAD
+// prints empty output and resolves to ("", nil) — no named branch to protect,
+// a distinction its caller relies on: the protected-commit deny ALLOWS a
+// detached HEAD rather than denying on uncertainty (SPEC-MAIN-COMMIT-BAN-001
+// D3/REQ-2.3). Returns an error on any uncertainty (non-git dir, missing git
+// binary, non-zero exit) so the caller can fail in its own safe direction.
+//
+// Hosted beside ResolveGitDirs per the same extraction disposition: the
+// resolution is a function of the queried directory, and the hook layer keeps
+// only its boolean-ish contract over it.
+func ResolveHeadBranch(dir string) (string, error) {
+	if err := validateDirArg(dir); err != nil {
+		return "", err
+	}
+	cmd := ExecCommand("git", "-C", dir, "branch", "--show-current")
+	// Same env isolation as runGitRevParse: an inherited GIT_DIR (exported by
+	// git into every hook) would otherwise outrank -C and answer about the
+	// caller's repo (t1208).
+	cmd.Env = gitenv.Env()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("git branch --show-current: %s (%s)",
+			execerr.StatusDetail(err), strings.TrimSpace(stderr.String()))
+	}
+	return strings.TrimSpace(stdout.String()), nil
+}
+
 // runGitRevParse runs `git -C dir rev-parse <args...>` via the package-level
 // ExecCommand indirection and returns the trimmed stdout. Returns an error on
 // non-zero exit (covers missing git binary, non-git directory, and

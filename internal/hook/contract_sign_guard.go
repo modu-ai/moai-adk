@@ -164,7 +164,7 @@ func CheckContractSignClassify(command string) (string, string) {
 	return checkContractSign(&HookInput{
 		SessionID:     "s-contract-classify",
 		HookEventName: "PreToolUse",
-		ToolName:      "Bash",
+		ToolName:      toolNameBash,
 		ToolInput:     raw,
 	})
 }
