@@ -1,0 +1,28 @@
+restore [APPLY]: 8 unambiguous repair(s) proposed, 15 flagged ambiguous
+  숴환 -> 소환
+  신귴 -> 신규
+  신귵 -> 신규
+  채넍 -> 채널
+  채넍에서 -> 채널에서
+  채넎이 -> 채널이
+  채넞 -> 채널
+  큜 -> 큐
+ambiguous (human review required):
+  /tmp/t1336-apply-demo.md:7:27: 인트리   엔트리(d=1,f=439), 인프라(d=2,f=139), 실트리(d=2,f=13)
+  /tmp/t1336-apply-demo.md:7:124: 문서층   문서는(d=2,f=387), 문서를(d=2,f=284), 문서상(d=2,f=18)
+  /tmp/t1336-apply-demo.md:7:128: 병합판   병합한(d=1,f=6), 병합은(d=2,f=53), 병합된(d=2,f=38)
+  /tmp/t1336-apply-demo.md:12:91: 나먲지   나머지(d=2,f=595)
+  /tmp/t1336-apply-demo.md:13:68: 엄트리   엔트리(d=2,f=439)
+  /tmp/t1336-apply-demo.md:14:40: 슠테일   스테일(d=2,f=160)
+  /tmp/t1336-apply-demo.md:14:107: 엠키는   삼키는(d=2,f=11), 엣지는(d=2,f=4), 에지는(d=2,f=2)
+  /tmp/t1336-apply-demo.md:14:152: 엠키   임시(d=2,f=750), 엣지(d=2,f=85), 임이(d=2,f=28)
+  /tmp/t1336-apply-demo.md:19:29: 브랿치   브랜치(d=2,f=1312)
+  /tmp/t1336-apply-demo.md:19:87: 바이넄리   바이너리(d=2,f=614)
+  /tmp/t1336-apply-demo.md:22:84: 통   종(d=1,f=1054), 총(d=1,f=382), 동(d=1,f=16)
+  /tmp/t1336-apply-demo.md:23:33: 팕   판(d=1,f=218), 팔(d=1,f=135), 가(d=2,f=19941)
+  /tmp/t1336-apply-demo.md:23:98: 밖라   따라(d=2,f=907), 바로(d=2,f=604), 밖의(d=2,f=256)
+  /tmp/t1336-apply-demo.md:26:59: 읠   의(d=1,f=24359), 을(d=1,f=10214), 일(d=1,f=740)
+  /tmp/t1336-apply-demo.md:26:122: 쓛   쓴(d=2,f=313), 쌍(d=2,f=312), 큐(d=2,f=301)
+applied repairs to 1 file(s): /tmp/t1336-apply-demo.md(3 lines)
+remaining flagged after apply: 15
+exit=1

@@ -234,7 +234,7 @@ gh pr merge <PR> --merge --delete-branch
 | **Tier 2 (release PR 풀 매트릭스)** | `release/*` branch PR + workflow_dispatch | macOS + Windows + ubuntu 풀 매트릭스 (`.github/workflows/release-pr-multi-os.yml`) | Informational (NOT required) |
 | **Tier 3 (수동 override)** | `workflow_dispatch` | release-pr-multi-os.yml 수동 트리거 | Informational |
 
-**Tier 2 trigger 근거 (user directive 2026-05-17)**: "macOS/Windows 검증은 릴리즈 PR 때 처리르 하는게 맞지 않을까?" — release branch PR 시 회귀가 just-in-time 으로 가시화되어 동일 PR에서 수정 가능. nightly cron (async) / release tag (post-merge) 보다 우수.
+**Tier 2 trigger 근거 (user directive 2026-05-17)**: "macOS/Windows 검증은 릴리즈 PR 때 처리를 하는게 맞지 않을까?" — release branch PR 시 회귀가 just-in-time 으로 가시화되어 동일 PR에서 수정 가능. nightly cron (async) / release tag (post-merge) 보다 우수.
 
 **Required status checks (4 items, post-(B) baseline)**:
 - `Lint`
