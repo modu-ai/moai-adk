@@ -1089,8 +1089,11 @@ func (s *BacklogStore) RenewLease(id, holder string) (*BacklogClaim, error) {
 					// The addressed card's own lease had lapsed: the return
 					// commits (callback returns nil) and the caller still
 					// sees the refusal — renew-after-expiry never extends.
+					// The result carries the reclamation so the surface can
+					// render its C5 audit line even on this refusal.
 					committedRefusal = fmt.Errorf("%w: %s lapsed at %s and was returned to queued",
 						ErrLeaseExpired, id, derefOr(it.LeaseExpiresAt, "unknown"))
+					result = &BacklogClaim{Item: *it, Reclaimed: reclaimed}
 					return nil
 				}
 			}
@@ -1112,7 +1115,9 @@ func (s *BacklogStore) RenewLease(id, holder string) (*BacklogClaim, error) {
 		return nil, err
 	}
 	if committedRefusal != nil {
-		return nil, committedRefusal
+		// A non-nil result alongside the error is the committed expiry-first
+		// return: the caller renders the reclamation line, then the refusal.
+		return result, committedRefusal
 	}
 	return result, nil
 }

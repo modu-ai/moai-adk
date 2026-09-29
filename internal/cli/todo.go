@@ -301,6 +301,7 @@ mentions an id later in the sentence still falls through, and
 		GroupID: "tools",
 	}
 	cmd.AddCommand(newTodoAddCmd(), newTodoListCmd(), newTodoDoneCmd(), newTodoUndoneCmd(), newTodoNextCmd(),
+		newTodoClaimCmd(),
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
 		newTodoDropCmd(), newTodoUndropCmd(),
 		newTodoHoldCmd(), newTodoUnholdCmd(),
@@ -356,6 +357,16 @@ func todoTreeRoot(run *cobra.Command) *cobra.Command {
 // proceed. The parent-with-args form is refused because it falls through to
 // `add`, a mutation. root is the tree the hook was defined on; run is the
 // command actually executing.
+//
+// @MX:NOTE: [AUTO] SPEC-TODO-CLAIM-LEASE-001 C6 flag-form guard extension:
+// `todo claim` is deliberately NOT exempted from this guard in either form.
+// A bare claim from a lane session and a `--lane <label>` claim while
+// factoryLaneRefusal() holds BOTH refuse with the same text below — the
+// flag form grants nothing, because the refusal predicate assumes nothing
+// about caller identity (REQ-TCL-013 arms 1/3). REQ-SD-015 bare-refusal
+// semantics are unchanged by the claim verb's arrival, and lane self-claim
+// governance remains t1338's decision; this guard is where that decision
+// would land if it ever widens the allowlist.
 func todoRefuseLaneMutation(root, run *cobra.Command, args []string) error {
 	if !factoryLaneRefusal() {
 		return nil
@@ -722,7 +733,11 @@ func runTodoListRoot(root string, cmd *cobra.Command, jsonOutput bool, droppedOn
 	}
 	out := cmd.OutOrStdout()
 	if jsonOutput {
-		data, err := json.Marshal(rec)
+		// REQ-TCL-014: the JSON face renders through the lease-free
+		// projection — the new columns are excluded from this
+		// serialization entirely, keeping the frozen golden gate
+		// byte-identical and the machine contract lease-blind.
+		data, err := json.Marshal(todoJSONProjection(rec))
 		if err != nil {
 			return err
 		}
@@ -750,7 +765,10 @@ func runTodoListRoot(root string, cmd *cobra.Command, jsonOutput bool, droppedOn
 		shown = limit
 	}
 	for _, it := range visible[:shown] {
-		_, _ = fmt.Fprintf(out, "%s\t%s\t%s\n", it.ID, it.State, todoPRCell(it.Text))
+		// REQ-TCL-010: a card carrying lease fields exposes them on the
+		// human surface (by=/lease= cells before the text, which stays the
+		// last field); a card without them keeps the historical line shape.
+		_, _ = fmt.Fprintf(out, "%s\t%s\t%s%s\n", it.ID, it.State, todoLeaseCells(it), todoPRCell(it.Text))
 		for _, f := range rec.Findings {
 			if !f.Names(it.ID) {
 				continue
