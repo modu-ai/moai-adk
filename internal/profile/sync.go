@@ -6,14 +6,28 @@ import (
 	"path/filepath"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/settings/yamlpatch"
 	"github.com/modu-ai/moai-adk/internal/statusline"
-	"github.com/modu-ai/moai-adk/pkg/models"
 	"gopkg.in/yaml.v3"
 )
 
 // SyncToProjectConfig synchronizes profile preferences to
 // the project's .moai/config/sections/ YAML files.
 // Only non-empty preference values overwrite existing config values.
+//
+// The user name is persisted as a user.yaml ROW REPLACEMENT, not a struct
+// re-marshal (SPEC-WEB-SAVE-LOSSLESS-001, AC-WSL-005 — plan-audit F1
+// redesign): models.UserConfig models only `name`, so any struct round-trip
+// loses unmodeled keys (github_username, timezone, ...) and comments at the
+// re-marshal point. The yamlpatch splice rewrites only the `name:` row and
+// leaves every other byte of user.yaml intact. A name-absent user.yaml takes
+// the upsert fallback (AC-WSL-005 F6 variant — C3 data-level guarantee).
+//
+// The yamlpatch call goes DIRECTLY to internal/settings/yamlpatch rather than
+// through settings.WriteSectionViaSeam because internal/settings already
+// imports internal/profile (the shared field schema) — importing it back here
+// would be an import cycle. The seam conventions (yamlpatch node surgery,
+// atomic temp+rename write) are the same either way.
 func SyncToProjectConfig(projectRoot string, prefs ProfilePreferences) error {
 	mgr := config.NewConfigManager()
 	cfg, err := mgr.LoadRaw(projectRoot)
@@ -21,15 +35,17 @@ func SyncToProjectConfig(projectRoot string, prefs ProfilePreferences) error {
 		return fmt.Errorf("load project config: %w", err)
 	}
 
-	changed := false
-
-	// Sync user section
+	// Sync user section — name row splice only (AC-WSL-005). The splice is the
+	// ONLY write for a name-only sync: no SetSection, no Save().
 	if prefs.UserName != "" && cfg.User.Name != prefs.UserName {
-		cfg.User = models.UserConfig{Name: prefs.UserName}
-		if err := mgr.SetSection("user", cfg.User); err != nil {
-			return fmt.Errorf("set user section: %w", err)
+		sectionsDir := filepath.Join(projectRoot, ".moai", "config", "sections")
+		if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+			return fmt.Errorf("create config directory: %w", err)
 		}
-		changed = true
+		if err := yamlpatch.PatchFile(filepath.Join(sectionsDir, "user.yaml"),
+			[]yamlpatch.KeyEdit{{Path: []string{"user", "name"}, Value: prefs.UserName}}); err != nil {
+			return fmt.Errorf("sync user name: %w", err)
+		}
 	}
 
 	// Sync language section
@@ -58,10 +74,6 @@ func SyncToProjectConfig(projectRoot string, prefs ProfilePreferences) error {
 		if err := mgr.SetSection("language", lang); err != nil {
 			return fmt.Errorf("set language section: %w", err)
 		}
-		changed = true
-	}
-
-	if changed {
 		if err := mgr.Save(); err != nil {
 			return fmt.Errorf("save project config: %w", err)
 		}

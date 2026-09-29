@@ -7,7 +7,6 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/settings"
-	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
 // projectNestedForm carries the curated nested project-config fields submitted by
@@ -214,44 +213,14 @@ func readProjectNestedConfig(projectRoot string) (projectNestedCurrent, error) {
 }
 
 // writeProjectConfig is the real write seam (REQ-WC3-005/007). It persists each
-// non-empty value into its project-config section via the config-manager API
-// (LoadRaw → mutate only non-empty → SetSection → Save). Empty submissions leave
-// the existing persisted value unchanged (EC-1). It writes ONLY the quality
-// (development_mode) and git_convention (convention) sections — Save() round-trips
-// every other section's content unchanged. No direct yaml.Marshal/os.WriteFile.
+// non-empty value into its project-config section through the shared settings
+// seam (SPEC-WEB-SAVE-LOSSLESS-001 — settings.WriteProjectScalars, a
+// yamlpatch line-splice that rewrites only the target row). Empty submissions
+// leave the existing persisted value unchanged (EC-1). It writes ONLY the
+// quality (development_mode) and git_convention (convention) rows; every other
+// byte of both files survives. No direct yaml.Marshal/os.WriteFile.
 func writeProjectConfig(projectRoot, devMode, convention string) error {
-	mgr := config.NewConfigManager()
-	cfg, err := mgr.LoadRaw(projectRoot)
-	if err != nil {
-		return fmt.Errorf("load project config: %w", err)
-	}
-
-	changed := false
-
-	if devMode != "" && string(cfg.Quality.DevelopmentMode) != devMode {
-		quality := cfg.Quality
-		quality.DevelopmentMode = models.DevelopmentMode(devMode)
-		if err := mgr.SetSection("quality", quality); err != nil {
-			return fmt.Errorf("set quality section: %w", err)
-		}
-		changed = true
-	}
-
-	if convention != "" && cfg.GitConvention.Convention != convention {
-		gc := cfg.GitConvention
-		gc.Convention = convention
-		if err := mgr.SetSection("git_convention", gc); err != nil {
-			return fmt.Errorf("set git_convention section: %w", err)
-		}
-		changed = true
-	}
-
-	if changed {
-		if err := mgr.Save(); err != nil {
-			return fmt.Errorf("save project config: %w", err)
-		}
-	}
-	return nil
+	return settings.WriteProjectScalars(projectRoot, devMode, convention)
 }
 
 // writeProjectNestedConfig is the load-modify-write seam for the 7 curated nested

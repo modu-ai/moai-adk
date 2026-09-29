@@ -3,22 +3,23 @@ package settings
 // 이 파일은 M2b 확장 필드의 영속화 디스패처다 (SPEC-WEB-CONSOLE-011 M2b).
 //
 // @MX:WARN: [AUTO] ApplySchemaEdits는 10섹션 확장 필드를 디스크에 쓰는 영속화
-// 경계다. seam 섹션은 WriteSectionViaSeam(yamlpatch — 주석/미모델링 키 보존),
-// typed 섹션(git_strategy/llm/quality)은 config.NewConfigManager LoadRaw →
-// per-field apply → SetSection → Save 경로만 사용한다.
-// @MX:REASON: [AUTO] workflow.yaml 등 8개 seam 섹션에 typed re-marshal을 적용하면
-// 주석과 미모델링 키가 파괴된다 (REQ-WC11-005/017, AP-1/AP-11). 반대로
-// git-strategy는 완전 typed + dirty-flag Save가 요구 계약이다 (REQ-WC11-010,
-// SPEC-GITSTRATEGY-SAVE-ISOLATION-001). 필드별 라우팅은 FieldDef.Persist.Kind가
-// SSOT이며, 여기 없는 키(read-only: llm.mode/team_mode, db system 5키)는 어떤
-// 경로로도 기록되지 않는다 (REQ-WC11-013/019).
+// 경계다. 전 필드가 WriteSectionViaSeam(yamlpatch — 주석/미모델링 키 보존)으로
+// 기록된다: seam 섹션은 그대로, typed 섹션(git_strategy/llm/quality)은
+// SPEC-WEB-SAVE-LOSSLESS-001 M1에서 라인-스플라이스 라우팅으로 전환되어
+// SetSection → Save 전체-재마샬은 더 이상 이 경계에 없다.
+// @MX:REASON: [AUTO] workflow.yaml 등 seam 섹션뿐 아니라 typed 파일에도
+// typed re-marshal을 적용하면 주석과 미모델링 키가 파괴된다 (REQ-WC11-005/017,
+// AP-1/AP-11, REQ-WSL-002/003 — GitHub issue #1731의 결함 기제). 필드별
+// 라우팅 판정과 검증은 FieldDef.Persist.Kind + 구 typed applier가 SSOT이며,
+// 여기 없는 키(read-only: llm.mode/team_mode, db system 5키)는 어떤 경로로도
+// 기록되지 않는다 (REQ-WC11-013/019).
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -69,6 +70,16 @@ func ApplySchemaEdits(projectRoot string, edits map[string]string) error {
 			if curOk && cur == edits[name] {
 				continue
 			}
+			// REQ-WSL-004 (SPEC-WEB-SAVE-LOSSLESS-001, AC-WSL-004): an ABSENT
+			// key plus an empty submission is a no-op — absence already IS the
+			// unset state, so writing `key: ""` would only add a byte-level
+			// artifact (the D3 defect: workflow.yaml audit pins growing empty
+			// keys). A key that EXISTS keeps its delete semantics: the
+			// curOk && cur != "" path above still writes the "" (crosssession
+			// round-trip lineage).
+			if !curOk && edits[name] == "" {
+				continue
+			}
 			if !curOk && f.Type == TypeBool {
 				effective := f.AbsentDefault
 				if effective == "" {
@@ -109,16 +120,24 @@ func ApplySchemaEdits(projectRoot string, edits map[string]string) error {
 	return nil
 }
 
-// applyTypedEdits는 typed 섹션 필드를 config 매니저 경로로 영속화한다.
-// git_strategy 필드가 하나라도 있으면 SetSection("git_strategy")이 dirty-flag를
-// 세워 Save가 git-strategy.yaml을 재기록한다 (그 외에는 기존 파일 byte 보존 —
-// SPEC-GITSTRATEGY-SAVE-ISOLATION-001).
+// applyTypedEdits는 typed 섹션(git_strategy/llm/quality) 필드를 yamlpatch seam
+// 라인-스플라이스로 영속화한다 (SPEC-WEB-SAVE-LOSSLESS-001 M1 — REQ-WSL-002/003).
 //
-// REQ-WWS-003/004 (SPEC-WEB-WRITE-SAFETY-001): SetSection은 apply 전후 구조체
-// 비교에서 실제로 값이 바뀐 섹션에만 호출된다. M1(d)에서 값-불변 제출이
-// SetSection("git_strategy")을 통과해 gitStrategyDirty를 세우고 Save가
-// git-strategy.yaml을 전체 재마샬하는 것(키 재배열 + zero-value 키 추가)이
-// 관측됐다 — 값이 바뀌지 않은 섹션은 dirty 플래그에 도달해서는 안 된다.
+// 구 경로(LoadRaw → SetSection → Save)는 편집-대상 섹션 파일 전체를 재마샬해
+// 주석·미모델링 키를 파괴했다 (GitHub issue #1731의 결함 기제). 본 경로는
+// FieldDef.Persist.Key를 yamlpatch 경로로 매핑(fieldYAMLPath 재사용)해 대상
+// 행만 재작성하고, upsert(부재 키 신설)만 재직렬화 폴백을 승계한다 (C3).
+//
+// 검증과 정규화는 구 typed applier(applyGitStrategyKey/applyLLMKey/
+// applyQualityKey)를 그대로 거친다 — FieldDef 스키마가 편집 가능 표면의 SSOT라는
+// C2와 merge_method enum·bool 검증을 유지하기 위해서다. applier는 구조체에
+// 적용되지만 그 구조체는 Save로 영속화되지 않는다 — 값 확정(정규화 반영)과
+// no-op 게이트의 현재값 산출에만 쓰인다.
+//
+// no-op 게이트(REQ-WSL-001): 제출값(정규화 후)이 로드된 현재값(컴파일 기본값
+// 반영 — 구 DeepEqual 게이트와 동일한 판정)과 같으면 스킵, 디스크 스칼라가 이미
+// 제출값과 같으면(env-override 케이스) 스킵 — 동치 제출은 mtime 포함 무기록이다.
+// 부재 키 + "" 제출도 스킵한다 (REQ-WSL-004).
 func applyTypedEdits(projectRoot string, fields []FieldDef, values []string) error {
 	mgr := config.NewConfigManager()
 	cfg, err := mgr.LoadRaw(projectRoot)
@@ -126,80 +145,143 @@ func applyTypedEdits(projectRoot string, fields []FieldDef, values []string) err
 		return fmt.Errorf("settings: load project config: %w", err)
 	}
 
-	before := map[string]any{
-		"git_strategy": cfg.GitStrategy,
-		"llm":          cfg.LLM,
-		"quality":      cfg.Quality,
-	}
-
-	touched := map[string]bool{}
+	seamEdits := map[string][]yamlpatch.KeyEdit{}
 	for i, f := range fields {
+		path := fieldYAMLPath(f)
+		file := sectionFileFor(f)
+		if file == "" || len(path) == 0 {
+			return fmt.Errorf("settings: no seam target for typed field %q (section %q)", f.Name, f.Persist.Section)
+		}
+
+		var cur, next string
 		switch f.Persist.Section {
 		case "git_strategy":
+			cur = gitStrategyValue(cfg.GitStrategy, f.Persist.Key)
 			if err := applyGitStrategyKey(&cfg.GitStrategy, f.Persist.Key, values[i]); err != nil {
 				return err
 			}
+			next = gitStrategyValue(cfg.GitStrategy, f.Persist.Key)
 		case "llm":
+			cur = llmValue(cfg.LLM, f.Persist.Key)
 			if err := applyLLMKey(&cfg.LLM, f.Persist.Key, values[i]); err != nil {
 				return err
 			}
+			next = llmValue(cfg.LLM, f.Persist.Key)
 		case "quality":
+			cur = qualityValue(cfg.Quality, f.Persist.Key)
 			if err := applyQualityKey(&cfg.Quality, f.Persist.Key, values[i]); err != nil {
 				return err
 			}
+			next = qualityValue(cfg.Quality, f.Persist.Key)
 		default:
 			return fmt.Errorf("settings: no typed applier for section %q", f.Persist.Section)
 		}
-		touched[f.Persist.Section] = true
-	}
 
-	// quality_extras_enabled forced true: the launch-tab toggle was removed from
-	// the web UI, so the field is never submitted from the form anymore. To keep
-	// the persisted value aligned with the always-on intent (and to migrate any
-	// pre-removal config that had it stored as false), force the flag to true
-	// whenever the quality section is touched by ANY quality-section edit. The
-	// forced value overrides any submitted input (defensive — the form no longer
-	// emits this field). Pre-removal configs migrate naturally on their next
-	// quality-section save. Saves that do not touch quality leave the file
-	// untouched (LoadRaw round-trip preserves the on-disk byte content).
-	if touched["quality"] {
-		cfg.Quality.QualityExtrasEnabled = true
-	}
-
-	changed := 0
-	for _, section := range []string{"git_strategy", "llm", "quality"} {
-		if !touched[section] {
+		// REQ-WSL-001: 제출값 == 로드 현재값(기본값 포함) → 무기록. 구
+		// DeepEqual 게이트의 필드 단위 환원이다.
+		if next == cur {
 			continue
 		}
-		var value any
-		switch section {
-		case "git_strategy":
-			value = cfg.GitStrategy
-		case "llm":
-			value = cfg.LLM
-		case "quality":
-			value = cfg.Quality
-		}
-		// REQ-WWS-003: skip the SetSection entirely when the applied values did
-		// not change the section — an unchanged section must not raise the
-		// git_strategy dirty flag nor ride the Save() rewrite.
-		if reflect.DeepEqual(before[section], value) {
+		// 동치 스플라이스 방지: 디스크가 이미 제출값을 담고 있으면(env
+		// override 케이스) 기록해도 바이트 불변일 뿐이므로 mtime 오염을 피한다.
+		if curFile, ok := readSeamScalar(projectRoot, file, path); ok && curFile == next {
 			continue
 		}
-		if err := mgr.SetSection(section, value); err != nil {
-			return fmt.Errorf("settings: set %s section: %w", section, err)
+		// REQ-WSL-004: 부재 키 + "" 제출 → 부재가 이미 미설정 상태다.
+		if next == "" {
+			if _, ok := readSeamScalar(projectRoot, file, path); !ok {
+				continue
+			}
 		}
-		changed++
+		seamEdits[file] = append(seamEdits[file], yamlpatch.KeyEdit{Path: path, Value: next})
 	}
-	if changed == 0 {
-		// REQ-WWS-003: no section actually changed — Save() would still rewrite
-		// all six section files (creating absent ones such as llm.yaml). Skip it.
-		return nil
+
+	files := make([]string, 0, len(seamEdits))
+	for file := range seamEdits {
+		files = append(files, file)
 	}
-	if err := mgr.Save(); err != nil {
-		return fmt.Errorf("settings: save project config: %w", err)
+	sort.Strings(files)
+	for _, file := range files {
+		if err := WriteSectionViaSeam(projectRoot, file, seamEdits[file]); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+// gitStrategyValue는 git_strategy.<key>의 로드된 현재값을 문자열로 반환한다.
+// applyGitStrategyKey의 setter 스위치를 거울처럼 반영하는 getter로, no-op 게이트의
+// 현재값 산출 단일 원천이다. 정규화(공백 제거)는 applier 적용 후 재판정이
+// 담당하므로 getter는 저장값을 그대로 읽는다.
+func gitStrategyValue(gs config.GitStrategyConfig, key string) string {
+	switch key {
+	case "mode":
+		return gs.Mode
+	case "worktree_base_branch":
+		return gs.WorktreeBaseBranch
+	}
+	profileName, rest, ok := strings.Cut(key, ".")
+	if !ok {
+		return ""
+	}
+	var p *config.ModeProfile
+	switch profileName {
+	case "manual":
+		p = &gs.Manual
+	case "personal":
+		p = &gs.Personal
+	case "team":
+		p = &gs.Team
+	default:
+		return ""
+	}
+	switch rest {
+	case "hooks.pre_push":
+		return p.Hooks.PrePush
+	case "merge_method":
+		return p.MergeMethod
+	}
+	return ""
+}
+
+// llmValue는 llm.<key>의 로드된 현재값을 문자열로 반환한다 (applyLLMKey의
+// getter 짝).
+func llmValue(l config.LLMConfig, key string) string {
+	switch key {
+	case "glm.models.high":
+		return l.GLM.Models.High
+	case "glm.models.medium":
+		return l.GLM.Models.Medium
+	case "glm.models.low":
+		return l.GLM.Models.Low
+	case "glm.models.fable":
+		return l.GLM.Models.Fable
+	case "glm.effort.high":
+		return l.GLM.Effort.High
+	case "glm.effort.medium":
+		return l.GLM.Effort.Medium
+	case "glm.effort.low":
+		return l.GLM.Effort.Low
+	case "glm.effort.fable":
+		return l.GLM.Effort.Fable
+	}
+	return ""
+}
+
+// qualityValue는 quality.<key>의 로드된 현재값을 문자열로 반환한다
+// (applyQualityKey의 getter 짝 — bool은 FormatBool 정규형).
+func qualityValue(q models.QualityConfig, key string) string {
+	switch key {
+	case "quality_extras_enabled":
+		return strconv.FormatBool(q.QualityExtrasEnabled)
+	case "ddd_settings.characterization_tests":
+		return strconv.FormatBool(q.DDDSettings.CharacterizationTests)
+	case "ddd_settings.behavior_snapshots":
+		return strconv.FormatBool(q.DDDSettings.BehaviorSnapshots)
+	case "ddd_settings.preserve_before_improve":
+		return strconv.FormatBool(q.DDDSettings.PreserveBeforeImprove)
+	}
+	return ""
 }
 
 // readSeamScalar returns the persisted scalar at path inside the section file,
