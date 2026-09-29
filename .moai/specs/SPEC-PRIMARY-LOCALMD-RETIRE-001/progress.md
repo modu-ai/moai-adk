@@ -95,6 +95,7 @@ failure path never fired — blocker count 0.
 | AC | Status | Verification | Actual output |
 |----|--------|--------------|---------------|
 | AC-PLR-008 (a) | PASS | run transcript review | this lane executed no `git push`, no `git fetch`; the working-copy-discard family (`git restore CLAUDE.local.md` / `checkout --` / `reset` / `stash`) never appears as a lane act |
+<!-- moving-ref-ok: the 0 1 divergence is a dated M1-record measurement (2026-09-29, primary main @ c8f245c2c), reported as such per REQ-PLR-008; re-measurement before the lead's batch push belongs to the lead, so pinning it here would state a number about a tree this lane cannot observe -->
 | AC-PLR-008 (b) | PASS | `git rev-list --count --left-right origin/main...HEAD` on local main (per M1 record) | `0 1` — one unpushed commit on local `main` (the `0 N` "proceed normally" matrix row) |
 | AC-PLR-008 (c) | PASS | commit enumeration | local-`main` policy commit `c8f245c2c`; WT-branch tip `f22a1a1cd` (this lane does not push — REQ-PLR-008) |
 
