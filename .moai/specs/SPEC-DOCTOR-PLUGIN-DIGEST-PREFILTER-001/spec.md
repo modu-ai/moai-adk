@@ -9,7 +9,7 @@ author: manager-spec
 priority: P2
 phase: "v3.1.5 target"
 module: "internal/cli"
-lifecycle: spec-first
+lifecycle: spec-anchored
 tags: "doctor, home-disk, sha256, prefilter, test-budget"
 tier: S
 era: V3R6
