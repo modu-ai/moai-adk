@@ -56,7 +56,7 @@
 ## §E.3 Run-phase Audit-Ready Signal
 
 - run_complete_at: 2026-09-29
-- run_commit_sha: pending-backfill-run
+- run_commit_sha: 793249821
 - run_status: complete (M1-M4 landed; AC matrix in §E.2; one EXPECTED-SYNC-DEBT row pending the sync-phase doc repair, see §E.2 Known-red)
 - ac_pass_count: 7
 - ac_fail_count: 0
