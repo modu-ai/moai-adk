@@ -27,10 +27,10 @@ import (
 
 // HoistResult reports what one hoist pass did.
 type HoistResult struct {
-	Count int64  // files copied
-	Bytes int64  // bytes copied
+	Count   int64    // files copied
+	Bytes   int64    // bytes copied
 	Skipped []string // relative paths NOT copied: destination held different content
-	Dest  string     // destination directory (main root / .moai/reports/worktrees/<tree>)
+	Dest    string   // destination directory (main root / .moai/reports/worktrees/<tree>)
 }
 
 // hoistWorktreeReports copies treePath/.moai/reports/ content into
