@@ -73,6 +73,54 @@ suggestion is a signal a person reads: a labelled model answer…" in the
 template source first, then re-mirrored (`cp`) and re-verified — identity,
 sentinels, and guard test all re-observed after the fix.
 
+### M3 — catalog registration + build + verification matrix
+
+`CARD_BASE` recomputed at measurement time per acceptance §D.10:
+`git merge-base develop HEAD` → `7a713a9a84b341824c3cc2f191ff8543a795ae0c`
+(happens to equal the plan-phase pin develop @ `7a713a9a8` — no develop
+absorption has occurred on this branch; the recomputation, not the pin, is
+the measurement basis).
+
+| # | Claim | Command | Observed output (verbatim) | Exit | Tree |
+|---|-------|---------|---------------------------|------|------|
+| H1 | make build succeeds incl. catalog regen | `make build` | `catalog.yaml updated successfully (13657 bytes)` + successful `go build -ldflags … -o bin/moai ./cmd/moai` | 0 | this run |
+| H2 | catalog entry carries 5 fields, hash regenerated (AC-JSK-008a) | `grep -A4 'name: moai-jev-skill-suggestion' internal/template/catalog.yaml` | name/tier `core`/path/hash `65bc06796226a5aabba9f0780286f1b99696c43f6ebaaab1a2f8c49f99646ca2`/version `1.0.0` — the hand-inserted placeholder `0`×64 was replaced by make build (regeneration proven, not hand-computed) | 0 | this run |
+| H3 | deterministic regeneration (AC-JSK-008b) | `go run ./internal/template/scripts/gen-catalog-hashes.go --all` (re-run) | hash unchanged: `65bc06796226a5aabba9f0780286f1b99696c43f6ebaaab1a2f8c49f99646ca2` | 0 | this run |
+| H4 | build matrix (AC-JSK-009) | `go build ./...` then `GOOS=windows GOARCH=amd64 go build ./...` | `GO_BUILD_EXIT_0` / `GOOS_WIN_EXIT_0` | 0 / 0 | this run |
+| H5 | existing consumer-call-path guard green (AC-JSK-010b) | `go test ./internal/jevmeasure/ -run '^TestNoConsumerCallPathShips$' -count=1` | `ok  	github.com/modu-ai/moai-adk/internal/jevmeasure	0.735s` | 0 | this run |
+| H6 | sibling guard green (no regression) | `go test ./internal/cli/ -run '^TestJevQuestionDesignSkill(CarriesNoCallPath\|CopiesStayIdentical)$' -count=1` | `ok  	github.com/modu-ai/moai-adk/internal/cli	0.845s` | 0 | this run |
+| H7 | go vet clean | `go vet ./internal/cli/...` | (no output) | 0 | this run |
+| H8 | lint zero issues (AC-JSK-011) | `golangci-lint run --timeout=2m ./internal/cli/...` | `0 issues.` | 0 | this run |
+| H9 | non-test Go diff empty (AC-JSK-010a) | `git diff --name-only CARD_BASE..HEAD -- 'internal/**/*.go'` → grep -v `_test` | the Go list holds exactly `internal/cli/jev_skill_suggestion_skill_test.go` (the one `_test.go`); after `_test` exclusion → empty | 1 (grep zero-hit) | this run |
+| H10 | guard directory zero-edit (AC-JSK-010c) | `git diff CARD_BASE..HEAD -- internal/jevmeasure/` | (empty output) | 0 | this run |
+
+Scope control: the full CARD_BASE..HEAD file list at measurement time held 8
+files (2 skill copies, 5 SPEC artifacts, 1 guard test) + `catalog.yaml`
+still uncommitted — no PRESERVE-list path appears anywhere in it.
+
+## §E.3 Run-phase Audit-Ready Signal
+
+```yaml
+run_status: complete
+run_complete_at: 2026-09-30
+run_commit_sha: "pending-backfill"  # = M3 commit; backfilled in the follow-up commit (self-reference physics, D3 exemption)
+red_green_pair: M1 existence-RED (read-fail, tree 235fcfd12, exit 1) -> M2 GREEN (ok, internal/cli, exit 0)
+milestone_commits: M1 guard-test-first, M2 skill body + mirror, M3 catalog registration + build matrix
+ac_pass_count: 11
+ac_fail_count: 0
+ac_pass_with_debt_count: 0
+preserve_list_post_run_count: 0  # zero PRESERVE edits observed (H9/H10 + full CARD_BASE..HEAD file list)
+l44_pre_commit_fetch: n/a  # lane-local worktree; lane protocol forbids lane push — lead batch-pushes develop
+l44_post_push_fetch: n/a
+new_warnings_or_lints_introduced: 0  # golangci-lint: 0 issues. (H8); go vet clean (H7)
+cross_platform_build:
+  host: PASS  # go build ./... exit 0 (H4)
+  windows_amd64: PASS  # GOOS=windows GOARCH=amd64 go build ./... exit 0 (H4)
+total_run_phase_files: 6  # guard test, 2 skill copies, catalog.yaml, spec.md (draft->in-progress), progress.md
+m1_to_mN_commit_strategy: one commit per milestone (test-first RED, then GREEN, then registration+build) + a single §E.3 SHA backfill commit
+blockers: none
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — manager-develop 소관>_
