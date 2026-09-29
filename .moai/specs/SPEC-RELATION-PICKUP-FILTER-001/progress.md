@@ -2,8 +2,8 @@
 
 Tier S (dispatcher-mandated acceptance layer added) · card t1343 · plan-phase
 artifact set authored 2026-09-29 at HEAD `113082295` (worktree
-`.moai/worktrees/t1343`, branch `WT-relation-pickup-filter`). Status: `draft`
-(plan-phase creation per ownership; run phase not entered).
+`.moai/worktrees/t1343`, branch `WT-relation-pickup-filter`). Status:
+`completed` (3-phase close 2026-09-30 — plan §E.1, run §E.2/§E.3, sync §E.4).
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -294,4 +294,48 @@ m1_to_m4_commit_strategy: "one commit per milestone (M1 938e43f61, M2 46e3ec0da,
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-30T01:58:24+09:00
+sync_commit_sha: "pending-backfill-sync"  # a commit cannot cite its own hash; backfilled in the following commit
+sync_status: complete
+b12_self_test_a: pass  # grep -c 'SPEC-RELATION-PICKUP-FILTER-001' CHANGELOG.md → 0 before emission (no duplicate entry)
+b12_self_test_b: pass  # distinct AC ids in acceptance.md = 7 (AC-RPF-001..007); CHANGELOG entry cites 7/7 PASS
+b12_self_test_c: pass  # all file paths cited in the CHANGELOG entry verified present (ls)
+changelog_entry_position: "[Unreleased] › Added"
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed (merged close, single sync commit)"
+  plan_md: n/a  # plan.md frontmatter carries no status field
+  acceptance_md: n/a  # acceptance.md frontmatter carries no status field
+  progress_md: "§E.4 written in this commit; header status sentence corrected draft → completed"
+canary_compliance_check:
+  doc_surface_impact: cli-command-behavior  # todo --auto pickup skip + todo relate cycle refusal; recorded in the CHANGELOG entry
+  readme_edit: skipped  # README.md / README.ko.md carry zero todo/relate command-surface prose (grep 0 hits both) — nothing to update
+  codemaps_edit: skipped  # sync workflow prescribes regeneration only for significant structural changes (new directories / dependency-graph change / module reorganization); this SPEC adds functions inside 4 existing files — no structural change
+  acceptance_body_edit_scope: none  # no body edits to acceptance.md
+  mx_tag_validation: pass  # WaitsOnOf fan_in=4 (>=3) gained the mandated @MX:ANCHOR+@MX:REASON in this commit; FindingsBlocking / WaitsOnClosesCycle fan_in=1 each — consider-level, fully covered per §E.2
+```
+
+Sync-phase notes:
+
+1. **README check (skipped with evidence).** `grep -n relate` over `README.md`
+   and `README.ko.md` returns 0 hits in both — the repo READMEs carry no
+   `todo relate` / `todo --auto` command-surface prose, so there is nothing to
+   update and the 4-locale same-change discipline has no surface to apply to.
+   The command surface is documented in `.claude/skills/moai/workflows/gtd.md`,
+   whose `relate` row predates this card and already omitted the sequencing
+   vocabulary (a t1309-era doc gap, not introduced here); that file is a
+   template-mirrored skill surface outside this card's enumerated sync scope
+   and was left untouched.
+2. **Codemaps (skipped per the workflow condition).** The sync workflow
+   (`.claude/skills/moai/workflows/sync/doc-execution.md` D-table) prescribes a
+   codemaps rotation only when significant structural changes are detected —
+   new directories, dependency-graph changes, or module reorganization. This
+   SPEC adds functions inside four existing files with no structural change,
+   so the prescribed condition does not hold; no regeneration, no stamp.
+3. **MX tag validation.** `WaitsOnOf` measured fan_in 4 (non-test callers:
+   todo_auto pickup filter, todo_relate cycle guard, FindingsBlocking,
+   WaitsOnClosesCycle) — above the >=3 threshold, so the mandated
+   `@MX:ANCHOR` + `@MX:REASON` pair was added in this sync commit alongside the
+   existing NOTE. `FindingsBlocking` and `WaitsOnClosesCycle` each measure
+   fan_in 1 (consider-level gate; both fully covered per §E.2) — no annotation
+   added. Comment-only source change; build re-verified before the commit.

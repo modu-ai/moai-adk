@@ -215,6 +215,8 @@ func (f BacklogFinding) Names(id string) bool {
 // return ok=false — the pickup filter and the cycle guard consume exactly
 // blocks and depends (REQ-RPF-006).
 //
+// @MX:ANCHOR: WaitsOnOf — the direction-normalization SSOT for the sequencing pair
+// @MX:REASON: fan_in 4 (todo_auto pickup filter, todo_relate cycle guard, FindingsBlocking, WaitsOnClosesCycle); a second direction spelling would let the two consumers disagree about which side waits
 // @MX:NOTE: single normalization point for both sequencing consumers —
 // the pickup filter and the todo-relate cycle guard read direction ONLY
 // through this function.
