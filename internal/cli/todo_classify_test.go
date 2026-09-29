@@ -99,47 +99,74 @@ func TestTodoAddRecordsClassificationInLockedWrite(t *testing.T) {
 	}
 }
 
-// TestTodoAddDeciderFailureFallsBackWithNotice — AC-TCD-003: a decider that
-// is unavailable promotes the fail-safe default (normal / false / serial /
-// default) with EXACTLY ONE stderr notice line, and admission never blocks.
-// The positive control (healthy decider records its real values) lives in
-// TestTodoAddRecordsClassificationInLockedWrite; the default-vs-failure
-// separation is asserted here by the notice firing only on the failure arm.
+// TestTodoAddDeciderFailureFallsBackWithNotice — AC-TCD-003, both arms in
+// one test so the mutation separation is judged together: (a) the FAILURE
+// arm — an unavailable decider promotes the fail-safe default (normal /
+// false / serial / default) with EXACTLY ONE stderr notice line, admission
+// never blocking; (b) the POSITIVE CONTROL — the same path with a healthy
+// decider records the real judgment, proving the default is the failure
+// arm's value and not a value stamped on every add.
 func TestTodoAddDeciderFailureFallsBackWithNotice(t *testing.T) {
-	_, store := todoFixture(t)
-	installTodoCardDecider(t, failingCardDecider{})
+	t.Run("failure promotes the fail-safe default with one notice", func(t *testing.T) {
+		_, store := todoFixture(t)
+		installTodoCardDecider(t, failingCardDecider{})
 
-	out, errOut, err := runTodo(t, "add", "unclassified fallback card")
-	if err != nil {
-		t.Fatalf("add: %v", err)
-	}
-	id := strings.TrimSpace(strings.SplitN(out, " ", 2)[0])
-	if !strings.Contains(errOut, "decider unavailable") {
-		t.Errorf("stderr notice %q does not name the fallback cause", errOut)
-	}
-	// Count the FALLBACK lines, not the whole stderr stream: the fixture
-	// environment legitimately adds its own disclosure lines (the temp-root
-	// queue notice), which are not part of the AC.
-	if n := strings.Count(errOut, "classification decider unavailable"); n != 1 {
-		t.Errorf("stderr carries %d fallback notices, want exactly 1 (got %q)", n, errOut)
-	}
-	rec, err := store.LoadPure()
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
-	for _, it := range rec.Items {
-		if it.ID != id {
-			continue
+		out, errOut, err := runTodo(t, "add", "unclassified fallback card")
+		if err != nil {
+			t.Fatalf("add: %v", err)
 		}
-		c := it.Classification
-		if c == nil {
-			t.Fatalf("fallback card %s carries no classification", id)
+		id := strings.TrimSpace(strings.SplitN(out, " ", 2)[0])
+		if !strings.Contains(errOut, "decider unavailable") {
+			t.Errorf("stderr notice %q does not name the fallback cause", errOut)
 		}
-		want := kanban.DefaultCardClassification()
-		if c.Priority != want.Priority || c.Blocked != want.Blocked || c.Mode != want.Mode || c.Decider != want.Decider {
-			t.Errorf("fallback classification = %+v, want the fail-safe defaults %+v", c, want)
+		// Count the FALLBACK lines, not the whole stderr stream: the fixture
+		// environment legitimately adds its own disclosure lines (the
+		// temp-root queue notice), which are not part of the AC.
+		if n := strings.Count(errOut, "classification decider unavailable"); n != 1 {
+			t.Errorf("stderr carries %d fallback notices, want exactly 1 (got %q)", n, errOut)
 		}
-	}
+		rec, err := store.LoadPure()
+		if err != nil {
+			t.Fatalf("load: %v", err)
+		}
+		for _, it := range rec.Items {
+			if it.ID != id {
+				continue
+			}
+			c := it.Classification
+			if c == nil {
+				t.Fatalf("fallback card %s carries no classification", id)
+			}
+			want := kanban.DefaultCardClassification()
+			if c.Priority != want.Priority || c.Blocked != want.Blocked || c.Mode != want.Mode || c.Decider != want.Decider {
+				t.Errorf("fallback classification = %+v, want the fail-safe defaults %+v", c, want)
+			}
+		}
+	})
+
+	t.Run("positive control: healthy decider records its real judgment", func(t *testing.T) {
+		_, store := todoFixture(t)
+		installTodoCardDecider(t, judgementCardDecider(kanban.ClassPriorityLow, kanban.ClassModeParallelizable, true))
+
+		out, _, err := runTodo(t, "add", "healthy judgment card")
+		if err != nil {
+			t.Fatalf("add: %v", err)
+		}
+		id := strings.TrimSpace(strings.SplitN(out, " ", 2)[0])
+		rec, err := store.LoadPure()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, it := range rec.Items {
+			if it.ID != id {
+				continue
+			}
+			c := it.Classification
+			if c == nil || c.Priority != kanban.ClassPriorityLow || !c.Blocked || c.Mode != kanban.ClassModeParallelizable || c.Decider != kanban.DeciderIdentityLLM {
+				t.Errorf("healthy-decider classification = %+v, want the decider's real judgment (NOT the fail-safe default)", c)
+			}
+		}
+	})
 }
 
 // TestTodoAddDefaultDeciderPrintsNoNotice — the deterministic default is a

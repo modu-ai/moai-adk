@@ -102,13 +102,13 @@ const factoryFlagUsageError = "-f/--factory takes no argument (the factory leade
 // lane label is an error — there is no second interpretation to silently
 // fall into, and hiding the typo would be worse than naming it.
 type factoryFlagParse struct {
-	Enabled     bool     // -f present (any shape)
-	Lanes       int      // always 0 post-N-removal; kept for the merge contract
-	LaneNumber  int      // n of `-f lane-<n>`; 0 otherwise
-	LaneLabel   string   // the lane label exactly as typed (`lane-3`)
-	LaneRole    bool     // `-f lane`: join as the next free lane
-	RunID       string   // explicit --factory-run selector (MoAI-owned, pre--- only)
-	ClearPolicy string   // --clear-policy value; a lane-only selection (REQ-SD-020)
+	Enabled     bool   // -f present (any shape)
+	Lanes       int    // always 0 post-N-removal; kept for the merge contract
+	LaneNumber  int    // n of `-f lane-<n>`; 0 otherwise
+	LaneLabel   string // the lane label exactly as typed (`lane-3`)
+	LaneRole    bool   // `-f lane`: join as the next free lane
+	RunID       string // explicit --factory-run selector (MoAI-owned, pre--- only)
+	ClearPolicy string // --clear-policy value; a lane-only selection (REQ-SD-020)
 	// NoAutoDispatch marks the --no-auto-dispatch opt-out
 	// (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-011); a lane-only boolean.
 	NoAutoDispatch bool

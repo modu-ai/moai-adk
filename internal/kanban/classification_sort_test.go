@@ -11,8 +11,8 @@ import (
 // classifyStore builds a record whose items carry the named classifications
 // in slice (insertion) order.
 func classifyStore(t *testing.T, defs []struct {
-	id   string
-	prio string
+	id    string
+	prio  string
 	block bool
 }) *BacklogRecord {
 	t.Helper()
