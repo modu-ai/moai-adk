@@ -253,7 +253,7 @@ boundary_grep: AskUserQuestion/mcp__askuser in internal/cli+internal/kanban non-
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-09-30
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "3427724ff"
 sync_status: complete
 changelog_entry_position: [Unreleased] > Added (top, above the SPEC-TODO-CLASSIFY-DISPATCH-001 row — most-recent-first convention)
 b12_self_test_a: PASS — pre-emission grep `grep -c 'SPEC-TODO-SURFACE-POLISH-001' CHANGELOG.md` = 0 before the entry landed (no duplicate from a parallel BATCH-SYNC session)
