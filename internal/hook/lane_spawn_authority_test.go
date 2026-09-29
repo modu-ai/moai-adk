@@ -48,7 +48,12 @@ func TestFactoryWorkerNoticeCarriesSpawnAuthority(t *testing.T) {
 			// reaches the lane only via the Status Transition Ownership
 			// Matrix pointer, so the per-phase specialist names and the
 			// mapping parenthetical must not reappear in the rendered notice.
-			for _, gone := range []string{"manager-spec", "manager-develop", "manager-docs", "plan-phase artifacts to"} {
+			// Raw-string literals on purpose: these assert ABSENCE, and the
+			// interpreted-string form would re-trip the EV-2 probe (the
+			// double-quoted specialist-name grep) that pins the
+			// required-marker list being specialist-free. Do not convert to
+			// interpreted literals.
+			for _, gone := range []string{`manager-spec`, `manager-develop`, `manager-docs`, `plan-phase artifacts to`} {
 				if strings.Contains(got, gone) {
 					t.Errorf("factory worker notice re-inlines the specialist mapping (%q):\n%s", gone, got)
 				}
@@ -72,7 +77,8 @@ func TestKanbanCompanionNoticeCarriesSpawnAuthority(t *testing.T) {
 		}
 	}
 	// Same absence sweep as the factory sibling: no re-inlined mapping.
-	for _, gone := range []string{"manager-spec", "manager-develop", "manager-docs", "plan-phase artifacts to"} {
+	// Raw-string literals on purpose (see the factory twin above).
+	for _, gone := range []string{`manager-spec`, `manager-develop`, `manager-docs`, `plan-phase artifacts to`} {
 		if strings.Contains(got, gone) {
 			t.Errorf("kanban companion notice re-inlines the specialist mapping (%q):\n%s", gone, got)
 		}
