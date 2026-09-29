@@ -6,9 +6,13 @@ package config
 // The test pins the two exported constants to their exact literal spellings —
 // the one place the literal is the assertion rather than a drift — and reads
 // the contract-sign guard's source to keep the guard's environment surface
-// inside the closed set REQ-AP-009 names: {EnvFactoryRole} ∪
-// {CLAUDECODE, CLAUDE_CODE_SESSION_ID}, with no literal re-spelled anywhere
-// in internal/hook.
+// inside the closed set: the F2 lane-gate trio
+// {EnvFactoryRole, EnvMoaiFactoryWorker, EnvMoaiKanbanBackend}
+// (REQ-AP-009's original {EnvFactoryRole} set, widened by
+// SPEC-FACTORY-SELF-DISPATCH-001's three-clause lane refusal;
+// SPEC-AUTONOMY-PRECONDITION-001 carries
+// partially_superseded_by: [SPEC-FACTORY-SELF-DISPATCH-001],
+// commit 9866ca25e), with no literal re-spelled anywhere in internal/hook.
 //
 // SPEC-ROLE-NAMING-CODE-001 M4 (REQ-RNC-012): the role value constant is
 // FactoryRoleLane = "lane" — the value follows the leader/lane vocabulary.
@@ -60,7 +64,13 @@ func TestFactoryRoleEnvConstant(t *testing.T) {
 
 	// AC-AP-017 limb: the guard reads no environment variable outside the
 	// closed set, enumerated from the guard's os.Getenv / os.LookupEnv call
-	// sites. A1's harness-presence markers (CLAUDECODE,
+	// sites. The set is the F2 lane-gate trio the guard's contractLaneGate
+	// denies on — {EnvFactoryRole, EnvMoaiFactoryWorker, EnvMoaiKanbanBackend}
+	// (SPEC-FACTORY-SELF-DISPATCH-001 widened the lane refusal from
+	// REQ-AP-009's original single variable;
+	// SPEC-AUTONOMY-PRECONDITION-001 carries
+	// partially_superseded_by: [SPEC-FACTORY-SELF-DISPATCH-001],
+	// commit 9866ca25e). A1's harness-presence markers (CLAUDECODE,
 	// CLAUDE_CODE_SESSION_ID) would appear here as literals if the guard ever
 	// needed them (REQ-AP-009); it currently needs none.
 	data, err := os.ReadFile(filepath.Join(hookDir, "contract_sign_guard.go"))
@@ -68,10 +78,15 @@ func TestFactoryRoleEnvConstant(t *testing.T) {
 		t.Fatalf("read guard source: %v", err)
 	}
 	callRe := regexp.MustCompile(`os\.(?:Getenv|LookupEnv)\(([^)]*)\)`)
+	allowed := map[string]bool{
+		"config.EnvFactoryRole":       true,
+		"config.EnvMoaiFactoryWorker": true,
+		"config.EnvMoaiKanbanBackend": true,
+	}
 	for _, m := range callRe.FindAllStringSubmatch(string(data), -1) {
 		arg := strings.TrimSpace(m[1])
-		if arg != "config.EnvFactoryRole" {
-			t.Errorf("guard environment read %s is outside the closed set {config.EnvFactoryRole} (AC-AP-017)", m[0])
+		if !allowed[arg] {
+			t.Errorf("guard environment read %s is outside the closed set {config.EnvFactoryRole, config.EnvMoaiFactoryWorker, config.EnvMoaiKanbanBackend} (AC-AP-017, widened by SPEC-FACTORY-SELF-DISPATCH-001)", m[0])
 		}
 	}
 }

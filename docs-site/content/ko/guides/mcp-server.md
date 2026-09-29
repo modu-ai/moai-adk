@@ -95,7 +95,7 @@ flowchart TD
 
 ## `project_root` 입력 — 호출자가 자기 트리를 지목한다
 
-14개 도구가 선택적 문자열 `project_root`를 받습니다: `spec_progress`, `spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`, `codex_task`, `claude_audit`, `glm_audit`, `audit_multi`, `graph_file_api`, `graph_find_code`, `graph_trace_calls`, `graph_shortest_path`. 이 호출이 대상으로 삼을 트리를 가리키는 값이며, 넘길 값은 호출자 자신의 `git rev-parse --show-toplevel` 결과입니다. 다만 `codex_task`에서는 선택이 아니라 필수입니다 — 자기 toplevel을 넘기지 않으면 호출이 거부되며, 어떤 트리로도 기본값이 잡히지 않습니다.
+20개 도구가 선택적 문자열 `project_root`를 받습니다: `spec_progress`, `spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`, `codex_task`, `claude_audit`, `glm_audit`, `audit_multi`, `graph_file_api`, `graph_find_code`, `graph_trace_calls`, `graph_shortest_path`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`, `factory_stage`, `factory_complete`. 이 호출이 대상으로 삼을 트리를 가리키는 값이며, 넘길 값은 호출자 자신의 `git rev-parse --show-toplevel` 결과입니다. 다만 `factory_next`, `factory_stage`, `factory_complete`, `codex_task`에서는 선택이 아니라 필수입니다 — 자기 toplevel을 넘기지 않으면 호출이 거부되며, 어떤 트리로도 기본값이 잡히지 않습니다.
 
 워크트리 안에서 일하는 에이전트는 이 값을 반드시 넘겨야 합니다. 편의 기능이 아닙니다. 서버가 스스로 답을 알아낼 방법이 없기 때문입니다. MCP 서버는 오래 사는 서브프로세스라 작업 디렉터리가 워크트리 전환을 따라가지 못하고, 대신 참조하는 환경변수는 세션이 워크트리에서 일하고 있어도 **프로젝트** 루트 — 즉 primary 체크아웃 — 를 가리킵니다. 워크트리에서 이 값을 빠뜨리면 호출은 primary 체크아웃을 대상으로 동작하고, 카드 브랜치에만 있는 SPEC은 감사자가 읽는 카탈로그에 들어오지 않습니다. 없다고 보고되지도 않습니다. 그냥 없습니다.
 
