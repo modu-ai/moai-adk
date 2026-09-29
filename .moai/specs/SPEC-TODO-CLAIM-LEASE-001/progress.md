@@ -70,7 +70,7 @@ run_phase:
   spec: SPEC-TODO-CLAIM-LEASE-001
   run_complete_at: 2026-09-30T00:30:00+09:00
   run_commit_sha: "pending-backfill-run"
-  run_status: complete
+  run_status: audit-ready
   ac_pass_count: 12
   ac_fail_count: 0
   preserve_list_post_run_count: 5
