@@ -624,6 +624,12 @@ func goldenReplay(t *testing.T, root string) map[string]string {
 // dropped_at on items, archived_at on archive entries) — the deliberate,
 // AC-tested extension this SPEC dispatched. The other five goldens are
 // unchanged; a future silent drift of the JSON disclosure still fails here.
+//
+// Provenance update — card t1332: list-json.txt was RE-CAPTURED after the
+// record gained the classification key (the creation-time judgment recorded
+// by the add path's decider seam — the declared, AC-tested extension of that
+// SPEC). The other five goldens are unchanged; a future silent drift of the
+// JSON disclosure still fails here.
 func TestLiveReadersUnchangedByHistoryVerb(t *testing.T) {
 	root := replayGoldenFixture(t)
 	streams := goldenReplay(t, root)

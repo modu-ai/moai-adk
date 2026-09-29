@@ -361,6 +361,24 @@ const (
 	// fresh session.
 	FactoryClearPolicyEach = "clear-each"
 
+	// EnvFactoryAutoDispatch carries the auto-dispatch selection a factory
+	// lane launch made (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-011): the
+	// launcher stamps it into the lane session's environment and the
+	// SessionStart lane rule reads it. The DEFAULT is auto-dispatch and is
+	// recorded in code, not in this carrier — the stamp always overwrites
+	// (the clear-policy discipline) so an outer session's value cannot leak
+	// into a lane launched without one. Any value other than
+	// FactoryDispatchManual reads as the default.
+	EnvFactoryAutoDispatch = "MOAI_FACTORY_AUTO_DISPATCH"
+
+	// FactoryDispatchAuto is the stamped default: the lane enters its
+	// factory-next self-dispatch loop without a per-card lead routing step.
+	FactoryDispatchAuto = "auto"
+
+	// FactoryDispatchManual is the --no-auto-dispatch opt-out stamp: the lane
+	// receives a manual-mode rule instead of the next-card rule.
+	FactoryDispatchManual = "manual"
+
 	// FactoryClearPolicyWhenFull asks for /clear only once the session's
 	// context-usage record reaches the model-specific handoff threshold;
 	// below it the lane continues with the next card in the same session.

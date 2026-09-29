@@ -30,7 +30,10 @@ func TestBacklogLanding_ItemsColumnShape(t *testing.T) {
 		"state:TEXT:1:NULL " +
 		"landing:TEXT:0:NULL " +
 		"picked_at:TEXT:0:NULL " +
-		"dropped_at:TEXT:0:NULL"
+		"dropped_at:TEXT:0:NULL " +
+		// SPEC-TODO-CLASSIFY-DISPATCH-001 (card t1332): the classification
+		// TEXT column, appended last by the same ADD COLUMN path.
+		"classification:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "items"); got != want {
 		t.Errorf("items column tuples =\n %s\nwant\n %s", got, want)
 	}
@@ -64,7 +67,8 @@ func TestBacklogLanding_ArchivedItemsColumnShape(t *testing.T) {
 		"picked_at:TEXT:0:NULL " +
 		"dropped_at:TEXT:0:NULL " +
 		"archived_at:TEXT:0:NULL " +
-		"landing_verdict:TEXT:0:NULL"
+		"landing_verdict:TEXT:0:NULL " +
+		"classification:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "archived_items"); got != want {
 		t.Errorf("archived_items column tuples =\n %s\nwant\n %s", got, want)
 	}
