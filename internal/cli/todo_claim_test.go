@@ -378,3 +378,46 @@ func storeAdd(t *testing.T, store *kanban.BacklogStore, text string) (*kanban.Ba
 	t.Helper()
 	return store.Add(text)
 }
+
+// REQ-TCL-013 — the MCP todo_claim mirror performs the SAME decision as the
+// CLI verb and refuses with the SAME text: a lane session is refused in the
+// bare and the --lane form alike, an allowed claim goes through the shared
+// runTodoClaimRoot body anchored at the caller's project_root.
+func TestTodoClaimMCP_Mirror(t *testing.T) {
+	root, store := todoFixture(t)
+	if _, _, err := storeAdd(t, store, "mcp mirror card"); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	wantRefusal := todoLaneMutationRefusalText("claim")
+
+	// Refusal arm — lane session, --lane form: the identical text.
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
+	before := claimFileHash(t, store)
+	_, err := sdCallTool(t, handleTodoClaim, map[string]any{"project_root": root, "lane": "lane-9"})
+	if err == nil {
+		t.Fatal("mcp todo_claim in a lane session: err = nil, want refusal")
+	}
+	if !strings.Contains(err.Error(), wantRefusal) {
+		t.Errorf("mcp refusal = %q, want it to carry the CLI-identical text %q (the todo_claim: prefix is the MCP surface convention, matching the todo_add parity guard)", err.Error(), wantRefusal)
+	}
+	if after := claimFileHash(t, store); after != before {
+		t.Error("mcp refusal modified the queue file")
+	}
+
+	// Allowed arm — operator session: claims through the same body.
+	t.Setenv(config.EnvMoaiFactoryWorker, "")
+	out, err := sdCallTool(t, handleTodoClaim, map[string]any{"project_root": root})
+	if err != nil {
+		t.Fatalf("mcp todo_claim: %v", err)
+	}
+	if !strings.Contains(out, "claimed t1") || !strings.Contains(out, "picked_by=operator") {
+		t.Errorf("mcp output = %q, want the shared claim line", out)
+	}
+	rec, rerr := store.LoadPure()
+	if rerr != nil {
+		t.Fatalf("reload: %v", rerr)
+	}
+	if rec.Items[0].PickedBy == nil || *rec.Items[0].PickedBy != kanban.BacklogOperatorHolder {
+		t.Errorf("picked_by = %v, want operator", rec.Items[0].PickedBy)
+	}
+}
