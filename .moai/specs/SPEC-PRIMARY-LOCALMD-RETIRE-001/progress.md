@@ -122,7 +122,7 @@ m1_to_mn_commit_strategy: M1 = orchestrator session-level primary act (c8f245c2c
 
 sync_status: completed
 sync_close_at: 2026-09-29T15:35+09:00
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: aef53f42c (backfilled from pending-backfill-sync)
 b12_self_test_a: pre-emission grep -c 'SPEC-PRIMARY-LOCALMD-RETIRE-001' CHANGELOG.md → 0 (no duplicate entry)
 b12_self_test_b: distinct AC count in acceptance.md = 8 (grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' | sort -u | wc -l) — matches run-phase 8/8 PASS matrix; CHANGELOG entry references 8 AC
 b12_self_test_c: all paths claimed in the CHANGELOG entry verified to exist via ls (.moai/specs/SPEC-PRIMARY-LOCALMD-RETIRE-001/, AGENTS.local.md §0.4 in-tree, .moai/reports/t1317/m1-primary-act.md is a primary-checkout artifact recorded by run phase, not re-verified from this worktree — primary access out of lane scope)
