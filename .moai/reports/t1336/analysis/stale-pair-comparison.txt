@@ -1,0 +1,11 @@
+3-syllable words containing 일 on lines 11/14: [(11, 78, '스테일'), (14, 40, '슠테일'), (14, 136, '스테일')]
+
+line 11 form: 스테일 codepoints: ['0xc2a4', '0xd14c', '0xc77c']
+line 14 form: 슠테일 codepoints: ['0xc2a0', '0xd14c', '0xc77c']
+identical strings: False
+slot distance: 2
+deltas: ['syllable 1 jungseong: ㅡ -> ㅠ', 'syllable 1 jongseong: (none) -> ㅋ']
+  테(ㅌㅔ)
+  슠(ㅅㅠ+ㅋ)
+  일(ㅇㅣ+ㄹ)
+  스(ㅅㅡ)
