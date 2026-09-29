@@ -2,7 +2,7 @@
 id: SPEC-LANE-NOTICE-DIET-001
 title: "Lead·lane join-notice multi-locale diet — compress the lane join notice and its embedded standing spawn authority to core form"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-29
 updated: 2026-09-29
 author: manager-spec

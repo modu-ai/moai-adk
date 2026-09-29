@@ -72,6 +72,7 @@ EV-5  (baseline-green observation, AC-LND-007)
         scope). The whitelist check: every listed path must be one of
         internal/hook/lane_spawn_authority.go,
         internal/hook/lane_spawn_authority_test.go,
+        internal/hook/session_start_factory_test.go,
         internal/hook/session_start_factory_i18n.go,
         internal/hook/session_start_kanban_i18n.go.
 ```

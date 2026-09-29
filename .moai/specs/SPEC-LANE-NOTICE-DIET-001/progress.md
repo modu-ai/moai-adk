@@ -146,4 +146,38 @@ m1_to_mn_commit_strategy: per-milestone commits (M1 fd7ae7ed4 / M2 dff54c2b9 / M
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-29T22:05:00+09:00
+sync_commit_sha: "pending-backfill-sync"  # a commit cannot cite its own hash; backfilled in the following commit
+sync_status: complete
+b12_self_test_a: pass  # grep -c 'SPEC-LANE-NOTICE-DIET-001' CHANGELOG.md → 0 before emission (no duplicate entry)
+b12_self_test_b: pass  # distinct AC ids in acceptance.md = 7 (AC-LND-001..007); CHANGELOG entry cites 7/7 PASS
+b12_self_test_c: pass  # all file paths cited in the CHANGELOG entry verified present (ls)
+changelog_entry_position: "[Unreleased] › Changed"
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed (merged close, single sync commit)"
+  plan_md: n/a  # plan.md frontmatter carries no status field
+  acceptance_md: n/a  # acceptance.md frontmatter carries no status field; R2 whitelist line landed in this same commit
+  progress_md: §E.4 written in this commit
+canary_compliance_check:
+  doc_surface_impact: none  # grep across README*.md + docs: the only hit (README.md:67) describes the notice's lane-model recommendation default, not the dieted spawn-authority prose; locale READMEs have 0 hits
+  readme_edit: skipped  # nothing references the removed prose
+  acceptance_body_edit_scope: R2 whitelist line only (run-phase-reported enumeration gap, sanctioned by the close contract)
+  mx_tag_validation: pass  # lane_spawn_authority.go header comment already names the t1335 rewording; no new exported symbols
+```
+
+Sync-phase notes:
+
+1. **Documentation impact check (skipped with evidence).** The change surface is
+   an English-only internal hook const + its tests. `grep -r` across
+   `README*.md` and `docs` for `laneSpawnAuthority|lane_spawn_authority|bootstrap
+   notice|Bootstrap notice` hits only `README.md:67`, whose sentence describes
+   the notice's lane-model recommendation default (leader/plan/run/sync backend
+   mix) — content the diet did not touch. No doc edit is called for.
+2. **CHANGELOG convention observed**: per-card entries under `[Unreleased]`
+   (e.g. SPEC-PRIMARY-LOCALMD-RETIRE-001, SPEC-AUTONOMY-CLOSURE-001) — a
+   per-card entry was added accordingly.
+3. **R2 whitelist reconciliation**: the acceptance.md line 75 whitelist line
+   (`session_start_factory_test.go`) landed in this same sync commit per the
+   close contract; it reconciles the run-phase-reported enumeration gap (§E.2
+   item 2) and touches no other acceptance body content.
