@@ -67,6 +67,13 @@ type kanbanEntryParse struct {
 	FactoryEnabled bool   // -k selected the factory (numeric count or lane-shape name)
 	FactoryLanes   int    // the factory count (explicit or the default)
 	FactoryRun     string // explicit --factory-run selector for mixed factory joins
+	// FactoryLead is the raw `-l/--lead <name>` target a lane join's leader
+	// discovery aims at (SPEC-FACTORY-LANE-JOIN-SOCKET-001 REQ-008); empty
+	// means the canonical leader label, resolved by the join gate. The field
+	// carries the RAW value: the default resolution lives in one place, and
+	// the parse-level refusals (legacy spelling, surface gates) have already
+	// run by the time a non-empty value reaches the gate.
+	FactoryLead string
 	// FactoryAutoNumber marks a lane number the launcher chose itself
 	// (`-f lane`), as opposed to one the operator typed (`-f lane-<n>`,
 	// `--name lane-<n>`); the claim reports legacy collisions differently.

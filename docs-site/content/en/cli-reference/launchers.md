@@ -35,6 +35,7 @@ Removes GLM-specific environment variables from `.claude/settings.local.json`, r
 | `-f, --factory` | Enter as the **factory leader** — opens a factory run with one lane (`lane-1`). The leader deals the cards the operator picks to free lanes over cross-session messages |
 | `-f lane` | Auto-join one more lane at the next free number and attach it to the leader socket of a running factory |
 | `-f lane-<n>` | Bring up exactly that lane (`lane-<n>`) as one more. A number already held by a live lane bumps to the next free number. `moai glm -f lane` / `-f lane-<n>` behave the same on the GLM backend |
+| `-l, --lead <name>` | With `-f lane` / `-f lane-<n>`: which leader session the record-absence verification targets (default `leader`; the former spelling `lead` is refused). When the run's record is missing or retired while a live leader exists, the join verifies that leader (pid + process-start) and restores its run |
 | `-k <N>` / `-k <N> --name lane-<i>` | The v1.2.0 combined form, still valid — `-k <N>` is the leader of an N-lane run, `-k <N> --name lane-<i>` is lane `<i>` within it. `-k --name lane-<i>` without N defaults to 8 lanes |
 | Former spellings | No longer parsed — joining with a former spelling errors, naming the canonical `-f lane` / `-f lane-<n>` |
 

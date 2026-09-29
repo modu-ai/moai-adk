@@ -568,13 +568,13 @@ func TestBacklogLeaseRetrofitConvergesAfterRebuild(t *testing.T) {
 	}
 	defer func() { _ = eng.close() }()
 
-	// The 11-column items tuple, identical in shape to the freeze test's
-	// pin: the lease columns sit at the END — after dropped_at on items and
-	// after the archive-only landing_verdict on archived_items — so a fresh
-	// and an upgraded database converge on the exact physical order.
+	// Column-order pin, identical in shape to the freeze test's: additive
+	// columns land in merge order — classification before the claim-lease
+	// pair — so a fresh and an upgraded database converge on the exact
+	// physical order.
 	wantTails := map[string]string{
-		"items":          "picked_at:TEXT:0:NULL dropped_at:TEXT:0:NULL picked_by:TEXT:0:NULL lease_expires_at:TEXT:0:NULL",
-		"archived_items": "archived_at:TEXT:0:NULL landing_verdict:TEXT:0:NULL picked_by:TEXT:0:NULL lease_expires_at:TEXT:0:NULL",
+		"items":          "picked_at:TEXT:0:NULL dropped_at:TEXT:0:NULL classification:TEXT:0:NULL picked_by:TEXT:0:NULL lease_expires_at:TEXT:0:NULL",
+		"archived_items": "archived_at:TEXT:0:NULL landing_verdict:TEXT:0:NULL classification:TEXT:0:NULL picked_by:TEXT:0:NULL lease_expires_at:TEXT:0:NULL",
 	}
 	for table, wantTail := range wantTails {
 		got := columnTupleSequence(t, eng, table)
