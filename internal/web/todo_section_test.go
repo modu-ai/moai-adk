@@ -108,6 +108,51 @@ func TestTodoSectionListsAllThreeStates(t *testing.T) {
 	}
 }
 
+// TestTodoSectionRendersRelations — card t1309: recorded findings render as
+// relation lines under the rows they name, keeping the recorded direction.
+// The finding JSON mirrors kanban.BacklogFinding's serialization contract.
+func TestTodoSectionRendersRelations(t *testing.T) {
+	stubTodoHome(t)
+	root := t.TempDir()
+	writeBacklog(t, root, `{"version":1,"last_seq":2,"items":[`+
+		`{"id":"t1","text":"blocks card","added_at":"2026-09-29T00:00:00Z","spec_id":null,"state":"picked"},`+
+		`{"id":"t2","text":"blocked card","added_at":"2026-09-29T00:01:00Z","spec_id":null,"state":"queued"}],`+
+		`"findings":[{"subject_id":"t1","related_id":"t2","relation":"blocks","source":"agent","score":0,"note":"","at":"2026-09-29T00:02:00Z"}]}`)
+
+	body := todoBodyFor(t, root)
+
+	// Both rows show the recorded direction: the subject row reads it
+	// forward, the related row keeps the original direction and marks whose
+	// record it was.
+	for _, want := range []string{
+		"blocks t2 (agent)",
+		"t1 blocks this (agent)",
+		`data-todo-relations`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("rendered section is missing %q", want)
+		}
+	}
+	if n := strings.Count(body, `data-todo-relations`); n != 2 {
+		t.Errorf("relation lines rendered %d times, want 2 (one per named row)", n)
+	}
+}
+
+// TestTodoSectionNoRelationsMarkerOnFindinglessQueue — the relations marker
+// appears only where findings exist, so an ordinary queue renders exactly as
+// before t1309.
+func TestTodoSectionNoRelationsMarkerOnFindinglessQueue(t *testing.T) {
+	stubTodoHome(t)
+	root := t.TempDir()
+	writeBacklog(t, root, threeStateQueue)
+
+	body := todoBodyFor(t, root)
+
+	if strings.Contains(body, "data-todo-relations") {
+		t.Errorf("a findingless queue rendered relation lines")
+	}
+}
+
 // An absent or valid empty legacy queue remains an empty state at 200. Corruption
 // is covered separately: it must not claim that the queue is empty (t647).
 func TestTodoSectionEmptyStates(t *testing.T) {

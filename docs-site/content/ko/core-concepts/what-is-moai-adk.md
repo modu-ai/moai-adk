@@ -22,7 +22,7 @@ MoAI-ADK는 **Claude Code 안에서 에이전트들이 서로 협력하며 에�
 | AI 개발팀 | MoAI-ADK | 역할 |
 |----------|----------|------|
 | 프로덕트 오너 | 사용자 (개발자) | 무엇을 만들지 결정합니다 |
-| 팀 리드 / Tech Lead | MoAI 오케스트레이터 | 전체 작업을 조율하고 13개 에이전트에게 위임합니다 |
+| 팀 리더 / Tech Lead | MoAI 오케스트레이터 | 전체 작업을 조율하고 13개 에이전트에게 위임합니다 |
 | 기획자 / Spec Writer | manager-spec | 요구사항을 SPEC 문서로 정리합니다 |
 | 개발자 / Engineers | manager-develop (도메인 컨텍스트 주입) | 실제 코드를 DDD/TDD로 구현합니다 |
 | QA / 코드 리뷰어 | plan-auditor · sync-auditor | 계획과 결과물을 독립적으로 감사합니다 |
@@ -33,7 +33,7 @@ v3.0의 가치는 세 가지 핵심으로 요약됩니다.
 
 ### 토크노믹스 (Token Economics)
 
-쓴 비용만큼의 품질을 최대로 뽑아내도록 자원을 똑똑하게 나눠 쓰는 방식입니다. 작업 단계와 SPEC 크기에 따라 모델과 추론 깊이를 선언적으로 배정하는 **3-계층 모델 정책**, 예산 초과 전에 안전하게 멈추는 **Token Circuit Breaker**, 그리고 항시 로드 컨텍스트를 줄이는 **컨텍스트 다이어트**가 이 핵심을 이룹니다.
+쓴 비용만큼의 품질을 최대로 뽑아내도록 자원을 똑똑하게 나눠 쓰는 방식입니다. 세션의 모델과 추론 깊이를 정하는 **세션 모델 정책** (서브에이전트는 세션의 모델과 추론 깊이를 그대로 따릅니다), 예산 초과 전에 안전하게 멈추는 **Token Circuit Breaker**, 그리고 항시 로드 컨텍스트를 줄이는 **컨텍스트 다이어트**가 이 핵심을 이룹니다.
 
 ### 에이전틱 루프 엔지니어링 (Agentic Loop Engineering)
 
@@ -122,7 +122,7 @@ flowchart TD
 | 기존 코드 파괴 | **DDD/TDD** 로 테스트를 먼저 작성하여 기존 기능 보호 |
 | 반복 설명 | **CLAUDE.md와 스킬 시스템** 으로 프로젝트 컨텍스트 자동 로드 |
 | 검증 부재 | **LSP 품질 게이트** 로 코드 품질 자동 검증 |
-| 토큰 낭비 | **모델 정책 + Token Circuit Breaker** 로 비용을 시스템이 관리 |
+| 토큰 낭비 | **세션 모델 정책 + Token Circuit Breaker** 로 비용을 시스템이 관리 |
 
 ## 시스템 요구사항
 
@@ -261,7 +261,7 @@ MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 쓰지 �
 | | mission-governor | 🔴 | 승인된 GTD 자동 미션의 봉인된 스냅샷을 읽고 판정 하나만 반환 (읽기 전용, 실행은 결정론적 실행기가 담당) |
 | **빌트인** | Explore | ⚪ | 읽기 전용 코드베이스 탐색 |
 
-비용 색상은 기본 `medium` 프로파일의 model×effort 셀 기준입니다 (`moai model profile`로 확인): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 세션 모델 상속 (사용자 추가 에이전트). 프로파일 (`high`/`low`) 전환 시 배정이 달라집니다.
+비용 색상은 각 에이전트가 일하는 모델의 깊이를 반영합니다: 🔴 Opus 깊은 추론 · 🟠 Opus 표준 추론 · 🔵 얕은 추론 · ⚪ 읽기 전용 탐색. v3.2부터 모든 에이전트는 **세션의 모델과 추론 깊이**로 돕니다 — 서브에이전트는 메인 세션의 모델과 추론 깊이를 그대로 따르므로, 보이는 색은 에이전트별 배정표(물러남)가 아니라 그때 시작한 세션을 따라갑니다.
 
 ```mermaid
 flowchart TD
@@ -521,26 +521,26 @@ MoAI-ADK는 AI 에이전트 간 컨텍스트, 불변량, 위험 영역을 전달
 
 ## 모델 정책 (토크노믹스의 핵심)
 
-MoAI-ADK는 에이전트마다 가장 알맞은 모델과 추론 깊이를 배정합니다. 요금제의 사용량 제한 안에서 품질을 최대로 끌어올리는 것이 목표입니다. 그래서 더 약한 모델 클래스로 갈아타는 대신, 각 에이전트를 Opus 추론 깊이 래더 안에서 위아래로 옮깁니다 — 장기 에이전틱 작업에서는 약한 모델이 스텝을 더 많이 소모해 작업당 비용이 오히려 올라가기 때문입니다.
+요금제의 사용량 제한 안에서 품질을 최대로 끌어올리는 것이 목표입니다. 장기 에이전틱 작업에서는 약한 모델이 스텝을 더 많이 소모해 작업당 비용이 오히려 올라가기 때문에, 모델 클래스를 바꾸는 대신 같은 모델 안에서 추론 깊이만 조절합니다. v3.2부터 이 조절은 **세션** 단위입니다. 서브에이전트는 메인 세션의 모델과 추론 깊이를 그대로 따르고, 에이전트 정의는 어느 쪽도 선언하지 않으며, 예전 버전의 에이전트별 배정표는 물러났습니다.
 
-| 정책 | 특징 |
+| 세션 모델 정책 | 특징 |
 |------|------|
-| **high** | 최고 품질 — medium과 같되 `builder-harness`·`e2e-tester` 두 에이전트만 effort 한 단계 위 |
-| **medium** (기본) | 품질과 비용의 균형 |
-| **low** | 작업당 최저 비용 — 감사·조율 행은 `medium`, `builder-harness`는 Opus `low`로 내려가고(`super-advisor`·`mission-governor`는 `high` 유지), Sonnet은 단발성 행과 `e2e-tester`에 |
+| **high** | 세션 effort 폴백 `high` |
+| **medium** (기본) | 세션 effort 폴백 `medium` — 비용/점수 곡선의 무릎 |
+| **low** | 세션 effort 폴백 `low` — 같은 모델 안에서의 경제 운용 |
 
 ### 설정 방법
 
 ```bash
-# 프로젝트 초기화 시
-moai init my-project          # 대화형 마법사에서 모델 정책 선택
+# 세션 모델 정책 설정 (세션 모델 정책 질문)
+moai profile setup
 
-# 기존 프로젝트 재설정
-moai update                   # 각 설정 단계에 대한 대화형 프롬프트
+# 세션 effort를 그때그때 조절
+# /effort low|medium|high|xhigh|max  ·  ultrathink
 ```
 
 {{< callout type="info" >}}
-기본 정책은 `medium`입니다. GLM 설정은 `settings.local.json`에 격리됩니다 (Git에 커밋되지 않음). 설정 키는 `llm.yaml`의 `profile: high | medium | low`(프로필 매트릭스 열)이며, legacy `performance_tier` 필드가 `profile` 부재 시 별칭으로 읽힙니다 (`--high`/`--low`는 각각 `--model-policy high`/`low`의 deprecated 별칭). `--profile high|medium|low` 플래그로 직접 지정할 수 있으며, legacy `max` 값도 입력으로 받아 `high`로 정규화됩니다.
+기본 effort 폴백은 `medium`입니다. GLM 설정은 `settings.local.json`에 격리됩니다 (Git에 커밋되지 않음). 사라진 `--model-policy` / `--profile` / `--high` / `--medium-alias` / `--low` 플래그는 지원 종료 스텁입니다 — `moai profile setup`을 안내하는 경고를 낼 뿐 아무 효과가 없습니다.
 {{< /callout >}}
 
 ## Task 메트릭 로깅

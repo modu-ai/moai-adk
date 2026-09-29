@@ -12,7 +12,7 @@ draft: false
 
 MoAI-ADK 的回答有三点。
 
-1. **为每个任务分配合适的模型和推理深度** — 规划深、实现省、验证独立。
+1. **为会话选择合适的模型和推理深度** — 主会话的模型与 effort 会原样传给所有子代理，选好一个会话就是完成了整体分配。
 2. **节食上下文** — 最小化常驻指令，测量提示缓存命中率。
 3. **系统守护预算** — 追踪代币使用，在超阈值前正常停止。
 
@@ -33,7 +33,7 @@ v3.0 的产品差异化由三大核心组成。代币经济学是第一个核心
 ```mermaid
 flowchart TD
     A["Layer A — Metering<br/>per-SPEC 代币记账"]
-    B["Layer B — Routing<br/>Tier × Phase 声明式模型/effort"]
+    B["Layer B — Routing<br/>会话级模型/effort"]
     C["Layer C — Verify-diet<br/>verbatim 证据存文件，上下文存摘要"]
     D["Layer D — Budget defense<br/>90% hard-limit graceful stop"]
 
@@ -48,7 +48,7 @@ flowchart TD
 
 ### Layer B — 路由 (Routing)
 
-{{< icon package >}} 为每个保留代理声明式地分配模型和推理深度(effort)。活动配置文件(`high`/`medium`/`low`)选择配置矩阵的一列，把每个代理放在其工作所需的推理深度阶梯上，并把 Sonnet 保留给单次完成的机械性行，最大化性价比。详细的配置矩阵见 [配置矩阵](/zh/advanced/profile-matrix/)页面。
+{{< icon package >}} 决定会话使用的模型和推理深度(effort)。v3.2 起路由的单位是**会话**而不是智能体 —— 主会话的模型与 effort 被所有子代理原样继承，会话 effort 用 `/effort`·`ultrathink` 调节，配置向导的会话模型策略决定未单独选择推理强度时的默认回退。不再需要像过去那样维护逐智能体的分配表。把深度推理集中到判断密集环节的性价比判断标准继续有效，详情见 [配置矩阵](/zh/advanced/profile-matrix/)与[模型策略](/zh/multi-llm/model-policy/)页面。
 
 ### Layer C — 验证节食 (Verify-diet)
 
@@ -60,10 +60,10 @@ flowchart TD
 
 ## 模型层级路由
 
-将 Layer B 路由具体化的是模型配置文件策略。MoAI-ADK v3.0 将 Haiku 从路由模型集合中排除，以贴合任务性质的三层结构分散工作 — Sonnet 承担单次完成的行，Opus 贯穿整条代理式阶梯，更高的 effort 集中给做判断的行（审计、顾问、协调）。此设计的依据和配置矩阵实现在以下两页讨论。
+将 Layer B 路由具体化的是会话模型策略。MoAI-ADK v3.0 将 Haiku 从路由模型集合中排除，贴合任务性质的三层结构 — 单次完成的工作交给 Sonnet，代理式阶梯交给 Opus，更高的 effort 集中给做判断的工作（审计、顾问、协调）—— 作为选择会话模型的判断标准保留下来。v3.2 起分配本身就是会话继承：主会话的模型与 effort 就是所有子代理运行的环境。设计依据与继承规则在以下两页讨论。
 
 - [三层代理架构](/zh/advanced/no-haiku-3tier/) — 为什么排除 Haiku、DeepSWE 排行榜依据
-- [配置矩阵](/zh/advanced/profile-matrix/) — 单一 3 列 per-agent 配置矩阵
+- [配置矩阵](/zh/advanced/profile-matrix/) — 矩阵退役后的位置，以及现在的会话继承规则
 
 ## CG 停用与配置迁移
 
@@ -77,7 +77,7 @@ flowchart TD
 
 本页内容的实现状态明确区分如下。
 
-{{< icon check ok >}} **已实现 (已发布)** — 四层结构(A/B/C/D)全部、三层模型策略(配置矩阵解析器)、验证节食文件重定向契约、正常中止机制。
+{{< icon check ok >}} **已实现 (已发布)** — 四层结构(A/B/C/D)全部、会话继承模型策略（会话的模型·effort 由子代理继承，会话模型策略作为 effort 回退）、验证节食文件重定向契约、正常中止机制。
 
 {{< icon clock >}} **设计阶段 (路线图)** — GLM 后端 effort 叠加的 wire 有效性是需要实时 GLM 会话出站观测的实证课题。在配置矩阵页面中明确标注此区分。
 
@@ -85,4 +85,4 @@ flowchart TD
 
 - [代币预算管理与正常停止](/zh/advanced/token-budget/) — Layer D 深入 (各模型阈值、paste-ready resume 结构)
 - [三层代理架构](/zh/advanced/no-haiku-3tier/) — 线束架构基础
-- [配置矩阵](/zh/advanced/profile-matrix/) — 单一 3 列 per-agent 配置矩阵
+- [配置矩阵](/zh/advanced/profile-matrix/) — 矩阵退役后的位置与会话继承规则

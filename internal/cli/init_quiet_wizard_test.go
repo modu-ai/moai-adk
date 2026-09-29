@@ -25,9 +25,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -40,7 +38,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
-	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // quietWizardProjectDirName is the project directory name every run uses, so
@@ -178,40 +175,13 @@ func quietWizardReadYAML(p string, v any) error {
 	return yaml.Unmarshal(data, v)
 }
 
-// quietWizardPerformanceTierLine returns the first non-comment
-// performance_tier line of an llm.yaml document, verbatim.
-func quietWizardPerformanceTierLine(data []byte) (string, bool) {
-	for _, line := range strings.Split(string(data), "\n") {
-		if strings.HasPrefix(strings.TrimSpace(line), "performance_tier:") {
-			return line, true
-		}
-	}
-	return "", false
-}
-
-// quietWizardTemplatePerformanceTierLine reads the performance_tier line the
-// shipped llm.yaml template carries.
-func quietWizardTemplatePerformanceTierLine() (string, error) {
-	embedFS, err := template.EmbeddedTemplates()
-	if err != nil {
-		return "", fmt.Errorf("embedded templates: %w", err)
-	}
-	data, err := fs.ReadFile(embedFS, path.Join(defs.MoAIDir, defs.SectionsSubdir, quietWizardLLMYAML))
-	if err != nil {
-		return "", fmt.Errorf("read template llm.yaml: %w", err)
-	}
-	line, ok := quietWizardPerformanceTierLine(data)
-	if !ok {
-		return "", errors.New("template llm.yaml has no performance_tier line")
-	}
-	return line, nil
-}
-
 // quietWizardObserveDefaults is the observer: it returns every key under
 // projectDir whose value is not the default an all-defaults run must leave
 // (acceptance.md AC-IQW-006 table). project/report/llm/feedback values are read
 // from disk; workflow and feedback values are also read as the config loader
 // resolves them. An unreadable input is itself a finding, never a skip.
+// (The former llm.profile and llm.performance_tier checks retired with those
+// keys — t1246 removed both from the shipped llm.yaml template.)
 func quietWizardObserveDefaults(projectDir, wantName string) []quietWizardMismatch {
 	var found []quietWizardMismatch
 	check := func(key, want, got string) {
@@ -252,24 +222,12 @@ func quietWizardObserveDefaults(projectDir, wantName string) []quietWizardMismat
 	}
 
 	llmPath := filepath.Join(sections, quietWizardLLMYAML)
-	var llmDoc struct {
-		LLM struct {
-			Profile string `yaml:"profile"`
-		} `yaml:"llm"`
-	}
-	if err := quietWizardReadYAML(llmPath, &llmDoc); err != nil {
+	if _, err := os.ReadFile(llmPath); err != nil {
 		fail("llm.yaml", err)
-	} else {
-		check("llm.yaml llm.profile", "medium", llmDoc.LLM.Profile)
 	}
-	if wantLine, err := quietWizardTemplatePerformanceTierLine(); err != nil {
-		fail("template llm.yaml performance_tier", err)
-	} else if data, err := os.ReadFile(llmPath); err != nil {
-		fail("llm.yaml performance_tier", err)
-	} else {
-		gotLine, _ := quietWizardPerformanceTierLine(data)
-		check("llm.yaml llm.performance_tier line", wantLine, gotLine)
-	}
+	// (The former llm.profile and llm.performance_tier default checks retired
+	// with those keys — t1246 removed both from the shipped llm.yaml template,
+	// so there is no default left to observe.)
 
 	var feedbackDoc struct {
 		Feedback struct {

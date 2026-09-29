@@ -306,7 +306,7 @@ func TestAgentModelNoAdvisory(t *testing.T) {
 	h := newAgentModelTestHandler(t, root)
 
 	for name, model := range map[string]string{
-		"inherit spawn": "",
+		"inherit spawn":  "",
 		"declared spawn": "haiku",
 	} {
 		out, err := h.Handle(context.Background(), agentInput("Explore", model))

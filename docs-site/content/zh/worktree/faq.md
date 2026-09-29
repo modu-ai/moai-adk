@@ -101,7 +101,7 @@ moai glm -w SPEC-AUTH-001
 # 以 Claude 后端进入同一个工作树
 moai cc -w SPEC-AUTH-001
 
-# 以 Claude 领导 + GLM 队友的混合模式进入
+# 以 Claude 领队 + GLM 队友的混合模式进入
 moai cc -w SPEC-AUTH-001
 ```
 

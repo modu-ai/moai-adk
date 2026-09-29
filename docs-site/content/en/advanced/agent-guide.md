@@ -43,42 +43,42 @@ MoAI-ADK uses **13 core agents** (12 MoAI custom + 1 Anthropic built-in).
 
 ### Manager Agents (6)
 
-| Agent | Role | Phase | Model / effort | Key skills |
-|----------|------|------|---------------|----------|
-| `manager-spec` | SPEC document creation, GEARS-format requirements | Plan | inherit / medium {{< icon flash primary >}} | `moai-workflow-spec` |
-| `manager-develop` | DDD/TDD/autofix cycle implementation (cycle_type in quality.yaml) | Run | inherit / medium {{< icon flash primary >}} | `moai-workflow-ddd`, `moai-workflow-tdd` |
-| `manager-docs` | Documentation generation, CHANGELOG, README sync | Sync | inherit / low {{< icon flash muted >}} | `moai-workflow-project` |
-| `manager-git` | PR creation, Git branching, merge strategy | PR (Tier L) | sonnet / low {{< icon flash muted >}} | `moai-foundation-core` |
-| `manager-design` | Claude Design bidirectional collaboration (D1-D5 pipeline) | Design | inherit / medium {{< icon flash primary >}} | `moai-foundation-core` |
-| `manager-lead` | Hierarchical-team Tier L coordination (sole Agent-carrier, depth-2 sealed) | Run (Tier L) | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core`, `moai-workflow-project` |
+| Agent | Role | Phase | Key skills |
+|----------|------|------|----------|
+| `manager-spec` | SPEC document creation, GEARS-format requirements | Plan | `moai-workflow-spec` |
+| `manager-develop` | DDD/TDD/autofix cycle implementation (cycle_type in quality.yaml) | Run | `moai-workflow-ddd`, `moai-workflow-tdd` |
+| `manager-docs` | Documentation generation, CHANGELOG, README sync | Sync | `moai-workflow-project` |
+| `manager-git` | PR creation, Git branching, merge strategy | PR (Tier L) | `moai-foundation-core` |
+| `manager-design` | Claude Design bidirectional collaboration (D1-D5 pipeline) | Design | `moai-foundation-core` |
+| `manager-lead` | Hierarchical-team Tier L coordination (sole Agent-carrier, depth-2 sealed) | Run (Tier L) | `moai-foundation-core`, `moai-workflow-project` |
 
 ### Evaluator Agents (2)
 
-| Agent | Role | Evaluates | Model / effort | Key skills |
-|----------|------|---------|---------------|----------|
-| `plan-auditor` | Independent plan-phase audit, GEARS compliance, bias prevention | SPEC completeness | inherit / medium {{< icon flash primary >}} | `moai-foundation-core`, `moai-foundation-thinking` |
-| `sync-auditor` | Sync-phase quality scoring (4 dimensions: Functionality, Security, Craft, Consistency) | Implementation quality | inherit / medium {{< icon flash primary >}} | `moai-foundation-quality`, `moai-foundation-core` |
+| Agent | Role | Evaluates | Key skills |
+|----------|------|---------|----------|
+| `plan-auditor` | Independent plan-phase audit, GEARS compliance, bias prevention | SPEC completeness | `moai-foundation-core`, `moai-foundation-thinking` |
+| `sync-auditor` | Sync-phase quality scoring (4 dimensions: Functionality, Security, Craft, Consistency) | Implementation quality | `moai-foundation-quality`, `moai-foundation-core` |
 
 The key point is that planning and auditing are separated — the one who built it does not inspect their own work. Audit agents approach with a skeptical (fresh-judgment) stance — doubting every claim until evidence appears, and accepting only reproducible results rather than "it seems to pass." Scores are computed as the harmonic mean rather than the simple average, so if one dimension collapses, the overall score falls with it. This design upholds the reliability of the TRUST 5 quality framework.
 
 ### Builder Agent (1)
 
-| Agent | Role | Model / effort | Produces |
-|----------|------|---------------|--------|
-| `builder-harness` | Creates project-specific dynamic specialist teams (based on a Socratic interview) | inherit / medium {{< icon flash primary >}} | `.claude/agents/harness/`, `.moai/harness/manifest.json` |
+| Agent | Role | Produces |
+|----------|------|--------|
+| `builder-harness` | Creates project-specific dynamic specialist teams (based on a Socratic interview) | `.claude/agents/harness/`, `.moai/harness/manifest.json` |
 
 ### Advisor Agent (1)
 
-| Agent | Role | Model / effort | Characteristics |
-|----------|------|---------------|------|
-| `super-advisor` | High-reasoning consultation — deadlocks, design decision points, second opinions (E1-E4 escalation) | inherit / high {{< icon flash warn >}} | Non-binding prescriptions — the orchestrator makes the final call |
+| Agent | Role | Characteristics |
+|----------|------|------|
+| `super-advisor` | High-reasoning consultation — deadlocks, design decision points, second opinions (E1-E4 escalation) | Non-binding prescriptions — the orchestrator makes the final call |
 
 ### Specialist Agents (2)
 
-| Agent | Role | Model / effort | Characteristics |
-|----------|------|---------------|------|
-| `e2e-tester` | E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs, artifact management) | inherit / low {{< icon flash muted >}} | Execution owner of the `/moai e2e` workflow — selection questions stay with the orchestrator |
-| `mission-governor` | Reads the sealed snapshot of an approved GTD auto mission and returns exactly one structured decision (read-only) | inherit / high {{< icon flash warn >}} | Decides but never acts — a deterministic executor validates the decision and performs any state change |
+| Agent | Role | Characteristics |
+|----------|------|------|
+| `e2e-tester` | E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs, artifact management) | Execution owner of the `/moai e2e` workflow — selection questions stay with the orchestrator |
+| `mission-governor` | Reads the sealed snapshot of an approved GTD auto mission and returns exactly one structured decision (read-only) | Decides but never acts — a deterministic executor validates the decision and performs any state change |
 
 `mission-governor` **decides; it does not execute**. It writes no files, runs no shell or Git commands, touches no queue, dispatches no work to a lane, and neither commits, merges, approves, nor issues an audit verdict. The side that inspects the returned decision and actually changes state is a deterministic executor (an automated handler that moves only along fixed rules). Its tool list is just four — `Read`, `Grep`, `Glob`, `Skill` — and it returns a blocker decision whenever a request falls outside the sealed scope, or the evidence it needs to judge is missing or stale.
 
@@ -88,14 +88,12 @@ The key point is that planning and auditing are separated — the one who built 
 
 ### Built-in Agent (1, Anthropic)
 
-| Agent | Role | Model / effort | Characteristics |
-|----------|------|---------------|------|
-| `Explore` | Read-only code exploration and analysis | sonnet / low (call-time default) | Read-only tools; no agent file on disk, so effort is stated in the spawn prompt rather than pinned |
+| Agent | Role | Characteristics |
+|----------|------|------|
+| `Explore` | Read-only code exploration and analysis | Read-only tools; an Anthropic built-in with no agent file on disk |
 
 {{< callout type="info" >}}
-**4-tier token-cost tiers** ({{< icon flash danger >}} max · {{< icon flash warn >}} high · {{< icon flash primary >}} medium · {{< icon flash muted >}} low): `model: inherit` inherits the parent session model, and effort determines the reasoning-token budget.
-
-The values above are the **shipped frontmatter**, which is pinned to the `medium` column of the [profile matrix](/en/advanced/profile-matrix/) so a fresh deployment matches the default profile. Switching the profile rewrites these values — under `high`, only `builder-harness` and `e2e-tester` move up one level (no cell uses `max`), and under `low` the auditing and coordinating rows drop to `medium`, `builder-harness` drops to `low`, and `e2e-tester` moves to Sonnet. Inspect the resolved values for the active profile with `moai model profile`.
+**Model and effort**: the former per-agent assignment is retired. **Subagents inherit the main session's model and effort** — pass neither `model` nor `effort` when spawning a subagent, and MoAI agent definitions declare neither. Change the session's effort (`/effort`, `ultrathink`) and every agent in that session follows.
 {{< /callout >}}
 
 ## Manager-Develop Domain Context Injection
@@ -252,7 +250,6 @@ name: my-specialist
 description: >
   A specialist for this project. Describe the specific domain expertise.
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: inherit
 ---
 
 You are this project's [domain] specialist.

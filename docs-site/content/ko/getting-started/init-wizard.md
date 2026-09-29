@@ -127,31 +127,16 @@ Jev 는 건네받은 상태에 대해 정해진 형태의 질문에 답하고 �
 
 | 항목 | 기본값 | 바꾸는 방법 |
 |------|--------|-------------|
-| 성능 티어 (모델 정책) | Medium | `--model-policy` 또는 `--profile`, `moai update -c` |
+| 세션 모델 정책 (effort 폴백) | Medium | `moai profile setup`, `moai update -c` |
 | 리포트 형식 | HTML + Markdown | `moai update -c` |
 | LSP 통합 | 켜짐 | `--enable-lsp` |
 | 품질 게이트 강제 | 켜짐 | `--enforce-quality` |
 | 디자인 워크플로우·Claude Design 연동 | 켜짐 | `--enable-design` |
 | Git 자동화 모드·프로바이더 | 원격 저장소 설정에서 판단 | `--git-mode`, `--git-provider`, `moai update -c` |
 
-### 성능 티어 (모델 정책)
+### 세션 모델 정책 (effort 폴백)
 
-모델 정책은 `moai init` 에서는 묻지 않고 Medium 으로 저장됩니다. `moai update -c` 로 다시 설정할 때 아래 화면이 나옵니다.
-
-```bash
-? 모델 정책 선택:
-  Max - Opus 5.5 (high~medium) + Sonnet (low, 문서/단발성 작업) — Max $200 플랜
-▸ Medium (권장) - Opus 5.5 (high~low) + Sonnet (low, 문서/단발성 작업) — Max $100 플랜
-  Low - Opus 5.5 (high~low) + Sonnet (low, 문서/E2E/단발성 작업) — Plus $20 플랜
-```
-
-| 티어 | 특징 |
-|------|------|
-| **Max** | 품질 우선 — Medium과 같되 `builder-harness`와 `e2e-tester` 두 에이전트만 한 단계 높은 effort로 돌립니다 |
-| **Medium** (기본값·권장) | 품질과 비용의 균형 — 비용/점수 곡선의 무릎 |
-| **Low** | 작업당 최저 비용 — 에이전틱 에이전트는 대부분 Opus `medium`으로 내려갑니다 |
-
-이 설정은 `.moai/config/sections/llm.yaml` 의 `performance_tier` 필드에 저장되며, `profile` 필드(프로필 매트릭스 열)의 legacy 별칭으로 읽힙니다. `--profile high|medium|low` 플래그로 직접 지정하면 `profile` 필드에 저장됩니다. 프로필별 에이전트 model+effort 매핑은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
+에이전트별 모델 배정을 묻던 마법사 질문은 물러났습니다. v3.2부터 서브에이전트는 메인 세션의 모델과 추론 깊이를 그대로 따르므로, `moai init`은 모델 정책을 묻지 않습니다 — 에이전트별로 고를 것이 남아 있지 않기 때문입니다. 프로필이 지니는 것은 **세션 모델 정책** 하나입니다. 이 프로필로 실행하는 Claude 세션의 기본 추론 강도이며, 추론 강도를 따로 고르지 않았을 때 적용됩니다. 설정은 `moai profile setup`의 "세션 모델 정책" 질문에서 하세요. 사라진 `--model-policy` / `--profile` 플래그는 경고만 내는 지원 종료 스텁입니다. 상속 규칙은 [모델 정책](/ko/multi-llm/model-policy/) 페이지, 에이전트별 매트릭스의 물러남은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
 
 ## 비대화형 모드 (CI/CD)
 
@@ -162,7 +147,6 @@ moai init my-project \
   --non-interactive \
   --llm claude \
   --autonomy-tier semi-auto \
-  --profile medium \
   --enable-lsp=false \
   --enforce-quality
 ```
@@ -197,8 +181,8 @@ vim .moai/config/sections/user.yaml
 # 언어 설정
 vim .moai/config/sections/language.yaml
 
-# 모델 정책 (성능 티어)
-vim .moai/config/sections/llm.yaml
+# 세션 모델 정책 (effort 폴백)
+moai profile setup
 
 # 품질 설정
 vim .moai/config/sections/quality.yaml

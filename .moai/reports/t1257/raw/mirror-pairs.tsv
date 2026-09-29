@@ -1,0 +1,116 @@
+local_path	local_status	bytes	token=template/local
+.claude/agents/moai/e2e-tester.md	present	differs	lane=1/1
+.claude/agents/moai/manager-design.md	present	differs	worker=1/1
+.claude/agents/moai/manager-develop.md	present	differs	lead=1/1
+.claude/agents/moai/manager-git.md	present	differs	lead=1/1
+.claude/agents/moai/manager-lead.md	present	differs	lead=63/64 lane=28/29 worker=36/33 companion=4/4 deputy=26/26 coordinator=1/1
+.claude/agents/moai/manager-spec.md	present	differs	lead=1/1
+.claude/agents/moai/mission-governor.md	present	identical	lane=1/1
+.claude/agents/moai/plan-auditor.md	present	differs	lead=2/2
+.claude/agents/moai/super-advisor.md	present	differs	leader=0/3 worker=1/1
+.claude/agents/moai/sync-auditor.md	present	differs	lead=2/2 leader=1/1
+.claude/loop.md	present	identical	foreman=3/0
+.claude/output-styles/moai/moai-easy.md	present	identical	companion=3/3
+.claude/output-styles/moai/moai.md	present	identical	lead=5/5 lane=22/22
+.claude/rules/moai/core/agent-common-protocol-reference.md	present	differs	lead=1/1 worker=2/2 companion=1/1
+.claude/rules/moai/core/agent-common-protocol.md	present	differs	lead=3/3 lane=15/15 companion=2/2
+.claude/rules/moai/core/askuser-protocol-reference.md	present	identical	companion=1/1
+.claude/rules/moai/core/askuser-protocol.md	present	identical	companion=1/1
+.claude/rules/moai/core/glm-web-tooling.md	present	differs	leader=3/14
+.claude/rules/moai/core/moai-constitution-detail.md	present	differs	lead=1/1 lane=1/1 companion=4/4
+.claude/rules/moai/core/moai-constitution.md	present	differs	lane=2/2 companion=1/1
+.claude/rules/moai/core/moai-mcp-tools-catalogue.md	present	identical	lead=10/10 lane=6/6 worker=5/5 companion=4/4
+.claude/rules/moai/core/moai-mcp-tools.md	present	identical	lead=2/2 lane=1/1 worker=1/1
+.claude/rules/moai/core/native-idiom-and-register-detail.md	present	identical	companion=4/4
+.claude/rules/moai/core/output-style-localization-catalogue.md	present	identical	companion=4/4
+.claude/rules/moai/core/verification-claim-integrity-detail.md	present	differs	lead=1/1 companion=6/6
+.claude/rules/moai/core/verification-claim-integrity.md	present	differs	companion=2/3
+.claude/rules/moai/development/agent-authoring.md	present	differs	lead=8/8 worker=4/4 coordinator=1/1
+.claude/rules/moai/development/agent-patterns.md	present	differs	lead=7/7 worker=8/8 coordinator=4/4
+.claude/rules/moai/development/model-policy.md	present	identical	lead=3/3 leader=3/3 worker=2/2 companion=2/2
+.claude/rules/moai/development/orchestrator-templates.md	present	differs	lead=1/1
+.claude/rules/moai/development/rule-authoring.md	present	identical	companion=1/1
+.claude/rules/moai/development/skill-authoring.md	present	differs	companion=1/1
+.claude/rules/moai/development/sprint-round-naming.md	present	identical	lane=15/15
+.claude/rules/moai/languages/cpp.md	present	identical	worker=2/2
+.claude/rules/moai/languages/go.md	present	identical	worker=1/1
+.claude/rules/moai/languages/kotlin.md	present	identical	companion=1/1
+.claude/rules/moai/languages/rust.md	present	identical	worker=1/1
+.claude/rules/moai/quality/boundary-verification.md	present	identical	lead=1/1
+.claude/rules/moai/workflow/archived-agent-rejection.md	present	identical	worker=2/2 coordinator=1/1
+.claude/rules/moai/workflow/cache-aware-execution-reference.md	present	differs	companion=4/4
+.claude/rules/moai/workflow/context-window-management-detail.md	present	identical	companion=5/5
+.claude/rules/moai/workflow/cross-session-messaging-detail.md	present	differs	lead=1/1 lane=2/2 worker=4/4 companion=5/5
+.claude/rules/moai/workflow/cross-session-messaging.md	present	differs	lead=4/4 worker=5/5 companion=1/1 coordinator=2/2
+.claude/rules/moai/workflow/goal-directive-detail.md	present	identical	companion=3/3
+.claude/rules/moai/workflow/goal-directive.md	present	identical	companion=1/1
+.claude/rules/moai/workflow/kanban-dispatch-detail.md	present	identical	lead=79/79 lane=57/57 worker=9/9 companion=20/20 deputy=29/29
+.claude/rules/moai/workflow/kanban-dispatch.md	present	identical	lead=87/87 lane=57/57 worker=6/6 companion=18/18 deputy=10/10
+.claude/rules/moai/workflow/main-checkout-branch-guard-detail.md	present	differs	companion=4/4
+.claude/rules/moai/workflow/moai-memory.md	present	differs	lead=2/2
+.claude/rules/moai/workflow/orchestration-mode-selection.md	present	differs	lead=16/16 leader=1/1 worker=10/10
+.claude/rules/moai/workflow/resource-slot-lease.md	present	identical	lane=1/1
+.claude/rules/moai/workflow/runtime-recovery-doctrine.md	present	identical	companion=1/1
+.claude/rules/moai/workflow/session-handoff-examples.md	present	identical	leader=2/2 worker=1/1 companion=1/1
+.claude/rules/moai/workflow/session-handoff.md	present	identical	companion=1/1
+.claude/rules/moai/workflow/skill-routing-detail.md	present	identical	companion=4/4
+.claude/rules/moai/workflow/spec-workflow.md	present	identical	worker=1/1
+.claude/rules/moai/workflow/worktree-integration.md	present	identical	lead=3/3 lane=5/5 worker=2/2
+.claude/skills/moai-domain-html-report/SKILL.md	present	identical	lead=3/3
+.claude/skills/moai-domain-humanize/modules/copy-review.md	present	identical	lead=2/2
+.claude/skills/moai-domain-humanize/modules/english.md	present	identical	lead=1/1
+.claude/skills/moai-domain-svg-infographic/SKILL.md	present	differs	lane=1/1
+.claude/skills/moai-domain-svg-infographic/references/archetypes.md	present	identical	lane=1/1
+.claude/skills/moai-domain-svg-infographic/references/authoring.md	present	identical	lead=1/1 leader=2/2
+.claude/skills/moai-foundation-cc/SKILL.md	present	differs	lead=2/3 worker=4/5
+.claude/skills/moai-foundation-cc/reference/advanced-agent-patterns.md	present	identical	lead=3/3 worker=6/6
+.claude/skills/moai-foundation-cc/reference/sub-agents/sub-agent-examples.md	present	identical	coordinator=1/1
+.claude/skills/moai-foundation-core/modules/agents-reference.md	present	identical	worker=1/1
+.claude/skills/moai-foundation-thinking/SKILL.md	present	identical	lead=2/2
+.claude/skills/moai-harness-learner/SKILL.md	present	differs	coordinator=3/3
+.claude/skills/moai-kanban-foreman/SKILL.md	present	identical	lane=5/5 worker=18/18 foreman=11/11
+.claude/skills/moai-meta-harness/SKILL.md	present	differs	companion=5/5
+.claude/skills/moai-meta-harness/references/seven-phase-workflow.md	present	identical	lead=1/1 worker=3/3
+.claude/skills/moai-ref-ui-polish/references/motion-principles.md	present	identical	lead=1/1
+.claude/skills/moai-workflow-project/references/navigator.md	present	differs	companion=1/1
+.claude/skills/moai-workflow-project/scripts/navigator-regen.sh	present	identical	companion=1/1
+.claude/skills/moai-workflow-project/templates/question-templates/spec-workflow-setup.json	present	identical	lead=1/1
+.claude/skills/moai-workflow-testing/modules/advanced-patterns.md	present	differs	worker=1/1
+.claude/skills/moai-workflow-testing/modules/optimization.md	present	differs	worker=2/2
+.claude/skills/moai-workflow-testing/modules/performance-optimization/ai-optimization.md	present	identical	worker=1/1
+.claude/skills/moai-workflow-testing/modules/performance-optimization/bottleneck-detection.md	present	identical	worker=1/1
+.claude/skills/moai-workflow-testing/modules/performance/optimization-patterns.md	present	differs	worker=2/2
+.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md	present	identical	lane=2/2
+.claude/skills/moai-workflow-worktree/modules/moai-adk-integration.md	present	differs	lead=1/1
+.claude/skills/moai-workflow-worktree/modules/parallel-workflows.md	present	identical	lead=1/1
+.claude/skills/moai-workflow-worktree/modules/tools-integration.md	present	identical	worker=3/3
+.claude/skills/moai-workflow-worktree/modules/worktree-management.md	present	identical	coordinator=1/1
+.claude/skills/moai/SKILL.md	present	differs	companion=2/2
+.claude/skills/moai/workflows/design.md	present	identical	worker=1/1
+.claude/skills/moai/workflows/e2e.md	present	identical	lane=4/4
+.claude/skills/moai/workflows/goal.md	present	identical	lead=1/1 lane=2/2
+.claude/skills/moai/workflows/gtd.md	present	identical	lead=11/11 lane=6/6 companion=1/1 foreman=1/1
+.claude/skills/moai/workflows/harness-build-entry.md	present	differs	companion=3/3
+.claude/skills/moai/workflows/harness-builder.md	present	differs	lead=1/1 worker=3/3 companion=10/10 coordinator=1/1
+.claude/skills/moai/workflows/harness.md	present	differs	companion=1/1
+.claude/skills/moai/workflows/project/doc-generation.md	present	identical	lead=3/3
+.claude/skills/moai/workflows/project/meta-harness.md	present	differs	companion=1/1
+.claude/skills/moai/workflows/run/context-loading.md	present	differs	lead=1/1
+.claude/skills/moai/workflows/run/phase-execution.md	present	differs	leader=1/1
+.claude/skills/moai/workflows/run/task-decomposition.md	present	differs	leader=1/1
+.claude/skills/moai/workflows/sync/delivery.md	present	differs	lane=1/1
+.claude/agents/harness/hns-oss-docs-content-author-specialist.md	LOCAL-ONLY	-	companion=-/3
+.claude/agents/harness/hns-oss-docs-locale-translator-specialist.md	LOCAL-ONLY	-	worker=-/1 companion=-/2
+.claude/agents/harness/hns-oss-docs-structure-curator-specialist.md	LOCAL-ONLY	-	companion=-/2
+.claude/agents/harness/hns-release-specialist.md	LOCAL-ONLY	-	lane=-/7
+.claude/agents/harness/hns-release-update-specialist.md	LOCAL-ONLY	-	leader=-/1
+.claude/commands/harness/oss-docs/manifest.json	LOCAL-ONLY	-	worker=-/1
+.claude/rules/local/gitflow-lane-protocol.md	LOCAL-ONLY	-	lane=-/5
+.claude/rules/local/repo-local-pr-policy.md	LOCAL-ONLY	-	lead=-/1 lane=-/5 worker=-/1
+.claude/rules/moai/workflow/rule-loading-budget.md	LOCAL-ONLY	-	companion=-/1
+.claude/rules/moai/workflow/team-capability-resolver.md	LOCAL-ONLY	-	worker=-/1
+.claude/skills/hns-lsel-curator/SKILL.md	LOCAL-ONLY	-	lead=-/1 lane=-/1 companion=-/4
+.claude/skills/hns-lsel-curator/drain.sh	LOCAL-ONLY	-	companion=-/5
+.claude/skills/hns-moaiadk-patterns/SKILL.md	LOCAL-ONLY	-	companion=-/2
+.claude/skills/hns-oss-docs-readme-sync/SKILL.md	LOCAL-ONLY	-	worker=-/1
+.claude/skills/hns-oss-docs-verify/SKILL.md	LOCAL-ONLY	-	lead=-/2

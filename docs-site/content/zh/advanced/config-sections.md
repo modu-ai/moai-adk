@@ -61,19 +61,15 @@ delegation:
 
 相关: [代理指南](/zh/advanced/agent-guide), [技能指南](/zh/advanced/skill-guide).
 
-## llm.yaml — 后端·配置矩阵
+## llm.yaml — 后端·GLM 映射
 
-定义配置文件、配置矩阵、每个代理的 override 以及 GLM 模型映射。
+定义 harness 后端、GLM 环境和 GLM 模型映射。智能体运行的模型与 effort 在**会话**层面决定 —— 子代理沿用主会话的模型与推理深度，因此这个文件不再承载逐智能体的模型分配。曾经的配置矩阵键（`profile`、`profiles`、`performance_tier`、`harness_agents`、`agent_overrides`）已经退役；`moai update` 会在下次运行时从用户文件中移除这些键。主会话的推理强度来自偏好配置文件（`moai profile setup`），而非本文件。
 
 ```yaml
 llm:
-  profile: "medium"            # high | medium | low (活动矩阵列; max 读作 high)
-  performance_tier: "medium"   # legacy 别名 (profile 缺失时读取; 同一套词汇)
-  profiles:                    # 配置文件列 → 13 个代理 → {model, effort}
-    high: { ... }              # 详表: 配置矩阵页面
-    medium: { ... }
-    low: { ... }
-  agent_overrides: {}          # 每个代理的 {model, effort} override (可选)
+  harness: "claude"            # claude | gpt | both — 初始化时选择的智能体 harness
+  team_mode: ""                # glm 时切换到 z.ai 后端
+  glm_env_var: "GLM_API_KEY"
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
@@ -85,10 +81,9 @@ llm:
 
 | 键 | 说明 |
 |----|------|
-| `profile` | 活动配置矩阵列 (`high`/`medium`/`low`; 旧的 `max` 被读作 `high` 的别名)。为空时解释为 `medium`。所有子代理 spawn 的 model+effort 来源 |
-| `performance_tier` | legacy 别名字段。仅当 `profile` 缺失时读取; 与 `profile` 共享同一套 `high`/`medium`/`low` 词汇，因此不需要归一化步骤 |
-| `profiles` | 每个配置文件列的 per-agent → `{model, effort}` 矩阵 (13 个代理 × 3 列 = 39 格)。Go 默认值(`template.DefaultProfileMatrix`)是缺失格的权威 fallback |
-| `agent_overrides` | 每个规范代理名称的 `{model, effort}` override。优先于活动配置文件的代理格 (目录+enum 校验) |
+| `harness` | 初始化时部署的智能体 harness（`claude` 默认；`gpt` 表示 Codex 专用部署） |
+| `team_mode` | 为空运行 Claude；`glm` 会将会话路由到 z.ai 后端 |
+| `claude_bin` | Claude Code 二进制的显式固定（可选；环境变量 `MOAI_CLAUDE_BIN` 按次启动优先） |
 | `glm.base_url` | Z.AI Anthropic兼容代理端点 |
 | `glm.models` | 每个插槽的 GLM 模型映射。GLM将Claude的5步effort折叠为3个推理状态 (thinking-off / reasoning-high / reasoning-max) |
 

@@ -166,6 +166,19 @@ workflow:
     # undone, re-run, or rewritten. Ships OFF.
     served_model_gate:
         enabled: false
+    # commit_identity_guard: refuse a shell command that would create a commit
+    # under a known test-fixture identity (an email your test suites use for
+    # throwaway repositories). The guard reads the identity the commit would
+    # actually use — configuration layers plus command-level overrides — and
+    # denies only on an exact email match against its built-in fixture list;
+    # uncertainty always allows. Commands aimed at another repository (a
+    # different git common dir, such as a temp fixture repository) are allowed
+    # without probing. While it is off no probe subprocess ever runs.
+    # Ships OFF; deny_emails adds entries to the built-in list, it never
+    # removes from it.
+    commit_identity_guard:
+        enabled: false
+        deny_emails: []
     # jev: the TypeSafe System One judgment capability. It answers a typed
     # question about a supplied state and returns a typed answer with a
     # probability; it generates no text and decides nothing. Ships OFF, and

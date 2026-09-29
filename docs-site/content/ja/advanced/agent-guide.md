@@ -44,42 +44,42 @@ MoAI-ADK は **13 個のコアエージェント** (12 個の MoAI カスタム 
 
 ### Manager エージェント (6 個)
 
-| エージェント | 役割 | フェーズ | Model / effort | 主要スキル |
-|----------|------|------|---------------|----------|
-| `manager-spec` | SPEC ドキュメント生成、GEARS 形式の要求事項 | Plan | inherit / medium {{< icon flash primary >}} | `moai-workflow-spec` |
-| `manager-develop` | DDD/TDD/autofix サイクル実装 (quality.yaml の cycle_type) | Run | inherit / medium {{< icon flash primary >}} | `moai-workflow-ddd`, `moai-workflow-tdd` |
-| `manager-docs` | ドキュメント生成、CHANGELOG、README 同期 | Sync | inherit / low {{< icon flash muted >}} | `moai-workflow-project` |
-| `manager-git` | PR 作成、Git ブランチ、マージ戦略 | PR (Tier L) | sonnet / low {{< icon flash muted >}} | `moai-foundation-core` |
-| `manager-design` | Claude Design 双方向コラボレーション (D1-D5 パイプライン) | Design | inherit / medium {{< icon flash primary >}} | `moai-foundation-core` |
-| `manager-lead` | 階層型チーム Tier L 調整（唯一の Agent-carrier、depth-2 seal） | Run (Tier L) | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core`, `moai-workflow-project` |
+| エージェント | 役割 | フェーズ | 主要スキル |
+|----------|------|------|----------|
+| `manager-spec` | SPEC ドキュメント生成、GEARS 形式の要求事項 | Plan | `moai-workflow-spec` |
+| `manager-develop` | DDD/TDD/autofix サイクル実装 (quality.yaml の cycle_type) | Run | `moai-workflow-ddd`, `moai-workflow-tdd` |
+| `manager-docs` | ドキュメント生成、CHANGELOG、README 同期 | Sync | `moai-workflow-project` |
+| `manager-git` | PR 作成、Git ブランチ、マージ戦略 | PR (Tier L) | `moai-foundation-core` |
+| `manager-design` | Claude Design 双方向コラボレーション (D1-D5 パイプライン) | Design | `moai-foundation-core` |
+| `manager-lead` | 階層型チーム Tier L 調整（唯一の Agent-carrier、depth-2 seal） | Run (Tier L) | `moai-foundation-core`, `moai-workflow-project` |
 
 ### Evaluator エージェント (2 個)
 
-| エージェント | 役割 | 評価対象 | Model / effort | 主要スキル |
-|----------|------|---------|---------------|----------|
-| `plan-auditor` | Plan フェーズの独立監査、GEARS 準拠、バイアス防止 | SPEC 完成度 | inherit / medium {{< icon flash primary >}} | `moai-foundation-core`, `moai-foundation-thinking` |
-| `sync-auditor` | Sync フェーズの品質スコア (4 次元: Functionality, Security, Craft, Consistency) | 実装品質 | inherit / medium {{< icon flash primary >}} | `moai-foundation-quality`, `moai-foundation-core` |
+| エージェント | 役割 | 評価対象 | 主要スキル |
+|----------|------|---------|----------|
+| `plan-auditor` | Plan フェーズの独立監査、GEARS 準拠、バイアス防止 | SPEC 完成度 | `moai-foundation-core`, `moai-foundation-thinking` |
+| `sync-auditor` | Sync フェーズの品質スコア (4 次元: Functionality, Security, Craft, Consistency) | 実装品質 | `moai-foundation-quality`, `moai-foundation-core` |
 
 計画と監査が分離されている点が核心です — 作った本人が自分の仕事を検査することはありません。この分離設計が **TRUST 5** 品質フレームワークの信頼性を支えています。
 
 ### Builder エージェント (1 個)
 
-| エージェント | 役割 | Model / effort | 生成物 |
-|----------|------|---------------|--------|
-| `builder-harness` | プロジェクト固有の動的エージェントチーム生成 (Socratic インタビューベース) | inherit / medium {{< icon flash primary >}} | `.claude/agents/harness/`, `.moai/harness/manifest.json` |
+| エージェント | 役割 | 生成物 |
+|----------|------|--------|
+| `builder-harness` | プロジェクト固有の動的エージェントチーム生成 (Socratic インタビューベース) | `.claude/agents/harness/`, `.moai/harness/manifest.json` |
 
 ### Advisor エージェント (1 個)
 
-| エージェント | 役割 | Model / effort | 特徴 |
-|----------|------|---------------|------|
-| `super-advisor` | 高推論コンサルティング — デッドロック、設計上の決定点、セカンドオピニオン (E1-E4 エスカレーション) | inherit / high {{< icon flash warn >}} | 非拘束の処方 — 最終決定はオーケストレーター |
+| エージェント | 役割 | 特徴 |
+|----------|------|------|
+| `super-advisor` | 高推論コンサルティング — デッドロック、設計上の決定点、セカンドオピニオン (E1-E4 エスカレーション) | 非拘束の処方 — 最終決定はオーケストレーター |
 
 ### Specialist エージェント (2 個)
 
-| エージェント | 役割 | Model / effort | 特徴 |
-|----------|------|---------------|------|
-| `e2e-tester` | ウェブ/モバイル/デスクトップの E2E テスト実行 (ジャーニースクリプティング、CLI 優先のスイート実行、アーティファクト管理) | inherit / low {{< icon flash muted >}} | `/moai e2e` ワークフローの実行主体 — 選択質問はオーケストレーター担当 |
-| `mission-governor` | 承認済み GTD 自動ミッションの封印されたスナップショットを読み、構造化された判定を 1 つだけ返します (読み取り専用) | inherit / high {{< icon flash warn >}} | 判定するだけで実行はしません — 判定を検査し状態を変えるのは決定論的な実行器です |
+| エージェント | 役割 | 特徴 |
+|----------|------|------|
+| `e2e-tester` | ウェブ/モバイル/デスクトップの E2E テスト実行 (ジャーニースクリプティング、CLI 優先のスイート実行、アーティファクト管理) | `/moai e2e` ワークフローの実行主体 — 選択質問はオーケストレーター担当 |
+| `mission-governor` | 承認済み GTD 自動ミッションの封印されたスナップショットを読み、構造化された判定を 1 つだけ返します (読み取り専用) | 判定するだけで実行はしません — 判定を検査し状態を変えるのは決定論的な実行器です |
 
 `mission-governor` は **判定するだけで、自ら実行はしません**。ファイルを書くことも、シェルや Git のコマンドを走らせることも、キューに触れることも、レーンに作業を配ることもなく、コミット・マージ・承認も、監査判定も行いません。返された判定を検査して実際に状態を変えるのは決定論的な実行器 (決められた規則どおりにだけ動く自動処理器) です。ツール一覧も `Read`、`Grep`、`Glob`、`Skill` の 4 つだけで、リクエストが封印された範囲を外れた場合や、判断に必要な証拠が欠けている・古い場合は blocker 判定を返します。
 
@@ -89,14 +89,12 @@ MoAI-ADK は **13 個のコアエージェント** (12 個の MoAI カスタム 
 
 ### ビルトインエージェント (1 個、Anthropic)
 
-| エージェント | 役割 | Model / effort | 特徴 |
-|----------|------|---------------|------|
-| `Explore` | 読み取り専用のコード探索と分析 | sonnet / low (呼び出し時のデフォルト) | Read-only ツール。ディスク上にエージェントファイルが無いため、effort は frontmatter に固定されるのではなく spawn プロンプトで指定されます |
+| エージェント | 役割 | 特徴 |
+|----------|------|------|
+| `Explore` | 読み取り専用のコード探索と分析 | Read-only ツール。Anthropic 組み込みでディスク上にエージェントファイルはありません |
 
 {{< callout type="info" >}}
-**4 段のトークンコストティア** ({{< icon flash danger >}} max · {{< icon flash warn >}} high · {{< icon flash primary >}} medium · {{< icon flash muted >}} low): `model: inherit` は親セッションのモデルを継承し、effort が推論トークンの予算を決めます。
-
-上記の値は **配布時の frontmatter** であり、新規デプロイがデフォルトプロファイルと一致するように[プロファイルマトリクス](/ja/advanced/profile-matrix/)の `medium` 列に固定されています。プロファイルを切り替えるとこれらの値は書き換わります — `high` では `builder-harness` と `e2e-tester` だけが 1 段階上がり(`max` を使うセルはありません)、`low` では監査・調整の行が `medium` に、`builder-harness` が `low` に下がり、`e2e-tester` は Sonnet に移ります。アクティブプロファイルで解決された値は `moai model profile` で確認してください。
+**モデルと推論深度**: エージェントごとの割り当ては退きました。**サブエージェントはメインセッションのモデルと推論深度をそのまま引き継ぎます** — spawn するとき `model` も `effort` も渡さず、MoAI のエージェント定義はどちらも宣言しません。セッションの effort を変えれば (`/effort`、`ultrathink`)、そのセッションの全エージェントが一緒に従います。
 {{< /callout >}}
 
 ## Manager-Develop ドメインコンテキスト注入
@@ -253,7 +251,6 @@ name: my-specialist
 description: >
   このプロジェクトの専門家。特定ドメインの専門性の説明。
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: inherit
 ---
 
 あなたはこのプロジェクトの [ドメイン] 専門家です。

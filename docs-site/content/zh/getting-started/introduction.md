@@ -29,7 +29,7 @@ MoAI-ADK 是用**三根轴**包住 Claude Code 的 Agentic Development Kit —�
 
 ### 成本 —— 代币经济学
 
-同样的质量，更少的代币。决定成本的不是单价而是**模型分配** —— DeepSWE 基准测试中，Opus 最低推理的得分高于 Sonnet 最高推理，成本却是其十六分之一。三档模型策略 · 提示缓存 · Token Circuit Breaker 让预算由系统管理。
+同样的质量，更少的代币。决定成本的不是单价而是**模型的选择** —— DeepSWE 基准测试中，Opus 最低推理的得分高于 Sonnet 最高推理，成本却是其十六分之一。会话模型策略 · 提示缓存 · Token Circuit Breaker 让预算由系统管理。
 
 ### 自我改进 —— 智能体循环工程
 
@@ -46,10 +46,10 @@ MoAI-ADK 是用**三根轴**包住 Claude Code 的 Agentic Development Kit —�
 - **`/moai goal`** —— 一行声明完成条件，会话自主推进。
 - **看板模式** —— 同时运行多个会话。
 - **BAS Navigator** —— 自动同步三段代码地图。
-- **manager-lead** —— 协调大规模工作：SPEC 内的 Tier L 里程碑扇出，加上看板与工厂领导会话调度。
+- **manager-lead** —— 协调大规模工作：SPEC 内的 Tier L 里程碑扇出，加上看板与工厂主导会话调度。
 - **multi-model audit** —— 用多模型交叉验证抓偏差。
 - **autonomy tier** —— 调节自主档位，安全地跑。
-- **profile matrix** —— 以 13 个智能体 × 3 个配置文件分配模型。
+- **会话模型策略** —— 一次选择即可决定会话的默认推理强度。子代理沿用会话的模型与推理深度。
 
 ## 核心概念
 
@@ -139,16 +139,16 @@ MoAI 编排器不亲自实现，而是把工作委派给 13 个专业智能体�
 
 ### 模型策略（代币经济学）
 
-MoAI-ADK 为每个智能体分配最优的模型与推理深度。目标是在套餐的用量额度内把质量尽量拉高。因此不去换更弱的模型等级，而是在同一个 Opus 内部只调节各智能体的推理深度。因为在长周期的智能体工作里，弱模型会消耗更多步数，每任务成本反而更高。
+目标是在套餐的用量额度内把质量尽量拉高。在长周期的智能体工作里，弱模型会消耗更多步数、每任务成本反而更高，所以不去换更弱的模型等级，而是在同一个模型内部只调节推理深度。v3.2 起这个调节以**会话**为单位：子代理沿用主会话的模型与推理深度，智能体定义对两者都不作声明，配置文件的**会话模型策略**（`moai profile setup`）决定未单独选择推理强度时的默认值。
 
-| 档位 | 特点 |
+| 会话模型策略 | 含义 |
 |------|------|
-| **high** | 最高质量 —— 与 medium 相同，只有 `builder-harness` 和 `e2e-tester` 两个智能体的 effort 高一级 |
-| **medium**（默认） | 质量与成本的平衡 |
-| **low** | 每任务成本最低 —— 审计与协调行降到 `medium`，`builder-harness` 降到 Opus `low`(`super-advisor` 与 `mission-governor` 保持 `high`)，Sonnet 用于单发行和 `e2e-tester` |
+| **high** | 会话 effort 回退 `high` |
+| **medium**（默认） | 会话 effort 回退 `medium` —— 成本/评分曲线的拐点 |
+| **low** | 会话 effort 回退 `low` —— 同一个模型内部的节省用法 |
 
 {{< callout type="info" >}}
-默认档位是 **medium**。调整档位主要改变各智能体的 Opus 推理深度，唯一换模型的是在 `low` 下改用 Sonnet 的 `e2e-tester`。`low` 把审计与协调行降到 `medium`、`builder-harness` 降到 `low`，只在单发行和 `e2e-tester` 上用 Sonnet；`high` 只把 `builder-harness` 和 `e2e-tester` 两个智能体的 effort 比 medium 提高一级。任何档位都没有 `max` 单元格。通过 `--model-policy` 标志或初始化向导设置。
+已退役的 `--model-policy` / `--profile` 旗标是弃用桩：只打印指向 `moai profile setup` 的警告，没有任何效果。会话 effort 可随时用 `/effort` 或 `ultrathink` 调节，模型用 `/model`。详情见[模型策略](/zh/multi-llm/model-policy/)页面。
 {{< /callout >}}
 
 ### 执行模式与编排
@@ -270,7 +270,7 @@ Ralph-Loop Style LSP 集成把开发工作流的质量闸门自动化，让人�
 | 优势 | 说明 |
 |------|------|
 | **质量保障** | 用 TRUST 5 框架保持一致的质量 |
-| **代币效率** | 模型策略 + Token Circuit Breaker 让系统管理成本 |
+| **代币效率** | 会话模型策略 + Token Circuit Breaker 让系统管理成本 |
 | **生产力提升** | AI 智能体自动化缩短开发时间 |
 | **可扩展** | 模块化架构与线束构建器灵活扩展 |
 | **多语言** | 支持 4 种语言 |

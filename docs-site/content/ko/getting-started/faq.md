@@ -83,60 +83,36 @@ statusline:
 
 ## Q: 모델 정책을 어떻게 선택하나요?
 
-MoAI-ADK는 Claude Code 구독 요금제에 맞춰 에이전트에 최적의 AI 모델을 할당합니다. 요금제의 사용량 한도 안에서 품질을 최대한 끌어올리는 토크노믹스 장치입니다.
+v3.2부터 에이전트별 모델 정책은 더 이상 고를 것이 없습니다. **서브에이전트는 메인 세션의 모델과 추론 깊이를 그대로 따릅니다** — 서브에이전트를 부를 때 `model`도 `effort`도 넘기지 않으며, MoAI 에이전트 정의는 어느 쪽도 선언하지 않습니다. 남은 것은 세션 수준 선택 하나입니다. `moai profile setup`의 **세션 모델 정책**은 이 프로필로 실행하는 Claude 세션의 기본 추론 강도(추론 강도를 따로 고르지 않았을 때 적용)를 정합니다.
 
-### 티어 비교
+### 세션 모델 정책 비교
 
-| 티어 | 특징 |
+| 값 | 의미 |
 |------|------|
-| **high** | 최고 품질 — `builder-harness`와 `e2e-tester`가 기본 열보다 한 단계씩 올라갑니다. 어느 행도 `max`를 받지 않습니다 |
-| **medium** (기본값) | 품질과 비용의 균형 — 비용/점수 곡선의 무릎 |
-| **low** | 작업당 최저 비용 — 감사·조율 행이 `medium`으로, `builder-harness`는 Opus `low`로, `e2e-tester`는 Sonnet으로 내려갑니다. `super-advisor`와 `mission-governor`만 `high`를 지킵니다 |
+| **high** | 세션 effort 폴백 `high` |
+| **medium** (기본값) | 세션 effort 폴백 `medium` — 비용/점수 곡선의 무릎 |
+| **low** | 세션 effort 폴백 `low` — 같은 모델 안에서의 경제 운용 |
 
 {{< callout type="warning" >}}
-**왜 중요한가요?** 티어를 낮추면 모델 클래스보다는 주로 *추론 깊이*가 낮아집니다. 오래 이어지는 에이전틱 작업에서는 Opus의 `low` effort가 어떤 effort의 Sonnet보다도 점수가 높고 작업당 비용도 낮습니다. 청구액을 좌우하는 것은 토큰당 단가가 아니라, 모델이 작업을 끝낼 때까지 밟은 스텝 수이기 때문입니다. 그래서 `low`는 Opus 안에서 아낍니다. Sonnet을 쓰는 곳은 모든 티어의 `manager-docs`·`manager-git`·`Explore`와, `low` 티어의 `e2e-tester`뿐입니다.
+**왜 중요한가요?** effort를 낮추면 모델 클래스보다는 주로 *추론 깊이*가 낮아집니다. 오래 이어지는 에이전틱 작업에서는 Opus의 `low` effort가 어떤 effort의 Sonnet보다도 점수가 높고 작업당 비용도 낮습니다. 청구액을 좌우하는 것은 토큰당 단가가 아니라, 모델이 작업을 끝낼 때까지 밟은 스텝 수이기 때문입니다. 이 경제 운용의 자리가 이제 세션 effort이며, 예전 버전의 에이전트별 배정표는 물러났습니다.
 {{< /callout >}}
 
-### 티어별 에이전트 모델 배정
+### 에이전트별 배정 시절과 달라진 점
 
-**13개 에이전트 카탈로그** (12 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`) 가운데 MoAI 커스텀 에이전트는 티어에 따라 모델이 정해집니다. 과거의 12개 보관 에이전트 (archived agents) 는 쓸 수 없습니다.
-
-#### Manager Agents (6개)
-
-| 에이전트 | high | medium | low |
-|---------|------|--------|-----|
-| manager-spec | opus / medium | opus / medium | opus / medium |
-| manager-develop | opus / medium | opus / medium | opus / medium |
-| manager-docs | sonnet / low | sonnet / low | sonnet / low |
-| manager-git | sonnet / low | sonnet / low | sonnet / low |
-| manager-design | opus / high | opus / high | opus / medium |
-| manager-lead | opus / high | opus / high | opus / medium |
-
-#### Evaluator · Builder · Advisor · Specialist Agents (6개)
-
-| 에이전트 | high | medium | low |
-|---------|------|--------|-----|
-| plan-auditor | opus / high | opus / high | opus / medium |
-| sync-auditor | opus / high | opus / high | opus / medium |
-| builder-harness | opus / high | opus / medium | opus / low |
-| super-advisor | opus / high | opus / high | opus / high |
-| e2e-tester | opus / medium | opus / low | sonnet / low |
-| mission-governor | opus / high | opus / high | opus / high |
-
-빌트인 `Explore`는 모든 열에서 `sonnet / low`로 해석됩니다. 디스크에 고정해 둘 에이전트 파일이 없어서, 호출하는 시점에 이 기본값이 적용됩니다.
+v3.1까지 MoAI-ADK는 프로필 매트릭스로 13개 카탈로그 에이전트 각각에 `{model, effort}`를 배정했고, 티어가 그 열을 골랐습니다. 이 장치는 SPEC-AGENT-MODEL-INHERIT-001에서 물러났습니다 — 부름에 model 인자가 붙은 경우가 1%에도 못 미친다는 실측이 나왔고, 배정의 자리는 세션 자신으로 옮겨졌습니다. 예전의 `--model-policy`, `--profile`, `--high`, `--medium-alias`, `--low` 플래그는 경고만 내고 아무 효과가 없는 지원 종료 스텁으로 남아 있습니다.
 
 ### 설정 방법
 
 ```bash
-# 프로젝트 초기화 시
-moai init my-project          # 대화형 마법사에서 모델 정책 선택
+# 세션 모델 정책 설정 (세션 모델 정책 질문)
+moai profile setup
 
 # 기존 프로젝트 재설정
 moai update -c                # 설정 마법사 재실행
 ```
 
 {{< callout type="info" >}}
-기본 티어는 `medium` 입니다. `moai update -c`로 설정 마법사를 다시 실행하여 변경할 수 있습니다.
+기본 effort 폴백은 `medium` 입니다. `moai profile setup`에서 바꾸거나, `/effort`나 `ultrathink`로 세션 effort를 그때그때 조절하세요 — 이후의 서브에이전트 부름은 전부 그 값을 따릅니다.
 {{< /callout >}}
 
 ---
