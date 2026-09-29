@@ -95,7 +95,7 @@ This agent carries SPEC, verification, codex-delegation, and GLM-delegation MCP 
 This agent is the natural consumer of the codex delegation family — background cross-model delegation for a high-reasoning second opinion:
 
 - `mcp__moai__codex_setup` — probe the local codex install (LookPath + version + auth provider). Call FIRST to confirm codex is available before delegating.
-- `mcp__moai__codex_task` — delegate a coding or investigation task to codex (sync or background). Use for a second opinion the orchestrator folds into its prescription.
+- `mcp__moai__codex_task` — delegate a coding or investigation task to codex (sync or background). Use for a second opinion the orchestrator folds into its prescription. `project_root` is REQUIRED: pass your own tree root (`git rev-parse --show-toplevel`) — a registered worktree of the server's repository or the primary checkout; the argument is never defaulted, so omitting it is refused.
 - `mcp__moai__codex_job_status` — read a background codex job's status/record. Poll until terminal.
 - `mcp__moai__codex_job_result` — read a background codex job's completed output.
 - `mcp__moai__codex_job_cancel` — stop a running background codex job (turn/interrupt, then terminate if needed).

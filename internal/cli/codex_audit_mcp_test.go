@@ -123,9 +123,9 @@ func TestCodexAuditMCPTool(t *testing.T) {
 	// directories, foreign repositories, and bad destinations are refused.
 	repo := newAuditRepo(t)
 	fake := installFakeCodex(t)
-	orig := codexRoleAuditServerDir
-	codexRoleAuditServerDir = func() (string, error) { return repo.a1, nil }
-	t.Cleanup(func() { codexRoleAuditServerDir = orig })
+	orig := codexServingDir
+	codexServingDir = func() (string, error) { return repo.a1, nil }
+	t.Cleanup(func() { codexServingDir = orig })
 	c := newRoleAuditClient(t)
 
 	u := filepath.Join(repo.a, "unregistered") // inside the serving repo, not registered

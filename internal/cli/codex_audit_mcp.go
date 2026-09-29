@@ -45,10 +45,10 @@ const (
 	codexRoleAuditFailed    = "failed"
 )
 
-// codexRoleAuditServerDir is the directory this server process started in; it
+// codexServingDir is the directory this server process started in; it
 // anchors the repository boundary the presented root is verified against. A
 // seam so tests can place the server.
-var codexRoleAuditServerDir = os.Getwd
+var codexServingDir = os.Getwd
 
 // codexRoleAuditJob is one background launch.
 type codexRoleAuditJob struct {
@@ -93,7 +93,7 @@ func handleCodexRoleAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	if role == "" || root == "" || strings.TrimSpace(task) == "" {
 		return toolErr(codexRoleAuditToolName, errors.New("role, worktree_root, and task are required")), nil
 	}
-	serverDir, err := codexRoleAuditServerDir()
+	serverDir, err := codexServingDir()
 	if err != nil {
 		return toolErr(codexRoleAuditToolName, fmt.Errorf("cannot read the server's start directory: %w", err)), nil
 	}
