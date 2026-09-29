@@ -50,13 +50,13 @@ import (
 const factoryUnsupportedBackendSentinel = "FACTORY_MODE_UNSUPPORTED_BACKEND"
 
 // The entry tokens. `-f` is unbound on cc / glm / cg outside this file's
-// parse; `--factory` is its long form. `-l/--lead` (SPEC-FACTORY-LANE-JOIN-
+// parse; `--factory` is its long form. `-l/--leader` (SPEC-FACTORY-LANE-JOIN-
 // SOCKET-001 REQ-008) names the leader session a lane join's discovery
 // targets — research measured `-l` free in this tree.
 const (
 	factoryFlagLong  = "--factory"
 	factoryFlagShort = "-f"
-	leadFlagLong     = "--lead"
+	leadFlagLong     = "--leader"
 	leadFlagShort    = "-l"
 
 	// factoryLaneRoleToken is the canonical `-f lane` role value
@@ -117,7 +117,7 @@ type factoryFlagParse struct {
 	// NoAutoDispatch marks the --no-auto-dispatch opt-out
 	// (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-011); a lane-only boolean.
 	NoAutoDispatch bool
-	Lead           string   // `-l/--lead <name>`: which leader session discovery targets (lane joins only)
+	Lead           string   // `-l/--leader <name>`: which leader session discovery targets (lane joins only)
 	Rest           []string // args with -f and its consumed value removed
 }
 
@@ -153,7 +153,7 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 			continue
 		}
 
-		// -l/--lead names WHICH leader session a lane join's discovery
+		// -l/--leader names WHICH leader session a lane join's discovery
 		// targets (SPEC-FACTORY-LANE-JOIN-SOCKET-001 REQ-008) — a target,
 		// not this session's own name. The legacy spelling is refused here
 		// with the same canonical-form shape refuseLegacyEntryNames applies
@@ -251,7 +251,7 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 		return p, fmt.Errorf("%s, got %q", factoryFlagUsageError, value)
 	}
 
-	// The --lead surface gates (REQ-008): the flag names a TARGET for a lane
+	// The --leader surface gates (REQ-008): the flag names a TARGET for a lane
 	// join's discovery, so a leader entry carrying it names two things at
 	// once, and carrying it beside --factory-run names two different
 	// selectors. Both refuse before anything launches.

@@ -56,6 +56,10 @@ var guardAllowlist = []guardAllowlistEntry{
 	// trimming the legacy prefix (`strings.TrimPrefix(name, "lead")`) so the
 	// error names leader-<suffix> (REQ-RNC-007).
 	{file: "factory.go", literal: "lead"},
+	// codex_factory.go: the codex lane-join path composes the same canonical
+	// form by trimming the legacy prefix, mirroring the factory.go comparison
+	// above (REQ-RNC-007; card t1330 follow-up — the mirror-parity site).
+	{file: "codex_factory.go", literal: "lead"},
 
 	// --- internal/cli: refusal messages and detection comparisons ----------
 	// doctor_factory_run.go: the doctor's chain reader classifies a persisted
