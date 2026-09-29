@@ -149,14 +149,17 @@ const (
 	// other. No resolution is proposed — both may be legitimate.
 	BacklogRelationConflicts = "conflicts"
 	// BacklogRelationBlocks records that the subject must land before the
-	// related card can proceed (card t1309). Record-only, like every agent
-	// relation: no scheduler, dispatcher, or self-dispatch path reads it —
-	// whether factory self-dispatch ever consults the blocks graph is a
-	// separate adjudication (t1240), and until that lands the record exists
-	// for the operator to read.
+	// related card can proceed (card t1309). Since
+	// SPEC-RELATION-PICKUP-FILTER-001 the sequencing pair is no longer
+	// purely observational: the todo --auto pickup selection
+	// (internal/cli autoPickTargets) excludes the blocked-side card while
+	// the finding is live, and todo relate refuses a write that would close
+	// a waits-on cycle (BacklogRecord.WaitsOnClosesCycle). Factory-lease
+	// consumption stays the separate adjudication named in the code (t1240).
 	BacklogRelationBlocks = "blocks"
 	// BacklogRelationDepends is the inverse spelling of blocks: the subject
-	// waits on the related card. Same record-only posture.
+	// waits on the related card. Consumed by the same two paths as blocks —
+	// WaitsOnOf is the single direction normalization.
 	BacklogRelationDepends = "depends"
 )
 
@@ -215,6 +218,80 @@ type BacklogFinding struct {
 // Names reports whether the finding refers to id in either position.
 func (f BacklogFinding) Names(id string) bool {
 	return f.SubjectID == id || f.RelatedID == id
+}
+
+// WaitsOnOf normalizes a sequencing finding to one directed waits-on edge:
+// the WAITER (the blocked side) and the card it waits on (its predecessor).
+// `depends {S,R}` means S waits on R; `blocks {S,R}` means R waits on S
+// (SPEC-RELATION-PICKUP-FILTER-001 spec.md B.3). Non-sequencing relations
+// return ok=false — the pickup filter and the cycle guard consume exactly
+// blocks and depends (REQ-RPF-006).
+//
+// @MX:ANCHOR: WaitsOnOf — the direction-normalization SSOT for the sequencing pair
+// @MX:REASON: fan_in 4 (todo_auto pickup filter, todo_relate cycle guard, FindingsBlocking, WaitsOnClosesCycle); a second direction spelling would let the two consumers disagree about which side waits
+// @MX:NOTE: single normalization point for both sequencing consumers —
+// the pickup filter and the todo-relate cycle guard read direction ONLY
+// through this function.
+func WaitsOnOf(f BacklogFinding) (waiter, target string, ok bool) {
+	switch f.Relation {
+	case BacklogRelationDepends:
+		return f.SubjectID, f.RelatedID, true
+	case BacklogRelationBlocks:
+		return f.RelatedID, f.SubjectID, true
+	}
+	return "", "", false
+}
+
+// FindingsBlocking returns the live findings whose blocked side (the
+// waits-on waiter) names id. The finding's EXISTENCE in the live record is
+// the whole unresolved predicate (REQ-RPF-001): a predecessor's done moves
+// the finding into the archive through ArchiveCard, so resolution needs no
+// card-state scan — and a dropped or held predecessor keeps the finding, so
+// the successor conservatively keeps waiting (spec.md B.1).
+func (r *BacklogRecord) FindingsBlocking(id string) []BacklogFinding {
+	var out []BacklogFinding
+	for _, f := range r.Findings {
+		if waiter, _, ok := WaitsOnOf(f); ok && waiter == id {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
+// WaitsOnClosesCycle reports whether the record's live sequencing findings
+// already connect target back to waiter — adding the waiter→target edge
+// would then close a directed cycle (SPEC-RELATION-PICKUP-FILTER-001
+// REQ-RPF-005). Same-pair opposite spellings normalize to the SAME edge
+// through WaitsOnOf and never form a cycle (spec.md B.3).
+func (r *BacklogRecord) WaitsOnClosesCycle(waiter, target string) bool {
+	edges := map[string][]string{}
+	for _, f := range r.Findings {
+		if w, t, ok := WaitsOnOf(f); ok {
+			edges[w] = append(edges[w], t)
+		}
+	}
+	return waitsOnReaches(edges, target, waiter)
+}
+
+// waitsOnReaches reports whether to is reachable from from over the directed
+// waits-on edges.
+func waitsOnReaches(edges map[string][]string, from, to string) bool {
+	seen := map[string]bool{from: true}
+	queue := []string{from}
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		if cur == to {
+			return true
+		}
+		for _, next := range edges[cur] {
+			if !seen[next] {
+				seen[next] = true
+				queue = append(queue, next)
+			}
+		}
+	}
+	return false
 }
 
 // SamePairAs reports whether two findings refer to the same UNORDERED pair.
