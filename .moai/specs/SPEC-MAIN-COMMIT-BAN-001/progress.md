@@ -161,7 +161,7 @@ git rev-parse main            # primary HEAD state, AC-13 falsifiable read (expe
 
 - sync_status: audit-ready
 - sync_complete_at: 2026-09-29
-- sync_commit_sha: pending-backfill-sync
+- sync_commit_sha: 2e5de5413
 - Sync commit scope (the single 3-phase close commit): spec.md frontmatter
   `in-progress → completed` (merged transition per the Status Transition
   Ownership Matrix — no separate Mx chore commit), this §E.4 section, and the
@@ -207,7 +207,7 @@ git rev-parse main            # primary HEAD state, AC-13 falsifiable read (expe
   - Both rows stay lead-owned past this SPEC's close: AC-3's full pass and
     AC-16's primary set complete at disposition time, not at sync time.
 - sync_commit_sha backfill note: recorded as the `pending-backfill-sync`
-  placeholder in the sync commit itself (a commit cannot reference its own
-  hash; SHA-placeholder backfill exemption,
-  spec-frontmatter-schema.md § D3) and backfilled with the real SHA in the
-  follow-up commit immediately after.
+  placeholder in the sync commit `2e5de5413` itself (a commit cannot reference
+  its own hash; SHA-placeholder backfill exemption,
+  spec-frontmatter-schema.md § D3) and backfilled to `2e5de5413` in this
+  follow-up commit.
