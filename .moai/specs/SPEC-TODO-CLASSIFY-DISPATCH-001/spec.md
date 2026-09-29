@@ -2,7 +2,7 @@
 id: SPEC-TODO-CLASSIFY-DISPATCH-001
 title: "LLM-classified card metadata at creation — priority·blocked·execution-mode on every card, a priority-sorted queue, mode-aware factory lane leases, and default-on auto-dispatch for -f lanes"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-09-29
 updated: 2026-09-29
 author: manager-spec (card t1332)

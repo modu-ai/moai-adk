@@ -22,6 +22,12 @@
 // done-time landing_verdict record (REQ-TST-008). Pure additive columns via
 // the pragma_table_info-gated ADD COLUMN pattern; no table rebuild, no
 // constraint change, schema_version stays "1".
+//
+// Extended by SPEC-TODO-CLASSIFY-DISPATCH-001 (card t1332), M1 — the
+// recorded schema decision: BOTH card-bearing tables gain one nullable
+// classification TEXT column, appended LAST through the same ADD COLUMN
+// path (TestSchemaFreezeCarriesClassificationColumn asserts the convergence
+// separately). No rebuild, no constraint change, schema_version stays "2".
 package kanban
 
 import (
@@ -137,7 +143,8 @@ func assertBacklogSchemaFrozen(t *testing.T) {
 		"state:TEXT:1:NULL " +
 		"landing:TEXT:0:NULL " +
 		"picked_at:TEXT:0:NULL " +
-		"dropped_at:TEXT:0:NULL"
+		"dropped_at:TEXT:0:NULL " +
+		"classification:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "items"); got != wantItemsColumns {
 		t.Errorf("items column tuples =\n %s\nwant\n %s", got, wantItemsColumns)
 	}
@@ -153,7 +160,8 @@ func assertBacklogSchemaFrozen(t *testing.T) {
 		"picked_at:TEXT:0:NULL " +
 		"dropped_at:TEXT:0:NULL " +
 		"archived_at:TEXT:0:NULL " +
-		"landing_verdict:TEXT:0:NULL"
+		"landing_verdict:TEXT:0:NULL " +
+		"classification:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "archived_items"); got != wantArchivedItemsColumns {
 		t.Errorf("archived_items column tuples =\n %s\nwant\n %s", got, wantArchivedItemsColumns)
 	}

@@ -102,6 +102,16 @@ type BacklogItem struct {
 	// and never "" (the REQ-TLE-006 discipline this SPEC follows).
 	PickedAt  *string `json:"picked_at,omitempty"`
 	DroppedAt *string `json:"dropped_at,omitempty"`
+	// Classification is ADDITIVE (SPEC-TODO-CLASSIFY-DISPATCH-001
+	// REQ-TCD-002): the creation-time judgment recorded through the add
+	// path's decider seam — priority, blocked, mode, decider identity,
+	// classified-at stamp, one-line reason — in ONE nullable field after the
+	// Landing precedent, so a card with no classification marshals
+	// byte-identically to the pre-SPEC record. Absence is a nil pointer here
+	// and SQL NULL in the classification column — never `{}` and never `""`.
+	// Every reader derives the defaults through EffectiveCardClassification
+	// (REQ-TCD-014); no consumer tests the pointer itself.
+	Classification *CardClassification `json:"classification,omitempty"`
 }
 
 // Relation values a finding may carry. The first two are MECHANICAL — the
