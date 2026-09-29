@@ -148,7 +148,7 @@ m1_to_mn_commit_strategy: per-milestone commits (M1 fd7ae7ed4 / M2 dff54c2b9 / M
 
 ```yaml
 sync_complete_at: 2026-09-29T22:05:00+09:00
-sync_commit_sha: "pending-backfill-sync"  # a commit cannot cite its own hash; backfilled in the following commit
+sync_commit_sha: "8ba841146"  # a commit cannot cite its own hash; backfilled in the following commit
 sync_status: complete
 b12_self_test_a: pass  # grep -c 'SPEC-LANE-NOTICE-DIET-001' CHANGELOG.md → 0 before emission (no duplicate entry)
 b12_self_test_b: pass  # distinct AC ids in acceptance.md = 7 (AC-LND-001..007); CHANGELOG entry cites 7/7 PASS
