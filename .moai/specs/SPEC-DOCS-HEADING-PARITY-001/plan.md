@@ -32,7 +32,7 @@ docs-site의 4로케일(ko/en/ja/zh) 페이지 중 헤딩 구조가 갈라진 �
 - [ ] E1: 세 표적 페이지가 고정 카운터 기준 ko == en == ja == zh (레시피 `comm -23` 출력 없음).
 - [ ] E2: 래칫 파일 diff가 삭제 전용(프루닝)이고 수렴 3페이지의 줄이 빠졌는지 확인.
 - [ ] E3: tokenomics en 단독 수리 생존 검사 — `9a53efd24`/`7ad954556`가 만든 문장이 재유도 후 4로케일 모두에 존재(grep 증거).
-- [ ] E4: `hns-oss-docs-verify` 전체 레시피 — must_pass 4개 차원(build-clean, locale-parity, version-sync, content-fidelity 기준) 통과 출력.
+- [ ] E4: `hns-oss-docs-verify` 전체 레시피 — must_pass 3개 차원(build-clean, locale-parity, version-sync — 스킬 표 기준) 통과 출력. content-fidelity는 must_pass가 아니라 0.9 임계의 권고 차원이다.
 - [ ] E5: 증거가 `.moai/reports/t1328/`에 착지(verdict + 전/후 테이블)했는지 확인.
 
 ## F. Milestones

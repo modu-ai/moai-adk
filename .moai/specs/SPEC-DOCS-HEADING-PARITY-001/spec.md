@@ -1,7 +1,7 @@
 ---
 id: SPEC-DOCS-HEADING-PARITY-001
 title: "docs-site 4로케일 헤딩 패리티 정렬 — 표적 3페이지 구조 재유도 + 래칫 프루닝"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-09-29
 updated: 2026-09-29
@@ -20,6 +20,7 @@ related_specs: [SPEC-DOCS-LOCALE-PARITY-REPAIR-001, SPEC-AGENT-MODEL-INHERIT-DOC
 ## HISTORY
 
 - v0.1.0 (2026-09-29) — manager-spec 초판. 카드 t1328(Class C) plan-phase 산출물. 레인 측정치를 재검증해 사전 결정 테이블(§2)과 패리티 카운터 정의(§4)를 확정했다.
+- v0.1.1 (2026-09-29) — plan-auditor iter-1 반영(D1/D2/O1-O3). §2.1 토크노믹스 근거 커밋 라벨을 en+ko로 정정(`81c10109e`·`a29db12ec` — `git show --name-only` 재검증), multi-llm "ko 파일만" 괄호에 페이지 범위 한정자 추가, agent-guide "en 단독 수리 없음"에 페이지별 판정 한정자 추가. AC-DOCS-004를 en 문장 목록 단일 grep에서 로케일별 예상 패턴 표로 교체(ja/zh 다리는 M2 종료 판정 선결조건 명시). plan.md E4 must_pass 차원 목록을 스킬 표 기준 3개로 정정. REQ/AC 식별자 불변.
 
 ## 1. 개요
 
@@ -35,9 +36,9 @@ docs-site의 ko/en/ja/zh 4로케일 페이지 가운데 헤딩 구조가 갈라�
 
 | 페이지 | 카운터 값 (ko/en/ja/zh) | 캐노닉 생성 결정 | 정렬 방향 | 근거 커밋 (git 이력 재검증 완료) |
 |---|---|---|---|---|
-| `advanced/agent-guide.md` | 22 / 30 / 30 / 30 | ko-캐노닉 (구조 기준 = ko) | en/ja/zh → ko 구조로 재유도 | 최신 커밋 `5f4f199ef` (2026-09-29, t1300 M1 A-cluster rewrite)이 4로케일을 한 커밋에 함께 손봤는데도 구조 불균형이 발생 — 스테일 파생이 아니라 재작성 자체가 불균등했다. `9a53efd24`(t1115)도 agent-guide는 4로케일 동시 수정(검증됨) → en 단독 수리 없음 |
-| `multi-llm/_index.md` | 11 / 5 / 5 / 5 | ko-캐노닉 — ko가 5세대 앞섬 | en/ja/zh → ko 재유도 (en/ja/zh는 스테일) | 마지막 4로케일 터치 `ce79ef7ca` (2026-09-12, t649). 이후 ko 단독 커밋 5건(전부 ko 파일만 터치 — 검증됨): `7897e4d8a`(t918, 09-18), `a29db12ec`(t1094, 09-23), `81c10109e`(t1095, 09-23), `be43782e2`(t1118, 09-23), `fbd13bbfc`(t1300 M3, 09-29) |
-| `advanced/tokenomics-overview.md` | 12 / 13 / 12 / 11 | ko가 구조 기준 — 단, en 단독 사실 수리 2건 보존 | ko→en/ja/zh 재유도하되 en 단독 사실 수정 이월(carry-forward) + 생존 검사 | en 단독: `9a53efd24`(t1115 sync-audit FAIL 수리, en만), `7ad954556`(t1095 Sonnet 4.5/4.6 1M 경계, en+ko). 4로케일: `a9d9779d9`(t1115 tier 서술), `81c10109e`(t1095 1M 문맥), `a29db12ec`(t1094), `5f4f199ef`(t1300 M1). 병합 `64868b3e4`는 en+ko |
+| `advanced/agent-guide.md` | 22 / 30 / 30 / 30 | ko-캐노닉 (구조 기준 = ko) | en/ja/zh → ko 구조로 재유도 | 최신 커밋 `5f4f199ef` (2026-09-29, t1300 M1 A-cluster rewrite)이 4로케일을 한 커밋에 함께 손봤는데도 구조 불균형이 발생 — 스테일 파생이 아니라 재작성 자체가 불균등했다. `9a53efd24`(t1115)도 agent-guide는 4로케일 동시 수정(검증됨) → agent-guide에는 en 단독 수리 없음(같은 커밋이 tokenomics에서는 en 단독을 터치 — 페이지별 판정) |
+| `multi-llm/_index.md` | 11 / 5 / 5 / 5 | ko-캐노닉 — ko가 5세대 앞섬 | en/ja/zh → ko 재유도 (en/ja/zh는 스테일) | 마지막 4로케일 터치 `ce79ef7ca` (2026-09-12, t649). 이후 ko 단독 커밋 5건(이 페이지에서는 전부 ko 파일만 터치 — 검증됨, 페이지 범위 한정. `81c10109e`·`a29db12ec`는 tokenomics에서는 en+ko를 터치): `7897e4d8a`(t918, 09-18), `a29db12ec`(t1094, 09-23), `81c10109e`(t1095, 09-23), `be43782e2`(t1118, 09-23), `fbd13bbfc`(t1300 M3, 09-29) |
+| `advanced/tokenomics-overview.md` | 12 / 13 / 12 / 11 | ko가 구조 기준 — 단, en 단독 사실 수리 2건 보존 | ko→en/ja/zh 재유도하되 en 단독 사실 수정 이월(carry-forward) + 생존 검사 | en 단독: `9a53efd24`(t1115 sync-audit FAIL 수리, en만). en+ko: `7ad954556`(t1095 Sonnet 4.5/4.6 1M 경계), `81c10109e`(t1095 1M 문맥), `a29db12ec`(t1094), 병합 `64868b3e4`. 4로케일: `a9d9779d9`(t1115 tier 서술), `5f4f199ef`(t1300 M1). 판정 방향 불변 — 사실은 ko가 보유하고 ja/zh는 M2 재유도로 취득 |
 
 ### 2.2 결정 유형별 처리 규칙
 
