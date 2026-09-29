@@ -1248,6 +1248,62 @@ func TestCodexAuditVerbRegistered(t *testing.T) {
 	}
 }
 
+// TestCodexRoleAuditVerbRegistered pins the CLI role-audit verb
+// (SPEC-CODEX-ROLE-AUDIT-ROOT-001 REQ-004): a session in its own worktree can
+// launch the read-only role audit directly, without the MCP server, under the
+// same name the MCP tool carries.
+func TestCodexRoleAuditVerbRegistered(t *testing.T) {
+	var found bool
+	for _, c := range codexCmd.Commands() {
+		if c.Name() == "role-audit" {
+			found = true
+			if c.Flags().Lookup("out") == nil {
+				t.Error("role-audit verb has no --out flag")
+			}
+		}
+	}
+	if !found {
+		t.Fatal("moai codex role-audit is not registered")
+	}
+}
+
+func TestCodexRoleAuditVerbRunsInCallerWorktree(t *testing.T) {
+	repo := newAuditRepo(t)
+	fake := installFakeCodex(t)
+	fake.setExec("role-audit verdict\n", 0)
+	t.Chdir(repo.a1)
+	var out, errb bytes.Buffer
+	cmd := newCodexRoleAuditCmd()
+	cmd.SetOut(&out)
+	cmd.SetErr(&errb)
+	cmd.SetIn(strings.NewReader("role-audit task"))
+	cmd.SetArgs([]string{"plan-auditor", "--out", ".moai/reports/role/v.md"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("role-audit failed: %v\n%s", err, errb.String())
+	}
+	got, err := os.ReadFile(filepath.Join(repo.a1, ".moai", "reports", "role", "v.md"))
+	if err != nil || string(got) != "role-audit verdict\n" {
+		t.Fatalf("verdict = %q (%v)", got, err)
+	}
+	ex := fake.execCalls(t)
+	if len(ex) != 1 || replaceAfter(ex[0], "-C", "X")[0] != "exec" {
+		t.Fatalf("exec calls = %v", ex)
+	}
+	lines := launchRecordLines(errb.String())
+	if len(lines) != 1 {
+		t.Fatalf("role-audit printed %d LAUNCH_RECORD lines", len(lines))
+	}
+	raw, err := os.ReadFile(filepath.Join(repo.a1, filepath.FromSlash(lines[0])))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rec map[string]any
+	_ = json.Unmarshal(raw, &rec)
+	if rec["route"] != "shell" {
+		t.Errorf("role-audit route = %v, want shell", rec["route"])
+	}
+}
+
 func TestCodexAuditVerbRunsInCallerWorktree(t *testing.T) {
 	repo := newAuditRepo(t)
 	fake := installFakeCodex(t)

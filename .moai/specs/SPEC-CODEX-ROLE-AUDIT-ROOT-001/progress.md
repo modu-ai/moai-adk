@@ -33,11 +33,41 @@
 - Test fallout (SPEC-required harness adaptation, classified): every pre-existing codex_task test called the handler without `project_root` → now refused. `callCodexTask` harness injects this repository's own toplevel when the key is absent (documented; gate tests needing an ABSENT value call the handler raw); raw-handler sites in failcause / process_context / session_ctx tests inject `thisRepoRoot(t)` explicitly. No assertion weakened.
 - Affected-suite GREEN: `go test -timeout 30m ./internal/cli/ -run '(Test)?(CodexAudit|CodexTask)' -count=1` → `ok ... 52.056s`; `go vet ./internal/cli/...` clean; `golangci-lint v2.1.6 run ./internal/cli/...` → `0 issues.`; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
 
-_Pending M3+._
+### M3 — CLI role-audit verb (flips AC-002)
+
+- RED evidence: live CLI at M0 (`unknown verb - usage: moai codex [cli] ...`, exit 1, tree 91c522dfe) + unit RED `go test ./internal/cli/ -run 'TestCodexRoleAuditVerb'` → compile-level RED `undefined: newCodexRoleAuditCmd` (the verb and its constructor did not exist).
+- GREEN: `newCodexRoleAuditCmd()` registered under the codex cobra namespace (`role-audit <role> [--out <path>]`; no Use-prefix collision — no existing command starts with `role`); the RunE body of both verbs extracted into one shared `runCodexAuditVerb` so both travel through `runCodexAudit` → `prepareCodexAudit` → the repaired validator (no bypass shape, plan §G). Unit arms: `TestCodexRoleAuditVerbRegistered` + `TestCodexRoleAuditVerbRunsInCallerWorktree` (route shell, verdict verbatim, launch record) green.
+- Live: `/tmp/t1324-run-moai codex role-audit --help` exit 0 printing the CLI-twin long text; `codex --help` lists `role-audit` (grep count 1).
+
+### M4 — re-measure and residue sweep
+
+- Binary rebuilt from the run tree (`make build`, commit `2f1631763` embedded): live re-observations —
+  - AC-001 GREEN (live stdio session, server cwd = primary, worktree_root = this worktree, probe role unknown so no codex process spawns): refusal now comes from the ROLE loader — verbatim `codex_role_audit: codex audit no-such-role: role "no-such-role" is not a read-only contract role` — i.e. root validation PASSED; the AC-001 RED fragment `is not the caller's own worktree` is absent from the real wiring. Full-launch green (isError:false + job_id) is proven at unit level (`TestCodexAuditMCPTool/accepts/sibling worktree|primary checkout`) against the fake codex.
+  - AC-003 GREEN live: `tools/list` → `codex_task -> ['background', 'project_root', 'prompt', 'resume_last', 'thread_id', 'work_key', 'write']`; live `tools/call` codex_task without the argument → verbatim `codex_task: project_root is required (pass your own git rev-parse --show-toplevel); codex_task does not default to any tree`, `isError: true`.
+  - Piped-EOF artifact reproduced again (lower-layer refusal) — confirms plan §C's environment note; live-session form used for all role-audit MCP observations.
+- E3 coverage (scoped `-run '(Test)?(CodexAudit|CodexTask|ProjectRoot)' -coverprofile`): touched-file function mean 90.8% (44 funcs across codex_audit_launch.go / codex_audit_mcp.go / codex_task.go); key funcs — `codexAuditValidateRoot` 88.9%, `handleCodexRoleAudit` 87.5%, `handleCodexTask` 88.8%, `runCodexAuditVerb` 66.7% (shared runner; the uncovered arms are the shared verb's already-covered-by-twin error paths), status/result handlers 87.5-100%. Above the 85% target.
+- E4 residue greps (this tree): `callerTop|caller's own worktree` in internal/cli non-test → 0; `must be the worktree this server started in` / `server-started-in` across internal/cli + the super-advisor mirrors → 0; `AskUserQuestion` in the four touched non-test files → 3 matches, all inside comments (the no-AskUserQuestion documentation itself).
+- Final batch: scoped suite `ok ... 48.867s`; `go vet ./internal/cli/...` clean; `golangci-lint v2.1.6 run ./internal/cli/...` → `0 issues.`; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `go build ./...` exit 0.
+
+### Known-red classification (NEW vs pre-existing)
+
+- NEW test failures OUTSIDE the scoped suites, introduced by M2 and scheduled for sync by the SPEC itself: `TestProjectRootDocMatchesServer` and `TestDocsSiteProjectRootMatchesServer` (4 locale arms) — the doc-parity tests key `moai-mcp-tools.md` (+ docs-site locale lists) against the set of tools declaring `project_root`; M2 added `codex_task` to that family. Repair = editing `.claude/rules/moai/core/moai-mcp-tools.md` (+ mirror + docs-site), which plan.md §G forbids in run phase and acceptance.md §D.5 schedules for sync. Disposition: EXPECTED-SYNC-DEBT, not a code defect; the lane's scoped suites are green, and sync (same card, pre-merge per lane protocol) repairs the docs before any push.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_Pending run-phase._
+- run_complete_at: 2026-09-29
+- run_commit_sha: pending-backfill-run
+- run_status: complete (M1-M4 landed; AC matrix in §E.2; one EXPECTED-SYNC-DEBT row pending the sync-phase doc repair, see §E.2 Known-red)
+- ac_pass_count: 7
+- ac_fail_count: 0
+- preserve_list_post_run_count: 0
+- l44_pre_commit_fetch: not-run (lane worktree; no origin fetch required for scoped run phase)
+- l44_post_push_fetch: not-run (lane does not push; factory leader batch-pushes develop)
+- new_warnings_or_lints_introduced: 0
+- cross_platform_build.windows: pass
+- cross_platform_build.darwin: pass
+- total_run_phase_files: 20
+- m1_to_mN_commit_strategy: one commit per milestone (M1 validator repair + status flip; M2 codex_task gate + interlocked super-advisor caller update; M3 CLI verb; M4 evidence; SHA backfill follow-up)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

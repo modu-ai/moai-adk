@@ -784,6 +784,41 @@ func codexAuditGit(ctx context.Context, dir string, args ...string) (string, err
 	return strings.TrimSpace(string(out)), nil
 }
 
+// runCodexAuditVerb is the shared launcher path of the two CLI verbs
+// (`moai codex audit` and `moai codex role-audit`): the working root is the
+// git worktree containing the current directory, and every refusal travels
+// through the same codexAuditValidateRoot as the MCP route.
+func runCodexAuditVerb(cmd *cobra.Command, role string, out string) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	top, err := codexAuditGit(cmd.Context(), cwd, "rev-parse", "--show-toplevel")
+	if err != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "codex audit %s: current directory is not inside a git worktree\n", role)
+		return &exitCodeError{code: 1}
+	}
+	dest := out
+	if dest != "" {
+		if dest, err = filepath.Abs(dest); err != nil {
+			return err
+		}
+	}
+	ctx := cmd.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	res, _ := runCodexAudit(ctx, codexAuditRequest{
+		Role: role, ProjectRoot: top, Root: top, Out: dest,
+		Route: codexAuditRouteShell, Task: cmd.InOrStdin(),
+		Stdout: cmd.OutOrStdout(), Stderr: cmd.ErrOrStderr(),
+	})
+	if res.ExitCode != 0 {
+		return &exitCodeError{code: res.ExitCode}
+	}
+	return nil
+}
+
 // newCodexAuditCmd builds `moai codex audit <role> [--out <path>]`.
 func newCodexAuditCmd() *cobra.Command {
 	var out string
@@ -800,34 +835,34 @@ func newCodexAuditCmd() *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cwd, err := os.Getwd()
-			if err != nil {
-				return err
-			}
-			top, err := codexAuditGit(cmd.Context(), cwd, "rev-parse", "--show-toplevel")
-			if err != nil {
-				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "codex audit %s: current directory is not inside a git worktree\n", args[0])
-				return &exitCodeError{code: 1}
-			}
-			dest := out
-			if dest != "" {
-				if dest, err = filepath.Abs(dest); err != nil {
-					return err
-				}
-			}
-			ctx := cmd.Context()
-			if ctx == nil {
-				ctx = context.Background()
-			}
-			res, _ := runCodexAudit(ctx, codexAuditRequest{
-				Role: args[0], ProjectRoot: top, Root: top, Out: dest,
-				Route: codexAuditRouteShell, Task: cmd.InOrStdin(),
-				Stdout: cmd.OutOrStdout(), Stderr: cmd.ErrOrStderr(),
-			})
-			if res.ExitCode != 0 {
-				return &exitCodeError{code: res.ExitCode}
-			}
-			return nil
+			return runCodexAuditVerb(cmd, args[0], out)
+		},
+	}
+	cmd.Flags().StringVar(&out, "out", "", "write the returned text to this path instead of stdout")
+	return cmd
+}
+
+// newCodexRoleAuditCmd builds `moai codex role-audit <role> [--out <path>]`
+// (SPEC-CODEX-ROLE-AUDIT-ROOT-001 REQ-004): the CLI twin of the MCP
+// codex_role_audit tool, so a session in its own linked-worktree working
+// directory can launch the read-only role audit directly, without the MCP
+// server, under the same refusal semantics.
+func newCodexRoleAuditCmd() *cobra.Command {
+	var out string
+	cmd := &cobra.Command{
+		Use:   "role-audit <role>",
+		Short: "Run a read-only role against this worktree (the codex_role_audit MCP tool's CLI twin)",
+		Long: "The CLI twin of the codex_role_audit MCP tool: run a role whose\n" +
+			"permission contract is read-only as one top-level codex exec process\n" +
+			"with the read-only sandbox and every MCP server disabled, task text\n" +
+			"read from stdin. The working root is the git worktree containing the\n" +
+			"current directory, verified against the same registration rules as\n" +
+			"the MCP route; --out must stay inside that worktree's report tree.",
+		Args:          cobra.ExactArgs(1),
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runCodexAuditVerb(cmd, args[0], out)
 		},
 	}
 	cmd.Flags().StringVar(&out, "out", "", "write the returned text to this path instead of stdout")
@@ -836,4 +871,5 @@ func newCodexAuditCmd() *cobra.Command {
 
 func init() {
 	codexCmd.AddCommand(newCodexAuditCmd())
+	codexCmd.AddCommand(newCodexRoleAuditCmd())
 }
