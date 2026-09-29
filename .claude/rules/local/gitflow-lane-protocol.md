@@ -26,6 +26,7 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 - 생성 직후 브랜치를 제자리에서 개명한다: `git branch -m WT-<slug>`. slug은 카드가 **하는 일**에서 뽑고(소문자 `a-z0-9-`, 토큰 3개 이하, 24자 이하), **카드 id를 넣지 않는다**. 워크트리 디렉터리는 카드 id를 유지한다(`.claude/worktrees/<card-id>`).
 - 새 카드는 새 워크트리다. 이전 카드 트리에 앵커돼 있으면 `ExitWorktree`로 primary 체크아웃에 돌아온 뒤 만든다 — 안 그러면 새 카드 작업이 옛 카드 브랜치에 얹힌다.
 - **추적성 운반체 3종은 그대로다**: dispatch의 `card:` 필드, 브랜치 위 **모든** 커밋 메시지 안의 카드 id, 증거 경로(`.moai/reports/<card-id>/…`). 브랜치 이름은 더 이상 카드를 식별하지 않으므로 셋 중 무엇도 생략하지 않는다.
+- [HARD] 레인 세션은 카드 워크트리 안에서 시작해 그 안에 머문다 — 세션 도중 카드 워크트리에서 다른 카드 워크트리로의 이동은 금지며, 불가피하게 이동할 때는 이동 뒤 `/clear` 를 정확히 1회 실행한다. 이 금지의 정본은 배포 규칙 `.claude/rules/moai/workflow/kanban-dispatch.md`의 Isolation 절이며, 여기에 다시 적지 않는다. 통합 워크트리 진입(§2)은 이 금지의 적용 밖이다 — 자체 재진입 규칙을 그대로 따른다.
 
 ## 2. 통합 면 — `develop` 워크트리는 하나뿐
 

@@ -1,0 +1,2 @@
+{"type":"system","subtype":"init","cwd":"/tmp/t1279-m1/fixture-two-source-a","slash_commands":["fixture-outer-01","fixture-outer-02","user-level-alpha"]}
+{"type":"system","subtype":"init","cwd":"/tmp/t1279-m1/fixture-two-source-b","slash_commands":["fixture-wt-01","fixture-wt-02","user-level-alpha"]}

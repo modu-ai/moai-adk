@@ -120,6 +120,8 @@ Anything else is a gap, not a pass. `Review rate limited` means the review never
 
 [HARD] A companion session does not carry one card's context into the next card. When a phase completes and the leader has read its evidence, the leader **asks the operator to `/clear` that session** — `/clear` is a user-typed command and cannot be sent as an instruction. The leader's message states, in order: what closed (card, phase, evidence read), which session to `/clear` (by name), and what happens next.
 
+[HARD] On a card transition inside a lane session, `/clear` happens exactly once, **after** the session has moved into the next card's worktree — not before the move. A phase end that is not a card transition clears at the phase boundary exactly as stated above. The count is not reduced: one card transition, one `/clear`.
+
 Where the next phase reuses a just-cleared session, the leader re-sends the full pointer instruction rather than assuming the session remembers.
 
 The leader's own session is cleared the same way, between cards rather than phases: once a card reaches `done`, the operator is asked to `/clear` the leader session, and the next turn presents the queue again.
@@ -133,6 +135,8 @@ The leader's own session is cleared the same way, between cards rather than phas
 [HARD] **`moai worktree done` closes L2 trees only** — project trees under `.claude/worktrees/` and `.moai/worktrees/` are L1 and absent from its registry. The full L1/L2 boundary lives in `worktree-integration.md` § Terminology Glossary.
 
 [HARD] **The card's branch is unpushed, so its worktree is the work's only instance.** Dispose of no worktree — L1 or L2 — until the leader has integrated the branch and the remote merge has landed.
+
+[HARD] **A card session starts inside its worktree and stays there.** The standard is a lane session launched inside the card's worktree through the launcher (`moai cc -w`); it starts with that tree's project skill set. Moving a running card session from one card worktree into another card worktree is prohibited — that transition attaches a second skill listing on top of the session's first, and that duplication is what this rule exists to prevent. Two composition rules bound the prohibition rather than leaving it implicit: (a) the "A new card starts in a new worktree" clause below composes with it — its exit-first requirement is satisfied by ending the lane session and launching the next session inside the new tree, never by moving the running session; (b) the brief entry into the release/integration worktree that the same files mandate for merging a card branch is NOT covered by the prohibition — it keeps its own re-entry rule (return to the card worktree before continuing card work). Where a worktree move is unavoidable anyway, `/clear` is issued exactly once, after the move — never before it.
 
 [HARD] **A new card starts in a new worktree** — a lane anchored in the previous card's tree MUST `ExitWorktree` before entering the next one; the fresh tree is created from the configured base, never reused. Where the new card depends on a prior card's unmerged code, merge that branch inside the new worktree.
 

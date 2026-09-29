@@ -1,0 +1,55 @@
+# Per-probe extractor outputs — verbatim, this run (2026-09-29, CC 2.1.284)
+
+# extractor_skills: jq -r 'select(.subtype=="init") | .slash_commands[]' <transcript> | grep -c '^fixture-'
+#   (per-source breakdown uses the same jq with grep -c '^fixture-wt-' / '^fixture-outer-')
+# extractor_instructions: grep -oE 'Contents of [^"\]+(CLAUDE\.md|CLAUDE\.local\.md)' <transcript> | sort -u
+# transcripts persisted under probes/transcripts/ (byte copies of the profile-store session files)
+
+## p1-launcher-start-w1 (session e1fe10e4) — started inside worktree w1
+skills extractor: 40 (fixture-wt), 0 (fixture-outer)  <- single skill source
+instructions extractor:
+Contents of /private/tmp/t1279-m1/outer/.claude/worktrees/w1/CLAUDE.local.md
+Contents of /private/tmp/t1279-m1/outer/.claude/worktrees/w1/CLAUDE.md
+Contents of /private/tmp/t1279-m1/outer/CLAUDE.local.md
+result-line usage: input_tokens 28150, cache_creation_input_tokens 0, cache_read_input_tokens 640 -> first-turn input sum 28790
+
+## p1b (session d2e8b483) — probe 1 re-instrumented run, identical geometry
+skills extractor: 40 (fixture-wt), 0 (fixture-outer)
+instructions extractor: same three lines as p1
+result-line usage: input_tokens 28727, cache_creation_input_tokens 0, cache_read_input_tokens 64 -> first-turn input sum 28791
+
+## p2-primary-start-moved (session f533a0a0) — started in outer, EnterWorktree into w1 (tool result confirmed: "Entered worktree at /private/tmp/t1279-m1/outer/.claude/worktrees/w1 on branch wt1")
+skills extractor at init: 12 (fixture-outer), 0 (fixture-wt)
+fixture-wt mentions in whole transcript after the move: 0  <- no second skill list attached
+instructions extractor:
+Contents of /private/tmp/t1279-m1/outer/CLAUDE.local.md
+Contents of /private/tmp/t1279-m1/outer/CLAUDE.md
+result-line usage (final request, post-move turn): input_tokens 53155, cache_creation_input_tokens 0, cache_read_input_tokens 1728 -> input sum 54883
+
+## p3a-interactive-attempt1 (session cc035f13) — tmux interactive, attempt 1
+skills extractor: 12 (fixture-outer) via init listing; fixture-wt mentions in whole transcript: 0
+instructions extractor:
+Contents of /private/tmp/t1279-m1/outer/CLAUDE.local.md
+Contents of /private/tmp/t1279-m1/outer/CLAUDE.md
+turn A marker P3-MOVED: arrived (pane grep count 1). /clear send was concatenated with the next
+prompt by the TUI slash-menu fill mechanism (single Enter inserts the command text without
+executing); the in-session timeout expired during the declared marker wait. No second transcript
+file; /clear never executed.
+
+## p3b-interactive-retry (session 765d59a3) — tmux interactive, spare-probe retry
+turn A marker P3-MOVED: arrived (pane grep count 2). /clear again filled the input without
+executing despite an 8 s settle; the following prompt concatenated onto it
+(user message verbatim: "/clearReply with exactly P3-CLEARED and nothing else."); the model
+replied P3-CLEARED to the mangled single prompt. No second transcript file. Subsequent sends
+in the pane returned API Error 400 (backend, served model). Caps exhausted -> REQ-SDL-005 Gap.
+instructions extractor: outer CLAUDE.local.md + outer CLAUDE.md (same two lines as p2)
+
+## p4-control-primary (session 696b29d1) — started in outer, no move
+skills extractor: 12 (fixture-outer), 0 (fixture-wt)
+instructions extractor:
+Contents of /private/tmp/t1279-m1/outer/CLAUDE.local.md
+Contents of /private/tmp/t1279-m1/outer/CLAUDE.md
+result-line usage: input_tokens 27174, cache_creation_input_tokens 0, cache_read_input_tokens 64 -> first-turn input sum 27238
+
+## probe5 positive control (fixture probes/transcripts/probe5-fixture-two-sources.jsonl, two skill sources)
+skills extractor: 4  (fixture-wt 2, fixture-outer 2)  -> count >= 2 as required
