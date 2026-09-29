@@ -59,6 +59,21 @@ AC-RLC-004 판정 보강 — 가드의 RED 관측 기록(구현 과정에서 실
 
 AC-RLC-006 성격 주기: html-report skill 은 AI 실행 지침이라 Go 테스트 불가점이며, 본 관측은 편집된 SKILL.md 의 절차(기본 경로 해석 → 디렉터리 자동 생성 → html+md 트윈 출력)를 임시 프로젝트에서 그대로 실행해 경로 관례와 자동 생성 동작을 확인한 것이다 — 렌더 품질(spec §E 예외: 렌더링 동작 전부 현행 유지)은 대상 밖이다.
 
+### M3 — hoist 동사 + done(L2) 배선 + 폐기 플로우 문서 (전수 전사)
+
+RED 증거(GREEN 이전 실측, `.moai/reports/t1320/m3-red-evidence.txt` 전사): `go test -run 'TestHoist|TestDoneL2RemovalHoists' ./internal/cli/worktree/` → `undefined: hoistWorktreeReports / newHoistCmd / runDoneWorktreeCleanupWithOptions` + `[build failed]`.
+
+| AC | 판정 명령 | 관측 출력 |
+|---|---|---|
+| AC-RLC-007 | `go test -run 'TestHoist\|TestDoneL2RemovalHoists' ./internal/cli/worktree/` (구현 후) | PASS — 동사 정상 인출(`Hoisted 1 file(s), 14 byte(s)` + 목적지 파일 관측) · no-op · 루트 밖 거부 · done L2 제거 전 루틴 호출(실제 git repo+worktree 픽스처) · `--no-hoist` 제외 |
+| AC-RLC-008 | 동일 스위트 `TestHoistVerb_ConflictSkipAndReport` | PASS — 목적지 상이 내용 보존(`OLD evidence` 불변) + `Skipped (differs at destination): evidence.md` 보고 + 비충돌 파일 인출 |
+| AC-RLC-007(보강) | `go test -count=1 -timeout 30m ./internal/cli/worktree/` | `ok … 28.865s` — 기존 9동사 레지스트리 가드 2건은 신규 동사 등록의 필연 수반 갱신(9→10, Long 텍스트 hoist 명시) 후 전수 GREEN |
+| AC-RLC-012 | `grep -c hoist .claude/rules/moai/workflow/worktree-integration.md internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md` | `…:1` / `…:1` — 양 사본 동일 조항(「hoist, then remove」 의무), 조항은 AC-RLC-007 이 검증한 `moai worktree hoist <tree-path>` 동사를 참조 |
+
+구현 형상(REQ-RLC-005 재설계 반영): hoist 코어는 `hoistWorktreeReports(treePath, mainRoot)` 단일 함수 — ① 동사 `moai worktree hoist <tree-path>`(`internal/cli/worktree/hoist.go`, main 루트는 대상 트리 경로에서 역산 — `gitMainRootFromTargetFunc` 재사용) ② done 의 L2 제거 경로 2곳 모두 제거 전 호출(`runDoneWorktreeCleanupWithOptions`, 실패 시 제거 차단, `--no-hoist` 배제) ③ L1 세션 종료 폐기 플로우는 문서 의무로 동사 호출 명시. 충돌 정책은 REQ-RLC-006 대로 skip-and-report.
+
+판정 과정 실측 정정 2건: ① 이 git의 `check-ignore -v` negation exit 0 동작(M1 기록 재확인)과 무관하게, done 배선 테스트의 초기 실패 2건은 테스트 픽스처 설계 오류(tree 가 main temp 밖 — 거부가 정답 / 선행 서브테스트의 목적지 재사용)로 구현과 무관. ② AC-RLC-012 조항은 사본 간 바이트 동일 유지(cp 동기화, 편집 전 IDENTICAL 확인).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
