@@ -67,7 +67,7 @@ Baseline (pre-flight, this tree @ c961c4d4a): `go build ./...` + `GOOS=windows G
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-09-30
-run_commit_sha: pending-backfill-run
+run_commit_sha: f1e5c11bf
 run_status: complete (M1-M5 landed; no blockers)
 ac_pass_count: 17
 ac_fail_count: 0
@@ -84,4 +84,15 @@ m1_to_m5_commit_strategy: one commit per milestone (M1 757255ff4, M2 c8a0d9137, 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_(pending sync-phase — owned by manager-docs; sync_commit_sha: )_
+- sync_complete_at: 2026-09-30
+- sync_commit_sha: pending-backfill-sync
+- sync_status: complete
+- sync_phase_scope: artifact-only close (spec/plan/acceptance frontmatter, §E.3 run_commit_sha backfill per the D3 placeholder exemption, this §E.4, CHANGELOG entry) — no code, no template source, no docs edits; the documentation surface was already cleared in-run by M5 (c8c671a68) and the sync-phase spot-check found no drift
+- b12_self_test_a: pass — `grep -c 'SPEC-FACTORY-LANE-JOIN-SOCKET-001' CHANGELOG.md` = 0 pre-emission
+- b12_self_test_b: pass — 17 distinct live AC identifiers in acceptance.md (AC-001..AC-017, zero [RETIRED]/[REF] markers); the CHANGELOG entry references the same 17
+- b12_self_test_c: pass — every file path cited in the CHANGELOG entry verified with `ls` (internal/homestate/factory_run_resume.go, internal/discovery/factory_discovery.go, internal/cli/factory.go, internal/cli/factory_join_discovery_test.go, internal/hook/factory_resumed_bind_test.go) and the load-bearing claims verified by grep (AMBIGUOUS_FACTORY_LEADER at factory.go:360, DiscoverLeader at factory_discovery.go:113, ResumeRun at factory_run_resume.go:39, run.resumed {basis,outcome} payload at factory_run_resume.go:70-71)
+- changelog_entry_position: [Unreleased] → `### Added`, first entry
+- frontmatter_status_transitions.spec_md: in-progress → implemented → completed (merged into the single sync commit; `updated:` refreshed 2026-09-30)
+- frontmatter_status_transitions.plan_acceptance: no `status:` field authored (status-axis statelessness per spec-frontmatter-schema.md § Artifact Statelessness); `updated:` refreshed to 2026-09-30
+- canary_compliance_check.mx_tags: no MX tag surface touched — sync edits are SPEC artifacts + CHANGELOG only (M3's @MX:ANCHOR/@MX:NOTE in factory.go landed in-run)
+- carried_gap: package-wide internal/cli + internal/hook suite verdicts remain CI's (run-phase full-suite attempts died to load with 0 assertion failures, /tmp/t1330-cli-full-suite.log) — unchanged by this artifact-only sync; targeted clusters all green

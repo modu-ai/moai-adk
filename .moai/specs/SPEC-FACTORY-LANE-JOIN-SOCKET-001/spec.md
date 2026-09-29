@@ -2,9 +2,9 @@
 id: SPEC-FACTORY-LANE-JOIN-SOCKET-001
 title: "Factory lane join tolerates run-record absence via verified leader discovery; -l/--lead target flag"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-09-29
-updated: 2026-09-29
+updated: 2026-09-30
 author: manager-spec
 priority: P1
 phase: "v3.3.0 target"
