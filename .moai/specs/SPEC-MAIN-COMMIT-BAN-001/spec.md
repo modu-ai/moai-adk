@@ -2,7 +2,7 @@
 id: SPEC-MAIN-COMMIT-BAN-001
 title: "Local main Commit Ban — Doctrine Codification, Protected-Branch Commit Deny, Residue Disposition Procedure, Lead Push Threshold"
 version: 0.1.0
-status: draft
+status: in-progress
 created: 2026-09-29
 updated: 2026-09-29
 author: manager-spec
