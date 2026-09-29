@@ -72,7 +72,7 @@
 ## §E.4 Sync-phase Audit-Ready Signal
 
 - sync_complete_at: 2026-09-29
-- sync_commit_sha: pending-backfill-sync
+- sync_commit_sha: 4537d046b
 - sync_status: complete
 - expected_sync_debt: cleared — `TestProjectRootDocMatchesServer` + `TestDocsSiteProjectRootMatchesServer` (4 locale arms) now `ok`; repair = the project_root-family documentation updated to the post-M2 server schema (`codex_task` joins, 14 tools, codex_task's input required-never-defaulted): `.claude/rules/moai/core/moai-mcp-tools.md` + byte-identical template mirror (`cmp` → identical; `make build` exit 0, catalog.yaml 13408 bytes) + `docs-site/content/{en,ko,ja,zh}/guides/mcp-server.md`. The doc-conformance test's own count vocabulary (`docCountWords` map, 4 locale count phrases in `internal/cli/mcp_project_root_doc_test.go`) extended to fourteen/14 per lead authorization (coordinator message 2026-09-29) — the alternative of keeping the Thirteen phrase while listing 14 names was refused as a false published count.
 - b12_self_test_a: pass — `grep -c 'SPEC-CODEX-ROLE-AUDIT-ROOT-001' CHANGELOG.md` = 0 pre-emission
