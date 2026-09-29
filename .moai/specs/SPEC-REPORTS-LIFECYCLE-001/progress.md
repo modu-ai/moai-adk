@@ -113,7 +113,7 @@ process 정정 기록: M3 에서 템플릿 미러(worktree-integration.md) 편�
 
 ```yaml
 run_complete_at: 2026-09-29
-run_commit_sha: "pending-backfill-run"   # backfilled with the M-final commit SHA in the follow-up commit (D3 exemption)
+run_commit_sha: "292cf70f8 (M-final)"   # backfilled with the M-final commit SHA in the follow-up commit (D3 exemption)
 run_status: complete
 ac_pass_count: 12
 ac_fail_count: 0
