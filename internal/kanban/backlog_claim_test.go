@@ -177,7 +177,11 @@ func TestBacklogClaim_LiveLeaseGuard(t *testing.T) {
 	// Arm 1 — raced refusal, byte-identical record.
 	store := claimFixture(t)
 	ids := seedQueuedCards(t, store, "live leased card")
-	stampLease(t, store, ids[0], "lane-1", leaseAt(15*time.Minute))
+	// leaseAt() re-reads the wall clock on every call, so the stamped value
+	// and the expected value must come from ONE call: two calls a second
+	// apart disagree once -race slows the run, flaking the comparison below.
+	wantLease := leaseAt(15 * time.Minute)
+	stampLease(t, store, ids[0], "lane-1", wantLease)
 	before := recordJSON(t, store)
 
 	if _, err := store.Claim("lane-2"); !errors.Is(err, ErrClaimRaced) {
@@ -188,7 +192,7 @@ func TestBacklogClaim_LiveLeaseGuard(t *testing.T) {
 	}
 	guarded := findItem(t, store, ids[0])
 	if guarded.PickedBy == nil || *guarded.PickedBy != "lane-1" ||
-		guarded.LeaseExpiresAt == nil || *guarded.LeaseExpiresAt != leaseAt(15*time.Minute) {
+		guarded.LeaseExpiresAt == nil || *guarded.LeaseExpiresAt != wantLease {
 		t.Errorf("live lease fields moved under a refused claim: %+v", guarded)
 	}
 
