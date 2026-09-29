@@ -178,11 +178,11 @@ func TestFactoryWorkerNoticeLocaleWordOrders(t *testing.T) {
 	// contrast (count first). A later format-string reorder in either
 	// direction fails here.
 	zhJoin := factoryLaneNotice("lane-2", 5, "zh")
-	if labelAt, countAt := strings.Index(zhJoin, "lane-2"), strings.Index(zhJoin, "5"); !(labelAt >= 0 && countAt >= 0 && labelAt < countAt) {
+	if labelAt, countAt := strings.Index(zhJoin, "lane-2"), strings.Index(zhJoin, "5"); labelAt < 0 || countAt < 0 || labelAt >= countAt {
 		t.Errorf("zh join must render the label before the count (label at %d, count at %d):\n%s", labelAt, countAt, zhJoin)
 	}
 	enJoin := factoryLaneNotice("lane-2", 5, "en")
-	if labelAt, countAt := strings.Index(enJoin, "lane-2"), strings.Index(enJoin, "5"); !(labelAt >= 0 && countAt >= 0 && countAt < labelAt) {
+	if labelAt, countAt := strings.Index(enJoin, "lane-2"), strings.Index(enJoin, "5"); labelAt < 0 || countAt < 0 || countAt >= labelAt {
 		t.Errorf("en join must render the count before the label (label at %d, count at %d):\n%s", labelAt, countAt, enJoin)
 	}
 
