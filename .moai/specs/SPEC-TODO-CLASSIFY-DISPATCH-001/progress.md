@@ -145,6 +145,25 @@ SPEC's scope envelope.
   `SortByClassification` (sole queue-order restorer), each with @MX:REASON + @MX:SPEC. No tags
   removed; no existing tag touched.
 
+### Guardian adjudication — sql-injection flag on the backlog DDL path (post-run, 2026-09-29)
+
+FINDING: sql-injection flag on `fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s TEXT", table, column)`
+at internal/kanban/backlog_sqlite.go:562.
+
+MEASUREMENT: (1) identifiers are compile-time constants at every call site —
+backlogClassificationColumn, backlogLandingColumn, and the literal
+`[]string{"items","archived_items"}` transition-stamp loop; the ensureColumn doc comment binds
+"may NEVER be fed from a runtime value". (2) value parameters ARE parameterized
+(pragma_table_info(?) binding in hasColumn). (3) SQLite cannot bind DDL identifiers — constant
+Sprintf is the standard pattern. (4) mechanically enforced by
+TestSchemaFreezeRecordsTransitionStamps (exact ordered column tuples of items + archived_items).
+(5) PROVENANCE: introduced by 3bcb0c33a (2026-09-08, card t359) — `git merge-base --is-ancestor`
+confirms it predates this card's absorb base 51f3e9878; this card's diff adds only a new constant
+call site.
+
+DISPOSITION: false positive — guarded DDL, base code, doubly guarded (doc contract + schema-freeze
+test). No code change in this card; surfaced to the lead for the base-debt ledger.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
