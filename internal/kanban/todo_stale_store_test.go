@@ -196,3 +196,135 @@ func TestInspectStaleLocalStores_ReadOnly(t *testing.T) {
 			legacySum, gotSum, legacyMtime, gotMtime, legacyNames, gotNames)
 	}
 }
+
+// ghostFixture plants the measured ghost classes (SPEC-TODO-SURFACE-POLISH-001
+// REQ-TSP-040) on top of the divergent-store fixture: a legacy backlog.json
+// in the home queue directory and in the project-local todo directory, a
+// .migrated quarantine in the legacy kanban directory, and UUID-shaped
+// session records beside named artifacts the class must NOT swallow.
+func ghostFixture(t *testing.T) (root string, ghosts map[string]GhostArtifact) {
+	t.Helper()
+	r, _, _ := staleStoreFixture(t)
+	root = r
+	ghosts = map[string]GhostArtifact{}
+
+	homeJSON := filepath.Join(StateDirForRoot(root), backlogFileName)
+	if err := os.WriteFile(homeJSON, []byte(strings.Repeat("h", 1884)), 0o600); err != nil {
+		t.Fatalf("plant home backlog.json: %v", err)
+	}
+	ghosts[homeJSON] = GhostArtifact{Path: homeJSON, Class: GhostClassLegacyJSON, Bytes: 1884}
+
+	localJSON := filepath.Join(projectStateDirForRoot(root), backlogFileName)
+	if err := os.WriteFile(localJSON, []byte(strings.Repeat("l", 652)), 0o600); err != nil {
+		t.Fatalf("plant project-local backlog.json: %v", err)
+	}
+	ghosts[localJSON] = GhostArtifact{Path: localJSON, Class: GhostClassLegacyJSON, Bytes: 652}
+
+	migrated := filepath.Join(LegacyStateDirForRoot(root), backlogFileName+backlogMigratedSuffix)
+	if err := os.MkdirAll(filepath.Dir(migrated), 0o755); err != nil {
+		t.Fatalf("create legacy kanban dir: %v", err)
+	}
+	if err := os.WriteFile(migrated, []byte(strings.Repeat("m", 155)), 0o600); err != nil {
+		t.Fatalf("plant .migrated: %v", err)
+	}
+	ghosts[migrated] = GhostArtifact{Path: migrated, Class: GhostClassMigratedJSON, Bytes: 155}
+
+	for _, name := range []string{
+		"0a0b0c0d-0000-4000-8000-000000000001.json",
+		"0a0b0c0d-0000-4000-8000-000000000002.json",
+	} {
+		path := filepath.Join(projectStateDirForRoot(root), name)
+		if err := os.WriteFile(path, []byte(`{"session_id":"x"}`), 0o600); err != nil {
+			t.Fatalf("plant session record: %v", err)
+		}
+		ghosts[path] = GhostArtifact{Path: path, Class: GhostClassSessionRecord, Bytes: int64(len(`{"session_id":"x"}`))}
+	}
+	// Named artifacts sharing the directory are NOT session records.
+	for _, name := range []string{"companions.json", "leads.json"} {
+		if err := os.WriteFile(filepath.Join(projectStateDirForRoot(root), name), []byte("[]"), 0o600); err != nil {
+			t.Fatalf("plant %s: %v", name, err)
+		}
+	}
+	return root, ghosts
+}
+
+// AC-TSP-040 — every ghost class lands in the fact as its own entry with
+// path, class, and byte size; the SQLite divergence facts are untouched by
+// the walk; the probe writes nothing (sha unchanged) and swallows no named
+// artifact into the session-record class.
+func TestInspectStaleLocalStoresGhostClasses(t *testing.T) {
+	root, want := ghostFixture(t)
+
+	// Fingerprint every planted ghost before the probe.
+	sums := map[string]string{}
+	for path := range want {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		sum := sha256.Sum256(raw)
+		sums[path] = hex.EncodeToString(sum[:])
+	}
+
+	fact := InspectStaleLocalStores(root)
+
+	// The SQLite divergence facts survive the extension untouched.
+	if !fact.Divergent {
+		t.Error("Divergent = false after the ghost walk — the ghost extension must not contaminate the SQLite verdict (REQ-TSP-040)")
+	}
+	if len(fact.Stores) != 1 {
+		t.Errorf("len(Stores) = %d, want 1", len(fact.Stores))
+	}
+
+	if len(fact.Ghosts) != len(want) {
+		t.Fatalf("len(Ghosts) = %d (%v), want %d", len(fact.Ghosts), fact.Ghosts, len(want))
+	}
+	for _, got := range fact.Ghosts {
+		w, ok := want[got.Path]
+		if !ok {
+			t.Errorf("unexpected ghost %q (class %q) — companions.json/leads.json must not be swallowed", got.Path, got.Class)
+			continue
+		}
+		if got.Class != w.Class {
+			t.Errorf("ghost %s class = %q, want %q", got.Path, got.Class, w.Class)
+		}
+		if got.Bytes != w.Bytes {
+			t.Errorf("ghost %s bytes = %d, want %d", got.Path, got.Bytes, w.Bytes)
+		}
+		raw, err := os.ReadFile(got.Path)
+		if err != nil {
+			t.Fatalf("re-read %s: %v", got.Path, err)
+		}
+		sum := sha256.Sum256(raw)
+		if hex.EncodeToString(sum[:]) != sums[got.Path] {
+			t.Errorf("ghost %s changed across the probe — the detector is read-only (REQ-TSP-040)", got.Path)
+		}
+	}
+}
+
+// The canonical directory's backlog.json without a sibling engine database
+// is the LIVE pre-SQLite JSON queue, not a ghost — calling it one would name
+// the answering store stale.
+func TestInspectStaleLocalStores_LiveJSONQueueIsNotAGhost(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv(paths.EnvHome, t.TempDir())
+	// Seed NO home database: the canonical dir resolves project-local
+	// (temporary origin) or stays home-shaped; either way the queue JSON we
+	// plant is the only store and no engine .db sits beside it.
+	canonical := StateDirForRoot(root)
+	liveJSON := filepath.Join(canonical, backlogFileName)
+	if err := os.MkdirAll(filepath.Dir(liveJSON), 0o755); err != nil {
+		t.Fatalf("create canonical state dir: %v", err)
+	}
+	if err := os.WriteFile(liveJSON, []byte(`{"version":1,"items":[]}`), 0o600); err != nil {
+		t.Fatalf("plant live backlog.json: %v", err)
+	}
+
+	fact := InspectStaleLocalStores(root)
+
+	for _, g := range fact.Ghosts {
+		if g.Class == GhostClassLegacyJSON {
+			t.Errorf("canonical backlog.json without a sibling engine database reported as %q ghost at %s — it is the live legacy-format queue", GhostClassLegacyJSON, g.Path)
+		}
+	}
+}

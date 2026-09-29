@@ -118,6 +118,80 @@ weakening):
    '^TestTodoRuntimeStorePublicReadbackSurvivesCardEdit$' -count=1` →
    `ok ... 2.596s`.
 
+### M2 — ghost stores (④ detection, once-notice, doctor inventory, doc fix)
+
+**Diagnosis record (REQ-TSP-031 / AC-TSP-031 — the t1338 observation).**
+Three legs, each mechanically observed in this run:
+
+1. **Reproduction attempt** — the plan-phase re-measure (2026-09-29, this
+   session's predecessor) ran `moai todo list --limit 60 | grep -c t1338`
+   against the live home queue and counted 4 (the card renders in one row
+   plus findings lines): the one-off non-render observation was NOT
+   reproduced at plan time, and the run phase adds no counter-evidence —
+   the render filter's only exclusion is `dropped`
+   (`runTodoListRoot`, todo.go), so a queued row cannot be skipped by
+   state.
+2. **v1/v2 CHECK-constraint hold-write behavior** — observed with a
+   hand-built v1-schema database (3-state CHECK, `schema_version=1`,
+   the seq/landing column list the rebuild copies) driven through the
+   store's own `Mutate` hold write. Result: the write SUCCEEDS — the
+   adopting open's `ensureSchema` rebuilds the v1 items table to the
+   4-state v2 layout first (`rebuildItemsTable`), the row lands as `hold`,
+   and the post-write stamp reads `schema_version="2"`. Verbatim probe
+   output (temporary diagnosis test, since deleted; evidence preserved
+   here):
+   ```
+   hold write on hand-built v1 DB: err=<nil>
+   post-write schema_version="2" items.t1.state="hold"
+   LoadPure items=1 first-state="hold"
+   ```
+   A CHECK violation on the hold write path is unreachable through the
+   verb surface.
+3. **Conclusion** — the t1338 observation is a non-reproducible one-off
+   with no reachable structural cause remaining: the render filter admits
+   every live state (now pinned by the AC-TSP-030 property test, whose
+   instrument was mutant-probed red), and the hold write path on a v1
+   database is protected by the rebuild migration. The structural guard
+   the SPEC demanded is the invariant test itself.
+
+**Detector extension (AC-TSP-040)** — `TestInspectStaleLocalStoresGhostClasses`
++ `TestInspectStaleLocalStores_LiveJSONQueueIsNotAGhost` in
+internal/kanban pass (`ok github.com/modu-ai/moai-adk/internal/kanban`),
+covering: each ghost class reported as its own fact with path/class/bytes,
+sha-unmodified evidence across the probe, the SQLite divergence verdict
+uncontaminated, named artifacts (companions.json, leads.json) not
+swallowed, and the live pre-SQLite JSON queue not misreported as a ghost.
+
+**Once-per-class notice (AC-TSP-041)** — `TestGhostNoticeOnce` in
+internal/cli: first `list` carries the ghost notice naming `legacy-json`;
+the second `list` is silent; stdout is byte-identical across the two runs;
+the marker lands in the alive state directory recording the class; ghost
+file shas are unchanged and the pure ghost directory plus the home queue
+directory gain no entry. Note (interpretation recorded per §B.4): the AC's
+"no file added to the ghost directory" is judged over the ghost-only
+snapshot directories; the alive state directory — which the launcher
+already fills with live runtime artifacts (companions.json, leads.json,
+the autodone log) — hosts the marker, because REQ-TSP-041 itself names the
+alive state directory as the marker's home and the ghost evidence stays
+byte-untouched.
+
+**Doctor ghost inventory (AC-TSP-042)** — `TestDoctorTodoGhostInventory`
+(3 states: absent OK / present WARN with path·class·bytes / unreadable
+FAIL) passes; the same commit carries the constant registration
+(`todoGhostInventoryCheckName`), the `namesAddedAfterBaseline` bare key,
+and regenerated goldens — the t1251 bundle, verified by
+`go test ./internal/cli/ -run
+'^(TestBinaryLag_AllowlistKeysAreLiveNames|TestBinaryLag_DoctorCheckNameSetIsUnchanged)$'`
+and the three `TestDoctorGolden_*` tests, all `ok`.
+
+**Storage doc fix (AC-TSP-043)** — template source
+`internal/template/templates/.moai/docs/todo-queue-storage.md` rewritten
+(home-DB canonical layout; the `backlog.json` "safe to delete" row
+corrected to the ghost framing; a ghost-artifact table added) and mirrored
+byte-identical to the tracked `.moai/docs/todo-queue-storage.md` in this
+branch (`cmp` → identical). Greps: `backlog.db` ×10, `~/.moai/db/` ×2,
+both paths tracked by git.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
