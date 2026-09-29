@@ -115,6 +115,19 @@ func newTodoReadStore() *kanban.BacklogStore {
 	return kanban.NewBacklogStore(kanban.BacklogPathForRoot(root))
 }
 
+// todoStoreAt and todoReadStoreAt anchor the queue at an explicit root — the
+// MCP tool path, whose caller names its tree with the project_root argument
+// (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-024). The CLI verbs keep resolving
+// through resolveTodoQueueRoot; the two shapes share the same path builders,
+// so a root both surfaces agree on sees the same queue file.
+func todoStoreAt(root string) *kanban.BacklogStore {
+	return kanban.NewBacklogStore(todoBacklogPath(root))
+}
+
+func todoReadStoreAt(root string) *kanban.BacklogStore {
+	return kanban.NewBacklogStore(kanban.BacklogPathForRoot(root))
+}
+
 // todoLandedRef is the single place the todo surface resolves the ref the
 // landing question is asked about, so the help text, the flag description, the
 // refusal, and the query itself can never name different refs.
@@ -274,8 +287,16 @@ mentions an id later in the sentence still falls through, and
 		// here rather than inside resolveTodoQueueRoot: that helper is called
 		// several times per run (store, landed ref, ...) and would repeat the
 		// notice once per call.
-		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
-			warnTempOriginQueueRefusal(cmd)
+		//
+		// The lane queue guard (REQ-SD-015) rides the same hook, ahead of
+		// every subcommand's RunE, so a refused lane session never reaches a
+		// mutation and the queue file stays byte-identical.
+		PersistentPreRunE: func(run *cobra.Command, args []string) error {
+			if err := todoRefuseLaneMutation(todoTreeRoot(run), run, args); err != nil {
+				return err
+			}
+			warnTempOriginQueueRefusal(run)
+			return nil
 		},
 		GroupID: "tools",
 	}
@@ -301,6 +322,61 @@ var (
 	todoAutoFlag bool
 	todoAutoWait time.Duration
 )
+
+// todoLaneReadOnlyVerbs is the REQ-SD-015 read-only allowlist: the only
+// `moai todo` forms a lane session may run. Everything else — including
+// `next <n>`, which the operator's pick path shares — is refused; the one
+// queue write a lane performs is the promotion inside `moai factory next`
+// (OD-1, operator-authorized for the self-dispatch lane mode).
+var todoLaneReadOnlyVerbs = map[string]bool{
+	"list":    true,
+	"history": true,
+	"why":     true,
+	"pr":      true,
+	"triage":  true,
+}
+
+// todoTreeRoot returns the todo tree's own root for run: the nearest
+// ancestor (run included) that defines this PersistentPreRunE. Inside the
+// todo tree that is the `moai todo` command itself, so the lane guard can
+// tell "the parent invoked bare" from "a subcommand" without closing over
+// the not-yet-defined root variable.
+func todoTreeRoot(run *cobra.Command) *cobra.Command {
+	for p := run; p != nil; p = p.Parent() {
+		if p.PersistentPreRunE != nil {
+			return p
+		}
+	}
+	return run
+}
+
+// todoRefuseLaneMutation guards the todo surface against a lane session
+// (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-015): when lane refusal holds, only
+// the read-only allowlist — and a bare parent render with no arguments — may
+// proceed. The parent-with-args form is refused because it falls through to
+// `add`, a mutation. root is the tree the hook was defined on; run is the
+// command actually executing.
+func todoRefuseLaneMutation(root, run *cobra.Command, args []string) error {
+	if !factoryLaneRefusal() {
+		return nil
+	}
+	if run == root {
+		if len(args) == 0 {
+			return nil
+		}
+	} else if todoLaneReadOnlyVerbs[run.Name()] {
+		return nil
+	}
+	return fmt.Errorf("%s", todoLaneMutationRefusalText(todoSurfaceName(run)))
+}
+
+// todoLaneMutationRefusalText is the one wording source for the REQ-SD-015
+// queue-mutation refusal, shared by the CLI guard and the MCP todo_add tool
+// so the two surfaces cannot drift (AC-SD-014 refusal equality).
+func todoLaneMutationRefusalText(surface string) string {
+	return fmt.Sprintf("moai %s: refused — %s: a lane session cannot mutate the queue (read-only here: bare todo, list, history, why, pr, triage); a lane takes its next card through moai factory next",
+		surface, factoryLaneBoundarySentinel)
+}
 
 // todoVerbShaped matches a first token that reads as a command verb: one
 // ASCII word, optionally carrying digits, hyphens, or underscores. Bounded in
@@ -532,6 +608,13 @@ func newTodoAddCmd() *cobra.Command {
 // append, "<id> <position>" stdout line. `--pick` stays add-only — the
 // fallthrough path has no flags.
 func runTodoAddAppend(cmd *cobra.Command, text string, force bool) error {
+	return runTodoAddAppendRoot(resolveTodoQueueRoot(), cmd, text, force)
+}
+
+// runTodoAddAppendRoot is runTodoAddAppend anchored at an explicit root —
+// the shape the MCP todo_add tool calls (REQ-SD-024), so both surfaces run
+// one implementation.
+func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bool) error {
 	if strings.TrimSpace(text) == "" {
 		return fmt.Errorf("todo add: text must be non-empty")
 	}
@@ -550,7 +633,7 @@ func runTodoAddAppend(cmd *cobra.Command, text string, force bool) error {
 	}
 	var item kanban.BacklogItem
 	var pos int
-	err := newTodoStore().Mutate(func(rec *kanban.BacklogRecord) error {
+	err := todoStoreAt(root).Mutate(func(rec *kanban.BacklogRecord) error {
 		var mutErr error
 		item, pos, mutErr = appendAnalyzedCard(rec, text, kanban.BacklogStateQueued, force)
 		return mutErr
@@ -618,10 +701,17 @@ const todoListDefaultLimit = 20
 // structured record is the full read, and a bounded JSON would be the same
 // silent truncation.
 func runTodoList(cmd *cobra.Command, jsonOutput bool, droppedOnly bool, limit int) error {
+	return runTodoListRoot(resolveTodoQueueRoot(), cmd, jsonOutput, droppedOnly, limit)
+}
+
+// runTodoListRoot is runTodoList anchored at an explicit root — the shape
+// the MCP todo_list tool calls (REQ-SD-024), so both surfaces render one
+// implementation.
+func runTodoListRoot(root string, cmd *cobra.Command, jsonOutput bool, droppedOnly bool, limit int) error {
 	if !jsonOutput && limit < 0 {
 		return fmt.Errorf("todo list: --limit must be >= 0 (got %d)", limit)
 	}
-	store := newTodoReadStore()
+	store := todoReadStoreAt(root)
 	// REQ-BJD-002 — probed before the read. stderr only: stdout is what the
 	// foreman reads.
 	_ = discloseQueueLayout(cmd, "todo")

@@ -544,7 +544,7 @@ func TestEnterFactoryLeadModeMintsRunID(t *testing.T) {
 func TestEnterFactoryWorkerModeEnv(t *testing.T) {
 	clearFactoryTestEnv(t)
 
-	restore := enterFactoryLaneMode("worker-3", 5)
+	restore := enterFactoryLaneMode("worker-3", 5, "")
 	defer restore()
 
 	if got := os.Getenv(config.EnvMoaiFactoryWorker); got != "worker-3" {
@@ -580,7 +580,7 @@ func TestEnterFactoryWorkerModeUnknownCount(t *testing.T) {
 	clearFactoryTestEnv(t)
 	t.Setenv(config.EnvClaudeCodeMaxConcurrentSubagents, "3")
 
-	restore := enterFactoryLaneMode("worker-5", 0)
+	restore := enterFactoryLaneMode("worker-5", 0, "")
 	defer restore()
 
 	if got := os.Getenv(config.EnvMoaiFactoryWorkers); got != "0" {
@@ -876,6 +876,30 @@ func installFactoryLaunchSeam(t *testing.T) *factoryLaunchCapture {
 	return c
 }
 
+// seedGitWorkingTree turns a scratch dir into a minimal git working tree: the
+// fixture every lane join now demands (REQ-SD-005 — factoryLaneRequiresGitTree
+// refuses a lane launch from a non-git directory, card t1240). A fresh init
+// plus one seed commit keeps the entry tests measuring the entry flow through
+// the gate rather than against it. Git identity is pinned per-process so the
+// commit reads no ambient user config (same isolation as newLaneHandoffFixture).
+func seedGitWorkingTree(t *testing.T, dir string) {
+	t.Helper()
+	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(t.TempDir(), "gitconfig"))
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	for k, v := range map[string]string{
+		"GIT_AUTHOR_NAME": "fx", "GIT_AUTHOR_EMAIL": "fx@example.invalid",
+		"GIT_COMMITTER_NAME": "fx", "GIT_COMMITTER_EMAIL": "fx@example.invalid",
+	} {
+		t.Setenv(k, v)
+	}
+	handoffGit(t, dir, "init", "-q", "-b", "main")
+	if err := os.WriteFile(filepath.Join(dir, "seed.txt"), []byte("seed\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	handoffGit(t, dir, "add", "seed.txt")
+	handoffGit(t, dir, "commit", "-qm", "seed")
+}
+
 func TestCCFactoryEntryRecordsFailOpenRunMetadata(t *testing.T) {
 	clearFactoryTestEnv(t)
 	root := t.TempDir()
@@ -987,6 +1011,9 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		root := t.TempDir()
 		t.Setenv(config.EnvClaudeProjectDir, root)
 		t.Setenv("MOAI_HOME", t.TempDir())
+		// REQ-SD-005: a lane join needs a git working tree — seed one so the
+		// entry flow is measured through the launch gate, not refused by it.
+		seedGitWorkingTree(t, root)
 		clearFactoryTestEnv(t)
 		c := installFactoryLaunchSeam(t)
 
@@ -1067,6 +1094,9 @@ func TestGLM_FactoryLaneEntry(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv(config.EnvClaudeProjectDir, root)
 	t.Setenv("MOAI_HOME", t.TempDir())
+	// REQ-SD-005: a lane join needs a git working tree — seed one so the
+	// entry flow is measured through the launch gate, not refused by it.
+	seedGitWorkingTree(t, root)
 
 	clearFactoryTestEnv(t)
 	c := installFactoryLaunchSeam(t)
@@ -1104,6 +1134,9 @@ func TestGLM_FactoryLeadRunIsJoinableByLane(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv(config.EnvClaudeProjectDir, root)
 	t.Setenv("MOAI_HOME", t.TempDir())
+	// REQ-SD-005: the lane half of this drive needs a git working tree — seed
+	// one so the join is measured through the launch gate, not refused by it.
+	seedGitWorkingTree(t, root)
 
 	clearFactoryTestEnv(t)
 	c := installFactoryLaunchSeam(t)
