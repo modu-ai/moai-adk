@@ -9,7 +9,7 @@ author: manager-spec
 priority: P2
 phase: "v3.1.0 target"
 module: "internal/template/profile_matrix.go"
-lifecycle: spec-first
+lifecycle: spec-anchored
 tags: "comment-accuracy, profile-matrix, agent-group, doc-comment, card-t1055"
 tier: S
 era: V3R6

@@ -16,7 +16,7 @@ related_gap:
 related_theme: "Theme 7 — Extension"
 breaking: false
 bc_id: []
-lifecycle: design-only
+lifecycle: exploratory
 tags: "plugin, manifest, scope, design-only, deferred, v3.1, v3"
 ---
 
