@@ -62,7 +62,7 @@ The two artifacts this skill produces serve **different readers and therefore ca
 | `mode` | yes | — | `status` \| `incident` \| `plan` \| `explainer` \| `financial` \| `pr` |
 | `audience` | no | derived from the active output style | `expert` \| `basic` \| `learn` — see § Audience Tiers |
 | `slug` | no | auto-derived from the title | Output filename prefix |
-| `output_path` | no | `<cwd>/reports/<slug>-<YYYYMMDD>.html` | Output path |
+| `output_path` | no | `.moai/reports/<slug>-<YYYYMMDD>.html` | Output path |
 | `font_stack` | no | per-mode default | Font mapping override |
 
 `mode` and `audience` are **orthogonal**: `mode` picks the report's *structure* (which sections exist), `audience` picks its *depth* (how much explanation each section carries). Every mode renders at every tier.
@@ -71,7 +71,7 @@ The two artifacts this skill produces serve **different readers and therefore ca
 
 ## Output
 
-Two files at `<cwd>/reports/<slug>-<YYYYMMDD>.{html,md}`:
+Two files at `.moai/reports/<slug>-<YYYYMMDD>.{html,md}`. If the `.moai/reports/` directory does not exist yet, create it before writing either file:
 
 **The `.html` file** — the human-facing artifact:
 

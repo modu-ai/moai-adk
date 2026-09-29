@@ -35,7 +35,7 @@ func TestWorktreeCmd_Short(t *testing.T) {
 
 func TestWorktreeCmd_HasSubcommands(t *testing.T) {
 	expected := []string{
-		"new", "sync", "remove", "clean", "recover", "done",
+		"new", "sync", "remove", "clean", "recover", "done", "hoist", // SPEC-REPORTS-LIFECYCLE-001: evidence hoist before disposal
 		"snapshot", "verify", "restore", // worktree state guard
 	}
 	for _, name := range expected {
@@ -68,7 +68,7 @@ func TestWorktreeCmd_RetiredSubcommands(t *testing.T) {
 
 func TestWorktreeCmd_SubcommandCount(t *testing.T) {
 	count := len(WorktreeCmd.Commands())
-	const expected = 9 // new + sync, remove, clean, recover, done + guard snapshot/verify/restore
+	const expected = 10 // new + sync, remove, clean, recover, done, hoist + guard snapshot/verify/restore
 	if count != expected {
 		t.Errorf("worktree should have %d subcommands, got %d", expected, count)
 	}
