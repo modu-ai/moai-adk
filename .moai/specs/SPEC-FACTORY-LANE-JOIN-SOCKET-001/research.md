@@ -131,7 +131,7 @@ author: manager-spec
 | 2 | Runtime name→socket registry queryable from Go? | Pivotal unknown, deliberately not depended on (spec.md §A). |
 | 3 | Are stale sockets connectable when the pid is dead? | Unknown; irrelevant — sockets are candidacy only, never liveness (REQ-002). |
 | 4 | Does cc-socks protocol support an external join? | Unknown; irrelevant — no dialing (spec.md §A). |
-| 5 | Are REQ-FMH-001/REQ-014 blocking or amendable? | [NEEDS CLARIFICATION: amendment-vs-parallel-path] — recommendation: parallel path, no amendment (plan.md clarification 2). |
+| 5 | Are REQ-FMH-001/REQ-014 blocking or amendable? | RESOLVED (plan gate, 2026-09-29): parallel path, no amendment — the plan audit verified the framing against both contracts' actual text (`.moai/reports/t1330/plan-audit.md` § Framing Audit). |
 | 6 | Should lane numbering become run-scoped? | No — preserved project-scoped (REQ-011, Out of Scope). |
 | 7 | `peers.generation` allocation rule | Untraced; not needed by this design (bind stays generation-1 via the existing hook chain). |
 | 8 | Hook-side vs launcher-side discovery ownership | Launcher-side (design.md §A — the hook consumes the produced run id; splitting ownership would need the hook to mutate run state, which REQ-004's transactional write makes unnecessary). |
@@ -177,7 +177,7 @@ Measured first-hand during SPEC authoring, beyond the lens reports:
   refusal, REQ-003).
 - Candidate-population latency against the live ~97-socket directory (M2 measures, bounded).
 - Codex twin E2E leg (asserted at source level per spec.md §F, not exercised end-to-end).
-- [NEEDS CLARIFICATION: --lead default value] and
-  [NEEDS CLARIFICATION: run-id provenance via leader env] — plan.md §F clarifications 1 and 3;
-  both degrade to an honest refusal if answered otherwise and the answer changes M2/M3 shape,
-  not M1.
+- All three plan-gate clarifications are RESOLVED (2026-09-29, operator gate + audit
+  verification; resolutions recorded in plan.md §F): --lead default = `leader`;
+  parallel-path framing (no amendment); run-id provenance via the verified leader's env with
+  fail-closed decline.

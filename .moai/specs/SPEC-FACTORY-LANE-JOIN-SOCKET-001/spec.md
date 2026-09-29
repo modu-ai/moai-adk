@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-LANE-JOIN-SOCKET-001
 title: "Factory lane join tolerates run-record absence via verified leader discovery; -l/--lead target flag"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-09-29
 updated: 2026-09-29
@@ -94,6 +94,10 @@ excluded. Lane slot numbering semantics are preserved unchanged.
   (`IsLegacyLeaderSpelling`; refused at entry by `refuseLegacyEntryNames`,
   `factory.go:185-198`, REQ-RNC-004/-007). The live leader argv is `--name leader`; the live
   leader env carries `MOAI_KANBAN_LEAD_NAME=leader`.
+- **Divergence from the card text, operator-confirmed.** The originating card proposed
+  defaulting `--lead` to `lead`; this SPEC defaults to the canonical `leader` instead — `lead`
+  is the refused legacy spelling that no live leader can carry. The operator confirmed the
+  `leader` default at the plan gate (2026-09-29).
 - `internal/config/envkeys.go:189-195,218-225,255-273` — `EnvMoaiKanbanID`,
   `EnvMoaiKanbanLeadAddr`, `EnvMoaiKanbanLeadName`; the flag's effect reaches the child/hook via
   env by design (`factory.go:23-27`; precedent `exportLeaderSessionName` →
@@ -154,7 +158,8 @@ excluded. Lane slot numbering semantics are preserved unchanged.
 
 - **REQ-008** (Capability gate): **Where** a lane join is performed, the launcher shall accept
   `-l, --lead <name>` naming which leader session discovery targets. The default target shall be
-  the canonical leader label (`kanban.LeaderLabel()`). The value `lead` and any `lead-<suffix>`
+  the canonical leader label (`kanban.LeaderLabel()`, the value `leader` — operator-confirmed
+  2026-09-29). The value `lead` and any `lead-<suffix>`
   form shall be refused with the canonical-form error, the same refusal `--name` applies
   (REQ-RNC-004/-007). The flag shall be accepted only on lane joins; a leader entry carrying it
   is an error, and carrying it together with `--factory-run` is an error (the two name
@@ -289,3 +294,10 @@ unreadable run-id env (AC-017).
   `factory_test.go:1103` / `:1099-1102` / `factory_mixed_test.go:87`. **D4**: REQ-005's bare
   `REQ-014` cross-reference given its owning-SPEC prefix. No requirement semantics changed;
   the `--lead` default recommendation text is untouched pending the operator gate.
+- 2026-09-29 — v0.3.0 — manager-spec — plan-gate clarification closure (operator confirmed the
+  `--lead` default `leader`, 2026-09-29). All three clarification markers resolved and recorded
+  as resolutions (`plan.md` §F, `research.md` §C/§K): (a) default `leader` — divergence from
+  the card text recorded in §A.2 and REQ-008 pinned to the confirmed value; (b) parallel-path
+  framing (no amendment) — verified by the audit's framing audit; (c) run-id provenance via the
+  verified leader's env, fail-closed decline. No requirement semantics changed beyond pinning
+  the confirmed default.

@@ -114,30 +114,28 @@ Ordered by decision-reversibility: data-model and new-type decisions first, mech
   chain per the oss-docs rules; all locales in one change (parity obligation). Flips AC-016.
   CHANGELOG stays sync-phase.
 
-### Clarifications the operator confirms at the plan gate
+### Clarifications — RESOLVED (operator gate, 2026-09-29)
 
-1. **[NEEDS CLARIFICATION: --lead default value — card text `lead` vs live canonical `leader`]**
-   Recommendation: **default `kanban.LeaderLabel()` = `"leader"`**, diverging from the card
-   text. Why: `lead` is the refused legacy spelling in this tree (`role.go:46`,
+All three plan-gate clarifications are closed; the recommendation in each was adopted.
+
+1. **--lead default value — RESOLVED: `leader`.** The operator confirmed the recommended
+   default `kanban.LeaderLabel()` = `"leader"` (2026-09-29), diverging from the card text's
+   `lead`. Why: `lead` is the refused legacy spelling in this tree (`role.go:46`,
    `refuseLegacyEntryNames` REQ-RNC-004/-007); no leader can carry that name anymore, so a
    `lead` default would target nothing that can exist; the live leader argv and env both read
-   `leader`. The divergence is recorded in spec.md §B REQ-008; one operator confirmation at the
-   gate closes it.
-2. **[NEEDS CLARIFICATION: amendment-vs-parallel-path framing against
-   SPEC-FACTORY-MIXED-HOOK-001 / REQ-014]** Recommendation: **parallel path, no amendment** (the
-   framing this SPEC is written in). Why: the refusal contracts stay literally true (the resolver
-   is untouched); discovery restores the record and re-enters the same gate; RUN-RETIRE's
-   rejected alternative (d) forbids picking among records, not discovering live processes. If the
-   operator prefers explicit amendment instead, spec.md §C and REQ-001/004/006 need a revision
-   pass before run.
-3. **[NEEDS CLARIFICATION: run-id provenance when the record is absent but the lead is alive]**
-   Recommendation: **read the run id from the verified leader's own process env**
-   (`MOAI_KANBAN_ID`), and decline any candidate whose env cannot be read (fail-closed). Why:
-   the run id is the broker address the lead already speaks on — minting or guessing an id joins
-   the lane to an empty broker (finding 5 of research.md); env reading is measurable on
-   darwin/linux for same-user processes, and windows degradation is an honest refusal. Alternative
-   if the operator rejects env reading: discovery via broker peers of any-status runs only
-   (weaker — misses the never-recorded case, and stale-prone).
+   `leader`. The divergence-from-card-text record lives in spec.md §A.2 and §G.
+2. **Amendment-vs-parallel-path framing — RESOLVED: parallel path, no amendment.** The plan
+   audit verified the framing against the contracts' actual text (`.moai/reports/t1330/plan-audit.md`
+   § Framing Audit): the refusal contracts stay literally true (the resolver is untouched),
+   discovery restores the record and re-enters the same gate, and RUN-RETIRE's rejected
+   alternative (d) forbids picking among records, not discovering live processes. No revision
+   pass needed.
+3. **Run-id provenance — RESOLVED: read the run id from the verified leader's own process env**
+   (`MOAI_KANBAN_ID`), declining any candidate whose env cannot be read (fail-closed). The
+   auditor verified the resume-writer identity hazard and the hook-chain survival end to end;
+   the alternative (broker-peers-only discovery) is strictly weaker — it misses the
+   never-recorded case and is stale-prone (research.md §A.6). Env reading is measurable on
+   darwin/linux for same-user processes; the windows degradation is an honest refusal.
 
 ## §G Anti-patterns (refuse during run)
 
