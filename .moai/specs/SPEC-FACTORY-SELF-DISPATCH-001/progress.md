@@ -818,7 +818,7 @@ re-verifies, -018, -021, -022. Continuation at `f37942d79` (clean).
 
 ```yaml
 sync_complete_at: 2026-09-29
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: f2c44360a
 sync_status: complete
 b12_self_test_a: "grep -c SPEC-FACTORY-SELF-DISPATCH-001 CHANGELOG.md -> 0 before emission (re-run by this sync; post-insertion the entry is the only matching line)"
 b12_self_test_b: "distinct AC ids in acceptance.md -> 25 (AC-SD-001..025; zero [RETIRED]/[REF] markers — every identifier live); CHANGELOG entry cites 25"
