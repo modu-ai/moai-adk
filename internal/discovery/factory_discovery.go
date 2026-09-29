@@ -52,10 +52,6 @@ const runtimeSocketDir = "/tmp/cc-socks"
 // liveness probe each; only live candidates pay the argv/env/cwd readers.
 const discoveryDeadline = 15 * time.Second
 
-// readerDeadline bounds one platform reader invocation (a `ps` or `lsof`
-// subprocess, or a /proc read).
-const readerDeadline = 3 * time.Second
-
 // VerifiedLeader is a candidate that passed the full proof (REQ-002 + REQ-003):
 // live by pid + process-start fingerprint, carrying the targeted leader label
 // in its argv, a member of this canonical project, and readable run identity.
@@ -363,11 +359,6 @@ func openSQLiteReadOnly(path string) (*sql.DB, error) {
 		return nil, err
 	}
 	return db, nil
-}
-
-// readerContext bounds one platform reader invocation.
-func readerContext(ctx context.Context) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(ctx, readerDeadline)
 }
 
 // DescribeVerifiedLeaders renders verified candidates for the multi-leader

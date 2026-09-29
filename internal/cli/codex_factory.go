@@ -38,7 +38,7 @@ func parseCodexFactoryEntry(head []string) (rest []string, entry factoryFlagPars
 		}
 		// Same surface as the cc/glm parse (REQ-008, mirror parity): the
 		// legacy leader spelling refuses with the canonical form, and the
-		// post-loop gates keep --lead a lane-join-only, single-selector flag.
+		// post-loop gates keep --leader a lane-join-only, single-selector flag.
 		if token == leadFlagLong || token == leadFlagShort ||
 			strings.HasPrefix(token, leadFlagLong+"=") || strings.HasPrefix(token, leadFlagShort+"=") {
 			if entry.Lead != "" {

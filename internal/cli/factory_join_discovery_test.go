@@ -272,7 +272,7 @@ func TestFactoryLaneJoinAmbiguousRunsSkipDiscovery(t *testing.T) {
 	}
 }
 
-// AC-009 — the --lead target reaches discovery: the default targets the
+// AC-009 — the --leader target reaches discovery: the default targets the
 // canonical leader label, an explicit value targets that leader, and the
 // verified leader's own name is what the child receives.
 func TestFactoryLaneJoinLeadTargeting(t *testing.T) {
@@ -293,7 +293,7 @@ func TestFactoryLaneJoinLeadTargeting(t *testing.T) {
 		}
 	})
 
-	t.Run("explicit --lead targets that leader", func(t *testing.T) {
+	t.Run("explicit --leader targets that leader", func(t *testing.T) {
 		discoveryTestRoot(t)
 		clearFactoryTestEnv(t)
 		c := installFactoryLaunchSeam(t)
@@ -303,7 +303,7 @@ func TestFactoryLaneJoinLeadTargeting(t *testing.T) {
 		}})
 
 		if err := runCC(ccCmd, []string{"-f", "lane", "-l", "leader-2"}); err != nil {
-			t.Fatalf("--lead leader-2 join: %v", err)
+			t.Fatalf("--leader leader-2 join: %v", err)
 		}
 		if len(*asked) != 1 || (*asked)[0] != "leader-2" {
 			t.Errorf("discovery asked = %v, want [leader-2]", *asked)
@@ -319,8 +319,8 @@ func TestFactoryLaneJoinLeadTargeting(t *testing.T) {
 		installFactoryLaunchSeam(t)
 		stageDiscoveredLeaders(t, nil)
 
-		if err := runCC(ccCmd, []string{"-f", "lane", "--lead", "nobody"}); err == nil || !strings.Contains(err.Error(), "NO_ACTIVE_FACTORY") {
-			t.Fatalf("--lead nobody join = %v, want NO_ACTIVE_FACTORY", err)
+		if err := runCC(ccCmd, []string{"-f", "lane", "--leader", "nobody"}); err == nil || !strings.Contains(err.Error(), "NO_ACTIVE_FACTORY") {
+			t.Fatalf("--leader nobody join = %v, want NO_ACTIVE_FACTORY", err)
 		}
 	})
 }
@@ -332,34 +332,34 @@ func TestFactoryLeadFlagLegacyRefused(t *testing.T) {
 		args []string
 		want string
 	}{
-		{[]string{"-f", "lane", "--lead", "lead"}, "legacy leader spelling"},
+		{[]string{"-f", "lane", "--leader", "lead"}, "legacy leader spelling"},
 		{[]string{"-f", "lane", "-l", "lead-2"}, "legacy leader spelling"},
-		{[]string{"-f", "lane", "--lead=lead"}, "legacy leader spelling"},
+		{[]string{"-f", "lane", "--leader=lead"}, "legacy leader spelling"},
 	} {
 		_, err := parseLauncherEntry(tc.args)
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Errorf("parseLauncherEntry(%v) = %v, want the canonical-form legacy refusal", tc.args, err)
 			continue
 		}
-		if !strings.Contains(err.Error(), "--lead") {
-			t.Errorf("refusal for %v = %q, should name the --lead flag", tc.args, err)
+		if !strings.Contains(err.Error(), "--leader") {
+			t.Errorf("refusal for %v = %q, should name the --leader flag", tc.args, err)
 		}
 	}
 }
 
-// REQ-008's surface gates: --lead is lane-only, and --lead + --factory-run is
+// REQ-008's surface gates: --leader is lane-only, and --leader + --factory-run is
 // a conflict (the two name different selectors).
 func TestFactoryLeadFlagSurfaceGates(t *testing.T) {
-	t.Run("leader entry carrying --lead is an error", func(t *testing.T) {
-		_, err := parseLauncherEntry([]string{"-f", "--lead", "leader"})
-		if err == nil || !strings.Contains(err.Error(), "--lead") {
-			t.Errorf("bare -f with --lead = %v, want an error naming the lane-only surface", err)
+	t.Run("leader entry carrying --leader is an error", func(t *testing.T) {
+		_, err := parseLauncherEntry([]string{"-f", "--leader", "leader"})
+		if err == nil || !strings.Contains(err.Error(), "--leader") {
+			t.Errorf("bare -f with --leader = %v, want an error naming the lane-only surface", err)
 		}
 	})
-	t.Run("--lead with --factory-run is an error", func(t *testing.T) {
-		_, err := parseLauncherEntry([]string{"-f", "lane", "--factory-run", "runx0001", "--lead", "leader"})
+	t.Run("--leader with --factory-run is an error", func(t *testing.T) {
+		_, err := parseLauncherEntry([]string{"-f", "lane", "--factory-run", "runx0001", "--leader", "leader"})
 		if err == nil || !strings.Contains(err.Error(), "--factory-run") {
-			t.Errorf("--lead with --factory-run = %v, want a selector-conflict error", err)
+			t.Errorf("--leader with --factory-run = %v, want a selector-conflict error", err)
 		}
 	})
 	t.Run("short and joined forms parse", func(t *testing.T) {
@@ -368,8 +368,8 @@ func TestFactoryLeadFlagSurfaceGates(t *testing.T) {
 			want string
 		}{
 			{[]string{"-f", "lane", "-l", "leader"}, "leader"},
-			{[]string{"-f", "lane", "--lead", "leader-2"}, "leader-2"},
-			{[]string{"-f", "lane-3", "--lead=leader"}, "leader"},
+			{[]string{"-f", "lane", "--leader", "leader-2"}, "leader-2"},
+			{[]string{"-f", "lane-3", "--leader=leader"}, "leader"},
 		} {
 			entry, err := parseLauncherEntry(tc.args)
 			if err != nil {
@@ -381,7 +381,7 @@ func TestFactoryLeadFlagSurfaceGates(t *testing.T) {
 			}
 		}
 	})
-	t.Run("absent --lead leaves the field empty", func(t *testing.T) {
+	t.Run("absent --leader leaves the field empty", func(t *testing.T) {
 		entry, err := parseLauncherEntry([]string{"-f", "lane"})
 		if err != nil {
 			t.Fatal(err)
@@ -418,12 +418,12 @@ func TestCodexFactoryLaneJoinsDiscoveredLeader(t *testing.T) {
 	}
 }
 
-// The codex parse carries the same --lead surface as cc/glm (REQ-008 mirror
+// The codex parse carries the same --leader surface as cc/glm (REQ-008 mirror
 // parity).
 func TestCodexFactoryLeadFlagSurface(t *testing.T) {
-	rest, entry, err := parseCodexFactoryEntry([]string{"-f", "lane", "--lead", "leader"})
+	rest, entry, err := parseCodexFactoryEntry([]string{"-f", "lane", "--leader", "leader"})
 	if err != nil {
-		t.Fatalf("parseCodexFactoryEntry(-f lane --lead leader): %v", err)
+		t.Fatalf("parseCodexFactoryEntry(-f lane --leader leader): %v", err)
 	}
 	if entry.Lead != "leader" {
 		t.Errorf("entry.Lead = %q, want leader", entry.Lead)
@@ -431,14 +431,14 @@ func TestCodexFactoryLeadFlagSurface(t *testing.T) {
 	if len(rest) != 0 {
 		t.Errorf("rest = %v, want the flags consumed", rest)
 	}
-	if _, _, err := parseCodexFactoryEntry([]string{"-f", "lane", "--lead", "lead"}); err == nil || !strings.Contains(err.Error(), "legacy leader spelling") {
-		t.Errorf("codex legacy --lead = %v, want the canonical-form refusal", err)
+	if _, _, err := parseCodexFactoryEntry([]string{"-f", "lane", "--leader", "lead"}); err == nil || !strings.Contains(err.Error(), "legacy leader spelling") {
+		t.Errorf("codex legacy --leader = %v, want the canonical-form refusal", err)
 	}
-	if _, _, err := parseCodexFactoryEntry([]string{"-f", "--lead", "leader"}); err == nil || !strings.Contains(err.Error(), "lane") {
-		t.Errorf("codex leader-entry --lead = %v, want the lane-only surface error", err)
+	if _, _, err := parseCodexFactoryEntry([]string{"-f", "--leader", "leader"}); err == nil || !strings.Contains(err.Error(), "lane") {
+		t.Errorf("codex leader-entry --leader = %v, want the lane-only surface error", err)
 	}
-	if _, _, err := parseCodexFactoryEntry([]string{"-f", "lane", "--factory-run", "runx0001", "--lead", "leader"}); err == nil || !strings.Contains(err.Error(), "--factory-run") {
-		t.Errorf("codex --lead with --factory-run = %v, want the selector-conflict error", err)
+	if _, _, err := parseCodexFactoryEntry([]string{"-f", "lane", "--factory-run", "runx0001", "--leader", "leader"}); err == nil || !strings.Contains(err.Error(), "--factory-run") {
+		t.Errorf("codex --leader with --factory-run = %v, want the selector-conflict error", err)
 	}
 }
 

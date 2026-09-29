@@ -45,7 +45,7 @@ func registerTodoMCPTools(add func(name string, tool mcp.Tool, handler server.To
 	add("todo_claim", mcp.NewTool(
 		"todo_claim",
 		mcp.WithDescription("Claim the oldest queued card under a lease (atomic CAS + lease), or renew a held card's lease with --renew. Same implementation as `moai todo claim`. "+projectRootDesc),
-		mcp.WithString("lane", mcp.Description("Attribute the claim to this operator/lead-supplied lane label (optional).")),
+		mcp.WithString("lane", mcp.Description("Attribute the claim to this operator/leader-supplied lane label (optional).")),
 		mcp.WithString("renew", mcp.Description("Renew the addressed card's lease (id) instead of claiming a new card (optional).")),
 		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(false),

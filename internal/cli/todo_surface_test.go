@@ -86,8 +86,13 @@ var frozenTodoSurface = map[string][]string{
 //     mechanical observations of the tree and reaches no verdict.
 //
 // permittedVerbAdditions — SPEC-TODO-HOLD-STATE-001 declares `hold` / `unhold`
-// (the operator park verbs, REQ-THS-006/008).
-var permittedVerbAdditions = []string{"export-json", "undone", "history", "landed", "auto-done", "triage", "hold", "unhold"}
+// (the operator park verbs, REQ-THS-006/008). SPEC-TODO-CLAIM-LEASE-001
+// declares `claim` (REQ-TCL-005/-008 — the atomic CAS + lease claim; --renew
+// extends a held lease; flags: --lane, --renew). --lane attributes the claim
+// to an operator/leader-supplied lane label and grants nothing to a lane
+// session — the REQ-SD-015 refusal holds with or without the flag
+// (REQ-TCL-013).
+var permittedVerbAdditions = []string{"export-json", "undone", "history", "landed", "auto-done", "triage", "hold", "unhold", "claim"}
 
 // permittedFlagAdditions records flags added to an ALREADY-FROZEN verb, which
 // is a re-flagging and therefore needs its own declaration rather than an edit

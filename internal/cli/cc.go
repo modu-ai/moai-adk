@@ -85,10 +85,10 @@ Factory Mode (dedicated -f entry):
                                 and connect it to the leader socket of the
                                 running factory. A number whose label is held by
                                 a live session is bumped to the next free number.
-  -l, --lead <name>            With -f lane / -f lane-<n>: which leader session
+  -l, --leader <name>            With -f lane / -f lane-<n>: which leader session
                                 the record-absence verification targets
-                                (default: leader). The legacy spelling lead /
-                                lead-<suffix> is refused.
+                                (default: leader). A legacy spelling of the
+                                leader name is refused.
   -k <N> / -k <N> --name lane-<i>
                                 The v1.2.0 unified -k factory shapes, still
                                 valid: -k N is the leader of an N-lane run,
