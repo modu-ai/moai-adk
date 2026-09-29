@@ -180,12 +180,12 @@ func runHoist(cmd *cobra.Command, args []string) error {
 // count and byte total; REQ-RLC-006: every unresolved path).
 func printHoistResult(w io.Writer, res HoistResult, treePath string) {
 	if res.Count == 0 && len(res.Skipped) == 0 {
-		fmt.Fprintf(w, "Nothing to hoist: %s has no .moai/reports/ content\n", treePath)
+		_, _ = fmt.Fprintf(w, "Nothing to hoist: %s has no .moai/reports/ content\n", treePath)
 		return
 	}
-	fmt.Fprintf(w, "Hoisted %d file(s), %d byte(s) -> %s\n", res.Count, res.Bytes, res.Dest)
+	_, _ = fmt.Fprintf(w, "Hoisted %d file(s), %d byte(s) -> %s\n", res.Count, res.Bytes, res.Dest)
 	for _, rel := range res.Skipped {
-		fmt.Fprintf(w, "Skipped (differs at destination): %s\n", rel)
+		_, _ = fmt.Fprintf(w, "Skipped (differs at destination): %s\n", rel)
 	}
 }
 
@@ -199,7 +199,7 @@ func hoistBeforeDisposal(w io.Writer, targetPath string) error {
 	if err != nil {
 		// Unresolvable main root — no destination to hoist into. Not a
 		// removal blocker: there is nothing this routine can act on.
-		fmt.Fprintf(w, "hoist skipped (project root unresolved from %s)\n", targetPath)
+		_, _ = fmt.Fprintf(w, "hoist skipped (project root unresolved from %s)\n", targetPath)
 		return nil
 	}
 	res, err := hoistWorktreeReports(targetPath, mainRoot)

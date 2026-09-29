@@ -90,9 +90,53 @@ RED 증거(GREEN 이전 실측, `.moai/reports/t1320/m4-red-evidence.txt` 전사
 
 구현 노트: ① dry-run 기본은 `moai clean` 의 기존 스코프 관례(--home/--codex-skills)와의 일관성이며 `--force` 가 move 를 수행한다 — REQ-RLC-007 의 move 의무는 force 경로에서 이행된다. ② AC-RLC-009 픽스처명 `t-old`/`t-new` 은 술어 1조(`^t[0-9]+$`)가 이름 형상을 요구하므로 술어 적합 실현명 `t100`/`t101` 로 구현했다(리터럴 t-old 는 술어에 의해 배제돼 AC 의도「술어 적합 후보」와 모순). ③ shard 는 후보 mtime 의 `YYYY-MM` 이다. ④ tracked 판정은 `git ls-files` — 판독 불가도 tracked 로 보는 보수적 default-deny.
 
+### M5 — 템플릿·문서 반영 및 전체 재검증 (전수 전사)
+
+| 항목 | 판정 명령 | 관측 출력 |
+|---|---|---|
+| AC-RLC-011 | `git diff 6879cfa5e..HEAD -- internal/template/templates/ \| grep '^+' \| grep -cE 't1320\|SPEC-REPORTS-LIFECYCLE\|2026-09-29\|[0-9a-f]{9,}'` | `0` (미러 변경분 전체 추가행에서 카드 유래물 0건) |
+| 빌드 축 | `make build` | catalog.yaml 재생성(워킹 diff 0 — 해시 일치) + 바이너리 빌드 성공 |
+| 빌드 축 | `make embed-check` | `Pass 1  Warn 0  Fail 0` |
+| 코드 품질 | `golangci-lint run ./internal/cli/... ./internal/config/... ./internal/template/` (v2.1.6 = CI 판) | 초기 4건(hoist.go errcheck — 신규 코드) → `_, _ =` 수리 후 `0 issues.` |
+| 정적 분석 | `go vet ./internal/cli/... ./internal/config/...` | 클린 |
+| 크로스 플랫폼 | `GOOS=windows GOARCH=amd64 go build ./internal/cli/... ./internal/config/...` | 성공 |
+| 재검증 | `go test -count=1 -timeout 30m ./internal/cli/worktree/` | `ok … 35.202s` (lint 수리 후 재측정) |
+| 재검증 | `go test -count=1 -timeout 30m ./internal/template/` | `ok … 73.758s` |
+| 커버리지 | `go test -cover ./internal/cli/worktree/` | `coverage: 86.5% of statements` (목표 85% 충족) |
+| 커버리지 | `go test -cover ./internal/template/` | `coverage: 83.8%` — 패키지 기선(본 SPEC 기여분은 테스트 전용, 신규 프로덕션 스테이트먼트 0) |
+| CLI 표면 | `./bin/moai worktree --help`, `./bin/moai clean --help` | `hoist <tree-path>` 동사 + `--reports-archive`/`--reports-archive-days` 플래그 관측 |
+| 불변 | reports 관련 `git status --porcelain` 잔용 | 0건 (§D.4 조기 신호 클린) |
+
+process 정정 기록: M3 에서 템플릿 미러(worktree-integration.md) 편집 커밋에 `make build` 를 즉행 실행하지 않았다 — M5 의 `make build` 에서 워킹 diff 0 으로 확인(해시 대상이 아닌 파일이었음)했으나, 절차상 미러 편집 커밋마다 build 를 run 하는 규율 위반이므로 여기에 기록한다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-29
+run_commit_sha: "pending-backfill-run"   # backfilled with the M-final commit SHA in the follow-up commit (D3 exemption)
+run_status: complete
+ac_pass_count: 12
+ac_fail_count: 0
+ac_pass_with_debt_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: "n/a (card worktree, no push — develop push is the leader's batch act)"
+l44_post_push_fetch: "n/a (same)"
+new_warnings_or_lints_introduced: 0   # 4 errcheck findings on new hoist.go code fixed within the run; final lint 0 issues
+cross_platform_build.darwin: "pass (native)"
+cross_platform_build.windows: "pass (GOOS=windows GOARCH=amd64 go build, changed packages)"
+total_run_phase_files: 14   # 511 renamed + guard test + parity test + hoist.go/test + done.go + root.go/test + 2 SKILL.md + catalog.yaml + 2 worktree-integration.md + clean.go + clean_reports_archive.go/test + defaults.go + spec/progress
+m1_to_m5_commit_strategy: "one commit per milestone (M1 9fa86e6bb, M2 476cb929d, M3 4aff3bbc7, M4 ac49df61d, M-final this commit)"
+milestones: [M1, M2, M3, M4, M5]
+evidence_dir: ".moai/reports/t1320/ (gitignored — m1-migration.txt, m2-render-observation.txt, m3-red-evidence.txt, m4-red-evidence.txt)"
+gaps:
+  - "internal/cli 패키지 전체 -cover 재측정 미실행(전 스위트 1485.088s 를 cover 플래그로 재실행하지 않음) — worktree 86.5%, template 83.8%(기선) 만 측정. 전 패키지 판정은 CI 몫"
+  - "27개 기존 카드 트리의 증거 인출은 spec §E 배제 항목(run phase 산출물 아님)"
+sync_should_verify:
+  - "AC 전수 판정 명령·출력이 §E.2 에 전사돼 있는지 (§D.5 클로저 게이트 1)"
+  - "run_commit_sha 백필 (이 커밋 직후 chore 커밋)"
+  - "spec.md:89/acceptance.md:10 의 N1 cosmetic 잔여 (KNOWN sync-phase leftover — 본 러닝 미수리)"
+  - "미러 변경분 중립성 재판정 (CI template-neutrality-check 안전망)"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
