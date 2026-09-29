@@ -2,7 +2,7 @@
 id: SPEC-WEB-SAVE-LOSSLESS-001
 title: "moai web 설정 Save 무손실 — 편집 없으면 무기록, 편집은 해당 필드만, 미모델링 키·주석 영생존"
 version: "0.1.2"
-status: in-progress
+status: completed
 created: 2026-09-29
 updated: 2026-09-29
 author: manager-spec

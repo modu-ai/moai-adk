@@ -104,3 +104,19 @@ cross_platform_build:
 total_run_phase_files: 15
 m1_to_mn_commit_strategy: "행위 단일 통합 커밋 9be71a4f1 (M1+M2+M3+M4 전환) + 문서 커밋"
 ```
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-09-29
+sync_commit_sha: "pending-backfill-sync"
+sync_status: complete
+b12_self_test_a: "PASS — grep -c 'SPEC-WEB-SAVE-LOSSLESS-001' CHANGELOG.md = 1 (기존 run 문서 커밋 687bac776에 이미 착지, 중복 emission 없음)"
+b12_self_test_b: "PASS — acceptance.md 고유 AC 수 9건 (AC-WSL-001..009, grep -oE | sort -u | wc -l 실측) = run §E.2 AC 매트릭스 9/9와 일치"
+b12_self_test_c: "PASS — CHANGELOG 항목이 인용하는 8개 구현 경로 전부 ls 실측 존재 (internal/settings/{sectionapply,sectionwrite,nested,projectscalars}.go, internal/config/manager.go, internal/profile/sync.go, internal/web/projectconfig.go, internal/cli/profile_setup.go)"
+mx_tag_validation: "PASS — 본 SPEC이 건드린 8개 Go 파일 전수 스캔(grep -rn '@MX:') 실측: 신규 exported 함수 3건(WriteProjectScalars, WriteSectionViaSeam, WriteProjectNestedConfig) 모두 @MX:WARN+@MX:REASON 보유(seam 재마샬 금지 계약 경고), ConfigManager.Save @MX:ANCHOR+@MX:DEBT/CEILING/UPGRADE 기존 유지 — 추가 태그 불요"
+canary_compliance_check: "n/a — 본 SPEC은 장래 정책 선언 SPEC 아님(무손실 Save 동작 구현)"
+spec_status_transition: "in-progress -> completed (본 sync 커밋에 편승; body 무변경, frontmatter status만)"
+docs_rotation_check: "PASS — .moai/project/{tech,structure}.md의 settings/web/config/profile 언급 구문 확인: ADR-011 'Config YAML generated via yaml.Marshal'은 init 생성 맥락(생성은 여전히 typed 직렬화)으로 여전히 참; structure.md manager.go 로드 경로 서술 무변동 — project docs 수정 불요"
+changelog_entry_position: "기존 항목 CHANGELOG.md [Unreleased] (커밋 687bac776, 문서 커밋) — sync 신규 emission 없음"
+```
