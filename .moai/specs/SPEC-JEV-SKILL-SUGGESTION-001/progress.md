@@ -130,7 +130,7 @@ _<pending run-phase — manager-develop 소관>_
 ```yaml
 sync_status: complete
 sync_complete_at: 2026-09-30
-sync_commit_sha: "pending-backfill-sync"  # D3 placeholder — a commit cannot cite its own hash; backfilled in the follow-up commit
+sync_commit_sha: "c25b71ca2"  # the 3-phase close commit; backfilled here per the D3 exemption (a commit cannot cite its own hash)
 sync_phase_scope: artifact-only close (spec.md in-progress -> completed frontmatter, this §E.4, CHANGELOG [Unreleased] entry) — no code, no template source; docs-site/README outside SPEC scope by design (the skill is the user-facing doc)
 b12_self_test_a: pass — `grep -c 'SPEC-JEV-SKILL-SUGGESTION-001' CHANGELOG.md` = 0 pre-emission (exit 1, zero-hit)
 b12_self_test_b: pass — 11 distinct AC identifiers in acceptance.md (AC-JSK-001..011, zero [RETIRED]/[REF] markers); the CHANGELOG entry references the same 11
