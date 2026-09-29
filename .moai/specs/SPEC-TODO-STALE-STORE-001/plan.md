@@ -62,7 +62,10 @@ M1..M3 각 종료 시 본인 변경 패키지 테스트 + 아래 AC 재측정. �
    출력은 팩트 구조: 레거시 스토어 경로 유무, 양쪽 `meta.last_seq`, 발산 여부.
    `meta.last_seq` 판독은 기존 `backlog_sqlite.go`의 meta 키 상수를 재사용하는 별도
    read-only 오픈(마이그레이션·lock·DDL 없음 — REQ-TSS-013 성격 공유). 스토어 부재·
-   비SQLite 파일·0바이트 파일은 "판독 불가"로 발산과 구분해 보고한다.
+   비SQLite 파일·0바이트 파일은 "판독 불가"로 발산과 구분해 보고한다(이 보고는
+   detector 팩트이며, 별도 상태 노출은 doctor 표면 소관이고 stderr 고지 표면의
+   대상이 아니다 — REQ-TSS-001은 판독 가능한 스토어의 last_seq 발산만을 트리거로
+   한다; sync-audit F1 문안 명료화, 카드 t1307).
 2. `internal/cli/todo_disclosure.go`의 고지 경로가 이 팩트를 추가로 전한다(verb 접두어,
    stderr 전용, stdout 무변경: REQ-TSS-001/002). **진입점은 둘이다** —
    `discloseQueueLayout`(todo.go:573, todo_pr.go:179, todo_why.go:28이 경유)과

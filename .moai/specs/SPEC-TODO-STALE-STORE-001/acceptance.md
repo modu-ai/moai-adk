@@ -79,8 +79,12 @@
 
 ## §D.2 엣지 케이스
 
-- 레거시 스토어가 0바이트이거나 SQLite가 아닌 파일 → "판독 불가"로 고지(발산과 구분),
-  doctor는 실패가 아닌 별도 상태로 보고.
+- 레거시 스토어가 0바이트이거나 SQLite가 아닌 파일(판독 불가) → **doctor 표면의 소관**이다:
+  발산과 구분된 별도 상태로 보고하며 실패로 취급하지 않는다. 다섯 읽기 동사의 stderr
+  고지 표면(REQ-TSS-001)은 **판독 가능한** 스토어의 last_seq 발산만을 대상으로 한다 —
+  판독 불가 스토어는 REQ-TSS-001의 트리거(판독 가능한 last_seq 발산)를 만족하지
+  못하므로, 고지 표면이 이를 건너뛰는 것(`discloseStaleLocalStores`의
+  `!st.Readable → continue`)은 설계대로다.
 - 레거시 디렉터리가 둘 다(`todo`+`kanban`) 존재 → 각각 보고.
 - 홈 DB와 레거시 스토어 last_seq가 같음 → 무고지, doctor PASS.
 - `MOAI_HOME` override 환경 — 검출기가 override를 존중해야 함(기존 `StateDirForRoot`

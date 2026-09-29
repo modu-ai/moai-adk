@@ -137,6 +137,37 @@ hold strictly older states.
 lead+operator disposition decision. No deletion executed; no automatic
 disposal path exists; all four targets exist as of this report.
 
+### M3 disposition — EXECUTED 2026-09-29 (post-sync, lead-directed)
+
+REQ-TSS-021 confirmation gate MET: the operator answered 「전부 삭제」 (the
+recommended option) via the lead's query, and the lead's approval is recorded
+in the same query cycle (lead dispatch, 2026-09-29). The REQ-TSS-020
+measurement record verified preceding: the M3 table above (pre-deletion
+sha256/mtime/size for every target). Deletion manifest — primary-checkout
+paths, exactly the approved targets; `backlog.json` and `backlog.json.migrated`
+in the same directory are NOT in the approved set and stay untouched:
+
+| # | Path | Pre-deletion state |
+|---|---|---|
+| 1 | `.moai/backlog.db` | 0 B (M3 table above) |
+| 2 | `.moai/state/backlog.db` | 0 B (M3 table above) |
+| 3 | `.moai/state/todo/backlog.db` (+ its `-shm`/`-wal` sidecars, same db family) | 811,008 B · sha256 `9802d3f6…ce590` · last_seq 661 — byte-identical to backup store-1's backlog.db |
+| 4 | `.moai/state/todo-merge-backup-20260913/` (store-1 + store-2 trees, recursive) | 2,648 KB · store-1 db `9802d3f6…ce590`/seq 661 · store-2 db `e190c863…5904`/seq 708 |
+
+**Post-deletion existence check (2026-09-29, this run — verbatim):** `GONE:` × 6 —
+`.moai/backlog.db`, `.moai/state/backlog.db`, `.moai/state/todo/backlog.db`,
+`.moai/state/todo/backlog.db-shm`, `.moai/state/todo/backlog.db-wal`,
+`.moai/state/todo-merge-backup-20260913`. Preserved as approved: the
+`.moai/state/todo/` session-record jsons and `backlog.json` /
+`backlog.json.migrated` (outside the approved set). The ghost store is gone
+from the primary checkout — the M1 disclosure surface now has no local store
+to misreport there, and `moai doctor` reports the legacy-store-absent state.
+
+**AC-TSS-022 CLOSED**: disposal evidence now exists (this record + the
+post-deletion check above), completing the REQ-TSS-020 → 021 → 022 chain.
+The run-phase matrix row's "awaiting disposition" snapshot above is the
+historical run-time state; this subsection supersedes it with the closure.
+
 ### AC PASS/FAIL Matrix (commands + verbatim outputs this run, this tree)
 
 | AC | Status | Verification | Observed |

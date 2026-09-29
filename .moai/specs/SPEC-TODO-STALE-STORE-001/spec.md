@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-STALE-STORE-001
 title: "트리 안 유령 큐 저장소 — 스테일 프로젝트-로컬 스토어 고지, doctor 발산 점검, 잔존 저장소 처분"
-version: "0.1.2"
+version: "0.1.3"
 status: completed
 created: 2026-09-29
 updated: 2026-09-29
@@ -21,6 +21,12 @@ related_specs: [SPEC-TODO-QUEUE-HOME-CANON-001, SPEC-TODO-SQLITE-001, SPEC-BACKL
 
 - 2026-09-29 v0.1.0 — manager-spec 최초 작성 (카드 t1307, plan-phase). 측정 근거: `.moai/reports/todo-logic-review-20260929.md` P1(2026-09-29 오독 사고 포함), 운영자 제공 실측(홈 DB `~/.moai/db/moai-adk-go-1bd3d038/todo/backlog.db` last_seq 1305 vs 유령 스토어 `.moai/state/todo/backlog.db` seq 661).
 - 2026-09-29 v0.1.1 — manager-spec plan-audit iter1 수리 (카드 t1307). D1: M3 삭제 승인 주체 확정(운영자·리드 양쪽 확인 — 카드 t1307 본문 근거, REQ-TSS-021 정합 수정). D3/D4: `-run` 패턴 비공허화(§C.3). D2/D5/D6는 plan.md/acceptance.md 쪽 수리.
+- 2026-09-29 v0.1.3 — manager-spec sync-audit F1 §D.2 문안 수리 (카드 t1307, 리드
+  지시 fold-in). 판독 불가(0바이트·비SQLite) 스토어의 보고 소관을 doctor 표면으로
+  명시하고, 다섯 읽기 동사 stderr 고지 표면은 판독 가능한 스토어의 last_seq 발산만을
+  대상으로 함을 §D.2 엣지 케이스에 구분 기재 — 판독 불가 스토어는 REQ-TSS-001의
+  트리거(판독 가능한 last_seq 발산)를 만족하지 못하므로 고지 표면의 침묵은
+  설계대로다. REQ/AC 식별자 추가·삭제 없음(문안 명료화, 상태 completed 유지).
 - 2026-09-29 v0.1.2 — manager-spec codex cross-audit 수리 (카드 t1307). 단일 차단 결함: REQ-TSS-001이 다섯 읽기 동사(bare/list, why, pr, history)의 고지를 요구하는데 AC-TSS-001이 `list`만, AC-TSS-003이 불변성만 검사해 `history` 등에서 고지를 건너뛰는 변이가 양쪽 AC를 모두 통과(GLM iter2 PASS 0.95를 codex 재감사 OVERTURN 0.76으로 뒤집은 결함). 수리: AC-TSS-001을 동사별 시나리오(AC-TSS-001a..e)로 분해, AC-TSS-002를 동사별 stdout 바이트 동일성·무고지 판정으로 확장(REQ-TSS-002/005 동일 결함 형태 예방). plan.md M1 정합 수정.
 
 ## A. 배경과 문제 정의
