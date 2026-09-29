@@ -306,7 +306,7 @@ mentions an id later in the sentence still falls through, and
 		newTodoHoldCmd(), newTodoUnholdCmd(),
 		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(),
 		newTodoPRCmd(), newTodoLandedCmd(), newTodoAutoDoneCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd(),
-		newTodoTriageCmd())
+		newTodoShowCmd(), newTodoTriageCmd())
 	cmd.Flags().BoolVar(&todoAutoFlag, "auto", false,
 		"process the queue serially: pick one card, dispatch one isolated worker, judge completion on disk evidence, then accept the next; the invocation is the operator's batch approval of the queue in queue order and nothing else")
 	cmd.Flags().DurationVar(&todoAutoWait, "auto-wait", 30*time.Minute,
@@ -331,6 +331,7 @@ var (
 var todoLaneReadOnlyVerbs = map[string]bool{
 	"list":    true,
 	"history": true,
+	"show":    true,
 	"why":     true,
 	"pr":      true,
 	"triage":  true,
@@ -374,7 +375,7 @@ func todoRefuseLaneMutation(root, run *cobra.Command, args []string) error {
 // queue-mutation refusal, shared by the CLI guard and the MCP todo_add tool
 // so the two surfaces cannot drift (AC-SD-014 refusal equality).
 func todoLaneMutationRefusalText(surface string) string {
-	return fmt.Sprintf("moai %s: refused — %s: a lane session cannot mutate the queue (read-only here: bare todo, list, history, why, pr, triage); a lane takes its next card through moai factory next",
+	return fmt.Sprintf("moai %s: refused — %s: a lane session cannot mutate the queue (read-only here: bare todo, list, history, show, why, pr, triage); a lane takes its next card through moai factory next",
 		surface, factoryLaneBoundarySentinel)
 }
 
@@ -575,6 +576,87 @@ func todoVerbNames(cmd *cobra.Command) []string {
 	return names
 }
 
+// todoAddScan is the result of the add command's own argument scan: the
+// known flags the surface registers, plus the one card text.
+type todoAddScan struct {
+	pick          bool
+	force         bool
+	classFile     string
+	haveClassFile bool
+	help          bool
+	text          string
+}
+
+// scanTodoAddArgs separates the known flags from the card text in the raw
+// argument vector the add command receives under DisableFlagParsing
+// (SPEC-TODO-SURFACE-POLISH-001 REQ-TSP-010).
+//
+// Why the add path parses its own flags: pflag's interspersed parser
+// consumes every `-`-prefixed token as flags, and this surface registers no
+// shorthands — so a quoted body starting with `-f` (`moai todo add "-f fix
+// the flaky tests"`) died as `unknown shorthand flag: 'f'`. A body is TEXT;
+// the scanner treats a single-dash token as text and reserves flag meaning
+// for the three known long forms plus the `--` separator, so the known-flag
+// semantics (REQ-TSP-011) survive the change verbatim.
+//
+// The scan runs in Args — before PersistentPreRunE, where pflag's errors
+// used to fire — so an errored add still skips the run-phase hooks exactly
+// as it did under the old parser.
+func scanTodoAddArgs(raw []string) (*todoAddScan, error) {
+	scan := &todoAddScan{}
+	var positionals []string
+	separator := false // after `--`, every remaining token is the text
+	for i := 0; i < len(raw); i++ {
+		tok := raw[i]
+		switch {
+		case separator:
+			positionals = append(positionals, tok)
+		case tok == "--":
+			separator = true
+		case strings.HasPrefix(tok, "--"):
+			name, value, hasValue := strings.Cut(tok, "=")
+			switch name {
+			case "--pick":
+				scan.pick = true
+			case "--force":
+				scan.force = true
+			case "--classification-file":
+				scan.haveClassFile = true
+				if hasValue {
+					scan.classFile = value
+				} else {
+					i++
+					if i >= len(raw) {
+						return nil, fmt.Errorf("flag needs an argument: %s", name)
+					}
+					scan.classFile = raw[i]
+				}
+			case "--help":
+				scan.help = true
+			default:
+				return nil, fmt.Errorf("unknown flag: %s", name)
+			}
+		case tok == "-h":
+			scan.help = true
+		default:
+			// Includes every single-dash token (`-f`, `-x`, prose starting
+			// with one): the surface registers no shorthands, so a leading
+			// dash reaches the store verbatim instead of dying as an
+			// unknown shorthand flag. A body that genuinely reads like a
+			// known long flag keeps the `--` escape hatch.
+			positionals = append(positionals, tok)
+		}
+	}
+	if scan.help {
+		return scan, nil
+	}
+	if len(positionals) != 1 {
+		return nil, fmt.Errorf("accepts 1 arg(s), received %d", len(positionals))
+	}
+	scan.text = positionals[0]
+	return scan, nil
+}
+
 // newTodoAddCmd — `moai todo add "<text>"` (REQ-TODO-002): append under the
 // lock, print the issued id and its 1-based queue position. `--pick` (t71)
 // folds the pick into the same locked write. `--classification-file`
@@ -582,16 +664,29 @@ func todoVerbNames(cmd *cobra.Command) []string {
 // classification judgement — `<path>` or `-` for standard input; it is the
 // ONLY classification injection seam, and the product computes no judgment
 // of its own beyond the deterministic default (plan D.3).
+//
+// The command parses its own arguments (DisableFlagParsing +
+// scanTodoAddArgs, REQ-TSP-010); the flag declarations below exist for the
+// usage text and are not consulted by a parser anymore.
 func newTodoAddCmd() *cobra.Command {
-	var pick bool
-	var force bool
-	var classificationFile string
+	var scan *todoAddScan
 	cmd := &cobra.Command{
-		Use:   "add <text>",
-		Short: "Append a card to the backlog queue",
-		Args:  cobra.ExactArgs(1),
+		Use:                "add <text>",
+		Short:              "Append a card to the backlog queue",
+		DisableFlagParsing: true,
+		Args: func(cmd *cobra.Command, args []string) error {
+			parsed, err := scanTodoAddArgs(args)
+			if err != nil {
+				return err
+			}
+			scan = parsed
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			text := args[0]
+			if scan.help {
+				return cmd.Help()
+			}
+			text := scan.text
 			if strings.TrimSpace(text) == "" {
 				return fmt.Errorf("todo add: text must be non-empty")
 			}
@@ -599,24 +694,24 @@ func newTodoAddCmd() *cobra.Command {
 			// the locked write — an out-of-set value or the jev identity is
 			// a usage refusal with nothing written.
 			dec := todoCardDecider
-			if cmd.Flags().Changed("classification-file") {
-				resolved, err := todoDeciderFromClassificationFile(classificationFile)
+			if scan.haveClassFile {
+				resolved, err := todoDeciderFromClassificationFile(scan.classFile)
 				if err != nil {
 					return err
 				}
 				dec = resolved
 			}
-			if pick {
-				return runTodoAddPick(cmd, newTodoStore(), text, force, dec)
+			if scan.pick {
+				return runTodoAddPick(cmd, newTodoStore(), text, scan.force, dec)
 			}
-			return runTodoAddAppend(cmd, text, force, dec)
+			return runTodoAddAppend(cmd, text, scan.force, dec)
 		},
 	}
-	cmd.Flags().BoolVar(&pick, "pick", false,
+	cmd.Flags().BoolVar(new(bool), "pick", false,
 		"Append AND mark picked as one locked write, printing the issued id")
-	cmd.Flags().BoolVar(&force, "force", false,
+	cmd.Flags().BoolVar(new(bool), "force", false,
 		"Admit a card the analyser reads as an exact duplicate, recording that it was forced")
-	cmd.Flags().StringVar(&classificationFile, "classification-file", "",
+	cmd.Flags().StringVar(new(string), "classification-file", "",
 		"Classification judgement JSON (<path> or - for stdin); validated against the closed value sets before the write")
 	return cmd
 }
@@ -719,12 +814,18 @@ func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string,
 	return nil
 }
 
-// todoListDefaultLimit is the list render's default bound — the same shape
-// (and value) as the history verb's REQ-TAQ-007 contract: a bounded read is
-// the default, --limit raises or lowers it, --limit 0 lifts it entirely,
-// and a truncated listing states the withheld count on stderr because a
-// truncated read must never be mistaken for a complete one.
-const todoListDefaultLimit = 20
+// todoListDefaultLimit is the list render's default bound. A bounded read
+// stays the default, --limit raises or lowers it, --limit 0 lifts it
+// entirely, and a truncated listing states the withheld count on stderr
+// because a truncated read must never be mistaken for a complete one.
+//
+// The value is 100 (SPEC-TODO-SURFACE-POLISH-001 REQ-TSP-020, operator
+// decision at the 2026-09-30 kickoff): the measured live queue (55 rows,
+// 2026-09-29) was cut in half every single day by the old 20, while the
+// withheld line made the cut VISIBLE — the bound stopped matching the
+// queue's actual scale. 100 renders today's queue whole; when a queue
+// outgrows it again the same withheld line reports the fact.
+const todoListDefaultLimit = 100
 
 // runTodoList renders the backlog lock-free. It backs both entry points —
 // the bare `moai todo` and the explicit `moai todo list` — so the two cannot
