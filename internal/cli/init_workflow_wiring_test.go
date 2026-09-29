@@ -112,8 +112,11 @@ func TestRunInit_WorktreeAutoCreateFlagBeatsWizard(t *testing.T) {
 	}
 
 	// Flag absent: false equals the template default. Assert the VALUE:
-	// auto_create stays false and no branch_guard block is synthesized (no
-	// tracker flipped).
+	// auto_create stays false. The branch_guard block now SHIPS in the
+	// template (card t1337, inert defaults: enabled false, deny list
+	// empty), so a flag-absent run renders it from the template — the
+	// tracker must still not have flipped it on (no protected list, no
+	// enabled true).
 	_, workflowPath2 := runInitForWorkflow(t, wiz, nil)
 	got2, err := os.ReadFile(workflowPath2)
 	if err != nil {
@@ -122,8 +125,11 @@ func TestRunInit_WorktreeAutoCreateFlagBeatsWizard(t *testing.T) {
 	if !bytes.Contains(got2, []byte("auto_create: false")) {
 		t.Errorf("flag-absent run must keep auto_create false (the wizard answer); got:\n%s", got2)
 	}
-	if bytes.Contains(got2, []byte("branch_guard:")) {
-		t.Errorf("flag-absent run must not synthesize a branch_guard block; got:\n%s", got2)
+	if !bytes.Contains(got2, []byte("enabled: false")) {
+		t.Errorf("flag-absent run must render the shipped-inert branch_guard block (enabled: false, card t1337 template default); got:\n%s", got2)
+	}
+	if bytes.Contains(got2, []byte("deny_commits_on: [main]")) {
+		t.Errorf("flag-absent run must not flip deny_commits_on to a protected list (the tracker stayed off); got:\n%s", got2)
 	}
 }
 
