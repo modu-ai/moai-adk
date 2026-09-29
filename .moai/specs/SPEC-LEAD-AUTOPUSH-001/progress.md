@@ -75,4 +75,29 @@ plan_audit_iter2: PASS 1.0 (Tier M threshold 0.80), .moai/reports/t1346/plan-aud
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-30
+sync_commit_sha: pending-backfill-sync   # D3 placeholder — backfilled in the follow-up commit
+sync_status: complete
+b12_self_test_a: not-applicable          # CHANGELOG emission not owed — docs-only SPEC, plan.md §C D1 (docs surface), no CHANGELOG requirement in plan.md; no entry emitted (per delegation: do not invent entries)
+b12_self_test_b: not-applicable          # same — no CHANGELOG entry drafted, no AC-count comparison owed
+b12_self_test_c: not-applicable          # same — no file paths claimed in any CHANGELOG entry
+changelog_entry_position: none           # no [Unreleased] entry — docs-only lane-protocol wording, local-only files (plan.md carries no sync CHANGELOG requirement)
+frontmatter_status_transitions:
+  draft_to_in_progress: 286712396        # manager-develop, M1 commit
+  in_progress_to_completed: pending-backfill-sync   # this sync commit (3-phase close, merged transition)
+canary_compliance_check:
+  template_mirror: clean                 # .claude/rules/local/ + AGENTS.local.md carry no template mirror by design (plan.md §D)
+  neutral_surface: clean                 # zero files under internal/template/ in card delta (run §E.2 re-verified)
+mx_tag_validation: not-applicable        # no Go source, no hooks, no template files — docs-only delta carries no @MX surface
+sync_phase_files_modified: 2             # spec.md (frontmatter status+updated only) + progress.md (§E.4)
+```
+
+- Sync-phase re-verification (this run, worktree `.moai/worktrees/t1346`, post-run HEAD
+  `3d8192fcb`): `go run ./cmd/moai spec lint SPEC-LEAD-AUTOPUSH-001` → "✓ No findings —
+  all SPEC documents are valid", exit 0. AC greps re-run on the current tree: AC-001
+  `lead_push_threshold` count = 2; AC-005 absence grep `lead_push_threshold: 20|초기값 20`
+  → no output exit 1 with positive control `git-strategy.yaml:26: lead_push_threshold: 20`;
+  AC-006 GWT cross-ref present at `AGENTS.local.md:206`. No `sync_should_verify` items were
+  left in §E.3 by the run phase — nothing to clear.
+- CHANGELOG / README / docs-site: not owed (see `b12_self_test_*` above). No entries invented.
