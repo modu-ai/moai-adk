@@ -104,7 +104,7 @@ sync_phase:
     doc_parity: "DocParity selector 0 tests; real pins TestGTDAllTodoVerbsParity + TestSD_AC015_LaneQueueAllowlistWalk PASS; claim row added to gtd.md live + template mirror in same commit"
 ```
 
-## §F.1 Plan-phase 기록 (Plan-Phase Record)
+## §G Plan-phase 기록 (Plan-Phase Record)
 
 ### 리서치 팬아웃 출처 (Research Fan-out Provenance)
 
