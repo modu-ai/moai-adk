@@ -9,7 +9,7 @@ author: manager-spec
 priority: P2
 phase: "v3.1.4 target"
 module: ".moai/specs/SPEC-HOOK-WIRING-DRIFT-001"
-lifecycle: spec-first
+lifecycle: spec-anchored
 tags: "spec-amendment, card-t469, template-neutrality, strip-aware-mirror"
 tier: S
 depends_on: [SPEC-HOOK-WIRING-DRIFT-001]
