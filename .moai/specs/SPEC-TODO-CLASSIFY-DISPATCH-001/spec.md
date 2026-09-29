@@ -68,8 +68,11 @@ The product already carries a decider-identity vocabulary this SPEC reuses, not 
 kickoff contract's closed set `human | llm | llm+jev` (`internal/contract/seal.go:55-56`), the
 "jev is never a sole decider" refusal (`internal/contract/kickoff/decide.go:111-112`), and the
 `homestate.Decider` identity recorded on card decisions (`internal/homestate/card_record.go:45-46`).
-This SPEC defines the classification seam (a `Decider` abstraction for card classification) so that
-its product implementation is `Decider(llm)` and its absence-of-judgment fallback is deterministic.
+This SPEC defines the classification seam (a `Decider` abstraction for card classification); its
+product implementation is the `--classification-file` judgment-file injection with
+`DefaultCardDecider` (identity `default`) as the shipped judgment backend and a deterministic
+absence-of-judgment fallback, while the `Decider(llm)` implementation is deferred out of scope for
+this SPEC (REQ-TCD-012, leader ruling 2026-09-29 OD-2).
 `scripts/jev/` is LOCAL-ONLY tooling (AGENTS.local.md §29) and is never wired into any product
 path; the local dogfood seam is stated in plan.md §D.3.
 
