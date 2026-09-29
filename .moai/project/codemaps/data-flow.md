@@ -449,7 +449,7 @@ internal/cli/goal.go                    goal --auto "<mission>" → 승인 대�
 **`internal/mission`의 비테스트 소비자는 `internal/cli/goal.go` 하나**이며, 같은 파일이
 `internal/kanban`의 GTD 함수도 직접 부릅니다. 미션 텍스트는 셸 명령이나 goal 조건으로 해석되지
 않습니다(`--auto` 플래그 도움말: "without condition or shell parsing"). 거버넌스 receipt의
-발행자는 `mission-governor`이고 상태는 권고(`GovernanceRecommended`)이며, 효과는 위 소유자
+발행자는 `manager-todo`(구 판정 역할의 개명 후 이름)이고 상태는 권고(`GovernanceRecommended`)이며, 효과는 위 소유자
 어댑터가 적용합니다. 원격 push·PR·보호 브랜치 병합은 설정된 provider가 없으면 일어나지
 않습니다 — 이 절의 존재는 원격 전달이 동작한다는 뜻이 아닙니다.
 

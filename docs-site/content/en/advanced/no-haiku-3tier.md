@@ -66,11 +66,13 @@ Four conclusions read from the data:
 
 Even Sonnet costs more per task than Opus on long-horizon work. Haiku is weaker than Sonnet. So adding Haiku to routing adds no capability — only step waste; the completion-failure pattern already observed on Sonnet would appear even more steeply on Haiku.
 
-That is why MoAI excludes Haiku from the routing model set entirely (the No-Haiku policy, SPEC-AGENT-ARCH-V2-001 §D). Haiku remains a valid value in the model enum, so it appears in docs and example YAML, but it enters no cell of the actual agent assignment matrix. Remove Haiku and the cost-cutting axis still remains — tiering effort (reasoning depth) per step instead of switching model classes. That is the starting point of the 3-tier structure.
+That is why MoAI excludes Haiku from the routing model set entirely (the No-Haiku policy, SPEC-AGENT-ARCH-V2-001 §D). Haiku remains a valid value in the model enum, so it appears in docs and example YAML, but it enters no combination of the session model lineup. Remove Haiku and the cost-cutting axis still remains — tiering effort (reasoning depth) per step instead of switching model classes. That is the starting point of the 3-tier structure.
 
 ## The 3-tier assignment rule
 
 The remaining models (Opus, Sonnet) and effort are assigned across three tiers by the character of the work. "Tier" here means *a step of model·effort assignment keyed to task type*.
+
+> The assignment tables from this section on are **design intent, and the actual rule up to v3.1** (the per-agent profile-matrix era). From v3.2 the implemented behavior is session inheritance, so read this assignment as a record of the model-choice standards, not as current behavior. The split between the two is stated in "Reading design intent and implemented behavior apart" below.
 
 ```mermaid
 flowchart TD
@@ -81,11 +83,11 @@ flowchart TD
 
     T1["Tier 1 — Mechanical & search<br/>Sonnet low<br/>manager-docs · manager-git · Explore"]
     T2["Tier 2 — Produce<br/>Opus, a different step per row<br/>manager-spec · manager-develop<br/>builder-harness · e2e-tester"]
-    T3["Tier 3 — Judge & coordinate<br/>Opus, mostly high<br/>plan-auditor · sync-auditor · manager-design<br/>manager-lead · super-advisor · mission-governor"]
+    T3["Tier 3 — Judge & coordinate<br/>Opus, mostly high<br/>plan-auditor · sync-auditor · manager-design<br/>manager-lead · super-advisor · manager-todo"]
 
     T1 --> NOTE["Fixed across all three profiles"]
     T2 --> NOTE2["Two rows stay at medium in all three columns<br/>only two step down with the profile"]
-    T3 --> NOTE3["super-advisor · mission-governor hold high<br/>even in the economical column"]
+    T3 --> NOTE3["super-advisor · manager-todo hold high<br/>even in the economical column"]
 ```
 
 ### Tier 1 — Mechanical & search
@@ -115,11 +117,11 @@ The authoring and implementing rows — `manager-spec` and `manager-develop` —
 |---|---|---|---|
 | `plan-auditor` · `sync-auditor` | `opus / high` | `opus / high` | `opus / medium` |
 | `manager-design` · `manager-lead` | `opus / high` | `opus / high` | `opus / medium` |
-| `super-advisor` · `mission-governor` | `opus / high` | `opus / high` | `opus / high` |
+| `super-advisor` · `manager-todo` | `opus / high` | `opus / high` | `opus / high` |
 
-Only `super-advisor` (the escalation path) and `mission-governor` (the sealed-mission verdict) **hold `high` even in the economical column** — those two are exactly what a cheap column most needs to keep sound.
+Only `super-advisor` (the escalation path) and `manager-todo` (whose judgment sub-role is the sealed-mission verdict) **hold `high` even in the economical column** — those two are exactly what a cheap column most needs to keep sound.
 
-`mission-governor` is what shows why this axis beats "multi-turn or not". It reads once and returns a single decision, so by a multi-turn test it would belong on the Sonnet side; in fact it is `opus / high` in all three columns. **Because it is a row that judges.**
+The `manager-todo` judgment sub-role is what shows why this axis beats "multi-turn or not". It reads once and returns a single decision, so by a multi-turn test it would belong on the Sonnet side; in fact it is `opus / high` in all three columns. **Because it is a row that judges.**
 
 `max` is assigned to **no row**. It survives in the vocabulary as the only step above `high`, but the count of cells holding it is zero. `xhigh` is used nowhere either — on Opus it scores the same as `high` at 49% more cost.
 
@@ -141,13 +143,13 @@ The two are orthogonal. An agent working on an expensive model at high effort (a
 
 **Design stage** (`.moai/reports/agent-architecture-redesign-v2-20260709.html`) — the design intent of the v2 architecture. Presents the principles of the 3-tier model policy and the DeepSWE rationale.
 
-**Implemented behavior** — a single profile matrix performs the actual routing. The active profile (`high` / `medium` / `low`) picks one column of the matrix, the resolver fixes each agent's `{model, effort}`, and the model goes in as a runtime argument at spawn time. See the [Profile Matrix](/en/advanced/profile-matrix/) page for the detailed matrix.
+**Implemented behavior** — since v3.2 the actual behavior is **session inheritance**. Subagents inherit the main session's model and effort: pass neither `model` nor `effort` when spawning a subagent, and MoAI agent definitions declare neither. The former profile matrix (the 39-cell assignment table of 13 agents × 3 profiles) and the resolver that injected its values into spawns are retired. What the session model policy does today is set the session's default effort fallback in `moai profile setup` — nothing more. See the [Profile Matrix](/en/advanced/profile-matrix/) page for today's behavior in detail.
 
-Readers, too, should keep design intent (the DeepSWE rationale on this page) separate from implemented behavior (the single profile matrix).
+Readers, too, should keep design intent (the DeepSWE rationale and the 3-tier assignment standards on this page) separate from implemented behavior (session inheritance).
 
 ## What this benchmark does not measure
 
-{{< icon info >}} **Limitation note**: what this benchmark measures are **coding** agents. Documentation authoring, audit judgment, and SPEC (requirements document) authoring quality were not directly measured, so those row placements lean on the inference that they resemble multi-turn agentic work — they are not observations. Confidence intervals matter too: `medium` (69%±1) and `high` (73%±2) do not overlap, but `max` (74%±4) overlaps `high`. That is why `max` is assigned to no cell at all — it would be paying more for an overlapping interval. Every default is reversible per agent via `llm.agent_overrides`.
+{{< icon info >}} **Limitation note**: what this benchmark measures are **coding** agents. Documentation authoring, audit judgment, and SPEC (requirements document) authoring quality were not directly measured, so those row placements lean on the inference that they resemble multi-turn agentic work — they are not observations. Confidence intervals matter too: `medium` (69%±1) and `high` (73%±2) do not overlap, but `max` (74%±4) overlaps `high`. That is why `max` is assigned to no cell at all — it would be paying more for an overlapping interval. Every default is adjustable at the session level — the model by Claude Code's model selection, the effort by `/effort` or the profile wizard's session model policy.
 
 {{< icon info >}} **On Fable 5**: Fable loses on coding work across every effort. Fable `high` (69%, $9.18) delivers the same score as Opus `medium` (69%, $3.29) for nearly triple the cost. So it was placed in no matrix cell. It remains a valid value in the model enum, and the Fable-slot wiring of the GLM backend stays alive — only the defaults changed.
 
@@ -157,6 +159,6 @@ The 3-tier assignment is the foundation of the loop in which the harness improve
 
 ## Next steps
 
-- [Profile Matrix](/en/advanced/profile-matrix/) — the single 3-column per-agent profile matrix (13 agents × 3 profiles = 39 cells)
+- [Profile Matrix](/en/advanced/profile-matrix/) — what replaced the 39-cell matrix, and today's session-inheritance rule
 - [Autonomy Tier](/en/advanced/autonomy-tier/) — the permission · control autonomy grade, orthogonal to model tiers
 - [Tokenomics Overview](/en/advanced/tokenomics-overview/) — the routing layer of the 4-layer tokenomics structure

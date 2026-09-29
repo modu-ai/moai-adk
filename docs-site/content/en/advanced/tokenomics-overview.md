@@ -12,7 +12,7 @@ As multiple agents run, contexts grow longer, and reasoning deepens, a single se
 
 MoAI-ADK's answer has three parts.
 
-1. **Assign the right model and reasoning depth per task** — deep for planning, cheap for implementation, independent for verification.
+1. **Set the right model and reasoning depth for the session** — the main session's model and effort carry over to every subagent, so one well-chosen session *is* the whole assignment.
 2. **Diet the context** — minimize always-loaded instructions and measure prompt-cache hit rate.
 3. **System-enforced budget** — track token usage and stop gracefully before the threshold is exceeded.
 
@@ -33,7 +33,7 @@ Tokenomics consists of four layers. Each layer operates independently while comp
 ```mermaid
 flowchart TD
     A["Layer A — Metering<br/>per-SPEC token accounting"]
-    B["Layer B — Routing<br/>Tier × Phase declarative model/effort"]
+    B["Layer B — Routing<br/>session-level model/effort"]
     C["Layer C — Verify-diet<br/>verbatim evidence to file, summary to context"]
     D["Layer D — Budget defense<br/>90% hard-limit graceful stop"]
 
@@ -48,7 +48,7 @@ flowchart TD
 
 ### Layer B — Routing
 
-{{< icon package >}} Models and reasoning depth (effort) are declaratively assigned to each retained agent. The active profile (`high`/`medium`/`low`) selects one column of the profile matrix, placing each agent on the reasoning-depth rung its work warrants and reserving Sonnet for single-shot mechanical rows, maximizing quality per cost. For the detailed profile matrix, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
+{{< icon package >}} The session's model and reasoning depth (effort) are chosen — and since v3.2 the unit of routing is the **session**, not the agent. The main session's model and effort are inherited by every subagent; the session effort is adjusted with `/effort` and `ultrathink`, and the profile wizard's session model policy sets the default effort fallback for when no depth is chosen. There is no per-agent assignment table to maintain anymore. The cost/quality judgment standards — concentrating deep reasoning on heavy judgment work — are kept, and the details are on the [Profile Matrix](/en/advanced/profile-matrix/) and [Model Policy](/en/multi-llm/model-policy/) pages.
 
 ### Layer C — Verify-diet
 
@@ -103,10 +103,10 @@ The 1M-context models (Opus 5.5, GLM-5.3) recommend handoff at 50%. A wider wind
 
 ## Model Tier Routing
 
-What concretizes Layer B's routing is the model profile policy. MoAI-ADK v3.0 excludes Haiku from the routing model set and distributes work across a 3-tier structure keyed to task character — Sonnet on single-shot rows, Opus across the agentic ladder, with the higher effort levels concentrated on the rows that judge (auditing, advising, coordinating). The rationale for this design and the profile matrix implementation are covered in the next two pages.
+What concretizes Layer B's routing is the session model policy. MoAI-ADK v3.0 excludes Haiku from the routing model set, and the 3-tier structure keyed to task character — Sonnet for single-shot work, Opus across the agentic ladder, higher effort concentrated on judgment work (auditing, advising, coordinating) — remains the judgment standard for choosing a session model. Since v3.2 the assignment itself is session inheritance: the main session's model and effort are what every subagent runs. The rationale and the inheritance rule are covered in the next two pages.
 
 - [3-Tier Agent Architecture](/en/advanced/no-haiku-3tier/) — why Haiku is excluded, DeepSWE leaderboard rationale
-- [Profile Matrix](/en/advanced/profile-matrix/) — the single 3-column per-agent profile matrix
+- [Profile Matrix](/en/advanced/profile-matrix/) — what replaced the matrix, and today's session-inheritance rule
 
 ## CG retirement and migration
 
@@ -120,7 +120,7 @@ The `claude-glm` target describes a Claude leader with GLM teammates in tmux. It
 
 The implementation status of the content on this page is clearly distinguished.
 
-{{< icon check ok >}} **Implemented (shipped)** — all 4 layers (A/B/C/D), 3-tier model policy (profile matrix resolver), verify-diet file-redirect contract, graceful-abort mechanism.
+{{< icon check ok >}} **Implemented (shipped)** — all 4 layers (A/B/C/D), session-inheritance model policy (the session's model·effort inherited by subagents; the session model policy as effort fallback), verify-diet file-redirect contract, graceful-abort mechanism.
 
 {{< icon clock >}} **Design-stage (roadmap)** — the GLM backend effort overlay's wire effectiveness is a verification item requiring live GLM session outbound observation. The Profile Matrix page states this distinction explicitly.
 
@@ -128,4 +128,4 @@ The implementation status of the content on this page is clearly distinguished.
 
 - [Token Budget Management and Graceful Stop](/en/advanced/token-budget/) — Layer D deep-dive (per-model thresholds, paste-ready resume structure)
 - [3-Tier Agent Architecture](/en/advanced/no-haiku-3tier/) — harness architecture foundation
-- [Profile Matrix](/en/advanced/profile-matrix/) — the single 3-column per-agent profile matrix
+- [Profile Matrix](/en/advanced/profile-matrix/) — what replaced the matrix, and the session-inheritance rule

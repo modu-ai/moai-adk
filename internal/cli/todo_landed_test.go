@@ -302,13 +302,15 @@ func TestTodoLanded_StateCheckAndStatesUntouched(t *testing.T) {
 		}
 	}
 
-	// The stored DDL still carries the three-state CHECK, verbatim.
+	// The stored DDL still carries the four-state CHECK, verbatim
+	// (SPEC-TODO-HOLD-STATE-001 widened the tuple; the freeze keeps pinning
+	// it so the width cannot drift again).
 	var ddl string
 	if err := openQueueDB(t, f.store).QueryRow(
 		`SELECT sql FROM sqlite_master WHERE type='table' AND name='items'`).Scan(&ddl); err != nil {
 		t.Fatalf("read items DDL: %v", err)
 	}
-	const wantCheck = `CHECK (state IN ('queued','picked','dropped'))`
+	const wantCheck = `CHECK (state IN ('queued','picked','dropped','hold'))`
 	if !strings.Contains(ddl, wantCheck) {
 		t.Errorf("items DDL lost %s\nDDL:\n%s", wantCheck, ddl)
 	}

@@ -79,60 +79,36 @@ For details, see [SPEC-STATUSLINE-001](https://github.com/modu-ai/moai-adk/blob/
 
 ## Q: How do I choose a model policy?
 
-MoAI-ADK assigns the optimal AI model to each agent according to your Claude Code subscription plan. It is a tokenomics mechanism that maximizes quality within your plan's usage limits.
+Since v3.2 there is no per-agent model policy to choose. **Subagents inherit the main session's model and effort** — pass neither `model` nor `effort` when spawning a subagent, and MoAI agent definitions declare neither. What remains is one session-level choice: the **Session model policy** in `moai profile setup`, which sets the default reasoning effort of the Claude session launched with the profile, applied when no effort level is chosen.
 
-### Tier Comparison
+### Session Model Policy Comparison
 
-| Tier | Characteristics |
+| Value | Meaning |
 |------|------|
-| **high** | Highest quality — `builder-harness` and `e2e-tester` each step up one level from the default column. No row takes `max` |
-| **medium** (default) | Balance of quality and cost — the knee of the cost/score curve |
-| **low** | Lowest cost per task — the auditing and coordinating rows drop to `medium`, `builder-harness` to Opus `low`, and `e2e-tester` to Sonnet. Only `super-advisor` and `mission-governor` hold `high` |
+| **high** | Session effort fallback `high` |
+| **medium** (default) | Session effort fallback `medium` — the knee of the cost/score curve |
+| **low** | Session effort fallback `low` — economical within the same model |
 
 {{< callout type="warning" >}}
-**Why does this matter?** Lowering the tier mostly lowers *reasoning depth*, not model class. On a long-horizon agentic task, Opus at `low` effort scores higher and costs less per task than Sonnet at any effort — the bill is set by how many steps a model spends finishing, not by the per-token rate. So `low` economizes within Opus; Sonnet runs only `manager-docs`, `manager-git`, and `Explore` in every tier, plus `e2e-tester` in the `low` tier.
+**Why does the effort choice matter?** Lowering the effort mostly lowers *reasoning depth*, not model class. On a long-horizon agentic task, Opus at `low` effort scores higher and costs less per task than Sonnet at any effort — the bill is set by how many steps a model spends finishing, not by the per-token rate. The session-level effort is where that economy lives now; the per-agent assignment tables of earlier versions are retired.
 {{< /callout >}}
 
-### Agent Model Assignment per Tier
+### What Changed from the Per-Agent Era
 
-Of the **13-agent catalog** (12 MoAI custom + 1 Anthropic built-in `Explore`), the MoAI custom agents are assigned models according to the tier. The 12 archived agents from earlier versions are not available.
-
-#### Manager Agents (6)
-
-| Agent | high | medium | low |
-|---------|------|--------|-----|
-| manager-spec | opus / medium | opus / medium | opus / medium |
-| manager-develop | opus / medium | opus / medium | opus / medium |
-| manager-docs | sonnet / low | sonnet / low | sonnet / low |
-| manager-git | sonnet / low | sonnet / low | sonnet / low |
-| manager-design | opus / high | opus / high | opus / medium |
-| manager-lead | opus / high | opus / high | opus / medium |
-
-#### Evaluator · Builder · Advisor · Specialist Agents (6)
-
-| Agent | high | medium | low |
-|---------|------|--------|-----|
-| plan-auditor | opus / high | opus / high | opus / medium |
-| sync-auditor | opus / high | opus / high | opus / medium |
-| builder-harness | opus / high | opus / medium | opus / low |
-| super-advisor | opus / high | opus / high | opus / high |
-| e2e-tester | opus / medium | opus / low | sonnet / low |
-| mission-governor | opus / high | opus / high | opus / high |
-
-The built-in `Explore` resolves to `sonnet / low` in every column — a call-time default, since it has no agent file on disk to pin.
+Through v3.1, MoAI-ADK assigned `{model, effort}` to each of the 13 catalog agents through a profile matrix whose column the tier selected. That apparatus was retired in SPEC-AGENT-MODEL-INHERIT-001 — measurement showed fewer than 1% of spawns ever carried a model argument, so the assignment moved to the session itself. The old `--model-policy`, `--profile`, `--high`, `--medium-alias`, and `--low` flags survive as deprecated stubs that print a warning and do nothing.
 
 ### How to Configure
 
 ```bash
-# During project initialization
-moai init my-project          # Select the model policy in the interactive wizard
+# Configure the session model policy (Session model policy question)
+moai profile setup
 
 # Reconfigure an existing project
 moai update -c                # Re-run the setup wizard
 ```
 
 {{< callout type="info" >}}
-The default tier is `medium`. Change it by re-running the setup wizard with `moai update -c`.
+The default effort fallback is `medium`. Change it in `moai profile setup`, or adjust the session effort as you go with `/effort` or `ultrathink` — every subagent spawned afterwards inherits it.
 {{< /callout >}}
 
 ---

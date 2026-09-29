@@ -127,7 +127,7 @@ The `memory` field enables cross-session learning for agents. Three scope levels
 
 ## Agent Categories
 
-The MoAI agent catalog consists of exactly **13 retained agents** (12 MoAI-custom + 1 Anthropic built-in `Explore`), aligned with CLAUDE.md §4. The v2 architecture (SPEC-AGENT-ARCH-V2-001) added `super-advisor` (on-demand high-reasoning consultation) and `manager-design` (Claude Design collaboration) to the former 8-agent catalog; `manager-lead` (hierarchical-team Tier L coordination) and `mission-governor` (the GTD auto-mission decision role) were added later. Previously-listed manager and expert agents beyond this set were archived during the catalog consolidation. Domain expertise formerly delivered by those static agents is now delivered through per-spawn `Agent(general-purpose)` parameter injection — see § Per-Spawn Domain Specialization below and `.claude/rules/moai/workflow/archived-agent-rejection.md` §C for the full archived-name enumeration and migration table.
+The MoAI agent catalog consists of exactly **13 retained agents** (12 MoAI-custom + 1 Anthropic built-in `Explore`), aligned with CLAUDE.md §4. The v2 architecture (SPEC-AGENT-ARCH-V2-001) added `super-advisor` (on-demand high-reasoning consultation) and `manager-design` (Claude Design collaboration) to the former 8-agent catalog; `manager-lead` (hierarchical-team Tier L coordination) was added later, and the original GTD auto-mission decision role was later renamed and repurposed as `manager-todo` (todo-queue management + dispatch ownership, judgment retained as a read-only sub-role). Previously-listed manager and expert agents beyond this set were archived during the catalog consolidation. Domain expertise formerly delivered by those static agents is now delivered through per-spawn `Agent(general-purpose)` parameter injection — see § Per-Spawn Domain Specialization below and `.claude/rules/moai/workflow/archived-agent-rejection.md` §C for the full archived-name enumeration and migration table.
 
 ### Retained MoAI-custom Agents (12)
 
@@ -144,7 +144,7 @@ Coordinate the SPEC plan/design/run/sync/audit lifecycle:
 - builder-harness: Dynamic project-specific harness specialist generation (new agents, skills, plugins, commands, hooks, MCP/LSP servers)
 - e2e-tester: E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs, artifact management)
 - manager-lead: Tier L coordination + the -k kanban / -f factory lead role (the sole Agent-carrier, depth-2 sealed)
-- mission-governor: GTD auto-mission decision role — returns one bounded structured decision, never applies it (read-only; dispatched by the GTD auto-mission flow rather than selected from the §4 decision tree)
+- manager-todo: todo-queue management agent — owns queue lifecycle, the `/moai:todo --auto` serial cycle, and dispatch guidance; consults Jev as a display-only signal; carries the read-only sealed-snapshot judgment (one bounded structured decision, never applies it) as a sub-role dispatched by the GTD auto-mission flow
 
 ### Anthropic Built-in (1)
 

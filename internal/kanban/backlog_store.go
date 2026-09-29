@@ -63,6 +63,12 @@ const (
 	BacklogStatePicked BacklogState = "picked"
 	// BacklogStateDropped marks a card the operator discarded.
 	BacklogStateDropped BacklogState = "dropped"
+	// BacklogStateHold marks a card an OPERATOR parked out of the queue
+	// (SPEC-TODO-HOLD-STATE-001). It is the state, not a text marker: every
+	// actionable surface enumerates accepted states positively, so a held
+	// card is invisible to every machine selector by construction, and no
+	// lease path gains a verb that sets or clears it.
+	BacklogStateHold BacklogState = "hold"
 )
 
 // BacklogItem is one queued card. The five original fields are the frozen
@@ -86,6 +92,16 @@ type BacklogItem struct {
 	// `operator`) hold on every write rather than at each call site.
 	Landing  *LandingEvidence `json:"landing,omitempty"`
 	CardUUID *string          `json:"card_uuid"`
+	// PickedAt / DroppedAt are ADDITIVE (SPEC-TODO-TRANSITION-STAMPS-001
+	// REQ-TST-001): nullable transition stamps in the added_at TEXT format,
+	// `omitempty` after the Landing precedent so a card carrying none
+	// marshals byte-identically to before. PickedAt answers "when did the
+	// CURRENT picked episode begin" — it is overwritten on every re-pick and
+	// cleared on unpick; DroppedAt is stamped on drop and cleared on undrop.
+	// Absence is a nil pointer here and SQL NULL in the column — never {}
+	// and never "" (the REQ-TLE-006 discipline this SPEC follows).
+	PickedAt  *string `json:"picked_at,omitempty"`
+	DroppedAt *string `json:"dropped_at,omitempty"`
 }
 
 // Relation values a finding may carry. The first two are MECHANICAL — the
@@ -214,6 +230,18 @@ type BacklogArchiveEntry struct {
 	Item     BacklogItem              `json:"item"`
 	Position int                      `json:"position"`
 	Findings []BacklogArchivedFinding `json:"findings"`
+	// ArchivedAt is ADDITIVE (SPEC-TODO-TRANSITION-STAMPS-001 REQ-TST-002):
+	// the archive-time stamp, `omitempty` after the Landing precedent. The
+	// item's own stamps ride inside Item — ArchiveCard copies the row
+	// wholesale — so the archived row is the card's final, readable home
+	// (REQ-TST-007).
+	ArchivedAt *string `json:"archived_at,omitempty"`
+	// LandingVerdict is ADDITIVE (SPEC-TODO-TRANSITION-STAMPS-001
+	// REQ-TST-008): the done-time landing query's answer — verdict, answering
+	// ref, verdict time — persisted alongside, never instead of, the
+	// operator-authored evidence in Item.Landing (REQ-TST-009). It carries no
+	// SHA by construction; see kanban/landing_verdict.go.
+	LandingVerdict *LandingVerdict `json:"landing_verdict,omitempty"`
 }
 
 // BacklogRecord is the backlog file's document shape. LastSeq is the
@@ -281,6 +309,11 @@ func (r *BacklogRecord) ArchiveCard(id string) error {
 		Position: at,
 		Findings: []BacklogArchivedFinding{},
 	}
+	// REQ-TST-007: the archive is the row's final home and carries its own
+	// archive-time stamp. The item's picked_at / dropped_at stamps ride
+	// inside the copied Item, as they stood at archive time.
+	now := time.Now().UTC().Format(time.RFC3339)
+	entry.ArchivedAt = &now
 	kept := make([]BacklogFinding, 0, len(r.Findings))
 	for i, f := range r.Findings {
 		if f.Names(id) {
