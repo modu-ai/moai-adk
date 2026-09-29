@@ -80,10 +80,11 @@ func todoQueueRootForDisclosure() string {
 	return kanban.ResolveTodoQueueRoot(resolveProjectDir())
 }
 
-// @MX:ANCHOR fan_in=3 - SPEC-BACKLOG-JSON-DISCLOSURE-001 REQ-BJD-002 sole
+// @MX:ANCHOR fan_in=5 - SPEC-BACKLOG-JSON-DISCLOSURE-001 REQ-BJD-002 sole
 // disclosure entry point for the read verbs that do not already hold a vouch
-// (bare/list, why, pr); history calls discloseNonAuthoritativeBacklogJSON
-// directly with the vouch it already holds.
+// (bare/list, show, why, pr, triage); history calls
+// discloseNonAuthoritativeBacklogJSON directly with the vouch it already
+// holds.
 // discloseQueueLayout probes the queue layout and discloses, for the read
 // verbs that do not already hold a vouch.
 //

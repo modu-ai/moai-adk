@@ -252,7 +252,18 @@ boundary_grep: AskUserQuestion/mcp__askuser in internal/cli+internal/kanban non-
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_complete_at: 2026-09-30
+sync_commit_sha: "pending-backfill-sync"
+sync_status: complete
+changelog_entry_position: [Unreleased] > Added (top, above the SPEC-TODO-CLASSIFY-DISPATCH-001 row — most-recent-first convention)
+b12_self_test_a: PASS — pre-emission grep `grep -c 'SPEC-TODO-SURFACE-POLISH-001' CHANGELOG.md` = 0 before the entry landed (no duplicate from a parallel BATCH-SYNC session)
+b12_self_test_b: PASS — acceptance.md distinct live AC identifiers = 15 (AC-TSP-001..052; zero `[RETIRED]`/`[REF]` tokens) = CHANGELOG entry count 15
+b12_self_test_c: PASS — every file path named in the CHANGELOG entry verified present via ls: `.moai/specs/SPEC-TODO-SURFACE-POLISH-001/{spec,progress}.md`, `internal/cli/{todo_show,todo_history,todo,todo_ghost_notice,doctor_todo_ghost,doctor_owner_label}.go`, `internal/kanban/{todo_stale_store,todo_owner_label,todo_runtime}.go`, `internal/template/templates/.moai/docs/todo-queue-storage.md`, `docs-site/content/{ko,en,ja,zh}/utility-commands/moai-todo.md`
+frontmatter_status_transitions: in-progress → implemented → completed (merged 3-phase close on this single sync commit); `updated:` 2026-09-30 (already the current date — value unchanged)
+canary_compliance_check: n/a — this SPEC defines no forward-looking policy covered by its own sync tests
+mx_tag_validation: PASS with 1 update — the `@MX:ANCHOR` on `discloseQueueLayout` (`internal/cli/todo_disclosure.go`) refreshed to fan_in=5 with its caller enumeration extended to (bare/list, show, why, pr, triage); this SPEC's show verb added the fifth caller, so the ANCHOR-update duty fired (MX protocol: update when fan_in changes). No other tag gap: the new functions carry no fan_in≥3 surface, no goroutines, no complexity≥15; every new exported symbol (`MigrateOwnerLabelVocabulary`, `GhostArtifact`, the three `GhostClass*` constants) is godoc'd, tested, and inside the already-ANCHORed `InspectStaleLocalStores` file
+readme_docs_site_decision: default-limit-20 — NO statement exists in README*.md or docs-site/content (confirmed absent by grep; nothing to fix). Read-verb enumeration — `docs-site/content/{ko,en,ja,zh}/utility-commands/moai-todo.md` line 248 enumerated the disclosing read verbs as list·why·pr·history, made stale by show's addition; FIXED in all 4 locales in this commit (show inserted after list, one token per locale, no structural change). README todo rows (ko L392 / en L393) are partial subcommand enumerations already missing pre-existing verbs (history, hold, why, pr, triage, export-json…) and claim no exhaustiveness — not made false by this SPEC, untouched. Pre-existing imprecision noted, not repaired (out of this SPEC's delta): the same docs enumeration omits `triage`, which also discloses via discloseQueueLayout since before this SPEC
+sync_scope: CHANGELOG.md + progress.md §E.4 + spec.md frontmatter (status/updated only) + the MX ANCHOR refresh + the 4-locale docs fix; spec/plan/acceptance BODY content untouched (blocker-report boundary respected — no body edit was needed)
 
 ## §F Phase 4 Mode Selection
 

@@ -2,7 +2,7 @@
 id: SPEC-TODO-SURFACE-POLISH-001
 title: "todo 표면 정비 5종 — show 동사 신설, add -f 오파싱 수리, list 한도 완화, 유령 저장소 소멸, 라벨 어휘 통합 (+렌더 누락 점검)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-29
 updated: 2026-09-30
 author: manager-spec
