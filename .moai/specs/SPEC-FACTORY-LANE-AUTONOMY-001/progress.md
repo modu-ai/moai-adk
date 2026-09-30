@@ -257,7 +257,71 @@ gaps:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owner: manager-docs>_
+```yaml
+sync_status: complete (3-phase close — plan → run → sync, this commit)
+sync_complete_at: 2026-09-30
+sync_commit_sha: "pending-backfill-sync"
+changelog_entry_position: CHANGELOG.md [Unreleased] § Added, first entry
+frontmatter_status_transitions:
+  - "spec.md status: in-progress -> completed (this single sync commit; the intermediate implemented step consolidated per the Status Transition Ownership Matrix close row)"
+updated_field_refresh: "2026-09-30 (was already 2026-09-30 — no byte change needed); no other frontmatter field touched, body content of spec/plan/acceptance untouched"
+b12_self_test_a: >-
+  pre-emission grep -c 'SPEC-FACTORY-LANE-AUTONOMY-001' CHANGELOG.md -> 0
+  (halt condition not triggered); post-emission count is 1 (this commit's entry)
+b12_self_test_b: >-
+  AC count match — moai-ac counter over acceptance.md (tier L, ac_source
+  .moai/specs/SPEC-FACTORY-LANE-AUTONOMY-001/acceptance.md, resolved and
+  non-empty): live=17 excluded=0 ambiguous=0; the CHANGELOG entry cites 17
+  (AC-FLA-001..017)
+b12_self_test_c: >-
+  file path verification — every path cited in the CHANGELOG entry confirmed
+  present in this tree: internal/factorylane/{probe,store,transitions,pickup,merge}.go
+  (diff-filter=A proven new), internal/config/defaults.go (constants at :51-:59),
+  internal/cli/worktree/done.go (originLandingRefusal at :331)
+mx_tag_validation:
+  tags_found: 7
+  anchors: >-
+    5 — EvaluateAvailability (probe.go, fan_in>=3 documented in @MX:REASON),
+    DeclareFallback (transitions.go), TransitionCountsByLane (transitions.go),
+    EvaluateMergeTriple (merge.go), newFactoryMergeReadyCommand
+    (factory_merge.go) — each carries the mandatory @MX:REASON + @MX:SPEC
+  notes: 2 — Classifier seam (pickup.go), RecordMergeCheckRun (merge.go), both with @MX:SPEC
+  todo_residual: 0 (grep over the new surface)
+  dangerous_patterns: 0 (no goroutines, no complexity >= 15 in the new surface)
+  sync_delta: "0 added / 0 updated / 0 removed — run-phase coverage judged adequate on the high-fan-in seams; sync found no warranted addition"
+codemap_refresh:
+  modules_md: >-
+    partial refresh stamped (t1338): new business/domain row internal/factorylane
+    (5 non-test), internal/cli row 375->384 (root 298->306; this card's proven
+    share +4 root files, remainder is absorbed-develop delta between the t1333
+    measurement tree and anchor 8ea2febe2 — re-measured with find in this tree),
+    factory cluster row 11(6+1+5) -> 17(11+1+5)
+  entry_points_md: >-
+    partial refresh stamped (t1338): the new lane-autonomy verbs described,
+    non-test AddCommand( 231->239 (+8 — exactly this card's diff added lines),
+    registration files 73->76 (+3: factory_messaging/merge/pickup),
+    rootCmd.AddCommand( 66 unchanged
+docs_surface_decision: >-
+  No established public docs surface covers factory CLI subcommands:
+  docs-site/content/<locale>/advanced/factory-mode.md (4 locales) documents the
+  -f launcher / lane operating concept only, and README documents only
+  'moai factory runs'. The new lane-autonomy verbs are an internal factory
+  subsystem, so per the sync dispatch NO new public docs were created; the
+  CHANGELOG entry is the user-facing record. No existing surface was made stale
+  (the landing check only narrows card-branch disposal, which no public page
+  documents; 'moai factory runs' is unchanged).
+canary_compliance_check: "n/a — this SPEC defines no forward-looking policy exercised by its own sync tests"
+sync_gates:
+  spec_body_content_modified: false
+  vocabulary: >-
+    leader (not lead) throughout the new user-facing surface; the M5 vocabulary
+    guard TestSD_AC021_LegacySpellingsRefused PASS carries into close
+  dod_item5: >-
+    worktree done guards + --auto foreman contract unchanged — AC-FLA-013's
+    guards-outrank ordering pin and the existing internal/cli/worktree suite
+    green unmodified (M4 §E.2); the machine check sits AFTER both guards and no
+    flag bypasses it (AC-FLA-015)
+```
 
 ## §F Phase 4 Mode Selection
 
