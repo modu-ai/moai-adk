@@ -155,19 +155,25 @@ func newFactoryMessagingAckCommand() *cobra.Command {
 
 // newFactoryFallbackCommand is the fallback-transition event log surface
 // (REQ-FLA-003): the bare command queries the log (count-by-lane is the
-// AC-FLA-003 check); declare/restore record the mode switches.
+// AC-FLA-003 check); declare/restore record the mode switches. The --all form
+// answers the count-by-lane query across every recorded lane at once and
+// needs no lane identity — the joint summary an operator reads from anywhere.
 func newFactoryFallbackCommand() *cobra.Command {
 	var asJSON bool
+	var allLanes bool
 	fb := &cobra.Command{
 		Use:   "fallback",
 		Short: "Query the fallback-transition event log",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			lane, err := factoryLaneLabelFromEnv("fallback")
+			store, err := factoryLaneFallbackStore()
 			if err != nil {
 				return err
 			}
-			store, err := factoryLaneFallbackStore()
+			if allLanes {
+				return runFactoryFallbackAllLanes(cmd, store, asJSON)
+			}
+			lane, err := factoryLaneLabelFromEnv("fallback")
 			if err != nil {
 				return err
 			}
@@ -195,8 +201,31 @@ func newFactoryFallbackCommand() *cobra.Command {
 		},
 	}
 	fb.Flags().BoolVar(&asJSON, "json", false, "Emit machine-readable JSON")
+	fb.Flags().BoolVar(&allLanes, "all", false, "Count events across ALL lanes (count-by-lane summary; no lane identity required)")
 	fb.AddCommand(newFactoryFallbackDeclareCommand(), newFactoryFallbackRestoreCommand())
 	return fb
+}
+
+// runFactoryFallbackAllLanes prints the count-by-lane summary rows: one line
+// per recorded lane in the text form, one JSON object per lane with --json.
+func runFactoryFallbackAllLanes(cmd *cobra.Command, store *factorylane.Store, asJSON bool) error {
+	counts, err := store.TransitionCountsByLane()
+	if err != nil {
+		return err
+	}
+	if asJSON {
+		data, err := json.Marshal(counts)
+		if err != nil {
+			return err
+		}
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(data))
+		return nil
+	}
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "fallback transition counts by lane:")
+	for _, c := range counts {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  %s  %d event(s)\n", c.Lane, c.Count)
+	}
+	return nil
 }
 
 // newFactoryFallbackDeclareCommand records one fallback activation — exactly

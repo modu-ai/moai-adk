@@ -85,6 +85,54 @@ func TestRestoreEnablesSecondCountedSwitch(t *testing.T) {
 	}
 }
 
+// M5 observability polish: the count-by-lane query (AC-FLA-003's check)
+// answered across ALL lanes at once — the joint summary the operator reads.
+// Every recorded event counts, restores included; lanes sort lexically.
+func TestTransitionCountsByLaneSumsEveryLanesEvents(t *testing.T) {
+	store, clock := newTestStore(t)
+	clock.Current = base.Add(time.Minute)
+	if _, err := store.DeclareFallback("lane-1", TriggerChannelUnavailable, "t1"); err != nil {
+		t.Fatalf("declare lane-1: %v", err)
+	}
+	clock.Current = base.Add(2 * time.Minute)
+	if _, err := store.DeclareFallback("lane-2", TriggerNoResponse, "t2"); err != nil {
+		t.Fatalf("declare lane-2: %v", err)
+	}
+	clock.Current = base.Add(3 * time.Minute)
+	if _, err := store.Restore("lane-1"); err != nil {
+		t.Fatalf("restore lane-1: %v", err)
+	}
+	counts, err := store.TransitionCountsByLane()
+	if err != nil {
+		t.Fatalf("TransitionCountsByLane: %v", err)
+	}
+	want := []TransitionCount{
+		{Lane: "lane-1", Count: 2},
+		{Lane: "lane-2", Count: 1},
+	}
+	if len(counts) != len(want) {
+		t.Fatalf("counts = %+v, want %+v", counts, want)
+	}
+	for i, c := range want {
+		if counts[i] != c {
+			t.Errorf("counts[%d] = %+v, want %+v (lexically ordered, restores counted)", i, counts[i], c)
+		}
+	}
+}
+
+// An empty store is an empty set, not an error — the count-by-lane query
+// degrades the same way the per-lane event query does.
+func TestTransitionCountsByLaneEmptyStoreIsEmptySet(t *testing.T) {
+	store, _ := newTestStore(t)
+	counts, err := store.TransitionCountsByLane()
+	if err != nil {
+		t.Fatalf("TransitionCountsByLane on an empty store: %v", err)
+	}
+	if len(counts) != 0 {
+		t.Fatalf("counts = %+v, want an empty set", counts)
+	}
+}
+
 // REQ-FLA-003: an unknown trigger kind is refused before anything is written.
 func TestDeclareRefusesUnknownTrigger(t *testing.T) {
 	store, _ := newTestStore(t)

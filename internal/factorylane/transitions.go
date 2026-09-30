@@ -118,6 +118,48 @@ func (s *Store) Restore(lane string) (Transition, error) {
 	return ev, nil
 }
 
+// TransitionCount is one lane's count-by-lane row: the lane id and how many
+// transition events (activations and restores alike) it has recorded.
+type TransitionCount struct {
+	Lane  string `json:"lane"`
+	Count int    `json:"count"`
+}
+
+// TransitionCountsByLane answers the count-by-lane query (AC-FLA-003's check)
+// across ALL recorded lanes at once — the joint summary row set. Lanes sort
+// lexically; a store with no events yet is an empty set, not an error.
+//
+// @MX:ANCHOR: [AUTO] the cross-lane count-by-lane query (M5 observability polish) — the operator-facing joint summary
+// @MX:REASON: fan_in >= 2 (factory fallback --all verb, the M5 joint-scenario observable); a wrong count here misstates every lane's fallback history at once.
+// @MX:SPEC: SPEC-FACTORY-LANE-AUTONOMY-001
+func (s *Store) TransitionCountsByLane() ([]TransitionCount, error) {
+	dir := filepath.Join(s.root, "transitions")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("factorylane: read transitions root %s: %w", dir, err)
+	}
+	lanes := make([]string, 0, len(entries))
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		lanes = append(lanes, e.Name())
+	}
+	sort.Strings(lanes)
+	counts := make([]TransitionCount, 0, len(lanes))
+	for _, lane := range lanes {
+		events, err := s.Transitions(lane)
+		if err != nil {
+			return nil, err
+		}
+		counts = append(counts, TransitionCount{Lane: lane, Count: len(events)})
+	}
+	return counts, nil
+}
+
 // Transitions returns the lane's events in recorded order.
 func (s *Store) Transitions(lane string) ([]Transition, error) {
 	dir := s.transitionDir(lane)

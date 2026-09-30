@@ -168,6 +168,66 @@ func TestFactoryFallbackQueryPrintsCountByLane(t *testing.T) {
 	}
 }
 
+// M5 observability polish: the count-by-lane query exposed across ALL lanes
+// (`fallback --all`) — the joint summary an operator reads without a lane
+// session. Text and --json forms carry one row per lane with its event count.
+func TestFactoryFallbackAllLanesCountsAcrossLanes(t *testing.T) {
+	root := t.TempDir()
+	t.Chdir(root)
+	store := factorylane.NewStore(root, nil)
+	if _, err := store.DeclareFallback("lane-1", factorylane.TriggerChannelUnavailable, "t1"); err != nil {
+		t.Fatalf("seed lane-1: %v", err)
+	}
+	if _, err := store.DeclareFallback("lane-2", factorylane.TriggerNoResponse, "t2"); err != nil {
+		t.Fatalf("seed lane-2: %v", err)
+	}
+	out, _, err := runFactory(t, "fallback", "--all")
+	if err != nil {
+		t.Fatalf("fallback --all: %v", err)
+	}
+	for _, lane := range []string{"lane-1", "lane-2"} {
+		if !strings.Contains(out, lane) {
+			t.Fatalf("fallback --all output = %q, want a count row for %s", out, lane)
+		}
+	}
+	out, _, err = runFactory(t, "fallback", "--all", "--json")
+	if err != nil {
+		t.Fatalf("fallback --all --json: %v", err)
+	}
+	var got []factorylane.TransitionCount
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("parse fallback --all --json output %q: %v", out, err)
+	}
+	want := []factorylane.TransitionCount{
+		{Lane: "lane-1", Count: 1},
+		{Lane: "lane-2", Count: 1},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("json rows = %+v, want %+v", got, want)
+	}
+	for i, row := range want {
+		if got[i] != row {
+			t.Errorf("json rows[%d] = %+v, want %+v", i, got[i], row)
+		}
+	}
+}
+
+// The polish stays additive: `--all` needs no lane identity, while the bare
+// single-lane query keeps refusing without one (existing contract unchanged).
+func TestFactoryFallbackAllNeedsNoLaneBareStillDoes(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if _, _, err := runFactory(t, "fallback", "--all"); err != nil {
+		t.Fatalf("fallback --all without a lane label: %v", err)
+	}
+	_, errOut, err := runFactory(t, "fallback")
+	if err == nil {
+		t.Fatal("bare fallback without a lane label must still be refused")
+	}
+	if !strings.Contains(errOut, config.EnvMoaiFactoryWorker) {
+		t.Fatalf("refusal %q must name the lane-identity variable %s", errOut, config.EnvMoaiFactoryWorker)
+	}
+}
+
 // An unknown trigger kind is refused at the CLI edge before any write.
 func TestFactoryFallbackDeclareRefusesUnknownTrigger(t *testing.T) {
 	root := t.TempDir()
