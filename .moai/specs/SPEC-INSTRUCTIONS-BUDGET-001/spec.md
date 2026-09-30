@@ -2,7 +2,7 @@
 id: SPEC-INSTRUCTIONS-BUDGET-001
 title: "InstructionsLoaded aggregate character budget: mechanically-derived instruction-file set with a session-level character constant"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-10-01
 updated: 2026-10-01
 author: manager-spec
