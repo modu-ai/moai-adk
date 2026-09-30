@@ -248,7 +248,19 @@ func newSweepRepo(t *testing.T) sweepFixture {
 	sweepRunGit(t, repo, "init", "-q", "--bare", origin)
 	sweepRunGit(t, repo, "remote", "add", "origin", origin)
 	sweepRunGit(t, repo, "push", "-q", "-u", "origin", "develop")
-	return sweepFixture{base: base, repo: repo, origin: origin}
+
+	// Canonicalize every fixture path (macOS /var/folders ->
+	// /private/var/folders): git's porcelain reports RESOLVED paths, so an
+	// unresolved root would miss the protected-tree filter and the main
+	// checkout would enter the sweep's universe.
+	resolve := func(p string) string {
+		r, err := filepath.EvalSymlinks(p)
+		if err != nil {
+			t.Fatalf("evalsymlinks %s: %v", p, err)
+		}
+		return r
+	}
+	return sweepFixture{base: resolve(base), repo: resolve(repo), origin: resolve(origin)}
 }
 
 // addSweepWorktree creates a linked worktree on a new branch at HEAD.
@@ -441,9 +453,225 @@ func TestSweep_NoAskUserQuestion(t *testing.T) {
 	}
 }
 
+// --- M2: the remote-landing predicate (three-way contract) ------------------
+
+// TestSweepAncestryUnanswerable is AC-WS-003: the three-way contract. No
+// answer is never a no — fetch failure, a non-0/1 ancestry exit, and an
+// unresolvable base each PRESERVE with their own cause token, and none of
+// them may read as cause=not-landed.
+func TestSweepAncestryUnanswerable(t *testing.T) {
+	t.Run("fetch-failed", func(t *testing.T) {
+		m := sweepMockEnv(t, []git.Worktree{{Path: "/wt/unfetched", Branch: "feature/unfetched"}})
+		m.fetchErr = errors.New("could not read from remote repository")
+
+		out, err := runSweepCmd(t, map[string]string{"json": "true"})
+		if err != nil {
+			t.Fatalf("runSweep error: %v", err)
+		}
+		got := decodeSweepJSON(t, out)
+		if len(got) != 1 {
+			t.Fatalf("expected 1 record, got %d:\n%s", len(got), out)
+		}
+		if got[0]["verdict"] != sweepPreserve {
+			t.Errorf("a fetch failure must preserve, got %v", got[0]["verdict"])
+		}
+		if reason, _ := got[0]["reason"].(string); !strings.Contains(reason, "cause="+causeFetchFailed) {
+			t.Errorf("reason must carry cause=%s, got %q", causeFetchFailed, reason)
+		}
+		if got[0]["landed"] != staleStateUndetermined {
+			t.Errorf("an unasked landing must read %q, got %v", staleStateUndetermined, got[0]["landed"])
+		}
+	})
+
+	t.Run("ancestry-exit-2", func(t *testing.T) {
+		m := sweepMockEnv(t, []git.Worktree{{Path: "/wt/broken", Branch: "feature/broken"}})
+		m.ancestorErrs["feature/broken"] = errors.New("merge-base exited 2")
+
+		out, err := runSweepCmd(t, map[string]string{"json": "true"})
+		if err != nil {
+			t.Fatalf("runSweep error: %v", err)
+		}
+		got := decodeSweepJSON(t, out)
+		if got[0]["verdict"] != sweepPreserve {
+			t.Errorf("an unanswerable ancestry must preserve, got %v", got[0]["verdict"])
+		}
+		reason, _ := got[0]["reason"].(string)
+		if !strings.Contains(reason, "cause="+causeLandedCheckFailed) {
+			t.Errorf("reason must carry cause=%s, got %q", causeLandedCheckFailed, reason)
+		}
+		if strings.Contains(reason, "cause="+causeNotLanded) {
+			t.Errorf("no answer must never read as cause=%s, got %q", causeNotLanded, reason)
+		}
+	})
+
+	t.Run("unresolvable-base-ref", func(t *testing.T) {
+		// Real git: the fetch is stubbed successful, but origin/no-such-base
+		// resolves to nothing, so merge-base --is-ancestor exits 128.
+		f := newSweepRepo(t)
+		wt := filepath.Join(f.base, "trees", "wt-baseless")
+		addSweepWorktree(t, f, wt, "feature/baseless")
+		withSweepRepoEnv(t, f)
+		m := &sweepMock{}
+		stubSweepProbeSeams(t, m, f)
+		origFetch := sweepFetchBase
+		sweepFetchBase = func(string, string) error { return nil } // fetch pretends success
+		t.Cleanup(func() { sweepFetchBase = origFetch })
+
+		out, err := runSweepCmd(t, map[string]string{"json": "true", "base": "origin/no-such-base"})
+		if err != nil {
+			t.Fatalf("runSweep error: %v", err)
+		}
+		got := decodeSweepJSON(t, out)
+		if len(got) != 1 {
+			t.Fatalf("expected 1 record, got %d:\n%s", len(got), out)
+		}
+		if got[0]["verdict"] != sweepPreserve {
+			t.Errorf("an unresolvable base must preserve, got %v", got[0]["verdict"])
+		}
+		reason, _ := got[0]["reason"].(string)
+		if !strings.Contains(reason, "cause="+causeLandedCheckFailed) {
+			t.Errorf("reason must carry cause=%s, got %q", causeLandedCheckFailed, reason)
+		}
+		if strings.Contains(reason, "cause="+causeNotLanded) {
+			t.Errorf("no answer must never read as cause=%s, got %q", causeNotLanded, reason)
+		}
+		if got[0]["landed"] != staleStateUndetermined {
+			t.Errorf("an unanswerable landing must read %q, got %v", staleStateUndetermined, got[0]["landed"])
+		}
+	})
+
+	t.Run("exit-code-parsing", func(t *testing.T) {
+		// The pure three-way mapping: 0 landed, 1 not landed, anything else
+		// unanswerable — including a non-exit error (-1).
+		for _, tc := range []struct {
+			exit       int
+			landed     bool
+			determined bool
+		}{
+			{0, true, true},
+			{1, false, true},
+			{2, false, false},
+			{128, false, false},
+			{-1, false, false},
+		} {
+			landed, determined := sweepAncestryOutcome(tc.exit)
+			if landed != tc.landed || determined != tc.determined {
+				t.Errorf("exit %d: got (landed=%v, determined=%v), want (%v, %v)", tc.exit, landed, determined, tc.landed, tc.determined)
+			}
+		}
+	})
+}
+
+// TestSweepNotLandedPreserves is AC-WS-002: a branch tip that is NOT an
+// ancestor of the fetched base (real git, real ancestry) preserves with
+// cause=not-landed — the one negative the landing predicate may assert.
+func TestSweepNotLandedPreserves(t *testing.T) {
+	f := newSweepRepo(t)
+	wt := filepath.Join(f.base, "trees", "wt-unlanded")
+	addSweepWorktree(t, f, wt, "feature/unlanded")
+	// Commit work that exists nowhere on the remote.
+	sweepRunGit(t, wt, "commit", "-q", "--allow-empty", "-m", "unpushed card work")
+	withSweepRepoEnv(t, f)
+	m := &sweepMock{}
+	stubSweepProbeSeams(t, m, f)
+
+	out, err := runSweepCmd(t, map[string]string{"json": "true"})
+	if err != nil {
+		t.Fatalf("runSweep error: %v", err)
+	}
+	got := decodeSweepJSON(t, out)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 record, got %d:\n%s", len(got), out)
+	}
+	if got[0]["verdict"] != sweepPreserve {
+		t.Errorf("an unlanded branch must preserve, got %v", got[0]["verdict"])
+	}
+	reason, _ := got[0]["reason"].(string)
+	if !strings.Contains(reason, "cause="+causeNotLanded) {
+		t.Errorf("reason must carry cause=%s, got %q", causeNotLanded, reason)
+	}
+	if got[0]["landed"] != staleStateNo {
+		t.Errorf("a determined negative must read landed=%q, got %v", staleStateNo, got[0]["landed"])
+	}
+	if _, statErr := os.Stat(wt); statErr != nil {
+		t.Errorf("the tree must survive, got: %v", statErr)
+	}
+}
+
+// TestSweepLandedBranchClassification pins the affirmative half of the
+// contract at classification level: a branch tip that IS an ancestor of the
+// fetched origin/develop reads landed=yes with no cause reason. (The --yes
+// disposal itself is AC-WS-001, asserted in TestSweepLandedBranchDisposes.)
+func TestSweepLandedBranchClassification(t *testing.T) {
+	f := newSweepRepo(t)
+	wt := filepath.Join(f.base, "trees", "wt-landed")
+	addSweepWorktree(t, f, wt, "feature/landed")
+	withSweepRepoEnv(t, f)
+	m := &sweepMock{}
+	stubSweepProbeSeams(t, m, f)
+
+	out, err := runSweepCmd(t, map[string]string{"json": "true"})
+	if err != nil {
+		t.Fatalf("runSweep error: %v", err)
+	}
+	got := decodeSweepJSON(t, out)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 record, got %d:\n%s", len(got), out)
+	}
+	if got[0]["landed"] != staleStateYes {
+		t.Errorf("a landed branch tip must read landed=%q, got %v (record: %v)", staleStateYes, got[0]["landed"], got[0])
+	}
+	reason, _ := got[0]["reason"].(string)
+	if strings.Contains(reason, "cause="+causeNotLanded) || strings.Contains(reason, "cause="+causeFetchFailed) || strings.Contains(reason, "cause="+causeLandedCheckFailed) {
+		t.Errorf("a landed branch must not carry a landing-failure cause, got %q", reason)
+	}
+}
+
+// TestSweepBaseFlag is AC-WS-012: the base default is origin/develop, and
+// --base overrides it. The fixture's feature tip is an ancestor of
+// origin/main but NOT of origin/develop, so the two bases classify the same
+// tree differently.
+func TestSweepBaseFlag(t *testing.T) {
+	f := newSweepRepo(t)
+	wt := filepath.Join(f.base, "trees", "wt-bases")
+	addSweepWorktree(t, f, wt, "feature/bases")
+	// Land feature/bases into a local main and push it: origin/main contains
+	// the feature tip; origin/develop (still at the seed) does not.
+	sweepRunGit(t, wt, "commit", "-q", "--allow-empty", "-m", "base flag work")
+	sweepRunGit(t, f.repo, "branch", "main", "develop")
+	sweepRunGit(t, f.repo, "checkout", "-q", "main")
+	sweepRunGit(t, f.repo, "merge", "-q", "--no-ff", "-m", "merge feature/bases", "feature/bases")
+	sweepRunGit(t, f.repo, "push", "-q", "origin", "main")
+	sweepRunGit(t, f.repo, "checkout", "-q", "develop")
+	withSweepRepoEnv(t, f)
+	m := &sweepMock{}
+	stubSweepProbeSeams(t, m, f)
+
+	out, err := runSweepCmd(t, map[string]string{"json": "true"})
+	if err != nil {
+		t.Fatalf("runSweep (bare, base default) error: %v", err)
+	}
+	got := decodeSweepJSON(t, out)
+	if got[0]["landed"] != staleStateNo {
+		t.Errorf("against the origin/develop default the tip must read not landed, got %v", got[0]["landed"])
+	}
+	reason, _ := got[0]["reason"].(string)
+	if !strings.Contains(reason, "cause="+causeNotLanded) {
+		t.Errorf("bare run must preserve with cause=%s, got %q", causeNotLanded, reason)
+	}
+
+	out, err = runSweepCmd(t, map[string]string{"json": "true", "base": "origin/main"})
+	if err != nil {
+		t.Fatalf("runSweep (--base origin/main) error: %v", err)
+	}
+	got = decodeSweepJSON(t, out)
+	if got[0]["landed"] != staleStateYes {
+		t.Errorf("against --base origin/main the tip must read landed, got %v (record: %v)", got[0]["landed"], got[0])
+	}
+}
+
 // keep unused-import guards honest for the milestone-gated test growth.
 var (
-	_ = errors.New
 	_ = time.Now
 	_ = session.Entry{}
 )

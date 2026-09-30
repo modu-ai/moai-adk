@@ -119,6 +119,9 @@ var sweepFetchBase = func(repoRoot, base string) error {
 // anything else (or a non-exit error) = unanswerable.
 var sweepMergeBaseExit = func(treePath, branchTip, base string) (int, error) {
 	_, err := gitWorktreeCmd("-C", treePath, "merge-base", "--is-ancestor", branchTip, base)
+	if err == nil {
+		return 0, nil // a successful command exits 0 — landed
+	}
 	return sweepProcessExitCode(err), err
 }
 
@@ -322,8 +325,29 @@ func sweepEvaluate(wt git.Worktree, in sweepEvalInputs) sweepVerdict {
 		return v
 	}
 
-	// M2 placeholder: the landing predicate is evaluated in the next
-	// milestone; until then every tree is preserved as not-evaluated.
+	// Landing predicate (REQ-WS-001/002/003). The fetch ran once for the
+	// whole invocation; its failure makes every tree's landing unanswerable.
+	// The ancestry check is the three-way contract: exit 0 = landed, exit 1
+	// = not landed (the ONE negative this predicate may assert), any other
+	// exit = unanswerable. A stale remote-tracking ref never satisfies the
+	// predicate on its own — the fetch above is what makes it an observation.
+	if in.fetchErr != nil {
+		v.Landed = staleStateUndetermined
+		v.Reason = fmt.Sprintf("cause=%s; could not fetch the %s remote: %v", causeFetchFailed, in.base, in.fetchErr)
+		return v
+	}
+	landed, err := sweepAncestor(wt.Path, wt.Branch, in.base)
+	if err != nil {
+		v.Landed = staleStateUndetermined
+		v.Reason = fmt.Sprintf("cause=%s; %v", causeLandedCheckFailed, err)
+		return v
+	}
+	if !landed {
+		v.Landed = staleStateNo
+		v.Reason = fmt.Sprintf("cause=%s; branch has commits not in %s", causeNotLanded, in.base)
+		return v
+	}
+	v.Landed = staleStateYes
 	v.Reason = fmt.Sprintf("cause=%s", causeNotEvaluated)
 	return v
 }
