@@ -29,6 +29,11 @@ func schemaRenderedFieldNames() map[string]bool {
 		for _, f := range m.Fields {
 			rendered[f.Name] = true
 		}
+		// t1280: 고급 접기 영역도 렌더 홈이다 — 접혀 있어도 필드는 렌더되고 같은
+		// 폼으로 제출된다. exemption 이 아니라 render home 이다.
+		for _, f := range m.Advanced {
+			rendered[f.Name] = true
+		}
 	}
 	for _, f := range settings.SectionFields(settings.SectionMCP) {
 		rendered[f.Name] = true

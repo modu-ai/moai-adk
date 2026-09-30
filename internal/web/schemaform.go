@@ -155,6 +155,10 @@ type schemaSectionMeta struct {
 	Title    string
 	Desc     string
 	Fields   []settings.FieldDef
+	// Advanced는 고급 접기 영역(<details class="panel__advanced">)으로 내려가는
+	// 필드다 (t1280). 기본값 유지가 정답인 운영 한도(루프 방지·완성 루프 반복)만
+	// 놓는다 — 화면에서 접혀도 폼 제출에는 그대로 포함된다(atomic Save 계약 유지).
+	Advanced []settings.FieldDef
 	// Extras가 true인 패널만 ID 섹션의 read-only 표시 키와 raw view 블록을
 	// 렌더한다. 한 섹션이 여러 패널로 갈라질 때(workflow → 워크플로우/감사) 그
 	// 부수 표면이 중복 렌더되는 것을 막는 primary-panel 표식이다.
@@ -212,9 +216,32 @@ func partitionWorkflowFields() (rest, worktree, audit, jev []settings.FieldDef) 
 	return rest, worktree, audit, jev
 }
 
+// isAdvancedWorkflowField는 workflow 탭에서 고급 접기 영역으로 내려갈 필드를
+// 판정한다 (t1280 — 구스 지시 "나머진 기본 설정을 그대로 사용하면 되지 않나").
+// 루프 방지 3종과 완성 루프 반복 한도는 값 변경 없이 기본값 유지가 운영 정답인
+// 항목이라, 화면에서는 접되 저장 경로는 그대로 둔다.
+func isAdvancedWorkflowField(name string) bool {
+	return name == "workflow.agentic_loop.max_iterations" ||
+		strings.HasPrefix(name, "workflow.loop_prevention.")
+}
+
+// splitWorkflowAdvanced는 workflow 잔여 필드를 (보임, 고급 접기) 둘로 가른다.
+// 입력 순서를 보존한다 — 스키마 순서가 곧 렌더 순서다.
+func splitWorkflowAdvanced(fields []settings.FieldDef) (visible, advanced []settings.FieldDef) {
+	for _, f := range fields {
+		if isAdvancedWorkflowField(f.Name) {
+			advanced = append(advanced, f)
+		} else {
+			visible = append(visible, f)
+		}
+	}
+	return visible, advanced
+}
+
 // schemaSectionMetas는 제네릭 렌더 대상 패널의 표시 메타를 렌더 순서대로 반환한다.
 func schemaSectionMetas() []schemaSectionMeta {
 	workflowRest, worktreeFields, auditFields, _ := partitionWorkflowFields()
+	workflowVisible, workflowAdvanced := splitWorkflowAdvanced(workflowRest)
 	return []schemaSectionMeta{
 		{
 			ID: settings.SectionLLM, PanelID: "llm", Icon: "rocket",
@@ -237,7 +264,7 @@ func schemaSectionMetas() []schemaSectionMeta {
 			ID: settings.SectionWorkflow, PanelID: "workflow", Icon: "panel-bottom",
 			TitleKey: "sec.workflow.title", DescKey: "sec.workflow.desc",
 			Title: "Workflow", Desc: "Workflow execution mode and loop-prevention settings.",
-			Fields: workflowRest, Extras: true,
+			Fields: workflowVisible, Advanced: workflowAdvanced, Extras: true,
 		},
 		{
 			ID: settings.SectionGitStrategy, PanelID: "git-worktree", Icon: "folder-git",

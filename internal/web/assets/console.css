@@ -528,3 +528,8 @@ html[lang="en"] .nav__en{display:none}
 @media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
 .fade-in{animation:fade var(--dur-2) var(--ease) both}
 @keyframes fade{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
+/* t1280 — 고급 접기 영역: 기본값 유지가 정답인 운영 한도 필드를 접어 둔다.
+   네이티브 <details>라 JS 없이 동작하며, 접혀 있어도 폼 제출에는 포함된다. */
+.panel__advanced{margin-top:14px;border-top:1px solid var(--border);padding-top:10px}
+.panel__advanced>summary{cursor:pointer;font:var(--text-help);color:var(--fg-3)}
+.panel__advanced[open]>summary{margin-bottom:10px}

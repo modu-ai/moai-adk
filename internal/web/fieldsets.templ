@@ -165,6 +165,16 @@ templ fieldsetSchemaSection(view pageView, meta schemaSectionMeta) {
 		for _, f := range meta.Fields {
 			@schemaFieldWidget(view, f)
 		}
+		// 고급 접기 영역 (t1280) — 기본값 유지가 정답인 운영 한도 필드. 네이티브
+		// <details>라 JS 없이 동작하고, 접혀 있어도 폼 제출에 그대로 포함된다.
+		if len(meta.Advanced) > 0 {
+			<details class="panel__advanced">
+				<summary data-i18n="settings.advanced.summary">Advanced — defaults are fine for most projects</summary>
+				for _, f := range meta.Advanced {
+					@schemaFieldWidget(view, f)
+				}
+			</details>
+		}
 		for _, ro := range settings.ReadOnlyDisplayFields() {
 			if meta.Extras && ro.Section == meta.ID {
 				@schemaReadOnlyRow(ro.Name, view.SchemaValues[ro.Name], ro.NoteKey)
