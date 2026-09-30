@@ -2,7 +2,7 @@
 id: SPEC-CODEX-GATE-SCOPE-001
 title: "codex 리뷰 게이트의 검사 대상을 세션 스코프에 따라 한정한다"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-01
 updated: 2026-10-01
 author: manager-spec

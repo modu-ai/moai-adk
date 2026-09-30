@@ -79,7 +79,9 @@ ci_verdict: "PENDING — the repository-wide test verdict belongs to the CI run 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_commit_sha: pending-backfill-sync
+- sync_date: 2026-10-01
+- sync 요약: sync 산출물 3건 — CHANGELOG [Unreleased] ### Added 항목(카드 t1383 3-phase close 서술), 본 §E.4 시그널, spec.md frontmatter `in-progress → completed` 전이. run 커밋 `6ca762e1f`→`70a8efe59`, tip `09e6c9cef`. sync 커밋은 레인이 직접 수행 — manager-docs 위임이 두 번 구조적으로 실패(스폰 격리가 자체 트리 생성 / 비격리 스폰이 레인 트리 고정 — 서브에이전트 cwd는 스폰 세션 트리에 고정, manager-docs 차단 보고 `feedback_sync_dispatch_tree_anchor.md` 참조)하여 §16 위임 대상 부재 상당으로 레인이 manager-docs의 사전 점검(B12 중복 0·AC 13·경로 존재)과 초안을 그대로 실행. 소유 예외는 완료 보고에 기록.
 
 ## §F Phase 4 Mode Selection
 
