@@ -4,58 +4,94 @@
 
 plan_status: audit-ready
 plan_complete_at: 2026-09-30
-plan_phase_tree: 3dd5adf2f (branch WT-lane-stall-watchdog)
-note: artifact set complete (spec/plan/acceptance/progress, Tier M),
+plan_phase_tree: 3dd5adf2f (0.1.0) → revision commit (0.2.0), branch
+WT-lane-stall-watchdog
+note: iter-2 artifact set complete (spec/plan/acceptance/progress, Tier M),
 frontmatter schema-validated, SPEC-ID regex Bash check PASS, spec lint clean
-at authoring commit; plan-auditor (--deep) verdict is the orchestrator's next
-step and has not yet run.
+at each plan-phase commit; plan-auditor (--deep) verdict is the orchestrator's
+next step and has not yet run.
 
 ## §A Overlap Adjudication (plan-phase record)
 
-t1343 SPEC-RELATION-PICKUP-FILTER-001 (status: completed; landed — filter
-code present in this tree at `internal/cli/todo_auto.go:162-187`) owns the
-QUEUE-level pickup decision: relation-blocked `queued` cards are excluded
-from `todo --auto` pickup while the finding lives in the record (REQ-RPF-001/
-002/004; dead-owner rescue deliberately ungated per REQ-RPF-006). Card t1370
-owns the LANE-level in-flight remedy: a dispatched lane stalled on a blocked
-predecessor reads the predecessor's on-disk evidence directly and resumes on
-landing evidence, else records an explicit wait. Composition, not
-duplication: different lifecycle moment (pre-pickup vs in-flight), shared
-data surfaces (relation findings + `.moai/reports/<card-id>/`), and the lane
-remedy performs zero queue mutation — it never picks, drops, edits, or
-unrelates. REQ-LSW-004 carries this boundary in the requirement text; AC-LSW-006
-verifies the skill states it.
+t1343 SPEC-RELATION-PICKUP-FILTER-001 (status: completed; filter code present
+in this tree at `internal/cli/todo_auto.go:162-187`) owns the QUEUE-level
+pickup decision. Iter-2 EXCLUDES the queue surface from this card's coverage
+entirely (operator-unused), so the two SPECs now share zero coverage: t1343
+owns pre-pickup exclusion, this card owns the in-flight lane remedy. The
+blocked-by remedy reads the same data surfaces (relation findings,
+`.moai/reports/<card-id>/` evidence) directly from disk and performs zero
+queue mutation — it never picks, drops, edits, or unrelates. REQ-LSW-004
+carries the boundary; AC-LSW-006 verifies the skill states it.
 
-## §B Doc-vs-Code Surface Enumeration (plan-phase record)
+## §B Doc-vs-Code Surface Enumeration (plan-phase record, iter-2)
 
 | Kind | Path | Mirror |
 |---|---|---|
 | NEW rule | `.claude/rules/moai/workflow/auto-semantics.md` | template-first + `make build` |
 | NEW skill | `.claude/skills/moai-lane-watchdog/SKILL.md` | template-first + `make build` |
-| EDIT rule | `.claude/rules/moai/workflow/kanban-dispatch.md` | template mirror same change |
+| EDIT rules | `.claude/rules/moai/workflow/kanban-dispatch.md` + the §A.7 amendment-list files (each mirrored) | template mirror same change |
 | EDIT local-only | `.claude/rules/local/gitflow-lane-protocol.md` §6 | NEVER mirrored |
-| unchanged | Go (`internal/`, `pkg/`, `cmd/`), `.moai/config/**`, `.claude/loop.md` (+ mirror) | — |
+| unchanged | Go (`internal/`, `pkg/`, `cmd/`), `.moai/config/**`, `.claude/loop.md` (+ mirror), `factory decide` code | — |
 
-`.claude/loop.md` is template-managed (mirror measured, 1254 bytes) and
-deliberately untouched — the bare-`/loop` driver is the leader-side foreman
-iteration; its queue-level 30-minute evidence deadline already watches worker
-death. The lane-side awaken path is doctrine + skill (spec.md §B.3/§B.4).
+The iter-2 content growth (ladder, neutrality table, gate inventory, decision
+records) lives INSIDE the same two new files — the file set is unchanged from
+0.1.0; the zero-Go boundary survives the autonomous transition because
+decision records go to the disk board, not to `factory decide` (which stays
+human-only, spec.md §A.7 row E). `.claude/loop.md` is template-managed
+(mirror measured, 1254 bytes) and deliberately untouched — the lane-side
+awaken path is doctrine + skill, not a second loop driver.
 
-## §C Three-Surface --auto Inventory (plan-phase record, code-verified)
+## §C --auto Surface Inventory (plan-phase record, iter-2 scoping)
 
-- `todo --auto` — queue serial cycle; watchdog = `--auto-wait` default 30 min
-  evidence deadline + unpick + dead-owner rescue (`internal/cli/todo.go:313`,
-  `internal/cli/todo_auto.go:17-27, 142-161, 276-328`).
-- lane (factory/kanban worker) — NO watchdog for the four stall classes
-  (awaited-actor, blocked-by, shell-error, accidental stop); the open-ended
-  wait posture is doctrine text (`gitflow-lane-protocol.md` §6). This is the
-  gap the card closes.
-- `goal --auto` — natural-language mission (draft → approve → run; blocked →
-  resume), bounded by turn ceiling + stagnation guard + wall-clock; not
-  infinite (`internal/cli/goal.go:148-154, 194`; `internal/goal/evaluate.go:325,
-  337-347, 358-363`).
-- Jev — display-only on every surface (`internal/cli/todo_auto.go:221-226,
-  339-349`; `AGENTS.local.md` §29).
+- lane (factory/kanban worker; `moai cc` / `moai glm` / `moai codex`) — the
+  COVERED surface: watchdog + ladder + doctrine (spec.md §A.3).
+- `todo --auto` — OUT OF SCOPE (operator-unused): queue serial cycle,
+  `--auto-wait` 30 min evidence deadline + unpick + dead-owner rescue
+  (`internal/cli/todo.go:313`, `todo_auto.go:17-27, 142-161, 276-328`) —
+  cited as design precedent only.
+- `goal --auto` — OUT OF SCOPE (already bounded): mission lifecycle + turn
+  ceiling + stagnation + wall-clock (`goal.go:148-154, 194`;
+  `evaluate.go:325, 337-347, 358-363`) — boundary inventory only.
+- Jev — the single judgment surface is the `jev_ask` MCP tool
+  (`mcp_server.go:650-658`, wraps `jev.Client.Ask`) behind
+  `workflow.jev.enabled` (default false, `types.go:522, 783`); `scripts/jev/`
+  measured ABSENT — the earlier ask.sh premise was stale and is stricken.
+
+## §D Scope Revision Record (plan-phase iter-2 — operator feedback via lead)
+
+1. **Queue surface excluded** (directive 1): `todo --auto` batch cycle leaves
+   coverage; 30m unpick = design precedent only. Applied in spec.md §A.3,
+   §D, REQ-LSW-007; plan.md §B2/§G.
+2. **Lead-wait elimination via the ladder** (directive 2 — primary goal):
+   t1311-style reply waiting is removed as a stall cause; the five-step
+   ladder (disk evidence → decision board → MCP audit cross → jev_ask → lead
+   chat last resort) is REQ-LSW-003. The lead's ⑤-carrier note (SendMessage
+   absent on codex; broker polling + queue-on-disk substitute) verified
+   against `mcp_server.go:550, 566` and SPEC-CODEX-SESSION-MSG-001 (landed).
+3. **Harness neutrality REQ** (directive 2 addendum): REQ-LSW-010 + the
+   §B.6 per-runner table; hook-independence chosen over dual-parity hook
+   work (t1099 binds future hook surfaces only).
+4. **Gate inventory + default-autonomous transition** (directive 3):
+   REQ-LSW-008/012/013; the inventory + dispositions + three-category
+   keep-set in spec.md §B.5; the amendment list §A.7 (rows A-H). Premise
+   verified: `factory decide` surface at `factory_card.go:1469-1485` (verbs
+   + `DeciderHuman`-only + lane refusal) — disposition: code UNCHANGED,
+   autonomous records go to the decision board.
+5. **Jev surface correction** (directive 3 principle 2): `scripts/jev/`
+   measured absent (`ls`: No such file or directory) — the ask.sh premise
+   from the earlier brief was STALE; the canonical surface is `jev_ask`
+   (measured `mcp_server.go:650-658`) behind `workflow.jev.enabled` (measured
+   default false). All ask.sh mentions stricken; REQ-LSW-009 rewritten;
+   repeatable-parameter + stall-judgment-only scope recorded.
+6. **update_plan discovery** (directive 4): codex's native TODO tool adopted
+   as the codex-side rendering view (REQ-LSW-011); SSOT stays disk on both
+   runners; view–SSOT rule codified; ExecPlan/PLANS.md marked reference-only.
+   NOTE: `update_plan` schema and TaskList-absence-on-codex are LEAD-REPORTED
+   external measurements (OpenAI Codex Prompting Guide) — not locally
+   verifiable from this tree; registered in acceptance.md §E.2 and §G R-4.
+7. **CLI verb hygiene** (directive 1 note): "advance" measured absent from
+   the todo verb set (add / list / done / next / unpick — `todo.go:685-1315`);
+   "lane self-advance" is used as a concept name only.
 
 ## §E.2 Run-phase Evidence
 
