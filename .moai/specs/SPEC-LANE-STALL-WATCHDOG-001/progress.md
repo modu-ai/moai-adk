@@ -299,7 +299,7 @@ explicit pathspec staging only; no push
 
 ```yaml
 sync_complete_at: 2026-09-30T14:05:57+09:00
-sync_commit_sha: "pending-backfill-sync"  # the single sync commit (3-phase close); backfilled in a following commit per convention
+sync_commit_sha: "6eceb5243"  # the single sync commit (3-phase close); backfilled per convention
 sync_status: complete
 b12_self_test_a: pass  # grep -c 'SPEC-LANE-STALL-WATCHDOG-001' CHANGELOG.md → 0 before emission (no duplicate entry); positive control SPEC-JEV-SKILL-SUGGESTION-001 → 1, pattern live
 b12_self_test_b: pass  # distinct AC ids in acceptance.md = 16 families (AC-LSW-001..017, 008 consolidated into 007a/b) = 26 a/b rows; CHANGELOG entry cites 16 패밀리 26행 all PASS
