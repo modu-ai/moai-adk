@@ -41,7 +41,7 @@ fallback-transition log), CLI verbs `moai factory messaging probe|request|ack`,
 `moai factory fallback [declare|restore]`, `moai factory handoff adopt`; config constants
 `DefaultFactoryNoResponseMinutes` / `DefaultFactoryFallbackBoundMinutes`
 (`internal/config/defaults.go`; heartbeat-age bound reuses `DefaultSessionMsgAgentOfflineMinutes`
-— single source). Milestones M2-M5 pending.
+— single source). Milestones M2 done (below); M3-M5 pending.
 
 | AC | Status | Verification command | Actual output |
 |----|--------|---------------------|---------------|
@@ -56,6 +56,37 @@ run-phase completion report returned to the orchestrator and pinned to the M1 co
 history; M0 gate evidence: `d43e50bb3` ancestor + SPEC-FACTORY-SELF-DISPATCH-001 present (§F
 record). RED-before-GREEN evidence per TDD cycle (5 cycles) is likewise in the completion report
 (verbatim failing-test output captured before each GREEN).
+
+### M2 — Classified pickup consumption (2026-09-30, owner: manager-develop)
+
+Surfaces: consumer decision core `internal/factorylane/pickup.go` — the DECLARED MINIMAL
+CONSUMPTION INTERFACE per design.md D2 (`Classifier` seam, `NormalizeClassification` tolerance
+point, `PlanPickup` rules, `Hold` read from the F1 lease model) — and the CLI verb
+`moai factory pickup plan` (`internal/cli/factory_pickup.go`, registered beside
+messaging/fallback). t1332 producer GATED: absent as a SPEC at M2 entry (plan.md §F M2 gate), so
+every card evaluates through the REQ-FLA-007 fallback default; `StaticClassifier` and the CLI's
+flag adapter are the documented wiring points t1332's future reader replaces — no producer schema
+defined here (AC-FLA-008 grep 0, below). Exclusivity rides the existing lease records
+(`homestate.IsLeaseHoldingState` holders) — no new lock, integration window untouched.
+
+| AC | Status | Verification command | Actual output |
+|----|--------|---------------------|---------------|
+| AC-FLA-006 | PASS (M2 Go surface) | `go test ./internal/factorylane/ -run TestPickup -count=1` + same with `-race` | `ok github.com/modu-ai/moai-adk/internal/factorylane` (sequential group held by another lane → denied, `WaitOn` names the holder; free group → allowed exclusive `MultiPick=false`; parallel → allowed `MultiPick=true`; two-lane concurrent contention over one sequential group ends with exactly 1 winner, parallel pair → 2 winners; `-race` clean) + CLI edge `ok ... internal/cli` (`--axis sequential --group alpha` prints the classified decision) |
+| AC-FLA-007 | PASS (M2 Go surface) | `go test ./internal/factorylane/ -run TestPickupUnclassified -count=1` + `go test ./internal/cli/ -run TestFactoryPickupPlanFallsBackWithoutMetadata -count=1` | `ok` both (unclassified card → `Allowed=true` with `Fallback=true` behavior marker and `MultiPick=false` — the operator-picked single-dispatch behavior, no autonomous multi-pick; reason names REQ-FLA-007) |
+| AC-FLA-008 | PASS (M2 Go surface) | `go test ./internal/factorylane/ -run 'TestNormalize|TestPickupUnknownAxis|TestStaticClassifier' -count=1` + producer-schema symbol grep | `ok` (unknown axis token → `Known=false`, decision exits nil-error with `ToleratedUnknown=true` + tolerated log; absent metadata → fallback classification) + `grep -rnE 'MetadataSchema\|SchemaDefinition\|type [A-Za-z]*Metadata struct\|ClassificationSchema\|ProducerSchema\|BacklogItemMetadata' internal/factorylane/ internal/cli/factory_pickup.go` → **0 matches** (no producer-schema code in the consumer) |
+
+M2 E2-E8 outputs (both builds, coverage, boundary grep, lint 0 issues, commit list, verbatim RED
+per cycle, the AC-FLA-008 grep, and the `TestSD_AC021_LegacySpellingsRefused` guard result) are
+carried in the run-phase completion report returned to the orchestrator; suite evidence persisted
+at `.moai/state/verify/t1338-m2/` under the M2 commit SHA in git history. E3 GAP (recorded like
+M1's): the `internal/cli` FULL-suite aggregate coverage line was NOT obtained — the full-suite run
+under the slot lease hit go test's default 10m timeout and was killed mid-package (`panic: test
+timed out after 10m0s`, 601.8s, **0** `--- FAIL` lines — no test failure, an elapsed-bound kill;
+the mid-dump `coverage: 24.8%` line is the partial-run value and is not an aggregate). The
+substantive measure is the per-package aggregate `go test ./internal/factorylane/ -cover` →
+**87.4%** (includes pickup.go) plus the lane-local targeted run `go test ./internal/cli/ -run
+'TestFactory|TestSD_AC021' -count=1` → `ok` (116.5s). The full-suite aggregate remains CI's
+(observed on `origin/develop` at batch push).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
