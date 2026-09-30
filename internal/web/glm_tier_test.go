@@ -113,8 +113,11 @@ func TestGLMFlashOptionLabelsAllLocales(t *testing.T) {
 	}
 }
 
-// TestGLMEffortTierDefaults verifies AC-WCR-031: option set {Max, High, None}
-// and per-tier defaults fable=Max, high=Max, medium=High, low=None.
+// TestGLMEffortTierDefaults verifies AC-WCR-031 (defaults retargeted by
+// SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-003): option set {Max, High, None} and
+// per-tier defaults ALL Max — glm-5.3 and glm-5.3-flash both accept max
+// (flash is max-only), so every tier's default choice is max now. High/low
+// remain valid stored selections; only the default choice changed.
 //
 // The three option values are the z.ai canonical reasoning states, derived from
 // the template package's GLMState* constants — the same domain the runtime
@@ -127,9 +130,9 @@ func TestGLMEffortTierDefaults(t *testing.T) {
 		template.GLMStateLow,
 	}
 	wantDefault := map[string]string{
-		"high":   template.GLMStateHigh,
-		"medium": template.GLMStateHigh,
-		"low":    template.GLMStateLow,
+		"high":   template.GLMStateMax,
+		"medium": template.GLMStateMax,
+		"low":    template.GLMStateMax,
 		"fable":  template.GLMStateMax,
 	}
 

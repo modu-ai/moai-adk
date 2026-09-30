@@ -166,20 +166,14 @@ func glmTiers() []string {
 // 없음. RC3(glm-settings-persist)부터 메인 세션이 해당 슬롯을 쓰면 런타임에
 // 적용된다 (llmFields 주석 참조).
 //
-// GLM-5.3 기준 기본값: high=high, medium=high, low=low, fable=max. fable만 max인
-// 것은 z.ai가 코딩 과제에 max를 권고하기 때문이고, high/medium이 max가 아닌 것은
-// 세션 전역 값이 모든 spawn에 청구되기 때문이다(SessionGLMReasoningState의 근거와
-// 동일). low 티어는 5.3에서 thinking을 끌 수 없으므로 최저 단계인 low로 내려간다.
-// (주의: collapse 오버레이에 따라 저장된 high도 wire에서는 max로 수렴한다.)
+// SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-003부터 전 티어 기본값이 max다 —
+// glm-5.3과 glm-5.3-flash 양쪽 모두 max와 양립하고(flash는 max 전용),
+// 세션 기본값도 이미 max다(SessionGLMReasoningState). high/low는 여전히
+// 유효한 저장 상태 선택지다(GLMReasoningStateNames 유지) — 바뀌는 것은
+// 기본 선택값뿐이다. (주의: collapse 오버레이에 따라 저장된 high도 wire에서는
+// max로 수렴한다.)
 func glmDefaultTierEffort(tier string) string {
-	switch tier {
-	case "high", "medium":
-		return template.GLMStateHigh
-	case "low":
-		return template.GLMStateLow
-	default: // fable
-		return template.GLMStateMax
-	}
+	return template.GLMStateMax
 }
 
 // llmFields는 GLM tier 매핑 4종(high/medium/low/fable)과 티어별 추론 강도 4종을
