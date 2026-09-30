@@ -198,13 +198,13 @@ func glmDefaultTierEffort(tier string) string {
 func llmFields() []FieldDef {
 	var fields []FieldDef
 	for _, tier := range glmTiers() {
-		f := withSelect(typedField(SectionLLM, "llm", "glm.models."+tier, TypeSelect),
+		f := withRadio(typedField(SectionLLM, "llm", "glm.models."+tier, TypeRadio),
 			"f.llm.glm.models.opt.", config.ValidGLMModels(), "", "")
 		f.Description = "fieldDesc.llm.glm.models." + tier
 		fields = append(fields, f)
 	}
 	for _, tier := range glmTiers() {
-		f := withSelect(typedField(SectionLLM, "llm", "glm.effort."+tier, TypeSelect),
+		f := withRadio(typedField(SectionLLM, "llm", "glm.effort."+tier, TypeRadio),
 			"f.llm.glm.effort.opt.", template.GLMReasoningStateNames(), "", "")
 		f.Description = "fieldDesc.llm.glm.effort." + tier
 		f.Default = glmDefaultTierEffort(tier)
@@ -369,23 +369,27 @@ func seamSectionFields() []FieldDef {
 		// per-backend {model, effort} pins, editable on the SAME Audit panel
 		// (the workflow.audit. prefix routes them there via isAuditFieldName)
 		// and persisted through the same workflow.yaml seam the audit
-		// resolvers read. codex.model is free-form text (a codex-servable id,
-		// e.g. gpt-*); the three selects are closed sets from the SSOT
+		// resolvers read. All six pins render as closed sets (t1278 — the two
+		// former free-text model fields graduated to radio groups: claude pins
+		// reuse the launch model-alias SSOT, codex pins the operator-confirmed
+		// ValidCodexAuditModels pair). The remaining sets come from the SSOT
 		// accessors (v4 effort vocabulary / ValidGLMModels /
 		// GLMReasoningStateNames — the z.ai state names, single reading).
 		// Empty = no pin: the resolver falls back to the SSOT sync-auditor
 		// cell (hence withEmptySubmits — clearing a pin must persist "").
 		// Unlike the llm tier effort map (stored-only, REQ-WCR-033), these
 		// efforts ARE runtime-applied — they ride the audit request builders.
-		withEmptySubmits(s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "claude", "model")),
-		withEmptySubmits(withSelect(s(SectionWorkflow, "workflow", TypeSelect, "workflow", "audit", "claude", "effort"),
+		withEmptySubmits(withRadio(s(SectionWorkflow, "workflow", TypeRadio, "workflow", "audit", "claude", "model"),
+			"f.model.opt.", template.ModelAliasPickerValues(), emptyLabelUnset, "opt.unset")),
+		withEmptySubmits(withRadio(s(SectionWorkflow, "workflow", TypeRadio, "workflow", "audit", "claude", "effort"),
 			"f.workflow.audit.claude.effort.opt.", v4EffortValues(), emptyLabelUnset, "opt.unset")),
-		s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "codex", "model"),
-		withEmptySubmits(withSelect(s(SectionWorkflow, "workflow", TypeSelect, "workflow", "audit", "codex", "effort"),
+		withEmptySubmits(withRadio(s(SectionWorkflow, "workflow", TypeRadio, "workflow", "audit", "codex", "model"),
+			"f.workflow.audit.codex.model.opt.", config.ValidCodexAuditModels(), emptyLabelUnset, "opt.unset")),
+		withEmptySubmits(withRadio(s(SectionWorkflow, "workflow", TypeRadio, "workflow", "audit", "codex", "effort"),
 			"f.workflow.audit.codex.effort.opt.", v4EffortValues(), emptyLabelUnset, "opt.unset")),
-		withEmptySubmits(withSelect(s(SectionWorkflow, "workflow", TypeSelect, "workflow", "audit", "glm", "model"),
+		withEmptySubmits(withRadio(s(SectionWorkflow, "workflow", TypeRadio, "workflow", "audit", "glm", "model"),
 			"f.workflow.audit.glm.model.opt.", config.ValidGLMModels(), emptyLabelUnset, "opt.unset")),
-		withEmptySubmits(withSelect(s(SectionWorkflow, "workflow", TypeSelect, "workflow", "audit", "glm", "effort"),
+		withEmptySubmits(withRadio(s(SectionWorkflow, "workflow", TypeRadio, "workflow", "audit", "glm", "effort"),
 			"f.workflow.audit.glm.effort.opt.", template.GLMReasoningStateNames(), emptyLabelUnset, "opt.unset")),
 		// SPEC-MCP-CONSOLE-001 M3 (REQ-C-6 / AC-C-009): codex opt-in toggles written
 		// through the SAME seam the fail-closed readers consume. The path

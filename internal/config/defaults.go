@@ -1203,7 +1203,7 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			// is also recorded at the AuditConfig.Codex doc comment
 			// (internal/config/audit_models.go).
 			Codex: ModelEffort{
-				Model:  "gpt-6.1-sol",
+				Model:  DefaultCodexAuditModel,
 				Effort: "high",
 			},
 			Gates: AuditGates{

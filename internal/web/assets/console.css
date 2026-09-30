@@ -12,7 +12,9 @@
       원본 방식은 해당 패밀리가 --font-ui 스택에 없어 ja/zh 글리프가
       끝내 resolve 되지 않는다 (SPEC-WEB-CONSOLE-005 회귀).
 
-   불변식: primary/status 색상은 docs-site 동결값을 그대로 쓴다. 상태는 색만이
+   불변식(개정 t1278 — 구스 지시 2026-09-30): primary 는 docs-site 동결 초록(#3d7d5f)에서
+   **무채색 노션 스타일**(neutral-700 계열)로 갈았다 — 콘솔 한정이며 docs-site 토큰 자체는
+   건드리지 않는다. status 색상(success/warning/danger/info)은 의미 색으로 유지. 상태는 색만이
    아니라 모양(점 채움 대 테두리, 파선, 글리프)으로도 나른다 · 본문 폭을 880px 로
    묶지 않는다 · 다크 테마 블록 없음 — 테마 속성 셀렉터도 prefers-color-scheme
    분기도 두지 않는다 (C2) · 원격 URL 0 (C1).
@@ -20,23 +22,23 @@
 
 /* ── §1 토큰 ───────────────────────────────────────────── */
 :root{
-/* docs-site frozen v2-renewal tokens — source of truth */
---color-primary:#3d7d5f;--color-primary-hover:#316750;--color-primary-active:#265240;
+/* docs-site frozen v2-renewal tokens — primary 만 t1278 무채색 개정(위 헤더), status 는 동결값 유지 */
+--color-primary:var(--neutral-700);--color-primary-hover:var(--neutral-800);--color-primary-active:var(--neutral-900);
 --color-ink:#060606;--color-bg:#f4f4f4;--color-surface:#ffffff;
 --neutral-100:#e6e6e6;--neutral-200:#d1d1d1;--neutral-300:#b5b5b5;--neutral-400:#9fa0a0;
 --neutral-500:#757575;--neutral-600:#565656;--neutral-700:#3a3a3a;--neutral-800:#242424;--neutral-900:#141414;
 --color-success:#2e8a63;--color-warning:#c47b2a;--color-danger:#c44a3a;--color-info:#2a8a8c;
---border-1:#e6e6e6;--border-2:#ebebeb;--border-strong:#d3d3d3;--border-focus-ring:rgba(61,125,95,.18);
+--border-1:#e6e6e6;--border-2:#ebebeb;--border-strong:#d3d3d3;--border-focus-ring:rgba(6,6,6,.14);
 --shadow-sm:0 2px 4px rgba(6,6,6,.06);--shadow-md:0 4px 12px rgba(6,6,6,.08);--shadow-lg:0 8px 24px rgba(6,6,6,.10);
 /* 콘솔 별칭 */
 --bg:#f4f4f4;--bg-2:#e6e6e6;--bg-3:#d1d1d1;--surface:#ffffff;
 --line:#e6e6e6;--line-soft:#ebebeb;--line-strong:#d3d3d3;
 --fg-1:#060606;--fg-2:#3a3a3a;--fg-3:#757575;--fg-inverse:#ffffff;
---primary:#3d7d5f;--primary-hover:#316750;--primary-active:#265240;
---ink:#060606;--ink-hover:#265240;--ink-fg:#ffffff;
+--primary:var(--neutral-700);--primary-hover:var(--neutral-800);--primary-active:var(--neutral-900);
+--ink:#060606;--ink-hover:var(--neutral-700);--ink-fg:#ffffff;
 --fill:rgba(6,6,6,.05);--fill-hover:rgba(6,6,6,.08);--fill-active:rgba(6,6,6,.12);
 --danger:#c44a3a;--danger-bg:#f6e3de;
---focus:0 0 0 3px rgba(61,125,95,.18);
+--focus:0 0 0 3px rgba(6,6,6,.12);
 --elev-raised:var(--shadow-sm),var(--shadow-md);
 --overlay:rgba(0,0,0,.32);
 
@@ -118,7 +120,7 @@ html[lang="en"] .nav__en{display:none}
 .subnav{list-style:none;margin:4px 0 8px;padding:0 0 0 8px;display:flex;flex-direction:column;gap:1px;border-left:1px solid var(--line)}
 .subnav__row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:36px;padding:0 10px;border-radius:var(--r-sm);color:var(--fg-3);font-size:12.5px}
 .subnav__row:hover{background:var(--fill);color:var(--fg-1);text-decoration:none}
-.subnav__row[aria-selected="true"]{background:var(--primary);color:var(--ink-fg);font-weight:600}
+.subnav__row[aria-selected="true"]{background:var(--fill-active);color:var(--fg-1);font-weight:600}
 .count{font-family:var(--font-mono);font-size:10.5px;opacity:.62}
 .rail__foot{border-top:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:4px}
 .ctx-btn{display:flex;align-items:center;gap:8px;min-height:40px;padding:0 10px;background:none;border:1px solid transparent;border-radius:var(--r-sm);cursor:pointer;text-align:left}
@@ -338,7 +340,7 @@ html[lang="en"] .nav__en{display:none}
 .overview-action{display:grid;grid-template-columns:32px minmax(0,1fr) 16px;align-items:center;gap:10px;min-height:58px;padding:8px 0;border-bottom:1px solid var(--line-soft)}
 .overview-action:last-child{border-bottom:0}
 .overview-action:hover{text-decoration:none;color:var(--fg-1)}
-.overview-action__icon{display:grid;place-items:center;width:32px;height:32px;border-radius:var(--r-sm);background:rgba(61,125,95,.10);color:var(--primary)}
+.overview-action__icon{display:grid;place-items:center;width:32px;height:32px;border-radius:var(--r-sm);background:rgba(6,6,6,.06);color:var(--primary)}
 .overview-action strong,.overview-action small{display:block}
 .overview-action strong{font:var(--text-label);font-weight:600}
 .overview-action small{margin-top:2px;font:var(--text-help);color:var(--fg-3);text-wrap:pretty}

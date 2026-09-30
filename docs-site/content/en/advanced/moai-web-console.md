@@ -129,12 +129,12 @@ Choosing Settings in the rail unfolds the tabs below as a vertical list.
 
 1. **Identity** — display name and project-level identity fields
 2. **Language** — conversation, commit message, code comment and documentation language
-3. **LLM** — permission mode, model, effort level
+3. **Claude settings** — permission mode, model, effort level
 4. **GLM Settings** — per-tier GLM models, per-tier effort, GLM API key
-5. **Workflow** — execution mode, default mode, agentic-loop, loop-prevention
-6. **Git & Worktree** — `git_strategy.mode`, per-profile `merge_method`, worktree and branch-guard toggles
-7. **Audit** — the audit model and the per-backend gates
-8. **Codex** — a **read-only mirror** gathering the twelve scattered codex settings onto one screen: the audit backend and the codex pins, the codex opt-ins, the codex MCP tool toggles, and the detected binary. Nothing is edited here; each row links to the tab that actually owns the value
+5. **Codex settings** — a **read-only mirror** gathering the scattered codex settings onto one screen: the audit backend and the codex pins, the codex opt-ins, and the detected binary. Nothing is edited here; each row links to the tab that actually owns the value
+6. **Workflow** — execution mode, default mode, agentic-loop, loop-prevention
+7. **Git & Worktree** — `git_strategy.mode`, per-profile `merge_method`, worktree and branch-guard toggles
+8. **Audit** — the audit model and the per-backend gates
 9. **Report** — report format and output preferences
 10. **MCP** — per-tool activation toggles for `moai mcp-server`. Write-capable tools carry a distinguishing mark
 11. **Cross-Session** — the inbound posture for cross-session messaging: how inbound messages are handled (`accept` · `hold` · `refuse`), cross-machine sending isolation, and held-dialog expiry. It edits `crosssession.yaml`, and the launcher injects this value into sessions from the next `moai cc`/`glm` run — sessions already running keep the posture they were launched with
@@ -143,13 +143,13 @@ Choosing Settings in the rail unfolds the tabs below as a vertical list.
 
 The number beside each tab is how many fields that tab renders. A tab with errors carries a warning mark instead of the number, so the list itself tells you which tab to open.
 
-### Why the Codex tab is read-only
+### Why the Codex settings tab is read-only
 
-The codex settings were split between the Audit tab and the MCP tab. Answering "how does this project use codex?" meant visiting two tabs and reading values that never appeared together. The Codex tab puts them on one screen.
+The codex settings were split between the Audit tab and the MCP tab. Answering "how does this project use codex?" meant visiting two tabs and reading values that never appeared together. The Codex settings tab puts them on one screen.
 
 **Showing without editing is a chosen trade-off, not an unfinished state.** Every panel in the settings area lives inside a single `<form>`, and the save path reads only the **first** value submitted under a given name. Render the same setting as a control in two panels and the edit made in the later panel is **discarded with no warning**. A bool setting is worse still: its hidden companion field, standing alone, is read as an *explicit false*, so merely opening this page and saving would switch six MCP tool toggles off.
 
-So the Codex tab renders values and links, and creates no input element carrying a name. Every setting stays declared, rendered and editable on its owning tab. "Fixing" this page into editable inputs later would reintroduce exactly that loss.
+So the Codex settings tab renders values and links, and creates no input element carrying a name. Every setting stays declared, rendered and editable on its owning tab. "Fixing" this page into editable inputs later would reintroduce exactly that loss.
 
 **Nothing new was configured.** No new configuration key, no new persistence route, no new file under `.moai/config`. The settings already existed; only the place to see them together is new.
 

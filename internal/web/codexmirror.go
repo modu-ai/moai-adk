@@ -18,7 +18,6 @@ package web
 import (
 	"strings"
 
-	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
 
@@ -60,34 +59,16 @@ var codexPanelI18nKeys = []string{
 	"tab.codex.readonly",
 	"tab.codex.group.audit",
 	"tab.codex.group.optin",
-	"tab.codex.group.mcp",
-	"tab.codex.group.mcp.help",
 	"tab.codex.group.probe",
 	"tab.codex.edit_on.audit",
-	"tab.codex.edit_on.mcp",
 	codexSharedBackendI18nKey,
 	codexMirrorUnsetI18nKey,
 }
 
-// isCodexMCPToolField reports whether an MCP enablement field names a codex
-// tool, resolved through the shared catalogue (internal/mcp MoaiMCPTools) rather
-// than through a second tool list. A tool added to the catalogue is mirrored
-// without an edit here.
-func isCodexMCPToolField(fieldName string) bool {
-	tool, ok := mcpToolNameFromField(fieldName)
-	if !ok {
-		return false
-	}
-	for _, t := range mcpcat.MoaiMCPTools() {
-		if t.Name == tool {
-			return strings.HasPrefix(t.Name, "codex_")
-		}
-	}
-	return false
-}
-
-// isCodexMirrorField is the mirror predicate: the audit codex pins, the codex
-// opt-ins, and the codex MCP tool toggles.
+// isCodexMirrorField is the mirror predicate: the audit codex pins and the
+// codex opt-ins. t1278 dropped the codex MCP tool toggles from the mirror —
+// tool enablement lives on the MCP tab alone, and the codex tab keeps only
+// the LLM/audit-facing settings.
 func isCodexMirrorField(fieldName string) bool {
 	switch {
 	case fieldName == "workflow.audit.gates.codex":
@@ -97,7 +78,7 @@ func isCodexMirrorField(fieldName string) bool {
 	case strings.HasPrefix(fieldName, "workflow.codex."):
 		return true
 	default:
-		return isCodexMCPToolField(fieldName)
+		return false
 	}
 }
 
@@ -155,9 +136,10 @@ type codexMirrorGroup struct {
 	Rows     []codexMirrorRow
 }
 
-// codexMirrorGroups builds the panel's three row groups in reading order: the
+// codexMirrorGroups builds the panel's two row groups in reading order: the
 // audit pins (led by the declared exception, since "which backend gates merges"
-// frames everything below it), the codex opt-ins, then the MCP tool enablement.
+// frames everything below it), then the codex opt-ins. The MCP tool mirror was
+// removed in t1278 — enablement belongs to the MCP tab.
 func codexMirrorGroups(view pageView) []codexMirrorGroup {
 	audit := codexMirrorGroup{
 		TitleKey: "tab.codex.group.audit",
@@ -176,12 +158,6 @@ func codexMirrorGroups(view pageView) []codexMirrorGroup {
 		TitleKey: "tab.codex.group.optin",
 		Title:    "Codex opt-ins",
 	}
-	mcp := codexMirrorGroup{
-		TitleKey: "tab.codex.group.mcp",
-		Title:    "MCP tool enablement",
-		HelpKey:  "tab.codex.group.mcp.help",
-		Help:     "An unset value reads as enabled; only an explicit false turns a tool off.",
-	}
 
 	for _, name := range codexMirrorFieldNames() {
 		row := codexMirrorRow{
@@ -191,13 +167,11 @@ func codexMirrorGroups(view pageView) []codexMirrorGroup {
 			LabelKey: "f." + name + ".title",
 		}
 		switch {
-		case strings.HasPrefix(name, "mcp.tools."):
-			mcp.Rows = append(mcp.Rows, row)
 		case strings.HasPrefix(name, "workflow.codex."):
 			optin.Rows = append(optin.Rows, row)
 		default:
 			audit.Rows = append(audit.Rows, row)
 		}
 	}
-	return []codexMirrorGroup{audit, optin, mcp}
+	return []codexMirrorGroup{audit, optin}
 }
