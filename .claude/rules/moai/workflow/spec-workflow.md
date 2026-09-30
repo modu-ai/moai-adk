@@ -313,7 +313,7 @@ Progressive Disclosure:
 Each transition below is stated per route (§ SPEC Phase Discipline): Route A triggers on commit/push events, Route B on PR merges; the phase *ordering* is identical on both routes.
 
 Plan to Run:
-- Trigger: (A) plan-phase artifacts committed + pushed to `main`, or (B) plan PR merged (squash) — each AND SPEC approval (annotation cycle completed, user confirmed "Proceed").
+- Trigger: (A) plan-phase artifacts committed + pushed to `main`, or (B) plan PR merged (squash) — each AND SPEC approval: under the default-autonomous Kickoff transition (`.claude/rules/moai/workflow/auto-semantics.md` §9.1), the audit-cross evidence path IS the default entry; the operator approval named here is the form keep-set cases keep (annotation cycle completed, user confirmed "Proceed").
 - Pre-condition: plan.md records `plan_complete_at` + `plan_status: audit-ready` in progress.md; on Route B the plan PR is additionally in MERGED state.
 - Action: Execute /clear, then `/moai run SPEC-XXX` — on `main` (Route A) or `feat/SPEC-XXX` (Route B default), or inside `moai cc -w SPEC-XXX` where the user opted into a worktree (§ SPEC Phase Discipline Step 2).
 - Gate: `/moai run` Phase 1 (Plan Audit Gate) executes automatically before any implementation (details below).
@@ -344,11 +344,14 @@ Plan to Run:
   prior 4th condition ("Within 24h") and aligned the 2nd condition to per-tier
   PASS: the cache is now sticky (hash-only validity, no time bound) so a
   legitimately-passed SPEC with unchanged artifacts stays skip-eligible.
-  This skip is distinct from Implementation Kickoff Approval: skip-eligibility
-  governs ONLY Phase 1 verdict re-execution — it NEVER auto-bypasses the
-  plan-to-implement human gate (the mandatory blocking `AskUserQuestion` gate;
-  see `.claude/rules/moai/workflow/orchestration-mode-selection.md` header for
-  the Implementation Kickoff Approval mandatory-restoration policy).
+  This skip is distinct from the plan→run Kickoff gate: skip-eligibility
+  governs ONLY Phase 1 verdict re-execution — it never bypasses the gate.
+  Under the default-autonomous Kickoff transition
+  (`.claude/rules/moai/workflow/auto-semantics.md` §9.1), this skip contract's
+  three conditions ARE the autonomous entry's evidence criteria — the
+  audit-cross path reuses the skip contract's mechanics (verdict PASS +
+  per-tier score + artifact-hash unchanged) as its entry evidence and writes
+  a decision record; the operator question survives only for keep-set cases.
 - Concurrent plan-run pipeline (Route B only): the orchestrator MAY begin run-phase pre-flight
   (Section C of the manager-develop prompt) on a feature branch while the plan
   PR is still in CI/review, PROVIDED the SPEC plan-auditor verdict is already

@@ -28,7 +28,7 @@
   branch `WT-lane-stall-watchdog`, measured 2026-09-30; the artifacts are the
   only delta between consecutive pins, so target-file absence is valid at
   each). Binds every criterion carrying no pin of its own.
-- **AC budget reading (D9)**: the matrix lists 25 rows = **16 AC families**;
+- **AC budget reading (D9)**: the matrix lists 26 rows = **16 AC families**;
   sub-suffixed rows (001a/b, 002a/b, 004a-d, 007a/b, 010a/b, 013a/b,
   016a/b, 017a/b) are sub-criteria WITHIN their family per the AC sub-ID
   convention — they count once each. 16 families = the Tier M acceptance

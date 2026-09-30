@@ -141,8 +141,18 @@ condition `workflow.autonomy.mode: contract` and do not apply; every gate stays 
 
 ## Autonomous Kickoff
 
-This section is filled in when the autonomous Kickoff activation conditions are met. Until then
-only a human signature passes `kickoff-check`.
+FILLED — the activation conditions are met: the autonomous Kickoff transition
+of `.claude/rules/moai/workflow/auto-semantics.md` §9.1 is the plan→run gate's
+DEFAULT form. Entry criteria: the independent plan-audit verdict is PASS (FAIL
+/ INCONCLUSIVE stay hard blocks), the SPEC's plan phase records audit-ready
+status, the plan-artifact hashes are unchanged since that verdict, and no
+blocker is open — and the transition writes a decision record the sync audit
+re-reads. Keep-set cases — environment-impossible work, operator-held work,
+irreversible operations touching external shared systems — keep the human
+answer. The human signing path above is PRESERVED as an equivalent voluntary
+form: a `signer_kind: human` signature still passes `kickoff-check`, and an
+operator may sign voluntarily on any card even where the autonomous default
+would suffice.
 
 ## Revocation
 

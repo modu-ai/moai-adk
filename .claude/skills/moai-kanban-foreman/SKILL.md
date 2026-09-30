@@ -63,7 +63,11 @@ not something this loop can do for itself.
    already `picked` are dispatchable. Never run `moai gtd add`; never run
    `moai gtd next <n>` — that mutation is the operator's pick. Never invent,
    reword, or reorder cards. An empty queue is a legitimate state: say so and
-   idle.
+   idle. A batch authorization (`/moai:todo --auto` — the operator's typed
+   invocation-as-approval) is the card-pick gate's autonomous form
+   (`.claude/rules/moai/workflow/auto-semantics.md` §9): within it, serial
+   consumption in queue order is authorized; queue ADMISSION stays the
+   operator's.
 2. **No approval gate is answered on the operator's behalf.** When a card's
    next step needs a human decision that is not already recorded as made
    (plan-to-run kickoff approval, a review severity call, a scope choice),

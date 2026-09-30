@@ -28,7 +28,7 @@ Prompt-caching-aware ordering rules for orchestrator execution. Caching is a **p
 
 ## Non-goals
 
-- These directives NEVER justify skipping, weakening, or reordering an approval gate's *semantics* — Implementation Kickoff Approval and all HUMAN GATEs remain mandatory where defined. Only the *placement and batching* of questions is governed here.
+- These directives NEVER justify skipping, weakening, or reordering an approval gate's *semantics* — the gate SEMANTICS are unchanged: keep-set gates (environment-impossible, operator-held, irreversible external-shared operations) remain operator-mandatory, and the default gates transition per the inventory in `.claude/rules/moai/workflow/auto-semantics.md` §9 with their evidence standard intact. Only the *placement and batching* of questions is governed here.
 - Cache breakpoints are managed internally by the runtime; the orchestrator can only order its own actions, so these rules govern ordering, spawn timing, and edit timing.
 
 ## Cross-references
