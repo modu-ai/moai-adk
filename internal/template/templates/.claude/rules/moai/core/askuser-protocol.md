@@ -108,7 +108,7 @@ and MUST NOT re-encode the same preference through option ordering, description 
 carries no question-type field, so an obligation scoped to a class the runtime cannot distinguish
 could not be measured.
 
-The mode resolves at output-composition time, per surface — never latched at session start. `pull` withholds a recommendation and nothing else: the observation, the evidence, the enumerated options, and every gate and evidence obligation elsewhere in this file stay binding in both modes — including the mandatory, score-independent Implementation Kickoff Approval gate, which under `pull` asks the same question with an unlabeled first option.
+The mode resolves at output-composition time, per surface — never latched at session start. `pull` withholds a recommendation and nothing else: the observation, the evidence, the enumerated options, and every gate and evidence obligation elsewhere in this file stay binding in both modes — including the plan→run Kickoff gate, autonomous by default per the transition in `.claude/rules/moai/workflow/auto-semantics.md` §9.1 (keep-set cases keep the operator-question form, and that operator form under `pull` asks with an unlabeled first option).
 
 ### On-request emission
 

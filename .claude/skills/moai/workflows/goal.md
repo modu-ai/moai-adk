@@ -189,15 +189,19 @@ process-identity, and owner-replacement support is not proven, report and enforc
 Use `moai gpt` for the worktree session and preserve the repository's existing
 manager ownership and local-develop integration rules.
 
-## Progression Mode (Autonomous / Semi-autonomous) — chosen at Implementation Kickoff Approval
+## Progression Mode (Autonomous / Semi-autonomous) — chosen at the plan→run Kickoff gate (autonomous by default; `.claude/rules/moai/workflow/auto-semantics.md` §9.1)
 
-When the orchestrator runs Implementation Kickoff Approval (`AskUserQuestion` at
-the plan→run boundary), it offers an **autonomous vs semi-autonomous**
-progression-mode choice as a DISTINCT axis from the approve/decline decision.
+When the orchestrator offers the progression-mode choice at the plan→run
+boundary — under the default-autonomous transition the choice is offered
+alongside the autonomous entry, and at the gate's operator form (keep-set
+cases) it rides the `AskUserQuestion` round — it offers an **autonomous vs
+semi-autonomous** progression-mode choice as a DISTINCT axis from the
+approve/decline decision.
 
-- **Approval remains required in both modes.** The progression-mode axis selects
-  ONLY what happens AFTER the gate passes — it is never a gate bypass, never a
-  relaxation of Implementation Kickoff Approval. An armed goal never authorizes
+- **The gate's evidence standard holds in both modes.** The progression-mode axis
+  selects ONLY what happens AFTER the gate is met (its default autonomous form —
+  audit-cross evidence + decision record — or the operator form keep-set cases
+  keep) — never a gate bypass, never a relaxation. An armed goal never authorizes
   run-phase entry, never creates a PR, and never performs a destructive operation
   regardless of the selected mode.
 - **Autonomous mode** (default): the evaluator blocks each turn until the
@@ -260,9 +264,11 @@ boundary-crossing mechanism is invented.
 
 ## Safety Invariants
 
-1. **Implementation Kickoff Approval is mandatory in both modes.** The
-   progression-mode axis is a post-approval progression CHOICE, not a relaxation
-   of the gate. The gate stays mandatory and score-independent in both autonomous
+1. **The plan→run Kickoff gate holds in both modes.** The
+   progression-mode axis is a post-gate progression CHOICE, not a relaxation
+   of the gate. The gate is met in its default autonomous form (audit-cross
+   evidence + decision record, `.claude/rules/moai/workflow/auto-semantics.md`
+   §9.1) or the operator form keep-set cases keep, in both autonomous
    and semi-autonomous modes.
 2. **An armed goal does not bypass Kickoff**, does not auto-create a PR, does not
    perform destructive operations. The evaluator only decides whether the turn
