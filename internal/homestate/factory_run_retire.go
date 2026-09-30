@@ -78,6 +78,14 @@ type Reconciliation struct {
 type ReconcileOptions struct {
 	Fallback LeaderIdentityLookup
 	Classify OwnerClassifier
+	// BatchProbe overrides the production batch identity probe
+	// (SPEC-CODEX-LANE-SLOTS-001 REQ-013). When Classify is nil — the
+	// production shape — ClassifyRuns resolves every identity-bearing row
+	// through ONE BatchProbe invocation per listing, so the probe work is
+	// bounded by the batch call instead of multiplying once per row. A
+	// counting fake here is how tests pin that bound; a caller that wants the
+	// per-pid path back pins Classify explicitly (DefaultOwnerClassifier).
+	BatchProbe BatchProcessIdentityProbe
 	// BootTime reports when the host last booted. Nil, or a false second
 	// result, disables the boot proof.
 	BootTime func() (time.Time, bool)
@@ -95,6 +103,15 @@ func (o ReconcileOptions) classifier() OwnerClassifier {
 		return o.Classify
 	}
 	return DefaultOwnerClassifier
+}
+
+// batchProbe resolves the listing's probe: the caller's override, else the
+// production batch probe built on the platform seam.
+func (o ReconcileOptions) batchProbe() BatchProcessIdentityProbe {
+	if o.BatchProbe != nil {
+		return o.BatchProbe
+	}
+	return BatchProbeProcessIdentity
 }
 
 // DefaultOwnerClassifier classifies an owner identity with the process probe
@@ -175,19 +192,67 @@ func (f *FactoryDB) classifyRuns(ctx context.Context, opts ReconcileOptions, sta
 	// Classification runs after the row cursor is drained: the boot proof
 	// issues its own queries, and the pool holds a single connection.
 	classify := opts.classifier()
+	// Each row's identity source resolves ONCE — the legacy-row sentinel
+	// consults the registered role='lead' peer (REQ-006), and the peer's pid
+	// travels with the PEER's process-start, never the row stamp's.
+	type identitySource struct {
+		ok    bool
+		pid   int
+		start string
+		basis ProofBasis
+	}
+	sources := make([]identitySource, len(owners))
 	for i := range owners {
 		o := &owners[i]
 		pid, start, basis := o.LeadPID, o.LeadProcessStart, BasisStamp
-		// lead_pid = 0 is the legacy-row sentinel: consult the run's
-		// registered role='lead' peer instead (REQ-006).
 		if pid < 1 && opts.Fallback != nil {
 			if fpid, fstart, ok := opts.Fallback(o.RunID); ok {
 				pid, start, basis = fpid, fstart, BasisPeer
 			}
 		}
-		if pid >= 1 && strings.TrimSpace(start) != "" {
-			o.Classification = classify(pid, start)
-			o.Basis = basis
+		sources[i] = identitySource{ok: pid >= 1 && strings.TrimSpace(start) != "", pid: pid, start: start, basis: basis}
+	}
+	// REQ-013 (SPEC-CODEX-LANE-SLOTS-001): without an explicitly pinned
+	// per-pid classifier, every identity-bearing row resolves through ONE
+	// batch probe invocation — the probe work is bounded per listing instead
+	// of multiplying once per row.
+	useBatch := opts.Classify == nil
+	var probed map[int]ProcessIdentity
+	if useBatch {
+		batchPids := make([]int, 0, len(owners))
+		seen := make(map[int]bool, len(owners))
+		for _, src := range sources {
+			if src.ok && !seen[src.pid] {
+				seen[src.pid] = true
+				batchPids = append(batchPids, src.pid)
+			}
+		}
+		if len(batchPids) > 0 {
+			probed = opts.batchProbe()(batchPids)
+		}
+	}
+	for i := range owners {
+		o := &owners[i]
+		src := sources[i]
+		if src.ok {
+			if useBatch {
+				// An identity-bearing row the batch result somehow lacks
+				// classifies indeterminate on the same basis — the same
+				// trust a broken per-pid classifier earns — and never falls
+				// through to the boot proof, which is reserved for rows with
+				// no identity at all.
+				pr, present := probed[src.pid]
+				if !present {
+					o.Classification = OwnerIndeterminate
+					o.Basis = src.basis
+					continue
+				}
+				o.Classification = ClassifyOwnerFromResult(pr.Fingerprint, pr.State, src.start)
+				o.Basis = src.basis
+				continue
+			}
+			o.Classification = classify(src.pid, src.start)
+			o.Basis = src.basis
 			continue
 		}
 		// Neither source yields an identity.

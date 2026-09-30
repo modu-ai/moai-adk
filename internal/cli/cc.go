@@ -194,7 +194,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		leaderLabel, _ := parseLeaderLabel(filteredArgs)
 		restoreFactory := enterFactoryLeaderMode(entry.FactoryLanes, leaderLabel)
 		defer restoreFactory()
-		restoreRun, runErr := enterSelectedFactoryRun(launchProjectRoot(), entry.FactoryRun, false)
+		restoreRun, runErr := enterSelectedFactoryRun(launchProjectRoot(), entry.FactoryRun, false, nil)
 		if runErr != nil {
 			return runErr
 		}
@@ -216,7 +216,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		// verified leader discovery + resume, then re-enters the gate
 		// (SPEC-FACTORY-LANE-JOIN-SOCKET-001). One implementation for cc,
 		// glm, and the codex twin (REQ-010).
-		restoreRun, runErr := enterFactoryLaneRun(launchProjectRoot(), entry.FactoryRun, entry.FactoryLead)
+		restoreRun, runErr := enterFactoryLaneRun(launchProjectRoot(), entry.FactoryRun, entry.FactoryLead, nil)
 		if runErr != nil {
 			return runErr
 		}

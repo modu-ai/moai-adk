@@ -56,7 +56,7 @@ func seedLegacyPeerRun(t *testing.T, runID, role, slot string, live bool) string
 
 func TestEnterSelectedFactoryRunRefusesLiveLegacyPeer(t *testing.T) { // AC-RNC-022 first clause
 	root := seedLegacyPeerRun(t, "runR", "worker", "worker-2", true)
-	restore, err := enterSelectedFactoryRun(root, "runR", false)
+	restore, err := enterSelectedFactoryRun(root, "runR", false, nil)
 	if err == nil {
 		restore()
 		t.Fatal("enterSelectedFactoryRun = nil error, want the legacy-run refusal")
@@ -71,7 +71,7 @@ func TestEnterSelectedFactoryRunRefusesLiveLegacyPeer(t *testing.T) { // AC-RNC-
 
 func TestEnterSelectedFactoryRunDeadLegacyPeerProceeds(t *testing.T) {
 	root := seedLegacyPeerRun(t, "runD", "worker", "worker-2", false)
-	restore, err := enterSelectedFactoryRun(root, "runD", false)
+	restore, err := enterSelectedFactoryRun(root, "runD", false, nil)
 	if err != nil {
 		t.Fatalf("enterSelectedFactoryRun with dead legacy peer: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestEnterSelectedFactoryRunDeadLegacyPeerProceeds(t *testing.T) {
 
 func TestEnterSelectedFactoryRunLiveLegacyLeaderPeerRefuses(t *testing.T) {
 	root := seedLegacyPeerRun(t, "runL", "lead", "lead", true)
-	_, err := enterSelectedFactoryRun(root, "runL", false)
+	_, err := enterSelectedFactoryRun(root, "runL", false, nil)
 	if err == nil {
 		t.Fatal("enterSelectedFactoryRun = nil error, want refusal for legacy lead peer")
 	}

@@ -640,12 +640,27 @@ var (
 // smaller default (DefaultFactoryLeaderLanes).
 const DefaultFactoryLanes = 8
 
-// DefaultFactoryLeaderLanes is the fan-out a bare `-f` / `--factory` (no
-// count) resolves to (t118 launcher axis, v3.1.1): one lane. The revived -f
-// entry starts the minimal factory — leader plus lane-1 — which the operator
-// then grows one lane at a time with `-f lane-<n>`, so the count-less
-// default is 1, not the legacy form's 8 (DefaultFactoryLanes).
+// DefaultFactoryLeaderLanes is the leader fan-out a bare `-f` / `--factory`
+// (no count) resolves to (t118 launcher axis, v3.1.1): one lane. The revived
+// -f entry starts the minimal factory — leader plus lane-1 — which the
+// operator then grows one lane at a time with `-f lane-<n>`, so the
+// count-less default is 1, not the legacy form's 8 (DefaultFactoryLanes).
+//
+// Its role is the LEADER FAN-OUT DEFAULT only (SPEC-CODEX-LANE-SLOTS-001,
+// plan §E.3): it is no longer a run's join bound. A run's declared lane
+// capacity is run state — runs.lane_capacity, recorded at leader start
+// (REQ-004) — and the claim engine reads the record; this constant is the
+// fallback where a run carries no record or a capacity-open one.
 const DefaultFactoryLeaderLanes = 1
+
+// DefaultFactorySlowLaunchThreshold is the slow-launch threshold of the
+// codex lane launch's pre-exec phase (SPEC-CODEX-LANE-SLOTS-001 REQ-012):
+// when the phase exceeds it, the launcher prints one timing line per
+// pre-exec step. Two seconds sits far above a healthy join+init sequence
+// (sub-second) yet well under the operator-visible stall the diagnosis
+// chased, so the report fires only on a genuinely slow launch. The operator
+// override rides MOAI_FACTORY_SLOW_LAUNCH_MS (EnvMoaiFactorySlowLaunchMS).
+const DefaultFactorySlowLaunchThreshold = 2 * time.Second
 
 // DefaultLaneMaxConcurrentSubagents is the per-lane concurrent-subagent cap
 // the launcher seeds on kanban companion and factory lane sessions (t118,

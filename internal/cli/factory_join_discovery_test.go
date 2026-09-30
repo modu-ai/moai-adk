@@ -401,7 +401,7 @@ func TestCodexFactoryLaneJoinsDiscoveredLeader(t *testing.T) {
 	stageDiscoveredLeaders(t, []discovery.VerifiedLeader{verifiedTestLeader("runcodex1")})
 
 	entry := factoryFlagParse{Enabled: true, LaneRole: true}
-	restore, err := enterCodexFactory(root, entry)
+	restore, err := enterCodexFactory(root, entry, nil)
 	if err != nil {
 		t.Fatalf("enterCodexFactory lane with one verified leader: %v", err)
 	}
@@ -455,7 +455,7 @@ func TestFactoryLaneJoinMirrorParity(t *testing.T) {
 		"func enterFactoryLaneRun(",
 		"discoverFactoryLeader(",
 		"ResumeRun(",
-		"enterSelectedFactoryRun(root, \"\", true)", // the re-entry is the SAME gate
+		"enterSelectedFactoryRun(root, \"\", true, timing)", // the re-entry is the SAME gate
 	} {
 		if !strings.Contains(gateSrc, want) {
 			t.Errorf("factory.go (the shared join point) does not carry %q", want)

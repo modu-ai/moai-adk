@@ -288,6 +288,14 @@ const (
 	// leader/lane vocabulary.
 	EnvMoaiFactoryWorkers = "MOAI_FACTORY_WORKERS"
 
+	// EnvMoaiFactorySlowLaunchMS is the operator-configurable slow-launch
+	// threshold of the codex lane launch's pre-exec phase, in milliseconds
+	// (SPEC-CODEX-LANE-SLOTS-001 REQ-012): when the phase exceeds it, the
+	// launcher prints one timing line per pre-exec step. The default value
+	// lives in internal/config/defaults.go (DefaultFactorySlowLaunchThreshold);
+	// this variable is the override surface, never an inline literal.
+	EnvMoaiFactorySlowLaunchMS = "MOAI_FACTORY_SLOW_LAUNCH_MS"
+
 	// EnvMoaiFactoryWorker marks a session as a LANE of a factory run and
 	// carries its `lane-<n>` label. It is the factory counterpart of
 	// EnvMoaiKanbanLabel: the lane needs the raised Stop-hook block cap

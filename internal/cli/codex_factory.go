@@ -116,7 +116,12 @@ func codexHeadTokenIsVerb(token string) bool {
 	return ok
 }
 
-func enterCodexFactory(root string, entry factoryFlagParse) (func(), error) {
+// enterCodexFactory resolves the codex twin's factory entry. timing, when
+// non-nil, records the pre-exec steps of a codex lane launch — the join gate
+// and the lane claim live here, the active-run resolution nests inside the
+// gate (SPEC-CODEX-LANE-SLOTS-001 REQ-012); the leader start records no
+// steps (REQ-012 scopes the report to a lane launch).
+func enterCodexFactory(root string, entry factoryFlagParse, timing *factoryLaunchTiming) (func(), error) {
 	if !entry.Enabled {
 		return func() {}, nil
 	}
@@ -127,7 +132,9 @@ func enterCodexFactory(root string, entry factoryFlagParse) (func(), error) {
 		// See factory.go enterFactoryLaneRun: the shared lane join with the
 		// discovery fallback — the codex twin inherits the behavior through
 		// this one call (REQ-010).
-		restoreRun, err = enterFactoryLaneRun(root, entry.RunID, entry.Lead)
+		endJoin := timing.begin(factoryStepJoinGate)
+		restoreRun, err = enterFactoryLaneRun(root, entry.RunID, entry.Lead, timing)
+		endJoin()
 		if err != nil {
 			return nil, err
 		}
@@ -138,8 +145,10 @@ func enterCodexFactory(root string, entry factoryFlagParse) (func(), error) {
 	restore := func() { restoreFacts(); restoreRun() }
 	if lane {
 		runID := os.Getenv(config.EnvMoaiKanbanID)
+		endClaim := timing.begin(factoryStepLaneClaim)
 		claim, claimErr := kanban.ClaimFactoryLaneWithin(root, entry.LaneLabel, entry.LaneRole,
 			os.Getpid(), runID, factoryJoinLaneBound(root, runID), factoryProcessAlive)
+		endClaim()
 		if claimErr != nil {
 			restore()
 			return nil, fmt.Errorf("claim Codex factory lane: %w", claimErr)

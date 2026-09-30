@@ -414,7 +414,11 @@ func factoryLaneRequiresGitTree(root string) error {
 	return fmt.Errorf("factory lane launch: refused — %s is not a git working tree, and a lane session needs the git repository it will carry cards for (run the lane inside the project checkout)", root)
 }
 
-func enterSelectedFactoryRun(root, explicit string, requireActive bool) (func(), error) {
+// enterSelectedFactoryRun resolves the run a lane joins or a leader starts.
+// timing, when non-nil, records the active-run resolution step of the codex
+// lane launch's pre-exec phase (SPEC-CODEX-LANE-SLOTS-001 REQ-012); the
+// cc/glm twins pass nil and measure nothing.
+func enterSelectedFactoryRun(root, explicit string, requireActive bool, timing *factoryLaunchTiming) (func(), error) {
 	// REQ-SD-005: a LANE join needs a git working tree, refused before any
 	// write. requireActive is the lane discriminator here — the leader passes
 	// false and is unaffected.
@@ -426,7 +430,9 @@ func enterSelectedFactoryRun(root, explicit string, requireActive bool) (func(),
 	if explicit == "" && !requireActive {
 		return func() {}, nil
 	}
+	endResolve := timing.begin(factoryStepRunResolve)
 	runID, err := factorymsg.ResolveActiveRun(context.Background(), root, explicit)
+	endResolve()
 	if err != nil {
 		return func() {}, err
 	}
@@ -489,8 +495,15 @@ const noActiveFactorySentinel = "NO_ACTIVE_FACTORY"
 //
 // An explicit --factory-run is a decision, not an absence (REQ-006): the
 // resolver's answer stands and discovery never runs on it.
-func enterFactoryLaneRun(root, explicit, leadTarget string) (func(), error) {
-	restore, err := enterSelectedFactoryRun(root, explicit, true)
+// enterFactoryLaneRun joins a factory lane to the run selected by explicit,
+// falling back to verified leader discovery on the record-absence refusal
+// (SPEC-FACTORY-LANE-JOIN-SOCKET-001 REQ-001). leadTarget names which leader
+// session discovery aims at; empty means the canonical leader label. timing,
+// when non-nil, records the join-gate and active-run-resolution steps of the
+// codex lane launch's pre-exec phase (SPEC-CODEX-LANE-SLOTS-001 REQ-012);
+// the cc/glm twins pass nil and measure nothing.
+func enterFactoryLaneRun(root, explicit, leadTarget string, timing *factoryLaunchTiming) (func(), error) {
+	restore, err := enterSelectedFactoryRun(root, explicit, true, timing)
 	if err == nil {
 		return restore, nil
 	}
@@ -519,7 +532,7 @@ func enterFactoryLaneRun(root, explicit, leadTarget string) (func(), error) {
 	}
 	restoreName := captureEnvState(config.EnvMoaiKanbanLeadName)
 	_ = os.Setenv(config.EnvMoaiKanbanLeadName, leader.Name)
-	reentered, jerr := enterSelectedFactoryRun(root, "", true)
+	reentered, jerr := enterSelectedFactoryRun(root, "", true, timing)
 	if jerr != nil {
 		restoreName()
 		return restore, jerr
