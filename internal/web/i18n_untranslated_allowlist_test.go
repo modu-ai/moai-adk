@@ -222,6 +222,11 @@ var i18nUntranslatedAllowlist = []i18nAllowEntry{
 	},
 	// Codex audit model ids are technical identifiers — locale-invariant.
 	{
+		Key:           "f.workflow.audit.codex.model.opt.gpt-6.1-sol",
+		Reason:        reasonTechnicalIdentifier,
+		Justification: "gpt-6.1-sol is the codex audit default model id.",
+	},
+	{
 		Key:           "f.workflow.audit.codex.model.opt.gpt-5.6",
 		Reason:        reasonTechnicalIdentifier,
 		Justification: "gpt-5.6 is a codex model id.",
