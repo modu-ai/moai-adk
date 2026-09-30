@@ -140,4 +140,26 @@ evidence_file: ".moai/reports/t1373/run-ac-green.md (this worktree; card-tree wr
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+sync_complete_at: "2026-10-01"
+sync_commit_sha: "pending-backfill-sync"
+sync_status: "complete"
+sync_branch: "WT-stale-run-label"
+sync_worktree: ".moai/worktrees/t1373 (card tree — the run commits a1a22b919..13806938c ride this branch)"
+ac_source: ".moai/specs/SPEC-STALE-RUN-LABEL-001/acceptance.md (tier M)"
+ac_live_count: 9
+changelog_entry_position: "CHANGELOG.md [Unreleased] first Fixed entry"
+b12_self_test_a: "pre-emission grep count of SPEC-STALE-RUN-LABEL-001 in CHANGELOG.md = 0 (no duplicate entry)"
+b12_self_test_b: "AC counter (awk) on acceptance.md -> live=9 excluded=0 ambiguous=0 exit 0; the entry references the same 9 (AC-SRL-001..009); 0 reserved tokens in the file"
+b12_self_test_c: "ls verification of every path cited in the entry -> all exist (run-ac-green.md present on disk; .moai/reports/* is gitignored by policy)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (merged close on this sync commit)"
+  plan_md_acceptance_md: "no frontmatter (stateless on the status axis per spec-frontmatter-schema.md — nothing to transition)"
+  progress_md: "no frontmatter by design; this §E.4 section filled by the sync commit"
+frontmatter_updated_field: "spec.md updated: 2026-10-01 — already the sync-commit date, no refresh needed"
+canary_compliance_check: "n/a — this SPEC defines no forward-looking sync-test policy of its own"
+codemap_freshness: "moai graph check -> codemaps described-source-diff value=8 threshold=40 verdict=fresh; mx-index/edges absent (fresh worktree); citations fresh — no regeneration needed"
+docs_surface_judgment: "CHANGELOG-only — docs-site factory-mode/kanban-mode pages and README 4-locale document lane join/routing/lane-number ownership; no page describes the stale-run prescription or the retire flow, so no documented behavior changed"
+mx_tag_validation: "run_state.go carries 3 @MX:NOTE; stale_run_gate.go functions are unexported with max fan-in 2 (< the 3-caller @MX:ANCHOR threshold) — no mandatory tag missing"
+sync_tool_refusals: "the worktree isolation guard refused three complex AC-counter invocations (inline awk with shell glue, heredoc, awk -f); cleared on a single plain inline-awk invocation — count measured live=9 (refusal named per verification-claim-integrity.md §3.1)"
+```

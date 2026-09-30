@@ -2,7 +2,7 @@
 id: SPEC-STALE-RUN-LABEL-001
 title: "Stale factory run label — run-state-gated prescription, /clear env residue, and the orphan-label unbind path"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-09-30
 updated: 2026-10-01
 author: manager-spec
