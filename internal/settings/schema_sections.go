@@ -128,7 +128,12 @@ func withOptionDesc(f FieldDef, descPrefix string) FieldDef {
 func gitStrategyFields() []FieldDef {
 	modeField := withRadio(typedField(SectionGitStrategy, "git_strategy", "mode", TypeRadio),
 		"f.git_strategy.mode.opt.", []string{"manual", "personal", "team"}, "", "")
-	modeField.Description = "fieldDesc.git_strategy.mode"
+	// card t1281: the three profiles differ in contract shape, not just name —
+	// per-option descriptions carry the difference. Keys use the ".option."
+	// form so they follow the locale (the ".opt." label guard must not match).
+	// With option descriptions present the field-level description is cleared —
+	// the per-option lines are the sole explanation (report.format precedent).
+	modeField = withOptionDesc(modeField, "f.git_strategy.mode.option.")
 	// SPEC-WORKTREE-BASEREF-001 REQ-WBR-014: free text, NOT a closed option set.
 	// A select carrying main / develop would bake two repository-specific branch
 	// names into the shipped schema, so a user whose default branch is `trunk`
