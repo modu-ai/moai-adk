@@ -67,4 +67,18 @@ e8_first_audit_spawn_observation: documented-residual (out-of-tree execution; se
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs가 sync 커밋 착지 시 기입>_
+```yaml
+sync_complete_at: 2026-09-30
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+changelog_entry_position: "[Unreleased] > Changed (first subsection head, newest-first)"
+b12_self_test.a_preemission_duplicate_grep: "pass — grep -c 'SPEC-MODEL-MATRIX-UPDATE-001' CHANGELOG.md → 0 before emission"
+b12_self_test.b_ac_count_match: "pass — 16 distinct AC identifiers (AC-MMU-001..016, acceptance.md §B) = CHANGELOG count"
+b12_self_test.c_cited_path_verification: "pass — all cited paths confirmed present via git diff --name-only 3dd5adf2f..HEAD (41 files)"
+frontmatter_status_transitions.spec_md: "in-progress → completed (status + updated=2026-09-30 only; zero body edits)"
+frontmatter_status_transitions.plan_acceptance: "untouched — no status: field (status-axis statelessness); no updated: field present"
+mx_tag_validation: "pass — run diff adds no exported symbols (new funcs unexported/test-only); no @MX additions owed"
+docs_sync_scope: "CHANGELOG-only (docs-site/README excluded by SPEC scope)"
+carried_observations: "none — §E.3 is the single final run-phase signal; no stale placeholder alongside"
+```
+
