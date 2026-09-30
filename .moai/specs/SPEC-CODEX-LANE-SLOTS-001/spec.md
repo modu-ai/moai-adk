@@ -12,7 +12,6 @@ module: "internal/kanban"
 lifecycle: spec-anchored
 tags: "factory,lane,slots,codex,claim,legacy-label,performance,reconcile"
 tier: M
-related_specs: [SPEC-FACTORY-LANE-JOIN-SOCKET-001, SPEC-CODEX-FACTORY-RETIRE-001]
 ---
 
 # SPEC-CODEX-LANE-SLOTS-001
@@ -50,24 +49,28 @@ related_specs: [SPEC-FACTORY-LANE-JOIN-SOCKET-001, SPEC-CODEX-FACTORY-RETIRE-001
 
 ### §B.5 Launch-latency diagnosis and `moai factory runs` cost (leader items ①–④)
 
-- REQ-012 (Event-driven): **When** a codex lane launch spends noticeably long before its terminal outcome, the launcher shall expose where the wall-time went (per-step pre-exec timing) so an operator report names the slow step rather than "eventually fails".
-- REQ-013 (Ubiquitous): The `moai factory runs` owner-classification shall probe process identity with subprocess work bounded per listing invocation, not once per run row.
+- REQ-012 (Event-driven): **When** a codex lane launch's pre-exec phase exceeds the operator-configurable slow-launch threshold, the launcher shall print one timing line per pre-exec step, naming each step and its wall-time. The threshold's default value lives in `internal/config/defaults.go` — never an inline literal at the call site. (Trigger definition is operator-configurable by design; the report capability itself is unconditionally testable.)
+- REQ-013 (Ubiquitous): The `moai factory runs` owner-classification shall probe process identity through the platform process-fingerprint seam — all of its build-tagged platform variants — with per-listing probe work bounded, not once per run row.
 - REQ-014 (Ubiquitous): Every latency or probe-count measurement this SPEC requires shall be recorded as command-plus-verbatim-output in the SPEC's progress evidence, attributed to the tree measured.
 
 ## §C — Acceptance Criteria (summary)
 
 Full Given-When-Then scenarios live in `acceptance.md`. Binary-testable summary:
 
-| AC | Verifies | Mechanical check |
-|----|----------|------------------|
-| AC-001 | Repro sequence: full 1-slot run + live lane-1 → codex-shape auto join claims lane-2 | `go test ./internal/kanban/...` new test |
-| AC-002 | Explicit out-of-range request still refused | same package, new test |
-| AC-003 | Full explicitly-sized run still refuses (t1294 contract) | same package, new test |
-| AC-004 | Live legacy record refuses with legacy-run refusal on the bounded path | existing `role_naming_m1_test.go` tests keep passing + new bounded-path test |
-| AC-005 | Legacy-label explicit request refused naming canonical; empty-run-id legacy ignored | existing tests keep passing |
-| AC-006 | Run capacity recorded at leader start (explicit vs derived) | targeted `internal/cli` or `internal/homestate` test |
-| AC-007 | Owner probe bounded per listing invocation | instrumented test in `internal/homestate` |
-| AC-008 | Whole-package re-measurement green | `go test ./internal/kanban/...` exit 0 |
+| AC | Verifies | Class | Mechanical check |
+|----|----------|-------|------------------|
+| AC-001 | Repro sequence: full 1-slot run + live lane-1 → codex-shape auto join claims lane-2 | release-blocking | `go test ./internal/kanban/...` new test; RED-now: acceptance.md ledger RED-1 |
+| AC-002 | Explicit out-of-range request still refused | regression-guard | same package, new test |
+| AC-003 | Full explicitly-sized run still refuses (t1294 contract) | regression-guard | same package, new test |
+| AC-004 | Live legacy record refuses with legacy-run refusal on the bounded path | regression-guard | existing `role_naming_m1_test.go` tests keep passing + new bounded-path test |
+| AC-005 | Legacy-label explicit request refused naming canonical; empty-run-id legacy ignored | regression-guard | existing tests keep passing |
+| AC-006 | Run capacity recorded at leader start (explicit vs derived) | release-blocking | targeted `internal/cli` test; RED-now: ledger RED-2 |
+| AC-007 | Owner probe bounded per listing invocation, platform variants pinned | release-blocking | instrumented test in `internal/homestate`; RED-now: ledger RED-4 |
+| AC-008 | Whole-package re-measurement green | regression-guard | `go test ./internal/kanban/...` exit 0 |
+| AC-009 | Shared run-scoped lane pool: a codex-shape bounded join draws a distinct number while a claude-shape claim holds lane-1 | release-blocking | `go test ./internal/kanban/...` new test; RED-now: ledger RED-1 (shared) |
+| AC-010 | Per-step pre-exec timing report names every pre-exec step | release-blocking | targeted launcher test; RED-now: ledger RED-3 |
+
+Classification discipline: release-blocking criteria carry an executed RED-now observation (acceptance.md § Evidence Ledger) and name the milestone that flips them; regression-guard criteria preserve already-correct behavior (no red is reproducible today) and are never recorded as passes before the green lands.
 
 ## §D — Constraints
 
@@ -93,7 +96,7 @@ Full Given-When-Then scenarios live in `acceptance.md`. Binary-testable summary:
 
 ### Out of Scope — Codex hook re-approval UX
 
-- The "Codex stops changed hooks until they are re-approved" behavior (`internal/codexwiring/codexwiring.go:74`) acts inside the codex process after `syscall.Exec` — the moai launcher cannot gate on or accelerate codex's own trust prompt. Surfacing the untrusted-hooks state in the launcher readout is a candidate follow-up card, not this SPEC.
+- The "Codex stops changed hooks until they are re-approved" behavior (`internal/codexwiring/codexwiring.go:74`) acts inside the codex process after the launcher replaces itself — on the POSIX path via `syscall.Exec` (`internal/cli/codex_direct_posix.go:53`, `//go:build !windows`); Windows uses its own exec mechanism (`internal/cli/codex_direct_windows.go`). The moai launcher cannot gate on or accelerate codex's own trust prompt. Surfacing the untrusted-hooks state in the launcher readout is a candidate follow-up card, not this SPEC.
 
 ### Out of Scope — backend-prefixed lane namespaces
 

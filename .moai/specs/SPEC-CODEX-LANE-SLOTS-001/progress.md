@@ -16,9 +16,13 @@ Verdict: **premise HOLDS — root cause confirmed.** Evidence observed in this r
 | V6 | ① Claim path has no wait/retry | `claimFactoryLane` (factory_slots.go:167-285) contains no sleep/retry/deadline; failure at line 255 is immediate. Long-launch delay must be pre-claim: `enterCodexFactory` → `enterFactoryLaneRun` (factory.go:492) → `enterSelectedFactoryRun` (factory.go:417) → codex pre-exec init → `syscall.Exec` (`internal/cli/codex_direct_posix.go:53`). |
 | V7 | ② No worktree scan in the launch path | Greps `filepath.Walk|os.ReadDir|filepath.Glob` over `internal/cli/codex_launcher.go`, `codex_init.go`, `session*.go`: no hits. |
 | V8 | ③ Hook-trust message is a wiring-pass emit | `ReTrustGuidance` at `internal/codexwiring/codexwiring.go:74`; launcher execs and does not gate on hook approval. |
-| V9 | ④ Owner probe is per-run-row | `moai factory runs` = `OpenFactory` + `ClassifyRuns` (`internal/cli/factory_handoff_recover.go:79-101`); probe `ps -o lstart= -p <pid>` at `internal/homestate/process_fingerprint_unix.go:12`; seam `OwnerClassifier` at `internal/homestate/factory_run_retire.go:44`. |
+| V9 | ④ Owner probe is per-run-row | `moai factory runs` = `OpenFactory` + `ClassifyRuns` (`internal/cli/factory_handoff_recover.go:79-101`); the probe is `platformProcessFingerprint(pid)` — per-pid, three build-tagged variants: `process_fingerprint_unix.go:11` (`!windows && !darwin`, `ps` subprocess), `process_fingerprint_darwin.go:11` (darwin, `unix.SysctlKinfoProc` sysctl — no subprocess), `process_fingerprint_windows.go:10` (windows); seam `OwnerClassifier` at `internal/homestate/factory_run_retire.go:44`. (Iteration-1 correction: the earlier citation named only the unix `ps` variant, which is build-excluded on this darwin tree — the measured 3.0s user / 1.86s sys cost cannot be attributed to `ps` alone.) |
 
 SPEC ID self-check: `ID="SPEC-CODEX-LANE-SLOTS-001"; [[ "$ID" =~ ^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$ ]] && echo PASS || echo FAIL` → `PASS`. Uniqueness: no `SPEC-CODEX-LANE-SLOTS-*` in `.moai/specs/` (catalog listing observed, 1002 entries).
+
+## Plan-audit Iterations
+
+- **Iteration 1 — FAIL 0.75 vs Tier M 0.80** (report: `.moai/reports/t1378/plan-audit.md`). Fixes applied 2026-09-30 on tree `850aefca9`, no commits: D1 (AC-009/AC-010 added for REQ-007/008/012), D2 (RED-now evidence ledger in acceptance.md — RED-1/RED-2/RED-3/RED-4 executed on the pre-implementation tree at `850aefca9`, scratch probe deleted after capture; regression-guard classification for AC-002/003/004/005/008), D3 (POSIX/Windows exec-split clause at both `syscall.Exec` mentions), D4 (V9, plan §B.4/M3/§E.4 corrected to the three platform variants), D5 (AC-006 package pinned to `internal/cli`), D6 (REQ-012 trigger made operator-configurable with the default in `internal/config/defaults.go`), D9 (`related_specs` dropped from frontmatter; §G body cross-references are the carrier).
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
