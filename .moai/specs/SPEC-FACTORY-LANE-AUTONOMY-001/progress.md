@@ -163,9 +163,97 @@ with `nil error = removal proceeded` — done silently removed unlanded card tre
 repositories under t.TempDir (local "origin", no network); the machine check is never aimed at a
 real remote in tests. No push (leader batch).
 
+### M5 — Cross-fragment integration + observability polish (2026-09-30, owner: manager-develop)
+
+Surfaces: the AC-FLA-017 joint three-lane scenario test
+(`internal/factorylane/scenario_joint_test.go` — ONE test process simulating
+the mixed workload over the existing fragment APIs: lane-fb's fallback switch
+logged, lane-a/lane-b contending over a sequential group and a parallel card,
+and lane-a's merge proceeding only inside an acquired window; t.TempDir +
+FakeClock + the scripted GitRunner + the forged WindowSnapshot test seam — no
+real cross-session state, no real window, no real merge) and the count-by-lane
+query surface (`Store.TransitionCountsByLane` +
+`moai factory fallback --all`, additive: the bare single-lane query keeps its
+lane-identity contract, pinned by test). Scope pin held: no doctrine file
+touched.
+
+| AC | Status | Verification command | Actual output |
+|----|--------|---------------------|---------------|
+| AC-FLA-016 | PASS (negative, per acceptance §D.3) | full M1-M5 diff greps: `git diff BASE...HEAD` with BASE = `git merge-base develop HEAD` = `8ea2febe2` (recomputed, not pinned), non-test added lines | 2,362 added non-test diff lines; messaging-delegation send-patterns (`.Send(` / `SendMessage` / `session_msg_send` / `MsgSend` / `SendMessageTo`) on added lines → **0** (positive control: the same pattern matches pre-existing `internal/cli/mcp_factory_msg.go:62`, so the zero is a meaningful absence); `sessionmsg.` usage in added lines = `NewStore`/`DefaultStateRoot`/`AgentInfo` only — the probe's read-only registry read (fragment 1's declared design), no send; card-admission surfaces (`internal/cli/todo*`, `internal/cli/project*`) in the diff → **0 files**. Evidence: `.moai/state/verify/t1338-m5/e4-diff-files-final.txt` + `e4-sessionmsg-usages.txt` |
+| AC-FLA-017 | PASS (joint scenario) | `go test ./internal/factorylane/ -run TestJointThreeLaneScenario -count=1 -v` | `ok` (evidence `.moai/state/verify/t1338-m5/joint-scenario.txt`) — one joint log observable: fallback transition logged exactly once (`lane-fb=1`); sequential group gamma ends with exactly 1 holder under concurrency (the loser's re-check names the holder); the parallel pair ends with 2 holders; the merge triple all-passed and recorded, the merge refused with no window ("no integration acquire record exists — the window was never taken"), proceeding inside lane-a's live window (acquired AFTER the checks — the AC-FLA-009 order), and refused for lane-b (the window is per-lane) |
+
+M5 E2-E8: builds darwin + `GOOS=windows` OK; factorylane aggregate coverage
+`go test ./internal/factorylane/ -cover` → **88.7%** (includes both new
+surfaces); `-race` clean after one repair — the race detector caught a defect
+in the NEW scenario helper itself (the holders-now log line read `winners`
+outside the mutex; fixed by copying under the lock), verbatim pre-fix warning
++ post-fix `ok` at `.moai/state/verify/t1338-m5/red-race-verbatim.txt` +
+`green-factorylane-race.txt`; production code needed NO change (the M1-M4
+surfaces came through the full-package `-race` clean — the joint scenario
+exposed no M1-M4 defect). internal/cli full-suite aggregate GAP recorded like
+M1-M4 (lane-local slice: `go test ./internal/cli/ -run
+'TestFactoryFallback|TestFactoryMessaging|TestFactoryPickup|TestFactoryMerge|TestAdopt'
+-count=1` → `ok`, 16.1s); lint `golangci-lint run --timeout=8m` on factorylane
++ cli + worktree → **0 issues** (`e5-lint.txt`); vocabulary guard
+`TestSD_AC021_LegacySpellingsRefused` PASS; boundary greps 0
+(`e4-boundary-greps.txt`). TDD RED verbatim for the query surface:
+`red-counts-package.txt` + `red-counts-cli.txt` (stub returning empty → both
+new assertions failing; the existing-contract pin passed already), GREEN
+`green-counts-*.txt`. Commit: `ad2d752a3` — no push (leader batch).
+
+
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — owner: manager-develop>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-09-30
+run_commit_sha: ad2d752a3
+ac_pass_count: 17
+ac_fail_count: 0
+ac_coverage: >-
+  AC-FLA-001..015 evidence complete in §E.2 (M1-M4 sections);
+  AC-FLA-016 negative full-diff verification and AC-FLA-017 joint
+  three-lane scenario in §E.2 M5 (AC-FLA-017 severity Should per the
+  acceptance matrix — delivered, not dropped)
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: >-
+  HEAD re-read immediately before each commit in this lane
+  (4d60234ab for M5 entry; ad2d752a3 landed on WT-lane-autonomy-umbrella);
+  no push from the lane
+l44_post_push_fetch: >-
+  n/a in-lane — the batch push and its post-push fetch are the leader's
+  (card discipline: no push from the lane)
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  darwin: pass
+  windows_amd64: pass
+total_run_phase_files: 30
+m1_to_mN_commit_strategy: >-
+  one commit per milestone unit (M1 ef4c444da, M2 ace746123,
+  M3 0931c6a8b+51ad23ae6+57dcbe857, M4 4d60234ab, M5 ad2d752a3) on
+  WT-lane-autonomy-umbrella; develop baseline absorbed at fce80341f;
+  batch push + CI aggregate owned by the leader
+coverage:
+  factorylane_aggregate: 88.7%
+  internal_cli_full_suite: >-
+    GAP recorded (M1-M4 precedent: the full-suite run exceeds go test's
+    default 10m timeout — the kill is not a failure and the partial
+    coverage line is not an aggregate); lane-local slices green in §E.2;
+    the aggregate remains CI's at the batch push
+gaps:
+  - >-
+    internal/cli full-suite aggregate coverage NOT obtained from the lane
+    (recorded GAP above; no slot-lease full-suite attempt in M5, following
+    the M3/M4 lane-local precedent)
+  - >-
+    AC-FLA-016 is negative verification by design (acceptance §D.3): its
+    evidence is the full-diff grep zero WITH a positive control, not a
+    positive test
+  - >-
+    AC-FLA-013 remains indirect verification (acceptance §D.3): existing
+    worktree suite green unmodified, measured at M4
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
