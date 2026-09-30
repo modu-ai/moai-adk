@@ -364,9 +364,9 @@ func sweepEvaluate(wt git.Worktree, in sweepEvalInputs) sweepVerdict {
 	}
 	v.Dirty = staleStateNo
 
-	// Ignored-content predicate — the SHARED decision (REQ-WR-024): the class
-	// both `git status --porcelain` and non-forced removal disregard.
-	state, ignoreReason := ignoredContentVerdict(wt.Path)
+	// Ignored-content predicate — the SHARED decision (REQ-WR-024), composed
+	// with the sweep's hoist-aware filter (see sweepIgnoredReason).
+	state, ignoreReason := sweepIgnoredReason(wt.Path)
 	v.Ignored = state
 	if ignoreReason != "" {
 		v.Reason = ignoreReason
@@ -392,6 +392,36 @@ func sweepEvaluate(wt git.Worktree, in sweepEvalInputs) sweepVerdict {
 	v.Verdict = sweepDispose
 	v.Reason = ""
 	return v
+}
+
+// sweepIgnoredReason is the ignored-content predicate as the SWEEP evaluates
+// it: the shared decision (ignoredContentVerdict, REQ-WR-024) composed with
+// one sweep-specific filter — the `.moai/reports/` class is NOT irreplaceable
+// here, because the apply path hoists exactly that class into the project
+// root BEFORE every removal (REQ-WS-009): the evidence survives the
+// disposal, which is the concern the predicate protects. Everything else
+// stays fail-closed — a card tree holding `.claude/agent-memory/` is
+// preserved exactly as `clean --stale` preserves it.
+func sweepIgnoredReason(path string) (state, reason string) {
+	state, reason = ignoredContentVerdict(path)
+	if reason == "" {
+		return state, ""
+	}
+	porcelain, err := gitWorktreeCmd("-C", path, "status", "--porcelain", "--ignored")
+	if err != nil {
+		return state, reason // the shared verdict already renders the failure
+	}
+	stillIrreplaceable := make([]string, 0, 2)
+	for _, entry := range session.IrreplaceableIgnoredEntries(porcelain) {
+		if entry == ".moai/reports" || strings.HasPrefix(entry, ".moai/reports/") {
+			continue // hoisted before removal — the concern is discharged
+		}
+		stillIrreplaceable = append(stillIrreplaceable, entry)
+	}
+	if len(stillIrreplaceable) == 0 {
+		return staleStateNo, ""
+	}
+	return staleStateYes, fmt.Sprintf("cause=%s; irreplaceable gitignored content: %s", causeIgnoredContent, strings.Join(stillIrreplaceable, ", "))
 }
 
 // sweepCWDOccupied reports whether any observed process cwd lies at or
@@ -461,10 +491,69 @@ func renderSweepReport(cmd *cobra.Command, records []sweepVerdict) {
 	_, _ = fmt.Fprintln(out, "\nThis was a preview. Re-run with --yes to remove them.")
 }
 
-// applySweepVerdicts performs the --yes removals. M4 wires the tier routing
-// (L1 hoist+remove, L2 done core); the M1 skeleton preserves everything —
-// no record can be DISPOSE yet.
+// applySweepVerdicts performs the --yes removals, routing by tier: L1 trees
+// hoist evidence then remove (REQ-WS-009); L2 trees dispose through the done
+// removal core (REQ-WS-008). A removal failure is a non-blocking notice —
+// the remaining trees still process (REQ-WS-013).
+//
+// @MX:WARN: [AUTO] bulk disposal loop — every guard here is load-bearing
+// @MX:REASON: this loop deletes directories across both tiers; dropping the
+// removal-time ignored-content re-read, the hoist-before-remove order, or
+// the non-forced removal turns a routine sweep into silent evidence or work
+// loss.
 func applySweepVerdicts(cmd *cobra.Command, records []sweepVerdict) {
-	_ = cmd
-	_ = records
+	out := cmd.OutOrStdout()
+	removed := 0
+	for _, r := range records {
+		if r.Verdict != sweepDispose {
+			continue
+		}
+		// Removal-time re-read of the ignored-content predicate (design §E),
+		// through the same hoist-aware filter the classification used:
+		// classification happened for the whole population first, so a tree
+		// cleared early can acquire irreplaceable ignored content — a session
+		// writing .claude/agent-memory/ — before its turn comes. Ignored
+		// files trigger no refusal from non-forced removal, so this is the
+		// only guard consulted at this distance. The window is narrowed, not
+		// closed.
+		if _, reason := sweepIgnoredReason(r.Path); reason != "" {
+			_, _ = fmt.Fprintf(out, "  Keeping %s [%s]: %s (observed at removal time)\n", r.Path, r.Branch, reason)
+			continue
+		}
+		switch r.Tier {
+		case sweepTierL1:
+			// REQ-WS-009: the tree's .moai/reports/ evidence is copied into
+			// the project root BEFORE removal — the tree is the only copy —
+			// and a hoist failure preserves the tree.
+			if err := sweepHoistBeforeDisposal(cmd.ErrOrStderr(), r.Path); err != nil {
+				_, _ = fmt.Fprintf(out, "  Keeping %s [%s]: cause=%s; %v\n", r.Path, r.Branch, causeHoistFailed, err)
+				continue
+			}
+			// Non-forced, never a branch deletion (REQ-WS-007/010).
+			if err := WorktreeProvider.Remove(r.Path, false); err != nil {
+				_, _ = fmt.Fprintf(out, "  Warning: could not remove %s: %v\n", r.Path, err)
+				continue
+			}
+		default:
+			// REQ-WS-008: L2 trees dispose through the done removal core —
+			// built-in evidence hoist, anchor refusal, non-forced removal,
+			// and no branch deletion.
+			success, err := sweepDoneCleanup(r.Branch, false, false, true)
+			if err != nil {
+				_, _ = fmt.Fprintf(out, "  Warning: could not remove %s [%s]: %v\n", r.Path, r.Branch, err)
+				continue
+			}
+			if !success {
+				_, _ = fmt.Fprintf(out, "  Keeping %s [%s]: the done core kept the tree\n", r.Path, r.Branch)
+				continue
+			}
+		}
+		_, _ = fmt.Fprintf(out, "  Removing swept worktree: %s [%s]\n", r.Path, r.Branch)
+		removed++
+	}
+	if removed > 0 {
+		// Reclaim launch-ledger rows left dead by the removals (card t297).
+		pruneLaunchLedgerAfterDisposal(out, cmd.ErrOrStderr())
+		_, _ = fmt.Fprintf(out, "Removed %d worktree(s). Branches were left intact.\n", removed)
+	}
 }

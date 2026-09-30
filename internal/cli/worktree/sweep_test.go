@@ -241,8 +241,31 @@ func newSweepRepo(t *testing.T) sweepFixture {
 	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("seed\n"), 0o644); err != nil {
 		t.Fatalf("seed file: %v", err)
 	}
+	// A tracked marker under .moai/ mirrors the real repo (whose .moai/
+	// holds tracked content): without it git collapses a fully-ignored
+	// .moai/ into one `!! .moai` entry instead of `!! .moai/reports/`.
+	if err := os.MkdirAll(filepath.Join(repo, ".moai"), 0o755); err != nil {
+		t.Fatalf("mkdir .moai: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, ".moai", ".keep"), []byte("\n"), 0o644); err != nil {
+		t.Fatalf("write .moai/.keep: %v", err)
+	}
 	sweepRunGit(t, repo, "add", ".")
 	sweepRunGit(t, repo, "commit", "-q", "-m", "seed")
+	// .moai/reports/ is machine-local run-phase evidence; the real repo
+	// ignores `.moai/reports/*`. Mirror that shape here so the fixture's
+	// porcelain matches what a real card tree shows (the entry the sweep's
+	// hoist-aware ignored filter discharges), and so evidence does not read
+	// as untracked dirt.
+	exclude := filepath.Join(repo, ".git", "info", "exclude")
+	fh, err := os.OpenFile(exclude, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatalf("open exclude: %v", err)
+	}
+	if _, err := fh.WriteString(".moai/reports/\n"); err != nil {
+		t.Fatalf("append exclude: %v", err)
+	}
+	_ = fh.Close()
 
 	origin := filepath.Join(base, "origin.git")
 	sweepRunGit(t, repo, "init", "-q", "--bare", origin)
@@ -296,12 +319,16 @@ func withSweepRepoEnv(t *testing.T, f sweepFixture) {
 }
 
 // stubSweepProbeSeams replaces the host-dependent seams (cwd probe, remote
-// fetch is real via the local origin) with the configured values.
+// fetch is real via the local origin) with the configured values, and seals
+// the caller-registry env axis: the lane session's CLAUDE_PROJECT_DIR points
+// at the moai checkout, whose live registry must never anchor a fixture tree
+// (t1350 lesson class).
 func stubSweepProbeSeams(t *testing.T, m *sweepMock, f sweepFixture) {
 	t.Helper()
 	origCWDs := sweepProcessCWDs
 	t.Cleanup(func() { sweepProcessCWDs = origCWDs })
 	sweepProcessCWDs = func() ([]string, error) { return m.cwds, m.cwdErr }
+	t.Setenv("CLAUDE_PROJECT_DIR", filepath.Join(t.TempDir(), "empty-project"))
 }
 
 // decodeSweepJSON parses the sweep's --json stdout into verdict records.
@@ -916,6 +943,417 @@ func TestSweepVerdictRecord(t *testing.T) {
 	}
 	if reason, _ := r["reason"].(string); reason != "" {
 		t.Errorf("a DISPOSE record carries an empty reason, got %q", reason)
+	}
+}
+
+// --- M4: tier routing and the apply path ------------------------------------
+
+// recordingProvider decorates the real git provider so a test can observe
+// removal calls (and force failures) without reimplementing git.
+type recordingProvider struct {
+	git.WorktreeManager
+	removed  []string
+	failFor  map[string]error
+	onRemove func() // observation hook, called at removal time
+}
+
+func (r *recordingProvider) Remove(path string, force bool) error {
+	r.removed = append(r.removed, path)
+	if r.onRemove != nil {
+		r.onRemove()
+	}
+	if err := r.failFor[path]; err != nil {
+		return err
+	}
+	return r.WorktreeManager.Remove(path, force)
+}
+
+// TestSweepLandedBranchDisposes is AC-WS-001: a landed, clean, unanchored,
+// probe-negative worktree is disposed with --yes; the branch ref survives
+// (REQ-WS-010); every predicate field reads affirmatively.
+func TestSweepLandedBranchDisposes(t *testing.T) {
+	f := newSweepRepo(t)
+	wt := filepath.Join(f.base, "trees", "wt-dispose")
+	addSweepWorktree(t, f, wt, "feature/dispose")
+	withSweepRepoEnv(t, f)
+	m := &sweepMock{}
+	stubSweepProbeSeams(t, m, f)
+
+	out, err := runSweepCmd(t, map[string]string{"yes": "true"})
+	if err != nil {
+		t.Fatalf("runSweep error: %v", err)
+	}
+	if _, statErr := os.Stat(wt); !os.IsNotExist(statErr) {
+		t.Fatalf("the disposable tree must be gone, stat error: %v\noutput:\n%s", statErr, out)
+	}
+	// REQ-WS-010: the branch is never deleted.
+	if branchList := sweepRunGitAllowFail(t, f.repo, "rev-parse", "--verify", "feature/dispose"); strings.TrimSpace(branchList) == "" {
+		t.Error("the branch ref must still resolve after disposal")
+	}
+	if !strings.Contains(out, "Removed 1 worktree(s). Branches were left intact.") {
+		t.Errorf("expected the removal summary, got:\n%s", out)
+	}
+
+	// The --json inventory of the same fixture carries the affirmative
+	// record (one evaluation, two renderings).
+	out, err = runSweepCmd(t, map[string]string{"json": "true"})
+	if err != nil {
+		t.Fatalf("runSweep --json error: %v", err)
+	}
+	got := decodeSweepJSON(t, out)
+	if len(got) != 0 {
+		t.Errorf("the disposed tree is gone; the inventory must be empty, got %v", got)
+	}
+}
+
+// sweepRunGitAllowFail runs git, returning its output even on failure (the
+// caller asserts on empty output instead of failing the fixture).
+func sweepRunGitAllowFail(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	out, _ := cmd.CombinedOutput()
+	return string(out)
+}
+
+// TestSweepDryRunDefaultAndYes is AC-WS-008: bare previews and removes
+// nothing; --yes removes exactly the disposable tree; --json removes nothing
+// and carries the same predicate values the text report showed.
+func TestSweepDryRunDefaultAndYes(t *testing.T) {
+	buildFixture := func(t *testing.T) (sweepFixture, string, string) {
+		f := newSweepRepo(t)
+		disposable := filepath.Join(f.base, "trees", "wt-dry-disposable")
+		addSweepWorktree(t, f, disposable, "feature/dry-disposable")
+		preserved := filepath.Join(f.base, "trees", "wt-dry-kept")
+		addSweepWorktree(t, f, preserved, "feature/dry-kept")
+		if err := os.WriteFile(filepath.Join(preserved, "uncommitted.txt"), []byte("keep me\n"), 0o644); err != nil {
+			t.Fatalf("dirty the preserved tree: %v", err)
+		}
+		withSweepRepoEnv(t, f)
+		m := &sweepMock{}
+		stubSweepProbeSeams(t, m, f)
+		return f, disposable, preserved
+	}
+
+	t.Run("bare-previews-and-removes-nothing", func(t *testing.T) {
+		_, disposable, _ := buildFixture(t)
+		out, err := runSweepCmd(t, map[string]string{})
+		if err != nil {
+			t.Fatalf("runSweep error: %v", err)
+		}
+		if _, statErr := os.Stat(disposable); statErr != nil {
+			t.Fatalf("a dry run must remove nothing, got: %v", statErr)
+		}
+		if !strings.Contains(out, "Would remove 1 worktree(s)") {
+			t.Errorf("expected the preview header, got:\n%s", out)
+		}
+		if !strings.Contains(out, "Re-run with --yes") {
+			t.Errorf("expected the preview to point at --yes, got:\n%s", out)
+		}
+	})
+
+	t.Run("yes-removes-exactly-the-disposable", func(t *testing.T) {
+		_, disposable, preserved := buildFixture(t)
+		out, err := runSweepCmd(t, map[string]string{"yes": "true"})
+		if err != nil {
+			t.Fatalf("runSweep error: %v", err)
+		}
+		if _, statErr := os.Stat(disposable); !os.IsNotExist(statErr) {
+			t.Fatalf("the disposable tree must be gone, stat error: %v", statErr)
+		}
+		if _, statErr := os.Stat(preserved); statErr != nil {
+			t.Fatalf("the preserved tree must survive, got: %v", statErr)
+		}
+		if !strings.Contains(out, "Removed 1 worktree(s)") {
+			t.Errorf("expected the removal summary, got:\n%s", out)
+		}
+	})
+
+	t.Run("json-parity", func(t *testing.T) {
+		_, disposable, _ := buildFixture(t)
+		out, err := runSweepCmd(t, map[string]string{"json": "true"})
+		if err != nil {
+			t.Fatalf("runSweep error: %v", err)
+		}
+		if _, statErr := os.Stat(disposable); statErr != nil {
+			t.Fatalf("--json must remove nothing, got: %v", statErr)
+		}
+		got := decodeSweepJSON(t, out)
+		if len(got) != 2 {
+			t.Fatalf("expected records for both trees, got %d:\n%s", len(got), out)
+		}
+		for _, r := range got {
+			if r["branch"] == "feature/dry-disposable" {
+				if r["verdict"] != sweepDispose {
+					t.Errorf("the disposable tree must classify as %s in the inventory, got %v", sweepDispose, r["verdict"])
+				}
+			}
+			if r["branch"] == "feature/dry-kept" {
+				if r["verdict"] != sweepPreserve || r["dirty"] != staleStateYes {
+					t.Errorf("the dirty tree must read PRESERVE/dirty=yes in the inventory, got %v", r)
+				}
+			}
+		}
+		assertSweepStateValues(t, got)
+	})
+}
+
+// TestSweepL1HoistThenRemove is AC-WS-009: an L1 tree is hoisted BEFORE
+// removal (order asserted), its evidence lands in the project root, and a
+// hoist failure preserves the tree with cause=hoist-failed.
+func TestSweepL1HoistThenRemove(t *testing.T) {
+	t.Run("hoist-before-remove", func(t *testing.T) {
+		f := newSweepRepo(t)
+		l1 := filepath.Join(f.repo, ".claude", "worktrees", "sweep-l1")
+		addSweepWorktree(t, f, l1, "feature/sweep-l1")
+		reports := filepath.Join(l1, ".moai", "reports")
+		if err := os.MkdirAll(reports, 0o755); err != nil {
+			t.Fatalf("mkdir reports: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(reports, "verdict.md"), []byte("evidence\n"), 0o644); err != nil {
+			t.Fatalf("write evidence: %v", err)
+		}
+		withSweepRepoEnv(t, f)
+		m := &sweepMock{}
+		stubSweepProbeSeams(t, m, f)
+
+		provider := &recordingProvider{WorktreeManager: WorktreeProvider}
+		WorktreeProvider = provider
+
+		// One shared sequence records both seams, so the ORDER is evidence:
+		// hoist must appear before remove.
+		var order []string
+		origHoist := sweepHoistBeforeDisposal
+		sweepHoistBeforeDisposal = func(w io.Writer, path string) error {
+			order = append(order, "hoist")
+			return origHoist(w, path)
+		}
+		provider.onRemove = func() { order = append(order, "remove") }
+		t.Cleanup(func() { sweepHoistBeforeDisposal = origHoist })
+
+		out, err := runSweepCmd(t, map[string]string{"yes": "true"})
+		if err != nil {
+			t.Fatalf("runSweep error: %v", err)
+		}
+
+		if _, statErr := os.Stat(l1); !os.IsNotExist(statErr) {
+			t.Fatalf("the L1 tree must be gone, stat error: %v\noutput:\n%s", statErr, out)
+		}
+		if len(order) != 2 || order[0] != "hoist" || order[1] != "remove" {
+			t.Fatalf("the hoist seam must record BEFORE the removal seam, got order %v", order)
+		}
+		if len(provider.removed) != 1 {
+			t.Fatalf("exactly one removal must happen, got %v", provider.removed)
+		}
+		// The hoisted evidence survives the removal at the project root.
+		hoisted := filepath.Join(f.repo, ".moai", "reports", "worktrees", "sweep-l1", "verdict.md")
+		content, readErr := os.ReadFile(hoisted)
+		if readErr != nil || !strings.Contains(string(content), "evidence") {
+			t.Errorf("the evidence must exist under the project root after disposal (read: %v)", readErr)
+		}
+		if !strings.Contains(out, "Removed 1 worktree(s)") {
+			t.Errorf("expected the removal summary, got:\n%s", out)
+		}
+	})
+
+	t.Run("hoist-failure-preserves", func(t *testing.T) {
+		f := newSweepRepo(t)
+		l1 := filepath.Join(f.repo, ".claude", "worktrees", "sweep-l1-fail")
+		addSweepWorktree(t, f, l1, "feature/sweep-l1-fail")
+		withSweepRepoEnv(t, f)
+		m := &sweepMock{}
+		stubSweepProbeSeams(t, m, f)
+
+		origHoist := sweepHoistBeforeDisposal
+		sweepHoistBeforeDisposal = func(_ io.Writer, _ string) error {
+			return errors.New("cannot copy evidence")
+		}
+		t.Cleanup(func() { sweepHoistBeforeDisposal = origHoist })
+
+		out, err := runSweepCmd(t, map[string]string{"yes": "true"})
+		if err != nil {
+			t.Fatalf("runSweep error: %v", err)
+		}
+		if _, statErr := os.Stat(l1); statErr != nil {
+			t.Fatalf("a hoist failure must preserve the tree, got: %v", statErr)
+		}
+		if !strings.Contains(out, "cause="+causeHoistFailed) {
+			t.Errorf("the notice must carry cause=%s, got:\n%s", causeHoistFailed, out)
+		}
+	})
+}
+
+// TestSweepL2DonePath is AC-WS-010: an L2 tree disposes through the done
+// removal core (hoist inside, non-forced, no branch deletion); an L1 tree in
+// the same run never reaches the done core.
+func TestSweepL2DonePath(t *testing.T) {
+	f := newSweepRepo(t)
+	l2 := filepath.Join(f.base, "trees", "sweep-l2")
+	addSweepWorktree(t, f, l2, "feature/sweep-l2")
+	l1 := filepath.Join(f.repo, ".claude", "worktrees", "sweep-l1-mix")
+	addSweepWorktree(t, f, l1, "feature/sweep-l1-mix")
+	withSweepRepoEnv(t, f)
+	m := &sweepMock{}
+	stubSweepProbeSeams(t, m, f)
+
+	var doneCalls []string
+	origDone := sweepDoneCleanup
+	sweepDoneCleanup = func(branch string, force, deleteBranch, hoist bool) (bool, error) {
+		doneCalls = append(doneCalls, sweepDoneCallKey(branch, force, deleteBranch, hoist))
+		return origDone(branch, force, deleteBranch, hoist)
+	}
+	t.Cleanup(func() { sweepDoneCleanup = origDone })
+
+	out, err := runSweepCmd(t, map[string]string{"yes": "true"})
+	if err != nil {
+		t.Fatalf("runSweep error: %v", err)
+	}
+
+	if _, statErr := os.Stat(l2); !os.IsNotExist(statErr) {
+		t.Fatalf("the L2 tree must be gone, stat error: %v\noutput:\n%s", statErr, out)
+	}
+	// The done core saw exactly the L2 branch, non-forced, no branch
+	// deletion, hoist on.
+	if len(doneCalls) != 1 || doneCalls[0] != sweepDoneCallKey("feature/sweep-l2", false, false, true) {
+		t.Fatalf("the done core must be called once with (force=false, deleteBranch=false, hoist=true), got %v", doneCalls)
+	}
+	// The branch survives (no deletion inside the done core either).
+	if branchList := sweepRunGitAllowFail(t, f.repo, "rev-parse", "--verify", "feature/sweep-l2"); strings.TrimSpace(branchList) == "" {
+		t.Error("the L2 branch must survive the done-core disposal")
+	}
+}
+
+// TestSweepNeverDispose is AC-WS-011: the main checkout and the process's
+// own tree are absent from the records entirely; a base-branch checkout and
+// a locked tree preserve; a healthy candidate still disposes, proving the
+// list protects rather than paralyzes.
+func TestSweepNeverDispose(t *testing.T) {
+	f := newSweepRepo(t)
+	// Move the main checkout OFF develop so a linked worktree can hold the
+	// base branch (git allows a branch in exactly one worktree).
+	sweepRunGit(t, f.repo, "checkout", "-q", "-b", "hold")
+
+	baseWt := filepath.Join(f.base, "trees", "wt-on-base")
+	sweepRunGit(t, f.repo, "worktree", "add", "--", baseWt, "develop")
+
+	lockedWt := filepath.Join(f.base, "trees", "wt-locked")
+	addSweepWorktree(t, f, lockedWt, "feature/locked-wt")
+	sweepRunGit(t, f.repo, "worktree", "lock", lockedWt)
+
+	ownWt := filepath.Join(f.base, "trees", "wt-own")
+	addSweepWorktree(t, f, ownWt, "feature/own-wt")
+
+	disposeWt := filepath.Join(f.base, "trees", "wt-fine")
+	addSweepWorktree(t, f, disposeWt, "feature/fine")
+
+	withSweepRepoEnv(t, f)
+	m := &sweepMock{}
+	stubSweepProbeSeams(t, m, f)
+
+	// Move the process INTO one of the fixture's trees: that tree is the
+	// worktree this command runs in — protected by definition.
+	origWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(ownWt); err != nil {
+		t.Fatalf("chdir into the own tree: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(origWd) })
+
+	out, err := runSweepCmd(t, map[string]string{"json": "true"})
+	if err != nil {
+		t.Fatalf("runSweep error: %v", err)
+	}
+	got := decodeSweepJSON(t, out)
+	// The apply run is a separate invocation: --json removes nothing by
+	// contract, even with --yes.
+	if _, err := runSweepCmd(t, map[string]string{"yes": "true"}); err != nil {
+		t.Fatalf("apply run error: %v", err)
+	}
+	byBranch := map[string]map[string]interface{}{}
+	for _, r := range got {
+		branch, _ := r["branch"].(string)
+		byBranch[branch] = r
+	}
+	// The main checkout (hold) and the process's own tree are OUTSIDE the
+	// universe — absent, not reported as kept.
+	for _, absent := range []string{"hold", "feature/own-wt"} {
+		if _, ok := byBranch[absent]; ok {
+			t.Errorf("protected tree %q must be absent from the records, got %v", absent, byBranch[absent])
+		}
+	}
+	// The base-branch checkout preserves, naming the cause.
+	if r, ok := byBranch["develop"]; !ok {
+		t.Error("the base-branch checkout must appear in the records")
+	} else {
+		if r["on_base"] != staleStateYes || r["verdict"] != sweepPreserve {
+			t.Errorf("the base-branch checkout must read on_base=yes and PRESERVE, got %v", r)
+		}
+		reason, _ := r["reason"].(string)
+		if !strings.Contains(reason, "cause="+causeOnBaseBranch) {
+			t.Errorf("reason must carry cause=%s, got %q", causeOnBaseBranch, reason)
+		}
+	}
+	// The locked tree preserves with the lock source named.
+	if r, ok := byBranch["feature/locked-wt"]; !ok {
+		t.Error("the locked tree must appear in the records")
+	} else if r["anchored"] != "lock" || r["verdict"] != sweepPreserve {
+		t.Errorf("a locked tree must read anchored=lock and PRESERVE, got %v", r)
+	}
+	// The healthy candidate still flows through.
+	if r, ok := byBranch["feature/fine"]; !ok {
+		t.Error("the healthy candidate must appear in the records")
+	} else if r["verdict"] != sweepDispose {
+		t.Errorf("a clean landed tree must be disposable, got %v", r)
+	}
+
+	// Survivals: locked, base-branch, own tree, main checkout.
+	for _, p := range []string{lockedWt, baseWt, ownWt, f.repo} {
+		if _, statErr := os.Stat(p); statErr != nil {
+			t.Errorf("protected tree %s must survive, got: %v", p, statErr)
+		}
+	}
+	// And the healthy candidate is gone.
+	if _, statErr := os.Stat(disposeWt); !os.IsNotExist(statErr) {
+		t.Errorf("the healthy candidate must be disposed, stat error: %v", statErr)
+	}
+}
+
+// TestSweepRemovalFailure is AC-WS-014 (a): a failing removal is a
+// non-blocking notice; the remaining trees still process; the run exits 0
+// (removal failure is not the degraded-anchor signal).
+func TestSweepRemovalFailure(t *testing.T) {
+	f := newSweepRepo(t)
+	failing := filepath.Join(f.base, "trees", "wt-fail")
+	addSweepWorktree(t, f, failing, "feature/removal-fails")
+	second := filepath.Join(f.base, "trees", "wt-second")
+	addSweepWorktree(t, f, second, "feature/removal-second")
+	withSweepRepoEnv(t, f)
+	m := &sweepMock{}
+	stubSweepProbeSeams(t, m, f)
+
+	provider := &recordingProvider{
+		WorktreeManager: WorktreeProvider,
+		failFor:         map[string]error{failing: errors.New("git worktree remove refused")},
+	}
+	WorktreeProvider = provider
+
+	out, err := runSweepCmd(t, map[string]string{"yes": "true"})
+	if err != nil {
+		t.Fatalf("a removal failure is non-blocking; got: %v", err)
+	}
+	if !strings.Contains(out, "could not remove") {
+		t.Errorf("the failure must surface as a non-blocking notice, got:\n%s", out)
+	}
+	if _, statErr := os.Stat(failing); statErr != nil {
+		t.Errorf("the failed tree must survive, got: %v", statErr)
+	}
+	if _, statErr := os.Stat(second); !os.IsNotExist(statErr) {
+		t.Errorf("the remaining tree must still be processed, stat error: %v", statErr)
+	}
+	if !strings.Contains(out, "Removed 1 worktree(s)") {
+		t.Errorf("the count must report only the actual removal, got:\n%s", out)
 	}
 }
 
