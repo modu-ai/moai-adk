@@ -131,6 +131,38 @@ negative-case verbatim in `e1-ac011-negative.txt`. Commits: `0931c6a8b` (triple)
 test merges into any real develop branch, and the window is exercised against a throwaway lock
 root, never the developer's state.
 
+### M4 — Post-push disposal machine check + `--auto` (2026-09-30, owner: manager-develop)
+
+Surfaces: the origin-landing machine check on BOTH `worktree done` paths (`internal/cli/worktree/
+done.go`) — `originLandingRefusal` (git fetch origin develop + `git rev-list --count --left-right
+origin/develop...<branch>` over the `landingGitCmd` target-anchored seam, M3 ExecGitRunner
+pattern), gated on card branches (`isCardBranch`, the gitflow `WT-` prefix) and ordered AFTER the
+L1 tier guard and the anchored-session guard so both fire exactly as before (REQ-FLA-013); no
+flag bypasses it (REQ-FLA-015); no CI status is consulted (design D4). Non-card (`feature/*`)
+disposal keeps its pre-SPEC behavior — the sync workflow's --auto cleanup runs after a squash PR
+merge, where a branch tip is by construction not on the base branch, so an unconditional check
+would wrongly refuse that flow. Landing predicate: under the gitflow --no-ff merge discipline the
+card branch tip is a parent of the card's merge commit, so the tip's reachability from
+origin/develop IS the merge commit's landing; a fetch failure refuses fail-closed.
+
+| AC | Status | Verification command | Actual output |
+|----|--------|---------------------|---------------|
+| AC-FLA-012 | PASS (M4 Go surface) | `go test ./internal/cli/worktree/ -run 'TestDoneLandingCheck_RefusesUnlandedCardWorktree/manual_unpushed_branch\|TestDoneLandingCheck_RefusesUnlandedCardWorktree/manual_local_only_merge' -count=1` | `ok` (evidence `.moai/state/verify/t1338-m4/green-verbatim.txt`) — unlanded card tree refused with `MERGE_NOT_ON_ORIGIN` + the machine-check output shown (`git rev-list --count --left-right origin/develop...WT-lane-card => "0\t1" (0 left-only / 1 right-only commits)`); local-only --no-ff merge (unpushed) refused the same way; tree survives both |
+| AC-FLA-013 | PASS (indirect per acceptance §D.3) | full `go test ./internal/cli/worktree/ -count=1` BEFORE vs AFTER the change + `TestDoneLandingCheck_GuardsOutrankLandingCheck` | BEFORE (tree == `57dcbe857`, pre-change): `ok ... 30.632s`; AFTER: `ok ... 96.155s` (`.moai/state/verify/t1338-m4/e8-full-suite-after.txt`) — existing suite green UNMODIFIED; ordering pin: an unlanded card tree that is ALSO L1 gets `L1_SESSION_WORKTREE` (not the landing refusal), an unlanded card tree with a live anchored session gets `ANCHORED_SESSIONS_PRESENT` — both guards outrank the new check |
+| AC-FLA-014 | PASS (M4 Go surface) | `go test ./internal/cli/worktree/ -run TestDoneLandingCheck_LandedCardDisposalCompletes -count=1` | `ok` — after `landCard` (--no-ff merge + push to the local bare origin), `--auto` AND manual disposal complete exit 0 with removal observable (tree gone on both paths); CI-status absence grep-proven: `grep -nE 'exec\.Command\("gh"\|"gh",|gh pr \|gh api \|ciStatus\|ci-status\|CIStatus' internal/cli/worktree/done.go internal/cli/worktree/done_landing_test.go` → **0 matches**; the check runs exactly two git subcommands (`landingGitCmd(targetPath, "fetch", ...)` + `landingGitCmd(targetPath, "rev-list", ...)`), both read-only |
+| AC-FLA-015 | PASS (M4 Go surface) | `go test ./internal/cli/worktree/ -run 'TestDoneLandingCheck_RefusesUnlandedCardWorktree/auto_unpushed_branch_refused\|TestDoneLandingCheck_RefusesUnlandedCardWorktree/fetch_failure_refused_fail_closed' -count=1` | `ok` — `--auto` on an unlanded card tree refused (`MERGE_NOT_ON_ORIGIN`, tree survives); fetch failure (origin pointed at a missing remote, work fully merged) → `ORIGIN_LANDING_UNCONFIRMED` fail-closed refusal, tree survives — acceptance §D.2 edge covered |
+
+M4 E2-E8: builds darwin + `GOOS=windows` OK; coverage `go test -cover ./internal/cli/worktree/`
+→ **86.4%**, `go test -cover ./internal/factorylane/` → **89.0%** (both ≥ 85; internal/cli
+full-suite aggregate GAP recorded like M1-M3 — CI's job at batch push); lint
+`golangci-lint run --timeout=8m` on factorylane + cli + worktree → **0 issues, exit 0**
+(`.moai/state/verify/t1338-m4/e5-lint.txt`); guard `TestSD_AC021_LegacySpellingsRefused` PASS;
+boundary greps 0 (AskUserQuestion, `.Send(`). RED verbatim (pre-GREEN, 4 refusal cells failing
+with `nil error = removal proceeded` — done silently removed unlanded card trees on both paths):
+`.moai/state/verify/t1338-m4/red-verbatim.txt`. Fixtures build throwaway bare remotes +
+repositories under t.TempDir (local "origin", no network); the machine check is never aimed at a
+real remote in tests. No push (leader batch).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — owner: manager-develop>_
