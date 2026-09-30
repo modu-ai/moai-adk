@@ -218,14 +218,18 @@ case "$LAST_COMMIT_SUBJECT" in
 esac
 
 # Resolve project root and detect language from canonical markers.
-# GATE_LANG (not LANG): LANG is the reserved POSIX locale variable — assigning
-# the detected language to it would change the locale of every child tool.
+# GATE_LANG_CANDIDATES (not LANG): LANG is the reserved POSIX locale variable —
+# assigning the detected language to it would change the locale of every child
+# tool. Every detected candidate participates downstream: the delta scan sums
+# per-language code files, and the checks run for every language the sync
+# commit actually touched. Selecting a single candidate here left every other
+# detected language's checker unrun while the gate still recorded pass — a
+# check that did not run must never be counted as a pass.
 PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
 GATE_LANG_CANDIDATES=$(detect_languages "$PROJECT_ROOT")
-GATE_LANG=$(printf '%s\n' "$GATE_LANG_CANDIDATES" | head -1)
 
 # Silent pass when no recognized language marker is present (docs-only projects, etc.)
-if [ -z "$GATE_LANG" ]; then
+if [ -z "$GATE_LANG_CANDIDATES" ]; then
     # stdout intentionally empty (Stop schema: decision must be approve|block, not "skip").
     exit 0
 fi
@@ -240,11 +244,15 @@ fi
 # grep -c is wrapped so its no-match exit (1) under `set -e` does not abort; the
 # result is normalized to a single integer (avoids a "0\n0" double-emit).
 CODE_DELTA=0
+CHANGED_LANGS=""
 for detected_language in $GATE_LANG_CANDIDATES; do
     DELTA_PATTERN=$(code_delta_pattern "$detected_language")
     if [ -n "$DELTA_PATTERN" ]; then
         DETECTED_DELTA=$(git diff --name-only "$DIFF_RANGE" 2>/dev/null | grep -cE "$DELTA_PATTERN" || true)
         CODE_DELTA=$((CODE_DELTA + ${DETECTED_DELTA:-0}))
+        if [ "${DETECTED_DELTA:-0}" -gt 0 ]; then
+            CHANGED_LANGS="$CHANGED_LANGS $detected_language"
+        fi
     fi
 done
 if [ "$CODE_DELTA" -eq 0 ]; then
@@ -282,9 +290,10 @@ write_state_file() {
 }
 
 # log_gate_event <fields>: one audit line in the gate log; failures are ignored.
+# The checked languages ride the summary line (language=), not this prefix.
 log_gate_event() {
     mkdir -p "$GATE_LOG_DIR" 2>/dev/null || true
-    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [sync-phase-quality-gate] language=$GATE_LANG $1 head=$HEAD_SHA" \
+    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [sync-phase-quality-gate] $1 head=$HEAD_SHA" \
         >> "$GATE_LOG_DIR/sync-quality-gate.log" 2>/dev/null || true
 }
 
@@ -530,35 +539,60 @@ log_gate_event "snapshot_status=$SNAPSHOT_STATUS"
 GATE_TMPDIR=$(mktemp -d)
 trap "rm -rf $GATE_TMPDIR" EXIT
 
-# Default per-check results: 0 = pass/skipped, used when a step does not run for the
-# detected language. command -v guards every tool invocation so an absent toolchain
-# is skipped gracefully (exit 0, recorded as skipped) rather than failing.
-echo "0" > "$GATE_TMPDIR/c1.exit"; echo "not run for $GATE_LANG" > "$GATE_TMPDIR/c1.log"
-echo "0" > "$GATE_TMPDIR/c2.exit"; echo "not run for $GATE_LANG" > "$GATE_TMPDIR/c2.log"
+# Default per-check results: 0 = nothing has failed yet. The slots are seeded
+# once and then MERGED across languages — an absent tool must never overwrite
+# a failure an earlier language recorded into the same slot. command -v guards
+# every tool invocation so an absent toolchain is skipped gracefully rather
+# than failing; the skip is journaled and surfaced, never counted as a pass.
+echo "0" > "$GATE_TMPDIR/c1.exit"; echo "not run" > "$GATE_TMPDIR/c1.log"
+echo "0" > "$GATE_TMPDIR/c2.exit"; echo "not run" > "$GATE_TMPDIR/c2.log"
+: > "$GATE_TMPDIR/steps.journal"
 
 # run_step <tool> <result-prefix> <command...>: run only if the tool is on PATH,
-# otherwise record exit 0 and log a graceful skip. The `&& rc=0 || rc=$?` idiom
-# captures the tool's exit code without letting `set -e` abort the hook when a
-# tool legitimately fails (the failure is recorded and drives the decision).
+# otherwise journal a graceful skip and leave the slot untouched. The slot
+# carries the WORST exit across every language that ran into it, so the
+# decision reads the aggregate rather than one language's last word. The
+# `&& rc=0 || rc=$?` idiom captures the tool's exit code without letting
+# `set -e` abort the hook when a tool legitimately fails (the failure is
+# recorded and drives the decision).
 run_step() {
     tool="$1"; prefix="$2"; shift 2
     if command -v "$tool" >/dev/null 2>&1; then
-        local rc=0
-        "$@" > "$GATE_TMPDIR/$prefix.log" 2>&1 && rc=0 || rc=$?
-        echo "$rc" > "$GATE_TMPDIR/$prefix.exit"
+        local rc=0 prev=0
+        "$@" >> "$GATE_TMPDIR/$prefix.log" 2>&1 && rc=0 || rc=$?
+        prev=$(cat "$GATE_TMPDIR/$prefix.exit" 2>/dev/null || true)
+        case "$prev" in
+            ''|*[!0-9]*) prev=0 ;;
+        esac
+        if [ "$rc" -gt "$prev" ]; then
+            prev="$rc"
+        fi
+        echo "$prev" > "$GATE_TMPDIR/$prefix.exit"
+        printf 'lang=%s slot=%s tool=%s rc=%s\n' "$checked_language" "$prefix" "$tool" "$rc" >> "$GATE_TMPDIR/steps.journal"
     else
-        echo "0" > "$GATE_TMPDIR/$prefix.exit"
-        echo "skipped: $tool absent" > "$GATE_TMPDIR/$prefix.log"
+        echo "skipped: $tool absent" >> "$GATE_TMPDIR/$prefix.log"
+        SKIPPED_TOOLS="$SKIPPED_TOOLS $tool"
+        printf 'lang=%s slot=%s tool=%s skipped\n' "$checked_language" "$prefix" "$tool" >> "$GATE_TMPDIR/steps.journal"
     fi
 }
 
 # Fast structural checks only. Two slots per language: c1 (vet/lint) + c2 (build).
 # Heavy lint (golangci-lint) and the full test suite are intentionally NOT run here —
 # they cannot finish within the Stop timeout and belong in CI.
+#
+# The loop runs EVERY language the sync commit touched — never a single selected
+# candidate — and folds each language's checker exits into the shared c1/c2
+# slots (worst exit wins), so one broken checker blocks no matter which other
+# language passed. The case table below keeps its original indentation inside
+# the loop on purpose: the per-language bodies stay diff-stable and the loop
+# adds only the wrapper lines.
+C1_LABELS=""
+C2_LABELS=""
+SKIPPED_TOOLS=""
+for checked_language in $CHANGED_LANGS; do
 C1_LABEL="(none)"
 C2_LABEL="(none)"
-
-case "$GATE_LANG" in
+case "$checked_language" in
     go)
         C1_LABEL="go vet"; C2_LABEL="go build"
         run_step go c1 go vet ./...
@@ -673,28 +707,54 @@ exit $rc' || true
         ;;
 esac
 
-# Dependency manifest-change observation: set DEPS_MODIFIED=1 when a dependency
-# manifest of the detected language changed in the HEAD commit (unexpected for a
-# docs sync). Informational only — it does NOT drive the block decision and it is
-# not a vulnerability scan. Language-specific manifest set.
-DEPS_MANIFESTS=""
-case "$GATE_LANG" in
-    go)       DEPS_MANIFESTS="go.mod go.sum" ;;
-    python)   DEPS_MANIFESTS="pyproject.toml requirements.txt poetry.lock" ;;
-    node)     DEPS_MANIFESTS="package.json package-lock.json yarn.lock pnpm-lock.yaml" ;;
-    rust)     DEPS_MANIFESTS="Cargo.toml Cargo.lock" ;;
-    java)     DEPS_MANIFESTS="pom.xml build.gradle build.gradle.kts gradle.properties" ;;
-    kotlin)   DEPS_MANIFESTS="pom.xml build.gradle.kts gradle.properties" ;;
-    csharp)   DEPS_MANIFESTS="*.csproj packages.lock.json" ;;
-    ruby)     DEPS_MANIFESTS="Gemfile Gemfile.lock" ;;
-    php)      DEPS_MANIFESTS="composer.json composer.lock" ;;
-    elixir)   DEPS_MANIFESTS="mix.exs mix.lock" ;;
-    cpp)      DEPS_MANIFESTS="CMakeLists.txt Makefile" ;;
-    scala)    DEPS_MANIFESTS="build.sbt pom.xml build.scala" ;;
-    r)        DEPS_MANIFESTS="DESCRIPTION renv.lock .Rprofile" ;;
-    flutter)  DEPS_MANIFESTS="pubspec.yaml pubspec.lock" ;;
-    swift)    DEPS_MANIFESTS="Package.swift Package.resolved" ;;
+# Fold this language's slots into the aggregate labels; a slot the language
+# did not use keeps "(none)" and contributes nothing. The patterns are quoted:
+# an unquoted (none) reads as the bare word none, which never matches.
+case "$C1_LABEL" in
+    "(none)") ;;
+    *) C1_LABELS="$C1_LABELS${C1_LABELS:+,}$C1_LABEL" ;;
 esac
+case "$C2_LABEL" in
+    "(none)") ;;
+    *) C2_LABELS="$C2_LABELS${C2_LABELS:+,}$C2_LABEL" ;;
+esac
+done
+C1_LABEL="${C1_LABELS:-(none)}"
+C2_LABEL="${C2_LABELS:-(none)}"
+
+# Every checker invocation is on the record — ran exits and absent-tool skips
+# alike — so an aggregate allow can always be traced to what actually ran.
+if [ -s "$GATE_TMPDIR/steps.journal" ]; then
+    while IFS= read -r journal_line; do
+        log_gate_event "step $journal_line"
+    done < "$GATE_TMPDIR/steps.journal"
+fi
+
+# Dependency manifest-change observation: set DEPS_MODIFIED=1 when a dependency
+# manifest of a changed language appears in the HEAD commit (unexpected for a
+# docs sync). Informational only — it does NOT drive the block decision and it is
+# not a vulnerability scan. Language-specific manifest set, accumulated over
+# every changed language like the checks above.
+DEPS_MANIFESTS=""
+for checked_language in $CHANGED_LANGS; do
+case "$checked_language" in
+    go)       DEPS_MANIFESTS="$DEPS_MANIFESTS go.mod go.sum" ;;
+    python)   DEPS_MANIFESTS="$DEPS_MANIFESTS pyproject.toml requirements.txt poetry.lock" ;;
+    node)     DEPS_MANIFESTS="$DEPS_MANIFESTS package.json package-lock.json yarn.lock pnpm-lock.yaml" ;;
+    rust)     DEPS_MANIFESTS="$DEPS_MANIFESTS Cargo.toml Cargo.lock" ;;
+    java)     DEPS_MANIFESTS="$DEPS_MANIFESTS pom.xml build.gradle build.gradle.kts gradle.properties" ;;
+    kotlin)   DEPS_MANIFESTS="$DEPS_MANIFESTS pom.xml build.gradle.kts gradle.properties" ;;
+    csharp)   DEPS_MANIFESTS="$DEPS_MANIFESTS *.csproj packages.lock.json" ;;
+    ruby)     DEPS_MANIFESTS="$DEPS_MANIFESTS Gemfile Gemfile.lock" ;;
+    php)      DEPS_MANIFESTS="$DEPS_MANIFESTS composer.json composer.lock" ;;
+    elixir)   DEPS_MANIFESTS="$DEPS_MANIFESTS mix.exs mix.lock" ;;
+    cpp)      DEPS_MANIFESTS="$DEPS_MANIFESTS CMakeLists.txt Makefile" ;;
+    scala)    DEPS_MANIFESTS="$DEPS_MANIFESTS build.sbt pom.xml build.scala" ;;
+    r)        DEPS_MANIFESTS="$DEPS_MANIFESTS DESCRIPTION renv.lock .Rprofile" ;;
+    flutter)  DEPS_MANIFESTS="$DEPS_MANIFESTS pubspec.yaml pubspec.lock" ;;
+    swift)    DEPS_MANIFESTS="$DEPS_MANIFESTS Package.swift Package.resolved" ;;
+esac
+done
 # Reuse the initial-commit-safe DIFF_RANGE computed above (HEAD~1..HEAD would
 # fail on an initial commit; DIFF_RANGE already falls back to the empty tree).
 git diff "$DIFF_RANGE" -- $DEPS_MANIFESTS > "$GATE_TMPDIR/deps.diff" 2>&1 || true
@@ -753,6 +813,13 @@ if [ "$DECISION" = "block" ]; then
     fi
 fi
 
+# An absent tool is a graceful skip by design, but the skip must never read as
+# a verified pass: when the gate allows only because a checker could not run,
+# surface the skip on the advisory channel (never on the decision channel).
+if [ "$DECISION" = "allow" ] && [ -n "$SKIPPED_TOOLS" ]; then
+    emit_gate_notice "sync-phase quality gate: checker(s)$SKIPPED_TOOLS absent — their checks did not run and were not counted as passing. Install them or let CI cover them." >> "$GATE_OUTPUT_FILE"
+fi
+
 # Record the outcome before writing stdout. A failing run writes its payload
 # first and its "fail" record second, so a crash between the two leaves a state
 # that re-gates or notifies on a later turn rather than one that passes silently.
@@ -768,7 +835,8 @@ fi
 cat "$GATE_OUTPUT_FILE"
 
 mkdir -p "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs"
-echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [sync-phase-quality-gate] language=$GATE_LANG languages=$(printf '%s' "$GATE_LANG_CANDIDATES" | tr '\n' ',') mode=$MODE decision=$DECISION $C1_LABEL=$C1_EXIT $C2_LABEL=$C2_EXIT deps_modified=$DEPS_MODIFIED head=$HEAD_SHA" \
+CHECKED_SUMMARY=$(printf '%s' "${CHANGED_LANGS# }" | tr ' ' ',')
+echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [sync-phase-quality-gate] language=$CHECKED_SUMMARY languages=$(printf '%s' "$GATE_LANG_CANDIDATES" | tr '\n' ',') mode=$MODE decision=$DECISION $C1_LABEL=$C1_EXIT $C2_LABEL=$C2_EXIT skipped_tools=$SKIPPED_TOOLS deps_modified=$DEPS_MODIFIED head=$HEAD_SHA" \
     >> "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs/sync-quality-gate.log"
 
 # The hook always exits 0. In blocking mode the {"decision":"block"} stdout JSON
