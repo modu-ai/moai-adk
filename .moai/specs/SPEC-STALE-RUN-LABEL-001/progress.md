@@ -142,7 +142,7 @@ evidence_file: ".moai/reports/t1373/run-ac-green.md (this worktree; card-tree wr
 
 ```yaml
 sync_complete_at: "2026-10-01"
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "043709597"
 sync_status: "complete"
 sync_branch: "WT-stale-run-label"
 sync_worktree: ".moai/worktrees/t1373 (card tree — the run commits a1a22b919..13806938c ride this branch)"
