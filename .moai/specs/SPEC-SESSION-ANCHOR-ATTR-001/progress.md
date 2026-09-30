@@ -32,7 +32,13 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — manager-develop 소관>_
+### M1 — W1 거부 귀속 가능화 (2026-09-30, HEAD 78df22755 기준 작업)
+
+- REQ-SAA-001/002 구현: `harness.Event`에 `cwd`·`worktree_path` additive omitempty 필드 추가(internal/harness/types.go — 행 스키마의 기계적 소재라 M1 봉투 내 캐스케이드), failure_observer.go에 WorktreeGuardRefusal 행 전용 attribution(session_id/cwd/트리 경로, 미해상 시 `unknown` 마커, 행 유실 없음). 다른 카테고리 행은 기존 형태 유지(REQ 스코프).
+- RED 증거(E8): 신규 3테스트 컴파일 실패 — `undefined: guardRefusalWorktreePath` / `undefined: guardRefusalAttribution` / `harness.Event has no field or method Cwd` (구현 전 실측).
+- GREEN: `go test ./internal/hook/ -run '^(TestGuardRefusalWorktreePath|TestClassifyError_GuardRefusal_UnknownMarkers|TestRecordToolFailureEvent_GuardRefusalRowFields|…기존 guard군)$'` — 전부 PASS, ok.
+- 기존 살생 변이 2건 테스트(TestClassifyError_GuardRefusal_AnchorOnly, _BeatsOOM) 무수정 GREEN — REQ-SAA-010.
+- draft→in-progress 전환(spec.md status+updated만) 본 M1 커밋에 동승.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -41,3 +47,12 @@ _<pending run-phase — manager-develop 소관>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase — manager-docs 소관>_
+
+## §F Phase 4 Mode Selection
+
+- 입력 파라미터: tier M · scope 7~9파일 (internal/hook 3 + internal/session 2 + docs 1 + 테스트) · 도메인 수 2 (hook/session + rules doc) · 언어 혼합 Go 위주 · concurrency benefit LOW (coding-heavy)
+- 모드 평가: direct 미선정(다중 파일·의미 변경) / fanout 미선정(coding-heavy — Anthropic 병렬화 주의사항) / sweep 미선정(기계적 대량 변형 아님) / **serial 선정**
+- Decision: serial (단일 manager-develop 순차 위탁, per-milestone 커밋)
+- 근거: Anthropic coding-task parallelism caveat — 코딩 과업은 연구와 달리 진병렬화가 드묾. 앵커 수리는 hook/session 패키지에 걸치는 의미 변경이라 단일 작성자 순차가 안전. 리서치는 이미 plan 단계에서 fanout으로 소진.
+- Kickoff: 운영자 직답 승인(진입 승인·자율 진행) 2026-09-30 — 이 기록이 그 게이트의 결정 레코드
+- Phase 1 skip 근거(위임 Section A에도 기재): verdict PASS 1.00(≥0.80) + 아티팩트 해시 불변(판정 후 spec/plan/acceptance/research 무변경 — progress.md는 해시 대상 아님)

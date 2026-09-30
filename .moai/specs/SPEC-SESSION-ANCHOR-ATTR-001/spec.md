@@ -2,7 +2,7 @@
 id: SPEC-SESSION-ANCHOR-ATTR-001
 title: "Bash 워크트리 세션 앵커 교차 레인 오판독 — 귀속 가능 계측기·재배치 감사·회피 규율 (card t1339, t1337+t1339 통합)"
 version: "1.0.0"
-status: draft
+status: in-progress
 created: 2026-09-30
 updated: 2026-09-30
 author: "MoAI lane (card t1339)"
