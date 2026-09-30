@@ -301,6 +301,13 @@ func TestWSR002_ConvergenceStoreIdentityAndCoexistence(t *testing.T) {
 
 // AC-WSR-006: the Stop review gates' input-to-root matrix. P's own store holds
 // a fail for S; W's own store holds a decoy pass for S.
+//
+// SPEC-CODEX-GATE-SCOPE-001 amendment (REQ-CGS-005): the two gates no longer
+// share one resolution chain. The codex REVIEW gate resolves the SESSION tree
+// (cwd → project_dir → env) so a spawn-frozen project_dir naming a different
+// tree cannot pull foreign WIP into the review; the MULTI gate keeps AC-WSR-006's
+// legacy chain (project_dir → cwd → env) unchanged. Rows where the two chains
+// agree read exactly as before; the divergent rows now require the split.
 func TestWSR006_ReviewGateRootMatrix(t *testing.T) {
 	const sid = "S"
 	fx := newWSRFixture(t, wsrWorkflowF)
@@ -343,7 +350,10 @@ func TestWSR006_ReviewGateRootMatrix(t *testing.T) {
 		out := wsrRunGate(t, true, payload)
 		return outcome{codexCalls: codexCalls, multiCalls: append([]string{}, *calls...), multiBlock: strings.Contains(out, `"decision":"block"`)}
 	}
-	classify := func(o outcome, r string) string {
+	classify := func(o outcome, r, s string) string {
+		tag := func(x string) string {
+			return map[string]string{"": "none", fx.W: "W", fx.P: "P"}[x]
+		}
 		switch {
 		case len(o.codexCalls) == 0 && len(o.multiCalls) == 0 && !o.multiBlock:
 			if r == "" {
@@ -355,6 +365,11 @@ func TestWSR006_ReviewGateRootMatrix(t *testing.T) {
 				return "Pp"
 			}
 			return "Wr"
+		case len(o.codexCalls) == 1 && len(o.multiCalls) == 1 && o.codexCalls[0] == s && o.multiCalls[0] == r && o.multiBlock:
+			// The divergent chains the SPEC-CODEX-GATE-SCOPE-001 amendment
+			// creates: the review gate reads the session tree, the multi gate
+			// the legacy chain.
+			return "rev=" + tag(s) + " multi=" + tag(r)
 		case len(o.multiCalls) == 1 && !o.multiBlock:
 			return "decoy-read"
 		}
@@ -368,11 +383,22 @@ func TestWSR006_ReviewGateRootMatrix(t *testing.T) {
 		if r == "" {
 			r = val[row.env]
 		}
+		// s: the SESSION chain the review gate resolves (REQ-CGS-005).
+		s := val[row.cwd]
+		if s == "" {
+			s = val[row.pd]
+		}
+		if s == "" {
+			s = val[row.env]
+		}
 		want := map[string]string{"": "N", fx.W: "Wr", fx.P: "Pp"}[r]
+		if s != r {
+			want = "rev=" + map[string]string{"": "none", fx.W: "W", fx.P: "P"}[s] + " multi=" + map[string]string{"": "none", fx.W: "W", fx.P: "P"}[r]
+		}
 		o := observe(t, val[row.pd], val[row.cwd], val[row.env])
-		got := classify(o, r)
-		t.Logf("row %2d pd=%s cwd=%s env=%s R=%s observed=%s (codex calls=%v multi calls=%v multi block=%v) required=%s",
-			i+1, row.pd, row.cwd, row.env, map[string]string{"": "empty", fx.W: "W", fx.P: "P"}[r], got, o.codexCalls, o.multiCalls, o.multiBlock, want)
+		got := classify(o, r, s)
+		t.Logf("row %2d pd=%s cwd=%s env=%s R=%s S=%s observed=%s (codex calls=%v multi calls=%v multi block=%v) required=%s",
+			i+1, row.pd, row.cwd, row.env, map[string]string{"": "empty", fx.W: "W", fx.P: "P"}[r], map[string]string{"": "empty", fx.W: "W", fx.P: "P"}[s], got, o.codexCalls, o.multiCalls, o.multiBlock, want)
 		if got != want {
 			t.Errorf("row %d: observed %s, required %s", i+1, got, want)
 		}

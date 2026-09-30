@@ -53,13 +53,15 @@ var reviewGateChangeDetector = hasReviewableChanges
 //   - {Decision: "block", Reason: "..."}               = BLOCK (keep working)
 //
 // Decision order (AC-MCP-009 self-gate + AC-MCP-010 opt-in + REQ-MCP-012
-// fail-open):
+// fail-open; scope resolution per SPEC-CODEX-GATE-SCOPE-001):
 //  1. gate disabled (config off)            → ALLOW (opt-in default-off, C6)
 //  2. stop_hook_active (loop prevention)    → ALLOW (mandatory CC protocol)
-//  3. no reviewable uncommitted change      → ALLOW (self-gate; no false block)
-//  4. codex missing                         → ALLOW (fail-open; can't trap the session)
-//  5. codex review pass / inconclusive      → ALLOW
-//  6. codex review FAIL                     → BLOCK (the gate's only block path)
+//  3. scope resolution (REQ-CGS-001)        → card | tree, from the session tree
+//     (REQ-CGS-005); class + basis logged (REQ-CGS-010), env context only
+//  4. no reviewable change IN THE SCOPE     → ALLOW (self-gate; no false block)
+//  5. codex missing                         → ALLOW (fail-open; can't trap the session)
+//  6. codex review pass / inconclusive      → ALLOW
+//  7. codex review FAIL                     → BLOCK (the gate's only block path)
 //
 // `enabled` is read by the caller (runCodexReviewGate via
 // readCodexReviewGateEnabled) and passed in so this function stays free of
@@ -72,13 +74,19 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 	if input != nil && input.StopHookActive {
 		return allow, nil // (2) loop prevention — never re-block an already-continuing turn
 	}
-	if !reviewGateChangeDetector(projectDir) {
-		return allow, nil // (3) self-gate — nothing reviewable ⇒ no false block
+	// (3) The scope is determined BEFORE any review or consult (REQ-CGS-001),
+	// from the SESSION's working-directory tree — never from a spawn-frozen
+	// CLAUDE_PROJECT_DIR naming a different tree (REQ-CGS-005). One resolver
+	// serves both execution paths (REQ-CGS-009).
+	scope := reviewScopeResolver(reviewScopeSessionDir(input, projectDir))
+	reviewGateScopeLogger(scope, reviewGateEnvContext())
+	if !reviewGateScopedChangeDetector(scope) {
+		return allow, nil // (4) scoped self-gate — nothing reviewable in the session's scope ⇒ no false block
 	}
 
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
-		return allow, nil // (4) fail-open: a missing reviewer must not trap the session
+		return allow, nil // (5) fail-open: a missing reviewer must not trap the session
 	}
 
 	// The 900s override (config.DefaultCodexReviewGateTimeout) is pinned in the
@@ -87,14 +95,14 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 	// budget. The moai-default 5s hook timeout does NOT apply (AC-MCP-010).
 	ctx, cancel := context.WithTimeout(context.Background(), config.DefaultCodexReviewGateTimeout)
 	defer cancel()
-	out, rpcErr := runCodexReviewRPC(ctx, binaryPath, codexMethodReviewStart, map[string]any{
-		"target": codexTargetUncommitted,
-		// cwd lets codex review the uncommitted changes in THIS project's tree;
-		// without it thread/start reviews the app-server's own cwd, not projectDir.
-		"cwd": projectDir,
-	})
+	// The review request carries the scope: tree scope stays shape-identical
+	// to its pre-SPEC form (REQ-CGS-003 / REQ-CRT-006), card scope names the
+	// card diff (REQ-CGS-002). projectDir remains the CONFIG root only —
+	// reviewGateConfigRoot above — never the review target when the session
+	// tree differs (REQ-CGS-005).
+	out, rpcErr := runCodexReviewRPC(ctx, binaryPath, codexMethodReviewStart, reviewRequestParams(scope))
 	if rpcErr != nil {
-		// (5) fail-open: an inconclusive or erroring reviewer ⇒ ALLOW. The error
+		// (6) fail-open: an inconclusive or erroring reviewer ⇒ ALLOW. The error
 		// rides back with the ALLOW so runCodexReviewGate can log WHY on stderr;
 		// it does not change the decision. Swallowing it here made a gate that
 		// was turned on but structurally unable to reach a verdict look exactly
@@ -103,7 +111,7 @@ func HandleCodexReviewGate(input *hook.HookInput, enabled bool, projectDir strin
 	}
 	if isBlockVerdict(out.Verdict) {
 		return &hook.HookOutput{
-			Decision: hook.DecisionBlock, // (6) the gate's only BLOCK path
+			Decision: hook.DecisionBlock, // (7) the gate's only BLOCK path
 			Reason:   "codex review gate: " + out.Summary,
 		}, nil
 	}
