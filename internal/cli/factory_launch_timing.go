@@ -82,6 +82,8 @@ func (t *factoryLaunchTiming) phaseElapsed() time.Duration {
 // exceeded the operator-configurable slow-launch threshold (REQ-012). The
 // second call is a no-op: the direct exec door reports before the seam and
 // the deferred error-path guard never duplicates the lines.
+// @MX:NOTE: [AUTO] the report must print BEFORE the platform exec seam — the direct door replaces the process (syscall.Exec), so a print after the seam never runs; the deferred error-path guard stays inert once reported
+// @MX:SPEC: SPEC-CODEX-LANE-SLOTS-001
 func (t *factoryLaunchTiming) reportSlow(w io.Writer) {
 	if t == nil || !t.started || t.reported {
 		return

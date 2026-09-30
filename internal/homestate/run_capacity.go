@@ -11,6 +11,8 @@ import (
 // A lane joining such a run treats it as capacity-open and applies the
 // growth rule (REQ-005); a positive value is the operator-declared count and
 // keeps the hard bound (REQ-006).
+// @MX:NOTE: [AUTO] zero is the capacity-open marker, not an unset datum — a join reading it must grow the scan, never fall back to a launcher-side bound
+// @MX:SPEC: SPEC-CODEX-LANE-SLOTS-001
 const LaneCapacityDerived = 0
 
 // RunLaneCapacity reads a run's recorded lane capacity

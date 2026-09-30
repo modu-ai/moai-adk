@@ -167,6 +167,9 @@ func ClaimFactoryLane(root, requested string, auto bool, pid int, runID string, 
 // (REQ-005); a recorded operator-declared count overrides maxSlots and the
 // full recorded run refuses (REQ-006, the t1294 contract); a run with no
 // record keeps the launcher-side bound. Explicit requests never grow (REQ-003).
+// @MX:ANCHOR: [AUTO] ClaimFactoryLaneWithin — the lane-slot claim engine's public boundary; the recorded capacity read inside the claim transaction is the automatic scan's authority (derived marker grows, recorded count overrides and refuses a full run, absent record keeps the launcher bound — t1294 contract)
+// @MX:REASON: the capacity policy lives here, not at the launcher — moving the bound decision back to the call site revives the capacity-blind 1..1 refusal this boundary was reworked to fix
+// @MX:SPEC: SPEC-CODEX-LANE-SLOTS-001
 func ClaimFactoryLaneWithin(root, requested string, auto bool, pid int, runID string, maxSlots int, alive func(int) bool) (FactoryClaim, error) {
 	if maxSlots < 1 {
 		return FactoryClaim{}, fmt.Errorf("factory lane limit must be positive")

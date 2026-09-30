@@ -2,7 +2,7 @@
 id: SPEC-CODEX-LANE-SLOTS-001
 title: "Codex factory lane slot-claim repair: capacity-aware auto-growth, default capacity policy, shared lane pool, and legacy-path parity"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-30
 updated: 2026-10-01
 author: manager-spec

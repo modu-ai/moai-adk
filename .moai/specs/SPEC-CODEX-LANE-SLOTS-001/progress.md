@@ -128,7 +128,27 @@ m1_to_mN_commit_strategy: per-milestone Conventional Commits M1→M2→M3→M4; 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-10-01
+sync_commit_sha: pending-backfill-sync  # placeholder — a commit cannot cite its own SHA; the lane backfills the real SHA in a follow-up commit
+sync_status: complete
+b12_self_test_a: pass  # pre-emission grep `grep -c 'SPEC-CODEX-LANE-SLOTS-001' CHANGELOG.md` = 0 before this sync commit (duplicate-entry guard)
+b12_self_test_b: pass  # AC count: MOAI-AC-COUNTER against acceptance.md (tier M source) → live=10 excluded=0 ambiguous=0; the CHANGELOG entries cite the same 10 (AC-001..010)
+b12_self_test_c: pass  # file-path verification: all 18 implementation paths cited in the CHANGELOG entries confirmed via ls against this tree
+changelog_entry_position: "[Unreleased] > Fixed (root defect, first entry) + Added (launch timing report, batched owner probe)"
+frontmatter_status_transitions:
+  in_progress_to_implemented: merged  # folded into the single sync commit per the 3-phase close
+  implemented_to_completed: this commit  # spec.md frontmatter status+updated only; body sections byte-untouched
+canary_compliance_check:
+  spec_body_untouched: true  # spec.md/plan.md/acceptance.md bodies byte-unchanged (frontmatter-only edit)
+  runtime_files_untouched: true  # .moai/state, .moai/harness, .moai/cache untouched
+mx_tag_validation:
+  added: 3  # 1 ANCHOR (factory_slots.go ClaimFactoryLaneWithin — public claim-API boundary + REASON) + 2 NOTE (run_capacity.go zero-means-open marker; factory_launch_timing.go report-before-exec-seam); English comments, within per-file limits
+  dangerous_patterns: 0  # no goroutines, no complexity >= 15 introduced
+codemap_refresh: modules.md (header note re-stamped at anchor b8f437bae; cli 389→390, kanban 61→63 cell correction, homestate 27→31 rows) + overview.md (scale table 1452→1455 / 2619→2628; edges 453/282 re-confirmed unchanged) + provenance.json re-stamped to this tree
+docs_site_decision: no-edit  # factory-mode pages (4 locales) describe `-f lane` auto-assignment as the unrefused next-free-number — behavior this repair makes true for codex lanes too; grep found no bound-specific or now-false claim (no "no free lane slots"/"1..1" text anywhere in docs-site/content)
+recorded_by: manager-docs (sync phase, card t1378)
+```
 
 ## §F Phase 4 Mode Selection
 
