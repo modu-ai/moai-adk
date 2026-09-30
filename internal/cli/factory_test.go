@@ -544,7 +544,7 @@ func TestEnterFactoryLeadModeMintsRunID(t *testing.T) {
 func TestEnterFactoryWorkerModeEnv(t *testing.T) {
 	clearFactoryTestEnv(t)
 
-	restore := enterFactoryLaneMode("worker-3", 5, "")
+	restore := enterFactoryLaneMode("worker-3", 5, "", config.FactoryDispatchAuto)
 	defer restore()
 
 	if got := os.Getenv(config.EnvMoaiFactoryWorker); got != "worker-3" {
@@ -580,7 +580,7 @@ func TestEnterFactoryWorkerModeUnknownCount(t *testing.T) {
 	clearFactoryTestEnv(t)
 	t.Setenv(config.EnvClaudeCodeMaxConcurrentSubagents, "3")
 
-	restore := enterFactoryLaneMode("worker-5", 0, "")
+	restore := enterFactoryLaneMode("worker-5", 0, "", config.FactoryDispatchAuto)
 	defer restore()
 
 	if got := os.Getenv(config.EnvMoaiFactoryWorkers); got != "0" {
@@ -841,12 +841,13 @@ func TestFactoryDefaultWorkersConstant(t *testing.T) {
 // at the moment the launch happens (the deferred restores are still live
 // there, which is the point — the signal REQ-FM-023 transports).
 type factoryLaunchCapture struct {
-	args    []string
-	runID   string
-	workers string
-	worker  string
-	addr    string
-	cap     string
+	args     []string
+	runID    string
+	workers  string
+	worker   string
+	addr     string
+	cap      string
+	leadName string
 }
 
 // installFactoryLaunchSeam swaps unifiedLaunchFunc, findProjectRootFn, and
@@ -862,6 +863,7 @@ func installFactoryLaunchSeam(t *testing.T) *factoryLaunchCapture {
 		c.worker = os.Getenv(config.EnvMoaiFactoryWorker)
 		c.addr = os.Getenv(config.EnvMoaiKanbanLeadAddr)
 		c.cap = os.Getenv(config.EnvClaudeCodeMaxConcurrentSubagents)
+		c.leadName = os.Getenv(config.EnvMoaiKanbanLeadName)
 		return nil
 	}
 	origFn := findProjectRootFn

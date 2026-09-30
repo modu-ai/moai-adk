@@ -67,6 +67,13 @@ type kanbanEntryParse struct {
 	FactoryEnabled bool   // -k selected the factory (numeric count or lane-shape name)
 	FactoryLanes   int    // the factory count (explicit or the default)
 	FactoryRun     string // explicit --factory-run selector for mixed factory joins
+	// FactoryLead is the raw `-l/--lead <name>` target a lane join's leader
+	// discovery aims at (SPEC-FACTORY-LANE-JOIN-SOCKET-001 REQ-008); empty
+	// means the canonical leader label, resolved by the join gate. The field
+	// carries the RAW value: the default resolution lives in one place, and
+	// the parse-level refusals (legacy spelling, surface gates) have already
+	// run by the time a non-empty value reaches the gate.
+	FactoryLead string
 	// FactoryAutoNumber marks a lane number the launcher chose itself
 	// (`-f lane`), as opposed to one the operator typed (`-f lane-<n>`,
 	// `--name lane-<n>`); the claim reports legacy collisions differently.
@@ -75,7 +82,12 @@ type kanbanEntryParse struct {
 	// factory entry only): "" when none was given, which the lane reads as
 	// the default clear-each.
 	ClearPolicy string
-	Rest        []string // args with -k and its consumed value removed
+	// AutoDispatchManual marks the lane's --no-auto-dispatch opt-out
+	// (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-011, factory entry only):
+	// false (the code default) launches a self-dispatch lane, true launches
+	// a manual-mode lane.
+	AutoDispatchManual bool
+	Rest               []string // args with -k and its consumed value removed
 }
 
 // parseKanbanFlag extracts --kanban / -k and its optional value from args.

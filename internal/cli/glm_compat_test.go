@@ -29,16 +29,17 @@ func setupGLMTestConfig(t *testing.T, llmYAML string) *config.ConfigManager {
 }
 
 // TestLoadGLMConfig_NewFormat verifies that high/medium/low fields are used
-// when they contain explicit non-empty values.
+// when they contain explicit non-empty values (offered-set values pass
+// through per REQ-MMU-004).
 func TestLoadGLMConfig_NewFormat(t *testing.T) {
 	mgr := setupGLMTestConfig(t, `
 llm:
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
-      high: "new-high-model"
-      medium: "new-medium-model"
-      low: "new-low-model"
+      high: "glm-5.3"
+      medium: "glm-5.3-flash"
+      low: "glm-5.3-flash"
 `)
 	origDeps := deps
 	deps = &Dependencies{Config: mgr}
@@ -48,19 +49,22 @@ llm:
 	if err != nil {
 		t.Fatalf("loadGLMConfig should not error: %v", err)
 	}
-	if cfg.Models.High != "new-high-model" {
-		t.Errorf("Models.High = %q, want %q", cfg.Models.High, "new-high-model")
+	if cfg.Models.High != "glm-5.3" {
+		t.Errorf("Models.High = %q, want %q", cfg.Models.High, "glm-5.3")
 	}
-	if cfg.Models.Medium != "new-medium-model" {
-		t.Errorf("Models.Medium = %q, want %q", cfg.Models.Medium, "new-medium-model")
+	if cfg.Models.Medium != "glm-5.3-flash" {
+		t.Errorf("Models.Medium = %q, want %q", cfg.Models.Medium, "glm-5.3-flash")
 	}
-	if cfg.Models.Low != "new-low-model" {
-		t.Errorf("Models.Low = %q, want %q", cfg.Models.Low, "new-low-model")
+	if cfg.Models.Low != "glm-5.3-flash" {
+		t.Errorf("Models.Low = %q, want %q", cfg.Models.Low, "glm-5.3-flash")
 	}
 }
 
-// TestLoadGLMConfig_LegacyFields verifies that opus/sonnet/haiku are used
-// as fallbacks when high/medium/low are explicitly empty.
+// TestLoadGLMConfig_LegacyFields pins the post-DR-2 behavior (REQ-MMU-004):
+// the legacy opus/sonnet/haiku alias FIELDS are deleted, so an llm.yaml
+// carrying them loads without error (non-strict loader silently ignores the
+// keys — the accepted silent half of DR-2) and the empty tier slots resolve
+// to the tier defaults, never to the ignored alias values.
 func TestLoadGLMConfig_LegacyFields(t *testing.T) {
 	mgr := setupGLMTestConfig(t, `
 llm:
@@ -70,9 +74,9 @@ llm:
       high: ""
       medium: ""
       low: ""
-      opus: "legacy-high-model"
-      sonnet: "legacy-medium-model"
-      haiku: "legacy-low-model"
+      opus: "glm-4.7"
+      sonnet: "glm-5.1"
+      haiku: "glm-4.6"
 `)
 	origDeps := deps
 	deps = &Dependencies{Config: mgr}
@@ -80,33 +84,35 @@ llm:
 
 	cfg, err := loadGLMConfig("/unused")
 	if err != nil {
-		t.Fatalf("loadGLMConfig should not error: %v", err)
+		t.Fatalf("loadGLMConfig should not error (alias keys are ignored, not rejected): %v", err)
 	}
-	if cfg.Models.High != "legacy-high-model" {
-		t.Errorf("Models.High = %q, want %q (legacy fallback from opus)", cfg.Models.High, "legacy-high-model")
+	sysDefaults := config.NewDefaultLLMConfig()
+	if cfg.Models.High != sysDefaults.GLM.Models.High {
+		t.Errorf("Models.High = %q, want the tier default %q (alias keys are ignored — DR-2)", cfg.Models.High, sysDefaults.GLM.Models.High)
 	}
-	if cfg.Models.Medium != "legacy-medium-model" {
-		t.Errorf("Models.Medium = %q, want %q (legacy fallback from sonnet)", cfg.Models.Medium, "legacy-medium-model")
+	if cfg.Models.Medium != sysDefaults.GLM.Models.Medium {
+		t.Errorf("Models.Medium = %q, want the tier default %q (alias keys are ignored — DR-2)", cfg.Models.Medium, sysDefaults.GLM.Models.Medium)
 	}
-	if cfg.Models.Low != "legacy-low-model" {
-		t.Errorf("Models.Low = %q, want %q (legacy fallback from haiku)", cfg.Models.Low, "legacy-low-model")
+	if cfg.Models.Low != sysDefaults.GLM.Models.Low {
+		t.Errorf("Models.Low = %q, want the tier default %q (alias keys are ignored — DR-2)", cfg.Models.Low, sysDefaults.GLM.Models.Low)
 	}
 }
 
-// TestLoadGLMConfig_MixedFormat verifies that new fields take precedence
-// over legacy fields when both are present, and legacy fills in missing new fields.
+// TestLoadGLMConfig_MixedFormat verifies that the real tier fields resolve
+// their own values while the legacy alias keys (present in the same file)
+// contribute nothing — REQ-MMU-004 deleted their fields.
 func TestLoadGLMConfig_MixedFormat(t *testing.T) {
 	mgr := setupGLMTestConfig(t, `
 llm:
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
-      high: "new-high"
+      high: "glm-5.3"
       medium: ""
-      low: "new-low"
-      opus: "legacy-high"
-      sonnet: "legacy-medium"
-      haiku: "legacy-low"
+      low: "glm-5.3-flash"
+      opus: "glm-4.7"
+      sonnet: "glm-5.1"
+      haiku: "glm-4.6"
 `)
 	origDeps := deps
 	deps = &Dependencies{Config: mgr}
@@ -116,17 +122,18 @@ llm:
 	if err != nil {
 		t.Fatalf("loadGLMConfig should not error: %v", err)
 	}
-	// high is set directly, should use it
-	if cfg.Models.High != "new-high" {
-		t.Errorf("Models.High = %q, want %q (new field takes precedence)", cfg.Models.High, "new-high")
+	// high is set directly to an offered id, should use it
+	if cfg.Models.High != "glm-5.3" {
+		t.Errorf("Models.High = %q, want %q (tier field takes precedence)", cfg.Models.High, "glm-5.3")
 	}
-	// medium is empty, should fall back to sonnet
-	if cfg.Models.Medium != "legacy-medium" {
-		t.Errorf("Models.Medium = %q, want %q (legacy fallback from sonnet)", cfg.Models.Medium, "legacy-medium")
+	// medium is empty, and the sonnet alias key is ignored — tier default
+	sysDefaults := config.NewDefaultLLMConfig()
+	if cfg.Models.Medium != sysDefaults.GLM.Models.Medium {
+		t.Errorf("Models.Medium = %q, want the tier default %q (alias keys contribute nothing — DR-2)", cfg.Models.Medium, sysDefaults.GLM.Models.Medium)
 	}
 	// low is set directly, should use it
-	if cfg.Models.Low != "new-low" {
-		t.Errorf("Models.Low = %q, want %q (new field takes precedence)", cfg.Models.Low, "new-low")
+	if cfg.Models.Low != "glm-5.3-flash" {
+		t.Errorf("Models.Low = %q, want %q (tier field takes precedence)", cfg.Models.Low, "glm-5.3-flash")
 	}
 }
 

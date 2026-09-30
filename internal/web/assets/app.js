@@ -343,6 +343,45 @@
   //
   // 패널은 DOM 에서 제거되지 않고 CSS display:none 만 토글된다 — 비활성 패널의
   // 폼 필드도 그대로 제출된다 (atomic Save contract).
+  // updateSettingsPageHead 은 settings-page-head(설정 상세 머리글)를 방금 활성화한
+  // 탭의 제목·설명·효과 배지로 맞춘다. 서버가 그린 머리글은 로드 시점 탭 기준이라,
+  // 클라이언트 탭 전환만 일어나면 머리글이 첫 탭에 고착됐다 (t1280 — 구스 스크린샷
+  // #27·#28: 모든 페이지 제목이 '에이전트'로 남는 결함). 탭 메타는 shell.templ
+  // subnav 행의 data-page-* 속성이 실어 준다. 머리글이 없는 화면에서는 조용히
+  // 아무것도 하지 않는다 — 설정 화면 밖에서는 갱신할 대상이 없다.
+  function updateSettingsPageHead(link) {
+    var head = document.querySelector(".settings-page-head");
+    var title = document.getElementById("settings-page-title");
+    if (!head || !title) {
+      return;
+    }
+    var tKey = link.getAttribute("data-page-title-key");
+    if (tKey) {
+      title.setAttribute("data-i18n", tKey);
+      title.textContent = link.getAttribute("data-page-title") || tKey;
+    }
+    var desc = head.querySelector(".settings-page-head__desc");
+    var dKey = link.getAttribute("data-page-desc-key");
+    if (desc && dKey) {
+      desc.setAttribute("data-i18n", dKey);
+      desc.textContent = link.getAttribute("data-page-desc") || dKey;
+    }
+    var badge = head.querySelector(".settings-page-head__meta .badge");
+    var eKey = link.getAttribute("data-page-effect-key");
+    if (badge && eKey) {
+      badge.setAttribute("data-i18n", eKey);
+      badge.textContent = link.getAttribute("data-page-effect") || eKey;
+    }
+    var direct = head.querySelector(".settings-page-head__link");
+    var href = link.getAttribute("href");
+    if (direct && href) {
+      direct.setAttribute("href", href);
+    }
+    // 영문 baseline 으로 바꿔 놓은 텍스트를 현재 로케일 사전으로 재번역한다 —
+    // 이 호출이 없으면 ko/ja/zh 화면에서 탭을 옮길 때마다 영어로 튄다.
+    applyI18n(readPersistedLang());
+  }
+
   function wireTabs() {
     var tabLinks = document.querySelectorAll('.subnav__row[role="tab"]');
     if (tabLinks.length === 0) {
@@ -365,6 +404,7 @@
         }
         this.setAttribute("aria-selected", "true");
         panel.classList.add("is-active");
+        updateSettingsPageHead(this);
         // 새로고침해도 같은 탭으로 돌아오도록 주소만 맞춰 둔다. 히스토리에는
         // 쌓지 않는다 — 탭 전환은 뒤로 가기로 되돌릴 일이 아니다.
         var href = this.getAttribute("href");

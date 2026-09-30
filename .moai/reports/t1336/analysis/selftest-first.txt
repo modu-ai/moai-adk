@@ -1,0 +1,4 @@
+usage: jamo_integrity.py [-h] [--max-distance MAX_DISTANCE]
+                         [--min-cand-freq MIN_CAND_FREQ] [--top TOP]
+                         {check,restore,selftest} ...
+jamo_integrity.py: error: unrecognized arguments: --selftest

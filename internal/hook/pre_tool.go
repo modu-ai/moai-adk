@@ -558,6 +558,24 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 			)
 			return NewDenyOutput(reason), nil
 		}
+		// Protected-branch commit deny (SPEC-MAIN-COMMIT-BAN-001): the second,
+		// branch-CONDITIONAL deny class of the same BranchGuard family
+		// (REQ-2.4), riding the SAME Workflow.BranchGuard.Enabled gate
+		// (REQ-3.4 — no new opt-in flag). Sits after the branch-state check
+		// and before the allow fall-through. An empty deny_commits_on list
+		// short-circuits here before any command scan or subprocess runs
+		// (REQ-2.5); checkProtectedCommit re-asserts the same guard
+		// internally.
+		if denyList := h.protectedCommitDenyList(); len(denyList) > 0 {
+			if decision, reason := checkProtectedCommit(input, h.projectRoot(), denyList); decision == DecisionDeny {
+				slog.Warn("branch guard denied protected-branch commit",
+					"tool_name", input.ToolName,
+					"session_id", input.SessionID,
+					"reason", reason,
+				)
+				return NewDenyOutput(reason), nil
+			}
+		}
 	}
 
 	// Release-integration holder guard (card t194). Sits directly after the
@@ -996,6 +1014,23 @@ func (h *preToolHandler) integrationLockEnabled() bool {
 		return false
 	}
 	return cfg.Workflow.IntegrationLock.Enabled
+}
+
+// protectedCommitDenyList returns the branch names the protected-branch commit
+// deny refuses commits on (SPEC-MAIN-COMMIT-BAN-001 REQ-3.1). Defensive in the
+// same shape as branchGuardEnabled: a nil ConfigProvider or nil Config yields
+// nil — the shipped empty default — keeping the deny inert for unconfigured
+// users. Read at the call site so the empty list costs nothing beyond the len
+// check (REQ-2.5).
+func (h *preToolHandler) protectedCommitDenyList() []string {
+	if h.cfg == nil {
+		return nil
+	}
+	cfg := h.cfg.Get()
+	if cfg == nil {
+		return nil
+	}
+	return cfg.Workflow.BranchGuard.DenyCommitsOn
 }
 
 // slotLeaseConfig returns the slot-lease section and whether its guard is

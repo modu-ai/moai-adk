@@ -156,15 +156,27 @@ func TestTodoLegacyRecordRoundTrips(t *testing.T) {
 	if len(items) != 3 {
 		t.Fatalf("items = %d, want 3", len(items))
 	}
-	want := map[string]bool{"id": true, "text": true, "added_at": true, "spec_id": true, "state": true, "card_uuid": true}
+	// The per-item document contract: the frozen five, the declared additive
+	// keys (card_uuid, picked_at/dropped_at on stamped cards), and — SPEC-
+	// TODO-CLASSIFY-DISPATCH-001 — `classification`, the one additive
+	// nullable judgment field the add path records at creation. Present on
+	// every card the current add path admits; absent (`omitempty`) on cards
+	// recorded before the field existed.
+	want := map[string]bool{"id": true, "text": true, "added_at": true, "spec_id": true, "state": true, "card_uuid": true, "classification": true}
 	for i, it := range items {
-		if len(it) != len(want) {
-			t.Errorf("item %d has %d keys, want exactly %d: %v", i, len(it), len(want), todoJSONKeys(it))
-		}
 		for k := range it {
 			if !want[k] {
 				t.Errorf("item %d carries an out-of-contract key %q", i, k)
 			}
+		}
+		// `classification` is the declared additive key (SPEC-TODO-CLASSIFY-
+		// DISPATCH-001): present on cards the current add path admits, absent
+		// (`omitempty`) on rows recorded before the field existed — so an
+		// item carries the full contract or the contract minus that one key,
+		// never a third shape.
+		if len(it) != len(want) && len(it) != len(want)-1 {
+			t.Errorf("item %d has %d keys, want %d (classified) or %d (a card recorded before classification existed): %v",
+				i, len(it), len(want), len(want)-1, todoJSONKeys(it))
 		}
 	}
 	var addedUUID string

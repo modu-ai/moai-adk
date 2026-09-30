@@ -34,8 +34,19 @@ func consoleTabs() []consoleTab {
 	return []consoleTab{
 		{ID: "identity", LabelKey: "sec.identity.title", Baseline: "Identity"},
 		{ID: "language", LabelKey: "sec.language.title", Baseline: "Language"},
-		{ID: "launch", LabelKey: "sec.launch.title", Baseline: "LLM"},
+		{ID: "launch", LabelKey: "sec.launch.title", Baseline: "Claude settings"},
 		{ID: "llm", LabelKey: "sec.llm.title", Baseline: "GLM Settings"},
+		// codex (SPEC-WEB-CODEX-PANEL-001): a READ-ONLY MIRROR of the codex
+		// settings on the audit and workflow panels. It owns no field and removes
+		// none — every mirrored field stays declared, rendered and editable on
+		// its owning tab. t1278 placed it here to group the three backend tabs
+		// (CLAUDE 설정 · GLM 설정 · Codex 설정) and to separate it from the MCP
+		// tab, whose tool toggles it no longer mirrors. Still deliberately NOT
+		// last: panelHTML slices a panel from its marker to the NEXT one and
+		// falls back to end-of-document for the final panel, so a codex panel
+		// placed last would silently widen every panel-scoped assertion into a
+		// whole-page one.
+		{ID: "codex", LabelKey: "tab.codex.title", Baseline: "Codex settings"},
 		// workflow restored (Issue 3): the worktree auto-create toggle lives here.
 		// Original ordering placed it after llm (pre-cca120c70).
 		{ID: "workflow", LabelKey: "sec.workflow.title", Baseline: "Workflow"},
@@ -49,16 +60,6 @@ func consoleTabs() []consoleTab {
 		// The move is a RENDER placement only — the fields keep SectionWorkflow
 		// and the workflow.yaml seam persist target (AP-4).
 		{ID: "audit", LabelKey: "tab.audit.title", Baseline: "Audit"},
-		// codex (SPEC-WEB-CODEX-PANEL-001): a READ-ONLY MIRROR of the codex
-		// settings scattered across audit and mcp. It owns no field and removes
-		// none — every mirrored field stays declared, rendered and editable on
-		// its owning tab. Placed immediately after audit, where its
-		// most-consulted values live, and deliberately NOT last: panelHTML
-		// slices a panel from its marker to the NEXT one and falls back to
-		// end-of-document for the final panel, so a codex panel placed last
-		// would silently widen every panel-scoped assertion into a whole-page
-		// one.
-		{ID: "codex", LabelKey: "tab.codex.title", Baseline: "Codex"},
 		{ID: "report", LabelKey: "sec.report.title", Baseline: "Report"},
 		// SPEC-MCP-CONSOLE-001 M2: the per-tool MCP enablement panel. Each of the
 		// 17 tools renders as an individually-toggleable bool; the 4 write-capable
@@ -81,6 +82,19 @@ func consoleTabs() []consoleTab {
 		// into gate.yaml; the runner honors it only under MOAI_PRECOMMIT=1.
 		{ID: "gate", LabelKey: "sec.gate.title", Baseline: "Quality Gate"},
 	}
+}
+
+// radioEffectiveValue resolves the value a radio row should preselect: the
+// stored value, or — when nothing is on disk — the field's declared Default.
+// t1278: the select widget preselected defaults through its own path; the
+// radio conversion would have silently lost that affordance (and with it the
+// GLM tier effort default) without this bridge. templ cannot reassign a
+// parameter mid-markup, so the fallback lives here.
+func radioEffectiveValue(f settings.FieldDef, value string) string {
+	if value == "" && f.Default != "" {
+		return f.Default
+	}
+	return value
 }
 
 // mcpToolNameFromField extracts the tool identifier from an MCP enablement
@@ -155,6 +169,10 @@ type schemaSectionMeta struct {
 	Title    string
 	Desc     string
 	Fields   []settings.FieldDef
+	// Advanced는 고급 접기 영역(<details class="panel__advanced">)으로 내려가는
+	// 필드다 (t1280). 기본값 유지가 정답인 운영 한도(루프 방지·완성 루프 반복)만
+	// 놓는다 — 화면에서 접혀도 폼 제출에는 그대로 포함된다(atomic Save 계약 유지).
+	Advanced []settings.FieldDef
 	// Extras가 true인 패널만 ID 섹션의 read-only 표시 키와 raw view 블록을
 	// 렌더한다. 한 섹션이 여러 패널로 갈라질 때(workflow → 워크플로우/감사) 그
 	// 부수 표면이 중복 렌더되는 것을 막는 primary-panel 표식이다.
@@ -212,9 +230,32 @@ func partitionWorkflowFields() (rest, worktree, audit, jev []settings.FieldDef) 
 	return rest, worktree, audit, jev
 }
 
+// isAdvancedWorkflowField는 workflow 탭에서 고급 접기 영역으로 내려갈 필드를
+// 판정한다 (t1280 — 구스 지시 "나머진 기본 설정을 그대로 사용하면 되지 않나").
+// 루프 방지 3종과 완성 루프 반복 한도는 값 변경 없이 기본값 유지가 운영 정답인
+// 항목이라, 화면에서는 접되 저장 경로는 그대로 둔다.
+func isAdvancedWorkflowField(name string) bool {
+	return name == "workflow.agentic_loop.max_iterations" ||
+		strings.HasPrefix(name, "workflow.loop_prevention.")
+}
+
+// splitWorkflowAdvanced는 workflow 잔여 필드를 (보임, 고급 접기) 둘로 가른다.
+// 입력 순서를 보존한다 — 스키마 순서가 곧 렌더 순서다.
+func splitWorkflowAdvanced(fields []settings.FieldDef) (visible, advanced []settings.FieldDef) {
+	for _, f := range fields {
+		if isAdvancedWorkflowField(f.Name) {
+			advanced = append(advanced, f)
+		} else {
+			visible = append(visible, f)
+		}
+	}
+	return visible, advanced
+}
+
 // schemaSectionMetas는 제네릭 렌더 대상 패널의 표시 메타를 렌더 순서대로 반환한다.
 func schemaSectionMetas() []schemaSectionMeta {
 	workflowRest, worktreeFields, auditFields, _ := partitionWorkflowFields()
+	workflowVisible, workflowAdvanced := splitWorkflowAdvanced(workflowRest)
 	return []schemaSectionMeta{
 		{
 			ID: settings.SectionLLM, PanelID: "llm", Icon: "rocket",
@@ -237,7 +278,7 @@ func schemaSectionMetas() []schemaSectionMeta {
 			ID: settings.SectionWorkflow, PanelID: "workflow", Icon: "panel-bottom",
 			TitleKey: "sec.workflow.title", DescKey: "sec.workflow.desc",
 			Title: "Workflow", Desc: "Workflow execution mode and loop-prevention settings.",
-			Fields: workflowRest, Extras: true,
+			Fields: workflowVisible, Advanced: workflowAdvanced, Extras: true,
 		},
 		{
 			ID: settings.SectionGitStrategy, PanelID: "git-worktree", Icon: "folder-git",

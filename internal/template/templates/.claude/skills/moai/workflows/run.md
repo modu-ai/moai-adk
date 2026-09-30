@@ -24,9 +24,9 @@ triggers:
   phases: ["run"]
 ---
 
-<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
-<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
-<!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai run Phase <N> <enter|exit> -->
+<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
 
 # Run Workflow Entry Router
 
@@ -124,19 +124,19 @@ Read .claude/skills/moai/workflows/run/mode-orchestration.md
 
 A CI audit verifies the literal `MODE_UNKNOWN` sentinel remains present in this skill body (shared with `design.md`). `MODE_UNKNOWN` is emitted when `--mode <value>` is supplied to `/moai run` but `<value>` is not in the valid set `{autopilot, loop, team, pipeline}` (note: pipeline is itself rejected with the separate `MODE_PIPELINE_ONLY_UTILITY` sentinel — see line 71). The complementary `MODE_PIPELINE_ONLY_UTILITY` and `MODE_TEAM_UNAVAILABLE` sentinels are documented in this skill body and in `design.md`. `MODE_TEAM_UNAVAILABLE` is retained as the historical retired-era fallback marker (the `team` mode is now experimental-live; see the Mode dispatch list above).
 
-Ordering invariant (read before the autonomy section below): the Implementation Kickoff Approval `AskUserQuestion` human gate is always cleared FIRST; any run-phase autonomy set is downstream of it. The next section documents that ordering and the autonomy condition together.
+Ordering invariant (read before the autonomy section below): the plan→run Kickoff gate is always met FIRST — its default autonomous form (audit-cross evidence + decision record per `.claude/rules/moai/workflow/auto-semantics.md` §9.1) or the operator form keep-set cases keep; any run-phase autonomy set is downstream of it. The next section documents that ordering and the autonomy condition together.
 
 ## Run-phase Autonomy (ac_converge)
 
-This section wires the run-phase autonomy mechanisms — the Implementation Kickoff Approval human-gate ordering reference and the `ac_converge` goal condition — into a single co-located place. The two parts are ORDERED: the Implementation Kickoff Approval `AskUserQuestion` human gate is described FIRST (it must be cleared before any autonomy begins), then the `ac_converge` arming (entered only after Implementation Kickoff Approval approval).
+This section wires the run-phase autonomy mechanisms — the plan→run Kickoff gate ordering reference and the `ac_converge` goal condition — into a single co-located place. The two parts are ORDERED: the Kickoff gate is described FIRST (it must be met before any autonomy begins), then the `ac_converge` arming (entered only after the gate is met).
 
-> **Progression-mode axis (autonomous vs. semi-autonomous)**: the Implementation Kickoff Approval gate also offers a progression-mode choice — autonomous (default; the loop continues without per-turn prompts) or semi-autonomous (the `stop-goal` hook emits a checkpoint-signal each turn for orchestrator-side `AskUserQuestion` confirmation). This axis selects ONLY post-approval progression; the gate stays mandatory in both modes. See `.claude/skills/moai/workflows/goal.md` § Progression Mode.
+> **Progression-mode axis (autonomous vs. semi-autonomous)**: the Kickoff gate also offers a progression-mode choice — autonomous (default; the loop continues without per-turn prompts) or semi-autonomous (the `stop-goal` hook emits a checkpoint-signal each turn for orchestrator-side `AskUserQuestion` confirmation). This axis selects ONLY post-gate progression; the gate's evidence standard holds in both modes. See `goal.md` § Progression Mode.
 
-### 1. Implementation Kickoff Approval ordering (the human gate comes first)
+### 1. Kickoff gate ordering (the gate comes first)
 
-[HARD] Before any run-phase autonomy (arming a goal, a sweep Workflow launch, or any autonomous loop), the orchestrator MUST have already obtained explicit Implementation Kickoff Approval approval. Implementation Kickoff Approval is the plan→run HUMAN GATE: a mandatory orchestrator-issued `AskUserQuestion` round (run-phase entry / further review / abort, first option marked "(Recommended)" — the label is withheld while `interview.recommendation_mode` is `pull`; the gate itself stays mandatory and score-independent in both modes, per `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles) presented after Phase 1 (Plan Audit Gate) and before Phase 4 (Mode Selection). The orchestrator emits this gate; it is never embedded inside a subagent body (subagents cannot prompt the user — the asymmetric boundary in `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary).
+[HARD] Before any run-phase autonomy (arming a goal, a sweep Workflow launch, or any autonomous loop), the orchestrator MUST have already met the plan→run Kickoff gate in one of its two forms. DEFAULT form — autonomous: the independent audit cross (plan-auditor verdict PASS; FAIL / INCONCLUSIVE fail closed), the SPEC's plan phase recorded audit-ready, artifact-hash integrity since that verdict, and no open blocker — the transition writes a decision record the sync audit re-reads (`.claude/rules/moai/workflow/auto-semantics.md` §9.1). Operator form — keep-set cases only: an orchestrator-issued `AskUserQuestion` round (run-phase entry / further review / abort, first option marked "(Recommended)" — the label is withheld while `interview.recommendation_mode` is `pull`, per `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles) presented after Phase 1 (Plan Audit Gate) and before Phase 4 (Mode Selection). The gate is never embedded inside a subagent body (subagents cannot prompt the user — the asymmetric boundary in `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary).
 
-[HARD] Implementation Kickoff Approval is **score-independent**: the orchestrator emits the Implementation Kickoff Approval `AskUserQuestion` gate **regardless of the plan-auditor score**, including the high skip-eligible case. Skip-eligibility (a high autonomous-bypass score) applies ONLY to Phase 1 plan-auditor verdict re-execution — NOT to Implementation Kickoff Approval. A high plan-auditor score never authorizes skipping the Implementation Kickoff Approval human gate. This is the Implementation Kickoff Approval mandatory-restoration invariant per the Implementation Kickoff Approval mandatory-restoration policy.
+[HARD] The gate's entry evidence is verdict-governed: the adjudication consumes the plan-auditor verdict itself, not a raw score claim. Skip-eligibility (a high autonomous-bypass score) applies ONLY to Phase 1 plan-auditor verdict re-execution — NOT to the Kickoff gate. Implementation Kickoff Approval is emitted regardless of the plan-auditor score — the per-tier skip-eligible thresholds (S 0.75 / M 0.80 / L 0.85) waive nothing here. Under the default-autonomous transition (`.claude/rules/moai/workflow/auto-semantics.md` §9.1), a PASS verdict + unchanged artifact hashes + audit-ready status + no open blocker is not a bypass of the gate — it IS the gate's autonomous entry evidence, written as a decision record; keep-set cases still take the operator form.
 
 Because Implementation Kickoff Approval also drains all user preferences (Tier, mode preference, PR strategy), the orchestrator collects every preference at this gate BEFORE launching any autonomy — goal-loop turn agents and sweep Workflow agents cannot prompt the user mid-run, so the one decision that must involve the user is taken here.
 
@@ -197,4 +197,3 @@ This loop is COMPLEMENTARY to the independent audits (plan-auditor Phase 5, sync
 ## Routing Ledger Recording
 
 At run dispatch, the orchestrator records the routing decision to the routing-ledger via `moai harness ledger record` (per the SKILL.md router recording obligation). As run-phase gates complete, it appends machine evidence via `moai harness ledger evidence` — a terminal gate exit (`--kind gate_exit --value 0 --terminal --ref "go test ./..."`) or a verify-log path (`--kind verify_path --ref <.moai/reports/<card-id>/... log>`). The `--ref` value is read later by a person auditing the ledger, not opened by the finalizer, so it names an **exported tracked file** — a scratch path recorded there resolves nowhere but the machine that wrote it. Outcome is finalized from that machine evidence only — never supplied as an input. The recording is opt-in and fail-open; it never blocks the run phase.
-

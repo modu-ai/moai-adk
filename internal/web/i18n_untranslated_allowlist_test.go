@@ -220,11 +220,21 @@ var i18nUntranslatedAllowlist = []i18nAllowEntry{
 		Reason:        reasonProperNoun,
 		Justification: "Anthropic Sonnet model family name.",
 	},
-	// Locale-invariant initialism.
+	// Codex audit model ids are technical identifiers — locale-invariant.
 	{
-		Key:           "sec.launch.title",
-		Reason:        reasonAcronym,
-		Justification: "LLM is a locale-invariant initialism.",
+		Key:           "f.workflow.audit.codex.model.opt.gpt-6.1-sol",
+		Reason:        reasonTechnicalIdentifier,
+		Justification: "gpt-6.1-sol is the codex audit default model id.",
+	},
+	{
+		Key:           "f.workflow.audit.codex.model.opt.gpt-5.6",
+		Reason:        reasonTechnicalIdentifier,
+		Justification: "gpt-5.6 is a codex model id.",
+	},
+	{
+		Key:           "f.workflow.audit.codex.model.opt.gpt-5.6-sol",
+		Reason:        reasonTechnicalIdentifier,
+		Justification: "gpt-5.6-sol is a codex model id.",
 	},
 	// SPEC-MCP-CONSOLE-001 M2: MCP section title — Model Context Protocol is a
 	// locale-invariant initialism identical across locales.

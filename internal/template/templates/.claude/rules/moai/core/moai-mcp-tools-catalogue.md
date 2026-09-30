@@ -67,7 +67,8 @@ mitigation before fan-out.
 
 `claude_audit` accepts `target`, `focus`, optional `model`/`effort`, and
 `project_root`. It permits subscription login only (`authMethod=claude.ai`,
-`apiProvider=firstParty`), defaults to `sonnet/high`, strips gateway/provider
+`apiProvider=firstParty`), defaults to `claude-opus-5-5/medium`, strips
+gateway/provider
 environment variables, disables tools and session persistence, and reports
 resolved-model plus usage provenance without exposing credentials.
 

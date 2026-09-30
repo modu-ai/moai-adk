@@ -137,8 +137,12 @@ func TestLoadLLMSectionIntegration(t *testing.T) {
 	if cfg.LLM.GLM.BaseURL != "https://custom.api/v1" {
 		t.Errorf("LLM.GLM.BaseURL = %q, want %q", cfg.LLM.GLM.BaseURL, "https://custom.api/v1")
 	}
-	if cfg.LLM.GLM.Models.Opus != "custom-opus" {
-		t.Errorf("LLM.GLM.Models.Opus = %q, want %q", cfg.LLM.GLM.Models.Opus, "custom-opus")
+	// The legacy alias keys (haiku/sonnet/opus) are seeded above but their
+	// struct fields are deleted (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-004,
+	// DR-2): the non-strict loader silently ignores them, so the real tier
+	// slots keep their defaults.
+	if cfg.LLM.GLM.Models.High != config.DefaultGLMHigh {
+		t.Errorf("LLM.GLM.Models.High = %q, want the tier default %q (legacy alias keys are ignored — DR-2)", cfg.LLM.GLM.Models.High, config.DefaultGLMHigh)
 	}
 
 	// Verify llm was in loaded sections

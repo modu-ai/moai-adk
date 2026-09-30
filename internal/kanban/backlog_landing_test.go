@@ -20,6 +20,9 @@ import (
 // Extended by SPEC-TODO-TRANSITION-STAMPS-001 (card t1310): the transition
 // stamps picked_at / dropped_at are the columns recorded after landing —
 // the recorded decision the freeze test (AC-TST-011) carries for both tables.
+// Extended by SPEC-TODO-CLAIM-LEASE-001 (card t1342): the lease columns
+// picked_by / lease_expires_at append after the stamps (REQ-TCL-015, the
+// same additive re-record the freeze test took).
 func TestBacklogLanding_ItemsColumnShape(t *testing.T) {
 	eng := landingEngineFixture(t)
 	const want = "seq:INTEGER:0:NULL " +
@@ -30,7 +33,14 @@ func TestBacklogLanding_ItemsColumnShape(t *testing.T) {
 		"state:TEXT:1:NULL " +
 		"landing:TEXT:0:NULL " +
 		"picked_at:TEXT:0:NULL " +
-		"dropped_at:TEXT:0:NULL"
+		"dropped_at:TEXT:0:NULL " +
+		// SPEC-TODO-CLASSIFY-DISPATCH-001 (card t1332): the classification
+		// TEXT column, appended by the same ADD COLUMN path.
+		"classification:TEXT:0:NULL " +
+		// SPEC-TODO-CLAIM-LEASE-001 (card t1342): the lease columns, appended
+		// after the classification by the same path.
+		"picked_by:TEXT:0:NULL " +
+		"lease_expires_at:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "items"); got != want {
 		t.Errorf("items column tuples =\n %s\nwant\n %s", got, want)
 	}
@@ -50,7 +60,8 @@ func TestBacklogLanding_ItemsColumnShape(t *testing.T) {
 //
 // Extended by SPEC-TODO-TRANSITION-STAMPS-001 (card t1310): archived_items
 // also carries picked_at / dropped_at (the stamps preserved into the archive,
-// REQ-TST-007) and archived_at.
+// REQ-TST-007) and archived_at. Extended by SPEC-TODO-CLAIM-LEASE-001
+// (card t1342): the archive mirrors the lease columns (REQ-TCL-001).
 func TestBacklogLanding_ArchivedItemsColumnShape(t *testing.T) {
 	eng := landingEngineFixture(t)
 	const want = "seq:INTEGER:0:NULL " +
@@ -64,7 +75,10 @@ func TestBacklogLanding_ArchivedItemsColumnShape(t *testing.T) {
 		"picked_at:TEXT:0:NULL " +
 		"dropped_at:TEXT:0:NULL " +
 		"archived_at:TEXT:0:NULL " +
-		"landing_verdict:TEXT:0:NULL"
+		"landing_verdict:TEXT:0:NULL " +
+		"classification:TEXT:0:NULL " +
+		"picked_by:TEXT:0:NULL " +
+		"lease_expires_at:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "archived_items"); got != want {
 		t.Errorf("archived_items column tuples =\n %s\nwant\n %s", got, want)
 	}

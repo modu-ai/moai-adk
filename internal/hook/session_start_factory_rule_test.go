@@ -50,6 +50,12 @@ var sdRuleAuthPin = map[string]string{
 	"zh": "已获运营者授权",
 }
 
+// sdRuleTasksTokens are the SPEC-WORKFLOW-TASKS-001 lane-discipline protocol
+// tokens: every lane rule (next-card and owned-card) must carry the
+// TaskCreate/TaskUpdate discipline, and the tokens stay verbatim in every
+// locale the same way the MCP tool names do.
+var sdRuleTasksTokens = [...]string{"TaskCreate", "TaskUpdate"}
+
 // AC-SD-019 — the rule matrix: backend claude under every clear policy on
 // source startup in each of en, ko, ja, zh carries the next-card rule
 // naming the six MCP tools with their CLI equivalents and the
@@ -84,6 +90,11 @@ func TestSD_AC019_NextCardRuleInjection(t *testing.T) {
 				if !strings.Contains(rule, sdRuleAuthPin[lang]) {
 					t.Errorf("locale %s policy %s: rule does not state the operator-authorized queue promotion (want pin %q)", lang, policy, sdRuleAuthPin[lang])
 				}
+				for _, token := range sdRuleTasksTokens {
+					if !strings.Contains(rule, token) {
+						t.Errorf("locale %s policy %s: rule does not carry the tasks-discipline token %s (SPEC-WORKFLOW-TASKS-001)", lang, policy, token)
+					}
+				}
 			}
 		}
 	})
@@ -99,6 +110,11 @@ func TestSD_AC019_NextCardRuleInjection(t *testing.T) {
 		for _, tool := range sdRuleMCPTools {
 			if !strings.Contains(rule, tool) {
 				t.Errorf("backend glm: rule does not name MCP tool %s", tool)
+			}
+		}
+		for _, token := range sdRuleTasksTokens {
+			if !strings.Contains(rule, token) {
+				t.Errorf("backend glm: rule does not carry the tasks-discipline token %s (SPEC-WORKFLOW-TASKS-001)", token)
 			}
 		}
 	})
@@ -135,6 +151,11 @@ func TestSD_AC019_NextCardRuleInjection(t *testing.T) {
 		for _, want := range []string{"t9", "moai factory stage", "moai factory complete"} {
 			if !strings.Contains(rule, want) {
 				t.Errorf("backend gpt: rule does not name %q", want)
+			}
+		}
+		for _, token := range sdRuleTasksTokens {
+			if !strings.Contains(rule, token) {
+				t.Errorf("backend gpt: owned-card rule does not carry the tasks-discipline token %s (SPEC-WORKFLOW-TASKS-001)", token)
 			}
 		}
 		// The owned-card rule never names `moai factory next` or any MCP

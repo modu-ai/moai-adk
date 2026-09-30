@@ -167,7 +167,11 @@ func TestDisableTeamMode_NoRewriteWhenAlreadyNeutral(t *testing.T) {
 
 // TestPersistTeamMode_PreservesUnrelatedKeys pins that a REAL write (team_mode
 // transition) still round-trips semantically-unrelated persisted state —
-// per-tier GLM effort and context_windows survive the typed re-marshal.
+// per-tier GLM effort and context_windows survive the typed re-marshal. The
+// legacy alias keys (opus/sonnet/haiku) are seeded ON PURPOSE: their struct
+// fields are deleted (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-004, DR-2), so the
+// non-strict loader silently ignores them and the re-marshal drops them — the
+// accepted silent half of DR-2, asserted below as a real write behavior.
 func TestPersistTeamMode_PreservesUnrelatedKeys(t *testing.T) {
 	root := t.TempDir()
 	sectionsDir := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir)
@@ -182,15 +186,15 @@ func TestPersistTeamMode_PreservesUnrelatedKeys(t *testing.T) {
 		"      high: low\n" +
 		"      fable: max\n" +
 		"    context_windows:\n" +
-		"      " + config.DefaultGLM52 + ": 1000000\n" +
+		"      glm-5.2: 1000000\n" +
 		"    models:\n" +
 		"      high: " + config.DefaultGLMHigh + "\n" +
 		"      medium: " + config.DefaultGLMMedium + "\n" +
 		"      low: " + config.DefaultGLMLow + "\n" +
 		"      fable: " + config.DefaultGLMFable + "\n" +
-		"      opus: " + config.DefaultGLMOpus + "\n" +
-		"      sonnet: " + config.DefaultGLMSonnet + "\n" +
-		"      haiku: " + config.DefaultGLMHaiku + "\n"
+		"      opus: glm-5.2\n" +
+		"      sonnet: glm-5.2\n" +
+		"      haiku: glm-5.2\n"
 	if err := os.WriteFile(filepath.Join(sectionsDir, "llm.yaml"), []byte(src), 0o644); err != nil {
 		t.Fatalf("write llm.yaml: %v", err)
 	}
@@ -205,7 +209,20 @@ func TestPersistTeamMode_PreservesUnrelatedKeys(t *testing.T) {
 	if got.GLM.Effort.High != "low" || got.GLM.Effort.Fable != "max" {
 		t.Errorf("per-tier effort lost across real write: %+v", got.GLM.Effort)
 	}
-	if got.GLM.ContextWindows[config.DefaultGLM52] != 1000000 {
+	// The override-map key survives the typed re-marshal — llm.glm.context_windows
+	// keys on any id, including a removed one (REQ-MMU-004 override path).
+	if got.GLM.ContextWindows["glm-5.2"] != 1000000 {
 		t.Errorf("context_windows lost across real write: %+v", got.GLM.ContextWindows)
+	}
+	// The legacy alias keys are dropped by the re-marshal: no struct field
+	// reads them, and the loader never errored on them (DR-2 silent half).
+	persisted, err := os.ReadFile(filepath.Join(sectionsDir, "llm.yaml"))
+	if err != nil {
+		t.Fatalf("read rewritten llm.yaml: %v", err)
+	}
+	for _, alias := range []string{"opus:", "sonnet:", "haiku:"} {
+		if strings.Contains(string(persisted), alias) {
+			t.Errorf("legacy alias key %q survived the typed re-marshal — the fields are deleted (REQ-MMU-004) and must be dropped", alias)
+		}
 	}
 }

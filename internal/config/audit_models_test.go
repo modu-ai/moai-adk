@@ -22,8 +22,8 @@ func TestAuditConfigYAMLRoundTrip(t *testing.T) {
 	populated := AuditConfig{
 		Model:  AuditModelCodex,
 		Gates:  AuditGates{Claude: AuditGateRequired, Codex: AuditGateRequired, GLM: AuditGateAdvisory},
-		Claude: ModelEffort{Model: "sonnet", Effort: "high"},
-		Codex:  ModelEffort{Model: "gpt-5.6-sol", Effort: "high"},
+		Claude: ModelEffort{Model: "claude-opus-5-5", Effort: "medium"},
+		Codex:  ModelEffort{Model: "gpt-6.1-sol", Effort: "high"},
 		GLM:    ModelEffort{Model: "glm-5.3", Effort: "max"},
 	}
 
@@ -79,7 +79,7 @@ func TestAuditConfigYAMLRoundTrip(t *testing.T) {
 		t.Errorf("GLM pin lost by codex-drop arm: got %+v", droppedCodex.GLM)
 	}
 
-	withoutGLM := "model: codex\ncodex:\n    model: gpt-5.6-sol\n    effort: high\n"
+	withoutGLM := "model: codex\ncodex:\n    model: gpt-6.1-sol\n    effort: high\n"
 	var droppedGLM AuditConfig
 	if err := yaml.Unmarshal([]byte(withoutGLM), &droppedGLM); err != nil {
 		t.Fatalf("unmarshal glm-dropped yaml: %v", err)
@@ -87,7 +87,7 @@ func TestAuditConfigYAMLRoundTrip(t *testing.T) {
 	if droppedGLM.GLM != (ModelEffort{}) {
 		t.Errorf("GLM pin populated without a glm: key: got %+v, want zero", droppedGLM.GLM)
 	}
-	if droppedGLM.Codex.Model != "gpt-5.6-sol" || droppedGLM.Codex.Effort != "high" {
+	if droppedGLM.Codex.Model != "gpt-6.1-sol" || droppedGLM.Codex.Effort != "high" {
 		t.Errorf("Codex pin lost by glm-drop arm: got %+v", droppedGLM.Codex)
 	}
 }
@@ -100,10 +100,10 @@ func TestAuditConfigYAMLWorkflowWrapperLoad(t *testing.T) {
 		"    audit:\n" +
 		"        model: multi\n" +
 		"        claude:\n" +
-		"            model: sonnet\n" +
-		"            effort: high\n" +
+		"            model: claude-opus-5-5\n" +
+		"            effort: medium\n" +
 		"        codex:\n" +
-		"            model: gpt-5.6-sol\n" +
+		"            model: gpt-6.1-sol\n" +
 		"            effort: high\n" +
 		"        glm:\n" +
 		"            model: glm-5.3\n" +
@@ -120,11 +120,11 @@ func TestAuditConfigYAMLWorkflowWrapperLoad(t *testing.T) {
 	if got.Model != AuditModelMulti {
 		t.Errorf("Model: got %q, want %q", got.Model, AuditModelMulti)
 	}
-	if got.Claude.Model != "sonnet" || got.Claude.Effort != "high" {
-		t.Errorf("Claude pin: got %+v, want {sonnet high}", got.Claude)
+	if got.Claude.Model != "claude-opus-5-5" || got.Claude.Effort != "medium" {
+		t.Errorf("Claude pin: got %+v, want {claude-opus-5-5 medium}", got.Claude)
 	}
-	if got.Codex.Model != "gpt-5.6-sol" || got.Codex.Effort != "high" {
-		t.Errorf("Codex pin: got %+v, want {gpt-5.6-sol high}", got.Codex)
+	if got.Codex.Model != "gpt-6.1-sol" || got.Codex.Effort != "high" {
+		t.Errorf("Codex pin: got %+v, want {gpt-6.1-sol high}", got.Codex)
 	}
 	if got.GLM.Model != "glm-5.3" || got.GLM.Effort != "max" {
 		t.Errorf("GLM pin: got %+v, want {glm-5.3 max}", got.GLM)

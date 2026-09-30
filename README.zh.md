@@ -77,7 +77,7 @@ moai cc -f lane-3            # 一条泳道，直接指定编号
 moai glm -f lane             # ……GLM 后端上的一条泳道
 ```
 
-用 `moai cc -f lane`（自动加入下一个空号）或 `moai cc -f lane-<n>`（精确那个编号）一条一条地加泳道。两种写法都已经指定了泳道名，再给 `--name`/`-n` 会报错。直接指定的编号若与存活的泳道相撞，会顺延到下一个空号。除此之外，只有活着的会话占用的编号才会被跳过 —— 泳道死了，占用不再挡住那个编号（直接指定的编号可以立刻重用），但 `-f lane` 的自动分配总是取存活最高编号 +1，不会回填中间的空号。泳道归属记录在 `~/.moai/db/<project-key>/factory/factory.db` 中 —— 启动目录是临时目录时（没有绝对 `MOAI_HOME` 覆盖）则记录在项目本地的 `<base>/.moai/db/<project-key>/factory/` 下，与 backlog 队列同一例外；旧的 `.moai/state/factory/workers.json` 只导入一次，之后仅作为回滚凭据保留。一条泳道最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。千万不要一次把所有泳道全开 —— 先起第一条，确认它真的开始产出，再激活其余。卡片绝不会被拆到多条泳道上。`-k` 依旧驱动三角色的看板链；一次启动只能带一个进入标记，所以 `-k` 与 `-f` 同时给出会报错，已停用的 `moai cg` 会显示迁移提示并退出。 工厂 run 现在会记录持有它的会话的进程标识，因此主导已经死掉的 run 会在下一条泳道加入时自动退役，那次加入不再卡在 `AMBIGUOUS_FACTORY` 上。`moai factory runs` 列出每个 run 及其属主的存活状态，`moai factory runs --retire <run-id>` 手动退役指定的 run，属主没有真正死掉就会被拒绝。
+用 `moai cc -f lane`（自动加入下一个空号）或 `moai cc -f lane-<n>`（精确那个编号）一条一条地加泳道。两种写法都已经指定了泳道名，再给 `--name`/`-n` 会报错。直接指定的编号若与存活的泳道相撞，会顺延到下一个空号。除此之外，只有活着的会话占用的编号才会被跳过 —— 泳道死了，占用不再挡住那个编号（直接指定的编号可以立刻重用），但 `-f lane` 的自动分配总是取存活最高编号 +1，不会回填中间的空号。泳道归属记录在 `~/.moai/db/<project-key>/factory/factory.db` 中 —— 启动目录是临时目录时（没有绝对 `MOAI_HOME` 覆盖）则记录在项目本地的 `<base>/.moai/db/<project-key>/factory/` 下，与 backlog 队列同一例外；旧的 `.moai/state/factory/workers.json` 只导入一次，之后仅作为回滚凭据保留。一条泳道最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。千万不要一次把所有泳道全开 —— 先起第一条，确认它真的开始产出，再激活其余。卡片绝不会被拆到多条泳道上。`-k` 依旧驱动三角色的看板链；一次启动只能带一个进入标记，所以 `-k` 与 `-f` 同时给出会报错，已停用的 `moai cg` 会显示迁移提示并退出。 工厂 run 现在会记录持有它的会话的进程标识，因此主导已经死掉的 run 会在下一条泳道加入时自动退役，那次加入不再卡在 `AMBIGUOUS_FACTORY` 上。反方向同样有闸门：泳道加入时若运行记录缺失或已退役而领导者会话还活着，加入会验证该领导者（pid 加进程启动指纹，目标用 `-l/--lead` 指定，默认 `leader`），恢复其运行记录后照常加入 —— 验证通过的领导者有两个或更多时，逐一点名候选并失败关闭。`moai factory runs` 列出每个 run 及其属主的存活状态，`moai factory runs --retire <run-id>` 手动退役指定的 run，属主没有真正死掉就会被拒绝。
 
 > 详见：[看板模式 —— 工厂模式](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
 
@@ -444,7 +444,7 @@ TRUST 5（Tested · Readable · Unified · Secured · Trackable）作用于每�
   <img src="./assets/images/moai-web-settings.png" alt="moai web 控制台设置画面 —— 档案栏和设置标签页" width="90%">
 </p>
 
-`moai web` 打开一个只监听本地主机的控制台。画面共六个 —— Overview、Kanban、Specs、Monitor、Settings、Todo；设置画面分成以下标签页：Identity、Language、LLM、GLM Settings、Workflow、Git & Worktree、Audit、Codex、Report、MCP、Cross-Session、Feedback、Quality Gate。Codex 标签页把分散的 codex 设置汇总到一屏，是只读画面，取值仍在各自所属的标签页里修改。档案的创建、改名、删除也在同一画面完成。
+`moai web` 打开一个只监听本地主机的控制台。画面共六个 —— Overview、Kanban、Specs、Monitor、Settings、Todo；设置画面分成以下标签页：Identity、Language、Claude settings、GLM Settings、Codex settings、Workflow、Git & Worktree、Audit、Report、MCP、Cross-Session、Feedback、Quality Gate。Codex 标签页把分散的 codex 设置汇总到一屏，是只读画面，取值仍在各自所属的标签页里修改。档案的创建、改名、删除也在同一画面完成。
 
 ### ref / domain 技能
 
@@ -754,7 +754,7 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 | `moai graph <build\|query>` | 生成/查询代码库图（edges.jsonl）—— 找调用方、波及范围、里程碑交叉检查 |
 | `moai cc` / `moai glm` | Claude 专用 / GLM 专用会话 |
 | `moai codex [cli\|status\|app]` | Codex 启动器 — 不带动词调用即启动 Codex CLI；`status` 只显示就绪状态，不启动任何东西 |
-| `moai worktree <sync\|done\|hoist\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 维护（进出工作树是启动器的职责） |
+| `moai worktree <sync\|done\|sweep\|hoist\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 维护（进出工作树是启动器的职责） |
 | `moai session <list\|register\|current>` | 多会话协调 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 生命周期工具 |
 | `moai goal <arm\|status\|clear>` | goal 引擎 CLI |

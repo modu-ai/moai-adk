@@ -68,7 +68,7 @@ func TestWorktreeCmd_RetiredSubcommands(t *testing.T) {
 
 func TestWorktreeCmd_SubcommandCount(t *testing.T) {
 	count := len(WorktreeCmd.Commands())
-	const expected = 10 // new + sync, remove, clean, recover, done, hoist + guard snapshot/verify/restore
+	const expected = 11 // new + sync, remove, clean, sweep, recover, done, hoist + guard snapshot/verify/restore
 	if count != expected {
 		t.Errorf("worktree should have %d subcommands, got %d", expected, count)
 	}

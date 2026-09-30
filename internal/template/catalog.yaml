@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 15b41b6b93ff742b475f4dfe772fde4ab5512dfbe877dd20788a72cacb4bbc0c
+              hash: 1dbc43a5703d89041df6917fa9bebf1bb4dd5bad1547a760ee2d30fc5ad12ca3
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -28,6 +28,11 @@ catalog:
               path: templates/.claude/skills/moai-foundation-thinking/
               hash: b8d5cd34431cf4043ea78593fbd453f942a4bef6fcf21b8663012e7c1a75eb26
               version: 1.0.0
+            - name: moai-jev-skill-suggestion
+              tier: core
+              path: templates/.claude/skills/moai-jev-skill-suggestion/
+              hash: 65bc06796226a5aabba9f0780286f1b99696c43f6ebaaab1a2f8c49f99646ca2
+              version: 1.0.0
             - name: moai-harness-learner
               tier: core
               path: templates/.claude/skills/moai-harness-learner/
@@ -36,7 +41,12 @@ catalog:
             - name: moai-kanban-foreman
               tier: core
               path: templates/.claude/skills/moai-kanban-foreman/
-              hash: b86549f9b8271e50239df4e776aa313a849caa9404cc1323de6c23daae3f8f8a
+              hash: de8216f7c41e87612320ace66e63bd530badfc4492f7145485e8947e6adf8dcc
+              version: 1.0.0
+            - name: moai-lane-watchdog
+              tier: core
+              path: templates/.claude/skills/moai-lane-watchdog/
+              hash: f50089faee6cdf2e33a8d74acb497154db6095757cd3ed017dad6039ffc5a1f7
               version: 1.0.0
             - name: moai-meta-harness
               tier: core

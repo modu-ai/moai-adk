@@ -76,15 +76,24 @@ type AuditConfig struct {
 	// Gates carries the per-auditor gate tokens.
 	Gates AuditGates `yaml:"gates,omitempty" json:"gates,omitempty"`
 	// Claude pins the subscription-backed Claude audit backend. An empty model
-	// means no pin; the runtime uses its documented sonnet/high default.
+	// means no pin; the runtime uses its documented
+	// claude-opus-5-5/medium default (SPEC-MODEL-MATRIX-UPDATE-001
+	// REQ-MMU-002, operator gate 2026-09-30 — previously sonnet/high).
 	Claude ModelEffort `yaml:"claude,omitempty" json:"claude,omitempty"`
 	// Codex pins the codex audit backend's {model, effort}
 	// (SPEC-V3R6-AUDIT-MODEL-PIN-001 REQ-AMP-001/002). Precedence at the
 	// audit entry points: this pin > SSOT sync-auditor cell > empty. An empty
 	// Model is NO pin (effort alone pins nothing — the model is the gate), and
-	// the empty fallback resolves exactly as before this SPEC (REQ-AMP-004).
+	// an explicit caller model still outranks the pin (REQ-AMP-004).
 	// Effort uses the codex/Claude vocabulary (low|medium|high|xhigh|max).
-	// Distributed default and Go default stay EMPTY (REQ-AMP-005 neutrality).
+	//
+	// REQ-AMP-005 SUPERSEDED (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-001,
+	// operator directive 2026-09-30): the AMP-005 "distributed default and Go
+	// default stay EMPTY" neutrality no longer holds — the distributed template
+	// (workflow.yaml), the Go default (NewDefaultWorkflowConfig), and the
+	// resolver terminal fallback (resolveCodexAuditModelEffort) all carry the
+	// new {gpt-6.1-sol, high} pin. REQ-AMP-008 (audit-only pin, never task
+	// delegation) is unchanged.
 	Codex ModelEffort `yaml:"codex,omitempty" json:"codex,omitempty"`
 	// GLM pins the GLM audit backend's {model, effort} (REQ-AMP-001/003).
 	// Same pin semantics as Codex (empty model = no pin). Effort uses the

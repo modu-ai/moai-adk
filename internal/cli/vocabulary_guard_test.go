@@ -56,6 +56,14 @@ var guardAllowlist = []guardAllowlistEntry{
 	// trimming the legacy prefix (`strings.TrimPrefix(name, "lead")`) so the
 	// error names leader-<suffix> (REQ-RNC-007).
 	{file: "factory.go", literal: "lead"},
+	// codex_factory.go: the codex lane-join path composes the same canonical
+	// form by trimming the legacy prefix, mirroring the factory.go comparison
+	// above (REQ-RNC-007; card t1330 follow-up — the mirror-parity site).
+	{file: "codex_factory.go", literal: "lead"},
+	// doctor_owner_label.go: the Owner Label Drift check's detail text names
+	// the legacy spellings it detects and the relabel it performs — the
+	// detection help text REQ-RNC-018 permits (card t1349, REQ-TSP-051).
+	{file: "doctor_owner_label.go", literal: "The migration (MigrateOwnerLabelVocabulary) relabels lead/worker-N/agent-N to leader/lane-N in one locked write. Rows: "},
 
 	// --- internal/cli: refusal messages and detection comparisons ----------
 	// doctor_factory_run.go: the doctor's chain reader classifies a persisted

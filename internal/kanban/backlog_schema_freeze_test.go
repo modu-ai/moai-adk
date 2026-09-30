@@ -22,6 +22,22 @@
 // done-time landing_verdict record (REQ-TST-008). Pure additive columns via
 // the pragma_table_info-gated ADD COLUMN pattern; no table rebuild, no
 // constraint change, schema_version stays "1".
+//
+// Extended by SPEC-TODO-CLASSIFY-DISPATCH-001 (card t1332), M1 — the
+// recorded schema decision: BOTH card-bearing tables gain one nullable
+// classification TEXT column, appended LAST through the same ADD COLUMN
+// path (TestSchemaFreezeCarriesClassificationColumn asserts the convergence
+// separately). No rebuild, no constraint change, schema_version stays "2".
+//
+// Extended by SPEC-TODO-CLAIM-LEASE-001 (card t1342), REQ-TCL-015 — the
+// additive lease retrofit: items and archived_items each gain nullable
+// picked_by and lease_expires_at (RFC 3339) AFTER the classification ensure
+// path, through the same pragma_table_info-gated ADD COLUMN pattern. No
+// version bump (C1: schema_version stays "2" — an additive column is
+// ALTERable), no entry in backlogItemsTableColumns (the v1→v2 rebuild must
+// never see these columns), and the retrofit runs only AFTER version
+// reconciliation so a rebuild never silently drops them (REQ-TCL-002, card
+// t1310's ordering lesson).
 package kanban
 
 import (
@@ -137,7 +153,13 @@ func assertBacklogSchemaFrozen(t *testing.T) {
 		"state:TEXT:1:NULL " +
 		"landing:TEXT:0:NULL " +
 		"picked_at:TEXT:0:NULL " +
-		"dropped_at:TEXT:0:NULL"
+		"dropped_at:TEXT:0:NULL " +
+		"classification:TEXT:0:NULL " +
+		// SPEC-TODO-CLAIM-LEASE-001 REQ-TCL-001: the lease columns ride the
+		// ensure path appended after the classification column, never
+		// backlogItemsTableColumns.
+		"picked_by:TEXT:0:NULL " +
+		"lease_expires_at:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "items"); got != wantItemsColumns {
 		t.Errorf("items column tuples =\n %s\nwant\n %s", got, wantItemsColumns)
 	}
@@ -153,7 +175,12 @@ func assertBacklogSchemaFrozen(t *testing.T) {
 		"picked_at:TEXT:0:NULL " +
 		"dropped_at:TEXT:0:NULL " +
 		"archived_at:TEXT:0:NULL " +
-		"landing_verdict:TEXT:0:NULL"
+		"landing_verdict:TEXT:0:NULL " +
+		"classification:TEXT:0:NULL " +
+		// The archive mirrors the lease columns (REQ-TCL-001): an archived
+		// card keeps the holder and expiry it held when it left the queue.
+		"picked_by:TEXT:0:NULL " +
+		"lease_expires_at:TEXT:0:NULL"
 	if got := columnTupleSequence(t, eng, "archived_items"); got != wantArchivedItemsColumns {
 		t.Errorf("archived_items column tuples =\n %s\nwant\n %s", got, wantArchivedItemsColumns)
 	}

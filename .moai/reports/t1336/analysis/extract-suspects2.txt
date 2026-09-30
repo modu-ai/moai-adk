@@ -1,0 +1,171 @@
+--- per-line hangul words with line:col ---
+line   4 col  32  확인
+line   4 col  46  문서
+line   4 col  93  갱신
+line   4 col 124  재찍음
+line   4 col 151  층
+line   7 col  26  인트리
+line   7 col  30  바이너리
+line   7 col 101  앵커
+line   7 col 123  문서층
+line   7 col 127  병합판
+line   8 col  61  필터
+line   8 col  88  동일
+line   8 col  91  집합
+line  11 col  15  단락
+line  11 col  18  갱신
+line  11 col  23  규모
+line  11 col  26  표
+line  11 col  28  비테스트
+line  11 col  43  테스트
+line  11 col  58  도식
+line  11 col  61  절
+line  11 col  77  스테일
+line  11 col  89  정정
+line  12 col  14  단락
+line  12 col  17  갱신
+line  12 col  22  행
+line  12 col  24  수치
+line  12 col  39  루트
+line  12 col  90  나먲지
+line  12 col 100  산술
+line  12 col 103  재산정
+line  12 col 110  행
+line  12 col 112  근거
+line  12 col 115  절
+line  13 col  19  단락
+line  13 col  22  갱신
+line  13 col  65  훅
+line  13 col  67  엄트리
+line  13 col  74  불볇확인
+line  14 col  19  단락
+line  14 col  22  갱신
+line  14 col  27  작은
+line  14 col  37  표
+line  14 col  39  슠테일
+line  14 col  43  정정
+line  14 col  99  신귴
+line  14 col 102  소비자
+line  14 col 106  엠키는
+line  14 col 118  으로
+line  14 col 121  앵커
+line  14 col 124  시점
+line  14 col 127  존재
+line  14 col 130  확인
+line  14 col 135  스테일
+line  14 col 139  값의
+line  14 col 142  바로잠펴
+line  14 col 148  신귵
+line  14 col 151  엠키
+line  14 col 154  아님
+line  15 col   2  불변
+line  15 col   5  재확인
+line  15 col  10  패키지
+line  15 col  18  최상위
+line  15 col  25  엣지
+line  15 col  36  임베드
+line  15 col  55  상위
+line  15 col  58  표
+line  15 col  60  전
+line  15 col  62  행
+line  15 col  64  숴환
+line  15 col  68  쌍
+line  15 col  84  무변경
+line  19 col   0  카드
+line  19 col   3  트리
+line  19 col  28  브랿치
+line  19 col  69  에서
+line  19 col  72  이
+line  19 col  74  실행으로
+line  19 col  79  측정
+line  19 col  83  측정
+line  19 col  86  바이넄리
+line  19 col 104  산물
+line  19 col 141  무관
+line  22 col  17  층
+line  22 col  20  미추적
+line  22 col  24  런타임
+line  22 col  28  산출물
+line  22 col  32  부재
+line  22 col  51  워크트리
+line  22 col  56  상태로
+line  22 col  76  아님
+line  22 col  83  통
+line  22 col  85  팠택은
+line  22 col 102  후
+line  22 col 104  리드
+line  22 col 107  소관
+line  23 col   8  커밋
+line  23 col  23  카드
+line  23 col  26  커밋
+line  23 col  29  직전
+line  23 col  32  팕
+line  23 col  35  카드
+line  23 col  38  커밋
+line  23 col  41  본체
+line  23 col  58  변경
+line  23 col  61  은
+line  23 col  97  밖라
+line  23 col 107  유지
+line  23 col 112  재차
+line  23 col 121  되지
+line  23 col 124  않는다
+line  26 col   2  본
+line  26 col   4  세션
+line  26 col  11  출력
+line  26 col  14  채넍에서
+line  26 col  19  한국어
+line  26 col  23  자모
+line  26 col  26  오염이
+line  26 col  30  반복
+line  26 col  33  관측됨
+line  26 col  37  큜
+line  26 col  39  경쟁
+line  26 col  42  폴백
+line  26 col  45  등
+line  26 col  47  실재
+line  26 col  50  하지만
+line  26 col  54  엉터닐
+line  26 col  58  읠
+line  26 col  60  블록
+line  26 col  66  문서
+line  26 col  69  산문은
+line  26 col  73  전수
+line  26 col  88  자모명
+line  26 col  92  검증
+line  26 col 101  채넍
+line  26 col 104  으로
+line  26 col 107  수리했으나
+line  26 col 114  같은
+line  26 col 117  채넎이
+line  26 col 121  쓛
+line  26 col 123  다른
+line  26 col 126  한국어
+line  26 col 130  산문
+line  26 col 133  카드
+line  26 col 136  보고
+line  26 col 139  포함
+line  26 col 142  에
+line  26 col 144  잔여
+line  26 col 147  가능성
+line  26 col 156  채넞
+line  26 col 159  한국어
+line  26 col 163  무결성
+line  26 col 167  카드
+line  26 col 170  후보
+
+--- lines 12-25 raw ---
+ 12| - modules.md: 단락 갱신 + 행 수치 cli 372→375(루트 295→298)·todo* 15→17·doctor* 23→24·kanban 57→61·나먲지 78→67 산술 재산정 + 6행 근거 절
+ 13| - entry-points.md: 단락 갱신 + AddCommand 230→231(rootCmd 66·init 30·훅 엄트리 34 불볇확인)
+ 14| - dependencies.md: 단락 갱신 + 작은 fan-in 표 슠테일 정정 — auditreceipt 2→3·jev 2→3·jevcred 2→3·contract 1→3 (신귴 소비자 엠키는 git grep으로 앵커 시점 존재 확인 — 스테일 값의 바로잠펴, 신귵 엠키 아님)
+ 15| - 불변 재확인: 패키지 162·최상위 82·엣지 449/277·임베드 598·fan-in/out 상위 표 전 행·숴환 4쌍·go.mod/go.sum 무변경
+ 16| - ./bin/moai graph stamp codemaps --commit 145c3d98c → graph check: codemaps value=0 verdict=fresh
+ 17| 
+ 18| ## Baseline
+ 19| 카드 트리 .moai/worktrees/t1333(브랿치 WT-codemaps-refresh9, base 145c3d98c)에서 이 실행으로 측정. 측정 바이넄리 = make build 산물(Commit=145c3d98c) — installed lag 무관(2.2).
+ 20| 
+ 21| ## Gaps
+ 22| - mx-index·edges 층: 미추적 런타임 산출물 부재(absent) — fresh 워크트리 상태로 expected, stale 아님. CI 통 팠택은 develop push 후 리드 소관.
+ 23| - stamp 커밋 145c3d98c = 카드 커밋 직전 팕. 카드 커밋 본체(.moai/project 변경)은 described roots(internal·cmd·pkg) 밖라 diff 0 유지 — 재차 stale 되지 않는다.
+ 24| 
+ 25| ## Residual-risk

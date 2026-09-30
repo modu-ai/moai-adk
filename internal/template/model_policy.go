@@ -65,8 +65,12 @@ const ModelIDSonnet55 = "claude-sonnet-5-5"
 // needs the alias→id resolution MUST read from this table rather than
 // hard-coding a literal, so the mapping stays in one place.
 //
-// The forward direction (alias → canonical id) is used by expandModelString in
-// launcher.go. The reverse direction (canonical id → alias) is performed by
+// The forward direction (alias → canonical id) serves the non-launch surfaces
+// only — wizard picker values, prefs normalization, web/settings validation,
+// and the GLM reverse map below. The launch path never consults the table:
+// the stored model string passes to `claude --model` verbatim and Claude Code
+// resolves alias semantics at launch time (SPEC-ALIAS-PASSTHROUGH-001). The
+// reverse direction (canonical id → alias) is performed by
 // ModelAliasFromCanonicalID, which consults ModelAliasTable for the current id
 // and ModelDeprecatedCanonicalIDs for superseded ids that still appear in
 // historical prefs files.
@@ -76,7 +80,7 @@ const ModelIDSonnet55 = "claude-sonnet-5-5"
 // total over the wizard picker surface.
 //
 // @MX:ANCHOR: [AUTO] ModelAliasTable — single SSOT for alias↔canonical-id mapping
-// @MX:REASON: [AUTO] fan_in >= 3 (launcher.go expandModelString + profile_setup.go normalizeModel + settings/schema.go modelOptions); hardcoding-prevention per CLAUDE.local.md §14
+// @MX:REASON: [AUTO] fan_in >= 3 (launcher.go GLM reverse map + profile_setup.go normalizeModel + web validate.go modelOptionList + schema_bridge.go option labels); hardcoding-prevention per CLAUDE.local.md §14
 var ModelAliasTable = map[string]string{
 	"opus":     ModelIDOpus55,
 	"sonnet":   ModelIDSonnet55,

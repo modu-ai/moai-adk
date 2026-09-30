@@ -17,6 +17,8 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 
 [HARD] **로컬 `main`은 동기화만 하는 참조점이고, 아무도 거기서 분기하지 않는다.** 이 모델에서 `main`을 갱신하는 유일한 경로는 릴리스 PR이며, 로컬 `main`이 `origin/main`보다 뒤처져 있어도 작업에는 지장이 없다 — `develop`이 `origin/main`을 포함하기 때문이다. 따라서 로컬 `main`을 앞당기지 못하는 상황(예: 공유 체크아웃의 미커밋 작업과 충돌)은 작업을 막는 사유가 아니다. 상태줄의 `↓N` 표시는 그 사실의 반영일 뿐이다.
 
+[HARD] **로컬 `main`은 commit-dead다 — 어느 세션도 그 안에서 커밋하지 않는다 (SPEC-MAIN-COMMIT-BAN-001, 카드 t1337).** primary 체크아웃의 `main`에서 `git commit` / `git revert` / `git cherry-pick`은 BranchGuard(`workflow.branch_guard.deny_commits_on: [main]`)가 거부한다. 커밋은 `develop`에서 분기한 카드 워크트리에서만 만들고, main의 잔여물 처분(되살리기)은 운영자 터미널 전용 절차로 `.moai/docs/gitflow-integration-chain.md`가 소유한다.
+
 - 하네스에 맞는 경로로 들어간다:
   - Claude Code 레인: `moai cc -w <card-id>` 또는 현재 세션의 `EnterWorktree(<card-id>)`.
   - Codex 레인: 기존 트리에 새 세션으로 들어갈 때 `moai codex -w <card-id>`.
@@ -80,13 +82,19 @@ git branch --show-current
 
 **원격 CI(`origin/develop`)가 통합 판정의 주체다.** 로컬 통과는 조기 신호일 뿐이다 — 깨끗한 환경도, darwin/windows 매트릭스도 아니다.
 
+**배치 닫기 트리거 — 임계값은 설정이 운반한다(SPEC-LEAD-AUTOPUSH-001).** 배치를 닫을 시점은 리더의 재량이 아니라 계수 트리거가 정한다: `git rev-list --count origin/develop..develop`이 `git_strategy.manual.lead_push_threshold`에 닿으면 배치를 닫고 `git push origin develop`을 **한 번** 실행한다. 값의 원천은 `.moai/config/sections/git-strategy.yaml`이며 이 문서는 그 수를 다시 쓰지 않는다 — 키와 계수 명령만 명명한다. 트리거는 병합 창이 닫힌 뒤에만 평가한다 — 창(`moai integration acquire`/`release`) 안에서 push하지 않는다.
+
+**초록 조건부 — push는 green일 때만 다시 연다.** 두 층이 있다. (i) 카드별 사전 게이트: 통합 창의 병합 트리 재측정을 통과하지 못한 병합은 배치에 넣지 않는다(지난 3건의 적색은 전부 이 재측정이 push 전에 잡았다). (ii) 배치 단위 보류: 마지막 push의 `origin/develop` CI가 red면 다음 push를 보류한다 — 수리되어 green으로 돌아온 뒤에야 트리거가 다시 유효하다. 초록 조건부가 계수 트리거보다 우선한다. 마지막 push의 CI 판정이 아직 없으면(새 develop의 첫 push 등) red가 아니므로 보류 사유가 아니다.
+
+**임계값 0(또는 키 부재)은 오류가 아니라 비활성이다.** `lead_push_threshold`가 0이면 트리거는 꺼진 것으로, 배치 닫기 시점은 리더의 판단으로 돌아간다 — 오류 조건으로 취급하지 않는다.
+
 ## 5. 충돌 — 변경을 소유한 레인의 몫
 
 병합이 일으킨 충돌은 그 병합을 하는 레인이 해결한다. 해결할 수 없는 충돌(다른 레인이 이미 합친 변경과의 의미적 충돌)은 **리더에게 blocker 보고**다. 강제 병합이 아니다.
 
 ## 6. 병합 이후 — 레인은 카드를 스스로 고르지 않는다
 
-- 로컬 병합을 마치고 병합 SHA를 리더에게 보고하면 `ExitWorktree`로 primary 체크아웃에 돌아와, **리더가 다음 카드를 dispatch 할 때까지 기다린다.** 레인이 큐에서 카드를 집지 않는다.
+- 로컬 병합을 마치고 병합 SHA를 리더에게 보고하면 `ExitWorktree`로 primary 체크아웃에 돌아와, **리더가 다음 카드를 dispatch 할 때까지 기다린다.** 레인이 큐에서 카드를 집지 않는다. 그 대기는 열린 대기가 아니라 **명시적 대기(explicit wait)** 다 — 디스크에 대기 기록(reason + 대상 + 재확인 지점)을 남기는 대기이고, 각성(awaken) 턴에서는 카드 작업 재개 전에 레인 스톨 워치독을 먼저 실행한다 — Skill("moai-lane-watchdog")을 호출해 따른다. 워치독은 진행 3채널(HEAD SHA · 증거 mtime · 통합 창 상태)을 재측정해 원인을 분류하고, 판단이 필요하면 결정 사다리(디스크 증거 → 결정 보드 → 감사 교차 → jev_ask → 리드 채팅 최후)로 답장 없이 푼다 — 답장 부재를 진행 부재로 읽지 않는다. 이 대기·사다리 독트린의 정본은 `.claude/rules/moai/workflow/auto-semantics.md`이고, 워치독의 queue-readonly 경계는 큐 수준 픽업 필터를 소유하는 SPEC-RELATION-PICKUP-FILTER-001과의 조합으로 성립한다(레인은 여전히 카드를 고르지 않는다 — 위 금지와 같은 경계다).
 - **self-dispatch lane 예외 — 카드 임대.** self-dispatch 팩토리 run의 레인은 `moai factory next`로 대기 중인 다음 카드를 임대할 수 있다(레인이 수행하는 유일한 promotion). 이 예외를 제외한 큐 변경(`add`, `drop`, `done`, `edit` 등)과 `moai contract sign`은 레인에게 금지된다.
 - **self-dispatch lane 예외 — 병합 창.** Claude self-dispatch 레인은 리더에게 창을 요청하지 않고 `moai factory complete`의 통합 절차로 스스로 통합 창을 잡고 자기 카드를 `develop`에 병합한다(위 첫 번째 항목의 「리더에게 병합을 요청한다」를 이 레인에서 대체한다). Codex 레인은 예외가 아니다 — merge-ready에서 정지한다(REQ-SD-025). 두 예외 모두 위 금지(그 외 큐 변경 + `moai contract sign`)를 바꾸지 않는다.
 - [HARD] **카드 워크트리는 작업이 `origin/develop`에 올라간 뒤에야 폐기한다.** 그전까지 그 트리가 작업의 유일한 사본이다. 원격 착지는 리더의 일괄 push가 만든다(§4, §7). L1 트리(`.claude/worktrees/…`)는 `moai worktree done`의 대상이 아니다 — 세션 종료 keep/remove 프롬프트나 `git worktree unlock` + `git worktree remove`로 닫는다.
@@ -97,7 +105,7 @@ git branch --show-current
 - 병합 판정(무엇이 `develop`에 들어갔는가)은 리더의 것이다. 작업을 만든 레인에게 자기 결과를 판정하게 하지 않는다.
 - 증거 파일이 없거나 읽히지 않거나 낡았으면 **gap**이다 — 카드는 그대로 두고 이유를 보고한다.
 - 병합이 확인되면 다음 카드를 **지금 비어 있는 레인**에 dispatch 한다.
-- **develop push는 리더의 일괄 소관이다(2026-09-02).** 레인 완료 보고에서 카드 id와 로컬 병합 SHA를 모은다 → 배치를 닫을 시점을 리더가 판단한다 → `git push origin develop`을 **한 번** 실행한다 → `git fetch`와 `git rev-parse origin/develop`으로 원격 착지를 검증한다 → 그 뒤에야 카드 done과 워크트리 폐기 승인을 낸다.
+- **develop push는 리더의 일괄 소관이다(2026-09-02).** 레인 완료 보고에서 카드 id와 로컬 병합 SHA를 모은다 → 배치를 닫을 시점은 §4의 임계 트리거와 초록 조건부가 정한다(리더 재량 단독이 아니다) → `git push origin develop`을 **한 번** 실행한다 → `git fetch`와 `git rev-parse origin/develop`으로 원격 착지를 검증한다 → 그 뒤에야 카드 done과 워크트리 폐기 승인을 낸다.
 
 ## 8. 검증은 레인-로컬
 

@@ -848,7 +848,7 @@ func TestTodoNaturalLanguageCardsSurviveVerbGuard(t *testing.T) {
 
 // TestMistypedVerbGuardSpeaksInTheInvokedSurfacesName — t939: the refusal is
 // produced at one site shared by both surfaces, and it used to name the
-// compatibility spelling whichever way it was called: `moai gtd show t855`
+// compatibility spelling whichever way it was called: `moai gtd peek t855`
 // answered "todo: ... moai todo add ...". REQ-GTD-003 makes gtd the canonical
 // surface and todo the thin compatibility one, so an operator working the
 // canonical surface was handed the compatibility name — and the recovery line
@@ -875,10 +875,14 @@ func TestMistypedVerbGuardSpeaksInTheInvokedSurfacesName(t *testing.T) {
 			var out, errBuf bytes.Buffer
 			cmd.SetOut(&out)
 			cmd.SetErr(&errBuf)
-			cmd.SetArgs([]string{"show", "t855"})
+			// "peek" is a deliberately unregistered stand-in (the t555
+			// leak-matrix convention): `show` became a registered verb
+			// (card t1349 REQ-TSP-001), so the mistyped-verb example moved
+			// to a token that is still verb-shaped but not real.
+			cmd.SetArgs([]string{"peek", "t855"})
 			err := cmd.Execute()
 			if err == nil {
-				t.Fatalf("%s: `show t855` was accepted, want a refusal", tc.surface)
+				t.Fatalf("%s: `peek t855` was accepted, want a refusal", tc.surface)
 			}
 			combined := err.Error() + errBuf.String()
 

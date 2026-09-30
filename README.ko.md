@@ -77,7 +77,7 @@ moai cc -f lane-3            # 레인 하나, 번호를 직접 지정
 moai glm -f lane             # …GLM 백엔드로 띄운 레인 하나
 ```
 
-레인은 `-f lane`(다음 빈 번호로 자동 합류) 또는 `-f lane-<n>`(정확히 그 번호)로 하나씩 늘린다. 두 형태 모두 레인 이름을 이미 정하므로 `--name`/`-n`을 함께 주면 에러다. 직접 고른 번호가 살아 있는 레인과 겹치면 다음 빈 번호로 붙는다. 번호는 살아 있는 세션이 쥔 것만 건너뛴다 — 죽은 레인의 claim은 더 이상 그 번호를 막지 않지만(직접 고른 번호는 바로 재사용 가능), `-f lane` 자동 배정은 항상 최고 번호+1만 받으므로 중간 빈 번호를 채우지는 않는다. 레인 소유권은 `~/.moai/db/<project-key>/factory/factory.db`에 기록한다. 기점 디렉터리가 임시 디렉터리면(절대 `MOAI_HOME` 오버라이드 없음) 프로젝트 로컬 `<base>/.moai/db/<project-key>/factory/` 아래에 기록한다 — 백로그 큐와 같은 예외다. 기존 `.moai/state/factory/workers.json`은 한 번만 가져오고 롤백 증거로만 남긴다. 레인 하나가 동시에 돌리는 `Agent()` 서브에이전트는 최대 10개이고, 쓰기를 맡는 스폰은 각자의 워크트리로 격리한다. 레인을 한꺼번에 켜지 말고 첫 레인을 먼저 올려 실제로 출력이 나오는 것을 확인한 뒤 나머지를 띄운다. 카드는 레인에 쪼개어 넣지 않는다. `-k`는 그대로 세 역할짜리 칸반 체인을 돌린다. 한 번의 실행에 진입 토큰은 하나뿐이라 `-k`와 `-f`를 함께 쓰면 에러다. CG는 폐기되었다. `moai migrate cg`로 이전 선택지를 먼저 확인한다. 팩토리 런은 이제 자기를 소유한 세션의 프로세스 신원을 기록한다. 리더가 죽은 런은 다음 레인이 합류하는 시점에 자동으로 회수되므로 합류가 `AMBIGUOUS_FACTORY`에서 막히지 않는다. `moai factory runs`는 모든 런을 소유자 생존 여부와 함께 보여주고, `moai factory runs --retire <run-id>`는 지목한 런 하나를 손으로 회수한다. 소유자가 실제로 죽지 않았으면 거절한다.
+레인은 `-f lane`(다음 빈 번호로 자동 합류) 또는 `-f lane-<n>`(정확히 그 번호)로 하나씩 늘린다. 두 형태 모두 레인 이름을 이미 정하므로 `--name`/`-n`을 함께 주면 에러다. 직접 고른 번호가 살아 있는 레인과 겹치면 다음 빈 번호로 붙는다. 번호는 살아 있는 세션이 쥔 것만 건너뛴다 — 죽은 레인의 claim은 더 이상 그 번호를 막지 않지만(직접 고른 번호는 바로 재사용 가능), `-f lane` 자동 배정은 항상 최고 번호+1만 받으므로 중간 빈 번호를 채우지는 않는다. 레인 소유권은 `~/.moai/db/<project-key>/factory/factory.db`에 기록한다. 기점 디렉터리가 임시 디렉터리면(절대 `MOAI_HOME` 오버라이드 없음) 프로젝트 로컬 `<base>/.moai/db/<project-key>/factory/` 아래에 기록한다 — 백로그 큐와 같은 예외다. 기존 `.moai/state/factory/workers.json`은 한 번만 가져오고 롤백 증거로만 남긴다. 레인 하나가 동시에 돌리는 `Agent()` 서브에이전트는 최대 10개이고, 쓰기를 맡는 스폰은 각자의 워크트리로 격리한다. 레인을 한꺼번에 켜지 말고 첫 레인을 먼저 올려 실제로 출력이 나오는 것을 확인한 뒤 나머지를 띄운다. 카드는 레인에 쪼개어 넣지 않는다. `-k`는 그대로 세 역할짜리 칸반 체인을 돌린다. 한 번의 실행에 진입 토큰은 하나뿐이라 `-k`와 `-f`를 함께 쓰면 에러다. CG는 폐기되었다. `moai migrate cg`로 이전 선택지를 먼저 확인한다. 팩토리 런은 이제 자기를 소유한 세션의 프로세스 신원을 기록한다. 리더가 죽은 런은 다음 레인이 합류하는 시점에 자동으로 회수되므로 합류가 `AMBIGUOUS_FACTORY`에서 막히지 않는다. 그 반대도 막혀 있다: 레인이 합류할 때 실행 기록이 없거나 은퇴했는데 살아 있는 리더 세션이 있으면, 합류는 그 리더를 검증하고(pid + 프로세스 시작 지문, `-l/--lead`로 대상 지정, 기본값 `leader`) 그 런 기록을 복원한 뒤 그대로 합류한다 — 검증된 리더가 둘 이상이면 후보를 모두 이름 대고 실패로 닫는다. `moai factory runs`는 모든 런을 소유자 생존 여부와 함께 보여주고, `moai factory runs --retire <run-id>`는 지목한 런 하나를 손으로 회수한다. 소유자가 실제로 죽지 않았으면 거절한다.
 
 > 자세히: [칸반 모드 — 팩토리 모드](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
 
@@ -444,7 +444,7 @@ AI 에이전트끼리 컨텍스트·불변 계약·위험 구역을 주고받는
   <img src="./assets/images/moai-web-settings.png" alt="moai web 콘솔 설정 화면 — 프로파일 바와 설정 탭" width="90%">
 </p>
 
-`moai web`이 로컬호스트에만 열리는 콘솔을 띄운다. 화면은 Overview·Kanban·Specs·Monitor·Settings·Todo 여섯 개이고, 설정 화면은 Identity·Language·LLM·GLM Settings·Workflow·Git & Worktree·Audit·Codex·Report·MCP·Cross-Session·Feedback·Quality Gate 탭으로 나뉜다. Codex 탭은 흩어져 있는 codex 설정을 한 화면에 모아 보여주는 읽기 전용 화면이라, 값은 원래 자기 탭에서 고친다. 프로파일 생성·이름 변경·삭제도 같은 화면에서 한다.
+`moai web`이 로컬호스트에만 열리는 콘솔을 띄운다. 화면은 Overview·Kanban·Specs·Monitor·Settings·Todo 여섯 개이고, 설정 화면은 Identity·Language·Claude settings·GLM Settings·Codex settings·Workflow·Git & Worktree·Audit·Report·MCP·Cross-Session·Feedback·Quality Gate 탭으로 나뉜다. Codex 설정 탭은 흩어져 있는 codex 설정을 한 화면에 모아 보여주는 읽기 전용 화면이라, 값은 원래 자기 탭에서 고친다. 프로파일 생성·이름 변경·삭제도 같은 화면에서 한다.
 
 ### ref / domain 스킬
 
@@ -754,7 +754,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 | `moai graph <build\|query>` | 코드베이스 그래프(edges.jsonl) 생성·조회 — 호출자 찾기, 폭발 반경, 마일스톤 교차검사 |
 | `moai cc` / `moai glm` | Claude 전용 / GLM 전용 세션 |
 | `moai codex [cli\|status\|app]` | Codex 런처 — 인자 없이 부르면 Codex CLI를 기동한다. `status`는 준비 상태만 보여주고 아무것도 띄우지 않는다 |
-| `moai worktree <sync\|done\|hoist\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 유지 관리 (워크트리 진입은 런처의 몫) |
+| `moai worktree <sync\|done\|sweep\|hoist\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 유지 관리 (워크트리 진입은 런처의 몫) |
 | `moai session <list\|register\|current>` | 멀티 세션 조율 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 라이프사이클 도구 |
 | `moai goal <arm\|status\|clear>` | Goal 엔진 CLI |

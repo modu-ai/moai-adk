@@ -77,7 +77,7 @@ moai cc -f lane-3            # レーン 1 本、番号を直接指定
 moai glm -f lane             # …GLM バックエンドのレーンも同じ形
 ```
 
-レーンは `moai cc -f lane`（次の空き番号に自動合流）または `moai cc -f lane-<n>`（その番号ちょうど）で 1 本ずつ増やす。どちらの形もレーン名を既に決めているので、`--name`/`-n` を併せて渡すとエラーになる。直接指定した番号が生存中のレーンと重なれば次の空き番号に変わる。それ以外では番号は生きているセッションが握っているものだけを飛ばす — 死んだレーンの claim はその番号をもう塞がないが（直接指定すればすぐ再利用できる）、`-f lane` の自動割り当ては常に生存中の最高番号+1を取るだけで、途中の空き番号は埋めない。レーンの所有権は `~/.moai/db/<project-key>/factory/factory.db` に記録される。起点ディレクトリが一時ディレクトリなら（絶対 `MOAI_HOME` オーバーライドなし）プロジェクトローカルの `<base>/.moai/db/<project-key>/factory/` の下に記録される — バックログキューと同じ例外だ。従来の `.moai/state/factory/workers.json` は一度だけ取り込まれ、ロールバック用の証跡として残る。1 本のレーンは最大 10 個の `Agent()` サブエージェントを同時に走らせ、書き込みを担うスポーンはそれぞれの worktree に隔離される。レーンを一度に全部立ち上げてはいけない — まず最初の 1 本を上げ、実際に出力が出ているのを確かめてから残りを活性化する。カードがレーンをまたいで分割されることはない。`-k` は 3 役割のカンバンチェーンを回すトークンのままで、1 回の起動に進入トークンは 1 つだけだから `-k` と `-f` の併用はエラーになる。廃止された `moai cg` は移行案内を表示して終了する。 ファクトリ run は自分を所有するセッションのプロセス識別を記録するようになった。リーダーが死んだ run は次にレーンが参加した時点で自動的に retire されるので、その参加が `AMBIGUOUS_FACTORY` で止まることはない。`moai factory runs` は全 run を所有者の生死とともに一覧し、`moai factory runs --retire <run-id>` は指定した run を手で retire する。所有者が実際に死んでいなければ拒否される。
+レーンは `moai cc -f lane`（次の空き番号に自動合流）または `moai cc -f lane-<n>`（その番号ちょうど）で 1 本ずつ増やす。どちらの形もレーン名を既に決めているので、`--name`/`-n` を併せて渡すとエラーになる。直接指定した番号が生存中のレーンと重なれば次の空き番号に変わる。それ以外では番号は生きているセッションが握っているものだけを飛ばす — 死んだレーンの claim はその番号をもう塞がないが（直接指定すればすぐ再利用できる）、`-f lane` の自動割り当ては常に生存中の最高番号+1を取るだけで、途中の空き番号は埋めない。レーンの所有権は `~/.moai/db/<project-key>/factory/factory.db` に記録される。起点ディレクトリが一時ディレクトリなら（絶対 `MOAI_HOME` オーバーライドなし）プロジェクトローカルの `<base>/.moai/db/<project-key>/factory/` の下に記録される — バックログキューと同じ例外だ。従来の `.moai/state/factory/workers.json` は一度だけ取り込まれ、ロールバック用の証跡として残る。1 本のレーンは最大 10 個の `Agent()` サブエージェントを同時に走らせ、書き込みを担うスポーンはそれぞれの worktree に隔離される。レーンを一度に全部立ち上げてはいけない — まず最初の 1 本を上げ、実際に出力が出ているのを確かめてから残りを活性化する。カードがレーンをまたいで分割されることはない。`-k` は 3 役割のカンバンチェーンを回すトークンのままで、1 回の起動に進入トークンは 1 つだけだから `-k` と `-f` の併用はエラーになる。廃止された `moai cg` は移行案内を表示して終了する。 ファクトリ run は自分を所有するセッションのプロセス識別を記録するようになった。リーダーが死んだ run は次にレーンが参加した時点で自動的に retire されるので、その参加が `AMBIGUOUS_FACTORY` で止まることはない。逆も防がれている: レーンが参加するとき run の記録が欠落または退役済みで、リーダーセッションが生きていれば、参加はそのリーダーを検証し(pid + プロセス開始フィンガープリント、対象は `-l/--lead` で指定、既定値 `leader`)、run の記録を復元してそのまま参加する — 検証済みリーダーが二人以上なら候補を全員名指してフェイルクローズする。`moai factory runs` は全 run を所有者の生死とともに一覧し、`moai factory runs --retire <run-id>` は指定した run を手で retire する。所有者が実際に死んでいなければ拒否される。
 
 > 詳しくは: [カンバンモード — ファクトリーモード](https://adk.mo.ai.kr/ja/advanced/kanban-mode)
 
@@ -445,7 +445,7 @@ AI エージェント同士がコンテキスト・不変条件・危険区域�
   <img src="./assets/images/moai-web-settings.png" alt="moai web コンソール設定画面 — プロファイルバーと設定タブ" width="90%">
 </p>
 
-`moai web` がローカルホスト限定のコンソールを開く。画面は Overview・Kanban・Specs・Monitor・Settings・Todo の 6 つで、設定画面は Identity・Language・LLM・GLM Settings・Workflow・Git & Worktree・Audit・Codex・Report・MCP・Cross-Session・Feedback・Quality Gate のタブに分かれる。Codex タブは散らばった codex 設定を 1 画面にまとめて見せる読み取り専用の画面で、値の編集は元のタブで行う。プロファイルの作成・改名・削除も同じ画面で行う。
+`moai web` がローカルホスト限定のコンソールを開く。画面は Overview・Kanban・Specs・Monitor・Settings・Todo の 6 つで、設定画面は Identity・Language・Claude settings・GLM Settings・Codex settings・Workflow・Git & Worktree・Audit・Report・MCP・Cross-Session・Feedback・Quality Gate のタブに分かれる。Codex タブは散らばった codex 設定を 1 画面にまとめて見せる読み取り専用の画面で、値の編集は元のタブで行う。プロファイルの作成・改名・削除も同じ画面で行う。
 
 ### ref / domain スキル
 
@@ -755,7 +755,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | `moai graph <build\|query>` | コードベースグラフ (edges.jsonl) の生成・照会 — 呼び出し元の検索、影響半径、マイルストーンの交差検査 |
 | `moai cc` / `moai glm` | Claude 専用 / GLM 専用のセッション |
 | `moai codex [cli\|status\|app]` | Codex ランチャー — 引数なしで呼ぶと Codex CLI を起動する。`status` は準備状態を表示するだけで何も起動しない |
-| `moai worktree <sync\|done\|hoist\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree の保守 (ワークツリーへの出入りはランチャーの仕事) |
+| `moai worktree <sync\|done\|sweep\|hoist\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree の保守 (ワークツリーへの出入りはランチャーの仕事) |
 | `moai session <list\|register\|current>` | マルチセッション調整 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC ライフサイクル・ツール |
 | `moai goal <arm\|status\|clear>` | ゴール・エンジン CLI |

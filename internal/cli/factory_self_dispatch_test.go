@@ -124,6 +124,13 @@ func TestSD_AC008_NextSelectionOrderAndOutput(t *testing.T) {
 	t.Run("assigned-to-this-lane wins over unowned picked", func(t *testing.T) {
 		root, store := fcFixture(t)
 		fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
+		// SPEC-TODO-CLASSIFY-DISPATCH-001: this scenario is mode-NEUTRAL —
+		// its subject is the arm ordering, not exclusivity. Two cards left
+		// unclassified both read serial (the absent-field default), and the
+		// serial-vs-serial gate would then wedge the arm ordering this test
+		// pins; the mode-neutral intent maps to parallelizable.
+		fcClassify(t, store, "t1", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
+		fcClassify(t, store, "t2", kanban.ClassPriorityNormal, false, kanban.ClassModeParallelizable)
 		sdRegisterLane(t, root, "lane-1")
 		fcPlace(t, root,
 			homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "lane-1", Stage: homestate.CardRun},
@@ -370,6 +377,7 @@ func TestSD_AC015_LaneQueueAllowlistWalk(t *testing.T) {
 		"list":        nil,
 		"done":        {"t1"},
 		"next":        {"1"},
+		"claim":       nil,
 		"unpick":      {"t1"},
 		"edit":        {"1", "text"},
 		"move":        {"1"},
@@ -382,6 +390,7 @@ func TestSD_AC015_LaneQueueAllowlistWalk(t *testing.T) {
 		"relate":      {"t1", "t2"},
 		"unrelate":    {"1"},
 		"why":         {"t1"},
+		"show":        {"t1"},
 		"pr":          nil,
 		"landed":      {"t1"},
 		"auto-done":   nil,
@@ -389,7 +398,7 @@ func TestSD_AC015_LaneQueueAllowlistWalk(t *testing.T) {
 		"history":     nil,
 		"triage":      {"t1"},
 	}
-	allow := map[string]bool{"list": true, "history": true, "why": true, "pr": true, "triage": true}
+	allow := map[string]bool{"list": true, "history": true, "why": true, "pr": true, "triage": true, "show": true}
 
 	todoRoot := newTodoCmd()
 	walked := 0

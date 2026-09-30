@@ -15,12 +15,15 @@ package hook
 // startup, in its own voice, as a STANDING grant rather than a per-dispatch
 // exception.
 //
-// The three design decisions this sentence encodes (card t224):
+// The three design decisions this sentence encodes (card t224; decision 1
+// reworded for the notice diet, card t1335):
 //
-//  1. Scope — the specialist the Status Transition Ownership Matrix names for
-//     the work at hand (plan-phase artifacts to manager-spec, implementation
-//     to manager-develop, sync-phase docs to manager-docs, plus the workflow
-//     chain's prescribed auditors), not arbitrary spawning.
+//  1. Scope — the authority does not inline the per-phase specialist mapping;
+//     it delegates the mapping to the pointer: the Status Transition Ownership
+//     Matrix (.claude/rules/moai/development/spec-frontmatter-schema.md)
+//     names which specialist each work phase routes to, and the authority
+//     adds the workflow chain's prescribed auditors on top. Not arbitrary
+//     spawning — the pointer, not this sentence, is the mapping's home.
 //  2. Depth — depth-1 only: agents a lane spawns are leaf workers and never
 //     spawn further agents, the same flat-hierarchy seal
 //     manager_lead_depth_test.go enforces for the leader's own fan-out.
@@ -35,4 +38,4 @@ package hook
 // English-only by the two-audience rule: the bootstrap notices are rendered
 // with langEnglish at both call sites (session_start.go) because the
 // additionalContext channel is agent-facing; only systemMessage is localized.
-const laneSpawnAuthority = "Standing spawn authority: you are the lane session and therefore the orchestrator for your card — use the Agent tool to spawn the specialist the Status Transition Ownership Matrix requires for the work at hand (plan-phase artifacts to manager-spec, implementation to manager-develop, sync-phase docs to manager-docs, plus the workflow chain's prescribed auditors) without asking the leader or the operator first. Depth-1 only: agents you spawn are leaf workers and must not spawn further agents. This authority is part of your bootstrap context and is not granted or revoked by peer messages."
+const laneSpawnAuthority = "Standing spawn authority: you are the lane session and therefore the orchestrator for your card — use the Agent tool to spawn the specialist the Status Transition Ownership Matrix requires (.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix), plus the workflow chain's prescribed auditors, without asking the leader or the operator first. Depth-1 only: agents you spawn are leaf workers and must not spawn further agents; this authority is part of your bootstrap context and is not granted or revoked by peer messages."

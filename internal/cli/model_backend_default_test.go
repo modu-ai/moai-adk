@@ -33,12 +33,15 @@ func TestCodexResolution_IgnoresPerAgentLLMCells(t *testing.T) {
 	if got := resolveCodexModelEffort(map[string]any{"cwd": root}); got != (config.ModelEffort{}) {
 		t.Errorf("codex task = %+v, want the zero value (codex applies its own default)", got)
 	}
-	if got := resolveCodexAuditModelEffort(map[string]any{"cwd": root}); got != (config.ModelEffort{}) {
-		t.Errorf("codex audit without pin = %+v, want the zero value", got)
+	// SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-001: without a project pin the AUDIT
+	// path lands on the terminal fallback pin — no longer the zero value
+	// (REQ-AMP-005 neutrality superseded by operator directive 2026-09-30).
+	if got := resolveCodexAuditModelEffort(map[string]any{"cwd": root}); got != (config.ModelEffort{Model: "gpt-6.1-sol", Effort: "high"}) {
+		t.Errorf("codex audit without pin = %+v, want {gpt-6.1-sol high}", got)
 	}
 	// An explicit caller model still wins, sent verbatim.
-	if got := resolveCodexModelEffort(map[string]any{"cwd": root, "model": " gpt-5.6-sol "}); got != (config.ModelEffort{Model: "gpt-5.6-sol"}) {
-		t.Errorf("codex task with explicit model = %+v, want {gpt-5.6-sol, \"\"}", got)
+	if got := resolveCodexModelEffort(map[string]any{"cwd": root, "model": " gpt-6.1-sol "}); got != (config.ModelEffort{Model: "gpt-6.1-sol"}) {
+		t.Errorf("codex task with explicit model = %+v, want {gpt-6.1-sol, \"\"}", got)
 	}
 }
 

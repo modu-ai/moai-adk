@@ -191,9 +191,9 @@ func TestApplyCGMode_CredentialRoutingInvariant(t *testing.T) {
 	}
 
 	glmConfig := &GLMConfigFromYAML{BaseURL: "https://api.z.ai/api/anthropic"}
-	glmConfig.Models.High = "glm-5.2"
-	glmConfig.Models.Medium = "glm-4.7"
-	glmConfig.Models.Low = "glm-4.5-air"
+	glmConfig.Models.High = "glm-5.3"
+	glmConfig.Models.Medium = "glm-5.3-flash"
+	glmConfig.Models.Low = "glm-5.3-flash"
 
 	rec := newRecordingSessionManager()
 	if err := injectTmuxSessionEnvVia(rec, glmConfig, "teammate-glm-token"); err != nil {
@@ -206,7 +206,7 @@ func TestApplyCGMode_CredentialRoutingInvariant(t *testing.T) {
 	if rec.bulk["ANTHROPIC_BASE_URL"] != "https://api.z.ai/api/anthropic" {
 		t.Errorf("teammate ANTHROPIC_BASE_URL must be injected, got bulk: %v", rec.bulk)
 	}
-	if rec.bulk["ANTHROPIC_DEFAULT_OPUS_MODEL"] != "glm-5.2" {
+	if rec.bulk["ANTHROPIC_DEFAULT_OPUS_MODEL"] != "glm-5.3" {
 		t.Errorf("teammate High-slot model must be injected, got bulk: %v", rec.bulk)
 	}
 	if _, ok := rec.bulk["ANTHROPIC_AUTH_TOKEN"]; ok {
@@ -220,13 +220,17 @@ func TestApplyCGMode_CredentialRoutingInvariant(t *testing.T) {
 // mode switches, documented in buildTmuxClearVars).
 func TestTmuxEnv_InjectClearParity(t *testing.T) {
 	// Clean cwd so the built-in glmContextWindows table (not a stray project
-	// llm.yaml) is consulted when glm-5.2 resolves to the 1M tier.
+	// llm.yaml) is consulted when glm-5.3 resolves to the 1M tier. (The High
+	// slot was glm-5.2 until REQ-MMU-004 deleted it; the 1M-resolution premise
+	// now rests on the offered set — glm-5.3 still resolves to 1M, so the
+	// auto-compact-window var still enters the inject set and the parity check
+	// keeps covering it.)
 	t.Chdir(t.TempDir())
 
 	glmConfig := &GLMConfigFromYAML{BaseURL: "https://api.z.ai/api/anthropic"}
-	glmConfig.Models.High = "glm-5.2" // resolves to the 1M tier → triggers the auto-compact-window var
-	glmConfig.Models.Medium = "glm-4.7"
-	glmConfig.Models.Low = "glm-4.5-air"
+	glmConfig.Models.High = "glm-5.3" // resolves to the 1M tier → triggers the auto-compact-window var
+	glmConfig.Models.Medium = "glm-5.3-flash"
+	glmConfig.Models.Low = "glm-5.3-flash"
 
 	injectVars := buildTmuxInjectVars(glmConfig, "some-token")
 	clearVars := buildTmuxClearVars()

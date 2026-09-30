@@ -33,13 +33,11 @@ const defaultAutoCompactPct = 85
 var glmContextWindows = map[string]int{
 	"glm-5.3-flash": 1_000_000, // GLM-5.3-Flash (z.ai 1M-context model, default coding model; explicit entry, not substring inheritance)
 	"glm-5.3":       1_000_000, // GLM-5.3 (z.ai 1M-context model; drives Claude Code 1M auto-compact)
-	"glm-5.2":       1_000_000, // GLM-5.2 (z.ai 1M-context model)
-	"glm-5.1":       200_000,   // GLM-5.1 (z.ai) — actual ~230K, leave headroom
-	"glm-5":         128_000,
-	"glm-4.7":       128_000,
-	"glm-4.6":       128_000,
-	"glm-4.5":       128_000,
-	"glm-4.5-air":   128_000,
+	// DELETION RECORD (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-004, DR-2): the
+	// seven old-model entries (glm-5.2 1M, glm-5.1 200K, glm-5/glm-4.7/
+	// glm-4.6/glm-4.5/glm-4.5-air 128K) are removed — the built-in table no
+	// longer resolves a removed id. llm.glm.context_windows remains the user
+	// override path that still maps a custom window for any id.
 }
 
 // getAutoCompactThreshold returns the auto-compact trigger percentage.
@@ -93,7 +91,7 @@ func readLLMYAMLContextWindows() map[string]int {
 
 // matchContextWindow returns the largest-matching context window entry for
 // the given lowercase model name, or 0 when no entry matches. Longer keys are
-// preferred to avoid "glm-4.5" masking "glm-4.5-air".
+// preferred to avoid "glm-5.3" masking "glm-5.3-flash".
 func matchContextWindow(model string, table map[string]int) int {
 	var matched int
 	var matchedSize int

@@ -23,7 +23,7 @@ The runtime ships a native `/loop` interval scheduler and Cron tools; MoAI ships
 
 **The single governing sentence, binding all recipes present and future:** scheduled runs never commit, never push, never enter run-phase; Level-1 uncommitted working-tree edits are the sole permitted exception.
 
-The Implementation Kickoff Approval (the plan→run HUMAN GATE; see `.claude/rules/moai/workflow/orchestration-mode-selection.md` header) is **human-only and cadence-unsatisfiable** — no scheduled invocation, however framed, can substitute for or bypass it. A cadence discovery is input to a human decision; it is never itself a decision.
+The plan→run Kickoff gate (see `.claude/rules/moai/workflow/orchestration-mode-selection.md` header) — under the default-autonomous transition (`.claude/rules/moai/workflow/auto-semantics.md` §9.1), an audit-cross-scheduled entry substitutes BY DESIGN: the decision record carries the evidence, so a scheduled invocation CAN satisfy the gate's autonomous form. Human-only survives for the keep-set categories (environment-impossible, operator-held, irreversible operations touching external shared systems) — no scheduled invocation substitutes for those. A cadence discovery is input to adjudication; it is never itself a decision.
 
 This invariant is stated once, here, at the catalog level — it is NOT restated per-recipe, so that adding a new recipe in the future does not accidentally omit it.
 
@@ -104,7 +104,7 @@ Not every discovery pathway belongs on a cadence. A recipe here is appropriate w
 - `.claude/skills/moai/workflows/gate.md`, `.claude/skills/moai/workflows/review.md` (`--lean` mode), `.claude/skills/moai/workflows/fix.md` (Level 1 classification) — the cited read-only/advisory/uncommitted-edit-only entry points.
 - `.claude/skills/moai/workflows/loop.md` § Ceiling-Exit Verdict Contract / § Remaining-Issue Persistence — the verdict-file schema recipe 3 reads (consumed here, not defined here).
 - `.claude/rules/moai/workflow/ci-autofix-protocol.md`, `.claude/skills/moai/workflows/sync/delivery.md` — the event-driven CI path this catalog deliberately does not duplicate.
-- `.claude/rules/moai/workflow/orchestration-mode-selection.md` (header) — Per the Implementation Kickoff Approval mandatory-restoration invariant (orchestration-mode-selection.md §E); this bridge cites and never weakens it.
+- `.claude/rules/moai/workflow/orchestration-mode-selection.md` (header) — Per the default-autonomous Kickoff transition (`.claude/rules/moai/workflow/auto-semantics.md` §9.1); this bridge cites and never weakens the gate's evidence standard.
 - `.claude/rules/moai/core/askuser-protocol.md` — the AskUserQuestion channel monopoly, unaffected by any cadence recipe (a cadence discovery is input to a human decision, never a decision itself).
 
 ---

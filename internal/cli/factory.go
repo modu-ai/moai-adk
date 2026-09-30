@@ -37,6 +37,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/discovery"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/kanban"
@@ -49,10 +50,14 @@ import (
 const factoryUnsupportedBackendSentinel = "FACTORY_MODE_UNSUPPORTED_BACKEND"
 
 // The entry tokens. `-f` is unbound on cc / glm / cg outside this file's
-// parse; `--factory` is its long form.
+// parse; `--factory` is its long form. `-l/--leader` (SPEC-FACTORY-LANE-JOIN-
+// SOCKET-001 REQ-008) names the leader session a lane join's discovery
+// targets — research measured `-l` free in this tree.
 const (
 	factoryFlagLong  = "--factory"
 	factoryFlagShort = "-f"
+	leadFlagLong     = "--leader"
+	leadFlagShort    = "-l"
 
 	// factoryLaneRoleToken is the canonical `-f lane` role value
 	// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-002): join the running factory as
@@ -65,6 +70,13 @@ const (
 	// `--clear-policy <value>` stamps the selected policy into the lane
 	// session's environment through config.EnvFactoryClearPolicy.
 	clearPolicyFlag = "--clear-policy"
+
+	// noAutoDispatchFlag is the lane auto-dispatch opt-out token
+	// (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-011): a boolean flag, no
+	// value. Absent, a lane launch is a SELF-DISPATCH lane — the default is
+	// recorded in code, and the flag is the only way to select the manual
+	// mode.
+	noAutoDispatchFlag = "--no-auto-dispatch"
 )
 
 // factoryFlagUsageError names every accepted -f shape. It is the error text
@@ -95,14 +107,18 @@ const factoryFlagUsageError = "-f/--factory takes no argument (the factory leade
 // lane label is an error — there is no second interpretation to silently
 // fall into, and hiding the typo would be worse than naming it.
 type factoryFlagParse struct {
-	Enabled     bool     // -f present (any shape)
-	Lanes       int      // always 0 post-N-removal; kept for the merge contract
-	LaneNumber  int      // n of `-f lane-<n>`; 0 otherwise
-	LaneLabel   string   // the lane label exactly as typed (`lane-3`)
-	LaneRole    bool     // `-f lane`: join as the next free lane
-	RunID       string   // explicit --factory-run selector (MoAI-owned, pre--- only)
-	ClearPolicy string   // --clear-policy value; a lane-only selection (REQ-SD-020)
-	Rest        []string // args with -f and its consumed value removed
+	Enabled     bool   // -f present (any shape)
+	Lanes       int    // always 0 post-N-removal; kept for the merge contract
+	LaneNumber  int    // n of `-f lane-<n>`; 0 otherwise
+	LaneLabel   string // the lane label exactly as typed (`lane-3`)
+	LaneRole    bool   // `-f lane`: join as the next free lane
+	RunID       string // explicit --factory-run selector (MoAI-owned, pre--- only)
+	ClearPolicy string // --clear-policy value; a lane-only selection (REQ-SD-020)
+	// NoAutoDispatch marks the --no-auto-dispatch opt-out
+	// (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-011); a lane-only boolean.
+	NoAutoDispatch bool
+	Lead           string   // `-l/--leader <name>`: which leader session discovery targets (lane joins only)
+	Rest           []string // args with -f and its consumed value removed
 }
 
 // parseFactoryFlag extracts --factory / -f and its optional value from args.
@@ -134,6 +150,40 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 			if strings.TrimSpace(p.RunID) == "" {
 				return p, fmt.Errorf("--factory-run requires a run id")
 			}
+			continue
+		}
+
+		// -l/--leader names WHICH leader session a lane join's discovery
+		// targets (SPEC-FACTORY-LANE-JOIN-SOCKET-001 REQ-008) — a target,
+		// not this session's own name. The legacy spelling is refused here
+		// with the same canonical-form shape refuseLegacyEntryNames applies
+		// to --name (AC-010): nothing parsed further, nothing launched,
+		// nothing written.
+		if arg == leadFlagLong || arg == leadFlagShort ||
+			strings.HasPrefix(arg, leadFlagLong+"=") || strings.HasPrefix(arg, leadFlagShort+"=") {
+			switch {
+			case strings.HasPrefix(arg, leadFlagLong+"="):
+				p.Lead = strings.TrimPrefix(arg, leadFlagLong+"=")
+			case strings.HasPrefix(arg, leadFlagShort+"="):
+				p.Lead = strings.TrimPrefix(arg, leadFlagShort+"=")
+			case i+1 < len(args) && args[i+1] != "--" && !strings.HasPrefix(args[i+1], "-"):
+				i++
+				p.Lead = args[i]
+			default:
+				return p, fmt.Errorf("%s requires a leader label", leadFlagLong)
+			}
+			if kanban.IsLegacyLeaderSpelling(p.Lead) {
+				return p, fmt.Errorf("%s %q is the legacy leader spelling; use %q (leader label forms: leader, leader-<n>, leader-<run-id>)",
+					leadFlagLong, p.Lead, kanban.LeaderLabel()+strings.TrimPrefix(p.Lead, "lead"))
+			}
+			continue
+		}
+
+		if arg == noAutoDispatchFlag || strings.HasPrefix(arg, noAutoDispatchFlag+"=") {
+			if strings.HasPrefix(arg, noAutoDispatchFlag+"=") {
+				return p, fmt.Errorf("%s takes no value; it is a boolean opt-out", noAutoDispatchFlag)
+			}
+			p.NoAutoDispatch = true
 			continue
 		}
 
@@ -201,6 +251,18 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 		return p, fmt.Errorf("%s, got %q", factoryFlagUsageError, value)
 	}
 
+	// The --leader surface gates (REQ-008): the flag names a TARGET for a lane
+	// join's discovery, so a leader entry carrying it names two things at
+	// once, and carrying it beside --factory-run names two different
+	// selectors. Both refuse before anything launches.
+	if p.Lead != "" {
+		if p.RunID != "" {
+			return p, fmt.Errorf("%s and --factory-run name two different selectors; carry one", leadFlagLong)
+		}
+		if !p.LaneRole && p.LaneNumber == 0 {
+			return p, fmt.Errorf("%s applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target", leadFlagLong)
+		}
+	}
 	// The clear policy is a LANE selection (REQ-SD-020: a Claude-harness
 	// lane launch). Carrying it on a non-factory launch or on the leader
 	// shape has no defined meaning, so the parser refuses it rather than
@@ -214,8 +276,29 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 			return p, fmt.Errorf("%s selects a lane's clear policy; the factory leader takes none", clearPolicyFlag)
 		}
 	}
+	// The auto-dispatch opt-out is a LANE selection too (REQ-TCD-011), on
+	// the same typo-honesty terms as the clear policy: a leader shape or a
+	// non-factory launch refuses it rather than silently swallowing the flag.
+	if p.NoAutoDispatch {
+		if !p.Enabled {
+			return p, fmt.Errorf("%s selects a factory lane's dispatch mode; it composes with -f lane or -f lane-<n> only", noAutoDispatchFlag)
+		}
+		if !p.LaneRole && p.LaneNumber == 0 {
+			return p, fmt.Errorf("%s selects a lane's dispatch mode; the factory leader takes none", noAutoDispatchFlag)
+		}
+	}
 
 	return p, nil
+}
+
+// laneDispatchSelection resolves the dispatch value a lane launch stamps
+// into config.EnvFactoryAutoDispatch (REQ-TCD-011): the opt-out selects the
+// manual mode; the code default is auto-dispatch.
+func laneDispatchSelection(entry kanbanEntryParse) string {
+	if entry.AutoDispatchManual {
+		return config.FactoryDispatchManual
+	}
+	return config.FactoryDispatchAuto
 }
 
 // refuseLegacyEntryNames refuses the legacy spellings on the operator-name
@@ -284,7 +367,9 @@ func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
 
 	entry.FactoryEnabled = true
 	entry.FactoryRun = fp.RunID
+	entry.FactoryLead = fp.Lead
 	entry.ClearPolicy = fp.ClearPolicy
+	entry.AutoDispatchManual = fp.NoAutoDispatch
 	// The stripped args always become the launch args — for every -f shape,
 	// not only the lane form below. (The lane forms append their desugared
 	// --name on top of these.)
@@ -364,6 +449,97 @@ func enterSelectedFactoryRun(root, explicit string, requireActive bool) (func(),
 	restore := captureEnvState(config.EnvMoaiKanbanID)
 	_ = os.Setenv(config.EnvMoaiKanbanID, runID)
 	return restore, nil
+}
+
+// discoverFactoryLeader is the leader-discovery seam; tests override it to
+// stage verified leaders without spawning processes (the
+// installFactoryLaunchSeam pattern).
+var discoverFactoryLeader = discovery.DiscoverLeader
+
+// ambiguousFactoryLeaderSentinel is the multi-leader fail-closed refusal
+// (REQ-005): two or more verified live leaders is genuine ambiguity, and —
+// the same prohibition REQ-014 applies to picking among active records —
+// selection among live leaders is forbidden. The refusal names every
+// candidate with its run id and mutates nothing.
+const ambiguousFactoryLeaderSentinel = "AMBIGUOUS_FACTORY_LEADER"
+
+// noActiveFactorySentinel is the resolver's record-absence answer; the lane
+// gate matches it to decide whether discovery may run.
+const noActiveFactorySentinel = "NO_ACTIVE_FACTORY"
+
+// enterFactoryLaneRun joins a factory lane to the run selected by explicit,
+// falling back to verified leader discovery on the record-absence refusal
+// (SPEC-FACTORY-LANE-JOIN-SOCKET-001 REQ-001). leadTarget names which leader
+// session discovery aims at; empty means the canonical leader label.
+//
+// @MX:ANCHOR: [AUTO] enterFactoryLaneRun — the single shared lane-join gate every launcher (cc/glm/codex twin) passes (REQ-010)
+// @MX:REASON: the discovery+resume path lives HERE and nowhere else; a launcher-private copy of this seam is the AC-013 defect, and the re-entry into enterSelectedFactoryRun is what keeps a discovered run indistinguishable from a lead-recorded one
+//
+// The path is the single join point every lane entry (cc / glm / codex twin)
+// passes (REQ-010): on NO_ACTIVE_FACTORY with no explicit selection it probes
+// for a live leader of this project; zero verified → the original refusal
+// stands; two or more → fail closed naming them; exactly one → the dedicated
+// resume writer restores that leader's run (REQ-004) and the gate is
+// RE-ENTERED, so a discovered run resolves exactly as one the lead recorded
+// itself — every downstream invariant (run id into MOAI_KANBAN_ID, lane
+// claim, hook ValidateActiveRun) is exercised, not bypassed. On the discovery
+// path the verified leader's own name is exported to the child as
+// MOAI_KANBAN_LEAD_NAME (REQ-009); ordinary joins export no leader name and
+// are unchanged.
+//
+// An explicit --factory-run is a decision, not an absence (REQ-006): the
+// resolver's answer stands and discovery never runs on it.
+func enterFactoryLaneRun(root, explicit, leadTarget string) (func(), error) {
+	restore, err := enterSelectedFactoryRun(root, explicit, true)
+	if err == nil {
+		return restore, nil
+	}
+	if explicit != "" || err.Error() != noActiveFactorySentinel {
+		return restore, err
+	}
+	target := leadTarget
+	if target == "" {
+		target = kanban.LeaderLabel()
+	}
+	verified, derr := discoverFactoryLeader(context.Background(), root, target)
+	if derr != nil {
+		return restore, derr
+	}
+	switch {
+	case len(verified) == 0:
+		// Discovery verified no live leader for this project — the refusal
+		// stands, now backed by a probe instead of a record (REQ-001).
+		return restore, err
+	case len(verified) > 1:
+		return restore, fmt.Errorf("%s: %s", ambiguousFactoryLeaderSentinel, discovery.DescribeVerifiedLeaders(verified))
+	}
+	leader := verified[0]
+	if rerr := resumeDiscoveredRun(root, leader); rerr != nil {
+		return restore, fmt.Errorf("resume discovered run %s: %w", leader.RunID, rerr)
+	}
+	restoreName := captureEnvState(config.EnvMoaiKanbanLeadName)
+	_ = os.Setenv(config.EnvMoaiKanbanLeadName, leader.Name)
+	reentered, jerr := enterSelectedFactoryRun(root, "", true)
+	if jerr != nil {
+		restoreName()
+		return restore, jerr
+	}
+	return func() { reentered(); restoreName() }, nil
+}
+
+// resumeDiscoveredRun is the join path's ONLY write: the dedicated resume
+// writer stamps the verified leader's probe-measured identity (REQ-004).
+// recordFactoryRunStart is deliberately NOT reused — it stamps the calling
+// lane, and the lane's exit would then retire a live lead's run.
+//
+// @MX:NOTE: [AUTO] the run id comes from the VERIFIED LEADER's own MOAI_KANBAN_ID env read by the probe — never minted or defaulted; an unreadable env declines the candidate (fail-closed), because the run id is the address of the broker the lead already speaks on
+func resumeDiscoveredRun(root string, leader discovery.VerifiedLeader) error {
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return err
+	}
+	defer closeFactoryInto(&err, db, "factory state")
+	return db.ResumeRun(context.Background(), leader.RunID, leader.PID, leader.ProcessStart, leader.Basis)
 }
 
 // refuseCodexLeaderRun prevents a different leader from adopting an active
@@ -510,11 +686,18 @@ func enterFactoryLeaderMode(lanes int, leaderLabel string) func() {
 // stamp always overwrites, so a policy inherited from an outer session can
 // never leak into a lane launched without one. Codex-harness lanes take no
 // policy and pass "" (REQ-SD-020).
-func enterFactoryLaneMode(label string, lanes int, clearPolicy string) func() {
+//
+// dispatch is the lane's auto-dispatch selection
+// (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-011): config.FactoryDispatchAuto
+// (the code default) or config.FactoryDispatchManual (--no-auto-dispatch).
+// The stamp always overwrites, like the policy's — nothing leaks from an
+// outer session.
+func enterFactoryLaneMode(label string, lanes int, clearPolicy string, dispatch string) func() {
 	restoreLabel := captureEnvState(config.EnvMoaiFactoryWorker)
 	restoreMarker := captureEnvState(config.EnvFactoryRole)
 	restoreLaneCount := captureEnvState(config.EnvMoaiFactoryWorkers)
 	restorePolicy := captureEnvState(config.EnvFactoryClearPolicy)
+	restoreDispatch := captureEnvState(config.EnvFactoryAutoDispatch)
 	restoreTier := seedAutonomyTier()
 	restoreCap := seedLaneAgentCap()
 
@@ -522,10 +705,12 @@ func enterFactoryLaneMode(label string, lanes int, clearPolicy string) func() {
 	_ = os.Setenv(config.EnvFactoryRole, config.FactoryRoleLane)
 	_ = os.Setenv(config.EnvMoaiFactoryWorkers, strconv.Itoa(lanes))
 	_ = os.Setenv(config.EnvFactoryClearPolicy, clearPolicy)
+	_ = os.Setenv(config.EnvFactoryAutoDispatch, dispatch)
 
 	return func() {
 		restoreCap()
 		restoreTier()
+		restoreDispatch()
 		restorePolicy()
 		restoreLaneCount()
 		restoreMarker()

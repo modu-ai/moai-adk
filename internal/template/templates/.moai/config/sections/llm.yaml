@@ -101,11 +101,13 @@ llm:
     #
     # Values are in tokens. Substring match: "glm-5.3" matches the high-slot id directly.
     # Set MOAI_STATUSLINE_CONTEXT_SIZE env for a one-shot override instead.
+    #
+    # The built-in glmContextWindows table carries ONLY glm-5.3-flash and
+    # glm-5.3 — the old-model entries are deleted, so this override key is the
+    # ONLY path that still maps a context window for a removed id. If you keep
+    # naming a removed model in a tier slot (the launcher falls back to the
+    # tier default with a one-line warning), set the window here explicitly.
     # Reference (Z.AI official docs):
     #   glm-5.3     : 1000000 context
-    #   glm-4.7     : 202752 context (per OpenRouter mirror)
-    #   glm-4.5-air : 128000 context
     # context_windows:
     #   glm-5.3: 1000000
-    #   glm-4.7: 202752
-    #   glm-4.5-air: 128000

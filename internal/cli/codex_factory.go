@@ -36,6 +36,31 @@ func parseCodexFactoryEntry(head []string) (rest []string, entry factoryFlagPars
 			}
 			continue
 		}
+		// Same surface as the cc/glm parse (REQ-008, mirror parity): the
+		// legacy leader spelling refuses with the canonical form, and the
+		// post-loop gates keep --leader a lane-join-only, single-selector flag.
+		if token == leadFlagLong || token == leadFlagShort ||
+			strings.HasPrefix(token, leadFlagLong+"=") || strings.HasPrefix(token, leadFlagShort+"=") {
+			if entry.Lead != "" {
+				return nil, entry, fmt.Errorf("%s may appear only once", leadFlagLong)
+			}
+			switch {
+			case strings.HasPrefix(token, leadFlagLong+"="):
+				entry.Lead = strings.TrimPrefix(token, leadFlagLong+"=")
+			case strings.HasPrefix(token, leadFlagShort+"="):
+				entry.Lead = strings.TrimPrefix(token, leadFlagShort+"=")
+			case i+1 < len(head) && !strings.HasPrefix(head[i+1], "-"):
+				i++
+				entry.Lead = head[i]
+			default:
+				return nil, entry, fmt.Errorf("%s requires a leader label", leadFlagLong)
+			}
+			if kanban.IsLegacyLeaderSpelling(entry.Lead) {
+				return nil, entry, fmt.Errorf("%s %q is the legacy leader spelling; use %q (leader label forms: leader, leader-<n>, leader-<run-id>)",
+					leadFlagLong, entry.Lead, kanban.LeaderLabel()+strings.TrimPrefix(entry.Lead, "lead"))
+			}
+			continue
+		}
 		value, hasValue := "", false
 		switch {
 		case token == factoryFlagShort || token == factoryFlagLong:
@@ -77,6 +102,12 @@ func parseCodexFactoryEntry(head []string) (rest []string, entry factoryFlagPars
 	if entry.RunID != "" && !entry.LaneRole && entry.LaneNumber == 0 {
 		return nil, entry, fmt.Errorf("--factory-run applies to a factory lane")
 	}
+	if entry.Lead != "" && entry.RunID != "" {
+		return nil, entry, fmt.Errorf("%s and --factory-run name two different selectors; carry one", leadFlagLong)
+	}
+	if entry.Lead != "" && !entry.LaneRole && entry.LaneNumber == 0 {
+		return nil, entry, fmt.Errorf("%s applies to a factory lane join (-f lane / -f lane-<n>); a factory leader names itself, not a target", leadFlagLong)
+	}
 	return rest, entry, nil
 }
 
@@ -93,7 +124,10 @@ func enterCodexFactory(root string, entry factoryFlagParse) (func(), error) {
 	var restoreRun func()
 	var err error
 	if lane {
-		restoreRun, err = enterSelectedFactoryRun(root, entry.RunID, true)
+		// See factory.go enterFactoryLaneRun: the shared lane join with the
+		// discovery fallback — the codex twin inherits the behavior through
+		// this one call (REQ-010).
+		restoreRun, err = enterFactoryLaneRun(root, entry.RunID, entry.Lead)
 		if err != nil {
 			return nil, err
 		}
@@ -109,7 +143,7 @@ func enterCodexFactory(root string, entry factoryFlagParse) (func(), error) {
 			restore()
 			return nil, fmt.Errorf("claim Codex factory lane: %w", claimErr)
 		}
-		restoreMode := enterFactoryLaneMode(claim.Label, 0, "")
+		restoreMode := enterFactoryLaneMode(claim.Label, 0, "", config.FactoryDispatchAuto)
 		return func() { restoreMode(); restore() }, nil
 	}
 	restoreMode := enterFactoryLeaderMode(config.DefaultFactoryLeaderLanes, "")
@@ -125,6 +159,10 @@ func codexFactoryEnv(entry factoryFlagParse) []string {
 	keys := []string{config.EnvMoaiKanbanID, config.EnvMoaiKanbanBackend, config.EnvMoaiFactoryWorkers}
 	if entry.LaneRole || entry.LaneNumber > 0 {
 		keys = append(keys, config.EnvMoaiFactoryWorker)
+		// The discovery path exports the verified leader's name (REQ-009);
+		// ordinary joins never set it, and the loop below drops empty keys,
+		// so this is additive-only for the child's env.
+		keys = append(keys, config.EnvMoaiKanbanLeadName)
 	} else {
 		keys = append(keys, config.EnvMoaiKanbanLeadAddr)
 	}

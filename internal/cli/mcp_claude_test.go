@@ -342,7 +342,11 @@ func TestClaudeAudit_ErrorTaxonomyIsSanitized_AC_CLA_006_007(t *testing.T) {
 		original := claudeLookPath
 		claudeLookPath = func(string) (string, error) { return "", exec.ErrNotFound }
 		t.Cleanup(func() { claudeLookPath = original })
-		out := performClaudeAudit(context.Background(), claudeAuditRequest{ProjectRoot: root})
+		// A pin-less tree, so the assertion measures the Go default rather than
+		// the enclosing fixture's workflow.yaml pin — the two coincided under
+		// the pre-t1368 sonnet default and the claim was vacuous (card t1374).
+		plainRoot := newGLMReviewTree(t, false)
+		out := performClaudeAudit(context.Background(), claudeAuditRequest{ProjectRoot: plainRoot})
 		if out.Provenance == nil || out.Provenance.ErrorCode != claudeErrBinaryMissing {
 			t.Fatalf("binary missing = %+v", out)
 		}

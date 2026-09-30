@@ -280,7 +280,7 @@ mentions an id later in the sentence still falls through, and
 			if len(args) == 0 {
 				return runTodoList(cmd, false, false, todoListDefaultLimit)
 			}
-			return runTodoAddAppend(cmd, strings.Join(args, " "), false)
+			return runTodoAddAppend(cmd, strings.Join(args, " "), false, todoCardDecider)
 		},
 		// PersistentPreRun fires once per `moai todo ...` invocation, for the
 		// parent and every subcommand alike, which is why the guidance lives
@@ -301,12 +301,13 @@ mentions an id later in the sentence still falls through, and
 		GroupID: "tools",
 	}
 	cmd.AddCommand(newTodoAddCmd(), newTodoListCmd(), newTodoDoneCmd(), newTodoUndoneCmd(), newTodoNextCmd(),
+		newTodoClaimCmd(),
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
 		newTodoDropCmd(), newTodoUndropCmd(),
 		newTodoHoldCmd(), newTodoUnholdCmd(),
 		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(),
 		newTodoPRCmd(), newTodoLandedCmd(), newTodoAutoDoneCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd(),
-		newTodoTriageCmd())
+		newTodoShowCmd(), newTodoTriageCmd())
 	cmd.Flags().BoolVar(&todoAutoFlag, "auto", false,
 		"process the queue serially: pick one card, dispatch one isolated worker, judge completion on disk evidence, then accept the next; the invocation is the operator's batch approval of the queue in queue order and nothing else")
 	cmd.Flags().DurationVar(&todoAutoWait, "auto-wait", 30*time.Minute,
@@ -331,6 +332,7 @@ var (
 var todoLaneReadOnlyVerbs = map[string]bool{
 	"list":    true,
 	"history": true,
+	"show":    true,
 	"why":     true,
 	"pr":      true,
 	"triage":  true,
@@ -356,6 +358,16 @@ func todoTreeRoot(run *cobra.Command) *cobra.Command {
 // proceed. The parent-with-args form is refused because it falls through to
 // `add`, a mutation. root is the tree the hook was defined on; run is the
 // command actually executing.
+//
+// @MX:NOTE: [AUTO] SPEC-TODO-CLAIM-LEASE-001 C6 flag-form guard extension:
+// `todo claim` is deliberately NOT exempted from this guard in either form.
+// A bare claim from a lane session and a `--lane <label>` claim while
+// factoryLaneRefusal() holds BOTH refuse with the same text below — the
+// flag form grants nothing, because the refusal predicate assumes nothing
+// about caller identity (REQ-TCL-013 arms 1/3). REQ-SD-015 bare-refusal
+// semantics are unchanged by the claim verb's arrival, and lane self-claim
+// governance remains t1338's decision; this guard is where that decision
+// would land if it ever widens the allowlist.
 func todoRefuseLaneMutation(root, run *cobra.Command, args []string) error {
 	if !factoryLaneRefusal() {
 		return nil
@@ -374,7 +386,7 @@ func todoRefuseLaneMutation(root, run *cobra.Command, args []string) error {
 // queue-mutation refusal, shared by the CLI guard and the MCP todo_add tool
 // so the two surfaces cannot drift (AC-SD-014 refusal equality).
 func todoLaneMutationRefusalText(surface string) string {
-	return fmt.Sprintf("moai %s: refused — %s: a lane session cannot mutate the queue (read-only here: bare todo, list, history, why, pr, triage); a lane takes its next card through moai factory next",
+	return fmt.Sprintf("moai %s: refused — %s: a lane session cannot mutate the queue (read-only here: bare todo, list, history, show, why, pr, triage); a lane takes its next card through moai factory next",
 		surface, factoryLaneBoundarySentinel)
 }
 
@@ -575,31 +587,143 @@ func todoVerbNames(cmd *cobra.Command) []string {
 	return names
 }
 
+// todoAddScan is the result of the add command's own argument scan: the
+// known flags the surface registers, plus the one card text.
+type todoAddScan struct {
+	pick          bool
+	force         bool
+	classFile     string
+	haveClassFile bool
+	help          bool
+	text          string
+}
+
+// scanTodoAddArgs separates the known flags from the card text in the raw
+// argument vector the add command receives under DisableFlagParsing
+// (SPEC-TODO-SURFACE-POLISH-001 REQ-TSP-010).
+//
+// Why the add path parses its own flags: pflag's interspersed parser
+// consumes every `-`-prefixed token as flags, and this surface registers no
+// shorthands — so a quoted body starting with `-f` (`moai todo add "-f fix
+// the flaky tests"`) died as `unknown shorthand flag: 'f'`. A body is TEXT;
+// the scanner treats a single-dash token as text and reserves flag meaning
+// for the three known long forms plus the `--` separator, so the known-flag
+// semantics (REQ-TSP-011) survive the change verbatim.
+//
+// The scan runs in Args — before PersistentPreRunE, where pflag's errors
+// used to fire — so an errored add still skips the run-phase hooks exactly
+// as it did under the old parser.
+func scanTodoAddArgs(raw []string) (*todoAddScan, error) {
+	scan := &todoAddScan{}
+	var positionals []string
+	separator := false // after `--`, every remaining token is the text
+	for i := 0; i < len(raw); i++ {
+		tok := raw[i]
+		switch {
+		case separator:
+			positionals = append(positionals, tok)
+		case tok == "--":
+			separator = true
+		case strings.HasPrefix(tok, "--"):
+			name, value, hasValue := strings.Cut(tok, "=")
+			switch name {
+			case "--pick":
+				scan.pick = true
+			case "--force":
+				scan.force = true
+			case "--classification-file":
+				scan.haveClassFile = true
+				if hasValue {
+					scan.classFile = value
+				} else {
+					i++
+					if i >= len(raw) {
+						return nil, fmt.Errorf("flag needs an argument: %s", name)
+					}
+					scan.classFile = raw[i]
+				}
+			case "--help":
+				scan.help = true
+			default:
+				return nil, fmt.Errorf("unknown flag: %s", name)
+			}
+		case tok == "-h":
+			scan.help = true
+		default:
+			// Includes every single-dash token (`-f`, `-x`, prose starting
+			// with one): the surface registers no shorthands, so a leading
+			// dash reaches the store verbatim instead of dying as an
+			// unknown shorthand flag. A body that genuinely reads like a
+			// known long flag keeps the `--` escape hatch.
+			positionals = append(positionals, tok)
+		}
+	}
+	if scan.help {
+		return scan, nil
+	}
+	if len(positionals) != 1 {
+		return nil, fmt.Errorf("accepts 1 arg(s), received %d", len(positionals))
+	}
+	scan.text = positionals[0]
+	return scan, nil
+}
+
 // newTodoAddCmd — `moai todo add "<text>"` (REQ-TODO-002): append under the
 // lock, print the issued id and its 1-based queue position. `--pick` (t71)
-// folds the pick into the same locked write.
+// folds the pick into the same locked write. `--classification-file`
+// (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-004) supplies a validated
+// classification judgement — `<path>` or `-` for standard input; it is the
+// ONLY classification injection seam, and the product computes no judgment
+// of its own beyond the deterministic default (plan D.3).
+//
+// The command parses its own arguments (DisableFlagParsing +
+// scanTodoAddArgs, REQ-TSP-010); the flag declarations below exist for the
+// usage text and are not consulted by a parser anymore.
 func newTodoAddCmd() *cobra.Command {
-	var pick bool
-	var force bool
+	var scan *todoAddScan
 	cmd := &cobra.Command{
-		Use:   "add <text>",
-		Short: "Append a card to the backlog queue",
-		Args:  cobra.ExactArgs(1),
+		Use:                "add <text>",
+		Short:              "Append a card to the backlog queue",
+		DisableFlagParsing: true,
+		Args: func(cmd *cobra.Command, args []string) error {
+			parsed, err := scanTodoAddArgs(args)
+			if err != nil {
+				return err
+			}
+			scan = parsed
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			text := args[0]
+			if scan.help {
+				return cmd.Help()
+			}
+			text := scan.text
 			if strings.TrimSpace(text) == "" {
 				return fmt.Errorf("todo add: text must be non-empty")
 			}
-			if pick {
-				return runTodoAddPick(cmd, newTodoStore(), text, force)
+			// REQ-TCD-004: the supplied classification is validated BEFORE
+			// the locked write — an out-of-set value or the jev identity is
+			// a usage refusal with nothing written.
+			dec := todoCardDecider
+			if scan.haveClassFile {
+				resolved, err := todoDeciderFromClassificationFile(scan.classFile)
+				if err != nil {
+					return err
+				}
+				dec = resolved
 			}
-			return runTodoAddAppend(cmd, text, force)
+			if scan.pick {
+				return runTodoAddPick(cmd, newTodoStore(), text, scan.force, dec)
+			}
+			return runTodoAddAppend(cmd, text, scan.force, dec)
 		},
 	}
-	cmd.Flags().BoolVar(&pick, "pick", false,
+	cmd.Flags().BoolVar(new(bool), "pick", false,
 		"Append AND mark picked as one locked write, printing the issued id")
-	cmd.Flags().BoolVar(&force, "force", false,
+	cmd.Flags().BoolVar(new(bool), "force", false,
 		"Admit a card the analyser reads as an exact duplicate, recording that it was forced")
+	cmd.Flags().StringVar(new(string), "classification-file", "",
+		"Classification judgement JSON (<path> or - for stdin); validated against the closed value sets before the write")
 	return cmd
 }
 
@@ -607,14 +731,18 @@ func newTodoAddCmd() *cobra.Command {
 // parent's natural-language fallthrough (t69): non-empty guard, locked
 // append, "<id> <position>" stdout line. `--pick` stays add-only — the
 // fallthrough path has no flags.
-func runTodoAddAppend(cmd *cobra.Command, text string, force bool) error {
-	return runTodoAddAppendRoot(resolveTodoQueueRoot(), cmd, text, force)
+func runTodoAddAppend(cmd *cobra.Command, text string, force bool, dec kanban.CardDecider) error {
+	return runTodoAddAppendRoot(resolveTodoQueueRoot(), cmd, text, force, dec)
 }
 
 // runTodoAddAppendRoot is runTodoAddAppend anchored at an explicit root —
 // the shape the MCP todo_add tool calls (REQ-SD-024), so both surfaces run
-// one implementation.
-func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bool) error {
+// one implementation. The decider argument is the classification seam this
+// invocation resolves; the MCP surface passes the package default.
+func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bool, dec kanban.CardDecider) error {
+	if dec == nil {
+		dec = todoCardDecider
+	}
 	if strings.TrimSpace(text) == "" {
 		return fmt.Errorf("todo add: text must be non-empty")
 	}
@@ -636,7 +764,18 @@ func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bo
 	err := todoStoreAt(root).Mutate(func(rec *kanban.BacklogRecord) error {
 		var mutErr error
 		item, pos, mutErr = appendAnalyzedCard(rec, text, kanban.BacklogStateQueued, force)
-		return mutErr
+		if mutErr != nil {
+			return mutErr
+		}
+		// REQ-TCD-001: the classification is resolved INSIDE the same locked
+		// write — no card becomes visible to a machine selector unclassified,
+		// and no two-step window exists (plan G1).
+		todoApplyClassification(rec, item.ID, todoClassifyInLock(dec, text, cmd.ErrOrStderr()))
+		// REQ-TCD-005/-006: the sort is re-established inside the same locked
+		// write, and the printed position is the sorted 1-based position.
+		rec.SortByClassification()
+		pos = rec.QueuedPosition(item.ID)
+		return nil
 	})
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
@@ -655,7 +794,10 @@ func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bo
 // race that mis-picked t67 on 2026-08-16. The confirmation prints the
 // issued id and the card text prefix; the caller never has to guess what
 // `--pick` just picked.
-func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string, force bool) error {
+func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string, force bool, dec kanban.CardDecider) error {
+	if dec == nil {
+		dec = todoCardDecider
+	}
 	// Card t1313: the same stale-store disclosure the append path carries —
 	// the issued id is a receipt for the store that answered. Scoped to the
 	// t1307 divergence line only (see the append-path comment).
@@ -667,7 +809,13 @@ func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string,
 	err := store.Mutate(func(rec *kanban.BacklogRecord) error {
 		var mutErr error
 		item, _, mutErr = appendAnalyzedCard(rec, text, kanban.BacklogStatePicked, force)
-		return mutErr
+		if mutErr != nil {
+			return mutErr
+		}
+		// REQ-TCD-001: same locked write, same seam, same sort duty.
+		todoApplyClassification(rec, item.ID, todoClassifyInLock(dec, text, cmd.ErrOrStderr()))
+		rec.SortByClassification()
+		return nil
 	})
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
@@ -677,12 +825,18 @@ func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string,
 	return nil
 }
 
-// todoListDefaultLimit is the list render's default bound — the same shape
-// (and value) as the history verb's REQ-TAQ-007 contract: a bounded read is
-// the default, --limit raises or lowers it, --limit 0 lifts it entirely,
-// and a truncated listing states the withheld count on stderr because a
-// truncated read must never be mistaken for a complete one.
-const todoListDefaultLimit = 20
+// todoListDefaultLimit is the list render's default bound. A bounded read
+// stays the default, --limit raises or lowers it, --limit 0 lifts it
+// entirely, and a truncated listing states the withheld count on stderr
+// because a truncated read must never be mistaken for a complete one.
+//
+// The value is 100 (SPEC-TODO-SURFACE-POLISH-001 REQ-TSP-020, operator
+// decision at the 2026-09-30 kickoff): the measured live queue (55 rows,
+// 2026-09-29) was cut in half every single day by the old 20, while the
+// withheld line made the cut VISIBLE — the bound stopped matching the
+// queue's actual scale. 100 renders today's queue whole; when a queue
+// outgrows it again the same withheld line reports the fact.
+const todoListDefaultLimit = 100
 
 // runTodoList renders the backlog lock-free. It backs both entry points —
 // the bare `moai todo` and the explicit `moai todo list` — so the two cannot
@@ -722,7 +876,11 @@ func runTodoListRoot(root string, cmd *cobra.Command, jsonOutput bool, droppedOn
 	}
 	out := cmd.OutOrStdout()
 	if jsonOutput {
-		data, err := json.Marshal(rec)
+		// REQ-TCL-014: the JSON face renders through the lease-free
+		// projection — the new columns are excluded from this
+		// serialization entirely, keeping the frozen golden gate
+		// byte-identical and the machine contract lease-blind.
+		data, err := json.Marshal(todoJSONProjection(rec))
 		if err != nil {
 			return err
 		}
@@ -750,7 +908,10 @@ func runTodoListRoot(root string, cmd *cobra.Command, jsonOutput bool, droppedOn
 		shown = limit
 	}
 	for _, it := range visible[:shown] {
-		_, _ = fmt.Fprintf(out, "%s\t%s\t%s\n", it.ID, it.State, todoPRCell(it.Text))
+		// REQ-TCL-010: a card carrying lease fields exposes them on the
+		// human surface (by=/lease= cells before the text, which stays the
+		// last field); a card without them keeps the historical line shape.
+		_, _ = fmt.Fprintf(out, "%s\t%s\t%s%s\n", it.ID, it.State, todoLeaseCells(it), todoPRCell(it.Text))
 		for _, f := range rec.Findings {
 			if !f.Names(it.ID) {
 				continue

@@ -203,6 +203,7 @@ local/main
 3. **main으로는 release 브랜치의 PR만 올라간다.** 카드가 직접 main으로 PR을 내지 않는다.
 4. **통합 창은 직렬이다.** `moai integration acquire --card <card-id>` → 병합 → `release` — push는 창 밖이다(리더 일괄, 2026-09-02). 락은 병합을 직렬화하는 장치이지 수리를 직렬화하는 장치가 아니므로, 수리가 남았으면 준비된 뒤에 잡는다.
 5. **판정은 CI.** 로컬 통과는 조기 신호일 뿐이다 — 깨끗한 환경도, darwin/windows 매트릭스도 아니다. 병합 전 검증을 병합 후 근거로 재사용하지 않는다: 병합 트리에서 다시 재거나, 병합 커밋의 `git rev-parse <merge>^{tree}`가 재측정한 트리와 동일함을 보인다.
+6. **로컬 `main`은 commit-dead다 (SPEC-MAIN-COMMIT-BAN-001, 카드 t1337).** 어느 세션도 primary 체크아웃의 `main` 안에서 커밋하지 않는다 — `git commit` / `git revert` / `git cherry-pick`은 BranchGuard(`workflow.branch_guard.deny_commits_on: [main]`)가 거부하고, 커밋은 `develop`에서 분기한 카드 워크트리에서만 만든다. main의 잔여물을 처분하는 절차(운영자 터미널 전용)는 `.moai/docs/gitflow-integration-chain.md`가 소유한다. 리더의 develop push는 배치 트리거로 닫는다 — `git rev-list --count origin/develop..develop`이 `git_strategy.manual.lead_push_threshold`에 닿으면 배치를 닫는다. 현재값의 원천은 설정 파일이고 이 규율은 키와 계수 명령을 명명할 뿐이다. push는 초록 조건부를 따른다 — 카드 병합마다 통합 창의 병합 트리 재측정이 사전 게이트이고, 마지막 push의 `origin/develop` CI가 red인 동안 다음 push는 보류된다. 상세는 `.claude/rules/local/gitflow-lane-protocol.md` §4.
 
 **[SUPERSEDED by 위 체인 — 2026-08-29]** 종전 규위(develop 원격 미푸시 · 카드별 main PR · 일회용 develop)은 폐기됐다 — 폐기 사실과 사유의 보존은 두 문서가 반대 지시를 하지 않게 하기 위함이며, 전문은 `.moai/docs/gitflow-integration-chain.md` 에 있다.
 
@@ -424,7 +425,7 @@ Sections §18-27 were consolidated into external `.moai/docs/` files to reduce l
 - **§5 Version Management** (SemVer pre-release, ldflags injection, release process): `.moai/docs/version-management.md`
 - **§7 Hook Development** (shell-script-only pattern, settings.json format, quoting rules): `.moai/docs/hook-development.md`
 - **§18 Git Workflow** (Enhanced GitHub Flow 본문 + [2026-08-27] git-flow 전환 상위모델 노트 — 정본은 §4.1, branch protection `enforce_admins: true`, Hybrid Trunk RETIRED): `.moai/docs/git-workflow-doctrine.md`
-- **§19 AskUserQuestion Enforcement + §19.1 Implementation Kickoff Approval Mandatory Restoration** (REQ-ATR-015): canonical SSOT at `.claude/rules/moai/core/askuser-protocol.md` + `.claude/rules/moai/workflow/orchestration-mode-selection.md` §E (the gate is mandatory and score-independent; plan-auditor PASS never auto-bypasses it)
+- **§19 AskUserQuestion Enforcement + §19.1 Implementation Kickoff Approval** (REQ-ATR-015, 기본 자율 전이로 개정): canonical SSOT at `.claude/rules/moai/core/askuser-protocol.md` + `.claude/rules/moai/workflow/auto-semantics.md` §9.1 (plan→run 진입의 기본형은 감사 교차 증거 — plan-auditor PASS + audit-ready + 해시 무결성 + 무차단 — + 결정 기록; keep-set 3범주 [environment-impossible / operator-held / irreversible external-shared]는 운영자 직답 유지)
 - **§20 Vercel Build Cost Guard** [HARD]: all Vercel projects MUST use Elastic build machine ($0.0035/CPU min vs Turbo $0.126/min); check Build Machine setting first on cost anomalies
 - **§21 Dev-Only Commands Isolation** (split harnesses, `SPLIT_HARNESS_NAMESPACE_LEAK` sentinel): `.moai/docs/dev-only-commands-isolation.md`
 - **§22 Dev Settings Intent** (settings.json key semantics): `.moai/docs/local-dev-settings-intent.md`
@@ -452,4 +453,4 @@ Sections §18-27 were consolidated into external `.moai/docs/` files to reduce l
 
 ## 31. 킥오프 자율·의사결정 위임 (운영자 정책)
 
-[HARD] 킥오프는 카드가 운영자 게이트를 명시하지 않는 한 자율로 진행한다. 레인 창에서 운영자가 이미 고른 모드는 덮지 않는다. 레인은 선택을 운영자에게 되묻지 않고 리더에게 올린다. 리더는 Jev를 쓰더라도 완료·병합·큐 변경·운영자 게이트를 모델 답으로 판정하지 않는다. 근거와 적용 범위는 `.moai/docs/kickoff-autonomy.md`에 있다.
+[HARD] 킥오프는 카드가 운영자 게이트를 명시하지 않는 한 자율로 진행한다 — 게이트 재고 + keep-set 모델(`.claude/rules/moai/workflow/auto-semantics.md` §9: 기본 자율 전이는 감사 교차 증거 + 결정 기록이고, environment-impossible / operator-held / irreversible external-shared 3범주만 운영자 직답을 유지한다)을 따른다. 레인 창에서 운영자가 이미 고른 모드는 덮지 않는다. 레인은 선택을 운영자에게 되묻지 않고 리더에게 올린다. 리더는 Jev를 쓰더라도 완료·병합·큐 변경·운영자 게이트를 모델 답으로 판정하지 않는다. 근거와 적용 범위는 `.moai/docs/kickoff-autonomy.md`에 있다.

@@ -37,7 +37,7 @@ func sdScrubLauncherEnv(t *testing.T) {
 		config.EnvMoaiKanbanLeadAddr, config.EnvMoaiKanbanSettingsInjected,
 		config.EnvFactoryRole, config.EnvMoaiFactoryWorker, config.EnvMoaiFactoryWorkers,
 		config.EnvMoaiKanbanBackend, config.EnvMoaiKanbanCard,
-		config.EnvFactoryClearPolicy,
+		config.EnvFactoryClearPolicy, config.EnvFactoryAutoDispatch,
 	} {
 		t.Setenv(k, "")
 	}

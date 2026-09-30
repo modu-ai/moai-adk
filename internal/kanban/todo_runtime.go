@@ -213,10 +213,21 @@ func (s *BacklogStore) recordRuntime(run TodoRuntimeRun, assignment *TodoRuntime
 		return err
 	}
 	if assignment != nil {
-		a := assignment
+		// REQ-TSP-052: the write path records the canonical vocabulary
+		// only — a legacy spelling carried in (an old launcher's env, a
+		// stale dispatch surface) is relabeled at the choke point, so no
+		// new legacy row is ever written.
+		a := *assignment
+		a.OwnerLabel = canonicalOwnerLabel(a.OwnerLabel)
 		if _, err := tx.ExecContext(ctx, `INSERT INTO todo_runtime_assignments(run_id,card_id,owner_label,reported_state,event_kind,provenance_json) VALUES(?,?,?,?,?,?) ON CONFLICT(run_id,card_id) DO UPDATE SET owner_label=excluded.owner_label,reported_state=excluded.reported_state,event_kind=excluded.event_kind,provenance_json=excluded.provenance_json`, a.RunID, a.CardID, a.OwnerLabel, a.ReportedState, a.EventKind, a.ProvenanceJSON); err != nil {
 			return err
 		}
+	}
+	// REQ-TSP-050: the one-time relabel rides the same locked transaction —
+	// idempotent (canonical rows pass through unchanged), so it costs one
+	// DISTINCT scan on a migrated store.
+	if _, err := migrateOwnerLabelVocabularyTx(ctx, tx); err != nil {
+		return err
 	}
 	return tx.Commit()
 }
