@@ -96,4 +96,17 @@ m1_to_mN_commit_strategy: one commit per milestone (M1-M6), conventional subject
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_complete_at: 2026-09-30
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+b12_self_test_a: pass  # grep -c 'SPEC-WORKTREE-SWEEP-001' CHANGELOG.md → 0 pre-emission (no duplicate entry)
+b12_self_test_b: pass  # AC count in acceptance.md = 14 (AC-WS-001..014); CHANGELOG entry cites 14 — match
+b12_self_test_c: pass  # every file path in the CHANGELOG entry verified via ls/grep before commit
+changelog_entry_position: CHANGELOG.md [Unreleased] → Added, first bullet
+frontmatter_status_transitions.in-progress_to_completed: 2026-09-30  # single sync commit (3-phase close merged)
+canary_compliance_check:
+  docs_site_touched: false  # docs-site (adk.mo.ai.kr) content is oss-docs harness scope — follow-up candidate only
+  readme_touched: true      # worktree verb enumeration +`sweep`, ko-canonical, 4-locale same-commit (ko/en/ja/zh)
+  readme_parity: pass       # H2 counts 12/12/12/12, code fences 46 each, switcher headers intact, URL blacklist clean
+mx_tag_validation: sync sub-step pass  # no @MX:TODO residue in new sweep files (E2-E6 clean; lint 0 issues)
+sync_note: run-phase §E.2/§E.3 evidence unchanged; sync is artifact-only (CHANGELOG + README 4-locale verb row + this §E.4 + spec.md status transition).
