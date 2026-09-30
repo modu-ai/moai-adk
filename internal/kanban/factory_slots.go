@@ -23,6 +23,8 @@ package kanban
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -157,6 +159,14 @@ func ClaimFactoryLane(root, requested string, auto bool, pid int, runID string, 
 // ClaimFactoryLaneWithin atomically chooses a free slot in 1..maxSlots or
 // refuses a requested slot outside that range. A full run never claims a
 // higher number, and a conflicting explicit number is never bumped.
+//
+// The run's recorded lane capacity (runs.lane_capacity, the leader-start
+// record of SPEC-CODEX-LANE-SLOTS-001 REQ-004) is the automatic scan's
+// authority: the derived-capacity marker makes the run capacity-open and the
+// scan grows to one past the highest LIVE claim without an upper refusal
+// (REQ-005); a recorded operator-declared count overrides maxSlots and the
+// full recorded run refuses (REQ-006, the t1294 contract); a run with no
+// record keeps the launcher-side bound. Explicit requests never grow (REQ-003).
 func ClaimFactoryLaneWithin(root, requested string, auto bool, pid int, runID string, maxSlots int, alive func(int) bool) (FactoryClaim, error) {
 	if maxSlots < 1 {
 		return FactoryClaim{}, fmt.Errorf("factory lane limit must be positive")
@@ -243,16 +253,55 @@ func claimFactoryLane(root, requested string, auto bool, pid int, runID string, 
 	if err := rows.Close(); err != nil {
 		return claim, err
 	}
+	// The run's recorded lane capacity is the automatic scan's authority
+	// (SPEC-CODEX-LANE-SLOTS-001 REQ-004), read inside the same transaction
+	// as the workers scan: the derived marker marks a capacity-open run whose
+	// scan grows (REQ-005), a positive count is the operator-declared bound
+	// that overrides the launcher-side guess and refuses a full run (REQ-006,
+	// the t1294 contract), and a run with no record keeps the launcher-side
+	// bound — the preserved pre-SPEC behavior. The legacy-run refusal above
+	// has already fired by this point, so a capacity-open run never grows
+	// into a legacy vocabulary.
+	capacityOpen := false
+	if maxSlots > 0 && runID != "" {
+		var recorded int
+		err := tx.QueryRow(`SELECT lane_capacity FROM runs WHERE run_id=?`, runID).Scan(&recorded)
+		switch {
+		case err == nil:
+			if recorded == homestate.LaneCapacityDerived {
+				capacityOpen = true
+			} else if recorded >= 1 {
+				maxSlots = recorded
+			}
+		case errors.Is(err, sql.ErrNoRows):
+			// No recorded capacity: the launcher-side bound stands.
+		default:
+			return claim, err
+		}
+	}
 	if maxSlots > 0 {
 		if auto {
-			for candidate := 1; candidate <= maxSlots; candidate++ {
-				if !taken[candidate] {
-					n = candidate
-					break
+			if capacityOpen {
+				// Capacity-open (REQ-005): the identical growth rule the
+				// unbounded path applies — one past the highest LIVE claim
+				// (dead claims were never counted), bumped past anything
+				// taken. Every number drawn here is still guaranteed free by
+				// the taken set, so two lanes can never hold one number
+				// (REQ-002).
+				n = maxCanonical + 1
+				for taken[n] {
+					n++
 				}
-			}
-			if n == 0 {
-				return claim, fmt.Errorf("factory run %s has no free lane slots in 1..%d", runID, maxSlots)
+			} else {
+				for candidate := 1; candidate <= maxSlots; candidate++ {
+					if !taken[candidate] {
+						n = candidate
+						break
+					}
+				}
+				if n == 0 {
+					return claim, fmt.Errorf("factory run %s has no free lane slots in 1..%d", runID, maxSlots)
+				}
 			}
 		} else if taken[n] {
 			return claim, fmt.Errorf("factory lane %q is already occupied in run %s", requested, runID)
