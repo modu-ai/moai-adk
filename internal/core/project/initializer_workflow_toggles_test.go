@@ -24,7 +24,6 @@ const templateLikeWorkflow = `workflow:
         auto_create: false
         auto_merge: false
         auto_cleanup: false
-        tmux_preferred: true
     token_budget:
         plan: 30000
         run: 180000
@@ -85,7 +84,6 @@ func TestWriteWorkflowTogglesYAML_PatchesExistingWorktreeKeys(t *testing.T) {
 		"        auto_create: true",
 		"        auto_merge: true",
 		"        auto_cleanup: true",
-		"        tmux_preferred: true",
 		"    token_budget:",
 	} {
 		if !bytes.Contains(got, []byte(want)) {
