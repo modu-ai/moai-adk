@@ -31,6 +31,13 @@ var platformProcessCWDs = func() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("lsof cwd scan: %w", err)
 	}
+	return parseLsofCWDs(out), nil
+}
+
+// parseLsofCWDs parses `lsof -a -d cwd -F0n` output into directory paths.
+// Extracted from platformProcessCWDs so the NUL-field parse is unit-testable
+// without running lsof on the host.
+func parseLsofCWDs(out []byte) []string {
 	var directories []string
 	for _, field := range bytes.Split(out, []byte{0}) {
 		value := strings.TrimLeft(string(field), "\r\n")
@@ -38,5 +45,5 @@ var platformProcessCWDs = func() ([]string, error) {
 			directories = append(directories, strings.TrimSuffix(value[1:], " (deleted)"))
 		}
 	}
-	return directories, nil
+	return directories
 }

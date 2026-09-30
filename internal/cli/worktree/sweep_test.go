@@ -37,17 +37,24 @@ type sweepMock struct {
 	removed       []string
 	removedForce  []bool
 	statusOut     map[string]string // -C <path> status --porcelain
+	statusErr     error             // -C <path> status failure (dirty-check-failed)
 	ignoredOut    map[string]string // -C <path> status --porcelain --ignored
+	ignoredCalls  int               // --ignored invocations observed
+	ignoredAfter  int               // when > 0: --ignored returns content only after this many calls
 	lockPorcelain string            // `git worktree list --porcelain` output
 	lockErr       error             // lock source unreadable
 	cwds          []string          // process cwd probe result
 	cwdErr        error             // process cwd probe failure
+	fetchCmdErr   error             // git fetch subprocess failure (default seam)
+	fetchArgs     [][]string        // git fetch subprocess invocations
+	removeErr     map[string]error  // provider Remove failure by path
 	fetchErr      error             // fetch seam failure
 	fetchedBases  []string          // bases the fetch seam observed
 	landed        map[string]bool   // ancestry seam result by branch tip
 	ancestorErrs  map[string]error  // ancestry seam failure by branch tip
 	doneCalls     []string          // "branch|force|delete|hoist" per done-core call
 	doneErr       error             // done-core failure
+	doneSuccess   bool              // done-core success return (initialized true; a cell flips it)
 	hoistCalls    []string          // paths the hoist seam saw
 	hoistErr      error             // hoist seam failure
 }
@@ -62,6 +69,8 @@ func sweepMockEnv(t *testing.T, worktrees []git.Worktree) *sweepMock {
 		ignoredOut:   map[string]string{},
 		landed:       map[string]bool{},
 		ancestorErrs: map[string]error{},
+		removeErr:    map[string]error{},
+		doneSuccess:  true,
 	}
 
 	origProvider := WorktreeProvider
@@ -94,6 +103,9 @@ func sweepMockEnv(t *testing.T, worktrees []git.Worktree) *sweepMock {
 			}
 			m.removed = append(m.removed, path)
 			m.removedForce = append(m.removedForce, force)
+			if err := m.removeErr[path]; err != nil {
+				return err
+			}
 			return nil
 		},
 	}
@@ -120,7 +132,7 @@ func sweepMockEnv(t *testing.T, worktrees []git.Worktree) *sweepMock {
 		if m.doneErr != nil {
 			return false, m.doneErr
 		}
-		return true, nil
+		return m.doneSuccess, nil
 	}
 
 	// Seal the anchor-registry env axis: point the caller registry at an
@@ -137,11 +149,27 @@ func (m *sweepMock) git(args ...string) (string, error) {
 	if args[0] == "-C" {
 		path := args[1]
 		rest := args[2:]
+		if len(rest) >= 1 && rest[0] == "fetch" {
+			m.fetchArgs = append(m.fetchArgs, args)
+			return "", m.fetchCmdErr
+		}
+		if len(rest) >= 1 && rest[0] == "worktree" {
+			if m.lockErr != nil {
+				return "", m.lockErr
+			}
+			return m.lockPorcelain, nil
+		}
 		if len(rest) >= 2 && rest[0] == "status" {
+			if m.statusErr != nil {
+				return "", m.statusErr
+			}
 			for _, a := range rest {
 				if a == "--ignored" {
-					if out, ok := m.ignoredOut[path]; ok {
-						return out, nil
+					m.ignoredCalls++
+					if m.ignoredAfter == 0 || m.ignoredCalls > m.ignoredAfter {
+						if out, ok := m.ignoredOut[path]; ok {
+							return out, nil
+						}
 					}
 					break
 				}
@@ -365,7 +393,7 @@ func assertSweepStateValues(t *testing.T, records []map[string]interface{}) {
 // universe entirely, per the clean --stale convention.
 func TestSweep_JSONEmitsEveryNonProtectedTree(t *testing.T) {
 	sweepMockEnv(t, []git.Worktree{
-		{Path: "/repo", Branch: "develop"},      // protected: provider root
+		{Path: "/repo", Branch: "develop"}, // protected: provider root
 		{Path: "/wt/one", Branch: "feature/one"},
 		{Path: "/wt/two", Branch: "feature/two"},
 	})
@@ -694,6 +722,38 @@ func TestSweepBaseFlag(t *testing.T) {
 	got = decodeSweepJSON(t, out)
 	if got[0]["landed"] != staleStateYes {
 		t.Errorf("against --base origin/main the tip must read landed, got %v (record: %v)", got[0]["landed"], got[0])
+	}
+}
+
+// TestSweepUnpushedPreserves is AC-WS-005: a branch carrying commits
+// unreachable from ANY remote preserves via the landing predicate's exit-1
+// path. The behavior was RED'd by TestSweepNotLandedPreserves (M2); this is
+// the AC-named pin adding the remote-unreachability observation.
+func TestSweepUnpushedPreserves(t *testing.T) {
+	f := newSweepRepo(t)
+	wt := filepath.Join(f.base, "trees", "wt-unpushed")
+	addSweepWorktree(t, f, wt, "feature/unpushed")
+	sweepRunGit(t, wt, "commit", "-q", "--allow-empty", "-m", "work no remote has")
+	// Positive control: the commit is genuinely unreachable from every
+	// remote-tracking ref — exit 1 names it.
+	if out := sweepRunGitAllowFail(t, wt, "branch", "-r", "--contains", "HEAD"); strings.TrimSpace(out) != "" {
+		t.Fatalf("fixture broken: the commit is reachable from a remote: %s", out)
+	}
+	withSweepRepoEnv(t, f)
+	m := &sweepMock{}
+	stubSweepProbeSeams(t, m, f)
+
+	out, err := runSweepCmd(t, map[string]string{"json": "true"})
+	if err != nil {
+		t.Fatalf("runSweep error: %v", err)
+	}
+	got := decodeSweepJSON(t, out)
+	reason, _ := got[0]["reason"].(string)
+	if !strings.Contains(reason, "cause="+causeNotLanded) {
+		t.Errorf("an unpushed branch must preserve via cause=%s, got %q", causeNotLanded, reason)
+	}
+	if _, statErr := os.Stat(wt); statErr != nil {
+		t.Errorf("the tree must survive, got: %v", statErr)
 	}
 }
 
@@ -1354,6 +1414,199 @@ func TestSweepRemovalFailure(t *testing.T) {
 	}
 	if !strings.Contains(out, "Removed 1 worktree(s)") {
 		t.Errorf("the count must report only the actual removal, got:\n%s", out)
+	}
+}
+
+// --- REFACTOR-phase edge-path pins ------------------------------------------
+//
+// These pin failure branches and the acceptance §D.2 edge cases. Each
+// behavior's RED evidence lives in its milestone (M1-M4); these cells harden
+// the error paths and pin the remaining edge vocabulary.
+
+// TestSweepDetachedHeadPreserves pins acceptance §D.2: a detached-HEAD tree
+// has no branch tip, so the landing predicate is unanswerable — PRESERVE,
+// landed=undetermined, never a negative.
+func TestSweepDetachedHeadPreserves(t *testing.T) {
+	sweepMockEnv(t, []git.Worktree{{Path: "/wt/detached", Branch: ""}})
+
+	out, err := runSweepCmd(t, map[string]string{"json": "true"})
+	if err != nil {
+		t.Fatalf("runSweep error: %v", err)
+	}
+	got := decodeSweepJSON(t, out)
+	if got[0]["landed"] != staleStateUndetermined {
+		t.Errorf("a detached HEAD must read landed=undetermined, got %v", got[0]["landed"])
+	}
+	reason, _ := got[0]["reason"].(string)
+	if !strings.Contains(reason, "cause="+causeDetachedHead) {
+		t.Errorf("reason must carry cause=%s, got %q", causeDetachedHead, reason)
+	}
+	if got[0]["verdict"] != sweepPreserve {
+		t.Errorf("a detached-HEAD tree must preserve, got %v", got[0]["verdict"])
+	}
+}
+
+// TestSweepDirtyCheckFailurePreserves pins the dirty predicate's unanswerable
+// branch: an unreadable working-tree state is undetermined, never a negative.
+func TestSweepDirtyCheckFailurePreserves(t *testing.T) {
+	m := sweepMockEnv(t, []git.Worktree{{Path: "/wt/unreadable", Branch: "feature/unreadable"}})
+	m.landed["feature/unreadable"] = true
+	m.statusErr = errors.New("git status died")
+
+	out, err := runSweepCmd(t, map[string]string{"json": "true"})
+	if err != nil {
+		t.Fatalf("runSweep error: %v", err)
+	}
+	got := decodeSweepJSON(t, out)
+	if got[0]["dirty"] != staleStateUndetermined {
+		t.Errorf("an unreadable dirty check must read undetermined, got %v", got[0]["dirty"])
+	}
+	reason, _ := got[0]["reason"].(string)
+	if !strings.Contains(reason, "cause="+causeDirtyCheckFailed) {
+		t.Errorf("reason must carry cause=%s, got %q", causeDirtyCheckFailed, reason)
+	}
+}
+
+// TestSweepFetchErrorDefaultImpl pins the DEFAULT fetch seam's failure path
+// and its remote/ref derivation: base origin/develop fetches
+// `git -C <root> fetch origin develop`; the failure makes every tree's
+// landing unanswerable.
+func TestSweepFetchErrorDefaultImpl(t *testing.T) {
+	defaultFetch := sweepFetchBase // capture before sweepMockEnv replaces it
+	m := sweepMockEnv(t, []git.Worktree{{Path: "/wt/unfetched2", Branch: "feature/unfetched2"}})
+	sweepFetchBase = defaultFetch
+	m.fetchCmdErr = errors.New("network down")
+
+	out, err := runSweepCmd(t, map[string]string{"json": "true"})
+	if err != nil {
+		t.Fatalf("runSweep error: %v", err)
+	}
+	if len(m.fetchArgs) != 1 {
+		t.Fatalf("the default fetch must run exactly once, got %v", m.fetchArgs)
+	}
+	want := []string{"-C", "/repo", "fetch", "origin", "develop"}
+	for i, a := range want {
+		if m.fetchArgs[0][i] != a {
+			t.Fatalf("fetch invocation = %v, want %v", m.fetchArgs[0], want)
+		}
+	}
+	got := decodeSweepJSON(t, out)
+	reason, _ := got[0]["reason"].(string)
+	if !strings.Contains(reason, "cause="+causeFetchFailed) {
+		t.Errorf("reason must carry cause=%s, got %q", causeFetchFailed, reason)
+	}
+}
+
+// TestSweepProcessExitCode pins the exit-code extractor: a real subprocess
+// exit error reports its code; a non-exit error reports -1 (unanswerable).
+func TestSweepProcessExitCode(t *testing.T) {
+	dir := t.TempDir()
+	cmd := exec.Command("git", "rev-parse", "--verify", "no-such-ref-for-exitcode-test")
+	cmd.Dir = dir
+	_, err := cmd.Output()
+	if err == nil {
+		t.Fatal("fixture broken: expected a non-zero git exit")
+	}
+	if code := sweepProcessExitCode(err); code != 128 {
+		t.Errorf("a real git failure must report exit 128, got %d", code)
+	}
+	if code := sweepProcessExitCode(errors.New("not an exit error")); code != -1 {
+		t.Errorf("a non-exit error must report -1, got %d", code)
+	}
+}
+
+// TestParseLsofCWDs pins the NUL-field parser extracted from the lsof
+// wrapper: n/-prefixed fields become paths, the (deleted) suffix is trimmed,
+// and non-path fields are dropped.
+func TestParseLsofCWDs(t *testing.T) {
+	out := []byte("p123\x00n/some/tree\x00n/other/tree (deleted)\x00\x00nrelative\x00")
+	got := parseLsofCWDs(out)
+	want := []string{"/some/tree", "/other/tree"}
+	if len(got) != len(want) {
+		t.Fatalf("parsed %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("entry %d = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+// TestSweepRemovalTimeIgnoredKeep pins the removal-time re-read: a tree that
+// classified clean but holds irreplaceable ignored content by the time its
+// removal turn comes is kept with the "observed at removal time" notice.
+func TestSweepRemovalTimeIgnoredKeep(t *testing.T) {
+	m := sweepMockEnv(t, []git.Worktree{{Path: "/wt/lateignored", Branch: "feature/lateignored"}})
+	m.landed["feature/lateignored"] = true
+	m.ignoredAfter = 1 // the classification read is clean; the removal re-read is not
+	m.ignoredOut["/wt/lateignored"] = "!! .claude/agent-memory/\n"
+
+	out, err := runSweepCmd(t, map[string]string{"yes": "true"})
+	if err != nil {
+		t.Fatalf("runSweep error: %v", err)
+	}
+	if len(m.removed) != 0 {
+		t.Fatalf("a tree acquiring irreplaceable ignored content must be kept, removed %v", m.removed)
+	}
+	if !strings.Contains(out, "observed at removal time") {
+		t.Errorf("expected the removal-time keep notice, got:\n%s", out)
+	}
+}
+
+// TestSweepDoneCoreKeptNotice pins the done-core's success=false branch: the
+// core can keep a tree (its own anchor refusal) — the sweep reports it as a
+// keep notice, not a failure.
+func TestSweepDoneCoreKeptNotice(t *testing.T) {
+	m := sweepMockEnv(t, []git.Worktree{{Path: "/wt/donekept", Branch: "feature/donekept"}})
+	m.landed["feature/donekept"] = true
+	m.doneSuccess = false
+
+	out, err := runSweepCmd(t, map[string]string{"yes": "true"})
+	if err != nil {
+		t.Fatalf("runSweep error: %v", err)
+	}
+	if len(m.removed) != 0 {
+		t.Fatalf("a kept tree must not be counted removed, removed %v", m.removed)
+	}
+	if !strings.Contains(out, "the done core kept the tree") {
+		t.Errorf("expected the done-core keep notice, got:\n%s", out)
+	}
+}
+
+// TestSweepL1RemoveErrorWarning pins the L1 apply path's removal failure: a
+// warning notice, the tree survives, hoist already ran (evidence safe).
+func TestSweepL1RemoveErrorWarning(t *testing.T) {
+	l1Path := "/repo/.claude/worktrees/swepl1fail"
+	m := sweepMockEnv(t, []git.Worktree{{Path: l1Path, Branch: "feature/l1fail"}})
+	m.landed["feature/l1fail"] = true
+	m.lockPorcelain = sweepLockPorcelain("/repo") // the fallback main-root resolver reads this
+	m.removeErr[l1Path] = errors.New("git worktree remove refused")
+
+	out, err := runSweepCmd(t, map[string]string{"yes": "true"})
+	if err != nil {
+		t.Fatalf("runSweep error: %v", err)
+	}
+	if !strings.Contains(out, "could not remove") {
+		t.Errorf("expected the removal-failure warning, got:\n%s", out)
+	}
+	if len(m.hoistCalls) != 1 {
+		t.Errorf("the hoist seam must have run before the failed removal, got %v", m.hoistCalls)
+	}
+}
+
+// TestSweepNilProviderErrors pins the uninitialized-provider guard.
+func TestSweepNilProviderErrors(t *testing.T) {
+	orig := WorktreeProvider
+	WorktreeProvider = nil
+	t.Cleanup(func() { WorktreeProvider = orig })
+
+	cmd := newSweepCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	err := cmd.RunE(cmd, nil)
+	if err == nil || !strings.Contains(err.Error(), "not initialized") {
+		t.Fatalf("a nil provider must error, got: %v", err)
 	}
 }
 
