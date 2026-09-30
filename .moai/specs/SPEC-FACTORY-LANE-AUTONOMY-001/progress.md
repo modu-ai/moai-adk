@@ -260,7 +260,7 @@ gaps:
 ```yaml
 sync_status: complete (3-phase close — plan → run → sync, this commit)
 sync_complete_at: 2026-09-30
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "a7e4798b1"
 changelog_entry_position: CHANGELOG.md [Unreleased] § Added, first entry
 frontmatter_status_transitions:
   - "spec.md status: in-progress -> completed (this single sync commit; the intermediate implemented step consolidated per the Status Transition Ownership Matrix close row)"
