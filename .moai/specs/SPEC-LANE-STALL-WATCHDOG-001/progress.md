@@ -297,4 +297,44 @@ explicit pathspec staging only; no push
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+sync_complete_at: 2026-09-30T14:05:57+09:00
+sync_commit_sha: "pending-backfill-sync"  # the single sync commit (3-phase close); backfilled in a following commit per convention
+sync_status: complete
+b12_self_test_a: pass  # grep -c 'SPEC-LANE-STALL-WATCHDOG-001' CHANGELOG.md → 0 before emission (no duplicate entry); positive control SPEC-JEV-SKILL-SUGGESTION-001 → 1, pattern live
+b12_self_test_b: pass  # distinct AC ids in acceptance.md = 16 families (AC-LSW-001..017, 008 consolidated into 007a/b) = 26 a/b rows; CHANGELOG entry cites 16 패밀리 26행 all PASS
+b12_self_test_c: pass  # all file paths cited in the CHANGELOG entry verified present (ls/cmp)
+changelog_entry_position: "[Unreleased] › Added"
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed (merged close, single sync commit)"
+  plan_md: n/a  # plan.md frontmatter carries no status field
+  acceptance_md: n/a  # acceptance.md frontmatter carries no status field
+  progress_md: "§E.4 written in this commit"
+canary_compliance_check:
+  doc_surface_impact: internal-workflow-doctrine  # lane watchdog skill + --auto semantics doctrine + gate explicit-wait; zero CLI behavior change (.go delta 0)
+  readme_edit: skipped  # grep -ciE 'watchdog|워치독' over README.md/ko/ja/zh → 0/0/0/0; the earlier 'stall' hits were the Install substring, not a surface
+  codemaps_edit: skipped  # git diff 04a646a27..HEAD -- '*.go' → 0 files; described-source unaffected — no regeneration, no stamp
+  acceptance_body_edit_scope: none  # no body edits to acceptance.md
+  mx_tag_validation: n/a  # markdown-only deliverable (rules + skill); zero exported code surface to annotate
+```
+
+Sync-phase notes:
+
+1. **README (skipped with evidence).** `grep -ciE 'watchdog|워치독'` over
+   `README.md` / `README.ko.md` / `README.ja.md` / `README.zh.md` returns
+   0/0/0/0 — the repo READMEs carry no lane-watchdog surface; the deliverable
+   is operator-internal workflow doctrine (kanban/factory lane operations),
+   not a user-facing CLI command. The 4-locale same-change discipline has no
+   surface to apply to.
+2. **Codemaps (skipped per the workflow condition).** Zero `.go` files in the
+   run-phase diff (04a646a27..34a19f843, 41 files, all markdown/catalog);
+   the described-source set is unchanged, so the rotation condition never
+   fires. No regeneration, no stamp.
+3. **Docs-site (out of the SPEC's enumerated scope).** spec.md §A.7 / §B
+   enumerate the doc surfaces (NEW rule + NEW skill + amendment list + local
+   files); no docs-site row exists and run phase touched none. Adding pages
+   here would exceed the approved scope envelope; the doctrine is template-
+   shipped to users without a docs-site page by design.
+4. **Mirror parity spot-check at sync.** cmp of both NEW pairs
+   (moai-lane-watchdog/SKILL.md, auto-semantics.md) → byte-identical; catalog
+   hash cascade already landed with the run close (34a19f843).

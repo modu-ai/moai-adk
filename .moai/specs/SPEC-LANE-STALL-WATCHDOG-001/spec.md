@@ -2,7 +2,7 @@
 id: SPEC-LANE-STALL-WATCHDOG-001
 title: "Lane stall watchdog — self-diagnosis, decision-ladder self-resume, unified --auto semantics, and autonomous gate transition across the Claude and Codex runners"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-09-30
 updated: 2026-09-30
 author: manager-spec (card t1370)
