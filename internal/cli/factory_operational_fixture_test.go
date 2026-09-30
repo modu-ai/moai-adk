@@ -101,7 +101,7 @@ func TestFactoryOperationalFixtureUsesProductionInit(t *testing.T) {
 	}
 
 	run := "run-codex-hook-process-boundary"
-	if err := recordFactoryRunStart(root, run, "claude", ""); err != nil {
+	if err := recordFactoryRunStart(root, run, "claude", "", homestate.LaneCapacityDerived); err != nil {
 		t.Fatal(err)
 	}
 	start := homestate.CurrentProcessFingerprint()

@@ -199,7 +199,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 			return runErr
 		}
 		defer restoreRun()
-		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), backend, entry.Spec); err != nil {
+		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), backend, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
 			return fmt.Errorf("record factory run: %w", err)
 		}
 		defer exportFactoryLaunchFacts(entry.Spec, backend)()

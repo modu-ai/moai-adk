@@ -561,7 +561,11 @@ func refuseCodexLeaderRun(root, runID string) (err error) {
 		runID, BackendCodex, runID)
 }
 
-func recordFactoryRunStart(root, runID, backend, specID string) (err error) {
+// recordFactoryRunStart records a run's start. declaredLanes is the run's
+// declared lane capacity (SPEC-CODEX-LANE-SLOTS-001 REQ-004): the
+// operator-supplied count, or homestate.LaneCapacityDerived when the leader
+// start carried none — the marker the join reads as capacity-open.
+func recordFactoryRunStart(root, runID, backend, specID string, declaredLanes int) (err error) {
 	if err := kanban.RecordFactoryRunStart(root, runID, backend, specID); err != nil {
 		return err
 	}
@@ -578,7 +582,21 @@ func recordFactoryRunStart(root, runID, backend, specID string) (err error) {
 	return db.RecordRun(context.Background(), homestate.FactoryRun{
 		RunID: runID, Backend: backend, ManifestJSON: "{}",
 		LeadPID: os.Getpid(), LeadProcessStart: homestate.CurrentProcessFingerprint(),
+		LaneCapacity: declaredLanes,
 	})
+}
+
+// factoryDeclaredLanes resolves a leader start's declared lane capacity from
+// the entry parse (SPEC-CODEX-LANE-SLOTS-001 REQ-004): the operator-supplied
+// count when one was typed (`-k N`), the derived-capacity marker when the
+// count is a parse default (`-f` bare — the count-less leader). The
+// distinction is the whole policy: a defaulted count never becomes a declared
+// bound.
+func factoryDeclaredLanes(entry kanbanEntryParse) int {
+	if entry.FactoryLanesDeclared && entry.FactoryLanes >= 1 {
+		return entry.FactoryLanes
+	}
+	return homestate.LaneCapacityDerived
 }
 
 // factoryBranch enumerates the dispatch outcomes, mirroring kanbanBranch.

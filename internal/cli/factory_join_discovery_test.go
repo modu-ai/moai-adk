@@ -252,10 +252,10 @@ func TestFactoryLaneJoinAmbiguousRunsSkipDiscovery(t *testing.T) {
 	installFactoryLaunchSeam(t)
 	// Two active rows whose owners are live (this process) survive
 	// reconciliation, so the resolver answers AMBIGUOUS_FACTORY.
-	if err := recordFactoryRunStart(root, "runamb01", "glm", ""); err != nil {
+	if err := recordFactoryRunStart(root, "runamb01", "glm", "", homestate.LaneCapacityDerived); err != nil {
 		t.Fatal(err)
 	}
-	if err := recordFactoryRunStart(root, "runamb02", "glm", ""); err != nil {
+	if err := recordFactoryRunStart(root, "runamb02", "glm", "", homestate.LaneCapacityDerived); err != nil {
 		t.Fatal(err)
 	}
 	asked := stageDiscoveredLeaders(t, []discovery.VerifiedLeader{verifiedTestLeader("runlead04")})

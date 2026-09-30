@@ -137,8 +137,9 @@ func enterCodexFactory(root string, entry factoryFlagParse) (func(), error) {
 	restoreFacts := exportFactoryLaunchFacts("", BackendCodex)
 	restore := func() { restoreFacts(); restoreRun() }
 	if lane {
+		runID := os.Getenv(config.EnvMoaiKanbanID)
 		claim, claimErr := kanban.ClaimFactoryLaneWithin(root, entry.LaneLabel, entry.LaneRole,
-			os.Getpid(), os.Getenv(config.EnvMoaiKanbanID), config.DefaultFactoryLeaderLanes, factoryProcessAlive)
+			os.Getpid(), runID, factoryJoinLaneBound(root, runID), factoryProcessAlive)
 		if claimErr != nil {
 			restore()
 			return nil, fmt.Errorf("claim Codex factory lane: %w", claimErr)
@@ -147,12 +148,50 @@ func enterCodexFactory(root string, entry factoryFlagParse) (func(), error) {
 		return func() { restoreMode(); restore() }, nil
 	}
 	restoreMode := enterFactoryLeaderMode(config.DefaultFactoryLeaderLanes, "")
-	if err := recordFactoryRunStart(root, os.Getenv(config.EnvMoaiKanbanID), BackendCodex, ""); err != nil {
+	// The codex leader carries no count form (bare -f): its runs record the
+	// derived-capacity marker, never a declared bound
+	// (SPEC-CODEX-LANE-SLOTS-001 REQ-004).
+	if err := recordFactoryRunStart(root, os.Getenv(config.EnvMoaiKanbanID), BackendCodex, "", homestate.LaneCapacityDerived); err != nil {
 		restoreMode()
 		restore()
 		return nil, fmt.Errorf("record Codex factory run: %w", err)
 	}
 	return func() { restoreMode(); restore() }, nil
+}
+
+// factoryJoinLaneBound resolves the launcher-side join bound for a codex
+// lane claim (SPEC-CODEX-LANE-SLOTS-001 REQ-004/005/006): the run's RECORDED
+// declared capacity when the record holds an explicit operator-declared
+// count; the leader fan-out default when the record is absent or
+// capacity-open. The claim engine re-reads the record inside its own
+// transaction — the record is the authority for the automatic scan (the
+// growth rule on a capacity-open run, the recorded count otherwise); this
+// value is the explicit request's range check and the fallback for an
+// unrecorded run.
+func factoryJoinLaneBound(root, runID string) int {
+	capacity, found := recordedFactoryLaneCapacity(root, runID)
+	if found && capacity >= 1 {
+		return capacity
+	}
+	return config.DefaultFactoryLeaderLanes
+}
+
+func recordedFactoryLaneCapacity(root, runID string) (capacity int, found bool) {
+	if runID == "" {
+		return 0, false
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return 0, false
+	}
+	capacity, found, err = db.RunLaneCapacity(context.Background(), runID)
+	if cerr := db.Close(); cerr != nil && err == nil {
+		err = cerr
+	}
+	if err != nil {
+		return 0, false
+	}
+	return capacity, found
 }
 
 func codexFactoryEnv(entry factoryFlagParse) []string {
