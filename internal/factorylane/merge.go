@@ -302,6 +302,45 @@ func VerifyRunBeforeAcquire(run *MergeCheckRun, acquireAt time.Time) (bool, stri
 		run.CheckedAt.Format(time.RFC3339), acquireAt.Format(time.RFC3339))
 }
 
+// VerifyWhyText is the cleared verdict's standing explanation: what the
+// recorded run plus the window's acquire stamp together prove.
+const VerifyWhyText = "the recorded check output for all three conditions exists before the integration acquire timestamp (AC-FLA-009)"
+
+// WindowSnapshot is one read of the integration window record, flattened to
+// what the AC-FLA-011 predicate decides on. The CLI flattens the
+// kanban.IntegrationLock into it; tests forge it directly.
+type WindowSnapshot struct {
+	Held       bool // a holder is recorded at all
+	Live       bool // the recorded holder's session is alive
+	HolderName string
+	AcquiredAt time.Time
+	KnownAt    bool // the record carried a parseable acquire timestamp
+}
+
+// WindowCoversMerge is REQ-FLA-011 as a predicate: a lane-direct merge may
+// proceed only when a LIVE acquire record for this lane covers the merge
+// moment — the window taken before the merge and not yet released. The
+// refusal names which property is missing, so the negative case is always
+// attributable. This is a checked property of the EXISTING window — the
+// second serialization mechanism the SPEC forbids stays unbuilt.
+func WindowCoversMerge(w WindowSnapshot, lane string, at time.Time) (bool, string) {
+	switch {
+	case !w.Held:
+		return false, "no integration acquire record exists — the window was never taken"
+	case !w.Live:
+		return false, "the window record names a holder whose session is gone (stale) — not a live hold"
+	case lane != "" && w.HolderName != "" && w.HolderName != lane:
+		return false, fmt.Sprintf("the window is held by %s, not this lane", w.HolderName)
+	case !w.KnownAt:
+		return false, "the acquire record carries no parseable acquired-at timestamp — it cannot cover any moment"
+	case w.AcquiredAt.After(at):
+		return false, fmt.Sprintf("the window was acquired at %s, after the merge moment %s",
+			w.AcquiredAt.Format(time.RFC3339), at.Format(time.RFC3339))
+	}
+	return true, fmt.Sprintf("a live acquire record for lane %s covers the moment (held since %s)",
+		lane, w.AcquiredAt.Format(time.RFC3339))
+}
+
 // mergeCheckDir is the directory holding one lane's recorded triple runs.
 func (s *Store) mergeCheckDir(lane string) string {
 	return filepath.Join(s.root, "merge-checks", lane)

@@ -452,6 +452,44 @@ func (failingRunner) Git(args ...string) (string, error) {
 	return "", errors.New("git unavailable")
 }
 
+// AC-FLA-011 as a predicate: a live hold for this lane covering the moment
+// proceeds; every missing property refuses and names itself.
+func TestWindowCoversMerge(t *testing.T) {
+	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
+	live := WindowSnapshot{
+		Held: true, Live: true, HolderName: "lane-5",
+		AcquiredAt: now.Add(-time.Minute), KnownAt: true,
+	}
+	if ok, why := WindowCoversMerge(live, "lane-5", now); !ok {
+		t.Fatalf("live hold for the lane refused: %s", why)
+	}
+
+	cases := []struct {
+		name    string
+		snap    WindowSnapshot
+		lane    string
+		wantIn  string
+		wantNot string
+	}{
+		{name: "no record", snap: WindowSnapshot{}, lane: "lane-5", wantIn: "no integration acquire record"},
+		{name: "stale holder", snap: WindowSnapshot{Held: true, Live: false, HolderName: "lane-5", AcquiredAt: now.Add(-time.Minute), KnownAt: true}, lane: "lane-5", wantIn: "not a live hold"},
+		{name: "foreign lane", snap: live, lane: "lane-6", wantIn: "held by lane-5", wantNot: "PROCEED"},
+		{name: "no timestamp", snap: WindowSnapshot{Held: true, Live: true, HolderName: "lane-5"}, lane: "lane-5", wantIn: "no parseable acquired-at"},
+		{name: "acquired after the moment", snap: WindowSnapshot{Held: true, Live: true, HolderName: "lane-5", AcquiredAt: now.Add(time.Minute), KnownAt: true}, lane: "lane-5", wantIn: "after the merge moment"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ok, why := WindowCoversMerge(tc.snap, tc.lane, now)
+			if ok {
+				t.Fatalf("negative case %q proceeded", tc.name)
+			}
+			if !strings.Contains(why, tc.wantIn) || (tc.wantNot != "" && strings.Contains(why, tc.wantNot)) {
+				t.Errorf("refusal %q does not match wantIn=%q wantNot=%q", why, tc.wantIn, tc.wantNot)
+			}
+		})
+	}
+}
+
 // ExecGitRunner wraps a failing git exit into *GitExitError carrying the exit
 // code, so the check layer can read merge-tree's exit-1 verdict.
 func TestExecGitRunnerWrapsExitError(t *testing.T) {
