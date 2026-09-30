@@ -2,7 +2,7 @@
 id: SPEC-WORKTREE-SWEEP-001
 title: "Worktree post-landing auto-sweep: remote-landing-confirmed disposal of merged worktrees across L1 and L2 tiers"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-30
 updated: 2026-09-30
 author: manager-spec
