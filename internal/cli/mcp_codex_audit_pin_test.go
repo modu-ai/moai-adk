@@ -38,7 +38,7 @@ func writeLLMYAML(t *testing.T, root, model, effort string) {
 // model (the session-level destination), turn/start carries model + effort.
 func TestCodexAuditPin_ReachesTransmittedParams(t *testing.T) {
 	root := t.TempDir()
-	writeCodexWorkflowYAML(t, root, auditCodexPinYAML("gpt-5.6-sol", "high"))
+	writeCodexWorkflowYAML(t, root, auditCodexPinYAML("gpt-6.1-sol", "high"))
 	sess := withCodexSession(t, codexSessionScript("clean"))
 
 	if _, err := runCodexAuditReviewRPC(context.Background(), "/fake/codex", codexMethodTurnStart, map[string]any{
@@ -49,12 +49,12 @@ func TestCodexAuditPin_ReachesTransmittedParams(t *testing.T) {
 	}
 
 	thread := sentParams(t, sess.sent, 1)
-	if got, _ := thread["model"].(string); got != "gpt-5.6-sol" {
-		t.Errorf("thread/start model = %q, want the pinned %q", got, "gpt-5.6-sol")
+	if got, _ := thread["model"].(string); got != "gpt-6.1-sol" {
+		t.Errorf("thread/start model = %q, want the pinned %q", got, "gpt-6.1-sol")
 	}
 	turn := sentParams(t, sess.sent, 2)
-	if got, _ := turn["model"].(string); got != "gpt-5.6-sol" {
-		t.Errorf("turn/start model = %q, want the pinned %q", got, "gpt-5.6-sol")
+	if got, _ := turn["model"].(string); got != "gpt-6.1-sol" {
+		t.Errorf("turn/start model = %q, want the pinned %q", got, "gpt-6.1-sol")
 	}
 	if got, _ := turn["effort"].(string); got != "high" {
 		t.Errorf("turn/start effort = %q, want the pinned %q", got, "high")
@@ -70,7 +70,7 @@ func TestCodexAuditPin_TaskTurnCarriesNoPin(t *testing.T) {
 	// The pin IS resolvable in this tree (workflow.yaml present) AND a leftover
 	// llm.yaml cell is present too — the task path must transmit neither: no
 	// pin (audit-entry-only) and no per-agent cell (design D5).
-	writeCodexWorkflowYAML(t, root, auditCodexPinYAML("gpt-5.6-sol", "high"))
+	writeCodexWorkflowYAML(t, root, auditCodexPinYAML("gpt-6.1-sol", "high"))
 	writeLLMYAML(t, root, "gpt-5-codex", "medium")
 	withCodexProjectDir(t, root)
 	prev := codexLookPath
@@ -81,7 +81,7 @@ func TestCodexAuditPin_TaskTurnCarriesNoPin(t *testing.T) {
 	callCodexTask(t, map[string]any{"prompt": "do the task"})
 
 	thread := sentParams(t, sess.sent, 1)
-	if got, _ := thread["model"].(string); got == "gpt-5.6-sol" {
+	if got, _ := thread["model"].(string); got == "gpt-6.1-sol" {
 		t.Error("codex_task thread/start must NOT carry the audit pin — the pin is audit-entry-only (REQ-AMP-008)")
 	}
 	turn := sentParams(t, sess.sent, 2)
@@ -93,8 +93,9 @@ func TestCodexAuditPin_TaskTurnCarriesNoPin(t *testing.T) {
 }
 
 // AC-AMP-003 state (c) — an unservable pinned model (a Claude id) falls back
-// to the backend default: the request carries no model and no effort, and a
-// leftover llm.yaml cell does not step in (design D5).
+// to the audit terminal fallback (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-001:
+// {gpt-6.1-sol, high} — previously "no model, no effort"), and a leftover
+// llm.yaml cell does not step in (design D5).
 func TestCodexAuditPin_UnservableFallsBackToBackendDefault(t *testing.T) {
 	root := writeCodexLLMFixture(t, "gpt-5-codex", "medium")
 	writeCodexWorkflowYAML(t, root, auditCodexPinYAML("opus", "high"))
@@ -107,19 +108,22 @@ func TestCodexAuditPin_UnservableFallsBackToBackendDefault(t *testing.T) {
 		t.Fatalf("audit rpc: %v", err)
 	}
 
-	if _, ok := sentParams(t, sess.sent, 1)["model"]; ok {
-		t.Error("thread/start must omit the model when the pin is unservable (the backend default applies)")
+	thread := sentParams(t, sess.sent, 1)
+	if got, _ := thread["model"].(string); got != codexAuditDefaultModel {
+		t.Errorf("thread/start model = %q, want the fallback pin %q", got, codexAuditDefaultModel)
 	}
 	turn := sentParams(t, sess.sent, 2)
-	for _, field := range []string{"model", "effort"} {
-		if _, ok := turn[field]; ok {
-			t.Errorf("turn/start carries %q; the unservable pin's pair drops whole and no llm.yaml cell steps in", field)
-		}
+	if got, _ := turn["model"].(string); got != codexAuditDefaultModel {
+		t.Errorf("turn/start model = %q, want the fallback pin %q", got, codexAuditDefaultModel)
+	}
+	if got, _ := turn["effort"].(string); got != codexAuditDefaultEffort {
+		t.Errorf("turn/start effort = %q, want the fallback pin %q", got, codexAuditDefaultEffort)
 	}
 }
 
 // Edge case (§D.2) — effort set with an EMPTY model is no pin (the model is
-// the gate): resolution falls through to the backend default.
+// the gate): resolution falls through to the audit terminal fallback
+// ({gpt-6.1-sol, high} per REQ-MMU-001 — previously "no model, no effort").
 func TestCodexAuditPin_EffortAlonePinsNothing(t *testing.T) {
 	root := writeCodexLLMFixture(t, "gpt-5-codex", "medium")
 	writeCodexWorkflowYAML(t, root, "workflow:\n  audit:\n    codex:\n      model: \"\"\n      effort: high\n")
@@ -132,11 +136,11 @@ func TestCodexAuditPin_EffortAlonePinsNothing(t *testing.T) {
 		t.Fatalf("audit rpc: %v", err)
 	}
 
-	if _, ok := sentParams(t, sess.sent, 1)["model"]; ok {
-		t.Error("thread/start must omit the model (empty pin model = no pin)")
+	if got, _ := sentParams(t, sess.sent, 1)["model"].(string); got != codexAuditDefaultModel {
+		t.Errorf("thread/start model = %q, want the fallback pin %q (empty pin model = no pin)", got, codexAuditDefaultModel)
 	}
-	if _, ok := sentParams(t, sess.sent, 2)["effort"]; ok {
-		t.Error("turn/start must omit the effort (pin effort is inert without a model)")
+	if got, _ := sentParams(t, sess.sent, 2)["effort"].(string); got != codexAuditDefaultEffort {
+		t.Errorf("turn/start effort = %q, want the fallback pin %q (the pin effort is inert without a model)", got, codexAuditDefaultEffort)
 	}
 }
 
@@ -144,7 +148,7 @@ func TestCodexAuditPin_EffortAlonePinsNothing(t *testing.T) {
 // existing resolveCodexModelEffort precedence rule.
 func TestCodexAuditPin_ExplicitModelOverridesPin(t *testing.T) {
 	root := t.TempDir()
-	writeCodexWorkflowYAML(t, root, auditCodexPinYAML("gpt-5.6-sol", "high"))
+	writeCodexWorkflowYAML(t, root, auditCodexPinYAML("gpt-6.1-sol", "high"))
 	sess := withCodexSession(t, codexSessionScript("clean"))
 
 	if _, err := runCodexAuditReviewRPC(context.Background(), "/fake/codex", codexMethodTurnStart, map[string]any{
@@ -167,12 +171,12 @@ func TestCodexAuditPin_ExplicitModelOverridesPin(t *testing.T) {
 	}
 }
 
-// AC-AMP-003 states (a)/(b) — no pin sub-keys / absent workflow.yaml: the
-// audit path resolves byte-identically to the pre-SPEC legacy resolution
-// (C7 anchor; the deep legacy behavior is pinned by the unmodified
-// TestCodexSession_* suite, this asserts the audit-scoped entry equivalence).
-func TestCodexAuditPin_AbsentPinEqualsLegacyResolution(t *testing.T) {
-	root := t.TempDir() // no workflow.yaml, no llm.yaml → both resolvers drop the pair
+// AC-AMP-003 states (a)/(b), retargeted by SPEC-MODEL-MATRIX-UPDATE-001
+// REQ-MMU-001 — no pin sub-keys / absent workflow.yaml: the audit path lands
+// on the terminal fallback pin {gpt-6.1-sol, high} (previously the byte-free
+// legacy shape; the task path still resolves pin-free — REQ-AMP-008).
+func TestCodexAuditPin_AbsentPinLandsOnDefaultPin(t *testing.T) {
+	root := t.TempDir() // no workflow.yaml, no llm.yaml → the terminal fallback applies
 	sess := withCodexSession(t, codexSessionScript("clean"))
 
 	if _, err := runCodexAuditReviewRPC(context.Background(), "/fake/codex", codexMethodTurnStart, map[string]any{
@@ -183,14 +187,14 @@ func TestCodexAuditPin_AbsentPinEqualsLegacyResolution(t *testing.T) {
 	}
 
 	thread := sentParams(t, sess.sent, 1)
-	if _, ok := thread["model"]; ok {
-		t.Error("thread/start must omit model when no pin resolves (byte-identical legacy shape)")
+	if got, _ := thread["model"].(string); got != codexAuditDefaultModel {
+		t.Errorf("thread/start model = %q, want the fallback pin %q", got, codexAuditDefaultModel)
 	}
 	turn := sentParams(t, sess.sent, 2)
-	if _, ok := turn["model"]; ok {
-		t.Error("turn/start must omit model when no pin resolves")
+	if got, _ := turn["model"].(string); got != codexAuditDefaultModel {
+		t.Errorf("turn/start model = %q, want the fallback pin %q", got, codexAuditDefaultModel)
 	}
-	if _, ok := turn["effort"]; ok {
-		t.Error("turn/start must omit effort when no pin resolves")
+	if got, _ := turn["effort"].(string); got != codexAuditDefaultEffort {
+		t.Errorf("turn/start effort = %q, want the fallback pin %q", got, codexAuditDefaultEffort)
 	}
 }

@@ -1200,7 +1200,16 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		Audit: AuditConfig{
 			Model: AuditModelClaude,
 			Claude: ModelEffort{
-				Model:  "sonnet",
+				Model:  "claude-opus-5-5",
+				Effort: "medium",
+			},
+			// Codex pin {gpt-6.1-sol, high} (SPEC-MODEL-MATRIX-UPDATE-001
+			// REQ-MMU-001). SUPERSEDES REQ-AMP-005 (keep-the-Go-default-EMPTY
+			// neutrality) per operator directive 2026-09-30 — the supersession
+			// is also recorded at the AuditConfig.Codex doc comment
+			// (internal/config/audit_models.go).
+			Codex: ModelEffort{
+				Model:  "gpt-6.1-sol",
 				Effort: "high",
 			},
 			Gates: AuditGates{

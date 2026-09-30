@@ -2,7 +2,7 @@
 id: SPEC-MODEL-MATRIX-UPDATE-001
 title: "모델 매트릭스 갱신 — codex 감사 핀 신설, claude 감사 핀 승격, glm effort max 통일, 구형 모델 제공 집합 철수"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-30
 updated: 2026-09-30
 author: manager-spec

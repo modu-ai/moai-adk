@@ -51,6 +51,17 @@ const (
 	// codexAppServerSubcmd is the codex subcommand that speaks JSON-RPC over stdio.
 	codexAppServerSubcmd = "app-server"
 
+	// codexAuditDefaultModel / codexAuditDefaultEffort are the audit-path
+	// terminal fallback (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-001), the codex
+	// counterpart of the claudeAuditDefault* pair in mcp_claude.go: when the
+	// workflow.audit.codex pin is absent (or unservable) AND the caller supplied
+	// no explicit model, resolveCodexAuditModelEffort lands here instead of the
+	// former zero value. The task-delegation path (resolveCodexModelEffort)
+	// still resolves to the zero value — REQ-AMP-008 keeps the audit pin and the
+	// task path separate.
+	codexAuditDefaultModel  = "gpt-6.1-sol"
+	codexAuditDefaultEffort = "high"
+
 	// codex JSON-RPC methods. review/start (native audit) and turn/start
 	// (adversarial prompt) are the review methods; initialize + thread/start are
 	// the mandatory session handshake the app-server (codex-cli 0.146.1) requires
@@ -190,8 +201,9 @@ func resolveCodexModelEffort(params map[string]any) config.ModelEffort {
 
 // resolveCodexAuditModelEffort is the AUDIT-scoped resolution
 // (SPEC-V3R6-AUDIT-MODEL-PIN-001 REQ-AMP-002): the workflow.audit.codex pin
-// outranks the backend default; everything else falls through to
-// resolveCodexModelEffort unchanged (REQ-AMP-004).
+// outranks the backend default; everything else falls through to the audit
+// terminal fallback (REQ-AMP-004, retargeted by SPEC-MODEL-MATRIX-UPDATE-001
+// REQ-MMU-001 from the zero value to the {gpt-6.1-sol, high} pin).
 //
 // Pin rules: the pin applies only when its Model is non-empty AND
 // codexServable (an unservable pin falls back to the backend default — never
@@ -209,7 +221,10 @@ func resolveCodexAuditModelEffort(params map[string]any) config.ModelEffort {
 		}
 		return pin
 	}
-	return resolveCodexModelEffort(params)
+	if explicit, ok := params["model"].(string); ok && strings.TrimSpace(explicit) != "" {
+		return resolveCodexModelEffort(params)
+	}
+	return config.ModelEffort{Model: codexAuditDefaultModel, Effort: codexAuditDefaultEffort}
 }
 
 // VerdictInconclusive is the fail-open verdict value. It rides the same
