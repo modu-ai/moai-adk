@@ -92,6 +92,47 @@ awaken path is doctrine + skill, not a second loop driver.
 7. **CLI verb hygiene** (directive 1 note): "advance" measured absent from
    the todo verb set (add / list / done / next / unpick — `todo.go:685-1315`);
    "lane self-advance" is used as a concept name only.
+8. **plan-audit iter-3 repair** (verdict `.moai/reports/t1370/plan-audit-verdict.md`,
+   FAIL 0.80 at `dc3710d95`, blocking D1-D7 + optional D8-D11 — all applied;
+   delta re-audit is the LAST round):
+   - **D1** — E-6 re-targeted to concept tokens (`pickup filter|queue-readonly`);
+     the skill carries NO internal SPEC ID; the composition citation moved to
+     the local-only surface (new probe E-6b on `gitflow-lane-protocol.md`,
+     RED `0`/exit 1 observed) — mirror-parity × neutrality × citation now
+     jointly satisfiable.
+   - **D2** — §A.7 extended: 8 measured surfaces added as rows I-N (all
+     re-verified this tree: AGENTS.local.md:428 §19/§19.1, kanban-dispatch
+     §Boundaries, cadence-bridge:26, skills goal.md:263, CLAUDE.md §2,
+     cache-aware-execution:31, goal-directive-detail ×5, archived-agent-
+     rejection) + the auditor's 5 reviewed-no-change surfaces recorded with
+     dispositions; plan E9 sweep re-scoped to the FULL list.
+   - **D3** — three-way traceability alignment: §D.2's REQ-LSW-003 → AC-LSW-004a
+     only; §C.1 rewritten with explicit a/b ids; matrix/§D.2/§C.1 now name
+     the same relations.
+   - **D4** — probes re-targeted to what their criteria claim: E-2 split into
+     E-2a ("autonomous adjudication") + E-2b ("display-only"); E-12 split
+     into E-12a (kickoff approve) + E-12b (keep-set token alternation); E-13
+     counts the §B.8 record-shape line (`decided_by=.*evidence_refs=.*ladder_path=`).
+   - **D5** — contract-signing gate added to the §B.5 inventory (PRESERVED
+     EQUIVALENT FORM + justification); §A.7 row H names the reserved
+     `## Autonomous Kickoff` section (measured contract-autonomy.md line 142)
+     as an M3 amendment target.
+   - **D6** — §B.2 outcome→action table added; authority-gate fail-closed
+     invariant stated (negative/inconclusive audit never proceeds);
+     availability failures fail-open downward.
+   - **D7** — §B.1 observation-snapshot rule added (path
+     `.moai/state/watchdog/<card-id>.json` lane-local, fields
+     observed_at/head_sha/evidence_mtime_max/window_state, two-point
+     comparison + N-minute window, single-writer, fail-open first
+     observation); REQ-LSW-001 references it.
+   - **D8** — ghost-db wording re-measured: absent in the current tree
+     (0-byte at `3dd5adf2f`); §A.6/§B.7 state both measurements.
+   - **D9** — acceptance.md §A states the family-count rationale (25 rows =
+     16 families = Tier M ceiling exactly met).
+   - **D10** — §B.6 names the awaken carrier as scheduler-mediated out of
+     scope; the rule binds the awaken turn's first action, not the scheduler.
+   - **D11** — REQ-LSW-003's non-action tail clause removed; REQ-LSW-009
+     rewritten as a proper (Unwanted) shall-not form.
 
 ## §E.2 Run-phase Evidence
 

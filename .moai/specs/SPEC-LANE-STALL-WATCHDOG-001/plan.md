@@ -71,8 +71,13 @@ ls scripts/jev/ 2>&1                            # absent — stale-surface guard
    exception: `.claude/rules/local/gitflow-lane-protocol.md` is NEVER
    mirrored.
 2. **Template neutrality**: template copies carry no card ids (`t\d+`), no
-   internal dates, no commit SHAs; composition references to internal SPEC
-   IDs stay in the local layer and `.moai/specs/` (local-only). Run
+   internal dates, no commit SHAs, and — for the two NEW artifacts — no
+   internal SPEC IDs at all: the skill and the unified doc carry CONCEPT
+   TOKENS ONLY ("pickup filter", "queue-readonly"); the t1343 composition
+   citation with its SPEC ID lives on the local-only surface
+   (`gitflow-lane-protocol.md` §6, M3b) and in `.moai/specs/` — this is what
+   makes mirror parity (AC-LSW-010) × neutrality (this constraint) × the
+   citation (AC-LSW-006/E-6b) jointly satisfiable (D1). Run
    `go test ./internal/template/ -run '^TestTemplateNeutralityAudit$' -count=1`
    before commit; consult the §25.1 checklist when in doubt.
 3. **No Go code changes** — `git diff --name-only develop...HEAD -- '*.go'`
@@ -113,10 +118,12 @@ ls scripts/jev/ 2>&1                            # absent — stale-surface guard
 - **E8** RED evidence: `acceptance.md` §E ledger cells (observed at
   `3dd5adf2f` for the 0.1.0 set, re-observed at the revision tree for the
   iter-2 set); each flipped criterion cites its cell.
-- **E9** Amendment sweep: after M3, `grep -c "Implementation Kickoff
-  Approval"` across the §A.7 row-A..D files reads consistent with the new
-  default (each file's diff shown); `factory decide` help text unchanged
-  (`go run ./cmd/moai factory decide --help` — human-only wording preserved).
+- **E9** Amendment sweep: after M3, verify EVERY file named in spec.md §A.7 —
+  amendment rows A-N AND the reviewed-no-change list — reads consistent with
+  the new default (each file's diff shown; a row left unapplied or a
+  reviewed file that in fact needed the change is a blocker, not a note);
+  `factory decide` help text unchanged (`go run ./cmd/moai factory decide
+  --help` — human-only wording preserved).
 
 ## §F Milestones (ordered by decision-reversibility — changeable decisions first)
 
@@ -130,8 +137,11 @@ ls scripts/jev/ 2>&1                            # absent — stale-surface guard
   broker substitute and `update_plan` view; the gate inventory + dispositions
   + keep-set + out-of-set justification duty (§B.5); the decision-record
   format (§B.8); the view–SSOT rule (§B.7); the Jev boundary (§B.2 step ④);
-  the awaken rule + canonical awaken prompt (§B.4). Flips AC-LSW-001a,
-  001b, 002, 013a, 014, 015, 016a.
+  the awaken rule + canonical awaken prompt (§B.4), the observation-snapshot
+  rule (§B.1: path, fields, two-point comparison, single-writer), the
+  ladder outcome→action table with the authority-gate fail-closed invariant
+  (§B.2), and the decision-record single-line shape of §B.8. Flips AC-LSW-001a,
+  001b, 002a, 002b, 013a, 013b, 014 (E-12a+E-12b), 015, 016a.
 - **M2 (Priority High) — `moai-lane-watchdog` skill.** Template-first author
   `internal/template/templates/.claude/skills/moai-lane-watchdog/SKILL.md`,
   `make build`, local copy. Content: one watchdog iteration — progress
@@ -139,23 +149,31 @@ ls scripts/jev/ 2>&1                            # absent — stale-surface guard
   blocked-by / shell-error / accidental-stop), the remedy + ladder procedure
   (REQ-LSW-003..006) with per-runner paths, the decision-board read/write
   protocol with the view–SSOT rule (REQ-LSW-011), decision-record emission
-  (REQ-LSW-012), the t1343 composition + queue-readonly note, escalate-or-record
-  output shape. Flips AC-LSW-003, 004a-d, 005, 006, 013b, 016b, 017a, 017b.
+  (REQ-LSW-012, §B.8 shape), the t1343 composition note in CONCEPT TOKENS
+  ONLY ("pickup filter", "queue-readonly" — never an internal SPEC ID, D1),
+  escalate-or-record output shape. Flips AC-LSW-003, 004a-d, 005, 006
+  (E-6), 016b, 017a, 017b.
 - **M3 (Priority Medium) — doctrine integration + amendment sweep.** (a)
   `.claude/rules/moai/workflow/kanban-dispatch.md` (+ mirror): explicit-wait
   posture + watchdog pointer, batch-authorization promotion wording (§A.7
-  row F). (b) `.claude/rules/local/gitflow-lane-protocol.md` §6: the
-  open-ended wait becomes explicit wait + ladder recheck (local-only). (c)
-  The §A.7 amendment list rows A-D, G, H: apply the worded amendments to
-  `orchestration-mode-selection.md`, `askuser-protocol.md`,
-  `spec-workflow.md`, `run.md`/`goal-directive.md` surfaces,
-  `session-handoff.md`, `AGENTS.local.md` §29 pointer area,
-  `contract-autonomy.md` — batched at the END of M3 (B13). Flips AC-LSW-007a,
-  007b, 009.
+  row F) + the §Boundaries gate-bypass amendment (row J). (b)
+  `.claude/rules/local/gitflow-lane-protocol.md` §6: the open-ended wait
+  becomes explicit wait + ladder recheck, AND this local-only surface
+  carries the t1343 composition citation WITH its SPEC ID (the only
+  mirrored-forbidden surface where the citation may live — flips E-6b).
+  (c) The §A.7 amendment list — ALL rows A through N plus the
+  reviewed-no-change re-read — applied to every named file
+  (`orchestration-mode-selection.md`, `askuser-protocol.md`,
+  `spec-workflow.md`, `run.md`/`goal-directive.md`/`goal-directive-detail.md`
+  surfaces, `session-handoff.md`, `AGENTS.local.md` §19/§19.1 + §29,
+  `contract-autonomy.md` incl. the reserved `## Autonomous Kickoff` section,
+  `cadence-bridge.md`, `.claude/skills/moai/workflows/goal.md`,
+  `CLAUDE.md` via its template first, `cache-aware-execution.md`) — batched
+  at the END of M3 (B13). Flips AC-LSW-007a, 007b, 009, E-6b.
 - **M4 (Priority Medium) — mechanical verification sweep.** `make build`;
   mirror parity `diff -r` (AC-LSW-010a/b); template neutrality + spec lint
-  re-run (AC-LSW-012); Go-scope guard (AC-LSW-011); E9 amendment sweep;
-  codex-premise re-check of R-4 against current Codex docs; update
+  re-run (AC-LSW-012); Go-scope guard (AC-LSW-011); E9 amendment sweep
+  (below); codex-premise re-check of R-4 against current Codex docs; update
   progress.md §E.2/§E.3.
 
 cycle_type=tdd — the acceptance commands ARE the RED probes (observed red at
