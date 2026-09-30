@@ -47,7 +47,7 @@ Gate summary: 16/16 AC PASS, 0 FAIL, 0 PASS-WITH-DEBT. Lint: `golangci-lint run`
 
 ```yaml
 run_complete_at: 2026-09-30
-run_commit_sha: b24170567
+run_commit_sha: 2266fbaf7
 run_status: complete
 ac_pass_count: 16
 ac_fail_count: 0
