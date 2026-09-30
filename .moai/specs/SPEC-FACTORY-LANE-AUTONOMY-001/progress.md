@@ -88,6 +88,49 @@ substantive measure is the per-package aggregate `go test ./internal/factorylane
 'TestFactory|TestSD_AC021' -count=1` → `ok` (116.5s). The full-suite aggregate remains CI's
 (observed on `origin/develop` at batch push).
 
+### M3 — Lane-direct merge conditions (2026-09-30, owner: manager-develop)
+
+Surfaces: the condition-triple check core `internal/factorylane/merge.go` — `EvaluateMergeTriple`
+(conditions a/b/c over a `GitRunner` seam; `GitExitError` carries merge-tree's exit-1-as-verdict),
+`MergeCheckRun` records on the shared factory-fallback store (`merge-checks/<lane>/`, one file per
+run), `VerifyRunBeforeAcquire`, and the AC-FLA-011 predicate `WindowCoversMerge` — plus the CLI
+verbs `moai factory merge ready` (triple → record → window through the existing
+`kanban.AcquireIntegrationLock`; every refusal is a verdict and exits 0) and
+`moai factory merge gate` (REQ-FLA-011 as a checked property; the negative case is the tested
+property). No new serialization mechanism: the integration window is the only one (design.md D3);
+this surface never performs a merge.
+
+Re-pin (plan.md M3 pre-flight, Known Issue B2): the t1241 card text re-read from the live queue
+this run — 「병합 창 자동화(자율 모드: sync-audit PASS·충돌 없음·HEAD^{tree}=HEAD^2^{tree} 면 로컬
+develop 병합)」 — matches the dispatch's documented discipline verbatim. Tree identity carries
+BOTH forms: the literal `HEAD^{tree} == HEAD^2^{tree}` rev-parse form on a prepared merge commit
+(`--merge-commit`), and the equivalent pre-merge merge-tree form — a clean merge commit's tree is
+exactly the merge-tree result and HEAD^2 is the merged branch — with the equivalence verified on
+a real throwaway repository (TestMergeTriple_PreMergeFormMatchesLiteralPostMergeForm). The
+window's acquire stamp carries RFC3339 second precision, so the pre-acquire proof is evaluated at
+the stamp's own resolution; the record-only verifier stays strict, and a failed proof releases
+the window again.
+
+| AC | Status | Verification command | Actual output |
+|----|--------|---------------------|---------------|
+| AC-FLA-009 | PASS (M3 Go + CLI surface) | `go test ./internal/factorylane/ -run 'TestEvaluateMergeTriple\|TestVerifyRunBeforeAcquire\|TestStoreMergeCheckRun\|TestMergeTriple_\|TestExecGitRunner\|TestCheckSyncAudit\|TestRecordMergeCheckRun\|TestLatestMergeCheckRun' -count=1` + `go test ./internal/cli/ -run TestFactoryMergeReady -count=1` | `ok` both (evidence `.moai/state/verify/t1338-m3/e1-ac009.txt` + `e1-ac010.txt`) — every failing condition NAMED: sync-audit on `audit-ready`/empty/missing §E.4, conflict-free on merge-tree exit 1 carrying the conflicted paths, tree-identity on both forms' mismatch; merge-tree tool failure fails closed; the run records all three checks + `failed_condition`; the cleared run predates the acquire stamp |
+| AC-FLA-010 | PASS (M3 CLI surface) | `go test ./internal/cli/ -run TestFactoryMergeReady_HeldWindowRefusedWithHolderNamed -count=1` | `ok ... internal/cli` — window pre-held by lane-7 → `verdict: waiting` with the holder NAMED, the lock unchanged (still sess-other/lane-7), the lane's checks recorded, exit 0 |
+| AC-FLA-011 | PASS (M3 predicate + CLI) | `go test ./internal/factorylane/ -run TestWindowCoversMerge -count=1` + `go test ./internal/cli/ -run TestFactoryMergeGate -count=1` | `ok` both (evidence `.moai/state/verify/t1338-m3/e1-ac011-negative.txt`) — NEGATIVE CASE: no record → `merge gate: REFUSED — no integration acquire record exists`; stale holder / foreign lane / unparseable timestamp / future acquire each refuse naming the missing property; a live own-lane hold → PROCEED |
+
+M3 E2-E8: builds darwin + `GOOS=windows` OK (pre-commit batch, tree content == `51ad23ae6`);
+factorylane package aggregate `go test ./internal/factorylane/ -cover` → **89.0%**; internal/cli
+full-suite aggregate GAP (recorded like M1/M2 — lane-local slices only: `go test ./internal/cli/
+-run 'TestFactory\|TestSD_AC021' -count=1` → `ok`, 63.4s); boundary greps 0 (AskUserQuestion,
+`.Send(`); lint `golangci-lint run --timeout=8m` on both affected packages → **0 issues, exit 0**
+(`e5-lint.txt`; one QF1001 finding on the tie clause repaired by variable extraction before this
+measurement); guard `TestSD_AC021_LegacySpellingsRefused` PASS (legacy "lead" spellings 0 in the
+new surface). RED verbatim: `.moai/state/verify/t1338-m3/red-cycle1.txt` (8 factorylane tests
+failing on stubs) + `red-cycle2-3.txt` (5 CLI tests failing on the stub verbs); AC-FLA-011
+negative-case verbatim in `e1-ac011-negative.txt`. Commits: `0931c6a8b` (triple), `51ad23ae6`
+(verbs) — no push (leader batch). Fixtures build throwaway git repositories under t.TempDir; no
+test merges into any real develop branch, and the window is exercised against a throwaway lock
+root, never the developer's state.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — owner: manager-develop>_

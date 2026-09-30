@@ -191,25 +191,25 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 			if parseErr != nil {
 				return fmt.Errorf("factory merge ready: the recorded acquired_at %q is unreadable: %w", acquired.AcquiredAt, parseErr)
 			}
-			if ok, why := factorylane.VerifyRunBeforeAcquire(&recorded, acquireAt); !ok &&
-				!(recorded.AllPassed && recorded.CheckedAt.Before(acquireAt.Add(time.Second))) {
-				// Not cleared — except for one case the strict record-only
-				// verifier cannot see: the window's acquire stamp carries
-				// RFC3339 SECOND precision (the kanban record format) while
-				// the check record carries nanoseconds, so a record written
-				// within the acquire's own second is unorderable from the
-				// records alone. The clause above admits exactly that: a
-				// passing record falling at or before the end of the acquire's
-				// second, written by THIS call's immediately preceding
-				// statement. A failed run, a missing run, or a record later
-				// than the acquire's second all still refuse, and the window
-				// is released again.
+			proofOK, proofWhy := factorylane.VerifyRunBeforeAcquire(&recorded, acquireAt)
+			// One case the strict record-only verifier cannot see: the
+			// window's acquire stamp carries RFC3339 SECOND precision (the
+			// kanban record format) while the check record carries
+			// nanoseconds, so a record written within the acquire's own
+			// second is unorderable from the records alone. sameSecondProof
+			// admits exactly that: a passing record falling at or before the
+			// end of the acquire's second, written by THIS call's immediately
+			// preceding statement. A failed run, a missing run, or a record
+			// later than the acquire's second all still refuse, and the
+			// window is released again.
+			sameSecondProof := recorded.AllPassed && recorded.CheckedAt.Before(acquireAt.Add(time.Second))
+			if !proofOK && !sameSecondProof {
 				if _, releaseErr := kanban.ReleaseIntegrationLock(lockRoot, sessionID, ownerPID, false); releaseErr != nil {
-					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "factory merge ready: the pre-acquire proof failed (%s) and the window release also failed: %v\n", why, releaseErr)
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "factory merge ready: the pre-acquire proof failed (%s) and the window release also failed: %v\n", proofWhy, releaseErr)
 				}
-				_, _ = fmt.Fprintf(human, "merge-readiness: REFUSED — %s\nthe window was released again; no cleared verdict rides an unproven record\n", why)
+				_, _ = fmt.Fprintf(human, "merge-readiness: REFUSED — %s\nthe window was released again; no cleared verdict rides an unproven record\n", proofWhy)
 				return emitFactoryMergeVerdict(cmd, asJSON, factoryMergeVerdict{
-					Verdict: "refused", Lane: lane, Card: card, Detail: why,
+					Verdict: "refused", Lane: lane, Card: card, Detail: proofWhy,
 				})
 			}
 
