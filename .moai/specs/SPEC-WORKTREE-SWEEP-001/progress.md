@@ -97,7 +97,7 @@ m1_to_mN_commit_strategy: one commit per milestone (M1-M6), conventional subject
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-09-30
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 7bf07cad9
 sync_status: complete
 b12_self_test_a: pass  # grep -c 'SPEC-WORKTREE-SWEEP-001' CHANGELOG.md → 0 pre-emission (no duplicate entry)
 b12_self_test_b: pass  # AC count in acceptance.md = 14 (AC-WS-001..014); CHANGELOG entry cites 14 — match
