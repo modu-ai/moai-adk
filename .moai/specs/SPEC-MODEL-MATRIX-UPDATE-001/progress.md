@@ -69,7 +69,7 @@ e8_first_audit_spawn_observation: documented-residual (out-of-tree execution; se
 
 ```yaml
 sync_complete_at: 2026-09-30
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: f99a755b0
 sync_status: complete
 changelog_entry_position: "[Unreleased] > Changed (first subsection head, newest-first)"
 b12_self_test.a_preemission_duplicate_grep: "pass — grep -c 'SPEC-MODEL-MATRIX-UPDATE-001' CHANGELOG.md → 0 before emission"
