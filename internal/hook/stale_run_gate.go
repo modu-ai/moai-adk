@@ -87,12 +87,14 @@ func (m *factoryNoticeMarker) mark(kind string, at time.Time) {
 	}
 }
 
-func factoryNoticeMarkerPath(root, sessionID string) (string, error) {
-	dir, err := homestate.FactoryDir(root)
-	if err != nil {
-		return "", err
+func factoryNoticeMarkerPath(dbPath, sessionID string) (string, error) {
+	if dbPath == "" {
+		return "", errors.New("factory state path unresolved")
 	}
-	return filepath.Join(dir, "notices", safeNoticeStem(sessionID)+".json"), nil
+	// The notices dir is a sibling of the factory DB inside the factory dir
+	// (homestate.FactoryDir == filepath.Dir(FactoryDBPath)) — derived from the
+	// already-resolved DB path so one gate answer never re-resolves it.
+	return filepath.Join(filepath.Dir(dbPath), "notices", safeNoticeStem(sessionID)+".json"), nil
 }
 
 // safeNoticeStem reduces the session identity to a filesystem-safe stem.
@@ -108,12 +110,12 @@ func safeNoticeStem(sessionID string) string {
 	return "h-" + hex.EncodeToString(sum[:8])
 }
 
-func readFactoryNoticeMarker(root, sessionID string) factoryNoticeMarker {
+func readFactoryNoticeMarker(dbPath, sessionID string) factoryNoticeMarker {
 	var m factoryNoticeMarker
-	if sessionID == "" || root == "" {
+	if sessionID == "" || dbPath == "" {
 		return m
 	}
-	path, err := factoryNoticeMarkerPath(root, sessionID)
+	path, err := factoryNoticeMarkerPath(dbPath, sessionID)
 	if err != nil {
 		return m
 	}
@@ -125,21 +127,21 @@ func readFactoryNoticeMarker(root, sessionID string) factoryNoticeMarker {
 	return m
 }
 
-func markFactoryNotice(root, sessionID, kind string) {
-	if sessionID == "" || root == "" {
+func markFactoryNotice(dbPath, sessionID, kind string) {
+	if sessionID == "" || dbPath == "" {
 		// A session without an identity cannot own a carrier; fail open to
 		// over-informing (emit unmarked). Degenerate input — production hook
 		// inputs always carry the session UUID.
 		return
 	}
-	path, err := factoryNoticeMarkerPath(root, sessionID)
+	path, err := factoryNoticeMarkerPath(dbPath, sessionID)
 	if err != nil {
 		return
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return
 	}
-	m := readFactoryNoticeMarker(root, sessionID)
+	m := readFactoryNoticeMarker(dbPath, sessionID)
 	m.mark(kind, time.Now())
 	data, err := json.Marshal(m)
 	if err != nil {
@@ -164,7 +166,15 @@ func staleRunPrescriptionGate(ctx context.Context, root, sessionID, label, runID
 	}
 	gateCtx, cancel := context.WithTimeout(ctx, factoryGateBudget)
 	defer cancel()
-	state, status, err := factorymsg.ProbeRunState(gateCtx, root, runID)
+	// The factory DB path is resolved ONCE for the whole answer: every
+	// homestate path helper re-runs CanonicalProjectRoot (git subprocesses),
+	// and five resolutions were measured exhausting the gate budget before
+	// the last measurement ran (the rebind-line test caught exactly that).
+	dbPath, err := homestate.FactoryDBPath(root)
+	if err != nil {
+		return "factory messaging degraded: " + err.Error()
+	}
+	state, status, err := factorymsg.ProbeRunStateAt(gateCtx, dbPath, runID)
 	switch state {
 	case factorymsg.RunStateUnavailable:
 		// Measurement failure fails open: the degraded answer, never a
@@ -174,30 +184,35 @@ func staleRunPrescriptionGate(ctx context.Context, root, sessionID, label, runID
 		}
 		return "factory messaging degraded: " + err.Error()
 	case factorymsg.RunStateActive:
-		carrier := readFactoryNoticeMarker(root, sessionID)
+		carrier := readFactoryNoticeMarker(dbPath, sessionID)
 		if carrier.emitted(factoryNoticePrescription) || carrier.emitted(factoryNoticeUnbind) {
 			return ""
 		}
-		markFactoryNotice(root, sessionID, factoryNoticePrescription)
+		markFactoryNotice(dbPath, sessionID, factoryNoticePrescription)
 		return legacyFactoryHookNotice(label, runID, lang)
 	default: // factorymsg.RunStateNotActive — a measured verdict
-		carrier := readFactoryNoticeMarker(root, sessionID)
+		carrier := readFactoryNoticeMarker(dbPath, sessionID)
 		if carrier.emitted(factoryNoticeUnbind) {
 			return ""
 		}
-		markFactoryNotice(root, sessionID, factoryNoticeUnbind)
-		return unbindFactoryHookNotice(root, label, runID, status, lang)
+		markFactoryNotice(dbPath, sessionID, factoryNoticeUnbind)
+		return unbindFactoryHookNotice(gateCtx, dbPath, label, runID, status, lang)
 	}
 }
 
 // unbindFactoryHookNotice renders the one-time unbind notice (REQ-SRL-005):
-// it names the orphan label and the measured run state. The re-bind entry
-// for an active run in the same root is the M2 increment (REQ-SRL-006).
-func unbindFactoryHookNotice(root, label, runID, status, lang string) string {
+// it names the orphan label and the measured run state, and names the
+// documented re-bind entry only while an active run exists in the same root
+// (REQ-SRL-006) — a failed liveness measurement omits the line (fail-open).
+func unbindFactoryHookNotice(ctx context.Context, dbPath, label, runID, status, lang string) string {
 	if !kanban.IsLegacyFactoryRoleValue(strings.TrimSpace(label)) {
 		return ""
 	}
-	return fmt.Sprintf(staleRunMessagesFor(lang).laneLabelUnbind, label, runID, status)
+	notice := fmt.Sprintf(staleRunMessagesFor(lang).laneLabelUnbind, label, runID, status)
+	if active, err := factorymsg.ActiveRunExistsAt(ctx, dbPath); err == nil && active {
+		notice += "\n" + staleRunMessagesFor(lang).laneLabelUnbindRebind
+	}
+	return notice
 }
 
 // gatedStaleRunAnswer applies the run-state gate exactly where the answer

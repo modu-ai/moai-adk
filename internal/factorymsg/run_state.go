@@ -63,22 +63,30 @@ func (s RunState) String() string {
 // every prescription surface must measure through here, never re-derive run
 // state from broker-file absence or text patterns.
 func ProbeRunState(ctx context.Context, projectRoot, runID string) (state RunState, detail string, err error) {
+	path, err := homestate.FactoryDBPath(projectRoot)
+	if err != nil {
+		return RunStateUnavailable, "", err
+	}
+	return ProbeRunStateAt(ctx, path, runID)
+}
+
+// ProbeRunStateAt is the path-based form of ProbeRunState for callers that
+// answer several questions in one budget: homestate.FactoryDBPath resolves
+// through git subprocesses (CanonicalProjectRoot), so a multi-measurement
+// answer resolves the path once and measures through the At-forms.
+func ProbeRunStateAt(ctx context.Context, dbPath, runID string) (state RunState, detail string, err error) {
 	if !safeID.MatchString(runID) {
 		// A malformed id cannot name an active run — a measured property of
 		// the label, not a measurement failure.
 		return RunStateNotActive, "absent", nil
 	}
-	path, err := homestate.FactoryDBPath(projectRoot)
-	if err != nil {
-		return RunStateUnavailable, "", err
-	}
-	if _, err := os.Stat(path); err != nil {
+	if _, err := os.Stat(dbPath); err != nil {
 		// The accessor's own DB-file probe is part of the shared measurement
 		// (REQ-SRL-003): no factory DB means this project never carried the
 		// run — measured not-active, never a failure.
 		return RunStateNotActive, "absent", nil
 	}
-	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path)+"?_pragma=busy_timeout(100)")
+	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(dbPath)+"?_pragma=busy_timeout(100)")
 	if err != nil {
 		return RunStateUnavailable, "", err
 	}
@@ -110,10 +118,16 @@ func ActiveRunExists(ctx context.Context, projectRoot string) (active bool, err 
 	if err != nil {
 		return false, err
 	}
-	if _, err := os.Stat(path); err != nil {
+	return ActiveRunExistsAt(ctx, path)
+}
+
+// ActiveRunExistsAt is the path-based form of ActiveRunExists — see
+// ProbeRunStateAt for why multi-measurement callers pass the resolved path.
+func ActiveRunExistsAt(ctx context.Context, dbPath string) (active bool, err error) {
+	if _, err := os.Stat(dbPath); err != nil {
 		return false, nil
 	}
-	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path)+"?_pragma=busy_timeout(100)")
+	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(dbPath)+"?_pragma=busy_timeout(100)")
 	if err != nil {
 		return false, err
 	}
