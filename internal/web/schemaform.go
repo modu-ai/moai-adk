@@ -34,8 +34,19 @@ func consoleTabs() []consoleTab {
 	return []consoleTab{
 		{ID: "identity", LabelKey: "sec.identity.title", Baseline: "Identity"},
 		{ID: "language", LabelKey: "sec.language.title", Baseline: "Language"},
-		{ID: "launch", LabelKey: "sec.launch.title", Baseline: "LLM"},
+		{ID: "launch", LabelKey: "sec.launch.title", Baseline: "Claude settings"},
 		{ID: "llm", LabelKey: "sec.llm.title", Baseline: "GLM Settings"},
+		// codex (SPEC-WEB-CODEX-PANEL-001): a READ-ONLY MIRROR of the codex
+		// settings on the audit and workflow panels. It owns no field and removes
+		// none — every mirrored field stays declared, rendered and editable on
+		// its owning tab. t1278 placed it here to group the three backend tabs
+		// (CLAUDE 설정 · GLM 설정 · Codex 설정) and to separate it from the MCP
+		// tab, whose tool toggles it no longer mirrors. Still deliberately NOT
+		// last: panelHTML slices a panel from its marker to the NEXT one and
+		// falls back to end-of-document for the final panel, so a codex panel
+		// placed last would silently widen every panel-scoped assertion into a
+		// whole-page one.
+		{ID: "codex", LabelKey: "tab.codex.title", Baseline: "Codex settings"},
 		// workflow restored (Issue 3): the worktree auto-create toggle lives here.
 		// Original ordering placed it after llm (pre-cca120c70).
 		{ID: "workflow", LabelKey: "sec.workflow.title", Baseline: "Workflow"},
@@ -49,16 +60,6 @@ func consoleTabs() []consoleTab {
 		// The move is a RENDER placement only — the fields keep SectionWorkflow
 		// and the workflow.yaml seam persist target (AP-4).
 		{ID: "audit", LabelKey: "tab.audit.title", Baseline: "Audit"},
-		// codex (SPEC-WEB-CODEX-PANEL-001): a READ-ONLY MIRROR of the codex
-		// settings scattered across audit and mcp. It owns no field and removes
-		// none — every mirrored field stays declared, rendered and editable on
-		// its owning tab. Placed immediately after audit, where its
-		// most-consulted values live, and deliberately NOT last: panelHTML
-		// slices a panel from its marker to the NEXT one and falls back to
-		// end-of-document for the final panel, so a codex panel placed last
-		// would silently widen every panel-scoped assertion into a whole-page
-		// one.
-		{ID: "codex", LabelKey: "tab.codex.title", Baseline: "Codex"},
 		{ID: "report", LabelKey: "sec.report.title", Baseline: "Report"},
 		// SPEC-MCP-CONSOLE-001 M2: the per-tool MCP enablement panel. Each of the
 		// 17 tools renders as an individually-toggleable bool; the 4 write-capable
@@ -81,6 +82,19 @@ func consoleTabs() []consoleTab {
 		// into gate.yaml; the runner honors it only under MOAI_PRECOMMIT=1.
 		{ID: "gate", LabelKey: "sec.gate.title", Baseline: "Quality Gate"},
 	}
+}
+
+// radioEffectiveValue resolves the value a radio row should preselect: the
+// stored value, or — when nothing is on disk — the field's declared Default.
+// t1278: the select widget preselected defaults through its own path; the
+// radio conversion would have silently lost that affordance (and with it the
+// GLM tier effort default) without this bridge. templ cannot reassign a
+// parameter mid-markup, so the fallback lives here.
+func radioEffectiveValue(f settings.FieldDef, value string) string {
+	if value == "" && f.Default != "" {
+		return f.Default
+	}
+	return value
 }
 
 // mcpToolNameFromField extracts the tool identifier from an MCP enablement

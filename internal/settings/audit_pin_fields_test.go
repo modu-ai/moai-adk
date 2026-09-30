@@ -27,11 +27,12 @@ func auditPinField(t *testing.T, name string) FieldDef {
 	return f
 }
 
-// optionValues returns the closed set of a select field's option values.
+// optionValues returns the closed set of a select/radio field's option values
+// (t1278 — the audit pins are radio groups now).
 func optionValues(t *testing.T, f FieldDef) []string {
 	t.Helper()
-	if f.Type != TypeSelect {
-		t.Fatalf("%s: Type = %v, want TypeSelect", f.Name, f.Type)
+	if f.Type != TypeSelect && f.Type != TypeRadio {
+		t.Fatalf("%s: Type = %v, want select or radio", f.Name, f.Type)
 	}
 	if len(f.Options) == 0 {
 		t.Fatalf("%s: select carries no options", f.Name)
@@ -60,8 +61,13 @@ func containsString(list []string, s string) bool {
 func TestAuditPinFields_ExistWithTypeAndPanel(t *testing.T) {
 	t.Parallel()
 	claudeModel := auditPinField(t, "workflow.audit.claude.model")
-	if claudeModel.Type != TypeText || claudeModel.Section != SectionWorkflow {
-		t.Errorf("workflow.audit.claude.model = {type:%v section:%v}, want text/workflow", claudeModel.Type, claudeModel.Section)
+	if claudeModel.Type != TypeRadio || claudeModel.Section != SectionWorkflow {
+		t.Errorf("workflow.audit.claude.model = {type:%v section:%v}, want radio/workflow (t1278)", claudeModel.Type, claudeModel.Section)
+	}
+	wantClaudeModels := append([]string{}, template.ModelAliasPickerValues()...)
+	sort.Strings(wantClaudeModels)
+	if gotClaudeModels := optionValues(t, claudeModel); !slices.Equal(gotClaudeModels, wantClaudeModels) {
+		t.Errorf("workflow.audit.claude.model options = %v, want %v (launch model-alias SSOT)", gotClaudeModels, wantClaudeModels)
 	}
 	claudeEffort := auditPinField(t, "workflow.audit.claude.effort")
 	wantClaudeEffort := append([]string{}, v4EffortValues()...)
@@ -71,8 +77,13 @@ func TestAuditPinFields_ExistWithTypeAndPanel(t *testing.T) {
 	}
 
 	codexModel := auditPinField(t, "workflow.audit.codex.model")
-	if codexModel.Type != TypeText {
-		t.Errorf("workflow.audit.codex.model: Type = %v, want TypeText (a free-form model id)", codexModel.Type)
+	if codexModel.Type != TypeRadio {
+		t.Errorf("workflow.audit.codex.model: Type = %v, want TypeRadio (t1278 — operator-confirmed closed set)", codexModel.Type)
+	}
+	wantCodexModels := append([]string{}, config.ValidCodexAuditModels()...)
+	sort.Strings(wantCodexModels)
+	if gotCodexModels := optionValues(t, codexModel); !slices.Equal(gotCodexModels, wantCodexModels) {
+		t.Errorf("workflow.audit.codex.model options = %v, want %v (config.ValidCodexAuditModels SSOT)", gotCodexModels, wantCodexModels)
 	}
 	if codexModel.Section != SectionWorkflow {
 		t.Errorf("workflow.audit.codex.model: Section = %v, want SectionWorkflow", codexModel.Section)

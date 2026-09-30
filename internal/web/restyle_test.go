@@ -66,14 +66,15 @@ func TestConsoleCSSEmbedded(t *testing.T) {
 	// 콘솔 별칭(--bg, --primary 등)은 컴포넌트 호환을 위해 남기되, 원본 토큰
 	// 이름과 값도 함께 방출되어야 한다.
 	for _, want := range []string{
-		"--color-primary:#3d7d5f",
-		"--color-primary-hover:#316750",
-		"--color-primary-active:#265240",
+		"--color-primary:var(--neutral-700)",
+		"--color-primary-hover:var(--neutral-800)",
+		"--color-primary-active:var(--neutral-900)",
 		"--color-ink:#060606",
 		"--color-bg:#f4f4f4",
 		"--color-surface:#ffffff",
 		"--color-danger:#c44a3a",
-		"--border-focus-ring:rgba(61,125,95,.18)",
+		"--border-focus-ring:rgba(6,6,6,.14)",
+		"--color-primary:var(--neutral-700)",
 	} {
 		if !strings.Contains(css, want) {
 			t.Errorf("console.css missing frozen docs-site token %q", want)
