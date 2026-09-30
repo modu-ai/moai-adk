@@ -70,6 +70,36 @@ func TestClassifyRunsBatchesOwnerProbe(t *testing.T) {
 	}
 }
 
+// TestClassifyRunsBatchAbsentPidStaysIndeterminate pins the defensive
+// branch: an identity-bearing row the batch result somehow lacks classifies
+// indeterminate on its own basis and never falls through to the boot proof,
+// which is reserved for rows with no identity at all.
+func TestClassifyRunsBatchAbsentPidStaysIndeterminate(t *testing.T) {
+	db := openSandboxFactory(t)
+	mustRecordRun(t, db, FactoryRun{RunID: "run-absent1", Backend: "codex", LeadPID: 421, LeadProcessStart: "st-421"})
+	opts := ReconcileOptions{BatchProbe: func(pids []int) map[int]ProcessIdentity {
+		// The probe answers every pid EXCEPT 421 — the map-miss contract.
+		result := make(map[int]ProcessIdentity, len(pids))
+		for _, pid := range pids {
+			if pid == 421 {
+				continue
+			}
+			result[pid] = ProcessIdentity{Fingerprint: "st-421", State: ProcessIdentityLive}
+		}
+		return result
+	}}
+	owners, err := db.ClassifyRuns(context.Background(), opts)
+	if err != nil {
+		t.Fatalf("ClassifyRuns: %v", err)
+	}
+	if got := owners[0].Classification; got != OwnerIndeterminate {
+		t.Fatalf("absent-pid row classified %s, want indeterminate", got)
+	}
+	if got := owners[0].Basis; got != BasisStamp {
+		t.Fatalf("absent-pid row basis = %q, want %q", got, BasisStamp)
+	}
+}
+
 // TestClassifyRunsPerPidClassifierStillHonored pins the seam rule: a caller
 // that pins a per-pid classifier gets the per-pid path unchanged — the batch
 // path is the default, never an override of an explicit Classify seam.
