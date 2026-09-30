@@ -58,7 +58,6 @@ const (
 	causeHoistFailed       = "hoist-failed"
 	causeDirtyCheckFailed  = "dirty-check-failed"
 	causeDirtyTree         = "dirty-tree"
-	causeNotEvaluated      = "not-evaluated"
 )
 
 // sweepVerdict is one worktree's audited evaluation — the record
@@ -324,6 +323,7 @@ func sweepEvaluate(wt git.Worktree, in sweepEvalInputs) sweepVerdict {
 		v.Reason = fmt.Sprintf("cause=%s; checked out on the base branch", causeOnBaseBranch)
 		return v
 	}
+	v.OnBase = staleStateNo
 
 	// Landing predicate (REQ-WS-001/002/003). The fetch ran once for the
 	// whole invocation; its failure makes every tree's landing unanswerable.
@@ -348,8 +348,62 @@ func sweepEvaluate(wt git.Worktree, in sweepEvalInputs) sweepVerdict {
 		return v
 	}
 	v.Landed = staleStateYes
-	v.Reason = fmt.Sprintf("cause=%s", causeNotEvaluated)
+
+	// Dirty predicate: uncommitted or untracked content (the work git itself
+	// would refuse to discard without --force).
+	dirty, err := worktreeHasLocalChanges(wt.Path)
+	if err != nil {
+		v.Dirty = staleStateUndetermined
+		v.Reason = fmt.Sprintf("cause=%s; could not read working tree state: %v", causeDirtyCheckFailed, err)
+		return v
+	}
+	if dirty {
+		v.Dirty = staleStateYes
+		v.Reason = fmt.Sprintf("cause=%s; uncommitted or untracked changes", causeDirtyTree)
+		return v
+	}
+	v.Dirty = staleStateNo
+
+	// Ignored-content predicate — the SHARED decision (REQ-WR-024): the class
+	// both `git status --porcelain` and non-forced removal disregard.
+	state, ignoreReason := ignoredContentVerdict(wt.Path)
+	v.Ignored = state
+	if ignoreReason != "" {
+		v.Reason = ignoreReason
+		return v
+	}
+
+	// Process-cwd predicate (REQ-WS-006): a live process sitting in the tree
+	// dies with it. An unanswerable probe preserves; it is never a negative.
+	if in.cwdErr != nil {
+		v.CWDOccupied = staleStateUndetermined
+		v.Reason = fmt.Sprintf("cause=%s; %v", causeCWDProbeFailed, in.cwdErr)
+		return v
+	}
+	if sweepCWDOccupied(in.cwdDirs, wt.Path) {
+		v.CWDOccupied = staleStateYes
+		v.Reason = fmt.Sprintf("cause=%s; a live process has its working directory inside this tree (process-cwd probe)", causeCWDOccupied)
+		return v
+	}
+	v.CWDOccupied = staleStateNo
+
+	// Every predicate asked and answered affirmatively: the tree is a
+	// disposal candidate.
+	v.Verdict = sweepDispose
+	v.Reason = ""
 	return v
+}
+
+// sweepCWDOccupied reports whether any observed process cwd lies at or
+// inside the tree. Both sides are symlink-canonicalized where resolvable
+// (the probe reports resolved paths; a recorded cwd may not be).
+func sweepCWDOccupied(cwdDirs []string, tree string) bool {
+	for _, dir := range cwdDirs {
+		if isInsideRoot(dir, tree) {
+			return true
+		}
+	}
+	return false
 }
 
 // sweepTierOf classifies a tree's tier from its path: L1 when it sits under

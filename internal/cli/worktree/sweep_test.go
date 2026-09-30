@@ -670,6 +670,255 @@ func TestSweepBaseFlag(t *testing.T) {
 	}
 }
 
+// --- M3: the safety predicate composition -----------------------------------
+
+// TestSweepDirtyPreserves is AC-WS-004: a landed, unanchored worktree with
+// one untracked file preserves (dirty=yes), the file intact.
+func TestSweepDirtyPreserves(t *testing.T) {
+	f := newSweepRepo(t)
+	wt := filepath.Join(f.base, "trees", "wt-dirty")
+	addSweepWorktree(t, f, wt, "feature/dirty")
+	untracked := filepath.Join(wt, "scratch.txt")
+	if err := os.WriteFile(untracked, []byte("precious scratch\n"), 0o644); err != nil {
+		t.Fatalf("write untracked file: %v", err)
+	}
+	withSweepRepoEnv(t, f)
+	m := &sweepMock{}
+	stubSweepProbeSeams(t, m, f)
+
+	out, err := runSweepCmd(t, map[string]string{"json": "true", "yes": "true"})
+	if err != nil {
+		t.Fatalf("runSweep error: %v", err)
+	}
+	got := decodeSweepJSON(t, out)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 record, got %d:\n%s", len(got), out)
+	}
+	if got[0]["dirty"] != staleStateYes {
+		t.Errorf("an untracked file must read dirty=%q, got %v", staleStateYes, got[0]["dirty"])
+	}
+	if got[0]["verdict"] != sweepPreserve {
+		t.Errorf("a dirty tree must preserve, got %v", got[0]["verdict"])
+	}
+	if got[0]["landed"] != staleStateYes {
+		t.Errorf("the branch is landed; landed must read %q (record: %v)", staleStateYes, got[0])
+	}
+	content, readErr := os.ReadFile(untracked)
+	if readErr != nil || !strings.Contains(string(content), "precious") {
+		t.Errorf("the untracked file must survive intact (read error: %v)", readErr)
+	}
+	if _, statErr := os.Stat(wt); statErr != nil {
+		t.Errorf("the tree must survive, got: %v", statErr)
+	}
+
+	t.Run("ignored-content", func(t *testing.T) {
+		f := newSweepRepo(t)
+		wt := filepath.Join(f.base, "trees", "wt-ignored")
+		addSweepWorktree(t, f, wt, "feature/ignored")
+		// An irreplaceable gitignored file: the class both `git status
+		// --porcelain` and non-forced removal disregard.
+		exclude := filepath.Join(f.repo, ".git", "info", "exclude")
+		fh, err := os.OpenFile(exclude, os.O_APPEND|os.O_WRONLY, 0o644)
+		if err != nil {
+			t.Fatalf("open exclude: %v", err)
+		}
+		if _, err := fh.WriteString(".claude/agent-memory/\n"); err != nil {
+			t.Fatalf("append exclude: %v", err)
+		}
+		_ = fh.Close()
+		ignored := filepath.Join(wt, ".claude", "agent-memory")
+		if err := os.MkdirAll(ignored, 0o755); err != nil {
+			t.Fatalf("mkdir ignored dir: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(ignored, "topic.md"), []byte("memory\n"), 0o644); err != nil {
+			t.Fatalf("write ignored file: %v", err)
+		}
+		withSweepRepoEnv(t, f)
+		m := &sweepMock{}
+		stubSweepProbeSeams(t, m, f)
+
+		out, err := runSweepCmd(t, map[string]string{"json": "true"})
+		if err != nil {
+			t.Fatalf("runSweep error: %v", err)
+		}
+		got := decodeSweepJSON(t, out)
+		if got[0]["ignored"] != staleStateYes {
+			t.Errorf("irreplaceable ignored content must read ignored=%q, got %v", staleStateYes, got[0]["ignored"])
+		}
+		reason, _ := got[0]["reason"].(string)
+		if !strings.Contains(reason, "cause="+causeIgnoredContent) {
+			t.Errorf("reason must carry cause=%s, got %q", causeIgnoredContent, reason)
+		}
+	})
+}
+
+// TestSweepLockedAndAnchored is AC-WS-006: (a) a git-locked tree, (b) a tree
+// named by the caller-registry anchor, (c) an unreadable lock source. (a)
+// and (b) preserve naming the anchor source; (c) preserves EVERY tree with
+// anchored=undetermined and ends with the distinguished exit-2 signal.
+func TestSweepLockedAndAnchored(t *testing.T) {
+	t.Run("git-lock", func(t *testing.T) {
+		m := sweepMockEnv(t, []git.Worktree{{Path: "/wt/locked", Branch: "feature/locked"}})
+		m.lockPorcelain = sweepLockPorcelain("/repo", "/wt/locked")
+
+		out, err := runSweepCmd(t, map[string]string{"json": "true"})
+		if err != nil {
+			t.Fatalf("runSweep error: %v", err)
+		}
+		got := decodeSweepJSON(t, out)
+		if got[0]["anchored"] != "lock" {
+			t.Errorf("a git-locked tree must name the anchor source %q, got %v", "lock", got[0]["anchored"])
+		}
+		if got[0]["verdict"] != sweepPreserve {
+			t.Errorf("a locked tree must preserve, got %v", got[0]["verdict"])
+		}
+		reason, _ := got[0]["reason"].(string)
+		if !strings.Contains(reason, "cause="+causeAnchored) {
+			t.Errorf("reason must carry cause=%s, got %q", causeAnchored, reason)
+		}
+	})
+
+	t.Run("registry-anchor", func(t *testing.T) {
+		launcher := t.TempDir() // the checkout a `moai cc -w` lane launched from
+		sweepMockEnv(t, []git.Worktree{{Path: "/wt/anchored", Branch: "feature/anchored"}})
+		// Re-point the caller registry at the launcher AFTER the env helper
+		// sealed it: this cell needs the registry anchor to be observable.
+		t.Setenv("CLAUDE_PROJECT_DIR", launcher)
+		writeTreeRegistry(t, launcher, []session.Entry{anchoredEntry(t, "/wt/anchored", os.Getpid())})
+
+		out, err := runSweepCmd(t, map[string]string{"json": "true"})
+		if err != nil {
+			t.Fatalf("runSweep error: %v", err)
+		}
+		got := decodeSweepJSON(t, out)
+		if got[0]["anchored"] != "registry" {
+			t.Errorf("a registry-anchored tree must name the anchor source %q, got %v", "registry", got[0]["anchored"])
+		}
+		if got[0]["verdict"] != sweepPreserve {
+			t.Errorf("an anchored tree must preserve, got %v", got[0]["verdict"])
+		}
+	})
+
+	t.Run("lock-source-unreadable", func(t *testing.T) {
+		m := sweepMockEnv(t, []git.Worktree{
+			{Path: "/wt/one", Branch: "feature/one"},
+			{Path: "/wt/two", Branch: "feature/two"},
+		})
+		m.lockErr = errors.New("git worktree list failed")
+
+		out, err := runSweepCmd(t, map[string]string{"json": "true"})
+		var ec *ExitCodeError
+		if err == nil || !errors.As(err, &ec) || ec.Code != 2 {
+			t.Fatalf("a degraded run must end with the exit-2 preservation signal, got %v", err)
+		}
+		got := decodeSweepJSON(t, out)
+		if len(got) != 2 {
+			t.Fatalf("the report must complete in full (2 records), got %d:\n%s", len(got), out)
+		}
+		for _, r := range got {
+			if r["anchored"] != staleStateUndetermined {
+				t.Errorf("an unreadable lock source must leave anchored=%q (never a negative), got %v on %v", staleStateUndetermined, r["anchored"], r["path"])
+			}
+			if r["verdict"] != sweepPreserve {
+				t.Errorf("every tree must preserve on a degraded run, got %v on %v", r["verdict"], r["path"])
+			}
+			reason, _ := r["reason"].(string)
+			if !strings.Contains(reason, "cause="+causeLockSourceUnreadable) {
+				t.Errorf("reason must carry cause=%s, got %q", causeLockSourceUnreadable, reason)
+			}
+		}
+	})
+}
+
+// TestSweepProcessCWDPredicate is AC-WS-007: (a) a probe list containing the
+// tree (or a path under it) occupies the tree; (b) a probe error is an
+// unanswerable, never a negative. (c) the Windows stub is verified by the
+// GOOS=windows build (sweep_cwd_windows_test.go runs on the Windows side).
+func TestSweepProcessCWDPredicate(t *testing.T) {
+	t.Run("cwd-inside-tree", func(t *testing.T) {
+		m := sweepMockEnv(t, []git.Worktree{{Path: "/wt/occupied", Branch: "feature/occupied"}})
+		// A cwd deep INSIDE the tree counts — prefix match, not equality.
+		m.cwds = []string{"/elsewhere", "/wt/occupied/inner/deeper"}
+		m.landed["feature/occupied"] = true
+
+		out, err := runSweepCmd(t, map[string]string{"json": "true"})
+		if err != nil {
+			t.Fatalf("runSweep error: %v", err)
+		}
+		got := decodeSweepJSON(t, out)
+		if got[0]["cwd_occupied"] != staleStateYes {
+			t.Errorf("a process cwd inside the tree must read cwd_occupied=%q, got %v", staleStateYes, got[0]["cwd_occupied"])
+		}
+		if got[0]["verdict"] != sweepPreserve {
+			t.Errorf("an occupied tree must preserve, got %v", got[0]["verdict"])
+		}
+		reason, _ := got[0]["reason"].(string)
+		if !strings.Contains(reason, "cause="+causeCWDOccupied) {
+			t.Errorf("reason must carry cause=%s, got %q", causeCWDOccupied, reason)
+		}
+	})
+
+	t.Run("probe-unanswerable", func(t *testing.T) {
+		m := sweepMockEnv(t, []git.Worktree{{Path: "/wt/unprobed", Branch: "feature/unprobed"}})
+		m.cwdErr = errors.New("lsof: command not found")
+		m.landed["feature/unprobed"] = true
+
+		out, err := runSweepCmd(t, map[string]string{"json": "true"})
+		if err != nil {
+			t.Fatalf("runSweep error: %v", err)
+		}
+		got := decodeSweepJSON(t, out)
+		if got[0]["cwd_occupied"] != staleStateUndetermined {
+			t.Errorf("an unanswerable probe must read cwd_occupied=%q (never a negative), got %v", staleStateUndetermined, got[0]["cwd_occupied"])
+		}
+		reason, _ := got[0]["reason"].(string)
+		if !strings.Contains(reason, "cause="+causeCWDProbeFailed) {
+			t.Errorf("reason must carry cause=%s, got %q", causeCWDProbeFailed, reason)
+		}
+		if got[0]["verdict"] != sweepPreserve {
+			t.Errorf("an unanswerable probe must preserve, got %v", got[0]["verdict"])
+		}
+	})
+}
+
+// TestSweepVerdictRecord is AC-WS-013: on a fully-evaluated record every
+// field is present and every predicate reads affirmatively — an unobserved
+// predicate is never rendered as a negative.
+func TestSweepVerdictRecord(t *testing.T) {
+	f := newSweepRepo(t)
+	wt := filepath.Join(f.base, "trees", "wt-record")
+	addSweepWorktree(t, f, wt, "feature/record")
+	withSweepRepoEnv(t, f)
+	m := &sweepMock{}
+	stubSweepProbeSeams(t, m, f)
+
+	out, err := runSweepCmd(t, map[string]string{"json": "true"})
+	if err != nil {
+		t.Fatalf("runSweep error: %v", err)
+	}
+	got := decodeSweepJSON(t, out)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 record, got %d:\n%s", len(got), out)
+	}
+	r := got[0]
+	for _, field := range []string{"path", "branch", "tier", "verdict", "reason", "landed", "dirty", "ignored", "anchored", "cwd_occupied", "on_base"} {
+		if _, ok := r[field]; !ok {
+			t.Errorf("record is missing field %q (record: %v)", field, r)
+		}
+	}
+	for _, field := range []string{"landed", "dirty", "ignored", "anchored", "cwd_occupied", "on_base"} {
+		if r[field] == staleStateUndetermined || r[field] == staleStateNotChecked {
+			t.Errorf("a fully-evaluated record must not carry %q on %s (record: %v)", r[field], field, r)
+		}
+	}
+	if r["verdict"] != sweepDispose {
+		t.Errorf("a fully-affirmative tree must classify as %s, got %v (record: %v)", sweepDispose, r["verdict"], r)
+	}
+	if reason, _ := r["reason"].(string); reason != "" {
+		t.Errorf("a DISPOSE record carries an empty reason, got %q", reason)
+	}
+}
+
 // keep unused-import guards honest for the milestone-gated test growth.
 var (
 	_ = time.Now
