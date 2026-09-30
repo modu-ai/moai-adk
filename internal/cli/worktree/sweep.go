@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -56,6 +57,7 @@ const (
 	causeOnBaseBranch      = "on-base-branch"
 	causeDetachedHead      = "detached-head"
 	causeHoistFailed       = "hoist-failed"
+	causeHoistPartial      = "hoist-partial"
 	causeDirtyCheckFailed  = "dirty-check-failed"
 	causeDirtyTree         = "dirty-tree"
 )
@@ -160,10 +162,31 @@ var sweepProcessExitCode = func(err error) int {
 	return -1
 }
 
-// sweepHoistBeforeDisposal is the L1 evidence-retrieval seam (REQ-WS-009):
-// the tree's .moai/reports/ is copied into the project root BEFORE removal,
-// and a hoist failure preserves the tree.
-var sweepHoistBeforeDisposal = hoistBeforeDisposal
+// sweepHoistEvidence is the sweep's evidence-retrieval seam (REQ-WS-009).
+// Unlike the plain done-path routine — whose contract reports only hard
+// failures — this returns whether the retrieval was COMPLETE: the tree is
+// removable only when every evidence file landed at the project root.
+var sweepHoistEvidence = sweepHoistEvidenceImpl
+
+// sweepHoistEvidenceImpl runs the shared hoist routine and judges its
+// completeness. Two fail-open shapes of the plain routine land here as
+// complete=false (nil error): an unresolved project root — no retrieval was
+// attempted at all — and a partial copy where destination conflicts were
+// skipped per REQ-RLC-006's never-overwrite policy. Either way the tree
+// still holds the only copy of something, so it must not be removed.
+func sweepHoistEvidenceImpl(w io.Writer, treePath string) (complete bool, err error) {
+	mainRoot, rootErr := hoistTargetMainRoot(treePath)
+	if rootErr != nil {
+		_, _ = fmt.Fprintf(w, "hoist skipped (project root unresolved from %s)\n", treePath)
+		return false, nil
+	}
+	res, hoistErr := hoistWorktreeReports(treePath, mainRoot)
+	if hoistErr != nil {
+		return false, hoistErr
+	}
+	printHoistResult(w, res, treePath)
+	return len(res.Skipped) == 0, nil
+}
 
 // sweepDoneCleanup is the L2 disposal seam (REQ-WS-008): the done removal
 // core with built-in evidence hoist, anchor refusal, non-forced removal, and
@@ -498,9 +521,9 @@ func renderSweepReport(cmd *cobra.Command, records []sweepVerdict) {
 //
 // @MX:WARN: [AUTO] bulk disposal loop — every guard here is load-bearing
 // @MX:REASON: this loop deletes directories across both tiers; dropping the
-// removal-time ignored-content re-read, the hoist-before-remove order, or
-// the non-forced removal turns a routine sweep into silent evidence or work
-// loss.
+// removal-time ignored-content re-read, the full-retrieval hoist check, the
+// hoist-before-remove order, or the non-forced removal turns a routine sweep
+// into silent evidence or work loss.
 func applySweepVerdicts(cmd *cobra.Command, records []sweepVerdict) {
 	out := cmd.OutOrStdout()
 	removed := 0
@@ -520,15 +543,28 @@ func applySweepVerdicts(cmd *cobra.Command, records []sweepVerdict) {
 			_, _ = fmt.Fprintf(out, "  Keeping %s [%s]: %s (observed at removal time)\n", r.Path, r.Branch, reason)
 			continue
 		}
+		// FULL-RETRIEVAL GUARD (REQ-WS-009), both tiers: the tree is removed
+		// only when its evidence retrieval was COMPLETE. The plain done-path
+		// routine reports only hard failures, so a PARTIAL copy (destination
+		// conflicts skipped per REQ-RLC-006's never-overwrite policy) or an
+		// unattempted one (project root unresolved) would otherwise remove a
+		// tree still holding the only copy of the skipped evidence. A hard
+		// hoist failure preserves with cause=hoist-failed; an incomplete
+		// retrieval preserves with cause=hoist-partial. Running the check
+		// sweep-side ahead of the L2 done core is safe: the core's own hoist
+		// then re-copies nothing (identical destinations are a no-op under
+		// REQ-RLC-006).
+		complete, hoistErr := sweepHoistEvidence(cmd.ErrOrStderr(), r.Path)
+		if hoistErr != nil {
+			_, _ = fmt.Fprintf(out, "  Keeping %s [%s]: cause=%s; %v\n", r.Path, r.Branch, causeHoistFailed, hoistErr)
+			continue
+		}
+		if !complete {
+			_, _ = fmt.Fprintf(out, "  Keeping %s [%s]: cause=%s; evidence retrieval was partial or unattempted — the tree still holds the only copy\n", r.Path, r.Branch, causeHoistPartial)
+			continue
+		}
 		switch r.Tier {
 		case sweepTierL1:
-			// REQ-WS-009: the tree's .moai/reports/ evidence is copied into
-			// the project root BEFORE removal — the tree is the only copy —
-			// and a hoist failure preserves the tree.
-			if err := sweepHoistBeforeDisposal(cmd.ErrOrStderr(), r.Path); err != nil {
-				_, _ = fmt.Fprintf(out, "  Keeping %s [%s]: cause=%s; %v\n", r.Path, r.Branch, causeHoistFailed, err)
-				continue
-			}
 			// Non-forced, never a branch deletion (REQ-WS-007/010).
 			if err := WorktreeProvider.Remove(r.Path, false); err != nil {
 				_, _ = fmt.Fprintf(out, "  Warning: could not remove %s: %v\n", r.Path, err)

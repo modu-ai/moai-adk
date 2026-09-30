@@ -56,7 +56,8 @@ type sweepMock struct {
 	doneErr       error             // done-core failure
 	doneSuccess   bool              // done-core success return (initialized true; a cell flips it)
 	hoistCalls    []string          // paths the hoist seam saw
-	hoistErr      error             // hoist seam failure
+	hoistErr      error             // hoist seam hard failure
+	hoistComplete bool              // hoist seam completeness (initialized true; a cell flips it)
 }
 
 // sweepMockEnv installs the stubbed environment for one sweep test and
@@ -65,12 +66,13 @@ func sweepMockEnv(t *testing.T, worktrees []git.Worktree) *sweepMock {
 	t.Helper()
 
 	m := &sweepMock{
-		statusOut:    map[string]string{},
-		ignoredOut:   map[string]string{},
-		landed:       map[string]bool{},
-		ancestorErrs: map[string]error{},
-		removeErr:    map[string]error{},
-		doneSuccess:  true,
+		statusOut:     map[string]string{},
+		ignoredOut:    map[string]string{},
+		landed:        map[string]bool{},
+		ancestorErrs:  map[string]error{},
+		removeErr:     map[string]error{},
+		doneSuccess:   true,
+		hoistComplete: true,
 	}
 
 	origProvider := WorktreeProvider
@@ -80,7 +82,7 @@ func sweepMockEnv(t *testing.T, worktrees []git.Worktree) *sweepMock {
 	origCWDs := sweepProcessCWDs
 	origFetch := sweepFetchBase
 	origAncestor := sweepAncestor
-	origHoist := sweepHoistBeforeDisposal
+	origHoist := sweepHoistEvidence
 	origDone := sweepDoneCleanup
 	t.Cleanup(func() {
 		WorktreeProvider = origProvider
@@ -90,7 +92,7 @@ func sweepMockEnv(t *testing.T, worktrees []git.Worktree) *sweepMock {
 		sweepProcessCWDs = origCWDs
 		sweepFetchBase = origFetch
 		sweepAncestor = origAncestor
-		sweepHoistBeforeDisposal = origHoist
+		sweepHoistEvidence = origHoist
 		sweepDoneCleanup = origDone
 	})
 
@@ -123,9 +125,12 @@ func sweepMockEnv(t *testing.T, worktrees []git.Worktree) *sweepMock {
 		}
 		return m.landed[tip], nil
 	}
-	sweepHoistBeforeDisposal = func(_ io.Writer, path string) error {
+	sweepHoistEvidence = func(_ io.Writer, path string) (bool, error) {
 		m.hoistCalls = append(m.hoistCalls, path)
-		return m.hoistErr
+		if m.hoistErr != nil {
+			return false, m.hoistErr
+		}
+		return m.hoistComplete, nil
 	}
 	sweepDoneCleanup = func(branch string, force, deleteBranch, hoist bool) (bool, error) {
 		m.doneCalls = append(m.doneCalls, sweepDoneCallKey(branch, force, deleteBranch, hoist))
@@ -471,8 +476,8 @@ func TestSweep_EmptyPopulationStatesSweptCount(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an empty population must exit 0, got: %v", err)
 	}
-	if !strings.Contains(out, "0") {
-		t.Errorf("the empty-run report must state the swept count (0), got:\n%s", out)
+	if !strings.Contains(out, "Nothing to sweep: 0 worktree(s) evaluated.") {
+		t.Errorf("the empty-run report must state the swept count, got:\n%s", out)
 	}
 }
 
@@ -1183,13 +1188,13 @@ func TestSweepL1HoistThenRemove(t *testing.T) {
 		// One shared sequence records both seams, so the ORDER is evidence:
 		// hoist must appear before remove.
 		var order []string
-		origHoist := sweepHoistBeforeDisposal
-		sweepHoistBeforeDisposal = func(w io.Writer, path string) error {
+		origHoist := sweepHoistEvidence
+		sweepHoistEvidence = func(w io.Writer, path string) (bool, error) {
 			order = append(order, "hoist")
 			return origHoist(w, path)
 		}
 		provider.onRemove = func() { order = append(order, "remove") }
-		t.Cleanup(func() { sweepHoistBeforeDisposal = origHoist })
+		t.Cleanup(func() { sweepHoistEvidence = origHoist })
 
 		out, err := runSweepCmd(t, map[string]string{"yes": "true"})
 		if err != nil {
@@ -1224,11 +1229,11 @@ func TestSweepL1HoistThenRemove(t *testing.T) {
 		m := &sweepMock{}
 		stubSweepProbeSeams(t, m, f)
 
-		origHoist := sweepHoistBeforeDisposal
-		sweepHoistBeforeDisposal = func(_ io.Writer, _ string) error {
-			return errors.New("cannot copy evidence")
+		origHoist := sweepHoistEvidence
+		sweepHoistEvidence = func(_ io.Writer, _ string) (bool, error) {
+			return false, errors.New("cannot copy evidence")
 		}
-		t.Cleanup(func() { sweepHoistBeforeDisposal = origHoist })
+		t.Cleanup(func() { sweepHoistEvidence = origHoist })
 
 		out, err := runSweepCmd(t, map[string]string{"yes": "true"})
 		if err != nil {
@@ -1239,6 +1244,90 @@ func TestSweepL1HoistThenRemove(t *testing.T) {
 		}
 		if !strings.Contains(out, "cause="+causeHoistFailed) {
 			t.Errorf("the notice must carry cause=%s, got:\n%s", causeHoistFailed, out)
+		}
+	})
+
+	// Repair round F1: a PARTIAL retrieval must preserve. A different-content
+	// file pre-planted at the hoist destination is skipped by REQ-RLC-006's
+	// never-overwrite policy — the skipped file would be the tree's sole
+	// copy, so the sweep keeps the tree (cause=hoist-partial).
+	t.Run("destination-conflict-preserves", func(t *testing.T) {
+		f := newSweepRepo(t)
+		l1 := filepath.Join(f.repo, ".claude", "worktrees", "sweep-l1-conflict")
+		addSweepWorktree(t, f, l1, "feature/sweep-l1-conflict")
+		reports := filepath.Join(l1, ".moai", "reports")
+		if err := os.MkdirAll(reports, 0o755); err != nil {
+			t.Fatalf("mkdir reports: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(reports, "verdict.md"), []byte("fresh evidence\n"), 0o644); err != nil {
+			t.Fatalf("write evidence: %v", err)
+		}
+		dest := filepath.Join(f.repo, ".moai", "reports", "worktrees", "sweep-l1-conflict")
+		if err := os.MkdirAll(dest, 0o755); err != nil {
+			t.Fatalf("mkdir destination: %v", err)
+		}
+		destFile := filepath.Join(dest, "verdict.md")
+		if err := os.WriteFile(destFile, []byte("stale different content\n"), 0o644); err != nil {
+			t.Fatalf("pre-plant destination conflict: %v", err)
+		}
+		withSweepRepoEnv(t, f)
+		m := &sweepMock{}
+		stubSweepProbeSeams(t, m, f)
+
+		out, err := runSweepCmd(t, map[string]string{"yes": "true"})
+		if err != nil {
+			t.Fatalf("runSweep error: %v", err)
+		}
+		if _, statErr := os.Stat(l1); statErr != nil {
+			t.Fatalf("a partially-retrieved tree must be preserved, got: %v", statErr)
+		}
+		if !strings.Contains(out, "cause="+causeHoistPartial) {
+			t.Errorf("the notice must carry cause=%s, got:\n%s", causeHoistPartial, out)
+		}
+		content, readErr := os.ReadFile(destFile)
+		if readErr != nil || string(content) != "stale different content\n" {
+			t.Errorf("the destination conflict must be left untouched (read: %v)", readErr)
+		}
+	})
+
+	// Repair round F1: an UNATTEMPTED retrieval must preserve. The main-root
+	// resolver succeeds exactly once — for the L1 tier classification — then
+	// fails, so the hoist cannot even find a destination.
+	t.Run("root-unresolved-preserves", func(t *testing.T) {
+		f := newSweepRepo(t)
+		l1 := filepath.Join(f.repo, ".claude", "worktrees", "sweep-l1-rootless")
+		addSweepWorktree(t, f, l1, "feature/sweep-l1-rootless")
+		reports := filepath.Join(l1, ".moai", "reports")
+		if err := os.MkdirAll(reports, 0o755); err != nil {
+			t.Fatalf("mkdir reports: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(reports, "verdict.md"), []byte("evidence\n"), 0o644); err != nil {
+			t.Fatalf("write evidence: %v", err)
+		}
+		withSweepRepoEnv(t, f)
+		m := &sweepMock{}
+		stubSweepProbeSeams(t, m, f)
+
+		calls := 0
+		origResolver := gitMainRootFromTargetFunc
+		gitMainRootFromTargetFunc = func(string) (string, error) {
+			calls++
+			if calls == 1 {
+				return f.repo, nil
+			}
+			return "", errors.New("project root unresolved")
+		}
+		t.Cleanup(func() { gitMainRootFromTargetFunc = origResolver })
+
+		out, err := runSweepCmd(t, map[string]string{"yes": "true"})
+		if err != nil {
+			t.Fatalf("runSweep error: %v", err)
+		}
+		if _, statErr := os.Stat(l1); statErr != nil {
+			t.Fatalf("a tree whose evidence retrieval was unattempted must be preserved, got: %v", statErr)
+		}
+		if !strings.Contains(out, "cause="+causeHoistPartial) {
+			t.Errorf("the notice must carry cause=%s, got:\n%s", causeHoistPartial, out)
 		}
 	})
 }
@@ -1281,6 +1370,81 @@ func TestSweepL2DonePath(t *testing.T) {
 	if branchList := sweepRunGitAllowFail(t, f.repo, "rev-parse", "--verify", "feature/sweep-l2"); strings.TrimSpace(branchList) == "" {
 		t.Error("the L2 branch must survive the done-core disposal")
 	}
+}
+
+// TestSweepL2PartialRetrievalPreserves is repair round F1's L2 equivalent:
+// the done core reports only hard hoist failures, so the sweep verifies full
+// retrieval sweep-side BEFORE delegating — a partial or unattempted
+// retrieval preserves the tree and the done core is never reached.
+func TestSweepL2PartialRetrievalPreserves(t *testing.T) {
+	t.Run("partial-retrieval", func(t *testing.T) {
+		m := sweepMockEnv(t, []git.Worktree{{Path: "/wt/l2partial", Branch: "feature/l2partial"}})
+		m.landed["feature/l2partial"] = true
+		m.hoistComplete = false
+
+		out, err := runSweepCmd(t, map[string]string{"yes": "true"})
+		if err != nil {
+			t.Fatalf("runSweep error: %v", err)
+		}
+		if len(m.doneCalls) != 0 {
+			t.Errorf("the done core must not be reached on an incomplete retrieval, got %v", m.doneCalls)
+		}
+		if len(m.removed) != 0 {
+			t.Errorf("a partially-retrieved tree must not be removed, removed %v", m.removed)
+		}
+		if !strings.Contains(out, "cause="+causeHoistPartial) {
+			t.Errorf("the notice must carry cause=%s, got:\n%s", causeHoistPartial, out)
+		}
+	})
+
+	t.Run("root-unresolved", func(t *testing.T) {
+		f := newSweepRepo(t)
+		l2 := filepath.Join(f.base, "trees", "sweep-l2-rootless")
+		addSweepWorktree(t, f, l2, "feature/sweep-l2-rootless")
+		reports := filepath.Join(l2, ".moai", "reports")
+		if err := os.MkdirAll(reports, 0o755); err != nil {
+			t.Fatalf("mkdir reports: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(reports, "verdict.md"), []byte("evidence\n"), 0o644); err != nil {
+			t.Fatalf("write evidence: %v", err)
+		}
+		withSweepRepoEnv(t, f)
+		m := &sweepMock{}
+		stubSweepProbeSeams(t, m, f)
+
+		calls := 0
+		origResolver := gitMainRootFromTargetFunc
+		gitMainRootFromTargetFunc = func(string) (string, error) {
+			calls++
+			if calls == 1 {
+				return f.repo, nil
+			}
+			return "", errors.New("project root unresolved")
+		}
+		t.Cleanup(func() { gitMainRootFromTargetFunc = origResolver })
+
+		var doneCalls []string
+		origDone := sweepDoneCleanup
+		sweepDoneCleanup = func(branch string, force, deleteBranch, hoist bool) (bool, error) {
+			doneCalls = append(doneCalls, branch)
+			return origDone(branch, force, deleteBranch, hoist)
+		}
+		t.Cleanup(func() { sweepDoneCleanup = origDone })
+
+		out, err := runSweepCmd(t, map[string]string{"yes": "true"})
+		if err != nil {
+			t.Fatalf("runSweep error: %v", err)
+		}
+		if _, statErr := os.Stat(l2); statErr != nil {
+			t.Fatalf("a tree whose evidence retrieval was unattempted must be preserved, got: %v", statErr)
+		}
+		if len(doneCalls) != 0 {
+			t.Errorf("the done core must not be reached on an unattempted retrieval, got %v", doneCalls)
+		}
+		if !strings.Contains(out, "cause="+causeHoistPartial) {
+			t.Errorf("the notice must carry cause=%s, got:\n%s", causeHoistPartial, out)
+		}
+	})
 }
 
 // TestSweepNeverDispose is AC-WS-011: the main checkout and the process's
