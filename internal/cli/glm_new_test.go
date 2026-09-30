@@ -97,14 +97,18 @@ func writeProjectLLMYAML(t *testing.T, llmYAML string) string {
 // (its root parameter) so user-configured models take effect.
 func TestLoadGLMConfig_ReadsDiskModelsWhenConfigUnloaded(t *testing.T) {
 	// Custom models, NO base_url set (the issue #1065 scenario): base_url
-	// should default but models must still be honored.
+	// should default but models must still be honored. The probe ids are
+	// offered-set values (glm-5.3 differs from the flash default) so the
+	// honor-disk assertion is distinguishable from a default fallback — an
+	// out-of-set value would fall back per REQ-MMU-004, which this test is
+	// not the home of.
 	root := writeProjectLLMYAML(t, `
 llm:
   glm:
     models:
-      high: "glm-PROBE-HIGH"
-      medium: "glm-PROBE-MEDIUM"
-      low: "glm-PROBE-LOW"
+      high: "glm-5.3"
+      medium: "glm-5.3-flash"
+      low: "glm-5.3-flash"
 `)
 
 	// Realistic runtime state: ConfigManager constructed but never Load()ed,
@@ -117,14 +121,14 @@ llm:
 	if err != nil {
 		t.Fatalf("loadGLMConfig should not error, got: %v", err)
 	}
-	if cfg.Models.High != "glm-PROBE-HIGH" {
-		t.Errorf("Models.High = %q, want %q (user llm.yaml ignored — issue #1065)", cfg.Models.High, "glm-PROBE-HIGH")
+	if cfg.Models.High != "glm-5.3" {
+		t.Errorf("Models.High = %q, want %q (user llm.yaml ignored — issue #1065)", cfg.Models.High, "glm-5.3")
 	}
-	if cfg.Models.Medium != "glm-PROBE-MEDIUM" {
-		t.Errorf("Models.Medium = %q, want %q (user llm.yaml ignored)", cfg.Models.Medium, "glm-PROBE-MEDIUM")
+	if cfg.Models.Medium != "glm-5.3-flash" {
+		t.Errorf("Models.Medium = %q, want %q (user llm.yaml ignored)", cfg.Models.Medium, "glm-5.3-flash")
 	}
-	if cfg.Models.Low != "glm-PROBE-LOW" {
-		t.Errorf("Models.Low = %q, want %q (user llm.yaml ignored)", cfg.Models.Low, "glm-PROBE-LOW")
+	if cfg.Models.Low != "glm-5.3-flash" {
+		t.Errorf("Models.Low = %q, want %q (user llm.yaml ignored)", cfg.Models.Low, "glm-5.3-flash")
 	}
 	// base_url was omitted in llm.yaml, so the default must fill in.
 	if cfg.BaseURL != "https://api.z.ai/api/anthropic" {
@@ -139,7 +143,7 @@ func TestLoadGLMConfig_ReadsDiskModelsWithNilDeps(t *testing.T) {
 llm:
   glm:
     models:
-      high: "glm-PROBE-HIGH"
+      high: "glm-5.3"
 `)
 
 	origDeps := deps
@@ -150,8 +154,8 @@ llm:
 	if err != nil {
 		t.Fatalf("loadGLMConfig should not error, got: %v", err)
 	}
-	if cfg.Models.High != "glm-PROBE-HIGH" {
-		t.Errorf("Models.High = %q, want %q (disk models ignored with nil deps)", cfg.Models.High, "glm-PROBE-HIGH")
+	if cfg.Models.High != "glm-5.3" {
+		t.Errorf("Models.High = %q, want %q (disk models ignored with nil deps)", cfg.Models.High, "glm-5.3")
 	}
 	// medium/low omitted → defaults fill in.
 	if cfg.Models.Medium != "glm-5.3-flash" {
@@ -167,7 +171,7 @@ llm:
   glm:
     base_url: "https://custom.example.test/anthropic"
     models:
-      high: "glm-PROBE-HIGH"
+      high: "glm-5.3"
 `)
 
 	origDeps := deps
@@ -181,8 +185,8 @@ llm:
 	if cfg.BaseURL != "https://custom.example.test/anthropic" {
 		t.Errorf("BaseURL = %q, want explicit disk value", cfg.BaseURL)
 	}
-	if cfg.Models.High != "glm-PROBE-HIGH" {
-		t.Errorf("Models.High = %q, want %q", cfg.Models.High, "glm-PROBE-HIGH")
+	if cfg.Models.High != "glm-5.3" {
+		t.Errorf("Models.High = %q, want %q", cfg.Models.High, "glm-5.3")
 	}
 }
 

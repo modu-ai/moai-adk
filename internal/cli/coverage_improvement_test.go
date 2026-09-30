@@ -1786,9 +1786,9 @@ func TestLoadGLMConfig_WithConfig(t *testing.T) {
   glm:
     base_url: "https://custom.api.com"
     models:
-      high: "custom-high"
-      medium: "custom-med"
-      low: "custom-low"
+      high: "glm-5.3"
+      medium: "glm-5.3-flash"
+      low: "glm-5.3-flash"
 `
 	if err := os.WriteFile(filepath.Join(sectionsDir, "llm.yaml"), []byte(llmYAML), 0o644); err != nil {
 		t.Fatal(err)
@@ -1813,8 +1813,8 @@ func TestLoadGLMConfig_WithConfig(t *testing.T) {
 	if cfg.BaseURL != "https://custom.api.com" {
 		t.Errorf("BaseURL = %q, want %q", cfg.BaseURL, "https://custom.api.com")
 	}
-	if cfg.Models.High != "custom-high" {
-		t.Errorf("Models.High = %q, want %q", cfg.Models.High, "custom-high")
+	if cfg.Models.High != "glm-5.3" {
+		t.Errorf("Models.High = %q, want %q", cfg.Models.High, "glm-5.3")
 	}
 	if cfg.EnvVar != "CUSTOM_KEY" {
 		t.Errorf("EnvVar = %q, want %q", cfg.EnvVar, "CUSTOM_KEY")

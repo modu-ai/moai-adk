@@ -742,16 +742,6 @@ func saveLLMSection(sectionsDir string, llm config.LLMConfig) error {
 	if llm.GLM.Models.Fable == "" {
 		llm.GLM.Models.Fable = defaults.GLM.Models.Fable
 	}
-	// Also populate legacy model name fields for consistency
-	if llm.GLM.Models.Opus == "" {
-		llm.GLM.Models.Opus = defaults.GLM.Models.Opus
-	}
-	if llm.GLM.Models.Sonnet == "" {
-		llm.GLM.Models.Sonnet = defaults.GLM.Models.Sonnet
-	}
-	if llm.GLM.Models.Haiku == "" {
-		llm.GLM.Models.Haiku = defaults.GLM.Models.Haiku
-	}
 	// Populate GLM env var if empty
 	if llm.GLMEnvVar == "" {
 		llm.GLMEnvVar = defaults.GLMEnvVar
@@ -838,40 +828,44 @@ type GLMConfigFromYAML struct {
 	EnvVar string
 }
 
-// resolveGLMModels resolves the effective high, medium, low, and fable model names.
+// resolveGLMModels resolves the effective high, medium, low, and fable model
+// names. SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-004 (DR-2): a stored tier-slot
+// value naming anything outside the offered set — a removed old-model id
+// (glm-4.7 and friends were fully deleted) as readily as an arbitrary id —
+// falls back to that tier's default WITH a one-line stderr warning
+// (fail-open: never a silent pass-through, never a hard error). The legacy
+// opus/sonnet/haiku alias fields no longer participate: they are deleted, and
+// the non-strict loader silently ignores the alias keys in an existing
+// llm.yaml (the accepted silent half of DR-2).
 func resolveGLMModels(models config.GLMModels) (high, medium, low, fable string) {
 	defaults := config.NewDefaultLLMConfig()
 
-	high = models.High
-	if high == "" {
-		high = models.Opus
-	}
-	if high == "" {
-		high = defaults.GLM.Models.High
-	}
-
-	medium = models.Medium
-	if medium == "" {
-		medium = models.Sonnet
-	}
-	if medium == "" {
-		medium = defaults.GLM.Models.Medium
-	}
-
-	low = models.Low
-	if low == "" {
-		low = models.Haiku
-	}
-	if low == "" {
-		low = defaults.GLM.Models.Low
-	}
-
-	fable = models.Fable
-	if fable == "" {
-		fable = defaults.GLM.Models.Fable
-	}
+	high = resolveGLMTierSlot("high", models.High, defaults.GLM.Models.High)
+	medium = resolveGLMTierSlot("medium", models.Medium, defaults.GLM.Models.Medium)
+	low = resolveGLMTierSlot("low", models.Low, defaults.GLM.Models.Low)
+	fable = resolveGLMTierSlot("fable", models.Fable, defaults.GLM.Models.Fable)
 
 	return high, medium, low, fable
+}
+
+// resolveGLMTierSlot resolves one tier slot: an empty value falls to the tier
+// default silently (the pre-existing unset semantics — nothing was stored);
+// a non-empty value outside config.ValidGLMModels() falls to the tier default
+// and names the substitution on one stderr line (REQ-MMU-004's managed
+// transition — the warning is the whole management device).
+func resolveGLMTierSlot(tier, value, def string) string {
+	if value == "" {
+		return def
+	}
+	for _, known := range config.ValidGLMModels() {
+		if known == value {
+			return value
+		}
+	}
+	fmt.Fprintf(os.Stderr,
+		"moai: glm model %q in tier slot %q is no longer offered; using the tier default %q (llm.glm.context_windows may still map a custom window for it)\n",
+		value, tier, def)
+	return def
 }
 
 // loadGLMConfig reads GLM configuration from llm.yaml.

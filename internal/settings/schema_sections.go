@@ -192,8 +192,9 @@ func glmDefaultTierEffort(tier string) string {
 // max로 고정한다. 콘솔의 안내 문구(sec.llm.effortnote)도 이 내용을 따른다.
 //
 // legacy alias opus/sonnet/haiku는 SPEC-WEB-CONSOLE-012 REQ-WC12-002에서 웹
-// 편집면에서 제거되었다 — GLMModels legacy struct 멤버는 무접촉 보존되어 legacy
-// yaml 로드가 backward-compat를 유지한다 (REQ-WC12-006).
+// 편집면에서 제거되었다. GLMModels legacy struct 멤버는 SPEC-MODEL-MATRIX-
+// UPDATE-001 REQ-MMU-004(DR-2)에서 삭제되었다 — 기존 llm.yaml의 alias 키는
+// 비엄strict 로더가 무오류 무시한다(수용된 위험의 무음 절반).
 func llmFields() []FieldDef {
 	var fields []FieldDef
 	for _, tier := range glmTiers() {

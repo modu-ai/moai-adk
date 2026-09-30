@@ -246,19 +246,17 @@ const (
 	// context). Unlike glm-5.3 it accepts reasoning_effort "max" only — the
 	// web console locks the tier effort select to max when a tier slot holds
 	// it, and the effort overlay branches per-model.
-	// Additional GLM models — those exposed by ValidGLMModels() (glm-5.1,
-	// glm-4.7, glm-4.5-air) are selectable in the tier slots; glm-4.5,
-	// glm-4.6, glm-5.2, and glm-5-turbo are named constants with no config
-	// surface. glm-5.2 left the offered set when a single model became every
-	// tier's default, but stays declared so an existing llm.yaml naming it still
-	// loads and still resolves a context window.
-	DefaultGLM45     = "glm-4.5"
-	DefaultGLM46     = "glm-4.6"
-	DefaultGLM47     = "glm-4.7"
-	DefaultGLM45Air  = "glm-4.5-air"
-	DefaultGLM51     = "glm-5.1"
-	DefaultGLM52     = "glm-5.2"
-	DefaultGLM5Turbo = "glm-5-turbo"
+	//
+	// DELETION RECORD (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-004, DR-2 —
+	// operator override 2026-09-30): the seven old-model name constants —
+	// "glm-4.5", "glm-4.6", "glm-4.7", "glm-4.5-air", "glm-5.1", "glm-5.2",
+	// "glm-5-turbo" — are DELETED, not merely withdrawn from
+	// ValidGLMModels(). glm-5.2 had left the offered set earlier while its
+	// constant stayed loadable; the operator chose full deletion over that
+	// preservation precedent. A stored tier-slot value naming a removed id
+	// falls back to the tier default with a one-line warning (fail-open), and
+	// the statusline context-window table no longer carries the removed ids —
+	// llm.glm.context_windows is the user override path that keeps working.
 	// Legacy GLM model names (map to tiers)
 	DefaultGLMHaiku  = DefaultGLM53Flash
 	DefaultGLMSonnet = DefaultGLM53Flash
@@ -968,10 +966,6 @@ func NewDefaultLLMConfig() LLMConfig {
 				Medium: DefaultGLMMedium,
 				Low:    DefaultGLMLow,
 				Fable:  DefaultGLMFable,
-				// Legacy fields for backward compatibility
-				Opus:   DefaultGLMOpus,
-				Sonnet: DefaultGLMSonnet,
-				Haiku:  DefaultGLMHaiku,
 			},
 		},
 	}
