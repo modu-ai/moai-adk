@@ -318,9 +318,8 @@ Plan to Run:
 - Action: Execute /clear, then `/moai run SPEC-XXX` — on `main` (Route A) or `feat/SPEC-XXX` (Route B default), or inside `moai cc -w SPEC-XXX` where the user opted into a worktree (§ SPEC Phase Discipline Step 2).
 - Gate: `/moai run` Phase 1 (Plan Audit Gate) executes automatically before any implementation (details below).
 - [ZONE:Evolvable] Plan Audit Gate skip policy (single authoritative contract):
-  the orchestrator MAY skip Phase 1 re-execution and proceed directly to
-  Phase 1 **IF AND ONLY IF ALL THREE** of the following hold for the most recent
-  plan-auditor verdict on the SPEC:
+  the orchestrator MAY skip Phase 1 re-execution **IF AND ONLY IF ALL THREE**
+  of the following hold for the most recent plan-auditor verdict on the SPEC:
     1. **Verdict is `PASS`** (NOT FAIL, NOT INCONCLUSIVE, NOT BYPASSED).
     2. **Overall score ≥ the SPEC's per-tier PASS threshold** — Tier S `0.75`,
        Tier M `0.80`, Tier L `0.85` (matching § SPEC Complexity Tier). The flat
@@ -335,15 +334,13 @@ Plan to Run:
   If ANY of the three fails, Phase 1 re-executes (the gate is never disabled by
   harness level; see Gate Entry Condition below). When the skip is taken, the
   skip decision AND the three satisfied conditions MUST be recorded in the
-  run-phase delegation prompt (Section A: Context) so downstream actors
-  can verify the rationale. This is the ONE
+  run-phase delegation prompt (Section A: Context). This is the ONE
   authoritative skip contract — any other surface (e.g. the skill-layer
-  `run/phase-execution.md`) MUST cite this contract rather than restating a
-  divergent condition set. Origin: the workflow-optimization layer (redundant
-  audit re-execution removal). SPEC-AUDIT-SNAPSHOT-001 (A1+A2) retired the
-  prior 4th condition ("Within 24h") and aligned the 2nd condition to per-tier
-  PASS: the cache is now sticky (hash-only validity, no time bound) so a
-  legitimately-passed SPEC with unchanged artifacts stays skip-eligible.
+  `run/phase-execution.md`) MUST cite it rather than restate a divergent
+  condition set. Origin: SPEC-AUDIT-SNAPSHOT-001 (A1+A2) retired the
+  prior 4th condition ("Within 24h") and made the cache sticky (hash-only
+  validity, no time bound), so a legitimately-passed SPEC with unchanged
+  artifacts stays skip-eligible.
   This skip is distinct from the plan→run Kickoff gate: skip-eligibility
   governs ONLY Phase 1 verdict re-execution — it never bypasses the gate.
   Under the default-autonomous Kickoff transition
@@ -364,9 +361,8 @@ Plan to Run:
 ## Phase 1: Plan Audit Gate
 
 The Plan Audit Gate is a mandatory protocol executed at the start of every `/moai run` invocation,
-before any implementation phase begins. The gate invokes the plan-auditor subagent to independently
-review all SPEC plan artifacts. It prevents unreviewed or incomplete SPEC artifacts from entering
-the implementation phase.
+before any implementation phase begins: the plan-auditor subagent independently reviews all SPEC
+plan artifacts, preventing unreviewed or incomplete ones from entering implementation.
 
 ### Gate Entry Condition
 
@@ -375,7 +371,7 @@ the implementation phase.
 
 ### Depends_on Pre-flight Check
 
-The Depends_on Pre-flight Check is the first sub-step of Phase 1, executed BEFORE the plan-auditor subagent invocation. It is NOT a separate Phase 2 — it extends Phase 1 as sub-step 0 (no phase inflation).
+The Depends_on Pre-flight Check is the first sub-step of Phase 1, executed BEFORE the plan-auditor subagent invocation — sub-step 0, not a separate phase (no phase inflation).
 
 **Procedure:**
 1. Load the SPEC's frontmatter `depends_on:` list (Optional field per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Optional Fields).
@@ -402,16 +398,16 @@ The `--ignore-deps` flag and `.moai/logs/depends-on-override.log` path are liter
 
 ### Report Persistence
 
-Two report streams exist for plan audits; they are distinct by design and mutually cross-referenced here and in `.claude/agents/moai/plan-auditor.md` § Output Format. They do NOT share a directory:
+Two report streams exist for plan audits; they are distinct by design, cross-referenced with `.claude/agents/moai/plan-auditor.md` § Output Format, and do NOT share a directory:
 
 - **plan-phase review stream** — `plan-audit.md` (or `plan-audit-iter<N>.md`, one file per iteration), exported by the plan-auditor to the card evidence path `.moai/reports/<card-id>/` (or `.moai/reports/<SPEC-ID>/` for a SPEC-scoped audit produced without a card) per the audit-artifact convention (`.moai/docs/audit-artifact-convention.md`). Iteration `N` follows the plan-auditor Retry Loop Contract (max 3). Consumed by the plan workflow's assembly/annotation cycle.
 - **run-gate stream** — `<SPEC-ID>-<YYYY-MM-DD>.md`, date-based, under the gitignored runtime record directory `.moai/reports/plan-audit/`. Written by the Phase 1 Plan Audit Gate (`internal/runtime/audit_report.go`). Every gate call persists a record here; multiple calls on the same day append to the same file. This date-file is the verdict **record surface** only — it is never the hash subject for skip-eligibility (see below).
 
 Skip-eligibility inputs (normative, matching the Go implementation): (a) the "most recent plan-auditor verdict" the run-gate consults is the plan-phase review stream's **final-iteration verdict**, resolved by `runtime.ResolveLatestPlanAudit`; (b) the artifact-hash check recomputes and compares the **plan-artifact hash** — `internal/runtime/audit_cache.go` `ComputeHash` hashes the SPEC directory's plan artifacts (the union subject set below) as exact bytes, with cache key = (specID, planArtifactHash); (c) the run-gate stream's date-file records the verdict but is not hashed and never supplies cache identity. A review file without hash/score/version metadata is a cache miss and requires a fresh audit.
 
-**Plan-artifact hash subject list (Go verbatim):** the hash subject set is the union `{acceptance.md, design.md, plan.md, research.md, spec.md, tasks.md}` — matching `internal/runtime/audit_cache.go` `planArtifactNames` verbatim. The set is tier-conditional by construction via the "skip if missing" rule in `ComputeHash`: a Tier S directory (spec.md, plan.md) hashes only those present; a Tier M directory adds acceptance.md; a Tier L directory contributes design.md AND research.md as mechanical subjects (SPEC-AUDIT-SNAPSHOT-001 A1 Tier L extension — changes to design.md/research.md NOW mechanically invalidate a cached skip verdict, replacing the former "manual judgment input" treatment); a grandfathered V3R4 directory carrying tasks.md retains it as a subject (K-2 backward compat).
+**Plan-artifact hash subject list (Go verbatim):** the hash subject set is the union `{acceptance.md, design.md, plan.md, research.md, spec.md, tasks.md}` — matching `internal/runtime/audit_cache.go` `planArtifactNames` verbatim. The set is tier-conditional by construction via the "skip if missing" rule in `ComputeHash`: a Tier S directory (spec.md, plan.md) hashes only those present; a Tier M directory adds acceptance.md; a Tier L directory contributes design.md AND research.md as mechanical subjects (SPEC-AUDIT-SNAPSHOT-001 A1 — design.md/research.md changes now mechanically invalidate a cached skip verdict); a grandfathered V3R4 directory carrying tasks.md retains it as a subject (K-2 backward compat).
 
-**Amendment as cache-invalidating event:** when a SPEC is amended in-place per the `completed → in-progress (amendment)` transition (completed → in-progress, `## Amendments` HISTORY row added), the plan-artifact hash changes because `spec.md` is modified — this is a cache-invalidating event that invalidates any cached plan-auditor PASS verdict for the SPEC, forcing Phase 1 plan-audit re-execution on the next `/moai run`. During the amendment transition, the SPEC remains V3R6 modern era (subject to drift detection) because frontmatter status is `in-progress` (not `completed`), so the `internal/spec/audit.go` completed-no-drift predicate does not fire.
+**Amendment as cache-invalidating event:** when a SPEC is amended in-place per the `completed → in-progress (amendment)` transition (completed → in-progress, `## Amendments` HISTORY row added), the plan-artifact hash changes because `spec.md` is modified — this is a cache-invalidating event that invalidates any cached plan-auditor PASS verdict for the SPEC, forcing Phase 1 plan-audit re-execution on the next `/moai run`. During the amendment transition the SPEC stays V3R6 modern era: frontmatter status `in-progress` (not `completed`) keeps the `internal/spec/audit.go` completed-no-drift predicate from firing.
 
 Reports in both streams are local artifacts (gitignored).
 
@@ -428,7 +424,7 @@ Run to Sync:
 Sync (close):
 - Trigger: (A) the single sync commit — carrying the `implemented → completed` transition (manager-docs) and populating `sync_commit_sha` in progress.md §E.4 — pushed to `main`; or (B) the sync PR carrying that same commit, merged. This is the 3-phase close: NO separate Mx-phase commit (MX Tag validation is a sync sub-step); the SPEC is `completed` once it lands.
 - **What the slot holds in the sync commit itself.** A commit cannot cite its own hash, so the sync commit writes the canonical placeholder `pending-backfill` — a `-`-suffixed member of that family (`pending-backfill-sync`) is equally admitted — and the real SHA is backfilled in a following commit. This is the schema doctrine's D3 backfill window (`spec-frontmatter-schema.md` § SHA placeholder backfill exemption), and the slot-format lint is silent on a recognized placeholder by design: it is a sanctioned intermediate state, not a defect.
-- **Leaving the slot empty is not the alternative, and the reason is not tidiness.** An empty value is neither a SHA nor a recognized placeholder, so the slot-format rule reports a warning on it. The warning is the mild consequence. The costly one is that an empty slot records no owed work: the SPEC is `completed` once the sync commit lands, so no further close ever runs against it and nothing schedules the repair — and because a terminal-status document has its warnings demoted to advisory, no gate blocks on the signal either. A placeholder names the debt and the phase that owes it; an empty slot names nothing, and outlives everyone who knew what belonged there.
+- **Leaving the slot empty is not the alternative, and the reason is not tidiness.** An empty value is neither a SHA nor a recognized placeholder, so the slot-format rule warns on it — the mild consequence. The costly one: an empty slot records no owed work — the SPEC is `completed` once the sync commit lands, no further close runs against it, nothing schedules the repair, and a terminal-status document's warnings are demoted to advisory so no gate blocks. A placeholder names the debt; an empty slot names nothing.
 
 Sync to Cleanup (Route B only):
 - Trigger: Sync PR merged into main
@@ -440,7 +436,7 @@ Sync to Cleanup (Route B only):
 
 Agent Teams usage is ALLOWED as an experimental surface (operator decision): the flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships enabled in `.claude/settings.json` and the distributed template, and `agent-team` is selectable via an explicit `--team` / `--mode team` request (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.1). The Phase 4 decision tree still never auto-selects it.
 
-Genealogy: previously RETIRED (`--team` emitted `MODE_TEAM_UNAVAILABLE` with a sub-agent fallback; the team-mode skill files and the `workflow.yaml` team-config block were removed); re-allowed on 5 named-worker completions with result returns — full history in `orchestration-mode-selection.md` §C.1.
+Genealogy: previously RETIRED (`--team` emitted `MODE_TEAM_UNAVAILABLE`), re-allowed on named-worker completions — full history in `orchestration-mode-selection.md` §C.1.
 
 The default multi-agent surface remains:
 - Multi-domain research/review → fanout (parallel fan-out: 3-5 concurrent read-only `Agent()` in one turn — advisory band; hard bound is the runtime subagent cap, per orchestration-mode-selection.md §C.2).
