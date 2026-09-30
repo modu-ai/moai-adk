@@ -66,7 +66,7 @@ run-phase 종료 시 아래를 관측하고 증거를 `.moai/reports/t1368/`에 
 - E5 제공 집합 grep: `grep -n -A 3 "func ValidGLMModels" internal/config/closed_sets.go` — 두 모델만 확인.
 - E6 불변 재측정: memory.go:34-35 (1M 양쪽) + settings.json.tmpl:417 (`"model": "sonnet"`) — 변경 전후 동일 바이트.
 - E7 잔존 스캔: `grep -rn "gpt-5.6-sol" internal/ .moai/config/` — 0행 (테스트 픽스처 갱신 포함).
-- E8 삭제 스캔 + 관찰 항목: `grep -rn "DefaultGLM45\|DefaultGLM46\|DefaultGLM47\|DefaultGLM45Air\|DefaultGLM51\|DefaultGLM52\|DefaultGLM5Turbo" internal/` — 0행. `grep -rn "Models.Opus\|Models.Sonnet\|Models.Haiku" internal/cli/` — 0행. 관찰(트리 외, run-phase): claude CLI가 `claude-opus-5-5` 핀으로 첫 감사 스폰이 성립하는지 확인(DR-1 잔여 항목 — 증거는 완료 보고에 서술로 기록).
+- E8 삭제 스캔 + 관찰 항목: `grep -rn "DefaultGLM45\|DefaultGLM46\|DefaultGLM47\|DefaultGLM45Air\|DefaultGLM51\|DefaultGLM52\|DefaultGLM5Turbo" internal/` — 0행. `grep -rn "Models.Opus\|Models.Sonnet\|Models.Haiku" internal/` — 0행(N2 — cli/ 한정을 internal/로 확대; defaults_test.go:362-379가 cli/ 밖 적중). 관찰(트리 외, run-phase): claude CLI가 `claude-opus-5-5` 핀으로 첫 감사 스폰이 성립하는지 확인(DR-1 잔여 항목 — 증거는 완료 보고에 서술로 기록).
 
 ## §F Milestones (결정 가역성 순 — 바뀔 가능성이 큰 결정이 앞선다)
 
@@ -95,8 +95,9 @@ run-phase 종료 시 아래를 관측하고 증거를 `.moai/reports/t1368/`에 
 3. `internal/statusline/memory.go` — `:36-42` 구형 항목 7종 삭제 + `:96` "glm-4.5 masking glm-4.5-air" 주석 갱신(`:34-35` 1M 불변은 REQ-MMU-005로 유지).
 4. legacy struct 별칭 삭제: `internal/config/types.go:361-364` 필드(Opus/Sonnet/Haiku) + `defaults.go:971-974` 배정 + `internal/cli/glm.go:746-753`·`:847` 레거시 별칭 폴백 사슬 제거 + `internal/settings/schema_sections.go:200-202` REQ-WC12-006 "무접촉 보존" 주석 갱신.
 5. 레거시 폴백 구현: tier 슬롯 값이 잔존 알려진 모델 집합 밖이면 티어 기본 모델로 폴백 + 1행 경고(fail-open; 구현 위치는 런처/로더 중 resolved-value 소비 지점 — run 판단 사항).
-6. 테스트 전면 갱신: `glm_tier_test.go`(D3), `defaults_test.go`(D3 + :421 주석), `schema_select_preserve_test.go`(13적중), `glm_persist_gate_test.go`, `glm_effort_overlay_test.go`.
-7. 로컬 도그푸드: 삭제 대상 값 0행(DR-2 실측, 2026-09-30) — 갱신 불요, 커밋 직전 재확인만.
+6. 테스트 전면 갱신(17파일): `glm_tier_test.go`(D3), `defaults_test.go`(D3 + `:421` 주석 + `:362-379` Models.* 접근 — N2), `schema_select_preserve_test.go`(13적중), `glm_persist_gate_test.go`, `glm_effort_overlay_test.go`, `glm_team_test.go`(`:140-141` Models.Opus 접근 — 필드 삭제 시 컴파일 단절, plan-audit iter-2 N1), 그리고 **단정 재작성 3파일** — `glm_autocompact_test.go`(`:16-68`, glm-5.2→1000000 리터럴 단정 + [1m] 접미사 케이스, 주석이 "내장 glmContextWindows 테이블이 검증 대상 baseline"임을 선언), `glm_max_context_test.go`(`:28-30`, 5.2→1M/5.1→200K/4.7→128K), `cg_mode_hardening_test.go`(`:223-227`, glm-5.2 1M 해석 전제의 패리티 테스트) — 이 셋은 열거만으론 부족하고, 윈도우 해석 리터럴이 삭제로 사라지므로 **단정 자체를 삭제 후 동작 기준으로 재작성**해야 한다(plan-audit iter-2 N1).
+7. `internal/template/templates/.moai/config/sections/llm.yaml:97-111` — context_windows 주석 블록에 오버라이드 경로 유지 명시 + 내장 테이블이 더 이상 구형 id를 담지 않음을 밝히는 주석 갱신(plan-audit iter-2 N3).
+8. 로컬 도그푸드: 삭제 대상 값 0행(DR-2 실측, 2026-09-30) — 갱신 불요, 커밋 직전 재확인만.
 
 ### M4 (Priority Medium) — 문서·i18n 일관성
 

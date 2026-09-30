@@ -36,7 +36,7 @@ author: manager-spec
 ### REQ-MMU-004 (구형 모델 전면 삭제 + 레거시 폴백) — AC-010..012
 
 - **AC-MMU-010**: Given `internal/config/closed_sets.go`의 `ValidGLMModels`를 읽을 때, When 반환 집합과 주석을 확인하면, Then 집합은 정확히 {glm-5.3-flash, glm-5.3}이고, 철수·삭제 기록 주석이 존재하며, `internal/config/defaults.go:249-254`의 보존 근거 주석이 삭제 기록으로 대체돼 있다.
-- **AC-MMU-011**: Given 변경 후 트리에서 `grep -rn "DefaultGLM45\|DefaultGLM46\|DefaultGLM47\|DefaultGLM45Air\|DefaultGLM51\|DefaultGLM52\|DefaultGLM5Turbo" internal/`과 `grep -rn "Models.Opus\|Models.Sonnet\|Models.Haiku" internal/cli/`를 실행할 때, When 출력을 관측하면, Then **양쪽 모두 0행**이다 — 상수(defaults.go:255-261), statusline 구형 항목(memory.go:36-42), legacy struct 필드(types.go:361-364 + defaults.go:971-974 + glm.go:746-753·847 소비자)가 전부 삭제됐다(DR-2 — 보존 잔존은 AC 위반이다).
+- **AC-MMU-011**: Given 변경 후 트리에서 `grep -rn "DefaultGLM45\|DefaultGLM46\|DefaultGLM47\|DefaultGLM45Air\|DefaultGLM51\|DefaultGLM52\|DefaultGLM5Turbo" internal/`과 `grep -rn "Models.Opus\|Models.Sonnet\|Models.Haiku" internal/`를 실행할 때, When 출력을 관측하면, Then **양쪽 모두 0행**이다 — 상수(defaults.go:255-261), statusline 구형 항목(memory.go:36-42), legacy struct 필드(types.go:361-364 + defaults.go:971-974 + glm.go:746-753·847 소비자 + defaults_test.go:362-379 접근)가 전부 삭제됐다(DR-2 — 보존 잔존은 AC 위반이다; grep-B 범위는 cli/ 한정이 아니라 internal/ 전체, plan-audit iter-2 N2).
 - **AC-MMU-012**: Given 삭제된 모델 id(glm-4.7 등)를 tier 슬롯 값으로 지명하는 llm.yaml을 읽을 때, When 해당 값이 해석되는 경로(런처 또는 로더의 resolved-value 소비 지점)를 읽을 때, Then 티어 기본 모델로 폴백하며 1행 경고를 출력하는 구현이 존재한다(fail-open — 침묵 통과·하드 오류 어느 쪽도 아님, DR-2 관리 장치).
 
 ### REQ-MMU-005/006 (불변) — AC-013
@@ -46,7 +46,7 @@ author: manager-spec
 ### REQ-MMU-007 (동반 갱신) — AC-014..015
 
 - **AC-MMU-014**: Given 변경 후 트리에서 `grep -rn "gpt-5.6-sol" internal/ .moai/config/`를 실행할 때, When 출력을 관측하면, Then 적중 0행이다(테스트 픽스처 전면 갱신 포함).
-- **AC-MMU-015**: Given 감사·집합·삭제 대상을 단정하던 테스트 13파일 — `audit_models_test.go`, `mcp_audit_config_test.go`, `audit_pin_test.go`, `model_backend_default_test.go`, `mcp_codex_audit_pin_test.go`, `factory_operational_fixture_test.go`, `internal/settings/audit_pin_fields_test.go`, `schema_sections_test.go`, `internal/web/glm_tier_test.go`, `internal/config/defaults_test.go`, `internal/web/schema_select_preserve_test.go`, `internal/cli/glm_persist_gate_test.go`, `internal/template/glm_effort_overlay_test.go` — 을 읽을 때, When 각 파일이 새 핀·새 집합·삭제 후 기준을 단정하는지 확인하면, Then 13파일 모두 갱신돼 있다(D3 후 2파일은 ValidGLMModels 축소 시 보장-RED였고 나머지 3파일은 DR-2 상수 소비 분다).
+- **AC-MMU-015**: Given 감사·집합·삭제 대상을 단정하던 테스트 17파일 — `audit_models_test.go`, `mcp_audit_config_test.go`, `audit_pin_test.go`, `model_backend_default_test.go`, `mcp_codex_audit_pin_test.go`, `factory_operational_fixture_test.go`, `internal/settings/audit_pin_fields_test.go`, `schema_sections_test.go`, `internal/web/glm_tier_test.go`, `internal/config/defaults_test.go`, `internal/web/schema_select_preserve_test.go`, `internal/cli/glm_persist_gate_test.go`, `internal/template/glm_effort_overlay_test.go`, `internal/cli/glm_team_test.go`, `internal/cli/glm_autocompact_test.go`, `internal/cli/glm_max_context_test.go`, `internal/cli/cg_mode_hardening_test.go` — 을 읽을 때, When 각 파일이 새 핀·새 집합·삭제 후 기준을 단정하는지 확인하면, Then 17파일 모두 갱신돼 있다. 단, 마지막 3파일(glm_autocompact/glm_max_context/cg_mode_hardening)은 열거 갱신이 아니라 **삭제 후 동작 기준의 단정 재작성**이다 — 윈도우 해석 리터럴(5.2→1M, 5.1→200K, 4.7→128K)이 삭제로 소멸하기 때문이다(plan-audit iter-2 N1).
 
 ### REQ-MMU-008 (Template-First · 빌드) — AC-016
 

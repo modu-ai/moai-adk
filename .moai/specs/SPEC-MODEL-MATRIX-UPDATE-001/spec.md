@@ -23,6 +23,7 @@ tier: M
 | 2026-09-30 | 초판 작성 (plan-phase). 운영자 지시 6개 항목 + 유지 항목 1건을 본 트리에서 검증해 GEARS 요구사항으로 변환 | 카드 t1368 리드 디스패치 (운영자 지시 전사) |
 | 2026-09-30 | 2차 개정 (plan-audit iter-1 FAIL 0.875 → wave-1): D2 AC 19→15 병합·재번호, D3 RED 테스트 2파일 추가, D4 i18n 4 로케일(+동급 effort 설명 표면), D5 무효 주석 2표면, D6 llm.yaml 환상 앵커 제거(verify-only 재분류), D8 related_specs 산문 이관 | `.moai/reports/t1368/plan-audit.md` |
 | 2026-09-30 | 3차 개정 (wave-2, 운영자 게이트): NC-1/2/3 전건 확정 — plan.md 마커 절을 결정 기록(DR-1..3)으로 전환. NC-2는 권장안(철수 전용)을 기각한 **전면 삭제** 재정: REQ-MMU-004 재작성(삭제+레거시 폴백), Out of Scope 삭제 경계 재편, 소비자 실측 반영 | 운영자 게이트 2026-09-30 (리드 전달) |
+| 2026-09-30 | 4차 개정 (plan-audit iter-2 CONDITIONAL → N1-N4 접기): 소비자 열거 4파일 추가(glm_team/glm_autocompact/glm_max_context/cg_mode_hardening — 단정 재작성 3파일 구분), grep-B 범위 internal/ 확대, llm.yaml context_windows 주석 오버라이드 경로 명시 | `.moai/reports/t1368/plan-audit.md` (iter-2) |
 
 ## A. 배경
 

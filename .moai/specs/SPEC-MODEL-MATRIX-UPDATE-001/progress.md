@@ -14,7 +14,8 @@ author: manager-spec
 - 아티팩트: spec.md / plan.md / acceptance.md / progress.md 4종 (Tier M 집합; research.md 불요 — 검증표가 plan.md §A에 귀속됨)
 - 이슈 소지: **해소됨(2026-09-30 운영자 게이트)** — [NC-1/2/3] 전건 확정되어 plan.md 결정 기록(DR-1/2/3)으로 전환됐다. NC-2는 권장안 기각·전면 삭제 재정, NC-1은 claude-opus-5-5 확정(D7 접기 포함), NC-3은 변경 없음 확정. live 판단 대기 마커 없음.
 - 운영자 지시 대체 기록: REQ-AMP-005(Audit.Codex Go 기본 EMPTY 중립성)를 REQ-MMU-001로 대체 — spec.md §C.1.
-- plan-audit iter-1: **FAIL 0.875** (`.moai/reports/t1368/plan-audit.md` — MP-7 미해결 마커 게이트 + D2-D6). Wave-1 반영 완료(2026-09-30): D2 AC 19→15 병합·재번호(커버리지 손실 없음), D3 보장-RED 테스트 2파일 AC 편입(10파일), D4 i18n 4 로케일 + 감사자 미발견 동급 effort 설명 표면(spec.md §B REQ-MMU-002에 직접 관측 근거 기록), D5 무효 주석 2표면, D6 llm.yaml 환상 앵커 제거(verify-only 재분류), D8 related_specs 산문 이관. **D1(NC 결정 기록)은 wave-2 — 운영자 응답 대기.**
+- plan-audit iter-1: **FAIL 0.875** (`.moai/reports/t1368/plan-audit.md` — MP-7 미해결 마커 게이트 + D2-D6). Wave-1 반영 완료(2026-09-30): D2 AC 19→15 병합·재번호(커버리지 손실 없음), D3 보장-RED 테스트 2파일 AC 편입(10파일), D4 i18n 4 로케일 + 감사자 미발견 동급 effort 설명 표면(spec.md §B REQ-MMU-002에 직접 관측 근거 기록), D5 무효 주석 2표면, D6 llm.yaml 환상 앵커 제거(verify-only 재분류), D8 related_specs 산문 이관. **D1은 wave-2에서 해소**(아래 4차 개정 행 — 결정 기록 DR-1/2/3 전환).
+- plan-audit iter-2: **CONDITIONAL 0.875** — 8건 전부 관측 증거로 해소, 잔여 N1(소비자 열거 4파일 누락)만 기계 판정 가능. Wave-3 반영(2026-09-30): N1 M3 항목 6 + AC-MMU-015 13→17파일(단정 재작성 3파일 구분 명시), N2 AC-MMU-011/E8 grep-B 범위 cli/→internal/ 확대, N3 템플릿 llm.yaml context_windows 주석 오버라이드 경로 명시(M3 항목 7), N4 본 §E.1의 스테일 "운영자 응답 대기" 행 갱신. 제3의 감사 라운드 없음 — 레인 기계 검증 후 kickoff.
 - 검증 예산: go build + grep/sed만 (go test ./... 금지 — plan.md §D).
 
 ## §E.2 Run-phase Evidence
