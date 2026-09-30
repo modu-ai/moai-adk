@@ -135,7 +135,15 @@ detect_languages() {
     if [ -f "$root/Cargo.toml" ] || has_suffix '*.rs'; then add_language rust; fi
     if { [ -f "$root/build.gradle.kts" ] && grep -Eiq 'kotlin\(|org\.jetbrains\.kotlin|kotlin-dsl|libs\.plugins\.kotlin' "$root/build.gradle.kts"; } || has_kotlin_source; then
         add_language kotlin
-    elif [ -f "$root/pom.xml" ] || [ -f "$root/build.gradle" ] || [ -f "$root/build.gradle.kts" ] || has_suffix '*.java'; then
+    fi
+    # Java is detected independently of Kotlin — an elif here let a Kotlin hit
+    # suppress the Java candidate, so in a mixed Gradle project a sync commit
+    # that touched only .java files summed to a zero code delta and passed
+    # without any checker running. The two languages own disjoint source
+    # suffixes (.kt/.kts vs .java) and their candidates coexist safely: a
+    # pure-Kotlin project keeps kotlin ahead of java in detection order, and
+    # the changed-language filter runs only what the commit actually touched.
+    if [ -f "$root/pom.xml" ] || [ -f "$root/build.gradle" ] || [ -f "$root/build.gradle.kts" ] || has_suffix '*.java'; then
         add_language java
     fi
     if [ -f "$root/Gemfile" ] || has_suffix '*.rb'; then add_language ruby; fi
