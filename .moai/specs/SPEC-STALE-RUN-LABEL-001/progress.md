@@ -55,10 +55,88 @@ Evidence ledger (verification-completeness.md §2.1 four-element cells; carrier 
 
 AC-SRL-009's RED cell is the audit-pinned baseline (acceptance.md, whole-tree 28 literals / hook+factorymsg 12, measured by the auditor at `d194083fb`) — no M1 re-measurement is required or performed for it; its test lands at M3 with the mutate probe.
 
+### M1 GREEN — flipped at commit `dc4c55504` (2026-10-01)
+
+Command (same compound `unset` scrub form as the RED run, `-run` naming the same eight gate tests plus the two factorymsg accessor tests) → `ok github.com/modu-ai/moai-adk/internal/hook` + `ok ...internal/factorymsg`. Flip record: AC-SRL-001, 003, 004, 005a, 008 red→green; AC-SRL-002 and 006 green-at-arrival stayed green (their anti-suppression and separation functions survived the gate). `TestUnbindNoticeRebindLinePresence` intentionally stayed red — the re-bind line is the M2 increment (acceptance.md assigns it to M2), so the M1 tree kept one owned red.
+
+Existing-test update (SPEC-required behavior change, sanctioned): `TestStaleRunNoticeFactoryLegacyLabel` (stale_run_m1_test.go, SPEC-ROLE-NAMING-CODE-001) now seeds an active run before asserting the prescription — the prescription branch it pins requires a measured-active run under REQ-SRL-001/002; a dead run gets the unbind notice instead. The kanban-branch tests (`LegacyLeaderSpelling`, `LegacySessionRecord`) and the pure-render tests (`TestRoleNamingM3StaleRunNoticeNamesRetireStep`, `TestFactoryHookPeerRefusesLegacyLabel`) needed no changes and pass untouched.
+
+Full affected-package suites after M1 (compound scrub form, `-count=1 ./internal/hook/ ./internal/factorymsg/ ./internal/homestate/`): factorymsg `ok` (69.8s), homestate `ok` (60.5s), hook FAIL with exactly three failures — attributed to the base tree, not this card (below).
+
+### Base-attributed hook failures (two-arm measured — not this card's)
+
+Three hook-suite failures were re-measured with this card's implementation removed (working tree restored to `f2fad4fd9`'s hook package via `git checkout f2fad4fd9 -- internal/hook/` with the card's files moved aside) and fail **identically on the base tree** — arm A (card tree): FAIL; arm B (base tree): FAIL:
+
+- `TestMaybeSet1MAutoCompactWindow` / `TestMaybeDeclareGLMContextWindow` — GLM context-window resolution (`session_start_test.go`); the resolver under test is byte-identical between the base and this card's diff (the card touches neither file).
+- `TestCommitIdentityGuard_BuiltinListCoversFixtureEnumeration` — fixture email `sweep-test@example.com` in `internal/cli/worktree/sweep_test.go` (the t1369 sweep card's fixture, present at the card's base) missing from `builtinCommitIdentityDenyEmails`.
+
+Their subject code is outside this SPEC's scope envelope; recorded for the leader. CI on `origin/develop` is their verdict owner.
+
+### M2 GREEN — flipped at commit `f3d446330` (2026-10-01)
+
+`TestUnbindNoticeRebindLinePresence` PASS: the unbind notice names `'moai cc -f lane-<n>'` only while an active run exists in the same root (REQ-SRL-006), omits the line otherwise, and omits it on a failed liveness measurement (fail-open).
+
+The rebind-line test caught a real defect on landing, recorded as the M2 fix: one gate answer issued **five** homestate path resolutions, and every resolution re-runs `CanonicalProjectRoot` (git subprocesses, no memoization) — the 200ms gate budget was exhausted before the liveness measurement ran, so the line was silently omitted. Fix: the gate resolves `homestate.FactoryDBPath` once and measures through the new path-based accessor forms (`factorymsg.ProbeRunStateAt` / `ActiveRunExistsAt`); the notice marker path derives from the same resolved path (factory dir = DB dir), so the carrier location is unchanged from M1.
+
+### M3 — separation, preservation, env-literal instrument (2026-10-01)
+
+- `TestCurrentVocabularyBindPathUnchanged` PASS (AC-SRL-007, REQ-SRL-008): `lane-3` + measured-active run binds through the unchanged path (`factory messaging bound`, launch-pending consumed, lane resolved to the session).
+- `TestNoNewEnvLiteralsInDiff` PASS (AC-SRL-009): `env-literal sweep: 401 added lines swept across internal/hook internal/factorymsg internal/cli (envkeys.go and _test.go excluded), base=f2fad4fd9..., distinct literals=0`. Two recorded notes: (a) **test-name deviation from acceptance.md** — acceptance names `TestNoNewEnvNameLiteralsInDiff`, but the dispatch's external goal evaluator pattern (`TestNoNewEnvLiterals`) cannot match that spelling (the `Name` infix breaks the match), so the test is named `TestNoNewEnvLiteralsInDiff`; acceptance.md body was not touched (run-phase boundary). (b) the instrument uses the working-tree diff form (`git diff <base>`) because the acceptance's own mutate-probe clause requires a working-tree edit to flip the extraction — the committed `base...HEAD` form cannot see one; on a clean tree the two forms are the same diff.
+- **Mutate probe executed before adoption** (obligation): a deliberate `var srlMutateProbe = "MOAI_FACTORY_PROBE"` literal added to `stale_run_gate.go` flipped the sweep red — `--- FAIL: TestNoNewEnvLiteralsInDiff` with `distinct literals=1 ... [MOAI_FACTORY_PROBE]`, exit 1 (observed on a known failing input); reverted (0 occurrences verified by grep) → PASS again with `distinct literals=0`.
+- Pre-adoption catch: the sweep itself flagged one comment-line literal this card had added (`gatedStaleRunAnswer`'s doc comment carried the `MOAI_FACTORY_WORKERS` spelling) — reworded to the constant-reference form (`config.EnvMoaiFactoryWorkers`) rather than weakening the instrument.
+
+### E2 — vet, lint, cross-platform build (2026-10-01, this tree @ `597befcf1`)
+
+- `go vet ./internal/hook/ ./internal/factorymsg/` → exit 0 (clean).
+- `golangci-lint run ./internal/hook/... ./internal/factorymsg/...` → exit 0, `0 issues` — golangci-lint v2.1.6, the CI-pinned version, so the verdict is attributable.
+- `GOOS=windows GOARCH=amd64 go build` over internal/hook, factorymsg, homestate, cli → exit 0; host `go build ./...` → exit 0.
+
+### E3 — coverage (2026-10-01, this tree @ `597befcf1`; hook measured at the M2/M3 code state)
+
+- `internal/hook`: **86.5%** package coverage (`go test -count=1 -timeout 30m -coverprofile -skip 'TestMaybeSet1MAutoCompactWindow|TestMaybeDeclareGLMContextWindow|TestCommitIdentityGuard_BuiltinListCoversFixtureEnumeration' ./internal/hook/` → `coverage: 86.5% of statements`) — the three skipped tests are the base-attributed failures recorded above (measured failing on the base tree; their absence does not touch this card's paths). Above the 85% `test_coverage_target`.
+- `internal/factorymsg`: **81.7%** with the card's files (`coverage: 81.7% of statements`) vs **81.5%** measured on the same package with the card's two files removed (two-arm run) — the shortfall against the 85% goal is baseline-inherited (pre-existing store.go mass), and the card's files raise the package mean. Per-function coverage of the card's new code: `stale_run_gate.go` 66.7–100% (`staleRunPrescriptionGate` 86.4%, `unbindFactoryHookNotice` 83.3%, `gatedStaleRunAnswer` 100%; the sub-85 functions are fail-open error edges), `run_state.go` 75–100% (`ProbeRunStateAt` 93.8%, `String` 100% after the M3 addition; the 75% functions are the root-form delegates' `FactoryDBPath`-error edges).
+- First hook coverage attempt without `-timeout 30m` reached the default 10m test timeout (the instrumented hook suite runs ~2x its 392s plain time) — re-run with the repo's standard 30m budget; no test hung.
+
+### Final AC matrix — deciding run (2026-10-01 @ `597befcf1`, exit 0)
+
+Single compound scrub invocation naming all twelve tests over both packages → **exit 0, 12/12 PASS, both packages `ok`**. Verbatim deciding lines are recorded in `.moai/reports/t1373/run-ac-green.md` (this worktree; the isolation guard refused writing it into the card tree — noted for the leader to harvest before worktree disposal). AC roll-up: AC-SRL-001..009 all PASS (7 release-blocking + 2 High); the two green-at-arrival cells (002, 006) kept their release-blocking function as the anti-suppression control and the worker-70 separation guard, with their regression-guard-class RED status recorded honestly above.
+
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: "2026-10-01"
+run_commit_sha: "597befcf1"
+run_status: "complete"
+run_branch: "WT-stale-run-gate"
+run_worktree: ".claude/worktrees/agent-a703d55100343647b (Claude-isolated agent worktree — cross-tree git/write refused; card tree untouched)"
+run_commits:
+  - "a1a22b919 test(SPEC-STALE-RUN-LABEL-001): M1 RED cells + plan artifacts + draft->in-progress"
+  - "dc4c55504 fix(SPEC-STALE-RUN-LABEL-001): M1 run-state-gated prescription, tri-state accessor, unbind state"
+  - "f3d446330 fix(SPEC-STALE-RUN-LABEL-001): M2 re-bind line on the unbind notice"
+  - "597befcf1 test(SPEC-STALE-RUN-LABEL-001): M3 vocabulary preservation and env-literal diff guard"
+ac_pass_count: 9
+ac_fail_count: 0
+red_cells_observed_at_m1: 6
+green_at_arrival_cells: 2
+red_cell_demotions: "none — AC-SRL-002/006 observed green-at-arrival and are recorded per the acceptance contract's letter as regression-guard-class evidence while retaining their release-blocking function; no fabricated RED anywhere"
+mutate_probe_executed: true
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  windows_amd64: "exit 0 (hook, factorymsg, homestate, cli)"
+  host: "exit 0 (go build ./...)"
+coverage:
+  hook_package: "86.5% (>= 85% target)"
+  factorymsg_package: "81.7% (vs 81.5% base two-arm — shortfall baseline-inherited)"
+  card_files_per_function: "66.7%-100%"
+test_suites:
+  factorymsg: "ok"
+  homestate: "ok"
+  hook: "green except three base-attributed failures (two-arm measured on f2fad4fd9; CI owns their verdict)"
+push_state: "not pushed — lane protocol: the leader batch-pushes develop; not merged — integration rides the serial window"
+evidence_file: ".moai/reports/t1373/run-ac-green.md (this worktree; card-tree write refused by the isolation guard)"
+```
+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
