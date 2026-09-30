@@ -1,6 +1,9 @@
 # 진입점
 
-**현재 부분 갱신 — t1374, worktree `.claude/worktrees/t1374`, 브랜치 `WT-t1368-ci-repair`, base `ca7191cba` (2026-09-30).**
+**현재 부분 갱신 — t1338, worktree `.moai/worktrees/t1338`, 브랜치 `WT-lane-autonomy-umbrella`, base `8ea2febe2` (2026-09-30, sync-phase 부분 갱신).**
+앵커 `8ea2febe2`(흡수한 develop 기점) 뒤 이 카드의 신규 표면을 반영(card t1338, SPEC-FACTORY-LANE-AUTONOMY-001 — 팩토리 레인 자율 완성, 신규 패키지 `internal/factorylane` 위의 cli 배선). `moai factory messaging probe|request|ack` — 채널 가용성 판정(세션msg 레지스트리 읽기 전용, 리더 heartbeat 연령 상한, 활성 무응답 관측 우선; 불가 판정은 exit 0 보고), 지시 요청 기록과 응답 확인. `moai factory fallback [--all]|declare|restore` — fallback 전이 장부의 질의(레인별, `--all`은 전 레인 카운트)와 기록(한 전환 한 사건). `moai factory pickup plan` — 분류 픽업 판정(sequential 그룹 단일 보유·parallel 동시·부재 메타데이터는 fallback 단일 디스패치). `moai factory merge ready|gate` — 조건 삼중(sync-audit·merge-tree 드라이런·트리 동일)을 통합 창 선점 전에 기록하고, gate는 자기 레인의 산 창 기록이 덮지 않는 병합 시점을 거부한다(이 표면은 병합을 수행하지 않는다). `moai factory handoff adopt --card <id>` — stall 판정 뒤 픽업 카드를 기록된 진행·증거(SHA-256)에서 재개하고 `resumption.jsonl`만 덧붙인다. `moai worktree done`은 카드 브랜치(`WT-` 접두)에 origin 착지 기계 검사를 두 판정 경로 모두에 얹었다(fetch + rev-list; 플래그 우회 없음, fetch 실패 fail-closed). 비테스트 `AddCommand(` 등록은 231→239(+8 — 이 카드 diff의 추가 등록 줄과 정확히 일치), 등록 파일 73→76(+3: `factory_messaging`·`factory_merge`·`factory_pickup`), `rootCmd.AddCommand(` 66·root.go init() 30회는 변동 없었다(이 트리 재측정).
+
+**이전 갱신 — t1374, worktree `.claude/worktrees/t1374`, 브랜치 `WT-t1368-ci-repair`, base `ca7191cba` (2026-09-30).**
 스탬프 앵커 `3e6d78f73`(t1351 판) 이후 착지분을 반영. **SPEC-WORKTREE-SWEEP-001(card t1369)**이 `moai worktree sweep`을 놓았다 — 원격 착지(`origin/develop` 대비 fetch + merge-base 판정, `--base`로 재지정)가 확인된 카드 트리를 안전 술어(비보호·비잠금·살아 있는 세션 앵커 없음·트리 안 프로세스 cwd 없음·클린 워킹 트리·대체 불가 무시물 없음)로 훑어 양쪽 티어를 폐기하는 스윕 동사다(`internal/cli/worktree/sweep.go` 본체, cwd 스캔은 플랫폼 분할 `sweep_cwd_posix.go`·`sweep_cwd_windows.go`; 술어가 확증하지 못하는 나무는 전부 보존 — 등록은 기존 `WorktreeCmd.AddCommand(` 호출의 인자 행). **SPEC-MODEL-MATRIX-UPDATE-001(card t1368)**이 감사 모델 핀을 고했다 — `config.audit`이 claude `{claude-opus-5-5, medium}`·codex `{gpt-6.1-sol, high}`를 기본으로 실고 GLM 핀은 빈 채로 배포되며(`internal/config/audit_models.go`·`defaults.go`; 옛 REQ-AMP-005 빈 핀 중립은 운영자 지시 2026-09-30으로 대체), GLM 구형 모델 별칭 필드(`opus`/`sonnet`/`haiku`)는 `internal/config/types.go`에서 타입 필드째 삭제됐다(DR-2 — 낡은 `llm.yaml` 키는 비엄격 섹션 로더가 조용히 무시한다). **SPEC-TODO-CLAIM-LEASE-001(card t1342)**이 `moai todo claim [--lane] [--renew]` 동사와 MCP `todo_claim` 미러를, **SPEC-TODO-SURFACE-POLISH-001(card t1349)**이 `moai todo show <id|n>` 동사와 owner_label 어휘 일회 잠금 이행(`doctor` 진단 포함)과 유형별 1회 유령 스토어 공지를 얹었다 — 신규 동사는 전부 `todo.go`의 기존 `cmd.AddCommand(` 한 줄에 합류해 등록 수치는 움직이지 않았다. card t1330 후속(card t1358)이 레인 합류 플래그를 `--lead`에서 `--leader`로 개명했고, `todo relate`에 순환 방어와 픽업 관계 필터가 더해졌다(card t1343). 등록 수치 재측정 — 비테스트 `AddCommand(` 231·`rootCmd.AddCommand(` 66·`root.go init()` 30, 전부 변동 없었다(신규 동사는 기존 등록 줄의 인자 행 합류). MCP 도구는 in-process tools/list 재측정 45 — 창 안에서 `todo_claim`이 더해졌다(card t1342). 훅 엔트리 34·셸 래퍼 48도 같은 방법으로 재측정해 변동 없었다.
 
 **이전 갱신 — t1351, worktree `.moai/worktrees/t1351`, 브랜치 `WT-codemaps-refresh10`, base `145c3d98c` (2026-09-29).**
@@ -138,13 +141,16 @@ root.go Execute()
      `clean_reports_archive.go`: 증거 형태 이름(t<숫자>·SPEC-…)이고 mtime 이 보존창
      (`--reports-archive-days`, 기본 90)보다 오래되고 git 추적 파일이 없는 최상위 항목만
      `archive/<YYYY-MM>/` 으로 **이동**한다 — 삭제는 없다).
-2. **자기 파일의 `init()`에서 스스로 등록** — `AddCommand`를 호출하는 파일이 **73개**입니다
+2. **자기 파일의 `init()`에서 스스로 등록** — `AddCommand`를 호출하는 파일이 **76개**입니다
+   (t1338 병합 판 재측정 — 이 카드 몫 +3: `factory_messaging.go`·`factory_merge.go`·`factory_pickup.go`; 흡수된 t1369·t1374 배치까지 합산한 이 트리 직접 측정)
    (`grep -rl "AddCommand" internal/cli --include='*.go' | grep -v _test`).
    `hook.go`, `todo.go`, `kanban.go`, `glm.go`, `cc.go`, `update.go`, `doctor.go`, `spec.go`,
    `gate.go`, `graph.go`, `goal.go`, `integration.go` 등이 이 방식이고, 앞선 판 사이에
    `gtd.go`(`NewGTDCommand()` — todo 명령 트리를 감싸 `Use`만 `gtd`로 바꾼 두 번째 이름)와
    `slot.go`(`moai slot` — 무거운 실행용 세션 간 자원 임대)가 더해진 바 있습니다.
-   비테스트 `AddCommand(` 호출은 모두 **231회**, 그중 `rootCmd.AddCommand(`는 **66회**입니다(t1305 판
+   비테스트 `AddCommand(` 호출은 모두 **239회**, 그중 `rootCmd.AddCommand(`는 **66회**입니다(t1338 판
+   재측정 — 231→239는 card t1338의 factory lane-autonomy 동사 등록 +8이며, 앵커 `8ea2febe2` 대비
+   diff의 추가 `AddCommand(` 줄 수와 정확히 일치한다. 이력: t1305 판
    병합 트리 재측정 — t1286 판 231/67에서 card t1246의 `moai model` 은퇴가 −1. 이력: t1286 판 같은
    명령으로 231 — t1286 몫 +3 은 `moai factory assign`·`status`·`decide`, t1237 몫은
    `contract_report.go` 의 `c.AddCommand(` 등록 — , t1237 판 236 은 테스트 파일까지 선 계수.
@@ -208,6 +214,16 @@ LoopController · Logger · PerfTiming을 조립하고 전역 변수 `deps *Depe
 - `moai factory handoff recover-resume --id <id> --expected-token <token> --decision <fail|requeue>`
   — v1 레거시 claim이 자동 판정 불가능할 때 쓰는 명시적 운영 복구 표면입니다. 현재 소유자가
   살아 있거나 상태가 불명확하면 재점유하지 않습니다.
+- `moai factory handoff adopt --card <id>` — t1241의 stall 인터페이스가 멈춤으로 판정한 픽업 카드를
+  이어받는 레인의 재개 표면입니다(card t1338). 이전 소유자의 progress.md와 증거 파일을 SHA-256과
+  함께 일 전에 읽어 브리핑으로 출력하고, 자기 `resumption.jsonl` 한 줄만 덧붙입니다 — 이전 소유자의
+  바이트는 다시 쓰이지 않으며, 기록이 없는 카드는 재개가 아니라 새 픽업으로 거부됩니다.
+- `moai factory messaging probe|request|ack` · `moai factory fallback [--all]|declare|restore` ·
+  `moai factory pickup plan` · `moai factory merge ready|gate` — 레인 자율 표면(card t1338,
+  `internal/factorylane` 위의 배선): 채널 가용성 판정과 무응답 타이머, fallback 전이 장부의
+  질의·기록, 분류 픽업 판정, 통합 창 선점 전 조건 삼중 기록과 창 커버 판정. 판정형 동사는
+  거부도 exit 0의 보고입니다(판정에 대한 레인의 행동은 레인 몫), merge 표면은 병합을 수행하지
+  않습니다.
 
 런타임 쪽 진입점은 별도 명령이 아니라 공통 gate입니다. SessionStart, MCP 서버, Factory가
 `internal/homestate` admission lock을 잡고 migration marker를 검사한 뒤에만 상태를 엽니다.

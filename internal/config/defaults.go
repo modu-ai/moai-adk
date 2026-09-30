@@ -48,6 +48,15 @@ const (
 	// lease takes when the caller omits --max-duration. A chosen value, not a
 	// measured one (plan.md §B3, OQ-3); this is the one place it is defined.
 	DefaultSlotLeaseMaxDuration = "30m"
+	// DefaultFactoryNoResponseMinutes is how long a directed lead request may
+	// go unacknowledged before a lane records a no-response observation
+	// (SPEC-FACTORY-LANE-AUTONOMY-001 REQ-FLA-002).
+	DefaultFactoryNoResponseMinutes = 10
+	// DefaultFactoryFallbackBoundMinutes is the bound period of one directed
+	// lead request, measured from its send time: once the request records a
+	// no-response observation, the messaging channel is treated unavailable
+	// for the remainder of this period (REQ-FLA-002).
+	DefaultFactoryFallbackBoundMinutes = 30
 	// DefaultFactoryLeaseDuration is how long a factory worker's card lease
 	// lasts past its last heartbeat. It bounds worker liveness only: the
 	// decision-pending card states hold no lease, so a human decision is never

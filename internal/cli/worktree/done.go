@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,8 +24,10 @@ func newDoneCmd() *cobra.Command {
 This command performs the completion workflow:
 1. Refuse while a live session is anchored in the worktree (tree-local
    session registry check; --force overrides with a warning)
-2. Remove the worktree at the specified branch
-3. Optionally delete the feature branch (with --delete-branch)
+2. Card worktrees (WT- branches): refuse until the card's merge commit is
+   confirmed on origin/develop (git fetch + rev-list machine check)
+3. Remove the worktree at the specified branch
+4. Optionally delete the feature branch (with --delete-branch)
 
 Note: Merging to base branch should be done separately via git merge or PR.`,
 		Args: cobra.ExactArgs(1),
@@ -98,6 +101,18 @@ func runDoneWorktreeCleanupWithOptions(branchName string, force, deleteBranch, h
 		fmt.Fprintf(os.Stderr, "moai: worktree %s kept: %d live anchored session(s):\n%s\n",
 			targetPath, len(anchored), formatAnchored(anchored))
 		return false, nil
+	}
+
+	// Origin-landing machine check (SPEC-FACTORY-LANE-AUTONOMY-001 M4):
+	// card worktrees (WT- branches) are disposed only once the card's
+	// merge commit is confirmed on origin/develop. Ordered AFTER the L1
+	// and anchor guards so both fire exactly as before (REQ-FLA-013); no
+	// flag reaches here as a bypass (REQ-FLA-015 — refusal on every path,
+	// manual and --auto alike).
+	if isCardBranch(branchName) {
+		if err := originLandingRefusal(branchName, targetPath); err != nil {
+			return false, err
+		}
 	}
 
 	// Evidence hoist (SPEC-REPORTS-LIFECYCLE-001 REQ-RLC-005): retrieve the
@@ -250,6 +265,104 @@ func refuseL1SessionWorktree(path string) error {
 	return fmt.Errorf("L1_SESSION_WORKTREE: %s is an L1 session worktree%s", path, l1Guidance(path))
 }
 
+// cardBranchPrefix marks a card worktree branch per the gitflow lane
+// protocol ("card worktree branches carry the WT- prefix"); only card
+// disposals run the origin-landing check. PR-route feature/* disposal —
+// the sync workflow's --auto cleanup after a squash PR merge — keeps its
+// pre-existing behavior: a squash-merged branch tip is not on the base
+// branch and the check would wrongly refuse that flow. Mirrors
+// SessionWorktreeBranchPrefix in internal/cli (not imported — the root cli
+// package imports this one).
+const cardBranchPrefix = "WT-"
+
+// landingBaseBranch is the integration branch the origin-landing machine
+// check fetches and compares against (git-flow: develop; see
+// .claude/rules/local/gitflow-lane-protocol.md §2/§4).
+const landingBaseBranch = "develop"
+
+// landingGitCmd is the git execution seam for the origin-landing machine
+// check, anchored on the TARGET worktree path — CWD-independent, like
+// gitMainRootFromTargetFunc. Overridable in tests so they can drive fake
+// runners (the M3 ExecGitRunner pattern).
+var landingGitCmd = func(targetPath string, args ...string) (string, error) {
+	return gitWorktreeCmd(append([]string{"-C", targetPath}, args...)...)
+}
+
+// isCardBranch reports whether branchName names a card worktree branch.
+//
+// @MX:NOTE: [AUTO] card-tree marker — done gates the origin-landing check on
+// the WT- prefix (gitflow card discipline). feature/* trees keep the
+// pre-SPEC disposal behavior: the sync workflow's --auto cleanup runs after
+// a squash PR merge, where the branch tip is by construction not on the base.
+// @MX:SPEC: SPEC-FACTORY-LANE-AUTONOMY-001
+func isCardBranch(branchName string) bool {
+	return strings.HasPrefix(branchName, cardBranchPrefix)
+}
+
+// parseLeftRightCounts parses `git rev-list --count --left-right A...B`
+// output — the "N\tM" pair of left-only and right-only commit counts.
+func parseLeftRightCounts(out string) (left, right int, err error) {
+	fields := strings.Split(strings.TrimSpace(out), "\t")
+	if len(fields) != 2 {
+		return 0, 0, fmt.Errorf("unexpected rev-list output %q", out)
+	}
+	left, err = strconv.Atoi(strings.TrimSpace(fields[0]))
+	if err != nil {
+		return 0, 0, fmt.Errorf("parse left count from %q: %w", out, err)
+	}
+	right, err = strconv.Atoi(strings.TrimSpace(fields[1]))
+	if err != nil {
+		return 0, 0, fmt.Errorf("parse right count from %q: %w", out, err)
+	}
+	return left, right, nil
+}
+
+// originLandingRefusal runs the origin-landing machine check of
+// REQ-FLA-012 on a card branch and returns nil only when the branch's
+// commits are confirmed reachable from origin/<landingBaseBranch>: it
+// fetches origin develop, then counts `git rev-list --count --left-right
+// origin/develop...<branch>` — right count 0 means every commit of the
+// card branch side is on the remote. Under the gitflow --no-ff merge
+// discipline the branch tip is a parent of the card's merge commit, so the
+// tip's reachability IS the merge commit's landing. A fetch failure
+// (network, missing remote) refuses fail-closed — an unconfirmable landing
+// is not a confirmed one. No flag bypasses the refusal (REQ-FLA-015), and
+// no CI status is consulted: CI judgment stays leader-side (design D4).
+func originLandingRefusal(branchName, targetPath string) error {
+	if _, err := landingGitCmd(targetPath, "fetch", "origin", landingBaseBranch); err != nil {
+		return landingRefusalError("ORIGIN_LANDING_UNCONFIRMED",
+			fmt.Sprintf("git fetch origin %s failed — the landing cannot be confirmed; disposal refused fail-closed\n  git error: %v",
+				landingBaseBranch, err))
+	}
+	out, err := landingGitCmd(targetPath, "rev-list", "--count", "--left-right",
+		"origin/"+landingBaseBranch+"..."+branchName)
+	if err != nil {
+		return landingRefusalError("ORIGIN_LANDING_UNCONFIRMED",
+			fmt.Sprintf("git rev-list --count --left-right origin/%s...%s could not run — disposal refused fail-closed\n  git error: %v",
+				landingBaseBranch, branchName, err))
+	}
+	left, right, parseErr := parseLeftRightCounts(out)
+	if parseErr != nil {
+		return landingRefusalError("ORIGIN_LANDING_UNCONFIRMED", parseErr.Error()+" — disposal refused fail-closed")
+	}
+	if right > 0 {
+		return landingRefusalError("MERGE_NOT_ON_ORIGIN",
+			fmt.Sprintf("%s carries %d commit(s) not on origin/%s — disposal refused until the card merge lands on the remote\n"+
+				"  git rev-list --count --left-right origin/%s...%s => %q (%d left-only / %d right-only commits)",
+				branchName, right, landingBaseBranch, landingBaseBranch, branchName, strings.TrimSpace(out), left, right))
+	}
+	return nil
+}
+
+// landingRefusalError prints the refusal to stderr and wraps it with the
+// sentinel so both the --auto core and the interactive path surface the
+// same message (the refuseL1SessionWorktree pattern).
+func landingRefusalError(sentinel, detail string) error {
+	msg := fmt.Sprintf("%s: %s", sentinel, detail)
+	fmt.Fprintln(os.Stderr, "moai: "+msg)
+	return errors.New(msg)
+}
+
 func runDone(cmd *cobra.Command, args []string) error {
 	out := cmd.OutOrStdout()
 	branchName := resolveSpecBranch(args[0])
@@ -320,6 +433,14 @@ func runDone(cmd *cobra.Command, args []string) error {
 		}
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Warning: --force removing %s while %d live session(s) are anchored there:\n%s\n",
 			targetPath, len(anchored), formatAnchored(anchored))
+	}
+
+	// Origin-landing machine check (SPEC-FACTORY-LANE-AUTONOMY-001 M4):
+	// same gate as the --auto core above, so the two paths cannot diverge.
+	if isCardBranch(branchName) {
+		if err := originLandingRefusal(branchName, targetPath); err != nil {
+			return err
+		}
 	}
 
 	// Evidence hoist (SPEC-REPORTS-LIFECYCLE-001 REQ-RLC-005): same routine
