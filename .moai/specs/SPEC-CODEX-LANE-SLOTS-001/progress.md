@@ -27,7 +27,13 @@ SPEC ID self-check: `ID="SPEC-CODEX-LANE-SLOTS-001"; [[ "$ID" =~ ^SPEC(-[A-Z][A-
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-_<pending plan-audit>_
+plan_status: audit-ready
+plan_complete_at: 2026-10-01
+plan_audit_verdict: PASS (score 1.00, Tier M threshold 0.80; trajectory 0.75 → 0.94 → 1.00 over 3 iterations, no STOP signal)
+plan_audit_report: .moai/reports/t1378/plan-audit-iter3.md (full stream: plan-audit.md, plan-audit-iter2.md, plan-audit-iter3.md)
+plan_audit_sha: bfdaf564cf8b32755921123780a1485a92bfc980
+plan_artifact_hash: 314f8659a13eb14b74678fd343975a8bfdfebea43fca758ac2c9d5694dc21e
+recorded_by: lane orchestrator (verdict landed after manager-spec's final fix turn; audit-ready signal derived from the iteration-3 verdict)
 
 ## §E.2 Run-phase Evidence
 
@@ -40,3 +46,29 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+### Kickoff record (operator-held gate)
+
+- The card dispatch (leader → lane, 2026-09-30) marked the plan→run Kickoff for OPERATOR DIRECT ANSWER — the keep-set operator form, not the autonomous transition.
+- Operator answered via AskUserQuestion in the lane on 2026-10-01: **착수 (proceed to run phase)** — the recommended option; alternatives offered were SPEC 재검토 (revise) and 중단 (abort).
+- Gate evidence at ask time: plan-audit iter3 PASS 1.00 (≥ 0.80 Tier M), RED citations 4/4 re-executed and reproduced at `bfdaf564c`, tree-sourced spec lint 0 errors / 0 warnings, artifact hash `314f8659a13eb14b74678fd343975a8bfdfebea43fca758ac2c9d5694dc21e` fixed since the verdict.
+
+### Input parameters
+
+- tier: M · scope: ~9-10 files (internal/kanban claim+tests, internal/cli factory/codex_factory/launcher, internal/homestate store+probe variants, internal/config defaults) · domain count: 4 · file language mix: 100% Go · concurrency benefit: LOW (coding-heavy, dependency-ordered milestones).
+
+### Mode evaluation
+
+| Mode | Selected | Rationale |
+|------|----------|-----------|
+| direct | no | multi-file semantic change, not a typo/one-liner |
+| fanout | no | coding-heavy work (Anthropic coding-task parallelism caveat); milestones are dependency-ordered |
+| sweep | no | not a mechanical uniform transform; Kickoff just passed but the transform rule is per-milestone semantic |
+| agent-team | no | not operator-requested; experimental surface stays unselected |
+| serial | **yes** | one manager-develop per milestone, M1→M2→M3→M4 |
+
+Decision: serial
+
+Justification: the four milestones are strictly dependency-ordered (M1 capacity record feeds M2 claim semantics; M3 instrumentation is independent but same-tree; M4 parity verifies the whole), the work is coding-heavy Go across three packages, and a single manager-develop with the Section A-E delegation template carries the full context cheaper than any fan-out. Boundary case: scope estimate ~9-10 files sits at the fanout threshold ±1 — the tie-breaker resolves to the simpler mode (serial), consistent with the coding-heavy override.
