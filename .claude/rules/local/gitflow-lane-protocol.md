@@ -94,7 +94,7 @@ git branch --show-current
 
 ## 6. 병합 이후 — 레인은 카드를 스스로 고르지 않는다
 
-- 로컬 병합을 마치고 병합 SHA를 리더에게 보고하면 `ExitWorktree`로 primary 체크아웃에 돌아와, **리더가 다음 카드를 dispatch 할 때까지 기다린다.** 레인이 큐에서 카드를 집지 않는다.
+- 로컬 병합을 마치고 병합 SHA를 리더에게 보고하면 `ExitWorktree`로 primary 체크아웃에 돌아와, **리더가 다음 카드를 dispatch 할 때까지 기다린다.** 레인이 큐에서 카드를 집지 않는다. 그 대기는 열린 대기가 아니라 **명시적 대기(explicit wait)** 다 — 디스크에 대기 기록(reason + 대상 + 재확인 지점)을 남기는 대기이고, 각성(awaken) 턴에서는 카드 작업 재개 전에 레인 스톨 워치독을 먼저 실행한다 — Skill("moai-lane-watchdog")을 호출해 따른다. 워치독은 진행 3채널(HEAD SHA · 증거 mtime · 통합 창 상태)을 재측정해 원인을 분류하고, 판단이 필요하면 결정 사다리(디스크 증거 → 결정 보드 → 감사 교차 → jev_ask → 리드 채팅 최후)로 답장 없이 푼다 — 답장 부재를 진행 부재로 읽지 않는다. 이 대기·사다리 독트린의 정본은 `.claude/rules/moai/workflow/auto-semantics.md`이고, 워치독의 queue-readonly 경계는 큐 수준 픽업 필터를 소유하는 SPEC-RELATION-PICKUP-FILTER-001과의 조합으로 성립한다(레인은 여전히 카드를 고르지 않는다 — 위 금지와 같은 경계다).
 - **self-dispatch lane 예외 — 카드 임대.** self-dispatch 팩토리 run의 레인은 `moai factory next`로 대기 중인 다음 카드를 임대할 수 있다(레인이 수행하는 유일한 promotion). 이 예외를 제외한 큐 변경(`add`, `drop`, `done`, `edit` 등)과 `moai contract sign`은 레인에게 금지된다.
 - **self-dispatch lane 예외 — 병합 창.** Claude self-dispatch 레인은 리더에게 창을 요청하지 않고 `moai factory complete`의 통합 절차로 스스로 통합 창을 잡고 자기 카드를 `develop`에 병합한다(위 첫 번째 항목의 「리더에게 병합을 요청한다」를 이 레인에서 대체한다). Codex 레인은 예외가 아니다 — merge-ready에서 정지한다(REQ-SD-025). 두 예외 모두 위 금지(그 외 큐 변경 + `moai contract sign`)를 바꾸지 않는다.
 - [HARD] **카드 워크트리는 작업이 `origin/develop`에 올라간 뒤에야 폐기한다.** 그전까지 그 트리가 작업의 유일한 사본이다. 원격 착지는 리더의 일괄 push가 만든다(§4, §7). L1 트리(`.claude/worktrees/…`)는 `moai worktree done`의 대상이 아니다 — 세션 종료 keep/remove 프롬프트나 `git worktree unlock` + `git worktree remove`로 닫는다.

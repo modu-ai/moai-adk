@@ -425,7 +425,7 @@ Sections §18-27 were consolidated into external `.moai/docs/` files to reduce l
 - **§5 Version Management** (SemVer pre-release, ldflags injection, release process): `.moai/docs/version-management.md`
 - **§7 Hook Development** (shell-script-only pattern, settings.json format, quoting rules): `.moai/docs/hook-development.md`
 - **§18 Git Workflow** (Enhanced GitHub Flow 본문 + [2026-08-27] git-flow 전환 상위모델 노트 — 정본은 §4.1, branch protection `enforce_admins: true`, Hybrid Trunk RETIRED): `.moai/docs/git-workflow-doctrine.md`
-- **§19 AskUserQuestion Enforcement + §19.1 Implementation Kickoff Approval Mandatory Restoration** (REQ-ATR-015): canonical SSOT at `.claude/rules/moai/core/askuser-protocol.md` + `.claude/rules/moai/workflow/orchestration-mode-selection.md` §E (the gate is mandatory and score-independent; plan-auditor PASS never auto-bypasses it)
+- **§19 AskUserQuestion Enforcement + §19.1 Implementation Kickoff Approval** (REQ-ATR-015, 기본 자율 전이로 개정): canonical SSOT at `.claude/rules/moai/core/askuser-protocol.md` + `.claude/rules/moai/workflow/auto-semantics.md` §9.1 (plan→run 진입의 기본형은 감사 교차 증거 — plan-auditor PASS + audit-ready + 해시 무결성 + 무차단 — + 결정 기록; keep-set 3범주 [environment-impossible / operator-held / irreversible external-shared]는 운영자 직답 유지)
 - **§20 Vercel Build Cost Guard** [HARD]: all Vercel projects MUST use Elastic build machine ($0.0035/CPU min vs Turbo $0.126/min); check Build Machine setting first on cost anomalies
 - **§21 Dev-Only Commands Isolation** (split harnesses, `SPLIT_HARNESS_NAMESPACE_LEAK` sentinel): `.moai/docs/dev-only-commands-isolation.md`
 - **§22 Dev Settings Intent** (settings.json key semantics): `.moai/docs/local-dev-settings-intent.md`
@@ -453,4 +453,4 @@ Sections §18-27 were consolidated into external `.moai/docs/` files to reduce l
 
 ## 31. 킥오프 자율·의사결정 위임 (운영자 정책)
 
-[HARD] 킥오프는 카드가 운영자 게이트를 명시하지 않는 한 자율로 진행한다. 레인 창에서 운영자가 이미 고른 모드는 덮지 않는다. 레인은 선택을 운영자에게 되묻지 않고 리더에게 올린다. 리더는 Jev를 쓰더라도 완료·병합·큐 변경·운영자 게이트를 모델 답으로 판정하지 않는다. 근거와 적용 범위는 `.moai/docs/kickoff-autonomy.md`에 있다.
+[HARD] 킥오프는 카드가 운영자 게이트를 명시하지 않는 한 자율로 진행한다 — 게이트 재고 + keep-set 모델(`.claude/rules/moai/workflow/auto-semantics.md` §9: 기본 자율 전이는 감사 교차 증거 + 결정 기록이고, environment-impossible / operator-held / irreversible external-shared 3범주만 운영자 직답을 유지한다)을 따른다. 레인 창에서 운영자가 이미 고른 모드는 덮지 않는다. 레인은 선택을 운영자에게 되묻지 않고 리더에게 올린다. 리더는 Jev를 쓰더라도 완료·병합·큐 변경·운영자 게이트를 모델 답으로 판정하지 않는다. 근거와 적용 범위는 `.moai/docs/kickoff-autonomy.md`에 있다.
