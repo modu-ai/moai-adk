@@ -231,9 +231,27 @@ func toolResultJSON(t *testing.T, res *mcp.CallToolResult) map[string]any {
 // reviewTreeFixture is a valid MoAI project root (passes validateProjectRoot)
 // holding exactly one uncommitted change, so the glm_audit diff collector has
 // material to carry.
+//
+// The claude_audit entry point runs with no explicit model, so without a pin it
+// resolves claudeAuditDefaultModel — claude-opus-5-5 since
+// SPEC-MODEL-MATRIX-UPDATE-001 — while the shared claude runner stub
+// (validClaudeRunner) resolves claude-sonnet-4-6. That combination is a genuine
+// provider mismatch and would flip this build-identity suite's verdict to
+// inconclusive for reasons orthogonal to build identity, so the fixture tree
+// pins the claude audit model to the sonnet tier the stub resolves
+// (card t1374).
 func reviewTreeFixture(t *testing.T) string {
 	t.Helper()
-	return newGLMReviewTree(t, true)
+	root := newGLMReviewTree(t, true)
+	sections := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(sections, 0o755); err != nil {
+		t.Fatalf("mkdir sections: %v", err)
+	}
+	workflow := "workflow:\n  audit:\n    claude:\n      model: sonnet\n      effort: high\n"
+	if err := os.WriteFile(filepath.Join(sections, "workflow.yaml"), []byte(workflow), 0o644); err != nil {
+		t.Fatalf("write workflow.yaml: %v", err)
+	}
+	return root
 }
 
 // noGitTreeFixture is a valid MoAI project root that is NOT a git working tree.

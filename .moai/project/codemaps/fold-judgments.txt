@@ -92,3 +92,11 @@ omission internal/cli/wizard/questions.go
 # modules.md 의 business/domain 표에 신규 행으로 서술됐고(이름이 문서에 있으므로 fold 성립 안 함),
 # 나머지 앵커(4a05fd3d6) 이후 변경 52개는 기존 행(cli·hook·config·auditreceipt·doctor* 클러스터)의
 # 수치·문장 갱신이다. 위 판정들은 이번 판에서 문서 본문과 대조해 그대로 성립함을 확인했다.
+
+# --- 2026-09-30 refresh (worktree t1374, base ca7191cba, card t1374) ---
+# 이번 판은 새 fold/omission 판정이 없다. 창 안 신규 파일 전부(sweep.go·sweep_cwd_*·
+# todo_claim/show/classify/ghost_notice·doctor_owner_label/todo_ghost·classification.go·
+# todo_owner_label.go·factory_run_resume.go)는 modules.md·entry-points.md 의 기존 행
+# (cli·todo*·doctor*·kanban·config·homestate)에 이름과 함께 서술됐다 — 이름이 문서에
+# 있으므로 fold 성립 안 한다. 위 기존 판정들은 이번 판에서 문서 본문과 대조해 그대로
+# 성립함을 확인했다.
