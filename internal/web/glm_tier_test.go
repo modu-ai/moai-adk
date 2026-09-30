@@ -48,12 +48,17 @@ func optionValues(f settings.FieldDef) []string {
 }
 
 // TestGLMModelSelectOptions verifies AC-WCR-030: the four tier fields are
-// closed-set selects over exactly {glm-5.3-flash, glm-5.3, glm-5.1, glm-4.7,
-// glm-4.5-air} — flash first (the default), glm-5.3 retained as selectable.
-// glm-5.3-flash accepts reasoning_effort max only — the web client locks the
-// tier effort select to max when the slot holds it.
+// closed-set selects over exactly {glm-5.3-flash, glm-5.3} — flash first (the
+// default), glm-5.3 retained as selectable. glm-5.3-flash accepts
+// reasoning_effort max only — the web client locks the tier effort select to
+// max when the slot holds it.
+//
+// t1280 수리(선존재 결함 — 본 카드 착지 전 develop 적색): 같은 SPEC 의 M3
+// 커밋(15b6c1ced, DR-2 운영자 결정 2026-09-30)이 옛 모델 id 를 전량 폐기하며
+// 집합을 정확히 2개로 개정했는데 이 테스트의 기대 목록이 M2(31bf718d5)에서
+// 멈춰 있었다 — closed_sets.go 의 폐기 기록 문서가 단서다.
 func TestGLMModelSelectOptions(t *testing.T) {
-	want := []string{"glm-5.3-flash", "glm-5.3", "glm-5.1", "glm-4.7", "glm-4.5-air"}
+	want := []string{"glm-5.3-flash", "glm-5.3"}
 
 	// The set the schema renders is derived, not re-declared. Assert the derived
 	// accessor equals the SPEC set first, so a drift in the underlying constants

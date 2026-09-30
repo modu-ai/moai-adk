@@ -147,6 +147,12 @@ templ rail(vm ShellVM) {
 									role="tab"
 									href={ templ.SafeURL("/settings?tab=" + t.ID) }
 									data-tab={ t.ID }
+									data-page-title-key={ t.LabelKey }
+									data-page-title={ t.Label }
+									data-page-desc-key={ t.DescKey }
+									data-page-desc={ t.Desc }
+									data-page-effect-key={ t.EffectKey }
+									data-page-effect={ t.Effect }
 									aria-selected={ attrBool(t.ID == vm.Tab) }
 									aria-controls={ "panel-" + t.ID }
 									id={ "tab-" + t.ID }
