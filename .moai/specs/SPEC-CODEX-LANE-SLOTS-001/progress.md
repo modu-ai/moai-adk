@@ -130,7 +130,7 @@ m1_to_mN_commit_strategy: per-milestone Conventional Commits M1→M2→M3→M4; 
 
 ```yaml
 sync_complete_at: 2026-10-01
-sync_commit_sha: pending-backfill-sync  # placeholder — a commit cannot cite its own SHA; the lane backfills the real SHA in a follow-up commit
+sync_commit_sha: 3a3d093bb1d19cc1624d41396ada3cc288a99bad  # D3-exempt backfill: the placeholder in the sync commit replaced with the real SHA by the lane (phase-owned field, manager-docs §E.4)
 sync_status: complete
 b12_self_test_a: pass  # pre-emission grep `grep -c 'SPEC-CODEX-LANE-SLOTS-001' CHANGELOG.md` = 0 before this sync commit (duplicate-entry guard)
 b12_self_test_b: pass  # AC count: MOAI-AC-COUNTER against acceptance.md (tier M source) → live=10 excluded=0 ambiguous=0; the CHANGELOG entries cite the same 10 (AC-001..010)
