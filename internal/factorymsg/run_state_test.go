@@ -35,6 +35,17 @@ func seedRunStatus(t *testing.T, root, run, status string) {
 }
 
 func TestPrescriptionGateProbeRunStateTriState(t *testing.T) {
+	t.Run("state renders for logs and notices", func(t *testing.T) {
+		for state, want := range map[RunState]string{
+			RunStateActive:      "active",
+			RunStateNotActive:   "not-active",
+			RunStateUnavailable: "unavailable",
+		} {
+			if got := state.String(); got != want {
+				t.Errorf("RunState(%d).String() = %q, want %q", state, got, want)
+			}
+		}
+	})
 	t.Run("active run measures active", func(t *testing.T) {
 		root := t.TempDir()
 		seedRunStatus(t, root, "run-a", "active")

@@ -247,3 +247,41 @@ func TestInboundClaimIndependentOfEnvLabel(t *testing.T) { // AC-SRL-006
 		t.Fatalf("claim delivery altered under a stale env label: msg=%q state=%s", msg, state)
 	}
 }
+
+func TestCurrentVocabularyBindPathUnchanged(t *testing.T) { // AC-SRL-007
+	// REQ-SRL-008 behavior preservation: a current-vocabulary label against a
+	// measured-active run still binds through ValidateActiveRun →
+	// BindLaunchPending exactly as before the repair.
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root := t.TempDir()
+	run := "srl-current-vocab"
+	recordActiveFactoryRun(t, root, run)
+	t.Setenv(config.EnvMoaiKanbanID, run)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-3")
+	t.Setenv(config.EnvMoaiKanbanBackend, "codex")
+	owner, start := factoryHookOwnerIdentity(t)
+	s, err := factorymsg.Open(root, run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	closeOnCleanup(t, "factory message broker", s)
+	pending, err := s.RegisterLaunchPending(context.Background(), factorymsg.Peer{
+		ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex",
+		Role: "lane", Slot: "lane-3", PID: owner, ProcessStart: start,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	notice := registerFactorySessionStartPeer(context.Background(), &HookInput{SessionID: "srl-007-session", ProjectDir: root})
+	if !strings.Contains(notice, "factory messaging bound") {
+		t.Fatalf("current-vocabulary bind path altered by the repair: %q", notice)
+	}
+	bound, err := s.ResolveLane(context.Background(), "lane-3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bound.SessionUUID != "srl-007-session" || bound.Generation <= pending.Generation {
+		t.Fatalf("bound=%+v pending=%+v", bound, pending)
+	}
+}

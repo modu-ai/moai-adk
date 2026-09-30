@@ -216,9 +216,10 @@ func unbindFactoryHookNotice(ctx context.Context, dbPath, label, runID, status, 
 }
 
 // gatedStaleRunAnswer applies the run-state gate exactly where the answer
-// would carry the factory retire step — runID set and MOAI_FACTORY_WORKERS
-// stamped, the same discriminator staleRunNotice uses for its factory
-// branch. The kanban relaunch prose names no factory run and stays ungated.
+// would carry the factory retire step — runID set and the factory fan-out
+// env stamped (config.EnvMoaiFactoryWorkers), the same discriminator
+// staleRunNotice uses for its factory branch. The kanban relaunch prose
+// names no factory run and stays ungated.
 func gatedStaleRunAnswer(root, sessionID, label, lang string) string {
 	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
 	if runID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
