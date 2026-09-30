@@ -37,11 +37,94 @@ recorded_by: lane orchestrator (verdict landed after manager-spec's final fix tu
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Status: run complete (2026-10-01, manager-develop cycle_type=tdd). Branch: `WT-codex-lane-slots-run`, branched exactly at the card tip `b8f437bae` in the run session's isolated worktree; commits are direct ancestors of the card branch, integrable with `git merge --ff-only WT-codex-lane-slots-run` (the card branch itself stays owned by the lane session — one writer).
+
+### Commits (per-milestone Conventional Commits)
+
+| M | SHA | Subject |
+|---|-----|---------|
+| M1 | `3d02f66fa` | feat: record declared lane capacity on the run (runs.lane_capacity, schema v5) |
+| M2 | `881580165` | feat: capacity-aware growth of the bounded lane claim |
+| M3 | `e18f2d193` | feat: per-step pre-exec timing and batched owner probe |
+| M4 | _this commit_ | test: bounded-path legacy parity + run-phase evidence |
+
+### Deviations (declared)
+
+- **spec.md frontmatter `status: draft → in-progress` deferred from M1 to this M-final commit** — the ownership-matrix trigger is the first run-phase commit; the flip lands here instead. Declared rather than silently timed; the M1..M3 code commits are unaffected.
+- **M1's whole-kanban re-measurement ran with M2's RED tests present in the tree** (written next-milestone, not yet committed) and failed only in those four new tests; the M2-commit-time whole-package run (249.271s, green) and this card's final AC-008 run (231.602s, green) subsume M1's regression coverage. No M1-only whole-package run exists.
+- **The REQ-014 measurement briefly migrated the shared live store** (`~/.moai/db/moai-adk-go-1bd3d038/factory/factory.db`, project-keyed across worktree lanes) to schema v5 — an in-place side effect of running the post-M1 binary against it. Restored to v4 the same session (`ALTER TABLE runs DROP COLUMN lane_capacity` + meta 5→4; base-binary listing re-verified). All recorded measurements after that point run on a scratch-rooted copy (`/tmp/t1378-perf-root`), never the live store. Concurrent lanes running pre-v5 binaries were exposed for the minutes between; no failure was reported.
+
+### AC matrix (E1)
+
+Every row: command executed in this run, output verbatim, HEAD attributed. Baseline green at pre-flight: `go test -timeout 30m ./internal/kanban/...` → `ok github.com/modu-ai/moai-adk/internal/kanban 193.031s` at `b8f437bae`.
+
+| AC | Verdict | Command + verbatim evidence (HEAD) |
+|----|---------|------------------------------------|
+| AC-001 | **PASS** (M2) | RED-first at `b8f437bae`+M1: `factory_slots_capacity_test.go:54: bounded claim on capacity-open run: factory run tm3yoq has no free lane slots in 1..1`; GREEN: `go test ./internal/kanban/ -run '^TestClaimFactoryLaneWithinGrowsCapacityOpen$'` → `--- PASS: TestClaimFactoryLaneWithinGrowsCapacityOpen (4.36s)` (post-M2). Probe flip (M2 green side): `RED-1 claude-shape claim: lane-1` / `RED-1 codex-shape claim error: <nil>` / `RED-1 codex-shape claim label: lane-2` |
+| AC-002 | **PASS** (M2) | `TestClaimFactoryLaneWithinBounds` `--- PASS (4.64s)` (legacy bounds pin unmodified) + new subtest `explicit_request_never_grows` `--- PASS (1.10s)`: explicit lane-9 vs 1..1 on a capacity-open run refuses with `outside the allowed slots 1..1` |
+| AC-003 | **PASS** (M2) | `TestClaimFactoryLaneWithinExplicitCapacityFull` `--- PASS (3.76s)`; `full_declared_run_refuses` → `has no free lane slots in 1..1`; `the_recorded_count_overrides_the_launcher-side_bound` (bound 3 vs recorded 1 → refuses 1..1) |
+| AC-004 | **PASS** (M4) | `go test ./internal/kanban/ -run '^TestClaimFactoryLaneWithinRefusesLiveLegacy$'` → `--- PASS: TestClaimFactoryLaneWithinRefusesLiveLegacy (1.18s)` (bounded path, message names worker-1 / legacyrun1 / `moai factory runs --retire legacyrun1`; registry untouched after refusal) |
+| AC-005 | **PASS** (M4) | legacy trio green unmodified: `TestClaimFactoryWorkerRefusesLiveLegacyClaim`, `TestClaimFactoryWorkerDeadLegacyClaimIsStale`, `TestClaimFactoryWorkerIgnoresLegacyClaimOfNoRun`, `TestIsLegacyLeadLabelDetection` — all `--- PASS` in the M2-adjacent selector run; the unbounded trio's intent untouched |
+| AC-006 | **PASS** (M1) | RED-first: compile-fail verbatim (`undefined: homestate.LaneCapacityDerived` / `db.RunLaneCapacity undefined` / `undefined: factoryJoinLaneBound`, recorded before the M1 change); GREEN: `go test ./internal/cli/ -run '^TestRecordFactoryRunStartCapacity$'` → `--- PASS: TestRecordFactoryRunStartCapacity (1.73s)`; RED-2 flip: `RED-2 runs table columns: run_id,lead_session_id,lead_backend,status,manifest_json,lead_pid,lead_process_start,lane_capacity,created_at,updated_at` |
+| AC-007 | **PASS** (M3) | RED-first: compile-fail verbatim (`unknown field BatchProbe` / `undefined: ProcessIdentity` / `undefined: BatchProbeProcessIdentity`); GREEN: `--- PASS: TestClassifyRunsBatchesOwnerProbe (0.28s)` (1 batch invocation for 4 rows/3 pids, deduped `[411 412 413]`, both classification arms fed) + platform pin `--- PASS: TestBatchProbeResolvesLiveProcessIdentityDarwin` |
+| AC-008 | **PASS** (M4) | `go test -timeout 30m ./internal/kanban/... -count=1` → `ok github.com/modu-ai/moai-adk/internal/kanban 231.602s` (final tree); `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `go vet` on touched packages clean |
+| AC-009 | **PASS** (M2) | `TestClaimFactoryLaneWithinSharedPoolDistinctNumbers` `--- PASS (1.40s)` — claude-shape lane-1 + codex-shape bounded lane-2, one registry, distinct numbers; RED (same refusal as AC-001, shared ledger RED-1) |
+| AC-010 | **PASS** (M3) | RED-first: compile-fail verbatim (`undefined: factoryLaunchTiming` / `undefined: factoryStepCodexPreInit` …); GREEN: `--- PASS: TestCodexLaneLaunchTimingNamesSteps` (+ `QuietUnderThreshold`, `NilSafe`, `MeasuresElapsed`, all `--- PASS`) — the report carries one line per recorded step naming codex pre-exec init / join gate / active-run resolution / lane claim / exec handoff |
+
+### REQ-014 measurement pair (AC-007 evidence)
+
+Method: the live store was first found to be shared project state (see Deviations), so the pair runs on a scratch-rooted `.backup` copy of the same 10-row store in v4 shape; the after binary's first run absorbs the one-time v4→v5 migration.
+
+```
+$ cd /tmp/t1378-perf-root
+$ time /tmp/moai-t1378-before factory runs   # built at b8f437bae
+0.83s user 0.32s system 79% cpu 1.450 total
+$ time /tmp/moai-t1378-before factory runs
+0.88s user 0.31s system 91% cpu 1.311 total
+$ time /tmp/moai-t1378-after factory runs    # working tree at M3; run 1 absorbs v4→v5 migration
+0.88s user 0.35s system 88% cpu 1.403 total
+$ time /tmp/moai-t1378-after factory runs
+0.92s user 0.33s system 92% cpu 1.353 total
+$ time /tmp/moai-t1378-after factory runs
+0.94s user 0.36s system 94% cpu 1.379 total
+```
+
+Attribution: the pair is flat on this store — the probe bound is pinned mechanically by `TestClassifyRunsBatchesOwnerProbe` (1 invocation per listing), and the listing's wall-time here is dominated by non-probe work (open/schema/boot-proof/broker reads), which is exactly the attribution plan §B.4 stated. The operator's 3.0s-user incident store is larger; its measurement is a follow-up card candidate, not evidence recorded here. An invalid earlier comparison (base binary against the migrated v5 store) was discarded on discovery: the base binary fast-fails with `Unsupported factory schema version "5"` and its apparent speed was the error path.
+
+### M3 split decision
+
+NOT taken — the batched probe landed in-card (seam + three platform variants + instrumented test + measurement), within a single-function change per platform variant on the existing `OwnerClassifier`/`ReconcileOptions` seam.
+
+### Diagnosis findings ①–④ — run-phase resolution
+
+- **① (claim path has no wait/retry)**: CONFIRMED and preserved — the claim still refuses immediately (plan §G forbids retry); the long-launch diagnosis is now measurable: REQ-012's per-step report names the phase that is slow on the next slow codex lane launch. The rc.23 delta attribution needs one slow-launch observation to populate and is explicitly left to that report, not asserted here.
+- **② (no worktree scan in the launch path)**: CONFIRMED absent (plan-phase greps stand); this card added no scanning (Out of Scope held).
+- **③ (hook-trust is a wiring-pass emit)**: Out of Scope held (spec §F); no launcher gating added.
+- **④ (owner probe per run row)**: FIXED by M3 — the per-listing invocation bound is test-pinned; wall-time attribution recorded above.
+
+### Pre-existing red (outside this card, unchanged by it)
+
+`TestCharacterize_AuditPinPrecedenceAndBackendDefault` fails identically on the base tree: the base `defaults.go` already bakes the codex audit pin `{gpt-6.1-sol, high}` (card t1368 / SPEC-MODEL-MATRIX-UPDATE-001) while the characterization test expects the zero value for a bare root. Evidence: `git show b8f437bae:internal/config/defaults.go` carries the pin at line ~1206; `git diff --stat b8f437bae -- internal/config/defaults.go internal/cli/retained_model_surfaces_char_test.go` is empty; observed `retained_model_surfaces_char_test.go:153: codex audit without pin = {Model:gpt-6.1-sol Effort:high}, want the zero value`. Not repaired here (out of scope); the full cli-suite verdict owner remains the CI run on the integration branch, PENDING at report time.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-10-01
+run_commit_sha: e18f2d193  # last code commit (M3); the M4 docs/test commit lands after this signal
+run_status: complete
+ac_pass_count: 10
+ac_fail_count: 0
+preserve_list_post_run_count: 5  # TestClaimFactoryLaneWithinBounds, TestClaimFactoryLaneWithinConcurrentOneSlot, role_naming_m1 trio (3) — passing unmodified in intent
+l44_pre_commit_fetch: not-run  # session-private worktree; no shared-checkout commit or push from this session
+l44_post_push_fetch: not-run  # no push (lane protocol: push is the leader's)
+new_warnings_or_lints_introduced: 0  # golangci-lint v2.1.6 (CI pin): 0 issues pre and post on kanban/cli/homestate/config; go vet clean; gofmt clean
+cross_platform_build:
+  native: pass  # go build ./...
+  windows: pass  # GOOS=windows GOARCH=amd64 go build ./...
+total_run_phase_files: 40  # 37 through M3 + legacy-bounded test + progress.md + spec.md frontmatter
+m1_to_mN_commit_strategy: per-milestone Conventional Commits M1→M2→M3→M4; spec frontmatter flip deferred from M1 to M4 (declared deviation)
+```
+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
