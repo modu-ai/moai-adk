@@ -321,8 +321,10 @@ func TestLoader_GitStrategy_MergeMethod_Partial_KeepsSiblingDefaults(t *testing.
 	if got := cfg.GitStrategy.Team.MergeMethod; got != "rebase" {
 		t.Errorf("GitStrategy.Team.MergeMethod: got %q, want %q (file override)", got, "rebase")
 	}
-	if got := cfg.GitStrategy.Manual.MergeMethod; got != "squash" {
-		t.Errorf("GitStrategy.Manual.MergeMethod: got %q, want compiled default %q (not overridden)", got, "squash")
+	// card t1281: the compiled manual default is "merge" now — the sibling-
+	// preservation assertion tracks the current compiled default, not a literal.
+	if got := cfg.GitStrategy.Manual.MergeMethod; got != "merge" {
+		t.Errorf("GitStrategy.Manual.MergeMethod: got %q, want compiled default %q (not overridden)", got, "merge")
 	}
 	if got := cfg.GitStrategy.Personal.MergeMethod; got != "squash" {
 		t.Errorf("GitStrategy.Personal.MergeMethod: got %q, want compiled default %q (not overridden)", got, "squash")
