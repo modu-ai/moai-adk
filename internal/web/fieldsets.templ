@@ -103,28 +103,12 @@ templ fieldsetLaunch(view pageView) {
 		DescKey: "sec.launch.desc", Desc: "How sessions start — permissions, model, and reasoning effort.",
 		Count: len(settings.SectionFields(settings.SectionLaunch)),
 	}) {
-		<div class="field">
-			@fieldHead("permission_mode", "Permission mode", "permission_mode")
-			<p class="field__help" data-i18n="f.permission_mode.desc">How much the agent may do before asking you.</p>
-			<div class="field__ctl">
-				<select
-					class="sel"
-					id="permission_mode"
-					name="permission_mode"
-					if hasFieldError(view.FieldErrors, "permission_mode") {
-						aria-invalid="true"
-						aria-describedby="err_permission_mode"
-					}
-				>
-					for _, m := range view.PermissionModes {
-						@permissionOption(m, view.Prefs.PermissionMode)
-					}
-				</select>
-			</div>
-			@fieldErr(view.FieldErrors, "permission_mode")
-		</div>
-		@optSelect(optSelectArgs{Name: "model", Title: "Model", Key: "model", Desc: "The specific model to run.", Value: view.Prefs.Model, Empty: settings.EmptyLabelFor("model"), EmptyKey: settings.EmptyLabelKeyFor("model"), Options: view.ModelOptions, Errors: view.FieldErrors})
-		@optSelect(optSelectArgs{Name: "effort_level", Title: "Effort level", Key: "effort_level", Desc: "How much reasoning effort the model spends per task.", Value: view.Prefs.EffortLevel, Empty: settings.EmptyLabelFor("effort_level"), EmptyKey: settings.EmptyLabelKeyFor("effort_level"), Options: view.EffortLevels, Errors: view.FieldErrors})
+		// t1278 — 3 위젯 모두 segmented 라디오로(네이티브 select 대체). permission_mode 의
+		// 빈 옵션은 view.PermissionModes 가 이미 옵션으로 갖고 있어(permissionOption 이
+		// "(project default)" 로 렌더하던 것) segRadio 에 별도 Empty 를 넣지 않는다.
+		@segRadio(segRadioArgs{Name: "permission_mode", Title: "Permission mode", Key: "permission_mode", Desc: "How much the agent may do before asking you.", Value: view.Prefs.PermissionMode, Options: view.PermissionModes, Errors: view.FieldErrors})
+		@segRadio(segRadioArgs{Name: "model", Title: "Model", Key: "model", Desc: "The specific model to run.", Value: view.Prefs.Model, Empty: settings.EmptyLabelFor("model"), EmptyKey: settings.EmptyLabelKeyFor("model"), Options: view.ModelOptions, Errors: view.FieldErrors})
+		@segRadio(segRadioArgs{Name: "effort_level", Title: "Effort level", Key: "effort_level", Desc: "How much reasoning effort the model spends per task.", Value: view.Prefs.EffortLevel, Empty: settings.EmptyLabelFor("effort_level"), EmptyKey: settings.EmptyLabelKeyFor("effort_level"), Options: view.EffortLevels, Errors: view.FieldErrors})
 	}
 }
 

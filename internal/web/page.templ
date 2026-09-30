@@ -153,6 +153,50 @@ templ optSelect(a optSelectArgs) {
 	</div>
 }
 
+// segRadioArgs 는 segRadio 의 계약이다 — optSelectArgs 와 필드가 1:1이다
+// (t1278: 네이티브 select 를 segmented 라디오로 대체, 폼 계약 무변경).
+type segRadioArgs struct {
+	Name, Title, Key, Desc, Value, Empty, EmptyKey string
+	Options                                        []settings.OptionDef
+	Errors                                         map[string]string
+}
+
+// segRadio 는 optSelect 의 segmented 선택판이다. name·빈 옵션·옵션 i18n 키·
+// 오류 표시 계약이 optSelect 와 동일하므로 호출처는 위젯만 갈아끼운다.
+// 선택 상태는 input:checked 로 나르고(.seg__b:has(input:checked) CSS),
+// 옵션은 wrapping label 이라 id 없이도 접근성이 성립한다.
+templ segRadio(a segRadioArgs) {
+	<div class="field">
+		@fieldHead(a.Name, a.Title, a.Key)
+		<p class="field__help" data-i18n={ "f." + a.Name + ".desc" }>{ a.Desc }</p>
+		<div class="field__ctl">
+			<div class="seg" role="radiogroup" aria-label={ a.Title }>
+				if a.Empty != "" {
+					<label class="seg__b">
+						if a.Value == "" {
+							<input type="radio" name={ a.Name } value="" checked/>
+						} else {
+							<input type="radio" name={ a.Name } value=""/>
+						}
+						<span data-i18n={ a.EmptyKey }>{ a.Empty }</span>
+					</label>
+				}
+				for _, opt := range a.Options {
+					<label class="seg__b">
+						if opt.Value == a.Value {
+							<input type="radio" name={ a.Name } value={ opt.Value } checked/>
+						} else {
+							<input type="radio" name={ a.Name } value={ opt.Value }/>
+						}
+						<span data-i18n={ opt.I18nKey }>{ opt.Value }</span>
+					</label>
+				}
+			</div>
+		</div>
+		@fieldErr(a.Errors, a.Name)
+	</div>
+}
+
 // optOptionTags emits the caller-labelled empty option followed by the canonical
 // option list, marking the current value selected. M5-b D4: 각 option 에
 // data-i18n 키를 방출한다. empty 옵션의 data-i18n 은 emptyKey (예:

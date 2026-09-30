@@ -377,7 +377,7 @@ func allFields() []FieldDef {
 		FieldDef{
 			Name:          "model",
 			Section:       SectionLaunch,
-			Type:          TypeSelect,
+			Type:          TypeRadio,
 			Options:       modelOpts,
 			EmptyLabel:    emptyLabelProjectDefault,
 			EmptyLabelKey: "opt.project_default",
@@ -388,7 +388,7 @@ func allFields() []FieldDef {
 		FieldDef{
 			Name:          "effort_level",
 			Section:       SectionLaunch,
-			Type:          TypeSelect,
+			Type:          TypeRadio,
 			Options:       effortOpts,
 			EmptyLabel:    emptyLabelRuntimeDefault,
 			EmptyLabelKey: "opt.runtime_default",
@@ -399,7 +399,7 @@ func allFields() []FieldDef {
 		FieldDef{
 			Name:          "permission_mode",
 			Section:       SectionLaunch,
-			Type:          TypeSelect,
+			Type:          TypeRadio,
 			Options:       permOpts,
 			EmptyLabel:    emptyLabelProjectDefault,
 			EmptyLabelKey: "opt.project_default",
