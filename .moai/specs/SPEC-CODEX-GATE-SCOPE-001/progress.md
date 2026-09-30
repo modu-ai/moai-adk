@@ -12,11 +12,70 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+실행 트리: 카드 워크트리 분리(런타임 agent worktree, 베이스 f4aa9bf99 = 감사 트리와 동일 커밋), 브랜치 `WT-gate-scope-impl`. 커밋: M1 `6ca762e1f`(SPEC 산출 + 회귀선) → M3-M5 `70a8efe59`(구현 + 테스트). push 없음(레인 통합 몫).
+
+### RED 관측 (acceptance §C — 구현 전 트리 SHA `6ca762e1f`)
+
+- RED-1(컴파일 실패 — 테스트가 구현 심볼을 먼저 참조): `.moai/reports/t1383/red/m2-red1-compile-failure.txt` — `undefined: reviewScopeResolver ... [build failed]`.
+- RED-2(스텁 선언으로 컴파일 가능화 후 런타임 실패, `-v` `=== RUN` 21행 관측): `.moai/reports/t1383/red/m2-red2-runtime-failures.txt` — 신규 동작 13테스트 전부 `--- FAIL`, 회귀선 2건(`TreeScopeRequestShapeUnchanged`·`CardScopeFailOpenOnMissingReviewer`)만 `--- PASS`.
+- M1 회귀선의 변경 전(f4aa9bf99) 초록 관측: `.moai/reports/t1383/red/m1-treescope-regression-prechange-GREEN.txt`.
+- GREEN 전환: `.moai/reports/t1383/red/m4-green-after-implementation.txt` — 셀렉터 17테스트 0실패.
+- 요지 파일: `.moai/reports/t1383/red/README.md`. (`.moai/reports/*`는 gitignore — 디스크 보존이며 판정 출력은 본 문서와 완료 보고서가 운반한다.)
+
+### AC 매트릭스 (게이트 조립 요청 필드 + receipt 바인딩 관측 — acceptance §A)
+
+| AC | 검증 테스트 | 상태 | 근거(명령: `go test -count=1 -v -run '^TestCodexReviewGate|^TestCodexReviewScope|^TestProduceCodexReviewReceipt' ./internal/cli/`) |
+|---|---|---|---|
+| AC-CGS-001 | TestCodexReviewGate_CardScopeRequestIsCardDiff · TestProduceCodexReviewReceipt_CardScopeRecordsCardState | PASS | `--- PASS` — review/start target `{type: baseBranch, branch: <재계산 merge-base>}`, thread/start cwd = 카드 워크트리, primary 경로 미참조 |
+| AC-CGS-002 | TestCodexReviewGate_TreeScopeRequestShapeUnchanged | PASS | `--- PASS` — 변경 전 트리(f4aa9bf99)에서도 초록; target.type `uncommittedChanges` 고정 |
+| AC-CGS-003 | TestCodexReviewGate_StaleEnvKeepsTreeScope | PASS | `--- PASS` — env 라벨 2종에서 스코프 불변 + 트리 요청 형태 유지 |
+| AC-CGS-004 | TestCodexReviewGate_BranchAloneDecidesCardScope | PASS | `--- PASS` — env 부재 + `WT-` 브랜치 → card, Branch/MergeBase 단정 |
+| AC-CGS-005 | TestCodexReviewScope_LabelValuesDoNotAffectDecision | PASS | `--- PASS` — 임의 라벨 2종에서 `reflect.DeepEqual` 동일 스코프(양성 관측) |
+| AC-CGS-006 | TestCodexReviewGate_FrozenProjectDirBypassed | PASS | `--- PASS` — payload project_dir + freeze env 모두 primary 지정, 세션 cwd 트리로 스코프·요청 |
+| AC-CGS-007 | TestCodexReviewGate_EmptyCardDiffSkipsReviewer | PASS | `--- PASS` — 빈 카드 diff에서 reviewer 미호출(codexLookPath 가드 통과) + ALLOW |
+| AC-CGS-008 | TestCodexReviewScope_UnidentifiedFallsToTree | PASS | `--- PASS` — detached / 비 WT- / 비git / merge-base 불가 4케이스 전부 tree, 근거 문자열 포함 |
+| AC-CGS-009 | TestCodexReviewScope_ReceiptBoundToScopeState | PASS | `--- PASS` — 동일 카드 상태 재차단 유지 + 트리 상태 비매치 + 리더 트리 무영향 |
+| AC-CGS-010 | TestCodexReviewGate_AndProducerSeeSameScope | PASS | `--- PASS` — 게이트/생산자의 cwd·target 객체 `reflect.DeepEqual` 동일 |
+| AC-CGS-011 | TestCodexReviewGate_CardScopeFailOpenOnMissingReviewer (+기존 fail-open 테스트) | PASS | `--- PASS` — 카드 스코프에서 reviewer 부재 ALLOW, 호출 0 |
+| AC-CGS-012 | TestCodexReviewScope_AbsorbedDevelopRecomputesBase | PASS | `--- PASS` — 흡수 후 merge-base 재계산, 흡수 전 바인딩 불일치 |
+| AC-CGS-013 | TestCodexReviewGate_ScopeLogObservability | PASS | `--- PASS` — 클래스·근거(card: branch match + 브랜치명 / tree: 상이 문자열)·env 맥락 기록 |
+
+미매핑 REQ 없음(acceptance §D 추적표 준수). REQ-CGS-001은 전 테스트의 전제 구조(판별 → 요청)로, REQ-CGS-002는 AC-001·012로, REQ-CGS-008은 AC-011로 각각 검증.
+
+### 소관 패키지 재측정 (단위 = 패키지 전체)
+
+`unset <레인 env> && go test -count=1 -timeout 30m -coverprofile=… ./internal/cli/... ./internal/codexwiring/...`
+
+- 1차 실행(27.7분): FAIL 4건 → 즉시 판별. (a) `TestSyncGateLanguageDetectionMatchesScript/kotlin_source`·(b) `TestCharacterize_AuditPinPrecedenceAndBackendDefault` — **기저 재측정에서 동일 적색**: `git archive f4aa9bf99 | tar -x` 로 뽑은 무변경 트리에서 동일 실패 확인(본 카드 변경과 무관한 기존 결함 — 전자는 spec §A.7이 범위 밖으로 명시한 pre-t1379 Go 미러 결함, 후자는 운영자 실감사 핀을 읽는 환경 의존 가드). (c) `TestAuditLagUsesBinlagSeam`·(d) `TestWSR006_ReviewGateRootMatrix` — 본 카드 변경분(아래 정합 참조).
+- 2차 실행(24.6분): **실패 (a)(b)만 잔존 — 신규 실패 0**. `.moai/reports/t1383/e3-owning-packages-rerun.txt`.
+- 정합 2건: `TestWSR006_ReviewGateRootMatrix` 행 16-18은 REQ-CGS-005가 바꾼 분리 규칙(리뷰 게이트=세션 체인, 멀티 게이트=기존 체인)으로 재고정 — AC-WSR-006의 멀티 게이트 규약은 불변. `TestAuditLagUsesBinlagSeam` 허용 목록에 카드 diff 기저 측정 좌표 추가(대상 선정용 읽기이지 binary-lag 판정이 아님 — binlag.Evaluate 단일성 유지).
+- 커버리지(전체 패키지 프로파일, 수정 파일): `codex_review_scope.go` 88.9%(12함수) · `codex_review_receipt.go` 93.3% · `codex_review_gate.go` 96.1% · `codex_stop_chain.go` 87.3% — 파일당 85% 기준 충족. 최저 함수 `cardScopeKeyParts` 75.6%(walk 오류·symlink 읽기 실패 방어선 미개방 — 신규 유미공 개정 테스트로 31.1%→75.6%).
+- 정적: `go vet`(darwin) 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 · `golangci-lint run --timeout=2m`(v2.1.6 = CI 판) `0 issues.` · gofmt 0.
+- 범위 침범: `git diff --stat`에 `mcp_convergence.go`·`codex_sync_gate.go` 없음. 라벨 파싱: 프로덕션 4파일에서 `worker-<숫자>`/`lane-<숫자>` 리터럴 0(env 상수는 `config.EnvMoaiFactoryWorker`로만 참조). AskUserQuestion: 접촉 파일 전체 호출 0(선존 금지 문장 1건은 주석).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: "2026-10-01"
+run_commit_sha: "70a8efe59917c87b83b5de2cc849557cd26728d3"
+run_status: "complete"
+ac_pass_count: 13
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: "not-run (isolated agent worktree — no shared-checkout commit; lane owns integration)"
+l44_post_push_fetch: "not-run (no push by design — lane pushes develop after local merge)"
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  darwin_arm64: "go build ./... exit 0; go vet 0; golangci-lint 0 issues"
+  windows_amd64: "GOOS=windows GOARCH=amd64 go build ./... exit 0"
+total_run_phase_files: 13
+m1_to_mN_commit_strategy: "M1 (SPEC intake + regression line, 6ca762e1f) -> M3-M5 single feat commit (70a8efe59) -> docs commit (progress only)"
+known_base_reds_not_in_scope:
+  - "TestSyncGateLanguageDetectionMatchesScript/kotlin_source — pre-existing on f4aa9bf99 (spec §A.7 out-of-scope Go-mirror defect)"
+  - "TestCharacterize_AuditPinPrecedenceAndBackendDefault — pre-existing on f4aa9bf99 (reads the operator's live audit pin)"
+ci_verdict: "PENDING — the repository-wide test verdict belongs to the CI run on the integration branch after the lane merges; this report claims the owning-package runs only"
+```
+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
