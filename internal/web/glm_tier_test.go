@@ -47,13 +47,12 @@ func optionValues(f settings.FieldDef) []string {
 	return out
 }
 
-// TestGLMModelSelectOptions verifies AC-WCR-030: the four tier fields are
-// closed-set selects over exactly {glm-5.3-flash, glm-5.3, glm-5.1, glm-4.7,
-// glm-4.5-air} — flash first (the default), glm-5.3 retained as selectable.
-// glm-5.3-flash accepts reasoning_effort max only — the web client locks the
-// tier effort select to max when the slot holds it.
+// TestGLMModelSelectOptions verifies AC-WCR-030 (as narrowed by
+// SPEC-MODEL-MATRIX-UPDATE-001 and re-widgeted by card t1278): the four tier
+// fields are closed-set RADIO groups over exactly {glm-5.3-flash, glm-5.3} —
+// flash first (the default), glm-5.3 retained as selectable.
 func TestGLMModelSelectOptions(t *testing.T) {
-	want := []string{"glm-5.3-flash", "glm-5.3", "glm-5.1", "glm-4.7", "glm-4.5-air"}
+	want := []string{"glm-5.3-flash", "glm-5.3"}
 
 	// The set the schema renders is derived, not re-declared. Assert the derived
 	// accessor equals the SPEC set first, so a drift in the underlying constants
@@ -65,8 +64,8 @@ func TestGLMModelSelectOptions(t *testing.T) {
 	for _, tier := range glmTierKeys {
 		name := "llm.glm.models." + tier
 		f := fieldByName(t, name)
-		if f.Type != settings.TypeSelect {
-			t.Errorf("%s Type = %q, want select (a closed model set gets a closed widget)", name, f.Type)
+		if f.Type != settings.TypeRadio {
+			t.Errorf("%s Type = %q, want radio (a closed model set gets a segmented widget)", name, f.Type)
 		}
 		if got := optionValues(f); !equalStrings(got, want) {
 			t.Errorf("%s options = %v, want %v", name, got, want)
@@ -124,11 +123,7 @@ func TestGLMFlashOptionLabelsAllLocales(t *testing.T) {
 // collapse function produces. "Max"/"High"/"None" are the DISPLAY labels for
 // those states, carried by i18n, not a second value vocabulary.
 func TestGLMEffortTierDefaults(t *testing.T) {
-	wantOpts := []string{
-		template.GLMStateMax,
-		template.GLMStateHigh,
-		template.GLMStateLow,
-	}
+	wantOpts := template.GLMReasoningStateNames()
 	wantDefault := map[string]string{
 		"high":   template.GLMStateMax,
 		"medium": template.GLMStateMax,
@@ -139,8 +134,8 @@ func TestGLMEffortTierDefaults(t *testing.T) {
 	for _, tier := range glmTierKeys {
 		name := "llm.glm.effort." + tier
 		f := fieldByName(t, name)
-		if f.Type != settings.TypeSelect {
-			t.Errorf("%s Type = %q, want select", name, f.Type)
+		if f.Type != settings.TypeRadio {
+			t.Errorf("%s Type = %q, want radio", name, f.Type)
 		}
 		if got := optionValues(f); !equalStrings(got, wantOpts) {
 			t.Errorf("%s options = %v, want %v", name, got, wantOpts)
@@ -157,8 +152,8 @@ func TestGLMEffortTierDefaults(t *testing.T) {
 	for _, tier := range []string{"medium", "low"} {
 		name := "llm.glm.effort." + tier
 		want := wantDefault[tier]
-		if !strings.Contains(html, `<option value="`+want+`" selected`) {
-			t.Errorf("%s: rendered page does not preselect the default %q", name, want)
+		if !strings.Contains(html, `name="`+name+`" value="`+want+`" checked`) {
+			t.Errorf("%s: rendered page does not preselect the default %q (t1278: radio checked marker)", name, want)
 		}
 	}
 }

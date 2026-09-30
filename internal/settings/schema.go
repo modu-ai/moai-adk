@@ -418,7 +418,7 @@ func allFields() []FieldDef {
 	fields = append(fields, FieldDef{
 		Name:          "statusline_theme",
 		Section:       SectionStatusline,
-		Type:          TypeSelect,
+		Type:          TypeRadio,
 		Options:       themeOpts,
 		EmptyLabel:    "",
 		EmptyLabelKey: "",
@@ -442,7 +442,7 @@ func allFields() []FieldDef {
 		FieldDef{
 			Name:          "development_mode",
 			Section:       SectionQuality,
-			Type:          TypeSelect,
+			Type:          TypeRadio,
 			Options:       devOpts,
 			EmptyLabel:    emptyLabelProjectDefault,
 			EmptyLabelKey: "opt.project_default",

@@ -89,6 +89,16 @@ func ValidAuditModels() []string {
 	return []string{AuditModelClaude, AuditModelCodex, AuditModelGLM, AuditModelMulti}
 }
 
+// ValidCodexAuditModels returns the closed set for workflow.audit.codex.model
+// (card t1278). The repo owns no codex model-id constants — the id rides the
+// codex CLI — so the set is the operator-visible pair: the stored value from
+// the 2026-09-30 settings screenshot (gpt-5.6-sol) and the schema example
+// (gpt-5.6). Widening is a one-line change here; a stored foreign id keeps
+// round-tripping through the RC2 passthrough-preserve in parseSchemaForm.
+func ValidCodexAuditModels() []string {
+	return []string{"gpt-5.6-sol", "gpt-5.6"}
+}
+
 // ValidProjectContinuations returns the closed set for
 // workflow.project.continuation, derived from the ProjectContinuation*
 // constants the resolver validates against

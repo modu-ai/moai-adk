@@ -35,15 +35,6 @@ var codexMirrorOwningPanel = map[string]string{
 	"workflow.audit.model":                      "audit", // the one declared exception
 	"workflow.codex.review_gate.enabled":        "mcp",
 	"workflow.codex.task.allow_write":           "mcp",
-	"mcp.tools.codex_audit.enabled":             "mcp",
-	"mcp.tools.codex_setup.enabled":             "mcp",
-	"mcp.tools.codex_task.enabled":              "mcp",
-	"mcp.tools.codex_job_status.enabled":        "mcp",
-	"mcp.tools.codex_job_result.enabled":        "mcp",
-	"mcp.tools.codex_job_cancel.enabled":        "mcp",
-	"mcp.tools.codex_role_audit.enabled":        "mcp",
-	"mcp.tools.codex_role_audit_status.enabled": "mcp",
-	"mcp.tools.codex_role_audit_result.enabled": "mcp",
 }
 
 // wantCodexTokenFields is the INDEPENDENT ORACLE for AC-WCP-006: the 14
@@ -57,15 +48,6 @@ var wantCodexTokenFields = []string{
 	"workflow.audit.codex.effort",
 	"workflow.codex.review_gate.enabled",
 	"workflow.codex.task.allow_write",
-	"mcp.tools.codex_audit.enabled",
-	"mcp.tools.codex_setup.enabled",
-	"mcp.tools.codex_task.enabled",
-	"mcp.tools.codex_job_status.enabled",
-	"mcp.tools.codex_job_result.enabled",
-	"mcp.tools.codex_job_cancel.enabled",
-	"mcp.tools.codex_role_audit.enabled",
-	"mcp.tools.codex_role_audit_status.enabled",
-	"mcp.tools.codex_role_audit_result.enabled",
 }
 
 // codexPanelTestApp builds an app over a seeded temp project root, optionally
@@ -188,7 +170,9 @@ func TestCodexMirrorCoverage(t *testing.T) {
 	// comparison above cannot detect a registry field the predicate never saw.
 	sweep := map[string]bool{}
 	for _, f := range settings.AllFields() {
-		if strings.Contains(f.Name, "codex") {
+		// t1278 — mcp.tools.codex_* fields are intentionally NOT mirrored
+		// (enablement lives on the MCP tab), so the sweep excludes them too.
+		if strings.Contains(f.Name, "codex") && !strings.HasPrefix(f.Name, "mcp.tools.") {
 			sweep[f.Name] = true
 		}
 	}
@@ -243,17 +227,14 @@ func TestCodexMirrorRowLinksToOwningTab(t *testing.T) {
 	if !strings.Contains(body, "sentinel-codex-model-x7") {
 		t.Error("codex panel region does not carry the seeded workflow.audit.codex.model value")
 	}
-	// The MCP-side sentinel: an explicit false on one tool, distinguishable
-	// from the five that carry no explicit value.
-	if got := codexRowValue(t, body, "mcp.tools.codex_audit.enabled"); got != "false" {
-		t.Errorf("mirror row for mcp.tools.codex_audit.enabled shows value %q, want %q", got, "false")
-	}
+	// t1278 — the MCP tool mirror is gone: enablement lives on the MCP tab
+	// alone, so the codex panel carries no mcp.tools rows to sentinel here.
 	if got := codexRowValue(t, body, "workflow.codex.task.allow_write"); got != "true" {
 		t.Errorf("mirror row for workflow.codex.task.allow_write shows value %q, want %q", got, "true")
 	}
 
 	// The owning-tab links.
-	for _, want := range []string{`href="/settings?tab=audit"`, `href="/settings?tab=mcp"`} {
+	for _, want := range []string{`href="/settings?tab=audit"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("codex panel region missing owning-tab link %s", want)
 		}

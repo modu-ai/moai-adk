@@ -2237,7 +2237,7 @@ func schemaRadioRow(f settings.FieldDef, value string, errs map[string]string) t
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				if opt.Value == value {
+				if opt.Value == radioEffectiveValue(f, value) {
 					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 162, "<input type=\"radio\" id=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
@@ -2384,7 +2384,7 @@ func schemaRadioRow(f settings.FieldDef, value string, errs map[string]string) t
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				if value == "" {
+				if radioEffectiveValue(f, value) == "" {
 					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 177, "<input type=\"radio\" id=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
@@ -2483,7 +2483,7 @@ func schemaRadioRow(f settings.FieldDef, value string, errs map[string]string) t
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				if opt.Value == value {
+				if opt.Value == radioEffectiveValue(f, value) {
 					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 187, "<input type=\"radio\" id=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err

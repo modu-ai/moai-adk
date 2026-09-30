@@ -502,7 +502,7 @@ templ schemaRadioRow(f settings.FieldDef, value string, errs map[string]string) 
 				<div class="seg seg--stacked">
 					for _, opt := range f.Options {
 						<label class="seg__b">
-							if opt.Value == value {
+							if opt.Value == radioEffectiveValue(f, value) {
 								<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value } checked/>
 							} else {
 								<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value }/>
@@ -516,7 +516,7 @@ templ schemaRadioRow(f settings.FieldDef, value string, errs map[string]string) 
 				<div class="seg">
 					if f.EmptyLabel != "" {
 						<label class="seg__b">
-							if value == "" {
+							if radioEffectiveValue(f, value) == "" {
 								<input type="radio" id={ f.Name + "--empty" } name={ f.Name } value="" checked/>
 							} else {
 								<input type="radio" id={ f.Name + "--empty" } name={ f.Name } value=""/>
@@ -526,7 +526,7 @@ templ schemaRadioRow(f settings.FieldDef, value string, errs map[string]string) 
 					}
 					for _, opt := range f.Options {
 						<label class="seg__b">
-							if opt.Value == value {
+							if opt.Value == radioEffectiveValue(f, value) {
 								<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value } checked/>
 							} else {
 								<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value }/>
