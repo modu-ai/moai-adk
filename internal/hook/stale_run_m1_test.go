@@ -91,6 +91,11 @@ func TestStaleRunNoticeLegacySessionRecord(t *testing.T) { // AC-RNC-025 (b)
 
 func TestStaleRunNoticeFactoryLegacyLabel(t *testing.T) { // AC-RNC-022 hook clause
 	root := newStaleRunRoot(t)
+	// SPEC-STALE-RUN-LABEL-001 REQ-SRL-001/002: the retire prescription is
+	// run-state gated, so the prescription branch this test pins requires
+	// the run to measure active — a dead run gets the unbind notice instead
+	// (stale_run_gate_test.go).
+	recordActiveFactoryRun(t, root, "runR")
 	t.Setenv(config.EnvMoaiKanbanID, "runR")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "4")
 	t.Setenv(config.EnvMoaiFactoryWorker, "worker-2")
