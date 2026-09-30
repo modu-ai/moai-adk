@@ -167,11 +167,17 @@ func TestUnbindNoticeRebindLinePresence(t *testing.T) { // AC-SRL-005 (b)
 func TestPrescriptionGateUnavailableFailsOpen(t *testing.T) { // AC-SRL-008
 	root := t.TempDir()
 	run := "srl-unavailable"
-	dir := filepath.Join(root, ".moai", "factory")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	// The garbage DB must land on the path the shared accessor actually
+	// reads (homestate.FactoryDBPath) — a guessed spelling would measure
+	// not-active instead of unavailable.
+	dbPath, err := homestate.FactoryDBPath(root)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "factory.db"), []byte("definitely not a sqlite database"), 0o600); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dbPath, []byte("definitely not a sqlite database"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	srlGateEnv(t, run, "worker-69")
@@ -201,7 +207,12 @@ func TestClearSourceDeadRunEnvYieldsUnbound(t *testing.T) { // AC-SRL-004
 	}
 	// No effective dead-run binding is carried into the fresh session: the
 	// run's broker was never opened on this path, so no broker can exist.
-	if _, err := os.Stat(filepath.Join(root, ".moai", "factory", "messages", run, "broker.db")); !os.IsNotExist(err) {
+	// The path comes from the broker path accessor, not a guessed spelling.
+	brokerPath, err := factorymsg.BrokerPath(root, run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(brokerPath); !os.IsNotExist(err) {
 		t.Errorf("a broker was created for a dead-run session at the /clear boundary")
 	}
 }

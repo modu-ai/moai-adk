@@ -26,6 +26,7 @@
 package hook
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -50,7 +51,10 @@ import (
 func factoryBootstrapNotice(root, sessionID, lang string) string {
 	if label := os.Getenv(config.EnvMoaiFactoryWorker); label != "" {
 		if kanban.IsLegacyFactoryRoleValue(label) {
-			return legacyFactoryHookNotice(label, os.Getenv(config.EnvMoaiKanbanID), lang)
+			// Run-state gated: an active run prescribes once, a dead run
+			// unbinds once, an unmeasurable one degrades — never an
+			// unconditional prescription (SPEC-STALE-RUN-LABEL-001).
+			return staleRunPrescriptionGate(context.Background(), root, sessionID, label, os.Getenv(config.EnvMoaiKanbanID), lang)
 		}
 		return factoryLaneNotice(label, factoryLanesEnv(), lang)
 	}
