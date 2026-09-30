@@ -754,7 +754,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 | `moai graph <build\|query>` | 코드베이스 그래프(edges.jsonl) 생성·조회 — 호출자 찾기, 폭발 반경, 마일스톤 교차검사 |
 | `moai cc` / `moai glm` | Claude 전용 / GLM 전용 세션 |
 | `moai codex [cli\|status\|app]` | Codex 런처 — 인자 없이 부르면 Codex CLI를 기동한다. `status`는 준비 상태만 보여주고 아무것도 띄우지 않는다 |
-| `moai worktree <sync\|done\|hoist\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 유지 관리 (워크트리 진입은 런처의 몫) |
+| `moai worktree <sync\|done\|sweep\|hoist\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 유지 관리 (워크트리 진입은 런처의 몫) |
 | `moai session <list\|register\|current>` | 멀티 세션 조율 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 라이프사이클 도구 |
 | `moai goal <arm\|status\|clear>` | Goal 엔진 CLI |

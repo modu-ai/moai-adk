@@ -755,7 +755,7 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 | `moai graph <build\|query>` | Build/query the codebase graph (edges.jsonl) — caller lookup, blast radius, milestone cross-checks |
 | `moai cc` / `moai glm` | Claude-only / GLM-only sessions |
 | `moai codex [cli\|status\|app]` | Codex launcher — called with no verb it launches the Codex CLI; `status` prints the readiness readout and starts nothing |
-| `moai worktree <sync\|done\|hoist\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree maintenance (entering a worktree is the launchers' job) |
+| `moai worktree <sync\|done\|sweep\|hoist\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree maintenance (entering a worktree is the launchers' job) |
 | `moai session <list\|register\|current>` | Multi-session coordination |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC lifecycle tools |
 | `moai goal <arm\|status\|clear>` | Goal engine CLI |

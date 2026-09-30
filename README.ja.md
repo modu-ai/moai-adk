@@ -755,7 +755,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | `moai graph <build\|query>` | コードベースグラフ (edges.jsonl) の生成・照会 — 呼び出し元の検索、影響半径、マイルストーンの交差検査 |
 | `moai cc` / `moai glm` | Claude 専用 / GLM 専用のセッション |
 | `moai codex [cli\|status\|app]` | Codex ランチャー — 引数なしで呼ぶと Codex CLI を起動する。`status` は準備状態を表示するだけで何も起動しない |
-| `moai worktree <sync\|done\|hoist\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree の保守 (ワークツリーへの出入りはランチャーの仕事) |
+| `moai worktree <sync\|done\|sweep\|hoist\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree の保守 (ワークツリーへの出入りはランチャーの仕事) |
 | `moai session <list\|register\|current>` | マルチセッション調整 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC ライフサイクル・ツール |
 | `moai goal <arm\|status\|clear>` | ゴール・エンジン CLI |
