@@ -89,6 +89,22 @@ func ValidAuditModels() []string {
 	return []string{AuditModelClaude, AuditModelCodex, AuditModelGLM, AuditModelMulti}
 }
 
+// DefaultCodexAuditModel is the codex audit pin default — the same id the
+// DefaultAuditConfig Codex cell writes (SPEC-MODEL-MATRIX-UPDATE-001
+// REQ-MMU-001/002). Declared here so the web closed set derives from the
+// constant the resolver writes instead of restating the literal.
+const DefaultCodexAuditModel = "gpt-6.1-sol"
+
+// ValidCodexAuditModels returns the closed set for workflow.audit.codex.model
+// (card t1278): the runtime default first, then the two ids with real
+// stored-value evidence (gpt-5.6-sol — operator screenshot 2026-09-30 ·
+// primary-checkout workflow.yaml; gpt-5.6 — the schema example). A stored
+// foreign id keeps round-tripping through the RC2 passthrough-preserve in
+// parseSchemaForm; widening is a one-line change here.
+func ValidCodexAuditModels() []string {
+	return []string{DefaultCodexAuditModel, "gpt-5.6-sol", "gpt-5.6"}
+}
+
 // ValidProjectContinuations returns the closed set for
 // workflow.project.continuation, derived from the ProjectContinuation*
 // constants the resolver validates against

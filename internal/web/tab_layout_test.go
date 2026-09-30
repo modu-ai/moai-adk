@@ -22,8 +22,8 @@ import (
 // slices the final panel to end-of-document. SPEC-AGENT-MODEL-INHERIT-001
 // removes the agentfm (agent-settings) tab.
 var wantTabOrder = []string{
-	"identity", "language", "launch", "llm", "workflow",
-	"git-worktree", "audit", "codex", "report", "mcp", "crosssession",
+	"identity", "language", "launch", "llm", "codex", "workflow",
+	"git-worktree", "audit", "report", "mcp", "crosssession",
 	"feedback", "gate",
 }
 

@@ -22,7 +22,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -80,36 +79,11 @@ func seedExoticSelectValues(t *testing.T, root string) {
 
 // selOptionRe matches one rendered <option> element, capturing its value
 // attribute and the remaining attributes (to test for `selected`).
-var selOptionRe = regexp.MustCompile(`<option value="([^"]*)"([^>]*)>`)
 
 // browserSelectedValue returns the value a real browser would submit for the
 // named select: the option carrying `selected`, or the FIRST option when none
 // is marked (the browser's auto-select rule — the exact mechanism behind the
 // silent revert).
-func browserSelectedValue(t *testing.T, body, fieldName string) string {
-	t.Helper()
-	i := strings.Index(body, `name="`+fieldName+`"`)
-	if i < 0 {
-		t.Fatalf("select %q is not rendered on the page", fieldName)
-	}
-	seg := body[i:]
-	if j := strings.Index(seg, "</select>"); j >= 0 {
-		seg = seg[:j]
-	}
-	first := ""
-	for _, m := range selOptionRe.FindAllStringSubmatch(seg, -1) {
-		if first == "" {
-			first = m[1]
-		}
-		if strings.Contains(m[2], "selected") {
-			return m[1]
-		}
-	}
-	if first == "" {
-		t.Fatalf("select %q renders no options", fieldName)
-	}
-	return first
-}
 
 // TestSchemaSelectSyntheticCurrentOptionRendered pins the render half of RC2:
 // when the persisted value is outside the offered option set, the select must
@@ -121,15 +95,18 @@ func TestSchemaSelectSyntheticCurrentOptionRendered(t *testing.T) {
 	seedExoticSelectValues(t, root)
 	body := renderSettingsGET(newAppWithRoot(t, root))
 
-	// The two SELECT widgets carrying the out-of-set value. (The audit backend
-	// picker workflow.audit.model is a radio — an unlisted value leaves every
-	// button unchecked and submits nothing, so it needs no synthetic option.)
+	// t1278 converted both former selects to radios (the audit backend picker
+	// workflow.audit.model was already one). A radio carrying an out-of-set
+	// value renders NO checked button — the browser submits nothing for the
+	// field and parseSchemaForm preserves (EC-1); the POST round-trip test
+	// below pins that end to end. The synthetic-(saved)-option mechanism only
+	// ever applied to <select> widgets, so it has no radio counterpart.
 	for _, name := range []string{"llm.glm.models.high", "workflow.audit.glm.model"} {
-		if got := browserSelectedValue(t, body, name); got != "glm-5.2" {
-			t.Errorf("%s: browser would submit %q, want the persisted %q — no selected synthetic option, the first offered option wins and silently rewrites the value", name, got, "glm-5.2")
+		if !strings.Contains(body, `name="`+name+`"`) {
+			t.Fatalf("%s: radio group not rendered", name)
 		}
-		if !strings.Contains(body, "glm-5.2"+schemaSavedCurrentSuffix) {
-			t.Errorf("synthetic option for %q lacks the (saved) label", "glm-5.2")
+		if strings.Contains(body, `name="`+name+`" value="glm-5.2" checked`) {
+			t.Errorf("%s: out-of-set value rendered as checked — the browser would silently rewrite the persisted value", name)
 		}
 	}
 }
@@ -147,9 +124,12 @@ func TestBrowserRoundTripPreservesExoticSelectValues(t *testing.T) {
 
 	form := url.Values{}
 	form.Set("__profile", "default")
-	for _, name := range []string{"llm.glm.models.high", "workflow.audit.glm.model"} {
-		form.Set(name, browserSelectedValue(t, body, name))
-	}
+	// t1278 — both former selects are radios now: an out-of-set value leaves
+	// the group unchecked, the browser submits NOTHING for the field, and the
+	// pin survives via empty=preserve. The POST below is deliberately silent
+	// on them (browser-equivalent). browserSelectedValue stays for the
+	// remaining <select> surfaces.
+	_ = body
 	rec := postGLMSave(a, form)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("save status = %d, want 200; body: %s", rec.Code, rec.Body.String())

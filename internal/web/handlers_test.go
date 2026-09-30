@@ -108,13 +108,12 @@ func TestIndexRendersPopulatedForm(t *testing.T) {
 			t.Errorf("rendered form missing %q", want)
 		}
 	}
-	// Selected language option should be marked.
+	// language stays a select (langSelect widget, t1278 scope-out).
 	if !strings.Contains(body, `<option value="ko" selected`) {
 		t.Errorf("conversation_lang=ko not marked selected:\n%s", body)
 	}
-	// permission_mode=acceptEdits should be selected.
-	if !strings.Contains(body, `<option value="acceptEdits" selected`) {
-		t.Error("permission_mode=acceptEdits not marked selected")
+	if !strings.Contains(body, `name="permission_mode" value="acceptEdits" checked`) {
+		t.Error("permission_mode=acceptEdits not marked checked")
 	}
 }
 
