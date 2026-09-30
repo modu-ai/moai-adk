@@ -2,9 +2,9 @@
 id: SPEC-FACTORY-LANE-AUTONOMY-001
 title: "Factory lane autonomy completion — messaging-fallback self-service, classified pickup, lane-direct merge, post-push disposal"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-29
-updated: 2026-09-29
+updated: 2026-09-30
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"

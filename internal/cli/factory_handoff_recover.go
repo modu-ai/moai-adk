@@ -50,10 +50,12 @@ func newFactoryCommand() *cobra.Command {
 	recover.Flags().StringVar(&decision, "decision", "", "Recovery decision: requeue or fail")
 	handoff.AddCommand(recover)
 	handoff.AddCommand(newAbandonLaneCommand())
+	handoff.AddCommand(newFactoryAdoptCommand())
 	factory.AddCommand(handoff)
 	factory.AddCommand(newFactoryRunsCommand())
 	factory.AddCommand(newFactoryAssignCommand(), newFactoryStatusCommand(), newFactoryDecideCommand(),
 		newFactoryNextCommand(), newFactoryStageCommand(), newFactoryCompleteCommand())
+	factory.AddCommand(newFactoryMessagingCommand(), newFactoryFallbackCommand())
 	return factory
 }
 
