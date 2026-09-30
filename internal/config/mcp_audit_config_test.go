@@ -54,11 +54,17 @@ func TestAuditConfig_DefaultProfile(t *testing.T) {
 	if a.Gates.GLM != AuditGateAdvisory {
 		t.Errorf("default Gates.GLM = %q, want %q (advisory — user-enabled)", a.Gates.GLM, AuditGateAdvisory)
 	}
-	if a.Claude.Model != "sonnet" {
-		t.Errorf("default Claude.Model = %q, want sonnet", a.Claude.Model)
+	if a.Claude.Model != "claude-opus-5-5" {
+		t.Errorf("default Claude.Model = %q, want claude-opus-5-5", a.Claude.Model)
 	}
-	if a.Claude.Effort != "high" {
-		t.Errorf("default Claude.Effort = %q, want high", a.Claude.Effort)
+	if a.Claude.Effort != "medium" {
+		t.Errorf("default Claude.Effort = %q, want medium", a.Claude.Effort)
+	}
+	if a.Codex.Model != "gpt-6.1-sol" {
+		t.Errorf("default Codex.Model = %q, want gpt-6.1-sol", a.Codex.Model)
+	}
+	if a.Codex.Effort != "high" {
+		t.Errorf("default Codex.Effort = %q, want high", a.Codex.Effort)
 	}
 }
 

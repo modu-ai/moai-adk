@@ -135,7 +135,7 @@ func TestFactoryOperationalFixtureUsesProductionInit(t *testing.T) {
 	)
 	payload, err := json.Marshal(map[string]any{
 		"session_id": "01a0c977-bdb7-7013-81e2-3bc3a96269c3", "turn_id": "turn-live6",
-		"cwd": root, "hook_event_name": "UserPromptSubmit", "model": "gpt-5.6-sol",
+		"cwd": root, "hook_event_name": "UserPromptSubmit", "model": "gpt-6.1-sol",
 		"permission_mode": "default", "prompt": "Reply with exactly FACTORY_READY_1 and do not call any tool.",
 		"transcript_path": nil,
 	})
@@ -296,8 +296,8 @@ func TestFactoryOperationalPromptReadinessGate(t *testing.T) {
 		want         bool
 	}{
 		{name: "loading", output: "OpenAI Codex\nmodel: loading\ndirectory: loading", want: false},
-		{name: "status without composer", output: "OpenAI Codex\nmodel: gpt-5.6-sol\ndirectory: /tmp/project\nsession id: actual", want: false},
-		{name: "ready after loading", output: "model: loading\ndirectory: loading\nmodel: gpt-5.6-sol\ndirectory: /tmp/project\nAsk Codex to do anything", want: true},
+		{name: "status without composer", output: "OpenAI Codex\nmodel: gpt-6.1-sol\ndirectory: /tmp/project\nsession id: actual", want: false},
+		{name: "ready after loading", output: "model: loading\ndirectory: loading\nmodel: gpt-6.1-sol\ndirectory: /tmp/project\nAsk Codex to do anything", want: true},
 		{name: "old composer before hook trust", output: "Ask Codex to do anything\nTrusting hooks...", want: false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -337,7 +337,7 @@ func TestOperationalExecutableIdentityCanonicalizesPathAliases(t *testing.T) {
 
 func TestFactoryOperationalPromptReadinessProcessBoundary(t *testing.T) {
 	terminal := &operationalTerminal{}
-	cmd := exec.Command("/bin/sh", "-c", "printf 'model: loading\\ndirectory: loading\\n'; sleep 0.10; printf 'model: gpt-5.6-sol\\ndirectory: /tmp/project\\nAsk Codex to do anything\\n'")
+	cmd := exec.Command("/bin/sh", "-c", "printf 'model: loading\\ndirectory: loading\\n'; sleep 0.10; printf 'model: gpt-6.1-sol\\ndirectory: /tmp/project\\nAsk Codex to do anything\\n'")
 	cmd.Stdout, cmd.Stderr = terminal, terminal
 	started := time.Now()
 	if err := cmd.Start(); err != nil {

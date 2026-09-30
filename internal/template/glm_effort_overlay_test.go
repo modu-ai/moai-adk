@@ -128,8 +128,9 @@ func TestSessionGLMReasoningStateForEffort(t *testing.T) {
 }
 
 // TestIsGLMFlashModel covers the flash-model predicate: exact id, decorated
-// id, case-insensitive input; and the non-flash negatives (glm-5.3 itself,
-// glm-5.1, empty).
+// id, case-insensitive input; and the non-flash negatives (glm-5.3 itself, a
+// removed old-model id — the raw literal stands in for it after the DR-2
+// constant deletion, empty).
 func TestIsGLMFlashModel(t *testing.T) {
 	tests := []struct {
 		model string
@@ -139,7 +140,7 @@ func TestIsGLMFlashModel(t *testing.T) {
 		{"GLM-5.3-FLASH", true},
 		{"glm-5.3-flash[1m]", true},
 		{config.DefaultGLM53, false},
-		{config.DefaultGLM51, false},
+		{"glm-5.1", false},
 		{"", false},
 	}
 	for _, tt := range tests {
@@ -173,7 +174,7 @@ func TestCollapseClaudeEffortToGLMForModel(t *testing.T) {
 		{config.DefaultGLM53, EffortLevelLow, GLMStateLow, GLMReasoningEffortLow},
 		{config.DefaultGLM53, EffortLevelMedium, GLMStateMax, GLMReasoningEffortMax},
 		{config.DefaultGLM53, "bogus", GLMStateMax, GLMReasoningEffortMax},
-		{config.DefaultGLM51, EffortLevelLow, GLMStateLow, GLMReasoningEffortLow},
+		{"glm-5.1", EffortLevelLow, GLMStateLow, GLMReasoningEffortLow},
 		{"", EffortLevelLow, GLMStateLow, GLMReasoningEffortLow},
 	} {
 		got := CollapseClaudeEffortToGLMForModel(tc.model, tc.effort)

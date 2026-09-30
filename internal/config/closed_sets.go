@@ -60,27 +60,27 @@ func ValidWorkflowDefaultModes() []string {
 // slots, default-first: glm-5.3-flash (the default) leads, and no capability
 // ordering between flash and glm-5.3 is claimed beyond that placement.
 //
+// DELETION + WITHDRAWAL RECORD (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-004,
+// DR-2 — operator override 2026-09-30): the set is exactly
+// {glm-5.3-flash, glm-5.3}. The former extras glm-5.1, glm-4.7, and
+// glm-4.5-air are withdrawn from the offered set, and ALL old-model id
+// surfaces — the named "glm-4.5"-through-"glm-5-turbo" constants, the
+// statusline context-window entries, the legacy opus/sonnet/haiku alias
+// fields — are deleted outright, superseding the glm-5.2 precedent of
+// withdrawing the offered value while keeping its constant loadable. A
+// stored tier-slot value naming a removed id resolves to the tier default
+// with a one-line warning (fail-open); the llm.glm.context_windows user
+// override key stays the path that still maps a custom window for any id.
+//
 // The members are DERIVED from the DefaultGLM* constants rather than restated:
 // a second literal list would drift from the defaults the launcher actually
 // injects, and the widget would keep offering a model id the runtime no longer
-// maps. Note that these constants are not the only occurrences of these ids in
-// the tree — the statusline context-window table keys on some of them too — but
-// they are the SSOT for "which model may a tier slot hold", which is what this
-// set answers.
-//
-// glm-5.3 is listed EXPLICITLY (DefaultGLM53) even though no tier slot
+// maps. glm-5.3 is listed EXPLICITLY (DefaultGLM53) even though no tier slot
 // defaults to it anymore: the set derives from constants, so a default
 // retarget without the explicit member would silently drop glm-5.3 from the
 // offered set and break an existing explicit selection.
-//
-// glm-5.2 was withdrawn from this set once a single model became the default
-// for every tier: offering the immediate predecessor of the default buys
-// nothing a user wants and costs a widget row. DefaultGLM52 itself is
-// DELIBERATELY retained as a constant — an existing llm.yaml may still name
-// glm-5.2 in a tier slot, and the statusline context-window table still
-// resolves it, so the id stays loadable even though it is no longer offered.
 func ValidGLMModels() []string {
-	return []string{DefaultGLM53Flash, DefaultGLM53, DefaultGLM51, DefaultGLM47, DefaultGLM45Air}
+	return []string{DefaultGLM53Flash, DefaultGLM53}
 }
 
 // ValidAuditModels returns the closed set for workflow.audit.model, derived

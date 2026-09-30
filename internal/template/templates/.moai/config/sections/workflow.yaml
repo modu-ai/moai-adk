@@ -105,15 +105,17 @@ workflow:
     # never a hard error). codex effort vocabulary: low|medium|high|xhigh|max.
     # glm effort vocabulary (z.ai reasoning states, verbatim): low|high|max —
     # any other non-empty value omits the reasoning directive while the model
-    # pin still applies. Claude ships at sonnet/high; Codex and GLM pins ship
-    # EMPTY and may be set per project.
+    # pin still applies. Claude ships at claude-opus-5-5/medium and Codex at
+    # gpt-6.1-sol/high (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-001/002, which
+    # supersede the REQ-AMP-005 empty-pin neutrality per operator directive
+    # 2026-09-30); the GLM pin ships EMPTY and may be set per project.
     audit:
         claude:
-            model: sonnet
-            effort: high
+            model: claude-opus-5-5
+            effort: medium
         codex:
-            model: ""
-            effort: ""
+            model: gpt-6.1-sol
+            effort: high
         glm:
             model: ""
             effort: ""

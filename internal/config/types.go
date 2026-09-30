@@ -353,15 +353,18 @@ type GLMTierEffort struct {
 }
 
 // GLMModels represents GLM model mappings by performance tier.
+//
+// DELETION RECORD (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-004, DR-2): the
+// legacy backward-compat alias fields Opus/Sonnet/Haiku are removed. An
+// existing llm.yaml carrying the alias keys (`opus:`/`sonnet:`/`haiku:`) is
+// read by the non-strict section loader, which silently ignores unknown keys
+// — that silent drop is the accepted, deliberate half of DR-2 (no migration
+// tool, no error transition).
 type GLMModels struct {
 	High   string `yaml:"high"`   // Complex reasoning
 	Medium string `yaml:"medium"` // Balanced performance
 	Low    string `yaml:"low"`    // Fast exploration
 	Fable  string `yaml:"fable"`  // Fable tier (Claude Code ANTHROPIC_DEFAULT_FABLE_MODEL)
-	// Legacy fields for backward compatibility
-	Opus   string `yaml:"opus"`   // Maps to High
-	Sonnet string `yaml:"sonnet"` // Maps to Medium
-	Haiku  string `yaml:"haiku"`  // Maps to Low
 }
 
 // PricingConfig represents the pricing configuration section.

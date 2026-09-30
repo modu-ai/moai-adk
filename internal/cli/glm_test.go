@@ -372,25 +372,30 @@ func TestResolveGLMModels(t *testing.T) {
 		wantLow    string
 	}{
 		{
-			name:       "only High/Medium/Low set",
-			models:     config.GLMModels{High: "custom-high", Medium: "custom-medium", Low: "custom-low"},
-			wantHigh:   "custom-high",
-			wantMedium: "custom-medium",
-			wantLow:    "custom-low",
+			// Offered-set values pass through verbatim (the passthrough half
+			// of the REQ-MMU-004 fallback: only out-of-set values fall back).
+			name:       "offered High/Medium/Low set passes through",
+			models:     config.GLMModels{High: "glm-5.3", Medium: "glm-5.3-flash", Low: "glm-5.3-flash"},
+			wantHigh:   "glm-5.3",
+			wantMedium: "glm-5.3-flash",
+			wantLow:    "glm-5.3-flash",
 		},
 		{
-			name:       "only Opus/Sonnet/Haiku set",
-			models:     config.GLMModels{Opus: "legacy-opus", Sonnet: "legacy-sonnet", Haiku: "legacy-haiku"},
-			wantHigh:   "legacy-opus",
-			wantMedium: "legacy-sonnet",
-			wantLow:    "legacy-haiku",
+			// REQ-MMU-004 (DR-2): a REMOVED old-model id (glm-4.7 and friends
+			// were fully deleted) falls back to the tier default — never a
+			// silent pass-through. The offered-set values pass through.
+			name:       "removed ids fall back to the tier default",
+			models:     config.GLMModels{High: "glm-4.7", Medium: "glm-5.1", Low: "glm-4.6"},
+			wantHigh:   defaults.GLM.Models.High,
+			wantMedium: defaults.GLM.Models.Medium,
+			wantLow:    defaults.GLM.Models.Low,
 		},
 		{
-			name:       "both set - High/Medium/Low priority",
-			models:     config.GLMModels{High: "new-high", Medium: "new-medium", Low: "new-low", Opus: "old-opus", Sonnet: "old-sonnet", Haiku: "old-haiku"},
-			wantHigh:   "new-high",
-			wantMedium: "new-medium",
-			wantLow:    "new-low",
+			name:       "arbitrary unknown id falls back to the tier default",
+			models:     config.GLMModels{High: "totally-made-up"},
+			wantHigh:   defaults.GLM.Models.High,
+			wantMedium: defaults.GLM.Models.Medium,
+			wantLow:    defaults.GLM.Models.Low,
 		},
 		{
 			name:       "neither set - defaults",
@@ -414,6 +419,41 @@ func TestResolveGLMModels(t *testing.T) {
 				t.Errorf("low = %q, want %q", gotLow, tt.wantLow)
 			}
 		})
+	}
+}
+
+// TestResolveGLMModels_WarnsOnRemovedId pins the one-line stderr warning of
+// REQ-MMU-004 (DR-2's management device): the fallback for a removed id is
+// announced on ONE line naming the removed value, the slot, and the tier
+// default — fail-open, never silent, never a hard error.
+func TestResolveGLMModels_WarnsOnRemovedId(t *testing.T) {
+	defaults := config.NewDefaultLLMConfig()
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe: %v", err)
+	}
+	prevStderr := os.Stderr
+	os.Stderr = w
+	defer func() { os.Stderr = prevStderr }()
+
+	_, _, _, _ = resolveGLMModels(config.GLMModels{High: "glm-4.7"})
+
+	if err := w.Close(); err != nil {
+		t.Fatalf("close pipe writer: %v", err)
+	}
+	out := make([]byte, 4096)
+	n, _ := r.Read(out)
+	stderrText := string(out[:n])
+	_ = r.Close()
+
+	if strings.Count(stderrText, "\n") != 1 {
+		t.Errorf("fallback warning must be exactly ONE line, got %d newlines:\n%s", strings.Count(stderrText, "\n"), stderrText)
+	}
+	for _, want := range []string{"glm-4.7", "high", defaults.GLM.Models.High} {
+		if !strings.Contains(stderrText, want) {
+			t.Errorf("warning line missing %q:\n%s", want, stderrText)
+		}
 	}
 }
 

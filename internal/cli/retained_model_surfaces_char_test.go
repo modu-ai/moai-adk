@@ -65,8 +65,12 @@ func TestCharacterize_GLMAliasMapping(t *testing.T) {
 		wantH, wantM, wantL, wantFable string
 	}{
 		{"empty falls back to defaults", config.GLMModels{}, d.High, d.Medium, d.Low, d.Fable},
-		{"legacy aliases", config.GLMModels{Opus: "o", Sonnet: "s", Haiku: "h"}, "o", "s", "h", d.Fable},
-		{"tier keys win over legacy", config.GLMModels{High: "H", Medium: "M", Low: "L", Fable: "F", Opus: "o", Sonnet: "s", Haiku: "h"}, "H", "M", "L", "F"},
+		// The legacy opus/sonnet/haiku alias FIELDS are deleted (REQ-MMU-004,
+		// DR-2) — the characterization now pins the removal behavior instead:
+		// a removed or unknown id falls back to the tier default (never a
+		// silent pass-through).
+		{"removed ids fall back to defaults", config.GLMModels{High: "glm-4.7", Medium: "glm-5.1", Low: "glm-4.6", Fable: "glm-5.2"}, d.High, d.Medium, d.Low, d.Fable},
+		{"offered ids pass through", config.GLMModels{High: "glm-5.3", Medium: "glm-5.3-flash", Low: "glm-5.3-flash", Fable: "glm-5.3"}, "glm-5.3", "glm-5.3-flash", "glm-5.3-flash", "glm-5.3"},
 	}
 	for _, tc := range cases {
 		h, m, l, f := resolveGLMModels(tc.in)

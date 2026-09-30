@@ -133,9 +133,9 @@ func TestAuditPinFields_SeamRoundTrip(t *testing.T) {
 	seedSectionFixture(t, root, "workflow")
 
 	edits := []yamlpatch.KeyEdit{
-		{Path: []string{"workflow", "audit", "claude", "model"}, Value: "sonnet"},
-		{Path: []string{"workflow", "audit", "claude", "effort"}, Value: "high"},
-		{Path: []string{"workflow", "audit", "codex", "model"}, Value: "gpt-5.6-sol"},
+		{Path: []string{"workflow", "audit", "claude", "model"}, Value: "claude-opus-5-5"},
+		{Path: []string{"workflow", "audit", "claude", "effort"}, Value: "medium"},
+		{Path: []string{"workflow", "audit", "codex", "model"}, Value: "gpt-6.1-sol"},
 		{Path: []string{"workflow", "audit", "codex", "effort"}, Value: "high"},
 		{Path: []string{"workflow", "audit", "glm", "model"}, Value: "glm-5.3"},
 		{Path: []string{"workflow", "audit", "glm", "effort"}, Value: "max"},
@@ -156,11 +156,11 @@ func TestAuditPinFields_SeamRoundTrip(t *testing.T) {
 		t.Fatalf("unmarshal written workflow.yaml: %v\n%s", err, raw)
 	}
 	audit := wrapper.Workflow.Audit
-	if audit.Claude.Model != "sonnet" || audit.Claude.Effort != "high" {
-		t.Errorf("claude pin round-trip: got %+v, want {sonnet high}", audit.Claude)
+	if audit.Claude.Model != "claude-opus-5-5" || audit.Claude.Effort != "medium" {
+		t.Errorf("claude pin round-trip: got %+v, want {claude-opus-5-5 medium}", audit.Claude)
 	}
-	if audit.Codex.Model != "gpt-5.6-sol" || audit.Codex.Effort != "high" {
-		t.Errorf("codex pin round-trip: got %+v, want {gpt-5.6-sol high}", audit.Codex)
+	if audit.Codex.Model != "gpt-6.1-sol" || audit.Codex.Effort != "high" {
+		t.Errorf("codex pin round-trip: got %+v, want {gpt-6.1-sol high}", audit.Codex)
 	}
 	if audit.GLM.Model != "glm-5.3" || audit.GLM.Effort != "max" {
 		t.Errorf("glm pin round-trip: got %+v, want {glm-5.3 max}", audit.GLM)
@@ -185,7 +185,7 @@ func TestAuditPinFields_SeamRoundTrip(t *testing.T) {
 	if wrapper.Workflow.Audit.GLM.Model != "" {
 		t.Errorf("cleared glm model = %q, want empty (web save with empty value persists empty strings)", wrapper.Workflow.Audit.GLM.Model)
 	}
-	if wrapper.Workflow.Audit.Codex.Model != "gpt-5.6-sol" {
+	if wrapper.Workflow.Audit.Codex.Model != "gpt-6.1-sol" {
 		t.Errorf("codex pin lost by the glm clear edit: %q", wrapper.Workflow.Audit.Codex.Model)
 	}
 }
