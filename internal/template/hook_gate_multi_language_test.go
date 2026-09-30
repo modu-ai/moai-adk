@@ -32,7 +32,7 @@ func gateMultiRun(t *testing.T, base, sync map[string]string, fail map[string]bo
 	bin := t.TempDir()
 	stubLog := filepath.Join(t.TempDir(), "stub.log")
 
-	tools := []string{"eslint", "ruff", "go"}
+	tools := []string{"eslint", "ruff", "go", "javac", "kotlinc"}
 	for _, name := range tools {
 		code := "0"
 		if fail[name] {
@@ -125,6 +125,34 @@ func TestSyncGateMultiLanguage_PassingCheckersAllow(t *testing.T) {
 	}
 	if strings.Contains(out, `"decision":"block"`) {
 		t.Errorf("passing checkers in every changed language must not block.\naudit: %q\nout: %q", audit, out)
+	}
+}
+
+// A mixed Kotlin+Java Gradle project must detect both languages: an elif let a
+// Kotlin hit suppress the Java candidate, so a java-only sync commit summed to
+// a zero code delta and passed without any checker running. Java must be
+// checked, and Kotlin — whose sources did not change — must not run.
+//
+// Sentinel on failure: SYNC_GATE_KOTLIN_SUPPRESSES_JAVA
+func TestSyncGateMultiLanguage_MixedKotlinJavaChecksChangedJava(t *testing.T) {
+	gateExitRequire(t)
+	base := map[string]string{
+		"build.gradle.kts": "plugins { kotlin(\"jvm\") }\n",
+		"A.kt":             "class A\n",
+	}
+	sync := map[string]string{"B.java": "class B { void broken( }\n"}
+	out, audit, stub := gateMultiRun(t, base, sync, map[string]bool{"javac": true})
+	if !strings.Contains(stub, "stub javac") {
+		t.Fatalf("premise: the javac checker must run for a java change.\nstub log: %q\naudit: %q", stub, audit)
+	}
+	if !strings.Contains(audit, "languages=kotlin,java") {
+		t.Fatalf("SYNC_GATE_KOTLIN_SUPPRESSES_JAVA: both languages must be detected in a mixed project.\naudit: %q", audit)
+	}
+	if strings.Contains(stub, "stub kotlinc") {
+		t.Errorf("kotlinc ran although no .kt file changed — checks must follow the changed languages.\nstub log: %q", stub)
+	}
+	if !strings.Contains(out, `"decision":"block"`) {
+		t.Errorf("SYNC_GATE_KOTLIN_SUPPRESSES_JAVA: broken java passed with no checker — the java candidate was suppressed.\naudit: %q\nout: %q", audit, out)
 	}
 }
 
