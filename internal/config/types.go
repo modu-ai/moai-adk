@@ -575,7 +575,6 @@ type WorkflowWorktreeConfig struct {
 	AutoCreate         bool   `yaml:"auto_create"`
 	AutoMerge          bool   `yaml:"auto_merge"`
 	SessionNamePattern string `yaml:"session_name_pattern"`
-	TmuxPreferred      bool   `yaml:"tmux_preferred"`
 }
 
 // WorkflowTodoConfig mirrors workflow.todo.* — the backlog-queue guidance gate

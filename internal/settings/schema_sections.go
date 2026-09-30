@@ -343,7 +343,6 @@ func seamSectionFields() []FieldDef {
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "auto_cleanup"),
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "auto_create"),
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "auto_merge"),
-		s(SectionWorkflow, "workflow", TypeBool, "workflow", "worktree", "tmux_preferred"),
 		// SPEC-WT-DOC-001 (branch-guard config surface): the distributed template
 		// ships without a branch_guard block, so this key is absent until the user
 		// opts in via `moai init --branch-guard` or the reconfigure wizard. The web

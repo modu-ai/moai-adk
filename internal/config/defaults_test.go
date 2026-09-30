@@ -517,7 +517,6 @@ func TestNewDefaultWorkflowConfigNestedDefaults(t *testing.T) {
 		{"Worktree.AutoCleanup", cfg.Worktree.AutoCleanup, false},
 		{"Worktree.AutoCreate", cfg.Worktree.AutoCreate, false},
 		{"Worktree.AutoMerge", cfg.Worktree.AutoMerge, false},
-		{"Worktree.TmuxPreferred", cfg.Worktree.TmuxPreferred, true},
 	}
 	for _, c := range boolChecks {
 		if c.got != c.want {

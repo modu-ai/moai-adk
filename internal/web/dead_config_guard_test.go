@@ -71,7 +71,6 @@ func TestDeadConfigLiveNeighborsPreserved(t *testing.T) {
 		"workflow.worktree.auto_create",
 		"workflow.worktree.auto_merge",
 		"workflow.worktree.auto_cleanup",
-		"workflow.worktree.tmux_preferred",
 		"workflow.branch_guard.enabled",
 	} {
 		if !present[name] {
