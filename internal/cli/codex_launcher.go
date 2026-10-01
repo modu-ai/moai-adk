@@ -69,7 +69,12 @@ const (
 
 	// codexSpawnReadoutDiag rejects --spawn on the readout forms (AC-CL-003):
 	// a readout is not something to open a new window for.
-	codexSpawnReadoutDiag           = "--spawn applies to the launch verbs only (moai codex cli --spawn / moai codex app --spawn)"
+	codexSpawnReadoutDiag = "--spawn applies to the launch verbs only (moai codex cli --spawn / moai codex app --spawn)"
+
+	// codexDebugReadoutDiag rejects -d/--debug on the readout forms
+	// (SPEC-CODEX-DEBUG-MODE-001 REQ-003), mirroring the --spawn discipline:
+	// a readout starts nothing there is nothing to trace.
+	codexDebugReadoutDiag           = "-d/--debug applies to the launch verbs only (moai codex cli -d / moai codex app -d)"
 	codexDuplicateLocalOverrideDiag = "duplicate developer_instructions override: local instruction inputs and operator config both set this key"
 )
 
@@ -622,6 +627,8 @@ var codexCmd = &cobra.Command{
 		"  -f lane-<n>          join as a numbered lane (CLI only)\n" +
 		"  Factory sessions show launch_pending until their first prompt binds a session UUID.\n" +
 		"  --spawn               open the launch in a new tmux window\n" +
+		"  -d, --debug           launcher debug: trace the pre-exec path to stderr\n" +
+		"                        (launcher-owned; the token never reaches codex)\n" +
 		"  -- <codex-args...>    arguments after -- pass to codex verbatim",
 	Example: "  # Launch the Codex CLI here\n" +
 		"  moai codex\n" +
@@ -650,6 +657,10 @@ func init() {
 	// (AC-CL-013); DisableFlagParsing means the launcher itself strips the
 	// flag via stripSpawnFlag before the verb lookup.
 	codexCmd.Flags().Bool("spawn", false, "open the launch in a new tmux window (cli/app verbs only)")
+	// Same registration rationale as --spawn (SPEC-CODEX-DEBUG-MODE-001):
+	// DisableFlagParsing means the launcher itself strips the debug tokens
+	// via stripCodexDebugFlag before the verb lookup.
+	codexCmd.Flags().Bool("debug", false, "launcher debug trace of the pre-exec path (cli/app verbs only)")
 }
 
 // runCodex routes the invocation: --help first (DisableFlagParsing means
@@ -667,6 +678,12 @@ func runCodex(cmd *cobra.Command, args []string) error {
 
 	args, spawn := stripSpawnFlag(args)
 	head, tail, hasTail := splitCodexDashDash(args)
+	// The debug tokens are launcher-owned on this launcher (SPEC-CODEX-DEBUG-
+	// MODE-001 REQ-001): the codex CLI rejects them, so the head's tokens are
+	// stripped here — never forwarded — and activate the launcher debug trace
+	// downstream. Tokens after -- are codex's own and were never inspected
+	// (REQ-002).
+	head, debugRequested := stripCodexDebugFlag(head)
 	// The factory entries classify before anything else is read or written
 	// (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-003/-004, narrowing
 	// REQ-CFR-001..005): `-f lane` routes to the per-card relaunch, every
@@ -719,6 +736,12 @@ func runCodex(cmd *cobra.Command, args []string) error {
 	}
 	if spawn {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), codexSpawnReadoutDiag)
+		return &exitCodeError{code: 1}
+	}
+	if debugRequested {
+		// REQ-003: the debug token on a readout refuses with the named
+		// diagnostic — a readout starts nothing there is nothing to trace.
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), codexDebugReadoutDiag)
 		return &exitCodeError{code: 1}
 	}
 	if hasTail {

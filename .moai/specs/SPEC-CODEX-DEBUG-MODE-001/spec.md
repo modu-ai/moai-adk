@@ -2,7 +2,7 @@
 id: SPEC-CODEX-DEBUG-MODE-001
 title: "Codex launcher debug mode: -d/--debug flag parity across the cc/glm/codex launchers, launcher-side pre-exec trace, and Codex CLI debug linkage"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-10-01
 updated: 2026-10-01
 author: manager-spec
