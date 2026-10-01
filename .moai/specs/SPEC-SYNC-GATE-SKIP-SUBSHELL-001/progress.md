@@ -99,7 +99,7 @@ plan_audit_gate_skip: "Phase-1 Plan Audit Gate skip taken per the authoritative 
 
 ```yaml
 sync_complete_at: 2026-10-02
-sync_commit_sha: pending-backfill-sync  # D3 backfill window: placeholder written by the sync commit itself; the real SHA is backfilled by the next chore commit (a commit cannot cite its own hash)
+sync_commit_sha: 9cd576861c2082d1c2658cc50a1de87c8edf0e36  # D3-exempt backfill: the pending-backfill-sync placeholder in the sync commit replaced with the real SHA by the phase-owning agent (spec-frontmatter-schema § SHA placeholder backfill exemption)
 sync_status: complete
 b12_self_test_a: pass  # pre-emission grep `grep -c 'SPEC-SYNC-GATE-SKIP-SUBSHELL-001' CHANGELOG.md` = 0 before this sync commit (duplicate-entry guard)
 b12_self_test_b: pass  # AC count against acceptance.md (tier M source): 8 unique live identifiers AC-001..008, zero reserved tokens (live=8 excluded=0 ambiguous=0); the CHANGELOG entry cites the same 8
