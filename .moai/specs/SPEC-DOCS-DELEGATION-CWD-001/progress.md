@@ -42,9 +42,35 @@
 - AC-DSC-007 PASS (N2 지시대로 UNESCAPED 형태): `grep -cE "implemented .* completed|3-phase close" .claude/rules/moai/workflow/kanban-dispatch-mechanics.md` → `1`, exit=0; 양성 대조 `## Integration into the release branch` → `1`.
 - 항상 적재 예산: `agent-common-protocol.md` 증분 **487 바이트**(17,284 → 17,771) — ≤600B 목표 이내.
 
+### M2 — 콘텐츠 가드 테스트 (커밋 그래프 2번째 — M1 뒤)
+
+- 착지: `internal/template/docs_delegation_lane_flow_test.go` · `TestReconciliationProcedureDocumented` — 소절 제목 + 9개 필수 마커(5단계 + `WT-<slug>` + `3-phase close` + `ownership exception` + `structurally`) + 의무 문장 마커 2개(`runtime decision`, 소절 포인터) + 금지형(`git -C`/`--git-dir`) 소절 스코프 부정 검사(양성 대조: 소절 존재·마커 검사가 부정 검사보다 선행 — 빈 입력 공멸 차단). 로컬+템플릿 4사본 전부 스캔.
+- AC-DSC-003 GREEN: `unset MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS MOAI_FACTORY_ROLE MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL && go test -count=1 -run '^TestReconciliationProcedureDocumented$' ./internal/template/` → `ok github.com/modu-ai/moai-adk/internal/template 0.430s`, exit=0.
+- **변이 프로브 관측 3건** (verification-completeness §1.1 관측된 실패 완료):
+  1. 프로브 A (AC-DSC-003a — "증거 수확" 마커 단독 삭제 → `**Collect the reports.**` 로 치환): `--- FAIL: TestReconciliationProcedureDocumented` + `local: reconciliation procedure section lost a mandatory step marker "Harvest the evidence before disposal" (kanban-dispatch-mechanics.md)` — RED 관측.
+  2. 복원: 마커 원문 복구 후 `diff` C1↔C2 바이트 동일 재실측 (`C1==C2 restored: identical`).
+  3. 최종 GREEN: 안전 배치 `go test -count=1 -run '^TestReconciliationProcedureDocumented$|^TestRuleTemplateMirrorDrift$|^TestTemplateNoInternalContentLeak$|^TestSanitizedPairParity$' ./internal/template/` → `ok 1.811s`, exit=0.
+  4. 추가 프로브 B (AC-DSC-003 소절 제목 변이 → `### Reconciling an isolated spawn`): `--- FAIL: ...` + 소절 부재 에러 관측 뒤 복원 — 소절 존재 검사가 물린다는 별도 관측.
+- AC-DSC-004 GREEN (교체 기제 — AC 처분 (a) 기준): 같은 배치에서 `TestTemplateNoInternalContentLeak` + `TestSanitizedPairParity` 포함 `ok 1.811s`, exit=0 — 편집된 C2 미러 2파일이 누출·정화 쌍 계측을 통과.
+- AC-DSC-003의 RED-now 핀(e927266be: 테스트 파일 부재)은 plan-audit r2 가 본 트리와 동일 조건에서 재측정 완료 — 본 트리 기점 f22e2d7ac 도 테스트 파일 부재 동일 상태에서 시작.
+- 품질 게이트: `go vet ./internal/template/...` exit=0 · `moai spec lint SPEC-DOCS-DELEGATION-CWD-001` → `✓ No findings — all SPEC documents are valid` (설치 빌드 v3.2.0-rc.23, `moai_cp/20260925_122548-1711-gd194083fb` — r2 감사와 동일 보조 계측 caveat) · `make build` exit=0 (템플릿 편집 뒤 catalog.yaml 재생성 — 이 룰 2파일은 catalog 해시 대상이 아니어서 tracked 변경 0건 실측).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — manager-develop 소유>_
+- run_status: complete
+- run_complete_at: 2026-10-01
+- run_commit_sha: pending-backfill-run (커밋 그래프로 대체 — M1 `39e51b022` → M2 커밋 순서가 AC-DSC-008 의 목격자; 본 필드는 sync 커밋이 아닌 run 마지막 커밋을 가리키며 D3 백필 창에 둔다)
+- ac_pass_count: 9
+- ac_fail_count: 0
+- preserve_list_post_run_count: 0 (PRESERVE 위반 없음 — 편집 4룰파일+테스트 1+SPEC 산출물 5만 변경)
+- l44_pre_commit_fetch: n/a (격리 워크트리 — 공유 체크아웃 아님, 스폰 시점 분기 상태 기점 f22e2d7ac)
+- l44_post_push_fetch: n/a (push 없음 — 레인 화해 대기)
+- new_warnings_or_lints_introduced: 0 (`go vet` exit=0, spec lint 0 findings)
+- cross_platform_build.go_darwin: pass (`make build` exit=0, darwin/arm64 실측)
+- cross_platform_build.windows: not-run (문서+테스트-only 변경 — CI 가 전 판정; GOOS=windows 빌드는 Go 소스 비변경으로 생략, Gaps 기재)
+- total_run_phase_files: 10 (4 룰 + 1 테스트 + 5 SPEC 산출물)
+- m1_to_mN_commit_strategy: M1(문서+SPEC 산출물+진행) → M2(가드 테스트+진행) 2커밋 — 커밋 그래프가 순서를 목격(VCI §2.3)
+- isolated_spawn_note: 본 run-phase 자체가 REQ-DSC-002/003 의 첫 실측 사례 — 격리 트리 브랜치는 런타임 기명(`worktree-agent-a6ac0c2224378b493`) 유지, 레인이 화해 절차(WT- 개명 → ff-only 병합 → 증거 수확)를 수행한다. 증거 파일 `.moai/reports/t1387/run-ac-green.md` 은 gitignored 라 병합에 동행하지 않음 — REQ-DSC-007 수확 대상.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
