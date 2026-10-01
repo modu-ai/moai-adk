@@ -91,8 +91,11 @@ var autoRankJevLevels = [autoRankJevLevelCount]string{
 
 // Record line vocabulary. Every printed selection line is built from these.
 const (
-	autoRankLinePrefix   = "selection: "
-	autoRankLineSource   = autoRankLinePrefix + "source="
+	autoRankLinePrefix = "selection: "
+	// The source line is spelled out whole: acceptance AC-TAP-001's ledger row
+	// finds the record's writer by this contiguous literal, and a literal built
+	// from the prefix plus a fragment is invisible to that search.
+	autoRankLineSource   = "selection: source="
 	autoRankLineReason   = " reason="
 	autoRankLineRanked   = autoRankLinePrefix + "ranked "
 	autoRankLineFlagged  = autoRankLinePrefix + "flagged "
