@@ -125,7 +125,7 @@ m1_to_mN_commit_strategy: per-milestone commits M1..M5 on WT-codex-debug-mode-ru
 
 ```yaml
 sync_complete_at: 2026-10-02
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: fbaca1091
 sync_status: complete
 changelog_entry_position: "[Unreleased] > Added — first bullet (newest-first within the section; t1378's entry demoted one position)"
 b12_self_test_a: "pre-emission grep -c SPEC-CODEX-DEBUG-MODE-001 CHANGELOG.md → 0 (cleared to emit)"
