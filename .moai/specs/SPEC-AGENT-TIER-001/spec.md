@@ -2,9 +2,9 @@
 id: SPEC-AGENT-TIER-001
 title: "Three-tier subagent model-effort configuration (max/medium/low) with operator-fixed audit pins"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-01
-updated: 2026-10-01
+updated: 2026-10-02
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"

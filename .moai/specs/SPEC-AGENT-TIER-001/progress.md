@@ -217,7 +217,31 @@ run_complete_at: 2026-10-02
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync window 2026-10-02, card worktree `WT-agent-tier-max`, sync base `f0fa3cf75` (the run-phase
+final HEAD). Sync scope: CHANGELOG `[Unreleased]` `### Added` entry (top, most-recent-first
+convention), this §E.4 signal, README judgment, and the `spec.md` frontmatter
+`status: in-progress → implemented → completed` + `updated: 2026-10-02` transition. docs-site is
+out of this SPEC's scope (follow-up suggestion recorded in the sync report).
+
+- sync_commit_sha: pending-backfill
+- sync_date: 2026-10-02
+- sync_status: complete
+- b12_self_test_a: PASS — pre-emission grep `grep -c 'SPEC-AGENT-TIER-001' CHANGELOG.md` = 0
+  before the entry landed (no duplicate from a parallel BATCH-SYNC session).
+- b12_self_test_b: PASS — acceptance.md distinct live AC identifiers = 15 (AC-TIER-001..015;
+  zero `[RETIRED]`/`[REF]` markers anywhere in the file) = CHANGELOG entry count 15.
+- b12_self_test_c: PASS — every file path named in the CHANGELOG entry verified present via ls
+  (internal/config, internal/cli, internal/web, internal/settings, template workflow.yaml).
+- README judgment: no update — no README statement describes the audit pin values or a per-agent
+  tier surface; the "every agent inherits the session's model and reasoning effort" sentence
+  stays true because launcher-side tier consumption is downstream wiring no AC in this SPEC
+  gates, and the tier sub-section renders inside the existing Workflow tab so the settings-tab
+  enumeration is unchanged.
+- Verification (this run, this tree): `go test -timeout 30m ./internal/spec/... ./internal/config/...`
+  env-scrubbed compound form — ok (spec/config ok, exit 0); `make build` exit 0;
+  `./bin/moai spec lint` scoped to SPEC-AGENT-TIER-001 — clean (verbatim outputs carried in the
+  sync report and the sync commit evidence). internal/cli is not re-run in sync (sync changes no
+  Go code in it; the merge-tree re-measurement covers it).
 
 ## §F Phase 4 Mode Selection
 
