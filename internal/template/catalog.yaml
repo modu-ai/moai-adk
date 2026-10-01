@@ -167,7 +167,7 @@ catalog:
             - name: manager-todo
               tier: core
               path: templates/.claude/agents/moai/manager-todo.md
-              hash: 811507e72830c78556685fda0bdc4b4bde926985dd3c925b04b331078c0f573c
+              hash: 6cf817ab5aad6d01aa70c391c657586dc4f92f000e9e74562706e5d3f65d79c0
               version: 1.0.0
             - name: manager-design
               tier: core
