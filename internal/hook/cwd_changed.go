@@ -15,11 +15,22 @@ import (
 // Fired when the working directory changes during a session.
 // Supports CLAUDE_ENV_FILE for persisting environment variables.
 // Available since Claude Code v2.1.83+.
-type cwdChangedHandler struct{}
+type cwdChangedHandler struct {
+	// cfg provides the workflow.anchor_relocation_guard.enabled flag for the
+	// relocation path (SPEC-SESSION-ANCHOR-ATTR-001 REQ-SAA-005). Nil keeps
+	// the guard disabled — the distributed default.
+	cfg ConfigProvider
+}
 
 // NewCwdChangedHandler creates a new CwdChanged event handler.
 func NewCwdChangedHandler() Handler {
 	return &cwdChangedHandler{}
+}
+
+// NewCwdChangedHandlerWithConfig creates a new CwdChanged event handler with
+// the config provider the relocation guard flag reads.
+func NewCwdChangedHandlerWithConfig(cfg ConfigProvider) Handler {
+	return &cwdChangedHandler{cfg: cfg}
 }
 
 // EventType returns EventCwdChanged.
@@ -43,7 +54,7 @@ func (h *cwdChangedHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 
 	// t74: keep the registry entry's CWD in step with the session, so anchor
 	// detection sees sessions that entered a worktree mid-session.
-	relocateSessionCwd(input, newCwd)
+	relocateSessionCwd(input, newCwd, "CwdChanged", anchorRelocationGuardEnabled(h.cfg))
 
 	// Write project-specific environment to CLAUDE_ENV_FILE if available.
 	// This persists env vars into subsequent Bash tool calls.

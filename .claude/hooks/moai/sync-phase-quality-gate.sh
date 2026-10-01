@@ -242,6 +242,42 @@ if [ -z "$GATE_LANG_CANDIDATES" ]; then
     exit 0
 fi
 
+# The gate's own state and log paths, anchored at the repository root so the
+# exclusion holds whatever the hook's working directory is. The same set also
+# carries two wider exclusion classes. Other cards' worktrees
+# (.moai/worktrees, .claude/worktrees) are outside this session's change
+# scope — their sources joined the delta set, the vetted GO_ROOTS, and this
+# gate's content key, so a foreign card's compile failure blocked this
+# session's gate (observed RED, card t1392); a pathspec rather than a
+# .gitignore entry, for the same reason the two excludes below are one.
+# And the heavy dependency/build dirs mirror the prune set detect_languages
+# walks above (which itself mirrors sourceScanSkipDirs in
+# internal/hook/quality/gate.go), so every collector in this hook skips one
+# shared set of trees.
+WCI_EXCLUDES=(':(top,exclude).moai/state' ':(top,exclude).moai/logs'
+    ':(top,exclude).moai/worktrees' ':(top,exclude).claude/worktrees'
+    ':(glob,top,exclude)**/node_modules/**' ':(glob,top,exclude)**/vendor/**'
+    ':(glob,top,exclude)**/dist/**' ':(glob,top,exclude)**/build/**'
+    ':(glob,top,exclude)**/target/**' ':(glob,top,exclude)**/.next/**'
+    ':(glob,top,exclude)**/.output/**' ':(glob,top,exclude)**/.venv/**'
+    ':(glob,top,exclude)**/venv/**' ':(glob,top,exclude)**/__pycache__/**'
+    ':(glob,top,exclude)**/site-packages/**' ':(glob,top,exclude)**/.tox/**'
+    ':(glob,top,exclude)**/.nox/**' ':(glob,top,exclude)**/.mypy_cache/**'
+    ':(glob,top,exclude)**/.ruff_cache/**' ':(glob,top,exclude)**/.pytest_cache/**')
+
+# Ignored sources join the delta set AND the worktree key. The find-based
+# checkers (Ruby/PHP/C++ …) scan ignored sources, so a broken ignored file
+# added after a pass must both gate again and invalidate the stored key —
+# changing only the key would re-run the gate into a silent pass reuse, and
+# changing only the delta would re-check on every turn. Filtered to source
+# extensions so bulk-ignored trees stay cheap. Untracked (non-ignored) files
+# are NOT added here: a fix landing as uncommitted work already re-gates
+# through worktree_content_id, and adding its content to the HEAD delta would
+# double-count it across re-runs. (codex review gate reproduction — an ignored
+# generated.rb syntax error was skipped silently after a clean pass.)
+WCI_IGNORED_SOURCES=$(git ls-files --others --ignored --exclude-standard -- "${WCI_EXCLUDES[@]}" 2>/dev/null \
+    | grep -E '\.(go|py|js|ts|jsx|tsx|mjs|cjs|rb|php|rs|java|kt|kts|cs|ex|exs|cpp|cc|cxx|h|hpp|hxx|scala|r|R|dart|swift)$' || true)
+
 # Detect code-file changes in HEAD commit; skip if 0 code-file delta (markdown-only sync).
 # On an initial commit HEAD~1 does not exist, so diff against the empty tree instead.
 if git rev-parse --verify -q HEAD~1 >/dev/null 2>&1; then
@@ -251,12 +287,37 @@ else
 fi
 # grep -c is wrapped so its no-match exit (1) under `set -e` does not abort; the
 # result is normalized to a single integer (avoids a "0\n0" double-emit).
+# SYNC_DELTA_FILES: every source path this gate could be responsible for —
+# ① the sync commit's diff (what HEAD~1..HEAD touched), ② tracked uncommitted
+# changes (git diff HEAD), ③ untracked new files, and ④ ignored sources
+# (collected above). ③'s walk carries the WCI_EXCLUDES pathspecs — the same
+# set ④ and the content key already filter by: a new file inside a
+# dependency/build dir or another card's worktree is not this session's
+# change scope, and left unfiltered it entered CHANGED_LANGS here while
+# find_go_module_roots vetted the foreign module, so a docs-only change
+# blocked on a broken vendor module (observed RED, card t1392). The
+# checkers read the WORK TREE, so a broken file that
+# exists only uncommitted must gate the turn even when the commit itself
+# touched nothing in its language: the worktree key already changes (forcing a
+# re-run), but the changed-language set aggregates only what is listed here,
+# so leaving ② and ③ out let a Go compile error added beside a Ruby-only
+# commit pass with zero Go checks (codex review gate reproduction —
+# `language=ruby`, no go steps, decision=allow). sort -u deduplicates the
+# overlap between the four sources.
+SYNC_DELTA_FILES=$({ git diff --name-only "$DIFF_RANGE" 2>/dev/null || true
+                     git diff HEAD --name-only 2>/dev/null || true
+                     git ls-files --others --exclude-standard -- "${WCI_EXCLUDES[@]}" 2>/dev/null || true
+                     [ -n "$WCI_IGNORED_SOURCES" ] && printf '%s\n' "$WCI_IGNORED_SOURCES"
+                   } | sort -u)
+
 CODE_DELTA=0
 CHANGED_LANGS=""
 for detected_language in $GATE_LANG_CANDIDATES; do
     DELTA_PATTERN=$(code_delta_pattern "$detected_language")
     if [ -n "$DELTA_PATTERN" ]; then
-        DETECTED_DELTA=$(git diff --name-only "$DIFF_RANGE" 2>/dev/null | grep -cE "$DELTA_PATTERN" || true)
+        # printf of the multi-line variable (possibly empty) under a pipe
+        # keeps set -e from acting on grep.
+        DETECTED_DELTA=$(printf '%s\n' "$SYNC_DELTA_FILES" | grep -cE "$DELTA_PATTERN" || true)
         CODE_DELTA=$((CODE_DELTA + ${DETECTED_DELTA:-0}))
         if [ "${DETECTED_DELTA:-0}" -gt 0 ]; then
             CHANGED_LANGS="$CHANGED_LANGS $detected_language"
@@ -380,8 +441,16 @@ hash_stdin() {
 # which is the memo defeating itself. The exclusion is by pathspec rather than by
 # .gitignore, because whether a downstream project ignores those two directories is
 # that project's choice and must not decide whether this gate works. git-ignored
-# files are excluded too (--exclude-standard) — build output and caches are not
-# what the checks are being asked about.
+# files are generally excluded (--exclude-standard) — build output and caches are
+# not what the checks are being asked about — EXCEPT ignored SOURCE files, which
+# the find-based checkers do scan; they ride the delta set (collected above) and
+# so they ride this key too, names and contents both.
+#
+# The checker-tool presence rides the key as well: an absent tool is skipped
+# gracefully and the skip is journaled, but a pass recorded while a tool was
+# absent must not be reused once the tool is installed — the tool's verdict was
+# never part of that pass. One stable token per tool; any install or removal
+# flips the key and forces a re-check.
 #
 # Prints empty when git cannot answer, which degrades the identifier to HEAD alone:
 # the behavior before it existed, never something looser.
@@ -393,12 +462,19 @@ worktree_content_id() {
             printf '%s\n' "$wci_others"
             printf '%s\n' "$wci_others" | git hash-object --stdin-paths 2>/dev/null || true
         fi
+        if [ -n "$WCI_IGNORED_SOURCES" ]; then
+            printf '%s\n' "$WCI_IGNORED_SOURCES"
+            printf '%s\n' "$WCI_IGNORED_SOURCES" | git hash-object --stdin-paths 2>/dev/null || true
+        fi
+        for gate_tool in go ruff eslint cargo javac kotlinc dotnet ruby php mix g++ scalac R dart swift; do
+            if command -v "$gate_tool" >/dev/null 2>&1; then
+                printf '%s=present\n' "$gate_tool"
+            else
+                printf '%s=absent\n' "$gate_tool"
+            fi
+        done
     } | hash_stdin
 }
-
-# The gate's own state and log paths, anchored at the repository root so the
-# exclusion holds whatever the hook's working directory is.
-WCI_EXCLUDES=(':(top,exclude).moai/state' ':(top,exclude).moai/logs')
 
 # resolve_gate_mode: sets MODE (blocking|advisory) from MOAI_SYNC_GATE_BLOCKING,
 # MOAI_AUTONOMY_TIER, DECISION, C1_EXIT, and C2_EXIT. A check run and a
@@ -487,7 +563,42 @@ if [ -n "$HEAD_SHA" ]; then
             fi
             if [ "$PAYLOAD_VALID" = "1" ]; then
                 if [ "$P_KIND" = "advisory" ]; then
-                    # The advisory warning was written once, by the run that checked.
+                    # A stored advisory is re-delivered under the CURRENT mode:
+                    # an advisory→blocking flip must not silently exit 0 on the
+                    # stored failure (codex review gate reproduction — blocking
+                    # env set after an advisory-mode failure produced no checks
+                    # and no block). resolve_gate_mode reads the stored exit
+                    # codes to make that call under the same rules as a fresh
+                    # run. DECISION=block (not the stored kind!) is the input:
+                    # the checks DID fail, and resolve_gate_mode's automatic-
+                    # tier lint downgrade keys on DECISION=block — passing
+                    # "advisory" here would block a lint-only failure under
+                    # MOAI_AUTONOMY_TIER=automatic (codex review gate round-6
+                    # reproduction; ported from the primary hotfix, card
+                    # t1388).
+                    DECISION="block"
+                    C1_EXIT="$P_C1"
+                    C2_EXIT="$P_C2"
+                    resolve_gate_mode
+                    if [ "$MODE" != "blocking" ]; then
+                        # The advisory warning was written once, by the run that
+                        # checked; advisory mode still re-delivers nothing.
+                        exit 0
+                    fi
+                    if stop_hook_active_set; then
+                        log_gate_event "mode=$MODE decision=redelivery-deferred stop_hook_active=true stored=advisory"
+                        exit 0
+                    fi
+                    # The stored advisory body carries no decision:block (it was
+                    # an advisory WARNING), so re-printing it would not block.
+                    # Synthesize the block decision in the same
+                    # hookSpecificOutput-wrapped shape the fresh-run blocking
+                    # path emits below; the stored text stays in the payload
+                    # file and the reason points at it (quoting stored text
+                    # inline would break out of the JSON string). (codex
+                    # review gate P1 reproduction.)
+                    printf '{"hookSpecificOutput":{"hookEventName":"Stop","decision":"block","reason":"sync gate (blocking mode): stored advisory failure re-delivered. Detail: .moai/state/sync-quality-gate.payload"},"systemMessage":"sync-phase quality gate BLOCKED: stored advisory failure re-delivered (blocking mode). Detail: .moai/logs/sync-quality-gate.log"}\n'
+                    log_gate_event "mode=$MODE decision=block-redelivered stored=advisory"
                     exit 0
                 fi
                 DECISION="block"
@@ -597,14 +708,75 @@ run_step() {
 C1_LABELS=""
 C2_LABELS=""
 SKIPPED_TOOLS=""
+# find_go_module_roots: every go.mod that owns a Go file in SYNC_DELTA_FILES
+# (the same delta set the checks read), one per line, deduplicated. A repo can
+# carry a root module AND nested modules; following only the first .go file's
+# module vetted whichever module find happened to hand back first and left the
+# other unmeasured — a broken root next to a clean nested module recorded
+# vet=0 build=0 and allowed (codex review gate reproduction, card t1389). The
+# caller runs the checks once per root and lets run_step's worst-exit slot
+# merge aggregate them. Empty stdout = no owning go.mod anywhere: the repo
+# root stays the anchor, where a failure is then a real one. A deleted file
+# still resolves its owning module — the walk ascends from the deleted path
+# itself, because the deletion can break sibling files that still reference
+# the removed symbols (observed RED, card t1392). Paths containing whitespace
+# are unsupported (git names them with octal escapes here, and no supported
+# layout needs one).
+find_go_module_roots() {
+    local files f d out
+    files=$(printf '%s\n' "$SYNC_DELTA_FILES" | grep -E '\.go$' || true)
+    out=""
+    while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        # No file-existence skip: a DELETED Go file must still resolve its
+        # owning module (the deletion itself can break siblings that still
+        # reference the removed symbols — card t1392). The walk below only
+        # tests directories for go.mod, so a missing file is handled
+        # identically: dirname ascends from the deleted path to the nearest
+        # surviving go.mod.
+        d="$PROJECT_ROOT/$f"
+        while :; do
+            d=$(dirname "$d")
+            if [ -f "$d/go.mod" ]; then
+                case "$out" in *"$d
+"*) ;; *) printf '%s\n' "$d"; out="$out$d
+" ;; esac
+                break
+            fi
+            case "$d" in "$PROJECT_ROOT"|/) break ;; esac
+        done
+    done <<GOFILES
+$files
+GOFILES
+}
+GO_ROOTS=""
 for checked_language in $CHANGED_LANGS; do
 C1_LABEL="(none)"
 C2_LABEL="(none)"
 case "$checked_language" in
     go)
         C1_LABEL="go vet"; C2_LABEL="go build"
-        run_step go c1 go vet ./...
-        run_step go c2 go build ./...
+        # go -C (Go 1.20+) keeps the hook's cwd stable; loop over every owning
+        # module — run_step merges each call's exit into the c1/c2 slots with
+        # its worst-exit rule, so one broken module blocks no matter how many
+        # others passed.
+        [ -n "$GO_ROOTS" ] || GO_ROOTS=$(find_go_module_roots)
+        if [ -n "$GO_ROOTS" ]; then
+            # Line-based read: $GO_ROOTS is newline-separated, and a plain
+            # for-loop word-splits on IFS — a module root containing a space
+            # shattered into per-word chdir failures (observed RED, card
+            # t1392). read -r preserves each whole line; the here-string feeds
+            # the already-computed variable (same idiom as the read loops
+            # above).
+            while IFS= read -r go_root; do
+                [ -n "$go_root" ] || continue
+                run_step go c1 go -C "$go_root" vet ./...
+                run_step go c2 go -C "$go_root" build ./...
+            done <<< "$GO_ROOTS"
+        else
+            run_step go c1 go -C "$PROJECT_ROOT" vet ./...
+            run_step go c2 go -C "$PROJECT_ROOT" build ./...
+        fi
         ;;
     python)
         C1_LABEL="ruff"

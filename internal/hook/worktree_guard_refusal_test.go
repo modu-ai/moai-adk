@@ -16,8 +16,14 @@
 package hook
 
 import (
+	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/harness"
 )
 
 const (
@@ -163,5 +169,163 @@ func TestFormatMessage_GuardRefusal_NamesTheGap(t *testing.T) {
 		if !strings.Contains(lower, want) {
 			t.Errorf("formatMessage() omits %q — the evidentiary consequence is unstated: %q", want, msg)
 		}
+	}
+}
+
+// ─── SPEC-SESSION-ANCHOR-ATTR-001 W1 — refusal attribution (REQ-SAA-001/002) ───
+//
+// The t1064 defect class: 4,358 WorktreeGuardRefusal rows carry only
+// subject:Bash + context_hash — no session_id, no cwd, no tree path — so the
+// 2026-09-29 refusals (t1337 vs t1339 vs legitimate merge-window refusals)
+// cannot be separated from the log. These tests pin the attribution fields the
+// failure observer must add to guard-refusal rows.
+
+// TestGuardRefusalWorktreePath covers the tree-path extraction from the
+// refusal text for every sample shape known to the card. The path is the
+// segment the runtime quotes right after the anchor, up to the ", " separator
+// or end of line. The card-quoted variant carries a relative path — extracted
+// as quoted, not absolutized.
+func TestGuardRefusalWorktreePath(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		text string
+		want string
+	}{
+		{"redirect via -C", sampleGuardRefusalDashC, "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t529"},
+		{"redirect via --git-dir", sampleGuardRefusalGitDir, "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t529"},
+		{"command too complex", sampleGuardRefusalComplex, "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t529"},
+		{"cwd resolved (card, relative path)", sampleGuardRefusalCwdCardQuoted, ".claude/worktrees/t526"},
+		{"anchor only, no path quoted", "This session is isolated in the worktree", ""},
+		{"anchor mid-line, path at line end", "prefix\nThis session is isolated in the worktree /tmp/wt\nsuffix", "/tmp/wt"},
+		{"no anchor at all", "unrelated error text", ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			if got := guardRefusalWorktreePath(c.text); got != c.want {
+				t.Errorf("guardRefusalWorktreePath() = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+// TestClassifyError_GuardRefusal_UnknownMarkers covers REQ-SAA-002: when a
+// session identifier, the cwd, or the quoted tree path cannot be resolved at
+// refusal-record time, the row carries explicit "unknown" markers and is still
+// written — never dropped or deferred.
+//
+// The pure half asserts the marker substitution; the wire half asserts the
+// shall-not-drop clause end to end through the PostToolUseFailure handler.
+func TestClassifyError_GuardRefusal_UnknownMarkers(t *testing.T) {
+	// Pure half: empty session id, empty cwd, and an anchor-only error text
+	// (no path quoted) all resolve to explicit unknown markers.
+	sid, cwd, treePath := guardRefusalAttribution("", "", "This session is isolated in the worktree")
+	if sid != "unknown" || cwd != "unknown" || treePath != "unknown" {
+		t.Errorf("guardRefusalAttribution() = (%q, %q, %q), want explicit unknown markers on all three", sid, cwd, treePath)
+	}
+
+	// Wire half: unresolvable session id — the row is still recorded.
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
+		t.Fatalf("mkdir .moai: %v", err)
+	}
+	t.Setenv(config.EnvClaudeProjectDir, root)
+
+	input := &HookInput{
+		SessionID:     "", // unresolvable — REQ-SAA-002
+		ToolName:      "Bash",
+		Error:         sampleGuardRefusalCwdCardQuoted,
+		HookEventName: "PostToolUseFailure",
+	}
+	h := NewPostToolUseFailureHandler()
+	if _, err := h.Handle(context.Background(), input); err != nil {
+		t.Fatalf("Handle error: %v", err)
+	}
+
+	events := readUsageLog(t, root)
+	found := findEvent(events, harness.EventTypeToolFailure)
+	if found == nil {
+		t.Fatal("guard refusal row was dropped — REQ-SAA-002 forbids dropping an unattributable row")
+	}
+	if found.SessionID != "unknown" {
+		t.Errorf("session_id = %q, want explicit \"unknown\" marker", found.SessionID)
+	}
+	// The cwd was resolvable here (os.Getwd fallback), so it must carry the
+	// resolved value, not the marker — the marker is only for the unresolvable
+	// case (asserted on the pure half above).
+	if found.Cwd == "" || found.Cwd == "unknown" {
+		t.Errorf("cwd = %q, want the resolved working directory", found.Cwd)
+	}
+	if got := found.WorktreePath; got != ".claude/worktrees/t526" {
+		t.Errorf("worktree_path = %q, want the rejection-quoted path %q", got, ".claude/worktrees/t526")
+	}
+}
+
+// TestRecordToolFailureEvent_GuardRefusalRowFields covers REQ-SAA-001: a
+// WorktreeGuardRefusal row carries session_id, the resolved cwd, and the
+// rejection-quoted worktree path in addition to the existing subject and
+// context_hash fields. A non-guard failure row keeps the pre-existing shape
+// (no attribution fields) — the requirement is scoped to guard refusals.
+func TestRecordToolFailureEvent_GuardRefusalRowFields(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
+		t.Fatalf("mkdir .moai: %v", err)
+	}
+	t.Setenv(config.EnvClaudeProjectDir, root)
+
+	guardInput := &HookInput{
+		SessionID:     "sess-guard-001",
+		ToolName:      "Bash",
+		Error:         sampleGuardRefusalDashC,
+		HookEventName: "PostToolUseFailure",
+	}
+	h := NewPostToolUseFailureHandler()
+	if _, err := h.Handle(context.Background(), guardInput); err != nil {
+		t.Fatalf("Handle error: %v", err)
+	}
+	otherInput := &HookInput{
+		SessionID:     "sess-other-001",
+		ToolName:      "Bash",
+		Error:         "exit status 1",
+		HookEventName: "PostToolUseFailure",
+	}
+	if _, err := h.Handle(context.Background(), otherInput); err != nil {
+		t.Fatalf("Handle error: %v", err)
+	}
+
+	events := readUsageLog(t, root)
+	var guard, other *harness.Event
+	for i := range events {
+		switch {
+		case events[i].ContextHash == string(WorktreeGuardRefusal):
+			guard = &events[i]
+		case events[i].ContextHash == string(ExitError):
+			other = &events[i]
+		}
+	}
+	if guard == nil {
+		t.Fatalf("no WorktreeGuardRefusal row recorded; got %d events", len(events))
+	}
+	if guard.SessionID != "sess-guard-001" {
+		t.Errorf("guard row session_id = %q, want %q", guard.SessionID, "sess-guard-001")
+	}
+	if guard.Cwd == "" || guard.Cwd == "unknown" {
+		t.Errorf("guard row cwd = %q, want the resolved working directory", guard.Cwd)
+	}
+	if want := "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t529"; guard.WorktreePath != want {
+		t.Errorf("guard row worktree_path = %q, want %q", guard.WorktreePath, want)
+	}
+	if guard.Subject != "Bash" || guard.ContextHash != string(WorktreeGuardRefusal) {
+		t.Errorf("guard row subject/context_hash = %q/%q — the pre-existing fields must survive alongside the new ones", guard.Subject, guard.ContextHash)
+	}
+
+	if other == nil {
+		t.Fatalf("no ExitError row recorded; got %d events", len(events))
+	}
+	if other.SessionID != "" || other.Cwd != "" || other.WorktreePath != "" {
+		t.Errorf("non-guard row grew attribution fields (session_id=%q cwd=%q worktree_path=%q) — REQ-SAA-001 is scoped to guard refusals",
+			other.SessionID, other.Cwd, other.WorktreePath)
 	}
 }
