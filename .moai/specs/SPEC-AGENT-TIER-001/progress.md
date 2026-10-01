@@ -37,11 +37,183 @@ plan_complete_at: 2026-10-01
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run window 2026-10-01 → 2026-10-02, card worktree `WT-agent-tier-max`. Run-start SHA
+`01022d8cd`; M1 `a4d24cf89`; M2 `44116a924`; M3 `a0bd604da` (final HEAD for the verification
+batch). Every verification below ran in this run, in this tree.
+
+### M2 design decisions (recorded at M2 start, per plan.md §F)
+
+1. **Config surface: option (a) — `workflow.agent_tiers` block in workflow.yaml** (the
+   recommended default). Reason: the tier axis is workflow-scoped delegation policy; the audit
+   pins it must stay disjoint from already live in `workflow.audit` of the same section file;
+   the loader `Validate()` convention and the shipped-key anti-rot inventory
+   (`internal/config/testdata/shipped_key_inventory.yaml`) key on this section, so rejection
+   semantics (REQ-TIER-009) and key-honesty guards come from the existing machinery. The
+   alternative (an llm.yaml key) was rejected — llm.yaml is gitignored and wiped by
+   `moai update`, so a tier table there would be non-durable.
+2. **Spawn-time injection channel: candidate (a) — launcher/session-env injection via the
+   `CLAUDE_CODE_SUBAGENT_MODEL` chain.** Implementation evidence: the codebase already treats
+   `CLAUDE_CODE_SUBAGENT_MODEL` as a session-launch env token (it sits in the claude audit
+   scrub key set, `internal/cli/mcp_claude.go` `claudeAuditScrubKeySet`); the declaration-only
+   spawn observer (`internal/hook/agent_model_guard.go`) classifies env-declared spawns as
+   declared, so the observer's declared/inherit semantics survive unchanged; and the settings
+   field `effortLevel` rejects `max`, so a resolved max must ride the launcher launch-argument
+   path (coding-standards compatibility table) — launcher-side, consistent with (a). (b)
+   delegation-layer spawn-argument injection re-introduces hand-passing doctrine pressure;
+   (c) frontmatter `tier:` is the per-agent-file channel SPEC-AGENT-MODEL-INHERIT-001 removed.
+   **Boundary recorded:** this run lands the config surface + resolver + validation + web
+   surface (the ACs' subject); the launcher-side consumption of the recorded channel is
+   downstream wiring no AC in this SPEC gates.
+
+### Run-start RED cells (tree `01022d8cd`, observed 2026-10-01, before any M1 edit)
+
+**R1 — AC-TIER-001/008** (`go test ./internal/config/ -run '^TestClaudeTierConstants$'`, after
+the test was authored; the compile failure names exactly the symbols M1 creates):
+
+```
+# github.com/modu-ai/moai-adk/internal/config [github.com/modu-ai/moai-adk/internal/config.test]
+internal/config/claude_tier_constants_test.go:17:5: undefined: DefaultClaudeTierMax
+internal/config/claude_tier_constants_test.go:18:65: undefined: DefaultClaudeTierMax
+internal/config/claude_tier_constants_test.go:20:5: undefined: DefaultClaudeTierMedium
+internal/config/claude_tier_constants_test.go:21:69: undefined: DefaultClaudeTierMedium
+internal/config/claude_tier_constants_test.go:23:5: undefined: DefaultClaudeTierLow
+internal/config/claude_tier_constants_test.go:24:68: undefined: DefaultClaudeTierLow
+internal/config/claude_tier_constants_test.go:35:5: undefined: DefaultClaudeTierMaxFallback
+internal/config/claude_tier_constants_test.go:36:80: undefined: DefaultClaudeTierMaxFallback
+FAIL	github.com/modu-ai/moai-adk/internal/config [build failed]
+FAIL
+```
+exit 1. RED for the right reason: the symbols do not exist anywhere in the package (EVID-TIER-B).
+
+**AC-TIER-002 Go side** (`go test ./internal/config/ -run
+'^TestDefaultWorkflowConfig_AuditPinsOperatorTable$'`):
+
+```
+--- FAIL: TestDefaultWorkflowConfig_AuditPinsOperatorTable (0.00s)
+    audit_pin_defaults_test.go:18: default Claude pin = {claude-opus-5-5 medium}, want {claude-opus-5-5 high}
+    audit_pin_defaults_test.go:24: default GLM pin = { }, want {glm-5.3 max} (non-empty per REQ-TIER-006)
+FAIL
+```
+exit 1. Corroborates EVID-TIER-A at the Go level.
+
+**R2 — AC-TIER-004/015** (`go test ./internal/cli/ -run
+'^TestAuditResolverTerminalFallbacks_OperatorTable$'`):
+
+```
+--- FAIL: TestAuditResolverTerminalFallbacks_OperatorTable (1.14s)
+    audit_pin_resolver_defaults_test.go:27: claude terminal fallback = {claude-opus-5-5 medium}, want {claude-opus-5-5 high}
+    audit_pin_resolver_defaults_test.go:32: glm terminal fallback = {glm-5.3-flash }, want {glm-5.3 max}
+FAIL
+```
+exit 1. RED for the right reason: the fallbacks bound the t1368 values EVID-TIER-A/EVID-TIER-F
+observed.
+
+**R3 — AC-TIER-005** (sweep test, `go test ./internal/config/ -run '^TestPinLiteralSweep'
+-count=1 -v`): the positive control PASSED on the first authored version after exposing a real
+defect in the sweep's own first cut (a root-relative suffix bug that matched nothing — fixed
+before any green was read; the control proved the detector fires). The real-tree run was RED on
+exactly the two pin-literal restatements M1 removes:
+
+```
+--- PASS: TestPinLiteralSweep_PositiveControl (0.01s)
+=== RUN   TestPinLiteralSweep_RealTreeClean
+    pin_literal_sweep_test.go:147: pin literal sweep: swept 1554 files under internal/ (excl. tests, template mirror, documented non-pin axes)
+    pin_literal_sweep_test.go:152: pin literals found outside the declared single-source locations (14):
+    pin_literal_sweep_test.go:154:   cli/mcp_claude.go carries pin literal claude-opus-5-5
+    pin_literal_sweep_test.go:154:   cli/mcp_codex.go carries pin literal gpt-6.1-sol
+    ... (12 further hits: internal/config package literals + comments on non-pin axes, re-classified into the exclusion set with documented reasons)
+--- FAIL: TestPinLiteralSweep_RealTreeClean
+```
+exit 1. After the exclusion-set classification (`internal/config/` package = the declared
+single-source home per REQ-TIER-013's own wording; `template/model_policy.go`,
+`statusline/memory.go`, `cli/glm.go` = documented non-pin axes), the final cut measured RED on
+exactly the two real restatements, 1339 files swept, positive control green.
+
+**R4 — AC-TIER-006/007** (`go test ./internal/config/ -run '^TestAgentTiers_RejectsUnknownToken$'`
+at M2 start, before the tier surface existed):
+
+```
+internal/config/agent_tiers_test.go:48:24: undefined: ValidAgentTiers
+internal/config/agent_tiers_test.go:61:22: undefined: AgentTierMax
+... (ValidAgentTiers, AgentTierMax/Medium/Low, ResolveAgentClassTier — all undefined)
+```
+exit 1 (build failed). RED for the right reason: no tier surface exists at M2 start.
+
+### GREEN evidence (per AC; final verification at HEAD `a0bd604da` unless noted)
+
+- **AC-TIER-001** `go test ./internal/config/ -run '^TestClaudeTierConstants$|^TestClaudeTierMaxFallbackRecorded$' -count=1 -v`:
+  `--- PASS: TestClaudeTierConstants` / `--- PASS: TestClaudeTierMaxFallbackRecorded` / `ok github.com/modu-ai/moai-adk/internal/config 0.292s`. exit 0.
+- **AC-TIER-002** `TestDefaultWorkflowConfig_AuditPinsOperatorTable` PASS (same command, `-run '…PinsOperatorTable$'`): asserts {claude-opus-5-5, high} · {gpt-6.1-sol, high} · {glm-5.3, max} byte-exact. `grep -n -A 3 "Claude: ModelEffort{" internal/config/defaults.go` now shows the block at `defaults.go:1269-1272` deriving `DefaultClaudeAuditModel`/`DefaultClaudeAuditEffort`; the GLM cell sits at `:1290-1293`.
+- **AC-TIER-003** template block post-edit: `effort: high` (:115), codex `gpt-6.1-sol/high` (:117-118), `glm-5.3/max` (:120-121); `make build` re-embedded (exit 0), `make embed-check` = Pass 1 Warn 0 Fail 0, and `TestClaudeAuditTemplateSurfacesAndCatalogHash` (reads the embedded copy) passes in the template suite.
+- **AC-TIER-004** `go test ./internal/cli/ -run '^TestAuditResolverTerminalFallbacks_OperatorTable$' -count=1`: `ok github.com/modu-ai/moai-adk/internal/cli 3.318s`. exit 0.
+- **AC-TIER-005** `go test ./internal/config/ -run '^TestPinLiteralSweep' -count=1 -v`: `--- PASS: TestPinLiteralSweep_PositiveControl` + `pin literal sweep: swept 1339 files under internal/` + `--- PASS: TestPinLiteralSweep_RealTreeClean`. The sweep is a permanent package test (fires on every `go test ./internal/config/`).
+- **AC-TIER-006** `TestAgentTiers_RejectsUnknownToken` PASS: `extreme` fails the load with an error naming the token, and the loader wrap names `workflow.yaml` (`workflow.yaml: workflow.agent_tiers.classes[manager-develop] = "extreme" invalid: want one of max|medium|low`); `max`/`medium`/`low` fixtures load cleanly.
+- **AC-TIER-007** `TestDefaultAgentTierAssignment` PASS: super-advisor→max, manager-spec→max, manager-develop→medium, manager-docs→medium, e2e-tester→medium, explore→low, lane→medium; plan-auditor, sync-auditor, audit-claude/codex/glm → "" (no tier). `TestAgentTiers_UserOverrideWins` PASS (project override per class).
+- **AC-TIER-008** `TestClaudeTierMaxFallbackRecorded` PASS; the constant's doc comment carries the chart grounding (65% @ ~$5, availability/dispersion alternative) and the record-only clause.
+- **AC-TIER-009** targeted diff empty: `git diff --stat -- internal/template/templates/.moai/config/sections/llm.yaml internal/cli/launch_effort_settings.go internal/template/glm_effort_overlay.go internal/config/envkeys.go` → empty (byte-unchanged). The workflow.yaml effort-line diff carries ONLY the sanctioned audit-pin flips (`medium→high`, `""→max`) and the new agent_tiers comment; no tier token occupies any effort slot anywhere. Q2 definition documented on the tier constants' comment block (defaults.go).
+- **AC-TIER-010** `go test ./internal/web/ -run '^TestAgentTiersSection' -count=1 -v`: `--- PASS: TestAgentTiersSection_ChartGrounding` (tier keys max/medium/low rendered as code chips + figures 70.6% / ~$11 / 45% / ~$2.3 / 29% / ~$0.8) and `--- PASS: TestAgentTiersSection_SelectionClosedSet` (each class's radio group offers exactly {max, medium, low}, no value outside the closed set).
+- **AC-TIER-012** `grep -rn "^model:\|^effort:\|^tier:"` over C1/C2 agent trees and the toml keys over C3: empty; `git diff --stat 01022d8cd..HEAD -- internal/hook/ .claude/agents/ internal/template/templates/.claude/agents/ internal/template/templates/.codex/agents/` → empty; `make agents-emit-check` exit 0; `go test ./internal/hook/ -run 'AgentModel|ModelGuard' -count=1` → `ok internal/hook 0.752s`.
+- **AC-TIER-014** plan-auditor PASS 0.91 ≥ 0.80 (plan-phase record; §E.1 / `.moai/reports/t1391/plan-audit.md`).
+- **AC-TIER-015** the resolver test GREEN (model `DefaultGLM53`, effort `max` forwarded verbatim); the sweep's green proves no inline `glm-5.3` literal remains anywhere in the audit path (mcp_glm.go carries zero pin literals — `glmAuditDefaultModel = config.DefaultGLMAuditModel`, `glmAuditDefaultEffort = config.DefaultGLMAuditEffort`). RED-now: EVID-TIER-F (the t1368 `DefaultGLMHigh` binding).
+
+### AC-TIER-011 — user pin precedence preserved (regression-guard)
+
+Baseline (pre-edit binaries compiled at launch, before any edit): `go test -timeout 30m
+./internal/config/... ./internal/cli/... ./internal/web/...` → config ok ×3; cli root FAIL with
+4 failures (`TestStopChainEffectParityGolden`, `TestStopChainMemberCostWithinBudget`,
+`TestSyncGateLanguageDetectionMatchesScript`, `TestCodexTaskBackgroundHandshakeHonorsTaskBound`);
+all cli subpackages ok; web ok 146.1s.
+
+Final (post-M3): cli root FAIL with exactly 2 — `TestStopChainEffectParityGolden` (57.63s) and
+`TestSyncGateLanguageDetectionMatchesScript` (1.79s). BOTH are in the pre-edit baseline and both
+are known pre-existing CI red (card t1390's known-red set). The other two baseline failures did
+NOT reproduce in isolation (flaky under the baseline run's parallel load; stop-chain/codex-task
+domains this SPEC never touches). **NEW failures attributable to this change: 0.** User-pin
+precedence tests (`TestResolveClaudeAuditModelEffort_FieldsOverrideIndependently`,
+`audit_pin_test.go`, `mcp_codex_audit_pin_test.go`, `mcp_glm_audit_pin_test.go` pin cases) pass
+unmodified — they reference the defaults symbolically. Tests updated in the same commit as the
+default they pin: `mcp_audit_config_test.go` (`TestAuditConfig_DefaultProfile`: medium→high +
+GLM additions), `mcp_glm_fallback_test.go` (3 tests re-pinned to the new audit/task default
+split), `mcp_glm_test.go` (`TestResolveGLMAuditModel_BackendDefault`), `mcp_glm_audit_pin_test.go`
+(absent-pin case + task-resolution assertion).
+
+### AC-TIER-013 — verification batch (final; HEAD `a0bd604da`, env-scrubbed compound form)
+
+| Command | Result | exit |
+|---|---|---|
+| `go vet ./internal/config/... ./internal/cli/... ./internal/web/...` | (no output) | 0 |
+| `golangci-lint run --timeout=2m` (v2.1.6 — the CI-pinned version) | `0 issues.` | 0 |
+| `go test -timeout 30m ./internal/config/... ./internal/cli/... ./internal/web/...` | config ok ×3 · cli root FAIL = 2 pre-existing (above) · cli subpackages ok ×21 · web ok 74.950s | 1 (pre-existing only) |
+| `make build` | catalog regenerated + binary built | 0 |
+| `make embed-check` | Pass 1 Warn 0 Fail 0 | 0 |
+| `make agents-emit-check` | `ok internal/template/agentemit` | 0 |
+| `GOOS=windows GOARCH=amd64 go build ./...` | (no output) | 0 |
+
+Repo-specific guards absorbed during M2/M3 (both GREEN after the fix): the shipped-key anti-rot
+inventory (`TestShippedConfigKeysHaveReaders` — 7 new W-class entries with reader evidence) and
+the web schema parity guard (`TestSchemaParity_EditableFieldsHaveRenderHome` — the tier
+sub-section registered as a render home, the jevSectionFields pattern).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+Milestones: M1 `a4d24cf89` (tier constants + operator audit pin defaults, RED-first R1/R2/R3
+observed) → M2 `44116a924` (agent_tiers profile matrix wiring, RED-first R4 observed) → M3
+`a0bd604da` (moai web tier widget). progress evidence commit follows this section.
+
+- AC matrix: AC-TIER-001..010 PASS, AC-TIER-015 PASS (blocking); AC-TIER-013 PASS with the
+  pre-existing-failure classification above (0 new); AC-TIER-014 PASS (plan-phase record);
+  AC-TIER-011/012 regression-guards PASS (baseline comparison + unchanged trees).
+- Cross-platform: `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+- Lint: v2.1.6 (CI-pinned), 0 issues — no NEW lint findings (baseline-equivalent).
+- Injection channel recorded: candidate (a) — launcher/session-env via the
+  `CLAUDE_CODE_SUBAGENT_MODEL` chain; launcher-side wiring is downstream (recorded above).
+- Known boundaries (not defects): (i) the 2 pre-existing cli failures ride the branch into CI as
+  they rode the baseline; (ii) tier chart figures live in `internal/config` (single source) and
+  render via `AgentTierChartTable()`; (iii) `DefaultClaudeTierMaxFallback` is a record only —
+  no failover machinery (REQ-TIER-003/§C).
+
+run_status: audit-ready
+run_complete_at: 2026-10-02
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
