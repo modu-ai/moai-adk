@@ -114,18 +114,18 @@ func TestCodexDebugTraceStepLines(t *testing.T) {
 // strings must appear nowhere in the captured stderr.
 func TestCodexDebugTraceEnvKeysOnly(t *testing.T) {
 	sentinels := map[string]string{
-		config.EnvMoaiKanban:               "kanban-sentinel",
-		config.EnvMoaiKanbanID:             "run-sentinel",
-		config.EnvMoaiKanbanSpec:           "spec-sentinel",
-		config.EnvMoaiKanbanLabel:          "label-sentinel",
-		config.EnvMoaiKanbanLeadAddr:       "leader-secret-sentinel",
-		config.EnvMoaiKanbanLeadName:       "leadname-sentinel",
-		config.EnvMoaiKanbanBackend:        "backend-sentinel",
-		config.EnvMoaiKanbanCard:           "card-sentinel",
+		config.EnvMoaiKanban:                 "kanban-sentinel",
+		config.EnvMoaiKanbanID:               "run-sentinel",
+		config.EnvMoaiKanbanSpec:             "spec-sentinel",
+		config.EnvMoaiKanbanLabel:            "label-sentinel",
+		config.EnvMoaiKanbanLeadAddr:         "leader-secret-sentinel",
+		config.EnvMoaiKanbanLeadName:         "leadname-sentinel",
+		config.EnvMoaiKanbanBackend:          "backend-sentinel",
+		config.EnvMoaiKanbanCard:             "card-sentinel",
 		config.EnvMoaiKanbanSettingsInjected: "settings-sentinel",
-		config.EnvMoaiFactoryWorker:        "worker-sentinel",
-		config.EnvMoaiFactoryWorkers:       "workers-sentinel",
-		config.EnvFactoryRole:              "role-sentinel",
+		config.EnvMoaiFactoryWorker:          "worker-sentinel",
+		config.EnvMoaiFactoryWorkers:         "workers-sentinel",
+		config.EnvFactoryRole:                "role-sentinel",
 	}
 	for key, value := range sentinels {
 		t.Setenv(key, value)

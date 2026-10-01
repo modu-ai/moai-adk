@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/spf13/cobra"
 )
@@ -148,7 +149,7 @@ func TestThreeRunnerDebugUniformityMatrix(t *testing.T) {
 				}
 				got.childHasToken = slices.Contains(cap.records[0].Argv, tc.token)
 				got.rustLogDebug = func() bool {
-					v := envValues(cap.records[0].Env, "RUST_LOG")
+					v := envValues(cap.records[0].Env, config.EnvRustLog)
 					return len(v) > 0 && v[len(v)-1] == "debug"
 				}()
 				got.traceLines = launcherTraceLineCount(stderr)
