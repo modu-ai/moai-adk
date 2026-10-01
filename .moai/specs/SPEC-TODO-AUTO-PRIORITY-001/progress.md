@@ -404,3 +404,27 @@ drift_guard: 4 unplanned of 18 non-SPEC files = 22.2% (<= 30%, warn only)
 pre_existing_red: TestTemplateNoInternalContentLeak, TestRuleDateProvenance, TestSyncGateCpp_LocalAndTemplateCopiesIdentical (same before and after M4, none from files this card touched)
 repository_wide_test_verdict: PENDING (owned by CI on the integration branch)
 ```
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+Sync base `e04641fe5` on branch `WT-auto-priority-pick` (card worktree, nothing pushed). Sync scope: the `CHANGELOG.md` `[Unreleased]` `### Added` entry (first bullet, most-recent-first), this signal, the public-docs judgment, a read-only MX validation sub-step, and the `spec.md` frontmatter `status: in-progress → implemented → completed` + `updated: 2026-10-02` transition on the single sync commit.
+
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-10-01T19:59:25Z
+card: t1400
+sync_commit_sha: pending-backfill-sync
+changelog_path: CHANGELOG.md
+changelog_entry_position: "[Unreleased] > ### Added, first bullet"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (merged, single sync commit); updated: 2026-10-02"
+  plan_md_acceptance_md: "stateless on the status axis per spec-frontmatter-schema.md (no status field to transition)"
+  progress_md: "no frontmatter; this section is the sync signal"
+b12_self_test_a: "PASS — pre-emission `grep -c 'SPEC-TODO-AUTO-PRIORITY-001' CHANGELOG.md` = 0 before the entry landed; = 1 after"
+b12_self_test_b: "MISMATCH EXPLAINED, not a clean PASS — ac_source=.moai/specs/SPEC-TODO-AUTO-PRIORITY-001/acceptance.md (tier M, resolved, non-empty). The MOAI-AC-COUNTER (default AC prefix) printed live=18 excluded=0 ambiguous=0, exit 0. 15 of the 18 are the declared criteria AC-TAP-001..015 (`grep -c '^## AC-TAP-'` = 15; the CHANGELOG entry states 15). The other 3 are the prose shorthand tokens AC-001, AC-004 and AC-012 (acceptance.md lines 17, 18, 29, 43, 334: ranges such as `AC-001~011` and back-references to AC-TAP-012) — no heading, no declaration. The counter has no `[REF]` mark on them and acceptance.md body is outside manager-docs scope, so the discrepancy is reported here rather than marked or softened."
+b12_self_test_c: "PASS — every path named in the CHANGELOG entry verified present via ls (todo_auto_rank.go, todo_auto.go, todo.go, todo_edit_move.go, classification.go, the three live doctrine files, their three template mirrors, the codex manager-todo.toml, progress.md)"
+public_docs_judgment: "no change — README.md/README.ko.md/README.ja.md/README.zh.md and docs-site (en/ko/ja/zh) mention `/moai:todo --auto` only as `serial cycle` in the manager-todo row (README.md:516, docs-site */advanced/agent-guide.md:93) and assert no queue order; the other `--auto` hits are `/moai goal --auto`"
+mx_validation: "read-only; no tag owed — see the sync report (all new functions are unexported; no goroutine; no function with 3 or more distinct production callers; liveAutoJevRanker already carries @MX:NOTE)"
+read_during_sync: "progress.md §E.1-§E.3, spec.md (§A-§G), acceptance.md headings and AC tokens, todo_auto_rank.go, todo_auto.go, todo.go (flag help, seams), classification.go (PriorityRank), kanban-dispatch.md, workflows/gtd.md, manager-todo.md, git log 7d8a9bdbc..HEAD"
+not_run_in_sync: "no go build, go test, golangci-lint or make build (sync edits no Go file; the run phase owns those, see §E.2); no CI; no package-wide test; no sync-audit"
+```

@@ -2,7 +2,7 @@
 id: SPEC-TODO-AUTO-PRIORITY-001
 title: "Priority-aware card selection for todo --auto — a Jev-ordered or recorded-priority-fallback ranking of queued candidates, a printed selection decision record, and an --auto-scoped doctrine exception"
 version: "0.1.2"
-status: in-progress
+status: completed
 created: 2026-10-02
 updated: 2026-10-02
 author: manager-spec (card t1400)
