@@ -873,7 +873,7 @@ func runCodexFactoryLane(cmd *cobra.Command) error {
 	// The run id and the git requirement arrive together: a lane join
 	// resolves the single active run and refuses outside a git working tree
 	// before any write (REQ-SD-005) — the same door the cc/glm lane join uses.
-	restoreRun, err := enterSelectedFactoryRun(root, "", true)
+	restoreRun, err := enterSelectedFactoryRun(root, "", true, nil)
 	if err != nil {
 		return err
 	}
@@ -1004,6 +1004,17 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 		return &exitCodeError{code: 1}
 	}
 
+	// The slow-launch timing covers a codex LANE launch only (REQ-012,
+	// SPEC-CODEX-LANE-SLOTS-001): the phase runs from the pre-exec init
+	// through the exec handoff, and the report prints before the platform
+	// exec seam — the direct door replaces this process and prints nothing
+	// afterwards.
+	var launchTiming *factoryLaunchTiming
+	if factoryEntry.Enabled && (factoryEntry.LaneRole || factoryEntry.LaneNumber > 0) {
+		launchTiming = &factoryLaunchTiming{}
+		defer launchTiming.reportSlow(cmd.ErrOrStderr()) // error-path guard; no-op after the pre-seam report
+	}
+
 	// The launch cwd is the PROJECT ROOT, not the process cwd (AC-CL-002):
 	// a call from a subdirectory still launches at the root. An unresolvable
 	// root degrades to the process cwd rather than refusing to launch.
@@ -1018,10 +1029,13 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 	// launch form passes through right before launching, the bare form
 	// included. The gate takes no spawn argument: both launch paths cross the
 	// same function (REQ-CI-002).
+	endInit := launchTiming.begin(factoryStepCodexPreInit)
 	if err := codexInitOfferGate(cmd, projectRoot); err != nil {
+		endInit()
 		return err
 	}
 	localArgs, localRead, err := codexLocalDeveloperInstructions(projectRoot)
+	endInit()
 	if err != nil {
 		return fmt.Errorf("load Codex local instructions: %w", err)
 	}
@@ -1056,13 +1070,18 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 	}
 	if factoryEntry.Enabled {
 		// The run is project-scoped even when Codex enters an existing worktree.
-		restore, ferr := enterCodexFactory(projectRoot, factoryEntry)
+		restore, ferr := enterCodexFactory(projectRoot, factoryEntry, launchTiming)
 		if ferr != nil {
 			return ferr
 		}
 		defer restore()
 		req.FactoryEnv = codexFactoryEnv(factoryEntry)
 	}
+	// The exec handoff is the launcher's last measurable pre-exec work — the
+	// final assembly and the anchor lock — and the report is the launcher's
+	// last output before the platform exec seam (the direct door replaces the
+	// process; the spawn door's child is already launched).
+	endHandoff := launchTiming.begin(factoryStepExecHandoff)
 	if spawn {
 		if worktree.present {
 			// The process that becomes Codex is the pane's; it exists only
@@ -1070,15 +1089,20 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 			codexSpawnAnchorFn = func(pid int, start string) error { return codexWorktreeAnchorLock(dir, pid, start) }
 			defer func() { codexSpawnAnchorFn = nil }()
 		}
+		endHandoff()
+		launchTiming.reportSlow(cmd.ErrOrStderr())
 		return codexSpawnLaunch(req)
 	}
 	if worktree.present {
 		// The lock names the process that becomes Codex, before it starts.
 		if err := codexWorktreeAnchorLock(dir, codexDirectAnchorPID(), homestate.CurrentProcessFingerprint()); err != nil {
+			endHandoff()
 			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), err.Error())
 			return &exitCodeError{code: 1}
 		}
 	}
+	endHandoff()
+	launchTiming.reportSlow(cmd.ErrOrStderr())
 	return codexDirectLaunch(req)
 }
 

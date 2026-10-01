@@ -17,7 +17,7 @@ import (
 	sqlite3 "modernc.org/sqlite/lib"
 )
 
-const factorySchemaVersion = 4
+const factorySchemaVersion = 5
 
 const factoryDDL = `
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS runs (
   manifest_json TEXT NOT NULL DEFAULT '{}',
   lead_pid INTEGER NOT NULL DEFAULT 0,
   lead_process_start TEXT NOT NULL DEFAULT '',
+  lane_capacity INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -223,6 +224,12 @@ func OpenFactoryPath(path string) (*FactoryDB, error) {
 			version = "4"
 		}
 	}
+	if err == nil && version == "4" {
+		err = migrateFactoryV4ToV5(ctx, db)
+		if err == nil {
+			version = "5"
+		}
+	}
 	if err == nil && version != strconv.Itoa(factorySchemaVersion) {
 		err = fmt.Errorf("unsupported factory schema version %q", version)
 	}
@@ -381,6 +388,42 @@ var cardF1Columns = []string{
 	"failure_reason", "hint_prefer", "hint_after", "spec_id", "worktree_path",
 	"evidence_sha", "merge_sha", "merge_tree", "remeasure_path",
 	"contract_spec_id", "contract_sha256", "contract_signed_at", "contract_event",
+}
+
+// migrateFactoryV4ToV5 adds the runs.lane_capacity column — the run's
+// declared lane capacity recorded at leader start (SPEC-CODEX-LANE-SLOTS-001
+// REQ-004): the operator-supplied count, or LaneCapacityDerived for a run
+// started without one.
+//
+// The migration default is 1, not the derived marker, on purpose: a row that
+// predates the datum has unknown provenance, and the bound the previous
+// binary actually applied to its joins was the launcher constant (1) — the
+// hard refusal of REQ-006. Defaulting unknown rows to capacity-open would
+// let lanes grow into runs whose operator may have declared a bound, so the
+// conservative reading keeps every pre-existing row on the behavior it
+// already had.
+func migrateFactoryV4ToV5(ctx context.Context, db *sql.DB) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	// factoryDDL runs before the version check, so on a database whose `runs`
+	// table did not exist the DDL has already created it in the v5 shape. Add
+	// only the column that is actually missing.
+	existing, err := factoryRunColumns(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if !existing["lane_capacity"] {
+		if _, err := tx.ExecContext(ctx, `ALTER TABLE runs ADD COLUMN lane_capacity INTEGER NOT NULL DEFAULT 1`); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE meta SET value='5' WHERE key='schema_version' AND value='4'`); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func factoryRunColumns(ctx context.Context, tx *sql.Tx) (map[string]bool, error) {

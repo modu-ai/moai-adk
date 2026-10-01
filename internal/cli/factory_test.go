@@ -1020,7 +1020,7 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		c := installFactoryLaunchSeam(t)
 
 		const run = "run-cc-lane-entry"
-		if err := recordFactoryRunStart(root, run, kanban.BackendClaude, ""); err != nil {
+		if err := recordFactoryRunStart(root, run, kanban.BackendClaude, "", homestate.LaneCapacityDerived); err != nil {
 			t.Fatalf("record factory run: %v", err)
 		}
 
@@ -1069,7 +1069,7 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		c := installFactoryLaunchSeam(t)
 
 		const run = "run-cc-legacy-worker-entry"
-		if err := recordFactoryRunStart(root, run, kanban.BackendClaude, ""); err != nil {
+		if err := recordFactoryRunStart(root, run, kanban.BackendClaude, "", homestate.LaneCapacityDerived); err != nil {
 			t.Fatalf("record factory run: %v", err)
 		}
 
@@ -1107,7 +1107,7 @@ func TestGLM_FactoryLaneEntry(t *testing.T) {
 	// NO_ACTIVE_FACTORY when none is active, so the fixture records the run a
 	// lead would have started before the lane enters.
 	const run = "run-glm-lane-entry"
-	if err := recordFactoryRunStart(root, run, kanban.BackendGLM, ""); err != nil {
+	if err := recordFactoryRunStart(root, run, kanban.BackendGLM, "", homestate.LaneCapacityDerived); err != nil {
 		t.Fatalf("record factory run: %v", err)
 	}
 

@@ -66,7 +66,13 @@ type kanbanEntryParse struct {
 	KanbanEnabled  bool   // -k present (any shape)
 	FactoryEnabled bool   // -k selected the factory (numeric count or lane-shape name)
 	FactoryLanes   int    // the factory count (explicit or the default)
-	FactoryRun     string // explicit --factory-run selector for mixed factory joins
+	// FactoryLanesDeclared records that the count was operator-supplied
+	// (numeric `-k N`), not a parse default (SPEC-CODEX-LANE-SLOTS-001
+	// REQ-004): the leader start records the count as the run's declared
+	// capacity only when this is true, and the derived-capacity marker
+	// otherwise.
+	FactoryLanesDeclared bool
+	FactoryRun           string // explicit --factory-run selector for mixed factory joins
 	// FactoryLead is the raw `-l/--lead <name>` target a lane join's leader
 	// discovery aims at (SPEC-FACTORY-LANE-JOIN-SOCKET-001 REQ-008); empty
 	// means the canonical leader label, resolved by the join gate. The field
@@ -145,6 +151,7 @@ func parseKanbanFlag(args []string) (p kanbanEntryParse, err error) {
 			}
 			p.FactoryEnabled = true
 			p.FactoryLanes = n
+			p.FactoryLanesDeclared = true
 			continue
 		}
 		if joined {

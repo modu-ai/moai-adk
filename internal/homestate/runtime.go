@@ -12,10 +12,17 @@ import (
 // replace-shaped launch door that process IS the session; on the spawn and
 // pane shapes the launcher restamps the row once the session identity exists
 // (REQ-002b).
+//
+// LaneCapacity is the declared lane capacity recorded at leader start
+// (SPEC-CODEX-LANE-SLOTS-001 REQ-004): the operator-supplied count, or
+// LaneCapacityDerived when the operator supplied none. A caller that leaves
+// the field zero records exactly that marker, so the zero value is the
+// capacity-open reading rather than a missing datum.
 type FactoryRun struct {
 	RunID, LeadSessionID, Backend, ManifestJSON string
 	LeadPID                                     int
 	LeadProcessStart                            string
+	LaneCapacity                                int
 }
 
 func (f *FactoryDB) RecordRun(ctx context.Context, row FactoryRun) error {
@@ -34,10 +41,10 @@ func (f *FactoryDB) RecordRun(ctx context.Context, row FactoryRun) error {
 	// auto-retired — until the REQ-006b boot proof holds for it after the next
 	// host reboot (REQ-006): a second generator of the defect this fixes
 	// (REQ-002).
-	if _, err := tx.ExecContext(ctx, `INSERT INTO runs(run_id,lead_session_id,lead_backend,status,manifest_json,lead_pid,lead_process_start,created_at,updated_at)
-VALUES(?,?,?,'active',?,?,?,?,?) ON CONFLICT(run_id) DO UPDATE SET
-lead_session_id=excluded.lead_session_id,lead_backend=excluded.lead_backend,status='active',manifest_json=excluded.manifest_json,lead_pid=excluded.lead_pid,lead_process_start=excluded.lead_process_start,updated_at=excluded.updated_at`,
-		row.RunID, row.LeadSessionID, row.Backend, row.ManifestJSON, row.LeadPID, row.LeadProcessStart, now, now); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO runs(run_id,lead_session_id,lead_backend,status,manifest_json,lead_pid,lead_process_start,lane_capacity,created_at,updated_at)
+VALUES(?,?,?,'active',?,?,?,?,?,?) ON CONFLICT(run_id) DO UPDATE SET
+lead_session_id=excluded.lead_session_id,lead_backend=excluded.lead_backend,status='active',manifest_json=excluded.manifest_json,lead_pid=excluded.lead_pid,lead_process_start=excluded.lead_process_start,lane_capacity=excluded.lane_capacity,updated_at=excluded.updated_at`,
+		row.RunID, row.LeadSessionID, row.Backend, row.ManifestJSON, row.LeadPID, row.LeadProcessStart, row.LaneCapacity, now, now); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO events(run_id,kind,payload_json,created_at) VALUES(?,'run.started',?,?)`, row.RunID, row.ManifestJSON, now); err != nil {
