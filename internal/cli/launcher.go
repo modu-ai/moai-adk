@@ -580,6 +580,11 @@ var launchClaudeFunc = launchClaudeDefault
 // env a launch would have used without replacing the test process.
 var execOrSpawnClaudeFunc = execOrSpawnClaude
 
+// managedFactoryLaunchFunc is the managed-divert seam (SPEC-FACTORY-MANAGED-
+// SESSION-001 M3, design.md D-7). Tests override it to observe the divert
+// without spawning a real managed session.
+var managedFactoryLaunchFunc = managedFactoryLaunch
+
 // launchClaude delegates to launchClaudeFunc for testability.
 func launchClaude(profileName string, extraArgs []string) error {
 	return launchClaudeFunc(profileName, extraArgs)
@@ -807,6 +812,19 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 
 	if profileLeaseEnv != "" {
 		launchEnv = append(launchEnv, profileLeaseEnv)
+	}
+
+	// SPEC-FACTORY-MANAGED-SESSION-001 M3 (design.md D-7): a factory leader
+	// or lane launch — the env carries the factory stamps — enters the
+	// managed session owner instead of the exec/spawn handoff: the launcher
+	// keeps its PID and owns the child as a stream-json process (REQ-MS-012).
+	// General (non-factory) launches fall through to the doors below
+	// unchanged.
+	if factoryLaunchEnabled(launchEnv) {
+		if cont {
+			return errors.New("factory managed session owns the launch shape: --continue/-c is a plain-launch resume and is not available")
+		}
+		return managedFactoryLaunchFunc(glmBackend, claudeBin, buildArgs(false), launchEnv)
 	}
 
 	// 7. Execute with --continue fallback

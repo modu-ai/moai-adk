@@ -458,3 +458,15 @@ func runManagedFactoryStreamSession(backend, bin string, args, env []string, std
 	defer ticker.Stop()
 	return driveManagedFactorySession(session, stdin, ticker.C, claim, toPrompt)
 }
+
+// managedFactoryLaunch routes the launcher's factory divert (design.md D-7)
+// to the managed owner for the launch's backend: a GLM launch shares the
+// Claude stream-json surface under the GLM backend label (M1), a Claude
+// launch takes the Claude owner. bin/args/env are the launch the exec door
+// would have carried — args[0] is the program name, per the owner convention.
+func managedFactoryLaunch(glmBackend bool, bin string, args, env []string) error {
+	if glmBackend {
+		return runManagedFactoryGlm(bin, args, env)
+	}
+	return runManagedFactoryClaude(bin, args, env)
+}

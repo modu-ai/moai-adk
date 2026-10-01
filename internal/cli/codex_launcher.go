@@ -233,6 +233,14 @@ var codexSpawnLaunchFn = defaultCodexSpawnLaunch
 var codexSpawnPaneIdentityFn = defaultCodexSpawnPaneIdentity
 var codexSpawnCleanupPaneFn = tmuxKillPane
 
+// managedFactoryCodexLaunchFunc is the managed-divert seam (SPEC-FACTORY-
+// MANAGED-SESSION-001 M3): it receives the binary, the argv with the
+// program name at args[0], and the launcher env. Tests override it to
+// observe the divert without starting a real App Server.
+var managedFactoryCodexLaunchFunc = func(bin string, args, env []string) error {
+	return runManagedFactoryCodex(bin, args, env, os.Stdin)
+}
+
 // defaultCodexSpawnLaunch opens a detached tmux window running codex
 // directly. The command string is shell-quoted token-by-token so a tail
 // containing spaces, quotes, or $ survives the round trip.
@@ -1063,6 +1071,22 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 	}
 	childArgs := append(localArgs, codexChildArgs(kind, tail)...)
 	req := codexLaunchRequest{Program: binaryPath, Args: childArgs, Dir: dir}
+	// SPEC-FACTORY-MANAGED-SESSION-001 M3 (design.md D-7): a launch whose
+	// process env carries the factory stamps enters the managed Codex owner —
+	// the launcher keeps its PID and owns the App Server child (REQ-MS-012) —
+	// instead of the doors below. General launches reach the doors unchanged,
+	// and the tmux --spawn door stays a general-launch surface.
+	if !spawn && factoryLaunchEnabled(os.Environ()) {
+		if worktree.present {
+			// Same anchor discipline as the direct door: the lock names the
+			// owning process before the session starts.
+			if err := codexWorktreeAnchorLock(dir, codexDirectAnchorPID(), homestate.CurrentProcessFingerprint()); err != nil {
+				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), err.Error())
+				return &exitCodeError{code: 1}
+			}
+		}
+		return managedFactoryCodexLaunchFunc(binaryPath, append([]string{binaryPath}, childArgs...), os.Environ())
+	}
 	if spawn {
 		if err := checkSpawnPrereqs(); err != nil {
 			return err
