@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -121,6 +122,25 @@ func factoryRefuseCodexMergeEdge(verb string) error {
 		verb, factoryCodexMergeSentinel)
 }
 
+// sameDirPath reports whether two path spellings name the same directory.
+// Beyond the literal form it accepts case-only differences on the platforms
+// whose filesystems resolve case-insensitively (t1293): a lane launched from
+// a lowercase logical PWD occupies the same physical checkout git names with
+// its on-disk spelling, so spelling equality must not gate lane admission
+// there. On case-sensitive platforms only the literal form passes — there a
+// case-distinct path IS a different directory.
+func sameDirPath(a, b string) bool {
+	if a == b {
+		return true
+	}
+	switch runtime.GOOS {
+	case "darwin", "windows":
+		return strings.EqualFold(a, b)
+	default:
+		return false
+	}
+}
+
 // factoryAssertParentCheckout refuses when dir is not the repository's
 // parent (primary) checkout, naming the parent path (REQ-SD-010). The CLI
 // path evaluates it against the command's project root; the MCP factory
@@ -134,7 +154,7 @@ func factoryAssertParentCheckout(dir string) error {
 	if err != nil {
 		return fmt.Errorf("factory next: cannot identify the parent checkout of %s: %w", dir, err)
 	}
-	if primary != dir {
+	if !sameDirPath(primary, dir) {
 		return fmt.Errorf("factory next: refused — this verb runs from the parent checkout %s, not from %s", primary, dir)
 	}
 	return nil
