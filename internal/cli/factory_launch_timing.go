@@ -91,6 +91,8 @@ func (t *factoryLaunchTiming) phaseElapsed() time.Duration {
 // REQ-005) with an optional detail suffix. It measures nothing unless the
 // collector was created for a debug launch — the debug-off threshold report
 // keeps exactly its REQ-012 step set — and is nil-safe like begin.
+// @MX:ANCHOR: [AUTO] the debug-vocabulary recording site shared by the cc/glm/codex launch paths (fan-in spans all three launchers)
+// @MX:REASON: the single recording point is load-bearing — a second instrumentation site would fork the step set and break the AC-012/AC-013 freezes
 // @MX:SPEC: SPEC-CODEX-DEBUG-MODE-001
 func (t *factoryLaunchTiming) beginDebug(name, detail string) func() {
 	if t == nil || !t.debug {
@@ -109,6 +111,8 @@ func (t *factoryLaunchTiming) beginDebug(name, detail string) func() {
 // lane claim's claimed label, the anchor lock's outcome. No-op without debug
 // or on an empty record; nil-safe. The launch path is single-threaded, so
 // "most recent" is unambiguous.
+// @MX:ANCHOR: [AUTO] detail-annotation site for every traced launch step (lane-claim label, worktree outcome, anchor-lock result)
+// @MX:REASON: fan-in spans all three launchers; the most-recent-step contract depends on the single-threaded launch path staying single-threaded
 // @MX:SPEC: SPEC-CODEX-DEBUG-MODE-001
 func (t *factoryLaunchTiming) annotateDetail(detail string) {
 	if t == nil || !t.debug || len(t.steps) == 0 {
@@ -123,6 +127,8 @@ func (t *factoryLaunchTiming) annotateDetail(detail string) {
 // recording site (no second instrumentation exists). Like reportSlow it must
 // run BEFORE the platform exec seam (REQ-009): the direct door replaces the
 // process, so a print after the seam never runs.
+// @MX:ANCHOR: [AUTO] pre-seam debug dump — the last launcher print before the platform exec seam replaces the process
+// @MX:REASON: like reportSlow it must run before syscall.Exec (REQ-009): a print after the seam never executes; every new launch door must call it before handoff
 // @MX:SPEC: SPEC-CODEX-DEBUG-MODE-001
 func (t *factoryLaunchTiming) debugDump(w io.Writer) {
 	if t == nil || !t.started {

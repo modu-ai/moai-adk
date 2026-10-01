@@ -57,6 +57,7 @@ const (
 // are never inspected — the same scoping discipline as the --help scan and
 // stripSpawnFlag (the cc/glm form of REQ-002: the token is observe-only
 // there, REQ-004).
+// @MX:NOTE: [AUTO] the one shared pre--- debug-token scan for all three launchers — the uniformity contract's parse site (REQ-012); cc/glm/codex must consume this, not private scans
 // @MX:SPEC: SPEC-CODEX-DEBUG-MODE-001
 func launcherDebugRequested(args []string) bool {
 	for _, arg := range args {
@@ -86,6 +87,7 @@ func hasEnvKey(env []string, key string) bool {
 // value is never modified (REQ-011): the caller invokes this only under
 // debug mode, and the absence check is what keeps an operator value
 // authoritative.
+// @MX:NOTE: [AUTO] operator-supplied RUST_LOG must survive untouched (REQ-011) — the absence check IS the override guard; do not fold it away
 // @MX:SPEC: SPEC-CODEX-DEBUG-MODE-001
 func codexApplyDebugEnv(env []string) []string {
 	if hasEnvKey(env, config.EnvRustLog) {
@@ -99,6 +101,7 @@ func codexApplyDebugEnv(env []string) []string {
 // emitted (REQ-006; the lane keys carry leader addresses and identity). The
 // rustLogInjected caller knowledge distinguishes "injected" from
 // "preserved" for the RUST_LOG clause.
+// @MX:NOTE: [AUTO] REQ-006 secrecy boundary: renders env KEY names and presence only — lane keys carry leader addresses and identity; never extend it to print values
 // @MX:SPEC: SPEC-CODEX-DEBUG-MODE-001
 func codexDebugEnvDetail(rustLogInjected bool) string {
 	var parts []string
@@ -130,6 +133,7 @@ func codexDebugEnvDetail(rustLogInjected bool) string {
 // tokens after -- are codex's own and are never inspected (REQ-002). Exact
 // token shapes only, mirroring stripSpawnFlag, so a `-d` sitting in the
 // value position of another flag is never consumed.
+// @MX:NOTE: [AUTO] exact-token strip so `-d` never reaches the codex child (REQ-001) — token-shape parity with stripSpawnFlag, value positions untouched
 // @MX:SPEC: SPEC-CODEX-DEBUG-MODE-001
 func stripCodexDebugFlag(head []string) ([]string, bool) {
 	rest := make([]string, 0, len(head))

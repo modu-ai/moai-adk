@@ -123,7 +123,21 @@ m1_to_mN_commit_strategy: per-milestone commits M1..M5 on WT-codex-debug-mode-ru
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-10-02
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+changelog_entry_position: "[Unreleased] > Added — first bullet (newest-first within the section; t1378's entry demoted one position)"
+b12_self_test_a: "pre-emission grep -c SPEC-CODEX-DEBUG-MODE-001 CHANGELOG.md → 0 (cleared to emit)"
+b12_self_test_b: "AC live-count counter over acceptance.md (tier M source) → 15 live / 0 excluded / 0 ambiguous; CHANGELOG entry cites AC-001..015 = 15 (match)"
+b12_self_test_c: "all 7 cited implementation paths verified via ls (internal/cli/launcher_debug_trace.go + codex_launcher.go + codex_factory.go + cc.go + glm.go + factory_launch_timing.go + internal/config/envkeys.go)"
+mx_compliance: "launcher_debug_trace.go 4x @MX:NOTE; factory_launch_timing.go 3x @MX:ANCHOR (+@MX:REASON) on beginDebug/annotateDetail/debugDump (fan-in >= 3 across the three launchers); existing @MX:SPEC sub-lines preserved; per-file limits respected (anchor 3/3, note 4/10 in launcher_debug_trace.go); comment language en per code_comments"
+codemap_refresh: "modules.md internal/cli row 395→396 (root 314→315, launcher_debug_trace.go) + new 현재 부분 갱신 t1380 paragraph (t1378 demoted to 이전 갱신, per t1378/t1383 precedent); provenance.json re-stamped to this tree (3a32a654b)"
+docs_site_decision: "no edit — docs-site/content/*/advanced/codex-dual-harness.md enumerates launch-path forms (기본 실행·cli·app·--spawn·-w) for the local-instruction load order, which -d does not falsify (flag, not a path form); the missing -d mention is an omission, recorded as a follow-up candidate, not expanded in this sync"
+spec_frontmatter: "status in-progress → completed, updated → 2026-10-02 (frontmatter-only; spec/plan/acceptance body untouched)"
+verification_scope: "gofmt -l clean + go build ./internal/cli + go vet ./internal/cli clean after MX edits (this run, tree HEAD 3a32a654b + doc edits); spec lint tree-sourced (see below); full internal/cli suite NOT re-run at sync — machine load 69-109 with parallel lanes, per the run-phase Gaps record; run-phase verification at 3a32a654b stands (15/15 AC, decisive selector ok 20.628s)"
+recorded_by: "manager-docs (sync phase, card t1380)"
+```
 
 ## §F Phase 4 Mode Selection
 
