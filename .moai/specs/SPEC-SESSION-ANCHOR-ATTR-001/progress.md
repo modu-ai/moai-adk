@@ -90,13 +90,25 @@
 - new_warnings_or_lints_introduced: 0 (중간 3건 errcheck — M5에서 수정, 최종 scoped lint 0 issues)
 - cross_platform_build.darwin_arm64: pass (go build ./... exit 0)
 - cross_platform_build.windows_amd64: pass (GOOS=windows GOARCH=amd64 exit 0)
-- total_run_phase_files: 24 (base 78df22755..HEAD — Go 소스 15 + 테스트 5 + rules doc 2 + SPEC 아티팩트 2)
+- total_run_phase_files: 25 (base 78df22755..HEAD — Go 소스 15 + 테스트 6 + rules doc 2 + SPEC 아티팩트 2)
+- f2_correction_note: 위 24 → 25 정정 — sync-audit F2: 수정된 worktree_guard_refusal_test.go가 테스트 분해에서 미계수였음 (.moai/reports/t1339/sync-audit-1.md F2, 2026-10-01 manager-docs sync 단계 적용)
 - m1_to_mN_commit_strategy: per-milestone 5커밋 (M1 attribution → M2 audit+guard → M3 trace → M4 docs → M5 wrap-up)
 - pre_existing_baseline_note: internal/hook GLM 컨텍스트 윈도우 테스트 2건 적색 — t1368 유입 선존재(코드경로 diff 0 입증), 본 SPEC 스코프 외, 리드 통합 전 수리 필요
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs 소관>_
+- sync_status: complete
+- sync_complete_at: 2026-10-01
+- sync_commit_sha: pending-backfill-sync
+- sync_audit: PASS 0.97 (harmonic mean, Tier M 임계 0.85 — must-pass Functionality 1.00·Security 1.00) — report `.moai/reports/t1339/sync-audit-1.md` (cold-auditor fallback 경로, audit 1, audited_sha 4072b84a74d28ee504b446fc584ef47fe352cc76)
+- changelog_entry_position: CHANGELOG.md `[Unreleased]` § Added 선두 항목
+- b12_self_test_a: 사전 배출 grep `SPEC-SESSION-ANCHOR-ATTR-001` in CHANGELOG.md = 0건 (중복 항목 가드 통과)
+- b12_self_test_b: AC 카운터(acceptance.md) → live=10 excluded=0 ambiguous=0 — CHANGELOG 항목의 10건(AC-001..AC-010)과 일치
+- b12_self_test_c: CHANGELOG 항목이 이름 대는 파일 경로 전수 `ls` 실측 존재 확인 (16경로, 누락 0)
+- frontmatter_status_transitions.spec: in-progress → completed (본 sync 커밋에 동승, updated: 2026-10-01 — 3-phase close로 completed 전이가 sync 커밋에 병합됨)
+- frontmatter_status_transitions.plan_acceptance: 해당 없음 — plan.md·acceptance.md는 frontmatter 미보유(status 축 stateless 규정)
+- mx_folded: 3-phase close에 따라 MX 태그 검증은 별도 Mx-phase가 아니라 sync 하위 단계로 흡수 — sync-audit Craft 0.95가 신규 @MX:NOTE 어노테이션(anchor_relocate_audit.go·anchor_trace.go) 포함 표면을 실측 커버
+- sync_audit_f2_correction: §E.3 total_run_phase_files 24 → 25 정정 (상세는 §E.3 f2_correction_note)
 
 ## §F Phase 4 Mode Selection
 
