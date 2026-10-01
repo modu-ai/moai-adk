@@ -200,6 +200,20 @@ func TestSD_AC013_ClaudeCompleteViaIntegrationWorktree(t *testing.T) {
 		}
 	})
 
+	t.Run("integration branch held only by the parent checkout: not provisioned", func(t *testing.T) {
+		root, _, cards := sdMergeFixture(t, true, false, true, 1)
+		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
+		before := fcCard(t, root, "t1")
+
+		sdLaneEnv(t, "lane-1", "")
+		t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
+		_, _, err := runFactory(t, "complete", "t1", "--run", fcRun)
+		if err == nil || !strings.Contains(err.Error(), "not provisioned") {
+			t.Fatalf("parent-checkout arm: err = %v, want a not-provisioned refusal", err)
+		}
+		sdCardUnchanged(t, "parent-checkout arm", root, "t1", before)
+	})
+
 	t.Run("integration branch held by no tree: not provisioned", func(t *testing.T) {
 		root, _, cards := sdMergeFixture(t, true, false, false, 1)
 		sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
@@ -347,39 +361,5 @@ func TestSD_AC025_IntegrationWindowSerializes(t *testing.T) {
 	// The window is now held by lane-2's session (release stays its next step).
 	if lock := sdWindow(t, root); !lock.Held() || lock.SessionID != "sess-lane-2" {
 		t.Errorf("window after lane-2 complete = held=%v by %q, want held by sess-lane-2", lock.Held(), lock.SessionID)
-	}
-}
-
-// t1294 — primary-develop integration: an operator flow (mo.ai.kr,
-// operator-confirmed 2026-09-13) merges cards with --no-ff INSIDE the parent
-// checkout's local develop, so the ONLY tree holding the integration branch
-// is the parent itself. complete used to refuse that shape outright
-// (t1277/t1290/t1291: cards wedged at `merging`, closable only by operator
-// decide); when the parent has the integration branch checked out, the
-// parent IS the integration tree.
-func TestSD_CompletePrimaryDevelopIntegration(t *testing.T) {
-	root, _, cards := sdMergeFixture(t, true, false, true, 1)
-	sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
-
-	sdLaneEnv(t, "lane-1", "")
-	t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
-	if _, _, err := runFactory(t, "complete", "t1", "--run", fcRun); err != nil {
-		t.Fatalf("complete in the primary-develop flow: %v", err)
-	}
-	c := fcCard(t, root, "t1")
-	if c.State != homestate.CardMergedLocal {
-		t.Fatalf("t1 = %s, want merged-local", c.State)
-	}
-	head := fcGit(t, root, "rev-parse", "HEAD")
-	if head != c.MergeSHA {
-		t.Errorf("parent HEAD = %s, want the recorded merge %s", head, c.MergeSHA)
-	}
-	if got := fcGit(t, root, "rev-list", "--parents", "-n", "1", head); len(strings.Fields(got)) != 3 {
-		t.Errorf("parent HEAD is not a two-parent merge: %s", got)
-	}
-	// The window records the tree the merge actually ran in: the parent.
-	lock := sdWindow(t, root)
-	if !lock.Held() || !factorySameTree(lock.Worktree, root) {
-		t.Errorf("window worktree = %q held=%v, want the parent checkout %s", lock.Worktree, lock.Held(), root)
 	}
 }
