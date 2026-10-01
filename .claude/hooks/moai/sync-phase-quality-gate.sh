@@ -749,7 +749,36 @@ find_go_module_roots() {
 $files
 GOFILES
 }
+# find_cargo_manifest_dirs: the Rust counterpart of the Go module-root walk.
+# Detection recurses over *.rs (has_suffix), so a nested package under a root
+# without its own Cargo.toml is detected — and a root `cargo check` there
+# exits 101 and blocks a healthy project (codex review gate reproduction:
+# root Gemfile + sub/Cargo.toml). Walk each changed .rs up to its nearest
+# owning manifest and check that package instead.
+find_cargo_manifest_dirs() {
+    local files f d out
+    files=$(printf '%s\n' "$SYNC_DELTA_FILES" | grep -E '\.rs$' || true)
+    out=""
+    while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        [ -f "$PROJECT_ROOT/$f" ] || continue
+        d="$PROJECT_ROOT/$f"
+        while :; do
+            d=$(dirname "$d")
+            if [ -f "$d/Cargo.toml" ]; then
+                case "$out" in *"$d
+"*) ;; *) printf '%s\n' "$d"; out="$out$d
+" ;; esac
+                break
+            fi
+            case "$d" in "$PROJECT_ROOT"|/) break ;; esac
+        done
+    done <<RSFILES
+$files
+RSFILES
+}
 GO_ROOTS=""
+CARGO_MANIFEST_DIRS=""
 for checked_language in $CHANGED_LANGS; do
 C1_LABEL="(none)"
 C2_LABEL="(none)"
@@ -788,7 +817,20 @@ case "$checked_language" in
         ;;
     rust)
         C1_LABEL="cargo check"
-        run_step cargo c1 cargo check
+        # Check each changed source's owning package, not the repo root: the
+        # root may carry no Cargo.toml at all (nested-package layout, codex
+        # review gate reproduction) where a bare `cargo check` exits 101 and
+        # blocks healthy code. No owning manifest anywhere keeps the root run
+        # as the anchor — a failure there is then a real one.
+        [ -n "$CARGO_MANIFEST_DIRS" ] || CARGO_MANIFEST_DIRS=$(find_cargo_manifest_dirs)
+        if [ -n "$CARGO_MANIFEST_DIRS" ]; then
+            while IFS= read -r cargo_dir; do
+                [ -n "$cargo_dir" ] || continue
+                run_step cargo c1 cargo check --manifest-path "$cargo_dir/Cargo.toml" -q
+            done < <(printf '%s\n' "$CARGO_MANIFEST_DIRS")
+        else
+            run_step cargo c1 cargo check
+        fi
         ;;
     java)
         C1_LABEL="javac compile check"

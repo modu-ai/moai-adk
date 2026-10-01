@@ -179,12 +179,56 @@ templ fieldsetSchemaSection(view pageView, meta schemaSectionMeta) {
 		if meta.PanelID == "workflow" {
 			@fieldsetJevSection(view)
 		}
+		// The agent-tier sub-section (tier axis): the chart-grounding table
+		// and the per-class tier radios as one surface. Same PanelID keying
+		// as the Jev sub-section above — render placement inside the workflow
+		// panel, persistence on the SectionWorkflow seam.
+		if meta.PanelID == "workflow" {
+			@fieldsetAgentTiers(view)
+		}
 		for _, rb := range settings.RawViewBlocks() {
 			if meta.Extras && rb.Section == meta.ID {
 				@schemaRawBlock(rb.Name, view.RawBlocks[rb.Name], rb.NoteKey)
 			}
 		}
 	}
+}
+
+// fieldsetAgentTiers renders the agent-tier sub-section of the workflow panel
+// (tier axis): the chart-grounding table (each tier's Terminal-Bench accuracy
+// and cost figures — display data straight from the config table, never
+// restated here) followed by the per-class tier radios. The radios are schema
+// fields closed to config.ValidAgentTiers(), so the selection accepts only
+// the closed set; an empty submit is the class's "unset" and the resolver
+// falls back to the compiled default.
+templ fieldsetAgentTiers(view pageView) {
+	<div class="subsection" data-section={ agentTierSectionMarker }>
+		<div class="field__head">
+			<span class="field__label" data-i18n="sec.agenttiers.title">Agent tiers</span>
+		</div>
+		<p class="panel__help" data-i18n="sec.agenttiers.help">
+			Which model-and-effort pair each agent class runs at. Tier tokens are configuration keys, not effort values — an unset class keeps the compiled default, and audit surfaces ride the audit pins, never a tier.
+		</p>
+		<div class="tier-chart" role="table" aria-label="Tier chart grounding">
+			<div class="tier-chart__row tier-chart__row--head" role="row">
+				<span data-i18n="sec.agenttiers.col.tier">Tier</span>
+				<span data-i18n="sec.agenttiers.col.pair">Model @ effort</span>
+				<span data-i18n="sec.agenttiers.col.score">Accuracy</span>
+				<span data-i18n="sec.agenttiers.col.cost">Cost/attempt</span>
+			</div>
+			for _, row := range agentTierChartRows() {
+				<div class="tier-chart__row" role="row">
+					<span><code class="key">{ row.Tier }</code></span>
+					<span><code class="key">{ row.Pair }</code></span>
+					<span>{ row.Score }</span>
+					<span>{ row.Cost }</span>
+				</div>
+			}
+		</div>
+		for _, f := range agentTierSectionFields() {
+			@schemaFieldWidget(view, f)
+		}
+	</div>
 }
 
 // fieldsetGLMKey renders the GLM API key control. It is a secret-class input:

@@ -95,6 +95,27 @@ workflow:
         plan: 30000
         run: 180000
         sync: 40000
+    # agent_tiers: which {model, effort} pair each agent class runs at. Tier
+    # tokens are configuration-key names, NOT effort values — the effort field
+    # keeps its own vocabulary everywhere: max = the accuracy-first pair
+    # (sonnet-5-5 at effort max), medium = the cost-efficiency pair
+    # (sonnet-5-5 at effort high), low = the light-work pair (sonnet-5-5 at
+    # effort medium). The compiled defaults in the Go config are the source of
+    # truth; this block documents them and is where a project overrides per
+    # class — unlisted classes keep the compiled defaults. Audit surfaces
+    # (plan-auditor, sync-auditor, and the audit backends) are excluded from
+    # this table: they resolve through the audit pins above, never a tier.
+    # An unknown tier token fails the config load; an unknown class name is
+    # ignored.
+    agent_tiers:
+        classes:
+            super-advisor: max
+            manager-spec: max
+            manager-develop: medium
+            manager-docs: medium
+            e2e-tester: medium
+            explore: low
+            lane: medium
     # audit: cross-model audit backend model+effort pinning. Applies ONLY at
     # the audit entry points (claude_audit / codex_audit / glm_audit /
     # audit_multi) — never to task delegation. Precedence: this pin > the llm.yaml
@@ -105,20 +126,20 @@ workflow:
     # never a hard error). codex effort vocabulary: low|medium|high|xhigh|max.
     # glm effort vocabulary (z.ai reasoning states, verbatim): low|high|max —
     # any other non-empty value omits the reasoning directive while the model
-    # pin still applies. Claude ships at claude-opus-5-5/medium and Codex at
+    # pin still applies. Claude ships at claude-opus-5-5/high and Codex at
     # gpt-6.1-sol/high (deliberate non-empty pins; an earlier empty-pin
     # neutrality default was superseded by operator directive); the
-    # GLM pin ships EMPTY and may be set per project.
+    # GLM pin ships glm-5.3/max and may be set per project.
     audit:
         claude:
             model: claude-opus-5-5
-            effort: medium
+            effort: high
         codex:
             model: gpt-6.1-sol
             effort: high
         glm:
-            model: ""
-            effort: ""
+            model: glm-5.3
+            effort: max
     # codex.review_gate: opt-in Stop-hook gate that asks the codex reviewer to
     # look at your uncommitted changes at turn-end and keeps the turn going when
     # the review comes back failing. Requires the optional `codex` binary.

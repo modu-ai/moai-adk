@@ -277,6 +277,24 @@ func modeDefaultFields() []FieldDef {
 	return fields
 }
 
+// tierClassFields builds the per-class agent-tier radio fields (the agent
+// tier axis): one closed-set radio per known class, in domain order. The
+// class list comes from config.AgentTierClassOrder so the schema order — the
+// render order — is deterministic. Options derive from config.ValidAgentTiers()
+// (SSOT accessor, never a restated literal set).
+func tierClassFields() []FieldDef {
+	order := config.AgentTierClassOrder()
+	fields := make([]FieldDef, 0, len(order))
+	for _, class := range order {
+		fields = append(fields, withRadio(
+			seamField(SectionWorkflow, "workflow", TypeRadio, "workflow", "agent_tiers", "classes", class),
+			"f.workflow.agent_tiers.classes.opt.",
+			config.ValidAgentTiers(), "", "",
+		))
+	}
+	return fields
+}
+
 func seamSectionFields() []FieldDef {
 	s := seamField
 	// 닫힌 집합 필드는 withRadio/withSelect로 닫힌 위젯 + 멤버십 검증을 갖춘다
@@ -472,7 +490,9 @@ func seamSectionFields() []FieldDef {
 	}
 	// harness.mode_defaults.* 는 실행 모드 pin 집합에서 파생하므로 리터럴 목록에
 	// 인라인하지 않고 뒤에 붙인다 (렌더 순서: harness 블록 뒤).
-	return append(fields, modeDefaultFields()...)
+	// Agent-tier class radios append after the derived harness fields (tier
+	// fields: closed-set radios per class — see tierClassFields).
+	return append(append(fields, modeDefaultFields()...), tierClassFields()...)
 }
 
 // ─── SPEC-WEB-CONSOLE-013 M2: handoff / cache 섹션 (seam 전용) ────────────────
