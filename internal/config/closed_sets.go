@@ -95,6 +95,33 @@ func ValidAuditModels() []string {
 // constant the resolver writes instead of restating the literal.
 const DefaultCodexAuditModel = "gpt-6.1-sol"
 
+// DefaultClaudeAuditModel / DefaultClaudeAuditEffort are the claude audit pin
+// default — {claude-opus-5-5, high} (SPEC-AGENT-TIER-001 REQ-TIER-004,
+// operator directive: SUPERSEDES the t1368 {claude-opus-5-5, medium} pin).
+// Declared beside DefaultCodexAuditModel per the same precedent: the Go
+// default (NewDefaultWorkflowConfig) and the resolver terminal fallback
+// (resolveClaudeAuditModelEffort) both derive from these constants instead of
+// restating the literals (REQ-TIER-013 single-sourcing).
+const (
+	DefaultClaudeAuditModel  = "claude-opus-5-5"
+	DefaultClaudeAuditEffort = "high"
+)
+
+// DefaultGLMAuditModel / DefaultGLMAuditEffort are the GLM audit pin default —
+// {glm-5.3, max} (SPEC-AGENT-TIER-001 REQ-TIER-004/006). The model is the FULL
+// glm-5.3 (DefaultGLM53), deliberately NOT the flash slot default
+// (DefaultGLMHigh): the audit pin targets full glm-5.3 while the glm_task
+// delegation default stays on the flash variant (REQ-AMP-008). The effort
+// value is a z.ai reasoning-state name — the {low, high, max} vocabulary,
+// stored and transmitted verbatim (REQ-AMP-006). internal/template owns the
+// GLMState* name constants and internal/config cannot import it, so the state
+// is declared here once and glmAuditReasoningEffort (internal/cli) validates
+// against the same set.
+const (
+	DefaultGLMAuditModel  = DefaultGLM53
+	DefaultGLMAuditEffort = "max"
+)
+
 // ValidCodexAuditModels returns the closed set for workflow.audit.codex.model
 // (card t1278): the runtime default first, then the two ids with real
 // stored-value evidence (gpt-5.6-sol — operator screenshot 2026-09-30 ·
