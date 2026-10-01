@@ -100,7 +100,7 @@ func TestAnchorTraceBranchGuardAnchorRead(t *testing.T) {
 // positive control (acceptance AC-008): the switch off emits nothing on the
 // identical fixture, the control run on emits the row.
 func TestAnchorTraceBranchGuardDisabledEmitsNothing(t *testing.T) {
-	os.Unsetenv(config.EnvAnchorTrace)
+	_ = os.Unsetenv(config.EnvAnchorTrace)
 	projectDir := t.TempDir()
 	nonGitCwd := t.TempDir()
 

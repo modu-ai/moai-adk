@@ -55,7 +55,10 @@ func TestAnchorTraceEnabledTruthy(t *testing.T) {
 			t.Errorf("AnchorTraceEnabled() with %s=%q = true, want false", config.EnvAnchorTrace, v)
 		}
 	}
-	os.Unsetenv(config.EnvAnchorTrace)
+	// The unset case reads as falsy too — asserted via the empty-string arm
+	// above plus an explicit unset through os to keep t.Setenv's restore
+	// semantics (the value is restored at test end either way).
+	_ = os.Unsetenv(config.EnvAnchorTrace)
 	if AnchorTraceEnabled() {
 		t.Errorf("AnchorTraceEnabled() with the variable unset = true, want false")
 	}
@@ -110,7 +113,7 @@ func TestAnchorTraceDisabledEmitsNothing(t *testing.T) {
 	host, _ := os.Hostname()
 
 	// Negative arm: switch unset — no trace file at all.
-	os.Unsetenv(config.EnvAnchorTrace)
+	_ = os.Unsetenv(config.EnvAnchorTrace)
 	root := t.TempDir()
 	writeAnchorRegistry(t, root, []Entry{
 		{SessionID: "sess-off", SpecID: "SPEC-X", Phase: "run", LastHeartbeat: time.Now().UTC().Add(time.Hour), PID: os.Getpid(), Host: host, CWD: "/tree/old"},

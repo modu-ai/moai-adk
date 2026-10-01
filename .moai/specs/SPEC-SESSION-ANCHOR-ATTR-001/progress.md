@@ -47,7 +47,7 @@
 - REQ-SAA-005: `workflow.anchor_relocation_guard.enabled` opt-in 키(config types.go+defaults.go — BranchGuard/AgentStopGuard 선례 동형, 기본 false, 템플릿 중립). on + 플래그 → 거부 + 감사행 Refused:true, `ErrRelocationRefused`.
 - REQ-SAA-006 보존: 두-패스 후보 순서(relocateRegistryCandidatesFrom)·fail-open 무수정 — 기존 8 RUN 테스트 GREEN.
 - 훅 연결: cwd_changed_relocate.go에 git-context seam(`relocationGitContext` 패키지 변수 — sessionProcessLiveness 선례 동형), `relocationTargetContext`(git rev-parse --show-toplevel + worktree list --porcelain fail-open), `anchorRelocationGuardEnabled`(nil-safe). cwdChangedHandler cfg 필드 + NewCwdChangedHandlerWithConfig, deps.go 갱신, handleWorktreeMove에 cfg 전달.
-- RED 증거(E8): (a) session측 — `undefined: guardRefusalAttribution` 아니라 `RelocationAudit` 관련 compile fail (audit 타입/메서드 미존재 시절); (b) hook측 — `undefined: relocationGitContext` ×3, `too many arguments in call to relocateSessionCwd` ×3, `undefined: anchorRelocationGuardEnabled` ×3 (구현 전 실측).
+- RED 증거(E8): (a) session측 — 구현 전 컴파일 실패: `undefined: RelocationAudit/RelocationOptions/RelocateSessionWithOptions/ParseLockCardID/ErrRelocationRefused` 등 audit 표면 전체 미존재; (b) hook측 — `undefined: relocationGitContext` ×3, `too many arguments in call to relocateSessionCwd` ×3, `undefined: anchorRelocationGuardEnabled` ×3 (구현 전 실측).
 - GREEN: session 신규 5테스트 + 기존 RelocateSession 3테스트, hook 신규 4테스트 + 기존 two-pass 8 RUN — 전부 PASS. session·config 패키지 전체 ok.
 
 ### M3 — W3 앵커 트레이스 스위치 (2026-10-01)
@@ -66,9 +66,33 @@
 - 검증: diff 템플릿↔로컬 = 0, `TestTemplateNeutralityAudit` ok, `TestRuleTemplateMirrorDrift` PASS, 4요소 presence grep 템플릿·로컬 양면 t1339=3/3.
 - AC-010 RED-now(`grep -c t1339` = 0) → green-path 전환 완료.
 
+### M5 — W5 심각도 일치 + 종합 검증 (2026-10-01)
+
+- W5: spec.md §A.3 심각도 논거 3축(무음 변이 실측/처분 가드 오귀속/표준 운용 재현)과 구현 산출물 대조 — 모순 0(무음 측정은 W3 트레이스가, 처분 가드 오귀속 판독은 W2 registry-only 플래그가, 기본 동작 불변은 advisory 도크트린이 각각 대응; 부분 산출 한계는 spec.md §A.4 그대로).
+- E2 빌드: `go build ./...` exit 0 + `GOOS=windows GOARCH=amd64 go build ./...` exit 0 + `go vet ./internal/...` exit 0 (HEAD 455e069f6+lfx, 최종 트리).
+- E1 AC 매트릭스: AC-001..AC-010 전부 PASS — §D 매트릭스 선택자 실측(관측 RUN 수 인용, `[no tests to run]` 0건): AC-001/002 군 14 RUN ok, AC-003~005 session 6+hook 7 RUN ok, AC-006 회귀(anchor_relocate_test.go·cwd_changed_relocate_anchor_test.go **무수정** — base 대비 diff 0 실측) ok, AC-007/008 트레이스 4+2 RUN ok(부정+양성 대조 병행), AC-009 (a)살생 변이 2건 유지[파일 diff 순수 추가 실측]/(b)Seam A/[c]감사 로그 CLAUDE_PROJECT_DIR 앵커/(d)env 리터럴 1건(envkeys.go 선언)/(e)LiveAnchoredSessions 6 RUN/(f)RefuseMutation 1 RUN 전부 ok, AC-010 diff 템플릿↔로컬 0 + 중립성 ok.
+- E3 커버리지: `go test ./internal/session/ -cover` → **86.1%** (ok 36.8s); `go test ./internal/hook/ -cover -timeout=24m` → **86.8%** (ok 1198.9s, TRUST 5 85% 충족).
+- 전체 hook 스위트 최종 실측: -cover 풀 실행(1198.9s, 무타임아웃)에서 적색은 **선존재 2건뿐** — TestMaybeSet1MAutoCompactWindow(glm-5.2)·TestMaybeDeclareGLMContextWindow(glm-4.5-air), t1368 모델 매트릭스 유입 baseline 결함(코드경로 session_start.go·session_start_test.go·statusline/memory.go base..HEAD diff 0 입증) — 본 SPEC 불가항목, 리드 통합 전 수리 필요. 중간 실행의 타이밍 3건 적색은 격리 재실행 전부 PASS로 부하 요인 판정.
+- E4 경계 grep: B3 명령 raw 24건 전수 확인 → 23건 주석 + 1건 pre_tool.go:834 `input.ToolName == "AskUserQuestion"`(관측 비교문 — user_decision_capture 서브파이프라인, API 호출 아님; 본 SPEC 미터치 파일, base 대비 diff 0). 신규 위반 0.
+- E5 린트(CI판 golangci-lint v2.1.6): 변경 패키지 4종 scoped 실행 → **0 issues**. 전체 리포 실행은 병행 부하로 timeout(측정 조건 기록) — scoped 결과가 변경면 커버. 중간 실측 3건 errcheck(test `os.Unsetenv` 미확인 복귀)는 본 마일스톤에서 수정(`_ =` 명시) — 최종 신규 0.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — manager-develop 소관>_
+- run_complete_at: 2026-10-01
+- run_commit_sha: pending-backfill-run
+- run_status: complete
+- ac_pass_count: 10
+- ac_fail_count: 0
+- ac_pass_with_debt_count: 0
+- preserve_list_post_run_count: 6 (anchor_lock.go 동작·two-pass 순서·Seam A 분리·worktreeGuardAnchor 핀·LiveAnchoredSessions 읽기 경로·RefuseMutationFromNonCanonicalTree — 전부 무수정 실측: base 대비 해당 파일 diff 0 또는 기존 테스트 GREEN)
+- l44_pre_commit_fetch: n/a (레인 미push — 리포 로컬 git-flow, 통합은 리드 일괄)
+- l44_post_push_fetch: n/a (상동)
+- new_warnings_or_lints_introduced: 0 (중간 3건 errcheck — M5에서 수정, 최종 scoped lint 0 issues)
+- cross_platform_build.darwin_arm64: pass (go build ./... exit 0)
+- cross_platform_build.windows_amd64: pass (GOOS=windows GOARCH=amd64 exit 0)
+- total_run_phase_files: 24 (base 78df22755..HEAD — Go 소스 15 + 테스트 5 + rules doc 2 + SPEC 아티팩트 2)
+- m1_to_mN_commit_strategy: per-milestone 5커밋 (M1 attribution → M2 audit+guard → M3 trace → M4 docs → M5 wrap-up)
+- pre_existing_baseline_note: internal/hook GLM 컨텍스트 윈도우 테스트 2건 적색 — t1368 유입 선존재(코드경로 diff 0 입증), 본 SPEC 스코프 외, 리드 통합 전 수리 필요
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
