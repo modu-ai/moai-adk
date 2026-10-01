@@ -76,7 +76,7 @@
 
 - sync_status: complete
 - sync_complete_at: 2026-10-01
-- sync_commit_sha: pending-backfill-sync
+- sync_commit_sha: 383954c94e75c9f536f67342c65648af4cdd07cc  # D3-exempt backfill: the placeholder in the sync commit replaced with the real SHA (phase-owned field, manager-docs §E.4)
 - changelog_entry_position: [Unreleased] / Fixed / SPEC-DOCS-DELEGATION-CWD-001 (1건, 선두)
 - b12_self_test_a: 사전 방출 grep `grep -c 'SPEC-DOCS-DELEGATION-CWD-001' CHANGELOG.md` → `0` + exit=1 (중복 없음)
 - b12_self_test_b: AC 카운터(tier M → acceptance.md) → stdout `9`, stderr `live=9 excluded=0 ambiguous=0` — CHANGELOG 엔트리의 9 AC 인용과 일치
