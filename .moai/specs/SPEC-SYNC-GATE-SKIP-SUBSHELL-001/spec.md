@@ -2,7 +2,7 @@
 id: SPEC-SYNC-GATE-SKIP-SUBSHELL-001
 title: "Sync gate skipped-tool pipe-subshell loss repair (card t1395)"
 version: "1.0.0"
-status: draft
+status: in-progress
 created: 2026-10-02
 updated: 2026-10-02
 author: manager-spec
