@@ -149,8 +149,8 @@ func TestCharacterize_AuditPinPrecedenceAndBackendDefault(t *testing.T) {
 	bare := charAuditRoot(t, "")
 	projectDirResolver = func() string { return bare }
 
-	if got := resolveCodexAuditModelEffort(map[string]any{"cwd": bare}); got != (config.ModelEffort{}) {
-		t.Errorf("codex audit without pin = %+v, want the zero value (codex applies its own default)", got)
+	if got := resolveCodexAuditModelEffort(map[string]any{"cwd": bare}); got != (config.ModelEffort{Model: codexAuditDefaultModel, Effort: codexAuditDefaultEffort}) {
+		t.Errorf("codex audit without pin = %+v, want the {%s, %s} default pin (REQ-MMU-001 — the former zero value fell with superseded REQ-AMP-005)", got, codexAuditDefaultModel, codexAuditDefaultEffort)
 	}
 	if got := resolveCodexModelEffort(map[string]any{"cwd": bare}); got != (config.ModelEffort{}) {
 		t.Errorf("codex task without pin = %+v, want the zero value", got)
