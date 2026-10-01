@@ -32,10 +32,14 @@ const (
 	factoryStepExecHandoff  = "exec handoff"
 )
 
-// factoryLaunchStep is one measured pre-exec step.
+// factoryLaunchStep is one measured pre-exec step. detail carries the
+// debug-vocabulary suffix (SPEC-CODEX-DEBUG-MODE-001 — keys-only env
+// content, outcomes); the threshold report never prints it, the debug dump
+// does.
 type factoryLaunchStep struct {
 	name    string
 	elapsed time.Duration
+	detail  string
 }
 
 // factoryLaunchTiming collects the pre-exec steps of one launch. A nested
@@ -50,7 +54,12 @@ type factoryLaunchTiming struct {
 	start    time.Time
 	started  bool
 	reported bool
-	steps    []factoryLaunchStep
+	// debug marks a collector created for a debug launch
+	// (SPEC-CODEX-DEBUG-MODE-001): only then does beginDebug record the
+	// debug-vocabulary steps, so the debug-off threshold report keeps
+	// exactly its REQ-012 step set (the t1378 freeze).
+	debug bool
+	steps []factoryLaunchStep
 }
 
 // begin starts a step and returns the function that closes it. The returned
@@ -76,6 +85,56 @@ func (t *factoryLaunchTiming) phaseElapsed() time.Duration {
 		return 0
 	}
 	return time.Since(t.start)
+}
+
+// beginDebug records a debug-vocabulary step (SPEC-CODEX-DEBUG-MODE-001
+// REQ-005) with an optional detail suffix. It measures nothing unless the
+// collector was created for a debug launch — the debug-off threshold report
+// keeps exactly its REQ-012 step set — and is nil-safe like begin.
+// @MX:SPEC: SPEC-CODEX-DEBUG-MODE-001
+func (t *factoryLaunchTiming) beginDebug(name, detail string) func() {
+	if t == nil || !t.debug {
+		return func() {}
+	}
+	end := t.begin(name)
+	return func() {
+		end()
+		if detail != "" && len(t.steps) > 0 {
+			t.steps[len(t.steps)-1].detail = detail
+		}
+	}
+}
+
+// annotateDetail attaches a detail to the most recently recorded step — the
+// lane claim's claimed label, the anchor lock's outcome. No-op without debug
+// or on an empty record; nil-safe. The launch path is single-threaded, so
+// "most recent" is unambiguous.
+// @MX:SPEC: SPEC-CODEX-DEBUG-MODE-001
+func (t *factoryLaunchTiming) annotateDetail(detail string) {
+	if t == nil || !t.debug || len(t.steps) == 0 {
+		return
+	}
+	t.steps[len(t.steps)-1].detail = detail
+}
+
+// debugDump prints one line per recorded pre-exec step under the launcher
+// debug prefix — unconditionally: the slow-launch threshold does not gate it
+// (REQ-014), and the lines are this collector's recorded steps, the single
+// recording site (no second instrumentation exists). Like reportSlow it must
+// run BEFORE the platform exec seam (REQ-009): the direct door replaces the
+// process, so a print after the seam never runs.
+// @MX:SPEC: SPEC-CODEX-DEBUG-MODE-001
+func (t *factoryLaunchTiming) debugDump(w io.Writer) {
+	if t == nil || !t.started {
+		return
+	}
+	for _, step := range t.steps {
+		if step.detail != "" {
+			_, _ = fmt.Fprintf(w, "%s %s took %s (%s)\n", launcherDebugTracePrefix, step.name, step.elapsed.Round(time.Microsecond), step.detail)
+			continue
+		}
+		_, _ = fmt.Fprintf(w, "%s %s took %s\n", launcherDebugTracePrefix, step.name, step.elapsed.Round(time.Microsecond))
+	}
 }
 
 // reportSlow prints one line per recorded step when the pre-exec phase

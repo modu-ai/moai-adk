@@ -219,6 +219,17 @@ type codexLaunchRequest struct {
 	Args       []string // argv AFTER the program token: [verb, passthrough...]
 	Dir        string
 	FactoryEnv []string
+	// Env is the ASSEMBLED child environment (codexChildEnv, the debug
+	// RUST_LOG injection when debug mode is on, then the factory identity):
+	// assembled by the launcher ahead of the pre-seam reports so the
+	// child-env assembly step is a traced step like the others
+	// (SPEC-CODEX-DEBUG-MODE-001 REQ-005/REQ-009/REQ-010).
+	Env []string
+	// Debug carries the debug linkage decision the assembly applied.
+	Debug bool
+	// timing is the launch's pre-exec collector — nil when the launch is
+	// neither a debug launch nor a lane launch.
+	timing *factoryLaunchTiming
 }
 
 // codexDirectLaunchFn is the direct-launch seam: it receives the fully
@@ -705,11 +716,13 @@ func runCodex(cmd *cobra.Command, args []string) error {
 		// The relaunch stays the parent and selects each card's worktree
 		// itself: no --spawn, no -w, and no verb or passthrough composes
 		// with it — the closed-set discipline refuses the combination
-		// rather than adapting it.
+		// rather than adapting it. The debug token (already stripped above)
+		// composes: the relaunch loop traces its own pre-exec steps under
+		// debug mode.
 		if spawn || worktree.present || hasTail || len(stripCodexFactoryTokens(head)) > 0 {
 			return codexUsageFailure(cmd)
 		}
-		return runCodexFactoryLane(cmd)
+		return runCodexFactoryLane(cmd, debugRequested)
 	}
 	if len(head) > 1 {
 		return codexUsageFailure(cmd)
@@ -727,7 +740,7 @@ func runCodex(cmd *cobra.Command, args []string) error {
 	}
 
 	if kind.launches() {
-		return runCodexLaunch(cmd, kind, tail, spawn, worktree, factoryEntry)
+		return runCodexLaunch(cmd, kind, tail, spawn, worktree, factoryEntry, debugRequested)
 	}
 	if worktree.present || factoryEntry.Enabled {
 		// A readout starts no process, so it has no working directory to
@@ -881,13 +894,24 @@ func stripCodexFactoryTokens(head []string) []string {
 // (REQ-SD-019); no process replacement happens on this path (design.md §6) —
 // the launcher stays the parent across every card.
 // @MX:SPEC: SPEC-FACTORY-SELF-DISPATCH-001
-func runCodexFactoryLane(cmd *cobra.Command) error {
+func runCodexFactoryLane(cmd *cobra.Command, debug bool) error {
 	// The loop drives the F1 lease machinery itself, so it inherits the
 	// `next` verb's own precondition: the parent checkout (REQ-SD-010).
 	if err := factoryAssertParentCheckout(resolveProjectDir()); err != nil {
 		return err
 	}
+	// Debug mode (SPEC-CODEX-DEBUG-MODE-001): the relaunch loop traces its
+	// own pre-exec steps — binary resolution, run resolution, the lane claim
+	// with its claimed label — through the same collector, then dumps once
+	// before the first session handoff. Without debug the collector stays
+	// nil and nothing changes.
+	var launchTiming *factoryLaunchTiming
+	if debug {
+		launchTiming = &factoryLaunchTiming{debug: true}
+	}
+	endBinary := launchTiming.beginDebug(launchStepBinaryResolve, "")
 	binaryPath, err := codexLookPath(codexBinaryName)
+	endBinary()
 	if err != nil {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), codexInstallHint)
 		return &exitCodeError{code: 1}
@@ -896,7 +920,7 @@ func runCodexFactoryLane(cmd *cobra.Command) error {
 	// The run id and the git requirement arrive together: a lane join
 	// resolves the single active run and refuses outside a git working tree
 	// before any write (REQ-SD-005) — the same door the cc/glm lane join uses.
-	restoreRun, err := enterSelectedFactoryRun(root, "", true, nil)
+	restoreRun, err := enterSelectedFactoryRun(root, "", true, launchTiming)
 	if err != nil {
 		return err
 	}
@@ -904,9 +928,20 @@ func runCodexFactoryLane(cmd *cobra.Command) error {
 	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
 	// The label is claimed atomically — the next free lane-<n>, bumped past a
 	// live hold — so two codex lanes cannot start under one label.
+	endClaim := launchTiming.beginDebug(factoryStepLaneClaim, "")
 	label, err := resolveFactoryLaneName(root, "", true, cmd.ErrOrStderr())
+	endClaim()
+	if launchTiming != nil && err == nil {
+		// REQ-005/§D.1 edge: the lane-claim step carries the claimed label
+		// and the run id — session labels, not secrets; environment VALUES
+		// stay out of the trace (REQ-006).
+		launchTiming.annotateDetail("label=" + label + " run=" + runID)
+	}
 	if err != nil {
 		return err
+	}
+	if debug {
+		launchTiming.debugDump(cmd.ErrOrStderr())
 	}
 	// The stamps arm the loop's own next calls (lane admission, the
 	// merge-ready skip) and identify the lane; the backend value rides the
@@ -942,7 +977,7 @@ func runCodexFactoryLane(cmd *cobra.Command) error {
 			return fmt.Errorf("codex lane: %w", err)
 		}
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s stage=%s worktree=%s\n", card.CardID, dash(card.Stage), filepath.Base(wt))
-		if err := launchCodexCardSession(binaryPath, wt, label, card.CardID); err != nil {
+		if err := launchCodexCardSession(binaryPath, wt, label, card.CardID, debug); err != nil {
 			// On that session's exit, continue with the next card
 			// (REQ-SD-003): a child that failed to start or exited non-zero
 			// does not stop the loop; its card stays leased until expiry.
@@ -955,8 +990,9 @@ func runCodexFactoryLane(cmd *cobra.Command) error {
 // directory is the card worktree (design.md D1): `codex -C <worktree>`, the
 // card worktree's local instruction files attached. The launcher stays the
 // parent and waits; the existing child-process launch form serves every
-// platform (design.md §6 — Windows needs no new syscall).
-func launchCodexCardSession(binaryPath, wt, label, cardID string) error {
+// platform (design.md §6 — Windows needs no new syscall). Under debug mode
+// the child environment carries the RUST_LOG linkage (REQ-010/REQ-011).
+func launchCodexCardSession(binaryPath, wt, label, cardID string, debug bool) error {
 	localArgs, err := codexLocalDeveloperInstructionArgs(wt)
 	if err != nil {
 		return fmt.Errorf("load Codex local instructions: %w", err)
@@ -969,10 +1005,13 @@ func launchCodexCardSession(binaryPath, wt, label, cardID string) error {
 			}
 		}
 	}
-	req := codexLaunchRequest{Program: binaryPath, Args: args, Dir: wt}
+	req := codexLaunchRequest{Program: binaryPath, Args: args, Dir: wt, Debug: debug}
 	c := exec.Command(req.Program, req.Args...)
 	c.Dir = req.Dir
 	c.Env = codexCardLaunchEnv(label, cardID)
+	if debug {
+		c.Env = codexApplyDebugEnv(c.Env)
+	}
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
@@ -1020,24 +1059,34 @@ func runCodexReadout(cmd *cobra.Command) error {
 // runCodexLaunch resolves the binary and hands off to the direct or spawn
 // path. A missing binary is a single-line install hint, launch count 0
 // (AC-CL-011).
-func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn bool, worktree codexWorktreeArg, factoryEntry factoryFlagParse) error {
+//
+// Under debug mode (SPEC-CODEX-DEBUG-MODE-001) the collector is instantiated
+// on EVERY traced launch — lane or not (REQ-014's composition posture) — and
+// the debug-vocabulary steps are recorded through beginDebug, which measures
+// nothing without debug, so the debug-off lane wiring below records exactly
+// its t1378 step set (REQ-015's freeze). The dump prints before the platform
+// exec seam (REQ-009).
+func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn bool, worktree codexWorktreeArg, factoryEntry factoryFlagParse, debug bool) error {
+	// The slow-launch timing covers a codex LANE launch (REQ-012,
+	// SPEC-CODEX-LANE-SLOTS-001) and — under debug mode — every launch; the
+	// phase runs from the first recorded step through the exec handoff, and
+	// the reports print before the platform exec seam — the direct door
+	// replaces this process and prints nothing afterwards.
+	laneTiming := factoryEntry.Enabled && (factoryEntry.LaneRole || factoryEntry.LaneNumber > 0)
+	var launchTiming *factoryLaunchTiming
+	if debug || laneTiming {
+		launchTiming = &factoryLaunchTiming{debug: debug}
+		defer launchTiming.reportSlow(cmd.ErrOrStderr()) // error-path guard; no-op after the pre-seam report
+	}
+	endBinary := launchTiming.beginDebug(launchStepBinaryResolve, "")
 	binaryPath, err := codexLookPath(codexBinaryName)
+	endBinary()
 	if err != nil {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), codexInstallHint)
 		return &exitCodeError{code: 1}
 	}
 
-	// The slow-launch timing covers a codex LANE launch only (REQ-012,
-	// SPEC-CODEX-LANE-SLOTS-001): the phase runs from the pre-exec init
-	// through the exec handoff, and the report prints before the platform
-	// exec seam — the direct door replaces this process and prints nothing
-	// afterwards.
-	var launchTiming *factoryLaunchTiming
-	if factoryEntry.Enabled && (factoryEntry.LaneRole || factoryEntry.LaneNumber > 0) {
-		launchTiming = &factoryLaunchTiming{}
-		defer launchTiming.reportSlow(cmd.ErrOrStderr()) // error-path guard; no-op after the pre-seam report
-	}
-
+	endRoot := launchTiming.beginDebug(launchStepProjectRoot, "")
 	// The launch cwd is the PROJECT ROOT, not the process cwd (AC-CL-002):
 	// a call from a subdirectory still launches at the root. An unresolvable
 	// root degrades to the process cwd rather than refusing to launch.
@@ -1047,18 +1096,27 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 	} else if cwd, gerr := os.Getwd(); gerr == nil {
 		projectRoot = cwd
 	}
+	endRoot()
 
 	// SPEC-CODEX-INIT-001: the init-offer gate — the ONE call site every
 	// launch form passes through right before launching, the bare form
 	// included. The gate takes no spawn argument: both launch paths cross the
-	// same function (REQ-CI-002).
-	endInit := launchTiming.begin(factoryStepCodexPreInit)
+	// same function (REQ-CI-002). Under debug the phase records under its
+	// debug-vocabulary name (REQ-005); without debug the t1378 name stands
+	// and the local-instruction load records no separate step (the freeze).
+	initStepName := factoryStepCodexPreInit
+	if debug {
+		initStepName = launchStepInitGate
+	}
+	endInit := launchTiming.begin(initStepName)
 	if err := codexInitOfferGate(cmd, projectRoot); err != nil {
 		endInit()
 		return err
 	}
-	localArgs, localRead, err := codexLocalDeveloperInstructions(projectRoot)
 	endInit()
+	endLocal := launchTiming.beginDebug(launchStepLocalInstr, "")
+	localArgs, localRead, err := codexLocalDeveloperInstructions(projectRoot)
+	endLocal()
 	if err != nil {
 		return fmt.Errorf("load Codex local instructions: %w", err)
 	}
@@ -1074,18 +1132,25 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 	// Resolve the existing worktree only after read-only launch validation.
 	dir := projectRoot
 	if worktree.present {
+		endWt := launchTiming.beginDebug(launchStepWorktree, "")
 		resolved, werr := resolveCodexWorktreeDir(projectRoot, worktree.value)
 		if werr == nil {
 			werr = codexWorktreeWriterCheck(resolved)
 		}
+		endWt()
 		if werr != nil {
+			launchTiming.annotateDetail("resolved " + worktree.value + " failed: " + werr.Error())
 			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), werr.Error())
 			return &exitCodeError{code: 1}
 		}
+		// REQ-007: the resolved directory and the writer-check outcome ride
+		// the worktree step; the anchor-lock outcome rides the handoff step,
+		// where the lock is actually placed.
+		launchTiming.annotateDetail("resolved " + resolved + "; writer-check ok")
 		dir = resolved
 	}
 	childArgs := append(localArgs, codexChildArgs(kind, tail)...)
-	req := codexLaunchRequest{Program: binaryPath, Args: childArgs, Dir: dir}
+	req := codexLaunchRequest{Program: binaryPath, Args: childArgs, Dir: dir, Debug: debug, timing: launchTiming}
 	if spawn {
 		if err := checkSpawnPrereqs(); err != nil {
 			return err
@@ -1100,8 +1165,24 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 		defer restore()
 		req.FactoryEnv = codexFactoryEnv(factoryEntry)
 	}
+	// The child-env assembly is a traced pre-exec step (REQ-005), performed
+	// HERE — ahead of the pre-seam reports — so the assembly line precedes
+	// the seam with the rest of the trace (REQ-009). The injection follows
+	// REQ-010/REQ-011: appended last-wins only when the operator set no
+	// RUST_LOG.
+	envDetail := ""
+	if debug {
+		envDetail = codexDebugEnvDetail(true)
+	}
+	endEnv := launchTiming.beginDebug(launchStepChildEnv, envDetail)
+	childEnv := codexChildEnv()
+	if debug {
+		childEnv = codexApplyDebugEnv(childEnv)
+	}
+	req.Env = append(childEnv, req.FactoryEnv...)
+	endEnv()
 	// The exec handoff is the launcher's last measurable pre-exec work — the
-	// final assembly and the anchor lock — and the report is the launcher's
+	// final assembly and the anchor lock — and the reports are the launcher's
 	// last output before the platform exec seam (the direct door replaces the
 	// process; the spawn door's child is already launched).
 	endHandoff := launchTiming.begin(factoryStepExecHandoff)
@@ -1111,8 +1192,21 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 			// after the spawn, so the lock is placed from inside it.
 			codexSpawnAnchorFn = func(pid int, start string) error { return codexWorktreeAnchorLock(dir, pid, start) }
 			defer func() { codexSpawnAnchorFn = nil }()
+			endHandoff()
+			launchTiming.annotateDetail("anchor-lock deferred to the spawned pane")
+		} else {
+			endHandoff()
 		}
-		endHandoff()
+		if debug {
+			// REQ-010 on the spawn door: the pane's codex reads the
+			// command-scoped assignments, so the same absence guard carries
+			// the injection there; an operator-supplied RUST_LOG stays
+			// authoritative (REQ-011).
+			if _, ok := os.LookupEnv(config.EnvRustLog); !ok {
+				req.FactoryEnv = append(req.FactoryEnv, config.EnvRustLog+"="+codexDebugRustLogValue)
+			}
+			launchTiming.debugDump(cmd.ErrOrStderr())
+		}
 		launchTiming.reportSlow(cmd.ErrOrStderr())
 		return codexSpawnLaunch(req)
 	}
@@ -1120,11 +1214,18 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 		// The lock names the process that becomes Codex, before it starts.
 		if err := codexWorktreeAnchorLock(dir, codexDirectAnchorPID(), homestate.CurrentProcessFingerprint()); err != nil {
 			endHandoff()
+			launchTiming.annotateDetail("anchor-lock failed: " + err.Error())
 			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), err.Error())
 			return &exitCodeError{code: 1}
 		}
 	}
 	endHandoff()
+	if debug {
+		if worktree.present {
+			launchTiming.annotateDetail("anchor-lock ok")
+		}
+		launchTiming.debugDump(cmd.ErrOrStderr())
+	}
 	launchTiming.reportSlow(cmd.ErrOrStderr())
 	return codexDirectLaunch(req)
 }
@@ -1132,7 +1233,10 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 // codexDirectLaunch assembles the child (stdio = the parent's OWN os.Stdin /
 // os.Stdout / os.Stderr values — the interactive-tty precondition,
 // AC-CL-002), runs it through the seam, and propagates the child's exit code
-// verbatim (AC-CL-002 rc axis, AC-CL-016).
+// verbatim (AC-CL-002 rc axis, AC-CL-016). The child environment arrives
+// ASSEMBLED on the request (the launcher traced its assembly pre-seam,
+// SPEC-CODEX-DEBUG-MODE-001 REQ-005/REQ-009); this function is the seam
+// call only.
 func codexDirectLaunch(req codexLaunchRequest) error {
 	for _, arg := range req.Args {
 		if strings.HasPrefix(arg, "developer_instructions=") {
@@ -1143,8 +1247,7 @@ func codexDirectLaunch(req codexLaunchRequest) error {
 	}
 	c := exec.Command(req.Program, req.Args...)
 	c.Dir = req.Dir
-	c.Env = codexChildEnv()
-	c.Env = append(c.Env, req.FactoryEnv...)
+	c.Env = req.Env
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr

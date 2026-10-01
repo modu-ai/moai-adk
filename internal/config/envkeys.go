@@ -316,6 +316,15 @@ const (
 	// injecting a known-live PID).
 	EnvMoaiSessionPID = "MOAI_SESSION_PID"
 
+	// EnvRustLog is the Rust logging filter the codex child reads
+	// (SPEC-CODEX-DEBUG-MODE-001 REQ-010): when launcher debug mode is on and
+	// the operator set no value, the launcher appends RUST_LOG=debug to the
+	// child environment (best-effort linkage — the codex CLI documents no
+	// logging flag; an unknown variable is harmless to the child). An
+	// operator-supplied value is never modified (REQ-011). This constant is
+	// the only spelling site; no inline "RUST_LOG" literals elsewhere.
+	EnvRustLog = "RUST_LOG"
+
 	// EnvChainNodeID carries the origin-trail chain node ID from the spawning
 	// context to the child process. Set by the spawner (moai cc -w,
 	// EnterWorktree, Agent isolation:worktree) on the child environment before
