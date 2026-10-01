@@ -1,6 +1,6 @@
 # SPEC-CODEX-DEBUG-MODE-001 — Progress
 
-Status: draft (plan-phase artifacts authored 2026-10-01, card t1380). Premise table V1–V12 measured on tree `16424e9b4`; the RED-now observations in `acceptance.md` § Evidence Ledger were re-executed on tree `49a42c2fc` (the lane's artifact commit moved HEAD between the two measurement passes; none of the cited source files changed — anchors below re-verified at `49a42c2fc`).
+Status: in-progress (run phase executed 2026-10-01 → 2026-10-02, card t1380; plan-phase artifacts authored 2026-10-01). Premise table V1–V12 measured on tree `16424e9b4`; the RED-now observations in `acceptance.md` § Evidence Ledger were re-executed on tree `49a42c2fc` (the lane's artifact commit moved HEAD between the two measurement passes; none of the cited source files changed — anchors below re-verified at `49a42c2fc`).
 
 ## Premise Verification (plan-phase, this tree `16424e9b4`, branch `WT-codex-debug-mode`)
 
@@ -40,11 +40,86 @@ recorded_by: lane orchestrator (verdict landed after manager-spec's final fix tu
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run phase executed 2026-10-01 → 2026-10-02 by manager-develop (cycle_type=tdd, serial), branch `WT-codex-debug-mode-run` at the card tip `152adf3bb` (the runtime isolates spawned agents onto a develop-based worktree, so the run branch was recreated at the card tip per the dispatch note; the lane fast-forwards `WT-codex-debug-mode`). Commits, oldest first: M1 `e22be7956` (flag surface + spec.md status flip), M2 `d00210bf8` (trace engine + child-env linkage), M3 `275ebb21a` (cc/glm uniformity), M4 `4e2022868` (composition pins), M5 sweep `2a4950d47` (gofmt + env-name constant), evidence commit = this one. No push, no PR (lane-owned).
+
+### AC matrix (all 15 PASS)
+
+Verification form: one env-scrubbed anchored run of the 16-test debug battery plus the 4 frozen timing tests — `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1 -timeout 15m -run '^(TestCodexDebugTokenStrippedFromChildArgs|…|TestFactoryLaunchTimingMeasuresElapsed)$' ./internal/cli/` → `ok github.com/modu-ai/moai-adk/internal/cli 21.630s` (verbatim, 2026-10-02, tree `2a4950d47`). Per-AC anchors:
+
+| AC | Test / evidence | Result |
+|----|-----------------|--------|
+| AC-001 | TestCodexDebugTokenStrippedFromChildArgs (`cli -d` row) | PASS |
+| AC-002 | same test, `-w wt-a --debug` row | PASS |
+| AC-003 | TestCodexDebugTokenAfterDashDashForwarded (3 rows incl. empty head) | PASS |
+| AC-004 | TestCodexDebugTokenRefusedOnReadoutVerb (named constant + exit 1 + 0 launches) | PASS |
+| AC-005 | TestCCDebugTokenObserveOnly (child keeps `-d`; trace lines present) | PASS |
+| AC-006 | TestGLMDebugTokenObserveOnly | PASS |
+| AC-007 | TestThreeRunnerDebugUniformityMatrix (6 combos: linkage + same prefix) | PASS |
+| AC-008 | TestCodexDebugTraceStepLines (6 step lines exactly; lane/worktree absent) | PASS |
+| AC-009 | TestCodexDebugTraceEnvKeysOnly (12 pinned sentinels; key named, no value) | PASS |
+| AC-010 | TestCodexDebugTraceWorktreeEntry (resolved dir + writer-check ok + anchor-lock ok) | PASS |
+| AC-011 | TestCodexDebugRustLogInjection (injected when absent / `info` preserved) | PASS |
+| AC-012 | TestCodexDebugSupersedesLaunchThreshold (1-hour threshold; dump still prints; label detail) | PASS |
+| AC-013 | part 1: TestCodexDebugOffKeepsTimingReportFrozen (fast silent / slow exact report, no debug steps); part 2: the 4 frozen tests, file unmodified (`git diff 152adf3bb --stat -- internal/cli/factory_launch_timing_test.go` → empty) | PASS |
+| AC-014 | TestCodexDebugTraceIgnoresLogLevel (MOAI_LOG_LEVEL=error; trace prints) | PASS |
+| AC-015 | TestCodexDebugTracePrecedesExecSeam (all prefix lines precede the seam sentinel in one buffer) | PASS |
+
+### Run-phase RED evidence (E8)
+
+- M1 RED (captured pre-implementation, tree `152adf3bb`): all five `TestCodexDebugTokenStrippedFromChildArgs` rows failed at `runCodex(...)`: exit-1 with the generic usage line `unknown verb - usage: moai codex …`; `TestCodexDebugScanNeverConsumesWorktreeValue` and `TestCodexDebugTokenRefusedOnReadoutVerb` failed with `stderr = "unknown verb - …", want … "-w requires an existing worktree name or path" / "-d/--debug applies to the launch verbs only …"`. The post-`--` pin (AC-003) passed pre-implementation — it is a regression-guard (ledger has no RED cell for it).
+- M2 RED (captured pre-implementation): `TestCodexDebugTraceStepLines` — all six steps `produced 0 trace lines`; `TestCodexDebugTraceEnvKeysOnly` — `trace does not name the lane key MOAI_KANBAN_LEAD_ADDR`; `TestCodexDebugTraceWorktreeEntry` — `worktree materialization produced 0 trace lines`; `TestCodexDebugRustLogInjection/injected_when_absent` — `child RUST_LOG = [], want … debug`; `TestCodexDebugTracePrecedesExecSeam` — `only 0 trace lines preceded the seam`; `TestCodexDebugTraceIgnoresLogLevel` — all three steps suppressed. The operator-preservation arm (`RUST_LOG=info` kept) passed pre-implementation — regression-guard arm.
+- M3 RED (captured pre-implementation): `TestCCDebugTokenObserveOnly`, `TestGLMDebugTokenObserveOnly`, and the four cc/glm matrix legs all failed with `emitted no debug trace lines under the "moai-launcher-debug:" prefix`; observe-only and codex legs passed (already implemented by M2 / pre-existing observe behavior).
+- M4/M5: the composition cells landed green-on-arrival — the composition behavior shipped with the M2 engine (whose RED run above shows zero trace lines on the same invocation family, the honest pre-state); they are the integration pins plan §F M4 names. AC-014's pin reds for the same reason as the M2 batch (captured there).
+
+### Frozen-behavior preservation (post-run re-verification)
+
+1. t1378 REQ-012: the four timing tests pass unmodified (multiple runs, exact names; the test file has zero commits on this branch).
+2. cc/glm child argv byte-parity: AC-005/006 assert `-d` (and the `-- extra` tail) reach the child verbatim.
+3. Operator `RUST_LOG`: AC-011 arm (b) — `info` preserved, no `debug` appended.
+4. `MOAI_LOG_LEVEL` axis: AC-014 — the level neither enables nor suppresses the trace.
+5. Readout refusals: the `--spawn` refusal is untouched (no diff hunk touches it); the `-d` refusal mirrors it (AC-004).
+
+### Cross-platform, lint, coverage
+
+- Native build: `go build ./...` exit 0 (multiple runs). Windows: `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (`WINDOWS_BUILD_OK`, 2026-10-01 tree `d00210bf8` and re-checked at `2a4950d47`).
+- `go vet ./internal/cli/ ./internal/config/` clean; `gofmt -l` clean; `golangci-lint run --timeout=4m ./internal/cli/... ./internal/config/...` → `0 issues.` (v2.1.6 — the CI pin). New warnings/lints introduced: 0.
+- Boundary grep (E4): `git diff 152adf3bb..HEAD | grep -c AskUserQuestion` → 0. No interactive prompts, no hook-adjacent changes.
+- Coverage (E3, scoped measurement — see Gaps): per-function coverage of the NEW code from the launcher-scoped `-coverprofile` (`go test -coverprofile -run 'TestCodex|TestCC|TestGLM|TestCG|TestFactory|TestWorktree|TestLauncher|TestThreeRunner'`): `beginDebug` 100%, `annotateDetail` 100%, `debugDump` 85.7%, `launcherDebugRequested` 100%, `hasEnvKey` 100%, `codexApplyDebugEnv` 100%, `codexDebugEnvDetail` 100%, `stripCodexDebugFlag` 100%. Touched-file aggregate (6 files, 89 functions): 72.6% function-average under the launcher-scoped subset (subset excludes non-launcher tests that also cover these files, so this is a lower bound, not the package number).
+- internal/config: `go test -cover ./internal/config/` → 82.5% (pre-existing package level; this SPEC adds one constant, zero statements). internal/kanban: `go test -run '^TestClaimFactoryLane'` → ok (composition surface untouched).
+
+### Gaps (explicitly unobserved)
+
+1. **The whole-package `./internal/cli` suite does not complete on this machine under current load** — measured twice: this branch (`-timeout 25m -cover` → timeout panic at 1501.7s with 3 failures) and the unmodified baseline `152adf3bb` (`-timeout 30m -cover` → 1801.8s, again over its timeout, with a DIFFERENT flake set: `TestStopChainMemberCostWithinBudget` + the shared language-detection failure; partial coverage 45.9% from the killed run). Load average 69–109 with four other lane test runs observed concurrently. Per the local doctrine (AGENTS.md §4: a full-suite run on a loaded developer machine measures the machine), the repository-wide verdict is **owned by the CI run on the integration branch and is PENDING at report time**.
+2. **The package-level coverage percentage is therefore unmeasured on this machine** (both full -cover runs died before completion). The scoped per-function numbers above are the honest substitute; the 85% package target is asserted by CI, not by this report.
+3. Flake set observed in full/subset runs (all acquitted by alone-runs and/or the baseline comparison): `TestCodexGoalContinueUntilMet`, `TestCodexTaskBackgroundHandshakeHonorsTaskBound` (non-deterministic alone), `TestCodexHarnessHooksRegisterNoFactoryPeer`, `TestCodexGoalUnmeasuredCapBoundsContinuation`, `TestStopChainMemberCostWithinBudget` — none touches this SPEC's surface.
+4. **Pre-existing defect discovered (not this SPEC's scope, route via feedback/card)**: `TestSyncGateLanguageDetectionMatchesScript/kotlin_source` fails deterministically and identically on the unmodified baseline — `languages: Go = [kotlin], script = [kotlin java]` (`codex_sync_gate_test.go:115`). Environment-dependent Go-detector vs script divergence, zero relation to the launcher surface.
+
+### Residual-risk
+
+- The lane relaunch loop (`-f lane -d`) traces its pre-exec steps and dumps once before the first card session; per-card handoffs inside the loop are not individually traced (v1 single-level debug; the card id and worktree already print on the loop's stdout line).
+- `RUST_LOG` linkage on the spawn door rides the command-scoped assignment with an absence check against THIS process's env; a tmux server carrying a stale `RUST_LOG` could still win in the pane (best-effort linkage per plan Residual 1).
+- The debug-off lane threshold report's step set is asserted frozen by test (AC-013); the threshold start-point remains the init gate as in t1378.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-10-02
+run_commit_sha: 2a4950d47
+run_status: complete
+run_status_note: code-complete with scoped verification; full-package suite + package coverage delegated to CI (machine-bound, see §E.2 Gaps 1-2)
+ac_pass_count: 15
+ac_fail_count: 0
+preserve_list_post_run_count: 5
+preserve_list: [t1378 REQ-012 threshold report + 4 frozen tests unmodified, cc/glm child-argv byte parity, operator RUST_LOG preserved, MOAI_LOG_LEVEL axis untouched, readout refusal discipline mirrored]
+l44_pre_commit_fetch: n/a (run phase commits on the run branch only; no fetch performed)
+l44_post_push_fetch: n/a (run phase performs no push — lane-owned)
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  native: pass (darwin/arm64, go build ./...)
+  windows: pass (GOOS=windows GOARCH=amd64 go build ./...)
+total_run_phase_files: 13
+m1_to_mN_commit_strategy: per-milestone commits M1..M5 on WT-codex-debug-mode-run (e22be7956, d00210bf8, 275ebb21a, 4e2022868, 2a4950d47) + this evidence commit; lane fast-forwards WT-codex-debug-mode
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
