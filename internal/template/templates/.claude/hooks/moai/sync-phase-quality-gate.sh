@@ -730,10 +730,17 @@ case "$checked_language" in
         # others passed.
         [ -n "$GO_ROOTS" ] || GO_ROOTS=$(find_go_module_roots)
         if [ -n "$GO_ROOTS" ]; then
-            for go_root in $GO_ROOTS; do
+            # Line-based read: $GO_ROOTS is newline-separated, and a plain
+            # for-loop word-splits on IFS — a module root containing a space
+            # shattered into per-word chdir failures (observed RED, card
+            # t1392). read -r preserves each whole line; the here-string feeds
+            # the already-computed variable (same idiom as the read loops
+            # above).
+            while IFS= read -r go_root; do
+                [ -n "$go_root" ] || continue
                 run_step go c1 go -C "$go_root" vet ./...
                 run_step go c2 go -C "$go_root" build ./...
-            done
+            done <<< "$GO_ROOTS"
         else
             run_step go c1 go -C "$PROJECT_ROOT" vet ./...
             run_step go c2 go -C "$PROJECT_ROOT" build ./...
