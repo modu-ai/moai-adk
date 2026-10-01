@@ -664,14 +664,40 @@ run_step() {
 C1_LABELS=""
 C2_LABELS=""
 SKIPPED_TOOLS=""
+# find_go_module_root: the directory holding the go.mod that owns the first
+# .go file under the project root, walking up from it. A monorepo whose root
+# carries no go.mod but nests one under a subdirectory vetts from THAT root —
+# running the go checks at the repo root fails both slots (go cannot resolve
+# a main module) and blocks a healthy project (codex review gate reproduction:
+# a clean nested module's own vet succeeded while the gate recorded vet=1,
+# build=1 and stopped the turn). Empty stdout = no go.mod anywhere: the repo
+# root stays the anchor, where the failure is then a real one.
+find_go_module_root() {
+    local f d
+    f=$(find "$PROJECT_ROOT" -type f -name '*.go' \
+        -not -path '*/.git/*' -not -path '*/vendor/*' -print -quit 2>/dev/null)
+    [ -n "$f" ] || return 0
+    d=$(dirname "$f")
+    while :; do
+        if [ -f "$d/go.mod" ]; then
+            printf '%s\n' "$d"
+            return 0
+        fi
+        case "$d" in "$PROJECT_ROOT"|/) return 0 ;; esac
+        d=$(dirname "$d")
+    done
+}
+GO_ROOT=""
 for checked_language in $CHANGED_LANGS; do
 C1_LABEL="(none)"
 C2_LABEL="(none)"
 case "$checked_language" in
     go)
         C1_LABEL="go vet"; C2_LABEL="go build"
-        run_step go c1 go vet ./...
-        run_step go c2 go build ./...
+        [ -n "$GO_ROOT" ] || GO_ROOT=$(find_go_module_root)
+        [ -n "$GO_ROOT" ] || GO_ROOT="$PROJECT_ROOT"
+        run_step go c1 go -C "$GO_ROOT" vet ./...
+        run_step go c2 go -C "$GO_ROOT" build ./...
         ;;
     python)
         C1_LABEL="ruff"
