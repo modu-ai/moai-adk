@@ -322,6 +322,29 @@ func managedCodexOptions(args []string) (appArgs []string, model string, err err
 	return appArgs, model, nil
 }
 
+// factoryMoAIMCPApprovalArgs are the config overrides that let the owned
+// App Server take MoAI broker tool calls without an approval dialog
+// (REQ-MS-009, D-5). Every override addresses mcp_servers.moai only, and the
+// two broker tools are approved individually. They ride the owned process
+// command line and never reach the project config, whose generated
+// default_tools_approval_mode stays "writes".
+func factoryMoAIMCPApprovalArgs() []string {
+	return []string{
+		"-c", `mcp_servers.moai.default_tools_approval_mode="approve"`,
+		"-c", `mcp_servers.moai.tools.factory_msg_send.approval_mode="approve"`,
+		"-c", `mcp_servers.moai.tools.factory_msg_receipt.approval_mode="approve"`,
+	}
+}
+
+// managedCodexAppServerArgs builds the owned App Server command line: the
+// listen/auth flags, then the approval scoping, then the operator's own
+// overrides last so an explicit operator value still wins.
+func managedCodexAppServerArgs(url, tokenFile string, operatorArgs []string) []string {
+	args := []string{"app-server", "--listen", url, "--ws-auth", "capability-token", "--ws-token-file", tokenFile}
+	args = append(args, factoryMoAIMCPApprovalArgs()...)
+	return append(args, operatorArgs...)
+}
+
 // managedCodexSession owns one Codex App Server child process and its WS
 // control connection. It implements the M1 managedSession interface: Start
 // spawns and handshakes, DeliverTurn injects one turn, Close tears the child
@@ -380,7 +403,7 @@ func (s *managedCodexSession) Start() error {
 	if err != nil {
 		return err
 	}
-	args := append([]string{"app-server", "--listen", url, "--ws-auth", "capability-token", "--ws-token-file", tokenFile}, s.appArgs...)
+	args := managedCodexAppServerArgs(url, tokenFile, s.appArgs)
 	s.cmd = exec.Command(s.program, args...)
 	s.cmd.Env = s.env
 	s.cmd.Stderr = os.Stderr

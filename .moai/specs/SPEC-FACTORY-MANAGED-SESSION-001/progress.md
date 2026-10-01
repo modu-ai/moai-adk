@@ -115,6 +115,66 @@ M1 규약(args[0] 미스캔) 위반으로 옵션 테스트가 포착, `i := 1` �
 시험 환경의 권위 세션 id를 집어 PID 경로를 가림 — `EnvClaudeCodeSessionID` 비움
 (`TestFactoryMCPIdentityAttribution` 선례).
 
+### M3 — launcher wiring (2026-10-02)
+
+측정 기준: HEAD `1d17928a0`, 클린 트리. M3는 컨텍스트가 소진된 선행 워커가 남긴 미커밋 상태에서
+복구되어 `1d17928a0`로 커밋되었고, 레인이 독립 검수 후 이번 실행에서 재측정했다 (아래 행은
+전부 이 트리·이 실행의 관측값).
+
+| AC | Status | Verification Command | Actual Output |
+|----|--------|---------------------|---------------|
+| M3 launcher divert | PASS | `go test -count=1 -v -run 'TestManaged(Launch\|CodexLaunch)\|TestLaunchWithoutFactoryEnv\|TestCodexLaunchWithoutFactoryEnv' ./internal/cli/` | `--- PASS` 10건, `ok … 1.998s` (exit 0) |
+| AC-MS-011 + `--` pass-through (R2) | PASS | `go test -count=1 -v -run '^TestFactoryMsgSendRejectsClaudeOnlyRun$\|TestParseCompanionLabelStopsAtPassThroughMarker' ./internal/cli/` | 두 테스트 `--- PASS`, `ok … 1.453s` (exit 0) |
+| AC-MS-017 | PASS | `git diff 1d17928a0 -- internal/factorymsg/store.go \| wc -l` / `git diff f22e2d7ac..HEAD -- internal/factorymsg/store.go \| wc -l` | `0` / `0` |
+
+### M4 — MCP approval scoping + doctor (2026-10-02)
+
+측정 기준: HEAD `1d17928a0` + M4 작업 변경분(커밋 직전 워킹 트리). 파일:
+`internal/cli/managed_codex_factory.go` (`factoryMoAIMCPApprovalArgs` + `managedCodexAppServerArgs`
+추출, `Start`가 후자 사용), `internal/codexwiring/configtoml.go` (`StaleApprovalOverride`,
+읽기 전용), `internal/cli/doctor_codex.go` (기존 "Codex Wiring" 점검에 finding 1종 추가 —
+신규 점검이 아니므로 binary_lag 허용목록 변경 없음), 테스트
+`internal/cli/managed_codex_approval_test.go`, `internal/codexwiring/configtoml_test.go`.
+승인 인수는 소유 App Server 명령행에만 붙고 연산자 `-c` 인수가 뒤에 와서 우선한다.
+TUI 부착은 M2와 마찬가지로 헤드리스 소유자라 이 트리에 소유 TUI 프로세스가 없다 — TUI 쪽
+인수 전달은 TUI 소유 표면이 생기는 시점의 몫이며, 헬퍼는 그 경로가 재사용할 수 있게 분리했다.
+
+| AC | Status | Verification Command | Actual Output |
+|----|--------|---------------------|---------------|
+| AC-MS-012 | PASS | `go test -count=1 -run '^(TestMoAIMCPApprovalArgsOnlyTargetMoAI\|TestConfigTomlWritesUnchanged\|TestDoctorCodexWarnsStaleGlobalApproval\|TestStaleApprovalOverride)$' ./internal/cli/ ./internal/codexwiring/` | `ok … internal/cli 1.268s` / `ok … internal/codexwiring 0.897s` (exit 0); project config 생성물 `default_tools_approval_mode = "writes"` 불변·`approve`/`factory_msg` 부재 단언 |
+| AC-MS-013 | PASS | 위 동일 실행의 `TestDoctorCodexWarnsStaleGlobalApproval` | `--- PASS`: CheckWarn + 메시지에 approval·approve 명명 + `.codex/config.toml` 전후 바이트 동일 단언; 대조군(정규 config)은 approval finding 없음 |
+| AC-MS-009 | PASS | `grep -rnE 'fmt\.Sprintf\("(agent\|worker)-' internal/cli/managed_*.go \| wc -l` | `0` |
+| AC-MS-010 | PASS | M4 diff는 인수 빌더·읽기 전용 검사기·doctor finding뿐 (merge 자동화·Decider·T29b/c 코드 없음) | diff 검토 |
+| AC-MS-014 | PASS | `GOOS=windows GOARCH=amd64 go build ./...` + `grep -c 'syscall\.' internal/cli/managed_*.go` | `win_exit=0`, 신규 `syscall.` 0건 |
+| AC-MS-017 | PASS | `git diff 1d17928a0 -- internal/factorymsg/store.go \| wc -l` / `git diff f22e2d7ac..HEAD -- internal/factorymsg/store.go \| wc -l` | `0` / `0` |
+
+품질 게이트 (M4):
+- 커버리지: 신규 함수 `factoryMoAIMCPApprovalArgs` 100.0%, `managedCodexAppServerArgs` 100.0%,
+  `StaleApprovalOverride` 93.3% (M4 테스트 한정 coverprofile). 패키지 전체 집계는 미임대
+  관계상 GAP (CI/리드 슬롯 몫).
+- codexwiring 패키지 전체: `go test -count=1 ./internal/codexwiring/` → `ok … 1.589s` (생성기 출력 불변).
+- doctor 회귀: `go test -count=1 -run 'CheckCodexWiring|DoctorCodex|TestBinaryLag' ./internal/cli/` → `ok … 3.666s`.
+- vet: `go vet ./internal/cli/ ./internal/codexwiring/` → exit 0.
+- lint: `golangci-lint run --timeout=8m ./internal/cli/... ./internal/codexwiring/...` → `0 issues.`
+- gofmt: 변경 파일 5종 `-l` 빈 출력.
+- go.mod/go.sum: 변경 0.
+
+E8 (TDD RED verbatim, 구현 전 캡처):
+```
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/managed_codex_approval_test.go:24:10: undefined: factoryMoAIMCPApprovalArgs
+internal/cli/managed_codex_approval_test.go:53:12: undefined: managedCodexAppServerArgs
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+```
+
+M4 발견 이력: (1) 신규 doctor 점검이 아니라 기존 "Codex Wiring" 점검의 finding으로 구현 —
+binary_lag 허용목록/TestBinaryLag 변경 불필요(`TestBinaryLag` 회귀 통과). (2) 기존 비정규
+테이블 finding과 새 finding이 같은 config에서 함께 뜬다(중복이 아니라 서로 다른 사실 —
+하나는 형태 드리프트, 하나는 잔재 지목). (3) M3 커밋의
+`internal/cli/managed_factory_session_test.go`에 gofmt 지적(한 줄 goroutine 람다) 기존 존재 —
+M4 범위 밖이라 미수정, 리드 판단 대기.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
