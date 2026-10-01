@@ -2,9 +2,9 @@
 id: SPEC-FACTORY-MANAGED-SESSION-001
 title: "Factory cross-host managed-session layer — PR #1722 재작성 (현 develop 어휘·브로커 API 기준)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-01
-updated: 2026-10-01
+updated: 2026-10-02
 author: GOOS (manager-spec)
 priority: P1
 phase: "v3.2.0 target"

@@ -288,7 +288,58 @@ go.mod/go.sum: base 대비 변경은 M2의 승인된 `github.com/gorilla/websock
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-10-02
+sync_commit_sha: pending-backfill  # canonical placeholder: a commit cannot cite its own SHA; backfilled with the real SHA in a following commit (phase-owned field, manager-docs §E.4)
+sync_status: complete
+b12_self_test_a: pass  # pre-emission `grep -c 'SPEC-FACTORY-MANAGED-SESSION-001' CHANGELOG.md` = 0 before this sync commit (duplicate-entry guard)
+b12_self_test_b: pass  # AC count: MOAI-AC-COUNTER against acceptance.md (tier L source) → live=17 excluded=0 ambiguous=0; the CHANGELOG entry cites the same 17 (AC-MS-001..017); milestones 6 (M1..M6, per the run commit list); managed-test coverage 88.0% (344/391) quoted from §E.3, not re-measured here
+b12_self_test_c: pass  # file-path verification: all 9 implementation/doc paths cited in the CHANGELOG entry confirmed via ls against this tree (ls exit 0)
+changelog_entry_position: "[Unreleased] > Added (first entry)"
+frontmatter_status_transitions:
+  in_progress_to_implemented: merged  # folded into the single sync commit per the 3-phase close
+  implemented_to_completed: this commit  # spec.md frontmatter status+updated only; plan/acceptance/design/research are stateless on the status axis and carry no status field
+canary_compliance_check:
+  spec_body_untouched: true  # spec/plan/acceptance/design/research bodies byte-unchanged vs 677cb6919 (see Verification, diff below)
+  runtime_files_untouched: true  # .moai/state, .moai/harness, .moai/cache untouched
+recorded_by: manager-docs (sync phase, card t1375)
+```
+
+### What was synced
+
+- `CHANGELOG.md` `[Unreleased] > Added`: one entry for the managed cross-host session layer. It states the one new dependency `github.com/gorilla/websocket v1.5.3` (`go.mod:37`, loopback App Server use only) and the delivery-only boundary (no merge automation, no card completion judgment).
+- `spec.md` frontmatter: `status: in-progress → completed`, `updated: 2026-10-01 → 2026-10-02`.
+- README / docs-site: no edit. The only docs-site surface naming the broker is `docs-site/content/en/guides/mcp-server.md:220-224` (and its ja/zh/ko twins), which lists the five `factory_msg_*` MCP tools; this card did not change that tool surface (`git diff f22e2d7ac..HEAD --name-only | grep -E 'mcp_server|docs-site|README' | wc -l` → `0`). The operator-facing guide `.moai/docs/factory-managed-session.md` already landed in M5 and is linked from the CHANGELOG entry, not duplicated.
+- Codemaps refresh: not performed in this sync commit (outside the dispatched deliverables); listed under Gaps.
+
+### Verification (this run, this tree: HEAD `677cb6919` + uncommitted sync edits; lane env scrubbed in the same compound call as each command)
+
+| Check | Command | Verbatim result |
+|---|---|---|
+| SPEC lint | `go run ./cmd/moai spec lint SPEC-FACTORY-MANAGED-SESSION-001` | `✓ No findings — all SPEC documents are valid` |
+| AC counter (B12) | MOAI-AC-COUNTER awk from `manager-docs.md` § B12, `AC_FILE=.moai/specs/SPEC-FACTORY-MANAGED-SESSION-001/acceptance.md` | stdout `17`, stderr `live=17 excluded=0 ambiguous=0`, exit 0 |
+| Duplicate guard | `grep -c 'SPEC-FACTORY-MANAGED-SESSION-001' CHANGELOG.md` (before the edit) | `0` |
+| SPEC-corpus test slice | `go test -count=1 -run '^(TestACCounterFullCorpusMatchesBaseline\|TestACCounterCorpusMutantIsDetected)$' -v ./internal/spec` | `--- PASS: TestACCounterFullCorpusMatchesBaseline (8.33s)`, `--- PASS: TestACCounterCorpusMutantIsDetected (0.01s)`, `ok  github.com/modu-ai/moai-adk/internal/spec 8.794s` |
+| SPEC audit | `go run ./cmd/moai spec audit --json`, entries naming this SPEC | one entry: `finding_type: EraAutoDetected`, `severity: INFO`, `era: V3R6`, `heuristic_matched: H-4 (§E.2 + §E.4 + sync_commit_sha)`; no drift finding for this SPEC in the filtered output (`grep -B2 -A8` window, not a full-report parse) |
+| store.go untouched | `git diff f22e2d7ac..HEAD -- internal/factorymsg/store.go \| wc -l` | `0` |
+| Body untouched | `git diff 677cb6919 -- .moai/specs/SPEC-FACTORY-MANAGED-SESSION-001/<file>.md \| grep -E '^[-+]'` for plan/acceptance/design/research | empty for all four; for spec.md only `-status: in-progress` / `+status: completed` / `-updated: 2026-10-01` / `+updated: 2026-10-02` (plus the two `---`/`+++` header lines) |
+
+### Gaps
+
+- The live Codex round trip is unobserved: `TestManagedCodexFactoryBrokerLive` skips without `MOAI_FACTORY_LIVE_ROOT` / `MOAI_FACTORY_LIVE_RUN` (AC-MS-016 passes as a SKIP, per §E.2).
+- The CI-parity lint version is unchecked: the `golangci-lint` figures in §E.3 come from the local binary, and its match to the CI v2.1.6 build was not verified. No lint was run in this sync phase.
+- The two reds in the full `./internal/cli` run, `TestStopChainEffectParityGolden` (owner card t1390) and `TestSyncGateLanguageDetectionMatchesScript` (owner card t1402), are recorded in the 회귀 증거 subsection; their ownership comes from the leader's message and is not a sync-phase observation. No full-package suite was run in this sync phase.
+- Codemaps (`.moai/project/codemaps/`) were not refreshed in this sync commit.
+- The SPEC-corpus slice above is the AC-counter corpus test; no test dedicated to `status:` frontmatter of the real `.moai/specs` tree was found by grep, so `spec lint` on this SPEC is the status/frontmatter validity evidence.
+- `sync_commit_sha` is a placeholder until the backfill commit lands.
+
+### Residual-risk
+
+- MCP approval scoping and loopback guards are covered by in-repo tests only; behavior against a real Codex App Server is unobserved (see Gaps).
+- The coverage figure (88.0%) covers the managed test selection only, not the whole `internal/cli` package.
+- A concurrent session pushing a competing change to the CHANGELOG `[Unreleased] > Added` block would conflict textually with the first-entry insertion; resolve at integration.
+
+sync_status: audit-ready — this signal is ready for the independent sync audit (sync-auditor).
 
 ## §F Phase 4 Mode Selection
 
