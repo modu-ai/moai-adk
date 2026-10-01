@@ -74,6 +74,15 @@ const (
 	// hands the store: the message stays claim-locked for one turn's worth of
 	// processing before the store's own lease policy may reclaim it.
 	DefaultManagedSessionClaimLease = 2 * time.Minute
+	// DefaultManagedCodexReadyTimeout bounds one Codex App Server handshake —
+	// process spawn, /readyz wait, loopback WS dial, initialize, thread start
+	// (SPEC-FACTORY-MANAGED-SESSION-001 AC-MS-001). It also bounds the WS
+	// handshake itself.
+	DefaultManagedCodexReadyTimeout = 10 * time.Second
+	// DefaultManagedCodexTurnTimeout bounds one injected turn: a turn that
+	// never completes fails the delivery instead of holding the serial queue
+	// forever; the store's claim lease owns redelivery afterwards.
+	DefaultManagedCodexTurnTimeout = 10 * time.Minute
 
 	DefaultTestCoverageTarget    = 85
 	DefaultMaxTransformationSize = "small"
