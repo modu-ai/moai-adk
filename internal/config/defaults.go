@@ -270,6 +270,34 @@ const (
 	DefaultGLMHaiku  = DefaultGLM53Flash
 	DefaultGLMSonnet = DefaultGLM53Flash
 	DefaultGLMOpus   = DefaultGLM53Flash
+
+	// Claude agent-tier pair components (SPEC-AGENT-TIER-001 REQ-TIER-002).
+	// The tier tokens max/medium/low are CONFIGURATION-KEY names, not effort
+	// values (REQ-TIER-001, the Q2 decision): each names one {model, effort}
+	// pair, and the constant is keyed by the TIER token rather than the effort
+	// slot — an effort-keyed suffix would alias tier-medium to a
+	// "...TierHigh" constant and recreate exactly the tier/effort ambiguity
+	// Q2 exists to prevent. The {model, effort} aggregates live in the
+	// DefaultClaudeTier* vars below the const block (Go const rules:
+	// ModelEffort is a struct). No other file may restate these model ids or
+	// effort values as inline literals (REQ-TIER-013); the pin_literal_sweep
+	// test guards the boundary.
+	//
+	// Chart grounding (Terminal-Bench 4.0, spec.md §E): max = Sonnet 5.5 @ max
+	// (70.6% @ ~$11 — accuracy-first), medium = Sonnet 5.5 @ high (45% @ ~$2.3
+	// — cost-efficiency sweet spot), low = Sonnet 5.5 @ medium (29% @ ~$0.8).
+	DefaultClaudeTierMaxModel     = "sonnet-5-5"
+	DefaultClaudeTierMaxEffort    = "max"
+	DefaultClaudeTierMediumModel  = DefaultClaudeTierMaxModel
+	DefaultClaudeTierMediumEffort = "high"
+	DefaultClaudeTierLowModel     = DefaultClaudeTierMaxModel
+	DefaultClaudeTierLowEffort    = "medium"
+
+	// DefaultClaudeTierMaxFallbackModel carries the max-tier fallback's model
+	// id. It spells the same string the claude audit pin carries today, but is
+	// a SEPARATE declaration: the fallback and the audit pin are independent
+	// concepts that may move on different schedules.
+	DefaultClaudeTierMaxFallbackModel = "claude-opus-5-5"
 	// Default1MContextTokens is the token count for Claude Code's 1M context
 	// mode. Used to populate CLAUDE_CODE_AUTO_COMPACT_WINDOW when the High slot
 	// model resolves to the 1M context tier.
@@ -480,6 +508,23 @@ const (
 	HandoffHardCeilingCapPct    = 95      // absolute cap for the hard (stage-2) ceiling
 	HandoffHardCeilingMarginPct = 10      // margin above auto-compact threshold for the hard ceiling
 )
+
+// Claude agent-tier {model, effort} pairs (SPEC-AGENT-TIER-001 REQ-TIER-002),
+// aggregating the DefaultClaudeTier* const components above. The values are
+// operator-fixed; the chart grounding is documented on the components.
+var (
+	DefaultClaudeTierMax    = ModelEffort{Model: DefaultClaudeTierMaxModel, Effort: DefaultClaudeTierMaxEffort}
+	DefaultClaudeTierMedium = ModelEffort{Model: DefaultClaudeTierMediumModel, Effort: DefaultClaudeTierMediumEffort}
+	DefaultClaudeTierLow    = ModelEffort{Model: DefaultClaudeTierLowModel, Effort: DefaultClaudeTierLowEffort}
+)
+
+// DefaultClaudeTierMaxFallback RECORDS — and only records — the max-tier
+// fallback pair {claude-opus-5-5, xhigh}: 65% @ ~$5 on the Terminal-Bench 4.0
+// chart, the availability/dispersion alternative to the max tier (−5.6 points
+// vs the max tier's 70.6% at roughly 55% of the cost). NO automatic failover
+// reads this value: activation is operator-invokable and is revisited only
+// when an availability signal exists (SPEC-AGENT-TIER-001 §C / REQ-TIER-003).
+var DefaultClaudeTierMaxFallback = ModelEffort{Model: DefaultClaudeTierMaxFallbackModel, Effort: "xhigh"}
 
 // SandboxProofKinds is the allowlist of recognized sandbox/container isolation
 // kinds for the MOAI_SANDBOX_PROOF env marker (SPEC-AUTONOMY-TIERS-001 REQ-002
@@ -1217,18 +1262,34 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// fallback when workflow.yaml omits the block.
 		Audit: AuditConfig{
 			Model: AuditModelClaude,
+			// Claude pin {claude-opus-5-5, high}: SUPERSEDES the t1368
+			// {claude-opus-5-5, medium} pin per operator directive
+			// (SPEC-AGENT-TIER-001 REQ-TIER-004). Derived from the
+			// closed-set constants — no inline pin literals here.
 			Claude: ModelEffort{
-				Model:  "claude-opus-5-5",
-				Effort: "medium",
+				Model:  DefaultClaudeAuditModel,
+				Effort: DefaultClaudeAuditEffort,
 			},
 			// Codex pin {gpt-6.1-sol, high} (SPEC-MODEL-MATRIX-UPDATE-001
 			// REQ-MMU-001). SUPERSEDES REQ-AMP-005 (keep-the-Go-default-EMPTY
 			// neutrality) per operator directive 2026-09-30 — the supersession
 			// is also recorded at the AuditConfig.Codex doc comment
-			// (internal/config/audit_models.go).
+			// (internal/config/audit_models.go). Unchanged by
+			// SPEC-AGENT-TIER-001.
 			Codex: ModelEffort{
 				Model:  DefaultCodexAuditModel,
 				Effort: "high",
+			},
+			// GLM pin {glm-5.3, max} (SPEC-AGENT-TIER-001 REQ-TIER-004/006,
+			// operator directive — SUPERSEDES the t1368 EMPTY GLM pin). The
+			// model is the FULL glm-5.3 (DefaultGLM53), NOT the flash slot
+			// default (DefaultGLMHigh); the effort rides the z.ai
+			// reasoning-state vocabulary verbatim (REQ-AMP-006). The pin is
+			// audit-only — the glm_task delegation default is unchanged
+			// (REQ-AMP-008).
+			GLM: ModelEffort{
+				Model:  DefaultGLMAuditModel,
+				Effort: DefaultGLMAuditEffort,
 			},
 			Gates: AuditGates{
 				Claude: AuditGateRequired,
