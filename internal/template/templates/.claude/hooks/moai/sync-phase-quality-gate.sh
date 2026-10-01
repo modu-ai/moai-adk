@@ -670,40 +670,63 @@ run_step() {
 C1_LABELS=""
 C2_LABELS=""
 SKIPPED_TOOLS=""
-# find_go_module_root: the directory holding the go.mod that owns the first
-# .go file under the project root, walking up from it. A monorepo whose root
-# carries no go.mod but nests one under a subdirectory vetts from THAT root —
-# running the go checks at the repo root fails both slots (go cannot resolve
-# a main module) and blocks a healthy project (codex review gate reproduction:
-# a clean nested module's own vet succeeded while the gate recorded vet=1,
-# build=1 and stopped the turn). Empty stdout = no go.mod anywhere: the repo
-# root stays the anchor, where the failure is then a real one.
-find_go_module_root() {
-    local f d
-    f=$(find "$PROJECT_ROOT" -type f -name '*.go' \
-        -not -path '*/.git/*' -not -path '*/vendor/*' -print -quit 2>/dev/null)
-    [ -n "$f" ] || return 0
-    d=$(dirname "$f")
-    while :; do
-        if [ -f "$d/go.mod" ]; then
-            printf '%s\n' "$d"
-            return 0
-        fi
-        case "$d" in "$PROJECT_ROOT"|/) return 0 ;; esac
-        d=$(dirname "$d")
-    done
+# find_go_module_roots: every go.mod that owns a Go file touched by this sync
+# commit (HEAD diff plus ignored sources, the same delta set the checks read),
+# one per line, deduplicated. A repo can carry a root module AND nested
+# modules; following only the first .go file's module vetted whichever module
+# find happened to hand back first and left the other unmeasured — a broken
+# root next to a clean nested module recorded vet=0 build=0 and allowed (codex
+# review gate reproduction, card t1389). The caller runs the checks once per
+# root and lets run_step's worst-exit slot merge aggregate them. Empty stdout
+# = no owning go.mod anywhere: the repo root stays the anchor, where a failure
+# is then a real one. Deleted files are skipped (nothing left to vet there);
+# paths containing whitespace are unsupported (git names them with octal
+# escapes here, and no supported layout needs one).
+find_go_module_roots() {
+    local files f d out
+    files=$({ git diff --name-only "$DIFF_RANGE" 2>/dev/null || true
+              [ -n "$WCI_IGNORED_SOURCES" ] && printf '%s\n' "$WCI_IGNORED_SOURCES"
+            } | grep -E '\.go$' || true)
+    out=""
+    while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        [ -f "$PROJECT_ROOT/$f" ] || continue
+        d="$PROJECT_ROOT/$f"
+        while :; do
+            d=$(dirname "$d")
+            if [ -f "$d/go.mod" ]; then
+                case "$out" in *"$d
+"*) ;; *) printf '%s\n' "$d"; out="$out$d
+" ;; esac
+                break
+            fi
+            case "$d" in "$PROJECT_ROOT"|/) break ;; esac
+        done
+    done <<GOFILES
+$files
+GOFILES
 }
-GO_ROOT=""
+GO_ROOTS=""
 for checked_language in $CHANGED_LANGS; do
 C1_LABEL="(none)"
 C2_LABEL="(none)"
 case "$checked_language" in
     go)
         C1_LABEL="go vet"; C2_LABEL="go build"
-        [ -n "$GO_ROOT" ] || GO_ROOT=$(find_go_module_root)
-        [ -n "$GO_ROOT" ] || GO_ROOT="$PROJECT_ROOT"
-        run_step go c1 go -C "$GO_ROOT" vet ./...
-        run_step go c2 go -C "$GO_ROOT" build ./...
+        # go -C (Go 1.20+) keeps the hook's cwd stable; loop over every owning
+        # module — run_step merges each call's exit into the c1/c2 slots with
+        # its worst-exit rule, so one broken module blocks no matter how many
+        # others passed.
+        [ -n "$GO_ROOTS" ] || GO_ROOTS=$(find_go_module_roots)
+        if [ -n "$GO_ROOTS" ]; then
+            for go_root in $GO_ROOTS; do
+                run_step go c1 go -C "$go_root" vet ./...
+                run_step go c2 go -C "$go_root" build ./...
+            done
+        else
+            run_step go c1 go -C "$PROJECT_ROOT" vet ./...
+            run_step go c2 go -C "$PROJECT_ROOT" build ./...
+        fi
         ;;
     python)
         C1_LABEL="ruff"
