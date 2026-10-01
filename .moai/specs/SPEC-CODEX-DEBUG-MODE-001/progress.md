@@ -29,7 +29,14 @@ SPEC ID self-check: `ID="SPEC-CODEX-DEBUG-MODE-001"; [[ "$ID" =~ ^SPEC(-[A-Z][A-
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-_<pending plan-audit verdict — the audit loop fills plan_status / plan_audit_verdict / plan_audit_report / plan_audit_sha; no audit claims exist at authoring time>_
+plan_status: audit-ready
+plan_complete_at: 2026-10-01
+plan_audit_verdict: PASS (score 1.00, Tier M threshold 0.80; trajectory 0.81 → 1.00 over 2 iterations, no STOP signal; iteration-1 FAIL was the MP-8 RED-now firewall, score-independent)
+plan_audit_report: .moai/reports/t1380/plan-audit-iter2.md (full stream: plan-audit.md, plan-audit-iter2.md)
+plan_audit_sha: 32caf5820 (verdict re-executed evidence at this tree; pin validity proven via git diff-tree — internal/ byte-identical to the pinned 49a42c2fc)
+plan_artifact_hash: 257c6ac68642441dfb6b9218a63b71c078dfa10964baca303e42c6dd70425576
+hash_note: computed via moai audit-cache ComputeHash on the SPEC dir AFTER the verdict; spec.md/plan.md/acceptance.md bytes unchanged since 32caf5820 (progress.md is not in the hashed set)
+recorded_by: lane orchestrator (verdict landed after manager-spec's final fix turn; audit-ready signal derived from the iteration-2 verdict)
 
 ## §E.2 Run-phase Evidence
 
@@ -42,3 +49,29 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+### Kickoff record (operator-held gate)
+
+- The card dispatch (leader → lane, 2026-10-01) marked the plan→run Kickoff for OPERATOR DIRECT ANSWER — the keep-set operator form, not the autonomous transition.
+- Operator answered via AskUserQuestion in the lane on 2026-10-01: **착수 (proceed to run phase)** — the recommended option; alternatives were SPEC 재검토 (override decision-index defaults) and 중단 (abort).
+- Gate evidence at ask time: plan-audit iter2 PASS 1.00 (≥ 0.80 Tier M), RED-now 9 cells re-executed by the auditor with pin validity proven, tree-sourced spec lint 0 errors / 0 warnings, plan-artifact hash `257c6ac68642441dfb6b9218a63b71c078dfa10964baca303e42c6dd70425576` fixed since the verdict. decision-index Q2-Q5 defaults proceed (both spellings / RUST_LOG best-effort / single-level v1 / readout refusal) — none gates run-phase entry per the plan-phase record.
+
+### Input parameters
+
+- tier: M · scope: ~8-12 files (internal/cli launchers + internal/config defaults/envkeys + tests) · domain count: 2 · file language mix: 100% Go · concurrency benefit: LOW (coding-heavy, dependency-ordered milestones).
+
+### Mode evaluation
+
+| Mode | Selected | Rationale |
+|------|----------|-----------|
+| direct | no | multi-file semantic feature, not a one-liner |
+| fanout | no | coding-heavy work (Anthropic coding-task parallelism caveat); milestones are dependency-ordered |
+| sweep | no | semantic new-code work, not a mechanical uniform transform |
+| agent-team | no | not operator-requested; experimental surface stays unselected |
+| serial | **yes** | one manager-develop per milestone, plan §F order |
+
+Decision: serial
+
+Justification: coding-heavy Go across two packages with strictly ordered milestones (flag surface → trace engine → uniformity → composition → sweep); a single manager-develop with the Section A-E delegation template carries the launcher-path context cheaper than any fan-out. No boundary case: scope sits inside the serial band.
