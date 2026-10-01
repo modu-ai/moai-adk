@@ -214,6 +214,23 @@ type Event struct {
 	// WeightUnit is the unit of the two weight fields: "tokens" or "bytes".
 	// Empty when estimation was skipped (fail-open sentinel).
 	WeightUnit string `json:"weight_unit,omitempty"`
+
+	// ── ToolFailure attribution fields (SPEC-SESSION-ANCHOR-ATTR-001 W1) ──
+	// Populated on WorktreeGuardRefusal tool_failure rows only. Before this
+	// SPEC the refusal rows carried no session identity at all (the t1064
+	// defect class), so the daily refusal volume could not be attributed to
+	// the incident, session, or tree that produced it.
+
+	// Cwd is the resolved working directory at refusal-record time
+	// (input.CWD first, os.Getwd() fallback). The explicit "unknown" marker
+	// replaces it when unresolvable — the row is never dropped (REQ-SAA-002).
+	Cwd string `json:"cwd,omitempty"`
+
+	// WorktreePath is the tree path the guard's refusal text quotes
+	// ("This session is isolated in the worktree <path>"), extracted as
+	// quoted — never absolutized. The "unknown" marker replaces it when the
+	// refusal text quotes no path.
+	WorktreePath string `json:"worktree_path,omitempty"`
 }
 
 // ─────────────────────────────────────────────
