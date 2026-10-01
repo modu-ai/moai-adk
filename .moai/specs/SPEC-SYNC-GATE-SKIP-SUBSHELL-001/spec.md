@@ -10,6 +10,7 @@ priority: P1
 phase: "v3.2.0 target"
 module: "internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh"
 lifecycle: spec-anchored
+tier: M
 tags: "hooks, sync-gate, subshell, skipped-tools, template-first"
 ---
 
@@ -41,12 +42,12 @@ Net effect: the user is never told a checker did not run, and the gate reads as 
 
 ## C. Requirements (GEARS)
 
-- REQ-001 — **When** a `run_step` invocation executes inside the sync-phase quality gate, the gate shall run it outside any pipeline subshell, so that the `SKIPPED_TOOLS` update performed by the absent-tool branch lands in the gate's main shell.
-- REQ-002 — **When** the gate's decision is `allow` and at least one checker was skipped because its tool was absent from PATH, the gate shall emit the skip advisory through the notice channel (`emit_gate_notice` appended to `GATE_OUTPUT_FILE`) so the skip reaches the user on stdout.
-- REQ-003 — **When** the gate writes its audit log line, the line shall carry a non-empty `skipped_tools=` value whenever a skip occurred in that run.
-- REQ-004 — The sync-phase quality gate script shall apply the repair to all four affected language checks (csharp `dotnet`, elixir `mix`, flutter `dart`, swift `swift`) — no check may retain the pipeline-wrapping-`run_step` shape.
-- REQ-005 — The gate script's two surfaces shall stay in contract: the template original (`internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh`) is the edit surface of record, the deployed local copy (`.claude/hooks/moai/sync-phase-quality-gate.sh`) shall be byte-identical after the repair, and `make build` shall regenerate the embedded binary copy.
-- REQ-006 — **When** the repair lands, the gate shall preserve the neighboring contracts that share the file: a failing checker still blocks (t602 exit-status shape), the pass record is still written on allow-with-skips, and checker-tool presence still rides the worktree content key (t1385 gate-cache contract).
+- **REQ-001** — **When** a `run_step` invocation executes inside the sync-phase quality gate, the gate shall run it outside any pipeline subshell, so that the `SKIPPED_TOOLS` update performed by the absent-tool branch lands in the gate's main shell.
+- **REQ-002** — **When** the gate's decision is `allow` and at least one checker was skipped because its tool was absent from PATH, the gate shall emit the skip advisory through the notice channel (`emit_gate_notice` appended to `GATE_OUTPUT_FILE`) so the skip reaches the user on stdout.
+- **REQ-003** — **When** the gate writes its audit log line, the line shall carry a non-empty `skipped_tools=` value whenever a skip occurred in that run.
+- **REQ-004** — The sync-phase quality gate script shall apply the repair to all four affected language checks (csharp `dotnet`, elixir `mix`, flutter `dart`, swift `swift`) — no check may retain the pipeline-wrapping-`run_step` shape.
+- **REQ-005** — The gate script's two surfaces shall stay in contract: the template original (`internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh`) is the edit surface of record, the deployed local copy (`.claude/hooks/moai/sync-phase-quality-gate.sh`) shall be byte-identical after the repair, and `make build` shall regenerate the embedded binary copy.
+- **REQ-006** — **When** the repair lands, the gate shall preserve every neighboring contract that shares the file, each verified by its named acceptance criterion: a failing checker still blocks (t602 exit-status shape → AC-005), the pass record is still written on allow-with-skips and checker-tool presence still rides the worktree content key (t1385 gate-cache contract → AC-006), the t1392 multi-language routing and aggregation behaviors stay unregressed (→ AC-007), and the cpp case-table family stays unregressed (→ AC-008).
 
 ## D. Non-Functional Constraints
 

@@ -4,16 +4,18 @@ Canonical AC enumeration. Every AC is mechanically verifiable; commands are plai
 
 ## D. AC Matrix
 
-| AC | Statement (one line) | Severity | Verification |
-|----|----------------------|----------|--------------|
-| AC-001 | Two-cell observational ledger: RED-now confirmed the defect on the pre-implementation tree; GREEN re-run post-fix shows all three cells flipped | Blocker | RED: already executed (ledger §D.1); GREEN: re-run `red-now.sh` post-fix |
-| AC-002 | Static sweep: zero pipeline-wrapping-`run_step` shapes in BOTH gate surfaces, positive control 4 on the pre-fix commit | Blocker | `grep -cE "run_step [a-zA-Z]+ c[12] [^']*\|"` |
-| AC-003 | Behavioral sweep test: all four languages, tool absent → audit `skipped_tools=<tool>` non-empty + stdout carries the systemMessage notice + decision=allow | Blocker | `go test ./internal/template/ -run '^TestSyncGateSkipNotice_ToolAbsentNotifies_AllFourLanguages$'` |
-| AC-004 | Dual-surface byte-identity + embedded regeneration | Blocker | `cmp` + `TestHookWrapperCopiesStayIdentical` + `make build` |
-| AC-005 | t602 exit-status family unregressed: failing checker still blocks in all four repaired languages | Blocker | `go test ./internal/template/ -run '^TestSyncGateExitStatus'` |
-| AC-006 | t1385 gate-cache contract unregressed: pass record written on allow-with-skip; failstate family green | Blocker | `go test ./internal/hook/ -run '^TestSyncGateFailState'` + AC-003's record assertion |
-| AC-007 | t1392 behaviors unregressed: multi-language gate family green | High | `go test ./internal/template/ -run '^TestSyncGateMultiLanguage'` |
-| AC-008 | cpp gate behavior family unregressed (shares the case table) | High | `go test ./internal/template/ -run '^TestSyncGateCpp'` |
+| AC | REQ ids | Statement (one line) | Severity | Verification |
+|----|---------|----------------------|----------|--------------|
+| AC-001 | REQ-001, REQ-002, REQ-003, REQ-006 | Two-cell observational ledger: RED-now confirmed the defect on the pre-implementation tree; GREEN re-run post-fix shows all three cells flipped | Blocker | RED: already executed (ledger §D.1); GREEN: re-run `red-now-t1395.sh` post-fix |
+| AC-002 | REQ-001, REQ-004 | Static sweep: zero pipeline-wrapping-`run_step` shapes in BOTH gate surfaces, positive control 4 on the pre-fix commit | Blocker | `grep -cE "run_step [a-zA-Z]+ c[12] [^']*\|"` |
+| AC-003 | REQ-001, REQ-002, REQ-003, REQ-004 | Behavioral sweep test: all four languages, tool absent → audit `skipped_tools=<tool>` non-empty + stdout carries the systemMessage notice + decision=allow | Blocker | `go test ./internal/template/ -run '^TestSyncGateSkipNotice_ToolAbsentNotifies_AllFourLanguages$'` |
+| AC-004 | REQ-005 | Dual-surface byte-identity + embedded regeneration | Blocker | `cmp` + `TestHookWrapperCopiesStayIdentical` + `make build` |
+| AC-005 | REQ-006 | t602 exit-status family unregressed: failing checker still blocks in all four repaired languages | Blocker | `go test ./internal/template/ -run '^TestSyncGateExitStatus'` |
+| AC-006 | REQ-006 | t1385 gate-cache contract unregressed: pass record written on allow-with-skip; failstate family green | Blocker | `go test ./internal/hook/ -run '^TestSyncGateFailState'` + AC-003's record assertion |
+| AC-007 | REQ-006 | t1392 behaviors unregressed: multi-language gate family green | High | `go test ./internal/template/ -run '^TestSyncGateMultiLanguage'` |
+| AC-008 | REQ-006 | cpp gate behavior family unregressed (shares the case table) | High | `go test ./internal/template/ -run '^TestSyncGateCpp'` |
+
+> **Lint-anchoring deviation note (deliberate — a lint-driven fixer MUST NOT "fix" this).** The `go test -run` patterns above use anchored-PREFIX family selectors (e.g. `'^TestSyncGateExitStatus'`), not the fully `$`-anchored forms `moai spec lint` suggests. The linter's suggested `$`-anchored forms would select ZERO tests: the target tests are `_`-suffixed subtest parents (`TestSyncGateExitStatus_FailingCheckerBlocks`, `TestSyncGateFailState_AC003_PassThenSameHeadStaysSilent`, …) and no test is named exactly `TestSyncGateExitStatus` or `TestSyncGateFailState`. `$`-anchoring would silently turn every AC green on nothing. The two exact-match selectors that ARE fully anchored (`'^TestSyncGateSkipNotice_ToolAbsentNotifies_AllFourLanguages$'`, `'^TestHookWrapperCopiesStayIdentical$'`) name tests that exist verbatim. Verified against the test files: `internal/template/hook_gate_exit_status_test.go` defines only the three `_`-suffixed names; `internal/hook/sync_gate_failstate_test.go` defines only `AC0xx`-suffixed names.
 
 ## D.1 AC-001 — Two-cell observational ledger (RED-now / GREEN-later)
 
@@ -30,8 +32,8 @@ Canonical AC enumeration. Every AC is mechanically verifiable; commands are plai
     CELL3 CONFIRMED: pass record written: d5dac44b6ecdc01e37c41ad2c06faa6740e99b01 pass cf131089db9b7300b2acb5cfc18618bc5e08e1204abc26be7da7e38878afc8ff
     PC2 PASS: gate reached the csharp case
     PC3 PASS: audit line carries the skipped_tools= token
-    harness-exit=0
     ```
+    (The harness's own output ends at the PC3 line; the invocation's `harness-exit=0` was shell-observed, not harness-printed — exit 0 is stated in the Then prose above.)
     Positive controls: `pc1 PASS` (dotnet unresolvable), `PC2 PASS` (`language=csharp` in audit), `PC3 PASS` (`skipped_tools=` token present). The temp fixture's git commit SHA (`d5dac44b…`) differs per run by design; the worktree content id (`cf131089…`) is identical across the first run and the re-execution.
   - Zero-hit grep positive control: the audit's `skipped_tools=` token IS present (PC3) while its value is empty — the empty value is a real observation, not a missing line.
   - Citation note: the harness lives in this committed SPEC directory so the RED cell is re-executable from a fresh checkout post-merge (t1378 precedent — a RED citation to a gitignored `.moai/reports/` artifact is non-re-executable). The first-run copies under `.moai/reports/t1395/` are historical lane evidence.

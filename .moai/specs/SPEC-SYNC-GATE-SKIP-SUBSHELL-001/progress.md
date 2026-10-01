@@ -9,6 +9,8 @@
 - ID uniqueness: no prior SPEC carries the SYNC-GATE-SKIP-SUBSHELL domain (catalog grep, 1009 SPEC dirs).
 - Decision gate `on` (`.moai/config/sections/interview.yaml:6`) → `decision-index.md` authored (1 row, FOUNDER).
 - Plan-phase artifacts: spec.md, plan.md, acceptance.md, progress.md, decision-index.md.
+- plan_status: pending-final-verdict (the lane records `plan_status: audit-ready` from the FINAL audit verdict — after the iteration-2 delta audit and operator kickoff; NOT written by plan phase)
+- plan_complete_at: pending
 
 ## §E.2 Run-phase Evidence
 
