@@ -299,3 +299,127 @@ func TestAutoHelpAndRefusalDoNotAssertPickOrder(t *testing.T) {
 		t.Errorf("the refusal still asserts the pick order: %q", msg)
 	}
 }
+
+// autoAgentSurfaces are the two copies of the manager-todo agent definition:
+// the live file and its template mirror. They are byte-identical by contract.
+func autoAgentSurfaces() []autoDocSurface {
+	return []autoDocSurface{
+		{"live manager-todo.md", filepath.Join(".claude", "agents", "moai", "manager-todo.md")},
+		{"template manager-todo.md", filepath.Join("internal", "template", "templates", ".claude", "agents", "moai", "manager-todo.md")},
+	}
+}
+
+// autoAgentRegions are the two passages of the agent definition that must carry
+// the `--auto`-scoped exception. Each start marker opens the region; the region
+// ends at the next level-two heading, so a literal pair placed in some other
+// section of the file does not count.
+var autoAgentRegions = []struct{ name, start string }{
+	{"serial-cycle contract", "Serial-cycle contract ("},
+	{"Jev Decision Boundary", "## Jev Decision Boundary"},
+}
+
+// autoAgentRegion returns the text from start to the next "\n## " heading (or
+// the end of the document), or "" when the start marker is absent.
+func autoAgentRegion(doc, start string) string {
+	idx := strings.Index(doc, start)
+	if idx < 0 {
+		return ""
+	}
+	rest := doc[idx+len(start):]
+	if end := strings.Index(rest, "\n## "); end >= 0 {
+		return doc[idx : idx+len(start)+end]
+	}
+	return doc[idx:]
+}
+
+// autoAgentStalePhrases are the assertions the pre-amendment agent definition
+// made, each quoted from that file (the live copy at the parent of the M4
+// commit). Each states that the cycle consumes the queue in its stored order,
+// which the ranking stage made false for the cycle's candidate selection. The
+// test names them so the absence check cannot pass by searching for a phrase
+// that was never there: before the amendment every one is present.
+var autoAgentStalePhrases = []string{
+	// Primary Mission: "select and process cards in strict queue order".
+	"strict queue order",
+	// Serial-cycle contract, first bullet: "serial consumption of the queue in
+	// queue order and nothing else".
+	"serial consumption of the queue in queue order and nothing else",
+	// Serial-cycle contract, first bullet: "never self-promotes, reorders,
+	// admits, or drops cards beyond that order".
+	"beyond that order",
+	// Frontmatter description: "consults the Jev judgment scripts as a
+	// display-only signal for dispatch order and priority — never as authority".
+	"consults the Jev judgment scripts as a display-only signal for dispatch order and priority",
+}
+
+// autoAgentKeptProhibitions are the clauses the amendment must leave exactly as
+// they are: Jev stays a display-style ordering signal for the lead, and is never
+// the basis of a queue mutation or a completion verdict.
+var autoAgentKeptProhibitions = []string{
+	"is a permitted display-only signal for dispatch order and priority judgment.",
+	"Jev output is judgment input for the lead — never authority.",
+	"It is never the basis of a queue mutation, a completion verdict, a merge approval, or any operator-gate decision.",
+}
+
+// TestAutoRankAgentDoctrine (AC-TAP-015): the manager-todo agent definition, live
+// and template mirror, carries the `--auto`-scoped ranking exception — both
+// pinned literals, each on one line, in one paragraph of the serial-cycle
+// contract and in one paragraph of the Jev Decision Boundary — keeps the Jev
+// prohibitions, no longer asserts that the cycle consumes the queue in queue
+// order, and the two copies are byte-identical.
+func TestAutoRankAgentDoctrine(t *testing.T) {
+	root := autoDocRepoRoot(t)
+	docs := map[string]string{}
+
+	for _, s := range autoAgentSurfaces() {
+		doc := autoDocRead(t, root, s.path)
+		docs[s.name] = doc
+
+		for _, r := range autoAgentRegions {
+			region := autoAgentRegion(doc, r.start)
+			t.Run("literals share one paragraph/"+s.name+"/"+r.name, func(t *testing.T) {
+				if region == "" {
+					t.Fatalf("%s has no %q region (start marker %q)", s.name, r.name, r.start)
+				}
+				for _, lit := range []string{autoDocExceptionLiteral, autoDocBoundLiteral} {
+					if !strings.Contains(region, lit) {
+						t.Errorf("%s %s does not carry the literal %q on a single line", s.name, r.name, lit)
+					}
+				}
+				found := false
+				for _, p := range autoDocParagraphs(region) {
+					if strings.Contains(p, autoDocExceptionLiteral) && strings.Contains(p, autoDocBoundLiteral) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("%s %s: no single paragraph carries both %q and %q", s.name, r.name, autoDocExceptionLiteral, autoDocBoundLiteral)
+				}
+			})
+		}
+
+		norm := autoDocNormalize(doc)
+		for _, stale := range autoAgentStalePhrases {
+			t.Run("stale phrase absent/"+s.name+"/"+stale, func(t *testing.T) {
+				if strings.Contains(norm, autoDocNormalize(stale)) {
+					t.Errorf("%s still asserts the pre-amendment wording %q", s.name, stale)
+				}
+			})
+		}
+		for _, kept := range autoAgentKeptProhibitions {
+			t.Run("prohibition kept/"+s.name+"/"+kept, func(t *testing.T) {
+				if !strings.Contains(norm, autoDocNormalize(kept)) {
+					t.Errorf("%s lost the clause %q", s.name, kept)
+				}
+			})
+		}
+	}
+
+	t.Run("live and template are byte-identical", func(t *testing.T) {
+		live, tmpl := docs["live manager-todo.md"], docs["template manager-todo.md"]
+		if live != tmpl {
+			t.Errorf("manager-todo.md differs between the live file (%d bytes) and the template mirror (%d bytes)", len(live), len(tmpl))
+		}
+	})
+}
