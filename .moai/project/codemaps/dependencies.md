@@ -1,6 +1,9 @@
 # 의존성 그래프
 
-**현재 부분 재측정 — t1333, worktree `.moai/worktrees/t1333`, 브랜치 `WT-codemaps-refresh9`, base `145c3d98c` (2026-09-29).**
+**현재 부분 재측정 — t1297, worktree `.moai/worktrees/t1297`, 브랜치 `WT-codemaps-regen`, base `a9f43a6fc` (2026-10-02, 전면 재생성 카드).**
+t1333 판 이후 이 문서를 건드린 판이 없어(개별 카드가 `overview.md` 표만 옮겨 왔다) 창 전체를 한 번에 다시 쐈다 — 패키지 단위 449→**457**, 최상위 접기 + self-edge 제거 고유 쌍 277→**286**. go.mod·go.sum은 앵커 이후 한 줄도 바뀌지 않았다. fan-out 상위에서 움직인 행: `internal/cli` 70→72(`internal/factorylane` — card t1338 착지 — 와 세션 앵커 계열 합류). fan-in 상위에서 움직인 행: `internal/config` 25→27, `internal/atomicfile` 13→14, `internal/kanban`·`internal/homestate` 7→8, `pkg/models` 8→7. § 순환은 네 쌍→**다섯 쌍** — 다섯째 `internal/profile` ↔ `internal/settings`의 양 엇키는 앵커 시점부터 존재하던 것이(`git grep` 실측 — `internal/profile/sync.go`) 이 판에 처음 표로 들어온 스테일 누락분이다(t1333 판의 auditreceipt·jev 정정과 같은 성격).
+
+**이전 재측정 — t1333, worktree `.moai/worktrees/t1333`, 브랜치 `WT-codemaps-refresh9`, base `145c3d98c` (2026-09-29).**
 문서의 산출 명령으로 내부 import를 다시 졌다 — 패키지 단위 449개, 최상위 접기 + self-edge 제거 고유 쌍은 277개으로 앞 판과 같았다. fan-in·fan-out 상위 표 전 행(`internal/cli` 70·`internal/hook` 39 포함)과 순환 4쌍은 재확인 결과 변동이 없었고, go.mod·go.sum도 앵커 이후 한 줄도 바뀌지 않았다. 이 판의 유일한 갱신지는 작은 fan-in 표의 스테일 수치 정정이다 — `internal/auditreceipt` 2→3(`internal/closure` 합류 — git grep으로 앵커 시점에 이미 존재하는 엇키였음이 확인된 스테일 값), `internal/jev` 2→3·`internal/jevcred` 2→3(`internal/contract` 합류 — 같은 성격), `internal/contract` 1→3(`internal/closure`·`internal/escalation` — 역시 같은 성격). civerdict 2·mission 2·chain 2·stateanchor 3은 변동 없었다.
 
 **이전 재측정 — t1305, worktree `.claude/worktrees/t1305`, 브랜치 `WT-codemaps-refresh8`, base `afecf81e9e96` (2026-09-29).**
@@ -36,8 +39,8 @@ settings의 fan-out이 줄었다). `internal/gitenv` 소비자가 둘에서 여�
 **정기 재측정**: worktree `.claude/worktrees/t1274`, 브랜치 `WT-codemaps-refresh4`, base `cf4b82755`, 2026-09-26 — 카드 t1274. 엣지 수(386→409 · 241→256; 최상위 집계는 계보 방식대로 고유 쌍 집합 기준). 증가분의 대부분은 신규 패키지 `internal/escalation`(비테스트 소비자 `internal/hook` 1개, 스스로는 `internal/config`·`internal/contract`·`internal/spec`·`internal/constitution`·`internal/homestate`·`internal/navigator/astx` 등을 import)와 t1235 계열 cli·hook·config 변경이 가져왔습니다. § 순환·§ 외부 의존성은 이번 변경과 무관해 손대지 않았습니다.
 **정기 재측정**: worktree `.claude/worktrees/t1278`, 브랜치 `WT-codemaps-refresh5`, base `6d514f9b7`, 2026-09-27 — 카드 t1278. 엣지 수(409→413 · 256→260). 신규 엣지는 정확히 넷: 신규 패키지 `internal/civerdict`로 향하는 둘(`internal/cli`·`internal/escalation`)과 `internal/escalation`→`internal/verify`(ciLimb 의 HasLocalPass 소비), `internal/contract`→`internal/mission`(projection_mission 투영). t1242 가 지운 `internal/cli`→`internal/homestate` 접힌 엣지는 타 cli 파일이 유지해 상위 집계에 변동이 없습니다. fan-out 상위 표는 `internal/cli` 66→67(civerdict 합류) 한 행, 작은 fan-in 표는 `internal/mission` 1→2(소비자에 `internal/contract` 합류)와 신규 `internal/civerdict` 2 한 행. § 순환·§ 외부 의존성·상호 참조 쌍은 이번 변경과 무관해 손대지 않았습니다.
 
-두 가지 해상도로 봅니다 — 패키지 단위 **449 엣지**, 이를 `internal/<X>` · `pkg/<X>` · `cmd/<X>`
-최상위로 접고 self-edge를 제거한 **277 엣지**. 아래 표는 후자 기준입니다.
+두 가지 해상도로 봅니다 — 패키지 단위 **457 엣지**, 이를 `internal/<X>` · `pkg/<X>` · `cmd/<X>`
+최상위로 접고 self-edge를 제거한 **286 엣지**. 아래 표는 후자 기준입니다.
 
 산출:
 
@@ -45,7 +48,7 @@ settings의 fan-out이 줄었다). `internal/gitenv` 소비자가 둘에서 여�
 $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
   | awk '{src=$1; for(i=2;i<=NF;i++) if ($i ~ /^github\.com\/modu-ai\/moai-adk\//) print src, $i}' \
   | wc -l
-449
+457
 ```
 
 > 앵커 `25a3212a9` 판은 이 자리에 1638을 적었습니다. 위 명령으로 재현되지 않고 그 판의
@@ -58,22 +61,22 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 
 | # | 패키지 | 피import | 레이어 |
 |---|---|---|---|
-| 1 | `internal/config` | 25 | data |
+| 1 | `internal/config` | 27 | data |
+| 2 | `internal/atomicfile` | 14 | cross-cutting |
 | 2 | `internal/paths` | 14 | cross-cutting |
-| 3 | `internal/defs` | 13 | cross-cutting |
-| 3 | `internal/atomicfile` | 13 | cross-cutting |
-| 5 | `pkg/models` | 8 | cross-cutting |
+| 4 | `internal/defs` | 13 | cross-cutting |
 | 5 | `internal/core` | 8 | domain |
+| 5 | `internal/homestate` | 8 | data |
+| 5 | `internal/kanban` | 8 | domain |
 | 5 | `internal/spec` | 8 | domain |
-| 8 | `internal/kanban` | 7 | domain |
-| 8 | `internal/homestate` | 7 | data |
-| 8 | `internal/execerr` | 7 | cross-cutting |
-| 11 | `internal/template` | 6 | domain |
-| 11 | `internal/hook` | 6 | **presentation** |
+| 9 | `internal/execerr` | 7 | cross-cutting |
+| 9 | `pkg/models` | 7 | cross-cutting |
 | 11 | `internal/gitenv` | 6 | cross-cutting |
-| 14 | `pkg/version` | 5 | cross-cutting |
-| 14 | `internal/statusline` | 5 | **presentation** |
+| 11 | `internal/hook` | 6 | **presentation** |
+| 11 | `internal/template` | 6 | domain |
 | 14 | `internal/lsp` | 5 | infrastructure |
+| 14 | `internal/statusline` | 5 | **presentation** |
+| 14 | `pkg/version` | 5 | cross-cutting |
 
 산출은 최상위 집계 엣지 목록의 목적지 열을 `sort | uniq -c | sort -rn` 한 것입니다.
 
@@ -83,8 +86,8 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 > `escalation`·`homestate` 넷이 합류했다(커밋 신원 가드 계열의 자식 git 프로세스 격리 확산,
 > card t1289). 나머지 행은 같은 명령으로 재확인해 변동이 없었습니다.
 
-상위 7행 중 **4개**가 cross-cutting leaf입니다(`paths` · `defs` · `atomicfile` ·
-`pkg/models`). 나머지 셋은 `internal/config`(data)와 `internal/core`·`internal/spec`(domain)이고,
+상위 7행 중 **3개**가 cross-cutting leaf입니다(`atomicfile` · `paths` · `defs`).
+나머지 넷은 `internal/config`·`internal/homestate`(data)와 `internal/core`·`internal/kanban`(domain)이고,
 이 배치는 안정 의존성 원칙에 부합하는 **건강한 신호**입니다.
 
 > **정정 이력.** 이 자리의 cross-cutting 비율은 판마다 레이어 칸을 그대로 세어 갱신한다 —
@@ -96,7 +99,7 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 적은 근거입니다.
 
 `internal/core`(8)의 소비자는 `cli` · `github` · `homestate` · `hook` · `kanban` · `stateanchor` ·
-`statusline` · `workflow`입니다. `internal/kanban`(6)의 소비자 중 `cmd/t657-merge`는 배포되지 않는
+`statusline` · `workflow`입니다. `internal/kanban`(8)의 소비자 중 `cmd/t657-merge`는 배포되지 않는
 일회성 도구이고, `internal/graph`는 이 판의 GTD 비공개 투영(`internal/graph/gtd_private.go`)이
 만든 엣지입니다.
 
@@ -116,7 +119,7 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 | `internal/jevmeasure` | 0 | **이 판에서 새로 들어왔고, 0은 설계다 — 그러나 종류가 다른 0이다.** 테스트 시점 가드도 빌드타임 도구도 아니고, 측정 게이트가 실행되지 않은 **게이트 미실행 상태**라 소비자가 원리상 아직 없다. 게이트가 통과하면 소비자가 붙는 것이 이 0의 의미다(`modules.md` §네거티브 스페이스) |
 | `internal/harness/rosterguard` | 0 | **t999 판에서 새로 들어왔고, 0이 정상이다.** 테스트 시점 가드라 비테스트 소비자가 원리상 없다 — `internal/template/agentemit` · `commandemit`과 같은 이유이고 `codextools`와는 다른 이유다(`modules.md` §네거티브 스페이스). 형제였던 `cellguard`는 t1246 배치에서 profile-matrix 표면 은퇴와 함께 이 표에서 내려갔다(행동 변화 없음 — fan-in 0이었다) |
 
-`internal/homestate`는 leaf가 아니라 최상위 fan-in **6**의
+`internal/homestate`는 leaf가 아니라 최상위 fan-in **8**의
 data/persistence seam입니다. 패키지 단위로 풀면 직접 소비자는 `internal/cli`,
 `internal/cli/ptycaptest`, `internal/hook`, `internal/hook/handoff`, `internal/kanban`,
 `internal/web`, `internal/factorymsg` 등의 표면이며, 이 표면들이 프로젝트 키 경로·Factory 인계·프로필 lease·migration
@@ -132,7 +135,7 @@ admission 계약을 공유합니다.
 
 | # | 패키지 | import |
 |---|---|---|
-| 1 | `internal/cli` | **70** |
+| 1 | `internal/cli` | **72** |
 | 2 | `internal/hook` | 39 |
 | 3 | `internal/web` | 15 |
 | 4 | `internal/core` | 13 |
@@ -147,7 +150,7 @@ admission 계약을 공유합니다.
 | 13 | `internal/update` · `spec` · `homestate` · `harness` | 4 각 |
 | 17 | `internal/template` · `session` · `ralph` · `profile` · `lsp` · `loop` · `graph` · `config` | 3 각 |
 
-`internal/cli`가 다른 최상위 패키지 **70개**를 import 합니다(t1305 판 재측정 — t1278 판 67에서
+`internal/cli`가 다른 최상위 패키지 **72개**를 import 합니다(t1297 판 재측정 — t1305 판 70에서
 커밋 신원 가드 배선·codex factory 복원 등의 누적 +3) — 사실상 전 트리에 닿습니다.
 합성 루트(`internal/cli/deps.go`)가 여기 있으므로 일부는 의도된 것이지만, 상당수는
 `deps.go`가 아니라 **개별 verb 파일에서 직접** 들어옵니다. 이것이 "명령 하나 = 파일 하나 = 그 명령이
@@ -157,6 +160,7 @@ admission 계약을 공유합니다.
 `internal/escalation` 12·`internal/contract` 9(계약 의사결정이 감지기 루트를 읽는 방향 — § 순환의
 새 넷째 쌍), `internal/codexwiring`·`internal/closure` 5. `spec` 행의 4는 새 엣지가 아니라 앞 판의
 **정정**이다 — 스탬프 트리에서도 `constitution`을 포함해 4였다.
+**t1297 판에서 움직인 행**: `internal/cli` 70→72 — `internal/factorylane`(card t1338 착지)과 세션 앵커 계열(card t1339)이 합류했다. 나머지 상위 행(`internal/hook` 39 포함)은 같은 명령으로 재확인해 변동이 없었습니다.
 
 ---
 
@@ -165,7 +169,7 @@ admission 계약을 공유합니다.
 **패키지 단위 순환은 존재하지 않습니다.** Go 컴파일러가 금지하므로 구조적으로 불가능하고,
 `go list ./...`가 오류 없이 완주하는 것으로 확인됩니다.
 
-**최상위 집계 단위에서는 상호 참조가 4쌍** 있습니다. 엣지 목록과 그 역방향을 교차시켜 얻었습니다.
+**최상위 집계 단위에서는 상호 참조가 5쌍** 있습니다. 엣지 목록과 그 역방향을 교차시켜 얻었습니다.
 
 | 상호 쌍 | 실제 엣지 | 원인 |
 |---|---|---|
@@ -173,8 +177,9 @@ admission 계약을 공유합니다.
 | `internal/cli` ↔ `internal/kanban` | `cli → kanban` / `kanban → cli/specid` | `cli/specid`(SPEC-ID sanitizer leaf)가 `internal/cli` 밑에 있다 |
 | `internal/hook` ↔ `internal/migration` | `hook → migration` / `migration/migrations → hook` | 마이그레이션 스텝이 훅의 은퇴 이벤트 목록을 읽는다 |
 | `internal/contract` ↔ `internal/escalation` | `contract/revoke`·`contract/kickoff` → `escalation`(의사결정·철회가 감지기 루트·기록을 읽는다) / `escalation → contract`(감지기의 계약 해석) | **t1305 판 신규.** 계약 하위 의사결정 패키지가 감지기의 루트 분류를 읽는 방향이 생기며 최상위 접기에서 맞섰다 |
+| `internal/profile` ↔ `internal/settings` | `profile → settings`, `settings → profile` | **t1297 판 신규 기재.** 양 엇키는 앵커 이전부터 존재했다(`git grep` 실측 — `internal/profile/sync.go`) — profile 동기화가 settings 모델을 읽고 settings 저장 seam이 profile 행을 쓰는 맞센 방향이다 |
 
-**네 쌍 모두 패키지 배치 문제이지 실제 순환이 아닙니다.** 앞의 두 쌍은 `cli/preference`와
+**다섯 쌍 모두 패키지 배치 문제이지 실제 순환이 아닙니다.** 앞의 두 쌍은 `cli/preference`와
 `cli/specid`를 최상위로 승격하면 즉시 사라집니다. 새 넷째 쌍도 하위 패키지(`contract/revoke`·
 `contract/kickoff` ↔ 최상위 `escalation`) 사이의 방향이라 패키지 그래프 자체는 순환이 아닙니다.
 
