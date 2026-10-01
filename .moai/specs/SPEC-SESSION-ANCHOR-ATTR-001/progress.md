@@ -59,6 +59,13 @@
 - RED 증거(E8): `undefined: AnchorTraceEvent/AnchorTracePath/AnchorTraceEnabled`(session), `undefined: session.AnchorTraceEvent/AnchorTracePath`(hook) — 구현 전 실측.
 - GREEN: session 신규 4테스트 + hook 신규 2테스트 전부 PASS; session 패키지 전체 ok, hook branch-guard군 ok.
 
+### M4 — W4 회피 규율 문서 (2026-10-01)
+
+- REQ-SAA-014 4요소를 worktree-integration-ops.md 신설 절에 문서화: (a) 복구 절차(ExitWorktree keep + 재-EnterWorktree — feedback_worktree_cd_wedge 선례), (b) 런타임 경계 선언(방출 앵커는 Claude Code 런타임 소유, 내부 keying은 unknown 기록), (c) 무음 경로-없는-명령 위험(t741 실측), (d) 정정된 t1337(재시작 없이 지속)/t1339(오트리 쓰기 0건·수 분 오판 후 복귀) 기록 + 측정 계측기 안내(MOAI_ANCHOR_TRACE + 재배치 감사 로그). 세션-종료 메모리 갱신은 후속 주석 명시.
+- Template-First 준수: 템플릿 선수정 → 로컬 동기(cp) → `make build`(catalog.yaml 재생성 — 변경 0 실측).
+- 검증: diff 템플릿↔로컬 = 0, `TestTemplateNeutralityAudit` ok, `TestRuleTemplateMirrorDrift` PASS, 4요소 presence grep 템플릿·로컬 양면 t1339=3/3.
+- AC-010 RED-now(`grep -c t1339` = 0) → green-path 전환 완료.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — manager-develop 소관>_

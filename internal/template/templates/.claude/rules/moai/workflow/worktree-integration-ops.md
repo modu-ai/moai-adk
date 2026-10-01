@@ -229,6 +229,39 @@ git diff --quiet develop...HEAD -- internal/pkg/; echo "diff_exit=$?"
 
 Guard behaviour is version-dependent — one shape has already been observed to flip between these two versions — so **state the version whenever you add a row here, and read the version before citing one.** No behaviour above is known to hold at any version other than the one its row names.
 
+## Session-anchor misresolution — recovery, boundary, and the silent hazard
+
+This section is the discipline record for the cross-lane session-anchor misresolution class (cards t1337 and t1339, 2026-09-29), added by SPEC-SESSION-ANCHOR-ATTR-001. It documents what to do when it happens, where the boundary of the fixable sits, and what the corrected incident record says.
+
+### Recovery procedure (anchor resolved to the wrong tree, or refusals from your own tree)
+
+`ExitWorktree` — answering its prompt with **keep** — then re-enter your own tree with `EnterWorktree(<own worktree path>)`. Re-entry registers a fresh session anchor, which is the only repo-side lever that exists. This is the recovery that worked for the wedged-`cd` precedent (`feedback_worktree_cd_wedge`): a session whose working directory had wedged inside the primary checkout recovered only by leaving and re-entering, not by retrying the command.
+
+Do **not** wait for a refused subagent command to clear on its own, and do not restart the subagent expecting the refusal to follow the restart — the t1337 record below shows refusals persisting with no restart involved.
+
+### The boundary: the emitting anchor is runtime state
+
+The state that emits `This session is isolated in the worktree …` is owned by the **Claude Code runtime**, not this repository — the same boundary the refusal-discriminator table at the top of this file states for the guard itself. What this repository owns is (1) the detection token the failure observer matches on (`worktreeGuardAnchor` in `internal/hook/post_tool_failure.go`, pinned by its killed-mutant tests) and (2) its own anchor stores (git worktree locks, the session registries). The runtime anchor's internal storage and keying are **unobserved** — recorded as unknown, and no sentence in this file asserts more about them than that.
+
+### The silent path-less-command hazard (t741)
+
+Refusal is not guaranteed. Card t741 measured that a **path-less** command — no `cd`, no `-C`, no explicit path anywhere — executes **silently** in whatever tree the session's anchor currently resolves to: twelve such calls passed with zero refusals while the parent session moved between trees. A re-anchored worker is therefore invisible: nothing refuses, nothing logs, and the worker cannot tell its later work landed in a different tree from its earlier work. Never move a session's tree while a background worker or auditor is live (§ A background subagent carries no anchor of its own above), and treat a verification that ran during a tree move as a Gap until its tree is accounted for.
+
+### The corrected incident records
+
+- **t1337** (2026-09-29, worker-69): immediately after the parent session's `EnterWorktree` move (card t1315's tree), a subagent's writes were refused wholesale. The refusals persisted **without any subagent restart**. Earlier paraphrases saying the refusals persisted "across subagent restart" contradict the first-hand record — do not propagate that wording; the correct statement is *no restart was involved*.
+- **t1339** (2026-09-29, worker-66, during card t1314's run): the Bash worktree session anchor misresolved to **another lane's tree** (`.claude/worktrees/develop`) for several minutes, then returned after wholesale Bash refusals. **Zero wrong-tree writes landed** — the guards held on every write — but the store structure the misresolution flowed through (a shared, last-writer-wins anchor state with no audit) is the defect class this section and SPEC-SESSION-ANCHOR-ATTR-001's instruments address.
+- **Severity note**: both observed events were denial-only, but the class is not denial noise — the silent variant above is measured, a misdirected registry `cwd` feeds the disposal guard (`LiveAnchoredSessions`), and the reproduction condition is standard lane-parallel operation (factory/kanban), not an edge case.
+
+### Measuring the next occurrence
+
+Two repo-owned instruments now make the next occurrence session-attributable:
+
+1. **`MOAI_ANCHOR_TRACE=1`** — one verbose JSONL row per anchor decision (branch-guard Seam A anchor reads, registry relocations, disposal-side anchor decisions), each carrying `session_id`, `pid`, `cwd`, and a timestamp, to `.moai/logs/anchor-trace.jsonl` (`internal/session/anchor_trace.go`). Off by default; the switch costs one environment lookup when off.
+2. **The relocation audit log** — every registry `cwd` rewrite appends a row (session, previous/new cwd, trigger hook, ownership case) to `.moai/logs/anchor-relocation-audit.jsonl`, and the opt-in `workflow.anchor_relocation_guard.enabled` config refuses an ownership-flagged relocation instead of proceeding.
+
+**Run-phase follow-up, not this section's scope**: the session-end auto-memory updates for the t1337/t1339 lessons belong to a later run-phase task; this file records the incidents, not the memory files.
+
 ---
 
-Version: 1.0.0 (split from worktree-integration.md; section content moved verbatim — see the parent file for the transfer note)
+Version: 1.1.0 (1.0.0 split from worktree-integration.md; section content moved verbatim — see the parent file for the transfer note; 1.1.0 adds the session-anchor misresolution section — SPEC-SESSION-ANCHOR-ATTR-001 W4)
