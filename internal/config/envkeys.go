@@ -561,6 +561,17 @@ const (
 	// fails whenever an audited production file changed after the last
 	// certification marker — the live pre-apply gate refusing, as designed.
 	EnvTestHomeStateLiveCoverage = "MOAI_TEST_HOME_STATE_LIVE_COVERAGE"
+
+	// EnvAnchorTrace turns on the session-anchor decision trace
+	// (SPEC-SESSION-ANCHOR-ATTR-001 REQ-SAA-007..009): when set to a truthy
+	// value ("1" or "true", case-insensitive), every anchor decision point —
+	// branch-guard Seam A anchor reads, registry relocations, disposal-side
+	// anchor decisions — appends one verbose JSONL row carrying session_id,
+	// pid, cwd, and a timestamp to .moai/logs/anchor-trace.jsonl. Unset or
+	// falsy: no trace output and no per-decision overhead beyond this single
+	// environment lookup (REQ-SAA-008). This constant is the trace switch's
+	// only name declaration site (REQ-SAA-009).
+	EnvAnchorTrace = "MOAI_ANCHOR_TRACE"
 )
 
 // Claude Code environment variables (set by Claude Code runtime).

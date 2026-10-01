@@ -50,6 +50,15 @@
 - RED 증거(E8): (a) session측 — `undefined: guardRefusalAttribution` 아니라 `RelocationAudit` 관련 compile fail (audit 타입/메서드 미존재 시절); (b) hook측 — `undefined: relocationGitContext` ×3, `too many arguments in call to relocateSessionCwd` ×3, `undefined: anchorRelocationGuardEnabled` ×3 (구현 전 실측).
 - GREEN: session 신규 5테스트 + 기존 RelocateSession 3테스트, hook 신규 4테스트 + 기존 two-pass 8 RUN — 전부 PASS. session·config 패키지 전체 ok.
 
+### M3 — W3 앵커 트레이스 스위치 (2026-10-01)
+
+- REQ-SAA-009: `EnvAnchorTrace = "MOAI_ANCHOR_TRACE"` 상수 envkeys.go 선언(유일 리터럴). E4 grep 실측: literal 1건(envkeys.go:574) + 주석 4건 — 코드 하드코딩 0.
+- REQ-SAA-007: 신설 internal/session/anchor_trace.go — `TraceAnchorDecision`이 게이트 on 시 `.moai/logs/anchor-trace.jsonl`에 행(session_id/pid/cwd/timestamp/decision/detail) 추가. 계측점 3곳: (1) `RelocateSessionWithOptions`(decision=relocate — trigger/owner/flagged/refused detail), (2) `AnchorDecision`(decision=anchor_decision — 판정 프로세스 pid+judged tree, session_id unknown 마커), (3) hook `checkBranchState` Seam A 앵커 읽기(decision=branch_guard.anchor_read — fail-open 경로도 기록).
+- REQ-SAA-008: 게이트 off 시 env 조회 1회 외 오버헤드 0 — 부정 경로 테스트 + 양성 대조 병행(AC-008 요구: 같은 fixture 게이트 on 대조). truthy="1"/"true"(대소문자 무시).
+- REQ-SAA-012 보존: branch_guard 트레이스 행의 로그 디렉터는 기존 audit-log projectDir(CLAUDE_PROJECT_DIR 체인) 사용, git-context는 input.CWD 체인 그대로.
+- RED 증거(E8): `undefined: AnchorTraceEvent/AnchorTracePath/AnchorTraceEnabled`(session), `undefined: session.AnchorTraceEvent/AnchorTracePath`(hook) — 구현 전 실측.
+- GREEN: session 신규 4테스트 + hook 신규 2테스트 전부 PASS; session 패키지 전체 ok, hook branch-guard군 ok.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — manager-develop 소관>_

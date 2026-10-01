@@ -228,7 +228,12 @@ func (r *Registry) RelocateSessionWithOptions(sessionID, newCwd string, opts Rel
 		audit.Flagged = false
 	}
 
+	root := projectRootOfRegistry(r.path)
 	appendRelocationAudit(r.path, audit)
+	// W3 (REQ-SAA-007): the relocation is one of the traced anchor decision
+	// points. No-op beyond one env lookup when MOAI_ANCHOR_TRACE is off.
+	TraceAnchorDecision(root, "relocate", sessionID, newCwd,
+		fmt.Sprintf("trigger=%s owner=%s flagged=%t refused=%t", audit.Trigger, audit.Owner, audit.Flagged, audit.Refused))
 	if refused {
 		return audit, ErrRelocationRefused
 	}
