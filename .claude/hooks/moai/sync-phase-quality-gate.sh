@@ -846,7 +846,7 @@ case "$checked_language" in
         ;;
     csharp)
         C1_LABEL="dotnet build"
-        run_step dotnet c1 dotnet build --no-restore 2>&1 | head -30 || true
+        run_step dotnet c1 dotnet build --no-restore
         ;;
     ruby)
         C1_LABEL="ruby syntax"
@@ -862,7 +862,7 @@ case "$checked_language" in
         ;;
     elixir)
         C1_LABEL="mix compile"
-        run_step mix c1 mix compile --no-start 2>&1 | head -20 || true
+        run_step mix c1 mix compile --no-start
         ;;
     cpp)
         C1_LABEL="g++ syntax check"
@@ -921,11 +921,11 @@ exit $rc' || true
         ;;
     flutter)
         C1_LABEL="dart analyze"
-        run_step dart c1 dart analyze 2>&1 | head -30 || true
+        run_step dart c1 dart analyze
         ;;
     swift)
         C1_LABEL="swift build"
-        run_step swift c1 swift build 2>&1 | head -30 || true
+        run_step swift c1 swift build
         ;;
 esac
 
