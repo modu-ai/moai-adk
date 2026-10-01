@@ -20,6 +20,10 @@ concurrency:
 
 jobs:
   graph-freshness:
+    # The merge-ref-based verdict runs only on pull_request/push — under
+    # pull_request_target this job would redundantly re-measure the base
+    # checkout (card t1298 conflict-guard split).
+    if: github.event_name != 'pull_request_target'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -113,6 +117,7 @@ jobs:
   # explicit, reasoned red. Separate concurrency group — the target ref is
   # the same refs/pull/N/merge and would otherwise cancel the real run.
   graph-freshness-conflict-guard:
+    if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     concurrency:
