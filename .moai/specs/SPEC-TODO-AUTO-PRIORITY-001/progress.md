@@ -277,3 +277,130 @@ In that run the 4 `literals share one paragraph/…` subtests, the 2 `passage ca
 **Gaps (not observed).** No `internal/cli` package-wide test or coverage run and no CI run (CI owns the repository-wide verdict, PENDING at report time). The two skipped guards above did not run. `TestTemplateNoInternalContentLeak` is red on a pre-existing match outside M3. `internal/mission/governor_test.go` (reads `manager-todo.md`) was not run — M4 owns that file. `TestAutoRankAgentDoctrine` and AC-TAP-015 are M4 and unflipped. Raw logs live in the session scratchpad and are machine-local; the deciding lines are quoted above.
 
 **Residual risk.** The literal check is paragraph-scoped and cannot detect a sentence that generalises the exception in other words (spec §G R-6); the Jev-side surfaces still say "display-only" until the follow-up card lands, and the amended wording only narrows that contradiction. The prohibition subtests quote whole sentences, so a legitimate future rewording of those prohibitions fails the test by design and must update the quote deliberately. The mirror-parity passage for `kanban-dispatch.md` is delimited by two heading literals; a later edit that renames either marker makes the test fail loudly rather than pass vacuously (`t.Fatalf` on a missing marker).
+
+### M4 — Agent text, stale comments, build and parity sweep
+
+Run by manager-develop (cycle_type=tdd), card t1400, branch `WT-auto-priority-pick`, starting HEAD `c56fdbf2f`. M4 commits: `232cd8d41` (manager-todo amendment, template mirror edited first, live copy identical; regenerated codex TOML and catalog hash), `fe847add8` (comment-only corrections in `todo_auto.go` and `todo_edit_move.go`), `08903dd0a` (`TestAutoRankAgentDoctrine`). Every Go command ran with the eleven lane variables scrubbed in one compound `unset … && <command>` invocation; the Go toolchain compiled the tree under test directly and no installed `moai` binary was invoked. The post-edit measurements below ran on a clean tree at HEAD `08903dd0a`; this section is the only later edit.
+
+**Charter note.** `manager-develop.md` lists agent files under "Forbidden modifications … out of run-phase scope". The M4 delegation and plan §E M4 name `manager-todo.md` (REQ-TAP-014) as this milestone's deliverable, so the edit follows that instruction; flagged here so the leader can confirm the reading.
+
+**Pre-flight (HEAD `c56fdbf2f`, clean tree).** `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; baseline of the 31 M1-M3 names (`go test -count=1 -v -run '^(…31 names…)$' ./internal/cli/ | grep -c '^--- PASS'` → `31`); `TestManagerTodoJudgmentSubRoleBoundary` and `TestManagerTodoJevBoundaryNamesGrade3` (`internal/mission/governor_test.go:27`, `:57`) both PASS, `ok … 0.363s`; `go test -count=1 ./internal/template/...` → three FAIL (listed in the guard table), `agentemit` and `commandemit` ok. `wc -c` of `manager-todo.md`: live 4328, template 4328 (`cmp` exit 0). `go test -list 'TestAutoRank' ./internal/cli/` → 14 names.
+
+**E8 — verbatim RED of `TestAutoRankAgentDoctrine` on the unamended agent file** (test written first; run before any agent edit; deciding lines, live copy first, the template copy printed the same ten lines):
+```
+todo_auto_doc_test.go:386: live manager-todo.md serial-cycle contract does not carry the literal "auto-scoped ranking exception" on a single line
+todo_auto_doc_test.go:386: live manager-todo.md serial-cycle contract does not carry the literal "selection order only" on a single line
+todo_auto_doc_test.go:397: live manager-todo.md serial-cycle contract: no single paragraph carries both "auto-scoped ranking exception" and "selection order only"
+todo_auto_doc_test.go:386: live manager-todo.md Jev Decision Boundary does not carry the literal "auto-scoped ranking exception" on a single line
+todo_auto_doc_test.go:386: live manager-todo.md Jev Decision Boundary does not carry the literal "selection order only" on a single line
+todo_auto_doc_test.go:397: live manager-todo.md Jev Decision Boundary: no single paragraph carries both "auto-scoped ranking exception" and "selection order only"
+todo_auto_doc_test.go:406: live manager-todo.md still asserts the pre-amendment wording "strict queue order"
+todo_auto_doc_test.go:406: live manager-todo.md still asserts the pre-amendment wording "serial consumption of the queue in queue order and nothing else"
+todo_auto_doc_test.go:406: live manager-todo.md still asserts the pre-amendment wording "beyond that order"
+todo_auto_doc_test.go:406: live manager-todo.md still asserts the pre-amendment wording "consults the Jev judgment scripts as a display-only signal for dispatch order and priority"
+--- FAIL: TestAutoRankAgentDoctrine (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.848s
+```
+Audit finding D-N4 (named search strings): the four absence assertions quote phrases read from the pre-edit file (Primary Mission line, serial-cycle first bullet twice, frontmatter description) and the run above shows each present before the amendment. The kept-prohibition subtests and the byte-equality subtest were green on the unamended files by construction (characterization); the mutant probes show they bite.
+
+**What the amendment says.** Frontmatter description, Primary Mission line, the serial-cycle first bullet and the Jev Decision Boundary now state the exception; both pinned literals sit on single lines in one paragraph of each of the two sections (`grep -c` output below). The Jev prohibitions are untouched: `Jev output is judgment input for the lead — never authority.` and `It is never the basis of a queue mutation, a completion verdict, a merge approval, or any operator-gate decision.` stay verbatim. Size: live and template `manager-todo.md` 4328 → 5095 bytes each (+767); neither is an always-loaded file.
+
+**Cascade the plan did not name (same-SPEC, required by committed guards).** The codex TOML `internal/template/templates/.codex/agents/moai/manager-todo.toml` embeds the agent body, and `make build` runs a read-only drift check that never regenerates, so `make agents-emit` was run (`ok … agentemit 0.480s`); the TOML diff is 16 insertions, 5 deletions. Editing the template agent file also changed its catalog hash: `TestManifestHashFormat` went red (`CATALOG_HASH_UNSTABLE: manager-todo stored hash=811507e7… computed hash=6cf817ab…`) until `make build` regenerated `internal/template/catalog.yaml`.
+
+**What `make build` changed.** `make build` ran `agents-emit-check`, `commands-emit-check`, `tool-policy-drift-check`, `templ-generate`, `gen-catalog-hashes --all` and `go build`; the only tracked change was `internal/template/catalog.yaml` (one hash line, the `manager-todo` entry, `6cf817ab…`), committed in `232cd8d41`. `bin/moai` is ignored.
+
+**E1 — AC-TAP-015 and the final matrix (this run, this tree, HEAD `08903dd0a`).**
+
+| AC | Command | Observed | Status |
+|---|---|---|---|
+| AC-TAP-015 | `grep -c "auto-scoped ranking exception" .claude/agents/moai/manager-todo.md internal/template/templates/.claude/agents/moai/manager-todo.md`; the same with `"selection order only"`; `go test -count=1 -v -run '^TestAutoRankAgentDoctrine$' ./internal/cli/` | live `:2`, template `:2` for both literals, exit 0; `--- PASS: TestAutoRankAgentDoctrine` with 4 stale-phrase subtests per copy PASS, 2 region subtests per copy PASS, `live and template are byte-identical` PASS | PASS |
+| AC-TAP-001 | `go test -count=1 -v -run '^TestAutoRankSelectionRecord$' ./internal/cli/`; `grep -rl --exclude="*_test.go" "selection: source=" internal/cli` | `--- PASS: TestAutoRankSelectionRecord (0.53s)`; grep stdout `internal/cli/todo_auto_rank.go`, exit 0; control `grep -rl --exclude="*_test.go" "jev: unavailable" internal/cli` → `internal/cli/todo_auto.go`, exit 0 | PASS |
+| AC-TAP-002 | `TestAutoRankJevOrdering` | `--- PASS … (0.76s)` | PASS |
+| AC-TAP-003 | `TestAutoRankFallbackReasons` | `--- PASS … (1.59s)` | PASS |
+| AC-TAP-004 | `TestAutoRankFallbackOrder` | `--- PASS … (0.00s)` | PASS |
+| AC-TAP-005 | `TestAutoRankDemotion` | `--- PASS … (0.00s)` | PASS |
+| AC-TAP-006 | `TestAutoRankUnmeasuredSignal` | `--- PASS … (0.00s)` | PASS |
+| AC-TAP-007 | `TestAutoRankBlockedExcluded` | `--- PASS … (0.44s)` | PASS |
+| AC-TAP-008 | `TestAutoRankRescueFirst` | `--- PASS … (0.30s)` | PASS |
+| AC-TAP-009 | `TestAutoRankQueueUnchanged`, `TestAutoRankNoQueueWriteGuard`; `grep -n "Mutate\|ArchiveCard" internal/cli/todo_auto_rank.go`; `grep -c '^func ' …` | both `--- PASS` (0.30s, 0.00s); grep no output, exit 1; function count `18`, exit 0 | PASS |
+| AC-TAP-010 | `TestAutoRankJevMalformedAnswer` | `--- PASS … (2.05s)` | PASS |
+| AC-TAP-011 | `grep -c` of both literals over the four doctrine files; `TestAutoRankDoctrineAmendment` | each of the four files `:1` for both literals, exit 0; `--- PASS: TestAutoRankDoctrineAmendment (0.00s)` | PASS |
+| AC-TAP-012 | the ten characterization names | ten `--- PASS`, no `--- FAIL`, `ok … 1.982s` | PASS (see the Definition-of-Done item 3 deviation recorded under M2: `todo_auto_test.go` carries the D-N1 hermetic change; `todo_relation_filter_test.go` is not in `git diff --stat 38b54f29b..HEAD`) |
+| AC-TAP-013 | `TestAutoRankMirrorParity`, `TestTodoSkillDocumentsClassification`, `TestSanitizedPairParity` | all three `--- PASS` | PASS |
+| AC-TAP-014 | `TestAutoRankMarkerDisclosure`; `grep -c "\[보류" …gtd.md` (live, template) | `--- PASS`; `:2` and `:2`, exit 0 | PASS |
+
+Sweep control: `go test -list 'TestAutoRank' ./internal/cli/` → 15 names then `ok … 0.729s`; the 15-name anchored run printed 15 top-level `--- PASS` and no `--- FAIL` (`ok … 6.606s`). The wider 32-name run (the 31 baseline names plus `TestAutoRankAgentDoctrine`) printed 32 `--- PASS`.
+
+**E2 — builds, vet, lint, format (HEAD `08903dd0a`).** `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `go vet ./internal/cli/ ./internal/kanban/` exit 0; `golangci-lint run --timeout=2m ./internal/cli/ ./internal/kanban/` → `0 issues.`; `gofmt -l` on the three touched Go files → no output.
+
+**E3 — coverage.** The new test adds helpers inside a `_test.go` file and no production statement; the only production edits are comments, so there is no production coverage figure to move. `TestAutoRankAgentDoctrine` runs 19 subtests (9 per copy plus the byte-equality one). No package-wide figure was taken (CI owns it).
+
+**E4 — greps.** The neutrality expression (`SPEC-[A-Z]`, `REQ-[A-Z]`, `AC-[A-Z]`, ISO date, 9+ hex run) over the 16 lines added to the template `manager-todo.md` (`git diff -U0`) → `0` matches; `AskUserQuestion` over the same lines → `0`; `grep -n 'AskUserQuestion\|mcp__askuser'` over `todo_auto.go`, `todo_edit_move.go`, `todo_auto_rank.go`, `todo.go` → no output. Comment-only proof for the two Go files: `git diff -U0 -- internal/cli/todo_auto.go internal/cli/todo_edit_move.go` filtered to changed lines → 29 lines matching `^[+-]\s*//` and `0` lines not matching it (positive control: the first count is non-zero).
+
+**E9 — guards that read `manager-todo.md`, the template tree or the amended documents (source lines; before = HEAD `c56fdbf2f`, after = HEAD `08903dd0a`).**
+
+| Guard (source) | Before | After |
+|---|---|---|
+| `TestManagerTodoJudgmentSubRoleBoundary` (`internal/mission/governor_test.go:27`, reads the live agent file) | PASS | PASS |
+| `TestManagerTodoJevBoundaryNamesGrade3` (`internal/mission/governor_test.go:57`) | PASS | PASS |
+| `TestGoldenCommittedArtifactsMatchEmission`, `TestRealSetBodiesByteEqual` (`internal/template/agentemit/golden_test.go`) | PASS (package ok) | PASS after `make agents-emit` regenerated the TOML (the body edit makes the committed TOML stale until then; not measured red in this run) |
+| `TestManifestHashFormat` (`internal/template/catalog_tier_audit_test.go:459`) | PASS | FAIL after the template agent edit (`CATALOG_HASH_UNSTABLE: manager-todo …`), PASS after `make build` regenerated `catalog.yaml` |
+| `TestSanitizedPairParity` (`internal/template/sanitized_pair_parity_test.go`) | PASS (not in the package's failure list) | PASS (`-v`) |
+| `TestRuleTemplateMirrorDrift`, `TestDeclaredRuleMirrorForks`, `TestGTDCanonicalSurfaceGolden` | PASS (not in the failure list) | PASS (`-v`) |
+| `TestTemplateNoInternalContentLeak` (`internal/template/internal_content_leak_test.go:1617`) | FAIL, one match | FAIL, the same single match: `templates/.claude/rules/moai/workflow/worktree-integration-ops.md` class C1 `SPEC-SESSION-ANCHOR-ATTR-001`; no match from any file this card touched. PRE-EXISTING |
+| `TestRuleDateProvenance` (`internal/template/rule_date_provenance_audit_test.go:183`) | FAIL — 3 matches `2026-09-29` in `.claude/rules/moai/workflow/worktree-integration-ops.md` lines 234, 252, 253 | FAIL, same three. PRE-EXISTING, not in the delegation's known list, reported not fixed |
+| `TestSyncGateCpp_LocalAndTemplateCopiesIdentical` (`internal/template/hook_cpp_gate_behavior_test.go:184`) | FAIL — `sync-phase-quality-gate.sh differs between the local and template copies` | FAIL, same. PRE-EXISTING, reported not fixed |
+| `TestJevAmendmentLinkage` (`internal/contract/kickoff/activation_test.go:208`) | not run before the M4 edits (M3 recorded PASS at an earlier HEAD) | PASS |
+| `TestTodoSkillDocumentsClassification`, `TestTodoHoldDocumentedOnEverySurface`, `TestTodoListJSONShapeMatchesDoc`, `TestTodoDoctrine_MirrorParityAndStatedColumnCount` | not run before the M4 edits | PASS; `TestHeadroomInitSurfaceExport` SKIP |
+| `TestPriorityRank` (`internal/kanban`) | covered by the M1 record | PASS |
+
+The whole `./internal/template/...` package: before three FAIL, after the same three FAIL, and no other. `internal/spec` and `internal/contract` hold no test that reads `manager-todo.md` (grep over `*_test.go` for the agent name found readers only in `internal/mission`, `internal/template` and fixture-based `internal/cli` tests that build their own temp repositories).
+
+**E10 — mutant probes (each applied to the committed tree plus the uncommitted test, run, then restored by `cp` from a saved copy; `git status --short` listed only the uncommitted test file and `git diff --stat` on both agent copies was empty afterwards).**
+- Drop `selection order only` from the live Jev paragraph → `live manager-todo.md Jev Decision Boundary does not carry the literal "selection order only" on a single line` and `no single paragraph carries both …`, plus the byte-equality failure.
+- Split the two literals across paragraphs in the live serial-cycle contract (blank line inserted between them) → `live manager-todo.md serial-cycle contract: no single paragraph carries both …` (the single-line check stays green, as it should), plus byte-equality.
+- Change only the template copy (`nothing else` → `nothing more`, same byte length) → only `manager-todo.md differs between the live file (5095 bytes) and the template mirror (5095 bytes)` fails.
+- Restore `strict queue order` in the live copy → `still asserts the pre-amendment wording "strict queue order"`; restored in both copies → exactly the two stale-phrase lines, nothing else.
+
+**E11 — Drift Guard (plan §E "Files changed" versus `git diff --stat 38b54f29b..HEAD`, measured on HEAD `08903dd0a`, before this evidence commit).** Planned: 13 core files plus `todo_edit_move.go` = 14 (`classification.go`, `classification_test.go`, `todo_auto_rank.go`, `todo_auto_rank_test.go`, `todo_auto.go`, `todo.go`, `todo_auto_doc_test.go`, both `kanban-dispatch.md`, both `gtd.md`, both `manager-todo.md`, `todo_edit_move.go`). The diff lists 20 files: the 14 planned, the two SPEC artifacts the run phase owns (`progress.md` evidence, `spec.md` status/`updated:`), and four unplanned:
+- `internal/cli/doctor_jev_test.go` (+1 line) — M2: `TestJevCallPath_HasExactlyTheDeclaredConsumers` was red at the start of M2 because `todo_auto_rank.go` imports `internal/jev`; the guard's own comment names the allow-list as the way a consumer arrives.
+- `internal/cli/todo_auto_test.go` (+22) — M2: the D-N1 hermetic change to `TestTodoAutoEntryPointFlag`, which otherwise reached the real `gh` once the live seams were wired (observed with a fake `gh`).
+- `internal/template/catalog.yaml` (4 changed lines across M3 and M4) — build artifact of the template edits, regenerated by `make build`; same-SPEC cascade.
+- `internal/template/templates/.codex/agents/moai/manager-todo.toml` (M4) — regenerated by `make agents-emit`; the committed-TOML drift guard requires it whenever an agent body changes.
+The small `todo.go` (+15) and `todo_auto.go` (+25) edits are planned files, not drift. Drift: 4 unplanned of 18 changed non-SPEC files = 22.2% (4 of the 14 planned = 28.6% against the plan's count; counting the two SPEC artifacts as files, 6 of 20 = 30.0%). All three readings are at or below the 30% threshold: warn, no re-planning. The three scope-creep candidates a reviewer might expect are absent: no Jev-side document or code surface was touched, no `internal/jev` change, no SPEC artifact other than `progress.md` and the M1 `spec.md` status line.
+
+**Deviations and interpretations (no scope growth).**
+- `TestAutoRankAgentDoctrine` quotes four stale phrases; the frontmatter description clause is stale-checked on the normalized text, so a reflowed copy is caught too.
+- Region scoping: the serial-cycle region starts at `Serial-cycle contract (` and the Jev region at `## Jev Decision Boundary`, each ending at the next level-two heading, so the literal pair cannot satisfy the test from an unrelated section; the Primary Mission paragraph carries neither literal.
+- The Primary Mission line keeps "queue order" in its general sense and points at the serial-cycle contract; "strict queue order" is gone.
+- The Jev Decision Boundary keeps its first sentence ("a permitted display-only signal for dispatch order and priority judgment") because the instruction keeps the Jev ordering-signal prohibition verbatim; the exception is added as its own sentence after it.
+- The `todo_edit_move.go` `:99` correction replaces "there are no priority fields" with the actual state (an optional recorded classification applied by the add path; `move` does not read it), read from `kanban/classification.go` in plan §Findings (a)/(b) rather than re-derived.
+
+**Gaps (not observed).** No `internal/cli` package-wide test or coverage run and no CI run (CI owns the repository-wide verdict, PENDING at report time). No live Jev request was made and the score level-index base (plan A-6) remains unobserved. `TestContractModeEmitterSites` and `TestHeadroomInitSurfaceExport` SKIP, so their coverage of the amended documents is unobserved. The agentemit golden guard was not observed red before `make agents-emit` ran. `TestJevAmendmentLinkage` and the cli doc guards were not run before the M4 edits (M4 touches none of their subject files, but that is an inference, not a measurement). The three pre-existing red template guards were reported, not fixed. Raw logs live in the session scratchpad and are machine-local; the deciding lines are quoted above.
+
+**Residual risk.** The stale-phrase absence check is phrase-scoped: a sentence that restates "queue order only" in other words passes it (spec §G R-6). The Jev Decision Boundary still opens with the display-only sentence and the exception follows it, so a reader who stops after the first sentence is not told about the exception until the follow-up card amends the Jev-side surfaces. The kept-prohibition subtests quote whole sentences and fail by design on a legitimate reword. The codex TOML and the catalog hash are derived artifacts: a later body edit that skips `make agents-emit` and `make build` turns two guards red by design.
+
+## §E.3 Run-phase Audit-Ready Signal
+
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-10-01T19:46:39Z
+card: t1400
+cycle_type: tdd
+run_commit_sha: pending-backfill
+m1_to_mN_commit_strategy: per-milestone commits on branch WT-auto-priority-pick, no push, no amend; M1 96e2c71fe 110918d14; M2 719e6c1b4 4050769f1 (evidence 946896945); M3 5ddbd6c44 75ade0ccc (evidence c56fdbf2f); M4 232cd8d41 fe847add8 08903dd0a (evidence: the commit that adds this section)
+ac_pass_count: 15
+ac_fail_count: 0
+ac_matrix: AC-TAP-001 to AC-TAP-015 PASS, each observed in this run at HEAD 08903dd0a (see the M4 matrix); AC-TAP-012 is a regression guard with the recorded Definition-of-Done item 3 deviation
+preserve_list_post_run_count: not-applicable (plan.md names no PRESERVE list)
+l44_pre_commit_fetch: not-run (lane worktree, no push; the leader batch-pushes)
+l44_post_push_fetch: not-applicable (nothing pushed)
+new_warnings_or_lints_introduced: 0 (golangci-lint ./internal/cli/ ./internal/kanban/ -> 0 issues; go vet exit 0)
+cross_platform_build:
+  host: go build ./... exit 0 (HEAD 08903dd0a)
+  windows_amd64: GOOS=windows GOARCH=amd64 go build ./... exit 0 (HEAD 08903dd0a)
+total_run_phase_files: 20 changed files in git diff --stat 38b54f29b..HEAD at HEAD 08903dd0a (14 planned, 2 SPEC artifacts, 4 unplanned)
+drift_guard: 4 unplanned of 18 non-SPEC files = 22.2% (<= 30%, warn only)
+pre_existing_red: TestTemplateNoInternalContentLeak, TestRuleDateProvenance, TestSyncGateCpp_LocalAndTemplateCopiesIdentical (same before and after M4, none from files this card touched)
+repository_wide_test_verdict: PENDING (owned by CI on the integration branch)
+```
