@@ -232,9 +232,59 @@ M5 후속 (2026-10-02, 기준 HEAD `87d4990bb`, 클린 트리에서 시작):
 - 기존 gofmt 지적: `internal/cli/managed_factory_session_test.go` (M1 커밋 `242ab5a2b`, 한 줄 goroutine 람다) — 이 후속에서도 미수정.
 - 위 M5 본문의 "가짜 세션은 인프로세스" 발견 (2)와 gap 서술은 이 후속으로 대체됨: re-exec leg가 추가됐고 커버리지 gap은 닫혔다.
 
+### M6 — run-phase closing matrix (2026-10-02)
+
+측정 기준: HEAD `f8382647c`, 클린 트리, 카드 base `f22e2d7ac`. 모든 명령은 `for v in $(env | grep -E '^(MOAI_|CLAUDE_CODE_)' | cut -d= -f1); do unset $v; done &&` 로 레인 env를 전부 제거한 뒤 이 트리에서 이번 실행에 돌렸다(`go test -count=1 -v`의 최상위 `--- ` 줄 인용).
+
+| AC | Status | Command | Verbatim result |
+|----|--------|---------|-----------------|
+| AC-MS-001 | PASS | `go test ./internal/cli -run '^TestManagedCodexAppServerHandshake$'` | `--- PASS: TestManagedCodexAppServerHandshake (0.31s)` |
+| AC-MS-002 | PASS | `go test ./internal/cli -run '^TestManagedCodexRegistersBoundPeer$'` | `--- PASS: TestManagedCodexRegistersBoundPeer (0.76s)` |
+| AC-MS-003 | PASS | `go test ./internal/cli -run '^TestManagedLaunchPendingRollback$'` | `--- PASS: TestManagedLaunchPendingRollback (0.85s)` |
+| AC-MS-004 | PASS | `go test ./internal/cli -run '^TestManagedInboxPromptMetadataOnly$'` | `--- PASS: TestManagedInboxPromptMetadataOnly (0.41s)` |
+| AC-MS-005 | PASS | `go test ./internal/factorymsg -run '^TestReadBodyClaimToken$'` | `--- PASS: TestReadBodyClaimToken (0.07s)` |
+| AC-MS-006 | PASS | `go test ./internal/cli -run '^TestManagedReceiptAcknowledges$'` | `--- PASS: TestManagedReceiptAcknowledges (0.61s)` |
+| AC-MS-007 | PASS | `go test ./internal/cli -run '^TestManagedSessionOwnsStreamFlags$'` | `--- PASS: TestManagedSessionOwnsStreamFlags (0.00s)` |
+| AC-MS-008 | PASS | `go test ./internal/cli -run '^TestManagedQueueSerializesOperatorAndInbox$'` | `--- PASS: TestManagedQueueSerializesOperatorAndInbox (0.00s)` |
+| AC-MS-009 | PASS | `grep -rnE 'fmt\.Sprintf\("(agent\|worker)-' internal/cli/managed_*.go \| wc -l` | `0` |
+| AC-MS-010 | PASS | `grep -rnE 'merge-window\|Decider\|T29b\|T29c\|handover' internal/cli/managed_*.go \| wc -l` | `0` |
+| AC-MS-011 | PASS | `go test ./internal/cli -run '^TestFactoryMsgSendRejectsClaudeOnlyRun$'` | `--- PASS: TestFactoryMsgSendRejectsClaudeOnlyRun (0.57s)` |
+| AC-MS-012 | PASS | `go test ./internal/codexwiring ./internal/cli -run '^(TestMoAIMCPApprovalArgsOnlyTargetMoAI\|TestConfigTomlWritesUnchanged)$'` | `--- PASS: TestMoAIMCPApprovalArgsOnlyTargetMoAI (0.00s)`, `--- PASS: TestConfigTomlWritesUnchanged (0.00s)` (codexwiring 패키지는 `[no tests to run]` — 두 테스트는 cli 소속) |
+| AC-MS-013 | PASS | `go test ./internal/cli -run '^TestDoctorCodexWarnsStaleGlobalApproval$'` | `--- PASS: TestDoctorCodexWarnsStaleGlobalApproval (0.01s)` |
+| AC-MS-014 | PASS | `GOOS=windows GOARCH=amd64 go build ./...` + `grep -rn 'syscall\.' internal/cli/managed_*.go \| wc -l` | `win_exit=0`, `0` |
+| AC-MS-015 | PASS | `go test ./internal/cli -run '^TestManagedSessionLoopbackRoundTrip$'` | `--- PASS: TestManagedSessionLoopbackRoundTrip (3.20s)` (in-process + re-exec 각 3팔) |
+| AC-MS-016 | PASS (SKIP) | `go test -v ./internal/cli -run '^TestManagedCodexFactoryBrokerLive$'` | `--- SKIP: TestManagedCodexFactoryBrokerLive (0.00s)`, `live gate env (MOAI_FACTORY_LIVE_ROOT / MOAI_FACTORY_LIVE_RUN) not set`, exit 0 — 실세션 왕복은 GAP(아래) |
+| AC-MS-017 | PASS | `git log --oneline f22e2d7ac..HEAD -- internal/factorymsg/store.go` + `git diff f22e2d7ac..HEAD -- internal/factorymsg/store.go \| wc -l` | 빈 출력, `0` |
+| 회귀 (acceptance §3) | existing red (owner card named) | 레인 측정 — 결정 줄은 아래 "회귀 증거" 소절(이 파일), 디스크 사본 `.moai/reports/t1375/full-suite-evidence.md`(gitignore 대상 — 저장소 지침상 보고서는 원격에 올리지 않음) | 클린 env `./internal/cli` 전체 `FAIL … 2236.779s`, 고유 FAIL 이름 정확히 2개(`TestStopChainEffectParityGolden`, `TestSyncGateLanguageDetectionMatchesScript`), base `f22e2d7ac` 사본에서도 같은 2건. 소유 카드: t1390 / t1402 (리더 메시지 귀속, 본 에이전트 관측 아님) |
+
+go.mod/go.sum: base 대비 변경은 M2의 승인된 `github.com/gorilla/websocket v1.5.3` 추가(`033221ced`)와 `jsonschema/v6`의 indirect 표기 해제뿐이다(`git log --oneline f22e2d7ac..HEAD -- go.mod go.sum` → `033221ced`). M3 이후 변경 없음.
+
+`go run ./cmd/moai spec lint SPEC-FACTORY-MANAGED-SESSION-001` → `✓ No findings — all SPEC documents are valid`.
+
+### 회귀 증거 (측정 주체: 레인 — manager-develop 미실행, 레인 scratch `/private/tmp/claude-501/t1375/`의 결정 줄을 M6에서 재독해 옮김)
+
+`.moai/reports/*`는 gitignore(저장소 지침: 보고서는 원격 비전송)라 전체 서술은 로컬 디스크 `.moai/reports/t1375/full-suite-evidence.md`에만 있고, 커밋되는 인용 대상은 이 소절이다.
+
+| 실행 | 범위·조건 | 관측 (scratch 파일) |
+|---|---|---|
+| (a) 1차 | `./internal/cli ./internal/codexwiring ./internal/factorymsg`, MOAI_KANBAN 계열 5종만 unset, 타 레인(go-test-cli-t1391)이 slot lease 보유 중인 부하 상태 | `full.txt`: `panic: test timed out after 30m0s`, `FAIL … internal/cli 1801.163s`, `ok … codexwiring 1.823s`, `ok … factorymsg 86.977s`, 고유 `--- FAIL` 254개(`failed.txt` 254행). 누수 env 이름(MOAI_FACTORY_ROLE/WORKER/WORKERS/AUTO_DISPATCH/CLEAR_POLICY, MOAI_AUTONOMY_TIER, MOAI_KANBAN_BACKEND, MOAI_PROJECT_DIR)은 레인 보고 — scratch에서 이름 목록은 미확인 |
+| (b) 254개 재실행 | 모든 `MOAI_*`·`CLAUDE_CODE_*` 제거 | `rerun-failed.txt`: `FAIL … internal/cli 644.130s`, 고유 FAIL 2개(`still-failing.txt`), timeout panic 0 → 252 통과 |
+| (c) 클린 env 전체 | `./internal/cli` | `full2.txt`: `FAIL … internal/cli 2236.779s`, `FULL2_EXIT=1`, 고유 FAIL = 아래 2개, timeout panic 0. `codex_sync_gate_test.go:115: languages: Go = [kotlin], script = [kotlin java]`; `codex_stop_chain_golden_test.go:146/160/180` (`Claude path decision = allow, want deny (the golden's premise does not hold)`, `premise: the first Claude run must block, got allow`) |
+| (d) base 사본 | `f22e2d7ac` git archive(워크트리 아님), 클린 env, 같은 2개 테스트 | `base-two.txt`: `--- FAIL: TestStopChainEffectParityGolden (38.38s)`, `--- FAIL: TestSyncGateLanguageDetectionMatchesScript (0.86s)`, 같은 메시지, `FAIL … internal/cli 40.241s` |
+
+결론: 252건은 레인 env 누수(측정된 원인), 남은 2건은 카드 base에도 있는 기존 적색. 소유 카드는 리더가 레인에 보낸 메시지의 귀속이며 본 에이전트의 관측이 아니다: `TestStopChainEffectParityGolden` = t1390(리더 로컬 develop `f3883ddb1`에서 수리·병합, 미push라 이 카드 base에 없음), `TestSyncGateLanguageDetectionMatchesScript` = t1402(발행됨, 의미 소유자는 그 plan에서 결정). 카드 변경 집합은 hook·gate·stop-chain 파일을 건드리지 않는다(`git diff f22e2d7ac..HEAD --name-only | grep -E '\.claude/hooks|sync-phase|stop|handle-'` → 0줄).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- run_status: run-complete-pending-audit (측정 기준 HEAD `f8382647c`, 이번 실행)
+- 커버리지: `go test -count=1 -run '^TestManaged|^TestClaimManagedFactoryInbox|^TestMoAIMCP' -coverprofile=… ./internal/cli` → `managed_factory_session.go` 90.9% (149/164), `managed_codex_factory.go` 85.9% (195/227), 합 88.0% (344/391) — 목표 85% 충족. 패키지 전체 집계는 이 목록에 없다(GAP).
+- vet: `go vet ./internal/cli ./internal/codexwiring ./internal/factorymsg ./internal/config` → exit 0.
+- gofmt: `git diff f22e2d7ac..HEAD --name-only` 의 Go 파일 16개에 `gofmt -l` → 빈 출력.
+- lint: `golangci-lint run --timeout=8m ./internal/cli/... ./internal/codexwiring/ ./internal/factorymsg/ ./internal/config/` → exit 0, `0 issues.`
+- 비침범 grep: AC-MS-009/010/014/017 행(위 매트릭스) 전부 0. `git diff f22e2d7ac..HEAD --name-only | grep -E '\.claude/hooks|sync-phase|stop|handle-' | wc -l` → `0`.
+- diff 범위: `git diff f22e2d7ac..HEAD --stat | tail -3` → `25 files changed, 4269 insertions(+), 2 deletions(-)`.
+- 회귀 증거(측정 주체 = 레인, 본 에이전트 미실행): 아래 "회귀 증거" 소절 — 252건은 레인 env 누수(측정된 원인), 2건은 base에서도 실패하는 기존 적색(소유 t1390·t1402는 리더 메시지 귀속).
+- GAP: (1) golangci-lint는 로컬 바이너리이며 CI(v2.1.6) 판 일치는 미확인. (2) 실제 Codex 왕복 미관측(live env 미설정). (3) `internal/kanban`·`internal/hook`·`internal/template` 스위트는 M5에 기록한 범위 한정 슬라이스로만 측정했고 M6에서 재실행하지 않았다. (4) 레인의 1차 전체 실행(a)은 다른 레인(go-test-cli-t1391)이 자기 slot lease를 쥔 부하 상태에서 돌았다. (5) 누수 env 이름 목록은 레인 보고이며 scratch에서 확인하지 못했다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
