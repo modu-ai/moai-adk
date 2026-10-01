@@ -7,6 +7,12 @@ on:
   # branches here declares the firing set already in force rather than changing it.
   pull_request:
     branches: [main, develop]
+  # Card t1298 — the conflict-guard job needs a fire on conflicting PRs,
+  # whose merge ref (and therefore pull_request event) does not exist.
+  # pull_request_target runs in the base context and needs no merge ref;
+  # the guard job alone consumes this event (job-level if: below).
+  pull_request_target:
+    branches: [main, develop]
   push:
     branches: [main, develop]
 
@@ -20,6 +26,10 @@ concurrency:
 
 jobs:
   graph-freshness:
+    # The merge-ref-based verdict runs only on pull_request/push — under
+    # pull_request_target this job would redundantly re-measure the base
+    # checkout (card t1298 conflict-guard split).
+    if: github.event_name != 'pull_request_target'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -99,3 +109,53 @@ jobs:
         # Exit 0 all fresh · 1 stale or absent · 2 system error. The step's
         # failure is attributable to the graph-freshness check by name.
         run: ./bin/moai graph check
+
+  # Card t1298 — a PR that conflicts with its base never gets a merge ref,
+  # and GitHub silently SKIPS pull_request-triggered workflows for it
+  # (field-measured on PR #1744: zero runs at open 15:59Z and at the
+  # close→reopen; the same workflow fired only after the conflict-resolving
+  # synchronize push — run 36891404804). The docs gate then vanishes from
+  # the PR with no surface saying so. This guard runs in the BASE context
+  # (pull_request_target — no merge ref needed, conflict-immune; the
+  # community workflow's trigger, which DID fire on reopen, is the same
+  # shape). It executes no PR-provided code and checks out nothing: it only
+  # queries the PR's mergeable state and turns the silent skip into an
+  # explicit, reasoned red. Separate concurrency group — the target ref is
+  # the same refs/pull/N/merge and would otherwise cancel the real run.
+  graph-freshness-conflict-guard:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: ${{ github.workflow }}-guard-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Surface a conflict-skipped graph-freshness as an explicit failure
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # mergeable is computed asynchronously by GitHub; null/empty means
+          # "not yet known" — poll briefly before judging.
+          MERGEABLE=""
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            MERGEABLE=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.mergeable // ""')
+            if [ -n "$MERGEABLE" ]; then break; fi
+            sleep 5
+          done
+          case "$MERGEABLE" in
+            true)
+              echo "guard: PR is mergeable — the pull_request graph-freshness run covers this head"
+              exit 0
+              ;;
+            false)
+              echo "::error::graph-freshness did NOT run for this PR: the merge ref cannot be created (conflict with the base branch). Resolve the conflict so the docs gate can judge this change — until then the gate is absent, not green."
+              exit 1
+              ;;
+            *)
+              echo "::error::mergeable state unknown after polling — the gate surface cannot be confirmed present. Re-run this check once GitHub computes the state."
+              exit 1
+              ;;
+          esac
