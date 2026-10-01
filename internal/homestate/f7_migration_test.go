@@ -48,8 +48,8 @@ func TestOpenFactoryV1ClaimedHandoffBackfill(t *testing.T) {
 		t.Fatalf("open migrated v1 factory: %v", err)
 	}
 	defer func() { _ = db.Close() }()
-	if got := frSchemaVersion(t, db.DB); got != "4" {
-		t.Fatalf("schema_version = %q, want \"4\"", got)
+	if got := frSchemaVersion(t, db.DB); got != "5" {
+		t.Fatalf("schema_version = %q, want \"5\"", got)
 	}
 	rows, err := db.DB.Query(`SELECT id, ifnull(claim_expires_at,''), legacy_recovery, legacy_recovery_reason FROM resume_handoffs ORDER BY id`)
 	if err != nil {

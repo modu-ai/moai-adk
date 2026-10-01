@@ -10,13 +10,14 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 func TestClaudePOSIXExecFailureRollsBackPending(t *testing.T) {
 	home, root, run := t.TempDir(), t.TempDir(), "run-claude-exec-failure"
 	t.Setenv("MOAI_HOME", home)
 	t.Setenv(config.EnvClaudeProjectDir, root)
-	if err := recordFactoryRunStart(root, run, "claude", ""); err != nil {
+	if err := recordFactoryRunStart(root, run, "claude", "", homestate.LaneCapacityDerived); err != nil {
 		t.Fatal(err)
 	}
 	env := append(os.Environ(),
