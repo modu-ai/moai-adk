@@ -175,6 +175,55 @@ binary_lag 허용목록/TestBinaryLag 변경 불필요(`TestBinaryLag` 회귀 �
 `internal/cli/managed_factory_session_test.go`에 gofmt 지적(한 줄 goroutine 람다) 기존 존재 —
 M4 범위 밖이라 미수정, 리드 판단 대기.
 
+### M5 — loopback integration + regression + docs (2026-10-02)
+
+측정 기준: HEAD `cea8c5a0b` (M4 tip), 클린 트리에서 시작. 파일:
+`internal/cli/managed_loopback_test.go` (신규, `TestManagedSessionLoopbackRoundTrip` + 헬퍼
+`runManagedLoopback`), `.moai/docs/factory-managed-session.md` (신규 한국어 안내). 프로덕션
+코드 변경 없음. 루프백 테스트는 실제 `driveManagedFactorySession` 루프와 실제
+`claimManagedFactoryInbox`/`managedFactoryInboxPrompt`를 임시 브로커 위에서 돌리고, 가짜 모델
+세션이 프롬프트의 `message_id`/`claim_token`으로 `ReadBody` → `RecordDisposition` → `Receipt`를
+수행한다. 2팔 대조: claim을 건너뛰는 변이, 프롬프트에 본문을 주입하는 변이가 각각 위반 목록으로
+잡힌다.
+
+| AC | Status | Verification Command | Actual Output |
+|----|--------|---------------------|---------------|
+| AC-MS-015 | PASS | `go test -count=1 -v -run '^TestManagedSessionLoopbackRoundTrip$' ./internal/cli` | real_path / mutant_skipping_the_claim / mutant_injecting_the_body 3 서브테스트 `--- PASS`, `ok … 2.541s`; `-race -count=5` → `ok … 12.029s` |
+| AC-MS-016 | PASS | `go test -count=1 -run '^TestManagedCodexFactoryBrokerLive$' -v ./internal/cli` | `--- SKIP: TestManagedCodexFactoryBrokerLive (0.00s)` (live gate env not set), exit 0; M2 테스트 수정 없음 |
+| AC-MS-009 | PASS | `grep -rnE 'fmt\.Sprintf\("(agent\|worker)-' internal/cli/managed_*.go \| wc -l` | `0` |
+| AC-MS-014 | PASS | `grep -n 'syscall\.' internal/cli/managed_*.go \| wc -l` + `GOOS=windows GOARCH=amd64 go build ./...` | `0`, `win_exit=0` |
+| AC-MS-017 | PASS | `git diff f22e2d7ac..HEAD -- internal/factorymsg/store.go \| wc -l` | `0` |
+
+회귀 슬라이스 (모두 이 트리·이 실행):
+- `go test -count=1 -run 'Factory|Managed|Kanban' ./internal/cli` (레인 env 스크럽 `unset … &&` 단일 호출) → `ok … 230.947s`, FAIL 0.
+- `go test -count=1 ./internal/kanban` → `ok … 236.497s`.
+- `go test -count=1 -run 'Factory' ./internal/hook` → `ok … 90.121s`.
+- `go test -count=1 -run 'Parity|Mirror' ./internal/template` → `ok … 1.363s`.
+
+품질 게이트 (M5):
+- 커버리지 (managed 테스트 한정 coverprofile `-run '^TestManaged|^TestClaimManagedFactoryInbox|^TestMoAIMCP'`): `managed_factory_session.go` 84.8% (139/164), `managed_codex_factory.go` 85.0% (193/227), 합 84.9% (332/391 문장). 패키지 전체 집계는 GAP (CI/리드 슬롯 몫).
+- vet: `go vet ./internal/cli` → exit 0. lint: `golangci-lint run --timeout=8m ./internal/cli/...` → `0 issues.`
+- gofmt: 신규 `managed_loopback_test.go` 는 `gofmt -l` 빈 출력. `gofmt -l internal/cli/managed_*.go` 는 M3 커밋의 `managed_factory_session_test.go` 1건만 지목 (M4 기록과 동일한 기존 항목, M5 범위 밖이라 미수정).
+- go.mod/go.sum: 변경 0.
+
+E8 (TDD RED verbatim, 헬퍼 구현 전 캡처):
+```
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/managed_loopback_test.go:21:10: undefined: runManagedLoopback
+internal/cli/managed_loopback_test.go:28:10: undefined: runManagedLoopback
+internal/cli/managed_loopback_test.go:37:10: undefined: runManagedLoopback
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+```
+
+M5 발견 이력: (1) 레인 env(`MOAI_KANBAN_*`/`MOAI_FACTORY_*`)가 셸에 남아 있으면 `Factory|Managed|Kanban`
+슬라이스에서 10건(`TestFactoryNext*`, `TestFR_AC024/025`, `TestTodoPickInFactory*` 등)이 거짓 적색으로
+뜬다 — env 스크럽 후 FAIL 0 (기존 교훈 `lane env falsifies env-reading guard tests`와 동일). (2) 가짜
+세션은 인프로세스다 — 재실행(re-exec) 자식은 브로커 호출 도구가 없어 왕복 증명에 쓸 수 없었고, 스트림 세션
+fixture(sh)는 M1 테스트가 이미 다룬다. (3) 안내 문서 위치: `.moai/docs/`는 `todo-queue-storage.md` 등
+운영자 안내 선례가 있는 디렉터리이며 이 문서는 템플릿 미러(`internal/template/templates/.moai/docs/`)
+밖의 로컬 문서다(미러에는 6종만 존재). `.claude/rules`·`.claude/skills`는 건드리지 않았다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
