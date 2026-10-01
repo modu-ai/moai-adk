@@ -2,7 +2,7 @@
 id: SPEC-DOCS-DELEGATION-CWD-001
 title: "레인 플로우 스폰 cwd 고정 결함 수리 — 격리 스폰 정착 검증과 싱크 위임 화해 절차"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-10-01
 updated: 2026-10-01
 author: manager-spec

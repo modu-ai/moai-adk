@@ -74,4 +74,15 @@
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs 소유>_
+- sync_status: complete
+- sync_complete_at: 2026-10-01
+- sync_commit_sha: pending-backfill-sync
+- changelog_entry_position: [Unreleased] / Fixed / SPEC-DOCS-DELEGATION-CWD-001 (1건, 선두)
+- b12_self_test_a: 사전 방출 grep `grep -c 'SPEC-DOCS-DELEGATION-CWD-001' CHANGELOG.md` → `0` + exit=1 (중복 없음)
+- b12_self_test_b: AC 카운터(tier M → acceptance.md) → stdout `9`, stderr `live=9 excluded=0 ambiguous=0` — CHANGELOG 엔트리의 9 AC 인용과 일치
+- b12_self_test_c: CHANGELOG 인용 경로 6건 전부 존재 실측 — spec.md · progress.md · kanban-dispatch-mechanics.md · agent-common-protocol.md · docs_delegation_lane_flow_test.go · run-ac-green.md
+- frontmatter_status_transitions: in-progress → implemented → completed (단일 싱크 커밋에서 병합 전이, spec.md `status: completed` + `updated: 2026-10-01`)
+- mx_check: `internal/template/docs_delegation_lane_flow_test.go` — exported 심볼 0건(테스트 패키지 비공개 3함수), goroutine·복잡도 트리거 없음 → 신규 @MX 태그 불요
+- codemap_freshness: `go run ./cmd/moai graph check`(본 트리 빌드, 본 트리 판독) — codemaps `value=31 threshold=40 verdict=fresh` (재생성 불요); mx-index·edges는 미추적 런타임 산출물 absent(신규 워크트리 상태, verdict 주체 아님)
+- docs_site_readme_judgment: CHANGELOG-only — 내부 하네스 플로우 문서(레인 화해 절차·콘텐츠 가드)로서 README/docs-site 사용자 대면 표면과 무관
+- canary_compliance_check: n/a — 본 SPEC이 자기 싱크 테스트를 가지는 forward-looking policy를 정의하지 않음(레인 플로우 절차 성문화이며, 절차의 실측 사례는 §E.2 격리 스폰 기록)
