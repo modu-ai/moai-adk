@@ -270,7 +270,7 @@ mentions an id later in the sentence still falls through, and
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if todoAutoFlag {
 				if len(args) > 0 {
-					return fmt.Errorf("--auto takes no card arguments; the invocation is the operator's batch approval of the queue in queue order, never an admission")
+					return fmt.Errorf("--auto takes no card arguments; the invocation is the operator's batch approval of the queue, never an admission")
 				}
 				return runAutoCycle(cmd.OutOrStdout(), newTodoStore(), resolveTodoQueueRoot(), autoOptions{
 					wait:     todoAutoWait,
@@ -311,7 +311,7 @@ mentions an id later in the sentence still falls through, and
 		newTodoPRCmd(), newTodoLandedCmd(), newTodoAutoDoneCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd(),
 		newTodoShowCmd(), newTodoTriageCmd())
 	cmd.Flags().BoolVar(&todoAutoFlag, "auto", false,
-		"process the queue serially: pick one card, dispatch one isolated worker, judge completion on disk evidence, then accept the next; the invocation is the operator's batch approval of the queue in queue order and nothing else")
+		"process the queue serially: pick one card, dispatch one isolated worker, judge completion on disk evidence, then accept the next; the invocation is the operator's batch approval of the queue and nothing else; the queued candidates are ranked first (a Jev signal when available, else recorded priority and readiness), and only a card whose text begins with the [보류 marker is demoted — a hold stated in prose without the marker is not (the structural hold is moai todo hold)")
 	cmd.Flags().DurationVar(&todoAutoWait, "auto-wait", 30*time.Minute,
 		"per-card deadline for the worker evidence file before the card is unpicked with a labelled non-finding")
 	return cmd
