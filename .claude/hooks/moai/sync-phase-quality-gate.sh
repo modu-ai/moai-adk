@@ -242,6 +242,23 @@ if [ -z "$GATE_LANG_CANDIDATES" ]; then
     exit 0
 fi
 
+# The gate's own state and log paths, anchored at the repository root so the
+# exclusion holds whatever the hook's working directory is.
+WCI_EXCLUDES=(':(top,exclude).moai/state' ':(top,exclude).moai/logs')
+
+# Ignored sources join the delta set AND the worktree key. The find-based
+# checkers (Ruby/PHP/C++ …) scan ignored sources, so a broken ignored file
+# added after a pass must both gate again and invalidate the stored key —
+# changing only the key would re-run the gate into a silent pass reuse, and
+# changing only the delta would re-check on every turn. Filtered to source
+# extensions so bulk-ignored trees stay cheap. Untracked (non-ignored) files
+# are NOT added here: a fix landing as uncommitted work already re-gates
+# through worktree_content_id, and adding its content to the HEAD delta would
+# double-count it across re-runs. (codex review gate reproduction — an ignored
+# generated.rb syntax error was skipped silently after a clean pass.)
+WCI_IGNORED_SOURCES=$(git ls-files --others --ignored --exclude-standard -- "${WCI_EXCLUDES[@]}" 2>/dev/null \
+    | grep -E '\.(go|py|js|ts|jsx|tsx|mjs|cjs|rb|php|rs|java|kt|kts|cs|ex|exs|cpp|cc|cxx|h|hpp|hxx|scala|r|R|dart|swift)$' || true)
+
 # Detect code-file changes in HEAD commit; skip if 0 code-file delta (markdown-only sync).
 # On an initial commit HEAD~1 does not exist, so diff against the empty tree instead.
 if git rev-parse --verify -q HEAD~1 >/dev/null 2>&1; then
@@ -256,7 +273,13 @@ CHANGED_LANGS=""
 for detected_language in $GATE_LANG_CANDIDATES; do
     DELTA_PATTERN=$(code_delta_pattern "$detected_language")
     if [ -n "$DELTA_PATTERN" ]; then
-        DETECTED_DELTA=$(git diff --name-only "$DIFF_RANGE" 2>/dev/null | grep -cE "$DELTA_PATTERN" || true)
+        # The delta set is the HEAD commit diff PLUS the ignored sources: the
+        # checkers read the work tree, so an ignored source present in it is
+        # part of what a re-run would actually check (see the collection
+        # comment above). A `{ group; } |` keeps set -e from acting on grep.
+        DETECTED_DELTA=$({ git diff --name-only "$DIFF_RANGE" 2>/dev/null || true
+                           [ -n "$WCI_IGNORED_SOURCES" ] && printf '%s\n' "$WCI_IGNORED_SOURCES"
+                         } | grep -cE "$DELTA_PATTERN" || true)
         CODE_DELTA=$((CODE_DELTA + ${DETECTED_DELTA:-0}))
         if [ "${DETECTED_DELTA:-0}" -gt 0 ]; then
             CHANGED_LANGS="$CHANGED_LANGS $detected_language"
@@ -380,8 +403,16 @@ hash_stdin() {
 # which is the memo defeating itself. The exclusion is by pathspec rather than by
 # .gitignore, because whether a downstream project ignores those two directories is
 # that project's choice and must not decide whether this gate works. git-ignored
-# files are excluded too (--exclude-standard) — build output and caches are not
-# what the checks are being asked about.
+# files are generally excluded (--exclude-standard) — build output and caches are
+# not what the checks are being asked about — EXCEPT ignored SOURCE files, which
+# the find-based checkers do scan; they ride the delta set (collected above) and
+# so they ride this key too, names and contents both.
+#
+# The checker-tool presence rides the key as well: an absent tool is skipped
+# gracefully and the skip is journaled, but a pass recorded while a tool was
+# absent must not be reused once the tool is installed — the tool's verdict was
+# never part of that pass. One stable token per tool; any install or removal
+# flips the key and forces a re-check.
 #
 # Prints empty when git cannot answer, which degrades the identifier to HEAD alone:
 # the behavior before it existed, never something looser.
@@ -393,12 +424,19 @@ worktree_content_id() {
             printf '%s\n' "$wci_others"
             printf '%s\n' "$wci_others" | git hash-object --stdin-paths 2>/dev/null || true
         fi
+        if [ -n "$WCI_IGNORED_SOURCES" ]; then
+            printf '%s\n' "$WCI_IGNORED_SOURCES"
+            printf '%s\n' "$WCI_IGNORED_SOURCES" | git hash-object --stdin-paths 2>/dev/null || true
+        fi
+        for gate_tool in go ruff eslint cargo javac kotlinc dotnet ruby php mix g++ scalac R dart swift; do
+            if command -v "$gate_tool" >/dev/null 2>&1; then
+                printf '%s=present\n' "$gate_tool"
+            else
+                printf '%s=absent\n' "$gate_tool"
+            fi
+        done
     } | hash_stdin
 }
-
-# The gate's own state and log paths, anchored at the repository root so the
-# exclusion holds whatever the hook's working directory is.
-WCI_EXCLUDES=(':(top,exclude).moai/state' ':(top,exclude).moai/logs')
 
 # resolve_gate_mode: sets MODE (blocking|advisory) from MOAI_SYNC_GATE_BLOCKING,
 # MOAI_AUTONOMY_TIER, DECISION, C1_EXIT, and C2_EXIT. A check run and a
@@ -487,7 +525,36 @@ if [ -n "$HEAD_SHA" ]; then
             fi
             if [ "$PAYLOAD_VALID" = "1" ]; then
                 if [ "$P_KIND" = "advisory" ]; then
-                    # The advisory warning was written once, by the run that checked.
+                    # A stored advisory is re-delivered under the CURRENT mode:
+                    # an advisory→blocking flip must not silently exit 0 on the
+                    # stored failure (codex review gate reproduction — blocking
+                    # env set after an advisory-mode failure produced no checks
+                    # and no block). resolve_gate_mode reads the stored exit
+                    # codes to make that call under the same rules as a fresh
+                    # run.
+                    DECISION="advisory"
+                    C1_EXIT="$P_C1"
+                    C2_EXIT="$P_C2"
+                    resolve_gate_mode
+                    if [ "$MODE" != "blocking" ]; then
+                        # The advisory warning was written once, by the run that
+                        # checked; advisory mode still re-delivers nothing.
+                        exit 0
+                    fi
+                    if stop_hook_active_set; then
+                        log_gate_event "mode=$MODE decision=redelivery-deferred stop_hook_active=true stored=advisory"
+                        exit 0
+                    fi
+                    # The stored advisory body carries no decision:block (it was
+                    # an advisory WARNING), so re-printing it would not block.
+                    # Synthesize the block decision in the same
+                    # hookSpecificOutput-wrapped shape the fresh-run blocking
+                    # path emits below; the stored text stays in the payload
+                    # file and the reason points at it (quoting stored text
+                    # inline would break out of the JSON string). (codex
+                    # review gate P1 reproduction.)
+                    printf '{"hookSpecificOutput":{"hookEventName":"Stop","decision":"block","reason":"sync gate (blocking mode): stored advisory failure re-delivered. Detail: .moai/state/sync-quality-gate.payload"},"systemMessage":"sync-phase quality gate BLOCKED: stored advisory failure re-delivered (blocking mode). Detail: .moai/logs/sync-quality-gate.log"}\n'
+                    log_gate_event "mode=$MODE decision=block-redelivered stored=advisory"
                     exit 0
                 fi
                 DECISION="block"
