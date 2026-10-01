@@ -284,7 +284,7 @@ func InitDependencies() {
 	deps.HookRegistry.Register(hook.NewTaskCreatedHandlerWithConfig(deps.Config))
 	deps.HookRegistry.Register(hook.NewPermissionDeniedHandler())
 	deps.HookRegistry.Register(hook.NewConfigChangeHandler())
-	deps.HookRegistry.Register(hook.NewCwdChangedHandler())
+	deps.HookRegistry.Register(hook.NewCwdChangedHandlerWithConfig(deps.Config))
 	deps.HookRegistry.Register(hook.NewFileChangedHandler())
 	// Config-ful constructors so the observability opt-in
 	// (system.yaml hook.observability_events) can actually activate — the

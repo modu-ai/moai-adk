@@ -40,6 +40,16 @@
 - 기존 살생 변이 2건 테스트(TestClassifyError_GuardRefusal_AnchorOnly, _BeatsOOM) 무수정 GREEN — REQ-SAA-010.
 - draft→in-progress 전환(spec.md status+updated만) 본 M1 커밋에 동승.
 
+### M2 — W2 재배치 감사 + 소유 타당성 (2026-09-30)
+
+- REQ-SAA-003: `Registry.RelocateSession`이 cwd 재작성 시 감사 행(session_id/from/to/trigger/timestamp)을 `<project-root>/.moai/logs/anchor-relocation-audit.jsonl`에 추가 — 내부 구현은 신설 `RelocateSessionWithOptions`(anchor_relocate_audit.go)로 위임, 모든 진입점이 감사. fail-open(기록 실패가 재배치를 막지 않음).
+- REQ-SAA-004: 케이스표 4팔 구현(self/other-live/unreadable/registry-only + 잔여 dead-holder 기록). lock reason card-id/pid 토큰 파싱은 `parseLockPID`/신설 `ParseLockCardID` 재사용. other-live·registry-only는 advisory 플래그 + 진행; unreadable은 기존 fail-closed 준수(플래그 없음).
+- REQ-SAA-005: `workflow.anchor_relocation_guard.enabled` opt-in 키(config types.go+defaults.go — BranchGuard/AgentStopGuard 선례 동형, 기본 false, 템플릿 중립). on + 플래그 → 거부 + 감사행 Refused:true, `ErrRelocationRefused`.
+- REQ-SAA-006 보존: 두-패스 후보 순서(relocateRegistryCandidatesFrom)·fail-open 무수정 — 기존 8 RUN 테스트 GREEN.
+- 훅 연결: cwd_changed_relocate.go에 git-context seam(`relocationGitContext` 패키지 변수 — sessionProcessLiveness 선례 동형), `relocationTargetContext`(git rev-parse --show-toplevel + worktree list --porcelain fail-open), `anchorRelocationGuardEnabled`(nil-safe). cwdChangedHandler cfg 필드 + NewCwdChangedHandlerWithConfig, deps.go 갱신, handleWorktreeMove에 cfg 전달.
+- RED 증거(E8): (a) session측 — `undefined: guardRefusalAttribution` 아니라 `RelocationAudit` 관련 compile fail (audit 타입/메서드 미존재 시절); (b) hook측 — `undefined: relocationGitContext` ×3, `too many arguments in call to relocateSessionCwd` ×3, `undefined: anchorRelocationGuardEnabled` ×3 (구현 전 실측).
+- GREEN: session 신규 5테스트 + 기존 RelocateSession 3테스트, hook 신규 4테스트 + 기존 two-pass 8 RUN — 전부 PASS. session·config 패키지 전체 ok.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — manager-develop 소관>_
