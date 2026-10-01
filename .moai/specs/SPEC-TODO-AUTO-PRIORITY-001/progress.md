@@ -204,3 +204,76 @@ todo_auto_rank_test.go:1390: kinds = map[], want t1 landed and t2 no-link
 **Gaps (not observed).** No live Jev request was made (credential-gated; the wire shape was exercised only against a fake transport) and the score level-index base (plan A-6) remains unobserved; the live `gh` path ran only through stubs and the fake-`gh` proof. No `internal/cli` package-wide test or coverage run and no CI run (CI owns the repository-wide verdict, PENDING at report time). The doc/mirror criteria AC-TAP-011, -013, -014, -015 and `TestSanitizedPairParity` were not run (no document changed in M2). The live landed seam discards the `computeTodoPRRows` degradation notes (`io.Discard`); the record's `selection: note` names the unmeasured signal but not the `gh` failure text. Mutant probes ran on `719e6c1b4`, not on `4050769f1`. Raw logs live in the session scratchpad and are machine-local; the deciding lines are quoted above.
 
 **Residual risk.** The Jev question wording and the five level texts are unmeasured against the live capability: a score question whose levels read differently to the model than intended orders cards by an uncalibrated signal, and this SPEC claims no accuracy (S-2). `computeTodoPRRows` runs one local git query per card in the record, so `--auto` on a very large queue pays that cost once per invocation. The record prints on every invocation with a non-empty queued set, which adds `selection:` lines before the first `accept` for every consumer that parses `--auto` output.
+
+### M3 — Doctrine amendment and marker disclosure
+
+Run by manager-develop (cycle_type=tdd), card t1400, branch `WT-auto-priority-pick`, starting HEAD `946896945`. M3 commits: `5ddbd6c44` (the two doctrine documents, live and template, plus the `catalog.yaml` hash `make build` regenerated), `75ade0ccc` (flag help and refusal wording, `todo_auto_doc_test.go`). Every Go command ran with the eleven lane variables scrubbed in one compound `unset … && <command>` invocation; the Go toolchain compiled the tree under test directly, no installed `moai` binary was invoked. Measurements below were taken on the tree whose Go and document content equals `75ade0ccc` (this section is the only later edit).
+
+**Pre-flight (HEAD `946896945`, clean tree).** `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; baseline of the 27 M1/M2 rank tests plus the ten characterization tests plus the live-seam tests = 27 `--- PASS`, 0 FAIL (`ok … 19.359s`).
+
+**Guards that read the edited files (found by `grep -rn --include='*_test.go' 'kanban-dispatch\.md\|workflows/gtd\.md\|manager-todo\.md' internal` plus a sweep for budget and neutrality guards; source lines).** `internal/template/gtd_canonical_surface_test.go:13` (`TestGTDCanonicalSurfaceGolden`), `internal/template/contract_mode_guided_test.go:679` (`TestContractModeEmitterSites`, classifies kanban-dispatch.md), `internal/template/workflow_rule_paths_pinned_test.go:31` (`TestWorkflowRulePathsPinned`), `internal/template/backlog_json_disclosure_mirror_test.go:25` (`TestBacklogJSONDisclosure_*`), `internal/cli/doc_json_shape_test.go:98` (`TestTodoListJSONShapeMatchesDoc`), `internal/cli/init_headroom_export_test.go:43` (`TestHeadroomInitSurfaceExport`), `internal/cli/todo_classify_doc_parity_test.go` (`TestTodoSkillDocumentsClassification`), `todo_hold_doc_test.go`, `todo_skill_doc_test.go`, `todo_skill_doc_parity_test.go`, `todo_landed_doc_test.go` (`TestTodoDoctrine_MirrorParityAndStatedColumnCount`); template-tree walkers `TestTemplateNoInternalContentLeak`, `TestRuleTemplateMirrorDrift`, `TestDeclaredRuleMirrorForks`, `TestSanitizedPairParity`; the always-loaded budget guards `internal/config/token_budget_guard_test.go` (`TestAlwaysLoadedTokenBudget`, `TestCodexContractByteCeiling`, `TestCodexNestedTemplateDiscoveryBudget`); `internal/contract/kickoff/activation_test.go:208` (`TestJevAmendmentLinkage`); the catalog hash guards `internal/template/catalog_tier_audit_test.go` (`TestManifestHashFormat`, `TestCatalogHashCoversSkillSubfiles`, `TestCatalogManifestPresent`, `TestAllSkillsInCatalog`) and `embed_catalog_test.go` (`TestLoadEmbeddedCatalog_Success`). `internal/mission/governor_test.go:27,57` reads `manager-todo.md`, which M3 does not touch (M4).
+
+| Guard | Before (HEAD `946896945`) | After (tree of `75ade0ccc`) |
+|---|---|---|
+| cli doc guards (8 names above) | 7 PASS, 1 SKIP (`TestHeadroomInitSurfaceExport`), `ok 2.633s` | 7 PASS, 1 SKIP, `ok 2.540s`; final re-run 12 names incl. the 4 new tests all PASS, `ok 8.001s` |
+| `TestGTDCanonicalSurfaceGolden`, `TestSanitizedPairParity`, `TestRuleTemplateMirrorDrift`, `TestDeclaredRuleMirrorForks`, `TestWorkflowRulePathsPinned`, `TestBacklogJSONDisclosure_*` | PASS | PASS |
+| `TestContractModeEmitterSites` | SKIP | SKIP |
+| `TestTemplateNoInternalContentLeak` | FAIL — one match, `templates/.claude/rules/moai/workflow/worktree-integration-ops.md` class C1 `SPEC-SESSION-ANCHOR-ATTR-001` | FAIL — the same single match; PRE-EXISTING, not mine, not fixed |
+| `TestAlwaysLoadedTokenBudget` | PASS, 64114 tokens (budget 77600) | PASS, 64227 tokens (+113) |
+| `TestCodexContractByteCeiling`, `TestCodexNestedTemplateDiscoveryBudget` | PASS | PASS |
+| `TestJevAmendmentLinkage` | PASS | PASS |
+| catalog hash guards (5 names) | not run before (no template edit yet) | PASS |
+
+**AC matrix (this run, this tree, HEAD `75ade0ccc` content).**
+
+| AC | Command | Observed | Status |
+|---|---|---|---|
+| AC-TAP-011 | `grep -c "auto-scoped ranking exception" <the four files>` and the same for `"selection order only"` | every file `:1`, exit 0 (both literals, all four files); `go test … -run '^TestAutoRankDoctrineAmendment$' ./internal/cli/` → `--- PASS: TestAutoRankDoctrineAmendment` | PASS |
+| AC-TAP-013 | `go test … -run '^(TestAutoRankMirrorParity|TestTodoSkillDocumentsClassification)$' ./internal/cli/`; `… -run '^TestSanitizedPairParity$' ./internal/template/` | both `--- PASS`; `TestSanitizedPairParity` `--- PASS` | PASS |
+| AC-TAP-014 | `go test … -run '^TestAutoRankMarkerDisclosure$' ./internal/cli/` | `--- PASS: TestAutoRankMarkerDisclosure` (12 subtests: 3 surfaces × 4 clauses) | PASS |
+
+**E4 greps.** The neutrality expression (SPEC id, requirement token, ISO date, 9+ hex run) over the lines added to the two template files by `git diff 946896945 75ade0ccc` → 0 matches. `grep -n 'AskUserQuestion\|mcp__askuser' internal/cli/todo.go` (comment lines excluded) → exit 1, no match; the new test file has 0. The added template lines contain the word `AskUserQuestion` once, inside the pre-existing `kanban-dispatch.md` promotion paragraph that the edit re-emits as one line — prose, not code.
+
+**E8 — verbatim RED output captured BEFORE the documents were edited** (new test file written first, run on the unamended documents and the unamended `todo.go`; deciding lines):
+```
+todo_auto_doc_test.go:99: live kanban-dispatch.md does not carry the literal "auto-scoped ranking exception" on a single line
+todo_auto_doc_test.go:105: live gtd.md: no single paragraph carries both "auto-scoped ranking exception" and "selection order only"
+--- FAIL: TestAutoRankDoctrineAmendment (0.00s)
+todo_auto_doc_test.go:212: live passage carries no "auto-scoped ranking exception"
+--- FAIL: TestAutoRankMirrorParity (0.00s)
+todo_auto_doc_test.go:268: live gtd.md does not state that only a card beginning with the marker is demoted (want the phrase "only a card whose text begins with the [보류 marker is demoted")
+todo_auto_doc_test.go:268: --auto flag help does not state that the structural hold is moai todo hold (want the phrase "the structural hold is moai todo hold")
+--- FAIL: TestAutoRankMarkerDisclosure (0.00s)
+todo_auto_doc_test.go:286: the --auto flag help still asserts the pick order: "process the queue serially: pick one card, … batch approval of the queue in queue order and nothing else"
+todo_auto_doc_test.go:299: the refusal still asserts the pick order: "--auto takes no card arguments; the invocation is the operator's batch approval of the queue in queue order, never an admission"
+--- FAIL: TestAutoHelpAndRefusalDoNotAssertPickOrder (0.33s)
+```
+In that run the 4 `literals share one paragraph/…` subtests, the 2 `passage carries the amendment/…` subtests and the 12 disclosure subtests were red. The `prohibition kept/…` subtests and the mirror `live and template agree` / `template passage is neutral` subtests were green on the unamended documents by construction (they pin text the amendment must not change, or compare two byte-identical copies — characterization, not new behaviour); the mutant probes below are what show those subtests bite.
+
+**E10 — mutant probes (each applied to the committed tree `75ade0ccc`, run, restored by `cp` from a saved copy, `cmp` exit 0 after each; final `git status --short` and `git diff --stat` both empty).**
+- Bounding literal reworded to `selection order` in live gtd.md → `TestAutoRankDoctrineAmendment` FAIL (`live gtd.md does not carry the literal "selection order only" on a single line`) and `TestAutoRankMirrorParity` FAIL (`live passage carries no "selection order only"`, live ≠ template).
+- Literals split across paragraphs (live kanban-dispatch.md) → `TestAutoRankDoctrineAmendment` FAIL (`no single paragraph carries both …`), `TestAutoRankMirrorParity` FAIL (passage differs).
+- Exception literal wrapped across a hard line break (live gtd.md) → `TestAutoRankDoctrineAmendment` FAIL (`does not carry the literal "auto-scoped ranking exception" on a single line`) — the audit finding D-N3 shape.
+- Template-only wording change (`unchanged` to `untouched`) → `TestAutoRankMirrorParity` FAIL (`the amended passage differs between …`); control: `TestTodoSkillDocumentsClassification` stayed PASS under the same mutant, so only the new test catches a mirror-only drift.
+- Prohibition `never reorders by inferred priority,` deleted from live kanban-dispatch.md → `TestAutoRankDoctrineAmendment` FAIL (`live kanban-dispatch.md lost the prohibition "The leader never picks for the operator, never reorders by inferred priority, …"`).
+- Disclosure deleted from the flag help only → `TestAutoRankMarkerDisclosure` FAIL on the four `--auto flag help/…` subtests, the six document subtests stayed PASS (each surface is asserted on its own).
+- `in queue order` put back into the refusal string → `TestAutoHelpAndRefusalDoNotAssertPickOrder` FAIL (`the refusal still asserts the pick order`).
+- A SPEC id written into both gtd.md copies → `TestAutoRankMirrorParity/template_passage_is_neutral` FAIL (`line 26 carries internal content "SPEC-FOO-BAR-001"`) and the existing `TestTodoSkillDocumentsClassification` FAIL.
+
+**Byte measurements (`wc -c`, before at `946896945`, after at `75ade0ccc`).** live `kanban-dispatch.md` 26352 → 26807 (+455); template `kanban-dispatch.md` 26030 → 26485 (+455); live and template `gtd.md` 37010 → 37897 (+887 each); `internal/cli/todo.go` 61641 → 61882 (+241). The always-loaded surface measured by `TestAlwaysLoadedTokenBudget` rose by 113 tokens (64114 → 64227). The single-edit growth of `kanban-dispatch.md` is below the 1,000-byte duty threshold; the commit body states the sizes anyway. The pre-existing live/template drift of `kanban-dispatch.md` (line 177 only, the `moai worktree sweep` sentence) is unchanged: `diff` after the edits still reports `177c177` and nothing else.
+
+**What `make build` changed.** `make build` ran `agents-emit-check`, `templ-generate`, `gen-catalog-hashes --all` and `go build`; the only tracked change was `internal/template/catalog.yaml` (one hash line, the `moai` skill directory), committed in `5ddbd6c44`. `bin/moai` is ignored.
+
+**Builds, vet, lint, format.** `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `go vet ./internal/cli/ ./internal/kanban/` exit 0; `golangci-lint run --timeout=2m ./internal/cli/` → `0 issues.`; `gofmt -l` flagged the new test file once (fixed with `gofmt -w`, then no output). The M1/M2 baseline set (27 names) re-ran 27 `--- PASS` after the edits.
+
+**Deviations and interpretations (no scope growth).**
+- A fourth test, `TestAutoHelpAndRefusalDoNotAssertPickOrder`, covers the "in queue order" rewording. Its name sits outside the `TestAutoRank` prefix so `go test -list 'TestAutoRank'` stays at the planned count (14 names now; `TestAutoRankAgentDoctrine` joins at M4 for 15).
+- The unchanged-prohibitions assertion lives as `prohibition kept/…` subtests inside `TestAutoRankDoctrineAmendment` (AC-TAP-011 says that test carries it) rather than as a separately named top-level test.
+- `kanban-dispatch.md` `:29` keeps its prohibition text verbatim and gains one trailing sentence pointing at the next paragraph; both pinned literals sit in the `:31` reconciliation paragraph, where the exception is stated. The phrase "named, not excepted" in that paragraph is retained untouched.
+- The flag help carries the marker disclosure without backticks (pflag reads a back-quoted word in a usage string as the value placeholder name), so the test compares on backtick-stripped, whitespace-collapsed text.
+- `internal/template/catalog.yaml` is part of commit `5ddbd6c44` (a build artifact of the template edit, same-SPEC cascade), not in the M3 file list of the plan.
+- `TestContractModeEmitterSites` and `TestHeadroomInitSurfaceExport` SKIP before and after; their coverage of `kanban-dispatch.md` is therefore unobserved here (Gap).
+
+**Gaps (not observed).** No `internal/cli` package-wide test or coverage run and no CI run (CI owns the repository-wide verdict, PENDING at report time). The two skipped guards above did not run. `TestTemplateNoInternalContentLeak` is red on a pre-existing match outside M3. `internal/mission/governor_test.go` (reads `manager-todo.md`) was not run — M4 owns that file. `TestAutoRankAgentDoctrine` and AC-TAP-015 are M4 and unflipped. Raw logs live in the session scratchpad and are machine-local; the deciding lines are quoted above.
+
+**Residual risk.** The literal check is paragraph-scoped and cannot detect a sentence that generalises the exception in other words (spec §G R-6); the Jev-side surfaces still say "display-only" until the follow-up card lands, and the amended wording only narrows that contradiction. The prohibition subtests quote whole sentences, so a legitimate future rewording of those prohibitions fails the test by design and must update the quote deliberately. The mirror-parity passage for `kanban-dispatch.md` is delimited by two heading literals; a later edit that renames either marker makes the test fail loudly rather than pass vacuously (`t.Fatalf` on a missing marker).
