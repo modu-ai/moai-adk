@@ -262,6 +262,9 @@ html[lang="en"] .nav__en{display:none}
 .tr--override{box-shadow:inset 2px 0 0 var(--fg-1)}
 .tr--error{box-shadow:inset 2px 0 0 var(--danger)}
 .tr--todo{grid-template-columns:70px minmax(0,1fr) 90px 210px;min-height:44px}
+/* t1277: the head and relation rows share the row grid — the default .tr tracks
+   misalign them inside the narrower detail splitpane. */
+.tr--todo-head,.tr--todo-rel{grid-template-columns:70px minmax(0,1fr) 90px 210px}
 .todo-row__id{min-width:0}
 .todo-row__text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .todo-row__state{display:flex;align-items:center;min-width:0}

@@ -207,7 +207,10 @@ func (r *Registry) Register(sessionID, specID, phase string) error {
 		return errors.New("session registry: sessionID cannot be empty")
 	}
 	host, _ := os.Hostname()
-	cwd, _ := os.Getwd()
+	cwd, err := canonicalCWDFromProcess()
+	if err != nil {
+		return fmt.Errorf("session registry: resolve cwd: %w", err)
+	}
 	now := r.clock.Now().UTC()
 	return r.withLock(func(entries []Entry) ([]Entry, error) {
 		// Idempotent: update in place if sessionID exists; else append.

@@ -8,7 +8,6 @@
 package session
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -123,22 +122,15 @@ func callerProjectRoot() string {
 // its launch-time CWD otherwise, which makes it invisible to anchor
 // detection. Idempotent on a missing entry — mirrors Heartbeat
 // (REQ-COORD-004): no error when the session is not registered anywhere.
+//
+// SPEC-SESSION-ANCHOR-ATTR-001 W2: the rewrite is audited — the legacy entry
+// point delegates to RelocateSessionWithOptions with zero options, so every
+// relocation appends an audit row (trigger "unspecified", ownership
+// unclassified). The hook layer calls the Options form to carry the trigger
+// event and the target-tree lock context.
 func (r *Registry) RelocateSession(sessionID, newCwd string) error {
-	if sessionID == "" {
-		return errors.New("session registry: sessionID cannot be empty")
-	}
-	if newCwd == "" {
-		return errors.New("session registry: newCwd cannot be empty")
-	}
-	return r.withLock(func(entries []Entry) ([]Entry, error) {
-		for i := range entries {
-			if entries[i].SessionID == sessionID {
-				entries[i].CWD = newCwd
-				return entries, nil
-			}
-		}
-		return entries, nil
-	})
+	_, err := r.RelocateSessionWithOptions(sessionID, newCwd, RelocationOptions{})
+	return err
 }
 
 // pathWithinTree reports whether the recorded working directory child lies
