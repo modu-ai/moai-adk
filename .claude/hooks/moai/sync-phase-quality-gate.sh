@@ -243,8 +243,27 @@ if [ -z "$GATE_LANG_CANDIDATES" ]; then
 fi
 
 # The gate's own state and log paths, anchored at the repository root so the
-# exclusion holds whatever the hook's working directory is.
-WCI_EXCLUDES=(':(top,exclude).moai/state' ':(top,exclude).moai/logs')
+# exclusion holds whatever the hook's working directory is. The same set also
+# carries two wider exclusion classes. Other cards' worktrees
+# (.moai/worktrees, .claude/worktrees) are outside this session's change
+# scope — their sources joined the delta set, the vetted GO_ROOTS, and this
+# gate's content key, so a foreign card's compile failure blocked this
+# session's gate (observed RED, card t1392); a pathspec rather than a
+# .gitignore entry, for the same reason the two excludes below are one.
+# And the heavy dependency/build dirs mirror the prune set detect_languages
+# walks above (which itself mirrors sourceScanSkipDirs in
+# internal/hook/quality/gate.go), so every collector in this hook skips one
+# shared set of trees.
+WCI_EXCLUDES=(':(top,exclude).moai/state' ':(top,exclude).moai/logs'
+    ':(top,exclude).moai/worktrees' ':(top,exclude).claude/worktrees'
+    ':(glob,top,exclude)**/node_modules/**' ':(glob,top,exclude)**/vendor/**'
+    ':(glob,top,exclude)**/dist/**' ':(glob,top,exclude)**/build/**'
+    ':(glob,top,exclude)**/target/**' ':(glob,top,exclude)**/.next/**'
+    ':(glob,top,exclude)**/.output/**' ':(glob,top,exclude)**/.venv/**'
+    ':(glob,top,exclude)**/venv/**' ':(glob,top,exclude)**/__pycache__/**'
+    ':(glob,top,exclude)**/site-packages/**' ':(glob,top,exclude)**/.tox/**'
+    ':(glob,top,exclude)**/.nox/**' ':(glob,top,exclude)**/.mypy_cache/**'
+    ':(glob,top,exclude)**/.ruff_cache/**' ':(glob,top,exclude)**/.pytest_cache/**')
 
 # Ignored sources join the delta set AND the worktree key. The find-based
 # checkers (Ruby/PHP/C++ …) scan ignored sources, so a broken ignored file
