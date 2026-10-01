@@ -268,18 +268,31 @@ else
 fi
 # grep -c is wrapped so its no-match exit (1) under `set -e` does not abort; the
 # result is normalized to a single integer (avoids a "0\n0" double-emit).
+# SYNC_DELTA_FILES: every source path this gate could be responsible for —
+# ① the sync commit's diff (what HEAD~1..HEAD touched), ② tracked uncommitted
+# changes (git diff HEAD), ③ untracked new files, and ④ ignored sources
+# (collected above). The checkers read the WORK TREE, so a broken file that
+# exists only uncommitted must gate the turn even when the commit itself
+# touched nothing in its language: the worktree key already changes (forcing a
+# re-run), but the changed-language set aggregates only what is listed here,
+# so leaving ② and ③ out let a Go compile error added beside a Ruby-only
+# commit pass with zero Go checks (codex review gate reproduction —
+# `language=ruby`, no go steps, decision=allow). sort -u deduplicates the
+# overlap between the four sources.
+SYNC_DELTA_FILES=$({ git diff --name-only "$DIFF_RANGE" 2>/dev/null || true
+                     git diff HEAD --name-only 2>/dev/null || true
+                     git ls-files --others --exclude-standard 2>/dev/null || true
+                     [ -n "$WCI_IGNORED_SOURCES" ] && printf '%s\n' "$WCI_IGNORED_SOURCES"
+                   } | sort -u)
+
 CODE_DELTA=0
 CHANGED_LANGS=""
 for detected_language in $GATE_LANG_CANDIDATES; do
     DELTA_PATTERN=$(code_delta_pattern "$detected_language")
     if [ -n "$DELTA_PATTERN" ]; then
-        # The delta set is the HEAD commit diff PLUS the ignored sources: the
-        # checkers read the work tree, so an ignored source present in it is
-        # part of what a re-run would actually check (see the collection
-        # comment above). A `{ group; } |` keeps set -e from acting on grep.
-        DETECTED_DELTA=$({ git diff --name-only "$DIFF_RANGE" 2>/dev/null || true
-                           [ -n "$WCI_IGNORED_SOURCES" ] && printf '%s\n' "$WCI_IGNORED_SOURCES"
-                         } | grep -cE "$DELTA_PATTERN" || true)
+        # printf of the multi-line variable (possibly empty) under a pipe
+        # keeps set -e from acting on grep.
+        DETECTED_DELTA=$(printf '%s\n' "$SYNC_DELTA_FILES" | grep -cE "$DELTA_PATTERN" || true)
         CODE_DELTA=$((CODE_DELTA + ${DETECTED_DELTA:-0}))
         if [ "${DETECTED_DELTA:-0}" -gt 0 ]; then
             CHANGED_LANGS="$CHANGED_LANGS $detected_language"
@@ -670,23 +683,21 @@ run_step() {
 C1_LABELS=""
 C2_LABELS=""
 SKIPPED_TOOLS=""
-# find_go_module_roots: every go.mod that owns a Go file touched by this sync
-# commit (HEAD diff plus ignored sources, the same delta set the checks read),
-# one per line, deduplicated. A repo can carry a root module AND nested
-# modules; following only the first .go file's module vetted whichever module
-# find happened to hand back first and left the other unmeasured — a broken
-# root next to a clean nested module recorded vet=0 build=0 and allowed (codex
-# review gate reproduction, card t1389). The caller runs the checks once per
-# root and lets run_step's worst-exit slot merge aggregate them. Empty stdout
-# = no owning go.mod anywhere: the repo root stays the anchor, where a failure
-# is then a real one. Deleted files are skipped (nothing left to vet there);
-# paths containing whitespace are unsupported (git names them with octal
-# escapes here, and no supported layout needs one).
+# find_go_module_roots: every go.mod that owns a Go file in SYNC_DELTA_FILES
+# (the same delta set the checks read), one per line, deduplicated. A repo can
+# carry a root module AND nested modules; following only the first .go file's
+# module vetted whichever module find happened to hand back first and left the
+# other unmeasured — a broken root next to a clean nested module recorded
+# vet=0 build=0 and allowed (codex review gate reproduction, card t1389). The
+# caller runs the checks once per root and lets run_step's worst-exit slot
+# merge aggregate them. Empty stdout = no owning go.mod anywhere: the repo
+# root stays the anchor, where a failure is then a real one. Deleted files are
+# skipped (nothing left to vet there); paths containing whitespace are
+# unsupported (git names them with octal escapes here, and no supported layout
+# needs one).
 find_go_module_roots() {
     local files f d out
-    files=$({ git diff --name-only "$DIFF_RANGE" 2>/dev/null || true
-              [ -n "$WCI_IGNORED_SOURCES" ] && printf '%s\n' "$WCI_IGNORED_SOURCES"
-            } | grep -E '\.go$' || true)
+    files=$(printf '%s\n' "$SYNC_DELTA_FILES" | grep -E '\.go$' || true)
     out=""
     while IFS= read -r f; do
         [ -n "$f" ] || continue
