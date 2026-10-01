@@ -7,11 +7,21 @@
 package cli
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
+	"math"
+	"net/http"
+	"os"
+	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/jev"
+	"github.com/modu-ai/moai-adk/internal/jevcred"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
@@ -391,10 +401,10 @@ func TestAutoRankUnmeasuredSignal(t *testing.T) {
 	})
 }
 
-// TestAutoRankBlockedExcluded — AC-TAP-007 (REQ-TAP-006, M1 fallback-source
-// subtests): a card whose effective classification is blocked is never a
-// target; the record names it once and its stored state stays queued. The
-// Jev-source subtests join at M2.
+// TestAutoRankBlockedExcluded — AC-TAP-007 (REQ-TAP-006, M1 stage-level
+// subtests and M2 cycle-level subtests on both sources): a card whose
+// effective classification is blocked is never a target; the record names it
+// once and its stored state stays queued.
 func TestAutoRankBlockedExcluded(t *testing.T) {
 	t.Run("fallback source excludes the blocked card and leaves its state", func(t *testing.T) {
 		items := []kanban.BacklogItem{
@@ -459,6 +469,80 @@ func TestAutoRankBlockedExcluded(t *testing.T) {
 			t.Errorf("excluded = [%s], want [B1 B2] in queue order", got)
 		}
 	})
+
+	// M2 — the cycle-level subtests, on both ranking sources.
+	excludedOnce := func(t *testing.T, lines []string) {
+		t.Helper()
+		if n := rankCountPrefix(lines, "selection: excluded t1 (blocked)"); n != 1 {
+			t.Errorf("`selection: excluded t1 (blocked)` printed %d times, want exactly once\n%s", n, strings.Join(lines, "\n"))
+		}
+	}
+	blockedQueue := func(t *testing.T) (string, *kanban.BacklogStore) {
+		t.Helper()
+		root, store := todoFixture(t)
+		seedItems(t, store, "blocked high card", "plain card") // t1 t2
+		rankClassify(t, store, "t1", kanban.ClassPriorityHigh, true)
+		return root, store
+	}
+
+	t.Run("cycle on the fallback source never accepts the blocked card", func(t *testing.T) {
+		root, store := blockedQueue(t)
+		lines := rankRunCycle(t, root, store, rankCycleOpts(root))
+		if got, want := rankAcceptOrder(lines), "t2"; got != want {
+			t.Errorf("accept order = [%s], want [%s]", got, want)
+		}
+		excludedOnce(t, lines)
+		rankAllQueued(t, store)
+	})
+
+	t.Run("cycle on the jev source never accepts the blocked card either", func(t *testing.T) {
+		root, store := blockedQueue(t)
+		// The stub gives the blocked card the top score whenever it is asked
+		// about it; an implementation that excludes on the fallback only would
+		// send it and accept it first.
+		stub := &rankJevStub{reply: rankReplyScores(map[string]float64{"t1": 4, "t2": 1}, nil)}
+		opts := rankCycleOpts(root)
+		opts.jevRank = stub.ask
+		lines := rankRunCycle(t, root, store, opts)
+		if got := rankSourceLine(t, lines); got != "selection: source=jev" {
+			t.Fatalf("source line = %q, want the jev source", got)
+		}
+		if got, want := rankAcceptOrder(lines), "t2"; got != want {
+			t.Errorf("accept order = [%s], want [%s]", got, want)
+		}
+		if got, want := rankRequestIDs(stub.reqs[0]), "t2"; got != want {
+			t.Errorf("request ids = [%s], want [%s] — a blocked card is never sent to Jev", got, want)
+		}
+		excludedOnce(t, lines)
+		rankAllQueued(t, store)
+	})
+
+	t.Run("cycle with every candidate blocked ends on the no-eligible report", func(t *testing.T) {
+		root, store := todoFixture(t)
+		seedItems(t, store, "blocked one", "blocked two") // t1 t2
+		rankClassify(t, store, "t1", "", true)
+		rankClassify(t, store, "t2", kanban.ClassPriorityHigh, true)
+		stub := &rankJevStub{reply: rankReplyScores(nil, nil)}
+		opts := rankCycleOpts(root)
+		opts.jevRank = stub.ask
+		lines := rankRunCycle(t, root, store, opts)
+		if rankLineIndex(lines, "selection: ranked") >= 0 {
+			t.Errorf("a ranked line was printed although every candidate was excluded\n%s", strings.Join(lines, "\n"))
+		}
+		if rankLineIndex(lines, "selection: excluded t1 (blocked)") < 0 || rankLineIndex(lines, "selection: excluded t2 (blocked)") < 0 {
+			t.Errorf("excluded lines missing\n%s", strings.Join(lines, "\n"))
+		}
+		if rankLineIndex(lines, "no eligible card") < 0 {
+			t.Errorf("no-eligible report missing\n%s", strings.Join(lines, "\n"))
+		}
+		if rankAcceptOrder(lines) != "" {
+			t.Errorf("a card was accepted: [%s]", rankAcceptOrder(lines))
+		}
+		if stub.calls != 0 {
+			t.Errorf("jev ranker called %d times with nothing to rank, want 0", stub.calls)
+		}
+		rankAllQueued(t, store)
+	})
 }
 
 // TestAutoFallbackReasonMapping — M1 (REQ-TAP-007): the closed fallback-reason
@@ -504,5 +588,848 @@ func TestAutoFallbackReasonMapping(t *testing.T) {
 	}
 	if autoRankReasonIncompleteAnswer == autoFallbackReason(jev.Malformed) {
 		t.Errorf("jev-malformed and jev-incomplete-answer must stay distinct reasons")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// M2 — the stage wired into runAutoCycle, and the Jev ordering consumer.
+//
+// Every test below drives the cycle (or the stage) with injected seams: the
+// landed lookup and the Jev ranker are stubs, and no test sends a request, runs
+// `gh`, or touches the network. The two live seam bodies are exercised through
+// a fake transport and a stubbed command runner.
+// ---------------------------------------------------------------------------
+
+// rankCycleOpts builds cycle options with a fake clock that advances one tick
+// per poll, so every accepted card reaches its evidence deadline after one tick
+// and is unpicked — the cycle ends without waiting and without evidence.
+func rankCycleOpts(root string) autoOptions {
+	clock := time.Unix(0, 0)
+	return autoOptions{
+		wait:      time.Minute,
+		liveness:  autoTestLiveness(root, "t1", true, true, nil),
+		sessionID: "operator-session-fixture",
+		jev:       func(string) string { return "jev: stub display line" },
+		now:       func() time.Time { return clock },
+		sleep:     func(time.Duration) { clock = clock.Add(time.Minute) },
+	}
+}
+
+// rankRunCycle runs the cycle and returns its output split into lines.
+func rankRunCycle(t *testing.T, root string, store *kanban.BacklogStore, opts autoOptions) []string {
+	t.Helper()
+	var out bytes.Buffer
+	if err := runAutoCycle(&out, store, root, opts); err != nil {
+		t.Fatalf("cycle errored: %v", err)
+	}
+	return strings.Split(strings.TrimRight(out.String(), "\n"), "\n")
+}
+
+// rankClassify records a priority and blocked flag on a stored card. An empty
+// priority keeps the default.
+func rankClassify(t *testing.T, store *kanban.BacklogStore, id, priority string, blocked bool) {
+	t.Helper()
+	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+		for i := range rec.Items {
+			if rec.Items[i].ID == id {
+				c := kanban.DefaultCardClassification()
+				if priority != "" {
+					c.Priority = priority
+				}
+				c.Blocked = blocked
+				rec.Items[i].Classification = &c
+				return nil
+			}
+		}
+		return fmt.Errorf("card %s not found", id)
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// rankLineIndex returns the index of the first line with the prefix, or -1.
+func rankLineIndex(lines []string, prefix string) int {
+	for i, l := range lines {
+		if strings.HasPrefix(l, prefix) {
+			return i
+		}
+	}
+	return -1
+}
+
+// rankCountPrefix counts the lines carrying the prefix.
+func rankCountPrefix(lines []string, prefix string) int {
+	n := 0
+	for _, l := range lines {
+		if strings.HasPrefix(l, prefix) {
+			n++
+		}
+	}
+	return n
+}
+
+// rankSourceLine returns the `selection: source=` line, failing the test when
+// the record carries none.
+func rankSourceLine(t *testing.T, lines []string) string {
+	t.Helper()
+	i := rankLineIndex(lines, "selection: source=")
+	if i < 0 {
+		t.Fatalf("no `selection: source=` line in:\n%s", strings.Join(lines, "\n"))
+	}
+	return lines[i]
+}
+
+// rankAcceptOrder lists the accepted card ids in processing order.
+func rankAcceptOrder(lines []string) string {
+	var ids []string
+	for _, l := range lines {
+		if strings.HasPrefix(l, "accept ") {
+			ids = append(ids, strings.Fields(l)[1])
+		}
+	}
+	return strings.Join(ids, " ")
+}
+
+// rankRankedIDs returns the ids of the `selection: ranked` line, or "".
+func rankRankedIDs(lines []string) string {
+	for _, l := range lines {
+		if strings.HasPrefix(l, "selection: ranked ") {
+			return strings.TrimPrefix(l, "selection: ranked ")
+		}
+	}
+	return ""
+}
+
+// rankSnapshot projects the queue to the fields the ranking stage must never
+// change: card order, text and recorded classification.
+func rankSnapshot(t *testing.T, store *kanban.BacklogStore) string {
+	t.Helper()
+	rec, err := store.LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	type view struct {
+		ID    string
+		Text  string
+		Class *kanban.CardClassification
+	}
+	views := make([]view, 0, len(rec.Items))
+	for _, it := range rec.Items {
+		views = append(views, view{it.ID, it.Text, it.Classification})
+	}
+	b, err := json.Marshal(views)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+// rankAllQueued fails when any stored card is not queued.
+func rankAllQueued(t *testing.T, store *kanban.BacklogStore) {
+	t.Helper()
+	rec, err := store.LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, it := range rec.Items {
+		if it.State != kanban.BacklogStateQueued {
+			t.Errorf("card %s state = %q, want %q", it.ID, it.State, kanban.BacklogStateQueued)
+		}
+	}
+}
+
+// rankJevStub is a Jev ranker seam that counts its calls and keeps every
+// request it was handed, so "no request was sent" reads a number.
+type rankJevStub struct {
+	calls int
+	reqs  []jev.Request
+	reply func(jev.Request) jev.Result
+}
+
+func (s *rankJevStub) ask(req jev.Request) jev.Result {
+	s.calls++
+	s.reqs = append(s.reqs, req)
+	return s.reply(req)
+}
+
+// rankScoreAnswer is one well-formed score answer.
+func rankScoreAnswer(id string, score, confidence float64) jev.Answer {
+	return jev.Answer{QuestionID: id, Kind: jev.KindScore, Score: score, Probability: confidence}
+}
+
+// rankReplyScores answers every question of the request with the score and
+// confidence named for its id (score 0, confidence 0.5 when unnamed).
+func rankReplyScores(scores, confidence map[string]float64) func(jev.Request) jev.Result {
+	return func(req jev.Request) jev.Result {
+		res := jev.Result{Availability: jev.Available}
+		for _, q := range req.Questions {
+			c, ok := confidence[q.ID]
+			if !ok {
+				c = 0.5
+			}
+			res.Answers = append(res.Answers, rankScoreAnswer(q.ID, scores[q.ID], c))
+		}
+		return res
+	}
+}
+
+// rankReplyResult always returns the same result, whatever was asked.
+func rankReplyResult(res jev.Result) func(jev.Request) jev.Result {
+	return func(jev.Request) jev.Result { return res }
+}
+
+// rankRequestIDs lists the question ids of a request in order.
+func rankRequestIDs(req jev.Request) string {
+	ids := make([]string, 0, len(req.Questions))
+	for _, q := range req.Questions {
+		ids = append(ids, q.ID)
+	}
+	return strings.Join(ids, " ")
+}
+
+// TestAutoRankSelectionRecord — AC-TAP-001 (REQ-TAP-001, REQ-TAP-008, M2): the
+// record is printed before the first accept, in the D-6 position, and the
+// accept order is the ranked order.
+func TestAutoRankSelectionRecord(t *testing.T) {
+	t.Run("record precedes the first accept and ranked is the accept order", func(t *testing.T) {
+		root, store := todoFixture(t)
+		seedItems(t, store, "card one", "card two", "card three") // t1 t2 t3
+		rankClassify(t, store, "t2", kanban.ClassPriorityHigh, false)
+
+		lines := rankRunCycle(t, root, store, rankCycleOpts(root))
+
+		src, acc := rankLineIndex(lines, "selection: source="), rankLineIndex(lines, "accept ")
+		if src < 0 || acc < 0 || src >= acc {
+			t.Fatalf("source line at %d, first accept at %d — the record must come first\n%s", src, acc, strings.Join(lines, "\n"))
+		}
+		if got, want := lines[src], "selection: source=fallback reason=jev-disabled"; got != want {
+			t.Errorf("source line = %q, want %q", got, want)
+		}
+		if got, want := rankRankedIDs(lines), "t2 t1 t3"; got != want {
+			t.Errorf("ranked = [%s], want [%s]", got, want)
+		}
+		if got, want := rankAcceptOrder(lines), rankRankedIDs(lines); got != want {
+			t.Errorf("accept order = [%s], want the ranked order [%s]", got, want)
+		}
+	})
+
+	t.Run("output order is jev line, existing notes, record, accept loop", func(t *testing.T) {
+		root, store := todoFixture(t)
+		seedItems(t, store, "predecessor card", "waiting card") // t1 t2
+		seedFindings(t, store, kanban.BacklogFinding{
+			SubjectID: "t1", RelatedID: "t2",
+			Relation: kanban.BacklogRelationBlocks, Source: kanban.BacklogSourceAgent,
+		})
+
+		lines := rankRunCycle(t, root, store, rankCycleOpts(root))
+
+		jevLine := rankLineIndex(lines, "jev: stub display line")
+		note := rankLineIndex(lines, "non-finding: t2 skipped (relation-blocked")
+		src := rankLineIndex(lines, "selection: source=")
+		acc := rankLineIndex(lines, "accept ")
+		if jevLine != 0 || jevLine >= note || note >= src || src >= acc {
+			t.Fatalf("order jev=%d note=%d record=%d accept=%d, want strictly increasing from 0\n%s",
+				jevLine, note, src, acc, strings.Join(lines, "\n"))
+		}
+		if got, want := rankAcceptOrder(lines), "t1"; got != want {
+			t.Errorf("accept order = [%s], want [%s] — the relation filter still gates the candidate", got, want)
+		}
+	})
+
+	t.Run("no queued candidate means no record and no jev call", func(t *testing.T) {
+		stub := &rankJevStub{reply: rankReplyScores(nil, nil)}
+
+		root, store := todoFixture(t) // empty queue
+		opts := rankCycleOpts(root)
+		opts.jevRank = stub.ask
+		lines := rankRunCycle(t, root, store, opts)
+		if n := rankCountPrefix(lines, "selection:"); n != 0 {
+			t.Errorf("empty queue printed %d selection lines", n)
+		}
+
+		root2, store2 := todoFixture(t) // only a dead-owner rescue target
+		seedItems(t, store2, "rescue only")
+		autoSetState(t, store2, "t1", kanban.BacklogStatePicked)
+		opts2 := rankCycleOpts(root2)
+		opts2.jevRank = stub.ask
+		lines2 := rankRunCycle(t, root2, store2, opts2)
+		if n := rankCountPrefix(lines2, "selection:"); n != 0 {
+			t.Errorf("rescue-only queue printed %d selection lines", n)
+		}
+		if got := rankAcceptOrder(lines2); got != "t1" {
+			t.Errorf("rescue-only accept order = [%s], want [t1]", got)
+		}
+		if stub.calls != 0 {
+			t.Errorf("jev ranker called %d times with no queued candidate, want 0", stub.calls)
+		}
+	})
+}
+
+// TestAutoRankJevOrdering — AC-TAP-002 (REQ-TAP-002, M2): an available Jev
+// signal decides the order, highest score first, then confidence, then
+// fallback order; one request carries one score question per candidate.
+func TestAutoRankJevOrdering(t *testing.T) {
+	cycle := func(t *testing.T, texts []string, prepare func(*testing.T, *kanban.BacklogStore), reply func(jev.Request) jev.Result) ([]string, *rankJevStub) {
+		t.Helper()
+		root, store := todoFixture(t)
+		seedItems(t, store, texts...)
+		if prepare != nil {
+			prepare(t, store)
+		}
+		stub := &rankJevStub{reply: reply}
+		opts := rankCycleOpts(root)
+		opts.jevRank = stub.ask
+		return rankRunCycle(t, root, store, opts), stub
+	}
+	four := []string{"card one", "card two", "card three", "card four"} // t1..t4
+
+	t.Run("jev order differs from the fallback order and wins", func(t *testing.T) {
+		reply := rankReplyScores(map[string]float64{"t1": 3, "t2": 0, "t3": 4, "t4": 2}, nil)
+		lines, stub := cycle(t, four, nil, reply)
+		if got, want := rankSourceLine(t, lines), "selection: source=jev"; got != want {
+			t.Errorf("source line = %q, want %q", got, want)
+		}
+		if got, want := rankAcceptOrder(lines), "t3 t1 t4 t2"; got != want {
+			t.Errorf("accept order = [%s], want [%s] (score descending)", got, want)
+		}
+		if got, want := rankRankedIDs(lines), "t3 t1 t4 t2"; got != want {
+			t.Errorf("ranked = [%s], want [%s]", got, want)
+		}
+		if stub.calls != 1 {
+			t.Errorf("jev ranker called %d times, want exactly one request per invocation", stub.calls)
+		}
+	})
+
+	t.Run("equal scores break by confidence descending", func(t *testing.T) {
+		reply := rankReplyScores(
+			map[string]float64{"t1": 2, "t2": 2, "t3": 2, "t4": 2},
+			map[string]float64{"t1": 0.2, "t2": 0.9, "t3": 0.5, "t4": 0.7})
+		lines, _ := cycle(t, four, nil, reply)
+		if got, want := rankAcceptOrder(lines), "t2 t4 t3 t1"; got != want {
+			t.Errorf("accept order = [%s], want [%s]", got, want)
+		}
+	})
+
+	t.Run("equal score and confidence fall back to the fallback order", func(t *testing.T) {
+		prepare := func(t *testing.T, store *kanban.BacklogStore) {
+			rankClassify(t, store, "t3", kanban.ClassPriorityHigh, false)
+		}
+		reply := rankReplyScores(
+			map[string]float64{"t1": 1, "t2": 1, "t3": 1, "t4": 1},
+			map[string]float64{"t1": 0.5, "t2": 0.5, "t3": 0.5, "t4": 0.5})
+		lines, _ := cycle(t, four, prepare, reply)
+		if got, want := rankAcceptOrder(lines), "t3 t1 t2 t4"; got != want {
+			t.Errorf("accept order = [%s], want [%s] (fallback order: priority, then queue order)", got, want)
+		}
+	})
+
+	t.Run("a readiness-poor card is flagged but not demoted on the jev source", func(t *testing.T) {
+		texts := []string{"[보류 parked card", "clean card"} // t1 t2
+		reply := rankReplyScores(map[string]float64{"t1": 4, "t2": 1}, nil)
+		lines, _ := cycle(t, texts, nil, reply)
+		if got, want := rankAcceptOrder(lines), "t1 t2"; got != want {
+			t.Errorf("accept order = [%s], want [%s] — demotion applies on the fallback source only", got, want)
+		}
+		if rankFlagLine(lines, "t1") != "selection: flagged t1 (hold-marker)" {
+			t.Errorf("t1 not flagged on the jev source:\n%s", strings.Join(lines, "\n"))
+		}
+	})
+
+	t.Run("one request, one score question per candidate, blocked cards left out", func(t *testing.T) {
+		prepare := func(t *testing.T, store *kanban.BacklogStore) {
+			rankClassify(t, store, "t2", kanban.ClassPriorityNormal, true)
+		}
+		_, stub := cycle(t, four, prepare, rankReplyScores(nil, nil))
+		if stub.calls != 1 {
+			t.Fatalf("calls = %d, want 1", stub.calls)
+		}
+		req := stub.reqs[0]
+		if got, want := rankRequestIDs(req), "t1 t3 t4"; got != want {
+			t.Errorf("question ids = [%s], want [%s]", got, want)
+		}
+		for _, q := range req.Questions {
+			if q.Kind != jev.KindScore {
+				t.Errorf("question %s kind = %q, want %q", q.ID, q.Kind, jev.KindScore)
+			}
+			if len(q.Levels) != autoRankJevLevelCount {
+				t.Errorf("question %s carries %d levels, want %d", q.ID, len(q.Levels), autoRankJevLevelCount)
+			}
+			if q.Text == "" || !strings.Contains(q.Text, q.ID) {
+				t.Errorf("question %s text %q does not name its card", q.ID, q.Text)
+			}
+		}
+		for _, id := range []string{"t1", "t3", "t4"} {
+			if !strings.Contains(req.State, id) {
+				t.Errorf("state does not carry card %s", id)
+			}
+		}
+		if strings.Contains(req.State, "card two") {
+			t.Errorf("state carries the excluded blocked card's text")
+		}
+	})
+
+	t.Run("candidates beyond the request bound follow in fallback order and a note says so", func(t *testing.T) {
+		total := autoRankJevCandidateLimit + 2
+		items := make([]kanban.BacklogItem, 0, total)
+		confidence := map[string]float64{}
+		for i := 1; i <= total; i++ {
+			id := fmt.Sprintf("c%03d", i)
+			items = append(items, rankTestItem(id, "card "+id, "", false))
+			confidence[id] = float64(i) / float64(total+1) // later card = more confident
+		}
+		stub := &rankJevStub{reply: rankReplyScores(map[string]float64{}, confidence)}
+		res := autoRank(rankTestRecord(items), items, rankLanded(nil), stub.ask)
+
+		if stub.calls != 1 {
+			t.Fatalf("calls = %d, want 1", stub.calls)
+		}
+		if got := len(stub.reqs[0].Questions); got != autoRankJevCandidateLimit {
+			t.Fatalf("request carried %d questions, want the bound %d", got, autoRankJevCandidateLimit)
+		}
+		if res.Source != autoRankSourceJev {
+			t.Fatalf("source = %q, want jev", res.Source)
+		}
+		ids := strings.Fields(rankIDs(res.Ranked))
+		if len(ids) != total {
+			t.Fatalf("ranked %d cards, want all %d", len(ids), total)
+		}
+		// Sent cards in confidence-descending order, then the two surplus cards
+		// in fallback (queue) order.
+		if ids[0] != fmt.Sprintf("c%03d", autoRankJevCandidateLimit) || ids[autoRankJevCandidateLimit-1] != "c001" {
+			t.Errorf("jev-ordered head = %s ... %s, want c%03d ... c001", ids[0], ids[autoRankJevCandidateLimit-1], autoRankJevCandidateLimit)
+		}
+		if got, want := strings.Join(ids[autoRankJevCandidateLimit:], " "),
+			fmt.Sprintf("c%03d c%03d", autoRankJevCandidateLimit+1, autoRankJevCandidateLimit+2); got != want {
+			t.Errorf("surplus tail = [%s], want [%s]", got, want)
+		}
+		sawNote := false
+		for _, l := range renderAutoSelectionRecord(res) {
+			if strings.HasPrefix(l, "selection: note ") && strings.Contains(l, "bound") {
+				sawNote = true
+			}
+		}
+		if !sawNote {
+			t.Errorf("record carries no note naming the request bound: %q", renderAutoSelectionRecord(res))
+		}
+	})
+}
+
+// TestAutoRankFallbackReasons — AC-TAP-003 (REQ-TAP-003, REQ-TAP-007, M2): every
+// unavailable condition lands on the fallback with exactly one reason from the
+// closed vocabulary, the cycle finishes cleanly, and the order is the fallback
+// order.
+func TestAutoRankFallbackReasons(t *testing.T) {
+	incomplete := jev.Result{
+		Availability: jev.Available,
+		Answers:      []jev.Answer{rankScoreAnswer("t1", 3, 0.8)}, // t2 unanswered
+	}
+	cases := []struct {
+		name  string
+		reply func(jev.Request) jev.Result // nil means no ranker seam at all
+		want  string
+	}{
+		{"no seam wired", nil, "jev-disabled"},
+		{"disabled", rankReplyResult(jev.Result{Availability: jev.Disabled}), "jev-disabled"},
+		{"no credential", rankReplyResult(jev.Result{Availability: jev.NoCredential}), "jev-no-credential"},
+		{"unauthorized", rankReplyResult(jev.Result{Availability: jev.Unauthorized}), "jev-unauthorized"},
+		{"rate limited", rankReplyResult(jev.Result{Availability: jev.RateLimited}), "jev-rate-limited"},
+		{"overloaded", rankReplyResult(jev.Result{Availability: jev.Overloaded}), "jev-overloaded"},
+		{"unreachable", rankReplyResult(jev.Result{Availability: jev.Unreachable}), "jev-unreachable"},
+		{"oversize", rankReplyResult(jev.Result{Availability: jev.Oversize}), "jev-oversize"},
+		{"secret detected", rankReplyResult(jev.Result{Availability: jev.SecretDetected}), "jev-secret-detected"},
+		{"malformed", rankReplyResult(jev.Result{Availability: jev.Malformed}), "jev-malformed"},
+		{"available but incomplete", rankReplyResult(incomplete), "jev-incomplete-answer"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root, store := todoFixture(t)
+			seedItems(t, store, "card one", "card two") // t1 t2
+			opts := rankCycleOpts(root)
+			if tc.reply != nil {
+				opts.jevRank = (&rankJevStub{reply: tc.reply}).ask
+			}
+			lines := rankRunCycle(t, root, store, opts)
+
+			if n := rankCountPrefix(lines, "selection: source="); n != 1 {
+				t.Fatalf("%d source lines, want exactly 1\n%s", n, strings.Join(lines, "\n"))
+			}
+			want := "selection: source=fallback reason=" + tc.want
+			if got := rankSourceLine(t, lines); got != want {
+				t.Errorf("source line = %q, want %q", got, want)
+			}
+			reasons := 0
+			for _, l := range lines {
+				reasons += strings.Count(l, " reason=")
+			}
+			if reasons != 1 {
+				t.Errorf("reason printed %d times, want once", reasons)
+			}
+			if got, want := rankAcceptOrder(lines), "t1 t2"; got != want {
+				t.Errorf("accept order = [%s], want the fallback order [%s]", got, want)
+			}
+		})
+	}
+}
+
+// TestAutoRankJevMalformedAnswer — AC-TAP-010 (REQ-TAP-011, M2). The name is
+// kept from the planned sweep set; the test exercises `jev-incomplete-answer`
+// (an answer set the stage rejects), not `jev-malformed` (the client's own
+// result for a request with no question).
+func TestAutoRankJevMalformedAnswer(t *testing.T) {
+	good := func(id string) jev.Answer { return rankScoreAnswer(id, 2, 0.6) }
+	run := func(t *testing.T, answers []jev.Answer) (lines []string, before, after string) {
+		t.Helper()
+		root, store := todoFixture(t)
+		seedItems(t, store, "card one", "card two") // t1 t2
+		rankClassify(t, store, "t2", kanban.ClassPriorityHigh, false)
+		before = rankSnapshot(t, store)
+		opts := rankCycleOpts(root)
+		opts.jevRank = (&rankJevStub{reply: rankReplyResult(jev.Result{Availability: jev.Available, Answers: answers})}).ask
+		lines = rankRunCycle(t, root, store, opts)
+		rankAllQueued(t, store)
+		return lines, before, rankSnapshot(t, store)
+	}
+	defects := []struct {
+		name    string
+		answers []jev.Answer
+	}{
+		{"an answer names a card that was not sent", []jev.Answer{good("t1"), good("t2"), good("zz")}},
+		{"a sent card has no answer", []jev.Answer{good("t1")}},
+		{"the same card answered twice", []jev.Answer{good("t1"), good("t1"), good("t2")}},
+		{"score is not a number", []jev.Answer{good("t1"), rankScoreAnswer("t2", math.NaN(), 0.5)}},
+		{"score is positive infinity", []jev.Answer{good("t1"), rankScoreAnswer("t2", math.Inf(1), 0.5)}},
+		{"score is negative infinity", []jev.Answer{good("t1"), rankScoreAnswer("t2", math.Inf(-1), 0.5)}},
+		{"score below the range", []jev.Answer{good("t1"), rankScoreAnswer("t2", -1, 0.5)}},
+		{"score above the range", []jev.Answer{good("t1"), rankScoreAnswer("t2", 4.5, 0.5)}},
+		{"score at the first value past the range", []jev.Answer{good("t1"), rankScoreAnswer("t2", 5, 0.5)}},
+		{"confidence is not a number", []jev.Answer{good("t1"), rankScoreAnswer("t2", 1, math.NaN())}},
+		{"an answer is not a score", []jev.Answer{good("t1"), {QuestionID: "t2", Kind: jev.KindChoice, Choice: "x"}}},
+	}
+	for _, tc := range defects {
+		t.Run(tc.name, func(t *testing.T) {
+			lines, before, after := run(t, tc.answers)
+			if got, want := rankSourceLine(t, lines), "selection: source=fallback reason=jev-incomplete-answer"; got != want {
+				t.Errorf("source line = %q, want %q", got, want)
+			}
+			if got, want := rankAcceptOrder(lines), "t2 t1"; got != want {
+				t.Errorf("accept order = [%s], want the fallback order [%s] — a defective answer set must not be partially applied", got, want)
+			}
+			if before != after {
+				t.Errorf("queue changed under a defective answer set:\n before %s\n after  %s", before, after)
+			}
+		})
+	}
+
+	// Positive controls: the boundary values and an in-range non-integer are
+	// valid, so the range check cannot be satisfied by rejecting everything.
+	valid := []struct {
+		name  string
+		score float64
+	}{{"lower bound 0", 0}, {"upper bound 4", 4}, {"in-range non-integer 2.5", 2.5}}
+	for _, tc := range valid {
+		t.Run("valid: "+tc.name, func(t *testing.T) {
+			lines, before, after := run(t, []jev.Answer{good("t1"), rankScoreAnswer("t2", tc.score, 0.5)})
+			if got, want := rankSourceLine(t, lines), "selection: source=jev"; got != want {
+				t.Errorf("source line = %q, want %q", got, want)
+			}
+			if before != after {
+				t.Errorf("queue changed under a valid answer set")
+			}
+		})
+	}
+}
+
+// TestAutoRankRescueFirst — AC-TAP-008 (REQ-TAP-009, M2): dead-owner picked
+// targets stay at the head on every ranking source, and the ranking neither
+// reorders them nor sends them to Jev.
+func TestAutoRankRescueFirst(t *testing.T) {
+	setup := func(t *testing.T) (string, *kanban.BacklogStore) {
+		t.Helper()
+		root, store := todoFixture(t)
+		seedItems(t, store, "rescue one", "rescue two", "queued a", "queued b", "queued c") // t1..t5
+		autoSetState(t, store, "t1", kanban.BacklogStatePicked)
+		autoSetState(t, store, "t2", kanban.BacklogStatePicked)
+		rankClassify(t, store, "t1", kanban.ClassPriorityLow, false)
+		rankClassify(t, store, "t2", kanban.ClassPriorityLow, false)
+		rankClassify(t, store, "t4", kanban.ClassPriorityHigh, false)
+		return root, store
+	}
+
+	t.Run("fallback source", func(t *testing.T) {
+		root, store := setup(t)
+		lines := rankRunCycle(t, root, store, rankCycleOpts(root))
+		if got, want := rankAcceptOrder(lines), "t1 t2 t4 t3 t5"; got != want {
+			t.Errorf("accept order = [%s], want [%s]", got, want)
+		}
+		if got, want := rankRankedIDs(lines), "t4 t3 t5"; got != want {
+			t.Errorf("ranked = [%s], want only the queued suffix [%s]", got, want)
+		}
+	})
+
+	t.Run("jev source scores every queued card above the rescue cards", func(t *testing.T) {
+		root, store := setup(t)
+		stub := &rankJevStub{reply: rankReplyScores(map[string]float64{"t3": 4, "t4": 0, "t5": 2}, nil)}
+		opts := rankCycleOpts(root)
+		opts.jevRank = stub.ask
+		lines := rankRunCycle(t, root, store, opts)
+		if got, want := rankAcceptOrder(lines), "t1 t2 t3 t5 t4"; got != want {
+			t.Errorf("accept order = [%s], want [%s]", got, want)
+		}
+		if stub.calls != 1 {
+			t.Fatalf("calls = %d, want 1", stub.calls)
+		}
+		// The request lists the candidates in fallback order (t4 is high
+		// priority), so the set is compared, not the order.
+		ids := strings.Fields(rankRequestIDs(stub.reqs[0]))
+		sort.Strings(ids)
+		if got, want := strings.Join(ids, " "), "t3 t4 t5"; got != want {
+			t.Errorf("request ids = [%s], want [%s] — rescue targets are never sent to the ranking source", got, want)
+		}
+	})
+}
+
+// TestAutoRankQueueUnchanged — AC-TAP-009 (REQ-TAP-010, M2): the ranking
+// changes the order the cycle chooses in, never the stored queue.
+func TestAutoRankQueueUnchanged(t *testing.T) {
+	prepare := func(t *testing.T) (string, *kanban.BacklogStore) {
+		t.Helper()
+		root, store := todoFixture(t)
+		seedItems(t, store, "low card", "high card", "normal card", "[보류 parked card") // t1..t4
+		rankClassify(t, store, "t1", kanban.ClassPriorityLow, false)
+		rankClassify(t, store, "t2", kanban.ClassPriorityHigh, false)
+		rankClassify(t, store, "t3", kanban.ClassPriorityNormal, false)
+		return root, store
+	}
+
+	t.Run("fallback source", func(t *testing.T) {
+		root, store := prepare(t)
+		before := rankSnapshot(t, store)
+		lines := rankRunCycle(t, root, store, rankCycleOpts(root))
+		if got := rankAcceptOrder(lines); got == "t1 t2 t3 t4" {
+			t.Fatalf("accept order equals the stored order [%s]; the fixture cannot tell a reorder from none", got)
+		}
+		if after := rankSnapshot(t, store); after != before {
+			t.Errorf("queue changed:\n before %s\n after  %s", before, after)
+		}
+		rankAllQueued(t, store)
+	})
+
+	t.Run("jev source", func(t *testing.T) {
+		root, store := prepare(t)
+		before := rankSnapshot(t, store)
+		opts := rankCycleOpts(root)
+		opts.jevRank = (&rankJevStub{reply: rankReplyScores(map[string]float64{"t1": 4, "t2": 1, "t3": 3, "t4": 2}, nil)}).ask
+		lines := rankRunCycle(t, root, store, opts)
+		if got, want := rankAcceptOrder(lines), "t1 t3 t4 t2"; got != want {
+			t.Fatalf("accept order = [%s], want [%s]", got, want)
+		}
+		if after := rankSnapshot(t, store); after != before {
+			t.Errorf("queue changed:\n before %s\n after  %s", before, after)
+		}
+		rankAllQueued(t, store)
+	})
+}
+
+// autoRankSourceViolations reports the forbidden tokens a source carries: a
+// queue write verb, an interactive-question call, or a re-spelled priority
+// value. It reads text, so the positive control below can hand it a poisoned
+// fixture.
+func autoRankSourceViolations(src string) []string {
+	forbidden := []string{
+		"Mutate", "ArchiveCard", "AskUserQuestion", "mcp__askuser",
+		`"high"`, `"normal"`, `"low"`,
+	}
+	var hits []string
+	for _, tok := range forbidden {
+		if strings.Contains(src, tok) {
+			hits = append(hits, tok)
+		}
+	}
+	return hits
+}
+
+// TestAutoRankNoQueueWriteGuard — AC-TAP-009 static arm (REQ-TAP-010, M2): the
+// ranking stage's source names no queue write verb and never re-spells the
+// priority values.
+func TestAutoRankNoQueueWriteGuard(t *testing.T) {
+	// Positive control: the scanner fires on a poisoned fixture, so its silence
+	// on the real file asserts something.
+	poisoned := `func bad(store *kanban.BacklogStore) { store.Mutate(nil); r.ArchiveCard("t1"); p := "high" }`
+	if got := autoRankSourceViolations(poisoned); len(got) < 3 {
+		t.Fatalf("scanner found %v in the poisoned fixture, want at least Mutate, ArchiveCard and a priority literal", got)
+	}
+
+	body, err := os.ReadFile("todo_auto_rank.go")
+	if err != nil {
+		t.Fatalf("read ranking source: %v", err)
+	}
+	if n := strings.Count(string(body), "\nfunc "); n < 1 {
+		t.Fatalf("ranking source has %d functions — the scan covered nothing", n)
+	}
+	if hits := autoRankSourceViolations(string(body)); len(hits) > 0 {
+		t.Errorf("todo_auto_rank.go carries forbidden tokens %v", hits)
+	}
+}
+
+// rankFakeDoer is a jev transport that answers a canned response and counts
+// its calls; no test contacts the real endpoint.
+type rankFakeDoer struct {
+	calls  int
+	status int
+	body   string
+}
+
+func (d *rankFakeDoer) Do(*http.Request) (*http.Response, error) {
+	d.calls++
+	return &http.Response{
+		StatusCode: d.status,
+		Header:     make(http.Header),
+		Body:       io.NopCloser(strings.NewReader(d.body)),
+	}, nil
+}
+
+// rankUseDoer installs a fake transport for the live ranker and restores it.
+func rankUseDoer(t *testing.T, d *rankFakeDoer) {
+	t.Helper()
+	orig := autoRankJevDoer
+	autoRankJevDoer = d
+	t.Cleanup(func() { autoRankJevDoer = orig })
+}
+
+// TestAutoLiveJevRanker — the production Jev seam (REQ-TAP-002, plan D-3/D-4,
+// M2): gated by workflow.jev.enabled, credential-gated by the client, one
+// bounded call through the capability's own client. A fake transport stands in
+// for the network.
+func TestAutoLiveJevRanker(t *testing.T) {
+	req := jev.Request{
+		State: "t1: a card",
+		Questions: []jev.Question{{
+			ID: "t1", Text: "How ready is card t1?", Kind: jev.KindScore,
+			Levels: []string{"a", "b", "c", "d", "e"},
+		}},
+	}
+
+	t.Run("gate off constructs no request", func(t *testing.T) {
+		t.Setenv("CLAUDE_PROJECT_DIR", jevProject(t, false))
+		d := &rankFakeDoer{status: 200, body: `{"answers":{}}`}
+		rankUseDoer(t, d)
+		res := liveAutoJevRanker(req)
+		if res.Availability != jev.Disabled || d.calls != 0 {
+			t.Errorf("availability=%q calls=%d, want disabled with no transport call", res.Availability, d.calls)
+		}
+	})
+
+	t.Run("gate on without a credential sends nothing", func(t *testing.T) {
+		t.Setenv("CLAUDE_PROJECT_DIR", jevProject(t, true))
+		d := &rankFakeDoer{status: 200, body: `{"answers":{}}`}
+		rankUseDoer(t, d)
+		res := liveAutoJevRanker(req)
+		if res.Availability != jev.NoCredential || d.calls != 0 {
+			t.Errorf("availability=%q calls=%d, want no-credential with no transport call", res.Availability, d.calls)
+		}
+	})
+
+	t.Run("gate on with a credential makes one call through the client", func(t *testing.T) {
+		t.Setenv("CLAUDE_PROJECT_DIR", jevProject(t, true))
+		if err := jevcred.Save("NOT-A-REAL-KEY-live-ranker-0123456789"); err != nil {
+			t.Fatal(err)
+		}
+		d := &rankFakeDoer{status: 200, body: `{"answers":{"t1":{"type":"score","score":3,"confidence":0.75}}}`}
+		rankUseDoer(t, d)
+		res := liveAutoJevRanker(req)
+		if !res.OK() || d.calls != 1 {
+			t.Fatalf("availability=%q calls=%d, want available after exactly one call", res.Availability, d.calls)
+		}
+		if len(res.Answers) != 1 || res.Answers[0].Score != 3 || res.Answers[0].Probability != 0.75 {
+			t.Errorf("answers = %+v, want one score-3 answer with confidence 0.75", res.Answers)
+		}
+	})
+
+	t.Run("a refusing endpoint lands on the typed unavailability", func(t *testing.T) {
+		t.Setenv("CLAUDE_PROJECT_DIR", jevProject(t, true))
+		if err := jevcred.Save("NOT-A-REAL-KEY-live-ranker-0123456789"); err != nil {
+			t.Fatal(err)
+		}
+		rankUseDoer(t, &rankFakeDoer{status: 429, body: ""})
+		if res := liveAutoJevRanker(req); res.Availability != jev.RateLimited {
+			t.Errorf("availability = %q, want rate-limited", res.Availability)
+		}
+	})
+}
+
+// TestAutoLiveLandedLookup — the production landed seam (plan D-5, M2): one
+// pass over the existing `moai todo pr` computation, answering the outcome kind
+// per card, with `unknown` when the pull-request query cannot answer.
+func TestAutoLiveLandedLookup(t *testing.T) {
+	stub := func(t *testing.T, ghErr error) {
+		t.Helper()
+		prev := todoRunCommand
+		t.Cleanup(func() { todoRunCommand = prev })
+		todoRunCommand = func(name string, args ...string) (string, error) {
+			switch {
+			case name == "gh":
+				if ghErr != nil {
+					return "", ghErr
+				}
+				return "[]", nil
+			case name == "git" && len(args) > 0 && args[0] == "log":
+				return "feat(t1): deliver the first card\n", nil
+			}
+			return prev(name, args...)
+		}
+	}
+	items := []kanban.BacklogItem{
+		rankTestItem("t1", "delivered card", "", false),
+		rankTestItem("t2", "open card", "", false),
+	}
+	rec := rankTestRecord(items)
+
+	t.Run("answers landed and no-link per card", func(t *testing.T) {
+		todoFixture(t)
+		stub(t, nil)
+		kinds, err := liveAutoLandedLookup(rec)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if kinds["t1"] != kanban.PRLinkLanded || kinds["t2"] != kanban.PRLinkNoLink {
+			t.Errorf("kinds = %v, want t1 landed and t2 no-link", kinds)
+		}
+	})
+
+	t.Run("an unavailable pull-request query reads as unknown, not no-link", func(t *testing.T) {
+		todoFixture(t)
+		stub(t, errors.New("gh: not authenticated"))
+		kinds, err := liveAutoLandedLookup(rec)
+		if err != nil {
+			t.Fatalf("fail-open lookup returned an error: %v", err)
+		}
+		if kinds["t1"] != kanban.PRLinkUnknown || kinds["t2"] != kanban.PRLinkUnknown {
+			t.Errorf("kinds = %v, want both unknown", kinds)
+		}
+	})
+}
+
+// TestAutoDefaultSeamsAreInert — plan D-5 (M2): a cycle whose options carry
+// neither new seam runs no Jev request and no landed lookup; the record says
+// so.
+func TestAutoDefaultSeamsAreInert(t *testing.T) {
+	root, store := todoFixture(t)
+	seedItems(t, store, "card one")
+	prev := todoRunCommand
+	t.Cleanup(func() { todoRunCommand = prev })
+	subprocesses := 0
+	todoRunCommand = func(name string, args ...string) (string, error) {
+		subprocesses++
+		return prev(name, args...)
+	}
+	lines := rankRunCycle(t, root, store, rankCycleOpts(root))
+	if subprocesses != 0 {
+		t.Errorf("nil seams ran %d subprocess calls, want none", subprocesses)
+	}
+	if got, want := rankSourceLine(t, lines), "selection: source=fallback reason=jev-disabled"; got != want {
+		t.Errorf("source line = %q, want %q", got, want)
+	}
+	if rankLineIndex(lines, "selection: note landed signal unmeasured") < 0 {
+		t.Errorf("record carries no note naming the unmeasured landed signal:\n%s", strings.Join(lines, "\n"))
 	}
 }

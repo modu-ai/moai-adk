@@ -275,6 +275,8 @@ mentions an id later in the sentence still falls through, and
 				return runAutoCycle(cmd.OutOrStdout(), newTodoStore(), resolveTodoQueueRoot(), autoOptions{
 					wait:     todoAutoWait,
 					liveness: newAutoLiveness(),
+					landed:   todoAutoLandedLookup,
+					jevRank:  todoAutoJevRanker,
 				})
 			}
 			if len(args) == 0 {
@@ -322,6 +324,15 @@ mentions an id later in the sentence still falls through, and
 var (
 	todoAutoFlag bool
 	todoAutoWait time.Duration
+)
+
+// The live seams of the `--auto` ranking stage (SPEC-TODO-AUTO-PRIORITY-001
+// plan D-5). runAutoCycle leaves a nil seam inert; this is where production
+// installs the live ones. They are variables so a test that reaches the real
+// command path replaces both and stays hermetic: the landed seam runs `gh`.
+var (
+	todoAutoLandedLookup autoLandedLookup = liveAutoLandedLookup
+	todoAutoJevRanker    autoJevRanker    = liveAutoJevRanker
 )
 
 // todoLaneReadOnlyVerbs is the REQ-SD-015 read-only allowlist: the only

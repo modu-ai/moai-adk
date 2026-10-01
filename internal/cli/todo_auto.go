@@ -196,6 +196,13 @@ type autoOptions struct {
 	sleep     func(time.Duration)      // poll-tick seam (tests drive evidence arrival here)
 	now       func() time.Time         // clock seam for the deadline
 	jev       func(root string) string // display-only consultation seam (tests stub it)
+
+	// The two inputs of the ranking stage. A nil value is INERT: a nil landed
+	// lookup leaves the landed signal unmeasured, a nil Jev ranker is Jev
+	// unavailable (`jev-disabled`) — neither runs a subprocess or sends a
+	// request. Production wiring (todo.go) sets both live seams.
+	landed  autoLandedLookup // landed-state lookup over the whole record
+	jevRank autoJevRanker    // one bounded Jev request over the candidates
 }
 
 // runAutoCycle executes the serial cycle against the store, writing the
@@ -236,6 +243,10 @@ func runAutoCycle(out io.Writer, store *kanban.BacklogStore, root string, opts a
 	for _, n := range notes {
 		_, _ = fmt.Fprintln(out, n)
 	}
+	// Ranking stage (SPEC-TODO-AUTO-PRIORITY-001): orders the queued suffix of
+	// the targets and prints the selection record; the dead-owner rescue
+	// targets stay first. It writes nothing to the queue.
+	targets = autoRankTargets(out, rec, targets, opts)
 	if len(targets) == 0 {
 		_, _ = fmt.Fprintln(out, "no eligible card: queue is empty or every card is untouched-by-authority (nothing to do)")
 		return nil
