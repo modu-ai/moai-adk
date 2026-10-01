@@ -204,7 +204,7 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 	// registry relocation ride this event instead. Early return — none of the
 	// Write/Edit machinery below applies to a tree move.
 	if input.ToolName == "EnterWorktree" || input.ToolName == "ExitWorktree" {
-		return handleWorktreeMove(input), nil
+		return handleWorktreeMove(input, h.cfg), nil
 	}
 
 	var systemMessage string
