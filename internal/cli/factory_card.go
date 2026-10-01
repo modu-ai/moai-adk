@@ -888,15 +888,24 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	if (cardBranch != "" && branch == cardBranch) || factorySameTree(windowTree, card.WorktreePath) || factorySameTree(integTree, card.WorktreePath) {
 		return fmt.Errorf("factory complete: refused — the integration branch %q is the card's own branch (worktree %s): a card's own branch never serves as its integration branch", branch, card.WorktreePath)
 	}
-	// (3) The integration worktree must be provisioned: the only tree holding
-	// the integration branch may not be the parent checkout (which never
-	// changes branch), and no tree at all is the same refusal.
+	// (3) The integration worktree must be provisioned: no tree holding the
+	// integration branch is a refusal. The ONE exception (t1294) is the
+	// primary-develop integration flow — an operator-confirmed shape
+	// (mo.ai.kr, 2026-09-13) whose cards merge --no-ff INSIDE the parent
+	// checkout's local develop, wedging every card at  behind the
+	// blanket refusal (t1277/t1290/t1291). The parent never CHANGES branch
+	// on its own; when the operator keeps the integration branch checked
+	// out there, the parent IS the integration tree. A parent holding the
+	// branch under any other name keeps the original refusal.
 	primary, _, err := identifyPrimaryCheckout(root)
 	if err != nil {
 		return fmt.Errorf("factory complete: cannot identify the parent checkout of %s: %w", root, err)
 	}
-	if integTree == "" || factorySameTree(integTree, primary) {
-		return fmt.Errorf("factory complete: refused — the integration worktree for %q is not provisioned: no tree holds it, or only the parent checkout %s does (the parent never changes branch; the leader provisions the integration worktree)", branch, primary)
+	if integTree == "" {
+		return fmt.Errorf("factory complete: refused — the integration worktree for %q is not provisioned: no tree holds it (the leader provisions the integration worktree)", branch)
+	}
+	if parentBranch := factoryBranchOfWorktree(primary); factorySameTree(integTree, primary) && parentBranch != branch {
+		return fmt.Errorf("factory complete: refused — the integration worktree for %q is not provisioned: only the parent checkout %s holds it, and %q is checked out there (the parent never changes branch; the leader provisions the integration worktree)", branch, primary, parentBranch)
 	}
 
 	// Hold the window as the lane: the same record acquire writes, resolved

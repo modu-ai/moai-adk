@@ -443,7 +443,7 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 		cliRefuse := func(t *testing.T) (string, error) {
 			t.Helper()
 			sdClearLaneEnv(t)
-			root, _, cards := sdMergeFixture(t, true, false, true, 1)
+			root, _, cards := sdMergeFixture(t, true, false, false, 1)
 			sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
 			sdLaneEnv(t, "lane-1", "")
 			t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
@@ -454,7 +454,7 @@ func TestSD_AC014_MCPMatchesCLIWithProjectRoot(t *testing.T) {
 		mcpRefuse := func(t *testing.T) (string, error) {
 			t.Helper()
 			sdClearLaneEnv(t)
-			root, _, cards := sdMergeFixture(t, true, false, true, 1)
+			root, _, cards := sdMergeFixture(t, true, false, false, 1)
 			sdPlaceMergeReady(t, root, "t1", "lane-1", cards[0])
 			sdLaneEnv(t, "lane-1", "")
 			t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
