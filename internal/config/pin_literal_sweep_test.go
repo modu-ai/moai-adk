@@ -76,14 +76,18 @@ func sweepPinLiterals(root string) (swept int, violations []string) {
 		if d.IsDir() {
 			// The template mirror — declared single-source location. Matched
 			// on the rel prefix so the walk root spelling does not matter.
+			// filepath.SkipDir, never SkipAll: SkipAll ENDS the whole walk,
+			// which would silently stop the sweep at the first excluded
+			// directory (alphabetically before web/, the walk never reached
+			// the rest of the tree).
 			if relSlash == "template/templates" || strings.HasPrefix(relSlash, "template/templates/") {
-				return filepath.SkipAll
+				return filepath.SkipDir
 			}
 			// The user-project config/state axis — an llm.yaml SSOT cell or a
 			// test-project fixture legitimately restates model ids; the sweep
 			// guards source surfaces, not .moai contents.
 			if d.Name() == ".moai" {
-				return filepath.SkipAll
+				return filepath.SkipDir
 			}
 			return nil
 		}
