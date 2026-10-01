@@ -210,7 +210,7 @@ func (r *Registry) RelocateSessionWithOptions(sessionID, newCwd string, opts Rel
 				refused = true
 				return entries, nil // the registry stays untouched
 			}
-			entries[i].CWD = newCwd
+			entries[i].CWD = canonicalCWD(newCwd)
 			return entries, nil
 		}
 		return entries, nil // no such entry: no-op, no audit row

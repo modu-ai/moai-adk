@@ -179,7 +179,16 @@ func (f *sgfFixture) setStub(s sgfStubSpec) {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	b.WriteString("case \"$1\" in\n")
+	// The gate invokes the toolchain as `go -C <module-root> vet ./...` since
+	// card t1385-r2 (vet nested Go modules from their module root), so the
+	// subcommand is the first NON-`-C`-argument token — matching on $1 alone
+	// read "-C" and silently fell through to the default exit, turning every
+	// failing-vet/build row into a vacuous allow (card t1396).
+	b.WriteString("sub=\nprev=\nfor a in \"$@\"; do\n")
+	b.WriteString("  if [ \"$prev\" = \"-C\" ]; then prev=; continue; fi\n")
+	b.WriteString("  if [ \"$a\" = \"-C\" ]; then prev=-C; continue; fi\n")
+	b.WriteString("  sub=\"$a\"\n  break\ndone\n")
+	b.WriteString("case \"$sub\" in\n")
 	for _, k := range keys {
 		fmt.Fprintf(&b, "  %s) exit %d ;;\n", k, s.exits[k])
 	}
@@ -686,16 +695,22 @@ func TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution(t *testing.T) {
 		vet, build      int
 		redeliver       bool // true: call 2 byte-identical to call 1's block
 		call1NoDecision bool
+		reblock         bool // true: call 2 carries a synthesized block, no re-run (t1388 flip contract)
 	}{
-		{"A1", rgClass, []string{full}, []string{full}, 0, 1, false, true},
-		{"A2", rgClass, []string{auto}, []string{auto}, 1, 0, false, true},
-		{"A3", rgClass, []string{off}, []string{off}, 1, 0, false, true},
-		{"A4", rbClass, []string{auto}, []string{auto}, 0, 1, true, false},
-		{"A5", rgClass, nil, []string{full}, 1, 0, false, false},
-		{"A6", rgClass, []string{full}, nil, 1, 0, false, false},
-		{"A7", rgClass, nil, []string{off}, 1, 0, false, false},
-		{"A8", rgClass, nil, []string{auto}, 1, 0, false, false},
-		{"A9", rbClass, []string{auto}, []string{auto}, 1, 1, true, false},
+		{"A1", rgClass, []string{full}, []string{full}, 0, 1, false, true, false},
+		{"A2", rgClass, []string{auto}, []string{auto}, 1, 0, false, true, false},
+		{"A3", rgClass, []string{off}, []string{off}, 1, 0, false, true, false},
+		{"A4", rbClass, []string{auto}, []string{auto}, 0, 1, true, false, false},
+		{"A5", rgClass, nil, []string{full}, 1, 0, false, false, false},
+		// A6 (updated, card t1396): advisory stored, call 2 flips to the
+		// default blocking mode. The landed t1388 contract (6ba893f24,
+		// codex review gate reproduction) re-delivers a synthesized BLOCK on
+		// the flip instead of exiting silently — the pre-t1388 "stay quiet"
+		// expectation this row encoded is what that fix retired.
+		{"A6", rgClass, []string{full}, nil, 1, 0, false, false, true},
+		{"A7", rgClass, nil, []string{off}, 1, 0, false, false, false},
+		{"A8", rgClass, nil, []string{auto}, 1, 0, false, false, false},
+		{"A9", rbClass, []string{auto}, []string{auto}, 1, 1, true, false, false},
 	}
 	for _, r := range rows {
 		t.Run(r.id, func(t *testing.T) {
@@ -715,6 +730,15 @@ func TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution(t *testing.T) {
 				}
 				if out2 != out1 {
 					t.Errorf("%s: call 2 stdout is not byte-identical to call 1's block (call1 %d bytes, call2 %d bytes); call2=%q", tag, len(out1), len(out2), out2)
+				}
+				return
+			}
+			if r.reblock {
+				if !sgfHasBlock(out2) {
+					t.Errorf("%s: call 2 stdout is not the stored-advisory blocking re-delivery; stdout=%q", tag, out2)
+				}
+				if n2 != n1 {
+					t.Errorf("%s: call 2 re-ran the checks (stub %d -> %d)", tag, n1, n2)
 				}
 				return
 			}
@@ -761,8 +785,13 @@ func TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState(t *testing.T) {
 		}
 		before3 := f.count()
 		out3, _ := f.run("{}")
-		if out3 != "" {
-			t.Errorf("%s: call 3 stdout = %q; want empty (call-1 block must not be re-delivered)", tag, out3)
+		// Updated (card t1396): call 2 stored an ADVISORY payload and call 3
+		// runs in the default blocking mode — the landed t1388 contract
+		// (6ba893f24) re-delivers a synthesized BLOCK on that flip (no checks
+		// re-run), which is why out3 is a block, not the pre-t1388 empty
+		// stdout this row originally expected.
+		if !sgfHasBlock(out3) {
+			t.Errorf("%s: call 3 stdout = %q; want the stored-advisory blocking re-delivery", tag, out3)
 		}
 		if n := f.count(); n != before3 {
 			t.Errorf("%s: call 3 ran the checks (stub %d -> %d)", tag, before3, n)
