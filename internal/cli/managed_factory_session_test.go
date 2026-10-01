@@ -127,7 +127,9 @@ func TestManagedQueueSerializesOperatorAndInbox(t *testing.T) {
 			}}, nil
 		}
 		errCh := make(chan error, 1)
-		go func() { errCh <- driveManagedFactorySession(sess, pr, idle, claim, func(c []factorymsg.Claim) string { return managedFactoryInboxPrompt("managed-driver-run", c) }) }()
+		go func() {
+			errCh <- driveManagedFactorySession(sess, pr, idle, claim, func(c []factorymsg.Claim) string { return managedFactoryInboxPrompt("managed-driver-run", c) })
+		}()
 
 		// The priming turn is the first delivery; release it so the driver
 		// reaches its idle select.
