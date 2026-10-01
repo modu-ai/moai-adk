@@ -79,7 +79,7 @@
 ## §E.3 Run-phase Audit-Ready Signal
 
 - run_complete_at: 2026-10-01
-- run_commit_sha: pending-backfill-run
+- run_commit_sha: 4072b84a7 (M5 tip — D3 backfill)
 - run_status: complete
 - ac_pass_count: 10
 - ac_fail_count: 0
@@ -99,7 +99,7 @@
 
 - sync_status: complete
 - sync_complete_at: 2026-10-01
-- sync_commit_sha: pending-backfill-sync
+- sync_commit_sha: adb44220d (D3 backfill)
 - sync_audit: PASS 0.97 (harmonic mean, Tier M 임계 0.85 — must-pass Functionality 1.00·Security 1.00) — report `.moai/reports/t1339/sync-audit-1.md` (cold-auditor fallback 경로, audit 1, audited_sha 4072b84a74d28ee504b446fc584ef47fe352cc76)
 - changelog_entry_position: CHANGELOG.md `[Unreleased]` § Added 선두 항목
 - b12_self_test_a: 사전 배출 grep `SPEC-SESSION-ANCHOR-ATTR-001` in CHANGELOG.md = 0건 (중복 항목 가드 통과)
