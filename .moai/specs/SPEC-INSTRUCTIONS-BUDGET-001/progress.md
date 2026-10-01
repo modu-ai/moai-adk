@@ -51,3 +51,28 @@ run_commit_sha: d21e4079e
 baseline_reproduction: yes (3/3 names reproduced pre-change; unchanged post-change)
 new_test_status: 4/4 green (scoped 0.582s + full package run)
 arrival_aggregate: 214,155 chars / 18 files (over 210,000 ruling by 4,155)
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: "2026-10-01"
+sync_commit_sha: "pending-backfill-sync"
+sync_status: "complete"
+sync_branch: "WT-instr-budget"
+sync_worktree: ".moai/worktrees/t1318-budget (card tree)"
+ac_source: ".moai/specs/SPEC-INSTRUCTIONS-BUDGET-001/acceptance.md (tier M)"
+ac_live_count: 4
+changelog_entry_position: "CHANGELOG.md [Unreleased] first Added entry"
+sync_changed: "CHANGELOG.md one Added entry + spec.md frontmatter status transition + this §E.4 section (progress.md is the only other touched SPEC artifact)"
+b12_self_test_a: "pre-emission grep count of SPEC-INSTRUCTIONS-BUDGET-001 in CHANGELOG.md = 0 (no duplicate entry)"
+b12_self_test_b: "AC counter on acceptance.md -> live=4 excluded=0 ambiguous=0; the entry references the same 4 (AC-INSTRBUDGET-1..4); 0 reserved tokens in the file"
+b12_self_test_c: "ls verification of every path cited in the entry -> all exist (run2-20261001.md present in the primary checkout's .moai/reports/t1318/; .moai/reports/* is gitignored by policy)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (merged close on this sync commit)"
+  plan_md_acceptance_md: "no status axis — stateless per spec-frontmatter-schema.md; body content untouched"
+  progress_md: "no frontmatter by design; this §E.4 section filled by the sync commit"
+frontmatter_updated_field: "spec.md updated: 2026-10-01 — already the sync-commit date, no refresh needed"
+docs_surface_judgment: "CHANGELOG-only — internal hook advisory metric; no README/docs-site surface documents the InstructionsLoaded budget, so no documented behavior changed (docs-site impact: none, expected)"
+codemap_freshness: "doc-only sync — git diff --name-only d21e4079e..HEAD shows only .moai/specs progress.md; no Go source change since the implementation commit, so the run-phase codemap state carries over unchanged"
+evidence_paths: ".moai/reports/t1318/{plan-20261001,plan-audit-20261001,kickoff-20261001,run-blocker1-20261001,run2-20261001}.md (primary checkout)"
+```
