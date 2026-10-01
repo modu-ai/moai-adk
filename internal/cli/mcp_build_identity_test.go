@@ -671,6 +671,12 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		"mcp_review_material.go:95":  true,
 		"todo_landed.go:231":         true,
 		"todo_autodone.go:349":       true,
+		// SPEC-CODEX-GATE-SCOPE-001 (card t1383): the card-diff BASE
+		// measurement — gitflow-lane-protocol §8 requires the gate to recompute
+		// `git merge-base develop HEAD` per evaluation. It selects which
+		// changes a review targets; it never judges binary-vs-source freshness,
+		// so binlag.Evaluate remains the one binary-lag comparison.
+		"codex_review_scope.go:132": true,
 	}
 	got := map[string]bool{}
 	entries, err := os.ReadDir(".")

@@ -51,52 +51,95 @@ var codexVersionProbe = func(ctx context.Context, binaryPath string) (string, er
 }
 
 // codexReviewReceiptState is the current value of the review receipt's bound
-// fields (design §D3.6): HEAD and the working-tree digest from key, a config
-// digest over what selects the review, the runner command, and the codex
-// version. A probe failure leaves tool_version empty, which CheckReceipt reads
-// as unbound — not run, never passed.
+// fields (design §D3.6) for a TREE-scope key: HEAD and the working-tree digest
+// from key, a config digest over what selects the review, the runner command,
+// and the codex version. A probe failure leaves tool_version empty, which
+// CheckReceipt reads as unbound — not run, never passed. The config digest is
+// byte-identical to its pre-SPEC form: the tree-scope binding shape does not
+// change (REQ-CGS-003).
 func codexReviewReceiptState(ctx context.Context, key, binaryPath string) verify.ReceiptState {
 	head, digest, _ := strings.Cut(key, ":")
+	return reviewReceiptStateFrom(ctx, head, digest, map[string]string{
+		"gate":   codexReviewCheckID,
+		"method": codexMethodReviewStart,
+		"target": codexTargetUncommitted,
+	}, binaryPath)
+}
+
+// reviewReceiptStateFrom is the shared builder over the five bound fields.
+func reviewReceiptStateFrom(ctx context.Context, head, digest string, cfg map[string]string, binaryPath string) verify.ReceiptState {
 	version, _ := codexVersionProbe(ctx, binaryPath)
 	return verify.ReceiptState{
-		Head:       head,
-		TreeDigest: digest,
-		ConfigDigest: verify.ConfigDigest(map[string]string{
-			"gate":   codexReviewCheckID,
-			"method": codexMethodReviewStart,
-			"target": codexTargetUncommitted,
-		}),
-		Command:     codexwiring.CodexReviewReceiptCommand,
-		ToolVersion: version,
+		Head:         head,
+		TreeDigest:   digest,
+		ConfigDigest: verify.ConfigDigest(cfg),
+		Command:      codexwiring.CodexReviewReceiptCommand,
+		ToolVersion:  version,
 	}
+}
+
+// codexReviewReceiptStateForScope builds the receipt state for a RESOLVED
+// scope: the card class binds to the card diff (cardReviewReceiptState), the
+// tree class keeps verify.Key over the scope's tree. Both execution paths —
+// the producer below and the Codex Stop chain's member 6 — call THIS so the
+// binding cannot drift between them (REQ-CGS-009).
+func codexReviewReceiptStateForScope(ctx context.Context, scope reviewScope, binaryPath string) (verify.ReceiptState, error) {
+	if scope.Class == reviewScopeCard {
+		return cardReviewReceiptState(ctx, scope, binaryPath)
+	}
+	key, err := verify.Key(ctx, scope.Dir)
+	if err != nil {
+		return verify.ReceiptState{}, err
+	}
+	return codexReviewReceiptState(ctx, key, binaryPath), nil
+}
+
+// cardReviewReceiptState is the card-scope receipt binding (REQ-CGS-007):
+// head = the card branch HEAD, TreeDigest = the card-scope digest over the
+// recomputed merge base + the card diff + the non-runtime untracked files
+// (cardScopeKeyParts), and the config digest carries the scope class and the
+// card target so a card receipt can never satisfy a tree-scope state, nor a
+// state measured before an absorption moved the base (AC-CGS-009/012).
+func cardReviewReceiptState(ctx context.Context, scope reviewScope, binaryPath string) (verify.ReceiptState, error) {
+	head, digest, err := cardScopeKeyParts(ctx, scope)
+	if err != nil {
+		return verify.ReceiptState{}, fmt.Errorf("codex review receipt: %w", err)
+	}
+	return reviewReceiptStateFrom(ctx, head, digest, map[string]string{
+		"gate":   codexReviewCheckID,
+		"method": codexMethodReviewStart,
+		"target": codexTargetBaseBranch,
+		"scope":  reviewScopeCard,
+	}, binaryPath), nil
 }
 
 // @MX:ANCHOR: [AUTO] codex review receipt producer (R1) — the only writer of the receipt the Codex Stop chain's member 6 compares
 // @MX:REASON: the Stop chain's member 6, `moai verify codex-review`, and the AC-HPR-002 goldens call it; a verdict mapping that differs from HandleCodexReviewGate breaks the parity the goldens assert
 
-// produceCodexReviewReceipt runs the codex review for the current tree and
-// records the verdict. The key is measured before the review, so a tree that
-// changes while the review runs leaves a receipt the Stop chain reads as
-// stale. It returns errCodexReviewerMissing, and records nothing, when the
-// codex binary is absent — the Stop chain then allows on its own, as Claude
-// does (codex_review_gate.go step 4).
+// produceCodexReviewReceipt runs the codex review for the session tree's
+// RESOLVED scope (the same reviewScopeResolver the turn-end path uses,
+// REQ-CGS-009) and records the verdict. The key is measured before the review,
+// so a tree (or card diff) that changes while the review runs leaves a receipt
+// the Stop chain reads as stale. It returns errCodexReviewerMissing, and
+// records nothing, when the codex binary is absent — the Stop chain then
+// allows on its own, as Claude does (codex_review_gate.go step 5).
 func produceCodexReviewReceipt(ctx context.Context, root string) (verify.Receipt, error) {
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
 		return verify.Receipt{}, errCodexReviewerMissing
 	}
-	key, err := verify.Key(ctx, root)
+	// One discriminator for both paths (plan §C [HARD]): root IS the session
+	// tree here — the command runs inside the session's working tree, so the
+	// scope resolves from it exactly as the Stop chain resolves from c.root.
+	scope := reviewScopeResolver(root)
+	state, err := codexReviewReceiptStateForScope(ctx, scope, binaryPath)
 	if err != nil {
 		return verify.Receipt{}, fmt.Errorf("codex review receipt: %w", err)
 	}
-	state := codexReviewReceiptState(ctx, key, binaryPath)
 
 	rctx, cancel := context.WithTimeout(ctx, config.DefaultCodexReviewGateTimeout)
 	defer cancel()
-	out, rpcErr := runCodexReviewRPC(rctx, binaryPath, codexMethodReviewStart, map[string]any{
-		"target": codexTargetUncommitted,
-		"cwd":    root,
-	})
+	out, rpcErr := runCodexReviewRPC(rctx, binaryPath, codexMethodReviewStart, reviewRequestParams(scope))
 	verdict, exit := codexReviewVerdictPass, 0
 	switch {
 	case rpcErr != nil:

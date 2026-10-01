@@ -60,11 +60,13 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 	// The persisted vocabulary is `leader` for the run's leader and
 	// `lane`/`lane-<n>` for a lane (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-010).
 	// A lane label in the legacy vocabulary never registers — the stale-run
-	// notice is the hook's whole answer for that session (REQ-RNC-022).
+	// gate measures the named run and answers from the measurement
+	// (SPEC-STALE-RUN-LABEL-001 REQ-SRL-001..003), never from the label
+	// alone.
 	label := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
 	if label != "" {
 		if kanban.IsLegacyFactoryRoleValue(label) {
-			return legacyFactoryHookNotice(label, runID, langEnglish)
+			return staleRunPrescriptionGate(ctx, root, input.SessionID, label, runID, langEnglish)
 		}
 	} else if os.Getenv(config.EnvMoaiFactoryWorkers) == "" {
 		return ""

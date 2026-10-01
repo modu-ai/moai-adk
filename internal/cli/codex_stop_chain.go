@@ -611,33 +611,44 @@ func (c *codexStopChain) syncGateMember(ctx context.Context) stopMemberOutcome {
 // ── member 6: codex review gate (receipt, behind its self-gates) ─────────
 
 func (c *codexStopChain) codexReviewMember(ctx context.Context) stopMemberOutcome {
-	// Steps 1–3 in Claude's order (codex_review_gate.go:56–76).
+	// Steps 1–4 in Claude's order (codex_review_gate.go), with the scope
+	// resolved by the ONE shared discriminator (SPEC-CODEX-GATE-SCOPE-001,
+	// REQ-CGS-009): c.root IS the Codex session's working tree, so the scope
+	// resolves from it exactly as the producer's does for the same state.
 	if !readCodexReviewGateEnabled(c.root) {
 		return stopMemberOutcome{Decision: codexadapter.DecisionAllow, Status: stopStatusNotApplicable}
 	}
 	if c.input.StopHookActive {
 		return stopMemberOutcome{Decision: codexadapter.DecisionAllow, Status: stopStatusNotApplicable, Reason: "stop_hook_active"}
 	}
-	if !reviewGateChangeDetector(c.root) {
+	scope := reviewScopeResolver(c.root)
+	reviewGateScopeLogger(scope, reviewGateEnvContext())
+	if !reviewGateScopedChangeDetector(scope) {
 		return stopMemberOutcome{Decision: codexadapter.DecisionAllow, Status: stopStatusNotApplicable, Reason: "no reviewable change"}
 	}
-	// Step 4: no reviewer → allow, as on Claude, and never silently.
+	// Step 5: no reviewer → allow, as on Claude, and never silently.
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
 		note := "codex review gate: the codex binary is not installed, so the stop was allowed without a codex review (fail-open, as on Claude)"
 		return stopMemberOutcome{Decision: codexadapter.DecisionAllow, Status: stopStatusFailOpen, Reason: note, Advisory: note,
 			Discards: []codexadapter.Discard{{Event: hook.EventStop, Key: "codex-stop-chain/codex-review/reviewer-missing", Reason: note}}}
 	}
-	key, err := c.currentKey(ctx)
+	// The receipt binding follows the scope (REQ-CGS-007): card scope binds to
+	// the card diff state, tree scope to verify.Key. Unlike the cached
+	// currentKey (kept for the sync-gate member), the card binding is computed
+	// per evaluation — its merge base input must never be pinned (REQ-CGS-002).
+	state, err := codexReviewReceiptStateForScope(ctx, scope, binaryPath)
 	if err != nil {
 		return stopMemberOutcome{Decision: codexadapter.DecisionDeny, Class: reasonUnmeasured,
 			Reason: fmt.Sprintf("codex review gate: the tree state could not be read (%v). Run `%s`, then end the turn again.", err, codexwiring.CodexReviewReceiptCommand)}
 	}
-	state := codexReviewReceiptState(ctx, key, binaryPath)
 	chk := verify.CheckReceipt(verify.LoadReceipt(c.root, state), state, time.Now(), 0)
 	if !chk.Run {
-		// Step 7: codex installed, receipt missing or stale → continue.
-		o := c.unmeasured(ctx, 6, stopCapGateReview, key, codexwiring.CodexReviewReceiptCommand, chk.Reason)
+		// Step 7: codex installed, receipt missing or stale → continue. The cap
+		// counter keys on the scope's binding ("<head>:<digest>") — for card
+		// scope that is the card diff state, so the loop bound tracks the same
+		// state the receipt would have to match.
+		o := c.unmeasured(ctx, 6, stopCapGateReview, state.Head+":"+state.TreeDigest, codexwiring.CodexReviewReceiptCommand, chk.Reason)
 		o.ReceiptRead = true
 		return o
 	}
