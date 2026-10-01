@@ -36,6 +36,13 @@ import (
 //     different axis from the audit pins;
 //   - cli/glm.go — GLM main-session help text (a display string naming the
 //     context-window models), not an audit pin.
+//
+// Any `.moai/` directory under the walk root is skipped entirely: it is the
+// user-project config/state axis (an llm.yaml SSOT cell or a test-project
+// fixture is a legitimate non-source restatement of model ids), not source
+// code. Observed live when a stale fixture under cli/.moai/ — untracked,
+// never tracked in any commit — tripped the sweep inside a worktree whose
+// working directory carried the residue, while every clean tree stayed green.
 
 // pinSweepLiterals are the audit-pin model ids this sweep guards.
 var pinSweepLiterals = []string{"gpt-6.1-sol", "claude-opus-5-5", "glm-5.3"}
@@ -70,6 +77,12 @@ func sweepPinLiterals(root string) (swept int, violations []string) {
 			// The template mirror — declared single-source location. Matched
 			// on the rel prefix so the walk root spelling does not matter.
 			if relSlash == "template/templates" || strings.HasPrefix(relSlash, "template/templates/") {
+				return filepath.SkipAll
+			}
+			// The user-project config/state axis — an llm.yaml SSOT cell or a
+			// test-project fixture legitimately restates model ids; the sweep
+			// guards source surfaces, not .moai contents.
+			if d.Name() == ".moai" {
 				return filepath.SkipAll
 			}
 			return nil
