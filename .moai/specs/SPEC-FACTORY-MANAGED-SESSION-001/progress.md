@@ -290,7 +290,7 @@ go.mod/go.sum: base 대비 변경은 M2의 승인된 `github.com/gorilla/websock
 
 ```yaml
 sync_complete_at: 2026-10-02
-sync_commit_sha: pending-backfill  # canonical placeholder: a commit cannot cite its own SHA; backfilled with the real SHA in a following commit (phase-owned field, manager-docs §E.4)
+sync_commit_sha: 578e0d8896a6238d9d110aa55cf702f85d11446e  # D3-exempt backfill: the placeholder in the sync commit replaced with the real SHA in a following commit (phase-owned field, manager-docs §E.4)
 sync_status: complete
 b12_self_test_a: pass  # pre-emission `grep -c 'SPEC-FACTORY-MANAGED-SESSION-001' CHANGELOG.md` = 0 before this sync commit (duplicate-entry guard)
 b12_self_test_b: pass  # AC count: MOAI-AC-COUNTER against acceptance.md (tier L source) → live=17 excluded=0 ambiguous=0; the CHANGELOG entry cites the same 17 (AC-MS-001..017); milestones 6 (M1..M6, per the run commit list); managed-test coverage 88.0% (344/391) quoted from §E.3, not re-measured here
