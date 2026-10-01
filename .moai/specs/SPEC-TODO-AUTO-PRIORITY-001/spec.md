@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-AUTO-PRIORITY-001
 title: "Priority-aware card selection for todo --auto — a Jev-ordered or recorded-priority-fallback ranking of queued candidates, a printed selection decision record, and an --auto-scoped doctrine exception"
-version: "0.1.1"
+version: "0.1.2"
 status: in-progress
 created: 2026-10-02
 updated: 2026-10-02
@@ -20,6 +20,15 @@ related_specs: [SPEC-MANAGER-TODO-001, SPEC-RELATION-PICKUP-FILTER-001, SPEC-TOD
 
 ## HISTORY
 
+- 0.1.2 — 2026-10-02 — run-phase reconciliation (card t1400), so the SPEC body
+  matches what the run phase did. No requirement or acceptance criterion was
+  added or removed (14 / 15) and no requirement changed meaning. REQ-TAP-006
+  states that the `selection: excluded` line is the labelled non-finding; REQ-TAP-007
+  points at the new §G R-8 (every-candidate-blocked case reports reason
+  `jev-disabled`); §B.6 records two behaviours the run added without a requirement
+  (the rank accessor's `-1` and the wider Jev answer-set validation); acceptance.md
+  Definition of Done item 3 and AC-TAP-012 and plan.md §E "Files changed" are
+  reconciled with the D-N1 hermetic test change and the four unplanned files.
 - 0.1.1 — 2026-10-02 — plan-audit iteration 1 revision (card t1400). Operator
   decisions 5-6 (§B.1) recorded as settled: the doctrine amendment is limited to
   `kanban-dispatch.md`, `workflows/gtd.md` and `manager-todo.md`, with the Jev-side
@@ -162,6 +171,23 @@ amended anywhere outside the `--auto` cycle. REQ-TAP-012 and REQ-TAP-014 carry
 the constraint as requirements; the wording check is literal and
 paragraph-scoped (acceptance.md AC-TAP-011, AC-TAP-015).
 
+### B.6 Run-phase additions that no requirement names
+
+The run phase added two behaviours without a requirement of their own. Neither
+changes the meaning of a requirement; both are recorded here so the SPEC matches
+the code (evidence: `progress.md` §E.2, M1 and M2 deviation lists).
+
+- **Rank accessor out-of-set value.** `kanban.PriorityRank` returns `-1` for a
+  priority value outside the closed set `high|normal|low`; the plan names the
+  accessor only. No record that passed classification validation can reach that
+  branch.
+- **Wider Jev answer-set validation.** REQ-TAP-011 names three defects (a card
+  that was not sent, a sent card left unanswered, a score outside the finite range
+  0 to 4). The stage also rejects an answer that is not a score kind, a card
+  answered twice, and a non-finite confidence. All of them are "answers defective"
+  under REQ-TAP-003 and degrade the whole Jev result to `jev-incomplete-answer`;
+  the kind check also closes the in-range-zero decode that §G R-7 describes.
+
 ## §C Requirements
 
 Verification layer: `acceptance.md`. The requirement layer below is GEARS.
@@ -204,7 +230,10 @@ Verification layer: `acceptance.md`. The requirement layer below is GEARS.
 - **REQ-TAP-006** (Ubiquitous) — The cycle shall exclude from its targets every
   queued card whose effective classification is `blocked`, on both ranking
   sources, and shall print one labelled non-finding per excluded card; exclusion
-  shall leave the card's state unchanged.
+  shall leave the card's state unchanged. The observable contract of that
+  labelled non-finding is the one `selection: excluded <id> (blocked)` line per
+  excluded card that REQ-TAP-008 and AC-TAP-007 pin: this line IS the labelled
+  non-finding, and no separate `non-finding:` line is emitted.
 
 - **REQ-TAP-007** (Ubiquitous) — While the source is `fallback`, the cycle shall
   print exactly one reason on the source line, drawn from the closed vocabulary
@@ -215,7 +244,9 @@ Verification layer: `acceptance.md`. The requirement layer below is GEARS.
   request that carried no question — reachable only through the test seam,
   because the stage never sends an empty question list), while an answer set that
   fails REQ-TAP-011 is `jev-incomplete-answer`; a response that cannot be read is
-  `jev-unreachable`.
+  `jev-unreachable`. (Known limitation of this closed vocabulary: when every
+  queued candidate is blocked, the reason is `jev-disabled` although Jev was not
+  consulted — §G R-8.)
 
 - **REQ-TAP-008** (Ubiquitous) — Before the first `accept` line the cycle shall
   print a selection decision record: a `selection: source=…` line, a
@@ -355,3 +386,11 @@ AC-TAP-014 · REQ-TAP-014 → AC-TAP-015 (bodies and `**Covers**` clauses in
   observed against the live capability (plan.md §B A-6). An answer that omits its
   score decodes to 0, which is in range, so the unanswered-card check is by
   presence per card id, not by score value.
+- **R-8 — No "not consulted" reason (known limitation, observed at M2).** When
+  every queued candidate is blocked, the stage sends no Jev request (it never
+  sends an empty question list), and the source line reads `source=fallback` with
+  reason `jev-disabled` plus a `selection: note` reading "no eligible candidate
+  remained, so jev was not consulted". The closed reason vocabulary of REQ-TAP-007
+  has no "not consulted" value, so `jev-disabled` is the conservative pick and the
+  note carries the truth; a reader of the reason alone is misled in that one case.
+  This SPEC adds no vocabulary value and changes no requirement for it.

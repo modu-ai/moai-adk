@@ -240,13 +240,22 @@ E1·E1c·E9·E10·E11 은 이 개정판 작성 중 같은 트리에서 새로 �
 **Covers**: maps REQ-TAP-001, REQ-TAP-009, REQ-TAP-010 (기존 필터·hold·`jev:` 표시 줄 불변 · rescue 우선 · 큐 불변)
 
 - **분류**: regression-guard (RED-now 없음 — 도착 시점부터 GREEN).
-- **Given** M1~M4 가 반영된 트리에서 두 기존 테스트 파일(`todo_auto_test.go`,
-  `todo_relation_filter_test.go`)은 수정되지 않았고(새 시임은 nil 기본값이 비활성이므로 — plan.md D-5 —
-  기존 `autoOptions` 구성이 그대로 돈다), **When**
-  `<SCRUB> go test -count=1 -v -run '^(TestTodoAutoPickupSelection|TestAutoPickTargetsRelationBlocked|TestAutoPickTargetsReturnsAfterDone|TestRunAutoCycleSkipsBlockedCards|TestAutoPickTargetsRescueArmUnfiltered|TestAutoPickTargetsNonSequencingRelation|TestTodoAutoSerialCycle|TestTodoAutoJevPoisonedValueCausesNoMutation|TestTodoAutoJevDegradedNonFinding|TestTodoAutoJevScriptPresentSignal)$' ./internal/cli/`
-  를 돌리면, **Then** 이름 10개가 모두 `--- PASS` 이고 `--- FAIL` 이 없으며 종료 0 이다.
+- **Given** M1~M4 가 반영된 트리에서 §Findings (f) 의 특성화 테스트 10개는 수정되지 않았고
+  (`todo_relation_filter_test.go` 는 파일 전체가 손대지 않았으며, `todo_auto_test.go` 에는 감사 지적 D-N1
+  이 요구한 의도적 변경이 정확히 하나 있다 — Definition of Done 3번), 새 시임은 nil 기본값이 비활성이므로
+  — plan.md D-5 — 기존 `autoOptions` 구성이 그대로 돈다. **When**
+  `<SCRUB> go test -count=1 -v -run '^(TestTodoAutoPickupSelection|TestAutoPickTargetsRelationBlocked|TestAutoPickTargetsReturnsAfterDone|TestRunAutoCycleSkipsBlockedCards|TestAutoPickTargetsRescueArmUnfiltered|TestAutoPickTargetsNonSequencingRelation|TestTodoAutoSerialCycle|TestTodoAutoJevPoisonedValueCausesNoMutation|TestTodoAutoJevDegradedNonFinding|TestTodoAutoJevScriptPresentSignal|TestTodoAutoEntryPointFlag|TestJevCallPath_HasExactlyTheDeclaredConsumers)$' ./internal/cli/`
+  를 돌리면, **Then** 이름 12개(특성화 10개 + 아래 가드 2개)가 모두 `--- PASS` 이고 `--- FAIL` 이
+  없으며 종료 0 이다.
+- **가드 집합에 더해진 두 이름 (run 단계 발견, AC 를 추가하지 않는다)**: `TestTodoAutoEntryPointFlag`
+  (D-N1 에 따라 hermetic 하게 바뀐 진입점 테스트 — 생산 배선이 landed·Jev 두 시임에 실제로 닿는지와
+  `selection: source=fallback reason=jev-disabled` 기록을 단언한다)와
+  `TestJevCallPath_HasExactlyTheDeclaredConsumers`(`internal/jev` 를 import 하는 소비자 집합 가드 —
+  M1 트리에서 새 소비자 `todo_auto_rank.go` 가 선언되지 않아 M2 시작 시점에 적색이었고, 소비자를
+  선언해 초록이 됐다).
 - **RED-now**: 해당 없음 — 회귀 가드. 도착 시점부터 GREEN 이어야 하며 E7 이 그 기준선이다
-  (같은 명령을 `7d8a9bdbc` 에서 실행해 10개 PASS·종료 0 을 관측했다; E7 은 정보용 행이다).
+  (같은 명령의 10개 이름 판을 `7d8a9bdbc` 에서 실행해 10개 PASS·종료 0 을 관측했다; E7 은 정보용 행이며
+  덧붙인 두 이름은 포함하지 않는다).
 - **green 이유 확인(변이)**: run M1 에서 관계 필터를 임시로 제거하면
   `TestAutoPickTargetsRelationBlocked` 가 적색이 되고 복원하면 초록이 됨을 한 번 관측해 가드가
   실제로 무는지 확인한다(plan 시점에는 실행하지 않았다 — plan.md G-5).
@@ -337,8 +346,11 @@ RED-now 는 E2 (이름 0개). 그 뒤 위 15개 이름을 앵커 alternation `^(
 
 1. AC-TAP-001~015 가 위 green 명령의 실제 출력으로 PASS 이고, Sweep 대조의 15개 이름이 모두 실행됐다.
 2. 각 행동 AC 의 테스트가 GREEN 앞에 RED(실패 출력 원문)를 남겼다(E8).
-3. AC-TAP-012 의 회귀 가드가 변이 시험으로 실제로 무는 것을 한 번 관측했고, 기존 두 테스트 파일이
-   수정되지 않았다(run 의 merge-base 대비 `git diff --stat` 에 둘 다 나타나지 않는다).
+3. AC-TAP-012 의 회귀 가드가 변이 시험으로 실제로 무는 것을 한 번 관측했다. §Findings (f) 의 특성화
+   테스트 10개는 수정되지 않았다. `todo_auto_test.go` 에는 감사 지적 D-N1 이 요구한 의도적 변경이
+   정확히 하나 있다 — `TestTodoAutoEntryPointFlag` 안의 hermetic 시임 교체와 호출 횟수 단언, 그리고
+   `internal/jev` import 한 줄. `todo_relation_filter_test.go` 는 손대지 않았다(run 의 merge-base 대비
+   `git diff --stat` 에 나타나지 않는다).
 4. 두 정본 문서와 template 사본, `manager-todo.md` 사본이 일치하고 template 사본이 중립이며, 여섯 파일
    모두 두 고정 문구를 같은 문단에 담는다.
 5. 완료 보고에 이 SPEC 이 Jev 측 표면의 연동 개정과 Jev 순서 정확도를 주장하지 않는다는 문장이 있고,
