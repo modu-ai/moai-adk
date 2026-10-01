@@ -224,6 +224,14 @@ fixture(sh)는 M1 테스트가 이미 다룬다. (3) 안내 문서 위치: `.moa
 운영자 안내 선례가 있는 디렉터리이며 이 문서는 템플릿 미러(`internal/template/templates/.moai/docs/`)
 밖의 로컬 문서다(미러에는 6종만 존재). `.claude/rules`·`.claude/skills`는 건드리지 않았다.
 
+M5 후속 (2026-10-02, 기준 HEAD `87d4990bb`, 클린 트리에서 시작):
+- AC-MS-015 re-exec leg: `TestManagedSessionLoopbackRoundTrip`가 `in-process` / `re-exec` 두 세션 종류 × (real path, claim 건너뛰기 변이, 본문 주입 변이)로 확장됨. re-exec leg는 테스트 바이너리를 `TestManagedLoopbackChild`로 재실행(sh 래퍼 → `os.Args[0] -test.run=…`)해 실제 `managedStreamSession` 소유 하에 stream-json 자식으로 띄운다. 자식이 stdin의 메타데이터 프롬프트를 읽고 같은 디스크 브로커 저장소를 `factorymsg.Open`으로 열어 본문 조회·disposition·영수증을 직접 수행하며(`store.go` 변경 없음), 부모가 acknowledged 1 / pending 0 과 프롬프트의 본문 부재를 단언한다. 출력: `--- PASS: …/re-exec (2.33s)` 하위 3건 + in-process 3건, `ok … 4.950s`; `-race -count=3` → `ok … 24.757s`.
+- RED verbatim (자식 지정을 없는 테스트명으로 바꾼 임시 변이, 확인 후 원복): `--- FAIL: …/re-exec/real_path`: `round trip violated: [session error: managed session output closed no inbox prompt was injected body lookup returned "" acknowledged=0 pending=1, want 1/0]`.
+- 커버리지: `go test -count=1 -run '^TestManaged|^TestClaimManagedFactoryInbox|^TestMoAIMCP' -coverprofile=… ./internal/cli` → `managed_factory_session.go` 90.9% (149/164), `managed_codex_factory.go` 85.9% (195/227), 합 88.0% (344/391). 추가 파일 `managed_failure_paths_test.go`: 스트림 플래그 탈취 거부(생성 시점), Start 전 DeliverTurn 거부, pump의 쓰기 실패·stdout 실패·error result·oversize 라인, 프라이밍 실패, stdin EOF 후 폴링 지속, 런 없는 launch 거부(Claude/GLM), 소유자의 `--print` 거부, Codex readiness 루프백 가드·취소 컨텍스트.
+- 불변식 재측정: store.go diff 0, vocabulary grep 0, `syscall.` 0, `win_exit=0`, go.mod/go.sum 변경 0, AC-MS-011(`TestFactoryMsgSendRejectsClaudeOnlyRun`)과 `--` 통과 테스트 PASS. lint `0 issues.`, vet exit 0.
+- 기존 gofmt 지적: `internal/cli/managed_factory_session_test.go` (M1 커밋 `242ab5a2b`, 한 줄 goroutine 람다) — 이 후속에서도 미수정.
+- 위 M5 본문의 "가짜 세션은 인프로세스" 발견 (2)와 gap 서술은 이 후속으로 대체됨: re-exec leg가 추가됐고 커버리지 gap은 닫혔다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
