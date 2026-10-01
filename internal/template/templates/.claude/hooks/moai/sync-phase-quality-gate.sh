@@ -691,17 +691,24 @@ SKIPPED_TOOLS=""
 # vet=0 build=0 and allowed (codex review gate reproduction, card t1389). The
 # caller runs the checks once per root and lets run_step's worst-exit slot
 # merge aggregate them. Empty stdout = no owning go.mod anywhere: the repo
-# root stays the anchor, where a failure is then a real one. Deleted files are
-# skipped (nothing left to vet there); paths containing whitespace are
-# unsupported (git names them with octal escapes here, and no supported layout
-# needs one).
+# root stays the anchor, where a failure is then a real one. A deleted file
+# still resolves its owning module — the walk ascends from the deleted path
+# itself, because the deletion can break sibling files that still reference
+# the removed symbols (observed RED, card t1392). Paths containing whitespace
+# are unsupported (git names them with octal escapes here, and no supported
+# layout needs one).
 find_go_module_roots() {
     local files f d out
     files=$(printf '%s\n' "$SYNC_DELTA_FILES" | grep -E '\.go$' || true)
     out=""
     while IFS= read -r f; do
         [ -n "$f" ] || continue
-        [ -f "$PROJECT_ROOT/$f" ] || continue
+        # No file-existence skip: a DELETED Go file must still resolve its
+        # owning module (the deletion itself can break siblings that still
+        # reference the removed symbols — card t1392). The walk below only
+        # tests directories for go.mod, so a missing file is handled
+        # identically: dirname ascends from the deleted path to the nearest
+        # surviving go.mod.
         d="$PROJECT_ROOT/$f"
         while :; do
             d=$(dirname "$d")
