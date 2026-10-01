@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 1dbc43a5703d89041df6917fa9bebf1bb4dd5bad1547a760ee2d30fc5ad12ca3
+              hash: 8babafa4b8e62dc003c1b0822030d240c3f3a260ac80b1446b7d8fe776263b2a
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
