@@ -26,7 +26,15 @@ var sectionLoaders = map[string]sectionLoaderFunc{
 	"llm":            (*Loader).loadLLMSection,
 	"ralph":          (*Loader).loadRalphSection,
 	"state":          (*Loader).loadStateSection,
-	"workflow":       (*Loader).loadWorkflowSection,
+	"workflow": func(l *Loader, dir string, cfg *Config) {
+		// The slice path fails OPEN (cache-miss latency contract — a hook
+		// must never hard-fail on config): a tier-token rejection logs and
+		// continues on the defaults loadWorkflowSection left in place. The
+		// full Load() path rejects instead (REQ-TIER-009).
+		if err := l.loadWorkflowSection(dir, cfg); err != nil {
+			slog.Warn("workflow config rejected, using defaults", "error", err)
+		}
+	},
 	"statusline":     (*Loader).loadStatuslineSection,
 	"feedback":       (*Loader).loadFeedbackSection,
 	"handoff":        (*Loader).loadHandoffSection,

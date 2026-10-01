@@ -67,8 +67,12 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 	// Load state section
 	l.loadStateSection(sectionsDir, cfg)
 
-	// Load workflow section (SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001)
-	l.loadWorkflowSection(sectionsDir, cfg)
+	// Load workflow section (SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001). A tier
+	// validation failure fails the load (REQ-TIER-009) — the only workflow
+	// surface that rejects rather than falls back.
+	if err := l.loadWorkflowSection(sectionsDir, cfg); err != nil {
+		return nil, err
+	}
 
 	// Load statusline section
 	l.loadStatuslineSection(sectionsDir, cfg)
@@ -223,17 +227,27 @@ func (l *Loader) loadStateSection(dir string, cfg *Config) {
 // The wrapper is seeded with the populated defaults (cfg.Workflow) so that yaml
 // keys omitted by the user retain their construction-time defaults rather than
 // silently collapsing to zero-values (Edge-WSE-003).
-func (l *Loader) loadWorkflowSection(dir string, cfg *Config) {
+//
+// The read/parse failure path keeps the section-level warn-and-default
+// behavior; a tier-token validation failure (workflow.agent_tiers, REQ-TIER-009)
+// is a REJECTION: it returns an error naming the offending token and this file,
+// and the caller fails the load. Only the tier surface rejects — every other
+// workflow key keeps the fallback semantics above.
+func (l *Loader) loadWorkflowSection(dir string, cfg *Config) error {
 	wrapper := &workflowFileWrapper{Workflow: cfg.Workflow}
 	loaded, err := loadYAMLFile(dir, "workflow.yaml", wrapper)
 	if err != nil {
 		slog.Warn("failed to load workflow config, using defaults", "error", err)
-		return
+		return nil
 	}
 	if loaded {
+		if err := wrapper.Workflow.AgentTiers.Validate(); err != nil {
+			return fmt.Errorf("workflow.yaml: %w", err)
+		}
 		cfg.Workflow = wrapper.Workflow
 		l.loadedSections["workflow"] = true
 	}
+	return nil
 }
 
 // loadStatuslineSection loads the statusline configuration section from statusline.yaml.

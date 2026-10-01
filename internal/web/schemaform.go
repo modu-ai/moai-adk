@@ -196,6 +196,15 @@ func isAuditFieldName(name string) bool {
 	return strings.HasPrefix(name, "workflow.audit.")
 }
 
+// isAgentTierFieldName judges whether a workflow section field belongs to the
+// agent-tier sub-section of the workflow panel (the tier axis): the per-class
+// tier radios. They render in the dedicated tier sub-section (fieldsetAgentTiers)
+// with the chart grounding, not in the generic loop — the chart table and the
+// controls travel together.
+func isAgentTierFieldName(name string) bool {
+	return strings.HasPrefix(name, "workflow.agent_tiers.classes.")
+}
+
 // isCodexToggleFieldName은 workflow 섹션 필드 중 MCP 콘솔의 codex 인증 서피스로
 // 배치되는 것을 판정한다 (SPEC-MCP-CONSOLE-001 M3). 이 필드들은 workflow 탭이
 // 아닌 MCP 탭의 codexAuthBlock 에서 렌더되므로 workflow 파티션에서 제외한다 —
@@ -205,13 +214,15 @@ func isCodexToggleFieldName(name string) bool {
 		name == "workflow.codex.task.allow_write"
 }
 
-// partitionWorkflowFields는 workflow 섹션 필드를 4개 탭으로 가른다: 워크플로우
-// 잔여 / Git·워크트리 / 감사 / Jev. codex 토글 필드는 MCP 탭에서 렌더되므로 어느
+// partitionWorkflowFields는 workflow 섹션 필드를 5개 탭 버킷으로 가른다: 워크플로우
+// 잔여 / Git·워크트리 / 감사 / Jev / 에이전트 티어. codex 토글 필드는 MCP 탭에서 렌더되므로 어느
 // workflow 탭에도 배치하지 않는다. 섹션 필드 순서를 보존한다.
 //
 // SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-001: jev 는 render placement 분기일 뿐
 // 섹션 재분류가 아니다 — 영속화 경로는 audit 탭과 동일하게 SectionWorkflow seam 이다.
-func partitionWorkflowFields() (rest, worktree, audit, jev []settings.FieldDef) {
+// The tier bucket is the same shape: render placement inside the workflow
+// panel's dedicated tier sub-section, persistence through the SectionWorkflow seam.
+func partitionWorkflowFields() (rest, worktree, audit, jev, tiers []settings.FieldDef) {
 	for _, f := range settings.SectionFields(settings.SectionWorkflow) {
 		if isCodexToggleFieldName(f.Name) {
 			continue // MCP 탭의 codexAuthBlock 에서 렌더 — workflow 탭 제외
@@ -223,11 +234,13 @@ func partitionWorkflowFields() (rest, worktree, audit, jev []settings.FieldDef) 
 			audit = append(audit, f)
 		case jevFieldBelongsToPanel(f.Name):
 			jev = append(jev, f)
+		case isAgentTierFieldName(f.Name):
+			tiers = append(tiers, f)
 		default:
 			rest = append(rest, f)
 		}
 	}
-	return rest, worktree, audit, jev
+	return rest, worktree, audit, jev, tiers
 }
 
 // isAdvancedWorkflowField는 workflow 탭에서 고급 접기 영역으로 내려갈 필드를
@@ -254,7 +267,7 @@ func splitWorkflowAdvanced(fields []settings.FieldDef) (visible, advanced []sett
 
 // schemaSectionMetas는 제네릭 렌더 대상 패널의 표시 메타를 렌더 순서대로 반환한다.
 func schemaSectionMetas() []schemaSectionMeta {
-	workflowRest, worktreeFields, auditFields, _ := partitionWorkflowFields()
+	workflowRest, worktreeFields, auditFields, _, _ := partitionWorkflowFields()
 	workflowVisible, workflowAdvanced := splitWorkflowAdvanced(workflowRest)
 	return []schemaSectionMeta{
 		{
