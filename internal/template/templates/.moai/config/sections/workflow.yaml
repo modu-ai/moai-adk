@@ -95,6 +95,27 @@ workflow:
         plan: 30000
         run: 180000
         sync: 40000
+    # agent_tiers: which {model, effort} pair each agent class runs at. Tier
+    # tokens are configuration-key names, NOT effort values — the effort field
+    # keeps its own vocabulary everywhere: max = the accuracy-first pair
+    # (sonnet-5-5 at effort max), medium = the cost-efficiency pair
+    # (sonnet-5-5 at effort high), low = the light-work pair (sonnet-5-5 at
+    # effort medium). The compiled defaults in the Go config are the source of
+    # truth; this block documents them and is where a project overrides per
+    # class — unlisted classes keep the compiled defaults. Audit surfaces
+    # (plan-auditor, sync-auditor, and the audit backends) are excluded from
+    # this table: they resolve through the audit pins above, never a tier.
+    # An unknown tier token fails the config load; an unknown class name is
+    # ignored.
+    agent_tiers:
+        classes:
+            super-advisor: max
+            manager-spec: max
+            manager-develop: medium
+            manager-docs: medium
+            e2e-tester: medium
+            explore: low
+            lane: medium
     # audit: cross-model audit backend model+effort pinning. Applies ONLY at
     # the audit entry points (claude_audit / codex_audit / glm_audit /
     # audit_multi) — never to task delegation. Precedence: this pin > the llm.yaml

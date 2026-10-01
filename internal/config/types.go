@@ -578,6 +578,23 @@ type WorkflowConfig struct {
 	// and callers resolve the distributed default profile via
 	// NewDefaultWorkflowConfig (claude required, codex required, glm advisory).
 	Audit AuditConfig `yaml:"audit"`
+
+	// AgentTiers is the workflow.agent_tiers block (SPEC-AGENT-TIER-001 M2,
+	// REQ-TIER-008): the user's agent-class → tier-token assignment table.
+	// When the block is absent (or a class is not listed) the resolver falls
+	// back to DefaultAgentTierClasses per class; an unknown tier token fails
+	// the load (Validate, REQ-TIER-009). Audit surfaces are excluded from the
+	// tier matrix regardless of this table (REQ-TIER-007) — they resolve
+	// exclusively through the workflow.audit pins.
+	AgentTiers AgentTiersConfig `yaml:"agent_tiers"`
+}
+
+// AgentTiersConfig mirrors workflow.agent_tiers — the tier-axis assignment
+// table (SPEC-AGENT-TIER-001 REQ-TIER-008/009). Classes maps an agent-class
+// name to a tier token from the closed set {max, medium, low}
+// (ValidAgentTiers); any other token fails the load through Validate.
+type AgentTiersConfig struct {
+	Classes map[string]string `yaml:"classes,omitempty" json:"classes,omitempty"`
 }
 
 // AutoClearConfig mirrors workflow.auto_clear.* — context-window auto-clear policy.
