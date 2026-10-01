@@ -290,7 +290,13 @@ fi
 # SYNC_DELTA_FILES: every source path this gate could be responsible for —
 # ① the sync commit's diff (what HEAD~1..HEAD touched), ② tracked uncommitted
 # changes (git diff HEAD), ③ untracked new files, and ④ ignored sources
-# (collected above). The checkers read the WORK TREE, so a broken file that
+# (collected above). ③'s walk carries the WCI_EXCLUDES pathspecs — the same
+# set ④ and the content key already filter by: a new file inside a
+# dependency/build dir or another card's worktree is not this session's
+# change scope, and left unfiltered it entered CHANGED_LANGS here while
+# find_go_module_roots vetted the foreign module, so a docs-only change
+# blocked on a broken vendor module (observed RED, card t1392). The
+# checkers read the WORK TREE, so a broken file that
 # exists only uncommitted must gate the turn even when the commit itself
 # touched nothing in its language: the worktree key already changes (forcing a
 # re-run), but the changed-language set aggregates only what is listed here,
@@ -300,7 +306,7 @@ fi
 # overlap between the four sources.
 SYNC_DELTA_FILES=$({ git diff --name-only "$DIFF_RANGE" 2>/dev/null || true
                      git diff HEAD --name-only 2>/dev/null || true
-                     git ls-files --others --exclude-standard 2>/dev/null || true
+                     git ls-files --others --exclude-standard -- "${WCI_EXCLUDES[@]}" 2>/dev/null || true
                      [ -n "$WCI_IGNORED_SOURCES" ] && printf '%s\n' "$WCI_IGNORED_SOURCES"
                    } | sort -u)
 
