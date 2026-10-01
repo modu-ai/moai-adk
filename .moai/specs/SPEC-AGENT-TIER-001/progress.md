@@ -194,6 +194,24 @@ inventory (`TestShippedConfigKeysHaveReaders` — 7 new W-class entries with rea
 the web schema parity guard (`TestSchemaParity_EditableFieldsHaveRenderHome` — the tier
 sub-section registered as a render home, the jevSectionFields pattern).
 
+Merge-tree pre-gate repairs (post-sync, card t1391; three roots caught by the integration-window
+re-measurement that the run-phase suite verdict did not surface):
+
+1. `c310cd4f5` + `c42d4a706` — the pin sweep tripped on an untracked worktree-local fixture
+   (`internal/cli/.moai/config/sections/llm.yaml`, never tracked in any commit), which then
+   exposed that `filepath.SkipAll` ENDS the whole walk: the run-phase sweep stopped at its first
+   excluded directory, so `internal/web/` was never swept by the instrument. The sweep now skips
+   `.moai/` directories entirely (the user-project config/state axis) and returns
+   `filepath.SkipDir`; the swept-count plausibility guard caught the 30-file truncation live.
+2. The glm audit default expectations in `internal/cli/model_backend_default_test.go` and
+   `internal/cli/retained_model_surfaces_char_test.go` — AC-TIER-011 default-asserting updates
+   the run phase missed: both asserted the former empty-effort backend default {glm-5.3-flash,
+   ""} and surfaced as failures on the merge-tree suite re-measurement (the run-phase report
+   listed only the 2 known pre-existing failures). Both now assert the {glm-5.3, max} default
+   pin via `glmAuditDefaultModel`/`glmAuditDefaultEffort` (t1386 constant-reference precedent)
+   — re-run green on the card branch (`ok internal/cli 1.121s`, the two repaired tests named
+   exactly) and again on the merge tree. This record is the AC-TIER-011 update listing.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 Milestones: M1 `a4d24cf89` (tier constants + operator audit pin defaults, RED-first R1/R2/R3
