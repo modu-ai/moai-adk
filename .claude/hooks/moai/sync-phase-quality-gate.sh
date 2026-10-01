@@ -531,8 +531,14 @@ if [ -n "$HEAD_SHA" ]; then
                     # env set after an advisory-mode failure produced no checks
                     # and no block). resolve_gate_mode reads the stored exit
                     # codes to make that call under the same rules as a fresh
-                    # run.
-                    DECISION="advisory"
+                    # run. DECISION=block (not the stored kind!) is the input:
+                    # the checks DID fail, and resolve_gate_mode's automatic-
+                    # tier lint downgrade keys on DECISION=block — passing
+                    # "advisory" here would block a lint-only failure under
+                    # MOAI_AUTONOMY_TIER=automatic (codex review gate round-6
+                    # reproduction; ported from the primary hotfix, card
+                    # t1388).
+                    DECISION="block"
                     C1_EXIT="$P_C1"
                     C2_EXIT="$P_C2"
                     resolve_gate_mode
