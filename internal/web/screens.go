@@ -124,7 +124,9 @@ func (a *app) handleOverview(w http.ResponseWriter, r *http.Request) {
 	// The other three screens carry a descriptive crumb; overview carried none,
 	// so it was the one screen that never named the project it was reporting on.
 	vm := a.shellVM(r, "overview", "Overview", filepath.Base(a.cfg.ProjectRoot))
-	a.renderPage(w, Overview(vm, o, a.buildTodo()))
+	// Overview is a summary, not an audit surface: it always shows the
+	// store's order and never opens the detail pane.
+	a.renderPage(w, Overview(vm, o, a.buildTodo(todoSortDefault, "")))
 }
 
 func (a *app) handleKanban(w http.ResponseWriter, r *http.Request) {
@@ -147,12 +149,17 @@ func (a *app) handleKanban(w http.ResponseWriter, r *http.Request) {
 //
 // Read-only like the other four screens: GET only, no mutation, no lock. The
 // queue's own writes and id issuance belong to `moai todo`.
+//
+// sort and id are view-state, not data: the sort key reorders the audit list
+// and id opens one card in the detail pane, both addressable as a URL the way
+// /specs?id= already is. Unknown values degrade to the default view.
 func (a *app) handleTodo(w http.ResponseWriter, r *http.Request) {
 	if !a.readOnly(w, r) {
 		return
 	}
+	q := r.URL.Query()
 	vm := a.shellVM(r, "todo", "Todo", "backlog queue")
-	a.renderPage(w, Todo(vm, a.buildTodo()))
+	a.renderPage(w, Todo(vm, a.buildTodo(q.Get("sort"), q.Get("id"))))
 }
 
 func (a *app) handleMonitor(w http.ResponseWriter, r *http.Request) {
