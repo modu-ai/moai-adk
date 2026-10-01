@@ -223,7 +223,7 @@ convention), this §E.4 signal, README judgment, and the `spec.md` frontmatter
 `status: in-progress → implemented → completed` + `updated: 2026-10-02` transition. docs-site is
 out of this SPEC's scope (follow-up suggestion recorded in the sync report).
 
-- sync_commit_sha: pending-backfill
+- sync_commit_sha: 44f302a68
 - sync_date: 2026-10-02
 - sync_status: complete
 - b12_self_test_a: PASS — pre-emission grep `grep -c 'SPEC-AGENT-TIER-001' CHANGELOG.md` = 0
