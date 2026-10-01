@@ -97,7 +97,28 @@ plan_audit_gate_skip: "Phase-1 Plan Audit Gate skip taken per the authoritative 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-<pending sync-phase>
+```yaml
+sync_complete_at: 2026-10-02
+sync_commit_sha: pending-backfill-sync  # D3 backfill window: placeholder written by the sync commit itself; the real SHA is backfilled by the next chore commit (a commit cannot cite its own hash)
+sync_status: complete
+b12_self_test_a: pass  # pre-emission grep `grep -c 'SPEC-SYNC-GATE-SKIP-SUBSHELL-001' CHANGELOG.md` = 0 before this sync commit (duplicate-entry guard)
+b12_self_test_b: pass  # AC count against acceptance.md (tier M source): 8 unique live identifiers AC-001..008, zero reserved tokens (live=8 excluded=0 ambiguous=0); the CHANGELOG entry cites the same 8
+b12_self_test_c: pass  # file-path verification: all 4 paths cited in the CHANGELOG entry confirmed via ls against this tree
+changelog_entry_position: "[Unreleased] > Fixed (first entry — newest-first; the prior first entry is t1392's gate-boundary repair)"
+frontmatter_status_transitions:
+  in_progress_to_implemented: merged  # folded into the single sync commit per the 3-phase close
+  implemented_to_completed: this commit  # spec.md frontmatter status+updated only; body sections byte-untouched
+canary_compliance_check:
+  spec_body_untouched: true  # spec.md/plan.md/acceptance.md bodies byte-unchanged (frontmatter-only edit on spec.md)
+  runtime_files_untouched: true  # .moai/state, .moai/harness, .moai/cache untouched
+mx_tag_validation:
+  added: 0  # no new Go production functions from this card — Go delta is test-only (hook_gate_exit_status_test.go +185); the bash gate script carries no MX surface; no MX annotation obligation triggered
+  dangerous_patterns: 0  # the repair REMOVES subshell wraps; no goroutines or new complexity introduced
+codemap_refresh: no-refresh  # measured: grep over .moai/project/codemaps/*.md for the card's touched files (sync-phase-quality-gate, hook_gate_exit_status) = 0 hits; the card's own Go production delta is 0 files (test-only +185 in one test file) — no codemap row moves; provenance.json untouched (no codemap edit made)
+docs_site_decision: no-edit  # measured: README.md/README.ko.md/docs/ carry zero sync-phase-quality-gate references; docs-site/content 'checker' hits are unrelated (security-notes update-checksum checker, moai-sync.md review-status table, moai-run.md LSP table) — no absent-checker behavior claim exists to falsify
+sync_harness_reexecution: "manager-docs re-executed red-now-t1395.sh in its own env, exit 0: CELL1 flip observed (stdout carries the systemMessage notice), CELL2 decided from the captured audit file (final line: decision=allow ... skipped_tools= dotnet deps_modified=1 — the harness's CELL2 print reads CONFIRMED by detector substring quirk, same-harness same-recipe discipline), CELL3 pass record preserved (t1385), PC1/PC2/PC3 PASS"
+recorded_by: manager-docs (sync phase, card t1395)
+```
 
 ## §F Phase 4 Mode Selection
 
