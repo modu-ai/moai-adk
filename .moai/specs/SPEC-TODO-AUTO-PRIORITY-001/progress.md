@@ -387,7 +387,7 @@ run_status: audit-ready
 run_complete_at: 2026-10-01T19:46:39Z
 card: t1400
 cycle_type: tdd
-run_commit_sha: pending-backfill
+run_commit_sha: 287d73e1e
 m1_to_mN_commit_strategy: per-milestone commits on branch WT-auto-priority-pick, no push, no amend; M1 96e2c71fe 110918d14; M2 719e6c1b4 4050769f1 (evidence 946896945); M3 5ddbd6c44 75ade0ccc (evidence c56fdbf2f); M4 232cd8d41 fe847add8 08903dd0a (evidence: the commit that adds this section)
 ac_pass_count: 15
 ac_fail_count: 0
@@ -413,7 +413,7 @@ Sync base `e04641fe5` on branch `WT-auto-priority-pick` (card worktree, nothing 
 sync_status: audit-ready
 sync_complete_at: 2026-10-01T19:59:25Z
 card: t1400
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: ef3c368d3
 changelog_path: CHANGELOG.md
 changelog_entry_position: "[Unreleased] > ### Added, first bullet"
 frontmatter_status_transitions:
@@ -428,3 +428,30 @@ mx_validation: "read-only; no tag owed — see the sync report (all new function
 read_during_sync: "progress.md §E.1-§E.3, spec.md (§A-§G), acceptance.md headings and AC tokens, todo_auto_rank.go, todo_auto.go, todo.go (flag help, seams), classification.go (PriorityRank), kanban-dispatch.md, workflows/gtd.md, manager-todo.md, git log 7d8a9bdbc..HEAD"
 not_run_in_sync: "no go build, go test, golangci-lint or make build (sync edits no Go file; the run phase owns those, see §E.2); no CI; no package-wide test; no sync-audit"
 ```
+
+### Close-out
+
+Recorded by the close-out commit that backfills the two SHA placeholders above (`run_commit_sha` `287d73e1e`, `sync_commit_sha` `ef3c368d3`; each is the commit that introduced its placeholder, found with `git log --format=%h -S"<placeholder line>" -- progress.md`).
+
+**Sync-audit result.** Independent sync-audit verdict `PASS-WITH-DEBT`, aggregate 88.7 (Functionality 93, Security 90, Craft 86, Consistency 80), `audited_sha: ef3c368d3fc3344daed24b3136f5ee52d47d9244`, findings F1-F8, all classified optional, no blocking finding. The verdict file is `.moai/reports/t1400/sync-audit.md`; it is local evidence (gitignored, reaching no clone), so this section carries the result and the disposition rather than the file.
+
+**Disposition of F1-F8.** Optional findings are not routed into fixes by this commit; the table states what is left and for whom.
+
+| Finding | What it is | Left as | For whom |
+|---|---|---|---|
+| F1 | The B12 identifier counter reads 18 live against the 15 declared criteria: three prose shorthands in `acceptance.md` (`AC-001`, `AC-004`, `AC-012`) are unmarked. The CHANGELOG states the declared 15. | Open | manager-spec marks those occurrences `[REF]` at the next sync-class change, then the counter is re-run to read 15 |
+| F2 | The static no-queue-write guard in `todo_auto_rank_test.go` names only `Mutate` and `ArchiveCard`. | Open, discretionary test hardening | leader / operator |
+| F3 | Doctrine tests do not pin the bounding clauses of the new exception paragraph (never reorders, admits, drops or edits cards; the queue itself is unchanged). | Open, discretionary test hardening | leader / operator |
+| F4 | The `manager-todo.md` frontmatter description dropped "operator-gate decision" from its summary line; the body keeps the full prohibition. | Open, discretionary wording hardening | leader / operator |
+| F5 | Run-phase ownership and attribution. | Answered by the ownership statement below | leader (delta audit decision) |
+| F6 | `.claude/skills/moai-kanban-foreman/SKILL.md:69` still says "in queue order". | Open | the leader folds it into follow-up card t1403 or a sibling card |
+| F7 | When every candidate is blocked the record reads `source=fallback reason=jev-disabled` although Jev was not consulted. | Closed as disclosed: SPEC risk R-8 and the CHANGELOG state it; a new vocabulary value is a SPEC change | none |
+| F8 | Answer confidence is only required to be finite; a value outside 0..1 is accepted as a tie-break key. | Open, discretionary wording or test hardening | leader / operator |
+
+**Ownership statement (answers F5).**
+
+1. Trailer visibility. Git's own trailer parser prints an empty `%(trailers:key=Authored-By-Agent)` on these commits because the marker line shares the final paragraph with the attribution line. `git log --grep=^Authored-By-Agent: --format=%h 7d8a9bdbc..HEAD` at HEAD `ef3c368d3` lists all 16 card commits; the ownership lint reads the body line by regex, not through git's parser.
+2. Role attribution. `38b54f29b` and `e04641fe5` were authored under the manager-spec role (spawned as manager-spec). `96e2c71fe` through `287d73e1e` were authored under the manager-develop role and `ef3c368d3` under the manager-docs role, each executed as a `general-purpose` spawn because a typed manager-develop spawn landed in its own isolated tree and stopped without writing. The Kickoff decision record in §F was written by the lane-2 orchestrator. The amendment of `manager-todo.md` (`232cd8d41`) is inside plan §E M4 and REQ-TAP-014, while `manager-develop.md:201` lists agent files as out of run-phase scope.
+3. Delta audit. A delta plan-audit of the reconciliation commit `e04641fe5` (edits to the `spec.md`, `plan.md` and `acceptance.md` bodies after the plan-audit PASS) was NOT run. The edits reconcile the SPEC with run-phase facts (counts and each requirement's meaning unchanged) and the sync-audit read the final text. The leader may order a delta audit.
+
+**Gaps.** No CI run, no package-wide Go test, no live Jev request, no cross-model audit.
