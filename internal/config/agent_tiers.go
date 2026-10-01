@@ -81,15 +81,16 @@ func IsAuditSurfaceClass(class string) bool {
 
 // ResolveAgentClassTier returns the tier token for an agent class:
 // the user's workflow.agent_tiers.classes entry wins per class, an unlisted
-// class falls back to DefaultAgentTierClasses, and an audit surface always
-// resolves to "" (no tier — REQ-TIER-007) whatever the table carries.
+// class (or a stored empty value — the console's "unset" submit) falls back
+// to DefaultAgentTierClasses, and an audit surface always resolves to ""
+// (no tier — REQ-TIER-007) whatever the table carries.
 func ResolveAgentClassTier(tiers AgentTiersConfig, class string) string {
 	name := strings.TrimSpace(class)
 	if IsAuditSurfaceClass(name) {
 		return ""
 	}
 	if tiers.Classes != nil {
-		if tier, ok := tiers.Classes[name]; ok {
+		if tier, ok := tiers.Classes[name]; ok && tier != "" {
 			return tier
 		}
 	}
@@ -117,7 +118,8 @@ func AgentTierPair(tier string) (ModelEffort, bool) {
 // (REQ-TIER-009): a token outside {max, medium, low} is an error naming the
 // offending class, the token, the valid set, and the file the loader wraps
 // around it. An empty/nil Classes table is valid (all classes then resolve to
-// the built-in defaults).
+// the built-in defaults), and a stored EMPTY token is the console's "unset"
+// submit — it falls back to the default rather than failing the load.
 func (c AgentTiersConfig) Validate() error {
 	// Sort for a deterministic error when several tokens are invalid.
 	classes := make([]string, 0, len(c.Classes))
@@ -127,9 +129,54 @@ func (c AgentTiersConfig) Validate() error {
 	sort.Strings(classes)
 	for _, class := range classes {
 		tier := c.Classes[class]
+		if tier == "" {
+			continue // unset — ResolveAgentClassTier falls back to the default
+		}
 		if _, ok := validAgentTiersSet[tier]; !ok {
 			return fmt.Errorf("workflow.agent_tiers.classes[%s] = %q invalid: want one of max|medium|low", class, tier)
 		}
 	}
 	return nil
+}
+
+// AgentTierClassOrder returns the known agent classes in domain order (the
+// order display surfaces list them): design judgments first, then the
+// implementation classes, then the light-work class. Unknown classes a project
+// configures are appended after these by the caller if it wants them shown.
+func AgentTierClassOrder() []string {
+	return []string{
+		"super-advisor",
+		"manager-spec",
+		"manager-develop",
+		"manager-docs",
+		"e2e-tester",
+		"explore",
+		"lane",
+	}
+}
+
+// AgentTierChart is one tier's chart grounding for display surfaces
+// (REQ-TIER-011): the tier token plus its Terminal-Bench 4.0 accuracy and
+// cost-per-attempt figures, rendered verbatim.
+type AgentTierChart struct {
+	// Tier is the tier token from the closed set (ValidAgentTiers).
+	Tier string
+	// Score is the chart accuracy figure, e.g. "70.6%".
+	Score string
+	// Cost is the chart cost-per-attempt figure, e.g. "~$11".
+	Cost string
+	// Pair is the tier's {model, effort} resolution, e.g. "sonnet-5-5 @ max".
+	Pair string
+}
+
+// AgentTierChartTable returns the three tiers with their chart grounding, in
+// tier order (max, medium, low). The figures are the SPEC-critical evidence
+// base (Terminal-Bench 4.0) and live HERE only — display surfaces consume
+// this table and never restate the numbers.
+func AgentTierChartTable() []AgentTierChart {
+	return []AgentTierChart{
+		{Tier: AgentTierMax, Score: "70.6%", Cost: "~$11", Pair: DefaultClaudeTierMaxModel + " @ " + DefaultClaudeTierMaxEffort},
+		{Tier: AgentTierMedium, Score: "45%", Cost: "~$2.3", Pair: DefaultClaudeTierMediumModel + " @ " + DefaultClaudeTierMediumEffort},
+		{Tier: AgentTierLow, Score: "29%", Cost: "~$0.8", Pair: DefaultClaudeTierLowModel + " @ " + DefaultClaudeTierLowEffort},
+	}
 }

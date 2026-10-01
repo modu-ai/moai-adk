@@ -535,3 +535,10 @@ html[lang="en"] .nav__en{display:none}
 .panel__advanced{margin-top:14px;border-top:1px solid var(--border);padding-top:10px}
 .panel__advanced>summary{cursor:pointer;font:var(--text-help);color:var(--fg-3)}
 .panel__advanced[open]>summary{margin-bottom:10px}
+
+/* Agent-tier chart table (tier axis sub-section of the workflow panel).
+   Display rows only — the figures come from the config chart table. */
+.tier-chart{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;margin-bottom:14px}
+.tier-chart__row{display:grid;grid-template-columns:110px minmax(0,1fr) 90px 110px;gap:12px;align-items:center;min-height:34px;padding:0 14px;border-top:1px solid var(--line-soft);background:var(--surface)}
+.tier-chart__row:first-child{border-top:0}
+.tier-chart__row--head{min-height:28px;background:var(--bg-2);color:var(--fg-3);font:var(--text-caption)}
