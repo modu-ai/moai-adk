@@ -38,11 +38,11 @@ Primary touch points: `internal/cli/codex_launcher.go` (flag parse, trace emissi
 - Tests: `t.TempDir()`; no OTEL `t.Setenv`; every test reading lane env vars pins all axes with `t.Setenv` (t1350 lesson); launch seams (`codexDirectLaunchFn`-style) stub the child — no real `codex`/`claude`/`glm` process in any test.
 - REQ-006 is a Secured constraint: assert absence of sentinel env VALUES in trace output tests, not just presence of key names.
 - Pre-seam ordering holds on both doors: POSIX `syscall.Exec` and the Windows stub; verify `GOOS=windows go build ./...`.
-- No changes to `internal/kanban` (the claim engine is traced from the launcher side, not modified); no changes to REQ-012 threshold semantics.
+- No changes to `internal/kanban` (the claim engine is traced from the launcher side, not modified); no changes to t1378 REQ-012 (SPEC-CODEX-LANE-SLOTS-001) threshold semantics.
 
 ## §E — Self-Verification (run-phase exit evidence)
 
-- E1: AC-001..AC-014 re-run green, outputs captured into `progress.md` §E.2.
+- E1: AC-001..AC-015 re-run green, outputs captured into `progress.md` §E.2.
 - E2: `GOOS=windows go build ./...` exit 0.
 - E3: `go test -cover ./internal/cli/...` at or above the package target (85%).
 - E4: grep guard — no AskUserQuestion/interactive-prompt additions in the diff.
@@ -53,9 +53,9 @@ Primary touch points: `internal/cli/codex_launcher.go` (flag parse, trace emissi
 ## §F — Milestones (decision-reversibility order — most likely to change first)
 
 - M1 (Priority High) — Debug flag surface and parse discipline. Debug-token constants; codex head strip (mirror the `stripSpawnFlag` / `stripCodexWorktreeFlag` token-shape pattern); post-`--` scoping; readout-verb refusal with a named diagnostic; `codexCmd` Long/help text updated. ACs: AC-001, AC-002, AC-003, AC-004. (Parser shape and flag semantics are the decisions most likely to be revisited — they are the user-facing contract.)
-- M2 (Priority High) — Launcher trace engine + child-env linkage. Step-recorder wiring: instantiate the shared collector on every traced codex launch (not lane-only); a debug dump function beside `reportSlow` (pre-seam, unconditional under debug); per-step lines for binary/root/init/instruction/claim/worktree/env/handoff; keys-only env reporting; worktree trace; `RUST_LOG=debug` injection with operator-override guard in `codexChildEnv` posture. ACs: AC-008, AC-009, AC-010, AC-011. (New trace vocabulary and the env-injection rule are the second-most-likely-to-change surface.)
+- M2 (Priority High) — Launcher trace engine + child-env linkage. Step-recorder wiring: instantiate the shared collector on every traced codex launch (not lane-only); a debug dump function beside `reportSlow` (pre-seam, unconditional under debug); per-step lines for binary/root/init/instruction/claim/worktree/env/handoff; keys-only env reporting; worktree trace; `RUST_LOG=debug` injection with operator-override guard in `codexChildEnv` posture. ACs: AC-008, AC-009, AC-010, AC-011, AC-015. (New trace vocabulary and the env-injection rule are the second-most-likely-to-change surface; AC-015's ordering assertion lives with the trace emission it orders.)
 - M3 (Priority Medium) — Three-runner uniformity wiring. cc/glm observe-only debug-token scan (post-`--`-aware, pre-subcommand-routing discipline identical to the `--help` scan); shared trace emission from the cc/glm pre-exec phases (entry parse, settings prep, lane join, worktree, launch handoff); the uniformity matrix test iterating all three launchers. ACs: AC-005, AC-006, AC-007.
-- M4 (Priority Medium) — t1378 composition + regression pins. Debug-supersedes-threshold print path reusing the collector's recorded steps; REQ-015 freeze: existing `factory_launch_timing_test.go` passes unmodified; debug-off byte-absence of trace lines. ACs: AC-012, AC-013.
+- M4 (Priority Medium) — t1378 composition + regression pins. Debug-supersedes-threshold print path reusing the collector's recorded steps; this SPEC's REQ-015 freeze: existing `factory_launch_timing_test.go` passes unmodified (t1378 REQ-012 behavior); debug-off byte-absence of trace lines. ACs: AC-012, AC-013.
 - M5 (Priority Low) — Mechanical sweep. `MOAI_LOG_LEVEL` non-gating pin; whole-package `internal/cli` re-measurement; `GOOS=windows` build; lint clean; MX annotations per protocol. ACs: AC-014.
 
 ## §G — Anti-Patterns

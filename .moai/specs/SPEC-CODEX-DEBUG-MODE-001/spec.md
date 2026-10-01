@@ -52,8 +52,10 @@ tier: M
 
 ### §B.5 Composition with the t1378 pre-exec timing report
 
-- REQ-014 (Event-driven): **When** debug mode is on for a codex lane launch, the launcher shall print the per-step pre-exec timing lines unconditionally — the slow-launch threshold does not gate them — reusing the SPEC-CODEX-LANE-SLOTS-001 REQ-012 collector (`internal/cli/factory_launch_timing.go`), which records every step regardless of threshold; no second instrumentation site shall be created.
-- REQ-015 (Ubiquitous): With debug mode off, the launcher shall preserve REQ-012's threshold-gated report behavior unchanged; the debug print path adds output only when the debug tokens are present.
+Citation convention: within this SPEC, `t1378 REQ-012` always names SPEC-CODEX-LANE-SLOTS-001's REQ-012 — this SPEC also has its own §B.4 REQ-012 (uniform spelling), and the bare token collides in prose.
+
+- REQ-014 (Event-driven): **When** debug mode is on for a codex lane launch, the launcher shall print the per-step pre-exec timing lines unconditionally — the slow-launch threshold does not gate them — reusing the t1378 REQ-012 collector (`internal/cli/factory_launch_timing.go`), which records every step regardless of threshold; no second instrumentation site shall be created.
+- REQ-015 (Ubiquitous): With debug mode off, the launcher shall preserve t1378 REQ-012's threshold-gated report behavior unchanged; the debug print path adds output only when the debug tokens are present.
 
 ## §C — Acceptance Criteria (summary)
 
@@ -66,7 +68,8 @@ tier: M
 | REQ-005 | AC-008 (release-blocking) | step trace |
 | REQ-006 | AC-009 (release-blocking) | keys-only secrecy |
 | REQ-007 | AC-010 (release-blocking) | worktree trace |
-| REQ-008, REQ-009 | AC-014 (regression-guard) | level non-gating + pre-seam |
+| REQ-008 | AC-014 (regression-guard) | MOAI_LOG_LEVEL non-gating |
+| REQ-009 | AC-015 (release-blocking) | pre-seam ordering, both doors |
 | REQ-010, REQ-011 | AC-011 (release-blocking) | RUST_LOG injection + override guard |
 | REQ-012, REQ-013 | AC-007 (release-blocking) | 3-runner uniformity matrix |
 | REQ-014 | AC-012 (release-blocking) | debug supersedes threshold |
@@ -81,13 +84,13 @@ Full Given-When-Then scenarios: `acceptance.md`.
 - The trace never emits environment-variable values (REQ-006; lane keys carry leader addresses and identity — Secured).
 - Tests: `t.TempDir()` for every temporary directory; no OTEL `t.Setenv`; tests that read lane environment variables pin all axes via `t.Setenv` (lane env falsifies env-reading guard tests — recurring lesson, t1350).
 - Windows parity: the trace and any pre-seam print must sit ahead of BOTH exec doors (POSIX `syscall.Exec` / `internal/cli/codex_direct_windows.go`); verified with `GOOS=windows go build`.
-- REQ-012's threshold report and its tests (`internal/cli/factory_launch_timing_test.go`) are frozen when debug mode is off (REQ-015).
+- t1378 REQ-012's threshold report and its tests (`internal/cli/factory_launch_timing_test.go`) are frozen when debug mode is off (REQ-015).
 - No time estimates in plans or reports; priority labels only.
 
 ## §E — Design Notes (verified facts from plan-phase diagnosis)
 
 - **Launch path today** (all steps pre-exec, before the seam): binary resolution (`codex_launcher.go:1002`), timing gate for lane launches only (`:1012-1014`), project-root resolution (`:1023-1027`), init-offer gate (`:1032`), local-instruction load (`:1033`), worktree resolve + writer check (`:1044-1055`, `resolveCodexWorktreeDir` at `:428`), child-args assembly (`:1056`), factory entry — join gate then lane claim (`internal/cli/codex_factory.go:135-151`, `kanban.ClaimFactoryLaneWithin`), env assembly (`codexChildEnv` `:575` + `codexFactoryEnv` `internal/cli/codex_factory.go:206`), anchor lock + exec handoff (`:1084-1106`), direct door (`internal/cli/codex_direct_posix.go:25-58`, `syscall.Exec` at `:53`).
-- **The timing collector is the composition seam**: `factoryLaunchTiming` is nil-safe and records every `begin()` step regardless of threshold; the threshold only gates `reportSlow` (`internal/cli/factory_launch_timing.go:46-48, 87-101`). The cc/glm twins currently pass nil. Debug mode = instantiate the collector on every traced launch (any backend, lane or not) and add an unconditional pre-seam dump; REQ-012's threshold report is untouched.
+- **The timing collector is the composition seam**: `factoryLaunchTiming` is nil-safe and records every `begin()` step regardless of threshold; the threshold only gates `reportSlow` (`internal/cli/factory_launch_timing.go:46-48, 87-101`). The cc/glm twins currently pass nil. Debug mode = instantiate the collector on every traced launch (any backend, lane or not) and add an unconditional pre-seam dump; t1378 REQ-012's threshold report is untouched.
 - **Destination decision — stderr, not a `.moai/logs/` file.** Three precedents converge: (1) the launcher's own diagnostics already go to `cmd.ErrOrStderr()` (install hint `:1004`, advisory `:1049`, timing report `:1093/:1105`); (2) the repo-wide slog decision routes non-hook subcommands to stderr (`internal/cli/logging.go:78-83`) and reserves `.moai/logs/` writers for background processes that own no terminal (hook sink, `config.log` in `internal/config/log.go`, codex-adapter diagnostics `internal/codexadapter/diagnostics.go:16`); (3) the direct door replaces the process — a file sink would need open+flush before the seam on every traced launch, exactly the constraint REQ-012 solved by printing pre-seam.
 - **Codex CLI verification record (honest)**: codex-cli 0.159.3 installed at `/Users/goos/.local/bin/codex`. Verified: `codex -d` → `error: unexpected argument '-d' found`; top-level `--help` lists no `--debug` option; `debug` exists only as a subcommand group (models / app-server / prompt-input); `codex exec --help` exposes no logging flag. NOT verified: `RUST_LOG` is undocumented in all local help surfaces and the upstream `docs/config.md` fetch returned non-codex content (inconclusive). Supporting-but-not-conclusive: the installed binary contains the `RUST_LOG` literal. Resolution: the `RUST_LOG=debug` injection is a best-effort linkage (an unknown env var is harmless to the child), NOT a load-bearing contract — the launcher-side trace (§B.2) is the primary debug surface. Residual recorded in plan.md §B.
 - **claude CLI verified**: `claude --help` → `-d, --debug [filter]   Enable debug mode with optional category` plus `--debug-file <path>`. glm CLI: binary not installed locally; its native `-d` support is unverified and deliberately non-load-bearing — the cc/glm launcher change is observe-only, so child behavior is unchanged whatever the child supports.
