@@ -56,7 +56,7 @@ arrival_aggregate: 214,155 chars / 18 files (over 210,000 ruling by 4,155)
 
 ```yaml
 sync_complete_at: "2026-10-01"
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "29d81caa8"
 sync_status: "complete"
 sync_branch: "WT-instr-budget"
 sync_worktree: ".moai/worktrees/t1318-budget (card tree)"
