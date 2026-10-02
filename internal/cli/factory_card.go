@@ -209,6 +209,16 @@ func factorySerialSlotFree(state string) bool {
 	}
 }
 
+// factorySerialSlotHeld reports whether a recorded card holds the serial slot
+// at now: its state is not one of the releasing states, and — for a card in a
+// lease-holding state — its lease has not expired. An expired lease is only
+// collected lazily, by the next transition on that same card, so the row keeps
+// its lease-holding state after the lane that held it is gone; reading the
+// state alone would hold the slot for that lane indefinitely (card t1407).
+func factorySerialSlotHeld(c homestate.Card, now time.Time) bool {
+	return !factorySerialSlotFree(c.State) && !c.LeaseExpired(now)
+}
+
 // factoryQueueClassification reads one card's classification from a queue
 // record snapshot. A card absent from the queue reads as the absent-field
 // default derivation (REQ-TCD-014): serial, normal, non-blocked.
@@ -424,12 +434,13 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 	// serial card is not a second serial card in flight — the exclusivity
 	// holds against DISTINCT cards (REQ-TCD-008), and a self-blocked
 	// candidate would wedge every lease of a legacy serial row.
+	now := factoryCardNow()
 	serialInFlightExcluding := func(cardID string) bool {
 		for _, c := range cards {
 			if c.CardID == cardID {
 				continue
 			}
-			if !factorySerialSlotFree(c.State) && classOf(c.CardID).Mode == kanban.ClassModeSerial {
+			if factorySerialSlotHeld(c, now) && classOf(c.CardID).Mode == kanban.ClassModeSerial {
 				return true
 			}
 		}
