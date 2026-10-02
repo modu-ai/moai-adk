@@ -1,6 +1,7 @@
 package session
 
 import (
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -19,11 +20,20 @@ func TestRegisterCanonicalizesCaseVariantCWD(t *testing.T) {
 	if variant == "" {
 		t.Skip("temp path has no case-varying component")
 	}
+	// On a case-insensitive filesystem the case-variant names the same directory
+	// and is what the caller enters. On a case-sensitive one (Linux CI) it names a
+	// directory that does not exist, so the caller enters the real spelling and
+	// the test pins the contract that remains there: no case axis to
+	// canonicalize, so the stored CWD is the on-disk path.
+	enter := variant
+	if _, err := os.Stat(variant); err != nil {
+		enter = dir
+	}
 
 	regPath := filepath.Join(t.TempDir(), "active-sessions.json")
 	reg := NewRegistry(regPath, nil)
 
-	t.Chdir(variant)
+	t.Chdir(enter)
 	if err := reg.Register("sess-t1293-case", "SPEC-T1293", "run"); err != nil {
 		t.Fatalf("register: %v", err)
 	}
@@ -43,8 +53,15 @@ func TestRegisterCanonicalizesCaseVariantCWD(t *testing.T) {
 			t.Errorf("stored CWD %q is neither the logical spelling nor the on-disk spelling %q", entries[0].CWD, dir)
 		}
 	default:
-		if entries[0].CWD != variant {
-			t.Errorf("stored CWD %q differs from the caller spelling %q on %s — canonicalization changed a case-sensitive path", entries[0].CWD, variant, runtime.GOOS)
+		want := enter
+		if enter == dir {
+			// Symlink resolution is canonicalCWD's job on every platform.
+			if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+				want = resolved
+			}
+		}
+		if entries[0].CWD != want {
+			t.Errorf("stored CWD %q differs from the caller spelling %q on %s — canonicalization changed a case-sensitive path", entries[0].CWD, want, runtime.GOOS)
 		}
 	}
 }
