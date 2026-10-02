@@ -224,4 +224,58 @@ pre_existing_reds: internal/cli 2건(§E.2 M5 말미 — kotlin 감지 규칙 �
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: audit-ready
+sync_complete_at: 2026-10-02
+sync_commit_sha: pending-backfill-sync
+비고 — 커밋은 자신의 해시를 인용할 수 없으므로 동기 커밋 본문에는 플레이스홀더로 기록하고,
+직후 커밋에서 실제 SHA로 backfill한다(spec-frontmatter-schema §D3 backfill 면제 — 본
+소관 에이전트의 후속 커밋).
+changelog_entry_position: CHANGELOG.md `[Unreleased]` → `### Added` 선두 1행
+changelog_entry_language: 영어 — 배차 지시 준수. 기존 항목은 한·영 혼용이며 주요 기능
+종결 항목(SPEC-TODO-AUTO-PRIORITY-001·SPEC-AGENT-TIER-001·SPEC-FACTORY-LANE-AUTONOMY-001)
+은 영어가 관행이라 충돌 없음.
+frontmatter_status_transitions: spec.md `in-progress → completed`(`updated` 2026-10-02
+동일 날짜 — 갱신 무변경) — plan.md·acceptance.md는 status 축 stateless(`status:` 필드
+부재 실측, grep exit 1)라 전이 대상 아님(spec-frontmatter-schema § Artifact Statelessness).
+b12_self_test_a: `grep -c 'SPEC-REPORT-ARTIFACT-DELIVERY-001' CHANGELOG.md` → `0`
+(exit 1) — 선방출 확인, 중복 항목 없음.
+b12_self_test_b: AC 카운터(acceptance.md, 기본 접두 AC) → `24` live · ambiguous 0.
+정식 선언 집합은 **14종(AC-RAD-001..014 각 1회 선언 — §B 표제)**이고 잔여 10은 축약
+표기(AC-001·004·005·006·007·008·009·011·012·014 — §D.2·§E 장부의 in-file 상호참조)다.
+[REF] 예약 토큰으로 배제하는 것이 정석이나 acceptance.md 본문 수정은 manager-docs
+금지라 마킹 불가 — 정식 선언 14종 기준으로 CHANGELOG 항목의 "14 acceptance criteria
+AC-RAD-001..014"과 일치함을 입증한다. 축약 표기는 선언이 아니라 참조다.
+b12_self_test_c: CHANGELOG 항목이 명명하는 파일 경로 전수 `ls` 실측 — 전원 존재
+(exit 0, ALL-PATHS-EXIST).
+canary_compliance_check: N/A — 본 SPEC은 자기 sync 테스트가 되는 forward-looking
+정책을 정의하지 않는다.
+mx_tag_validation: 변경 Go 파일 실측 — questions.go 2·initializer.go 6 태그 존재,
+schema_sections.go·SKILL.md 0타. 신규 export 심볼 없음(M1은 기존 var/func 개정뿐)이라
+@MX 신규 의무 미발생 — 기존 태그 정합.
+docs_surface: **검증 부재** — README 4로캘(README.md·README.ko.md·README.ja.md·
+README.zh.md)과 docs-site 전체·docs/에서 `reportFormat|report.format|html+md` 스캔
+0히트(2026-10-02 실측; 유일 히트는 무관한 "5-section evidence report format" 문언 2곳).
+report.format 값을 문서화하는 표면이 존재하지 않으므로 문서를 새로 만들지 않았다
+(허구 문서 금지 — 배차 지시 준수).
+sync_gate: acceptance.md §D.4 종결 게이트 충족 — CHANGELOG 항목 + 미러 패리티
+재입증(diff 0) + 템플릿 중립성 재입증(0히트). 최종 트리 재증명 출력:
+
+```text
+cmd:   diff -rq .claude/skills/moai-domain-html-report internal/template/templates/.claude/skills/moai-domain-html-report
+stdout: (없음)   exit: 0   (SKILL-MIRROR-PARITY-OK — 동기 단계 최종 트리 재입증)
+cmd:   diff -q .claude/rules/moai/workflow/skill-routing.md internal/template/templates/.claude/rules/moai/workflow/skill-routing.md
+stdout: (없음)   exit: 0   (ROUTING-MIRROR-PARITY-OK)
+cmd:   grep -rn 't1427\|SPEC-REPORT-ARTIFACT' internal/template/templates/
+stdout: (없음)   exit: 1   (0히트 — AC-RAD-012 중립성 유지)
+cmd:   wc -c .claude/skills/moai-domain-html-report/SKILL.md
+stdout: 25900 .claude/skills/moai-domain-html-report/SKILL.md
+exit:  0   (≤ 26000 — AC-RAD-014 유지)
+cmd:   cat .moai/config/sections/report.yaml
+stdout: report: /   format: html+md
+비고:   기본값 html+md 불변 — AC-RAD-013 유지
+cmd:   diff -q .moai/config/sections/report.yaml internal/template/templates/.moai/config/sections/report.yaml
+stdout: (없음)   exit: 0   (live=미러 byte 동일)
+```
+
+pre_existing_reds: §E.3 기재 2건(kotlin 감지 규칙 불일치 결정론적 적색 · stop-timing
+예산 요동) — 동기 단계에서 재접촉 없음, 본 카드 범위 밖 리더 판정 대상(불변).

@@ -2,7 +2,7 @@
 id: SPEC-REPORT-ARTIFACT-DELIVERY-001
 title: "html-report 스킬에 Claude Artifact 전달 형식 추가 — report.format=artifact·아티팩트 페이지 계약 템플릿 정합·전달 단계 개편 (card t1427)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-02
 updated: 2026-10-02
 author: "MoAI lane (card t1427)"
