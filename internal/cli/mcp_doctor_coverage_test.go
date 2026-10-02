@@ -342,8 +342,11 @@ func TestSyncPermissionModeToSettingsLocal_SetsBypassPermissions(t *testing.T) {
 	}
 }
 
-// TestSyncPermissionModeToSettingsLocal_AcceptEditsRemovesOverride removes defaultMode.
-func TestSyncPermissionModeToSettingsLocal_AcceptEditsRemovesOverride(t *testing.T) {
+// TestSyncPermissionModeToSettingsLocal_AcceptEditsWritesOverride persists
+// defaultMode for acceptEdits too: the template settings.json stopped
+// shipping a defaultMode default (20b4ff0f6), so the override is what keeps
+// CC 2.1.283+'s built-in default from winning silently (card t1414).
+func TestSyncPermissionModeToSettingsLocal_AcceptEditsWritesOverride(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
@@ -351,7 +354,7 @@ func TestSyncPermissionModeToSettingsLocal_AcceptEditsRemovesOverride(t *testing
 
 	// First set bypass.
 	_ = syncPermissionModeToSettingsLocal(path, "bypassPermissions")
-	// Then clear to acceptEdits.
+	// Then switch to acceptEdits — the override is updated, not removed.
 	if err := syncPermissionModeToSettingsLocal(path, "acceptEdits"); err != nil {
 		t.Fatalf("error: %v", err)
 	}
@@ -359,8 +362,8 @@ func TestSyncPermissionModeToSettingsLocal_AcceptEditsRemovesOverride(t *testing
 	data, _ := os.ReadFile(path)
 	var s SettingsLocal
 	_ = json.Unmarshal(data, &s)
-	if _, ok := s.Permissions["defaultMode"]; ok {
-		t.Error("defaultMode should be absent for acceptEdits mode")
+	if got, ok := s.Permissions["defaultMode"]; !ok || got != "acceptEdits" {
+		t.Errorf("defaultMode = %v, want \"acceptEdits\" (the mode is persisted like any other, card t1414)", got)
 	}
 }
 

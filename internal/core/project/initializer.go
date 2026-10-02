@@ -42,7 +42,7 @@ type InitOptions struct {
 	NonInteractive    bool     // If true, skip wizard and use defaults/flags.
 	Force             bool     // If true, allow reinitializing an existing project.
 	SkipShellConfig   bool     // If true, skip shell environment configuration.
-	ReportFormat      string   // Report output format: "html+md" or "md" (empty → html+md default).
+	ReportFormat      string   // Report output format: "html+md", "md", or "artifact" (empty → html+md default).
 
 	// Phase 1 wizard fields (REQ-IWE-001..005) — populated from wizard result or CLI flags.
 	// (The former project-mode field was removed by SPEC-INIT-UPDATE-CONSISTENCY-001
@@ -563,7 +563,7 @@ func (i *projectInitializer) generateConfigsFallback(opts InitOptions, result *I
 // .moai/config/sections/report.yaml. It runs unconditionally after template
 // deployment so the wizard/flag-selected value overrides the template default
 // (html+md). An empty opts.ReportFormat resolves to the html+md default. The
-// closed set of accepted values ({"html+md", "md"}) is owned by the
+// closed set of accepted values (html+md / md / artifact) is owned by the
 // internal/settings reportFormatValues SSOT.
 func (i *projectInitializer) writeReportConfig(opts InitOptions, result *InitResult) error {
 	format := opts.ReportFormat

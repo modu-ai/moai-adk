@@ -439,3 +439,9 @@ main-fork/
 # to `git status` still sees a clean tree while the suite is running.
 /test-stream.json
 /test-stream.json.gz
+
+# Claude Code mods under mods/. The engine lays its API typings beside a mod it loads
+# from a folder the person owns (<mod>/.claude-plugin/types/, written at every load),
+# so that generated tree is never committed. The mod's own contract, types/index.d.ts,
+# is a different path and stays tracked.
+mods/*/.claude-plugin/types/

@@ -151,11 +151,14 @@ func autoRankHoldMarked(text string) bool {
 }
 
 // autoRankNearDuplicate reports whether a live near-duplicate finding names
-// the card on either side, whatever recorded it.
+// the card on either side. A finding a Jev answer produced at admission is a
+// record a person reads and never a readiness signal (SPEC-JEV-CONSUMERS-001
+// REQ-JEVN-004): the ranking's only Jev input is its own request, so an earlier
+// answer must not filter, demote or flag a card here.
 func autoRankNearDuplicate(rec *kanban.BacklogRecord, id string) bool {
 	findings, _ := rec.FindingsNaming(id)
 	for _, f := range findings {
-		if f.Relation == kanban.BacklogRelationNearDuplicate {
+		if f.Relation == kanban.BacklogRelationNearDuplicate && f.Source != kanban.BacklogSourceJev {
 			return true
 		}
 	}

@@ -8,10 +8,12 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/glmcred"
 	"github.com/modu-ai/moai-adk/internal/jevcred"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
+	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
 )
 
 // app holds the Console's request-handling dependencies. Profile read/write and
@@ -75,13 +77,23 @@ type app struct {
 	rawBlockValues      func(projectRoot string) (map[string]string, error)
 	applySchemaEdits    func(projectRoot string, edits map[string]string) error
 
-	// Injectable seams over the credential persistence steps of handleSave
+	// Injectable seams over the restored agent-overrides surface
+	// (SPEC-WEB-AGENTFM-RESTORE-001 M3): listAgentFMs scans an agent directory
+	// (internal/settings/agentfm — read-only), patchAgentFM persists
+	// llm.agent_overrides, applyPerfTierEdits persists llm.profile. Promoting
+	// the CALLS to fields keeps save-failure instrumentation able to reach
+	// them (the recordingSeams contract — steps 7/8 of the save inventory).
+	listAgentFMs func(agentsDir string) ([]agentfm.AgentInfo, error)
+	patchAgentFM func(projectRoot string, pins map[string]config.ModelEffort, submitted []string) error
+
+	// Injectable seams over the remaining persistence steps of handleSave
 	// (SPEC-WEB-CONSOLE-017 HARD-2: recordingSeams is extended, not rewritten).
 	// glmcred.Save / jevcred.Save are the single shared credential writers;
 	// promoting the CALLS (not the implementations) to fields keeps the default
 	// wiring byte-identical to the old behavior.
-	glmcredSave func(key string) error
-	jevcredSave func(key string) error
+	applyPerfTierEdits func(projectRoot, perfTier string) error
+	glmcredSave        func(key string) error
+	jevcredSave        func(key string) error
 
 	// Injectable seams over the M4 profile CRUD surface (SPEC-WEB-CONSOLE-011
 	// REQ-WC11-032/033/034). createProfile creates the profile directory (no
@@ -141,8 +153,12 @@ func newApp(cfg Config) *app {
 		rawBlockValues:      settings.RawBlockValues,
 		applySchemaEdits:    settings.ApplySchemaEdits,
 
-		glmcredSave: glmcred.Save,
-		jevcredSave: jevcred.Save,
+		listAgentFMs: agentfm.List,
+		patchAgentFM: applyAgentOverrides,
+
+		applyPerfTierEdits: applyPerfTierEdits,
+		glmcredSave:        glmcred.Save,
+		jevcredSave:        jevcred.Save,
 
 		createProfile: createProfileDir,
 		renameProfile: renameProfileDir,

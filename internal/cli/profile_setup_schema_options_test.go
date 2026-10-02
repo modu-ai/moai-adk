@@ -117,7 +117,10 @@ func TestSchemaSelectOptions_Localized(t *testing.T) {
 }
 
 // TestModelPolicyLabels_AgreeWithProfileMatrix was removed with the per-agent
-// profile matrix (SPEC-AGENT-MODEL-INHERIT-001 M5): its derivation source (the
-// deleted template matrix) no longer exists. The "Agent model policy" tier
-// lines are now hand-written prose with no matrix to derive from; their
-// main-session rewording is design H24 (doctrine-text surface), outside M5.
+// profile matrix (SPEC-AGENT-MODEL-INHERIT-001 M5) and STAYS removed under
+// SPEC-WEB-AGENTFM-RESTORE-001: the re-ported template matrix
+// (internal/template/profile_matrix.go) now carries config-tier-paired cells
+// for the agent-overrides console surface, but the "Agent model policy" tier
+// lines these tests assert are main-session launch prose on a different axis —
+// they are hand-written by design (H24, doctrine-text surface) and derive from
+// no matrix.

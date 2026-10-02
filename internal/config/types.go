@@ -301,6 +301,24 @@ type LLMConfig struct {
 	// fallback — a pin that silently fell back would re-expose the
 	// broken-release blast radius the pin exists to stop.
 	ClaudeBin string `yaml:"claude_bin,omitempty"`
+	// Profile selects the active per-agent model+effort column for the
+	// console's agent-overrides surface, one of {high, medium, low}
+	// (REQ-AFR-003; restored under SPEC-WEB-AGENTFM-RESTORE-001 M1). The
+	// superseded top-column name "max" is accepted as a read-time alias.
+	// Absent/empty resolves via EffectiveProfile to the default column and
+	// means plain inheritance: an agent without an llm.agent_overrides entry
+	// resolves to the session model/effort (REQ-AFR-002 — the console surface
+	// is an override layer, never a spawn-path behavior change). Closed-set
+	// validated by validateProfile. This is NOT the retired
+	// llm.performance_tier — that key stays retired and stripped.
+	Profile string `yaml:"profile"`
+	// AgentOverrides is an optional per-agent {model, effort} override keyed
+	// by canonical agent name, applied on top of the active profile's cell
+	// (REQ-AFR-004; restored under SPEC-WEB-AGENTFM-RESTORE-001 M1).
+	// Validated by validateAgentOverrides. Runtime spawn-path consumption
+	// remains Out of Scope (decision-index Q2 — the follow-up card owns it);
+	// today only the console reads and writes this map.
+	AgentOverrides map[string]ModelEffort `yaml:"agent_overrides"`
 	// Claude model mapping by tier
 	ClaudeModels ClaudeTierModels `yaml:"claude_models"`
 	// GLM API configuration
@@ -503,6 +521,15 @@ type WorkflowConfig struct {
 	// the per-resource command patterns. Default OFF; the `moai slot` verbs
 	// work regardless of Enabled. Deliberately separate from IntegrationLock.
 	SlotLease SlotLeaseConfig `yaml:"slot_lease"`
+
+	// QuotaGate carries the quota-aware lane gate settings
+	// (SPEC-QUOTA-AWARE-SCHEDULING-001 REQ-QAS-008): whether the gate runs, the
+	// per-window hold percentages, the release margin, and the freshest-reading
+	// max age. Read through LoadQuotaGate, which owns the default on every
+	// failure and every out-of-range value. Default OFF; the status block, the
+	// hold, and the integration-window warning all consult it. Template
+	// neutrality: no `enabled: true` under internal/template/templates/.
+	QuotaGate QuotaGateConfig `yaml:"quota_gate"`
 
 	// SubagentWriteGuard gates the deny layer of the PreToolUse subagent
 	// destructive-write guard (SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001). Default
@@ -755,6 +782,22 @@ type SlotLeaseConfig struct {
 	Resources          map[string]SlotLeaseResourceConfig `yaml:"resources"`
 }
 
+// QuotaGateConfig mirrors workflow.quota_gate.* (SPEC-QUOTA-AWARE-SCHEDULING-001
+// REQ-QAS-008). Enabled gates every quota surface; the two hold percentages are
+// the used percentage at or above which a window counts as under pressure; a
+// held lane is released once the reading falls below its hold percentage minus
+// ReleaseMarginPct; MaxAge is a duration string — the age beyond which a session
+// record's reading is unknown. The numeric defaults are unmeasured. The raw
+// values may be out of range here; LoadQuotaGate is the resolver that replaces
+// an invalid value with its default.
+type QuotaGateConfig struct {
+	Enabled          bool   `yaml:"enabled"`
+	FiveHourHoldPct  int    `yaml:"five_hour_hold_pct"`
+	SevenDayHoldPct  int    `yaml:"seven_day_hold_pct"`
+	ReleaseMarginPct int    `yaml:"release_margin_pct"`
+	MaxAge           string `yaml:"max_age"`
+}
+
 // SlotLeaseResourceConfig is one resource entry: RE2 command patterns matched
 // against a Bash command with quoted spans scrubbed. Invalid is non-empty when
 // the entry could not be read as a list of pattern strings; such an entry is
@@ -902,6 +945,14 @@ type CodexTaskConfig struct {
 // the HOI opt-in precedent (isHookOptInEnabled), NOT the fail-open learning gate.
 type CodexReviewGateConfig struct {
 	Enabled bool `yaml:"enabled"`
+
+	// TreeScope decides what the gate does for a session whose scope is the
+	// whole uncommitted tree and which carries no WT- branch evidence
+	// (SPEC-CODEX-REVIEW-OWNERSHIP-001 REQ-CRO-001): "review" (default, the
+	// pre-existing behavior) or "skip". Read through
+	// NormalizeCodexReviewGateTreeScope — any other value means review. The
+	// template ships this key only as a commented example.
+	TreeScope string `yaml:"tree_scope"`
 }
 
 // MultiConfig mirrors workflow.multi.* — the multi-model convergence review-gate

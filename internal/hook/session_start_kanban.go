@@ -180,6 +180,7 @@ func kanbanLeaderNotice(runID, root, lang string) string {
 	} else {
 		context = append(context, m.settingsVerify)
 	}
+	context = append(context, m.gateSummary)
 	if spec := os.Getenv(config.EnvMoaiKanbanSpec); spec != "" {
 		context = append(context, fmt.Sprintf(m.specLine, spec))
 	}

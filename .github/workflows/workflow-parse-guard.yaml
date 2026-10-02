@@ -1,0 +1,36 @@
+name: workflow-parse-guard
+
+# Dynamic-workflow script parse gate (card t1445, #1747 regression guard).
+# A prose intrusion inside a .claude/workflows/*.js template literal shipped uncaught:
+# the scripts' load shape (`export const meta` + top-level return) is neither CJS nor
+# ESM, and Node's file-mode `node --check` silently passes files that are invalid in
+# BOTH module systems (module syntax detection falls back; measured on Node 22.14).
+# scripts/workflow-parse-check.js mirrors the runtime load shape (export prefixes
+# stripped, body parsed as an async function) with a plain-ESM fallback, and fails
+# only when neither parse accepts the file.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    paths:
+      - '.claude/workflows/**'
+      - 'internal/template/templates/.claude/workflows/**'
+      - 'scripts/workflow-parse-check.js'
+      - '.github/workflows/workflow-parse-guard.yaml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  workflow-parse-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Parse-check dynamic-workflow scripts (deployed + template trees)
+        run: node scripts/workflow-parse-check.js
