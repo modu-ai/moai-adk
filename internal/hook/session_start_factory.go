@@ -111,10 +111,17 @@ func factoryLaneRuleForSource(source, lang string) string {
 		// manual-mode rule, never the self-dispatch instruction. Any other
 		// value (the code default, absence included) reads as auto-dispatch:
 		// the default is fail-open.
+		//
+		// Card t1451: both Claude-harness rules end with the stall-recovery
+		// rule. Only the clear-surviving lane rule can carry it — a turn ended
+		// by an API error cannot arm a recheck afterwards — and the Codex
+		// owned-card rule below does not, because that harness has no session
+		// cron tool.
+		m := factoryMessagesFor(lang)
 		if os.Getenv(config.EnvFactoryAutoDispatch) == config.FactoryDispatchManual {
-			return factoryMessagesFor(lang).laneManualDispatchRule
+			return m.laneManualDispatchRule + "\n\n" + m.laneRecheckRule
 		}
-		return factoryMessagesFor(lang).laneNextCardRule
+		return m.laneNextCardRule + "\n\n" + m.laneRecheckRule
 	case kanban.BackendGPT:
 		cardID := os.Getenv(config.EnvMoaiKanbanCard)
 		if cardID == "" {

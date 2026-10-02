@@ -97,7 +97,7 @@ The measured precedent this rule codifies: lane-1 card t1330 held a 7-task list 
 
 ### Lane waits are explicit, and stalls are watched
 
-[HARD] A lane that cannot proceed records an explicit wait on disk — reason, whom, recheck point — and ends its turn; it never idles open-ended on a reply. On its next awaken the lane runs the stall watchdog first — invoke Skill("moai-lane-watchdog") and follow it — which measures progress, classifies the stall cause, and resolves the judgment through the decision ladder (doctrine: `.claude/rules/moai/workflow/auto-semantics.md`). The lead records judgments on the decision board instead of leaving a lane waiting on a reply address.
+[HARD] A lane that cannot proceed records an explicit wait on disk — reason, whom, recheck point — and ends its turn; it never idles open-ended on a reply. On its next awaken the lane runs the stall watchdog first — invoke Skill("moai-lane-watchdog") and follow it — which measures progress, classifies the stall cause, and resolves the judgment through the decision ladder (doctrine: `.claude/rules/moai/workflow/auto-semantics.md`). The lead records judgments on the decision board instead of leaving a lane waiting on a reply address. A lane also arms a standing recheck cron (`CronCreate`, recurring, every 20 minutes) before its first stage and keeps it until its completion report: a lane stopped by an API error (429) or by a delegate's report that never comes wakes without outside help only if something armed before it stopped fires, and every wake reads the disk evidence (progress record, reports, commits, the delegate's deliverable) before it replies (`.claude/rules/moai/workflow/auto-semantics.md` §5.1).
 
 ## Deputy dispatch surface
 

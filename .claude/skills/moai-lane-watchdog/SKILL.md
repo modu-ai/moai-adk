@@ -62,7 +62,9 @@ minutes old. N defaults to 15 minutes and is a per-invocation parameter —
 never a config key. No previous snapshot → record a fresh one, no stall
 verdict (fail-open first observation). One channel moving is progress —
 evidence mtime advancing without a commit included: end the iteration with
-a one-line status. Write the new snapshot after the verdict.
+a one-line status — unless the lane itself is parked on a delegate (§3.5):
+then the movement is the delegate's, and the deliverable read in §3.5
+decides, not this rule. Write the new snapshot after the verdict.
 
 ## 2. Classify the cause
 
@@ -71,7 +73,8 @@ a one-line status. Write the new snapshot after the verdict.
 | **awaited-judgment** | the lane stopped where a judgment was needed (a gate, a verdict, a choice) and no reply arrived |
 | **blocked-by** | the card waits on a predecessor card; the predecessor's landing state is the open question |
 | **shell-error** | the lane halted on an unadjudicated command failure (a non-zero exit with no recorded disposition) |
-| **accidental-stop** | the session died or was interrupted mid-card; no deliberate stop was recorded |
+| **accidental-stop** | the session died or was interrupted mid-card — an API error (a 429) ends the turn with no further model action — and no deliberate stop was recorded |
+| **awaited-delegate** | the lane parked on delegated work — a spawned agent's report, a background run's completion — and the report or notice has not arrived; an `available` idle notice that promised a later report counts, because that agent sends nothing more unless it is messaged |
 
 No stall / progress detected → end the iteration.
 
@@ -135,6 +138,28 @@ worktree-anchored Block 0 (`git rev-parse --show-toplevel` → this worktree),
 resuming from the last recorded checkpoint in the card's progress record.
 Never restart the card from zero.
 
+### 3.5 awaited-delegate
+
+Read the delegate's deliverable on disk — the artifacts it was asked to write,
+its output file, its commits — against the delegation record (what was asked,
+where it was to land). Never read the absence of its message as the absence of
+its work.
+
+- Deliverable present and consistent with the delegation → resume and consume
+  it; never wait for the report or the notice. An agent that went `available`
+  sends nothing more unless it is messaged, so the report may never come.
+- Deliverable absent or partial and the delegate evidently ended (its idle or
+  completion notice arrived, or its process is gone) → re-delegate with the
+  partial state, or resume the delegate with `SendMessage` only while it is a
+  live teammate. Never address a teammate stopped with `TaskStop` by name — one
+  message revives it as an ownerless writer
+  (`cross-session-messaging.md` § Rules). Record which.
+- Deliverable absent and the evidence still moving (the delegate is working) →
+  explicit wait whose recheck point is the next cron fire.
+- Deliverable absent, no sign the delegate ended, and the evidence unchanged
+  across two consecutive fires → structured blocker naming the delegate, what
+  was asked of it, and the evidence read; do not wait a third time.
+
 ## 4. Decision board protocol
 
 - **SSOT**: the disk board (doctrine §11). Append-only, one record per
@@ -191,4 +216,6 @@ Every iteration ends in exactly one of:
 3. One writer per tree: the watchdog writes only its own snapshot, its own
    evidence records, and the disk board.
 4. Verification is lane-local; no background load.
-5. Hook-independent: awaken-tick only; no hook surface, no scheduler change.
+5. Hook-independent: awaken-tick only; no hook surface. The scheduler that
+   fires the awaken is the lane's standing recheck cron (doctrine §5.1), armed
+   at card intake — this skill is its prompt, not its owner.
