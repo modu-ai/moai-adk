@@ -124,7 +124,7 @@ via `codex_job_status`/`codex_job_result`, and cancels via `codex_job_cancel`.
 `codex_setup` probes whether codex is available before delegating. codex is
 OPTIONAL: a missing or unavailable codex yields a fail-open `inconclusive`, never
 a hard error.
-`manager-develop` carries the family except `codex_setup`: it may start a bounded drafting job with `codex_task` only as the `External Model Delegation` section of `.claude/skills/moai/workflows/run.md` allows, and a delegated codex turn stays read-only.
+`manager-develop` carries the family except `codex_setup`: it may start a bounded drafting job with `codex_task` only as the `External Model Delegation` section of `.claude/skills/moai/workflows/run/external-delegation.md` allows, and a delegated codex turn stays read-only.
 
 ### Codex read-only roles (background jobs)
 
@@ -160,7 +160,7 @@ polls completion via `glm_job_status`/`glm_job_result`, and cancels via
 learned from `glm_task` itself, which reports a structured failed result when
 the key is missing or z.ai is unreachable. GLM is OPTIONAL: a missing or
 unavailable GLM yields a fail-open result, never a hard error.
-`manager-develop` carries this family in full: it may start a bounded drafting job with `glm_task` only as the `External Model Delegation` section of `.claude/skills/moai/workflows/run.md` allows, and a GLM job sends its prompt to an external provider.
+`manager-develop` carries this family in full: it may start a bounded drafting job with `glm_task` only as the `External Model Delegation` section of `.claude/skills/moai/workflows/run/external-delegation.md` allows, and a GLM job sends its prompt to an external provider.
 
 ### Judgment (gated, display-only)
 
