@@ -814,11 +814,13 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 		launchEnv = append(launchEnv, profileLeaseEnv)
 	}
 
-	// SPEC-FACTORY-MANAGED-SESSION-001 M3 (design.md D-7): a factory leader
-	// or lane launch — the env carries the factory stamps — enters the
-	// managed session owner instead of the exec/spawn handoff: the launcher
-	// keeps its PID and owns the child as a stream-json process (REQ-MS-012).
-	// General (non-factory) launches fall through to the doors below
+	// SPEC-FACTORY-MANAGED-SESSION-001 M3 (design.md D-7): the divert engages
+	// only when the explicit opt-in MOAI_FACTORY_MANAGED (1/true) AND the
+	// factory stamps (leader or lane) are both in the launch env. Such a launch
+	// enters the managed session owner instead of the exec/spawn handoff: the
+	// launcher keeps its PID and owns the child as a stream-json process
+	// (REQ-MS-012), and --continue is refused under the gate. Stamps alone or
+	// the switch alone, and general launches, fall through to the doors below
 	// unchanged.
 	if factoryManagedRequested(launchEnv) && factoryLaunchEnabled(launchEnv) {
 		if cont {

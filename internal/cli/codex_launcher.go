@@ -1160,11 +1160,14 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 	}
 	childArgs := append(localArgs, codexChildArgs(kind, tail)...)
 	req := codexLaunchRequest{Program: binaryPath, Args: childArgs, Dir: dir, Debug: debug, timing: launchTiming}
-	// SPEC-FACTORY-MANAGED-SESSION-001 M3 (design.md D-7): a launch whose
-	// process env carries the factory stamps enters the managed Codex owner —
-	// the launcher keeps its PID and owns the App Server child (REQ-MS-012) —
-	// instead of the doors below. General launches reach the doors unchanged,
-	// and the tmux --spawn door stays a general-launch surface.
+	// SPEC-FACTORY-MANAGED-SESSION-001 M3 (design.md D-7): the divert engages
+	// only when the explicit opt-in MOAI_FACTORY_MANAGED (1/true) AND the
+	// factory stamps are both in the process env. Such a launch enters the
+	// managed Codex owner — the launcher keeps its PID and owns the App Server
+	// child (REQ-MS-012) — instead of the doors below. Stamps alone or the
+	// switch alone stay on the ordinary doors, and the tmux --spawn door never
+	// diverts. `moai codex -f lane` card children never reach this code:
+	// runCodexFactoryLane launches them through the direct door.
 	if !spawn && factoryManagedRequested(os.Environ()) && factoryLaunchEnabled(os.Environ()) {
 		if worktree.present {
 			// Same anchor discipline as the direct door: the lock names the
