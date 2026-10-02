@@ -20,6 +20,12 @@
 - **판정서**: `.moai/reports/t1393/root-cause.md` — codex overlay Gap("최소 제출 정상 저장")은 풀폼 실측으로 대체·소멸.
 - **처분**: AC-WSS-001 명문화된 미재현 분기 — 구현 강행 없음, 재현 테스트 2종을 영구 회귀 가드로 보존. 잔여 설명(스테일 moai web 프로세스 등)은 root-cause.md §6 Gaps에 기록.
 
+### M2 (2026-10-02) — 스코프 ① 수리 처분: 수리 대상 공집합
+
+- M1 미재현 분기에 따라 수리 대상이 없다 — 재현 테스트 2종이 수정 전 트리에서 태어나 GREEN인 것이 그 자체로 최강 증거다(결함이 있었다면 적색이었을 테스트가 무수정 트리에서 통과).
+- AC-WSS-005 무손실 회귀 0: `go test -count=1 -run 'TestApplySchemaEdits|TestNestedSeamEdit|TestPatchFile|TestSyncToProjectConfig|TestSharedNestedSeam' ./internal/settings/ ./internal/profile/` — settings 29 PASS + profile 전항 PASS, 양 패키지 ok. t1314 무손실 테스트 무수정.
+- 산출물 변경 0 — 이 행이 M2의 완료 기록이다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
