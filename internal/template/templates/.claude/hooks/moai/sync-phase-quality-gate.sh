@@ -752,8 +752,8 @@ GOFILES
 # find_surviving_go_module_roots: every module root still present on disk,
 # discovered from the filesystem instead of the delta. The delta walk above
 # resolves a changed file to its OWNING module; when a changed file's whole
-# module is deleted its go.mod is gone with it and the walk resolves nothing
-# (card t1412). The prune set mirrors has_suffix's, so discovery skips the
+# module is deleted its go.mod is gone with it and the walk resolves nothing.
+# The prune set mirrors has_suffix's, so discovery skips the
 # same heavy trees.
 find_surviving_go_module_roots() {
     find "$PROJECT_ROOT" \
@@ -768,7 +768,7 @@ find_surviving_go_module_roots() {
             dirname "$m"
         done
 }
-# resolve_go_roots: the go branch's module-root ladder (card t1412). Delta
+# resolve_go_roots: the go branch's module-root ladder. Delta
 # roots first — only what the sync commit actually touched gets checked. When
 # the walk resolves nothing because the changed files' module is deleted whole
 # (its go.mod is gone with its files), the surviving module roots stand in:
