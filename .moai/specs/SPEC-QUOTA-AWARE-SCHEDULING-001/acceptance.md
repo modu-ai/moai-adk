@@ -4,7 +4,7 @@ This file is the verification layer: Given-When-Then criteria, each decided by o
 
 ## §A Scope of verification
 
-The criteria verify: the rate-limit windows in the session telemetry record and its schema, throttle, and exhaustion time; the aggregator's freshness, rollover, and fail-open rules; the `workflow.quota_gate` configuration and its template mirror; the Claude-lane hold at `moai factory next` (CLI and MCP) with its hold line and in-wait latch; the unaffected non-Claude lanes and unaffected `stage`/`complete`; the `moai factory status` quota block; the warn-only line at `moai integration acquire`; the offline/read-only property; the baseline-first commit ordering; and the untouched kanban paths. Not verified here: kanban mode, Codex-lane slot behaviour, any real Claude Code runtime or real quota (no test starts a real `claude` or `codex`).
+The criteria verify: the rate-limit windows in the session telemetry record and its schema, throttle, and exhaustion time; the aggregator's freshness, rollover, and fail-open rules; the `workflow.quota_gate` configuration and its template mirror; the Claude-lane hold at `moai factory next` (CLI and MCP) with its hold line and in-wait latch; the unaffected non-Claude lanes and unaffected `stage`/`complete`; the `moai factory status` quota block; the warn-only line at `moai integration acquire`; the offline/read-only property; the baseline-first commit ordering; the untouched kanban paths, and (leader verdict, 0.3.0) the steering: one shared pressure evaluation, the lane inventory, the `moai todo --auto` and `moai factory status` recommendation and no-candidate warning, no dispatch side effect, and unchanged output when pressure is off. Not verified here: kanban mode, Codex-lane slot behaviour, any real Claude Code runtime or real quota (no test starts a real `claude` or `codex`).
 
 ## §B Test-environment constraint (binds every AC)
 
@@ -13,7 +13,7 @@ The criteria verify: the rate-limit windows in the session telemetry record and 
 - Lane environment in the CLI tests means the factory role marker set to the role-value constant, a lane label, and the backend variable under test; the gate predicate reads the launch-provider variable first and the kanban backend variable second (`DO-10`).
 - `./internal/cli` runs only with an anchored `-run` selector naming the AC tests (`-run '^(TestQAS_AC008_...|TestQAS_AC008b_...)$'`); a whole-package run of `internal/cli` is not a verdict here (it measures the machine, not the change). `./internal/statusline` and `./internal/config` may run whole-package once at the end of M4.
 - **Pass convention:** an AC passes only when every command it names exits 0 and each test's verbose output carries a `--- PASS: <name> ` line for exactly the test the command names (name followed by a space, never a prefix match). `[no tests to run]`, `no tests ran`, or a zero swept count is a Gap, never a pass (`verification-completeness.md` §1.1). Subtests are decided by their parent's PASS line plus a `-v` listing of the subtest names the AC enumerates.
-- Defaults the tests assert come from the SPEC: hold 90 (five-hour) and 95 (seven-day), release margin 5, max age 30m, heartbeat 5m, exhaustion 100, hold exit status 4 — the numbers marked `[DECISION-OPEN]` in `spec.md` §B change here and in the tests together if the lane resolves them differently.
+- Defaults the tests assert come from the SPEC: hold 90 (five-hour) and 95 (seven-day), release margin 5, max age 30m, heartbeat 5m, exhaustion 100, hold exit status 3 (the no-card status, DO-5) — the numbers are the resolved defaults of `spec.md` §B; the thresholds, margin, and age are unmeasured defaults (DO-3, accepted as provisional by the leader) and change here and in the tests together when the leader sets other values.
 
 ## §C Traceability
 
@@ -35,6 +35,12 @@ The criteria verify: the rate-limit windows in the session telemetry record and 
 | REQ-QAS-014 | AC-QAS-013 |
 | REQ-QAS-015 | AC-QAS-016 |
 | REQ-QAS-016 | AC-QAS-015 |
+| REQ-QAS-017 | AC-QAS-017 |
+| REQ-QAS-018 | AC-QAS-018 |
+| REQ-QAS-019 | AC-QAS-019 |
+| REQ-QAS-020 | AC-QAS-020 |
+| REQ-QAS-021 | AC-QAS-021 |
+| REQ-QAS-022 | AC-QAS-022 |
 
 ## §D Acceptance criteria
 
@@ -82,22 +88,22 @@ Each entry ends with its **RED-now** cell (the pre-change observation, ledger ro
 - Decider: `go test ./internal/config -run '^TestQAS_AC007_ConfigDefaultsMirrorTemplate$' -count=1 -v` → PASS (subtests `defaults_equal_template`, `template_ships_off`, `absent_or_unparseable_yields_default`, `out_of_range_yields_default`, `cache_schema_bumped`); `go test ./internal/config -run '^TestShippedConfigKeysHaveReaders$' -count=1 -v` → PASS (the inventory classification, `shipped_key_reader_test.go:74`); the positive control inside the new test decodes the sibling `slot_lease.default_max_duration` from the same template (the pattern of `workflow_jev_test.go:84-88`).
 - RED-now: ledger E3, E4, E8 (`quota_gate` appears 0 times in the template, `types.go`, and the inventory). Green path: M2.
 
-### AC-QAS-008 — a Claude lane holds at the threshold and leases nothing
+### AC-QAS-008 — a held Claude lane leases no new card but still receives its own assigned card
 
-- **Given** the gate enabled, a lane environment whose launch provider is Claude, a queued card, and a fresh record with the five-hour window at 92% (reset in the future), **when** `moai factory next` runs (and, separately, the `factory_next` MCP handler), **then** no card is leased, the factory record and the queue are byte-identical before and after, one hold line is printed, and the CLI exits with the hold status (4); a window at 89.9% (below 90) leases normally; a seven-day window at 95% holds.
-- Decider: `go test ./internal/cli -run '^(TestQAS_AC008_ClaudeLaneHeldAtThreshold|TestQAS_AC008b_MCPFactoryNextHeld)$' -count=1 -v` → two PASS lines; subtests `five_hour_92`, `five_hour_89_9`, `seven_day_95`.
+- **Given** the gate enabled, a lane environment whose launch provider is Claude, a queued card, a picked-unassigned card, a picked card with no record row, and a fresh record with the five-hour window at 92% (reset in the future), **when** `moai factory next` runs (and, separately, the `factory_next` MCP handler), **then** none of those three cards is leased, the factory record and the queue are byte-identical before and after, one hold line is printed on the error stream with standard output empty, and the CLI exits with status 3 (the no-card status); **given** the same state plus a card assigned to this lane (arm (a)), **then** that card is leased and returned exactly as with the gate disabled and no hold line is printed; a window at 89.9% (below 90) leases normally; a seven-day window at 95% holds.
+- Decider: `go test ./internal/cli -run '^(TestQAS_AC008_ClaudeLaneHeldAtThreshold|TestQAS_AC008b_MCPFactoryNextHeld)$' -count=1 -v` → two PASS lines; subtests `five_hour_92_new_cards_skipped`, `five_hour_92_assigned_card_still_leased`, `five_hour_89_9`, `seven_day_95`.
 - RED-now: ledger E2. Green path: M3.
 
 ### AC-QAS-009 — the hold line carries the reset time
 
-- **Given** the hold fixtures of AC-QAS-008, **when** the hold line is captured, **then** it is exactly one line, matches `^quota hold: five_hour used=[0-9]+\.[0-9]% resets_at=[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$` for one held window, carries one such segment per held window separated by `; ` when both are held, and the instant equals the fixture's reset epoch rendered in UTC.
+- **Given** the hold fixtures of AC-QAS-008, **when** the hold line is captured, **then** it is exactly one line on the error stream (standard output carries nothing, whereas a true empty queue prints `no card is available` on standard output and no `quota hold:` line, both with status 3), matches `^quota hold: five_hour used=[0-9]+\.[0-9]% resets_at=[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$` for one held window, carries one such segment per held window separated by `; ` when both are held, and the instant equals the fixture's reset epoch rendered in UTC.
 - Decider: `go test ./internal/cli -run '^TestQAS_AC009_HoldLineCarriesResetTime$' -count=1 -v` → PASS.
 - RED-now: ledger E2. Green path: M3.
 
 ### AC-QAS-010 — the wait latch releases only below the margin or at the reset
 
-- **Given** a held Claude lane in `moai factory next --wait` and an injected sleep that advances fixtures, **when** the reading goes 92% → 88% → 84%, **then** the verb stays held at 88% (release needs below 85%) and leases at 84%; **when** the reading stays at 92% and the reset time passes, **then** the verb leases once the window reads reset; **when** the wait bound elapses while held, **then** it exits with the hold status.
-- Decider: `go test ./internal/cli -run '^TestQAS_AC010_WaitLatchReleasesOnlyBelowMarginOrReset$' -count=1 -v` → PASS (subtests `margin_release`, `reset_release`, `bound_elapsed`).
+- **Given** a held Claude lane in `moai factory next --wait` and an injected sleep that advances fixtures, **when** the reading goes 92% → 88% → 84%, **then** the verb stays held at 88% (release needs below 85%) and leases at 84%; **when** the reading stays at 92% and the reset time passes, **then** the verb leases once the window reads reset; **when** the wait bound elapses while held, **then** it exits with status 3 and the stderr hold line; **when** a card is assigned to the lane while the verb waits held, **then** the next re-check leases that card.
+- Decider: `go test ./internal/cli -run '^TestQAS_AC010_WaitLatchReleasesOnlyBelowMarginOrReset$' -count=1 -v` → PASS (subtests `margin_release`, `reset_release`, `bound_elapsed`, `assigned_card_leased_during_wait`).
 - RED-now: ledger E2. Green path: M3.
 
 ### AC-QAS-011 — non-Claude lanes are never held; stage and complete are never gated
@@ -121,13 +127,13 @@ Each entry ends with its **RED-now** cell (the pre-change observation, ledger ro
 ### AC-QAS-014 — the quota path is offline, spawn-free, and read-only
 
 - **Given** the new aggregator and gate source files, **when** their imports are parsed and the aggregator runs on a temporary directory snapshot, **then** none imports `net`, `net/http`, or `os/exec`, and the directory tree (names, sizes, bytes) is identical before and after the run.
-- Decider: `go test ./internal/statusline ./internal/cli -run '^TestQAS_AC014_AggregatorIsOfflineSpawnFreeAndReadOnly$' -count=1 -v` → PASS in each package that defines it; the swept count is the two files named in `plan.md` §D.
+- Decider: `go test ./internal/statusline ./internal/cli -run '^TestQAS_AC014_AggregatorIsOfflineSpawnFreeAndReadOnly$' -count=1 -v` → PASS in each package that defines it; the swept count is the three files named in `plan.md` §D (`internal/statusline/quota.go`, `internal/cli/factory_quota.go`, `internal/cli/factory_quota_lanes.go`), and the steering code is included in the no-network, no-spawn, no-write sweep.
 - RED-now: ledger E1 (the files do not exist yet). Green path: M2 and M3.
 
 ### AC-QAS-015 — the baseline lands before the implementation
 
-- **Given** the run-phase commit graph, **when** the first commit adding the two baseline goldens (`internal/statusline/testdata/qas_baseline_windowless_record.golden.json`, `internal/cli/testdata/qas_baseline_factory_status.golden.json`) is B and the first commit adding `internal/statusline/quota.go` is I, **then** B is an ancestor of I and distinct from it.
-- Decider (plain commands, recorded verbatim in `progress.md` §E.2): `git log --reverse --format=%H -- internal/statusline/testdata/qas_baseline_windowless_record.golden.json internal/cli/testdata/qas_baseline_factory_status.golden.json` (first line = B); `git log --reverse --format=%H -- internal/statusline/quota.go` (first line = I); `git rev-list --count B..I` prints a number of at least 1 and `git rev-list --count I..B` prints `0`.
+- **Given** the run-phase commit graph, **when** the first commit adding the three baseline goldens (`internal/statusline/testdata/qas_baseline_windowless_record.golden.json`, `internal/cli/testdata/qas_baseline_factory_status.golden.json`, `internal/cli/testdata/qas_baseline_todo_auto.golden.txt`) is B and the first commit adding `internal/statusline/quota.go` is I, **then** B is an ancestor of I and distinct from it.
+- Decider (plain commands, recorded verbatim in `progress.md` §E.2): `git log --reverse --format=%H -- internal/statusline/testdata/qas_baseline_windowless_record.golden.json internal/cli/testdata/qas_baseline_factory_status.golden.json internal/cli/testdata/qas_baseline_todo_auto.golden.txt` (first line = B); `git log --reverse --format=%H -- internal/statusline/quota.go` (first line = I); `git rev-list --count B..I` prints a number of at least 1 and `git rev-list --count I..B` prints `0`.
 - RED-now: ledger E9 (no golden and no `testdata` directory exist on the pre-change statusline tree). Green path: the M0 commit adds both goldens, then every later milestone commit follows it. Why a commit-graph criterion: a baseline committed together with the implementation it measured leaves the ordering unverifiable (`verification-claim-integrity.md` §2.3).
 
 ### AC-QAS-016 — no kanban path is touched
@@ -135,6 +141,43 @@ Each entry ends with its **RED-now** cell (the pre-change observation, ledger ro
 - **Given** the card branch after its last implementation commit and `CARD_BASE` read at that moment as `git merge-base develop HEAD`, **when** the changed-file list is taken, **then** it names no file under `internal/kanban/` and neither `internal/cli/kanban.go` nor `internal/cli/kanban_settings.go`; the positive control (the same range without the pathspec) is non-empty.
 - Decider (plain commands): `git merge-base develop HEAD` (= `CARD_BASE`); `git diff --name-only <CARD_BASE>..HEAD -- internal/kanban internal/cli/kanban.go internal/cli/kanban_settings.go` prints nothing; `git diff --name-only <CARD_BASE>..HEAD` prints at least the SPEC and source files (an empty control reports "unmeasurable", never "no change"). Pre-merge evaluation only (`gitflow-lane-protocol.md` §8).
 - RED-now: not applicable as a red (a guard that holds at arrival); its mutant is the probe: touching `internal/cli/kanban.go` must make the first command print that path. Green path: every milestone.
+
+### AC-QAS-017 — one pressure evaluation, four surfaces
+
+- **Given** the gate enabled and a fixture with the five-hour window at 92% (fresh, reset in the future), **when** the lane gate (as a Claude lane), the `moai factory status` block, the `moai todo --auto` recommendation, and the `moai integration acquire` warning are each evaluated, **then** all four report pressure; with the window at 89.9%, reset, unknown, or the gate disabled, none reports pressure; the lane gate holds only a Claude lane while the other three report pressure for any caller backend.
+- Decider: `go test ./internal/cli -run '^TestQAS_AC017_FourSurfacesAgreeOnPressure$' -count=1 -v` → PASS (subtests `at_92`, `at_89_9`, `reset`, `unknown`, `gate_disabled`, `caller_backend_independent`).
+- RED-now: ledger E2, E5, E10. Green path: M3 (the shared evaluation) and M4-M5 (the surfaces).
+
+### AC-QAS-018 — the lane inventory lists live non-Claude lanes only
+
+- **Given** a temporary factory registry and kanban session records with: lane-1 alive, backend claude; lane-2 alive, backend glm; lane-3 alive, backend gpt; lane-4 registered with a dead pid, backend glm; lane-5 alive with no session record; lane-6 alive with two records of the same newest instant that disagree on backend; and, separately, an unreadable registry and an unreadable record directory, **when** the inventory is read, **then** the candidates are lane-2 (glm) and lane-3 (gpt), the unknown count is 2 (lane-5 and lane-6), a lane whose newest record is newer than an older record of a different backend takes the newest, and an unreadable registry or record store yields no candidates; the registry and record files are byte-identical before and after.
+- Decider: `go test ./internal/cli -run '^TestQAS_AC018_LaneInventoryCandidates$' -count=1 -v` → PASS (subtests `candidates_and_unknown`, `newest_record_wins`, `unreadable_yields_none`, `read_only`).
+- RED-now: ledger E10. Green path: M4.
+
+### AC-QAS-019 — pressure on: `--auto` and `moai factory status` recommend the candidate lanes
+
+- **Given** the gate enabled, pressure on (five-hour 92%), the inventory of AC-QAS-018, a two-card queue and the Jev line stubbed, **when** `moai todo --auto` runs one cycle and `moai factory status` runs in text and `--json`, **then** the `--auto` output carries, immediately before each `accept` line, exactly one line matching `^quota pressure: five_hour used=[0-9]+\.[0-9]% resets_at=[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z; recommend non-Claude lane\(s\): lane-2 \(glm\), lane-3 \(gpt\)$`; the status text carries the same line under the quota block; the status JSON `quota` key carries `pressure: true`, the two candidates with label and backend, and `unknown_lanes: 2`.
+- Decider: `go test ./internal/cli -run '^TestQAS_AC019_AutoAndStatusRecommendNonClaudeLanes$' -count=1 -v` → PASS (subtests `auto_line_before_each_accept`, `status_text`, `status_json`).
+- RED-now: ledger E10, E11. Green path: M4.
+
+### AC-QAS-020 — pressure on and no candidate lane: a warning, nothing else
+
+- **Given** pressure on and an inventory with only claude lanes, only dead lanes, or no registered lane, **when** `moai todo --auto` and `moai factory status` run, **then** each prints one line matching `^quota pressure: five_hour used=[0-9]+\.[0-9]% resets_at=[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z; warning: no live non-Claude lane \(unknown backend: [0-9]+\); nothing is re-dispatched$` in place of the recommendation line, the status JSON carries `warning: "no-non-claude-lane"` and an empty candidate list, and every other line of the output (accept, directive, evidence, done) is identical to the pressure-off output of the same fixture.
+- Decider: `go test ./internal/cli -run '^TestQAS_AC020_NoNonClaudeLaneWarnsOnly$' -count=1 -v` → PASS (subtests `only_claude_lanes`, `only_dead_lanes`, `no_lanes`, `rest_of_output_unchanged`).
+- RED-now: ledger E10, E11. Green path: M4.
+
+### AC-QAS-021 — the steering changes nothing
+
+- **Given** pressure on, a queue, a factory record, a lane registry, and a session registry, **when** the recommendation is produced through `moai factory status` and through the `--auto` cycle, **then** the set of queue mutations the `--auto` cycle performs is identical to the pressure-off run of the same fixture (its own pick and done only), the factory record, the lane registry, and the session registry are byte-identical before and after, no card changes state or owner, and the steering code path starts no process, opens no network connection, and sends no message (static import check on the steering files, shared with AC-QAS-014).
+- Decider: `go test ./internal/cli -run '^TestQAS_AC021_SteeringChangesNothing$' -count=1 -v` → PASS (subtests `status_is_read_only`, `auto_mutations_equal_pressure_off`, `no_card_class_read`).
+- RED-now: ledger E10 (no steering code exists to compare). Green path: M4.
+
+### AC-QAS-022 — pressure off: the output is unchanged
+
+- **Given** the baseline goldens measured before the change (`qas_baseline_factory_status.golden.json`, `qas_baseline_todo_auto.golden.txt`) and a fixture with the gate disabled, then enabled with every window below its hold percentage, reset, or unknown, **when** `moai todo --auto` (Jev line stubbed) and `moai factory status` run, **then** each output is byte-identical to its golden.
+- Decider: `go test ./internal/cli -run '^TestQAS_AC022_PressureOffOutputUnchanged$' -count=1 -v` → PASS (subtests `status_gate_disabled`, `status_below_threshold`, `auto_gate_disabled`, `auto_below_threshold`, `auto_unknown_windows`); existing guards `go test ./internal/cli -run '^(TestFactoryStatusShowsHolderModePriority|TestTodoAutoSerialCycle|TestTodoAutoCreatesNoFactoryLease|TestTodoAutoClearGuidancePerCard)$' -count=1 -v` → four PASS lines (`todo_auto_test.go:247,395,339`, `factory_classify_test.go:392`).
+- RED-now: baseline goldens absent (ledger E9); the existing `--auto` tests are the pre-change measurement. Green path: M0 (goldens), M4.
+- Depends on the baseline goldens (AC-QAS-015).
 
 ## §E RED-now evidence ledger
 
@@ -151,8 +194,10 @@ Measured in this plan phase on tree `c50da9c2f` (the card branch tip and the dev
 | E7 | `grep -c -i "heartbeat" internal/statusline/context_usage.go` | `0` | not observed (G1) | the throttle has no heartbeat |
 | E8 | `grep -c "quota_gate" internal/config/testdata/shipped_key_inventory.yaml` | `0` | not observed (G1) | the inventory has no gate entries |
 | E9 | `ls internal/statusline/testdata` | `ls: internal/statusline/testdata: No such file or directory` | 1 (observed; the harness printed `Exit code 1`) | the statusline baseline golden's directory does not exist yet; the golden is created in M0. The CLI side: `ls internal/cli/testdata` lists 36 entries, none named `qas_*` |
+| E10 | `grep -c -i "quota" internal/cli/todo_auto.go` | `0` | not observed (G1) | the `--auto` cycle has no quota or lane logic |
+| E11 | `grep -c -i "quota" internal/cli/todo.go` | `0` | not observed (G1) | the `--auto` wiring has no quota seam |
 
-Each green path flips the count to at least 1 (E1-E5, E7-E8) or the value to `3` (E6). The mutant probe for the count rows: an implementation that only adds the word to a comment satisfies the count but cannot satisfy the Go test that decides the same AC, which is why every AC names a Go test as its decider and the ledger row only pins the starting observation.
+Each green path flips the count to at least 1 (E1-E5, E7-E8, E10-E11) or the value to `3` (E6). The mutant probe for the count rows: an implementation that only adds the word to a comment satisfies the count but cannot satisfy the Go test that decides the same AC, which is why every AC names a Go test as its decider and the ledger row only pins the starting observation.
 
 ## §F Edge cases
 
@@ -161,11 +206,11 @@ Each green path flips the count to at least 1 (E1-E5, E7-E8) or the value to `3`
 - A percentage above 100: treated as exhausted; the hold line prints the received value.
 - Two Claude sessions of different accounts writing the same project directory (`DO-2`): freshest-per-window applies; the reset times differ and `moai factory status` shows the source of each reading.
 - `max_age` of `0` or an unparseable duration, or a hold percentage outside 1-100: the default applies (REQ-QAS-008); the status block reports the effective values.
-- A held lane with `--wait` and a very long reset: the wait bound (15m default) ends the wait with the hold status; no lease, no record change.
+- A held lane with `--wait` and a very long reset: the wait bound (15m default) ends the wait with status 3 and the stderr hold line; no new-card lease, no record change.
 
 ## §G Quality gate and Definition of Done
 
-- All 16 deciders pass with a non-empty swept count; the existing guards named in AC-QAS-002, -003, -007, -011, -012 stay green; `go vet ./internal/statusline ./internal/config ./internal/cli` and `GOOS=windows GOARCH=amd64 go build ./...` pass; the lint baseline is not worsened.
+- All 22 deciders pass with a non-empty swept count; the existing guards named in AC-QAS-002, -003, -007, -011, -012, -022 stay green; `go vet ./internal/statusline ./internal/config ./internal/cli` and `GOOS=windows GOARCH=amd64 go build ./...` pass; the lint baseline is not worsened.
 - Template-first: the template `workflow.yaml` and the local `.moai/config/sections/workflow.yaml` are edited in the same change (local enables the gate for this repository); `make build` regenerates embedded templates before the commit.
 - `moai spec lint` reports no error for this SPEC directory.
 - `progress.md` §E.2 carries, per milestone, the verbatim RED (E8), the verbatim GREEN output, and the commit SHAs including the AC-QAS-015 ordering evidence.
