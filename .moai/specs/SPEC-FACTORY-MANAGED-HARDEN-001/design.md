@@ -47,7 +47,13 @@ tier: M
 
 오류 응답의 `message` 는 영어이고 method 이름을 담는다(예: "managed Factory session cannot answer <method>: no operator is attached"). 정책표는 코드 안의 한 표 데이터이고 분기마다 판단을 흩지 않는다 — 표를 한 곳에서 읽고 한 곳에서 시험한다.
 
-**미관측(Gap)**: 실제 codex가 각 거부·오류 응답을 받았을 때 모델이 어떻게 행동하는지는 관측하지 못했다(라이브 게이트 미설정). 특히 `mcpServer/elicitation/request` 를 거부하는 선택은, codex가 MoAI MCP 도구 승인까지 이 요청으로 올리는 경우 브로커 도구 호출을 막을 수 있다. 부모 SPEC의 승인 스코핑(`approval_mode="approve"`)이 그 승인창을 없앤다는 부모 쪽 관측에 기대는 판단이며, 이 SPEC은 그 관측을 다시 하지 않는다. 라이브에서 수신 확인이 멈추는 것이 보이면 정책표의 해당 줄을 재검토한다.
+**운영자에게 보이는 흔적 (모든 응답 요청)**: 답한 서버 요청마다 stderr에 한 줄(영어)을 남긴다 — `Factory server request answered: <method> -> <decline|denied|empty|failed|error>`. `mcpServer/elicitation/request` 줄은 `serverName` 도 담는다(`… serverName=<name>`; 스키마 실측: `McpServerElicitationRequestParams` 의 필수 필드는 `serverName`·`threadId`, `turnId` 는 선택). 같은 한 곳(응답 정책표를 읽는 함수)에서 쓰므로 표와 로그가 갈라지지 않는다. AC-MH-001 의 가짜 서버 시험이 11개 하위 케이스 각각에서 그 줄을 단언한다.
+
+**MoAI 브로커 elicitation 거부는 그 턴의 턴 단위 실패다 (D7 탐지 수단)**: 거부된 `mcpServer/elicitation/request` 의 `serverName` 이 MoAI 브로커 MCP 서버 이름 `moai`(소유 App Server 명령행의 `mcp_servers.moai.*` 키와 같은 이름)와 같으면, 읽기 고루틴이 그 사실을 클라이언트의 원자적 계수기에 올린다. `startTurn` 은 턴을 시작할 때 계수기를 0으로 되돌리고, `turn/completed` 를 받은 뒤 계수기가 0보다 크면 App Server가 그 턴을 `completed` 로 표시했더라도 턴 단위 표식 오류(D-2의 `errManagedTurnFailed`)를 반환한다. 이유: codex가 브로커 도구 승인을 이 요청으로 올리면 `decline` 은 도구 호출만 막고 턴은 정상 종료될 수 있다 — 그러면 수신 확인이 안 써지고 claim은 lease(2분)마다 TTL까지 다시 배달되어 조용한 재배달 루프가 된다. 턴 단위 실패로 세면 연속 실패 상한(D-2)이 그 루프를 큰 소리의 정지로 바꾼다. 다른 `serverName` 의 elicitation 은 거부하고 로그만 남기며 실패로 세지 않는다. 턴 사이(한가한 때)에 도착한 broker elicitation 은 다음 `startTurn` 의 0 리셋으로 버려지고 로그만 남는다(턴에 속하지 않는다). 이 규칙은 정책표의 응답을 바꾸지 않는다 — 응답은 계속 `decline` 이다.
+
+**미관측 전제와 Gap (정정)**: 실제 codex가 각 거부·오류 응답을 받았을 때 모델이 어떻게 행동하는지는 관측하지 못했다. 특히 `mcpServer/elicitation/request` 를 거부하는 선택은 "부모 SPEC의 승인 스코핑(`approval_mode="approve"`)이 MoAI 브로커 도구의 승인창을 없앤다"는 전제에 기댄다. **이 전제는 관측된 사실이 아니라 미관측 전제다** — 부모 research.md(`:87`)가 "실제 Factory 승인 대화상자 유무는 다시 실세션에서 확인해야 한다 — live 게이트 테스트(M2)가 이 재확인을 소유"라고 남겼고, 부모의 `TestManagedCodexFactoryBrokerLive`(AC-MS-016)는 SKIP으로 통과했다. 부모의 AC-MS-012 가 확인하는 것은 인수 모양(`TestMoAIMCPApprovalArgsOnlyTargetMoAI`)뿐이다.
+- 이 라이브 관측은 **run 진입 조건이 아니다**. 이름 붙은 Gap이며 `MOAI_FACTORY_LIVE_ROOT` 와 `MOAI_FACTORY_LIVE_RUN` 환경변수를 둔 환경에서 부모의 `TestManagedCodexFactoryBrokerLive` 로 돌릴 수 있다.
+- 라이브를 돌린다면 볼 것: (1) stderr에 `Factory server request answered: mcpServer/elicitation/request … serverName=moai` 줄이 나타나는가 — 나타나면 승인 스코핑이 브로커 elicitation을 없애지 못한다는 뜻이므로 이 정책표 줄을 재검토한다. (2) 수신 확인(`factory_msg_receipt`)이 실제로 써지는가 — 안 써지고 같은 `message_id` 가 lease 간격마다 다시 오면 위 조용한 루프다. (3) 명령·파일 승인 줄이 나타나는가 — 나타나면 모델이 승인되지 않은 동작을 시도한 것이다.
 
 ### 기각한 대안
 
@@ -66,6 +72,7 @@ tier: M
 |---|---|---|
 | 스트림 `result.is_error` (`pumpManagedStreamTurn`) | **턴 단위** | 세션이 살아 있고 결과 이벤트가 정상 도착했다. 일시적 429 같은 API 오류가 이 모양이다(감사서 §F4). |
 | Codex 턴이 `completed` 가 아닌 상태로 종료(`turn ended as interrupted/failed`) | **턴 단위** | 서버가 `turn/completed` 를 정상 보고했다. 연결은 살아 있다. |
+| 거부된 MoAI 브로커 `mcpServer/elicitation/request`(`serverName` 이 `moai`)가 있었던 Codex 턴 — App Server가 그 턴을 `completed` 로 표시해도 | **턴 단위** | 브로커 도구가 막혀 수신 확인이 안 써졌을 가능성이 있는 턴이다(D-1). 턴 단위로 세어야 연속 실패 상한이 조용한 재배달 루프를 큰 소리의 정지로 바꾼다. 표식을 붙이는 곳은 `startTurn` 의 턴 종료 직후 한 곳이다. |
 | 우선 턴(priming) 실패 | **세션 치명** | 세션이 한 번도 쓸 수 있게 된 적이 없다. 기존 테스트 `TestManagedDriverFailureBranches` 가 이 동작을 고정한다. |
 | 스트림 종료(`errManagedStreamClosed`), Codex "connection closed" | **세션 치명** | 소유한 자식이나 연결이 사라졌다. 다음 턴도 같은 이유로 실패한다. |
 | 자식 stdin·WS 쓰기 실패, 스캐너 오류(한 줄 한도 초과) | **세션 치명** | 스트림 상태를 신뢰할 수 없다. |
@@ -121,7 +128,7 @@ tier: M
 | 스트림 소유자의 블로킹 읽기 | 컨텍스트로 풀리지 않는다. 읽기를 별도 고루틴으로 빼거나 자식을 죽여야 풀린다 — 결국 B의 kill이 필요하다 | 자식을 죽이면 stdout이 EOF를 내 읽기가 풀린다 | 풀 필요 없음(프로세스가 끝남) |
 | Codex 소유자의 블로킹 | ctx 취소로 풀린다 | `Close` → `shutdown` 이 `done` 을 닫고 연결을 닫아 풀린다 | 풀 필요 없음 |
 | 한가한 드라이버 | 인터페이스 변경과 별개로 드라이버에도 취소 경로가 필요하다 | 드라이버 `select` 에 `ctx.Done()` 추가 | 풀 필요 없음 |
-| 수정 지점(실측: `grep -c` 기준 텍스트 출현 수) | `DeliverTurn(` 13곳(6개 파일) + 구현체 2종 + 가짜 `fakeManagedSession` 1종 + `driveManagedFactorySession(` 10곳(5개 파일) | `driveManagedFactorySession(` 10곳(5개 파일)에 `ctx` 첫 인자 추가, 인터페이스와 가짜 구현체는 무변경 | 정리를 한 번 더 구현 |
+| 수정 지점(실측: `grep -c` 기준 텍스트 출현 수) | `DeliverTurn(` 13곳(6개 파일) + 구현체 2종 + 가짜 `fakeManagedSession` 1종 + `driveManagedFactorySession(` 출현 10곳(5개 파일; 정의 1 + 호출 9) | `driveManagedFactorySession(` 출현 10곳(정의 1 + 호출 9: 비테스트 2·테스트 7, 5개 파일)에 `ctx` 첫 인자 추가, 인터페이스와 가짜 구현체는 무변경 | 정리를 한 번 더 구현 |
 | 정리 경로 수 | 1(기존) | 1(기존) — `Close`·`defer` 그대로 | 2(`defer` 는 `os.Exit` 에서 돌지 않으므로 launch-pending 롤백·토큰 삭제를 다시 써야 한다) |
 | 새 위험 | 인터페이스 확장이 이후 소유자 모두에 강제된다 | `Close` 가 동시 호출 안전해야 한다(아래) | 정리가 두 벌로 갈라진다 |
 
@@ -130,19 +137,42 @@ tier: M
 ### B의 구성 (가칭)
 
 - **시그널 구독**: `signal.NotifyContext(parent, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)` 를 감싼 작은 도우미를 `internal/cli/launch_signals.go` 에 둔다. 첫 시그널이 오면 `stop()` 으로 기본 동작을 복원한다 — 정리가 멈췄을 때 두 번째 시그널이 프로세스를 끝낼 수 있게 하려는 것이다.
-- **워처**: 소유자 진입(`runManagedFactoryStreamSession`, `runManagedFactoryCodex`)이 컨텍스트를 세션 생성 직후, `Start()` 이전에 만들고 워처 고루틴이 `ctx.Done()` 에서 `session.Close()` 를 부른다. 워처가 `Start()` 중에 도달해도 안전하려면 Codex 소유자의 `Start()` 가 준비 대기에 쓰는 컨텍스트를 이 컨텍스트에서 파생한다(필드로 주입; 인터페이스 불변). 그렇지 않으면 핸드셰이크 예산(10초) 동안 시그널이 기다린다.
+- **워처**: 소유자 진입(`runManagedFactoryStreamSession`, `runManagedFactoryCodex`)이 컨텍스트를 세션 생성 직후, `Start()` 이전에 만들고 워처 고루틴이 `ctx.Done()` 에서 `session.Close()` 를 부른다. 워처가 `Start()` 중에 도달해도 안전한 것은 아래 수명주기 규칙 덕분이다 — Codex 소유자의 `Start()` 는 준비 대기 컨텍스트를 **세션이 소유한 취소 함수**에 연결하고 `Close` 가 그것을 부르므로, 시그널이 핸드셰이크 예산(10초)을 기다리게 하지 않는다(시그널 컨텍스트를 `Start()` 에 주입할 필요가 없어 인터페이스도 필드도 늘지 않는다).
 - **드라이버**: `driveManagedFactorySession(ctx, …)`. 한가한 `select` 와 대기 `select` 에 `ctx.Done()` 을 추가하고, `DeliverTurn` 오류를 받으면 분류보다 먼저 `ctx.Err() != nil` 을 확인해 중단 오류(가칭 `errManagedInterrupted`)를 반환한다.
-- **`Close` 의 동시 안전**: 지금 `closed` 는 보호되지 않은 불리언이고 `cmd.Wait()` 는 한 번만 부를 수 있다. 시그널 워처와 `defer` 가 겹치면 데이터 경합과 이중 `Wait` 이 생긴다. 두 소유자의 `Close` 를 한 번만 도는 정리(예: `sync.Once` 에 결과 오류를 저장)로 바꾸고 동시 호출자는 첫 정리가 끝날 때까지 기다려 같은 결과를 받는다.
+- **`Start`/`Close` 수명주기 규칙**: 아래 별도 절. `Close` 만 한 번 도는 정리(`sync.Once` 류)로 감싸는 것으로는 부족하다 — 아래 이유.
 - **정리 컨텍스트 분리**: launch-pending 롤백은 이미 `context.Background()` 를 쓴다. 정리 호출이 취소된 시그널 컨텍스트를 물려받으면 롤백이 즉시 실패하므로, 정리에는 시그널 컨텍스트를 쓰지 않는다(AC-MH-010이 롤백 행 0건을 단언한다).
 - **종료 형태**: 시그널로 끝난 런처는 중단 오류(시그널이 정리를 일으켰음을 이름에 담은 오류)를 반환한다. 종료 코드는 cobra의 1이며 `128+시그널` 이 아니다 — 후속에서 필요하면 바꾼다.
 
+### `Start`/`Close` 수명주기 규칙 (plan-audit D2)
+
+**왜 `Close` 한 번-실행 래퍼로는 부족한가**: 워처는 세션 생성 직후 `Start()` 이전에 뜨므로 시그널이 `Start()` 가 토큰 디렉터리를 만들거나 자식을 띄우기 전에 올 수 있다. 지금 `Close` 는 `!s.started || s.closed` 면 아무것도 안 하고 돌아온다. 한 번-실행 래퍼만 얹으면 빈 세션에서 도는 `Close` 가 실행 기회를 소진하고, 이어서 `Start()` 가 자식·토큰 디렉터리·연결을 만들며, `defer` 의 `Close` 는 저장된 결과만 돌려줘 자식과 토큰 디렉터리가 샌다. 또 `Start()` 가 쓰는 `started`·`cmd`·`client`·`tokenDir` 를 `Close` 가 읽는데 둘 사이 동기화가 없어 `-race` 에도 걸린다. (이 경합은 plan-audit이 소스 판독과 교차 모델 보고로 확인한 것이며 plan 작성자가 재현한 것이 아니다 — 재현은 M1의 RED 시험이 한다.)
+
+**규칙**: 세션마다 뮤텍스 하나와 `closed` 플래그 하나가 `Start` 와 `Close` 를 보호한다.
+
+1. **`Start` 는 자원을 만들기 전에 잠금 안에서 `closed` 를 확인하고, 닫혔으면 아무것도 만들지 않고 오류를 반환한다.** `Close` 이후의 `Start` 는 이 첫 확인에서 거부된다.
+2. **`Start` 는 자원을 만든 직후 잠금 안에서 세션 필드에 기록하는데, 그 순간 `closed` 이면 기록하지 않는다.** 기록되지 않은 자원은 `Close` 의 눈에 보이지 않으므로 **`Start` 자신이 치운다**: 자식이면 kill + wait, 토큰 디렉터리이면 제거, 연결이면 닫기. 그런 뒤 오류를 반환한다.
+3. **`Close` 는 잠금 안에서 `closed` 를 세우고 그 순간 기록된 자원의 스냅숏을 뜬다.** 정리(연결 종료, 자식 kill + wait, 토큰 디렉터리 제거)는 잠금 밖에서 그 스냅숏에 대해 **한 번만** 한다. 동시·반복 호출자는 첫 정리가 끝날 때까지 기다렸다가 같은 결과를 받는다. 정리가 `Start` 를 기다리지 않으므로 핸드셰이크 중에도 풀린다.
+4. **자원의 정리 책임은 정확히 한 쪽에 있다.** 스냅숏 이전에 기록된 자원은 `Close` 몫이고, 스냅숏 이후에 만들어진 자원은 `Start` 몫이다. 같은 자원을 둘이 치우지 않는다(자식의 `cmd.Wait` 이중 호출 방지).
+5. 연결은 네트워크 호출(다이얼)을 잠금 밖에서 하고 기록만 잠금 안에서 한다. 기록 시점에 이미 닫혔으면 규칙 2대로 `Start` 가 그 연결을 닫는다(AC-MH-016의 "연결이 게시된 직후" 사례).
+6. 스트림 소유자는 자식이 생성자에서 만든 파이프를 가지므로, `Start` 전에 `Close` 되면 `Close` 가 그 파이프 양 끝도 닫는다(자식이 없으므로 kill 대상은 없다).
+7. Codex `Start()` 의 준비 대기(`/readyz` 폴링, 다이얼, 핸드셰이크 호출)에 쓰는 컨텍스트는 세션이 소유한 취소 함수에 연결하고(그 함수는 잠금 안에서 기록), `Close` 가 스냅숏을 뜰 때 그것을 부른다. 그래서 `Close` 가 도중에 오면 대기가 즉시 풀리고 `Start` 는 규칙 2의 자기 정리 뒤 오류를 반환한다. 대기 시간 예산 값(10초)은 바꾸지 않는다.
+
+**`Start()` 변경의 크기와 t1410(F8)과의 겹침**: 이 규칙이 `Start()` 에 더하는 것은 (a) 위 확인·기록 지점들과 (b) 닫힌 경로의 자기 정리(토큰 디렉터리 제거를 작은 도우미로 둔다)와 (c) 준비 대기 컨텍스트를 세션의 취소 함수에 연결하는 변경(규칙 7)이다. 세션이 **열려 있는데** `Start()` 가 실패하는 경로(F8: `MkdirTemp` 뒤 `cmd.Start` 이전 실패가 토큰 디렉터리를 남김)는 이 규칙이 바꾸지 않는다 — 그 경로는 `Close` 가 `started` 가 거짓이라 아무것도 안 하는 지금 동작 그대로이고, t1410이 위 도우미를 실패 경로에서 재사용해 고친다. 겹치는 코드는 토큰 디렉터리 삭제 한 곳이며 spec.md §F 에 그 선이 그어져 있다.
+
+### 공시한 한계 (이 SPEC이 닫지 않음)
+
+- **연결 쓰기 데드라인 없음**: 서버가 읽지 않으면 쓰기가 막힐 수 있다(읽기 고루틴의 답장 쓰기, `call()`). 이 경우 DeliverTurn은 턴 타임아웃(10분)에서 세션 치명으로 끝난다. 시그널 경로는 영향이 없다 — `Close` → `shutdown` 이 잠금 없이 `conn.Close()` 를 부르므로 막힌 쓰기도 풀린다. 쓰기 데드라인 상수는 필요하다고 판단하지 않아 `defaults.go` 에 더하지 않는다(근거: 관측된 사례 없음, 최악의 경우가 이미 유한). `id: null` 프레임은 응답·요청 어느 쪽으로도 분류되지 않아 버려진다.
+- **두 번째 시그널**: 첫 시그널에서 기본 동작을 복원하므로 정리 중 두 번째 시그널(SIGHUP 직후 SIGTERM 등)은 프로세스를 기본 동작으로 끝내 F5의 원래 상태를 재현할 수 있다. 정리가 멈췄을 때의 탈출구로 의도한 것이며 자동 시험으로 고정하지 않는다.
+- **후손 프로세스**: 스트림 소유자의 `Kill` 은 직접 자식만 죽이고 후손은 남을 수 있다. AC-MH-010은 소유한 자식의 부재만 단언한다.
+
 ### `syscall` 참조와 부모 AC-MS-014
 
-부모 AC-MS-014는 `grep -rn 'syscall\.' internal/cli/managed_*.go` 가 0행이어야 한다고 정한다. `SIGTERM`·`SIGHUP` 은 `syscall` 상수라 이 SPEC은 참조를 `managed_*` 가 아닌 파일(`launch_signals.go`)에 둔다. 이것은 **의도적 배치**이며 부모 AC의 목적(자식 프로세스 소유 모델, 프로세스 교체 exec·플랫폼 분기 없음, Windows 크로스 빌드)을 해치지 않는다는 판단에 기댄다 — 이 참조는 상수뿐이고 어떤 시스템 호출도 하지 않는다. 그 판단을 검증 가능하게 만들려고 두 가지를 AC에 건다: `managed_*.go` 의 0행이 유지된다(부모 AC-MS-014 grep 그대로), 그리고 `launch_signals.go` 의 `syscall.` 참조가 상수뿐이다(AC-MH-011).
+부모 AC-MS-014는 `grep -rn 'syscall\.' internal/cli/managed_*.go` 가 0행이어야 한다고 정한다. `SIGTERM`·`SIGHUP` 은 `syscall` 상수라 이 SPEC은 참조를 `managed_*` 가 아닌 파일(`launch_signals.go`)에 둔다. 이것은 **의도적 배치**이며 부모 AC의 목적(자식 프로세스 소유 모델, 프로세스 교체 exec·플랫폼 분기 없음, Windows 크로스 빌드)을 해치지 않는다는 판단에 기댄다 — 이 참조는 상수뿐이고 어떤 시스템 호출도 하지 않는다. 이것은 부모 REQ-MS-012 문면("zero `syscall` usage in newly added files")에 대한 명시적 예외이고, 같은 cross-platform exemption(EXCL-syscall) 선언이 spec.md C.3·§D 에 있다. 그 판단을 검증 가능하게 만들려고 두 가지를 AC에 건다: `managed_*.go` 의 0행이 유지된다(부모 AC-MS-014 grep 그대로), 그리고 `launch_signals.go` 의 `syscall.` 참조가 상수뿐이다(AC-MH-011).
 
 **Windows 실측**: 별도 임시 모듈에서 `signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)` 를 `GOOS=windows GOARCH=amd64 go build` 했을 때 exit 0이었다(go1.26.0). 기존 선례로 `internal/cli/mcp_server.go:123` 가 `os.Interrupt, syscall.SIGTERM` 을 같은 방식으로 쓴다. 참고로 `internal/cli/codex_job_control.go:88-95` 의 주석은 "`syscall.SIGTERM` does not exist on windows" 라고 쓰는데 위 실측과 어긋난다 — 이 SPEC은 그 주석을 건드리지 않는다. Windows에서는 런타임이 `os.Interrupt`(Ctrl-C/Ctrl-Break)만 전달하므로 SIGTERM·SIGHUP 구독은 컴파일되지만 발화하지 않는다. 콘솔 닫기 이벤트는 처리하지 않는다(범위 밖, 한계로 공시).
 
 ### 시그널 시험 설계
 
+- 수명주기(AC-MH-016): 두 소유자에 대해 `Close` 가 `Start` 전·도중·연결 게시 직후에 오는 경우와 `Close`∥`Start` 경합을 `-race` 로 돌리고, 매번 "소유한 자식 부재, 토큰 디렉터리 부재, `Start` 가 오류 반환(또는 `Close` 이후 `Start` 거부)"을 단언한다. "연결 게시 직후"를 정확히 겨누려고 연결을 기록하는 지점에 비공개 시험 훅을 둔다(시험 전용 이음새).
 - 단위: 가짜 세션이 `DeliverTurn` 안에서 `Close` 가 불릴 때까지 막히게 하고, 컨텍스트 취소 → 워처의 `Close` → 반환을 단언한다(한가한 경우와 진행 중인 경우 둘 다).
 - 종단(POSIX): 시험 바이너리를 `os/exec` 로 다시 기동해(재실행 선례: `TestManagedCodexFakeAppServer`) 소유자를 돌리고, 부모 시험이 SIGTERM·SIGHUP·SIGINT를 `os.Process.Signal` 로 보낸 뒤 5초 안 종료, 자식 프로세스 부재, 토큰 디렉터리 삭제, launch-pending 행 0건을 단언한다. **하네스 함정(실측)**: 셸의 `&` 로 띄운 백그라운드 프로세스는 SIGINT를 무시한 채 상속되어 `kill -INT` 가 듣지 않는다. 그래서 반드시 `os/exec` 로 띄운다. Windows에서는 `runtime.GOOS == "windows"` 로 건너뛰고(이유: POSIX 시그널 전달 시험) 빌드는 AC-MH-011이 증명한다.
