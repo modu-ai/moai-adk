@@ -27,11 +27,11 @@ func TestFactoryLeadProviderLaneGuidance(t *testing.T) {
 	} {
 		for _, lang := range []string{"en", "ko", "ja", "zh"} {
 			t.Run(tc.name+"/"+lang, func(t *testing.T) {
-				clearKanbanEnv(t)
+				clearFactoryEnv(t)
 				t.Setenv(config.EnvMoaiLaunchProvider, tc.provider)
-				t.Setenv(config.EnvMoaiKanbanBackend, tc.backend)
+				t.Setenv(config.EnvFactoryBackend, tc.backend)
 				t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-				t.Setenv(config.EnvMoaiKanbanID, "provider-test")
+				t.Setenv(config.EnvFactoryRunID, "provider-test")
 				notice := factoryBootstrapNotice("", "", lang)
 				for _, cmd := range laneEntryCommands {
 					if got := strings.Count(notice, cmd); got != 1 {

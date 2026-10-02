@@ -52,7 +52,7 @@ func registerFactoryUserPromptPeer(ctx context.Context, input *HookInput) string
 }
 
 func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factoryPeerBindMode) string {
-	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
+	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
 	root := factoryHookRoot(input)
 	if runID == "" || root == "" || input.SessionID == "" {
 		return ""
@@ -75,7 +75,7 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 	if label != "" {
 		role, slot = kanban.RoleLane, label
 	}
-	backend := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanBackend))
+	backend := strings.TrimSpace(os.Getenv(config.EnvFactoryBackend))
 	if backend == "" {
 		backend = "unknown"
 	}
@@ -132,7 +132,7 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 func factoryHookBatch(ctx context.Context, input *HookInput, event EventType) (string, bool, string) {
 	ctx, cancel := context.WithTimeout(ctx, factoryHookInspectionDeadline)
 	defer cancel()
-	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
+	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
 	root := factoryHookRoot(input)
 	if runID == "" || root == "" || input.SessionID == "" {
 		return "", false, "disabled"

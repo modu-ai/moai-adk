@@ -119,10 +119,10 @@ func TestCCFactoryLaneJoinsDiscoveredLeader(t *testing.T) {
 		t.Errorf("discovery asked = %v, want exactly [leader]", *asked)
 	}
 	if c.runID != "runlead01" {
-		t.Errorf("%s at launch = %q, want the leader's own run id", config.EnvMoaiKanbanID, c.runID)
+		t.Errorf("%s at launch = %q, want the leader's own run id", config.EnvFactoryRunID, c.runID)
 	}
 	if c.leadName != "leader" {
-		t.Errorf("%s at launch = %q, want the verified leader's name (AC-012)", config.EnvMoaiKanbanLeadName, c.leadName)
+		t.Errorf("%s at launch = %q, want the verified leader's name (AC-012)", config.EnvFactoryLeadName, c.leadName)
 	}
 	status, pid, start := runRowOwner(t, root, "runlead01")
 	if status != "active" {
@@ -405,11 +405,11 @@ func TestCodexFactoryLaneJoinsDiscoveredLeader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("enterCodexFactory lane with one verified leader: %v", err)
 	}
-	if got := os.Getenv(config.EnvMoaiKanbanID); got != "runcodex1" {
-		t.Errorf("%s after codex lane join = %q, want the leader's run runcodex1", config.EnvMoaiKanbanID, got)
+	if got := os.Getenv(config.EnvFactoryRunID); got != "runcodex1" {
+		t.Errorf("%s after codex lane join = %q, want the leader's run runcodex1", config.EnvFactoryRunID, got)
 	}
-	if got := os.Getenv(config.EnvMoaiKanbanLeadName); got != "leader" {
-		t.Errorf("%s after codex lane join = %q, want leader (REQ-009 on the codex twin)", config.EnvMoaiKanbanLeadName, got)
+	if got := os.Getenv(config.EnvFactoryLeadName); got != "leader" {
+		t.Errorf("%s after codex lane join = %q, want leader (REQ-009 on the codex twin)", config.EnvFactoryLeadName, got)
 	}
 	restore()
 

@@ -50,7 +50,7 @@ const (
 // ErrLandingVerdictAbsent is returned when a stored value carries no record.
 // Absence is SQL NULL — never {} and never "" (REQ-TST-010) — so this is
 // what a caller sees when it asks a column that was never written.
-var ErrLandingVerdictAbsent = errors.New("kanban: no landing verdict recorded")
+var ErrLandingVerdictAbsent = errors.New("factory: no landing verdict recorded")
 
 // LandingVerdict is one done-time landing query answer, persisted on the
 // archived row when `done --require-landed` ran and the archive accepted the
@@ -89,14 +89,14 @@ func (v LandingVerdict) Validate() error {
 	switch strings.TrimSpace(string(v.Verdict)) {
 	case string(LandingLanded), string(LandingNotLanded), string(LandingUnknown):
 	default:
-		return fmt.Errorf("kanban: landing verdict %q is not one of the landing query's answers (%s, %s, %s)",
+		return fmt.Errorf("factory: landing verdict %q is not one of the landing query's answers (%s, %s, %s)",
 			v.Verdict, LandingLanded, LandingNotLanded, LandingUnknown)
 	}
 	if strings.TrimSpace(v.Ref) == "" {
-		return fmt.Errorf("kanban: landing verdict has no %s; a verdict without its answering ref is not storable", LandingVerdictKeyRef)
+		return fmt.Errorf("factory: landing verdict has no %s; a verdict without its answering ref is not storable", LandingVerdictKeyRef)
 	}
 	if strings.TrimSpace(v.At) == "" {
-		return fmt.Errorf("kanban: landing verdict has no %s", LandingVerdictKeyAt)
+		return fmt.Errorf("factory: landing verdict has no %s", LandingVerdictKeyAt)
 	}
 	return nil
 }
@@ -109,7 +109,7 @@ func EncodeLandingVerdict(v LandingVerdict) (string, error) {
 	}
 	encoded, err := json.Marshal(v)
 	if err != nil {
-		return "", fmt.Errorf("kanban: encode landing verdict: %w", err)
+		return "", fmt.Errorf("factory: encode landing verdict: %w", err)
 	}
 	return string(encoded), nil
 }
@@ -124,10 +124,10 @@ func DecodeLandingVerdict(stored string) (LandingVerdict, error) {
 		return v, ErrLandingVerdictAbsent
 	}
 	if err := json.Unmarshal([]byte(stored), &v); err != nil {
-		return LandingVerdict{}, fmt.Errorf("kanban: decode landing verdict: %w", err)
+		return LandingVerdict{}, fmt.Errorf("factory: decode landing verdict: %w", err)
 	}
 	if err := v.Validate(); err != nil {
-		return LandingVerdict{}, fmt.Errorf("kanban: stored landing verdict is not a record: %w", err)
+		return LandingVerdict{}, fmt.Errorf("factory: stored landing verdict is not a record: %w", err)
 	}
 	return v, nil
 }

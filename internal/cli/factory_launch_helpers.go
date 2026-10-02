@@ -25,13 +25,12 @@ import (
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
-// kanbanEntryParse is the launcher entry parse: the factory entry the `-f`
+// launcherEntryParse is the launcher entry parse: the factory entry the `-f`
 // leader and `-l` lane tokens select, plus the arguments left for the backend.
 // The retired `-k` entry never reaches it — parseLauncherEntry refuses that
 // spelling first (launcher_retired_entries.go).
-type kanbanEntryParse struct {
+type launcherEntryParse struct {
 	Spec           string // the SPEC identifier a factory run records; empty on every current entry
-	KanbanEnabled  bool   // set by no current entry; deleted with the entry-parse rename
 	FactoryEnabled bool   // -f selected the factory leader
 	FactoryLanes   int    // the factory count (explicit or the default)
 	// FactoryLanesDeclared records that the count was operator-supplied, not a
@@ -83,7 +82,7 @@ func leaderRunID(leaderLabel string) string {
 	if suffix, ok := kanban.SplitLeaderLabel(leaderLabel); ok && suffix != "" && !allDigits(suffix) {
 		return suffix
 	}
-	if runID := os.Getenv(config.EnvMoaiKanbanID); runID != "" {
+	if runID := os.Getenv(config.EnvFactoryRunID); runID != "" {
 		return runID
 	}
 	return kanban.NewRunID()
@@ -280,7 +279,7 @@ func captureEnvState(key string) func() {
 	}
 }
 
-// exportKanbanLaunchFacts publishes the launch facts a launched session cannot
+// exportFactoryLaunchFacts publishes the launch facts a launched session cannot
 // observe for itself, and returns the function that puts the environment back
 // on the same prior-presence contract the other enter*Mode helpers use.
 //
@@ -306,24 +305,17 @@ func captureEnvState(key string) func() {
 //
 // The card-identifier override is deliberately NOT exported here. It is the
 // operator's or the leader's to set, and the launch environment carries it
-// through unchanged (config.EnvMoaiKanbanCard); the session reads it directly.
+// through unchanged (config.EnvFactoryCard); the session reads it directly.
 //
 // Callers must defer the returned function so it also runs on the error path.
-func exportKanbanLaunchFacts(_, backend string) func() {
-	restoreBackend := captureEnvState(config.EnvMoaiKanbanBackend)
+func exportFactoryLaunchFacts(_, backend string) func() {
+	restoreBackend := captureEnvState(config.EnvFactoryBackend)
 
 	if backend != "" {
-		_ = os.Setenv(config.EnvMoaiKanbanBackend, backend)
+		_ = os.Setenv(config.EnvFactoryBackend, backend)
 	}
 
 	return restoreBackend
-}
-
-// exportFactoryLaunchFacts preserves the established env carriers for the
-// Claude and GLM launchers (the GPT Factory provenance path was removed with
-// the gateway withdrawal, 2026-09-16).
-func exportFactoryLaunchFacts(specID, backend string) func() {
-	return exportKanbanLaunchFacts(specID, backend)
 }
 
 // The tokens claude uses to name a session. moai RECOGNIZES them; it never
@@ -476,7 +468,7 @@ func exportLeaderSessionName(name string) func() {
 	if name == "" {
 		return func() {}
 	}
-	restore := captureEnvState(config.EnvMoaiKanbanLeadName)
-	_ = os.Setenv(config.EnvMoaiKanbanLeadName, name)
+	restore := captureEnvState(config.EnvFactoryLeadName)
+	_ = os.Setenv(config.EnvFactoryLeadName, name)
 	return restore
 }

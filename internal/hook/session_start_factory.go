@@ -51,7 +51,7 @@ func factoryBootstrapNotice(root, sessionID, lang string) string {
 			// Run-state gated: an active run prescribes once, a dead run
 			// unbinds once, an unmeasurable one degrades — never an
 			// unconditional prescription (SPEC-STALE-RUN-LABEL-001).
-			return staleRunPrescriptionGate(context.Background(), root, sessionID, label, os.Getenv(config.EnvMoaiKanbanID), lang)
+			return staleRunPrescriptionGate(context.Background(), root, sessionID, label, os.Getenv(config.EnvFactoryRunID), lang)
 		}
 		return factoryLaneNotice(label, factoryLanesEnv(), lang)
 	}
@@ -61,7 +61,7 @@ func factoryBootstrapNotice(root, sessionID, lang string) string {
 	if notice := staleRunNoticeFor(root, sessionID, lang); notice != "" {
 		return notice
 	}
-	return factoryLeaderNotice(os.Getenv(config.EnvMoaiKanbanID), factoryLanesEnv(), lang)
+	return factoryLeaderNotice(os.Getenv(config.EnvFactoryRunID), factoryLanesEnv(), lang)
 }
 
 // factoryBootstrapNoticeForSource returns the announcement only for a
@@ -103,7 +103,7 @@ func factoryLaneRuleForSource(source, lang string) string {
 	if _, ok := kanban.SplitFactoryLaneLabel(label); !ok {
 		return ""
 	}
-	switch os.Getenv(config.EnvMoaiKanbanBackend) {
+	switch os.Getenv(config.EnvFactoryBackend) {
 	case kanban.BackendClaude, kanban.BackendGLM:
 		// REQ-TCD-011 (SPEC-TODO-CLASSIFY-DISPATCH-001): the launcher's
 		// stamped dispatch selection picks the rule — manual mode receives a
@@ -115,7 +115,7 @@ func factoryLaneRuleForSource(source, lang string) string {
 		}
 		return factoryMessagesFor(lang).laneNextCardRule
 	case kanban.BackendGPT:
-		cardID := os.Getenv(config.EnvMoaiKanbanCard)
+		cardID := os.Getenv(config.EnvFactoryCard)
 		if cardID == "" {
 			// An owned-card rule without a card id names nothing the lane
 			// could carry; the M5 launcher always stamps the id, so this is
@@ -182,7 +182,7 @@ func factoryLeaderNotice(runID string, lanes int, lang string) string {
 	// (c) the entry-point guide and the per-lane fan-out, plus the leader
 	// socket path when the launcher captured one.
 	backend := []string{m.entryGuide, m.agentFanout}
-	if addr := os.Getenv(config.EnvMoaiKanbanLeadAddr); addr != "" {
+	if addr := os.Getenv(config.EnvFactoryLeadAddr); addr != "" {
 		backend = append(backend, fmt.Sprintf(m.leaderSocket, addr))
 	}
 	blocks = append(blocks, strings.Join(backend, "\n"))
@@ -195,7 +195,7 @@ func factoryLeaderNotice(runID string, lanes int, lang string) string {
 	// the injected-settings discriminator the launcher publishes.
 	var context []string
 	context = append(context, fmt.Sprintf(m.operationalStatus, runID))
-	if os.Getenv(config.EnvMoaiKanbanSettingsInjected) == "1" {
+	if os.Getenv(config.EnvFactorySettingsInjected) == "1" {
 		context = append(context, m.settingsAuto)
 	} else {
 		context = append(context, m.settingsVerify)

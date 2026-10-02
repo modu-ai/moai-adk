@@ -23,7 +23,7 @@ func TestFactoryLauncherRegistersLaunchPendingPeers(t *testing.T) {
 // launch variables before the same check: its final os.Environ() launch must
 // still read as non-factory (card t1222).
 func TestFactoryLauncherRegistersLaunchPendingPeersUnderLaneEnv(t *testing.T) {
-	t.Setenv(config.EnvMoaiKanbanID, "run-t1222-probe")
+	t.Setenv(config.EnvFactoryRunID, "run-t1222-probe")
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-7")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
 	checkFactoryLauncherRegistersLaunchPendingPeers(t)
@@ -52,8 +52,8 @@ func checkFactoryLauncherRegistersLaunchPendingPeers(t *testing.T) {
 		t.Fatal("test process identity unavailable")
 	}
 	env := []string{
-		config.EnvMoaiKanbanID + "=" + run,
-		config.EnvMoaiKanbanBackend + "=claude",
+		config.EnvFactoryRunID + "=" + run,
+		config.EnvFactoryBackend + "=claude",
 		config.EnvMoaiFactoryWorkers + "=1",
 	}
 	peer, err := registerFactoryLaunchPending(context.Background(), root, env, os.Getpid(), start)

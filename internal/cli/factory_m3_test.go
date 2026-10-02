@@ -626,7 +626,7 @@ func TestSD_AC015_MCPTodoAddRefused(t *testing.T) {
 	// Codex MCP environment: lane label + backend gpt, no role marker.
 	sdClearLaneEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
-	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendGPT)
+	t.Setenv(config.EnvFactoryBackend, kanban.BackendGPT)
 	before = sdQueueBytes(t, store)
 	if _, err := sdCallTool(t, handleTodoAdd, map[string]any{"text": "codex card", "project_root": root}); err == nil || !strings.Contains(err.Error(), "lane boundary") {
 		t.Fatalf("codex-mcp todo_add: err = %v, want the lane-boundary refusal", err)
@@ -659,7 +659,7 @@ func TestSD_AC016_MCPDecideRefused(t *testing.T) {
 
 	sdClearLaneEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
-	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendGPT)
+	t.Setenv(config.EnvFactoryBackend, kanban.BackendGPT)
 	if _, err := sdCallTool(t, handleFactoryDecide, args); err == nil || !strings.Contains(err.Error(), "refused") {
 		t.Fatalf("codex-mcp factory_decide: err = %v, want a refusal", err)
 	}

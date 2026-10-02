@@ -53,22 +53,22 @@ func TestFactoryGuideTeachesLaneFormsInEveryLocale(t *testing.T) {
 	}
 }
 
-// TestKanbanRoleFromEnvReadsOnlyLaneLabels: the record path derives a lane
+// TestFactoryRoleFromEnvReadsOnlyLaneLabels: the record path derives a lane
 // role from the canonical `lane-<n>` label only — legacy `worker-<n>` /
 // `agent-<n>` labels map to no role (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-009);
 // the stale-run gate above this reader handles them (REQ-RNC-025).
-func TestKanbanRoleFromEnvReadsOnlyLaneLabels(t *testing.T) {
-	scrubKanbanEnv(t)
+func TestFactoryRoleFromEnvReadsOnlyLaneLabels(t *testing.T) {
+	scrubFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-3")
-	role, n, ok := kanbanRoleFromEnv()
+	role, n, ok := factoryRoleFromEnv()
 	if !ok || role != kanban.RoleLane || n != 3 {
-		t.Errorf("kanbanRoleFromEnv(lane-3) = (%q, %d, %v), want (%q, 3, true)", role, n, ok, kanban.RoleLane)
+		t.Errorf("factoryRoleFromEnv(lane-3) = (%q, %d, %v), want (%q, 3, true)", role, n, ok, kanban.RoleLane)
 	}
 	for _, label := range []string{"worker-4", "agent-2"} {
-		scrubKanbanEnv(t)
+		scrubFactoryEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorker, label)
-		if role, n, ok := kanbanRoleFromEnv(); ok {
-			t.Errorf("kanbanRoleFromEnv(%s) = (%q, %d, true), want ok=false — legacy maps to no role", label, role, n)
+		if role, n, ok := factoryRoleFromEnv(); ok {
+			t.Errorf("factoryRoleFromEnv(%s) = (%q, %d, true), want ok=false — legacy maps to no role", label, role, n)
 		}
 	}
 }

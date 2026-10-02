@@ -116,15 +116,15 @@ func TestCodexDebugTraceStepLines(t *testing.T) {
 // their last publisher (SPEC-LAUNCHER-ENTRY-FLAGS-001 M5a).
 func TestCodexDebugTraceEnvKeysOnly(t *testing.T) {
 	sentinels := map[string]string{
-		config.EnvMoaiKanbanID:               "run-sentinel",
-		config.EnvMoaiKanbanLeadAddr:         "leader-secret-sentinel",
-		config.EnvMoaiKanbanLeadName:         "leadname-sentinel",
-		config.EnvMoaiKanbanBackend:          "backend-sentinel",
-		config.EnvMoaiKanbanCard:             "card-sentinel",
-		config.EnvMoaiKanbanSettingsInjected: "settings-sentinel",
-		config.EnvMoaiFactoryWorker:          "worker-sentinel",
-		config.EnvMoaiFactoryWorkers:         "workers-sentinel",
-		config.EnvFactoryRole:                "role-sentinel",
+		config.EnvFactoryRunID:            "run-sentinel",
+		config.EnvFactoryLeadAddr:         "leader-secret-sentinel",
+		config.EnvFactoryLeadName:         "leadname-sentinel",
+		config.EnvFactoryBackend:          "backend-sentinel",
+		config.EnvFactoryCard:             "card-sentinel",
+		config.EnvFactorySettingsInjected: "settings-sentinel",
+		config.EnvMoaiFactoryWorker:       "worker-sentinel",
+		config.EnvMoaiFactoryWorkers:      "workers-sentinel",
+		config.EnvFactoryRole:             "role-sentinel",
 	}
 	for key, value := range sentinels {
 		t.Setenv(key, value)
@@ -138,8 +138,8 @@ func TestCodexDebugTraceEnvKeysOnly(t *testing.T) {
 	if cap.count() != 1 {
 		t.Fatalf("launches = %d, want 1", cap.count())
 	}
-	if !strings.Contains(stderr, config.EnvMoaiKanbanLeadAddr) {
-		t.Errorf("trace does not name the lane key %s with its presence:\n%s", config.EnvMoaiKanbanLeadAddr, stderr)
+	if !strings.Contains(stderr, config.EnvFactoryLeadAddr) {
+		t.Errorf("trace does not name the lane key %s with its presence:\n%s", config.EnvFactoryLeadAddr, stderr)
 	}
 	for key, value := range sentinels {
 		if strings.Contains(stderr, value) {

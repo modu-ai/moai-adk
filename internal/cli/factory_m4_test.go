@@ -33,10 +33,10 @@ import (
 func sdScrubLauncherEnv(t *testing.T) {
 	t.Helper()
 	for _, k := range []string{
-		retiredLeaderMarker, config.EnvMoaiKanbanID, retiredLaneLabelMarker,
-		config.EnvMoaiKanbanLeadAddr, config.EnvMoaiKanbanSettingsInjected,
+		retiredLeaderMarker, config.EnvFactoryRunID, retiredLaneLabelMarker,
+		config.EnvFactoryLeadAddr, config.EnvFactorySettingsInjected,
 		config.EnvFactoryRole, config.EnvMoaiFactoryWorker, config.EnvMoaiFactoryWorkers,
-		config.EnvMoaiKanbanBackend, config.EnvMoaiKanbanCard,
+		config.EnvFactoryBackend, config.EnvFactoryCard,
 		config.EnvFactoryClearPolicy, config.EnvFactoryAutoDispatch,
 	} {
 		t.Setenv(k, "")
@@ -153,9 +153,9 @@ func TestSD_AC002_LaneLaunchStampsMarkerAndLabel(t *testing.T) {
 				t.Errorf("child env %s = %q, want the next free lane label %q",
 					config.EnvMoaiFactoryWorker, got, wantLabel)
 			}
-			if got := captured.env[config.EnvMoaiKanbanBackend]; got != tc.backend {
+			if got := captured.env[config.EnvFactoryBackend]; got != tc.backend {
 				t.Errorf("child env %s = %q, want %q (the backend value the launch already exports)",
-					config.EnvMoaiKanbanBackend, got, tc.backend)
+					config.EnvFactoryBackend, got, tc.backend)
 			}
 			if captured.cwd != root {
 				t.Errorf("child working directory = %q, want the parent checkout %q", captured.cwd, root)
@@ -448,7 +448,7 @@ func TestSD_AC017_StampedMarkerArmsContractGuard(t *testing.T) {
 	t.Logf("captured %s=%q %s=%q %s=%q",
 		config.EnvFactoryRole, captured.env[config.EnvFactoryRole],
 		config.EnvMoaiFactoryWorker, captured.env[config.EnvMoaiFactoryWorker],
-		config.EnvMoaiKanbanBackend, captured.env[config.EnvMoaiKanbanBackend])
+		config.EnvFactoryBackend, captured.env[config.EnvFactoryBackend])
 	if decision != hook.DecisionDeny {
 		t.Fatalf("contract sign under the lane launch environment: decision = %q (reason %q), want deny", decision, reason)
 	}

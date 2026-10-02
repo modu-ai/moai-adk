@@ -28,14 +28,14 @@ var factoryAmbientEnvKeys = []string{
 	config.EnvMoaiFactoryWorkers,
 	config.EnvMoaiFactoryWorker,
 	retiredLeaderMarker,
-	config.EnvMoaiKanbanID,
+	config.EnvFactoryRunID,
 	retiredSpecMarker,
 	retiredLaneLabelMarker,
-	config.EnvMoaiKanbanSettingsInjected,
-	config.EnvMoaiKanbanLeadAddr,
-	config.EnvMoaiKanbanBackend,
-	config.EnvMoaiKanbanCard,
-	config.EnvMoaiKanbanLeadName,
+	config.EnvFactorySettingsInjected,
+	config.EnvFactoryLeadAddr,
+	config.EnvFactoryBackend,
+	config.EnvFactoryCard,
+	config.EnvFactoryLeadName,
 	config.EnvClaudeCodeMaxConcurrentSubagents,
 }
 
@@ -65,7 +65,7 @@ func clearFactoryAmbientEnv() {
 
 // clearFactoryTestEnv isolates the factory signal variables from this test
 // binary's ambient environment, on the same t.Setenv-restore contract as
-// clearKanbanLauncherEnv (a developer running tests inside a factory session
+// clearFactoryLauncherEnv (a developer running tests inside a factory session
 // carries MOAI_FACTORY_* in the ambient env; the branches under test are
 // unconditional on them).
 func clearFactoryTestEnv(t *testing.T) {
@@ -99,7 +99,7 @@ func TestFactoryAmbientEnvClearedInTestMain(t *testing.T) {
 			"clear no longer covers factoryLaunchEnabled's gate keys")
 	}
 	for _, key := range []string{
-		config.EnvMoaiKanbanID,
+		config.EnvFactoryRunID,
 		config.EnvMoaiFactoryWorker,
 		config.EnvMoaiFactoryWorkers,
 	} {
@@ -120,12 +120,12 @@ func TestFactoryAmbientEnvClearedInTestMain(t *testing.T) {
 // TestCodexDirectPOSIXExecPreservesFactoryOwner in a lane session.
 func TestFactoryEnvPinnedSkipsTestMainClear(t *testing.T) {
 	t.Setenv(factoryEnvPinnedEnv, "1")
-	t.Setenv(config.EnvMoaiKanbanID, "pinned-run")
+	t.Setenv(config.EnvFactoryRunID, "pinned-run")
 	clearFactoryAmbientEnv()
-	if got := os.Getenv(config.EnvMoaiKanbanID); got != "pinned-run" {
+	if got := os.Getenv(config.EnvFactoryRunID); got != "pinned-run" {
 		t.Fatalf("%s=%q after clearFactoryAmbientEnv with pin marker; the "+
 			"marker must keep a parent-composed family intact",
-			config.EnvMoaiKanbanID, got)
+			config.EnvFactoryRunID, got)
 	}
 }
 
@@ -413,10 +413,10 @@ func TestEnterFactoryLeadModeEnv(t *testing.T) {
 	if got := os.Getenv(config.EnvMoaiFactoryWorkers); got != "4" {
 		t.Errorf("MOAI_FACTORY_WORKERS = %q, want 4", got)
 	}
-	if got := os.Getenv(config.EnvMoaiKanbanID); got != "abc123" {
+	if got := os.Getenv(config.EnvFactoryRunID); got != "abc123" {
 		t.Errorf("MOAI_KANBAN_ID = %q, want the adopted run id abc123", got)
 	}
-	if got := os.Getenv(config.EnvMoaiKanbanLeadAddr); got != "/tmp/moai-socket-factory/abc123" {
+	if got := os.Getenv(config.EnvFactoryLeadAddr); got != "/tmp/moai-socket-factory/abc123" {
 		t.Errorf("MOAI_KANBAN_LEAD_ADDR = %q, want /tmp/moai-socket-factory/abc123 (the factory socket directory)", got)
 	}
 	for _, key := range []string{retiredLeaderMarker, retiredLaneLabelMarker, config.EnvMoaiFactoryWorker} {
@@ -439,7 +439,7 @@ func TestEnterFactoryLeadModeMintsRunID(t *testing.T) {
 	restore := enterFactoryLeaderMode(2, "")
 	defer restore()
 
-	runID := os.Getenv(config.EnvMoaiKanbanID)
+	runID := os.Getenv(config.EnvFactoryRunID)
 	if runID == "" {
 		t.Fatal("MOAI_KANBAN_ID empty for a bare factory lead; expected a minted run id")
 	}
@@ -470,7 +470,7 @@ func TestEnterFactoryWorkerModeEnv(t *testing.T) {
 	if got := os.Getenv(config.EnvClaudeCodeMaxConcurrentSubagents); got != "10" {
 		t.Errorf("%s = %q, want 10 (the per-lane cap)", config.EnvClaudeCodeMaxConcurrentSubagents, got)
 	}
-	for _, key := range []string{retiredLeaderMarker, retiredLaneLabelMarker, config.EnvMoaiKanbanID} {
+	for _, key := range []string{retiredLeaderMarker, retiredLaneLabelMarker, config.EnvFactoryRunID} {
 		if _, present := os.LookupEnv(key); present {
 			t.Errorf("%s must stay unset on a factory lane, got a value", key)
 		}
@@ -742,12 +742,12 @@ func installFactoryLaunchSeam(t *testing.T) *factoryLaunchCapture {
 	origLaunch := unifiedLaunchFunc
 	unifiedLaunchFunc = func(_ string, _ string, args []string) error {
 		c.args = args
-		c.runID = os.Getenv(config.EnvMoaiKanbanID)
+		c.runID = os.Getenv(config.EnvFactoryRunID)
 		c.workers = os.Getenv(config.EnvMoaiFactoryWorkers)
 		c.worker = os.Getenv(config.EnvMoaiFactoryWorker)
-		c.addr = os.Getenv(config.EnvMoaiKanbanLeadAddr)
+		c.addr = os.Getenv(config.EnvFactoryLeadAddr)
 		c.cap = os.Getenv(config.EnvClaudeCodeMaxConcurrentSubagents)
-		c.leadName = os.Getenv(config.EnvMoaiKanbanLeadName)
+		c.leadName = os.Getenv(config.EnvFactoryLeadName)
 		return nil
 	}
 	origFn := findProjectRootFn
@@ -915,7 +915,7 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 			t.Fatalf("runCC(-l): %v", err)
 		}
 		if c.runID != run {
-			t.Errorf("%s at launch = %q, want the active run %q", config.EnvMoaiKanbanID, c.runID, run)
+			t.Errorf("%s at launch = %q, want the active run %q", config.EnvFactoryRunID, c.runID, run)
 		}
 		if c.worker != "lane-1" {
 			t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want lane-1", c.worker)
@@ -1002,7 +1002,7 @@ func TestGLM_FactoryLaneEntry(t *testing.T) {
 		t.Fatalf("runGLM(-l): %v", err)
 	}
 	if c.runID != run {
-		t.Errorf("%s at launch = %q, want the active run %q", config.EnvMoaiKanbanID, c.runID, run)
+		t.Errorf("%s at launch = %q, want the active run %q", config.EnvFactoryRunID, c.runID, run)
 	}
 	if c.worker != "lane-1" {
 		t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want lane-1", c.worker)

@@ -24,7 +24,7 @@ func launchEnvValue(env []string, key string) string {
 }
 
 func factoryLaunchEnabled(env []string) bool {
-	return strings.TrimSpace(launchEnvValue(env, config.EnvMoaiKanbanID)) != "" &&
+	return strings.TrimSpace(launchEnvValue(env, config.EnvFactoryRunID)) != "" &&
 		(strings.TrimSpace(launchEnvValue(env, config.EnvMoaiFactoryWorker)) != "" ||
 			strings.TrimSpace(launchEnvValue(env, config.EnvMoaiFactoryWorkers)) != "")
 }
@@ -33,7 +33,7 @@ func factoryLaunchEnabled(env []string) bool {
 // A SessionStart hook later replaces its private provisional row key with the
 // actual session UUID through Store.RegisterPeer's owner-preserving upsert.
 func registerFactoryLaunchPending(ctx context.Context, root string, env []string, pid int, processStart string) (_ factorymsg.Peer, err error) {
-	runID := strings.TrimSpace(launchEnvValue(env, config.EnvMoaiKanbanID))
+	runID := strings.TrimSpace(launchEnvValue(env, config.EnvFactoryRunID))
 	laneLabel := strings.TrimSpace(launchEnvValue(env, config.EnvMoaiFactoryWorker))
 	laneCountEnv := strings.TrimSpace(launchEnvValue(env, config.EnvMoaiFactoryWorkers))
 	if runID == "" || (laneLabel == "" && laneCountEnv == "") {
@@ -55,7 +55,7 @@ func registerFactoryLaunchPending(ctx context.Context, root string, env []string
 		}
 		role, slot = kanban.RoleLane, laneLabel
 	}
-	backend := strings.TrimSpace(launchEnvValue(env, config.EnvMoaiKanbanBackend))
+	backend := strings.TrimSpace(launchEnvValue(env, config.EnvFactoryBackend))
 	if backend == "" {
 		backend = "unknown"
 	}

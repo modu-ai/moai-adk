@@ -167,15 +167,15 @@ const (
 	// file loader; the managed layer injects this env var instead.
 	EnvDisableBypassPermissionsMode = "MOAI_DISABLE_BYPASS_PERMISSIONS_MODE"
 
-	// EnvMoaiKanbanID carries the run identifier that distinguishes one kanban
+	// EnvFactoryRunID carries the run identifier that distinguishes one kanban
 	// run from another on the same machine. The leader session generates it once at
 	// launch; the SessionStart hook reads it to name itself and the leader
 	// socket. It is leader-owned state: a companion neither carries nor publishes
 	// it (companion names are bare roles, so no companion surface holds a run id
 	// that could disagree with the leader's).
-	EnvMoaiKanbanID = "MOAI_KANBAN_ID"
+	EnvFactoryRunID = "MOAI_KANBAN_ID"
 
-	// EnvMoaiKanbanSettingsInjected signals to the SessionStart hook that the
+	// EnvFactorySettingsInjected signals to the SessionStart hook that the
 	// launcher wrote a transient settings file carrying
 	// {"crossSessionInbound": "accept"} and passed it to the backend via
 	// --settings. The hook reads it to decide which inbound-automation notice
@@ -184,18 +184,18 @@ const (
 	// prints the operator advisory instead (verify the field is present in the
 	// operator's own --settings file, or it was not injected due to a fail-open
 	// write failure).
-	EnvMoaiKanbanSettingsInjected = "MOAI_KANBAN_SETTINGS_INJECTED"
+	EnvFactorySettingsInjected = "MOAI_KANBAN_SETTINGS_INJECTED"
 
-	// EnvMoaiKanbanLeadAddr carries the leader socket path — the address on
+	// EnvFactoryLeadAddr carries the leader socket path — the address on
 	// the cross-session messaging substrate that companions send messages to.
 	// Set by the launcher when it classifies a factory leader, read by the
 	// SessionStart hook to surface the address in the leader notice.
 	//
 	// Name kept under REQ-RNC-011 (this SPEC); the value it carries follows the
 	// leader/lane vocabulary.
-	EnvMoaiKanbanLeadAddr = "MOAI_KANBAN_LEAD_ADDR"
+	EnvFactoryLeadAddr = "MOAI_KANBAN_LEAD_ADDR"
 
-	// EnvMoaiKanbanBackend names the backend the launcher opened the session
+	// EnvFactoryBackend names the backend the launcher opened the session
 	// on: kanban.BackendClaude, kanban.BackendGLM, or kanban.BackendGPT.
 	//
 	// It exists because the backend is the one launch fact a session cannot
@@ -206,13 +206,13 @@ const (
 	// is set by the GLM path but is settable by anyone, so deriving the backend
 	// from it would be a guess dressed as a measurement
 	// (SPEC-KANBAN-RECORD-SESSION-KEY-001 REQ-KRS-006).
-	EnvMoaiKanbanBackend = "MOAI_KANBAN_BACKEND"
+	EnvFactoryBackend = "MOAI_KANBAN_BACKEND"
 
 	// EnvMoaiLaunchProvider records the launcher-selected initial provider
 	// (claude, glm, or gpt), never the current request route.
 	EnvMoaiLaunchProvider = "MOAI_LAUNCH_PROVIDER"
 
-	// EnvMoaiKanbanCard names the queue card the session is working, and is
+	// EnvFactoryCard names the queue card the session is working, and is
 	// the EXPLICIT OVERRIDE of the card identifier a session otherwise derives
 	// from its own worktree root. It is read by the session, not required of
 	// the launcher: an operator or a leader that knows the card exports it into
@@ -221,9 +221,9 @@ const (
 	//
 	// An empty value is treated as unset, so an empty export never blanks a
 	// derivable value (REQ-KRS-005).
-	EnvMoaiKanbanCard = "MOAI_KANBAN_CARD"
+	EnvFactoryCard = "MOAI_KANBAN_CARD"
 
-	// EnvMoaiKanbanLeadName carries the leader session's RESOLVED name — the value
+	// EnvFactoryLeadName carries the leader session's RESOLVED name — the value
 	// that actually reached the backend argv as `--name`, which is the operator's
 	// own name when they supplied one and the bare-or-bumped role otherwise.
 	//
@@ -241,7 +241,7 @@ const (
 	//
 	// Name kept under REQ-RNC-011 (this SPEC); the value it carries follows the
 	// leader/lane vocabulary.
-	EnvMoaiKanbanLeadName = "MOAI_KANBAN_LEAD_NAME"
+	EnvFactoryLeadName = "MOAI_KANBAN_LEAD_NAME"
 
 	// EnvMoaiFactoryWorkers carries the Factory Mode signal and the run's
 	// lane count from the launcher entry point to the block-cap inject and
@@ -250,7 +250,7 @@ const (
 	// started with `-l` carries 0 (the count-less form). A non-empty value is
 	// what marks a session a factory session; the value is the fan-out size N.
 	//
-	// A factory run reuses EnvMoaiKanbanID and EnvMoaiKanbanLeadAddr on the
+	// A factory run reuses EnvFactoryRunID and EnvFactoryLeadAddr on the
 	// leader (run id, leader socket). It sets no chain marker: a factory run
 	// never seeds a plan -> run -> verify -> sync chain.
 	//

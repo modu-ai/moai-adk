@@ -47,26 +47,26 @@ func TestAC003_BlockCapDoctrineClauseSpecific(t *testing.T) {
 	}
 }
 
-// clearKanbanLauncherEnv unsets every kanban signal variable plus the runtime
+// clearFactoryLauncherEnv unsets every kanban signal variable plus the runtime
 // block-cap key so the inject's negative controls below start from a
 // known-absent state. A session running these tests inside Kanban Mode carries
 // the launcher-injected MOAI_KANBAN* variables in its ambient env, and the
 // inject's kanban branch is unconditional on them — without this isolation the
 // "no signal → env unchanged" controls fail on the developer's own machine.
 // t.Setenv registers the restore, so the process env is returned to its prior
-// value when the test ends. Same pattern as clearKanbanEnv in
+// value when the test ends. Same pattern as clearFactoryEnv in
 // internal/hook/session_start_env_helper_test.go. The three retired markers
 // stay in the list by their written-out names, so a surviving session's
 // ambient value cannot reach TestRetiredChainSignalsDoNotRaiseBlockCap.
-func clearKanbanLauncherEnv(t *testing.T) {
+func clearFactoryLauncherEnv(t *testing.T) {
 	t.Helper()
 	for _, key := range []string{
 		retiredLeaderMarker,
-		config.EnvMoaiKanbanID,
+		config.EnvFactoryRunID,
 		retiredSpecMarker,
 		retiredLaneLabelMarker,
-		config.EnvMoaiKanbanSettingsInjected,
-		config.EnvMoaiKanbanLeadAddr,
+		config.EnvFactorySettingsInjected,
+		config.EnvFactoryLeadAddr,
 		config.EnvMoaiFactoryWorkers,
 		config.EnvMoaiFactoryWorker,
 		config.EnvClaudeCodeStopHookBlockCap,
@@ -81,7 +81,7 @@ func clearKanbanLauncherEnv(t *testing.T) {
 // MaxTurns==0 goal exists for the resolving session, and leaves the env
 // unchanged when no such goal exists (backward compat).
 func TestAC003_LauncherInjectsRaisedBlockCapForInfiniteGoal(t *testing.T) {
-	clearKanbanLauncherEnv(t)
+	clearFactoryLauncherEnv(t)
 	tmp := t.TempDir()
 	ctx := context.Background()
 
@@ -146,7 +146,7 @@ func armInfiniteGoalFixture(t *testing.T, projectRoot, sessionID string, maxTurn
 //
 // Non-parallel by construction: t.Setenv mutates process-global state.
 func TestRetiredChainSignalsDoNotRaiseBlockCap(t *testing.T) {
-	clearKanbanLauncherEnv(t)
+	clearFactoryLauncherEnv(t)
 	tmp := t.TempDir()
 	ctx := context.Background()
 	base := []string{"PATH=/usr/bin", "HOME=/tmp"}
@@ -162,7 +162,7 @@ func TestRetiredChainSignalsDoNotRaiseBlockCap(t *testing.T) {
 // replace-in-place discipline of the goal branch rather than appending a
 // duplicate key, which a child process would resolve ambiguously.
 func TestFactoryCapReplacesPreexistingEntry(t *testing.T) {
-	clearKanbanLauncherEnv(t)
+	clearFactoryLauncherEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 	key := config.EnvClaudeCodeStopHookBlockCap
 	base := []string{"PATH=/usr/bin", key + "=8"}
@@ -189,7 +189,7 @@ func TestFactoryCapReplacesPreexistingEntry(t *testing.T) {
 // meant to survive unattended. The goal read cannot see them, since the session
 // arms its goal mid-session.
 func TestFactoryRaisesBlockCap(t *testing.T) {
-	clearKanbanLauncherEnv(t)
+	clearFactoryLauncherEnv(t)
 	tmp := t.TempDir()
 	ctx := context.Background()
 	base := []string{"PATH=/usr/bin", "HOME=/tmp"}
@@ -216,7 +216,7 @@ func TestFactoryRaisesBlockCap(t *testing.T) {
 // would stay green through that failure.
 func TestFactoryEnvReachesChildEnvironment(t *testing.T) {
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
-	t.Setenv(config.EnvMoaiKanbanID, "run-placeholder")
+	t.Setenv(config.EnvFactoryRunID, "run-placeholder")
 
 	// Neither the plain Claude path (card t595) nor the gateway path (card t668)
 	// wraps os.Environ() any more — both moved their CLAUDE_CODE_EFFORT_LEVEL
@@ -229,7 +229,7 @@ func TestFactoryEnvReachesChildEnvironment(t *testing.T) {
 
 	for _, want := range []string{
 		config.EnvMoaiFactoryWorkers + "=1",
-		config.EnvMoaiKanbanID + "=run-placeholder",
+		config.EnvFactoryRunID + "=run-placeholder",
 	} {
 		if !slices.Contains(launchEnv, want) {
 			t.Errorf("%q missing from the child environment", want)

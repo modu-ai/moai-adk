@@ -53,7 +53,7 @@ func requireGTDID(id string) error {
 func NewGTDCommand() *cobra.Command {
 	cmd := newTodoCmd()
 	cmd.Use = "gtd"
-	cmd.Short = "Operate the GTD-managed kanban backlog queue"
+	cmd.Short = "Operate the GTD-managed backlog queue"
 	cmd.Long = `Manage captured work through Capture, Clarify, Organize, Reflect, and Engage.
 
 Captured GTD items stay separate from the established development queue. Only

@@ -249,7 +249,7 @@ func (h *userPromptSubmitHandler) buildSessionTitle(ctx context.Context, cwd, tr
 // title and the messaging address the same string; a title that guessed the role
 // would disagree with the session's real name on every bumped leader.
 func leaderSessionTitle() string {
-	return strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanLeadName))
+	return strings.TrimSpace(os.Getenv(config.EnvFactoryLeadName))
 }
 
 // conversationLanguage returns the configured conversation_language, or "" when

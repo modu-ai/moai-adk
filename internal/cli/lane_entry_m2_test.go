@@ -131,7 +131,7 @@ func TestLaneEntryJoinsNextFreeSlot(t *testing.T) {
 					for key, want := range map[string]string{
 						config.EnvFactoryRole:       config.FactoryRoleLane,
 						config.EnvMoaiFactoryWorker: fx.want,
-						config.EnvMoaiKanbanBackend: verb.backend,
+						config.EnvFactoryBackend:    verb.backend,
 					} {
 						if got := launch.env[key]; got != want {
 							t.Errorf("%s at launch = %q, want %q", key, got, want)
@@ -296,27 +296,27 @@ func TestLaneEntryComposesWithLaneOptions(t *testing.T) {
 	// Parse-level rows: the selections reach the entry parse.
 	for _, tc := range []struct {
 		args []string
-		pass func(entry kanbanEntryParse) string // "" = ok, otherwise the complaint
+		pass func(entry launcherEntryParse) string // "" = ok, otherwise the complaint
 	}{
-		{[]string{"-l", "--leader", "leader-2"}, func(e kanbanEntryParse) string { return wantString("FactoryLead", e.FactoryLead, "leader-2") }},
-		{[]string{"--lane", "--leader=leader-2"}, func(e kanbanEntryParse) string { return wantString("FactoryLead", e.FactoryLead, "leader-2") }},
-		{[]string{"-l", "--clear-policy", config.FactoryClearPolicyEach}, func(e kanbanEntryParse) string {
+		{[]string{"-l", "--leader", "leader-2"}, func(e launcherEntryParse) string { return wantString("FactoryLead", e.FactoryLead, "leader-2") }},
+		{[]string{"--lane", "--leader=leader-2"}, func(e launcherEntryParse) string { return wantString("FactoryLead", e.FactoryLead, "leader-2") }},
+		{[]string{"-l", "--clear-policy", config.FactoryClearPolicyEach}, func(e launcherEntryParse) string {
 			return wantString("ClearPolicy", e.ClearPolicy, config.FactoryClearPolicyEach)
 		}},
-		{[]string{"-l", "--no-auto-dispatch"}, func(e kanbanEntryParse) string {
+		{[]string{"-l", "--no-auto-dispatch"}, func(e launcherEntryParse) string {
 			if !e.AutoDispatchManual {
 				return "AutoDispatchManual = false, want true"
 			}
 			return ""
 		}},
-		{[]string{"-l", "--factory-run", "runx0001"}, func(e kanbanEntryParse) string { return wantString("FactoryRun", e.FactoryRun, "runx0001") }},
-		{[]string{"-l", "-w", "feat-x"}, func(e kanbanEntryParse) string {
+		{[]string{"-l", "--factory-run", "runx0001"}, func(e launcherEntryParse) string { return wantString("FactoryRun", e.FactoryRun, "runx0001") }},
+		{[]string{"-l", "-w", "feat-x"}, func(e launcherEntryParse) string {
 			if !containsFlag(e.Rest, "-w") || !containsFlag(e.Rest, "feat-x") {
 				return "Rest = " + strings.Join(e.Rest, " ") + ", want the -w pair preserved"
 			}
 			return ""
 		}},
-		{[]string{"-l", "--", "--print"}, func(e kanbanEntryParse) string {
+		{[]string{"-l", "--", "--print"}, func(e launcherEntryParse) string {
 			if !containsFlag(e.Rest, "--print") {
 				return "Rest = " + strings.Join(e.Rest, " ") + ", want the passthrough token kept"
 			}

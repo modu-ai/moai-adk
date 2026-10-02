@@ -2,7 +2,7 @@
 // kanban/factory session launch with no bound (398 entries measured in a
 // long-lived checkout, 2026-09-29). Every reader needs liveness only — the
 // doctor Factory Run check (doctor_factory_run.go), the web ops console
-// (viewmodel_ops.go loadKanbanRecords), and the stale-run hook
+// (viewmodel_ops.go loadFactoryRecords), and the stale-run hook
 // (session_stale_run.go, which reads only the current session's own record) —
 // and none needs forensics: a record carries launch facts alone. Age-based
 // retention is therefore the whole contract, and the sweep is confined to

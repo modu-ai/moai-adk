@@ -14,7 +14,7 @@ import (
 //
 // The fixture root is created and populated by the test, so this listing is
 // reproducible in a way the live directory is not.
-func TestLauncherWritesNoKanbanRecord(t *testing.T) {
+func TestLauncherWritesNoFactoryRecord(t *testing.T) {
 	// Queue state is staged under a temp project root; drop the TestMain
 	// MOAI_HOME sandbox so it resolves project-locally (card t1229).
 	t.Setenv(config.EnvHome, "")
@@ -45,7 +45,7 @@ func TestLauncherWritesNoKanbanRecord(t *testing.T) {
 
 	before := listNames(t, recordDir)
 
-	restore := exportKanbanLaunchFacts("SPEC-EXAMPLE-001", kanban.BackendGLM)
+	restore := exportFactoryLaunchFacts("SPEC-EXAMPLE-001", kanban.BackendGLM)
 	defer restore()
 
 	after := listNames(t, recordDir)
@@ -65,18 +65,18 @@ func TestLauncherWritesNoKanbanRecord(t *testing.T) {
 // dropped the SPEC identifier with its last launcher).
 func TestLaunchFactsAreExportedForTheSessionToRead(t *testing.T) {
 	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
-	t.Setenv(config.EnvMoaiKanbanBackend, "")
+	t.Setenv(config.EnvFactoryBackend, "")
 
-	restore := exportKanbanLaunchFacts("", kanban.BackendGLM)
+	restore := exportFactoryLaunchFacts("", kanban.BackendGLM)
 
-	if got := os.Getenv(config.EnvMoaiKanbanBackend); got != kanban.BackendGLM {
-		t.Fatalf("%s = %q, want %q", config.EnvMoaiKanbanBackend, got, kanban.BackendGLM)
+	if got := os.Getenv(config.EnvFactoryBackend); got != kanban.BackendGLM {
+		t.Fatalf("%s = %q, want %q", config.EnvFactoryBackend, got, kanban.BackendGLM)
 	}
 
 	restore()
 
-	if got := os.Getenv(config.EnvMoaiKanbanBackend); got != "" {
-		t.Fatalf("after restore %s = %q, want empty", config.EnvMoaiKanbanBackend, got)
+	if got := os.Getenv(config.EnvFactoryBackend); got != "" {
+		t.Fatalf("after restore %s = %q, want empty", config.EnvFactoryBackend, got)
 	}
 }
 
@@ -90,7 +90,7 @@ func TestLaunchFactsPublishNoSpecMarker(t *testing.T) {
 		t.Fatalf("Unsetenv: %v", err)
 	}
 
-	restore := exportKanbanLaunchFacts("SPEC-EXAMPLE-001", kanban.BackendClaude)
+	restore := exportFactoryLaunchFacts("SPEC-EXAMPLE-001", kanban.BackendClaude)
 	defer restore()
 
 	if _, present := os.LookupEnv(retiredSpecMarker); present {

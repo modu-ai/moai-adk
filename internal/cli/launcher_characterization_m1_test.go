@@ -46,15 +46,15 @@ func TestLeaderEntryUnchanged(t *testing.T) {
 			if launch.err != nil || !launch.launched {
 				t.Fatalf("%v: launched=%v err=%v", tc.args, launch.launched, launch.err)
 			}
-			runID := launch.env[config.EnvMoaiKanbanID]
+			runID := launch.env[config.EnvFactoryRunID]
 			if runID == "" {
 				t.Fatalf("the leader carries no run id at launch")
 			}
 			if launch.env[config.EnvMoaiFactoryWorkers] != "1" {
 				t.Errorf("leader markers: %s = %q, want 1", config.EnvMoaiFactoryWorkers, launch.env[config.EnvMoaiFactoryWorkers])
 			}
-			if launch.env[config.EnvMoaiKanbanLeadAddr] != kanban.FactoryLeaderSocketPath(runID) {
-				t.Errorf("leader markers: %s = %q, want the run's leader socket", config.EnvMoaiKanbanLeadAddr, launch.env[config.EnvMoaiKanbanLeadAddr])
+			if launch.env[config.EnvFactoryLeadAddr] != kanban.FactoryLeaderSocketPath(runID) {
+				t.Errorf("leader markers: %s = %q, want the run's leader socket", config.EnvFactoryLeadAddr, launch.env[config.EnvFactoryLeadAddr])
 			}
 			netRunRecorded(t, root, runID, tc.backend)
 		})

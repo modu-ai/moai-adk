@@ -285,7 +285,7 @@ func isRunIDShape(s string) bool {
 
 // The factory leader-socket root (t118 socket scheme, v3.1.1:
 // `/tmp/moai-socket-factory/<run-id>`). The value is a conventional address
-// line the SessionStart notice prints (EnvMoaiKanbanLeadAddr), not a filesystem
+// line the SessionStart notice prints (EnvFactoryLeadAddr), not a filesystem
 // contract the messaging substrate is bound to — the actual transport is
 // runtime-owned — which is why the /tmp literal is acceptable here rather than
 // os.TempDir().
@@ -293,7 +293,7 @@ const factorySocketDir = "/tmp/moai-socket-factory"
 
 // FactoryLeaderSocketPath returns the conventional leader-socket address a
 // FACTORY leader publishes for runID: <factorySocketDir>/<run-id>. The value is
-// printed by the SessionStart notice (EnvMoaiKanbanLeadAddr carries it).
+// printed by the SessionStart notice (EnvFactoryLeadAddr carries it).
 func FactoryLeaderSocketPath(runID string) string {
 	return factorySocketDir + "/" + runID
 }

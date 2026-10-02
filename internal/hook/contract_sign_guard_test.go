@@ -61,7 +61,7 @@ func TestContractSignAgentInvocationDenied(t *testing.T) {
 	// must not depend on the runner's environment (lane env inflow, card t1354).
 	t.Setenv(config.EnvFactoryRole, "")
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
-	t.Setenv(config.EnvMoaiKanbanBackend, "")
+	t.Setenv(config.EnvFactoryBackend, "")
 	cases := []string{
 		"moai contract sign SPEC-X-001",
 		"moai contract sign --signer human SPEC-X-001",
@@ -246,7 +246,7 @@ func TestContractRoleScopedAllowWithoutLaneMarker(t *testing.T) {
 	// under test, so the other two must be hermetic (lane env inflow, card t1354).
 	t.Setenv(config.EnvFactoryRole, "")
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
-	t.Setenv(config.EnvMoaiKanbanBackend, "")
+	t.Setenv(config.EnvFactoryBackend, "")
 	roleScoped := []string{
 		"moai contract sign --signer llm --receipt /tmp/r.json",
 		"moai contract sign --signer llm+jev --receipt /tmp/r.json",

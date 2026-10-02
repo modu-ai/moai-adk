@@ -199,10 +199,10 @@ func TestFactoryLeadNoticeUsesOperationalStatus(t *testing.T) {
 	t.Setenv("CLAUDE_CONFIG_DIR", t.TempDir())
 	root, run := t.TempDir(), "ops-notice"
 	c := operationalStatusClient(t, root, run)
-	t.Setenv(config.EnvMoaiKanbanID, run)
+	t.Setenv(config.EnvFactoryRunID, run)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
-	t.Setenv(config.EnvMoaiKanbanBackend, "codex")
+	t.Setenv(config.EnvFactoryBackend, "codex")
 	t.Setenv(config.EnvMoaiSessionPID, strconv.Itoa(os.Getpid()))
 	start, state := homestate.ProbeProcessIdentity(os.Getpid())
 	if state != homestate.ProcessIdentityLive || start == "" {

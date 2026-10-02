@@ -234,12 +234,12 @@ func TestChainBanner_NoStrayTreeFromNormalizedSubdirCWD(t *testing.T) {
 // Precondition: a factory leader role env (the fan-out marker set, the lane
 // label cleared) and Source "startup"; without a role the write is never
 // reached.
-func TestKanbanSessionRecord_NoStrayTreeInSubdirCWD(t *testing.T) {
+func TestFactorySessionRecord_NoStrayTreeInSubdirCWD(t *testing.T) {
 	_, sub := newSubdirProject(t)
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 
-	writeKanbanSessionRecord(&HookInput{SessionID: "sess-sub", Source: "startup", CWD: sub})
+	writeFactorySessionRecord(&HookInput{SessionID: "sess-sub", Source: "startup", CWD: sub})
 
 	assertNoStrayMoai(t, sub)
 }

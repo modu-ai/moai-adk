@@ -58,10 +58,10 @@ func TestFactoryNetSessionRecord(t *testing.T) {
 		netScrubFactoryEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorker, kanban.FactoryLaneLabel(3))
 		t.Setenv(config.EnvMoaiFactoryWorkers, "0")
-		t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendGLM)
-		t.Setenv(config.EnvMoaiKanbanCard, "t1399")
+		t.Setenv(config.EnvFactoryBackend, kanban.BackendGLM)
+		t.Setenv(config.EnvFactoryCard, "t1399")
 
-		writeKanbanSessionRecord(&HookInput{SessionID: "net-lane-sess", ProjectDir: root, CWD: root})
+		writeFactorySessionRecord(&HookInput{SessionID: "net-lane-sess", ProjectDir: root, CWD: root})
 
 		rec, err := kanban.Read(root, "net-lane-sess")
 		if err != nil {
@@ -82,9 +82,9 @@ func TestFactoryNetSessionRecord(t *testing.T) {
 		root := newMoaiProjectRoot(t)
 		netScrubFactoryEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-		t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+		t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
 
-		writeKanbanSessionRecord(&HookInput{SessionID: "net-leader-sess", ProjectDir: root, CWD: root})
+		writeFactorySessionRecord(&HookInput{SessionID: "net-leader-sess", ProjectDir: root, CWD: root})
 
 		rec, err := kanban.Read(root, "net-leader-sess")
 		if err != nil {
@@ -102,7 +102,7 @@ func TestFactoryNetSessionRecord(t *testing.T) {
 		root := newMoaiProjectRoot(t)
 		netScrubFactoryEnv(t)
 
-		writeKanbanSessionRecord(&HookInput{SessionID: "net-plain-sess", ProjectDir: root, CWD: root})
+		writeFactorySessionRecord(&HookInput{SessionID: "net-plain-sess", ProjectDir: root, CWD: root})
 
 		if _, err := os.Stat(kanban.RecordPath(root, "net-plain-sess")); err == nil {
 			t.Error("a session outside every run wrote a session record")
@@ -142,9 +142,9 @@ func TestFactoryNetSessionStartNotices(t *testing.T) {
 		root := newMoaiProjectRoot(t)
 		netScrubFactoryEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorkers, "1")
-		t.Setenv(config.EnvMoaiKanbanID, "netrun01")
-		t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-factory/netrun01")
-		t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+		t.Setenv(config.EnvFactoryRunID, "netrun01")
+		t.Setenv(config.EnvFactoryLeadAddr, "/tmp/moai-socket-factory/netrun01")
+		t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
 
 		ctx, sys := netSessionStart(t, root, "net-notice-leader")
 		for channel, text := range map[string]string{"additionalContext": ctx, "systemMessage": sys} {
@@ -164,8 +164,8 @@ func TestFactoryNetSessionStartNotices(t *testing.T) {
 		netScrubFactoryEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorker, kanban.FactoryLaneLabel(2))
 		t.Setenv(config.EnvMoaiFactoryWorkers, "0")
-		t.Setenv(config.EnvMoaiKanbanID, "netrun01")
-		t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+		t.Setenv(config.EnvFactoryRunID, "netrun01")
+		t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
 
 		ctx, sys := netSessionStart(t, root, "net-notice-lane")
 		for channel, text := range map[string]string{"additionalContext": ctx, "systemMessage": sys} {

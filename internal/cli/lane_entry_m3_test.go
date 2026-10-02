@@ -76,15 +76,15 @@ func TestCodexLaneEntryStartsRelaunchLane(t *testing.T) {
 		if lane.env[config.EnvFactoryRole] != config.FactoryRoleLane || label == "" {
 			t.Errorf("codex %s: child is not a lane: role=%q worker=%q", spelling, lane.env[config.EnvFactoryRole], label)
 		}
-		if got := lane.env[config.EnvMoaiKanbanBackend]; got != kanban.BackendGPT {
-			t.Errorf("codex %s: child %s = %q, want %q", spelling, config.EnvMoaiKanbanBackend, got, kanban.BackendGPT)
+		if got := lane.env[config.EnvFactoryBackend]; got != kanban.BackendGPT {
+			t.Errorf("codex %s: child %s = %q, want %q", spelling, config.EnvFactoryBackend, got, kanban.BackendGPT)
 		}
-		if card := lane.env[config.EnvMoaiKanbanCard]; card == "" {
+		if card := lane.env[config.EnvFactoryCard]; card == "" {
 			t.Errorf("codex %s: the relaunch loop handed the child no card id", spelling)
 		}
 		// No leader: the leader markers never reach a lane child, and the only
 		// run row is the leader run the fixture recorded.
-		for _, key := range []string{config.EnvMoaiFactoryWorkers, config.EnvMoaiKanbanLeadAddr} {
+		for _, key := range []string{config.EnvMoaiFactoryWorkers, config.EnvFactoryLeadAddr} {
 			if got := lane.env[key]; got != "" {
 				t.Errorf("codex %s: child carries the leader marker %s=%q", spelling, key, got)
 			}

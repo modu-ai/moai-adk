@@ -13,7 +13,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
-// scrubKanbanEnv clears every launch-fact discriminator before a test sets the
+// scrubFactoryEnv clears every launch-fact discriminator before a test sets the
 // ones it means to exercise.
 //
 // It is load-bearing rather than tidy: these tests frequently RUN INSIDE a
@@ -24,16 +24,16 @@ import (
 // machine running the lane and never in CI.
 //
 // The list below is not a sample: it MUST name EVERY launch-fact variable
-// writeKanbanSessionRecord reads. One missing entry leaves exactly one field
+// writeFactorySessionRecord reads. One missing entry leaves exactly one field
 // reading the ambient lane instead of the case, so keep the two in step
 // whenever the writer gains a variable.
-func scrubKanbanEnv(t *testing.T) {
+func scrubFactoryEnv(t *testing.T) {
 	t.Helper()
 	for _, key := range []string{
 		config.EnvMoaiFactoryWorker,
 		config.EnvMoaiFactoryWorkers,
-		config.EnvMoaiKanbanBackend,
-		config.EnvMoaiKanbanCard,
+		config.EnvFactoryBackend,
+		config.EnvFactoryCard,
 		config.EnvMoaiLaunchProvider,
 	} {
 		t.Setenv(key, "")
@@ -57,13 +57,13 @@ func TestRecordIsKeyedByTheRuntimeSessionIDNotTheSidecar(t *testing.T) {
 		t.Fatalf("seed sidecar: %v", err)
 	}
 
-	scrubKanbanEnv(t)
+	scrubFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorker, kanban.FactoryLaneLabel(2))
 	t.Setenv(config.EnvMoaiFactoryWorkers, "0")
-	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+	t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
 
 	const own = "S-99999999-8888-7777-6666-555555555555"
-	writeKanbanSessionRecord(&HookInput{
+	writeFactorySessionRecord(&HookInput{
 		SessionID:  own,
 		ProjectDir: root,
 		CWD:        root,
@@ -93,12 +93,12 @@ func TestRecordIsKeyedByTheRuntimeSessionIDNotTheSidecar(t *testing.T) {
 func TestFactoryLaneRecordsItsNumberAndLeadRecordsZero(t *testing.T) {
 	t.Run("lane-3", func(t *testing.T) {
 		root := newMoaiProjectRoot(t)
-		scrubKanbanEnv(t)
+		scrubFactoryEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorker, kanban.FactoryLaneLabel(3))
 		t.Setenv(config.EnvMoaiFactoryWorkers, "4")
-		t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendGLM)
+		t.Setenv(config.EnvFactoryBackend, kanban.BackendGLM)
 
-		writeKanbanSessionRecord(&HookInput{SessionID: "lane-sess", ProjectDir: root, CWD: root})
+		writeFactorySessionRecord(&HookInput{SessionID: "lane-sess", ProjectDir: root, CWD: root})
 
 		rec, err := kanban.Read(root, "lane-sess")
 		if err != nil {
@@ -117,11 +117,11 @@ func TestFactoryLaneRecordsItsNumberAndLeadRecordsZero(t *testing.T) {
 
 	t.Run("factory leader", func(t *testing.T) {
 		root := newMoaiProjectRoot(t)
-		scrubKanbanEnv(t)
+		scrubFactoryEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-		t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+		t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
 
-		writeKanbanSessionRecord(&HookInput{SessionID: "lead-sess", ProjectDir: root, CWD: root})
+		writeFactorySessionRecord(&HookInput{SessionID: "lead-sess", ProjectDir: root, CWD: root})
 
 		rec, err := kanban.Read(root, "lead-sess")
 		if err != nil {
@@ -144,11 +144,11 @@ func TestCardIdentifierDerivation(t *testing.T) {
 
 	t.Run("(a) card worktree, no override", func(t *testing.T) {
 		root := newMoaiProjectRoot(t)
-		scrubKanbanEnv(t)
+		scrubFactoryEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-		t.Setenv(config.EnvMoaiKanbanCard, "")
+		t.Setenv(config.EnvFactoryCard, "")
 
-		writeKanbanSessionRecord(&HookInput{SessionID: "a", ProjectDir: root, CWD: cardWorktree})
+		writeFactorySessionRecord(&HookInput{SessionID: "a", ProjectDir: root, CWD: cardWorktree})
 
 		rec, err := kanban.Read(root, "a")
 		if err != nil {
@@ -161,11 +161,11 @@ func TestCardIdentifierDerivation(t *testing.T) {
 
 	t.Run("(b) override wins", func(t *testing.T) {
 		root := newMoaiProjectRoot(t)
-		scrubKanbanEnv(t)
+		scrubFactoryEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-		t.Setenv(config.EnvMoaiKanbanCard, "t999")
+		t.Setenv(config.EnvFactoryCard, "t999")
 
-		writeKanbanSessionRecord(&HookInput{SessionID: "b", ProjectDir: root, CWD: cardWorktree})
+		writeFactorySessionRecord(&HookInput{SessionID: "b", ProjectDir: root, CWD: cardWorktree})
 
 		rec, err := kanban.Read(root, "b")
 		if err != nil {
@@ -178,11 +178,11 @@ func TestCardIdentifierDerivation(t *testing.T) {
 
 	t.Run("(c) primary checkout yields no card", func(t *testing.T) {
 		root := newMoaiProjectRoot(t)
-		scrubKanbanEnv(t)
+		scrubFactoryEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-		t.Setenv(config.EnvMoaiKanbanCard, "")
+		t.Setenv(config.EnvFactoryCard, "")
 
-		writeKanbanSessionRecord(&HookInput{SessionID: "c", ProjectDir: root, CWD: primaryCheckout})
+		writeFactorySessionRecord(&HookInput{SessionID: "c", ProjectDir: root, CWD: primaryCheckout})
 
 		raw, err := os.ReadFile(kanban.RecordPath(root, "c"))
 		if err != nil {
@@ -205,7 +205,7 @@ func TestCardIdentifierDerivation(t *testing.T) {
 // as one standing at its root — the reason the derivation walks upward instead
 // of testing the cwd's own parent.
 func TestCardIdentifierFromADeepCwdInsideACardWorktree(t *testing.T) {
-	scrubKanbanEnv(t)
+	scrubFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 
 	base := t.TempDir()
@@ -215,7 +215,7 @@ func TestCardIdentifierFromADeepCwdInsideACardWorktree(t *testing.T) {
 	}
 
 	root := newMoaiProjectRoot(t)
-	writeKanbanSessionRecord(&HookInput{SessionID: "real-wt", ProjectDir: root, CWD: deep})
+	writeFactorySessionRecord(&HookInput{SessionID: "real-wt", ProjectDir: root, CWD: deep})
 
 	rec, err := kanban.Read(root, "real-wt")
 	if err != nil {
@@ -267,11 +267,11 @@ func TestFactoryLaneJoinClosesOnTheThirdHop(t *testing.T) {
 	}
 
 	// Hop 3: the lane session writes its own record at SessionStart.
-	scrubKanbanEnv(t)
+	scrubFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorker, kanban.FactoryLaneLabel(5))
 	t.Setenv(config.EnvMoaiFactoryWorkers, "8")
-	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
-	writeKanbanSessionRecord(&HookInput{SessionID: laneSession, ProjectDir: root, CWD: root, Source: "startup"})
+	t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
+	writeFactorySessionRecord(&HookInput{SessionID: laneSession, ProjectDir: root, CWD: root, Source: "startup"})
 
 	// Resolve the chain the consumer walks.
 	loaded := kanban.LoadFactoryRegistry(regPath)
@@ -311,12 +311,12 @@ func TestFactoryLaneJoinClosesOnTheThirdHop(t *testing.T) {
 
 // A malformed launch label yields no record at all rather than a guessed role.
 // (A well-formed lane label resolving to the lane role is pinned in
-// TestKanbanRoleFromEnvReadsOnlyLaneLabels; the retired companion label
-// resolving to no role in TestSessionRecordIgnoresRetiredKanbanMarkers.)
+// TestFactoryRoleFromEnvReadsOnlyLaneLabels; the retired companion label
+// resolving to no role in TestSessionRecordIgnoresRetiredFactoryMarkers.)
 func TestMalformedLaneLabelYieldsNoRole(t *testing.T) {
-	scrubKanbanEnv(t)
+	scrubFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorker, "not a role at all")
-	if _, _, ok := kanbanRoleFromEnv(); ok {
+	if _, _, ok := factoryRoleFromEnv(); ok {
 		t.Fatalf("a malformed lane label resolved to a role")
 	}
 }
@@ -347,13 +347,13 @@ func TestCardIDFromPathRequiresAWorktreesParent(t *testing.T) {
 
 // §E edge case: a session that is not a factory session gets no record. The
 // absence is the correct answer, not a degraded one.
-func TestNonKanbanSessionWritesNoRecord(t *testing.T) {
+func TestNonFactorySessionWritesNoRecord(t *testing.T) {
 	root := newMoaiProjectRoot(t)
-	scrubKanbanEnv(t)
+	scrubFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "")
 
-	writeKanbanSessionRecord(&HookInput{SessionID: "plain", ProjectDir: root, CWD: root})
+	writeFactorySessionRecord(&HookInput{SessionID: "plain", ProjectDir: root, CWD: root})
 
 	if _, err := os.Stat(kanban.RecordPath(root, "plain")); err == nil {
 		t.Fatalf("a record was written for a non-kanban session")
@@ -367,11 +367,11 @@ func TestReEntrySourcesDoNotWriteOrOverwrite(t *testing.T) {
 	for _, source := range []string{"resume", "clear", "compact", "fork"} {
 		t.Run(source, func(t *testing.T) {
 			root := newMoaiProjectRoot(t)
-			scrubKanbanEnv(t)
+			scrubFactoryEnv(t)
 			t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-			t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+			t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
 
-			writeKanbanSessionRecord(&HookInput{SessionID: "s", ProjectDir: root, CWD: root, Source: source})
+			writeFactorySessionRecord(&HookInput{SessionID: "s", ProjectDir: root, CWD: root, Source: source})
 
 			if _, err := os.Stat(kanban.RecordPath(root, "s")); err == nil {
 				t.Fatalf("source %q wrote a record", source)
@@ -382,9 +382,9 @@ func TestReEntrySourcesDoNotWriteOrOverwrite(t *testing.T) {
 
 func TestExistingRecordIsNotClobbered(t *testing.T) {
 	root := t.TempDir()
-	scrubKanbanEnv(t)
+	scrubFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+	t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
 
 	seeded := kanban.NewRecord("s", "SPEC-SEED", kanban.BackendGLM).WithRole(kanban.RoleLeader)
 	seeded.DeepScanDir = "/tmp/scan"
@@ -393,7 +393,7 @@ func TestExistingRecordIsNotClobbered(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	writeKanbanSessionRecord(&HookInput{SessionID: "s", ProjectDir: root, CWD: root, Source: "startup"})
+	writeFactorySessionRecord(&HookInput{SessionID: "s", ProjectDir: root, CWD: root, Source: "startup"})
 
 	rec, err := kanban.Read(root, "s")
 	if err != nil {
@@ -424,13 +424,13 @@ func TestRecordWriteFailsOpenOnUnwritableStateDirectory(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(stateDir, 0o755) })
 
-	scrubKanbanEnv(t)
+	scrubFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+	t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
 
 	// The path is reached (the environment marks a kanban session) and the
 	// write attempt fails inside WriteBestEffort, which discards the error.
-	writeKanbanSessionRecord(&HookInput{SessionID: "unwritable", ProjectDir: root, CWD: root, Source: "startup"})
+	writeFactorySessionRecord(&HookInput{SessionID: "unwritable", ProjectDir: root, CWD: root, Source: "startup"})
 
 	if _, err := os.Stat(kanban.RecordPath(root, "unwritable")); err == nil {
 		t.Fatalf("a record exists though the state directory was unwritable")

@@ -43,10 +43,10 @@ var launcherEntryFlag = regexp.MustCompile("moai (?:cc|glm|codex) (-[-A-Za-z]+)"
 // environment axis fixed first.
 func renderLeaderNotice(t *testing.T, lang string, lanes int) string {
 	t.Helper()
-	clearKanbanEnv(t)
+	clearFactoryEnv(t)
 	t.Setenv(config.EnvMoaiLaunchProvider, "")
 	t.Setenv(config.EnvMoaiFactoryWorkers, strconv.Itoa(lanes))
-	t.Setenv(config.EnvMoaiKanbanID, "abc123")
+	t.Setenv(config.EnvFactoryRunID, "abc123")
 	return factoryBootstrapNotice("", "", lang)
 }
 

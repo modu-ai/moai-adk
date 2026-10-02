@@ -160,7 +160,7 @@ func netCodexLaneChildFor(t *testing.T, args ...string) netCodexLane {
 		if childEnv == nil {
 			childEnv = sdEnvOf(t, c.Env)
 		}
-		sdCodexSessionWork(t, root, sdEnvOf(t, c.Env)[config.EnvMoaiKanbanCard])
+		sdCodexSessionWork(t, root, sdEnvOf(t, c.Env)[config.EnvFactoryCard])
 		return nil
 	}
 	t.Cleanup(func() { codexLookPath, codexDirectLaunchFn = prevLook, prevDirect })
@@ -195,8 +195,8 @@ func netRequireSettingsInjected(t *testing.T, launch netLaunch) {
 	if launch.settings["crossSessionInbound"] != "accept" {
 		t.Errorf("the injected settings payload = %v, want crossSessionInbound=accept", launch.settings)
 	}
-	if got := launch.env[config.EnvMoaiKanbanSettingsInjected]; got != "1" {
-		t.Errorf("%s at launch = %q, want 1 (the SessionStart hook reads it)", config.EnvMoaiKanbanSettingsInjected, got)
+	if got := launch.env[config.EnvFactorySettingsInjected]; got != "1" {
+		t.Errorf("%s at launch = %q, want 1 (the SessionStart hook reads it)", config.EnvFactorySettingsInjected, got)
 	}
 }
 
@@ -261,18 +261,18 @@ func TestFactoryNetLeaderLaunch(t *testing.T) {
 				t.Fatalf("%s -f: launched=%v err=%v", tc.name, launch.launched, launch.err)
 			}
 
-			runID := launch.env[config.EnvMoaiKanbanID]
+			runID := launch.env[config.EnvFactoryRunID]
 			if runID == "" {
-				t.Fatalf("%s at launch is empty: the leader carries no run id", config.EnvMoaiKanbanID)
+				t.Fatalf("%s at launch is empty: the leader carries no run id", config.EnvFactoryRunID)
 			}
 			if got := launch.env[config.EnvMoaiFactoryWorkers]; got != "1" {
 				t.Errorf("%s at launch = %q, want 1 (the count-less leader's one-lane default)", config.EnvMoaiFactoryWorkers, got)
 			}
-			if got, want := launch.env[config.EnvMoaiKanbanLeadAddr], kanban.FactoryLeaderSocketPath(runID); got != want {
-				t.Errorf("%s at launch = %q, want the run's leader socket %q", config.EnvMoaiKanbanLeadAddr, got, want)
+			if got, want := launch.env[config.EnvFactoryLeadAddr], kanban.FactoryLeaderSocketPath(runID); got != want {
+				t.Errorf("%s at launch = %q, want the run's leader socket %q", config.EnvFactoryLeadAddr, got, want)
 			}
-			if got := launch.env[config.EnvMoaiKanbanBackend]; got != tc.backend {
-				t.Errorf("%s at launch = %q, want %q", config.EnvMoaiKanbanBackend, got, tc.backend)
+			if got := launch.env[config.EnvFactoryBackend]; got != tc.backend {
+				t.Errorf("%s at launch = %q, want %q", config.EnvFactoryBackend, got, tc.backend)
 			}
 			// A factory leader seeds no chain and is no lane.
 			for _, key := range []string{retiredLeaderMarker, retiredLaneLabelMarker, config.EnvMoaiFactoryWorker, config.EnvFactoryRole} {
@@ -280,9 +280,9 @@ func TestFactoryNetLeaderLaunch(t *testing.T) {
 					t.Errorf("%s at a leader launch = %q, want unset (the marker belongs to another role)", key, got)
 				}
 			}
-			leaderName := launch.env[config.EnvMoaiKanbanLeadName]
+			leaderName := launch.env[config.EnvFactoryLeadName]
 			if _, ok := kanban.SplitLeaderLabel(leaderName); !ok {
-				t.Errorf("%s at launch = %q, want a leader-shaped name", config.EnvMoaiKanbanLeadName, leaderName)
+				t.Errorf("%s at launch = %q, want a leader-shaped name", config.EnvFactoryLeadName, leaderName)
 			}
 			if got := netNamedArg(launch.args); got != leaderName {
 				t.Errorf("the backend argv names the session %q, want the exported leader name %q (argv %v)", got, leaderName, launch.args)
@@ -294,7 +294,7 @@ func TestFactoryNetLeaderLaunch(t *testing.T) {
 			netRunRecorded(t, root, runID, tc.backend)
 
 			// The enter helpers restore the process environment on return.
-			for _, key := range []string{config.EnvMoaiFactoryWorkers, config.EnvMoaiKanbanID, config.EnvMoaiKanbanLeadAddr, config.EnvMoaiKanbanBackend} {
+			for _, key := range []string{config.EnvMoaiFactoryWorkers, config.EnvFactoryRunID, config.EnvFactoryLeadAddr, config.EnvFactoryBackend} {
 				if v, ok := os.LookupEnv(key); ok {
 					t.Errorf("%s = %q survived the launch; the leader markers must be restored", key, v)
 				}
@@ -329,8 +329,8 @@ func TestFactoryNetLaneLaunch(t *testing.T) {
 				config.EnvFactoryRole:                      config.FactoryRoleLane,
 				config.EnvMoaiFactoryWorker:                label,
 				config.EnvMoaiFactoryWorkers:               "0", // the count is unknown on the incremental form
-				config.EnvMoaiKanbanID:                     fcRun,
-				config.EnvMoaiKanbanBackend:                tc.backend,
+				config.EnvFactoryRunID:                     fcRun,
+				config.EnvFactoryBackend:                   tc.backend,
 				config.EnvFactoryAutoDispatch:              config.FactoryDispatchAuto,
 				config.EnvClaudeCodeMaxConcurrentSubagents: "10",
 			} {
@@ -474,8 +474,8 @@ func TestFactoryEntryMatrix(t *testing.T) {
 		if lane.env[config.EnvFactoryRole] != config.FactoryRoleLane || lane.env[config.EnvMoaiFactoryWorker] == "" {
 			t.Errorf("codex lane child is not a lane: role=%q worker=%q", lane.env[config.EnvFactoryRole], lane.env[config.EnvMoaiFactoryWorker])
 		}
-		if got := lane.env[config.EnvMoaiKanbanBackend]; got != kanban.BackendGPT {
-			t.Errorf("codex lane child %s = %q, want %q", config.EnvMoaiKanbanBackend, got, kanban.BackendGPT)
+		if got := lane.env[config.EnvFactoryBackend]; got != kanban.BackendGPT {
+			t.Errorf("codex lane child %s = %q, want %q", config.EnvFactoryBackend, got, kanban.BackendGPT)
 		}
 	})
 	t.Run("codex leader refused", func(t *testing.T) {

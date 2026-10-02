@@ -60,7 +60,7 @@ func factoryLaneAdmission() bool {
 func factoryLaneRefusal() bool {
 	return factoryLaneAdmission() ||
 		os.Getenv(config.EnvMoaiFactoryWorker) != "" ||
-		os.Getenv(config.EnvMoaiKanbanBackend) == kanban.BackendGPT
+		os.Getenv(config.EnvFactoryBackend) == kanban.BackendGPT
 }
 
 // The refusal sentinels. One wording source per refusal kind, so the queue
@@ -115,7 +115,7 @@ const factoryCodexMergeSentinel = "the Codex harness cannot take the merge-ready
 // verbs call it before touching any record; the MCP factory tools (M3) call
 // the same function.
 func factoryRefuseCodexMergeEdge(verb string) error {
-	if os.Getenv(config.EnvMoaiKanbanBackend) != kanban.BackendGPT {
+	if os.Getenv(config.EnvFactoryBackend) != kanban.BackendGPT {
 		return nil
 	}
 	return fmt.Errorf("factory %s: refused — %s: a Codex lane stops at merge-ready; integration is the Claude lane's or the leader's (F3)",
@@ -583,7 +583,7 @@ func factoryNextClaimRefused(err error) (homestate.Card, bool, bool, error) {
 // `merge-ready` or later, including a card returned to `assigned` by lease
 // expiry with its stage kept. Every other backend selects freely.
 func factoryNextSkipForBackend() func(homestate.Card) bool {
-	if os.Getenv(config.EnvMoaiKanbanBackend) != kanban.BackendGPT {
+	if os.Getenv(config.EnvFactoryBackend) != kanban.BackendGPT {
 		return func(homestate.Card) bool { return false }
 	}
 	return func(c homestate.Card) bool {

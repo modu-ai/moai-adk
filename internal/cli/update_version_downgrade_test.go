@@ -27,10 +27,10 @@ var updateViewGoldens = flag.Bool("update-golden", false, "rewrite the downgrade
 
 const downgradeGoldenDir = "testdata/downgrade-confirm"
 
-// downgradeKanbanVars is every MOAI_KANBAN* variable in internal/config/envkeys.go.
-var downgradeKanbanVars = []string{
-	config.EnvMoaiKanbanID, config.EnvMoaiKanbanSettingsInjected, config.EnvMoaiKanbanLeadAddr,
-	config.EnvMoaiKanbanBackend, config.EnvMoaiKanbanCard, config.EnvMoaiKanbanLeadName,
+// downgradeFactoryVars is every MOAI_KANBAN* variable in internal/config/envkeys.go.
+var downgradeFactoryVars = []string{
+	config.EnvFactoryRunID, config.EnvFactorySettingsInjected, config.EnvFactoryLeadAddr,
+	config.EnvFactoryBackend, config.EnvFactoryCard, config.EnvFactoryLeadName,
 }
 
 // downgradeExpect is the independent oracle per locale: the rendered title,
@@ -123,7 +123,7 @@ func TestUpdateVersionDowngradeConfirm_Localized(t *testing.T) {
 				}
 			}
 			prepared := map[string]string{config.EnvHome: moaiHome, config.EnvClaudeConfigDir: configDir}
-			for _, k := range downgradeKanbanVars {
+			for _, k := range downgradeFactoryVars {
 				prepared[k] = ""
 			}
 			for k, v := range prepared {

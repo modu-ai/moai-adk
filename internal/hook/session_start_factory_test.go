@@ -37,7 +37,7 @@ func TestFactoryGuideNamesWorkerJoinInEveryLocale(t *testing.T) {
 // TestFactoryBootstrapNoticeSilentForOrdinarySession is the blast-radius
 // case: a session that is not part of a factory run is completely unaffected.
 func TestFactoryBootstrapNoticeSilentForOrdinarySession(t *testing.T) {
-	clearKanbanEnv(t)
+	clearFactoryEnv(t)
 
 	if got := factoryBootstrapNotice("", "", langEnglish); got != "" {
 		t.Errorf("ordinary session must get no factory notice, got:\n%s", got)
@@ -52,11 +52,11 @@ func TestFactoryBootstrapNoticeSilentForOrdinarySession(t *testing.T) {
 // session name that must match it.
 func TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide(t *testing.T) {
 	t.Setenv(config.EnvMoaiLaunchProvider, "")
-	clearKanbanEnv(t)
+	clearFactoryEnv(t)
 
 	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
-	t.Setenv(config.EnvMoaiKanbanID, "abc123")
-	t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-factory/abc123")
+	t.Setenv(config.EnvFactoryRunID, "abc123")
+	t.Setenv(config.EnvFactoryLeadAddr, "/tmp/moai-socket-factory/abc123")
 
 	notice := factoryBootstrapNotice("", "", langEnglish)
 	for _, want := range []string{
@@ -85,7 +85,7 @@ func TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide(t *testing.T) {
 // with no run id (or a nonsensical count) emits nothing rather than a notice
 // addressing an unnamed run.
 func TestFactoryLeadNoticeEmptyWithoutRunID(t *testing.T) {
-	clearKanbanEnv(t)
+	clearFactoryEnv(t)
 
 	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
 	if got := factoryBootstrapNotice("", "", langEnglish); got != "" {
@@ -102,7 +102,7 @@ func TestFactoryLeadNoticeEmptyWithoutRunID(t *testing.T) {
 // a Contains("lane-4") assertion passed right through that garbage, so the
 // whole sentence is asserted here.
 func TestFactoryWorkerNoticeNamesLabel(t *testing.T) {
-	clearKanbanEnv(t)
+	clearFactoryEnv(t)
 
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-4")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
@@ -144,7 +144,7 @@ func TestFactoryWorkerNoticeNamesLabel(t *testing.T) {
 // against the en count-first contrast) and leading/trailing-newline hygiene
 // on every join-line i18n field in both tables.
 func TestFactoryWorkerNoticeLocaleWordOrders(t *testing.T) {
-	clearKanbanEnv(t)
+	clearFactoryEnv(t)
 
 	for _, lang := range []string{"en", "ko", "ja", "zh"} {
 		got := factoryLaneNotice("lane-2", 5, lang)
@@ -191,10 +191,10 @@ func TestFactoryWorkerNoticeLocaleWordOrders(t *testing.T) {
 // resume / clear / compact / fork re-emit nothing, because the operator's lane
 // terminals are already open by then.
 func TestFactoryBootstrapNoticeStartupOnly(t *testing.T) {
-	clearKanbanEnv(t)
+	clearFactoryEnv(t)
 
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvMoaiKanbanID, "abc123")
+	t.Setenv(config.EnvFactoryRunID, "abc123")
 
 	for _, source := range []string{"resume", "clear", "compact", "fork", "upgrade-mystery"} {
 		if got := factoryBootstrapNoticeForSource(source, "", "", langEnglish); got != "" {
@@ -235,10 +235,10 @@ func TestFactoryMessagesLocaleFallback(t *testing.T) {
 // It deliberately does NOT teach queue polling: that loop is the foreman's
 // (t96), and a second polling protocol here would conflict.
 func TestFactoryLeadNoticeCarriesDispatchDiscipline(t *testing.T) {
-	clearKanbanEnv(t)
+	clearFactoryEnv(t)
 
 	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
-	t.Setenv(config.EnvMoaiKanbanID, "abc123")
+	t.Setenv(config.EnvFactoryRunID, "abc123")
 
 	notice := factoryBootstrapNotice("", "", langEnglish)
 	for _, want := range []string{
@@ -269,10 +269,10 @@ func TestFactoryLeadNoticeCarriesDispatchDiscipline(t *testing.T) {
 // the same codification — localized prose around the same verbatim protocol
 // tokens, with the foreman named in its factory rendering.
 func TestFactoryLeadNoticeDispatchDisciplineKorean(t *testing.T) {
-	clearKanbanEnv(t)
+	clearFactoryEnv(t)
 
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvMoaiKanbanID, "abc123")
+	t.Setenv(config.EnvFactoryRunID, "abc123")
 
 	notice := factoryBootstrapNotice("", "", "ko")
 	for _, want := range []string{

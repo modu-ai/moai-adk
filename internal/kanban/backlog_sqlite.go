@@ -194,16 +194,16 @@ CREATE INDEX IF NOT EXISTS idx_items_state ON items(state);
 var (
 	// ErrBacklogBusy maps SQLITE_BUSY surviving the busy window (another
 	// process held the database beyond 5s) or the outer lock timing out.
-	ErrBacklogBusy = errors.New("kanban backlog store busy")
+	ErrBacklogBusy = errors.New("todo queue store busy")
 
 	// ErrBacklogCorrupt maps an unreadable/malformed database image. The file
 	// is NEVER deleted or rewritten by this store; operator action is
 	// documented in the downgrade procedure.
-	ErrBacklogCorrupt = errors.New("kanban backlog store corrupt")
+	ErrBacklogCorrupt = errors.New("todo queue store corrupt")
 
 	// ErrBacklogIDConflict maps a UNIQUE(id) constraint violation: the
 	// transaction aborts and prior state stands intact.
-	ErrBacklogIDConflict = errors.New("kanban backlog id conflict")
+	ErrBacklogIDConflict = errors.New("todo queue id conflict")
 )
 
 // IsBacklogBusy reports whether err is the busy sentinel.

@@ -33,10 +33,10 @@ var (
 func m3ScrubEnv(t *testing.T) {
 	t.Helper()
 	for _, key := range []string{
-		config.EnvMoaiKanbanID,
-		config.EnvMoaiKanbanLeadName, config.EnvMoaiKanbanLeadAddr,
-		config.EnvMoaiKanbanSettingsInjected,
-		config.EnvMoaiKanbanBackend, config.EnvMoaiFactoryWorker,
+		config.EnvFactoryRunID,
+		config.EnvFactoryLeadName, config.EnvFactoryLeadAddr,
+		config.EnvFactorySettingsInjected,
+		config.EnvFactoryBackend, config.EnvMoaiFactoryWorker,
 		config.EnvMoaiFactoryWorkers,
 	} {
 		t.Setenv(key, "")
@@ -47,7 +47,7 @@ func TestRoleNamingM3NoticesCarryLeaderLaneTerms(t *testing.T) {
 	m3ScrubEnv(t)
 	// The stale-run variants need the run id; the bootstrap notices tolerate
 	// it unset.
-	t.Setenv(config.EnvMoaiKanbanID, "runX")
+	t.Setenv(config.EnvFactoryRunID, "runX")
 
 	langs := []string{"en", "ko", "ja", "zh", "en-fallback"}
 	for _, lang := range langs {
@@ -120,7 +120,7 @@ func TestRoleNamingM3NoticesCarryLeaderLaneTerms(t *testing.T) {
 // retire), per REQ-RNC-022's discriminator.
 func TestRoleNamingM3StaleRunNoticeNamesRetireStep(t *testing.T) {
 	m3ScrubEnv(t)
-	t.Setenv(config.EnvMoaiKanbanID, "runX")
+	t.Setenv(config.EnvFactoryRunID, "runX")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 
 	factory := staleRunNotice("worker-2", "en")

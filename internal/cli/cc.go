@@ -185,7 +185,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 			return runErr
 		}
 		defer restoreRun()
-		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), backend, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
+		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvFactoryRunID), backend, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
 			return fmt.Errorf("record factory run: %w", err)
 		}
 		defer exportFactoryLaunchFacts(entry.Spec, backend)()
@@ -193,7 +193,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		filteredArgs, leaderName = appendLeaderName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
 		defer exportLeaderSessionName(leaderName)()
 		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
-		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+		settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)
 		endSettings()
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
@@ -234,7 +234,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		// own `next` calls and reach every child through the environment.
 		if entry.ClearPolicy == config.FactoryClearPolicyRelaunch {
 			endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
-			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+			settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)
 			endSettings()
 			defer settingsCleanup()
 			if len(settingsFlag) > 0 {
@@ -249,7 +249,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 			return runFactoryLaneRelaunch(cmd, finalLabel, filteredArgs)
 		}
 		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
-		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+		settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)
 		endSettings()
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)

@@ -150,10 +150,10 @@ func TestTodoPickInFactoryRecordsCardAndEvent(t *testing.T) {
 	// (no role, no label, no backend marker) and the mirror owner records as
 	// the REQ-RNC-010 `leader` spelling.
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvMoaiKanbanID, "run-card-test")
+	t.Setenv(config.EnvFactoryRunID, "run-card-test")
 	t.Setenv(config.EnvFactoryRole, "")
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
-	t.Setenv(config.EnvMoaiKanbanBackend, "")
+	t.Setenv(config.EnvFactoryBackend, "")
 	if _, _, err := runTodo(t, "next", "--spec", "SPEC-CARD-001", "1"); err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +185,7 @@ func TestTodoPickInFactoryProvenanceFailsOpenWithoutSpecOrGit(t *testing.T) {
 	t.Setenv("CLAUDE_PROJECT_DIR", root)
 	t.Setenv("MOAI_HOME", t.TempDir())
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
-	t.Setenv(config.EnvMoaiKanbanID, "run-fail-open")
+	t.Setenv(config.EnvFactoryRunID, "run-fail-open")
 	if _, _, err := runTodo(t, "add", "unscoped card"); err != nil {
 		t.Fatal(err)
 	}
@@ -251,10 +251,10 @@ func TestTodoPickInFactoryCapturesLinkedWorktreeSpecAndHEAD(t *testing.T) {
 	// REQ-SD-015: lane sessions pick through `moai factory next`; the pick
 	// here runs on the operator surface in a lane-neutral environment.
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
-	t.Setenv(config.EnvMoaiKanbanID, "run-linked-lane")
+	t.Setenv(config.EnvFactoryRunID, "run-linked-lane")
 	t.Setenv(config.EnvFactoryRole, "")
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
-	t.Setenv(config.EnvMoaiKanbanBackend, "")
+	t.Setenv(config.EnvFactoryBackend, "")
 	if _, _, err := runTodo(t, "next", "--spec", "SPEC-LANE-001", "1"); err != nil {
 		t.Fatal(err)
 	}

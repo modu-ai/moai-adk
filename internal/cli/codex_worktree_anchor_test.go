@@ -558,7 +558,7 @@ func TestCodexSpawnAnchorsToPanePID(t *testing.T) {
 // launch-pending path the test never set up (card t1222).
 func TestCodexSpawnAnchorsToPanePIDUnderLaneEnv(t *testing.T) {
 	t.Setenv(config.EnvHome, t.TempDir())
-	t.Setenv(config.EnvMoaiKanbanID, "run-t1222-probe")
+	t.Setenv(config.EnvFactoryRunID, "run-t1222-probe")
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-7")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
 	checkCodexSpawnAnchorsToPanePID(t)

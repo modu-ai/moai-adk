@@ -240,15 +240,15 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		// Same recording as the cc leader: the kanban store AND the factory state
 		// a lane's -l join resolves. Recording only the former left
 		// every GLM-led run unjoinable (NO_ACTIVE_FACTORY).
-		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), kanban.BackendGLM, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
+		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvFactoryRunID), kanban.BackendGLM, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
 			return fmt.Errorf("record factory run: %w", err)
 		}
-		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
+		defer exportFactoryLaunchFacts(entry.Spec, kanban.BackendGLM)()
 		var leaderName string
 		filteredArgs, leaderName = appendLeaderName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
 		defer exportLeaderSessionName(leaderName)()
 		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
-		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+		settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)
 		endSettings()
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
@@ -276,12 +276,12 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		}
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
 		defer enterFactoryLaneMode(finalLabel, entry.FactoryLanes, entry.ClearPolicy, laneDispatchSelection(entry))()
-		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
+		defer exportFactoryLaunchFacts(entry.Spec, kanban.BackendGLM)()
 		// See cc.go: the relaunch policy is the supervising loop (design.md
 		// §6) — the launcher stays the parent across every card.
 		if entry.ClearPolicy == config.FactoryClearPolicyRelaunch {
 			endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
-			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+			settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)
 			endSettings()
 			defer settingsCleanup()
 			if len(settingsFlag) > 0 {
@@ -293,7 +293,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			return runFactoryLaneRelaunch(cmd, finalLabel, filteredArgs)
 		}
 		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
-		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+		settingsFlag, settingsCleanup := prepareFactorySettings(profileName, filteredArgs)
 		endSettings()
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)

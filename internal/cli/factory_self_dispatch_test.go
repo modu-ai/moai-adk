@@ -42,7 +42,7 @@ func sdLaneEnv(t *testing.T, label, backend string) {
 	t.Helper()
 	t.Setenv(config.EnvFactoryRole, config.FactoryRoleLane)
 	t.Setenv(config.EnvMoaiFactoryWorker, label)
-	t.Setenv(config.EnvMoaiKanbanBackend, backend)
+	t.Setenv(config.EnvFactoryBackend, backend)
 }
 
 // sdClearLaneEnv removes every variable the lane predicates read, so a test
@@ -51,7 +51,7 @@ func sdClearLaneEnv(t *testing.T) {
 	t.Helper()
 	t.Setenv(config.EnvFactoryRole, "")
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
-	t.Setenv(config.EnvMoaiKanbanBackend, "")
+	t.Setenv(config.EnvFactoryBackend, "")
 }
 
 // sdQueueBytes snapshots the queue file the verbs share.
@@ -493,7 +493,7 @@ func TestSD_AC015_LabelOnlyIsNotALane(t *testing.T) {
 	// Codex MCP environment: lane label + backend gpt, no role marker. The
 	// todo_add MCP tool refusal is exercised when the tool lands (M3); the
 	// CLI todo surface and the not-a-lane factory refusal are covered here.
-	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendGPT)
+	t.Setenv(config.EnvFactoryBackend, kanban.BackendGPT)
 	before = sdQueueBytes(t, store)
 	if _, _, err := runTodo(t, "add", "x"); err == nil || !strings.Contains(err.Error(), "lane boundary") {
 		t.Errorf("todo add under Codex MCP env: err = %v, want the lane-boundary refusal", err)

@@ -110,7 +110,7 @@ func enterCodexFactory(root string, entry factoryFlagParse, timing *factoryLaunc
 	restoreFacts := exportFactoryLaunchFacts("", BackendCodex)
 	restore := func() { restoreFacts(); restoreRun() }
 	if lane {
-		runID := os.Getenv(config.EnvMoaiKanbanID)
+		runID := os.Getenv(config.EnvFactoryRunID)
 		endClaim := timing.begin(factoryStepLaneClaim)
 		claim, claimErr := kanban.ClaimFactoryLaneWithin(root, entry.LaneLabel, entry.LaneRole,
 			os.Getpid(), runID, factoryJoinLaneBound(root, runID), factoryProcessAlive)
@@ -132,7 +132,7 @@ func enterCodexFactory(root string, entry factoryFlagParse, timing *factoryLaunc
 	// The codex leader carries no count form (bare -f): its runs record the
 	// derived-capacity marker, never a declared bound
 	// (SPEC-CODEX-LANE-SLOTS-001 REQ-004).
-	if err := recordFactoryRunStart(root, os.Getenv(config.EnvMoaiKanbanID), BackendCodex, "", homestate.LaneCapacityDerived); err != nil {
+	if err := recordFactoryRunStart(root, os.Getenv(config.EnvFactoryRunID), BackendCodex, "", homestate.LaneCapacityDerived); err != nil {
 		restoreMode()
 		restore()
 		return nil, fmt.Errorf("record Codex factory run: %w", err)
@@ -176,15 +176,15 @@ func recordedFactoryLaneCapacity(root, runID string) (capacity int, found bool) 
 }
 
 func codexFactoryEnv(entry factoryFlagParse) []string {
-	keys := []string{config.EnvMoaiKanbanID, config.EnvMoaiKanbanBackend, config.EnvMoaiFactoryWorkers}
+	keys := []string{config.EnvFactoryRunID, config.EnvFactoryBackend, config.EnvMoaiFactoryWorkers}
 	if entry.LaneRole || entry.LaneNumber > 0 {
 		keys = append(keys, config.EnvMoaiFactoryWorker)
 		// The discovery path exports the verified leader's name (REQ-009);
 		// ordinary joins never set it, and the loop below drops empty keys,
 		// so this is additive-only for the child's env.
-		keys = append(keys, config.EnvMoaiKanbanLeadName)
+		keys = append(keys, config.EnvFactoryLeadName)
 	} else {
-		keys = append(keys, config.EnvMoaiKanbanLeadAddr)
+		keys = append(keys, config.EnvFactoryLeadAddr)
 	}
 	env := make([]string, 0, len(keys))
 	for _, key := range keys {
@@ -199,7 +199,7 @@ func codexFactoryEnv(entry factoryFlagParse) []string {
 }
 
 func codexExplicitFactoryEnv(env []string) bool {
-	return factoryLaunchEnabled(env) && launchEnvValue(env, config.EnvMoaiKanbanBackend) == BackendCodex
+	return factoryLaunchEnabled(env) && launchEnvValue(env, config.EnvFactoryBackend) == BackendCodex
 }
 
 // A spawned launcher exits immediately; its lane claim must follow the Codex
@@ -216,7 +216,7 @@ func stampCodexLaneClaim(root string, env []string, childPID int) (err error) {
 	defer closeFactoryInto(&err, db, "factory state")
 	result, err := db.DB.ExecContext(context.Background(),
 		`UPDATE workers SET pid=?, heartbeat_at=? WHERE label=? AND pid=? AND run_id=?`,
-		childPID, time.Now().UTC().Format(time.RFC3339Nano), label, os.Getpid(), launchEnvValue(env, config.EnvMoaiKanbanID))
+		childPID, time.Now().UTC().Format(time.RFC3339Nano), label, os.Getpid(), launchEnvValue(env, config.EnvFactoryRunID))
 	if err != nil {
 		return err
 	}

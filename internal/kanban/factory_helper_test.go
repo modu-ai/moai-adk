@@ -27,11 +27,11 @@ const substrateLockFileName = "state.lock"
 // and its t.Cleanup-registered kill, never a substitute for either.
 const integrationHelperStallCeiling = 30 * time.Second
 
-// TestKanbanHelperProcess is not a real test: when MOAI_KANBAN_HELPER is unset
+// TestFactoryHelperProcess is not a real test: when MOAI_KANBAN_HELPER is unset
 // it returns immediately so the normal `go test` run skips over it. When set,
 // the child performs the named operation against the HELPER_* environment and
 // exits — its stdout/stderr/exit code ARE the observation.
-func TestKanbanHelperProcess(t *testing.T) {
+func TestFactoryHelperProcess(t *testing.T) {
 	switch os.Getenv("MOAI_KANBAN_HELPER") {
 	case "":
 		return

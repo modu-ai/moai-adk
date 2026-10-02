@@ -50,11 +50,11 @@ func TestSessionStartPrunesExpiredRecordsByDefault(t *testing.T) {
 	root := newMoaiProjectRoot(t)
 	stale := seedStaleRecord(t, root, "stale-sess")
 
-	scrubKanbanEnv(t)
+	scrubFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+	t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
 
-	writeKanbanSessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
+	writeFactorySessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
 
 	if _, err := os.Stat(stale); !os.IsNotExist(err) {
 		t.Fatalf("stale record survived a SessionStart prune (stat err = %v)", err)
@@ -71,11 +71,11 @@ func TestSessionStartPruneHonorsZeroRetentionOverride(t *testing.T) {
 	stale := seedStaleRecord(t, root, "kept-sess")
 	writeStateYAML(t, root, "state:\n  session_record_retention_days: 0\n")
 
-	scrubKanbanEnv(t)
+	scrubFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+	t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
 
-	writeKanbanSessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
+	writeFactorySessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
 
 	if _, err := os.Stat(stale); err != nil {
 		t.Fatalf("retention 0 did not disable the prune: %v", err)
@@ -98,11 +98,11 @@ func TestSessionStartPruneHonorsConfiguredWindow(t *testing.T) {
 	target := kanban.RecordPath(root, "week-old-sess")
 	writeStateYAML(t, root, "state:\n  session_record_retention_days: 7\n")
 
-	scrubKanbanEnv(t)
+	scrubFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+	t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
 
-	writeKanbanSessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
+	writeFactorySessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
 
 	if _, err := os.Stat(target); !os.IsNotExist(err) {
 		t.Fatalf("a 10-day-old record survived a 7-day window (stat err = %v)", err)
@@ -117,11 +117,11 @@ func TestSessionStartPruneFailsOpenOnMalformedConfig(t *testing.T) {
 	stale := seedStaleRecord(t, root, "stale-sess")
 	writeStateYAML(t, root, "state: [not, a, mapping\n")
 
-	scrubKanbanEnv(t)
+	scrubFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+	t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
 
-	writeKanbanSessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
+	writeFactorySessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
 
 	if _, err := os.Stat(kanban.RecordPath(root, "new-sess")); err != nil {
 		t.Fatalf("a malformed config blocked the record write: %v", err)
@@ -145,11 +145,11 @@ func TestSessionStartPruneFailsOpenOnUnreadableConfig(t *testing.T) {
 		t.Fatalf("Mkdir: %v", err)
 	}
 
-	scrubKanbanEnv(t)
+	scrubFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+	t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
 
-	writeKanbanSessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
+	writeFactorySessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
 
 	if _, err := os.Stat(kanban.RecordPath(root, "new-sess")); err != nil {
 		t.Fatalf("an unreadable config blocked the record write: %v", err)
@@ -175,11 +175,11 @@ func TestSessionStartPruneSparesRecentRecords(t *testing.T) {
 	}
 	path := kanban.RecordPath(root, "recent-sess")
 
-	scrubKanbanEnv(t)
+	scrubFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+	t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
 
-	writeKanbanSessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
+	writeFactorySessionRecord(&HookInput{SessionID: "new-sess", ProjectDir: root, CWD: root, Source: "startup"})
 
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("a one-day-old record was pruned — the live-session guard failed: %v", err)

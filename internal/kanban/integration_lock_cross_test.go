@@ -109,7 +109,7 @@ func runIntegrationAcquireHelper(t *testing.T, root, session string, ownerPID in
 	ctx, cancel := context.WithTimeout(context.Background(), integrationHelperDeadline)
 	t.Cleanup(cancel)
 
-	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=TestKanbanHelperProcess", "--")
+	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=TestFactoryHelperProcess", "--")
 	cmd.Env = append(os.Environ(),
 		"MOAI_KANBAN_HELPER=integration-acquire",
 		"HELPER_ROOT="+root,

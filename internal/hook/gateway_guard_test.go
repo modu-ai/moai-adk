@@ -58,12 +58,12 @@ func TestGatewayHooksPreserveRoutingSettings(t *testing.T) {
 
 func TestGatewayRecordUsesInitialProviderAndKeepsExistingRecord(t *testing.T) {
 	root := newMoaiProjectRoot(t)
-	scrubKanbanEnv(t)
+	scrubFactoryEnv(t)
 	t.Setenv(config.EnvMoaiFactoryWorker, kanban.FactoryLaneLabel(1))
-	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
+	t.Setenv(config.EnvFactoryBackend, "claude")
 	t.Setenv(config.EnvMoaiLaunchProvider, "glm")
 	input := &HookInput{SessionID: "gateway-initial", ProjectDir: root, CWD: root, Source: "startup"}
-	writeKanbanSessionRecord(input)
+	writeFactorySessionRecord(input)
 	rec, err := kanban.Read(root, input.SessionID)
 	if err != nil {
 		t.Fatal(err)
@@ -72,7 +72,7 @@ func TestGatewayRecordUsesInitialProviderAndKeepsExistingRecord(t *testing.T) {
 		t.Fatalf("backend %q", rec.Backend)
 	}
 	t.Setenv(config.EnvMoaiLaunchProvider, "claude")
-	writeKanbanSessionRecord(input)
+	writeFactorySessionRecord(input)
 	rec, err = kanban.Read(root, input.SessionID)
 	if err != nil || rec.Backend != kanban.BackendGLM {
 		t.Fatalf("initial record changed: %+v %v", rec, err)

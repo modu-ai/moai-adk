@@ -106,7 +106,7 @@ func TestSD_AC003_CodexRelaunchPerCard(t *testing.T) {
 		got = append(got, cap)
 		// The substituted session moves ITS OWN card (the id the launcher
 		// handed it) to merge-ready, then exits 0.
-		sdCodexSessionWork(t, root, cap.env[config.EnvMoaiKanbanCard])
+		sdCodexSessionWork(t, root, cap.env[config.EnvFactoryCard])
 		return nil
 	}
 	t.Cleanup(func() { codexLookPath, codexDirectLaunchFn = prevLook, prevDirect })
@@ -145,14 +145,14 @@ func TestSD_AC003_CodexRelaunchPerCard(t *testing.T) {
 		if v := rec.env[retiredLaneLabelMarker]; v != "" {
 			t.Errorf("invocation %d: child env carries the retired %s=%q", i, retiredLaneLabelMarker, v)
 		}
-		if rec.env[config.EnvMoaiKanbanBackend] != kanban.BackendGPT {
-			t.Errorf("invocation %d: child env %s = %q, want the Codex harness value %q", i, config.EnvMoaiKanbanBackend, rec.env[config.EnvMoaiKanbanBackend], kanban.BackendGPT)
+		if rec.env[config.EnvFactoryBackend] != kanban.BackendGPT {
+			t.Errorf("invocation %d: child env %s = %q, want the Codex harness value %q", i, config.EnvFactoryBackend, rec.env[config.EnvFactoryBackend], kanban.BackendGPT)
 		}
-		if rec.env[config.EnvMoaiKanbanCard] != cardID {
-			t.Errorf("invocation %d: child env %s = %q, want card %s's id", i, config.EnvMoaiKanbanCard, rec.env[config.EnvMoaiKanbanCard], cardID)
+		if rec.env[config.EnvFactoryCard] != cardID {
+			t.Errorf("invocation %d: child env %s = %q, want card %s's id", i, config.EnvFactoryCard, rec.env[config.EnvFactoryCard], cardID)
 		}
-		if rec.env[config.EnvMoaiKanbanID] != "" {
-			t.Errorf("invocation %d: child env carries the run id %s=%q; the eleven-key scrub holds on the lane path too", i, config.EnvMoaiKanbanID, rec.env[config.EnvMoaiKanbanID])
+		if rec.env[config.EnvFactoryRunID] != "" {
+			t.Errorf("invocation %d: child env carries the run id %s=%q; the eleven-key scrub holds on the lane path too", i, config.EnvFactoryRunID, rec.env[config.EnvFactoryRunID])
 		}
 	}
 }

@@ -217,8 +217,8 @@ func newTodoCmd() *cobra.Command {
 	defer newTodoCmdMu.Unlock()
 	cmd := &cobra.Command{
 		Use:   "todo",
-		Short: "Operate the kanban backlog queue",
-		Long: `Operate the kanban backlog queue at ~/.moai/db/<project-key>/todo/backlog.db.
+		Short: "Operate the backlog queue",
+		Long: `Operate the backlog queue at ~/.moai/db/<project-key>/todo/backlog.db.
 
 The queue resolves against the PRIMARY checkout even when this command runs
 inside a linked worktree — one repository, one queue; a card worktree adds
@@ -1356,7 +1356,7 @@ func newTodoUnpickCmd() *cobra.Command {
 }
 
 func recordFactoryCardState(cardID, specID, state, eventKind string) {
-	runID := os.Getenv(config.EnvMoaiKanbanID)
+	runID := os.Getenv(config.EnvFactoryRunID)
 	if runID == "" || os.Getenv(config.EnvMoaiFactoryWorkers) == "" {
 		return
 	}

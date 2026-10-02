@@ -312,7 +312,7 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 // laneDispatchSelection resolves the dispatch value a lane launch stamps
 // into config.EnvFactoryAutoDispatch (REQ-TCD-011): the opt-out selects the
 // manual mode; the code default is auto-dispatch.
-func laneDispatchSelection(entry kanbanEntryParse) string {
+func laneDispatchSelection(entry launcherEntryParse) string {
 	if entry.AutoDispatchManual {
 		return config.FactoryDispatchManual
 	}
@@ -343,7 +343,7 @@ func refuseLegacyEntryNames(args []string) error {
 // parseLauncherEntry is the launcher entry parse (t118): the retired -k
 // spelling is refused first, before any branch resolves
 // (launcher_retired_entries.go), then parseFactoryFlag runs on the args and the
-// factory shapes resolve into the kanbanEntryParse the dispatch branches read:
+// factory shapes resolve into the launcherEntryParse the dispatch branches read:
 //
 //   - bare `-f` sets FactoryEnabled with the leader's one-lane default
 //     (DefaultFactoryLeaderLanes); a lane-shaped --name beside it is refused
@@ -359,11 +359,11 @@ func refuseLegacyEntryNames(args []string) error {
 // Legacy spellings of an operator --name (`worker-<n>`, `agent-<n>`, bare
 // legacy roles, and `lead` / `lead-<suffix>` leader names) are refused before
 // any branch resolves (REQ-RNC-004/-005/-007).
-func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
+func parseLauncherEntry(args []string) (launcherEntryParse, error) {
 	if err := refuseRetiredEntry(args); err != nil {
-		return kanbanEntryParse{}, err
+		return launcherEntryParse{}, err
 	}
-	entry := kanbanEntryParse{Rest: append(make([]string, 0, len(args)), args...)}
+	entry := launcherEntryParse{Rest: append(make([]string, 0, len(args)), args...)}
 	if err := refuseLegacyEntryNames(args); err != nil {
 		return entry, err
 	}
@@ -476,8 +476,8 @@ func enterSelectedFactoryRun(root, explicit string, requireActive bool, timing *
 		return func() {}, fmt.Errorf("factory run %s holds live legacy record %q from a binary before the leader/lane rename — "+
 			"end its sessions, retire with 'moai factory runs --retire %s', then relaunch", runID, value, runID)
 	}
-	restore := captureEnvState(config.EnvMoaiKanbanID)
-	_ = os.Setenv(config.EnvMoaiKanbanID, runID)
+	restore := captureEnvState(config.EnvFactoryRunID)
+	_ = os.Setenv(config.EnvFactoryRunID, runID)
 	return restore, nil
 }
 
@@ -554,8 +554,8 @@ func enterFactoryLaneRun(root, explicit, leadTarget string, timing *factoryLaunc
 	if rerr := resumeDiscoveredRun(root, leader); rerr != nil {
 		return restore, fmt.Errorf("resume discovered run %s: %w", leader.RunID, rerr)
 	}
-	restoreName := captureEnvState(config.EnvMoaiKanbanLeadName)
-	_ = os.Setenv(config.EnvMoaiKanbanLeadName, leader.Name)
+	restoreName := captureEnvState(config.EnvFactoryLeadName)
+	_ = os.Setenv(config.EnvFactoryLeadName, leader.Name)
 	reentered, jerr := enterSelectedFactoryRun(root, "", true, timing)
 	if jerr != nil {
 		restoreName()
@@ -629,7 +629,7 @@ func recordFactoryRunStart(root, runID, backend, specID string, declaredLanes in
 // when the count is a parse default (`-f` bare — the count-less leader, the
 // only leader entry now). The distinction is the whole policy: a defaulted
 // count never becomes a declared bound.
-func factoryDeclaredLanes(entry kanbanEntryParse) int {
+func factoryDeclaredLanes(entry launcherEntryParse) int {
 	if entry.FactoryLanesDeclared && entry.FactoryLanes >= 1 {
 		return entry.FactoryLanes
 	}
@@ -695,18 +695,18 @@ func parseFactoryLaneLabel(args []string) (label string, ok bool) {
 // replaced (see leaderRunID).
 func enterFactoryLeaderMode(lanes int, leaderLabel string) func() {
 	restoreLaneCount := captureEnvState(config.EnvMoaiFactoryWorkers)
-	restoreID := captureEnvState(config.EnvMoaiKanbanID)
-	restoreAddr := captureEnvState(config.EnvMoaiKanbanLeadAddr)
+	restoreID := captureEnvState(config.EnvFactoryRunID)
+	restoreAddr := captureEnvState(config.EnvFactoryLeadAddr)
 	restoreTier := seedAutonomyTier()
 
 	_ = os.Setenv(config.EnvMoaiFactoryWorkers, strconv.Itoa(lanes))
 	runID := leaderRunID(leaderLabel)
-	_ = os.Setenv(config.EnvMoaiKanbanID, runID)
+	_ = os.Setenv(config.EnvFactoryRunID, runID)
 	// The conventional path-shaped address, from the factory's own socket
 	// directory (t118 scheme): the actual messaging-substrate address is a run
 	// concern, and this value gives the notice a non-empty, grep-friendly
 	// address line that never collides with another run's.
-	_ = os.Setenv(config.EnvMoaiKanbanLeadAddr, kanban.FactoryLeaderSocketPath(runID))
+	_ = os.Setenv(config.EnvFactoryLeadAddr, kanban.FactoryLeaderSocketPath(runID))
 
 	return func() {
 		restoreTier()
@@ -808,7 +808,7 @@ var factoryProcessAlive = kanban.FactoryProcessAlive
 // refuses naming the canonical lane-<n>). notes, when non-nil, receives the
 // operator-visible bump line.
 func resolveFactoryLaneName(root, label string, auto bool, notes io.Writer) (string, error) {
-	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
+	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
 	claim, err := kanban.ClaimFactoryLane(root, label, auto, os.Getpid(), runID, factoryProcessAlive)
 	var legacyRun *kanban.FactoryLegacyRunError
 	if errors.As(err, &legacyRun) {

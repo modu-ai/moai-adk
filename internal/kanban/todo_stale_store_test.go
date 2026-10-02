@@ -159,8 +159,8 @@ func TestInspectStaleLocalStores_ZeroByteStoreIsUnreadableNotDivergent(t *testin
 
 func TestInspectStaleLocalStores_BothLegacyDirsReported(t *testing.T) {
 	root, _, _ := staleStoreFixture(t)
-	kanbanDirDB := backlogSQLitePath(filepath.Join(LegacyStateDirForRoot(root), backlogFileName))
-	seedStaleStoreSeq(t, kanbanDirDB, 500)
+	factoryDirDB := backlogSQLitePath(filepath.Join(LegacyStateDirForRoot(root), backlogFileName))
+	seedStaleStoreSeq(t, factoryDirDB, 500)
 
 	fact := InspectStaleLocalStores(root)
 
@@ -171,8 +171,8 @@ func TestInspectStaleLocalStores_BothLegacyDirsReported(t *testing.T) {
 	for _, st := range fact.Stores {
 		seen[st.Path] = st.LastSeq
 	}
-	if seen[kanbanDirDB] != 500 {
-		t.Errorf("kanban-dir store last_seq = %d, want 500", seen[kanbanDirDB])
+	if seen[factoryDirDB] != 500 {
+		t.Errorf("kanban-dir store last_seq = %d, want 500", seen[factoryDirDB])
 	}
 	if !fact.Divergent {
 		t.Error("Divergent = false with two stale stores present")

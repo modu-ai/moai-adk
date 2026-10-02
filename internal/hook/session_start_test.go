@@ -178,7 +178,7 @@ func TestSessionStartHandler_Handle(t *testing.T) {
 	// the factory bootstrap notice injects itself into AdditionalContext even
 	// when SessionID/ProjectDir is empty — breaking the "nil config" and
 	// "empty project config" subtests below.
-	clearKanbanEnv(t)
+	clearFactoryEnv(t)
 
 	tests := []struct {
 		name         string

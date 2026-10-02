@@ -35,7 +35,7 @@ func TestSD_AC017_WidenedRoleGateDenyAndAllow(t *testing.T) {
 
 	// Label-only environment: the marker is unset, the lane label is set.
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
-	t.Setenv(config.EnvMoaiKanbanBackend, "")
+	t.Setenv(config.EnvFactoryBackend, "")
 	decision, reason := checkContractSign(signGuardInput(t, call))
 	assertDeny("label-only", decision, reason)
 
@@ -44,14 +44,14 @@ func TestSD_AC017_WidenedRoleGateDenyAndAllow(t *testing.T) {
 	// MOAI_KANBAN_BACKEND=gpt, no role marker. The deny here rides the
 	// label and backend clauses.
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
-	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendGPT)
+	t.Setenv(config.EnvFactoryBackend, kanban.BackendGPT)
 	decision, reason = checkContractSign(signGuardInput(t, call))
 	assertDeny("codex-mcp", decision, reason)
 
 	// None of the three lane variables: allowed exactly as before — the allow
 	// direction is a requirement (the leader's own decide path rides it).
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
-	t.Setenv(config.EnvMoaiKanbanBackend, "")
+	t.Setenv(config.EnvFactoryBackend, "")
 	decision, reason = checkContractSign(signGuardInput(t, call))
 	if decision != "" || reason != "" {
 		t.Errorf("no-lane-vars: decision = %q reason = %q, want the silent allow", decision, reason)

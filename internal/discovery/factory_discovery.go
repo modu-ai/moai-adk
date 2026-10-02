@@ -175,7 +175,7 @@ func verifyCandidate(ctx context.Context, pid int, canonicalRoot, targetLabel st
 	if !ok {
 		return VerifiedLeader{}, false
 	}
-	runID := strings.TrimSpace(env[config.EnvMoaiKanbanID])
+	runID := strings.TrimSpace(env[config.EnvFactoryRunID])
 	if runID == "" || !runIDPattern.MatchString(runID) {
 		return VerifiedLeader{}, false
 	}

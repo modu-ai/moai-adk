@@ -32,10 +32,10 @@ import (
 func srlGateEnv(t *testing.T, run, label string) {
 	t.Helper()
 	m3ScrubEnv(t)
-	t.Setenv(config.EnvMoaiKanbanID, run)
+	t.Setenv(config.EnvFactoryRunID, run)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "4")
 	t.Setenv(config.EnvMoaiFactoryWorker, label)
-	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
+	t.Setenv(config.EnvFactoryBackend, "claude")
 }
 
 // recordFactoryRunWithStatus seeds a runs row with an explicit status, so a
@@ -256,10 +256,10 @@ func TestCurrentVocabularyBindPathUnchanged(t *testing.T) { // AC-SRL-007
 	root := t.TempDir()
 	run := "srl-current-vocab"
 	recordActiveFactoryRun(t, root, run)
-	t.Setenv(config.EnvMoaiKanbanID, run)
+	t.Setenv(config.EnvFactoryRunID, run)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-3")
-	t.Setenv(config.EnvMoaiKanbanBackend, "codex")
+	t.Setenv(config.EnvFactoryBackend, "codex")
 	owner, start := factoryHookOwnerIdentity(t)
 	s, err := factorymsg.Open(root, run)
 	if err != nil {

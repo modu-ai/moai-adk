@@ -17,13 +17,13 @@ import (
 // Non-parallel by construction: os.Setenv mutates process-global state.
 func TestEnterFactoryLeaderModeSetsRunID(t *testing.T) {
 	clearFactoryTestEnv(t)
-	keys := []string{config.EnvMoaiKanbanID, config.EnvMoaiKanbanLeadAddr, config.EnvMoaiFactoryWorkers}
+	keys := []string{config.EnvFactoryRunID, config.EnvFactoryLeadAddr, config.EnvMoaiFactoryWorkers}
 
 	restore := enterFactoryLeaderMode(1, "")
 
-	runID := os.Getenv(config.EnvMoaiKanbanID)
+	runID := os.Getenv(config.EnvFactoryRunID)
 	if runID == "" {
-		t.Fatalf("%s not set by enterFactoryLeaderMode", config.EnvMoaiKanbanID)
+		t.Fatalf("%s not set by enterFactoryLeaderMode", config.EnvFactoryRunID)
 	}
 	if _, ok := kanban.SplitLeaderLabel(kanban.RoleLeader + "-" + runID); !ok {
 		t.Errorf("run id %q does not produce a parseable leader label", runID)

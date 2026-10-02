@@ -222,8 +222,8 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 			if rec.dir != card.WorktreePath {
 				t.Errorf("session %d: child working directory = %q, want card %s's worktree %q", i, rec.dir, cardID, card.WorktreePath)
 			}
-			if rec.env[config.EnvMoaiKanbanCard] != cardID {
-				t.Errorf("session %d: child env %s = %q, want card %s's id", i, config.EnvMoaiKanbanCard, rec.env[config.EnvMoaiKanbanCard], cardID)
+			if rec.env[config.EnvFactoryCard] != cardID {
+				t.Errorf("session %d: child env %s = %q, want card %s's id", i, config.EnvFactoryCard, rec.env[config.EnvFactoryCard], cardID)
 			}
 			if rec.env[config.EnvFactoryClearPolicy] != config.FactoryClearPolicyRelaunch {
 				t.Errorf("session %d: child env %s = %q, want %q", i, config.EnvFactoryClearPolicy, rec.env[config.EnvFactoryClearPolicy], config.FactoryClearPolicyRelaunch)

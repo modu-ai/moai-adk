@@ -29,10 +29,10 @@ func newStaleRunRoot(t *testing.T) string {
 func TestStaleRunNoticeLegacyLeaderSpelling(t *testing.T) { // AC-RNC-025 (a) + debt P4
 	root := newStaleRunRoot(t)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvMoaiKanbanLeadName, "lead")
+	t.Setenv(config.EnvFactoryLeadName, "lead")
 
 	input := &HookInput{SessionID: "stale-lead-session", Source: "startup", ProjectDir: root, CWD: root}
-	writeKanbanSessionRecord(input)
+	writeFactorySessionRecord(input)
 
 	if _, err := os.Stat(kanban.RecordPath(root, "stale-lead-session")); !os.IsNotExist(err) {
 		t.Errorf("session record exists after legacy-label SessionStart, want no file created")
@@ -52,7 +52,7 @@ func TestStaleRunNoticeLegacyLeaderSpelling(t *testing.T) { // AC-RNC-025 (a) + 
 func TestStaleRunNoticeLegacySessionRecord(t *testing.T) { // AC-RNC-025 (b)
 	root := newStaleRunRoot(t)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-	t.Setenv(config.EnvMoaiKanbanLeadName, "leader")
+	t.Setenv(config.EnvFactoryLeadName, "leader")
 
 	// A pre-rename binary wrote this record with role "lead" — written as raw
 	// JSON because the current-vocabulary WithRole setter correctly refuses
@@ -71,7 +71,7 @@ func TestStaleRunNoticeLegacySessionRecord(t *testing.T) { // AC-RNC-025 (b)
 	}
 
 	input := &HookInput{SessionID: "legacy-record-session", Source: "startup", ProjectDir: root, CWD: root}
-	writeKanbanSessionRecord(input)
+	writeFactorySessionRecord(input)
 
 	after, err := os.ReadFile(path)
 	if err != nil {
@@ -96,12 +96,12 @@ func TestStaleRunNoticeFactoryLegacyLabel(t *testing.T) { // AC-RNC-022 hook cla
 	// the run to measure active — a dead run gets the unbind notice instead
 	// (stale_run_gate_test.go).
 	recordActiveFactoryRun(t, root, "runR")
-	t.Setenv(config.EnvMoaiKanbanID, "runR")
+	t.Setenv(config.EnvFactoryRunID, "runR")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "4")
 	t.Setenv(config.EnvMoaiFactoryWorker, "worker-2")
 
 	input := &HookInput{SessionID: "stale-lane-session", Source: "startup", ProjectDir: root, CWD: root}
-	writeKanbanSessionRecord(input)
+	writeFactorySessionRecord(input)
 	if _, err := os.Stat(kanban.RecordPath(root, "stale-lane-session")); !os.IsNotExist(err) {
 		t.Errorf("session record exists after legacy lane label, want none")
 	}
@@ -121,21 +121,21 @@ func TestStaleRunNoticeFactoryLegacyLabel(t *testing.T) { // AC-RNC-022 hook cla
 	}
 }
 
-func TestKanbanRoleFromEnvLegacyLabelsNotRecognized(t *testing.T) { // REQ-RNC-009
+func TestFactoryRoleFromEnvLegacyLabelsNotRecognized(t *testing.T) { // REQ-RNC-009
 	t.Setenv(config.EnvMoaiFactoryWorker, "worker-2")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "4")
-	role, lane, ok := kanbanRoleFromEnv()
+	role, lane, ok := factoryRoleFromEnv()
 	if ok {
-		t.Errorf("kanbanRoleFromEnv(worker-2) = (%q, %d, true), want ok=false — legacy is detection only", role, lane)
+		t.Errorf("factoryRoleFromEnv(worker-2) = (%q, %d, true), want ok=false — legacy is detection only", role, lane)
 	}
 }
 
-func TestKanbanRoleFromEnvNewVocabulary(t *testing.T) {
+func TestFactoryRoleFromEnvNewVocabulary(t *testing.T) {
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-2")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "4")
-	role, lane, ok := kanbanRoleFromEnv()
+	role, lane, ok := factoryRoleFromEnv()
 	if !ok || role != kanban.RoleLane || lane != 2 {
-		t.Errorf("kanbanRoleFromEnv(lane-2) = (%q, %d, %v), want (lane, 2, true)", role, lane, ok)
+		t.Errorf("factoryRoleFromEnv(lane-2) = (%q, %d, %v), want (lane, 2, true)", role, lane, ok)
 	}
 }
 

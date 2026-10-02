@@ -115,8 +115,8 @@ func TestCodexLaneChildEnvOmitsLabelMarker(t *testing.T) {
 		config.EnvFactoryAutoDispatch,
 		config.EnvFactoryRole,
 		config.EnvMoaiFactoryWorker,
-		config.EnvMoaiKanbanBackend,
-		config.EnvMoaiKanbanCard,
+		config.EnvFactoryBackend,
+		config.EnvFactoryCard,
 	}
 	sort.Strings(want)
 	if got := laneKeyNames(lane.env); !slices.Equal(got, want) {
@@ -186,7 +186,7 @@ func TestFactoryCardVerbsResolveLaneFromWorkerMarker(t *testing.T) {
 		if err != nil || label != child[config.EnvMoaiFactoryWorker] {
 			t.Errorf("lane label from the child environment = (%q, %v), want %q", label, err, child[config.EnvMoaiFactoryWorker])
 		}
-		sdCodexSessionWork(t, root, child[config.EnvMoaiKanbanCard])
+		sdCodexSessionWork(t, root, child[config.EnvFactoryCard])
 		return nil
 	}
 	t.Cleanup(func() { codexLookPath, codexDirectLaunchFn = prevLook, prevDirect })

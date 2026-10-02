@@ -30,10 +30,10 @@ func TestSessionStartEmitsNoKanbanNotice(t *testing.T) {
 		{"leader marker alone", map[string]string{"MOAI_KANBAN": "1"}},
 		{"companion label alone", map[string]string{"MOAI_KANBAN_LABEL": "plan"}},
 		{"leader marker with run id, socket, and SPEC", map[string]string{
-			"MOAI_KANBAN":                "1",
-			"MOAI_KANBAN_SPEC":           "SPEC-RETIRED-001",
-			config.EnvMoaiKanbanID:       "oldrun01",
-			config.EnvMoaiKanbanLeadAddr: "/tmp/moai-socket-kanban/oldrun01",
+			"MOAI_KANBAN":             "1",
+			"MOAI_KANBAN_SPEC":        "SPEC-RETIRED-001",
+			config.EnvFactoryRunID:    "oldrun01",
+			config.EnvFactoryLeadAddr: "/tmp/moai-socket-kanban/oldrun01",
 		}},
 		{"both markers", map[string]string{"MOAI_KANBAN": "1", "MOAI_KANBAN_LABEL": "run-2"}},
 	}
@@ -58,9 +58,9 @@ func TestSessionStartEmitsNoKanbanNotice(t *testing.T) {
 		netScrubFactoryEnv(t)
 		t.Setenv("MOAI_KANBAN", "1")
 		t.Setenv(config.EnvMoaiFactoryWorkers, "1")
-		t.Setenv(config.EnvMoaiKanbanID, "netrun02")
-		t.Setenv(config.EnvMoaiKanbanLeadAddr, "/tmp/moai-socket-factory/netrun02")
-		t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+		t.Setenv(config.EnvFactoryRunID, "netrun02")
+		t.Setenv(config.EnvFactoryLeadAddr, "/tmp/moai-socket-factory/netrun02")
+		t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
 
 		ctx, sys := netSessionStart(t, root, "retired-marker-factory-leader")
 		for channel, text := range map[string]string{"additionalContext": ctx, "systemMessage": sys} {
@@ -79,8 +79,8 @@ func TestSessionStartEmitsNoKanbanNotice(t *testing.T) {
 		t.Setenv("MOAI_KANBAN_LABEL", "plan")
 		t.Setenv(config.EnvMoaiFactoryWorker, kanban.FactoryLaneLabel(2))
 		t.Setenv(config.EnvMoaiFactoryWorkers, "0")
-		t.Setenv(config.EnvMoaiKanbanID, "netrun02")
-		t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+		t.Setenv(config.EnvFactoryRunID, "netrun02")
+		t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
 
 		ctx, sys := netSessionStart(t, root, "retired-marker-factory-lane")
 		for channel, text := range map[string]string{"additionalContext": ctx, "systemMessage": sys} {
@@ -94,11 +94,11 @@ func TestSessionStartEmitsNoKanbanNotice(t *testing.T) {
 	})
 }
 
-// TestSessionRecordIgnoresRetiredKanbanMarkers pins the session-record role
+// TestSessionRecordIgnoresRetiredFactoryMarkers pins the session-record role
 // reader after M5b: the leader and companion markers of the retired mode map to
 // no role, so a session carrying only them writes no record, and the SPEC
 // marker never reaches a factory record (its SPEC field is the empty string).
-func TestSessionRecordIgnoresRetiredKanbanMarkers(t *testing.T) {
+func TestSessionRecordIgnoresRetiredFactoryMarkers(t *testing.T) {
 	for name, env := range map[string]map[string]string{
 		"leader marker":    {"MOAI_KANBAN": "1"},
 		"companion label":  {"MOAI_KANBAN_LABEL": "plan"},
@@ -110,10 +110,10 @@ func TestSessionRecordIgnoresRetiredKanbanMarkers(t *testing.T) {
 			for k, v := range env {
 				t.Setenv(k, v)
 			}
-			if role, lane, ok := kanbanRoleFromEnv(); ok {
-				t.Errorf("kanbanRoleFromEnv with %v = (%q, %d, true), want ok=false", env, role, lane)
+			if role, lane, ok := factoryRoleFromEnv(); ok {
+				t.Errorf("factoryRoleFromEnv with %v = (%q, %d, true), want ok=false", env, role, lane)
 			}
-			writeKanbanSessionRecord(&HookInput{SessionID: "retired-marker-sess", ProjectDir: root, CWD: root})
+			writeFactorySessionRecord(&HookInput{SessionID: "retired-marker-sess", ProjectDir: root, CWD: root})
 			if _, err := kanban.Read(root, "retired-marker-sess"); err == nil {
 				t.Errorf("a session with %v wrote a session record", env)
 			}
@@ -124,10 +124,10 @@ func TestSessionRecordIgnoresRetiredKanbanMarkers(t *testing.T) {
 		root := newMoaiProjectRoot(t)
 		netScrubFactoryEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorkers, "2")
-		t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+		t.Setenv(config.EnvFactoryBackend, kanban.BackendClaude)
 		t.Setenv("MOAI_KANBAN_SPEC", "SPEC-RETIRED-001")
 
-		writeKanbanSessionRecord(&HookInput{SessionID: "spec-marker-sess", ProjectDir: root, CWD: root})
+		writeFactorySessionRecord(&HookInput{SessionID: "spec-marker-sess", ProjectDir: root, CWD: root})
 		rec, err := kanban.Read(root, "spec-marker-sess")
 		if err != nil {
 			t.Fatalf("the factory leader wrote no session record: %v", err)

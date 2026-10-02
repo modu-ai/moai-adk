@@ -278,13 +278,13 @@ func defaultCodexSpawnLaunch(dir, program string, args, factoryEnv []string) err
 			identityErr = stampCodexLaneClaim(dir, factoryEnv, pid)
 		}
 		if identityErr == nil && launchEnvValue(factoryEnv, config.EnvMoaiFactoryWorker) == "" && codexExplicitFactoryEnv(factoryEnv) {
-			identityErr = stampFactoryRunOwner(dir, launchEnvValue(factoryEnv, config.EnvMoaiKanbanID), pid, start)
+			identityErr = stampFactoryRunOwner(dir, launchEnvValue(factoryEnv, config.EnvFactoryRunID), pid, start)
 		}
 		if identityErr != nil {
 			cleanupErr := codexSpawnCleanupPaneFn(paneID)
 			cleanupErr = errors.Join(cleanupErr, rollbackFactoryLaunchPending(context.Background(), dir, pending))
 			if codexExplicitFactoryEnv(factoryEnv) && launchEnvValue(factoryEnv, config.EnvMoaiFactoryWorker) == "" {
-				cleanupErr = errors.Join(cleanupErr, clearFactoryRunOwner(dir, launchEnvValue(factoryEnv, config.EnvMoaiKanbanID)))
+				cleanupErr = errors.Join(cleanupErr, clearFactoryRunOwner(dir, launchEnvValue(factoryEnv, config.EnvFactoryRunID)))
 			}
 			return fmt.Errorf("prepare spawned Codex: %w", errors.Join(identityErr, cleanupErr))
 		}
@@ -315,12 +315,12 @@ func defaultCodexSpawnPaneIdentity(paneID string) (int, string, error) {
 // export. A plain Codex launch scrubs them. An explicit -f launch supplies a
 // freshly selected factory identity after the scrub.
 var codexLaneLaunchEnvKeys = []string{
-	config.EnvMoaiKanbanID,
-	config.EnvMoaiKanbanLeadAddr,
-	config.EnvMoaiKanbanLeadName,
-	config.EnvMoaiKanbanBackend,
-	config.EnvMoaiKanbanCard,
-	config.EnvMoaiKanbanSettingsInjected,
+	config.EnvFactoryRunID,
+	config.EnvFactoryLeadAddr,
+	config.EnvFactoryLeadName,
+	config.EnvFactoryBackend,
+	config.EnvFactoryCard,
+	config.EnvFactorySettingsInjected,
 	config.EnvMoaiFactoryWorker,
 	config.EnvMoaiFactoryWorkers,
 	config.EnvFactoryRole,
@@ -961,7 +961,7 @@ func runCodexFactoryLane(cmd *cobra.Command, debug bool) error {
 		return err
 	}
 	defer restoreRun()
-	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
+	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
 	// The label is claimed atomically — the next free lane-<n>, bumped past a
 	// live hold — so two codex lanes cannot start under one label.
 	endClaim := launchTiming.beginDebug(factoryStepLaneClaim, "")
@@ -1064,8 +1064,8 @@ func codexCardLaunchEnv(label, cardID string) []string {
 	return append(env,
 		config.EnvFactoryRole+"="+config.FactoryRoleLane,
 		config.EnvMoaiFactoryWorker+"="+label,
-		config.EnvMoaiKanbanBackend+"="+kanban.BackendGPT,
-		config.EnvMoaiKanbanCard+"="+cardID,
+		config.EnvFactoryBackend+"="+kanban.BackendGPT,
+		config.EnvFactoryCard+"="+cardID,
 	)
 }
 

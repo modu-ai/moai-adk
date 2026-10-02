@@ -462,7 +462,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// no record and nothing happens here; every failure is discarded, so the
 	// call returns nothing and the session start cannot gate on it.
 	clock.lap("marshal_attribution")
-	writeKanbanSessionRecord(input)
+	writeFactorySessionRecord(input)
 	if factoryNotice := registerFactorySessionStartPeer(ctx, input); factoryNotice != "" {
 		if out.HookSpecificOutput == nil {
 			out.HookSpecificOutput = &HookSpecificOutput{HookEventName: string(EventSessionStart)}
@@ -472,7 +472,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 		out.HookSpecificOutput.AdditionalContext += factoryNotice
 	}
-	clock.lap("kanban_record")
+	clock.lap("factory_record")
 
 	// SPEC-STEERING-ALIGN-GUARDRAIL-HOOK-001: GLM 가드레일 리마인더 주입.
 	// GLM 백엔드 세션(PROCESS env ANTHROPIC_BASE_URL이 z.ai 포함)일 때만 z.ai MCP

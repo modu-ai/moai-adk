@@ -221,7 +221,7 @@ func unbindFactoryHookNotice(ctx context.Context, dbPath, label, runID, status, 
 // staleRunNotice uses for its factory branch. The kanban relaunch prose
 // names no factory run and stays ungated.
 func gatedStaleRunAnswer(root, sessionID, label, lang string) string {
-	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
+	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
 	if runID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
 		return staleRunPrescriptionGate(context.Background(), root, sessionID, label, runID, lang)
 	}

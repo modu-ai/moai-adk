@@ -148,7 +148,7 @@ func contractLaneGate() bool {
 	if os.Getenv(config.EnvMoaiFactoryWorker) != "" {
 		return true
 	}
-	return os.Getenv(config.EnvMoaiKanbanBackend) == kanban.BackendGPT
+	return os.Getenv(config.EnvFactoryBackend) == kanban.BackendGPT
 }
 
 // CheckContractSignClassify classifies one command line under the contract

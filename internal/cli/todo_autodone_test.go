@@ -599,7 +599,7 @@ func TestTodoAutoDone_InconclusiveNeverCloses(t *testing.T) {
 // one skip line per skipped card, summary last, and factory state recorded
 // for the closed card.
 func TestTodoAutoDone_CloseLineContract(t *testing.T) {
-	t.Setenv(config.EnvMoaiKanbanID, "run-1")
+	t.Setenv(config.EnvFactoryRunID, "run-1")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 	root, store := autoDoneFixture(t)
 	seedCard(t, store, "t971", "closes", kanban.BacklogStateQueued)

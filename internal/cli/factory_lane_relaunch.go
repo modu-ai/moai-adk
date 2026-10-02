@@ -32,7 +32,7 @@ var factoryLaneCardLaunchFn = func(c *exec.Cmd) error {
 // through the F1 machinery on the parent checkout, ensure its worktree,
 // start ONE interactive session there, wait, repeat. The stop condition is
 // `next`'s no-card answer. The child learns its card through
-// config.EnvMoaiKanbanCard; the launcher process carries the lane stamps
+// config.EnvFactoryCard; the launcher process carries the lane stamps
 // (enterFactoryLaneMode ran in the lane branch) and every child inherits
 // them, so each fresh session re-enters the cycle with the same lane
 // identity and the same clear policy.
@@ -53,7 +53,7 @@ func runFactoryLaneRelaunch(cmd *cobra.Command, label string, claudeArgs []strin
 	root := factoryCardRoot()
 	// The run id was resolved and stamped by the lane branch's
 	// enterSelectedFactoryRun before the divert reached here.
-	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
+	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
 	ctx := cmd.Context()
 	if ctx == nil {
 		ctx = context.Background()
@@ -90,7 +90,7 @@ func runFactoryLaneRelaunch(cmd *cobra.Command, label string, claudeArgs []strin
 // leased for it. The existing child-process launch form serves every
 // platform; no syscall use on this path.
 func launchFactoryLaneCardSession(binaryPath string, claudeArgs []string, wt, cardID string) error {
-	env := append(os.Environ(), config.EnvMoaiKanbanCard+"="+cardID)
+	env := append(os.Environ(), config.EnvFactoryCard+"="+cardID)
 	c := exec.Command(binaryPath, claudeArgs...)
 	c.Dir = wt
 	c.Env = env

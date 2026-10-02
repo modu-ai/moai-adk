@@ -24,7 +24,7 @@ import (
 // leaders alike) and the lane label (MOAI_FACTORY_WORKER) are the two
 // role-bearing launch labels.
 func legacyLaunchLabelValue() string {
-	if label := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanLeadName)); kanban.IsLegacyLeaderSpelling(label) {
+	if label := strings.TrimSpace(os.Getenv(config.EnvFactoryLeadName)); kanban.IsLegacyLeaderSpelling(label) {
 		return label
 	}
 	if label := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker)); kanban.IsLegacyFactoryRoleValue(label) {
@@ -141,7 +141,7 @@ func staleRunMessagesFor(lang string) staleRunMessages {
 // discriminator): a kanban run has no factory run to retire — its remedy is
 // ending the session and relaunching.
 func staleRunNotice(value, lang string) string {
-	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
+	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
 	m := staleRunMessagesFor(lang)
 	if runID != "" && os.Getenv(config.EnvMoaiFactoryWorkers) != "" {
 		return fmt.Sprintf(m.roleValueRetire, value, runID)

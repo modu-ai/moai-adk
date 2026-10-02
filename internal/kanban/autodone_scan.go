@@ -236,11 +236,11 @@ func LandedScanArgs(ref string) []string {
 // reason a silently-empty stream would be.
 func ScanLandedSubjects(run CommandRunner, ref string) ([]LandedCommit, error) {
 	if run == nil {
-		return nil, fmt.Errorf("kanban: landed scan has no command runner")
+		return nil, fmt.Errorf("factory: landed scan has no command runner")
 	}
 	out, err := run("git", LandedScanArgs(ref)...)
 	if err != nil {
-		return nil, fmt.Errorf("kanban: git log %s: %w", ref, err)
+		return nil, fmt.Errorf("factory: git log %s: %w", ref, err)
 	}
 	var commits []LandedCommit
 	for _, line := range strings.Split(out, "\n") {
@@ -250,15 +250,15 @@ func ScanLandedSubjects(run CommandRunner, ref string) ([]LandedCommit, error) {
 		}
 		sha, rest, ok := strings.Cut(line, "\x00")
 		if !ok {
-			return nil, fmt.Errorf("kanban: git log %s: malformed scan line %q — no SHA separator", ref, line)
+			return nil, fmt.Errorf("factory: git log %s: malformed scan line %q — no SHA separator", ref, line)
 		}
 		timeStr, subject, ok := strings.Cut(rest, "\x00")
 		if !ok {
-			return nil, fmt.Errorf("kanban: git log %s: malformed scan line %q — no time separator", ref, line)
+			return nil, fmt.Errorf("factory: git log %s: malformed scan line %q — no time separator", ref, line)
 		}
 		ct, err := strconv.ParseInt(timeStr, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("kanban: git log %s: malformed scan line %q — committer time %q is not unix seconds", ref, line, timeStr)
+			return nil, fmt.Errorf("factory: git log %s: malformed scan line %q — committer time %q is not unix seconds", ref, line, timeStr)
 		}
 		commits = append(commits, LandedCommit{SHA: sha, Subject: subject, CommitTime: ct})
 	}

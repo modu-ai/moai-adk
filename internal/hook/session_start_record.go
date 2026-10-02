@@ -40,7 +40,7 @@ import (
 // containment test is what separates a card id from a checkout name.
 const worktreeRootDirName = "worktrees"
 
-// writeKanbanSessionRecord records this session's kanban identity under its
+// writeFactorySessionRecord records this session's kanban identity under its
 // OWN identifier, or does nothing at all.
 //
 // Four gates precede the write, each of them a case where the correct answer
@@ -57,7 +57,7 @@ const worktreeRootDirName = "worktrees"
 //   - A record already present for this identifier, for the same reason the
 //     re-entry gate exists: the write is additive to the session's start, not
 //     to its progress.
-func writeKanbanSessionRecord(input *HookInput) {
+func writeFactorySessionRecord(input *HookInput) {
 	if input == nil || input.SessionID == "" {
 		return
 	}
@@ -87,7 +87,7 @@ func writeKanbanSessionRecord(input *HookInput) {
 		return
 	}
 
-	role, lane, ok := kanbanRoleFromEnv()
+	role, lane, ok := factoryRoleFromEnv()
 	if !ok {
 		return
 	}
@@ -101,7 +101,7 @@ func writeKanbanSessionRecord(input *HookInput) {
 		dir = input.ProjectDir
 	}
 
-	backend := os.Getenv(config.EnvMoaiKanbanBackend)
+	backend := os.Getenv(config.EnvFactoryBackend)
 	if isGatewaySession() {
 		backend = os.Getenv(config.EnvMoaiLaunchProvider)
 	}
@@ -162,7 +162,7 @@ func sessionRecordRetentionDays(root string) (days int, ok bool) {
 	return *wrapper.State.SessionRecordRetentionDays, true
 }
 
-// kanbanRoleFromEnv reports the role this session occupies in a factory run
+// factoryRoleFromEnv reports the role this session occupies in a factory run
 // and, for a factory lane, its number. ok is false when the session is not part
 // of a factory run at all, and when a label is present but does not parse — a
 // malformed label yields no record rather than a guessed role. A LEGACY label
@@ -177,7 +177,7 @@ func sessionRecordRetentionDays(root string) (days int, ok bool) {
 // The lane number is returned as its own datum and is set through WithLane,
 // never through WithRole — whose drop-unknown guard exists precisely so a
 // consumer never has to defend against arbitrary launch-label text.
-func kanbanRoleFromEnv() (role string, lane int, ok bool) {
+func factoryRoleFromEnv() (role string, lane int, ok bool) {
 	if label := os.Getenv(config.EnvMoaiFactoryWorker); label != "" {
 		n, parsed := kanban.SplitFactoryLaneLabel(label)
 		if !parsed {
@@ -196,7 +196,7 @@ func kanbanRoleFromEnv() (role string, lane int, ok bool) {
 // this session stands in. An empty override is treated as unset so it never
 // blanks a derivable value (REQ-KRS-005, acceptance.md §E).
 func resolveSessionCardID(dir string) string {
-	if override := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanCard)); override != "" {
+	if override := strings.TrimSpace(os.Getenv(config.EnvFactoryCard)); override != "" {
 		return override
 	}
 	return cardIDFromPath(dir)

@@ -18,12 +18,12 @@ func TestFactoryMarkerValuesFrozen(t *testing.T) {
 		got      string
 		want     string
 	}{
-		{"EnvMoaiKanbanID", EnvMoaiKanbanID, "MOAI_KANBAN_ID"},
-		{"EnvMoaiKanbanLeadAddr", EnvMoaiKanbanLeadAddr, "MOAI_KANBAN_LEAD_ADDR"},
-		{"EnvMoaiKanbanLeadName", EnvMoaiKanbanLeadName, "MOAI_KANBAN_LEAD_NAME"},
-		{"EnvMoaiKanbanSettingsInjected", EnvMoaiKanbanSettingsInjected, "MOAI_KANBAN_SETTINGS_INJECTED"},
-		{"EnvMoaiKanbanBackend", EnvMoaiKanbanBackend, "MOAI_KANBAN_BACKEND"},
-		{"EnvMoaiKanbanCard", EnvMoaiKanbanCard, "MOAI_KANBAN_CARD"},
+		{"EnvFactoryRunID", EnvFactoryRunID, "MOAI_KANBAN_ID"},
+		{"EnvFactoryLeadAddr", EnvFactoryLeadAddr, "MOAI_KANBAN_LEAD_ADDR"},
+		{"EnvFactoryLeadName", EnvFactoryLeadName, "MOAI_KANBAN_LEAD_NAME"},
+		{"EnvFactorySettingsInjected", EnvFactorySettingsInjected, "MOAI_KANBAN_SETTINGS_INJECTED"},
+		{"EnvFactoryBackend", EnvFactoryBackend, "MOAI_KANBAN_BACKEND"},
+		{"EnvFactoryCard", EnvFactoryCard, "MOAI_KANBAN_CARD"},
 	} {
 		if tc.got == "" {
 			t.Errorf("%s is empty — the comparison would pass vacuously", tc.constant)

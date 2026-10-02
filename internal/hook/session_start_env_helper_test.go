@@ -7,7 +7,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// clearKanbanEnv unsets every launch marker the retained factory notices and
+// clearFactoryEnv unsets every launch marker the retained factory notices and
 // the session-record reader read, so each case starts from a known-absent
 // state. t.Setenv registers the restore, so the process env is returned to its
 // prior value when the test ends.
@@ -16,13 +16,13 @@ import (
 // first step): the retained factory SessionStart tests call it. The three
 // retired markers (the leader marker, the companion label, the SPEC marker) left
 // its list with their constants.
-func clearKanbanEnv(t *testing.T) {
+func clearFactoryEnv(t *testing.T) {
 	t.Helper()
 	for _, key := range []string{
-		config.EnvMoaiKanbanID,
-		config.EnvMoaiKanbanSettingsInjected,
-		config.EnvMoaiKanbanLeadAddr,
-		config.EnvMoaiKanbanBackend,
+		config.EnvFactoryRunID,
+		config.EnvFactorySettingsInjected,
+		config.EnvFactoryLeadAddr,
+		config.EnvFactoryBackend,
 		config.EnvMoaiFactoryWorkers,
 		config.EnvMoaiFactoryWorker,
 	} {

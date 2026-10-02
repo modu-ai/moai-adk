@@ -997,20 +997,20 @@ var (
 	// ErrClaimRaced reports that the claim lost a race or a live lease
 	// guards every candidate: the queue holds picked cards and none of them
 	// is claimable. The record is byte-identical — Mutate wrote nothing.
-	ErrClaimRaced = errors.New("kanban backlog claim raced: the queue's cards are already picked (live lease or concurrent claim)")
+	ErrClaimRaced = errors.New("todo queue claim raced: the queue's cards are already picked (live lease or concurrent claim)")
 	// ErrClaimNoCard reports that no eligible card exists at all — no queued
 	// card, and no picked card either (queue empty, or only held/dropped
 	// cards). Non-eligible states refuse by POSITIVE enumeration
 	// (REQ-TCL-011): only state=='queued' is ever selected, so a state added
 	// later is refused by the same fall-through.
-	ErrClaimNoCard = errors.New("kanban backlog claim: no eligible card (nothing queued)")
+	ErrClaimNoCard = errors.New("todo queue claim: no eligible card (nothing queued)")
 	// ErrLeaseExpired reports a renew against a lapsed lease. The
 	// expiry-first return has COMMITTED (the homestate committedRefusal
 	// shape); the card is queued again and the renew did not extend.
-	ErrLeaseExpired = errors.New("kanban backlog lease expired")
+	ErrLeaseExpired = errors.New("todo queue lease expired")
 	// ErrLeaseHolder reports a renew by a label that does not hold the
 	// lease — refused with no change (REQ-TCL-008).
-	ErrLeaseHolder = errors.New("kanban backlog lease holder refused")
+	ErrLeaseHolder = errors.New("todo queue lease holder refused")
 )
 
 // BacklogOperatorHolder is the holder label a bare (non---lane) claim

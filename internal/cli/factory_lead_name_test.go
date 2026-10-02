@@ -51,7 +51,7 @@ func TestOperatorSuppliedName(t *testing.T) {
 // explicit bare-role name, which is what survives /clear.
 func TestLeadNameArgs_InjectsWhenUnnamed(t *testing.T) {
 	clearFactoryTestEnv(t)
-	t.Setenv(config.EnvMoaiKanbanID, "abc123")
+	t.Setenv(config.EnvFactoryRunID, "abc123")
 
 	got := leaderNameArgs([]string{"-p", "work"})
 	want := []string{"--name", "leader"}
@@ -64,7 +64,7 @@ func TestLeadNameArgs_InjectsWhenUnnamed(t *testing.T) {
 // operator who named their lead by hand keeps that name — in every form.
 func TestLeadNameArgs_NeverOverridesOperatorName(t *testing.T) {
 	clearFactoryTestEnv(t)
-	t.Setenv(config.EnvMoaiKanbanID, "abc123")
+	t.Setenv(config.EnvFactoryRunID, "abc123")
 
 	for _, args := range [][]string{
 		{"--name", "board-watch"},
@@ -133,11 +133,11 @@ func TestEnterFactoryLeaderMode_AdoptsOperatorLeadRunID(t *testing.T) {
 	restore := enterFactoryLeaderMode(1, label)
 	defer restore()
 
-	if got := os.Getenv(config.EnvMoaiKanbanID); got != "abc123" {
-		t.Errorf("%s = %q, want %q (the id from the operator's name)", config.EnvMoaiKanbanID, got, "abc123")
+	if got := os.Getenv(config.EnvFactoryRunID); got != "abc123" {
+		t.Errorf("%s = %q, want %q (the id from the operator's name)", config.EnvFactoryRunID, got, "abc123")
 	}
-	if got, want := os.Getenv(config.EnvMoaiKanbanLeadAddr), "/tmp/moai-socket-factory/abc123"; got != want {
-		t.Errorf("%s = %q, want %q", config.EnvMoaiKanbanLeadAddr, got, want)
+	if got, want := os.Getenv(config.EnvFactoryLeadAddr), "/tmp/moai-socket-factory/abc123"; got != want {
+		t.Errorf("%s = %q, want %q", config.EnvFactoryLeadAddr, got, want)
 	}
 	// The operator's name still wins — adoption must not also inject a second
 	// --name and hand claude two.
@@ -167,8 +167,8 @@ func TestEnterFactoryLeaderMode_MintsWithoutLeadName(t *testing.T) {
 			restore := enterFactoryLeaderMode(1, c.label)
 			defer restore()
 
-			if got := os.Getenv(config.EnvMoaiKanbanID); got == "" {
-				t.Errorf("%s is empty, want a freshly minted run id", config.EnvMoaiKanbanID)
+			if got := os.Getenv(config.EnvFactoryRunID); got == "" {
+				t.Errorf("%s is empty, want a freshly minted run id", config.EnvFactoryRunID)
 			}
 		})
 	}
@@ -235,7 +235,7 @@ func TestLeadLabelNeverReadsAsLane(t *testing.T) {
 // second run id (the notice header and the lead socket path both follow it).
 func TestLeadRunID_AdoptsEnvironmentRunID(t *testing.T) {
 	clearFactoryTestEnv(t)
-	t.Setenv(config.EnvMoaiKanbanID, "abc123")
+	t.Setenv(config.EnvFactoryRunID, "abc123")
 
 	if got := leaderRunID(""); got != "abc123" {
 		t.Errorf("leaderRunID(\"\") = %q, want %q (adopted from the environment)", got, "abc123")
@@ -250,7 +250,7 @@ func TestLeadRunID_AdoptsEnvironmentRunID(t *testing.T) {
 // that name states, not on whatever the environment happened to hold.
 func TestLeadRunID_LegacyNameWinsOverEnvironment(t *testing.T) {
 	clearFactoryTestEnv(t)
-	t.Setenv(config.EnvMoaiKanbanID, "stale1")
+	t.Setenv(config.EnvFactoryRunID, "stale1")
 
 	if got := leaderRunID("leader-abc123"); got != "abc123" {
 		t.Errorf("leaderRunID(\"lead-abc123\") = %q, want %q (the pasted name wins)", got, "abc123")
@@ -263,7 +263,7 @@ func TestLeadRunID_LegacyNameWinsOverEnvironment(t *testing.T) {
 // session shares.
 func TestLeadRunID_BumpNumberIsNotARunID(t *testing.T) {
 	clearFactoryTestEnv(t)
-	t.Setenv(config.EnvMoaiKanbanID, "abc123")
+	t.Setenv(config.EnvFactoryRunID, "abc123")
 
 	if got := leaderRunID(kanban.LeaderNumberLabel(2)); got != "abc123" {
 		t.Errorf("leaderRunID(%q) = %q, want %q (a bump number is not a run id)", kanban.LeaderNumberLabel(2), got, "abc123")

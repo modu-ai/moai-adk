@@ -25,7 +25,7 @@ import (
 // then releases. Returns the command and its stdout scanner.
 func startLockHoldHelper(t *testing.T, root, releaseFile string) (*exec.Cmd, *bufio.Scanner, io.ReadCloser) {
 	t.Helper()
-	cmd := exec.Command(os.Args[0], "-test.run=TestKanbanHelperProcess", "--")
+	cmd := exec.Command(os.Args[0], "-test.run=TestFactoryHelperProcess", "--")
 	cmd.Env = append(os.Environ(),
 		"MOAI_KANBAN_HELPER=lock-hold",
 		"HELPER_ROOT="+root,

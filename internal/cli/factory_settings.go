@@ -50,7 +50,7 @@ func operatorSuppliedSettings(args []string) bool {
 	return false
 }
 
-// prepareKanbanSettings writes a transient settings file carrying
+// prepareFactorySettings writes a transient settings file carrying
 // {"crossSessionInbound": "accept"} (plus the user's crosssession.yaml extras
 // — dialogExpiry and an isolatePeerMachines opt-in ride along, only the
 // inbound value is forced to accept, because kanban dispatch stalls without
@@ -61,13 +61,13 @@ func operatorSuppliedSettings(args []string) bool {
 //
 // When the operator supplied their own --settings (REQ-FB-007), OR when the
 // write fails (fail-open, C8/EC-4), no flag is returned and cleanup is a no-op.
-// In both cases the signal env var EnvMoaiKanbanSettingsInjected stays unset,
+// In both cases the signal env var EnvFactorySettingsInjected stays unset,
 // which tells the SessionStart hook to print the operator advisory instead of
 // the auto-accept notice.
 //
 // The signal env var is set via os.Setenv (restored on cleanup) so it reaches
 // the child process through os.Environ(), matching the enter*Mode helpers.
-func prepareKanbanSettings(profileName string, args []string) (flag []string, cleanup func()) {
+func prepareFactorySettings(profileName string, args []string) (flag []string, cleanup func()) {
 	if operatorSuppliedSettings(args) {
 		return nil, func() {}
 	}
@@ -86,16 +86,16 @@ func prepareKanbanSettings(profileName string, args []string) (flag []string, cl
 	}
 	payload["crossSessionInbound"] = "accept"
 
-	path, err := writeTransientSettingsFile(payload, "moai-kanban")
+	path, err := writeTransientSettingsFile(payload, "moai-factory")
 	if err != nil {
 		// Fail-open (C8/EC-4): launch without the injected --settings. The hook
-		// will print the verify advisory because EnvMoaiKanbanSettingsInjected
+		// will print the verify advisory because EnvFactorySettingsInjected
 		// is unset.
 		return nil, func() {}
 	}
 
-	restoreInjected := captureEnvState(config.EnvMoaiKanbanSettingsInjected)
-	_ = os.Setenv(config.EnvMoaiKanbanSettingsInjected, "1")
+	restoreInjected := captureEnvState(config.EnvFactorySettingsInjected)
+	_ = os.Setenv(config.EnvFactorySettingsInjected, "1")
 
 	return append([]string{settingsFlagLong, path}, effortArgs...), func() {
 		_ = os.Remove(path)

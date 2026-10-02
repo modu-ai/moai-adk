@@ -80,7 +80,7 @@ const (
 // Absence is SQL NULL (REQ-TLE-006), so this is what a caller sees when it
 // asks a column that was never written — distinct from a decode failure on a
 // value that IS present and malformed.
-var ErrLandingEvidenceAbsent = errors.New("kanban: no landing evidence recorded")
+var ErrLandingEvidenceAbsent = errors.New("factory: no landing evidence recorded")
 
 // LandingEvidence is one operator-recorded landing observation (REQ-TLE-005).
 //
@@ -145,25 +145,25 @@ func (e LandingEvidence) Marker() string {
 // outright — that is precisely the shape a derived-from-grep value would take.
 func (e LandingEvidence) Validate() error {
 	if strings.TrimSpace(e.Ref) == "" {
-		return fmt.Errorf("kanban: landing evidence has no %s", LandingKeyRef)
+		return fmt.Errorf("factory: landing evidence has no %s", LandingKeyRef)
 	}
 	if strings.TrimSpace(e.RefHead) == "" {
-		return fmt.Errorf("kanban: landing evidence has no %s", LandingKeyRefHead)
+		return fmt.Errorf("factory: landing evidence has no %s", LandingKeyRefHead)
 	}
 	if strings.TrimSpace(e.ObservedAt) == "" {
-		return fmt.Errorf("kanban: landing evidence has no %s", LandingKeyObservedAt)
+		return fmt.Errorf("factory: landing evidence has no %s", LandingKeyObservedAt)
 	}
 	hasSHA := strings.TrimSpace(e.SHA) != ""
 	hasSource := strings.TrimSpace(e.SHASource) != ""
 	switch {
 	case hasSHA && !hasSource:
-		return fmt.Errorf("kanban: landing evidence carries %s without %s; a stored delivering commit is operator-asserted or absent",
+		return fmt.Errorf("factory: landing evidence carries %s without %s; a stored delivering commit is operator-asserted or absent",
 			LandingKeyDeliveringSHA, LandingKeySHASource)
 	case hasSource && !hasSHA:
-		return fmt.Errorf("kanban: landing evidence carries %s without %s; a provenance labels nothing on its own",
+		return fmt.Errorf("factory: landing evidence carries %s without %s; a provenance labels nothing on its own",
 			LandingKeySHASource, LandingKeyDeliveringSHA)
 	case hasSHA && e.SHASource != LandingSHASourceOperator:
-		return fmt.Errorf("kanban: landing evidence %s = %q, want %q; the machine has no other lawful source for a delivering commit",
+		return fmt.Errorf("factory: landing evidence %s = %q, want %q; the machine has no other lawful source for a delivering commit",
 			LandingKeySHASource, e.SHASource, LandingSHASourceOperator)
 	}
 	return nil
@@ -178,7 +178,7 @@ func EncodeLandingEvidence(e LandingEvidence) (string, error) {
 	}
 	encoded, err := json.Marshal(e)
 	if err != nil {
-		return "", fmt.Errorf("kanban: encode landing evidence: %w", err)
+		return "", fmt.Errorf("factory: encode landing evidence: %w", err)
 	}
 	return string(encoded), nil
 }
@@ -196,10 +196,10 @@ func DecodeLandingEvidence(stored string) (LandingEvidence, error) {
 		return e, ErrLandingEvidenceAbsent
 	}
 	if err := json.Unmarshal([]byte(stored), &e); err != nil {
-		return LandingEvidence{}, fmt.Errorf("kanban: decode landing evidence: %w", err)
+		return LandingEvidence{}, fmt.Errorf("factory: decode landing evidence: %w", err)
 	}
 	if err := e.Validate(); err != nil {
-		return LandingEvidence{}, fmt.Errorf("kanban: stored landing evidence is not a record: %w", err)
+		return LandingEvidence{}, fmt.Errorf("factory: stored landing evidence is not a record: %w", err)
 	}
 	return e, nil
 }

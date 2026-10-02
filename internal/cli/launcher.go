@@ -788,7 +788,7 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 		// override.
 		//
 		// Both halves are pinned: TestLaunchEffortReachesGeneralInjection and
-		// TestLaunchEffortReachesKanbanInjection for the injected payload,
+		// TestLaunchEffortReachesFactoryInjection for the injected payload,
 		// TestClaudeLaunchEnvPreservesInheritedEffort for the inherited value.
 		//
 		// This block once carried a second paragraph extending the same

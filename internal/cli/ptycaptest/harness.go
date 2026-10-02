@@ -59,17 +59,18 @@ const (
 	childTestLimit  = "60s"
 )
 
-// kanbanVars is every MOAI_KANBAN* variable in internal/config/envkeys.go;
+// factoryVars is every factory launch marker variable declared in
+// internal/config/envkeys.go (the six frozen marker names);
 // each is passed to the child as an empty value so a lane's identity never
-// reaches product code. TestPtycapScrubList_KanbanVarsMatchEnvKeys keeps this
+// reaches product code. TestPtycapScrubList_FactoryVarsMatchEnvKeys keeps this
 // list in step with envkeys.go.
-var kanbanVars = []string{
-	config.EnvMoaiKanbanID,
-	config.EnvMoaiKanbanSettingsInjected,
-	config.EnvMoaiKanbanLeadAddr,
-	config.EnvMoaiKanbanBackend,
-	config.EnvMoaiKanbanCard,
-	config.EnvMoaiKanbanLeadName,
+var factoryVars = []string{
+	config.EnvFactoryRunID,
+	config.EnvFactorySettingsInjected,
+	config.EnvFactoryLeadAddr,
+	config.EnvFactoryBackend,
+	config.EnvFactoryCard,
+	config.EnvFactoryLeadName,
 }
 
 // Gate skips without MOAI_PTY_CAPTURE=1 and fails when the gate is on but
@@ -199,7 +200,7 @@ func (c *Case) ChildEnv() []string {
 		config.EnvHome + "=" + c.MoaiHome,
 		config.EnvClaudeConfigDir + "=",
 	}
-	for _, k := range kanbanVars {
+	for _, k := range factoryVars {
 		env = append(env, k+"=")
 	}
 	return append(env,
@@ -213,7 +214,7 @@ func (c *Case) ChildEnv() []string {
 // excluded), in list order.
 func recordedVars() []string {
 	vars := []string{"HOME", config.EnvHome, config.EnvClaudeConfigDir}
-	vars = append(vars, kanbanVars...)
+	vars = append(vars, factoryVars...)
 	return append(vars, "TERM", CanaryEnv)
 }
 
@@ -278,7 +279,7 @@ func checkChildEnvRecord(c *Case, record, realHome, realMoai string) []string {
 	if v := got[config.EnvClaudeConfigDir]; v != "" {
 		problems = append(problems, fmt.Sprintf("%s %q, want empty", config.EnvClaudeConfigDir, v))
 	}
-	for _, k := range kanbanVars {
+	for _, k := range factoryVars {
 		if v := got[k]; v != "" {
 			problems = append(problems, fmt.Sprintf("%s %q, want empty", k, v))
 		}

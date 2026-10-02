@@ -143,7 +143,7 @@ func TestSessionStartAdditionalContextSkippedOnEmptySessionID(t *testing.T) {
 	// factory launcher carries MOAI_KANBAN_* and MOAI_FACTORY_* variables, and
 	// the factory bootstrap notice would append itself to AdditionalContext
 	// even with an empty SessionID.
-	clearKanbanEnv(t)
+	clearFactoryEnv(t)
 
 	projectDir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(projectDir, ".moai", "state"), 0o755); err != nil {
