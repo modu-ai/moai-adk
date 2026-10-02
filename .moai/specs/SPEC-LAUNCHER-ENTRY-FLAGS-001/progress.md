@@ -1450,6 +1450,61 @@ Kanban-named symbols that remain in `internal/hook` and `internal/config` after 
 3. The deleted kanban notice builder was also the SessionStart carrier of the stale-run notice for a session that is not a factory session: `kanbanBootstrapNotice` called `staleRunNoticeFor` before it read any kanban marker, so a surviving session whose launch label is a legacy leader spelling (`MOAI_KANBAN_LEAD_NAME=lead`, no `MOAI_FACTORY_WORKERS`) and a session whose existing record carries a legacy role got the stale-run relaunch notice there. After M5b the only non-test caller of `staleRunNoticeFor` is `factoryBootstrapNotice` (`session_start_factory.go:61`, which needs `MOAI_FACTORY_WORKERS`), so that session gets no stale-run notice at SessionStart (the factory message hook still calls `staleRunNotice` through `legacyFactoryHookNotice`). AC-014 says the stale-run notices are "emitted as before" for factory sessions, which holds (the factory stale-run tests pass); a non-factory legacy session is outside AC-014's wording and plan.md M5b's list, so this is a behavior change the SPEC does not name. `roleValueRelaunch` ("the kanban branch" in `session_stale_run.go`) stays reachable through the factory hook with an empty run id.
 4. Divergences from the probe's `M5b.patch`: the probe removed both `clock.lap("factory_notice")` and `clock.lap("kanban_notice")`; this milestone keeps one lap, `factory_notice`, in the place before the lineage banner, because a lap times the work since the previous lap and the factory rule block would otherwise fall into the `chain_banner` lap (no test asserts lap names: `grep -rn 'kanban_notice\|factory_notice' internal --include='*.go'` finds `clock.lap("factory_notice")` at `session_start.go:566` and a file-name comment in the new test). The probe retargeted the removed constants to other factory markers as a compile model; this milestone keeps the retired names as written-out strings in the cli scrub lists and uses factory markers only where a test needs a trigger. The probe's `envkeys.go` hunk rewrote one comment (the `MOAI_FACTORY_WORKERS` documentation, plan `:284`); this milestone also rewords the `EnvMoaiFactoryWorker` documentation (plan `:301`, which named the deleted label as its counterpart) and the `EnvMoaiKanbanLeadAddr` comment that names `enterKanbanMode` (the M5a leftover at `:220`).
 
+### M6 evidence
+
+Recorded by the run-phase implementation worker (cycle_type ddd: characterization first, the milestone is behavior-preserving relocation plus deletion) for milestone M6 of card t1399 (board family, role carrier, and companion symbols, two commits), branch `WT-launcher-entry-flags`. Start state, re-read before any change: `pwd` printed `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1399`, `git rev-parse --short HEAD` printed `5aa03a393`, `git branch --show-current` printed `WT-launcher-entry-flags`, `git status --short` printed nothing. Output blocks are verbatim excerpts of commands run in this run on this tree; each says what it drops.
+
+#### RED-now and baseline before any change (E8)
+
+RED-now of AC-012 on tree `5aa03a393` (read before any edit):
+
+```text
+$ find internal -name 'board_lock*.go'
+internal/kanban/board_lock_clear_unix.go
+internal/kanban/board_lock_cross_test.go
+internal/kanban/board_lock_join_test.go
+internal/kanban/board_lock_windows.go
+internal/kanban/board_lock_clear_windows_test.go
+internal/kanban/board_lock_errno_test.go
+internal/kanban/board_lock_clear_windows.go
+internal/kanban/board_lock_unix.go
+internal/kanban/board_lock_wait_test.go
+internal/kanban/board_lock_test.go
+internal/kanban/board_lock.go
+$ find internal -name 'board_store*.go' -o -name 'board_lock*.go' -o -name 'board_recover*.go' -o -name board.go -o -name column.go -o -name reconcile.go     (AC-012 third command: 18 paths, as the AC says)
+internal/kanban/board_lock_clear_unix.go          ... 11 board_lock paths as above, plus
+internal/kanban/board_recover_test.go
+internal/kanban/board_recover.go
+internal/kanban/board_store_test.go
+internal/kanban/board_store.go
+internal/kanban/board.go
+internal/kanban/column.go
+internal/kanban/reconcile.go
+$ grep -rlE '\b(LoadBoard|WriteBoardState|AcquireBoardLock|RecoverBoard|ParseColumn|TransitionIntoRun|BoardState|BoardDir|DeclareRole|ResolveDeclaredRole|RoleDeclaration)\b' internal cmd --include='*.go'     (27 paths by a separate `wc -l`, all under internal/kanban; the set)
+admission_test.go board_coverage_test.go board_lock_clear_unix.go board_lock_clear_windows_test.go board_lock_cross_test.go board_lock_errno_test.go board_lock_join_test.go board_lock_test.go board_lock.go board_recover_test.go board_recover.go board_store_test.go board_store.go board_test.go board.go column_test.go column.go f1_traversal_test.go fix2_probe_test.go fix3_wedge_test.go integration_lock_mutation.go kanban_helper_test.go reconcile_test.go role_naming_m1_test.go role_test.go role.go status_read_test.go
+$ grep -rlE 'enterKanbanMode|enterKanbanCompanionMode|parseKanbanFlag|rejectKanbanOnCG|EnvMoaiKanban\b|EnvMoaiKanbanSpec|CompanionRoles|SplitCompanionLabel|kanbanLeaderNotice|kanbanCompanionNotice|kanbanBootstrapNotice' internal cmd --exclude='*_test.go'
+internal/kanban/role.go
+internal/kanban/bootstrap.go
+exit=0
+$ find internal -name 'factory_slots.go' -o -name 'backlog_store.go' -o -name 'integration_lock.go' -o -name 'slot_lease.go' -o -name 'state_lock.go' -o ...      (the positive control: four today, ten after M6)
+internal/kanban/backlog_store.go
+internal/kanban/factory_slots.go
+internal/kanban/integration_lock.go
+internal/kanban/slot_lease.go
+```
+
+The `find` exit and the symbol-grep exit were 0 (files listed); AC-012 asserts empty output on both after M6. The `state_lock*` files do not exist yet, which is why the control lists four.
+
+Baseline of the characterization (whole `internal/kanban` package, before any change), under `moai slot acquire --resource t1399-run --max-duration 60m` (`slot t1399-run acquired by 0dcdf2d5-df5c-4da1-8870-24c2a5861303 until 2026-10-02T15:46:08Z`), env unset in one compound invocation, `go test ./internal/kanban -count=1 -v` redirected to a file:
+
+```text
+exit=0
+ok  	github.com/modu-ai/moai-adk/internal/kanban	214.414s
+top-level `--- PASS` lines: 582; `--- FAIL`: 0; `--- SKIP`: 0; all `--- PASS` lines including subtests: 857; `=== RUN` lines: 857
+```
+
+The sorted list of the 582 top-level results was kept outside the tree (scratchpad `baseline_top.txt`) so the after-run can be diffed by name modulo the renames.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
