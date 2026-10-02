@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -89,6 +90,8 @@ func TestSyncGateLanguageDetectionMatchesScript(t *testing.T) {
 		"visual studio dir":     {".vs/settings.json"},
 		"cpp header only":       {"include/x.h"},
 		"cxx source":            {"src/kernel.cxx"},
+		"hpp source":            {"include/x.hpp"},
+		"hxx source":            {"include/x.hxx"},
 		"r lower":               {"analysis/a.r"},
 		"docs only":             {"docs/a.md"},
 		"swift package":         {"Package.swift"},
@@ -153,6 +156,123 @@ func TestSyncGateCxxSourceDetectsCpp(t *testing.T) {
 			t.Fatalf("languages: script = %q, want cpp present", string(out))
 		}
 	})
+}
+
+// TestSyncGateCppHeaderSuffixesDetectCpp extends the t1420 semantics pin to
+// the sibling header suffixes: .hpp and .hxx-only trees must resolve to cpp
+// on each side independently (card t1412 batch, t1420 residual) — the compile
+// step, code_delta_pattern, and changed-file filter cover them, so a missed
+// detection let a header-only sync commit pass without any checker running.
+func TestSyncGateCppHeaderSuffixesDetectCpp(t *testing.T) {
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skip("bash not on PATH")
+	}
+	for _, ext := range []string{"hpp", "hxx"} {
+		t.Run(ext, func(t *testing.T) {
+			root := t.TempDir()
+			p := filepath.Join(root, "include", "x."+ext)
+			if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(p, []byte("x\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			got := detectSyncGateLanguages(root)
+			if !slices.Contains(got, "cpp") {
+				t.Fatalf("languages: Go = %v, want cpp present", got)
+			}
+			out, err := exec.Command("bash", "-c", `source "$1" && detect_languages "$2"`, "_", syncGateScriptPath(t), root).Output()
+			if err != nil {
+				t.Fatalf("source script: %v", err)
+			}
+			if !slices.Contains(strings.Fields(string(out)), "cpp") {
+				t.Fatalf("languages: script = %q, want cpp present", string(out))
+			}
+		})
+	}
+}
+
+// TestSyncGateGoRootsSurviveWholeModuleDeletion drives the gate's go module
+// root resolution through the deletion scenario the card premise describes
+// (card t1412): a multi-module tree without a root go.mod whose changed files
+// belong to a module deleted whole. The script's source guard stops sourcing
+// before these functions are defined, so the test extracts their exact
+// committed bytes by function-name range and runs them in bash.
+func TestSyncGateGoRootsSurviveWholeModuleDeletion(t *testing.T) {
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skip("bash not on PATH")
+	}
+	script := syncGateScriptPath(t)
+	root := t.TempDir()
+	for rel, body := range map[string]string{
+		"modules/b/go.mod": "module example.com/b\n\ngo 1.21\n",
+		"modules/b/b.go":   "package b\n",
+		"modules/c/go.mod": "module example.com/c\n\ngo 1.21\n",
+	} {
+		p := filepath.Join(root, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	extract := func(fn string) string {
+		t.Helper()
+		out, err := exec.Command("bash", "-c",
+			"awk '/^"+fn+"\\(\\) \\{/,/^\\}/' \"$1\"", "_", script).Output()
+		if err != nil {
+			t.Fatalf("extract %s: %v", fn, err)
+		}
+		if len(out) == 0 {
+			t.Fatalf("extract %s: empty range", fn)
+		}
+		return string(out)
+	}
+	frag := filepath.Join(t.TempDir(), "goroots.sh")
+	if err := os.WriteFile(frag, []byte(
+		extract("find_go_module_roots")+
+			extract("find_surviving_go_module_roots")+
+			extract("resolve_go_roots")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	probe := func(projectRoot, delta string) string {
+		t.Helper()
+		payload := `source "$1"
+PROJECT_ROOT=$2
+SYNC_DELTA_FILES=$3
+printf 'walk=[%s]\n' "$(find_go_module_roots | sort)"
+printf 'surviving=[%s]\n' "$(find_surviving_go_module_roots | sort)"
+printf 'resolved=[%s]\n' "$(resolve_go_roots | sort)"
+`
+		out, err := exec.Command("bash", "-c", payload, "_", frag, projectRoot, delta).Output()
+		if err != nil {
+			t.Fatalf("probe: %v", err)
+		}
+		return string(out)
+	}
+	// Deletion scenario: the delta holds only the deleted module's paths, so
+	// the walk resolves nothing, surviving discovery finds modules/b and
+	// modules/c, and the ladder checks both — pre-fix this fell to the root
+	// anchor and blocked "does not contain main module" on a healthy tree.
+	wantB := filepath.Join(root, "modules/b")
+	wantC := filepath.Join(root, "modules/c")
+	wantBoth := wantB + "\n" + wantC
+	if got := probe(root, "modules/a/a.go\nmodules/a/go.mod"); got != fmt.Sprintf("walk=[]\nsurviving=[%s]\nresolved=[%s]\n", wantBoth, wantBoth) {
+		t.Fatalf("deletion ladder: got %q, want walk=[] surviving/resolved=%s", got, wantBoth)
+	}
+	// Delta rooted in modules/b while modules/c also survives: the WALK wins —
+	// resolved is modules/b alone even though discovery has both. This pins
+	// the ladder ORDER; swapping walk and surviving would fail here (audit F2).
+	if got := probe(root, "modules/b/b.go"); got != fmt.Sprintf("walk=[%s]\nsurviving=[%s]\nresolved=[%s]\n", wantB, wantBoth, wantB) {
+		t.Fatalf("delta ladder: got %q, want walk/resolved=%s surviving=%s", got, wantB, wantBoth)
+	}
+	// No go.mod anywhere: the bare root anchor survives as the final fallback
+	// — its failure there is a real one (design intent, unchanged).
+	bare := t.TempDir()
+	if got := probe(bare, ""); got != fmt.Sprintf("walk=[]\nsurviving=[]\nresolved=[%s]\n", bare) {
+		t.Fatalf("bare ladder: got %q, want resolved=%s", got, bare)
+	}
 }
 
 // TestVerifySyncGateRecordsReceipt: `moai verify sync-gate` runs the checks out
