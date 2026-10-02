@@ -173,11 +173,7 @@ final batch re-ran every form on the committed tree and matched).
 
 - sync_complete_at: 2026-10-02T06:33:43Z
 - sync_status: audit-ready
-- sync_commit_sha: "pending-backfill-sync" — placeholder (a commit cannot cite
-  its own hash); backfilled to the real sync commit SHA in the immediately
-  following commit (sanctioned D3 backfill window,
-  `.claude/rules/moai/development/spec-frontmatter-schema.md` § SHA placeholder
-  backfill exemption)
+- sync_commit_sha: 5a8893e510630fcbcf9e6f50ecc3b8ab2c638c3d  # D3-exempt backfill: the pending-backfill-sync placeholder in the sync commit replaced with the real SHA by the phase-owning agent (spec-frontmatter-schema § SHA placeholder backfill exemption)
 - sync scope (single sync commit): CHANGELOG.md `### Fixed` entry (card t1415,
   B12 duplicate pre-check measured 0) + spec.md frontmatter
   `in-progress → implemented → completed` merged transition (status + updated
