@@ -1355,6 +1355,10 @@ type factoryStatusReport struct {
 	// Unavailable lists the dispatch mirror writes that failed and have not
 	// been reconciled by a later successful write (REQ-FR-025).
 	Unavailable []homestate.RecordUnavailableEntry `json:"unavailable"`
+	// Quota is the read-only quota block (SPEC-QUOTA-AWARE-SCHEDULING-001
+	// REQ-QAS-013): present only while the quota gate is enabled and some window
+	// has data, and last, so every pre-existing key keeps its place.
+	Quota *factoryQuotaBlock `json:"quota,omitempty"`
 }
 
 func factoryCardViewOf(c homestate.Card, now time.Time, cls kanban.CardClassification) factoryCardView {
@@ -1429,6 +1433,7 @@ func newFactoryStatusCommand() *cobra.Command {
 			}
 			report.Unavailable = append([]homestate.RecordUnavailableEntry{}, entries...)
 			report.UnavailableSkipped = skipped
+			report.Quota = factoryQuotaStatusBlock(root)
 			if jsonOut {
 				enc := json.NewEncoder(cmd.OutOrStdout())
 				enc.SetIndent("", "  ")
@@ -1474,6 +1479,9 @@ func writeFactoryStatusText(w io.Writer, r factoryStatusReport) {
 	}
 	if r.UnavailableSkipped > 0 {
 		_, _ = fmt.Fprintf(w, "%s warning: skipped %d unparseable line(s)\n", factoryRecordUnavailableTag, r.UnavailableSkipped)
+	}
+	if r.Quota != nil {
+		writeFactoryQuotaText(w, r.Quota)
 	}
 }
 

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -162,4 +163,130 @@ const factoryQuotaHoldPrefix = "quota hold: "
 func factoryQuotaHoldSegment(w factoryQuotaWindowState) string {
 	return fmt.Sprintf("%s used=%.1f%% resets_at=%s",
 		w.Name, w.Reading.UsedPercentage, time.Unix(w.Reading.ResetsAt, 0).UTC().Format(time.RFC3339))
+}
+
+// SPEC-QUOTA-AWARE-SCHEDULING-001 M5 (REQ-QAS-013, -019, -020): the read-only
+// quota block of `moai factory status`.
+
+// factoryQuotaWindowView is one window of the status block (REQ-QAS-013): its
+// state, the reading's percentage (fresh only), reset instant, source capture
+// time, whether it would hold a Claude lane, and the first-observed-exhausted
+// time where the source record carries one (DO-13). An unknown window carries
+// only its name, state, and the held flag (false).
+type factoryQuotaWindowView struct {
+	Window          string   `json:"window"`
+	State           string   `json:"state"`
+	UsedPercentage  *float64 `json:"used_percentage,omitempty"`
+	ResetsAt        string   `json:"resets_at,omitempty"`
+	CapturedAt      string   `json:"captured_at,omitempty"`
+	HoldsClaudeLane bool     `json:"holds_claude_lane"`
+	ExhaustedAt     string   `json:"exhausted_at,omitempty"`
+}
+
+// factoryQuotaSteeringView is the steering part of the block, present only while
+// quota pressure is on (REQ-QAS-019, -020): the candidate lanes, the count of
+// live lanes of unknown backend, and the warning marker when there is no
+// candidate. Its fields are embedded in the block's JSON object.
+type factoryQuotaSteeringView struct {
+	Candidates   []factoryQuotaLane `json:"candidates"`
+	UnknownLanes int                `json:"unknown_lanes"`
+	Warning      string             `json:"warning,omitempty"`
+}
+
+// factoryQuotaBlock is the `quota` key of the status report and the block under
+// the text report. line is the steering line, set only while pressure is on.
+type factoryQuotaBlock struct {
+	Pressure bool                     `json:"pressure"`
+	Windows  []factoryQuotaWindowView `json:"windows"`
+	*factoryQuotaSteeringView
+	line string
+}
+
+// factoryQuotaStatusBlock builds the status block, or nil when there is nothing
+// to report: the gate is disabled (no record is read at all) or no window has
+// data — a window reads as data when it is fresh or reset, so a directory of
+// stale or window-less records adds no block. It takes the one shared pressure
+// evaluation and, only when pressure is on, reads the lane inventory.
+func factoryQuotaStatusBlock(root string) *factoryQuotaBlock {
+	ev := factoryQuotaEvaluate(root)
+	if !ev.Enabled {
+		return nil
+	}
+	data := false
+	views := make([]factoryQuotaWindowView, 0, len(ev.Windows))
+	for _, w := range ev.Windows {
+		if w.Reading.State != statusline.QuotaUnknown {
+			data = true
+		}
+		views = append(views, factoryQuotaWindowViewOf(w))
+	}
+	if !data {
+		return nil
+	}
+	block := &factoryQuotaBlock{Pressure: ev.Pressure(), Windows: views}
+	if block.Pressure {
+		inv := factoryQuotaReadLanes(root)
+		steer := &factoryQuotaSteeringView{Candidates: inv.Candidates, UnknownLanes: inv.Unknown}
+		if steer.Candidates == nil {
+			steer.Candidates = []factoryQuotaLane{}
+		}
+		if len(steer.Candidates) == 0 {
+			steer.Warning = factoryQuotaWarningNoLane
+		}
+		block.factoryQuotaSteeringView = steer
+		block.line = factoryQuotaSteeringLine(ev.HeldWindows(), inv)
+	}
+	return block
+}
+
+// factoryQuotaWindowViewOf renders one window's reading.
+func factoryQuotaWindowViewOf(w factoryQuotaWindowState) factoryQuotaWindowView {
+	r := w.Reading
+	v := factoryQuotaWindowView{Window: w.Name, State: string(r.State), HoldsClaudeLane: w.atOrAboveHold()}
+	if r.State == statusline.QuotaUnknown {
+		return v
+	}
+	if r.State == statusline.QuotaFresh {
+		used := r.UsedPercentage
+		v.UsedPercentage = &used
+	}
+	v.ResetsAt = time.Unix(r.ResetsAt, 0).UTC().Format(time.RFC3339)
+	if !r.CapturedAt.IsZero() {
+		v.CapturedAt = r.CapturedAt.UTC().Format(time.RFC3339)
+	}
+	if !r.ExhaustedAt.IsZero() {
+		v.ExhaustedAt = r.ExhaustedAt.UTC().Format(time.RFC3339)
+	}
+	return v
+}
+
+// writeFactoryQuotaText prints the block: one `quota <window>:` line per window,
+// then the steering line while pressure is on. The informational lines never
+// start with `quota pressure:` or `quota hold:`, so a pressure-off block carries
+// no steering or hold line.
+func writeFactoryQuotaText(w io.Writer, b *factoryQuotaBlock) {
+	for _, v := range b.Windows {
+		cells := []string{"state=" + v.State}
+		if v.UsedPercentage != nil {
+			cells = append(cells, fmt.Sprintf("used=%.1f%%", *v.UsedPercentage))
+		}
+		if v.State != string(statusline.QuotaUnknown) {
+			cells = append(cells, "resets_at="+v.ResetsAt)
+			if v.CapturedAt != "" {
+				cells = append(cells, "captured_at="+v.CapturedAt)
+			}
+			holds := "no"
+			if v.HoldsClaudeLane {
+				holds = "yes"
+			}
+			cells = append(cells, "holds_claude_lane="+holds)
+			if v.ExhaustedAt != "" {
+				cells = append(cells, "exhausted_at="+v.ExhaustedAt)
+			}
+		}
+		_, _ = fmt.Fprintf(w, "quota %s: %s\n", v.Window, strings.Join(cells, " "))
+	}
+	if b.line != "" {
+		_, _ = fmt.Fprintln(w, b.line)
+	}
 }

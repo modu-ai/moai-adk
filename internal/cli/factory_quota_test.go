@@ -692,11 +692,12 @@ func TestQAS_AC011b_StageAndCompleteIgnoreQuotaHold(t *testing.T) {
 	}
 }
 
-// qasMinSweptCliFiles is the least count of non-test files the cli half of the
-// AC-QAS-014 sweep must see. At M3 only factory_quota.go exists; plan.md debt N1
-// raises the floor to three (factory_quota_lanes.go joins at M5, with the
-// statusline half's quota.go making the SPEC's three).
-const qasMinSweptCliFiles = 1
+// qasMinSweptFiles is the least count of non-test files the AC-QAS-014 sweep
+// must see across internal/statusline/quota*.go and internal/cli/factory_quota*.go:
+// the SPEC's three (quota.go, factory_quota.go, factory_quota_lanes.go). It was
+// one at M3, while only factory_quota.go existed; plan.md debt N1 reserves the
+// full floor for M5, where factory_quota_lanes.go joins.
+const qasMinSweptFiles = 3
 
 // qasTreeSnapshot lists every file under dir with its size and digest.
 func qasTreeSnapshot(t *testing.T, dir string) string {
@@ -725,18 +726,31 @@ func qasTreeSnapshot(t *testing.T, dir string) string {
 // the files matching the glob import no net, net/http, or os/exec, and the
 // pressure evaluation leaves the record directory byte-identical.
 func TestQAS_AC014_AggregatorIsOfflineSpawnFreeAndReadOnly(t *testing.T) {
-	files, err := filepath.Glob("factory_quota*.go")
-	if err != nil {
-		t.Fatal(err)
-	}
 	var swept []string
-	for _, f := range files {
-		if !strings.HasSuffix(f, "_test.go") {
-			swept = append(swept, f)
+	for _, pattern := range []string{"factory_quota*.go", filepath.Join("..", "statusline", "quota*.go")} {
+		files, err := filepath.Glob(pattern)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, f := range files {
+			if !strings.HasSuffix(f, "_test.go") {
+				swept = append(swept, f)
+			}
 		}
 	}
-	if len(swept) < qasMinSweptCliFiles {
-		t.Fatalf("the sweep matched %d non-test files %v, want at least %d (a vanished file must not shrink the sweep silently)", len(swept), swept, qasMinSweptCliFiles)
+	if len(swept) < qasMinSweptFiles {
+		t.Fatalf("the sweep matched %d non-test files %v, want at least %d (a vanished file must not shrink the sweep silently)", len(swept), swept, qasMinSweptFiles)
+	}
+	for _, name := range []string{"quota.go", "factory_quota.go", "factory_quota_lanes.go"} {
+		found := false
+		for _, f := range swept {
+			if filepath.Base(f) == name {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("the sweep %v does not contain %s", swept, name)
+		}
 	}
 	forbidden := map[string]bool{"net": true, "net/http": true, "os/exec": true}
 	for _, f := range swept {
@@ -766,11 +780,11 @@ func TestQAS_AC014_AggregatorIsOfflineSpawnFreeAndReadOnly(t *testing.T) {
 	}
 }
 
-// AC-QAS-017 (function part, M3) — one pressure evaluation that does not look
-// at the caller; the lane gate applies the Claude-caller predicate to its
-// result. The surface-adoption assertions (status block, --auto line,
-// integration-window warning) land with M5 and M6 and are skipped here with an
-// explicit message, never passed silently.
+// AC-QAS-017 — one pressure evaluation that does not look at the caller; the
+// lane gate applies the Claude-caller predicate to its result. M5 adds the
+// status-block and --auto adoption assertions (the status_and_auto_surfaces
+// subtest); the integration-window warning lands with M6 and stays skipped here
+// with an explicit message (acquire_warning), never passed silently.
 func TestQAS_AC017_SharedPressureEvaluationAndSurfaces(t *testing.T) {
 	setup := func(t *testing.T, five *statusline.QuotaWindowRecord, o qasFixtureOpts) string {
 		t.Helper()
@@ -790,9 +804,30 @@ func TestQAS_AC017_SharedPressureEvaluationAndSurfaces(t *testing.T) {
 		held, _ := (&factoryQuotaLatch{}).evaluate(root)
 		return held
 	}
-	surfaces := func(t *testing.T, which string) {
-		t.Run("surfaces", func(t *testing.T) {
-			t.Skip("surface adoption is asserted in " + which + ": the status block and the --auto line land in M5, the integration-window warning in M6")
+	// surfaces asserts the two M5 surfaces against the pressure the shared
+	// function reports: the status quota block (the `pressure` flag) and the
+	// --auto line. Neither applies a caller rule, so the lane environment a
+	// caller subtest left set does not matter. The registry carries the
+	// standard lanes so a recommendation has something to name.
+	surfaces := func(t *testing.T, root string, wantPressure bool) {
+		t.Helper()
+		t.Run("status_and_auto_surfaces", func(t *testing.T) {
+			qasLaneSeam(t)
+			qasWriteLanes(t, root, qasStandardLaneRows())
+			text, js := qasStatus(t)
+			quota, present := qasStatusQuota(t, js)
+			if got := present && quota["pressure"] == true; got != wantPressure {
+				t.Errorf("status quota pressure = %v (block present: %v), want %v", got, present, wantPressure)
+			}
+			if got := strings.Contains(text, "\nquota pressure:"); got != wantPressure {
+				t.Errorf("status text carries a quota pressure line = %v, want %v:\n%s", got, wantPressure, text)
+			}
+			if got := todoAutoQuotaLine(root) != ""; got != wantPressure {
+				t.Errorf("--auto steering line present = %v, want %v", got, wantPressure)
+			}
+		})
+		t.Run("acquire_warning", func(t *testing.T) {
+			t.Skip("the integration-window warning is asserted with M6 (TestQAS_AC013_AcquireWarnsNeverRefuses)")
 		})
 	}
 
@@ -821,7 +856,7 @@ func TestQAS_AC017_SharedPressureEvaluationAndSurfaces(t *testing.T) {
 		if !laneHolds(t, root, kanban.BackendClaude) {
 			t.Errorf("the lane gate does not hold a Claude lane at 92%%")
 		}
-		surfaces(t, "M5/M6")
+		surfaces(t, root, true)
 	})
 	t.Run("acquire_requires_claude_caller", func(t *testing.T) {
 		root := setup(t, qasWin(92, qasReset5), qasFixtureOpts{})
@@ -831,34 +866,34 @@ func TestQAS_AC017_SharedPressureEvaluationAndSurfaces(t *testing.T) {
 		if !factoryQuotaEvaluate(root).Pressure() {
 			t.Errorf("the shared function stopped reporting pressure for a non-Claude caller")
 		}
-		surfaces(t, "M6")
+		surfaces(t, root, true)
 	})
 	t.Run("at_89_9", func(t *testing.T) {
 		root := setup(t, qasWin(89.9, qasReset5), qasFixtureOpts{})
 		if factoryQuotaEvaluate(root).Pressure() || laneHolds(t, root, kanban.BackendClaude) {
 			t.Errorf("pressure or a hold at 89.9%%")
 		}
-		surfaces(t, "M5/M6")
+		surfaces(t, root, false)
 	})
 	t.Run("reset", func(t *testing.T) {
 		root := setup(t, qasWin(92, fcNow.Add(-time.Second).Unix()), qasFixtureOpts{})
 		if factoryQuotaEvaluate(root).Pressure() || laneHolds(t, root, kanban.BackendClaude) {
 			t.Errorf("pressure or a hold on a window whose reset time has passed")
 		}
-		surfaces(t, "M5/M6")
+		surfaces(t, root, false)
 	})
 	t.Run("unknown", func(t *testing.T) {
 		root := setup(t, nil, qasFixtureOpts{})
 		if factoryQuotaEvaluate(root).Pressure() || laneHolds(t, root, kanban.BackendClaude) {
 			t.Errorf("pressure or a hold with no reading at all")
 		}
-		surfaces(t, "M5/M6")
+		surfaces(t, root, false)
 	})
 	t.Run("gate_disabled", func(t *testing.T) {
 		root := setup(t, qasWin(99, qasReset5), qasFixtureOpts{gateOff: true})
 		if factoryQuotaEvaluate(root).Pressure() || laneHolds(t, root, kanban.BackendClaude) {
 			t.Errorf("pressure or a hold with the gate disabled")
 		}
-		surfaces(t, "M5/M6")
+		surfaces(t, root, false)
 	})
 }
