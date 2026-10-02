@@ -32,6 +32,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/git"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
@@ -208,7 +209,9 @@ landed, and ANY other exit (fetch failure, unresolvable base) means the
 sweep cannot answer, which PRESERVES the tree. A stale remote-tracking ref
 never satisfies the predicate on its own.
 
-The default base is origin/develop — this diverges from clean --stale,
+The default base is origin/<the configured integration target> —
+origin/develop under git-flow, origin/main under github-flow; with no target
+configured the sweep stops and asks for --base. This diverges from clean --stale,
 whose default is origin/main (that flag sweeps stale references, not
 landings). Override with --base.
 
@@ -221,8 +224,25 @@ Previews by default; pass --yes to remove.`,
 	}
 	cmd.Flags().Bool("yes", false, "Actually perform the disposals instead of previewing them")
 	cmd.Flags().Bool("json", false, "Report every non-protected worktree's evaluation as JSON; removes nothing")
-	cmd.Flags().String("base", "origin/develop", "Remote integration base the landing check compares against (default diverges from clean --stale's origin/main)")
+	cmd.Flags().String("base", "", "Remote integration base the landing check compares against (default: origin/<configured integration target>)")
 	return cmd
+}
+
+// sweepConfigRoot names the project root the default --base is derived from.
+// A seam in the file's style (sweepFetchBase, sweepAncestor) so tests whose
+// provider root is a fake path can point it at a fixture root.
+var sweepConfigRoot = func() string { return WorktreeProvider.Root() }
+
+// sweepDefaultBase derives the default --base from the configured integration
+// target of the project rooted at root (the interpretation table behind
+// config.LoadGitFlowIntegrationConfig). With no target the answer is an error,
+// never a substituted branch: the sweep cannot name what it compares against.
+func sweepDefaultBase(root string) (string, error) {
+	target := strings.TrimSpace(config.LoadGitFlowIntegrationConfig(root).IntegrationTarget)
+	if target == "" {
+		return "", fmt.Errorf("sweep: no integration target configured under %s (git_strategy workflow) — pass --base origin/<branch>", root)
+	}
+	return "origin/" + target, nil
 }
 
 func runSweep(cmd *cobra.Command, _ []string) error {
@@ -233,6 +253,14 @@ func runSweep(cmd *cobra.Command, _ []string) error {
 	base, _ := cmd.Flags().GetString("base")
 	apply, _ := cmd.Flags().GetBool("yes")
 	asJSON, _ := cmd.Flags().GetBool("json")
+
+	if strings.TrimSpace(base) == "" {
+		derived, err := sweepDefaultBase(sweepConfigRoot())
+		if err != nil {
+			return err
+		}
+		base = derived
+	}
 
 	worktrees, err := WorktreeProvider.List()
 	if err != nil {

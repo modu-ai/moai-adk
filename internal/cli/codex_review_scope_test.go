@@ -129,6 +129,9 @@ func newCardScopeFixture(t *testing.T) *cardScopeFixture {
 	primary := t.TempDir()
 	cardScopeGit(t, primary, "init", "-q", "-b", "develop")
 	writeCardFile(t, primary, "go.mod", "module example.com/card\n\ngo 1.22\n")
+	// Precondition under test (card t1453): the card diff base is the configured
+	// integration target, so this fixture models a git-flow project (develop).
+	writeGitStrategyFixture(t, primary, "git-flow", "develop")
 	cardScopeGit(t, primary, "add", "-A")
 	cardScopeGit(t, primary, "commit", "-q", "-m", "base")
 	// file F: foreign WIP sitting in the primary-role tree (uncommitted).

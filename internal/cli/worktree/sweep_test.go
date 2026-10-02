@@ -84,7 +84,9 @@ func sweepMockEnv(t *testing.T, worktrees []git.Worktree) *sweepMock {
 	origAncestor := sweepAncestor
 	origHoist := sweepHoistEvidence
 	origDone := sweepDoneCleanup
+	origConfigRoot := sweepConfigRoot
 	t.Cleanup(func() {
+		sweepConfigRoot = origConfigRoot
 		WorktreeProvider = origProvider
 		gitWorktreeCmd = origGitCmd
 		gitRepoRootFunc = origRepoRoot
@@ -111,6 +113,12 @@ func sweepMockEnv(t *testing.T, worktrees []git.Worktree) *sweepMock {
 			return nil
 		},
 	}
+	// The default --base derives from the configured integration target
+	// (card t1453): the fake provider root has no configuration, so the seam
+	// points at a git-flow fixture root — the default these tests exercise.
+	gitFlowRoot := t.TempDir()
+	installBaseRow(t, gitFlowRoot, gitFlowBaseRow())
+	sweepConfigRoot = func() string { return gitFlowRoot }
 	gitWorktreeCmd = m.git
 	gitRepoRootFunc = func() (string, error) { return "/repo", nil }
 	pruneLaunchLedgerFn = func() ([]string, error) { return nil, nil }
@@ -316,6 +324,10 @@ func newSweepRepo(t *testing.T) sweepFixture {
 		}
 		return r
 	}
+	// The default --base derives from the configured integration target (card
+	// t1453): seed the git-flow configuration these fixtures exercise, untracked
+	// so no card tree carries it.
+	installBaseRow(t, repo, gitFlowBaseRow())
 	return sweepFixture{base: resolve(base), repo: resolve(repo), origin: resolve(origin)}
 }
 

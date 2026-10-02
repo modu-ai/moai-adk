@@ -86,11 +86,11 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 			}
 			if strings.TrimSpace(developRef) == "" {
 				// The target is resolved exactly as the integration window
-				// resolves it (the configured git-flow develop branch), but
+				// resolves it (the configured integration target), but
 				// with NO caller fallback: a merge-readiness check must not
 				// guess its target — the caller's own card branch is never a
 				// merge target.
-				developRef = config.LoadGitFlowIntegrationConfig(integrationLockRoot()).DevelopBranch
+				developRef = config.LoadGitFlowIntegrationConfig(integrationLockRoot()).IntegrationTarget
 				if developRef == "" {
 					return fmt.Errorf("factory merge ready: no integration branch configured (git_strategy.manual.develop_branch) and no --branch given — the merge target would be a guess")
 				}

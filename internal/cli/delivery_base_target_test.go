@@ -25,7 +25,9 @@ package cli
 
 import (
 	"io"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -76,6 +78,28 @@ func installTargetRow(t *testing.T, root string, row targetRow) {
 		return
 	}
 	writeGitStrategyBody(t, root, row.body)
+}
+
+// seedGitFlowPrecondition models a git-flow project (card t1453): it writes the
+// git-flow git-strategy.yaml (manual, git-flow, develop) under root and keeps
+// it out of git status through .git/info/exclude, so fixtures whose assertions
+// read the working tree stay byte-identical. It is a precondition seed — the
+// integration target is now read from configuration — not an assertion change.
+func seedGitFlowPrecondition(t *testing.T, root string) {
+	t.Helper()
+	writeGitStrategyFixture(t, root, "git-flow", "develop")
+	info := filepath.Join(root, ".git", "info")
+	if err := os.MkdirAll(info, 0o755); err != nil {
+		return // not a git checkout: nothing to exclude from
+	}
+	f, err := os.OpenFile(filepath.Join(info, "exclude"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = f.Close() }()
+	if _, err := f.WriteString(".moai/config/\n"); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // gitFlowRow is the characterization configuration: git-flow with develop.

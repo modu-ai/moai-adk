@@ -1056,12 +1056,13 @@ func factoryPrintClearPolicyLine(out io.Writer, root string) {
 }
 
 // factoryResolveIntegrationBranch mirrors acquire's branch resolution
-// (resolveIntegrationTarget) without its $PWD legs: the configured git-flow
-// develop branch decides; with none configured the caller's own tree decided
-// the window, which complete refuses, so the branch is the caller's — taken
-// from the card worktree, the lane's own tree, never from the process cwd.
+// (resolveIntegrationTarget) without its $PWD legs: the configured integration
+// target decides (git-flow: the develop branch; github-flow: main); with none
+// configured the caller's own tree decided the window, which complete refuses,
+// so the branch is the caller's — taken from the card worktree, the lane's own
+// tree, never from the process cwd.
 func factoryResolveIntegrationBranch(root string, card homestate.Card) (string, string) {
-	if branch := strings.TrimSpace(config.LoadGitFlowIntegrationConfig(root).DevelopBranch); branch != "" {
+	if branch := strings.TrimSpace(config.LoadGitFlowIntegrationConfig(root).IntegrationTarget); branch != "" {
 		return branch, kanban.BranchSourceConfig
 	}
 	return factoryBranchOfWorktree(card.WorktreePath), kanban.BranchSourceCaller

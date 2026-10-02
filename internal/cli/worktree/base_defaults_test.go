@@ -21,8 +21,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/modu-ai/moai-adk/internal/core/git"
 )
 
 // baseRow is one row of the interpretation table: a git-strategy.yaml fixture
@@ -57,10 +55,14 @@ func gitFlowBaseRow() baseRow { return baseRows()[1] }
 // installBaseRow writes the row's git-strategy.yaml under root.
 func installBaseRow(t *testing.T, root string, row baseRow) {
 	t.Helper()
+	dir := filepath.Join(root, ".moai", "config", "sections")
 	if row.absent {
+		// An absent row also clears a configuration a fixture seeded earlier.
+		if err := os.Remove(filepath.Join(dir, "git-strategy.yaml")); err != nil && !os.IsNotExist(err) {
+			t.Fatal(err)
+		}
 		return
 	}
-	dir := filepath.Join(root, ".moai", "config", "sections")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -77,10 +79,7 @@ func sweepDefaultBaseFor(t *testing.T, row baseRow) (fetched []string, err error
 	m := sweepMockEnv(t, nil)
 	root := t.TempDir()
 	installBaseRow(t, root, row)
-	WorktreeProvider = &mockWorktreeManager{
-		rootPath: root,
-		listFunc: func() ([]git.Worktree, error) { return nil, nil },
-	}
+	sweepConfigRoot = func() string { return root }
 	_, err = runSweepCmd(t, map[string]string{})
 	return m.fetchedBases, err
 }
@@ -153,10 +152,7 @@ func TestBaseDefaultsFollowIntegrationTarget(t *testing.T) {
 	t.Run("sweep/explicit --base wins over an unresolved target", func(t *testing.T) {
 		m := sweepMockEnv(t, nil)
 		root := t.TempDir() // no configuration at all
-		WorktreeProvider = &mockWorktreeManager{
-			rootPath: root,
-			listFunc: func() ([]git.Worktree, error) { return nil, nil },
-		}
+		sweepConfigRoot = func() string { return root }
 		if _, err := runSweepCmd(t, map[string]string{"base": "origin/custom"}); err != nil {
 			t.Fatalf("sweep with an explicit base: %v", err)
 		}

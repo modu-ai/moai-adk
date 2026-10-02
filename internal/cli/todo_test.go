@@ -70,6 +70,7 @@ func todoFixture(t *testing.T) (root string, store *kanban.BacklogStore) {
 	// stays project-local under it, where these tests read it (card t1229).
 	t.Setenv(config.EnvHome, "")
 	initGitRepo(t, root)
+	seedGitFlowPrecondition(t, root)
 	store = kanban.NewBacklogStore(todoBacklogPath(root))
 	return root, store
 }
