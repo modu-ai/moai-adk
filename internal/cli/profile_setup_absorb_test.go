@@ -299,7 +299,7 @@ func TestProfileSetupAbsorbed_PreservationTable(t *testing.T) {
 			},
 		},
 		{
-			name:        "acceptEdits_stores_empty_and_prints_confirmation_once",
+			name:        "acceptEdits_persisted_and_prints_confirmation_once",
 			withProject: true,
 			answers: func(a wizard.ProfileResult) wizard.ProfileResult {
 				a.PermissionMode = "acceptEdits"
@@ -311,8 +311,13 @@ func TestProfileSetupAbsorbed_PreservationTable(t *testing.T) {
 				if err != nil {
 					t.Fatalf("ReadPreferences: %v", err)
 				}
-				if prefs.PermissionMode != "" {
-					t.Errorf("saved permission mode = %q, want the empty string", prefs.PermissionMode)
+				// acceptEdits persists like any other mode: the template
+				// settings.json stopped shipping a defaultMode default
+				// (20b4ff0f6), so the stored override is what keeps CC
+				// 2.1.283+'s built-in default from winning silently
+				// (card t1414).
+				if prefs.PermissionMode != "acceptEdits" {
+					t.Errorf("saved permission mode = %q, want \"acceptEdits\" (persisted, not normalized away)", prefs.PermissionMode)
 				}
 				// Counted via the locale-stable anchor tokens: the notice is
 				// localized per the wizard's ending locale (REQ-TRI-006), so

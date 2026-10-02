@@ -728,7 +728,12 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	// 7. Build args
 	buildArgs := func(withContinue bool) []string {
 		a := []string{"claude"}
-		if permMode != "" && permMode != "acceptEdits" {
+		// Every non-empty mode is forwarded verbatim, acceptEdits included.
+		// The template settings.json stopped shipping a defaultMode default
+		// (20b4ff0f6), so with CC 2.1.283+ the former acceptEdits omission
+		// let the CC built-in default (auto; Manual under a GLM backend) win
+		// silently (card t1414).
+		if permMode != "" {
 			a = append(a, "--permission-mode", permMode)
 		}
 		if withContinue {
@@ -1091,20 +1096,19 @@ func readSettingsLocalForLaunch() map[string]string {
 // preference to .claude/settings.local.json so that permissions.defaultMode
 // survives across sessions regardless of how Claude Code is launched.
 //
-// When permissionMode is a non-default value (e.g. "auto", "bypassPermissions"),
-// it sets permissions.defaultMode in settings.local.json.
-// When permissionMode is empty or "acceptEdits" (matching the project default),
-// it removes the defaultMode override so settings.json default applies.
+// Any non-empty mode (acceptEdits included) writes the defaultMode override:
+// the template settings.json stopped shipping a defaultMode default
+// (20b4ff0f6), so with CC 2.1.283+ an absent override falls back to the CC
+// built-in default instead of a project acceptEdits default (card t1414).
+// Only an empty preference removes the override, deferring to whatever the
+// user-edited project settings.json carries.
 //
-// The empty-string normalization for "acceptEdits" is intentional AND surfaced
-// to the user: runProfileSetup emits an explicit confirmation line
-// (acceptEditsConfirmationLine) so the user does not perceive the selection as
-// a silent no-op. See profile_setup.go runProfileSetup normalization block
-// (REQ-CCI-006 / REQ-CCI-007 — the normalization is intentional, and it is
-// disclosed to the user via the wizard confirmation, not silently applied).
-// syncPermissionModeToSettingsLocal persists the profile permission mode
-// preference to .claude/settings.local.json so that permissions.defaultMode
-// survives across sessions regardless of how Claude Code is launched.
+// The persistence of an explicit acceptEdits selection is surfaced to the
+// user: runProfileSetup emits an explicit confirmation line
+// (acceptEditsConfirmationLine) so the user does not perceive the write as a
+// silent no-op. See profile_setup.go's permission-mode save block
+// (REQ-CCI-006 / REQ-CCI-007 — the notice is intentional, and it is disclosed
+// to the user via the wizard confirmation, not silently applied).
 //
 // SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trips as map[string]any so
 // unknown top-level keys survive the write.
@@ -1112,10 +1116,9 @@ func syncPermissionModeToSettingsLocal(settingsPath string, permissionMode strin
 	// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-001: route through the locked+atomic
 	// mutateSettingsLocal seam so concurrent sessions cannot lose updates.
 	return mutateSettingsLocal(settingsPath, func(m map[string]any) {
-		// Only write an override when the mode differs from the project default.
-		// The project settings.json default is "acceptEdits", so we skip writing
-		// for empty string and "acceptEdits" to avoid unnecessary overrides.
-		if permissionMode != "" && permissionMode != "acceptEdits" {
+		// Any non-empty mode writes the override — the template no longer
+		// carries a defaultMode default for it to shadow (card t1414).
+		if permissionMode != "" {
 			perms, _ := m["permissions"].(map[string]any)
 			if perms == nil {
 				perms = make(map[string]any)
@@ -1123,7 +1126,8 @@ func syncPermissionModeToSettingsLocal(settingsPath string, permissionMode strin
 			perms["defaultMode"] = permissionMode
 			m["permissions"] = perms
 		} else {
-			// Remove the override so settings.json default applies
+			// Empty preference: remove the override so the project
+			// settings.json default (if any) applies.
 			if perms, ok := m["permissions"].(map[string]any); ok {
 				delete(perms, "defaultMode")
 				if len(perms) == 0 {

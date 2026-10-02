@@ -455,6 +455,50 @@ func TestUnifiedLaunch_CG_WithTestMode(t *testing.T) {
 	}
 }
 
+// TestLaunchClaudeDefault_ForwardsPermissionModes pins the t1414 repair:
+// every non-empty permission mode MUST reach the child argv, acceptEdits
+// included. CC 2.1.283+ falls back to its built-in default when no
+// --permission-mode arrives and the template ships no settings.json
+// defaultMode (removed in 20b4ff0f6), so the former "acceptEdits matches the
+// project default" omission silently started sessions in the CC built-in
+// mode (auto; Manual under a GLM backend) instead of acceptEdits. The
+// bypassPermissions call is the live-measured positive control: it was
+// forwarded all along, so the differential isolates the acceptEdits premise.
+func TestLaunchClaudeDefault_ForwardsPermissionModes(t *testing.T) {
+	fakeMoaiProject(t)
+
+	origExec := execOrSpawnClaudeFunc
+	defer func() { execOrSpawnClaudeFunc = origExec }()
+
+	for _, tc := range []struct {
+		mode string
+	}{
+		{mode: "acceptEdits"},
+		{mode: "bypassPermissions"},
+	} {
+		var capturedArgs []string
+		execOrSpawnClaudeFunc = func(bin string, args, env []string) error {
+			capturedArgs = args
+			return nil
+		}
+
+		if err := launchClaudeDefault("", []string{"--permission-mode", tc.mode}); err != nil {
+			t.Fatalf("launch with --permission-mode %s: %v", tc.mode, err)
+		}
+
+		found := false
+		for i, a := range capturedArgs {
+			if a == "--permission-mode" && i+1 < len(capturedArgs) && capturedArgs[i+1] == tc.mode {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("child args %v: --permission-mode %s not forwarded — the omission silently falls back to the CC built-in default (card t1414)", capturedArgs, tc.mode)
+		}
+	}
+}
+
 func TestSyncPermissionModeToSettingsLocal(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -511,10 +555,10 @@ func TestSyncPermissionModeToSettingsLocal(t *testing.T) {
 			wantEnvValue: "bar",
 		},
 		{
-			name:     "acceptEdits removes defaultMode (matches project default)",
+			name:     "acceptEdits writes defaultMode (no template default since 20b4ff0f6)",
 			existing: `{"permissions":{"defaultMode":"auto"}}`,
 			mode:     "acceptEdits",
-			wantMode: "",
+			wantMode: "acceptEdits",
 		},
 		{
 			name:         "empty mode with no permissions is no-op",
