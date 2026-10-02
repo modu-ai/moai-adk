@@ -6,7 +6,7 @@ Measurements are cited as `M-n` / `G-n` from `spec.md` (§1, §7); tree `802a722
 
 **Card.** t1436, Class C (design change). Operator constraints from the leader dispatch are authoritative: data through `$.process.run` (argv list) and `$.clock.every`; pane through `$.ui.open` plus a `ui.render` hook on `{ component: 'Pane', requestId }`; SPEC text through `$.fs.read` and `Markdown` elements; read-only first; the commands are `/moai-board` (no colon). Plugin load scope waits on card t1434, so the mod lives in a standalone directory of this repository (`spec.md` D-1).
 
-**Tier judgment — M.** Files touched: 12 under `mods/moai-board/` (9 source and config, 3 test files) plus the root `.gitignore` = 13, inside the Tier M band (5-15). Size: an estimate of 600-900 lines including tests, inside 300-1,000 (an estimate, not a measurement). Not constitutional, no Go code, no change to any distributed template. REQ 15 of 16, AC 15 of 16. Tier L was weighed and rejected: no file-count or LOC signal reaches it, and a `design.md` / `research.md` pair would restate §1 and §B. Threshold for the plan audit: 0.80.
+**Tier judgment — M.** Files touched: 13 under `mods/moai-board/` (9 source and config, 4 test files) plus the root `.gitignore` = 14, inside the Tier M band (5-15). Size: an estimate of 600-900 lines including tests, inside 300-1,000 (an estimate, not a measurement). Not constitutional, no Go code, no change to any distributed template. REQ 15 of 16, AC 15 of 16. Tier L was weighed and rejected: no file-count or LOC signal reaches it, and a `design.md` / `research.md` pair would restate §1 and §B. Threshold for the plan audit: 0.80.
 
 **Provisional parameters are named constants.** Every numeric value in §G is either a measured bound or a constant the operator's verdict (`decision-index.md`) sets at Kickoff. The tests assert the floors and properties of REQ-MBM-006/008/012, never a particular default, so M1-M4 do not depend on any open verdict.
 
@@ -23,10 +23,11 @@ mods/moai-board/
   hooks/specs.ts               SPEC list parser; id and file allow-lists; real-path guard; Markdown chunker
   hooks/view.tsx               tab row, summary line, Queue / Lanes / SPEC views
   types/index.d.ts             PluginState for the 'moai-board' plugin + shared types
-  tests/data.test.ts           pure parsers/reducers, runner classification, polling, pick flow
-  tests/specs.test.ts          list parser, id/path guards, chunker
-  tests/board.test.tsx         Pane mounted on terminal and desktop
-  tsconfig.json                the options of the typings header, include [".claude-plugin/types","hooks","types","tests"]
+  tests/pure/data.spec.ts      PURE (bun): queue/lane parsers and reducers, runner classification, pick argv/outcome, interval clamp
+  tests/pure/specs.spec.ts     PURE (bun): list parser, id/file allow-lists, injected-io path guard, chunker
+  tests/engine.test.ts         ENGINE (claude plugin test): hook dispatch, polling timers, pick flow with ui.ask stub, fail-soft hooks
+  tests/board.test.tsx         ENGINE: Pane mounted on terminal and desktop
+  tsconfig.json                the options of the typings header, include [".claude-plugin/types","hooks","types","tests"], exclude ["tests/pure"] (bun:test is not among the engine typings)
   README.md                    launch, test and validate commands; the read-only boundary
 ```
 
@@ -62,7 +63,7 @@ A render hook never writes state and never calls `$.process.run`; handlers (pres
 
 | Tab | Content | Sources |
 |---|---|---|
-| Queue (hotkey 1) | summary `In progress N · Queued N · Held N`; rows grouped picked → queued → hold, each group in the emitted order (M-3: JSON order = text order); a row shows id and the text cut to the body width; `open` shows the full text as chunked Markdown, `added_at`, `spec_id`; a `queued` card also shows **pick** (`p`) | queue-json, fallback queue-text |
+| Queue (hotkey 1) | summary `Picked N · Queued N · Held N` (`Picked` is the state `picked`, an operator promotion — not "in progress"); rows grouped picked → queued → hold, each group in the emitted order (M-3: JSON order = text order); a row shows id and the text cut to the body width; `open` shows the full text as chunked Markdown, `added_at`, `spec_id`; a `queued` card also shows **pick** (`p`) | queue-json, fallback queue-text |
 | Lanes (2) | factory cards grouped by owner with state, stage, SPEC id and the "lease expired" marker (M-4: `t1399`); below, sessions with a heartbeat within 24 h, newest first, ≤ 20, shown as "heartbeat Xm ago" — never alive/dead (M-5: pid reuse, 144 h-old entries) | lanes, sessions |
 | SPEC (3) | status filter chips (default draft + in-progress), 15 rows per page; `open` shows a file selector and the file as Markdown elements | spec-list, `$.fs.read` |
 
@@ -88,13 +89,14 @@ Every hook body runs inside one guard that turns an exception into a `notice` an
 
 ### B.7 SPEC tab mechanics (REQ-MBM-011, -012)
 
-- **Listing.** `moai spec status --list`; keep rows whose first column matches the SPEC-id pattern and whose second column is a status word (drops the header, the rule, `_archive`); ignore the `Modified` column (M-6: checkout time). Statuses seen: completed 780, implemented 143, draft 25, archived 31, superseded 15, in-progress 15, rejected 2.
-- **Which tree.** `moai spec status --list` follows the **cwd of the process**; the mod uses the session's (the engine default). From a worktree the list is that worktree's tree (1,011 SPECs), from the primary checkout another (678 lines, M-6). The pane header shows the session root so the operator can see which tree is read; whether to union the primary is Q4.
-- **Reading.** `root = await $.session.root()`; `base = root + '/.moai/specs'`; `file` ∈ the six allowed names; id matches `^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$`; `$.fs.stat(path, { resolve: true })` and `$.fs.stat(base, { resolve: true })`; the read happens only when `kind` is a regular file and the file's `realPath` starts with the base's `realPath` plus the separator; the read target is the `realPath`. `..`, absolute names, extra segments, lowercase ids and symlinks leaving the base fail before any read.
+- **Listing.** `moai spec status --list`; keep rows whose first column is a SPEC id per the SPEC-id rule of spec.md §3 (one regex, stated once) and whose second column is a status word; this drops the header, the rule line, `_archive`, `SPEC-GITHUB-WORKFLOW` and `SPEC-I18N-001-ARCHIVED` (M-14: 1,010 kept at `5f6c7d343`); ignore the `Modified` column (M-6: checkout time). Statuses seen at the M-6 tree: completed 780, implemented 143, draft 25, archived 31, superseded 15, in-progress 15, rejected 2.
+- **Which tree.** `moai spec status --list` follows the **cwd of the process**; the mod uses the session's (the engine default). From a worktree the list is that worktree's tree (1,010 SPEC ids at `5f6c7d343`, M-14), from the primary checkout another (678 lines, M-6). The pane header shows the session root so the operator can see which tree is read; whether to union the primary is Q4.
+- **Reading.** `root = await $.session.root()`; `base = root + '/.moai/specs'`; `file` ∈ the six allowed names; id satisfies the same SPEC-id rule as the list (spec.md §3); the guard takes its `stat`/`read` as an injected `io` argument so bun can test it; `$.fs.stat(path, { resolve: true })` and `$.fs.stat(base, { resolve: true })`; the read happens only when `kind` is a regular file and the file's `realPath` starts with the base's `realPath` plus the separator; the read target is the `realPath`. `..`, absolute names, extra segments, lowercase ids and symlinks leaving the base fail before any read.
 - **Chunking.** Blocks are split at blank lines outside fenced code; blocks are packed greedily to ≤ 9,000 characters (the 10,000 limit minus a 1,000 margin for re-fencing and counting UTF-16 units); a block over the limit is split at line boundaries; a split inside a fence closes it at the chunk end and reopens it (same info string) at the next start; a single line over the limit is cut at the limit without splitting a surrogate pair; at most 12 chunks per file (the measured maximum file, 133,596 bytes, needs 15), then a notice naming the file path. Measured: 2,936 of 4,129 SPEC artifacts exceed 10,000 bytes (M-7), so chunking is the common case.
 
 ### B.8 Pick flow (REQ-MBM-003 to -005)
 
+0. **One call site.** The argv is built by `buildPickArgv(id, prefix)` in `hooks/data.ts` and that function — defined as `const buildPickArgv = (…) =>`, so that the text `buildPickArgv(` matches calls only — is called from exactly one place, `onPickPress` in `hooks/register.tsx`; `session.start`, `command.run`, the timer and the render hook never reference it (AC-MBM-003 counts the references; the engine test `dispatch:` records every argv across those dispatches).
 1. Press on a `queued` card with a valid id and prefix → `$.ui.ask("Pick <id>? <first line of text, ≤120 chars>", ["Pick", "Cancel"])` (the confirm label is the constant `Pick`).
 2. Rejection (dismissed, `-p` run), any text other than `Pick`, or `Cancel` → no process, no state change.
 3. `Pick` → one `runMoai` of the pick argv. Non-zero exit or cannot start → first 400 chars of stderr (or the start error) into the pane and a toast; no retry. Measured refusal text from a lane (M-10) is shown as-is.
@@ -116,8 +118,9 @@ Each is a plain command whose output is read, not remembered. Values below are t
 | C7 | `git check-ignore -v mods/moai-board/.claude-plugin/types/claude-code/index.d.ts` | exit 1 (not ignored) until M5 |
 | C8 | `claude plugin test <any folder holding one trivial test>` | **expected to execute; the rollout switch may serve off (M-13)** — record the outcome either way |
 | C9 | `git log --oneline -1 -- mods/` and `ls mods` | nothing yet |
+| C10 | `bun --version`, then `bun test mods/moai-board/tests/pure/ --reporter=junit --reporter-outfile=/tmp/mbm-junit.xml` | `1.4.2`; exit 1 "did not match any test files" until M1 (M-15). bun is developer-local — no CI or tooling file references it |
 
-If C8 refuses, M1 proceeds with `claude plugin validate` only, tests are written and typed, and every test-bearing AC stays **unobserved** until the runner executes (acceptance.md §A).
+If C8 refuses, M1 proceeds with `claude plugin validate` only; the pure criteria run under bun (C10) and are lane/developer evidence; every engine-runner criterion stays **UNOBSERVED** until the engine runner executes, and the SPEC stays open (acceptance.md §A.2, §F).
 
 ## §D Constraints (not renegotiated in run-phase)
 
@@ -126,7 +129,8 @@ If C8 refuses, M1 proceeds with `claude plugin validate` only, tests are written
 3. No network, no file write, no tool call, no prompt submission, no model/agent/settings/env access — enforced by `claude plugin validate`'s `calls:` line (AC-MBM-002).
 4. The mod is never embedded in `internal/template/templates/` and never deployed by `moai init` / `moai update` (REQ-MBM-014).
 5. No change to any Go file, any `moai` command, or any rule file (`AGENTS.md` §5 scope discipline).
-6. Every commit on the branch names card `t1436` in its message; the evidence path is `.moai/reports/t1436/verdict.md` (written by the lane, not by this plan).
+6. Test files are named by runner: pure tests are `*.spec.ts` under `tests/pure/` (bun; never `*.test.ts`, which the engine runner globs), engine tests are `*.test.ts` / `*.test.tsx` directly under `tests/`.
+7. Every commit on the branch names card `t1436` in its message; the evidence path is `.moai/reports/t1436/verdict.md` (written by the lane, not by this plan).
 
 ## §E Self-verification (plan-phase)
 
@@ -134,15 +138,15 @@ Run by the plan author and recorded in `progress.md` §E.1: ID pattern check (`P
 
 ## §F Milestones (ordered by likelihood of change: contracts and interfaces first, mechanics last)
 
-**M1 — Contracts and skeleton (highest change likelihood).** `types/index.d.ts` (`PluginState` for `moai-board`: `view`, `queue`, `lanes`, `specs`, `notice`; the parsed-item types), the argv table and `runMoai` signature, `plugin.json`, `hooks.json`, `tsconfig.json`, an empty `register.tsx` that registers `/moai-board` and opens an empty pane. First test (if the runner executes, C8): a test imports a sibling module — settles G-12; if it cannot, the pure functions are exercised through the hooks from then on. Exit: `claude plugin validate mods/moai-board` exit 0 and its `hooks:` line names `command.run{command=moai-board}`.
+**M1 — Contracts and skeleton (highest change likelihood).** `types/index.d.ts` (`PluginState` for `moai-board`: `view`, `queue`, `lanes`, `specs`, `notice`; the parsed-item types), the argv table and `runMoai` signature, `plugin.json`, `hooks.json`, `tsconfig.json`, an empty `register.tsx` that registers `/moai-board` and opens an empty pane. The first pure spec is written and observed red under bun (C10) before any parser exists. Exit: `claude plugin validate mods/moai-board` exit 0 and its `hooks:` line names `command.run{command=moai-board}`.
 
-**M2 — Queue and Lanes data path (TDD).** Tests first, red observed: parsers and reducers for queue-json, queue-text, factory status, sessions; classification of runner results; fail-soft guard; polling (single flight, floor, timer cancel on `ui.close`, no timer while closed); unchanged-raw skip; a 2 MB synthetic payload. Exit: the named tests of AC-MBM-005..009 pass.
+**M2 — Queue and Lanes data path (TDD).** Tests first, red observed: pure under bun — parsers and reducers for queue-json, queue-text, factory status, sessions; classification of runner results; interval clamp and single-flight guard; unchanged-raw skip; a 2 MB synthetic payload; engine under `claude plugin test` — polling timers, timer cancel on `ui.close`, the `dispatch:` and `poll:` tests. Exit: the named tests of AC-MBM-005a, -006, -007, -008, -009a pass under bun; AC-MBM-005b is observed only when the engine runner executes.
 
-**M3 — Pane UI and pick (TDD).** The Pane render hook and views for Queue and Lanes; tab row, summary, row `open` and detail; the pick flow of §B.8 with `$.ui.ask` stubbed through `tool.call` (M-9). Exit: AC-MBM-004, AC-MBM-012 named tests pass (terminal and desktop).
+**M3 — Pane UI and pick (TDD).** The Pane render hook and views for Queue and Lanes; tab row, summary, row `open` and detail; the pick flow of §B.8 with `$.ui.ask` stubbed through `tool.call` (M-9); the fail-soft hooks. Exit: AC-MBM-004a passes under bun; AC-MBM-004b, -009b and -012 are observed only when the engine runner executes (terminal and desktop).
 
-**M4 — SPEC tab (TDD).** List parser and filters, id and file allow-lists, real-path guard with a stubbed `fs.stat` (`realPath` outside the base is denied), chunker properties (≤ 9,000, blank-line boundaries, fences closed and reopened, 12-chunk cap with notice). Exit: AC-MBM-010, -011 named tests pass.
+**M4 — SPEC tab (TDD).** List parser and filters, id and file allow-lists, real-path guard with a stubbed `fs.stat` (`realPath` outside the base is denied), chunker properties (≤ 9,000, blank-line boundaries, fences closed and reopened, 12-chunk cap with notice) — all pure, under bun. Exit: AC-MBM-010, -011 named tests pass under bun.
 
-**M5 — Packaging and handoff.** Add `mods/*/.claude-plugin/types/` to `.gitignore`; write `README.md` (launch: `claude --plugin-dir <absolute path to mods/moai-board>`; test and validate commands; the read-only boundary and the pick confirmation); re-run the regression guards of AC-MBM-013; leave the two manual items (AC-MBM-014, -015) as a checklist for an operator in an interactive, non-lane session. Exit: AC-MBM-001..013 evidence recorded in `progress.md` §E.2 with commands and verbatim output.
+**M5 — Packaging and handoff.** Add `mods/*/.claude-plugin/types/` to `.gitignore`; write `README.md` (launch: `claude --plugin-dir <absolute path to mods/moai-board>`; test and validate commands; the read-only boundary and the pick confirmation); re-run the regression guards of AC-MBM-013; leave the two manual items (AC-MBM-014, -015) as a checklist for an operator in an interactive, non-lane session. Exit: AC-MBM-001..013 evidence recorded in `progress.md` §E.2 with commands and verbatim output, each labeled pure (bun), engine, or UNOBSERVED.
 
 ## §G Parameters
 
@@ -178,6 +182,7 @@ Run by the plan author and recorded in `progress.md` §E.1: ID pattern check (`P
 - A second `$.process.run` call site, or an argv assembled from a template string.
 - Reading a SPEC path before both `stat` calls resolved, or reading the unresolved spelling.
 - Reporting an AC as passed because the runner refused or printed nothing (acceptance.md §A).
+- Presenting `bun test` results as engine evidence or as CI evidence (spec.md G-13), or naming a pure test file `*.test.ts`.
 - A colon in a command name; an `import()` in a hooks module (it does not load).
 
 ## §J Cross-references

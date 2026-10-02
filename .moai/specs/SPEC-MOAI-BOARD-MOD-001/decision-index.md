@@ -1,6 +1,6 @@
 # Decision Index — SPEC-MOAI-BOARD-MOD-001
 
-Decisions surfaced while assembling this SPEC that the operator has not settled. Each row states what is unresolved and why; none carries a preferred answer (decision gate on, recommendation mode `pull`: `.moai/config/sections/interview.yaml`). Labels: `DECIDED`, `POLICY-COVERED`, `EVIDENCE-NEEDED`, `FOUNDER`. No row qualifies as `DECIDED` or `POLICY-COVERED`: none has an authority anchor verifiable in the committed tree, so none is relabeled to look settled. Measurements cited are `M-n` / `G-n` of `spec.md`, taken at tree `802a72235`.
+Decisions surfaced while assembling this SPEC that the operator has not settled. Each row states what is unresolved and why; none carries a preferred answer (decision gate on, recommendation mode `pull`: `.moai/config/sections/interview.yaml`). Labels: `DECIDED`, `POLICY-COVERED`, `EVIDENCE-NEEDED`, `FOUNDER`. No row qualifies as `DECIDED` or `POLICY-COVERED`: none has an authority anchor verifiable in the committed tree, so none is relabeled to look settled. Measurements cited are `M-n` / `G-n` of `spec.md`, taken at tree `802a72235` (M-10, M-11, M-13, M-14 and M-15 re-measured at `5f6c7d343`).
 
 ### Q1: Where does the mod load from once the prototype stage ends — the user's mods folder, a project scope, or a repository-distributed path?
 
@@ -42,4 +42,11 @@ Operator verdict:
 Label: FOUNDER
 Authority anchor: —
 Why unresolved: REQ-MBM-011 currently names draft and in-progress (25 + 15 = 40 rows, M-6). `implemented` has 143 rows and covers SPECs whose code landed but which are not closed; whether those belong in the default view is a product reading of "active" that no committed artifact states.
+Operator verdict:
+
+### Q7: If the engine test runner (`claude plugin test`) is still refused by the rollout switch at Kickoff, does run-phase start — and on what footing?
+
+Label: EVIDENCE-NEEDED
+Authority anchor: —
+Why unresolved: the runner exited 1 with `hooks modules are turned off in this process: the rollout switch served off` in every run after the first four of this session, including `claude plugin test --help` (M-13); why it is off and whether it flips back were not observed, and the same switch gates loading a hooks module in a session (G-11), so its state in the operator's own session is unread. The engine-runner criteria (AC-MBM-004b, -005b, -009b, -012) cannot execute while it is off; acceptance.md §A.2 and §F already fix that they stay UNOBSERVED and keep the SPEC open until a run executes or a leader or operator waiver is written. What is open is the Kickoff choice: wait for the switch; start run-phase on pure-function evidence (`bun test`, developer-local, G-13) with those criteria left UNOBSERVED; or a written waiver.
 Operator verdict:
