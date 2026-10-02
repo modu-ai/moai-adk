@@ -327,10 +327,11 @@ func (boomErr) Error() string { return "boom: simulated transport failure" }
 func TestResolveGLMAuditModel_BackendDefault(t *testing.T) {
 	// AC-MCP-015: model resolution never reads agent frontmatter /
 	// llm.agent_overrides. Without a pin the resolver returns the documented
-	// GLM backend default {glm-5.3, max} (SPEC-V3R6-AUDIT-MODEL-PIN-001 M3;
-	// SPEC-AGENT-MODEL-INHERIT-001 design D5; the effort rose from the former
-	// EMPTY by REQ-WSS-201 — RED observed at the want-empty assertion before
-	// this update).
+	// GLM backend default pair (SPEC-V3R6-AUDIT-MODEL-PIN-001 M3;
+	// SPEC-AGENT-MODEL-INHERIT-001 design D5). SPEC-AGENT-TIER-001 flipped
+	// that pair to {glm-5.3, max} — the operator pin effort rides the
+	// fallback, forwarded verbatim (REQ-AMP-006); updated in the same commit
+	// as the default.
 	t.Setenv("CLAUDE_PROJECT_DIR", "")
 	old := projectDirResolver
 	projectDirResolver = func() string { return "" } // no sections dir available
@@ -340,14 +341,11 @@ func TestResolveGLMAuditModel_BackendDefault(t *testing.T) {
 	if me.Model == "" {
 		t.Fatal("resolveGLMAuditModelEffort returned an empty model for a missing llm.yaml (want the GLM default)")
 	}
-	if me.Model == "opus" || strings.HasPrefix(me.Model, "claude") {
-		t.Errorf("resolveGLMAuditModelEffort model = %q; a Claude id cannot be a GLM default", me.Model)
-	}
 	if me.Model != config.DefaultGLM53 {
-		t.Errorf("resolveGLMAuditModelEffort model = %q, want %q (REQ-WSS-201 operator-confirmed audit pin)", me.Model, config.DefaultGLM53)
+		t.Errorf("resolveGLMAuditModelEffort model = %q, want %q (full glm-5.3, not the flash slot default)", me.Model, config.DefaultGLM53)
 	}
 	if me.Effort != "max" {
-		t.Errorf("resolveGLMAuditModelEffort effort = %q, want %q (REQ-WSS-201 — the fallback now carries the max reasoning state)", me.Effort, "max")
+		t.Errorf("resolveGLMAuditModelEffort effort = %q, want %q (the pin effort forwarded verbatim)", me.Effort, "max")
 	}
 }
 

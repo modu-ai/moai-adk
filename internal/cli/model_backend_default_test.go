@@ -60,7 +60,7 @@ func TestGLMResolution_IgnoresPerAgentLLMCells(t *testing.T) {
 	if got := resolveGLMTaskModel(); got != config.DefaultGLMHigh {
 		t.Errorf("glm task default = %q, want %q", got, config.DefaultGLMHigh)
 	}
-	if got := resolveGLMAuditModelEffort(root); got != (config.ModelEffort{Model: config.DefaultGLM53, Effort: "max"}) {
-		t.Errorf("glm audit without pin = %+v, want {%s, max} (REQ-WSS-201 — the audit fallback diverges from the task default)", got, config.DefaultGLM53)
+	if got := resolveGLMAuditModelEffort(root); got != (config.ModelEffort{Model: glmAuditDefaultModel, Effort: glmAuditDefaultEffort}) {
+		t.Errorf("glm audit without pin = %+v, want the {%s, %s} default pin (REQ-TIER-004 — the former empty-effort backend default fell with the operator pin flip)", got, glmAuditDefaultModel, glmAuditDefaultEffort)
 	}
 }

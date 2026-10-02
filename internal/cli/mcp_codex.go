@@ -58,8 +58,11 @@ const (
 	// no explicit model, resolveCodexAuditModelEffort lands here instead of the
 	// former zero value. The task-delegation path (resolveCodexModelEffort)
 	// still resolves to the zero value — REQ-AMP-008 keeps the audit pin and the
-	// task path separate.
-	codexAuditDefaultModel  = "gpt-6.1-sol"
+	// task path separate. Unchanged by SPEC-AGENT-TIER-001; the model derives
+	// from config.DefaultCodexAuditModel per that constant's single-sourcing
+	// intent (the effort token stays local — effort vocabulary values are not
+	// swept pin literals).
+	codexAuditDefaultModel  = config.DefaultCodexAuditModel
 	codexAuditDefaultEffort = "high"
 
 	// codex JSON-RPC methods. review/start (native audit) and turn/start

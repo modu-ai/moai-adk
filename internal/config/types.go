@@ -512,6 +512,14 @@ type WorkflowConfig struct {
 	// default-OFF neutrality.
 	SubagentWriteGuard SubagentWriteGuardConfig `yaml:"subagent_write_guard"`
 
+	// AnchorRelocationGuard gates the refusal layer of the session-anchor
+	// relocation ownership guard (SPEC-SESSION-ANCHOR-ATTR-001 REQ-SAA-005).
+	// Default false: the ownership judgment and its audit row run on every
+	// relocation, but a flagged relocation proceeds (advisory) until a
+	// maintainer opts in via local config. Sibling of BranchGuard /
+	// SubagentWriteGuard — same opt-in shape, same default-OFF neutrality.
+	AnchorRelocationGuard AnchorRelocationGuardConfig `yaml:"anchor_relocation_guard"`
+
 	// CommitIdentityGuard gates the PreToolUse commit identity guard
 	// (SPEC-COMMIT-IDENTITY-GUARD-001). Default false: the guard ships INERT —
 	// when off, no repository-scope or identity probe subprocess ever runs and
@@ -578,6 +586,23 @@ type WorkflowConfig struct {
 	// and callers resolve the distributed default profile via
 	// NewDefaultWorkflowConfig (claude required, codex required, glm advisory).
 	Audit AuditConfig `yaml:"audit"`
+
+	// AgentTiers is the workflow.agent_tiers block (SPEC-AGENT-TIER-001 M2,
+	// REQ-TIER-008): the user's agent-class → tier-token assignment table.
+	// When the block is absent (or a class is not listed) the resolver falls
+	// back to DefaultAgentTierClasses per class; an unknown tier token fails
+	// the load (Validate, REQ-TIER-009). Audit surfaces are excluded from the
+	// tier matrix regardless of this table (REQ-TIER-007) — they resolve
+	// exclusively through the workflow.audit pins.
+	AgentTiers AgentTiersConfig `yaml:"agent_tiers"`
+}
+
+// AgentTiersConfig mirrors workflow.agent_tiers — the tier-axis assignment
+// table (SPEC-AGENT-TIER-001 REQ-TIER-008/009). Classes maps an agent-class
+// name to a tier token from the closed set {max, medium, low}
+// (ValidAgentTiers); any other token fails the load through Validate.
+type AgentTiersConfig struct {
+	Classes map[string]string `yaml:"classes,omitempty" json:"classes,omitempty"`
 }
 
 // AutoClearConfig mirrors workflow.auto_clear.* — context-window auto-clear policy.
@@ -769,6 +794,20 @@ type AgentStopGuardConfig struct {
 // contract). Template neutrality: no `enabled: true` anywhere under
 // internal/template/templates/.
 type SubagentWriteGuardConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// AnchorRelocationGuardConfig mirrors workflow.anchor_relocation_guard.*
+// (SPEC-SESSION-ANCHOR-ATTR-001 REQ-SAA-005). Enabled gates the REFUSAL layer
+// of the session-anchor relocation ownership guard: when false (the
+// distributed default) an implausible-target relocation is advisory only —
+// the ownership flag row is recorded and the relocation proceeds. When true,
+// a flagged relocation is refused and the refusal recorded to the relocation
+// audit log. Detection (the ownership judgment and its audit row) is not
+// gated: it runs on every relocation regardless of this flag, mirroring the
+// SubagentWriteGuard family contract. Template neutrality: no `enabled: true`
+// anywhere under internal/template/templates/.
+type AnchorRelocationGuardConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 

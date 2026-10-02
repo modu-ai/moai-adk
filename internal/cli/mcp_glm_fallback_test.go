@@ -17,30 +17,28 @@ import (
 // defaults moved on, and the pre-existing test only asserted the result was
 // non-empty and not a Claude id — both true of the stale value. These tests pin
 // the value instead.
-//
-// SPEC-WEB-SETTINGS-SAVE-001 REQ-WSS-201 (operator-confirmed 2026-10-01): the
-// audit fallback deliberately DIVERGES from the tier default now — {glm-5.3,
-// max} (config.DefaultGLM53) while the launcher's tier default stays
-// glm-5.3-flash. The former derivation guard
-// (TestGLMAuditDefaultModel_DerivesFromTierDefault, RED observed against the
-// new value) was rewritten into the divergence pin below.
 
-// TestGLMAuditDefaultModel_PinsOperatorConfirmedAuditPin is the anti-drift
-// guard, rewritten for the operator-confirmed audit pin: the fallback tracks
-// config.DefaultGLM53 with the max reasoning state — NOT the tier default the
-// launcher injects (glm-5.3-flash has no audit meaning here; a second literal
-// was what let the fallback go stale once, so the pin stays a named-constant
-// derivation rather than a restated literal).
-func TestGLMAuditDefaultModel_PinsOperatorConfirmedAuditPin(t *testing.T) {
+// TestGLMAuditDefaultModel_DerivesFromAuditPin is the anti-drift guard
+// (updated by SPEC-AGENT-TIER-001 in the same commit as the default it pins:
+// the audit fallback is the operator pin target — full glm-5.3 with effort
+// max — while the glm_task delegation default keeps the flash slot default,
+// REQ-AMP-008). Restating either as its own literal is what let the fallback
+// drift once before.
+func TestGLMAuditDefaultModel_DerivesFromAuditPin(t *testing.T) {
 	t.Parallel()
 
 	if glmAuditDefaultModel != config.DefaultGLM53 {
-		t.Errorf("glmAuditDefaultModel = %q, want config.DefaultGLM53 (%q) — "+
-			"the operator-confirmed audit pin (REQ-WSS-201), deliberately diverging from the tier default %q",
-			glmAuditDefaultModel, config.DefaultGLM53, config.DefaultGLMHigh)
+		t.Errorf("glmAuditDefaultModel = %q, want it to track config.DefaultGLM53 (%q) — "+
+			"the audit pin targets full glm-5.3, not the flash slot default",
+			glmAuditDefaultModel, config.DefaultGLM53)
 	}
 	if glmAuditDefaultEffort != "max" {
-		t.Errorf("glmAuditDefaultEffort = %q, want %q (the z.ai max reasoning state, REQ-WSS-201)", glmAuditDefaultEffort, "max")
+		t.Errorf("glmAuditDefaultEffort = %q, want %q (the pin effort, forwarded verbatim)", glmAuditDefaultEffort, "max")
+	}
+	if glmTaskDefaultModel != config.DefaultGLMHigh {
+		t.Errorf("glmTaskDefaultModel = %q, want it to keep tracking config.DefaultGLMHigh (%q) — "+
+			"the glm_task delegation default is unchanged (REQ-AMP-008)",
+			glmTaskDefaultModel, config.DefaultGLMHigh)
 	}
 }
 
@@ -59,9 +57,9 @@ func TestResolveGLMAuditModel_UnreadableLLMYAML(t *testing.T) {
 	projectDirResolver = func() string { return root }
 	t.Cleanup(func() { projectDirResolver = old })
 
-	want := config.ModelEffort{Model: config.DefaultGLM53, Effort: "max"}
-	if got := resolveGLMAuditModelEffort(""); got != want {
-		t.Errorf("unreadable llm.yaml: resolveGLMAuditModelEffort() = %+v, want %+v", got, want)
+	got := resolveGLMAuditModelEffort("")
+	if got.Model != config.DefaultGLM53 || got.Effort != "max" {
+		t.Errorf("unreadable llm.yaml: resolveGLMAuditModelEffort() = {%s %s}, want {%s max}", got.Model, got.Effort, config.DefaultGLM53)
 	}
 }
 
@@ -92,8 +90,8 @@ func TestResolveGLMAuditModel_NonGLMSession(t *testing.T) {
 	projectDirResolver = func() string { return root }
 	t.Cleanup(func() { projectDirResolver = old })
 
-	want := config.ModelEffort{Model: config.DefaultGLM53, Effort: "max"}
-	if got := resolveGLMAuditModelEffort(""); got != want {
-		t.Errorf("non-GLM session: resolveGLMAuditModelEffort() = %+v, want %+v", got, want)
+	got := resolveGLMAuditModelEffort("")
+	if got.Model != config.DefaultGLM53 || got.Effort != "max" {
+		t.Errorf("non-GLM session: resolveGLMAuditModelEffort() = {%s %s}, want {%s max}", got.Model, got.Effort, config.DefaultGLM53)
 	}
 }

@@ -124,7 +124,10 @@ func TestGLMAuditPin_RequestBody(t *testing.T) {
 			wantEffort: "",
 		},
 		{
-			name:       "absent pin uses the operator-confirmed default (glm-5.3 with the max reasoning state — REQ-WSS-201)",
+			// SPEC-AGENT-TIER-001: the absent-pin state runs the backend
+			// default pair {glm-5.3, max} — the operator pin effort rides the
+			// fallback (updated in the same commit as the default).
+			name:       "absent pin runs the backend default pair (glm-5.3, max)",
 			pinYAML:    "",
 			wantModel:  glmAuditDefaultModel,
 			wantEffort: glmAuditDefaultEffort,
@@ -176,7 +179,7 @@ func TestGLMAuditPin_TaskResolutionUnaffected(t *testing.T) {
 	withCodexProjectDir(t, root)
 
 	if got := resolveGLMTaskModel(); got != glmTaskDefaultModel {
-		t.Errorf("resolveGLMTaskModel = %q, want the task backend default %q (neither the audit pin nor a per-agent cell reaches glm_task; the task path carries its own constant since the audit pin diverged — REQ-WSS-201/REQ-WSS-204)", got, glmTaskDefaultModel)
+		t.Errorf("resolveGLMTaskModel = %q, want the task default %q (neither the audit pin nor a per-agent cell reaches glm_task; the task default is unchanged by SPEC-AGENT-TIER-001)", got, glmTaskDefaultModel)
 	}
 
 	// The pin DOES apply on the audit resolver under the same config. CR #8:

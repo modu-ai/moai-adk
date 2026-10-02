@@ -9,13 +9,66 @@ package hook
 // to the new directory — in whichever registry the entry actually lives.
 
 import (
+	"errors"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
+
+// relocationGitContext resolves the git worktree context for a target
+// directory: the tree root (git rev-parse --show-toplevel) and the worktree
+// porcelain listing. It is a package variable so tests can express the
+// context without a real git repository — the same test seam shape the
+// session package uses for sessionProcessLiveness.
+var relocationGitContext = func(dir string) (treeRoot, porcelain string, ok bool) {
+	out, err := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		return "", "", false
+	}
+	root := strings.TrimSpace(string(out))
+	if root == "" {
+		return "", "", false
+	}
+	porcelainOut, err := exec.Command("git", "-C", root, "worktree", "list", "--porcelain").Output()
+	if err != nil {
+		return root, "", false
+	}
+	return root, string(porcelainOut), true
+}
+
+// anchorRelocationGuardEnabled reads the opt-in anchor relocation guard flag
+// (workflow.anchor_relocation_guard.enabled, REQ-SAA-005). Nil-safe: a nil
+// provider reads as disabled — the distributed default keeps the guard inert.
+func anchorRelocationGuardEnabled(cfg ConfigProvider) bool {
+	if cfg == nil || cfg.Get() == nil {
+		return false
+	}
+	return cfg.Get().Workflow.AnchorRelocationGuard.Enabled
+}
+
+// relocationTargetContext resolves the target tree root and its git worktree
+// lock in one git-context read. The lock is nil when the context is
+// unresolvable or the tree carries no lock — the ownership evaluation then
+// reads OwnerNone (no lock observable), never a guessed one.
+func relocationTargetContext(newCwd string) (string, *session.LockInfo) {
+	treeRoot, porcelain, ok := relocationGitContext(newCwd)
+	if !ok {
+		return "", nil
+	}
+	locks := session.ParseWorktreeLocks(porcelain)
+	if lock, found := locks[treeRoot]; found {
+		return treeRoot, &lock
+	}
+	if lock, found := locks[resolveSymlinks(treeRoot)]; found {
+		return treeRoot, &lock
+	}
+	return treeRoot, nil
+}
 
 // relocateSessionCwd moves the session's registry entry CWD to newCwd.
 // Candidate registries are found by walking UP from the old and new working
@@ -27,7 +80,12 @@ import (
 // PRIMARY registry is consulted (see relocateRegistryCandidates). Fail-open:
 // no registry found, unreadable registry, or a relocate error leaves
 // everything untouched and never fails the hook.
-func relocateSessionCwd(input *HookInput, newCwd string) {
+//
+// SPEC-SESSION-ANCHOR-ATTR-001 W2: trigger names the hook event driving the
+// relocation (recorded on the audit row), and refuseFlagged is the opt-in
+// anchor relocation guard — when true, an ownership-flagged relocation is
+// refused (ErrRelocationRefused path) instead of proceeding advisory.
+func relocateSessionCwd(input *HookInput, newCwd, trigger string, refuseFlagged bool) {
 	if input == nil || input.SessionID == "" || newCwd == "" {
 		return
 	}
@@ -48,7 +106,32 @@ func relocateSessionCwd(input *HookInput, newCwd string) {
 		if !found {
 			continue
 		}
-		if err := reg.RelocateSession(input.SessionID, newCwd); err != nil {
+
+		// W2: resolve the target-tree ownership context. The git lookups are
+		// fail-open — an unresolvable context degrades the audit row to
+		// OwnerNone and never blocks the relocation.
+		treeRoot, lock := relocationTargetContext(newCwd)
+		anchoredOthers := 0
+		if treeRoot != "" {
+			anchoredOthers = session.CountAnchoredOthers(entries, input.SessionID, treeRoot)
+		}
+
+		_, err = reg.RelocateSessionWithOptions(input.SessionID, newCwd, session.RelocationOptions{
+			Trigger:        trigger,
+			TargetLock:     lock,
+			AnchoredOthers: anchoredOthers,
+			RefuseFlagged:  refuseFlagged,
+		})
+		if err != nil {
+			if errors.Is(err, session.ErrRelocationRefused) {
+				// An intended opt-in refusal (REQ-SAA-005) — the audit row
+				// records it; the hook logs and leaves the registry as-is.
+				slog.Warn("cwd-changed: relocation refused by anchor relocation guard",
+					"session_id", input.SessionID,
+					"new_cwd", newCwd,
+				)
+				return
+			}
 			slog.Warn("cwd-changed: registry relocate failed (non-blocking)",
 				"error", err.Error(),
 				"session_id", input.SessionID,

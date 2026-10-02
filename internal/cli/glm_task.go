@@ -116,21 +116,12 @@ type GLMTaskResult struct {
 	Error string `json:"error,omitempty"`
 }
 
-// glmTaskDefaultModel is the GLM task path's fallback model id: the tier
-// default the launcher injects (config.DefaultGLMHigh = glm-5.3-flash). Named
-// constant per §14, derived rather than restated — and deliberately separate
-// from glmAuditDefaultModel (see resolveGLMTaskModel).
-const glmTaskDefaultModel = config.DefaultGLMHigh
-
-// resolveGLMTaskModel resolves the default GLM task model: the tier default
-// glmTaskDefaultModel (config.DefaultGLMHigh = glm-5.3-flash). MoAI assigns no
-// per-agent model, so no llm.yaml cell is consulted
+// resolveGLMTaskModel resolves the default GLM task model: the task default
+// glmTaskDefaultModel (config.DefaultGLMHigh — UNCHANGED by
+// SPEC-AGENT-TIER-001; the audit pin flip is audit-only, REQ-AMP-008). MoAI
+// assigns no per-agent model, so no llm.yaml cell is consulted
 // (SPEC-AGENT-MODEL-INHERIT-001 design D5); a caller override is handled by
-// handleGLMTask before this is reached. The task path deliberately does NOT
-// read the audit pin family (REQ-AMP-008 / REQ-WSS-204): the audit pins are
-// audit-only, so the operator-confirmed {glm-5.3, max} audit fallback must
-// never leak into task delegation — the shared-constant shape this resolver
-// had before SPEC-WEB-SETTINGS-SAVE-001 made that leak one constant edit away.
+// handleGLMTask before this is reached.
 func resolveGLMTaskModel() string {
 	return glmTaskDefaultModel
 }

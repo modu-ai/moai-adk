@@ -41,23 +41,26 @@ import (
 // than in defaults.go because it is a single-call ceiling, not a cross-package
 // threshold).
 const (
-	// glmAuditDefaultModel is the GLM AUDIT fallback model id: the model
-	// glm_audit uses when no workflow.audit.glm pin names one. Named constant
-	// per §14, still derived from a defaults.go constant rather than restated
-	// as a literal — but since SPEC-WEB-SETTINGS-SAVE-001 REQ-WSS-201
-	// (operator-confirmed 2026-10-01) it deliberately DIVERGES from the tier
-	// default: the audit pin is the full glm-5.3, while the tier default
-	// (config.DefaultGLMHigh) stays glm-5.3-flash for the launcher. The task
-	// path is unaffected (REQ-AMP-008 — the audit pins never delegate tasks;
-	// glm_task keeps its own config.DefaultGLMHigh fallback).
-	glmAuditDefaultModel = config.DefaultGLM53
+	// glmAuditDefaultModel is the GLM AUDIT default model id: the model the
+	// audit path uses when no workflow.audit.glm pin names one. It is the
+	// audit pin target — full glm-5.3 (SPEC-AGENT-TIER-001 REQ-TIER-004/006,
+	// AC-TIER-015) — deliberately NOT the flash slot default: the glm_task
+	// delegation default keeps the flash variant below, so the audit flip
+	// never touches delegation (REQ-AMP-008).
+	glmAuditDefaultModel = config.DefaultGLMAuditModel
 
-	// glmAuditDefaultEffort is the reasoning state the GLM audit request
-	// carries when no pin effort names one (REQ-WSS-201 — created together
-	// with the model switch; the former fallback returned an EMPTY effort,
-	// which omitted the reasoning directive entirely). Vocabulary is the z.ai
-	// reasoning-state set {low, high, max} (REQ-AMP-006).
-	glmAuditDefaultEffort = "max"
+	// glmAuditDefaultEffort is the GLM audit default reasoning state: the
+	// operator pin's effort, forwarded VERBATIM under REQ-AMP-006 (the z.ai
+	// {low, high, max} states; glmAuditReasoningEffort validates the same
+	// set). Replaces the pre-tier EMPTY effort.
+	glmAuditDefaultEffort = config.DefaultGLMAuditEffort
+
+	// glmTaskDefaultModel is the glm_task delegation default: UNCHANGED from
+	// the pre-tier state (config.DefaultGLMHigh, the flash slot default) —
+	// the audit pin is audit-only and never task delegation (REQ-TIER-006 /
+	// REQ-AMP-008). Split from glmAuditDefaultModel so the audit-side flip
+	// cannot drift the task path.
+	glmTaskDefaultModel = config.DefaultGLMHigh
 
 	// glmMessagesPath is appended to config.DefaultGLMBaseURL to form the
 	// Anthropic-compatible /v1/messages endpoint (z.ai accepts Anthropic
@@ -194,10 +197,10 @@ func glmServedModelWarning(requested, served string) string {
 //     z.ai-4xx fail-open to VerdictInconclusive (design decision D3), never a
 //     hard error. Effort rides the pin only when the model is pinned (the
 //     model is the gate — effort alone pins nothing).
-//  2. Otherwise the backend default {glmAuditDefaultModel, max}
-//     (REQ-WSS-201 — the former fallback returned an EMPTY effort, which
-//     omitted the reasoning directive entirely). MoAI assigns no per-agent
-//     model, so no llm.yaml cell is consulted
+//  2. Otherwise the backend default pair glmAuditDefaultModel with
+//     glmAuditDefaultEffort ({glm-5.3, max} — SPEC-AGENT-TIER-001
+//     REQ-TIER-004/006; the effort is forwarded verbatim, REQ-AMP-006).
+//     MoAI assigns no per-agent model, so no llm.yaml cell is consulted
 //     (SPEC-AGENT-MODEL-INHERIT-001 design D5).
 //
 // glm_task never calls it (REQ-AMP-008).

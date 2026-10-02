@@ -57,8 +57,11 @@ func TestAuditConfig_DefaultProfile(t *testing.T) {
 	if a.Claude.Model != "claude-opus-5-5" {
 		t.Errorf("default Claude.Model = %q, want claude-opus-5-5", a.Claude.Model)
 	}
+	// SPEC-AGENT-TIER-001 REQ-TIER-004: the claude effort default flipped
+	// medium → high (operator pin), and the GLM pin ships {glm-5.3, max}
+	// non-empty (REQ-TIER-006). Updated in the same commit as the default.
 	if a.Claude.Effort != "high" {
-		t.Errorf("default Claude.Effort = %q, want high (REQ-WSS-201, operator-confirmed 2026-10-01)", a.Claude.Effort)
+		t.Errorf("default Claude.Effort = %q, want high", a.Claude.Effort)
 	}
 	if a.Codex.Model != "gpt-6.1-sol" {
 		t.Errorf("default Codex.Model = %q, want gpt-6.1-sol", a.Codex.Model)
@@ -66,14 +69,11 @@ func TestAuditConfig_DefaultProfile(t *testing.T) {
 	if a.Codex.Effort != "high" {
 		t.Errorf("default Codex.Effort = %q, want high", a.Codex.Effort)
 	}
-	// GLM pin {glm-5.3, max} (SPEC-WEB-SETTINGS-SAVE-001 REQ-WSS-201): the
-	// formerly EMPTY pin is now operator-confirmed, with the model switch from
-	// the tier default (glm-5.3-flash) to the full 5.3.
 	if a.GLM.Model != "glm-5.3" {
-		t.Errorf("default GLM.Model = %q, want glm-5.3 (REQ-WSS-201)", a.GLM.Model)
+		t.Errorf("default GLM.Model = %q, want glm-5.3", a.GLM.Model)
 	}
 	if a.GLM.Effort != "max" {
-		t.Errorf("default GLM.Effort = %q, want max (REQ-WSS-201)", a.GLM.Effort)
+		t.Errorf("default GLM.Effort = %q, want max", a.GLM.Effort)
 	}
 }
 
