@@ -289,6 +289,76 @@ func TestAutoRankDemotion(t *testing.T) {
 	})
 }
 
+// TestAutoRankJevFindingIsNotASignal (card t1428, sync-audit F2 of t1403): a
+// near-duplicate finding recorded from a Jev answer at admission is a record a
+// person reads (SPEC-JEV-CONSUMERS-001 REQ-JEVN-001/004), not a readiness
+// signal. If the ranking selected on it, an admission-time Jev answer would
+// steer the --auto order through a path that is neither the ranking request nor
+// a mechanical filter, and the REQ-JEVC-011 carve-out would lapse. Every
+// subtest builds the same three cards; only the finding's source differs.
+func TestAutoRankJevFindingIsNotASignal(t *testing.T) {
+	items := func() []kanban.BacklogItem {
+		return []kanban.BacklogItem{
+			rankTestItem("N1", "first of the pair", kanban.ClassPriorityHigh, false),
+			rankTestItem("N2", "second of the pair", kanban.ClassPriorityHigh, false),
+			rankTestItem("C", "clean low card", kanban.ClassPriorityLow, false),
+		}
+	}
+	finding := func(source string) kanban.BacklogFinding {
+		return kanban.BacklogFinding{
+			SubjectID: "N2", RelatedID: "N1",
+			Relation: kanban.BacklogRelationNearDuplicate, Source: source,
+		}
+	}
+
+	t.Run("fallback: a jev-sourced finding demotes nothing", func(t *testing.T) {
+		cards := items()
+		res := autoRankFallback(rankTestRecord(cards, finding(kanban.BacklogSourceJev)), cards, rankLanded(nil))
+		if got, want := rankIDs(res.Ranked), "N1 N2 C"; got != want {
+			t.Fatalf("ranked = [%s], want [%s] — a Jev finding must not move the order", got, want)
+		}
+		if len(res.Flagged) != 0 {
+			t.Errorf("flagged = %v, want none — a Jev finding is not a readiness signal", res.Flagged)
+		}
+	})
+
+	t.Run("control: the same finding from the mechanical source demotes", func(t *testing.T) {
+		cards := items()
+		res := autoRankFallback(rankTestRecord(cards, finding(kanban.BacklogSourceMechanical)), cards, rankLanded(nil))
+		if got, want := rankIDs(res.Ranked), "C N1 N2"; got != want {
+			t.Fatalf("ranked = [%s], want [%s] — the measured near-duplicate signal must still demote", got, want)
+		}
+	})
+
+	t.Run("a mechanical finding beside a jev one on the same pair still demotes", func(t *testing.T) {
+		cards := items()
+		rec := rankTestRecord(cards, finding(kanban.BacklogSourceJev), finding(kanban.BacklogSourceMechanical))
+		res := autoRankFallback(rec, cards, rankLanded(nil))
+		if got, want := rankIDs(res.Ranked), "C N1 N2"; got != want {
+			t.Fatalf("ranked = [%s], want [%s] — only the Jev-sourced finding is ignored, never the pair", got, want)
+		}
+	})
+
+	t.Run("jev source: the request carries no flag from a jev finding and ties fall to priority order", func(t *testing.T) {
+		cards := items()
+		stub := &rankJevStub{reply: rankReplyScores(nil, nil)} // every card ties
+		res := autoRank(rankTestRecord(cards, finding(kanban.BacklogSourceJev)), cards, rankLanded(nil), stub.ask)
+		if res.Source != autoRankSourceJev {
+			t.Fatalf("source = %q, want %q", res.Source, autoRankSourceJev)
+		}
+		if got, want := rankIDs(res.Ranked), "N1 N2 C"; got != want {
+			t.Errorf("ranked = [%s], want [%s] — a full tie falls back to priority then queue order", got, want)
+		}
+		if stub.calls != 1 {
+			t.Fatalf("jev ranker called %d times, want 1", stub.calls)
+		}
+		if state := stub.reqs[0].State; strings.Contains(state, autoRankSignalNearDuplicate) {
+			t.Errorf("request state names %q for a Jev-sourced finding — the answer would be fed back to itself:\n%s",
+				autoRankSignalNearDuplicate, state)
+		}
+	})
+}
+
 // TestAutoRankUnmeasuredSignal — AC-TAP-006 (REQ-TAP-005, M1): a readiness
 // signal that cannot be measured is never read as poor, and the record names
 // it in a note.
