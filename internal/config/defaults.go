@@ -1043,7 +1043,10 @@ func NewDefaultGitStrategyConfig() GitStrategyConfig {
 			GitHubIntegration: false,
 			PushToRemote:      false,
 			AutoCheckpoint:    "disabled",
-			MergeMethod:       "squash",
+			// card t1281: manual-mode cards land as plain merges into the local
+			// integration branch (WT-* --no-ff house practice), so the seeded
+			// default follows the practice instead of contradicting it.
+			MergeMethod: "merge",
 			// SPEC-MAIN-COMMIT-BAN-001 REQ-3.3: 0 disables the batch-push
 			// trigger (template-neutral — manual mode ships push_to_remote:
 			// false, so a nonzero default would push a workflow choice).
