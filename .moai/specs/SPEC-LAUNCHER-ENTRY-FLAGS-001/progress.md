@@ -26,6 +26,374 @@ Plan-phase signal: plan-audit iteration 1 returned FAIL (0.72, audited at `b9242
 
 _<pending run-phase>_
 
+### M1 evidence
+
+Recorded by the run-phase implementation worker (cycle_type tdd, tests only) for milestone M1 of card t1399. The earlier line `_<pending run-phase>_` above is superseded by this subsection and left as written. Every output below was produced in this run; the saved outputs live in the worker scratchpad and are quoted here without editing (long lines are not shortened).
+
+#### Claim
+
+- M1 added tests only: no production file changed (diff against the start HEAD, below). The factory net, the enterable-pair matrix, the AC-009 characterization, the AC-016 frozen-value tests and the AC-017 tolerance tests are green on the unmodified production tree, and each of the eight AC-015 mutants (a)-(h) was observed red against the net before the tests were committed. The AC-004 golden was committed alone, ahead of every other change.
+- Commits (explicit-path staging, English subjects, trailer `Authored-By-Agent: manager-develop`): `0472b060c` (the AC-004 golden alone, plus the spec.md frontmatter `status: draft` to `status: in-progress`); `1379abc9a` (the nine test files); the commit carrying this subsection.
+
+#### Baseline-attribution
+
+- Start state, re-read at the start of the run: `git rev-parse --short HEAD` printed `29bf84c33`, `git branch --show-current` printed `WT-launcher-entry-flags`, `git status --short` printed nothing. HEAD tree `6e67e965586b440b6eec145c2fef20a8c0325d72`. `git diff --stat a6d3e6fd4 29bf84c33 -- internal cmd pkg` printed nothing (exit 0), so the Go sources equal tree `a6d3e6fd4`, the tree every SPEC measurement is pinned to.
+- Golden capture tree: HEAD `29bf84c33` (tree `6e67e965586b440b6eec145c2fef20a8c0325d72`), production sources unmodified, the nine test files untracked in the working tree. Mutant runs: HEAD `0472b060c` (tree `012cbe5dc4d0a8ca03f98db34bc2a5d1f9ab2cb6`) plus the uncommitted test files that were committed unchanged as `1379abc9a`. Green and AC results below: HEAD `1379abc9a` (tree `c65b5971fa23a4f900b68de9949436229e34a48f`), measured in this run.
+- The judging build is the Go toolchain `go1.26.8 darwin/arm64` compiling this tree (every command is `go test`, `go vet` or `go build` on the tree; no installed `moai` binary was used as a measuring instrument).
+- Env hygiene: every test run was one compound invocation `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_FACTORY_AUTO_DISPATCH MOAI_FACTORY_CLEAR_POLICY MOAI_FACTORY_ROLE MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS MOAI_KANBAN_BACKEND && go test ...`; the new tests additionally scrub every `MOAI_FACTORY*` and `MOAI_KANBAN*` variable by prefix inside the test process.
+
+#### The net and its swept counts (AC-015)
+
+Selector, internal/cli (nine names; exactly one of the two settings-test names exists today, so it sweeps 8): `go test ./internal/cli -run '^(TestCCFactoryEntryRecordsFailOpenRunMetadata|TestCCFactoryLaneJoinsDiscoveredLeader|TestGLMFactoryLaneJoinsDiscoveredLeader|TestPrepareKanbanSettingsWritesTransientFile|TestPrepareFactorySettingsWritesTransientFile|TestFactoryNetLeaderLaunch|TestFactoryNetLaneLaunch|TestFactoryNetBlockCap|TestFactoryEntryMatrix)$' -v -count=1` at HEAD `1379abc9a`, exit 0, swept 8 (eight `--- PASS` lines at top level):
+
+```text
+--- PASS: TestCCFactoryLaneJoinsDiscoveredLeader (3.12s)
+--- PASS: TestGLMFactoryLaneJoinsDiscoveredLeader (4.40s)
+--- PASS: TestFactoryNetLeaderLaunch (2.10s)
+    --- PASS: TestFactoryNetLeaderLaunch/cc (0.74s)
+    --- PASS: TestFactoryNetLeaderLaunch/glm (1.35s)
+--- PASS: TestFactoryNetLaneLaunch (5.49s)
+    --- PASS: TestFactoryNetLaneLaunch/cc (3.10s)
+    --- PASS: TestFactoryNetLaneLaunch/glm (2.39s)
+--- PASS: TestFactoryNetBlockCap (1.67s)
+    --- PASS: TestFactoryNetBlockCap/leader (0.71s)
+    --- PASS: TestFactoryNetBlockCap/lane (0.97s)
+--- PASS: TestFactoryEntryMatrix (5.79s)
+    --- PASS: TestFactoryEntryMatrix/claude_leader (0.45s)
+    --- PASS: TestFactoryEntryMatrix/glm_leader (0.54s)
+    --- PASS: TestFactoryEntryMatrix/claude_lane (0.95s)
+    --- PASS: TestFactoryEntryMatrix/glm_lane (0.79s)
+    --- PASS: TestFactoryEntryMatrix/codex_lane (2.68s)
+    --- PASS: TestFactoryEntryMatrix/codex_leader_refused (0.38s)
+--- PASS: TestCCFactoryEntryRecordsFailOpenRunMetadata (0.46s)
+--- PASS: TestPrepareKanbanSettingsWritesTransientFile (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	24.021s
+```
+
+Selector, internal/hook: `go test ./internal/hook -run '^(TestFactoryNetSessionRecord|TestFactoryNetSessionStartNotices)$' -v -count=1`, exit 0, swept 2:
+
+```text
+--- PASS: TestFactoryNetSessionRecord (0.01s)
+    --- PASS: TestFactoryNetSessionRecord/lane (0.00s)
+    --- PASS: TestFactoryNetSessionRecord/leader_signalled_by_the_factory_variable_alone (0.00s)
+    --- PASS: TestFactoryNetSessionRecord/ordinary_session_writes_nothing (0.00s)
+--- PASS: TestFactoryNetSessionStartNotices (1.57s)
+    --- PASS: TestFactoryNetSessionStartNotices/leader (1.04s)
+    --- PASS: TestFactoryNetSessionStartNotices/lane (0.29s)
+    --- PASS: TestFactoryNetSessionStartNotices/ordinary_session_gets_no_factory_notice (0.24s)
+ok  	github.com/modu-ai/moai-adk/internal/hook	2.257s
+```
+
+Selector, internal/discovery: `go test ./internal/discovery -run '^(TestDiscoverLeaderVerifiesLiveLeader|TestDiscoverLeaderDeclinesUnparseableRunID)$' -v -count=1`, exit 0, swept 2:
+
+```text
+--- PASS: TestDiscoverLeaderVerifiesLiveLeader (0.14s)
+--- PASS: TestDiscoverLeaderDeclinesUnparseableRunID (0.09s)
+ok  	github.com/modu-ai/moai-adk/internal/discovery	0.560s
+```
+
+The net's lane launches and the matrix use today's `-f lane`; M2 (cc, glm) and M3 (codex) re-pin them to `-l`. New test files: `internal/cli/factory_net_m1_test.go` (leader launch, lane launch, block cap, matrix), `internal/hook/factory_net_m1_test.go` (session record, SessionStart notices, hook tolerance test).
+
+#### The eight mutants (AC-015) and the AC-017 mutants: verbatim reds
+
+Each mutant is a scratch edit to ONE production file, applied by a script that asserted the exact original text, built (`go build` of the package, exit 0), run against the net selector of the package it targets, and REVERTED immediately by the inverse script; after each revert `git diff --stat -- <file>` printed nothing. Exit code of every red run below: 1. The reds quote the saved output filtered to failing-test names, the assertion lines (`_test.go:N:`) and the package verdict.
+
+**(a) settings injection removed** - edit: `internal/cli/cc.go`: the three `settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)` calls in the factory leader and factory lane branches replaced by `var settingsFlag []string; settingsCleanup := func() {}`. Run: the internal/cli selector above, exit 1.
+
+```text
+    factory_net_m1_test.go:287: the launch argv carries no --settings pair: [--name leader]
+    factory_net_m1_test.go:287: the injected settings payload = map[], want crossSessionInbound=accept
+    factory_net_m1_test.go:287: MOAI_KANBAN_SETTINGS_INJECTED at launch = "", want 1 (the SessionStart hook reads it)
+--- FAIL: TestFactoryNetLeaderLaunch (3.16s)
+    --- FAIL: TestFactoryNetLeaderLaunch/cc (1.54s)
+    factory_net_m1_test.go:338: the launch argv carries no --settings pair: [--name lane-1]
+    factory_net_m1_test.go:338: the injected settings payload = map[], want crossSessionInbound=accept
+    factory_net_m1_test.go:338: MOAI_KANBAN_SETTINGS_INJECTED at launch = "", want 1 (the SessionStart hook reads it)
+--- FAIL: TestFactoryNetLaneLaunch (5.64s)
+    --- FAIL: TestFactoryNetLaneLaunch/cc (3.88s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	33.374s
+FAIL
+```
+
+**(b) block-cap factory clause removed** - edit: `internal/cli/launcher_blockcap_infinite.go`: the `|| os.Getenv(config.EnvMoaiFactoryWorkers) != ""` clause removed from the unconditional-raise condition. Run: the internal/cli selector above, exit 1.
+
+```text
+    factory_net_m1_test.go:398: leader: injectStopHookBlockCapForGoal = [PATH=/usr/bin HOME=/tmp], want "CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200" (the factory clause)
+    factory_net_m1_test.go:405: lane: injectStopHookBlockCapForGoal = [PATH=/usr/bin HOME=/tmp], want "CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200" (the factory clause)
+--- FAIL: TestFactoryNetBlockCap (1.36s)
+    --- FAIL: TestFactoryNetBlockCap/leader (0.51s)
+    --- FAIL: TestFactoryNetBlockCap/lane (0.85s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	25.451s
+FAIL
+```
+
+**(c) a factory marker publish removed** - edit: `internal/cli/factory.go`: `_ = os.Setenv(config.EnvFactoryRole, config.FactoryRoleLane)` removed from `enterFactoryLaneMode`. Run: the internal/cli selector above, exit 1.
+
+```text
+    factory_net_m1_test.go:332: MOAI_FACTORY_ROLE at launch = "", want "lane"
+    factory_net_m1_test.go:332: MOAI_FACTORY_ROLE at launch = "", want "lane"
+--- FAIL: TestFactoryNetLaneLaunch (2.81s)
+    --- FAIL: TestFactoryNetLaneLaunch/cc (1.41s)
+    --- FAIL: TestFactoryNetLaneLaunch/glm (1.40s)
+    factory_net_m1_test.go:462: claude lane did not launch as a lane: role="" worker="lane-1"
+    factory_net_m1_test.go:462: glm lane did not launch as a lane: role="" worker="lane-1"
+    factory_net_m1_test.go:157: stage t1 run: factory stage: refused — not a lane session: set MOAI_FACTORY_ROLE=lane in a lane session (the launcher stamps it)
+--- FAIL: TestFactoryEntryMatrix (6.96s)
+    --- FAIL: TestFactoryEntryMatrix/claude_lane (1.07s)
+    --- FAIL: TestFactoryEntryMatrix/glm_lane (1.11s)
+    --- FAIL: TestFactoryEntryMatrix/codex_lane (2.21s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	27.343s
+FAIL
+```
+
+**(d) discovery read removed** - edit: `internal/discovery/factory_discovery.go`: `runID := strings.TrimSpace(env[config.EnvMoaiKanbanID])` replaced by a read of a key that does not exist (`env["MUTANT_D_NO_SUCH_KEY"]`, with `_ = config.EnvMoaiKanbanID` keeping the import used; the first form, `runID := ""`, failed to BUILD on an unused import and is not counted as a red). Run: the internal/discovery selector above, exit 1.
+
+```text
+    factory_discovery_test.go:106: verified = 0, want 1 ([])
+--- FAIL: TestDiscoverLeaderVerifiesLiveLeader (0.15s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/discovery	0.655s
+FAIL
+```
+
+**(e) session-record role reader returns no role for a factory leader or lane** - edit: `internal/hook/session_start_record.go`: the factory-lane branch and the factory-leader branch of `kanbanRoleFromEnv` guarded with `&& false`. Run: the internal/hook selector above, exit 1.
+
+```text
+    factory_net_m1_test.go:68: the lane wrote no session record: read kanban record: open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestFactoryNetSessionRecordlane690889000/001/.moai/state/todo/net-lane-sess.json: no such file or directory
+    factory_net_m1_test.go:91: the factory leader wrote no session record: read kanban record: open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestFactoryNetSessionRecordleader_signalled_by_the_factory_vari1855199715/001/.moai/state/todo/net-leader-sess.json: no such file or directory
+--- FAIL: TestFactoryNetSessionRecord (0.00s)
+    --- FAIL: TestFactoryNetSessionRecord/lane (0.00s)
+    --- FAIL: TestFactoryNetSessionRecord/leader_signalled_by_the_factory_variable_alone (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	1.595s
+FAIL
+```
+
+**(f) factory SessionStart notice block removed** - edit: `internal/hook/session_start.go`: the call `factoryBootstrapNoticeForSource(input.Source, factoryRoot, input.SessionID, langEnglish)` replaced by `""` (`if notice := ""; notice != "" {`). Run: the internal/hook selector above, exit 1.
+
+```text
+    factory_net_m1_test.go:153: leader notice on additionalContext lacks "netrun01":
+    factory_net_m1_test.go:153: leader notice on additionalContext lacks "/tmp/moai-socket-factory/netrun01":
+    factory_net_m1_test.go:153: leader notice on systemMessage lacks "netrun01":
+    factory_net_m1_test.go:153: leader notice on systemMessage lacks "/tmp/moai-socket-factory/netrun01":
+    factory_net_m1_test.go:157: leader notice on systemMessage never names the leader role:
+    factory_net_m1_test.go:173: lane notice on additionalContext does not name the lane label "lane-2":
+    factory_net_m1_test.go:173: lane notice on systemMessage does not name the lane label "lane-2":
+--- FAIL: TestFactoryNetSessionStartNotices (0.86s)
+    --- FAIL: TestFactoryNetSessionStartNotices/leader (0.30s)
+    --- FAIL: TestFactoryNetSessionStartNotices/lane (0.32s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	1.739s
+FAIL
+```
+
+**(g) lane claim call removed (today's `-f lane` path)** - edit: `internal/cli/cc.go`: `finalLabel, claimErr := resolveFactoryLaneName(...)` replaced by `finalLabel, claimErr := factoryLabel, error(nil)`. Run: the internal/cli selector above, exit 1.
+
+```text
+    factory_net_m1_test.go:343: registry[lane-1] = ({PID:0 RegisteredAt:}, false), want a live claim under pid 8187
+    factory_net_m1_test.go:352: second lane MOAI_FACTORY_WORKER = "lane-1", want "lane-2" (the first claim is live)
+    factory_net_m1_test.go:356: registry lost the second claim: map[]
+--- FAIL: TestFactoryNetLaneLaunch (2.88s)
+    --- FAIL: TestFactoryNetLaneLaunch/cc (1.26s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	21.714s
+FAIL
+```
+
+**(h) `MOAI_KANBAN_BACKEND` publication removed (today's `-f lane` and `-f` paths)** - edit: `internal/cli/kanban.go`: `_ = os.Setenv(config.EnvMoaiKanbanBackend, backend)` replaced by `_ = backend` in `exportKanbanLaunchFacts`. Run: the internal/cli selector above, exit 1.
+
+```text
+    factory_net_m1_test.go:269: MOAI_KANBAN_BACKEND at launch = "", want "claude"
+    factory_net_m1_test.go:269: MOAI_KANBAN_BACKEND at launch = "", want "glm"
+--- FAIL: TestFactoryNetLeaderLaunch (1.88s)
+    --- FAIL: TestFactoryNetLeaderLaunch/cc (0.84s)
+    --- FAIL: TestFactoryNetLeaderLaunch/glm (1.04s)
+    factory_net_m1_test.go:332: MOAI_KANBAN_BACKEND at launch = "", want "claude"
+    factory_net_m1_test.go:332: MOAI_KANBAN_BACKEND at launch = "", want "glm"
+--- FAIL: TestFactoryNetLaneLaunch (5.03s)
+    --- FAIL: TestFactoryNetLaneLaunch/cc (2.56s)
+    --- FAIL: TestFactoryNetLaneLaunch/glm (2.47s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	23.660s
+FAIL
+```
+
+**Bonus, glm path (a)+(g)** - edit: in `internal/cli/glm.go` the three factory-branch `prepareKanbanSettings` calls and the `resolveFactoryLaneName` call replaced exactly as in (a) and (g). Run: `go test ./internal/cli -run '^(TestFactoryNetLeaderLaunch|TestFactoryNetLaneLaunch)$' -v -count=1`, exit 1 (the cc subtests stay PASS, the glm subtests go red, so the rows are independent):
+
+```text
+    factory_net_m1_test.go:287: the launch argv carries no --settings pair: [--name leader]
+    factory_net_m1_test.go:287: the injected settings payload = map[], want crossSessionInbound=accept
+    factory_net_m1_test.go:287: MOAI_KANBAN_SETTINGS_INJECTED at launch = "", want 1 (the SessionStart hook reads it)
+--- FAIL: TestFactoryNetLeaderLaunch (2.28s)
+    --- PASS: TestFactoryNetLeaderLaunch/cc (1.16s)
+    --- FAIL: TestFactoryNetLeaderLaunch/glm (1.12s)
+    factory_net_m1_test.go:338: the launch argv carries no --settings pair: [--name lane-1]
+    factory_net_m1_test.go:338: the injected settings payload = map[], want crossSessionInbound=accept
+    factory_net_m1_test.go:338: MOAI_KANBAN_SETTINGS_INJECTED at launch = "", want 1 (the SessionStart hook reads it)
+    factory_net_m1_test.go:343: registry[lane-1] = ({PID:0 RegisteredAt:}, false), want a live claim under pid 30449
+    factory_net_m1_test.go:352: second lane MOAI_FACTORY_WORKER = "lane-1", want "lane-2" (the first claim is live)
+    factory_net_m1_test.go:356: registry lost the second claim: map[]
+--- FAIL: TestFactoryNetLaneLaunch (3.69s)
+    --- PASS: TestFactoryNetLaneLaunch/cc (2.13s)
+    --- FAIL: TestFactoryNetLaneLaunch/glm (1.56s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	6.939s
+FAIL
+```
+
+**AC-017 mutants, one per package.** Command (all four packages): `go test ./internal/cli ./internal/hook ./internal/web ./internal/statusline -run '^TestPreexistingKanbanArtifactsTolerated$' -v -count=1`.
+
+- cli: `internal/cli/doctor_factory_run.go`, a `default:` case in the role switch of `checkFactoryRun` returning `uikit.CheckFail` for an unknown role (reader fails on an unknown role). Run: the same command, exit 1:
+
+```text
+    launcher_characterization_m1_test.go:191: doctor check "Factory Run" failed on pre-existing kanban artifacts: {Name:Factory Run Status:fail Message:unknown role Detail:}
+--- FAIL: TestPreexistingKanbanArtifactsTolerated (0.12s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.110s
+--- PASS: TestPreexistingKanbanArtifactsTolerated (0.53s)
+ok  	github.com/modu-ai/moai-adk/internal/hook	1.368s
+--- PASS: TestPreexistingKanbanArtifactsTolerated (0.57s)
+ok  	github.com/modu-ai/moai-adk/internal/web	1.351s
+--- PASS: TestPreexistingKanbanArtifactsTolerated (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/statusline	0.432s
+FAIL
+```
+
+- hook, web, statusline (applied together in one second run, each in its own file): hook `internal/hook/session_start_record.go` early return on an existing record removed (the pre-existing record is rewritten); web `internal/web/viewmodel_ops.go` `buildKanban` returns an error when `.moai/state/kanban-board` exists; statusline `internal/statusline/backlog.go` `resolveBacklogCounts` panics when `.moai/state/kanban-board` exists. The cli package stays PASS in this second run because the doctor mutant had already been reverted. Run: the same command, exit 1:
+
+```text
+--- PASS: TestPreexistingKanbanArtifactsTolerated (0.16s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.768s
+    factory_net_m1_test.go:236: the pre-existing record was rewritten:
+--- FAIL: TestPreexistingKanbanArtifactsTolerated (0.61s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	1.612s
+    preexisting_kanban_artifacts_m1_test.go:59: buildKanban failed on pre-existing kanban artifacts: invalid argument
+--- FAIL: TestPreexistingKanbanArtifactsTolerated (0.17s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/web	1.082s
+--- FAIL: TestPreexistingKanbanArtifactsTolerated (0.00s)
+panic: unknown artifact [recovered, repanicked]
+FAIL	github.com/modu-ai/moai-adk/internal/statusline	0.844s
+FAIL
+```
+
+Revert proof: after the last revert, `git status --short` (filtered to tracked changes) printed nothing and `git diff --stat` printed nothing, with HEAD `0472b060c`, before the tests were committed.
+
+#### The AC-004 golden
+
+- Golden: `internal/cli/testdata/lane_entry_env_golden.json`, three rows (cc, glm, codex) of the `MOAI_FACTORY*` and `MOAI_KANBAN*` environment today's `-f lane` publishes. The codex row carries `MOAI_KANBAN_LABEL=lane-1` (the Codex lane child stamps it today); the cc and glm rows carry `MOAI_KANBAN_ID`, `MOAI_KANBAN_BACKEND`, `MOAI_KANBAN_SETTINGS_INJECTED`, `MOAI_FACTORY_ROLE`, `MOAI_FACTORY_WORKER`, `MOAI_FACTORY_WORKERS`, `MOAI_FACTORY_CLEAR_POLICY`, `MOAI_FACTORY_AUTO_DISPATCH`.
+- Capture command (run once with the capture mode of the test, output to the worker scratchpad, then copied into the tree): `unset <the eleven variables above> && MOAI_LANE_GOLDEN_WRITE=<scratchpad>/lane_entry_env_golden.json go test ./internal/cli -run '^TestLaneMarkerGoldenMatchesFLane$' -count=1 -v`, exit 0, final capture output below; tree HEAD `29bf84c33` (tree `6e67e965586b440b6eec145c2fef20a8c0325d72`). A first capture was discarded and not committed: it took its environment through an existing helper that sets the lane variables to empty strings, which wrote `MOAI_KANBAN`, `MOAI_KANBAN_CARD`, `MOAI_KANBAN_LABEL` and `MOAI_KANBAN_LEAD_ADDR` into the cc and glm rows as published empties; the final capture removes the variables by prefix (key absent, not empty) and is the committed one.
+```text
+    lane_entry_golden_m1_test.go:149: golden written to /private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/0dcdf2d5-df5c-4da1-8870-24c2a5861303/scratchpad/lane_entry_env_golden.json
+--- PASS: TestLaneMarkerGoldenMatchesFLane (6.94s)
+    --- PASS: TestLaneMarkerGoldenMatchesFLane/cc (1.60s)
+    --- PASS: TestLaneMarkerGoldenMatchesFLane/glm (1.67s)
+    --- PASS: TestLaneMarkerGoldenMatchesFLane/codex (3.66s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	8.357s
+```
+
+- Commit order (the commit graph is the only ordering witness, verification-claim-integrity 2.3): `0472b060c` carries the golden and the frontmatter line only (`git show --stat` printed two files); the test that compares against it is in the later commit `1379abc9a`.
+- M1 check, `go test ./internal/cli -run '^TestLaneMarkerGoldenMatchesFLane$' -v -count=1`, exit 0:
+
+```text
+--- PASS: TestLaneMarkerGoldenMatchesFLane (4.21s)
+    --- PASS: TestLaneMarkerGoldenMatchesFLane/cc (0.82s)
+    --- PASS: TestLaneMarkerGoldenMatchesFLane/glm (0.90s)
+    --- PASS: TestLaneMarkerGoldenMatchesFLane/codex (2.49s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	4.888s
+```
+
+#### AC results
+
+| AC | Result | Exit | Swept |
+|----|--------|------|-------|
+| AC-004 (M1 form) | PASS | 0 | 1 parent, 3 subtests |
+| AC-009 | PASS | 0 | 5 |
+| AC-015 | PASS (net green, eight mutants red) | 0 / 0 / 0 | 8 / 2 / 2 |
+| AC-016 | PASS | 0 each | 1 / 2 / 1 / 1 |
+| AC-017 | PASS | 0 | 1 in each of the four packages |
+
+Commands, all this run at HEAD `1379abc9a`:
+
+- AC-004 (golden against today's `-f lane`; the `-l` parity test is M2's): `go test ./internal/cli -run '^TestLaneMarkerGoldenMatchesFLane$' -v -count=1`
+- AC-009: `go test ./internal/cli -run '^(TestCCFactoryEntryRecordsFailOpenRunMetadata|TestLeaderEntryUnchanged|TestCGRetiredEntryAndModeHaveZeroEffects|TestCGRetirementCompleteEntryShapesAndCounters|TestBareMoaiPrintsBannerAndHelp)$' -v -count=1`
+- AC-015: the three selectors in the net section above
+- AC-016: `go test ./internal/config -run '^TestFactoryMarkerValuesFrozen$' -v -count=1`; the discovery selector of AC-015; `go test ./internal/codexwiring -run '^TestMCPServerEnvVarsKeepFactoryMarkers$' -v -count=1`; `go test ./internal/kanban -run '^TestLegacyStateDirStillRead$' -v -count=1` (the AC names ./internal/factory; the package is ./internal/kanban through M7)
+- AC-017: `go test ./internal/cli ./internal/hook ./internal/web ./internal/statusline -run '^TestPreexistingKanbanArtifactsTolerated$' -v -count=1`
+
+AC-009 output:
+
+```text
+--- PASS: TestCGRetiredEntryAndModeHaveZeroEffects (0.00s)
+--- PASS: TestCGRetirementCompleteEntryShapesAndCounters (2.45s)
+--- PASS: TestCCFactoryEntryRecordsFailOpenRunMetadata (1.30s)
+--- PASS: TestLeaderEntryUnchanged (3.68s)
+    --- PASS: TestLeaderEntryUnchanged/cc_-f (1.11s)
+    --- PASS: TestLeaderEntryUnchanged/cc_--factory (0.86s)
+    --- PASS: TestLeaderEntryUnchanged/glm_-f (0.75s)
+    --- PASS: TestLeaderEntryUnchanged/glm_--factory (0.68s)
+    --- PASS: TestLeaderEntryUnchanged/codex_-f_has_no_leader_entry (0.28s)
+    --- PASS: TestLeaderEntryUnchanged/gpt_is_an_unknown_command (0.00s)
+--- PASS: TestBareMoaiPrintsBannerAndHelp (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	8.167s
+```
+
+AC-016 outputs:
+
+```text
+--- PASS: TestFactoryMarkerValuesFrozen (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/config	0.317s
+--- PASS: TestMCPServerEnvVarsKeepFactoryMarkers (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/codexwiring	0.670s
+--- PASS: TestLegacyStateDirStillRead (0.10s)
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.527s
+```
+
+AC-017 output:
+
+```text
+--- PASS: TestPreexistingKanbanArtifactsTolerated (0.09s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.756s
+--- PASS: TestPreexistingKanbanArtifactsTolerated (0.32s)
+ok  	github.com/modu-ai/moai-adk/internal/hook	0.730s
+--- PASS: TestPreexistingKanbanArtifactsTolerated (0.35s)
+ok  	github.com/modu-ai/moai-adk/internal/web	0.734s
+--- PASS: TestPreexistingKanbanArtifactsTolerated (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/statusline	0.194s
+```
+
+#### Hygiene and scope
+
+- `gofmt -l` over the nine test files: no output (exit 0). `go vet ./internal/cli ./internal/hook ./internal/discovery ./internal/config ./internal/codexwiring ./internal/kanban ./internal/statusline ./internal/web`: exit 0. `GOOS=windows GOARCH=amd64 go vet` over the same eight packages: exit 0 (the windows vet type-checks the new test files). `go build ./...`: exit 0. `GOOS=windows GOARCH=amd64 go build ./...`: exit 0.
+- Scope: `git diff --stat 29bf84c33 HEAD` at `1379abc9a` lists exactly eleven files: the spec.md frontmatter line, `internal/cli/testdata/lane_entry_env_golden.json`, and nine `*_test.go` files (1379 insertions, 1 deletion). `git diff --stat 29bf84c33 HEAD -- ':!*_test.go'` lists only `.moai/specs/SPEC-LAUNCHER-ENTRY-FLAGS-001/spec.md` (`2 +-`) and the golden (`31 +`). No production file changed; no template file changed.
+- spec.md: `git diff` showed one changed line, `status: draft` to `status: in-progress`. The `updated:` field already read `2026-10-02`, the date of this run, so it was left as it was.
+
+#### Gaps
+
+- AC-004's `-l` parity (`TestLaneEntryEnvParity`) is M2's and M3's; at M1 only today's `-f lane` rows are compared with the golden.
+- AC-017 clause "the hook emits no kanban notice" does NOT hold today. Measured in this run (scratch probe, removed): with `MOAI_KANBAN=1` and `MOAI_KANBAN_LABEL=plan` the real SessionStart handler returns `Kanban Mode: joined the kanban run as plan.` on both the agent context and the operator message. The AC text calls the test green today and the notice is deleted at M5b, so the M1 hook test asserts tolerance only (no error, the pre-existing record left byte-identical and readable); the absence of the notice is pinned by AC-014's `TestSessionStartEmitsNoKanbanNotice` at M5b. This is a contradiction inside AC-017, returned for the orchestrator.
+- AC-017: the behavior of a live old session is unexercised (research.md R14 gap 8). The web test covers the two builders `buildOverview` and `buildKanban`; the statusline test covers the queue-count read, the only statusline reader of that state tree (the statusline has no session-record reader, measured by grep over `internal/statusline`); the doctor test covers `checkFactoryRun` and `checkOwnerLabelDrift`, not the whole `moai doctor` run.
+- Mutants were applied to `cc.go` and `glm.go` for (a) and (g), and to the lane role marker for (c); not mutated: the leader's `MOAI_KANBAN_LEAD_ADDR` publish, the codex child markers in `codexCardLaunchEnv`, the codex lane claim `ClaimFactoryLaneWithin`, and the three platform process readers of `MOAI_KANBAN_ID` in `internal/discovery/leader_readers_*.go` (the discovery tests inject fakes; no test exercises a real process read). The net's codex lane row asserts the child markers and the matrix launch, not the registry claim.
+- Mutants (g) and (h) are observed on today's `-f lane` path only; the AC requires them to be re-observed on the `-l` path after the M2 re-pin.
+- The notice assertions of `TestFactoryNetSessionStartNotices` are limited to facts that survive the M4 rewrite (the run id, the leader socket, the lane label, the word leader); the lane-guidance wording is M4's and AC-010's.
+- Only the selectors named above were run. The whole-package suites of the eight touched packages and the race detector were not run (scope discipline; no `moai slot` lease was taken because nothing wider than a selector ran). A test I did not run is not asserted green.
+- plan-audit obligation J.5 item 1 (size the AC-018 exact-four-files grep sweep behind the audit's measured 123 files / 502 lines at M1, and record the measured edit list) was not part of this delegation and was not done; it remains open for the orchestrator.
+- Worktree-guard refusals, each re-issued as a plain command with no measurement replaced by source reading: (1) a `sed` over `acceptance.md` through a shell variable was refused, and the file was read with the Read tool instead; (2) a `go test` compound that used a shell variable for the scratchpad path was refused, and the identical run was re-issued with literal paths; (3) a compound that read `${PIPESTATUS[0]}` was refused, and the runs were re-issued with the output redirected to a file and `echo $?` after it.
+- Test hygiene note: the new tests use `t.Setenv` and `t.Chdir` and are therefore not parallel; no OTEL variable is set; no real network and no real engine binary is started (the engine launch and the codex child launch are substituted); the cc and glm launches write transient settings files under the OS temp directory, which the launcher removes on return.
+- The golden was captured with the test file that is committed later (capture mode behind `MOAI_LANE_GOLDEN_WRITE`); there is no separate generator program, so the golden's provenance is this record plus the commit order, not a re-runnable tool outside that test.
+
+#### Residual-risk
+
+- The net proves the factory still publishes today's markers and records through today's seams; it does not prove a real `claude`, `glm` or `codex` session behaves the same, because every engine launch is substituted.
+- The golden fixes the lane marker set for the three backends from one fixture each (run id `run-cli`, label `lane-1`, one picked card for codex). A marker that appears only under another option (`--clear-policy`, `--no-auto-dispatch`, `--factory-run`, the discovery path's `MOAI_KANBAN_LEAD_NAME`) is covered by AC-005's composition rows at M2, not by this golden.
+- Mutant strength is bounded by the eight edits chosen; a defect shaped differently from them (for example a marker published with a wrong value rather than removed) is caught only where an assertion names the value.
+
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
