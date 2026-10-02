@@ -225,7 +225,7 @@ Every answer names the tree root and commit it was computed from. The edge layer
 |------|---------|----------|----------------|
 | `mcp__moai__jev_ask` | Ask typed questions over one supplied state and receive typed answers with probabilities | unavailable at the shipped default (`workflow.jev.enabled: false`) | — (MCP-only) |
 
-The tool is always registered, but with the gate off it builds no request and makes no network call. Its answer is a signal for a person to read — never a completion verdict, merge approval, queue mutation, or gate input.
+The tool is always registered, but with the gate off it builds no request and makes no network call. Its answer is a signal for a person to read, and on its own it is never a completion verdict, merge approval, or queue mutation. Where software uses it automatically, it is only as a signal — for example the order in which `moai todo --auto` considers queued cards, or an optional Kickoff cross-check that can only confirm or hand over to a person.
 
 ### Factory messaging
 

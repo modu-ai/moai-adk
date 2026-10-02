@@ -235,7 +235,7 @@ workflow:
         max_scan_dirs: 128
     # jev: the TypeSafe System One judgment capability. It answers a typed
     # question about a supplied state and returns a typed answer with a
-    # probability; it generates no text and decides nothing. Ships OFF, and
+    # probability; it generates no text and makes no decision itself. Ships OFF, and
     # while it is off no request is constructed and no network call is made, so
     # a project that never opts in pays nothing and reaches no third-party
     # endpoint.
