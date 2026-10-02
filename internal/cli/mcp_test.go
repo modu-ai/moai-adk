@@ -154,6 +154,120 @@ func TestMCP_Add_IdempotentSkip(t *testing.T) {
 	}
 }
 
+// TestMCP_Add_AsideDocumentedCommandLine pins the documented registration line
+// for the optional Aside MCP server:
+//
+//	moai mcp add aside --command aside --args mcp [--scope user]
+//
+// It drives the real cobra command (flag parsing included) twice against a
+// temporary project directory (project scope, via the working directory) and a
+// temporary home (user scope, via the userHomeDirFn seam). Each scope must end
+// with exactly one `aside` entry whose args are ["mcp"], leave unrelated entries
+// intact, and leave the file byte-identical after the second run.
+//
+// Deliberately NOT t.Parallel(): swaps the package-global userHomeDirFn and
+// changes the working directory.
+func TestMCP_Add_AsideDocumentedCommandLine(t *testing.T) {
+	const seed = `{
+  "mcpServers": {
+    "context7": {"command":"npx","args":["-y","@upstash/context7-mcp@latest"]}
+  },
+  "otherSetting": "keep-me"
+}
+`
+	cases := []struct {
+		name  string
+		file  string
+		extra []string
+		setup func(t *testing.T, dir string)
+	}{
+		{
+			name: "project",
+			file: ".mcp.json",
+			setup: func(t *testing.T, dir string) {
+				t.Chdir(dir)
+			},
+		},
+		{
+			name:  "user",
+			file:  ".claude.json",
+			extra: []string{"--scope", "user"},
+			setup: func(t *testing.T, dir string) {
+				orig := userHomeDirFn
+				userHomeDirFn = func() (string, error) { return dir, nil }
+				t.Cleanup(func() { userHomeDirFn = orig })
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			path := filepath.Join(dir, tc.file)
+			if err := os.WriteFile(path, []byte(seed), 0o600); err != nil {
+				t.Fatalf("seed %s: %v", tc.file, err)
+			}
+			tc.setup(t, dir)
+
+			run := func() {
+				t.Helper()
+				cmd := newMCPCmd()
+				cmd.SetOut(&bytes.Buffer{})
+				cmd.SetErr(&bytes.Buffer{})
+				cmd.SetArgs(append([]string{"add", "aside", "--command", "aside", "--args", "mcp"}, tc.extra...))
+				if err := cmd.Execute(); err != nil {
+					t.Fatalf("documented command line failed: %v", err)
+				}
+			}
+
+			run()
+			first, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("read %s after first run: %v", tc.file, err)
+			}
+			run()
+			second, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("read %s after second run: %v", tc.file, err)
+			}
+			if !bytes.Equal(first, second) {
+				t.Errorf("%s changed on the second identical run (want byte-identical):\nfirst=%s\nsecond=%s", tc.file, first, second)
+			}
+
+			var doc struct {
+				Servers map[string]map[string]any `json:"mcpServers"`
+				Other   string                    `json:"otherSetting"`
+			}
+			if err := json.Unmarshal(second, &doc); err != nil {
+				t.Fatalf("unmarshal %s: %v", tc.file, err)
+			}
+			asideEntries := 0
+			for name := range doc.Servers {
+				if name == "aside" {
+					asideEntries++
+				}
+			}
+			if asideEntries != 1 {
+				t.Fatalf("aside entries = %d, want exactly 1: %v", asideEntries, doc.Servers)
+			}
+			aside := doc.Servers["aside"]
+			if aside["command"] != "aside" {
+				t.Errorf("aside command = %v, want %q", aside["command"], "aside")
+			}
+			args, _ := aside["args"].([]any)
+			if len(args) != 1 || args[0] != "mcp" {
+				t.Errorf("aside args = %v, want [\"mcp\"]", aside["args"])
+			}
+			if _, ok := doc.Servers["context7"]; !ok {
+				t.Errorf("unrelated entry context7 was not preserved: %v", doc.Servers)
+			}
+			if doc.Other != "keep-me" {
+				t.Errorf("unrelated top-level key otherSetting = %q, want %q", doc.Other, "keep-me")
+			}
+		})
+	}
+}
+
 // TestMCP_Add_ConcurrentWriter — AC-TMC-005 concurrent-writer sub-scenario.
 // Inject a non-cooperating external write between the prep-read and the in-lock
 // compare via the package-global claudeJSONGuardPreLockHook; the guard's

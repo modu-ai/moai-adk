@@ -110,6 +110,10 @@ type leakClass struct {
 	// defined over date literals, so applying it to a SPEC-ID or REQ-token
 	// class would silently widen the exemption beyond its adjudicated scope.
 	dateCarveOut bool
+	// cardIDBaselined, when true, subjects the class to the card-id baseline:
+	// the (file, literal) pairs in cardIDBaseline are residue that predates the
+	// class and are not flagged. Only the C9 card-id class sets it.
+	cardIDBaselined bool
 }
 
 // skillBodyPrefix is the relative-path prefix (under templatesRoot) that
@@ -335,6 +339,17 @@ var leakClasses = []leakClass{
 		name:            "C8-constraint-token-c-ph",
 		pattern:         regexp.MustCompile(`\bC-PH-[0-9]{3}\b`),
 		skillMoaiScoped: true,
+	},
+	{
+		// C9 — bare internal card id (card t1447). No prior class covers this
+		// shape: a card citation shipped to every user project while the guard
+		// passed. Three or four digits matches the project's card ids; the one-
+		// and two-digit `t` tokens in the tree are not cards. Residue that
+		// predates the class is a (file, literal) baseline, removal-only — see
+		// cardIDBaseline in card_id_leak_test.go.
+		name:            "C9-card-id",
+		pattern:         regexp.MustCompile(`\bt[0-9]{3,4}\b`),
+		cardIDBaselined: true,
 	},
 }
 
@@ -1516,6 +1531,10 @@ func collectLeakViolations(displayPath, relForAllowlist, text string, classes []
 				}
 				// DC-3/DC-2b/DC-5-PRESERVE content-anchored date allowlist.
 				if class.dateCarveOut && isDateAllowlisted(relForAllowlist, trimmed) {
+					continue
+				}
+				// Card-id baseline: residue that predates the C9 class.
+				if class.cardIDBaselined && isCardIDBaselined(relForAllowlist, trimmed) {
 					continue
 				}
 				out = append(out, displayPath+" | class="+class.name+" | match="+trimmed)

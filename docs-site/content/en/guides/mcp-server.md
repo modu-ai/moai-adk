@@ -60,9 +60,9 @@ The key point is that "MoAI does not provision MCP" is a **half-truth**. It is t
 
 `staggeredStartup` is a Claude Code runtime field that regulates servers so they start sequentially. When there are multiple servers, it prevents a simultaneous-startup race.
 
-### Four documented-but-disabled entries
+### Five documented-but-disabled entries
 
-The distribution default activates only the `moai` server. Four external servers are documented but disabled, and are turned on with the `moai mcp add <name>` command.
+The distribution default activates only the `moai` server. Five external servers are documented but disabled, and are turned on with the `moai mcp add <name>` command.
 
 | Server | Purpose | Activation |
 |--------|---------|------------|
@@ -70,6 +70,9 @@ The distribution default activates only the `moai` server. Four external servers
 | `chrome-devtools` | Headless browser automation | `moai mcp add chrome-devtools` |
 | `playwright` | Browser automation + E2E testing | `moai mcp add playwright` |
 | `ast-grep` | Structural code search and refactoring | `moai mcp add ast-grep` |
+| `aside` | Optional browser agent that works inside a logged-in browser (exec, repl) | `moai mcp add aside --command aside --args mcp --scope user` |
+
+`aside` is optional. It is not part of the default configuration, and no workflow depends on it. To register it for every project, run `moai mcp add aside --command aside --args mcp --scope user`; omit `--scope user` to register it for the current project only. `aside mcp` exposes two tools: `exec` runs the browser agent on logged-in sites, and `repl` runs Playwright-style JavaScript against open pages. Because it works inside the operator's own logged-in browser, MoAI uses it read-only by default and never with `--permission full-access`. `aside repl` has no permission flag, so read-only use of the REPL is an operating rule, not something the tool enforces. Any state-changing step needs the operator's explicit confirmation, which only the MoAI orchestrator (never a subagent) asks for and runs. MoAI never installs Aside; to add Aside's own browser skill, the operator runs `aside skills install` themselves. In the E2E workflow Aside is used only when `/moai e2e --tool aside` is passed explicitly (unavailable when `CI=true`), and when Aside is absent the workflow continues silently on the platform default toolchain.
 
 ### Neutrality contract
 
@@ -222,7 +225,7 @@ Every answer names the tree root and commit it was computed from. The edge layer
 |------|---------|----------|----------------|
 | `mcp__moai__jev_ask` | Ask typed questions over one supplied state and receive typed answers with probabilities | unavailable at the shipped default (`workflow.jev.enabled: false`) | — (MCP-only) |
 
-The tool is always registered, but with the gate off it builds no request and makes no network call. Its answer is a signal for a person to read — never a completion verdict, merge approval, queue mutation, or gate input.
+The tool is always registered, but with the gate off it builds no request and makes no network call. Its answer is a signal for a person to read, and on its own it is never a completion verdict, merge approval, or queue mutation. Where software uses it automatically, it is only as a signal — for example the order in which `moai todo --auto` considers queued cards, or an optional Kickoff cross-check that can only confirm or hand over to a person.
 
 ### Factory messaging
 

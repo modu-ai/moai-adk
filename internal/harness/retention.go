@@ -25,6 +25,14 @@ const pruneSkipDuration = time.Hour
 // inject a mock clock stay deterministic).
 const pruneStateSuffix = ".prune-state"
 
+// tmpPattern names the temp file the log rewrite creates next to the log; the orphan
+// sweep matches the same pattern so the two cannot drift apart.
+const tmpPattern = "usage-log-*.tmp"
+
+// orphanTmpMinAge is how old a tmpPattern file must be before the sweep deletes it. A live
+// rewrite takes seconds and a hook is killed at 5 s, so a file this old has no writer.
+const orphanTmpMinAge = 10 * time.Minute
+
 // maxStampBytes bounds how much of the state file is read; a stamp is ~35 bytes.
 //
 // @MX:NOTE: [AUTO] Anything longer than this is not a stamp we wrote, so it parses as "no stamp".
@@ -107,7 +115,8 @@ func (r *Retention) PruneStaleEntries(retentionDays int) error {
 // clock reading, because the previous holder may have stamped while this process waited.
 // @MX:NOTE: [AUTO] Stamp-before-work: a pruner killed after archiving and before the rename leaves the
 // stamp, so the same events are archived again at most once per interval, not by every later hook.
-// A kill mid-rewrite can still leave an orphan usage-log-*.tmp; nothing sweeps those.
+// A kill mid-rewrite leaves an orphan usage-log-*.tmp; the lock holder sweeps the old ones
+// on the next cycle (sweepOrphanTmp).
 func (r *Retention) pruneExclusive(statePath string, retentionDays int) error {
 	sf, err := os.OpenFile(statePath, os.O_RDWR|os.O_CREATE, 0o644)
 	if err != nil {
@@ -134,7 +143,35 @@ func (r *Retention) pruneExclusive(statePath string, retentionDays int) error {
 		return fmt.Errorf("retention: prune state write failed: %w", err)
 	}
 
-	return r.prune(retentionDays, now)
+	err = r.prune(retentionDays, now)
+	r.sweepOrphanTmp(now)
+	return err
+}
+
+// sweepOrphanTmp deletes usage-log-*.tmp files next to the log that are older than
+// orphanTmpMinAge: leftovers of a rewrite whose process was killed before the rename.
+// The caller holds the state-file lock, so no other pruner on this machine is rewriting.
+//
+// Best effort: nothing here fails the prune. Only regular files qualify (a directory or
+// symlink with a matching name is not ours). It runs after the prune, so a slow sweep (many
+// large leftovers) cannot spend the hook's 5 s budget before the log itself is pruned; a sweep
+// cut short by the kill resumes at the next cycle.
+func (r *Retention) sweepOrphanTmp(now time.Time) {
+	dir := filepath.Dir(r.logPath)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		if ok, _ := filepath.Match(tmpPattern, e.Name()); !ok || !e.Type().IsRegular() {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil || now.Sub(info.ModTime()) < orphanTmpMinAge {
+			continue
+		}
+		_ = os.Remove(filepath.Join(dir, e.Name()))
+	}
 }
 
 // readStamp returns the (bounded) content of an open state file.
@@ -314,7 +351,7 @@ func appendToGzip(archivePath string, events []Event) error {
 func overwriteWithEvents(logPath string, lines []logLine) error {
 	// Write to temporary file first, then atomic replacement
 	dir := filepath.Dir(logPath)
-	tmp, err := os.CreateTemp(dir, "usage-log-*.tmp")
+	tmp, err := os.CreateTemp(dir, tmpPattern)
 	if err != nil {
 		return fmt.Errorf("임시 파일 생성: %w", err)
 	}

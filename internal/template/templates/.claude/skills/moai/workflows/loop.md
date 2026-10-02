@@ -183,7 +183,7 @@ Agent selection by issue type (domain expertise injected per-spawn per `.claude/
 - Type errors, logic bugs: manager-develop subagent (or orchestrator verification batch)
 - Import/module issues: manager-develop (or per-spawn `Agent(general-purpose)` backend/frontend specialist) — inject `At start, invoke Skill("moai-ref-api-patterns")` for backend import/module work
 - Test failures: manager-develop subagent — inject `At start, invoke Skill("moai-ref-testing-pyramid")` for test-suite structure
-- A bounded mechanical subtask may use the optional external-model delegation described in `.claude/skills/moai/workflows/run.md` § External Model Delegation
+- A bounded mechanical subtask may use the optional external-model delegation described in `.claude/skills/moai/workflows/run/external-delegation.md` § External Model Delegation
 - Security issues: per-spawn `Agent(general-purpose)` security reviewer — inject `At start, invoke Skill("moai-ref-owasp-checklist") for the OWASP Top 10 baseline.`
 - Performance issues: per-spawn `Agent(general-purpose)` performance specialist
 
