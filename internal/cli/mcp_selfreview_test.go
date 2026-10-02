@@ -970,8 +970,14 @@ func TestSelfReview_SourceReferencesNoAuditMachinery(t *testing.T) {
 			t.Errorf("control: mcp_codex.go references %q %d time(s), want >= %d", tok, n, min)
 		}
 	}
-	// P11: the package-wide receipt-writing call sites are the same four lines
-	// as before this milestone (one definition + three calls).
+	// P11: the self-review milestone added no receipt-writing call site. Before
+	// it the package carried four lines (one definition + three calls). The
+	// audit_multi path later moved to recordAuditReceiptAt, which takes the
+	// call-start codex gate (SPEC-AUDIT-MODEL-CONVERGE-001 M9); the sites are
+	// therefore counted under both spellings: recordAuditReceipt( on its
+	// definition and the two codex_audit calls (3), recordAuditReceiptAt( on its
+	// definition, the delegation inside recordAuditReceipt and the audit_multi
+	// call (3). The self-review file stays at zero (checked above).
 	entries, err := os.ReadDir(".")
 	if err != nil {
 		t.Fatal(err)
@@ -982,13 +988,13 @@ func TestSelfReview_SourceReferencesNoAuditMachinery(t *testing.T) {
 			continue
 		}
 		for line := range strings.SplitSeq(srReadFile(t, e.Name()), "\n") {
-			if strings.Contains(line, "recordAuditReceipt(") && !strings.HasPrefix(strings.TrimSpace(line), "//") {
+			if (strings.Contains(line, "recordAuditReceipt(") || strings.Contains(line, "recordAuditReceiptAt(")) && !strings.HasPrefix(strings.TrimSpace(line), "//") {
 				sites++
 			}
 		}
 	}
-	if sites != 4 {
-		t.Errorf("recordAuditReceipt( appears on %d non-comment lines, want the same 4 as before this milestone", sites)
+	if sites != 6 {
+		t.Errorf("recordAuditReceipt( / recordAuditReceiptAt( appear on %d non-comment lines, want the 6 the receipt writers and their callers occupy (the self-review tools add none)", sites)
 	}
 }
 

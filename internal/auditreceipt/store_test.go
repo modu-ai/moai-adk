@@ -27,7 +27,10 @@ func requiredTree(t *testing.T, gate string) string {
 	return canonical
 }
 
-// The gate is read raw and matched exactly: only the literal `required` opts in.
+// The gate is read raw and matched case-sensitively after trimming surrounding
+// whitespace (the resolver's reading, SPEC-AUDIT-MODEL-CONVERGE-001 EC-1): only
+// the literal `required` opts in, and a padded value reads like the trimmed one
+// on every audit surface.
 func TestCodexGateRequired_ExactMatchOnly(t *testing.T) {
 	for _, tc := range []struct {
 		gate string
@@ -37,12 +40,65 @@ func TestCodexGateRequired_ExactMatchOnly(t *testing.T) {
 		{"advisory", false},
 		{"off", false},
 		{"", false},
-		{"\"required \"", false},
+		{"\"required \"", true},
 		{"REQUIRED", false},
 	} {
 		if got := CodexGateRequired(requiredTree(t, tc.gate)); got != tc.want {
 			t.Errorf("CodexGateRequired(gate=%q) = %v, want %v", tc.gate, got, tc.want)
 		}
+	}
+}
+
+// workflowYAMLTree writes body as the tree's workflow.yaml (an empty body writes
+// no file) and returns the canonical root.
+func workflowYAMLTree(t *testing.T, body string) string {
+	t.Helper()
+	root := t.TempDir()
+	if body != "" {
+		dir := filepath.Join(root, ".moai", "config", "sections")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("MkdirAll: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "workflow.yaml"), []byte(body), 0o644); err != nil {
+			t.Fatalf("WriteFile: %v", err)
+		}
+	}
+	canonical, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatalf("EvalSymlinks: %v", err)
+	}
+	return canonical
+}
+
+// The predicate follows the audit plan (SPEC-AUDIT-MODEL-CONVERGE-001 AC-ACV-010):
+// an audit.model token that requires codex opts the tree in, an explicit gate
+// overrides the token, and the default profile and an invalid value do not.
+func TestCodexGateRequired_FromModelToken(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		yaml string
+		want bool
+	}{
+		{"multi", "workflow:\n  audit:\n    model: multi\n", true},
+		{"codex", "workflow:\n  audit:\n    model: codex\n", true},
+		{"padded token", "workflow:\n  audit:\n    model: \" multi \"\n", true},
+		{"explicit gate required", "workflow:\n  audit:\n    gates:\n      codex: required\n", true},
+		{"claude token leaves codex on the default", "workflow:\n  audit:\n    model: claude\n", false},
+		{"glm token turns codex off", "workflow:\n  audit:\n    model: glm\n", false},
+		{"empty token", "workflow:\n  audit:\n    model: \"\"\n", false},
+		{"pins only", "workflow:\n  audit:\n    codex:\n      model: gpt-6.1-sol\n      effort: high\n", false},
+		{"no file", "", false},
+		{"multi with advisory override", "workflow:\n  audit:\n    model: multi\n    gates:\n      codex: advisory\n", false},
+		{"multi with off override", "workflow:\n  audit:\n    model: multi\n    gates:\n      codex: \"off\"\n", false},
+		{"unknown token reads as not required", "workflow:\n  audit:\n    model: grok\n", false},
+		{"unknown gate reads as not required", "workflow:\n  audit:\n    model: multi\n    gates:\n      codex: requird\n", false},
+		{"unparseable file", "workflow: [unterminated\n", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := CodexGateRequired(workflowYAMLTree(t, tc.yaml)); got != tc.want {
+				t.Errorf("CodexGateRequired(%q) = %v, want %v", tc.yaml, got, tc.want)
+			}
+		})
 	}
 }
 

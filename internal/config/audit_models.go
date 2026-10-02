@@ -13,9 +13,9 @@ package config
 // @MX:NOTE: [AUTO] audit_models.go — multi-model audit enum + AuditConfig surface for the MCP audit backends
 // @MX:SPEC: SPEC-MOAI-MCP-SERVER-001
 
-// AuditModel enum (audit_model in workflow.yaml). `multi` is a DECLARED token
-// only — its convergence logic is owned by SPEC-AUDIT-MULTI-MODEL; the M3
-// surface accepts the token but does NOT orchestrate the parallel fan-out.
+// AuditModel enum (audit_model in workflow.yaml). The token is validated and
+// consumed by ResolveAuditPlan, which maps it to a per-backend gate; the `multi`
+// fan-out across backends is orchestrated by the audit_multi tool.
 const (
 	// AuditModelClaude is the default single-backend audit model.
 	AuditModelClaude = "claude"
@@ -23,9 +23,9 @@ const (
 	AuditModelCodex = "codex"
 	// AuditModelGLM selects the GLM reviewer as the active backend.
 	AuditModelGLM = "glm"
-	// AuditModelMulti declares the multi-auditor convergence model. Accepted as
-	// a stored value; its convergence logic is deferred to
-	// SPEC-AUDIT-MULTI-MODEL (AP-8).
+	// AuditModelMulti selects the multi-auditor convergence model: the
+	// audit_multi tool fans the review out across the backends and converges
+	// their verdicts.
 	AuditModelMulti = "multi"
 )
 

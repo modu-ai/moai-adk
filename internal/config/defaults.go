@@ -671,6 +671,14 @@ var DefaultCodexTaskTimeout = 600 * time.Second
 // process group and writes no verdict. Not a const so a test can shorten it.
 var DefaultCodexAuditTimeout = 20 * time.Minute
 
+// DefaultCodexAuditLegTimeout bounds the codex leg of one `audit_multi` call.
+// The leg is the same kind of work DefaultCodexAuditTimeout bounds — a read-only
+// review of a SPEC or diff — so it takes that value instead of restating it, and
+// stays distinct from DefaultCodexTaskTimeout (delegated work) and
+// DefaultCodexReviewGateTimeout (a Stop hook) so tuning one cannot move another.
+// Not a const so a test can shorten it.
+var DefaultCodexAuditLegTimeout = DefaultCodexAuditTimeout
+
 // DefaultCodexAuditListTimeout bounds the `codex mcp list --json` lookup the
 // audit launcher runs before the audit to learn which MCP servers to disable.
 // The lookup makes no model call, so its bound is short.

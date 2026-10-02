@@ -46,6 +46,18 @@ func receiptTarget(projectRoot string) (root, source string) {
 // identified there is no store: the write is skipped, never redirected, and
 // notice says so (REQ-WSR-004).
 func recordAuditReceipt(tool, projectRoot, codexVerdict, gateUnmet string) (id, notice string) {
+	return recordAuditReceiptAt(tool, projectRoot, codexVerdict, gateUnmet, nil)
+}
+
+// recordAuditReceiptAt is recordAuditReceipt with the codex gate the exposure
+// follows supplied by the caller: a non-nil codexRequired is the gate fixed at
+// call start (the one the unmet-gate enforcement used), so the id exposed and
+// the verdict persisted cannot disagree under an edit of the tree's
+// configuration made while the backends ran (SPEC-AUDIT-MODEL-CONVERGE-001
+// REQ-ACV-009). A nil codexRequired keeps the read of the tree's configuration
+// that every caller carrying no call-start plan has always had. The receipt is
+// recorded either way; only its exposure follows the gate.
+func recordAuditReceiptAt(tool, projectRoot, codexVerdict, gateUnmet string, codexRequired *bool) (id, notice string) {
 	root, source := receiptTarget(projectRoot)
 	if root == "" {
 		return "", ""
@@ -66,7 +78,13 @@ func recordAuditReceipt(tool, projectRoot, codexVerdict, gateUnmet string) (id, 
 		slog.Warn("audit receipt not recorded", "tool", tool, "tree_root", root, "error", err)
 		return "", ""
 	}
-	if !receiptCodexGateRequired(root) {
+	var required bool
+	if codexRequired != nil {
+		required = *codexRequired
+	} else {
+		required = receiptCodexGateRequired(root)
+	}
+	if !required {
 		return "", ""
 	}
 	return id, ""

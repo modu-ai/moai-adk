@@ -31,6 +31,8 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // Store layout, all relative to the canonical tree root.
@@ -99,8 +101,9 @@ const (
 const codexVerdictInconclusive = "inconclusive"
 
 // gateRequired is the ONLY value that opts a tree into the receipt checks. The
-// comparison is exact on the raw configured string: a trimmed or case-folded
-// match would turn a typo into an enforcement nobody asked for.
+// resolver (config.ResolveAuditPlan) trims surrounding whitespace and matches
+// case-sensitively, so a case-folded or misspelled value is rejected rather than
+// turned into an enforcement nobody asked for.
 const gateRequired = "required"
 
 // Now is the clock the store stamps records with; tests replace it.
@@ -199,11 +202,14 @@ func IsAuditorAgent(agentType string) bool {
 	return agentType == AgentPlanAuditor || agentType == AgentSyncAuditor
 }
 
-// CodexGateRequired reports whether the tree EXPLICITLY declares
-// workflow.audit.gates.codex: required. A missing file, an unreadable file, a
-// missing key, and any other value all read as "not required" — the engine
-// default is deliberately not consulted, because a default nobody wrote is not
-// an opt-in.
+// CodexGateRequired reports whether the tree EXPLICITLY makes the codex gate
+// required: workflow.audit.gates.codex is `required`, or workflow.audit.model is
+// a token whose plan requires codex (`multi`, `codex`) and no explicit gate
+// overrides it (SPEC-AUDIT-MODEL-CONVERGE-001 REQ-ACV-009). A missing file, an
+// unreadable file, a missing key, an invalid value, and any other gate all read
+// as "not required" — the engine default is deliberately not consulted, because
+// a default nobody wrote is not an opt-in. The loud error for an invalid value
+// belongs to audit_multi and the plan verb, not to this hook-side path.
 func CodexGateRequired(treeRoot string) bool {
 	return rawCodexGate(treeRoot) == gateRequired
 }
@@ -233,6 +239,14 @@ func ServedGateEnabled(treeRoot string) bool {
 	return wrapper.Workflow.ServedModelGate.Enabled
 }
 
+// rawCodexGate returns the codex gate the tree's own workflow.yaml writes — the
+// audit.gates.codex value, or the codex cell the audit.model token assigns —
+// resolved by the same function every other audit surface reads. The input is the
+// RAW section value (never a default-merged configuration): a merged read pairs
+// the model token `claude` with the default gates and would opt every project in.
+// Only the two keys it needs are decoded, so an unrelated malformed key (a pin)
+// cannot erase the reading. Any failure — no file, unreadable, a value the
+// resolver rejects — returns "".
 func rawCodexGate(treeRoot string) string {
 	if strings.TrimSpace(treeRoot) == "" {
 		return ""
@@ -244,6 +258,7 @@ func rawCodexGate(treeRoot string) string {
 	var wrapper struct {
 		Workflow struct {
 			Audit struct {
+				Model string `yaml:"model"`
 				Gates struct {
 					Codex string `yaml:"codex"`
 				} `yaml:"gates"`
@@ -253,7 +268,15 @@ func rawCodexGate(treeRoot string) string {
 	if err := yaml.Unmarshal(data, &wrapper); err != nil {
 		return ""
 	}
-	return wrapper.Workflow.Audit.Gates.Codex
+	audit := wrapper.Workflow.Audit
+	plan, err := config.ResolveAuditPlan(config.AuditConfig{
+		Model: audit.Model,
+		Gates: config.AuditGates{Codex: audit.Gates.Codex},
+	}, config.AuditGates{})
+	if err != nil {
+		return ""
+	}
+	return plan.ExplicitGates().Codex
 }
 
 // StateDir returns the store directory for a tree.

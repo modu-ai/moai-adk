@@ -364,7 +364,7 @@ func seamSectionFields() []FieldDef {
 		// (the IDENTICAL interpreter the wizard writes + the MCP handlers read —
 		// no fork). audit_model is the active backend; the three gates are the
 		// per-auditor strictness. Typed as text (the enum is validated at the M3
-		// config-read layer, activeAuditBackend); the wizard offers the validated
+		// config-read layer, config.ResolveAuditPlan); the wizard offers the validated
 		// select for the primary path.
 		// The audit enum LABELS stay English by design (applyI18n's ".opt."
 		// guard). What each value DOES is carried by per-option descriptions
