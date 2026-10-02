@@ -117,11 +117,12 @@ var validOverrideEfforts = map[string]bool{
 
 // retainedAgentNames is the closed set of canonical agent names an
 // llm.agent_overrides entry may key on (REQ-AFR-006, REQ-MPM-007 lineage).
-// It is the CURRENT 12-agent roster (.claude/agents/moai/, measured
-// 2026-10-02) — manager-todo in, mission-governor out — plus the Anthropic
-// built-in Explore, which keeps its entry so pre-restore overrides for it
-// stay valid and resolvable. A newly retained agent must be registered here
-// before an operator can target it with an override.
+// It is the canonical retained catalog (template.RetainedAgents lineage, 13
+// names): the definition-file agents at the 2026-10-02 measurement
+// (manager-todo in, mission-governor out) plus the Anthropic built-in
+// Explore, which keeps its entry so pre-restore overrides for it stay valid
+// and resolvable. A newly retained agent must be registered here before an
+// operator can target it with an override.
 var retainedAgentNames = map[string]bool{
 	"manager-spec":    true,
 	"plan-auditor":    true,

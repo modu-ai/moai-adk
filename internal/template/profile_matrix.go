@@ -17,10 +17,11 @@ package template
 //     rows take the max pair, the old opus/medium rows the medium pair, and
 //     the old low rows the low pair — preserving the old shape's per-row
 //     monotonicity (high >= medium >= low) under the current values.
-//   - The roster is the CURRENT 12-agent catalog: mission-governor is gone,
-//     manager-todo is in (plan §D.4-1). Explore keeps its mapped cell so
-//     pre-restore overrides for it stay resolvable, but it is not on the
-//     console roster (it has no file under .claude/agents/moai/).
+//   - The roster is the canonical retained catalog (template.RetainedAgents:
+//     manager-todo in, mission-governor out at the 2026-10-02 measurement).
+//     The display roster filters Explore (no definition file) from the
+//     console rows; Explore keeps a mapped cell so pre-restore overrides for
+//     it stay resolvable.
 //   - The `llm.profiles` config-mirror lookup and the harness-class machinery
 //     are NOT re-ported: the config mirror is not re-shipped (plan §D.1 — the
 //     Go matrix stays the SSOT) and llm.harness_agents stays retired.
@@ -116,26 +117,25 @@ func AgentGroup(agent string) (string, bool) {
 	return g, ok
 }
 
-// profileMatrixAgentOrder is the canonical display/derivation order of the
-// 12-agent roster for the console's client-side matrix island (the grid rows
-// themselves come from the live agentfm scan; this order feeds the per-profile
-// cell enumeration).
-var profileMatrixAgentOrder = []string{
-	"manager-spec",
-	"plan-auditor",
-	"sync-auditor",
-	"manager-develop",
-	"super-advisor",
-	"manager-design",
-	"manager-lead",
-	"builder-harness",
-	"e2e-tester",
-	"manager-docs",
-	"manager-git",
-	"manager-todo",
-}
+// profileMatrixAgentOrder is the console's display/derivation roster for the
+// client-side matrix island: the CANONICAL retained roster
+// (template.RetainedAgents — the single roster literal in the tree) filtered
+// to the agents with definition files. The built-in Explore has no file under
+// .claude/agents/moai/ and is off the console surface, so it is filtered here
+// by name — the one restatement this derivation needs, and the roster
+// membership itself is rosterguard-asserted against the canonical literal.
+var profileMatrixAgentOrder = func() []string {
+	var out []string
+	for _, name := range RetainedAgents() {
+		if name == "Explore" {
+			continue
+		}
+		out = append(out, name)
+	}
+	return out
+}()
 
-// ProfileMatrixAgents returns a defensive copy of the canonical roster order
+// ProfileMatrixAgents returns a defensive copy of the console roster order
 // (the web/CLI matrix surfaces iterate this rather than restating a second
 // literal).
 func ProfileMatrixAgents() []string {

@@ -3,8 +3,10 @@ package web
 // agent_overrides_test.go — SPEC-WEB-AGENTFM-RESTORE-001 M2: the inverted
 // agent-settings tests (plan §D.5 row 1 — the observational-RED baseline).
 // agent_settings_removed_test.go asserted the surface's ABSENCE
-// (SPEC-AGENT-MODEL-INHERIT-001 REQ-AMI-011); card t1411 restores the console
-// surface, so these tests assert its PRESENCE + EFFECT instead:
+// (SPEC-AGENT-MODEL-INHERIT-001 REQ-AMI-011 — its two absence-mode tests are
+// deleted with that file, unquoted here so the AC-AFR-012 0-hit grep stays
+// clean); card t1411 restores the console surface, so these tests assert its
+// PRESENCE + EFFECT instead:
 //
 //   - TestAgentOverridesSubsection  — the llm-panel sub-section renders every
 //     parseable .claude/agents/moai/ agent with wired selects (REQ-AFR-001);
@@ -21,9 +23,9 @@ package web
 //
 // These are written BEFORE the M3 save path and M4 render exist: their first
 // run is the verbatim RED recorded in progress.md §E.2 (E8), and M3/M4 make
-// them pass. The two absence-mode tests this file replaces
-// (TestAgentSettingsTab_IsNotRendered, TestAgentSettingsFields_ArePostedWithoutEffect)
-// are deleted with their file — AC-AFR-012 pins their 0-hit.
+// them pass. The two absence-mode tests this file replaces are deleted with
+// their file — AC-AFR-012 pins their identifier 0-hit, so they are
+// deliberately not quoted here.
 
 import (
 	"bytes"
@@ -35,6 +37,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"gopkg.in/yaml.v3"
 )
@@ -519,4 +523,48 @@ func sliceAgentRow(t *testing.T, body, name string) string {
 		end = start + 1 + next
 	}
 	return body[start:end]
+}
+
+// TestAgentOverridesSeams covers AC-AFR-011 (REQ-AFR-012): the save path's
+// list/parse/persist seams are injectable — substituting them observes ONLY
+// the substitution (the substituted persist owns the write, so llm.yaml is
+// untouched by the real seam), and the default wiring stays in place on a
+// fresh app (agentfm.List / applyAgentOverrides assigned by newApp).
+func TestAgentOverridesSeams(t *testing.T) {
+	a, root := seedAgentOverridesProject(t)
+	writeLLMYAML(t, root, "llm:\n  mode: \"\"\n  glm_env_var: GLM_API_KEY\n")
+
+	var observed []string
+	defaultList := a.listAgentFMs
+	a.listAgentFMs = func(dir string) ([]agentfm.AgentInfo, error) {
+		observed = append(observed, "listAgentFMs")
+		return defaultList(dir) // chain to the default scan: the parse path needs the roster
+	}
+	a.patchAgentFM = func(string, map[string]config.ModelEffort, []string) error {
+		observed = append(observed, "patchAgentFM")
+		return nil // the substituted persist writes nothing
+	}
+
+	rec := postSave(t, a, agentOverridesForm(map[string]string{
+		"agentfm.manager-develop.model":  "opus",
+		"agentfm.manager-develop.effort": "xhigh",
+	}))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("save status = %d; body:\n%s", rec.Code, rec.Body.String())
+	}
+	seen := strings.Join(observed, ",")
+	if !strings.Contains(seen, "listAgentFMs") || !strings.Contains(seen, "patchAgentFM") {
+		t.Errorf("the substituted seams were not both observed: %s", seen)
+	}
+	if got := readSectionFile(t, root, "llm"); strings.Contains(got, "opus") {
+		t.Errorf("the real persist ran although the seam was substituted:\n%s", got)
+	}
+
+	// Default wiring identity on a fresh app: both seams are non-nil (the
+	// canonical agentfm.List / applyAgentOverrides assignments), so the
+	// substitution above is the only actor that differed.
+	fresh := newApp(Config{ProjectRoot: root, ProfileName: "default"})
+	if fresh.listAgentFMs == nil || fresh.patchAgentFM == nil || fresh.applyPerfTierEdits == nil {
+		t.Fatal("default agent-overrides wiring is nil on a fresh app — the seams were not wired")
+	}
 }

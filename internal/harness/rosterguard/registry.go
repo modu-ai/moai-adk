@@ -34,6 +34,78 @@ func Registry() []Site {
 		},
 		// ── Go rosters that have drifted ───────────────────────────────────
 		{
+			// SPEC-WEB-AGENTFM-RESTORE-001 M5 (plan §D.2 re-judgment): the
+			// restored override-validation closed set re-enumerates the
+			// retained catalog (plus Explore, kept so pre-restore overrides
+			// stay resolvable). New-row evidence written from this file's
+			// measured shape, not from the deleted surface's old note.
+			// Membership only: the file's prose carries no roster-count claim
+			// (the numeral layer finds none on this path — measured), so a
+			// Count row here would be a registered path no numeral hit
+			// reaches.
+			ID:         "profile-override-agent-names",
+			Path:       "internal/config/profile.go",
+			Axis:       AxisRetainedRoster,
+			Claims:     ClaimMembership,
+			BlockStart: "var retainedAgentNames = map[string]bool{",
+			BlockEnd:   "}",
+			Note: "The llm.agent_overrides validation closed set. Membership " +
+				"mirrors the canonical roster (incl. Explore); asserted " +
+				"against the accessor so a catalog change cannot silently " +
+				"leave the override surface validating stale names.",
+		},
+		{
+			// SPEC-WEB-AGENTFM-RESTORE-001 M5 (plan §D.2 re-judgment): the
+			// re-ported matrix's group layer keys on the retained catalog —
+			// same enumeration shape, same assertion. Membership only, for
+			// the same measured reason as the row above.
+			ID:         "profile-matrix-group-membership",
+			Path:       "internal/template/profile_matrix.go",
+			Axis:       AxisRetainedRoster,
+			Claims:     ClaimMembership,
+			BlockStart: "var agentGroupMembership = map[string]string{",
+			BlockEnd:   "}",
+			Note: "The agent→group layer of the restored profile matrix. The " +
+				"display roster (ProfileMatrixAgents) derives from the " +
+				"canonical accessor — this row covers only the membership " +
+				"map, whose keys restate the catalog to carry group values.",
+		},
+		{
+			// SPEC-WEB-AGENTFM-RESTORE-001 M4/M5: the restored grid's display
+			// bucket classifier names the agents it ranks; every unranked
+			// name (manager-lead, Explore, harness specialists) legitimately
+			// falls to the "other" bucket, so the listing is partial by
+			// design. It claims no roster count and no membership — the
+			// ranking is display order, not catalog policy — hence a
+			// subset-by-design row with an empty Claim set: the sweep's
+			// registration requirement is what this row discharges.
+			ID:         "agentfm-grid-bucket-rank",
+			Path:       "internal/web/agentfm.go",
+			Axis:       AxisSubsetByDesign,
+			BlockStart: "func agentGroupRank(name string) int {",
+			BlockEnd:   "return 4 // other (harness specialists, …)",
+			Note: "agentGroupRank assigns the grid's five display buckets; " +
+				"the names it enumerates are bucket members, not a roster " +
+				"claim.",
+		},
+		{
+			// SPEC-WEB-AGENTFM-RESTORE-001 M5: the agentdesc.<name>
+			// translation keys enumerate the catalog (ko/ja/zh — en carries
+			// the frontmatter baseline instead, the registered en-exempt
+			// prefix), and the agent_tiers class keys add the explore class,
+			// so the file's union is the full canonical roster. Whole-file
+			// membership: a catalog change now obliges a translation-key
+			// change in the same breath, which is exactly the coupling the
+			// console's agentdesc rows need.
+			ID:         "i18n-agentdesc-keys",
+			Path:       "internal/web/assets/i18n.js",
+			Axis:       AxisRetainedRoster,
+			Claims:     ClaimMembership,
+			Note: "agentdesc.<name> ko/ja/zh keys plus the agent_tiers class " +
+				"keys enumerate the retained roster; asserted whole-file " +
+				"because the names appear only inside these translation keys.",
+		},
+		{
 			ID:         "delegationmap-retained-catalog",
 			Path:       "internal/harness/delegationmap/types.go",
 			Axis:       AxisRetainedRoster,

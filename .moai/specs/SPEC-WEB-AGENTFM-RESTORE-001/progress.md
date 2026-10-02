@@ -74,3 +74,24 @@ _<pending sync-phase>_
 - 테스트: TestHaikuEffortLock·TestGLMReasoningColumn 신설(AC-AFR-009/010 — GLM 열은 template.ResolveGLMReasoningForModel 동일 호출 단언, Claude 백엔드 미렌더 실측), fieldsets_states_test.go 확장(TestAgentFMRowStates 재포트 + TestAgentOverridesSubsectionStates — 파싱 실패 행·빈 목록·Custom 선선택), TestAgentOverridesSubsection의 파싱-실패 행 어설션을 구 표준 형태에 정렬(비편집 행은 data-agent-row 마커 없음 — 테스트 결함 수정).
 - §B-4 코멘트 정합: handlers.go model_policy 각주("agent-overrides 프로필 셀렉터의 중복"으로), schemaform.go agentfm-gridnote 관례 각주, restyle_test.go warn 배너 갈라냄 각주. main_test.go:9는 복원 후에도 참이어서 무변경.
 - 관측: web 패키지 전량 GREEN(M2 역반전 테스트 전부 GREEN 전환 완료 — TestAgentOverridesSubsection·TestPerfTierSave·TestAgentOverridesSave·TestAgentFrontmatterUntouched). lint 0 issues. go build + GOOS=windows 빌드 exit 0.
+
+### M5 — i18n·가드 재등록 (M4 커밋 49719635e 이후)
+
+- i18n 잔여분: fieldDesc.agentfm.* 11종(model.{inherit,haiku,sonnet,opus,fable}+custom+effort.{low,medium,high,xhigh,max}) 4-locale 재수재 — 구 색상 키(red/orange/blue/lightblue)는 배지가 모델 유도로 재포트되어 참조하지 않아 미수재(계획 수치 13은 plan-phase 산정, run 재판정 11 — §D.5 신규 재판정 원칙). agentdesc.<12 로스터> ko/ja/zh 재수재(manager-todo 신규 작성, mission-governor 키 소멸, 11종은 현역 서술과 일치하는 구 번역 재사용). 섹션 UI 키 8종은 M4에서 선수재 완료.
+- i18nEnExemptPrefixes 재등록: agentdesc. — 정당화 문구(en baseline은 frontmatter SSOT를 data-i18n-baseline으로 서버 렌더, en 사전 키는 SSOT 중복) 동반. 거버넌스 전 테스트(TestI18nKeyCoverageForward/Reverse·Parity·Allowlist) GREEN.
+- rosterguard/numeral 재판정(§D.2 — 구 노트 미인용, 파일 실측): (a)중복 리터럴 제거 — profileMatrixAgentOrder를 RetainedAgents() 유도(Explore 필터)로 재작성(retained_agents.go 앵커의 "두 번째 수제 로스터 금지" 계약 준수, 테스트도 유도 계약 단언으로 전환); (b)신규 등록 4행 — internal/config/profile.go(retainedAgentNames, retained-roster membership), internal/template/profile_matrix.go(agentGroupMembership, retained-roster membership), internal/web/agentfm.go(agentGroupRank, subset-by-design — 버킷 랭킹은 부분 나열이며 카탈로그 정책 아님), internal/web/assets/i18n.js(agentdesc+agent_tiers 키의 합집합 = 정준 로스터, retained-roster membership — 카탈로그 변경이 번역 키 변경을 강제하는 결합이 콘솔 행이 필요로 하는 것); (3)카운트 산문 정합 — "12-agent catalog/roster" 문구를 정준 계보 서술로 재작성(수치 축 미적중 실측). rosterguard 전 패키지 GREEN.
+- 측정 기록: registry ClaimCount 시도 → "32 reachable Count paths but 30 discharged" 산술 불일치 실측(등록된 카운트 행이 도달하는 수치 히트가 없음) → 재산정(prose가 수치 클레임이 아님) → membership 전용 행으로 확정. 신규 파일의 착수 재판정(§D.5)이 실제로 두 번 작동한 사례.
+
+### §E.3 Run-phase Audit-Ready Signal
+
+- run_complete_at: 2026-10-02 (M1→M5 완료, 커밋 5종 — §E.2 마일스톤 행 각각)
+- run_status: audit-ready (커버리지·경계 grep·양방향 빌드·lint·web 전체 스위트 실측 — 아래 E-항목 행)
+- M5b 미착수(소유자: manager-spec 재위임 — plan §F M5b). M6 전체 검증은 오케스트레이터 몫.
+
+### M5 후행 (AC-AFR-011 보강 + 증거 수집)
+
+- TestAgentOverridesSeams 신설(AC-AFR-011 — §D.11): listAgentFMs/patchAgentFM 치환 시 대체된 seam만 관측(치환된 persist가 소관을 가져 실 llm.yaml 무기록 실측) + 신규 앱의 기본 배선 3종(listAgentFMs·patchAgentFM·applyPerfTierEdits) non-nil 실측. GREEN.
+- AC-AFR-012 증거 정합: agent_overrides_test.go 머리 주석이 구 absent 테스트 식별자를 인용 → EV-AFR-012 0-hit grep(1히트 실측) 위반으로 주석을 비-인용 형태로 재작성 → 0히트 실측. `still renders` 문구 결합 마커 5종: agentfm 표면 결합 0히트 실측(나머지 11히트는 타 표면의 무관 부재 테스트).
+- 역방향 회귀 관측: TestCodexResolution_IgnoresPerAgentLLMCells GREEN(스폰-경로 무시 계약 생존 — REQ-AFR-002).
+
+- 커버리지 실측(이 트리, 이 런): internal/settings/agentfm 94.4% · internal/settings 87.0% · internal/config 82.8% · internal/template 84.4% · internal/web 73.5%. acceptance.md 간접 검증이 이름하는 2패키지 중 agentfm ≥85% 충족; template은 84.4%로 0.6pt 미달 — 신규 파일 기여분과 기존 레거시 기여분의 구분은 -coverprofile 산출 후 보고(아래 행), 본 SPEC 범위 밖 레거시 코드의 기여분이 있으면 sync-auditor 판정 자료로 남긴다.

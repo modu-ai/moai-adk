@@ -40,32 +40,32 @@ var matrixModels = map[string]bool{
 	defaultMatrixModelMedium: true,
 }
 
-// TestProfileMatrixAgents_CurrentRoster pins the display roster to the CURRENT
-// 12-agent catalog (.claude/agents/moai/ measured 2026-10-02): manager-todo in,
-// mission-governor out (plan §D.4-1).
+// TestProfileMatrixAgents_CurrentRoster pins the display roster's derivation
+// contract: ProfileMatrixAgents is the CANONICAL retained roster
+// (template.RetainedAgents — the single roster literal, rosterguard-asserted)
+// filtered to the console rows, so the names here are never restated as a
+// second literal. Semantic pins: mission-governor absent, Explore off-console,
+// every definition-file agent present.
 func TestProfileMatrixAgents_CurrentRoster(t *testing.T) {
 	agents := ProfileMatrixAgents()
-	want := []string{
-		"manager-spec",
-		"plan-auditor",
-		"sync-auditor",
-		"manager-develop",
-		"super-advisor",
-		"manager-design",
-		"manager-lead",
-		"builder-harness",
-		"e2e-tester",
-		"manager-docs",
-		"manager-git",
-		"manager-todo",
+	var want []string
+	for _, name := range RetainedAgents() {
+		if name == "Explore" {
+			continue
+		}
+		want = append(want, name)
 	}
 	if !slices.Equal(agents, want) {
-		t.Errorf("ProfileMatrixAgents = %v, want %v", agents, want)
+		t.Errorf("ProfileMatrixAgents = %v, want the canonical roster minus Explore: %v", agents, want)
 	}
-	for _, a := range agents {
-		if a == "mission-governor" {
-			t.Error("mission-governor must not appear (retired from the catalog)")
-		}
+	if slices.Contains(agents, "mission-governor") {
+		t.Error("mission-governor must not appear (retired from the catalog)")
+	}
+	if slices.Contains(agents, "Explore") {
+		t.Error("Explore must not appear (no definition file — off the console surface)")
+	}
+	if !slices.Contains(agents, "manager-todo") {
+		t.Error("manager-todo must appear (current catalog)")
 	}
 }
 
