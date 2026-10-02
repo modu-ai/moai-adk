@@ -229,6 +229,123 @@ git diff --quiet develop...HEAD -- internal/pkg/; echo "diff_exit=$?"
 
 Guard behaviour is version-dependent — one shape has already been observed to flip between these two versions — so **state the version whenever you add a row here, and read the version before citing one.** No behaviour above is known to hold at any version other than the one its row names.
 
+## Session-anchor misresolution — recovery, boundary, and the silent hazard
+
+This section is the discipline record for the cross-lane session-anchor misresolution class (cards t1337 and t1339, 2026-09-29), added by SPEC-SESSION-ANCHOR-ATTR-001. It documents what to do when it happens, where the boundary of the fixable sits, and what the corrected incident record says.
+
+### Recovery procedure (anchor resolved to the wrong tree, or refusals from your own tree)
+
+`ExitWorktree` — answering its prompt with **keep** — then re-enter your own tree with `EnterWorktree(<own worktree path>)`. Re-entry registers a fresh session anchor, which is the only repo-side lever that exists. This is the recovery that worked for the wedged-`cd` precedent (`feedback_worktree_cd_wedge`): a session whose working directory had wedged inside the primary checkout recovered only by leaving and re-entering, not by retrying the command.
+
+Do **not** wait for a refused subagent command to clear on its own, and do not restart the subagent expecting the refusal to follow the restart — the t1337 record below shows refusals persisting with no restart involved.
+
+### The boundary: the emitting anchor is runtime state
+
+The state that emits `This session is isolated in the worktree …` is owned by the **Claude Code runtime**, not this repository — the same boundary the refusal-discriminator table at the top of this file states for the guard itself. What this repository owns is (1) the detection token the failure observer matches on (`worktreeGuardAnchor` in `internal/hook/post_tool_failure.go`, pinned by its killed-mutant tests) and (2) its own anchor stores (git worktree locks, the session registries). The runtime anchor's internal storage and keying are **unobserved** — recorded as unknown, and no sentence in this file asserts more about them than that.
+
+### The silent path-less-command hazard (t741)
+
+Refusal is not guaranteed. Card t741 measured that a **path-less** command — no `cd`, no `-C`, no explicit path anywhere — executes **silently** in whatever tree the session's anchor currently resolves to: twelve such calls passed with zero refusals while the parent session moved between trees. A re-anchored worker is therefore invisible: nothing refuses, nothing logs, and the worker cannot tell its later work landed in a different tree from its earlier work. Never move a session's tree while a background worker or auditor is live (§ A background subagent carries no anchor of its own above), and treat a verification that ran during a tree move as a Gap until its tree is accounted for.
+
+### The corrected incident records
+
+- **t1337** (2026-09-29, worker-69): immediately after the parent session's `EnterWorktree` move (card t1315's tree), a subagent's writes were refused wholesale. The refusals persisted **without any subagent restart**. Earlier paraphrases saying the refusals persisted "across subagent restart" contradict the first-hand record — do not propagate that wording; the correct statement is *no restart was involved*.
+- **t1339** (2026-09-29, worker-66, during card t1314's run): the Bash worktree session anchor misresolved to **another lane's tree** (`.claude/worktrees/develop`) for several minutes, then returned after wholesale Bash refusals. **Zero wrong-tree writes landed** — the guards held on every write — but the store structure the misresolution flowed through (a shared, last-writer-wins anchor state with no audit) is the defect class this section and SPEC-SESSION-ANCHOR-ATTR-001's instruments address.
+- **Severity note**: both observed events were denial-only, but the class is not denial noise — the silent variant above is measured, a misdirected registry `cwd` feeds the disposal guard (`LiveAnchoredSessions`), and the reproduction condition is standard lane-parallel operation (factory/kanban), not an edge case.
+
+### Measuring the next occurrence
+
+Two repo-owned instruments now make the next occurrence session-attributable:
+
+1. **`MOAI_ANCHOR_TRACE=1`** — one verbose JSONL row per anchor decision (branch-guard Seam A anchor reads, registry relocations, disposal-side anchor decisions), each carrying `session_id`, `pid`, `cwd`, and a timestamp, to `.moai/logs/anchor-trace.jsonl` (`internal/session/anchor_trace.go`). Off by default; the switch costs one environment lookup when off.
+2. **The relocation audit log** — every registry `cwd` rewrite appends a row (session, previous/new cwd, trigger hook, ownership case) to `.moai/logs/anchor-relocation-audit.jsonl`, and the opt-in `workflow.anchor_relocation_guard.enabled` config refuses an ownership-flagged relocation instead of proceeding.
+
+**Run-phase follow-up, not this section's scope**: the session-end auto-memory updates for the t1337/t1339 lessons belong to a later run-phase task; this file records the incidents, not the memory files.
+
+
+## Native Worktree Feature Deep-Dives (from worktree-integration.md)
+
+Moved here by card t1398 to bring the parent rule under its 40,000-character
+launch budget. Three reference sections: the base-branch setting mechanics
+(`worktree.baseRef` / `git_strategy.worktree_base_branch`), the gitignored-file
+copy contract (`.worktreeinclude`), and the unregistered
+`WorktreeCreate` / `WorktreeRemove` hook deep-dive. The parent rule carries
+pointer lines at each former location.
+
+### Worktree Base Branch (`worktree.baseRef`)
+
+Native worktrees (`--worktree` and subagent `isolation: worktree`) branch from the repository's default branch (`origin/HEAD`) by default, so they start from a clean tree matching the remote. If no remote is configured or the fetch fails, the worktree falls back to the current local `HEAD`. To always branch from local `HEAD` instead (carrying unpushed commits and feature-branch state), set `worktree.baseRef` to `"head"` in settings (accepts only `"fresh"` or `"head"`, not arbitrary refs):
+
+```json
+{
+  "worktree": {
+    "baseRef": "head"
+  }
+}
+```
+
+Use `"head"` when isolating subagents that must operate on in-progress work. To branch a native worktree from a specific pull request, pass the PR number prefixed with `#` (e.g. `claude --worktree "#1234"`); Claude Code fetches `pull/<number>/head` and creates the worktree at `.claude/worktrees/pr-<number>`.
+
+This setting governs **Claude-native** worktrees only, which is now every worktree the launcher creates — `moai cc -w <name>` passes `-w` straight through to `claude`.
+
+**Creating a card worktree on a release branch.** Because the default is `origin/HEAD`, a worktree created while a release branch is the intended base starts behind it — measured on one such branch, 34 commits behind, with the reflog reading `branch: Created from origin/main`. Two ways out, and the difference between them is not convenience:
+
+- **Set the base after creation**, while the new tree still has no commits of its own: `git -C <tree> reset --hard <ref>`, then `git -C <tree> merge-base --is-ancestor <ref> HEAD` and read the exit code. Only for a tree that is empty and clean; once it carries a commit, this discards it.
+- **Set `baseRef` to `"head"`**, which makes creation inherit rather than default.
+
+`"head"` carries a trap worth stating plainly, because the name invites the wrong reading: it is **the HEAD of the tree the launcher ran in**, not the branch you had in mind. Run `moai cc -w <name>` from the primary checkout while intending a release branch and the new worktree inherits whatever the primary happens to be sitting on — wrong in a quieter direction than the default was, because the reflog now names a plausible commit instead of an obviously-unrelated one. Using it correctly therefore adds a procedural requirement of its own: the launcher must be run from inside a tree already on the intended base.
+
+That asymmetry is the reason to prefer the reset path for card work. `baseRef` is silent whether it lands right or wrong; the reset path ends in an exit code somebody read.
+
+**The stored setting: `git_strategy.worktree_base_branch`.** `baseRef` accepts only `"fresh"` or `"head"`, so it cannot name a branch — which leaves the branch choice resting on `refs/remotes/origin/HEAD`, local repository metadata that does not survive a fresh clone. The moai setting `git_strategy.worktree_base_branch` (in `.moai/config/sections/git-strategy.yaml`) is the reproducible handle on that choice, and it has two consumers:
+
+- **At session start**, from the primary checkout only, moai points `refs/remotes/origin/HEAD` at the configured branch and prints one line saying it did. Native worktrees created afterwards read the corrected symref. Inside a linked worktree the step does nothing at all — the symref is repository-global while the config file is tracked and follows each worktree's own branch, so one writer is both sufficient and the only way two lanes do not reverse each other's writes forever.
+- **When MoAI creates the worktree itself** (`moai worktree new <name>`), the configured branch is passed to the shared `git worktree add` plumbing as the base operand, so the new tree is cut from it rather than from the invoking tree's HEAD. Claude's creating `moai cc -w <name>` form uses the same configured base through its own hook. This half honours the setting from any working tree.
+
+The empty value — the shipped default — means take no action on both paths, reproducing the pre-setting behaviour exactly. A value naming a branch that has no remote-tracking counterpart is refused before either write: the session-start step prints one diagnostic line and leaves the symref alone, and worktree creation falls back to the no-operand form. Pointing `refs/remotes/origin/HEAD` at a ref that does not exist would be worse than the mismatch it was meant to fix.
+
+`moai doctor --check 'Worktree Base Branch'` reports the current comparison without writing anything, and distinguishes a plain mismatch (repaired by running the alignment) from an unresolvable value (repaired by correcting the setting). It reports metadata state only — worktrees already cut from the wrong base are not re-created by it.
+
+
+### `.worktreeinclude` (Copy Gitignored Files into Native Worktrees)
+
+A native worktree is a fresh checkout, so untracked files (`.env`, `.env.local`, local config) are not present. Add a `.worktreeinclude` file at the project root to copy them automatically when Claude creates a worktree. It uses `.gitignore` syntax; only files that match a pattern AND are gitignored are copied (tracked files are never duplicated):
+
+```text
+.env
+.env.local
+.moai/config/sections/*.local.yaml
+```
+
+Applies to `claude --worktree`, subagent `isolation: worktree` worktrees, and desktop parallel sessions. NOT processed when a custom `WorktreeCreate` hook replaces the default git behavior — copy local files inside the hook script instead.
+
+
+## WorktreeCreate and WorktreeRemove Hooks (Not Registered by Default)
+
+Claude Code v2.1.49+ defines `WorktreeCreate` / `WorktreeRemove` hooks that **replace** Claude Code's default git worktree behavior — not extend it. Per the official contract (https://code.claude.com/docs/en/hooks):
+
+| Hook | Role | stdout contract | Failure mode |
+|---|---|---|---|
+| WorktreeCreate | Active creator — MUST actually create the worktree directory and echo its absolute path to stdout (plain text only, no JSON; HTTP hooks use `{"hookSpecificOutput": {"worktreePath": "..."}}`). | Single line: `/absolute/path/to/worktree` | Empty stdout OR any non-zero exit aborts creation |
+| WorktreeRemove | Observer — runs during/after removal for cleanup. | No output required | Failures logged in debug mode only |
+
+The stdin JSON for both events includes `worktree_path` (Claude Code's proposed path), `name`, `cwd`, `session_id`, `transcript_path`, `hook_event_name`.
+
+**MoAI-ADK does NOT register these hooks by default.** Claude Code's default git worktree handling is sufficient for our agent isolation use case — write-heavy work is declared `isolation: worktree` by the retained `manager-develop` agent, by per-spawn `Agent(general-purpose)` specialists with a write-heavy domain whitelist, and by team-mode role profiles (implementer, tester, designer) per the Worktree Selection Rules above. Registering observer-only hooks here would replace the default behavior with non-functional stubs and produce `"WorktreeCreate hook returned a path that is not a directory: {}"` because an empty JSON object cannot be parsed as a path.
+
+If a future use case requires custom worktree creation (e.g., non-git VCS, shared-file symlinks, per-worktree database setup), implement an active creator hook that:
+
+1. Reads stdin JSON (fields: `worktree_path`, `name`, `cwd`, `session_id`).
+2. Performs `git worktree add` (or equivalent for the VCS), redirecting its stdout to `/dev/null` so it does not pollute the hook stdout.
+3. Prints **only** the absolute worktree path to stdout. All progress/diagnostic output goes to stderr.
+4. Exits 0 on success; any non-zero exit aborts creation.
+
+Handler files at `internal/hook/worktree_{create,remove}.go` and `internal/cli/hook.go` `worktree-create` / `worktree-remove` subcommands are preserved as opt-in infrastructure for future active-creator implementations. They are not registered in `.claude/settings.json` until such an implementation lands. Likewise, `.claude/hooks/moai/handle-worktree-{create,remove}.sh` wrapper scripts exist but are not invoked by any settings.json entry.
+
+
 ---
 
-Version: 1.0.0 (split from worktree-integration.md; section content moved verbatim — see the parent file for the transfer note)
+Version: 1.2.0 (t1398: the three native-worktree feature deep-dives moved in
+from worktree-integration.md to bring the parent under its launch budget —
+section content moved verbatim, pointer lines at each former location; the
+1.1.0 session-anchor section and the 1.0.0 split content are unchanged)

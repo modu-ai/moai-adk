@@ -179,11 +179,16 @@ func (f *sgfFixture) setStub(s sgfStubSpec) {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	// The sync-gate hook invokes go as `go -C <module-root> vet|build ./...`
-	// (card t1389 multi-module vetting); strip the prefix so the exits map
-	// keeps keying on the subcommand like the real go binary.
-	b.WriteString("if [ \"$1\" = \"-C\" ]; then shift 2; fi\n")
-	b.WriteString("case \"$1\" in\n")
+	// The gate invokes the toolchain as `go -C <module-root> vet ./...` since
+	// card t1385-r2 (vet nested Go modules from their module root), so the
+	// subcommand is the first NON-`-C`-argument token — matching on $1 alone
+	// read "-C" and silently fell through to the default exit, turning every
+	// failing-vet/build row into a vacuous allow (card t1396).
+	b.WriteString("sub=\nprev=\nfor a in \"$@\"; do\n")
+	b.WriteString("  if [ \"$prev\" = \"-C\" ]; then prev=; continue; fi\n")
+	b.WriteString("  if [ \"$a\" = \"-C\" ]; then prev=-C; continue; fi\n")
+	b.WriteString("  sub=\"$a\"\n  break\ndone\n")
+	b.WriteString("case \"$sub\" in\n")
 	for _, k := range keys {
 		fmt.Fprintf(&b, "  %s) exit %d ;;\n", k, s.exits[k])
 	}
@@ -690,13 +695,18 @@ func TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution(t *testing.T) {
 		vet, build      int
 		redeliver       bool // true: call 2 byte-identical to call 1's block
 		call1NoDecision bool
-		flipBlock       bool // true: a stored advisory under a blocking call 2 re-delivers as a synthesized block — the advisory→blocking flip must not read as a pass (card t1385/t1388)
+		reblock         bool // true: call 2 carries a synthesized block, no re-run (t1388 flip contract)
 	}{
 		{"A1", rgClass, []string{full}, []string{full}, 0, 1, false, true, false},
 		{"A2", rgClass, []string{auto}, []string{auto}, 1, 0, false, true, false},
 		{"A3", rgClass, []string{off}, []string{off}, 1, 0, false, true, false},
 		{"A4", rbClass, []string{auto}, []string{auto}, 0, 1, true, false, false},
 		{"A5", rgClass, nil, []string{full}, 1, 0, false, false, false},
+		// A6 (updated, card t1396): advisory stored, call 2 flips to the
+		// default blocking mode. The landed t1388 contract (6ba893f24,
+		// codex review gate reproduction) re-delivers a synthesized BLOCK on
+		// the flip instead of exiting silently — the pre-t1388 "stay quiet"
+		// expectation this row encoded is what that fix retired.
 		{"A6", rgClass, []string{full}, nil, 1, 0, false, false, true},
 		{"A7", rgClass, nil, []string{off}, 1, 0, false, false, false},
 		{"A8", rgClass, nil, []string{auto}, 1, 0, false, false, false},
@@ -723,13 +733,9 @@ func TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution(t *testing.T) {
 				}
 				return
 			}
-			if r.flipBlock {
-				// Card t1385 flip semantics: the stored advisory (call 1 ran
-				// advisory, call 2 resolves blocking) re-delivers as a
-				// synthesized block — not byte-identical, the stored advisory
-				// body carries no decision — and without re-running checks.
+			if r.reblock {
 				if !sgfHasBlock(out2) {
-					t.Errorf("%s: call 2 is not a block; stdout=%q", tag, out2)
+					t.Errorf("%s: call 2 stdout is not the stored-advisory blocking re-delivery; stdout=%q", tag, out2)
 				}
 				if n2 != n1 {
 					t.Errorf("%s: call 2 re-ran the checks (stub %d -> %d)", tag, n1, n2)
@@ -784,8 +790,13 @@ func TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState(t *testing.T) {
 		// re-delivers is the advisory.
 		before3 := f.count()
 		out3, _ := f.run("{}")
+		// Updated (card t1396): call 2 stored an ADVISORY payload and call 3
+		// runs in the default blocking mode — the landed t1388 contract
+		// (6ba893f24) re-delivers a synthesized BLOCK on that flip (no checks
+		// re-run), which is why out3 is a block, not the pre-t1388 empty
+		// stdout this row originally expected.
 		if !sgfHasBlock(out3) {
-			t.Errorf("%s: call 3 is not a block; stdout=%q", tag, out3)
+			t.Errorf("%s: call 3 stdout = %q; want the stored-advisory blocking re-delivery", tag, out3)
 		}
 		if n := f.count(); n != before3 {
 			t.Errorf("%s: call 3 ran the checks (stub %d -> %d)", tag, before3, n)

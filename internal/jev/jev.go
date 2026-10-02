@@ -24,8 +24,16 @@
 //   - **The capability is display-only.** A Jev answer is a labelled,
 //     model-produced signal a person reads (REQ-JEVC-013). Nothing in this
 //     package writes a file, mutates a queue, or touches git — it has no
-//     dependency that could (see doc_display_only_test.go, which asserts the
-//     package's entire import set is standard library).
+//     dependency that could (see display_only_test.go, which asserts the
+//     package's entire import set is standard library). Two in-process
+//     consumers outside this package use an answer as more than a display:
+//     the Kickoff cross-check, and the todo --auto cycle's own candidate
+//     ranking, the auto-scoped ranking exception. That ranking runs behind
+//     the default-off workflow.jev.enabled gate, and an answer there sets
+//     selection order only: the candidate set is fixed by mechanical filters
+//     before any answer is read, and the answer is never the basis of a
+//     completion verdict, a merge approval or a queue mutation. Neither
+//     consumer reaches the MCP tool, and no ordering accuracy is claimed.
 //
 // The package depends only on the standard library so it cannot participate in
 // an import cycle and can be imported from both internal/cli and internal/web.

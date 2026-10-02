@@ -146,9 +146,15 @@ func enterCodexFactory(root string, entry factoryFlagParse, timing *factoryLaunc
 	if lane {
 		runID := os.Getenv(config.EnvMoaiKanbanID)
 		endClaim := timing.begin(factoryStepLaneClaim)
-		claim, claimErr := kanban.ClaimFactoryLaneWithin(root, entry.LaneLabel, entry.LaneRole,
-			os.Getpid(), runID, factoryJoinLaneBound(root, runID), factoryProcessAlive)
+		claim, claimErr := kanban.ClaimFactoryLaneWithinWithBackend(root, entry.LaneLabel, entry.LaneRole,
+			os.Getpid(), runID, factoryJoinLaneBound(root, runID), BackendCodex, factoryProcessAlive)
 		endClaim()
+		// Under debug the lane-claim step carries the claimed label and the
+		// run id (SPEC-CODEX-DEBUG-MODE-001 §D.1; annotateDetail no-ops
+		// without debug, so the t1378 freeze is untouched).
+		if claimErr == nil {
+			timing.annotateDetail("label=" + claim.Label + " run=" + runID)
+		}
 		if claimErr != nil {
 			restore()
 			return nil, fmt.Errorf("claim Codex factory lane: %w", claimErr)

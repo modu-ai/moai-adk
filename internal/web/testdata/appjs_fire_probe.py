@@ -854,18 +854,32 @@ async def run_sandbox_scenario(cdp, base, sandbox_root, entry):
     # Place a value the server-side validator rejects. The control is a select
     # with no such option, so the option is appended first: the point is to
     # exercise the server's reject path, not to simulate a reachable keystroke.
+    # Card t1390: permission_mode now renders as a segRadio RADIO group (card
+    # t1381 regen), and setting `.value` on a radio changes only its property
+    # while the form still submits the CHECKED radio — the stale probe reported
+    # "bogus" set while the server received a valid value, saved, and answered
+    # with the success banner. A radio gets a checked sentinel input carrying
+    # the invalid value appended to the form instead, so the submission
+    # genuinely carries the rejectable value.
     rep["s_invalid_set"] = await ev(
         cdp,
         """(function(){
   var f=document.querySelector(%s); if(!f){return 'no-form';}
   var el=f.querySelector('[name=%s]'); if(!el){return 'no-field';}
   if(el.tagName==='SELECT'){var o=document.createElement('option');o.value=%s;o.textContent=%s;el.appendChild(o);}
+  if(el.type==='radio'){
+    var r=document.createElement('input');
+    r.type='radio'; r.name=el.name; r.value=%s; r.checked=true;
+    f.appendChild(r);
+    return r.value;
+  }
   el.value=%s;
   return el.value;
 })()"""
         % (
             form_sel,
             json.dumps(entry["invalid_field"]),
+            json.dumps(entry["invalid_value"]),
             json.dumps(entry["invalid_value"]),
             json.dumps(entry["invalid_value"]),
             json.dumps(entry["invalid_value"]),

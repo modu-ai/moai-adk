@@ -153,7 +153,20 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		}
 	}
 
+	// SPEC-CODEX-DEBUG-MODE-001 REQ-004: observe-only debug detection — the
+	// token STAYS in the child arguments untouched (the child's native -d
+	// handling is preserved); only the launcher-side trace activates. The
+	// scan mirrors the --help scan above: post--- tokens are the child's and
+	// are never inspected (REQ-002's scoping).
+	debugRequested := launcherDebugRequested(args)
+	var debugTiming *factoryLaunchTiming
+	if debugRequested {
+		debugTiming = &factoryLaunchTiming{debug: true}
+	}
+	endEntry := debugTiming.beginDebug(launchStepEntryParse, "")
+
 	if err := guardCGLaunchMode(mode); err != nil {
+		endEntry()
 		return err
 	}
 
@@ -162,11 +175,13 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	// failed spawn leaves the environment untouched; the spawned `moai cc`
 	// performs the mutations itself.
 	if spawnArgs, spawn := stripSpawnFlag(args); spawn {
+		endEntry()
 		return spawnLaunch(cmd.OutOrStdout(), commandName, spawnArgs)
 	}
 
 	profileName, filteredArgs, err := parseProfileFlag(args)
 	if err != nil {
+		endEntry()
 		return err
 	}
 	// The unified entry parse (t118): parseLauncherEntry covers BOTH entry
@@ -180,9 +195,11 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	// restored on every return path, including error.
 	entry, err := parseLauncherEntry(filteredArgs)
 	if err != nil {
+		endEntry()
 		return err
 	}
 	filteredArgs = entry.Rest
+	endEntry()
 	label, isCompanion := parseCompanionLabel(filteredArgs)
 	factoryLabel, isFactoryLane := parseFactoryLaneLabel(filteredArgs)
 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
@@ -206,7 +223,9 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		var leaderName string
 		filteredArgs, leaderName = appendLeaderName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
 		defer exportLeaderSessionName(leaderName)()
+		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
 		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+		endSettings()
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
@@ -215,8 +234,11 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		// The shared lane join: record-absence refusal falls back to
 		// verified leader discovery + resume, then re-enters the gate
 		// (SPEC-FACTORY-LANE-JOIN-SOCKET-001). One implementation for cc,
-		// glm, and the codex twin (REQ-010).
-		restoreRun, runErr := enterFactoryLaneRun(launchProjectRoot(), entry.FactoryRun, entry.FactoryLead, nil)
+		// glm, and the codex twin (REQ-010). Under debug mode the join gate
+		// and active-run resolution record through the launch's collector —
+		// the same t1378 steps the codex lane launch names (REQ-013's
+		// shared vocabulary).
+		restoreRun, runErr := enterFactoryLaneRun(launchProjectRoot(), entry.FactoryRun, entry.FactoryLead, debugTiming)
 		if runErr != nil {
 			return runErr
 		}
@@ -224,7 +246,12 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		// A number held by a live session is bumped to the next free one, and
 		// the bumped value must reach the backend argv — the session name is
 		// the address the leader dispatches to.
-		finalLabel, claimErr := resolveFactoryLaneName(launchProjectRoot(), factoryLabel, entry.FactoryAutoNumber, cmd.ErrOrStderr())
+		endClaim := debugTiming.beginDebug(factoryStepLaneClaim, "")
+		finalLabel, claimErr := resolveFactoryLaneName(launchProjectRoot(), factoryLabel, backend, entry.FactoryAutoNumber, cmd.ErrOrStderr())
+		endClaim()
+		if claimErr == nil {
+			debugTiming.annotateDetail("label=" + finalLabel)
+		}
 		if claimErr != nil {
 			return claimErr
 		}
@@ -237,14 +264,24 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		// place (design.md §6). The stamps above are live for the loop's
 		// own `next` calls and reach every child through the environment.
 		if entry.ClearPolicy == config.FactoryClearPolicyRelaunch {
+			endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
 			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+			endSettings()
 			defer settingsCleanup()
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)
 			}
+			if debugRequested {
+				// The relaunch loop replaces the one-shot launch: the dump is
+				// this launcher's pre-exec trace, printed before the loop's
+				// first session handoff (REQ-009's cc/glm form).
+				debugTiming.debugDump(cmd.ErrOrStderr())
+			}
 			return runFactoryLaneRelaunch(cmd, finalLabel, filteredArgs)
 		}
+		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
 		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+		endSettings()
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
@@ -266,7 +303,9 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 			var leaderName string
 			filteredArgs, leaderName = appendLeaderName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
 			defer exportLeaderSessionName(leaderName)()
+			endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
 			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+			endSettings()
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)
 			}
@@ -279,7 +318,9 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 			filteredArgs = replaceNamedLabel(filteredArgs, label, finalLabel)
 			defer enterKanbanCompanionMode(finalLabel)()
 			defer exportKanbanLaunchFacts(entry.Spec, backend)()
+			endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
 			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+			endSettings()
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)
 			}
@@ -291,13 +332,16 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	// clear error (AC-WES-010c) and L2 (~/.moai/worktrees/) paths are accepted
 	// (AC-WES-010a). normalizeWorktreeFlag remains the owner of short-name
 	// token normalization (AC-WES-010b).
+	endWt := debugTiming.beginDebug(launchStepWorktree, "")
 	if err := resolveWorktreeL2Path(filteredArgs, cmd.ErrOrStderr()); err != nil {
+		endWt()
 		return err
 	}
 	// Card t295: `-w <name> --branch <existing>` materializes the worktree at
 	// the existing branch before launch; the flag tokens are stripped so the
 	// backend re-enters the tree that now exists. No-op without --branch.
 	filteredArgs, err = resolveWorktreeExistingBranch(filteredArgs, cmd.ErrOrStderr())
+	endWt()
 	if err != nil {
 		return err
 	}
@@ -310,6 +354,14 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	// only now that the admission above succeeded, so a refused launch leaves
 	// the tree untouched (audit F0, sync-audit-opus.md).
 	seedAdmittedWorktreeHooks(filteredArgs, cmd.ErrOrStderr())
+	endHandoff := debugTiming.beginDebug(launchStepLaunchHandoff, "")
 	filteredArgs = normalizeWorktreeFlag(filteredArgs)
+	endHandoff()
+	if debugRequested {
+		// REQ-009's cc/glm form: the backend launch replaces this process
+		// (exec), so the dump is the launcher's last output, printed before
+		// the launch call.
+		debugTiming.debugDump(cmd.ErrOrStderr())
+	}
 	return launch(profileName, mode, filteredArgs)
 }

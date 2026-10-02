@@ -118,7 +118,7 @@ func jevFieldBelongsToPanel(name string) bool {
 // toggle and a credential field" without reaching into documentation this SPEC
 // has no mandate over.
 func jevSectionFields() []settings.FieldDef {
-	_, _, _, jev := partitionWorkflowFields()
+	_, _, _, jev, _ := partitionWorkflowFields()
 	return jev
 }
 

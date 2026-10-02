@@ -21,7 +21,7 @@ import (
 // and keeps the session registry's cwd in step with the move, then warns that
 // the already-running moai mcp-server still resolves its project root from
 // spawn-frozen state and that catalog tools take an explicit project_root.
-func handleWorktreeMove(input *HookInput) *HookOutput {
+func handleWorktreeMove(input *HookInput, cfg ConfigProvider) *HookOutput {
 	newCwd := input.CWD
 	if newCwd == "" {
 		newCwd = input.NewCwd
@@ -36,7 +36,7 @@ func handleWorktreeMove(input *HookInput) *HookOutput {
 	// Keep the session registry's cwd in step with the move — the same
 	// fail-open call the CwdChanged handler makes — so anchor detection sees
 	// sessions that entered a worktree mid-session.
-	relocateSessionCwd(input, newCwd)
+	relocateSessionCwd(input, newCwd, "PostToolUse", anchorRelocationGuardEnabled(cfg))
 
 	stamped := false
 	if envFile := os.Getenv(config.EnvClaudeEnvFile); envFile != "" {

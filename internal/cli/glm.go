@@ -194,6 +194,17 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// SPEC-CODEX-DEBUG-MODE-001 REQ-004: observe-only debug detection, taken
+	// BEFORE the subcommand routing (the scan decides nothing on a routed
+	// subcommand — only the launch path below consumes it). The token STAYS
+	// in the child arguments untouched; the scan mirrors the --help scan:
+	// post--- tokens are never inspected (REQ-002's scoping).
+	debugRequested := launcherDebugRequested(args)
+	var debugTiming *factoryLaunchTiming
+	if debugRequested {
+		debugTiming = &factoryLaunchTiming{debug: true}
+	}
+
 	// Manual subcommand routing (DisableFlagParsing prevents automatic routing)
 	if len(args) > 0 {
 		switch args[0] {
@@ -209,7 +220,9 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	endEntry := debugTiming.beginDebug(launchStepEntryParse, "")
 	if err := guardCGLaunchMode("glm"); err != nil {
+		endEntry()
 		return err
 	}
 
@@ -217,11 +230,13 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// Placed after subcommand routing so `moai glm setup` is never intercepted.
 	// See cc.go for the ordering rationale.
 	if spawnArgs, spawn := stripSpawnFlag(args); spawn {
+		endEntry()
 		return spawnLaunch(cmd.OutOrStdout(), "glm", spawnArgs)
 	}
 
 	profileName, filteredArgs, err := parseProfileFlag(args)
 	if err != nil {
+		endEntry()
 		return err
 	}
 	// t118 launcher axis: the unified entry parse — parseLauncherEntry covers
@@ -230,9 +245,11 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// glm mirrors cc exactly except for the backend constant.
 	entry, err := parseLauncherEntry(filteredArgs)
 	if err != nil {
+		endEntry()
 		return err
 	}
 	filteredArgs = entry.Rest
+	endEntry()
 	label, isCompanion := parseCompanionLabel(filteredArgs)
 	factoryLabel, isFactoryLane := parseFactoryLaneLabel(filteredArgs)
 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
@@ -255,22 +272,30 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		var leaderName string
 		filteredArgs, leaderName = appendLeaderName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
 		defer exportLeaderSessionName(leaderName)()
+		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
 		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+		endSettings()
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
 		defer settingsCleanup()
 	case factoryBranchLane:
 		// See cc.go: the shared lane join with the discovery fallback — one
-		// implementation for cc, glm, and the codex twin (REQ-010).
-		restoreRun, runErr := enterFactoryLaneRun(launchProjectRoot(), entry.FactoryRun, entry.FactoryLead, nil)
+		// implementation for cc, glm, and the codex twin (REQ-010). Under
+		// debug the join gate records through the launch's collector.
+		restoreRun, runErr := enterFactoryLaneRun(launchProjectRoot(), entry.FactoryRun, entry.FactoryLead, debugTiming)
 		if runErr != nil {
 			return runErr
 		}
 		defer restoreRun()
 		// See cc.go: a live-held lane number is bumped, and the bumped value
 		// must reach the backend argv.
-		finalLabel, claimErr := resolveFactoryLaneName(launchProjectRoot(), factoryLabel, entry.FactoryAutoNumber, cmd.ErrOrStderr())
+		endClaim := debugTiming.beginDebug(factoryStepLaneClaim, "")
+		finalLabel, claimErr := resolveFactoryLaneName(launchProjectRoot(), factoryLabel, kanban.BackendGLM, entry.FactoryAutoNumber, cmd.ErrOrStderr())
+		endClaim()
+		if claimErr == nil {
+			debugTiming.annotateDetail("label=" + finalLabel)
+		}
 		if claimErr != nil {
 			return claimErr
 		}
@@ -280,14 +305,21 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		// See cc.go: the relaunch policy is the supervising loop (design.md
 		// §6) — the launcher stays the parent across every card.
 		if entry.ClearPolicy == config.FactoryClearPolicyRelaunch {
+			endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
 			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+			endSettings()
 			defer settingsCleanup()
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)
 			}
+			if debugRequested {
+				debugTiming.debugDump(cmd.ErrOrStderr())
+			}
 			return runFactoryLaneRelaunch(cmd, finalLabel, filteredArgs)
 		}
+		endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
 		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+		endSettings()
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
@@ -304,7 +336,9 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			var leaderName string
 			filteredArgs, leaderName = appendLeaderName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
 			defer exportLeaderSessionName(leaderName)()
+			endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
 			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+			endSettings()
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)
 			}
@@ -316,7 +350,9 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			filteredArgs = replaceNamedLabel(filteredArgs, label, finalLabel)
 			defer enterKanbanCompanionMode(finalLabel)()
 			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
+			endSettings := debugTiming.beginDebug(launchStepSettingsPrep, "")
 			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
+			endSettings()
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)
 			}
@@ -324,11 +360,14 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		}
 	}
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: see cc.go for the rationale.
+	endWt := debugTiming.beginDebug(launchStepWorktree, "")
 	if err := resolveWorktreeL2Path(filteredArgs, cmd.ErrOrStderr()); err != nil {
+		endWt()
 		return err
 	}
 	// Card t295: see cc.go — `-w <name> --branch <existing>` creation path.
 	filteredArgs, err = resolveWorktreeExistingBranch(filteredArgs, cmd.ErrOrStderr())
+	endWt()
 	if err != nil {
 		return err
 	}
@@ -354,6 +393,13 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Z.AI concurrency is limited (1-3 in-flight requests per paid tier)")
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "Mixed Claude/GLM teammate roles require verified teammate routing support.")
 
+	endHandoff := debugTiming.beginDebug(launchStepLaunchHandoff, "")
+	filteredArgs = normalizeWorktreeFlag(filteredArgs)
+	endHandoff()
+	if debugRequested {
+		// REQ-009's cc/glm form: see cc.go — the dump precedes the launch.
+		debugTiming.debugDump(cmd.ErrOrStderr())
+	}
 	return unifiedLaunch(profileName, "glm", filteredArgs)
 }
 

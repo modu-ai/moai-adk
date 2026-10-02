@@ -504,6 +504,15 @@ type WorkflowConfig struct {
 	// work regardless of Enabled. Deliberately separate from IntegrationLock.
 	SlotLease SlotLeaseConfig `yaml:"slot_lease"`
 
+	// QuotaGate carries the quota-aware lane gate settings
+	// (SPEC-QUOTA-AWARE-SCHEDULING-001 REQ-QAS-008): whether the gate runs, the
+	// per-window hold percentages, the release margin, and the freshest-reading
+	// max age. Read through LoadQuotaGate, which owns the default on every
+	// failure and every out-of-range value. Default OFF; the status block, the
+	// hold, and the integration-window warning all consult it. Template
+	// neutrality: no `enabled: true` under internal/template/templates/.
+	QuotaGate QuotaGateConfig `yaml:"quota_gate"`
+
 	// SubagentWriteGuard gates the deny layer of the PreToolUse subagent
 	// destructive-write guard (SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001). Default
 	// false: detection and the audit-log append always run, but no subagent
@@ -511,6 +520,14 @@ type WorkflowConfig struct {
 	// Sibling of BranchGuard / AgentStopGuard — same opt-in shape, same
 	// default-OFF neutrality.
 	SubagentWriteGuard SubagentWriteGuardConfig `yaml:"subagent_write_guard"`
+
+	// AnchorRelocationGuard gates the refusal layer of the session-anchor
+	// relocation ownership guard (SPEC-SESSION-ANCHOR-ATTR-001 REQ-SAA-005).
+	// Default false: the ownership judgment and its audit row run on every
+	// relocation, but a flagged relocation proceeds (advisory) until a
+	// maintainer opts in via local config. Sibling of BranchGuard /
+	// SubagentWriteGuard — same opt-in shape, same default-OFF neutrality.
+	AnchorRelocationGuard AnchorRelocationGuardConfig `yaml:"anchor_relocation_guard"`
 
 	// CommitIdentityGuard gates the PreToolUse commit identity guard
 	// (SPEC-COMMIT-IDENTITY-GUARD-001). Default false: the guard ships INERT —
@@ -578,6 +595,23 @@ type WorkflowConfig struct {
 	// and callers resolve the distributed default profile via
 	// NewDefaultWorkflowConfig (claude required, codex required, glm advisory).
 	Audit AuditConfig `yaml:"audit"`
+
+	// AgentTiers is the workflow.agent_tiers block (SPEC-AGENT-TIER-001 M2,
+	// REQ-TIER-008): the user's agent-class → tier-token assignment table.
+	// When the block is absent (or a class is not listed) the resolver falls
+	// back to DefaultAgentTierClasses per class; an unknown tier token fails
+	// the load (Validate, REQ-TIER-009). Audit surfaces are excluded from the
+	// tier matrix regardless of this table (REQ-TIER-007) — they resolve
+	// exclusively through the workflow.audit pins.
+	AgentTiers AgentTiersConfig `yaml:"agent_tiers"`
+}
+
+// AgentTiersConfig mirrors workflow.agent_tiers — the tier-axis assignment
+// table (SPEC-AGENT-TIER-001 REQ-TIER-008/009). Classes maps an agent-class
+// name to a tier token from the closed set {max, medium, low}
+// (ValidAgentTiers); any other token fails the load through Validate.
+type AgentTiersConfig struct {
+	Classes map[string]string `yaml:"classes,omitempty" json:"classes,omitempty"`
 }
 
 // AutoClearConfig mirrors workflow.auto_clear.* — context-window auto-clear policy.
@@ -730,6 +764,22 @@ type SlotLeaseConfig struct {
 	Resources          map[string]SlotLeaseResourceConfig `yaml:"resources"`
 }
 
+// QuotaGateConfig mirrors workflow.quota_gate.* (SPEC-QUOTA-AWARE-SCHEDULING-001
+// REQ-QAS-008). Enabled gates every quota surface; the two hold percentages are
+// the used percentage at or above which a window counts as under pressure; a
+// held lane is released once the reading falls below its hold percentage minus
+// ReleaseMarginPct; MaxAge is a duration string — the age beyond which a session
+// record's reading is unknown. The numeric defaults are unmeasured. The raw
+// values may be out of range here; LoadQuotaGate is the resolver that replaces
+// an invalid value with its default.
+type QuotaGateConfig struct {
+	Enabled          bool   `yaml:"enabled"`
+	FiveHourHoldPct  int    `yaml:"five_hour_hold_pct"`
+	SevenDayHoldPct  int    `yaml:"seven_day_hold_pct"`
+	ReleaseMarginPct int    `yaml:"release_margin_pct"`
+	MaxAge           string `yaml:"max_age"`
+}
+
 // SlotLeaseResourceConfig is one resource entry: RE2 command patterns matched
 // against a Bash command with quoted spans scrubbed. Invalid is non-empty when
 // the entry could not be read as a list of pattern strings; such an entry is
@@ -769,6 +819,20 @@ type AgentStopGuardConfig struct {
 // contract). Template neutrality: no `enabled: true` anywhere under
 // internal/template/templates/.
 type SubagentWriteGuardConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// AnchorRelocationGuardConfig mirrors workflow.anchor_relocation_guard.*
+// (SPEC-SESSION-ANCHOR-ATTR-001 REQ-SAA-005). Enabled gates the REFUSAL layer
+// of the session-anchor relocation ownership guard: when false (the
+// distributed default) an implausible-target relocation is advisory only —
+// the ownership flag row is recorded and the relocation proceeds. When true,
+// a flagged relocation is refused and the refusal recorded to the relocation
+// audit log. Detection (the ownership judgment and its audit row) is not
+// gated: it runs on every relocation regardless of this flag, mirroring the
+// SubagentWriteGuard family contract. Template neutrality: no `enabled: true`
+// anywhere under internal/template/templates/.
+type AnchorRelocationGuardConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 

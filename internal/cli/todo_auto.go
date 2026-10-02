@@ -23,8 +23,11 @@ import (
 // card. Cards are processed strictly one at a time; a worker that dies or
 // leaves no readable evidence is unpicked back to `queued` with a labelled
 // non-finding, never silently done. The invocation itself is the operator's
-// batch approval: it authorizes serial consumption of the queue in queue
-// order and nothing else — the cycle never reorders, admits, or drops cards.
+// batch approval: it authorizes serial consumption of the queue and nothing
+// else. The cycle carries one auto-scoped ranking exception — it may rank the
+// queued candidates it is about to accept (todo_auto_rank.go), which changes
+// its selection order only — and it never admits, drops, or edits cards; the
+// queue itself is unchanged.
 
 // autoEvidenceRelPath is the evidence file the dispatch directive names, per
 // the foreman convention. Completion is judged by reading THIS file, never by
@@ -196,7 +199,25 @@ type autoOptions struct {
 	sleep     func(time.Duration)      // poll-tick seam (tests drive evidence arrival here)
 	now       func() time.Time         // clock seam for the deadline
 	jev       func(root string) string // display-only consultation seam (tests stub it)
+
+	// The two inputs of the ranking stage. A nil value is INERT: a nil landed
+	// lookup leaves the landed signal unmeasured, a nil Jev ranker is Jev
+	// unavailable (`jev-disabled`) — neither runs a subprocess or sends a
+	// request. Production wiring (todo.go) sets both live seams.
+	landed  autoLandedLookup // landed-state lookup over the whole record
+	jevRank autoJevRanker    // one bounded Jev request over the candidates
+
+	// quota is the quota-pressure steering seam (SPEC-QUOTA-AWARE-SCHEDULING-001
+	// REQ-QAS-019): it returns the one line printed immediately before each
+	// accept line, or "" when there is nothing to say. A nil value is INERT — no
+	// line, no read of any quota record or registry. Printing only: the line
+	// never reaches a queue write, a lease, or a dispatch.
+	quota autoQuotaLine
 }
+
+// autoQuotaLine returns the quota-pressure steering line for the project root,
+// or "" while pressure is off. It is evaluated afresh before every accept line.
+type autoQuotaLine func(root string) string
 
 // runAutoCycle executes the serial cycle against the store, writing the
 // narrated output (accept → directive → evidence → done/unpick → guidance)
@@ -218,11 +239,14 @@ func runAutoCycle(out io.Writer, store *kanban.BacklogStore, root string, opts a
 		opts.jev = consultJev
 	}
 
-	// Jev consultation is display-only (REQ-MT-014/015): the signal is
+	// The script consultation is display-only (REQ-MT-014/015): its signal is
 	// rendered verbatim as a labelled line and consumed by NO decision —
 	// never a queue mutation, a completion verdict, a merge approval, or an
 	// operator gate. Absent scripts or an absent key degrade to a labelled
 	// non-finding and the cycle proceeds on lead judgment alone, exit 0.
+	// This line is not the ranking input: the one place a Jev answer informs
+	// the cycle is the ranking stage below (opts.jevRank, the Go capability),
+	// and it sets the selection order only.
 	_, _ = fmt.Fprintln(out, opts.jev(root))
 
 	rec, err := store.LoadPure()
@@ -236,12 +260,25 @@ func runAutoCycle(out io.Writer, store *kanban.BacklogStore, root string, opts a
 	for _, n := range notes {
 		_, _ = fmt.Fprintln(out, n)
 	}
+	// Ranking stage (SPEC-TODO-AUTO-PRIORITY-001): orders the queued suffix of
+	// the targets and prints the selection record; the dead-owner rescue
+	// targets stay first. It writes nothing to the queue.
+	targets = autoRankTargets(out, rec, targets, opts)
 	if len(targets) == 0 {
 		_, _ = fmt.Fprintln(out, "no eligible card: queue is empty or every card is untouched-by-authority (nothing to do)")
 		return nil
 	}
 
 	for _, card := range targets {
+		// Quota steering (SPEC-QUOTA-AWARE-SCHEDULING-001 REQ-QAS-019): one
+		// line immediately before the accept line, evaluated afresh per card.
+		// Printing only — no queue write, no lease, no dispatch — and absent
+		// entirely while pressure is off or the seam is nil.
+		if opts.quota != nil {
+			if line := opts.quota(root); line != "" {
+				_, _ = fmt.Fprintln(out, line)
+			}
+		}
 		_, _ = fmt.Fprintf(out, "accept %s %s\n", card.ID, todoTextPrefix(card.Text))
 		// Claim the card before dispatch: a queued card becomes picked (the
 		// cycle's own pick); a dead-owner picked card is already claimed. The
@@ -336,6 +373,8 @@ func runAutoCycle(out io.Writer, store *kanban.BacklogStore, root string, opts a
 // a queue mutation, a completion verdict, a merge approval, or any
 // operator-gate decision (REQ-MT-015). An absent script, key, or network
 // degrades to a labelled non-finding; degradation is never an error exit.
+// The ranking stage's Jev consumer is a separate seam (autoJevRanker) and does
+// not read this line.
 func consultJev(root string) string {
 	script := filepath.Join(root, "scripts", "jev", "route.sh")
 	if _, err := os.Stat(script); err != nil {

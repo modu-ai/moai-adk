@@ -127,11 +127,17 @@ func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 	if err != nil {
 		return toolErr("factory_next", fmt.Errorf("factory next: %w", err)), nil
 	}
-	card, leased, err := factoryNextLeaseOnce(ctx, root, runID, lane)
+	// The same quota gate as the CLI verb, through the same shared evaluation.
+	held, holdLine := (&factoryQuotaLatch{}).evaluate(root)
+	card, leased, err := factoryNextLeaseOnceGated(ctx, root, runID, lane, held)
 	if err != nil {
 		return toolErr("factory_next", fmt.Errorf("factory next: %w", err)), nil
 	}
 	if !leased {
+		if held {
+			// A hold is the whole, non-error result text — never the empty-queue text.
+			return mcp.NewToolResultText(holdLine), nil
+		}
 		return mcp.NewToolResultText("no card is available"), nil
 	}
 	wt, _, err := factoryEnsureCardWorktree(ctx, root, runID, card, lane, io.Discard)

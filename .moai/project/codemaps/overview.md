@@ -5,7 +5,8 @@
 > `go.mod`에서 직접 읽었습니다(`go 1.26.8`).
 
 **모듈**: `github.com/modu-ai/moai-adk` · **Go**: 1.26.8
-**현재 부분 재측정**: worktree `.claude/worktrees/t1378`, 브랜치 `WT-codex-lane-slots`, base `0a8780201`, 카드 t1378. 스탬프 앵커 `b8f437bae`(카드 런 베이스) 뒤 비테스트 Go 소스 변경 19개(`IsDescribedWorthy` 술어)를 대조했다. § 규모 표의 값을 같은 명령으로 다시 쟀다 — 비테스트 1452→1455(`internal/cli` +1: `factory_launch_timing.go`, `internal/homestate` +2: `run_capacity.go`·`process_identity_batch.go`), 테스트 2619→2628(이 카드 신규 8 — 클레임 용량·유한 경로 레거시 2, 런치 타이밍 1, 배치 프로브·플랫폼 핀 4, 런 용량 기록 1; 나머지 1은 흡수 창 분), 패키지 163·최상위 디렉터리 83·내부 import 엣지 453/282(`internal/kanban`의 `internal/homestate` 임포트는 앵커 이전부터 있었다)·임베드 템플릿 601은 재확인 결과 변동 없었다. 본문 내용 갱신(codex 레인 슬롯 클레임의 용량 인식 성장·런 선언 용량 기록·런치 타이밍 보고·소유자 프로브 배치화)은 § `modules.md`의 해당 행이 나른다.
+**현재 부분 재측정**: worktree `.moai/worktrees/t1297`, 브랜치 `WT-codemaps-regen`, base `a9f43a6fc`, 카드 t1297. 전면 재생성 카드로, `moai graph check`가 보고한 미커버 창(stale 48 · 임계 40)을 이 트리에서 소진한다. 앵커 `0a8780201`(t1378 판 스탬프) 뒤 비테스트 Go 소스 변경 48개(`IsDescribedWorthy` 술어 — 검사기 값과 같은 술어로 독립 재현)를 대조했다. 창은 13카드 착지분이다 — gate 계열(card t1379 sync-gate 다언어 검사 · t1383 codex 리뷰 게이트 스코핑(`codex_review_scope.go`) · t1385 캐시 결함 형식화 · t1388 모노레포 go vet · t1389 멀티모듈 CHANGED_LANGS), **card t1338 레인 자율 배치 착지**(`internal/factorylane` 패키지와 cli 4파일 — 본문 서술은 t1338 판이 이미 갖춰 있고 이 판이 창으로 소진한다), card t1373 stale-run 라벨(`internal/hook/stale_run_gate.go`·`internal/factorymsg/run_state.go`), card t1381 templ 재생성(`internal/web/*_templ.go` — 파일 수 불변), card t1387 문서 위임 cwd 고정(`internal/hook/cwd_changed.go`·`internal/hook/cwd_changed_relocate.go`), card t1339 세션 앵커 귀속 수리(`internal/session/anchor_trace.go`·`anchor_relocate_audit.go` 신규 — 24→26), card t1394 GLM 창 픽스처(테스트 전용 — described 0). § 규모 표의 일곱 값을 같은 명령으로 다시 쟀다 — 비테스트 1455→1469, 테스트 2628→2653, 패키지 163→164(`internal/factorylane` — t1338 착지분), 최상위 디렉터리 83→84(internal 79→80), 내부 import 엣지 453/282→457/286, 임베드 템플릿 601은 재확인 결과 변동 없었다. 본문 내용 갱신(훅 stale-run 게이트 · 세션 앵커 trace·audit · factorymsg run-state · config 앵커 설정(card t1339) · dependencies 전면 재측정)은 § `modules.md`·`entry-points.md`·`dependencies.md`의 해당 행이 나른다.
+**이전 부분 재측정**: worktree `.claude/worktrees/t1378`, 브랜치 `WT-codex-lane-slots`, base `0a8780201`, 카드 t1378. 스탬프 앵커 `b8f437bae`(카드 런 베이스) 뒤 비테스트 Go 소스 변경 19개(`IsDescribedWorthy` 술어)를 대조했다. § 규모 표의 값을 같은 명령으로 다시 쟀다 — 비테스트 1452→1455(`internal/cli` +1: `factory_launch_timing.go`, `internal/homestate` +2: `run_capacity.go`·`process_identity_batch.go`), 테스트 2619→2628(이 카드 신규 8 — 클레임 용량·유한 경로 레거시 2, 런치 타이밍 1, 배치 프로브·플랫폼 핀 4, 런 용량 기록 1; 나머지 1은 흡수 창 분), 패키지 163·최상위 디렉터리 83·내부 import 엣지 453/282(`internal/kanban`의 `internal/homestate` 임포트는 앵커 이전부터 있었다)·임베드 템플릿 601은 재확인 결과 변동 없었다. 본문 내용 갱신(codex 레인 슬롯 클레임의 용량 인식 성장·런 선언 용량 기록·런치 타이밍 보고·소유자 프로브 배치화)은 § `modules.md`의 해당 행이 나른다.
 
 **이전 부분 재측정**: worktree `.claude/worktrees/t1374`, 브랜치 `WT-t1368-ci-repair`, base `ca7191cba`, 카드 t1374. 스탬프 앵커 `3e6d78f73`(t1351 판) 뒤 비테스트 Go 소스 변경 50개(`IsDescribedWorthy` 술어)를 대조했다. § 규모 표의 값을 같은 명령으로 다시 쟀다 — 비테스트 1436→1452(`internal/cli` +9: `todo_claim`·`todo_show`·`todo_classify`·`todo_ghost_notice`·`doctor_owner_label`·`doctor_todo_ghost`와 `worktree/sweep.go`+`sweep_cwd_{posix,windows}.go`, `internal/kanban` +2: `classification.go`·`todo_owner_label.go`, `internal/homestate` +1: `factory_run_resume.go`, 나머지는 창 안 138커밋의 산문·픽스처 인접분), 테스트 2590→2619, 패키지 162→163, 최상위 디렉터리 82→83(internal 78→79), 패키지 단위 내부 import 엣지 448→453·최상위 집계 277→282(`go list` 패키지 의존 쌍 기준), 임베드 템플릿 598→601. 본문 내용 갱신(`moai worktree sweep`·감사 모델 핀과 GLM 구형 모델 삭제·todo claim/show/분류 연쇄·`--leader` 개명)은 § `modules.md`·`entry-points.md`의 해당 절이 나른다.
 **이전 부분 재측정**: worktree `.moai/worktrees/t1351`, 브랜치 `WT-codemaps-refresh10`, base `145c3d98c`, 카드 t1351. 스탬프 앵커 `145c3d98c`(t1333 판의 트리) 뒤 비테스트 Go 소스 변경 54개를 대조했다. § 규모 표의 값 중 셋이 움직였다 — 비테스트 1429→1436(`internal/cli` +4: `clean_reports_archive.go`·`factory_lane_relaunch.go`·`mcp_factory_card.go`·`mcp_todo.go`, `internal/homestate` +1: `card_worktree.go`, `internal/settings` +1: `projectscalars.go`), 테스트 2569→2590, 패키지 단위 내부 import 엣지 449→448. 같은 명령으로 재확인해 변동 없음: 패키지 162 · 최상위 디렉터리 82(internal 78) · 최상위 집계 엣지 277(`internal/cli` 70·`internal/hook` 39 포함) · 임베드 템플릿 598. § 규모 표의 나머지 넷은 이 값들로 갱신했고, 본문 내용 갱신(F1 자가 배차 표면·main 커밋 금지 제2 거부 클래스·reports 생명주기·무손실 설정 저장)은 § `modules.md`·`entry-points.md`·`data-flow.md`의 해당 절이 나른다.
@@ -29,12 +30,12 @@
 
 | 값 | 수치 | 산출 명령 |
 |---|---|---|
-| 비테스트 Go 파일 | 1455 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
-| 테스트 Go 파일 | 2628 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
-| Go 패키지 총수 | 163 | `go list ./... \| wc -l` |
-| 최상위 디렉터리 | 83 | `internal` 79(`ls -d internal/*/`) + `cmd` 2 + `pkg` 2 |
-| 내부 import 엣지 (패키지 단위) | 453 | `go list -deps -json ./...`의 프로젝트 패키지 `Imports` 중 내부 경로 |
-| 내부 import 엣지 (최상위 집계) | 282 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
+| 비테스트 Go 파일 | 1469 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
+| 테스트 Go 파일 | 2653 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
+| Go 패키지 총수 | 164 | `go list ./... \| wc -l` |
+| 최상위 디렉터리 | 84 | `internal` 80(`ls -d internal/*/`) + `cmd` 2 + `pkg` 2 |
+| 내부 import 엣지 (패키지 단위) | 457 | `go list -deps -json ./...`의 프로젝트 패키지 `Imports` 중 내부 경로 |
+| 내부 import 엣지 (최상위 집계) | 286 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
 | 임베드 템플릿 파일 | 601 | `find internal/template/templates -type f \| wc -l` |
 
 테스트 대 비테스트 비율은 **1.81 : 1**입니다. `go list`의 패키지 가운데 테스트 Go 파일이

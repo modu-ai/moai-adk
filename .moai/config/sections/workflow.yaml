@@ -212,6 +212,20 @@ workflow:
     # internal/template/templates/).
     served_model_gate:
         enabled: false
+    # quota_gate: steer the NEXT card away from a nearly exhausted Claude
+    # account (SPEC-QUOTA-AWARE-SCHEDULING-001). A Claude lane's `moai factory
+    # next` leases no new card while a five-hour or seven-day window reads at or
+    # above its hold percentage; `moai factory status` and `moai todo --auto`
+    # recommend non-Claude lanes. This local opt-in enables the gate for
+    # dogfood; the numeric values are the shipped unmeasured defaults. Shipped
+    # default-false in template (internal/config/defaults.go enforces this; no
+    # gate-enabling value under internal/template/templates/).
+    quota_gate:
+        enabled: true
+        five_hour_hold_pct: 90
+        seven_day_hold_pct: 95
+        release_margin_pct: 5
+        max_age: 30m
     # jev: the TypeSafe System One judgment capability. It answers a typed
     # question about a supplied state and returns a typed answer with a
     # probability; it generates no text and decides nothing. Ships OFF, and
@@ -230,6 +244,18 @@ workflow:
     # One exception: the contract-mode Kickoff `llm+jev` cross-check may use
     # an answer as its second signal, where it can only confirm an LLM
     # approval or route the Kickoff to a human; it never decides alone.
+    #
+    # A second exception, separate from that cross-check, is the
+    # `moai todo --auto` cycle's own candidate ranking: the
+    # auto-scoped ranking exception. Behind the default-off
+    # workflow.jev.enabled gate, an in-process caller may supply the key
+    # that orders the queued candidates the cycle is about to accept, which
+    # sets selection order only. The candidate set is fixed by
+    # mechanical filters before any answer is read, and an answer that
+    # cannot be used as a whole falls back to recorded priority over the
+    # same set. The answer never adds, removes or edits a card, is never the
+    # basis of a completion verdict, a merge approval or an operator gate,
+    # and no ordering accuracy is claimed.
     #
     # Where this setting is changed, and where it is NOT: `moai init` asks
     # about it once, and after that the `moai web` settings screen is the only

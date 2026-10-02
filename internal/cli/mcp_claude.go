@@ -17,8 +17,12 @@ const (
 	claudeAuditToolName      = "claude_audit"
 	claudeBinaryName         = "claude"
 	claudeAuditTransport     = "claude-code-cli"
-	claudeAuditDefaultModel  = "claude-opus-5-5"
-	claudeAuditDefaultEffort = "medium"
+	// claudeAuditDefaultModel / claudeAuditDefaultEffort are the audit-path
+	// terminal fallback (SPEC-AGENT-TIER-001 REQ-TIER-004, operator pin
+	// {claude-opus-5-5, high} — SUPERSEDES the t1368 medium effort). Derived
+	// from the closed-set constants, not restated (REQ-TIER-013).
+	claudeAuditDefaultModel  = config.DefaultClaudeAuditModel
+	claudeAuditDefaultEffort = config.DefaultClaudeAuditEffort
 	claudeAuditOutputLimit   = 1 << 20
 	claudeAuditTimeout       = 5 * time.Minute
 	claudeCodeEnvPrefix      = "CLAUDE_CODE_"
