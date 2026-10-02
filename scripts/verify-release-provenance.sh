@@ -19,12 +19,21 @@
 #   6  .moai/config/sections/system.yaml at the tagged commit has version: <tag>
 #   7  the tagged commit is an ancestor of origin/main
 #
-# Exit 0 = every check passed; exit 1 = a check failed (the verdict
+# Pre-release tags (SemVer -rc.N) skip checks 5 and 6 and keep 1-4 and 7: a
+# release candidate has no CHANGELOG section or version bump of its own, but who
+# tagged which commit, by which route, is exactly as binding as for a final tag.
+# No substitute check takes the place of the two that are skipped, and the
+# verdict says so explicitly. Tags without a pre-release suffix run all seven
+# checks unchanged. Only the project's own `-rc.N` form counts; the legacy
+# undotted `-rcN` and other pre-release identifiers keep all seven.
+#
+# Exit 0 = every applicable check passed; exit 1 = a check failed (the verdict
 # line names it); exit 2 = bad usage.
 #
 # Honest limitation: the trailer lives in a public tag annotation, so anyone with
 # push rights can copy it. The gate stops accidental and habitual releases
-# through unsanctioned routes; the substantive protection is checks 5-7.
+# through unsanctioned routes; the substantive protection is checks 5-7 and, for
+# a pre-release tag, check 7 and the commit binding of check 4.
 
 set -euo pipefail
 
@@ -71,20 +80,32 @@ if [ "${TRAILER_COMMIT}" != "${TAG_COMMIT}" ]; then
   fail "check 4 (commit binding): trailer Release-commit='${TRAILER_COMMIT}' != tagged commit '${TAG_COMMIT}'."
 fi
 
-# Check 5 — CHANGELOG.md at the tagged commit has this version's section.
-# Formal sections are bare ('## [3.1.0]'); pre-release (rc) sections
-# carry the v prefix ('## [v3.0.0-rc12]'). 'v?' accepts both forms.
-VERSION_NO_V="${TAG#v}"
-if ! git show "${TAG_COMMIT}:CHANGELOG.md" | grep -E "^## \[v?${VERSION_NO_V}\]" >/dev/null; then
-  fail "check 5 (CHANGELOG): CHANGELOG.md at ${TAG_COMMIT} has no '## [${VERSION_NO_V}]' or '## [v${VERSION_NO_V}]' section."
-fi
+# Pre-release tags (-rc.N) skip checks 5 and 6; see the header. The grammar is
+# the project's own `-rc.N` (no leading zero), the form scripts/release.sh
+# produces. A tag outside it — the legacy undotted `-rcN`, `-beta.1`, build
+# metadata — is treated as a formal tag and keeps all seven checks.
+if [[ "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-rc\.(0|[1-9][0-9]*)$ ]]; then
+  echo "RELEASE_PROVENANCE_GATE: pre-release tag ${TAG}: skipping check 5 (CHANGELOG) and check 6 (version SSOT) per the rc rule."
+  APPLICABLE_CHECKS="5 applicable checks"
+  SKIPPED_NOTE="; checks 5 and 6 skipped (pre-release)"
+else
+  # Check 5 — CHANGELOG.md at the tagged commit has this version's section.
+  # Formal sections are bare ('## [3.1.0]'); pre-release (rc) sections
+  # carry the v prefix ('## [v3.0.0-rc12]'). 'v?' accepts both forms.
+  VERSION_NO_V="${TAG#v}"
+  if ! git show "${TAG_COMMIT}:CHANGELOG.md" | grep -E "^## \[v?${VERSION_NO_V}\]" >/dev/null; then
+    fail "check 5 (CHANGELOG): CHANGELOG.md at ${TAG_COMMIT} has no '## [${VERSION_NO_V}]' or '## [v${VERSION_NO_V}]' section."
+  fi
 
-# Check 6 — version SSOT (.moai/config/sections/system.yaml stores the
-# v-prefixed form, e.g. `version: v3.0.1`).
-SSOT_PATH='.moai/config/sections/system.yaml'
-if ! git show "${TAG_COMMIT}:${SSOT_PATH}" | grep -E "^[[:space:]]*version:[[:space:]]*${TAG}[[:space:]]*$" >/dev/null; then
-  ACTUAL="$(git show "${TAG_COMMIT}:${SSOT_PATH}" | sed -n 's/^[[:space:]]*version:[[:space:]]*//p' | head -n1)"
-  fail "check 6 (version SSOT): ${SSOT_PATH} at ${TAG_COMMIT} has version='${ACTUAL}', expected '${TAG}'."
+  # Check 6 — version SSOT (.moai/config/sections/system.yaml stores the
+  # v-prefixed form, e.g. `version: v3.0.1`).
+  SSOT_PATH='.moai/config/sections/system.yaml'
+  if ! git show "${TAG_COMMIT}:${SSOT_PATH}" | grep -E "^[[:space:]]*version:[[:space:]]*${TAG}[[:space:]]*$" >/dev/null; then
+    ACTUAL="$(git show "${TAG_COMMIT}:${SSOT_PATH}" | sed -n 's/^[[:space:]]*version:[[:space:]]*//p' | head -n1)"
+    fail "check 6 (version SSOT): ${SSOT_PATH} at ${TAG_COMMIT} has version='${ACTUAL}', expected '${TAG}'."
+  fi
+  APPLICABLE_CHECKS="all 7 checks"
+  SKIPPED_NOTE=""
 fi
 
 # Check 7 — the tagged commit is an ancestor of origin/main.
@@ -92,4 +113,4 @@ if ! git merge-base --is-ancestor "${TAG_COMMIT}" origin/main; then
   fail "check 7 (main ancestry): tagged commit ${TAG_COMMIT} is not an ancestor of origin/main."
 fi
 
-echo "RELEASE_PROVENANCE_GATE: all 7 checks passed for ${TAG} (${TAG_COMMIT})."
+echo "RELEASE_PROVENANCE_GATE: ${APPLICABLE_CHECKS} passed for ${TAG} (${TAG_COMMIT})${SKIPPED_NOTE}."

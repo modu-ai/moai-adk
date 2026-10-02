@@ -6,10 +6,12 @@
 #   scripts/release.sh v2.14.1              # Patch release (fix 직접 main)
 #   scripts/release.sh v2.14.1 --hotfix     # Hotfix release
 #   scripts/release.sh v2.15.0 --dry-run    # 검증만 (실제 tag/push 없이)
+#   scripts/release.sh v3.2.0-rc.1          # Release candidate (-rc.N): CHANGELOG 섹션 불필요
 #
 # 전제 조건 (CLAUDE.local.md §18.8):
-#   - CHANGELOG.md 에 해당 버전 섹션 존재
+#   - CHANGELOG.md 에 해당 버전 섹션 존재 (-rc.N 태그는 예외)
 #   - main 브랜치 checkout + origin/main 과 동기화
+#     (origin/main 과 같은 커밋을 가리키는 detached HEAD 도 허용)
 #   - 모든 CI 통과
 #   - 작업 트리 clean
 #
@@ -52,7 +54,7 @@ while [[ $# -gt 0 ]]; do
         --hotfix)        HOTFIX=true; shift ;;
         --skip-ci-check) SKIP_CI_CHECK=true; shift ;;
         -h|--help)
-            sed -n '2,20p' "$0"
+            sed -n '2,22p' "$0"
             exit 0
             ;;
         -*)
@@ -85,6 +87,15 @@ done
 # ACCEPTED so the historical `v3.0.0-rc12` line of tags remains valid input.
 if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
     die "Invalid version format: $VERSION (expected SemVer 2.0.0: vX.Y.Z, or vX.Y.Z-rc.N for a pre-release)"
+fi
+
+# Release candidate: the project's own `-rc.N` form (no leading zero). The same
+# grammar scripts/verify-release-provenance.sh uses to skip its checks 5 and 6;
+# the legacy undotted `-rcN` and other pre-release identifiers are NOT release
+# candidates here, so they keep the CHANGELOG requirement.
+IS_RC=false
+if [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-rc\.(0|[1-9][0-9]*)$ ]]; then
+    IS_RC=true
 fi
 
 log_info "Release version: ${BOLD}$VERSION${NC}"
@@ -121,30 +132,49 @@ log_ok "Working tree clean"
 
 # ─── Validation 5: Current branch ──────────────────────────────────────────
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-if [[ "$CURRENT_BRANCH" != "main" ]]; then
-    if [[ "$HOTFIX" == true ]]; then
-        log_warn "On branch '$CURRENT_BRANCH' (hotfix mode — allowed)"
-    else
-        die "Must be on 'main' branch (current: $CURRENT_BRANCH). Use --hotfix for hotfix branches."
+# The release harness runs from a detached worktree pinned at origin/main, so a
+# detached HEAD is admitted here; validation 6 then requires it to be exactly
+# origin/main's commit (an older or divergent detached HEAD is refused there).
+# On a branch, the rule is unchanged.
+DETACHED=false
+SYNC_BRANCH="$CURRENT_BRANCH"
+if [[ "$CURRENT_BRANCH" == "HEAD" ]]; then
+    DETACHED=true
+    SYNC_BRANCH="main"
+    log_ok "On expected ref: detached HEAD (must equal origin/main, checked next)"
+else
+    if [[ "$CURRENT_BRANCH" != "main" ]]; then
+        if [[ "$HOTFIX" == true ]]; then
+            log_warn "On branch '$CURRENT_BRANCH' (hotfix mode — allowed)"
+        else
+            die "Must be on 'main' branch (current: $CURRENT_BRANCH). Use --hotfix for hotfix branches."
+        fi
     fi
+    log_ok "On expected branch: $CURRENT_BRANCH"
 fi
-log_ok "On expected branch: $CURRENT_BRANCH"
 
 # ─── Validation 6: Synced with origin ──────────────────────────────────────
 git fetch origin --tags --quiet
 LOCAL_SHA="$(git rev-parse HEAD)"
-REMOTE_SHA="$(git rev-parse "origin/$CURRENT_BRANCH" 2>/dev/null || echo "")"
+REMOTE_SHA="$(git rev-parse "origin/$SYNC_BRANCH" 2>/dev/null || echo "")"
 
 if [[ -z "$REMOTE_SHA" ]]; then
-    die "Remote branch 'origin/$CURRENT_BRANCH' not found. Push branch first."
+    die "Remote branch 'origin/$SYNC_BRANCH' not found. Push branch first."
 fi
 
 if [[ "$LOCAL_SHA" != "$REMOTE_SHA" ]]; then
     AHEAD="$(git rev-list --count "$REMOTE_SHA..$LOCAL_SHA" 2>/dev/null || echo "?")"
     BEHIND="$(git rev-list --count "$LOCAL_SHA..$REMOTE_SHA" 2>/dev/null || echo "?")"
+    if [[ "$DETACHED" == true ]]; then
+        die "Detached HEAD is not origin/main (ahead: $AHEAD, behind: $BEHIND). Check out origin/main (or main) first."
+    fi
     die "Local '$CURRENT_BRANCH' diverged from origin (ahead: $AHEAD, behind: $BEHIND). Pull/push first."
 fi
-log_ok "Local $CURRENT_BRANCH synced with origin"
+if [[ "$DETACHED" == true ]]; then
+    log_ok "Detached HEAD equals origin/main"
+else
+    log_ok "Local $CURRENT_BRANCH synced with origin"
+fi
 
 # ─── Validation 7: Tag does not exist ──────────────────────────────────────
 if git rev-parse "$VERSION" >/dev/null 2>&1; then
@@ -165,14 +195,25 @@ CHANGELOG_HEADER="## [$CHANGELOG_VERSION]"
 # fall back to the v-prefixed one. CHANGELOG_HEADER must point at the form
 # that actually matched because the tag-annotation extraction below matches
 # it literally.
+#
+# A release candidate (-rc.N) needs no section of its own: it has no release
+# notes to write. When one exists anyway it is used; when it does not, the tag
+# annotation below is a one-line pre-release note and this validation is skipped.
+CHANGELOG_HAS_SECTION=true
 if ! grep -q "^## \[$CHANGELOG_VERSION\]" CHANGELOG.md; then
     if grep -q "^## \[v$CHANGELOG_VERSION\]" CHANGELOG.md; then
         CHANGELOG_HEADER="## [v$CHANGELOG_VERSION]"
+    elif [[ "$IS_RC" == true ]]; then
+        CHANGELOG_HAS_SECTION=false
     else
         die "CHANGELOG.md missing section '## [$CHANGELOG_VERSION]' (or '## [v$CHANGELOG_VERSION]'). Add release notes first."
     fi
 fi
-log_ok "CHANGELOG.md contains $CHANGELOG_HEADER section"
+if [[ "$CHANGELOG_HAS_SECTION" == true ]]; then
+    log_ok "CHANGELOG.md contains $CHANGELOG_HEADER section"
+else
+    log_ok "Pre-release $VERSION: no CHANGELOG.md section required (skipped)"
+fi
 
 # ─── Validation 9: CI status on HEAD (optional) ────────────────────────────
 if [[ "$SKIP_CI_CHECK" != true ]]; then
@@ -225,11 +266,15 @@ trap 'rm -f "$TMP_NOTES"' EXIT
 # trailing space in target disambiguates "3.0.0" from "3.0.0-rc1". The `started`
 # guard stops after the first section so a duplicate header (e.g. a localized
 # "## [3.0.0]" section) does not re-open extraction.
-awk -v target="$CHANGELOG_HEADER " '
-    !started && index($0, target) == 1 {flag=1; started=1; print; next}
-    /^## \[/ && flag {flag=0}
-    flag
-' CHANGELOG.md > "$TMP_NOTES"
+if [[ "$CHANGELOG_HAS_SECTION" == true ]]; then
+    awk -v target="$CHANGELOG_HEADER " '
+        !started && index($0, target) == 1 {flag=1; started=1; print; next}
+        /^## \[/ && flag {flag=0}
+        flag
+    ' CHANGELOG.md > "$TMP_NOTES"
+else
+    echo "Pre-release $VERSION" > "$TMP_NOTES"
+fi
 
 if [[ ! -s "$TMP_NOTES" ]]; then
     die "Failed to extract CHANGELOG section for $VERSION"
@@ -253,15 +298,27 @@ TAG_COMMIT="$(git rev-parse HEAD^{commit})"
 } >> "$TMP_NOTES"
 
 NOTES_LINES="$(wc -l < "$TMP_NOTES" | tr -d ' ')"
-log_ok "Extracted $NOTES_LINES line(s) from CHANGELOG.md as tag annotation"
+if [[ "$CHANGELOG_HAS_SECTION" == true ]]; then
+    log_ok "Extracted $NOTES_LINES line(s) from CHANGELOG.md as tag annotation"
+else
+    log_ok "Composed $NOTES_LINES line(s) of pre-release tag annotation (no CHANGELOG.md section)"
+fi
 
 # ─── Final confirmation ────────────────────────────────────────────────────
 echo
 echo -e "${BOLD}=== Release Summary ===${NC}"
 echo "  Version:     $VERSION"
-echo "  Branch:      $CURRENT_BRANCH"
+if [[ "$DETACHED" == true ]]; then
+    echo "  Branch:      (detached HEAD at origin/main)"
+else
+    echo "  Branch:      $CURRENT_BRANCH"
+fi
 echo "  HEAD SHA:    ${LOCAL_SHA:0:12}"
-echo "  Notes size:  $NOTES_LINES lines (from CHANGELOG.md $CHANGELOG_HEADER)"
+if [[ "$CHANGELOG_HAS_SECTION" == true ]]; then
+    echo "  Notes size:  $NOTES_LINES lines (from CHANGELOG.md $CHANGELOG_HEADER)"
+else
+    echo "  Notes size:  $NOTES_LINES lines (pre-release note; no CHANGELOG.md section)"
+fi
 echo "  Dry-run:     $DRY_RUN"
 echo "  Hotfix:      $HOTFIX"
 echo
