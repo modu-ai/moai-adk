@@ -22,7 +22,7 @@ func tg2ShellVM(area string) ShellVM {
 	}
 }
 
-// TestFactoryLaneStates pins the factory lanes beside the chain: a resolved lane
+// TestFactoryLaneStates pins the factory lanes: a resolved lane
 // renders its own card/spec rows, an unresolved lane renders the
 // lane-unresolved warning with its reason (never another lane's record), and an
 // empty lane list renders the no-lanes banner rather than a silent nothing.

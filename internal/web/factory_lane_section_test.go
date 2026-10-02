@@ -181,14 +181,22 @@ func TestFactoryNoteBannerCorrected(t *testing.T) {
 	}
 
 	// Survival: the not-recorded marker still carries non-empty hover text, and
-	// that text now carries a translation key of its own.
+	// that text now carries a translation key of its own. The marker is drawn
+	// where a value is not recorded; a lane whose record names neither a card
+	// nor a SPEC draws it twice, so that is the page the marker is read from.
 	if !strings.Contains(sources["widgets.templ"], `data-i18n-title="mark.notRecorded"`) {
 		t.Error("the not-recorded marker carries no translated hover text")
 	}
-	if !strings.Contains(body, `data-i18n-title="mark.notRecorded"`) {
+	root := t.TempDir()
+	pid := os.Getpid()
+	writeFactoryRegistry(t, root, map[string]int{"lane-1": pid})
+	writeActiveSessions(t, root, []session.Entry{liveEntry("sess-blank", pid)})
+	writeFactoryRecord(t, root, factory.Record{SessionID: "sess-blank", Role: "lane", Lane: 1, Backend: factory.BackendClaude})
+	marked := factoryBodyFor(t, root)
+	if !strings.Contains(marked, `data-i18n-title="mark.notRecorded"`) {
 		t.Error("the rendered marker carries no translated hover text")
 	}
-	if strings.Contains(body, `title=""`) {
+	if strings.Contains(marked, `title=""`) {
 		t.Error("a marker rendered with empty hover text")
 	}
 }
@@ -256,7 +264,9 @@ func TestLaneSectionAddsNoTransportSurface(t *testing.T) {
 		t.Errorf("live-area count changed with lanes present: %d vs %d",
 			areas, strings.Count(plain, `data-live="`))
 	}
-	if strings.Contains(body, `data-live="factory"`) || strings.Contains(body, `data-live="lane"`) {
+	// The page's own area is "factory", the key the lane section rides; the
+	// lane section must not add an area of its own beside it.
+	if strings.Contains(body, `data-live="lane"`) {
 		t.Error("the lane section declared a new live area — transport is out of scope")
 	}
 	_ = time.Now

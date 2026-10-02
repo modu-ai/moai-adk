@@ -1,6 +1,6 @@
 package web
 
-// preexisting_kanban_artifacts_m1_test.go — SPEC-LAUNCHER-ENTRY-FLAGS-001 M1
+// preexisting_factory_artifacts_m1_test.go — SPEC-LAUNCHER-ENTRY-FLAGS-001 M1
 // (card t1399), AC-017 web half: a project holding session records with the
 // retired chain roles, a kanban-board directory with an unreadable role
 // declaration, and a surviving session environment carrying the two kanban

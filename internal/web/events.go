@@ -30,8 +30,9 @@ var watchMap = map[string][]string{
 	"session": {".moai/state"},
 	"goal":    {".moai/state/goal"},
 	"verify":  {".moai/state/verify"},
-	// SSE event KEY stays "factory" — it is a frontend-visible contract. Only
-	// the watched PATH moved with the state-directory rename.
+	// The SSE event KEY is a frontend-visible contract: assets/app.js lists it in
+	// EVENTS and the screens carry it as data-live, so the three move together
+	// (TestWebLiveKeyContract). The watched path is the todo queue.
 	"factory": {".moai/state/todo"},
 	"config":  {".moai/config/sections"},
 }

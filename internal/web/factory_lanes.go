@@ -1,9 +1,5 @@
 // factory_lanes.go — per-lane factory progress (SPEC-WEB-CONSOLE-015 M1).
 //
-// Lanes are NOT chain roles, so they live beside ChainRoles rather than
-// widening it: the four-role chain is a fixed dispatch vocabulary, and a
-// variable-length role list would make every chain consumer defend against it.
-//
 // The join is `factory.db workers[lane-N].PID → active-sessions entry → factory
 // record`, and it is non-unique on BOTH sides. The factory registry's loader is
 // fail-open and pruning dead claims is a separate call this console does not

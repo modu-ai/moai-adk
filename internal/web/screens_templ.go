@@ -542,8 +542,8 @@ func specRowLink(s SpecRowVM) templ.Component {
 }
 
 /* ── 팩토리 ───────────────────────────────────────────────
-   뷰 A(체인 세션 보드)가 주, 뷰 B(SPEC 파이프라인 4컬럼)가 보조.
-   뷰 A의 모델·effort·CW는 기록이 없으면 채우지 않고 비운다.
+   팩토리 레인이 주, SPEC 파이프라인(4컬럼)이 보조.
+   레인 행의 값은 기록이 없으면 채우지 않고 비운다.
    ---------------------------------------------------- */
 
 func Factory(vm ShellVM, k FactoryVM) templ.Component {

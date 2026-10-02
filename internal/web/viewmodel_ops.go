@@ -30,7 +30,7 @@ import (
 const (
 	StateLive  = "live"  // PID 생존 확인
 	StateStale = "stale" // 기록은 있으나 하트비트가 낡음 / PID 미확인
-	StateIdle  = "idle"  // 세션 자체가 없음 = 체인 결함
+	StateIdle  = "idle"  // 세션 자체가 없음
 
 	StageDone    = "done"
 	StageActive  = "active"
@@ -100,10 +100,8 @@ type FactoryVM struct {
 	Columns []PipeColumnVM
 	Total   int
 
-	// Lanes are the factory lanes. They stand beside Roles rather than inside it:
-	// a lane is not a chain role, and widening ChainRoles would make every chain
-	// consumer defend against a variable-length role list. No registered lane
-	// yields an empty list, and the view draws that fact.
+	// Lanes are the factory lanes. No registered lane yields an empty list, and
+	// the view draws that fact.
 	Lanes []LaneVM
 }
 

@@ -1,16 +1,18 @@
 package cli
 
 // retired_word_identifiers_m7_test.go — SPEC-LAUNCHER-ENTRY-FLAGS-001 M7 (card
-// t1399), the identifier half of AC-018 (REQ-017): outside internal/web, no Go
-// identifier carries the retired mode word in any letter case. The four test
-// names that acceptance commands select by name are the only identifiers that
-// keep it (the bare package name was an allowed identifier until M8 renamed the
-// package; a bare use of it now counts like any other). internal/web moves as
-// one unit at M9 and is not scanned here.
+// t1399), the identifier half of AC-018 (REQ-017): no Go identifier under
+// internal or cmd carries the retired mode word in any letter case. The four
+// test names that acceptance commands select by name are the only identifiers
+// that keep it (the bare package name was an allowed identifier until M8
+// renamed the package; a bare use of it now counts like any other). internal/web
+// moved as one unit at M9 and was excluded from this scan until then; its
+// generated *_templ.go files are scanned like any other Go source.
 //
 // The scan is syntactic (go/parser identifiers), so a comment, a string literal,
 // or a marker value (`MOAI_KANBAN_ID`, frozen by AC-016) never trips it. The
-// re-runnable program probe/rename/m7_rename.go converts an offender.
+// re-runnable programs probe/rename/m7_rename.go (outside internal/web) and
+// probe/rename/m9_rename.go (internal/web) convert an offender.
 
 import (
 	"go/ast"
@@ -78,7 +80,7 @@ func TestRetiredWordIdentifierScanHasTeeth(t *testing.T) {
 	}
 }
 
-func TestNoRetiredWordIdentifiersOutsideWeb(t *testing.T) {
+func TestNoRetiredWordIdentifiers(t *testing.T) {
 	var offenders []string
 	for _, root := range []string{"../../internal", "../../cmd"} {
 		_ = filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
@@ -89,7 +91,7 @@ func TestNoRetiredWordIdentifiersOutsideWeb(t *testing.T) {
 				switch {
 				case d.Name() == "testdata", d.Name() == "node_modules":
 					return filepath.SkipDir
-				case filepath.ToSlash(p) == "../../internal/web", filepath.ToSlash(p) == "../../internal/template/templates":
+				case filepath.ToSlash(p) == "../../internal/template/templates":
 					return filepath.SkipDir
 				}
 				return nil
@@ -111,6 +113,6 @@ func TestNoRetiredWordIdentifiersOutsideWeb(t *testing.T) {
 		if len(shown) > 25 {
 			shown = shown[:25]
 		}
-		t.Fatalf("%d Go identifier(s) outside internal/web still carry the retired mode word (run probe/rename/m7_rename.go):\n%s", len(offenders), strings.Join(shown, "\n"))
+		t.Fatalf("%d Go identifier(s) still carry the retired mode word (run probe/rename/m7_rename.go, and m9_rename.go for internal/web):\n%s", len(offenders), strings.Join(shown, "\n"))
 	}
 }

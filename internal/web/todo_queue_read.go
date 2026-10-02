@@ -23,8 +23,8 @@ import (
 // (REQ-WTQ-001, REQ-WTQ-004). Calling the adopting Load here would make a page
 // render perform the one-time storage cutover, which is the `moai todo`
 // command path's act. Adoption stays reachable only from there. The read itself
-// takes no lock — lock-guarded writes and id issuance belong to
-// SPEC-KANBAN-TODO-CLI-001, and the console is a consumer.
+// takes no lock — lock-guarded writes and id issuance belong to the
+// `moai todo` command, and the console is a consumer.
 //
 // An absent queue is empty; a failed read is unavailable, never a zero count.
 // The view receives no raw error text. All three states are

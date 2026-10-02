@@ -138,7 +138,7 @@ func (a *app) handleFactory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "factory unavailable: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	vm := a.shellVM(r, "factory", "Factory", "chain + pipeline")
+	vm := a.shellVM(r, "factory", "Factory", "lanes + pipeline")
 	a.renderPage(w, Factory(vm, k))
 }
 
