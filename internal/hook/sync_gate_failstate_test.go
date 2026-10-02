@@ -179,6 +179,10 @@ func (f *sgfFixture) setStub(s sgfStubSpec) {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
+	// The sync-gate hook invokes go as `go -C <module-root> vet|build ./...`
+	// (card t1389 multi-module vetting); strip the prefix so the exits map
+	// keeps keying on the subcommand like the real go binary.
+	b.WriteString("if [ \"$1\" = \"-C\" ]; then shift 2; fi\n")
 	b.WriteString("case \"$1\" in\n")
 	for _, k := range keys {
 		fmt.Fprintf(&b, "  %s) exit %d ;;\n", k, s.exits[k])
@@ -686,16 +690,17 @@ func TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution(t *testing.T) {
 		vet, build      int
 		redeliver       bool // true: call 2 byte-identical to call 1's block
 		call1NoDecision bool
+		flipBlock       bool // true: a stored advisory under a blocking call 2 re-delivers as a synthesized block — the advisory→blocking flip must not read as a pass (card t1385/t1388)
 	}{
-		{"A1", rgClass, []string{full}, []string{full}, 0, 1, false, true},
-		{"A2", rgClass, []string{auto}, []string{auto}, 1, 0, false, true},
-		{"A3", rgClass, []string{off}, []string{off}, 1, 0, false, true},
-		{"A4", rbClass, []string{auto}, []string{auto}, 0, 1, true, false},
-		{"A5", rgClass, nil, []string{full}, 1, 0, false, false},
-		{"A6", rgClass, []string{full}, nil, 1, 0, false, false},
-		{"A7", rgClass, nil, []string{off}, 1, 0, false, false},
-		{"A8", rgClass, nil, []string{auto}, 1, 0, false, false},
-		{"A9", rbClass, []string{auto}, []string{auto}, 1, 1, true, false},
+		{"A1", rgClass, []string{full}, []string{full}, 0, 1, false, true, false},
+		{"A2", rgClass, []string{auto}, []string{auto}, 1, 0, false, true, false},
+		{"A3", rgClass, []string{off}, []string{off}, 1, 0, false, true, false},
+		{"A4", rbClass, []string{auto}, []string{auto}, 0, 1, true, false, false},
+		{"A5", rgClass, nil, []string{full}, 1, 0, false, false, false},
+		{"A6", rgClass, []string{full}, nil, 1, 0, false, false, true},
+		{"A7", rgClass, nil, []string{off}, 1, 0, false, false, false},
+		{"A8", rgClass, nil, []string{auto}, 1, 0, false, false, false},
+		{"A9", rbClass, []string{auto}, []string{auto}, 1, 1, true, false, false},
 	}
 	for _, r := range rows {
 		t.Run(r.id, func(t *testing.T) {
@@ -715,6 +720,19 @@ func TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution(t *testing.T) {
 				}
 				if out2 != out1 {
 					t.Errorf("%s: call 2 stdout is not byte-identical to call 1's block (call1 %d bytes, call2 %d bytes); call2=%q", tag, len(out1), len(out2), out2)
+				}
+				return
+			}
+			if r.flipBlock {
+				// Card t1385 flip semantics: the stored advisory (call 1 ran
+				// advisory, call 2 resolves blocking) re-delivers as a
+				// synthesized block — not byte-identical, the stored advisory
+				// body carries no decision — and without re-running checks.
+				if !sgfHasBlock(out2) {
+					t.Errorf("%s: call 2 is not a block; stdout=%q", tag, out2)
+				}
+				if n2 != n1 {
+					t.Errorf("%s: call 2 re-ran the checks (stub %d -> %d)", tag, n1, n2)
 				}
 				return
 			}
@@ -759,10 +777,15 @@ func TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState(t *testing.T) {
 		if sgfHasDecision(out2) {
 			t.Errorf("%s: call 2 carries \"decision\"; stdout=%q", tag, out2)
 		}
+		// Call 3: the payload on disk is now call 2's stored ADVISORY (call 2
+		// replaced call 1's block payload), and the blocking default resolves
+		// the card t1385 flip: re-deliver as a synthesized block, no check
+		// re-run. The call-1 block body still never re-delivers — what
+		// re-delivers is the advisory.
 		before3 := f.count()
 		out3, _ := f.run("{}")
-		if out3 != "" {
-			t.Errorf("%s: call 3 stdout = %q; want empty (call-1 block must not be re-delivered)", tag, out3)
+		if !sgfHasBlock(out3) {
+			t.Errorf("%s: call 3 is not a block; stdout=%q", tag, out3)
 		}
 		if n := f.count(); n != before3 {
 			t.Errorf("%s: call 3 ran the checks (stub %d -> %d)", tag, before3, n)

@@ -16,6 +16,11 @@ import (
 // testFixedNow is a stable reference time for staleness tests.
 var testFixedNow = time.Date(2026, 4, 25, 12, 0, 0, 0, time.UTC)
 
+// Model-id expectations follow SPEC-MODEL-MATRIX-UPDATE-001 DR-2: the built-in
+// glmContextWindows table dropped the seven retired ids (glm-5.2,
+// glm-4.5-air, …), so a retired id now resolves to 0 and both hooks leave the
+// env keys unset; llm.yaml glm.context_windows is the override path for any
+// custom id.
 func TestMaybeSet1MAutoCompactWindow(t *testing.T) {
 	t.Parallel()
 
@@ -24,8 +29,8 @@ func TestMaybeSet1MAutoCompactWindow(t *testing.T) {
 		env        map[string]string
 		wantWindow string // "" means expect the key unset
 	}{
-		{name: "glm-5.2 resolves to 1M, no window → sets 1M", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.2"}, wantWindow: "1000000"},
-		{name: "glm-4.5-air resolves to 128K (< 1M tier), no window → unset", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5-air"}, wantWindow: ""},
+		{name: "glm-5.3 resolves to 1M, no window → sets 1M", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.3"}, wantWindow: "1000000"},
+		{name: "glm-4.5-air (removed id) resolves to 0, no window → unset", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5-air"}, wantWindow: ""},
 		{name: "claude model → unset (ResolveGLMContextWindow returns 0 for claude-prefixed)", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8"}, wantWindow: ""},
 		{name: "window already set → preserved, not overwritten", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.2", config.EnvClaudeCodeAutoCompactWindow: "500000"}, wantWindow: "500000"},
 		{name: "empty opus model → unset", env: map[string]string{}, wantWindow: ""},
@@ -50,7 +55,7 @@ func TestMaybeDeclareGLMContextWindow(t *testing.T) {
 		wantDecl string // "" means expect the key unset
 	}{
 		{name: "glm-5.3 resolves to 1M → declares 1000000", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.3"}, wantDecl: "1000000"},
-		{name: "glm-4.5-air resolves to 128K (non-1M tier still declared)", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5-air"}, wantDecl: "128000"},
+		{name: "glm-4.5-air (removed id) resolves to 0, no declaration → unset", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5-air"}, wantDecl: ""},
 		{name: "claude model → unset (ResolveGLMContextWindow returns 0 for claude-prefixed)", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8"}, wantDecl: ""},
 		{name: "declaration already set → preserved, not overwritten", env: map[string]string{"ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.3", config.EnvClaudeCodeMaxContextTokens: "500000"}, wantDecl: "500000"},
 		{name: "empty opus model → unset", env: map[string]string{}, wantDecl: ""},
