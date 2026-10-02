@@ -3,15 +3,21 @@
 Tier M. Every release-blocking criterion carries a **RED-now cell** (a read-only single-invocation
 command, its verbatim output, its exit code, the pinned tree) and a **green-path cell** (the
 milestone that flips it and what the passing output becomes), per
-`verification-completeness.md` §2 and §2.1. Given-When-Then is the verification layer's format;
-the requirements are GEARS in `spec.md`.
+`verification-completeness.md` §2 and §2.1. A criterion that cannot be red on arrival is a
+**regression-guard**, is labelled so, and is never recorded as release-blocking. Given-When-Then is
+the verification layer's format; the requirements are GEARS in `spec.md`. Where a clause is a model
+act that no mechanical check reaches, the criterion says *(doctrine-only)*.
 
 ## Evidence ledger (RED-now observations)
 
-Whole-ledger pin: tree `4bf547bca` (`4bf547bcad7c155b1e91485921569db709ec3ac2`), branch
-`WT-todo-auto-pick-autonomy`, observed 2026-10-02 in this card's worktree. After the run these rows
-are history by design — each describes the pinned tree and is expected to print something else on a
-tree that carries the linked milestone. Row ids are `L<n>` (RED-now / context) and `C<n>` (controls).
+Pins. Rows `L1`-`L14` and `C1`-`C3` were observed on tree `4bf547bca`
+(`4bf547bcad7c155b1e91485921569db709ec3ac2`) and re-executed by the plan audit on `b3646de10`,
+which differs from `4bf547bca` only by the SPEC's own files. Rows `L15`-`L22`, `S1`-`S2`, `C4` were
+measured in the iteration-1 repair on `b3646de10`
+(`b3646de107ca38c3c0d66e776ec4d8341b0e5ead`), branch `WT-todo-auto-pick-autonomy`. After the run
+these rows are history by design — each describes the pinned tree and is expected to print
+something else on a tree that carries the linked milestone. Row ids are `L<n>` (RED-now / context),
+`C<n>` (controls), `S<n>` (setup).
 
 | Id | Command | Verbatim stdout | Exit | Why it is red |
 |---|---|---|---|---|
@@ -27,199 +33,261 @@ tree that carries the linked milestone. Row ids are `L<n>` (RED-now / context) a
 | L9 | `git grep -c -F "factory next --card" -- .claude/rules/moai/workflow/kanban-dispatch.md .claude/rules/moai/workflow/auto-semantics.md .claude/skills/moai/workflows/gtd.md .claude/agents/moai/manager-todo.md .claude/skills/moai-kanban-foreman/SKILL.md` | (empty) | 1 | none of the five docs names the nominated form |
 | L10 | `git grep -c -F "ladder_path=gate-row card pick" -- .claude/rules/moai/workflow/auto-semantics.md .claude/skills/moai/workflows/gtd.md` | (empty) | 1 | no card-pick decision-record form exists |
 | C2 | `git grep -c -F "ladder_path=" -- .claude/rules/moai/workflow/auto-semantics.md` | `.claude/rules/moai/workflow/auto-semantics.md:1` | 0 | control for L10: the sibling literal is live on the same pathspec |
-| L11 | `wc -c .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` | `   26959 .claude/rules/moai/workflow/kanban-dispatch.md` · `   26637 internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` · `   53596 total` | 0 | baseline sizes the non-growth bound is measured against (see AC-TAU-011) |
+| L11 | `wc -c .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` | `   26959 .claude/rules/moai/workflow/kanban-dispatch.md` · `   26637 internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` · `   53596 total` | 0 | baseline byte sizes the non-growth bound is measured against |
 | L12 | `git diff --no-index --numstat -- .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` | `1	1	{.claude => internal/template/templates/.claude}/rules/moai/workflow/kanban-dispatch.md` | 1 | baseline: exactly one differing line (the pre-existing line-177 drift) |
 | C3 | `cmp .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` | `.claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md differ: char 23771, line 177` | 1 | positive control: `cmp` detects the one drifting pair |
-| L13 | `cmp .claude/skills/moai/workflows/gtd.md internal/template/templates/.claude/skills/moai/workflows/gtd.md` | (empty) | 0 | baseline: identical (parity guard — green by design; see AC-TAU-010) |
-| L14 | `git diff --name-only 4bf547bca -- internal/kanban internal/graph` | (empty) | 0 | baseline: no change under the two packages REQ-TAU-003 freezes (guard — green by design) |
+| L13 | `cmp .claude/skills/moai/workflows/gtd.md internal/template/templates/.claude/skills/moai/workflows/gtd.md` | (empty) | 0 | baseline: identical (parity guard — green by design; AC-TAU-010) |
+| L14 | `git diff --name-only 4bf547bca -- internal/kanban internal/graph` | (empty) | 0 | baseline: no change under the two packages REQ-TAU-003 freezes (guard — green by design; AC-TAU-012) |
+| L15 | `go run ./cmd/moai factory next --help` | `Lease the lane's next card through the factory record (lane session, parent checkout)` · `USAGE` · `moai factory next [--flags]` · `FLAGS` · `-h --help     Help for next` · `--run         Factory run id (default: the single active run)` · `--wait        Keep re-checking at a fixed interval until a card is leased or the wait bound elapses` · `--wait-bound  How long --wait re-checks before reporting no card (15m0s)` | 0 | the flag set has no `--card`; the baseline the flag-set-equality criterion compares to (AC-TAU-001) |
+| L16 | `git grep -n -F "switch to /moai:todo --auto self-service pickup" -- internal/cli/factory_messaging.go` | `internal/cli/factory_messaging.go:255:			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "fallback declared: trigger=%s card=%s at %s\nswitch to /moai:todo --auto self-service pickup (REQ-FLA-001)\n",` | 0 | the shipped fallback verb still routes a lane to the serial cycle (AC-TAU-005) |
+| L17 | `git grep -c -F "authorization is exercised through" -- internal/cli/todo.go` | (empty) | 1 | no dedicated `--auto` refusal text exists (AC-TAU-005) |
+| S1 | `go build -o <S>/moai ./cmd/moai` (S = the plan session's scratch directory, outside the tree) | (empty) | 0 | setup for L18/C4: this tree's binary, built at `b3646de10` |
+| S2 | `MOAI_HOME=<S>/home CLAUDE_PROJECT_DIR=<S>/proj <S>/moai todo add "d4 scratch card one"` | `t1 1` (stderr carries one `config sections directory not found, using defaults` WARN) | 0 | setup: a one-card scratch queue under a redirected `MOAI_HOME`; the database landed at `<S>/home/db/proj-b4a38042/todo/backlog.db`, never in the real home |
+| L18 | `env MOAI_FACTORY_WORKER=lane-1 MOAI_HOME=<S>/home CLAUDE_PROJECT_DIR=<S>/proj <S>/moai todo --auto --auto-wait 1ms` (run from a shell with no `MOAI_FACTORY_*` variables; this lane's shell needed an `unset` first, done as a separate precondition) | `jev: unavailable (no local scripts) — labelled non-finding; proceeding on the operator session's own judgment` · `selection: source=fallback reason=jev-disabled` · `selection: ranked t1` · `selection: note landed signal unmeasured for t1 (no answer or unknown)` · `accept t1 d4 scratch card one` · `dispatch (one isolated in-session Agent() worker, isolation: worktree):` · `card: t1` · `evidence: <S>/proj/.moai/reports/t1/evidence.md` · `worker orders: …` · `unpick t1 non-finding: worker evidence absent at deadline … card returned to queued, never done` | 0 | a session whose only lane variable is the lane label **runs** the serial cycle and mutates the queue; the criterion demands a refusal (AC-TAU-005) |
+| C4 | `env MOAI_KANBAN_BACKEND=gpt MOAI_HOME=<S>/home CLAUDE_PROJECT_DIR=<S>/proj <S>/moai todo --auto --auto-wait 1ms` (same precondition as L18) | the same ten lines as L18 (`accept t1 …` through `unpick t1 …`) | 0 | **control, must stay green:** a non-lane session carrying only the Codex backend marker runs `--auto` today and must keep running it (AC-TAU-005 non-lane arm); a guard built on `factoryLaneRefusal()` would turn this row red |
+| L19 | `git grep -c -F "exercises the --auto authorization through" -- .claude/skills/moai/workflows/gtd.md internal/template/templates/.claude/skills/moai/workflows/gtd.md` | (empty) | 1 | gtd.md has no lane routing sentence (AC-TAU-007) |
+| L20 | `git grep -c -F "report-only for an operator-picked card" -- .claude/rules/moai/workflow/kanban-dispatch-detail.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch-detail.md` | (empty) | 1 | the detail companion has no operator-picked report-only sentence (AC-TAU-007) |
+| L21 | `git diff --numstat 4bf547bca -- .claude/rules/moai/workflow/kanban-dispatch.md .claude/rules/moai/workflow/kanban-dispatch-detail.md .claude/rules/moai/workflow/auto-semantics.md .claude/skills/moai/workflows/gtd.md .claude/agents/moai/manager-todo.md .claude/skills/moai-kanban-foreman/SKILL.md` | (empty) | 0 | the floor of AC-TAU-013 (every named doc has at least one changed line) is not met: nothing is edited yet |
+| L22 | `wc -m .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` | `   26754 .claude/rules/moai/workflow/kanban-dispatch.md` · `   26433 internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` · `   53187 total` | 0 | baseline character counts (AC-TAU-011) |
 
 **Context rows** (observed, not RED-now cells — their commands are compound or no longer exist):
 
-- **G1.** The baseline of the existing pinned tests, lane environment scrubbed in one compound
+- **G1.** The baseline of the existing lease pins, lane environment scrubbed in one compound
   invocation: `unset … && go test ./internal/cli -run '^(TestFactoryNextSerialMutualExclusivity|…|TestAutoRankAgentDoctrine)$' -count=1 -v`
-  → exit 0, 8 of 8 named tests `--- PASS` (full command and list: `research.md` R3). The swept set is
-  non-empty (eight named PASS lines), so the green is not an empty sweep.
+  → exit 0, 8 of 8 named tests `--- PASS` (`research.md` R3).
+- **G2.** The baseline of the doc pins that read the amended files: `unset … && go test ./internal/cli -run '^(TestAutoRankDoctrineAmendment|TestAutoRankMirrorParity|TestAutoRankMarkerDisclosure|TestAutoRankAgentDoctrine|TestAutoHelpAndRefusalDoNotAssertPickOrder|TestTodoSkillDocumentsClassification)$' -count=1 -v`
+  → exit 0, 6 of 6 named tests `--- PASS`, `ok  github.com/modu-ai/moai-adk/internal/cli  2.035s` (`b3646de10`). A wider prefix selector
+  over `TestAutoRank`, `TestTodoAuto`, `TestAutoHelp` ran 54 passing tests (`ok … 108.063s`, exit 0).
 - **P1-P4.** The four throwaway-probe observations (`research.md` R2, O1-O4). The probe file was
-  deleted before commit; they are history and motivate AC-TAU-004, -005, -008, but are **not**
-  re-executable, so no criterion's release-blocking status rests on them alone.
+  deleted before commit; they motivate AC-TAU-004, -005 and -006 and are **not** re-executable, so
+  no criterion's release-blocking status rests on them alone (L18 re-measures the lane arm).
 
-## AC-TAU-001 — A lane takes the card it nominates (REQ-TAU-002, -004, -005)
+## AC-TAU-001 — A lane takes the card it nominates, and the interface is exactly one flag wider (REQ-TAU-002, -003, -004, -005)
 
-**Covers**: maps REQ-TAU-002, REQ-TAU-004, REQ-TAU-005
+**Covers**: maps REQ-TAU-002, REQ-TAU-003, REQ-TAU-004, REQ-TAU-005
 
 Release-blocking.
 
-**Given** a factory run with lane `lane-1`, and a queue of three queued parallelizable cards
-`t1`, `t2`, `t3`
+**Given** a factory run with lane `lane-1` and three queued parallelizable cards `t1`, `t2`, `t3`
 **When** `lane-1` runs `moai factory next --card t2`
-**Then** `t2` — not `t1` — is leased to `lane-1` in the factory record, its queue state is
-`picked`, its per-card worktree is ensured exactly as for an unnominated lease, and the output
-line has the unnominated shape (`<id> stage=… worktree=…`).
+**Then** `t2` — not `t1` — is leased to `lane-1`, its queue state is `picked`, its per-card
+worktree is ensured exactly as for an unnominated lease, and the output line has the unnominated
+shape (`<id> stage=… worktree=…`).
 
 **Given** the same queue
-**When** `lane-1` runs `moai factory next --card t9` (an id that is in no queue)
-**Then** the command exits with the refusal code (distinct from 0, 1 and the no-card status 3),
-prints one stderr line naming the token `unknown-card`, prints nothing on stdout, and neither the
-queue file nor the factory record changes (byte-identical before and after).
+**When** `lane-1` runs `moai factory next --card t9` (an id in no queue)
+**Then** the command exits 4, prints one stderr line `factory next: refused unknown-card: …`,
+prints nothing on stdout, and the queue and the factory record are byte-identical before and after.
 
-- **RED-now:** L1 (the flag is unknown) and L2 (no nomination test exists). Red because the
-  nomination form does not exist.
-- **Green path:** M2 flips L1 — the command no longer prints `Unknown flag`; M1's
-  `TestFactoryNextNominateLeasesNominee` and the `unknown-card` subtest pass. The swept set is
-  checked: the run's `-v` output must list at least the named tests as `--- PASS`.
-- **Mutant probe:** (MU-1) a `--card` that is parsed and ignored (falls through to priority order)
-  leases `t1` and fails the "leases `t2`" assertion; (MU-2) a nomination that leases without the
-  version-checked edge changes a row the refusal case asserts unchanged.
+**Given** the command's flag set
+**When** `moai factory next --help` is read
+**Then** the flags are exactly `--card`, `--run`, `--wait`, `--wait-bound` (and `-h/--help`): the
+baseline L15 plus `--card`, nothing else (`TestFactoryNextFlagSet`).
 
-## AC-TAU-002 — Concurrent lanes never double-pick, through the nominated path (REQ-TAU-006, -002)
+**Given** the MCP tool `factory_next`
+**When** it is called with `card` and without it
+**Then** with `card` it leases the nominee or returns the same refusal line as an error result;
+without `card` it behaves as before; its inputs are exactly `run`, `project_root`, `card`
+(`TestFactoryNextNominateMCPParity`).
+
+- **RED-now:** L1 (the flag is unknown), L2 (no nomination test exists, control C1) and L15 (the
+  flag set has no `--card`). Red because the nomination form does not exist.
+- **Green path:** M2 flips the CLI rows — L1 no longer prints `Unknown flag`, L15 lists `--card`;
+  M4 flips the MCP row. The run's `-v` output must list the named tests as `--- PASS` (the swept
+  set is checked, not assumed).
+- **Mutant probe:** (MU-1) `--card` parsed and ignored (falls through to priority order) leases
+  `t1` and fails "leases `t2`"; (MU-2) a lease that bypasses the version-checked edge changes a row
+  the refusal case asserts unchanged; (MU-18) a second flag such as `--force-card` fails the
+  flag-set equality; (MU-19) an MCP `card` that is parsed and ignored leases `t1` and fails parity.
+
+## AC-TAU-002 — Concurrent lanes never double-pick, through the nominated path (REQ-TAU-002, -006)
 
 **Covers**: maps REQ-TAU-006, REQ-TAU-002
 
-Release-blocking.
+Release-blocking. **Card item 6 is satisfied here:** "two concurrent `--auto` lanes lease
+different cards" is exercised through the nominated path, because a lane no longer runs
+`moai todo --auto` (AC-TAU-005).
 
-**Given** two registered lanes `lane-1` and `lane-2` and two queued parallelizable cards `t1`, `t2`
-**When** the two lanes run `factory next --card t1` and `factory next --card t2` concurrently
+**Given** two registered lanes `lane-1`, `lane-2` and two queued parallelizable cards `t1`, `t2`
+**When** the lanes run `factory next --card t1` and `factory next --card t2` concurrently
 **Then** each lane holds its own card and no card has two holders.
 
 **Given** the same two lanes and one queued card `t1`
 **When** both run `factory next --card t1` concurrently
-**Then** exactly one lane holds `t1`; the other exits with the refusal code and the token `raced`
-or `owned`, and re-nominating a different candidate (`t2`) succeeds.
+**Then** exactly one lane holds `t1`; the other exits 4 with the token `raced` or `owned`, and
+re-nominating a different candidate (`t2`) succeeds.
 
 - **RED-now:** L2 (the swept tests do not exist), with control C1.
 - **Green path:** M2 — `TestFactoryNextNominateConcurrentLanes` and
   `TestFactoryNextNominateSameCardExactlyOne` pass under goroutine contention (the shape of the
   existing `TestFactoryNextParallelizableConcurrentLeases`); the five pre-existing lease tests of
-  G1 stay green.
-- **Mutant probe:** (MU-3) a nomination implemented as read-then-write without the version check
-  lets both lanes hold `t1` and fails the exactly-one assertion.
+  G1 stay green. The lane's act of re-selecting is *doctrine-only*; the test performs it.
+- **Mutant probe:** (MU-3) a read-then-write nomination without the version check lets both lanes
+  hold `t1` and fails the exactly-one assertion.
 
-## AC-TAU-003 — Lane `--auto` self-service never asks which card to take (REQ-TAU-001, -003)
+## AC-TAU-003 — The doctrine lets the session choose, and routes a lane to the lease (REQ-TAU-001)
 
-**Covers**: maps REQ-TAU-001, REQ-TAU-003
+**Covers**: maps REQ-TAU-001
 
-Release-blocking (doctrine + behavior pair).
+Release-blocking; the "does not ask" half is *doctrine-only* — it is bounded by the doctrine text
+and the decision record, not by a mechanical check.
 
-**Given** a lane session under an `--auto` authorization and a queue with ranked candidates
-**When** the lane's rules are read and the lane takes its next card
-**Then** the rule text (AC-TAU-007's literals) authorizes the lane to choose on its own judgment
-through `moai factory next [--card <id>]`, and the lane's decision record (AC-TAU-009) — not an
-operator question — carries the choice. No `moai gtd add/drop/edit/done/relate` runs in a lane
-(the existing refusals still hold: `TestTodoLaneRefusesAutoCycle` and the existing lane-refusal
-tests green).
+**Given** the amended docs (live and mirror)
+**When** a session reads `kanban-dispatch.md`, the `gtd.md` `--auto` section, `manager-todo.md`
+and the foreman skill
+**Then** each authorizes the invoked session to take cards on its own judgment, and the `gtd.md`
+section states that a lane session exercises the `--auto` authorization through `moai factory
+next` (the § C.1 literals), so a lane that reads it has a working path and no reason to ask.
 
-- **RED-now:** L5 and L9 — the docs authorize serial queue-order consumption only and never name
-  the nominated form. Red because the doctrine that authorizes the judgment is absent.
-- **Green path:** M5 (docs) and M3 (refusal) — L5 reads empty, L9 lists the five files.
-- **Note:** the "does not ask" half is a model behavior; it is bounded by the doctrine text and the
-  decision record, not by a mechanical check (spec §G).
+- **RED-now:** L5 and L9 (the docs authorize serial queue-order consumption only and never name the
+  nominated form) and L19 (no lane routing sentence). Red because the doctrine that authorizes the
+  judgment is absent.
+- **Green path:** M5 — L5 reads empty, L9 lists the five files, L19 lists the two `gtd.md` copies.
 
-## AC-TAU-004 — Keep-set cards are never leased, including when nominated (REQ-TAU-009, -007, -011)
+## AC-TAU-004 — Keep-set cards are never leased, including when nominated (REQ-TAU-007, -009, -010, -011)
 
 **Covers**: maps REQ-TAU-009, REQ-TAU-007, REQ-TAU-011, REQ-TAU-010
 
 Release-blocking.
 
-**Given** a queue holding: `tH` in state `hold`; `tM` queued with text opening `[보류`; `tB`
-queued with classification `blocked`; `tS2` a serial card while serial card `tS1` is in flight; and
-`tOK` an ordinary queued card
-**When** a lane runs `moai factory next --card <id>` for each of `tH`, `tM`, `tB`, `tS2`
-**Then** each exits with the refusal code and its own token (`held`, `hold-marker`, `blocked`,
-`serial-slot`), changes no queue or record state, and `moai factory next --card tOK` then leases
-`tOK`.
+**Given** a queue holding: `tH` in state `hold`; `tD` in state `dropped`; `tM` queued with text
+opening `[보류`; `tB` queued with classification `blocked`; `tS2` a serial card while serial card
+`tS1` is in flight; `tO` a card leased by another lane; and `tOK` an ordinary queued card
+**When** a lane runs `moai factory next --card <id>` for each of `tH`, `tD`, `tM`, `tB`, `tS2`, `tO`
+**Then** each exits 4 with its own token (`held`, `dropped`, `hold-marker`, `blocked`,
+`serial-slot`, `owned`), changes no queue or record state, and `moai factory next --card tOK` then
+leases `tOK`.
 
 **Given** the same queue
 **When** a lane runs the **bare** `moai factory next`
-**Then** it never leases `tH`, `tM` or `tB`: the `hold` state and the classification were already
-skipped, and the `[보류` marker is skipped by REQ-TAU-007 (the single default-path delta).
+**Then** it never leases `tH`, `tD`, `tM` or `tB`: the `hold` state, the `dropped` state and the
+classification were already skipped, and the `[보류` marker is skipped by REQ-TAU-007's second clause.
 
-**Given** a queue holding a card marked by neither `hold` nor `[보류` whose text says the work
-needs a payment confirmation
-**When** the lane applies REQ-TAU-010
-**Then** the card is absent from the nominations and present in the record's `skipped=` entry with
-its reason; no mechanical check claims to have caught it.
+**Given** a card marked by neither `hold` nor `[보류` whose text says the work needs a payment
+confirmation, and a `queued` card the session read as having an open pull request
+**When** the session screens candidates (REQ-TAU-010)
+**Then** both are absent from its nominations and present in the record's `skipped=` entry with
+their reasons, while an operator-`picked` card with an open pull request is **not** skipped and is
+reported only — *doctrine-only*; no mechanical check claims to have caught any of these.
 
-- **RED-now:** L2 (tests absent) with C1. Supporting history, not a cell: probe O1 — arm (c)
-  leased the `[보류` card (`research.md` R2).
-- **Green path:** M2 — `TestFactoryNextNominateRefusesKeepSet` (subtests `hold-state`,
-  `hold-marker`, `blocked`, `serial-slot`) and `TestFactoryNextArmCSkipsHoldMarker` pass.
-- **Mutant probe:** (MU-4) a keep-set predicate applied to the bare path only, not to nomination,
-  leases `tM` when nominated and fails the `hold-marker` subtest; (MU-5) a predicate on nomination
-  only leaves the bare arm leasing `tM` and fails `TestFactoryNextArmCSkipsHoldMarker`; (MU-6) a
-  predicate that tests the marker anywhere in the text (not only at the start) refuses a card that
-  merely mentions `[보류` mid-text and fails the "ordinary card still leases" assertion.
-- **Isolation:** the arm-(c) half (REQ-TAU-007) is its own subtest and can be dropped with the
-  requirement without touching the nominated-path rows.
+- **RED-now:** L2 (tests absent) with control C1. Supporting history, not a cell: probe O1 — arm
+  (c) leased the `[보류` card (`research.md` R2).
+- **Green path:** M2 — `TestFactoryNextNominateRefusesKeepSet` (subtests `held`, `hold-marker`,
+  `blocked`, `serial-slot`, `dropped`, `owned`) and `TestFactoryNextArmCSkipsHoldMarker` pass.
+- **Mutant probe:** (MU-4) a keep-set predicate on the bare path only leases `tM` when nominated;
+  (MU-5) a predicate on nomination only leaves the bare arm leasing `tM`; (MU-6) a predicate that
+  matches the marker anywhere in the text refuses a card that merely mentions `[보류` mid-text;
+  (MU-20) a nomination that leases a `dropped` card fails the `dropped` subtest.
+- **Isolation:** the arm-(c) half is its own subtest and can be dropped with REQ-TAU-007's second
+  clause without touching the nominated-path rows.
 
-## AC-TAU-005 — The lease is the only lane pick path: `moai todo --auto` is refused in a lane (REQ-TAU-008)
+## AC-TAU-005 — The lease is the only lane pick path: a lane is refused `moai todo --auto`, a non-lane Codex session is not (REQ-TAU-008)
 
 **Covers**: maps REQ-TAU-008
 
 Release-blocking; isolated (droppable with REQ-TAU-008).
 
-**Given** a queue of two queued cards and the lane environment (`MOAI_FACTORY_ROLE=lane`,
-`MOAI_FACTORY_WORKER=lane-1`)
-**When** the lane runs `moai todo --auto --auto-wait 1ms`
-**Then** the command is refused with the lane-boundary refusal text (it contains `lane boundary`
-and `moai factory next`), exits non-zero, and the queue file is byte-identical before and after
-(`sdQueueBytes`).
+**Given** a queue of two queued cards and a session whose only lane variable is the lane label
+(`MOAI_FACTORY_WORKER=lane-1`), then one whose role marker is `lane`, then one with both
+**When** the session runs `moai todo --auto --auto-wait 1ms`
+**Then** each is refused with the dedicated text — it contains `the --auto authorization is
+exercised through` and `moai factory next --card <id>` — exits non-zero, and the queue file is
+byte-identical before and after.
 
-**Given** the same environment
-**When** the lane runs bare `moai todo` (no flags) or `moai todo list`
+**Given** a **non-lane** session whose only marker is `MOAI_KANBAN_BACKEND=gpt` (no role marker, no
+lane label), and the same queue
+**When** it runs `moai todo --auto --auto-wait 1ms`
+**Then** it is **not** refused: the cycle runs exactly as today (row C4), because a Codex-backend
+leader session has no lease alternative.
+
+**Given** a session with the lane environment
+**When** it runs bare `moai todo` or `moai todo list`
 **Then** both still run (the read-only allowlist and the bare parent render are unchanged).
 
-- **RED-now:** L3 (test absent) with C1. Supporting history, not a cell: probe O4 — the cycle ran
-  from a lane and printed `accept t1 …` / `unpick t1 …`.
-- **Green path:** M3 — `TestTodoLaneRefusesAutoCycle` passes; the existing lane-refusal tests
-  (REQ-SD-015 family) stay green.
-- **Mutant probe:** (MU-7) a guard that refuses every bare-parent invocation breaks `moai todo`
-  with no args and fails the second Given; (MU-8) a guard keyed on the flag but placed after the
-  cycle starts leaves the queue changed and fails the byte-identity assertion.
+**Given** `moai factory fallback declare --trigger channel-unavailable`
+**When** it prints its confirmation
+**Then** the instruction line names `moai factory next [--card <id>]` and no longer names
+`/moai:todo --auto` (`TestFactoryFallbackDeclarePrintsLeasePath`).
 
-## AC-TAU-006 — The bare `factory next` is unchanged (REQ-TAU-007)
+**Given** the amended `gtd.md` `--auto` section
+**When** it is read
+**Then** it routes a lane to the lease path in the pinned sentence (AC-TAU-007).
+
+- **RED-now:** L18 (a label-only session **runs** the cycle: the output reads `accept t1 d4 scratch
+  card one … unpick t1 …`, exit 0), L16 (the shipped fallback string still routes to `/moai:todo
+  --auto`), L17 (no dedicated refusal text), L3 (test absent, control C1). Red because the lane
+  refusal, its text and the corrected instruction do not exist. **Control C4** must stay green: it
+  is the non-lane arm.
+- **Green path:** M3 flips L18, L16, L17 — the Go rows do not read the docs; the routing-sentence
+  row flips at M5 and is stated against M5. `TestTodoNonLaneGPTSessionNotRefused` is GREEN on the
+  unmodified tree and stays green.
+- **Mutant probe:** (MU-7) a guard refusing every bare-parent invocation fails the third Given;
+  (MU-8) a guard placed after the cycle starts leaves the queue changed; (MU-21) a refusal that
+  reuses the queue-mutation text fails the text assertion; (MU-22) a guard built on
+  `factoryLaneRefusal()` refuses the GPT-only session and fails the non-lane Given; (MU-23) an
+  unchanged fallback string fails the string test.
+
+## AC-TAU-006 — The bare `factory next` is unchanged, and an all-marker queue ends on the no-card exit (REQ-TAU-007)
 
 **Covers**: maps REQ-TAU-007
 
-Release-blocking (regression guard with its own RED).
+Release-blocking (regression guard with its own seeded perturbation).
 
-**Given** a marker-free queue with ranked, classified, serial and parallelizable cards and
-quota/Codex conditions as the pinned tests build them
-**When** bare `moai factory next` is run repeatedly by several lanes
-**Then** the leases, their order, the printed lines, and the exit codes equal the golden recorded
-before the change (`TestFactoryNextBareUnchanged`), and the five existing pinned tests of G1 stay
-green.
+**Given** a marker-free queue exercising, at minimum: the default arm order (a)→(b)→(b2)→(c) over
+assigned / operator-picked / queue-picked / queued cards; `--wait` with a bounded wait; the quota
+hold (an assigned card still leasing); the Codex skip of a card at or past merge-ready; the serial
+slot (a second serial card not leased while one is in flight); and the no-card exit 3 with its
+stdout line
+**When** bare `moai factory next` is run by the lanes the golden records
+**Then** the leases, their order, the printed lines and the exit codes equal the golden recorded
+**before** the change (`TestFactoryNextBareUnchanged`), and the five existing pinned lease tests of
+G1 stay green.
 
-- **RED-now:** L2 (the golden test does not exist). The green-now existing pins (G1) are the
-  regression baseline; this criterion's own RED is the missing golden, so a mutant that perturbs
-  the default path has nothing to fail today.
-- **Green path:** M1 writes the golden against the **unmodified** tree (it must be GREEN there —
-  it pins current behavior), M2 keeps it green.
+**Given** a queue whose only queued cards all open with `[보류`
+**When** bare `moai factory next` is run
+**Then** it exits 3 with the no-card line and **not** a retry or race exit: the skipped card counts
+as seen (`TestFactoryNextAllMarkerQueueExitsNoCard`).
+
+- **RED-now:** L2 (the golden and the all-marker test do not exist). The golden is **GREEN on the
+  unmodified tree** by design (it pins current behavior), so its red is the **seeded perturbation**
+  recorded at M1 (progress §E.2): a one-line mutation of `factory_card.go` — command, verbatim
+  stdout, exit code and tree SHA of the failing run, then reverted. The all-marker test is RED on
+  the unmodified tree (the marker card is leased today).
+- **Green path:** M1 writes the golden against the unmodified tree (GREEN there); M2 keeps it
+  GREEN and flips the all-marker test.
 - **Mutant probe:** (MU-9) re-sorting candidates in the bare arm, or skipping a card the old arm
-  leased, fails the golden.
+  leased, fails the golden; (MU-24) a marker skip that does not count the skipped card turns the
+  all-marker queue into a retry and fails the exit-3 assertion; (MU-25) a perturbation of `--wait`,
+  the quota hold, the Codex skip or the serial slot fails its golden case.
 
-## AC-TAU-007 — The doctrine sentences are replaced, not appended (REQ-TAU-001, -002, -003, -011, -014)
+## AC-TAU-007 — The doctrine sentences are replaced, not appended, live and mirror together (REQ-TAU-001, -002, -003, -011, -014)
 
 **Covers**: maps REQ-TAU-001, REQ-TAU-002, REQ-TAU-003, REQ-TAU-011, REQ-TAU-014
 
 Release-blocking.
 
-**Given** the five edited docs (live and mirror) of `spec.md` § C.1
+**Given** the edited docs (live and mirror) of `spec.md` § C.1
 **When** `TestAutoPickDocDoctrine` reads them
 **Then** every "must contain" literal is present, every "must no longer contain" literal is absent
-from every surface listed for it, and the existing pins moved in the same commit still pass.
+from every surface listed for it — live and mirror, in the **same commit** — and the moved
+existing pins of plan § M5 (the `kanban-dispatch.md` prohibition sentence and the
+`TestAutoRankMirrorParity` start marker) pass in that commit.
 
-- **RED-now:** L5, L6, L7, L8 (old sentences present: every row exits 0 with a hit) and L9 (new
-  literal absent). Red because the old wording is still in place and the new is not.
-- **Green path:** M5 — L5-L8 read empty/exit 1, L9 lists the five files.
+- **RED-now:** L5, L6, L7, L8 (old sentences present: each exits 0 with hits), L9 (the nominated
+  form absent), L19 and L20 (the lane routing and report-only sentences absent). Red because the
+  old wording is still in place and the new is not.
+- **Green path:** M5 — L5-L8 read empty/exit 1, L9 lists the five files, L19 and L20 list their
+  copies; one commit, so no state exists in which a live pin is green and its mirror pin red.
 - **Mutant probe (the card's item d):** (MU-10) a doc edit that **adds** the new wording but
   **leaves** `consumption of the queue and nothing else` fails the L5-form assertion; (MU-11) one
   that leaves `Promotion is the operator's act, always.` or the unscoped `The leader never picks
-  for the operator` fails the L6-form assertion; (MU-12) one that edits the live copy only fails the
-  mirror-parity assertion (AC-TAU-010); (MU-13) one that rewrites the pinned sentence in
-  `kanban-dispatch.md` but not the pin in `todo_auto_doc_test.go` fails the existing
-  `TestAutoRankDoctrineAmendment` — which is why REQ-TAU-014 moves them together.
+  for the operator` fails the L6-form assertion; (MU-12) one that edits the live copy only fails
+  the mirror comparison (AC-TAU-010); (MU-13) one that rewrites the pinned sentence but not the
+  pin fails the existing `TestAutoRankDoctrineAmendment`; (MU-26) one that renames the `gtd.md`
+  `--auto` heading fails `TestAutoRankMirrorParity`'s start marker; (MU-27) one that puts a SPEC
+  id, ISO date or REQ token in a mirror passage fails the neutrality subtests.
 
-## AC-TAU-008 — The decision record and the open input set (REQ-TAU-012, -013)
+## AC-TAU-008 — The decision record, its location, and the open input set (REQ-TAU-012, -013)
 
 **Covers**: maps REQ-TAU-012, REQ-TAU-013
 
@@ -227,42 +295,45 @@ Release-blocking.
 
 **Given** `auto-semantics.md` §9.3 and the `gtd.md` `--auto` section after the edit
 **When** `TestAutoPickDocDoctrine` reads them
-**Then** they contain the record form with `ladder_path=gate-row card pick`, name the inputs
-(card class, relation records, pull-request/landing state, worktree presence, file overlap with
-in-flight lanes, skipped candidates), require `unmeasured` for an input that could not be read,
-state the file-overlap fallback, and state the open-set sentence
-`adds an input without amending the keep-set or the lease path`; and no sentence names the
+**Then** they carry the record form with `ladder_path=gate-row card pick`, name the inputs (card
+class, relation records, pull-request/landing state, worktree presence, file overlap with in-flight
+lanes, skipped candidates), require `unmeasured` for an input that could not be read, locate the
+line in the card's progress record as evidence and not the decision board, state the open-set
+sentence `adds an input without amending the keep-set or the lease path`, and state that the
+file-overlap fallback is unmeasured and the record does not require it; no sentence names the
 queue-findings store or `gtd_relations` as *the* relation source.
 
-- **RED-now:** L10 (the `ladder_path=gate-row card pick` literal is absent) with control C2.
-- **Green path:** M5 — L10 lists `auto-semantics.md`.
-- **Mutant probe:** (MU-14) a record form that omits `unmeasured` (so an unread input reads as
-  absent-and-fine) fails the `unmeasured` literal assertion; (MU-15) a rule that names
-  `gtd_relations` as the relation source fails the not-store-bound assertion.
+- **RED-now:** L10 (the `ladder_path=gate-row card pick` literal is absent), with control C2.
+- **Green path:** M5 — L10 lists `auto-semantics.md` and `gtd.md`.
+- **Mutant probe:** (MU-14) a record form that omits `unmeasured` fails the literal assertion;
+  (MU-15) a rule that names `gtd_relations` as the relation source fails the not-store-bound
+  assertion; (MU-28) a record described as the §11 board fails the `evidence, not the decision
+  board` literal.
 
 ## AC-TAU-009 — The record, as the lane writes it (REQ-TAU-012)
 
 **Covers**: maps REQ-TAU-012
 
-Regression-guard on the run-phase evidence (process criterion; not a RED-now item — the record is
-authored by a lane, not by code).
+**Regression-guard** (not release-blocking): a process criterion over run-phase evidence — no code
+writes the line and **no party is assumed to execute a re-read** (spec §B.5, §G).
 
 **Given** the first run-phase lane lease taken under this doctrine
-**When** the sync audit re-reads the card's progress record
-**Then** one `decision record:` line carries `decided_by=`, `evidence_refs=` with every named
-input (each `key=value`, `unmeasured` where unread, `skipped=` for passed-over candidates) and
-`ladder_path=gate-row card pick (AUTONOMOUS, auto-semantics §9)`, and the line is explicitly marked
-self-attested (no board writer exists — `research.md` R4-iii).
+**When** any reader opens the card's progress record
+**Then** it holds one `decision record:` line with `decided_by=`, `evidence_refs=` carrying every
+named input as `key=value` (`unmeasured` where unread; `skipped=` for passed-over candidates) and
+`ladder_path=gate-row card pick (AUTONOMOUS, auto-semantics §9)`, marked self-attested and marked as
+evidence, not the board.
 
 - **Disposition:** the criterion's starting observation cannot be re-executed on this tree (no
   lease has been taken under the new doctrine), so per `verification-completeness.md` §2.1 it is a
-  **regression-guard** and is not recorded as a pass until the sync audit reads the line.
+  regression-guard and is not recorded as a pass until a reader has opened the record.
 
 ## AC-TAU-010 — Mirrors agree, and the one pre-existing drift is preserved (REQ-TAU-015)
 
 **Covers**: maps REQ-TAU-015
 
-Release-blocking (guard with contrast control).
+**Regression-guard** (not release-blocking): it cannot be red on arrival — the pairs are identical
+today (L13) and the drift is exactly one line (L12).
 
 **Given** the edited rule/skill/agent files and their `internal/template/templates` mirrors
 **When** each pair is compared
@@ -271,82 +342,148 @@ Release-blocking (guard with contrast control).
 and `kanban-dispatch.md` differs by exactly the one line it differed by before
 (`git diff --no-index --numstat` reads `1	1`, and the differing line is still line 177).
 
-- **RED-now:** none by design — L13 (`cmp` exit 0) and L12 (`1 1`) are green today; this criterion
-  guards against a one-sided or drift-absorbing edit. **Contrast control:** C3 shows the same `cmp`
-  returning exit 1 on the one pair that does differ, so a `cmp` that cannot fail is ruled out; the
-  mutants below are the non-vacuity argument.
-- **Green path:** M6 — every `cmp` exit 0 except the one pair, `numstat` still `1 1`.
+- **Contrast control:** C3 shows the same `cmp` returning exit 1 on the one pair that does differ,
+  so a `cmp` that cannot fail is ruled out.
 - **Mutant probe:** (MU-12) an edit applied to the live copy only fails `cmp`; (MU-16) an edit that
-  syncs line 177 either way changes the numstat to `0 0` or `2 2` and fails the preserved-drift
-  assertion.
+  syncs line 177 either way changes the numstat to `0 0` or `2 2`.
 
-## AC-TAU-011 — The always-loaded stub does not grow (REQ-TAU-016)
+## AC-TAU-011 — The always-loaded stub does not grow, in bytes or characters (REQ-TAU-016)
 
 **Covers**: maps REQ-TAU-016
 
 Release-blocking; **conjunctive** so it is not vacuous.
 
-**Given** the pinned baselines (live 26,959 B, mirror 26,637 B — L11)
+**Given** the pinned baselines — bytes live 26,959 / mirror 26,637 (L11), characters live 26,754 /
+mirror 26,433 (L22)
 **When** both copies of `kanban-dispatch.md` are measured after the edit
-**Then** (a) the old sentence `consumption of the queue and nothing else` is absent from both
-(the L5 form), **and** (b) `wc -c` of each copy is ≤ its baseline.
+**Then** (a) the old sentence `consumption of the queue and nothing else` is absent from both (the
+L5 form), **and** (b) `wc -c` of each copy is ≤ its byte baseline **and** `wc -m` of each copy is
+≤ its character baseline.
 
-- **RED-now:** L5 (conjunct a is red: the old sentence is present on both). Conjunct b is green
-  today by construction (growth 0 ≤ 0); the right reason for the red is conjunct a.
-- **Green path:** M5 + M6 — L5 empty for the two files and `wc -c` ≤ 26,959 / 26,637.
-- **Mutant probe:** (MU-17) an append-only edit that satisfies (a) by replacing the sentence but
-  adds new paragraphs without removing others satisfies (a) and fails (b) — the case the
-  feasibility draft (+11 B before trimming) shows is reachable if the author does not trim.
-- **Report duty:** the commit body states the measured before/after bytes of both copies and the
-  non-invoking-cost sentence (`rule-authoring.md` (c)).
+- **RED-now:** L5 (conjunct a is red). Conjunct b is green today by construction (growth 0 ≤ 0);
+  the right reason for the red is conjunct a.
+- **Green path:** M5 — L5 empty for the two files, and the `wc` commands read ≤ the baselines. The
+  reproducible feasibility draft (plan §3) reads −12 B and −16 chars.
+- **Mutant probe:** (MU-17) an append-only edit that replaces the sentence but adds paragraphs
+  without trimming satisfies (a) and fails (b); (MU-29) an edit that trades multi-byte punctuation
+  for ASCII passes the byte bound and fails the character bound.
+- **Report duty:** the M5 commit body states the measured before/after bytes and characters of
+  both copies and the non-invoking-cost sentence (`rule-authoring.md` (c)).
 
 ## AC-TAU-012 — The boundaries hold (REQ-TAU-003)
 
 **Covers**: maps REQ-TAU-003
 
-Release-blocking (guard; green by design).
+**Regression-guard** (not release-blocking): green today by design (L14).
 
 **Given** the merge-base `CARD_BASE=$(git merge-base develop HEAD)` taken at read time
 **When** the card's diff is listed
 **Then** it names no file under `internal/kanban/**` or `internal/graph/**`, no queue/gtd schema
-file, and the only `internal/cli` non-test changes are `factory_card.go`, `mcp_factory_card.go`,
-`todo.go`; the control `git diff --name-only "$CARD_BASE"..HEAD` lists at least one path (a
-count of zero would be "unmeasurable", not "no change").
+file, and the only non-test `internal/cli` changes are `factory_card.go`, `mcp_factory_card.go`,
+`todo.go`, `factory_messaging.go`; the control `git diff --name-only "$CARD_BASE"..HEAD` lists at
+least one path (a count of zero is "unmeasurable", not "no change"). The flag set (AC-TAU-001) and
+the refusal-token set (spec § C.2) bound the new CLI surface.
 
-- **RED-now:** none by design (L14 is empty today); the criterion is a guard. Non-vacuity: the
-  control row above must list ≥ 1 path after the first run commit, and a mutant that touches
+- **Non-vacuity:** the control must list ≥ 1 path after the first run commit; a mutant that touches
   `internal/kanban/backlog_store.go` makes the pathspec probe non-empty.
-- **Green path:** M7 — the pathspec probe stays empty and the control is non-empty.
+
+## AC-TAU-013 — The edits are surgical: each file's diff stays inside a measured bound (REQ-TAU-014)
+
+**Covers**: maps REQ-TAU-014
+
+Release-blocking; a floor and a ceiling, so a reflow fails and an empty edit fails.
+
+**Given** the merge-base `CARD_BASE=$(git merge-base develop HEAD)` taken at read time
+**When** `git diff --numstat "$CARD_BASE"..HEAD -- <path>` is read for each live file and its mirror
+**Then** each file has at least one added line (the floor) and no more than its cap (the ceiling),
+and the pre-existing line 177 of `kanban-dispatch.md` is untouched:
+
+| File (each copy) | max added | max deleted |
+|---|---|---|
+| `kanban-dispatch.md` | 3 | 3 (the three single-line paragraphs L29, L31, L33) |
+| `kanban-dispatch-detail.md` | 12 | 0 |
+| `auto-semantics.md` | 70 | 1 (the card-pick row) |
+| `gtd.md` | 80 | 24 (the `--auto` clause paragraph, L334-L357, may be re-wrapped) |
+| `manager-todo.md` | 12 | 12 (the two regions L22-L25 and L33-L42) |
+| `moai-kanban-foreman/SKILL.md` | 12 | 12 (Boundary 1 L61-L70, step 4) |
+| `moai-mcp-tools-catalogue.md` | 1 | 1 (one table row) |
+
+The caps are chosen from the named regions' line counts and the feasibility draft (three changed
+lines in `kanban-dispatch.md`); exceeding one needs a recorded reason in the commit body and the
+delta re-audit's agreement, not a silent raise. The numstat of the mirror pair must equal the live
+file's.
+
+- **RED-now:** L21 — `git diff --numstat 4bf547bca -- <the six live docs>` is empty (exit 0): the
+  floor is not met because nothing is edited yet. Red for the right reason.
+- **Green path:** M5 — every file's numstat is within [1, cap]; the M6 measurement records it.
+- **Mutant probe:** (MU-30) reflowing or reordering the whole of `kanban-dispatch.md` while keeping
+  the literals and shedding bytes elsewhere satisfies AC-TAU-007 and AC-TAU-011 and fails the
+  ceiling; (MU-31) editing only a mirror fails the floor on the live copy.
+
+## AC-TAU-014 — The nominee leaves state unchanged on refusal, promotion is undone, and the quota and Codex rules bind it (REQ-TAU-004, -005, -009)
+
+**Covers**: maps REQ-TAU-004, REQ-TAU-005, REQ-TAU-009
+
+Release-blocking.
+
+**Given** a queued nominee and the quota gate holding new leases
+**When** a lane runs `moai factory next --card <id>`
+**Then** it exits 4 with the token `quota-hold` and changes nothing, while a card already assigned
+to the lane still leases (arm (a)).
+
+**Given** a Codex lane and a nominee at or past merge-ready
+**When** the lane nominates it
+**Then** it exits 4 with `backend-skip` and changes nothing.
+
+**Given** any refused nomination (every token of spec § C.2 except `raced`)
+**When** the queue and factory record are compared byte-for-byte before and after
+**Then** they are identical (`TestFactoryNextNominateRefusalLeavesStateUnchanged`).
+
+**Given** a queued nominee that the invocation promoted to `picked`, and a competing lane that
+leases it between the promotion and the claim
+**When** the claim is lost
+**Then** the invocation exits 4 with `raced`, the competing lane holds the card, the queue shows the
+competitor's `picked` state, and no second record row exists (`TestFactoryNextNominatePromoteThenLose`).
+
+**Given** a queued nominee that the invocation promoted, and a claim refusal injected through the
+test seam with no other holder
+**When** the claim is refused
+**Then** the queue item is back to `queued` and the factory record has no row for the card
+(`TestFactoryNextNominateClaimRefusedRollsBack`).
+
+- **RED-now:** L1 and L2 with control C1 — the nomination path, the seam and the tests do not
+  exist. Supporting history, not a cell: arm (c) itself promotes before it claims
+  (`factory_card.go:505-558`), which is the shape the compensation must not inherit.
+- **Green path:** M2 — all five tests pass; the nominated path validates read-only before the first
+  write and compensates only the promotion it made.
+- **Mutant probe:** (MU-32) a nomination that promotes before validating leaves a `picked` card
+  after a refusal and fails the byte comparison; (MU-33) a compensation that reverts the queue state
+  even when another holder owns the card steals the winner's state and fails `PromoteThenLose`;
+  (MU-34) a nomination that ignores the quota hold leases and fails the `quota-hold` Given;
+  (MU-35) one that ignores the Codex skip leases a merge-ready card and fails `backend-skip`.
 
 ## Mutant probe summary (the card's item d)
 
 | Mutant | Violates | Caught by |
 |---|---|---|
-| MU-1 `--card` parsed and ignored | REQ-TAU-004 | AC-TAU-001 |
+| MU-1, MU-18, MU-19 `--card` ignored; extra flag; MCP `card` ignored | REQ-TAU-003, -004 | AC-TAU-001 |
 | MU-2/MU-3 lease without the version-checked edge | REQ-TAU-006 | AC-TAU-001/-002 |
-| MU-4/MU-5 keep-set on one path only | REQ-TAU-009/-007 | AC-TAU-004 |
-| MU-6 marker matched mid-text | REQ-TAU-009 | AC-TAU-004 |
-| MU-7/MU-8 over-broad or late lane guard | REQ-TAU-008 | AC-TAU-005 |
-| MU-9 default arm perturbed | REQ-TAU-007 | AC-TAU-006 |
-| MU-10/MU-11 old sentence left in place | REQ-TAU-014 | AC-TAU-007 |
+| MU-4/MU-5/MU-6/MU-20 keep-set on one path only; mid-text marker; `dropped` leased | REQ-TAU-009/-007 | AC-TAU-004 |
+| MU-7/MU-8/MU-21/MU-22/MU-23 over-broad or late lane guard; wrong text; Codex leader refused; fallback string unchanged | REQ-TAU-008 | AC-TAU-005 |
+| MU-9/MU-24/MU-25 default arm perturbed; marker card not counted | REQ-TAU-007 | AC-TAU-006 |
+| MU-10/MU-11/MU-13/MU-26/MU-27 old sentence left; pin not moved; heading renamed; internal token in a mirror | REQ-TAU-014 | AC-TAU-007 |
 | MU-12/MU-16 one-sided or drift-absorbing edit | REQ-TAU-015 | AC-TAU-010 |
-| MU-13 pin not moved with the docs | REQ-TAU-014 | existing `TestAutoRankDoctrineAmendment` |
-| MU-14/MU-15 record without `unmeasured`; store-bound relation source | REQ-TAU-012/-013 | AC-TAU-008 |
-| MU-17 append-only edit | REQ-TAU-016 | AC-TAU-011 |
+| MU-14/MU-15/MU-28 record without `unmeasured`; store-bound relation; record posing as the board | REQ-TAU-012/-013 | AC-TAU-008 |
+| MU-17/MU-29 append-only edit; multi-byte for ASCII trade | REQ-TAU-016 | AC-TAU-011 |
+| MU-30/MU-31 whole-file reflow; mirror-only edit | REQ-TAU-014 | AC-TAU-013 |
+| MU-32..MU-35 promote before validate; over-eager rollback; quota and Codex ignored | REQ-TAU-004/-005 | AC-TAU-014 |
 
 ## Edge cases
 
-- **Quota hold:** while the quota gate holds new leases, `--card <id>` is refused with
-  `quota-hold` (exit via the existing hold line semantics) and the lane's already-assigned card
-  still leases (arm (a) unchanged).
-- **Codex lane:** a nominee at or past `merge-ready` is refused for a Codex lane exactly as the
-  unnominated arms skip it.
+- **`--wait` with `--card`:** the nomination is evaluated each pass; a refusal other than `raced`
+  or `serial-slot` ends the wait immediately (a permanent refusal is not retried).
 - **Nominee already `picked` by the operator with no owner:** leasable (arms (b)/(b2) semantics);
   `picked` and owned by another lane: `owned`.
-- **`--wait` with `--card`:** the nomination is evaluated each pass; a refusal other than
-  `raced`/`serial-slot` ends the wait immediately (a permanent refusal is not retried).
-- **MCP form:** `factory_next` with `card` returns the same refusal line as an error result;
-  without `card` it behaves as before (`TestFactoryNextNominateMCPParity`).
 - **Empty queue / all candidates in the keep-set:** the session records the empty-candidate state
   and ends its turn with an explicit wait; it does not invent work and does not ask which card.
 - **Lane environment in tests:** every fixture builds through `runTodo add`, so the lane variables
@@ -354,20 +491,27 @@ count of zero would be "unmeasurable", not "no change").
 
 ## Quality gates
 
-- TRUST 5: tests written first and observed RED (M1); coverage ≥ 85% of the changed functions;
-  `golangci-lint` at the CI version clean; `GOOS=windows GOARCH=amd64 go build ./...` passes.
-- Doc gates: `moai spec lint SPEC-TODO-AUTO-PICK-001` clean (plan phase); the existing
-  `TestAutoRank*` pins and `internal/template` mirror tests green after M5/M6.
-- MX: the nomination function and the shared predicate are new exported-or-high-fan-in code —
-  `@MX:NOTE` / `@MX:ANCHOR` as the protocol requires (`factory_card.go` is already at its 3-anchor
-  limit; use `@MX:NOTE`).
+- TRUST 5: tests written first and observed RED (M1) except the two guards; coverage ≥ 85% of the
+  changed functions; `golangci-lint` at the CI version clean; `GOOS=windows GOARCH=amd64 go build
+  ./...` passes.
+- Doc gates: `moai spec lint SPEC-TODO-AUTO-PICK-001` and `--strict` clean (plan phase); the
+  existing `TestAutoRank*` pins and the `internal/template` mirror tests green after M5.
+- MX: the nomination function and the shared predicate are new high-fan-in code — `@MX:NOTE` /
+  `@MX:ANCHOR` as the protocol requires (`factory_card.go` is already at its 3-anchor limit; use
+  `@MX:NOTE`).
 
 ## Definition of Done
 
-1. AC-TAU-001..008, -010, -011, -012 PASS with the RED-now cells observed and the green-path
-   outputs recorded in `progress.md` §E.2.
-2. AC-TAU-009 read by the sync audit from the first lane lease taken under the new doctrine.
-3. The commit graph shows the baseline measurements (this plan commit) before any run commit.
-4. The always-loaded byte measurement and the non-invoking-cost statement are in the commit body.
+1. AC-TAU-001..008, -011, -013, -014 PASS with the RED-now cells observed and the green-path
+   outputs recorded in `progress.md` §E.2; AC-TAU-009, -010, -012 hold as regression-guards.
+2. The seeded-perturbation cells of M1 (golden, GPT guard) are recorded with command, verbatim
+   stdout, exit code and tree SHA, and each mutation is reverted.
+3. The commit graph shows the baseline measurements (the plan commits) before any run commit.
+4. The always-loaded byte and character measurement and the non-invoking-cost statement are in the
+   M5 commit body.
 5. The completion report names the preserved line-177 drift, the two deliberate deltas (D-DEF,
-   D-LANE) and the unmarked operator-decision cards, each as a gap or follow-up.
+   D-LANE) and the unresolved residual risks (spec §G).
+6. **Handoff note.** The operator or leader holds or marks (`moai gtd hold`, or the `[보류` marker)
+   the operator-decision cards — t810, t1294, t1383 — before lanes exercise this doctrine; lanes
+   cannot mutate the queue. The completion report carries this note, or states that the operator
+   accepted the exposure.

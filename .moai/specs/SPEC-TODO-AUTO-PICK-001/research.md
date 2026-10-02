@@ -18,8 +18,10 @@ Stored order is priority order; selection never re-sorts (`factory_card.go:497-5
 **READ** `newFactoryNextCommand` (`factory_card.go:629-698`): the flags are `--wait`,
 `--wait-bound`, `--run`. There is no way to name a card. The CLI chooses; the session cannot.
 `factoryNextNoCardExit = 3` (`factory_card.go:181`). The MCP form (`handleFactoryNext`,
-`internal/cli/mcp_factory_card.go:111`) shares the implementation and has the same three inputs
-(`mcp_factory_card.go:42-48`).
+`internal/cli/mcp_factory_card.go:111`) shares the implementation but takes **two** inputs, `run`
+and `project_root` (`mcp_factory_card.go:42-48`; the description says "no --wait"). An earlier
+draft said "the same three inputs"; the plan audit (D13) showed that to be wrong — the CLI has
+three flags, the MCP form two inputs.
 
 **READ** the lane queue boundary: `todoLaneReadOnlyVerbs` (`internal/cli/todo.go:~346`) allows a
 lane only `list`, `history`, `show`, `why`, `pr`, `triage`. `todoRefuseLaneMutation`
@@ -110,9 +112,15 @@ that the board "was NOT written", citing that its predecessor t1400 "recorded `f
 refused for a lane session and found no lane-writable board verb", and noted the finding was not
 re-measured. That second-hand statement is **not re-measured here either**. So the card-pick decision
 record is, in this tree, a policy-layer obligation with a self-attested line (`auto-semantics.md`
-§10: "detection, not prevention"); it lands in the card's progress record. SPEC consequence: the
-requirement binds the line's *form and content*, and the sync audit's re-read is the compensating
-control — the SPEC does not claim a board write it cannot specify.
+§10: "detection, not prevention"); it lands in the card's progress record. **Retraction (plan
+audit D5):** an earlier draft called "the sync audit's re-read" a compensating control. The audit
+measured `grep -n -i decision .claude/agents/moai/sync-auditor.md` (only a model-escalation note)
+and found no decision-record step in `.claude/workflows/sync-audit-4dim.js`, so **no party executes
+that re-read today**. SPEC consequence: the requirement binds the line's *form, content and
+location* (evidence in the card's progress record, explicitly not the §11 board, which calls a
+tree-local copy "a ghost — never a board"), and the missing re-read is an **unimplemented
+residual risk**, not a control. This SPEC does not add the re-read (it would edit audit surfaces the
+t1453/t1454 cards may touch).
 
 ## R5. The three lane pick paths today (the double-pick surface)
 
@@ -127,8 +135,17 @@ card's item (2) — "the lease is the ONLY pick path" — needs a mechanical gua
 and not only a sentence. SPEC-FACTORY-LANE-AUTONOMY-001 REQ-FLA-001 says a lane in messaging
 fallback "switch[es] to `/moai:todo --auto` self-service pickup"; its REQ-FLA-006 describes that
 pickup in lease-model terms (a sequential card "only while no other lane holds … a card of the same
-sequential group"), which is arm (c)'s serial-slot rule. This SPEC therefore reads FLA's
-"self-service pickup" as the lease path and does not edit FLA's body (completed SPEC).
+sequential group"), which is arm (c)'s serial-slot rule. **Plan audit D3 corrected an earlier
+"reading" reconciliation:** REQ-FLA-001's text is literal, and a shipped verb prints it —
+`moai factory fallback declare` ends with `switch to /moai:todo --auto self-service pickup
+(REQ-FLA-001)` (`factory_messaging.go:255`, comment L234; **OBSERVED** by `git grep`, cell L16);
+AC-FLA-001 of the completed SPEC says the same. No test pins that string. So this SPEC does not
+"read" the phrase differently: it **supersedes it in lane sessions** by the lease path, changes the
+printed string and adds a test, and leaves that completed SPEC's body unedited.
+**INFERRED (the file-overlap fallback, D16):** that a lane can read another lane's branch by name
+from its own worktree is plausible but unmeasured — the worktree guard refuses `git -C` into other
+trees (`kanban-dispatch.md` § Isolation) and the branch slug is not derivable from a card id —
+so `unmeasured` is the expected value of that input until measured.
 
 ## R6. Existing doc pins that the amendment must move in lockstep
 
@@ -144,8 +161,25 @@ sequential group"), which is arm (c)'s serial-slot rule. This SPEC therefore rea
   stays the operator's.` — the amendment keeps all three verbatim.
 - `autoDocGTDProhibitions` keeps `The pick is the operator's. Do not preselect, …` (the `gtd next`
   leader path, not `--auto`) — **kept unchanged**.
+- **`TestAutoRankMirrorParity` uses `[HARD] **Promotion is the operator's act, always.**` as the
+  passage start marker for `kanban-dispatch.md`** (`todo_auto_doc_test.go` ~L188) and
+  `[HARD] **The self-dispatch lane exception.**` as its end marker; for `gtd.md` the start marker is
+  the heading `### --auto — the serial batch consumption` and the end marker `## Standing sources`.
+  The kanban start marker is a literal the amendment must remove (plan audit D6): the marker moves
+  with the heading. The same test applies the template-neutrality expression (no SPEC id, REQ
+  token, ISO date or 9+ hex run) to both passages, and `TestTodoSkillDocumentsClassification`
+  applies it to the whole mirror `gtd.md`.
+- `TestAutoRankMarkerDisclosure` pins four clauses about the `[보류` demotion on live gtd.md,
+  mirror gtd.md and the `--auto` flag help — kept; the two-treatments sentence (D12) is added
+  beside them.
 - `TestAutoRankAgentDoctrine` requires both pinned literals in the manager-todo serial-cycle
   region and keeps `strict queue order` etc. absent — compatible with the amendment.
+- Read in the repair (plan audit gap G8): `internal/template/jev_auto_exception_test.go` uses
+  `kanban-dispatch.md`, `gtd.md`, `manager-todo.md` only as presence anchors for the Jev token
+  (`jaeAnchors`); `contract_mode_guided_test.go` classifies `kanban-dispatch.md` as a
+  Kickoff-bearing document (`R`) — the edit touches no Kickoff text;
+  `init_headroom_export_test.go` lists `kanban-dispatch.md` in a measurement-harness path list (it
+  skips without its flag); `rule_template_mirror_test.go` names none of the amended files.
 - `autoDocMirrorPassage` already tolerates the one pre-existing drift ("the two kanban-dispatch.md
   copies differ elsewhere, by a pre-existing sentence that is not part of this amendment").
 
@@ -173,11 +207,16 @@ the line-177 sentence). `kanban-dispatch.md` is the only target that is always-l
 `gtd.md`, `manager-todo.md`, the foreman skill are skill/agent files. The mirror copy ships to user
 projects as an always-loaded rule, so the non-growth bound applies to **both** copies.
 
-**Feasibility measurement** (scratch script, not committed): replacing exactly the sentences below
-in `kanban-dispatch.md` lines 29, 31, 33 gives per-line deltas +72, −31, −30 = **+11 B** net
-before any trimming, with every retained pin literal still present and the old fragment
-`serial consumption` gone. So the budget is reachable by trimming ≥ 11 B more (e.g. the phrase
-"in the gate inventory"); the run phase owns the final wording.
+**Feasibility measurement** (scratch script, not committed — see plan §3 for the reproducible
+method; the binding measurement is the committed `wc -c` / `wc -m`): a first draft replacing the
+sentences of `kanban-dispatch.md` lines 29, 31, 33 gave +72, −31, −30 = +11 B. After trimming two
+phrases (`so this clause and the cycle state the same rule from two sides`, ` in the gate
+inventory`) the draft measures **−12 B and −16 characters** (+72/−54/−30 B; +70/−54/−32 chars),
+every retained pin literal present and the three old literals absent. Baselines (observed):
+live 26,959 B / 26,754 chars, mirror 26,637 B / 26,433 chars. The run phase owns the final wording.
+The `62197bb38` provenance of the line-177 sentence is from a `git log -S` run earlier in the plan
+session; the plan audit's own re-run was refused by the worktree guard (gap G2), so it is **not
+independently re-verified** — the drift itself is observed (`cmp`, numstat).
 
 ## R8. Design alternatives measured against the evidence
 
@@ -211,8 +250,8 @@ removal and the one-worker serialization.
 3. **Refusing `moai todo --auto` in a lane** reverses a path SPEC-FACTORY-LANE-AUTONOMY-001's
    fallback doctrine named. Mitigation: isolated requirement (REQ-TAU-008); the lane's
    self-service pickup keeps working through the lease path; nothing else in FLA changes.
-4. **Self-attested decision records.** No board writer exists (R4-iii). Residual risk is stated in
-   `spec.md` §G; the sync audit's re-read is the control.
+4. **Self-attested, unread decision records.** No board writer exists and no party re-reads the
+   line (R4-iii). Unimplemented residual risk, stated in `spec.md` §G; not a control.
 5. **`unmeasured` inputs read as "none".** The record form forces an explicit `unmeasured` token,
    and the criteria mutant-probe a record that omits it.
 6. **Unmarked operator-decision cards (t810/t1294/t1383-class) stay selectable** until the operator
@@ -223,12 +262,45 @@ removal and the one-worker serialization.
 
 ## R10. Not verified
 
-- The live state of cards t810/t1294/t1383 (not queried; the queue is the operator's).
+- The live state of cards t810/t1294/t1383 was **not queried by this author**; the plan audit read
+  it through the installed rc.25 binary (t1294 and t1383 `queued` with ordinary text, t810
+  `picked`) — attributed to that binary's queue store, not to this tree's build.
 - Whether the repo's template embed needs a regeneration step after editing
   `internal/template/templates/**` (Makefile not read); plan.md carries it as a run-phase
   pre-flight check.
 - Whether `MOAI_FACTORY_*` scrubbing is required for the doc-only tests (they read files; the
   lane-env hazard is for fixtures built through `runTodo`).
 - The claim that no lane-writable decision-board verb exists (second-hand from t1400 via t1403).
-- Exit code 4 availability in the `factory` verb family (only 1 and 3 were seen in
-  `factory_card.go`; the run phase measures before choosing).
+- Exit code 4 availability in the `factory` verb family: within `factory*.go` only 1 and 3 are used
+  (`factoryNextNoCardExit = 3`; `factory_lane_relaunch.go:51`); `moai slot` uses 4
+  (`slotExitBusy = 4`, `slot.go:38`) in a different verb family, so exit codes do not collide; the
+  run phase re-greps before choosing.
+- Whether a Codex-backend kanban leader session carries `MOAI_KANBAN_BACKEND=gpt` in production
+  (`kanban.go:535-548` says the backend is re-exported on the leader path; the plan audit inferred
+  a Codex leader would carry it). R11 measures what the **guard** does with that variable alone,
+  not whether a real leader carries it.
+
+## R11. The lane predicate, measured (plan audit D3/D4 repair)
+
+The predicate `factoryLaneRefusal()` (`factory_card.go:60-64`) is true when the lane role marker
+equals `lane`, **or** the lane-label variable `MOAI_FACTORY_WORKER` is non-empty, **or**
+`MOAI_KANBAN_BACKEND == gpt`. `factoryLaneAdmission()` (`:50-52`) is the role marker alone, and
+`factory next` itself requires it (`factoryNotALaneError`, `factory_card.go:638`). A launcher that
+stamps only the label (a recorded lesson says so) would not satisfy admission, so the guard for
+`--auto` must key on **role marker or label**, not on the role marker alone.
+
+Measured on `b3646de10`, with a binary built from this tree (setup S1) against a scratch queue
+under a redirected `MOAI_HOME` (setup S2), each run from a shell with the lane variables unset;
+`todoRefuseLaneMutation` (`todo.go:387`) lets a bare parent invocation through when `len(args) ==
+0`, and `--auto` is a flag, not an argument:
+
+| Run | Session environment | Result today |
+|---|---|---|
+| M1 / cell C4 | `MOAI_KANBAN_BACKEND=gpt` only (a non-lane session) | the serial cycle runs: `accept t1 …`, `unpick t1 …`, exit 0 |
+| M2 / cell L18 | `MOAI_FACTORY_WORKER=lane-1` only | the serial cycle runs, exit 0 — a lane with only its label is **not** refused |
+
+So (a) a guard on `factoryLaneRefusal()` would refuse M1, a Codex-backend session that is not a
+lane and has no lease alternative (`factory next` refuses outside a lane) — the over-broad form the
+audit warned about; (b) a guard on the role marker alone would not refuse M2. The SPEC's predicate
+is the union of role marker and label, with the backend marker deliberately excluded. Setup rows
+S1/S2 and cells L18/C4 are in `acceptance.md`; the scratch directory is machine-local.
