@@ -34,6 +34,8 @@ Lane decisions applied as given: Codex option (a); Codex per-card loop out of sc
 | D17 REQ-002/012 bundle many behaviours | partly adopted — REQ-002 split (grammar vs provider/Codex, REQ-SRH-016); REQ-012 kept whole to stay at the 16-requirement ceiling | spec §D.1, §D.5 |
 | D18 A4 unmeasured | adopted (state the consequence) — A4 stays an unmeasured assumption; §H states that an autonomous lane without operator prompts stays unrebound | spec §G A4, §H |
 
+- 2026-10-02 — plan-audit iteration 2 (PASS-WITH-DEBT 0.85) debt F1 repaired, nothing else changed: the seven probe-cited RED cells (AC-SRH-004, 005, 006, 008, 009, 010, 012) are re-pinned to `e48d22fc4a14b1f3105ad3129c1c9f910c4afd2a` (the commit that contains `probe/hook-probe.sh`; Go code equals `802a72235`) and written as literal single-invocation commands; `probe/hook-probe.sh` gained an optional binary argument defaulting to `./bin/moai-t1345` (scenarios unchanged). Evidence ledger `acceptance.md` D.1.
+
 ## §E.1 Plan-phase Audit-Ready Signal
 
 plan_status: audit-ready

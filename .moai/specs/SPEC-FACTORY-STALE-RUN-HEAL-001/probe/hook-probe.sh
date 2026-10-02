@@ -1,7 +1,9 @@
 #!/bin/bash
 # hook-probe.sh — behavioural probe for SPEC-FACTORY-STALE-RUN-HEAL-001.
 #
-# usage: bash hook-probe.sh <scenario> <moai-binary>
+# usage: bash hook-probe.sh <scenario> [moai-binary]
+# The binary defaults to ./bin/moai-t1345 (bin/ is gitignored); build it from the tree first:
+#   go build -o ./bin/moai-t1345 ./cmd/moai
 #
 # Builds a throw-away project + factory database in a temp directory OUTSIDE the
 # repository (isolated HOME/MOAI_HOME, git-initialised project), seeds run rows,
@@ -22,11 +24,12 @@
 #   dry-run-nonmutation   `moai factory relaunch --dry-run --from-run` writes nothing
 
 SCEN="${1:-}"
-BIN="${2:-}"
+BIN="${2:-./bin/moai-t1345}"
 if [ -z "$SCEN" ] || [ ! -x "$BIN" ]; then
-  echo "usage: bash hook-probe.sh <scenario> <moai-binary>" >&2
+  echo "usage: bash hook-probe.sh <scenario> [moai-binary]   (default binary: ./bin/moai-t1345, run from the repo root)" >&2
   exit 2
 fi
+BIN="$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")"
 
 T="$(mktemp -d)"
 trap 'rm -rf "$T"' EXIT

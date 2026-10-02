@@ -3,7 +3,7 @@
 Every AC is mechanically verifiable without a live factory run. There are three instruments:
 
 - **Binary commands** — a build of the card tree invoked by path (never the installed `moai`), e.g. `moai factory relaunch --dry-run ...`.
-- **The behavioural probe** — `bash .moai/specs/SPEC-FACTORY-STALE-RUN-HEAL-001/probe/hook-probe.sh <scenario> <moai-binary>`: one invocation that builds a throw-away project and factory database in a temp directory outside the repository (isolated `HOME`/`MOAI_HOME`), seeds run rows, drives the real `moai hook user-prompt-submit` / `session-start` subcommands with a lane environment, prints each turn's output, and ends in `VERDICT: PASS` (exit 0) or `VERDICT: FAIL <reason>` (exit 1). It writes nothing in the repository; it needs `bash`, `git`, `jq`, `sqlite3`. The scenario `control-healthy` is its positive control: it PASSES on the pre-change tree, proving the fixture and driver can reach a PASS, so the FAIL verdicts are not vacuous.
+- **The behavioural probe** — `bash .moai/specs/SPEC-FACTORY-STALE-RUN-HEAL-001/probe/hook-probe.sh <scenario> [moai-binary]` (the binary defaults to `./bin/moai-t1345`, built from the tree per the prerequisite in D.1): one invocation that builds a throw-away project and factory database in a temp directory outside the repository (isolated `HOME`/`MOAI_HOME`), seeds run rows, drives the real `moai hook user-prompt-submit` / `session-start` subcommands with a lane environment, prints each turn's output, and ends in `VERDICT: PASS` (exit 0) or `VERDICT: FAIL <reason>` (exit 1). It writes nothing in the repository; it needs `bash`, `git`, `jq`, `sqlite3`. The scenario `control-healthy` is its positive control: it PASSES on the pre-change tree, proving the fixture and driver can reach a PASS, so the FAIL verdicts are not vacuous.
 - **Go tests** on `t.TempDir()` factory databases, env-scrubbed in ONE compound invocation (a lane-stamped environment falsifies env-reading guard tests locally):
 
 ```bash
@@ -39,10 +39,12 @@ unset MOAI_FACTORY_WORKERS MOAI_FACTORY_WORKER MOAI_FACTORY_ROLE MOAI_FACTORY_CL
 
 ## D.1 Evidence Ledger (RED-now cells, measured this run)
 
-All entries measured at tree `cda6913d127c959cee93b54254e6c7241f8b2032` (card branch `WT-stale-run-healing`). The commit is a SPEC-only commit: `git diff --name-only 802a72235 HEAD` lists the four SPEC files, so every Go-code measurement is identical to `802a72235536958ada5b7cd5876a168e4b8c325f`. The binary was built from the card working tree by `go build -ldflags "-X github.com/modu-ai/moai-adk/pkg/version.Commit=cda6913d1" -o <scratch>/moai-t1345 ./cmd/moai` and invoked by path; its `version` prints `v3.1.3   cda6913d1   built unknown`. The scratch path is machine-local and is not a citation target; the commands and outputs are. Probe output is shown whitespace-collapsed; the prompt/step blocks are the probe's own lines.
+**Pin.** Entries E1-E10 and E12 were measured at tree `e48d22fc4a14b1f3105ad3129c1c9f910c4afd2a` (card branch `WT-stale-run-healing`), the commit that contains `probe/hook-probe.sh`; the Go code at that SHA equals `802a72235536958ada5b7cd5876a168e4b8c325f` (the diff between them is SPEC-directory files only). Entry E11 (a Go-test baseline) was measured earlier at `cda6913d127c959cee93b54254e6c7241f8b2032`, also Go-identical to `802a72235`, and is not re-measured here.
+
+**Prerequisite (stated once, outside every cell).** From the repository root, build the binary the cells invoke, from this tree: `go build -ldflags "-X github.com/modu-ai/moai-adk/pkg/version.Commit=e48d22fc4" -o ./bin/moai-t1345 ./cmd/moai` (`bin/` is gitignored). Its `version` prints `v3.1.3   e48d22fc4   built unknown`. The probe's default binary argument is `./bin/moai-t1345`, so each probe cell is a literal single invocation from the repository root. Probe output is shown whitespace-collapsed; the prompt/step blocks are the probe's own lines.
 
 ```text
-E1  command : moai factory relaunch --dry-run --lane lane-3 --provider cc
+E1  command : ./bin/moai-t1345 factory relaunch --dry-run --lane lane-3 --provider cc
     stdout  : (empty)
     stderr  : ERROR / Unknown flag: --dry-run. / Try --help for usage.
     exit    : 1
@@ -50,17 +52,17 @@ E1  command : moai factory relaunch --dry-run --lane lane-3 --provider cc
               "relaunch" and rejects the flag. (`moai factory relaunch --help` exits 0 today and
               prints the factory parent's help — a vacuous green, so no AC uses --help as RED.)
 
-E2  command : moai codex -f lane-3
+E2  command : ./bin/moai-t1345 codex -f lane-3
     stdout  : (empty)
     stderr  : FACTORY_MODE_UNSUPPORTED_BACKEND: moai codex -f lane is the only Codex factory entry; use 'moai cc -f' or 'moai glm -f' for the factory leader
     exit    : 1
     why     : the Codex launcher refuses a pinned lane — the line the 0.1.0 draft expected the verb to print.
 
-E3  command : moai codex -f lane --factory-run runA
+E3  command : ./bin/moai-t1345 codex -f lane --factory-run runA
     stderr  : FACTORY_MODE_UNSUPPORTED_BACKEND: (same text as E2)
     exit    : 1
 
-E4  command : bash .moai/specs/SPEC-FACTORY-STALE-RUN-HEAL-001/probe/hook-probe.sh rebind <binary>
+E4  command : bash .moai/specs/SPEC-FACTORY-STALE-RUN-HEAL-001/probe/hook-probe.sh rebind
     stdout  : prompt 1: factory messaging degraded: NO_ACTIVE_FACTORY
               prompt 2: factory messaging degraded: NO_ACTIVE_FACTORY
               peers in runY: (empty)
@@ -68,17 +70,17 @@ E4  command : bash .moai/specs/SPEC-FACTORY-STALE-RUN-HEAL-001/probe/hook-probe.
     exit    : 1
     why red : a current-vocabulary lane on a retired run never rebinds and repeats the degraded string every prompt.
 
-E5  command : bash .../probe/hook-probe.sh unbind-then-rebind <binary>
+E5  command : bash .moai/specs/SPEC-FACTORY-STALE-RUN-HEAL-001/probe/hook-probe.sh unbind-then-rebind
     stdout  : prompt 1/2/3: factory messaging degraded: NO_ACTIVE_FACTORY   (all three, including after runY is active)
               VERDICT: FAIL prompt 1 says degraded instead of the one-time unbound notice
     exit    : 1
 
-E6  command : bash .../probe/hook-probe.sh ambiguous <binary>
+E6  command : bash .moai/specs/SPEC-FACTORY-STALE-RUN-HEAL-001/probe/hook-probe.sh ambiguous
     stdout  : prompt 1/2: factory messaging degraded: NO_ACTIVE_FACTORY
               VERDICT: FAIL prompt 1 says degraded
     exit    : 1
 
-E7  command : bash .../probe/hook-probe.sh legacy-lines <binary>
+E7  command : bash .moai/specs/SPEC-FACTORY-STALE-RUN-HEAL-001/probe/hook-probe.sh legacy-lines
     stdout  : legacy, run active: stale run: lane label "worker-69" is legacy vocabulary from a binary before the leader/lane rename — end this session, retire the run with 'moai factory runs --retire runX', then relaunch
               VERDICT: FAIL row R6: no exact line '--from-run runX'
     exit    : 1
@@ -87,19 +89,19 @@ E7  command : bash .../probe/hook-probe.sh legacy-lines <binary>
               `an active factory run exists in this project — to rejoin its slot set, end this session and relaunch with 'moai cc -f lane-<n>'`
               — the placeholder line the table replaces.
 
-E8  command : bash .../probe/hook-probe.sh session-start-silent <binary>
+E8  command : bash .moai/specs/SPEC-FACTORY-STALE-RUN-HEAL-001/probe/hook-probe.sh session-start-silent
     stdout  : SessionStart (source clear): moai session attribution: source_session_id=s1 / Use 'moai session current' ... (first three lines)
               VERDICT: FAIL SessionStart still says 'factory messaging degraded'
     exit    : 1
     why red : the SessionStart additionalContext carries `factory messaging degraded: NO_ACTIVE_FACTORY`
               (observed in full output); registering nothing is already true, the string is the verdict.
 
-E9  command : bash .../probe/hook-probe.sh roundtrip <binary>
+E9  command : bash .moai/specs/SPEC-FACTORY-STALE-RUN-HEAL-001/probe/hook-probe.sh roundtrip
     stdout  : printed line: (empty)
               VERDICT: FAIL the notice prints no 'moai factory relaunch' line to feed the verb
     exit    : 1
 
-E10 command : bash .../probe/hook-probe.sh dry-run-nonmutation <binary>
+E10 command : bash .moai/specs/SPEC-FACTORY-STALE-RUN-HEAL-001/probe/hook-probe.sh dry-run-nonmutation
     stdout  : verb --dry-run --from-run runX: ERROR / Unknown flag: --dry-run. / Try --help for usage. (exit 1)
               VERDICT: FAIL the verb exited 1
     exit    : 1
@@ -112,7 +114,7 @@ E11 command : unset <factory/kanban vars> && go test ./internal/hook -run '^(Tes
               not observed (no failure text captured) and is inferred to be the 200 ms gate budget. The seams
               of `plan.md` §B exist so that no hook AC depends on it.
 
-E12 command : bash .../probe/hook-probe.sh control-healthy <binary>
+E12 command : bash .moai/specs/SPEC-FACTORY-STALE-RUN-HEAL-001/probe/hook-probe.sh control-healthy
     stdout  : prompt 1: factory messaging bound: run=runX slot=lane-3 generation=1; messages arrive at turn boundaries, not idle wake
               VERDICT: PASS
     exit    : 0
