@@ -89,6 +89,44 @@ Named tests, each its own command with output redirected to a file, exit code ob
 
 Lexical-only checks: every grep above is a text match; whether the rewritten sentences agree with section 9.1 in meaning is a reading for the sync audit.
 
+M4 commit: d196a9de4.
+
+### M5 — leader notice sentence, RED first
+
+Base tree d196a9de4 (M4 committed). Product Go changes are the four files `internal/hook/session_start_kanban_i18n.go`, `session_start_kanban.go`, `session_start_factory_i18n.go`, `session_start_factory.go`; test Go changes are the `TestKanbanLocalesCoverEveryField` field table of `session_start_kanban_i18n_test.go` (one entry appended, nothing weakened) and the new `session_start_leader_gate_notice_test.go` (top-level test `TestLeaderNoticeBatchGatePointer`). The new struct field is named `gateSummary` in both i18n tables instead of the plan's candidate name `leaderGateSummary`: a 17-character key would make gofmt realign the 13-field kanban struct and every locale block, turning a five-line change into a rewrite of unrelated lines.
+
+Baseline before any Go edit, 63-name leader notice command of research.md R3.1 E17, output redirected to a file, run on tree 4e0a60bc1 (the M4 edits touch no Go): `--- PASS` 63, `--- FAIL` 0, `=== RUN` 63, final line `ok  github.com/modu-ai/moai-adk/internal/hook  15.181s`.
+
+RED (new test written before any product change; tree d196a9de4 plus the new untracked test file): `go test -count=1 -v -run '^TestLeaderNoticeBatchGatePointer$' ./internal/hook/` redirected to a file, exit code 1 observed as its own step. Decisive lines, verbatim:
+
+```text
+    session_start_leader_gate_notice_test.go:178: real_grid violations=[omit-pointer omit-name-token]
+    session_start_leader_gate_notice_test.go:190: kanban notice (en) violates [omit-pointer omit-name-token]; sentence line ""
+    session_start_leader_gate_notice_test.go:229: mutant omit-pointer reported [omit-pointer omit-name-token], want exactly [omit-pointer]
+--- FAIL: TestLeaderNoticeBatchGatePointer (8.72s)
+    --- FAIL: TestLeaderNoticeBatchGatePointer/handler_level/kanban (1.19s)
+    --- FAIL: TestLeaderNoticeBatchGatePointer/handler_level/factory (3.08s)
+FAIL	github.com/modu-ai/moai-adk/internal/hook	9.668s
+```
+
+Classification per tdd-result-contract: EXPECTED_RED. The package compiled and `go vet ./internal/hook/` exited 0 first, so the failure is the intended assertion (pointer and name token absent from every rendered leader notice and from both handler channels), not TOOL_FAILURE. The same run showed the guards that must hold before the change already PASS (`mutant_omit-locale`, `lane_and_companion_lack_pointer`, `source_scan`).
+
+GREEN: field `gateSummary` plus four locale values in each of the two i18n tables; kanban notice block (e) gets one `context = append(context, m.gateSummary)` line after the settings line; factory notice block (e) gets the field in its `strings.Join` list. The sentence is one sentence per locale carrying `batch gate summary` and the address `.claude/rules/moai/workflow/auto-semantics.md` followed by the section mark 9.2, and nothing else of the canonical content.
+
+AC-015 readings on the final tree (each its own command, output redirected to a file):
+
+- `go test -count=1 -v -run '^TestLeaderNoticeBatchGatePointer$' ./internal/hook/` exit 0: `--- PASS` 21, `--- FAIL` 0, `=== RUN` 21 (equal, counted the same way), `no tests to run` 0, mutant lines `mutant <name> rejected: reported=<name>` 6 (omit-locale, question-tool-name, omit-pointer, omit-name-token, card-id, one-sided-leader; each pair of names identical).
+- `grep -c AskUserQuestion` over the four product files: 0 in each.
+- `grep -cF 'auto-semantics.md` §9.2'` over the two i18n files: 4 and 4. `grep -cF 'batch gate summary'`: 4 and 4 (a first draft carried the name token in a struct comment and printed 5; the comments were reworded so the count is one per locale value).
+- 63-name command re-run after the change: `--- PASS` 63, `--- FAIL` 0, `=== RUN` 63, `ok  github.com/modu-ai/moai-adk/internal/hook  13.911s`.
+- `gofmt -l` over the six changed or new Go files: no output. `go vet ./internal/hook/` exit 0. `golangci-lint --version` printed v2.1.6 (the CI version), and `golangci-lint run --timeout=5m ./internal/hook/` exited 0.
+
+Cost disclosure, measured in a throwaway test (deleted before the commit) by rendering the notices in the package: the sentence adds one line to a leader notice, 232 bytes in en (297 in ja, 248 in ko, 232 in zh — bytes, not characters). The en kanban leader notice renders 1768 bytes after and 1536 before (the before value is the after value minus the added line, a derivation, not a second render); the en factory leader notice renders 2557 after and 2325 before. Sessions that are not a leader session at startup pay 0 bytes: the field is read only inside the two leader notice builders, and the existing source gate leaves resume, clear, compact and fork without a notice.
+
+Scope check: `git diff --numstat` over the four product files before the commit read `1 1` (factory.go), `5 0` (factory_i18n.go), `1 0` (kanban.go), `5 0` (kanban_i18n.go); the test table file reads `1 0`. `make build` exit 0 and regenerated no tracked file.
+
+Lexical-only checks in M5: every token check of the new test is a substring or regular-expression match on the sentence line (a sentence with the pointer but the opposite meaning would pass, spec limit G-7); the forbidden-token checks run on the line that carries the name token, not on a parsed sentence; the card-id shape is a letter t followed by three to five digits.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
