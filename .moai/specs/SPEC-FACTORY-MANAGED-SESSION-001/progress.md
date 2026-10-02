@@ -288,71 +288,68 @@ go.mod/go.sum: base 대비 변경은 M2의 승인된 `github.com/gorilla/websock
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-Re-close state (2026-10-02). The first close (sync commit `578e0d8896a6238d9d110aa55cf702f85d11446e`, backfill `623e4b15a`) was followed by an independent sync audit (FAIL 69) and an in-place SPEC amendment (0.2.0); this re-close sync commit returns the SPEC to `completed`. The prior close SHA is kept in `spec.md` HISTORY as `prior_completed_sha`. Earlier §E.4 wording is superseded by this block; the audit trail is in §J.
+Second re-close state (2026-10-02). Close history: first close sync commit `578e0d8896a6238d9d110aa55cf702f85d11446e` (backfill `623e4b15a`); first re-close sync commit `35dbf356c4ca5e3cd9cb84cae2382c4908afef5e` (backfill `b2a4579db`, doc fixes `2130b8aa3`); this second re-close sync commit follows the explicit opt-in work (AC-MS-018) and returns the SPEC to `completed`. The prior close SHAs stay in `spec.md` HISTORY as `prior_completed_sha`. Earlier §E.4 wording is superseded by this block; the audit trail is in §J and the opt-in measurements are in §H.
 
 ```yaml
 sync_complete_at: 2026-10-02
-sync_commit_sha: 35dbf356c4ca5e3cd9cb84cae2382c4908afef5e  # D3-exempt backfill: the re-close sync commit SHA replaced the placeholder written in that commit (phase-owned field, manager-docs §E.4). Prior close SHA: 578e0d8896a6238d9d110aa55cf702f85d11446e (spec.md HISTORY prior_completed_sha)
+sync_commit_sha: pending-backfill  # canonical placeholder: a commit cannot cite its own SHA; backfilled with the real SHA in a following commit (phase-owned field, manager-docs §E.4). Prior close SHAs: 35dbf356c4ca5e3cd9cb84cae2382c4908afef5e, 578e0d8896a6238d9d110aa55cf702f85d11446e (spec.md HISTORY prior_completed_sha)
 sync_status: complete
-re_close: true
-b12_self_test_a: pass  # re-close corrects the existing CHANGELOG entry in place; `grep -c 'SPEC-FACTORY-MANAGED-SESSION-001' CHANGELOG.md` = 1 before this edit and still one entry afterwards (no second entry)
-b12_self_test_b: pass  # AC count: MOAI-AC-COUNTER against acceptance.md (tier L source) → live=17 excluded=0 ambiguous=0; AC rows 17, REQ 15 by grep; the CHANGELOG entry cites 17 (AC-MS-001..017); managed-file coverage 89.3% (352/394) re-measured this run
-b12_self_test_c: pass  # file-path verification: every implementation/doc path cited in the corrected entry confirmed via ls (see Verification)
+re_close: 2
+b12_self_test_a: pass  # the existing CHANGELOG entry is corrected in place; `grep -c 'SPEC-FACTORY-MANAGED-SESSION-001](' CHANGELOG.md` = 1 (no second entry)
+b12_self_test_b: pass  # AC count: MOAI-AC-COUNTER against acceptance.md (tier L source) → live=18 excluded=0 ambiguous=0; AC rows 18 and REQ 15 by grep; the CHANGELOG entry cites 18 (AC-MS-001..018); managed-file coverage 89.3% (352/394) re-measured this run
+b12_self_test_c: pass  # file-path verification: every implementation/doc path cited in the corrected entry confirmed by ls, and every cited commit confirmed by git cat-file -t (all `commit`)
 changelog_entry_position: "[Unreleased] > Added (first entry, corrected in place)"
 frontmatter_status_transitions:
   in_progress_to_completed: this commit  # spec.md frontmatter status only (updated was already 2026-10-02); amendment_of and HISTORY untouched
 canary_compliance_check:
-  spec_body_untouched: true  # spec.md body and plan/acceptance/design/research byte-unchanged vs 76c795333
+  spec_body_untouched: true  # spec.md body and plan/acceptance/design/research byte-unchanged vs ada9b3635
   runtime_files_untouched: true  # .moai/state, .moai/harness, .moai/cache untouched
-recorded_by: manager-docs (re-close sync, card t1375)
+recorded_by: manager-docs (second re-close sync, card t1375)
 ```
 
 ### What was synced
 
-- `CHANGELOG.md`: the existing SPEC-FACTORY-MANAGED-SESSION-001 entry corrected in place. It now states the exact `go.mod` delta (new `require github.com/gorilla/websocket v1.5.3`, and the `// indirect` marker dropped from `github.com/santhosh-tekuri/jsonschema/v6 v6.0.2`, already directly imported at base `f22e2d7ac` by `internal/codextools/registry.go`), the headless Codex owner, the arrival-order FIFO queue, the launch-directory behavior and the residual risks, with refreshed coverage and commit range.
-- `.moai/docs/factory-managed-session.md`: the same facts in Korean, plus the follow-ups F8, F9 and F13 without card ids.
-- `spec.md` frontmatter: `status: in-progress → completed` (the `re_close_path` row of the HISTORY amendment table).
-- progress.md: the stale §E.4 wording fixed (below) and §J added.
-- README / docs-site: no edit; same reason as the first close (broker MCP tool surface unchanged).
+- `CHANGELOG.md`: the existing entry corrected in place (still one entry). Launches no longer "enter the managed owner" unconditionally: the layer is an explicit opt-in, default off (`MOAI_FACTORY_MANAGED` set to `1` or `true` together with the factory stamps; either alone leaves every launch on its ordinary door). The entry now states AC-MS-001..018, the two reachability limits (`moai codex -f lane` card children are never managed; a managed Codex launch skips the later debug-trace steps and `RUST_LOG` injection), the commit list through `3dbb510e7` and the develop absorption `da60cbd2f`, the earlier disclosures (headless Codex owner, FIFO, residual risks, two `go.mod` changes, F8/F9/F13), and the follow-up cards t1408 (TUI attach), t1409 (approval requests, failed-turn isolation, signal handling) and t1410 (F8, F9, F13). `moai todo` listed all three ids before they were cited. The follow-up that wires the managed layer into the Codex lane card children and into debug tracing has no card id yet and the entry says so.
+- `.moai/docs/factory-managed-session.md`: the opt-in switch and its default, what stays unchanged when it is off, the reachability limits, the three card ids; the sentence saying factory launches are managed by default is corrected.
+- `spec.md` frontmatter: `status: in-progress → completed` (the `re_close_path` row of the HISTORY amendment table); `updated` was already `2026-10-02`.
+- README / docs-site: no edit; the broker MCP tool surface is unchanged.
 
-Stale §E.4 lines fixed (audit F12), before → after:
-- Before: `- `sync_commit_sha` is a placeholder until the backfill commit lands.` (Gaps; false after backfill `623e4b15a`) → After: removed (the slot now holds the real re-close SHA from the backfill commit).
-- Before: `It states the one new dependency `github.com/gorilla/websocket v1.5.3`` (What was synced) → After: states both go.mod changes (new `require` plus the dropped `// indirect` marker).
-
-### Verification (this run, this tree: HEAD `76c795333` plus uncommitted re-close edits; lane env scrubbed in the same compound call as each go command)
+### Verification (this run, this tree: HEAD `ada9b3635` plus uncommitted re-close edits; lane env unset by literal name in the same call as each go command)
 
 | Check | Command | Verbatim result |
 |---|---|---|
+| B12 AC counter | MOAI-AC-COUNTER awk from `manager-docs.md` § B12 on `acceptance.md` | stdout `18`, stderr `live=18 excluded=0 ambiguous=0`, exit 0 |
+| AC rows / REQ | `grep -cE '^\| AC-MS-[0-9]+ ' acceptance.md`; `grep -cE '^- \*\*REQ-MS-[0-9]+\*\*' spec.md` | `18`; `15` |
+| Entry count | `grep -c 'SPEC-FACTORY-MANAGED-SESSION-001](' CHANGELOG.md` | `1` |
 | SPEC lint | `go run ./cmd/moai spec lint SPEC-FACTORY-MANAGED-SESSION-001` | `✓ No findings — all SPEC documents are valid` |
-| B12 AC counter | MOAI-AC-COUNTER awk from `manager-docs.md` § B12 on `acceptance.md` | stdout `17`, stderr `live=17 excluded=0 ambiguous=0`, exit 0 |
-| AC rows / REQ | `grep -cE '^\| AC-MS-[0-9]+ ' acceptance.md`; `grep -cE '^- \*\*REQ-MS-[0-9]+\*\*' spec.md` | `17`; `15` |
-| Coverage | `go test -count=1 -run '^TestManaged\|^TestClaimManagedFactoryInbox\|^TestMoAIMCP\|^TestFactoryMsgSendRejectsClaudeOnlyRun\|^TestParseCompanionLabelStopsAtPassThroughMarker\|^TestDoctorCodexWarnsStaleGlobalApproval\|^TestCodexLaunchWithoutFactoryEnvReachesDirectDoor\|^TestLaunchWithoutFactoryEnvReachesExecDoor' -coverprofile=<scratch>/cov.out ./internal/cli/`, statement-weighted over the two managed files | `ok … internal/cli 10.223s coverage: 8.7% of statements`; `managed_factory_session.go 154/166 92.8%`, `managed_codex_factory.go 198/228 86.8%`, `COMBINED 352/394 89.3%` |
-| SPEC-corpus tests | `go test -count=1 -run '^(TestACCounterFullCorpusMatchesBaseline\|TestACCounterCorpusMutantIsDetected)$' ./internal/spec` | `ok  github.com/modu-ai/moai-adk/internal/spec 5.634s` |
 | SPEC audit | `go run ./cmd/moai spec audit --json`, `drift_findings` filtered to this SPEC (parsed with json) | 1 finding: `EraAutoDetected` / `INFO`; no `SyncStatusDrift` |
-| Bodies untouched | `git diff 76c795333 -- .moai/specs/SPEC-FACTORY-MANAGED-SESSION-001/<file>.md \| wc -l` for plan / acceptance / design / research | `0` for all four |
-| spec.md diff | `git diff 76c795333 -- …/spec.md \| grep -E '^[-+]'` | `-status: in-progress` / `+status: completed` (plus the two `---`/`+++` header lines); `updated` was already `2026-10-02` |
-| Path check | `ls` of the cited managed files, the guide and `go.mod` | exit 0 |
-| go.mod delta | `git diff f22e2d7ac..HEAD -- go.mod` | `+require github.com/gorilla/websocket v1.5.3`; `-github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect` / `+github.com/santhosh-tekuri/jsonschema/v6 v6.0.2` |
+| SPEC-corpus tests | `go test -count=1 -run '^(TestACCounterFullCorpusMatchesBaseline\|TestACCounterCorpusMutantIsDetected)$' ./internal/spec` | `ok  github.com/modu-ai/moai-adk/internal/spec 5.299s` |
+| Coverage | `go test -count=1 -run '^TestManaged\|^TestClaimManagedFactoryInbox\|^TestMoAIMCP\|^TestFactoryMsgSendRejectsClaudeOnlyRun\|^TestParseCompanionLabelStopsAtPassThroughMarker\|^TestDoctorCodexWarnsStaleGlobalApproval\|^TestCodexLaunchWithoutFactoryEnvReachesDirectDoor\|^TestLaunchWithoutFactoryEnvReachesExecDoor\|^TestFactoryManagedRequested' -coverprofile=<scratch>/cov.out ./internal/cli/`, statement-weighted over the two managed files | `ok … internal/cli 12.699s coverage: 10.6% of statements`; `managed_factory_session.go 154/166 92.8%`, `managed_codex_factory.go 198/228 86.8%`, `COMBINED 352/394 89.3%` |
+| Commits exist | `git cat-file -t <sha>` for `175fa3398`, `d42adfdbc`, `ba8c25396`, `76c795333`, `15fa2f096`, `a88f138ad`, `d308ee2a7`, `3dbb510e7`, `da60cbd2f` | `commit` for each |
+| Follow-up cards | `moai todo`, lines for t1408, t1409, t1410 | all three listed as `queued`, each carrying `선행: t1375 착지` |
+| Go tree unchanged | `git diff --name-only a88f138ad ada9b3635` | only the five SPEC files; no `.go` file |
 
 ### Gaps
 
-- The live Codex round trip is unobserved (`TestManagedCodexFactoryBrokerLive` skips without `MOAI_FACTORY_LIVE_ROOT` / `MOAI_FACTORY_LIVE_RUN`).
-- TUI attach is not delivered (headless owner); the follow-up card has no id yet.
+- The live Codex round trip is unobserved (`TestManagedCodexFactoryBrokerLive` skips without `MOAI_FACTORY_LIVE_ROOT` / `MOAI_FACTORY_LIVE_RUN`); a real `claude` stream backend is unobserved too.
+- TUI attach is not delivered (headless owner); follow-up card t1408.
+- Wiring the managed layer into Codex lane card children and into debug tracing has no card id yet.
 - The CI-parity lint version is unchecked; no lint was run in this re-close.
-- The two reds in the full `./internal/cli` run, `TestStopChainEffectParityGolden` (owner card t1390) and `TestSyncGateLanguageDetectionMatchesScript` (owner card t1402), are recorded in the 회귀 증거 subsection; ownership comes from the leader's message, not from a re-close observation. No full-package suite was run in this re-close.
-- Codemaps were not refreshed in this re-close commit.
+- The two reds in the full `./internal/cli` run, `TestStopChainEffectParityGolden` (owner card t1390) and `TestSyncGateLanguageDetectionMatchesScript` (owner card t1402), are recorded in the 회귀 증거 subsection; ownership comes from the leader's message, not from this re-close. No full-package suite was run in this re-close.
+- The current head has no audit verdict yet. The earlier verdicts (sync-audit FAIL 69, delta sync-audit PASS-WITH-DEBT 83 on `b2a4579db`) predate the opt-in work, and the new audits are still to run.
 - AC-MS-012's "only" and no-TUI claims are unpinned by tests (plan-audit delta3 D3, carried debt).
-- To be checked after the merge with develop (audit D3): develop's `Debug` and `launchTiming` request fields may not reach the managed Codex path, so `moai codex -d` and the slow-launch report may not apply to factory managed launches. Unverified; this card's base lacks those fields.
-- The audit and plan-audit evidence files named in §J are local and gitignored, so they reach no other clone.
+- Codemaps were not refreshed in this re-close commit.
+- `sync_commit_sha` is a placeholder until the backfill commit lands.
+- The audit and plan-audit files named in §J are local and gitignored, so they reach no other clone.
 
 ### Residual-risk
 
-- Server-initiated approval and elicitation requests are not answered, so an un-pre-approved action can stall a turn up to the 10-minute turn timeout; one failed turn ends the whole session; the launcher has no signal handling (sync-audit F3, F4, F5; follow-up cards, no ids assigned).
-- Follow-ups without ids: F8 (token directory not removed when Start fails early), F9 (the 10 s handshake budget is thin), F13 (the `/readyz` probe follows redirects without re-applying the loopback guard).
+- Server-initiated approval and elicitation requests are not answered, so an un-pre-approved action can stall a turn up to the 10-minute turn timeout; one failed turn ends the whole session; the launcher has no signal handling (follow-up t1409). F8, F9 and F13 remain (follow-up t1410).
+- The managed layer reaches only the launch shapes listed in the CHANGELOG entry; Codex lane card children and debug tracing are outside it until the unnumbered follow-up lands.
 - Operator input queues behind an already-claimed inbox batch (arrival-order FIFO, by amendment).
 - The coverage figure (89.3%) covers the managed test selection only, not the whole `internal/cli` package.
 
-sync_status: audit-ready — this signal is ready for the NEXT independent sync audit (delta over `623e4b15a`).
+sync_status: audit-ready — this signal is ready for the NEXT independent audits (plan-audit delta and sync-audit delta over the opt-in work); no verdict is claimed for the current head.
 
 ## §F Phase 4 Mode Selection
 
@@ -415,6 +412,14 @@ Evidence files below are local and gitignored (`.moai/reports/t1375/`); they are
 - Repair commits: `175fa3398` (launch directory carried into the managed Codex owner, production inbox wiring extracted and pinned, token file mode pinned), `d42adfdbc` (queue comments say FIFO), `ba8c25396` and `76c795333` (SPEC amendment: status in-progress, `amendment_of`, HISTORY Amendments with `prior_completed_sha` `578e0d8896a6238d9d110aa55cf702f85d11446e`, FIFO and headless wording), `15fa2f096` (FIFO proved both ways, four subtests).
 - Plan-audit of the amendment: `.moai/reports/t1375/plan-audit-delta2.md` FAIL 0.88 on `ba8c25396` (two blocking defects D1 and D2, both small), then `.moai/reports/t1375/plan-audit-delta3.md` PASS-WITH-DEBT 0.95 on `76c795333`. Carried debt: D3, AC-MS-012's "only" and no-TUI claims are unpinned by tests.
 - Re-close: this sync commit (`status: completed`) followed by a SHA backfill commit.
+
+Second re-close (opt-in work):
+- Merge attempt 1 was aborted at develop tip `c50da9c2f`: the merged tree had a red test (`TestCodexDebugTraceEnvKeysOnly` failed with `NO_ACTIVE_FACTORY`, §H) and a design flaw, namely that the managed layer was wired on the factory env stamps alone, so a plain `moai codex` run carrying stamps was diverted to the headless owner.
+- Operator decision: the managed layer is an explicit opt-in, default off, switched by the environment variable `MOAI_FACTORY_MANAGED` (`1` or `true`) together with the factory stamps.
+- Develop was absorbed into the card branch by merge commit `da60cbd2f` (CHANGELOG kept both sides). The dev worker landed the opt-in in `a88f138ad` and refreshed the evidence in `caaa6a943` (E.2 at `d308ee2a7`) and `ada9b3635` (addendum at `3dbb510e7`). The spec worker amended the same open SPEC amendment in `d308ee2a7` and `3dbb510e7`: AC-MS-018 was added to decide the opt-in (AC count 18, REQ 15).
+- SPEC correction history: the first opt-in amendment (`d308ee2a7`) reworded AC-MS-001 and AC-MS-007 as if the opt-in were active in those tests. The dev worker found that over-claim (both tests exercise the owners directly, below the launcher divert, and never set the switch); `3dbb510e7` restored the original prose and moved the activation condition to AC-MS-018.
+- Verdict files of the earlier audits (`sync-audit.md`, `sync-audit-delta.md`, `plan-audit-delta2.md`, `plan-audit-delta3.md`) are local, gitignored evidence. No verdict exists yet for the head after the opt-in work.
+- Re-close: the second re-close sync commit (`status: completed`) followed by a SHA backfill commit.
 
 ## §H Opt-in delta (2026-10-02, base HEAD `da60cbd2f`)
 
