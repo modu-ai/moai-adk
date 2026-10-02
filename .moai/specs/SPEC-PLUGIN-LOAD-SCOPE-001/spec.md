@@ -2,7 +2,7 @@
 id: SPEC-PLUGIN-LOAD-SCOPE-001
 title: "Measure what a Claude Code plugin and a Codex plugin can carry versus what must stay in the project scaffold"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-10-02
 updated: 2026-10-02
 author: manager-spec
