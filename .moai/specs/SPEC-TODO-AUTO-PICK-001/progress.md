@@ -300,6 +300,30 @@ negated conjunction in `factoryNominateCompensate` rewritten as the disjunction)
 5. `compensation failed` (the restoring write errors) and a post-`RecordPicked` failure remain specified-and-untested,
    as spec § B.8 and § G state; the single seam sits before `RecordPicked`.
 
+### M3 — a lane is refused `moai todo --auto`; the fallback declare line routes to the lease (GREEN)
+
+Files: `internal/cli/todo.go` (`todoRefuseLaneMutation` gains one early clause; new `todoLaneSession` and
+`todoLaneAutoRefusalText`) and `internal/cli/factory_messaging.go` (the printed declare instruction and its comment).
+The lane definition is exactly REQ-TAU-008's: the role marker equals `lane`, or the lane label variable is non-empty
+(`factoryLaneAdmission() || os.Getenv(config.EnvMoaiFactoryWorker) != ""`); `factoryLaneRefusal()` is NOT used here
+and is unchanged (its Codex-backend clause would refuse the non-lane Codex-backend session, row C4 / MU-22). The
+refusal text is the dedicated function, it names `moai factory next --card <id>` and contains `the --auto
+authorization is exercised through`, and it does not reuse the queue-mutation wording.
+
+**GREEN, HEAD `efec50cdc` (M2) + the M3 working tree.** `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL
+MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_FACTORY_ROLE MOAI_FACTORY_WORKER && go test ./internal/cli -run
+'^(TestTodoLaneRefusesAutoCycle|TestTodoLaneAutoRefusalText|TestTodoNonLaneGPTSessionNotRefused|TestFactoryFallbackDeclarePrintsLeasePath|TestSD_AC015_LaneQueueAllowlistWalk|TestSD_AC015_LabelOnlyIsNotALane|TestSD_AC015_MCPTodoAddRefused|TestFactoryFallbackDeclareRestoreLifecycle|TestTodoAutoEntryPointFlag)$'
+-count=1 -v` → exit 0, 16 `=== RUN` lines, 9 of 9 top-level tests `--- PASS` (the four new M3 tests, the three existing
+lane-allowlist pins, the declare/restore lifecycle and the `--auto` entry-point test), `ok
+github.com/modu-ai/moai-adk/internal/cli  50.476s`. The three lane variants (`label-only`, `role-only`, `role-and-label`)
+now refuse in about 2 s each (they ran the 11 s serial cycle at M1); the non-lane Codex-backend session still runs the cycle
+(`TestTodoNonLaneGPTSessionNotRefused` `--- PASS`, 13.52 s). The doc pins of G2 re-run after the change: 6 of 6 `--- PASS`, exit 0,
+`ok … 1.793s`. `golangci-lint run ./internal/cli/` (v2.1.6) `0 issues.`, exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+
+Superseding note (REQ-TAU-008, spec § B.4): in lane sessions REQ-FLA-001's reference to `/moai:todo --auto` is superseded
+by the lease path; the declare confirmation now prints `switch to self-service pickup through the lease: moai factory next [--card <id>]`
+and the comment above `newFactoryFallbackDeclareCommand` says so. The completed SPEC's body is not edited.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
