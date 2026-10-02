@@ -178,7 +178,47 @@ authority-gate invariant), the SPEC's plan phase records audit-ready status,
 the plan-artifact hashes are unchanged since that verdict, and no blocker is
 open. The transition writes a decision record (§10) that the sync audit
 re-reads. Keep-set cases keep the operator answer; the contract-signing path
-stays as the voluntary equivalent form.
+stays as the voluntary equivalent form. Operator-form Kickoff rows that wait
+together are presented through §9.2.
+
+### 9.2 The batch gate summary
+
+The batch gate summary is a presentation form for operator-form decisions, not an approval method: it lowers no evidence standard of §9.1. It is distinct from the `--auto` batch authorization of the card pick row, which authorizes serial queue consumption and nothing else.
+
+**Membership**
+
+- The summary applies to the plan→run Kickoff row only. Every other row of the §9 inventory (the factory decide rows, the sync blocking approval, card pick) forms no summary row and is asked individually where an operator answer is required.
+- The session that holds the operator dialogue builds it. A lane presents only its own card's gate and never forms a cross-card batch.
+- A ready card is never held back to wait for further rows; a row that becomes ready later joins the next summary or is asked individually.
+- A single ready Kickoff row is not a summary and is asked individually; a summary needs two or more rows.
+- When one judgment is the common decision subject of two or more pending Kickoff rows that are neither reserved nor blocked, ask it once and name every affected card in the question and in the report before it. That question never names a blocked or reserved row.
+- When `workflow.autonomy.mode` is `contract`, the contract signature checked by `moai contract kickoff-check` is the plan→run gate and no summary row exists.
+
+**Report and question**
+
+- The report precedes the question in the same response. The report head names the plan→run Kickoff gate row, and each listed card has one row carrying the card id, the SPEC id, the independent plan-audit verdict with its iteration identifier, score, and margin to the tier's PASS threshold, the plan-artifact-hash-unchanged check, a reference to the card's own decision record, and `counter_refs=`. Each row also states the result of the keep-set and leader-held-power check together with the basis on which the row was classified. Rows carrying counter-evidence are listed before rows without it.
+- A verdict reference binds to the final iteration of the card's current plan artifacts; an earlier iteration's PASS never covers them.
+- Exactly one decision question follows when at least one listed row is approvable, in a call that holds no second batch gate summary question. Its approval covers only the listed approvable rows. The report states that rows added later, reserved rows, and blocked rows are not covered by it. When no listed row is approvable, no question is asked: the report states the blocked and reserved rows and ends there.
+- To pull a row out, the operator writes its card id in the question channel's automatic free-text entry, exactly as the report shows it, whatever the number of rows. The question text states that every card id written there is pulled out and every other listed approvable row is approved. An answer that cannot be read as card ids, or that names a card id the report does not list, approves no row and the question is asked again. Pulling a row out leaves the approval of the remaining rows intact, and the pulled-out row is handled individually. Explicit options stay within the channel's per-question limit.
+- Recommendation labels follow `interview.recommendation_mode` unchanged. Where the harness has no question channel, the same summary is delivered as a blocker report.
+
+**Counter-evidence**
+
+- Each row carries a `counter_refs=` field naming the strongest evidence against proceeding. Its sources are a closed list: audit warnings or recorded debt, the margin to the PASS threshold, unresolved decision-index rows, divergent audit-cross opinions, open blockers or wait records, and path overlap with another row of the same summary.
+- When none is found, the row reads `counter_refs=none searched=<token>`, where the token is one whitespace-free word naming the search, in the report and in the decision record alike. A `counter_refs=none` without `searched=` is not a counter-evidence statement.
+
+**Approvable, blocked, reserved**
+
+- A row is approvable only when all four hold: its most recent independent plan-audit verdict is PASS, the plan phase records audit-ready status, the plan-artifact hashes are unchanged since that verdict, and no blocker is open. Every other row is reported as blocked and excluded from the single approval.
+- The verdict must be independent, produced by the plan-auditor; a PASS stated by the session that authored the plan artifacts is blocked.
+- Blocked states are: PASS-WITH-DEBT, BYPASSED, FAIL, INCONCLUSIVE, an absent verdict, audit-ready status not recorded, a plan-artifact hash changed since the verdict, and an open blocker.
+- A row is reserved, and handled individually outside the single approval, when it falls in a keep-set category (environment-impossible, operator-held, or an irreversible operation on an external shared system) or in a power the leader session keeps: final PASS/FAIL verdicts, final merge approval, operator gates, card issuance and `done` through queue mutations, CodeRabbit slot-wait adjudication, and cross-session dispute coordination. The operator gates item does not include the operator-form plan→run Kickoff row: that row is reserved only when it falls in a keep-set category, and otherwise it is a summary row classified by the approvability rule above.
+
+**Records**
+
+- When the answer arrives and before each approved row is recorded, the session re-reads all four conditions of approvability and the row's reserved classification, an operator hold included. A row that no longer qualifies is refused, not recorded as approved, and the operator is told.
+- Each approved row gets its own decision record in the §10 form, as one line carrying the three fields in order, followed by `counter_refs=`. Its `ladder_path` holds the gate row slug followed by `;batch=<id>`, where `<id>` is the UTC time of the decision question as `YYYYMMDDTHHMMSSZ`, identical on every record of one summary and advanced to the next free second when another decision record on the board already carries that value. A row without its own record is not approved.
+- The single approval weakens no other Kickoff condition: for each approved card the tier, the mode preference, the PR strategy, and the chain scope are on disk, from the card or SPEC contract or from an operator dialogue held for that card, before run entry.
 
 ## 10. Decision records
 
@@ -193,6 +233,10 @@ decision record: decided_by=<runner+role> evidence_refs=<paths+verdict-ids> ladd
 - `decided_by` — the deciding runner and role
 - `evidence_refs` — the artifact paths and verdict ids the decision rests on
 - `ladder_path` — the ladder step (①–⑤) or the gate row that resolved it
+
+A decision approved through the batch gate summary (§9.2) also carries its
+per-row counter-reference field and the batch id; that format is defined only
+in §9.2.
 
 A decision record is self-attested by the writing lane; the sync audit's
 re-read of these records is the compensating control (detection, not

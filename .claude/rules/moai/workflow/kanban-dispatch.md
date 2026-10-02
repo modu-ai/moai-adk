@@ -184,7 +184,7 @@ Subshell and `env -u` variants, their measured refusal shapes, and the script-fi
 
 ## Boundaries — what this protocol does not do
 
-- **No gate bypass.** Approval gates keep their evidence standard inside a dispatch cycle. The plan→run Kickoff's default form is the autonomous transition — independent audit cross + evidence criteria + a written decision record (`.claude/rules/moai/workflow/auto-semantics.md` §9.1) — which is the gate's new default form, not a bypass; keep-set gates (environment-impossible, operator-held, irreversible external-shared operations) still require the operator.
+- **No gate bypass.** Approval gates keep their evidence standard inside a dispatch cycle. The plan→run Kickoff's default form is the autonomous transition — independent audit cross + evidence criteria + a written decision record (`.claude/rules/moai/workflow/auto-semantics.md` §9.1) — which is the gate's new default form, not a bypass; keep-set gates (environment-impossible, operator-held, irreversible external-shared operations) still require the operator, and operator-form Kickoff rows that wait together are presented through the batch gate summary (`.claude/rules/moai/workflow/auto-semantics.md` §9.2).
 - **No question delegation.** Companion sessions return blocker reports; the operator is asked by the leader, through `AskUserQuestion`.
 
 The three remaining boundaries — no board state store, no session spawning, and an empty role being a fault rather than a wait: `kanban-dispatch-mechanics.md` § Boundaries.

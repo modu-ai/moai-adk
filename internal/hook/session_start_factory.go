@@ -219,7 +219,7 @@ func factoryLeaderNotice(runID string, lanes int, root, lang string) string {
 
 	// (e) the dispatch discipline — localized prose with verbatim protocol
 	// tokens; see factoryMessages for why the tokens are not translated.
-	blocks = append(blocks, strings.Join([]string{m.leaderClasses, m.leaderStagger}, "\n"))
+	blocks = append(blocks, strings.Join([]string{m.leaderClasses, m.leaderStagger, m.gateSummary}, "\n"))
 
 	// (f) the free-slot line and the inbound-automation notice, on the same
 	// injected-settings discriminator as the kanban leader. The slot list is
