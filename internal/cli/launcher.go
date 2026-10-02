@@ -712,18 +712,19 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	}
 	model = resolveMainSessionModel(model, glmBackend)
 
-	// 6b. An empty model is only worth surfacing when the user explicitly
-	// targeted a named profile (via -p or a project-scoped binding) that then
-	// yielded no model — that suggests the named profile is empty or
-	// misconfigured. For the default profile (base preferences) an empty model
-	// is the normal, intentional state: many setups deliberately omit a model
-	// pin so Claude Code falls back to the user-scope last-choice (see
-	// CLAUDE.local.md §22.7). Warning there is a false alarm, so the gate is
-	// isNamedProfile. warnNoModelResolved itself stays unconditional (its unit
-	// test calls it directly with any profileName).
-	if model == "" && isNamedProfile(profileName) {
-		warnNoModelResolved(os.Stderr, profileName)
-	}
+	// 6a. Neither --model nor the profile chose a model: apply the remaining
+	// precedence levels — ANTHROPIC_MODEL and the project's settings.local.json
+	// (both left to Claude Code), then the model the user saved with /model,
+	// then the announced project pin. Without the /model level a project-level
+	// model pin, which outranks user-scope settings inside Claude Code,
+	// silently decided the session (card t1441). Rules, GLM exclusion and
+	// notices: launcher_model_source.go. An empty model is surfaced for a named
+	// profile (via -p or a project-scoped binding) that yielded none, which
+	// suggests the profile is empty or misconfigured; the default profile with
+	// no pin is the normal state and stays quiet. warnNoModelResolved itself
+	// stays unconditional (its unit test calls it directly with any profileName).
+	launchRoot, _ := findProjectRoot()
+	model = resolveLaunchModelFallback(model, glmBackend, launchRoot, profileName, launcherStderr)
 
 	// 7. Build args
 	buildArgs := func(withContinue bool) []string {
