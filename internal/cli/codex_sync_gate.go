@@ -164,10 +164,14 @@ func detectSyncGateLanguages(root string) []string {
 		add("rust")
 	}
 	kts, _ := os.ReadFile(filepath.Join(root, "build.gradle.kts"))
-	switch {
-	case (len(kts) > 0 && kotlinBuildMarker.Match(kts)) || has(".kt"):
+	if (len(kts) > 0 && kotlinBuildMarker.Match(kts)) || has(".kt") {
 		add("kotlin")
-	case exists("pom.xml") || exists("build.gradle") || exists("build.gradle.kts") || has(".java"):
+	}
+	// Java is detected independently of Kotlin, matching the script's two ifs:
+	// an elif/switch here let a Kotlin hit suppress the Java candidate, so in a
+	// mixed Gradle project a sync commit that touched only .java files summed
+	// to a zero code delta and passed without any checker running.
+	if exists("pom.xml") || exists("build.gradle") || exists("build.gradle.kts") || has(".java") {
 		add("java")
 	}
 	if exists("Gemfile") || has(".rb") {
@@ -179,7 +183,7 @@ func detectSyncGateLanguages(root string) []string {
 	if exists("mix.exs") || has(".ex", ".exs") {
 		add("elixir")
 	}
-	if exists("CMakeLists.txt") || exists("Makefile") || has(".cpp", ".cc", ".h") {
+	if exists("CMakeLists.txt") || exists("Makefile") || has(".cpp", ".cc", ".cxx", ".h", ".hpp", ".hxx") {
 		add("cpp")
 	}
 	if exists("build.sbt") || has(".scala") {

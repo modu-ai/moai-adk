@@ -107,7 +107,7 @@ func TestStaleRunNoticeFactoryLegacyLabel(t *testing.T) { // AC-RNC-022 hook cla
 	}
 
 	notice := staleRunNoticeFor(root, "stale-lane-session", "en")
-	for _, want := range []string{"worker-2", "runR", "moai factory runs --retire runR"} {
+	for _, want := range []string{"worker-2", "runR", "moai factory relaunch --provider cc --from-run runR"} {
 		if !strings.Contains(notice, want) {
 			t.Errorf("stale-run notice %q missing %q", notice, want)
 		}

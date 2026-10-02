@@ -404,6 +404,14 @@ func newIntegrationAcquireCmd() *cobra.Command {
 			if source == factory.BranchSourceCaller && gitFlow.IntegrationTarget != "" && gitFlow.IntegrationTarget != branch {
 				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), integrationUnwiredTargetWarning(gitFlow.Workflow, gitFlow.IntegrationTarget, branch))
 			}
+			// Warn-only (SPEC-QUOTA-AWARE-SCHEDULING-001 REQ-QAS-014, DO-7
+			// final): a Claude lane taking the window under quota pressure is
+			// told so, once, after the window is already recorded. The line
+			// never refuses, delays, or changes the record, the exit status,
+			// or stdout; every failure of the quota read is silent.
+			if line := integrationQuotaWarning(root); line != "" {
+				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), line)
+			}
 			if jsonOut {
 				return json.NewEncoder(cmd.OutOrStdout()).Encode(map[string]any{
 					"acquired":       true,

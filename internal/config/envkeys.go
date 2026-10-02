@@ -275,6 +275,13 @@ const (
 	// leader/lane vocabulary.
 	EnvMoaiFactoryWorker = "MOAI_FACTORY_WORKER"
 
+	// EnvMoaiFactoryManaged is the explicit opt-in for the managed Factory
+	// session (SPEC-FACTORY-MANAGED-SESSION-001): a factory launch diverts to
+	// the managed owner only when this is "1" or "true" AND the factory
+	// stamps are present. Unset, empty, or any other value leaves every launch
+	// on its ordinary door.
+	EnvMoaiFactoryManaged = "MOAI_FACTORY_MANAGED"
+
 	// EnvMoaiSessionPID carries an explicit override for the PID recorded in
 	// the multi-session coordination registry. A hook subprocess exits within
 	// milliseconds of registering, so its own PID is worthless to the liveness
@@ -669,7 +676,9 @@ const (
 	// (--model, this variable, a settings `model` value, or an organization
 	// default) chose a model.
 	//
-	// MoAI neither reads nor writes it.
+	// MoAI never writes it. The Claude launcher reads it only to leave the
+	// choice to Claude Code: while it is set, the launcher does not pass a
+	// saved /model value (card t1441).
 	EnvAnthropicModel = "ANTHROPIC_MODEL"
 
 	// EnvAnthropicDefaultModel names the model new sessions start on (Claude

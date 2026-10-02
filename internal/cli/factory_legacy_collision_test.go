@@ -28,7 +28,7 @@ func seedLiveFactoryClaims(t *testing.T, root string, labels ...string) {
 func TestResolveFactoryWorkerNameRefusesLegacyRequest(t *testing.T) {
 	for legacy, canonical := range map[string]string{"worker-3": "lane-3", "agent-2": "lane-2"} {
 		var notes bytes.Buffer
-		got, err := resolveFactoryLaneName(t.TempDir(), legacy, false, &notes)
+		got, err := resolveFactoryLaneName(t.TempDir(), legacy, "", false, &notes)
 		if err == nil {
 			t.Fatalf("legacy %s launched as %q; want an error naming %s", legacy, got, canonical)
 		}
@@ -46,7 +46,7 @@ func TestResolveFactoryWorkerNameAutoIgnoresLegacyRows(t *testing.T) {
 	seedLiveFactoryClaims(t, root, "lane-1", "worker-2")
 
 	var notes bytes.Buffer
-	got, err := resolveFactoryLaneName(root, "", true, &notes)
+	got, err := resolveFactoryLaneName(root, "", "", true, &notes)
 	if err != nil || got != "lane-2" {
 		t.Fatalf("auto claim = (%q, %v), want lane-2 (legacy worker-2 holds no number)", got, err)
 	}

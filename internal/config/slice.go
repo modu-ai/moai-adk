@@ -35,16 +35,16 @@ var sectionLoaders = map[string]sectionLoaderFunc{
 			slog.Warn("workflow config rejected, using defaults", "error", err)
 		}
 	},
-	"statusline":     (*Loader).loadStatuslineSection,
-	"feedback":       (*Loader).loadFeedbackSection,
-	"handoff":        (*Loader).loadHandoffSection,
-	"archive":        (*Loader).loadArchiveSection,
-	"gate":           (*Loader).loadGateSection,
-	"system":         (*Loader).loadSystemSection,
-	"constitution":   (*Loader).loadConstitutionSection,
-	"context":        (*Loader).loadContextSection,
-	"interview":      (*Loader).loadInterviewSection,
-	"design":         (*Loader).loadDesignSection,
+	"statusline":   (*Loader).loadStatuslineSection,
+	"feedback":     (*Loader).loadFeedbackSection,
+	"handoff":      (*Loader).loadHandoffSection,
+	"archive":      (*Loader).loadArchiveSection,
+	"gate":         (*Loader).loadGateSection,
+	"system":       (*Loader).loadSystemSection,
+	"constitution": (*Loader).loadConstitutionSection,
+	"context":      (*Loader).loadContextSection,
+	"interview":    (*Loader).loadInterviewSection,
+	"design":       (*Loader).loadDesignSection,
 }
 
 // LoadSlice reads ONLY the named configuration sections from disk, applying

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/jev"
 )
 
 // autoFixture seeds a store with named cards and returns the fixture root.
@@ -544,6 +545,21 @@ func TestTodoAutoEntryPointFlag(t *testing.T) {
 	if _, _, err := store.Add("entry point card"); err != nil {
 		t.Fatal(err)
 	}
+	// Hermetic wiring (SPEC-TODO-AUTO-PRIORITY-001 D-N1): the command path
+	// installs the live ranking seams, and the live landed seam runs `gh`. Both
+	// are replaced here, and counted — a call count of one each is the
+	// observation that the production wiring really reaches them.
+	landedCalls, jevCalls := 0, 0
+	origLanded, origJev := todoAutoLandedLookup, todoAutoJevRanker
+	t.Cleanup(func() { todoAutoLandedLookup, todoAutoJevRanker = origLanded, origJev })
+	todoAutoLandedLookup = func(*kanban.BacklogRecord) (map[string]kanban.PRLinkKind, error) {
+		landedCalls++
+		return nil, nil
+	}
+	todoAutoJevRanker = func(jev.Request) jev.Result {
+		jevCalls++
+		return jev.Result{Availability: jev.Disabled}
+	}
 	// The cycle runs through the real command path; no evidence arrives, so
 	// the card unpicks at the (shrunk) deadline — the failure path exercised
 	// through the real flag surface.
@@ -553,5 +569,11 @@ func TestTodoAutoEntryPointFlag(t *testing.T) {
 	}
 	if !strings.Contains(out, "accept t1") || !strings.Contains(out, "unpick t1") {
 		t.Errorf("--auto command output missing the cycle lines: %q", out)
+	}
+	if landedCalls != 1 || jevCalls != 1 {
+		t.Errorf("seam calls through the command path: landed=%d jev=%d, want 1 each — the production wiring must reach both ranking seams", landedCalls, jevCalls)
+	}
+	if !strings.Contains(out, "selection: source=fallback reason=jev-disabled") {
+		t.Errorf("--auto command output carries no selection record: %q", out)
 	}
 }

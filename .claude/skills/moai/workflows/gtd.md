@@ -327,25 +327,38 @@ for it, judge completion only by reading the worker's disk evidence, record
 the done transition on that evidence, emit the /clear guidance for the
 completed card, and only then accept the next. Exactly one card is in flight
 at any time; the pickup order is the dead-owner `picked` cards first, then
-the queue order, with owner liveness judged on two channels — the session
-registry and an `lsof` working-directory probe — re-measured at every pickup
-decision, never cached.
+the ranked queued candidates, with owner liveness judged on two channels — the
+session registry and an `lsof` working-directory probe — re-measured at every
+pickup decision, never cached.
 
 [HARD] `/moai:todo --auto` is the operator's batch approval: it authorizes
-serial consumption of the queue in queue order and nothing else. Queue order
-is the classification order the queue is kept sorted in — non-blocked cards
-first, then priority `high` > `normal` > `low`, then insertion order within a
-rank — so the cycle's first pickup is the highest-ranked queued card with no
-ordering logic of its own. The cycle
-derives its authority solely from the invocation — it never self-promotes,
-reorders, admits, or drops cards beyond that order, and it never takes over a
+serial consumption of the queue and nothing else. The cycle carries one
+auto-scoped ranking exception: once per invocation, before its first pickup,
+it may rank the queued candidates it is about to accept, and that changes the
+cycle's selection order only. The ranking source is a Jev signal when the
+capability is available and its answer validates as a whole; otherwise it is
+the recorded classification priority (`high` > `normal` > `low`, queue order
+within a priority), with cards the classification marks `blocked` left out of
+the candidates. On the fallback source only, a card is sent behind the clean
+ones when its text opens with the `[보류` marker, when it has already landed on
+the integration branch, or when a near-duplicate finding names it. The cycle
+prints a `selection:` record naming the source before its first accept, and
+the dead-owner `picked` cards keep their place at the head. The ranking never
+reorders, admits, drops or edits a card — the queue itself is unchanged — and
+the cycle derives its authority solely from the invocation: it never
+self-promotes, admits, drops, or edits cards, and it never takes over a
 picked card whose owning session is measured alive, even when no other pickup
 target exists. A worker that dies or leaves no readable evidence leaves the
 card unpicked back to `queued` with a labelled non-finding — never silently
-done, never left picked by the cycle. Jev consultation inside the cycle is a
-display-only signal for dispatch order and priority; it is never the basis of
-a queue mutation or a completion verdict. See `kanban-dispatch.md` § Entry
-into the board is an operator act (the reconciliation clause).
+done, never left picked by the cycle. The `jev:` line of the cycle stays a
+display-only signal, and Jev's ranking answer is used for the selection order
+only; it is never the basis of a queue mutation or a completion verdict. See
+`kanban-dispatch.md` § Entry into the board is an operator act (the
+reconciliation clause).
+
+Only a card whose text begins with the `[보류` marker is demoted; a hold stated
+in prose without the marker is not, and the structural hold is
+`moai todo hold`, the state the pickup already excludes.
 
 ## Standing sources
 

@@ -9,44 +9,9 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// SPEC-MOAI-MCP-SERVER-001 M3 — 3-way audit selection + secret hygiene
-// (REQ-MCP-010/011/014, AC-MCP-012/013/016/017). RED until
-// internal/cli/mcp_audit.go exists.
-
-func TestActiveAuditBackend_SingleBackends(t *testing.T) {
-	// AC-MCP-017: claude/codex/glm each resolve to exactly one active backend.
-	for _, model := range []string{config.AuditModelClaude, config.AuditModelCodex, config.AuditModelGLM} {
-		got, err := activeAuditBackend(model)
-		if err != nil {
-			t.Errorf("model %q: unexpected error %v", model, err)
-			continue
-		}
-		if got != model {
-			t.Errorf("activeAuditBackend(%q) = %q, want %q", model, got, model)
-		}
-	}
-}
-
-func TestActiveAuditBackend_MultiTokenAccepted(t *testing.T) {
-	// AC-MCP-017: `multi` is accepted as a stored value but its convergence
-	// logic is NOT implemented here (AP-8 → SPEC-AUDIT-MULTI-MODEL).
-	got, err := activeAuditBackend(config.AuditModelMulti)
-	if err != nil {
-		t.Fatalf("multi token rejected: %v (must be accepted)", err)
-	}
-	if got != config.AuditModelMulti {
-		t.Errorf("activeAuditBackend(multi) = %q, want multi (stored verbatim)", got)
-	}
-	if multiConvergenceImplemented {
-		t.Error("multiConvergenceImplemented = true; M3 must NOT orchestrate multi (AP-8)")
-	}
-}
-
-func TestActiveAuditBackend_RejectsUnknown(t *testing.T) {
-	if _, err := activeAuditBackend("grok"); err == nil {
-		t.Error("activeAuditBackend accepted unknown model 'grok' (must reject)")
-	}
-}
+// SPEC-MOAI-MCP-SERVER-001 M3 — audit secret hygiene
+// (REQ-MCP-011/014, AC-MCP-013/016). The audit_model token is validated by
+// config.ResolveAuditPlan (see internal/config/audit_plan_test.go).
 
 // TestBuildAuditEnvBlock_SecretHygiene_NegativeTest is the LOAD-BEARING
 // AC-MCP-013 guard. Even when a real GLM key is resolvable in the environment,

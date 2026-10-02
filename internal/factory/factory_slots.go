@@ -40,6 +40,11 @@ import (
 type FactoryLaneEntry struct {
 	PID          int    `json:"pid"`
 	RegisteredAt string `json:"registered_at"`
+	// Backend is the backend the lane recorded at claim (REQ-QAS-023): claude,
+	// glm, or gpt. A row written without one — before the claim recorded it, or
+	// by a caller that carries none — reads empty, which means unknown and is
+	// never backfilled.
+	Backend string `json:"backend,omitempty"`
 }
 
 // FactoryRegistryPath returns the project-scoped factory.db path. Separate
@@ -67,7 +72,7 @@ func LoadFactoryRegistry(path string) map[string]FactoryLaneEntry {
 	if root, rootErr := homestate.ProjectRootFromDBPath(path); rootErr == nil {
 		_ = db.ImportLegacyWorkers(filepath.Join(root, ".moai", "state", "factory", "workers.json"))
 	}
-	rows, err := db.DB.Query(`SELECT label, pid, registered_at FROM workers`)
+	rows, err := db.DB.Query(`SELECT label, pid, registered_at, backend FROM workers`)
 	if err != nil {
 		return reg
 	}
@@ -75,7 +80,7 @@ func LoadFactoryRegistry(path string) map[string]FactoryLaneEntry {
 	for rows.Next() {
 		var label string
 		var entry FactoryLaneEntry
-		if err := rows.Scan(&label, &entry.PID, &entry.RegisteredAt); err == nil {
+		if err := rows.Scan(&label, &entry.PID, &entry.RegisteredAt, &entry.Backend); err == nil {
 			reg[label] = entry
 		}
 	}
@@ -103,7 +108,7 @@ func SaveFactoryRegistry(path string, reg map[string]FactoryLaneEntry) error {
 		if at == "" {
 			at = time.Now().UTC().Format(time.RFC3339Nano)
 		}
-		if _, err := tx.Exec(`INSERT INTO workers(label,pid,registered_at,heartbeat_at) VALUES(?,?,?,?)`, label, entry.PID, at, at); err != nil {
+		if _, err := tx.Exec(`INSERT INTO workers(label,pid,backend,registered_at,heartbeat_at) VALUES(?,?,?,?,?)`, label, entry.PID, entry.Backend, at, at); err != nil {
 			return err
 		}
 	}
@@ -153,7 +158,7 @@ func (e *FactoryLegacyRunError) Error() string {
 // refused nor counted as a lane, and it is never rewritten. Dead claims of
 // any shape are pruned as stale.
 func ClaimFactoryLane(root, requested string, auto bool, pid int, runID string, alive func(int) bool) (FactoryClaim, error) {
-	return claimFactoryLane(root, requested, auto, pid, runID, 0, alive)
+	return claimFactoryLane(root, requested, auto, pid, runID, 0, "", alive)
 }
 
 // ClaimFactoryLaneWithin atomically chooses a free slot in 1..maxSlots or
@@ -171,13 +176,33 @@ func ClaimFactoryLane(root, requested string, auto bool, pid int, runID string, 
 // @MX:REASON: the capacity policy lives here, not at the launcher — moving the bound decision back to the call site revives the capacity-blind 1..1 refusal this boundary was reworked to fix
 // @MX:SPEC: SPEC-CODEX-LANE-SLOTS-001
 func ClaimFactoryLaneWithin(root, requested string, auto bool, pid int, runID string, maxSlots int, alive func(int) bool) (FactoryClaim, error) {
+	return ClaimFactoryLaneWithinWithBackend(root, requested, auto, pid, runID, maxSlots, "", alive)
+}
+
+// ClaimFactoryLaneWithBackend is ClaimFactoryLane for a launcher that knows its
+// backend: the claim records it in the same insert that registers the lane
+// (REQ-QAS-023). The Codex launcher's token "codex" is recorded as gpt.
+func ClaimFactoryLaneWithBackend(root, requested string, auto bool, pid int, runID, backend string, alive func(int) bool) (FactoryClaim, error) {
+	return claimFactoryLane(root, requested, auto, pid, runID, 0, backend, alive)
+}
+
+// ClaimFactoryLaneWithinWithBackend is ClaimFactoryLaneWithin for a launcher
+// that knows its backend (REQ-QAS-023).
+func ClaimFactoryLaneWithinWithBackend(root, requested string, auto bool, pid int, runID string, maxSlots int, backend string, alive func(int) bool) (FactoryClaim, error) {
 	if maxSlots < 1 {
 		return FactoryClaim{}, fmt.Errorf("factory lane limit must be positive")
 	}
-	return claimFactoryLane(root, requested, auto, pid, runID, maxSlots, alive)
+	return claimFactoryLane(root, requested, auto, pid, runID, maxSlots, backend, alive)
 }
 
-func claimFactoryLane(root, requested string, auto bool, pid int, runID string, maxSlots int, alive func(int) bool) (FactoryClaim, error) {
+// laneBackendToken is the Codex launcher's own backend token; the registry
+// records that backend as gpt, the vocabulary every other surface speaks.
+const laneBackendToken = "codex"
+
+func claimFactoryLane(root, requested string, auto bool, pid int, runID string, maxSlots int, backend string, alive func(int) bool) (FactoryClaim, error) {
+	if backend == laneBackendToken {
+		backend = BackendGPT
+	}
 	claim := FactoryClaim{Label: requested}
 	admissionLock, lockErr := homestate.AcquireAdmissionLock(root)
 	if lockErr != nil {
@@ -326,7 +351,8 @@ func claimFactoryLane(root, requested string, auto bool, pid int, runID string, 
 	// canonical label for n is free by construction.
 	final := FactoryLaneLabel(n)
 	at := time.Now().UTC().Format(time.RFC3339Nano)
-	if _, err := tx.Exec(`INSERT INTO workers(label,pid,registered_at,heartbeat_at,run_id) VALUES(?,?,?,?,?)`, final, pid, at, at, runID); err != nil {
+	// The backend rides this one statement (REQ-QAS-023): never a later update.
+	if _, err := tx.Exec(`INSERT INTO workers(label,pid,backend,registered_at,heartbeat_at,run_id) VALUES(?,?,?,?,?,?)`, final, pid, backend, at, at, runID); err != nil {
 		return claim, err
 	}
 	if err := tx.Commit(); err != nil {

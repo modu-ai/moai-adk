@@ -1,5 +1,7 @@
 # 데이터 흐름
 
+> **t1443 판(card t1347·t1375)** — Factory 흐름에 두 관문이 더했다: ① **할당량 게이트** — `factory next` 임대 전 `internal/cli/factory_quota.go`가 상태 디렉터리의 사용량 창 원장으로 보유 창·압력을 평가한다(원장은 `internal/statusline/context_usage.go`가 스키마 v3로 쓰고 `internal/statusline/quota.go`의 `AggregateQuota`가 읽는 것과 같은 것). 판정은 배차 스티어링 행(`factory_quota_lanes.go`)과 `--auto` 사이클 안내 줄로 흘러 임대 보유를 설명한다. 게이트 설정은 `workflow.quota_gate.*`(`loader_quota_gate.go` — 모든 실패에서 꺼짐 기본). ② **관리 세션 divert** — `MOAI_FACTORY_MANAGED`가 명시적으로 켜진 런치는 `launcher.go`·`codex_launcher.go`의 게이트에서 관리 소유자로 갈라진다(`managed_factory_session.go`의 stream-json Claude 자식 · `managed_codex_factory.go`의 websocket Codex App-Server 자식 — 런처가 대화를 소유한다). 기본은 꺼짐이다. ③ **llm.yaml 셋째 쓰기 경로**(card t1411) — § G의 두 갈래 밖에 `internal/settings/llmoverrides.go`가 더했다: 웹 에이전트 설정 탭의 저장이 llm.yaml 프로파일·에이전트별 model/effort를 원자 쓰기+스냅샷/복원으로 쓴다. ④ **할당량 판독 확장**(card t1442 — t1347 부채 F1) — 게이트 판독이 primary 하나가 아니라 primary+링크된 워크트리 상태 디렉터리 전부로 넓었다(`internal/statusline/quota_dirs.go`의 `QuotaStateDirs` — git 메타데이터 파일 읽기만으로 열거, `workflow.quota_gate.max_scan_dirs` 바운드; 다른 형태의 상태 디렉터리는 단독 판독 — fail-open). ⑤ **스테일 런 리바인딩**(card t1345) — 프롬프트마다 env 네임 런의 활성을 재측정해 비활성이면 레인을 살아 있는 런으로 재결합하거나(`internal/hook/factory_rebind.go`) `moai factory relaunch` 실행 명령줄을 운영자에게 안내한다.
+
 **현재 갱신 — t1295, `develop` `cee197917` (2026-09-28).**
 MoAI가 만드는 L1 워크트리 경로와 기존 트리의 이전 경로를 § M에 추가했다.
 Factory 런 은퇴의 `lead` 표기는 이전 런의 저장 역할값이다. 현재 런은 `leader/lane`을 쓰며,

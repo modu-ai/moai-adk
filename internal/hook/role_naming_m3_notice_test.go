@@ -115,16 +115,17 @@ func TestRoleNamingM3NoticesCarryLeaderLaneTerms(t *testing.T) {
 	}
 }
 
-// TestRoleNamingM3StaleRunNoticeNamesRetireStep pins the retire step on the
-// factory variant and its absence on the relaunch variant (no factory run to
-// retire), per REQ-RNC-022's discriminator.
+// TestRoleNamingM3StaleRunNoticeNamesRetireStep pins the relaunch command (the
+// retire step's successor, SPEC-FACTORY-STALE-RUN-HEAL-001) on the factory
+// variant and its absence on the relaunch variant (no factory run to relaunch
+// into), per REQ-RNC-022's discriminator.
 func TestRoleNamingM3StaleRunNoticeNamesRetireStep(t *testing.T) {
 	m3ScrubEnv(t)
 	t.Setenv(config.EnvFactoryRunID, "runX")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
 
 	factory := staleRunNotice("worker-2", "en")
-	for _, want := range []string{"worker-2", "runX", "moai factory runs --retire runX"} {
+	for _, want := range []string{"worker-2", "runX", "moai factory relaunch --provider cc --from-run runX"} {
 		if !strings.Contains(factory, want) {
 			t.Errorf("factory stale-run notice %q missing %q", factory, want)
 		}
@@ -132,8 +133,8 @@ func TestRoleNamingM3StaleRunNoticeNamesRetireStep(t *testing.T) {
 
 	t.Setenv(config.EnvMoaiFactoryWorkers, "")
 	relaunch := staleRunNotice("lead", "en")
-	if strings.Contains(relaunch, "factory runs --retire") {
-		t.Errorf("relaunch stale-run notice %q must not name a factory retire step", relaunch)
+	if strings.Contains(relaunch, "factory runs --retire") || strings.Contains(relaunch, "factory relaunch") {
+		t.Errorf("relaunch stale-run notice %q must not name a factory retire or relaunch step", relaunch)
 	}
 	if !strings.Contains(relaunch, "lead") {
 		t.Errorf("relaunch stale-run notice %q does not name the legacy value", relaunch)

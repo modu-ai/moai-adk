@@ -17,12 +17,16 @@ workflow:
     # codex_audit / glm_audit / audit_multi), never task delegation. Precedence per
     # backend: this pin > llm.yaml sync-auditor SSOT cell > empty. codex effort
     # Claude/Codex effort vocabulary low|medium|high|xhigh|max; GLM effort =
-    # z.ai states low|high|max. Claude defaults to claude-opus-5-5/medium and
+    # z.ai states low|high|max. Claude defaults to claude-opus-5-5/high and
     # codex to gpt-6.1-sol/high (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-001/002).
+    # model: multi (SPEC-AUDIT-MODEL-CONVERGE-001) opts this repository into
+    # cross-model convergence: codex required, GLM advisory, Claude as the anchor.
+    # Relax it per backend with an audit.gates block if needed.
     audit:
+        model: multi
         claude:
             model: claude-opus-5-5
-            effort: medium
+            effort: high
         codex:
             model: gpt-6.1-sol
             effort: high
@@ -212,9 +216,26 @@ workflow:
     # internal/template/templates/).
     served_model_gate:
         enabled: false
+    # quota_gate: steer the NEXT card away from a nearly exhausted Claude
+    # account (SPEC-QUOTA-AWARE-SCHEDULING-001). A Claude lane's `moai factory
+    # next` leases no new card while a five-hour or seven-day window reads at or
+    # above its hold percentage; `moai factory status` and `moai todo --auto`
+    # recommend non-Claude lanes. This local opt-in enables the gate for
+    # dogfood; the numeric values are the shipped unmeasured defaults. Shipped
+    # default-false in template (internal/config/defaults.go enforces this; no
+    # gate-enabling value under internal/template/templates/).
+    # max_scan_dirs: the unmeasured shipped default; more linked worktrees than
+    # this need a larger value.
+    quota_gate:
+        enabled: true
+        five_hour_hold_pct: 90
+        seven_day_hold_pct: 95
+        release_margin_pct: 5
+        max_age: 30m
+        max_scan_dirs: 128
     # jev: the TypeSafe System One judgment capability. It answers a typed
     # question about a supplied state and returns a typed answer with a
-    # probability; it generates no text and decides nothing. Ships OFF, and
+    # probability; it generates no text and makes no decision itself. Ships OFF, and
     # while it is off no request is constructed and no network call is made, so
     # a project that never opts in pays nothing and reaches no third-party
     # endpoint.
@@ -230,6 +251,18 @@ workflow:
     # One exception: the contract-mode Kickoff `llm+jev` cross-check may use
     # an answer as its second signal, where it can only confirm an LLM
     # approval or route the Kickoff to a human; it never decides alone.
+    #
+    # A second exception, separate from that cross-check, is the
+    # `moai todo --auto` cycle's own candidate ranking: the
+    # auto-scoped ranking exception. Behind the default-off
+    # workflow.jev.enabled gate, an in-process caller may supply the key
+    # that orders the queued candidates the cycle is about to accept, which
+    # sets selection order only. The candidate set is fixed by
+    # mechanical filters before any answer is read, and an answer that
+    # cannot be used as a whole falls back to recorded priority over the
+    # same set. The answer never adds, removes or edits a card, is never the
+    # basis of a completion verdict, a merge approval or an operator gate,
+    # and no ordering accuracy is claimed.
     #
     # Where this setting is changed, and where it is NOT: `moai init` asks
     # about it once, and after that the `moai web` settings screen is the only

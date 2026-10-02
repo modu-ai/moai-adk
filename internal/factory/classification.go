@@ -68,6 +68,17 @@ var (
 	}
 )
 
+// PriorityRank returns a priority value's rank — high above normal above low —
+// so a consumer outside this package orders by priority without re-spelling
+// the closed set. A value outside the set ranks below every member (-1) rather
+// than tying with the lowest one.
+func PriorityRank(priority string) int {
+	if rank, ok := classPriorities[priority]; ok {
+		return rank
+	}
+	return -1
+}
+
 // CardClassification is one card's recorded creation-time judgment. It is
 // written only through the add path's decider seam, inside the locked write
 // that appends the card.

@@ -338,7 +338,7 @@ func TestTodoList_LockFreeWhileForeignProcessHoldsLock(t *testing.T) {
 	helper := exec.Command(os.Args[0], "-test.run=TestTodoHelperProcess", "--")
 	helper.Env = append(os.Environ(),
 		"MOAI_TODO_HELPER=hold-lock",
-		"CLAUDE_PROJECT_DIR="+root,
+		todoHelperRootEnv+"="+root,
 	)
 	if err := helper.Start(); err != nil {
 		t.Fatalf("start lock-holder: %v", err)
@@ -504,7 +504,7 @@ func TestTodoConcurrentAdd_8Processes(t *testing.T) {
 			cmd := exec.Command(os.Args[0], "-test.run=TestTodoHelperProcess", "--")
 			cmd.Env = append(os.Environ(),
 				"MOAI_TODO_HELPER=add",
-				"CLAUDE_PROJECT_DIR="+root,
+				todoHelperRootEnv+"="+root,
 				"MOAI_TODO_HELPER_TEXT=card "+string(rune('A'+i)),
 			)
 			// Parse stdout only: the temporary-origin advisory (t705) goes to
@@ -560,6 +560,12 @@ func TestTodoConcurrentAdd_8Processes(t *testing.T) {
 	}
 }
 
+// todoHelperRootEnv carries the project root a parent test composed for a
+// re-exec helper. It is not CLAUDE_PROJECT_DIR: this package's TestMain scrubs
+// that variable at startup (REQ-ACV-019), and the helper child runs TestMain
+// too, so a root passed under the scrubbed name would arrive empty.
+const todoHelperRootEnv = "MOAI_TODO_HELPER_ROOT"
+
 // TestTodoHelperProcess is the re-exec helper backing the cross-process
 // tests above (same idiom as internal/factory/board_lock_cross_test.go).
 func TestTodoHelperProcess(t *testing.T) {
@@ -567,8 +573,13 @@ func TestTodoHelperProcess(t *testing.T) {
 	if mode == "" {
 		return // normal test run, not a helper invocation
 	}
-	root := os.Getenv("CLAUDE_PROJECT_DIR")
+	root := os.Getenv(todoHelperRootEnv)
 	if root == "" {
+		os.Exit(4)
+	}
+	// The todo verbs resolve their project root from CLAUDE_PROJECT_DIR, which
+	// TestMain cleared; restore the value the parent composed for this child.
+	if err := os.Setenv(config.EnvClaudeProjectDir, root); err != nil {
 		os.Exit(4)
 	}
 	store := factory.NewBacklogStore(todoBacklogPath(root))
@@ -1010,7 +1021,7 @@ func TestTodoAddPick_ConcurrentProcesses(t *testing.T) {
 			cmd := exec.Command(os.Args[0], "-test.run=TestTodoHelperProcess", "--")
 			cmd.Env = append(os.Environ(),
 				"MOAI_TODO_HELPER=add-pick",
-				"CLAUDE_PROJECT_DIR="+root,
+				todoHelperRootEnv+"="+root,
 				"MOAI_TODO_HELPER_TEXT=card "+string(rune('A'+i)),
 			)
 			// Parse stdout only: the temporary-origin advisory (t705) goes to

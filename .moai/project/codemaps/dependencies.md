@@ -1,6 +1,12 @@
 # 의존성 그래프
 
-**현재 부분 재측정 — t1297, worktree `.moai/worktrees/t1297`, 브랜치 `WT-codemaps-regen`, base `a9f43a6fc` (2026-10-02, 전면 재생성 카드).**
+**현재 부분 재측정 — t1456, worktree `.moai/worktrees/t1456`, 브랜치 `WT-codemaps-regen2`, base `5501c06af` (2026-10-03).**
+문서의 산출 명령으로 내부 import를 다시 쟀다 — 패키지 단위 460→**461**, 최상위 접기 + self-edge 제거 고유 쌍 288→**289**. 창의 신규 8파일은 전부 기존 패키지 안에 들어와 신규 패키지는 없다. fan-out·fan-in 상위 표는 전 행 재확인 결과 변동이 없었고(`internal/cli` 72·`internal/hook` 39·`internal/config` 27·`internal/paths`·`internal/atomicfile` 14), 작은 fan-in 표도 변동 없었다. § 순환은 재확인 결과 변동 없음. go.mod는 t1443 앵커 이후에도 한 줄도 바뀌지 않았다 — § 외부 의존성 표는 t1443 판의 32항목이 그대로 유효하다.
+
+**이전 부분 재측정 — t1443, worktree `.moai/worktrees/t1443`, 브랜치 `WT-codemaps-regen`, base `4bf547bca` (2026-10-02).**
+문서의 산출 명령으로 내부 import를 다시 쟀다 — 패키지 단위 457→**460**, 최상위 접기 + self-edge 제거 고유 쌍 286→**288**. 신규 패키지 `internal/settings/agentfm`(card t1411)은 순수 leaf다 — 내부 import 0(표준 라이브러리와 `gopkg.in/yaml.v3`만), 내부 소비자는 `internal/web` 하나. fan-out·fan-in 상위 표는 전 행 재확인 결과 변동이 없었다(`internal/cli` 72·`internal/hook` 39·`internal/config` 27·`internal/paths` 14·`internal/atomicfile` 14 포함 — 창의 소폭계 신규 엣지는 기존 최상위 쌍 안쪽의 패키지 세분이다). 작은 fan-in 표도 변동 없었다(`auditreceipt` 3·`jev` 3·`jevcred` 3·`contract` 3·`mission` 2·`chain` 2·`stateanchor` 3·`civerdict` 2 — 같은 명령 재측정). § 순환은 다섯 쌍 재확인 결과 변동 없음(상호쌍 교차 재계산 — `cli`↔`hook` · `cli`↔`kanban` · `hook`↔`migration` · `contract`↔`escalation` · `profile`↔`settings`). go.mod는 앵커 이후 처음 움직였다 — 직접 require 30→32항목: 신규 `github.com/gorilla/websocket` v1.5.3(관리 세션의 Codex App-Server stream 전송 — `internal/cli/managed_codex_factory.go`, card t1375)과 `santhosh-tekuri/jsonschema/v6` v6.0.2의 indirect→직접 승격(`internal/codextools/registry.go`)이며 § 외부 의존성 표에 두 행을 더했다.
+
+**이전 부분 재측정 — t1297, worktree `.moai/worktrees/t1297`, 브랜치 `WT-codemaps-regen`, base `a9f43a6fc` (2026-10-02, 전면 재생성 카드).**
 t1333 판 이후 이 문서를 건드린 판이 없어(개별 카드가 `overview.md` 표만 옮겨 왔다) 창 전체를 한 번에 다시 쐈다 — 패키지 단위 449→**457**, 최상위 접기 + self-edge 제거 고유 쌍 277→**286**. go.mod·go.sum은 앵커 이후 한 줄도 바뀌지 않았다. fan-out 상위에서 움직인 행: `internal/cli` 70→72(`internal/factorylane` — card t1338 착지 — 와 세션 앵커 계열 합류). fan-in 상위에서 움직인 행: `internal/config` 25→27, `internal/atomicfile` 13→14, `internal/kanban`·`internal/homestate` 7→8, `pkg/models` 8→7. § 순환은 네 쌍→**다섯 쌍** — 다섯째 `internal/profile` ↔ `internal/settings`의 양 엇키는 앵커 시점부터 존재하던 것이(`git grep` 실측 — `internal/profile/sync.go`) 이 판에 처음 표로 들어온 스테일 누락분이다(t1333 판의 auditreceipt·jev 정정과 같은 성격).
 
 **이전 재측정 — t1333, worktree `.moai/worktrees/t1333`, 브랜치 `WT-codemaps-refresh9`, base `145c3d98c` (2026-09-29).**
@@ -187,13 +193,14 @@ admission 계약을 공유합니다.
 
 ## 외부 의존성
 
-`go.mod`에서 `// indirect` 표시가 없는 require 30개 항목입니다(첫 require 블록 28개와 둘째 블록의
-`github.com/google/uuid` · `modernc.org/sqlite` 2개). 항목 구성과 버전은 이번 재측정에서
+`go.mod`에서 `// indirect` 표시가 없는 require 32개 항목입니다(첫 require 블록 28개, `github.com/gorilla/websocket` 단독 블록 1개, 둘째 블록의 `github.com/google/uuid` · `github.com/santhosh-tekuri/jsonschema/v6` · `modernc.org/sqlite` 3개 — t1443 판 재측정). 항목 구성과 버전은 이번 재측정에서
 아래 표와 한 줄씩 대조해 바뀐 것이 없었습니다. 다만 표에 없는 직접 사용이 하나 있습니다 —
 § 이례적인 것 7.
 
 | 모듈 | 용도 | 사용처 |
 |---|---|---|
+| `github.com/gorilla/websocket` v1.5.3 | **t1443 판 신규 직접 의존** — Codex App-Server stream 전송 | `internal/cli/managed_codex_factory.go` (card t1375) |
+| `github.com/santhosh-tekuri/jsonschema/v6` v6.0.2 | **t1443 판 indirect→직접 승격** — JSON Schema 검증 | `internal/codextools/registry.go` |
 | `github.com/spf13/cobra` v1.10.2 | CLI 명령 트리 | `internal/cli` 전역 |
 | `github.com/spf13/pflag` v1.0.10 | cobra 플래그 | 동상 |
 | `charm.land/fang/v2` v2.0.1 | cobra 위 help/error/version/completion 렌더러 | `internal/cli/fang.go` |

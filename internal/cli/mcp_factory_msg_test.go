@@ -282,3 +282,66 @@ func TestFactoryMCPIdentityFallsBackToDirectParent(t *testing.T) {
 		t.Fatalf("parent attribution=%+v err=%v", got, err)
 	}
 }
+
+// TestFactoryMsgSendRejectsClaudeOnlyRun is SPEC-FACTORY-MANAGED-SESSION-001
+// AC-MS-011 (REQ-MS-011): a Claude-only run keeps its native SendMessage
+// policy, so factory_msg_send from a process owning no broker endpoint is
+// refused. The success arm — the same call once the caller owns a registered
+// endpoint — kills the refuse-everything mutant: the refusal is attribution,
+// not broken plumbing.
+func TestFactoryMsgSendRejectsClaudeOnlyRun(t *testing.T) {
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root, run := t.TempDir(), "claude-only-run"
+	activateManagedRun(t, root, run)
+	t.Setenv(config.EnvClaudeProjectDir, root)
+	// No authoritative session id: this harness's ambient value would route
+	// attribution through s.Peer and mask the PID path both arms exercise
+	// (the TestFactoryMCPIdentityAttribution precedent clears it too).
+	t.Setenv(config.EnvClaudeCodeSessionID, "")
+
+	arguments := map[string]any{
+		"run_id": run, "to_slot": "leader", "kind": "status_request",
+		"idempotency_key": "claude-only-once", "body": "must never deliver",
+		"task_ref": "t1375", "correlation_id": "claude-only-c1",
+	}
+	request := mcp.CallToolRequest{Params: mcp.CallToolParams{Name: "factory_msg_send", Arguments: arguments}}
+	result, err := handleFactoryMsgSend(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.IsError {
+		t.Fatalf("factory_msg_send on a Claude-only run = %v, want a refusal", result)
+	}
+
+	// Success arm: the same send from a registered endpoint owner delivers.
+	store, err := factorymsg.Open(root, run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	start := homestate.CurrentProcessFingerprint()
+	if start == "" {
+		t.Fatal("test process identity unavailable")
+	}
+	leader := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "claude",
+		Role: "leader", Slot: "leader", SessionUUID: "claude-only-leader", Generation: 1,
+		PID: os.Getpid(), ProcessStart: start}
+	leader, err = store.RegisterPeer(context.Background(), leader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lane := leader
+	lane.Role, lane.Slot, lane.SessionUUID = "lane", "lane-1", "claude-only-lane"
+	if _, err := store.RegisterPeer(context.Background(), lane); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(config.EnvMoaiSessionPID, strconv.Itoa(os.Getpid()))
+	arguments["to_slot"] = "lane-1"
+	result, err = handleFactoryMsgSend(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.IsError {
+		t.Fatalf("factory_msg_send from a registered endpoint owner = %v, want delivery", result)
+	}
+}

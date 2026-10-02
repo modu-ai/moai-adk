@@ -85,7 +85,7 @@ import urllib.request
 
 # The three agent-settings groups (profile matrix, tier radio, haiku lock) left
 # with that tab (SPEC-AGENT-MODEL-INHERIT-001), taking the total from 13 to 10.
-INVENTORY_TOTAL = 10
+INVENTORY_TOTAL = 13
 
 # Reversible effect kinds a manifest entry may exercise unconditionally
 # (REQ-AFG-012). Save- and submit-family controls are outside this family: the
@@ -236,6 +236,25 @@ EXCLUSIONS = [
         "line_group": 412,
         "selector": 'select[name^="llm.glm.models."]',
         "reason": "GLM flash effort lock: option disabled-state pairing — form state outside the allowlist",
+    },
+    {
+        # SPEC-WEB-AGENTFM-RESTORE-001 M4: the restored agent-overrides surface
+        # adds three change groups, all form-state pairing like the GLM lock
+        # above — select/radio state set client-side, outside the probe's
+        # visibility/click effects family.
+        "line_group": 485,
+        "selector": 'select[name^="agentfm."]',
+        "reason": "profile-matrix repopulation: marks dirty selects and flips the Custom radio — form state pairing outside the allowlist",
+    },
+    {
+        "line_group": 493,
+        "selector": 'input[name="performance_tier"]',
+        "reason": "tier repopulation handler: resets agentfm selects to the tier's matrix cells — form state pairing outside the allowlist",
+    },
+    {
+        "line_group": 552,
+        "selector": 'select[name^="agentfm."][name$=".model"]',
+        "reason": "haiku effort lock: effort select disabled-state pairing — form state outside the allowlist (same shape as the GLM lock)",
     },
     {
         "line_group": 430,
@@ -854,18 +873,32 @@ async def run_sandbox_scenario(cdp, base, sandbox_root, entry):
     # Place a value the server-side validator rejects. The control is a select
     # with no such option, so the option is appended first: the point is to
     # exercise the server's reject path, not to simulate a reachable keystroke.
+    # Card t1390: permission_mode now renders as a segRadio RADIO group (card
+    # t1381 regen), and setting `.value` on a radio changes only its property
+    # while the form still submits the CHECKED radio — the stale probe reported
+    # "bogus" set while the server received a valid value, saved, and answered
+    # with the success banner. A radio gets a checked sentinel input carrying
+    # the invalid value appended to the form instead, so the submission
+    # genuinely carries the rejectable value.
     rep["s_invalid_set"] = await ev(
         cdp,
         """(function(){
   var f=document.querySelector(%s); if(!f){return 'no-form';}
   var el=f.querySelector('[name=%s]'); if(!el){return 'no-field';}
   if(el.tagName==='SELECT'){var o=document.createElement('option');o.value=%s;o.textContent=%s;el.appendChild(o);}
+  if(el.type==='radio'){
+    var r=document.createElement('input');
+    r.type='radio'; r.name=el.name; r.value=%s; r.checked=true;
+    f.appendChild(r);
+    return r.value;
+  }
   el.value=%s;
   return el.value;
 })()"""
         % (
             form_sel,
             json.dumps(entry["invalid_field"]),
+            json.dumps(entry["invalid_value"]),
             json.dumps(entry["invalid_value"]),
             json.dumps(entry["invalid_value"]),
             json.dumps(entry["invalid_value"]),

@@ -110,10 +110,17 @@ func factoryLaneRuleForSource(source, lang string) string {
 		// manual-mode rule, never the self-dispatch instruction. Any other
 		// value (the code default, absence included) reads as auto-dispatch:
 		// the default is fail-open.
+		//
+		// Card t1451: both Claude-harness rules end with the stall-recovery
+		// rule. Only the clear-surviving lane rule can carry it — a turn ended
+		// by an API error cannot arm a recheck afterwards — and the Codex
+		// owned-card rule below does not, because that harness has no session
+		// cron tool.
+		m := factoryMessagesFor(lang)
 		if os.Getenv(config.EnvFactoryAutoDispatch) == config.FactoryDispatchManual {
-			return factoryMessagesFor(lang).laneManualDispatchRule
+			return m.laneManualDispatchRule + "\n\n" + m.laneRecheckRule
 		}
-		return factoryMessagesFor(lang).laneNextCardRule
+		return m.laneNextCardRule + "\n\n" + m.laneRecheckRule
 	case factory.BackendGPT:
 		cardID := os.Getenv(config.EnvFactoryCard)
 		if cardID == "" {
@@ -189,7 +196,7 @@ func factoryLeaderNotice(runID string, lanes int, lang string) string {
 
 	// (d) the dispatch discipline — localized prose with verbatim protocol
 	// tokens; see factoryMessages for why the tokens are not translated.
-	blocks = append(blocks, strings.Join([]string{m.leaderClasses, m.leaderStagger}, "\n"))
+	blocks = append(blocks, strings.Join([]string{m.leaderClasses, m.leaderStagger, m.gateSummary}, "\n"))
 
 	// (e) the operational-status query and the inbound-automation notice, on
 	// the injected-settings discriminator the launcher publishes.

@@ -96,9 +96,13 @@ func (f *stopFixture) commit(t *testing.T, subject string) {
 }
 
 // setFakeGo installs a `go` whose vet exits vetExit; build always passes.
+// The gate invokes the tool as `go -C <module-root> vet ./...` (t1385-r2
+// moved the checks to the owning module root), so the stub must strip the
+// leading `-C <dir>` pair before matching the subcommand — a stub that only
+// matches `$1 = vet` silently passes every slot.
 func (f *stopFixture) setFakeGo(t *testing.T, vetExit int) {
 	t.Helper()
-	script := "#!/bin/sh\ncase \"$1\" in vet) echo 'fake vet'; exit " + strconv.Itoa(vetExit) + " ;; build) exit 0 ;; *) exit 0 ;; esac\n"
+	script := "#!/bin/sh\ncase \"$1\" in -C) shift 2 ;; esac\ncase \"$1\" in vet) echo 'fake vet'; exit " + strconv.Itoa(vetExit) + " ;; build) exit 0 ;; *) exit 0 ;; esac\n"
 	if err := os.WriteFile(filepath.Join(f.bin, "go"), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}

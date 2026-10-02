@@ -98,19 +98,22 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:     defaultProjectName,
 			Required:    true,
 		},
-		// 3. Report Format — html+md vs md.
+		// 3. Report Format — html+md vs md vs artifact.
 		// The value set mirrors internal/settings reportFormatValues (the closed
-		// set {"html+md", "md"} consumed by the moai-domain-html-report skill via
-		// report.format). Keep these two Values in sync with that SSOT.
+		// set {"html+md", "md", "artifact"} consumed by the
+		// moai-domain-html-report skill via report.format; artifact publishes the
+		// HTML as a Claude Artifact and falls back to html+md when the Artifact
+		// tool is absent). Keep these Values in sync with that SSOT.
 		{
 			ID:          "report_format",
 			Group:       "Model & Report",
 			Type:        QuestionTypeSelect,
 			Title:       "Select report format",
-			Description: "Controls whether reports are generated as HTML+Markdown or Markdown only.",
+			Description: "Controls whether reports are generated as HTML+Markdown, Markdown only, or published as a Claude Artifact.",
 			Options: []Option{
 				{Label: "HTML + Markdown (Recommended)", Value: "html+md", Desc: "Generate both an HTML report (browser-viewable) and Markdown"},
 				{Label: "Markdown only", Value: "md", Desc: "Generate Markdown reports only (lighter, diff-friendly)"},
+				{Label: "Artifact (Claude)", Value: "artifact", Desc: "Publish the report as a Claude Artifact (falls back to html+md when the Artifact tool is unavailable)"},
 			},
 			Default:  "html+md",
 			Required: true,
@@ -421,7 +424,7 @@ func Page3Questions(projectRoot string) []Question {
 			Group:       "Judgment Capability",
 			Type:        QuestionTypeConfirm,
 			Title:       "Enable Jev typed judgments? (optional, off by default)",
-			Description: "Jev answers a typed question about supplied state and returns a probability; it decides nothing. Enabling it sends card text or request text to a third-party server. This question is asked only at init — change it later in `moai web` settings.",
+			Description: "Jev answers a typed question about supplied state and returns a probability; it makes no decision itself. A person reads its answer; where software uses it automatically, it is only as a signal — for example the order in which `moai todo --auto` considers queued cards, or an optional Kickoff cross-check that can only confirm or hand over to a person — never to approve, merge, or change a card on its own. Enabling it sends card text or request text to a third-party server. This question is asked only at init — change it later in `moai web` settings.",
 			Default:     "false",
 			Required:    false,
 		},

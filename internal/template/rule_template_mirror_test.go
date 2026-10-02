@@ -179,11 +179,14 @@ func TestDeclaredRuleMirrorForks(t *testing.T) {
 // Allowlist is intentionally explicit (no glob) so that adding a new mirrored file
 // is a deliberate code change visible in PR review.
 var workflowOptMirroredPaths = []string{
-	// worktree-integration-ops.md — split companion of worktree-integration.md
-	// (manual disposal + guard-refusal catalogue). Authored clean: byte-identical
-	// in both trees from birth, and enrolled in both this allowlist and
-	// sanitizedPairPaths (where it passes structural parity trivially).
-	".claude/rules/moai/workflow/worktree-integration-ops.md",
+	// worktree-integration-ops.md — REMOVED from the byte-parity allowlist.
+	// The session-anchor misresolution section added internal provenance
+	// (card ids, dates, a SPEC-ID) to the local dogfood copy; the template
+	// mirror is now held sanitized per CLAUDE.local.md §25 (provenance
+	// generalized to neutral prose), so byte-parity cannot hold. Doctrine
+	// parity is enforced by TestSanitizedPairParity (sanitizedPairPaths,
+	// where the pair was already enrolled) and mirror cleanliness by
+	// TestTemplateNoInternalContentLeak — not here.
 	// (new entry — REQ-TMD-005 — hooks-system.md mirror parity)
 	".claude/rules/moai/core/hooks-system.md",
 	// Layer E — Phase Transitions skip policy

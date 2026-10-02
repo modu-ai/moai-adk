@@ -236,6 +236,18 @@ func factoryQueueClassification(rec *factory.BacklogRecord, cardID string) facto
 // assigned to another lane. A race with another lane is retried inside; the
 // returned bool reports whether a card was leased.
 func factoryNextLeaseOnce(ctx context.Context, root, runID, lane string) (homestate.Card, bool, error) {
+	return factoryNextLeaseOnceGated(ctx, root, runID, lane, false)
+}
+
+// factoryNextLeaseOnceGated is factoryNextLeaseOnce with the quota gate's
+// verdict handed in as one boolean (SPEC-QUOTA-AWARE-SCHEDULING-001 REQ-QAS-009):
+// noNewCards leaves only the card already assigned to this lane leasable. The
+// `next` verb and the factory_next MCP handler call this form; the relaunch
+// loop and the Codex loop keep calling the ungated function above.
+//
+// @MX:NOTE: [AUTO] The gated lease entry point — the noNewCards boolean is the quota gate's whole effect on card selection; the ungated factoryNextLeaseOnce must stay for the relaunch and Codex loops. Fan-in 3 (the next verb, the factory_next MCP handler, the ungated wrapper) — kept a NOTE because factory_card.go is at its 3-anchor limit.
+// @MX:SPEC: SPEC-QUOTA-AWARE-SCHEDULING-001
+func factoryNextLeaseOnceGated(ctx context.Context, root, runID, lane string, noNewCards bool) (homestate.Card, bool, error) {
 	db, err := homestate.OpenFactory(root)
 	if err != nil {
 		return homestate.Card{}, false, fmt.Errorf("open factory record: %w", err)
@@ -243,7 +255,7 @@ func factoryNextLeaseOnce(ctx context.Context, root, runID, lane string) (homest
 	defer func() { _ = db.Close() }()
 	skip := factoryNextSkipForBackend()
 	for attempt := 0; attempt < factoryNextSelectionAttempts; attempt++ {
-		card, leased, raced, err := factoryNextSelectAndLease(ctx, db, root, runID, lane, skip)
+		card, leased, raced, err := factoryNextSelectAndLease(ctx, db, root, runID, lane, skip, noNewCards)
 		if err != nil {
 			return homestate.Card{}, false, err
 		}
@@ -381,7 +393,13 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 // card through ANY arm — while parallelizable candidates stay leasable
 // throughout (REQ-TCD-008). The auto-promotion arm additionally never
 // selects a blocked card (REQ-TCD-007).
-func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, skip func(homestate.Card) bool) (homestate.Card, bool, bool, error) {
+//
+// noNewCards is the quota gate's verdict (SPEC-QUOTA-AWARE-SCHEDULING-001
+// REQ-QAS-009), evaluated once per `next` invocation outside the arms: it ends
+// the pass after arm (a), so a card already assigned to this lane still leases
+// while arms (b), (b2), and (c) — every arm that takes a NEW card — are
+// bypassed without a second predicate.
+func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, skip func(homestate.Card) bool, noNewCards bool) (homestate.Card, bool, bool, error) {
 	cards, err := db.ListCards(ctx, runID)
 	if err != nil {
 		return homestate.Card{}, false, false, err
@@ -435,6 +453,9 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 			continue
 		}
 		return factoryNextClaim(ctx, db, root, runID, c, lane)
+	}
+	if noNewCards {
+		return homestate.Card{}, false, false, nil
 	}
 	// (b) an operator-picked card assigned to no lane. The record row sits at
 	// `picked` with no owner; the queue item must still be picked, so an
@@ -634,8 +655,13 @@ func newFactoryNextCommand() *cobra.Command {
 				return fmt.Errorf("factory next: %w", err)
 			}
 			deadline := factoryCardNow().Add(waitBound)
+			// The quota gate (SPEC-QUOTA-AWARE-SCHEDULING-001): evaluated once per
+			// pass, outside the selection arms, and carried across the --wait
+			// re-checks by the latch.
+			quotaLatch := &factoryQuotaLatch{}
 			for {
-				card, leased, err := factoryNextLeaseOnce(ctx, root, runID, lane)
+				held, holdLine := quotaLatch.evaluate(root)
+				card, leased, err := factoryNextLeaseOnceGated(ctx, root, runID, lane, held)
 				if err != nil {
 					return fmt.Errorf("factory next: %w", err)
 				}
@@ -648,6 +674,13 @@ func newFactoryNextCommand() *cobra.Command {
 					return factoryNextPrint(cmd, card)
 				}
 				if !wait || !factoryCardNow().Before(deadline) {
+					if held {
+						// A hold: one line on the error stream, nothing on standard
+						// output, and the no-card status (REQ-QAS-009/-010); the hold
+						// line is what tells it from an empty queue.
+						_, _ = fmt.Fprintln(cmd.ErrOrStderr(), holdLine)
+						return &exitCodeError{code: factoryNextNoCardExit, msg: "factory next: " + holdLine}
+					}
 					_, _ = fmt.Fprintln(cmd.OutOrStdout(), "no card is available")
 					return &exitCodeError{code: factoryNextNoCardExit, msg: "factory next: no card is available"}
 				}
@@ -1325,6 +1358,10 @@ type factoryStatusReport struct {
 	// Unavailable lists the dispatch mirror writes that failed and have not
 	// been reconciled by a later successful write (REQ-FR-025).
 	Unavailable []homestate.RecordUnavailableEntry `json:"unavailable"`
+	// Quota is the read-only quota block (SPEC-QUOTA-AWARE-SCHEDULING-001
+	// REQ-QAS-013): present only while the quota gate is enabled and some window
+	// has data, and last, so every pre-existing key keeps its place.
+	Quota *factoryQuotaBlock `json:"quota,omitempty"`
 }
 
 func factoryCardViewOf(c homestate.Card, now time.Time, cls factory.CardClassification) factoryCardView {
@@ -1399,6 +1436,7 @@ func newFactoryStatusCommand() *cobra.Command {
 			}
 			report.Unavailable = append([]homestate.RecordUnavailableEntry{}, entries...)
 			report.UnavailableSkipped = skipped
+			report.Quota = factoryQuotaStatusBlock(root)
 			if jsonOut {
 				enc := json.NewEncoder(cmd.OutOrStdout())
 				enc.SetIndent("", "  ")
@@ -1444,6 +1482,9 @@ func writeFactoryStatusText(w io.Writer, r factoryStatusReport) {
 	}
 	if r.UnavailableSkipped > 0 {
 		_, _ = fmt.Fprintf(w, "%s warning: skipped %d unparseable line(s)\n", factoryRecordUnavailableTag, r.UnavailableSkipped)
+	}
+	if r.Quota != nil {
+		writeFactoryQuotaText(w, r.Quota)
 	}
 }
 

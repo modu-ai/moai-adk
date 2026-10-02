@@ -23,6 +23,17 @@ func launchEnvValue(env []string, key string) string {
 	return ""
 }
 
+// factoryManagedRequested reports whether the operator opted into the managed
+// Factory session: MOAI_FACTORY_MANAGED is "1" or "true" (case-insensitive,
+// trimmed). Anything else — unset, empty, "0", "yes" — is off.
+func factoryManagedRequested(env []string) bool {
+	switch strings.ToLower(strings.TrimSpace(launchEnvValue(env, config.EnvMoaiFactoryManaged))) {
+	case "1", "true":
+		return true
+	}
+	return false
+}
+
 func factoryLaunchEnabled(env []string) bool {
 	return strings.TrimSpace(launchEnvValue(env, config.EnvFactoryRunID)) != "" &&
 		(strings.TrimSpace(launchEnvValue(env, config.EnvMoaiFactoryWorker)) != "" ||

@@ -84,7 +84,10 @@ const (
 // factoryFlagUsageError is the refusal for any value after -f/--factory: the
 // flag takes none (bare -f starts the factory leader) and a lane joins with
 // -l / --lane. It is the reference the help texts paraphrase; the supplied
-// value is appended by the caller.
+// value is appended by the caller. Card t1444 added the lane-join selectors
+// (--factory-run, --leader) to the -f text; they compose with -l / --lane
+// only, so they are taught by the lane refusals and the ambiguity guidance
+// rather than by this -f line.
 const factoryFlagUsageError = "-f/--factory takes no argument (bare -f starts the factory leader); a lane joins with -l or --lane"
 
 // laneFlagArgumentError, laneFlagNameError and the entry-token error are the
@@ -497,6 +500,45 @@ const ambiguousFactoryLeaderSentinel = "AMBIGUOUS_FACTORY_LEADER"
 // gate matches it to decide whether discovery may run.
 const noActiveFactorySentinel = "NO_ACTIVE_FACTORY"
 
+// ambiguousJoinGuidance appends the resolution commands to the typed
+// ambiguity error (card t1444 ③): the runs are already named with the facts
+// that distinguish them (owner, lead pid, start); the operator gets the
+// commands that select or retire one. Leader names, when the name registry
+// maps a candidate's lead pid, ride along — they are the handle the
+// --leader selector takes. Best-effort: an unreadable registry yields no
+// names and the commands still stand.
+func ambiguousJoinGuidance(root string, err error) error {
+	var ambiguous *factorymsg.AmbiguousRunsError
+	if !errors.As(err, &ambiguous) {
+		return err
+	}
+	names := leaderNamesByPID(root)
+	leaders := ""
+	for _, o := range ambiguous.Owners {
+		if name := names[o.LeadPID]; name != "" {
+			leaders += fmt.Sprintf(" %s→%s", o.RunID, name)
+		}
+	}
+	if leaders != "" {
+		leaders = " (leaders:" + leaders + ")"
+	}
+	return fmt.Errorf("%w — resolve: join one with '-l --factory-run <run-id>', or its leader with '-l --leader <leader-name>'%s, or retire one with 'moai factory runs --retire <run-id>'", err, leaders)
+}
+
+// leaderNamesByPID maps a live leader-name claim's pid to the session name
+// (card t1444 ③). Read-only and best-effort; the registry is the same one
+// the leader launch claims through.
+func leaderNamesByPID(root string) map[int]string {
+	reg := loadFactoryRegistry(leaderRegistryPath(root))
+	names := make(map[int]string, len(reg))
+	for name, entry := range reg {
+		if entry.PID > 0 {
+			names[entry.PID] = name
+		}
+	}
+	return names
+}
+
 // enterFactoryLaneRun joins a factory lane to the run selected by explicit,
 // falling back to verified leader discovery on the record-absence refusal
 // (SPEC-FACTORY-LANE-JOIN-SOCKET-001 REQ-001). leadTarget names which leader
@@ -526,12 +568,30 @@ const noActiveFactorySentinel = "NO_ACTIVE_FACTORY"
 // when non-nil, records the join-gate and active-run-resolution steps of the
 // codex lane launch's pre-exec phase (SPEC-CODEX-LANE-SLOTS-001 REQ-012);
 // the cc/glm twins pass nil and measure nothing.
+//
+// Card t1444 ①: discovery also answers live ambiguity WHEN the operator
+// named a leader — a named target is a decision, the same principle REQ-006
+// applies to an explicit run id. An unnamed ambiguity never discovers: the
+// guided refusal (③) is the answer, and fail-closed selection among live
+// runs stays the contract.
 func enterFactoryLaneRun(root, explicit, leadTarget string, timing *factoryLaunchTiming) (func(), error) {
 	restore, err := enterSelectedFactoryRun(root, explicit, true, timing)
 	if err == nil {
 		return restore, nil
 	}
-	if explicit != "" || err.Error() != noActiveFactorySentinel {
+	var ambiguousErr *factorymsg.AmbiguousRunsError
+	isAmbiguous := errors.As(err, &ambiguousErr)
+	if isAmbiguous {
+		// ③: every escape of this error carries the resolution commands.
+		err = ambiguousJoinGuidance(root, err)
+	}
+	// Discovery answers two refusals: record absence — the original
+	// fallback — and, since card t1444 ①, live ambiguity when the operator
+	// NAMED a leader (a named target is a decision, the same principle
+	// REQ-006 applies to an explicit run id). An unnamed ambiguity never
+	// discovers; the guided refusal is the answer.
+	discoveryMayAnswer := err.Error() == noActiveFactorySentinel || (isAmbiguous && leadTarget != "")
+	if explicit != "" || !discoveryMayAnswer {
 		return restore, err
 	}
 	target := leadTarget
@@ -556,7 +616,11 @@ func enterFactoryLaneRun(root, explicit, leadTarget string, timing *factoryLaunc
 	}
 	restoreName := captureEnvState(config.EnvFactoryLeadName)
 	_ = os.Setenv(config.EnvFactoryLeadName, leader.Name)
-	reentered, jerr := enterSelectedFactoryRun(root, "", true, timing)
+	// The re-entry carries the verified leader's run id explicitly (card
+	// t1444 ①): on the record-absence path the resumed row resolves the same
+	// either way, and on the live-ambiguity path an empty selector would
+	// re-enter the very ambiguity the named join just resolved.
+	reentered, jerr := enterSelectedFactoryRun(root, leader.RunID, true, timing)
 	if jerr != nil {
 		restoreName()
 		return restore, jerr
@@ -807,9 +871,9 @@ var factoryProcessAlive = factory.FactoryProcessAlive
 // label MUST have a lane shape (canonical, or legacy — which the claim
 // refuses naming the canonical lane-<n>). notes, when non-nil, receives the
 // operator-visible bump line.
-func resolveFactoryLaneName(root, label string, auto bool, notes io.Writer) (string, error) {
+func resolveFactoryLaneName(root, label, backend string, auto bool, notes io.Writer) (string, error) {
 	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
-	claim, err := factory.ClaimFactoryLane(root, label, auto, os.Getpid(), runID, factoryProcessAlive)
+	claim, err := factory.ClaimFactoryLaneWithBackend(root, label, auto, os.Getpid(), runID, backend, factoryProcessAlive)
 	var legacyRun *factory.FactoryLegacyRunError
 	if errors.As(err, &legacyRun) {
 		// REQ-RNC-022: a live legacy record of the same run refuses the join.

@@ -513,7 +513,7 @@ func TestEnterFactoryWorkerModeUnknownCount(t *testing.T) {
 func TestResolveFactoryWorkerName(t *testing.T) {
 	t.Run("free name is kept and registered", func(t *testing.T) {
 		root := t.TempDir()
-		if got, err := resolveFactoryLaneName(root, "lane-1", false, nil); err != nil || got != "lane-1" {
+		if got, err := resolveFactoryLaneName(root, "lane-1", "", false, nil); err != nil || got != "lane-1" {
 			t.Fatalf("free name = %q, want lane-1", got)
 		}
 		reg := loadFactoryRegistry(factoryRegistryPath(root))
@@ -537,7 +537,7 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 		defer func() { factoryProcessAlive = probe }()
 
 		var notes bytes.Buffer
-		got, err := resolveFactoryLaneName(root, "lane-2", false, &notes)
+		got, err := resolveFactoryLaneName(root, "lane-2", "", false, &notes)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -560,7 +560,7 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 		factoryProcessAlive = func(int) bool { return false }
 		defer func() { factoryProcessAlive = probe }()
 
-		got, err := resolveFactoryLaneName(root, "lane-2", false, nil)
+		got, err := resolveFactoryLaneName(root, "lane-2", "", false, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -581,7 +581,7 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 		}
 		root := blocker // .moai/state/factory/ resolves under a file → fails
 
-		if got, err := resolveFactoryLaneName(root, "lane-7", false, nil); err == nil || got != "" {
+		if got, err := resolveFactoryLaneName(root, "lane-7", "", false, nil); err == nil || got != "" {
 			t.Fatalf("fail-closed name = %q err=%v", got, err)
 		}
 	})
@@ -594,7 +594,7 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer func() { _ = release(true) }()
-		if got, err := resolveFactoryLaneName(root, "lane-1", false, nil); err == nil || got != "" {
+		if got, err := resolveFactoryLaneName(root, "lane-1", "", false, nil); err == nil || got != "" {
 			t.Fatalf("resolver admitted marker: got=%q err=%v", got, err)
 		}
 	})

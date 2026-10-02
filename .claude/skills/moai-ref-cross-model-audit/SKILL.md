@@ -9,8 +9,9 @@ description: >
   skill both audit entry points load — no duplication.
 
 when_to_use: >
-  Use when the project's `audit_model` is `multi` AND the auditor needs a
-  cross-backend second opinion before reaching a verdict. Also use when the
+  Use when the audit plan (`moai verify audit-plan`) reports a cross-model
+  backend AND the auditor needs a cross-backend second opinion before reaching
+  a verdict. Also use when the
   auditor runs under a GPT or GLM main session and needs an independent Claude
   subscription verdict through `claude_audit`, or when it must explain why the
   convergence result is a pass, fail, or
@@ -26,20 +27,35 @@ metadata:
 # Cross-Model Audit Convergence
 
 This skill is the single load-point both plan-auditor and sync-auditor use when
-the project opts into multi-model audit (`audit_model: multi`). It documents the
-one MCP tool the auditor calls, the independence rule that tool enforces, and
-how to fold the returned convergence result into the auditor's verdict.
+the audit plan reports a cross-model backend. It documents the one MCP tool the
+auditor calls, the independence rule that tool enforces, how to check the result
+against the plan, and how to fold the returned convergence result into the
+auditor's verdict.
 
 ## When to use convergence vs single-model
 
-| Project setting | Path | Skill |
-|---|---|---|
-| `audit_model: claude` (default) | Claude main: in-session review; GPT/GLM main: `claude_audit` | this skill for external-main sessions |
-| `audit_model: codex` | Codex reviews alone | `moai-ref-owasp-checklist` etc., no convergence |
-| `audit_model: glm` | GLM reviews alone | (same) |
-| `audit_model: multi` | Claude + codex + GLM, converged | **this skill** |
+The auditor does not choose a backend by interpreting the `audit_model` value. It
+runs `moai verify audit-plan --project-root <own toplevel>` first (the full flow
+is in each agent's MCP Audit Tools section; pass the toplevel yourself, because
+`CLAUDE_PROJECT_DIR` names the primary checkout in a worktree session) and
+follows the plan:
 
-Single-model paths do NOT load this skill. Convergence is only the multi-model
+| Outcome of the verb | Path | This skill |
+|---|---|---|
+| `config_status` `ok` or `absent`, `cross_model_active: false` (the distributed default, an explicit `claude` token) | Claude main: in-session review; GPT/GLM main: `claude_audit` | for external-main sessions |
+| `cross_model_active: true` | `audit_multi` without a `gates` argument: the plan's backends, converged | **this skill** |
+| The output is the `verify` group's help text (it contains `Shared diagnostic snapshot contract` and neither `config_status` nor an `audit-plan:` line) | The legacy path below, with "plan surface unreachable, legacy path used" named as a Gap | only as the legacy path says |
+| `config_status: unreadable`, an `audit-plan:` error, or any other failure to run the verb (refused, crashed, timed out, malformed output) | Not the legacy path: a PASS-blocking Gap; a configured required backend that does not answer stays fail-closed | no PASS on this audit |
+
+**Legacy path (a binary that predates the verb).** Behave as before the plan
+verb existed: read the project's `audit_model` from `workflow.yaml` — `multi`
+converges Claude, codex and GLM via `audit_multi`, `claude` keeps the
+single-model path, `glm` and `codex` call that one backend directly. Wherever
+`audit_multi` is called, pass it without a `gates` argument, and call it
+whenever the tree's `workflow.yaml` sets an audit model other than `claude` or
+any `audit.gates` key, so a plan-aware server applies the configured plan.
+
+Single-model paths do NOT load this skill. Convergence is only the cross-model
 concern.
 
 ## The `audit_multi` MCP tool
@@ -63,7 +79,7 @@ results.
 | `claude_verdict` | object | conditional | Claude main sessions pass their in-session verdict. GPT/GLM/unknown-origin sessions may omit it; `audit_multi` ignores any supplied value and performs a fresh Claude subscription audit. |
 | `target` | string | no | What the secondary backends review (`uncommittedChanges`, `baseBranch`). The string reaches both backends unchanged; for codex, `baseBranch`'s branch name is then resolved server-side from the reviewed tree (remote default head, then `main`) — it cannot be supplied here. |
 | `focus` | string | no | Optional focus area forwarded to the secondary backends (e.g. `concurrency`, `auth`). |
-| `gates` | object | no | Per-auditor gate map (`claude`/`codex`/`glm` ∈ `off`/`advisory`/`required`). When omitted, distributed defaults apply: claude required, codex required, glm advisory. |
+| `gates` | object | no | Per-auditor gate map (`claude`/`codex`/`glm` ∈ `off`/`advisory`/`required`). Auditors do not pass it: omitted, the tree's own plan applies (the configured audit model and gates); with no configuration the distributed defaults apply — claude required, codex required, glm advisory — and an unconfigured gate stays fail-open. |
 | `session_id` | string | no | When set, the result is persisted to `.moai/state/audit-multi/<session>.json` so the multi-review-gate Stop hook reads the most recent result rather than re-invoking convergence. |
 | `project_root` | string | no *(REQUIRED in a worktree)* | The tree the backends should read — this session's own `git rev-parse --show-toplevel`. Omitted from a worktree, the fan-out reads the PRIMARY checkout instead, so the backends review a diff that is not the one under audit and nothing in the result says so. Omit it only in the primary checkout. An unusable path is rejected with an error naming it, never silently replaced. |
 
@@ -131,6 +147,10 @@ The tool returns a `ConvergenceResult`:
   report's residual-risk section.
 - `fail_open_backends` lists the backends that returned `inconclusive` (missing,
   unauthenticated, or erroring) — surfaced so the report can name them.
+- `plan_source` is `config` when any backend's gate came from the tree's
+  configuration, and absent otherwise. A result without it from a tree whose plan
+  has configured gates comes from a server that predates the plan: the check
+  below reports an unmet gate.
 - `source` distinguishes an in-session Claude anchor from a real
   `mcp_claude_audit` call. `provenance` identifies transport, subscription auth,
   requested/resolved model, effort, tool surface, persistence, usage source,
@@ -249,6 +269,28 @@ overall verdict can fall back to the in-session Claude anchor — EXCEPT for a g
 the project explicitly configured `required` in `workflow.audit.gates`: that
 gate left unmet fails `overall_verdict` instead (see the convergence policy
 above).
+
+## Checking the result against the plan
+
+After an `audit_multi` call on a tree whose plan lists `enforced_required`
+backends, the result is checked before a verdict is reached:
+
+1. Write the digest of the result just obtained to
+   `<toplevel>/.moai/state/audit-plan-result.json` with a `Write` tool — fresh,
+   immediately before the check: overwrite any earlier file at that name and never
+   reuse a file from an earlier audit. The digest holds `overall_verdict`,
+   `gate_unmet`, `plan_source` and, per `per_backend_verdicts` entry, `backend`,
+   `gate` and `verdict` — digest members only, never summary or finding text.
+2. Run `moai verify audit-plan --project-root <toplevel> --result-file <that path>`
+   and pass only the path — never the JSON on the command line (the worktree guard
+   refuses braces and quotes).
+3. Read `convergence_check`: `ok: false` is an unmet gate named by backend, no PASS,
+   reported as an unmet gate and not as a reviewed defect.
+
+`plan-auditor` carries `Write` and does steps 1-3 itself. In the sync phase the
+orchestrator does them: a cold `sync-auditor` is read-only, so it returns the digest
+members in its report, says its verdict is not final until the orchestrator's check
+passes, and the orchestrator writes the file and runs the check.
 
 ## Folding the result into the audit verdict
 

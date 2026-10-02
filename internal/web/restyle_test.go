@@ -407,8 +407,9 @@ func TestBannerKindMapping(t *testing.T) {
 		if !strings.Contains(body, `class="banner" role="status"`) {
 			t.Errorf("success banner not rendered with the neutral banner chrome:\n%s", body)
 		}
-		// agentfm 패널이 자체 주의 배너를 들고 있으므로 페이지 전역 검색으로는
-		// 갈라낼 수 없다. 상태 배너(role="status")만 좁혀서 본다.
+		// 성공 판정은 상태 배너(role="status")로 좁혀 본다 — 페이지 어느 패널이
+		// warn 변형을 들고 있더라도(구 agentfm 주의 배너가 그랬다) 성공 배너
+		// 판정이 오염되지 않도록 하는 좁힘이다.
 		if strings.Contains(body, `class="banner banner--warn" role="status"`) {
 			t.Error("a successful save rendered the warning banner variant")
 		}

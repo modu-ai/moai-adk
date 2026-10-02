@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // TestFactoryFreeSlots is the shared-cluster AC for the t85 lead loop's
@@ -262,4 +264,233 @@ func TestClaimFactoryWorkerNameConcurrentClaimsAreUnique(t *testing.T) {
 	if len(seen) != workers {
 		t.Fatalf("unique claims=%d, want %d: %v", len(seen), workers, seen)
 	}
+}
+
+// qasWorkerBackend reads the backend column the registry holds for label.
+func qasWorkerBackend(t *testing.T, root, label string) string {
+	t.Helper()
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatalf("open factory: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+	var backend string
+	if err := db.DB.QueryRow(`SELECT backend FROM workers WHERE label=?`, label).Scan(&backend); err != nil {
+		t.Fatalf("read backend of %s: %v", label, err)
+	}
+	return backend
+}
+
+// qasGuardedRegistry returns a project root whose registry carries the two
+// SPEC-QUOTA-AWARE-SCHEDULING-001 AC-QAS-023 test triggers: a BEFORE UPDATE on
+// workers that aborts (a claim that inserts the row and then updates the
+// backend fails) and an AFTER INSERT on workers that aborts when the inserted
+// backend is empty (the insert statement itself must carry the backend).
+func qasGuardedRegistry(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatalf("open factory: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+	for _, ddl := range []string{
+		`CREATE TRIGGER qas_no_update BEFORE UPDATE ON workers BEGIN SELECT RAISE(ABORT, 'qas: update on workers'); END`,
+		`CREATE TRIGGER qas_insert_needs_backend AFTER INSERT ON workers WHEN NEW.backend = '' BEGIN SELECT RAISE(ABORT, 'qas: insert without backend'); END`,
+	} {
+		if _, err := db.DB.Exec(ddl); err != nil {
+			t.Fatalf("install trigger: %v", err)
+		}
+	}
+	return root
+}
+
+// AC-QAS-023 — the lane claim records the backend in its own insert and
+// nothing else changes (REQ-QAS-023).
+func TestQAS_AC023_ClaimRecordsBackend(t *testing.T) {
+	alive := func(int) bool { return true }
+
+	t.Run("claim_with_backend_in_the_insert", func(t *testing.T) {
+		root := qasGuardedRegistry(t)
+		// Positive control: the insert trigger bites a claim that carries no
+		// backend, so the passes below prove the insert statement itself wrote it.
+		if _, err := ClaimFactoryLane(root, "", true, 9001, "run-c", alive); err == nil || !strings.Contains(err.Error(), "insert without backend") {
+			t.Fatalf("empty-backend claim on the guarded registry: err = %v, want the insert trigger to abort it", err)
+		}
+		for i, backend := range []string{BackendClaude, BackendGLM, BackendGPT} {
+			claim, err := ClaimFactoryLaneWithBackend(root, "", true, 9100+i, "run-c", backend, alive)
+			if err != nil {
+				t.Fatalf("claim as %s: %v", backend, err)
+			}
+			if got := qasWorkerBackend(t, root, claim.Label); got != backend {
+				t.Errorf("%s recorded backend %q, want %q", claim.Label, got, backend)
+			}
+		}
+		claim, err := ClaimFactoryLaneWithinWithBackend(root, "", true, 9200, "run-c", 8, BackendGLM, alive)
+		if err != nil {
+			t.Fatalf("bounded claim as glm: %v", err)
+		}
+		if got := qasWorkerBackend(t, root, claim.Label); got != BackendGLM {
+			t.Errorf("bounded %s recorded backend %q, want %q", claim.Label, got, BackendGLM)
+		}
+		// Positive control: the update trigger bites a later backend update.
+		db, err := homestate.OpenFactory(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = db.Close() }()
+		if _, err := db.DB.Exec(`UPDATE workers SET backend='mutant' WHERE label=?`, claim.Label); err == nil || !strings.Contains(err.Error(), "update on workers") {
+			t.Fatalf("update on the guarded registry: err = %v, want the update trigger to abort it", err)
+		}
+	})
+
+	t.Run("empty_without_backend", func(t *testing.T) {
+		root := t.TempDir()
+		a, err := ClaimFactoryLane(root, "", true, 9301, "run-e", alive)
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := ClaimFactoryLaneWithin(root, "", true, 9302, "run-e", 4, alive)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cLabel, err := ClaimFactoryLaneName(root, "lane-9", 9303, "run-e", alive)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Positive control: a backend-carrying claim in the same registry reads
+		// back non-empty, so the empty readings below are not a failed read.
+		d, err := ClaimFactoryLaneWithBackend(root, "", true, 9304, "run-e", BackendGLM, alive)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := qasWorkerBackend(t, root, d.Label); got != BackendGLM {
+			t.Fatalf("control %s recorded backend %q, want %q", d.Label, got, BackendGLM)
+		}
+		for _, label := range []string{a.Label, b.Label, cLabel} {
+			if got := qasWorkerBackend(t, root, label); got != "" {
+				t.Errorf("%s claimed without a backend recorded %q, want empty", label, got)
+			}
+		}
+	})
+
+	t.Run("codex_token_normalized", func(t *testing.T) {
+		root := qasGuardedRegistry(t)
+		claim, err := ClaimFactoryLaneWithinWithBackend(root, "", true, 9401, "run-x", 4, "codex", alive)
+		if err != nil {
+			t.Fatalf("claim as the codex token: %v", err)
+		}
+		if got := qasWorkerBackend(t, root, claim.Label); got != BackendGPT {
+			t.Errorf("codex token recorded %q, want %q", got, BackendGPT)
+		}
+		other, err := ClaimFactoryLaneWithBackend(root, "", true, 9402, "run-x", "codex", alive)
+		if err != nil {
+			t.Fatalf("unbounded claim as the codex token: %v", err)
+		}
+		if got := qasWorkerBackend(t, root, other.Label); got != BackendGPT {
+			t.Errorf("unbounded codex token recorded %q, want %q", got, BackendGPT)
+		}
+	})
+
+	t.Run("concurrent_claims_each_carry_backend", func(t *testing.T) {
+		root := qasGuardedRegistry(t)
+		const claimants = 9
+		backends := []string{BackendClaude, BackendGLM, BackendGPT}
+		var mu sync.Mutex
+		want := map[string]string{}
+		errs := make(chan error, claimants)
+		var wg sync.WaitGroup
+		for i := 0; i < claimants; i++ {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				backend := backends[i%len(backends)]
+				claim, err := ClaimFactoryLaneWithBackend(root, "", true, 9500+i, "run-k", backend, alive)
+				if err == nil {
+					mu.Lock()
+					want[claim.Label] = backend
+					mu.Unlock()
+				}
+				errs <- err
+			}(i)
+		}
+		wg.Wait()
+		close(errs)
+		for err := range errs {
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		if len(want) != claimants {
+			t.Fatalf("unique claims = %d, want %d: %v", len(want), claimants, want)
+		}
+		for label, backend := range want {
+			if got := qasWorkerBackend(t, root, label); got != backend {
+				t.Errorf("%s recorded backend %q, want %q", label, got, backend)
+			}
+		}
+	})
+
+	t.Run("registry_round_trips_backend", func(t *testing.T) {
+		// Plan debt N9: SaveFactoryRegistry carries the backend, and a row
+		// written by the pre-REQ-QAS-023 insert reads back as unknown (empty).
+		root := t.TempDir()
+		seed := map[string]FactoryLaneEntry{
+			"lane-1": {PID: os.Getpid(), RegisteredAt: "2026-10-02T00:00:00Z", Backend: BackendGLM},
+			"lane-2": {PID: os.Getpid(), RegisteredAt: "2026-10-02T00:00:00Z"},
+		}
+		if err := SaveFactoryRegistry(FactoryRegistryPath(root), seed); err != nil {
+			t.Fatalf("save: %v", err)
+		}
+		got := LoadFactoryRegistry(FactoryRegistryPath(root))
+		if got["lane-1"].Backend != BackendGLM {
+			t.Errorf("lane-1 backend after round trip = %q, want %q", got["lane-1"].Backend, BackendGLM)
+		}
+		if got["lane-2"].Backend != "" {
+			t.Errorf("lane-2 backend after round trip = %q, want empty", got["lane-2"].Backend)
+		}
+		db, err := homestate.OpenFactory(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = db.Close() }()
+		if _, err := db.DB.Exec(`INSERT INTO workers(label,pid,registered_at,heartbeat_at,run_id) VALUES('lane-3',?,?,?,?)`,
+			os.Getpid(), "2026-10-02T00:00:00Z", "2026-10-02T00:00:00Z", "old-run"); err != nil {
+			t.Fatalf("insert pre-change row: %v", err)
+		}
+		if got := LoadFactoryRegistry(FactoryRegistryPath(root)); got["lane-3"].Backend != "" {
+			t.Errorf("pre-change row backend = %q, want empty (unknown, never backfilled)", got["lane-3"].Backend)
+		}
+	})
+
+	t.Run("schema_unchanged", func(t *testing.T) {
+		root := qasGuardedRegistry(t)
+		if _, err := ClaimFactoryLaneWithBackend(root, "", true, 9601, "run-s", BackendClaude, alive); err != nil {
+			t.Fatal(err)
+		}
+		db, err := homestate.OpenFactory(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = db.Close() }()
+		var version string
+		if err := db.DB.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil {
+			t.Fatal(err)
+		}
+		if version != "5" {
+			t.Errorf("meta.schema_version = %q after a backend claim, want 5", version)
+		}
+		raw, err := os.ReadFile(filepath.Join("..", "homestate", "factory.go"))
+		if err != nil {
+			t.Fatalf("read the factory DDL source: %v", err)
+		}
+		ddl := string(raw)
+		// Positive control: the search sees the ALTER TABLE statements that do exist.
+		if !strings.Contains(ddl, "ALTER TABLE runs") {
+			t.Fatal("control: the factory DDL source carries no ALTER TABLE runs statement; the search is blind")
+		}
+		if strings.Contains(ddl, "ALTER TABLE workers") {
+			t.Error("the factory DDL carries an ALTER TABLE workers statement; REQ-QAS-023 needs no schema change")
+		}
+	})
 }

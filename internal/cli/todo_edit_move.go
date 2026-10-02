@@ -5,9 +5,10 @@
 // a correction the operator decided on. Nothing here infers what a card
 // should say or where it belongs — no analysis, no absorption, no silent
 // promotion. Those would collide head-on with the [HARD] clauses in
-// workflows/gtd.md and the Factory Dispatch Protocol (the pick is the operator's; the
-// queue is never auto-populated or reordered by inferred priority), and a
-// doctrine change would have to come first.
+// workflows/gtd.md and factory-dispatch.md (the pick is the operator's; the
+// queue is never auto-populated or reordered by inferred priority — the one
+// ranking the board admits is the `--auto` cycle's own selection order, which
+// writes nothing to the queue), and a doctrine change would have to come first.
 //
 // Recoverability is the property that makes a mis-correction survivable, and
 // each verb carries it differently:
@@ -96,10 +97,12 @@ untouched.`,
 // newTodoMoveCmd — `moai todo move <n> (--top|--bottom|--before <m>|--after <m>)`:
 // reposition a card within the queue file's order under the lock.
 //
-// Order is the only thing the queue records about priority — there are no
-// priority fields (workflows/gtd.md § Boundaries: not a task tracker) — so
-// an operator who wants a card considered sooner previously had to hand-edit
-// the file, the one thing the doctrine tells them not to do.
+// A card may carry a recorded classification (priority high|normal|low,
+// blocked) that the add path sorts by once, when the card is admitted; `move`
+// neither reads nor rewrites it. Stored order is therefore the operator's own
+// statement of priority from then on, so an operator who wants a card
+// considered sooner previously had to hand-edit the file, the one thing the
+// doctrine tells them not to do.
 //
 // Exactly one position flag is required: a move with no destination, or with
 // two, is a malformed invocation rather than a guess the CLI resolves.

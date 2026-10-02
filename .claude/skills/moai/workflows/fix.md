@@ -193,6 +193,8 @@ Execution order:
 - Level 3 fixes require AskUserQuestion approval, then delegated to agent
 - Level 4 fixes listed in report as manual action items
 
+A Level 2 fix that is a bounded mechanical subtask may use the optional external-model delegation described in `.claude/skills/moai/workflows/run/external-delegation.md` § External Model Delegation.
+
 If --dry flag: Display preview of all classified issues and exit without changes.
 
 ## Phase 5: Verification

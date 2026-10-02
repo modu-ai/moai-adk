@@ -112,8 +112,8 @@ func enterCodexFactory(root string, entry factoryFlagParse, timing *factoryLaunc
 	if lane {
 		runID := os.Getenv(config.EnvFactoryRunID)
 		endClaim := timing.begin(factoryStepLaneClaim)
-		claim, claimErr := factory.ClaimFactoryLaneWithin(root, entry.LaneLabel, entry.LaneRole,
-			os.Getpid(), runID, factoryJoinLaneBound(root, runID), factoryProcessAlive)
+		claim, claimErr := factory.ClaimFactoryLaneWithinWithBackend(root, entry.LaneLabel, entry.LaneRole,
+			os.Getpid(), runID, factoryJoinLaneBound(root, runID), BackendCodex, factoryProcessAlive)
 		endClaim()
 		// Under debug the lane-claim step carries the claimed label and the
 		// run id (SPEC-CODEX-DEBUG-MODE-001 §D.1; annotateDetail no-ops

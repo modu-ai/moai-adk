@@ -149,6 +149,15 @@ type ConvergenceResult struct {
 	// result, and invisible to every project that did not declare the gate.
 	AuditReceipt string `json:"audit_receipt,omitempty"`
 
+	// PlanSource is "config" when at least one backend's gate came from the
+	// audited tree's configuration (audit.gates or the audit.model token)
+	// (SPEC-AUDIT-MODEL-CONVERGE-001 REQ-ACV-006). Additive + omitempty: with no
+	// configuration and no gates the member is absent, so the result of an
+	// unconfigured tree stays byte-identical to the pre-change one. Its consumer
+	// is the plan checker, which reads the member to tell a current server from
+	// one that predates the resolver.
+	PlanSource string `json:"plan_source,omitempty"`
+
 	// SecondReviewRecordError carries the A4 append failure
 	// (SPEC-AUTONOMY-CLOSURE-001 REQ-CLOSURE-012): non-empty only when a
 	// card_id was supplied and the record could not be written. omitempty —
@@ -519,6 +528,25 @@ type MultiAuditConfig struct {
 	// scope, and the signed contract digest, into the card evidence
 	// directory. Empty ⇒ byte-identical pre-change behavior.
 	CardID string
+
+	// PlanSource is threaded to ConvergenceResult.PlanSource: the handler sets it
+	// to "config" when the resolved plan took a gate from the tree's
+	// configuration. Empty ⇒ the member is omitted.
+	PlanSource string
+
+	// EnforcementGates are the gates the unmet-gate enforcement keys on, fixed by
+	// the handler from the plan it resolved at call start (SPEC-AUDIT-MODEL-
+	// CONVERGE-001 REQ-ACV-006/008). Non-nil ⇒ the enforcement reads these and
+	// never re-reads workflow.yaml after the fan-out, so the entry's gate and the
+	// enforcement agree and an edit made while the backends run changes neither.
+	// Nil ⇒ the caller carries no plan and the enforcement re-reads the audited
+	// tree's configuration (workflowAuditGates), byte-identically to before.
+	EnforcementGates *config.AuditGates
+
+	// EnforcementNote accompanies EnforcementGates: the residual-risk prefix for
+	// a gate assumed `required` because a config-orphaned root's primary checkout
+	// could not be identified. Empty otherwise.
+	EnforcementNote string
 }
 
 // backendCallFn is the injectable seam for external-backend invocation.
@@ -606,7 +634,19 @@ func performCodexAudit(ctx context.Context, target, focus, projectRoot string) R
 	if root := strings.TrimSpace(projectRoot); root != "" {
 		params["cwd"] = root
 	}
-	out, _ := codexReviewRPC(ctx, binaryPath, codexMethodTurnStart, params) // fail-open inside
+	// The leg ends within a bound derived from the codex audit bound: the process
+	// is killed at the deadline, its stream closes, and the turn reader returns
+	// the inconclusive review. Only this leg is bounded; codex_audit keeps the
+	// request context.
+	legCtx, cancel := context.WithTimeout(ctx, config.DefaultCodexAuditLegTimeout)
+	defer cancel()
+	out, _ := codexReviewRPC(legCtx, binaryPath, codexMethodTurnStart, params) // fail-open inside
+	// Reword the summary only when the leg's OWN deadline ended an inconclusive
+	// turn: a verdict that arrived is never replaced, and a caller that gave up
+	// first keeps the reader's cause.
+	if out.Verdict == VerdictInconclusive && errors.Is(legCtx.Err(), context.DeadlineExceeded) && ctx.Err() == nil {
+		return inconclusiveReviewWithSummary("codex leg timed out after " + config.DefaultCodexAuditLegTimeout.String())
+	}
 	return out
 }
 
@@ -769,6 +809,7 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// carry the same commit the verdict carried (REQ-ABI-002 — no separate
 	// persistence-side code).
 	result.BuildCommit, result.BuildLag = buildCommit, buildLag
+	result.PlanSource = cfg.PlanSource
 
 	// ── explicit-required gate enforcement (GH #1632 item 3) ──
 	// converge above is deliberately fail-open: a required backend that
@@ -780,7 +821,20 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// engine's distributed default (codex required) is not an opt-in. Runs
 	// BEFORE persist so the state file the multi-review-gate Stop hook reads
 	// carries the enforced verdict.
-	enforcementGates, gateAssumedNote := workflowAuditGates(cfg.ProjectRoot)
+	var (
+		enforcementGates config.AuditGates
+		gateAssumedNote  string
+		// receiptCodexRequired is the call-start codex gate the receipt exposure
+		// follows; nil (no plan carried) keeps the configuration re-read.
+		receiptCodexRequired *bool
+	)
+	if cfg.EnforcementGates != nil {
+		enforcementGates, gateAssumedNote = *cfg.EnforcementGates, cfg.EnforcementNote
+		codexRequired := enforcementGates.Codex == config.AuditGateRequired
+		receiptCodexRequired = &codexRequired
+	} else {
+		enforcementGates, gateAssumedNote = workflowAuditGates(cfg.ProjectRoot)
+	}
 	// The actual Claude backend is a default-required independent audit. Unlike
 	// the legacy optional backends, an unavailable required Claude review must
 	// not fall through to a caller-supplied or secondary-model verdict.
@@ -800,7 +854,7 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	var notices []string
 	if codexVerdict, participated := codexParticipation(verdicts); participated {
 		var notice string
-		result.AuditReceipt, notice = recordAuditReceipt(auditreceipt.ToolAuditMulti, cfg.ProjectRoot, codexVerdict, result.GateUnmet)
+		result.AuditReceipt, notice = recordAuditReceiptAt(auditreceipt.ToolAuditMulti, cfg.ProjectRoot, codexVerdict, result.GateUnmet, receiptCodexRequired)
 		if notice != "" {
 			notices = append(notices, notice)
 		}

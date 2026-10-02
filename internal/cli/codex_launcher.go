@@ -250,6 +250,15 @@ var codexSpawnLaunchFn = defaultCodexSpawnLaunch
 var codexSpawnPaneIdentityFn = defaultCodexSpawnPaneIdentity
 var codexSpawnCleanupPaneFn = tmuxKillPane
 
+// managedFactoryCodexLaunchFunc is the managed-divert seam (SPEC-FACTORY-
+// MANAGED-SESSION-001 M3): it receives the binary, the argv with the
+// program name at args[0], the launcher env, and the directory the launch
+// resolved (project root or the -w worktree — the one the doors launch in).
+// Tests override it to observe the divert without starting a real App Server.
+var managedFactoryCodexLaunchFunc = func(bin string, args, env []string, dir string) error {
+	return runManagedFactoryCodex(bin, args, env, dir, os.Stdin)
+}
+
 // defaultCodexSpawnLaunch opens a detached tmux window running codex
 // directly. The command string is shell-quoted token-by-token so a tail
 // containing spaces, quotes, or $ survives the round trip.
@@ -718,7 +727,7 @@ func runCodex(cmd *cobra.Command, args []string) error {
 		if spawn || worktree.present || hasTail || len(stripCodexFactoryTokens(head)) > 0 {
 			return codexUsageFailure(cmd)
 		}
-		return runCodexFactoryLane(cmd, debugRequested)
+		return runCodexFactoryLane(cmd, factoryEntry, debugRequested)
 	}
 	if len(head) > 1 {
 		return codexUsageFailure(cmd)
@@ -761,7 +770,7 @@ func runCodex(cmd *cobra.Command, args []string) error {
 
 // The factory refusal line. It carries the same sentinel as the `moai cg`
 // refusal (D2), so one grep finds both. It is the ONE wording source REQ-SD-004
-// names: every `-f` shape (and `--factory-run`) prints it byte-identically
+// names: every `-f` shape prints it byte-identically
 // (AC-SD-004 compares stderr against this constant). Since
 // SPEC-LAUNCHER-ENTRY-FLAGS-001 the lane entry is `-l`, so no `-f` shape is an
 // entry on moai codex, `-f lane` included. The retired `-k` entry prints
@@ -794,10 +803,6 @@ func codexFactoryLegacyRefusalDiag(value string) (diag string, ok bool) {
 	}
 	return "", false
 }
-
-// codexFactoryRunFlag is the --factory-run token; on moai codex it is refused
-// with the other factory entry tokens.
-const codexFactoryRunFlag = "--factory-run"
 
 // codexFactoryEntry classifies the head's factory-entry tokens
 // (SPEC-FACTORY-SELF-DISPATCH-001 REQ-SD-003/-004).
@@ -853,11 +858,11 @@ func codexFactoryEntryClassify(head []string) (codexFactoryEntry, string) {
 		case token == leadFlagLong || strings.HasPrefix(token, leadFlagLong+"="):
 			leadSeen = true
 			continue
-		case token == codexFactoryRunFlag || strings.HasPrefix(token, codexFactoryRunFlag+"="):
-			if refusal == "" {
-				refusal = codexFactoryRefusalDiag
-			}
-			continue
+		// --factory-run is NOT classified here (card t1444 ②): the token
+		// travels to parseCodexFactoryEntry, which owns its validation and
+		// its precise refusals (requires -l/--lane, selector conflict). The
+		// usage line has always advertised the flag; the classifier was
+		// refusing what the help promised.
 		case token == factoryFlagLong || token == factoryFlagShort:
 			if i+1 < len(head) && !strings.HasPrefix(head[i+1], "-") {
 				value, hasValue = head[i+1], true
@@ -921,6 +926,16 @@ func stripCodexFactoryTokens(head []string) []string {
 	return rest
 }
 
+// enterCodexRelaunchJoin is the relaunch loop's lane-join step (card t1444
+// ②): the parsed entry's run id is the explicit selector — named or empty,
+// and the loop joins through the SHARED gate enterFactoryLaneRun (REQ-010's
+// one implementation): a launcher-private join copy is the AC-013 defect
+// shape, and the guided ambiguity refusal and the discovery fallback are
+// doors cc/glm lanes already pass.
+func enterCodexRelaunchJoin(root string, entry factoryFlagParse, timing *factoryLaunchTiming) (func(), error) {
+	return enterFactoryLaneRun(root, entry.RunID, entry.Lead, timing)
+}
+
 // @MX:NOTE: the supervising loop stays the parent (design.md §6): lease the
 // next card through the F1 machinery on the parent checkout, ensure its
 // worktree, start ONE interactive Codex child there, wait, repeat. The stop
@@ -930,7 +945,7 @@ func stripCodexFactoryTokens(head []string) []string {
 // (REQ-SD-019); no process replacement happens on this path (design.md §6) —
 // the launcher stays the parent across every card.
 // @MX:SPEC: SPEC-FACTORY-SELF-DISPATCH-001
-func runCodexFactoryLane(cmd *cobra.Command, debug bool) error {
+func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool) error {
 	// The loop drives the F1 lease machinery itself, so it inherits the
 	// `next` verb's own precondition: the parent checkout (REQ-SD-010).
 	if err := factoryAssertParentCheckout(resolveProjectDir()); err != nil {
@@ -955,8 +970,10 @@ func runCodexFactoryLane(cmd *cobra.Command, debug bool) error {
 	root := factoryCardRoot()
 	// The run id and the git requirement arrive together: a lane join
 	// resolves the single active run and refuses outside a git working tree
-	// before any write (REQ-SD-005) — the same door the cc/glm lane join uses.
-	restoreRun, err := enterSelectedFactoryRun(root, "", true, launchTiming)
+	// before any write (REQ-SD-005) — the same door the cc/glm lane join
+	// uses. The parsed entry's run id is the explicit selector (card t1444
+	// ②): named or empty, the shared gate resolves it.
+	restoreRun, err := enterCodexRelaunchJoin(root, entry, launchTiming)
 	if err != nil {
 		return err
 	}
@@ -965,7 +982,7 @@ func runCodexFactoryLane(cmd *cobra.Command, debug bool) error {
 	// The label is claimed atomically — the next free lane-<n>, bumped past a
 	// live hold — so two codex lanes cannot start under one label.
 	endClaim := launchTiming.beginDebug(factoryStepLaneClaim, "")
-	label, err := resolveFactoryLaneName(root, "", true, cmd.ErrOrStderr())
+	label, err := resolveFactoryLaneName(root, "", kanban.BackendGPT, true, cmd.ErrOrStderr())
 	endClaim()
 	if launchTiming != nil && err == nil {
 		// REQ-005/§D.1 edge: the lane-claim step carries the claimed label
@@ -1180,6 +1197,25 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 	}
 	childArgs := append(localArgs, codexChildArgs(kind, tail)...)
 	req := codexLaunchRequest{Program: binaryPath, Args: childArgs, Dir: dir, Debug: debug, timing: launchTiming}
+	// SPEC-FACTORY-MANAGED-SESSION-001 M3 (design.md D-7): the divert engages
+	// only when the explicit opt-in MOAI_FACTORY_MANAGED (1/true) AND the
+	// factory stamps are both in the process env. Such a launch enters the
+	// managed Codex owner — the launcher keeps its PID and owns the App Server
+	// child (REQ-MS-012) — instead of the doors below. Stamps alone or the
+	// switch alone stay on the ordinary doors, and the tmux --spawn door never
+	// diverts. `moai codex -l` card children never reach this code:
+	// runCodexFactoryLane launches them through the direct door.
+	if !spawn && factoryManagedRequested(os.Environ()) && factoryLaunchEnabled(os.Environ()) {
+		if worktree.present {
+			// Same anchor discipline as the direct door: the lock names the
+			// owning process before the session starts.
+			if err := codexWorktreeAnchorLock(dir, codexDirectAnchorPID(), homestate.CurrentProcessFingerprint()); err != nil {
+				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), err.Error())
+				return &exitCodeError{code: 1}
+			}
+		}
+		return managedFactoryCodexLaunchFunc(binaryPath, append([]string{binaryPath}, childArgs...), os.Environ(), req.Dir)
+	}
 	if spawn {
 		if err := checkSpawnPrereqs(); err != nil {
 			return err

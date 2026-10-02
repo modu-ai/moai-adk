@@ -891,6 +891,9 @@
 - path: "language.git_commit_messages"
   class: R
   evidence: none
+- path: "llm.agent_overrides"
+  class: R
+  evidence: none
 - path: "llm.claude_bin"
   class: W
   evidence: reader
@@ -918,6 +921,9 @@
 - path: "llm.mode"
   class: W
   evidence: reader
+- path: "llm.profile"
+  class: R
+  evidence: none
 - path: "llm.team_mode"
   class: W
   evidence: reader
@@ -2397,6 +2403,24 @@
 - path: "workflow.project.continuation"
   class: P
   evidence: .claude/skills/moai/workflows/project/doc-generation.md
+- path: "workflow.quota_gate.enabled"
+  class: W
+  evidence: reader
+- path: "workflow.quota_gate.five_hour_hold_pct"
+  class: W
+  evidence: reader
+- path: "workflow.quota_gate.max_age"
+  class: W
+  evidence: reader
+- path: "workflow.quota_gate.max_scan_dirs"
+  class: W
+  evidence: reader
+- path: "workflow.quota_gate.release_margin_pct"
+  class: W
+  evidence: reader
+- path: "workflow.quota_gate.seven_day_hold_pct"
+  class: W
+  evidence: reader
 - path: "workflow.served_model_gate.enabled"
   class: W
   evidence: reader

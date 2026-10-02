@@ -233,3 +233,32 @@ func TestSchemaFreezeCarriesClassificationColumn(t *testing.T) {
 		t.Errorf("archived_items column tuples =\n %s\nwant\n %s", got, wantArchived)
 	}
 }
+
+// TestPriorityRank pins the exported rank accessor (SPEC-TODO-AUTO-PRIORITY-001
+// M1): the closed priority set ranks high above normal above low, and a value
+// outside the set ranks below every member instead of tying with one. The
+// accessor is the only spelling of the ranking outside this package.
+func TestPriorityRank(t *testing.T) {
+	cases := []struct {
+		name     string
+		priority string
+		want     int
+	}{
+		{"high", ClassPriorityHigh, 2},
+		{"normal", ClassPriorityNormal, 1},
+		{"low", ClassPriorityLow, 0},
+		{"unrecognized value ranks below the closed set", "urgent", -1},
+		{"empty value ranks below the closed set", "", -1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := PriorityRank(tc.priority); got != tc.want {
+				t.Errorf("PriorityRank(%q) = %d, want %d", tc.priority, got, tc.want)
+			}
+		})
+	}
+	if PriorityRank(ClassPriorityHigh) <= PriorityRank(ClassPriorityNormal) ||
+		PriorityRank(ClassPriorityNormal) <= PriorityRank(ClassPriorityLow) {
+		t.Errorf("rank order is not high > normal > low")
+	}
+}

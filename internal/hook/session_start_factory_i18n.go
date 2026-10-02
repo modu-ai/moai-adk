@@ -38,6 +38,7 @@ type factoryMessages struct {
 	leaderSocket      string // socket path
 	leaderClasses     string // whole-card routing: one lane runs the serial 3-stage path in-session
 	leaderStagger     string // fan-out-only staggered activation
+	gateSummary       string // one sentence: name token + pointer
 	operationalStatus string // explicit run-bound read-only operational query
 	settingsAuto      string
 	settingsVerify    string
@@ -59,6 +60,15 @@ type factoryMessages struct {
 	laneNextCardRule       string
 	laneOwnedCardRule      string // card id %[1]s
 	laneManualDispatchRule string
+
+	// laneRecheckRule is the stall-recovery rule a Claude-harness lane
+	// carries after its next-card or manual-dispatch rule (card t1451): the
+	// standing recheck cron that wakes a lane stopped on an API error or on a
+	// delegate's report that never comes, and the disk-evidence-first reading
+	// of any wake. The tool names, the watchdog skill name and the cron
+	// expression stay verbatim in every locale. The Codex-harness owned-card
+	// rule does not carry it — that harness has no session cron tool.
+	laneRecheckRule string
 }
 
 // factoryLocales is the conversation-language table; its four entries are the
@@ -84,6 +94,7 @@ var factoryLocales = map[string]factoryMessages{
 			"free-slot lanes. Concurrent requests cannot read a cache entry still being written " +
 			"(cache-aware-execution directive 2). This rule governs FACTORY fan-out only — the workflow " +
 			"runtime staggers itself (CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS) and is not governed here.",
+		gateSummary:       "When two or more plan→run Kickoff decisions wait for the operator, present them as one batch gate summary instead of asking card by card — the format and its limits live in `.claude/rules/moai/workflow/auto-semantics.md` §9.2.",
 		operationalStatus: "Inspect operational lanes with factory_msg_status({\"run_id\":%q}); endpoint liveness does not establish task activity, which remains unknown without evidence.",
 		settingsAuto:      "Cross-session messages are auto-accepted via the injected --settings.",
 		settingsVerify:    "Verify \"crossSessionInbound\": \"accept\" is present in your --settings file so cross-session messages are accepted.",
@@ -110,6 +121,14 @@ var factoryLocales = map[string]factoryMessages{
 		laneManualDispatchRule: "Factory lane manual-dispatch rule: this session launched with --no-auto-dispatch — " +
 			"manual dispatch mode. Do not lease cards yourself: the operator (or the factory leader) routes each card to you explicitly. " +
 			"When a card is routed to you, work it in the current worktree and record its stages with `moai factory stage`.",
+		laneRecheckRule: "Stall recovery: before the first stage of a card, arm ONE recurring recheck with `CronCreate` (cron `7,27,47 * * * *`, recurring) " +
+			"whose prompt runs the lane stall watchdog first — invoke Skill(\"moai-lane-watchdog\") and follow it — and then resumes the card from its progress record; " +
+			"confirm it with `CronList` at card intake and after every clear, and re-arm it if it is missing or has expired; delete it with `CronDelete` when you send the completion report. " +
+			"The cron is what wakes a lane that stopped on an API error (such as a 429) or on a delegate's report that will never come, " +
+			"because a turn that has already ended cannot arm anything. " +
+			"Whatever wakes you — the cron, a leader message, an idle notice — read the disk evidence first " +
+			"(the progress record, the reports, the commits, the delegate's deliverable) before replying: " +
+			"a message is never evidence of progress or of its absence.",
 	},
 	"ko": {
 		leaderHeader:   "팩토리 모드: run %s, 리더 세션.",
@@ -127,6 +146,7 @@ var factoryLocales = map[string]factoryMessages{
 			"실제 출력을 내기 시작했다는 증거(첫 작업 수행 또는 진행 흔적)를 확인한 뒤 나머지 빈 슬롯의 레인을 활성화하세요. " +
 			"동시 요청은 아직 기록 중인 캐시 항목을 읽을 수 없습니다(cache-aware-execution directive 2). " +
 			"이 규칙은 팩토리 팬아웃에만 적용됩니다 — 워크플로 런타임은 스스로 스태거합니다(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS).",
+		gateSummary:       "plan→run Kickoff 결정이 둘 이상 운영자의 답을 기다리면 카드마다 따로 묻지 말고 batch gate summary 하나로 제시하세요 — 서식과 한계는 `.claude/rules/moai/workflow/auto-semantics.md` §9.2 에 있습니다.",
 		operationalStatus: "factory_msg_status({\"run_id\":%q})로 운영 레인 상태를 조회하세요. 프로세스 생존 여부만으로 작업 중이라고 판단하지 않으며, 작업 관측이 없으면 unknown입니다.",
 		settingsAuto:      "세션 간 메시지는 주입된 --settings 로 자동 수락됩니다.",
 		settingsVerify:    "--settings 파일에 \"crossSessionInbound\": \"accept\" 가 있는지 확인하세요. 세션 간 메시지 수락에 필요합니다.",
@@ -150,6 +170,12 @@ var factoryLocales = map[string]factoryMessages{
 		laneManualDispatchRule: "팩토리 레인 수동 디스패치 규칙: 이 세션은 --no-auto-dispatch 로 시작했습니다 — 수동 디스패치 모드입니다. " +
 			"카드를 임대하려고 `moai factory next` 를 실행하지 마세요: 운영자(또는 팩토리 리더)가 카드를 명시적으로 배분합니다. " +
 			"배분받은 카드는 현재 워크트리에서 작업하고 각 단계를 `moai factory stage` 로 기록합니다.",
+		laneRecheckRule: "정지 복구: 카드의 첫 단계를 시작하기 전에 `CronCreate` 로 반복 재점검 크론 하나를 겁니다(cron `7,27,47 * * * *`, recurring). " +
+			"프롬프트는 먼저 레인 스톨 워치독을 실행하고 — Skill(\"moai-lane-watchdog\") 를 호출해 따릅니다 — 그다음 카드의 진행 기록에서 작업을 재개하도록 씁니다. " +
+			"카드를 넘겨받을 때와 `/clear` 뒤마다 `CronList` 로 확인하고, 없거나 만료됐으면 다시 걸고, 완료 보고를 보낼 때 `CronDelete` 로 지웁니다. " +
+			"API 오류(429 등)로 멈췄거나 끝내 오지 않을 위임 대상의 보고를 기다리다 멈춘 레인은 이 크론이 깨웁니다 — 이미 끝난 턴은 아무것도 걸 수 없기 때문입니다. " +
+			"크론이든 리더 메시지든 idle 알림이든, 깨어나면 답하기 전에 디스크 증거(진행 기록·보고서·커밋·위임 대상의 산출물)를 먼저 읽으세요. " +
+			"메시지는 진행이 있다는 증거도, 없다는 증거도 아닙니다.",
 	},
 	"ja": {
 		leaderHeader:   "ファクトリーモード: run %s、リーダーセッション。",
@@ -167,6 +193,7 @@ var factoryLocales = map[string]factoryMessages{
 			"(最初のジョブまたは進行の形跡)を確認してから、残りの空きスロットのレーンを起動してください。 " +
 			"同時リクエストは書き込み中のキャッシュエントリを読めません(cache-aware-execution directive 2)。 " +
 			"このルールはファクトリーファンアウトにのみ適用されます — ワークフローランタイムは自身でスタガーします(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS)。",
+		gateSummary:       "plan→run Kickoff の判断が 2 件以上オペレーターの回答を待っているときは、カードごとに個別に尋ねず batch gate summary 1 つにまとめて提示してください — 書式と制約は `.claude/rules/moai/workflow/auto-semantics.md` §9.2 にあります。",
 		operationalStatus: "factory_msg_status({\"run_id\":%q}) でレーンの稼働状態を確認してください。プロセスの生存は作業中である証拠ではなく、作業の観測がなければ unknown です。",
 		settingsAuto:      "セッション間メッセージは、注入された --settings により自動的に受理されます。",
 		settingsVerify:    "--settings ファイルに \"crossSessionInbound\": \"accept\" があることを確認してください。セッション間メッセージの受理に必要です。",
@@ -190,6 +217,12 @@ var factoryLocales = map[string]factoryMessages{
 		laneManualDispatchRule: "ファクトリーレーン手動ディスパッチ規則：このセッションは --no-auto-dispatch で起動しました — 手動ディスパッチモードです。 " +
 			"カードをリースするために `moai factory next` を実行しないでください：オペレーター（またはファクトリーリーダー）がカードを明示的に割り当てます。 " +
 			"割り当てられたカードは現在のワークツリーで作業し、各段階を `moai factory stage` で記録します。",
+		laneRecheckRule: "停止からの復旧：カードの最初の段階を始める前に、`CronCreate` で繰り返しの再点検用 cron を1つ設定します（cron `7,27,47 * * * *`、recurring）。 " +
+			"プロンプトは、まずレーン停滞ウォッチドッグを実行し — Skill(\"moai-lane-watchdog\") を呼び出して従います — そのあとカードの進捗記録から作業を再開する内容にします。 " +
+			"カードを引き継ぐときと `/clear` のたびに `CronList` で確認し、なければ、または期限切れなら設定し直し、完了報告を送るときに `CronDelete` で削除します。 " +
+			"API エラー（429 など）で止まったレーンや、永久に届かない委任先の報告を待って止まったレーンは、この cron が起こします — すでに終わったターンは何も設定できないためです。 " +
+			"クロンでもリーダーのメッセージでも idle 通知でも、起こされたら返信の前にディスク上の証拠（進捗記録・レポート・コミット・委任先の成果物）を先に読みます。 " +
+			"メッセージは、進捗があることの証拠でも、ないことの証拠でもありません。",
 	},
 	"zh": {
 		leaderHeader:   "工厂模式：run %s，主导会话。",
@@ -206,6 +239,7 @@ var factoryLocales = map[string]factoryMessages{
 		leaderStagger: "分批启动 — 必须: 绝不要同时激活所有泳道。先激活第一条泳道，等到它确实开始产出 " +
 			"(首个任务或可见进展)之后，再激活其余空闲槽位的泳道。 并发请求无法读取仍在写入的缓存条目 " +
 			"(cache-aware-execution directive 2)。本规则仅约束工厂分发 — 工作流运行时会自行错峰(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS)。",
+		gateSummary:       "当有两个及以上 plan→run Kickoff 决定在等待操作者答复时，不要逐张卡片提问，请合并为一份 batch gate summary 提交 —— 格式与限制见 `.claude/rules/moai/workflow/auto-semantics.md` §9.2。",
 		operationalStatus: "使用 factory_msg_status({\"run_id\":%q}) 查询运行通道状态。进程存活不代表正在执行任务；没有任务观测依据时，状态为 unknown。",
 		settingsAuto:      "跨会话消息通过注入的 --settings 自动接受。",
 		settingsVerify:    "请确认 --settings 文件中包含 \"crossSessionInbound\": \"accept\"，跨会话消息的接受依赖该配置。",
@@ -229,6 +263,12 @@ var factoryLocales = map[string]factoryMessages{
 		laneManualDispatchRule: "工厂泳道手动调度规则：本会话以 --no-auto-dispatch 启动 — 手动调度模式。 " +
 			"不要运行 `moai factory next` 去租用卡片：由操作者（或工厂主导会话）显式分配每张卡片。 " +
 			"被分配的卡片在当前工作树中处理，各阶段用 `moai factory stage` 记录。",
+		laneRecheckRule: "停滞恢复：在开始卡片的第一个阶段之前，用 `CronCreate` 设置一个循环复查定时任务（cron `7,27,47 * * * *`，recurring）。 " +
+			"其提示词先运行泳道停滞看门狗 — 调用 Skill(\"moai-lane-watchdog\") 并按其执行 — 再依据卡片的进度记录继续工作。 " +
+			"接手卡片时以及每次 `/clear` 之后，用 `CronList` 确认；若缺失或已过期则重新设置，发送完成报告时用 `CronDelete` 删除它。 " +
+			"因 API 错误（如 429）而停下、或在等一个永远不会到来的被委派方报告而停下的泳道，由这个定时任务唤醒 — 因为已经结束的回合无法再设置任何东西。 " +
+			"无论是被定时任务、主导会话的消息还是 idle 通知唤醒，回复之前都先读取磁盘证据（进度记录、报告、提交、被委派方的产出物）。 " +
+			"消息既不能证明有进展，也不能证明没有进展。",
 	},
 }
 

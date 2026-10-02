@@ -354,6 +354,10 @@ func TestMain(m *testing.M) {
 	// what they need via t.Setenv, so this clear strips only the ambient copy
 	// and leaves a pinned helper child's composed family alone.
 	clearFactoryAmbientEnv()
+	// The project directory a launching session exports must not steer any
+	// test's project-root resolution (SPEC-AUDIT-MODEL-CONVERGE-001
+	// REQ-ACV-019); TestMain_ScrubsClaudeProjectDir guards this line.
+	_ = os.Unsetenv(config.EnvClaudeProjectDir)
 	// Git fixtures must not inherit a hook's or lane's repository (GH #1691).
 	if err := gitenv.ScrubProcess(); err != nil {
 		restoreMoaiHome()
@@ -484,6 +488,29 @@ func TestProfileBaseDirIsSandboxed(t *testing.T) {
 	if got := profile.GetBaseDir(); got == realBase {
 		t.Fatalf("profile.GetBaseDir() = %q, which is the real user profile "+
 			"base. Tests in this package must never resolve to it.", got)
+	}
+}
+
+// TestMain_ScrubsClaudeProjectDir is the guard for the CLAUDE_PROJECT_DIR scrub
+// in TestMain (SPEC-AUDIT-MODEL-CONVERGE-001 REQ-ACV-019).
+//
+// A session launched from a project tree exports CLAUDE_PROJECT_DIR, and
+// resolveProjectDir() reads it ahead of the working directory. A test that names
+// no project root would then resolve the tree it is running in and read that
+// tree's committed workflow.yaml, so its verdict would depend on the checkout
+// rather than on its own fixture.
+//
+// The assertion is made package-wide on purpose: it fails whenever the variable
+// is non-empty at test start, whichever test of whichever family would have read
+// it. It fails deterministically under `CLAUDE_PROJECT_DIR=<dir> go test` if the
+// Unsetenv line in TestMain is removed. It must not call t.Parallel() or
+// t.Setenv — either would hide the ambient value it exists to observe.
+func TestMain_ScrubsClaudeProjectDir(t *testing.T) {
+	if got := os.Getenv(config.EnvClaudeProjectDir); got != "" {
+		t.Fatalf("%s=%q is visible to the test binary: TestMain must unset it "+
+			"before m.Run(). Left set, any test that names no project root "+
+			"resolves the tree it runs in and reads that tree's committed "+
+			"workflow.yaml.", config.EnvClaudeProjectDir, got)
 	}
 }
 

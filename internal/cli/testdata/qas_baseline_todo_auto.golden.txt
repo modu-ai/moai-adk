@@ -1,0 +1,28 @@
+jev: stubbed (qas baseline fixture)
+selection: source=fallback reason=jev-disabled
+selection: ranked t1 t2
+selection: note landed signal unmeasured (no lookup wired)
+accept t1 card a
+dispatch (one isolated in-session Agent() worker, isolation: worktree):
+card: t1
+evidence: <ROOT>/.moai/reports/t1/evidence.md
+worker orders: implement the card lane-locally; write the evidence file above (decisions, verbatim output tails, gaps, residual risk); commit by explicit pathspec; never push, never merge.
+evidence collected: <ROOT>/.moai/reports/t1/evidence.md
+done t1
+--- /clear guidance ---
+card t1 is complete. Clear this session (/clear) before the next card.
+next step: re-run `moai todo --auto` to continue the queue; next pickup follows the same order.
+operator session: operator-session-fixture
+----------------------
+accept t2 card b
+dispatch (one isolated in-session Agent() worker, isolation: worktree):
+card: t2
+evidence: <ROOT>/.moai/reports/t2/evidence.md
+worker orders: implement the card lane-locally; write the evidence file above (decisions, verbatim output tails, gaps, residual risk); commit by explicit pathspec; never push, never merge.
+evidence collected: <ROOT>/.moai/reports/t2/evidence.md
+done t2
+--- /clear guidance ---
+card t2 is complete. Clear this session (/clear) before the next card.
+next step: re-run `moai todo --auto` to continue the queue; next pickup follows the same order.
+operator session: operator-session-fixture
+----------------------

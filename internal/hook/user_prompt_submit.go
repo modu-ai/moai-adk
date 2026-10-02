@@ -149,9 +149,14 @@ func (h *userPromptSubmitHandler) Handle(ctx context.Context, input *HookInput) 
 
 	// Detect workflow context
 	additionalCtx := detectWorkflowContext(prompt)
+	// reboundRun is the run the registration just rebound this session into
+	// (SPEC-FACTORY-STALE-RUN-HEAL-001 REQ-SRH-004); the claim below reads it
+	// and not the environment run. Empty for every non-rebound session.
+	var reboundRun string
 	if strings.TrimSpace(prompt) != "" {
 		bindCtx, cancel := context.WithTimeout(ctx, factoryBindBudget)
-		bindNotice := registerFactoryUserPromptPeer(bindCtx, input)
+		var bindNotice string
+		bindNotice, reboundRun = registerFactoryHookPeerRun(bindCtx, input, factoryPeerBindUserPrompt)
 		cancel()
 		if bindNotice != "" {
 			if additionalCtx != "" {
@@ -160,7 +165,7 @@ func (h *userPromptSubmitHandler) Handle(ctx context.Context, input *HookInput) 
 			additionalCtx += bindNotice
 		}
 	}
-	if factoryCtx, _, _ := factoryHookBatch(ctx, input, EventUserPromptSubmit); factoryCtx != "" {
+	if factoryCtx, _, _ := factoryHookBatchForRun(ctx, input, EventUserPromptSubmit, reboundRun); factoryCtx != "" {
 		if additionalCtx != "" {
 			additionalCtx += "\n\n"
 		}

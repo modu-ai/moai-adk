@@ -128,7 +128,7 @@ workflow:
     # any other non-empty value omits the reasoning directive while the model
     # pin still applies. Claude ships at claude-opus-5-5/high and Codex at
     # gpt-6.1-sol/high (deliberate non-empty pins; an earlier empty-pin
-    # neutrality default was superseded by operator directive 2026-09-30); the
+    # neutrality default was superseded by operator directive); the
     # GLM pin ships glm-5.3/max and may be set per project.
     audit:
         claude:
@@ -145,9 +145,15 @@ workflow:
     # the review comes back failing. Requires the optional `codex` binary.
     # Ships OFF: set enabled to true to turn it on. While it is off the hook
     # short-circuits in shell and costs nothing per turn.
+    # tree_scope (optional, shown below as a commented example only): what a
+    # session with no card-branch evidence does while the gate is on. `review`
+    # (the default) reviews the tree's uncommitted changes; `skip` lets such a
+    # session end its turn without a review. A session on a `WT-` card branch
+    # is reviewed either way.
     codex:
         review_gate:
             enabled: false
+            # tree_scope: review  # review | skip
     # multi.review_gate: opt-in Stop-hook gate for the multi-model review path.
     # It reads the most recent convergence result of the configured review
     # backends and keeps the turn going only when a required backend failed;
@@ -179,6 +185,34 @@ workflow:
         enabled: false
         default_max_duration: 30m
         resources: {}
+    # quota_gate: steer the NEXT card away from a nearly exhausted Claude
+    # account. The statusline records each Claude session's five-hour and
+    # seven-day usage windows; while the gate is on and a window reads at or
+    # above its hold percentage, a Claude lane's `moai factory next` leases no
+    # NEW card (a card already assigned to the lane is still leased), and
+    # `moai factory status` and `moai todo --auto` recommend non-Claude lanes.
+    # A hold lifts when the window falls below its hold percentage minus the
+    # release margin, or when its reset time passes. Reading no data never
+    # holds a lane. Ships OFF.
+    #
+    # The numeric values below are unmeasured defaults: nobody has measured how
+    # much quota a card consumes, so they are starting points, not
+    # recommendations. Tune them from what the status block shows you:
+    #     five_hour_hold_pct    1-100, hold at or above this five-hour usage
+    #     seven_day_hold_pct    1-100, the same for the seven-day window
+    #     release_margin_pct    0-50, release below hold minus this margin
+    #     max_age               a session reading older than this is unknown
+    #                           (at least 10m, twice the 5m statusline heartbeat)
+    #     max_scan_dirs         1-1024, linked worktrees examined per reading; unmeasured
+    #                           (a project with more worktrees than this needs a larger value)
+    # A value outside its range falls back to the default shown here.
+    quota_gate:
+        enabled: false
+        five_hour_hold_pct: 90
+        seven_day_hold_pct: 95
+        release_margin_pct: 5
+        max_age: 30m
+        max_scan_dirs: 128
     # served_model_gate: refuse to adopt a plan-auditor or sync-auditor verdict
     # when the model that actually answered that auditor differs from the
     # expected one, or cannot be determined. The SubagentStop hook records the
@@ -216,7 +250,7 @@ workflow:
         deny_emails: []
     # jev: the TypeSafe System One judgment capability. It answers a typed
     # question about a supplied state and returns a typed answer with a
-    # probability; it generates no text and decides nothing. Ships OFF, and
+    # probability; it generates no text and makes no decision itself. Ships OFF, and
     # while it is off no request is constructed and no network call is made, so
     # a project that never opts in pays nothing and reaches no third-party
     # endpoint.
@@ -232,6 +266,18 @@ workflow:
     # One exception: the contract-mode Kickoff `llm+jev` cross-check may use
     # an answer as its second signal, where it can only confirm an LLM
     # approval or route the Kickoff to a human; it never decides alone.
+    #
+    # A second exception, separate from that cross-check, is the
+    # `moai todo --auto` cycle's own candidate ranking: the
+    # auto-scoped ranking exception. Behind the default-off
+    # workflow.jev.enabled gate, an in-process caller may supply the key
+    # that orders the queued candidates the cycle is about to accept, which
+    # sets selection order only. The candidate set is fixed by
+    # mechanical filters before any answer is read, and an answer that
+    # cannot be used as a whole falls back to recorded priority over the
+    # same set. The answer never adds, removes or edits a card, is never the
+    # basis of a completion verdict, a merge approval or an operator gate,
+    # and no ordering accuracy is claimed.
     #
     # Where this setting is changed, and where it is NOT: `moai init` asks
     # about it once, and after that the `moai web` settings screen is the only

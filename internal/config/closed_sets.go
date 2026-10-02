@@ -84,7 +84,7 @@ func ValidGLMModels() []string {
 }
 
 // ValidAuditModels returns the closed set for workflow.audit.model, derived
-// from the AuditModel* constants that activeAuditBackend validates against.
+// from the AuditModel* constants that ResolveAuditPlan validates against.
 func ValidAuditModels() []string {
 	return []string{AuditModelClaude, AuditModelCodex, AuditModelGLM, AuditModelMulti}
 }

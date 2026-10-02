@@ -77,9 +77,10 @@ func TestCodexAudit_NonRequiredGateGoldenByteIdentical(t *testing.T) {
 		{"corrupt-yaml", func(t *testing.T, root string) {
 			writeRawCodexGateWorkflow(t, root, "workflow:\n  audit: [unclosed\n    gates: {codex: required\n")
 		}},
-		{"required-with-trailing-space", func(t *testing.T, root string) {
-			writeRawCodexGateWorkflow(t, root, "workflow:\n  audit:\n    gates:\n      codex: \"required \"\n")
-		}},
+		// A `required` padded with whitespace is no longer a non-required state:
+		// the audit plan resolver trims gate values (SPEC-AUDIT-MODEL-CONVERGE-001
+		// EC-1), so it reads as required on every surface —
+		// TestCodexAudit_PaddedRequiredGateFailsClosed pins that reading.
 		{"required-uppercase", func(t *testing.T, root string) { writeCodexAuditGate(t, root, "REQUIRED") }},
 	}
 	for _, tc := range cases {

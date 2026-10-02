@@ -4,7 +4,8 @@ package hook
 // (AC-010, REQ-009): the factory leader SessionStart notice states how to
 // start a lane in one place and carries no number — no lane count, no
 // per-lane launch line, no numbered lane label, no free-slot list — in each of
-// the four locales; the stale-run rebind hint names `moai cc -l`.
+// the four locales; the stale-run rebind hint teaches no removed form and its
+// relaunch command launches `-l`.
 
 import (
 	"regexp"
@@ -13,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 )
 
 // laneEntryLocales is the complete conversation-language set the notice is
@@ -121,19 +123,27 @@ func TestFactoryLeadNoticeIsLaneCountIndependent(t *testing.T) {
 	}
 }
 
-// TestStaleRunRebindHintNamesLaneEntry pins the stale-run rebind hint: it
-// names `moai cc -l` (the next free slot) and no removed form, in four
-// locales.
+// TestStaleRunRebindHintNamesLaneEntry pins the stale-run rebind hint: its
+// headers (one active run, several) name no removed form in four locales, and
+// the command they introduce — the `moai factory relaunch` line — launches the
+// lane entry `-l` for each provider. The hint prints the verb line since
+// SPEC-FACTORY-STALE-RUN-HEAL-001 (card t1345), so the lane entry the operator
+// ends up typing is the verb's launch line, not a sentence in the header.
 func TestStaleRunRebindHintNamesLaneEntry(t *testing.T) {
 	for _, lang := range laneEntryLocales {
-		hint := staleRunMessagesFor(lang).laneLabelUnbindRebind
-		if !strings.Contains(hint, "moai cc -l") {
-			t.Errorf("%s rebind hint does not name 'moai cc -l': %s", lang, hint)
-		}
-		for _, removed := range []string{"-f lane", "lane-<n>"} {
-			if strings.Contains(hint, removed) {
-				t.Errorf("%s rebind hint still teaches %q: %s", lang, removed, hint)
+		m := staleRunMessagesFor(lang)
+		for name, hint := range map[string]string{"one run": m.laneLabelUnbindRebind, "several runs": m.laneLabelUnbindMany} {
+			for _, removed := range []string{"-f lane", "lane-<n>"} {
+				if strings.Contains(hint, removed) {
+					t.Errorf("%s rebind hint (%s) still teaches %q: %s", lang, name, removed, hint)
+				}
 			}
+		}
+	}
+	for _, provider := range []string{factory.RelaunchProviderCC, factory.RelaunchProviderGLM, factory.RelaunchProviderCodex} {
+		want := "moai " + provider + " -l"
+		if got := (factory.RelaunchCommand{Provider: provider}).LaunchLine(); got != want {
+			t.Errorf("relaunch verb launch line for %s = %q, want the lane entry %q", provider, got, want)
 		}
 	}
 }

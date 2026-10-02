@@ -448,6 +448,18 @@ func appendLeaderName(args []string, root string, notes io.Writer) ([]string, st
 		// downstream is the name the session actually answers to, rather than
 		// the role moai would have chosen.
 		name, _ := parseNamedLabel(args, func(string) bool { return true })
+		// Card t1444 ④: a leader-SHAPED operator name is claimed exactly like
+		// the default one. A live leader holding the same name is precisely
+		// the collision that makes a name-based join ambiguous when a second
+		// run exists; the bump keeps every leader addressable by name alone.
+		// Non-leader-shaped names stay as supplied — they sit outside the
+		// leader namespace the join's discovery matches against.
+		if _, leaderShaped := factory.SplitLeaderLabel(name); leaderShaped {
+			claimed := resolveLeaderName(root, name, notes)
+			if claimed != name {
+				return replaceNamedLabel(args, name, claimed), claimed
+			}
+		}
 		return args, name
 	}
 	nameArgs[1] = resolveLeaderName(root, nameArgs[1], notes)
