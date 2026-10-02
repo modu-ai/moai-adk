@@ -102,4 +102,47 @@ run_head: c0cc0915c (code at e323eba4f)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase_
+sync_status: audit-ready (documentation and lifecycle close done; AC-MBM-014 and AC-MBM-015 remain manual Gap-class and are not recorded as passes)
+sync_complete_at: 2026-10-02
+sync_commit_sha: pending-backfill
+sync_head_before_commit: 3594cca90 (branch WT-moai-board-mod); the sync commit cannot cite its own hash, so the lane backfills the real SHA in a following commit
+
+Sync phase by manager-docs, card t1436. Every result below was observed in this run against this tree (HEAD `3594cca90` plus the uncommitted sync edits). Judging builds: `claude 2.1.287 (Claude Code)`; `moai v3.2.0-rc.25`, commit `802a72235`, built 2026-10-02T08:00:14Z, an ancestor of HEAD (`git merge-base --is-ancestor 802a72235 HEAD` completed with no output and no error) — no Go code changed since, so it judges `moai spec lint` and `moai graph check` correctly; `bun 1.4.2` (version carried from §E.2, not re-read here).
+
+### Verification evidence
+
+| Command | Exit | Bounded output |
+|---|---|---|
+| `claude plugin validate mods/moai-board` | 0 | last line `✔ Validation passed`; `register.tsx hooks: session.start, command.run{command=moai-board}, ui.close, session.end, ui.render{component=Pane, requestId=moai-board}`; calls list `$.clock.every`, `$.command.register`, `$.fs.read`, `$.fs.stat`, `$.process.run`, `$.session.root`, `$.state.get`, `$.state.set`, `$.ui.ask`, `$.ui.close`, `$.ui.open`, `$.ui.resolve`, `$.ui.toast` |
+| `CLAUDE_CONFIG_DIR=/tmp/mbm-claude-cfg claude plugin test mods/moai-board` (stdout and stderr to a scratch file) | 0 | ` 15 pass` / ` 0 fail` / `Ran 15 tests across 2 files. [4.22s]`; the config dir stayed empty (`ls -la` total 0 before and after) |
+| `bun test mods/moai-board/tests/pure/ --reporter=junit --reporter-outfile=<scratchpad>/mbm-junit.xml` | 0 | ` 35 pass` / ` 0 fail` / `Ran 35 tests across 2 files. [178.00ms]`; junit `grep -c '<testcase'` 35, `grep -c '<failure'` 0, `grep -c '<skipped'` 0 (pure, developer-local evidence only, spec.md G-13) |
+| `moai spec lint SPEC-MOAI-BOARD-MOD-001 --strict` (after the `completed` transition edit, before the sync commit) | 0 | `✓ No findings — all SPEC documents are valid` |
+| `grep -o -h -E 'AC-([A-Z0-9]+-)*[0-9]+[a-z]?' acceptance.md` sorted-unique count | 0 | `15` (B12 source: `acceptance.md`, tier M); reserved-token count `grep -c -E 'RETIRED\]\|\[REF\]'` printed `0`, so all 15 are live |
+| `moai graph check` | 0 | `codemaps  metric=described-source-diff value=23 threshold=40 verdict=fresh`; `citations ... verdict=fresh`; `mx-index` and `edges` `verdict=absent` (untracked runtime artifacts in a fresh worktree) |
+| `git status --short` before the sync commit | 0 | ` M .moai/project/structure.md`, ` M .moai/specs/SPEC-MOAI-BOARD-MOD-001/spec.md`, ` M CHANGELOG.md`, plus this file; the tree was clean (no output) when the sync started |
+
+### Documentation decisions
+
+- CHANGELOG: one `[Unreleased]` / `### Added` entry. B12 pre-emission `grep -c 'SPEC-MOAI-BOARD-MOD-001' CHANGELOG.md` printed `0` before the edit. Paths in the entry were checked against `ls mods/moai-board mods/moai-board/*` and `git show --stat e323eba4f`; the AC count (15 total, 13 blocking passed, 2 manual unobserved) was checked against `acceptance.md` and §E.2. The entry states plainly that the mod is an early-access prototype, loaded by `claude --plugin-dir`, not deployed by `moai init` or `moai update`, read-only plus an operator-confirmed pick.
+- `mods/moai-board/README.md`: read against `hooks/data.ts`, `hooks/specs.ts`, `hooks/view.tsx`, `hooks/register.tsx` and `tsconfig.json` (poll 15,000 ms, 24 h heartbeat window, 20 sessions, 15 SPECs per page, hotkeys `1`/`2`/`3`/`r`, argv table, `Pick`/`Cancel` labels, `tsconfig` excluding `tests/pure`); no factual error found, left unchanged. It does not mention the pane's `close` button (`x`); an omission, not an error.
+- `.moai/project/structure.md`: two-line `mods/` entry added to the directory tree (the workflow asks for new directories to be described there). The tree was already out of date for other top-level directories; they were not touched.
+- Codemaps: not regenerated. `moai graph check` reports `codemaps ... verdict=fresh` (23 of 40); the codemaps measure Go packages (`find internal cmd pkg`), and `mods/` holds no Go source.
+- MX: the three `@MX:NOTE` tags already in the mod (`register.tsx:43`, `data.ts:53`, `specs.ts:71`) were read against the code they annotate (the single `$.process.run` call site, the one write-capable argv, the read guard); each matches. No tag added.
+- Out of scope, recorded: the docs-site and the four-locale READMEs are not touched (a prototype outside the shipped product; no user-facing documentation surface references it). No Go code touched.
+- SPEC lifecycle: `spec.md` frontmatter `status: in-progress → implemented → completed` on this single sync commit; `updated` already read `2026-10-02`. No body edit to spec.md, plan.md or acceptance.md.
+
+### Gaps (unobserved, not passes)
+
+- AC-MBM-014 (interactive pane behaviour: paint, docking, scrolling, hotkey delivery, `Markdown` painting) and AC-MBM-015 (live pick against a real card) are manual and were not attempted.
+- `tsc` is not on PATH; no type check ran (the typings are advisory).
+- Whether the mod loads under the operator's own account profile (rollout switch, Q7) was not re-read in this run; the engine runner ran under an empty temporary config dir, which is not the operator profile.
+- The person-origin `ui.close` hook is registered but never dispatched by any test; in-engine CPU time of parsing about 1.9 MB against the 10 s hook budget is unmeasured (G-3); `vscode` and `mobile` surfaces are unobserved.
+- TDD ordering stays session-asserted (§E.2): tests and code share each milestone commit, so the commit graph cannot witness red-before-green (`verification-claim-integrity.md` §2.3).
+- `git merge-base --is-ancestor` printed nothing; its exit status was not echoed (a compound form is refused by the worktree guard), so the ancestor result is read from the call completing without error.
+- No refusal by the worktree guard affected a verification result; one compound `grep`/`echo`/`git` batch was refused and redone as separate plain commands.
+
+### Residual risk
+
+- The platform contract is early access; the kit's behaviour was learned by running, not documented, and may move between Claude Code releases.
+- The pure tests run under `bun`, which no CI job runs for this mod: the 35 passes are developer-local evidence, and a regression would not be caught by CI.
+- `sync_commit_sha` is a placeholder until the lane backfills it; until then a lint run reads the recognized placeholder, not a SHA.
