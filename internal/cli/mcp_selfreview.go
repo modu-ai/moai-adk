@@ -136,6 +136,10 @@ func runSelfReview(ctx context.Context, req mcp.CallToolRequest, backend string)
 	// reads the working tree itself and is still asked about them.
 	if strings.TrimSpace(diff) == "" && (backend == selfReviewBackendGLM || len(untracked) == 0) {
 		out.Base = ""
+		if len(untracked) > 0 {
+			// Changes exist; a diff just cannot carry them. Do not read as a clean tree.
+			return finish(selfReviewInconclusive("the only changes in the " + scope + " scope of this tree are untracked files, which a diff cannot carry; see excluded_untracked for the files this review could not see"))
+		}
 		return finish(selfReviewInconclusive("no change to review in the " + scope + " scope of this tree"))
 	}
 
@@ -158,7 +162,9 @@ func selfReviewInconclusive(summary string) ReviewOutput {
 // excluded by pathspec (tracked changes, staged or not, committed since base
 // included), and the untracked paths outside those prefixes.
 func selfReviewMaterial(root, base string) (diff string, untracked []string, err error) {
-	args := []string{"diff", base, "--", "."}
+	// A plain unified diff whatever the user's git config says: no external diff
+	// driver, no colour escapes, no textconv filter.
+	args := []string{"diff", "--no-ext-diff", "--no-color", "--no-textconv", base, "--", "."}
 	for _, p := range reviewGateRuntimePrefixes {
 		args = append(args, ":(exclude)"+p)
 	}
@@ -166,12 +172,14 @@ func selfReviewMaterial(root, base string) (diff string, untracked []string, err
 	if diff, err = runReviewGit(root, args...); err != nil {
 		return "", nil, fmt.Errorf("git diff %s: %w", base, err)
 	}
-	list, err := runReviewGit(root, "ls-files", "--others", "--exclude-standard")
+	// -z: NUL-separated and never quoted, so non-ASCII names stay readable and
+	// reach the runtime-prefix filter as real paths (core.quotepath is ignored).
+	list, err := runReviewGit(root, "ls-files", "--others", "--exclude-standard", "-z")
 	if err != nil {
 		return "", nil, fmt.Errorf("git ls-files: %w", err)
 	}
-	for p := range strings.SplitSeq(list, "\n") {
-		if p = strings.TrimSpace(p); p != "" && !isRuntimeManagedPath(p) {
+	for p := range strings.SplitSeq(list, "\x00") {
+		if p != "" && !isRuntimeManagedPath(p) {
 			untracked = append(untracked, p)
 		}
 	}

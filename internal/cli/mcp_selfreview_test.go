@@ -14,14 +14,19 @@ package cli
 // verdict alone proves nothing — the stub reviewers answer whatever they like.
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/modu-ai/moai-adk/internal/hook"
 	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
@@ -629,6 +634,15 @@ func TestSelfReview_EmptyMaterial(t *testing.T) {
 		if !reflect.DeepEqual(got, []string{"only_untracked.go"}) {
 			t.Errorf("excluded_untracked = %v, want the untracked file still reported", got)
 		}
+		// Sync-audit F2: the summary must not tell a reader of `summary` alone that
+		// the tree is clean — changes exist, GLM just cannot be sent them.
+		s, _ := m["summary"].(string)
+		if strings.Contains(s, "no change to review") {
+			t.Errorf("summary %q claims there is no change to review, but untracked changes exist", s)
+		}
+		if !strings.Contains(s, "untracked") || !strings.Contains(s, "excluded_untracked") {
+			t.Errorf("summary %q must say the only changes are untracked files and name excluded_untracked", s)
+		}
 	})
 	t.Run("codex/untracked-only", func(t *testing.T) {
 		rig := newSelfReviewRig(t, "codex", "fail")
@@ -637,6 +651,167 @@ func TestSelfReview_EmptyMaterial(t *testing.T) {
 			t.Errorf("codex reads untracked files itself, so an untracked-only tree must still be reviewed (verdict=%v)", m["verdict"])
 		}
 	})
+}
+
+// TestSelfReview_UntrackedListIsNULSeparatedSoNonASCIIPathsSurvive — sync-audit
+// F1: with git's default core.quotepath=true a plain `ls-files` prints non-ASCII
+// names octal-quoted, which would reach excluded_untracked unreadable and slip a
+// runtime-managed non-ASCII path past the prefix filter. The tree's own config
+// sets quotepath explicitly so the test does not depend on the machine's global
+// setting.
+func TestSelfReview_UntrackedListIsNULSeparatedSoNonASCIIPathsSurvive(t *testing.T) {
+	quotedTree := func(t *testing.T) string {
+		t.Helper()
+		dir := newSelfReviewPlainTree(t, "develop", false)
+		cardScopeGit(t, dir, "config", "core.quotepath", "true")
+		return dir
+	}
+
+	t.Run("excluded_untracked-names-are-readable", func(t *testing.T) {
+		dir := quotedTree(t)
+		writeCardFile(t, dir, "새파일.txt", "x\n")
+		writeCardFile(t, dir, "plain.txt", "x\n")
+		writeCardFile(t, dir, ".moai/reports/한글/보고.md", "x\n")
+		// Premise: the non-NUL listing really is octal-quoted under this config.
+		if raw := cardScopeGit(t, dir, "ls-files", "--others", "--exclude-standard"); !strings.Contains(raw, `\355`) {
+			t.Fatalf("fixture premise broken: expected an octal-quoted path in %q", raw)
+		}
+		newSelfReviewRig(t, "glm", "pass")
+		_, m := selfReviewCall(t, "glm_review", map[string]any{"scope": "uncommitted", "project_root": dir})
+		var got []string
+		for _, v := range m["excluded_untracked"].([]any) {
+			got = append(got, v.(string))
+		}
+		sort.Strings(got)
+		if want := []string{"plain.txt", "새파일.txt"}; !reflect.DeepEqual(got, want) {
+			t.Errorf("excluded_untracked = %q, want %q (real names, runtime-managed Korean path filtered)", got, want)
+		}
+	})
+
+	t.Run("runtime-managed-non-ASCII-path-is-filtered-for-codex-too", func(t *testing.T) {
+		dir := quotedTree(t)
+		writeCardFile(t, dir, ".moai/reports/한글/보고.md", "x\n")
+		rig := newSelfReviewRig(t, "codex", "fail")
+		_, m := selfReviewCall(t, "codex_review", map[string]any{"scope": "uncommitted", "project_root": dir})
+		if rig.calls() != 0 {
+			t.Errorf("a runtime-managed path is not a change to review; codex was reached %d time(s) (verdict=%v)", rig.calls(), m["verdict"])
+		}
+	})
+}
+
+// TestSelfReview_MaterialIsAPlainUnifiedDiff — sync-audit F3: a developer's
+// diff.external, diff textconv or forced colour must not change the bytes sent
+// to the reviewer. Each variant is configured in the tree's own config.
+func TestSelfReview_MaterialIsAPlainUnifiedDiff(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the external-diff and textconv doubles are shell commands")
+	}
+	cases := []struct {
+		name   string
+		setup  func(t *testing.T, dir string)
+		banned []string
+	}{
+		{"external-diff", func(t *testing.T, dir string) {
+			cardScopeGit(t, dir, "config", "diff.external", "echo EXTERNAL-DIFF-MARKER")
+		}, []string{"EXTERNAL-DIFF-MARKER"}},
+		{"colour", func(t *testing.T, dir string) {
+			cardScopeGit(t, dir, "config", "color.ui", "always")
+		}, []string{"\x1b"}},
+		{"textconv", func(t *testing.T, dir string) {
+			writeCardFile(t, dir, ".gitattributes", "*.go diff=sr\n")
+			cardScopeGit(t, dir, "config", "diff.sr.textconv", "echo TEXTCONV-MARKER")
+		}, []string{"TEXTCONV-MARKER"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := newSelfReviewPlainTree(t, "develop", true)
+			tc.setup(t, dir)
+			rig := newSelfReviewRig(t, "glm", "pass")
+			selfReviewCall(t, "glm_review", map[string]any{"scope": "uncommitted", "project_root": dir})
+			if rig.calls() != 1 {
+				t.Fatalf("the reviewer was reached %d time(s), want 1 (the real change must survive the config)", rig.calls())
+			}
+			content := rig.glm.sent(t).Messages[0].Content
+			if !strings.Contains(content, "diff --git") || !strings.Contains(content, "+// uncommitted change") {
+				t.Errorf("the posted material is not the plain unified diff of the change:\n%s", content)
+			}
+			for _, b := range tc.banned {
+				if strings.Contains(content, b) {
+					t.Errorf("the posted material carries %q — it is not a plain unified diff", b)
+				}
+			}
+		})
+	}
+}
+
+// TestSelfReview_ReviewBudgetAndCallerCancellationAreHonoured — sync-audit F4:
+// both legs return promptly and fail open when the review budget elapses and
+// when the caller's context is cancelled. The reviewer doubles block until
+// their context ends, so a leg that drops the bound (or, for GLM, the
+// cancellation forwarding) cannot return.
+func TestSelfReview_ReviewBudgetAndCallerCancellationAreHonoured(t *testing.T) {
+	dir := newSelfReviewPlainTree(t, "develop", true)
+	for _, backend := range []string{"codex", "glm"} {
+		for _, mode := range []string{"budget-elapses", "caller-cancels"} {
+			t.Run(backend+"/"+mode, func(t *testing.T) {
+				b := newSelfReviewBlockingReviewer(t)
+				handler := handleCodexReview
+				if backend == "codex" {
+					withCodexSession(t, nil)
+					codexSession = selfReviewBlockingCodexSession{b}
+				} else {
+					handler = handleGLMReview
+					withGLMSeams(t, "stub-key", selfReviewBlockingGLMDoer{b})
+				}
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				if mode == "budget-elapses" {
+					withReviewBudget(t, 150*time.Millisecond)
+				} else {
+					go func() {
+						<-b.started
+						cancel()
+					}()
+				}
+
+				req := mcp.CallToolRequest{}
+				req.Params.Name = backend + "_review"
+				req.Params.Arguments = map[string]any{"scope": "uncommitted", "project_root": dir}
+				done := make(chan *mcp.CallToolResult, 1)
+				start := time.Now()
+				go func() {
+					res, _ := handler(ctx, req)
+					done <- res
+				}()
+				var res *mcp.CallToolResult
+				select {
+				case res = <-done:
+				case <-time.After(10 * time.Second):
+					t.Fatalf("%s did not return within 10s of a %s — the review is unbounded", req.Params.Name, mode)
+				}
+				if took := time.Since(start); took > 5*time.Second {
+					t.Errorf("returned after %s, want a prompt return", took)
+				}
+				if !b.byCtx.Load() {
+					t.Error("the reviewer double was not released by its context")
+				}
+				raw, err := json.Marshal(res.StructuredContent)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var m map[string]any
+				if err := json.Unmarshal(raw, &m); err != nil {
+					t.Fatalf("decode %s: %v", raw, err)
+				}
+				if v, _ := m["verdict"].(string); v != VerdictInconclusive {
+					t.Errorf("verdict = %q, want inconclusive (fail-open)", v)
+				}
+				if adv, _ := m["advisory"].(bool); !adv {
+					t.Errorf("advisory = %v, want true", m["advisory"])
+				}
+			})
+		}
+	}
 }
 
 func TestSelfReview_ReviewerErrorsFailOpen(t *testing.T) {

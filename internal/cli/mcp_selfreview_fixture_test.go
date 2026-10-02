@@ -10,14 +10,20 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // selfReviewTestPrefixes restates the runtime-managed prefixes on purpose: the
@@ -349,4 +355,77 @@ func srReadFile(t *testing.T, path string) string {
 		t.Fatalf("read %s: %v", path, err)
 	}
 	return string(b)
+}
+
+// --- sync-audit F4: reviewer doubles that block until their context ends ---
+
+// withReviewBudget shortens the review budget both self-review legs apply
+// (config.DefaultCodexReviewGateTimeout is a package var, so no production seam
+// is needed) and restores it afterwards.
+func withReviewBudget(t *testing.T, d time.Duration) {
+	t.Helper()
+	prev := config.DefaultCodexReviewGateTimeout
+	config.DefaultCodexReviewGateTimeout = d
+	t.Cleanup(func() { config.DefaultCodexReviewGateTimeout = prev })
+}
+
+// selfReviewBlockingReviewer is the shared state of a reviewer double that never answers:
+// it blocks until the context it was handed ends. `release` is closed by
+// t.Cleanup so a mutant that drops the bound fails the test instead of hanging
+// the run; `byCtx` records that the block ended because the context did.
+type selfReviewBlockingReviewer struct {
+	release chan struct{}
+	started chan struct{}
+	once    sync.Once
+	byCtx   atomic.Bool
+}
+
+func newSelfReviewBlockingReviewer(t *testing.T) *selfReviewBlockingReviewer {
+	t.Helper()
+	b := &selfReviewBlockingReviewer{release: make(chan struct{}), started: make(chan struct{})}
+	t.Cleanup(func() { close(b.release) })
+	return b
+}
+
+// wait blocks until ctx ends (true) or the reviewer is released (false).
+func (b *selfReviewBlockingReviewer) wait(ctx context.Context) bool {
+	b.once.Do(func() { close(b.started) })
+	select {
+	case <-ctx.Done():
+		b.byCtx.Store(true)
+		return true
+	case <-b.release:
+		return false
+	}
+}
+
+// selfReviewBlockingCodexSession is a codexSessionRunner whose connection never yields a
+// line: recv blocks until the ctx the session was started with ends, which is
+// what a killed codex process looks like to the driver (stdout closes).
+type selfReviewBlockingCodexSession struct{ *selfReviewBlockingReviewer }
+
+func (s selfReviewBlockingCodexSession) start(ctx context.Context, _ string, _ []string) (codexConn, error) {
+	return &selfReviewBlockingCodexConn{b: s.selfReviewBlockingReviewer, ctx: ctx}, nil
+}
+
+type selfReviewBlockingCodexConn struct {
+	b   *selfReviewBlockingReviewer
+	ctx context.Context
+}
+
+func (c *selfReviewBlockingCodexConn) send(string) error { return nil }
+func (c *selfReviewBlockingCodexConn) recv() (string, bool) {
+	c.b.wait(c.ctx)
+	return "", false
+}
+func (c *selfReviewBlockingCodexConn) close() error { return nil }
+
+// selfReviewBlockingGLMDoer is a glmHTTPDoer that holds the request until its context ends.
+type selfReviewBlockingGLMDoer struct{ *selfReviewBlockingReviewer }
+
+func (d selfReviewBlockingGLMDoer) Do(req *http.Request) (*http.Response, error) {
+	if d.wait(req.Context()) {
+		return nil, req.Context().Err()
+	}
+	return nil, errors.New("blocking GLM double released by cleanup")
 }
