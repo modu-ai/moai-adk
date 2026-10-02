@@ -73,7 +73,7 @@ F3의 현 상태(정찰 R7): M1a만 착지 — SPEC-FACTORY-RECORD-001 amendment
 
 ## D-5 — MCP 승인 스코핑: PR e33cf0e0d 채택
 
-**결정**: 관리 Codex 런처가 **자신이 소유한 App Server와 TUI 프로세스에만** `-c mcp_servers.moai.default_tools_approval_mode="approve"` + `factory_msg_send`/`factory_msg_receipt` 도구별 approve를 인수로 전달한다. 프로젝트 설정의 capability 기반 `mcpApprovalMode = "writes"`(`internal/codexwiring/configtoml.go:22-26, :99`)는 무변경. doctor는 이전 세대의 프로젝트 전역 승인 잔재를 경고하고 사용자 파일을 건드리지 않는다(REQ-MS-009·010).
+**결정**: 관리 Codex 런처가 **자신이 소유한 App Server 프로세스에만(TUI는 미배달 — 후속 카드)** `-c mcp_servers.moai.default_tools_approval_mode="approve"` + `factory_msg_send`/`factory_msg_receipt` 도구별 approve를 인수로 전달한다. 프로젝트 설정의 capability 기반 `mcpApprovalMode = "writes"`(`internal/codexwiring/configtoml.go:22-26, :99`)는 무변경. doctor는 이전 세대의 프로젝트 전역 승인 잔재를 경고하고 사용자 파일을 건드리지 않는다(REQ-MS-009·010).
 
 **근거**: PR 리포트 실측 — 승인 스코핑 전에는 MoAI MCP 승인창에서 무인 수신이 정지했다(`approval_mode="auto"` 시도는 통과 증거에서 제외됐다고 리포트 자체가 기록). 스코핑 후 양방향 왕복에서 승인창 0관측. develop의 전역 완화는 보안 경계 위반이라 기각.
 

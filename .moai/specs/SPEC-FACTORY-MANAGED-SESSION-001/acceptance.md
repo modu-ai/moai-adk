@@ -23,11 +23,11 @@ tier: L
 | AC-MS-005 | REQ-MS-004 | Given claim된 메시지 When 세션이 body를 조회하면 Then claim token 없는 조회는 거부되고 토큰이 있는 조회만 본문을 돌려준다 | `go test ./internal/factorymsg -run '^TestReadBodyClaimToken$'` |
 | AC-MS-006 | REQ-MS-004 | Given 처리 완료 When receipt를 기록하면 Then store status의 acknowledged 카운트가 증가하고 pending이 감소한다 | `go test ./internal/cli -run '^TestManagedReceiptAcknowledges$'` |
 | AC-MS-007 | REQ-MS-005 | Given 관리 Claude/GLM 기동 When 사용자가 `-p`/`--input-format` 등 소유 플래그를 전달하면 Then 런처는 오류로 거부하고 stream-json 플래그를 강제한다 | `go test ./internal/cli -run '^TestManagedSessionOwnsStreamFlags$'` |
-| AC-MS-008 | REQ-MS-006 | Given 연산자 입력 1건과 브로커 메시지 1건이 동시에 있을 When 이전 턴이 완료되면 Then 두 입력이 정해진 순서(연산자 우선)로 직렬 주입되고 busy 동안 새 claim이 없다 | `go test ./internal/cli -run '^TestManagedQueueSerializesOperatorAndInbox$'` |
+| AC-MS-008 | REQ-MS-006 | Given 연산자 입력 1건과 브로커 메시지 1건이 동시에 있을 When 이전 턴이 완료되면 Then 두 입력이 도착순 FIFO로 한 번에 한 턴씩 직렬 주입되고 busy 동안 새 claim이 없다 | `go test ./internal/cli -run '^TestManagedQueueSerializesOperatorAndInbox$'` |
 | AC-MS-009 | REQ-MS-007 | Given 신규 관리 소스 파일들 When 라벨 생성 표면을 스캔하면 Then `agent-<n>`/`worker-<n>` 라벨 생성이 0건이고 lane 라벨만 만든다 | `grep -rnE 'fmt\.Sprintf\("(agent\|worker)-' internal/cli/managed_*.go` 0행 |
 | AC-MS-010 | REQ-MS-014 · REQ-MS-015 | Given 신규 관리 소스 파일들 When F3 상징과 수신확인-판정 상징을 스캔하면 Then 병합 자동화/Decider/핸드오버/완료판정 상징(`merge-window`, `Decider`, `T29b`, `T29c`, 카드 상태 전이 호출)이 0건이다 (F3 비침범 — receipt는 배달 증거로만 존재) | `grep -rnE 'merge-window\|Decider\|T29b\|T29c\|handover' internal/cli/managed_*.go` 0행 |
 | AC-MS-011 | REQ-MS-011 | Given Claude-only 브로커 run When `factory_msg_send`가 호출되면 Then 거부된다(네이티브 SendMessage 정책 유지) | `go test ./internal/cli -run '^TestFactoryMsgSendRejectsClaudeOnlyRun$'` (계승, 재작성 후에도 통과) |
-| AC-MS-012 | REQ-MS-009 | Given 관리 Codex 기동 When 승인 인수를 검사하면 Then approve 인수는 소유 App Server·TUI 프로세스에만 붙고 프로젝트 config 생성물의 `default_tools_approval_mode`는 `"writes"`로 불변이다 | `go test ./internal/codexwiring ./internal/cli -run '^(TestMoAIMCPApprovalArgsOnlyTargetMoAI\|TestConfigTomlWritesUnchanged)$'` |
+| AC-MS-012 | REQ-MS-009 | Given 관리 Codex 기동 When 승인 인수를 검사하면 Then approve 인수는 소유 App Server 프로세스에만 붙고(TUI는 본 SPEC에서 미배달), 프로젝트 config 생성물의 `default_tools_approval_mode`는 `"writes"`로 불변이다 | `go test ./internal/codexwiring ./internal/cli -run '^(TestMoAIMCPApprovalArgsOnlyTargetMoAI\|TestConfigTomlWritesUnchanged)$'` |
 | AC-MS-013 | REQ-MS-010 | Given 구식 프로젝트 전역 승인 잔재 When `moai doctor codex`가 실행되면 Then 경고를 내고 `.codex/config.toml`을 변경하지 않는다 | `go test ./internal/cli -run '^TestDoctorCodexWarnsStaleGlobalApproval$'` |
 | AC-MS-014 | REQ-MS-012 | Given 신규 관리 파일들 When 크로스빌드+스캔하면 Then `GOOS=windows GOARCH=amd64 go build ./...`가 exit 0이고 신규 파일의 `syscall` 참조가 0건이다 | 크로스빌드 exit 0 + `grep -rn 'syscall\.' internal/cli/managed_*.go` 0행 |
 | AC-MS-015 | REQ-MS-013 | Given 실제 제2호스트가 없는 CI When loopback 통합 테스트를 돌리면 Then 브로커 claim→메타데이터 주입→body 조회→receipt 왕복이 자기 재실행(re-exec) 가짜 세션으로 통과한다 | `go test ./internal/cli -run '^TestManagedSessionLoopbackRoundTrip$'` |
@@ -38,7 +38,7 @@ tier: L
 
 - **launch-pending 경합**: 기동 중 다른 프로세스가 같은 레인으로 조인 시도 → `ErrEndpointLaunchPending` 응답, 롤백 후 재시도 가능.
 - **owner 소멸**: 관리 세션 크래시 후 `PeerByOwner` 지문 불일치 → 스테일 엔드포인트 미사용, dead-letter 정책은 store 기존 동작 위임.
-- **App Server 조기 종료**: WS 이벤트 채널 close → 세션 종료 오류로 승격, TUI 정리(kill+Wait) 보장.
+- **App Server 조기 종료**: WS 이벤트 채널 close → 세션 종료 오류로 승격, 소유 App Server 프로세스 정리(kill+Wait) 보장.
 - **lease 만료 중 처리**: Claim lease 내 턴 미완료 → store의 lease 정책에 위임(관리 계층이 재구현하지 않음 — F3의 lease reaping과 혼동 금지).
 - **busy 중 수신**: 턴 진행 중 도착 메시지는 다음 idle 폴링에서 claim — 즉시 인터럽트 금지.
 - **`--` 이후 `--name`**: PR 리포트의 회귀(R2) — 레인 라벨은 `--` 앞에 배치하는 회귀 테스트 유지.

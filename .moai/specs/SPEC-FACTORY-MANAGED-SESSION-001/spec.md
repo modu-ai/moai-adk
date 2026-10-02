@@ -1,8 +1,8 @@
 ---
 id: SPEC-FACTORY-MANAGED-SESSION-001
 title: "Factory cross-host managed-session layer — PR #1722 재작성 (현 develop 어휘·브로커 API 기준)"
-version: "0.1.0"
-status: completed
+version: "0.2.0"
+status: in-progress
 created: 2026-10-01
 updated: 2026-10-02
 author: GOOS (manager-spec)
@@ -13,9 +13,28 @@ lifecycle: spec-anchored
 tier: L
 related_specs: [SPEC-FACTORY-RECORD-001, SPEC-FACTORY-LANE-AUTONOMY-001, SPEC-FACTORY-LANE-JOIN-SOCKET-001]
 tags: "factory, managed-session, cross-host, broker, codex, loopback"
+amendment_of: SPEC-FACTORY-MANAGED-SESSION-001
 ---
 
 # SPEC-FACTORY-MANAGED-SESSION-001 — Factory 관리 세션(managed-session) 계층 재작성
+
+## HISTORY
+
+### Amendments
+
+| Field | Value |
+|---|---|
+| prior_completed_version | 0.1.0 |
+| prior_completed_sha | 578e0d8896a6238d9d110aa55cf702f85d11446e |
+| prior_completed_record | progress.md §E.4 sync_commit_sha |
+| rationale | Independent sync audit (`.moai/reports/t1375/sync-audit.md`) found two spec-versus-implementation divergences; the operator chose to align the SPEC with the implementation. F2: the managed Codex launcher is a headless App Server owner and owns no TUI; TUI attach is owed to a follow-up card. F10: the managed turn queue is arrival-order FIFO, one turn at a time, and does not give operator input priority. |
+| scope | spec.md (§B item 2 managed Codex session sentence, REQ-MS-009 wording, frontmatter, this HISTORY, the Known debt section) + acceptance.md (AC-MS-008 and AC-MS-012 prose, the App Server early-exit edge case) + design.md (D-5 sentence and a debt note). REQ count (15) and AC count (17) unchanged; AC command cells unchanged. |
+| re_close_path | SPEC returns to `completed` on a later sync commit owned by manager-docs, after a delta plan-audit (this amendment invalidates the cached plan-audit PASS). |
+
+| Version | Date | Author | Change |
+|---------|------|--------|--------|
+| 0.2.0 | 2026-10-02 | manager-spec | Completed-SPEC amendment (card t1375) — headless Codex owner (audit F2) and arrival-order FIFO turn queue (audit F10). Weakening note: AC-MS-008 no longer promises operator priority, so operator input queues behind an already-claimed inbox batch. |
+| 0.1.0 | 2026-10-01 | manager-spec | Initial SPEC. |
 
 ## §A. 개요
 
@@ -30,7 +49,7 @@ t1365 판정(`.moai/reports/t1365/verdict.md`, 2026-09-30)에 따라 PR 병합�
 세 하위 영역을 재구현한다.
 
 1. **관리 Claude/GLM 세션** — 런처가 `--print --input-format stream-json --output-format stream-json`으로 Claude/GLM 프로세스를 소유하고, 연산자 stdin과 브로커 inbox를 하나의 직렬 턴 큐로 합친다.
-2. **관리 Codex 세션** — 런처가 로컬 Codex App Server(루프백 WS + capability token)와 TUI를 함께 소유하고, 스레드 ID로 브로커 엔드포인트를 바인딩해 무인 턴 주입을 수행한다.
+2. **관리 Codex 세션** — 런처가 로컬 Codex App Server(루프백 WS + capability token)를 헤드리스로 소유하고(TUI 부착은 본 SPEC에서 미배달이며 후속 카드 몫이다), 스레드 ID로 브로커 엔드포인트를 바인딩해 무인 턴 주입을 수행한다.
 3. **런처 배선 + MCP 승인 스코핑** — cc/glm/codex_launcher의 factory 진입에 관리 경로를 연결하고, 자동 MoAI MCP 승인은 **런처가 소유한 프로세스에만** `-c` 인수로 전달한다.
 
 ## §C. 요구사항 (GEARS)
@@ -54,7 +73,7 @@ t1365 판정(`.moai/reports/t1365/verdict.md`, 2026-09-30)에 따라 PR 병합�
 
 ### C.4 MCP 승인 스코핑
 
-- **REQ-MS-009** — The managed Codex launcher shall pass automatic MoAI MCP approval arguments only to the App Server and TUI processes it owns, and shall not change the project-level capability-based approval mode (`mcpApprovalMode = "writes"`).
+- **REQ-MS-009** — The managed Codex launcher shall pass automatic MoAI MCP approval arguments only to the App Server process it owns (the TUI is not delivered by this SPEC; TUI attach is owed to a follow-up card), and shall not change the project-level capability-based approval mode (`mcpApprovalMode = "writes"`).
 - **REQ-MS-010** — **When** doctor inspects a project whose Codex config carries a project-global MoAI MCP approval override left by an older Factory generation, it shall warn about the stale global approval setting and shall not rewrite the user-owned config file.
 - **REQ-MS-011** — **Where** a broker run is Claude-only, the broker send tool shall continue to refuse `factory_msg_send` so that Claude sessions keep the native SendMessage policy.
 
@@ -111,6 +130,14 @@ PR의 gorilla/websocket 기반 전송은 채택하되 App Server 클라이언트
 ### Out of Scope — Anthropic-backend session re-verification
 
 - The PR's live evidence covers Codex↔Codex and GLM↔Codex on macOS; re-verifying the Anthropic-account backend path is a follow-up, not this SPEC's gate.
+
+## Amendment 2026-10-02 — Known debt
+
+Source: `.moai/reports/t1375/sync-audit.md` (findings F2 and F10) and the operator decisions recorded for card t1375.
+
+1. **Headless owner, TUI attach owed.** The managed Codex launcher owns the local Codex App Server only. No TUI is attached or owned, so a factory-environment `moai codex` launch shows no model output on screen and delivery is unattended. TUI attach is owed to a follow-up card (pending issuance by the leader; no card id is assigned here).
+2. **FIFO turn queue.** The managed turn queue is arrival-order FIFO, one turn at a time, gated on the previous turn's completion. Operator input does not take priority: it queues behind an inbox batch that is already claimed. This weakens the wording AC-MS-008 carried before this amendment.
+3. **Verdict file.** `.moai/reports/t1375/sync-audit.md`.
 
 ## §G. 교차 참조
 
