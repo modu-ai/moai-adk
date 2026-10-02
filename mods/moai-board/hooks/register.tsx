@@ -40,7 +40,8 @@ const noticeRef = { plugin: 'moai-board', key: 'notice' } as const
 
 const DEFAULT_VIEW: MoaiBoardView = { tab: 'queue', card: '', spec: '', file: '', status: 'active', page: 0, root: '' }
 
-// The single process.run call site (REQ-MBM-013). Helpers receive it as a function.
+// @MX:NOTE: [AUTO] the module's only child-process call site (REQ-MBM-013); every argv that reaches it
+// comes from the fixed table or the pick builder in data.ts. Helpers receive it as a function.
 const runMoai = ($: EngineInterface, argv: readonly string[]) =>
   $.process.run(argv, { timeoutMs: CMD_TIMEOUT_MS })
 

@@ -68,6 +68,8 @@ export type SpecRead = { ok: true; text: string; realPath: string } | { ok: fals
 
 const refuse = (reason: string): SpecRead => ({ ok: false, reason })
 
+// @MX:NOTE: [AUTO] the read guard (REQ-MBM-012): allow-lists first, then both stats, then a read of the
+// resolved real path only. A deny-list on spellings would be best effort; this is the allow-list form.
 /**
  * Reads `<root>/.moai/specs/<id>/<file>` only when the id and the file name pass their allow-lists and the
  * file's resolved real path lies below the resolved real path of `<root>/.moai/specs`. Both paths are

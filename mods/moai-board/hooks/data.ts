@@ -50,6 +50,8 @@ export const pickPrefix = (text: string): string => Array.from(text).slice(0, EX
 
 const isPrefixOk = (prefix: string): boolean => prefix.length > 0 && !prefix.startsWith('-')
 
+// @MX:NOTE: [AUTO] the one write-capable argv in the mod. Only the confirmed press handler in
+// register.tsx may call it (SPEC-MOAI-BOARD-MOD-001 REQ-MBM-002, REQ-MBM-003).
 /** The one write-capable argv. Undefined when the id or the prefix fails its check. */
 export const buildPickArgv = (id: string, prefix: string): readonly string[] | undefined =>
   isCardId(id) && isPrefixOk(prefix) ? ['moai', 'gtd', 'next', id, '--expect', prefix] : undefined
