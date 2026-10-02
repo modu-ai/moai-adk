@@ -2,7 +2,7 @@
 id: SPEC-MOAI-BOARD-MOD-001
 title: "moai-board: read-only queue / lane / SPEC side-panel mod for Claude Code (MVP)"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-10-02
 updated: 2026-10-02
 author: manager-spec
