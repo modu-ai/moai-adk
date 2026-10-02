@@ -205,8 +205,10 @@ also compares the plan with an `audit_multi` result and adds
 ```
 
 `ok` is true only when, for every `enforced_required` backend, the result has a
-`per_backend_verdicts` entry whose `verdict` is not `inconclusive` and whose `gate`
-is `required`, **and** the result's `plan_source` is `config` whenever any plan
+`per_backend_verdicts` entry whose `verdict` is exactly `pass` or `fail` and whose
+`gate` is `required` (a `verdict` that is missing, null, empty, `inconclusive` or
+any other value — `"pas"`, say — is an unmet gate named in `convergence_check`),
+**and** the result's `plan_source` is `config` whenever any plan
 entry has a `config.*` source. A result that is not a JSON object is an
 `audit-plan:` error, exit 1. The checker is **pure**: its only inputs are the
 resolved plan and the JSON it is handed; it reads no `.moai/state` file, takes no
@@ -462,8 +464,10 @@ turn ended by context: <ctx error>` and `codex stream closed before the turn
 completed`. `runTurn` already turns that into an `inconclusive` carrying the cause;
 nothing else changes in it. The reader has two callers of `runTurn`
 (`codex_task.go:181` and `mcp_codex.go:1031`), so the review gate, `codex_audit` and
-`codex_task` inherit it; `codex_task` additionally races its own context against
-the turn and is unaffected (spec.md R-13). Existing codex test families must stay
+`codex_task` inherit it. `codex_task` races its own context against the turn and
+is unaffected only for that context/timer race; for the stream-closed arm its
+outcome changes from `completed` with partial output to `failed` with the cause
+(spec.md R-13). Existing codex test families must stay
 green (AC-ACV-020).
 
 **The deadline, derived from the repository's codex siblings.**

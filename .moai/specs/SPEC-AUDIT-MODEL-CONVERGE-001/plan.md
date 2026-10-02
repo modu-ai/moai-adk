@@ -109,7 +109,9 @@
 - **OQ-11** Assumption, flagged (new): making a closed stream and an ended context
   `inconclusive` in `awaitCodexTurnReview` is safe for the other callers of
   `runTurn` — the codex review gate, `codex_audit` and `codex_task` (the last races
-  its own context against the turn and is unaffected, `codex_task.go:168-215`). It
+  its own context against the turn, so the context/timer race is unaffected, but its
+  stream-closed arm changes from `completed` with partial output to `failed` with
+  the cause, `codex_task.go:497-504`). It
   is checked by the existing codex test families staying green (AC-ACV-020), not
   proved; a test that pinned the old partial-text behaviour would have to change.
 - **OQ-12** Assumption, flagged (new): `moai doctor` is the right per-session check

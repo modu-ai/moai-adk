@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUDIT-MODEL-CONVERGE-001
 title: "Make workflow.audit.model real — one resolver turns the audit model token and gates into a backend plan, audit_multi and the plan/sync auditors follow it, and a required cross-model backend that cannot answer fails the gate by name"
-version: "0.1.3"
+version: "0.1.4"
 status: draft
 created: 2026-10-02
 updated: 2026-10-02
@@ -21,6 +21,12 @@ related_specs: [SPEC-MOAI-MCP-SERVER-001, SPEC-V3R6-AUDIT-MODEL-PIN-001, SPEC-MC
 
 ## HISTORY
 
+- 0.1.4 — 2026-10-02 — iteration 4 = delta confirmation over the Tier L ceiling
+  of 3, leader-approved 10-02 (same criterion as t1411); D1 and D2 of
+  plan-audit iteration 3 repaired (REQ-ACV-016 and its checker rule: a required
+  entry counts only with a `verdict` of exactly `pass` or `fail`; REQ-ACV-007 now
+  names the reader rule of REQ-ACV-020 beside the deadline). No requirement or
+  criterion added, none renumbered.
 - 0.1.3 — 2026-10-02 — final revision for plan-audit iteration 2 (FAIL 0.81, tied
   with iteration 1; report `.moai/reports/t1423/plan-audit-iter2.md`; its defects
   are cited as PA2-D1..D9). This revision REDUCES scope. Operator decisions D12
@@ -238,9 +244,11 @@ requirement states one behaviour.
   only the backend pins, the shape the distributed template ships — and the call
   supplies no `gates`, `audit_multi` shall behave exactly as before this SPEC:
   claude required, codex required, glm advisory, and a result whose
-  serialization carries no member the pre-change result did not carry; the one
-  difference is a codex leg that outlasts the deadline of REQ-ACV-020, which
-  previously had no bound.
+  serialization carries no member the pre-change result did not carry; the
+  differences are those of REQ-ACV-020 — its deadline, which a codex leg
+  previously had none of, and its reader rule: a codex turn that ends without
+  `turn/completed` (a closed stream or an ended context) is `inconclusive`
+  instead of a verdict from partial text, for every codex caller.
 
 - **REQ-ACV-008** (When) — **When** a `required` gate that came from the tree's
   `audit.model` token or `audit.gates` is left without a verdict by its backend —
@@ -310,10 +318,11 @@ requirement states one behaviour.
   `audit_multi` result for a tree whose plan lists enforced-required backends, it
   shall pass the result JSON to `moai verify audit-plan --result '<json>'`, and
   the verb shall compare it with the plan without reading any store: for every
-  enforced-required backend, a non-`inconclusive` `per_backend_verdicts` entry
-  whose effective gate is `required`, and, where the plan reports any
-  config-sourced gate, a `plan_source` of `config` on the result; an absent
-  entry, an `inconclusive` entry, a different gate or a missing `plan_source` is
+  enforced-required backend, a `per_backend_verdicts` entry whose `verdict` is
+  exactly `pass` or `fail` and whose effective gate is `required`, and, where the
+  plan reports any config-sourced gate, a `plan_source` of `config` on the result;
+  an absent entry, an `inconclusive` entry, an entry whose `verdict` is missing,
+  null, empty or any other value, a different gate or a missing `plan_source` is
   an unmet gate, named in the verb's `convergence_check`, which the caller shall
   record in Gaps and not yield PASS on, so that a result from a server that
   predates the plan is never trusted.

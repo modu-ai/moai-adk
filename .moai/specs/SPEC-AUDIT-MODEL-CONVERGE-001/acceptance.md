@@ -550,19 +550,27 @@ func TestRedACVCodexStreamClosedBeforeCompletion(t *testing.T) {
   with no audit configuration — `ok: true` for any well-formed result (no
   enforced-required backend, no config-sourced gate); (h) the digest form (only
   `overall_verdict`, `gate_unmet`, `plan_source` and per-backend `backend`, `gate`,
-  `verdict`) is accepted and gives the same answer as the full result. The verb
-  exits 0 in (a)-(e), (g), (h), reads no file other than `workflow.yaml`, takes no
+  `verdict`) is accepted and gives the same answer as the full result; (i) required
+  entries that carry a `gate` of `required` but a malformed `verdict` — the member
+  absent (`{"backend":"codex","gate":"required"}`), `"verdict":""`, and
+  `"verdict":"pas"` — each give `ok: false` with `codex` named in `unmet` (a
+  `verdict` counts only when it is exactly `pass` or `fail`). The verb
+  exits 0 in (a)-(e), (g)-(i), reads no file other than `workflow.yaml`, takes no
   session id, and changes no file.
 - **RED-now**: E3 (no verb, hence no checker); E22 shows result shape (a) is what a
   server that ignores the token produces for this very configuration (`pass`, empty
-  `gate_unmet`, `fail_open=[codex]`).
+  `gate_unmet`, `fail_open=[codex]`). Fixture (i) has no output of its own to
+  record: the verb does not exist yet, so its RED is the same absence observation
+  (E3); no failing output is claimed for it.
 - **green** (M4): `<SCRUB>go test -count=1 -v -run '^TestAuditPlanCmd_ResultCheck$' ./internal/cli/` →
-  `--- PASS: TestAuditPlanCmd_ResultCheck ` and its eight sub-test names (a)-(h),
+  `--- PASS: TestAuditPlanCmd_ResultCheck ` and its nine sub-test names (a)-(i),
   exit 0; and `grep -n "audit-multi\|loadConvergenceResult\|check-session" internal/cli/audit_plan_cmd.go` →
   (no output), exit 1 (no store read, no session id).
 - **Mutant probe**: a checker that keys only on a non-empty `gate_unmet` passes (a)
   and (b) and fails them; one that ignores `plan_source` passes (b) and fails it;
-  one that accepts an `advisory` entry fails (d); one that requires a result even
+  one that accepts an `advisory` entry fails (d); the literal-predicate mutant —
+  `verdict != "inconclusive"` — accepts all three entries of (i) and is killed by
+  (i), which none of (a)-(h) does; one that requires a result even
   for a default plan fails (g); one that reads a persisted file fails the
   no-store grep. The checker cannot detect a caller who passes a fabricated digest
   (spec.md R-8); the receipt guard (AC-ACV-010) is the independent backstop.
@@ -695,8 +703,9 @@ func TestRedACVCodexStreamClosedBeforeCompletion(t *testing.T) {
   `residual_risk_note` naming codex
   (`TestAuditMulti_CodexLegDeadline_FailsClosedNamed`);
   (e) with NO configuration the same hung codex yields the fail-open result (codex
-  `inconclusive`, overall not failed) — the deadline changes the unconfigured case
-  only by ending a hang that previously never ended
+  `inconclusive`, overall not failed) — the unconfigured case differs from before
+  only by the REQ-ACV-020 deadline (ending a hang that previously never ended) and
+  the reader rule of (a) and (b)
   (`TestAuditMulti_CodexLegDeadline_UnconfiguredFailsOpen`).
 - **RED-now**: E29 (the stream-closed arm returns `fail` from partial text with a
   nil error), E30 (`mcp_codex.go:1264` and `:1268` return the partial text with a
