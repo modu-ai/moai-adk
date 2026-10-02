@@ -1240,7 +1240,9 @@ func coerceCodexReviewTarget(v any, root string) (map[string]any, error) {
 
 // awaitCodexTurnReview reads notifications until turn/completed for threadID,
 // collecting the review prose from the exitedReviewMode item (preferred) or the
-// final agentMessage text (fallback). Returns "" on EOF / deadline (fail-open).
+// final agentMessage text (fallback). A stream that closes or a context that
+// ends before turn/completed returns "" and an error naming the cause, never a
+// verdict built from the partial text.
 //
 // The second return value is the TURN FAILURE: non-nil exactly when the
 // turn/completed terminal state is anything other than "completed" (the

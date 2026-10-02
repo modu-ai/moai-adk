@@ -1047,6 +1047,99 @@ func TestAuditPlanCmd_ResultCheck_PredicateMutantsAreKilled(t *testing.T) {
 	}
 }
 
+// gatesOnlyChecker returns the F3 fixtures: a tree whose only audit
+// configuration is `audit.gates.codex: required` (no audit.model token), against
+// a result from a server that predates plan_source and the same result from one
+// that reports it.
+func gatesOnlyChecker() []checkerCase {
+	claudeOK := auditEntry("claude", jReq, jPass)
+	return []checkerCase{
+		{"g_old_server_digest_without_plan_source", auditResultJSON("", claudeOK, auditEntry("codex", jReq, jPass)), false, []string{}},
+		{"g_digest_with_plan_source_config", auditResultJSON("config", claudeOK, auditEntry("codex", jReq, jPass)), true, []string{}},
+	}
+}
+
+// TestAuditPlanCmd_ResultCheck_GatesOnlyTreeRequiresPlanSource (F3, REQ-ACV-016):
+// plan_source is required whenever ANY plan gate is config-sourced — a tree that
+// configures only audit.gates, with no audit.model token, included.
+func TestAuditPlanCmd_ResultCheck_GatesOnlyTreeRequiresPlanSource(t *testing.T) {
+	tree := auditPlanTree(t, planWorkflowYAML("", map[string]string{"codex": "required"}))
+	for _, tc := range gatesOnlyChecker() {
+		t.Run(tc.name, func(t *testing.T) {
+			stdout, stderr, code := runAuditPlanCmd(t, "--project-root", tree, "--result-file", writeResultFile(t, tc.result))
+			if code != 0 || stderr != "" {
+				t.Fatalf("exit=%d stderr=%q", code, stderr)
+			}
+			got := decodePlanOut(t, stdout)
+			if got.Model != "" {
+				t.Fatalf("model = %q, want a tree without a model token", got.Model)
+			}
+			if got.ConvergenceCheck == nil || got.ConvergenceCheck.OK != tc.wantOK {
+				t.Fatalf("convergence_check = %+v, want ok=%v", got.ConvergenceCheck, tc.wantOK)
+			}
+			if !tc.wantOK && !strings.Contains(got.ConvergenceCheck.Reason, "plan_source") {
+				t.Errorf("reason = %q, want it to name plan_source", got.ConvergenceCheck.Reason)
+			}
+		})
+	}
+}
+
+// TestAuditPlanCmd_ResultCheck_PlanSourceMutantIsKilled (F3): the mutant that
+// requires plan_source only when the plan carries a model token survived every
+// fixture written against a model: multi tree. It is run mechanically: the
+// mutant is the real checker over a plan whose model-less gates have lost their
+// config source, which is exactly "plan_source is checked only when the plan
+// has a model token". The multi fixtures cannot tell it from the real checker;
+// the gates-only fixture can.
+func TestAuditPlanCmd_ResultCheck_PlanSourceMutantIsKilled(t *testing.T) {
+	mutate := func(plan config.AuditPlan) config.AuditPlan {
+		if plan.Model != "" {
+			return plan
+		}
+		out := plan
+		out.Backends = append([]config.AuditPlanEntry(nil), plan.Backends...)
+		for i := range out.Backends {
+			out.Backends[i].Source = config.AuditPlanSourceDefault // Explicit stays: enforcement is unchanged
+		}
+		return out
+	}
+	run := func(plan config.AuditPlan, fixture checkerCase) bool {
+		got, err := checkAuditResult(plan, fixture.result, auditEntryAnswered)
+		if err != nil {
+			t.Fatalf("fixture %s: %v", fixture.name, err)
+		}
+		return got.OK
+	}
+
+	multi := multiPlan(t)
+	for _, f := range multiChecker() {
+		if real, mutant := run(multi, f), run(mutate(multi), f); real != mutant {
+			t.Errorf("fixture %s (multi tree) already separates the mutant from the real checker; the survivor premise is wrong", f.name)
+		}
+	}
+
+	gatesOnly, err := config.ResolveAuditPlan(config.AuditConfig{Gates: config.AuditGates{Codex: config.AuditGateRequired}}, config.AuditGates{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gatesOnly.Model != "" || !gatesOnly.FromConfig() {
+		t.Fatalf("precondition: want a model-less plan with a config-sourced gate, got model=%q fromConfig=%v", gatesOnly.Model, gatesOnly.FromConfig())
+	}
+	var killers []string
+	for _, f := range gatesOnlyChecker() {
+		if got := run(gatesOnly, f); got != f.wantOK {
+			t.Errorf("real checker on %s: ok=%v, want %v", f.name, got, f.wantOK)
+		}
+		if run(mutate(gatesOnly), f) != f.wantOK {
+			killers = append(killers, f.name)
+		}
+	}
+	if len(killers) == 0 {
+		t.Fatal("the plan_source mutant survives the gates-only fixtures")
+	}
+	t.Logf("mutant plan_source_only_when_model is killed by: %s", strings.Join(killers, ", "))
+}
+
 // --- structure guards ------------------------------------------------------
 
 func readAuditPlanSource(t *testing.T) string {

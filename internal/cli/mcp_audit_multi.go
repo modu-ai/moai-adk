@@ -94,21 +94,30 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	if planRoot == "" {
 		planRoot = resolveProjectDir()
 	}
-	var audit config.AuditConfig
+	var (
+		audit               config.AuditConfig
+		primaryUnidentified bool
+	)
 	if planRoot != "" {
-		audit, _ = auditSectionForRoot(planRoot)
+		audit, primaryUnidentified = auditSectionForRoot(planRoot)
 	}
 	plan, planErr := config.ResolveAuditPlan(audit, gates)
 	if planErr != nil {
 		return toolErr(auditMultiToolName, planErr), nil
 	}
 
+	// The same call-start reading fixes the enforcement (REQ-ACV-006/008): the
+	// configuration is read once, here, and the fan-out and the unmet-gate check
+	// both follow it — not a second read after the backends have run.
+	enforcement, enforcementNote := callStartEnforcement(audit, primaryUnidentified, gates)
 	cfg := MultiAuditConfig{
-		Gates:          planGates(plan),
-		SessionID:      req.GetString("session_id", ""),
-		ProjectRoot:    projectRoot,
-		OriginProvider: os.Getenv(config.EnvMoaiLaunchProvider),
-		CardID:         cardID,
+		Gates:            planGates(plan),
+		SessionID:        req.GetString("session_id", ""),
+		ProjectRoot:      projectRoot,
+		OriginProvider:   os.Getenv(config.EnvMoaiLaunchProvider),
+		CardID:           cardID,
+		EnforcementGates: &enforcement,
+		EnforcementNote:  enforcementNote,
 	}
 	if plan.FromConfig() {
 		cfg.PlanSource = planSourceConfig
@@ -198,6 +207,41 @@ func planGates(plan config.AuditPlan) config.AuditGates {
 		}
 	}
 	return g
+}
+
+// callStartEnforcement returns the gates the unmet-gate enforcement keys on,
+// from the audit section read at call start: the gates the operator wrote
+// (audit.gates or the audit.model token — never the distributed default), with
+// a gate the call supplied taking precedence. A supplied off or advisory
+// replaces a configured required, so the entry's gate and the enforcement agree
+// (REQ-ACV-006). A supplied required is not itself an opt-in and leaves the
+// configured reading in place: it enforces where the tree wrote required and
+// stays fail-open where it wrote nothing (design.md §D.2). A config-orphaned
+// root whose primary cannot be identified keeps the codex gate assumed required
+// and returns the note that says so (REQ-MWU-011/012); the same supplied-gate
+// precedence applies to it.
+func callStartEnforcement(audit config.AuditConfig, primaryUnidentified bool, supplied config.AuditGates) (config.AuditGates, string) {
+	var (
+		gates config.AuditGates
+		note  string
+	)
+	if primaryUnidentified {
+		gates, note = config.AuditGates{Codex: config.AuditGateRequired}, gateAssumedRequiredNote
+	} else if configured, err := config.ResolveAuditPlan(audit, config.AuditGates{}); err == nil {
+		// An invalid configured value was rejected by the handler's own resolution
+		// before this runs; the error arm is the fail-open reading.
+		gates = configured.ExplicitGates()
+	}
+	for _, g := range []struct{ suppliedGate, enforced *string }{
+		{&supplied.Claude, &gates.Claude},
+		{&supplied.Codex, &gates.Codex},
+		{&supplied.GLM, &gates.GLM},
+	} {
+		if *g.suppliedGate != "" && *g.suppliedGate != config.AuditGateRequired {
+			*g.enforced = *g.suppliedGate
+		}
+	}
+	return gates, note
 }
 
 // stringGateArg coerces an `any` argument (string, or nil) into a string gate.

@@ -533,6 +533,20 @@ type MultiAuditConfig struct {
 	// to "config" when the resolved plan took a gate from the tree's
 	// configuration. Empty ⇒ the member is omitted.
 	PlanSource string
+
+	// EnforcementGates are the gates the unmet-gate enforcement keys on, fixed by
+	// the handler from the plan it resolved at call start (SPEC-AUDIT-MODEL-
+	// CONVERGE-001 REQ-ACV-006/008). Non-nil ⇒ the enforcement reads these and
+	// never re-reads workflow.yaml after the fan-out, so the entry's gate and the
+	// enforcement agree and an edit made while the backends run changes neither.
+	// Nil ⇒ the caller carries no plan and the enforcement re-reads the audited
+	// tree's configuration (workflowAuditGates), byte-identically to before.
+	EnforcementGates *config.AuditGates
+
+	// EnforcementNote accompanies EnforcementGates: the residual-risk prefix for
+	// a gate assumed `required` because a config-orphaned root's primary checkout
+	// could not be identified. Empty otherwise.
+	EnforcementNote string
 }
 
 // backendCallFn is the injectable seam for external-backend invocation.
@@ -807,7 +821,15 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// engine's distributed default (codex required) is not an opt-in. Runs
 	// BEFORE persist so the state file the multi-review-gate Stop hook reads
 	// carries the enforced verdict.
-	enforcementGates, gateAssumedNote := workflowAuditGates(cfg.ProjectRoot)
+	var (
+		enforcementGates config.AuditGates
+		gateAssumedNote  string
+	)
+	if cfg.EnforcementGates != nil {
+		enforcementGates, gateAssumedNote = *cfg.EnforcementGates, cfg.EnforcementNote
+	} else {
+		enforcementGates, gateAssumedNote = workflowAuditGates(cfg.ProjectRoot)
+	}
 	// The actual Claude backend is a default-required independent audit. Unlike
 	// the legacy optional backends, an unavailable required Claude review must
 	// not fall through to a caller-supplied or secondary-model verdict.
