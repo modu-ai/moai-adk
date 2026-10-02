@@ -224,12 +224,15 @@ workflow:
     # dogfood; the numeric values are the shipped unmeasured defaults. Shipped
     # default-false in template (internal/config/defaults.go enforces this; no
     # gate-enabling value under internal/template/templates/).
+    # max_scan_dirs: the unmeasured shipped default; more linked worktrees than
+    # this need a larger value.
     quota_gate:
         enabled: true
         five_hour_hold_pct: 90
         seven_day_hold_pct: 95
         release_margin_pct: 5
         max_age: 30m
+        max_scan_dirs: 128
     # jev: the TypeSafe System One judgment capability. It answers a typed
     # question about a supplied state and returns a typed answer with a
     # probability; it generates no text and decides nothing. Ships OFF, and
