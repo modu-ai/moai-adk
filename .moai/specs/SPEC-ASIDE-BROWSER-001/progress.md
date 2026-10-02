@@ -125,6 +125,42 @@ The mutant was reverted by reversing the edit; the final green run above ran aft
 - The settings half of `TestMCPDefaultExcludesAside` is a case-insensitive substring match for `aside`. A future legitimate use of the English word in a settings string (a comment-free JSON file makes that unlikely) would fail it and need a deliberate edit; this is the intended direction (fail loudly, then decide).
 - `TestMCP_Add_AsideDocumentedCommandLine` shares the process working directory and a package global with other sequential tests; Go runs parallel tests only after sequential ones finish, so no overlap exists today, but a future test that parallelizes around it would need the same discipline.
 
+### M2 (policy skill, core catalog entry, skill checker) — commit subjects `test(SPEC-ASIDE-BROWSER-001): M2 RED - ...` then `feat(SPEC-ASIDE-BROWSER-001): M2 GREEN - ...`
+
+All measurements below were taken by manager-develop (cycle_type=tdd, run as a general-purpose agent because the manager-develop agent type auto-isolates into its own tree) in this run, branch `WT-aside-browser-cli`, worktree t1439, unless a line names another measurer. A commit cannot cite its own hash; commit SHAs of M2 are listed in the final report.
+
+#### Pre-flight (plan.md § C)
+
+- `git rev-parse --short HEAD` printed `1fa6e31ba` (the M1 commit); `git branch --show-current` printed `WT-aside-browser-cli`; `git status --short` printed nothing before any edit.
+- `go build ./...` exit 0 (no output).
+- `aside --version`: measured by the orchestrator, not by manager-develop (REQ-ASB-007); the orchestrator-supplied value is `1.26.916.1741`. The skill pins only the flags the orchestrator read from `aside --help`, `aside mcp --help`, `aside repl --help` and `aside skills --help`; no `aside` command was run by this agent.
+- Baseline of the 13-selector command of AC-ASB-003, run on unmodified HEAD `1fa6e31ba` before any M2 edit, redirected to a file: exit 0, `grep -c '^--- PASS'` over that file printed `13`, last lines `PASS` / `ok  	github.com/modu-ai/moai-adk/internal/template	0.250s`.
+
+#### M2.1 (M2 RED) `internal/template/aside_skill_policy_test.go`
+
+The test file holds the pure checker `checkAsideSkill(text)` over the literal anchors of acceptance.md § Checker anchors (the nine skill rows; the e2e-tester row and the `checkAsideE2E` rows are left to M3) and `TestAsideSkillPolicyAnchors`: one subtest per rule name, plus a `negative_controls` group that mutates the real skill text (each required literal removed in turn; bad lines added: unqualified `aside --permission full-access`, `never forget to run aside --permission full-access`, `npm i -g aside`, and the install command without the word `operator`; an oversize description; frontmatter removed). Every control must make the checker report its named rule; a control that does not is a failure.
+
+Observed RED, run before the skill exists, `go test ./internal/template/ -run '^TestAsideSkillPolicyAnchors$' -v -count=1`, exit 1, verbatim decisive lines:
+
+```
+    aside_skill_policy_test.go:231: skill file unreadable: open <worktree>/internal/template/templates/.claude/skills/moai-ref-aside-browser/SKILL.md: no such file or directory
+--- FAIL: TestAsideSkillPolicyAnchors (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/description_within_listing_cap (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/full_access_prohibited (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/guard_by_omission (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/repl_read_only_limit (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/write_confirmation_via_orchestrator (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/orchestrator_only_operation (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/subagent_never_invokes_skill (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/no_auto_install_advise_only (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/no_credentials_in_outputs (0.00s)
+    --- FAIL: TestAsideSkillPolicyAnchors/negative_controls (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.382s
+```
+
+(`<worktree>` abbreviates the absolute worktree path in this record.) Static checks on the RED tree: `gofmt -l internal/template/aside_skill_policy_test.go` printed nothing, exit 0; `go vet ./internal/template/` printed nothing, exit 0.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _pending run-phase (manager-develop)_
