@@ -170,7 +170,7 @@ func signedValid(c *Contract) bool {
 // carries an unmapped field, an inner-wildcard scope glob, an unsigned or
 // tampered signature, no mission-mappable action, or a non-positive
 // budget.operations. mission's exported surface is never widened.
-func ProjectToMission(c *Contract) (mission.MissionContract, error) {
+func ProjectToMission(c *Contract, mergeTarget string) (mission.MissionContract, error) {
 	if c == nil {
 		return mission.MissionContract{}, fmt.Errorf("%w: contract is nil", ErrNotProjectable)
 	}
