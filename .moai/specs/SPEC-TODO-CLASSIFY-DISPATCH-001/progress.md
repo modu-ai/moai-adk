@@ -230,3 +230,32 @@ m1_to_mN_commit_strategy: per-milestone commits M1..M5 + catalog cascade + AC-00
 - README/docs-site 결정: **의도적 미수정** — 선례 카드 t1240(SPEC-FACTORY-SELF-DISPATCH-001, 유사 사용자 대면 CLI 표면)의 sync 클로즈(f2c44360a)도 CHANGELOG·spec.md·progress.md 3파일만 손대 README 4파일과 docs-site를 만지지 않았으며, 동일 관례를 따른다. t1240 선례에서 README/docs-site 기재는 별도 카드(t1257) 스코프로 이관된 전례가 있다 — 본 카드도 동일하게 리드에게 이관 후보로 보고.
 - reviewer-attention 이월(run §E.3): security-guardian guarded-DDL 적중은 오탐 판정(guarded DDL·base 코드 t359·이중 가드)으로 기각됐으며 본 카드 코드 변경 없음 — base-debt 원장 등재는 리드 처분.
 - AC 상태: 14/14 PASS (run §E.2 재측정분, 이월 편차 없음)
+
+### Amendment Re-close (2026-10-03, card t1407)
+
+위 §E.4 본문(`sync_commit_sha: "34f09f34d"`)은 **v0.3.1 최초 close**의 기록이며 그대로 둔다. 아래는 v0.4.0 제자리 개정(`completed → in-progress → completed`)의 두 번째 close다. 개정 SHA 필드는 `amendment_` 접두 키로 분리해 era 파서가 최초 close의 `sync_commit_sha`를 계속 읽도록 했다.
+
+```yaml
+amendment_sync_status: complete
+amendment_sync_complete_at: 2026-10-03
+amendment_sync_commit_sha: "pending-backfill-sync"   # 커밋이 자기 해시를 인용할 수 없다 — 직후 커밋에서 백필 (D3 예외)
+prior_completed_sha: "34f09f34d"                      # 최초 close; spec.md `## Amendments`가 인용하는 값과 동일
+amendment_commits: "250c03899 → 165283948 (WT-factory-serial-slot-stale-lease, 기준 7109e0900; push 안 함 — 통합은 리더 몫)"
+amendment_scope: "serial 슬롯 3동작 — 만료 임대는 슬롯을 쥐지 않음 / assigned 형제는 새 카드 경로에서만 슬롯을 쥠(옵션 B) / failed는 종단·슬롯 해제"
+amendment_frontmatter_status_transitions:
+  spec.md: "in-progress → implemented → completed (단일 sync 커밋이 종단 전환을 싣는다); updated: 2026-10-03 (이미 sync 커밋 날짜)"
+  plan.md: "n/a — frontmatter 없음, 본문 불변"
+  acceptance.md: "n/a — frontmatter 없음, 본문 불변 (개정 범위 diff 0줄)"
+  progress.md: "본 amendment re-close 블록 추가; §E.2·§E.3·최초 close §E.4 불변"
+amendment_changelog_entry_position: "[Unreleased] > Fixed 최상단 (카드 t1407 단위 항목 1건)"
+amendment_b12_self_test_a: "PASS — 선방출 grep `grep -c 't1407' CHANGELOG.md` = 0 (SPEC ID 단독 grep은 최초 close 항목 때문에 1이므로 카드 ID로 판정)"
+amendment_b12_self_test_b: "PASS — B12 카운터(AC_FILE=acceptance.md, tier M) 출력 `live=14 excluded=0 ambiguous=0` / 14; 개정은 acceptance.md를 바꾸지 않았고(`git diff --stat 7109e0900..HEAD -- acceptance.md` 0줄) CHANGELOG 항목도 14건 불변을 적음"
+amendment_b12_self_test_c: "PASS — CHANGELOG 인용 경로 `ls` 확인: internal/cli/factory_card.go, internal/cli/factory_serial_slot_stale_test.go, .moai/specs/SPEC-TODO-CLASSIFY-DISPATCH-001/{spec,progress}.md"
+amendment_canary_compliance_check: "n/a — 본 개정이 정의하는 선향(forward-looking) 정책 없음"
+amendment_mx_tag_validation: "개정 범위에서 추가·변경한 @MX 태그 없음; sync 페이즈 신규 태그 회전 없음"
+amendment_sync_audit: "리더가 전달한 독립 sync-audit 판정 PASS-WITH-DEBT (audited_sha f31fcffb3). 판정서는 로컬 전용(.moai/reports/t1407/)이라 커밋 산출물로 인용하지 않는다. 감사 뒤에 들어온 커밋은 3cb71dee8(테스트만)와 165283948(SPEC 개정문 후속 — 감사 부채 F10·F12 반영, spec.md 한 파일)이며 이 둘은 감사 이후라 재감사되지 않았다. 판정서가 적은 교차 모델 합성은 `fail`(claude inconclusive·glm 401)로, 감사자는 그것을 덮어쓰지 않았고 불일치는 리더 판독 대상이다 — manager-docs는 이를 재측정하지 않았다."
+```
+
+- **알려진 한계(닫지 않음)**: 슬롯은 레코드 스냅숏에서 읽고 클레임은 그다음에 일어나므로, 두 레인이 동시에 선택하면 둘 다 serial 카드를 임대할 수 있다. 원자 임대는 운영자가 별도 후속으로 가져간다. SPEC 본문 `## Amendments`의 "Known limitation" 항목과 같은 내용이며 본 close는 원자성을 주장하지 않는다.
+- **잔여 미수리**: 소유자 없는 `picked` serial 행과 `assigned` serial 행이 서로를 기다린다(SPEC `## Amendments` "Residual not repaired").
+- **README/docs-site 결정**: 의도적 미수정 — 4-locale 규칙 대상이라 manager-docs가 건드리지 않는다. `README*.md`·`docs-site/content`를 serial 슬롯·직렬 카드·상호 배타 어휘로 조회한 결과 이 동작의 문구는 찾지 못했다(검색 패턴과 범위는 completion 보고 Gaps 참조).
