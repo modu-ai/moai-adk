@@ -1,9 +1,9 @@
 # SPEC-AUDIT-MODEL-CONVERGE-001 — acceptance
 
-> Verification layer (0.1.2). Each criterion is Given-When-Then, binary, and names
+> Verification layer (0.1.3). Each criterion is Given-When-Then, binary, and names
 > the `**Covers**` requirement(s) of spec.md §C. Judgement is by the real output
 > of a real command. Go test names are the tests the run phase writes (plan.md
-> §E); document items are judged by grep and by the template doc-surface test. 22
+> §E); document items are judged by grep and by the template doc-surface test. 20
 > criteria (Tier L ceiling 25). This file has no frontmatter `status:`.
 >
 > **Command convention.** A RED-now cell is a plain single-invocation read-only
@@ -19,40 +19,41 @@
 > **Classification.** **release-blocking** = a single-invocation RED-now ledger
 > row exists and reproduces on the tree it is pinned to. **regression-guard** =
 > no RED-now; GREEN on arrival and must stay GREEN. Release-blocking: 001-007,
-> 009-016, 020-022. Regression-guard: 008, 017, 018, 019.
+> 009-020. Regression-guard: 008.
 >
 > **Tests of record versus mechanisms.** The criteria that grep instruction TEXT
-> (AC-ACV-012, -013, -014, -022's document item) are tests-of-record for what the
-> text says; they cannot show that a model follows it, and a literal satisfied
-> by a comment is the mutant they admit. Where a mechanical backstop exists the
-> criterion anchors the behavioural intent to it: the receipt guard (AC-ACV-010),
-> the verb's result check (AC-ACV-021) and the verb's unreadable-state output
-> (AC-ACV-022).
+> (AC-ACV-013, -014, -016 and the document item of -012) are tests-of-record for
+> what the text says; they cannot show that a model follows it, and a literal
+> placed in a comment satisfies them — each says so. Where a mechanical backstop
+> exists the criterion anchors the behavioural intent to it: the receipt guard
+> (AC-ACV-010), a Go test over the verb's output (AC-ACV-011, -012) and the
+> verb's pure checker (AC-ACV-015).
 >
 > **Baseline-first ordering (verification-claim-integrity §2.3).** AC-ACV-005's
 > "zero non-test readers before, several after" and AC-ACV-008's "byte-identical"
 > are claims about ordering. The baselines are: the ledger below, committed in
-> the plan-phase commit that carries this file (it precedes every run-phase
-> commit), and the golden file of plan.md M1, which lands in its own commit
-> before any behaviour change.
+> the plan-phase commits that carry this file (they precede every run-phase
+> commit), and the golden file of plan.md M1, which lands in its own commit before
+> any behaviour change.
 >
 > **RED-now / green-path pairing.** Each criterion states why it is red on the
 > pinned tree and which milestone flips it. A new behaviour's RED-now is the
-> absence of the code that would provide it, plus — for AC-ACV-009 — one
-> behavioural RED (E22); each named Go test's own RED (verbatim failing output)
-> is captured by manager-develop in M2-M4 before GREEN, per
-> manager-develop-prompt-template §E8 — those captures are run-phase evidence,
-> not ledger rows here.
+> absence of the code that would provide it, plus — for AC-ACV-009 and AC-ACV-020
+> — one behavioural RED (E22, E29); each named Go test's own RED (verbatim failing
+> output) is captured by manager-develop in M2-M4 before GREEN, per
+> manager-develop-prompt-template §E8 — those captures are run-phase evidence, not
+> ledger rows here.
 
 ## Evidence ledger (RED-now observations)
 
-Pin: rows E1-E21 and E23-E28 were run on tree `c50da9c2f` (E1-E21 at 0.1.0) or on
-`53a42f013` (E3 re-measured with the new spelling, E22-E28 at 0.1.2); `53a42f013`
-is `c50da9c2f` plus this SPEC directory only (`git diff --stat c50da9c2f HEAD --
-internal .claude .moai/config` prints nothing), so the code under every row is
-the same. The document-level pin `53a42f013` binds every criterion that carries
-none of its own. Exit codes were read through a `sh -c '…; echo exit=$?'`
-wrapper; the command column is the plain command.
+Pin: rows E1-E10, E12-E19 and E23-E28 were run on `c50da9c2f` (E1-E19 at 0.1.0,
+re-run at 0.1.2/0.1.3); E3 was re-measured with the new spelling at 0.1.2 and E22,
+E24-E34 at 0.1.2/0.1.3 on `53a42f013` or `739556db5`; both are `c50da9c2f` plus
+SPEC files only (`git diff --stat c50da9c2f HEAD -- internal .claude .moai/config`
+prints nothing), so the code under every row is the same. The document-level pin
+`739556db5` binds every criterion that carries none of its own. Exit codes were
+read through a `sh -c '…; echo exit=$?'` wrapper; the command column is the plain
+command. (E11, E20-E21 of earlier versions are retired with the cuts.)
 
 | id | command | verbatim stdout | exit | meaning |
 |---|---|---|---|---|
@@ -63,9 +64,10 @@ wrapper; the command column is the plain command.
 | E3 | `moai verify audit-plan --help` | ` Shared diagnostic snapshot contract. Quality-check results (tests, lint, coverage, ...) recorded under the current working-tree key can be reused by sibling verification layers instead of re-executing, …` (the `verify` GROUP's help) | 0 | red for a specific reason: the verb is unknown, but the group prints its own help and exits 0 — an unknown verb under `verify` is not an error (research.md R-25), so the RED is "the output is the group's help, not a verb usage"; green is a usage naming `moai verify audit-plan` |
 | E3c | `moai verify check --help` | `  Query whether a snapshot recorded for the CURRENT working-tree key is fresh: key equality AND recorded-at within the TTL (default 10 minutes, …` | 0 | positive control: a real verb prints its own usage under the same form |
 | E4 | `grep -c "moai verify audit-plan" .claude/agents/moai/plan-auditor.md .claude/agents/moai/sync-auditor.md .claude/skills/moai-ref-cross-model-audit/SKILL.md .claude/skills/moai/workflows/sync.md` | `…plan-auditor.md:0` · `…sync-auditor.md:0` · `…SKILL.md:0` · `…sync.md:0` | 1 | no agent, skill or `sync.md` instructs the plan call |
-| E4c | `grep -c "audit_multi" .claude/agents/moai/plan-auditor.md .claude/agents/moai/sync-auditor.md .claude/skills/moai-ref-cross-model-audit/SKILL.md` | `…plan-auditor.md:4` · `…sync-auditor.md:5` · `…SKILL.md:6` | 0 | positive control: the same files do carry the tool name, so E4's zeros are not an empty scan |
+| E4c | `grep -c "audit_multi" .claude/agents/moai/plan-auditor.md .claude/agents/moai/sync-auditor.md .claude/skills/moai-ref-cross-model-audit/SKILL.md` | `…plan-auditor.md:4` · `…sync-auditor.md:5` · `…SKILL.md:6` | 0 | positive control: the same files do carry the tool name |
 | E4b | `grep -c "legacy path used" .claude/agents/moai/plan-auditor.md .claude/agents/moai/sync-auditor.md .claude/skills/moai-ref-cross-model-audit/SKILL.md .claude/skills/moai/workflows/sync.md` | `:0` · `:0` · `:0` · `:0` | 1 | the named legacy-path Gap wording is absent (local copies) |
 | E4bt | `grep -c "legacy path used" internal/template/templates/.claude/agents/moai/plan-auditor.md internal/template/templates/.claude/agents/moai/sync-auditor.md internal/template/templates/.claude/skills/moai-ref-cross-model-audit/SKILL.md internal/template/templates/.claude/skills/moai/workflows/sync.md` | `:0` · `:0` · `:0` · `:0` | 1 | absent in the template copies too |
+| E4s | `grep -c "Shared diagnostic snapshot contract" .claude/agents/moai/plan-auditor.md .claude/agents/moai/sync-auditor.md .claude/skills/moai-ref-cross-model-audit/SKILL.md .claude/skills/moai/workflows/sync.md` | `:0` · `:0` · `:0` · `:0` | 1 | the positive old-binary signature is not yet written into the instruction text |
 | E4d | `grep -cF "Single-backend audit mode (per the project" .claude/agents/moai/plan-auditor.md .claude/agents/moai/sync-auditor.md internal/template/templates/.claude/agents/moai/plan-auditor.md internal/template/templates/.claude/agents/moai/sync-auditor.md` | `:1` · `:1` · `:1` · `:1` | 0 | the prose-interpretation block exists in all four agent copies |
 | E4t | `grep -c "moai verify audit-plan" internal/template/templates/.claude/agents/moai/plan-auditor.md internal/template/templates/.claude/agents/moai/sync-auditor.md internal/template/templates/.claude/skills/moai-ref-cross-model-audit/SKILL.md internal/template/templates/.claude/skills/moai/workflows/sync.md` | `:0` · `:0` · `:0` · `:0` | 1 | the template copies carry no plan call either |
 | E4x | `grep -c "moai verify audit-plan" internal/template/templates/.codex/agents/moai/plan-auditor.toml internal/template/templates/.codex/agents/moai/sync-auditor.toml` | `:0` · `:0` | 1 | the emitted `.codex` roles carry none (they must follow the `.md` after `make agents-emit`) |
@@ -86,14 +88,15 @@ wrapper; the command column is the plain command.
 | E18 | `grep -n "context.WithTimeout" internal/cli/mcp_convergence.go` | (no output) | 1 | `performCodexAudit` and the fan-out apply no deadline to the codex leg |
 | E18c | `grep -n "context.WithTimeout" internal/cli/mcp_claude.go` | `110:	auditCtx, cancel := context.WithTimeout(ctx, claudeAuditTimeout)` | 0 | positive control: the same form hits where a deadline exists |
 | E19 | `grep -c "audit_multi unreachable" .claude/skills/moai/workflows/sync.md internal/template/templates/.claude/skills/moai/workflows/sync.md` | `:0` · `:0` | 1 | neither `sync.md` copy records the unavailable-`audit_multi` outcome |
-| E20 | `grep -c "audit_multi" .claude/workflows/sync-audit-4dim.js internal/template/templates/.claude/workflows/sync-audit-4dim.js` | `:0` · `:0` | 1 | neither script copy says the verdict is the Claude input to an `audit_multi` call |
-| E21 | `grep -c "mcp__moai__" .claude/workflows/sync-audit-4dim.js internal/template/templates/.claude/workflows/sync-audit-4dim.js` | `:0` · `:0` | 1 | baseline for "the script never calls an MCP tool" — it must stay 0 |
-| E22 | `go test -overlay <SCRATCH>/overlay.json -count=1 -v -run '^TestRedACVModelMultiCodexInconclusive$' ./internal/cli/` (source in the ledger entry E22-src; `<SCRATCH>` = a machine-local scratch directory holding `zz_red_acv_test.go` and the overlay JSON) | `=== RUN   TestRedACVModelMultiCodexInconclusive` · `zz_red_acv_test.go:39: overall_verdict=pass gate_unmet="" fail_open=[codex]` · `zz_red_acv_test.go:41: RED: model: multi with codex inconclusive returned overall_verdict=pass gate_unmet="" (want fail / codex)` · `--- FAIL: TestRedACVModelMultiCodexInconclusive (0.01s)` · `FAIL	github.com/modu-ai/moai-adk/internal/cli	1.087s` | 1 | the BEHAVIOURAL RED for AC-ACV-009 and AC-ACV-021: a `model: multi` yaml with codex `inconclusive` currently returns pass with an empty `gate_unmet` — also the exact shape an older server returns. Tree `53a42f013`. The overlay supplies a throwaway test file that is not in the tree. |
-| E23 | `grep -c "check-session" .claude/skills/moai/workflows/sync.md internal/template/templates/.claude/skills/moai/workflows/sync.md` | `:0` · `:0` | 1 | neither `sync.md` copy mentions the result check |
+| E22 | `go test -overlay <SCRATCH>/overlay.json -count=1 -v -run '^TestRedACVModelMultiCodexInconclusive$' ./internal/cli/` (source in the ledger entry E22-src; `<SCRATCH>` = a machine-local scratch directory holding `zz_red_acv_test.go` and the overlay JSON) | `=== RUN   TestRedACVModelMultiCodexInconclusive` · `zz_red_acv_test.go:39: overall_verdict=pass gate_unmet="" fail_open=[codex]` · `zz_red_acv_test.go:41: RED: model: multi with codex inconclusive returned overall_verdict=pass gate_unmet="" (want fail / codex)` · `--- FAIL: TestRedACVModelMultiCodexInconclusive (0.01s)` · `FAIL	github.com/modu-ai/moai-adk/internal/cli	1.087s` | 1 | the BEHAVIOURAL RED for AC-ACV-009 and the old-server shape for AC-ACV-015: a `model: multi` yaml with codex `inconclusive` currently returns pass with an empty `gate_unmet`. Tree `53a42f013`. The overlay supplies a throwaway test file that is not in the tree. |
+| E23 | `grep -c "audit-plan --result" .claude/skills/moai/workflows/sync.md internal/template/templates/.claude/skills/moai/workflows/sync.md` | `:0` · `:0` | 1 | neither `sync.md` copy mentions the checker call |
 | E24 | `grep -n "NewDefaultWorkflowConfig" internal/auditreceipt/store.go internal/cli/mcp_worktree_root.go internal/cli/mcp_audit_multi.go internal/cli/audit_pin.go` | (no output) | 1 | baseline for the raw-read guard: the existing raw readers never construct the default config |
 | E24c | `grep -rln --exclude="*_test.go" "NewDefaultWorkflowConfig" internal` | `internal/config/types.go` · `internal/config/defaults.go` · `internal/config/closed_sets.go` · `internal/config/audit_models.go` · `internal/cli/mcp_audit_multi_record.go` · `internal/cli/contract.go` | 0 | positive control: the same form hits files that do use the default constructor |
-| E25 | `grep -n "loadConvergenceResult(" internal/cli/multi_review_gate.go` | `120:func loadConvergenceResult(projectDir, sessionID string) (ConvergenceResult, bool) {` | 0 | the persisted-result reader the verb's check reuses exists |
 | E28 | `grep -c "config_status: unreadable" .claude/agents/moai/plan-auditor.md .claude/agents/moai/sync-auditor.md .claude/skills/moai-ref-cross-model-audit/SKILL.md .claude/skills/moai/workflows/sync.md` | `:0` · `:0` · `:0` · `:0` | 1 | the unreadable-state Gap wording is absent |
+| E29 | `go test -overlay <SCRATCH>/overlay_eof.json -count=1 -v -run '^TestRedACVCodexStreamClosedBeforeCompletion$' ./internal/cli/` (source in the ledger entry E29-src) | `zz_red_eof_test.go:12: body="The change introduces no blocking issues." verdict=inconclusive err=<nil>` · `zz_red_eof_test.go:12: body="- [P1] unvalidated input reaches the shell" verdict=fail err=<nil>` · `zz_red_eof_test.go:14: RED: a stream closed before turn/completed returned verdict=fail for body "- [P1] unvalidated input reaches the shell" (want inconclusive)` · `--- FAIL: TestRedACVCodexStreamClosedBeforeCompletion (0.00s)` · `FAIL	github.com/modu-ai/moai-adk/internal/cli	1.470s` | 1 | the BEHAVIOURAL RED for AC-ACV-020: a stream cut after a review item and before `turn/completed` is read as a verdict from partial text (`fail` here, with `err=<nil>`). A `pass` from partial text was NOT reproduced with the clean-prose fixture (it came out `inconclusive`); only the partial-`fail` is claimed. Tree `739556db5`. |
+| E30 | `grep -n "return bestCodexReviewText(reviewText, agentText), nil" internal/cli/mcp_codex.go` | `1264:			return bestCodexReviewText(reviewText, agentText), nil` · `1268:			return bestCodexReviewText(reviewText, agentText), nil` · `1319:			return bestCodexReviewText(reviewText, agentText), nil` | 0 | three returns of partial-or-final text with a nil error: the context-ended arm (1264), the stream-closed arm (1268) and the completed arm (1319). Green leaves only the completed arm. |
+| E31 | `grep -c "CLAUDE_PROJECT_DIR" internal/cli/main_test.go` | `0` | 1 | the `internal/cli` test binary does not scrub the variable |
+| E31c | `grep -n "EnvClaudeProjectDir" internal/hook/main_test.go` | `68:	_ = os.Unsetenv(config.EnvClaudeProjectDir)` | 0 | positive control: the hook test binary already does |
 
 **Ledger entry E22-src** — the throwaway test the overlay supplies (not part of
 the tree; the overlay JSON is `{"Replace": {"<tree>/internal/cli/zz_red_acv_test.go":
@@ -144,6 +147,27 @@ func TestRedACVModelMultiCodexInconclusive(t *testing.T) {
 }
 ```
 
+**Ledger entry E29-src** — the throwaway test of E29 (overlay JSON as for E22, file
+`internal/cli/zz_red_eof_test.go`):
+
+```go
+package cli
+
+import "testing"
+
+func TestRedACVCodexStreamClosedBeforeCompletion(t *testing.T) {
+	for _, body := range []string{"The change introduces no blocking issues.", "- [P1] unvalidated input reaches the shell"} {
+		lines := codexSessionScript(body)
+		lines = lines[:len(lines)-1] // drop turn/completed: the stream ends first
+		out, err := runCodexTurnWithLines(t, lines)
+		t.Logf("body=%q verdict=%s err=%v", body, out.Verdict, err)
+		if out.Verdict != VerdictInconclusive {
+			t.Errorf("RED: a stream closed before turn/completed returned verdict=%s for body %q (want %s)", out.Verdict, body, VerdictInconclusive)
+		}
+	}
+}
+```
+
 ## AC-ACV-001 — every token maps to a total plan
 
 **Covers**: maps REQ-ACV-001
@@ -164,7 +188,7 @@ func TestRedACVModelMultiCodexInconclusive(t *testing.T) {
   five sub-test names, exit 0.
 - **Mutant probe**: a resolver that returns only the `multi` row for every token
   fails the table; one that maps `claude` to Claude alone (codex and glm `off`)
-  fails the `claude` row; one that leaves a backend unset in any row fails the
+  fails the `claude` row; one that leaves a backend unset fails the
   exactly-one-gate assertion.
 
 ## AC-ACV-002 — precedence, with the deciding source recorded
@@ -175,9 +199,9 @@ func TestRedACVModelMultiCodexInconclusive(t *testing.T) {
 - **Given** `audit.model: multi`, `audit.gates.glm: off`, and a caller gate
   `codex: advisory`, **When** the plan is resolved, **Then** codex is `advisory`
   (source `argument`), glm is `off` (source `config.gates`), claude is `required`
-  (source `config.model`); and with the caller gate removed codex returns to
-  `required` (source `config.model`); and with an empty token and no gates every
-  entry has source `default`.
+  (source `config.model`); with the caller gate removed codex returns to
+  `required` (source `config.model`); with an empty token and no gates every entry
+  has source `default`.
 - **RED-now**: E1/E15.
 - **green** (M2): `<SCRUB>go test -count=1 -v -run '^TestResolveAuditPlan_Precedence$' ./internal/config/` →
   `--- PASS: TestResolveAuditPlan_Precedence `, exit 0.
@@ -221,8 +245,8 @@ func TestRedACVModelMultiCodexInconclusive(t *testing.T) {
   `internal/auditreceipt/store.go` references `NewDefaultWorkflowConfig` or
   `NewDefaultConfig`.
 - **RED-now**: E15 — the file does not exist (exit 2), E15c shows the control
-  form works on an existing file of the package; E24 records that the existing
-  raw readers already satisfy the second clause (E24c shows the form finds
+  form works on an existing file of the package; E24 records that the existing raw
+  readers already satisfy the second clause (E24c shows the form finds
   default-constructor users elsewhere).
 - **green** (M2-M4): `grep -c "^package config" internal/config/audit_plan.go` →
   `1`, exit 0; `grep -nE "\"(os|time|net|io|path/filepath|os/exec)\"" internal/config/audit_plan.go` →
@@ -231,15 +255,14 @@ func TestRedACVModelMultiCodexInconclusive(t *testing.T) {
   AC-ACV-011 (explicit `claude`) passes.
 - **Mutant probe**: a resolver that reads `os.Getenv` or the yaml file itself
   fails the second command; a consumer that builds the input from the default
-  constructor fails the third command and the pins-only golden (every project
-  would read `claude`).
+  constructor fails the third command and the pins-only golden.
 
 ## AC-ACV-005 — the resolver is consumed by non-test callers
 
 **Covers**: maps REQ-ACV-005
 
 - **Classification**: release-blocking (RED-now: E1, E2, E2c; baseline-first —
-  the ledger commit precedes M2).
+  the ledger commits precede M2).
 - **Given** the run-phase tree, **When** the non-test files that reference the
   resolver are listed, **Then** the list names the definition file and at least
   four consumers: `internal/config/audit_plan.go`,
@@ -250,8 +273,8 @@ func TestRedACVModelMultiCodexInconclusive(t *testing.T) {
 - **RED-now**: E1 (no reference), E2 (no reader of the token), E2c (the old
   validator was defined and never called).
 - **green** (M2-M4): `grep -rl --exclude="*_test.go" "ResolveAuditPlan(" internal` →
-  stdout containing those five paths, exit 0; and AC-ACV-006's handler-level
-  test passes (a reference without behaviour does not satisfy this criterion).
+  stdout containing those five paths, exit 0; and AC-ACV-006's handler-level test
+  passes (a reference without behaviour does not satisfy this criterion).
 - **Mutant probe**: calling the resolver only from the verb leaves the
   `mcp_audit_multi.go` and `store.go` paths out of the listing and fails
   AC-ACV-006 and AC-ACV-010.
@@ -268,8 +291,8 @@ func TestRedACVModelMultiCodexInconclusive(t *testing.T) {
   stub records are exactly the non-`off` entries of that token's §D.1 row
   (`codex` → [codex]; `glm` → [glm]; `claude` → [claude, codex, glm] — Claude
   explicit, the rest the default, so the fan-out is today's; `multi` → [claude,
-  codex, glm]), the persisted and returned result carries `plan_source: "config"`
-  in every row, and the omitted-key row takes codex from the plan.
+  codex, glm]), the returned result carries `plan_source: "config"` in every row,
+  and the omitted-key row takes codex from the plan.
 - **RED-now**: E1/E2 — with no reader of the token, the `codex` and `glm` rows
   would fan out to the default three and no row would carry `plan_source`.
 - **green** (M3): `<SCRUB>go test -count=1 -v -run '^TestAuditMulti_ConfigPlanFallback$' ./internal/cli/` →
@@ -309,10 +332,10 @@ func TestRedACVModelMultiCodexInconclusive(t *testing.T) {
   both roots (the result stays a pass — fail-open — and carries no `plan_source`,
   no `gate_unmet`); and the plan resolved for each root is the default plan with
   every entry `explicit: false`.
-- **RED-now**: none by design (a guard). It is red against any change that adds
-  a member, flips the codex-inconclusive case to a fail, changes the default
-  gates, or reads a default-merged configuration (which would give the pins-only
-  root `model: claude`).
+- **RED-now**: none by design (a guard). It is red against any change that adds a
+  member, flips the codex-inconclusive case to a fail, changes the default gates,
+  or reads a default-merged configuration (which would give the pins-only root
+  `model: claude`).
 - **green** (M1 on arrival; M2-M7 keep it): `<SCRUB>go test -count=1 -v -run '^(TestAuditMulti_NoConfigNoArgs_ByteIdentical|TestAuditMulti_PinsOnlyConfig_ByteIdentical)$' ./internal/cli/` →
   two `--- PASS:` lines, exit 0.
 - **Mutant probe**: always emitting `plan_source`, treating the default codex
@@ -336,8 +359,7 @@ func TestRedACVModelMultiCodexInconclusive(t *testing.T) {
   stays a pass (AC-ACV-008's case).
 - **RED-now**: E22 — measured on tree `53a42f013`: with exactly this fixture the
   handler returns `overall_verdict=pass gate_unmet="" fail_open=[codex]` (exit 1
-  from the throwaway test that asserts the green behaviour); E2 gives the reason
-  (no reader of the token).
+  from the throwaway test that asserts the green behaviour); E2 gives the reason.
 - **green** (M3): `<SCRUB>go test -count=1 -v -run '^TestAuditMulti_ModelMulti_CodexUnavailable_FailsClosedNamed$' ./internal/cli/` →
   `--- PASS: TestAuditMulti_ModelMulti_CodexUnavailable_FailsClosedNamed ` and its
   six sub-test names, exit 0.
@@ -369,13 +391,13 @@ func TestRedACVModelMultiCodexInconclusive(t *testing.T) {
 - **Mutant probe**: leaving `rawCodexGate` on the raw `audit.gates` key makes the
   `multi` row false and fails the first test.
 
-## AC-ACV-011 — `moai verify audit-plan` prints the plan and does nothing else
+## AC-ACV-011 — `moai verify audit-plan` prints the plan and runs no audit
 
-**Covers**: maps REQ-ACV-010, REQ-ACV-011, REQ-ACV-012
+**Covers**: maps REQ-ACV-010, REQ-ACV-011
 
 - **Classification**: release-blocking (RED-now: E3).
-- **Given** fixture trees (no yaml; a pins-only `audit` block; `model: multi`;
-  an explicit `model: claude`; `model: codex` with `gates.glm: advisory`;
+- **Given** fixture trees (no yaml; a pins-only `audit` block; `model: multi`; an
+  explicit `model: claude`; `model: codex` with `gates.glm: advisory`;
   `model: grok`; a config-orphaned worktree), **When**
   `moai verify audit-plan --project-root <tree>` runs in each, **Then** it prints
   JSON with the members of design.md §D.5 and exits 0 — no yaml or pins only:
@@ -383,46 +405,82 @@ func TestRedACVModelMultiCodexInconclusive(t *testing.T) {
   the explicit `claude` fixture: claude `required` source `config.model`
   `explicit: true`, codex `required` source `default` `explicit: false`, glm
   `advisory` source `default`, `cross_model_active: false`, `enforced_required:
-  ["claude"]`; invalid configuration prints nothing on stdout, the REQ-ACV-003
-  text prefixed `audit-plan:` on stderr, exit 1; and across every run the tree's
-  `.moai/state` directory is byte-identical before and after, no receipt file
-  exists, and the `backendCall` seam recorded zero calls. Given `CLAUDE_PROJECT_DIR`
-  set to one tree and `--project-root` naming another, the named tree is read;
-  with no flag the `CLAUDE_PROJECT_DIR` tree is read (the trap of design.md §D.4).
-  The output contract holds: stdout is one JSON object carrying `config_status`,
-  or stderr carries an `audit-plan:` line — nothing else.
+  ["claude"]`; the invalid fixture prints nothing on stdout, the REQ-ACV-003 text
+  prefixed `audit-plan:` on stderr, exit 1. Across every run the `backendCall`
+  seam recorded zero calls and **no regular file under the audited tree's
+  `.moai` was created or changed** (a recursive listing of regular files, before
+  and after, compared; the CLI's own start-up directory creation of
+  `.moai/reports` and `.moai/state` under the working directory — measured,
+  research.md R-33 — is pre-existing, is not a file the verb writes, and is
+  excluded from the comparison by listing regular files only). Given
+  `CLAUDE_PROJECT_DIR` set to one tree and `--project-root` naming another, the
+  named tree is read; with no flag the `CLAUDE_PROJECT_DIR` tree is read (the trap
+  of design.md §D.4). The output contract holds: stdout is one JSON object
+  carrying `config_status`, or stderr carries an `audit-plan:` line — nothing
+  else.
 - **RED-now**: E3 — the output is the `verify` group's help (exit 0), not a verb
   usage or a JSON plan.
-- **green** (M4): `<SCRUB>go test -count=1 -v -run '^(TestAuditPlanCmd_PrintsPlan|TestAuditPlanCmd_PinsOnlyIsDefault|TestAuditPlanCmd_InvalidConfigExitsOne|TestAuditPlanCmd_WritesNothing|TestAuditPlanCmd_ProjectRoot|TestAuditPlanCmd_OutputContract|TestAuditPlanCmd_NoAskUserQuestion)$' ./internal/cli/` →
+- **green** (M4): `<SCRUB>go test -count=1 -v -run '^(TestAuditPlanCmd_PrintsPlan|TestAuditPlanCmd_PinsOnlyIsDefault|TestAuditPlanCmd_InvalidConfigExitsOne|TestAuditPlanCmd_WritesNoFiles|TestAuditPlanCmd_ProjectRoot|TestAuditPlanCmd_OutputContract|TestAuditPlanCmd_NoAskUserQuestion)$' ./internal/cli/` →
   seven `--- PASS:` lines, exit 0; and `moai verify audit-plan --help` on the built
-  binary → a usage naming `moai verify audit-plan`, exit 0 (compare E3: the group
-  help).
-- **Mutant probe**: a verb that calls `audit_multi` or writes a receipt fails
-  `WritesNothing`; one that prints a plan for an invalid token fails the exit-1
-  assertion; one that ignores `--project-root` in favour of the environment fails
-  `ProjectRoot`; one that reads a default-merged config prints `model: claude`
-  for the pins-only tree and fails `PinsOnlyIsDefault`.
+  binary → a usage naming `moai verify audit-plan`, exit 0 (compare E3).
+- **Mutant probe**: a verb that calls `audit_multi` or writes a receipt or state
+  file fails `WritesNoFiles`; one that prints a plan for an invalid token fails
+  the exit-1 assertion; one that ignores `--project-root` in favour of the
+  environment fails `ProjectRoot`; one that reads a default-merged config prints
+  `model: claude` for the pins-only tree and fails `PinsOnlyIsDefault`.
 
-## AC-ACV-012 — the auditors follow the measured plan, not prose
+## AC-ACV-012 — an unreadable `workflow.yaml` is a distinct, PASS-blocking state
+
+**Covers**: maps REQ-ACV-012, REQ-ACV-015
+
+- **Classification**: release-blocking (RED-now: E3; document literal E28). The
+  document item is a test-of-record for instruction text; the mechanical part is
+  the verb's output.
+- **Given** a temp tree whose `workflow.yaml` is corrupt (for example
+  `workflow: [unclosed`), **When** `moai verify audit-plan --project-root <tree>`
+  runs, **Then** it prints JSON with `config_status: "unreadable"`,
+  `cross_model_active: "unknown"`, `cross_model_required: "unknown"`, an empty
+  `backends`, and a `note` naming the file and the parse cause, exits 0, prints no
+  default plan; the verb's reader is `loadWorkflowAuditSection` and not
+  `workflowAuditPins` (which turns a parse error into an absent configuration,
+  `audit_pin.go:58-64`); and the two auditors and `sync.md` (local and template)
+  say that this state, an `audit-plan:` error, and any other failure to run the
+  verb that is not the old-binary signature are recorded as a Gap and yield no
+  PASS, and are not the legacy path.
+- **RED-now**: E3 (no verb); E28 (zero for `config_status: unreadable` in the four
+  local documents).
+- **green** (M4, M7): `<SCRUB>go test -count=1 -v -run '^TestAuditPlanCmd_UnreadableConfig$' ./internal/cli/` →
+  `--- PASS: TestAuditPlanCmd_UnreadableConfig `, exit 0;
+  `grep -n "loadWorkflowAuditSection" internal/cli/audit_plan_cmd.go` → at least
+  one line, exit 0; `grep -n "workflowAuditPins" internal/cli/audit_plan_cmd.go` →
+  (no output), exit 1; and `grep -c "config_status: unreadable" .claude/agents/moai/plan-auditor.md .claude/agents/moai/sync-auditor.md .claude/skills/moai-ref-cross-model-audit/SKILL.md .claude/skills/moai/workflows/sync.md` →
+  each at least `1`, exit 0.
+- **Mutant probe**: a verb that reads through `workflowAuditPins` prints the
+  default plan with exit 0 for the corrupt file and fails the test; one that exits
+  non-zero without the JSON state is indistinguishable from an invalid
+  configuration and fails the contract assertions. A literal placed in a comment
+  satisfies the greps and is NOT caught — the behavioural intent rests on the
+  verb's output above.
+
+## AC-ACV-013 — the auditors follow the measured plan, not prose
 
 **Covers**: maps REQ-ACV-013
 
 - **Classification**: release-blocking (RED-now: E4, E4t, E4x, E4d; positive
   control E4c). A test-of-record for instruction TEXT; the mechanical backstops
-  are AC-ACV-010 and AC-ACV-021.
+  are AC-ACV-010 (the receipt guard) and AC-ACV-015 (the checker).
 - **Given** the four agent copies (`plan-auditor.md`, `sync-auditor.md`, local
   and template), the emitted `.codex` pair, and the cross-model skill (local and
   template), **When** they are scanned after M7, **Then** each `.md` agent and
-  each skill copy contains `moai verify audit-plan` and `--check-session`; the
-  old block heading `Single-backend audit mode (per the project` is absent from
-  all four agent copies (the token-keyed prose survives only inside the
-  paragraph labelled as the legacy path, AC-ACV-013); the two template `.codex`
-  role TOMLs, regenerated by `make agents-emit`, contain `moai verify
-  audit-plan`; the local `sync-auditor.md` still carries its
-  `<!-- moai:closure-second-review:start -->` and `:end -->` markers; and
-  `TestClaudeAuditTemplateSurfacesAndCatalogHash` and the new doc-surface test
-  pass (identical audit section between local and template agents; catalogue hash
-  current).
+  each skill copy contains `moai verify audit-plan` and `--result`; the old block
+  heading `Single-backend audit mode (per the project` is absent from all four
+  agent copies (the token-keyed prose survives only inside the paragraph labelled
+  as the legacy path, AC-ACV-014); the two template `.codex` role TOMLs,
+  regenerated by `make agents-emit`, contain `moai verify audit-plan`; the local
+  `sync-auditor.md` still carries its `<!-- moai:closure-second-review:start -->`
+  and `:end -->` markers; and `TestClaudeAuditTemplateSurfacesAndCatalogHash` and
+  the new doc-surface test pass (identical audit section between local and
+  template agents; catalogue hash current).
 - **RED-now**: E4, E4t, E4x (zero), E4d (one each).
 - **green** (M7): `grep -c "moai verify audit-plan" .claude/agents/moai/plan-auditor.md …` →
   every count at least `1`, exit 0; `grep -cF "Single-backend audit mode (per the project" …` →
@@ -434,72 +492,112 @@ func TestRedACVModelMultiCodexInconclusive(t *testing.T) {
   doc-surface tests; editing the `.md` without `make agents-emit` leaves E4x at
   zero and fails the TOML check; the literal placed in a comment satisfies the
   grep and is NOT caught here — that gap is why the behavioural intent rests on
-  AC-ACV-010 and AC-ACV-021.
+  AC-ACV-010 and AC-ACV-015.
 
-## AC-ACV-013 — an absent verb is the legacy path with a named Gap; a failing required backend is not
+## AC-ACV-014 — only the positive old-binary signature is the legacy path
 
-**Covers**: maps REQ-ACV-014
+**Covers**: maps REQ-ACV-014, REQ-ACV-015
 
-- **Classification**: release-blocking (RED-now: E4b, E4bt). A test-of-record for
-  instruction text, with a mechanical part (the verb's output contract,
+- **Classification**: release-blocking (RED-now: E4b, E4bt, E4s). A test-of-record
+  for instruction text, with one mechanical part (the verb's output contract,
   AC-ACV-011).
 - **Given** the two auditor agents, the cross-model skill and `sync.md` (local and
-  template) after M7, **When** scanned, **Then** each contains the literal
-  `plan surface unreachable, legacy path used`, the labelled legacy-path
-  paragraph, the statement that the verb is detected by its output contract (not
-  by exit code, because an unknown verb under `verify` exits 0), and the
-  distinction `a configured required backend that does not answer stays
-  fail-closed`; and the legacy-path paragraph preserves the pre-change behaviour —
-  the auditor reads the project's `audit_model` as the pre-change text said and
-  does not treat the missing verb as a failure.
+  template) after M7, **When** scanned, **Then** each contains: the literal
+  `plan surface unreachable, legacy path used`; the positive signature that
+  triggers it (the `verify` group help — the text `Shared diagnostic snapshot
+  contract` with neither `config_status` nor an `audit-plan:` line); the statement
+  that a refused, crashed, timed-out or malformed run is NOT the legacy path but a
+  PASS-blocking Gap; the sentence that a configured required backend that does not
+  answer stays fail-closed; and, in the legacy paragraph, the instruction to call
+  `audit_multi` **without a `gates` argument** whenever the tree's `workflow.yaml`
+  sets an audit model other than `claude` or any `audit.gates` key — which closes
+  the `model: claude` plus `gates.glm: required` case that the pre-change text
+  reviewed with Claude only. The mechanical part: `TestAuditPlanCmd_OutputContract`
+  (AC-ACV-011) pins that a run of the verb always produces either the JSON object
+  or an `audit-plan:` line, so the group-help signature can never be produced by
+  the verb itself.
 - **RED-now**: E4b (local) and E4bt (template) — the literal is absent in all
-  eight files; E3 shows why the exit code cannot be the detector.
+  eight files; E4s — the signature is absent; E3 shows why the exit code cannot be
+  the detector (the unknown verb exits 0).
 - **green** (M7): `grep -c "plan surface unreachable, legacy path used" .claude/agents/moai/plan-auditor.md .claude/agents/moai/sync-auditor.md .claude/skills/moai-ref-cross-model-audit/SKILL.md .claude/skills/moai/workflows/sync.md` →
-  every count at least `1`, exit 0; and `TestAuditPlanDocSurface` (AC-ACV-012's
-  run) asserts the same literals in the template copies.
-- **Mutant probe**: wording the Gap without the fixed literal fails the grep; an
-  instruction that makes the missing verb a PASS-blocking failure contradicts the
-  "legacy path" paragraph and is a review finding the grep cannot see — the
-  mechanical protection against a Claude-only PASS in the configured case is
-  AC-ACV-010 (receipts) and AC-ACV-021 (result check), which apply whenever the
-  verb IS reached.
+  every count at least `1`, exit 0; the same form with `Shared diagnostic snapshot contract` →
+  every count at least `1`, exit 0; and `TestAuditPlanDocSurface` (AC-ACV-013's run)
+  asserts the same literals in the template copies.
+- **Mutant probe**: wording the Gap without the fixed literal fails the grep. An
+  instruction that routes a refused or crashed run into the legacy path
+  contradicts the PASS-blocking sentence and is a review finding the grep cannot
+  see: the literals are present either way — the criterion says what the text
+  states, not that a model obeys it; the backstops for a configured plan are
+  AC-ACV-010 and AC-ACV-015, which apply whenever the verb is reached.
 
-## AC-ACV-014 — the sync verdict is binding only with a passing `audit_multi` and a good check
-
-**Covers**: maps REQ-ACV-015, REQ-ACV-021, REQ-ACV-024
-
-- **Classification**: release-blocking (RED-now: E14, E19, E20, E23; baseline
-  E21). A test-of-record for instruction text; the machine-readable parts it
-  relies on are the persisted result and the verb's check (AC-ACV-021).
-- **Given** both copies of `workflows/sync.md` and of `sync-audit-4dim.js` after
-  M7, **When** they are scanned, **Then** each `sync.md` copy names
-  `cross_model_required`, `moai verify audit-plan`, `--check-session`, the
-  post-PASS `audit_multi` call, the "both must pass" rule, the `cross_model:` /
-  `audit_multi:` / `gate_unmet:` / `audit_receipt:` / `plan_check:` lines of the
-  binding statement, `binding: no`, and the literal `audit_multi unreachable`;
-  each script copy names `audit_multi` in its header comment and
-  `meta.description` as the orchestrator's call, and still contains no
-  `mcp__moai__` (E21 stays 0); the script's phases, schemas and verdict
-  computation are unchanged; the Go `FourDimVerdict` / `IsBinding` source is
-  untouched; and the template copies carry no internal SPEC or card identifier.
-- **RED-now**: E14, E19, E23 (zero in both `sync.md` copies), E20 (zero in both
-  script copies).
-- **green** (M7): `grep -c "cross_model_required" …`,
-  `grep -c "audit_multi unreachable" …` and `grep -c "check-session" …` over both
-  `sync.md` copies → each at least `1`, exit 0; `grep -c "audit_multi" .claude/workflows/sync-audit-4dim.js internal/template/templates/.claude/workflows/sync-audit-4dim.js` →
-  each at least `1`, exit 0; `grep -c "mcp__moai__" …` over both script copies →
-  `0`, exit 1; and `<SCRUB>go test -count=1 -v -run '^(TestAuditPlanDocSurface|TestTemplateNoInternalContentLeak)$' ./internal/template/` →
-  two `--- PASS:` lines, exit 0.
-- **Mutant probe**: moving the call into the script adds `mcp__moai__` and fails
-  the zero-count grep; editing only the local copies fails the doc-surface test;
-  "codex absent → always PASS" with the required phrases placed in a comment
-  keeps every count at one and is NOT caught by this criterion — the intent is
-  anchored to AC-ACV-021, which gives the orchestrator a mechanical check to run
-  and the check a failing fixture.
-
-## AC-ACV-015 — the stale deferral is gone and its guard is not vacuous
+## AC-ACV-015 — the checker rejects a result from a server that predates the plan, from the input it is handed
 
 **Covers**: maps REQ-ACV-016
+
+- **Classification**: release-blocking (RED-now: E3 — the checker does not exist;
+  E22 — the old-server-shaped result it must reject).
+- **Given** a temp tree with `audit.model: multi` (plan: claude and codex
+  enforced-required) and, in turn, these `--result` arguments to
+  `moai verify audit-plan --project-root <tree>`, **When** the verb runs, **Then**
+  `convergence_check` reports: (a) an OLD-SERVER-SHAPED result — `overall_verdict:
+  pass`, empty `gate_unmet`, a codex entry `inconclusive`, no `plan_source` —
+  `ok: false`, `unmet: ["codex"]`; (b) the same result with the codex entry `pass`
+  but NO `plan_source` — `ok: false` with a reason naming `plan_source`; (c) no
+  codex entry — `ok: false`, `unmet: ["codex"]`; (d) the codex entry present,
+  `pass`, but its gate `advisory` — `ok: false`; (e) codex `pass` with gate
+  `required`, claude `pass`, and `plan_source: "config"` — `ok: true`; (f) a
+  `--result` that is not a JSON object — an `audit-plan:` error, exit 1; (g) a tree
+  with no audit configuration — `ok: true` for any well-formed result (no
+  enforced-required backend, no config-sourced gate); (h) the digest form (only
+  `overall_verdict`, `gate_unmet`, `plan_source` and per-backend `backend`, `gate`,
+  `verdict`) is accepted and gives the same answer as the full result. The verb
+  exits 0 in (a)-(e), (g), (h), reads no file other than `workflow.yaml`, takes no
+  session id, and changes no file.
+- **RED-now**: E3 (no verb, hence no checker); E22 shows result shape (a) is what a
+  server that ignores the token produces for this very configuration (`pass`, empty
+  `gate_unmet`, `fail_open=[codex]`).
+- **green** (M4): `<SCRUB>go test -count=1 -v -run '^TestAuditPlanCmd_ResultCheck$' ./internal/cli/` →
+  `--- PASS: TestAuditPlanCmd_ResultCheck ` and its eight sub-test names (a)-(h),
+  exit 0; and `grep -n "audit-multi\|loadConvergenceResult\|check-session" internal/cli/audit_plan_cmd.go` →
+  (no output), exit 1 (no store read, no session id).
+- **Mutant probe**: a checker that keys only on a non-empty `gate_unmet` passes (a)
+  and (b) and fails them; one that ignores `plan_source` passes (b) and fails it;
+  one that accepts an `advisory` entry fails (d); one that requires a result even
+  for a default plan fails (g); one that reads a persisted file fails the
+  no-store grep. The checker cannot detect a caller who passes a fabricated digest
+  (spec.md R-8); the receipt guard (AC-ACV-010) is the independent backstop.
+
+## AC-ACV-016 — the sync verdict is binding only with a passing `audit_multi` and a good check
+
+**Covers**: maps REQ-ACV-017
+
+- **Classification**: release-blocking (RED-now: E14, E19, E23). A test-of-record
+  for instruction text; the machine-readable parts it relies on are the
+  `audit_multi` result and the verb's checker (AC-ACV-015).
+- **Given** both copies of `workflows/sync.md` after M7, **When** they are scanned,
+  **Then** each names `cross_model_required`, `moai verify audit-plan`,
+  `audit-plan --result`, the post-PASS `audit_multi` call, the "both must pass"
+  rule, the `cross_model:` / `audit_multi:` / `gate_unmet:` / `audit_receipt:` /
+  `plan_check:` lines of the binding statement, `binding: no`, and the literal
+  `audit_multi unreachable`; the Go `FourDimVerdict` / `IsBinding` source and
+  `.claude/workflows/sync-audit-4dim.js` (both copies) are unchanged; and the
+  template copy carries no internal SPEC or card identifier.
+- **RED-now**: E14, E19, E23 (zero in both `sync.md` copies).
+- **green** (M7): `grep -c "cross_model_required" …`,
+  `grep -c "audit_multi unreachable" …` and `grep -c "audit-plan --result" …` over
+  both `sync.md` copies → each at least `1`, exit 0;
+  `grep -c "audit_multi" .claude/workflows/sync-audit-4dim.js internal/template/templates/.claude/workflows/sync-audit-4dim.js` →
+  `:0` · `:0`, exit 1 (the script is not edited); and `<SCRUB>go test -count=1 -v -run '^(TestAuditPlanDocSurface|TestTemplateNoInternalContentLeak)$' ./internal/template/` →
+  two `--- PASS:` lines, exit 0.
+- **Mutant probe**: "codex absent → always PASS" with the required phrases placed in
+  a comment keeps every count at one and is NOT caught by this criterion — the
+  intent is anchored to AC-ACV-015, which gives the orchestrator a mechanical check
+  to run and the check a failing fixture, and to AC-ACV-010 (the receipt guard).
+  Editing only the local copy fails the doc-surface test.
+
+## AC-ACV-017 — the stale deferral is gone and its guard is not vacuous
+
+**Covers**: maps REQ-ACV-018
 
 - **Classification**: release-blocking (RED-now: E5, E6, E12).
 - **Given** the run-phase tree, **When** it is scanned, **Then**
@@ -519,9 +617,9 @@ func TestRedACVModelMultiCodexInconclusive(t *testing.T) {
   `TestWebConsole_AuditSentinelExists` is the part that fails when the sentinel
   names no live symbol.
 
-## AC-ACV-016 — the committed yaml opts in and the pin is aligned; the template is untouched
+## AC-ACV-018 — the committed yaml opts in and the pin is aligned; the template is untouched
 
-**Covers**: maps REQ-ACV-017
+**Covers**: maps REQ-ACV-019
 
 - **Classification**: release-blocking (RED-now: E7, E8, E9; template guard E10,
   E16).
@@ -545,233 +643,141 @@ func TestRedACVModelMultiCodexInconclusive(t *testing.T) {
   `grep -nE` and the loader test; adding `model: multi` to the template fails
   the `grep -c` guard.
 
-## AC-ACV-017 — the fan-out stays concurrent under a config plan
+## AC-ACV-019 — the `internal/cli` test binary starts without `CLAUDE_PROJECT_DIR`
 
-**Covers**: maps REQ-ACV-018
+**Covers**: maps REQ-ACV-007, REQ-ACV-019
 
-- **Classification**: regression-guard (the default plan already activates all
-  three legs concurrently, so the test is GREEN against the pre-change tree and
-  must stay GREEN).
-- **Given** `audit.model: multi` and three stub backends that each sleep a fixed
-  interval, **When** `audit_multi` runs, **Then** all three are invoked, the
-  elapsed time is below the sum of the three intervals, and the resolver
-  activated no backend outside `claude`, `codex`, `glm`.
-- **RED-now**: none by design.
-- **green** (M3): `<SCRUB>go test -count=1 -v -run '^(TestAuditMulti_ConfigPlanKeepsParallelFanOut|TestRunMultiAudit_ParallelFanOut_AC_AMM_002)$' ./internal/cli/` →
-  two `--- PASS:` lines, exit 0.
-- **Mutant probe**: a serialized fan-out (legs run one after another) exceeds the
-  bound and fails the first test.
-
-## AC-ACV-018 — the committed `multi` does not leak into existing tests that read the config or the root
-
-**Covers**: maps REQ-ACV-007, REQ-ACV-017
-
-- **Classification**: regression-guard (GREEN before M6; its job is to stay GREEN
-  after the yaml flip, in a session whose environment points at the real tree).
+- **Classification**: release-blocking (RED-now: E31, control E31c). The property
+  is package-level, so no name sweep can miss a test.
 - **Given** M6 has landed (the committed yaml says `model: multi`), **When** the
-  existing tests that read `workflow.yaml` or resolve the root from
-  `CLAUDE_PROJECT_DIR` run with that variable set to this tree's root, **Then**
-  they all pass. The set is taken from measurement (research.md R-29), not from
-  a name guess: the whole of `internal/auditreceipt`, `internal/config` and
-  `internal/runtime`; in `internal/hook` the receipt-guard families
-  (`TestAuditReceiptGuard…`, `TestWSR00[789]…`, `TestSubagentStop…`, which resolve
-  a tree and read the gate); in `internal/cli` every audit family — the review-gate
-  tests (`TestRunMultiReviewGate_…`, `TestRunCodexReviewGate_…`,
-  `TestMultiReviewGate_…`, `TestReviewGate_…`), `TestHandleCodexReviewGate…`, the
-  `audit_multi` / convergence / codex / GLM / Claude audit families, the
-  `TestConfigOrphanedWorktree…` and `TestWSR0…` families, `TestAC…` and the
-  build-identity tests that touch the gate readers.
-- **RED-now**: none by design; a non-hermetic test turns RED only after M6.
-- **green** (M6): three commands, each of the form
-  `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && CLAUDE_PROJECT_DIR=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1423 go test -count=1 -v` plus the packages and
-  `-run` pattern named in (a)-(c):
-  (a) `./internal/auditreceipt/ ./internal/config/ ./internal/runtime/` with no
-  `-run`; (b) `./internal/hook/` with `'^(TestAuditReceiptGuard.*|TestWSR00[789].*|TestSubagentStop.*)$'`;
-  (c) `./internal/cli/` with `'^(TestAuditMulti_.*|TestRunMultiAudit_.*|TestConverge_.*|TestConvergence_.*|TestCodexAudit.*|TestPerformCodexAudit_.*|TestPerformGLMAudit_.*|TestDefaultBackendCaller_.*|TestPersist.*|TestLoadConvergenceResult.*|TestRunMultiReviewGate_.*|TestRunCodexReviewGate_.*|TestMultiReviewGate_.*|TestReviewGate_.*|TestHandleCodexReviewGate.*|TestConfigOrphanedWorktree.*|TestWSR0.*|TestAC.*|TestGLMAudit.*|TestClaudeAudit.*|TestAuditPinLive.*)$'`
-  → each ends `ok  	github.com/modu-ai/moai-adk/internal/…`, no `--- FAIL`, and (c) lists the
-  `--- PASS:` lines of at least `TestAuditMulti_RespectsCodexGateOff_AC_AMM_014`,
-  `TestAuditMulti_NoHardErrorPath_AC_AMM_024`,
-  `TestRunMultiAudit_ParallelFanOut_AC_AMM_002` and one `TestRunMultiReviewGate_`
-  test (an empty swept set prints `ok` too — read the names).
-- **Mutant probe**: removing M1's hermetic root from one audit test makes that
-  test red here after M6 (the intended detection).
+  `internal/cli` tests run with `CLAUDE_PROJECT_DIR` set to this tree's root,
+  **Then** `TestMain_ScrubsClaudeProjectDir` passes — it fails if the variable is
+  non-empty at test start — and `internal/cli/main_test.go` names
+  `EnvClaudeProjectDir`; no test of any family can therefore read the committed
+  file through the ambient project directory. `internal/hook` already scrubs it for
+  its whole test binary; `internal/auditreceipt` and `internal/config` receive
+  explicit tree roots (research.md R-31).
+- **RED-now**: E31 (`internal/cli/main_test.go` does not mention the variable;
+  control E31c: the hook package's does).
+- **green** (M1, kept by M6): `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && CLAUDE_PROJECT_DIR=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1423 go test -count=1 -v -run '^TestMain_ScrubsClaudeProjectDir$' ./internal/cli/` →
+  `--- PASS: TestMain_ScrubsClaudeProjectDir `, exit 0; and
+  `grep -c "EnvClaudeProjectDir" internal/cli/main_test.go` → at least `1`, exit 0.
+- **Mutant probe**: removing the `os.Unsetenv` line makes the test fail under the
+  set variable (the intended detection); a test that only checks the file text
+  without running under the variable would pass vacuously, which is why the
+  criterion runs the test with the variable set.
 
-## AC-ACV-019 — a GLM- or GPT-launched lane still gets an independent Claude verdict
-
-**Covers**: maps REQ-ACV-019
-
-- **Classification**: regression-guard (the existing behaviour, held under the new
-  plan).
-- **Given** launch provider `glm` (then `gpt`), `audit.model: multi`, a supplied
-  `claude_verdict` of `pass`, and stubs where the Claude backend returns `fail`,
-  **When** `audit_multi` runs, **Then** the supplied verdict is ignored, the
-  Claude backend is invoked, the result's claude entry has
-  `source: "mcp_claude_audit"` and verdict `fail`, and the overall verdict is
-  `fail`; and with the Claude backend `inconclusive` under `multi` the result
-  fails by name (`gate_unmet` contains `claude`).
-- **RED-now**: none by design.
-- **green** (M3): `<SCRUB>go test -count=1 -v -run '^(TestAuditMulti_GPTAndGLMOriginsRunActualClaude_AC_CLA_009_010|TestAuditMulti_GLMOriginUnderMultiPlan)$' ./internal/cli/` →
-  the existing test's sub-tests and `--- PASS: TestAuditMulti_GLMOriginUnderMultiPlan `,
-  exit 0.
-- **Mutant probe**: a plan path that lets a supplied anchor stand in for the
-  backend under a non-Claude origin fails the second assertion.
-
-## AC-ACV-020 — the codex leg has a deadline; any end of the leg is an unmet gate naming codex
+## AC-ACV-020 — a codex turn yields a verdict only if it completed; the codex leg has a deadline
 
 **Covers**: maps REQ-ACV-020, REQ-ACV-008, REQ-ACV-007
 
-- **Classification**: release-blocking (RED-now: E17, E18; positive controls E17c,
-  E18c).
-- **Given** a temp project root whose `workflow.yaml` sets only
-  `audit.model: multi`, claude and glm stubs returning `pass`, a
-  `codexReviewRPC` stub, and `config.DefaultCodexAuditLegTimeout` shortened to a
-  few milliseconds for the test (restored by `t.Cleanup`), **When** `audit_multi`
-  runs, **Then**
-  (a) with a stub that blocks until its context ends, it returns within a bound
-  well under one second; the codex `per_backend_verdicts` entry is
-  `inconclusive` with a summary naming a codex timeout; `overall_verdict` is
-  `fail`, `gate_unmet` is `codex`, and `residual_risk_note` names codex;
-  (b) with a stub that returns a `pass` only after the deadline, the entry is
-  still `inconclusive` — late output is never read as a verdict;
-  (c) with a stub that holds partial `pass` review text and the CALLER's context
-  cancelled mid-leg, the entry is `inconclusive` with a summary naming a
-  cancellation (not a timeout) and the partial text is discarded
-  (`awaitCodexTurnReview` returns it with a nil error on any context end);
-  (d) with NO configuration the same hung stub yields the fail-open result
-  (codex `inconclusive`, overall not failed) — the deadline changes the
-  unconfigured case only by ending a hang that previously never ended.
-- **RED-now**: E17 (no limit exists), E18 (no `context.WithTimeout` around the
-  codex leg) — the leg currently has no deadline, so the hung stub of (a) never
-  returns.
-- **green** (M3): `<SCRUB>go test -count=1 -v -run '^(TestAuditMulti_CodexLegDeadline_FailsClosedNamed|TestAuditMulti_CodexLegDeadline_LateOutputIgnored|TestAuditMulti_CodexLegCancel_DiscardsPartial|TestAuditMulti_CodexLegDeadline_UnconfiguredFailsOpen)$' ./internal/cli/` →
-  four `--- PASS:` lines, exit 0; `grep -n "DefaultCodexAuditLegTimeout = DefaultCodexAuditTimeout" internal/config/defaults.go` →
-  one line (the derivation, not a literal), exit 0; and
-  `grep -rn "codexLegTimeout\|codexAuditTimeout" internal` → (no output), exit 1
-  (no second seam, no constant in `mcp_codex.go`).
-- **Mutant probe**: a leg with no deadline never returns and test (a) times out
-  red; a deadline that still reads the partial text fails (b) and (c); a
-  deadline that maps expiry to `pass` or drops the entry fails the named-gate
+- **Classification**: release-blocking (RED-now: the behavioural RED E29 for the
+  stream-closed arm, E30 for the three returns, E17/E18 for the deadline;
+  positive controls E17c, E18c).
+- **Given** the codex turn reader and the `audit_multi` codex leg, **When** they
+  run over scripted sessions (the existing `codexSession` fake), **Then**
+  (a) a stream that closes after a review item and before `turn/completed` — with
+  a finding body and with a clean body — returns `inconclusive` naming
+  `stream closed before the turn completed`, with no verdict from the partial text
+  (`TestCodexTurnReview_StreamClosedBeforeCompletion_Inconclusive`);
+  (b) a context that has ended while partial review text is held returns
+  `inconclusive` naming the context end, and the partial text is discarded
+  (`TestCodexTurnReview_ContextEnded_DiscardsPartial`);
+  (c) a turn that completes still yields exactly the verdict it yielded before —
+  pass, fail, and the existing blank-body case
+  (`TestCodexTurnReview_CompletedTurnUnchanged`);
+  (d) with `audit.model: multi`, claude and glm stubs returning `pass`, and a fake
+  session whose `start(ctx)` closes its stream when `ctx` ends (emulating
+  `exec.CommandContext`), `config.DefaultCodexAuditLegTimeout` shortened to a few
+  milliseconds and restored by `t.Cleanup`, a hung codex makes `audit_multi`
+  return within well under one second with the codex entry `inconclusive` and a
+  summary naming a timeout, `overall_verdict: fail`, `gate_unmet: codex` and a
+  `residual_risk_note` naming codex
+  (`TestAuditMulti_CodexLegDeadline_FailsClosedNamed`);
+  (e) with NO configuration the same hung codex yields the fail-open result (codex
+  `inconclusive`, overall not failed) — the deadline changes the unconfigured case
+  only by ending a hang that previously never ended
+  (`TestAuditMulti_CodexLegDeadline_UnconfiguredFailsOpen`).
+- **RED-now**: E29 (the stream-closed arm returns `fail` from partial text with a
+  nil error), E30 (`mcp_codex.go:1264` and `:1268` return the partial text with a
+  nil error), E17 (no limit exists), E18 (no `context.WithTimeout` around the codex
+  leg — the hung stub of (d) never returns).
+- **green** (M3): `<SCRUB>go test -count=1 -v -run '^(TestCodexTurnReview_StreamClosedBeforeCompletion_Inconclusive|TestCodexTurnReview_ContextEnded_DiscardsPartial|TestCodexTurnReview_CompletedTurnUnchanged|TestAuditMulti_CodexLegDeadline_FailsClosedNamed|TestAuditMulti_CodexLegDeadline_UnconfiguredFailsOpen)$' ./internal/cli/` →
+  five `--- PASS:` lines, exit 0; `grep -n "return bestCodexReviewText(reviewText, agentText), nil" internal/cli/mcp_codex.go` →
+  exactly one line (the completed arm), exit 0; `grep -n "DefaultCodexAuditLegTimeout = DefaultCodexAuditTimeout" internal/config/defaults.go` →
+  one line (the derivation, not a literal), exit 0; `grep -rn "codexLegTimeout\|codexAuditTimeout" internal` →
+  (no output), exit 1 (no second seam, no constant in `mcp_codex.go`); and the
+  existing codex families stay green — `<SCRUB>go test -count=1 -run '^(TestCodexTask.*|TestCodexBlankReview.*|TestCodexAudit.*|TestCodexReviewGate.*|TestCharacterize.*|TestRunCodexReviewGate_.*|TestRunCodexReviewRPC.*|TestMCPEOFReaderPreservesFinalBytes)$' ./internal/cli/` →
+  `ok`, no `--- FAIL`, and the run lists names from each family (an empty swept
+  set prints `ok` too — read the names).
+- **Mutant probe**: a reader that still returns partial text on the closed stream
+  fails (a); one that ends the turn as `inconclusive` for a completed turn fails
+  (c); a leg with no deadline never returns and (d) times out red; a leg whose
+  deadline maps expiry to `pass` or drops the entry fails the named-gate
   assertions; a hard-coded `20 * time.Minute` literal fails the derivation grep.
-
-## AC-ACV-021 — a result from a server that predates the plan is never trusted
-
-**Covers**: maps REQ-ACV-022
-
-- **Classification**: release-blocking (RED-now: E3 — the check does not exist;
-  E22 — the old-server-shaped result it must reject).
-- **Given** a temp tree with `audit.model: multi` (plan: claude and codex
-  enforced-required) and a persisted convergence result for session `s1`, **When**
-  `moai verify audit-plan --project-root <tree> --check-session s1` runs, **Then**
-  `convergence_check` reports: (a) an OLD-SERVER-SHAPED result — `overall_verdict:
-  pass`, empty `gate_unmet`, `fail_open_backends: [codex, glm]`, no `plan_source`,
-  codex entry `inconclusive` — `ok: false`, `unmet: ["codex"]`; (b) the same
-  result with the codex entry `pass` but NO `plan_source` — `ok: false` with a
-  reason naming `plan_source`; (c) no codex entry — `ok: false`, `unmet:
-  ["codex"]`; (d) the codex entry present, `pass`, but its gate `advisory` —
-  `ok: false`; (e) codex `pass` with gate `required`, claude `pass`, and
-  `plan_source: "config"` — `ok: true`; (f) no persisted file for the session —
-  `found: false`, `ok: false`; (g) a tree with no audit configuration — the check
-  is `ok: true` for any result (no enforced-required backend, no config-sourced
-  gate). The verb exits 0 in every case and changes no file.
-- **RED-now**: E3 (no verb, hence no check); E22 shows the result shape (a) is
-  what a server that ignores the token produces for this very configuration
-  (`pass`, empty `gate_unmet`, `fail_open=[codex]`).
-- **green** (M4): `<SCRUB>go test -count=1 -v -run '^TestAuditPlanCmd_ResultCheck$' ./internal/cli/` →
-  `--- PASS: TestAuditPlanCmd_ResultCheck ` and its seven sub-test names (a)-(g),
-  exit 0.
-- **Mutant probe**: a check that keys only on a non-empty `gate_unmet` passes (a)
-  and (b) and fails them; one that ignores `plan_source` passes (b) and fails it;
-  one that accepts an `advisory` entry fails (d); one that requires a result even
-  for a default plan fails (g).
-
-## AC-ACV-022 — an unreadable `workflow.yaml` is a distinct, PASS-blocking state
-
-**Covers**: maps REQ-ACV-023
-
-- **Classification**: release-blocking (RED-now: E3; document literal E28).
-- **Given** a temp tree whose `workflow.yaml` is corrupt (for example
-  `workflow: [unclosed`), **When** `moai verify audit-plan --project-root <tree>`
-  runs, **Then** it prints JSON with `config_status: "unreadable"`,
-  `cross_model_active: "unknown"`, `cross_model_required: "unknown"`, an empty
-  `backends`, and a `note` naming the file and the parse cause, exits 0, prints no
-  default plan, and with `--check-session` adds no `convergence_check`; the verb's
-  reader is `loadWorkflowAuditSection` and not `workflowAuditPins` (which turns a
-  parse error into an absent configuration, `audit_pin.go:58-64`); and the two
-  auditors and `sync.md` (local and template) say that the state is recorded as a
-  Gap and yields no PASS and is not the legacy path.
-- **RED-now**: E3 (no verb); E28 (zero for `config_status: unreadable` in the
-  four local documents).
-- **green** (M4, M7): `<SCRUB>go test -count=1 -v -run '^TestAuditPlanCmd_UnreadableConfig$' ./internal/cli/` →
-  `--- PASS: TestAuditPlanCmd_UnreadableConfig `, exit 0;
-  `grep -n "loadWorkflowAuditSection" internal/cli/audit_plan_cmd.go` → at least
-  one line, exit 0; `grep -n "workflowAuditPins" internal/cli/audit_plan_cmd.go` →
-  (no output), exit 1; and `grep -c "config_status: unreadable" .claude/agents/moai/plan-auditor.md .claude/agents/moai/sync-auditor.md .claude/skills/moai-ref-cross-model-audit/SKILL.md .claude/skills/moai/workflows/sync.md` →
-  each at least `1`, exit 0 (a test-of-record for the text; the mechanical part is
-  the verb's output above).
-- **Mutant probe**: a verb that reads through `workflowAuditPins` prints the
-  default plan with exit 0 for the corrupt file and fails the first test; one that
-  exits non-zero without the JSON state is indistinguishable from an invalid
-  configuration and fails the contract assertions.
 
 ## Edge cases
 
-- **EC-1 Matching.** Token and gate values match exactly and case-sensitively
-  after trimming surrounding whitespace (AC-ACV-003).
-- **EC-2 Config-orphaned worktree with no identifiable primary.** The existing
-  rule stands: codex is assumed `required` with its note, so the gate is
-  fail-closed (`resolveAuditGates`, unchanged).
-- **EC-3 All-off plan.** `audit.model: codex` with `audit.gates.codex: off`
-  leaves every backend off; the verb prints `cross_model_active: false` and no
+- **EC-1 Matching.** Token and gate values match exactly and case-sensitively after
+  trimming surrounding whitespace (AC-ACV-003).
+- **EC-2 Config-orphaned worktree with no identifiable primary.** The existing rule
+  stands: codex is assumed `required` with its note, so the gate is fail-closed
+  (`resolveAuditGates`, unchanged).
+- **EC-3 All-off plan.** `audit.model: codex` with `audit.gates.codex: off` leaves
+  every backend off; the verb prints `cross_model_active: false` and no
   `enforced_required` entry, and `audit_multi` keeps its existing result for a
-  fan-out with no participants (this SPEC does not change it).
+  fan-out with no participants. A GPT or GLM main session on that plan still takes
+  the single-model path and calls `claude_audit` — a Claude review the plan turned
+  off. Named as a residual risk (spec.md R-12), not fixed here.
 - **EC-4 Unreadable yaml.** The verb prints the distinct unreadable state
-  (AC-ACV-022); the auditors and the sync step record a Gap and do not PASS.
+  (AC-ACV-012); the auditors and the sync step record a Gap and do not PASS.
   `audit_multi` called outside them keeps today's reading (spec.md R-4).
-- **EC-5 Old build.** `moai verify audit-plan` prints the `verify` group's help
-  and exits 0; the auditors detect the missing output contract and take the
-  legacy path with the named Gap (AC-ACV-013).
+- **EC-5 Old build.** `moai verify audit-plan` prints the `verify` group's help and
+  exits 0; that positive signature is the only trigger of the legacy path
+  (AC-ACV-014). A refused, crashed, timed-out or malformed run is a blocking Gap.
 - **EC-6 Cancellation versus deadline.** A leg ended by the caller's own
-  cancellation is reported as a cancellation, not a timeout — and, like a
-  timeout, it is `inconclusive` and discards any partial text (AC-ACV-020 (c)).
-- **EC-7 New CLI, old MCP server.** The verb answers; the old server's persisted
-  result has no `plan_source`; the result check fails closed by name until the
-  server is reconnected (AC-ACV-021 (a)/(b); spec.md R-8).
+  cancellation is reported as a context end, not a timeout — and, like a timeout, it
+  is `inconclusive` and discards any partial text (AC-ACV-020 (b)).
+- **EC-7 New CLI, old MCP server.** The verb answers; the old server's result has no
+  `plan_source`; the checker reports an unmet gate by name until that session's
+  server is reconnected (AC-ACV-015 (a)/(b); spec.md R-1).
 
 ## Quality gates and Definition of Done
 
-1. All 22 criteria pass; each release-blocking criterion's RED-now was observed
-   red on the pinned tree (ledger) and the named Go test's own RED output is in
+1. All 20 criteria pass; each release-blocking criterion's RED-now was observed red
+   on the pinned tree (ledger) and the named Go test's own RED output is in
    `progress.md §E.2`.
 2. `moai spec lint SPEC-AUDIT-MODEL-CONVERGE-001` exits 0; `go build ./...` and
-   `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `golangci-lint run` shows
-   no NEW finding against the pre-run baseline; `make build` exits 0 (agents-emit
+   `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `golangci-lint run` shows no
+   NEW finding against the pre-run baseline; `make build` exits 0 (agents-emit
    check, tool-policy drift check, catalogue hashes).
 3. Coverage of the new files `internal/config/audit_plan.go` and
    `internal/cli/audit_plan_cmd.go` is at least 85% (a coverage profile of the
    criteria's named tests, read per file with `go tool cover -func`; a
    package-level percentage does not satisfy this item).
-4. The distributed template `workflow.yaml`, the Go default `Audit.Model`, the
-   MCP catalogue, `internal/runtime/sync_4dim_binding.go`, `review.md`, and the
-   pre-existing local-vs-template differences of research.md R-15 are unchanged.
+4. The distributed template `workflow.yaml`, the Go default `Audit.Model`, the MCP
+   catalogue, `internal/runtime/sync_4dim_binding.go`, `.claude/workflows/sync-audit-4dim.js`,
+   `review.md`, and the pre-existing local-vs-template differences of research.md
+   R-15 are unchanged.
 5. TRUST 5: Tested (the criteria above); Readable (English comments, named
    constants, no inline env names); Unified (gofmt, golangci-lint); Secured (no
-   secret in output — the verb prints gates and a persisted-result summary, never
-   keys); Trackable (commit subjects carry `SPEC-AUDIT-MODEL-CONVERGE-001` and
-   `t1423`).
+   secret in output — the verb prints gates and a checker verdict, never keys);
+   Trackable (commit subjects carry `SPEC-AUDIT-MODEL-CONVERGE-001` and `t1423`).
 6. **Install and verify (leader-owned; plan.md §J).** The card is merged into
-   develop; a release-candidate build is made from develop and installed; the MCP
-   server is reconnected (taken together — the one window with a new CLI and an
-   old server fails closed by name); then, on the installed build,
+   develop; a release-candidate build is made from develop and installed; **every
+   live lane and leader session that will run a plan-audit or sync-audit reconnects
+   its MCP server or restarts**, and `moai doctor` in each shows the running server
+   matching the installed binary; then, on the installed build,
    `moai verify audit-plan --project-root <abs toplevel>` prints a JSON plan with
-   `config_status: "ok"` and `model: "multi"` in this repository, and one
-   `audit_multi` call with a `session_id` followed by
-   `moai verify audit-plan --project-root <abs toplevel> --check-session <id>`
-   prints `convergence_check.ok: true`. Only then does the new audit path apply
-   to later audits. Until then the auditors and the sync step run the legacy path
-   and name "plan surface unreachable, legacy path used" in the verdict's Gaps —
-   no outage, nothing fail-closed on the missing verb.
+   `config_status: "ok"` and `model: "multi"` in this repository, one `audit_multi`
+   call returns a result carrying `plan_source: "config"`, and the verb's
+   `--result` check of that result prints `convergence_check.ok: true`. Until a
+   session has reconnected, its audits fail closed BY NAME at the checker — a
+   bounded per-session window, not an absence of one; while the verb is absent the
+   auditors and the sync step take the legacy path with the named Gap (nothing is
+   blocked by the missing verb).
 7. The activation text (the local copies of the two auditors, the skill and
    `sync.md`) is the card's last commit (M7).
 8. The sync report names the pre-existing prose interpreter in `/moai review`
-   Phase 3.5 (`review.md`, left by decision D11) and the operator-owned rc
-   install.
+   Phase 3.5 (`review.md`, left by decision D11), the stale header of
+   `sync-audit-4dim.js` (spec.md R-11) and the operator-owned rc install.
