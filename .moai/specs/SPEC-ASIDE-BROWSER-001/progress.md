@@ -39,3 +39,18 @@ _pending run-phase (manager-develop)_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _pending sync-phase (manager-docs)_
+
+## §F Phase 4 Mode Selection and Kickoff record
+
+### Mode Selection (orchestrator, 2026-10-02)
+
+- Input parameters: tier M; scope about 15 files (template skill, catalog.yaml, e2e.md template+root, e2e-tester.md template+root, Codex TOML, Go guard tests, docs-site guides in 4 locales); domains 5 (skill, workflow doc, agent, catalog/Go tests, docs-site); file mix markdown + Go + TOML; concurrency benefit LOW (coding-heavy, ordered RED-then-GREEN commits per plan §F).
+- Mode evaluation: direct not selected (non-trivial); serial selected (default for coding-heavy work, one writer per tree); fanout not selected (coding-heavy; at the 10-file threshold the tie-breaker defaults to the simpler mode); sweep not selected (not a single uniform mechanical transform).
+- Decision: serial
+- Justification: the work is coding-heavy and has a mandated commit order (guard test and recorded RED run before each implementation commit), so one manager-develop spawn per milestone M1, M2, M3 in order is the safe path. The orchestrator itself runs `aside --version` and the M3.0 screenshot-persistence measurement before the M3 spawn (operator verdict Q1: no subagent invokes aside).
+
+### Kickoff record (plan→run, autonomous transition, auto-semantics §9.1)
+
+decision record: decided_by=claude-code lane-10 orchestrator (factory lane, Kickoff autonomous transition; leader-approved delta iteration + leader instruction "PASS family and no P2+ blocker -> autonomous Kickoff") evidence_refs=.moai/reports/t1439/plan-audit-iter3-delta.md(verdict=PASS-WITH-DEBT score=0.86 open_P2_or_higher=NO audited_sha=2bba87fcd),.moai/reports/t1439/plan-audit-iter2.md(PASS-WITH-DEBT 0.81),.moai/reports/t1439/plan-audit-iter1.md(FAIL 0.75),.moai/specs/SPEC-ASIDE-BROWSER-001/progress.md#E.1,commit 2bba87fcd,sha256 spec=3ba0b82e plan=50ed9d06 acceptance=ee8b4971 research=2f134afe ladder_path=gate-row plan→run Kickoff (AUTONOMOUS, auto-semantics §9.1)
+
+The verdict is PASS-WITH-DEBT where §9.1 names PASS; the entry rests on the factory leader's explicit instruction and the leader-extended Tier M audit ceiling. Debts carried to the run delegation: NF1, NF2, NF3, N3, N4, N5, N7 (details in `.moai/reports/t1439/kickoff-20261002.md`, local).
