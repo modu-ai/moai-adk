@@ -179,7 +179,7 @@ well-formed questions live in the reference skill; the call path lives in
 
 | Tool | Purpose | Consumer | CLI equivalent |
 |------|---------|----------|----------------|
-| `mcp__moai__factory_next` | Lease the lane's next card and ensure its per-card worktree (MCP form of `moai factory next`; `project_root` required) | factory lane session — refused outside one | `moai factory next` |
+| `mcp__moai__factory_next` | Lease the lane's next card and ensure its per-card worktree (MCP form of `moai factory next`; `project_root` required; optional `card` nominates one) | factory lane session — refused outside one | `moai factory next` |
 | `mcp__moai__factory_stage` | Apply a card's next stage transition with its evidence (MCP form of `moai factory stage`; `project_root` required) | factory lane session — refused outside one | `moai factory stage` |
 | `mcp__moai__factory_complete` | Take a merge-ready card through merging to merged-local (MCP form of `moai factory complete`; `project_root` required) | factory lane session — refused outside one | `moai factory complete` |
 | `mcp__moai__factory_decide` | Record one operator decision (MCP form of `moai factory decide`); inverted gate — refused FOR a lane session | attributed factory lead | `moai factory decide` |

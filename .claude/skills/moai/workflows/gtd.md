@@ -325,14 +325,15 @@ Once picked:
 the queue serially: pick one card, dispatch one isolated in-session worker
 for it, judge completion only by reading the worker's disk evidence, record
 the done transition on that evidence, emit the /clear guidance for the
-completed card, and only then accept the next. Exactly one card is in flight
-at any time; the pickup order is the dead-owner `picked` cards first, then
-the ranked queued candidates, with owner liveness judged on two channels — the
-session registry and an `lsof` working-directory probe — re-measured at every
-pickup decision, never cached.
+completed card, and only then accept the next. In the operator session's cycle
+exactly one card is in flight at any time; the pickup order is the dead-owner
+`picked` cards first, then the ranked queued candidates, with owner liveness
+judged on two channels — the session registry and an `lsof` working-directory
+probe — re-measured at every pickup decision, never cached.
 
-[HARD] `/moai:todo --auto` is the operator's batch approval: it authorizes
-serial consumption of the queue and nothing else. The cycle carries one
+[HARD] `/moai:todo --auto` is the operator's batch approval: it authorizes the
+invoked session to take cards from the queue on its own judgment, each only
+through a lease and never a keep-set card, and nothing else. The cycle carries one
 auto-scoped ranking exception: once per invocation, before its first pickup,
 it may rank the queued candidates it is about to accept, and that changes the
 cycle's selection order only. The ranking source is a Jev signal when the
@@ -358,7 +359,40 @@ reconciliation clause).
 
 Only a card whose text begins with the `[보류` marker is demoted; a hold stated
 in prose without the marker is not, and the structural hold is
-`moai todo hold`, the state the pickup already excludes.
+`moai todo hold`, the state the pickup already excludes. The same marker has
+two treatments: it demotes a card in the serial cycle and excludes it on the lease path.
+
+The authorization reaches a lane through the lease, not the cycle above: a lane
+session exercises the --auto authorization through moai factory next — bare for
+the CLI's priority-order choice, or `moai factory next --card <id>` for the card
+it judged — and the serial cycle is refused to a lane session.
+
+The keep-set is what the session never takes: a card the operator holds
+(`moai gtd hold`) or marks with the [보류 marker, a card whose classification
+is blocked, a serial card while another serial card is in flight, a card the
+factory record already owns, and a card whose text hinges on an operator
+confirmation — payments, secrets, or irreversible external-shared work. The
+lease refuses the first four; the last is the session's own judgment, and a
+card so judged, or a queued card whose pull-request or landed state it read as
+open or landed, is skipped, reported with its reason, and left unchanged in the
+queue. For a card the operator picked, that state is reported, never a reason to
+pass it over.
+
+A lane that takes a card this way writes one line in the card's progress record
+(the SPEC's progress file in a fresh top-level section, else the card's report
+directory) — evidence, not the decision board, and self-attested:
+
+```text
+decision record: decided_by=<runner+role> evidence_refs=<key=value;...> ladder_path=gate-row card pick (AUTONOMOUS, auto-semantics §9)
+```
+
+`evidence_refs` carries the card, its class, its relation records, its
+pull-request and landed state, its worktree presence, its file overlap with
+in-flight lanes, and each skipped candidate with its reason. An input that could
+not be read is written unmeasured — never omitted, never none. The inputs are
+an open set: a later card adds an input without amending the keep-set or the
+lease path. File overlap is one such input; its fallback, the paths changed by
+each in-flight lane's card branch, is inferred, and the record does not require it.
 
 ## Standing sources
 
