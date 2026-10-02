@@ -552,7 +552,7 @@ func TestTodoAutoEntryPointFlag(t *testing.T) {
 	landedCalls, jevCalls := 0, 0
 	origLanded, origJev := todoAutoLandedLookup, todoAutoJevRanker
 	t.Cleanup(func() { todoAutoLandedLookup, todoAutoJevRanker = origLanded, origJev })
-	todoAutoLandedLookup = func(*kanban.BacklogRecord) (map[string]kanban.PRLinkKind, error) {
+	todoAutoLandedLookup = func(*factory.BacklogRecord) (map[string]factory.PRLinkKind, error) {
 		landedCalls++
 		return nil, nil
 	}

@@ -233,8 +233,8 @@ func unbindFactoryHookNotice(ctx context.Context, dbPath, label, runID, status, 
 	if err != nil || len(active) == 0 {
 		return notice
 	}
-	lines := kanban.RelaunchNoticeFor(kanban.RelaunchNoticeState{
-		Provider:   kanban.RelaunchProviderForBackend(os.Getenv(config.EnvFactoryBackend)),
+	lines := factory.RelaunchNoticeFor(factory.RelaunchNoticeState{
+		Provider:   factory.RelaunchProviderForBackend(os.Getenv(config.EnvFactoryBackend)),
 		Legacy:     true,
 		Run:        runID,
 		ActiveRuns: active,

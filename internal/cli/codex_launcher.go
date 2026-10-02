@@ -982,7 +982,7 @@ func runCodexFactoryLane(cmd *cobra.Command, entry factoryFlagParse, debug bool)
 	// The label is claimed atomically — the next free lane-<n>, bumped past a
 	// live hold — so two codex lanes cannot start under one label.
 	endClaim := launchTiming.beginDebug(factoryStepLaneClaim, "")
-	label, err := resolveFactoryLaneName(root, "", kanban.BackendGPT, true, cmd.ErrOrStderr())
+	label, err := resolveFactoryLaneName(root, "", factory.BackendGPT, true, cmd.ErrOrStderr())
 	endClaim()
 	if launchTiming != nil && err == nil {
 		// REQ-005/§D.1 edge: the lane-claim step carries the claimed label

@@ -41,15 +41,16 @@ var (
 // leaderGateGrid maps a leader kind to a locale to the rendered notice.
 type leaderGateGrid map[string]map[string]string
 
-// renderLeaderGateGrid renders the factory leader notice in every locale. An
-// empty root degrades the queue summary inside the notice rather than failing.
+// renderLeaderGateGrid renders the factory leader notice in every locale. The
+// builder takes no project root since the lane-start sentence replaced the
+// per-lane lines (SPEC-LAUNCHER-ENTRY-FLAGS-001 REQ-009).
 func renderLeaderGateGrid(t *testing.T) leaderGateGrid {
 	t.Helper()
 	t.Setenv(config.EnvMoaiLaunchProvider, "")
 	clearFactoryEnv(t)
 	grid := leaderGateGrid{"factory": {}}
 	for _, lang := range leaderGateLocales {
-		grid["factory"][lang] = factoryLeaderNotice("tjgate", 2, "", lang)
+		grid["factory"][lang] = factoryLeaderNotice("tjgate", 2, lang)
 	}
 	return grid
 }
