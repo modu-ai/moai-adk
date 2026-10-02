@@ -546,14 +546,17 @@ _<pending run-phase>_
 ```yaml
 sync_complete_at: 2026-10-02T17:06:53Z   # UTC; the sync commit date is 2026-10-03 local
 sync_commit_sha: pending-backfill        # a commit cannot cite its own hash; backfilled in a following commit
-sync_status: docs-synced-audit-pending   # the independent sync audit has NOT run; this record asserts no verdict
+sync_status: docs-synced                 # docs, CHANGELOG and the corrected wording are committed; the audit disposition below is the operator's, not an audit result
 card: t1448
 tier: M
 tree_head_at_sync_start: 842369c77       # branch WT-todo-auto-pick-autonomy, clean at start
 re_close_complete_at: 2026-10-02T18:07:17Z   # UTC; sync re-close after sync-audit iteration 1 repairs; local date 2026-10-03
 tree_head_at_re_close_start: 9a5cb0dcb   # branch WT-todo-auto-pick-autonomy, clean at start of the re-close
 sync_audit_iteration_1: "FAIL 77.2/100 (cut 85) at audited commit 8de769d81; claude fail, codex fail (3 P1), glm inconclusive (HTTP 401); report .moai/reports/t1448/sync-audit.md (local, uncommitted)"
-sync_audit_status: not-passed            # no audit verdict is claimed for the repaired tree; iteration 2 has not run
+sync_audit_iteration_2: "delta audit of 01ccc8b33: four dimensions 88/90/85/85, harmonic mean 87.0/100 PASS-WITH-DEBT, no must-fix; cross-model overall fail (claude pass, codex fail, glm inconclusive HTTP 401); report .moai/reports/t1448/sync-audit-iter2.md (local, uncommitted) keeps its first verdict line FAIL"
+sync_audit_status: "iteration 2 four-dimension PASS-WITH-DEBT 87.0, required cross-model gate unmet (codex fail; audit server predates the plan surface), accepted as residual risk by operator decision 2026-10-03 - not a passed audit"
+post_audit_correction: "86281f836 (13 files, no re-audit, operator-permitted); the audit did not judge it"
+reclose_commits: "01ccc8b33 (re-close after iteration 1 repairs); the disposition commit that records this block (backfills sync_commit_sha in the commit after it)"
 b12_self_test_a: "grep -c 'SPEC-TODO-AUTO-PICK-001' CHANGELOG.md -> 0 before emission (exit 1), proceed"
 b12_self_test_b: "ac_source=.moai/specs/SPEC-TODO-AUTO-PICK-001/acceptance.md tier=M; canonical counter -> 14 (live=14 excluded=0 ambiguous=0, exit 0); live requirements REQ-TAU-001..016 = 16; CHANGELOG entry states 16 / 14"
 b12_self_test_c: "every path cited in the CHANGELOG entry verified with ls (exit 0): 4 changed Go files, 3 test files, 7 doctrine files, the Codex TOML, catalog.yaml, progress.md, 4 factory-mode pages; the 9 cited commit SHAs read from git log"
@@ -661,7 +664,7 @@ Finding dispositions (ids from the audit report; one line each):
 | F1 (blocking) | Fixed in `e55aaeb1b`: the AC-TAU-002 concurrency test is deterministic (per-card worktree repositories through a stubbed creator). Builder-measured 30/30 and 20/20 under `-race -count=5`; orchestrator-measured 20/20 and 12/12 under `-race -count=3`, 0 DATA RACE. Not independently re-audited |
 | F2 | Fixed: doctrine scoped to a lane session (`9a5cb0dcb`: stub, `gtd.md`, `auto-semantics.md` §9.2/§9.3, live and mirror, catalog) and user docs scoped in this re-close (`docs-site/content/{ko,en,ja,zh}/advanced/factory-mode.md` line 65) |
 | F3 (b) | Fixed in `e55aaeb1b`: compensation re-reads the factory record inside the queue lock |
-| F3 (a), (c) | NOT fixed — accepted residual risk pending the leader's disposition: (a) two different serial cards nominated at once can both lease; (c) an operator `unpick` then `hold` between promotion and claim can leave a held card leased. Both are two-store non-atomicity windows, the class of the pre-existing unnominated arm (c) |
+| F3 (a), (c) | NOT fixed — accepted residual risk (disposition: operator decision 2026-10-03, recorded under 'Sync-audit iteration 2' below): (a) two different serial cards nominated at once can both lease; (c) an operator `unpick` then `hold` between promotion and claim can leave a held card leased. Both are two-store non-atomicity windows, the class of the pre-existing unnominated arm (c) |
 | F4 | Tests added in `e55aaeb1b` for mutants M1 (blank `--card`, CLI and MCP), M2 (`picked` with owner) and M5 (`picked` plus `blocked`); M3, M4, M6 judged lower value and not pursued |
 | F5 | Reworded in `e55aaeb1b` (the `blocked` refusal detail) |
 | F6 | Follow-up owed: `kanban-dispatch-detail.md` is over the 40,000-character budget (43,138 characters now, 42,675 on develop) — split card |
@@ -672,14 +675,20 @@ Finding dispositions (ids from the audit report; one line each):
 | F11 | Help text: `moai todo --help` `--auto` still says the batch approval is 'of the queue and nothing else' — follow-up |
 | F12 | CHANGELOG corrected in place (no second entry): AC-TAU-002 no longer stated as unqualified PASS, the audit FAIL and repairs recorded, stub bytes 28,308 → 28,304, limitations group added |
 
-Follow-up card candidates (none created by this commit): (1) leader disposition of F3 (a)/(c) — fix with an atomic
-serial slot and a final queue re-read, or add them to spec §B.8/G; (2) the pre-existing `git branch -m` reflog-temp-file
-collision when two lanes lease at the same instant in one repository (`factoryEnsureCardWorktree`; surfaced by the new
-concurrency test; the verb errors after the lease succeeded); (3) split `kanban-dispatch-detail.md` under the budget;
-(4) `moai gtd hold` or a leading `[보류` for t810, t1294, t1383; (5) `moai todo --help` `--auto` wording; (6) decide the
-live-only `moai worktree sweep …` sentence of `kanban-dispatch.md`.
+Follow-up card candidates (updated after iteration 2; none created by this docs commit — the leader issues them, and
+the CHANGELOG says only 'a follow-up card is owed'): (1) an atomic lease across the queue and the factory record,
+closing F3 (a), F3 (c) and F14 (the operator-accepted windows; a promotion token in the compensation is the cheap
+part, an atomic serial slot plus a final queue re-read held across the claim is the rest); (2) the pre-existing
+`git branch -m` reflog-temp-file collision when two lanes lease at the same instant in one repository
+(`factoryEnsureCardWorktree`; surfaced by the new concurrency test; the verb errors after the lease succeeded) —
+carried by the same follow-up card per the operator decision; (3) split `kanban-dispatch-detail.md` under the
+40,000-character budget (card issued separately by the leader); (4) the `moai todo --help` `--auto` text (F11);
+(5) the F10 low security note (unvalidated `--card` text echoed on `unknown-card`; absolute landing path in
+`foreign-worktree`); (6) decide the live-only `moai worktree sweep …` sentence of `kanban-dispatch.md`; (7) holds for
+t810, t1294 and t1383 (operator or leader action, see the merge-report line below).
 
-`sync_commit_sha` stays `pending-backfill` until the sync audit passes (a commit cannot cite its own hash).
+`sync_commit_sha` stays `pending-backfill` in the disposition commit (a commit cannot cite its own hash) and is
+backfilled in the commit after it.
 
 Measured in this re-close (tree HEAD `9a5cb0dcb`, plain commands, output to the scratchpad where long):
 
@@ -706,3 +715,67 @@ orchestrator-measured and cited, not re-measured; the derived-locale sentences (
 only and the `moai-domain-humanize` pass was not run (single-sentence edit); pre-existing `**term (note)**` emphasis
 spans on lines 90-91 of the en/ja/ko pages (parenthetical inside the markers) were found by the emphasis scan and left
 untouched, being outside this re-close's scope.
+
+### Sync-audit iteration 2 and the operator's disposition (no passed audit is claimed)
+
+운영자 결정 2026-10-03: sync-audit iter2 네 차원 87.0 PASS-WITH-DEBT, 필수 codex fail(F3 a/c·F14)은 잔여 위험으로 수용, 후속 카드로 종결
+English gloss: operator decision of 2026-10-03 — the iteration 2 sync audit scored the four dimensions 87.0
+PASS-WITH-DEBT; the required codex failure (F3 a/c and F14) is accepted as residual risk and closed by a follow-up card.
+
+This decision is a **disposition, not an audit result**. The audit's own report, `.moai/reports/t1448/sync-audit-iter2.md`
+(local, uncommitted), keeps its first verdict line `FAIL`; nothing in this record rewrites it, and no audit has passed.
+
+Iteration 2 (delta audit, audited commit `01ccc8b33`; judged this tree's Go sources through the toolchain, the
+fan-out through the `d194083fb` MCP server, a strict ancestor of the tree):
+
+- Four dimensions: Functionality 88, Security 90, Craft 85, Consistency 85 → harmonic mean 87.0/100 against the 85 cut
+  (margin +2.0), **PASS-WITH-DEBT**, no must-fix finding, both must-pass dimensions above their thresholds.
+- Cross-model (`audit_multi`): overall `fail`; claude pass (required, the auditor's own verdict), codex fail (required),
+  glm inconclusive (advisory, HTTP 401). No receipt was issued.
+- The required gate was unmet for **two independent reasons**: (1) the codex backend returned fail — F3 (a) and F3 (c)
+  again, plus the new F14; (2) the orchestrator's `moai verify audit-plan --result-file` check read
+  `convergence_check.ok=false`, reason `plan_source: absent or null`, because the MCP server that produced the
+  `audit_multi` result (build `d194083fb`) predates the plan surface.
+- Dispositions that changed since iteration 1 (F1..F17):
+  - F1 **resolved** — `TestFactoryNextNominateConcurrentLanes` 20/20 PASS and 12/12 under `-race -count=3`, 0 DATA RACE
+    (delta-auditor measurement; the earlier builder and orchestrator counts are in the iteration-1 record).
+  - F3 (b) **resolved** — RED observed against the pre-repair file, GREEN on the repaired tree.
+  - F3 (a), F3 (c) and F14 — **accepted as residual risk by the operator decision above**; F14 (new, codex P2): the
+    compensation after a failed nominated claim cannot tell its own promotion from an operator's fresh pick of the same
+    card, so unpick, pick and a failing claim within milliseconds can revert the operator's pick; the auditor
+    reproduced it with direct queue writes. F14 is now also in the CHANGELOG limitations.
+  - F4 — four of the six mutants are killed; M3 (the set of refusals `--wait` waits through) survives; M4 (the in-lock
+    re-validation) cannot be forced.
+  - F13 (keep-set wording residue of F2) and F15 (the `blocked` detail over-claims on the bare path) — **corrected in
+    `86281f836`**, not re-audited (see the next record).
+  - F16 (internal audit ids in the CHANGELOG) — **fixed**: the ids are removed from the entry in this docs commit.
+  - F2 was partial at iteration 2 (the lease claim scoped, the keep-set clause not); its remainder is F13, corrected in
+    `86281f836`. F5 resolved, F12 resolved, F17 (400 ms sleep in a regression test) is a note with no action.
+  - F6, F7, F8, F10, F11 — unchanged (F9 unchanged as well; F6/F7 re-observed).
+
+For the merge report, one line: the SPEC identifies the keep-set by (a) the structural `hold` state, written only by
+`moai gtd hold`, and (b) a card body that opens with the `[보류` marker — a lane may write neither; t810 (`picked`),
+t1294 and t1383 (`queued`) currently carry neither, so the operator or leader must apply one before lanes exercise the
+doctrine.
+
+### Post-audit correction `86281f836` (no re-audit, operator-permitted)
+
+After iteration 2 the operator permitted a low-cost correction without a further audit. `86281f836` (one commit, 13
+files, 47 insertions, 30 deletions): `.claude/skills/moai/workflows/gtd.md`, `.claude/rules/moai/workflow/kanban-dispatch.md`,
+`.claude/rules/moai/workflow/auto-semantics.md`, `.claude/agents/moai/manager-todo.md`,
+`.claude/skills/moai-kanban-foreman/SKILL.md`, their five `internal/template/templates/` mirrors, the regenerated
+`internal/template/templates/.codex/agents/moai/manager-todo.toml`, `internal/template/catalog.yaml`, and the one-line
+refusal string in `internal/cli/factory_card.go`. It scopes the keep-set and lease wording to a lane session and names
+the operator session's serial cycle as the contrast (F13), and rewords the `blocked` refusal detail to 'the nominated
+lease refuses it, the operator decides it' (F15). No sync audit judged this tree; this record asserts none. After it
+the always-loaded stub `kanban-dispatch.md` measures 28301 B / 28092 chars live and 27979 B / 27771 chars mirror (this
+documentation pass, `wc -c` / `wc -m`; merge-base blob 28308 / 28099 live, 27986 / 27778 mirror).
+
+This docs commit (the disposition commit) touches only `CHANGELOG.md` (the existing entry, edited in place) and this
+§E.4; the commit after it only backfills `sync_commit_sha`. No Go code, `.claude/` rule, template, catalog, spec/plan/
+acceptance body or untracked report is touched by either.
+
+Measured in this pass (tree HEAD `86281f836`): B12 counter on `acceptance.md` `live=14 excluded=0 ambiguous=0`
+(exit 0), live requirements `REQ-TAU-001..016` = 16, `grep -c 'SPEC-TODO-AUTO-PICK-001' CHANGELOG.md` = 1 before and
+after the edit, every cited commit SHA passes `git cat-file -e`. Gaps: no Go test, build, lint or audit was run in
+this documentation pass; the repaired-code figures are cited from the audit and the earlier records, not re-measured.
