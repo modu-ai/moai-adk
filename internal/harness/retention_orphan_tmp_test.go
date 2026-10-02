@@ -42,7 +42,10 @@ func TestPruneSweepsOldOrphanTmp(t *testing.T) {
 			t.Parallel()
 			dir := t.TempDir()
 			logPath := filepath.Join(dir, "usage-log.jsonl")
-			now := time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)
+			// The injected clock runs 72 h ahead of the real one, so entries created below without
+			// a chosen mtime (the directory and the symlink) already read as old; only their file
+			// type keeps the sweep away from them.
+			now := time.Now().Add(72 * time.Hour)
 			if hasStale {
 				writeStaleLog(t, logPath, now, "stale")
 			} else {
@@ -68,7 +71,8 @@ func TestPruneSweepsOldOrphanTmp(t *testing.T) {
 			for _, k := range keepers {
 				writeTmpAged(t, k, now, 48*time.Hour)
 			}
-			// An old directory that matches the name is not ours to remove.
+			// An old directory that matches the name is not ours to remove (its mtime is the real
+			// creation time, 72 h behind the injected clock).
 			dirMatch := filepath.Join(dir, "usage-log-dir.tmp")
 			if err := os.Mkdir(dirMatch, 0o755); err != nil {
 				t.Fatalf("mkdir: %v", err)
