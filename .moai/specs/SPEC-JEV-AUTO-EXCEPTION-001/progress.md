@@ -84,7 +84,28 @@ Spawn shape: `general-purpose` carrying the manager-develop role charter for M1,
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — the guard, armed=false (commit G)
+
+Attribution: measured in this run on tree HEAD `5f8c6e051` plus the M1 files (the new test file, the `spec.md` frontmatter flip, this section); go1.26.8 darwin/arm64; golangci-lint v2.1.6, the CI-pinned version of `.github/workflows/ci.yml`; every Go command ran with the eleven lane variables unset in the same compound invocation. Machine load average was about 300, so wall times are inflated. Commit G: `pending-backfill` (a commit cannot cite its own SHA; AC-JAE-013 records G and K at M4).
+
+| Check | Command (scrub prefix omitted) | Deciding output | Exit |
+|---|---|---|---|
+| sweep control, before | `go test -count=1 -list '^(TestJevAutoExceptionLinkage\|TestJevAutoExceptionWording)$' ./internal/template/` | `ok  github.com/modu-ai/moai-adk/internal/template  0.490s`, no test name | 0 |
+| sweep control, after | same | `TestJevAutoExceptionLinkage` `TestJevAutoExceptionWording` `ok … 0.837s` | 0 |
+| AC-JAE-011 + AC-JAE-012 (armed=false) | `go test -count=1 -v -run '^(…Linkage\|…Wording)$' ./internal/template/` | 2 top-level `--- PASS`, 0 `--- FAIL`; 32 subtests PASS (18 `falsifier/partial/<n>`, `arming-only`, `self-match`, `split-commits`, `dangling-anchor`, `all-in-one-commit`, `tree` with `armed=false`, 6 wording falsifiers, `disclaimer-not-flagged`, `mirror-parity`); 7 group subtests SKIP, reason `surfaces unamended: armed=false; N passages located` with N = 2, 2, 4, 4, 2, 1, 8 = the located-passage count each group must find | 0 |
+| arming literal absent | `git grep -c -F "jevAutoExceptionAmended = true" -- internal/template/jev_auto_exception_test.go` (staged) | (empty) | 1 |
+| false constant present once | `git grep -c -F "jevAutoExceptionAmended = false" -- internal/template/jev_auto_exception_test.go` | `internal/template/jev_auto_exception_test.go:1` | 0 |
+| probe control | `git grep -c -F "TestJevDoctrineAmendment" -- internal/template` | `internal/template/contract_mode_blocks_test.go:2` | 0 |
+| neighbours | `TestJevAmendmentLinkage` (kickoff), `TestJevDoctrineAmendment` + `TestTemplateNoInternalContentLeak` (template), six cli guards, `TestNoConsumerCallPathShips`, `TestCatalogHashParity` | all `--- PASS`; `verified 49 catalog entries … 0 drift` | 0 |
+| build / vet / format / lint | `GOOS=windows GOARCH=amd64 go build ./...`; `go vet ./internal/template/` (and with `GOOS=windows`); `gofmt -l`; `golangci-lint run ./internal/template/...` | 0, 0, empty, `0 issues.` | 0 |
+
+RED (`EXPECTED_RED`, stub checkers returning nothing, same file): `--- FAIL` for `falsifier/partial/0` through `/17`, `arming-only`, `self-match`, `split-commits`, `dangling-anchor`, the six wording falsifiers, `mirror-parity` and the seven group subtests; the deciding lines read `checker accepted a registry missing internal/jev/jev.go`, `checker accepted markers split across commits`, `checker accepted a guard that spells its arming token`, `checker accepted a passage whose bound sits in another paragraph`, `located 0 passages, want 8`; the controls `all-in-one-commit`, `tree` and `disclaimer-not-flagged` passed against the stub, as a stub that finds nothing should.
+
+Mutants (throwaway copies in the scratchpad, run through `go test -overlay`, nothing in the repository tree): bound checked passage-wide, closed targets ignored, long-form literals skipped, claim and over-reach sets removed, mirror compare removed, anchor check removed, commit comparison removed, arming row missing from the registry, anchors added to the commit comparison — each turned exactly its named subtest red (`bound-in-other-paragraph`, `closed-target-dropped`, `long-form-literal-missing`, `claim-phrasing` and `over-reach-phrasing`, `mirror-parity`, `dangling-anchor`, `split-commits`, `arming-only` and `self-match`, `all-in-one-commit`). A claim set matching the word `accurate` anywhere turned `disclaimer-not-flagged` red. The mutant that spells the arming literal in the guard's own source passed `tree` under `-overlay` because `tree` reads the on-disk file, which the overlay does not change: that probe is invalid for the on-disk read, and the class is carried by `falsifier/self-match`.
+
+Claim and over-reach refinement (plan §E allows it): the reference expressions are kept; two narrowing exemptions were added. `validated as a whole` is not a claim when `answer` sits in the 30 characters before it; a negation (`not`, `never`, `no`, `nothing`, `nor`) in the 30 characters before `every|any|all moai todo|pick(s)` makes it a scope narrowing, not an over-reach. Verified by running the reference expressions alone against the accepted-sentence table: they flagged four legitimate sentences (`The answer set is validated as a whole…`, `An answer that is validated as a whole may set selection order only.`, `It does not apply to any moai todo pick outside the --auto cycle.`, `Nothing here changes all picks outside the cycle.`) and the exemptions clear exactly those four; the plan's eight documented outcomes are unchanged (the four flagged phrases stay flagged, the four accepted phrases stay accepted), and two sentences the exemptions must not clear (`The ordering is validated as a whole.`, `It applies to every moai todo pick outside the --auto cycle.`) stay flagged. Not fixed: `ordering accuracy was measured by nobody` is still a false positive.
+
+Process attestation (M1): one writer in the card worktree; the files of this commit were staged by explicit pathspec; Gaps and residual risk are in the lane report.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
