@@ -2,7 +2,7 @@
 // They exercise hook dispatch, timers and the pick flow against the engine itself
 // (never a surface's paint). Pure parsers are covered by tests/pure/ under bun.
 import { expect, test } from 'claude-code/testing'
-import { PANE, answerAsk, picks, setup } from './support'
+import { PANE, answerAsk, picks, setup, stubSpecFiles } from './support'
 
 const mount = ($: Parameters<Parameters<typeof test>[1]>[0]) =>
   $.ui.mount({ plugin: 'moai-board', surface: 'terminal', component: 'Pane', requestId: 'moai-board', props: PANE })
@@ -130,4 +130,40 @@ test('failsoft: last good data stays visible dimmed', async ($, on) => {
   expect(after?.props['dimColor']).toBe(true)
   const status = await ui.find({ key: 'status' })
   expect(status?.text).toContain('not found on PATH')
+})
+
+// ---- SPEC tab: the file calls are wired in the module, the guard is covered under bun ----------
+
+test('spec-tab: list, open and read through the guard', async ($, on) => {
+  const { calls } = setup(on)
+  const reads = stubSpecFiles(on, '/work', {
+    '/work/.moai/specs/SPEC-A-001/spec.md': { realPath: '/real/work/.moai/specs/SPEC-A-001/spec.md', text: '# Spec body text' },
+  })
+  await $.command.run({ command: 'moai-board' })
+  const ui = await mount($)
+  await ui.press({ key: 'tab-spec' })
+  expect(calls.map(argv => argv.join(' '))).toContain('moai spec status --list')
+  expect(await ui.find({ key: 'spec:SPEC-A-001' })).toBeDefined()
+  expect(await ui.find({ key: 'spec:SPEC-B-001' })).toBeUndefined() // completed: hidden by the default filter
+  await ui.press({ key: 'spec:SPEC-A-001' })
+  await ui.press({ key: 'file:spec.md' })
+  expect((await ui.find({ key: 'doc-0' }))?.text).toContain('Spec body text')
+  expect(reads).toEqual(['/real/work/.moai/specs/SPEC-A-001/spec.md'])
+  await ui.press({ key: 'back' })
+  expect(await ui.find({ key: 'spec:SPEC-A-001' })).toBeDefined()
+})
+
+test('spec-tab: a file resolving outside the folder is not read', async ($, on) => {
+  setup(on)
+  const reads = stubSpecFiles(on, '/work', {
+    '/work/.moai/specs/SPEC-A-001/plan.md': { realPath: '/etc/secret.md', text: 'SECRET' },
+  })
+  await $.command.run({ command: 'moai-board' })
+  const ui = await mount($)
+  await ui.press({ key: 'tab-spec' })
+  await ui.press({ key: 'spec:SPEC-A-001' })
+  await ui.press({ key: 'file:plan.md' })
+  expect(reads.length).toBe(0)
+  expect((await ui.find({ key: 'doc-notice' }))?.text).toContain('outside')
+  expect(await ui.find({ key: 'doc-0' })).toBeUndefined()
 })

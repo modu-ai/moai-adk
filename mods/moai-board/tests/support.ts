@@ -28,6 +28,14 @@ export const FACTORY = JSON.stringify({
   unavailable: [],
 })
 
+export const SPEC_LIST = [
+  'SPEC-ID                        Status          Modified',
+  '-'.repeat(60),
+  'SPEC-A-001                     draft           2026-10-02 17:28',
+  'SPEC-B-001                     completed       2026-10-02 17:28',
+  '',
+].join('\n')
+
 export const PANE = { title: 'moai-board', isFocused: false, bodyColumns: 80, placement: 'inline' } as const
 
 export type Stub = {
@@ -63,7 +71,9 @@ export const setup = (on: On, queue = queueFixture()): Stub => {
         ? ran(FACTORY)
         : joined.includes('session list')
           ? ran('[]')
-          : ran('')
+          : joined.includes('spec status')
+            ? ran(SPEC_LIST)
+            : ran('')
   })
   return { calls, clock: mock.clock(on), mode, queue: q }
 }
@@ -77,3 +87,28 @@ export const answerAsk = (on: On, answer: string | undefined) =>
   )
 
 export const picks = (calls: string[][]): string[][] => calls.filter(argv => argv.includes('next'))
+
+/**
+ * The file nouns beneath the plugin for the SPEC tab: the session root, `stat` (with the real path a
+ * resolve asks for) and `read`. `files` maps an asked-for path to where it really lands and its text.
+ */
+export const stubSpecFiles = (on: On, root: string, files: Record<string, { realPath: string; text: string }>) => {
+  const reads: string[] = []
+  const stats: Record<string, { kind: 'file' | 'dir'; realPath: string }> = {
+    [`${root}/.moai/specs`]: { kind: 'dir', realPath: `/real${root}/.moai/specs` },
+  }
+  for (const [path, f] of Object.entries(files)) stats[path] = { kind: 'file', realPath: f.realPath }
+  on('session.root', () => ({ value: root }))
+  on('fs.stat', (_$, e) => {
+    const found = stats[e.path]
+    if (found === undefined) throw new Error(`ENOENT ${e.path}`)
+    return { value: { ...found, size: 1, mtimeMs: 0, isLink: false } }
+  })
+  on('fs.read', (_$, e) => {
+    reads.push(e.path)
+    const text = Object.values(files).find(f => f.realPath === e.path)?.text
+    if (text === undefined) throw new Error(`ENOENT ${e.path}`)
+    return { value: text }
+  })
+  return reads
+}

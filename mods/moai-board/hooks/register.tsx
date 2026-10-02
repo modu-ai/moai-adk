@@ -24,6 +24,7 @@ import {
   readQueue,
   sameFeed,
 } from './data'
+import { chunkMarkdown, isSpecFile, readSpecFile, readSpecList } from './specs'
 import type { Actions, Model } from './view'
 import { drawBoard } from './view'
 
@@ -76,11 +77,14 @@ const readers = createQueueReaders()
 const gate = createFlightGate()
 let timer: { cancel: () => void } | undefined
 
-type Wanted = { lanes: boolean }
+type Wanted = { lanes: boolean; spec: boolean }
 
 let pending: Wanted | undefined
 
-const merge = (a: Wanted | undefined, b: Wanted): Wanted => ({ lanes: (a?.lanes ?? false) || b.lanes })
+const merge = (a: Wanted | undefined, b: Wanted): Wanted => ({
+  lanes: (a?.lanes ?? false) || b.lanes,
+  spec: (a?.spec ?? false) || b.spec,
+})
 
 const pollOnce = async ($: EngineInterface, want: Wanted): Promise<void> => {
   const run = (argv: readonly string[]) => runMoai($, argv)
@@ -93,6 +97,12 @@ const pollOnce = async ($: EngineInterface, want: Wanted): Promise<void> => {
     const prevLanes = (await $.state.get(lanesRef)).value ?? emptyFeed()
     const next = await readLanes(run, prevLanes, now)
     if (!sameFeed(prevLanes, next)) await $.state.set(lanesRef, next)
+  }
+  // The SPEC list is read on tab open and on refresh only, never by the timer.
+  if (want.spec) {
+    const prevSpecs = (await $.state.get(specsRef)).value ?? emptyFeed()
+    const next = await readSpecList(run, prevSpecs, now)
+    if (!sameFeed(prevSpecs, next)) await $.state.set(specsRef, next)
   }
 }
 
@@ -124,7 +134,7 @@ const stopPolling = (): void => {
 const startPolling = ($: EngineInterface): void => {
   stopPolling()
   timer = $.clock.every(clampInterval(POLL_INTERVAL_MS), () => {
-    void refresh($, { lanes: false }, true)
+    void refresh($, { lanes: false, spec: false }, true)
   })
 }
 
@@ -140,13 +150,13 @@ const closePane = async ($: EngineInterface): Promise<void> => {
 const switchTab = async ($: EngineInterface, tab: MoaiBoardTab): Promise<void> => {
   await patchView($, { tab, card: '', spec: '', file: '', page: 0 })
   await say($, '')
-  await refresh($, { lanes: tab === 'lanes' })
+  await refresh($, { lanes: tab === 'lanes', spec: tab === 'spec' })
 }
 
 const refreshNow = async ($: EngineInterface): Promise<void> => {
   const view = await readView($)
   await say($, '')
-  await refresh($, { lanes: view.tab === 'lanes' })
+  await refresh($, { lanes: view.tab === 'lanes', spec: view.tab === 'spec' })
 }
 
 // ---- the one write-capable action: pick (REQ-MBM-003 to REQ-MBM-005) ---------------------------
@@ -164,7 +174,7 @@ const onPickPress = async ($: EngineInterface, card: MoaiBoardCard): Promise<voi
   }
   if (!isConfirmed(answer)) return
   const result = await executePick(argv => runMoai($, argv), argv)
-  await refresh($, { lanes: false })
+  await refresh($, { lanes: false, spec: false })
   const queued = (await $.state.get(queueRef)).value?.data
   const isUnconfirmed = result.kind === 'ok' && queued !== undefined && isStillQueued(queued.cards, card.id)
   const message =
@@ -175,6 +185,29 @@ const onPickPress = async ($: EngineInterface, card: MoaiBoardCard): Promise<voi
         : `Picked ${card.id}.`
   await say($, message)
   if (result.kind === 'failed' || isUnconfirmed) $.ui.toast(message)
+}
+
+// ---- SPEC reading: the file calls are wired here, the guard itself is pure (specs.ts) -------------
+const openSpecFile = async ($: EngineInterface, file: string): Promise<void> => {
+  const view = await readView($)
+  const root = await rootOf($)
+  const io = {
+    stat: (path: string) => $.fs.stat(path, { resolve: true }),
+    read: (path: string) => $.fs.read(path),
+  }
+  const result = isSpecFile(file) ? await readSpecFile(io, root, view.spec, file) : undefined
+  const label = `${view.spec}/${file}`
+  const doc =
+    result?.ok === true
+      ? { spec: view.spec, file, ...chunkMarkdown(result.text, label) }
+      : { spec: view.spec, file, chunks: [], notice: result?.ok === false ? result.reason : `"${file}" is not a SPEC file.` }
+  await patchView($, { file, root })
+  await $.state.set(docRef, doc)
+}
+
+const closeSpec = async ($: EngineInterface): Promise<void> => {
+  await patchView($, { card: '', spec: '', file: '' })
+  await $.state.set(docRef, undefined)
 }
 
 // ---- drawing ---------------------------------------------------------------------------------------
@@ -192,10 +225,14 @@ const readModel = async ($: EngineInterface, cols: number): Promise<Model> => ({
 const makeActions = ($: EngineInterface): Actions => ({
   tab: tab => void soft($, () => switchTab($, tab)),
   refresh: () => void soft($, () => refreshNow($)),
-  back: () => void soft($, () => patchView($, { card: '', spec: '', file: '' })),
+  back: () => void soft($, () => closeSpec($)),
   close: () => void soft($, () => closePane($)),
   openCard: id => void soft($, () => patchView($, { card: id })),
   pick: card => void soft($, () => onPickPress($, card)),
+  openSpec: id => void soft($, () => patchView($, { spec: id, file: '' })),
+  openFile: file => void soft($, () => openSpecFile($, file)),
+  setStatus: status => void soft($, () => patchView($, { status, page: 0 })),
+  setPage: page => void soft($, () => patchView($, { page })),
 })
 
 const rootOf = async ($: EngineInterface): Promise<string> => {
@@ -224,7 +261,7 @@ export const register: Register = on => {
       await $.ui.open({ id: PANE, title: 'moai-board' })
       await patchView($, { root: await rootOf($) })
       startPolling($)
-      await refresh($, { lanes: false })
+      await refresh($, { lanes: false, spec: false })
       return { text: 'moai-board pane opened.' }
     } catch (err) {
       return { text: `moai-board could not open the pane: ${errorText(err)}` }

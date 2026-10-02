@@ -22,6 +22,7 @@ import {
   sessionText,
   summaryLine,
 } from './data'
+import { SPEC_FILES, chunkMarkdown, filterSpecs, pageOf, statusChips } from './specs'
 
 /** The four constructors every surface's element table has (the typings' `Elements`). */
 // The table is a per-surface union; only these four constructors are drawn, typed loosely on purpose.
@@ -46,6 +47,10 @@ export type Actions = {
   close: () => void
   openCard: (id: string) => void
   pick: (card: MoaiBoardCard) => void
+  openSpec: (id: string) => void
+  openFile: (file: string) => void
+  setStatus: (status: string) => void
+  setPage: (page: number) => void
 }
 
 const STATE_GROUPS = [
@@ -95,7 +100,9 @@ export const drawBoard = (T: Table, m: Model, a: Actions) => {
       return (
         <Box key="card-detail" flexDirection="column">
           {line('card-meta', `${card.id}  ${meta.join(' \u00b7 ')}`, { bold: true })}
-          <Markdown key="card-text" dimColor={dim} text={cutChars(card.text, 9000)} />
+          {chunkMarkdown(card.text, card.id).chunks.map((chunk, i) => (
+            <Markdown key={`card-text-${i}`} dimColor={dim} text={chunk} />
+          ))}
           <Box flexDirection="row" gap={1}>
             <Button key="back" label="back" hotkey="b" plain onPress={() => a.back()} />
             {canPick(card) && <Button key={`pick:${card.id}`} label="pick" hotkey="p" variant="primary" onPress={() => a.pick(card)} />}
@@ -143,6 +150,58 @@ export const drawBoard = (T: Table, m: Model, a: Actions) => {
     )
   }
 
+  const specsBody = () => {
+    const data = m.specs.data
+    if (view.spec !== '') {
+      const doc = m.doc !== undefined && m.doc.spec === view.spec && m.doc.file === view.file ? m.doc : undefined
+      return (
+        <Box key="spec-detail" flexDirection="column">
+          {line('spec-head', view.spec, { bold: true })}
+          <Box flexDirection="row" gap={1}>
+            {SPEC_FILES.map(f => (
+              <Button key={`file:${f}`} plain label={f} {...(view.file === f ? { variant: 'primary' } : {})} onPress={() => a.openFile(f)} />
+            ))}
+          </Box>
+          <Box flexDirection="row" gap={1}>
+            <Button key="back" label="back" hotkey="b" plain onPress={() => a.back()} />
+          </Box>
+          {view.file === '' && line('spec-pick', 'Choose a file to read.', { dimColor: true })}
+          {doc !== undefined && doc.notice !== '' && line('doc-notice', doc.notice, { wrap: 'wrap' })}
+          {doc?.chunks.map((chunk, i) => <Markdown key={`doc-${i}`} text={chunk} />)}
+        </Box>
+      )
+    }
+    if (data === undefined)
+      return line('specs-wait', m.specs.error === '' ? 'Reading the SPEC list...' : 'No SPEC data to show.', { dimColor: true })
+    const dim = feedStatus(m.specs, m.now).isDim
+    const filtered = filterSpecs(data.rows, view.status)
+    const pg = pageOf(filtered, view.page)
+    return (
+      <Box key="specs-list" flexDirection="column">
+        <Box flexDirection="row" gap={1}>
+          {statusChips(data.rows).map(s => (
+            <Button
+              key={`filter:${s}`}
+              plain
+              label={s === 'active' ? 'active (draft, in-progress)' : s}
+              {...(view.status === s ? { variant: 'primary' } : {})}
+              onPress={() => a.setStatus(s)}
+            />
+          ))}
+        </Box>
+        {filtered.length === 0 && line('specs-none', 'No SPECs with this status.', { dimColor: true })}
+        {pg.rows.map(r => (
+          <Button key={`spec:${r.id}`} plain dimColor={dim} label={`${r.id}  ${r.status}`} onPress={() => a.openSpec(r.id)} />
+        ))}
+        <Box flexDirection="row" gap={1}>
+          {pg.page > 0 && <Button key="page-prev" label="previous page" plain onPress={() => a.setPage(pg.page - 1)} />}
+          {line('page', `page ${pg.page + 1} of ${pg.pages} \u00b7 ${filtered.length} SPECs`, { dimColor: true })}
+          {pg.page < pg.pages - 1 && <Button key="page-next" label="next page" plain onPress={() => a.setPage(pg.page + 1)} />}
+        </Box>
+      </Box>
+    )
+  }
+
   const body = () => {
     switch (view.tab) {
       case 'queue':
@@ -150,7 +209,7 @@ export const drawBoard = (T: Table, m: Model, a: Actions) => {
       case 'lanes':
         return lanesBody()
       case 'spec':
-        return line('spec-wait', 'The SPEC tab is not available yet.', { dimColor: true })
+        return specsBody()
     }
   }
 
