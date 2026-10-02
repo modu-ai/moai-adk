@@ -16,7 +16,8 @@ import (
 const frRun = "run-f1"
 
 // frExpectedEdges is design.md § Transition Table's requested-edge set with a
-// remote configured: 65 (from, to) pairs. It is written out here rather than
+// remote configured: 70 (from, to) pairs (65 before the github-flow
+// states pr-open and merged-pr of SPEC-GITHUB-FLOW-DEFAULT-001 M2-B). It is written out here rather than
 // read from the production table, so the test compares two independent lists.
 func frExpectedEdges() map[[2]string]bool {
 	out := map[[2]string]bool{}
@@ -28,6 +29,8 @@ func frExpectedEdges() map[[2]string]bool {
 		{CardRun, CardSync}, {CardSync, CardSyncAudit}, {CardSyncAudit, CardSync}, {CardSyncAudit, CardMergeReady},
 		{CardMergeReady, CardMerging}, {CardMerging, CardMergeReady}, {CardMerging, CardMergedLocal},
 		{CardMergedLocal, CardPushed},
+		// github-flow delivery (design D-4, S-a): merging → pr-open → merged-pr → done.
+		{CardMerging, CardPROpen}, {CardPROpen, CardMergedPR}, {CardMergedPR, CardDone},
 	} {
 		add(e[0], e[1])
 	}
@@ -75,7 +78,7 @@ func frFixtureCard(repo frRepo, cardID, from, to string) Card {
 		if slices.Contains([]string{CardAssigned, CardPicked, CardMergedLocal, CardPushed, CardCIGreen}, to) {
 			c.DecisionResume = to
 		}
-	case CardMergedLocal, CardPushed, CardCIGreen:
+	case CardMergedLocal, CardPushed, CardCIGreen, CardMergedPR:
 		c.MergeSHA = repo.Merge
 		c.MergeTree = repo.MergeTree
 	}
@@ -83,13 +86,20 @@ func frFixtureCard(repo frRepo, cardID, from, to string) Card {
 }
 
 func frFullRequest(repo frRepo, c Card, to string) TransitionRequest {
-	return TransitionRequest{
+	req := TransitionRequest{
 		RunID: c.RunID, CardID: c.CardID, To: to, ExpectedVersion: c.Version,
 		Actor: "worker-1", Decider: DeciderHuman, Owner: "worker-1",
 		SHA: repo.Commit, ArtifactPath: repo.Artifact,
 		MergeSHA: repo.Merge, RemeasurePath: repo.Remeasure, IntegrationBranch: repo.Integration,
+		PRNumber: "7", PRURL: "https://github.example/org/repo/pull/7",
 		Question: "which way?", Reason: "build broken", Now: frNow,
 	}
+	if to == CardPROpen {
+		// The fixture worktree sits on the integration branch itself, which a
+		// PR head may never be; the PR's base is the fixture's main.
+		req.IntegrationBranch = "main"
+	}
+	return req
 }
 
 func frWriteVerdictsFor(t *testing.T, repo frRepo, cardID, from string) {
@@ -102,7 +112,7 @@ func frWriteVerdictsFor(t *testing.T, repo frRepo, cardID, from string) {
 	}
 }
 
-// AC-005 — exactly the 65 requested edges are accepted and the other 296 are
+// AC-005 — exactly the 70 requested edges are accepted and the other 371 are
 // refused; the production table has no duplicate pair; the T4 stage guard
 // refuses a mismatched resume.
 func TestFR_AC005_TransitionTableEdgeCount(t *testing.T) {
@@ -121,8 +131,8 @@ func TestFR_AC005_TransitionTableEdgeCount(t *testing.T) {
 	}
 
 	expected := frExpectedEdges()
-	if len(expected) != 65 {
-		t.Fatalf("expected-edge fixture lists %d pairs, want 65", len(expected))
+	if len(expected) != 70 {
+		t.Fatalf("expected-edge fixture lists %d pairs, want 70", len(expected))
 	}
 	accepted := map[[2]string]bool{}
 	refused := 0
@@ -144,8 +154,8 @@ func TestFR_AC005_TransitionTableEdgeCount(t *testing.T) {
 		}
 	}
 	t.Logf("requested pairs: %d accepted, %d refused, %d total; production table rows: %d", len(accepted), refused, len(accepted)+refused, len(TransitionEdges()))
-	if len(accepted) != 65 || refused != 296 {
-		t.Fatalf("accepted %d / refused %d, want 65 / 296", len(accepted), refused)
+	if len(accepted) != 70 || refused != 371 {
+		t.Fatalf("accepted %d / refused %d, want 70 / 371", len(accepted), refused)
 	}
 	for pair := range expected {
 		if !accepted[pair] {

@@ -50,6 +50,10 @@ type TransitionRequest struct {
 	MergeSHA, RemeasurePath string
 	// IntegrationBranch names the local integration branch (T16, T17).
 	IntegrationBranch string
+	// PRNumber and PRURL identify the card's pull request (the github-flow
+	// edges merging → pr-open and pr-open → merged-pr); identities only, the
+	// guards read the git evidence themselves.
+	PRNumber, PRURL string
 	// Question is required entering needs-decision; Reason entering failed.
 	Question, Reason string
 	// Now is the injected clock; zero means time.Now().
