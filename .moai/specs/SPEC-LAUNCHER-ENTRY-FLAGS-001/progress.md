@@ -1505,6 +1505,135 @@ top-level `--- PASS` lines: 582; `--- FAIL`: 0; `--- SKIP`: 0; all `--- PASS` li
 
 The sorted list of the 582 top-level results was kept outside the tree (scratchpad `baseline_top.txt`) so the after-run can be diffed by name modulo the renames.
 
+#### Claim
+
+- Step 1 (commit `d624b1cfc`, the board still present): the file-lock substrate is re-homed. `git mv` of `board_lock{,_unix,_windows,_clear_unix,_clear_windows}.go` to `state_lock{...}.go` and of the six board lock test files to `state_lock_*_test.go`; the wait-budget block (the seven constants and `boardLockRetryWait`, lines 72-170 of `board_store.go`) moved verbatim into the new `state_lock_wait.go` (a header comment added above it); the shared identifiers renamed exactly as plan.md lists (`BoardLock` to `StateLock`, `boardLockImpl`, `acquireBoardLockImpl`, `IsBoardLockHeld`, `ErrBoardLockHeld`, `BoardLockOwner`, `ErrBoardLockChangedHands`, `IsBoardLockChangedHands`, the seven budget constants, `boardLockRetryWait`, `flockBoardLock`, `atomicFileBoardLock`, `classifyBoardFlockErr`); the three wait-budget tests became `TestStateLock*`. No behavior change: whole `internal/kanban` suite 582 top-level PASS before and after, identical modulo the three renamed names.
+- Step 2 (commit `09bd28037`): deleted `board.go`, `board_store.go`, `board_recover.go`, `column.go`, `reconcile.go`; deleted `AcquireBoardLock`, `boardLockPath`, `boardLockFileName` (`state_lock.go`) and both `ClearStaleBoardLock` (the Unix no-op and the Windows wrapper); deleted the role-declaration carrier in `role.go` (the file stays); deleted `CompanionRoles`, `companionLaunchers`, `CompanionLauncher`, `CompanionLabel`, `CompanionNumberLabel`, `SplitCompanionLabel`, `isCompanionRole`, `LeaderSocketPath`, `kanbanSocketDir` from `bootstrap.go`; removed the companion clause of `Record.WithRole`. 12 whole test files and 3 lock test files deleted; the 4 errno tests and the cross-process exclusion test re-pointed to `acquireStateLockImpl`; 6 retained test files lost the cases that call a deleted symbol.
+- Frozen and untouched: the todo queue, the integration lock, the slot lease, landing, the factory slot code (`factory_slots.go`, `factory_runtime.go`, `factory_alive_*.go`), `FactoryFreeSlots`, `SplitLeaderLabel`, `LeaderLabel`, `LeaderNumberLabel`, `RoleLeader`, `RoleLane`, `IsLegacyLeaderSpelling`, `legacyLeaderSpelling`, the legacy state-directory read, the on-disk `.moai/state/kanban-board/roles` files, and every file outside `internal/kanban` plus this record.
+
+#### Evidence
+
+AC-012 (M6 part), each row a command run in this run on the committed tree `09bd28037` (`git status --short` empty), env unset in one compound invocation for every `go test`; exit is the shell exit read with `echo`:
+
+| Row | Status | Command | Exit | Observed |
+|---|---|---|---|---|
+| board files gone | PASS | `find internal -name 'board_store*.go' -o -name 'board_lock*.go' -o -name 'board_recover*.go' -o -name board.go -o -name column.go -o -name reconcile.go` | 0 | empty (RED-now 18 paths) |
+| board API and carrier symbols gone | PASS | `grep -rlE '\b(LoadBoard\|WriteBoardState\|AcquireBoardLock\|RecoverBoard\|ParseColumn\|TransitionIntoRun\|BoardState\|BoardDir\|DeclareRole\|ResolveDeclaredRole\|RoleDeclaration)\b' internal cmd --include='*.go'` | 1 | empty (RED-now 27 paths) |
+| companion and notice symbols gone (RED-K3) | PASS | `grep -rlE 'enterKanbanMode\|enterKanbanCompanionMode\|parseKanbanFlag\|rejectKanbanOnCG\|EnvMoaiKanban\b\|EnvMoaiKanbanSpec\|CompanionRoles\|SplitCompanionLabel\|kanbanLeaderNotice\|kanbanCompanionNotice\|kanbanBootstrapNotice' internal cmd --exclude='*_test.go'` | 1 | empty (RED-now `role.go`, `bootstrap.go`) |
+| substrate stays (positive control) | PASS | the ten-name `find` of AC-012, piped to `wc -l` | 0 | `10` (RED-now 4) |
+| queue, integration lock, slot lease acquire through the re-homed budget | PASS | `grep -c 'stateLockWaitBudget' internal/kanban/backlog_store.go internal/kanban/integration_lock_mutation.go internal/kanban/slot_lease.go` | 0 | `2`, `2`, `3` |
+| `role.go` keeps the symbols the factory reads | PASS | `grep -c 'RoleLeader' internal/kanban/role.go` | 0 | `3` |
+| build | PASS | `go build ./...`; `GOOS=windows GOARCH=amd64 go build ./...` | 0, 0 | no output |
+| substrate selector, floor four | PASS | `go test ./internal/kanban -run '^(TestStateLockWaitBudgetDerivedFromNamedInputs\|TestStateLockWaitBudgetCoversSerializedMutations\|TestStateLockRetryWaitIsNotLockstep\|TestBacklogLockStuckHolderSurfacesBoundedNamedError)$' -v -count=1` | 0 | 4 PASS of 4 (`ok … 3.505s`); the same four passed on the step-1 tree (`ok … 3.752s`) |
+| re-pointed substrate tests (added to the floor) | PASS | `go test ./internal/kanban -run '^(TestStateFlockErrnoContentionRemainsHeld\|TestStateFlockErrnoNonContentionIsNotHeld\|TestStateFlockErrnoPreservesErrnoAndPath\|TestStateFlockErrnoFailurePathClosesDescriptor\|TestStateLock_ExcludesAcrossProcesses\|…the four above)$' -v -count=1` (run on the pre-deletion tree, board still present) | 0 | 9 PASS of 9 (`ok … 4.004s`) |
+| REQ-SRL-009 env-literal guard | PASS | `go test ./internal/hook -run '^TestNoNewEnvLiteralsInDiff$' -count=1 -v` | 0 | `env-literal sweep: 661 added lines swept across internal/hook internal/factorymsg internal/cli (envkeys.go and _test.go excluded), base=a6d3e6fd4f21f9c04fbcb7ca7507e87571f9b2c2, distinct literals=0` |
+| AC-015 net | PASS | the three selectors | 0 each | 8 cli, 2 hook, 2 discovery (block below) |
+
+Whole `internal/kanban` suite, under `moai slot acquire --resource t1399-run --max-duration 60m`, released (`slot t1399-run released (was 0dcdf2d5-df5c-4da1-8870-24c2a5861303)`), `go test ./internal/kanban -count=1 -v` to a file, exit 0 each:
+
+| Tree | Result | Top-level PASS / FAIL / SKIP | Including subtests |
+|---|---|---|---|
+| `5aa03a393` (baseline) | `ok … 214.414s` | 582 / 0 / 0 | 857 |
+| `d624b1cfc` (step 1) | `ok … 219.324s` | 582 / 0 / 0 | 857; diff of the sorted name lists: exactly the three renamed names (`TestBoardLockRetryWaitIsNotLockstep`, `TestBoardLockWaitBudgetCoversSerializedMutations`, `TestBoardLockWaitBudgetDerivedFromNamedInputs` to the `TestStateLock*` names) |
+| `09bd28037` (step 2) | `ok … 205.838s` | 514 / 0 / 0 | 742; diff against step 1: 74 names removed, 6 added (582 - 74 + 6 = 514) |
+
+The 6 added names: `TestStateFlockErrnoContentionRemainsHeld`, `TestStateFlockErrnoNonContentionIsNotHeld`, `TestStateFlockErrnoPreservesErrnoAndPath`, `TestStateFlockErrnoFailurePathClosesDescriptor`, `TestStateLock_ExcludesAcrossProcesses` (the re-pointed substrate tests) and `TestFactoryLaneLabelNeverLeaderShape` (the lane-versus-leader half of the old `TestFactoryLaneLabelNeverKanbanShape`). The 74 removed names are the board, role-carrier, companion, reconcile, admission, column, and board-lock cases, plus the five board-entry originals of the re-pointed tests; the sorted lists are in the scratchpad (`step1_top.txt`, `step2b_top.txt`).
+
+Net re-run on the committed tree, tool exit 0 each (step 1 and step 2 both green, identical selection):
+
+```text
+--- PASS: TestCCFactoryLaneJoinsDiscoveredLeader (3.17s)
+--- PASS: TestGLMFactoryLaneJoinsDiscoveredLeader (3.47s)
+--- PASS: TestFactoryNetLeaderLaunch (1.42s)
+--- PASS: TestFactoryNetLaneLaunch (2.84s)
+--- PASS: TestFactoryNetBlockCap (1.20s)
+--- PASS: TestFactoryEntryMatrix (5.05s)
+--- PASS: TestCCFactoryEntryRecordsFailOpenRunMetadata (0.48s)
+--- PASS: TestPrepareKanbanSettingsWritesTransientFile (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	18.453s            (8 of 8)
+--- PASS: TestFactoryNetSessionRecord (0.00s)
+--- PASS: TestFactoryNetSessionStartNotices (0.65s)
+ok  	github.com/modu-ai/moai-adk/internal/hook	1.245s             (2 of 2)
+--- PASS: TestDiscoverLeaderVerifiesLiveLeader (0.13s)
+--- PASS: TestDiscoverLeaderDeclinesUnparseableRunID (0.08s)
+ok  	github.com/modu-ai/moai-adk/internal/discovery	0.541s         (2 of 2)
+```
+
+Compile proof, each exit 0 with no output, on the step-1 tree and again on the step-2 tree: `go build ./...`; `GOOS=windows GOARCH=amd64 go build ./...`; `go vet ./internal/kanban/ ./internal/cli/ ./internal/hook/`; the same vet with `GOOS=windows GOARCH=amd64`. On the step-2 tree additionally `go vet` and the windows vet of `./cmd/t657-merge/ ./internal/cli/ ./internal/discovery/ ./internal/escalation/ ./internal/factorymsg/ ./internal/graph/ ./internal/homestate/ ./internal/hook/ ./internal/mission/ ./internal/statusline/ ./internal/web/ ./internal/kanban/` (the twelve packages that import `internal/kanban` or are it), and `golangci-lint run --timeout=5m ./internal/kanban/...` (v2.1.6, `0 issues.`). `gofmt -l internal/kanban` printed nothing at both steps.
+
+Substrate mutants (observed-failure completion, verification-completeness §1.1). Mutated copies of `state_lock_unix.go` kept outside the tree (scratchpad `m6/mutA.go`, `mutB.go`, `mutC.go`, with `overlay_{A,B,C}.json`), run with `go test -overlay <overlay> ./internal/kanban -run '^(TestStateFlockErrno…|TestStateLock_ExcludesAcrossProcesses)$' -v -count=1` on the pre-deletion tree; each printed `FAIL` for the package (verdict lines and assertion lines only):
+
+```text
+mutant A (acquireStateLockImpl never calls flock, so nothing is excluded)
+    state_lock_errno_test.go:55: second acquireStateLockImpl: expected contention, got nil error
+--- FAIL: TestStateFlockErrnoContentionRemainsHeld (0.00s)
+    state_lock_errno_test.go:164: attempt 0: expected contention, got nil error
+--- FAIL: TestStateFlockErrnoFailurePathClosesDescriptor (0.00s)
+    state_lock_test.go:90: second process output = "ACQUIRED", want HELD — the lock excluded nothing across processes
+--- FAIL: TestStateLock_ExcludesAcrossProcesses (0.02s)
+mutant B (classifyStateFlockErr reports every failure as contention)
+    state_lock_errno_test.go:80: IsStateLockHeld(kanban board lock held) = true, want false   (x4, one per errno)
+--- FAIL: TestStateFlockErrnoNonContentionIsNotHeld (0.00s)
+    state_lock_errno_test.go:100: errors.Is(kanban board lock held, no locks available) = false, want true   (x4)
+--- FAIL: TestStateFlockErrnoPreservesErrnoAndPath (0.00s)
+mutant C (the flock-failure path leaks the descriptor: the Close is removed)
+    state_lock_errno_test.go:178: descriptor leak: probe fd 6 before, 206 after 200 failed acquisitions (slack 16)
+--- FAIL: TestStateFlockErrnoFailurePathClosesDescriptor (0.01s)
+```
+
+Each mutant is rejected by the tests that guard its neighbourhood and the others stay green (A leaves the classification tests green; B leaves the exclusion and descriptor tests green; C leaves everything but the descriptor test green). All three are the substrate properties the four re-pointed tests carry, observed red on `acquireStateLockImpl` and `classifyStateFlockErr` directly, not through any board entry.
+
+Actual lists against the plan's lists, re-measured on `5aa03a393` before editing:
+
+- Whole test files deleted: the plan's 12 (`board_coverage_test.go`, `board_recover_test.go`, `board_store_test.go`, `board_test.go`, `column_test.go`, `reconcile_test.go`, `admission_test.go`, `f1_traversal_test.go`, `f2_unresolved_test.go`, `fix2_probe_test.go`, `fix3_wedge_test.go`, `role_test.go`) and the three lock tests the plan names (`state_lock_cross_test.go`, `state_lock_join_test.go`, `state_lock_clear_windows_test.go`); the plan's `state_lock_errno_test.go` and `state_lock_test.go` were kept and re-pointed (the other two of the five).
+- Retained test files that needed an edit, from `go test -gcflags=-e -run '^NoSuchTestZZZ$' ./internal/kanban` after the deletions: exactly the plan's six (`backlog_store_test.go`, `bootstrap_test.go`, `factory_label_test.go`, `kanban_helper_test.go`, `role_naming_m1_test.go`, `status_read_test.go`). The compile of the retained tests needed `runtimeIsWindows`, `runGitAt`, `deadPID` (host) and `deadPIDWin` (windows), as the plan lists; `readFileBytes` was not moved (its only retained caller was the deleted-with-the-board test in `status_read_test.go`).
+- Retained-file cases removed: `TestCompanionRolesAreTheThreePhases`, `TestSplitCompanionLabel`, `TestCompanionLabelRoundTrips`, `TestCompanionNumberLabelRoundTrips`, `TestLeadNumberLabelIsNotACompanion`, `TestSplitLeadLabelAndCompanionAreDisjoint` (`bootstrap_test.go`); `TestBoardGuardRefusesLegacyLeadDeclaration`, `TestBoardGuardAdmitsLeaderDeclaration` (`role_naming_m1_test.go`); `TestUnresolvedCard_OutcomeDistinctAndByteUnchanged` (`status_read_test.go`); the helper-process operations `resolve-role`, `reacquire-lock`, `reader-loop`, `transition-run` (`kanban_helper_test.go`). Reduced rather than deleted: `TestLeadLabelIsBareRole` (its companion assertion dropped), `TestBacklogStore_NoLeadRoleGuard` (`backlog_store_test.go`: its `IsNotSoleWriter` assertion dropped, the no-role-guard write assertion kept), `TestFactoryLaneLabelNeverKanbanShape` (renamed `TestFactoryLaneLabelNeverLeaderShape`, the leader half kept).
+- Comments reworded: in `bootstrap.go` twelve comment edits against the plan's six (the header, three in `LeaderLabel`, `LeaderNumberLabel`, `SplitLeaderLabel`, `factoryLaneRole`, `FactoryLaneLabel`, `SplitFactoryLaneLabel`, `isRunIDShape`, the socket-root block, and `FactoryLeaderSocketPath`: each named a deleted symbol or the companion chain), the `RoleLeader`, `RoleLane`, and header comments in `role.go`, the `ErrStateLockHeld` and `ErrStateLockChangedHands` documentation and the header in `state_lock.go`, `integration_lock_mutation.go` (the plan's `:24` and the `board_store.go` path mention at `:21` and `:91`), the headers of `state_lock_unix.go`, `state_lock_windows.go`, `state_lock_clear_unix.go`, the wrapper and core documentation in `state_lock_clear_windows.go`, and the `board_store.go` path mentions in `backlog_store.go` (two), `integration_lock_cross_test.go`, `state_lock_wait_test.go`.
+
+Grep proof for the deleted symbols, on the committed tree `09bd28037` (output of the command, and exit):
+
+```text
+$ grep -rnE '\b(CompanionLauncher|CompanionLabel|CompanionNumberLabel|SplitCompanionLabel|isCompanionRole|LeaderSocketPath|kanbanSocketDir|companionLaunchers|ClearStaleBoardLock|acquireBoardLockSerialized|boardLockPath|boardLockFileName|requireLeaderRole|IsNotSoleWriter|ErrNotSoleWriter|IsWipLimitExceeded|BoardOptions|ReconcileCard|BoardPath|joinBoardReleaseErr|writeBoardAtomic)\b' internal cmd --include='*.go'
+internal/kanban/status_read.go:95:// @MX:REASON: expected fan_in >= 3 (ReconcileCard, the review column's verify gate, any board rendering); selecting the primary while a worktree is live ...
+```
+
+The one hit is a comment in `status_read.go` that M6 did not edit (see Finding 2).
+
+`git diff --stat 5aa03a393 HEAD` (taken on `09bd28037`, before this record): `56 files changed, 776 insertions(+), 4636 deletions(-)`; it includes the 55 lines of this section's RED-now and baseline part from commit `f3862640b`. Commits: `f3862640b` (docs: RED-now and baseline, committed ahead of the change), `d624b1cfc` (step 1), `09bd28037` (step 2), then this record as the fourth.
+
+Kanban- and board-named symbols that remain in `internal/kanban` after M6 (baseline for M7 and M8), from `grep -rhoE '[A-Za-z_]*[Kk][Aa][Nn][Bb][Aa][Nn][A-Za-z_]*' internal/kanban --include='*.go' --exclude='*_test.go'`: the package name `kanban` (128 uses: the package clause and prose; the import path is M8's), 11 `KANBAN` (the marker literal `MOAI_KANBAN_ID` and comments), 4 `Kanban` (comments in `record.go`), `EnvMoaiKanbanLeadAddr` (2, comments in `bootstrap.go`), `MOAI_KANBAN_ID` (1), `loadKanbanRecords` (1, a comment in `record_prune.go`). No Go identifier with the word survives in `internal/kanban` non-test code. The word `board` survives in 43 prose lines of 14 non-test files (comments and error texts such as `kanban board lock held`, `open board lock %s`, which are behavior-preserved) and in the two windows-only constants `boardLockTransientRetries` and `boardLockTransientDelay` in `state_lock_windows.go` (not in plan.md's rename list, left as they were).
+
+#### Baseline-attribution
+
+- Trees: `5aa03a393` for the RED-now greps and the baseline suite (before any edit); the working tree that became `d624b1cfc` for the step-1 suite, build, vet, net, and the four-test selector (HEAD stayed `f3862640b` through them); the working tree that became `09bd28037` for the substrate tests, the mutants (pre-deletion, HEAD `d624b1cfc`), the step-2 suites, the net, builds, vets, lint, and the env-literal guard (HEAD stayed `d624b1cfc` through them); the committed tree `09bd28037` for the final AC-012 greps and the exit codes (`git status --short` empty, `git rev-parse --short HEAD` printed `09bd28037`). Re-read before every commit: HEAD, branch (`WT-launcher-entry-flags`), `git status --short`.
+- Judging build: every `go test`, `go build`, `go vet`, `gofmt`, and `golangci-lint` ran from the Go toolchain and the installed `golangci-lint` v2.1.6 on this tree; no installed `moai` binary produced any measurement cited here, except `moai slot acquire` and `moai slot release` (lease lines only).
+- The status-test relocation (two `TestReadCardStatus_*` tests) came after the first step-2 whole-suite run (512); the suite was run again on the final tree (514) and that run is the one cited.
+
+#### Gaps
+
+1. The whole `internal/cli` and `internal/hook` suites were NOT run; for those packages the cited runs are the factory net, `TestNoNewEnvLiteralsInDiff`, and the vet of both (host and windows). `TestHookWrapperCopiesStayIdentical` (red on the base for an unrelated reason, M5b record) was not run at all, so nothing is claimed about it.
+2. `go vet ./...` over the whole module and `GOOS=windows go vet ./...` whole-module were not run; the windows vet ran over the twelve packages above (exit 0). The pre-existing windows vet failure outside this SPEC (`internal/cli/worktree/sweep_test.go:1687`, `parseLsofCWDs`) is in a package this milestone does not import or touch and was not exercised.
+3. Nothing ran on Windows: the Windows lock substrate, the Windows clear core, and the deleted Windows clear suite (`TestClearStaleBoardLock_*`, five tests incl. the re-acquire race) were checked only by compilation (`GOOS=windows go build`, `go vet`). The plan deletes that suite with the board, so the dead-owner-cleared, live-owner-refused, and re-acquire-race observations of `clearStaleLockAtPath` now have no Windows test of their own; `integration_lock_mutation_windows_test.go` (retained) still exercises the same core through the integration mutation lock.
+4. The mutant runs piped the `go test` output through `grep` and `head`, so the tool exit code of each mutant run was not read separately; each run printed `FAIL` for the package and the failing test names above.
+5. The probe runner `probe.go` was not re-run for comparison; `M6a.patch`, `M6a.rm`, `M6b.patch`, `M6b.rm` were used as a model only (divergences below), and `git apply` could not apply them (the patches use `/dev/null` sources that this git rejects), so the edits were made by hand.
+6. The `internal/kanban` suite was run once per tree, not repeated; no flake was observed in the four whole-suite runs (baseline, step 1, step 2 twice) or the targeted ones.
+7. Worktree-guard refusals, four, each re-issued as a plain form measuring the same thing, none replaced by reading source: (a) `cd internal/kanban && git mv … && cd ../..` ("changes directory to a location computed at runtime before running git"), re-issued with repo-relative `git mv` paths; (b) a `for` loop over helper names that contained the word `runGitAt` ("names git in a form too complex to verify"), re-issued as one `grep -E` alternation; (c) `perl` with a path built from a shell variable (`$S`) to make the mutated copies, replaced by files written with the Write tool and literal-path overlay JSON; (d) a heredoc that wrote a perl script followed by other commands, replaced by the Write tool for the script and a separate `perl -0pi <script> <file>` call.
+8. Ordering (verification-claim-integrity §2.3): the re-pointed substrate tests and the substrate-touching production edits share commit `09bd28037` with the deletions; the baseline and RED-now are committed ahead of it (`f3862640b`), and the substrate tests were run green and the three mutants run red on the pre-deletion tree (HEAD `d624b1cfc`, the board still present), which is a session record, not a commit-graph fact.
+
+#### Residual-risk
+
+- Behavior preserved on purpose, which still reads wrong: `ErrStateLockHeld` keeps the text `kanban board lock held`, `ErrStateLockChangedHands` keeps its text, and the acquire errors keep `open board lock %s` and `lock board lock %s`; anything that matches those strings (none found in `internal cmd` by grep during step 1, but not searched outside Go) is unaffected. Rewording them is a behavior change this milestone does not make.
+- A past board left `.moai/state/kanban-board/roles/*.json` and `board.json` on disk; after M6 nothing reads or writes them. The plan and the operator verdict leave them in place.
+- `state_lock_clear_unix.go` now carries only its header comment and `package kanban` (the function it held was the board-bound no-op). It stays because AC-012's positive-control `find` lists it and because `integration_lock_mutation_unix.go` points at its gate rationale.
+- `Record.WithRole` now discards the three companion role values; a rewrite through `WithRole` of an old record that carries `plan`, `run`, or `sync` would no longer store that role. Whether any reader renders such a stored value, and whether any non-test caller reaches `WithRole` with one, was not examined beyond the compile.
+
+#### Findings (statements the tree contradicts, no SPEC file edited)
+
+1. plan.md M6 step 2 lists `f1_traversal_test.go` among the six that "exercise only the board or the carrier"; on this tree it also carried `TestReadCardStatus_RejectsTraversalSpecID` and `TestReadCardStatus_AcceptsCanonicalSpecID`, which call the retained `ReadCardStatus` (`status_read.go`). The file was deleted as the plan says, and the two tests were relocated verbatim to `status_read_test.go` so the traversal guard of a retained function keeps its test (net effect on the plan's count: 12 whole files go, plus 2 tests move).
+2. After M6, `ReadCardStatus` (`internal/kanban/status_read.go:100`) has no non-test caller: `grep -rn 'ReadCardStatus\|ReadPrimarySpecStatus' internal cmd --include='*.go' --exclude='*_test.go'` finds callers only for `ReadPrimarySpecStatus` (`internal/cli/todo_autodone.go:306`, `internal/cli/todo_landed.go:337`). Its `@MX:REASON` at `:95` still names `ReconcileCard` (deleted) as an expected caller. Not edited and not deleted: it is outside the plan's lists and AGENTS.md §5 forbids deleting seemingly-unused code without approval; it is a candidate for the operator's next decision.
+3. Comment-only mentions of the renamed lock files outside `internal/kanban`, found by `grep -rn 'board_lock' internal cmd --include='*.go'` after step 1 and left alone (the stage data shows no edit outside `internal/kanban`): `internal/cli/todo_test.go:564`, `internal/cli/gate_lock_unix.go:6`, `internal/cli/gate_lock_windows.go:7` and `:26`, `internal/cli/gate_lock.go:14`. They now name files that do not exist.
+4. acceptance.md AC-012's third `find` command lists "18 paths" today and "empty output, exit 0" after: both hold (18 measured at `5aa03a393`, empty at `09bd28037`).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
