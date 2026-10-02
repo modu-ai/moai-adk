@@ -72,7 +72,7 @@ flowchart TD
 | `ast-grep` | 구조적 코드 검색 및 리팩터링 | `moai mcp add ast-grep` |
 | `aside` | 로그인된 브라우저에서 동작하는 선택형 브라우저 에이전트 (exec, repl) | `moai mcp add aside --command aside --args mcp --scope user` |
 
-`aside`는 선택 사항입니다. 기본 설정에는 들어 있지 않고, 어떤 워크플로도 이 서버를 전제로 하지 않습니다. 모든 프로젝트에 등록하려면 `moai mcp add aside --command aside --args mcp --scope user`를 실행하고, 현재 프로젝트에만 등록하려면 `--scope user`를 뺍니다. `aside mcp`는 도구 두 개를 제공합니다. `exec`는 로그인된 사이트에서 브라우저 에이전트를 실행하고, `repl`은 열려 있는 페이지에 Playwright 방식의 JavaScript를 실행합니다. 운영자 본인의 로그인된 브라우저 안에서 동작하므로 Moai는 기본적으로 읽기 전용으로만 쓰고 `--permission full-access`는 쓰지 않습니다. 상태를 바꾸는 단계는 운영자의 명시적 확인이 있어야 하며, 그 확인은 서브에이전트가 아니라 MoAI 오케스트레이터만 요청하고 실행합니다. MoAI는 Aside를 설치하지 않습니다. Aside 자체의 브라우저 스킬이 필요하면 운영자가 직접 `aside skills install`을 실행합니다. E2E 워크플로에서는 `/moai e2e --tool aside`로 지정했을 때만 쓰이며(명시 지정 전용, `CI=true`에서는 사용 불가), Aside가 없으면 아무 안내 없이 플랫폼 기본 도구 체인으로 이어집니다.
+`aside`는 선택 사항입니다. 기본 설정에는 들어 있지 않고, 어떤 워크플로도 이 서버를 전제로 하지 않습니다. 모든 프로젝트에 등록하려면 `moai mcp add aside --command aside --args mcp --scope user`를 실행하고, 현재 프로젝트에만 등록하려면 `--scope user`를 뺍니다. `aside mcp`는 도구 두 개를 제공합니다. `exec`는 로그인된 사이트에서 브라우저 에이전트를 실행하고, `repl`은 열려 있는 페이지에 Playwright 방식의 JavaScript를 실행합니다. 운영자 본인의 로그인된 브라우저 안에서 동작하므로 MoAI는 기본적으로 읽기 전용으로만 쓰고 `--permission full-access`는 쓰지 않습니다. 상태를 바꾸는 단계는 운영자의 명시적 확인이 있어야 하며, 그 확인은 서브에이전트가 아니라 MoAI 오케스트레이터만 요청하고 실행합니다. MoAI는 Aside를 설치하지 않습니다. Aside 자체의 브라우저 스킬이 필요하면 운영자가 직접 `aside skills install`을 실행합니다. E2E 워크플로에서는 `/moai e2e --tool aside`로 지정했을 때만 쓰이며(명시 지정 전용, `CI=true`에서는 사용 불가), Aside가 없으면 아무 안내 없이 플랫폼 기본 도구 체인으로 이어집니다.
 
 ### 중립성 계약
 

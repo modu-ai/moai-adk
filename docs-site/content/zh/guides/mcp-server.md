@@ -72,7 +72,7 @@ flowchart TD
 | `ast-grep` | 结构化代码搜索和重构 | `moai mcp add ast-grep` |
 | `aside` | 在已登录浏览器中工作的可选浏览器代理（exec, repl） | `moai mcp add aside --command aside --args mcp --scope user` |
 
-`aside` 是可选项。它不在默认配置里，任何工作流也不以它为前提。要为所有项目注册，运行 `moai mcp add aside --command aside --args mcp --scope user`；只想注册到当前项目，就去掉 `--scope user`。`aside mcp` 提供两个工具：`exec` 在已登录的网站上运行浏览器代理，`repl` 对已打开的页面执行 Playwright 风格的 JavaScript。由于它在操作者自己已登录的浏览器里工作，Moai 默认只读使用，且不使用 `--permission full-access`。任何会改变状态的步骤都需要操作者明确确认，而这一确认只由 MoAI 编排器（绝不是子智能体）发起并执行。MoAI 不会安装 Aside；如需添加 Aside 自带的浏览器技能，由操作者自己运行 `aside skills install`。在 E2E 工作流中，只有明确传入 `/moai e2e --tool aside` 时才会用到 Aside（`CI=true` 时不可用），Aside 不存在时，工作流会不作任何提示地继续使用平台默认工具链。
+`aside` 是可选项。它不在默认配置里，任何工作流也不以它为前提。要为所有项目注册，运行 `moai mcp add aside --command aside --args mcp --scope user`；只想注册到当前项目，就去掉 `--scope user`。`aside mcp` 提供两个工具：`exec` 在已登录的网站上运行浏览器代理，`repl` 对已打开的页面执行 Playwright 风格的 JavaScript。由于它在操作者自己已登录的浏览器里工作，MoAI 默认只读使用，且不使用 `--permission full-access`。任何会改变状态的步骤都需要操作者明确确认，而这一确认只由 MoAI 编排器（绝不是子智能体）发起并执行。MoAI 不会安装 Aside；如需添加 Aside 自带的浏览器技能，由操作者自己运行 `aside skills install`。在 E2E 工作流中，只有明确传入 `/moai e2e --tool aside` 时才会用到 Aside（`CI=true` 时不可用），Aside 不存在时，工作流会不作任何提示地继续使用平台默认工具链。
 
 ### 中立性契约
 
