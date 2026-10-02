@@ -1,8 +1,10 @@
 # SPEC-AUDIT-MODEL-CONVERGE-001 — research
 
-> Tier L research artifact. Every row was measured in the plan-phase run, in
-> this tree (`.moai/worktrees/t1423`, branch `WT-audit-model-convergence`, HEAD
-> `c50da9c2f`), unless the row says otherwise. Commands run from the tree root.
+> Tier L research artifact (0.1.2). Rows R-1..R-24 were measured in the
+> plan-phase run on this tree (`.moai/worktrees/t1423`, branch
+> `WT-audit-model-convergence`) at HEAD `c50da9c2f`; rows R-25..R-30 and §R.5
+> were re-measured for plan-audit iteration 1 at HEAD `53a42f013` (the same code
+> plus the SPEC directory, R-28), unless the row says otherwise. Commands run from the tree root.
 > A row quoting "exit" read it from a `sh -c '…; echo exit=$?'` wrapper; the
 > command column itself is the plain command.
 
@@ -30,10 +32,16 @@
 | R-18 | Methodology | `grep -n development_mode .moai/config/sections/quality.yaml` | `2:    development_mode: tdd` |
 | R-19 | `CLAUDE.local.md` | `ls CLAUDE.local.md` in the worktree and in the primary checkout | `No such file or directory` in both; the template-neutrality principle was read from the comment in `internal/config/defaults.go` instead |
 | R-20 | The Go default `Audit.Model` is pinned | read `internal/config/mcp_audit_config_test.go:42-48` | `TestAuditConfig_DefaultProfile` asserts `a.Model == AuditModelClaude` |
-| R-21 | A deadline on the codex leg stops the process, and the session returns partial text on a context end | read `internal/cli/mcp_codex.go:518-540` (`realCodexSessionRunner.start`: `exec.CommandContext(ctx, binaryPath, args...)`), `:1255-1275` (`awaitCodexTurnReview`: on `ctx.Err()` it returns `bestCodexReviewText(reviewText, agentText), nil`), `:1020-1031` | context expiry kills the codex subprocess and closes its stdout, which ends the blocked `recv()`; but the turn reader returns whatever review text it had with a nil error, so an expired leg must be forced to `inconclusive` rather than trusted to report the expiry (design.md §D.10 item 6) |
+| R-21 | A deadline on the codex leg stops the process, and the session returns partial text on a context end | read `internal/cli/mcp_codex.go:518-540` (`realCodexSessionRunner.start`: `exec.CommandContext(ctx, binaryPath, args...)`), `:1255-1275` (`awaitCodexTurnReview`: on `ctx.Err()` it returns `bestCodexReviewText(reviewText, agentText), nil`), `:1020-1031` | context expiry kills the codex subprocess and closes its stdout, which ends the blocked `recv()`; but the turn reader returns whatever review text it had with a nil error, so a leg whose context ended — by its own deadline or by the caller's cancellation, the code returns the text either way — must be forced to `inconclusive` and its text discarded (design.md §D.10 item 6) |
 | R-22 | The template leak test and the script's allowlist | read `internal/template/internal_content_leak_test.go:870-905`; `TestTemplateNoInternalContentLeak` at line 1541 | template files may not carry internal SPEC identifiers; the only allowlisted identifier in `sync-audit-4dim.js` is the illustrative `SPEC-FOO-001` launch example. Text added to the template copies of `sync.md` and the script must be identifier-free. |
 | R-23 | The sync-audit script's agents are read-only and its verdict is pure JS; `audit_multi` is write-capable | read `.claude/workflows/sync-audit-4dim.js` header (`Read-only: every agent … agentType 'Explore'`; `No meta-judge agent`; `No LLM arithmetic`) and the `Verdict` phase; `internal/mcp/catalog.go:36-40`; `grep -c "mcp__moai__"` on both script copies | `0` MCP-tool references in either copy; the script has no write capability and no call between judge collection and the returned verdict; `audit_multi` files receipts and state. Hence the added call sits with the orchestrator in `sync.md` (design.md §D.8). Whether an `Explore` workflow agent could carry MCP tools was not observed. |
 | R-24 | No recorded location for the orchestrator's binding statement | `grep -n "verdict\|§E.4\|audit-ready" .claude/skills/moai/workflows/sync.md`; `grep -n "sync-audit-4dim\|FO-SYNC-1\|BINDING\|binding" .claude/skills/moai/workflows/sync/*.md` | `sync.md` names no file that stores the statement of which verdict is binding; `sync/*.md` has no hit for the binding rule. Left as plan.md §B OQ-9. |
+| R-25 | An unknown verb under `moai verify` prints the group help and exits 0; the group's root flag and registration pattern | `moai verify audit-plan --help` (stdout beginning ` Shared diagnostic snapshot contract.`, exit 0); `moai verify check --help`; read `internal/cli/verify.go:34-91`, `codex_review_receipt.go:177`, `verify_receipts.go:16` | the group has no argument validation, so the absence of a verb cannot be detected by exit code; `--project-root` is a PERSISTENT flag on the group defaulting to `$CLAUDE_PROJECT_DIR`, then the working directory (`verifyResolveRoot`) — in a worktree-isolated session that environment variable names the primary checkout; verbs register through `verifyExtraCommands` (`sync-gate`, `codex-review`) beside `newVerifyRecordCmd` / `newVerifyCheckCmd`. `moai verify --help` lists record, check, sync-gate, codex-review. |
+| R-26 | Import weight of `internal/auditreceipt -> internal/config` | `go list -deps ./internal/hook` filtered for `moai-adk/internal/config$` (count); `go list -deps ./internal/config` filtered for a `.` in the path (count); `go list -deps ./internal/auditreceipt` filtered for `moai-adk` (count) | `1` (the hook package already imports `internal/config`); `29` module-path dependencies of `internal/config`; `1` (`internal/auditreceipt` imports no other moai package today). All three use a pipe — informational, not ledger rows. |
+| R-27 | What bounds the `audit_multi` call, and the codex siblings | read `internal/config/defaults.go:572-593` (`DefaultCodexTaskTimeout = 600 * time.Second` at 587; `DefaultCodexAuditTimeout = 20 * time.Minute` at 593, "An audit reads a SPEC and its tree and can take minutes"); `internal/cli/codex_audit_launch.go:640-655` (`codexAuditExec` bounds one audit process with it); `internal/cli/codex_task.go:172`; `grep -n "runMultiAudit\|performCodexAudit" internal/cli/codex_review_gate.go internal/cli/multi_review_gate.go`; read `internal/cli/multi_review_gate.go:13,79,120` | both codex bounds are `var`s ("Not a compile-time const … so a test can shorten it"); the two review-gate hook files reference neither `runMultiAudit` nor `performCodexAudit` (no output), and the multi-review gate only loads a result already persisted by `persistConvergenceResult` — so neither the 900 s Stop-hook budget nor any hook bounds an `audit_multi` MCP call; no host tool timeout is configured in the repository (R-6) |
+| R-28 | The code is unchanged between the authoring base and the audited HEAD | `git diff --stat c50da9c2f HEAD -- internal .claude .moai/config` | (no output) — `53a42f013` adds only the SPEC directory |
+| R-29 | Which tests read `workflow.yaml` or resolve the root from `CLAUDE_PROJECT_DIR` | `grep -rln 'CLAUDE_PROJECT_DIR\|EnvClaudeProjectDir' --include='*_test.go' internal` by package; `grep -rln 'workflow.yaml' --include='*_test.go' internal` by package; `grep -rln 'CodexGateRequired\|workflowAuditPins\|resolveAuditGates\|handleAuditMulti\|runMultiAudit' --include='*_test.go' internal`; the top-level test-name prefixes of the audit-reading files | files naming `CLAUDE_PROJECT_DIR`: `internal/cli` 128, `internal/hook` 43, `internal/template` 11, `internal/codexwiring` 3, `internal/kanban` 2, `internal/session` 2, `internal/constitution` 1, `internal/navigator` 1. Files naming `workflow.yaml`: `internal/cli` 44, `internal/config` 22, `internal/hook` 12, `internal/web` 10, `internal/template` 8, `internal/settings` 6, `internal/auditreceipt` 3, `internal/harness` 3, others 1-2. Test files that reach the gate readers: 15 in `internal/cli` (among them `mcp_project_root_codex_test.go`, `required_gate_block_test.go`, `codex_verdict_divergence_test.go`, `codex_audit_required_block_test.go`, `mcp_build_identity_test.go`, `wsr_state_root_test.go`) plus `internal/auditreceipt/store_test.go`. `internal/cli` audit-reading name families (by count): `TestCodexAudit`, `TestConverge`, `TestAuditMulti`, `TestReviewGate`, `TestMultiReviewGate`, `TestGLMAudit`, `TestClaudeAudit`, `TestAC`, `TestRunMultiAudit`, `TestRunCodexReviewGate`, `TestRunMultiReviewGate`, `TestPersistConvergenceResult`, `TestConfigOrphanedWorktree`, `TestWSR0…`, `TestPerformCodexAudit`, `TestPerformGLMAudit`, `TestHandleCodexReviewGate`, … The review-gate tests live in `internal/cli` (the gates are `internal/cli/*_review_gate.go`), not in `internal/hook`; the hook-side receipt-guard tests are `TestAuditReceiptGuard…`, `TestWSR007/008/009`, `TestSubagentStop…` (`internal/hook/audit_receipt_guard_test.go`, `wsr_audit_receipt_tree_test.go`). `internal/hook`'s full suite is a heavy run and is not used (AC-ACV-018 names the families). |
+| R-30 | Facts the plan-audit cited, re-measured | read `internal/cli/audit_pin.go:34-64` (`loadWorkflowAuditSection` returns `config.AuditConfig{}, nil` for an absent file and an error for a read or parse failure; `workflowAuditPins` turns that error into a zero value); `internal/auditreceipt/store.go:236-257` (`rawCodexGate`: a private struct, `return ""` on a read or parse error); `internal/cli/mcp_worktree_root.go:99-113` (`resolveAuditGates`); `internal/cli/mcp_codex.go:1263-1268` (`awaitCodexTurnReview` returns `bestCodexReviewText(reviewText, agentText), nil` on `ctx.Err()` and on a closed channel); `grep -n "moai:closure-second-review" …sync-auditor.md`; `grep -n "audit_model" .claude/skills/moai/workflows/review.md` | all three raw readers confirmed; the partial-text return confirmed on any context end; local `sync-auditor.md` carries the closure markers at lines 178 and 194 (template 162 and 178); `review.md` interprets `audit_model` at lines 211, 213, 263, 531, 542. |
 
 ## §R.2 Corrections to the card intake
 
@@ -69,8 +77,15 @@
 - **The web guard goes vacuous when `activeAuditBackend` is deleted** (R-11).
 - **The installed MCP server cannot show a new tool** (R-13), which is the
   measured reason the read-only surface is a CLI verb.
-- **A deadline alone is not enough** (R-21): the codex turn reader returns
-  partial text on context end, so the leg must discard it on expiry.
+- **A deadline alone is not enough** (R-21, R-30): the codex turn reader returns
+  partial text on ANY context end — deadline or caller cancellation — so the leg
+  must discard it in both arms.
+- **An older server looks like a pass** (R-5, E22): a `model: multi` yaml with
+  codex `inconclusive` returns `overall_verdict: pass` with an empty `gate_unmet`
+  from a server that ignores the token; keying fail-closed behaviour on
+  `gate_unmet` alone misses it, so the result is checked against the plan.
+- **An unknown verb is not an error under `moai verify`** (R-25): an older
+  binary is detected by the verb's output contract, not its exit code.
 - **The sync call cannot live in the script** (R-23): read-only agents and a
   pure-JS verdict; it lives with the orchestrator, and the template copies must
   stay identifier-free (R-22).
@@ -82,9 +97,34 @@
 - Whether the settings wizard writes the default `claude` token to YAML.
 - Whether a Codex-hosted read-only auditor role can execute a shell verb.
 - `moai update` preservation of a user-set `audit.model` (a code comment only).
-- The `internal/cli` import graph for the new `audit` command group beyond the
-  absence of an existing `audit` top-level verb in `moai --help`.
+- The `internal/cli` import graph for the new verb beyond its registration
+  through `verifyExtraCommands` (R-25).
 - Real codex adversarial-review durations (the deadline value is derived from
-  the Claude stage limit, not measured).
+  `DefaultCodexAuditTimeout`, R-27, not measured).
+- Whether the settings wizard persists an untouched `claude` radio (decision D7' makes either answer harmless).
 - Where the sync binding statement is persisted (R-24), and whether a workflow
   `Explore` agent could carry MCP tools (R-23).
+
+## §R.5 Plan-audit iteration 1 — which cited claims held on this tree
+
+Each file:line the audit cited was re-read or re-run at HEAD `53a42f013`; none was
+carried over. Result: **every cited claim held.**
+
+| Audit item | Cited claim | Re-measured here | Held |
+|---|---|---|---|
+| PA1-D1 | an older MCP server turns a required codex that never answers into a pass with empty `gate_unmet` | reproduced with the throwaway `go test -overlay` test of acceptance.md E22: `overall_verdict=pass gate_unmet="" fail_open=[codex]` | yes |
+| PA1-D2 | `workflowAuditPins` swallows the parse error (`audit_pin.go:58-64`); the verb must call `loadWorkflowAuditSection` | read, R-30 | yes |
+| PA1-D3 | `awaitCodexTurnReview` returns partial text with a nil error on any context end (`mcp_codex.go:1264-1266`) | read, R-30 (lines 1263-1268) | yes |
+| PA1-D4 | `DefaultCodexTaskTimeout` 600 s and `DefaultCodexAuditTimeout` 20 min exist in `defaults.go:587-593`, as `var`s | read, R-27 (589-593 for the audit bound) | yes |
+| PA1-D4 (added by the brief) | the 900 s Stop-hook wrapper does not bind the `audit_multi` call because the hook only reads a persisted result | read `multi_review_gate.go:13,79,120`; the two review-gate files reference neither `runMultiAudit` nor `performCodexAudit`, R-27 | yes |
+| PA1-D5 | the raw loaders keep an absent `audit.model` empty, while the Go default carries `claude` | read `audit_pin.go:34-53`, `store.go:236-257`, `mcp_worktree_root.go:101-110`, `defaults.go:1272-1304`; E24 (no raw reader constructs the default config) | yes |
+| PA1-D6 | `claude` is paired with the default gates in code | `defaults.go:1272-1304` | yes (superseded by decision D7') |
+| PA1-D7 | the installed binary has no such verb | E3: the group help, exit 0 (the audit read exit 1 for the old spelling `moai audit plan`; under the new spelling the exit is 0 — R-25) | yes (spelling changed) |
+| PA1-D8 | the literal-presence ACs are weak; the leak sweep is a name regex over `internal/cli` | read the 0.1.1 ACs; R-29 gives the wider set | yes |
+| PA1-D9 | `IsBinding` has no production caller | `grep -rn "IsBinding" --include="*.go" internal cmd` minus its own file and test finds no production caller (measured at 0.1.0, R-10) | yes |
+| PA1-D10 | `review.md` interprets `audit_model`; the local `sync-auditor.md` carries closure markers | R-30 | yes |
+| PA1-D11 | importing `internal/config` into `internal/auditreceipt` adds config's dependency set; no cycle | R-26 | yes (and `internal/hook` already imports it) |
+
+Not re-run: the audit's own overlay probes (`TestPlanReviewFailOpenProbes`,
+`TestPlanReviewCallerCancellation`); the conclusions were re-derived from the
+cited source lines and, for PA1-D1, from E22.
