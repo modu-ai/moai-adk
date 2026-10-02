@@ -355,6 +355,17 @@ Flags common to both launch commands.
 
 > The `auto` permission mode is not available on GLM (a third-party provider) — it is supported only in `moai cc`.
 
+### Session model resolution (`moai cc`)
+
+`moai cc` looks for the session model in the order below and passes the first value it finds to Claude Code as `--model`.
+
+1. An explicit `--model` argument
+2. The profile's model (the value chosen in `moai profile setup`)
+3. The value saved with `/model` in that profile's user-scope `settings.json` — the launch prints a one-line notice such as `model: opus (user /model)`
+4. If all three are empty, nothing is passed. The project's `.claude/settings.json` `model` pin then decides the session model, and the launcher names that value and how to change it
+
+Project settings outrank user-scope settings, so without step 3 a model picked with `/model` would be hidden behind the project pin. `moai glm` does not follow this rule: GLM needs the model as a slot alias, and a value picked with `/model` on an Anthropic account names a different model family that would route to the wrong slot.
+
 ### moai glm subcommands
 
 | Command | Description |

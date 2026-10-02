@@ -712,17 +712,32 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	}
 	model = resolveMainSessionModel(model, glmBackend)
 
-	// 6b. An empty model is only worth surfacing when the user explicitly
-	// targeted a named profile (via -p or a project-scoped binding) that then
-	// yielded no model — that suggests the named profile is empty or
-	// misconfigured. For the default profile (base preferences) an empty model
-	// is the normal, intentional state: many setups deliberately omit a model
-	// pin so Claude Code falls back to the user-scope last-choice (see
-	// CLAUDE.local.md §22.7). Warning there is a false alarm, so the gate is
-	// isNamedProfile. warnNoModelResolved itself stays unconditional (its unit
-	// test calls it directly with any profileName).
-	if model == "" && isNamedProfile(profileName) {
-		warnNoModelResolved(os.Stderr, profileName)
+	// 6a. Neither --model nor the profile chose a model: take the one the user
+	// saved with /model in this launch's user-scope settings.json (Claude
+	// backend only — see launcher_model_source.go). Without this the launch
+	// passed nothing, and a project-level model pin, which outranks user-scope
+	// settings inside Claude Code, silently decided the session (card t1441).
+	if model == "" && !glmBackend {
+		if userModel := readUserScopeModel(); userModel != "" {
+			model = userModel
+			noteUserScopeModel(launcherStderr, model)
+		}
+	}
+
+	// 6b. Still no model: the project's .claude/settings.json pin (if any)
+	// decides, and the notice names it. Without a pin, an empty model is only
+	// worth surfacing for a named profile (via -p or a project-scoped binding)
+	// that yielded none — that suggests the profile is empty or misconfigured.
+	// The default profile with no pin is the normal state and stays quiet.
+	// warnNoModelResolved itself stays unconditional (its unit test calls it
+	// directly with any profileName).
+	if model == "" {
+		root, _ := findProjectRoot()
+		if pinned := readProjectPinnedModel(root); pinned != "" {
+			warnProjectModelPin(launcherStderr, pinned)
+		} else if isNamedProfile(profileName) {
+			warnNoModelResolved(os.Stderr, profileName)
+		}
 	}
 
 	// 7. Build args

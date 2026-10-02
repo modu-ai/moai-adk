@@ -355,6 +355,17 @@ moai glm [-p profile] [-- claude-args...]
 
 > `auto` 权限模式在 GLM(第三方提供者)中不可用 —— 仅在 `moai cc` 中支持。
 
+### 会话模型的确定顺序(`moai cc`)
+
+`moai cc` 按下面的顺序查找会话模型,并把找到的第一个值作为 `--model` 传给 Claude Code。
+
+1. 显式指定的 `--model` 参数
+2. 配置文件中的模型(在 `moai profile setup` 里选的值)
+3. 该配置文件的用户级 `settings.json` 中用 `/model` 保存的值 —— 启动时会用一行提示,例如 `model: opus (user /model)`
+4. 以上三项都为空时不传任何值。此时由项目 `.claude/settings.json` 里的 `model` 固定值决定会话模型,启动器会指出该值以及修改方法
+
+项目设置优先于用户级设置,所以没有第 3 步时,用 `/model` 选的模型会被项目固定值盖住。`moai glm` 不适用这条规则:GLM 需要以槽位别名传入模型,而在 Anthropic 账户里用 `/model` 选的值属于另一个模型系列,会连到错误的槽位。
+
 ### moai glm 子命令
 
 | 命令 | 说明 |
