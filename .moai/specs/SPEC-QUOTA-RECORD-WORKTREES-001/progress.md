@@ -561,6 +561,67 @@ AC matrix on the final tree: AC-QWR-001..006 and -010 (statusline) PASS; -007, -
 - `moai spec lint` shows the two `MovingRefUnpinned` warnings noted above (not errors); the AC counter reports 15 for acceptance.md against 13 headings.
 - Exit status of commands that printed nothing is inferred from the harness's failure-line display, not from an echoed `$?`.
 
+### Pre-merge repair (leader-approved, after sync-audit F2 F3 F7)
+
+Test-only repair, commit `8557094af5d272e484601caf77df2f2a3909f3a7` (parent `c28c9c162`); no production file and no predecessor test file changed. Changed files: `internal/statusline/quota_dirs_test.go`, `internal/config/quota_gate_scan_dirs_test.go`. The sync-audit (`.moai/reports/t1442/sync-audit.md`, local-only) found that two AC-QWR-004 subtests pass even when the production check they are named for is deleted (F2 mutant M15, F3 mutant M12) and that the config cache-schema assertion is an equality (F7).
+
+Method (nothing written in the card tree): each mutant is a scratchpad copy of `internal/statusline/quota_dirs.go` with one check deleted, mapped through `go test -overlay`. M15 deletes the `os.Stat(gitFile)` target-exists block of `worktreeStateDir`; M12 deletes the `!filepath.IsAbs(gitFile)` block. Every command ran in the scrubbed single-command form `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go -C <tree> test ./internal/statusline -run '<selector>' -count=1 -v [-overlay <overlay.json>]`.
+
+Fixture change: `target_missing_pruned` now keeps a fresher record (90%, captured 10s before `now`) under the pruned worktree directory while its named `.git` file is absent; `gitdir_relative_path` now chdirs (`t.Chdir`) into a temporary directory that holds `relwt/.git` and a fresher record (90%) under `relwt/.moai/state`, and the entry's `gitdir` first line is the relative `relwt/.git`. The control reading stays 60%, so a wrongly read record shows as `used = 90`.
+
+(1) OLD subtests under the mutants (survived; test files unedited at this point):
+
+```
+$ ... -run '^TestQWR_AC004_UnusableEntriesContributeNothing$/^target_missing_pruned$' -overlay overlay-M15.json
+--- PASS: TestQWR_AC004_UnusableEntriesContributeNothing (0.00s)
+    --- PASS: TestQWR_AC004_UnusableEntriesContributeNothing/target_missing_pruned (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/statusline	0.374s
+
+$ ... -run '^TestQWR_AC004_UnusableEntriesContributeNothing$/^gitdir_relative_path$' -overlay overlay-M12.json
+--- PASS: TestQWR_AC004_UnusableEntriesContributeNothing (0.00s)
+    --- PASS: TestQWR_AC004_UnusableEntriesContributeNothing/gitdir_relative_path (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/statusline	0.428s
+```
+
+(2) NEW subtests under the same mutants (killed, for the stated reason: the unwanted record is read):
+
+```
+$ ... -run '...$/^target_missing_pruned$' -overlay overlay-M15.json
+    quota_dirs_test.go:450: five_hour: used = 90, want 60
+    --- FAIL: TestQWR_AC004_UnusableEntriesContributeNothing/target_missing_pruned (0.01s)
+FAIL	github.com/modu-ai/moai-adk/internal/statusline	0.389s
+
+$ ... -run '...$/^gitdir_relative_path$' -overlay overlay-M12.json
+    quota_dirs_test.go:415: five_hour: used = 90, want 60
+    --- FAIL: TestQWR_AC004_UnusableEntriesContributeNothing/gitdir_relative_path (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/statusline	0.394s
+```
+
+(3) NEW subtests on the unmutated tree (swept 2 subtests, both run):
+
+```
+$ ... -run '^TestQWR_AC004_UnusableEntriesContributeNothing$/^(target_missing_pruned|gitdir_relative_path)$'
+--- PASS: TestQWR_AC004_UnusableEntriesContributeNothing (0.01s)
+    --- PASS: TestQWR_AC004_UnusableEntriesContributeNothing/gitdir_relative_path (0.00s)
+    --- PASS: TestQWR_AC004_UnusableEntriesContributeNothing/target_missing_pruned (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/statusline	0.374s
+```
+
+F7: the assertion in `internal/config/quota_gate_scan_dirs_test.go` is now `configCacheSchemaVersion < 12` with a message that says "at least 12" (the stale "gained MaxScanDirs" wording is gone, the bound moved to the accessor under R1).
+
+Final-tree selectors:
+
+- statusline `-run '^(TestQWR_|TestQAS_)' -count=1 -v` (output in the scratchpad file `final-statusline.txt`): `ok  github.com/modu-ai/moai-adk/internal/statusline 0.898s`; top-level `--- PASS` 15 (7 TestQWR_ + 8 TestQAS_), subtest `--- PASS` 77, `--- FAIL`/`--- SKIP` 0.
+- config `-run '^(TestQWR_AC013_MaxScanDirsConfigKey|TestQAS_AC007_ConfigDefaultsMirrorTemplate)$' -count=1 -v`: `--- PASS: TestQWR_AC013_MaxScanDirsConfigKey (0.01s)` (8 subtests incl. `cache_schema_bumped`), `--- PASS: TestQAS_AC007_ConfigDefaultsMirrorTemplate (0.01s)` (9 subtests), `ok  github.com/modu-ai/moai-adk/internal/config 0.323s`.
+- `go -C <tree> vet ./internal/statusline ./internal/config` -> no output; `go -C <tree> run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6 run ./internal/statusline/... ./internal/config/...` -> `0 issues.`
+
+#### Gaps (pre-merge repair)
+
+- Only mutants M15 and M12 were re-reproduced; M8, M11, M20 and S4 (F1, F4, F5, F6) are untouched and still survive.
+- Exit statuses are as the tool displayed them (`Exit code 1` on the two killed-mutant runs, none on the rest); an echoed `$?` was not obtained because the worktree guard refuses a redirect followed by `; echo`.
+- The relative-path fixture relies on `t.Chdir` (Go 1.24+; `go.mod` declares 1.26.8); it was run on darwin only. The subtest is serial, so the chdir does not reach the package's parallel tests.
+- No heavy cli suite and no whole-package run was made (no cli file changed); CI carries the full-suite verdict.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
