@@ -103,6 +103,7 @@ func TestReviewGateReaders_AgreeWithConfigLoader(t *testing.T) {
 		{"codex only", nestedCodexOn},
 		{"multi only", nestedMultiOn},
 		{"absent", "workflow:\n    execution_mode: auto\n"},
+		{"tree scope skip", "workflow:\n    codex:\n        review_gate:\n            enabled: true\n            tree_scope: skip\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := writeGateWorkflowYAML(t, tc.body)
@@ -115,6 +116,9 @@ func TestReviewGateReaders_AgreeWithConfigLoader(t *testing.T) {
 			}
 			if got, want := readMultiReviewGateEnabled(dir), cfg.Workflow.Multi.ReviewGate.Enabled; got != want {
 				t.Errorf("multi reader = %v, config loader = %v (schema drift)", got, want)
+			}
+			if got, want := readCodexReviewGateTreeScope(dir), config.NormalizeCodexReviewGateTreeScope(cfg.Workflow.Codex.ReviewGate.TreeScope); got != want {
+				t.Errorf("tree_scope reader = %v, config loader = %v (schema drift)", got, want)
 			}
 		})
 	}
