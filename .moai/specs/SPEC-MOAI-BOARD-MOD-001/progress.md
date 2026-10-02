@@ -101,6 +101,7 @@ Sync-audit finding F1 (REQ-MBM-005): `onPickPress` read the queue feed right aft
 - RED (this tree, before the fix): `CLAUDE_CONFIG_DIR=/tmp/mbm-claude-cfg claude plugin test mods/moai-board` exit 1; `(fail) pick: poll in flight when the dialog is answered, the post-pick read confirms`, `Expected: "Picked t2."`, `Received: "The pick reported success but the card still reads queued (unconfirmed)."`; the control `(pass) pick: no poll in flight, the post-pick read confirms`; `1 fail`, `Ran 17 tests across 2 files`.
 - GREEN (after the fix): same command exit 0; ` 17 pass`, ` 0 fail`, `Ran 17 tests across 2 files` (both new pick tests pass).
 - Other runs after the fix: `bun test mods/moai-board/tests/pure/ --reporter=junit ...` exit 0, junit `<testcase` 35, `<failure` 0, `<skipped` 0; `claude plugin validate mods/moai-board` exit 0 (`Validation passed`); `moai spec lint SPEC-MOAI-BOARD-MOD-001 --strict` exit 0. `buildPickArgv` and `onPickPress` occurrence counts in `hooks/` unchanged (3 and 2); no `$.` in data.ts, specs.ts, view.tsx.
+- Hygiene after the delta sync-audit (F14/F15): the two new tests were renamed from the `pick:` prefix to `confirm:` so the AC-MBM-004 cell's `pick:` count of 4 stays true (the RED/GREEN lines above quote the names as they were when observed); the CHANGELOG engine count was corrected from 15 to 17; engine suite re-run after the rename: exit 0, ` 17 pass`, ` 0 fail`.
 - Test support: `tests/support.ts` gains `hold` (blocks the next list read, answer fixed when it starts) and `afterPick` (queue payload after a pick argv); the stub handler became async.
 
 ## §E.3 Run-phase Audit-Ready Signal
@@ -113,7 +114,8 @@ run_head: c0cc0915c (code at e323eba4f)
 
 sync_status: audit-ready (documentation and lifecycle close done; AC-MBM-014 and AC-MBM-015 remain manual Gap-class and are not recorded as passes)
 sync_complete_at: 2026-10-02
-sync_commit_sha: pending-backfill
+sync_commit_sha: a63b18d3b
+sync_sha_backfill: the placeholder `pending-backfill` written by the sync commit was replaced with the real sync commit SHA by the lane in the hygiene commit that follows the F1 fix (cfb867665)
 sync_head_before_commit: 3594cca90 (branch WT-moai-board-mod); the sync commit cannot cite its own hash, so the lane backfills the real SHA in a following commit
 
 Sync phase by manager-docs, card t1436. Every result below was observed in this run against this tree (HEAD `3594cca90` plus the uncommitted sync edits). Judging builds: `claude 2.1.287 (Claude Code)`; `moai v3.2.0-rc.25`, commit `802a72235`, built 2026-10-02T08:00:14Z, an ancestor of HEAD (`git merge-base --is-ancestor 802a72235 HEAD` completed with no output and no error) — no Go code changed since, so it judges `moai spec lint` and `moai graph check` correctly; `bun 1.4.2` (version carried from §E.2, not re-read here).

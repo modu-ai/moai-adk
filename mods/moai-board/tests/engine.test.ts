@@ -110,7 +110,7 @@ const settledNotice = async (ui: Awaited<ReturnType<typeof mount>>) => {
   return undefined
 }
 
-test('pick: no poll in flight, the post-pick read confirms', async ($, on) => {
+test('confirm: no poll in flight, the post-pick read confirms', async ($, on) => {
   const stub = setup(on)
   stub.afterPick.value = PICKED_T2
   answerAsk(on, 'Pick')
@@ -118,7 +118,7 @@ test('pick: no poll in flight, the post-pick read confirms', async ($, on) => {
   expect(await settledNotice(ui)).toBe('Picked t2.')
 })
 
-test('pick: poll in flight when the dialog is answered, the post-pick read confirms', async ($, on) => {
+test('confirm: poll in flight when the dialog is answered, the post-pick read confirms', async ($, on) => {
   const stub = setup(on)
   stub.afterPick.value = PICKED_T2
   answerAsk(on, 'Pick')
