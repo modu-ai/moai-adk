@@ -199,12 +199,12 @@ that enriches the review surface for the Implementation Kickoff Approval gate.
 2. Write the output to `.moai/reports/plan-html/{SPEC-ID}-plan.html` (gitignored directory; create it if absent).
 3. Surface the resulting HTML path to the orchestrator as additive prose context in the SAME turn the Implementation Kickoff Approval `AskUserQuestion` fires (see `orchestration-mode-selection.md` §E). The path is a pointer, NOT the report content — do NOT inline the HTML into the gate option text.
 
-[HARD] The Implementation Kickoff Approval `AskUserQuestion` gate stays MANDATORY
-and score-independent. The plan HTML report
+[HARD] The Implementation Kickoff Approval `AskUserQuestion` gate is the operator form of the plan→run gate: the default form is the
+autonomous transition of `auto-semantics.md` §9.1 (keep-set cases keep the operator answer). The plan HTML report
 ENRICHES the review surface (inline prose → rich HTML); it does NOT replace the
 gate, does NOT auto-bypass it, and does NOT relax its three canonical options
 (run-phase entry / further review / abort) or the `(권장)` first-option label (withheld under `recommendation_mode: pull`; the gate itself is unchanged). A
-plan-auditor PASS or a high skip-eligible score does NOT substitute for the gate.
+plan-auditor PASS or a skip-eligible score meets the gate only through the §9.1 evidence criteria; operator-form rows that wait together are presented through §9.2.
 This emission step is additive only (AP-4).
 
 Fail-open: if the renderer is unavailable or the review file is absent, the

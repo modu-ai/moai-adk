@@ -95,7 +95,7 @@ flowchart TD
 
 ## `project_root` 入力 — 呼び出し側が自分のツリーを指名する
 
-20個のツールがオプションの文字列 `project_root` を受け取ります：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`codex_task`、`claude_audit`、`glm_audit`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_trace_calls`、`graph_shortest_path`、`factory_decide`、`todo_add`、`todo_list`、`factory_next`、`factory_stage`、`factory_complete`。この呼び出しが対象とするツリーを指す値で、渡す値は呼び出し側自身の `git rev-parse --show-toplevel` の結果です。ただし `factory_next`・`factory_stage`・`factory_complete`・`codex_task` ではオプションではなく必須です — 自分の toplevel を渡さないと呼び出しは拒否され、どのツリーも既定値になりません。
+22個のツールがオプションの文字列 `project_root` を受け取ります：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`codex_review`、`codex_task`、`claude_audit`、`glm_audit`、`glm_review`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_trace_calls`、`graph_shortest_path`、`factory_decide`、`todo_add`、`todo_list`、`factory_next`、`factory_stage`、`factory_complete`。この呼び出しが対象とするツリーを指す値で、渡す値は呼び出し側自身の `git rev-parse --show-toplevel` の結果です。ただし `factory_next`・`factory_stage`・`factory_complete`・`codex_task` ではオプションではなく必須です — 自分の toplevel を渡さないと呼び出しは拒否され、どのツリーも既定値になりません。
 
 ワークツリーの中で作業するエージェントは、必ずこれを渡さなければなりません。利便性のための機能ではありません。サーバーには自力で答えを導く手段がないからです。MCP サーバーは長命なサブプロセスなので、作業ディレクトリがワークツリーの切り替えに追従できず、代わりに参照する環境変数は、セッションがワークツリーで作業していても**プロジェクト**ルート — つまり primary チェックアウト — を指します。ワークツリーでこれを省くと、呼び出しは primary チェックアウトを対象に動作し、カードのブランチにしか存在しない SPEC は監査者が読むカタログに入りません。欠落として報告もされません。ただ存在しないだけです。
 
@@ -161,17 +161,28 @@ manager-develop が run-phase の自己検証（継ぎ目 §E）で使い、sync
 
 単一バックエンド監査モードはプロジェクトの `audit_model` 設定で決まります: `codex+glm`（デフォルト、`audit_multi` で収束）| `glm` | `codex` | `none`（Claude 単独、バックエンド呼び出しなし）。すべてのバックエンドは fail-open です — 利用不可なバックエンドは `inconclusive` を返し、Go error ではありません。
 
+### オンデマンド自己レビュー（参考扱い）
+
+| ツール | 目的 | 消費エージェント | CLI 等価物 |
+|------|------|---------------|------------|
+| `mcp__moai__codex_review` | 呼び出し側自身の変更を codex でレビュー — `scope: card`（カード diff）または `scope: uncommitted` | メインセッション、および自分の `tools:` リストにこのツールを載せたエージェント | `moai verify codex-review`（codex 側のみ） |
+| `mcp__moai__glm_review` | 呼び出し側自身の変更を diff にして GLM (z.ai) へレビュー依頼 | メインセッション、および自分の `tools:` リストにこのツールを載せたエージェント | — |
+
+どちらも監査ツールではありません。結果は参考扱いで拘束力はありません。`advisory` は常に true で、監査レシートは作成も参照もせず、`workflow.audit.gates.*` の required への読み替えも受けません（レビュアーが不在なら `fail` ではなく `inconclusive`）。監査モデルのピンも適用しないため、`model` は呼び出し側が渡した値かバックエンドの既定値です。`scope` は必須で、既定値はありません。`card` はターン終了時のレビューゲートと同じスコープ解決器でカード diff を決め、マージベースを呼び出しのたびに計算し直します。カードのワークツリーではないツリーは、何もレビューせずに `inconclusive` を返します。`uncommitted` は指定したツリーの未コミット変更をレビューします。primary チェックアウトでは共有の作業ツリー全体が対象で、パスの絞り込みはありません。どの結果にも `scope`、`base`（`card` ではマージベースの SHA、それ以外は空文字列）、`backend`、`tree`（実際にレビューした正規化済みのルート）が入ります。
+
+GLM にはファイルシステムがないため、ランタイム管理のパスを除いた diff をリクエストに載せて送ります。追跡されていないファイルは diff に含められないので `excluded_untracked` に列挙し、diff がサイズ上限で切られたときは `truncated` が立ち、diff が空ならどちらのバックエンドも呼びません。呼び出しは同期で、レビュー予算の範囲内で終わり、進捗通知は送りません。これらのツールが追加される前に起動したサーバープロセスにはツールが見えないので、サーバーを再接続してください。その間、codex 側は `moai verify codex-review --project-root <ツリー>` で代替できますが、GLM 側に代替手段はありません。
+
 ### codex 委任（バックグラウンドジョブ）
 
 | ツール | 目的 | 消費エージェント | CLI 等価物 |
 |------|------|---------------|------------|
-| `mcp__moai__codex_task` | コーディング/調査ジョブを codex に委譲（同期またはバックグラウンド） | super-advisor | `moai codex task` |
+| `mcp__moai__codex_task` | コーディング/調査ジョブを codex に委譲（同期またはバックグラウンド） | manager-develop, super-advisor | `moai codex task` |
 | `mcp__moai__codex_setup` | ローカル codex インストール検出（LookPath + バージョン + 認証） | super-advisor | `moai codex setup` |
-| `mcp__moai__codex_job_status` | バックグラウンド codex ジョブ状態/記録読み取り | super-advisor | `moai codex job status` |
-| `mcp__moai__codex_job_result` | バックグラウンド codex ジョブ出力読み取り | super-advisor | `moai codex job result` |
-| `mcp__moai__codex_job_cancel` | 実行中のバックグラウンド codex ジョブ中断 | super-advisor | `moai codex job cancel` |
+| `mcp__moai__codex_job_status` | バックグラウンド codex ジョブ状態/記録読み取り | manager-develop, super-advisor | `moai codex job status` |
+| `mcp__moai__codex_job_result` | バックグラウンド codex ジョブ出力読み取り | manager-develop, super-advisor | `moai codex job result` |
+| `mcp__moai__codex_job_cancel` | 実行中のバックグラウンド codex ジョブ中断 | manager-develop, super-advisor | `moai codex job cancel` |
 
-codex 委任ツール群は super-advisor に配線されています — 随時の高推論相談エージェントがバックグラウンドのクロスモデル委譲の自然な消費者だからです。`codex_task` でジョブを委譲し、`codex_job_status` / `codex_job_result` で完了をポーリングし、`codex_job_cancel` で中断します。codex は選択的（optional）です — 欠落や利用不可なら fail-open な `inconclusive` を返し、hard error ではありません。
+codex 委任ツール群は super-advisor と manager-develop に配線されています。随時の高推論相談エージェントである super-advisor は、バックグラウンドのクロスモデル委譲の自然な消費者です。`codex_task` でジョブを委譲し、`codex_job_status` / `codex_job_result` で完了をポーリングし、`codex_job_cancel` で中断します。manager-develop は `codex_setup` を除く残りを持ち、範囲の限られた機械的な部分作業を任せるときに限り、run ワークフローの `External Model Delegation` 節が認める範囲で `codex_task` を使います。委譲された codex のターンは読み取り専用のままです。codex は選択的（optional）です — 欠落や利用不可なら fail-open な `inconclusive` を返し、hard error ではありません。
 
 ### codex 読み取り専用ロール
 
@@ -187,12 +198,12 @@ Codex セッションは `plan-auditor` や `sync-auditor` などの読み取り
 
 | ツール | 目的 | 消費エージェント | CLI 等価物 |
 |------|------|---------------|------------|
-| `mcp__moai__glm_task` | ジョブ(任意のプロンプト)を GLM(z.ai) に委譲（同期またはバックグラウンド） | super-advisor | — （該当 CLI なし） |
-| `mcp__moai__glm_job_status` | バックグラウンド GLM ジョブの状態/記録読み取り | super-advisor | — |
-| `mcp__moai__glm_job_result` | バックグラウンド GLM ジョブの出力読み取り | super-advisor | — |
-| `mcp__moai__glm_job_cancel` | 実行中のバックグラウンド GLM ジョブの中断 | super-advisor | — |
+| `mcp__moai__glm_task` | ジョブ(任意のプロンプト)を GLM(z.ai) に委譲（同期またはバックグラウンド） | manager-develop, super-advisor | — （該当 CLI なし） |
+| `mcp__moai__glm_job_status` | バックグラウンド GLM ジョブの状態/記録読み取り | manager-develop, super-advisor | — |
+| `mcp__moai__glm_job_result` | バックグラウンド GLM ジョブの出力読み取り | manager-develop, super-advisor | — |
+| `mcp__moai__glm_job_cancel` | 実行中のバックグラウンド GLM ジョブの中断 | manager-develop, super-advisor | — |
 
-GLM 委任ツール群は codex 委任と同じ形で super-advisor に配線されています。`glm_task` は `background` が偽なら完了したテキストをそのまま返し、真なら即座にジョブ ID を返します(以降は `glm_job_status`·`glm_job_result`·`glm_job_cancel` で観察・中断)。応答トークン上限は `max_tokens` で上書きでき、既定の上限値はサーバー側で定められています。バックグラウンドジョブはサーバープロセスの中で生きるため、プロセスが終われば一緒に終わります。GLM も選択的です — キーがないか z.ai に届かなければ構造化された fail-open 結果を返すだけで、ツールエラーではありません。
+GLM 委任ツール群は codex 委任と同じ形で super-advisor と manager-develop に配線されています。manager-develop はこのツール群をすべて持ち、範囲の限られた機械的な部分作業に限り、run ワークフローの `External Model Delegation` 節が認める範囲で `glm_task` を使います。GLM ジョブはプロンプトを外部プロバイダーに送ります。`glm_task` は `background` が偽なら完了したテキストをそのまま返し、真なら即座にジョブ ID を返します(以降は `glm_job_status`·`glm_job_result`·`glm_job_cancel` で観察・中断)。応答トークン上限は `max_tokens` で上書きでき、既定の上限値はサーバー側で定められています。バックグラウンドジョブはサーバープロセスの中で生きるため、プロセスが終われば一緒に終わります。GLM も選択的です — キーがないか z.ai に届かなければ構造化された fail-open 結果を返すだけで、ツールエラーではありません。
 
 ### コードクエリ
 

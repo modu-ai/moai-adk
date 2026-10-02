@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	gitpkg "github.com/modu-ai/moai-adk/internal/core/git"
 	"github.com/modu-ai/moai-adk/internal/paths"
@@ -162,8 +163,13 @@ func (b *defaultBuilder) Build(ctx context.Context, r io.Reader) (string, error)
 	// (REQ-THRESHOLD-007) and best-effort — it never disrupts the render
 	// (REQ-THRESHOLD-009).
 	var sessionID string
+	// The record carries the windows the stdin itself supplied (SPEC-QUOTA-
+	// AWARE-SCHEDULING-001 REQ-QAS-001) — never data.RateLimits, which the
+	// usage provider may fill from a home-level cache fed by a network probe.
+	var limits *RateLimitInfo
 	if input != nil {
 		sessionID = input.SessionID
+		limits = input.RateLimits
 	}
 	// The model and effort ride the same record (SPEC-SESSION-TELEMETRY-001
 	// D-1): this is the one place the session id, the collected data, and both
@@ -178,7 +184,7 @@ func (b *defaultBuilder) Build(ctx context.Context, r io.Reader) (string, error)
 	// The state anchor (SPEC-STATE-ANCHOR-001 REQ-SA-001): the telemetry
 	// record lands under the project root the shared resolver returns — never
 	// under a directory the session merely visited (the GH #1694 repair).
-	writeContextUsage(resolveStateAnchor(input), sessionID, os.Getpid(), data.Memory, handoffGuideStage(data), data.Metrics.Model, effort)
+	writeContextUsageAt(time.Now(), resolveStateAnchor(input), sessionID, os.Getpid(), data.Memory, handoffGuideStage(data), data.Metrics.Model, effort, limits)
 
 	// Renderer directly supports v3 modes, pass mode as-is (Phase 4, REQ-V3-LAYOUT-001~003)
 	result := b.renderer.Render(data, mode)

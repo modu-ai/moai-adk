@@ -15,14 +15,17 @@ import (
 )
 
 // update_model_key_strip.go — the moai update strip step for the retired
-// per-agent model/effort keys (llm.yaml profile/profiles/harness_agents/
-// agent_overrides/performance_tier, workflow.yaml workflow_agents/
-// model_routing/model_routing_profiles/agent_model_guard). Subagents inherit
-// the main session's model and effort, so these keys have no reader; the 3-way
-// merge would retain them forever (old-only keys are kept), hence an explicit
-// strip. It runs at three hosts, always after a configuration backup exists:
-// (a) the template-sync "Restore Settings" step, (b) a version-matched update
-// that skipped the sync, (c) the clean reinstall.
+// per-agent model/effort keys (llm.yaml profiles/harness_agents/
+// performance_tier, workflow.yaml workflow_agents/
+// model_routing/model_routing_profiles/agent_model_guard). Since
+// SPEC-WEB-AGENTFM-RESTORE-001 the console surface is restored and reads/
+// writes llm.profile and llm.agent_overrides again — those two keys re-enter
+// the template and are therefore auto-excluded from this strip by the
+// ShippedRetiredModelKeys seam, while the still-retired keys (no surviving
+// reader) would be retained forever by the 3-way merge (old-only keys are
+// kept), hence the explicit strip. It runs at three hosts, always after a
+// configuration backup exists: (a) the template-sync "Restore Settings" step,
+// (b) a version-matched update that skipped the sync, (c) the clean reinstall.
 
 // confirmViaPreviewFn is the merge-confirmation seam runTemplateSyncWithProgress
 // calls. Tests replace it to answer "cancel" without a TTY, which is the only

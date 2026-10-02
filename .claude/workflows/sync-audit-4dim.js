@@ -1,8 +1,8 @@
 // sync-audit-4dim.js — 4-dimension sync-phase quality verdict (Context → Judge → Verdict)
 //
 // VERDICT SCOPING (what this workflow IS and is NOT):
-//   This is an EXECUTION VEHICLE for a skeptical 4-dimension quality read. SPEC-AUDIT-SNAPSHOT-001
-//   (A3) PROMOTED its verdict to BINDING on the happy path: where the verdict is PASS with all
+//   This is an EXECUTION VEHICLE for a skeptical 4-dimension quality read. The audit-snapshot
+//   policy PROMOTED its verdict to BINDING on the happy path: where the verdict is PASS with all
 //   four dims above their floor, not INCOMPLETE, and no contested finding, the orchestrator treats
 //   this workflow's harmonic-mean verdict as the binding sync-phase verdict and does NOT spawn the
 //   cold `sync-auditor` subagent. The cold auditor remains the FALLBACK verdict owner for the
@@ -145,8 +145,8 @@ Analyze the SPEC "${SPEC_ID}" in this repository. Read its artifacts under .moai
 (spec.md, plan.md, acceptance.md, progress.md) using Read/Grep/Glob and
 read-only Bash.
 
-Before returning, run `moai verify check --key-current` against the current
-tree. Include the exact command and verbatim output in `snapshot_evidence`;
+Before returning, run \`moai verify check --key-current\` against the current
+tree. Include the exact command and verbatim output in \`snapshot_evidence\`;
 if the command is unavailable or misses, state that explicitly as an evidence
 gap rather than inferring a hit from a report path.
 
@@ -155,7 +155,7 @@ Return the audit surface as an object with EXACTLY these fields:
 - acceptance_criteria: the list of acceptance-criterion statements (from acceptance.md, the SSOT)
 - changed_files: the list of repo-relative source paths this SPEC touches (from plan.md scope + git)
 - test_command: the single command that runs this SPEC's test suite (e.g. "go test ./internal/foo/...")
-- snapshot_evidence: the exact `moai verify check --key-current` command and output, or an explicit gap
+- snapshot_evidence: the exact \`moai verify check --key-current\` command and output, or an explicit gap
 
 Report only what you can VERIFY from the artifacts. If a field cannot be determined, return it empty
 rather than guessing.`
@@ -173,7 +173,7 @@ Do NOT modify any file. You have Read/Grep/Glob and read-only Bash (test/lint/bu
 Audit context for the SPEC under review:
 ${JSON.stringify(context, null, 2)}
 
-The Context step's `snapshot_evidence` is the shared diagnostic baseline. Do
+The Context step's \`snapshot_evidence\` is the shared diagnostic baseline. Do
 not promote a missing, unavailable, or miss result to PASS; record an
 evidence_gap and run any dimension check needed for the current tree.
 

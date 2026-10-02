@@ -205,6 +205,12 @@ func settingsTabFieldCount(tabID string, view pageView, names []string) int {
 	switch tabID {
 	case "mcp":
 		return len(settings.SectionFields(settings.SectionMCP))
+	case "llm":
+		// SPEC-WEB-AGENTFM-RESTORE-001: the agent-overrides sub-section renders
+		// agentFMRenderCount rows on top of the schema fields, and the rail
+		// number must keep agreeing with the panel header (the invariant this
+		// function owns).
+		return len(names) + agentFMRenderCount(view.AgentFMs)
 	default:
 		return len(names)
 	}

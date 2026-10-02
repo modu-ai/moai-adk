@@ -188,6 +188,26 @@ Factory Mode (`moai cc -f <N>` / `moai glm -f <N>`) trades the per-column board 
 - **The `/clear` boundary is between cards, not phases.** The between-phases hand-off disappears (that is the point of the mode); the between-cards one does not — a factory lane is cleared once its card reaches `done`, before the next card is routed to it, exactly as the stub's `/clear` rule requires.
 - **Evidence, verdict, integration unchanged.** The lane writes the same completion signals; the leader still reads evidence and owns the final PASS/FAIL; release-branch integration is still lane work under the stub's rules. The deputy surface applies unchanged too: a factory leader may delegate dispatch sends and watches to the coordination deputy exactly as a kanban leader does (§ The leader works through manager-lead → Deputy mode), while the leader keeps the verdict and the batch pull request.
 
+## The card-review stage
+
+A lane closes its card through an ordered list of stages. The list fixes where the card-scope self-review sits, whichever column set or factory lane carries the card:
+
+1. `[run-exit]` Run convergence and lane-local verification (stub § Verification load is lane-local).
+2. `[card-review]` The card-scope self-review described below.
+3. `[integration]` The integration window and the merge into the batch's release branch (stub § Integration into the release branch is self-served).
+4. `[report]` The completion report naming every evidence path, then the `/clear` the stub requires.
+
+Running `[card-review]`:
+
+- **Call.** The lane, or a sub-agent it spawns, calls `codex_review` (the required backend) with `scope: card` and `project_root` set to its own `git rev-parse --show-toplevel`; `glm_review` takes the same arguments and adds a second opinion from the GLM backend. `scope: card` resolves through the scope resolver the turn-end gate uses and recomputes the merge base on every call. On a tree that is not a card worktree the tool returns `inconclusive` and reviews nothing.
+- **Fallback.** Where the running MCP server predates the tools (they are absent from its tool list), the codex leg runs as `moai verify codex-review --project-root <tree>` and the GLM leg is recorded as unavailable.
+- **Evidence.** The result is written to `.moai/reports/<card-id>/card-review.md` with the backend, the base commit, the verdict, the findings, and a disposition for each finding (fixed, carried over, or not adopted with the reason). The card's progress record cites that path.
+- **Ceiling.** After a repair the lane re-reviews at most 2 times, the same ceiling as the run-exit verify gate's re-entry limit. A finding still open at the ceiling is written down with its disposition and raised to the leader; the lane does not widen the ceiling.
+- **Advisory.** The result carries no authority: the card's PASS/FAIL stays with the leader's evidence read and the independent audit. A missing reviewer or an `inconclusive` result is recorded as "review not performed", never as a pass. The stage is a card step rather than a turn-end hook, so it never blocks a turn.
+- **Continued firing.** A stage that silently stops being run shows at the leader's completion read: the declared evidence list names `card-review.md`, and a card whose progress record neither cites it nor records why it is absent stays in its column (stub § Completion is read, never trusted). No hook enforces the file; the leader's read is the answer to what would look different if the stage stopped.
+- **One review per diff.** A repository that also enables the card-scope turn-end gate for its lanes reviews the same card diff twice; enable one of the two.
+- **The leader.** A leader reviews its own internal output with the same tools at `scope: uncommitted`. In the primary checkout that scope covers the whole shared working tree, which may include another session's work.
+
 ## The verdict's home
 
 The stub keeps the norm — the final PASS/FAIL verdict is the leader's, read from evidence on disk, never delegated to the lane that produced the work. The division is structural, not ceremonial: where the board's lanes run on a different backend than the leader, the lane sessions cannot commission judgment work onto the leader's backend, so the verdict has a home in the leader even when the execution has none.

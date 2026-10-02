@@ -47,6 +47,7 @@ type kanbanMessages struct {
 	settingsVerify   string
 	specLine         string // SPEC identifier
 	backlogSummary   string // queued card count
+	gateSummary      string // one sentence: name token + pointer
 	companionJoin    string // launch label
 }
 
@@ -79,6 +80,7 @@ var kanbanLocales = map[string]kanbanMessages{
 		settingsVerify: "Verify \"crossSessionInbound\": \"accept\" is present in your --settings file so cross-session messages are accepted.",
 		specLine:       "SPEC: %s",
 		backlogSummary: "Kanban backlog: %d waiting — run `moai todo` to view the queue.",
+		gateSummary:    "When two or more plan→run Kickoff decisions wait for the operator, present them as one batch gate summary instead of asking card by card — the format and its limits live in `.claude/rules/moai/workflow/auto-semantics.md` §9.2.",
 		companionJoin:  "Kanban Mode: joined the kanban run as %s.",
 	},
 	"ko": {
@@ -101,6 +103,7 @@ var kanbanLocales = map[string]kanbanMessages{
 		settingsVerify: "--settings 파일에 \"crossSessionInbound\": \"accept\" 가 있는지 확인하세요. 세션 간 메시지 수락에 필요합니다.",
 		specLine:       "SPEC: %s",
 		backlogSummary: "칸반 백로그: %d장 대기 중 — `moai todo` 를 실행하면 큐를 볼 수 있습니다.",
+		gateSummary:    "plan→run Kickoff 결정이 둘 이상 운영자의 답을 기다리면 카드마다 따로 묻지 말고 batch gate summary 하나로 제시하세요 — 서식과 한계는 `.claude/rules/moai/workflow/auto-semantics.md` §9.2 에 있습니다.",
 		companionJoin:  "칸반 모드: 칸반 run 에 %s 로 합류했습니다.",
 	},
 	"ja": {
@@ -123,6 +126,7 @@ var kanbanLocales = map[string]kanbanMessages{
 		settingsVerify: "--settings ファイルに \"crossSessionInbound\": \"accept\" があることを確認してください。セッション間メッセージの受理に必要です。",
 		specLine:       "SPEC: %s",
 		backlogSummary: "かんばんバックログ: %d件が待機中 — `moai todo` を実行するとキューを確認できます。",
+		gateSummary:    "plan→run Kickoff の判断が 2 件以上オペレーターの回答を待っているときは、カードごとに個別に尋ねず batch gate summary 1 つにまとめて提示してください — 書式と制約は `.claude/rules/moai/workflow/auto-semantics.md` §9.2 にあります。",
 		companionJoin:  "かんばんモード: かんばん run に %s として参加しました。",
 	},
 	"zh": {
@@ -145,6 +149,7 @@ var kanbanLocales = map[string]kanbanMessages{
 		settingsVerify: "请确认 --settings 文件中包含 \"crossSessionInbound\": \"accept\"，跨会话消息的接受依赖该配置。",
 		specLine:       "SPEC: %s",
 		backlogSummary: "看板待办队列：%d 张卡片在等待 — 运行 `moai todo` 可查看队列。",
+		gateSummary:    "当有两个及以上 plan→run Kickoff 决定在等待操作者答复时，不要逐张卡片提问，请合并为一份 batch gate summary 提交 —— 格式与限制见 `.claude/rules/moai/workflow/auto-semantics.md` §9.2。",
 		companionJoin:  "看板模式：已以 %s 身份加入看板 run。",
 	},
 }

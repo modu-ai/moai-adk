@@ -11,8 +11,10 @@ import (
 
 	"path/filepath"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
+	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
 )
 
 // pageView is the typed view-model for the Console page. It is the input to the
@@ -66,6 +68,30 @@ type pageView struct {
 	// 디스크 현재값(FieldDef.Name → 문자열)과 REQ-WC11-062 raw view 블록 텍스트.
 	SchemaValues map[string]string
 	RawBlocks    map[string]string
+
+	// Agent-overrides sub-section state (SPEC-WEB-AGENTFM-RESTORE-001 M3).
+	// PerfTier is the profile selector's seeded value — the ACTIVE profile
+	// after EffectiveProfile resolution (a stored "max" folds to "high" for
+	// display; the selector persists its own wire value verbatim).
+	// PerfTierIsEmpty drives the "(default)" empty-value hint.
+	PerfTier        string
+	PerfTierIsEmpty bool
+
+	// LLM carries the loaded llm.yaml config so the agentfm rows resolve each
+	// agent's selected model/effort through the profile matrix
+	// (template.ResolveAgentModelEffort). On the POST re-render path a read
+	// failure degrades to the zero value (medium-profile defaults).
+	LLM config.LLMConfig
+
+	// PerfTierCustom marks the client "Custom" pseudo-state: true when
+	// llm.agent_overrides is non-empty, so the perf-tier control preselects
+	// the Custom radio instead of a named tier (G3-4). Custom is a derived
+	// display state, NOT a persisted enum value.
+	PerfTierCustom bool
+
+	// AgentFMs is the scanned agent roster for the sub-section rows (M4
+	// render); a scan failure degrades to nil (empty section, page renders).
+	AgentFMs []agentfm.AgentInfo
 
 	// Banner is an optional status/error message; BannerKind is "ok" or "error".
 	Banner     string
@@ -335,12 +361,15 @@ func applyNestedForm(view *pageView, nested projectNestedCurrent, form projectNe
 // re-renders the form with per-field errors and leaves persisted state
 // unchanged.
 //
-// @MX:WARN: [AUTO] 이 함수는 디스크의 사용자/프로젝트 설정을 변경하는 유일한 코드 경로다(쓰기 위험 구역).
+// @MX:WARN: [AUTO] 이 함수는 디스크의 사용자/프로젝트 설정을 변경하는 쓰기 위험 구역이다 — 직접 YAML 쓰기는 없고 전부 시임 경유다.
 // @MX:REASON: [AUTO] 영속화는 반드시 두 경계를 통해서만 수행한다 — (1) WritePreferences(프로필 스토어) +
 // SyncToProjectConfig(user/language/statusline.yaml), (2) writeProjectConfig(config-manager로 quality.development_mode +
 // git_convention.convention만, SPEC-WEB-CONSOLE-003). 웹 레이어에서 YAML을 직접 marshal/write 하는 것은 금지된
 // 안티패턴(REQ-WC-007/REQ-WC3-008). project-config scope는 quality(development_mode) + git_convention(convention)
-// 두 필드로 엄격히 한정되며 workflow/harness/git-strategy/llm은 절대 건드리지 않는다(REQ-WC-012/REQ-WC3-007).
+// 두 필드로 엄격히 한정되며 이 경로는 workflow/harness/git-strategy를 건드리지 않는다(REQ-WC-012/REQ-WC3-007);
+// llm.profile/llm.agent_overrides는 같은 핸들러의 전용 시임(applyPerfTierEdits/patchAgentFM →
+// internal/settings/llmoverrides.go)으로만 쓴다(SPEC-WEB-AGENTFM-RESTORE-001 — 스키마 필드가 아닌
+// schema-external live 키, REQ-AFR-003/004).
 // 두 검증기(validatePrefs + validateProjectConfig)를 모두 실행하고 FieldErrors를 병합한 뒤 하나라도 실패하면 영속 상태를
 // 변경하지 않고 폼을 per-field 에러와 함께 재렌더한다 — atomic reject(REQ-WC-008/REQ-WC3-001/002, EC-2).
 func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
@@ -412,6 +441,25 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	jevKeySubmitted := parseJevKeyForm(r)
 	jevKeyErrs := validateJevKey(jevKeySubmitted)
 
+	// SPEC-WEB-AGENTFM-RESTORE-001 M3: parse the performance_tier selector
+	// (wire field at the top of the agent-overrides sub-section) BEFORE the
+	// agentfm edits, because it is the target tier the per-agent default
+	// comparison resolves under. A "custom" submission (the client
+	// pseudo-state) resolves to "" here (preserve).
+	perfTier, perfTierErrs := parsePerfTierForm(r)
+
+	// Parse the per-agent model/effort edits into the desired
+	// llm.agent_overrides state. Resolution is against the loaded llm.yaml
+	// (the read seam SSOT); a load failure degrades to the zero config
+	// (medium-profile defaults). 목록 실패는 편집 불가로 저하한다. 정렬은
+	// resolved model/effort 기반이므로 llm.yaml 을 먼저 로드해 넘긴다.
+	var llmCfg config.LLMConfig
+	if loaded, err := config.NewConfigManager().LoadRaw(a.cfg.ProjectRoot); err == nil {
+		llmCfg = loaded.LLM
+	}
+	agents, _ := a.listAllAgentFMs(a.cfg.ProjectRoot, llmCfg)
+	agentPins, agentSubmitted, agentErrs := parseAgentFMForm(r, agents, llmCfg, perfTier)
+
 	// REQ-WC-008 / REQ-WC3-001/002 / REQ-WC7-007: run ALL validators and merge
 	// their FieldErrors. Any failure → atomic reject (EC-2): leave ALL persisted
 	// state unchanged and re-render with per-field errors.
@@ -423,6 +471,12 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		fieldErrs[k] = v
 	}
 	for k, v := range schemaErrs {
+		fieldErrs[k] = v
+	}
+	for k, v := range agentErrs {
+		fieldErrs[k] = v
+	}
+	for k, v := range perfTierErrs {
 		fieldErrs[k] = v
 	}
 	for k, v := range glmKeyErrs {
@@ -508,6 +562,45 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		logSaveFailure("applySchemaEdits", "profile preferences saved, but section config write failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but section config write failed: "+err.Error())
+		return
+	}
+
+	// SPEC-WEB-AGENTFM-RESTORE-001 M3: persist the profile selector to
+	// llm.profile (only when changed; the retired performance_tier alias is
+	// never written). Runs BEFORE patchAgentFM so an explicit per-agent
+	// override submitted in the same request still wins over the newly-applied
+	// tier's baseline (its comparison already ran against this tier).
+	//
+	// F3 (sync-audit, card t1411): steps 7 and 8 both write llm.yaml — one
+	// logical persistence unit under REQ-AFR-007, which covers persistence
+	// errors. Snapshot before step 7; a step-8 failure rolls step 7's write
+	// back (best-effort) before the error re-render. Step 7 itself is a
+	// single atomic splice (temp+rename), so a step-7 failure needs no
+	// restore — nothing landed.
+	llmSnapshot, llmExisted, snapErr := settings.SnapshotLLMYAML(a.cfg.ProjectRoot)
+	if snapErr != nil {
+		logSaveFailure("snapshotLLMYAML", "could not snapshot llm.yaml before the agent-overrides writes")
+		a.renderErrorPage(w, prefs, selected, devMode, convention,
+			"profile preferences saved, but llm.yaml could not be snapshotted: "+snapErr.Error())
+		return
+	}
+	if err := a.applyPerfTierEdits(a.cfg.ProjectRoot, perfTier); err != nil {
+		logSaveFailure("applyPerfTierEdits", "profile preferences saved, but performance_tier apply failed")
+		a.renderErrorPage(w, prefs, selected, devMode, convention,
+			"profile preferences saved, but performance_tier apply failed: "+err.Error())
+		return
+	}
+
+	// Persist per-agent model/effort edits to llm.agent_overrides (settings
+	// block-splice seam). Agent .md frontmatter is NEVER mutated by the
+	// console (REQ-AFR-005).
+	if err := a.patchAgentFM(a.cfg.ProjectRoot, agentPins, agentSubmitted); err != nil {
+		if rerr := settings.RestoreLLMYAML(a.cfg.ProjectRoot, llmSnapshot, llmExisted); rerr != nil {
+			err = fmt.Errorf("%v (llm.yaml ROLLBACK FAILED — the profile write may remain without the overrides: %v)", err, rerr)
+		}
+		logSaveFailure("patchAgentFM", "settings saved, but agent override write failed — llm.yaml rolled back")
+		a.renderErrorPage(w, prefs, selected, devMode, convention,
+			"settings saved, but agent override write failed (llm.yaml rolled back): "+err.Error())
 		return
 	}
 
@@ -630,9 +723,10 @@ func logSaveFailure(seam, phrase string) {
 // statusline config, so syncStatusline preserves the on-disk values.
 //
 // model_policy is likewise NOT bound here (G3-5 — removed from the UI as a
-// duplicate of the agentfm performance tier). Its ProfilePreferences field is
-// preserved by an explicit carry-forward in handleSave so a web save never blanks
-// the resolveLaunchEffort fallback (launcher.go).
+// duplicate of the restored agent-overrides profile selector). Its
+// ProfilePreferences field is preserved by an explicit carry-forward in
+// handleSave so a web save never blanks the resolveLaunchEffort fallback
+// (launcher.go).
 func bindForm(r *http.Request) profile.ProfilePreferences {
 	prefs := profile.ProfilePreferences{
 		UserName:         r.PostFormValue("user_name"),

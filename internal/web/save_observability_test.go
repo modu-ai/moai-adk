@@ -203,6 +203,8 @@ var seamTable = []struct {
 	{stepWriteProjectCfg, "writeProjectConfig", "profile preferences saved, but project config write failed"},
 	{stepWriteNested, "writeProjectNestedConfig", "profile preferences saved, but project nested config write failed"},
 	{stepApplySchema, "applySchemaEdits", "profile preferences saved, but section config write failed"},
+	{stepApplyPerfTier, "applyPerfTierEdits", "profile preferences saved, but performance_tier apply failed"},
+	{stepPatchAgentFM, "patchAgentFM", "settings saved, but agent override write failed"},
 	{stepGlmcredSave, "glmcred.Save", "settings saved, but GLM credential write failed"},
 	{stepJevcredSave, "jevcred.Save", "settings saved, but Jev credential write failed"},
 }

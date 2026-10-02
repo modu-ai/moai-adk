@@ -36,10 +36,10 @@ var docsSiteProjectRootLine = regexp.MustCompile(`(?m)^## [^\n]*project_root[^\n
 func TestDocsSiteProjectRootMatchesServer(t *testing.T) {
 	declared := toolsDeclaringProjectRoot(t)
 	locales := map[string]string{
-		"en": "Twenty tools",
-		"ko": "20개 도구",
-		"ja": "20個のツール",
-		"zh": "20 个工具",
+		"en": "Twenty-two tools",
+		"ko": "22개 도구",
+		"ja": "22個のツール",
+		"zh": "22 个工具",
 	}
 	for locale, countPhrase := range locales {
 		t.Run(locale, func(t *testing.T) {
@@ -80,7 +80,7 @@ func TestDocsSiteProjectRootMatchesServer(t *testing.T) {
 
 // projectRootDocSentence captures the enumerating sentence and its count word.
 var projectRootDocSentence = regexp.MustCompile(
-	`(?m)^(\w+) tools accept an optional ` + "`project_root`" + ` string:((?s).*?)\. It names the tree`)
+	`(?m)^([\w-]+) tools accept an optional ` + "`project_root`" + ` string:((?s).*?)\. It names the tree`)
 
 // projectRootDocToolName pulls each backticked tool name out of that sentence.
 var projectRootDocToolName = regexp.MustCompile("`([a-z_]+)`")
@@ -91,6 +91,7 @@ var docCountWords = map[string]int{
 	"Three": 3, "Four": 4, "Five": 5, "Six": 6, "Seven": 7, "Eight": 8, "Nine": 9, "Ten": 10,
 	"Eleven": 11, "Twelve": 12, "Thirteen": 13, "Fourteen": 14,
 	"Fifteen": 15, "Sixteen": 16, "Seventeen": 17, "Eighteen": 18, "Nineteen": 19, "Twenty": 20,
+	"Twenty-one": 21, "Twenty-two": 22,
 }
 
 // TestProjectRootDocMatchesServer asserts the rule file names exactly the tools
