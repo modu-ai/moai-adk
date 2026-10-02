@@ -94,6 +94,13 @@ state to come from the `config.toml` registration; this revision followed the or
 - The status of `grep` and `find` commands that select nothing is not echoed by the tool; the ledger records the documented status and says so.
 - The `moai` MCP server used for `spec_audit` is an older build than the tree; the lint ran on the tree-built binary.
 
+### Plan-audit iteration 2 and lane wait (recorded by the lane, not the author)
+
+- Iteration 1 (audited_sha 3766cef05): FAIL 0.72, `.moai/reports/t1435/plan-audit-iter1.md`.
+- Iteration 2 (audited_sha d6987e59c): FAIL 0.84, below the Tier L threshold 0.85, `.moai/reports/t1435/plan-audit-iter2.md`. D1..D24: 23 fixed, D3 partial. New blocking-class defects N1..N5 (the rest N6..N13 are minor or major-optional).
+- Tier note: iteration 1 ran under the Tier M ceiling (`plan_audit_tier_ceilings.M: 2`, so iteration 2 is the last Tier M spawn). The re-tier to Tier L came from the auditor's D7 ruling (file count) and carries ceiling 3 (`plan_audit_tier_ceilings.L: 3`). Whether iteration 3 may run on that basis is a ceiling decision, so the lane has NOT started it and waits for the leader.
+- WAIT: reason = ceiling decision; whom = leader; recheck = leader reply or a re-read of this section on the next lane turn. Options offered to the leader: (a) iteration 3 under Tier L after fixing D3 + N1..N5, (b) PASS-with-debt with N1..N5 carried into the run phase as explicit debt, (c) scope cut or split at the M2/M3 boundary.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
