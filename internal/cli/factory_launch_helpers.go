@@ -300,8 +300,9 @@ func captureEnvState(key string) func() {
 // guess dressed as a measurement — that variable is set by the GLM path but is
 // settable by anyone. The first parameter is the SPEC identifier the entry
 // parse carries; it is no longer exported (no launcher publishes it), and the
-// parameter stays only so the call sites keep their shape until the launch-facts
-// functions collapse into one.
+// parameter stays only so the Claude, GLM and Codex call sites keep their shape.
+// This is the one launch-facts function: the Claude and GLM launchers and both
+// Codex entries all call it.
 //
 // The card-identifier override is deliberately NOT exported here. It is the
 // operator's or the leader's to set, and the launch environment carries it

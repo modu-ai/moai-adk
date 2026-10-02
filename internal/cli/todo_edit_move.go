@@ -5,7 +5,7 @@
 // a correction the operator decided on. Nothing here infers what a card
 // should say or where it belongs — no analysis, no absorption, no silent
 // promotion. Those would collide head-on with the [HARD] clauses in
-// workflows/gtd.md and kanban-dispatch.md (the pick is the operator's; the
+// workflows/gtd.md and the Factory Dispatch Protocol (the pick is the operator's; the
 // queue is never auto-populated or reordered by inferred priority), and a
 // doctrine change would have to come first.
 //

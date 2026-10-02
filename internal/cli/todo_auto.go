@@ -16,7 +16,7 @@ import (
 
 // `/moai:todo --auto` — the serial card-processing cycle (SPEC-MANAGER-TODO-001).
 //
-// The cycle is the moai-kanban-foreman contract driven from the CLI surface:
+// The cycle is the factory foreman skill's contract driven from the CLI surface:
 // pick one card → emit the dispatch directive for ONE isolated in-session
 // worker → judge completion only by reading the worker's disk evidence →
 // record `done` on that evidence → emit the /clear guidance → accept the next

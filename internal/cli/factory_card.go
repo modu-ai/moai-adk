@@ -272,7 +272,7 @@ func factoryRefuseForeignWorktree(root, cardID string) error {
 }
 
 // factoryWorktreeSlug derives the card worktree's WT- branch slug from the
-// card's queue title (the kanban-dispatch branch-naming rule): lowercase
+// card's queue title (the Factory Dispatch Protocol branch-naming rule): lowercase
 // [a-z0-9-], at most three tokens, at most 24 characters, and never
 // containing the card id — a token carrying the id is dropped. A title with
 // no usable token falls back to "card".

@@ -1,6 +1,6 @@
-// Package kanban implements the state record that carries Kanban Mode's
-// session-scoped signal between the launcher that opens a kanban session and
-// the orchestrator that drives the chain inside it.
+// Package kanban implements the state record that carries a factory session's
+// session-scoped signal between the launcher that opens the session and the
+// leader or lane that runs inside it.
 //
 // The record is best-effort by design: a launch never depends on it. A session
 // whose record could not be written is simply a session with no record, which
@@ -44,10 +44,10 @@ const (
 // resolves it purely: reading or writing a session record must not trigger the
 // one-time relocation, which belongs to the `moai todo` command path.
 
-// @MX:ANCHOR: [AUTO] Kanban state record schema — the cross-actor contract for a kanban session
+// @MX:ANCHOR: [AUTO] Factory session record schema — the cross-actor contract for a factory session
 // @MX:REASON: the launcher writes SessionID/SpecID/Backend/EnteredAt at launch while the orchestrator fills DeepScanDir/VerifyRung/VerifyReentries later; both sides plus the sync-phase dedup gate bind to these JSON keys, so a renamed key breaks readers this package cannot see
 //
-// Record is the per-session kanban state record persisted at
+// Record is the per-session factory state record persisted at
 // <state-dir>/<session>.json (see state_dir.go for the directory).
 //
 // The three orchestrator-written fields (DeepScanDir, VerifyRung,
@@ -65,8 +65,8 @@ type Record struct {
 	// Role is the role this session occupies: "leader", or "lane" for a
 	// factory run's numbered lane. It is derived from the factory lane label
 	// (`lane-<n>`) at launch, or "leader" for the session that elected the run
-	// (SPEC-ROLE-NAMING-CODE-001). A record written before the kanban chain
-	// went may carry another role value; WithRole never writes one.
+	// (SPEC-ROLE-NAMING-CODE-001). A record written before the leader and
+	// lane roles took over may carry another role value; WithRole never writes one.
 	//
 	// Empty is legitimate and load-bearing: a record written before this field
 	// existed, or a launch whose label could not be parsed, leaves it blank —
@@ -77,7 +77,7 @@ type Record struct {
 	// Backend is the initial BackendClaude, BackendGLM, or BackendGPT.
 	Backend string `json:"backend"`
 
-	// EnteredAt is the RFC3339 instant the session entered Kanban Mode.
+	// EnteredAt is the RFC3339 instant the session entered the factory run.
 	EnteredAt string `json:"entered_at"`
 
 	// DeepScanDir is the verify stage's results directory, written by the
@@ -123,7 +123,7 @@ type Record struct {
 	CardID string `json:"card_id,omitempty"`
 }
 
-// NewRecord builds a record for a session entering Kanban Mode, stamping
+// NewRecord builds a record for a session entering a factory run, stamping
 // EnteredAt with the current UTC instant in RFC3339. The three
 // orchestrator-written fields are deliberately left at their zero values —
 // VerifyRung nil rather than empty — so a reader can tell they have not been
@@ -224,7 +224,7 @@ func Write(projectRoot string, rec *Record) error {
 // WriteBestEffort persists rec and discards every failure. It is the call the
 // launcher makes: a record is an aid to the chain, never a precondition for
 // starting one, and a session that launches without a record degrades to a
-// non-kanban session rather than failing to launch.
+// session with no record rather than failing to launch.
 func WriteBestEffort(projectRoot string, rec *Record) {
 	_ = Write(projectRoot, rec)
 }

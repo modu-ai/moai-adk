@@ -3,7 +3,7 @@ package cli
 // integration.go — `moai integration`, the lane-facing surface of the
 // release-integration holder lock (card t194).
 //
-// The doctrine (`kanban-dispatch.md` § Integration into the release branch is
+// The doctrine (Factory Dispatch Protocol § Integration into the release branch is
 // self-served) serializes lanes by announcement. Card t181 wrote that rule and
 // named its gap: announcement is a social protocol with nothing behind it.
 // These three verbs are what a lane runs so the announcement leaves a record

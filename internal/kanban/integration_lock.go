@@ -1,6 +1,6 @@
 // integration_lock.go — the release-integration holder lock (card t194).
 //
-// The doctrine this backs (`kanban-dispatch.md` § Integration into the release
+// The doctrine this backs (Factory Dispatch Protocol § Integration into the release
 // branch is self-served) serializes lanes by ANNOUNCEMENT: a lane tells the
 // leader before entering the release worktree, the leader broadcasts the hold, and
 // no other session enters until the completion report. Card t181 wrote that

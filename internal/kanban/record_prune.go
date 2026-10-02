@@ -1,5 +1,5 @@
 // record_prune.go — card t1312. Session records accumulate one file per
-// kanban/factory session launch with no bound (398 entries measured in a
+// factory session launch with no bound (398 entries measured in a
 // long-lived checkout, 2026-09-29). Every reader needs liveness only — the
 // doctor Factory Run check (doctor_factory_run.go), the web ops console
 // (viewmodel_ops.go loadFactoryRecords), and the stale-run hook
