@@ -107,6 +107,29 @@ func TestFactoryNextSerialSlotLeaseExpiryBoundary(t *testing.T) {
 	}
 }
 
+// TestFactoryNextLiveLeaseHoldsSerialSlotInEveryState — the control for the
+// expiry repair, across every lease-holding implementation state: a lease that
+// has not expired keeps holding the slot, so a mutation that frees one of these
+// states unconditionally fails here instead of passing on a single state.
+func TestFactoryNextLiveLeaseHoldsSerialSlotInEveryState(t *testing.T) {
+	live := fcNow.Add(time.Hour).Format(time.RFC3339Nano)
+	for _, state := range []string{
+		homestate.CardLeased, homestate.CardPlan, homestate.CardPlanAudit,
+		homestate.CardRun, homestate.CardSync, homestate.CardSyncAudit,
+	} {
+		t.Run(state, func(t *testing.T) {
+			root := fcSlotFixture(t, fcDeadLaneCard(state, live), 1)
+			got, owned, err := factoryNextLeaseOnce(context.Background(), root, fcRun, "lane-1")
+			if err != nil {
+				t.Fatalf("next: %v", err)
+			}
+			if owned {
+				t.Fatalf("lane-1 leased %s while a live %s lease holds the serial slot", got.CardID, state)
+			}
+		})
+	}
+}
+
 // TestFactoryNextAssignedSerialCardsHoldSlot_PendingRuling pins the CURRENT
 // reading of a leader-assigned serial card — it holds the slot — as measured
 // evidence for the operator ruling this card routes upward, not as endorsed

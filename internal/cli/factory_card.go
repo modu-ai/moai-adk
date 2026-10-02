@@ -190,7 +190,9 @@ const factoryNextNoCardExit = 3
 // one irreversible exit. A state added later keeps the slot held — the
 // enumeration names the RELEASING states and never the holding ones (plan
 // G2): a negative check (`state != done && ...`) would silently release the
-// slot for every state added after it was written.
+// slot for every state added after it was written. The state is not the whole
+// read: factorySerialSlotHeld also frees a lease-holding card whose lease has
+// expired.
 //
 // merge-ready and later release the slot because that is the recorded
 // behavior the absorbed self-dispatch suite pins: a Codex lane's relaunch
@@ -399,7 +401,8 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 //
 // Classification eligibility (SPEC-TODO-CLASSIFY-DISPATCH-001): one pure
 // queue read anchors every mode lookup; a serial card recorded in a
-// non-terminal state holds the serial slot, so no lane leases another serial
+// non-terminal state holds the serial slot — unless its lease has expired
+// (factorySerialSlotHeld) — so no lane leases another serial
 // card through ANY arm — while parallelizable candidates stay leasable
 // throughout (REQ-TCD-008). The auto-promotion arm additionally never
 // selects a blocked card (REQ-TCD-007).
@@ -410,6 +413,12 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 // while arms (b), (b2), and (c) — every arm that takes a NEW card — are
 // bypassed without a second predicate.
 func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, skip func(homestate.Card) bool, noNewCards bool) (homestate.Card, bool, bool, error) {
+	// The clock is read BEFORE the record snapshot: a lease whose expiry the
+	// snapshot shows as already past was expired when the clock was read too,
+	// so a renewal landing after the snapshot cannot be read as an expiry. Read
+	// afterwards, a renewal slipping between the two would free the slot for a
+	// lease that is in fact live and let two serial cards run at once.
+	now := factoryCardNow()
 	cards, err := db.ListCards(ctx, runID)
 	if err != nil {
 		return homestate.Card{}, false, false, err
@@ -434,7 +443,6 @@ func factoryNextSelectAndLease(ctx context.Context, db *homestate.FactoryDB, roo
 	// serial card is not a second serial card in flight — the exclusivity
 	// holds against DISTINCT cards (REQ-TCD-008), and a self-blocked
 	// candidate would wedge every lease of a legacy serial row.
-	now := factoryCardNow()
 	serialInFlightExcluding := func(cardID string) bool {
 		for _, c := range cards {
 			if c.CardID == cardID {
