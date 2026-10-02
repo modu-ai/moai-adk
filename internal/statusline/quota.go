@@ -66,18 +66,23 @@ type QuotaAggregate struct {
 //
 // An absent or unreadable directory, an unreadable record, or no usable record
 // yields unknown (REQ-QAS-006).
+//
+// It is the one-directory case of AggregateQuotaDirs (quota_dirs.go), which
+// reads the same rules across several directories.
 func AggregateQuota(stateDir string, now time.Time, maxAge time.Duration) QuotaAggregate {
-	out := QuotaAggregate{
-		FiveHour: QuotaReading{State: QuotaUnknown},
-		SevenDay: QuotaReading{State: QuotaUnknown},
-	}
+	return AggregateQuotaDirs([]string{stateDir}, now, maxAge)
+}
+
+// scanQuotaDir offers every usable record under stateDir (the project's
+// .moai/state directory) to the per-window winners, applying the pre-filters of
+// AggregateQuota. An absent or unreadable directory, or an unreadable record,
+// offers nothing.
+func scanQuotaDir(stateDir string, now time.Time, maxAge time.Duration, fiveHour, sevenDay *winner) {
 	dir := filepath.Join(stateDir, contextUsageDirName)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return out
+		return
 	}
-
-	var fiveHour, sevenDay winner
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 			continue
@@ -97,9 +102,6 @@ func AggregateQuota(stateDir string, now time.Time, maxAge time.Duration) QuotaA
 		fiveHour.offer(rec.FiveHour, captured)
 		sevenDay.offer(rec.SevenDay, captured)
 	}
-	out.FiveHour = fiveHour.reading(now)
-	out.SevenDay = sevenDay.reading(now)
-	return out
 }
 
 // winner tracks the freshest record carrying one window.
