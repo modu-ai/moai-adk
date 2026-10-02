@@ -58,3 +58,26 @@ _pending run-phase_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _pending sync-phase_
+
+## §F Phase 4 Mode Selection (2026-10-02, lane-11, orchestrator)
+
+Input parameters: tier M; scope about 12 files across 4 Go packages (internal/hook, internal/factorymsg, internal/cli, internal/kanban) plus tests; domain count 3 (hook, factory messaging, launcher CLI); coding-heavy Go; concurrency benefit LOW (milestones share files and test seams).
+
+| Mode | Decision | Rationale |
+|---|---|---|
+| direct | not selected | not trivial |
+| serial | selected | coding-heavy, M1->M4 share the notice builder, the marker and test seams |
+| fanout | not selected | no read-only multi-domain research left; writers would share a tree |
+| sweep | not selected | not a uniform mechanical transform |
+
+Decision: serial
+
+Justification: milestones depend on each other (M1 command builder feeds M2 notices and M3 loop), one writer per working tree. The implementer is a general-purpose-typed spawn into the card tree, because a manager-develop-typed spawn materializes into its own L1 tree and the guards then refuse every write into the card worktree (measured lesson, card t1318).
+
+## §F.1 Plan-to-run Kickoff decision
+
+Form: operator form. The operator answered the Kickoff question "fix F1, then enter by operator approval" in the lane session on 2026-10-02. Autonomous form (auto-semantics 9.1) is not used because the plan-artifact hash changed after the last audit (F1 repair edited acceptance.md), and a third plan-audit would exceed the Tier M ceiling of 2.
+
+decision record: decided_by=claude-lane-11+operator evidence_refs=.moai/reports/t1345/plan-audit-iter2.md(PASS-WITH-DEBT 0.85 on e48d22fc4),commit 5a9aeaa8d (F1 repair, transcription only),operator AskUserQuestion answer 2026-10-02 ladder_path=gate row plan-run Kickoff operator form
+
+Residual: F2-F8 of plan-audit-iter2 stay open as optional debt; the 7 probe PASS branches have never executed (acquired at M1/M2 GREEN). Run Phase 1 plan-audit re-run is NOT executed (ceiling reached); the sync audit re-reads this record.
