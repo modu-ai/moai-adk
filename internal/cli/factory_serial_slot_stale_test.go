@@ -130,6 +130,34 @@ func TestFactoryNextLiveLeaseHoldsSerialSlotInEveryState(t *testing.T) {
 	}
 }
 
+// TestFactoryNextFailedSerialRowReleasesSlot — `failed` is a terminal card
+// state with no outgoing edge (homestate.IsTerminalCardState), so a serial row
+// that ended there is not in flight; REQ-TCD-008 re-admits selection on the
+// terminal states. The non-terminal parked states stay held: only `failed`
+// changes (the controls pin `blocked` and `needs-decision`).
+func TestFactoryNextFailedSerialRowReleasesSlot(t *testing.T) {
+	cases := []struct {
+		state     string
+		wantLease bool
+	}{
+		{homestate.CardFailed, true},
+		{homestate.CardBlocked, false},
+		{homestate.CardNeedsDecision, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.state, func(t *testing.T) {
+			root := fcSlotFixture(t, homestate.Card{State: tc.state, OwnerLabel: "lane-9"}, 1)
+			got, owned, err := factoryNextLeaseOnce(context.Background(), root, fcRun, "lane-1")
+			if err != nil {
+				t.Fatalf("next: %v", err)
+			}
+			if owned != tc.wantLease {
+				t.Fatalf("t1 at %s: owned=%v (card %q), want owned=%v", tc.state, owned, got.CardID, tc.wantLease)
+			}
+		})
+	}
+}
+
 // TestFactoryNextAssignedSerialCardsHoldSlot_PendingRuling pins the CURRENT
 // reading of a leader-assigned serial card — it holds the slot — as measured
 // evidence for the operator ruling this card routes upward, not as endorsed
