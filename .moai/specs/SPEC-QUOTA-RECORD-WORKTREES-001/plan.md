@@ -59,7 +59,7 @@ Fixed identifiers: `statusline.QuotaStateDirs(root string, maxDirs int) []string
 | File | Change | Milestone |
 |---|---|---|
 | `.moai/specs/SPEC-QUOTA-RECORD-WORKTREES-001/progress.md` | the `QWR-M0` evidence cell, alone in its commit | M0 |
-| `internal/statusline/quota_dirs_test.go` (new) | `TestQWR_AC001..006`, `TestQWR_AC010` (statusline decided), written RED first | M1 |
+| `internal/statusline/quota_dirs_test.go` (new) | `TestQWR_AC001..006`, `TestQWR_AC010` (statusline decided), written RED first; plus the skipped-by-default benchmark `BenchmarkQWR_RealRoot` (M5 data point) | M1 |
 | `internal/cli/factory_quota_worktrees_test.go` (new) | `TestQWR_AC007..009`, `TestQWR_AC010b`, `TestQWR_AC013b`, written RED first; reuses the predecessor's `qasFixture` helpers without editing them | M1 |
 | `internal/config/quota_gate_scan_dirs_test.go` (new) | `TestQWR_AC013_MaxScanDirsConfigKey`, written RED first (the file name is the one AC-QWR-012 allows; `workflow_quota_gate_test.go` of the predecessor is not edited) | M1 |
 | `internal/statusline/quota_dirs.go` (new) | M1: signature-only stubs (`QuotaStateDirs` returns the primary directory only; `AggregateQuotaDirs` reads only its first directory). M3: the bodies (file-read enumeration in sorted name order, examined-entry bound, 4 KiB first-line `gitdir` read, per-directory scan shared with `quota.go`) | M1, M3 |
@@ -82,7 +82,7 @@ Milestones are written as headings, in execution order, so that tooling can read
 
 ### M0 — Baseline first: the real-lane measurement (REQ-QWR-009, AC-QWR-011)
 
-Run the §C protocol, commit `progress.md` with `QWR-M0` alone, before any other run-phase commit. The step also records the one timing observation of the current evaluation (D4) here, so it is measured on the pre-change code. Evidence cell: `QWR-M0` plus the commit SHA B. The end-to-end gate observation is recorded as a Gap, not run.
+Run the §C protocol, commit `progress.md` with `QWR-M0` alone, before any other run-phase commit. No timing observation is taken here: the installed binary has no quota evaluation to time (plan-audit D-N4); the timing data point moves to M5. Evidence cell: `QWR-M0` plus the commit SHA B. The end-to-end gate observation is recorded as a Gap, not run.
 
 ### M1 — Stubs and RED tests (all test-decided ACs)
 
@@ -102,7 +102,7 @@ Replace the production value of the seam (root from the path shape, bound from `
 
 ### M5 — Closure evidence (AC-QWR-011, -012; §G of acceptance.md)
 
-`go vet`, windows build, lint baseline, `moai spec lint`; the one-shot git commands of AC-QWR-011/-012 with their positive controls, recorded in `progress.md` §E.2/§E.3.
+`go vet`, windows build, lint baseline, `moai spec lint`; the one-shot git commands of AC-QWR-011/-012 with their positive controls, recorded in `progress.md` §E.2/§E.3. The one timing data point (D4, not a gate) is taken here, on the post-change code: a benchmark `BenchmarkQWR_RealRoot` in `quota_dirs_test.go`, skipped unless an environment variable names a repository root, run once with the real repository root and `max_scan_dirs` 128 (`go test ./internal/statusline -run '^$' -bench 'BenchmarkQWR_RealRoot' -benchtime 20x`), its elapsed time per call recorded in `progress.md` §E.2 beside the machine load (`uptime`), alongside the single-directory call on the primary directory for comparison.
 
 ### M6 — Sync and scoped re-audit (sync phase)
 
@@ -132,6 +132,9 @@ Command and verbatim output for: the anchored selectors of AC-QWR-001..010 and -
 - **U16** `config.LoadQuotaGate(root)` called a second time per evaluation costs one more `workflow.yaml` parse; no timing was measured, and whether the loader caches is not known (`loadYAMLFile` reads the file and unmarshals every call, `loader.go:467-482`).
 - **U17** The embedded-template regeneration (`make build`) is assumed to be the established step for a template `workflow.yaml` edit, as the predecessor's plan states; it was not run here, and the plan-audit notes that the Makefile's `go:embed` is compile-time (the catalog-hash script is not known to cover `workflow.yaml`).
 - **U18** (plan-audit D5) The string-value behaviour — a type-mismatched `max_scan_dirs` makes `yaml.Unmarshal` fail, `loadYAMLFile` returns `ErrInvalidYAML`, and `LoadQuotaGate` returns `DefaultQuotaGate()` — was established by reading `loader_quota_gate.go:62-72` and `loader.go:467-482` (this revision, the code printed), not by running it. AC-QWR-013 `type_mismatch_defaults_the_whole_block_gate_off` pins it; if the run phase finds otherwise it is a spec revision, not a silent test change.
+- **U20** (plan-audit D-N3) Whether a hand-written `.git/worktrees/<entry>/gitdir` without a `HEAD` file inside an `initGitRepo` fixture survives `git worktree list --porcelain` and `identifyPrimaryCheckout` was not measured. `parseWorktreePorcelain` (`internal/auditreceipt/storeroot.go:96-130`) only parses git's own output, and `IdentifyPrimaryCheckout` (`:142-171`) requires the first listed worktree to be the primary; `homestate.CanonicalProjectRoot` (`internal/homestate/paths.go:58-90`, read in part) also runs git. The plan therefore uses real `git worktree add` in the cli fixtures and keeps synthetic metadata entries to the statusline tests (acceptance.md §B).
+- **U21** (plan-audit D-N7) That an integer literal too large for an `int` is a yaml.v3 decode error (and so takes the whole-block path) is inferred from knowledge of the library, not observed; AC-QWR-013's overflow case would show it at M1/M2 and, if the behaviour differs, becomes a spec revision.
+- **U22** Whether the checked-in fixture helper `initGitRepo` (`internal/cli/todo_queue_root_test.go:28-37`: `git init -q`, two `config`, `commit --allow-empty`) supports `git worktree add` without further setup was read, not run.
 - **U19** The pickaxe form `git log -S'QWR-M0'` selects the marker commit by pickaxe content: verified now only on the negative side (progress.md: nothing) and the positive control (plan.md: `8da5e1f39`); the real selection of B is exercised at M5.
 
 ## §H Risks and anti-patterns
@@ -170,3 +173,18 @@ Source: `.moai/reports/t1442/plan-audit-iter1.md` (FAIL, aggregate 0.75, Tier M 
 | D14 bound and trust semantics | **fixed in part, rest an accepted note**: examined entries count against the bound (REQ-QWR-004, AC-QWR-005 `unusable_entries_consume_the_bound`) and the `gitdir` first-line parse is in REQ-QWR-003 and AC-QWR-004; the missing back-pointer check and the `agent-*`-before-`t*` truncation order are **accepted notes** (same local trust boundary as the predecessor's F7, fail-open direction only, mitigated by the configurable bound) | spec.md §F; acceptance.md §F |
 | D15 AC-012 "plain single-invocation" | **fixed**: item (3) uses `git diff --numstat` (no pipe), so every command is plain | acceptance.md AC-QWR-012 |
 | D16 heavy config run without lease | **fixed**: the `TestShippedConfigKeysHaveReaders` run carries the lease and scrub qualifier, stated in §B and in AC-QWR-013 | acceptance.md §B, AC-QWR-013 |
+
+### Plan-audit iteration 2 — disposition of D-N1..D-N8
+
+Source: `.moai/reports/t1442/plan-audit-iter2.md` (FAIL, aggregate 0.83 against the Tier M threshold 0.80; the FAIL came only from the MP-8 firewall on AC-QWR-011 plus one blocking decider defect on the same criterion).
+
+| Defect | Disposition | Where |
+|---|---|---|
+| D-N1 AC-QWR-011 RED cell has no exit code (MP-8) | **fixed**: E9 is now `awk '/QWR-M0/ {f=1} END {exit !f}' .../progress.md`, measured on `b92f4bd8f` with the harness showing `Exit code 1`, and the same form on `plan.md` as the positive control showing no failure line (exit 0); the pin is stated per criterion. The class table now reads "pending (zero-sweep, becomes decided by the M1 verbatim failing assertions)" for the Go-test-decided ACs instead of "release-blocking, conditional" | acceptance.md §E.1 (E9), §E.2 |
+| D-N2 AC-QWR-011 accepts the same-commit mutant | **fixed**: the strictness command `git rev-list --count <B>..<I>` must print at least 1, in the form of the predecessor AC-QAS-015; the same-commit case is a pinned mutant, and the measured fact that the first two commands pass for B == I is stated | acceptance.md AC-QWR-011 |
+| D-N3 AC-QWR-010 cli premise false | **fixed**: `todoFixture` runs `initGitRepo` and `factoryAssertParentCheckout` runs git, so the cli fixtures are real git repositories and realise only the `no_worktrees_dir` shape; the other two shapes stay at the statusline layer; cli worktree fixtures use real `git worktree add`; the synthetic-metadata question is marked unverified (U20) | acceptance.md AC-QWR-010, §B; plan.md U20, U22 |
+| D-N4 M0 timing observation has no method | **fixed**: the M0 clause is dropped (the installed binary has no quota evaluation to time); the data point moves to M5 with a named method, a skipped-by-default benchmark `BenchmarkQWR_RealRoot` run once against the real root | plan.md §D, §E (M0, M5); spec.md D4, §F; acceptance.md §G |
+| D-N5 AC-006 helper-file escape overstated | **fixed**: the overstated sentence is narrowed to the two named functions, and an AST rule is added that every call from `quota.go` and `quota_dirs.go` to a package-level function resolves to those two files or to `ReadSessionTelemetry`; the method-value and interface residual is stated | acceptance.md AC-QWR-006 |
+| D-N6 AC-007 direct-read or aliased-import escape | **fixed**: the static subtest resolves import aliases and forbids `os.ReadDir`, `os.Open`, `os.ReadFile` selectors in the body of `factoryQuotaEvaluate` | acceptance.md AC-QWR-007 |
+| D-N7 integer-overflow literal vs the per-key claim | **fixed**: stated as the same whole-block decode failure (inferred from the YAML library, not observed, U21) in REQ-QWR-011, the AC-QWR-013 type-mismatch subtest, and §F | spec.md REQ-QWR-011; acceptance.md AC-QWR-013, §F; plan.md U21 |
+| D-N8 decision-index wording and stale control count | **fixed**: Q4 says "does not lease or change a card"; the AC-QWR-011 positive control is worded "non-empty" with the plan-phase commits named as an example, not a fixed list | decision-index.md Q4; acceptance.md AC-QWR-011 |

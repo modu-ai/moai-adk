@@ -23,12 +23,12 @@ Authority anchor: none
 Why unresolved: the predecessor's output is pinned byte for byte when the gate is off or pressure is off; adding a cell or key would change its goldens and tests for the benefit of operator visibility. Whether that visibility is worth editing the predecessor's pinned output is a product call.
 Operator verdict: Resolved by decision oracle — option A, no output change; the predecessor goldens and tests stay untouched (confidence 0.97).
 
-### Q4: Which command does the real-lane measurement run around — the read-only `moai factory status`, or `moai factory next` itself? (D6)
+### Q4: Which command does the real-lane measurement run around — `moai factory status` (which does not lease or change a card), or `moai factory next` itself? (D6)
 
 Label: FOUNDER
 Authority anchor: none
-Why unresolved: `moai factory next` leases a card when it succeeds, so measuring it adds a side effect on the live queue; the read-only variant reaches the same evaluation function but never enters the lane-specific wait loop or latch. The card leaves the choice to the plan.
-Operator verdict: Resolved by decision oracle — `moai factory status` always (read-only, before and after); `moai factory next` additionally only when a lease is genuinely due anyway (confidence 0.83).
+Why unresolved: `moai factory next` leases a card when it succeeds, so measuring it adds a side effect on the live queue; the `status` variant reaches the same evaluation function in a build that contains it, but never enters the lane-specific wait loop or latch, and does not lease or change a card (it is not strictly side-effect-free when the factory database exists). The card leaves the choice to the plan.
+Operator verdict: Resolved by decision oracle — `moai factory status` always (before and after; it does not lease or change a card); `moai factory next` additionally only when a lease is genuinely due anyway (confidence 0.83).
 
 ### Q5: Should the aggregator's seam keep its present type with a new production value, or change type to carry directories? (D2)
 
