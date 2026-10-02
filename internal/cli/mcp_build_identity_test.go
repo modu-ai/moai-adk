@@ -677,6 +677,17 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// changes a review targets; it never judges binary-vs-source freshness,
 		// so binlag.Evaluate remains the one binary-lag comparison.
 		"codex_review_scope.go:132": true,
+		// SPEC-WEB-SETTINGS-SAVE-001 scope ③ (card t1393): the session-worktree
+		// disposal landing check — arm (i) of the decided predicate asks
+		// whether the branch tip is an ancestor of refs/remotes/origin/develop
+		// before `git worktree remove`. The :810 coordinate is the predicate's
+		// doc comment naming the primitive, :836 the comparison itself. It is
+		// a disposal-safety reachability question about two repo refs — the
+		// same family as the todo_landed/todo_autodone coordinates — not a
+		// binary-vs-source freshness comparison, so binlag.Evaluate is not its
+		// owner (REQ-WSS-302's fail-open preserve is the safety net there).
+		"session_worktree.go:810": true,
+		"session_worktree.go:836": true,
 	}
 	got := map[string]bool{}
 	entries, err := os.ReadDir(".")

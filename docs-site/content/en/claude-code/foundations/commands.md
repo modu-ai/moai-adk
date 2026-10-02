@@ -76,7 +76,7 @@ Frequently used commands by category. The full list is available by typing `/` i
 - The [v2.1.154 changelog](https://github.com/anthropics/claude-code/blob/v2.1.154/CHANGELOG.md) introduces dynamic workflows and `/workflows`. The [v2.1.141 changelog](https://github.com/anthropics/claude-code/blob/v2.1.141/CHANGELOG.md) describes a `/bg` fix, which confirms the command existed by then but does not date its introduction.
 - The same functionality often goes by multiple names (aliases).
 - Some commands are exposed differently depending on platform, plan, and environment.
-- `ultracode` is currently a workflow trigger keyword (it was `workflow` pre-v2.1.160) and simultaneously an `/effort` level.
+- `ultracode` is currently a workflow trigger keyword (it was `workflow` pre-v2.1.160) and, since v2.1.284, also an independent on/off toggle in `/effort`. It is not an effort level, so turning it on or off leaves the level unchanged.
 
 ## Diving into the Core Commands
 
@@ -134,7 +134,7 @@ It is also worth touching on how subagents run inside a session. Since v2.1.198 
 
 ### /effort and ultrathink — Adjusting Reasoning Depth
 
-`/effort` sets the model's reasoning intensity. Levels are `low` · `medium` · `high` · `xhigh` · `max`, plus `auto`, and `ultracode`, which turns on workflow orchestration. For thought-heavy work like coding, `xhigh` is generally recommended.
+`/effort` sets the model's reasoning intensity. Levels are `low` · `medium` · `high` · `xhigh` · `max`, plus `auto`. `ultracode`, which turns on workflow orchestration, is a toggle separate from the levels and is turned off with `/effort ultracode off`. For thought-heavy work like coding, `xhigh` is generally recommended.
 
 Writing the keyword `ultrathink` in the chat has the same effect. `ultrathink` raises `effort` to `xhigh` and also turns on **Adaptive Thinking** (where the model itself decides how many tokens to spend on reasoning). The old way of specifying a fixed thinking budget with `budget_tokens` is no longer recommended — Opus 4.7 and above reject fixed budgets.
 

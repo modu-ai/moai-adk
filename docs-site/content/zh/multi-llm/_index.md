@@ -85,7 +85,7 @@ effort 可以用斜杠命令切换。
 /effort low       # 速度优先
 /effort high      # 深度推理
 /effort xhigh     # 高难度
-/effort ultracode # xhigh + 工作流自动编排
+/effort ultracode # 工作流自动编排开关
 /effort auto      # 由模型根据上下文选择
 ```
 
