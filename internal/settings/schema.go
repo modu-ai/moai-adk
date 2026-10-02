@@ -77,7 +77,9 @@ const (
 
 // NOTE: agent-settings 섹션(workflow.yaml team.role_profiles 렌더 표면)은 Agent
 // Teams 정적 레이어와 함께 제거되었다 (SPEC-AGENT-TEAM-RETIRE-001). sub-agent
-// model/effort 편집 표면(agentfm)도 제거되었다 (SPEC-AGENT-MODEL-INHERIT-001).
+// model/effort 편집 표면(agentfm)은 llm.agent_overrides 저장 경로로 복원되었다
+// (SPEC-WEB-AGENTFM-RESTORE-001) — 이 패키지의 agentfm 전용 필드는 없다
+// (llm.profile/llm.agent_overrides는 스키마 외부 live 키 — plan §B-6).
 
 // AllSections는 정규 섹션을 렌더 순서대로 반환한다.
 func AllSections() []SectionID {

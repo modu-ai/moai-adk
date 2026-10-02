@@ -1,10 +1,10 @@
 ---
 id: SPEC-AGENT-MODEL-INHERIT-001
 title: "Subagents inherit the main session's model and effort — remove per-agent model/effort assignment"
-version: "0.6.0"
-status: completed
+version: "0.7.0"
+status: in-progress
 created: 2026-09-26
-updated: 2026-09-29
+updated: 2026-10-02
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -13,7 +13,8 @@ lifecycle: spec-anchored
 tags: "agent-model, effort, inheritance, profile-matrix-retirement, agentemit, moai-update-migration, web-console"
 tier: L
 era: V3R6
-related_specs: [SPEC-MODEL-PROFILE-MATRIX-001, SPEC-MODEL-PROFILE-MATRIX-002, SPEC-MODEL-MATRIX-CORE-001, SPEC-MODEL-MATRIX-CONFIG-001, SPEC-MODEL-MATRIX-SURFACES-001, SPEC-MODEL-MATRIX-DOCS-001, SPEC-AGENT-MODEL-ENFORCE-001, SPEC-V3R6-AUDIT-MODEL-PIN-001, SPEC-ALWAYS-LOADED-DIET-002, SPEC-ROLE-NAMING-DOCS-001]
+amendment_of: SPEC-AGENT-MODEL-INHERIT-001
+related_specs: [SPEC-MODEL-PROFILE-MATRIX-001, SPEC-MODEL-PROFILE-MATRIX-002, SPEC-MODEL-MATRIX-CORE-001, SPEC-MODEL-MATRIX-CONFIG-001, SPEC-MODEL-MATRIX-SURFACES-001, SPEC-MODEL-MATRIX-DOCS-001, SPEC-AGENT-MODEL-ENFORCE-001, SPEC-V3R6-AUDIT-MODEL-PIN-001, SPEC-ALWAYS-LOADED-DIET-002, SPEC-ROLE-NAMING-DOCS-001, SPEC-WEB-AGENTFM-RESTORE-001]
 ---
 
 ## HISTORY
@@ -26,6 +27,35 @@ related_specs: [SPEC-MODEL-PROFILE-MATRIX-001, SPEC-MODEL-PROFILE-MATRIX-002, SP
 | 0.4.0 | 2026-09-26 | manager-spec | plan-audit iter-2 (FAIL 0.82, `.moai/reports/plan-audit/SPEC-AGENT-MODEL-INHERIT-001-review-2.md`) N1–N9 addressed: strip-step host re-measured and moved after backup+merge on the normal path, with its own backup on the version-matched path (REQ-AMI-014, design D14); rosterguard registry sites bound to removed surfaces assigned per milestone (design D4, plan §G); the local verify-judge effort channel inventoried (design H22) and made visible to AC-AMI-007; test-file consumers added to plan §G; AC-AMI-006 lints the fixture path explicitly; touch set C-collated and extended (research §I); docs residue, agent-authoring residue and profile-setup wording added. Operator decision recorded: the init/update wizard agent model-policy question is deleted (progress.md §E.1 Q7). Counts unchanged: 25 REQ / 25 AC. |
 | 0.5.0 | 2026-09-26 | manager-spec | plan-audit iter-3 (FAIL 0.83, `.moai/reports/plan-audit/SPEC-AGENT-MODEL-INHERIT-001-review-3.md`); one extra round approved by the operator beyond the Tier L cap (progress.md §E.1). R1–R9 addressed: roster premise names its real surviving consumer and `retainedAgentNames` is removed with its last consumer while `ModelEffort` is kept and relocated (design D4/§E); `shipped-key-inventory` and `web-i18n-agent-descriptions` rosterguard sites disposed with the i18n keys (design §F); clean-install path filters the retained-key advisory (D14 c); AC-AMI-006 uses an observable linter signal; Out of Scope reconciled with H24; ja/zh wording and eight `effort_level` strings added; ja/zh multi-llm index pages added; Q7 carried to §E and DoD; update skip-reason return and cancel seam named (D14 b). Counts unchanged: 25 REQ / 25 AC. |
 | 0.6.0 | 2026-09-29 | manager-spec | Sync-audit F1 amendment (sync-audit FAIL 77.2, `.moai/reports/t1246/sync-audit.md`; lead dispatch 2026-09-29, repair option (i) — formal amendment, not observer-layer deletion). REQ-AMI-009 redefined to the declaration-only observer design the run landed: the guard exists solely to classify each `Agent` spawn as declared vs inherit — no enforcement, no model/effort resolution, no advisory or deny — and MUST NOT write `.moai/logs/agent-model-audit.jsonl`; the file staying unwritten is the requirement. AC-AMI-009 reworded to match (reword only; count unchanged: 25 REQ / 25 AC). Rationale: the M5 declared/inherit transition proved superior to the planned full deletion (plan.md M3, design §E hook row) — deleting the observer would lose the observation capability, and the auditor assessed the removal work itself as verified; the failure was close-out truthfulness. Prescription: sync-audit F1 option (i) + lead dispatch 2026-09-29. Prune/audit-file fate measured in the same commit (design §G): no prune entry in `internal/cli` (grep: 1 hit, a doctor test fixture); the age-out entry survives at `internal/hook/prune_logs.go:169`. |
+| 0.7.0 | 2026-10-02 | manager-spec | **In-place amendment of the `completed` SPEC (card t1411 — SPEC-WEB-AGENTFM-RESTORE-001 REQ-AFR-014; manager-spec re-delegation per D-NEW-1; operator approval 2026-10-02, restore-SPEC decision-index Q1).** REQ-AMI-011 gains the console-surface exception: inheritance stays the default and the spawn path is untouched, while the `moai web` console restores per-agent override storage/display (`llm.profile` + `llm.agent_overrides`, llm-panel sub-section, no fourteenth tab) — runtime consumption is bounded by follow-up card t1421. REQ-AMI-013 narrows: the shipped template re-carries `profile`/`agent_overrides` with empty defaults; `harness_agents`, `performance_tier`, and the workflow keys stay prohibited. REQ-AMI-014 body unchanged (the `ShippedRetiredModelKeys` seam auto-exempts the re-shipped keys). No requirement deleted, no id renumbered, no AC mapping changed (25 REQ / 25 AC); progress.md §E.4 `sync_commit_sha` left at the prior close. Status moves `completed → in-progress` per the SSOT amendment transition; the structured record is in `## Amendments`. |
+
+---
+
+## Amendments
+
+**2026-10-02 — v0.7.0 — in-place amendment of the prior `completed` SPEC (card t1411).**
+
+- Transition: `completed → in-progress` per the SSOT amendment contract (`.claude/rules/moai/development/spec-frontmatter-schema.md` § completed → in-progress (amendment)); `amendment_of: SPEC-AGENT-MODEL-INHERIT-001` (self-referential). Authorized by the orchestrator's D-NEW-1 re-delegation to manager-spec (SPEC-WEB-AGENTFM-RESTORE-001 plan.md §F M5b, plan-audit D8).
+- Prior completed version: **0.6.0** — closed 2026-09-29 (card t1246 sync lane).
+- `prior_completed_sha: 770cb02a9` — the prior close's `sync_commit_sha` (this SPEC's progress.md §E.4); that field is left unmodified.
+- Rationale: the operator directed (2026-10-02, card t1411) the restoration of the `moai web` per-agent configuration surface this SPEC's REQ-AMI-011 removed (delete commit `384eb3460`). Inheritance remains the default behaviour; only the console storage/display surface returns. The template-key correction is forced by consistency: a save path writing keys the update strip removes would be self-contradictory, and the `ShippedRetiredModelKeys` seam already exempts keys the embedded template still ships.
+- Scope — SPEC-WEB-AGENTFM-RESTORE-001 plan §D.1 11-row surface disposition:
+
+  | # | Surface | Disposition |
+  |---|---|---|
+  | 1 | REQ-AMI-011 body | Amended here — console-surface exception sub-bullet |
+  | 2 | REQ-AMI-013 body | Amended here — narrowed prohibition (two keys re-shipped) |
+  | 3 | REQ-AMI-014 body | Unchanged — the `ShippedRetiredModelKeys` seam auto-exempts the re-shipped keys; strip-test expectation updates belong to the restore SPEC (its plan §D.5 extend rows), not to this body |
+  | 4 | `internal/web/agent_settings_removed_test.go` | Inverted by restore-SPEC M2 (observational-RED lock inversion; the file is gone from the tree) |
+  | 5 | `internal/web/agent_settings_test.go` | Kept — role_profiles/workflow_agents locks are unrelated to agentfm; the orphan-comment cleanup rode M2 |
+  | 6 | `internal/settings/schema.go:80` · `schema_sections.go:568` comments | Updated to restoration wording (restore-SPEC run phase; observed in this tree) |
+  | 7 | `internal/cli/update_model_key_strip.go` reason string + `retired_model_keys.go` doc comment | Updated to console-reader wording; logic unchanged (seam carries it) |
+  | 8 | template `llm.yaml` retirement comment block | Updated — keys re-shipped with the inheritance-default comment block (restore-SPEC M1) |
+  | 9 | `.claude/rules/moai/development/model-policy.md` · `.moai/project/tech.md:17` | Sync-phase settlement of the restore SPEC (run code settles first; tech.md's retired-key list drops `profile`/`agent_overrides` then) — pending at amendment time |
+  | 10 | SPEC-AGENT-MODEL-INHERIT-DOCS-001 | Out of the restore SPEC's scope — sync-phase follow-up card recommendation |
+  | 11 | `internal/cli/mcp_audit_test.go:145-151` | Kept — mcp-package-only purity guard, no conflict with the web-layer restore |
+
+- No requirement deleted, no id renumbered, no AC mapping changed. Requirement and AC counts unchanged: 25 / 25.
 
 ---
 
@@ -75,11 +105,13 @@ mapping, and migrates existing user projects on `moai update`.
 ### B.4 Web console
 
 - **REQ-AMI-011** (Ubiquitous): The `moai web` console shall carry no agent-settings tab — neither its UI (tab, panel, profile selector, per-agent model/effort controls) nor its handler/API path — and shall not write agent frontmatter `model`/`effort` or `llm.profile`/`llm.agent_overrides` on any request.
+  - *Amendment 2026-10-02 (v0.7.0, card t1411 — SPEC-WEB-AGENTFM-RESTORE-001 REQ-AFR-014; operator approval 2026-10-02, restore-SPEC decision-index Q1).* The console-surface prohibition is excepted for exactly the storage/display surface that SPEC restores: as a sub-section of the llm (3rd Party LLM) panel — never a fourteenth tab, so the 13-tab contract (REQ-AFR-013, `wantTabOrder`, `>13<`) stays byte-for-byte — the console stores and displays per-agent overrides in `llm.yaml` (`llm.profile` via the performance-tier selector and `llm.agent_overrides` per agent; REQ-AFR-001/003/004). Sub-agent model/effort inheritance remains the default behaviour and this amendment changes no spawn-path resolution; agent frontmatter stays a read-only scan surface (the frontmatter-write prohibition stands); and runtime consumption of the restored keys is out of scope of the restore SPEC, bounded by follow-up card t1421.
 - **REQ-AMI-012** (Ubiquitous): The `moai web` console's user-preference profile routes (`/profile/create`, `/profile/delete`, rename) and the main-session model/effort controls shall keep the behaviour captured by the M1 characterisation tests.
 
 ### B.5 Configuration and migration
 
 - **REQ-AMI-013** (Ubiquitous): The template `llm.yaml` shall not carry the `profile`, `profiles`, `harness_agents`, `agent_overrides`, or `performance_tier` keys, the template `workflow.yaml` shall not carry the `workflow_agents`, `model_routing`, or `model_routing_profiles` keys, and neither shall carry their explanatory comment blocks.
+  - *Amendment 2026-10-02 (v0.7.0, card t1411 — SPEC-WEB-AGENTFM-RESTORE-001 REQ-AFR-014/REQ-AFR-008; operator approval 2026-10-02, restore-SPEC decision-index Q1).* The llm.yaml prohibition is superseded for exactly two keys: the shipped template `llm.yaml` shall again carry `profile` and `agent_overrides` — with empty defaults (`profile: ""`, `agent_overrides: {}`) and an updated comment block stating the inheritance default — and `moai update` shall not strip a key the embedded template still ships (`template.ShippedRetiredModelKeys` membership is the strip exemption), so user values in those two keys survive every update. The prohibition stands for the remaining retired keys: `llm.yaml` shall not carry `harness_agents` or `performance_tier`, and `workflow.yaml` shall not carry `workflow_agents`, `model_routing`, or `model_routing_profiles`, nor their explanatory comment blocks. The `profiles` key is neither re-shipped nor prohibited: the Go default matrix remains the single source of truth and a user extension layer stays optional.
 - **REQ-AMI-014** (Event-driven): **When** `moai update` runs on a project whose `llm.yaml` or `workflow.yaml` carries any of the keys in REQ-AMI-013, or whose `workflow.yaml` carries `agent_model_guard`, the update shall remove each such key from the user's file in an explicit strip step that runs after the configuration backup and, where a merge runs, after the configuration merge; the backup shall hold the original keys; every removed key shall appear once in the update report as removed (not as retained); the step shall also run on a version-matched update that skips the template sync, taking its own backup first, and shall not run when the user cancels the merge.
 - **REQ-AMI-015** (Event-driven): **When** `moai init` or `moai update` runs, it shall write neither `llm.profile` nor `llm.performance_tier`, shall not ask the agent model-policy wizard question, and shall leave the main-session model policy exactly where it is persisted today — the preference profile `~/.moai/claude-profiles/<name>/preferences.yaml` key `model_policy`, written by `moai profile setup` and `moai web`.
 - **REQ-AMI-016** (Event-driven): **When** a user passes `--profile`, `--model-policy`, `--high`, `--medium-alias`, or `--low` to `moai init` or `--profile` to `moai update`, the command shall accept the flag, shall emit a deprecation warning stating that subagents now inherit the main session's model and effort and naming `moai profile setup` for the main-session policy, shall complete otherwise unchanged, and shall write neither `llm.profile` nor `llm.performance_tier`.

@@ -56,6 +56,12 @@ func Validate(cfg *Config, loadedSections map[string]bool) error {
 	// Check the GLM base_url is a safe, well-formed https endpoint (REQ-CGH-007).
 	errs = append(errs, validateGLMBaseURL(cfg.LLM.GLM.BaseURL)...)
 
+	// Check the restored console-surface keys (SPEC-WEB-AGENTFM-RESTORE-001
+	// REQ-AFR-006): the llm.profile closed set and every llm.agent_overrides
+	// entry's agent/model/effort enums join the same atomic-reject flow.
+	errs = append(errs, validateProfile(cfg)...)
+	errs = append(errs, validateAgentOverrides(cfg)...)
+
 	if len(errs) > 0 {
 		return &ValidationErrors{Errors: errs}
 	}
