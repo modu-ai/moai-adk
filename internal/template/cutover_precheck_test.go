@@ -297,7 +297,7 @@ func TestCutoverPrecheckGuards(t *testing.T) {
 		p := cvoNewPre(t)
 		p.setSessions(cvoSessionsJSON(
 			cvoSession(4242, "/x/moai/.moai/worktrees/t9007"), // lane cwd, but the pid is gone
-			cvoSession(4243, "/x/moai"),                        // a leader on the primary checkout
+			cvoSession(4243, "/x/moai"),                       // a leader on the primary checkout
 		), 0)
 		p.setAlive(false)
 		cvoWantClear(t, p.run())
