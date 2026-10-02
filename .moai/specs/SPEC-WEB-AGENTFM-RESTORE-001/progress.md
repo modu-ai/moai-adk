@@ -143,3 +143,12 @@ recorded_by: manager-docs (sync phase, card t1411)
 - **§E.2 pre-flight 행 재기술**: F3의 증거 과대 교정 — 위 Pre-flight 행이 "원자" 결론 대신 실측 범위(무관-파일 보존)로 재작성됨.
 - **재검증**: 아래 M6-repair 재실행 행.
 - **M6-repair 재실행(환경세척 단일 복합 호출, -count=1, 이 트리·이 런)**: `go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 · `go test -count=1 ./internal/settings/ ./internal/settings/agentfm/ ./internal/harness/rosterguard/` → settings ok 1.151s · agentfm ok 0.297s · rosterguard ok 48.788s · `go test -count=1 ./internal/web/` → ok 73.261s · AC 선별 29테스트 PASS · gofmt 클린(F4 반영) · lint `0 issues.` (수리 파일 4패키지).
+
+### Amendment (2026-10-03, card t1421) — v0.3.0 opt-in spawn-consumption contract (REQ-AFR-015..020)
+
+- manager-spec의 in-progress SPEC 재자리 수정 — v0.2.0 수정안 위의 연속 수정: version 0.2.0 → 0.3.0, `updated: 2026-10-03`, HISTORY 0.3.0 행, `## Amendments` v0.3.0 블록. `status: in-progress` 유지(재전이 불요), `amendment_of` 자기참조 불변, `prior_completed_sha: bd51d75a17a39c7fd0d4437cf62a28ce4be677a3` 불변. 수정 전 spec.md 마지막 본문 커밋: `9c6056164` (2026-10-03, card t1446 v0.2.0 amendment).
+- 운영자 결정 기록: **옵트인 고정** (2026-10-03, lane AskUserQuestion 라운드, 카드 t1421) — decision-index Q4. `llm` 섹션 단일 옵트인 키 `llm.agent_overrides_consume`(기본 false)를 켠 세션만 스폰 시 소비; 오케스트레이터가 Agent() 호출에 model/effort 전달(유일 승인 소비 경로 — model-policy.md 해상 순서). 카드 본문이 승인 원문.
+- REQ-AFR-015..020 신설(6건 — console·doctor 가시성은 동일 요구의 두 검증 면으로 하나의 REQ-AFR-019에 병합) · AC-AFR-014..019 신설(6건). 기존 14 REQ·13 AC 무변경 — 삭제·재번호·AC 매핑 변경 없음. Out of Scope 런타임 소비 절 재기술 — Q2 공백이 본 수정안으로 경계. REQ 20 / AC 19 — Tier M 상한 초과분의 예산 처분은 plan.md §I.3 (분할·티어 상향 기각 근거 기록).
+- plan.md §I 신설 — 마일스톤 M7(옵트인 키·게이트·리졸버)→M8(훅 advise/audit)→M9(console·doctor 가시성)→M10(AMI-001 수정안, M5b 선례 manager-spec 재위임)→M11(전체 검증). 룰 텍스트 소비 조항(REQ-AFR-017, `.claude/rules/moai/core/agent-common-protocol.md` § Subagent Model and Effort)은 sync-phase 소관 — run-phase는 룰 파일을 건드리지 않는다.
+- **재close 처분**: 0.2.0 + 0.3.0 두 수정안의 재close는 **하나의 joint close 커밋** — 카드 t1446 재진입이 본 카드와 동행하며 둘이 함께 재close한다. 그때까지 §E.4의 `sync_commit_sha: bd51d75a17a39c7fd0d4437cf62a28ce4be677a3` 불변. AC-AFR-016(룰 텍스트 grep)·AC-AFR-019(AMI-001 링크 grep)의 증거는 각 소유 단계(sync·M10) 착지 후 §E에 전사.
+- 이 파일의 §E.2/§E.3/§E.4 증거는 불변 — 본 블록은 말미 추가 기록뿐이다. AC-count baseline 스냅샷(`.moai/reports/t338/ac-count-baseline.txt`)은 본 수정안과 같은 커밋에 재생성본이 동행한다(ac-count-baseline-refresh.md §3 같은 커밋 규칙 — 방아쇠 4행, SPEC 제자리 개정).

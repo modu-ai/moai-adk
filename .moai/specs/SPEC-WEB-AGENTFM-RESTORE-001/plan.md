@@ -186,3 +186,77 @@
 - decision-index.md: Q1(템플릿 키 재수재 비준)·Q2(스폰 시점 소비)·Q3(패널 배치) — FOUNDER.
 - 블루프린트: `.moai/reports/t1411/removed-commit-384eb3460.diff`.
 - 선례: SPEC-JEV-CORE-001 HISTORY v0.2.0/v0.3.0 (completed-SPEC 좁은 수정안 형식), `internal/contract/kickoff/activation_test.go` `TestJevAmendmentLinkage`.
+
+## §I v0.3.0 Amendment Plan — 스폰 소비 계약 (card t1421)
+
+### §I.1 Context
+
+카드 t1421(decision-index Q2 후속): 복원된 `llm.agent_overrides`의 스폰-소비 계약. 운영자 결정 2026-10-03(lane AskUserQuestion 라운드): **옵트인 고정** — `llm` 섹션의 단일 명시 키(기본 off)를 켠 세션만 스폰 시 오버라이드를 소비하고, 오케스트레이터가 Agent() 호출에 model/effort를 실어 보낸다. 키 없는 세션은 상속 기본을 유지한다(`.claude/rules/moai/core/agent-common-protocol.md` § Subagent Model and Effort — 기본 문장 불변, 소비 예외 조항은 sync-phase 룰 개정).
+
+현 트리 실측(선행 — v0.1.0 착지분): 소비 경로 소비자 0 (`internal/config/types.go:319` — "Runtime spawn-path consumption remains Out of Scope … today only the console reads and writes this map"); 해상 기계(`EffectiveProfile`·`ResolveAgentModelEffort`·`validateAgentOverrides`)는 M1이 재포트해 생존 — 본 수정안은 소비 게이트와 소비자를 연결하는 것이지 해상 기계를 다시 쓰는 것이 아니다. 훅(`internal/hook/agent_model_guard.go`, 191행)은 observe(JSONL 상시, 무차단)·advise(무차단 조언) 2층이고 구 차단 레이어는 의도 제거됨(파일 헤더 실측); override 참조 0건 — 확장 여지 실측. doctor 표면 `internal/cli/doctor_served_model.go` 생존.
+
+개발 모드 TDD(`constitution.development_mode: tdd`). plan-auditor PASS 기준 Tier M 0.80 (티어 불변 — §I.3 예산 처분).
+
+### §I.2 제약 행 (v0.3.0)
+
+| # | 제약 | 근거 |
+|---|---|---|
+| C1 | 옵트인 기본 off — 기본 동작 무변경(REQ-AFR-002 승계) | 운영자 결정(옵트인 고정) |
+| C2 | observe/advise만 — 차단 레이어 부활·훅 입력 재작성 금지 | 훅 헤더 계약(구 차단층 의도 제거 실측) |
+| C3 | override 값은 REQ-AFR-006 별칭 폐쇄집합만 — 전체 모델 ID 형태 금지 | model-policy.md (full-ID 의도적 불허) |
+| C4 | 스폰 시점 모델 핀은 부모 [1m] 자격 미상속 — "Usage credits required for 1M" 즉시 실패(upstream #36670/#51060 — STILL-ACTIVE 기제, 현재 기본 라인업 실영향 0); 별칭 폐쇄집합이 완화, 잔여는 문서화 | model-policy.md § Inherit-by-Default Convention |
+| C5 | 템플릿 수재 + 인벤토리 R 등록 — `ShippedRetiredModelKeys`는 신규 키에 무관(은퇴 집합 밖), strip 회귀는 기존 테스트로 관측 | REQ-AFR-008 seam · M1 인벤토리 선례 |
+| C6 | 캐시 비용은 독트라 인용만 — cache-aware-execution.md 지시 5(스폰별 모델 오버라이드는 세션 캐시에서 갈라놓음)·지시 10(effort 전환은 캐시 무효화). 미측정 수치 금지 | 본 독트라 |
+| C7 | effort 축은 훅 관측 불가("the Agent tool exposes no effort parameter") — advise 비교는 모델 축, effort 전달은 교리(REQ-AFR-017) | 훅 헤더 실측 |
+| C8 | 룰 파일(`.claude/rules/**`) 편집은 sync-phase 전용 — run-phase 금지 | 카드 지시 · REQ-AMD-001 계열 |
+| C9 | 소비는 Agent() 호출 파라미터 — 프론트매터 쓰기 없음(REQ-AFR-005 승계), `CLAUDE_CODE_SUBAGENT_MODEL` 미사용(전역 핀은 옵트인 계약이 아니고 상속 계약을 훼손한다) | model-policy.md |
+
+### §I.3 예산 처분 (Tier M 상한 초과)
+
+REQ 20 / AC 19 — 상한 16/16 초과. 처분: (a) 분할 기각 — 운영자가 단일 계약을 본 SPEC의 수정안으로 지정(카드 t1421). (b) 티어 상향 기각 — Tier L은 design.md·research.md를 요구하고 수정안은 신규 아티팩트를 저술하지 않으며, `tier: L` 선언은 `TierArtifactMissingRule` 경고를 유발한다(`internal/spec/lint.go:227` — Warning). (c) 초과분은 본 수정안의 plan 감사에서 plan-auditor가 판정한다 — 감사가 축소를 요구하면 REQ-AFR-019의 doctor 면이 최초 축소 후보다(콘솔 면이 사용자 직접 표면).
+
+### §I.4 Pre-flight (run-phase 착수 시 최우선 기록 → progress.md §E.2)
+
+- [ ] 기준선: `go build ./...` + `go test ./internal/config/ ./internal/template/ ./internal/hook/ ./internal/cli/ ./internal/web/ -run '^(TestShippedConfigKeysHaveReaders|TestAgentOverridesSubsection|TestAgentOverridesSave|TestAgentOverridesSeams|TestAgentModelObserveNeverBlocks|TestAgentModelAdvisoryDoesNotBlock|TestServedModelCheck_Sweep)$'` GREEN (기존 테스트명 실측 — `go test ./internal/{cli,hook,web} -list`), 신규 RED 테스트는 각 마일스톤이 선작성.
+- [ ] 훅 레코드 스키마 핀: 확장 전 `agentModelAuditRecord` 필드 목록 전사(확장이 기존 필드를 훼손하지 않음의 기준).
+- [ ] 옵트인 키 이름 충돌 스캔: `agent_overrides_consume`이 기존 llm.yaml·스키마·문서에 0히트.
+- [ ] [1m] 잔여: 생존 재현 프로브 없음 — C4 문서화만(상류 이슈 상태 재확인은 sync 정산 시 1회).
+
+### §I.5 Milestones (단일 구현 에이전트, TDD)
+
+#### M7 (High) — 옵트인 키·소비 게이트·리졸버 결선 [데이터 모델 — 최우선]
+
+- `internal/config/types.go`: `LLMConfig`에 `agent_overrides_consume`(bool, yaml 태그 동명) 재도입 + 검증(비-불리언 거절 — 기존 원자 거절 합류).
+- 소비 게이트 뒤 리졸버 결선(REQ-AFR-016): on → override 승리/부재 상속/`inherit` no-op; off → 저장 전용. 블루프린트 `3fa8bd2ab^` 형태, 현 트리 해상 기계 재사용(재유도 금지).
+- 템플릿 `llm.yaml` 키 수재(기본 false, 주석 블록) + `internal/config/testdata/shipped_key_inventory.yaml` R 등록.
+- RED: 키 기본값·거절·해상 3축 선작성.
+
+#### M8 (High) — 훅 advise/audit 확장
+
+- `internal/hook/agent_model_guard.go`: consume on 시 advise가 override 기대와 스폰 선언을 비교(모델 축 — C7) + `agentModelAuditRecord`에 override 적중/미적중 필드 추가(C2 — observe 무차단 보존, 기존 필드 무변경).
+- RED: 기존 레코드 형태 고정 테스트 → 확장 후 적중/미적중/off 3케이스.
+
+#### M9 (Medium) — 가시성 (console + doctor)
+
+- agentfm 서브섹션에 계약 상태 표시(consume on/off — 저장 전용 침묵 방지).
+- `internal/cli/doctor_served_model.go`: 스위치 상태 행.
+- RED: 렌더 마커 + doctor 행 어설션.
+
+#### M10 (High) — AMI-001 수정안 [소유자: manager-spec 재위임 — M5b 선례]
+
+- **소유자 경계**: run-phase 에이전트의 SPEC 본문 수정 금지(spec-frontmatter-schema § Forbidden ownership crossings) → 오케스트레이터가 D-NEW-1 인라인-수정 패턴으로 manager-spec 재위임. **명시 직렬 순서: M9 → M10 → M11.**
+- 수정 대상: `.moai/specs/SPEC-AGENT-MODEL-INHERIT-001/spec.md` — HISTORY 신규 행 + REQ-AMI-011 예외 문단의 소비 계약 확장(REQ-AFR-020). 형식: 요구사항 삭제·재번호 없음, 동 SPEC 기존 close의 `sync_commit_sha` 불변, `TestJevAmendmentLinkage` 정합.
+
+#### M11 (High) — 전체 검증·LSP
+
+- 스코프 스위트 전량 + LSP run 게이트(오류 0) + acceptance.md DoD(v0.3.0 포함 19 AC) 체크.
+- 커버리지: 신규·수정 패키지 커밋당 80%+ (quality.yaml tdd_settings).
+
+### §I.6 Anti-Patterns (v0.3.0)
+
+- 차단 레이어(`workflow.agent_model_guard.enabled`) 부활·훅 입력 재작성 금지 (C2).
+- 해상 기계 재유도 금지 — M1 착지분 재사용 (단일 유도).
+- 미측정 캐시 비용 수치 금지 — 독트라 인용만 (C6).
+- 전체 모델 ID 형태 값 수용 금지 (C3) · 프론트매터 쓰기 금지 (C9).
+- run-phase 룰 편집 금지 (C8) — 소비 조항은 sync 소유.
+- `CLAUDE_CODE_SUBAGENT_MODEL` 경유 구현 금지 — 전역 핀은 옵트인 계약이 아니다 (C9).
