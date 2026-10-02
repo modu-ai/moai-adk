@@ -277,6 +277,7 @@ mentions an id later in the sentence still falls through, and
 					liveness: newAutoLiveness(),
 					landed:   todoAutoLandedLookup,
 					jevRank:  todoAutoJevRanker,
+					quota:    todoAutoQuotaLine,
 				})
 			}
 			if len(args) == 0 {
@@ -333,6 +334,10 @@ var (
 var (
 	todoAutoLandedLookup autoLandedLookup = liveAutoLandedLookup
 	todoAutoJevRanker    autoJevRanker    = liveAutoJevRanker
+	// todoAutoQuotaLine is the quota steering seam's live value
+	// (SPEC-QUOTA-AWARE-SCHEDULING-001): the shared pressure evaluation plus the
+	// lane inventory, read-only. A variable for the same reason as the two above.
+	todoAutoQuotaLine autoQuotaLine = factoryQuotaSteering
 )
 
 // todoLaneReadOnlyVerbs is the REQ-SD-015 read-only allowlist: the only

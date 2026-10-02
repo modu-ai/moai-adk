@@ -50,9 +50,11 @@ func TestParseSchemaFormEmptySubmits(t *testing.T) {
 	})
 	t.Run("EmptySubmits field: absent key preserves (non-browser post)", func(t *testing.T) {
 		// A form that carries no crosssession keys at all (an agentfm-only
-		// submission, a test client) must not fabricate revert edits.
+		// submission — the restored console surface's per-agent keys are not
+		// schema fields and never crosssession keys — or a test client) must
+		// not fabricate revert edits.
 		edits, errs := parseSchemaForm(postSchemaForm(url.Values{
-			"agentfm.dev-a.effort": {"high"},
+			"agentfm.manager-todo.effort": {"high"},
 		}), nil)
 		if len(errs) != 0 {
 			t.Fatalf("parseSchemaForm errors: %v", errs)
