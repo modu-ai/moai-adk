@@ -492,7 +492,51 @@ summary: quota-aware scheduling — the statusline records the Claude rate-limit
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_pending sync-phase_
+```yaml
+sync_complete_at: 2026-10-02
+sync_commit_sha: pending-backfill-sync  # a commit cannot cite its own hash; the real SHA is backfilled by the phase-owning agent in the follow-up commit (spec-frontmatter-schema § SHA placeholder backfill exemption)
+sync_status: complete  # the manager-docs deliverables below; the independent sync-audit runs after this commit and is not part of this signal
+b12_self_test_a: pass  # pre-emission `grep -c 'SPEC-QUOTA-AWARE-SCHEDULING-001' CHANGELOG.md` = 0 before the entry was added (duplicate-entry guard)
+b12_self_test_b: pass  # ac_source=.moai/specs/SPEC-QUOTA-AWARE-SCHEDULING-001/acceptance.md, tier L; `grep -c '^### AC-QAS-' acceptance.md` = 23; the reserved-token counter printed `23` with `live=23 excluded=0 ambiguous=0`; the CHANGELOG entry cites 23 (AC-QAS-001..023)
+b12_self_test_c: pass  # file-path verification: every path the CHANGELOG entry cites (internal/statusline/{context_usage,quota}.go, internal/config/loader_quota_gate.go, internal/cli/{factory_quota,factory_quota_lanes,factory_card,mcp_factory_card,todo,todo_auto,integration}.go, internal/kanban/factory_slots.go, the template workflow.yaml, and this SPEC's spec.md and progress.md) confirmed present via two `ls` calls against this tree (14 of 14 listed)
+changelog_entry_position: "[Unreleased] > Added (first entry — newest-first; the prior first entry is SPEC-TODO-AUTO-PRIORITY-001 from card t1400)"
+frontmatter_status_transitions:
+  in_progress_to_implemented: merged  # folded into the single sync commit per the 3-phase close
+  implemented_to_completed: this commit  # spec.md frontmatter `status:` only (`updated: 2026-10-02` was already the sync date); body sections byte-untouched
+canary_compliance_check:
+  spec_body_untouched: true  # spec.md body, plan.md, acceptance.md, design.md, research.md bodies byte-unchanged (spec.md changes one frontmatter line)
+  runtime_files_untouched: true  # .moai/state, .moai/logs, .moai/reports, .moai/harness, .moai/cache untouched
+  go_source_untouched: true  # no .go file edited by the sync phase
+mx_tag_validation:  # read-only; findings only, nothing edited (Go source is outside sync-phase scope)
+  fan_in_method: "text grep of call sites over non-test .go files under internal/ (not an LSP/graph tool; a method-value use or an indirect call would be missed)"
+  existing_tags: "factoryQuotaEvaluate @MX:NOTE (factory_quota.go:84); factoryQuotaReadLanes @MX:NOTE (factory_quota_lanes.go:63)"
+  findings:
+    - "MX-1 factoryQuotaEvaluate (internal/cli/factory_quota.go:86): 4 non-test callers (factory_quota.go:135, :189, :243; factory_quota_lanes.go:152) >= fan_in_anchor 3 (.moai/config/sections/mx.yaml:182); carries @MX:NOTE only, no @MX:ANCHOR. The NOTE text also reads 'adopt it in M5/M6', stale now that M5 and M6 landed."
+    - "MX-2 factoryQuotaHoldSegment (internal/cli/factory_quota.go:163): 3 non-test callers (factory_quota.go:146, :195; factory_quota_lanes.go:134) = threshold; no MX tag."
+    - "MX-3 factoryNextLeaseOnceGated (internal/cli/factory_card.go:247): 3 non-test callers (factory_card.go:239, :661; mcp_factory_card.go:132) = threshold; no MX tag."
+    - "MX-4 (lower priority, public boundaries, 1 non-test caller each, no threshold hit): statusline.AggregateQuota (quota.go:69), config.LoadQuotaGate (loader_quota_gate.go:64), kanban.ClaimFactoryLaneWithBackend / ClaimFactoryLaneWithinWithBackend (factory_slots.go) carry no MX tag."
+  dangerous_patterns: "none observed in the new code by reading: no goroutine or channel, no global-state mutation beyond the test seam variable factoryQuotaAggregate; no cyclomatic or branch measurement was run"
+  anchors_added_by_sync: 0  # not added: editing Go source is out of sync-phase scope; raised as findings for the sync-audit
+codemap_refresh: not-evaluated  # no codemap row lookup was run for the changed packages in this sync pass
+docs_surfaces_decision:  # greps run against this tree; the files read are named
+  README.md: "no change — mentions factory lanes (lines 71, 80) but nothing about `factory next`, quota, `integration acquire`, or `workflow.quota_gate`; no statement became false"
+  README.ko.md: "no change — same grep as README.md (matched only the generic `workflow.yaml` file listing)"
+  docs-site/content/{ko,en,ja,zh}/utility-commands/moai-todo.md: "no change — en copy read: it names `moai todo auto-done` and `workflow.todo.enabled`, never the `--auto` output, so the new quota line contradicts nothing; ko/ja/zh not opened"
+  docs-site/content/{ko,en,ja,zh}/advanced/config-sections.md: "deferred — en copy has 0 mentions of `quota` and documents a hand-picked subset of workflow keys (a `branch_guard` section at line 150), so nothing is false; adding a `quota_gate` section is new content that would need a 4-locale same-PR update, not improvised here"
+  .moai/docs/gitflow-integration-chain.md: "no change — line 15 lists `moai integration acquire --name <lane> --card <card-id>`; the warn-only stderr line changes no flag, status, or window behaviour it states"
+  .claude/skills/moai/workflows/gtd.md (and its template mirror): "no change — the `--auto` section (lines 322-361) pins the ranking/selection text and the one-card-in-flight cycle; the added `quota pressure:` line before each accept contradicts none of it. Neither copy touched, so the pinned-literal tests todo_auto_doc_test.go / todo_skill_doc_parity_test.go were not run or needed"
+  moai-mcp-tools-catalogue.md and kanban-dispatch.md (factory next mentions): "no change — they describe `factory_next` / the lane lease exception, not its exit status or result text"
+  grep_for_no_card_is_available_and_factory_next_in_.claude_.moai_docs_docs-site: "3 files only (moai-mcp-tools-catalogue.md, kanban-dispatch.md, gitflow-lane-protocol.md), none states exit-3-means-empty-queue"
+known_spec_code_disagreements: "none found in the paths read (hold line shape, exit status 3, MCP result text, latch release conditions, config ranges and defaults, schema 3, backend recorded at claim, status block conditions all match the SPEC); AC-QAS-005's SPEC text says seven subtests and names eight while thirteen exist, as already recorded in §E.2/§E.3 — a SPEC-body wording point, not changed here"
+gaps:
+  - "No consolidated verification, build, test, or lint was run by this sync pass (machine load ~45; read-only commands only); whole-package ./internal/cli and ./internal/kanban results belong to the lane and CI"
+  - "The spec lint and audit lines are measured by the installed moai binary, whose commit was not built from this tree; see the follow-up commit and the final report for the verbatim output"
+  - "docs-site ko/ja/zh moai-todo.md and the gtd.md template mirror were not opened; the no-change decisions for them rest on the en copy and the live gtd.md"
+  - "MX fan-in counts come from text grep, not LSP"
+  - "Nothing here is a real Claude Code, Codex, or quota measurement (§E.3 gap 7 unchanged)"
+residual_risk: "Three functions at the fan_in anchor threshold carry no @MX:ANCHOR and one NOTE is stale (MX-1..MX-3); the quota_gate numeric defaults remain unmeasured; the hold line and exit status 3 share the empty-queue exit status, so a script reading only the exit status cannot tell them apart"
+recorded_by: manager-docs (sync phase, card t1347)
+```
 
 ## §F Phase 4 Mode Selection
 
