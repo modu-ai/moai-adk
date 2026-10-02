@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MANAGED-HARDEN-001
 title: "Factory 관리 세션 소유자 강건화 — 서버 요청 응답, 턴 단위 실패 격리, 시그널 정리 (SPEC-FACTORY-MANAGED-SESSION-001 후속)"
-version: "0.1.0"
+version: "0.3.0"
 status: draft
 created: 2026-10-03
 updated: 2026-10-03
@@ -21,6 +21,8 @@ tags: "factory, managed-session, codex, app-server, hardening, failure-isolation
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 0.3.0 | 2026-10-03 | manager-spec | plan-audit 2차(FAIL 0.81, 감사 커밋 `820eff47f`) 개정. REQ-MH-002·006·010·012 문구 개정(새 REQ 없음): elicitation 거부는 읽기 고루틴이 프레임 도착 순서로 그 턴에 귀속, 시그널은 소유자 진입의 어느 시점에서도 정리에 닿음, `Start`/`Close` 는 어느 순서로 와도 자원을 남기지 않음. §F `Start()` 경계를 정확히 재정의. 수명 순서는 design.md D-3.1 한 표가 정본. |
+| 0.2.0 | 2026-10-03 | manager-spec | plan-audit 1차(FAIL 0.75, 감사 커밋 `95dfd85c8`) 개정. REQ-MH-002·006·012·014·015 문구 개정, C.3 에 시그널 상수 한정 cross-platform exemption 신설, RED 기준선 경로를 추적되는 SPEC 디렉터리 안으로 이동. |
 | 0.1.0 | 2026-10-03 | manager-spec | Initial SPEC (card t1409). 완료된 SPEC-FACTORY-MANAGED-SESSION-001의 독립 sync 감사 지적 F3·F4·F5를 닫는 후속 SPEC이다. 부모 SPEC은 본문·frontmatter 모두 수정하지 않는다. |
 
 ## §A. 개요
@@ -55,30 +57,30 @@ tags: "factory, managed-session, codex, app-server, hardening, failure-isolation
 ### C.1 서버가 먼저 보내는 요청 (F3)
 
 - **REQ-MH-001** — **When** the Codex App Server sends a server-to-client request (a frame carrying both an `id` and a `method`), the Codex session owner shall send exactly one reply carrying that request's `id` verbatim (string or integer form) from the connection reader, without waiting for a turn to be in flight.
-- **REQ-MH-002** — The Codex session owner shall answer each of the ten server-request kinds defined by the codex 0.160.0 app-server schema with the reply recorded in design.md D-1 (a refusal or a grant-nothing result for every approval kind, a failed-tool result for a dynamic tool call, a JSON-RPC error where the schema offers no refusal), and shall answer any other method that carries an `id` with a JSON-RPC method-not-found error; for every request it answers, the owner shall also write one stderr line naming the method (an `mcpServer/elicitation/request` line also names its `serverName`), so an operator can see what was declined.
+- **REQ-MH-002** — The Codex session owner shall answer each of the ten server-request kinds defined by the codex 0.160.0 app-server schema with the reply recorded in design.md D-1 (a refusal or a grant-nothing result for every approval kind, a failed-tool result for a dynamic tool call, a JSON-RPC error where the schema offers no refusal), and shall answer any other method that carries an `id` with a JSON-RPC method-not-found error; for every request it answers, the owner shall also write one stderr line naming the method (an `mcpServer/elicitation/request` line also names its `serverName` and the turn it is attributed to, or `none` when no turn is in flight), so an operator can see what was declined.
 - **REQ-MH-003** — The Codex session owner shall not answer any server request with an accepting decision or a non-empty permission grant; the authority the owned App Server holds beyond its defaults shall remain the MoAI broker tool pre-approval already carried on its command line.
 - **REQ-MH-004** — **When** a server request carries an `id` equal to an outstanding client request `id`, or an `id` in string form, the Codex session owner shall classify the frame as a server request, shall not take it as the client request's response, and shall keep its connection reader running.
 - **REQ-MH-005** — The Codex session owner shall serialize every write to the App Server connection so that no two goroutines write at the same time, replies sent from the connection reader included.
 
 ### C.2 턴 단위 실패 격리 (F4)
 
-- **REQ-MH-006** — **When** a turn after the priming turn fails in a turn-scoped way — a Claude or GLM stream turn ending with an error result, a Codex turn ending in any state other than completed, or a Codex turn during which the owner declined an `mcpServer/elicitation/request` whose `serverName` is the MoAI broker MCP server (`moai`), even if the App Server marks that turn completed — the delivery driver shall write one operator-visible line to stderr naming the consecutive-failure count and the cause, and shall continue the delivery loop.
+- **REQ-MH-006** — **When** a turn after the priming turn fails in a turn-scoped way — a Claude or GLM stream turn ending with an error result, a Codex turn ending in any state other than completed, or a Codex turn to which the owner attributed a declined `mcpServer/elicitation/request` whose `serverName` is the MoAI broker MCP server, even if the App Server marks that turn completed (attributed to that turn by the order in which the App Server's frames arrive, never by when the consumer reads them; a request arriving while no turn is in flight counts for no turn, and several in one turn count as one failure) — the delivery driver shall write one operator-visible line to stderr naming the consecutive-failure count and the cause, and shall continue the delivery loop.
 - **REQ-MH-007** — **When** a failure is session-fatal — the priming turn failing, the stream or connection closing, a write failure, a Codex per-turn timeout, or any error not classified turn-scoped — the delivery driver shall return that error as it does today.
 - **REQ-MH-008** — **When** the count of consecutive turn-scoped failures reaches `DefaultManagedSessionMaxConsecutiveTurnFailures` (defined in `internal/config/defaults.go`), the delivery driver shall return the last failure's error stating the count, and a turn that completes successfully shall reset the count to zero.
 - **REQ-MH-009** — The delivery driver shall not release, acknowledge, or re-address a broker message claimed by a turn that failed; redelivery follows the broker's claim-lease policy, and this layer shall add no attempt cap of its own.
 
 ### C.3 시그널 정리 (F5)
 
-- **REQ-MH-010** — **When** the launcher receives SIGINT, SIGTERM, or SIGHUP while it owns a managed session, the launcher shall run the existing teardown — session close, launch-pending rollback, token directory removal — and return an error naming the interruption, instead of ending through the runtime's default signal action.
+- **REQ-MH-010** — **When** the launcher receives SIGINT, SIGTERM, or SIGHUP at any point from the first persistent step of the owner entry until it returns — including after the launch-pending endpoint is registered and before the session starts, and during the App Server handshake — the launcher shall run the existing teardown — session close, launch-pending rollback, token directory removal — and every error return of the owner entry after that point shall name the interruption, instead of the process ending through the runtime's default signal action.
 - **REQ-MH-011** — **When** a signal arrives while a turn delivery is blocked on the backend, the launcher shall unblock that delivery by tearing the child process down, so the owner returns within the bound the acceptance test states (5 seconds).
-- **REQ-MH-012** — The managed session `Start` and `Close` shall be safe to call concurrently and in either order, and `Close` shall be safe to call repeatedly and shall perform the teardown exactly once: a session closed before `Start`, during `Start`, or right after `Start` published its connection shall leave no child process, no token directory, and no open connection behind, and a `Start` called after `Close` shall be refused.
+- **REQ-MH-012** — The managed session `Start` and `Close` shall be safe to call concurrently and in either order, and `Close` shall be safe to call repeatedly and shall perform the teardown exactly once: a session closed at any point before `Start`, during `Start` (including between dialing the App Server connection and recording it), or after `Start` shall leave no child process, no token directory, and no open connection behind, and a `Start` called after `Close` shall be refused. The order of the steps in which these guarantees hold is fixed once, in design.md D-3.1.
 - **REQ-MH-013** — The signal handling shall build for `GOOS=windows GOARCH=amd64`, and the `managed_*` source files shall keep their zero-`syscall` property.
 
 **Explicit cross-platform exemption (EXCL-syscall, signal constants only).** The signal helper `internal/cli/launch_signals.go` references `syscall.SIGTERM` and `syscall.SIGHUP` as signal constants only. Both constants exist on Windows, the helper makes no system call, and the Windows cross build is gated by AC-MH-011. This is an explicit, reasoned exception to the wording of parent REQ-MS-012 ("zero `syscall` usage in newly added files"): the parent's purpose is the child-process ownership model with one code path on Windows (no process-replacement exec, no platform-split files), and a constants-only reference leaves that purpose intact. The same package already carries the precedent `internal/cli/mcp_server.go:123` (`signal.NotifyContext(…, os.Interrupt, syscall.SIGTERM)` with no build tag). The `managed_*` files themselves keep zero `syscall.` references, so parent AC-MS-014's grep stays at 0 lines.
 
 ### C.4 공시와 검증 자세
 
-- **REQ-MH-014** — The operator documentation `.moai/docs/factory-managed-session.md` and this SPEC's CHANGELOG entry shall state F3, F4, and F5 as resolved and shall name every limit that remains, without claiming behavior that was not observed; the remaining limits include a poison message redelivered until its TTL, a Codex turn timeout that ends the session, a declined elicitation that blocks the receipt and so leaves redelivery until TTL, the absence of a write deadline on the App Server connection, a second signal during teardown ending the process by the default action, descendant processes of the child surviving its kill, Windows console events other than Ctrl-C, and behavior with a real codex session that was not observed.
+- **REQ-MH-014** — The operator documentation `.moai/docs/factory-managed-session.md` and this SPEC's CHANGELOG entry shall state F3, F4, and F5 as resolved and shall name every limit that remains, without claiming behavior that was not observed; the remaining limits include a poison message redelivered until its TTL, a Codex turn timeout that ends the session, a declined elicitation that blocks the receipt and so leaves redelivery until TTL, a blocked write on the App Server connection that nothing but `Close` or connection death releases (no write deadline, and the turn timeout does not bound it), a second signal during teardown ending the process by the default action, descendant processes of the child surviving its kill, Windows console events other than Ctrl-C, and behavior with a real codex session that was not observed.
 - **REQ-MH-015** — The run phase shall land each reproduction test's RED baseline, as the tracked file `.moai/specs/SPEC-FACTORY-MANAGED-HARDEN-001/red-baseline.md` together with the reproduction tests, in a commit that precedes the commit carrying the corresponding fix, so the commit graph witnesses the ordering; `.moai/reports/t1409/` holds local copies only.
 - **REQ-MH-016** — The delivery shall leave the directory of the completed parent SPEC and `internal/factorymsg/store.go` unchanged.
 
@@ -111,7 +113,10 @@ tags: "factory, managed-session, codex, app-server, hardening, failure-isolation
 ### Out of Scope — minor items F8, F9, F13 (card t1410)
 
 - 시작 실패 시 토큰 임시 디렉터리 잔존(F8), 10초 핸드셰이크 예산(F9), `/readyz` 리디렉션 루프백 재검사(F13)는 t1410 몫이다(이 카드 뒤에 실행).
-- **겹침 경계(`Start()` 영역)**: 이 카드는 `Start`/`Close` 수명주기 규칙(design.md D-3)에 필요한 **닫힌 세션 경로**의 정리만 한다 — `Close` 가 먼저 또는 도중에 불린 `Start` 가 자기가 만든 자식(kill+wait)·토큰 디렉터리·연결을 스스로 치우는 것. 세션이 **열려 있는데** `Start` 가 중간에 실패하는 경로(F8의 토큰 디렉터리 잔존)와 핸드셰이크 예산(F9)은 이 카드가 바꾸지 않는다. 겹치는 코드는 토큰 디렉터리 삭제 호출 한 곳이고, 이 카드는 그것을 닫힌 경로용 작은 도우미로 두어 t1410이 실패 경로에서 재사용할 수 있게 한다. `Start()` 의 그 밖의 변경은 준비 대기 컨텍스트를 세션의 닫힘에 연결해 `Close` 가 그 대기를 취소하게 하는 것이다(핸드셰이크 예산 값 자체는 F9로 t1410 몫이며 바꾸지 않는다).
+- **겹침 경계(`Start()` 영역) — 정확히 무엇이 바뀌고 무엇이 안 바뀌는가** (순서의 정본은 design.md D-3.1, 여기서 되풀이하지 않는다):
+  - **바뀐다**: `Start` 의 구조(진입 시 잠금과 닫힘 확인, `MkdirTemp`부터 `cmd.Start` 성공·게시까지 한 임계구역, 준비 대기를 세션의 취소 함수에 연결, 연결 기록 시점의 닫힘 재확인), `Close` 의 단일 실행·동시 안전, 소유자 진입의 시그널 컨텍스트.
+  - **바뀌지 않는다**: 세션이 **열려 있는데** `Start` 가 `cmd.Start` 성공 전에 실패하는 분기들의 지금 동작. 특히 토큰 파일 쓰기·엔드포인트 할당 실패 때 토큰 임시 디렉터리가 남는 것(F8)은 그대로다 — 아무것도 게시되지 않아 deferred `Close` 가 아무것도 치우지 않는다(게시 여부는 지금의 `started` 와 같다). 핸드셰이크 예산 값(F9)과 `/readyz` 리디렉션 재검사(F13)도 바꾸지 않는다.
+  - **겹치는 곳**: 같은 `Start()` 함수의 `MkdirTemp`–`cmd.Start` 줄 영역. t1410 이 이 카드 뒤에 실행되므로 그 분기들에서 토큰 디렉터리를 지우는 것으로 F8 을 닫으면 된다. 이 카드는 그 구간 변경을 한 마일스톤 커밋에 몰아 충돌 면적을 줄인다.
 
 ### Out of Scope — broker attempt cap or nack API
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MANAGED-HARDEN-001
 title: "plan.md — 구현 계획"
-version: "0.2.0"
+version: "0.3.0"
 created: 2026-10-03
 updated: 2026-10-03
 author: GOOS (manager-spec)
@@ -12,7 +12,7 @@ tier: M
 
 > 상태축 없음. 마일스톤은 우선순위와 선후 관계로만 적는다(시간 추정 없음). 순서는 **판단이 가장 바뀔 가능성이 큰 것부터** 검토하도록 §A 에 검토 우선순위를 따로 두고, 실행 순서는 §F 의 M1..M5 다.
 >
-> **개정 이력**: 0.2.0 은 plan-audit 1차(FAIL 0.75, `audited_sha` `95dfd85c8`)의 지적 D1–D10 에 대한 개정이다. 처분표는 progress.md §E.1.
+> **개정 이력**: 0.2.0 은 plan-audit 1차(FAIL 0.75, `audited_sha` `95dfd85c8`)의 지적 D1–D10 에 대한 개정, 0.3.0 은 2차(FAIL 0.81, `audited_sha` `820eff47f`)의 N1–N7 에 대한 개정이다. 처분표는 progress.md §E.1. **수명 순서는 design.md D-3.1 의 한 표(O1–O20)가 유일한 정본**이고 이 문서는 번호로만 가리킨다.
 
 ## §A. Context
 
@@ -24,7 +24,7 @@ tier: M
 - **검토 우선순위(되돌리기 어려운 판단 순)**:
   1. design.md D-1 응답 정책표와 broker elicitation 거부의 턴 단위 실패 규칙 — 보안 경계다. 승인 권한과 조용한 재배달 루프의 탐지가 여기서 결정된다.
   2. design.md D-2 오류 분류표와 상한 3 — 실패 시 닫힌 기본값과 UNMEASURED 상수.
-  3. design.md D-3 `Start`/`Close` 수명주기 규칙과 시그널 설계(B안) — 드라이버 시그니처 변경(정의 1 + 호출 9), `launch_signals.go` 의 `syscall.` 배치.
+  3. design.md D-3.1 수명 순서표(O1–O20)와 시그널 설계(B안) — 시그널 컨텍스트가 소유자 진입의 첫 영속 단계, `Start` 의 임계구역과 게시, 드라이버 시그니처 변경(정의 1 + 호출 9), `launch_signals.go` 의 `syscall.` 배치.
   4. 기계적인 것: 프레임 분류 리팩터, 로그 한 줄, 문서 문장, 게이트.
 
 ## §B. Known Issues (관련 범주만)
@@ -37,7 +37,7 @@ tier: M
 - **B8 트리 위생**: 커밋은 명시 pathspec. `.moai/state/` 무수정. 측정용 임시 시험 파일은 커밋 전에 삭제한다. `.moai/reports/` 는 gitignore 대상이라 증거를 거기에만 두면 커밋 그래프 밖이다 — RED 원문은 SPEC 디렉터리 안 추적 파일에 둔다.
 - **B9 커밋**: 카드 id `t1409` 를 모든 커밋 메시지에 넣는다. `Authored-By-Agent: manager-develop`(run) 트레일러 단독 단락, 마지막 단락 `🗿 MoAI`. 레인은 push하지 않고 병합 SHA를 리더에 보고한다(gitflow-lane-protocol §4).
 - **B10 PRESERVE**: §A 목록.
-- **t1410 인접**: t1410(F8·F9·F13)이 이 카드 뒤에 실행된다(factory 기록 `after=t1409`). 선은 spec.md §F 에 그어져 있다: 이 카드는 **닫힌 세션 경로**의 `Start` 자기 정리와 준비 대기 취소 연결만 하고, 세션이 열려 있는데 `Start` 가 실패하는 경로(F8)와 핸드셰이크 예산(F9)은 바꾸지 않는다. 겹치는 코드(토큰 디렉터리 삭제 한 곳)는 작은 도우미로 두어 t1410이 재사용한다.
+- **t1410 인접**: t1410(F8·F9·F13)이 이 카드 뒤에 실행된다(factory 기록 `after=t1409`). 선은 spec.md §F 와 design.md D-3.1 "F8과의 경계" 에 정확히 그어져 있다: 이 카드는 `Start` 의 구조(진입 확인, `MkdirTemp`–`cmd.Start`–게시 한 임계구역, 취소 연결, 연결 기록 시점 재확인)를 바꾸지만, 세션이 열려 있는데 `cmd.Start` 성공 전에 `Start` 가 실패하는 분기들의 지금 동작(토큰 디렉터리 잔존: F8)과 핸드셰이크 예산(F9)은 바꾸지 않는다. 같은 줄 영역이므로 병합 충돌 면적이 있고 M4 한 커밋에 몰아 둔다.
 - **t1408(TUI attach) 인접**: 같은 `managed_codex_factory.go` 를 건드릴 수 있다. 병합 충돌은 나중에 병합하는 쪽 몫이며 이 카드는 쓰기 지점·`Close`·`Start`·`read()` 를 건드리는 변경을 마일스톤별로 몰아 커밋해 충돌 면적을 줄인다.
 
 ## §C. Pre-flight — 측정 기준선 (기준 트리 `7109e0900`, 이 plan 실행)
@@ -85,8 +85,9 @@ grep -n DefaultManagedSessionMaxConsecutiveTurnFailures internal/config/defaults
 
 - **라이브 Codex 관측(실제 codex 세션에서의 거부·오류 응답에 대한 모델 행동, 특히 MoAI 브로커 elicitation)**: 미관측이며 **run 진입 조건이 아니다**. 라이브 게이트 환경변수는 `MOAI_FACTORY_LIVE_ROOT` 와 `MOAI_FACTORY_LIVE_RUN`(부모의 `TestManagedCodexFactoryBrokerLive`, 지금은 SKIP). 돌린다면 볼 것은 design.md D-1 "미관측 전제와 Gap" 의 세 가지다.
 - 실제 런처에 대한 kill 실험, SIGINT의 기본 동작, 세션 종료 후 orphan claim 행의 운명(소스 판독 추론), 부모 sync 기록의 managed 커버리지 89.3% 재측정.
-- `Close`∥`Start` 경합의 재현: plan-audit이 소스 판독과 교차 모델 보고로 확인했고 plan 작성자는 재현하지 않았다 — 재현은 M1의 RED 시험이 한다.
-- 명시한 한계(닫지 않음): 연결 쓰기 데드라인 없음, 정리 중 두 번째 시그널, 후손 프로세스(design.md D-3 "공시한 한계").
+- `Close`∥`Start` 경합, 시그널 등록 후 창, elicitation 귀속 순서 경합의 재현: plan-audit이 소스 판독과 교차 모델 보고로 확인했고 plan 작성자는 재현하지 않았다 — 재현은 M1의 RED 시험이 한다. 소스 순서 사실은 이번 개정에서 기준 트리에 다시 읽어 확인했다: 스트림 소유자는 `registerFactoryLaunchPending`(`managed_factory_session.go:436`)이 `newManagedStreamSession`(`:448`)보다 앞, Codex 소유자는 `newManagedCodexSession`(`managed_codex_factory.go:524`)이 등록(`:529`)보다 앞, `s.started = true`(`:420`)가 `cmd.Start`(`:413`) 뒤, `Close` 의 `!s.started` 게이트(`:485`), `call()` 의 `WriteJSON`(`:212`)이 `select`(`:215`) 앞.
+- 요청의 `serverName` 에 codex 가 config 키(`moai`)를 실제로 쓰는지는 미관측(라이브 Gap 과 같은 항목, design.md D-1 결정 3).
+- 명시한 한계(닫지 않음): 연결 쓰기 데드라인 없음과 막힌 쓰기의 상한 없음(`Close`/연결 종료까지), 정리 중 두 번째 시그널, 후손 프로세스, `id: null` 프레임(design.md D-3 "공시한 한계").
 
 **영향 가능 가드(run 단계가 재측정)**: 이 변경은 `.go` 파일과 `.moai/docs` 문서(미러 없음)뿐이다. `internal/guardstate` 의 census 는 워크플로 파일 대 매니페스트를 보는 것이라 직접 영향이 없고(기준 트리에서 이미 적색), `internal/template` 의 `.moai/docs` 접근 시험은 다른 문서(`jev-local-operations.md`)를 읽는다(grep 확인: `factory-managed-session` 문자열을 가진 template/guardstate 시험 0건). `internal/config` 는 `defaults.go` 상수 추가의 영향을 받는다. 이 셋을 §E 명령으로 재측정해 사전 적색과 신규 실패를 구별한다.
 
@@ -109,35 +110,35 @@ grep -n DefaultManagedSessionMaxConsecutiveTurnFailures internal/config/defaults
 - Windows: `GOOS=windows GOARCH=amd64 go build ./...`, `GOOS=windows GOARCH=amd64 go vet ./internal/cli/`
 - 정적: `gofmt -l internal/cli internal/config`, `go vet ./internal/cli ./internal/config`, `golangci-lint run ./internal/cli/... ./internal/config/...`
 - 경계 grep: acceptance.md §5.
-- 변이 확인(acceptance.md §6 DoD 3): 연속 실패 상수를 일시적으로 바꿔 AC-MH-007 시험이 따라오는지, 쓰기 뮤텍스를 일시적으로 빼서 AC-MH-004 쓰기 경합 시험이 붉어지는지, `Start` 의 닫힘 확인을 일시적으로 빼서 AC-MH-016 이 붉어지는지 — 각각 되돌린 뒤 `git diff --stat` 빈 출력을 확인하고 원문을 인용한다.
+- 변이 확인(acceptance.md §2.4 의 m1–m22, §6 DoD 3): 변이를 **하나씩** 임시 적용해 지목한 하위 케이스가 붉어지는지 보이고, 각각 되돌린 뒤 `git diff --stat` 빈 출력을 확인하고 원문을 progress.md §E.2 에 인용한다.
 
 ## §F. Milestones (실행 순서)
 
 ### M1 — RED 기준선 (독립 커밋, 가장 먼저; 시험 기반 AC의 채택 사건)
 
 - **선결**: RED 원문을 담을 경로가 추적되어야 한다. 이 SPEC은 `.moai/specs/SPEC-FACTORY-MANAGED-HARDEN-001/red-baseline.md` 를 쓴다(측정: gitignore 대상 아님, 감사 캐시 해시 목록 밖). `.moai/reports/t1409/` 에 두는 사본은 로컬 편의일 뿐 근거로 인용하지 않는다.
-- 재현 시험 **8개**를 기준 트리 API에 대해 컴파일되는 형태로 쓴다(새 심볼 없이). F3 4개: `TestManagedCodexServerRequestPolicy`(가짜 서버가 직접 서버 요청 11종을 보내고 응답 수신을 단언), `TestManagedCodexTurnSurvivesServerRequest`(응답이 없으면 가짜 서버가 유한 대기 뒤 `no reply` 를 기록하고 시험이 그 기록으로 실패), `TestManagedCodexServerRequestIDCollision`(프로세스 내 클라이언트 + 임시 서버), `TestManagedCodexDeclinedBrokerElicitationFailsTurn`(`serverName=moai` elicitation을 보내고 턴을 `completed` 로 끝냄; 단언은 `DeliverTurn` 이 nil 이 아닌 오류를 내는지뿐). F4 1개: `TestManagedDriverIsolatesTurnFailure`(실제 `pumpManagedStreamTurn` 을 쓰는 스크립트 세션). F5 3개: `TestManagedLauncherSignalTeardown`(시험 바이너리 재실행 + 시그널), `TestManagedSessionCloseConcurrent`(`-race`), `TestManagedSessionStartCloseLifecycle`(기준 컴파일 가능 하위 5개: `codex_before_start`, `codex_during_handshake`, `codex_racing_start`, `stream_before_start`, `stream_racing_start`).
-- **RED-first 면제와 대체 채택**(이유는 acceptance.md §2.1): `TestManagedCodexConcurrentWrites`(기준 트리에 쓰기 경합이 존재하지 않음)와 `codex_connection_published`(새 시험 훅 필요)는 M2·M4 의 변이 확인으로 채택한다. AC-MH-009 는 새 인자가 필요해 GREEN으로만 채택한다.
-- 각 시험을 기준 트리에서 돌려 **옳은 이유로 붉은지** 확인하고 원문을 `red-baseline.md` 에 적는다: 명령, 출력 원문(50줄/2KB 넘으면 파일 리다이렉트 + 꼬리), exit 코드, 측정 트리 SHA, 붉은 이유 한 줄, 선택 수(`-list`). 컴파일 오류나 타임아웃으로 붉은 것은 옳은 이유가 아니다(wrong-reason red) — 시험을 고친다.
+- 재현 시험 **8개**(F3 4·F4 1·F5 3)를 기준 트리 API에 대해 컴파일되는 형태로 쓴다(새 심볼 없이). 각 시험이 어떤 이유로 붉어야 하는지의 표는 acceptance.md §2.1 이 정본이다(여기서 되풀이하지 않는다). F3 4개: `TestManagedCodexServerRequestPolicy`(가짜 서버가 직접 서버 요청 11종을 보내고 응답 수신을 단언), `TestManagedCodexTurnSurvivesServerRequest`(응답이 없으면 가짜 서버가 유한 대기 뒤 `no reply` 를 기록하고 시험이 그 기록으로 실패), `TestManagedCodexServerRequestIDCollision`(프로세스 내 클라이언트 + 임시 서버), `TestManagedCodexDeclinedBrokerElicitationFailsTurn`(`serverName=moai` elicitation을 보내고 턴을 `completed` 로 끝냄; 단언은 `DeliverTurn` 이 nil 이 아닌 오류를 내는지뿐). F4 1개: `TestManagedDriverIsolatesTurnFailure`(실제 `pumpManagedStreamTurn` 을 쓰는 스크립트 세션). F5 3개: `TestManagedLauncherSignalTeardown`(시험 바이너리 재실행 + 시그널), `TestManagedSessionCloseConcurrent`(`-race`), `TestManagedSessionStartCloseLifecycle`(기준 컴파일 가능 하위 5개: `codex_before_start`, `codex_during_handshake`, `codex_racing_start`, `stream_before_start`, `stream_racing_start`).
+- **RED-first 면제와 대체 채택**(이유는 acceptance.md §2.1): `TestManagedCodexConcurrentWrites`(기준 트리에 쓰기 경합이 존재하지 않음), 시험 훅이 필요한 AC-MH-016·AC-MH-010 하위 케이스, AC-MH-006 의 과잉 계수 방지 행은 M2·M3·M4 의 변이 확인(acceptance.md §2.4 의 m1–m22)으로 채택한다. AC-MH-009 는 새 인자가 필요해 GREEN으로만 채택한다.
+- 각 시험을 기준 트리에서 돌려 **옳은 이유로 붉은지** 확인하고 원문을 `red-baseline.md` 에 적는다: 명령, 출력 원문(50줄/2KB 넘으면 파일 리다이렉트 + 꼬리), exit 코드, 측정 트리 SHA, 붉은 이유 한 줄, 선택 수(`-list`). 컴파일 오류, 패키지·하네스 타임아웃, 시험 인프라 실패로 붉은 것은 옳은 이유가 아니다(wrong-reason red) — 시험을 고친다. **시험 자신이 정한 시간 상한 단언**이 깨져서 붉은 것은 그 상한이 단언 대상 관측이므로 옳은 이유다(acceptance.md §2.1 의 한 방향 규정).
 - 시험 파일과 `red-baseline.md` 를 **한 커밋**에 담는다. 이 커밋이 수리 커밋들의 조상이어야 한다(REQ-MH-015, AC-MH-013). 같은 커밋에 구현 변경을 섞지 않는다(커밋 그래프가 선후의 유일한 증인이다: verification-claim-integrity §2.3). 커밋 게이트가 실패하는 시험을 담은 커밋을 거부하면 `--no-verify` 를 쓰지 말고 blocker 보고로 돌려준다(측정: `git config --get core.hooksPath` = `/dev/null` 이라 거부 위험은 낮다).
 - 커밋 제목 예: `test(SPEC-FACTORY-MANAGED-HARDEN-001): M1 RED baseline for F3 F4 F5 (card t1409)`.
 
 ### M2 — F3 서버 요청 응답 (되돌리기 가장 어려운 판단: 정책표)
 
-- 프레임 분류(`id` 원문 보존), 서버 요청 읽기 고루틴 응답, 응답 정책표(한 곳의 표 데이터)와 그 곳에서 쓰는 stderr 한 줄, 연결 쓰기 뮤텍스(`call()`, `initialized` 알림, 답장 모두 경유), `moai` broker elicitation 거부 계수와 `startTurn` 의 턴 종료 직후 표식 오류 반환(표식 심볼은 M3 가 도입하므로 M2 는 계수까지, 표식 연결은 M3).
-- GREEN: AC-MH-001, 002, 003. 변이 확인: 쓰기 뮤텍스를 빼면 `TestManagedCodexConcurrentWrites` 가 붉어짐(AC-MH-004 쓰기 부분 채택). M1의 F3 재현 시험이 뒤집힌다(`TestManagedCodexDeclinedBrokerElicitationFailsTurn` 은 M3).
+- 프레임 분류(`id` 원문 보존), 서버 요청 읽기 고루틴 응답, 응답 정책표(한 곳의 표 데이터)와 그 곳에서 쓰는 stderr 한 줄, 연결 쓰기 뮤텍스(`call()`, `initialized` 알림, 답장 모두 경유), 읽기 고루틴의 턴 창 상태(`armTurn` 은 `turn/start` 쓰기 전, 판정은 `turn/completed` 프레임을 본 읽기 고루틴이 완료 이벤트에 실음 — design.md D-1 결정 3)와 `moaiMCPServerKey` 상수 비교. 표식 오류 심볼은 M3 가 도입하므로 M2 는 판정을 이벤트에 싣는 데까지, `DeliverTurn` 의 표식 오류 반환 연결은 M3.
+- GREEN: AC-MH-001, 002, 003. 변이 확인: 쓰기 뮤텍스를 빼면 `TestManagedCodexConcurrentWrites` 가 붉어짐(m20, AC-MH-004 쓰기 부분 채택). M1의 F3 재현 시험이 뒤집힌다(`TestManagedCodexDeclinedBrokerElicitationFailsTurn` 은 M3).
 - 커밋: `fix(SPEC-FACTORY-MANAGED-HARDEN-001): M2 answer server-originated codex requests (card t1409)`.
 
 ### M3 — F4 턴 단위 실패 격리
 
 - 턴 단위 표식(`errors.Is` 판별)을 스트림 `result.is_error`, Codex `completed` 아닌 종료, 거부된 `moai` broker elicitation이 있었던 턴, 이 세 곳에서만 붙인다. 드라이버: 표식 있으면 로그+계속, 연속 횟수 상한, 성공 시 0으로, 우선 턴은 세지 않음. `defaults.go` 에 `DefaultManagedSessionMaxConsecutiveTurnFailures = 3`(UNMEASURED 표기, 근거 주석).
-- GREEN: AC-MH-005, 006, 007, 008. M1의 F4 재현 시험과 `TestManagedCodexDeclinedBrokerElicitationFailsTurn` 이 뒤집힌다.
+- GREEN: AC-MH-005, 006(하위 14개 + 서버 이름 고정 시험), 007, 008. M1의 F4 재현 시험과 `TestManagedCodexDeclinedBrokerElicitationFailsTurn` 이 뒤집힌다. 변이 확인 m14–m19.
 - 커밋: `fix(SPEC-FACTORY-MANAGED-HARDEN-001): M3 isolate turn failures with a ceiling (card t1409)`.
 
 ### M4 — F5 시그널 정리와 `Start`/`Close` 수명주기
 
-- 수명주기 규칙(design.md D-3: 뮤텍스 + closed 플래그, 자원 기록은 열려 있을 때만, `Start` 자기 정리, `Close` 스냅숏 후 한 번 정리, `Close` 이후 `Start` 거부, 준비 대기를 세션 취소 함수에 연결). 두 소유자 `Close` 를 이 규칙으로. `driveManagedFactorySession` 에 `ctx` 첫 인자(정의 1 + 호출 9) + 한가한/대기 select의 `ctx.Done()` + 중단 오류 우선 확인. `launch_signals.go` 도우미, 소유자 진입의 워처(세션 생성 직후 `Start()` 이전).
-- GREEN: AC-MH-009, 010, 011, 004(Close 부분), 016. 변이 확인: `Start` 의 닫힘 확인을 빼면 AC-MH-016 이 붉어짐(`codex_connection_published` 채택). M1의 F5 재현 시험이 뒤집힌다.
+- **구현은 design.md D-3.1 의 순서표 O1–O20 을 그대로 따른다**(순서를 여기서 다시 적지 않는다). 포함: 소유자 진입 두 곳의 시그널 컨텍스트 생성(O1, 첫 영속 단계)과 오류 → 중단 매핑(R-E), 세션별 뮤텍스 L 과 `closed`(O5–O8, O12, O17–O19), 두 소유자 `Close` 의 단일 실행·동시 안전, 준비 대기의 취소 연결, `driveManagedFactorySession` 에 `ctx` 첫 인자(정의 1 + 호출 9) + 한가한/대기 select의 `ctx.Done()` + 중단 오류 우선 확인, `launch_signals.go` 도우미, 비공개 시험 훅 `managedStepHook`(표의 훅 단계명).
+- GREEN: AC-MH-009, 010(하위 6개), 011, 004(Close 부분), 016(하위 10개). 변이 확인: acceptance.md §2.4 의 m1–m13, m22 를 하나씩. M1의 F5 재현 시험이 뒤집힌다.
 - 커밋: `fix(SPEC-FACTORY-MANAGED-HARDEN-001): M4 route signals to the managed teardown (card t1409)`.
 
 ### M5 — 게이트와 증거 (기계적)
@@ -155,6 +156,9 @@ grep -n DefaultManagedSessionMaxConsecutiveTurnFailures internal/config/defaults
 - 승인류 응답을 "편의상" accept 로 바꾸기, 또는 `cancel`/`abort` 로 턴을 끊기.
 - 시그널 컨텍스트로 정리 호출을 하기(롤백이 즉시 실패).
 - `Close` 만 한 번-실행 래퍼로 감싸고 `Start` 와의 경합을 놔두기(자식·토큰 디렉터리 누수).
+- 수명 순서를 design.md D-3.1 밖의 산출물에 문장으로 되풀이해 적기(문장끼리 어긋나 `started` 게이트 모순을 낳았다) — 번호(O1–O20)와 훅 이름으로만 가리킨다.
+- 시그널 컨텍스트를 launch-pending 등록 뒤에 만들기(등록 직후 창에서 롤백이 안 돈다).
+- elicitation 판정을 소비자 쪽 계수기로 하기(읽기 고루틴이 앞서 달리면 정상 턴을 실패로 센다).
 - 정책표를 분기마다 흩어 쓰기(표 한 곳에서 읽고 시험하는 구조를 깬다).
 - 라이브 미관측 사항을 해결로 공시하기(REQ-MH-014), 또는 미관측 전제를 관측으로 귀속하기.
 
