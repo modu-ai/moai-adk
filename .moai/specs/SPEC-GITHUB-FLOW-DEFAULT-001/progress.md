@@ -48,7 +48,19 @@ Gaps (unobserved, not claimed): (1) whole `internal/cli` package result unknown 
 
 Residual risk: legacy fixtures outside the five seeded constructors that read `cardMergeBase`, `goal approve` or the sweep/done base without a config would now see a refusal; none surfaced in the families run.
 
-§E.3 is NOT written: the cli package-level result and the guardstate/template re-measure are unobserved Gaps.
+§E.3 is NOT written for M1: §E.3 is the run-phase signal for the whole run phase (M1-M6), written only when the run phase is complete.
+
+#### M1 independent re-verification by the orchestrator (this run, HEAD 2f5334456, lane env scrubbed in one compound call; closes Gaps 3, 4 and the guardstate/template part of Gap 3 above)
+
+| Item | Command | Observed | Exit |
+|---|---|---|---|
+| Ledger E-01/E-02/E-28/E-29 | the four `git grep` commands of the table above, re-run | all four empty | 1 each |
+| AC-GFD-001/003 named tests | `go test ./internal/cli ./internal/cli/worktree -run 'TestDeliveryBase\|TestSessionExitAutoMergeInert\|TestBaseDefaults' -count=1 -v` | cli: `--- PASS` TestDeliveryBaseGitFlowUnchanged, TestDeliveryBaseResolvesFromIntegrationTarget, TestBaseDefaultsGitFlowUnchanged, TestBaseDefaultsFollowIntegrationTarget, TestSessionExitAutoMergeInertUnderGitHubFlow, `ok 38.106s`; worktree: both TestBaseDefaults* PASS, `ok 50.624s` | 0 |
+| guardstate / template after the change | `go test ./internal/guardstate ./internal/template -count=1` | template `ok 121.984s`; guardstate `FAIL` with exactly the baseline pair `census_test.go:80 … workflow-parse-guard.yaml exists on disk with no manifest entry` and `census_test.go:89 declared 19 entries against 20 workflow files` (no new failure) | 1 (baseline-identical) |
+| contract / mission | `go test ./internal/contract ./internal/mission -count=1` | `ok 0.515s`, `ok 6.319s` — the mission surface baseline is unchanged | 0 |
+| gofmt | `gofmt -l` on the 9 production and new-test files | (empty) | 0 |
+
+Gap 2 closed by reading, not by a baseline run: `TestTodoConcurrentAdd_8Processes` and `TestTodoAddPick_ConcurrentProcesses` fail with `exit status 4` here too (re-run alone, exit 1). Cause: develop commit `dd44df3cf` (card t1423, "TestMain project-dir scrub") added `os.Unsetenv(config.EnvClaudeProjectDir)` to `internal/cli/main_test.go` `TestMain`; `TestMain` also runs inside the re-executed helper child, so it clears the `CLAUDE_PROJECT_DIR` that the parent put in `cmd.Env`, and `TestTodoHelperProcess` (`todo_test.go:572`) then exits 4. `git diff 0028671ed HEAD -- internal/cli/todo_test.go` shows M1's only change there is the one-line fixture seed (`seedGitFlowPrecondition`), so the failure is a pre-existing develop defect, not M1. Attribution is by reading the code path; the same tests were not run on a pre-M1 tree (still unmeasured) — recommend to the leader as a red-repair input.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
