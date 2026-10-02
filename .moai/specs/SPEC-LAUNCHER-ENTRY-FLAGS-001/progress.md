@@ -772,3 +772,46 @@ The following bind the run phase without changing a requirement or a criterion:
 - The M0 sanity re-run of the probe that D-A1's fix suggests was not executed in this run (the instruction scoped this run to formatting plus this section); the `go vet` exit 0 over both probe files is the check that was observed. The auditor's own full 14-stage re-run (J.2) was taken against the pre-format file and the diff is two blank lines, so the program is unchanged, but that is a reading of the diff, not a re-measurement.
 - The report's counts (123 files, 502 lines, 41 codemaps citations, the four red tests) are the auditor's measurements; none was re-measured in this run.
 - The plan-text fixes D-A2..D-A7, D-A9..D-A12 and D-A14 were not applied, by instruction (hash-bound files); `decision-index.md` (D-A9's Q18 row) was outside the two files this run was permitted to touch.
+
+
+## §F Phase 4 Mode Selection
+
+Decision (summary): serial. Reasoning and the two recorded deviations follow below.
+
+Recorded by the lane orchestrator (lane-3) before the first run-phase delegation, 2026-10-02.
+
+### Kickoff gate (plan to run): met in its operator form
+
+- Plan-audit: iteration 3 PASS-WITH-DEBT, score 0.88, audited_sha 7e1ae0d808b180f266c71761290ab6ed96ba335f (iterations 0.72 FAIL, 0.79 FAIL; see section J). The five plan-artifact hash subjects (spec.md, plan.md, acceptance.md, design.md, research.md) are byte-identical between the audited commit and the run-entry commit 21f912ca7 (`git diff --quiet` over those five paths exits 0).
+- Operator answers, given directly in the lane session through AskUserQuestion on 2026-10-02: (1) enter the run phase for the whole SPEC, M0 through M11; (2) the role.go reading is confirmed (delete the role-declaration carrier only, the file stays); (3) Q20, Q21, Q22 and Q24 proceed on their smallest-footprint readings; (4) progression mode: autonomous.
+- The Kickoff gate is the operator's own answer here (kept in the lane session by the lane rule); it is not the autonomous audit-cross form, and no goal is armed by this record.
+
+### Input parameters
+
+- tier: L (13 integration units, M0..M11 with M5a, M5b, M6a, M6b).
+- scope: hundreds of files (SPEC research: 12 whole kanban-only Go files, 515 identifier occurrences, 1,830 qualified references at the package rename, 25 to 50 doc and instruction files per surface, 24 test files naming the three marker constants).
+- domain count: 7 or more (launcher Go, hook Go, web templ, docs-site four locales, README four locales, rules and skills and template mirrors, config).
+- file language mix: Go, templ, Markdown, YAML, JSON, shell.
+- concurrency benefit: LOW. The work is coding-heavy, strictly ordered, and each milestone builds on a compile-proved predecessor; one writer per working tree.
+- Agent Teams prerequisites: not requested (no explicit --team).
+
+### Mode evaluation
+
+| Mode | Selected | Rationale |
+|------|----------|-----------|
+| direct | not selected | not a trivial change |
+| serial | selected | coding-heavy and strictly sequenced; one implementation worker per milestone or integration unit |
+| fanout | not selected | only read-only fan-out is safe in one tree; used inside a milestone for read-only measurement if needed, never for writes |
+| sweep | not selected | M7 to M9 are mechanical renames but are programmatic (probe/probe.go rules) and need per-milestone compile proof; not a dynamic workflow |
+| agent-team | not selected | not explicitly requested |
+
+Decision: serial
+
+### Justification and boundary cases
+
+Serial is the default for coding-heavy work (the coding-task parallelism caveat). Two deviations from plan.md section D's wording are recorded here so the audit trail shows them:
+
+1. plan.md says the run phase is led by manager-lead (Tier L, CLAUDE.md section 4 item 7). manager-lead is not spawned: this session is a factory lane, whose standing spawn authority is depth-1 only (spawned agents are leaf workers and never spawn further agents), and manager-lead exists to spawn leaf workers of its own. The lane orchestrator therefore sequences the milestones itself, one worker at a time, exactly the serial envelope manager-lead would use; coordination duties plan.md assigns to the run-phase coordinator (the M7 to M9 hold on other lanes' Go-touching merges, the integration-window re-measure) are carried by the lane and requested from the factory leader.
+2. The Status Transition Ownership Matrix names manager-develop for run-phase implementation. A manager-develop typed spawn is auto-isolated into its own L1 tree and its writes to the card worktree are refused (measured on card t1318, recorded in the lane memory), and a non-isolated spawn is pinned to the spawning session's tree, which here is the card worktree. Implementation workers are therefore general-purpose spawns carrying the full manager-develop role instructions in the prompt (TDD cycle, ownership boundaries, commit trailers, the Authored-By-Agent: manager-develop trailer on commits that carry the draft to in-progress transition). This is an ownership exception recorded here, not a change of owner.
+
+Base: the card branch WT-launcher-entry-flags is based at a6d3e6fd4 (the tree every measured fact and RED-now cell is pinned to); local develop is 69 commits ahead with 79 changed files, of which only internal/kanban/classification.go and its test overlap this SPEC's edit areas (no launcher file). The run proceeds on the pinned base; develop is absorbed once, before the integration window, and every pinned measurement is re-taken on the absorbed tree at that point (merge-base discipline for scope claims).
