@@ -1,0 +1,245 @@
+---
+id: SPEC-LAUNCHER-ENTRY-FLAGS-001
+title: "Launcher entry flags on the backend verbs (-f leader, -l lane), removal of Kanban Mode, and the factory-vocabulary rename of everything that carried the kanban name"
+version: "0.6.0"
+status: draft
+created: 2026-10-02
+updated: 2026-10-02
+author: manager-spec
+priority: P1
+phase: "v3.2.0 target"
+module: "internal/cli, internal/hook, internal/kanban, internal/web, internal/config"
+lifecycle: spec-anchored
+tags: "launcher, factory, lane, leader, entry-flags, kanban-removal, rename, cc, glm, codex, template-first, docs-mirror"
+tier: L
+related_specs: [SPEC-FACTORY-MODE-001, SPEC-FACTORY-LANE-JOIN-SOCKET-001, SPEC-CODEX-LANE-SLOTS-001, SPEC-CODEX-FACTORY-RETIRE-001, SPEC-FACTORY-SELF-DISPATCH-001, SPEC-CODEX-LAUNCHER-001, SPEC-ROLE-NAMING-CODE-001, SPEC-KANBAN-BOARD-001, SPEC-KANBAN-BOOTSTRAP-001, SPEC-KANBAN-RENAME-001, SPEC-KANBAN-WORKTREE-001]
+---
+
+# SPEC-LAUNCHER-ENTRY-FLAGS-001
+
+> Card: **t1399** (Class C design change). Evidence path for the card (lead-read, created at close, not now): `.moai/reports/t1399/verdict.md`.
+> Tier **L** — measured: 12 milestones (M0–M11; the `manager-lead` threshold is at least 3 milestones AND at least 10 files) and a footprint of 190 non-test Go, templ, and script source files carrying the word "kanban" (63 of them the `internal/kanban` package), 179 files importing that package (66 production, one of them under `cmd`, and 113 test), 310 test files carrying the word, and 151 README, docs-site, rule, skill, template, and configuration files naming it (`research.md` §R1 states each pattern). The decision surface spans launcher grammar, a cross-process environment contract, a state package rename, a web screen, distributed rules and skills, and the constitution-slot files. Tier L work is coordinated by `manager-lead` in the run phase; each milestone is mergeable alone and the factory safety net stays green across the whole sequence (design.md §7).
+
+## §A — History
+
+- 2026-10-02 (v0.1.0): Card t1399 opened; first draft proposed a verb-less root entry with a pre-Cobra rewrite.
+- 2026-10-02 (v0.2.0): First operator verdicts (source: operator answer via AskUserQuestion, lane-3, 2026-10-02): flags ride on the backend verbs; `-l` retired as the `--leader` short; `-f lane`, `-f lane-<n>`, `moai codex -f lane` removed now; `-l` takes no argument; documentation scope is everything that names an entry command.
+- 2026-10-02 (v0.3.0): More verdicts (same source): explicit-name lane spelling refused; notice prints the lane command once; **Kanban Mode removed**, whole extent, in this SPEC, Tier L.
+- 2026-10-02 (v0.4.0): Final verdicts (same source, one lane-orchestrator ruling marked as such): the six factory-read `MOAI_KANBAN_*` string values are KEPT; the `MOAI_KANBAN_LABEL` stamp is REMOVED; everything that carries "kanban" and survives is RENAMED including the Go package `internal/kanban`; the kanban-dispatch rules are renamed; `workflows/factory.md` and the chain-contract text are REWRITTEN to today's behavior; the foreman skill and loop driver are KEPT under factory names; the constitution-slot sentences are edited directly (orchestrator ruling); the leader notice drops the lane count. The cleanup of renamed distributed rule files already installed in user projects was raised as a last question (OD-17) and is settled in v0.6.0.
+- 2026-10-02 (v0.5.0): OD-15 CONFIRMED by the operator ("proceed as is") with its stop condition kept. The operator first chose Option A for OD-17 (a retired-rule-file cleanup step in `moai update` with five safeguards); reading the update code showed that every `moai update` already removes the whole MoAI-managed `.claude/rules/moai` root and backs up first every file the template does not carry, so the three old files are already removed and backed up once the template stops shipping them, and three of the five safeguards cannot be built as stated without changing that managed-root contract. That finding was returned to the operator, and REQ-019 and AC-020 were written to the observed contract.
+- 2026-10-02 (v0.6.0): Final bookkeeping (same source). OD-17 / Q18 settled: the operator, shown the code facts, chose Option X — rely on the existing managed-root clean, with no production change and no dedicated retired-rule step; the fixture test `TestUpdateRemovesRetiredRuleFilesWithBackup` is the proof. Under X a user-modified copy of an old rule file is backed up and removed from the live tree, not retained, and this is accepted; AC-018's retired-name allowlist is unchanged. Q19 completed: rows 7, 8, 11, and 12 of §D, which the first acceptance had not covered, are accepted, so every row of §D is operator-accepted. No decision is open.
+
+### §A.1 Verdicts (decision-index.md Q1–Q17)
+
+1. (Superseded by 9) New tokens only; `-k` untouched.
+2. Grammar: leader `moai cc|glm -f`; lane `moai cc|glm|codex -l`; no verb-less root form; the verb carries the backend.
+3. The short `-l` of `--leader <name>` is retired; the long `--leader <name>` stays.
+4. Removed now, refused naming the canonical form: `moai cc|glm -f lane`, `-f lane-<n>`, `moai codex -f lane`; `-f <N>` is a pin (already refused).
+5. `-l` takes no argument; `-l lane-<n>` and any argument form is refused naming `-l`; slot assignment stays automatic through the shared claim.
+6. Documentation scope is everything that mentions an entry command.
+7. The explicit-name lane spelling (`-f --name lane-<n>` and equivalents) is refused naming `-l`.
+8. (Superseded in count by 16) The leader notice prints the lane command once.
+9. Kanban Mode is removed — whole extent — in this SPEC; Tier L; `-k` refused in every shape, naming `-f`/`-l`.
+10. Keep the names and string values of the six factory-read markers; no rename, no dual read.
+11. Remove the `MOAI_KANBAN_LABEL` stamp on the Codex lane child.
+12. Rename everything that carries "kanban" and survives, including the Go package, web, statusline, state names, and types, with a stated old→new mapping.
+13. Rename the three `kanban-dispatch*.md` rules to factory names (both trees), strip kanban-only sections, re-point references and pinned tests; docs pages renamed with redirects or deleted, per page.
+14. Rewrite `workflows/factory.md`, the `moai.md` chain-contract sentence, and the Record chain-field documentation to match today's behavior.
+15. Keep the foreman skill, `.claude/loop.md`, `moai todo --auto`, and the leader notice's queue sentence under factory names.
+16. Constitution-slot sentences edited directly with `moai constitution validate` before and after each edit. Raised as a lane-orchestrator ruling on evidence; CONFIRMED by the operator ("proceed as is"). Stop condition kept: any validate failure, or any need to touch a registered clause string (`CONST-V3R2-036..038` in the section anchored `#user-interaction-boundary`), is a blocker returned to the orchestrator.
+17. The leader notice drops the lane COUNT entirely and states only the command to start a lane.
+18. Stale renamed rule files in user projects (OD-17): the operator first chose Option A — a retired-rule-file cleanup step in `moai update` with five safeguards. The update code showed the premise does not hold and three safeguards cannot be built without changing the managed-root contract (§A.2 rows 18 and 21–23). Shown those facts, the operator chose **Option X**: rely on the existing managed-root clean (pre-clean backup, then removal), no production change, no dedicated step; the fixture test is the proof. Under X a user-modified copy of an old rule file is backed up and removed, not retained, and this is accepted.
+19. All author choices listed in §D are accepted as written — rows 2–6, 9, and 10 first, rows 7, 8, 11, and 12 afterward — and the row 1 ruling is confirmed, so every row of §D is operator-accepted.
+
+### §A.2 Measured current surface (tree `a6d3e6fd4`)
+
+Entry grammar and kanban coupling (unchanged from v0.3.0; full tables in `research.md`):
+
+| # | Observed fact | Evidence |
+|---|---|---|
+| 1 | `moai cc`/`moai glm` parse their flags by hand; `-f`, `-f lane`, `-f lane-<n>`, `-k` shapes are accepted; `-f lane` is accepted (`TestCCFactoryLaneJoinsDiscoveredLeader` passes). | `internal/cli/cc.go:23-135`; `internal/cli/factory.go:131-252`; ledger RED-4 |
+| 2 | `-f <N>` is already refused on cc, glm, codex (exit 1); `-l` today is the `--leader` short; on `moai codex` only `-f lane` is accepted. | `internal/cli/factory.go:88-90,162-180,251`; `internal/cli/codex_launcher.go:700-728,773-780`; ledger RED-1..6 |
+| 3 | `-f` with a lane-shaped `--name` selects the lane branch (code reading, not run). | `internal/cli/factory.go:624-642`; `internal/cli/cc.go:203-205` |
+| 4 | `kanban.go` mixes 12 kanban-only symbols with 14 factory-shared ones; `kanban_settings.go` is called from the factory leader branch; the block-cap raise has separable kanban and factory clauses; the SessionStart hook has independent factory and kanban blocks. | `research.md` §R4–R5; `internal/cli/cc.go:227`; `internal/cli/launcher_blockcap_infinite.go:41-60`; `internal/hook/session_start.go:511-542,555-605` |
+| 5 | Six `MOAI_KANBAN*` markers are read by factory code (95 files, 34 production); a joining lane reads `MOAI_KANBAN_ID` from a live leader process's environment by name. | `internal/config/envkeys.go:182-273`; `internal/discovery/leader_readers_darwin.go:47-62`; `internal/discovery/factory_discovery.go:171-178` |
+| 6 | The board state store (10 files) has no non-test caller outside `internal/kanban`; the package also holds the todo queue, factory slots, locks, and landing (63 non-test files: 10 kanban-only, 1 conditional, 3 mixed, 49 other). | `research.md` §R3 |
+
+Persisted names and wire contracts (new in v0.4.0; each says whether the SPEC renames or freezes it):
+
+| # | Name | Where it lives | Disposition |
+|---|------|----------------|-------------|
+| 7 | `MOAI_KANBAN_ID`, `_LEAD_ADDR`, `_LEAD_NAME`, `_SETTINGS_INJECTED`, `_BACKEND`, `_CARD` (string values) | process environment; one is read across processes by name | FROZEN (verdict 10); Go constant names renamed (design §4.7) |
+| 8 | `MOAI_KANBAN`, `MOAI_KANBAN_SPEC`, `MOAI_KANBAN_LABEL` | kanban chain and companion markers; LABEL stamped on the Codex lane child | REMOVED |
+| 9 | Project-local queue and record directory: canonical name is already `todo` (`.moai/state/todo`, `~/.moai/db/<project-key>/todo/`); the old name `kanban` survives only as the legacy fallback literal `legacyStateDirName` that reads data written by older versions | disk | the canonical names are not renamed (already factory-neutral); the legacy literal is FROZEN (it exists to read old data) — `internal/kanban/state_dir.go:20-24,40-44,59-61` |
+| 10 | Kanban board directory `.moai/state/kanban-board` | disk (written by board code with no external caller) | removed with the code; leftover directories are ignored (REQ-016) — `internal/kanban/board.go:27` |
+| 11 | Leader socket address directories: `/tmp/moai-socket-kanban` (kanban leader) and `/tmp/moai-socket-factory` (factory leader) — a conventional address line, not a filesystem contract | environment value | kanban directory removed; factory directory unchanged — `internal/kanban/bootstrap.go:402-432` |
+| 12 | Session record JSON keys (`session_id`, `spec_id`, `role`, `backend`, `entered_at`, `deepscan_dir`, `verify_rung`, `verify_reentries`, `lane`, `card_id`) — none carries "kanban" | disk, read by older and newer binaries | FROZEN (unchanged); records written by old kanban sessions (role `plan`/`run`/`sync`) stay readable | `internal/kanban/record.go:57-120` |
+| 13 | Web live-update area key `kanban`, `data-live="kanban"`, i18n keys `kanban.*` (84 occurrences in `i18n.js`), route `/kanban`, nav and screen labels | web assets embedded in the binary (`go:embed`), so server and client ship together; the only browser-persisted key is `moai-console-lang` | RENAMED with the screen; `/kanban` kept as a GET redirect for bookmarks; a browser tab opened before an upgrade holds old script (residual, §G) — `internal/web/assets.go:24`; `internal/web/events.go:33-35,223-225`; `internal/web/assets/app.js:614`; `internal/web/app.go:163` |
+| 14 | Statusline segment key is `backlog` (no kanban in any key); "Kanban" appears in comments | statusline config and output | no key to rename; comments reworded — `internal/statusline/types.go:350` |
+| 15 | CLI and MCP descriptive text: `moai todo` Short, `moai gtd` Short, MCP `todo_add` description, `tokens --card` flag text; MCP tool NAMES carry no kanban | help text, MCP descriptions | RENAMED (text only) — `internal/cli/todo.go:220`; `internal/cli/gtd.go:56`; `internal/cli/mcp_todo.go:32`; `internal/cli/tokens.go:441` |
+| 16 | Transient `--settings` file prefix `moai-kanban`; no sweeper or reader of the prefix was found | session-private temp file | RENAMED `moai-factory` — `internal/cli/kanban_settings.go:89,108` |
+| 17 | Package path strings used at run time by the home-state tools and a seam test: `./internal/kanban` in `migrate_home_state.go:95,187,202,287`, `home_state_coverage.go:55,64`, `queue_path_seam_scan_test.go:41-44`, and a sample in `evidence_writer.go:73` | source-checkout tooling | RENAMED with the package |
+| 18 | Distributed files: three always-loaded/path-scoped rules `kanban-dispatch*.md`, skill `moai-kanban-foreman` (catalog entry with a hash regenerated by `gen-catalog-hashes.go`, `Makefile:35`), `.claude/loop.md`; retired skills are archived on `moai update` through `legacySkillIDs` (`update_archive.go:45`); retired rule files need no list — the managed-root clean of rows 21–22 removes and backs them up | user projects | skill: add the old id to the archive list; rules: no new mechanism needed for removal and backup (OD-17, option X chosen) |
+
+Rewrite targets (verdict 14):
+
+| # | Observed fact | Evidence |
+|---|---|---|
+| 19 | `workflows/factory.md` documents a single-session plan→run→verify→sync chain entered by `--factory`/`-f` through a goal preset named `factory_chain`; that preset name occurs in no code or config (2 lines, all in the document); the state record is placed at `.moai/state/factory/` while the code resolves it under the todo state directory; the three chain fields are documented as orchestrator-written and no production code path writes them. | `.claude/skills/moai/workflows/factory.md:3-29,64-66,112,118-135`; `internal/kanban/state_dir.go:25-37`; `internal/kanban/record.go:57-120` |
+| 20 | The same chain contract is referenced by four further files: `moai.md:210`, `run.md:52`, `run/mode-orchestration.md:86` ("Verify Exit Gate (factory contract)"), `sync/quality-gates-quality.md:133` ("a sync entered from a factory chain"). | those files, both trees |
+
+Leader-notice facts (verdict 17): the notice builds `leaderManual` (count twice), `entryGuide` (count), and a free-slot line from `FactoryFreeSlots(root, lanes, …)`, whose only production caller is that line; `MOAI_FACTORY_WORKERS` carries the count and is also the factory discriminator and block-cap signal. — `internal/hook/session_start_factory_i18n.go:35-50,75-99`; `internal/hook/session_start_factory.go:185-250`; `internal/kanban/factory_slots.go:354-360`.
+
+Constitution evidence (verdict 16): none of the four kanban sentences' distinctive phrases occurs in the zone registry; none of the three kanban rules carries a zone tag; the sentence at `agent-common-protocol.md:75` sits in the body of the registered Evolvable Language Handling clause, whose registered text is the header sentence only; `moai constitution validate` is OK on this tree (97 of 101 entries). — progress.md PV-26..PV-28, PV-38.
+
+Update-flow facts (verdict 18; progress.md PV-54..PV-59), measured on tree `a6d3e6fd4`:
+
+| # | Observed fact | Evidence |
+|---|---|---|
+| 21 | Every `moai update` that runs the template sync includes a stage "Removing old MoAI-managed files" that removes the whole `.claude/rules/moai` root, among other managed roots, before redeploying the template. | `internal/cli/update/deploy/deploy.go:75-78` (managed targets), `:107-185` (the clean); `internal/cli/update_template_sync.go:388-421` (the stage) |
+| 22 | Before removing a root, the clean copies every regular file the embedded template does NOT carry at the same relative path into the run's pre-clean backup `.moai-backups/<timestamp>/pre-clean/`, aborts the removal if that backup fails, and reports "backed up N unmanaged file(s)". A file the template DOES carry is not backed up (the deploy rewrites it). Observed against the real embedded template: a user-modified copy of a path the template carries today was not in the backup; a user-modified file at a path it does not carry was backed up byte-identical, and both left the live tree. | `deploy.go:90-107,394-418`; `deploy_preclean_backup_test.go:47-101` (passing, PV-56); scratch probe PV-55 |
+| 23 | `.claude/rules/moai/**` is MoAI-managed, not a user-owned namespace: `IsUserOwnedNamespace` has no branch for it, and `IsMoaiManaged` covers `rules`. The existing deprecated-path sweep (`defs.DeprecatedPaths`) cannot carry the retired rules as designed: it deletes after backup regardless of modification, its error aborts the update (`internal/cli/update.go:494-496`), and a registered path that exists counts as a V2 signal (`internal/cli/v2_detection.go:142-144`, overridden only by a confirmed v3 version). | `internal/cli/update/plan/plan.go:152-259`; `internal/cli/update_residue_cleanup.go:50-160`; PV-57 |
+
+### §A.3 Cross-check — can every backend/role pair still be entered after the removals and renames?
+
+| Role | Claude | GLM | Codex |
+|------|--------|-----|-------|
+| Leader | `moai cc -f` | `moai glm -f` | never enterable (refused before and after) |
+| Lane | `moai cc -l` | `moai glm -l` | `moai codex -l` |
+
+No pair enterable today is lost. The renames touch Go identifiers, file names, and package paths, not the entry tokens. The discovery path that reads `MOAI_KANBAN_ID` from a live leader process stays valid: the string value is frozen (REQ-015), the constant that names it is renamed, and AC-016 pins both the value and a discovery read. The Codex lane identifies itself through `MOAI_FACTORY_WORKER` (read by the card verbs at `factory_card.go:62,88-91`) and `MOAI_FACTORY_ROLE`, neither of which the LABEL removal touches (AC-013). What is lost: operator-chosen lane numbering in every spelling, and the kanban three-companion chain, which has no one-to-one factory equivalent.
+
+## §B — Requirements
+
+### §B.1 The lane entry and the leader entry
+
+- REQ-001 (Event-driven): **When** `moai cc`, `moai glm`, or `moai codex` is launched with `-l` or `--lane` and no argument, the launcher shall start the session as a factory lane on the backend the verb names, joining the running factory and claiming the next free lane slot through the existing lane-slot claim; on `moai codex` the lane is the supervising per-card relaunch lane that `moai codex -f lane` starts today.
+- REQ-002 (Event-driven): **When** `-l` or `--lane` carries any argument (a lane label `lane-<n>`, a number, a leader name, or an `=`-joined value), or is combined with another entry token (`-f`, `-k`) or an operator `--name`, the launcher shall refuse with one line — naming `-l` as taking no argument and `--leader <name>` as the leader selector for an argument, or the one-entry-token rule for a combination — shall launch nothing, and shall write no run, claim, or settings record.
+- REQ-003 (Ubiquitous): A `-l` launch shall publish the same lane environment markers as a `-f lane` launch does today — `MOAI_FACTORY_WORKER`, `MOAI_FACTORY_ROLE`, `MOAI_FACTORY_WORKERS`, `MOAI_FACTORY_CLEAR_POLICY`, `MOAI_FACTORY_AUTO_DISPATCH`, `MOAI_KANBAN_ID` — and shall introduce no new marker.
+- REQ-004 (Ubiquitous): The long `--leader <name>` (space or `=` form) shall keep its meaning as the leader-session selector of a lane join and shall compose with `-l` only; the short `-l` shall no longer be accepted as its spelling; and `--clear-policy`, `--no-auto-dispatch`, and `--factory-run` shall compose with `-l` exactly as they compose with `-f lane` today.
+- REQ-005 (Event-driven): **When** `moai cc` or `moai glm` is launched with `-f` or `--factory` followed by `lane` or a lane label `lane-<n>` (space or `=`-joined), or together with an operator `--name` (or `-n`) whose value has the lane shape `lane-<n>`, the launcher shall refuse with one line naming `-l` as the lane entry, shall launch nothing, and shall write no run, claim, or settings record.
+- REQ-006 (Event-driven): **When** `moai codex` is launched with `-f` or `--factory` in any shape, including `lane`, the launcher shall refuse with one line that names `moai codex -l` for a lane and `moai cc -f` / `moai glm -f` for a leader, and that names no removed form.
+- REQ-007 (Event-driven): **When** `moai cc` or `moai glm` is launched with `-f` followed by a number, the launcher shall keep refusing exactly as it does today (exit 1, one line, nothing launched or written), and the line shall name the bare leader form `-f` and the lane entry `-l` and shall name no removed form.
+- REQ-008 (Ubiquitous): `moai cc -f` and `moai glm -f` (also `--factory`) with no argument shall start the factory leader exactly as today — the same leader markers and the derived capacity — `moai codex` shall continue to have no leader entry, bare `moai` shall print the banner and help and exit 0, `moai cg` shall keep returning the retirement error, and `moai gpt` shall remain an unknown command.
+
+### §B.2 The leader notice
+
+- REQ-009 (Event-driven): **When** a factory leader session starts, the SessionStart notice shall state how to start a lane — to start a lane, enter `moai cc -l` (or `moai glm -l`, `moai codex -l`) in a new terminal — in one place, and shall carry no lane count, no per-lane launch line, no numbered lane label, and no free-slot list, in each of the four locales.
+
+### §B.3 Kanban Mode removal
+
+- REQ-010 (Event-driven): **When** `-k` or `--kanban` appears before the pass-through marker on `moai cc`, `moai glm`, or `moai codex`, in any shape (bare, with a SPEC identifier, with a number, with `--name <role>` or `--name lane-<n>`, or `=`-joined), the launcher shall refuse with one line stating that kanban mode is retired and naming `-f` (lead a factory run, on `moai cc` or `moai glm`) and `-l` (join as a lane) as the entries to use, shall launch nothing, and shall write no record, by the same parser-level refusal pattern that already refuses retired flag spellings.
+- REQ-011 (Ubiquitous): The source tree shall contain no kanban chain-seeding mode entry, companion mode entry, companion label parser or registry, `-k` flag parser, kanban notice builder, kanban leader socket path, or kanban board state store (board state, locks, recovery, columns, reconciliation), no launcher shall publish `MOAI_KANBAN` or `MOAI_KANBAN_SPEC`, and the todo queue, factory slots, integration lock, slot lease, landing, and settings-drift code in `internal/kanban` shall remain.
+- REQ-012 (Event-driven): **When** the Codex relaunch loop starts a card session, the child environment shall carry the lane role, the lane label under `MOAI_FACTORY_WORKER`, the backend, and the card id, shall carry no `MOAI_KANBAN_LABEL`, and the factory card verbs run in that child shall resolve the lane label and admission from `MOAI_FACTORY_WORKER` and `MOAI_FACTORY_ROLE` alone.
+- REQ-013 (Ubiquitous): The SessionStart hook shall emit no kanban leader, companion, or bootstrap notice; the factory leader, lane, lane-rule, and stale-run notices shall be emitted exactly as before except for the REQ-009 text.
+- REQ-014 (Ubiquitous): With the kanban code removed and the renames applied, the factory leader and lane shall continue to launch, claim a slot, discover a live leader, receive the transient `crossSessionInbound` settings injection, receive the raised Stop-hook block cap, write their session record, and receive their SessionStart notices, exactly as before.
+- REQ-015 (Ubiquitous): The string values of `MOAI_KANBAN_ID`, `MOAI_KANBAN_LEAD_ADDR`, `MOAI_KANBAN_LEAD_NAME`, `MOAI_KANBAN_SETTINGS_INJECTED`, `MOAI_KANBAN_BACKEND`, and `MOAI_KANBAN_CARD` and their semantics shall remain byte-identical, every reader — including live-leader discovery — shall read them under those values, the Go constants that name them shall carry factory names (design.md §4.7), and the legacy project-local state-directory literal that reads data written by older versions shall remain.
+- REQ-016 (Ubiquitous): A project holding pre-existing kanban artifacts — session records with role `plan`/`run`/`sync`, a `.moai/state/kanban-board` directory, kanban markers in a surviving session environment — shall not make `moai doctor`, the web console, the statusline, or any hook fail; an unreadable artifact shall degrade to absence.
+
+### §B.4 Renames, rewrites, and mirrors
+
+- REQ-017 (Ubiquitous): The Go package `internal/kanban` shall be named `internal/factory` and no import path, no run-time package-path string, no file or directory name, and no non-test Go, templ, or script source under `internal` and `cmd` shall carry the word kanban in any letter case except the six marker string values wherever they are written (REQ-015) and four retired-name literals, each confined to its own named file (design.md §4.7): the retired-entry refusals of REQ-010, the retired skill identifier in the update archive list, the legacy state-directory name of REQ-015, and the legacy web route redirect of REQ-018; the types, functions, files, constants, texts, and temporary-file prefix in design.md §4.7 shall carry their new names.
+- REQ-018 (Ubiquitous): The web console shall present no chain session board; the screen formerly served at `/kanban` shall be served at `/factory` with its factory lanes and SPEC pipeline panels; a GET of `/kanban` shall redirect to `/factory`; the live-update area key, the `data-live` markers, the i18n keys, the view-model and handler names shall carry factory names; and the todo card and the Todo screen shall keep their live updates.
+- REQ-019 (Ubiquitous): The three `kanban-dispatch*.md` rule files shall be renamed `factory-dispatch.md`, `factory-dispatch-detail.md`, and `factory-dispatch-mechanics.md` in both the local `.claude` tree and the template mirror with their kanban-only sections stripped and the factory leader/lane doctrine retained; the foreman skill shall be renamed `moai-factory-foreman` with its catalog entry, hash, and tests, and the retired skill id shall be listed for archive on `moai update`; `.claude/loop.md`, `moai todo --auto`, and the leader notice's queue sentence shall name the factory foreman; every reference and pinned test shall be re-pointed; and, **when** `moai update` runs on a project that still carries the three old rule files — each unmodified, user-modified, or already absent — after the rename, the update shall complete, none of the three paths shall remain under `.claude/rules/moai/workflow/`, a byte-identical copy of each file that was present shall exist in the update's pre-clean backup, files outside the managed roots (a user skill, a file under `.claude/rules/local/`) shall be untouched, and a second update shall change nothing further; this is accomplished by the existing managed-root clean alone (no new production code and no dedicated retired-rule step), and a user-modified copy of an old rule file is therefore backed up and removed, not retained — accepted by the operator (OD-17, option X).
+- REQ-020 (Ubiquitous): `workflows/factory.md` shall be rewritten, and the `moai.md` chain-contract bullet, the `run.md` table row, the `mode-orchestration.md` verify-gate section title, and the `quality-gates-quality.md` applicability sentence shall be reworded, so that each assertion they make about entry tokens, the record location and fields, the backend rules, and the goal preset is one the tree observably holds (design.md §6 lists the assertions).
+- REQ-021 (Ubiquitous): The kanban sentences in the constitution-slot files shall be edited directly, `moai constitution validate` shall report no drift or violation before and after each edit, and no clause registered in the zone registry shall change; **where** a validate run reports anything other than OK, or an edit would require changing a registered clause string, the run phase shall stop and return a blocker to the orchestrator instead of continuing.
+- REQ-022 (Ubiquitous): Every README, docs-site page, menu and chrome entry, redirect, image, and instruction file that names kanban mode or a removed entry form shall be updated or removed per design.md §5 — each kanban-named docs page renamed with a redirect in all four locales or deleted with a redirect — the four locales shall change in one commit, and each local-versus-template pair shall be edited per file in the same change set, honoring the declared-fork marker.
+- REQ-023 (Ubiquitous): The help and usage text, the leader and lane notices, the stale-run hint, the factory card errors, and the refusal lines shall name `-f` and `-l` only and shall name no removed form (`-k`, `-f lane`, `-f lane-<n>`, `moai codex -f lane`, `-f <N>`, the `-l` leader short).
+- REQ-024 (Ubiquitous): The change shall add no OS-specific code path and shall build for windows/amd64, reusing the existing per-OS launch path unchanged.
+
+## §C — Acceptance Criteria (summary)
+
+Full Given-When-Then scenarios, the RED-now evidence ledger, and the Definition of Done live in `acceptance.md`. Tier L ceiling: 25 requirements and 25 criteria; this SPEC carries 24 requirements and 25 criteria (at the ceiling).
+
+| AC | Verifies | Class | Mechanical check |
+|----|----------|-------|------------------|
+| AC-001 | REQ-001 (cc, glm) | release-blocking | new `internal/cli` test; RED-now: RED-1 |
+| AC-002 | REQ-001 (codex) | release-blocking | new test; RED-now: RED-2 |
+| AC-003 | REQ-002 | release-blocking | new test; RED-now: RED-3, RED-10 |
+| AC-004 | REQ-003 | release-blocking | new test; RED-now: RED-1 |
+| AC-005 | REQ-004 | release-blocking | new test; RED-now: RED-1, RED-3 |
+| AC-006 | REQ-005 | release-blocking | new test; RED-now: RED-4 |
+| AC-007 | REQ-006 | release-blocking | new test; RED-now: RED-5 |
+| AC-008 | REQ-007 | release-blocking (message) / guard (refusal) | new test; RED-now: RED-6 |
+| AC-009 | REQ-008 | regression-guard | existing + characterization tests |
+| AC-010 | REQ-009 | release-blocking | hook tests; RED-now: RED-7, RED-7b |
+| AC-011 | REQ-010 | release-blocking | new test; RED-now: RED-K1, RED-K2 |
+| AC-012 | REQ-011 | release-blocking | symbol grep + file absence; RED-now: RED-K3, RED-K4 |
+| AC-013 | REQ-012 | release-blocking (with mutant) | new tests; RED-now: RED-8 |
+| AC-014 | REQ-013 | release-blocking | grep + hook test; RED-now: RED-K5 |
+| AC-015 | REQ-014 | regression-guard (with mutant probe) | factory safety-net tests plus the enterable-pair matrix; baseline PV-4, PV-12, PV-17, PV-22, PV-43 |
+| AC-016 | REQ-015 | regression-guard | frozen-value test + discovery test + allowlist and legacy-directory tests; baseline BASE-1..BASE-3, PV-43 |
+| AC-017 | REQ-016 | regression-guard (authored RED-first on a mutant) | tolerance test; green today by design |
+| AC-018 | REQ-017 | release-blocking | greps + build + vet; RED-now: RED-N1, RED-N2, RED-N3 |
+| AC-019 | REQ-018 | release-blocking | grep + web tests; RED-now: RED-W1, RED-W2 |
+| AC-020 | REQ-019 | release-blocking | file checks + template tests + update fixture (unmodified, user-modified, absent); RED-now: RED-C1, RED-C2, RED-C3 |
+| AC-021 | REQ-020 | release-blocking | doc-versus-behavior test + greps; RED-now: RED-F1, RED-F2, RED-F3 |
+| AC-022 | REQ-021 | regression-guard | `moai constitution validate` before and after each edit, registered Frozen clause strings unchanged, stop condition; baseline PV-26, PV-38, PV-58 |
+| AC-023 | REQ-022, REQ-023 (docs part) | release-blocking | greps + redirect + parity checks; RED-now: RED-D1, RED-D2, RED-D3, RED-D4 |
+| AC-024 | REQ-023 (strings part) | release-blocking | grep over Go sources + help tests; RED-now: RED-S1 |
+| AC-025 | REQ-024 | regression-guard | windows cross-build; baseline BASE-4 |
+
+## §D — Decisions: all decided, and the author readings
+
+Every verdict is recorded (§A.1, decision-index.md Q1–Q19) and every requirement above is written to a verdict. The last one, OD-17 / Q18, is settled as Option X: the operator first chose a dedicated retired-rule-file cleanup step in `moai update`; the update code showed the removal and backup already happen in the managed-root clean (§A.2 rows 21–23) and that three of the five safeguards (delete only on a released-content hash match, retain user-modified files, never abort on cleanup failure) cannot be built as stated without changing that contract; shown those facts, the operator chose to rely on the existing clean with no production change. A user-modified copy of an old rule file is therefore backed up and removed, not retained, and that is accepted. REQ-019 and AC-020 already state the observed contract; AC-018's allowlist of retired-name files is unchanged under X because no Go file is added.
+
+**Author choices within the verdicts (all ACCEPTED by the operator as written, 2026-10-02, in two steps: rows 2–6, 9, and 10 first, then rows 7, 8, 11, and 12; the row 1 ruling is confirmed):**
+
+| # | Choice | Why it is the author's, not the operator's |
+|---|--------|---------------------------------------------|
+| 1 | Verdict 16 was a lane-orchestrator ruling on evidence | confirmed by the operator ("proceed as is"); marked as originating from a ruling in decision-index.md Q16 |
+| 2 | The new package name is `internal/factory` (package `factory`) | verdict 12 asks for a name from the factory vocabulary; no `internal/factory` or `package factory` exists |
+| 3 | The leader notice also drops the free-slot line | the line is built from the declared lane count and lists lane numbers; verdict 17 says "no number" |
+| 4 | `GET /kanban` redirects to `/factory` | bookmark compatibility for a read-only route; no key or script compat is added |
+| 5 | The chain-lineage and `moai chain` sections of the kanban docs page move to a new page `advanced/origin-trail-chain` | the `moai chain` command is live and has no other docs page (measured) |
+| 6 | The home banner and the five-sessions image are removed | the visual shows the five-column kanban board |
+| 7 | The `MOAI_FACTORY_WORKERS` value stays a number | it is the factory discriminator and block-cap signal; only its display is dropped |
+| 8 | The four dependents of the chain contract (`moai.md`, `run.md`, `mode-orchestration.md`, `quality-gates-quality.md`) are reworded and the verify exit gate is retained as specification | they name "the factory contract" the rewrite retires; leaving them would contradict the tree; no launcher flag enters or arms the gate (PV-41) |
+| 9 | The retired-name literals are confined to four named files (the `-k` retirement refusal, the update archive list, the legacy state-directory name, the legacy web route) | REQ-010, REQ-015, REQ-018, and REQ-019 each need the word to appear once; confining it keeps the AC-018 search exact |
+| 10 | The web live-update key is named `factory` | the key covers the queue and lane state files together; verdict 12 asks for a factory-vocabulary name |
+| 11 | The three removed docs pages all redirect to `advanced/factory-mode` | no one-to-one successor exists for the board-terms page or the multi-LLM page |
+| 12 | `FactoryFreeSlots` stays in the slots package, caller-less | AGENTS.md §5 forbids deleting seemingly-unused code without approval |
+
+## §E — Constraints
+
+- One entry token per launch: `-l` with `-f` or `-k` is refused.
+- The kanban removal and the renames land only after the `-f`/`-l` entry is in place and a factory safety net has been observed green AND observed red on a mutant (M1); the net re-runs after every removal and rename milestone.
+- The six marker string values are frozen; the Go package rename and the identifier renames never change a persisted or wire string except where §A.2 says RENAMED.
+- Slot assignment is automatic through the existing shared claim; this SPEC does not re-implement slot selection, capacity policy, leader discovery, or the lane-join gate.
+- Removal follows repository precedent: a refusal naming the canonical form, not a warning window; there is no migration command.
+- All instruction and doc text follows `language.yaml`: English for instruction files; READMEs and docs-site per the four-locale rule and native-idiom policy; `AGENTS.md`, `CLAUDE.md`, and the dispatch rule are always-loaded slots and this change is expected to shrink them.
+- Running the full `internal/kanban`/`internal/factory` or `internal/cli` suites takes a resource slot lease first; verification is scoped to the change.
+
+## §F — Out of Scope
+
+### Out of Scope — verb-less root entry
+
+- No `moai -f` / `moai -l` root form, no pre-Cobra argv rewrite, and no `--backend` token or default-backend setting.
+
+### Out of Scope — lane slot claim, capacity, and join
+
+- Slot selection, bump-to-next-free, run capacity policy (SPEC-CODEX-LANE-SLOTS-001), leader discovery and the lane-join gate (SPEC-FACTORY-LANE-JOIN-SOCKET-001), and the factory record are not changed in behavior.
+
+### Out of Scope — behavior of the todo queue, integration lock, slot lease, landing, and settings-drift code
+
+- These move with the package rename and have their text renamed; their behavior is not changed.
+
+### Out of Scope — Codex leader
+
+- A Codex factory leader stays refused; no Codex leader entry is introduced.
+
+### Out of Scope — a migration command or warning window
+
+- No `moai migrate` kanban verb and no deprecation window for `-k`.
+
+### Out of Scope — historical and generated artifacts
+
+- `CHANGELOG.md`, `.moai/release-notes/**`, the generated `.moai/project/codemaps/**`, the frozen `internal/cli/testdata/**` rollout fixtures, and the completed SPECs under `.moai/specs/**` that mention kanban mode or the removed forms are not hand-edited in this change; partial-supersession annotations on the affected completed SPECs (including the SPEC-KANBAN-* family) are recorded at sync.
+
+## §G — Cross-References
+
+- `research.md` — inventory, marker coupling, persisted-name table, symbol searches.
+- `design.md` — entry grammar, removal design, the old→new mapping, the docs mapping, the factory.md rewrite assertions, the sequencing proof.
+- `plan.md` §B — the verdicts, the OD-17 evidence and the option weighed, and the confirmed readings; §D — milestones M0–M11.
+- `decision-index.md` — the recorded verdicts (Q1–Q19).
+- Partially superseded by this SPEC, recorded at sync (completed SPECs are not edited in the plan phase): `SPEC-FACTORY-LANE-JOIN-SOCKET-001` REQ-008 (the `-l` short), `SPEC-FACTORY-SELF-DISPATCH-001` REQ-SD-003/-004 (the `moai codex -f lane` spelling and the pinned refusal), `SPEC-CODEX-FACTORY-RETIRE-001`, and the `SPEC-KANBAN-*` family (kanban mode and the package name).

@@ -1,0 +1,158 @@
+# SPEC-LAUNCHER-ENTRY-FLAGS-001 — Research (Tier L, v0.4.0)
+
+Every measurement below was taken on tree `a6d3e6fd4` (branch `WT-launcher-entry-flags`). Counts from word searches are UPPER BOUNDS where noted: the word "kanban" is overloaded in this tree (the retired launch mode, the Go package that also holds the todo queue and the factory slots, a state directory, a web screen), so each count states the pattern that produced it. A claim not observed is listed in §R14 Gaps, not stated as fact.
+
+## §R1 — The headline counts
+
+Searching case-insensitively for the word across the tree (excluding `.git`, worktrees, reports, `node_modules`) matches **1,287 files**, of which **616 are SPEC artifacts** under `.moai/specs`. The measures the plan uses (each one command, rerunnable):
+
+| Measure | Pattern and scope | Count |
+|---------|-------------------|-------|
+| Non-test Go, templ, and script files carrying the word | `grep -rliE kanban internal cmd --include='*.go' --include='*.templ' --include='*.js' --exclude='*_test.go' --exclude-dir=testdata --exclude-dir=node_modules` | **190** (the `internal/kanban` package alone holds 63 non-test files; the rest are spread across `internal/cli`, `internal/hook`, `internal/web`, `internal/statusline`, `internal/config`, and other packages) |
+| Same, with the six frozen marker names allowed (the AC-018 rule) | `grep -rlP '(?i)(?<!moai_)kanban\|moai_kanban(?!_(id\|lead_addr\|lead_name\|settings_injected\|backend\|card)\b)\|칸반\|かんばん\|カンバン\|看板'` over the same scope | **189** (one file, `internal/codexwiring/configtoml.go`, carries only frozen marker names) |
+| Test files carrying the word under the same rule | same pattern, `internal --include='*_test.go'` | 308 (310 by the plain word) |
+| Files and directories named with the word | `find internal cmd -iname '*kanban*'` | 22 (the package directory, 6 hook files, 10 `internal/cli` files, one package test helper, and 4 template paths: the foreman skill directory and 3 rules) |
+| Files importing `internal/kanban` | `grep -rlE '"github.com/modu-ai/moai-adk/internal/kanban"' internal cmd --include='*.go'` | **179** (66 production, one under `cmd`, and 113 test) |
+| Qualified references to the package | `grep -rIn 'kanban\.' internal cmd --include='*.go'` | 1,689 lines |
+| README, docs-site, rule, skill, template, and config files carrying the word, with the six frozen marker names allowed and the mirrored Claude Code docs excluded | the combined pattern over `README*.md AGENTS.md CLAUDE.md .claude internal/template/templates docs-site/{content,data,i18n,layouts,static} .moai/docs .moai/config --exclude-dir={agent-memory,worktrees,node_modules,claude-code}` | **156** (151 by the plain Latin word without the exclusion of the marker names) |
+| Mode-specific Go identifiers | `enterKanbanMode`, `enterKanbanCompanionMode`, `parseKanbanFlag`, `rejectKanbanOnCG`, `EnvMoaiKanban`, `EnvMoaiKanbanLabel`, `EnvMoaiKanbanSpec`, `CompanionRoles`, `SplitCompanionLabel`, `kanbanLeaderNotice`, `kanbanCompanionNotice`, `kanbanBootstrapNotice` in non-test files | 15 |
+| Non-test Go files in four packages naming a removed entry form | `-k --name`, `moai (cc\|glm) -k`, `(-f\|--factory)[ =]lane`, `-l, --leader` in `internal/cli`, `internal/config`, `internal/hook`, `internal/kanban`, testdata excluded | 16 |
+
+Non-Latin spellings matter: the Latin grep misses `칸반`, `かんばん`, `看板`, which appear in 8 non-test source files (`internal/web/{app.go,screens.templ,screens_templ.go,viewmodel_ops.go,screens.go,assets/i18n.js}`, `internal/hook/{session_start_factory_i18n.go,session_start_kanban_i18n.go}`) and in docs and READMEs. Some native-language uses are generic and not this mode — a Chinese "monitoring dashboard" and a Korean analogy for the Agent Teams task list, both under `docs-site/content/*/claude-code/` — which is why the scope excludes that mirrored directory.
+
+## §R2 — Environment markers: which are kanban-only, which the factory reads
+
+Nine `MOAI_KANBAN*` constants exist (`internal/config/envkeys.go`: `MOAI_KANBAN` :182, `_SPEC` :187, `_ID` :195, `_LABEL` :205, `_SETTINGS_INJECTED` :216, `_LEAD_ADDR` :225, `_BACKEND` :238, `_CARD` :253, `_LEAD_NAME` :273); the string literal of each is written in that file and one more place, `internal/codexwiring/configtoml.go:21` (the Codex MCP server env allowlist, listing `MOAI_KANBAN_ID` and `MOAI_KANBAN_BACKEND`). Non-test files referencing each constant, and the factory-side readers:
+
+| Marker | Non-test files | Kanban-only readers | Factory-side readers (non-test) |
+|--------|----------------|---------------------|----------------------------------|
+| `MOAI_KANBAN` | 8 | chain-seeding mode entry, kanban notice, block cap clause, record writer | none (`factory.go` names it only in comments) |
+| `MOAI_KANBAN_SPEC` | 6 | kanban chain target | none (the record writer passes it through for a record's SPEC field) |
+| `MOAI_KANBAN_LABEL` | 8 | companion notice, companion role in the record writer, block cap clause | none found; STAMPED on the Codex lane child (`codex_launcher.go:959-961`, `:1037`), scrubbed from its inherited environment (`:316-329`), pinned by `factory_m5_test.go:145-146` |
+| `MOAI_KANBAN_ID` | 22 | kanban leader notice | factory run id: `factory.go`, `codex_factory.go`, `codex_launcher.go`, `factory_lane_relaunch.go`, `factory_launch_pending.go`, hook `session_start_factory.go`, `session_stale_run.go`, `stale_run_gate.go`, `factory_messages.go`, `internal/discovery/*` (3 files), `todo.go` |
+| `MOAI_KANBAN_LEAD_ADDR` | 9 | kanban leader notice | `factory.go`, `codex_factory.go`, `codex_launcher.go`, `kanban/bootstrap.go`, `session_start_factory.go` |
+| `MOAI_KANBAN_LEAD_NAME` | 8 | none beyond launch | `factory.go`, `codex_factory.go`, `codex_launcher.go`, `session_stale_run.go`, `user_prompt_submit.go` |
+| `MOAI_KANBAN_SETTINGS_INJECTED` | 6 | kanban notice | `kanban_settings.go`, `codex_launcher.go`, `session_start_factory.go` |
+| `MOAI_KANBAN_BACKEND` | 12 | record writer | `factory_card.go`, `hook.go`, `codex_launcher.go`, `codex_factory.go`, `factory_launch_pending.go`, `session_start_factory.go`, `contract_sign_guard.go`, `factory_messages.go` |
+| `MOAI_KANBAN_CARD` | 7 | record writer | `factory_lane_relaunch.go`, `codex_launcher.go`, `session_start_factory.go` |
+
+The six factory-read markers are referenced by **95 files** (34 production, 61 test). Two cross a PROCESS boundary: a joining lane reads `MOAI_KANBAN_ID` from a live leader process's environment by name (`internal/discovery/leader_readers_darwin.go:47-62`, `factory_discovery.go:171-178`), so a rename without a dual read breaks discovery between a leader started by an older binary and a lane started by a newer one — the reason the values are frozen. The comment at `codex_launcher.go:953-958` says the factory card verbs read `MOAI_KANBAN_LABEL`; `factory_card.go:62` and `:88-91` read `MOAI_FACTORY_WORKER` instead, and `grep -c EnvMoaiKanbanLabel` over the Codex lane files returns codex_launcher.go 4, factory_m5_test.go 2, codex_factory_retire_test.go 1, codex_debug_trace_test.go 1, factory_m4_test.go 1, envkeys.go 4 (the definition and its comment) — no production reader.
+
+The block-cap raise is separable: `launcher_blockcap_infinite.go:57` has a kanban clause and a factory clause reading `MOAI_FACTORY_WORKERS`. The existing constants `EnvMoaiFactoryWorkers`, `EnvMoaiFactoryWorker`, `EnvFactoryRole`, `EnvFactoryClearPolicy`, `EnvFactoryAutoDispatch` carry no kanban name (`envkeys.go:289-389`) and none shares a name with the six replacement constants.
+
+## §R3 — `internal/kanban`: kanban-only, mixed, and not the mode
+
+63 non-test files, 112 test files.
+
+| Class | Non-test files | Count |
+|-------|----------------|-------|
+| Kanban-only — board state store (no non-test caller outside the package) | `board.go`, `board_store.go`, `board_recover.go`, `board_lock.go`, `board_lock_unix.go`, `board_lock_windows.go`, `board_lock_clear_unix.go`, `board_lock_clear_windows.go`, `column.go`, `reconcile.go` | 10 |
+| Chain-contract revision (used only by `record.go`) | `revision.go` | 1 — kept (§4.2) |
+| Mixed | `bootstrap.go` (companion roles, launcher, label, split are kanban-only; leader label, run id, lane labels are factory-shared), `role.go`, `record.go` | 3 |
+| Factory-specific | `factory_slots.go`, `factory_runtime.go`, `factory_alive_unix.go`, `factory_alive_windows.go` | 4 |
+| Todo queue, GTD, classification, landing, locks, leases, settings-drift, state dir | `backlog_*` (8), `gtd_*` (9), `todo_*` (7), `classification.go`, `autodone_scan.go`, `prlink*.go` (3), `landing_*.go` (2), `integration_lock*.go` (6), `slot_lease*.go` (4), `settings_drift.go`, `state_dir.go`, `status.go`, `status_read.go`, `temp_origin.go`, `record_prune.go`, `lock_alive_windows.go` | 45 |
+
+The last row's class is by file-name prefix and header reading for a sample (§R14 gap 3). Board-symbol search: `LoadBoard`, `BoardState`, `WriteBoardState`, `AcquireBoardLock`, `RecoverBoard`, `Column`, `ParseColumn`, `TransitionIntoRun`, `BoardRoot`, `IsBoardUnknown` are referenced by no non-test file outside `internal/kanban`; the only two non-test files outside the package that use a status symbol use `ReadPrimarySpecStatus` (`todo_autodone.go:306`, `todo_landed.go:337`), which is not part of the board family. `manager-lead.md:102` states the board has no state store.
+
+`state_dir.go` holds the legacy literal: `const legacyStateDirName = "kanban"` (`:23`) and uses it at `:57` (the old `$MOAI_HOME/todo/<key>/.moai/state/kanban` fallback) and `:85` (`LegacyStateDirForRoot`, the project-local `.moai/state/kanban`). `RuntimeStateDirForRoot` returns `.moai/state/todo` if it exists, else the legacy directory if it exists, else `.moai/state/todo` (`:69-79`); the session record path is `RuntimeStateDirForRoot(root)/<session>.json` (`record.go:189-191`).
+
+Non-test string literals beginning with "kanban" outside the web assets (measured by `grep -rn '"kanban'`): `internal/cli/home_state_coverage.go:64` (a coverage key), `internal/cli/kanban.go:443,489` (two notes), the error texts in the board and backlog files, `landing_verdict.go`, `landing_evidence.go`, `autodone_scan.go`, `internal/hook/session_start.go:475,611` (two timing laps), `internal/web/{events.go:33-35,223,225; screens.go:138,141; viewmodel_ops.go:735}`.
+
+## §R4 — The launcher: `internal/cli`
+
+`kanban.go` (36 KB, 26 top-level declarations):
+
+| Kanban-only | Factory-shared (stay) |
+|-------------|------------------------|
+| `parseKanbanFlag` :113, `enterKanbanMode` :193, `enterKanbanCompanionMode` :333, `companionRegistryPath` :357, `resolveCompanionName` :379, `exportKanbanLaunchFacts` :543, `parseCompanionLabel` :588, `rejectKanbanOnCG` :750, `kanbanBranch` and `resolveKanbanBranch` :768/:792, `kanbanFlagUsageError` :37, `kanbanUnsupportedBackendSentinel` :45 | `kanbanEntryParse` :64 (carries the factory fields), `leaderRunID` :239, `allDigits` :252, `seedAutonomyTier` :286, `seedLaneAgentCap` :307, `leaderRegistryPath` :395, `resolveLeaderName` :420, `noteLegacyLeaderRegistryEntries` :429, `claimName` :467, `captureEnvState` :503, `exportFactoryLaunchFacts` :565, `parseLeaderLabel` :605, `parseNamedLabel` :620, `operatorSuppliedName` :661, `leaderNameArgs` :694, `appendLeaderName` :714, `exportLeaderSessionName` :739 |
+
+Factory callers of the shared helpers: `factory.go:311,379,653,677,680,732,733`; `cc.go:211,221,224,225`. `kanban_settings.go` is factory-shared (`cc.go:227` is inside the factory leader branch). Existing tests: 8 `kanban_*_test.go` files in `internal/cli`, of which `kanban_settings_test.go` covers the factory-shared settings injection; `TestPrepareKanbanSettingsWritesTransientFile` passes today (PV-22).
+
+## §R5 — Hooks
+
+`internal/hook`: 18 production files mention the word; kanban-only are `session_start_kanban.go` and `session_start_kanban_i18n.go`. `session_start.go:555-605` is the kanban notice block, separate from the factory block at `:511-542`; the two timing laps `"kanban_record"` (`:475`) and `"kanban_notice"` (`:611`) sit beside them. `session_start_record.go:180-202` reads factory markers first and the kanban markers after, and writes the record's backend from `MOAI_KANBAN_BACKEND` (`:104`). `session_stale_run.go` and `stale_run_gate.go` serve both modes' legacy-label handling and the factory stale-run notice. No `settings.json` or hook wiring file mentions the word (search over `.moai/config/sections`, the settings template, and `.claude/settings.json`: one match, a comment in `state.yaml`).
+
+## §R6 — Rules, skills, agents, loop, catalog
+
+| Surface | Files | Kanban-only vs factory-shared |
+|---------|-------|-------------------------------|
+| `kanban-dispatch.md`, `-detail.md`, `-mechanics.md` (local) | 3 (199 / 291 / 142 lines) | MIXED: the leader/lane doctrine for both modes. Factory-shared headings: lane isolation, verification load, integration self-served, completion read, queue delegation, lane task list, lane waits, deputy dispatch, "Factory Mode — the card travels whole", lane spawn authority; kanban-leaning: the board, card classes, the phase `/clear` handoff. Always-loaded (`kanban-dispatch.md`). No `[ZONE:Frozen]`/`[ZONE:Evolvable]` tag in any of the three. Not enrolled in the mirror guard; local and template copies of `kanban-dispatch.md` differ, `-detail` and `-mechanics` are identical. |
+| Other rules naming the word | 12: `agent-common-protocol.md`, `agent-common-protocol-reference.md`, `moai-constitution.md`, `moai-mcp-tools-catalogue.md` (also names the markers), `agent-authoring.md`, `auto-semantics.md`, `cross-session-messaging.md`, `cross-session-messaging-detail.md` (declared fork), `main-checkout-branch-guard-detail.md`, `worktree-integration.md`, `worktree-integration-ops.md`, local-only `gitflow-lane-protocol.md` | mention-level; each needs a line edit |
+| Skills | `moai-kanban-foreman` (216 lines; "Factory seam (reserved, not implemented)" :202-208), `moai-lane-watchdog`, `moai/workflows/gtd.md`, `moai/workflows/project/doc-generation.md`; plus `workflows/factory.md` (§R12) | |
+| Agents | `manager-lead.md` (16 kanban lines, 6 factory lines — a dual-role agent), `manager-todo.md`, and the two `.toml` Codex twins | mixed |
+| Loop driver | `.claude/loop.md` (20 lines) and its template copy | content is the foreman iteration; the path is the runtime's convention |
+| Catalog and tests | `internal/template/catalog.yaml:41-43` (foreman entry with hash; `grep -c moai-kanban-foreman` = 2); `catalog_loader_test.go`, `embed_catalog_test.go`, `catalog_tier_audit_test.go` carry comments and counts; `backlog_json_disclosure_mirror_test.go:26` lists the foreman path; `workflow_rule_paths_pinned_test.go:31` pins `kanban-dispatch-detail.md`; `docs_delegation_lane_flow_test.go:70-71` reads the mechanics rule; `contract_mode_guided_test.go:669,679` classify `factory.md` and `kanban-dispatch.md` | required edits |
+| Archive list and rule cleanup | `internal/cli/update_archive.go:45` `legacySkillIDs` (skills only); for rules the managed-root clean of §R15 | the skills list is a precedent for skills; rule files need no list for removal and backup (corrected in v0.5.0 — the earlier "none found" rested on a search that missed §R15) |
+| Template mirrors | 28 content files under `internal/template/templates` plus 8 template tests/catalog files | per file |
+
+Rule-path references: 52 files outside specs reference `kanban-dispatch` — 16 Go, test, or fixture files (9 non-test Go in comments or strings, 4 tests, 3 frozen fixtures), the rest rules, skills, docs, and template mirrors. Template tests observed on this tree: `TestWorkflowRulePathsPinned`, `TestContractModeLocalTemplateParity`, `TestDeclaredRuleMirrorForks`, `TestRuleTemplateMirrorDrift`, `TestAllSkillsInCatalog`, `TestCatalogHashCoversSkillSubfiles` PASS; `TestContractModeConstitutionDriftNotIncreased` and `TestContractModeAlwaysLoadedBudget` SKIP (reason not observed) — a skip is not a verification of either guard.
+
+## §R7 — Web console, statusline, doctor, other packages
+
+Web (`internal/web`): route `/kanban` (`app.go:163`), `handleKanban`/`buildKanban` (`screens.go:132-142`; error text `:138`, shell id and title `:141`), the `Kanban` template with three panels (chain session board `screens.templ:141`, factory lanes `:202`, SPEC pipeline `:254`), `KanbanVM`/`ChainRoles`/`KanbanRecord` (`viewmodel_ops.go:46-62,141,257-266`; a record source label `:735`), the factory-lane loader (`factory_lanes.go:62`), the SSE key `kanban` and its watched paths (`events.go:33-35,223-225`), `data-live="kanban"` (`screens.templ:53,139,299`; also on the overview todo card and the Todo screen), the icon case `"kanban"` (`icons.templ:72`, generated `icons_templ.go:128`), i18n keys `kanban.*` (84 occurrences in `assets/i18n.js`; zero existing `factory.*` keys), and the `app.js` event list (`:614`). The assets are embedded (`assets.go:24`). Hand-edited files: `app.go`, `screens.go`, `viewmodel_ops.go`, `events.go`, `screens.templ`, `widgets.templ`, `shell.templ`, `icons.templ` (8); generated `_templ.go` (4); scripts `app.js`, `i18n.js` (2). The only browser-persisted key found is `moai-console-lang`.
+
+Statusline: the "Kanban backlog" label (`statusline/types.go:252,350`, `backlog.go`) reads the todo queue; the segment key is `backlog`. Doctor: `doctor_factory_run.go`, `doctor_owner_label.go`, `doctor_todo_*.go` read session records or the todo store; none gate on the mode. Other packages mention the package or its name in imports or comments; the only non-comment use is the discovery marker read (§R2) and `factorymsg/store.go` using factory lane label helpers. `cmd/t657-merge/main.go` imports the package.
+
+## §R8 — Documentation
+
+| Surface | Files |
+|---------|-------|
+| docs-site content | pages with the word per locale; kanban-subject pages: `advanced/kanban-mode.md` (25 KB; titled "Kanban mode — Factory Mode"), `multi-llm/kanban-mode.md`, `core-concepts/kanban-board-terms.md` (12 total across en/ko/ja/zh); `advanced/factory-mode.md` exists (11 KB en) |
+| docs-site chrome | `data/menu/main.yaml` (:159-162, :493-496, :725-728), `i18n/{en,ko,ja,zh-cn}.yaml` (`home_kanban_*`), `layouts/index.html` (:56-76, a "NEW · KANBAN MODE" banner linking `/advanced/kanban-mode` and an image), `static/moai-docs-layout.css`, `content/*/{advanced,core-concepts}/_meta.yaml` listings, `vercel.json` |
+| `vercel.json` | redirects `/:locale(ko\|en\|ja\|zh)/advanced/factory-mode` and `/advanced/factory-mode` → the kanban page, `/multi-llm/factory-mode` likewise (`:182-201`); `manager-kanban` → `manager-lead` (`:202-211`). The pattern per page: one locale-parameterized rule and one bare rule to `/ko/…`. So the existing factory-mode page is shadowed by a redirect. |
+| READMEs | 4; each has a "What's New in v3.1 — Kanban Mode" section (`README.md:40-82`) that also documents the factory leader and `-f lane` forms |
+| Image | `assets/images/kanban-five-sessions.svg` and the `.png` referenced from READMEs and the home layout |
+| `.moai/docs` | `audit-artifact-convention.md`, `hook-stdin-fail-closed.md`, `todo-queue-storage.md`, `jamo-integrity-guide.md` (names "팩토리·칸반" sessions), `kickoff-autonomy.md` (native-language mention), plus template copies |
+| Generated | `.moai/project/codemaps/*` (7), regenerated by `/moai codemaps` |
+| Historical, not edited | `CHANGELOG.md`, `.moai/release-notes/v3.1.0.ko.md`, `.moai/research/*`, completed SPECs, the mirrored `docs-site/content/*/claude-code/` pages |
+
+## §R9 — The foreman chain: skill, loop, `moai todo --auto`, notice
+
+The leader notice sentence naming the foreman loop is in every locale: en `session_start_factory_i18n.go:89` ("the kanban foreman loop (bare `/loop`)"), ko `:139` (`칸반 포어맨 루프`), ja `:184` (`かんばんフォアマンループ`), zh `:229` (`看板工头循环`). `moai todo --auto` implements the foreman contract from the CLI (`todo_auto.go:19`). The skill calls its factory integration "reserved, not implemented" (`SKILL.md:202-208`). These are kept under factory names (verdict 15); the strings are edited at M4, the skill, loop, catalog, and references at M10.
+
+## §R10 — Leader notice strings and the lane count
+
+`session_start_factory_i18n.go` carries 28 references (`grep -c`) to `leaderFreeSlots`, `leaderSlotsNone`, `laneJoin`, `laneJoinNoCount`, `leaderManual`, `entryGuide`; the per-lane launch line is built at `session_start_factory.go:207` and the free-slot line at `:229` from `FactoryFreeSlots` (`internal/kanban/factory_slots.go:354-360`), whose only production caller is that line. `MOAI_FACTORY_WORKERS` carries the count, is the factory discriminator, and feeds the block-cap clause. Tests observed passing: `TestFactoryLeadNoticeWorkerCountDrivesLineCount`, `TestFactoryLeadNoticeAllSlotsClaimed` (PV-39), `TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide`, `TestFactoryGuideNamesWorkerJoinInEveryLocale`, `TestUnbindNoticeRebindLinePresence` (PV-12).
+
+## §R11 — Persisted and wire names
+
+See `design.md` §8 for the verdict per name. Evidence gathered: the legacy directory literal and its two read paths (§R3); the session record keys carry no kanban word (`record.go:57-125`); the board directory `kanban-board` (`board.go:27`) is read only by the board family; the leader socket directory in `bootstrap.go:402-432`; the web assets embed (§R7); the browser key `moai-console-lang`; the transient settings file prefix `moai-kanban` (`kanban_settings.go:89,108`) with no sweeper found.
+
+## §R12 — `workflows/factory.md` and its dependents
+
+The skill (142 lines, template copy identical in structure) describes `--factory`/`-f` as an entry switch that seeds a single-session plan→run→verify→sync chain, optional SPEC argument (`:29-31`), a goal preset `factory_chain` armed with `--max-turns 0 --max-duration 14400` (`:64-97`), a state record under `.moai/state/factory/` with three orchestrator-written fields (`:114-130`), rejection on `moai cg` with a sentinel (`:110-112`), and a session-wide block-cap raise (`:132-141`). Measured against the tree: `grep -c factory_chain` = 2 in each copy and the name occurs in no code or configuration; `RecordPath` resolves `.moai/state/todo/<session>.json` (§R3); `grep -rnE 'VerifyRung|DeepScanDir|VerifyReentries|\.Rung\b' internal --include='*.go' --exclude='*_test.go'` returns only `internal/kanban/record.go` lines (declarations and comments); `grep -rn 'verify exit gate\|VerifyExitGate\|Verify Exit Gate' internal --include='*.go'` returns nothing. Dependents of the chain contract: `moai.md:210` (one sentence, 1 occurrence of "chain head"), `run.md:52` (table row, "verify exit gate (factory contract)"), `run/mode-orchestration.md:86` ("## Verify Exit Gate (factory contract)"), `sync/quality-gates-quality.md:133` ("Applies only to a sync entered from a factory chain"). The sync dedup gate is a skill procedure whose predicate defaults to RUN when nothing is recorded.
+
+## §R13 — Constitution evidence (verdict 16)
+
+Four kanban sentences: `CLAUDE.md:61`, `moai-constitution.md:11`, `agent-common-protocol.md:27` and `:75`. Line 27 also cites the old rule path twice (`kanban-dispatch-mechanics.md`, `kanban-dispatch.md`). `grep` over `zone-registry.md` finds none of the sentences' distinctive phrases and no `kanban` text; the registry entries for `agent-common-protocol.md` are `CONST-V3R2-036..038` (Frozen, anchor `#user-interaction-boundary`, registered strings are three short clauses), `-039` (Evolvable, `#language-handling`, registered clause is the header sentence only), and others. Line 27 sits in the section anchored `#user-interaction-boundary`; line 75 in the body of `#language-handling`. `moai constitution validate` on this tree: `OK — no drift or violations detected (97 of 101 entries checked)`, 4 retired skipped (PV-26, re-run in PV-38). `moai constitution guard` takes `--violations` rule IDs; `amend` requires a registered `--rule` (PV-28).
+
+## §R14 — Gaps (unobserved)
+
+1. No kanban launch was run (`moai cc -k` starts a session and writes state); `-k` acceptance today rests on `TestCC_KanbanFlagStrippedBeforeLaunch` and `TestGLM_KanbanFlagParity` passing and on `moai codex -k` printing its refusal.
+2. `cc.go` and `glm.go` were not read past the factory branches.
+3. The 45-file "not the mode" class in `internal/kanban` is by name prefix and a sample of headers.
+4. The pattern counts are upper bounds that include comment-only and genealogy mentions; docs-site and README matches were not read line by line.
+5. Readers of `MOAI_KANBAN_LABEL` outside this repository's Go code (a script, a skill command, a Codex-side consumer) were not found by search over `internal`, `cmd`, `scripts`, `.claude`, `.moai/config`; the search is bounded.
+6. Why `TestContractModeConstitutionDriftNotIncreased` and `TestContractModeAlwaysLoadedBudget` SKIP was not read.
+7. The web tests that pin the `/kanban` screen text and the exact `app.js` consumers of the SSE key were not enumerated.
+8. The behavior of a surviving old kanban session after the notice and role code are removed was not exercised.
+9. The windows/amd64 cross-build, `make templ-generate`, `make build`, `make embed-check`, and `go vet ./...` were not run.
+10. `cmd/t657-merge/main.go` and `internal/cli/ptycaptest/harness.go` were not read beyond their matches.
+11. Non-test consumers of the sentinels `KANBAN_MODE_UNSUPPORTED_BACKEND` and `FACTORY_MODE_UNSUPPORTED_BACKEND` were not searched.
+12. Whether any latency log or telemetry keys on the hook timing lap names `kanban_record` / `kanban_notice` was not searched.
+13. Whether the four files that declare a local `factory` identifier also import the package was not read.
+14. CORRECTED in v0.5.0 (the earlier text said a bounded search found no stale-rule cleanup; the search used the wrong terms and missed the managed-root clean — §R15). Still unobserved: whether every update mode reaches the managed-clean stage (a template-only or binary-only update, and the version-match early return, were not traced); what the "backed up N unmanaged file(s)" progress line names beyond the count; whether a released-hash list could be generated from tags alone.
+15. Gitignored local instruction files (`AGENTS.local.md`, `CLAUDE.local.md`) were not measured for the word or the removed forms.
+16. The content of `multi-llm/kanban-mode.md` and the `moai chain` sections of `advanced/kanban-mode.md` were not re-read in this pass; the per-page dispositions in `design.md` §5 are made on titles and the existing redirect pattern.
+17. The board API is carried by 24 files under `internal/kanban` (acceptance.md RED-K4), not only the ten board-family files and their 13 tests: six further tests and a comment reference it. Which of those six also test kept behavior was not read per file.
+18. The 65 committed revisions of the main old rule file and the 18 v3 tags (progress.md PV-58) were counted, not hashed; whether the shipped bytes equal the committed template bytes for these paths (line endings, rendering) was not measured. Not needed under Option X (chosen), which adds no hash list; recorded only so the 65-revision figure in plan.md §B.2 is not read as hashed.
+
+## §R15 — The update flow and the three old rule files (verdict 18)
+
+Measured on tree `a6d3e6fd4` (progress.md PV-54..PV-59):
+
+- **The managed-root clean.** The template-sync stage "Removing old MoAI-managed files" (`internal/cli/update_template_sync.go:388-421`) calls `deploy.CleanMoaiManagedPaths` (`internal/cli/update/deploy/deploy.go:107-185`). Its targets (`:60-86`) are `.claude/settings.json`, `.claude/commands/moai`, `.claude/agents/moai`, `.claude/skills/moai*`, `.claude/rules/moai` (`defs.RulesMoaiSubdir = "rules/moai"`, `internal/defs/dirs.go:415`), `.claude/output-styles/moai`, `.claude/hooks/moai`, and `.moai/config`. Each root is removed after `backupThenRemove` (`:394-418`) copies every regular file the embedded template does not carry at the same relative path into `.moai-backups/<timestamp>/pre-clean/`; a failed backup aborts the removal (`TestCleanMoaiManagedPaths_BackupFailureAbortsRemoval`, passing); the progress line reports "backed up N unmanaged file(s)". Template-carried files are not backed up. The registry of destructive sites (`internal/cli/update_destructive_registry.go:57-160`) records the protection per site and is guarded by a source-scanning test.
+- **Observed against the real embedded template** (scratch probe, test file removed after the run; source in progress.md PV-55): a user-modified `kanban-dispatch.md` (a path the template carries today) and a user-modified `zz-retired-probe.md` (a path it does not carry) were both gone from the live tree after the clean; only the second was in the backup; the output line read "Removed .claude/rules/moai (backed up 1 unmanaged file(s))".
+- **Namespace protection.** `plan.IsUserOwnedNamespace` (`internal/cli/update/plan/plan.go:152-259`) matches harness skills, `.claude/agents/harness`, `.moai/harness`, harness commands and workflows, user skills outside `moai*`, and user agents outside the system prefixes — nothing under `.claude/rules/`; `IsMoaiManaged` covers `rules`. `backupUserOwnedNamespace` and `assertNoUserOwnedNamespaceTouch` (`internal/cli/update_namespace_protect.go`) therefore do not engage for the three paths.
+- **The deprecated-path route.** `defs.DeprecatedPaths` (`internal/defs/dirs.go:68`, a 40-entry registry, modified atomically with `dirs_test.go`) feeds `scanDeprecatedPaths`; the v3 residue sweep (`internal/cli/update_residue_cleanup.go:50-160`) backs up and then removes every scanned path with no modified-versus-pristine distinction, and its error aborts the update (`internal/cli/update.go:494-496`); `classifyDeprecatedFile` (`update_cleanup.go:341-358`) compares a file against the manifest `DeployedHash` for the backup record only. A registered path that exists counts as V2 signal 3 (`internal/cli/v2_detection.go:129-144`), overridden only by a confirmed v3 `moai.version`.
+- **Sizes and revisions.** Old rule files: 26,352 B (local) / 26,030 B (template) always-loaded, 39,965 B and 18,909 B path-scoped. `git log --oneline -- internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md | wc -l` → 65; `git tag --list 'v3*' | wc -l` → 18.
