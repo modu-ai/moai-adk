@@ -316,6 +316,15 @@ const (
 	// injecting a known-live PID).
 	EnvMoaiSessionPID = "MOAI_SESSION_PID"
 
+	// EnvRustLog is the Rust logging filter the codex child reads
+	// (SPEC-CODEX-DEBUG-MODE-001 REQ-010): when launcher debug mode is on and
+	// the operator set no value, the launcher appends RUST_LOG=debug to the
+	// child environment (best-effort linkage — the codex CLI documents no
+	// logging flag; an unknown variable is harmless to the child). An
+	// operator-supplied value is never modified (REQ-011). This constant is
+	// the only spelling site; no inline "RUST_LOG" literals elsewhere.
+	EnvRustLog = "RUST_LOG"
+
 	// EnvChainNodeID carries the origin-trail chain node ID from the spawning
 	// context to the child process. Set by the spawner (moai cc -w,
 	// EnterWorktree, Agent isolation:worktree) on the child environment before
@@ -569,6 +578,17 @@ const (
 	// fails whenever an audited production file changed after the last
 	// certification marker — the live pre-apply gate refusing, as designed.
 	EnvTestHomeStateLiveCoverage = "MOAI_TEST_HOME_STATE_LIVE_COVERAGE"
+
+	// EnvAnchorTrace turns on the session-anchor decision trace
+	// (SPEC-SESSION-ANCHOR-ATTR-001 REQ-SAA-007..009): when set to a truthy
+	// value ("1" or "true", case-insensitive), every anchor decision point —
+	// branch-guard Seam A anchor reads, registry relocations, disposal-side
+	// anchor decisions — appends one verbose JSONL row carrying session_id,
+	// pid, cwd, and a timestamp to .moai/logs/anchor-trace.jsonl. Unset or
+	// falsy: no trace output and no per-decision overhead beyond this single
+	// environment lookup (REQ-SAA-008). This constant is the trace switch's
+	// only name declaration site (REQ-SAA-009).
+	EnvAnchorTrace = "MOAI_ANCHOR_TRACE"
 )
 
 // Claude Code environment variables (set by Claude Code runtime).

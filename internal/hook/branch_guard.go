@@ -21,6 +21,7 @@ import (
 	"time"
 
 	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
+	"github.com/modu-ai/moai-adk/internal/session"
 )
 
 // branchGuardExemptEnv is the sentinel env var that exempts a session from the
@@ -1062,6 +1063,12 @@ func checkBranchState(input *HookInput, projectDir string) (decision string, rea
 	// argument; only which directory the caller asks it to query changes.
 	gitContextCwd := resolveProjectRootFromInputOrEnv(input, "branch_guard")
 	isPrimary, err := isPrimaryCheckout(gitContextCwd)
+	// W3 (SPEC-SESSION-ANCHOR-ATTR-001 REQ-SAA-007): this Seam A anchor read
+	// is one of the traced anchor decision points. One env lookup when
+	// MOAI_ANCHOR_TRACE is off (REQ-SAA-008); the audit-log project dir
+	// anchor (CLAUDE_PROJECT_DIR chain) is unchanged (REQ-SAA-012).
+	session.TraceAnchorDecision(projectDir, "branch_guard.anchor_read", input.SessionID, gitContextCwd,
+		fmt.Sprintf("is_primary=%t err=%v", isPrimary, err))
 	if err != nil {
 		// Fail OPEN with advisory (REQ-WBG-012). The deny requires positive
 		// evidence of a primary checkout; an error is NOT evidence. The

@@ -243,8 +243,27 @@ if [ -z "$GATE_LANG_CANDIDATES" ]; then
 fi
 
 # The gate's own state and log paths, anchored at the repository root so the
-# exclusion holds whatever the hook's working directory is.
-WCI_EXCLUDES=(':(top,exclude).moai/state' ':(top,exclude).moai/logs')
+# exclusion holds whatever the hook's working directory is. The same set also
+# carries two wider exclusion classes. Other cards' worktrees
+# (.moai/worktrees, .claude/worktrees) are outside this session's change
+# scope — their sources joined the delta set, the vetted GO_ROOTS, and this
+# gate's content key, so a foreign card's compile failure blocked this
+# session's gate (observed RED, card t1392); a pathspec rather than a
+# .gitignore entry, for the same reason the two excludes below are one.
+# And the heavy dependency/build dirs mirror the prune set detect_languages
+# walks above (which itself mirrors sourceScanSkipDirs in
+# internal/hook/quality/gate.go), so every collector in this hook skips one
+# shared set of trees.
+WCI_EXCLUDES=(':(top,exclude).moai/state' ':(top,exclude).moai/logs'
+    ':(top,exclude).moai/worktrees' ':(top,exclude).claude/worktrees'
+    ':(glob,top,exclude)**/node_modules/**' ':(glob,top,exclude)**/vendor/**'
+    ':(glob,top,exclude)**/dist/**' ':(glob,top,exclude)**/build/**'
+    ':(glob,top,exclude)**/target/**' ':(glob,top,exclude)**/.next/**'
+    ':(glob,top,exclude)**/.output/**' ':(glob,top,exclude)**/.venv/**'
+    ':(glob,top,exclude)**/venv/**' ':(glob,top,exclude)**/__pycache__/**'
+    ':(glob,top,exclude)**/site-packages/**' ':(glob,top,exclude)**/.tox/**'
+    ':(glob,top,exclude)**/.nox/**' ':(glob,top,exclude)**/.mypy_cache/**'
+    ':(glob,top,exclude)**/.ruff_cache/**' ':(glob,top,exclude)**/.pytest_cache/**')
 
 # Ignored sources join the delta set AND the worktree key. The find-based
 # checkers (Ruby/PHP/C++ …) scan ignored sources, so a broken ignored file
@@ -268,18 +287,37 @@ else
 fi
 # grep -c is wrapped so its no-match exit (1) under `set -e` does not abort; the
 # result is normalized to a single integer (avoids a "0\n0" double-emit).
+# SYNC_DELTA_FILES: every source path this gate could be responsible for —
+# ① the sync commit's diff (what HEAD~1..HEAD touched), ② tracked uncommitted
+# changes (git diff HEAD), ③ untracked new files, and ④ ignored sources
+# (collected above). ③'s walk carries the WCI_EXCLUDES pathspecs — the same
+# set ④ and the content key already filter by: a new file inside a
+# dependency/build dir or another card's worktree is not this session's
+# change scope, and left unfiltered it entered CHANGED_LANGS here while
+# find_go_module_roots vetted the foreign module, so a docs-only change
+# blocked on a broken vendor module (observed RED, card t1392). The
+# checkers read the WORK TREE, so a broken file that
+# exists only uncommitted must gate the turn even when the commit itself
+# touched nothing in its language: the worktree key already changes (forcing a
+# re-run), but the changed-language set aggregates only what is listed here,
+# so leaving ② and ③ out let a Go compile error added beside a Ruby-only
+# commit pass with zero Go checks (codex review gate reproduction —
+# `language=ruby`, no go steps, decision=allow). sort -u deduplicates the
+# overlap between the four sources.
+SYNC_DELTA_FILES=$({ git diff --name-only "$DIFF_RANGE" 2>/dev/null || true
+                     git diff HEAD --name-only 2>/dev/null || true
+                     git ls-files --others --exclude-standard -- "${WCI_EXCLUDES[@]}" 2>/dev/null || true
+                     [ -n "$WCI_IGNORED_SOURCES" ] && printf '%s\n' "$WCI_IGNORED_SOURCES"
+                   } | sort -u)
+
 CODE_DELTA=0
 CHANGED_LANGS=""
 for detected_language in $GATE_LANG_CANDIDATES; do
     DELTA_PATTERN=$(code_delta_pattern "$detected_language")
     if [ -n "$DELTA_PATTERN" ]; then
-        # The delta set is the HEAD commit diff PLUS the ignored sources: the
-        # checkers read the work tree, so an ignored source present in it is
-        # part of what a re-run would actually check (see the collection
-        # comment above). A `{ group; } |` keeps set -e from acting on grep.
-        DETECTED_DELTA=$({ git diff --name-only "$DIFF_RANGE" 2>/dev/null || true
-                           [ -n "$WCI_IGNORED_SOURCES" ] && printf '%s\n' "$WCI_IGNORED_SOURCES"
-                         } | grep -cE "$DELTA_PATTERN" || true)
+        # printf of the multi-line variable (possibly empty) under a pipe
+        # keeps set -e from acting on grep.
+        DETECTED_DELTA=$(printf '%s\n' "$SYNC_DELTA_FILES" | grep -cE "$DELTA_PATTERN" || true)
         CODE_DELTA=$((CODE_DELTA + ${DETECTED_DELTA:-0}))
         if [ "${DETECTED_DELTA:-0}" -gt 0 ]; then
             CHANGED_LANGS="$CHANGED_LANGS $detected_language"
@@ -670,40 +708,104 @@ run_step() {
 C1_LABELS=""
 C2_LABELS=""
 SKIPPED_TOOLS=""
-# find_go_module_root: the directory holding the go.mod that owns the first
-# .go file under the project root, walking up from it. A monorepo whose root
-# carries no go.mod but nests one under a subdirectory vetts from THAT root —
-# running the go checks at the repo root fails both slots (go cannot resolve
-# a main module) and blocks a healthy project (codex review gate reproduction:
-# a clean nested module's own vet succeeded while the gate recorded vet=1,
-# build=1 and stopped the turn). Empty stdout = no go.mod anywhere: the repo
-# root stays the anchor, where the failure is then a real one.
-find_go_module_root() {
-    local f d
-    f=$(find "$PROJECT_ROOT" -type f -name '*.go' \
-        -not -path '*/.git/*' -not -path '*/vendor/*' -print -quit 2>/dev/null)
-    [ -n "$f" ] || return 0
-    d=$(dirname "$f")
-    while :; do
-        if [ -f "$d/go.mod" ]; then
-            printf '%s\n' "$d"
-            return 0
-        fi
-        case "$d" in "$PROJECT_ROOT"|/) return 0 ;; esac
-        d=$(dirname "$d")
-    done
+# find_go_module_roots: every go.mod that owns a Go file in SYNC_DELTA_FILES
+# (the same delta set the checks read), one per line, deduplicated. A repo can
+# carry a root module AND nested modules; following only the first .go file's
+# module vetted whichever module find happened to hand back first and left the
+# other unmeasured — a broken root next to a clean nested module recorded
+# vet=0 build=0 and allowed (codex review gate reproduction, card t1389). The
+# caller runs the checks once per root and lets run_step's worst-exit slot
+# merge aggregate them. Empty stdout = no owning go.mod anywhere: the repo
+# root stays the anchor, where a failure is then a real one. A deleted file
+# still resolves its owning module — the walk ascends from the deleted path
+# itself, because the deletion can break sibling files that still reference
+# the removed symbols (observed RED, card t1392). Paths containing whitespace
+# are unsupported (git names them with octal escapes here, and no supported
+# layout needs one).
+find_go_module_roots() {
+    local files f d out
+    files=$(printf '%s\n' "$SYNC_DELTA_FILES" | grep -E '\.go$' || true)
+    out=""
+    while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        # No file-existence skip: a DELETED Go file must still resolve its
+        # owning module (the deletion itself can break siblings that still
+        # reference the removed symbols — card t1392). The walk below only
+        # tests directories for go.mod, so a missing file is handled
+        # identically: dirname ascends from the deleted path to the nearest
+        # surviving go.mod.
+        d="$PROJECT_ROOT/$f"
+        while :; do
+            d=$(dirname "$d")
+            if [ -f "$d/go.mod" ]; then
+                case "$out" in *"$d
+"*) ;; *) printf '%s\n' "$d"; out="$out$d
+" ;; esac
+                break
+            fi
+            case "$d" in "$PROJECT_ROOT"|/) break ;; esac
+        done
+    done <<GOFILES
+$files
+GOFILES
 }
-GO_ROOT=""
+# find_cargo_manifest_dirs: the Rust counterpart of the Go module-root walk.
+# Detection recurses over *.rs (has_suffix), so a nested package under a root
+# without its own Cargo.toml is detected — and a root `cargo check` there
+# exits 101 and blocks a healthy project (codex review gate reproduction:
+# root Gemfile + sub/Cargo.toml). Walk each changed .rs up to its nearest
+# owning manifest and check that package instead.
+find_cargo_manifest_dirs() {
+    local files f d out
+    files=$(printf '%s\n' "$SYNC_DELTA_FILES" | grep -E '\.rs$' || true)
+    out=""
+    while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        [ -f "$PROJECT_ROOT/$f" ] || continue
+        d="$PROJECT_ROOT/$f"
+        while :; do
+            d=$(dirname "$d")
+            if [ -f "$d/Cargo.toml" ]; then
+                case "$out" in *"$d
+"*) ;; *) printf '%s\n' "$d"; out="$out$d
+" ;; esac
+                break
+            fi
+            case "$d" in "$PROJECT_ROOT"|/) break ;; esac
+        done
+    done <<RSFILES
+$files
+RSFILES
+}
+GO_ROOTS=""
+CARGO_MANIFEST_DIRS=""
 for checked_language in $CHANGED_LANGS; do
 C1_LABEL="(none)"
 C2_LABEL="(none)"
 case "$checked_language" in
     go)
         C1_LABEL="go vet"; C2_LABEL="go build"
-        [ -n "$GO_ROOT" ] || GO_ROOT=$(find_go_module_root)
-        [ -n "$GO_ROOT" ] || GO_ROOT="$PROJECT_ROOT"
-        run_step go c1 go -C "$GO_ROOT" vet ./...
-        run_step go c2 go -C "$GO_ROOT" build ./...
+        # go -C (Go 1.20+) keeps the hook's cwd stable; loop over every owning
+        # module — run_step merges each call's exit into the c1/c2 slots with
+        # its worst-exit rule, so one broken module blocks no matter how many
+        # others passed.
+        [ -n "$GO_ROOTS" ] || GO_ROOTS=$(find_go_module_roots)
+        if [ -n "$GO_ROOTS" ]; then
+            # Line-based read: $GO_ROOTS is newline-separated, and a plain
+            # for-loop word-splits on IFS — a module root containing a space
+            # shattered into per-word chdir failures (observed RED, card
+            # t1392). read -r preserves each whole line; the here-string feeds
+            # the already-computed variable (same idiom as the read loops
+            # above).
+            while IFS= read -r go_root; do
+                [ -n "$go_root" ] || continue
+                run_step go c1 go -C "$go_root" vet ./...
+                run_step go c2 go -C "$go_root" build ./...
+            done <<< "$GO_ROOTS"
+        else
+            run_step go c1 go -C "$PROJECT_ROOT" vet ./...
+            run_step go c2 go -C "$PROJECT_ROOT" build ./...
+        fi
         ;;
     python)
         C1_LABEL="ruff"
@@ -715,7 +817,20 @@ case "$checked_language" in
         ;;
     rust)
         C1_LABEL="cargo check"
-        run_step cargo c1 cargo check
+        # Check each changed source's owning package, not the repo root: the
+        # root may carry no Cargo.toml at all (nested-package layout, codex
+        # review gate reproduction) where a bare `cargo check` exits 101 and
+        # blocks healthy code. No owning manifest anywhere keeps the root run
+        # as the anchor — a failure there is then a real one.
+        [ -n "$CARGO_MANIFEST_DIRS" ] || CARGO_MANIFEST_DIRS=$(find_cargo_manifest_dirs)
+        if [ -n "$CARGO_MANIFEST_DIRS" ]; then
+            while IFS= read -r cargo_dir; do
+                [ -n "$cargo_dir" ] || continue
+                run_step cargo c1 cargo check --manifest-path "$cargo_dir/Cargo.toml" -q
+            done < <(printf '%s\n' "$CARGO_MANIFEST_DIRS")
+        else
+            run_step cargo c1 cargo check
+        fi
         ;;
     java)
         C1_LABEL="javac compile check"
@@ -731,7 +846,7 @@ case "$checked_language" in
         ;;
     csharp)
         C1_LABEL="dotnet build"
-        run_step dotnet c1 dotnet build --no-restore 2>&1 | head -30 || true
+        run_step dotnet c1 dotnet build --no-restore
         ;;
     ruby)
         C1_LABEL="ruby syntax"
@@ -747,7 +862,7 @@ case "$checked_language" in
         ;;
     elixir)
         C1_LABEL="mix compile"
-        run_step mix c1 mix compile --no-start 2>&1 | head -20 || true
+        run_step mix c1 mix compile --no-start
         ;;
     cpp)
         C1_LABEL="g++ syntax check"
@@ -806,11 +921,11 @@ exit $rc' || true
         ;;
     flutter)
         C1_LABEL="dart analyze"
-        run_step dart c1 dart analyze 2>&1 | head -30 || true
+        run_step dart c1 dart analyze
         ;;
     swift)
         C1_LABEL="swift build"
-        run_step swift c1 swift build 2>&1 | head -30 || true
+        run_step swift c1 swift build
         ;;
 esac
 

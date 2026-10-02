@@ -1,6 +1,9 @@
 # 진입점
 
-**현재 부분 갱신 — t1338, worktree `.moai/worktrees/t1338`, 브랜치 `WT-lane-autonomy-umbrella`, base `8ea2febe2` (2026-09-30, sync-phase 부분 갱신).**
+**현재 부분 갱신 — t1297, worktree `.moai/worktrees/t1297`, 브랜치 `WT-codemaps-regen`, base `a9f43a6fc` (2026-10-02, 전면 재생성 카드).**
+앵커 `0a8780201`(t1378 판 스탬프) 뒤 창(card t1379·1338·1373·1381·1383·1385·1386·1388·1389·1387·1339·1394 착지분)을 반영했다. 등록 수치는 이 트리 재측정에서 변동 없었다 — 비테스트 `AddCommand(` 239·`rootCmd.AddCommand(` 66(t1338 판과 동일), MCP 도구 45(카탈로그 `internal/mcp/catalog.go` 동시 확인), 훅 설정 엔트리 34, 훅 이벤트 서브커맨드 26(`hook.go` 창 밖 변경 없음). 내용 갱신: codex 리뷰 게이트가 세션 스코핑을 얹었다(`codex_review_scope.go` 신규 — card t1383, § `modules.md` cli 행), 창의 나머지 CLI 변경(`factory_{adopt,merge,messaging,pickup}.go` 등)은 t1338 판이 이미 서술한 표면의 착지분이다. § 훅의 래퍼 수와 그 밖의 절은 창에서 움직인 등록 표면이 없어 이전 판을 이어받았다.
+
+**이전 갱신 — t1338, worktree `.moai/worktrees/t1338`, 브랜치 `WT-lane-autonomy-umbrella`, base `8ea2febe2` (2026-09-30, sync-phase 부분 갱신).**
 앵커 `8ea2febe2`(흡수한 develop 기점) 뒤 이 카드의 신규 표면을 반영(card t1338, SPEC-FACTORY-LANE-AUTONOMY-001 — 팩토리 레인 자율 완성, 신규 패키지 `internal/factorylane` 위의 cli 배선). `moai factory messaging probe|request|ack` — 채널 가용성 판정(세션msg 레지스트리 읽기 전용, 리더 heartbeat 연령 상한, 활성 무응답 관측 우선; 불가 판정은 exit 0 보고), 지시 요청 기록과 응답 확인. `moai factory fallback [--all]|declare|restore` — fallback 전이 장부의 질의(레인별, `--all`은 전 레인 카운트)와 기록(한 전환 한 사건). `moai factory pickup plan` — 분류 픽업 판정(sequential 그룹 단일 보유·parallel 동시·부재 메타데이터는 fallback 단일 디스패치). `moai factory merge ready|gate` — 조건 삼중(sync-audit·merge-tree 드라이런·트리 동일)을 통합 창 선점 전에 기록하고, gate는 자기 레인의 산 창 기록이 덮지 않는 병합 시점을 거부한다(이 표면은 병합을 수행하지 않는다). `moai factory handoff adopt --card <id>` — stall 판정 뒤 픽업 카드를 기록된 진행·증거(SHA-256)에서 재개하고 `resumption.jsonl`만 덧붙인다. `moai worktree done`은 카드 브랜치(`WT-` 접두)에 origin 착지 기계 검사를 두 판정 경로 모두에 얹었다(fetch + rev-list; 플래그 우회 없음, fetch 실패 fail-closed). 비테스트 `AddCommand(` 등록은 231→239(+8 — 이 카드 diff의 추가 등록 줄과 정확히 일치), 등록 파일 73→76(+3: `factory_messaging`·`factory_merge`·`factory_pickup`), `rootCmd.AddCommand(` 66·root.go init() 30회는 변동 없었다(이 트리 재측정).
 
 **이전 갱신 — t1374, worktree `.claude/worktrees/t1374`, 브랜치 `WT-t1368-ci-repair`, base `ca7191cba` (2026-09-30).**

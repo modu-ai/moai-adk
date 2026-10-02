@@ -312,34 +312,47 @@ templ Todo(vm ShellVM, q TodoVM) {
 			} else {
 				// 세 상태를 모두 싣는다(결정 G-5). queued 만 보여주는 작업 화면으로는
 				// "그 카드 어디로 갔나"에 답할 수 없어서, 감사 화면 쪽을 골랐다.
-				<div class="tbl tbl--todo">
-					<div class="tr tr--head tr--todo-head">
-						<span data-i18n="todo.id">ID</span>
-						<span data-i18n="todo.text">Card</span>
-						<span data-i18n="todo.state">State</span>
-						<span>SPEC</span>
-					</div>
-					for _, it := range q.Items {
-						<div class="tr tr--todo" data-todo-row>
-							<span class="mono todo-row__id">{ it.ID }</span>
-							<span class="todo-row__text" title={ it.Text }>{ it.Text }</span>
-							<span class="todo-row__state">@todoStateBadge(it.State)</span>
-							if it.SpecID != "" {
-								<span class="mono panel__meta todo-row__spec" title={ it.SpecID }>{ it.SpecID }</span>
-							} else {
-								<span class="todo-row__spec">@missing()</span>
-							}
-						</div>
-						if len(it.Relations) > 0 {
-							<div class="tr tr--todo-rel" data-todo-relations>
-								<span></span>
-								<span class="panel__meta todo-row__relations">
-									for _, rel := range it.Relations {
-										<span class="mono todo-row__relation">{ rel }</span>
-									}
-								</span>
-							</div>
+				<div class="toolbar" style="justify-content:flex-end;gap:10px">
+					<span class="panel__meta" data-i18n="todo.sort">Sort</span>
+					<div class="seg" role="group" aria-label="Sort order">
+						for _, o := range q.SortOptions {
+							<a class="seg__b" href={ templ.SafeURL(o.Href) } aria-selected={ attrBool(o.Active) } data-i18n={ o.LabelKey }>{ o.Label }</a>
 						}
+					</div>
+				</div>
+				<div class="splitpane">
+					<div class="tbl tbl--todo">
+						<div class="tr tr--head tr--todo-head">
+							<span data-i18n="todo.id">ID</span>
+							<span data-i18n="todo.text">Card</span>
+							<span data-i18n="todo.state">State</span>
+							<span>SPEC</span>
+						</div>
+						for _, it := range q.Items {
+							<a class={ "tr", "tr--todo", "tr--link", templ.KV("tr--sel", it.ID == q.SelectedID) } data-todo-row href={ templ.SafeURL("/todo?sort=" + q.Sort + "&id=" + it.ID) }>
+								<span class="mono todo-row__id">{ it.ID }</span>
+								<span class="todo-row__text" title={ it.Text }>{ it.Text }</span>
+								<span class="todo-row__state">@todoStateBadge(it.State)</span>
+								if it.SpecID != "" {
+									<span class="mono panel__meta todo-row__spec" title={ it.SpecID }>{ it.SpecID }</span>
+								} else {
+									<span class="todo-row__spec">@missing()</span>
+								}
+							</a>
+							if len(it.Relations) > 0 {
+								<div class="tr tr--todo-rel" data-todo-relations>
+									<span></span>
+									<span class="panel__meta todo-row__relations">
+										for _, rel := range it.Relations {
+											<span class="mono todo-row__relation">{ rel }</span>
+										}
+									</span>
+								</div>
+							}
+						}
+					</div>
+					if q.Detail != nil {
+						@todoDetail(*q.Detail, q.Sort)
 					}
 				</div>
 			}
@@ -356,6 +369,39 @@ templ todoStateBadge(state string) {
 		data-todo-state={ state }
 		data-i18n={ "todo.state." + state }
 	>{ state }</span>
+}
+
+// todoDetail 은 선택한 카드의 전문을 사이드 패널에 펼친다. 목록 행은 폭이
+// 정해져 긴 본문이 끊기므로(t1277), 감사 화면의 전문과 관계 기록은 여기서
+// 온전히 읽힌다. 골격은 Specs 의 슬라이드 패널과 같은 계열이다.
+templ todoDetail(d TodoItemVM, sort string) {
+	<aside class="slide" aria-label="Card detail">
+		<div class="slide__h">
+			<div style="display:flex;flex-direction:column;align-items:flex-start;gap:6px">
+				<span class="mono panel__meta">{ d.ID }</span>
+				@todoStateBadge(d.State)
+			</div>
+			<a class="icon-btn" href={ templ.SafeURL("/todo?sort=" + sort) } aria-label="Close">@iconAt("close", 13)</a>
+		</div>
+		<div class="slide__b">
+			<div style="white-space:pre-wrap;font-size:13px;line-height:1.55">{ d.Text }</div>
+			if d.SpecID != "" {
+				<ul class="kv">
+					<li><span>SPEC</span><b class="mono">{ d.SpecID }</b></li>
+				</ul>
+			}
+			if len(d.Relations) > 0 {
+				<div>
+					<span class="slide__st" data-i18n="todo.relations">Relations</span>
+					<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px">
+						for _, rel := range d.Relations {
+							<span class="mono todo-row__relation">{ rel }</span>
+						}
+					</div>
+				</div>
+			}
+		</div>
+	</aside>
 }
 
 /* ── SPEC 목록 + 슬라이드 패널 ─────────────────────────── */

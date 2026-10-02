@@ -116,12 +116,14 @@ type GLMTaskResult struct {
 	Error string `json:"error,omitempty"`
 }
 
-// resolveGLMTaskModel resolves the default GLM task model: the backend default
-// glmAuditDefaultModel. MoAI assigns no per-agent model, so no llm.yaml cell is
-// consulted (SPEC-AGENT-MODEL-INHERIT-001 design D5); a caller override is
-// handled by handleGLMTask before this is reached.
+// resolveGLMTaskModel resolves the default GLM task model: the task default
+// glmTaskDefaultModel (config.DefaultGLMHigh — UNCHANGED by
+// SPEC-AGENT-TIER-001; the audit pin flip is audit-only, REQ-AMP-008). MoAI
+// assigns no per-agent model, so no llm.yaml cell is consulted
+// (SPEC-AGENT-MODEL-INHERIT-001 design D5); a caller override is handled by
+// handleGLMTask before this is reached.
 func resolveGLMTaskModel() string {
-	return glmAuditDefaultModel
+	return glmTaskDefaultModel
 }
 
 // handleGLMTask is the handler for the `glm_task` MCP tool.

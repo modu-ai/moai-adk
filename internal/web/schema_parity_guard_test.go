@@ -51,6 +51,13 @@ func schemaRenderedFieldNames() map[string]bool {
 	for _, f := range jevSectionFields() {
 		rendered[f.Name] = true
 	}
+	// The agent-tier sub-section (tier axis): dedicated component in the same
+	// sense as fieldsetJevSection — it owns its field enumeration
+	// (agentTierSectionFields) and renders inside the workflow panel with the
+	// chart-grounding table. A render home, NOT an exemption.
+	for _, f := range agentTierSectionFields() {
+		rendered[f.Name] = true
+	}
 	return rendered
 }
 
