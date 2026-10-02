@@ -159,7 +159,7 @@ Open items for audit and sync: A4 (UserPromptSubmit firing on an autonomous lane
 
 sync_status: audit-ready
 sync_complete_at: 2026-10-02
-sync_commit_sha: pending-backfill
+sync_commit_sha: 162d32aeae45238bea923c3161d14eafea7fe2d4
 cycle: 3-phase close (plan, run, sync); the sync commit carries `in-progress -> implemented -> completed`
 
 - b12_self_test_a (pre-emission grep): `grep -c 'SPEC-FACTORY-STALE-RUN-HEAL-001' CHANGELOG.md` read 0 before the entry was written (this run, tree 48c9ca6e0).
