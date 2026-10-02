@@ -21,6 +21,7 @@ import (
 var unparsedShapes = map[string]string{
 	"truncated-json":   `{"timestamp":"2026-09-01T00:00:00Z","event_type":"moai_subcommand","subj`,
 	"plain-text":       `not json at all`,
+	"padded-text":      "  padded garbage \t",
 	"wrong-field-type": `{"timestamp":123,"subject":"typed-wrong"}`,
 	"json-array":       `[1,2,3]`,
 }

@@ -210,7 +210,8 @@ func (r *Retention) prune(retentionDays int, now time.Time) error {
 
 // logLine is one line that survives a prune. A line that parsed carries its event, which
 // is re-encoded on rewrite; a line that did not parse carries only its text (raw), which
-// is written back verbatim so a damaged line is never lost to a prune.
+// is written back as found (apart from its line terminator, normalized to "\n") so a
+// damaged line is never lost to a prune.
 type logLine struct {
 	evt Event
 	raw string
