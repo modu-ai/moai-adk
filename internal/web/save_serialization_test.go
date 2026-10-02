@@ -46,8 +46,8 @@ func TestSaveRequestsAreSerialized(t *testing.T) {
 	a.jevcredSave = func(string) error { return nil }
 
 	var (
-		entries      int32 // 1-based count of write-seam entries
-		aSeamExited  int32 // set inside A's seam AFTER it unblocks — A's seam exit marker
+		entries       int32 // 1-based count of write-seam entries
+		aSeamExited   int32 // set inside A's seam AFTER it unblocks — A's seam exit marker
 		bEnteredEarly int32 // set when B's seam entry observed before A's seam exit
 	)
 	aReached := make(chan struct{})
