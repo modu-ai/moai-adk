@@ -575,7 +575,7 @@ commits:
   m2: 7ff94b33f79ec389a8f226cde4fbe018c0f7c68b
   m3: 8ea00c4bb17ad018ad35c79207479332b8e390ee
   m4: 45dc4e1012fe988fa8803ffb048625ddb327327e
-  m5_evidence: pending-backfill   # a commit cannot cite its own hash; the real SHA is in the run report
+  m5_evidence: 80d491599   # a commit cannot cite its own hash; the real SHA is in the run report
 acceptance_criteria: {total: 13, pass: 13, skipped: 0}
 open_gaps:
   - end-to-end real-lane gate observation after installing a build from this tree (post-install follow-up, not an AC)
@@ -590,7 +590,21 @@ minor_plan_debt:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-10-02
+sync_status: audit-ready
+sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; backfilled in the following commit
+changelog_path: CHANGELOG.md   # [Unreleased] ### Added, first entry
+ac_source: .moai/specs/SPEC-QUOTA-RECORD-WORKTREES-001/acceptance.md   # tier M
+ac_count: 13   # live "### AC-QWR-" headings in acceptance.md
+open_gaps:
+  - end-to-end real-lane gate observation after installing a build from this tree (post-install follow-up, not an AC)
+  - 128 default, 4 KiB gitdir read and per-call cost unmeasured (one noisy benchmark sample only)
+  - fallback path of the production seam unpinned by any test
+  - Windows gitdir shape unexercised
+  - plan debt D-N10..D-N15 and D-R3, D-R4, D-R5, D-R7 not absorbed in the run phase
+  - 1846 inserted lines under internal/ exceed the Tier M LOC guidance (1663 of them in test files)
+```
 
 ## §F Phase 4 Mode Selection
 

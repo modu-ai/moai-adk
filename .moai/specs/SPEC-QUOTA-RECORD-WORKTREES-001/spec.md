@@ -2,7 +2,7 @@
 id: SPEC-QUOTA-RECORD-WORKTREES-001
 title: "Quota aggregator reads the record directories of linked worktrees — the usage gate sees readings from sessions that run inside card worktrees"
 version: "0.6.0"
-status: in-progress
+status: completed
 created: 2026-10-02
 updated: 2026-10-02
 author: manager-spec
