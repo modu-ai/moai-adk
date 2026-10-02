@@ -1229,6 +1229,70 @@ Re-run on the fixed tree, env unset in one compound invocation each, no error ba
 
 Gaps of this correction: the whole `internal/cli` suite is still unrun (Gap 1 above stands), so another test outside every selector could still be red; the golden test's `-count=1` run was a single run, not repeated for flakiness. Worktree-guard refusals in this round: none.
 
+### M5b evidence
+
+Recorded by the run-phase implementation worker (cycle_type tdd) for milestone M5b of card t1399 (hook removal and the end of the three markers), branch `WT-launcher-entry-flags`. Start state, re-read before any change: `pwd` printed `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1399`, `git rev-parse --short HEAD` printed `7e8087f40`, `git branch --show-current` printed `WT-launcher-entry-flags`, `git status --short` printed nothing. Output blocks are verbatim excerpts of commands run in this run on this tree; each says what it drops. Raw outputs were kept in `/tmp/t1399-m5b-*.txt` (outside the tree).
+
+#### RED-now and RED before the implementation (E8)
+
+RED-now of the M5b-flipping greps on tree `7e8087f40` (read before any edit; the line `exit=` is the tool exit of the command):
+
+```text
+$ grep -rl 'MOAI_KANBAN_LABEL' internal cmd --include='*.go' --exclude='*_test.go'      (AC-013 grep half; RED-8b)
+internal/config/envkeys.go
+exit=0
+$ grep -c 'kanbanBootstrapNotice' internal/hook/session_start.go                          (AC-014; RED-K5)
+2
+exit=0
+$ find internal/hook -name 'session_start_kanban*'                                        (AC-014)
+internal/hook/session_start_kanban_test.go
+internal/hook/session_start_kanban_i18n_test.go
+internal/hook/session_start_kanban_todo_test.go
+internal/hook/session_start_kanban.go
+internal/hook/session_start_kanban_surface_test.go
+internal/hook/session_start_kanban_i18n.go
+$ grep -rlE 'enterKanbanMode|enterKanbanCompanionMode|parseKanbanFlag|rejectKanbanOnCG|EnvMoaiKanban\b|EnvMoaiKanbanSpec|CompanionRoles|SplitCompanionLabel|kanbanLeaderNotice|kanbanCompanionNotice|kanbanBootstrapNotice' internal cmd --exclude='*_test.go'     (AC-012 symbol grep; RED-K3)
+internal/config/envkeys.go
+internal/cli/ptycaptest/harness.go
+internal/kanban/role.go
+internal/kanban/bootstrap.go
+internal/hook/session_start_factory.go
+internal/hook/session_start.go
+internal/hook/session_start_record.go
+internal/hook/session_start_kanban.go
+exit=0
+```
+
+Step 1 (the helper moves) was done and committed first, as its own commit `c10194abc` (`langEnglish` and `operatorLang` into `internal/hook/session_start_lang.go`, `clearKanbanEnv` into `internal/hook/session_start_env_helper_test.go`; text moved, nothing else changed). On that tree, env unset in one compound invocation each, tool exit 0: `go build ./...`, `GOOS=windows GOARCH=amd64 go build ./...`, `GOOS=windows GOARCH=amd64 go vet ./internal/hook/`, `go vet ./internal/hook/` (empty output), and the net: hook `--- PASS: TestFactoryNetSessionRecord`, `--- PASS: TestFactoryNetSessionStartNotices`; cli 8 PASS (`TestCCFactoryLaneJoinsDiscoveredLeader`, `TestGLMFactoryLaneJoinsDiscoveredLeader`, `TestFactoryNetLeaderLaunch`, `TestFactoryNetLaneLaunch`, `TestFactoryNetBlockCap`, `TestFactoryEntryMatrix`, `TestCCFactoryEntryRecordsFailOpenRunMetadata`, `TestPrepareKanbanSettingsWritesTransientFile`), `ok … internal/cli 32.713s`; discovery `--- PASS: TestDiscoverLeaderVerifiesLiveLeader`, `--- PASS: TestDiscoverLeaderDeclinesUnparseableRunID`.
+
+New and re-pinned tests written first: `internal/hook/session_start_no_kanban_notice_test.go` (new: `TestSessionStartEmitsNoKanbanNotice`, `TestSessionRecordIgnoresRetiredKanbanMarkers`) and `internal/hook/factory_net_m1_test.go` (`TestPreexistingKanbanArtifactsTolerated` gains the notice-absence and no-record assertions). RED run on `c10194abc` plus only those test edits, env unset, tool exit 1 (`go test ./internal/hook -run '^(TestSessionStartEmitsNoKanbanNotice|TestSessionRecordIgnoresRetiredKanbanMarkers|TestPreexistingKanbanArtifactsTolerated|TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide)$' -v -count=1`, assertion lines and verdict lines only):
+
+```text
+    factory_net_m1_test.go:234: session old-plan received a kanban notice on additionalContext:
+    factory_net_m1_test.go:234: session old-plan received a kanban notice on systemMessage:
+    factory_net_m1_test.go:234: session new-session received a kanban notice on additionalContext:
+    factory_net_m1_test.go:234: session new-session received a kanban notice on systemMessage:
+    factory_net_m1_test.go:241: a session carrying only the retired markers wrote a session record
+--- FAIL: TestPreexistingKanbanArtifactsTolerated (1.80s)
+--- PASS: TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide (0.00s)
+--- FAIL: TestSessionStartEmitsNoKanbanNotice (6.63s)
+    --- PASS: TestSessionStartEmitsNoKanbanNotice/no_marker (1.22s)
+    --- PASS: TestSessionStartEmitsNoKanbanNotice/leader_marker_alone (0.99s)
+    --- FAIL: TestSessionStartEmitsNoKanbanNotice/companion_label_alone (0.99s)
+    --- FAIL: TestSessionStartEmitsNoKanbanNotice/leader_marker_with_run_id,_socket,_and_SPEC (1.05s)
+    --- FAIL: TestSessionStartEmitsNoKanbanNotice/both_markers (0.61s)
+    --- PASS: TestSessionStartEmitsNoKanbanNotice/factory_leader_still_receives_its_notice (0.85s)
+    --- PASS: TestSessionStartEmitsNoKanbanNotice/factory_lane_still_receives_its_notice (0.92s)
+    session_start_no_kanban_notice_test.go:114: kanbanRoleFromEnv with map[MOAI_KANBAN:1] = ("leader", 0, true), want ok=false
+    session_start_no_kanban_notice_test.go:114: kanbanRoleFromEnv with map[MOAI_KANBAN_LABEL:plan] = ("plan", 0, true), want ok=false
+    session_start_no_kanban_notice_test.go:114: kanbanRoleFromEnv with map[MOAI_KANBAN_LABEL:sync-2] = ("sync", 0, true), want ok=false
+    session_start_no_kanban_notice_test.go:136: the record SPEC field = "SPEC-RETIRED-001", want the empty string
+--- FAIL: TestSessionRecordIgnoresRetiredKanbanMarkers (0.02s)
+FAIL	github.com/modu-ai/moai-adk/internal/hook	9.499s
+```
+
+Why the three passing subtests pass now (read, not hidden): `no_marker` is the control that the assertion does not fire on a clean session; `leader_marker_alone` (`MOAI_KANBAN=1` with no run id) passes because the leader notice builder returns the empty string for an empty run id, so the notice test cannot see that marker alone (the record test does: `kanbanRoleFromEnv` returns `("leader", 0, true)` for it); the two factory subtests are the unchanged-notice half of AC-014. A first run of the same tests reported a false red on `no_marker`: the session id contained the word the assertion greps for, and the attribution line of the context echoes the session id; the ids were renamed (`retired-marker-…`) and the RED above is the second run.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
