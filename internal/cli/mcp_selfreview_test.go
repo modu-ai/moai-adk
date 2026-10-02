@@ -107,14 +107,13 @@ func TestSelfReview_ToolSurface(t *testing.T) {
 // TestSelfReview_AuditToolSchemasUnchanged — AC-007 (e)(f): the four audit
 // tools keep their names and their input/output schemas, compared BY VALUE with
 // the snapshot taken from the pre-change server (plan.md §I M1). The snapshot
-// is local evidence (.moai/reports is gitignored), so a checkout without it
-// cannot run the comparison: that is reported as a skip — an unobserved
-// comparison, never a pass.
+// is tracked under testdata/, so every checkout runs the comparison: an absent
+// snapshot is a defect of the checkout, not a reason to skip.
 func TestSelfReview_AuditToolSchemasUnchanged(t *testing.T) {
-	snapPath := "../../.moai/reports/t1422/red/audit-tools-schema-pre.json"
+	snapPath := "testdata/audit-tools-schema-pre.json"
 	raw, err := os.ReadFile(snapPath)
 	if err != nil {
-		t.Skipf("audit-tool schema snapshot absent (%v): the comparison is unobserved here", err)
+		t.Fatalf("audit-tool schema snapshot unreadable (%v): the comparison cannot run", err)
 	}
 	var snap []map[string]any
 	if err := json.Unmarshal(raw, &snap); err != nil {
