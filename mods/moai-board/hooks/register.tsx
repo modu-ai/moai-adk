@@ -108,23 +108,33 @@ const pollOnce = async ($: EngineInterface, want: Wanted): Promise<void> => {
 }
 
 // At most one poll in flight. A user action that arrives while one runs is remembered
-// and served right after it; a timer tick that finds one running is dropped.
+// and served right after it; a timer tick that finds one running is dropped. A user action
+// resolves only once its own read has been served, so a caller that reads the feed afterwards
+// sees data read after the call (REQ-MBM-005: the pick confirmation).
+let running: Promise<void> | undefined
+
 const refresh = async ($: EngineInterface, want: Wanted, isTick = false): Promise<void> => {
   if (!isTick) pending = merge(pending, want)
-  if (!gate.tryStart()) return
-  try {
-    let next: Wanted | undefined = isTick ? merge(pending, want) : pending
-    pending = undefined
-    while (next !== undefined) {
-      await pollOnce($, next)
-      next = pending
-      pending = undefined
-    }
-  } catch (err) {
-    await soft($, async () => say($, `The board could not refresh: ${errorText(err)}`))
-  } finally {
-    gate.finish()
+  if (!gate.tryStart()) {
+    if (!isTick) await running
+    return
   }
+  running = (async () => {
+    try {
+      let next: Wanted | undefined = isTick ? merge(pending, want) : pending
+      pending = undefined
+      while (next !== undefined) {
+        await pollOnce($, next)
+        next = pending
+        pending = undefined
+      }
+    } catch (err) {
+      await soft($, async () => say($, `The board could not refresh: ${errorText(err)}`))
+    } finally {
+      gate.finish()
+    }
+  })()
+  await running
 }
 
 const stopPolling = (): void => {

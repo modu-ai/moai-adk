@@ -94,6 +94,15 @@ Other checks: `moai spec lint SPEC-MOAI-BOARD-MOD-001 --strict` exit 0, `No find
 - Polling cost under the real 1.9 MB payload inside the isolate is unmeasured; the 15,000 ms floor is the plan's, not a measured optimum (Q3).
 - Pick confirmation uses the exact label `Pick`; a dialog variant that returns the label with extra text would read as a no-op (safe direction).
 
+### Post-sync-audit fix (F1)
+
+Sync-audit finding F1 (REQ-MBM-005): `onPickPress` read the queue feed right after `refresh`, but `refresh` returned at once when a poll was already in flight, so a successful pick could read as "unconfirmed". Fixed in `hooks/register.tsx`: a user-action `refresh` that finds a poll in flight now awaits the running poll loop, which serves the remembered request as one fresh read after the pick; a timer tick still drops (one poll in flight, no stacked polls).
+
+- RED (this tree, before the fix): `CLAUDE_CONFIG_DIR=/tmp/mbm-claude-cfg claude plugin test mods/moai-board` exit 1; `(fail) pick: poll in flight when the dialog is answered, the post-pick read confirms`, `Expected: "Picked t2."`, `Received: "The pick reported success but the card still reads queued (unconfirmed)."`; the control `(pass) pick: no poll in flight, the post-pick read confirms`; `1 fail`, `Ran 17 tests across 2 files`.
+- GREEN (after the fix): same command exit 0; ` 17 pass`, ` 0 fail`, `Ran 17 tests across 2 files` (both new pick tests pass).
+- Other runs after the fix: `bun test mods/moai-board/tests/pure/ --reporter=junit ...` exit 0, junit `<testcase` 35, `<failure` 0, `<skipped` 0; `claude plugin validate mods/moai-board` exit 0 (`Validation passed`); `moai spec lint SPEC-MOAI-BOARD-MOD-001 --strict` exit 0. `buildPickArgv` and `onPickPress` occurrence counts in `hooks/` unchanged (3 and 2); no `$.` in data.ts, specs.ts, view.tsx.
+- Test support: `tests/support.ts` gains `hold` (blocks the next list read, answer fixed when it starts) and `afterPick` (queue payload after a pick argv); the stub handler became async.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready (engine and pure parts green; AC-MBM-014 and -015 remain manual Gap-class and are not recorded as passes)

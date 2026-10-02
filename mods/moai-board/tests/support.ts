@@ -44,6 +44,10 @@ export type Stub = {
   /** What the next process answers: 'ok' (fixtures), 'reject' (cannot start), 'exit2', 'garbage'. */
   mode: { value: 'ok' | 'reject' | 'exit2' | 'garbage' }
   queue: { value: string }
+  /** The next `gtd list --json` blocks on this promise (its answer is fixed when it starts); one use only. */
+  hold: { wait: Promise<void> | undefined }
+  /** When set, a pick argv (`next`) replaces the queue payload with this one. */
+  afterPick: { value: string | undefined }
 }
 
 // Everything beneath the plugin in a test: the engine's own nouns the module calls, a
@@ -52,11 +56,13 @@ export const setup = (on: On, queue = queueFixture()): Stub => {
   const calls: string[][] = []
   const mode: Stub['mode'] = { value: 'ok' }
   const q = { value: queue }
+  const hold: Stub['hold'] = { wait: undefined }
+  const afterPick: Stub['afterPick'] = { value: undefined }
   on('session.start', (_$, e) => ({ cwd: e.cwd }))
   on('command.register', (_$, e) => ({ value: { command: e.name } }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('ui.close', () => ({ value: undefined }))
-  on('process.run', (_$, e) => {
+  on('process.run', async (_$, e) => {
     calls.push([...e.argv])
     if (mode.value === 'reject') throw new Error('spawn moai ENOENT')
     const ran = (stdout: string, exitCode = 0, stderr = '') => ({
@@ -65,6 +71,14 @@ export const setup = (on: On, queue = queueFixture()): Stub => {
     if (mode.value === 'exit2') return ran('', 2, 'moai: something broke')
     if (mode.value === 'garbage') return ran('<<< not json >>>')
     const joined = e.argv.join(' ')
+    if (e.argv.includes('next') && afterPick.value !== undefined) q.value = afterPick.value
+    if (joined === 'moai gtd list --json' && hold.wait !== undefined) {
+      const answer = q.value
+      const wait = hold.wait
+      hold.wait = undefined
+      await wait
+      return ran(answer)
+    }
     return joined.includes('gtd list')
       ? ran(q.value)
       : joined.includes('factory status')
@@ -75,7 +89,7 @@ export const setup = (on: On, queue = queueFixture()): Stub => {
             ? ran(SPEC_LIST)
             : ran('')
   })
-  return { calls, clock: mock.clock(on), mode, queue: q }
+  return { calls, clock: mock.clock(on), mode, queue: q, hold, afterPick }
 }
 
 /** Answers the engine's AskUserQuestion dialog (what `$.ui.ask` raises) with a label, or dismisses it. */

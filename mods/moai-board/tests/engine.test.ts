@@ -2,7 +2,7 @@
 // They exercise hook dispatch, timers and the pick flow against the engine itself
 // (never a surface's paint). Pure parsers are covered by tests/pure/ under bun.
 import { expect, test } from 'claude-code/testing'
-import { PANE, answerAsk, picks, setup, stubSpecFiles } from './support'
+import { PANE, answerAsk, picks, queueFixture, setup, stubSpecFiles } from './support'
 
 const mount = ($: Parameters<Parameters<typeof test>[1]>[0]) =>
   $.ui.mount({ plugin: 'moai-board', surface: 'terminal', component: 'Pane', requestId: 'moai-board', props: PANE })
@@ -96,6 +96,44 @@ test('pick: rejected ask runs no process', async ($, on) => {
   answerAsk(on, undefined)
   await pressPick($)
   expect(picks(calls).length).toBe(0)
+})
+
+// ---- pick: the confirmation reads the queue as it is after the pick (REQ-MBM-005) ------------------
+
+const PICKED_T2 = queueFixture({ picked: 2, queued: 0, hold: 1, dropped: 1 })
+
+const settledNotice = async (ui: Awaited<ReturnType<typeof mount>>) => {
+  for (let i = 0; i < 50; i++) {
+    const found = await ui.find({ key: 'notice' })
+    if (found !== undefined) return found.text
+  }
+  return undefined
+}
+
+test('pick: no poll in flight, the post-pick read confirms', async ($, on) => {
+  const stub = setup(on)
+  stub.afterPick.value = PICKED_T2
+  answerAsk(on, 'Pick')
+  const ui = await pressPick($)
+  expect(await settledNotice(ui)).toBe('Picked t2.')
+})
+
+test('pick: poll in flight when the dialog is answered, the post-pick read confirms', async ($, on) => {
+  const stub = setup(on)
+  stub.afterPick.value = PICKED_T2
+  answerAsk(on, 'Pick')
+  await $.command.run({ command: 'moai-board' })
+  const ui = await mount($)
+  await ui.press({ key: 'open:t2' })
+  let release: () => void = () => {}
+  stub.hold.wait = new Promise<void>(resolve => {
+    release = resolve
+  })
+  await stub.clock.advance(15_000) // a timer poll starts here and blocks, its answer still showing t2 queued
+  await ui.press({ key: 'pick:t2' })
+  release()
+  expect(await settledNotice(ui)).toBe('Picked t2.')
+  expect(picks(stub.calls).length).toBe(1)
 })
 
 // ---- fail-soft ------------------------------------------------------------------------------
