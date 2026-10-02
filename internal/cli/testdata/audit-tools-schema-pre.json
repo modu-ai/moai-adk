@@ -1,0 +1,643 @@
+[
+  {
+    "inputSchema": {
+      "properties": {
+        "card_id": {
+          "description": "Optional card id binding this review as the card's second review (writes second-review.jsonl into the card evidence directory). Empty ⇒ no record.",
+          "type": "string"
+        },
+        "claude_verdict": {
+          "description": "Conditional Claude-main anchor (review-output schema). Ignored for GPT/GLM/unknown launch providers, which run an independent Claude subscription audit.",
+          "properties": {},
+          "type": "object"
+        },
+        "focus": {
+          "description": "Optional focus area (e.g. 'concurrency', 'auth', 'secret handling').",
+          "type": "string"
+        },
+        "gates": {
+          "description": "Optional per-auditor gate override (keys: claude/codex/glm; values: off|advisory|required). Defaults: claude+codex required, glm advisory.",
+          "properties": {},
+          "type": "object"
+        },
+        "project_root": {
+          "description": "Optional project or worktree root to act on. Supply your own `git rev-parse --show-toplevel`. In a worktree session you MUST pass it: the server's own resolution names the PRIMARY checkout, so omitting it acts on the wrong tree. An unusable path is rejected, never silently replaced by a default, and an accepted path is canonicalized — symlinks resolved — so the call acts on the real directory rather than on the spelling that reached it. A linked worktree of a repository that does not track .moai is accepted too, when git registers it as a worktree of a primary checkout that has .moai. On such a worktree without its own workflow config, the audit gate (workflow.audit.gates) is read from the primary checkout; its SPEC catalogue is the union of the worktree's and the primary checkout's .moai/specs, and its state is kept in the primary checkout's .moai/state under the worktree's own tree identity. Absent or empty supplies no root at all, exactly as before this parameter existed — the backends then resolve their own working directory.",
+          "type": "string"
+        },
+        "session_id": {
+          "description": "Optional session id for per-session convergence state persistence (.moai/state/audit-multi/<session>.json). Empty ⇒ persistence no-op.",
+          "type": "string"
+        },
+        "target": {
+          "description": "Optional review target (file path, diff ref, or scope label).",
+          "type": "string"
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "name": "audit_multi",
+    "outputSchema": null
+  },
+  {
+    "inputSchema": {
+      "properties": {
+        "effort": {
+          "description": "Optional Claude Code effort; overrides workflow.audit.claude.effort.",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "type": "string"
+        },
+        "focus": {
+          "description": "Optional independent-review focus area.",
+          "type": "string"
+        },
+        "model": {
+          "description": "Optional Claude Code model alias or model id; overrides workflow.audit.claude.model.",
+          "type": "string"
+        },
+        "project_root": {
+          "description": "Optional project or worktree root to act on. Supply your own `git rev-parse --show-toplevel`. In a worktree session you MUST pass it: the server's own resolution names the PRIMARY checkout, so omitting it acts on the wrong tree. An unusable path is rejected, never silently replaced by a default, and an accepted path is canonicalized — symlinks resolved — so the call acts on the real directory rather than on the spelling that reached it. A linked worktree of a repository that does not track .moai is accepted too, when git registers it as a worktree of a primary checkout that has .moai. On such a worktree without its own workflow config, the audit gate (workflow.audit.gates) is read from the primary checkout; its SPEC catalogue is the union of the worktree's and the primary checkout's .moai/specs, and its state is kept in the primary checkout's .moai/state under the worktree's own tree identity. Absent or empty resolves as before: CLAUDE_PROJECT_DIR, then the server's working directory.",
+          "type": "string"
+        },
+        "target": {
+          "description": "Review target: uncommittedChanges or baseBranch.",
+          "enum": [
+            "uncommittedChanges",
+            "baseBranch"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "name": "claude_audit",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "audit_receipt": {
+          "type": "string"
+        },
+        "build_commit": {
+          "type": "string"
+        },
+        "build_lag": {
+          "type": "string"
+        },
+        "contradiction": {
+          "type": "string"
+        },
+        "findings": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": "number"
+              },
+              "file": {
+                "type": "string"
+              },
+              "line": {
+                "type": "integer"
+              },
+              "recommendation": {
+                "type": "string"
+              },
+              "severity": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "severity",
+              "title",
+              "body",
+              "file",
+              "line",
+              "confidence",
+              "recommendation"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "gate_unmet": {
+          "type": "string"
+        },
+        "next_steps": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "provenance": {
+          "additionalProperties": false,
+          "properties": {
+            "auth_mode": {
+              "type": "string"
+            },
+            "backend": {
+              "type": "string"
+            },
+            "cached_input_tokens": {
+              "type": [
+                "null",
+                "integer"
+              ]
+            },
+            "error_code": {
+              "type": "string"
+            },
+            "input_tokens": {
+              "type": [
+                "null",
+                "integer"
+              ]
+            },
+            "output_tokens": {
+              "type": [
+                "null",
+                "integer"
+              ]
+            },
+            "requested_effort": {
+              "type": "string"
+            },
+            "requested_model": {
+              "type": "string"
+            },
+            "resolved_model": {
+              "type": "string"
+            },
+            "session_persisted": {
+              "type": "boolean"
+            },
+            "source": {
+              "type": "string"
+            },
+            "tool_surface": {
+              "type": "string"
+            },
+            "transport": {
+              "type": "string"
+            },
+            "usage_source": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "backend",
+            "transport",
+            "auth_mode",
+            "requested_model",
+            "resolved_model",
+            "requested_effort",
+            "tool_surface",
+            "session_persisted",
+            "usage_source",
+            "input_tokens",
+            "cached_input_tokens",
+            "output_tokens",
+            "error_code"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "state_notice": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "synthesis_note": {
+          "type": "string"
+        },
+        "verdict": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "verdict",
+        "summary",
+        "findings",
+        "next_steps"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "inputSchema": {
+      "properties": {
+        "focus": {
+          "description": "Adversarial-only focus area (e.g. 'concurrency', 'auth').",
+          "type": "string"
+        },
+        "mode": {
+          "description": "Audit mode: 'native' (codex review/start) or 'adversarial' (codex turn/start + red-team prompt). Defaults to native.",
+          "enum": [
+            "native",
+            "adversarial"
+          ],
+          "type": "string"
+        },
+        "model": {
+          "description": "Optional model override; omitted ⇒ the workflow.audit.codex pin, else codex's own configured default.",
+          "type": "string"
+        },
+        "project_root": {
+          "description": "Optional project or worktree root to act on. Supply your own `git rev-parse --show-toplevel`. In a worktree session you MUST pass it: the server's own resolution names the PRIMARY checkout, so omitting it acts on the wrong tree. An unusable path is rejected, never silently replaced by a default, and an accepted path is canonicalized — symlinks resolved — so the call acts on the real directory rather than on the spelling that reached it. A linked worktree of a repository that does not track .moai is accepted too, when git registers it as a worktree of a primary checkout that has .moai. On such a worktree without its own workflow config, the audit gate (workflow.audit.gates) is read from the primary checkout; its SPEC catalogue is the union of the worktree's and the primary checkout's .moai/specs, and its state is kept in the primary checkout's .moai/state under the worktree's own tree identity. Absent or empty resolves as before: CLAUDE_PROJECT_DIR, then the server's working directory.",
+          "type": "string"
+        },
+        "target": {
+          "description": "What codex reviews: 'uncommittedChanges' or 'baseBranch'. For 'baseBranch' the branch name is resolved SERVER-SIDE and cannot be supplied here — it is read from the reviewed tree, the remote default head first and then 'main', the same chain the GLM backend uses so both review the same change. A tree where neither resolves returns 'inconclusive' naming that cause rather than reviewing something else.",
+          "enum": [
+            "uncommittedChanges",
+            "baseBranch"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "name": "codex_audit",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "audit_receipt": {
+          "type": "string"
+        },
+        "build_commit": {
+          "type": "string"
+        },
+        "build_lag": {
+          "type": "string"
+        },
+        "contradiction": {
+          "type": "string"
+        },
+        "findings": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": "number"
+              },
+              "file": {
+                "type": "string"
+              },
+              "line": {
+                "type": "integer"
+              },
+              "recommendation": {
+                "type": "string"
+              },
+              "severity": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "severity",
+              "title",
+              "body",
+              "file",
+              "line",
+              "confidence",
+              "recommendation"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "gate_unmet": {
+          "type": "string"
+        },
+        "next_steps": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "provenance": {
+          "additionalProperties": false,
+          "properties": {
+            "auth_mode": {
+              "type": "string"
+            },
+            "backend": {
+              "type": "string"
+            },
+            "cached_input_tokens": {
+              "type": [
+                "null",
+                "integer"
+              ]
+            },
+            "error_code": {
+              "type": "string"
+            },
+            "input_tokens": {
+              "type": [
+                "null",
+                "integer"
+              ]
+            },
+            "output_tokens": {
+              "type": [
+                "null",
+                "integer"
+              ]
+            },
+            "requested_effort": {
+              "type": "string"
+            },
+            "requested_model": {
+              "type": "string"
+            },
+            "resolved_model": {
+              "type": "string"
+            },
+            "session_persisted": {
+              "type": "boolean"
+            },
+            "source": {
+              "type": "string"
+            },
+            "tool_surface": {
+              "type": "string"
+            },
+            "transport": {
+              "type": "string"
+            },
+            "usage_source": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "backend",
+            "transport",
+            "auth_mode",
+            "requested_model",
+            "resolved_model",
+            "requested_effort",
+            "tool_surface",
+            "session_persisted",
+            "usage_source",
+            "input_tokens",
+            "cached_input_tokens",
+            "output_tokens",
+            "error_code"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "state_notice": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "synthesis_note": {
+          "type": "string"
+        },
+        "verdict": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "verdict",
+        "summary",
+        "findings",
+        "next_steps"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "inputSchema": {
+      "properties": {
+        "focus": {
+          "description": "Optional focus area (e.g. 'concurrency', 'auth', 'secret handling').",
+          "type": "string"
+        },
+        "model": {
+          "description": "Optional GLM model override; omitted ⇒ the backend default GLM model (glm_audit reads the workflow.audit.glm pin first).",
+          "type": "string"
+        },
+        "project_root": {
+          "description": "Optional project or worktree root to act on. Supply your own `git rev-parse --show-toplevel`. In a worktree session you MUST pass it: the server's own resolution names the PRIMARY checkout, so omitting it acts on the wrong tree. An unusable path is rejected, never silently replaced by a default, and an accepted path is canonicalized — symlinks resolved — so the call acts on the real directory rather than on the spelling that reached it. A linked worktree of a repository that does not track .moai is accepted too, when git registers it as a worktree of a primary checkout that has .moai. On such a worktree without its own workflow config, the audit gate (workflow.audit.gates) is read from the primary checkout; its SPEC catalogue is the union of the worktree's and the primary checkout's .moai/specs, and its state is kept in the primary checkout's .moai/state under the worktree's own tree identity. Absent or empty resolves as before: CLAUDE_PROJECT_DIR, then the server's working directory.",
+          "type": "string"
+        },
+        "target": {
+          "description": "What GLM reviews: 'uncommittedChanges' (default) or 'baseBranch'. The named change is collected as a diff and sent in the request — GLM has no filesystem, so a target that yields no diff returns 'inconclusive' rather than a verdict.",
+          "enum": [
+            "uncommittedChanges",
+            "baseBranch"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "name": "glm_audit",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "audit_receipt": {
+          "type": "string"
+        },
+        "build_commit": {
+          "type": "string"
+        },
+        "build_lag": {
+          "type": "string"
+        },
+        "contradiction": {
+          "type": "string"
+        },
+        "findings": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "type": "string"
+              },
+              "confidence": {
+                "type": "number"
+              },
+              "file": {
+                "type": "string"
+              },
+              "line": {
+                "type": "integer"
+              },
+              "recommendation": {
+                "type": "string"
+              },
+              "severity": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "severity",
+              "title",
+              "body",
+              "file",
+              "line",
+              "confidence",
+              "recommendation"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "gate_unmet": {
+          "type": "string"
+        },
+        "next_steps": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "provenance": {
+          "additionalProperties": false,
+          "properties": {
+            "auth_mode": {
+              "type": "string"
+            },
+            "backend": {
+              "type": "string"
+            },
+            "cached_input_tokens": {
+              "type": [
+                "null",
+                "integer"
+              ]
+            },
+            "error_code": {
+              "type": "string"
+            },
+            "input_tokens": {
+              "type": [
+                "null",
+                "integer"
+              ]
+            },
+            "output_tokens": {
+              "type": [
+                "null",
+                "integer"
+              ]
+            },
+            "requested_effort": {
+              "type": "string"
+            },
+            "requested_model": {
+              "type": "string"
+            },
+            "resolved_model": {
+              "type": "string"
+            },
+            "session_persisted": {
+              "type": "boolean"
+            },
+            "source": {
+              "type": "string"
+            },
+            "tool_surface": {
+              "type": "string"
+            },
+            "transport": {
+              "type": "string"
+            },
+            "usage_source": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "backend",
+            "transport",
+            "auth_mode",
+            "requested_model",
+            "resolved_model",
+            "requested_effort",
+            "tool_surface",
+            "session_persisted",
+            "usage_source",
+            "input_tokens",
+            "cached_input_tokens",
+            "output_tokens",
+            "error_code"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "state_notice": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "synthesis_note": {
+          "type": "string"
+        },
+        "verdict": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "verdict",
+        "summary",
+        "findings",
+        "next_steps"
+      ],
+      "type": "object"
+    }
+  }
+]
