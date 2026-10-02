@@ -226,7 +226,7 @@ pre_existing_reds: internal/cli 2건(§E.2 M5 말미 — kotlin 감지 규칙 �
 
 sync_status: audit-ready
 sync_complete_at: 2026-10-02
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: b69719515
 비고 — 커밋은 자신의 해시를 인용할 수 없으므로 동기 커밋 본문에는 플레이스홀더로 기록하고,
 직후 커밋에서 실제 SHA로 backfill한다(spec-frontmatter-schema §D3 backfill 면제 — 본
 소관 에이전트의 후속 커밋).
