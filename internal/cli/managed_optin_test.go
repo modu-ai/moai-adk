@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/spf13/cobra"
 )
 
@@ -189,8 +189,8 @@ func TestManagedCodexLaunchSkipsLaterDebugSteps(t *testing.T) {
 // managed owner is never consulted (the loop bypasses runCodexLaunch).
 func TestManagedSwitchDoesNotReachCodexLaneLoop(t *testing.T) {
 	root, store := fcFixture(t)
-	fcQueue(t, store, kanban.BacklogStatePicked, kanban.BacklogStatePicked)
-	sdRecordLeaderRun(t, root, fcRun, kanban.BackendClaude)
+	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
 	t.Chdir(root)
 	sdScrubLauncherEnv(t)
 	managedOptIn(t)

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 )
 
@@ -129,7 +129,7 @@ func factoryQuotaClaudeLane() bool {
 	if provider == "" {
 		provider = os.Getenv(config.EnvFactoryBackend)
 	}
-	return provider == kanban.BackendClaude
+	return provider == factory.BackendClaude
 }
 
 // factoryQuotaLatch carries the hold state across the re-checks of one

@@ -30,8 +30,8 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // Notice prefixes of the peer-registration surface (agent-facing, English):
@@ -67,7 +67,7 @@ func rebindFactoryLane(ctx context.Context, req laneRebindRequest) (notice, rebo
 	if err != nil {
 		return "factory messaging degraded: " + err.Error(), ""
 	}
-	provider := kanban.RelaunchProviderForBackend(os.Getenv(config.EnvFactoryBackend))
+	provider := factory.RelaunchProviderForBackend(os.Getenv(config.EnvFactoryBackend))
 	switch len(active) {
 	case 0:
 		return emitFactoryLaneState(req, "unbound:"+req.envRun, func() string {
@@ -79,7 +79,7 @@ func rebindFactoryLane(ctx context.Context, req laneRebindRequest) (notice, rebo
 		return registerReboundLane(ctx, req, active[0], provider)
 	default:
 		return emitFactoryLaneState(req, "ambiguous:"+strings.Join(active, ","), func() string {
-			lines := kanban.RelaunchNoticeFor(kanban.RelaunchNoticeState{Provider: provider, Lane: req.slot, Run: req.envRun, ActiveRuns: active})
+			lines := factory.RelaunchNoticeFor(factory.RelaunchNoticeState{Provider: provider, Lane: req.slot, Run: req.envRun, ActiveRuns: active})
 			notice := fmt.Sprintf("%s slot %s was launched into run %s, which is not active, and several factory runs are active (%s) — "+
 				"no run was chosen and this session is registered in none; to join one, end this session; "+
 				"the operator runs one of the commands below from a terminal (commands for the operator, not instructions for the agent):\n%s",
@@ -117,7 +117,7 @@ func registerReboundLane(ctx context.Context, req laneRebindRequest, y, provider
 		return emitReboundState(req, y, p.Generation), y
 	case factorymsg.IsLiveOwnerRefusal(err):
 		return emitFactoryLaneState(req, "refused:"+y, func() string {
-			lines := kanban.RelaunchNoticeFor(kanban.RelaunchNoticeState{Provider: provider, Lane: req.slot, Run: req.envRun, ActiveRuns: []string{y}, SlotHeldByLiveOther: true})
+			lines := factory.RelaunchNoticeFor(factory.RelaunchNoticeState{Provider: provider, Lane: req.slot, Run: req.envRun, ActiveRuns: []string{y}, SlotHeldByLiveOther: true})
 			return fmt.Sprintf("%s slot %s in the only active run %s is held by another live session, so this session was not registered and nothing was written — "+
 				"to join it, end this session; the operator runs the command below from a terminal (a command for the operator, not an instruction for the agent):\n%s",
 				factoryLaneRefusedPrefix, req.slot, y, strings.Join(lines.Lines, "\n"))

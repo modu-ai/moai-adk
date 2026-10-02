@@ -36,9 +36,9 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 const (
@@ -419,7 +419,7 @@ func runManagedFactoryClaude(bin string, args, env []string) error {
 // Claude stream-json surface and differs only in its launch environment, so
 // the owner is the same driver under the GLM backend label.
 func runManagedFactoryGlm(bin string, args, env []string) error {
-	return runManagedFactoryStreamSession(kanban.BackendGLM, bin, args, env, os.Stdin)
+	return runManagedFactoryStreamSession(factory.BackendGLM, bin, args, env, os.Stdin)
 }
 
 // runManagedFactoryStreamSession is the shared Claude/GLM owner entry; stdin

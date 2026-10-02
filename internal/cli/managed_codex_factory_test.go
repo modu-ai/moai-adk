@@ -26,8 +26,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
-	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // fakeAppServerRoleEnv / fakeAppServerLogEnv are this file's own re-exec
@@ -263,7 +263,7 @@ func TestManagedCodexRegistersBoundPeer(t *testing.T) {
 	env := []string{
 		config.EnvFactoryRunID + "=" + run,
 		config.EnvFactoryBackend + "=" + BackendCodex,
-		config.EnvMoaiFactoryWorker + "=" + kanban.FactoryLaneLabel(1),
+		config.EnvMoaiFactoryWorker + "=" + factory.FactoryLaneLabel(1),
 		fakeAppServerRoleEnv + "=appserver",
 		fakeAppServerLogEnv + "=" + logPath,
 	}
@@ -313,7 +313,7 @@ func TestManagedCodexRegistersBoundPeer(t *testing.T) {
 		t.Fatalf("roster lanes=%+v, want exactly the managed lane", roster.Lanes)
 	}
 	lane := roster.Lanes[0]
-	if lane.Slot != kanban.FactoryLaneLabel(1) || lane.BindingState != factorymsg.BindingBound || lane.SessionUUID != fakeAppServerThreadID {
+	if lane.Slot != factory.FactoryLaneLabel(1) || lane.BindingState != factorymsg.BindingBound || lane.SessionUUID != fakeAppServerThreadID {
 		t.Fatalf("bound endpoint = slot %q state %q session %q; want lane-1/bound/%s",
 			lane.Slot, lane.BindingState, lane.SessionUUID, fakeAppServerThreadID)
 	}
@@ -341,7 +341,7 @@ func TestManagedCodexOwnerUsesLaunchDir(t *testing.T) {
 	env := []string{
 		config.EnvFactoryRunID + "=" + run,
 		config.EnvFactoryBackend + "=" + BackendCodex,
-		config.EnvMoaiFactoryWorker + "=" + kanban.FactoryLaneLabel(1),
+		config.EnvMoaiFactoryWorker + "=" + factory.FactoryLaneLabel(1),
 		fakeAppServerRoleEnv + "=appserver",
 		fakeAppServerLogEnv + "=" + logPath,
 	}
@@ -628,7 +628,7 @@ func TestManagedCodexFactoryBrokerLive(t *testing.T) {
 	env := []string{
 		config.EnvFactoryRunID + "=" + liveRun,
 		config.EnvFactoryBackend + "=" + BackendCodex,
-		config.EnvMoaiFactoryWorker + "=" + kanban.FactoryLaneLabel(1),
+		config.EnvMoaiFactoryWorker + "=" + factory.FactoryLaneLabel(1),
 	}
 	stdinR, stdinW, err := os.Pipe()
 	if err != nil {
