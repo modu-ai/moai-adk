@@ -5,15 +5,18 @@ package cli
 //
 // The verb prints the resolved audit backend plan of ONE tree as JSON, so an
 // auditor learns which backends its audit must reach without interpreting the
-// audit.model token itself. With --result it also compares that plan with an
-// audit_multi result handed to it inline and reports which required gates the
-// result leaves unmet.
+// audit.model token itself. With --result-file it also compares that plan with an
+// audit_multi result written to a file the caller names (--result-file <path>,
+// M4b; the inline JSON argument of M4 is gone because the worktree-isolation guard
+// refuses a command carrying braces or quotes) and reports which required gates
+// the result leaves unmet.
 //
 // Both halves are read-only. The verb invokes no audit backend and writes no
 // state, receipt, configuration or audit file. The checker is PURE: its only
-// inputs are the resolved plan and the JSON it is handed; it opens no file and
-// takes no session identifier, so a result cannot be a stale file from an
-// earlier audit or a foreign tree's file.
+// inputs are the resolved plan and the one file it is handed. It reads exactly
+// that path once (regular files only, at most auditPlanResultMaxBytes), takes no
+// session identifier and enumerates nothing under .moai/state, so a result cannot
+// be a persisted file picked up from an earlier audit or a foreign tree.
 //
 // The configuration is read raw through loadWorkflowAuditSection — the loader
 // that reports a failure — and never through a default-merged configuration: a
@@ -24,8 +27,12 @@ package cli
 // @MX:SPEC: SPEC-AUDIT-MODEL-CONVERGE-001
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -93,10 +100,10 @@ type auditPlanOutput struct {
 }
 
 func newVerifyAuditPlanCmd(projectRoot *string) *cobra.Command {
-	var result string
+	var resultFile string
 	cmd := &cobra.Command{
 		Use:   "audit-plan",
-		Short: "Print the resolved audit backend plan of one tree (read-only); --result checks an audit_multi result against it",
+		Short: "Print the resolved audit backend plan of one tree (read-only); --result-file checks an audit_multi result file against it",
 		Long: `Print the audit backend plan the tree's workflow.yaml resolves to, as one JSON
 object: per backend (claude, codex, glm) the gate (off | advisory | required),
 the source that decided it, and whether the operator wrote it; plus
@@ -116,18 +123,26 @@ backend pins: the distributed default plan) or unreadable (workflow.yaml exists
 but cannot be read or parsed: cross_model_active is "unknown", no plan is
 printed, and the state is never a pass).
 
---result '<json>' compares the plan with an audit_multi result passed inline (the
-full result, or the digest of overall_verdict, gate_unmet, plan_source and, per
-backend, backend, gate and verdict) and adds convergence_check {ok, unmet,
+--result-file <path> compares the plan with an audit_multi result held in a file
+(the full result, or the digest of overall_verdict, gate_unmet, plan_source and,
+per backend, backend, gate and verdict) and adds convergence_check {ok, unmet,
 reason}. ok is true only when every enforced-required backend has a
 per_backend_verdicts entry whose verdict is exactly "pass" or "fail" and whose
 gate is "required", and — where any plan gate comes from the configuration — the
-result's plan_source is "config". The check reads no file and takes no session id.
+result's plan_source is "config".
+
+The file is written by the auditor with its own Write tool, fresh for this check
+(for example <toplevel>/.moai/state/audit-plan-result.json, overwritten each
+time), and only the path is passed on the command line. The verb reads exactly
+that path once: a regular file of at most 262144 bytes (256 KiB) holding one JSON
+object. It takes no session id and reads nothing else under .moai/state. A file
+that is missing, unreadable, a directory or pipe, empty, over the size bound, or
+not a JSON object is an error, never a pass.
 
 Output contract: stdout is one JSON object carrying config_status, or stderr
 carries an "audit-plan:" line and stdout is empty. Exit 0 whenever a plan (or an
-unreadable state) was reported; exit 1 for invalid configuration or a --result
-that is not a JSON object; exit 2 when no tree can be resolved.`,
+unreadable state) was reported; exit 1 for invalid configuration or an unusable
+--result-file; exit 2 when no tree can be resolved.`,
 		Args:          cobra.NoArgs,
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -150,7 +165,7 @@ that is not a JSON object; exit 2 when no tree can be resolved.`,
 				out.CrossModelRequired = auditPlanUnknown
 				out.EnforcedRequired = []string{}
 				out.Note = fmt.Sprintf("workflow.yaml unreadable, the plan is not guessed: %v", loadErr)
-				if c.Flags().Changed("result") {
+				if c.Flags().Changed("result-file") {
 					out.ConvergenceCheck = &auditPlanConvergenceCheck{
 						OK: false, Unmet: []string{},
 						Reason: "the plan is unreadable, so there is nothing to compare the result with",
@@ -190,17 +205,21 @@ that is not a JSON object; exit 2 when no tree can be resolved.`,
 			}
 			out.CrossModelActive, out.CrossModelRequired = active, required
 
-			if c.Flags().Changed("result") {
-				check, checkErr := checkAuditResult(plan, result, auditEntryAnswered)
+			if c.Flags().Changed("result-file") {
+				data, readErr := readAuditResultFile(resultFile)
+				if readErr != nil {
+					return auditPlanFail(c, auditPlanExitUser, "%v", readErr)
+				}
+				check, checkErr := checkAuditResult(plan, string(data), auditEntryAnswered)
 				if checkErr != nil {
-					return auditPlanFail(c, auditPlanExitUser, "%v", checkErr)
+					return auditPlanFail(c, auditPlanExitUser, "--result-file %s: %v", resultFile, checkErr)
 				}
 				out.ConvergenceCheck = &check
 			}
 			return auditPlanEmit(c, out)
 		},
 	}
-	cmd.Flags().StringVar(&result, "result", "", "an audit_multi result (or its digest) as one inline JSON argument; adds convergence_check")
+	cmd.Flags().StringVar(&resultFile, "result-file", "", "path of a file the auditor wrote, fresh, holding an audit_multi result or its digest as one JSON object (at most 256 KiB); only the path is passed; adds convergence_check")
 	return cmd
 }
 
@@ -249,6 +268,62 @@ func loadAuditSectionForPlan(root string) (audit config.AuditConfig, readRoot st
 	return audit, readRoot, nil
 }
 
+// auditPlanResultMaxBytes bounds the result file: 256 KiB, about twelve times the
+// largest full audit_multi result measured (design.md §D.5) and a few hundred
+// times a digest, so no real result is refused and a runaway file is.
+const auditPlanResultMaxBytes = 256 * 1024
+
+// errAuditResultTooLarge reports an input longer than the cap.
+var errAuditResultTooLarge = errors.New("larger than the size bound")
+
+// readBoundedResult reads at most limit bytes from r. It asks the source for
+// limit+1 bytes and no more, so an input longer than the cap is recognised after
+// exactly one byte past it and the rest is never read.
+func readBoundedResult(r io.Reader, limit int64) ([]byte, error) {
+	data, err := io.ReadAll(io.LimitReader(r, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > limit {
+		return nil, errAuditResultTooLarge
+	}
+	return data, nil
+}
+
+// readAuditResultFile reads the one file the caller named, once. It stats the
+// path first and refuses anything that is not a regular file — a directory, a
+// named pipe, a device, a symlink resolving to one — before opening it, so a pipe
+// cannot hang the verb; a symlink to a regular file is the file it names. The
+// read itself is bounded (readBoundedResult).
+func readAuditResultFile(path string) ([]byte, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, fmt.Errorf("--result-file %s: does not exist", path)
+		}
+		return nil, fmt.Errorf("--result-file %s: cannot be read: %w", path, err)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("--result-file %s: not a regular file (mode %s)", path, info.Mode())
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("--result-file %s: cannot be read: %w", path, err)
+	}
+	defer func() { _ = f.Close() }()
+	data, err := readBoundedResult(f, auditPlanResultMaxBytes)
+	if errors.Is(err, errAuditResultTooLarge) {
+		return nil, fmt.Errorf("--result-file %s: larger than %d bytes (256 KiB)", path, auditPlanResultMaxBytes)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("--result-file %s: cannot be read: %w", path, err)
+	}
+	if len(bytes.TrimSpace(data)) == 0 {
+		return nil, fmt.Errorf("--result-file %s: is empty", path)
+	}
+	return data, nil
+}
+
 // auditEntryPredicate decides whether one per_backend_verdicts entry answers a
 // required gate. It is a parameter of checkAuditResult only so a test can run
 // mutated variants over the same fixtures; production passes auditEntryAnswered.
@@ -278,10 +353,10 @@ func auditEntryAnswered(verdict, gate any) bool {
 func checkAuditResult(plan config.AuditPlan, resultJSON string, answered auditEntryPredicate) (auditPlanConvergenceCheck, error) {
 	var top map[string]any
 	if err := json.Unmarshal([]byte(resultJSON), &top); err != nil {
-		return auditPlanConvergenceCheck{}, fmt.Errorf("--result is not a JSON object: %w", err)
+		return auditPlanConvergenceCheck{}, fmt.Errorf("not a JSON object: %w", err)
 	}
 	if top == nil {
-		return auditPlanConvergenceCheck{}, fmt.Errorf("--result is not a JSON object (got null)")
+		return auditPlanConvergenceCheck{}, fmt.Errorf("not a JSON object (got null)")
 	}
 
 	byBackend := map[string][]map[string]any{}

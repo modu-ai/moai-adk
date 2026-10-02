@@ -13,7 +13,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -22,6 +24,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 )
@@ -61,6 +64,18 @@ func auditPlanTree(t *testing.T, yaml string) string {
 		}
 	}
 	return dir
+}
+
+// writeResultFile writes content to a fresh file in its own temp directory and
+// returns the path — the shape of what an auditor does with its Write tool before
+// it passes only the path to --result-file.
+func writeResultFile(t *testing.T, content string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "audit-plan-result.json")
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
 }
 
 // auditPlanPinsOnlyYAML is the shape the distributed template ships: an audit
@@ -130,10 +145,13 @@ func TestAuditPlanCmd_HelpNamesTheVerbAndTheRootObligation(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("--help exit code = %d", code)
 	}
-	for _, want := range []string{"audit-plan", "--result", "--project-root", "toplevel"} {
+	for _, want := range []string{"audit-plan", "--result-file", "--project-root", "toplevel", "auditor", "fresh", "only the path"} {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("help must mention %q:\n%s", want, stdout)
 		}
+	}
+	if strings.Contains(stdout, "--result '") || strings.Contains(stdout, "inline") {
+		t.Errorf("help must not offer the removed inline --result form:\n%s", stdout)
 	}
 	if strings.Contains(stdout, "Shared diagnostic snapshot contract") {
 		t.Errorf("help is the verify GROUP help, not the verb's usage:\n%s", stdout)
@@ -226,7 +244,7 @@ func TestAuditPlanCmd_PrintsPlan(t *testing.T) {
 				t.Errorf("enforced_required = %#v, want %#v", got.EnforcedRequired, tc.want.enforced)
 			}
 			if got.ConvergenceCheck != nil {
-				t.Errorf("convergence_check must be absent without --result, got %+v", got.ConvergenceCheck)
+				t.Errorf("convergence_check must be absent without --result-file, got %+v", got.ConvergenceCheck)
 			}
 		})
 	}
@@ -346,9 +364,9 @@ func TestAuditPlanCmd_UnreadableConfig(t *testing.T) {
 		}
 		assertUnreadable(t, fx.W, "primary")
 	})
-	t.Run("the unreadable plan is never a pass for --result", func(t *testing.T) {
+	t.Run("the unreadable plan is never a pass for --result-file", func(t *testing.T) {
 		root := auditPlanTree(t, "workflow: [unclosed\n")
-		stdout, _, code := runAuditPlanCmd(t, "--project-root", root, "--result", `{"overall_verdict":"pass"}`)
+		stdout, _, code := runAuditPlanCmd(t, "--project-root", root, "--result-file", writeResultFile(t, `{"overall_verdict":"pass"}`))
 		if code != 0 {
 			t.Fatalf("exit code = %d", code)
 		}
@@ -405,8 +423,9 @@ func TestAuditPlanCmd_OutputContract(t *testing.T) {
 		{"absent", nil, auditPlanTree(t, "")},
 		{"unreadable", nil, auditPlanTree(t, "workflow: [unclosed\n")},
 		{"invalid configuration", nil, auditPlanTree(t, planWorkflowYAML("grok", nil))},
-		{"checker ok", []string{"--result", `{"plan_source":"config","per_backend_verdicts":[]}`}, good},
-		{"checker rejects a non-object", []string{"--result", `[1]`}, good},
+		{"checker ok", []string{"--result-file", writeResultFile(t, `{"plan_source":"config","per_backend_verdicts":[]}`)}, good},
+		{"checker rejects a non-object", []string{"--result-file", writeResultFile(t, `[1]`)}, good},
+		{"checker rejects a missing file", []string{"--result-file", filepath.Join(t.TempDir(), "absent.json")}, good},
 		{"missing root", nil, filepath.Join(t.TempDir(), "gone")},
 	}
 	for _, r := range runs {
@@ -469,7 +488,7 @@ func moaiFiles(t *testing.T, root string) map[string]string {
 
 // AC-ACV-011: the verb runs no audit backend and writes no regular file under
 // the audited tree's .moai — across every fixture shape, with and without
-// --result.
+// --result-file.
 func TestAuditPlanCmd_WritesNoFiles(t *testing.T) {
 	var calls atomic.Int64
 	withBackendCall(t, func(_ context.Context, _, _, _, _ string) ReviewOutput {
@@ -490,12 +509,23 @@ func TestAuditPlanCmd_WritesNoFiles(t *testing.T) {
 	}
 	for name, roots := range trees {
 		t.Run(name, func(t *testing.T) {
+			// The result file sits where an auditor writes it: under the audited
+			// tree's own .moai/state. It exists before the "before" listing, so the
+			// comparison also proves the verb leaves it as it found it.
+			resultPath := filepath.Join(roots[0], ".moai", "state", "audit-plan-result.json")
+			if err := os.MkdirAll(filepath.Dir(resultPath), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(resultPath, []byte(`{"plan_source":"config","per_backend_verdicts":[]}`), 0o600); err != nil {
+				t.Fatal(err)
+			}
 			before := map[string]map[string]string{}
 			for _, r := range roots {
 				before[r] = moaiFiles(t, r)
 			}
 			runAuditPlanCmd(t, "--project-root", roots[0])
-			runAuditPlanCmd(t, "--project-root", roots[0], "--result", `{"plan_source":"config","per_backend_verdicts":[]}`)
+			runAuditPlanCmd(t, "--project-root", roots[0], "--result-file", resultPath)
+			runAuditPlanCmd(t, "--project-root", roots[0], "--result-file", filepath.Join(t.TempDir(), "absent.json"))
 			for _, r := range roots {
 				if after := moaiFiles(t, r); !reflect.DeepEqual(before[r], after) {
 					t.Errorf("a regular file under %s/.moai was created or changed:\nbefore %v\nafter  %v", r, keys(before[r]), keys(after))
@@ -548,7 +578,7 @@ const (
 	jIncon = `"inconclusive"`
 )
 
-// checkerCase is one --result fixture against a model: multi tree (claude and
+// checkerCase is one --result-file fixture (the file's content) against a model: multi tree (claude and
 // codex enforced-required).
 type checkerCase struct {
 	name   string
@@ -618,7 +648,7 @@ func TestAuditPlanCmd_ResultCheck(t *testing.T) {
 
 	runCheck := func(t *testing.T, root, result string) planOut {
 		t.Helper()
-		stdout, stderr, code := runAuditPlanCmd(t, "--project-root", root, "--result", result)
+		stdout, stderr, code := runAuditPlanCmd(t, "--project-root", root, "--result-file", writeResultFile(t, result))
 		if code != 0 || stderr != "" {
 			t.Fatalf("exit=%d stderr=%q", code, stderr)
 		}
@@ -662,9 +692,9 @@ func TestAuditPlanCmd_ResultCheck(t *testing.T) {
 	})
 	t.Run("f_not_a_json_object", func(t *testing.T) {
 		for _, bad := range []string{`[1]`, `"x"`, `7`, `null`, `{`, `{"plan_source":"config"`, ``} {
-			stdout, stderr, code := runAuditPlanCmd(t, "--project-root", multi, "--result", bad)
+			stdout, stderr, code := runAuditPlanCmd(t, "--project-root", multi, "--result-file", writeResultFile(t, bad))
 			if code != 1 || stdout != "" || !strings.HasPrefix(stderr, "audit-plan:") {
-				t.Errorf("--result %q: exit=%d stdout=%q stderr=%q, want exit 1, empty stdout, an audit-plan: line", bad, code, stdout, stderr)
+				t.Errorf("file content %q: exit=%d stdout=%q stderr=%q, want exit 1, empty stdout, an audit-plan: line", bad, code, stdout, stderr)
 			}
 		}
 	})
@@ -710,6 +740,197 @@ func TestAuditPlanCmd_ResultCheck(t *testing.T) {
 			}
 		}
 	})
+	t.Run("j_unusable_result_file", func(t *testing.T) {
+		// refuse runs the verb on path and requires the whole refusal contract: one
+		// audit-plan: line naming the path and the reason, empty stdout, exit 1. A
+		// deadline guards the run — an implementation that opens a named pipe before
+		// checking what it is would block here forever.
+		refuse := func(t *testing.T, path, reason string) {
+			t.Helper()
+			type outcome struct {
+				stdout, stderr string
+				code           int
+			}
+			done := make(chan outcome, 1)
+			go func() {
+				o, e, c := runAuditPlanCmd(t, "--project-root", multi, "--result-file", path)
+				done <- outcome{o, e, c}
+			}()
+			var got outcome
+			select {
+			case got = <-done:
+			case <-time.After(5 * time.Second):
+				// Release a reader blocked on a pipe so the goroutine does not outlive the test.
+				if f, err := os.OpenFile(path, os.O_WRONLY, 0); err == nil {
+					_ = f.Close()
+				}
+				t.Fatalf("the verb did not return within 5s for %s", path)
+			}
+			if got.code != 1 || got.stdout != "" {
+				t.Errorf("%s: exit=%d stdout=%q, want exit 1 and empty stdout", path, got.code, got.stdout)
+			}
+			lines := strings.Split(strings.TrimRight(got.stderr, "\n"), "\n")
+			if len(lines) != 1 || !strings.HasPrefix(lines[0], "audit-plan:") ||
+				!strings.Contains(lines[0], path) || !strings.Contains(lines[0], reason) {
+				t.Errorf("%s: stderr %q, want exactly one audit-plan: line naming the path and %q", path, got.stderr, reason)
+			}
+		}
+
+		t.Run("j1_missing_path", func(t *testing.T) {
+			refuse(t, filepath.Join(t.TempDir(), "no-such-result.json"), "does not exist")
+		})
+		t.Run("j2_directory", func(t *testing.T) {
+			refuse(t, t.TempDir(), "not a regular file")
+		})
+		t.Run("j3_empty_file", func(t *testing.T) {
+			refuse(t, writeResultFile(t, ""), "empty")
+			refuse(t, writeResultFile(t, " \n\t"), "empty")
+		})
+		t.Run("j4_json_that_is_not_an_object", func(t *testing.T) {
+			for _, content := range []string{`[1]`, `"x"`, `7`, `null`, `{`} {
+				refuse(t, writeResultFile(t, content), "not a JSON object")
+			}
+		})
+		t.Run("j5_fifo", func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "result.fifo")
+			if err := mkfifoForTest(path); err != nil {
+				if errors.Is(err, errors.ErrUnsupported) {
+					t.Skip("named pipes are not supported on this platform")
+				}
+				t.Fatal(err)
+			}
+			refuse(t, path, "not a regular file")
+		})
+		t.Run("j5b_symlink_to_fifo", func(t *testing.T) {
+			dir := t.TempDir()
+			fifo := filepath.Join(dir, "result.fifo")
+			if err := mkfifoForTest(fifo); err != nil {
+				if errors.Is(err, errors.ErrUnsupported) {
+					t.Skip("named pipes are not supported on this platform")
+				}
+				t.Fatal(err)
+			}
+			link := filepath.Join(dir, "result.json")
+			if err := os.Symlink(fifo, link); err != nil {
+				t.Skipf("symlinks are not available: %v", err)
+			}
+			refuse(t, link, "not a regular file")
+		})
+		t.Run("j5c_symlink_to_a_regular_file_is_followed", func(t *testing.T) {
+			target := writeResultFile(t, auditResultJSON("config", claudeOK, auditEntry("codex", jReq, jPass)))
+			link := filepath.Join(t.TempDir(), "result-link.json")
+			if err := os.Symlink(target, link); err != nil {
+				t.Skipf("symlinks are not available: %v", err)
+			}
+			stdout, stderr, code := runAuditPlanCmd(t, "--project-root", multi, "--result-file", link)
+			if code != 0 || stderr != "" {
+				t.Fatalf("exit=%d stderr=%q", code, stderr)
+			}
+			if got := decodePlanOut(t, stdout); got.ConvergenceCheck == nil || !got.ConvergenceCheck.OK {
+				t.Errorf("a symlink to a regular file is the file it names; got %+v", got.ConvergenceCheck)
+			}
+		})
+		t.Run("j6_oversized_file", func(t *testing.T) {
+			// Valid-looking JSON object, one byte over the cap: the cap is what refuses it.
+			refuse(t, writeResultFile(t, paddedResultJSON(auditPlanResultMaxBytes+1)), "larger than 262144 bytes")
+		})
+		t.Run("j6b_a_file_of_exactly_the_cap_is_accepted", func(t *testing.T) {
+			stdout, stderr, code := runAuditPlanCmd(t, "--project-root", multi, "--result-file",
+				writeResultFile(t, paddedResultJSON(auditPlanResultMaxBytes)))
+			if code != 0 || stderr != "" {
+				t.Fatalf("exit=%d stderr=%q", code, stderr)
+			}
+			if got := decodePlanOut(t, stdout); got.ConvergenceCheck == nil {
+				t.Errorf("convergence_check missing:\n%s", stdout)
+			}
+		})
+	})
+}
+
+// paddedResultJSON returns a valid JSON object of exactly size bytes.
+func paddedResultJSON(size int) string {
+	const body = `{"plan_source":"config","per_backend_verdicts":[]}`
+	return body + strings.Repeat(" ", size-len(body))
+}
+
+// endlessReader yields spaces forever and counts the bytes it handed out. A
+// safety stop at 64 MiB turns an implementation that reads without the bound into
+// a clean failure instead of an out-of-memory run.
+type endlessReader struct{ served int64 }
+
+func (r *endlessReader) Read(p []byte) (int, error) {
+	if r.served >= 64<<20 {
+		return 0, errors.New("endless reader safety stop: the caller read without a bound")
+	}
+	for i := range p {
+		p[i] = ' '
+	}
+	r.served += int64(len(p))
+	return len(p), nil
+}
+
+// TestAuditPlanCmd_ReadIsBoundedWhileReading proves the cap is enforced WHILE
+// reading: against a source that never ends, the reader stops at cap+1 bytes and
+// reports the input oversized, instead of consuming the rest.
+func TestAuditPlanCmd_ReadIsBoundedWhileReading(t *testing.T) {
+	if auditPlanResultMaxBytes != 262144 {
+		t.Fatalf("auditPlanResultMaxBytes = %d, want 262144 (256 KiB, design.md §D.5)", auditPlanResultMaxBytes)
+	}
+	t.Run("an endless source is cut at cap+1", func(t *testing.T) {
+		src := &endlessReader{}
+		data, err := readBoundedResult(src, auditPlanResultMaxBytes)
+		if !errors.Is(err, errAuditResultTooLarge) || data != nil {
+			t.Fatalf("data len=%d err=%v, want errAuditResultTooLarge and no data", len(data), err)
+		}
+		if want := int64(auditPlanResultMaxBytes) + 1; src.served != want {
+			t.Errorf("the reader handed out %d bytes, want exactly cap+1 = %d", src.served, want)
+		}
+	})
+	t.Run("exactly the cap is read whole", func(t *testing.T) {
+		data, err := readBoundedResult(strings.NewReader(strings.Repeat("x", auditPlanResultMaxBytes)), auditPlanResultMaxBytes)
+		if err != nil || len(data) != auditPlanResultMaxBytes {
+			t.Fatalf("len=%d err=%v, want the whole cap and no error", len(data), err)
+		}
+	})
+	t.Run("one byte over the cap is refused", func(t *testing.T) {
+		_, err := readBoundedResult(strings.NewReader(strings.Repeat("x", auditPlanResultMaxBytes+1)), auditPlanResultMaxBytes)
+		if !errors.Is(err, errAuditResultTooLarge) {
+			t.Fatalf("err=%v, want errAuditResultTooLarge", err)
+		}
+	})
+	t.Run("a read error is not an oversize", func(t *testing.T) {
+		boom := errors.New("boom")
+		_, err := readBoundedResult(io.MultiReader(strings.NewReader("{"), errReader{boom}), auditPlanResultMaxBytes)
+		if !errors.Is(err, boom) || errors.Is(err, errAuditResultTooLarge) {
+			t.Fatalf("err=%v, want the underlying read error", err)
+		}
+	})
+}
+
+type errReader struct{ err error }
+
+func (r errReader) Read([]byte) (int, error) { return 0, r.err }
+
+// TestAuditPlanCmd_InlineResultFlagIsGone: REQ-ACV-016 amended at 0.1.5 — the
+// inline --result form is removed, not kept beside --result-file. The old
+// spelling is an unknown-flag error and nothing reaches stdout.
+func TestAuditPlanCmd_InlineResultFlagIsGone(t *testing.T) {
+	root := auditPlanTree(t, planWorkflowYAML("multi", nil))
+	cmd := newVerifyCmd()
+	var out, errBuf bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&errBuf)
+	cmd.SetArgs([]string{"audit-plan", "--project-root", root, "--result", `{"plan_source":"config"}`})
+	err := cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "unknown flag: --result") {
+		t.Fatalf("err = %v, want an unknown-flag error for --result", err)
+	}
+	if out.Len() != 0 {
+		t.Errorf("stdout = %q, want empty", out.String())
+	}
+	if strings.Contains(readAuditPlanSource(t), `"result"`) {
+		t.Error(`audit_plan_cmd.go must not declare a flag named "result"`)
+	}
 }
 
 // D4: the fixtures that kill the predicate mutants (normalisation, wrong JSON
@@ -718,7 +939,7 @@ func TestAuditPlanCmd_ResultCheck_Hardening(t *testing.T) {
 	multi := auditPlanTree(t, planWorkflowYAML("multi", nil))
 	for _, tc := range multiChecker() {
 		t.Run(tc.name, func(t *testing.T) {
-			stdout, stderr, code := runAuditPlanCmd(t, "--project-root", multi, "--result", tc.result)
+			stdout, stderr, code := runAuditPlanCmd(t, "--project-root", multi, "--result-file", writeResultFile(t, tc.result))
 			if code != 0 || stderr != "" {
 				t.Fatalf("exit=%d stderr=%q", code, stderr)
 			}
