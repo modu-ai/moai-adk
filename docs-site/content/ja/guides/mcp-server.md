@@ -165,13 +165,13 @@ manager-develop が run-phase の自己検証（継ぎ目 §E）で使い、sync
 
 | ツール | 目的 | 消費エージェント | CLI 等価物 |
 |------|------|---------------|------------|
-| `mcp__moai__codex_task` | コーディング/調査ジョブを codex に委譲（同期またはバックグラウンド） | super-advisor | `moai codex task` |
+| `mcp__moai__codex_task` | コーディング/調査ジョブを codex に委譲（同期またはバックグラウンド） | manager-develop, super-advisor | `moai codex task` |
 | `mcp__moai__codex_setup` | ローカル codex インストール検出（LookPath + バージョン + 認証） | super-advisor | `moai codex setup` |
-| `mcp__moai__codex_job_status` | バックグラウンド codex ジョブ状態/記録読み取り | super-advisor | `moai codex job status` |
-| `mcp__moai__codex_job_result` | バックグラウンド codex ジョブ出力読み取り | super-advisor | `moai codex job result` |
-| `mcp__moai__codex_job_cancel` | 実行中のバックグラウンド codex ジョブ中断 | super-advisor | `moai codex job cancel` |
+| `mcp__moai__codex_job_status` | バックグラウンド codex ジョブ状態/記録読み取り | manager-develop, super-advisor | `moai codex job status` |
+| `mcp__moai__codex_job_result` | バックグラウンド codex ジョブ出力読み取り | manager-develop, super-advisor | `moai codex job result` |
+| `mcp__moai__codex_job_cancel` | 実行中のバックグラウンド codex ジョブ中断 | manager-develop, super-advisor | `moai codex job cancel` |
 
-codex 委任ツール群は super-advisor に配線されています — 随時の高推論相談エージェントがバックグラウンドのクロスモデル委譲の自然な消費者だからです。`codex_task` でジョブを委譲し、`codex_job_status` / `codex_job_result` で完了をポーリングし、`codex_job_cancel` で中断します。codex は選択的（optional）です — 欠落や利用不可なら fail-open な `inconclusive` を返し、hard error ではありません。
+codex 委任ツール群は super-advisor と manager-develop に配線されています。随時の高推論相談エージェントである super-advisor は、バックグラウンドのクロスモデル委譲の自然な消費者です。`codex_task` でジョブを委譲し、`codex_job_status` / `codex_job_result` で完了をポーリングし、`codex_job_cancel` で中断します。manager-develop は `codex_setup` を除く残りを持ち、範囲の限られた機械的な部分作業を任せるときに限り、run ワークフローの `External Model Delegation` 節が認める範囲で `codex_task` を使います。委譲された codex のターンは読み取り専用のままです。codex は選択的（optional）です — 欠落や利用不可なら fail-open な `inconclusive` を返し、hard error ではありません。
 
 ### codex 読み取り専用ロール
 
@@ -187,12 +187,12 @@ Codex セッションは `plan-auditor` や `sync-auditor` などの読み取り
 
 | ツール | 目的 | 消費エージェント | CLI 等価物 |
 |------|------|---------------|------------|
-| `mcp__moai__glm_task` | ジョブ(任意のプロンプト)を GLM(z.ai) に委譲（同期またはバックグラウンド） | super-advisor | — （該当 CLI なし） |
-| `mcp__moai__glm_job_status` | バックグラウンド GLM ジョブの状態/記録読み取り | super-advisor | — |
-| `mcp__moai__glm_job_result` | バックグラウンド GLM ジョブの出力読み取り | super-advisor | — |
-| `mcp__moai__glm_job_cancel` | 実行中のバックグラウンド GLM ジョブの中断 | super-advisor | — |
+| `mcp__moai__glm_task` | ジョブ(任意のプロンプト)を GLM(z.ai) に委譲（同期またはバックグラウンド） | manager-develop, super-advisor | — （該当 CLI なし） |
+| `mcp__moai__glm_job_status` | バックグラウンド GLM ジョブの状態/記録読み取り | manager-develop, super-advisor | — |
+| `mcp__moai__glm_job_result` | バックグラウンド GLM ジョブの出力読み取り | manager-develop, super-advisor | — |
+| `mcp__moai__glm_job_cancel` | 実行中のバックグラウンド GLM ジョブの中断 | manager-develop, super-advisor | — |
 
-GLM 委任ツール群は codex 委任と同じ形で super-advisor に配線されています。`glm_task` は `background` が偽なら完了したテキストをそのまま返し、真なら即座にジョブ ID を返します(以降は `glm_job_status`·`glm_job_result`·`glm_job_cancel` で観察・中断)。応答トークン上限は `max_tokens` で上書きでき、既定の上限値はサーバー側で定められています。バックグラウンドジョブはサーバープロセスの中で生きるため、プロセスが終われば一緒に終わります。GLM も選択的です — キーがないか z.ai に届かなければ構造化された fail-open 結果を返すだけで、ツールエラーではありません。
+GLM 委任ツール群は codex 委任と同じ形で super-advisor と manager-develop に配線されています。manager-develop はこのツール群をすべて持ち、範囲の限られた機械的な部分作業に限り、run ワークフローの `External Model Delegation` 節が認める範囲で `glm_task` を使います。GLM ジョブはプロンプトを外部プロバイダーに送ります。`glm_task` は `background` が偽なら完了したテキストをそのまま返し、真なら即座にジョブ ID を返します(以降は `glm_job_status`·`glm_job_result`·`glm_job_cancel` で観察・中断)。応答トークン上限は `max_tokens` で上書きでき、既定の上限値はサーバー側で定められています。バックグラウンドジョブはサーバープロセスの中で生きるため、プロセスが終われば一緒に終わります。GLM も選択的です — キーがないか z.ai に届かなければ構造化された fail-open 結果を返すだけで、ツールエラーではありません。
 
 ### コードクエリ
 

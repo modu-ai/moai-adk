@@ -165,13 +165,13 @@ manager-develop 在 run-phase 自验证（接缝 §E）中使用，sync-auditor 
 
 | 工具 | 目的 | 消费智能体 | CLI 等价物 |
 |------|------|---------------|------------|
-| `mcp__moai__codex_task` | 将编码/调查任务委托给 codex（同步或后台） | super-advisor | `moai codex task` |
+| `mcp__moai__codex_task` | 将编码/调查任务委托给 codex（同步或后台） | manager-develop, super-advisor | `moai codex task` |
 | `mcp__moai__codex_setup` | 探测本地 codex 安装（LookPath + 版本 + 认证） | super-advisor | `moai codex setup` |
-| `mcp__moai__codex_job_status` | 读取后台 codex 任务的状态/记录 | super-advisor | `moai codex job status` |
-| `mcp__moai__codex_job_result` | 读取后台 codex 任务的输出 | super-advisor | `moai codex job result` |
-| `mcp__moai__codex_job_cancel` | 中断正在运行的后台 codex 任务 | super-advisor | `moai codex job cancel` |
+| `mcp__moai__codex_job_status` | 读取后台 codex 任务的状态/记录 | manager-develop, super-advisor | `moai codex job status` |
+| `mcp__moai__codex_job_result` | 读取后台 codex 任务的输出 | manager-develop, super-advisor | `moai codex job result` |
+| `mcp__moai__codex_job_cancel` | 中断正在运行的后台 codex 任务 | manager-develop, super-advisor | `moai codex job cancel` |
 
-codex 委托工具族连线到 super-advisor——因为按需高推理咨询智能体是后台跨模型委托的自然消费者。用 `codex_task` 委托任务，用 `codex_job_status` / `codex_job_result` 轮询完成情况，用 `codex_job_cancel` 中断。codex 是可选的（optional）——缺失或不可用时返回 fail-open 的 `inconclusive`，而非 hard error。
+codex 委托工具族连线到 super-advisor 和 manager-develop。按需高推理咨询智能体 super-advisor 是后台跨模型委托的自然消费者：用 `codex_task` 委托任务，用 `codex_job_status` / `codex_job_result` 轮询完成情况，用 `codex_job_cancel` 中断。manager-develop 持有除 `codex_setup` 之外的其余工具，仅在 run 工作流的 `External Model Delegation` 一节所允许的范围内，才用 `codex_task` 委托范围有限的机械性子任务；被委托的 codex 轮次保持只读。codex 是可选的（optional）——缺失或不可用时返回 fail-open 的 `inconclusive`，而非 hard error。
 
 ### codex 只读角色
 
@@ -187,12 +187,12 @@ Codex 会话通过这组工具而不是 `spawn_agent` 启动 `plan-auditor`、`s
 
 | 工具 | 目的 | 消费智能体 | CLI 等价物 |
 |------|------|---------------|------------|
-| `mcp__moai__glm_task` | 把任务（任意提示词）委托给 GLM（z.ai）（同步或后台） | super-advisor | —（无对应 CLI） |
-| `mcp__moai__glm_job_status` | 读取后台 GLM 任务的状态/记录 | super-advisor | — |
-| `mcp__moai__glm_job_result` | 读取后台 GLM 任务的输出 | super-advisor | — |
-| `mcp__moai__glm_job_cancel` | 中断正在运行的后台 GLM 任务 | super-advisor | — |
+| `mcp__moai__glm_task` | 把任务（任意提示词）委托给 GLM（z.ai）（同步或后台） | manager-develop, super-advisor | —（无对应 CLI） |
+| `mcp__moai__glm_job_status` | 读取后台 GLM 任务的状态/记录 | manager-develop, super-advisor | — |
+| `mcp__moai__glm_job_result` | 读取后台 GLM 任务的输出 | manager-develop, super-advisor | — |
+| `mcp__moai__glm_job_cancel` | 中断正在运行的后台 GLM 任务 | manager-develop, super-advisor | — |
 
-GLM 委托工具族与 codex 委托同形，也连线到 super-advisor。`glm_task` 在 `background` 为假时直接返回完成的文本，为真时立即返回任务 ID（此后用 `glm_job_status`·`glm_job_result`·`glm_job_cancel` 观察·中断）。响应 token 上限可用 `max_tokens` 覆盖，默认上限值定在服务器一侧。后台任务活在服务器进程里，进程结束它也一并结束。GLM 同样是可选的——密钥缺失或连不上 z.ai 时，只返回结构化的 fail-open 结果，而不是工具错误。
+GLM 委托工具族与 codex 委托同形，连线到 super-advisor 和 manager-develop。manager-develop 持有整个工具族，仅在 run 工作流的 `External Model Delegation` 一节所允许的范围内，才用 `glm_task` 委托范围有限的机械性子任务；GLM 任务会把提示词发送给外部提供方。`glm_task` 在 `background` 为假时直接返回完成的文本，为真时立即返回任务 ID（此后用 `glm_job_status`·`glm_job_result`·`glm_job_cancel` 观察·中断）。响应 token 上限可用 `max_tokens` 覆盖，默认上限值定在服务器一侧。后台任务活在服务器进程里，进程结束它也一并结束。GLM 同样是可选的——密钥缺失或连不上 z.ai 时，只返回结构化的 fail-open 结果，而不是工具错误。
 
 ### 代码查询
 
