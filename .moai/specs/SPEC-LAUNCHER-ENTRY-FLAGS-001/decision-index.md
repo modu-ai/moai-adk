@@ -1,8 +1,36 @@
 # SPEC-LAUNCHER-ENTRY-FLAGS-001 — Decision Index
 
-Decisions surfaced during plan assembly. Q1–Q15, Q17, and Q19 were answered by the operator on 2026-10-02 and are recorded as decided (Q1 is superseded by Q10; Q9's count sentence is superseded by Q17); Q7 is closed as moot. Q16 was raised as a lane-orchestrator ruling on measured evidence and was then CONFIRMED by the operator ("proceed as is"). Q18 was settled in two steps: the operator first chose an option whose premise and three safeguards the update code contradicts, the facts were returned, and the operator then chose Option X. The options weighed and their measured impact stay recorded in `plan.md` §B.2. No row is open. Labels use the fixed four-label vocabulary. Authority register consulted: `.moai/project/product.md`, completed SPECs' HISTORY and `## Amendments` rows, `.moai/config/sections/*.yaml` operator settings, the constitution — no committed artifact decided any row before the operator answered, so none was `DECIDED` or `POLICY-COVERED`; the operator verdicts are not yet a committed artifact and are not cited as authority. No row carries a recommendation.
+Decisions surfaced during plan assembly. Q1–Q15, Q17, and Q19 were answered by the operator on 2026-10-02 and are recorded as decided (Q1 is superseded by Q10; Q9's count sentence is superseded by Q17); Q7 is closed as moot. Q16 was raised as a lane-orchestrator ruling on measured evidence and was then CONFIRMED by the operator ("proceed as is"). Q18 was settled in two steps: the operator first chose an option whose premise and three safeguards the update code contradicts, the facts were returned, and the operator then chose Option X. The options weighed and their measured impact stay recorded in `plan.md` §B.2. Rows Q1–Q19 are decided. Rows Q20–Q22 were raised by the plan audit (iteration 1, FAIL 0.72) as operator judgments rather than measurable facts; they are OPEN and NON-GATING: the SPEC is written to the smallest-footprint reading of each, none gates the run phase, and their options and measured impact are in `plan.md` §B.3a. Labels use the fixed four-label vocabulary. Authority register consulted: `.moai/project/product.md`, completed SPECs' HISTORY and `## Amendments` rows, `.moai/config/sections/*.yaml` operator settings, the constitution — no committed artifact decided any row before the operator answered, so none was `DECIDED` or `POLICY-COVERED`; the operator verdicts are not yet a committed artifact and are not cited as authority. No row carries a recommendation.
 
 Verdict source for every decided row: operator answer via AskUserQuestion, lane-3, 2026-10-02 (Q16 additionally records its origin as a lane-orchestrator ruling on evidence).
+
+### Numbering table — three schemes name the same decisions
+
+`spec.md` §A.1 numbers the verdicts, `plan.md` §B.1 numbers them `OD-n`, and this file numbers them `Qn`; the three orders differ for several decisions (for example spec verdict 10, the marker values, is `OD-10` and `Q11`, while `Q10` is the Kanban Mode removal, spec verdict 9). Read across a row.
+
+| spec.md §A.1 verdict | plan.md OD | decision-index Q | Requirements | Subject |
+|----------------------|------------|------------------|--------------|---------|
+| 1 (superseded by 9) | OD-6 | Q1 | — | new tokens only, `-k` untouched |
+| 2 | OD-3 | Q2 | REQ-001 | the verb carries the backend; no root form |
+| 3 | OD-1 | Q3 | REQ-004 | the short `-l` of `--leader` retired |
+| 4 | OD-4 | Q4 | REQ-005, REQ-006, REQ-007 | removed spellings refused now |
+| 5 | OD-2 | Q6 | REQ-002 | `-l` takes no argument |
+| 6 | OD-5 | Q5 | REQ-022, REQ-023 | documentation scope |
+| 7 | OD-7 | Q8 | REQ-005 | the explicit-name lane spelling refused |
+| 8 (count sentence superseded by 17) | OD-8 | Q9 | REQ-009 | the leader notice prints the lane command once |
+| 9 | OD-9 | Q10 | REQ-010 to REQ-016 | Kanban Mode removed |
+| 10 | OD-10 | Q11 | REQ-015 | the six marker values kept |
+| 11 | OD-10-LABEL | Q11 | REQ-012 | the `MOAI_KANBAN_LABEL` stamp removed |
+| 12 | OD-11 | Q12 | REQ-017, REQ-018 | everything that survives is renamed |
+| 13 | OD-12 | Q13 | REQ-019, REQ-022 | rules and docs pages renamed |
+| 14 | OD-13 | Q14 | REQ-020 | `workflows/factory.md` rewritten |
+| 15 | OD-14 | Q15 | REQ-019 | the foreman kept under factory names |
+| 16 | OD-15 | Q16 | REQ-021 | constitution-slot sentences edited directly |
+| 17 | OD-16 | Q17 | REQ-009 | the leader notice drops the lane count |
+| 18 | OD-17 | Q18 | REQ-019 | stale rule files in user projects (Option X) |
+| 19 (author choices, spec.md §D) | — | Q19 | — | author readings accepted |
+| — | — | Q7 | — | usage of the `-l` short — closed as moot |
+| — | — | Q20, Q21, Q22 | — | raised by the plan audit — open, non-gating |
 
 ### Q1: Does "exactly two forms" mean two new root entry tokens beside an unchanged verb surface, or the whole launcher entry surface reduced to two forms? (plan.md OD-6)
 
@@ -136,3 +164,24 @@ Label: FOUNDER
 Authority anchor: none.
 Why unresolved (before the verdict): each was an author choice within a verdict, not an operator answer: (a) the package name `internal/factory`; (b) the free-slot line is dropped from the leader notice; (c) `GET /kanban` redirects to `/factory`; (d) the `moai chain` and chain-lineage sections of the kanban docs page move to a new page `advanced/origin-trail-chain`; (e) the home banner and the five-sessions image are removed; (f) the `MOAI_FACTORY_WORKERS` value stays a number; (g) the four dependents of the chain contract (`moai.md`, `run.md`, `mode-orchestration.md`, `quality-gates-quality.md`) are reworded and the verify exit gate is retained as specification; (h) the retired-name literals are confined to four named files (the `-k` retirement refusal, the archive list, the legacy state-directory name, the legacy web route); (i) the web live-update key is named `factory`; (j) the three removed docs pages redirect to `advanced/factory-mode`; (k) `FactoryFreeSlots` is left in the slots package, caller-less.
 Operator verdict: DECIDED in two steps — every row of spec.md §D is now operator-accepted as written. Step 1: seven rows accepted (rows 2–6, 9, and 10; row 1, the OD-15 ruling, confirmed separately). Step 2: the four rows the first acceptance had not covered — row 7 (`MOAI_FACTORY_WORKERS` stays a number), row 8 (the four chain-contract dependents reworded; the verify exit gate retained as specification), row 11 (the three removed docs pages redirect to `advanced/factory-mode`), and row 12 (`FactoryFreeSlots` stays caller-less) — accepted as written. (Source: operator answer via AskUserQuestion, lane-3, 2026-10-02, both steps.)
+
+### Q20: Where are the removals announced — the sync-phase CHANGELOG entry only, or also a release-note page? (plan.md §B.3a)
+
+Label: FOUNDER
+Authority anchor: none — the sync workflow's D1 drafter writes a CHANGELOG entry (`.claude/skills/moai/workflows/sync/doc-execution.md:152`), but no committed artifact decides whether the removal of operator-visible entry forms (`-k`, `-f lane`, `-f lane-<n>`, `moai codex -f lane`, `-f <N>`, the `-l` leader short) also needs a per-version note under `.moai/release-notes/`, which holds two per-version Korean files today.
+Why unresolved: an earlier draft of this SPEC contradicted itself — spec.md §F excluded `CHANGELOG.md` and `.moai/release-notes/**` from hand edits while design.md §9 said a release note at sync lists the removals — and which announcement surface the operator wants is a scope choice the code cannot answer. The SPEC is written to option A of plan.md §B.3a (the ordinary `[Unreleased]` CHANGELOG entry, no release-note file) until the operator answers.
+Operator verdict:
+
+### Q21: What happens to the two draft kanban SPECs — left as they are, marked superseded, or marked archived or rejected? (plan.md §B.3a)
+
+Label: FOUNDER
+Authority anchor: none — `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix names the owner of each transition (`* → superseded` manager-spec, `* → archived` manager-docs, `* → rejected` the orchestrator decision recorded by manager-docs) but does not decide whether `SPEC-KANBAN-BOOTSTRAP-001` and `SPEC-KANBAN-WORKTREE-001` (both `status: draft`, line 5 of each spec.md) transition at all.
+Why unresolved: both drafts describe the mode this SPEC removes and the SPEC's partial-supersession list (spec.md §G) did not name them; changing another SPEC's lifecycle status is an operator-owned act, and the three options differ in status value and in owner. The SPEC is written to option A (leave both as they are; spec.md §G names them) until the operator answers.
+Operator verdict:
+
+### Q22: Does the update's "backed up N unmanaged file(s)" line need an explanation for the three old rule files? (plan.md §B.3a)
+
+Label: FOUNDER
+Authority anchor: none — OD-17 (Q18) decided the mechanism (Option X: the existing managed-root clean, no production change) and accepted the count-only line, but did not decide whether the line needs an explanation beside it.
+Why unresolved: once the template stops carrying the three old rule paths, each counts toward N even when the user never touched it (`internal/cli/update/deploy/deploy.go:381`, progress.md PV-55), so the count an upgrading user reads includes files they did not modify; explaining it in the CHANGELOG entry is a docs-only choice, while changing the message would be a production change that Option X ruled out. The SPEC is written to option A (no change) until the operator answers.
+Operator verdict:
