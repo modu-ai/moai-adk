@@ -14,8 +14,8 @@ package web
 // site (REQ-AFR-010); this package must never re-derive a per-agent cell
 // (the mcp_audit_surface guard enforces the definition ban).
 //
-// The render-side helpers (grid rows, tier badge, GLM reasoning column,
-// profile-matrix island) land with the M4 fieldsets.templ wiring.
+// The M3 half above is the save path; the M4 half below is the render surface
+// the fieldsets.templ sub-section consumes.
 
 import (
 	"fmt"
@@ -40,6 +40,15 @@ const modelFable = "fable"
 // perf-tier radio group (G3-4). It is NOT a member of ValidPerformanceTiers —
 // selecting it means "keep the current profile and its per-agent overrides".
 const perfTierCustom = "custom"
+
+// agentOverridesSectionMarker is the data-section slice marker the rendered
+// sub-section carries, so a test can slice it the way panelHTML slices a
+// panel (REQ-AFR-013).
+const agentOverridesSectionMarker = "agent-overrides"
+
+// agentFMPerfTierDefault is the column the empty profile resolves to — the
+// "(runtime default)" hint's value (templ references it bare).
+var agentFMPerfTierDefault = template.PerformanceTierMedium
 
 // agentFMModelValues / agentFMEffortValues는 agentfm override select의 폼 옵션
 // 값이다. per-agent 편집은 llm.agent_overrides 로 영속화되므로, model 옵션은
@@ -338,4 +347,215 @@ func applyAgentOverrides(projectRoot string, pins map[string]config.ModelEffort,
 		return fmt.Errorf("agentfm: write agent overrides: %w", err)
 	}
 	return nil
+}
+
+// ─── M4 render half (SPEC-WEB-AGENTFM-RESTORE-001) ──────────────────────────
+
+// agentFMPerfTierOptions returns the closed-set performance-tier selector
+// options ({max, medium, low} — validated by template.IsValidPerformanceTier).
+// DISTINCT from the Launch section's model_policy (the session model axis).
+func agentFMPerfTierOptions() []string {
+	return template.ValidPerformanceTiers()
+}
+
+// agentfmBadgeGlyphs is the LOCAL model→glyph map (plan §A.1: the
+// v4manifest.ModelColor display helper died with the deletion and is NOT
+// re-ported — the glyphs are a display concern, restated here once).
+var agentfmBadgeGlyphs = map[string]string{
+	v4manifest.ModelOpus:   "🔴",
+	v4manifest.ModelSonnet: "🟠",
+	v4manifest.ModelHaiku:  "🔵",
+}
+
+// agentBadgeInfo carries the model-badge display data for one agent row.
+type agentBadgeInfo struct {
+	Glyph      string // emoji glyph derived from the model, or "custom"
+	TooltipKey string // fieldDesc.agentfm.model.<model> / fieldDesc.agentfm.custom i18n key
+	HasBadge   bool   // false only when the row carries no usable model state
+	IsCustom   bool   // true when effort=max (neutral "custom" badge)
+}
+
+// agentTierBadge computes the display-only badge for an agent row. The badge
+// is derived from the agent's resolved model (the profile-matrix SSOT via
+// agentResolvedModel) — NOT a name→tier table — so the badge tracks the model
+// the matrix actually assigns. When the agent's current effort is the
+// override sentinel `max`, the badge is a neutral "custom" marker. The name
+// parameter is retained so call sites keep passing the row's full state; it
+// is not used now that the badge is model-derived.
+func agentTierBadge(name, model, effort string) agentBadgeInfo {
+	_ = name
+	if effort == v4manifest.EffortMax {
+		return agentBadgeInfo{Glyph: "custom", TooltipKey: "fieldDesc.agentfm.custom", HasBadge: true, IsCustom: true}
+	}
+	glyph, ok := agentfmBadgeGlyphs[model]
+	if !ok {
+		glyph = "🩵" // inherit / unknown
+	}
+	return agentBadgeInfo{
+		Glyph:      glyph,
+		TooltipKey: "fieldDesc.agentfm.model." + model,
+		HasBadge:   true,
+	}
+}
+
+// agentGroupLabel returns the human-facing group header label for the named
+// agent's catalog class. Returns "" for the "other" bucket — those rows
+// (harness specialists) are filtered out by agentIsMoaiCore and never reach
+// the grid. The label is the server-rendered English baseline (a structural
+// taxonomy heading, like the agent names themselves — not a data-i18n node).
+func agentGroupLabel(name string) string {
+	switch agentGroupRank(name) {
+	case 0:
+		return "CORE / MANAGER"
+	case 1:
+		return "META / EVALUATOR"
+	case 2:
+		return "BUILDER"
+	case 3:
+		return "SPECIALIST"
+	}
+	return ""
+}
+
+// agentFMGridRow is one render entry in the agentfm grid: the agent plus the
+// group header label to emit BEFORE this row ("" = no group header — the row
+// stays in the same group as the previous rendered row). Precomputing the
+// group-change signal in Go keeps the templ grid loop state-free.
+type agentFMGridRow struct {
+	Agent     agentfm.AgentInfo
+	GroupHead string // label to render as a divider above this row; "" = none
+}
+
+// agentIsMoaiCore reports whether the agent lives in .claude/agents/moai/
+// (the retained agents) vs .claude/agents/harness/ (the specialists). Derived
+// from the source directory path — harness rows are scanned but never
+// rendered (REQ-AFR-001).
+func agentIsMoaiCore(info agentfm.AgentInfo) bool {
+	return strings.Contains(info.Path, string(filepath.Separator)+"moai"+string(filepath.Separator))
+}
+
+// agentFMGridRows walks the (already group-sorted) agent list, filters to the
+// moai-core rows that actually render, and attaches a GroupHead to the first
+// row of each catalog-class group.
+func agentFMGridRows(agents []agentfm.AgentInfo) []agentFMGridRow {
+	out := make([]agentFMGridRow, 0, len(agents))
+	prev := ""
+	for _, a := range agents {
+		if !agentIsMoaiCore(a) {
+			continue
+		}
+		head := ""
+		if g := agentGroupLabel(a.Name); g != prev {
+			head = g
+			prev = g
+		}
+		out = append(out, agentFMGridRow{Agent: a, GroupHead: head})
+	}
+	return out
+}
+
+// agentFMRenderCount reports how many of the listed agents actually render in
+// the agent-overrides sub-section. Only the .claude/agents/moai/ rows render,
+// so the section count must report that subset rather than the full scanned
+// catalog. The harness agents stay in the scan — an unrendered agent simply
+// submits no form values, which parseAgentFMForm reads as "preserve".
+func agentFMRenderCount(agents []agentfm.AgentInfo) int {
+	n := 0
+	for _, a := range agents {
+		if agentIsMoaiCore(a) {
+			n++
+		}
+	}
+	return n
+}
+
+// agentSelectedModel returns the model the row's select should display as
+// selected — the profile-matrix-resolved value.
+func agentSelectedModel(llm config.LLMConfig, info agentfm.AgentInfo) string {
+	return agentResolvedModel(llm, info.Name)
+}
+
+// agentSelectedEffort returns the effort the row's select should display as
+// selected — the profile-matrix-resolved value.
+func agentSelectedEffort(llm config.LLMConfig, info agentfm.AgentInfo) string {
+	return agentResolvedEffort(llm, info.Name)
+}
+
+// agentModelIsHaiku reports whether the agent's profile-matrix-resolved model
+// is haiku. Haiku does not honor reasoning effort, so the paired effort
+// select is disabled in that case (fieldsets.templ) with a muted inline hint.
+// The save path is unaffected: a disabled select does not submit, and
+// parseAgentFMForm backfills an unsubmitted effort with the resolved value.
+func agentModelIsHaiku(llm config.LLMConfig, info agentfm.AgentInfo) bool {
+	return agentResolvedModel(llm, info.Name) == v4manifest.ModelHaiku
+}
+
+// agentFMIsGLMBackend reports whether the live llm.yaml marks a GLM session
+// backend (team_mode glm/cg, or the dormant mode field). Thin reuse of the
+// config-level intent signal so the panel gate and the CLI resolver read the
+// same predicate.
+func agentFMIsGLMBackend(llm config.LLMConfig) bool {
+	return template.IsGLMBackend(llm)
+}
+
+// agentGLMReasoning returns the per-agent GLM reasoning state for the
+// effort(reasoning) map exposure: under a GLM backend the sub-agent model
+// is session-inherited, so the per-agent axis is effort — and its GLM reading
+// is the z.ai reasoning state the effort collapses to. The value reuses the
+// SAME overlay the session derivation uses
+// (template.ResolveGLMReasoningForModel — no second derivation, REQ-AFR-010),
+// keyed by the profile-matrix-resolved effort so an override row shows its
+// overridden state. Returns "" under a Claude backend, where the GLM reading
+// is noise.
+func agentGLMReasoning(llm config.LLMConfig, name string) string {
+	if !template.IsGLMBackend(llm) {
+		return ""
+	}
+	me, _ := template.ResolveAgentModelEffort(llm, name)
+	return template.ResolveGLMReasoningForModel(llm.GLM.Models.High, name, me.Effort).Name
+}
+
+// profileMatrixData returns the per-profile per-agent {model, effort} matrix
+// for the client-side tier-repopulation handler (G3-3), emitted via
+// templ.JSONScript. Shape: {"<tier>": {"<agent>": {"model": "...", "effort":
+// "..."}}}. It is static (derived from the Go default matrix through the SAME
+// resolver), so the same data is emitted on every render. Keys are the
+// selector wire values ({max, medium, low}); resolution folds max→high.
+func profileMatrixData() map[string]map[string]map[string]string {
+	out := map[string]map[string]map[string]string{}
+	for _, tier := range template.ValidPerformanceTiers() {
+		base := config.LLMConfig{Profile: tier}
+		cells := map[string]map[string]string{}
+		for _, agent := range template.ProfileMatrixAgents() {
+			me, _ := template.ResolveAgentModelEffort(base, agent)
+			cells[agent] = map[string]string{"model": me.Model, "effort": me.Effort}
+		}
+		out[tier] = cells
+	}
+	return out
+}
+
+// agentDescriptionShort returns a compact one-line summary of the agent's
+// frontmatter description for display in the agentfm row. It collapses
+// whitespace, extracts the first sentence (up to the first ". " boundary),
+// and truncates to ~140 characters with an ellipsis. Empty input returns ""
+// (the templ skips rendering when empty — graceful handling of agents
+// lacking a description).
+func agentDescriptionShort(desc string) string {
+	desc = strings.TrimSpace(desc)
+	if desc == "" {
+		return ""
+	}
+	// Collapse all whitespace (newlines from YAML block/folded scalars) to single spaces.
+	desc = strings.Join(strings.Fields(desc), " ")
+	// Extract the first sentence — the period-space boundary.
+	if i := strings.Index(desc, ". "); i >= 0 {
+		desc = desc[:i+1]
+	}
+	// Truncate to a compact length with an ellipsis.
+	const maxLen = 140
+	if len(desc) > maxLen {
+		desc = desc[:maxLen-3] + "…"
+	}
+	return desc
 }

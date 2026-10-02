@@ -703,9 +703,10 @@ func logSaveFailure(seam, phrase string) {
 // statusline config, so syncStatusline preserves the on-disk values.
 //
 // model_policy is likewise NOT bound here (G3-5 — removed from the UI as a
-// duplicate of the agentfm performance tier). Its ProfilePreferences field is
-// preserved by an explicit carry-forward in handleSave so a web save never blanks
-// the resolveLaunchEffort fallback (launcher.go).
+// duplicate of the restored agent-overrides profile selector). Its
+// ProfilePreferences field is preserved by an explicit carry-forward in
+// handleSave so a web save never blanks the resolveLaunchEffort fallback
+// (launcher.go).
 func bindForm(r *http.Request) profile.ProfilePreferences {
 	prefs := profile.ProfilePreferences{
 		UserName:         r.PostFormValue("user_name"),

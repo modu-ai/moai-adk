@@ -179,7 +179,8 @@ type schemaSectionMeta struct {
 	// 부수 표면이 중복 렌더되는 것을 막는 primary-panel 표식이다.
 	Extras bool
 	// NoteKey/Note는 패널 헤더에 1회 렌더되는 주의 문구다 (빈 값이면 미렌더).
-	// 필드마다 반복되는 힌트를 헤더로 승격하는 기존 관례(agentfm-gridnote)와
+	// 필드마다 반복되는 힌트를 헤더로 승격하는 관례(원래 삭제 전 agentfm 표면의
+	// grid-note에서 왔다 — SPEC-WEB-AGENTFM-RESTORE-001이 그 자리를 이어받는다)와
 	// 동일한 자리다 — 한 패널의 모든 필드에 공통으로 걸리는 사실은 필드마다
 	// 되풀이하지 않는다.
 	NoteKey string

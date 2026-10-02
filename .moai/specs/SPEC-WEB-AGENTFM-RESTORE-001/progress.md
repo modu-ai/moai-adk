@@ -63,3 +63,14 @@ _<pending sync-phase>_
 - settings schema.go/schema_sections.go의 agentfm 서술 주석 복원 서술로 갱신(§D.1 — M3 착지 시점에 맞춰 갱신).
 - 신규 단위 테스트: TestWriteLLMProfileSplicesAndGates·TestWriteLLMAgentOverridesBlockSplice·TestWriteLLMAgentOverridesAbsentKeyAndFile(주석·미모델링 키 보존, clear·전체 clear→{}·무기록 게이트 실측) + agentfm 4종.
 - 관측: TestPerfTierSave GREEN 전환(M2 RED→GREEN — llm.profile: "max" 기록·performance_tier 미생성·custom/empty byte-identical 실측). TestAgentOverridesSave의 pin/clear/no-op/non-matrix/backfill 서브테스트 GREEN — 원자 거절 2서브테스트는 렌더 의존(M4 전환 대상으로 RED 유지). TestAgentOverridesSubsection RED 유지(렌더 — M4). web 패키지 나머지 전량 GREEN(신규 회귀 0).
+
+### M4 — UI 노출 (M3 커밋 514a48f34 이후)
+
+- fieldsets.templ: fieldsetAgentFM(llm 패널 서브섹션 — data-section="agent-overrides" 마커·sec.agentfm.title·성능 티어 라디오[키 칩은 llm.profile — 은퇴 alias 아님]·moai-profile-matrix JSON island·agentFMGridRows 그룹 헤더 그리드) + agentFMRow(배지·설명 data-i18n-baseline·model/effort select·haiku disabled+data-haiku-hint·data-glm-reasoning·행별 fieldErr) 재포트. 14탭 아님 — `meta.PanelID == "llm"` 앵커(§D.3). 구 warn 배너("update가 덮어쓴다")는 저장 대상이 llm.yaml이라 성립하지 않아 미재포트. fieldsets_templ.go 재생성(templ v0.3.1020 — make templ-generate).
+- 컴포넌트명 설계 기록: 서브섹션 컴포넌트를 fieldsetAgentFM으로 명명 — fieldsetAgentOverrides라 지으면 생성물(fieldsets_templ.go)이 함수명 문자소로 "AgentOverrides" 센티널을 포함해 mcp_audit_surface 가드(생성물 0히트 계약 — §D.5 보존 계약)를 적중한다. 실측으로 확인 후 개명.
+- app.js: wireProfileMatrix(G3-3 — 티어 라디오→셀 재설정, dirty 보존, Custom 전환) + applyHaikuEffortLock/wireHaikuEffortLock/reapplyHaikuLocks(haiku→effort 잠금) 재포트 + initConsole 배선. console.css: .tr--afm 3열 그리드 최소 추가.
+- settings_shell.go: settingsTabFieldCount("llm") = 스키마 필드 + agentFMRenderCount — 레일-패널 수 일치 불변 유지.
+- 생성/운반 표면 정합 3건(실측): (a)TestDataI18nKeysSubsetOfDictionary — 렌더 data-i18n 키의 사전 존재 의무(R6)로 섹션 UI 키 8종을 4-locale 사전에 선수재(M5 잔여 = agentdesc.<12> 번역 + 면제 접두사 + 거버넌스 카운트); (b)TestAppJsFireManifestInventoryCount — change 그룹 3종 증가(10→13)를 appjs_fire_probe.py에 사유 exclusion 3행으로 등록(GLM 잠금과 동형 form-state pairing 근거); (c)mcp_audit_surface 가드는 (위 개명으로) 생성물 0히트 유지 GREEN.
+- 테스트: TestHaikuEffortLock·TestGLMReasoningColumn 신설(AC-AFR-009/010 — GLM 열은 template.ResolveGLMReasoningForModel 동일 호출 단언, Claude 백엔드 미렌더 실측), fieldsets_states_test.go 확장(TestAgentFMRowStates 재포트 + TestAgentOverridesSubsectionStates — 파싱 실패 행·빈 목록·Custom 선선택), TestAgentOverridesSubsection의 파싱-실패 행 어설션을 구 표준 형태에 정렬(비편집 행은 data-agent-row 마커 없음 — 테스트 결함 수정).
+- §B-4 코멘트 정합: handlers.go model_policy 각주("agent-overrides 프로필 셀렉터의 중복"으로), schemaform.go agentfm-gridnote 관례 각주, restyle_test.go warn 배너 갈라냄 각주. main_test.go:9는 복원 후에도 참이어서 무변경.
+- 관측: web 패키지 전량 GREEN(M2 역반전 테스트 전부 GREEN 전환 완료 — TestAgentOverridesSubsection·TestPerfTierSave·TestAgentOverridesSave·TestAgentFrontmatterUntouched). lint 0 issues. go build + GOOS=windows 빌드 exit 0.
