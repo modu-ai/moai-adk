@@ -255,19 +255,23 @@ removal and the one-worker serialization.
 5. **`unmeasured` inputs read as "none".** The record form forces an explicit `unmeasured` token,
    and the criteria mutant-probe a record that omits it.
 6. **Unmarked operator-decision cards (t810/t1294/t1383-class) stay selectable** until the operator
-   `hold`s them. Out of this SPEC's code; stated so the operator can act (plan.md §Operational
-   follow-ups).
-7. **MEMORY index drift** (INFERRED): this SPEC cites cards from the memory index
-   (t810/t1294/t1383) only as the motivating phrase; their live states were not queried.
+   or leader applies one of the two identification forms — the structural `hold` state or a leading
+   `[보류` marker in the card text. Out of this SPEC's code; stated so the operator can act (plan.md
+   §Operational follow-ups; the sentence of spec §B.3).
+7. **MEMORY index drift** (INFERRED at first authoring): this SPEC cites cards from the memory index
+   (t810/t1294/t1383) as the motivating phrase; their live states were first not queried and were
+   read, read-only, at the iteration-2 repair (R12, ledger G5).
 
 ## R10. Not verified
 
-- The live state of cards t810/t1294/t1383 was **not queried by this author**; the plan audit read
-  it through the installed rc.25 binary (t1294 and t1383 `queued` with ordinary text, t810
-  `picked`) — attributed to that binary's queue store, not to this tree's build.
+- The live state of cards t810/t1294/t1383 was **not queried at first authoring**; the plan audit
+  read it through the installed rc.25 binary (t1294 and t1383 `queued` with ordinary text, t810
+  `picked`) and the iteration-2 repair re-read it (R12, ledger G5) — attributed to that binary's
+  queue store, not to this tree's build.
 - Whether the repo's template embed needs a regeneration step after editing
-  `internal/template/templates/**` (Makefile not read); plan.md carries it as a run-phase
-  pre-flight check.
+  `internal/template/templates/**`: **answered at iteration 3 (R13)** — two generated artifacts
+  follow a template edit, the Codex TOML (`make agents-emit`) and the catalog hashes
+  (`gen-catalog-hashes.go --all`, which `make build` also runs).
 - Whether `MOAI_FACTORY_*` scrubbing is required for the doc-only tests (they read files; the
   lane-env hazard is for fixtures built through `runTodo`).
 - The claim that no lane-writable decision-board verb exists (second-hand from t1400 via t1403).
@@ -341,3 +345,25 @@ All measured on `63daaf6a7`.
   G4): `TestACCounterFullCorpusMatchesBaseline` `ok … 6.230s`.
 - **The three operator-decision cards were re-read, read-only** (ledger G5): t810 `picked`, t1294
   and t1383 `queued`, none starting with the marker.
+
+## R13. Iteration-3 observations (plan audit F1, F2)
+
+- **The catalog hash obligation (F1).** **READ** `internal/template/scripts/gen-catalog-hashes.go`:
+  `--all` updates every entry's `hash:` in place from the embedded templates (skill directories as
+  whole trees via `ComputeDirTreeHash`, agent entries as the `.md`), default paths relative to the
+  worktree root, yaml.v3 re-marshal. **READ** `internal/template/catalog_tier_audit_test.go:401` and
+  `:475` (the two guards) and `Makefile` `build` (runs the generator as a side effect). **OBSERVED**
+  (ledger G6, G7, G8): both guards PASS on the unmodified tree (49 entries, 37 directory entries);
+  both FAIL on a tree with the three template artifacts perturbed (`CATALOG_HASH_UNSTABLE` for `moai`,
+  `moai-kanban-foreman`, `manager-todo`; `CATALOG_HASH_SKINNY` for the two directories); the
+  generator run on a scratch catalog rewrote exactly three lines (`3  3`); the tree was restored and
+  proven clean (`git status --short` empty, `cmp` against the backups empty). The red is observed.
+  The perturbation was one **interior** double space — a trailing space would have been normalized
+  away by `NormalizeForHash` and the guards would have stayed green.
+- **User-facing pages that restate the operator-only pick (F2).** **OBSERVED**, `git grep -n -i -E
+  "always the operator|never picks|operator.s act|picks a card|operator-only|operator's acts|never pick"
+  -- README.md README.ko.md README.ja.md README.zh.md docs-site/content`: `README.md:161`,
+  `docs-site/content/en/advanced/factory-mode.md:65` and `:117`, and
+  `docs-site/content/en/advanced/kanban-mode.md:287`. The ko/ja/zh pages and the three locale
+  READMEs were not matched by the English pattern and are not enumerated (a gap; sync enumerates
+  them). `docs-site/content/{en,ko,ja,zh}/advanced/{factory-mode,kanban-mode}.md` all exist.

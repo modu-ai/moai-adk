@@ -1,10 +1,10 @@
 ---
 id: SPEC-TODO-AUTO-PICK-001
 title: "Autonomous card selection under --auto — the invoked session judges, the lease is the only pick path, the keep-set is skipped and reported"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-10-02
-updated: 2026-10-02
+updated: 2026-10-03
 author: manager-spec (card t1448)
 priority: P1
 phase: "v3.2.0 target"
@@ -21,6 +21,18 @@ related_specs: [SPEC-AUTONOMY-BATCH-GATE-001, SPEC-JEV-AUTO-EXCEPTION-001, SPEC-
 
 ## HISTORY
 
+- 0.4.0 — 2026-10-03 — plan-audit iteration 3 finding F1 and notes S1-S8 corrected. The iteration-3
+  audit (extension; audited commit `625f01718`) returned **FAIL, score 0.80, all nine must-pass
+  criteria PASS, one blocking finding (F1)**; this version corrects F1 and the notes **without a
+  re-audit** — the leader decides the next step, and nothing here claims a PASS. F1: the template
+  edits change the stored hashes in `internal/template/catalog.yaml` (the `moai` and
+  `moai-kanban-foreman` skill directories and the template `manager-todo.md`), so the plan now
+  regenerates the catalog with the repository's generator in the same M5 commit and carries the two
+  catalog guard tests through M5, M6, AC-TAU-010, -012, -013 and Definition of Done 7; the red was
+  observed on a reversible perturbation of the tree, not inferred. F2: the user-facing pages that
+  still say the pick is always the operator are named and assigned to the sync phase (plan §4a, §7;
+  Out of Scope here). S1-S8: wording and bookkeeping corrections (`plan.md` § Audit resolution map).
+  Requirement count 16, criterion count 14 — unchanged.
 - 0.3.0 — 2026-10-02 — plan-audit iteration 2 repair (FAIL 0.77, MP-9 failed on N1; audited commit
   `63daaf6a7`; the leader approved one extra delta audit scoped to N1-N6 plus a full ordering
   re-read). N1: M1 declares the one seam variable, so the seam tests compile at M1 and are RED at
@@ -242,11 +254,15 @@ compensation therefore promises only what the stores allow:
 - **After `RecordPicked` the record cannot be rolled back.** A failure there (a later
   version-checked edge refused for a non-race reason, or a store error) leaves the card's row at
   `picked`, unowned, with its `card.transition` event, and the queue item restored to `queued`
-  only if the record shows no other holder. That state is what arm (c) already leaves when its own
-  claim fails, and an unnominated arm or a later nomination re-adopts it (`RecordPicked` returns
-  the existing row unchanged); it is visible as a `picked` row with no owner in `moai factory
-  status`. It is **not tested** — the single M1 seam sits before `RecordPicked` — and is listed in
-  §G.
+  only if the record shows **no row, or a row at `picked` with no owner**. That residue differs from
+  what arm (c)'s own failed claim leaves: arm (c) leaves the queue item `picked` and the row
+  `picked`, while a failed nominated claim leaves the queue item `queued` with a `picked` row. Arm
+  (b) skips it (the item is `queued`); it **re-adopts through arm (c)**, or through a later
+  nomination (`RecordPicked` returns the existing row unchanged); it is visible as a `picked` row
+  with no owner in `moai factory status`. A row `assigned` to this lane (a first claim edge landed
+  and a later edge failed for a non-race reason) meets neither restore alternative and is left as
+  it is — it is this lane's own arm (a) lease target. None of this is **tested** — the single M1
+  seam sits before `RecordPicked` — and it is listed in §G.
 - **Non-atomicity.** The record read ("no other holder") and the queue write (the restore) are two
   stores with no shared lock. A lane that adopts the unowned `picked` row between the two leaves
   the queue `queued` while the record says `leased`; no second lease results (arm (c) re-promoting
@@ -291,7 +307,7 @@ criteria say so.
   and shall write nothing once the refusal is decided: every readable refusal is decided before the
   first write; a promotion of the nominee from `queued` to `picked` that the invocation made is
   undone, in one queue write that acts only if the item is still `picked`, when the claim fails
-  before any record row exists or when the record shows no other holder; a row `RecordPicked`
+  and the record shows no row, or a row at `picked` with no owner; a row `RecordPicked`
   already wrote cannot be undone and stays at `picked`, unowned (§B.8); and a failed compensation
   exits with status 1 and `factory next: compensation failed: <cause>`, not with a token (the
   re-selection that follows a refusal is the session's act, *doctrine-only*).
@@ -329,9 +345,11 @@ criteria say so.
   existing `hold` state and `[보류` marker only, shall introduce no new marker, state, per-item
   field, or queue verb, and shall state in its doctrine that a card marked by neither is judged by
   REQ-TAU-010 alone and that the marker demotes a card in the serial cycle and excludes it on the
-  lease path, and shall state the handoff sentence of §B.3 verbatim: today t810 (`picked`), t1294
-  and t1383 (`queued`, ordinary text) carry neither the `hold` state nor a leading marker, a lane
-  may write neither, and the operator or leader must apply one before lanes exercise the doctrine.
+  lease path, and shall carry the handoff sentence **defined in §B.3, which this requirement does
+  not restate** (it names the three operator-decision cards t810, t1294 and t1383, says none carries
+  either identification form today, and says the operator or leader must apply one before lanes
+  exercise the doctrine); §B.3, §G, Definition of Done 6 and `plan.md` §7 carry that sentence in
+  identical words.
 
 ### Module D — The decision record and the open input set
 
@@ -362,7 +380,10 @@ criteria say so.
   `TestAutoRankMirrorParity`.
 - **REQ-TAU-015** (Ubiquitous): Every edited rule, skill, and agent file shall stay byte-identical
   to its template mirror, except that the one pre-existing difference in `kanban-dispatch.md`
-  (line 177 of the live copy) shall be preserved exactly and reported, not absorbed.
+  (line 177 of the live copy) shall be preserved exactly and reported, not absorbed; and the two
+  artifacts generated from the edited template files — the Codex agent artifact
+  `manager-todo.toml` and the stored hashes in `internal/template/catalog.yaml` — shall be
+  regenerated by their generators in the same change, never hand-edited.
 - **REQ-TAU-016** (Ubiquitous): The edit shall not grow the always-loaded `kanban-dispatch.md` —
   live or mirror — by any byte or any character against the pinned baselines, with new detail
   placed in lazy files.
@@ -455,6 +476,10 @@ compensation is the other non-token exit (REQ-TAU-005, §B.8). The claim-lease c
 - No edit to a completed SPEC's body (SPEC-FACTORY-LANE-AUTONOMY-001, SPEC-TODO-AUTO-PRIORITY-001,
   SPEC-JEV-AUTO-EXCEPTION-001); no absorption of the `kanban-dispatch.md` line-177 drift.
 - No board writer for decision records; no change to `moai factory decide`.
+- No run-phase edit to the user-facing pages that state the operator-only pick — `README.md` and the
+  four-locale docs-site pages `advanced/factory-mode.md` and `advanced/kanban-mode.md`. They are the
+  **sync phase's** scope (`plan.md` §4a, §7), where the sentence "the actor that picks a card is
+  always the operator" becomes "the operator, in person or in advance through `--auto`".
 
 ## §G Gaps and Residual Risks
 
@@ -474,6 +499,12 @@ compensation is the other non-token exit (REQ-TAU-005, §B.8). The claim-lease c
   tested**, and so is the branch where the compensating queue write itself errors (exit 1,
   `factory next: compensation failed`). The record read and the queue write of the compensation are
   two stores without a shared lock (the window is stated in §B.8).
+- **The stranded `picked` row holds the serial slot (accepted, visible).** The residue of a failed
+  claim after `RecordPicked` is a `picked`, unowned row, and `factorySerialSlotFree("picked")` is
+  false (`factory_card.go` ~L202-L210): for a serial card that row holds the serial slot against
+  other serial cards until it is re-adopted (`factory_card.go:202-210` read; the arm-(c)
+  re-adoption order was read by the iteration-3 audit and not re-measured here). The state shows
+  in `moai factory status` as a `picked` row with no owner.
 - **auto-semantics §9.1 and §10 are outside this SPEC's scope.** Their wording that the sync audit's
   re-read is "the compensating control" for decision records (`auto-semantics.md` ~L179-L180 and
   ~L241-L242) still stands for the other gates; this SPEC retracts that claim **only for the

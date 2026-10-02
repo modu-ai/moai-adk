@@ -52,7 +52,7 @@ something else on a tree that carries the linked milestone. Row ids are `L<n>` (
 | L23 | `git grep -c -F "consumption of the queue and nothing else" -- internal/template/templates/.codex/agents/moai/manager-todo.toml` | `internal/template/templates/.codex/agents/moai/manager-todo.toml:1` | 0 | the **generated** Codex artifact carries the old serial-only sentence (AC-TAU-007, -010) |
 | L24 | `git grep -c -F "process cards in queue order" -- internal/template/templates/.codex/agents/moai/manager-todo.toml` | `internal/template/templates/.codex/agents/moai/manager-todo.toml:1` | 0 | and the old queue-order mission sentence |
 | L25 | `git grep -c -F "authorizes serial queue consumption and nothing else" -- .claude/rules/moai/workflow/auto-semantics.md internal/template/templates/.claude/rules/moai/workflow/auto-semantics.md` | `.claude/rules/moai/workflow/auto-semantics.md:1` · `internal/template/templates/.claude/rules/moai/workflow/auto-semantics.md:1` | 0 | the second place the old authority is stated (§9.2, line 186), which the L5 literal does not find (AC-TAU-007) |
-| L26 | `git grep -c -F "factoryNominateBeforeRecord" -- internal/cli` | (empty) | 1 | the M1 seam does not exist (AC-TAU-014) |
+| L26 | `git grep -c -F "factoryNominateBeforeRecord" -- internal/cli` | (empty) | 1 | the M1 seam does not exist (AC-TAU-014); **this cell flips at M1** (the seam declaration), while the criterion's green path is M2 (S8) |
 | C5 | `git grep -c -F "factoryCardNow" -- internal/cli/factory_card.go` | `internal/cli/factory_card.go:15` | 0 | control for L26: the seam style the plan names exists, so L26's empty output is a measured absence |
 | L27 | `git grep -c -F "TestFactoryNextBareUnchanged" -- internal/cli` | (empty) | 1 | the golden does not exist (AC-TAU-006) |
 | L28 | `git grep -c -F "TestFactoryNextAllMarkerQueueExitsNoCard" -- internal/cli` | (empty) | 1 | the all-marker test does not exist (AC-TAU-006) |
@@ -76,6 +76,8 @@ something else on a tree that carries the linked milestone. Row ids are `L<n>` (
 | L46 | `git grep -c -F "TestFactoryFallbackDeclarePrintsLeasePath" -- internal/cli` | (empty) | 1 | AC-TAU-005 |
 | L47 | `git grep -c -F "TestAutoPickMirrorParity" -- internal/cli` | (empty) | 1 | AC-TAU-007 |
 
+Rows G6-G8 were measured in the iteration-3 repair on `625f01718`
+(`625f017181a57a60b8f1e7f52b10e1b66a018dfd`, tree `f9f66e27120b7af16251fc67bafedac5465f08ba`).
 Rows L23-L47 and C5 were measured in the iteration-2 repair on `63daaf6a7`
 (`63daaf6a7652624be630996af57ef633e63f7359`); that commit differs from `b3646de10` only by the
 iteration-1 repair's SPEC files, so every row's tree is the same code tree as the rows above.
@@ -109,6 +111,38 @@ test that exists).
   installed binary (attributed to that binary's queue store, not to this tree's build): `t810 live
   picked`, `t1294 live queued`, `t1383 live queued`, none with text that begins with `[보류`
   (exit 0 each). The queue was not touched.
+- **G6.** The catalog-guard baseline on the **unmodified** tree (iteration-3 repair, tree
+  `f9f66e27120b7af16251fc67bafedac5465f08ba` = the tree of `625f01718`, working tree clean), lane
+  variables scrubbed in one compound invocation: `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/template -run '^(TestManifestHashFormat|TestCatalogHashCoversSkillSubfiles)$' -count=1 -v`
+  → `--- PASS: TestCatalogHashCoversSkillSubfiles (0.03s)`, `catalog_tier_audit_test.go:507: audited 37
+  directory entries for whole-tree hash coverage`, `--- PASS: TestManifestHashFormat (0.03s)`,
+  `catalog_tier_audit_test.go:464: audited 49 catalog entries for hash validity`, `ok …/internal/template  0.246s`
+  (the harness printed no separate exit line; `ok` is the pass status). A guard green on arrival.
+- **G7.** The same two tests **observed RED** on a perturbed tree (iteration-3 repair; the F1
+  experiment, reversible). Setup: each of the three template artifacts backed up with `cp` to the
+  plan session's scratch directory, then one interior double space introduced (not trailing — the hash
+  normalizer strips trailing whitespace): `internal/template/templates/.claude/skills/moai/workflows/gtd.md`
+  line 3, `…/.claude/agents/moai/manager-todo.md` line 4, `…/.claude/skills/moai-kanban-foreman/SKILL.md`
+  line 4; base tree `f9f66e27120b7af16251fc67bafedac5465f08ba`, `git status --short` = exactly those
+  three paths modified. Command: the G6 command without `-v`. Exit 1; the sha256 values are
+  abbreviated with `…` below, everything else is verbatim:
+  `--- FAIL: TestManifestHashFormat (0.59s)`, `CATALOG_HASH_UNSTABLE: moai stored hash=ae8aa96c…edf8, computed hash=656a84e0…de8 (source=.claude/skills/moai/ (whole tree))`,
+  `CATALOG_HASH_UNSTABLE: moai-kanban-foreman stored hash=de8216f7…dcc, computed hash=4b228101…554 (source=.claude/skills/moai-kanban-foreman/ (whole tree))`,
+  `CATALOG_HASH_UNSTABLE: manager-todo stored hash=6cf817ab…9c0, computed hash=3e11d85e…2b0 (source=.claude/agents/moai/manager-todo.md)`,
+  `--- FAIL: TestCatalogHashCoversSkillSubfiles (0.60s)`, `CATALOG_HASH_SKINNY: moai … does not cover the deployed directory tree`,
+  `CATALOG_HASH_SKINNY: moai-kanban-foreman … does not cover the deployed directory tree`,
+  `FAIL … internal/template 1.116s`. (An earlier single-artifact run — only `gtd.md` perturbed —
+  failed the same two tests for `moai` alone.) Restore: the three files copied back from the backups;
+  `git status --short` empty and `cmp` of each file against its backup empty (exit 0); the G6 command
+  re-run on the restored tree reads PASS, PASS. The red is therefore **observed**, not inferred: an
+  edit to any of the three template artifacts without regenerating `catalog.yaml` turns `internal/template` red.
+- **G8.** What the generator rewrites (iteration-3 repair, on the perturbed tree of G7, against a
+  **scratch copy** of `catalog.yaml` — the tree's own file was never written): `go run
+  ./internal/template/scripts/gen-catalog-hashes.go --all --catalog <scratch>/catalog.yaml.scratch`
+  printed `Computing hashes for all 49 entries…` and `catalog.yaml updated successfully (13900 bytes)`;
+  `git diff --no-index --numstat internal/template/catalog.yaml <scratch>/catalog.yaml.scratch` read
+  `3	3` — exactly the `moai`, `moai-kanban-foreman` and `manager-todo` `hash:` lines, no other
+  line, no reformatting. This is the cap of AC-TAU-013's catalog row.
 - **P1-P4.** The four throwaway-probe observations (`research.md` R2, O1-O4). The probe file was
   deleted before commit; they motivate AC-TAU-004, -005 and -006 and are **not** re-executable, so
   no criterion's release-blocking status rests on them alone (L18 re-measures the lane arm).
@@ -425,13 +459,34 @@ TOML equals the emission of the edited `.md` (baseline G3: PASS on the unmodifie
 regenerated with `make agents-emit`, never hand-edited). A hand-edited or stale TOML turns this test
 red, and `make build` with it (`agents-emit-check`).
 
+**Given** the edited template `moai` skill directory (`gtd.md`), the edited `moai-kanban-foreman`
+skill directory and the edited template `manager-todo.md`, and `internal/template/catalog.yaml`
+**When** `go run ./internal/template/scripts/gen-catalog-hashes.go --all` has been run after the last
+template edit and `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/template -run '^(TestManifestHashFormat|TestCatalogHashCoversSkillSubfiles)$' -count=1 -v`
+is run
+**Then** it exits 0 and prints both `--- PASS: TestManifestHashFormat (0.03s)` and
+`--- PASS: TestCatalogHashCoversSkillSubfiles (0.03s)` (the durations vary; the swept set is those two named tests; their log
+lines report the entry counts), and the catalog diff is exactly the three `hash:` lines
+(`git diff --numstat -- internal/template/catalog.yaml` reads `3	3`, AC-TAU-013).
+
 - **Contrast control:** C3 shows the same `cmp` returning exit 1 on the one pair that does differ,
   so a `cmp` that cannot fail is ruled out. The generated-parity row is a guard green on arrival
   (G3) and red the moment `manager-todo.md` is edited without regeneration; the seeded probe is to
   perform M5 step 2's edit and run the test **before** `make agents-emit` — the run phase records
-  that red once (progress §E.2) and the green after regeneration.
+  that red once (progress §E.2) and the green after regeneration. The catalog row has the same
+  shape and **its red was already observed** on a reversible perturbation of the tree (G7: exit 1,
+  `CATALOG_HASH_UNSTABLE` for `moai`, `moai-kanban-foreman`, `manager-todo`; `CATALOG_HASH_SKINNY`
+  for the two directories) next to its green on the unmodified tree (G6) — so the catalog guards
+  can fail, and fail for the stated reason.
+- **RED-now / green-path cells for the catalog row** (regression-guard, so the RED cell is the
+  perturbation, not the arrival tree): RED = G7 (pinned to tree
+  `f9f66e27120b7af16251fc67bafedac5465f08ba` plus the three one-space edits, exit 1, the verbatim
+  failure lines recorded there); GREEN = G6 on the unmodified tree, and after M5 the same command on
+  the committed tree with `catalog.yaml` regenerated (M5 step 5, re-measured at M6). The run phase's
+  own seeded probe (plan M5 step 2) records the red once more against the real edits.
 - **Mutant probe:** (MU-12) an edit applied to the live copy only fails `cmp`; (MU-16) an edit that
-  syncs line 177 either way changes the numstat to `0 0` or `2 2`.
+  syncs line 177 either way changes the numstat to `0 0` or `2 2`; (MU-43) template artifacts edited
+  and the Codex TOML regenerated but `catalog.yaml` left stale fails both catalog guards (G7).
 
 ## AC-TAU-011 — The always-loaded stub does not grow, in bytes or characters (REQ-TAU-016)
 
@@ -468,7 +523,10 @@ L5 form), **and** (b) `wc -c` of each copy is ≤ its byte baseline **and** `wc 
 file, and the only non-test `internal/cli` changes are `factory_card.go`, `mcp_factory_card.go`,
 `todo.go`, `factory_messaging.go`; the control `git diff --name-only "$CARD_BASE"..HEAD` lists at
 least one path (a count of zero is "unmeasurable", not "no change"). The flag set (AC-TAU-001) and
-the refusal-token set (spec § C.2) bound the new CLI surface.
+the refusal-token set (spec § C.2) bound the new CLI surface. Two **generated** artifacts of the
+template tree are allowed in the changed-file list and are not a boundary breach:
+`internal/template/templates/.codex/agents/moai/manager-todo.toml` and
+`internal/template/catalog.yaml` (its `hash:` lines only — AC-TAU-013 bounds it at `3 3`).
 
 - **Non-vacuity:** the control must list ≥ 1 path after the first run commit; a mutant that touches
   `internal/kanban/backlog_store.go` makes the pathspec probe non-empty.
@@ -493,6 +551,7 @@ and the pre-existing line 177 of `kanban-dispatch.md` is untouched:
 | `manager-todo.md` | 12 | 12 (the two regions L22-L25 and L33-L42) |
 | `.codex/agents/moai/manager-todo.toml` (template tree only, generated) | 12 | 12 (the same bound as `manager-todo.md`, whose body it emits; checked on the committed diff, produced only by `make agents-emit`) |
 | `moai-kanban-foreman/SKILL.md` | 12 | 12 (Boundary 1 L61-L70, step 4) |
+| `internal/template/catalog.yaml` (template tree only, generated, no live pair) | 3 | 3 (the `moai`, `moai-kanban-foreman` and `manager-todo` `hash:` lines; method: the generator run on a **scratch copy** of the catalog against a tree with those three artifacts perturbed, `git diff --no-index --numstat` = `3  3`, ledger G8; produced only by `gen-catalog-hashes.go --all`, never hand-edited) |
 | `moai-mcp-tools-catalogue.md` | 1 | 1 (one table row) |
 
 The caps are chosen from the named regions' line counts and the feasibility draft (three changed
@@ -567,8 +626,11 @@ left `picked` and unowned — is **specified in the requirement and not tested**
 `picked`, unowned, with its `card.transition` event (the record cannot be rolled back); the queue
 item is restored per the compensation rule, the row is re-adopted by an unnominated arm or a later
 nomination, and it is visible in `moai factory status` as a `picked` row with no owner. That case
-is accepted (it is the state arm (c)'s own failed claim leaves) and untested — the single M1 seam
-sits before `RecordPicked`.
+is accepted and untested — the single M1 seam sits before `RecordPicked`. It differs from what arm
+(c)'s own failed claim leaves (the queue item `picked` and the row `picked`): here the queue item is
+`queued` with a `picked` row, arm (b) skips it, and arm (c) re-adopts it. Its side effect is
+accepted too: `factorySerialSlotFree("picked")` is false, so the stranded row of a serial card holds
+the serial slot against other serial cards until it is re-adopted (spec §G).
 
 - **RED-now:** L26 (the seam variable does not exist, control C5) and L37-L43 (each of the seven
   named tests is absent, control C1) — the **right selectors**. The tests **compile at M1**
@@ -608,6 +670,21 @@ sits before `RecordPicked`.
 | MU-39 hand-edited or stale generated Codex artifact | REQ-TAU-014/-015 | AC-TAU-010 (`TestGoldenCommittedArtifactsMatchEmission`), AC-TAU-007 (L23/L24 form) |
 | MU-40 the §9.2 L186 sentence left in `auto-semantics.md` | REQ-TAU-014 | AC-TAU-007 (L25 form) |
 | MU-41 marker predicate that does not trim leading whitespace | REQ-TAU-009 | AC-TAU-004 |
+| MU-43 template artifacts edited and the Codex TOML regenerated but `catalog.yaml` left stale | REQ-TAU-015 | AC-TAU-010 (`TestManifestHashFormat`, `TestCatalogHashCoversSkillSubfiles`; red observed, G7) |
+
+**Mutants that pass today and are accepted, not caught** (iteration-3 S5 and the carried residuals;
+each states why it is left):
+
+| Mutant | Violates | Why it is not caught, and why it is accepted |
+|---|---|---|
+| MU-44 the marker refusal also applied to a **queue-`picked`** operator-pick card that carries a leading marker (arms (b)/(b2) skip it too) | REQ-TAU-009 (`queued` only), REQ-TAU-007 | no fixture card is queue-`picked` with a marker and the golden is marker-free; the exposure is an operator's own pick being skipped, which no check here observes — it is accepted as a stated gap, not as a measured harmlessness. A `tP` fixture (nominated and bare, expected leased) is the cheap closure if the run phase wants it |
+| MU-45 promote first, run the quota/Codex/other checks afterwards, restore on refusal | REQ-TAU-005 ("decided before the first write") | `TestFactoryNextNominateRefusalLeavesStateUnchanged` compares **end states**, and a byte-exact restore leaves an identical end state; observing the write order needs a write counter the stores do not expose; accepted as a stated gap (the end-state guarantee is what the criterion measures) |
+| MU-46 delete the unpinned clause "Every other queue mutation (…) stay forbidden to a lane" in `kanban-dispatch.md` L33 within the 3/3 line cap | REQ-TAU-014 | AC-TAU-013 bounds lines, not clauses (the carried D6 residual); the doctrine pins keep the five prohibitions in `gtd.md`, not this clause |
+| MU-47 add 16 unrelated lines to `auto-semantics.md` (29 needed, cap 45) | REQ-TAU-014 | the cap slack is deliberate (plan §3: the draft plus half again for rewording) |
+| MU-48 compensation wired only to the seam-injected failure, so a real `RecordPicked` or store error does not compensate | REQ-TAU-005 | the single seam is the only injection point (spec §G discloses the single seam); the post-`RecordPicked` case is specified and untested by admission |
+
+Counts: 47 mutants named in all (MU-1..MU-48 with MU-36 unused) — 42 caught by a criterion, 5
+(MU-44..MU-48) accepted and not caught, each with its reason above.
 
 ## Edge cases
 
@@ -655,5 +732,9 @@ sits before `RecordPicked`.
    before lanes exercise this doctrine.** The completion report carries this note, or states that
    the operator accepted the exposure.
 7. `TestGoldenCommittedArtifactsMatchEmission` passes on the M5 commit (the generated Codex artifact
-   was regenerated with `make agents-emit`), and `TestACCounterFullCorpusMatchesBaseline` passes —
-   the baseline file regenerated in the same commit only if the count moved.
+   was regenerated with `make agents-emit`); `TestManifestHashFormat` and
+   `TestCatalogHashCoversSkillSubfiles` pass on the same commit (`catalog.yaml` regenerated with
+   `go run ./internal/template/scripts/gen-catalog-hashes.go --all` after the last template edit,
+   staged in the same commit); and `TestACCounterFullCorpusMatchesBaseline` passes — the count is
+   final in the plan commits, so no baseline regeneration is expected (one, if ever needed,
+   belongs to a plan commit).

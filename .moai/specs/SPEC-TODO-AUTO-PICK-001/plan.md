@@ -1,7 +1,7 @@
 # SPEC-TODO-AUTO-PICK-001 — Plan
 
 Tier M. Card t1448, plan-start HEAD `4bf547bca`, iteration-1 repair base `b3646de10`, iteration-2
-repair base `63daaf6a7`, worktree `.moai/worktrees/t1448`, branch `WT-todo-auto-pick-autonomy`.
+repair base `63daaf6a7`, iteration-3 repair base `625f01718`, worktree `.moai/worktrees/t1448`, branch `WT-todo-auto-pick-autonomy`.
 Milestones are ordered by **decision reversibility** — the decisions most likely to change come
 first (the nominated-lease interface a lane sees, then the doctrine the operator reads), mechanical
 edits last. No time estimates; priority labels and ordering only.
@@ -73,7 +73,10 @@ predicate.
   leasing; the Codex skip (`factoryNextSkipForBackend`) of a card at or past merge-ready; the serial
   slot (a second serial card not leased while one is in flight); and the no-card exit 3 with its
   stdout line.
-- The refusal exit code is **4** (`factoryNextRefusedExit`). Pre-flight: measured, within
+- The refusal exit code is **4**. M1's tests assert the **literal** `4`; no constant by the name
+  `factoryNextRefusedExit` (or any name) exists at the plan tree (`git grep -n "factoryNextRefusedExit"
+  -- internal/cli` is empty), so the run phase **introduces** the named constant in M2 and no M1 test
+  may reference it (S1). Pre-flight: measured, within
   `factory*.go` only 1 and 3 are used (`factoryNextNoCardExit = 3`, `factory_lane_relaunch.go:51`);
   `moai slot` also uses 4 (`slotExitBusy = 4`, `slot.go:38`) — a different verb family, so exit
   codes do not collide; the run phase re-greps before choosing.
@@ -105,7 +108,11 @@ predicate.
      reads the record: if there is **no row, or a row at `picked` with no owner**, it restores the
      queue item from `picked` to `queued` in one `Mutate` that acts **only if the item is still
      `picked`**; if another holder exists the queue state is the holder's and is left alone and
-     the invocation refuses `raced`. If the item is no longer `picked` the compensation does
+     the invocation refuses `raced`. The restore condition is exactly this one — **no row, or a row
+     at `picked` with no owner** — and spec REQ-TAU-005 and §B.8 carry the same words (S2); a row
+     `assigned` to this lane (a first claim edge landed, a later edge failed for a non-race reason)
+     meets neither alternative, so nothing is restored: it is this lane's own arm (a) lease target
+     and is untested by design. If the item is no longer `picked` the compensation does
      nothing and the original outcome is reported. If the restoring write itself fails the
      invocation exits with status 1 and `factory next: compensation failed: <cause>` — no token —
      and the card stays `picked` and unowned (adoptable by an unnominated arm or a later
@@ -114,8 +121,13 @@ predicate.
   package has no delete, so a failure *after* `RecordPicked` leaves that row (`picked`, unowned) and
   its event; the queue item is still restored per step 4. The seam sits before `RecordPicked` so
   the tests can prove the restore and the absence of a row; the post-record case is specified in
-  §B.8, accepted (it is the state arm (c)'s own failed claim leaves), visible as a `picked` row with
-  no owner in `moai factory status`, and **not tested**.
+  §B.8, accepted, visible as a `picked` row with no owner in `moai factory status`, and **not
+  tested**. The residue differs from what arm (c) itself leaves: arm (c) leaves the queue item
+  `picked` **and** the row `picked`, while a failed nominated claim leaves the queue item `queued`
+  with a `picked` row; arm (b) skips it (the item is `queued`), and it re-adopts through arm (c)
+  (S2). Side effect, accepted and stated in spec §G (S7): `factorySerialSlotFree("picked")` is
+  false, so the stranded `picked` row of a serial card holds the serial slot against other serial
+  cards until it is re-adopted.
 - The arm (c) skip counts the marker card as seen (`sawQueued`), so a queue holding only
   marker-bearing cards ends on the no-card exit 3 (AC-TAU-006). The marker test is
   `strings.HasPrefix(strings.TrimSpace(text), "[보류")` — the same predicate as
@@ -153,18 +165,49 @@ predicate.
 ### M5 — Doctrine amendment, live and mirror and generated artifact in one change, pins first (Priority High)
 
 Everything below is **one commit**: no state exists in which a live file is edited and its mirror is
-not, in which a doc is edited and its pin is not, or in which `manager-todo.md` is edited and the
-generated Codex artifact is not.
+not, in which a doc is edited and its pin is not, in which `manager-todo.md` is edited and the
+generated Codex artifact is not, or in which a template artifact is edited and its stored catalog
+hash is not (F1).
+
+**The catalog hash obligation (F1), measured at `625f01718`.** `internal/template/catalog.yaml`
+stores a sha256 for three artifacts this milestone edits in the template tree: the **whole skill
+directory** `templates/.claude/skills/moai/` (it contains `workflows/gtd.md`), the **whole skill
+directory** `templates/.claude/skills/moai-kanban-foreman/` (it contains `SKILL.md`), and the **file**
+`templates/.claude/agents/moai/manager-todo.md`. `TestManifestHashFormat` recomputes every entry's hash
+from the embedded templates and fails `CATALOG_HASH_UNSTABLE` on a mismatch;
+`TestCatalogHashCoversSkillSubfiles` fails `CATALOG_HASH_SKINNY` for a directory entry
+(`internal/template/catalog_tier_audit_test.go`, `:401` and `:475`). The hashes are regenerated by
+`go run ./internal/template/scripts/gen-catalog-hashes.go --all` — the exact step `make build` runs as
+a side effect (`Makefile` `build` target), which leaves a **modified, unstaged** `catalog.yaml` for a
+lane that stages by pathspec, so the run phase runs the generator itself and stages the file. The
+script header states: `--all` updates **every** entry's `hash:` field in place (default catalog path
+`internal/template/catalog.yaml`, default templates path `internal/template/templates`, both
+relative — run it from the worktree root); skill directories hash as a whole tree
+(`ComputeDirTreeHash`), agent entries hash their `.md`; the file is re-marshalled with yaml.v3 (the
+script notes comments are not preserved — the committed file has none). Measured on a scratch copy of
+the catalog with the three template artifacts perturbed: the generator rewrote **exactly three
+lines**, `git diff --no-index --numstat` read `3  3` (the `moai`, `moai-kanban-foreman` and
+`manager-todo` `hash:` lines), nothing else moved. Precedent for the same kind of edit: commit
+`232cd8d41` (a `manager-todo.md` edit that also changed `catalog.yaml`).
 
 Order inside the milestone: (1) write `TestAutoPickDocDoctrine` and `TestAutoPickMirrorParity` in
 `internal/cli/todo_auto_pick_doc_test.go` — observe RED (AC-TAU-007/-008 RED-now cells);
-(2) edit every doc and every mirror, **then run `make agents-emit`** to regenerate
+(2) edit every doc and every mirror — then, **before** regenerating anything, run the generated-artifact
+parity test once and the two catalog guards once, and record each red once (the AC-TAU-010 seeded
+probe, S3: the TOML is stale against the edited `.md`; `moai`, `moai-kanban-foreman` and
+`manager-todo` read `CATALOG_HASH_UNSTABLE`); **then run `make agents-emit`** to regenerate
 `internal/template/templates/.codex/agents/moai/manager-todo.toml` from the edited template
-`manager-todo.md` (never hand-edit the TOML); (3) run the scoped doc-pin command once **before**
-moving any pin, and record the two expected breakages; (4) move the existing pins in
-`internal/cli/todo_auto_doc_test.go`; (5) run `AGENTEMIT_UPDATE= go test ./internal/template/agentemit/...
+`manager-todo.md` (never hand-edit the TOML); **then run the catalog generator**
+(`go run ./internal/template/scripts/gen-catalog-hashes.go --all`), only after every template
+artifact is final (a later template edit makes the hashes stale again); (3) run the scoped doc-pin
+command once **before** moving any pin, and record the two expected breakages; (4) move the existing
+pins in `internal/cli/todo_auto_doc_test.go`; (5) run `AGENTEMIT_UPDATE= go test ./internal/template/agentemit/...
 -run '^TestGoldenCommittedArtifactsMatchEmission$' -count=1` and see it PASS (it compares the committed
-TOML to the template `.md`; `make build` depends on it through `agents-emit-check`).
+TOML to the template `.md`; `make build` depends on it through `agents-emit-check`), and run
+`go test ./internal/template -run '^(TestManifestHashFormat|TestCatalogHashCoversSkillSubfiles)$' -count=1 -v`
+and require both `--- PASS` lines (the swept set is those two named tests; both are PASS on the
+unmodified tree — observed ledger G6 — so they are regression-guards that go red only when the
+catalog is left stale).
 
 **Every existing marker that must move (D6, enumerated):**
 
@@ -179,6 +222,7 @@ TOML to the template `.md`; `make build` depends on it through `agents-emit-chec
 | `TestAutoRankAgentDoctrine` | both pinned literals in the `Serial-cycle contract (` and `## Jev Decision Boundary` regions; four stale phrases absent; kept Jev prohibitions | **kept** — new manager-todo wording must not reintroduce a stale phrase |
 | `TestTodoSkillDocumentsClassification` (`todo_classify_doc_parity_test.go`) | whole-file neutrality of mirror `gtd.md` | **kept** — no internal token in the new gtd text |
 | `TestGoldenCommittedArtifactsMatchEmission` (`internal/template/agentemit`) | the committed `.codex/agents/moai/manager-todo.toml` equals the emission of the template `manager-todo.md` | **must be regenerated** with `make agents-emit` in the same commit (baseline PASS observed, ledger G3) |
+| `TestManifestHashFormat` and `TestCatalogHashCoversSkillSubfiles` (`internal/template/catalog_tier_audit_test.go`) | the stored sha256 of `moai`, `moai-kanban-foreman` (whole skill trees) and `manager-todo` (file) equals the hash recomputed from the embedded templates | **must be regenerated** with `go run ./internal/template/scripts/gen-catalog-hashes.go --all` in the same commit (baseline PASS observed, ledger G6; RED observed on a perturbed tree, ledger G7) |
 | `TestContractModeEmitterSites` (`contract_mode_guided_test.go`) | every document containing the word `Kickoff` is classified; `kanban-dispatch.md` is `R` | **kept** — the new `auto-semantics.md` §9.3 and `gtd.md` text must not add the word `Kickoff` to a file the registry does not classify (use "plan→run gate" wording) |
 | `internal/template/jev_auto_exception_test.go` | presence anchors `jaeAnchors` in `kanban-dispatch.md`, `gtd.md`, `manager-todo.md` | **kept** (read: markers are Jev tokens the edit leaves) |
 | `internal/cli/init_headroom_export_test.go` | a path list for a measurement harness (skips without its flag) | **kept** — no assertion on content |
@@ -202,6 +246,7 @@ restructuring; AC-TAU-013 bounds each file's diff):
 | `auto-semantics.md` new `### 9.3` | — | the keep-set, the input set, the record form with `ladder_path=gate-row card pick (AUTONOMOUS, auto-semantics §9)`, `evidence, not the decision board`, `unmeasured`, the open-set sentence `adds an input without amending the keep-set or the lease path`, and `no party re-reads the card-pick record` (the §9.1/§10 "compensating control" wording stays and is **not edited**; §9.3 says it does not hold for this record) |
 | `manager-todo.md` L23, L34-L35 (template copy and live copy) | `process cards in queue order`; `serial consumption of the queue and nothing else` | `on its own judgment` / keep-set wording; the serial-cycle region keeps the pinned ranking literals |
 | `.codex/agents/moai/manager-todo.toml` (template tree only) | — **generated**, not edited | regenerated by `make agents-emit` from the edited template `manager-todo.md`; the three old phrases are absent afterwards |
+| `internal/template/catalog.yaml` (template tree only) | — **generated**, not edited | the `hash:` lines of `moai`, `moai-kanban-foreman`, `manager-todo` regenerated by `go run ./internal/template/scripts/gen-catalog-hashes.go --all` after the template edits are final; never hand-edited (F1) |
 | `moai-kanban-foreman/SKILL.md` Boundary 1, step 4 | `serial consumption in queue order is authorized`; `\`queued\` items are not yours to pick.` | `… on the iteration's own judgment, within the keep-set`; `… not yours to pick outside a batch authorization.` |
 | `kanban-dispatch-detail.md` § The pre-dispatch cross-check | — | one added paragraph carrying `a pull request or landed state is a skip input for a queued candidate the session chose and is report-only for an operator-picked card` and the B.2 reconciliation. Lazy file — growth is free |
 | `moai-mcp-tools-catalogue.md` factory_next row | the one cell | mentions the optional `card` argument |
@@ -211,7 +256,8 @@ New detail goes in `auto-semantics.md` §9.3 (lazy, `paths:`-scoped to the watch
 replaced sentences. Preserve each copy's `kanban-dispatch.md` line 177 exactly (see §4).
 
 - Exit: the new doc pins GREEN **for live and mirror at once**; the moved existing pins GREEN;
-  `TestGoldenCommittedArtifactsMatchEmission` PASS; every AC-TAU-007/-008/-010/-011/-013 reading
+  `TestGoldenCommittedArtifactsMatchEmission` PASS; `TestManifestHashFormat` and
+  `TestCatalogHashCoversSkillSubfiles` PASS; every AC-TAU-007/-008/-010/-011/-013 reading
   holds on the committed tree; the mutants of `acceptance.md` each fail their criterion.
 
 ### M6 — Verification and measurement only (Priority High; no file edits)
@@ -223,13 +269,16 @@ exit code and verbatim tail in `progress.md` §E.2:
   package run (`.claude/rules/local/gitflow-lane-protocol.md` §8) and scrub the lane environment in
   one compound invocation.
 - `internal/template`: the tests naming the edited files (`jev_auto_exception_test.go`,
-  `contract_mode_guided_test.go`, `rule_template_mirror_test.go`) by an anchored selector, with a
-  swept-count check; and `AGENTEMIT_UPDATE= go test ./internal/template/agentemit/... -run
-  '^TestGoldenCommittedArtifactsMatchEmission$' -count=1 -v` (the swept set is the single named
-  test: its `--- PASS` line must appear).
+  `contract_mode_guided_test.go`, `rule_template_mirror_test.go`) **and the two catalog guards
+  `TestManifestHashFormat` and `TestCatalogHashCoversSkillSubfiles`** by one anchored selector, with a
+  swept-count check (the catalog guards' own log lines report 49 entries and 37 directory entries
+  swept at `625f01718`; a zero or a lower count is a gap); and `AGENTEMIT_UPDATE= go test
+  ./internal/template/agentemit/... -run '^TestGoldenCommittedArtifactsMatchEmission$' -count=1 -v`
+  (the swept set is the single named test: its `--- PASS` line must appear).
 - `internal/spec`: `go test ./internal/spec -run '^TestACCounterFullCorpusMatchesBaseline$' -count=1`
-  after the criteria are final (the acceptance counter baseline; regenerate in the same commit if
-  the count moved — `.moai/docs/ac-count-baseline-refresh.md`).
+  after the criteria are final (the acceptance counter baseline; the count is final in the plan
+  commits and the guard is green, so this run is a confirmation — a regeneration, if it were ever
+  needed, belongs to a plan commit, not to M6; S6).
 - Measurements (AC-TAU-010, -011, -012, -013): `cmp` on each pair, `wc -c` and `wc -m` on both
   `kanban-dispatch.md` copies against the baselines, `git diff --numstat "$CARD_BASE"..HEAD` against
   the caps, the boundary pathspec probe, and the draft-versus-actual byte comparison (§3).
@@ -255,7 +304,7 @@ declaration, which M1 itself adds). Checked by hand for **all** fourteen, again 
 | AC-TAU-007 | M5 | M5 | live, mirror, generated artifact and pins in one commit |
 | AC-TAU-008 | M5 | M5 | same commit |
 | AC-TAU-009 | no milestone flips it: the first lane lease taken under the doctrine, after the run phase | the lease | a regression-guard with no executing party; recorded as a pass only once a reader has opened the record |
-| AC-TAU-010 | M5 (measured M6) | M5 | both sides and the generated artifact edited together; the parity test runs at M5 step 5 |
+| AC-TAU-010 | M5 (measured M6) | M5 | both sides, the generated Codex artifact and the catalog hashes edited together; the parity test and the two catalog guards run at M5 step 5, the seeded probes at step 2 |
 | AC-TAU-011 | M5 (measured M6) | M5 | measurement only at M6 |
 | AC-TAU-012 | M6 | all | boundary read over the finished diff |
 | AC-TAU-013 | M5 (measured M6) | M5 | floor and ceiling both read the M5 commit |
@@ -319,8 +368,10 @@ copied, regenerated in the same M5 commit (§2 M5).
 Measured at `63daaf6a7` by `git grep -n -F -i` for `serial consumption`, `serial queue consumption`,
 `queue order`, `never picks for the operator`, and `nothing else` (with `auto`/`batch`/`serial`
 context) across `.claude`, `internal/template/templates`, `docs-site`, `CLAUDE.md`, `AGENTS.md`;
-`docs-site` exists and carries only vendored minified JavaScript hits (a false positive of the
-`nothing else` pattern), no documentation page. Each hit is classified:
+the first sweep's `docs-site` hits were vendored minified JavaScript (a false positive of the
+`nothing else` pattern); iteration 3 found that those four patterns did not match the user-facing
+wording "always the operator" / "operator's acts" / "never picks", so the last two rows were
+corrected (F2). Each hit is classified:
 
 | Hit | Disposition |
 |---|---|
@@ -338,7 +389,8 @@ context) across `.claude`, `internal/template/templates`, `docs-site`, `CLAUDE.m
 | `internal/cli/todo_auto.go` L26 (Go comment: the cycle "authorizes serial consumption of the queue and nothing") and the `--auto` flag help (`todo.go` L315) | **kept** — accurate for the operator-session serial cycle, which this SPEC leaves unchanged; the flag help is named in spec §G |
 | `internal/cli/todo_auto_doc_test.go` L344-L346 (a Go comment and a stale-phrase list quoting the old agent wording) | **kept** — a historical quotation pinned as an absent phrase |
 | `.claude/rules/moai/core/askuser-protocol.md` L111 (`withholds a recommendation and nothing else`) | **kept** — unrelated sense of "and nothing else" |
-| `docs-site/**` | **kept** — no documentation page states the old authority; the hits are vendored JavaScript |
+| `README.md` L161; `docs-site/content/en/advanced/factory-mode.md` L65; `docs-site/content/en/advanced/kanban-mode.md` L287 (F2) | **sync-phase scope, not run-phase** — user-facing pages that state the operator-only pick: "The actor that picks a card is always the operator (`moai todo next <n>`) … never picks one itself", "picking the next one remain the operator's acts", "both putting cards in the queue and picking them stay the operator's job — the foreman never picks". Found by `git grep -n -i -E "always the operator|never picks|operator.s act|picks a card|operator-only|operator's acts|never pick" -- README.md README.ko.md README.ja.md README.zh.md docs-site/content` (3 English hits; the four README locales and the ko/ja/zh docs-site pages were not matched by this English pattern and are **not enumerated** — sync enumerates them). The bare-`/loop` foreman statements stay true (outside a batch authorization the foreman still picks nothing); the damage is the unqualified "always the operator". The sync phase (`manager-docs`, 4-locale docs-site: en, ko, ja, zh) rewrites each such sentence to the new wording — the pick is the operator's, in person or in advance through `--auto` — and applies the same edit to every locale's `advanced/factory-mode.md` and `advanced/kanban-mode.md` and to the READMEs; **the run phase does not edit them** (Out of Scope, spec §D) |
+| `docs-site/**` vendored JavaScript hits | **kept** — the `nothing else` pattern's false positives |
 
 ## 5. Files to modify
 
@@ -357,9 +409,11 @@ context) across `.claude`, `internal/template/templates`, `docs-site`, `CLAUDE.m
 | Skill (live + mirror) | `.claude/skills/moai/workflows/gtd.md` | `--auto` section: replacement, keep-set list, record form, lane routing, D12 sentence |
 | Agent (live + mirror) | `.claude/agents/moai/manager-todo.md` | two sentence replacements |
 | **Generated** (template tree only) | `internal/template/templates/.codex/agents/moai/manager-todo.toml` | **regenerated** with `make agents-emit` in the same M5 commit; never hand-edited; `TestGoldenCommittedArtifactsMatchEmission` verifies |
+| **Generated** (template tree only) | `internal/template/catalog.yaml` | the `hash:` lines of `moai`, `moai-kanban-foreman`, `manager-todo` **regenerated** with `go run ./internal/template/scripts/gen-catalog-hashes.go --all` in the same M5 commit after the template edits are final; never hand-edited; `TestManifestHashFormat` and `TestCatalogHashCoversSkillSubfiles` verify (F1; measured diff `3  3`) |
 | Skill (live + mirror) | `.claude/skills/moai-kanban-foreman/SKILL.md` | Boundary 1 and step 4 |
 | Rule (live + mirror) | `.claude/rules/moai/core/moai-mcp-tools-catalogue.md` | one catalogue cell |
-| Baseline (tracked) | `.moai/reports/t338/ac-count-baseline.txt` | regenerate in the same commit **only if** `TestACCounterFullCorpusMatchesBaseline` is red after the criteria are final (observed green at iteration-2 repair time; see progress §E.1) |
+| Baseline (tracked) | `.moai/reports/t338/ac-count-baseline.txt` | not expected to change: `TestACCounterFullCorpusMatchesBaseline` is green with this SPEC reported `absent-from-snapshot … COUNT 14` (observed; see progress §E.1); a regeneration, if ever needed, belongs to a plan commit (S6) |
+| Docs (**not** run-phase) | `README.md`, `docs-site/content/{en,ko,ja,zh}/advanced/{factory-mode,kanban-mode}.md` | **sync-phase** rewrite of the "always the operator" sentences (§4a, F2); listed so the sync phase has its scope, **not edited by run** |
 
 No file under `internal/kanban/**`, `internal/graph/**`, or any schema file changes (REQ-TAU-003);
 no `sync-auditor` / `sync-audit-4dim` change (REQ-TAU-012 states the record is unread, not
@@ -400,6 +454,11 @@ the serial slot, ownership and the record state — none of which t1454's inputs
   `auto-semantics.md`, which this SPEC leaves untouched.
 - `contract-autonomy.md` L92 says card selection stays the operator's act for a signed contract; a
   follow-up may cross-reference the `--auto` authorization there.
+- **Sync phase (`manager-docs`) owns the user-facing pages** that state the operator-only pick
+  (§4a, F2): `README.md` L161 and the 4-locale docs-site pages `advanced/factory-mode.md` and
+  `advanced/kanban-mode.md`. The run phase leaves them untouched; the sync phase enumerates the
+  ko/ja/zh counterparts (not enumerated here) and rewrites each sentence to say the pick is the
+  operator's, in person or in advance through `--auto`.
 
 ## 8. Risks and their milestones
 
@@ -407,6 +466,7 @@ the serial slot, ownership and the record state — none of which t1454's inputs
 |---|---|
 | Doc pins red when the docs change | M5: docs, mirrors, generated artifact and pins in one commit; the two expected breakages observed first |
 | `make build` red because the generated Codex artifact is stale | M5 step 2/5: `make agents-emit` in the same commit, `TestGoldenCommittedArtifactsMatchEmission` PASS |
+| `internal/template` red because the catalog hashes are stale, or `make build` leaves an unstaged `catalog.yaml` (F1) | M5 steps 2 and 5: the generator run by the lane itself after the template edits are final, `catalog.yaml` staged by pathspec in the same commit, `TestManifestHashFormat` + `TestCatalogHashCoversSkillSubfiles` PASS; both are in the M6 `internal/template` selector |
 | Default-path `[보류` skip surprises an operator | isolated clause of REQ-TAU-007; stated in B.4 |
 | Lane `--auto` refusal reverses an FLA doctrine move, or refuses a Codex leader | isolated REQ-TAU-008 with an explicit predicate, a non-lane GPT guard, and the corrected fallback string |
 | Promoted-then-lost nominee leaves a `picked` card or a record row | M2 steps 1-4, the seam before `RecordPicked`, spec §B.8; the post-record residue is accepted and untested |
@@ -424,6 +484,21 @@ commit graph — not a message — witnesses that the baselines precede the chan
 (`verification-claim-integrity.md` §2.3).
 
 ## 10. Audit resolution map
+
+### Iteration 3 (audited commit `625f01718`; FAIL 0.80, MP-1..9 PASS, one blocker F1 — corrected here **without a re-audit**; the leader decides the next step)
+
+| Item | Resolution (where / how) |
+|---|---|
+| F1 | `internal/template/catalog.yaml` is now a named artifact: §5 row, M5 table row, M5 order (seeded probe, `--all` generator after the template edits, step 5 PASS of both catalog guards), the M5 pin-table row, the M6 `internal/template` selector, §8 risk row, AC-TAU-010 Given and RED-now/green cells, AC-TAU-012 changed-file allowance, AC-TAU-013 row with the **measured** cap `3` added / `3` deleted (method: generator run on a scratch copy of the catalog against a tree with the three artifacts perturbed, `git diff --no-index --numstat` = `3  3`), DoD 7, ledger G6-G8. The red was **observed**, not inferred (ledger G7) |
+| F2 | §4a's false "no documentation page" row replaced by the real finding (README.md L161; en `advanced/factory-mode.md` L65 and `advanced/kanban-mode.md` L287); classified **sync-phase scope**, listed in §5 and §7, and Out of Scope in spec §D for the run phase |
+| S1 | M1: tests assert the literal `4`; the constant is introduced in M2 (`git grep` of `factoryNextRefusedExit` is empty) |
+| S2 | REQ-TAU-005 and §B.8 reworded to the plan's "no row, or a row at `picked` with no owner"; the post-record residue is said to re-adopt through arm (c); the `assigned`-to-this-lane row is named as untested by design (M2 step 4) |
+| S3 | AC-TAU-010's seeded probe scheduled in M5 step 2 |
+| S4 | REQ-TAU-011 no longer says "verbatim" — it points at §B.3 for the sentence; spec-compact.md identical; research R9/R10 aligned to the two-form wording |
+| S5 | the two uncaught mutants are listed in the mutant table as **not caught, accepted** with the reason (queue-`picked` marker card; promote-then-restore) |
+| S6 | M6 states a baseline regeneration, if ever needed, belongs to a plan commit |
+| S7 | spec §G names the serial-slot side effect of the stranded `picked` row; plan M2 repeats it as accepted |
+| S8 | ledger row L26 annotated "flips at M1, the criterion at M2" |
 
 ### Iteration 2 (audited commit `63daaf6a7`; the leader approved one extra delta audit, scope N1-N6 plus a full ordering re-read)
 
