@@ -51,9 +51,15 @@ func parseLockOwner(raw []byte) (*StateLockOwner, error) {
 	return &owner, nil
 }
 
-// ClearStaleBoardLock removes a stale board-wide lock artifact — an explicit,
+// clearStaleLockAtPath removes a stale lock artifact at path — an explicit,
 // operator-visible, bounded act; never a step the acquire path takes on its
-// own, and never conditioned on the artifact's age.
+// own, and never conditioned on the artifact's age. The short-lived locks over
+// this atomic-create substrate (the integration-window mutation lock,
+// integration_lock_mutation.go, and the slot-lease mutation lock) share this
+// one discipline rather than each growing a subtly different copy of it: probe
+// first, remove only a positively-dead owner, re-read the identity immediately
+// before the unlink, abort on any mismatch, and give an empty artifact the
+// interrupted-acquisition grace.
 //
 // The removal happens ONLY when the recorded process is positively observed
 // absent, and a RE-READ of the recorded identity runs immediately before the
@@ -72,23 +78,8 @@ func parseLockOwner(raw []byte) (*StateLockOwner, error) {
 // whose recorded owner was observed dead, and the operation is explicit and
 // reports what it removed, so a rare bad outcome is attributable rather than
 // silent.
-func ClearStaleBoardLock(root string) (*ClearStaleReport, error) {
-	return clearStaleLockAtPath(boardLockPath(root), "board lock")
-}
-
-// clearStaleLockAtPath is the path-keyed core of the clear above, extracted so
-// a SECOND short-lived lock over the same atomic-create substrate — the
-// integration-window mutation lock (integration_lock_mutation.go) — reuses this
-// discipline rather than growing a subtly different copy of it: probe first,
-// remove only a positively-dead owner, re-read the identity immediately before
-// the unlink, abort on any mismatch, and give an empty artifact the
-// interrupted-acquisition grace.
 //
-// label names the lock in the error text, so the board caller's messages stay
-// byte-identical to what they were before the extraction. Nothing else changes:
-// ClearStaleBoardLock keeps its exact signature and behaviour and is now a
-// caller of this function. The TOCTOU residual documented above is inherited
-// unchanged and is not narrowed further here.
+// label names the lock in the error text of each caller.
 func clearStaleLockAtPath(path, label string) (*ClearStaleReport, error) {
 	rawFirst, err := os.ReadFile(path)
 	if err != nil {

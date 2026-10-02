@@ -1,6 +1,6 @@
 //go:build !windows
 
-// state_lock_unix.go — Unix substrate of the board-wide lock: flock(2) on an
+// state_lock_unix.go — Unix substrate of the state lock: flock(2) on an
 // open descriptor, mirroring internal/spec/lock_unix.go's pattern. The kernel
 // releases the flock when the descriptor closes, which it does on process
 // exit — so a killed holder leaves an artifact that blocks nothing on this
@@ -14,7 +14,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// classifyStateFlockErr maps a flock(2) failure to the board-lock error
+// classifyStateFlockErr maps a flock(2) failure to the state-lock error
 // contract: EWOULDBLOCK/EAGAIN is contention, every other errno is a hard
 // error that preserves the underlying errno for errors.Is inspection and
 // names the lock path (SPEC-BOARDLOCK-ERRNO-001 REQ-BLE-001/002/003).
@@ -27,8 +27,8 @@ import (
 // Both EWOULDBLOCK and EAGAIN are named although they share a value on linux
 // and darwin — that is portability notation, not redundancy.
 //
-// EINTR falls on the non-contention side. Today it is absorbed by the
-// contention retry budget in acquireBoardLockSerialized; here it becomes an
+// EINTR falls on the non-contention side. It used to be absorbed by the
+// contention retry budget of the retired board acquisition; here it becomes an
 // immediate hard error. That is an accepted behaviour change on an input
 // whose reachability is UNMEASURED, recorded as such in spec.md §1.3.1, and
 // it sits outside REQ-BLE-005's measured-reachable scope.

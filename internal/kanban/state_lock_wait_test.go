@@ -48,7 +48,7 @@ func TestStateLockWaitBudgetDerivedFromNamedInputs(t *testing.T) {
 	// Why no floor-versus-budget comparison appears here, and why
 	// reinstating one is a regression rather than an improvement:
 	// stateLockWaitBudget IS declared as that same three-constant product
-	// (board_store.go), and the equality above is a t.Fatalf hard stop, so
+	// (state_lock_wait.go), and the equality above is a t.Fatalf hard stop, so
 	// any floor built from those terms is the identical expression to the
 	// budget and evaluates false on every assignment — an identity wearing
 	// an inequality's clothing, which reads as coverage and can never fire.

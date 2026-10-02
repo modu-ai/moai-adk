@@ -3,7 +3,7 @@
 //
 // The backlog is the OPERATOR's queue, not the board's: any session may
 // append, pick, or complete a card, so this store deliberately applies NO
-// sole-writer role guard (the explicit contrast with board_store.go — the
+// sole-writer role guard (the explicit contrast with the retired board store — the
 // board has exactly one writer, the leader; the backlog has every writer).
 // What it does share with the board is the concurrency substrate: mutations
 // serialize on a sibling advisory lock (backlog.lock, the same
@@ -1245,7 +1245,7 @@ func derefOr(s *string, fallback string) string {
 
 // acquireBacklogLockSerialized acquires the backlog's sibling lock, retrying
 // contention against the SAME shared wait policy as the board lock
-// (stateLockWaitBudget and stateLockRetryWait, board_store.go — REQ-BLB-006:
+// (stateLockWaitBudget and stateLockRetryWait, state_lock_wait.go — REQ-BLB-006:
 // one policy, both call sites, so a change to either the budget or the
 // backoff applies here without a second edit): a mutation racing a
 // short-lived holder serializes behind it instead of failing, while a

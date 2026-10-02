@@ -8,7 +8,6 @@ package kanban
 import (
 	"errors"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -153,44 +152,6 @@ func TestClaimFactoryWorkerWritesLaneLabel(t *testing.T) {
 	reg := LoadFactoryRegistry(FactoryRegistryPath(root))
 	if _, ok := reg["lane-1"]; !ok {
 		t.Errorf("registry missing lane-1 after claim: %v", reg)
-	}
-}
-
-// REQ-RNC-025 board clause: a board role declaration `lead` loses board write
-// access; `leader` is admitted. DeclareRole has no production caller — this is
-// exercised from tests only.
-func TestBoardGuardRefusesLegacyLeadDeclaration(t *testing.T) {
-	root := t.TempDir()
-	if err := DeclareRole(root, "legacy-session", "lead", "lead"); err != nil {
-		t.Fatalf("DeclareRole: %v", err)
-	}
-	before, err := os.ReadFile(filepath.Join(BoardDir(root), "roles", "legacy-session.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = requireLeaderRole(root, "legacy-session")
-	if !errors.Is(err, ErrNotSoleWriter) {
-		t.Fatalf("requireLeaderRole(lead declaration) err = %v, want ErrNotSoleWriter", err)
-	}
-	if !strings.Contains(err.Error(), "lead") {
-		t.Errorf("refusal %q does not name the legacy role lead", err.Error())
-	}
-	after, err := os.ReadFile(filepath.Join(BoardDir(root), "roles", "legacy-session.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(before) != string(after) {
-		t.Errorf("declaration file changed on refusal")
-	}
-}
-
-func TestBoardGuardAdmitsLeaderDeclaration(t *testing.T) {
-	root := t.TempDir()
-	if err := DeclareRole(root, "leader-session", RoleLeader, LeaderLabel()); err != nil {
-		t.Fatalf("DeclareRole: %v", err)
-	}
-	if err := requireLeaderRole(root, "leader-session"); err != nil {
-		t.Fatalf("requireLeaderRole(leader declaration) = %v, want nil", err)
 	}
 }
 

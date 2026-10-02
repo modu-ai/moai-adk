@@ -1,6 +1,6 @@
 //go:build !windows
 
-// state_lock_errno_test.go — bidirectional contract for the Unix board-lock
+// state_lock_errno_test.go — bidirectional contract for the Unix state-lock
 // flock(2) failure classification (SPEC-BOARDLOCK-ERRNO-001, card t379).
 //
 // The pair is load-bearing: the positive direction alone admits an
@@ -36,23 +36,23 @@ var nonContentionErrnos = []unix.Errno{
 	unix.EINTR,
 }
 
-// TestBoardFlockErrnoContentionRemainsHeld covers AC-BLE-001a (REQ-BLE-001).
+// TestStateFlockErrnoContentionRemainsHeld covers AC-BLE-001a (REQ-BLE-001).
 // It runs the REAL acquisition path — the wiring detector: under the M-narrow
 // mutant this reddens only if acquireStateLockImpl returns the classifier's
 // result rather than a hardcoded sentinel.
-func TestBoardFlockErrnoContentionRemainsHeld(t *testing.T) {
-	root := t.TempDir()
+func TestStateFlockErrnoContentionRemainsHeld(t *testing.T) {
+	lockPath := filepath.Join(t.TempDir(), "state.lock")
 
-	held, err := AcquireBoardLock(root)
+	held, err := acquireStateLockImpl(lockPath)
 	if err != nil {
-		t.Fatalf("first AcquireBoardLock: unexpected error: %v", err)
+		t.Fatalf("first acquireStateLockImpl: unexpected error: %v", err)
 	}
-	t.Cleanup(func() { _ = held.Release() })
+	t.Cleanup(func() { _ = held.release() })
 
-	second, err := AcquireBoardLock(root)
+	second, err := acquireStateLockImpl(lockPath)
 	if err == nil {
-		_ = second.Release()
-		t.Fatal("second AcquireBoardLock: expected contention, got nil error")
+		_ = second.release()
+		t.Fatal("second acquireStateLockImpl: expected contention, got nil error")
 	}
 	if !IsStateLockHeld(err) {
 		t.Fatalf("IsStateLockHeld(%v) = false, want true", err)
@@ -62,13 +62,13 @@ func TestBoardFlockErrnoContentionRemainsHeld(t *testing.T) {
 	}
 }
 
-// TestBoardFlockErrnoNonContentionIsNotHeld covers AC-BLE-001b (REQ-BLE-002).
+// TestStateFlockErrnoNonContentionIsNotHeld covers AC-BLE-001b (REQ-BLE-002).
 // It feeds synthetic errnos to the classification predicate directly. It
 // asserts NOTHING about the contention direction — that belongs to
-// TestBoardFlockErrnoContentionRemainsHeld, so the two mutants redden
+// TestStateFlockErrnoContentionRemainsHeld, so the two mutants redden
 // different tests.
-func TestBoardFlockErrnoNonContentionIsNotHeld(t *testing.T) {
-	lockPath := filepath.Join(t.TempDir(), "board.lock")
+func TestStateFlockErrnoNonContentionIsNotHeld(t *testing.T) {
+	lockPath := filepath.Join(t.TempDir(), "state.lock")
 
 	for _, errno := range nonContentionErrnos {
 		t.Run(errno.Error(), func(t *testing.T) {
@@ -83,12 +83,12 @@ func TestBoardFlockErrnoNonContentionIsNotHeld(t *testing.T) {
 	}
 }
 
-// TestBoardFlockErrnoPreservesErrnoAndPath covers AC-BLE-002 (REQ-BLE-003).
+// TestStateFlockErrnoPreservesErrnoAndPath covers AC-BLE-002 (REQ-BLE-003).
 // Preserving the errno for errors.Is inspection is the substance of this
 // SPEC: an implementation that keeps only the errno TEXT in the message while
 // breaking errors.Is fails here.
-func TestBoardFlockErrnoPreservesErrnoAndPath(t *testing.T) {
-	lockPath := filepath.Join(t.TempDir(), "board.lock")
+func TestStateFlockErrnoPreservesErrnoAndPath(t *testing.T) {
+	lockPath := filepath.Join(t.TempDir(), "state.lock")
 
 	for _, errno := range nonContentionErrnos {
 		t.Run(errno.Error(), func(t *testing.T) {
@@ -106,7 +106,7 @@ func TestBoardFlockErrnoPreservesErrnoAndPath(t *testing.T) {
 	}
 }
 
-// TestBoardFlockErrnoFailurePathClosesDescriptor covers AC-BLE-003
+// TestStateFlockErrnoFailurePathClosesDescriptor covers AC-BLE-003
 // (REQ-BLE-004).
 //
 // Mechanism: POSIX open(2) guarantees "the lowest-numbered file descriptor
@@ -127,14 +127,14 @@ func TestBoardFlockErrnoPreservesErrnoAndPath(t *testing.T) {
 // contention and the non-contention return path, so removing it (the M-leak
 // mutant, re-laid against the shape actually built) reddens this test even
 // though only contention is inducible here.
-func TestBoardFlockErrnoFailurePathClosesDescriptor(t *testing.T) {
-	root := t.TempDir()
+func TestStateFlockErrnoFailurePathClosesDescriptor(t *testing.T) {
+	lockPath := filepath.Join(t.TempDir(), "state.lock")
 
-	held, err := AcquireBoardLock(root)
+	held, err := acquireStateLockImpl(lockPath)
 	if err != nil {
-		t.Fatalf("first AcquireBoardLock: unexpected error: %v", err)
+		t.Fatalf("first acquireStateLockImpl: unexpected error: %v", err)
 	}
-	t.Cleanup(func() { _ = held.Release() })
+	t.Cleanup(func() { _ = held.release() })
 
 	probeFD := func(label string) int {
 		fd, err := unix.Open(os.DevNull, unix.O_RDONLY|unix.O_CLOEXEC, 0)
@@ -158,9 +158,9 @@ func TestBoardFlockErrnoFailurePathClosesDescriptor(t *testing.T) {
 
 	induced := 0
 	for i := 0; i < attempts; i++ {
-		contender, err := AcquireBoardLock(root)
+		contender, err := acquireStateLockImpl(lockPath)
 		if err == nil {
-			_ = contender.Release()
+			_ = contender.release()
 			t.Fatalf("attempt %d: expected contention, got nil error", i)
 		}
 		if !IsStateLockHeld(err) {

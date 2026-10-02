@@ -305,67 +305,6 @@ func TestReadCardStatus_DoesNotSearchBranchSet(t *testing.T) {
 	}
 }
 
-// TestUnresolvedCard_OutcomeDistinctAndByteUnchanged — AC-KB-025's
-// board-level assertions over the detached fixture: the reconciled view is
-// UNRESOLVED (not inconsistent — both outcomes refuse dispatch, so the test
-// observes WHICH outcome was reported), the card keeps its recorded column,
-// no enum member is substituted, and both the board state file and the
-// card's spec.md are byte-unchanged by the reconciliation.
-func TestUnresolvedCard_OutcomeDistinctAndByteUnchanged(t *testing.T) {
-	if runtimeIsWindows() {
-		t.Skip("fixture uses posix git plumbing; windows covered by GOOS=windows build")
-	}
-	root := specFixtureRepo(t)
-	bases := fixtureBases(t)
-	seedLead(t, root, "lead-sess")
-
-	// Board record holding the card in run; the card's primary-side spec.md
-	// exists (completed on main).
-	writeBoardRaw(t, BoardPath(root), &BoardState{Cards: []Card{
-		{SpecID: "SPEC-NAV-DET2", Column: ColumnRun, Holder: "s1", LastMovedAt: "t0"},
-	}})
-	beforeBoard := readBoardBytes(t, root)
-	specPath := filepath.Join(root, ".moai", "specs", "SPEC-NAV-DET2", "spec.md")
-	writeSpecMD(t, root, "SPEC-NAV-DET2", StatusInProgress)
-	beforeSpec := readFileBytes(t, specPath)
-
-	// The card's worktree exists but reports no branch.
-	wt := filepath.Join(bases.Claude, "SPEC-NAV-DET2")
-	mustGit(t, root, "worktree", "add", "--detach", wt, "main")
-	t.Cleanup(func() { mustGit(t, root, "worktree", "remove", "--force", wt) })
-
-	cs, err := ReadCardStatus(root, "SPEC-NAV-DET2", bases)
-	if err != nil {
-		t.Fatalf("ReadCardStatus: %v", err)
-	}
-	card := Card{SpecID: "SPEC-NAV-DET2", Column: ColumnRun, Holder: "s1", LastMovedAt: "t0"}
-	view := ReconcileCard(card, cs)
-
-	if !view.Unresolved {
-		t.Fatalf("view.Unresolved = false — the detached-worktree card must report unresolved")
-	}
-	if view.Inconsistent {
-		t.Fatalf("view.Inconsistent = true — unresolved is NOT the illegal-pairing outcome; the test observes which outcome was reported")
-	}
-	if view.Dispatchable {
-		t.Fatal("unresolved card dispatchable")
-	}
-	if view.Card.Column != ColumnRun {
-		t.Fatalf("card column = %q, want the recorded run — the recorded column stands", view.Card.Column)
-	}
-	if IsCanonicalStatus(view.Status) || view.Status == StatusDraft {
-		t.Fatalf("status = %q — an enum member was substituted for the absence (draft would pair legally and dispatch)", view.Status)
-	}
-
-	// Nothing was written by the read or the reconciliation.
-	if string(beforeBoard) != string(readBoardBytes(t, root)) {
-		t.Fatal("board state file changed")
-	}
-	if string(beforeSpec) != string(readFileBytes(t, specPath)) {
-		t.Fatal("spec.md changed")
-	}
-}
-
 // TestReadPrimarySpecStatus_RefusesTraversingSpecID — the spec identifier
 // reaches a filesystem join here exactly as it does in ReadCardStatus, and
 // `moai todo next --spec` records the operator's value verbatim by design, so
@@ -424,5 +363,42 @@ func TestReadPrimarySpecStatus_RefusesTraversingSpecID(t *testing.T) {
 	if !ok || status != StatusCompleted {
 		t.Fatalf("ReadPrimarySpecStatus(root, \"SPEC-NAV-X\") = (%q, %v), want (%q, true) — the guard must not refuse a legitimate id",
 			status, ok, StatusCompleted)
+	}
+}
+
+// TestReadCardStatus_RejectsTraversalSpecID — F1: a specID carrying `..`, a
+// path separator, or an absolute path is refused at the read entry point,
+// never interpolated into a worktree path or a git-show ref. Relocated from
+// the board's traversal test file when the board went
+// (SPEC-LAUNCHER-ENTRY-FLAGS-001 M6): ReadCardStatus stays, so its guard keeps
+// its test.
+func TestReadCardStatus_RejectsTraversalSpecID(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	bases := WorktreeBases{Claude: filepath.Join(root, "wt"), MoAI: filepath.Join(root, "moai")}
+	for _, bad := range []string{
+		"../sibling",
+		"..",
+		"foo/../bar",
+		"foo/bar",
+		`foo\bar`,
+		"/etc/passwd",
+	} {
+		if _, err := ReadCardStatus(root, bad, bases); err == nil {
+			t.Errorf("ReadCardStatus(%q) err = nil, want refusal — a traversal specID must not reach a path or ref join", bad)
+		}
+	}
+}
+
+// TestReadCardStatus_AcceptsCanonicalSpecID — positive control: a canonical
+// SPEC-ID is accepted (the guard is conditional on shape, not unconditional).
+func TestReadCardStatus_AcceptsCanonicalSpecID(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	bases := WorktreeBases{}
+	for _, ok := range []string{"SPEC-NAV-001", "SPEC-KANBAN-BOARD-001"} {
+		if _, err := ReadCardStatus(root, ok, bases); err != nil {
+			t.Errorf("ReadCardStatus(%q) error = %v, want acceptance — canonical ids must pass", ok, err)
+		}
 	}
 }

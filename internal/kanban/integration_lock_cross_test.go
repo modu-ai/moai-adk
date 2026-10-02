@@ -52,7 +52,7 @@ const (
 	// Its size is load-bearing and is stated with margin rather than as a bare
 	// strict inequality (audit finding N3). The mutation-lock wait budget is
 	// stateLockWaitBudget = stateLockSupportedWriters × stateLockCIMutationCost
-	// × stateLockHeadroom = 10 × 33ms × 5 = 1.65s (board_store.go:96-117).
+	// × stateLockHeadroom = 10 × 33ms × 5 = 1.65s (state_lock_wait.go).
 	// 500ms is 30.3% of that budget — inside the "at most a third" headroom the
 	// audit asked for — so after A is released B still has ~1.15s (69.7%) of
 	// budget left to win the lock. A timeout merely SHORTER than the budget

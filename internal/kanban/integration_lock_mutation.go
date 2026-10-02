@@ -15,17 +15,17 @@
 // otherwise sweep both lifetimes into one set and re-derive exactly the
 // conflation this file exists to keep apart.
 //
-// NO NEW PRIMITIVE. The platform substrate is the board lock's, taken as it is:
-// acquireStateLockImpl (flock on Unix, atomic-create on Windows) is already
-// path-parameterized, and the bounded jittered contention policy is
-// board_store.go's. What is added is a second SCOPE over the same substrate,
-// not a second mechanism.
+// NO NEW PRIMITIVE. The platform substrate is the shared state lock's, taken as
+// it is: acquireStateLockImpl (flock on Unix, atomic-create on Windows) is
+// already path-parameterized, and the bounded jittered contention policy is
+// state_lock_wait.go's. What is added is a second SCOPE over the same
+// substrate, not a second mechanism.
 //
-// Why a dedicated scope rather than borrowing AcquireBoardLock: the defect
-// being repaired IS a scope mismatch — a lock whose stated scope did not match
-// what it protected. Answering it with a lock scoped to the WHOLE BOARD repeats
+// Why a dedicated scope rather than borrowing another lock's: the defect being
+// repaired IS a scope mismatch — a lock whose stated scope did not match what
+// it protected. Answering it with a lock scoped to some wider record repeats
 // that category error one level up, leaving the next reader to work out why a
-// board lock guards a release record.
+// broader lock guards a release record.
 package kanban
 
 import (
@@ -88,7 +88,7 @@ func withIntegrationLockMutation(projectRoot string, fn func() error) error {
 }
 
 // acquireIntegrationMutationLock takes the mutation lock, retrying contention
-// within the shared elapsed budget (board_store.go: 10 supported writers ×
+// within the shared elapsed budget (state_lock_wait.go: 10 supported writers ×
 // 33ms CI mutation cost × 5 headroom = 1.65s) using the same jittered backoff.
 // The budget is inherited rather than re-derived by guess; if integration-window
 // mutations turn out to be slower in practice, it is re-derived in a later card.

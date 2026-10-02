@@ -1,22 +1,17 @@
-// state_lock_test.go — the board-wide advisory lock and its bounded stale
-// clear (SPEC-KANBAN-BOARD-001 REQ-KB-019/023, M1).
+// state_lock_test.go — the cross-process exclusion of the shared file-lock
+// substrate (acquireStateLockImpl), which the todo queue, the integration lock,
+// and the slot lease all acquire through (SPEC-KANBAN-BOARD-001 REQ-KB-019's
+// substrate property, kept after the board went: SPEC-LAUNCHER-ENTRY-FLAGS-001
+// M6).
 //
-// Every board mutation is serialized beneath a lock scoped to the WHOLE
-// board, and the exclusion is exercised by SEPARATE OS PROCESSES — sessions
-// are distinct processes, and a goroutine test would measure the harness, not
-// the requirement (AP-19; internal/lockfile's in-process mutex is the
-// repository's own worked example of that gap).
-//
-// The stale-lock clear is judged on what it REFUSES (acceptance.md §D.12):
-// three observations, of which the third — the release-and-re-acquire
-// interleaving ahead of the pre-removal re-read — is the one that decides
-// whether the clear aborts on a changed identity instead of unlinking a
-// re-acquired lock.
+// The exclusion is exercised by SEPARATE OS PROCESSES — sessions are distinct
+// processes, and a goroutine test would measure the harness, not the
+// requirement (AP-19; internal/lockfile's in-process mutex is the repository's
+// own worked example of that gap).
 package kanban
 
 import (
 	"bufio"
-	"encoding/json"
 	"io"
 	"os"
 	"os/exec"
@@ -25,9 +20,9 @@ import (
 	"time"
 )
 
-// startLockHoldHelper spawns a subprocess that acquires the board lock,
-// prints ACQUIRED (or HELD), waits for the release file, then releases.
-// Returns the command and its stdout scanner.
+// startLockHoldHelper spawns a subprocess that acquires the state lock at
+// <root>/state.lock, prints ACQUIRED (or HELD), waits for the release file,
+// then releases. Returns the command and its stdout scanner.
 func startLockHoldHelper(t *testing.T, root, releaseFile string) (*exec.Cmd, *bufio.Scanner, io.ReadCloser) {
 	t.Helper()
 	cmd := exec.Command(os.Args[0], "-test.run=TestKanbanHelperProcess", "--")
@@ -68,11 +63,11 @@ func readHelperLine(t *testing.T, cmd *exec.Cmd, scanner *bufio.Scanner) string 
 	}
 }
 
-// TestBoardLock_ExcludesAcrossProcesses — REQ-KB-019's substrate property, in
-// separate processes: while one OS process holds the board lock, another OS
-// process's acquisition attempt is refused with ErrStateLockHeld; after the
-// holder releases, re-acquisition succeeds.
-func TestBoardLock_ExcludesAcrossProcesses(t *testing.T) {
+// TestStateLock_ExcludesAcrossProcesses — the substrate property, in separate
+// processes: while one OS process holds the state lock, another OS process's
+// acquisition attempt is refused with ErrStateLockHeld; after the holder
+// releases, re-acquisition succeeds.
+func TestStateLock_ExcludesAcrossProcesses(t *testing.T) {
 	if runtimeIsWindows() {
 		t.Skip("helper re-exec plumbing exercised on unix; windows substrate covered by GOOS=windows build")
 	}
@@ -106,81 +101,11 @@ func TestBoardLock_ExcludesAcrossProcesses(t *testing.T) {
 		t.Fatalf("holder wait: %v", err)
 	}
 
-	lock, err := AcquireBoardLock(root)
+	lock, err := acquireStateLockImpl(filepath.Join(root, substrateLockFileName))
 	if err != nil {
 		t.Fatalf("re-acquisition after release failed: %v", err)
 	}
-	if err := lock.Release(); err != nil {
+	if err := lock.release(); err != nil {
 		t.Fatalf("release: %v", err)
-	}
-}
-
-// deadPID returns the PID of a process that has positively terminated, by
-// spawning and reaping a child.
-func deadPID(t *testing.T) int {
-	t.Helper()
-	if runtimeIsWindows() {
-		t.Skip("posix dead-PID probe")
-	}
-	cmd := exec.Command("true")
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("spawn sacrificial process: %v", err)
-	}
-	pid := cmd.Process.Pid
-	if err := cmd.Wait(); err != nil {
-		t.Fatalf("wait sacrificial process: %v", err)
-	}
-	// Wait reaped the child, so the pid is positively terminated (the
-	// liveness probe itself now lives behind the windows tag with the clear).
-	return pid
-}
-
-// writeLockArtifact seeds a lock artifact recording the given owner identity.
-func writeLockArtifact(t *testing.T, root string, pid int) {
-	t.Helper()
-	dir := BoardDir(root)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatalf("mkdir board dir: %v", err)
-	}
-	owner := StateLockOwner{PID: pid, CreatedAt: time.Now().UTC().Format(time.RFC3339)}
-	body, err := json.MarshalIndent(owner, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal owner: %v", err)
-	}
-	if err := os.WriteFile(boardLockPath(root), body, 0o644); err != nil {
-		t.Fatalf("write lock artifact: %v", err)
-	}
-}
-
-// TestClearStaleBoardLock_UnixGatedOut — review finding F5: the stale-lock
-// clear is gated to Windows (the Unix substrate releases flock on process
-// exit, so an orphaned artifact blocks nothing here and the clear window the
-// M1 implementation opened — acquire flock, then record identity — cannot
-// arise). On Unix the operation is a no-op reporting the platform gate and
-// touches nothing. The Windows clear logic (dead-owner cleared, live-owner
-// refused, re-acquire race abort) lives in state_lock_clear_windows_test.go
-// behind a build tag and is exercised on a Windows runner / GOOS=windows
-// build.
-func TestClearStaleBoardLock_UnixGatedOut(t *testing.T) {
-	if runtimeIsWindows() {
-		t.Skip("unix-only gate observation")
-	}
-	root := t.TempDir()
-	if err := os.MkdirAll(BoardDir(root), 0o755); err != nil {
-		t.Fatalf("mkdir board dir: %v", err)
-	}
-	// A stale-looking artifact is present; on Unix it is inert and the clear
-	// does not remove it.
-	writeLockArtifact(t, root, deadPID(t))
-
-	report, err := ClearStaleBoardLock(root)
-	if err != nil {
-		t.Fatalf("ClearStaleBoardLock(unix) error = %v, want nil no-op", err)
-	}
-	if report == nil || report.Removed {
-		t.Fatalf("report = %+v, want Removed=false not-applicable on unix", report)
-	}
-	if _, statErr := os.Stat(boardLockPath(root)); statErr != nil {
-		t.Fatalf("artifact vanished on unix: %v — the clear must be a no-op here", statErr)
 	}
 }

@@ -35,24 +35,15 @@ func TestSplitFactoryLaneLabelRejectsNonShapes(t *testing.T) {
 	}
 }
 
-// TestFactoryLaneLabelNeverKanbanShape is the no-cross-talk property: a
-// factory lane label satisfies neither kanban discriminator, and no kanban
-// label satisfies the lane one — the three branch selectors can never both
-// match the same name.
-func TestFactoryLaneLabelNeverKanbanShape(t *testing.T) {
+// TestFactoryLaneLabelNeverLeaderShape is the no-cross-talk property: a
+// factory lane label does not satisfy the leader discriminator, and a leader
+// label does not satisfy the lane one — the two branch selectors can never
+// both match the same name.
+func TestFactoryLaneLabelNeverLeaderShape(t *testing.T) {
 	t.Parallel()
 
-	if _, _, ok := SplitCompanionLabel(FactoryLaneLabel(3)); ok {
-		t.Error("a lane label must not satisfy the companion shape")
-	}
 	if _, ok := SplitLeaderLabel(FactoryLaneLabel(3)); ok {
 		t.Error("a lane label must not satisfy the lead shape")
-	}
-	if _, ok := SplitFactoryLaneLabel(CompanionLabel("run")); ok {
-		t.Error("a companion label must not satisfy the lane shape")
-	}
-	if _, ok := SplitFactoryLaneLabel(CompanionNumberLabel("run", 1)); ok {
-		t.Error("a bumped companion label must not satisfy the lane shape")
 	}
 	if _, ok := SplitFactoryLaneLabel(LeaderLabel()); ok {
 		t.Error("a lead label must not satisfy the lane shape")

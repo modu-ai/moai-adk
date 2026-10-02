@@ -523,9 +523,9 @@ func TestBacklogConcurrentAdd_UniqueIDs(t *testing.T) {
 }
 
 // TestBacklogStore_NoLeadRoleGuard — REQ-TODO-011: the backlog applies no
-// requireLeaderRole-equivalent gate. This test process declares no role and
-// holds no kanban identity at all; the write must succeed anyway (explicit
-// contrast with the board's sole-writer guard — board files untouched).
+// role gate. This test process declares no role and holds no kanban identity
+// at all; the write must succeed anyway (the retired board had a sole-writer
+// guard; the backlog never did).
 func TestBacklogStore_NoLeadRoleGuard(t *testing.T) {
 	t.Parallel()
 	store := newTestBacklogStore(t)
@@ -536,9 +536,6 @@ func TestBacklogStore_NoLeadRoleGuard(t *testing.T) {
 	}
 	if item.ID != "t1" {
 		t.Fatalf("issued id = %q, want t1", item.ID)
-	}
-	if IsNotSoleWriter(err) {
-		t.Fatal("backlog write hit the board's sole-writer refusal")
 	}
 }
 

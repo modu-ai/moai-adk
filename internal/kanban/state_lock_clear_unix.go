@@ -14,15 +14,9 @@
 // that gap is unreachable when the kernel drops the lock on exit — and
 // touches the documented AP-29 residual not at all (it is a Windows-substrate
 // residual and the Windows clear keeps its re-read mitigation).
+//
+// The gate is the absence of a Unix clear: the board-bound no-op that used to
+// report it went with the board (SPEC-LAUNCHER-ENTRY-FLAGS-001 M6), and the
+// integration lock's mutation lock mirrors this gate and its reason
+// (integration_lock_mutation_unix.go).
 package kanban
-
-// ClearStaleBoardLock on Unix is a no-op reporting the platform gate: the
-// stale-clear window does not arise here. The lock artifact is inert and a
-// subsequent AcquireBoardLock succeeds by taking a fresh flock on the same
-// path.
-func ClearStaleBoardLock(root string) (*ClearStaleReport, error) {
-	return &ClearStaleReport{
-		Removed: false,
-		Reason:  "stale-lock clear is gated to windows; the unix substrate releases flock on process exit and an orphaned artifact blocks nothing here",
-	}, nil
-}

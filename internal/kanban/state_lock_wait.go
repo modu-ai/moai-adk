@@ -1,7 +1,7 @@
 // state_lock_wait.go — the shared lock-wait policy (budget and backoff) that
 // every state-lock acquisition path consumes: the todo queue (backlog_store.go),
 // the integration lock (integration_lock_mutation.go), and the slot lease
-// (slot_lease.go). It was moved here verbatim from board_store.go when the
+// (slot_lease.go). It was moved here verbatim from the retired board store when the
 // file-lock substrate was re-homed (SPEC-LAUNCHER-ENTRY-FLAGS-001 M6).
 package kanban
 

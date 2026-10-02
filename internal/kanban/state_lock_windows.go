@@ -1,10 +1,10 @@
 //go:build windows
 
-// state_lock_windows.go — Windows substrate of the board-wide lock:
+// state_lock_windows.go — Windows substrate of the state lock:
 // atomic-create (O_CREATE|O_EXCL), mirroring internal/spec/lock_windows.go's
 // pattern. Windows lacks fcntl-style advisory flock, so the artifact IS the
 // lock: a holder killed mid-mutation leaves an artifact that blocks every
-// subsequent board mutation permanently — which is why REQ-KB-023 records
+// subsequent mutation permanently — which is why REQ-KB-023 records
 // the owner identity and provides the bounded clear.
 package kanban
 
