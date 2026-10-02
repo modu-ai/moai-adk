@@ -6,7 +6,8 @@
 - plan_artifacts: spec.md, plan.md, acceptance.md, design.md, research.md (Tier L), plus decision-index.md
 - plan_complete_at: 2026-10-02
 - open_decisions: none — DO-1..DO-12 resolved (oracle; leader verdict on DO-3, DO-7, DO-8; DO-12 `write_backend_at_claim` verified then applied at spec 0.4.0)
-- plan_audit_verdict: not yet run
+- plan_audit_verdict: iteration 1 FAIL 0.74 (`.moai/reports/t1347/plan-audit-iter1.md`, local-only); revised at spec 0.5.0 to close D1-D24, awaiting iteration 2
+- open_decisions_note: DO-13 (first-exhausted time surfaced in the status block) is PROVISIONAL, escalated to the leader
 
 ## §E.2 Run-phase Evidence
 

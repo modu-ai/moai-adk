@@ -60,6 +60,10 @@ Schema: `workers.backend TEXT NOT NULL DEFAULT ''` was introduced with the table
 
 Consequences: feasible without kanban-mode code and without a migration; the registry reader (`:70`) and the entry type (`:36-42`) need the column added; `SaveFactoryRegistry`'s delete-and-reinsert (`:98-110`) would reset a column it does not carry, so it must round-trip the backend (its production callers operate on other files, but the factory registry's tests call it on the project registry).
 
+### 6.2 Read-only registry open (audit defect D7)
+
+`FactoryRegistryPath` → `EnsureProjectLayout` creates directories (`homestate/paths.go:298-324`); `OpenFactoryPath` runs `MkdirAll`/`Chmod`, `journal_mode(WAL)`, the full DDL, the version migrations, and `chmod` of the file (`homestate/factory.go:163-250`); `LoadFactoryRegistry` calls `ImportLegacyWorkers`, which inserts the `legacy_workers_imported` meta row when absent (`factory.go:506-550`; `factory_slots.go:60-83`). A read-only open therefore bypasses all three. Existing prior art: `openSQLiteReadOnly` (`internal/discovery/factory_discovery.go:353-362`) and `query_only(ON)` in `internal/kanban/backlog_sqlite.go:316`; `homestate.FactoryDBPath`/`ProjectDir` compute the path without touching the filesystem (`paths.go:151-162,238-244`). Driver `modernc.org/sqlite v1.57.0` (`go.mod:97`). The six measured cases (absent file, cleanly closed WAL database, `query_only`, `immutable=1`, live writer, read-only directory) and their consequences are in plan.md §D.1.
+
 ## 7. The `--auto` cycle and the leader surfaces
 
 - `runAutoCycle` `internal/cli/todo_auto.go:214-348`; options with nil-inert seams `:195-209`; production wiring `internal/cli/todo.go:275-279`; first output line is the Jev display line `:239`; per card `accept` `:262`, directive `:374-382` naming ONE isolated in-session Agent() worker, no lease, no slot. Existing tests: `todo_auto_test.go` (`TestTodoAutoSerialCycle` `:247`, `TestTodoAutoCreatesNoFactoryLease` `:395`, `TestTodoAutoClearGuidancePerCard` `:339`).

@@ -85,3 +85,31 @@ Label: EVIDENCE-NEEDED
 Authority anchor: none
 Why unresolved: the registry's `backend` column exists but is never written (the claim inserts omit it), while the web console already joins registry pid to session to session record; whether Codex lane sessions write a session record at all, and whether that record store survives the removal of kanban mode, were not observed. Writing the column at claim time changes the claim path and the launchers.
 Operator verdict: Resolved by decision oracle — write the backend at claim (probability 0.78, confidence 0.55, above the 0.5 gate). Verified before applying: every claim site holds its backend as a launcher-local value, no kanban-mode code is needed, the column needs no migration, and old rows read as empty (unknown). The only kanban-package file edited is the factory registry's claim cluster. The session-record join is dropped.
+
+### Q13: Should the recorded first-exhausted time stay in the SPEC, surfaced in the status quota block, or be dropped as dead data? (DO-13, plan-audit defect D12)
+
+Label: FOUNDER
+Authority anchor: none
+Why unresolved: the time is recorded, throttled and tested but nothing read it; surfacing it costs one field in the status block, dropping it frees two of the 25 ceiling slots (one REQ, one AC). Both serve the card text ("record the exhaustion time as session state"); neither is measured.
+Operator verdict: PROVISIONAL — keep REQ-004 and AC-004 and surface the time in the status block (text and JSON). The oracle was a coin flip (surface 0.52, drop 0.48, confidence 0.03, LOW); escalated to the leader.
+
+### Q14: Should the `moai factory status` quota block appear whenever a window has data, or only when the gate is enabled? (plan-audit defect D1)
+
+Label: FOUNDER
+Authority anchor: none
+Why unresolved: the two requirements that mention it contradicted each other for any fixture carrying data with pressure off — one demanded a new block, the other demanded byte-identical output; the choice decides whether a user who never enabled the gate sees changed `factory status` output.
+Operator verdict: Resolved by decision oracle — only when the gate is enabled AND some window has data (`block_only_when_gate_enabled`, confidence 0.88). With the gate disabled every surface is byte-identical to pre-change output.
+
+### Q15: What should happen to a held `--wait` lane whose reading ages out into unknown before the window resets? (plan-audit defect D3)
+
+Label: EVIDENCE-NEEDED
+Authority anchor: none
+Why unresolved: a waiting lane renders no statusline, so its record is never refreshed; the old text both said "unknown never holds" and "stay held until the reset". Whether the hold survives an aged-out reading depends on statusline cadence that nobody measured.
+Operator verdict: Resolved by decision oracle — release when unknown (`release_when_unknown`, confidence 0.59): the hold lasts only while the reading is fresh.
+
+### Q16: Should the lane inventory open the registry genuinely read-only, or only promise to change no row? (plan-audit defect D7)
+
+Label: EVIDENCE-NEEDED
+Authority anchor: none
+Why unresolved: the named loader creates directories, runs schema statements and may insert a meta row, so "reads without writing" could not hold; whether a genuinely read-only open works on this driver and on a WAL database was not measured.
+Operator verdict: Resolved by decision oracle — genuinely read-only open (`truly_read_only_open`, confidence 0.63). Feasibility was then measured on the driver in `go.mod` and holds (plan.md §D.1): the weaker form was not needed. Caveat recorded: SQLite may create `-wal`/`-shm` sidecar files for a read-only reader of a WAL database; the assertion covers the main file bytes and row dumps.
