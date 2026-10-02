@@ -1,6 +1,6 @@
 package cli
 
-// kanban_lead_name_test.go pins the leader-session name injection: a leader
+// factory_lead_name_test.go pins the leader-session name injection: a leader
 // launched as a bare `moai cc -f` carries only an AI-generated title, which
 // claude discards on /clear, so the launcher supplies an explicit
 // `--name leader` instead. The operator's own name always wins.

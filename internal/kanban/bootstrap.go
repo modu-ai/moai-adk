@@ -77,7 +77,7 @@ func base36(n int64) string {
 // session id rather than the run id. What remains — the notice
 // header and the conventional leader-socket path — is display, and the launcher
 // adopts a still-set MOAI_KANBAN_ID rather than reading the name (see
-// internal/cli/kanban.go leaderRunID).
+// internal/cli/factory_launch_helpers.go leaderRunID).
 func LeaderLabel() string {
 	return RoleLeader
 }
@@ -104,7 +104,7 @@ func LeaderNumberLabel(n int) string {
 //
 // The suffix is returned for the caller to interpret; it is NOT itself a run
 // id. Whether a suffix is adopted as one is the launcher's decision
-// (internal/cli/kanban.go leaderRunID), which is where a bump number must not be
+// (internal/cli/factory_launch_helpers.go leaderRunID), which is where a bump number must not be
 // mistaken for an id.
 func SplitLeaderLabel(label string) (suffix string, ok bool) {
 	if label == RoleLeader {

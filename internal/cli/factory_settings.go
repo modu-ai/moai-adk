@@ -1,6 +1,6 @@
 package cli
 
-// kanban_settings.go implements the transient --settings injection that lets
+// factory_settings.go implements the transient --settings injection that lets
 // cross-session messages flow between factory sessions without the operator
 // having to relax their project/local settings.
 //

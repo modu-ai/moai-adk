@@ -1,6 +1,6 @@
 package cli
 
-// kanban.go holds the launcher helpers the factory entry shares across cc, glm
+// factory_launch_helpers.go holds the launcher helpers the factory entry shares across cc, glm
 // and codex: the entry parse type, the leader run id and name resolution, the
 // lane autonomy seeds, the launch facts, and the session-name parsers. The
 // retired `-k` entry lives in launcher_retired_entries.go.

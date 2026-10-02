@@ -1,4 +1,4 @@
-// kanban_helper_test.go — the subprocess re-entry point for the cross-process
+// factory_helper_test.go — the subprocess re-entry point for the cross-process
 // criteria (the state-lock exclusion and the integration-window race).
 //
 // Sessions are distinct OS processes, and an in-process mutex passes a

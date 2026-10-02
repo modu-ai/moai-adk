@@ -1,6 +1,6 @@
 package statusline
 
-// preexisting_kanban_artifacts_m1_test.go — SPEC-LAUNCHER-ENTRY-FLAGS-001 M1
+// preexisting_factory_artifacts_m1_test.go — SPEC-LAUNCHER-ENTRY-FLAGS-001 M1
 // (card t1399), AC-017 statusline half: the statusline's only reader of the
 // state tree the kanban artifacts live in is the queue-count read. A project
 // holding session records with the retired chain roles, a kanban-board

@@ -1,6 +1,6 @@
 package hook
 
-// session_start_no_kanban_notice_test.go — SPEC-LAUNCHER-ENTRY-FLAGS-001 M5b
+// session_start_no_factory_notice_test.go — SPEC-LAUNCHER-ENTRY-FLAGS-001 M5b
 // (card t1399), AC-014 / REQ-013: SessionStart emits no kanban notice, whatever
 // retired marker a surviving session still carries, and the factory notices are
 // unchanged. The marker names are string literals on purpose: M5b deletes the

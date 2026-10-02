@@ -175,7 +175,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
 	case factoryBranchLeader:
 		// The operator-supplied `leader-<run-id>` name is adopted (see
-		// kanban.go leaderRunID) — the run id, the session name, and the lane
+		// factory_launch_helpers.go leaderRunID) — the run id, the session name, and the lane
 		// commands the notice prints stay on one run.
 		leaderLabel, _ := parseLeaderLabel(filteredArgs)
 		restoreFactory := enterFactoryLeaderMode(entry.FactoryLanes, leaderLabel)
