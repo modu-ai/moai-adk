@@ -11,12 +11,17 @@ import (
 )
 
 // retired_model_keys.go — write-time removal of retired configuration keys.
-// It holds the moai update strip step for the per-agent model/effort keys,
-// which subagents no longer read because they inherit the main session's model
-// and effort (SPEC-AGENT-MODEL-INHERIT-001). The strip is line/indent based
-// rather than a YAML round-trip so every line it does not remove survives
-// byte-identical, comments included. The former stripRetiredLLMKeys (plan_type
-// + claude_models removal on the llm.profile write path) left with
+// It holds the moai update strip step for the retired per-agent model/effort
+// keys: since SPEC-WEB-AGENTFM-RESTORE-001 the console reads and writes
+// llm.profile and llm.agent_overrides again, and because the embedded template
+// re-ships those two keys, ShippedRetiredModelKeys excludes them from the
+// strip automatically — a key leaves this protection exactly when it leaves
+// the template. The genuinely retired keys (performance_tier, profiles,
+// harness_agents, and the workflow routing keys) have no surviving reader
+// (SPEC-AGENT-MODEL-INHERIT-001) and keep stripping. The strip is line/indent
+// based rather than a YAML round-trip so every line it does not remove
+// survives byte-identical, comments included. The former stripRetiredLLMKeys
+// (plan_type + claude_models removal on the llm.profile write path) left with
 // ApplyProfile in M5: its only caller.
 
 // leadingWS returns the count of leading space/tab characters in a line.

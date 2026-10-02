@@ -23,11 +23,11 @@ const (
 
 // acceptEditsConfirmationLine is the deterministic English confirmation emitted
 // by the wizard when the user selects "acceptEdits" as permissionMode.
-// REQ-CCI-006 requires the wizard to surface the empty-string normalization so
-// the user does not perceive the selection as a silent no-op. The anchor tokens
-// ("acceptEdits", "project default", "settings.local.json") are grep-stable and
-// asserted by TestEmitAcceptEditsConfirmationAnchor (AC-CCI-006).
-const acceptEditsConfirmationLine = "Note: \"acceptEdits\" is the project default, so no settings.local.json defaultMode override will be written."
+// REQ-CCI-006 requires the wizard to surface the persistence so the user does
+// not perceive the write as a silent no-op. The anchor tokens ("acceptEdits",
+// "settings.local.json", "defaultMode") are grep-stable and asserted by
+// TestEmitAcceptEditsConfirmationAnchor (AC-CCI-006).
+const acceptEditsConfirmationLine = "Note: \"acceptEdits\" will be written to settings.local.json as permissions.defaultMode so it survives Claude Code's built-in default."
 
 // acceptEditsConfirmationTexts localizes the acceptEdits confirmation line
 // (REQ-TRI-006, the M1 residual table's row 4 — the notice was English-fixed).
@@ -36,16 +36,17 @@ const acceptEditsConfirmationLine = "Note: \"acceptEdits\" is the project defaul
 // the localized strings; "defaultMode" is a config key and stays untranslated
 // for the same reason.
 var acceptEditsConfirmationTexts = map[string]string{
-	"ko": "참고: \"acceptEdits\"는 프로젝트 기본값이므로 settings.local.json에 defaultMode 재정의를 기록하지 않습니다.",
-	"ja": "注意: \"acceptEdits\"はプロジェクトのデフォルトのため、settings.local.jsonにはdefaultModeの上書きを書き込みません。",
-	"zh": "注意: \"acceptEdits\"是项目默认值，因此不会向 settings.local.json 写入 defaultMode 覆盖。",
+	"ko": "참고: \"acceptEdits\"를 settings.local.json의 defaultMode로 기록합니다 — Claude Code 내장 기본값 대신 이 모드가 유지됩니다.",
+	"ja": "注意: \"acceptEdits\"はsettings.local.jsonのdefaultModeとして書き込まれます — Claude Codeの内蔵デフォルトの代わりにこのモードが維持されます。",
+	"zh": "注意：“acceptEdits”将作为 defaultMode 写入 settings.local.json——以它代替 Claude Code 的内置默认值。",
 }
 
 // emitAcceptEditsConfirmation writes the acceptEdits confirmation line to out
 // in the wizard's ending locale (unknown locales fall back to English).
-// Called from runProfileSetup immediately after the acceptEdits→""
-// normalization so the user sees why nothing was persisted to
-// settings.local.json.
+// Called from runProfileSetup when the user's selection is acceptEdits so the
+// user sees the mode being persisted to settings.local.json (card t1414 —
+// the pre-2.1.283 era normalization to empty was removed with the template
+// defaultMode premise it relied on).
 func emitAcceptEditsConfirmation(out io.Writer, locale string) {
 	txt, ok := acceptEditsConfirmationTexts[locale]
 	if !ok {
@@ -352,12 +353,13 @@ func runProfileSetup(cmd *cobra.Command, args []string) (err error) {
 	permissionMode := result.PermissionMode
 	developmentMode := result.DevelopmentMode
 
-	// Normalize permission mode: "acceptEdits" is the project default, so store
-	// empty string to avoid an unnecessary override. The normalization is NOT
-	// silent — emitAcceptEditsConfirmation surfaces it to the user so the
-	// selection is not perceived as a no-op (REQ-CCI-006).
+	// acceptEdits is persisted like any other mode: the template settings.json
+	// stopped shipping a defaultMode default (20b4ff0f6), so with CC 2.1.283+
+	// an absent override falls back to the CC built-in default instead of a
+	// project acceptEdits default (card t1414). The confirmation line surfaces
+	// the persistence so the selection is not perceived as silent
+	// (REQ-CCI-006).
 	if permissionMode == defaultPermissionMode {
-		permissionMode = ""
 		emitAcceptEditsConfirmation(cmd.OutOrStdout(), result.ConversationLang)
 	}
 

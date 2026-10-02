@@ -206,6 +206,37 @@ func InspectMCPTable(content []byte) MCPTableStatus {
 	return status
 }
 
+// StaleApprovalOverride reports a project-global MoAI MCP approval override
+// left by an older Factory generation: a default_tools_approval_mode other
+// than the canonical "writes" inside [mcp_servers.moai], or an approve
+// approval_mode inside a [mcp_servers.moai.tools.*] table. The managed
+// launcher now scopes approval to the processes it owns, so such a setting
+// is stale. It READS only (REQ-MS-010); the user-owned file is never
+// rewritten. The returned text is the offending assignment line.
+func StaleApprovalOverride(content []byte) (line string, found bool) {
+	inMoai, inTool := false, false
+	for _, l := range splitLines(string(content)) {
+		trimmed := strings.TrimSpace(l)
+		if anyTableRe.MatchString(l) {
+			inMoai = mcpMoaiTableRe.MatchString(l)
+			inTool = strings.HasPrefix(trimmed, "[mcp_servers.moai.tools.")
+			continue
+		}
+		key, val, ok := strings.Cut(trimmed, "=")
+		if !ok {
+			continue
+		}
+		key, val = strings.TrimSpace(key), strings.Trim(strings.TrimSpace(val), `"`)
+		switch {
+		case inMoai && key == "default_tools_approval_mode" && val != mcpApprovalMode:
+			return trimmed, true
+		case inTool && key == "approval_mode" && val == "approve":
+			return trimmed, true
+		}
+	}
+	return "", false
+}
+
 // splitLines splits body into trimmed-of-newline lines. A trailing newline
 // yields no extra empty element.
 func splitLines(body string) []string {

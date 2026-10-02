@@ -580,6 +580,11 @@ var launchClaudeFunc = launchClaudeDefault
 // env a launch would have used without replacing the test process.
 var execOrSpawnClaudeFunc = execOrSpawnClaude
 
+// managedFactoryLaunchFunc is the managed-divert seam (SPEC-FACTORY-MANAGED-
+// SESSION-001 M3, design.md D-7). Tests override it to observe the divert
+// without spawning a real managed session.
+var managedFactoryLaunchFunc = managedFactoryLaunch
+
 // launchClaude delegates to launchClaudeFunc for testability.
 func launchClaude(profileName string, extraArgs []string) error {
 	return launchClaudeFunc(profileName, extraArgs)
@@ -712,23 +717,29 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	}
 	model = resolveMainSessionModel(model, glmBackend)
 
-	// 6b. An empty model is only worth surfacing when the user explicitly
-	// targeted a named profile (via -p or a project-scoped binding) that then
-	// yielded no model — that suggests the named profile is empty or
-	// misconfigured. For the default profile (base preferences) an empty model
-	// is the normal, intentional state: many setups deliberately omit a model
-	// pin so Claude Code falls back to the user-scope last-choice (see
-	// CLAUDE.local.md §22.7). Warning there is a false alarm, so the gate is
-	// isNamedProfile. warnNoModelResolved itself stays unconditional (its unit
-	// test calls it directly with any profileName).
-	if model == "" && isNamedProfile(profileName) {
-		warnNoModelResolved(os.Stderr, profileName)
-	}
+	// 6a. Neither --model nor the profile chose a model: apply the remaining
+	// precedence levels — ANTHROPIC_MODEL and the project's settings.local.json
+	// (both left to Claude Code), then the model the user saved with /model,
+	// then the announced project pin. Without the /model level a project-level
+	// model pin, which outranks user-scope settings inside Claude Code,
+	// silently decided the session (card t1441). Rules, GLM exclusion and
+	// notices: launcher_model_source.go. An empty model is surfaced for a named
+	// profile (via -p or a project-scoped binding) that yielded none, which
+	// suggests the profile is empty or misconfigured; the default profile with
+	// no pin is the normal state and stays quiet. warnNoModelResolved itself
+	// stays unconditional (its unit test calls it directly with any profileName).
+	launchRoot, _ := findProjectRoot()
+	model = resolveLaunchModelFallback(model, glmBackend, launchRoot, profileName, launcherStderr)
 
 	// 7. Build args
 	buildArgs := func(withContinue bool) []string {
 		a := []string{"claude"}
-		if permMode != "" && permMode != "acceptEdits" {
+		// Every non-empty mode is forwarded verbatim, acceptEdits included.
+		// The template settings.json stopped shipping a defaultMode default
+		// (20b4ff0f6), so with CC 2.1.283+ the former acceptEdits omission
+		// let the CC built-in default (auto; Manual under a GLM backend) win
+		// silently (card t1414).
+		if permMode != "" {
 			a = append(a, "--permission-mode", permMode)
 		}
 		if withContinue {
@@ -807,6 +818,21 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 
 	if profileLeaseEnv != "" {
 		launchEnv = append(launchEnv, profileLeaseEnv)
+	}
+
+	// SPEC-FACTORY-MANAGED-SESSION-001 M3 (design.md D-7): the divert engages
+	// only when the explicit opt-in MOAI_FACTORY_MANAGED (1/true) AND the
+	// factory stamps (leader or lane) are both in the launch env. Such a launch
+	// enters the managed session owner instead of the exec/spawn handoff: the
+	// launcher keeps its PID and owns the child as a stream-json process
+	// (REQ-MS-012), and --continue is refused under the gate. Stamps alone or
+	// the switch alone, and general launches, fall through to the doors below
+	// unchanged.
+	if factoryManagedRequested(launchEnv) && factoryLaunchEnabled(launchEnv) {
+		if cont {
+			return errors.New("factory managed session owns the launch shape: --continue/-c is a plain-launch resume and is not available")
+		}
+		return managedFactoryLaunchFunc(glmBackend, claudeBin, buildArgs(false), launchEnv)
 	}
 
 	// 7. Execute with --continue fallback
@@ -1091,20 +1117,19 @@ func readSettingsLocalForLaunch() map[string]string {
 // preference to .claude/settings.local.json so that permissions.defaultMode
 // survives across sessions regardless of how Claude Code is launched.
 //
-// When permissionMode is a non-default value (e.g. "auto", "bypassPermissions"),
-// it sets permissions.defaultMode in settings.local.json.
-// When permissionMode is empty or "acceptEdits" (matching the project default),
-// it removes the defaultMode override so settings.json default applies.
+// Any non-empty mode (acceptEdits included) writes the defaultMode override:
+// the template settings.json stopped shipping a defaultMode default
+// (20b4ff0f6), so with CC 2.1.283+ an absent override falls back to the CC
+// built-in default instead of a project acceptEdits default (card t1414).
+// Only an empty preference removes the override, deferring to whatever the
+// user-edited project settings.json carries.
 //
-// The empty-string normalization for "acceptEdits" is intentional AND surfaced
-// to the user: runProfileSetup emits an explicit confirmation line
-// (acceptEditsConfirmationLine) so the user does not perceive the selection as
-// a silent no-op. See profile_setup.go runProfileSetup normalization block
-// (REQ-CCI-006 / REQ-CCI-007 — the normalization is intentional, and it is
-// disclosed to the user via the wizard confirmation, not silently applied).
-// syncPermissionModeToSettingsLocal persists the profile permission mode
-// preference to .claude/settings.local.json so that permissions.defaultMode
-// survives across sessions regardless of how Claude Code is launched.
+// The persistence of an explicit acceptEdits selection is surfaced to the
+// user: runProfileSetup emits an explicit confirmation line
+// (acceptEditsConfirmationLine) so the user does not perceive the write as a
+// silent no-op. See profile_setup.go's permission-mode save block
+// (REQ-CCI-006 / REQ-CCI-007 — the notice is intentional, and it is disclosed
+// to the user via the wizard confirmation, not silently applied).
 //
 // SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trips as map[string]any so
 // unknown top-level keys survive the write.
@@ -1112,10 +1137,9 @@ func syncPermissionModeToSettingsLocal(settingsPath string, permissionMode strin
 	// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-001: route through the locked+atomic
 	// mutateSettingsLocal seam so concurrent sessions cannot lose updates.
 	return mutateSettingsLocal(settingsPath, func(m map[string]any) {
-		// Only write an override when the mode differs from the project default.
-		// The project settings.json default is "acceptEdits", so we skip writing
-		// for empty string and "acceptEdits" to avoid unnecessary overrides.
-		if permissionMode != "" && permissionMode != "acceptEdits" {
+		// Any non-empty mode writes the override — the template no longer
+		// carries a defaultMode default for it to shadow (card t1414).
+		if permissionMode != "" {
 			perms, _ := m["permissions"].(map[string]any)
 			if perms == nil {
 				perms = make(map[string]any)
@@ -1123,7 +1147,8 @@ func syncPermissionModeToSettingsLocal(settingsPath string, permissionMode strin
 			perms["defaultMode"] = permissionMode
 			m["permissions"] = perms
 		} else {
-			// Remove the override so settings.json default applies
+			// Empty preference: remove the override so the project
+			// settings.json default (if any) applies.
 			if perms, ok := m["permissions"].(map[string]any); ok {
 				delete(perms, "defaultMode")
 				if len(perms) == 0 {

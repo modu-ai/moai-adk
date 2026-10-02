@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -301,6 +302,61 @@ func TestRetiredModelKeyStrip_HostPlacement(t *testing.T) {
 // in the user's file (code in this build still reads it); a retired key the
 // template does not ship is removed. agent_model_guard has never been shipped
 // in YAML, so it is removed now.
+
+// TestStripRetiredModelConfig_ReshippedConsoleKeysSurvive pins the
+// SPEC-WEB-AGENTFM-RESTORE-001 strip alignment against the REAL embedded
+// template: the restored console's keys (llm.profile, llm.agent_overrides)
+// re-shipped in the template survive a strip run, while the still-retired keys
+// (performance_tier, profiles, harness_agents, and the workflow routing keys)
+// are removed with a backup (REQ-AFR-008).
+func TestStripRetiredModelConfig_ReshippedConsoleKeysSurvive(t *testing.T) {
+	root := t.TempDir()
+	sections := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(sections, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	llmBody := "llm:\n  profile: \"medium\"\n  performance_tier: \"medium\"\n" +
+		"  profiles:\n    high: {}\n  harness_agents: {}\n" +
+		"  agent_overrides:\n    manager-develop: { model: opus, effort: xhigh }\n" +
+		"  glm:\n    base_url: x\n"
+	workflowBody := "workflow:\n  agent_model_guard:\n    enabled: true\n" +
+		"  workflow_agents:\n    research: { model: opus, effort: high }\n"
+	for name, body := range map[string]string{"llm.yaml": llmBody, "workflow.yaml": workflowBody} {
+		if err := os.WriteFile(filepath.Join(sections, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var buf bytes.Buffer
+	removed, err := stripRetiredModelConfig(&buf, root, ".moai-backups/t1411")
+	if err != nil {
+		t.Fatalf("stripRetiredModelConfig: %v", err)
+	}
+
+	llm := sectionBytes(t, root, "llm.yaml")
+	for _, kept := range []string{"  profile: \"medium\"", "  agent_overrides:"} {
+		if !strings.Contains(llm, kept) {
+			t.Errorf("re-shipped console key missing after strip: %q not in:\n%s", kept, llm)
+		}
+	}
+	for _, gone := range []string{"performance_tier", "profiles", "harness_agents", "agent_model_guard", "workflow_agents"} {
+		if strings.Contains(llm, gone) || strings.Contains(sectionBytes(t, root, "workflow.yaml"), gone) {
+			t.Errorf("still-retired key %q survived the strip", gone)
+		}
+	}
+	var removedKeys []string
+	for _, k := range removed {
+		removedKeys = append(removedKeys, k.Key)
+	}
+	for _, want := range []string{"llm.performance_tier", "llm.profiles", "llm.harness_agents", "workflow.agent_model_guard", "workflow.workflow_agents"} {
+		if !slices.Contains(removedKeys, want) {
+			t.Errorf("strip report lacks %q: %v", want, removedKeys)
+		}
+	}
+	if slices.Contains(removedKeys, "llm.profile") || slices.Contains(removedKeys, "llm.agent_overrides") {
+		t.Errorf("the re-shipped console keys must never be stripped: %v", removedKeys)
+	}
+}
 func TestStripRetiredModelConfig_LeavesKeysTheTemplateStillShips(t *testing.T) {
 	shipped, err := template.ShippedRetiredModelKeys()
 	if err != nil {

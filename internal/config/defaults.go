@@ -62,6 +62,56 @@ const (
 	// decision-pending card states hold no lease, so a human decision is never
 	// raced by it. A chosen value, not a measured one; no config key reads it.
 	DefaultFactoryLeaseDuration = 15 * time.Minute
+	// QuotaHeartbeatInterval is how old a window-carrying session telemetry
+	// record may grow, with an unchanged reading, before the statusline writer
+	// rewrites it to refresh its capture time (SPEC-QUOTA-AWARE-SCHEDULING-001
+	// REQ-QAS-003). It keeps a live session's reading from aging toward stale
+	// behind the write-if-changed throttle. A compiled, unmeasured value; a
+	// window-less record never heartbeats.
+	QuotaHeartbeatInterval = 5 * time.Minute
+	// QuotaExhaustionPct is the used percentage at or above which a rate-limit
+	// window counts as exhausted, so the record stamps its first-observed-
+	// exhausted time (REQ-QAS-004). A compiled, unmeasured value.
+	QuotaExhaustionPct = 100
+	// QuotaClockSkewTolerance is how far in the future a session record's capture
+	// time may lie, relative to the reader's clock, before the quota aggregator
+	// treats the record as unknown rather than as the freshest one
+	// (REQ-QAS-005): a record from another machine or a skewed clock must not win
+	// by being "newest". A compiled, unmeasured value.
+	QuotaClockSkewTolerance = 5 * time.Minute
+
+	// workflow.quota_gate defaults (SPEC-QUOTA-AWARE-SCHEDULING-001 REQ-QAS-008).
+	// All four numeric values are UNMEASURED defaults: no data on the quota a
+	// card consumes exists, so they are chosen, not measured, and are
+	// configuration keys precisely so the first real measurement changes a
+	// config value and no code. The shipped template block mirrors them and says
+	// so; this is the one place they are defined.
+	DefaultQuotaGateFiveHourHoldPct  = 90
+	DefaultQuotaGateSevenDayHoldPct  = 95
+	DefaultQuotaGateReleaseMarginPct = 5
+	DefaultQuotaGateMaxAge           = "30m"
+
+	// DefaultManagedSessionPollInterval is how often an idle managed factory
+	// session polls the broker for claimable inbox messages
+	// (SPEC-FACTORY-MANAGED-SESSION-001 REQ-MS-003).
+	DefaultManagedSessionPollInterval = 500 * time.Millisecond
+	// DefaultManagedSessionClaimTimeout bounds one broker claim round so a
+	// busy SQLite lock delays the poll loop instead of stalling the session
+	// owner.
+	DefaultManagedSessionClaimTimeout = 300 * time.Millisecond
+	// DefaultManagedSessionClaimLease is the claim lease a managed session
+	// hands the store: the message stays claim-locked for one turn's worth of
+	// processing before the store's own lease policy may reclaim it.
+	DefaultManagedSessionClaimLease = 2 * time.Minute
+	// DefaultManagedCodexReadyTimeout bounds one Codex App Server handshake —
+	// process spawn, /readyz wait, loopback WS dial, initialize, thread start
+	// (SPEC-FACTORY-MANAGED-SESSION-001 AC-MS-001). It also bounds the WS
+	// handshake itself.
+	DefaultManagedCodexReadyTimeout = 10 * time.Second
+	// DefaultManagedCodexTurnTimeout bounds one injected turn: a turn that
+	// never completes fails the delivery instead of holding the serial queue
+	// forever; the store's claim lease owns redelivery afterwards.
+	DefaultManagedCodexTurnTimeout = 10 * time.Minute
 
 	DefaultTestCoverageTarget    = 85
 	DefaultMaxTransformationSize = "small"
@@ -1161,6 +1211,16 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		SlotLease: SlotLeaseConfig{
 			Enabled:            false,
 			DefaultMaxDuration: DefaultSlotLeaseMaxDuration,
+		},
+		// The quota-aware lane gate ships inert, with unmeasured numeric
+		// defaults (SPEC-QUOTA-AWARE-SCHEDULING-001 REQ-QAS-008). Template
+		// neutrality: no `enabled: true` under internal/template/templates/.
+		QuotaGate: QuotaGateConfig{
+			Enabled:          false,
+			FiveHourHoldPct:  DefaultQuotaGateFiveHourHoldPct,
+			SevenDayHoldPct:  DefaultQuotaGateSevenDayHoldPct,
+			ReleaseMarginPct: DefaultQuotaGateReleaseMarginPct,
+			MaxAge:           DefaultQuotaGateMaxAge,
 		},
 		// The commit identity guard ships inert (SPEC-COMMIT-IDENTITY-GUARD-001
 		// REQ-CIG-006): when off, the pre-tool handler never invokes it, so no
