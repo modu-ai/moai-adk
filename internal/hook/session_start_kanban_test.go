@@ -13,27 +13,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
-// clearKanbanEnv unsets every kanban variable so each case starts from a
-// known-absent state. t.Setenv registers the restore, so the process env is
-// returned to its prior value when the test ends.
-func clearKanbanEnv(t *testing.T) {
-	t.Helper()
-	for _, key := range []string{
-		config.EnvMoaiKanban,
-		config.EnvMoaiKanbanID,
-		config.EnvMoaiKanbanSpec,
-		config.EnvMoaiKanbanLabel,
-		config.EnvMoaiKanbanSettingsInjected,
-		config.EnvMoaiKanbanLeadAddr,
-		config.EnvMoaiKanbanBackend,
-		config.EnvMoaiFactoryWorkers,
-		config.EnvMoaiFactoryWorker,
-	} {
-		t.Setenv(key, "")
-		_ = os.Unsetenv(key)
-	}
-}
-
 // TestKanbanBootstrapNoticeSilentForOrdinarySession is the case that matters
 // most for blast radius: a session that is not part of a kanban run must be
 // completely unaffected.
