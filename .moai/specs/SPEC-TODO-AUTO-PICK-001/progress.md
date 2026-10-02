@@ -545,7 +545,7 @@ _<pending run-phase>_
 
 ```yaml
 sync_complete_at: 2026-10-02T17:06:53Z   # UTC; the sync commit date is 2026-10-03 local
-sync_commit_sha: pending-backfill        # a commit cannot cite its own hash; backfilled in a following commit
+sync_commit_sha: 4293b2d73               # the disposition commit that records this block; first close 8de769d81, re-close commits 01ccc8b33 and 4293b2d73
 sync_status: docs-synced                 # docs, CHANGELOG and the corrected wording are committed; the audit disposition below is the operator's, not an audit result
 card: t1448
 tier: M
