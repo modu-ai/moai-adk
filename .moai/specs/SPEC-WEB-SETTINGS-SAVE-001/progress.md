@@ -11,7 +11,14 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 (2026-10-02, this tree HEAD 271746474) — 스코프 ① 진단: 미재현 분기 확정
+
+- **Q2 해소**: 운영자 설치본 = `~/go/bin/moai` v3.2.0-rc.23 (build `moai_cp/20260925_122548-1711-gd194083fb`, 2026-09-30 빌드). `git merge-base --is-ancestor 9be71a4f1 d194083fb` exit 0 — **설치본은 t1314 seam 재작성을 포함**. d194083fb→HEAD 저장경로 파일(handlers.go·schemaform.go·sectionapply.go·sectionwrite.go·yamlpatch) 무변화 — 유일 변화는 t1278 UI 개편(폼 계약 무변경) + t1381 생성물 재생성.
+- **dirty 배지**: 양 빌드 모두 런타임 생산자 없음(rc.23 app.js `dirty` 0히트 실측; settings_shell.go:61은 error|saved|clean만 반환) — 운영자 "미저장 표시"는 실 dirty 상태가 아니다.
+- **관측-RED 재현 시도**: 브라우저-충실 풀폼(렌더 페이지에서 추출한 152키 교차 탭 POST — 양성 대조로 폼 실재성 확인: worktree 4토글+companion·감사 라디오 현재값 전량 포함)에 운영자 편집(auto_create·auto_merge ON, claude.effort→high)을 얹어 POST → **본 트리에서 GREEN**(수정 전 트리, `go test -count=1 -run TestFullFormSave ./internal/web/` ok 0.711s). 연산자 실디스크 형태(빈 claude 핀 업서트 + codex 핀 보존 + 미모델링 키 보존) 변형도 GREEN.
+- **가설 판정**: (a) 원자거절·(b) 시늅 예외/렌더 500·(c) t1314 no-op 오판 — 전부 미재현. REQ-WWS-006 중복 거절도 배제(rc.23 codex 패널은 폼 요소 0짜리 읽기전용 미러 실측).
+- **판정서**: `.moai/reports/t1393/root-cause.md` — codex overlay Gap("최소 제출 정상 저장")은 풀폼 실측으로 대체·소멸.
+- **처분**: AC-WSS-001 명문화된 미재현 분기 — 구현 강행 없음, 재현 테스트 2종을 영구 회귀 가드로 보존. 잔여 설명(스테일 moai web 프로세스 등)은 root-cause.md §6 Gaps에 기록.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
