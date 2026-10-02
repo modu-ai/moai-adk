@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUTONOMY-BATCH-GATE-001
 title: "Research — 근거 요약과 전제 검증"
-version: "0.3.0"
+version: "0.4.0"
 created: 2026-10-02
 updated: 2026-10-02
 author: manager-spec
@@ -237,7 +237,7 @@ ok  	github.com/modu-ai/moai-adk/internal/hook	6.364s
 
 ### R4.5 `kanban-dispatch.md:106` 목록 원문 (결함 D4)
 
-`grep -n "The deputy never holds" .claude/rules/moai/workflow/kanban-dispatch.md` → `:106`: "**The deputy never holds a power of consequence.** Final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done` (`moai gtd` mutations), CodeRabbit slot-wait adjudication, and cross-session dispute coordination stay with the leader session." — 여섯 항목: 최종 PASS/FAIL 판정, 최종 병합 승인, 운영자 게이트, 카드 발행과 `done`(큐 변경), CodeRabbit 슬롯 대기 판정, 세션 간 분쟁 조정. "user-facing behavior changes"는 이 줄에 없다. 그 구절은 로컬 문서 `.moai/docs/jev-local-operations.md:30`에만 있고 출하되지 않는다(E3).
+`grep -n "The deputy never holds" .claude/rules/moai/workflow/kanban-dispatch.md` → `:106`: "**The deputy never holds a power of consequence.** Final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done` (`moai gtd` mutations), CodeRabbit slot-wait adjudication, and cross-session dispute coordination stay with the leader session." — 이 줄의 항목이 REQ-BGS-010의 리더 보유 권한 목록이다(목록의 집은 그 요구사항 하나다). "user-facing behavior changes"는 이 줄에 없다. 그 구절은 로컬 문서 `.moai/docs/jev-local-operations.md:30`에만 있고 출하되지 않는다(E3).
 
 ### R4.6 질문 채널 상한 (결함 D9)
 
@@ -271,3 +271,39 @@ ok  	github.com/modu-ai/moai-adk/internal/hook	6.364s
 3. **리더 공지는 둘이고 배타적이며, 제안서의 "3등급"은 로컬 독트린이다** (`spec.md` §A.2 #8·#9). 두 리더 공지에 모두 싣는 이유(REQ-BGS-016·017)와 예약 목록을 출하된 문서의 표현(keep-set 정의, `kanban-dispatch.md:106`)으로 한정하는 이유(REQ-BGS-010)가 여기서 왔다.
 
 "세 결과"를 위 셋으로 읽은 것은 이 문서 작성자의 해석이다. 요청문은 셋을 이름으로 지정하지 않았다.
+
+## R7 감사 2회차 반영 중 새로 확인한 전제 (0.4.0, 트리 `08692e732`)
+
+### R7.1 판정 빌드 (VCI §2.2)
+
+`go build -ldflags="-X github.com/modu-ai/moai-adk/pkg/version.Commit=08692e732" -o <scratch>/moai-08692e732 ./cmd/moai` → exit 0. `moai-08692e732 version`의 출력은 ` v3.1.3   08692e732   built unknown`이다. 판정 빌드 커밋 `08692e732`는 트리 HEAD와 같다. 설치본(`d194083fb`)과 MCP 서버(같은 커밋)는 HEAD보다 오래되어 판정에 쓰지 않았다.
+
+### R7.2 §9 게이트 행 목록과 Kickoff 행의 운영자 형태 (N2·N12)
+
+`auto-semantics.md:160-171`의 §9 표는 `factory decide: kickoff approve/reject`, `factory decide: push`, `factory decide: resume / block / unblock`, `factory decide: abandon`, `plan→run Kickoff`, `contract signing`, `sync blocking approval`, `card pick`, `plan-audit bypass flags`(RETIRED), `Jev capability gate` 열 행이다. `plan→run Kickoff` 행의 처분은 "AUTONOMOUS (§9.1); the operator question channel survives for keep-set cases and operator dialogue"이다. `:126-132`(§7)는 "the plan→run Kickoff, the sync blocking approval"을 권한 게이트로 명명하고 양성 판정만 진행시킨다고 쓴다. 이것이 REQ-BGS-001의 범위(Kickoff 행)와 §A.3의 모집단 문장의 근거다.
+
+### R7.3 Kickoff의 선호 배출 줄 (N12)
+
+- `.claude/skills/moai/workflows/moai.md:144`: "All user preferences (tier, mode preference, PR strategy, chain scope) are drained at this gate."
+- `.claude/skills/moai/workflows/run.md:141`: "Because Implementation Kickoff Approval also drains all user preferences (Tier, mode preference, PR strategy), the orchestrator collects every preference at this gate BEFORE launching any autonomy …"
+- `orchestration-mode-selection.md` §C.3 표: "All user preferences (Tier, mode preference, PR strategy, etc.) MUST be on disk before launch — from the operator dialogue where the keep-set operator form ran, or from the card/SPEC contract where the autonomous form ran".
+
+### R7.4 자유 입력의 의미 (N7)
+
+`askuser-protocol.md`: "Maximum 4 options per question"; "`AskUserQuestion` automatically appends an 'Other' option to every question set: users preferring free-form answers select 'Other' and type their response". 단일 선택 질문에서 "Other"를 고르면 답이 입력한 글이라는 읽기는 이 규칙문에서 나왔다. 명시적 선택지와 "Other" 글을 한 답에 함께 싣는 인코딩은 실행해 보지 않았다 — UNVERIFIED(감사 2회차의 운영 메모도 같은 가정을 적었다).
+
+### R7.5 읽는 시점 merge-base (N5)
+
+| 명령(단일 호출) | 출력 | exit |
+|---|---|---|
+| `git merge-base develop HEAD` | `c50da9c2f8aa1227073bd77caa07ca1c75b8d81b` | 0 |
+| `git cat-file -s c50da9c2f:.claude/rules/moai/workflow/kanban-dispatch.md` (계획 시점 측정) | `26807` | 0 |
+| `git cat-file -s c50da9c2f:internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` (계획 시점 측정) | `26485` | 0 |
+| `wc -c` 위 두 파일의 현재 값 | `26807`, `26485` (순증가 0) | 0 |
+| `git diff --name-only develop...HEAD` (범위 비공허 대조) | SPEC 디렉터리 아래 여덟 경로 | 0 |
+
+규율문: `gitflow-lane-protocol.md` §8 "「이 카드가 무엇을 바꿨는가」는 흡수한 ref 와의 merge-base 부터 잰다 — 리터럴 base SHA 로 재지 않는다" 및 병합 뒤 사용 불가 한계. 이 파일의 `c50da9c2f` 값은 계획 시점 측정이며 AC 판정의 왼쪽 끝이 아니다.
+
+### R7.6 기준선 점검 명령의 형태 (N4)
+
+`git diff-tree --no-commit-id --name-only -r <커밋>`은 경로만 찍는다(머리 줄 없음; HEAD에서 SPEC 산출물 여덟 줄). `git show --name-only --format=%h <커밋>`은 머리 줄 뒤에 빈 줄이 끼어 줄 계수 형태에 맞지 않는다(HEAD에서 관측). `git log --format=%h -S"### 9.1 The default-autonomous Kickoff transition" -- <템플릿 auto-semantics.md>`는 한 줄(`147c25d77`)을 낸다 — 기존 제목의 출현 커밋이 하나라는 기수 근거다.
