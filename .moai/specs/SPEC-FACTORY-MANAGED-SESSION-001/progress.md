@@ -388,3 +388,5 @@ sync-audit FAIL 69의 F1·F6·F7·F10 대응(코드·테스트 한정). 이번 �
 - F7: `TestManagedCodexTokenFileIsPrivate`(토큰 파일 0600, 디렉터리 그룹/기타 권한 0). 변이 `0o644` → `--- FAIL`(overlay).
 - F10: 처분하지 않음(블로커급 보고). 구현은 도착순 FIFO(`managedTurnQueue.Next`)이고 AC-MS-008의 "연산자 우선"은 구현되지 않았다. overlay 프로브(저장소 미변경): claim이 도는 동안 도착한 연산자 줄이 채널에 대기 중일 때 `delivery order: [priming, "INBOX-BATCH", "OPERATOR-WAITING"]`.
 - 검증: 관리 슬라이스 + M3/M4/M5 테스트 `ok … 18.889s`, 관리 파일 커버리지(statement-weighted) `managed_factory_session.go` 92.2% (153/166), `managed_codex_factory.go` 86.8% (198/228), 합 89.1% (351/394). vet exit 0, gofmt 빈 출력, lint `0 issues.`, store.go diff 0, vocab 0, syscall 0, windows exit 0, go.mod/go.sum 변경 0.
+
+F10 처분 (2026-10-02, 기준 HEAD `175fa3398`): 측정 사실 — `managedTurnQueue.Next`는 도착순 FIFO(`turns[0]` pop)이고, claim이 도는 동안 도착한 연산자 줄은 overlay 프로브에서 `[priming, "INBOX-BATCH", "OPERATOR-WAITING"]` 순으로 inbox 뒤에 섰다. REQ-MS-006은 경합 없는 직렬화만 요구하므로 운영자 결정은 코드가 아니라 주석을 구현(FIFO)에 맞추는 것이다. `managed_factory_session.go`의 주석 3곳과 `TestManagedQueueSerializesOperatorAndInbox` 문서 주석 한 문장만 고쳤고 동작·단언·테스트 이름은 불변이다. AC-MS-008의 "연산자 우선" 문구는 SPEC 담당 워커가 정정한다(이 에이전트의 범위 밖).

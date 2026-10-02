@@ -76,16 +76,18 @@ type managedSession interface {
 	Close() error
 }
 
-// managedTurn is one queued turn with its source. Operator turns go first:
-// a human waiting on the session outranks broker delivery.
+// managedTurn is one queued turn with its source. Operator and inbox turns
+// are not prioritized against each other: the queue is arrival-order FIFO.
 type managedTurn struct {
 	prompt    string
 	fromInbox bool
 }
 
 // managedTurnQueue serializes operator stdin lines and claimed broker inbox
-// batches into one ordered turn queue (REQ-MS-006). The driver drains it
-// between turns; a non-empty queue is what keeps the claim loop idle.
+// batches into one arrival-order FIFO turn queue (REQ-MS-006). The driver
+// delivers one turn at a time, gated on the previous turn's completion, and
+// drains the queue between turns; a non-empty queue is what keeps the claim
+// loop idle.
 type managedTurnQueue struct {
 	turns []managedTurn
 }
@@ -104,7 +106,7 @@ func (q *managedTurnQueue) PushInboxBatch(prompt string) {
 	q.turns = append(q.turns, managedTurn{prompt: prompt, fromInbox: true})
 }
 
-// Next pops the front turn, operator input before inbox batches.
+// Next pops the front turn: arrival order, one turn at a time.
 func (q *managedTurnQueue) Next() (managedTurn, bool) {
 	if len(q.turns) == 0 {
 		return managedTurn{}, false

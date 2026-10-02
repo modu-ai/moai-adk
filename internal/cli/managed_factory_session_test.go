@@ -88,6 +88,9 @@ func seedManagedInbox(t *testing.T, root, run, body string) (*factorymsg.Store, 
 	return store, lane, env
 }
 
+// The test arranges operator-before-inbox arrival and asserts the
+// serialization contract (one turn at a time, arrival order, no claim while
+// busy); the queue is FIFO, so it does not assert a priority.
 func TestManagedQueueSerializesOperatorAndInbox(t *testing.T) {
 	t.Run("queue orders operator before inbox", func(t *testing.T) {
 		q := &managedTurnQueue{}
