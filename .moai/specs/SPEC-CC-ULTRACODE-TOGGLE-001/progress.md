@@ -124,7 +124,7 @@ Residual-risk:
 
 sync_status: audit-ready
 sync_complete_at: 2026-10-02
-sync_commit_sha: pending-backfill
+sync_commit_sha: 211905e373f468a0d0481cf6832fa9d652049853
 sync_phase_actor: manager-docs (card t1416, worktree `.moai/worktrees/t1416`, branch `WT-ultracode-toggle-wording`)
 sync_tree_at_measurement: HEAD `90d5bac45` plus the uncommitted `spec.md` frontmatter edit this commit carries (`status: in-progress` to `status: completed`); base of the card `c50da9c2f`
 sync_sha_backfill_note: the `sync_commit_sha` slot holds the canonical `pending-backfill` placeholder in the sync commit itself (a commit cannot cite its own hash); the real SHA is backfilled in the following `docs(SPEC-CC-ULTRACODE-TOGGLE-001): backfill sync_commit_sha (t1416)` commit, which changes `progress.md` only.
