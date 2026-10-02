@@ -93,6 +93,8 @@ lens: --security --deep
 
 The measured precedent this rule codifies: lane-1 card t1330 held a 7-task list through the card's whole run, one `TaskCreate` per stage at intake and one `TaskUpdate` per transition. The clause above is the rule; that card is its evidence, not an instance list to extend.
 
+[HARD] Between run-exit verification and integration every lane runs a `card-review` stage: a card-scope self-review through `codex_review` (`glm_review` optional) whose result is written to `.moai/reports/<card-id>/card-review.md` — advisory only, never a replacement for the leader's evidence read or an independent audit. With `tree_scope: skip` configured for the leader's checkout, the leader session carries no turn-end codex review gate and reviews its own internal output directly with the same tools. Stage order, evidence fields, and the re-review ceiling: `kanban-dispatch-detail.md` § The card-review stage.
+
 ### Lane waits are explicit, and stalls are watched
 
 [HARD] A lane that cannot proceed records an explicit wait on disk — reason, whom, recheck point — and ends its turn; it never idles open-ended on a reply. On its next awaken the lane runs the stall watchdog first — invoke Skill("moai-lane-watchdog") and follow it — which measures progress, classifies the stall cause, and resolves the judgment through the decision ladder (doctrine: `.claude/rules/moai/workflow/auto-semantics.md`). The lead records judgments on the decision board instead of leaving a lane waiting on a reply address.
@@ -110,6 +112,8 @@ The measured precedent this rule codifies: lane-1 card t1330 held a 7-task list 
 [HARD] The leader advances a card on **evidence it read**, not on a companion's reply. Before moving a card out of a working column, the leader reads the card's `progress.md` and the verification evidence path the phase declares; a missing, unreadable, or stale evidence file is a **gap** — the card stays put and the leader reports why. Absence of a failure signal is not a pass.
 
 Where the phase's declared evidence includes an audit verdict, the leader reads the verdict **file** under `.moai/reports/<card-id>/` per `.moai/docs/audit-artifact-convention.md`; an absent, unreadable, or uncommitted verdict file is a gap exactly like a missing progress record.
+
+For a lane card the declared evidence list also carries `.moai/reports/<card-id>/card-review.md`; a card whose progress record neither cites a readable `card-review.md` nor records a reason for its absence is a gap and stays in its column.
 
 **The final PASS/FAIL verdict is the leader's**, read from the evidence on disk and never delegated to the lane that produced the work. Why the division is structural: `kanban-dispatch-detail.md` § The verdict's home.
 
