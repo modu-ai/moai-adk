@@ -796,6 +796,9 @@ type QuotaGateConfig struct {
 	SevenDayHoldPct  int    `yaml:"seven_day_hold_pct"`
 	ReleaseMarginPct int    `yaml:"release_margin_pct"`
 	MaxAge           string `yaml:"max_age"`
+	// MaxScanDirs bounds the linked-worktree record directories the quota
+	// reading examines per call (SPEC-QUOTA-RECORD-WORKTREES-001 REQ-QWR-011).
+	MaxScanDirs int `yaml:"max_scan_dirs"`
 }
 
 // SlotLeaseResourceConfig is one resource entry: RE2 command patterns matched
@@ -945,6 +948,14 @@ type CodexTaskConfig struct {
 // the HOI opt-in precedent (isHookOptInEnabled), NOT the fail-open learning gate.
 type CodexReviewGateConfig struct {
 	Enabled bool `yaml:"enabled"`
+
+	// TreeScope decides what the gate does for a session whose scope is the
+	// whole uncommitted tree and which carries no WT- branch evidence
+	// (SPEC-CODEX-REVIEW-OWNERSHIP-001 REQ-CRO-001): "review" (default, the
+	// pre-existing behavior) or "skip". Read through
+	// NormalizeCodexReviewGateTreeScope — any other value means review. The
+	// template ships this key only as a commented example.
+	TreeScope string `yaml:"tree_scope"`
 }
 
 // MultiConfig mirrors workflow.multi.* — the multi-model convergence review-gate

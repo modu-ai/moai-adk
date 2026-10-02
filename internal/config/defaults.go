@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/pkg/models"
@@ -90,6 +91,12 @@ const (
 	DefaultQuotaGateSevenDayHoldPct  = 95
 	DefaultQuotaGateReleaseMarginPct = 5
 	DefaultQuotaGateMaxAge           = "30m"
+
+	// workflow.quota_gate.max_scan_dirs default (SPEC-QUOTA-RECORD-WORKTREES-001
+	// REQ-QWR-011): the bound on linked-worktree record directories examined per
+	// quota reading. UNMEASURED, like the values above; read through
+	// LoadQuotaScanBound, never carried by QuotaGateSettings.
+	DefaultQuotaGateMaxScanDirs = 128
 
 	// DefaultManagedSessionPollInterval is how often an idle managed factory
 	// session polls the broker for claimable inbox messages
@@ -606,6 +613,28 @@ var DefaultHandoffStaleTTL = 7 * 24 * time.Hour
 // constant expression.
 var DefaultCodexReviewGateTimeout = 900 * time.Second
 
+// Values of workflow.codex.review_gate.tree_scope
+// (SPEC-CODEX-REVIEW-OWNERSHIP-001 REQ-CRO-001): what the codex review gate
+// does for a tree-scope session that carries no WT- branch evidence. Review is
+// today's whole-uncommitted-tree review and the distributed default; Skip lets
+// the turn through without a review. Single source of truth for both names.
+const (
+	CodexReviewGateTreeScopeReview = "review"
+	CodexReviewGateTreeScopeSkip   = "skip"
+)
+
+// NormalizeCodexReviewGateTreeScope maps a raw tree_scope value onto the policy:
+// only "skip", compared without regard to case or surrounding whitespace, reads
+// as skip; an empty, unknown or misspelled value reads as review, so a mistyped
+// key never silently reviews less (REQ-CRO-001). The config loader and the
+// gate's hand-rolled reader both go through this one function.
+func NormalizeCodexReviewGateTreeScope(value string) string {
+	if strings.EqualFold(strings.TrimSpace(value), CodexReviewGateTreeScopeSkip) {
+		return CodexReviewGateTreeScopeSkip
+	}
+	return CodexReviewGateTreeScopeReview
+}
+
 // DefaultMultiReviewGateTimeout is the per-call timeout for the multi-model
 // convergence read performed by the multi-review-gate Stop hook
 // (SPEC-AUDIT-MULTI-MODEL-001 M5 REQ-AMM-013 / AC-AMM-018). It overrides the
@@ -641,6 +670,14 @@ var DefaultCodexTaskTimeout = 600 * time.Second
 // tree and can take minutes; past this bound the launcher terminates the
 // process group and writes no verdict. Not a const so a test can shorten it.
 var DefaultCodexAuditTimeout = 20 * time.Minute
+
+// DefaultCodexAuditLegTimeout bounds the codex leg of one `audit_multi` call.
+// The leg is the same kind of work DefaultCodexAuditTimeout bounds — a read-only
+// review of a SPEC or diff — so it takes that value instead of restating it, and
+// stays distinct from DefaultCodexTaskTimeout (delegated work) and
+// DefaultCodexReviewGateTimeout (a Stop hook) so tuning one cannot move another.
+// Not a const so a test can shorten it.
+var DefaultCodexAuditLegTimeout = DefaultCodexAuditTimeout
 
 // DefaultCodexAuditListTimeout bounds the `codex mcp list --json` lookup the
 // audit launcher runs before the audit to learn which MCP servers to disable.
@@ -1221,6 +1258,7 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			SevenDayHoldPct:  DefaultQuotaGateSevenDayHoldPct,
 			ReleaseMarginPct: DefaultQuotaGateReleaseMarginPct,
 			MaxAge:           DefaultQuotaGateMaxAge,
+			MaxScanDirs:      DefaultQuotaGateMaxScanDirs,
 		},
 		// The commit identity guard ships inert (SPEC-COMMIT-IDENTITY-GUARD-001
 		// REQ-CIG-006): when off, the pre-tool handler never invokes it, so no
@@ -1293,7 +1331,8 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// `enabled: true` under internal/template/templates/.
 		Codex: CodexConfig{
 			ReviewGate: CodexReviewGateConfig{
-				Enabled: false,
+				Enabled:   false,
+				TreeScope: CodexReviewGateTreeScopeReview,
 			},
 			// SPEC-CODEX-PHASE2-001 (REQ-CX2-007 / REQ-CX2-015): the codex_task
 			// write mode ships default-OFF. A local opt-in belongs in local

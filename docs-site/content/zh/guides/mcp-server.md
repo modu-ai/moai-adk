@@ -95,7 +95,7 @@ flowchart TD
 
 ## `project_root` 输入——由调用方指名自己的树
 
-20 个工具接受可选的字符串 `project_root`：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`codex_task`、`claude_audit`、`glm_audit`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_trace_calls`、`graph_shortest_path`、`factory_decide`、`todo_add`、`todo_list`、`factory_next`、`factory_stage`、`factory_complete`。它指明这次调用应当作用的树，要传的值就是调用方自己的 `git rev-parse --show-toplevel`。不过在 `factory_next`、`factory_stage`、`factory_complete`、`codex_task` 上它不是可选而是必填——不传自己的 toplevel 调用就会被拒绝，也不会默认到任何树。
+22 个工具接受可选的字符串 `project_root`：`spec_progress`、`spec_audit`、`spec_drift`、`verify_snapshot`、`verify_trend`、`codex_audit`、`codex_review`、`codex_task`、`claude_audit`、`glm_audit`、`glm_review`、`audit_multi`、`graph_file_api`、`graph_find_code`、`graph_trace_calls`、`graph_shortest_path`、`factory_decide`、`todo_add`、`todo_list`、`factory_next`、`factory_stage`、`factory_complete`。它指明这次调用应当作用的树，要传的值就是调用方自己的 `git rev-parse --show-toplevel`。不过在 `factory_next`、`factory_stage`、`factory_complete`、`codex_task` 上它不是可选而是必填——不传自己的 toplevel 调用就会被拒绝，也不会默认到任何树。
 
 在 worktree 里工作的智能体必须传它。这不是图方便的功能。服务器没有办法自行推出答案：它是一个长寿的子进程，工作目录跟不上 worktree 的切换，而它退而依赖的环境变量指向的是**项目**根目录——也就是 primary 检出——即便会话正在 worktree 中工作也是如此。在 worktree 里省掉它，调用就会作用到 primary 检出上，于是只存在于卡片分支上的 SPEC 不会进入审计者读取的目录。它也不会被报告为缺失。它只是不存在。
 
@@ -160,6 +160,17 @@ manager-develop 在 run-phase 自验证（接缝 §E）中使用，sync-auditor 
 | `mcp__moai__audit_cache` | plan-audit PASS 缓存（compute_hash / lookup / store，进程间共享） | sync-auditor | `moai audit cache` |
 
 单一后端审计模式由项目的 `audit_model` 设置决定：`codex+glm`（默认值，通过 `audit_multi` 收敛）| `glm` | `codex` | `none`（Claude 独自，无后端调用）。所有后端都是 fail-open——不可用的后端返回 `inconclusive`，而非 Go error。
+
+### 按需自我评审（仅供参考）
+
+| 工具 | 目的 | 消费智能体 | CLI 等价物 |
+|------|------|---------------|------------|
+| `mcp__moai__codex_review` | 让 codex 评审调用方自己的改动——`scope: card`（卡片 diff）或 `scope: uncommitted` | 主会话，以及在自己的 `tools:` 列表中列出该工具的智能体 | `moai verify codex-review`（仅 codex 一侧） |
+| `mcp__moai__glm_review` | 把调用方自己的改动整理成 diff，请 GLM (z.ai) 评审 | 主会话，以及在自己的 `tools:` 列表中列出该工具的智能体 | — |
+
+这两个工具都不是审计工具。结果仅供参考，不具约束力：`advisory` 恒为 true，既不生成也不读取审计回执，也不会被 `workflow.audit.gates.*` 的 required 转换改写（评审方缺席时得到的是 `inconclusive`，而不是 `fail`）。审计模型的固定设置同样不适用，所以 `model` 要么是调用方传入的值，要么是后端的默认值。`scope` 必填，没有默认值。`card` 通过与回合结束评审门相同的范围解析器确定卡片 diff，每次调用都会重新计算合并基线；不是卡片工作树的树会直接返回 `inconclusive`，不会评审任何内容。`uncommitted` 评审指定树中尚未提交的改动；在 primary 检出中，对象是整个共享工作树，且不支持按路径限定。每个结果都带有 `scope`、`base`（`card` 时为合并基线的 SHA，其余情况为空字符串）、`backend` 和 `tree`（实际评审的规范化根目录）。
+
+GLM 没有文件系统，所以请求中携带的是排除了运行时管理路径的 diff。未被跟踪的文件无法放进 diff，会列在 `excluded_untracked` 中；diff 在大小上限处被截断时会置位 `truncated`；diff 为空时两个后端都不会被调用。调用是同步的，在评审预算之内结束，也不发送进度通知。在这些工具出现之前启动的服务器进程看不到它们，请重新连接服务器。在此期间，codex 一侧可以改用 `moai verify codex-review --project-root <树>`，GLM 一侧没有替代办法。
 
 ### codex 委托（后台任务）
 

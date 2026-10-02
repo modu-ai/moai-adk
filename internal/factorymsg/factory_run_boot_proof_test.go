@@ -107,12 +107,13 @@ func TestResolveActiveRunBootProofDeclinesWhenBrokerExists(t *testing.T) {
 		t.Fatalf("err = %v, want AMBIGUOUS_FACTORY (both runs keep a broker)", err)
 	}
 	// Both halves of a declining leg (AC-018): the run stays active AND the
-	// resolver reports it indeterminate, rendered as "<run> (owner <class>)".
+	// resolver reports it indeterminate, rendered as "<run> (owner <class>"
+	// — the classification fact card t1444 ③ appended start-time detail to.
 	for _, id := range []string{"legacy-a", "legacy-b"} {
 		if st := statusOf(t, root, id); st != "active" {
 			t.Fatalf("%s status = %q, want \"active\"", id, st)
 		}
-		want := id + " (owner " + string(homestate.OwnerIndeterminate) + ")"
+		want := id + " (owner " + string(homestate.OwnerIndeterminate)
 		if !strings.Contains(err.Error(), want) {
 			t.Fatalf("err = %v, want it to classify %q", err, want)
 		}

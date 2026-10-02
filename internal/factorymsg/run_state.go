@@ -106,6 +106,48 @@ func ProbeRunStateAt(ctx context.Context, dbPath, runID string) (state RunState,
 	return RunStateActive, status, nil
 }
 
+// ValidRunID reports whether id has the shape of a run id — the one shape
+// check every run-id-taking surface shares (the broker path and the run-state
+// accessor both refuse anything else).
+func ValidRunID(id string) bool { return safeID.MatchString(id) }
+
+// ActiveRunIDsAt lists, sorted, the ids of every run measuring
+// status='active' — the read-only input of the notice-line table
+// (SPEC-FACTORY-STALE-RUN-HEAL-001 REQ-SRH-001/-006). It writes nothing and
+// never creates the database: an absent file lists nothing, and a failed
+// measurement returns the error so the caller omits the lines (fail-open).
+// An id that is not run-id-shaped is skipped: the lines built from this
+// listing are commands, and a malformed id cannot be one.
+//
+// @MX:NOTE: [AUTO] Read-side sibling of ActiveRunExistsAt; the hook never
+// calls ResolveActiveRun/ReconcileActiveRuns because both write.
+func ActiveRunIDsAt(ctx context.Context, dbPath string) ([]string, error) {
+	if _, err := os.Stat(dbPath); err != nil {
+		return nil, nil
+	}
+	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(dbPath)+"?_pragma=busy_timeout(100)")
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = db.Close() }()
+	rows, err := db.QueryContext(ctx, `SELECT run_id FROM runs WHERE status='active' ORDER BY run_id`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		if safeID.MatchString(id) {
+			ids = append(ids, id)
+		}
+	}
+	return ids, rows.Err()
+}
+
 // ActiveRunExists reports whether any run in the project root measures
 // status='active' — the re-bind-line condition of the unbind notice
 // (REQ-SRL-006). A project without a factory DB measures false; a failed
