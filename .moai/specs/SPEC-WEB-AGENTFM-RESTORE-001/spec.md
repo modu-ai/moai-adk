@@ -2,7 +2,7 @@
 id: SPEC-WEB-AGENTFM-RESTORE-001
 title: "moai web 서브 에이전트 설정 표면 복원 — agentfm 오버라이드 · llm.profile · 저장 경로 · UI 노출"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-10-02
 updated: 2026-10-02
 author: manager-spec

@@ -43,7 +43,29 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-10-02
+sync_commit_sha: "pending-backfill"  # D3-exempt placeholder: a commit cannot cite its own hash; backfilled with the real SHA by the following commit (spec-frontmatter-schema § SHA placeholder backfill exemption)
+sync_status: complete
+b12_self_test_a: pass  # pre-emission grep `grep -c 'SPEC-WEB-AGENTFM-RESTORE-001' CHANGELOG.md` = 0 before this sync commit (duplicate-entry guard)
+b12_self_test_b: pass  # AC count against acceptance.md (tier M source): 13 unique live identifiers AC-AFR-001..013, zero reserved tokens (live=13 excluded=0 ambiguous=0); the CHANGELOG entry cites the same 13
+b12_self_test_c: pass  # file-path verification: every path cited in the CHANGELOG entry confirmed against this tree — internal/web/{agentfm.go,app.go,handlers.go,fieldsets.templ,agent_overrides_test.go,assets/app.js,assets/i18n.js}, internal/settings/{agentfm/agentfm.go,llmoverrides.go}, internal/template/{profile_matrix.go,glm_effort_overlay.go}, internal/config/types.go, internal/template/templates/.moai/config/sections/llm.yaml, internal/cli/model_backend_default_test.go (TestCodexResolution_IgnoresPerAgentLLMCells :28)
+changelog_entry_position: "[Unreleased] > Added (first entry — newest-first; prior first entry was SPEC-AGENT-TIER-001)"
+frontmatter_status_transitions:
+  in_progress_to_implemented: merged  # folded into the single sync commit per the 3-phase close
+  implemented_to_completed: this commit  # spec.md frontmatter status+updated only; body sections byte-untouched
+canary_compliance_check:
+  spec_body_untouched: true  # spec.md/plan.md/acceptance.md bodies byte-unchanged (frontmatter-only edit on spec.md); progress.md §E.2/§E.3 untouched
+  runtime_files_untouched: true  # .moai/state, .moai/harness, .moai/cache untouched
+mx_tag_validation:
+  added: 0  # new/modified Go files scanned: the re-ported resolvers already carry ANCHOR+REASON (profile_matrix.go:188/278 — defaultProfileMatrix, ResolveAgentModelEffort; glm_effort_overlay.go:228 — ResolveGLMReasoningForModel); agentfm.List and the llmoverrides writers carry header-level contracts with fan_in < 3 — no ANCHOR/NOTE obligation triggered
+  updated: 2 lines  # handlers.go @MX:WARN (handleSave) fact alignment — the "유일한 코드 경로" exclusivity and the "llm은 절대 건드리지 않는다" scope claim both staled once this SPEC routed llm.profile/llm.agent_overrides through the llmoverrides seams; protocol update-when-facts-change (mx-tag-protocol § When to Update Tags)
+  dangerous_patterns: 0  # no goroutines introduced; golangci-lint 0 issues (complexity gates clean, M6 실측)
+codemap_refresh: deferred  # measured: .moai/project/codemaps/modules.md:159/280 and overview.md:14 still describe the t1246 deletion (agentfm 탭/패키지 소멸, 11→10) — now stale; a refresh regenerates codemap files via moai codemaps and is outside this sync's delegated deliverables (tech.md + model-policy alignment only) — reported to the orchestrator as follow-up
+docs_site_decision: deferred  # measured: docs-site/content/{en,ko,ja,zh}/advanced/config-sections.md llm section still lists profile/agent_overrides among the retired-and-stripped keys — stale for the two re-shipped keys; the 4-locale docs-site edit is outside this sync's delegated deliverables (SPEC Out of Scope keeps docs-site pages out) — reported as follow-up
+model_policy_rule_check: no-edit  # measured: .claude/rules/moai/development/model-policy.md carries no retired-key list — its only "retired" lines are the No-Haiku routing policy (:26/:52/:177, still true) and its inheritance-first wording (:147) remains accurate (spawn path unchanged, REQ-AFR-002); live file and template mirror left byte-identical
+recorded_by: manager-docs (sync phase, card t1411)
+```
 
 ## §F Phase 4 Mode Selection
 

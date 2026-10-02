@@ -361,12 +361,15 @@ func applyNestedForm(view *pageView, nested projectNestedCurrent, form projectNe
 // re-renders the form with per-field errors and leaves persisted state
 // unchanged.
 //
-// @MX:WARN: [AUTO] 이 함수는 디스크의 사용자/프로젝트 설정을 변경하는 유일한 코드 경로다(쓰기 위험 구역).
+// @MX:WARN: [AUTO] 이 함수는 디스크의 사용자/프로젝트 설정을 변경하는 쓰기 위험 구역이다 — 직접 YAML 쓰기는 없고 전부 시임 경유다.
 // @MX:REASON: [AUTO] 영속화는 반드시 두 경계를 통해서만 수행한다 — (1) WritePreferences(프로필 스토어) +
 // SyncToProjectConfig(user/language/statusline.yaml), (2) writeProjectConfig(config-manager로 quality.development_mode +
 // git_convention.convention만, SPEC-WEB-CONSOLE-003). 웹 레이어에서 YAML을 직접 marshal/write 하는 것은 금지된
 // 안티패턴(REQ-WC-007/REQ-WC3-008). project-config scope는 quality(development_mode) + git_convention(convention)
-// 두 필드로 엄격히 한정되며 workflow/harness/git-strategy/llm은 절대 건드리지 않는다(REQ-WC-012/REQ-WC3-007).
+// 두 필드로 엄격히 한정되며 이 경로는 workflow/harness/git-strategy를 건드리지 않는다(REQ-WC-012/REQ-WC3-007);
+// llm.profile/llm.agent_overrides는 같은 핸들러의 전용 시임(applyPerfTierEdits/patchAgentFM →
+// internal/settings/llmoverrides.go)으로만 쓴다(SPEC-WEB-AGENTFM-RESTORE-001 — 스키마 필드가 아닌
+// schema-external live 키, REQ-AFR-003/004).
 // 두 검증기(validatePrefs + validateProjectConfig)를 모두 실행하고 FieldErrors를 병합한 뒤 하나라도 실패하면 영속 상태를
 // 변경하지 않고 폼을 per-field 에러와 함께 재렌더한다 — atomic reject(REQ-WC-008/REQ-WC3-001/002, EC-2).
 func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
