@@ -503,6 +503,33 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleGLMAudit)
 
+	// codex_review / glm_review → the on-demand self-review tools
+	// (SPEC-CODEX-REVIEW-OWNERSHIP-001 REQ-CRO-007..010): any session asks codex
+	// or GLM to review its own card diff or its uncommitted changes. They are
+	// NOT audit tools — the result is advisory, files no audit receipt and is
+	// never subject to the required audit gate — so both are catalog-READ tools
+	// (no write to the reviewed tree or to .moai/state) and carry the read-only
+	// hint, which keeps codex's `writes` approval mode from prompting for them.
+	add("codex_review", mcp.NewTool(
+		"codex_review",
+		mcp.WithDescription("Ask codex to review YOUR OWN change. The result is ADVISORY (non-binding): it files no audit receipt, is never subject to a required audit gate, and cannot stand in for an audit verdict or for the leader's evidence read. scope=card reviews the card diff — resolved by the same scope resolver the turn-end review gate uses, with the merge base recomputed on every call; a tree that is not a card worktree returns 'inconclusive' without reviewing anything. scope=uncommitted reviews the uncommitted changes of the named tree (in the primary checkout that is the whole shared working tree; there is no path restriction). A missing codex, an error, or an empty change returns verdict 'inconclusive' (fail-open). Every result names its scope, base (the merge-base SHA for scope=card), backend, and the canonical tree reviewed."),
+		mcp.WithString(selfReviewScopeArg, mcp.Required(), mcp.Enum(selfReviewScopeCard, selfReviewScopeUncommitted), mcp.Description("REQUIRED, no default. 'card' = the card diff from the recomputed merge base; 'uncommitted' = the uncommitted changes of the named tree.")),
+		mcp.WithString(selfReviewModelArg, mcp.Description("Optional model override; omitted ⇒ codex's own configured default. The workflow.audit.codex pin is NOT applied.")),
+		projectRootOption(),
+		mcp.WithOutputSchema[SelfReviewOutput](),
+		mcp.WithReadOnlyHintAnnotation(true),
+	), handleCodexReview)
+
+	add("glm_review", mcp.NewTool(
+		"glm_review",
+		mcp.WithDescription("Ask GLM (z.ai) to review YOUR OWN change. The result is ADVISORY (non-binding): it files no audit receipt, is never subject to a required audit gate, and cannot stand in for an audit verdict or for the leader's evidence read. GLM has no filesystem, so the change is collected as a diff and sent in the request: scope=card is the diff from the recomputed merge base (same resolver as the turn-end review gate; a non-card tree returns 'inconclusive' without a request), scope=uncommitted is the diff of the named tree against HEAD, staged changes included. Runtime-managed paths are excluded; untracked files cannot be part of a diff and are named in 'excluded_untracked'; 'truncated' is set when the diff was cut at the size cap. A missing key, an error, or an empty diff returns verdict 'inconclusive' (fail-open) without asking GLM for a verdict."),
+		mcp.WithString(selfReviewScopeArg, mcp.Required(), mcp.Enum(selfReviewScopeCard, selfReviewScopeUncommitted), mcp.Description("REQUIRED, no default. 'card' = the card diff from the recomputed merge base; 'uncommitted' = the uncommitted changes of the named tree.")),
+		mcp.WithString(selfReviewModelArg, mcp.Description("Optional GLM model override; omitted ⇒ the delegation default model. The workflow.audit.glm pin is NOT applied.")),
+		projectRootOption(),
+		mcp.WithOutputSchema[SelfReviewOutput](),
+		mcp.WithReadOnlyHintAnnotation(true),
+	), handleGLMReview)
+
 	// audit_multi → SPEC-AUDIT-MULTI-MODEL-001 multi-auditor convergence
 	// (REQ-AMM-009 / REQ-AMM-010 / AC-AMM-012 / AC-AMM-013). Thin wrapper over
 	// runMultiAudit (mcp_convergence.go) — does NOT re-implement the

@@ -1,5 +1,5 @@
 ---
-description: "Detail companion for moai-mcp-tools.md — the full 45-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
+description: "Detail companion for moai-mcp-tools.md — the full 47-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
 paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moai/*.md"
 ---
 
@@ -7,11 +7,11 @@ paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moa
 
 > Detail companion of `moai-mcp-tools.md` (the always-loaded stub). The stub owns the
 > MCP-over-CLI preference rule, the family index, and the unwired-by-design note. This file owns
-> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 45 tools.
+> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 47 tools.
 > Load it when wiring a tool into an agent's `tools:` list, or when choosing between an MCP tool
 > and its Bash equivalent for a specific capability.
 
-## Tool catalogue (45 tools)
+## Tool catalogue (47 tools)
 
 ### SPEC lifecycle
 
@@ -78,6 +78,34 @@ unknown-origin session ignores any caller-supplied Claude verdict and invokes
 the independent `claude_audit` backend. Codex and GLM continue to run as their
 configured gates require. Every backend tool fails open to `inconclusive`; an
 explicitly required gate left inconclusive makes the convergence verdict fail.
+
+### On-demand self-review (advisory)
+
+| Tool | Purpose | Consumer | CLI equivalent |
+|------|---------|----------|----------------|
+| `mcp__moai__codex_review` | codex review of the caller's OWN change — `scope: card` (the card diff) or `scope: uncommitted` | the main session; any agent whose `tools:` list names it | `moai verify codex-review` (codex leg only) |
+| `mcp__moai__glm_review` | GLM (z.ai) review of the caller's own change, sent as a diff | the main session; any agent whose `tools:` list names it | — |
+
+These are not audit tools. A result is ADVISORY (non-binding): `advisory` is
+always true, no audit receipt is filed or consumed, the `workflow.audit.gates.*`
+required conversion never applies (an absent reviewer is `inconclusive`, never
+`fail`), and the audit model pins are not read — `model` is the caller's input or
+the backend default. `scope` is required and has no default. `card` resolves
+through the same scope resolver the turn-end review gate uses, with the merge
+base recomputed on every call; a tree that is not a card worktree returns
+`inconclusive` without reviewing anything. `uncommitted` reviews the named
+tree's uncommitted changes — in the primary checkout that is the whole shared
+working tree, and there is no path restriction. Every result names `scope`,
+`base` (the merge-base SHA for `card`, empty otherwise), `backend`, and `tree`
+(the canonical root that was reviewed).
+
+GLM has no filesystem, so its material is the diff with the runtime-managed
+paths excluded: untracked files cannot be part of it and are listed in
+`excluded_untracked`, a diff cut at the size cap sets `truncated`, and an empty
+diff calls neither backend. A call is synchronous, bounded by the review budget,
+and sends no progress notifications. A server process started before these tools
+existed does not list them — reconnect it. The codex leg then falls back to
+`moai verify codex-review --project-root <tree>`; the GLM leg has no fallback.
 
 ### Codex delegation (background jobs)
 
@@ -218,7 +246,7 @@ Classification: Lazy companion — catalogue tables and per-family guidance only
 stays in `moai-mcp-tools.md`. Update this file whenever a tool is added, removed, or renamed on the
 `moai mcp-server` (the Go producer lives in `internal/cli/mcp_server.go`).
 
-## Tool families (41 of the 45 tools; the session-messaging family follows below)
+## Tool families (43 of the 47 tools; the session-messaging family follows below)
 
 | Family | Tools | Wired consumers |
 |---|---|---|
@@ -226,6 +254,7 @@ stays in `moai-mcp-tools.md`. Update this file whenever a tool is added, removed
 | Verification snapshots | `verify_snapshot`, `verify_trend` | manager-develop, sync-auditor, super-advisor |
 | Goal + session | `goal_arm`, `goal_status`, `session_list` | orchestrator only / manager-develop, manager-lead |
 | Cross-model audit | `audit_multi`, `claude_audit`, `codex_audit`, `glm_audit`, `audit_cache` | plan-auditor, sync-auditor |
+| Self-review (advisory) | `codex_review`, `glm_review` | the main session; any agent whose `tools:` list names them — never an audit verdict, no receipt |
 | Codex delegation | `codex_task`, `codex_setup`, `codex_job_{status,result,cancel}` | super-advisor |
 | Codex read-only roles | `codex_role_audit`, `codex_role_audit_status`, `codex_role_audit_result` | a Codex session — starts `plan-auditor`, `sync-auditor`, `manager-todo`, `super-advisor` as a top-level read-only process instead of through `spawn_agent` |
 | GLM delegation | `glm_task`, `glm_job_{status,result,cancel}` | super-advisor |
