@@ -593,7 +593,7 @@ minor_plan_debt:
 ```yaml
 sync_complete_at: 2026-10-02
 sync_status: audit-ready
-sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; backfilled in the following commit
+sync_commit_sha: a860830af2f1cbde6797720626f294d0c4157298   # the sync commit; written as pending-backfill inside it and backfilled in the following commit
 changelog_path: CHANGELOG.md   # [Unreleased] ### Added, first entry
 ac_source: .moai/specs/SPEC-QUOTA-RECORD-WORKTREES-001/acceptance.md   # tier M
 ac_count: 13   # live "### AC-QWR-" headings in acceptance.md
