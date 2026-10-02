@@ -36,6 +36,33 @@ FAIL	github.com/modu-ai/moai-adk/internal/template	0.403s
 - Classification per tdd-result-contract: EXPECTED_RED. The file compiled (a failure at line 246 is the intended assertion `section not found`, reached at run time), so this is not TOOL_FAILURE; it is not REGRESSION_FAILURE because the test is new.
 - Provenance note: the matchers were first validated for coherence against a draft of the section placed temporarily in the template copy (47 `--- PASS` including the top level, 45 mutant lines), then that draft was removed and the RED above was re-run on the final test file before this commit. The first RED run (same decisive failure) preceded any draft.
 
+M1 commit: 5936aeb32 (test file, spec.md frontmatter status draft to in-progress, this section).
+
+### M2 — canonical section, GREEN
+
+Section `### 9.2 The batch gate summary` written first in the template copy of `auto-semantics.md`, then the identical bytes copied to the live copy (`cmp` of the two files: exit 0). Also one pointer sentence at the end of 9.1 and one sentence in section 10. `make build` exit 0, regenerating no tracked file (git status afterwards listed only the two auto-semantics copies). Section size 5986 bytes (the file is `paths:`-scoped, not always-loaded; `TestAlwaysLoadedTokenBudget` headroom unchanged at 13373 tokens). Measured at tree 5936aeb32 plus the uncommitted M2 edits.
+
+Guard test, `go test -count=1 -v -run '^TestBatchGateSummaryDoctrine$' ./internal/template/` redirected to a file, exit 0, ending `ok  	github.com/modu-ai/moai-adk/internal/template	0.493s`. AC-007 five readings, each a separate `grep -c` or `awk` on that file:
+
+- `--- PASS` count 47 (one top level, `real_section`, 45 anchors); `--- FAIL` count 0.
+- `=== RUN` count 47, equal to the `--- PASS` count.
+- `[no tests to run]` count 0.
+- Mutant lines `mutant <ID> rejected: reported=<ID>` with equal IDs: 45 (`awk '$2=="mutant" && $4=="rejected:" && $5=="reported="$3'`), and 45 lines contain `rejected: reported=`.
+- `real_section violations=0` count 1.
+
+AC-001: `grep -c -F '### 9.2 The batch gate summary'` prints 1 on the live copy and 1 on the template copy. Before the edit `git log --format=%h -S"### 9.2 The batch gate summary" -- internal/template/templates/.claude/rules/moai/workflow/auto-semantics.md` printed nothing.
+
+Other commands, each its own run, exit 0:
+
+- `go test -count=1 -v -run '^TestRuleTemplateMirrorDrift$' ./internal/template/`: `--- PASS: TestRuleTemplateMirrorDrift` (10 `--- PASS` lines, 10 `=== RUN`).
+- `go test -count=1 -v -run '^TestTemplateNoInternalContentLeak$' ./internal/template/`: `--- PASS: TestTemplateNoInternalContentLeak`.
+- `go test -count=1 -v -run '^TestAlwaysLoadedTokenBudget$' ./internal/config/`: `always-loaded surface = 64227 tokens (budget 77600, headroom 13373, 16 entries)` and `--- PASS: TestAlwaysLoadedTokenBudget`.
+- `go test -count=1 -v -run '^(TestAutoRankDoctrineAmendment|TestAutoRankMirrorParity)$' ./internal/cli/`: both `--- PASS`.
+- `go test -count=1 -v -run '^(TestSubSkillLOCCeiling|TestEntryRouterLOCCeiling)$' ./internal/skills/`: both `--- PASS`.
+- `go vet ./internal/template/`: exit 0.
+
+AC-016 (a) pre-check: `grep -rlF "counter_refs=" ...` and the same for `searched=` over the rule, skill and hook sources (test files excluded) each print exactly the two auto-semantics copies.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
