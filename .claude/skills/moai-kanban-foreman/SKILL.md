@@ -66,7 +66,8 @@ not something this loop can do for itself.
    idle. A batch authorization (`/moai:todo --auto` — the operator's typed
    invocation-as-approval) is the card-pick gate's autonomous form
    (`.claude/rules/moai/workflow/auto-semantics.md` §9): within it, serial
-   consumption on its own judgment, within the keep-set, is authorized; queue
+   consumption on its own judgment, outside the keep-set (bar a `[보류` card,
+   which is ranked last, not excluded), is authorized; queue
    ADMISSION stays the operator's. A lane takes its card through
    `moai factory next --card <id>`, never through this loop.
 2. **No approval gate is answered on the operator's behalf.** When a card's

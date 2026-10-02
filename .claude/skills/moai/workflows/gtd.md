@@ -332,8 +332,10 @@ judged on two channels — the session registry and an `lsof` working-directory
 probe — re-measured at every pickup decision, never cached.
 
 [HARD] `/moai:todo --auto` is the operator's batch approval: it authorizes the
-invoked session to take cards from the queue on its own judgment, a lane session
-only through a lease and never a keep-set card, and nothing else. The cycle carries one
+invoked session to take cards from the queue on its own judgment, and nothing
+else. A lane session takes a card only through a lease and never one of the
+keep-set cards; the operator session's serial cycle takes cards without a lease
+and ranks a parked card last without excluding it. The cycle carries one
 auto-scoped ranking exception: once per invocation, before its first pickup,
 it may rank the queued candidates it is about to accept, and that changes the
 cycle's selection order only. The ranking source is a Jev signal when the
@@ -368,7 +370,8 @@ the CLI's priority-order choice, or `moai factory next --card <id>` for the card
 it judged — and the serial cycle is refused to a lane session.
 
 The keep-set is what the session never takes: a card the operator holds
-(`moai gtd hold`) or marks with the [보류 marker, a card whose classification
+(`moai gtd hold`) or marks with the [보류 marker (the lease refuses a marker
+card; the serial cycle ranks it last), a card whose classification
 is blocked, a serial card while another serial card is in flight, a card the
 factory record already owns, and a card whose text hinges on an operator
 confirmation — payments, secrets, or irreversible external-shared work. The

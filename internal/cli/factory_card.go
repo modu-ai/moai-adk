@@ -751,7 +751,7 @@ func factoryKeepSetRefusal(it kanban.BacklogItem, row *homestate.Card, lane stri
 		return factoryRefusal(factoryRefuseHoldMarker, "the card's text opens with the hold marker %s; the operator parked it", autoRankHoldMarker)
 	}
 	if kanban.EffectiveCardClassification(it).Blocked {
-		return factoryRefusal(factoryRefuseBlocked, "the card's classification is blocked; no lane lease takes it, the operator decides it")
+		return factoryRefusal(factoryRefuseBlocked, "the card's classification is blocked; the nominated lease refuses it, the operator decides it")
 	}
 	if serialHeld {
 		return factoryRefusal(factoryRefuseSerialSlot, "another serial card is in flight and holds the serial slot")

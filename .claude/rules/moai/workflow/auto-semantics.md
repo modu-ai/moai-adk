@@ -253,13 +253,16 @@ The batch gate summary is a presentation form for operator-form decisions, not a
 ### 9.3 The card-pick authorization
 
 The card pick row's `--auto` invocation authorizes the invoked session to take
-cards from the queue on its own judgment, a lane session only through a lease
-(`moai factory next`, or `moai factory next --card <id>` for a judged pick;
-the lease is a lane's only pick path) and never a keep-set card. Queue
-ADMISSION stays the operator's, and Jev stays display-only.
+cards from the queue on its own judgment, and nothing else. A lane session takes
+a card only through a lease (`moai factory next`, or `moai factory next --card
+<id>` for a judged pick; the lease is a lane's only pick path) and never one of
+the keep-set cards; the operator session's serial cycle takes cards without a
+lease and ranks a parked card last without excluding it. Queue ADMISSION stays
+the operator's, and Jev stays display-only.
 
 The keep-set of a pick: a card in the `hold` state or whose text begins with
-the `[보류` marker, a card classified blocked, a card the factory record already
+the `[보류` marker (the lease refuses a marker card; the serial cycle ranks it
+last), a card classified blocked, a card the factory record already
 owns, a serial card while another serial card is in flight, and a card whose
 text hinges on an operator confirmation — payments, secrets, or irreversible
 external-shared work. The lease refuses the first four mechanically; the last
