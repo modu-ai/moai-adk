@@ -281,6 +281,27 @@ func rxdSentenceWithWrite(line string) []string {
 	return out
 }
 
+// rxdReadOnlyControlDefects checks the one mechanical control that keeps a
+// delegated codex turn read-only where the project opt-in is on: the whole word
+// `write` occurs exactly once in the section, and the sentence holding it says
+// `never sets`. It returns one message per defect; nil means the control holds.
+func rxdReadOnlyControlDefects(section string) []string {
+	const writeReason = "a second whole-word `write` in the section needs review: this is the only mechanical control that keeps a delegated codex turn read-only where the project opt-in is on"
+	hits, total := rxdWholeWordWriteLines(section)
+	if total != 1 {
+		return []string{"whole-word `write` occurs " + strconv.Itoa(total) + " times in the delegation section, want exactly 1; matching lines: " + strings.Join(hits, " | ") + "; " + writeReason}
+	}
+	var defects []string
+	for _, l := range strings.Split(section, "\n") {
+		for _, sentence := range rxdSentenceWithWrite(l) {
+			if !strings.Contains(sentence, rxdNeverSets) {
+				defects = append(defects, "the sentence holding the one whole-word `write` does not contain "+strconv.Quote(rxdNeverSets)+": "+hits[0]+"; "+writeReason)
+			}
+		}
+	}
+	return defects
+}
+
 // rxdMultisetDelta is the multiset line difference between two texts: the sum,
 // over distinct lines, of the absolute difference of their occurrence counts.
 func rxdMultisetDelta(a, b string) int {
@@ -500,18 +521,8 @@ func TestRunExternalDelegationDoctrine(t *testing.T) {
 					// once in the section and its sentence says `never sets`.
 					// The lexical negative check above cannot see a spelling
 					// such as "the agent enables the write argument".
-					const writeReason = "a second whole-word `write` in the section needs review: this is the only mechanical control that keeps a delegated codex turn read-only where the project opt-in is on"
-					hits, total := rxdWholeWordWriteLines(section)
-					if total != 1 {
-						t.Errorf("%s: whole-word `write` occurs %d times in the delegation section, want exactly 1; matching lines: %s; %s", where, total, strings.Join(hits, " | "), writeReason)
-					} else {
-						for _, l := range strings.Split(section, "\n") {
-							for _, sentence := range rxdSentenceWithWrite(l) {
-								if !strings.Contains(sentence, rxdNeverSets) {
-									t.Errorf("%s: the sentence holding the one whole-word `write` does not contain %q: %s; %s", where, rxdNeverSets, hits[0], writeReason)
-								}
-							}
-						}
+					for _, defect := range rxdReadOnlyControlDefects(section) {
+						t.Errorf("%s: %s", where, defect)
 					}
 				}
 			}
