@@ -1,6 +1,8 @@
 package session
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -12,8 +14,8 @@ import (
 // entry CWD is stored in the on-disk spelling, not the caller's logical PWD
 // spelling (t1290 F1 — lanes registered as /Users/goos/moai/... while git and
 // lsof name the same tree /Users/goos/MoAI/...). On case-sensitive platforms
-// the case-variant is a different directory and the assertion is skipped's
-// inverse: the stored value stays the caller's spelling (nothing to fix).
+// the case-variant does not exist, so the test enters the real spelling and
+// pins that the stored value is the on-disk path (nothing to canonicalize).
 func TestRegisterCanonicalizesCaseVariantCWD(t *testing.T) {
 	dir := t.TempDir()
 	variant := swappedCasePath(t, dir)
@@ -27,6 +29,12 @@ func TestRegisterCanonicalizesCaseVariantCWD(t *testing.T) {
 	// canonicalize, so the stored CWD is the on-disk path.
 	enter := variant
 	if _, err := os.Stat(variant); err != nil {
+		// Only a missing variant off darwin means "case-sensitive filesystem".
+		// On darwin the variant must exist, and any other Stat error must fail
+		// loudly rather than turn this into a pass that never canonicalizes.
+		if runtime.GOOS == "darwin" || !errors.Is(err, fs.ErrNotExist) {
+			t.Fatalf("stat case-variant %q: %v", variant, err)
+		}
 		enter = dir
 	}
 
