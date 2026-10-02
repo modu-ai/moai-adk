@@ -2,9 +2,9 @@
 id: SPEC-GITHUB-FLOW-DEFAULT-001
 title: "github-flow 기본 개발 흐름 전환 — main 단일 기준·카드 PR 전달·main 태그 릴리스"
 version: "0.1.2"
-status: draft
+status: in-progress
 created: 2026-10-02
-updated: 2026-10-02
+updated: 2026-10-03
 author: GOOS
 priority: P1
 phase: "v3.2.0"
