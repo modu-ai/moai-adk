@@ -2,10 +2,11 @@
 
 The observations behind each premise row of `spec.md` §1.3, with the command, the deciding output, the source and the version
 stamp. Rows P-01 to P-27 were observed at iteration 0 (tree `7109e0900`) and re-checked by plan-audit iteration 1
-(`.moai/reports/t1435/plan-audit.md`, Evidence §B and §C); this file does not repeat their raw output. Rows P-28 to P-41 and the
+(`.moai/reports/t1435/plan-audit-iter1.md`, Evidence §B and §C); this file does not repeat their raw output. Rows P-28 to P-41 and the
 corrections to P-19 and P-20 were observed in the revision at tree `3766cef05` and are recorded below as R-nn, in the order the
-`spec.md` last column cites them. A statement here is an observation unless it says `read` (source or document read, not executed)
-or `inferred`.
+`spec.md` last column cites them. Rows P-42 to P-46 (R-23 to R-29) were observed in the revision after plan-audit iteration 2, at tree
+`b6a0522a0`, whose diff to the audited tree `d6987e59c` is the SPEC's own `progress.md` only. A statement here is an observation unless
+it says `read` (source or document read, not executed) or `inferred`.
 
 ## 1. Stamps
 
@@ -15,7 +16,7 @@ or `inferred`.
 | Codex CLI | `codex-cli 0.160.0` |
 | Go | `go1.26.8 darwin/arm64`; `go.mod` declares `go 1.26.8` |
 | Platform | Darwin 27.0.0, arm64 |
-| Tree measured | `3766cef05`, branch `WT-marketplace-core-plugin`, clean at start; HEAD and branch re-read at the end of the revision |
+| Tree measured | `3766cef05` (R-01 to R-22), `b6a0522a0` (R-23 to R-29), branch `WT-marketplace-core-plugin`, clean at start; HEAD and branch re-read at the end of each revision |
 | Judging build for repository tooling | `go build -o <scratch>/moai-t1435 ./cmd/moai` at `3766cef05`; `moai-t1435 version` printed `moai-adk v3.1.3` / `v3.1.3   none   built unknown` (no ldflags: the commit stamp is by build procedure, not self-attested). The installed `moai` is v3.2.0-rc.26 |
 | Date | 2026-10-03 |
 
@@ -332,13 +333,276 @@ From `internal/template/catalog.yaml`: 37 skills (24 `core`, 13 `optional-pack:*
 `core`, 1 `harness-generated`); `internal/template/templates/.claude/skills` holds exactly those 37 directories. "35 core" at iteration 0 is
 24 skills + 11 agents. Commands are not catalog entries (17 files under `templates/.claude/commands/moai/`: 15 `.tmpl`, `gtd.md`, `todo.md`).
 
+### R-23 — `moai init` writes the user-scope settings file, and which seams move it (P-42; N4, OD-14)
+
+Read, not executed (executing it would write the real home):
+
+```
+internal/cli/init.go:881         if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+internal/cli/init.go:890-892     applyAutonomyTierBundleFn( opts.ProjectRoot, filepath.Join(homeDir, ".claude", "settings.json"), projectSettingsPath, opts.AutonomyTier
+internal/core/project/autonomy_bundle.go:71-83   semi-auto / unset -> toolpolicy.WriteUserDefaultMode(userSettingsPath, config.TierDefaultMode(effective))
+                                 (comment, :46-50: "ONLY the USER-scope defaultMode="acceptEdits" record is written")
+internal/cli/glm_tools.go:124    var userHomeDirFn = userHomeDir
+internal/paths/paths.go:53-58    func Home(): if h := os.Getenv("HOME"); h != "" { return h, nil } ; return os.UserHomeDir()
+internal/paths/paths.go:75-83    MoaiHome(): a non-empty absolute MOAI_HOME is returned verbatim, else Home() joined with ".moai"
+```
+
+So a run of the real binary's `init` writes `$HOME/.claude/settings.json` whatever `CLAUDE_CONFIG_DIR` says; only `HOME` moves that
+file, and `MOAI_HOME` moves the `~/.moai` root only. `main_test.go:190-215` records that `go test` needs a package-wide
+`userHomeDirFn` redirect for this reason. The same repository doctrine that refuses `HOME=` in a command also says a script file is not
+a way round the guard (`.claude/rules/moai/workflow/kanban-dispatch-mechanics.md:105`, read), so an `init` case in an offline
+harness has no isolated form: OD-14.
+
+### R-24 — The Codex home seam and the registry-wide doctor tests (P-43; N2)
+
+```
+internal/cli/mcp_codex.go:2138   var codexUserHomeDir = os.UserHomeDir
+internal/cli/mcp_codex.go:2143-2152   resolveCodexHomeDir(): a non-blank CODEX_HOME wins, else codexUserHomeDir() joined with ".codex"
+$ grep -n 'CODEX_HOME\|codexHomeEnvVar\|codexUserHomeDir' internal/cli/main_test.go
+(no output; the TestMain sandbox at main_test.go:269-299 redirects userHomeDirFn only)
+$ grep -rn 'runDiagnosticChecks(false, "")' internal/cli --include='*_test.go'
+internal/cli/doctor_hook_wiring_test.go:250:	for _, c := range runDiagnosticChecks(false, "") {
+internal/cli/doctor_golden_test.go:263:	checks := runDiagnosticChecks(false, "")
+internal/cli/doctor_test.go:280:	checks := runDiagnosticChecks(false, "")
+internal/cli/doctor_test.go:422:	checks := runDiagnosticChecks(false, "")
+internal/cli/doctor_new_test.go:320:	checks := runDiagnosticChecks(false, "")
+internal/cli/doctor_new_test.go:329:	checks := runDiagnosticChecks(false, "")
+internal/cli/doctor_flag_slot_test.go:181:	checks := runDiagnosticChecks(false, "")
+$ grep -rln 'codexUserHomeDir = ' internal/cli --include='*_test.go'
+(7 files: doctor_codex_test.go, codex_skills_path_shape_test.go, codex_skills_prune_test.go, codex_skills_disable_test.go,
+ codex_skills_dotdot_test.go, codex_readiness_test.go, doctor_codex_stale_skill_test.go)
+```
+
+Seven unfiltered registry runs in six test files, not three tests: the audit named `TestRunDiagnosticChecks_All` and its two siblings
+(`doctor_test.go:280`, `doctor_new_test.go:320,329`), and four more sites exist. Only `doctor_golden_test.go` pins the Codex PATH
+seam (`:131-138`). The seven files that assign `codexUserHomeDir` per test capture the current value as `orig` and restore it, so a
+TestMain-level redirect installed through the same variable is restored by each of them to the sandboxed value, not to the real one.
+The existing doctor checks already resolve the real Codex home in those runs (reads); a registered check that starts `codex` is the new
+element.
+
+### R-25 — The Claude binary resolver order (P-44; N3)
+
+Read, `internal/cli/claude_binary.go:33-48`:
+
+```
+if pin := os.Getenv(config.EnvClaudeBin); pin != "" { return validateClaudeBinaryPin(pin, "env var "+config.EnvClaudeBin) }
+if root, err := findProjectRoot(); err == nil { … llm.ClaudeBin != "" → validateClaudeBinaryPin(llm.ClaudeBin, "llm.claude_bin in .moai/config/sections/llm.yaml") }
+claudeBin, err := exec.LookPath("claude")
+```
+
+A `PATH` shim is the last of three sources, so an inherited `MOAI_CLAUDE_BIN`, or a project pin found from the working directory
+upward, outranks it. The stand-in harness of R-28 reproduces both outcomes. This session's own environment carries 29 `MOAI_*`, `CLAUDE_*`
+and `CODEX_*` names (`awk 'BEGIN{n=0;for(k in ENVIRON) if (k ~ /^(MOAI|CLAUDE|CODEX)_/) n++; print n}'` printed `29`; the 34 that an
+early version of the stand-in printed was these 29 plus the five fixed poison names it plants) and no `MOAI_CLAUDE_BIN`, so the hazard is a supported pin, not an
+observed one.
+
+### R-26 — Payload file modes (P-45; N8)
+
+```
+internal/template/deployer.go:272-277   perm := fs.FileMode(0o644); if strings.HasSuffix(destRelPath, ".sh") { perm = 0o755 }
+$ git ls-files -s internal/template/templates/.claude/skills/moai-workflow-project/scripts
+100755 …	…/navigator-audit.sh
+100755 …	…/navigator-enrich.sh
+100644 …	…/navigator-regen.sh
+internal/template/templates/.claude/skills/moai-workflow-project/references/navigator.md:88   bash ".claude/skills/moai-workflow-project/scripts/navigator-regen.sh"
+```
+
+A scratch module that embeds one executable and one plain file (`//go:embed all:t`, `x.sh` mode 755, `y.txt` mode 644) and prints each
+file's mode from `fs.WalkDir`:
+
+```
+t/x.sh -r--r--r--
+t/y.txt -r--r--r--
+```
+
+`embed.FS` reports 0444 for both, so a generator that reads the embedded template tree has no source mode to copy; the deployer's
+suffix rule is the only mode rule derivable from it, and the plugin payload mirrors that rule. Whether a skill executes
+`navigator-audit.sh` or `navigator-enrich.sh` directly was not observed (`navigator.md:88` runs the third through `bash`), so the harm of
+losing the bit is unconfirmed; a marketplace plugin is taken from git, where the committed mode is the delivered mode (inferred).
+
+The criterion's own check form, `find <tree> -name '*.sh' ! -perm 755 -print`, aimed at three trees:
+
+```
+the template source tree (a copier of source modes):  …/navigator-regen.sh                      (one path: 100644 in git)
+stand-in payload, every file 0644 (design.md as it was written):  three .sh paths printed
+stand-in payload, .sh files 0755:                                   no output
+control, `find <good payload> -name '*.sh' -print`:                 three .sh paths printed
+```
+
+### R-27 — A name scan that passes correct code and fails hard-coded names (P-16; N1)
+
+Stand-in for `TestGeneratorHoldsNoComponentNames` (an AST scan of the non-test Go sources of a directory; string literals only; each
+literal split on `/` and `\`; a token is a hit when it equals a catalog skill or agent name or a command stem of the template tree;
+the plugin identifier `moai` is exempt; a positive control that must hit a path-form and a lone-literal form before the sweep is
+trusted; an empty sweep fails). Source and fixtures live in the scratchpad `i3/scan`, `i3/good`, `i3/bad1..3`; the tool is not part of
+the repository.
+
+```
+good  (const pluginName = "moai"; subdirs "skills", "commands"; an error text "cannot sync %q: empty name in the plan"; a comment naming a skill and a command stem)
+  CONTROL hits=2/2 (positive control: path-segment form and lone-literal form)
+  SWEPT files=1 literals=9 names=65 (catalog=49 commands=17 exempt=1)
+  PASS no component-name literal
+bad1  (map[string]bool{"moai-foundation-core": true})
+  HIT "moai-foundation-core" at …/i3/bad1/gen.go:3:28            SWEPT files=1 literals=1 names=65 …   FAIL 1 component-name literal(s)   [exit 1]
+bad2  (const p = "skills/moai-foundation-core/SKILL.md")
+  HIT "moai-foundation-core" at …/i3/bad2/gen.go:3:11            FAIL 1 component-name literal(s)   [exit 1]
+bad3  (var only = []string{"gtd"})
+  HIT "gtd" at …/i3/bad3/gen.go:3:21                              FAIL 1 component-name literal(s)   [exit 1]
+real, correct by design:  internal/template/commandemit   SWEPT files=3 literals=81  …   PASS no component-name literal
+                          internal/template/agentemit     SWEPT files=6 literals=267 …   PASS no component-name literal
+real, hand-listed names:  internal/template               SWEPT files=27 literals=782 …  FAIL 62 component-name literal(s)   [exit 1]
+  (first hits: glm_effort_overlay.go:184 "manager-develop"; profile_matrix.go:88 "todo", :98-:109 and :192-:233 the twelve agent names;
+   retained_agents.go:11-22 twelve agent names)
+```
+
+`names=65` is 49 catalog entries (`- name:` lines of `catalog.yaml`: 37 skills, 12 agents) plus 17 command stems, less the one exempt name
+`moai`, which is both the plugin identifier and the catalog's first skill. The real hits show the failure RK-4 exists to prevent in code
+that exists today, so the scan is neither vacuous nor satisfiable only by an empty tree.
+
+### R-28 — A stand-in harness whose scrub, pin handling and canary can each be seen to fail (P-42, P-44, P-46; N2 to N4)
+
+Stand-in for the isolation part of `scripts/test-plugin-install-step.sh`: it poisons its own environment first (`MOAI_CLAUDE_BIN` to a
+recording script, `MOAI_STUB_LEAK_DIR` to a canary directory that stands in for a real home, one `MOAI_*`, `CLAUDE_*` and `CODEX_*`
+variable each, and one more of each family whose name carries the process id, so that no typed list can name it), scrubs by live
+enumeration (`awk` over `ENVIRON`, names matching `^(MOAI|CLAUDE|CODEX)_`), sets `PATH` to `<shim>:/usr/bin:/bin`, scratch
+`CLAUDE_CONFIG_DIR`, `CODEX_HOME` and working directory, runs a stub product that models the resolver order of R-25 and an out-of-scratch
+directory creation, and then judges five cases. It sets no `HOME`, runs no git, and invokes no real `claude`, `codex` or `moai`; the
+protected set is read-only hashed (`protected-set-hash.sh`, R-29). Scratchpad `i3/h`. A fourth mode replaces the scrub with a typed list of
+the five fixed poison names, as a mutant.
+
+```
+$ sh i3/h/harness.sh normal
+scrub: enumerated and unset 37 names
+PASS isolation-env-scrubbed
+PASS isolation-cwd-has-no-project
+PASS isolation-resolves-to-stubs
+PASS isolation-poisoned-pin-never-executed
+PASS isolation-real-home-unchanged
+canary before: PROTECTED-SET c00bacbd…f46b68 entries=3
+canary after : PROTECTED-SET c00bacbd…f46b68 entries=3
+LEAK=0 (real roots unchanged: PROTECTED-SET a245f41a…77cf5f entries=193)
+poison.log lines: 0   stub.log lines: 2
+RESULT pass=5 fail=0
+
+$ sh i3/h/harness.sh typed-list-mutant      (the scrub is `unset` of the five fixed poison names)
+scrub: typed list of 5 names (mutant)
+RED   isolation-env-scrubbed
+green isolation-cwd-has-no-project
+green isolation-resolves-to-stubs
+green isolation-poisoned-pin-never-executed
+green isolation-real-home-unchanged
+LEAK=0 (real roots unchanged: PROTECTED-SET a245f41a…77cf5f entries=193)
+poison.log lines: 0   stub.log lines: 2
+RESULT typed-list-mutant: red set and green set are exactly the expected ones
+
+$ sh i3/h/harness.sh negative-control        (scrub disabled, working directory inside a project whose llm.yaml pins the recorder)
+scrub: DISABLED (negative control)
+RED   isolation-env-scrubbed
+RED   isolation-cwd-has-no-project
+green isolation-resolves-to-stubs
+RED   isolation-poisoned-pin-never-executed
+RED   isolation-real-home-unchanged
+canary before: PROTECTED-SET 20bad580…ac97f99 entries=3
+canary after : PROTECTED-SET b261a533…cd2ceb entries=5
+LEAK=0 (real roots unchanged: PROTECTED-SET a245f41a…77cf5f entries=193)
+poison.log lines: 2   stub.log lines: 0
+RESULT negative-control: red set and green set are exactly the expected ones
+
+$ sh i3/h/harness.sh negative-control-cwd    (scrub working, working directory inside the pinning project)
+scrub: enumerated and unset 37 names
+green isolation-env-scrubbed
+RED   isolation-cwd-has-no-project
+green isolation-resolves-to-stubs
+RED   isolation-poisoned-pin-never-executed
+green isolation-real-home-unchanged
+canary before: PROTECTED-SET 0a56754d…9908b5 entries=3
+canary after : PROTECTED-SET 0a56754d…9908b5 entries=3
+LEAK=0 (real roots unchanged: PROTECTED-SET a245f41a…77cf5f entries=193)
+poison.log lines: 2   stub.log lines: 0
+RESULT negative-control-cwd: red set and green set are exactly the expected ones
+```
+
+Reading. A PATH shim alone does not stop a pin: with the scrub disabled the recorder ran twice and the shim not at all (`poison.log
+lines: 2   stub.log lines: 0`), and the project pin alone does the same with the scrub working. The case that does not depend on the scrub
+(`isolation-resolves-to-stubs`) stays green in every negative mode, so a negative mode does not simply fail everything. The typed-list
+mutant passes everything except `isolation-env-scrubbed`, which is why the harness plants names no list can contain: the three
+pid-named variables are what no typed list can name: the mutant leaves 32 names behind (the 29 session names and the three pid-named
+ones) and that remainder is its `RED`, while the working scrub removes 37 (those 32 plus the five fixed poison names). The canary went
+from three entries to five, which are two
+empty directories (`home/.claude` and `home/.claude/leaked-dir`).
+
+The directory-entry control, in the scratchpad `i3/ctl`: a canary directory `canary/plugins` hashed before and after creating the empty
+directories `plugins/data/p-mcp-inline` (the shape of the t1434 leak):
+
+```
+$ sh i3/h/protected-set-hash.sh i3/ctl/canary                 -> PROTECTED-SET 0596b724…324e8 entries=2     (before)
+$ find i3/ctl/canary -type f -exec shasum -a 256 {} +         -> (no output)                                  (before)
+$ mkdir -p i3/ctl/canary/plugins/data/p-mcp-inline
+$ sh i3/h/protected-set-hash.sh i3/ctl/canary                 -> PROTECTED-SET dcf79825…37953 entries=4     (after: different)
+$ find i3/ctl/canary -type f -exec shasum -a 256 {} +         -> (no output)                                  (after: unchanged)
+```
+
+A files-only manifest cannot tell the two states apart; the entry hash can.
+
+### R-29 — The real roots are noisy on a machine with live sessions (P-46; N4)
+
+`protected-set-hash.sh` with its first root list (the Claude `plugins` tree whole, `<codex>/tmp`, `<codex>/.tmp`) over this machine's real
+roots, read only. The before and after hashes of one harness run, a few seconds apart, differed (`entries=151297`, then `entries=151301`);
+two later runs agreed with each other (151301), and a third a few minutes later differed again (151310). The diff of the 151301-entry list
+and the 151310-entry list:
+
+```
+> /Users/goos/.codex/.tmp/git-Ujcu0E
+> /Users/goos/.codex/.tmp/git-Ujcu0E/HEAD
+> /Users/goos/.codex/.tmp/git-Ujcu0E/objects
+> /Users/goos/.codex/.tmp/git-Ujcu0E/refs
+> /Users/goos/.codex/tmp/arg0/codex-arg0dKiaGu
+> /Users/goos/.codex/tmp/arg0/codex-arg0dKiaGu/.lock
+> /Users/goos/.codex/tmp/arg0/codex-arg0dKiaGu/apply_patch
+> /Users/goos/.codex/tmp/arg0/codex-arg0dKiaGu/applypatch
+> /Users/goos/.codex/tmp/arg0/codex-arg0dKiaGu/codex-execve-wrapper
+```
+
+The writer was not identified. No command of this session started `codex` (the stand-in used stubs), and the entry shapes are those the
+Codex CLI itself creates (P-34 shows it creating `tmp/arg0`), so another Codex process on the machine is the inferred writer. The entry
+list also holds about twenty `…/.tmp/marketplaces/.staging/marketplace-upgrade-*` directories (background upgrade staging). The t1434
+verdict classed `plugins/synced` of the Claude profile as AMBIENT for the same reason (`.moai/reports/t1435/inputs/t1434-verdict.md`
+line 48).
+
+Second list: the `plugins` trees whole and `<codex>/.tmp/marketplaces` whole, with `plugins/synced` and `.tmp/marketplaces/.staging`
+excluded and `<codex>/tmp` and `<codex>/.tmp/git-*` no longer roots. Harness runs at 07:30 to 07:31 read `entries=41337`; a run at 07:42 read
+`entries=41338`. The diff of their before-lists is one file, inside an existing official marketplace clone of the real Claude profile:
+
+```
+41205a41206
+> /Users/goos/.moai/claude-profiles/moai-adk/plugins/marketplaces/claude-plugins-official/plugins/security-guidance/tests/test_review_model.py
+```
+
+No command of this session addressed that profile, so the runtime refreshing its marketplace clone is the inferred writer. The same
+tree holds `plugins/.trash/<epoch>-<pid>-<id>/<plugin>~g<n>` directories and a sibling `plugins/.last_inuse_sweep`, which reads as the
+runtime's own sweep of orphaned plugin versions (inferred, not observed).
+
+Final design, from those observations: depth-limited roots, because what a leak of the t1434 kind adds sits at depth 2 or 3 and what the
+runtime churns sits deeper — `<claude>/plugins` to depth 3, `<codex>/plugins` to depth 3, `<codex>/.tmp/marketplaces` to depth 2,
+`~/.moai` to depth 1 — plus the file content of `settings.json` (both homes), `installed_plugins.json` and `config.toml`; and three
+exclusions by declaration, `<claude>/plugins/synced`, `<claude>/plugins/.trash` and `<codex>/.tmp/marketplaces/.staging`. Over the real
+roots that set reads `entries=193`, and nine reads of it (one direct, then two per run of four harness runs) printed the same hash
+`a245f41a…77cf5f`.
+
+Limits, stated: a `tmp/arg0` directory created by a started `codex` is invisible to the real-root hash on a machine where Codex runs, so
+that leak path is closed by the harness resolving only to stubs and by the test-binary refusal (REQ-017), not by the hash; a new file
+deeper than the declared depth inside an existing marketplace clone or plugin cache is invisible; the content of
+`known_marketplaces.json` is not hashed (the runtime rewrites it), only its name. A non-zero `LEAK` prints the differing entries, so an
+ambient change is attributed to its writer rather than assumed.
+
 ## 4. Sources
 
 - `claude` 2.1.287 and `codex` 0.160.0 command output (above); `claude plugin --help` family.
 - `https://code.claude.com/docs/en/sub-agents` (R-18).
 - The t1434 verdict table: `.moai/specs/SPEC-PLUGIN-LOAD-SCOPE-001/progress.md §E.2` (rows R01 to R14).
 - Repository files named in each row.
-- `.moai/reports/t1435/plan-audit.md` (iteration 1 evidence, cited where this revision relied on it rather than re-ran it).
+- `.moai/reports/t1435/plan-audit-iter1.md` (iteration 1 evidence, cited where this revision relied on it rather than re-ran it) and
+  `.moai/reports/t1435/plan-audit-iter2.md` (iteration 2: the defects N1 to N13 behind R-23 to R-29).
 
 ## 5. What this research did not observe
 
@@ -346,4 +610,8 @@ From `internal/template/catalog.yaml`: 37 skills (24 `core`, 13 `optional-pack:*
 shadowing, collision or hook double-firing between the scaffold copy and the plugin; whether the runtime registers a nested
 `commands/<dir>/` file for invocation; the `moai:<name>` invocation form for this plugin; behavior at any tool version other than the two
 above; PowerShell and Windows behavior; the scaffold's own listing cost; whether `codex plugin marketplace upgrade` refreshes a Git
-marketplace entry.
+marketplace entry. From the iteration-3 revision: the real `moai` binary was not run under the harness (the stand-in models only the
+resolver order and one out-of-scratch write, R-28), so whether the real binary writes anything under the real `~/.moai` or home with the
+scrub applied is for the first run of `scripts/test-plugin-install-step.sh`; a real `moai init` was never run (R-23); the real-root hash was
+read, never written; no command of this revision wrote to a real profile or home (its only reads of them are the entry hash and the
+entry lists dumped from it, R-29).

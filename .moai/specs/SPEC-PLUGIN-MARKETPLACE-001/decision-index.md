@@ -11,6 +11,9 @@ artifact in the authority register answers any of them as written.
 Revision 0.2.0 (after plan-audit iteration 1): Q1 no longer says the listing cost cannot be measured offline — it was, and the figure is
 now in the row; Q4 records the GitHub state read in this revision; Q9 to Q13 are new (plan-audit D2 and the measurements behind it).
 
+Revision 0.3.0 (after plan-audit iteration 2): Q14 is new (plan-audit N4 and the reading of `moai init` it required). Q3 now says 11 agents
+at the default tier and 12 only if every tier is admitted (N6). No other row changed.
+
 ## Q1: Does `moai init` install the plugin by default while it still deploys the whole scaffold?
 
 - Label: FOUNDER
@@ -25,7 +28,7 @@ now in the row; Q4 records the GitHub state read in this revision; Q9 to Q13 are
 - Why unresolved: card t1434 measured one hook registration (R07, R08) and one MCP server (R06) in a plugin, never the same registration in a plugin and in project settings at once, so double firing is unmeasured. For the MCP entry the code already records that an explicit decline of the project entry is honored absolutely, and a plugin MCP server is suppressed only when a project server with the same command exists; `--llm gpt` declines the project entry and `--llm both` forces it (`init.go:997-1003`). The effect on a declined or non-interactive init was inferred from those facts, not observed. An authenticated session is needed to measure both.
 - Operator verdict:
 
-## Q3: Do the twelve template agents ship in the v1 plugin?
+## Q3: Do the template agents ship in the v1 plugin (11 at the default tier, 12 if every tier is admitted)?
 
 - Label: FOUNDER
 - Authority anchor: none — the cited documentation is external and no committed artifact decides the question
@@ -100,4 +103,11 @@ now in the row; Q4 records the GitHub state read in this revision; Q9 to Q13 are
 - Label: FOUNDER
 - Authority anchor: none — no committed artifact decides how a diagnostic may obtain a tool's state
 - Why unresolved: the Codex installed state lives in `config.toml` registration, and the cache directory outlives a removed registration, so the answer cannot come from the cache directory. Running `codex plugin list --json` answers correctly and took 0.02 s, but it starts the CLI, which created a `tmp/arg0` directory inside an empty Codex home; reading the `config.toml` stanza starts nothing but depends on a file layout observed at one codex version; skipping Codex leaves half the check out. Whether a diagnostic may start a tool that writes into the tool's home, and whether it may depend on a file layout rather than the tool's own report, is a product call.
+- Operator verdict:
+
+## Q14: How do the harness cases that run the real binary's `moai init` stay off the real home?
+
+- Label: FOUNDER
+- Authority anchor: none — the nearest text, `.claude/rules/moai/workflow/kanban-dispatch-mechanics.md` (a rule file, outside the authority register), says a command moved into a script file is not a workaround for the worktree guard and that a verification which cannot be expressed in one guarded invocation is to be reduced; it is context for this question, not an answer to it
+- Why unresolved: `moai init` writes `$HOME/.claude/settings.json` on every run whatever `CLAUDE_CONFIG_DIR` says (read in this revision: `internal/cli/init.go:881-892`, `internal/core/project/autonomy_bundle.go:71-83`), and `HOME` is the only seam that moves it; `MOAI_HOME` moves the `~/.moai` root only. The worktree guard refuses a `HOME=` prefix, and the iteration-1 harness got round that by setting `HOME` inside a script file, which the audit named as the thing the doctrine says is not a workaround. Without a `HOME` override, a harness case that runs the real binary's `init` writes the real user settings file. Dropping those nine cases leaves init's call into the step covered by Go tests with an injected runner and leaves its real process start unexercised (G-8); keeping them needs either an exception to the doctrine or a CI-only run. Which cost the dispatcher accepts is not decided by anything committed.
 - Operator verdict:

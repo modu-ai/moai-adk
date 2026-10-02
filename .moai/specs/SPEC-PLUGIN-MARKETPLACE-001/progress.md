@@ -3,14 +3,14 @@
 ## §E.1 Plan-phase Audit-Ready Signal
 
 plan_status: audit-ready
-plan_complete_at: 2026-10-03 (revision for plan-audit iteration 2; the revised artifacts are not yet audited)
+plan_complete_at: 2026-10-03 (delta revision for plan-audit iteration 3, after iteration 2 FAIL 0.84; the revised artifacts are not yet audited)
 tier: L
 artifacts: spec.md, plan.md, acceptance.md, design.md, research.md, decision-index.md (progress.md not counted; decision-index.md is authored because `interview.decision_gate` is `on`)
-budget: 24 requirements, 24 acceptance criteria (Tier L ceilings 25 and 25)
-plan_base_sha: 7109e0900 (branch WT-marketplace-core-plugin, base develop); the revision was made on tree 3766cef05, which differs from the base in the SPEC artifacts only
+budget: 25 requirements, 25 acceptance criteria (Tier L ceilings 25 and 25: both at the ceiling, so any further requirement means splitting the SPEC)
+plan_base_sha: 7109e0900 (branch WT-marketplace-core-plugin, base develop); the iteration-3 delta was made on tree b6a0522a0, which differs from the tree plan-audit iteration 2 audited (d6987e59c) in this file only
 run_start_sha: pending — set by the orchestrator to the commit that carries the final plan-phase revision of the artifacts
-open_decisions: OD-1 to OD-13 in spec.md §5, mirrored as Q1 to Q13 in decision-index.md; verdict lines empty; every default-bound clause carries a `default pending OD-n` marker and spec.md §5 holds the marker table
-inputs: .moai/reports/t1435/inputs/t1434-verdict.md (local-only, `.gitignore:235`); the committed carrier of the same verdict is .moai/specs/SPEC-PLUGIN-LOAD-SCOPE-001/progress.md section E.2; .moai/reports/t1435/plan-audit.md (iteration 1 verdict, FAIL 0.72)
+open_decisions: OD-1 to OD-14 in spec.md §5, mirrored as Q1 to Q14 in decision-index.md; verdict lines empty; every default-bound clause carries a `default pending OD-n` marker and spec.md §5 holds the marker table (checked both ways, see "Verification of the iteration-3 revision")
+inputs: .moai/reports/t1435/inputs/t1434-verdict.md (local-only, `.gitignore:235`); the committed carrier of the same verdict is .moai/specs/SPEC-PLUGIN-LOAD-SCOPE-001/progress.md section E.2; .moai/reports/t1435/plan-audit-iter1.md (iteration 1 verdict, FAIL 0.72); .moai/reports/t1435/plan-audit-iter2.md (iteration 2 verdict, FAIL 0.84; local-only like the first)
 scratch_evidence: the revision's scratch-home probes live in the session scratchpad and are not part of the repository; their commands and deciding output are in research.md and acceptance.md (evidence ledger)
 
 ### Tier decision
@@ -43,16 +43,44 @@ un-packed.
 - Tree: `git rev-parse --short HEAD` = `3766cef05` and `git branch --show-current` = `WT-marketplace-core-plugin` at the end of the revision, as at the start;
   `git status --short` listed only files of this SPEC directory. Nothing was committed.
 
+### Verification of the iteration-3 revision
+
+`<s>` is the session scratchpad `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/2f10c8c5-67ea-41c2-9b61-6242acc465c3/scratchpad`.
+
+- Lint: `CLAUDE_CONFIG_DIR=<s>/i3/lint-claude CODEX_HOME=<s>/i3/lint-codex MOAI_HOME=<s>/i3/lint-moai <s>/i3/moai spec lint
+  SPEC-PLUGIN-MARKETPLACE-001 --strict` printed `✓ No findings — all SPEC documents are valid`, on the edited files, and again after
+  the last edit of the delta. Judging build: `go build -o <s>/i3/moai ./cmd/moai` at HEAD `b6a0522a0`, built without ldflags (the
+  earlier builds from this tree self-reported `moai-adk v3.1.3` and `none`, so its commit is attributed by build procedure and not
+  self-attested; this build's own `version` output was not read). The installed `moai` (v3.2.0-rc.26) was not used.
+- Counts: `grep -c '^- REQ-0' spec.md` printed `25`; `grep -c '^### AC-0' acceptance.md` printed `25`; `grep -c 'default pending OD-' spec.md`
+  printed `24` lines (a line count, which does not test completeness).
+- Marker completeness, both sides: `python3 <s>/i3/markcheck.py .moai/specs/SPEC-PLUGIN-MARKETPLACE-001` printed `checked=30
+  requirement/criterion pairs, rows=14, REQ lines=25, AC sections=25, failures=0`; each of the 30 pair lines reads
+  `req-marker=True AC-nnn-marker=True AC-nnn-alternate=True -> ok`. Controls: a copy with one marker and one `Alternate` removed printed
+  `failures=2`; the files at `d6987e59c` printed `failures=11`.
+- Ordering (the plan-auditor's CN-4 form, `<s>/cn4.sh`): `COLLECTED: 4 milestones in plan order (M1 M2 M3 M4), 14 exit bindings, 58 ordering
+  candidates`, no `CONFLICT` line. (The audit's run read 13 bindings and 41 candidates before AC-025 and the added text.)
+- `grep -rn 'plan-audit\.md' .moai/specs/SPEC-PLUGIN-MARKETPLACE-001` printed no line.
+- Tree: `git rev-parse --short HEAD` printed `b6a0522a0` and `git branch --show-current` printed `WT-marketplace-core-plugin` at the start and at
+  the end of the delta. `git status --short` listed seven modified files, all under `.moai/specs/SPEC-PLUGIN-MARKETPLACE-001/`
+  (`spec.md`, `plan.md`, `acceptance.md`, `design.md`, `research.md`, `decision-index.md`, `progress.md`); nothing was staged or committed,
+  and no agent-memory file was written.
+- Scratch work, none of it in the repository: `i3/scan` (the name scan), `i3/good` and `i3/bad1..3`, `i3/emb` (the embed mode program),
+  `i3/pl-good` and `i3/pl-bad`, `i3/h` (the stand-in harness, `protected-set-hash.sh` and a stub product), `i3/ctl`, `i3/mc` and `i3/old` (the
+  marker-check controls), `i3/markcheck.py`, `i3/moai`. Stand-ins use stub tools only; no real `claude`, `codex` or `moai init` was run; the
+  only product-binary run was the lint, with scratch `CLAUDE_CONFIG_DIR`, `CODEX_HOME` and `MOAI_HOME` set.
+
 ### Audit-iteration-1 disposition
 
-Every defect of `.moai/reports/t1435/plan-audit.md` is fixed; none is rejected, and none is skipped. "Evidence" names the re-run that
-the fix rests on, in `research.md` (R-nn) or `acceptance.md` (L-nn).
+The author claimed that every defect of `.moai/reports/t1435/plan-audit-iter1.md` was fixed; plan-audit iteration 2 found D3 only partly
+fixed (see the iteration-2 disposition below, which also corrects the D3 row of this table). "Evidence" names the re-run that the fix
+rests on, in `research.md` (R-nn) or `acceptance.md` (L-nn).
 
 | Defect | Disposition | Fixed where | Evidence |
 |--------|-------------|-------------|----------|
 | D1 REQ-010 contradicts AC-010, edge cases, plan M3 | fixed | REQ-013 (non-zero exit, timeout, invalid pin: one guidance block) and REQ-014 (absent tool: exactly one skip line, no block) replace the old REQ-010; AC-013 and AC-014 assert the same split; the edge-case list, plan M3 notes and design §3.2 say the same | the four locations re-read after the edit |
 | D2 four decisions outside the OD table | fixed | OD-9 harness gating, OD-10 target profile, OD-11 payload language, OD-12 scope, with options, a default and evidence (spec §5, decision-index Q9 to Q12); REQ-010, REQ-012, REQ-005, REQ-006, REQ-011 follow them; the "`--llm` does not gate the step" sentence is gone from the plan. One more decision, OD-13 (the doctor's Codex read path), was added because the D10 measurement found a side effect | P-28 (R-09: `init.go:133`, `:192-195`, `:997-1003` read), P-29 (R-10), P-32 (R-08: 18 locale conditionals, all on `description`/`argument-hint` lines), P-33 (R-07: `--scope` flags), P-34 (R-05) |
-| D3 defaults hard-coded without markers | fixed | 14 requirements carry a `default pending OD-n` marker (REQ-001, 003, 004, 005, 006, 007, 008, 010, 011, 012, 015, 018, 021, 022); the §5 marker table names each clause and what the other verdict changes; every affected criterion carries an `Alternate` line; the Definition of Done now requires a verdict or the line `default adopted` per row and a delta re-audit | `grep -c 'default pending OD-' spec.md` = 17 lines: the 14 requirement lines, the HISTORY row, the §2 preface and one §3 constraint |
+| D3 defaults hard-coded without markers | **partial, corrected by plan-audit iteration 2 and completed in iteration 3** | 14 requirements carried a `default pending OD-n` marker (REQ-001, 003, 004, 005, 006, 007, 008, 010, 011, 012, 015, 018, 021, 022); the §5 marker table named each clause and what the other verdict changes; the Definition of Done requires a verdict or the line `default adopted` per row and a delta re-audit. The sentence that stood here, "every affected criterion carries an `Alternate` line", was false: nine default-bound criteria carried no marker and three no `Alternate` line | `grep -c 'default pending OD-' spec.md` = 17 lines at the time (the 14 requirement lines, the HISTORY row, the §2 preface and one §3 constraint), a count that does not test completeness; the iteration-2 disposition below carries the check that does |
 | D4 AC-013(b) reaches the real Codex home | fixed | AC-022 (b) sets `CLAUDE_CONFIG_DIR` and `CODEX_HOME` to scratch homes; AC-023 (d) `TestDoctorGolden_IgnoresCallerCodexHome` and its static companion; plan M4 lists `internal/cli/doctor_golden_test.go` as modified (`captureDoctorCmd` gains the `CODEX_HOME` scrub). Note: the harness already pins `HOME` (`:111`), so only a `CODEX_HOME` set in the caller's environment escapes it | P-21, R-20 |
 | D5 P-20 false, AC-011(c) unsatisfiable | fixed | P-20 recounted: 33 `runInit(` lines in 18 test files, one a string literal, so 32 call sites; 9 `initCmd.RunE(` sites in 5 files; one `exec.Command` re-entry; two e2e invocations. REQ-016 (automated callers set the opt-out, e2e script named), REQ-017 (one mechanism, no per-site edit), AC-016 (enumerating guard test), AC-017 (pinned binary and PATH shims untouched); RK-8 and plan M3 name the e2e script | R-11, R-12 |
 | D6 undiscoverable commands, layout unspecified | fixed | REQ-006 (flat `commands/<name>.md`, no subdirectory); AC-006 (layout test, scratch-home inventory script, refusal of a non-empty argument); names a user sees stated in spec §1.4 with the unobserved caveat. The auditor's observation reproduced on the core-only payload shape: flat `Skills (41)`, nested `Skills (24)` | P-30, R-01 |
@@ -80,6 +108,43 @@ state to come from the `config.toml` registration; this revision followed the or
 `codex plugin list --json` (which answers from that registration) and kept the `config.toml` read as OD-13 option (b) because of the
 `tmp/arg0` side effect.
 
+### Audit-iteration-2 disposition
+
+Source: `.moai/reports/t1435/plan-audit-iter2.md` (FAIL 0.84 at audited_sha d6987e59c; Tier L threshold 0.85). Delta scope approved by the
+leader: the defects below only, no renumbering of requirements or criteria, no new feature. D1 to D24 other than D3 were confirmed FIXED by
+that audit and are untouched. Evidence ids: R-nn in `research.md`, L-nn in `acceptance.md`; tree `b6a0522a0` unless stated; every scratch
+fixture ran in the session scratchpad and no command wrote to a real profile or home.
+
+| Id | Disposition | Fixed where | Evidence |
+|----|-------------|-------------|----------|
+| D3 residue (nine criteria without the marker; three without an `Alternate`; four requirements unmarked; progress.md claim) | fixed | markers on AC-004, 005, 006, 007, 009, 018, 019, 020, 024; `Alternate` lines added to AC-009, AC-020, AC-024 (and to AC-002, found by the check below); REQ-002, 009, 020, 024 marked (REQ-004 for OD-3 and REQ-019 for OD-9 too); marker table: OD-4 gains REQ-002, REQ-009, REQ-024, OD-12 gains REQ-020, OD-9 gains REQ-019; the D3 row of the iteration-1 table above corrected | `python3 i3/markcheck.py <spec dir>`: `checked=30 requirement/criterion pairs, rows=14, REQ lines=25, AC sections=25, failures=0` (it reads each table row, then the REQ line and the `### AC-nnn` section, whitespace flattened). Its first run on the edited files found two gaps I had left (AC-002 `Alternate`, AC-003 marker for OD-4), fixed before the run quoted. Control: a copy with one marker and one `Alternate` removed printed `failures=2`. Run on the audited tree (`git show d6987e59c:…` copies) it printed `failures=11` — more than the audit's nine criteria because it also counts a capital-D `Default pending` and the REQ side |
+| N1 REQ-004 and AC-004 (b) unsatisfiable by correct code | fixed | REQ-004 (exempt identifier `moai`, whole literal or `/`-segment match); AC-004 (b) with the scan defined (what is scanned, tokenisation, the set N and the exemption, in-test positive control, empty-sweep failure); design §2.4; plan §3 M2 | R-27 and L-38: a correct stand-in generator printed `PASS`; three hard-coded mutants (`"moai-foundation-core"` as a map key, as a path, a lone `"gtd"`) printed `FAIL`, exit 1; the real `commandemit` (3 files, 81 literals) and `agentemit` (6 files, 267 literals) printed `PASS`; the real `internal/template` printed `FAIL 62 component-name literal(s)` |
+| N2 AC-023 (b) would start a real `codex`; home unpinned | fixed | REQ-017 (one runner for the step and the doctor probe), REQ-021 (home from the existing seam, handed to the child as `CODEX_HOME`); AC-021 (c) `TestCheckPluginVersion_HomeIsolation` with a canary directory, a recording-shim registry run, and a `TestMain` guard; AC-023 (b) note; plan §3 M4 names `internal/cli/main_test.go:269-299` and `doctor_plugin_version.go`; design §3.4 and §4 | R-24: `mcp_codex.go:2138` `var codexUserHomeDir = os.UserHomeDir`; `grep -n 'CODEX_HOME\|codexHomeEnvVar\|codexUserHomeDir' internal/cli/main_test.go` printed nothing; seven unfiltered `runDiagnosticChecks(false, "")` sites in six files (the audit named three tests); seven files assign `codexUserHomeDir` and restore the captured value. L-30 also-line: `[no tests to run]` for the new test |
+| N3 harness leaves the Claude pin and project unscrubbed | fixed | REQ-025 and AC-025: poison planted first, live-enumerated scrub of `MOAI_*`, `CLAUDE_*`, `CODEX_*`, pid-named variables so no typed list can pass, scratch working directory with no `.moai` above it, isolation cases, three negative controls; design §6; plan §3 M3 and §4 | R-25 (resolver order read at `claude_binary.go:33-48`), R-28 and L-39: normal run `RESULT pass=5 fail=0` after `scrub: enumerated and unset 37 names`; scrub disabled: four `RED`, one `green`, recorder executed twice, shim zero; pin from the project alone: two `RED`, three `green`; typed-list scrub: `RED isolation-env-scrubbed` alone |
+| N4 harness sets `HOME` in a script file | fixed (design) and one decision opened | `HOME` removed from design §6, acceptance Conventions, plan §4 and §6, spec §3; new OD-14 with Q14 in `decision-index.md` and a marker row; the `init-*` harness lines of AC-010, 012, 013, 014, 015 moved to Alternate lines; Gap G-8; REQ-025 forbids a `HOME` assignment and AC-025 (e) greps for one | R-23: `init.go:881-892` and `autonomy_bundle.go:71-83` write `$HOME/.claude/settings.json` whatever `CLAUDE_CONFIG_DIR` says, so the nine `init-*` cases have no isolated form without `HOME`; `paths.go:53-58` is HOME-first and `MOAI_HOME` moves `~/.moai` only. The grep of AC-025 (e) printed no line on the stand-in scripts, and on a scratch file holding `CODEX_HOME=`, `HOME=`, `export HOME` and `env HOME=` it matched exactly the last three |
+| N5 AC-003 (c) bound to M1, MCP unit in M2 | fixed | plan §3: `mcp.go` and `mcp_test.go` (`TestMCPEntryDerivedFromTemplate`) moved into M1, removed from M2; file count recounted (7 + 5 + 20 + 13 = 45); AC-003 (c) and AC-007 green-path and table text agree; exit lines unchanged | plan M1 file list and M2 file list re-read after the edit; the Codex manifest of REQ-003 needs the entry, so the unit cannot be later than the manifest |
+| N6 OD-3 (a) says "all 12" | fixed | OD-3 (a): every agent file the OD-8 tier admits, 11 at the default `core`, 12 only if OD-8 admits every tier; decision-index Q3 title | `sed -n '126,181p' internal/template/catalog.yaml | grep -c -- '- name:'` printed `11` (the `core` agents section); the `harness_generated` section lists one agent, `builder-harness`; the template agent directory holds 12 files; R-22 |
+| N7 OD-11 (c) treated three ways | fixed | marker table OD-11 row, AC-006 Alternate, Definition of Done and AC-005 (c) now say one thing: REQ-006 void, AC-006 (a) and the command half of (b) do not apply, its skills half and (c) stay, AC-005 (c) has no directory, AC-008 loses `commands`; OD-11 row (c) of §5 | the four places re-read after the edit |
+| N8 payload drops the executable bit | fixed | REQ-005 (mode rule), REQ-009 (mode difference is drift); AC-005 (a) and (d); AC-009 (b) gains `mode-flipped`; design §2.2 and §2.4 (the 0644 sentence is gone); plan M2; P-45 | R-26 and L-37: `deployer.go:275-276` gives `.sh` 0755; git modes `100755`, `100755`, `100644`; a scratch `//go:embed` program printed `-r--r--r--` for a mode-755 and a mode-644 file, so no source mode exists to copy and the suffix rule is the only derivable one; the check form `find <tree> -name '*.sh' ! -perm 755 -print` printed the one 0644 source, three paths on a 0644 stand-in payload, nothing on a 0755 one, and the control printed three |
+| N9 `timeout` subtest reads as a 60-second wait | fixed (trivial) | AC-013 (a): the step takes its bound as an injected parameter, `timeout` runs with a few milliseconds, new subtest `bound-equals-constant` pins that production passes `config.DefaultPluginInstallCommandTimeout` | text re-read; the constant's value stays pinned by (b) |
+| N10 two RED-now cells not the criterion's own command | fixed (trivial) | L-10 re-measured with AC-007 (a) and (b); L-24 labelled a surrogate and dropped from AC-018's RED-now list | `jq -c .mcpServers.moai plugins/moai/.mcp.json internal/template/templates/.mcp.json` exit 2, `Could not open file plugins/moai/.mcp.json`, and the template entry on stdout; `jq -c '.mcpServers|keys' plugins/moai/.mcp.json` exit 2, same message |
+| N11 iteration-1 report cited by a path that no longer exists | fixed | the old bare report name is replaced by `plan-audit-iter1.md` in spec.md, progress.md, research.md and acceptance.md; research sources also cite `plan-audit-iter2.md` | `grep -rn 'plan-audit\.md' .moai/specs/SPEC-PLUGIN-MARKETPLACE-001` matched six places before the edits (the audit's list: spec.md:L25, progress.md:L13 and L48, research.md:L5 and L341, acceptance.md:L10) and, after them, the command is re-run in the verification block below |
+| N12 REQ-018, REQ-022, REQ-023 still pack obligations | **skipped, with reason** | none | `grep -c '^- REQ-0' spec.md` printed `25` and `grep -c '^### AC-0' acceptance.md` printed `25`: both at the Tier L ceiling (25 and 25). Splitting a requirement adds a requirement past the ceiling and, by the one-to-one numbering, a criterion, so it is not a pure text split; the auditor classed it optional and "split only if the criteria become hard to bind", and each of the three criteria binds its clauses to named subtests |
+| N13 M4 remeasure list omits `version_sync_list_test.go` | fixed | plan M4 modified-list (the new group opens under `**Generated version carriers:**`, never as a bullet of the Version Stamps list) and §5 remeasure list; AC-024 (e) preservation guard | `go test ./internal/cli -run '^TestVersionSyncListNamesOnlyExistingPaths$' -count=1 -v` printed `--- PASS: TestVersionSyncListNamesOnlyExistingPaths (0.00s)` and `ok … 1.365s` (L-40); `version_sync_list_test.go:30-60` read: section ends at the next bold label or `###` heading, exactly seven entries |
+
+Totals: 14 items (D3 residue and N1 to N13): 13 fixed (N4 fixed in design with OD-14 opened for the one case that cannot be isolated),
+1 skipped (N12) with the reason and the counts above. New requirement: REQ-025; new criterion: AC-025; new Open Decision: OD-14 (Q14);
+new premise rows P-42 to P-46; new research rows R-23 to R-29; new ledger cells L-37 to L-40; new gaps G-8 and G-9. Final counts: 25
+requirements, 25 acceptance criteria, 14 Open Decisions.
+
+Where a fix departs from the auditor's suggested remedy. N1: the audit offered scoping the scan to selection data or a synthetic-tree-only
+test; this revision kept both and defined the scan precisely, because the synthetic-tree test alone cannot see one hard-coded name that
+the synthetic names do not trigger (mutant probe of AC-004). N2: the audit offered a refusing seam for the probe or a stubbed PATH seam
+with a pin; this revision did both (one shared refusing runner, and a `TestMain`-level redirect rather than seven per-test pins). N4: the
+audit offered a reduced harness or an Open Decision; this revision did the first for everything the explicit seams can isolate and the
+second for the nine `init-*` cases. N5: the audit offered either direction; `mcp.go` moved into M1, with AC-007 left in M2 as the audit
+suggested.
+
 ### Gaps of this revision
 
 - No criterion's own command exists yet; every RED-now cell is the observed red of a command whose target is absent. L-26 is a surrogate
@@ -94,12 +159,33 @@ state to come from the `config.toml` registration; this revision followed the or
 - The status of `grep` and `find` commands that select nothing is not echoed by the tool; the ledger records the documented status and says so.
 - The `moai` MCP server used for `spec_audit` is an older build than the tree; the lint ran on the tree-built binary.
 
+### Gaps added by the iteration-3 delta
+
+- The package, the three scripts and every Go test the criteria name still do not exist. The new cells L-38 and L-39 are stand-ins, written
+  to the definitions in AC-004 (b) and AC-025 and run in the scratchpad; L-37 is the criterion's own check form on trees that exist (the
+  template source tree and two stand-in payloads); L-40 is a control. The first run-phase RED record must show the real tests and the real
+  harness failing at an assertion, not at `[no tests to run]` or `No such file or directory`.
+- G-8 (new, plan §4): the real binary's `moai init` is not run by any harness case at the OD-14 default, because it writes
+  `$HOME/.claude/settings.json` and `HOME` is the only seam (R-23). Not observed: init's own process start of the step.
+- G-9 (new, plan §4): the protected-set hash cannot see `tmp/arg0` or `.tmp/git-*` under the real Codex home (other Codex processes write
+  there, R-29), nor entries deeper than its declared depth inside an existing marketplace clone or plugin cache.
+- The real `moai` binary was not run under the stand-in harness; the stand-in models the resolver order and one out-of-scratch write only. Whether
+  the real binary writes anything outside the scratch homes with the scrub applied is for the first run of the real harness (the hash is
+  the instrument).
+- The two worktree-guard refusals met during this delta, both on compound commands (a heredoc-and-`cd` chain, and `find` with a
+  `$CLAUDE_CONFIG_DIR` operand), were answered by splitting into plain commands and by writing files with the file tool; no measurement
+  was substituted. `find` of the real profile by variable path was refused, so the real-root listing was taken by the hash script instead.
+- The real-root hash was read-only and its two lists were dumped to the scratchpad; the only real-profile reads of this delta are those.
+  No command of this delta wrote to a real profile or home (the scratch `CLAUDE_CONFIG_DIR`, `CODEX_HOME` and `MOAI_HOME` were set on the
+  one product-binary run, the lint).
+
 ### Plan-audit iteration 2 and lane wait (recorded by the lane, not the author)
 
 - Iteration 1 (audited_sha 3766cef05): FAIL 0.72, `.moai/reports/t1435/plan-audit-iter1.md`.
 - Iteration 2 (audited_sha d6987e59c): FAIL 0.84, below the Tier L threshold 0.85, `.moai/reports/t1435/plan-audit-iter2.md`. D1..D24: 23 fixed, D3 partial. New blocking-class defects N1..N5 (the rest N6..N13 are minor or major-optional).
-- Tier note: iteration 1 ran under the Tier M ceiling (`plan_audit_tier_ceilings.M: 2`, so iteration 2 is the last Tier M spawn). The re-tier to Tier L came from the auditor's D7 ruling (file count) and carries ceiling 3 (`plan_audit_tier_ceilings.L: 3`). Whether iteration 3 may run on that basis is a ceiling decision, so the lane has NOT started it and waits for the leader.
-- WAIT: reason = ceiling decision; whom = leader; recheck = leader reply or a re-read of this section on the next lane turn. Options offered to the leader: (a) iteration 3 under Tier L after fixing D3 + N1..N5, (b) PASS-with-debt with N1..N5 carried into the run phase as explicit debt, (c) scope cut or split at the M2/M3 boundary.
+- Tier note: iteration 1 ran under the Tier M ceiling (`plan_audit_tier_ceilings.M: 2`, so iteration 2 was the last Tier M spawn). The re-tier to Tier L came from the auditor's D7 ruling (file count) and carries ceiling 3 (`plan_audit_tier_ceilings.L: 3`).
+- WAIT, resolved: the lane waited on a ceiling decision (whom = leader; options offered: (a) iteration 3 under Tier L after fixing D3 + N1..N5, (b) PASS-with-debt with N1..N5 carried into the run phase as explicit debt, (c) scope cut or split at the M2/M3 boundary). **The leader approved (a): iteration 3 runs under the Tier L ceiling of 3**, limited to the delta of the iteration-2 verdict (the disposition table above); no requirement or criterion was renumbered and no feature was added. This is the last plan-audit spawn the ceiling admits: a FAIL at iteration 3 goes to PASS-with-debt, scope reduction or an explicit operator override (`spec-workflow.md` § SPEC Complexity Tier), not to a fourth round.
+- The leader's safety order for this delta (binding): N2, N3 and N4 are one family with the t1434 leak, so every acceptance command and every harness script is isolated by scratch config homes, and a break of the isolation must turn a criterion red. Carried out as REQ-025 and AC-025 (leak canary, poisoned pin, live-enumerated scrub, directory-entry hash with `LEAK=0` required) and, for the doctor, AC-021 (c).
 
 ## §E.2 Run-phase Evidence
 

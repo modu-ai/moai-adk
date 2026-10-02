@@ -17,8 +17,9 @@ version SSOT. A read-only drift check and an explicit regenerate verb mirror `ag
 Makefile. A small install step, written once in Go with an injected command runner, is called by `moai init` (gated
 by the `--llm` harness) and by a `moai plugin install` verb that the install scripts call by their installed path. A new
 doctor check reads the installed plugin version from the Claude registry file and from a bounded
-`codex plugin list --json`. A shell script compares the plugin version with a release tag, and two harness scripts
-drive the real exec path and the installers offline.
+`codex plugin list --json`, started through the same refusing runner. A shell script compares the plugin version with a release
+tag, and a harness, a discoverability check and a protected-set hash script drive the real exec path and the installers offline under
+a scrub that is itself shown able to fail (REQ-025).
 
 Why derivation and not a hand list. Card t1399 (lane 3) renames a skill and rule files while this card is
 in flight (SPEC §6 RK-4, P-23). A generator that holds no component name survives either land order.
@@ -30,8 +31,9 @@ because each needs the previous one to exist. Review attention should follow rev
 these first, most likely to change at the top, because each moves files in more than one milestone. The marker table in
 `spec.md` §5 lists, per decision, the clauses that change.
 
-1. OD-1 (install default while the scaffold remains), OD-9 (harness gating), OD-10 (target profile), OD-12 (scope):
-   user-facing behavior against a person's real profile. They change M3 (when and where the step runs) and the risk list.
+1. OD-1 (install default while the scaffold remains), OD-9 (harness gating), OD-10 (target profile), OD-12 (scope), OD-14 (which
+   harness cases may run the real binary's `init`): user-facing behavior against a person's real profile, and what the verification
+   may touch. They change M3 (when and where the step runs, which harness cases exist) and the risk list.
 2. OD-2 (hooks and MCP), OD-3 (agents), OD-8 (tiers), OD-11 (payload language, commands): the payload set and its listing
    cost. They change M2 and the payload size.
 3. OD-4 (payload location and pin): changes every manifest path, the Makefile verbs and the release check.
@@ -43,16 +45,19 @@ milestone.
 
 ## 3. Milestones (priority-ordered, no time estimates)
 
-The hand-authored change set is the union of the lists below: about 42 files (5 + 6 + 19 + 12), against the Tier L
+The hand-authored change set is the union of the lists below: about 45 files (7 + 5 + 20 + 13), against the Tier L
 guidance of more than 15. Generated files (the committed payload) are not counted and are never edited by hand.
 
-### M1 — Emitter skeleton, manifests, validation (Priority: High) — REQ-001, 002, 003
+### M1 — Emitter skeleton, manifests, MCP derivation, validation (Priority: High) — REQ-001, 002, 003, and the derivation unit of REQ-007
 
 New files (names are proposals; the package path follows `commandemit` / `agentemit`):
 - `internal/template/pluginemit/pluginemit.go` — options, entry point, the golden-update switch
   (`PLUGIN_EMIT_UPDATE`, same convention as `COMMAND_EMIT_UPDATE` and `AGENTEMIT_UPDATE`).
 - `internal/template/pluginemit/manifest.go` — the four manifests, the version derivation.
-- `internal/template/pluginemit/manifest_test.go`, `golden_test.go`.
+- `internal/template/pluginemit/mcp.go` — the MCP entry copied from the template `.mcp.json` (REQ-007). It sits in M1, not M2,
+  because the Codex plugin manifest of REQ-003 carries that entry and AC-003 (c) is bound to the exit of M1 (plan-audit iteration
+  2, N5); M2 reuses the unit to emit the payload file `plugins/moai/.mcp.json`.
+- `internal/template/pluginemit/manifest_test.go`, `golden_test.go`, `mcp_test.go` (`TestMCPEntryDerivedFromTemplate`, AC-007 (c)).
 
 Generated and committed by `make plugin-emit`:
 - `.claude-plugin/marketplace.json`, `.agents/plugins/marketplace.json`
@@ -82,8 +87,9 @@ Content rules, copied from precedents so no field is invented:
   prerelease value is accepted). Strict validate fails when an entry version differs from plugin.json (P-03), so that
   disagreement is a tool-detected failure; the `metadata.version` equality is held by AC-001 (c).
 
-RED first (tdd): `TestManifestsGolden` and `TestVersionStampedFromSSOT` fail on an empty package; the
-version test sets `version.Version` to a synthetic value, so it does not depend on the current stamp.
+RED first (tdd): `TestManifestsGolden`, `TestVersionStampedFromSSOT` and `TestMCPEntryDerivedFromTemplate` fail on an empty
+package; the version test sets `version.Version` to a synthetic value, so it does not depend on the current stamp, and the MCP test
+changes the entry inside a synthetic template tree and asserts the Codex manifest entry follows.
 
 Exit: AC-001, AC-002, AC-003.
 
@@ -91,11 +97,11 @@ Exit: AC-001, AC-002, AC-003.
 
 New files:
 - `internal/template/pluginemit/payload.go` — fs walk over the core-tier view; skills copied, commands rendered and placed
-  flat (agents only where OD-3 admits them).
-- `internal/template/pluginemit/mcp.go` — the MCP entry copied from the template `.mcp.json`.
-- `internal/template/pluginemit/drift.go` — compare committed against emitted: byte difference, missing
+  flat (agents only where OD-3 admits them); every file written with the deployer's mode rule (`.sh` 0755, otherwise 0644), and
+  the payload `.mcp.json` written through the M1 unit `mcp.go`.
+- `internal/template/pluginemit/drift.go` — compare committed against emitted: byte difference, mode difference, missing
   file, extra file.
-- Tests: `payload_test.go` (synthetic-tree derivation, fidelity, layout, name scan, allow-list), `drift_test.go` (mutants).
+- Tests: `payload_test.go` (synthetic-tree derivation, fidelity including modes, layout, the name scan, allow-list), `drift_test.go` (mutants).
 - `scripts/check-plugin-discoverable.sh` — installs the emitted marketplace from its local path under a caller-given empty
   scratch home and checks the `claude plugin details` inventory against names derived from the template tree (AC-006);
   refuses a non-empty argument.
@@ -118,8 +124,17 @@ Approach points that carry decisions:
   only on `description:` and `argument-hint:` lines (P-32); its default is English, and the `commandemit` package
   likewise publishes the English variant. Non-`.tmpl` files, including the 16 skill files that merely contain `{{` (P-15),
   are copied byte for byte and never rendered.
-- No component name literal appears in the generator. The core-tier filter is data (the catalog). `TestGeneratorHoldsNoComponentNames`
-  holds this against the catalog's own names instead of one literal that t1399 renames.
+- No component name literal appears in the generator, apart from the plugin identifier `moai`, which the generator must write and which
+  is also the catalog's first skill name. The core-tier filter is data (the catalog). `TestGeneratorHoldsNoComponentNames` holds this
+  against the catalog's own names instead of one literal that t1399 renames, by an AST scan of the string literals of the non-test
+  sources, split on `/` and `\`, whole-token and case-sensitive, with an in-test positive control and an empty-sweep failure
+  (`acceptance.md` AC-004 (b); the scan passed a stand-in correct generator and the real `commandemit` and `agentemit` packages and
+  failed three hard-coded mutants, `research.md` R-27). The iteration-1 wording, "no name as a whole token in any source", could not be
+  satisfied by correct code: the plugin id is a skill name and several command stems are ordinary words (plan-audit iteration 2, N1).
+- **File modes.** The embedded template tree carries no mode (`embed.FS` reports 0444 for every file, R-26), so the generator cannot
+  copy one; it applies the deployer's rule (`internal/template/deployer.go:275-276`): `0755` for a `.sh` file, `0644` for every other
+  file, and the drift check compares modes (`mode-flipped`). The three `moai-workflow-project/scripts/*.sh` files are the live case.
+  `design.md` §2.4 said 0644 for every file before iteration 2; that was the defect (N8).
 - The generator never reads the working tree's own `.claude/` copy; it reads the embedded template tree, so
   maintainer-local drift cannot reach the payload.
 
@@ -129,20 +144,29 @@ name list or a tier-blind generator fails it.
 
 Exit: AC-004, AC-005, AC-006, AC-007, AC-008, AC-009.
 
-### M3 — Install step, verb, scripts, harness (Priority: High) — REQ-010 to 019
+### M3 — Install step, verb, scripts, harness (Priority: High) — REQ-010 to 019, 025
 
 New files:
 - `internal/cli/plugin_install.go` — the step: tool selection by harness, PATH resolution (`resolveLaunchClaudeBinary`
   for Claude, `codexWiringLookPath` for Codex), the two-command sequence, the per-command bound, the config-home line,
   guidance and skip text, the injected runner. A package-level runner variable is the seam; its default refuses under a test
-  binary (REQ-017).
+  binary (REQ-017), and the doctor probe of M4 starts its command through the same variable, so one refusal covers both.
 - `internal/cli/plugin_install_test.go` — the unit criteria (AC-010 to AC-015, AC-017).
 - `internal/cli/plugin_install_cmd.go` and `plugin_install_cmd_test.go` — the `moai plugin install` verb that OD-6 option (a)
   needs (a new `plugin` noun group with one leaf, in the `tools` help group; AC-019).
 - `internal/cli/plugin_install_guard_test.go` — `TestPluginOptOutCallersEnumerated` (AC-016 b) and
   `TestInstallScriptsPluginStepGuarded` (AC-018 c, static).
-- `scripts/test-plugin-install-step.sh` — the harness of the conventions block in `acceptance.md`: scrubbed PATH, stub tools,
-  stub `curl`, a pinned local archive, scratch homes, 17 named cases.
+- `scripts/test-plugin-install-step.sh` — the harness of the conventions block in `acceptance.md`. It plants a poison in its own
+  environment (a `MOAI_CLAUDE_BIN` naming a recording script, a variable of each of the `MOAI_*`, `CLAUDE_*` and `CODEX_*` families
+  with a pid-carrying name, a `MOAI_*` variable naming a canary directory), scrubs every `MOAI_*`, `CLAUDE_*` and `CODEX_*` name by live
+  enumeration, sets its own `PATH`, stub tools, a stub `curl`, a pinned local archive, scratch `CLAUDE_CONFIG_DIR`, `CODEX_HOME`,
+  `MOAI_HOME` and working directory, and sets no `HOME`. Default cases (12): the five `isolation-*` cases of AC-025, the three
+  `verb-*` cases, the four `installer-*` cases. The nine `init-*` cases exist only under OD-14 (b) or (c). Flags
+  `--negative-control`, `--negative-control-cwd` and `--typed-list-mutant` run the isolation cases under a deliberate break and exit 0
+  only when exactly the expected cases go red (AC-025 (b), (c)).
+- `scripts/protected-set-hash.sh` — read-only hash of the protected real set (entries and registry or settings file content,
+  depth-limited roots, three declared exclusions, AC-025 (d)); `--save-roots` and `--roots-file` let the harness capture the roots
+  before the scrub and hash exactly them after; a non-zero difference prints the differing entries.
 
 Modified:
 - `internal/config/envkeys.go` — the opt-out constant (`MOAI_SKIP_PLUGIN_INSTALL`; env names live there,
@@ -193,14 +217,18 @@ fail on an absent step. The inertness test pins `MOAI_CLAUDE_BIN` to a recording
 `codex` shims on PATH with scratch `CLAUDE_CONFIG_DIR` and `CODEX_HOME`, calls the existing `runInit` path, and asserts an
 empty record — a PATH shim alone would miss a pinned binary.
 
-Exit: AC-010 to AC-019.
+Exit: AC-010 to AC-019, AC-025.
 
 ### M4 — Doctor check, release coupling, runbook (Priority: Medium) — REQ-020 to 024
 
 New files:
 - `internal/cli/doctor_plugin_version.go` and `doctor_plugin_version_test.go` — modeled on `doctor_mcp_version.go`: a constant
   check name, one function with the homes, the probe runner and the binary version injected so no test mutates package
-  state.
+  state. Production wiring: the Claude home from `CLAUDE_CONFIG_DIR`, else `~/.claude`; the Codex home from the existing
+  `resolveCodexHomeDir()` (`mcp_codex.go:2143-2152`, which rides the `codexUserHomeDir` seam) and never from a path the check
+  computes itself; the probe started through the runner variable of `plugin_install.go` (default refuses under a test binary,
+  REQ-017) with the parent's environment plus `CODEX_HOME=<that home>`. `TestCheckPluginVersion_HomeIsolation` (AC-021 (c)) lives
+  here.
 - `scripts/check-plugin-version.sh` — reads `plugins/moai/.claude-plugin/plugin.json` and compares with the
   tag argument minus a leading `v`; exit 0 equal, exit 1 with both values on mismatch, exit 2 without an argument.
 - `internal/template/pluginemit/releasecheck_test.go` — `TestPluginVersionScript` and
@@ -212,18 +240,31 @@ Modified:
   `namesAddedAfterBaseline`), and the status-set test if the check can emit info.
 - `internal/cli/doctor_golden_test.go` — `captureDoctorCmd` gains the `CODEX_HOME` scrub (it pins `HOME`, `MOAI_HOME`,
   `CLAUDE_CONFIG_DIR` and the Codex PATH seam but not `CODEX_HOME`, P-21), and `TestDoctorGolden_IgnoresCallerCodexHome`.
+- `internal/cli/main_test.go` — `sandboxUserHomeDir` (`:269-299`, installed by `TestMain` at `:368`) also wraps `codexUserHomeDir`
+  with `homeRedirectingFn` (so a result equal to the captured real home becomes the sandbox directory) and clears `CODEX_HOME` for the
+  package run, and its restore function puts both back. Why here and not a pin in each test: seven unfiltered
+  `runDiagnosticChecks(false, "")` call sites in six test files exist (`doctor_hook_wiring_test.go:250`, `doctor_golden_test.go:263`,
+  `doctor_test.go:280,422`, `doctor_new_test.go:320,329`, `doctor_flag_slot_test.go:181`, P-43) and a pin per test would leave the
+  next one unguarded; the seven test files that assign `codexUserHomeDir` capture the current value as `orig` and restore it, so they
+  restore the sandboxed value. The two layers are independent: the refusing runner (REQ-017) stops a process start, this stops a
+  read of the real Codex home; `TestCheckPluginVersion_HomeIsolation` pins both (AC-021 (c) `testmain-sandbox-redirects-codex-home`,
+  `registry-wide-starts-nothing`).
 - `internal/cli/testdata/doctor-{light,dark,nocolor}.golden` — regenerated with `UPDATE_GOLDEN=1`; each then holds one
   `Plugin Version` row (AC-023 a).
 - `.github/workflows/release.yml` — a check 8 in `verify-provenance` that runs the script against the tag.
 - `.moai/docs/version-management.md` — a third group beside Version Stamps and Release Artifacts, "Generated version
   carriers": the bump step `make plugin-emit`, and the pre-tag step `sh scripts/check-plugin-discoverable.sh <empty-home>`.
-  The release harness's own runbook was not located in this tree (Gap G-6); this document is the carrier the card can name.
+  The group opens under its own bold label, `**Generated version carriers:**`, and is never written as a bullet inside the
+  Version Stamps list: `TestVersionSyncListNamesOnlyExistingPaths` (`internal/cli/version_sync_list_test.go`) reads the entries
+  after `**Version Stamps:**` up to the next bold label or `###` heading and requires exactly seven, so an eighth plain bullet
+  there turns it red (plan-audit iteration 2, N13). The release harness's own runbook was not located in this tree (Gap G-6); this
+  document is the carrier the card can name.
 
 Doctor read path. The Claude version is read from `<config home>/plugins/installed_plugins.json`, key
 `moai@moai-adk` (P-08), with no subprocess: the cost is one file read regardless of project size, which the
 Advisory-Check Discipline in `coding-standards.md` requires of anything on a latency-sensitive path. The Codex state and
-version come from `codex plugin list --json` run with the resolved Codex home, bounded by
-`DefaultPluginVersionProbeTimeout` and started only when `codex` resolves on PATH (REQ-021, default pending OD-13): the list
+version come from `codex plugin list --json`, started through the refusing runner with `CODEX_HOME` set to the resolved Codex home,
+bounded by `DefaultPluginVersionProbeTimeout` and started only when `codex` resolves on PATH (REQ-021, default pending OD-13): the list
 answers from the `config.toml` registration, which the cache directory does not (P-34: after the registration is removed
 the list prints `"installed": []` while `plugins/cache/moai-adk/moai/3.1.3` remains). `moai doctor` is an on-demand command,
 not a session-start or Stop path, so a bounded probe is within the discipline; the write of `tmp/arg0` into an empty Codex
@@ -243,15 +284,23 @@ Exit: AC-020 to AC-024.
 
 ## 4. Verification plan (scratch-home commands only)
 
-Rules for every acceptance command:
+Rules for every acceptance command and every harness script (REQ-025):
 - `CLAUDE_CONFIG_DIR` and `CODEX_HOME` point at empty directories created under the session scratchpad
   (`mkdir -p`, then `ls -A` shows empty) before the first command, **one pair per criterion**. Placeholders in
-  `acceptance.md`: `<claude-home:AC-nnn>`, `<codex-home:AC-nnn>`. No command sets `HOME` (the worktree guard refuses it, P-36);
-  the harness scripts set it inside themselves.
+  `acceptance.md`: `<claude-home:AC-nnn>`, `<codex-home:AC-nnn>`. Neither a command nor a script sets `HOME` (the worktree guard
+  refuses it, P-36, and a script file is not a way round that, `kanban-dispatch-mechanics.md:105`); `MOAI_HOME` and the two homes
+  are the explicit seams, and the one case they cannot cover, the real binary's `init` (P-42), is OD-14 and G-8.
+- A harness script scrubs by live enumeration: every `MOAI_*`, `CLAUDE_*` and `CODEX_*` name in its environment is unset, found at run
+  time and never from a typed list, after the script has planted its own poison (including names that carry the process id); it then
+  sets its own `PATH`, stubs and scratch directories, and runs from a scratch directory with no `.moai` in it or above it. A pinned
+  real `claude` can come from `MOAI_CLAUDE_BIN` or from the working directory's `llm.claude_bin` (P-44), and a `PATH` shim outranks
+  neither, so the scrub and the working directory are both required.
+- The whole run is bracketed by `sh scripts/protected-set-hash.sh` before and after, the two lines equal (AC-025 (d)). The
+  hash covers directory entries because the t1434 leak was four empty directories.
 - Forbidden against any real home, as in t1434: install, uninstall, marketplace add, remove, update, enable,
   disable, configure, `plugin update`, `codex exec`. `claude plugin list`, `validate`, `details` and the
   read-only help verbs are the only commands the run may aim at a real home, and only if a scratch home
-  cannot answer; none of the 24 criteria needs it.
+  cannot answer; none of the 25 criteria needs it.
 - No network. `marketplace add` takes a local path (the repository root in the run worktree). The product
   command `marketplace add modu-ai/moai-adk` is verified only through the injected runner (AC-011) and stays
   UNOBSERVED against GitHub until the manifests are on `main`.
@@ -280,6 +329,15 @@ Gaps this plan names instead of closing (carried into the run's Gaps section):
 - G-7: continued firing of `scripts/check-plugin-discoverable.sh`. It needs a Claude CLI and runs on demand, so nothing tells a
   reader it stopped. Its answer is the runbook step AC-024 (d) pins plus the plan-auditor's re-run at each release PR; the
   harness script, by contrast, runs in CI (M3), and the Go criteria run in the full suite.
+- G-8: the real exec path of the binary's `init`. `moai init` writes `$HOME/.claude/settings.json` whatever `CLAUDE_CONFIG_DIR` says
+  (P-42), `HOME` is the only seam, and neither a command nor a script may set it (§3 of the SPEC), so at the OD-14 default no
+  harness case runs the real binary's `init`. The init flow (harness gating, opt-out, fail-open, skip line, config-home print) is
+  asserted by Go tests with an injected runner under the `TestMain` home sandbox; the real default runner is exercised by the verb and
+  installer cases. What stays unobserved is init's own call into the step through a real process start.
+- G-9: the protected-set hash is blind to `tmp/arg0` and `.tmp/git-*` under the real Codex home (P-46: other Codex processes write
+  there), and to entries deeper than its declared depth inside an existing marketplace clone or plugin cache. The probe's own
+  `tmp/arg0` write is therefore guarded by the refusing runner (REQ-017), the stubs and `isolation-resolves-to-stubs`, not by the
+  hash; a non-zero `LEAK` prints the differing entries so an ambient change is attributed, not assumed.
 
 ## 5. Pre-flight and land order (for the run-phase delegation)
 
@@ -304,7 +362,13 @@ Record at run start, before any edit:
   `internal/cli` with `-run` selectors, `internal/config`, `internal/template` golden and neutrality selectors). No
   `go test ./...` (AGENTS.md §4); CI runs the full suite. The harness script is run once, against `bin/moai`.
 - A doctor-touching card remeasures `-run '^TestRunDiagnosticChecks.*$'`, `-run '^TestDoctorGolden_.*$'` and
-  `-run '^TestBinaryLag_.*$'` together (the three guards live apart from the card's own tests).
+  `-run '^TestBinaryLag_.*$'` together (the three guards live apart from the card's own tests). M4 also edits two things those
+  guards do not cover, so its remeasure list adds `-run '^TestVersionSyncListNamesOnlyExistingPaths$'` (it parses the runbook M4
+  edits and requires exactly seven Version Stamps; green at `b6a0522a0`, L-40) and, because `main_test.go` is edited, the selectors
+  of the files that assign `codexUserHomeDir` (`doctor_codex_test.go`, `codex_skills_*_test.go`, `codex_readiness_test.go`,
+  `doctor_codex_stale_skill_test.go`: `-run '^TestCodex.*$'` and `-run '^TestDoctorCodex.*$'`, run before and after the `TestMain`
+  change and compared).
+- Record the protected-set line (`sh scripts/protected-set-hash.sh`) before the first command of the run and after the last (AC-025 (d)).
 
 ## 6. Constraints for manager-develop
 
@@ -316,7 +380,9 @@ template, `.moai/specs/` other than this SPEC's `progress.md §E.2/§E.3` and th
 two opt-out prefixes.
 Forbidden commands: `--no-verify`, `--amend`, `git add -A`, `git add .`, force push, any registry-writing
 `claude plugin` / `codex plugin` verb against a real home, any network-touching marketplace add in an
-acceptance command, any command that sets `HOME` or runs `pwsh` (the guard refuses both).
+acceptance command, any command that sets `HOME` or runs `pwsh` (the guard refuses both), and any script that sets `HOME` to get
+past that refusal: moving a command into a script file is not a workaround (`kanban-dispatch-mechanics.md:105`), the case that
+needs it is OD-14 and G-8.
 Required: Conventional Commits with the card id in every commit message; stage by explicit pathspec; cite
 `worktree-integration-ops.md` form rules when an acceptance command is refused.
 
@@ -330,9 +396,13 @@ Required: Conventional Commits with the card id in every commit message; stage b
 - An install step whose default runner is reachable from `go test` (RK-8), or a test-binary detector that reads arguments.
 - An installer that calls the verb through a bare `moai`, or without a guard against `set -e` and `Stop`.
 - Copying the plugin version by hand into the manifests (REQ-003).
-- An acceptance criterion that sets `HOME`, shares a scratch home with another criterion, or passes on a mutant that never
+- An acceptance criterion or a script that sets `HOME`, shares a scratch home with another criterion, or passes on a mutant that never
   registers the check (AC-023 (a) exists for that).
 - Reading the real profile's registry in any test; fixtures are synthetic files under `t.TempDir()`.
+- An isolation check with no negative control: a scrub whose removal turns nothing red, a pin check that a `PATH` shim alone would
+  satisfy, a manifest that hashes files and not directory entries, or an environment scrub written as a typed list of names.
+- A name scan over every token of every source (identifiers, comments, the plugin id), which no correct generator can pass.
+- Writing every payload file at one mode, or copying a mode the embedded tree does not carry.
 
 ## 8. Cross-references
 
