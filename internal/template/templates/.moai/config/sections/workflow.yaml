@@ -203,6 +203,8 @@ workflow:
     #     release_margin_pct    0-50, release below hold minus this margin
     #     max_age               a session reading older than this is unknown
     #                           (at least 10m, twice the 5m statusline heartbeat)
+    #     max_scan_dirs         1-1024, linked worktrees examined per reading; unmeasured
+    #                           (a project with more worktrees than this needs a larger value)
     # A value outside its range falls back to the default shown here.
     quota_gate:
         enabled: false
@@ -210,6 +212,7 @@ workflow:
         seven_day_hold_pct: 95
         release_margin_pct: 5
         max_age: 30m
+        max_scan_dirs: 128
     # served_model_gate: refuse to adopt a plan-auditor or sync-auditor verdict
     # when the model that actually answered that auditor differs from the
     # expected one, or cannot be determined. The SubagentStop hook records the

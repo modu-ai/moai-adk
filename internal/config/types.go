@@ -796,6 +796,9 @@ type QuotaGateConfig struct {
 	SevenDayHoldPct  int    `yaml:"seven_day_hold_pct"`
 	ReleaseMarginPct int    `yaml:"release_margin_pct"`
 	MaxAge           string `yaml:"max_age"`
+	// MaxScanDirs bounds the linked-worktree record directories the quota
+	// reading examines per call (SPEC-QUOTA-RECORD-WORKTREES-001 REQ-QWR-011).
+	MaxScanDirs int `yaml:"max_scan_dirs"`
 }
 
 // SlotLeaseResourceConfig is one resource entry: RE2 command patterns matched
