@@ -349,9 +349,10 @@ func managedCodexAppServerArgs(url, tokenFile string, operatorArgs []string) []s
 // control connection. It implements the M1 managedSession interface: Start
 // spawns and handshakes, DeliverTurn injects one turn, Close tears the child
 // down. This surface is headless on purpose — the managed session is the
-// delivery loop's backend; the interactive TUI attach is later-milestone
-// launcher wiring (plan.md M3/M4), so model output renders wherever the
-// app server's own thread view renders it, not on our stdout.
+// delivery loop's backend. TUI attach is not delivered by
+// SPEC-FACTORY-MANAGED-SESSION-001 and is owed to a follow-up card, so model
+// output renders wherever the app server's own thread view renders it, not
+// on our stdout.
 type managedCodexSession struct {
 	program  string
 	appArgs  []string
