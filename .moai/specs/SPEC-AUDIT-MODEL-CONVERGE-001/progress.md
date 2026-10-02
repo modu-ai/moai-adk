@@ -27,7 +27,42 @@ iteration_4_note: "iteration 4 = delta confirmation over the Tier L ceiling of 3
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — baseline-first characterization and the TestMain scrub
+
+Measured against base HEAD `25e6e9737` (branch `WT-audit-model-convergence`, worktree `.moai/worktrees/t1423`); the M1 commit adds only test files, the golden, the `spec.md` status line and this block. Every Go run is `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED [CLAUDE_PROJECT_DIR] && go test ...` in one invocation. Judging toolchain: `golangci-lint v2.1.6` (the CI pin); no installed `moai` build was used for any measurement.
+
+Pre-flight (before any change): `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `golangci-lint run --timeout=2m ./internal/cli/...` exit 0, `0 issues.`; `grep -c "CLAUDE_PROJECT_DIR" internal/cli/main_test.go` -> `0` (E31 reproduced).
+
+AC-ACV-019 RED (test added, scrub line NOT yet added):
+
+    $ CLAUDE_PROJECT_DIR=<tree> go test -count=1 -v -run '^TestMain_ScrubsClaudeProjectDir$' ./internal/cli/
+    --- FAIL: TestMain_ScrubsClaudeProjectDir (0.00s)
+    FAIL	github.com/modu-ai/moai-adk/internal/cli	1.222s
+    exit=1
+
+AC-ACV-019 GREEN (one `os.Unsetenv(config.EnvClaudeProjectDir)` line added in `TestMain`):
+
+    $ CLAUDE_PROJECT_DIR=<tree> go test -count=1 -v -run '^TestMain_ScrubsClaudeProjectDir$' ./internal/cli/
+    --- PASS: TestMain_ScrubsClaudeProjectDir (0.00s)
+    ok  	github.com/modu-ai/moai-adk/internal/cli	0.923s
+    exit=0
+    $ grep -c "EnvClaudeProjectDir" internal/cli/main_test.go   -> 3
+
+AC-ACV-008 GREEN on arrival (golden generated from the unmodified production handler, then compared without the update toggle; the swept set is 2 tests x 2 subcases, no `[no tests to run]`):
+
+    $ go test -count=1 -v -run '^(TestAuditMulti_NoConfigNoArgs_ByteIdentical|TestAuditMulti_PinsOnlyConfig_ByteIdentical)$' ./internal/cli/
+    --- PASS: TestAuditMulti_NoConfigNoArgs_ByteIdentical (0.01s)
+    --- PASS: TestAuditMulti_PinsOnlyConfig_ByteIdentical (0.01s)
+    ok  	github.com/modu-ai/moai-adk/internal/cli	1.035s
+    exit=0
+
+Mutant probe on the golden: changing one summary in the `pins-only/all-pass` entry makes `TestAuditMulti_PinsOnlyConfig_ByteIdentical/all-pass` fail (exit 1); the entry was restored and the pair re-run green.
+
+Post-change: `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `go vet ./internal/cli/` exit 0; `golangci-lint run --timeout=2m ./internal/cli/...` exit 0, `0 issues.`; `gofmt -l` on both test files empty; `grep -rn 'AskUserQuestion\|mcp__askuser__'` on both test files: no output, exit 1.
+
+Golden facts: the golden is one JSON object keyed `<root>/<case>` (4 entries); the update toggle is `UPDATE_AUDIT_MULTI_DEFAULT_GOLDEN=1` (per-file env toggle, the repo's existing golden convention) and merges the cases a run covers. `build_commit`, `build_lag` and `tree_root` (asserted equal to the fixture root first) are dropped by the test, not stored. The all-pass and codex-inconclusive cases both resolve to `overall_verdict: pass` with no `plan_source` and no `gate_unmet` member.
+
+Not covered at M1 (a Gap, not a pass): the clause of AC-ACV-008 that the plan resolved for each root is the default plan with every entry `explicit: false` cannot be asserted before the resolver exists (M2); that assertion is to be added with M2 and kept by M3-M7. The full `internal/cli` suite was not run (heavy-run rule); CI runs it on push.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

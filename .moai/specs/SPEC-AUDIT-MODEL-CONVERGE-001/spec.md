@@ -2,7 +2,7 @@
 id: SPEC-AUDIT-MODEL-CONVERGE-001
 title: "Make workflow.audit.model real — one resolver turns the audit model token and gates into a backend plan, audit_multi and the plan/sync auditors follow it, and a required cross-model backend that cannot answer fails the gate by name"
 version: "0.1.4"
-status: draft
+status: in-progress
 created: 2026-10-02
 updated: 2026-10-02
 author: manager-spec (card t1423)
