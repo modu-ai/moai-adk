@@ -23,3 +23,35 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Owner: orchestrator (card t1344, lane session). Written 2026-10-02 over HEAD 81367083b on branch WT-batch-approval-gate, before the first run-phase spawn. This section supersedes two statements of §E.1 that went stale after it was written: "The delta read has not yet run" (it ran, see below) and "plan_artifact_hash: pending".
+
+### Plan-audit evidence chain
+
+- Iteration 1 FAIL 0.70, iteration 2 FAIL 0.775, iteration 3 FAIL 0.84 (Tier L PASS threshold 0.85), reports `.moai/reports/t1344/plan-audit-iter{1,2,3}.md` (local-only, gitignored).
+- Delta read after iteration 3, audited commit 81367083b: verdict PASS-WITH-DEBT, report `.moai/reports/t1344/plan-audit-iter3-delta.md` (local-only). No must-pass criterion failed; no blocking defect remained. The delta read issued no score.
+- Named debts carried into the run phase: N19, N20, N21, N22, N23, N24, N28, N29, N30 and M1 (author-fixable, text-level; the run phase may apply them while writing the doctrine). N25 and N27 are accepted by the operator (below).
+- Ceiling extension: iteration 3 reached the Tier L ceiling of 3. The operator approved one further author revision plus an auditor delta read. This exceeds the ceiling by operator decision; the verdict record reads "iteration 3 exceeded the Tier L ceiling — operator approval". The leader is informed in the card completion report.
+
+### Kickoff gate record (operator form, 2026-10-02)
+
+The default autonomous Kickoff form (`.claude/rules/moai/workflow/auto-semantics.md` §9.1) was not available: the independent plan-audit verdict is PASS-WITH-DEBT, not PASS, and ten decision-index rows are open. The operator form ran as an orchestrator question after a findings report that included the strongest evidence against proceeding. Operator answers:
+
+- Kickoff: enter the run phase.
+- Debts N25 (log-only subtests and one-character baseline bodies can satisfy AC-007 and AC-008) and N27 (REQ-BGS-011 admits only plan-auditor verdicts, narrower than the audit cross of §9.1, on the fail-closed side): accepted as named debts.
+- Progression mode: autonomous (no per-turn confirmation questions; questions are asked only at gates and for blockers). The `ac_converge` goal of `run.md` section 2 is NOT armed in this lane: its template condition requires `go test ./...` exit 0, which the lane verification rule (`.claude/rules/local/gitflow-lane-protocol.md` section 8, HARD) forbids running locally, and an armed goal blocks turn-end while this lane waits on background agents, which spins idle turns up to the ceiling. It may be armed later with a scoped condition if the operator asks.
+- Preferences drained at this gate: tier L (orchestrator ruling, Q11); execution mode serial (below); PR strategy none per `.claude/rules/local/repo-local-pr-policy.md` (lanes merge into the develop integration worktree; no card pull request).
+- Decision-index rows Q1-Q3, Q6-Q10, Q12, Q13 remain open and unanswered; the requirements carry the draft readings tagged in spec.md section B.8. A later answer that changes a requirement changes the plan-artifact hash and invalidates a cached audit verdict.
+
+### Phase 1 Plan Audit Gate record
+
+Verdict: BYPASSED by operator decision (2026-10-02). Reasons recorded: the run gate's lookup resolves `.moai/reports/plan-audit/<SPEC-ID>-review-N.md`, a directory the audit-artifact convention forbids, so the cache lookup misses; the final plan-phase verdict is PASS-WITH-DEBT at 0.84 and is not skip-eligible (PASS and score of at least 0.85 required). The operator chose to rely on the plan-phase evidence chain above instead of a fifth full audit. No fresh Phase 1 audit was run.
+
+### Mode Selection
+
+- Input parameters: tier L; scope 17 planned files counted by path (live and mirror separately); domains 3 (rule and skill documents, Go hook notice strings, tests); file language mix markdown and Go; concurrency benefit LOW (coding-heavy, ordered milestones); development_mode tdd (`.moai/config/sections/quality.yaml`); Agent Teams not requested.
+- Mode evaluation: direct not selected (semantic change); serial selected; fanout not selected (coding-heavy and one writer per working tree); sweep not selected (not a uniform mechanical transform); agent-team not selected (not requested).
+- Decision: serial
+- Justification: milestones are ordered by dependency (M0, M1, M2, M4, M5, M3) and edit shared documents and one Go package; one write-capable agent runs per milestone in this tree, with the orchestrator verifying between milestones. Boundary case: 17 files and 3 domains exceed the fanout thresholds, resolved to serial by the coding-heavy tie-breaker of orchestration-mode-selection section B.2.
