@@ -151,7 +151,7 @@ func TestUnbindNoticeRebindLinePresence(t *testing.T) { // AC-SRL-005 (b)
 	if strings.Contains(notice, "runs --retire") {
 		t.Fatalf("unbind path prescribed a retire: %q", notice)
 	}
-	if !strings.Contains(notice, "moai cc -f lane-") {
+	if !strings.Contains(notice, "moai cc -l") {
 		t.Fatalf("unbind notice omits the re-bind entry although an active run exists: %q", notice)
 	}
 
@@ -159,7 +159,7 @@ func TestUnbindNoticeRebindLinePresence(t *testing.T) { // AC-SRL-005 (b)
 	recordFactoryRunWithStatus(t, alone, dead, "retired")
 	srlGateEnv(t, dead, "worker-69")
 	solo := registerFactoryHookPeer(context.Background(), &HookInput{SessionID: "srl-005b-session", ProjectDir: alone}, factoryPeerBindUserPrompt)
-	if strings.Contains(solo, "moai cc -f lane-") {
+	if strings.Contains(solo, "moai cc -l") {
 		t.Fatalf("unbind notice names a re-bind with no active run in the root: %q", solo)
 	}
 }

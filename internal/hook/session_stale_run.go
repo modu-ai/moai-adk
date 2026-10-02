@@ -89,7 +89,7 @@ var staleRunLocales = map[string]staleRunMessages{
 			"end this session, retire the run with 'moai factory runs --retire %[2]s', then relaunch",
 		laneLabelUnbind: "stale run: lane label %[1]q is legacy vocabulary from a binary before the leader/lane rename, and the factory run %[2]s measures %[3]s (not active) — " +
 			"this session is unbound from factory messaging; no further stale-run notices will be emitted for this session",
-		laneLabelUnbindRebind: "an active factory run exists in this project — to rejoin its slot set, end this session and relaunch with 'moai cc -f lane-<n>'",
+		laneLabelUnbindRebind: "an active factory run exists in this project — to rejoin its slot set, end this session and relaunch with 'moai cc -l', which takes the next free slot",
 	},
 	"ko": {
 		roleValueRetire: "stale run: 이 세션은 리더/레인 개칭 이전 바이너리의 레거시 역할 값 %[1]q 을(를) 담고 있습니다 — " +
@@ -100,7 +100,7 @@ var staleRunLocales = map[string]staleRunMessages{
 			"이 세션을 끝내고 'moai factory runs --retire %[2]s' 로 run 을 은퇴시킨 뒤 다시 띄우세요.",
 		laneLabelUnbind: "stale run: 레인 라벨 %[1]q 은(는) 리더/레인 개칭 이전 바이너리의 레거시 어휘이고, 팩토리 run %[2]s 의 측정 상태는 %[3]s (not active) 입니다 — " +
 			"이 세션은 팩토리 메시징에서 언바운드되었으며 이 세션에 대해 스테일 런 안내를 더 내지 않습니다.",
-		laneLabelUnbindRebind: "이 프로젝트에 활성 팩토리 run 이 있습니다 — 슬롯에 다시 합류하려면 이 세션을 끝내고 'moai cc -f lane-<n>' 으로 다시 띄우세요.",
+		laneLabelUnbindRebind: "이 프로젝트에 활성 팩토리 run 이 있습니다 — 슬롯에 다시 합류하려면 이 세션을 끝내고 'moai cc -l' 로 다시 띄우세요. 비어 있는 다음 슬롯을 받습니다.",
 	},
 	"ja": {
 		roleValueRetire: "stale run: このセッションはリーダー/レーン改名前のバイナリのレガシー役割値 %[1]q を持っています — " +
@@ -111,7 +111,7 @@ var staleRunLocales = map[string]staleRunMessages{
 			"このセッションを終了し、'moai factory runs --retire %[2]s' で run を退役させてから起動し直してください。",
 		laneLabelUnbind: "stale run: レーンラベル %[1]q はリーダー/レーン改名前のバイナリのレガシー語彙で、ファクトリ run %[2]s の測定状態は %[3]s (not active) です — " +
 			"このセッションはファクトリメッセージングからアンバインドされました。このセッションに対してこれ以上 stale-run の案内は発行されません。",
-		laneLabelUnbindRebind: "このプロジェクトにはアクティブなファクトリ run があります — スロットに再参加するには、このセッションを終了して 'moai cc -f lane-<n>' で起動し直してください。",
+		laneLabelUnbindRebind: "このプロジェクトにはアクティブなファクトリ run があります — スロットに再参加するには、このセッションを終了して 'moai cc -l' で起動し直してください。空いている次のスロットが割り当てられます。",
 	},
 	"zh": {
 		roleValueRetire: "stale run：本会话携带主导/泳道改名前二进制文件的遗留角色值 %[1]q —— " +
@@ -122,7 +122,7 @@ var staleRunLocales = map[string]staleRunMessages{
 			"请结束本会话，用 'moai factory runs --retire %[2]s' 退役该 run 后重新启动。",
 		laneLabelUnbind: "stale run：泳道标签 %[1]q 是主导/泳道改名前二进制文件的遗留词汇，且工厂 run %[2]s 的实测状态为 %[3]s（not active）—— " +
 			"本会话已从工厂消息通道解绑，此后不再为本会话发出 stale-run 提示。",
-		laneLabelUnbindRebind: "本项目存在活跃的工厂 run —— 若要重新加入其槽位，请结束本会话并用 'moai cc -f lane-<n>' 重新启动。",
+		laneLabelUnbindRebind: "本项目存在活跃的工厂 run —— 若要重新加入其槽位，请结束本会话并用 'moai cc -l' 重新启动，它会占用下一个空闲槽位。",
 	},
 }
 

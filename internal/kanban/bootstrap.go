@@ -367,7 +367,7 @@ func CanonicalFactoryLabel(label string) (string, bool) {
 	return FactoryLaneLabel(n), true
 }
 
-// NextFactoryLaneNumber returns the number a `-f lane` join takes: one
+// NextFactoryLaneNumber returns the number a `-l` lane join takes: one
 // past the highest LIVE canonical claim in the pruned registry (1 when
 // nothing is claimed). Legacy claims hold no number — a live legacy record
 // refuses the join instead (REQ-RNC-022); dead claims are pruned first so a

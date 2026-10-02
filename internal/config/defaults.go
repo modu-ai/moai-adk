@@ -685,8 +685,8 @@ var (
 	DefaultSessionMsgMaxPending = 64
 )
 
-// DefaultFactoryLanes is the fan-out size the count-less `-k --name
-// lane-<n>` form takes when the operator supplies no count
+// DefaultFactoryLanes is the fan-out size the legacy count-less `-k` lane
+// entry takes when the operator supplies no count
 // (SPEC-FACTORY-WORKER-FANOUT-001 REQ-FF-001, t85 leader loop). The value 8 is
 // the operator-decided factory default for that legacy entry — large enough to
 // keep a card queue draining, small enough to sit under the session-count a
@@ -697,7 +697,7 @@ const DefaultFactoryLanes = 8
 // DefaultFactoryLeaderLanes is the leader fan-out a bare `-f` / `--factory`
 // (no count) resolves to (t118 launcher axis, v3.1.1): one lane. The revived
 // -f entry starts the minimal factory — leader plus lane-1 — which the
-// operator then grows one lane at a time with `-f lane-<n>`, so the
+// operator then grows one lane at a time with `-l`, so the
 // count-less default is 1, not the legacy form's 8 (DefaultFactoryLanes).
 //
 // Its role is the LEADER FAN-OUT DEFAULT only (SPEC-CODEX-LANE-SLOTS-001,

@@ -92,10 +92,10 @@ func factoryLaneLabelFromEnv(verb string) (string, error) {
 	}
 	lowered := strings.ToLower(lane)
 	if n, ok := kanban.SplitFactoryLegacyLabel(lowered); ok {
-		return "", fmt.Errorf("factory %s: %q is the legacy lane label; use %q (rejoin with -f lane)", verb, lane, kanban.FactoryLaneLabel(n))
+		return "", fmt.Errorf("factory %s: %q is the legacy lane label; use %q (rejoin with -l)", verb, lane, kanban.FactoryLaneLabel(n))
 	}
 	if kanban.IsLegacyFactoryRoleValue(lowered) {
-		return "", fmt.Errorf("factory %s: %q is the legacy role token; lane sessions carry lane-<n> labels (rejoin with -f lane)", verb, lane)
+		return "", fmt.Errorf("factory %s: %q is the legacy role token; lane sessions carry lane-<n> labels (rejoin with -l)", verb, lane)
 	}
 	if kanban.IsLegacyLeaderSpelling(lowered) {
 		return "", fmt.Errorf("factory %s: %q is the legacy leader spelling; lane sessions carry lane-<n> labels (the leader launches with -f)", verb, lane)

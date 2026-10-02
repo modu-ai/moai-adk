@@ -275,9 +275,9 @@ const (
 	// EnvMoaiFactoryWorkers carries the Factory Mode signal and the run's
 	// lane count from the launcher entry point to the block-cap inject and
 	// the SessionStart hook. It is set on BOTH the factory leader and every
-	// lane — the count travels in the lane's own `-f <N>` token, which is
-	// why the lane launch command carries it. A non-empty value is what
-	// marks a session a factory session; the value is the fan-out size N.
+	// lane — the leader carries the run's declared fan-out size N, and a lane
+	// started with `-l` carries 0 (the count-less form). A non-empty value is
+	// what marks a session a factory session; the value is the fan-out size N.
 	//
 	// A factory run reuses EnvMoaiKanbanID and EnvMoaiKanbanLeadAddr on the
 	// leader (run id, leader socket) and deliberately does NOT set
@@ -354,7 +354,7 @@ const (
 	EnvFactoryRole = "MOAI_FACTORY_ROLE"
 
 	// FactoryRoleLane is the role value the guard expects: the canonical
-	// `-f lane` role spelling (internal/cli's factoryLaneRoleToken), held
+	// canonical lane role spelling (internal/cli's factoryLaneRoleToken), held
 	// equal to internal/kanban's lane-label prefix factoryLaneRole by the
 	// REQ-AP-013 equality assertion (AC-AP-018), restored at
 	// SPEC-ROLE-NAMING-CODE-001 M4 (REQ-RNC-012). The legacy spellings
