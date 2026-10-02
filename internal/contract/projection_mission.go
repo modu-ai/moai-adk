@@ -79,7 +79,6 @@ var missionActionByContractAction = map[string]mission.Action{
 
 // Fixed rows of the design.md §D mapping table.
 const (
-	missionMergeTarget        = "develop"
 	missionPolicyVersion      = "contract-v1"
 	missionRevocationBehavior = "stop-before-next-action"
 )
@@ -170,9 +169,19 @@ func signedValid(c *Contract) bool {
 // carries an unmapped field, an inner-wildcard scope glob, an unsigned or
 // tampered signature, no mission-mappable action, or a non-positive
 // budget.operations. mission's exported surface is never widened.
+//
+// mergeTarget is the caller's configured integration target and becomes the
+// projected MergeTarget after trimming. The contract core reads no
+// configuration, so the caller resolves the target and passes it in; an empty
+// or whitespace-only target is refused as ErrNotProjectable naming
+// merge_target, with no fallback value — no target means no answer.
 func ProjectToMission(c *Contract, mergeTarget string) (mission.MissionContract, error) {
 	if c == nil {
 		return mission.MissionContract{}, fmt.Errorf("%w: contract is nil", ErrNotProjectable)
+	}
+	mergeTarget = strings.TrimSpace(mergeTarget)
+	if mergeTarget == "" {
+		return mission.MissionContract{}, fmt.Errorf("%w: field %q: empty integration target; never defaulted", ErrNotProjectable, "merge_target")
 	}
 	if unmapped := unmappedProjectionKeys(contractInventoryKeys(c)); len(unmapped) > 0 {
 		return mission.MissionContract{}, fmt.Errorf("%w: field %q: no mission counterpart and not on the deliberately-not-projected list", ErrNotProjectable, strings.Join(unmapped, ", "))
@@ -219,7 +228,7 @@ func ProjectToMission(c *Contract, mergeTarget string) (mission.MissionContract,
 		CompletionEvidence: evidence,
 		Scope:              scope,
 		AllowedActions:     actions,
-		MergeTarget:        missionMergeTarget,
+		MergeTarget:        mergeTarget,
 		ResourceLimits:     mission.ResourceLimits{MaxOperations: c.Budget.Operations, MaxRetries: c.Budget.AuditRetries},
 		ProhibitedActions:  missionProhibitedActions,
 		StopConditions:     c.EscalateOn,
