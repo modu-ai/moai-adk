@@ -225,6 +225,7 @@ func TestJevCallPath_HasExactlyTheDeclaredConsumers(t *testing.T) {
 		"todo_jev_finding.go":  "SPEC-JEV-CONSUMERS-001 M4 — Consumer C, near-duplicate marking",
 		"jev_skill_suggest.go": "SPEC-JEV-CONSUMERS-001 M6 — Consumer B, skill suggestion (gate-unrun)",
 		"mcp_jev.go":           "SPEC-JEV-GOAL-DIST-001 M8a — the MCP tool wrapper (thin caller, inert behind workflow.jev.enabled; gate off constructs no request)",
+		"todo_auto_rank.go":    "SPEC-TODO-AUTO-PRIORITY-001 M2 — the `todo --auto` selection-order consumer (inert behind workflow.jev.enabled; a Jev answer orders candidates and nothing else; no ordering accuracy is claimed)",
 	}
 
 	hits := jevImporters(t, ".")
