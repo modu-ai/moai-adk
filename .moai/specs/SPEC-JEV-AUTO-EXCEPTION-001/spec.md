@@ -2,7 +2,7 @@
 id: SPEC-JEV-AUTO-EXCEPTION-001
 title: "Linked amendment of the Jev display-only principle for the todo --auto selection-order exception — Jev-side surfaces, two completed SPECs, and a linkage guard"
 version: "0.1.2"
-status: in-progress
+status: completed
 created: 2026-10-02
 updated: 2026-10-02
 author: manager-spec (card t1403)

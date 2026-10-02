@@ -225,4 +225,27 @@ m1_to_mN_commit_strategy: "G (guard, armed=false) then K (M2+M3 linked, armed=tr
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-10-02T07:11:51Z
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled by the following commit
+card: t1403
+tier: M
+ac_source: .moai/specs/SPEC-JEV-AUTO-EXCEPTION-001/acceptance.md   # tier M: acceptance.md is the AC source; resolver state: resolved
+ac_total: 14                    # live count from acceptance.md (counter: live=14 excluded=0 ambiguous=0); not taken from this file
+ac_pass_count: 13               # as recorded in §E.3
+ac_pass_with_debt_count: 1      # AC-JAE-014; resolved in the SPEC body reconciliation (guard source classified (iii))
+ac_fail_count: 0
+changelog_entry_position: "CHANGELOG.md [Unreleased] ### Added, first bullet (above the SPEC-TODO-AUTO-PRIORITY-001 entry)"
+b12_self_test_a: "pre-emission grep: git grep -c 'SPEC-JEV-AUTO-EXCEPTION-001' -- CHANGELOG.md printed nothing, exit 1 (zero entries) before emission"
+b12_self_test_b: "AC count: awk counter over acceptance.md printed 14 (live=14 excluded=0 ambiguous=0); the entry states 14, AC-JAE-001..014"
+b12_self_test_c: "path verification: ls of every path the entry names (and the live/template mirrors) exited 0"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (single sync commit); updated: 2026-10-02 (unchanged, already the sync date)"
+  plan_acceptance_progress: "not applicable: plan.md and acceptance.md are stateless on the status axis and carry no status field; progress.md carries none"
+mx_tag_validation: "This change adds no @MX tags: comments, SPEC and rule prose, and one Go test file only. git grep -n '@MX' over jev_auto_exception_test.go, internal/jev/jev.go and internal/cli/mcp_jev.go found no tag in the test file and four pre-existing tag lines in the two production files (jev.go:5-6 ANCHOR+REASON, mcp_jev.go:71-72 WARN+REASON), none touched by this SPEC (the diff against the card base is one comment hunk in each file, at jev.go line 27 and mcp_jev.go line 10)."
+docs_site_readme_check: "git grep -n -i -E 'display-only|display only' -- docs-site README.md README.ko.md README.en.md README.ja.md README.zh.md: one hit, docs-site/content/en/guides/mcp-server.md:208 (heading 'Judgment (gated, display-only)'), classified as describing the jev_ask MCP tool, which stays display-only; no edit. README files carry no Jev mention."
+sync_audit: pending            # sync-auditor not yet run
+decision_record_reread: pending   # the sync audit re-reads the plan->run Kickoff decision record of section F.1
+```
+
