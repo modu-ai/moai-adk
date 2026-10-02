@@ -1855,6 +1855,69 @@ Comment lines (157 after M7 in non-test Go outside `internal/web`): 22 cite `SPE
 5. `ReadCardStatus`, `FactoryFreeSlots`, `rejectFactoryOnCG`, and `config.DefaultFactoryLanes` were not deleted (not in the plan's lists).
 6. plan.md M7 and the probe rename every identifier that carries the word, while four acceptance commands select tests by names that carry it: AC-011 `TestKanbanEntryRefused`, AC-014 `TestSessionStartEmitsNoKanbanNotice`, AC-017 `TestPreexistingKanbanArtifactsTolerated` (three packages), AC-019 `TestLegacyKanbanRouteRedirects` (`internal/web`, M9). A mechanical rename of them would leave those commands sweeping zero tests (the probe checks compilation only, so it did not show this). The program keeps the four names; acceptance.md was not edited. The same reasoning applies to AC-018's `find`, which covers test file names: the files that hold those tests were renamed (the cli test lives in `launcher_retired_entries_test.go` and `launcher_characterization_m1_test.go`, the hook and statusline files carry `factory` in their names now).
 
+### M8 evidence
+
+Recorded by the run-phase implementation worker (cycle_type ddd: the milestone is a behavior-preserving mechanical rename of the Go package `internal/kanban` to `internal/factory`; characterization is the factory net and the whole-package suites) for milestone M8 of card t1399, branch `WT-launcher-entry-flags`. Start state, re-read before any change: `pwd` printed `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1399`, `git rev-parse --short HEAD` printed `4e7a60232`, `git branch --show-current` printed `WT-launcher-entry-flags`, `git status --short` printed nothing. Every output block below is a command run in this run on this tree (HEAD `4e7a60232`), with what it drops stated. The sections grow in the commits of this milestone: this commit records the sizing and the baseline; later commits add the program, its results, the hand fixups, and the self-verification.
+
+#### Sizing of AC-018's package and import sweeps on this tree (measured before any change)
+
+```text
+$ grep -rl '"github.com/modu-ai/moai-adk/internal/kanban"' internal cmd --include='*.go'      (RED-N3 command; files counted by a separate | wc -l)
+183 files, exit 0
+$ grep -rn 'kanban\.' internal cmd --include='*.go' | wc -l      (text lines that contain "kanban."; comments and strings included, so an upper bound of the code qualifiers)
+1695
+$ grep -rlP '(?i)(?<!moai_)kanban|moai_kanban(?!_(id|lead_addr|lead_name|settings_injected|backend|card)\b)|칸반|かんばん|カンバン|看板' internal cmd --include='*.go' --include='*.templ' --include='*.js' --exclude='*_test.go' --exclude-dir=testdata --exclude-dir=node_modules | wc -l      (RED-N1 command)
+169
+$ grep -rIn "internal/kanban" internal cmd --include='*.go' | wc -l      (every line that spells the path: 183 import lines plus 69 others)
+252
+$ find internal cmd -iname '*kanban*'      (RED-N2 command, M7 cleared the 18 names inside cli/hook/kanban except the directory)
+internal/kanban
+internal/web/preexisting_kanban_artifacts_m1_test.go
+internal/template/templates/.claude/skills/moai-kanban-foreman
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch-mechanics.md
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch-detail.md
+$ ls internal/kanban/*.go | wc -l ; grep -L '^package kanban$' internal/kanban/*.go ; grep -l '^package kanban_test' internal/kanban/*.go | wc -l
+159 files, no file with another clause, 0 external-test-package files
+$ grep -rn "package kanban" internal cmd --include='*.go' | grep -v '^internal/kanban/'
+(no output: no package clause outside the directory)
+```
+
+Importers by shape: no aliased import (`grep -rn '^\s*[a-zA-Z_]* "github.com/modu-ai/moai-adk/internal/kanban"'` printed nothing), no dot import, no `.templ` or `.js` source imports the path; the only non-Go mentions of `internal/kanban` outside `internal/` and `cmd/` are `CHANGELOG.md`, `.claude/rules/local/gitflow-lane-protocol.md`, the generated codemaps under `.moai/project/codemaps/` (5 files), and `docs-site/content/*/advanced/kanban-mode.md` (the docs belong to M11; the codemaps stay stale until `/moai codemaps`, plan.md section E).
+
+Syntax-tree measurement by the M8 rename program in dry-run mode (program text not yet committed at this point; the same program is committed in the next commit):
+
+```text
+$ go run .moai/specs/SPEC-LAUNCHER-ENTRY-FLAGS-001/probe/rename/m8_rename.go -root . -dry-run
+m8_rename: package clauses: 159; import lines: 183; qualifiers: 1894; shadowing locals renamed: 4; string literals: 35; comment mentions: 41; files rewritten: 361; files moved: 159 (dry run, nothing written)
+```
+
+Against the plan's modeled numbers (probe stage M8 on the pinned base: 156 package clauses, 1,830 qualified references, 4 shadowing locals): 159 clauses (three package files of the live tree are newer than the model), 1,894 qualifiers (this count covers `internal/web` as well; the M7 residue count of 1,980 bare identifiers `kanban` was taken outside `internal/web`, so the two are not the same population and were not reconciled line by line; `grep -rn 'kanban\.[A-Za-z]' internal/web --include='*.go' | wc -l` printed 113 text lines, comments included), 4 shadowing locals as modeled. `-v` on the same dry run lists every string-literal and comment rewrite (35 and 41); the four shadowing occurrences are the local `factory` at `internal/hook/stale_run_m1_test.go` lines 118, 119 (two) and 120 (the plan's site; `grep -n '\bfactory\b' internal/hook/stale_run_m1_test.go` shows them).
+
+#### Baseline before any change (characterization)
+
+Selected by whole package, one compound invocation each, with the environment scrub (`unset MOAI_KANBAN … MOAI_FACTORY_WORKERS && go test … -count=1 -v`), output to a scratch file, counts by `grep -c '^--- PASS'` (top-level test lines; sub-tests are indented and not counted):
+
+```text
+internal/kanban   (whole)  ok  232.294s   top-level PASS 514, FAIL 0, SKIP 0 ; === RUN lines 742
+internal/config            ok   6.008s    PASS 488   (small-suite run: config discovery codexwiring statusline factorymsg factorylane homestate)
+internal/discovery         ok             PASS 14, SKIP 1
+internal/codexwiring       ok             PASS 91
+internal/statusline        ok  34.221s    PASS 333, SKIP 2
+internal/factorymsg        ok  85.045s    PASS 70, SKIP 1
+internal/factorylane       ok   4.363s    PASS 53
+internal/homestate         ok  78.543s    PASS 133                                (the seven sum to 1182 PASS lines)
+internal/web      (whole)  ok  40.883s    PASS 536, FAIL 0, SKIP 7
+internal/hook     (whole)  FAIL 477.812s PASS 1269, FAIL 1, SKIP 6   the one failure is TestHookWrapperCopiesStayIdentical (known base failure, unrelated)
+TestNoNewEnvLiteralsInDiff PASS: "env-literal sweep: 1167 added lines swept across internal/hook internal/factorymsg internal/cli (envkeys.go and _test.go excluded), base=a6d3e6fd4f21f9c04fbcb7ca7507e87571f9b2c2, distinct literals=0"
+```
+
+The factory net (AC-015) on this tree, three commands, exit 0 each: `go test ./internal/cli -run '^(TestCCFactoryEntryRecordsFailOpenRunMetadata|TestCCFactoryLaneJoinsDiscoveredLeader|TestGLMFactoryLaneJoinsDiscoveredLeader|TestPrepareKanbanSettingsWritesTransientFile|TestPrepareFactorySettingsWritesTransientFile|TestFactoryNetLeaderLaunch|TestFactoryNetLaneLaunch|TestFactoryNetBlockCap|TestFactoryEntryMatrix)$' -v -count=1` printed eight `--- PASS` lines (`TestCCFactoryLaneJoinsDiscoveredLeader`, `TestGLMFactoryLaneJoinsDiscoveredLeader`, `TestFactoryNetLeaderLaunch`, `TestFactoryNetLaneLaunch`, `TestFactoryNetBlockCap`, `TestFactoryEntryMatrix`, `TestPrepareFactorySettingsWritesTransientFile`, `TestCCFactoryEntryRecordsFailOpenRunMetadata`) and `ok ... internal/cli 28.068s` (swept 8); the hook command printed `--- PASS: TestFactoryNetSessionRecord`, `--- PASS: TestFactoryNetSessionStartNotices` and `ok ... internal/hook 1.698s` (swept 2); the discovery command printed `--- PASS: TestDiscoverLeaderVerifiesLiveLeader`, `--- PASS: TestDiscoverLeaderDeclinesUnparseableRunID` and `ok ... internal/discovery 0.833s` (swept 2).
+
+AC-016's four commands on this tree, each exit 0: `TestFactoryMarkerValuesFrozen` (internal/config, PASS), the two discovery tests above, `TestMCPServerEnvVarsKeepFactoryMarkers` (internal/codexwiring, PASS), `TestLegacyStateDirStillRead` (`./internal/kanban`, PASS, swept 1).
+
+Resource lease: `moai slot acquire --resource t1399-run --max-duration 60m` printed `slot t1399-run acquired by 0dcdf2d5-df5c-4da1-8870-24c2a5861303 until 2026-10-02T17:56:46Z`; it is released before the milestone's last commit.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
