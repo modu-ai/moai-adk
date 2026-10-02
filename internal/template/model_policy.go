@@ -59,6 +59,17 @@ const ModelIDOpus48 = "claude-opus-4-8"
 // ModelDeprecatedCanonicalIDs and introduce the new id as the alias target.
 const ModelIDSonnet55 = "claude-sonnet-5-5"
 
+// ModelIDFable51 is the canonical model ID for Claude Fable 5.1 — the current
+// target of the "fable" alias. The runtime attests claude-fable-5-1 as the
+// current generation (card t1286). Supersedes "claude-fable-5", which moves to
+// ModelDeprecatedCanonicalIDs for historical-prefs normalization.
+// Used by launcher.go to route the model and by profile translations.
+//
+// @MX:NOTE: [SYNC] ModelIDFable51 — canonical target of the "fable" alias.
+// On the next model bump, move this id into ModelDeprecatedCanonicalIDs and
+// introduce the new id as the alias target.
+const ModelIDFable51 = "claude-fable-5-1"
+
 // ModelAliasTable is the single source of truth mapping short model aliases
 // (the user-facing wizard picker values) to their canonical Claude Code model
 // ids. Add a new row whenever a new alias is introduced; every call site that
@@ -84,7 +95,7 @@ const ModelIDSonnet55 = "claude-sonnet-5-5"
 var ModelAliasTable = map[string]string{
 	"opus":     ModelIDOpus55,
 	"sonnet":   ModelIDSonnet55,
-	"fable":    "claude-fable-5",
+	"fable":    ModelIDFable51,
 	"haiku":    "claude-haiku-4-5",
 	"opusplan": "opusplan", // CC-native routing alias, no full-id expansion
 }
@@ -105,6 +116,7 @@ var ModelDeprecatedCanonicalIDs = map[string]string{
 	"claude-opus-5":     "opus",   // superseded by ModelIDOpus55
 	"claude-sonnet-5":   "sonnet", // superseded by ModelIDSonnet55
 	"claude-sonnet-4-6": "sonnet",
+	"claude-fable-5":    "fable", // superseded by ModelIDFable51 (card t1286)
 }
 
 // ModelAliasCanonicalID returns the canonical Claude Code model id for the
