@@ -4,49 +4,84 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-plan_status: revised-after-audit-iter2 (재감사 대기, 마지막 회차)
+plan_status: revised-after-scope-split (재감사 대기 — 축소 범위 1차)
 plan_complete_at: 2026-10-03
-artifacts: spec.md (REQ 16) · plan.md · acceptance.md (AC 16) · design.md (D-1..D-3, 순서 정본 D-3.1) · progress.md
-tier: M
+artifacts: spec.md (REQ 12) · plan.md · acceptance.md (AC 13) · design.md (D-1, D-2) · progress.md
+tier: M (축소 범위 재평가 결과 유지; 방법은 plan.md §A — 측정 `wc -l` + 가정 기반 줄 수 추정)
 measured_tree: 7109e0900
 open_clarifications: 0
 
-### plan-audit iteration 1 — FAIL 0.75 (audited_sha 95dfd85c8)
+### 분할 전 감사 3회 (F3·F4·F5 포함 범위)
 
-판정서: `.moai/reports/t1409/plan-audit-iter1.md`(로컬 사본, gitignore 대상). 차단 D1–D5, 주요 D6–D7, 경미 D8–D10. 개정(0.2.0, 커밋 `820eff47f`)이 그 처분이었다.
+| 회차 | 판정 | 점수 | audited_sha | 결과 |
+|---|---|---|---|---|
+| 1 | FAIL | 0.75 | `95dfd85c8` | 차단 D1–D5, 주요 D6–D7, 경미 D8–D10. 개정 0.2.0(`820eff47f`) |
+| 2 | FAIL | 0.81 | `820eff47f` | 신규 차단 N1–N4, 경미 N5–N7. 개정 0.3.0(`951f2bfb6`) |
+| 3 | FAIL | 0.81 | `951f2bfb6` | 차단 N8–N12(검증층: 경합 오라클, `codex_dialed` 단언, 변이표 지목 불일치, REQ-MH-011 실제 소유자 시험 부재, elicitation 귀속 구멍), 경미 N13–N15. 마지막 회차(3/3) |
 
-| 결함 | 처분 | 개정 내용 |
+판정서 로컬 사본: `.moai/reports/t1409/plan-audit-iter{1,2,3}.md`(gitignore 대상).
+
+### 범위 분할 결정과 그 출처
+
+- **결정**: F5(시그널 처리와 `Start`/`Close` 수명주기)를 새 카드 t1459 로 분리하고, 이 SPEC은 F3·F4 로 줄인다.
+- **출처와 날짜**: 운영자 결정, 리더가 중계(2026-10-03). 3차 판정서의 Recommendation 선택지 3("범위 축소")에 해당한다.
+- **리더 지시**: 축소된 이 SPEC의 다음 plan-audit 는 **축소 범위 1차(reduced-scope iteration 1)** 로 기록한다. Tier M 의 plan-auditor 상한은 2회이며 다시 상한에 닿으면 연장하지 않고 보고한다.
+- 이전 텍스트(F5 포함)는 git 이력 `95dfd85c8`, `820eff47f`, `951f2bfb6` 에서만 볼 수 있고 어디에도 복사하지 않았다.
+
+### 이 개정(0.4.0)이 한 일
+
+**제거된 것(F5 와 함께 사라짐)**: 구 REQ-MH-010(시그널 → 정리), 011(막힌 전달 해제), 012(`Start`/`Close` 수명주기), 013(Windows 시그널·zero-syscall 한정) · 구 AC-MH-009(드라이버 취소), 010(시그널 종단), 011(시그널 도우미 Windows 빌드 중 `launch_signals.go` 부분), 016(수명주기) · 구 AC-MH-004 의 `Close` 동시성 부분, 구 AC-MH-013 의 시그널·`Close` 재현 시험 3개, 구 AC-MH-015 의 시그널 관련 항목 · 변이 m1–m13, m22 와 수명주기 변이 전부 · 구 AC-MH-010·016 하위 케이스 표(§1.3·§1.5) · `managedStepHook` 시험 이음새 전부 · `launch_signals.go`, cross-platform syscall 면제 선언, 부모 REQ-MS-012 예외, 소유자 진입 오류 매핑(R-E), design D-3·D-3.1 수명 순서표.
+
+**번호 재부여(구 → 신)**
+
+| 구 REQ | 신 REQ | 구 AC | 신 AC |
+|---|---|---|---|
+| 001–005 | 001–005 | 001 | 001 |
+| 006–009 | 006–009 | 002 | 002 |
+| 010–013 | **제거(F5)** | 003 | 003 |
+| 014 (문서) | 010 | 004 | 004(쓰기 직렬화만) |
+| 015 (RED 기준선) | 011 | 005 | 005 |
+| 016 (비침범) | 012(Windows 빌드·zero-syscall 가드를 합침) | 006 | 006 |
+| — | — | 007 | 007 |
+| — | — | 008 | 008 |
+| — | — | 009, 010 | **제거(F5)** |
+| — | — | 011 | 009(Windows 빌드 가드만) |
+| — | — | 012 | 010 |
+| — | — | 013 | 011 |
+| — | — | 014 | 012 |
+| — | — | 015 | 013 |
+| — | — | 016 | **제거(F5)** |
+
+REQ 16→12, AC 16→13, 번호는 연속(MP-1).
+
+### 3차 결함 N8–N15 처분 (축소 범위 기준)
+
+| 결함 | 처분 | 근거 |
 |---|---|---|
-| D1 RED 산출물 경로 불착지 | fixed | 산출물을 추적되는 `.moai/specs/SPEC-FACTORY-MANAGED-HARDEN-001/red-baseline.md` 로 이동(측정: `git check-ignore -v` 대 `.moai/reports/…` 는 `.gitignore:235` exit 0, SPEC 경로는 출력 없음 exit 1; 감사 캐시 해시 목록 밖). `.moai/reports/t1409/` 는 로컬 사본뿐 |
-| D2 `Close`/`Start` 경합 | fixed(2차에서 순서 재정립) | design D-3 에 수명주기 규칙, REQ-MH-012 개정, AC-MH-016 신설, spec §F 경계 — 2차 감사가 N1·N2 로 이어짐 |
-| D3 표 이스케이프 파이프로 시험 0개 선택 | fixed | 파이프 문자를 담은 명령은 표 밖 fenced 블록, 선택 수 66 대 0 재측정 |
-| D4 시험 기반 AC의 RED-now 부재 | fixed (옵션 b) | "plan 시점 미채택, M1 이 채택", 재현 시험 8개 |
-| D5 MP-6 D8 문면 | fixed | spec.md C.3·§D 의 cross-platform exemption(EXCL-syscall) |
-| D6 부모 REQ-MS-012 문면과 운영 문서 | fixed | 명시적 예외 선언, AC-MH-012 가 운영 문서 문장 정정 확인 |
-| D7 elicitation 전제 오귀속·조용한 루프 | fixed(2차에서 귀속 순서 재정립) | 전제 정정, stderr 한 줄, 턴 단위 실패 처리 — 2차 감사가 N3 으로 이어짐 |
-| D8·D9·D10 | fixed / disclosed | 고정 앵커, "after the priming turn", 호출 수·시험 수 정정, 쓰기 한계·두 번째 시그널·후손 프로세스 공시 — 쓰기 한계 문장은 2차에서 N7 로 정정 |
+| N8 경합 오라클(`*_racing_start`) | **F5 와 함께 제거** | 수명주기 AC-MH-016 에만 있던 결함 |
+| N9 `codex_dialed` 쓰기 단언 | **F5 와 함께 제거** | 같음 |
+| N10 변이 m3·m7·m8·m9·m13 | **F5 와 함께 제거** | 수명주기·시그널 변이 |
+| N10 변이 m14 | **fixed** | AC-MH-006 #11 을 "같은 쓰기 묶음의 `turn/completed(T1)` 직후 요청 + 읽기 고루틴이 요청까지 처리할 때까지 소비자(`waitTurn`) 호출 보류"로 재작성. 가장 작은 이음새: 로그 대상 주입(별도 훅 없음) — 읽기 고루틴의 처리 완료를 그 요청 로그 줄(`turn=none`)로 안다. 소비자 쪽 계수기 설계(mu5)는 `waitTurn` 이 오류를 내 붉어짐 |
+| N10 변이 m17(요청마다 실패로 세기) | **declined(동치 변이) + 관측 가능한 대체** | 한 턴은 `DeliverTurn` 오류 하나만 내므로 차이가 없다. 관측값으로 로그 줄의 `broker_declined=<k>` 를 택하고 가를 수 있는 변이 mu8(`== 1` 판정)을 채택. #14 가 둘째 요청 줄 `broker_declined=2` 와 실패 1회를 단언 |
+| N10 변이 m19(상수 `3` 박기) | **fixed(방법 변경)** | 한 단계 변이로는 동치. 섭동 확인(상수를 2 로 바꿔도 AC-MH-007 시험 PASS, 드라이버가 3 을 박았다면 붉어짐)과 드라이버의 상수 참조 `grep` 으로 방어(acceptance §2.4·§6 DoD 4) |
+| N11 REQ-MH-011 실제 소유자 시험 부재 | **F5 와 함께 제거** | REQ 자체가 F5 |
+| N12 귀속 규칙 `turn/started` 이전 구멍 | **fixed** | `armTurn` 이 직전 완료 턴 id(`prevTurnID`)를 기억하고 지우지 않음. 규칙과 약속 문장을 design D-1 결정 3 의 한 문장으로 통일(acceptance §4 가 같은 문장을 가리킴). 행 추가: #15(`turn/started` 이전 직전 턴 id → nil), #16(확정된 현재 턴과 불일치 id → nil), #17(문자열 JSON-RPC id 요청도 귀속·계수·답장 id 보존). AC-MH-006 14→17 하위 케이스 |
+| N13(a) 훅 위치·`close-before-lock`·`codex_timeout` 이음새 | **부분 제거 + fixed** | 훅 위치 항목은 F5 와 함께 제거. `codex_timeout`(#8)은 이미 컨텍스트 인자를 받는 `startTurn` 에 50ms 마감 컨텍스트를 줘 이음새 없이 해결(design D-2) |
+| N13(b) O20 defer 순서 | **F5 와 함께 제거** | |
+| N13(c) REQ-MH-012 문면 vs F8 | **F5 와 함께 제거** | |
+| N13(d) 변이→마일스톤 배정 | **fixed** | acceptance §2.4 표에 모든 유지 변이의 마일스톤(M2/M3/M4)을 지정 |
+| N13(e) 경합 격자 근거 | **F5 와 함께 제거** | |
+| N14 Tier 선언 | **fixed(재평가)** | Tier M 유지, 방법(측정 `wc -l` + 가정 기반 추정)과 경계 상태를 plan §A 에 명시 |
+| N15(a) 훅 설정 race | **fixed(이음새 축소)** | 훅이 모두 사라져 남은 이음새는 로그 대상 `atomic.Pointer[io.Writer]` 하나 — 원자적이라 `-race` 안전, 시험은 병렬 금지 |
+| N15(b) stderr 줄 잡는 법 | **fixed** | 주입 가능한 쓰기 대상(위 원자 포인터). `os.Stderr` 전역 교체 안 함 |
 
-### plan-audit iteration 2 — FAIL 0.81 (audited_sha 820eff47f)
+### t1410 의존 정리 (plan §B, spec §F 와 동일 내용)
 
-판정서: `.moai/reports/t1409/plan-audit-iter2.md`(로컬 사본). 점수는 Tier M 통과선 0.80 을 넘었으나 blocking N1–N4 가 FAIL 을 강제했다. 1차 결함 D1·D3·D5·D6·D8–D10 은 해소 확인, D4 는 PASS-with-debt, D2·D7 은 N1–N4 로 이어짐.
+F8·F9·F13 모두 이 카드의 F3·F4 변경에 의존하지 않는다(줄 번호 측정, 결론은 추론). F8 은 `Start`/`Close` 를 구조적으로 바꾸는 t1459 와 같은 줄 영역을 만진다. 공유 시험 파일 `managed_codex_factory_test.go` 에서 텍스트 충돌 가능(추론).
 
-**리더 결정(2차 후)**: 정확히 **한 번 더**(3차, 마지막) 감사를 승인했다. 3차에서 FAIL 이면 연장하지 않는다. 델타 범위는 N1–N4 + 경미(N5–N7) + 회귀. 진입 조건: 3차 판정이 PASS 계열이고 blocking 0 이면 plan→run Kickoff 를 autonomous 형태(독립 감사 교차 증거 + 판정 기록)로 진행한다(auto-semantics §9.1; keep-set 사례는 운영자 응답을 유지).
+### 미측정(개정 시점)
 
-개정(0.3.0)의 처분(리더 지시 — 순서 문제는 문장 땜질이 아니라 한 번에 못 박는다):
-
-| 결함 | 처분 | 개정 내용 |
-|---|---|---|
-| N1 `started` 게이트 모순과 `MkdirTemp`→`cmd.Start` 누수 창 | fixed (옵션 b) | design D-3.1 의 **한 순서표 O1–O20** 이 정본. 게시(published) ⇔ 지금의 `started`(`cmd.Start` 성공 직후). `MkdirTemp`–토큰 쓰기–엔드포인트–`cmd.Start`–게시가 **L 안 한 임계구역**이라 `Close` 가 중간에 끼어들 수 없고, 토큰 디렉터리는 게시 때까지 `Start` 소유(F8 불변). 느린 단계(준비 폴링·다이얼·핸드셰이크)는 L 밖, 연결 기록(O12)에서 닫힘 재확인. 두 소유자의 `Close` 도착 시점별 결과표 포함. 모순 문장 제거, spec §F 의 F8 경계를 "바뀌는 것/안 바뀌는 것/겹치는 곳"으로 재작성 |
-| N2 AC-MH-016 이 변이를 못 가름 | fixed | 훅 하나(`managedStepHook`)를 단계 지점마다 둠(`start-before-lock`, `start-token-written`, `start-child-spawned`, `start-published`, `start-dialed`(다이얼 후·기록 전, 연결을 받음), `start-conn-recorded`, `close-snapshot`, `teardown`). AC-MH-016 하위 케이스 10개와 케이스별 기대(Start·Close 결과, 사후 조건 5종, 정리 1회), `during_handshake` 2초 시험 안 상한(Windows 성립), 경합 반복(codex 40, stream 200)과 그 근거, 결과를 훅 이벤트 순서로 결정하는 오라클, 변이 m1–m23 과 지목 하위 케이스(acceptance §2.4), DoD 3 갱신. plan M1 RED 이유 표와 "옳은 이유의 RED"(시험 자신의 시간 상한 단언은 옳은 이유, 하네스 타임아웃·컴파일 실패는 wrong-reason) 규정을 한 방향으로 통일 |
-| N3 elicitation 계수기 순서 | fixed | design D-1 결정 3: 판정을 소비자가 아니라 **읽기 고루틴이 프레임 도착 순서로** 정한다(`armTurn` 이 `turn/start` 쓰기 전에 창을 열고 초기화, `turnId` 우선·없으면 열린 창, 창 밖은 어느 턴에도 안 셈, 판정은 `turn/completed` 이벤트에 실려 옴). AC-MH-006 하위 케이스 14개(원인 10 + (a)–(d) 4)와 변이 m14–m18. REQ-MH-002·006 에 귀속 문구, design/acceptance 의 "버려진다" 단정 제거(시험으로 고정) |
-| N4 스트림 시그널 구독이 등록보다 늦음 | fixed | O1: 시그널 컨텍스트·핸들러가 **소유자 진입의 첫 영속 단계**(두 소유자 모두 launch-pending 등록 전). 워처만 세션 생성 뒤 부착(이미 취소됐으면 즉시 `Close`). 규칙 R-E: O1 이후 모든 오류 반환을 컨텍스트가 취소돼 있으면 중단 오류로 매핑(O20 ④). AC-MH-010 하위 케이스 6개(`stream_SIGTERM_after_registration` 신설, 훅 단계명별), 재실행 도우미의 준비 표지(`ready <단계명>`) 대기. REQ-MH-010 개정 |
-| N5 spec/design 버전·HISTORY | fixed | spec.md·design.md 0.3.0, HISTORY 0.2.0·0.3.0 행, plan·acceptance 0.3.0 |
-| N6 AC-MH-002 "한참 짧음", `moai` 리터럴, `Start` 실패 시 `ctx.Err()` | fixed | AC-MH-002 절대 상한 5초, 서버 이름은 기존 상수 `moaiMCPServerKey` 로 비교하고 승인 인수와의 일치를 고정 시험(`TestManagedBrokerNameMatchesApprovalArgs`)으로, `Start` 오류 → 중단 매핑은 R-E |
-| N7 쓰기 한계 문장 | fixed (공시 정정) | `call()` 의 `WriteJSON`(`:212`)이 `select`(`:215`) 앞이라 막힌 쓰기는 턴 타임아웃으로 풀리지 않음. 상한은 `Close`/연결 종료까지. 쓰기 데드라인 상수는 더하지 않기로 판단(근거 명시), design D-3·acceptance §4·REQ-MH-014 문구 정정 |
-
-개정 뒤 REQ 16(추가 0, 이번 개정 문구 수정: REQ-MH-002·006·010·012·014), AC 16(추가 0, 이번 개정 수정: AC-MH-002·006·010·016 및 §1.3–§1.5 표 신설).
-
-미측정(개정 시점): 설치된 `moai` 바이너리가 이 트리보다 뒤처져 있으므로 `moai spec lint` 출력은 지연 빌드의 증거일 뿐 이 트리 빌드의 판정이 아니다. `Close`∥`Start` 경합, 시그널 등록 후 창, elicitation 귀속 경합은 plan 작성자가 재현·관측하지 않았다(소스 순서는 이번 개정에서 기준 트리를 다시 읽어 확인; plan.md §C Gaps). 라이브 Codex 관측(`serverName` 값 포함)은 run 진입 조건이 아닌 이름 붙은 Gap.
+설치된 `moai` 바이너리가 이 트리보다 뒤처져 있으므로 `moai spec lint` 출력은 지연 빌드의 증거일 뿐 이 트리 빌드의 판정이 아니다. elicitation 귀속의 읽기 고루틴 대 소비자 경합은 plan 작성자가 재현·관측하지 않았다(소스 순서와 설계 논증만). 라이브 Codex 관측(`serverName` 값 포함)은 run 진입 조건이 아닌 이름 붙은 Gap. Tier 의 줄 수 추정은 가정이다.
 
 ## §E.2 Run-phase Evidence
 
