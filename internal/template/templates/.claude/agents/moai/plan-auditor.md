@@ -208,18 +208,30 @@ audited_sha: <full commit SHA the audit read>
 
 ## MCP Audit Tools (cross-model second opinion)
 
-This auditor carries single- and multi-backend audit MCP tools in its `tools:` list. Use them BEFORE reaching the primary verdict when the project config requests a cross-backend second opinion:
+This auditor carries single- and multi-backend audit MCP tools in its `tools:` list. Which of them to call is read from the audit plan, never from the `audit_model` value by prose:
 
-- `mcp__moai__audit_multi` — source-aware convergence: a Claude main session contributes its in-session anchor; GPT/GLM main sessions trigger a fresh subscription-backed Claude audit. Default path when `audit_model: multi`.
+- `mcp__moai__audit_multi` — source-aware convergence: a Claude main session contributes its in-session anchor; GPT/GLM main sessions trigger a fresh subscription-backed Claude audit. The path whenever the plan reports a cross-model backend.
 - `mcp__moai__claude_audit` — independent Claude subscription audit with read-only isolation and structured provenance.
 - `mcp__moai__codex_audit` — codex-backend single audit (`native` or `adversarial` mode).
 - `mcp__moai__glm_audit` — GLM (z.ai) backend single audit.
 
-Single-backend audit mode (per the project's `audit_model`):
-- `multi` — converge Claude, Codex, and GLM via `mcp__moai__audit_multi`; most robust.
-- `claude` — Claude main uses its own review; GPT/GLM main calls `mcp__moai__claude_audit`.
-- `glm` — GLM only; call `mcp__moai__glm_audit` directly.
-- `codex` — codex only; call `mcp__moai__codex_audit` directly.
+### [HARD] Read the plan before the verdict
+
+Before reaching a verdict, learn this session's own toplevel (`git rev-parse --show-toplevel`, a plain call) and run `moai verify audit-plan --project-root <that toplevel>`. Pass the toplevel yourself: in a worktree session `CLAUDE_PROJECT_DIR` names the primary checkout, so the default would read the wrong tree. The verb is read-only and prints one JSON object.
+
+- **A plan** — `config_status` is `ok` or `absent`. With `cross_model_active: true`, call `mcp__moai__audit_multi` without a `gates` argument (the tree's own plan then applies), with `project_root` set to your toplevel, `target`, `focus`, and `claude_verdict` only from a Claude main session; fold the result per Skill("moai-ref-cross-model-audit"). With `cross_model_active: false` (the distributed default and an explicit `claude` token included), keep the single-model path: a Claude main session reviews in-session, a GPT/GLM main session calls `mcp__moai__claude_audit`.
+- **The `verify` group's help text** — output that contains `Shared diagnostic snapshot contract` and neither a `config_status` member nor an `audit-plan:` line is the signature of a binary that predates the verb. Take the legacy path below and record "plan surface unreachable, legacy path used" as a named Gap in the verdict. That signature, and only that one, is the legacy path.
+- **Anything else** — `config_status: unreadable`, an `audit-plan:` error line, a refused, crashed or timed-out run, a non-zero exit, malformed output: not the legacy path. Record the cause as a PASS-blocking Gap and do not yield PASS on this audit, exactly as for an unmet required gate. A configured required backend that does not answer stays fail-closed by name.
+
+**Legacy path (a binary that predates the verb).** Behave exactly as before the plan verb existed: read the project's `audit_model` from `workflow.yaml`. `multi` — converge Claude, Codex and GLM via `mcp__moai__audit_multi`; `claude` — Claude main uses its own review, GPT/GLM main calls `mcp__moai__claude_audit`; `glm` — `mcp__moai__glm_audit` only; `codex` — `mcp__moai__codex_audit` only. Wherever you call `audit_multi`, pass it without a `gates` argument, and call it whenever the tree's `workflow.yaml` sets an audit model other than `claude` or any `audit.gates` key, so a configured plan or gate is applied by a plan-aware server rather than weakened by explicit default arguments.
+
+### [HARD] Check the audit_multi result against the plan
+
+After each `audit_multi` call on a tree whose plan lists `enforced_required` backends, check the result before reaching a verdict:
+
+1. Write the digest of the result just obtained with your `Write` tool to `<toplevel>/.moai/state/audit-plan-result.json` — fresh, immediately before the check: overwrite any earlier file at that name and never reuse a file from an earlier audit. The digest holds `overall_verdict`, `gate_unmet`, `plan_source` and, per `per_backend_verdicts` entry, `backend`, `gate` and `verdict` — digest members only, never summary or finding text.
+2. Run `moai verify audit-plan --project-root <toplevel> --result-file <toplevel>/.moai/state/audit-plan-result.json` and pass only the path — never the JSON on the command line (the worktree guard refuses braces and quotes).
+3. Read `convergence_check`. `ok: false` is an unmet gate: name the backend(s) in `unmet` under Gaps and Residual-risk, yield no PASS, and say it is an unmet gate, not a reviewed defect. A non-empty `gate_unmet` on the result is the same: the overall verdict is `fail`.
 
 All backend tools fail open to `inconclusive` rather than a Go error. An explicitly required audit gate left inconclusive still fails the convergence result, because missing evidence is not a pass. The same rule now holds on the single-backend surface: where the reviewed tree explicitly sets `workflow.audit.gates.codex` to `required`, `mcp__moai__codex_audit` returns `verdict: fail` with a non-empty `gate_unmet` and `isError: false` instead of an inconclusive.
 
@@ -742,7 +754,7 @@ The audit boundary is clear: plan-auditor audits, manager-spec creates and revis
 
 This agent carries no static `skills:` preload. The Skill tool is for read-only reference loading only — e.g., invoke Skill("moai-foundation-quality") when scoring TRUST 5 dimensions. Auditor independence means never loading a skill that prescribes acceptance.
 
-When the project sets `audit_model: multi`, or a GPT/GLM main session needs a Claude subscription audit, invoke Skill("moai-ref-cross-model-audit") before reaching a verdict. It documents the source-aware `mcp__moai__audit_multi` / `mcp__moai__claude_audit` paths and the independence rule that prevents one backend's analysis from contaminating another.
+When the audit plan reports a cross-model backend, or a GPT/GLM main session needs a Claude subscription audit, invoke Skill("moai-ref-cross-model-audit") before reaching a verdict. It documents the source-aware `mcp__moai__audit_multi` / `mcp__moai__claude_audit` paths and the independence rule that prevents one backend's analysis from contaminating another.
 
 ## Model/effort escalation
 
