@@ -64,7 +64,7 @@
 
 ```yaml
 sync_complete_at: 2026-10-02
-sync_commit_sha: pending-backfill-sync  # D3-exempt placeholder — a commit cannot cite its own SHA; backfilled in the follow-up commit (spec-frontmatter-schema.md § SHA placeholder backfill exemption)
+sync_commit_sha: 180453bb3803e43fbe8c9b6f4cc29836067eb6cb  # D3-exempt backfill: the placeholder in the sync commit 180453bb3 replaced with the real SHA by the lane (phase-owned field, manager-docs §E.4)
 sync_status: complete
 b12_self_test_a: pass  # pre-emission grep `grep -c 'SPEC-WEB-SETTINGS-SAVE-001' CHANGELOG.md` = 0 before this sync commit (duplicate-entry guard)
 b12_self_test_b: pass  # AC count: acceptance.md (tier M source) → live=16 excluded=0 ambiguous=0 (RETIRED/REF 마커 0건); the CHANGELOG entry cites the same 16 (AC-WSS-001..016)
