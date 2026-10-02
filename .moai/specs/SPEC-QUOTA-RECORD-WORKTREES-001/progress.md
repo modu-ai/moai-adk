@@ -452,9 +452,141 @@ The seam keeps its type (`func(string, time.Time, time.Duration) statusline.Quot
 - The whole `./internal/cli` and `./internal/config` packages were not run (only the anchored selectors above); the shipped-key guard and `TestQAS_AC007_ConfigDefaultsMirrorTemplate` were not re-run because `internal/config` was not touched in this part.
 - The end-to-end observation of a real lane's gate reading real worktree records is still the post-install follow-up of plan.md §C (no binary built from this tree was installed or run).
 
+### M5 — closure evidence (AC-QWR-011, AC-QWR-012, benchmark data point, closure checks, final-tree decider re-run)
+
+Tree: `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1442`, branch `WT-quota-read-worktree-records`, HEAD at measurement `ce2cd365ca96f61c9b3cd4c3fd4082d546ce7610`, 2026-10-02, tree clean (`git status --short` printed nothing). No production code and no plan artifact was changed in this milestone. Judging build for every Go measurement: `go version go1.26.8 darwin/arm64` (tests compile from this tree; lint is `golangci-lint v2.1.6` through `go run ...@v2.1.6`). The `moai` command used for lint is the installed build `v3.2.0-rc.25 moai_cp/20260925_122548-1952-g802a72235 built 2026-10-02T08:00:14Z`, an ancestor of this tree HEAD that predates all the quota code (QWR-M0 above). The Bash tool displays a failure line for a non-zero exit and none for exit 0 (observed: `Exit code 3` for the refused slot acquire below); a command that printed "no output" and showed no failure line is recorded as exit 0 by that display, not by an echoed `$?` (the guard refuses `; echo $?`).
+
+#### AC-QWR-011 — baseline-first ordering (commands as written in acceptance.md, no pipes)
+
+```
+$ git merge-base develop HEAD
+284e09c44023598affe486f17701717ca173e6ca            (CARD_BASE)
+$ git log --reverse -S'QWR-M0' --format=%H 284e09c44023598affe486f17701717ca173e6ca..HEAD -- .moai/specs/SPEC-QUOTA-RECORD-WORKTREES-001/progress.md
+60cb309ba8e6c2bce563ebd8ccdeaba3bd057123            (first line = B)
+7ff152b2bc9ab432b9f134df1dd6166968187f35            (a later commit whose M1 RED text also adds the marker: the pinned "not the first to carry it" mutant; B is the FIRST line)
+$ git log --reverse -S'QWR-M0' --format=%H 284e09c44023598affe486f17701717ca173e6ca..HEAD -- .moai/specs/SPEC-QUOTA-RECORD-WORKTREES-001/plan.md     (positive control, non-empty)
+8da5e1f39db1317f970a1e25831f22d8437f6f01
+b92f4bd8f25067a5d00865b9482bc48c2e0fd402
+bb6b9925ecf50b69ab9f54d0aa3e548bd41016e0
+$ git log --reverse --format=%H 284e09c44023598affe486f17701717ca173e6ca..HEAD -- internal ':(exclude)*_test.go' ':(exclude)*/testdata/*'
+0bb2048beb0d223ba2edfec65d3cafb1c900c9ef            (first line = I)
+e350a81392c19bcd0555ec0ec75b64b0866d5c77
+7ff94b33f79ec389a8f226cde4fbe018c0f7c68b
+8ea00c4bb17ad018ad35c79207479332b8e390ee
+45dc4e1012fe988fa8803ffb048625ddb327327e
+$ git show 60cb309ba8e6c2bce563ebd8ccdeaba3bd057123:.moai/specs/SPEC-QUOTA-RECORD-WORKTREES-001/progress.md
+(read in full, not piped: the `### QWR-M0 — real-lane record-location measurement` heading, the before/after listing of the four record copies with mtimes, dates and times T0/T1/T2, the measured command `moai factory status`, statements (i)-(iii), and the gaps)
+$ git merge-base --is-ancestor 60cb309ba8e6c2bce563ebd8ccdeaba3bd057123 0bb2048beb0d223ba2edfec65d3cafb1c900c9ef
+(no output, no failure line displayed: exit 0)
+$ git rev-list --count 0bb2048beb0d223ba2edfec65d3cafb1c900c9ef..60cb309ba8e6c2bce563ebd8ccdeaba3bd057123
+0
+$ git rev-list --count 60cb309ba8e6c2bce563ebd8ccdeaba3bd057123..0bb2048beb0d223ba2edfec65d3cafb1c900c9ef      (strictness)
+1
+$ git show --stat --format=%h 0bb2048beb0d223ba2edfec65d3cafb1c900c9ef
+(8 files: factory_quota.go, factory_quota_worktrees_test.go, loader_quota_gate.go, quota_gate_scan_dirs_test.go, types.go, quota_dirs.go, quota_dirs_test.go, and spec.md frontmatter; 1697 insertions, 1 deletion)
+```
+
+Reading: B (`60cb309ba`) exists, is none of the plan-phase commits (`8da5e1f39`, `2c6ef5077` carry no marker in progress.md; the progress.md form printed no plan commit), carries the QWR-M0 cell, and is a strict ancestor of I (`0bb2048be`): the ancestor command exited 0, `I..B` prints 0, `B..I` prints 1 (at least 1). The same-commit mutant (B..I = 0), the marker-after-implementation mutant (I..B at least 1) and the not-first-carrier mutant (B is the first line of the list) are all excluded by these outputs. AC-QWR-011: PASS. Pre-merge evaluation only (after the card merges the range is empty).
+
+#### AC-QWR-012 — preserve, the writer, the other thresholds, the schema (commands as written, no pipes)
+
+```
+$ git diff --name-only 284e09c44023598affe486f17701717ca173e6ca..HEAD -- internal/stateanchor internal/statusline/state_anchor.go internal/statusline/context_usage.go .moai/specs/SPEC-QUOTA-AWARE-SCHEDULING-001 internal/statusline/quota_test.go internal/cli/factory_quota_test.go internal/config/workflow_quota_gate_test.go
+(no output: no preserved path changed)
+$ git diff --name-only 284e09c44023598affe486f17701717ca173e6ca..HEAD -- internal/config
+internal/config/cache.go
+internal/config/defaults.go
+internal/config/loader_quota_gate.go
+internal/config/quota_gate_scan_dirs_test.go
+internal/config/testdata/shipped_key_inventory.yaml
+internal/config/types.go
+$ git diff --numstat 284e09c44023598affe486f17701717ca173e6ca..HEAD -- internal/config/defaults.go internal/config/loader_quota_gate.go
+7	0	internal/config/defaults.go
+27	0	internal/config/loader_quota_gate.go
+$ git diff --name-only 284e09c44023598affe486f17701717ca173e6ca..HEAD      (positive control, non-empty)
+(18 paths; names both internal/statusline/quota_dirs.go and internal/config/types.go, plus internal/statusline/quota.go, internal/cli/factory_quota.go, the template and local workflow.yaml, and the SPEC directory)
+```
+
+Reading: (1) the preserve list printed nothing, with the control non-empty and naming both required paths, so the empty result is a measured absence. (2) The six config paths are exactly the five allowed files plus the new test file `quota_gate_scan_dirs_test.go`; no other `internal/config` path changed. (3) The two numstat lines have removed-lines column 0 and added-lines column at least 1. The additions (`git diff -U1` read): `DefaultQuotaGateMaxScanDirs = 128` and the seed line `MaxScanDirs: DefaultQuotaGateMaxScanDirs` in `defaults.go`; the range constants `quotaGateScanDirsMin = 1` / `quotaGateScanDirsMax = 1024` and the accessor `LoadQuotaScanBound` in `loader_quota_gate.go`. The five predecessor quota_gate keys (`enabled`, `five_hour_hold_pct`, `seven_day_hold_pct`, `release_margin_pct`, `max_age`), their defaults (off, 90, 95, 5, 30m) and ranges are untouched: no `DefaultQuotaGate*` constant, no `quotaGate*` range constant, no `QuotaGateSettings`, `DefaultQuotaGate`, `resolveQuotaGate` or `LoadQuotaGate` line appears as a removed or changed line. AC-QWR-012: PASS. Pre-merge evaluation only.
+
+#### Timing data point (D4, NOT a gate): `BenchmarkQWR_RealRoot`, one run
+
+Command (the env switch `MOAI_QWR_BENCH_ROOT` is read from the test file constant `qwrEnvBenchRoot`, set in the same command): `env MOAI_QWR_BENCH_ROOT=/Users/goos/MoAI/moai-adk-go go -C <tree> test ./internal/statusline -run '^$' -bench 'BenchmarkQWR_RealRoot' -benchtime 20x -count=1`. Nothing else of mine ran during it.
+
+```
+uptime before: 20:57  up 16 days,  9:09, 33 users, load averages: 78.41 104.36 99.46
+cpu: Apple M4 Max
+BenchmarkQWR_RealRoot/multi_dir_bound_128-16      20   29208033 ns/op
+BenchmarkQWR_RealRoot/single_primary_dir-16       20    7477219 ns/op
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/statusline	1.253s
+uptime after:  20:58  up 16 days,  9:09, 33 users, load averages: 82.30 104.34 99.50
+```
+
+(The first "after" reading, 20:57 / 80.06, was issued in the same tool batch as the benchmark and may have run alongside it, so the clean one above was taken afterwards.) At the time the primary repository had 38 entries under `.git/worktrees` (`ls` of that directory, 40 lines less the two dot entries), so the bound of 128 was not reached. Reading: one run, 20 iterations, on a machine at load average about 80 (an M4 Max whose 16 cores were oversubscribed by other sessions): about 29.2 ms per multi-directory call against about 7.5 ms per single-directory call on the primary directory, a ratio of about 3.9. This is a single noisy data point on a loaded machine. It is not a pass or a fail, not a gate, and not a basis for the 128 default or for any cost claim; the M4 Check B figures (a throwaway `workflow.yaml` parse benchmark at load about 50-90) are equally one noisy sample.
+
+#### Closure checks (scoped), final tree
+
+- `go -C <tree> vet ./internal/statusline ./internal/config ./internal/cli` → no output, no failure line (exit 0).
+- `GOOS=windows GOARCH=amd64 go -C <tree> build ./...` → no output, no failure line (exit 0).
+- `go -C <tree> run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6 run ./internal/statusline/... ./internal/config/... ./internal/cli/...` → `0 issues.`
+- `moai spec lint .moai/specs/SPEC-QUOTA-RECORD-WORKTREES-001/spec.md` and the same with `--strict` (installed build named above) → both `0 error(s), 2 warning(s)`, no failure line. Both warnings are `MovingRefUnpinned` on `progress.md` lines 232 and 243, inside the M1 RED section: they sit on verbatim captured test output (a quoted stdout line that mentions the text `origin/main`), not on a claim of this SPEC; those lines are earlier record and are not edited here. Under `--strict` the warnings did not become errors. This is a gap in the sense that the lint is not warning-free; it is not an error.
+- `go -C <tree> test ./internal/spec -run 'TestACCounterFullCorpusMatchesBaseline' -count=1 -v` → `--- PASS: TestACCounterFullCorpusMatchesBaseline (12.56s)`, `ok  github.com/modu-ai/moai-adk/internal/spec 12.965s`; the test reports 37 acceptance files absent from the snapshot "reported, not failed", among them this SPEC's `acceptance.md` with `COUNT 15` (the file has 13 `### AC-QWR-` headings by `grep -c`; the counter's 15 was not reconciled, and the test treats absent-from-snapshot files as non-failing).
+- E4: `grep -rn AskUserQuestion` over the changed non-test files (`internal/statusline/quota.go`, `internal/statusline/quota_dirs.go`, `internal/cli/factory_quota.go`, `internal/config/loader_quota_gate.go`, `defaults.go`, `types.go`, `cache.go`) → no output (no match; the harness does not display a failure line for a zero-match grep, so this is the printed absence).
+- New non-test code uses the standard library only (`os`, `io`, `bytes`, `strings`, `path/filepath`); the AC-QWR-006 sweep inside the statusline run below passed.
+
+#### Final-tree decider re-run (HEAD `ce2cd365c`, scrubbed single compound `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go -C <tree> test ...`, `-count=1 -v`, output redirected to a file and read)
+
+Statusline `-run '^(TestQWR_|TestQAS_)'` (no lease; light) → `ok  github.com/modu-ai/moai-adk/internal/statusline 1.423s`; top-level `--- PASS`: 15 (seven TestQWR_: AC001, AC002, AC003, AC004, AC005, AC006, AC010; eight TestQAS_: AC001, AC002, AC002b, AC003, AC004, AC005, AC006, AC014), subtests `--- PASS`: 77, `--- FAIL`/`--- SKIP`: 0.
+
+Coverage of the changed statusline code under that same selector (`-coverprofile`, `go tool cover -func`): `quota.go` `AggregateQuota` 100.0%, `scanQuotaDir` 94.4%, `offer` 100.0%, `reading` 100.0%; `quota_dirs.go` `QuotaStateDirs` 100.0%, `worktreeStateDir` 93.8%, `AggregateQuotaDirs` 100.0%. (The package total of that run, 32.1%, is the selector's reach over the whole package and is not a coverage claim for the package.)
+
+Lease: `moai slot acquire --resource go-test-cli --max-duration 20m` first printed nothing and exited 3 (`Exit code 3`); `moai slot status --resource go-test-cli` showed another session (`60da3105-d660-42ae-a371-4ceb8a76c327`, pid 40942) holding it until `2026-10-02T12:09:22Z`. A retry loop acquired it after that bound passed, full output read: `slot go-test-cli acquired by 2da35a68-1196-4183-b6e5-a50fc9b6d901 until 2026-10-02T12:29:37Z` / `  displaced: 60da3105-d660-42ae-a371-4ceb8a76c327 (pid 40942), reason expired, held since 2026-10-02T11:54:22Z` (the previous holder's declared bound had expired; no `--force` was used).
+
+Config `-run '^(TestQWR_AC013_MaxScanDirsConfigKey|TestQAS_AC007_ConfigDefaultsMirrorTemplate|TestShippedConfigKeysHaveReaders)$'` → `--- PASS: TestQWR_AC013_MaxScanDirsConfigKey (0.03s)`, `--- PASS: TestShippedConfigKeysHaveReaders (4.62s)`, `--- PASS: TestQAS_AC007_ConfigDefaultsMirrorTemplate (0.03s)`, `ok  github.com/modu-ai/moai-adk/internal/config 5.040s`; 3 top-level, 21 subtests PASS (8 + 4 + 9), 0 FAIL/SKIP.
+
+Cli `-run '^(TestQWR_.*|TestQAS_AC006b_NextLeasesWhenQuotaDataAbsent|TestQAS_AC008_ClaudeLaneHeldAtThreshold|TestQAS_AC010_WaitLatchReleasesOnlyBelowMarginOrResetOrUnknown|TestQAS_AC012_StatusQuotaBlockOnlyWhenGateEnabledWithData|TestQAS_AC017_SharedPressureEvaluationAndSurfaces|TestQAS_AC022_GateOffOrPressureOffOutputUnchanged|TestQAS_AC014_AggregatorIsOfflineSpawnFreeAndReadOnly)$' -timeout 30m` → `ok  github.com/modu-ai/moai-adk/internal/cli 173.540s`; 12 top-level `--- PASS` (five TestQWR_: AC007 `2.13s`, AC008 `16.38s`, AC009 `21.60s`, AC010b `7.01s`, AC013b `0.62s`; seven TestQAS_: AC006b, AC008, AC010, AC012, AC014, AC017, AC022), 55 subtests PASS, 0 FAIL/SKIP.
+
+Lease released before this record was written: `moai slot release --resource go-test-cli` → `slot go-test-cli released (was 2da35a68-1196-4183-b6e5-a50fc9b6d901)`.
+
+AC matrix on the final tree: AC-QWR-001..006 and -010 (statusline) PASS; -007, -008, -009, -010b (cli), -013b PASS; -013 (config) PASS; -011 and -012 PASS by the one-shot commands above. 13 of 13 PASS, none skipped.
+
+#### Gaps (M5)
+
+- The end-to-end observation of the gate reading a real lane's records (an installed build from a tree containing both SPECs, a lane under a worktree, the freshest record in a worktree directory) was not made: no binary built from this tree was installed or run. Post-install follow-up, not an acceptance criterion.
+- The 128 default, the 4 KiB `gitdir` read and the per-call cost are unmeasured as design values; the one benchmark above is a single noisy sample at load about 80, not a measurement of cost.
+- The fallback branch of the production seam (a state-directory path that is not `<root>/.moai/state`) is pinned by no test (by code only).
+- `real_git_worktree_layout` ran on this machine's git only; the Windows `gitdir` shape (`C:/...`) was not exercised, and the Windows and root skips of `TestQWR_AC004/gitdir_unreadable` were not exercised.
+- The whole `./internal/cli` and `./internal/config` packages were not run (anchored selectors only, per the load discipline); CI on the pushed develop head carries the full-suite verdict.
+- `moai spec lint` shows the two `MovingRefUnpinned` warnings noted above (not errors); the AC counter reports 15 for acceptance.md against 13 headings.
+- Exit status of commands that printed nothing is inferred from the harness's failure-line display, not from an echoed `$?`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-10-02
+run_status: audit-ready
+cycle_type: tdd
+head_at_signal: ce2cd365ca96f61c9b3cd4c3fd4082d546ce7610   # the M5 evidence commit follows it
+commits:
+  m0_baseline_B: 60cb309ba8e6c2bce563ebd8ccdeaba3bd057123
+  first_implementation_I: 0bb2048beb0d223ba2edfec65d3cafb1c900c9ef   # M1 stubs and RED tests, flips spec.md to in-progress
+  m1_rework: e350a81392c19bcd0555ec0ec75b64b0866d5c77
+  m2: 7ff94b33f79ec389a8f226cde4fbe018c0f7c68b
+  m3: 8ea00c4bb17ad018ad35c79207479332b8e390ee
+  m4: 45dc4e1012fe988fa8803ffb048625ddb327327e
+  m5_evidence: pending-backfill   # a commit cannot cite its own hash; the real SHA is in the run report
+acceptance_criteria: {total: 13, pass: 13, skipped: 0}
+open_gaps:
+  - end-to-end real-lane gate observation after installing a build from this tree (post-install follow-up, not an AC)
+  - 128 default, 4 KiB gitdir read and per-call cost unmeasured (one noisy benchmark sample only)
+  - fallback path of the production seam unpinned by any test
+  - Windows gitdir shape unexercised
+  - moai spec lint: 2 MovingRefUnpinned warnings on quoted M1 output (progress.md lines 232 and 243), 0 errors
+minor_plan_debt:
+  absorbed_in_run: [D-N9 (the cli test counters delegate to the values in force), D-R1 (the accessor is only reached through the seam, which AC-QWR-007 shows is not called while the gate is off), D-R2 (M2 recorded the 2.5 observation), D-R6 (Go seed and template key landed in one commit 7ff94b33f)]
+  remaining_plan_text_for_sync_or_manager_spec: [D-N10 (the benchmark env name MOAI_QWR_BENCH_ROOT is a test-file constant; acceptance.md section B still says no test reads the real tree), D-N11, D-N12, D-N13 (no --auto steering subtest exists), D-N14, D-N15 (measured: 1846 insertions and 13 deletions under internal/ against the Tier M 300-1000 LOC guidance, 1663 of the insertions in three test files (615 + 205 + 843)), D-R3, D-R4, D-R5, D-R7]
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
