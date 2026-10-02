@@ -7,9 +7,10 @@ plan_complete_at: 2026-10-02
 plan_status: audit-ready  # artifacts authored by manager-spec; the independent plan-audit has not run
 tier: M
 artifacts: [spec.md, plan.md, acceptance.md, decision-index.md, progress.md]
-requirements: 10
-acceptance_criteria: 12
-open_decisions: [D1, D4, D5, D6, D2-seam-shape]  # routed in decision-index.md Q1-Q5, verdicts empty
+requirements: 11
+acceptance_criteria: 13
+open_decisions: []  # none; D4 (decision-index.md Q2) and D2 (Q5) carry the leader's verdict, ACCEPTED provisionally (D4 values unmeasured, bound exposed as workflow.quota_gate.max_scan_dirs); D1, D5, D6 resolved by the decision oracle
+spec_version: "0.3.0"
 planned_at_head: 284e09c44023598affe486f17701717ca173e6ca
 ```
 

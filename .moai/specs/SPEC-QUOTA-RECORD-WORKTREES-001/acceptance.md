@@ -4,7 +4,7 @@ This file is the verification layer: Given-When-Then criteria, each decided by o
 
 ## §A Scope of verification
 
-The criteria verify: a reading that exists only in a linked worktree's record directory is seen (three layouts plus a metadata entry whose name differs from its directory, and the on-disk layout git itself writes); freshest-wins across directories (a stale primary copy of a session id against a fresh worktree copy, the reverse, per window, tie, not-max); the single-directory entry point and every old `TestQAS_` test unchanged; unusable worktree entries contributing nothing; the entry bound; the offline, spawn-free, read-only, non-recursive property of the new code; nothing read while the gate is disabled; the lane gate, status block, and acquire warning seeing a worktree-only reading with unchanged output form; the no-git-metadata root reading its own directory alone; the measurement record and its commit ordering; and the untouched writer, thresholds, schema, and predecessor files. Not verified here: a real Claude Code statusline writing windows (the installed binary writes schema 2, no windows), real quota consumption, kanban mode, and any codex or GLM lane.
+The criteria verify: a reading that exists only in a linked worktree's record directory is seen (three layouts plus a metadata entry whose name differs from its directory, and the on-disk layout git itself writes); freshest-wins across directories (a stale primary copy of a session id against a fresh worktree copy, the reverse, per window, tie, not-max); the single-directory entry point and every old `TestQAS_` test unchanged; unusable worktree entries contributing nothing; the entry bound and its configuration key `workflow.quota_gate.max_scan_dirs` (default, range, template, local twin, inventory, cache schema, and the production seam applying it); the offline, spawn-free, read-only, non-recursive property of the new code; nothing read while the gate is disabled; the lane gate, status block, and acquire warning seeing a worktree-only reading with unchanged output form; the no-git-metadata root reading its own directory alone; the measurement record and its commit ordering; and the untouched writer, thresholds, schema, and predecessor files. Not verified here: a real Claude Code statusline writing windows (the installed binary writes schema 2, no windows), real quota consumption, kanban mode, and any codex or GLM lane.
 
 ## §B Test-environment constraint (binds every AC)
 
@@ -12,7 +12,7 @@ The criteria verify: a reading that exists only in a linked worktree's record di
 - Time is an injected clock (`factoryCardNow`, `factoryNextWaitSleep` for the factory seam; explicit `now` arguments for the aggregator). Record files are fixtures with `os.Chtimes` set per case; no test sleeps or reads the wall clock for a verdict.
 - `./internal/cli` runs only with an anchored `-run` naming the AC tests; a whole-package run is not a verdict (it measures the machine, `gitflow-lane-protocol.md` §8). `./internal/statusline` may run whole-package once at the end. Heavy runs take a `moai slot` lease.
 - Pass convention: an AC passes only when every command it names exits 0 and each test's verbose output carries a `--- PASS: <name> ` line for exactly the test the command names (name then a space). `[no tests to run]`, `no tests ran`, or a zero swept count is a Gap, never a pass (`verification-completeness.md` §1.1); a skipped subtest is a Gap named in the AC, not a pass. At M1 each anchored selector is run once against the pre-implementation tree and must print `[no tests to run]` — the intended RED of a test that does not exist yet.
-- Defaults the tests assert come from the predecessor: hold 90 / 95, margin 5, max age 30m, clock-skew tolerance 5m; this SPEC adds one constant, the 128-entry bound (unmeasured).
+- Defaults the tests assert come from the predecessor: hold 90 / 95, margin 5, max age 30m, clock-skew tolerance 5m; this SPEC adds one configuration key, `workflow.quota_gate.max_scan_dirs` (default 128, range 1-1024, unmeasured; AC-QWR-013), and one compiled constant, the 4 KiB `gitdir` read bound.
 
 ## §C Traceability
 
@@ -21,13 +21,14 @@ The criteria verify: a reading that exists only in a linked worktree's record di
 | REQ-QWR-001 | AC-QWR-001, AC-QWR-002, AC-QWR-003 |
 | REQ-QWR-002 | AC-QWR-001 |
 | REQ-QWR-003 | AC-QWR-004 |
-| REQ-QWR-004 | AC-QWR-005 |
+| REQ-QWR-004 | AC-QWR-005, AC-QWR-013 |
 | REQ-QWR-005 | AC-QWR-006 |
 | REQ-QWR-006 | AC-QWR-007 |
 | REQ-QWR-007 | AC-QWR-008, AC-QWR-009 |
 | REQ-QWR-008 | AC-QWR-010 |
 | REQ-QWR-009 | AC-QWR-011 |
 | REQ-QWR-010 | AC-QWR-003, AC-QWR-012 |
+| REQ-QWR-011 | AC-QWR-013 |
 
 ## §D Acceptance criteria
 
@@ -57,11 +58,11 @@ Each entry ends with its **RED-now** cell (ledger row id in §E) and its **green
 - Decider: `go test ./internal/statusline -run '^TestQWR_AC004_UnusableEntriesContributeNothing$' -count=1 -v` → PASS with the eleven subtests listed (a skipped subtest is named in the report).
 - RED-now: ledger E1. Green path: M2 (the entry handling).
 
-### AC-QWR-005 — at most 128 entries are read
+### AC-QWR-005 — at most the given number of entries are read (statusline half of REQ-QWR-004)
 
-- **Given** 130 metadata entries named `wt-000` … `wt-129` (sorted order is name order), each naming a worktree directory with a distinct fresh record whose percentage equals its index plus one, **when** the multi-directory reading runs, **then** the record of `wt-127` (the 128th entry) is visible, the records of `wt-128` and `wt-129` are not (the winner is chosen among the first 128 only), and a `gitdir` file larger than 4 KiB is read for at most 4 KiB (a fixture whose first line is a valid path followed by 1 MiB of filler is accepted, one whose valid path begins after byte 4096 is skipped).
-- Decider: `go test ./internal/statusline -run '^TestQWR_AC005_EnumerationBound$' -count=1 -v` → PASS (subtests `entry_128_visible`, `entry_129_and_130_not_read`, `gitdir_read_is_bounded`).
-- RED-now: ledger E1. Green path: M2. Mutant pinned: no bound (all 130 read), a bound of 127 or 129.
+- **Given** 130 metadata entries named `wt-000` … `wt-129` (sorted order is name order), each naming a worktree directory with a distinct fresh record whose percentage equals its index plus one, **when** the multi-directory reading runs with the bound argument 128, **then** the record of `wt-127` (the 128th entry) is visible, the records of `wt-128` and `wt-129` are not (the winner is chosen among the first 128 only); **when** it runs with the bound 3, **then** only `wt-000`..`wt-002` are read (the winner is the highest-index record of those three) and with the bound 1 only `wt-000`; and a `gitdir` file larger than 4 KiB is read for at most 4 KiB (a fixture whose first line is a valid path followed by 1 MiB of filler is accepted, one whose valid path begins after byte 4096 is skipped).
+- Decider: `go test ./internal/statusline -run '^TestQWR_AC005_EnumerationBound$' -count=1 -v` → PASS (subtests `bound_128_entry_128_visible`, `bound_128_entry_129_and_130_not_read`, `bound_3_reads_three`, `bound_1_reads_one`, `gitdir_read_is_bounded`).
+- RED-now: ledger E1. Green path: M2. Mutant pinned: no bound (all 130 read), a hard-coded 128 that ignores the argument, an off-by-one bound (127 or 129 for argument 128, 2 or 4 for argument 3).
 
 ### AC-QWR-006 — the new code is offline, spawn-free, read-only, and non-recursive
 
@@ -99,10 +100,16 @@ Each entry ends with its **RED-now** cell (ledger row id in §E) and its **green
 - Decider (plain commands, recorded verbatim in `progress.md` §E.2): `git merge-base develop HEAD`; `git log --reverse --format=%H <CARD_BASE>..HEAD -- .moai/specs/SPEC-QUOTA-RECORD-WORKTREES-001/progress.md` (first line = B, non-empty); `git show <B>:.moai/specs/SPEC-QUOTA-RECORD-WORKTREES-001/progress.md` carries `QWR-M0` (read, not piped); `git log --reverse --format=%H <CARD_BASE>..HEAD -- internal ':(exclude)*_test.go' ':(exclude)*/testdata/*'` (first line = I, non-empty); `git merge-base --is-ancestor <B> <I>` exit 0; `git rev-list --count <I>..<B>` prints `0`.
 - RED-now: ledger E4 (neither the directory nor the cell exists at the parent). Green path: M0 commits the cell; every later commit follows it. Why a commit-graph criterion: a measurement committed together with the implementation it precedes leaves the ordering unverifiable (`verification-claim-integrity.md` §2.3). Pre-merge evaluation only (`gitflow-lane-protocol.md` §8): after the card merges `CARD_BASE` equals the card tip and the range is empty.
 
-### AC-QWR-012 — the writer, thresholds, schema, and predecessor files are untouched (one-shot, pre-merge)
+### AC-QWR-013 — the directory bound is the configuration key `workflow.quota_gate.max_scan_dirs`
 
-- **Given** the card branch after its last implementation commit and `CARD_BASE` read at that moment as `git merge-base develop HEAD`, **then** `git diff --name-only <CARD_BASE>..HEAD -- internal/stateanchor internal/statusline/state_anchor.go internal/statusline/context_usage.go internal/config .moai/specs/SPEC-QUOTA-AWARE-SCHEDULING-001 internal/statusline/quota_test.go internal/cli/factory_quota_test.go` prints nothing, with the positive control that `git diff --name-only <CARD_BASE>..HEAD` is non-empty and names `internal/statusline/quota_dirs.go` (an empty control reports "unmeasurable", never "no change").
-- Decider (plain commands): `git merge-base develop HEAD`; the two `git diff --name-only` forms above. Pre-merge evaluation only.
+- **Given** the Go defaults, the shipped template `workflow.yaml`, the local `.moai/config/sections/workflow.yaml`, the shipped-key inventory, and the config cache version, **when** the template is decoded and `config.LoadQuotaGate` runs on temporary roots, **then** (config package, `TestQWR_AC013_MaxScanDirsConfigKey`): `default_equals_template` (the Go default and the template value are both 128, and the template carries the key inside `quota_gate`); `template_comment_says_unmeasured` (the comment block above the template gate mentions `max_scan_dirs` and the word `unmeasured`, a positive control being the existing predecessor assertion on the same block); `local_twin_carries_key`; `absent_or_unparseable_yields_default` (absent key, absent file, unparseable file → 128); `out_of_range_yields_default` (0, -1, 1025, and a string value → 128; 1, 3, 128, and 1024 are honoured); `other_keys_unchanged` (the five predecessor keys keep their defaults and ranges when `max_scan_dirs` is out of range or set); `inventory_row_with_reader` (the inventory carries `workflow.quota_gate.max_scan_dirs` as class W with evidence `reader`); `cache_schema_bumped` (the cache schema version is 12); and (cli package, `TestQWR_AC013b_ProductionSeamAppliesConfiguredBound`) a root whose local `workflow.yaml` sets `max_scan_dirs: 3` with five worktree entries each holding a distinct fresh record reads only the first three through the production seam (the higher-index two are not seen), the same root with the key absent reads all five, and the seam call count per evaluation stays one.
+- Decider: `go test ./internal/config -run '^TestQWR_AC013_MaxScanDirsConfigKey$' -count=1 -v` → PASS with the eight subtests listed; `go test ./internal/config -run '^(TestShippedConfigKeysHaveReaders|TestQAS_AC007_ConfigDefaultsMirrorTemplate)$' -count=1 -v` → two PASS lines (the predecessor's guards stay green with the new field); `go test ./internal/cli -run '^TestQWR_AC013b_ProductionSeamAppliesConfiguredBound$' -count=1 -v` (scrubbed anchored form, under a `moai slot` lease) → PASS.
+- RED-now: ledger E5, E6. Green path: M2a (config key) and M3 (the production seam). Mutants pinned: a hard-coded bound ignoring the key, a range check that accepts 0 or 1025, a missing cache bump, a template without the key (the shipped-key guard).
+
+### AC-QWR-012 — the writer, the other thresholds, the record schema, and the predecessor files are untouched (one-shot, pre-merge)
+
+- **Given** the card branch after its last implementation commit and `CARD_BASE` read at that moment as `git merge-base develop HEAD`, **then** (1) `git diff --name-only <CARD_BASE>..HEAD -- internal/stateanchor internal/statusline/state_anchor.go internal/statusline/context_usage.go .moai/specs/SPEC-QUOTA-AWARE-SCHEDULING-001 internal/statusline/quota_test.go internal/cli/factory_quota_test.go internal/config/workflow_quota_gate_test.go` prints nothing; (2) `git diff --name-only <CARD_BASE>..HEAD -- internal/config` prints only paths from the allowed set `internal/config/types.go`, `internal/config/defaults.go`, `internal/config/loader_quota_gate.go`, `internal/config/cache.go`, `internal/config/testdata/shipped_key_inventory.yaml`, and the new test file `internal/config/quota_gate_scan_dirs_test.go`; (3) the `git diff -U0 <CARD_BASE>..HEAD -- internal/config/defaults.go` and the same for `internal/config/loader_quota_gate.go`, printed through `grep -c '^-[^-]'`, count zero removed lines (the predecessor defaults and ranges are intact; the key is added, nothing is rewritten), with the positive control that the same `git diff` printed through `grep -c '^+[^+]'` counts at least one added line in each file; with the positive control that `git diff --name-only <CARD_BASE>..HEAD` is non-empty and names both `internal/statusline/quota_dirs.go` and `internal/config/types.go` (an empty control reports "unmeasurable", never "no change").
+- Decider (plain commands): `git merge-base develop HEAD`; the three `git diff` forms above, each plain and single-invocation. Pre-merge evaluation only.
 - RED-now: not applicable as a red — a guard that holds at arrival (regression-guard, §E.2). Its mutants are the probes: editing any named path makes the first command print it. Green path: every milestone.
 
 ## §E RED-now evidence
@@ -115,8 +122,10 @@ Measured in this plan phase on tree `284e09c44023598affe486f17701717ca173e6ca` (
 |---|---|---|---|---|
 | E1 | `go test -count=1 -run '^TestQWR_AC001_WorktreeOnlyRecordIsSeen$' ./internal/statusline` | `ok  	github.com/modu-ai/moai-adk/internal/statusline	0.542s [no tests to run]` | 0 | the new decider does not exist; the swept count is zero, which the pass convention reads as a Gap, never a pass (the same selector form stands for AC-QWR-002..006 and -010) |
 | E2 | `ls internal/statusline/quota_dirs.go` | `ls: internal/statusline/quota_dirs.go: No such file or directory` (stderr) | 1 | the enumeration file does not exist |
-| E3 | `ls internal/cli/factory_quota_worktrees_test.go` | `ls: internal/cli/factory_quota_worktrees_test.go: No such file or directory` (stderr) | 1 | the cli deciders (AC-QWR-007..010) do not exist |
+| E3 | `ls internal/cli/factory_quota_worktrees_test.go` | `ls: internal/cli/factory_quota_worktrees_test.go: No such file or directory` (stderr) | 1 | the cli deciders (AC-QWR-007..010, and -013b by the same absence of new cli test files) do not exist |
 | E4 | `ls .moai/specs/SPEC-QUOTA-RECORD-WORKTREES-001` | `ls: .moai/specs/SPEC-QUOTA-RECORD-WORKTREES-001: No such file or directory` (stderr) | 1 | at the parent of the plan commit neither the SPEC directory nor the measurement cell exists |
+| E5 | `go test -count=1 -run '^TestQWR_AC013_MaxScanDirsConfigKey$' ./internal/config` | `ok  	github.com/modu-ai/moai-adk/internal/config	0.389s [no tests to run]` | 0 | the config decider does not exist; swept count zero, a Gap, never a pass. Measured at HEAD `8da5e1f39db1317f970a1e25831f22d8437f6f01`, whose `internal/` tree is byte-identical to `284e09c44` (only this SPEC directory differs) |
+| E6 | `ls internal/config/quota_gate_scan_dirs_test.go` | `ls: internal/config/quota_gate_scan_dirs_test.go: No such file or directory` (stderr) | 1 | the config test file does not exist; same tree as E5 |
 
 Each green path flips E1 to `--- PASS: <name> ` lines with a non-empty swept count, and E2, E3, E4 to existing files (E4 after the M0 commit also carries `QWR-M0`). The defect itself — a fresh reading that sits where the gate does not look — is a **historical observation** (spec.md §A: session `2da35a68-…` in four directories, 4 versus 19 fresh files, predecessor audit F1) that cannot be re-executed as a RED on this tree without a live session; it is recorded as context, not as a release-blocking RED. The repair is accepted on AC-QWR-001, -002, and -008, whose deciders construct the defect shape (a fresh reading only in a worktree directory) in a fixture.
 
@@ -130,6 +139,7 @@ An AC is **release-blocking** when its RED-now cell carries the four elements �
 | AC-QWR-007, -008, -009 | release-blocking | E3 |
 | AC-QWR-010 | release-blocking | E1, E3 |
 | AC-QWR-011 | release-blocking | E4 |
+| AC-QWR-013 | release-blocking | E5, E6 |
 | AC-QWR-012 | regression-guard (holds at arrival; no red to observe) | — |
 
 The old `TestQAS_` deciders named inside AC-QWR-003 and -009 are regression-guards by nature. Each test-decided AC also records, at the start of its milestone in `progress.md` §E.2, the verbatim failing output of its test written RED against the unmodified code (the "E8" convention of the predecessor): the RED must be red for the stated reason — the assertion that a worktree-only reading is seen fails on the old code, not a compile error or a fixture mistake.
@@ -151,12 +161,13 @@ How a reader learns that a check stopped firing, per check class, without asking
 - A worktree created with `moai cc -w <abs-path>` outside the repository root: read through its `gitdir` (AC-QWR-001 `outside_root_layout`).
 - A worktree whose `.moai/state` does not exist yet (no session has rendered there): skipped (AC-QWR-004 `record_dir_absent`).
 - Windows paths in the `gitdir` file (`C:/…`): read with the platform's absolute-path rule; the Unix-style absolute-path fixtures skip with a named reason on Windows (a Gap there, not a pass).
-- A gate that is enabled while the repository has more than 128 linked worktrees: entries beyond the bound are not read (fail open, comment states it).
+- A gate that is enabled while the repository has more linked worktrees than `max_scan_dirs` (128 by default): entries beyond the bound are not read (fail open; the template comment tells the operator to raise the key).
+- `max_scan_dirs` set to a value outside 1-1024, to a string, or to a mistyped block: the default 128 applies for that key (the other keys are resolved on their own, as before).
 
 ## §G Quality gate and Definition of Done
 
-- All 12 deciders pass with a non-empty swept count; the old `TestQAS_` deciders named in AC-QWR-003 and -009 stay green without an edit; `go vet ./internal/statusline ./internal/cli` and `GOOS=windows GOARCH=amd64 go build ./...` pass; the lint baseline is not worsened.
-- Template-first: this SPEC adds no template or configuration file, so there is no template mirror to regenerate; if a sync-phase CHANGELOG sentence is added it goes through the usual sync commit.
+- All 13 deciders pass with a non-empty swept count; the old `TestQAS_` deciders named in AC-QWR-003, -009, and -013 stay green without an edit; `go vet ./internal/statusline ./internal/config ./internal/cli` and `GOOS=windows GOARCH=amd64 go build ./...` pass; the lint baseline is not worsened.
+- Template-first (CLAUDE.local.md): the key is added to the Go defaults, the shipped template `workflow.yaml`, and the local `.moai/config/sections/workflow.yaml` in the same change, `make build` regenerates the embedded templates before the commit, and the config cache schema is bumped 11 to 12 with a comment line in the established style (AC-QWR-013 checks all of it). A sync-phase CHANGELOG entry goes through the usual sync commit.
 - `moai spec lint` reports no error for this SPEC directory.
 - `progress.md` §E.2 carries the M0 measurement cell `QWR-M0` (its own commit), per milestone the verbatim RED and GREEN output, the one timing observation of the evaluation, and the AC-QWR-011 and -012 evidence.
 - A scoped re-audit of the delta (sync-auditor, scoped to this SPEC's changed files) is requested by the sync phase; its verdict file is read before the card advances (`kanban-dispatch.md` § Completion is read, never trusted).
