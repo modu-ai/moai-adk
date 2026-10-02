@@ -570,8 +570,9 @@ func reportFields() []FieldDef {
 // NOTE: agent-settings 웹 렌더 표면(team.role_profiles — 7 profiles ×
 // {model, effort, isolation, mode})은 Agent Teams 정적 레이어와 함께 제거되었다
 // (SPEC-AGENT-TEAM-RETIRE-001). 웹 콘솔은 더 이상 Agent Teams 설정을 렌더하지
-// 않는다. sub-agent model/effort 편집 표면(agentfm.*)도 제거되었다
-// (SPEC-AGENT-MODEL-INHERIT-001).
+// 않는다. sub-agent model/effort 편집 표면(agentfm.*)은 llm.agent_overrides
+// 저장 경로로 복원되었다 (SPEC-WEB-AGENTFM-RESTORE-001) — 전용 스키마
+// FieldDef 없이 전용 seam(llmoverrides.go)으로 영속화된다.
 
 // withEmptySubmits opts a closed-set select into treating "" as a real,
 // submittable value: the rendered empty option writes the yaml key back to its

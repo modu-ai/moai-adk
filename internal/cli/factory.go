@@ -787,9 +787,9 @@ var factoryProcessAlive = kanban.FactoryProcessAlive
 // label MUST have a lane shape (canonical, or legacy — which the claim
 // refuses naming the canonical lane-<n>). notes, when non-nil, receives the
 // operator-visible bump line.
-func resolveFactoryLaneName(root, label string, auto bool, notes io.Writer) (string, error) {
+func resolveFactoryLaneName(root, label, backend string, auto bool, notes io.Writer) (string, error) {
 	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
-	claim, err := kanban.ClaimFactoryLane(root, label, auto, os.Getpid(), runID, factoryProcessAlive)
+	claim, err := kanban.ClaimFactoryLaneWithBackend(root, label, auto, os.Getpid(), runID, backend, factoryProcessAlive)
 	var legacyRun *kanban.FactoryLegacyRunError
 	if errors.As(err, &legacyRun) {
 		// REQ-RNC-022: a live legacy record of the same run refuses the join.

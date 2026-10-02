@@ -7,7 +7,7 @@ description: |
   Use PROACTIVELY for code implementation, refactoring, test-driven development, behavior preservation, and pipeline auto-fix execution.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md / design.md / research.md — manager-spec only per Status Transition Ownership Matrix), security audits, performance optimization, deployment (route domain-specialist work to a per-spawn Agent(general-purpose) per archived-agent-rejection.md §C)
-tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__verify_snapshot, mcp__moai__verify_trend, mcp__moai__goal_status
+tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__verify_snapshot, mcp__moai__verify_trend, mcp__moai__goal_status, mcp__moai__codex_task, mcp__moai__codex_job_status, mcp__moai__codex_job_result, mcp__moai__codex_job_cancel, mcp__moai__glm_task, mcp__moai__glm_job_status, mcp__moai__glm_job_result, mcp__moai__glm_job_cancel
 color: green
 permissionMode: bypassPermissions
 memory: project
@@ -212,11 +212,21 @@ See `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transi
 
 ## MCP Tools
 
-This agent carries verification + goal MCP tools in its `tools:` list. Prefer the MCP tool over the equivalent Bash CLI (`moai verify check`, `moai goal status`):
+This agent carries verification, goal and delegation MCP tools in its `tools:` list. Prefer the MCP tool over the equivalent Bash CLI (`moai verify check`, `moai goal status`):
 
 - `mcp__moai__verify_snapshot` — read or record the per-key verification snapshot (the evidence baseline for a claim). Call AFTER running a verification command to persist the observed output, keyed by HEAD:digest.
 - `mcp__moai__verify_trend` — read the per-key verification check history (the trend). Call to compare the current run vs prior runs.
 - `mcp__moai__goal_status` — read the armed-goal state for this session. Call to check whether an autonomous goal is armed and how close it is to convergence.
+- `mcp__moai__codex_task` — start a background codex job.
+- `mcp__moai__codex_job_status` — read a codex job's status.
+- `mcp__moai__codex_job_result` — read a codex job's result.
+- `mcp__moai__codex_job_cancel` — stop a codex job.
+- `mcp__moai__glm_task` — start a background GLM job.
+- `mcp__moai__glm_job_status` — read a GLM job's status.
+- `mcp__moai__glm_job_result` — read a GLM job's result.
+- `mcp__moai__glm_job_cancel` — stop a GLM job.
+
+Optional delegation of bounded mechanical subtasks to an external model is described in `.claude/skills/moai/workflows/run.md` § External Model Delegation; it applies to Claude Code sessions only.
 
 ## Conditional Skill Loading
 

@@ -179,6 +179,31 @@ workflow:
         enabled: false
         default_max_duration: 30m
         resources: {}
+    # quota_gate: steer the NEXT card away from a nearly exhausted Claude
+    # account. The statusline records each Claude session's five-hour and
+    # seven-day usage windows; while the gate is on and a window reads at or
+    # above its hold percentage, a Claude lane's `moai factory next` leases no
+    # NEW card (a card already assigned to the lane is still leased), and
+    # `moai factory status` and `moai todo --auto` recommend non-Claude lanes.
+    # A hold lifts when the window falls below its hold percentage minus the
+    # release margin, or when its reset time passes. Reading no data never
+    # holds a lane. Ships OFF.
+    #
+    # The numeric values below are unmeasured defaults: nobody has measured how
+    # much quota a card consumes, so they are starting points, not
+    # recommendations. Tune them from what the status block shows you:
+    #     five_hour_hold_pct    1-100, hold at or above this five-hour usage
+    #     seven_day_hold_pct    1-100, the same for the seven-day window
+    #     release_margin_pct    0-50, release below hold minus this margin
+    #     max_age               a session reading older than this is unknown
+    #                           (at least 10m, twice the 5m statusline heartbeat)
+    # A value outside its range falls back to the default shown here.
+    quota_gate:
+        enabled: false
+        five_hour_hold_pct: 90
+        seven_day_hold_pct: 95
+        release_margin_pct: 5
+        max_age: 30m
     # served_model_gate: refuse to adopt a plan-auditor or sync-auditor verdict
     # when the model that actually answered that auditor differs from the
     # expected one, or cannot be determined. The SubagentStop hook records the
@@ -232,6 +257,18 @@ workflow:
     # One exception: the contract-mode Kickoff `llm+jev` cross-check may use
     # an answer as its second signal, where it can only confirm an LLM
     # approval or route the Kickoff to a human; it never decides alone.
+    #
+    # A second exception, separate from that cross-check, is the
+    # `moai todo --auto` cycle's own candidate ranking: the
+    # auto-scoped ranking exception. Behind the default-off
+    # workflow.jev.enabled gate, an in-process caller may supply the key
+    # that orders the queued candidates the cycle is about to accept, which
+    # sets selection order only. The candidate set is fixed by
+    # mechanical filters before any answer is read, and an answer that
+    # cannot be used as a whole falls back to recorded priority over the
+    # same set. The answer never adds, removes or edits a card, is never the
+    # basis of a completion verdict, a merge approval or an operator gate,
+    # and no ordering accuracy is claimed.
     #
     # Where this setting is changed, and where it is NOT: `moai init` asks
     # about it once, and after that the `moai web` settings screen is the only

@@ -97,7 +97,7 @@ func TestResolveFactoryWorkerNameRefusesLegacyLabel(t *testing.T) {
 	}
 	for _, c := range cases {
 		var notes bytes.Buffer
-		if got, err := resolveFactoryLaneName(t.TempDir(), c.label, false, &notes); err == nil {
+		if got, err := resolveFactoryLaneName(t.TempDir(), c.label, "", false, &notes); err == nil {
 			t.Fatalf("resolve %s = %q, want an error naming %s", c.label, got, c.want)
 		} else if !strings.Contains(err.Error(), c.want) {
 			t.Errorf("resolve %s error %q lacks the canonical form %s", c.label, err.Error(), c.want)
@@ -105,7 +105,7 @@ func TestResolveFactoryWorkerNameRefusesLegacyLabel(t *testing.T) {
 	}
 
 	var notes bytes.Buffer
-	if got, err := resolveFactoryLaneName(t.TempDir(), "lane-1", false, &notes); err != nil || got != "lane-1" || notes.Len() != 0 {
+	if got, err := resolveFactoryLaneName(t.TempDir(), "lane-1", "", false, &notes); err != nil || got != "lane-1" || notes.Len() != 0 {
 		t.Errorf("canonical free label = (%q, %v, notes %q), want lane-1 with no note", got, err, notes.String())
 	}
 }
