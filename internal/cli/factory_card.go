@@ -865,6 +865,11 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	if err := factoryRefuseCodexMergeEdge("complete"); err != nil {
 		return err
 	}
+	// github-flow delivers by pull request, takes no integration window and
+	// never merges locally (factory_card_pr.go, REQ-GFD-004/005/006).
+	if factoryGitHubFlow(root) {
+		return factoryCompleteGitHubFlow(ctx, out, root, cardID, remeasure, run, lane)
+	}
 	// The same session identity acquire resolves: a window whose holder is
 	// unresolvable can be neither taken nor re-taken, so an empty id is a
 	// blocker to report, never a value to invent.

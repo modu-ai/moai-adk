@@ -136,6 +136,15 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 				})
 			}
 
+			// github-flow delivers by pull request: the integration window is
+			// no prerequisite (REQ-GFD-006), so a cleared triple takes none.
+			if factoryGitHubFlow(integrationLockRoot()) {
+				const detail = "github-flow takes no integration window — run moai factory complete to push the card branch and open the pull request"
+				_, _ = fmt.Fprintf(human, "merge-readiness: CLEARED — three checks recorded; %s\n", detail)
+				return emitFactoryMergeVerdict(cmd, asJSON, factoryMergeVerdict{
+					Verdict: "cleared", Lane: lane, Card: card, Detail: detail,
+				})
+			}
 			sessionID := integrationSessionID(sessionFlag)
 			if sessionID == "" {
 				return fmt.Errorf("factory merge ready: cannot resolve this session's id; pass --session <id> (a window with an invented holder can be neither released by its holder nor recognized by the guard)")

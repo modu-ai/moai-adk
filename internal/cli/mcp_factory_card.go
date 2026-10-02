@@ -60,7 +60,7 @@ func registerFactoryCardMCPTools(add func(name string, tool mcp.Tool, handler se
 
 	add("factory_complete", mcp.NewTool(
 		"factory_complete",
-		mcp.WithDescription("Take a merge-ready card through merging to merged-local by the F1 merge gate — the MCP form of `moai factory complete` (no re-measure positional; complete records the merge evidence itself). Lane session only; a Codex lane is refused. The integration window stays held — release is the lane's next step."),
+		mcp.WithDescription("Take a merge-ready card through merging to merged-local by the F1 merge gate — the MCP form of `moai factory complete` (no re-measure positional; complete records the merge evidence itself). Lane session only; a Codex lane is refused. The integration window stays held — release is the lane's next step. Under github-flow the same call delivers by pull request instead: it pushes the card branch, opens a PR against the integration target and records pr-open (no local merge, no window); a later call records merged-pr once the PR is observed merged."),
 		mcp.WithString("card", mcp.Required(), mcp.Description("The card id.")),
 		mcp.WithString("run", mcp.Description("Factory run id (default: the single active run).")),
 		requiredProjectRootOption(),

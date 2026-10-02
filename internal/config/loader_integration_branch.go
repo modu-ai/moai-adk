@@ -68,6 +68,11 @@ type GitFlowIntegrationConfig struct {
 	// Manual && GitFlowWorkflow gate (REQ-GWS-005) — a non-manual git-flow
 	// profile resolves no target, exactly as DevelopBranch stays empty today.
 	IntegrationTarget string
+	// MergeMethod is the ACTIVE mode profile's raw merge_method, trimmed (card
+	// t1453 M2-B): the github-flow delivery edge maps it to the `gh pr merge`
+	// method flag. Empty when the profile sets none or the file is unreadable;
+	// the caller applies the squash default.
+	MergeMethod string
 }
 
 // IsGitFlow reports whether the project's git strategy is git-flow: manual
@@ -105,6 +110,7 @@ func LoadGitFlowIntegrationConfig(projectRoot string) GitFlowIntegrationConfig {
 		// stays reserved for "unknown" (unreadable file / no active profile).
 		cfg.Workflow = profile.Workflow
 		cfg.Disposition = ClassifyWorkflowDisposition(profile.Workflow)
+		cfg.MergeMethod = strings.TrimSpace(profile.MergeMethod)
 	}
 	if cfg.Manual && cfg.GitFlowWorkflow {
 		cfg.DevelopBranch = strings.TrimSpace(profile.DevelopBranch)
