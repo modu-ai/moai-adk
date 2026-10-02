@@ -7,9 +7,108 @@
 // token shapes that only look like one.
 package template
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"regexp"
+	"testing"
+)
 
 const cardIDClassName = "C9-card-id"
+
+// cardIDBaselineEntry pins one (file, card id literal) pair that predates the
+// C9 class. The baseline is removal-only: a card id added to any template
+// surface — including a second id in a listed file — is flagged, and an entry
+// whose literal has left its file fails TestCardIDBaselineHasNoStaleEntries.
+// Measured on base 7109e0900: 19 pairs in 9 files. The mirrored rule files are
+// byte-parity-enforced with their .claude/ source, so stripping a template copy
+// alone would break mirror parity; cleaning a pair means editing both trees.
+type cardIDBaselineEntry struct {
+	File string // relative path under internal/template/templates/
+	ID   string // literal card id expected in this file
+}
+
+var cardIDBaseline = []cardIDBaselineEntry{
+	{".claude/hooks/moai/sync-phase-quality-gate.sh", "t1388"},
+	{".claude/hooks/moai/sync-phase-quality-gate.sh", "t1389"},
+	{".claude/hooks/moai/sync-phase-quality-gate.sh", "t1392"},
+	{".claude/hooks/moai/sync-phase-quality-gate.sh", "t604"},
+	{".claude/hooks/moai/sync-phase-quality-gate.sh", "t663"},
+	{".claude/hooks/moai/sync-phase-quality-gate.sh", "t664"},
+	{".claude/rules/moai/core/askuser-protocol-reference.md", "t1303"},
+	{".claude/rules/moai/workflow/auto-semantics.md", "t1339"},
+	{".claude/rules/moai/workflow/auto-semantics.md", "t1393"},
+	{".claude/rules/moai/workflow/kanban-dispatch-detail.md", "t133"},
+	{".claude/rules/moai/workflow/kanban-dispatch-detail.md", "t224"},
+	{".claude/rules/moai/workflow/kanban-dispatch.md", "t1330"},
+	{".claude/rules/moai/workflow/session-handoff-format.md", "t1303"},
+	{".claude/rules/moai/workflow/worktree-integration-ops.md", "t529"},
+	{".claude/rules/moai/workflow/worktree-integration-ops.md", "t741"},
+	{".claude/rules/moai/workflow/worktree-integration-ops.md", "t852"},
+	{".claude/rules/moai/workflow/worktree-integration-ops.md", "t880"},
+	{".claude/rules/moai/workflow/worktree-integration.md", "t1398"},
+	{".claude/skills/moai/workflows/gtd.md", "t696"},
+}
+
+// isCardIDBaselined reports whether the (relPath, matched) pair is a baseline
+// entry. The check is by literal path plus literal id; no regex, no line number.
+func isCardIDBaselined(relPath, matched string) bool {
+	for _, e := range cardIDBaseline {
+		if e.File == relPath && e.ID == matched {
+			return true
+		}
+	}
+	return false
+}
+
+// TestCardIDBaselineHasNoStaleEntries keeps the baseline removal-only in the
+// useful direction: an entry whose card id has left its file must be deleted, so
+// a re-introduced citation of that id is flagged instead of silently excused.
+func TestCardIDBaselineHasNoStaleEntries(t *testing.T) {
+	t.Parallel()
+
+	if len(cardIDBaseline) == 0 {
+		t.Fatal("card-id baseline is empty: nothing is being checked")
+	}
+	idRe := regexp.MustCompile(`\bt[0-9]{3,4}\b`)
+	for _, e := range cardIDBaseline {
+		data, err := os.ReadFile(filepath.Join(templatesRoot, filepath.FromSlash(e.File)))
+		if err != nil {
+			t.Errorf("baseline entry %s %s: file unreadable: %v", e.File, e.ID, err)
+			continue
+		}
+		found := false
+		for _, m := range idRe.FindAllString(string(data), -1) {
+			if m == e.ID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("stale baseline entry: %s no longer carries %s — delete the entry", e.File, e.ID)
+		}
+	}
+}
+
+func TestCardIDBaselineIsPerFileAndPerLiteral(t *testing.T) {
+	t.Parallel()
+
+	const baselinedFile, baselinedID = ".claude/skills/moai/workflows/gtd.md", "t696"
+	if !isCardIDBaselined(baselinedFile, baselinedID) {
+		t.Fatalf("positive control failed: %s %s is not in the baseline", baselinedFile, baselinedID)
+	}
+	text := "see " + baselinedID
+	if got := collectLeakViolations(baselinedFile, baselinedFile, text, leakClasses); anyViolationHasClass(got, cardIDClassName) {
+		t.Errorf("the baselined pair fired: %v", got)
+	}
+	other := ".claude/skills/moai/workflows/other.md"
+	if got := collectLeakViolations(other, other, text, leakClasses); !anyViolationHasClass(got, cardIDClassName) {
+		t.Errorf("the same literal in an unlisted file did not fire: %v", got)
+	}
+	if got := collectLeakViolations(baselinedFile, baselinedFile, "see t9999", leakClasses); !anyViolationHasClass(got, cardIDClassName) {
+		t.Errorf("a second, unlisted id in a baselined file did not fire: %v", got)
+	}
+}
 
 func TestCardIDLeakClassDetectsShapes(t *testing.T) {
 	t.Parallel()
