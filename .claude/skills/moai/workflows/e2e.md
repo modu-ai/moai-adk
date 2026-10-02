@@ -264,16 +264,16 @@ The orchestrator groups Phase 3 failures/improvement findings by blast radius:
 
 Each `manager-develop` spawn (cycle_type=autofix):
 - **Skill injection** (skill-routing.md §1): inject `At start, invoke Skill("moai-workflow-ddd") for the autofix repair cycle.` plus 0-3 domain `moai-ref-*` skills matched to the failing journey's domain (e.g. frontend → moai-ref-react-patterns, backend → moai-ref-api-patterns; per `.moai/config/sections/delegation.yaml` domain_skills)
-- **Input**: failing journey(s) + bounded failure excerpt + artifact path (`e2e/.runs/<log>`) + exact reproduction
-- **Cycle**: localize → repair → validate (manager-develop autofix)
-- **Validate**: MUST re-run the relevant e2e spec locally (not the full suite) to confirm the fix before returning
+- **Input**: failing journey(s) + bounded failure excerpt + artifact path (`e2e/.runs/<log>`) + exact reproduction (except Aside: the reproduction is written text only, never an Aside step to run; a subagent never invokes Aside)
+- **Cycle**: localize → repair → validate (manager-develop autofix) (except Aside: manager-develop localizes and repairs the code only; the ORCHESTRATOR itself runs the validation and every Aside step, and a subagent never invokes Aside)
+- **Validate**: MUST re-run the relevant e2e spec locally (not the full suite) to confirm the fix before returning (except Aside: manager-develop does not re-run the spec and returns after the repair; the ORCHESTRATOR itself re-runs the relevant spec through Aside, and a subagent never invokes Aside)
 
 ### Loop Control
 
 ```
 iteration = 0
 while iteration < 3 and not green:
-    delegate grouped fixes → manager-develop (autofix)   # parallel-where-safe
+    delegate grouped fixes → manager-develop (autofix)   # parallel-where-safe (except Aside: the repair is delegated, while the Phase 3 re-run below is the ORCHESTRATOR's own Aside run)
     re-run Phase 3 (CLI-first, bounded output)
     iteration++
 green             → Phase 5 (success report)
@@ -340,7 +340,7 @@ Next steps (ORCHESTRATOR AskUserQuestion): Fix failing tests (Recommended) / Rer
 - Phase 1: e2e-tester (journey mapping)
 - Phase 2: e2e-tester (script creation) (except Aside: orchestrator-run)
 - Phase 3: e2e-tester (CLI-first execution) (except Aside: orchestrator-run)
-- Phase 3.5 (--autofix only): orchestrator (grouping + Kickoff Approval) → manager-develop autofix (parallel-where-safe)
+- Phase 3.5 (--autofix only): orchestrator (grouping + Kickoff Approval) → manager-develop autofix (parallel-where-safe) (except Aside: manager-develop repairs the code only; the ORCHESTRATOR itself re-verifies through Aside)
 - Phase 4: e2e-tester (native-facility recording) (except Aside: orchestrator-run)
 - Phase 5: MoAI orchestrator (report + next-step question)
 
@@ -353,7 +353,7 @@ Next steps (ORCHESTRATOR AskUserQuestion): Fix failing tests (Recommended) / Rer
 5. Phase 1: delegate journey mapping; orchestrator presents journey options
 6. Phase 2: delegate script creation per toolchain conventions (except Aside: orchestrator-run)
 7. Phase 3: delegate execution — CLI-first, bounded tail, file-redirect, selective JSON triage (except Aside: orchestrator-run)
-7.5. (if --autofix and Phase 3 not green) Phase 3.5: group findings → Kickoff Approval (1회) → manager-develop autofix (parallel independent / sequential dependent) → re-run; max 3 iterations or green; else escalate
+7.5. (if --autofix and Phase 3 not green) Phase 3.5: group findings → Kickoff Approval (1회) → manager-develop autofix (parallel independent / sequential dependent) → re-run; max 3 iterations or green; else escalate (except Aside: manager-develop repairs the code only; the ORCHESTRATOR itself re-runs Phase 3 through Aside, and a subagent never invokes Aside)
 8. Phase 4: if --record, native-facility recording only
 9. TaskCreate/TaskUpdate for all journeys
 10. Phase 5: report in conversation_language with citable artifact paths
