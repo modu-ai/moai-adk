@@ -1,7 +1,7 @@
 ---
 id: SPEC-JEV-AUTO-EXCEPTION-001
 title: "Linked amendment of the Jev display-only principle for the todo --auto selection-order exception — Jev-side surfaces, two completed SPECs, and a linkage guard"
-version: "0.1.1"
+version: "0.1.2"
 status: in-progress
 created: 2026-10-02
 updated: 2026-10-02
@@ -21,6 +21,20 @@ related_specs: [SPEC-JEV-CORE-001, SPEC-MANAGER-TODO-001, SPEC-AUTONOMY-GATE-REW
 
 ## HISTORY
 
+- 0.1.2 — 2026-10-02 — run-phase reconciliation (card t1403; run committed as G
+  `6d012fd4d` and K `7983d9131`, evidence in `progress.md` §E.2; plan-audit
+  iteration 2 PASS 0.94 on 0.1.1). The body now says what the run measured:
+  AC-JAE-014 no longer claims that no new file enters the sweeps — the guard source
+  is a new class-(iii) file in all three, and the counts are 76 hits / 44 files, 6
+  hits, 96 hits / 48 files (`research.md` §R1, §R1.5, §R7); the tier evidence of
+  `plan.md` D-8 carries the measured sizes; R-5 lists the false positive, the
+  negation case and the other-noun and other-language misses; §B.7 states what the
+  two plan-audit iterations actually observed about the in-place amendments and what
+  the run then observed in the tree, and notes `SPEC-MANAGER-TODO-001` 0.1.0 to
+  0.2.0; DoD item 4 no longer treats a commit trailer as a witness K does not carry;
+  the kickoff-autonomy guide line is recorded as class (iii). Requirement count (12),
+  criterion count (14) and the meaning of every requirement are unchanged; `status`
+  stays `in-progress`.
 - 0.1.1 — 2026-10-02 — plan-audit iteration 1 revision (card t1403; FAIL 0.82, four
   blocking defects D1-D4 and optional D5-D10; revision base HEAD `1eef55dd9`).
   D1: the arming token is assembled from two string pieces so its literal never sits
@@ -50,6 +64,10 @@ related_specs: [SPEC-JEV-CORE-001, SPEC-MANAGER-TODO-001, SPEC-AUTONOMY-GATE-REW
 ## §A Context
 
 ### A.1 Problem — the split state is live on develop now
+
+*Status after the run (0.1.2): the split described below is the plan-time state. The
+linked commit K (`7983d9131`, on the card branch) amends the Jev-side surfaces, so on
+the card branch the split is closed; it closes on `develop` when the card merges.*
 
 `SPEC-TODO-AUTO-PRIORITY-001` (card t1400, merged at `c50da9c2f`) gave the
 `moai todo --auto` cycle an `auto-scoped ranking exception`: it may rank the
@@ -89,12 +107,16 @@ linked change and adding a guard that fails if they ever diverge again.
 
 ### A.2 Verified basis (pinned tree `c50da9c2f`; re-run on `1eef55dd9`)
 
-The measurements below were taken at the pinned tree `c50da9c2f`. HEAD has since
-moved to `1eef55dd9`; `git diff --name-only c50da9c2f HEAD` lists only files inside
-this SPEC's own directory, and no ledger pathspec lies there, so every ledger row
-reproduces unchanged (re-run recorded in `acceptance.md`). Full evidence with
-commands and verbatim output is in `research.md`; the facts the requirements stand
-on:
+The measurements below were taken at the pinned tree `c50da9c2f`. At the plan-audit
+revision HEAD had moved to `1eef55dd9`, and `git diff --name-only c50da9c2f 1eef55dd9`
+listed only files inside this SPEC's own directory, so every ledger row reproduced
+unchanged there (re-run recorded in `research.md` §R5). The run phase has since
+landed (G `6d012fd4d`, K `7983d9131`): the RED-now rows of `acceptance.md` describe
+the pinned tree on purpose and are no longer expected to print the same values on a
+tree that contains K — their flip is the green path of each criterion (`progress.md`
+§E.2 E1; the flip check made in the reconciliation is `research.md` §R7). Full
+evidence with commands and verbatim output is in `research.md`; the facts the
+requirements stand on:
 
 - **Six surfaces named by the card, five more found.** The card lists S1-S6
   (§B.2). Three repository sweeps found five further class-(i) surfaces, X1-X5,
@@ -321,13 +343,27 @@ amendments of this SPEC without it. **Decided** (`progress.md` §G OD-4, orchest
 2026-10-02): both completed SPECs — `SPEC-JEV-CORE-001` and `SPEC-MANAGER-TODO-001` —
 are amended in place with a HISTORY row and keep `status: completed`; the heavier
 transition is not used. The decision rests on the precedent commit `185569ef3` and on
-the audit's own check that `moai spec lint` and `moai spec audit --filter-spec` stay
-clean in that state (plan-audit iteration 1, D8). Only `SPEC-JEV-CORE-001`'s
+what the audits observed, stated here at the strength they observed it: plan-audit
+iteration 1 found both SPECs lint-clean and audit-clean in their **pre-edit** state;
+iteration 2 found that `SPEC-JEV-CORE-001` already carries two in-place amendments
+(0.2.0 and 0.3.0) with `status: completed` and lints clean, and that a scratch copy of
+`SPEC-MANAGER-TODO-001` carrying the planned edit added no finding over an unmodified
+scratch copy (both printed the same 19 out-of-tree warnings). The in-tree result after
+the real edit was unobservable at plan time and is now observed (reconciliation
+re-run, tree-local binary built from tree HEAD `e70578c24`, whose `version` prints
+`v3.1.3 none built unknown`): `moai spec lint SPEC-JEV-CORE-001` and
+`moai spec lint SPEC-MANAGER-TODO-001` each print `✓ No findings — all SPEC documents
+are valid`; the run record adds `moai spec audit --filter-spec` for both —
+`modern_era_clean 1` and one INFO `EraAutoDetected` each, no drift finding
+(`progress.md` §E.2, "Other checks", not re-run here). Only `SPEC-JEV-CORE-001`'s
 `status: completed` is pinned by a test (§B.8 P1); `SPEC-MANAGER-TODO-001` is covered
-by the decision, not by a guard. Authoring ownership: SPEC bodies belong to `manager-spec`, so the run phase
-re-delegates those two files to it (the D-NEW-1 pattern), then `manager-develop`
-writes everything else; the first amendment was assembled the same way
-(`SPEC-AUTONOMY-GATE-REWIRE-001/design.md` §11.2).
+by the decision, not by a guard. The run moved `SPEC-JEV-CORE-001` from 0.3.0 to
+0.4.0 and `SPEC-MANAGER-TODO-001` from 0.1.0 to 0.2.0 (`git grep -n -F 'version:'`
+on the two files at `7983d9131`; the base values are the ledger's L14 and, for
+MANAGER-TODO, `research.md` §R7). Authoring ownership: SPEC bodies belong to
+`manager-spec`, so the run phase re-delegates those two files to it (the D-NEW-1
+pattern), then `manager-develop` writes everything else; the first amendment was
+assembled the same way (`SPEC-AUTONOMY-GATE-REWIRE-001/design.md` §11.2).
 
 ### B.8 Pinned text the amendment must preserve
 
@@ -518,8 +554,14 @@ AC-JAE-013 · REQ-JAE-012 → AC-JAE-014 (bodies and `**Covers**` clauses in
   tool as the lane watchdog uses it, which stays true.
 - `moai-jev-skill-suggestion/SKILL.md` and its mirror: the contract of a different
   consumer (skill suggestion), unaffected.
-- `AGENTS.local.md` §29: the leader's use of the local scripts, whose markers are
-  pinned by P3; `internal/cli/todo_auto.go` `:201/:231/:367` and
+- `AGENTS.local.md` §29 and `.moai/docs/kickoff-autonomy.md:13-17` (the line the
+  plan-audit iteration 2 found with a fourth, Korean-phrase sweep — "3등급(완료
+  판정·병합 승인·큐 변경·운영자 게이트)은 … 리드 소관이며 Jev 답을 입력으로도 쓰지
+  않는다"): the leader's delegation grades for the local scripts, a different object
+  from the `--auto` cycle's ranking and the same scope as §29, whose markers are
+  pinned by P3; no file under `internal/` names the kickoff guide
+(`git grep -l "kickoff-autonomy" -- internal` prints nothing), and it is observed,
+not changed; `internal/cli/todo_auto.go` `:201/:231/:367` and
   `internal/cli/todo_jev_finding.go:5-6`: the display-only script line and the
   admission-path finding, both unchanged in contract;
   `internal/contract/kickoff/kickoff.go:21`; `internal/mission/*` and
@@ -530,8 +572,14 @@ AC-JAE-013 · REQ-JAE-012 → AC-JAE-014 (bodies and `**Covers**` clauses in
 - `.claude/skills/moai-kanban-foreman/SKILL.md:69` ("serial consumption in queue
   order is authorized"): states what the batch approval grants, not the cycle's pick
   order; observed, not changed.
-- The 34 further files the closed-target-phrase sweep returned (`research.md`
-  §R1.5), each classified there with its reason: the predecessor-amended documents;
+- `internal/template/jev_auto_exception_test.go`, this SPEC's own guard, which the
+  run added as a new file: its locators, closed-target tables and fixture strings
+  contain the sweep phrases (6 hits in the primary sweep, 1 in the synonym sweep,
+  11 in the closed-target sweep), and a wording guard that must reject a passage
+  lacking "queue mutation" has to spell it — guard source, not doctrine
+  (`research.md` §R1.6).
+- The 34 further files the closed-target-phrase sweep returned at the pinned tree
+  (`research.md` §R1.5), each classified there with its reason: the predecessor-amended documents;
   statements about "queue mutation" that concern a different object (the queue
   lock, lane-queue writes, the foreman watch); the `moai-jev-skill-suggestion`
   contract and the finding-mark record, which are other consumers' contracts;
@@ -549,8 +597,10 @@ AC-JAE-013 · REQ-JAE-012 → AC-JAE-014 (bodies and `**Covers**` clauses in
 ## §G Gaps and Residual Risks
 
 - **R-1 — Interim state until the linked commit lands.** By design the split of §A.1
-  persists until then; the guard, committed first, is inert (`false`, all markers
-  absent) in that window.
+  persisted until then; the guard, committed first (G `6d012fd4d`), was inert
+  (`false`, all markers absent, the seven group subtests skipping) in that window. K
+  (`7983d9131`) has landed on the card branch; the split closes on `develop` with the
+  card's merge.
 - **R-2 — A full revert goes unseen.** If the single linked commit were reverted
   whole, the markers and the arming constant disappear together and the guard passes
   while the landed anchors again contradict the Jev side. `TestJevAmendmentLinkage`
@@ -568,13 +618,42 @@ AC-JAE-013 · REQ-JAE-012 → AC-JAE-014 (bodies and `**Covers**` clauses in
   long-form groups the gate literal and the filter literal; and the absence of the
   claim set (`is|are|was|were` followed by accurate/measured/reliable/validated,
   `beats`, `outperform…`, `measured accuracy`, `accuracy of <digit>`) and of the
-  over-reach set (`every|any|all` followed by `moai todo` or `pick(s)`). It does not
-  check: a claim or over-reach in other words or in another language (X1's Korean
-  paragraph is held only to its literals), that the filter literal is used in a
-  sense that matches REQ-TAP-001/-002 (it proves the words are present, not that
-  they are true), or that a sentence in other words does not generalize the
-  exception (inherited from the predecessor's R-6). Those are judged by reading at
-  the sync audit.
+  over-reach set (`every|any|all` followed by `moai todo` or `pick(s)`). The run
+  kept those reference expressions and added two narrowing exemptions
+  (`progress.md` §E.2 M1; code `jev_auto_exception_test.go:402-456`): `validated as a
+  whole` is not a claim when `answer` sits in the 30 characters before it, and a
+  negation (`not|never|no|nothing|nor`) in the 30 characters before the over-reach
+  phrase makes it a scope narrowing. Four legitimate sentences the reference
+  expressions alone flagged — `The answer set is validated as a whole…`, `An answer
+  that is validated as a whole may set selection order only.`, `It does not apply to
+  any moai todo pick outside the --auto cycle.`, `Nothing here changes all picks
+  outside the cycle.` — are **cleared** (asserted by `disclaimer-not-flagged`,
+  `:785-799`; reproduced by a copy of the functions run outside the repository,
+  `research.md` §R7). **One false positive remains**: `The ordering accuracy was
+  measured by nobody.` is flagged by the first claim expression (`was measured`) and
+  no exemption applies — measured in the same copy. The guard does **not** check, and
+  these were measured against the final functions (`research.md` §R7): (a) a claim
+  in other words — `The ordering is correct.`, `…is highly accurate.`, `…has been
+  validated.`, `…is 90% accurate.`, `…is proven better than recorded priority.` are
+  all accepted (the plan-audit iteration 2 measured 10 of 11 claim paraphrases
+  accepted against the reference expressions; the exemptions only clear sentences, so
+  none of them closes); (b) an over-reach under another noun — `every card pick`,
+  `all queue picks`, `each moai todo pick`, `any moai gtd mutation` are accepted;
+  (c) a **negation that satisfies both literals** —
+  `There is no auto-scoped ranking exception; selection order only is not permitted.`
+  passes the claim and
+  over-reach functions (measured) and, by reading `jaeWordingFindings`, the literal
+  check too, since that check looks for the two literals in one paragraph and not for
+  what is asserted about them (read, not run on that sentence); (d) any claim or over-reach in another language — the Korean variants are
+  accepted, and X1's Korean paragraph is held only to its literals; (e) that the
+  filter literal is used in a sense that matches REQ-TAP-001/-002 (it proves the
+  words are present, not that they are true); (f) a sentence in other words that
+  generalizes the exception (inherited from the predecessor's R-6). The negation
+  exemption does not open a hole in the two widening sentences tried —
+  `It is not limited to the cycle, so it applies to every moai todo pick.` and `It is
+  not a ranking; it applies to every moai todo pick.` both stay flagged — but its
+  30-character window was tried on those two only. Items (a)-(f) are judged by
+  reading at the sync audit.
 - **R-6 — Extensions may be cut.** X3 and X5 each cost a catalog-hash regeneration
   (`TestCatalogHashParity` is the mechanical backstop for a missed one) and X4 adds
   bytes to an always-loaded file; all three are cut candidates and none is required
@@ -587,4 +666,8 @@ AC-JAE-013 · REQ-JAE-012 → AC-JAE-014 (bodies and `**Covers**` clauses in
   a restatement in words none of them match would be missed. The third pattern was
   added because the first two missed X5, so the inventory has already been wrong once
   in exactly this way; `research.md` §R1 records the three sweeps and what each one
-  added. AC-JAE-014 claims closure over the three stated patterns only.
+  added. AC-JAE-014 claims closure over the three stated patterns only. A fourth,
+  Korean-phrase sweep run by the plan-audit iteration 2 found one more line no
+  pattern matched, `.moai/docs/kickoff-autonomy.md:15`; it is class (iii) (§D) and is
+  not a counterexample to the claim, but it is the second time a sweep outside the
+  three patterns found something.

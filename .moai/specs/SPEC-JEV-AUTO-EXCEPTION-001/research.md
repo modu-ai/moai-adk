@@ -62,6 +62,8 @@ Sweeps (all three over tracked files, excluding `.moai/specs/`, `.moai/reports/`
 | `internal/closure/model.go:88`, `readiness.go:77`, `receipt_view.go:29` | closure receipt display, not Jev |
 | `.claude/rules/moai/core/hooks-system.md:85`; template; `workflows/loop.md:116,221`; template; `internal/mx/provenance.go:25,73`; `internal/web/fieldsets_codex.templ:5`, `fieldsets_codex_templ.go:13`, `todo_view.go:52` | "display-only" in an unrelated sense (hook output, loop sentence, provenance timestamp, web panel) |
 | `.claude/skills/moai-kanban-foreman/SKILL.md:69`; template | "serial consumption in queue order is authorized": what the batch approval grants; not a Jev statement; observed, not changed |
+| `.moai/docs/kickoff-autonomy.md:13-17` (the line is `:15`) — found by the plan-audit iteration 2's fourth, Korean-phrase sweep, matched by none of the three SPEC patterns | "3등급(완료 판정·병합 승인·큐 변경·운영자 게이트)은 여전히 리드 소관이며 Jev 답을 입력으로도 쓰지 않는다 — 독트린과 읽은 증거로 판정한다": the leader's delegation grades for the local Jev scripts (operator instruction 2026-09-26), the same scope as `AGENTS.local.md` §29 (class iii, markers pinned by P3). It does not speak of the `--auto` cycle's ranking. `git grep -l "kickoff-autonomy" -- internal` prints nothing, so no guard pins it. Observed, not changed; the SPEC's closure claim is over its three patterns only (spec.md §G R-8) |
+| `internal/template/jev_auto_exception_test.go` (**new file since the pinned tree**, added by the run at G `6d012fd4d`) | this SPEC's own guard; see §R1.6 |
 
 ### R1.3 Class (ii) — historical record — left alone
 
@@ -82,7 +84,10 @@ The 43 files of the primary sweep are each assigned: class (i) — `jev.go`,
 the remaining 32 are class (iii) rows above. The synonym sweep adds `SKILL.md` ×2 and
 the guide (class (i)) and `AGENTS.local.md`, `contract_mode_blocks_test.go` (class
 (iii), already listed). The closed-target-phrase sweep's 47 files are assigned in §R1.5
-(8 + 5 + 34 = 47).
+(8 + 5 + 34 = 47). After the run (tree `e70578c24`) the primary sweep has 44 files:
+10 + 1 + 33, the 33 being the 32 above plus the guard source (§R1.6); the
+closed-target sweep has 48: 8 + 5 + 35, the 35 being the 34 of §R1.5 plus the guard
+source.
 
 ### R1.5 The closed-target-phrase sweep — 47 files, each assigned
 
@@ -105,6 +110,35 @@ Command (re-measured at tree `1eef55dd9`): `git grep -n -i -E 'a person reads|la
 
 No class-(i) surface beyond X1-X5 was found, so nothing is added to the orchestrator's
 decision list on this account.
+
+### R1.6 The guard source — the one file the sweeps gain after the run (class iii)
+
+The run added `internal/template/jev_auto_exception_test.go` (846 lines, G `6d012fd4d`).
+Measured at tree `e70578c24` with the three sweep commands of `plan.md` §F V12:
+
+| Sweep | Baseline at `c50da9c2f` | Now | Delta, accounted for |
+|---|---|---|---|
+| primary | 69 hits / 43 files | **76 hits / 44 files** | +1 hit `internal/cli/mcp_jev.go` (2 → 3; the added line of the amended comment block, class i) and +6 hits in the guard (`git grep -c -i -E 'display-only\|display only' -- <guard>` → `…:6`); file set differs by the guard alone |
+| synonym | 5 hits | **6 hits** | +1 hit in the guard (`:188`, the locator `never reorder by inferred priority`); the in-place rewrite of `SKILL.md:180` keeps its count |
+| closed-target | 84 hits / 47 files | **96 hits / 48 files** | +1 hit `internal/jev/jev.go` (2 → 3; the added comment, class i) and +11 hits in the guard (`…:11`); file set differs by the guard alone |
+
+The file-set claim is a measurement: `git grep -l` at `c50da9c2f` (prefix stripped) and
+at the tree, written to two scratch files and compared with `diff`, printed
+`29a30 > internal/template/jev_auto_exception_test.go` for the primary sweep and
+`35a36 > internal/template/jev_auto_exception_test.go` for the closed-target sweep —
+one added line each, nothing removed. Controls still present:
+`internal/mcp/catalog.go:97:` (primary), `internal/cli/todo_triage.go:14:` and `:123:`
+(closed-target).
+
+The guard's primary hits (`:126`, `:134`, `:173`, `:185`, `:191`, `:716`) are passage
+locators (`jaeCommentBlock(s, "display-only")`, `grLineWith(s, "consults Jev as a
+display-only signal")`, …), the closed list of REQ-MT-014 and a fixture comment. Its
+closed-target hits (`:132`, `:139`, `:146`, `:174`, `:195`, `:198`, `:710`, `:721`,
+`:755`, `:789`, `:790`) are the per-group closed-target tables and fixture sentences.
+A wording guard that has to reject a passage lacking "queue mutation" and to locate
+the passage that says "display-only" must spell both; none of it asserts the
+principle. Class (iii): a different object (guard source), the same kind as the
+predecessor's `contract_mode_blocks_test.go` (§R1.2).
 
 ## §R2 Raw sweep output (primary pattern, 69 lines, each cut at 200 characters)
 
@@ -489,3 +523,99 @@ partial amendment at `G`, and at `K` the arming marker first appears in `G`'s co
 occurs twice. The draft is a re-implementation, not the real guard — see `plan.md` §I
 G-7. The claim and over-reach expressions are the two reference expressions of `plan.md`
 §E; the eight cases are the full set they were tried on.
+
+## §R7 Run-phase reconciliation measurements (v0.1.2; tree `e70578c24`, branch `WT-jev-auto-exception`, tree clean at the start)
+
+Everything below was measured in the reconciliation session. Go commands ran as one
+compound `unset <11 lane variables> && go …`, one package per invocation; `git grep`
+commands as plain invocations. Tool: `<scratchpad>/moai3`, built by
+`go build -o <scratchpad>/moai3 ./cmd/moai` from tree HEAD `e70578c24` (exit 0); its
+`moai version` prints `v3.1.3  none  built unknown`, so the build's commit is "this
+tree, by construction", not something the binary reports.
+
+**Run record, from git.** `wc -l internal/template/jev_auto_exception_test.go` → `846`.
+`git show --stat --format=%h 7983d9131` → `19 files changed, 80 insertions(+), 28
+deletions(-)` (K); `git show --stat --format=%h 6d012fd4d` → `3 files changed, 869
+insertions(+), 2 deletions(-)` (G: the guard 846, `progress.md`, `spec.md`).
+`git diff --shortstat 5f8c6e051 e70578c24` → `21 files changed, 1061 insertions(+), 30
+deletions(-)`; with `-- . ':!.moai/specs'` → `17 files changed, 909 insertions(+), 17
+deletions(-)`. `git log -1 --format=%b 7983d9131` → the message body ends at `🗿 MoAI`,
+no `Authored-By-Agent` line; `git log -1 --format=%b 6d012fd4d` ends
+`Authored-By-Agent: manager-develop`. `git grep -n -E '^version:' 7983d9131 --
+SPEC-JEV-CORE-001/spec.md SPEC-MANAGER-TODO-001/spec.md` → `"0.4.0"` and `"0.2.0"`;
+`git grep -n -F 'version: "0.1.0"' c50da9c2f -- SPEC-MANAGER-TODO-001/spec.md` →
+`…spec.md:4:version: "0.1.0"`.
+
+**Flip check — the ledger's RED-now commands run on the tree that contains K.**
+
+| Row | Command (plain) | Output | Exit | Reads as |
+|---|---|---|---|---|
+| L1 | `git grep -c -F "auto-scoped ranking exception" -- internal/jev/jev.go internal/cli/mcp_jev.go` | `internal/cli/mcp_jev.go:1` · `internal/jev/jev.go:1` | 0 | flipped |
+| L2 | same, the two `workflow.yaml` | `.moai/config/sections/workflow.yaml:1` · `internal/template/templates/.moai/config/sections/workflow.yaml:1` | 0 | flipped |
+| L3 | same, the two catalogue copies | `:2` each | 0 | flipped |
+| L4 | same, the two completed SPECs | `SPEC-JEV-CORE-001/spec.md:5` · `SPEC-MANAGER-TODO-001/spec.md:3` | 0 | flipped |
+| L5 | same, the guide | `.moai/docs/jev-local-operations.md:1` | 0 | flipped |
+| L6 + L6b | same, the six extension paths | `:1` each | 0 | flipped |
+| L19 | same, the two reference-skill copies | `:1` each | 0 | flipped |
+| L12 | `git grep -c -F "jevAutoExceptionAmended" -- internal/template` | `internal/template/jev_auto_exception_test.go:8` | 0 | flipped |
+| L16 | `git grep -c -F "TestJevAutoExceptionWording" -- internal/template` | `…jev_auto_exception_test.go:3` | 0 | flipped |
+| L17 | `git grep -c -F "jev_auto_exception_test" -- internal/template` | `…jev_auto_exception_test.go:2` (line 1 header comment, line 41 `jaeGuardFile`) | 0 | flipped |
+| L15 | `git grep -c -F "doc_display_only_test" -- internal/jev/jev.go` | (empty) | 1 | flipped |
+| AC-013 D1 control | `git grep -c -F "jevAutoExceptionAmended = true" 6d012fd4d -- <guard>` | (empty) | 1 | token absent at G |
+| AC-013 | same with `7983d9131` | `7983d9131:internal/template/jev_auto_exception_test.go:1` | 0 | once at K |
+| AC-013 | `git grep -c -F "jevAutoExceptionAmended = false" 6d012fd4d -- <guard>` | `6d012fd4d:internal/template/jev_auto_exception_test.go:1` | 0 | once at G |
+| AC-013 | `git log --reverse --format=%h -S"jevAutoExceptionAmended = true" -- <guard>` | `7983d9131` | 0 | only K adds it |
+| tree | `git grep -c -F "jevAutoExceptionAmended = false" -- <guard>` | (empty) | 1 | absent now |
+
+**Guards and tools, at `e70578c24`.** `go test -count=1 -v -run
+'^(TestJevAutoExceptionLinkage|TestJevAutoExceptionWording)$' ./internal/template/`
+(filtered to result lines): `armed=true`; `--- PASS: TestJevAutoExceptionLinkage
+(6.10s)`; `--- PASS: TestJevAutoExceptionWording (0.01s)`; `ok …/internal/template
+6.550s`, at `uptime` load averages 20.53 29.39 78.90. `TestJevDoctrineAmendment`: `---
+PASS` with its six subtests (`falsifier/authority-items-unamended`,
+`falsifier/req-011-display-only`, `falsifier/note-widened`, `spec`,
+`rules-and-config`, `local-guide`), `ok … 0.255s`. `moai3 spec lint
+SPEC-JEV-CORE-001` and `moai3 spec lint SPEC-MANAGER-TODO-001`: `✓ No findings — all
+SPEC documents are valid`.
+
+**The wording guard's remaining false positive and misses, measured.** A throwaway
+program in the scratchpad (outside the repository, not committed) copies
+`jaeClaimRes`, `jaeOverreachRe`, `jaeNegationRe`, `jaeLead`, `jaeClaims` and
+`jaeOverreach` verbatim from `jev_auto_exception_test.go:402-456` and applies them to
+phrases. Verbatim output of `go run`:
+
+```
+claims=1   overreach=0   flagged=true   "The ordering accuracy was measured by nobody."
+claims=0   overreach=0   flagged=false  "The answer set is validated as a whole before it is used."
+claims=0   overreach=0   flagged=false  "An answer that is validated as a whole may set selection order only."
+claims=0   overreach=0   flagged=false  "It does not apply to any moai todo pick outside the --auto cycle."
+claims=0   overreach=0   flagged=false  "Nothing here changes all picks outside the cycle."
+claims=1   overreach=0   flagged=true   "The ordering is validated as a whole."
+claims=0   overreach=1   flagged=true   "It applies to every moai todo pick outside the --auto cycle."
+claims=0   overreach=0   flagged=false  "The ordering is correct."
+claims=0   overreach=0   flagged=false  "The ordering is highly accurate."
+claims=0   overreach=0   flagged=false  "The ordering has been validated."
+claims=0   overreach=0   flagged=false  "The ordering is 90% accurate."
+claims=0   overreach=0   flagged=false  "The ordering is proven better than recorded priority."
+claims=0   overreach=0   flagged=false  "It applies to every card pick."
+claims=0   overreach=0   flagged=false  "It applies to all queue picks."
+claims=0   overreach=0   flagged=false  "It applies to each moai todo pick."
+claims=0   overreach=0   flagged=false  "It applies to any moai gtd mutation."
+claims=0   overreach=0   flagged=false  "There is no auto-scoped ranking exception; selection order only is not permitted."
+claims=0   overreach=1   flagged=true   "It is not limited to the cycle, so it applies to every moai todo pick."
+claims=0   overreach=1   flagged=true   "It is not a ranking; it applies to every moai todo pick."
+claims=0   overreach=0   flagged=false  "순서가 정확하다고 검증되었다."
+claims=0   overreach=0   flagged=false  "모든 moai todo 선택에 적용된다."
+```
+
+Reading: line 1 is the false positive the M1 author named and did not fix; lines 2-5
+are the four legitimate sentences the M1 exemptions clear; lines 6-7 are the two the
+exemptions must not clear and do not; lines 8-16 and 20-21 are accepted claims, other
+nouns and Korean variants (misses); line 17 is the negation that satisfies both
+literals, accepted by the claim and over-reach functions; lines 18-19 show the
+negation window does not let a widening sentence through in the two forms tried. Line
+17 is judged on those two functions only; the literal-and-bound check lives in
+`jaeWordingFindings` (`:462-478`), which looks for the token and its bound in one
+paragraph and not for what is said about them — read from the code, not run on that
+sentence. The plan-audit iteration 2 measured the same classes against the reference
+expressions before the exemptions existed (34 phrases: 19 misses, 5 false positives).

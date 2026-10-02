@@ -151,7 +151,13 @@ assembly last.
   block `gofmt` would align the `=` and break the literal); the text
   `jevAutoExceptionAmended = true` appears nowhere else in the file — not in a comment,
   not in a fixture, not in a message string (fixtures build it from the same two
-  pieces); and the constant name alone, without ` = true`, may appear freely.
+  pieces); and the constant name alone, without ` = true`, may appear freely. The same
+  holds for the `= false` text: it appears once at `G`, as the const declaration
+  (`git grep -c -F "jevAutoExceptionAmended = false" 6d012fd4d -- <guard>` printed
+  `…:1`), and a comment or fixture spelling it would make AC-JAE-013's count 2 — so
+  the rule covers both spellings, and after `K` neither the `= false` text nor a second
+  `= true` text is in the file (`git grep -n "jevAutoExceptionAmended"` lists the
+  name only in the name constant, comments and uses; read at `e70578c24`).
   Alternatives rejected: the constant in a non-test Go file (adds a non-comment Go
   line, contradicting REQ-JAE-008) and detecting the flip by a regular expression
   instead of `Contains` (departs from the predecessor's mechanics for no gain).
@@ -180,18 +186,34 @@ assembly last.
   for the two Go files proves every changed line is a `//` comment line; it runs
   once at M4, it is not a permanent test.
 
-- **D-8 — Tier M.** Evidence: no constitutional clause names the principle
-  (`git grep -c -i -E 'jev|display-only'` over `zone-registry.md` and
-  `moai-constitution.md` prints nothing, exit 1); no new package and no behavior
-  change; non-test code is about 20 comment lines, prose and requirements text about
-  150 lines, the new test about 250-350 lines — under 1000 on any reading; 12
-  requirements and 14 criteria against the Tier M ceilings 16/16. File count
-  straddles the M/L line: 10 with the six card surfaces plus X1 and the test, 19 with
-  all extensions X2-X5 and `catalog.yaml` (six of the 19 are mirror copies of one
-  edit, and the tier table's LOC row is guidance). Classified M; a Tier L reading
-  would add design.md and raise the audit threshold to 0.85 for a comment-and-prose
-  change. The file count rose from 17 to 19 when X5 joined (OD-3); the
-  classification is the author's reading and is listed as an orchestrator decision.
+- **D-8 — Tier M (kept after the run).** Evidence at plan time: no constitutional
+  clause names the principle (`git grep -c -i -E 'jev|display-only'` over
+  `zone-registry.md` and `moai-constitution.md` prints nothing, exit 1); no new
+  package and no behavior change; 12 requirements and 14 criteria against the Tier M
+  ceilings 16/16; 13 distinct edits (the plan-audit iteration 2's count, each
+  live/mirror pair and the generated hash line counted once). The plan estimated "the
+  new test about 250-350 lines — under 1000 on any reading". **The run measured
+  otherwise:** the guard is **846 lines** (`wc -l internal/template/jev_auto_exception_test.go`),
+  about 2.4 times the top of the estimate (the run record counts 32 passing and 7
+  skipping subtests at G, plus the locator, fixture and claim tables;
+  `progress.md` §E.2 finding 1). Measured
+  sizes: G (`6d012fd4d`) 3 files, +869/−2, 846 of the insertions the guard; K
+  (`7983d9131`) 19 files, +80/−28 (17 non-SPEC files plus the two completed SPEC
+  bodies); G and K together +949; `git diff --shortstat 5f8c6e051 e70578c24` counts
+  21 files, +1061/−30 for the whole run including its own evidence record, and
+  17 files, +909/−17 outside `.moai/specs`. "Under 1000" therefore holds for G plus K
+  (949) and for the deliverables outside the SPEC directory (909) and does **not**
+  hold if the run's evidence record in `progress.md` is counted (1061); the 300-1000
+  LOC band of Tier M contains the first two. **File count is the one column that
+  points at Tier L:** 17 distinct non-SPEC files (19 with the two completed SPEC
+  bodies) against Tier M's 5-15, with six of them mirror copies of one edit and one a
+  generated hash line. Tier M is kept on the evidence above, **not** on the cost of a
+  `design.md` — the iteration-1 text gave that reason, and the tier table names it as
+  its anti-pattern. The classification is the independent auditor's, not the
+  author's: `progress.md` §G OD-6 deferred it, and plan-audit iteration 2 judged Tier
+  M (PASS 0.94 against 0.80; under a Tier L reading the same measurements score 0.88
+  against 0.85, with an absent `design.md` as non-blocking debt). The run does not
+  reopen it.
 
 **Assumptions flagged for confirmation (A):**
 
@@ -206,9 +228,14 @@ assembly last.
   style with `status: completed` unchanged, not the `completed → in-progress
   (amendment)` transition (§B.7). **Decided** — `progress.md` §G OD-4
   (orchestrator, 2026-10-02) applies it to both SPECs, on the precedent commit
-  `185569ef3` and the audit's clean `moai spec lint` / `moai spec audit` check in that
-  state. The `status: completed` pin of `TestJevDoctrineAmendment` (P1) exists for
-  `SPEC-JEV-CORE-001` only.
+  `185569ef3` and on what the audits observed — iteration 1: both lint-clean before
+  the edit; iteration 2: `SPEC-JEV-CORE-001` already carries two in-place amendments
+  and lints clean, and a scratch copy of `SPEC-MANAGER-TODO-001` with the planned edit
+  added no finding (spec.md §B.7 states it at that strength). The in-tree result after
+  the real edit is now observed: `moai spec lint` prints `No findings` for both.
+  `SPEC-JEV-CORE-001` went 0.3.0 → 0.4.0 and `SPEC-MANAGER-TODO-001` 0.1.0 → 0.2.0
+  (D-6 planned both). The `status: completed` pin of `TestJevDoctrineAmendment` (P1)
+  exists for `SPEC-JEV-CORE-001` only.
 - **A-3 — Tool-level description string unchanged** (§B.4). OD-4 does not decide this
   one; it stays the author's decision: no test pins the string, but changing it
   would tell agents about a path the tool refuses, so it is left alone and listed in
@@ -240,8 +267,22 @@ vacuous pass, so the swept count is read from `go test -list` first.
    prints no test name today (acceptance.md ledger row L7, informational). After M1 it
    prints exactly the two names and `ok`.
 5. A tree-local `moai` for lint: `go build -o <scratchpad>/moai ./cmd/moai`; invoke it
-   by path, and cite its tree HEAD next to every lint result.
-6. Worktree guard: use plain, separate commands. Two compound forms were refused in
+   by path, and cite its tree HEAD next to every lint result. The binary carries no
+   commit stamp — `moai version` prints `v3.1.3 none built unknown` when built without
+   ldflags (observed at `e70578c24`) — so the judging build's commit cannot be read
+   from the binary: the provenance is "built from tree HEAD `<sha>` by construction,
+   in the same session as the lint", stated beside the result, not read off the binary
+   (`verification-claim-integrity.md` §2.2).
+6. Verification cost of the linkage guard. `TestJevAutoExceptionLinkage` shells out to
+   `git`: with `armed=true` the `tree` subtest runs `git log -S<token>` once per
+   registry row (18 rows) plus the presence reads, and with `armed=false` it only
+   asserts absence. Wall time therefore tracks machine load, not the tree: the run
+   recorded 110-210 s at a load average of about 300 (M1, `progress.md` §E.2) and 8.26 s
+   at load averages 40.5 43.8 117.4 (M4); the reconciliation measured 6.10 s
+   (`--- PASS: TestJevAutoExceptionLinkage (6.10s)`, `ok … 6.550s`) at 20.53 29.39
+   78.90. The cost is git subprocess launches (the run's reading, `progress.md` §E.2
+   finding 4); it was not profiled here.
+7. Worktree guard: use plain, separate commands. Two compound forms were refused in
    this plan run (a `for` loop over `git grep`; a `git grep` redirected to a
    `$VAR/…` path) — see §I.
 
@@ -397,7 +438,7 @@ if kept, `agent-authoring.md` ×2, `SKILL.md` ×2, `CLAUDE.md` ×2, the referenc
 | V9 | `go build ./...` and `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 both |
 | V10 | `<scratchpad>/moai spec lint SPEC-JEV-CORE-001` and `… SPEC-MANAGER-TODO-001` and `… SPEC-JEV-AUTO-EXCEPTION-001` | `No findings` each |
 | V11 | `git diff -U0 <CARD_BASE> -- internal/jev/jev.go internal/cli/mcp_jev.go`, `CARD_BASE` from `git merge-base develop HEAD` taken at run time | every `+`/`-` content line is a `//` comment line; no hunk touches the `mcp.WithDescription` line |
-| V12 | the three inventory sweeps, each excluding `.moai/specs`, `.moai/reports`, `CHANGELOG.md` — primary: `git grep -n -i -E 'display-only\|display only' -- . ':!.moai/specs' ':!.moai/reports' ':!CHANGELOG.md'`; synonym: `git grep -n -E 'never reorder by inferred priority\|판단 자료\|모델 답을 입력으로도' -- . ':!.moai/specs' ':!.moai/reports' ':!CHANGELOG.md'`; closed-target phrases: `git grep -n -i -E 'a person reads\|labelled model\|queue mutation\|hard to undo' -- . ':!.moai/specs' ':!.moai/reports' ':!CHANGELOG.md'` | every hit's file is in the `research.md` §R1 tables; each class-(i) passage carries both literals; controls: `internal/mcp/catalog.go:97` (class iii, untouched) is present in the primary sweep, and `internal/cli/todo_triage.go` (class iii, untouched) is present in the closed-target-phrase sweep |
+| V12 | the three inventory sweeps, each excluding `.moai/specs`, `.moai/reports`, `CHANGELOG.md` — primary: `git grep -n -i -E 'display-only\|display only' -- . ':!.moai/specs' ':!.moai/reports' ':!CHANGELOG.md'`; synonym: `git grep -n -E 'never reorder by inferred priority\|판단 자료\|모델 답을 입력으로도' -- . ':!.moai/specs' ':!.moai/reports' ':!CHANGELOG.md'`; closed-target phrases: `git grep -n -i -E 'a person reads\|labelled model\|queue mutation\|hard to undo' -- . ':!.moai/specs' ':!.moai/reports' ':!CHANGELOG.md'` | every hit's file is in the `research.md` §R1 tables — the guard source `internal/template/jev_auto_exception_test.go` (class iii) is the one file the sweeps gain over their baselines, and at `e70578c24` they print primary 76 hits / 44 files, synonym 6 hits, closed-target 96 hits / 48 files; each class-(i) passage carries both literals; controls: `internal/mcp/catalog.go:97` (class iii, untouched) is present in the primary sweep, and `internal/cli/todo_triage.go` (class iii, untouched) is present in the closed-target-phrase sweep |
 | V13 | `go test -count=1 -v -run '^(TestJevQuestionDesignSkillCarriesNoCallPath\|TestJevQuestionDesignSkillCopiesStayIdentical)$' ./internal/cli/` | two `--- PASS` (P11, X5) |
 | V14 | `go test -count=1 -v -run '^TestCatalogHashParity$' ./internal/spec/` | `--- PASS`, `0 drift` (P12, X3 and X5 hash regeneration) |
 
@@ -454,25 +495,40 @@ assembly); `internal/contract/kickoff/activation_test.go` (the first guard);
 - **G-2 — Run-phase commands are unrun.** V1-V2, V11 and the sweep V12 as a closure
   check are run-phase commands; only their RED-now counterparts and the baseline
   guards were run now. `go test -list` for the new names was run (empty).
+  *Status after the run (0.1.2):* closed — the run exercised V1-V12 (`progress.md`
+  §E.2 E1 and the sweeps); the reconciliation re-ran V1-V2, V3 and the three sweeps
+  at `e70578c24`.
 - **G-3 — The 15-name ranking suite** was not re-run in full; eight names were
   (research.md §R3).
 - **G-4 — Draft wording is untested.** D-1 and D-2 are reference wording; whether
   each rewritten passage still satisfies its pin is established only at M3.
+  *Status after the run (0.1.2):* closed — at `e70578c24` `TestJevDoctrineAmendment`
+  passes 6/6 and the seven group subtests of `TestJevAutoExceptionWording` run
+  (`armed=true`) and pass over the amended passages.
 - **G-5 — `grReqBody`'s paragraph boundary** for the new "second exception"
   paragraph was reasoned from reading the helper (`contract_mode_blocks_test.go:833-846`),
-  not exercised.
+  not exercised. *Status after the run (0.1.2):* closed — `TestJevDoctrineAmendment/spec`
+  reads the amended REQ-JEVC-011/-012 bodies with the new paragraph and passes.
 - **G-6 — `moai spec lint` on the amended completed SPECs** is a post-M2 check; only
-  the pre-edit baseline was run.
+  the pre-edit baseline was run. *Status after the run (0.1.2):* closed — `moai spec
+  lint SPEC-JEV-CORE-001` and `SPEC-MANAGER-TODO-001` each print `✓ No findings — all
+  SPEC documents are valid` (tree-local build from tree HEAD `e70578c24`).
 - **G-7 — The D1 draft re-implements the predecessor's mechanics; it is not the
   predecessor's test.** It reproduces the presence check (`strings.Contains`), the
   first-commit check (`git log --reverse -S`) and the tree-versus-commit behavior in a
   throwaway program outside the repository (research.md §R6). That the real
   `TestJevAmendmentLinkage` helpers behave identically is established by reading
   `activation_test.go:44-50,179`, not by running the draft against them; the real guard
-  is first exercised at M1.
+  is first exercised at M1. *Status after the run (0.1.2):* closed — the real guard
+  ran RED against stubs and GREEN at G (`falsifier/self-match` included), and
+  `TestJevAutoExceptionLinkage` passes with `armed=true` at `e70578c24`; the draft
+  remains a re-implementation, and the guard's own `git log -S` is the real check.
 - **G-8 — The claim and over-reach expressions were tried on eight phrase cases**
   (research.md §R6), not on the amended passages, which do not exist yet. Whether the
-  final wording trips them is established at M3.
+  final wording trips them is established at M3. *Status after the run (0.1.2):* the
+  final passages pass the groups; the expressions were refined by two narrowing
+  exemptions, one false positive remains and several miss classes are measured
+  (spec.md §G R-5, research.md §R7).
 - **G-9 — The third sweep is itself a pattern** (spec.md §G R-8): it found X5, and a
   restatement phrased without `a person reads`, `labelled model`, `queue mutation` or
   `hard to undo` would still be missed.
