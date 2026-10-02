@@ -4,7 +4,7 @@
 
 plan_status: audit-ready
 plan_complete_at: 2026-10-02
-plan_phase_notes: Tier M artifacts authored (spec.md, plan.md, acceptance.md). Iteration 1 plan-audit FAIL 0.75 (`.moai/reports/t1416/plan-audit.md`); v0.1.1 repair addresses D1-D10 (D11 observed: hugo rc 0, 0 WARN/ERROR at `0e7b6af5b`). RED-now cells re-measured at HEAD `0e7b6af5b` with exit codes (acceptance.md Evidence ledger); scope files identical to the original pin `c50da9c2f`. Re-audit pending.
+plan_phase_notes: Tier M artifacts authored (spec.md, plan.md, acceptance.md). Iteration 1 plan-audit FAIL 0.75 (`.moai/reports/t1416/plan-audit.md`); v0.1.1 repair addresses D1-D10 (D11 observed: hugo rc 0, 0 WARN/ERROR at `0e7b6af5b`). RED-now cells re-measured at HEAD `0e7b6af5b` with exit codes (acceptance.md Evidence ledger); scope files identical to the original pin `c50da9c2f`. Iteration 2 plan-audit FAIL 0.86 (only D2 unresolved: verb-list pin); v0.1.2 repair replaces it with a structural `xhigh` count guard, records a rewording probe in scratch copies, applies N2-N4, and regenerates the ledger at HEAD `ff7b64f6e` (scope files identical to `c50da9c2f`). Final audit (iteration 3) pending.
 
 Gaps (explicitly unobserved at plan time):
 - Upstream facts F1-F7: F1-F6 were read through a fetch tool that summarizes pages; F7 (the `ultracode` settings entry) was read from the raw page with `curl` and tag-stripping on 2026-10-02 and matches the audit's own raw read. F1 was independently re-read by the plan-audit.

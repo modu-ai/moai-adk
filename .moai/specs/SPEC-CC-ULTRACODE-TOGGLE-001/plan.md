@@ -41,17 +41,17 @@ Exact phrases the bullet must contain verbatim (these are the AC-001/AC-002 posi
 | `v2.1.284` (and, on the same line, `"ultracode": true`) | R4, R11 | REQ-001, REQ-003, DEC-1 |
 | `/effort ultracode off` | R5 | REQ-002 |
 | `--effort ultracode` | R6 | REQ-002 |
-| `starts the session at `xhigh`` (the launch-flag clause; the only `xhigh` mention tied to ultracode) | R7 | REQ-002 |
+| `starts the session at `xhigh`` (the launch-flag clause; the only `xhigh` in the rule file — AC-001 `[R1s]`/`[R1c]` count it) | R7 | REQ-002 |
 | `current session` | R10 | REQ-003 |
 | `"ultracode": true` | R8 | REQ-003 |
 
-Suggested wording of the flag clause, built so the AC-001 coupling regex does not match it (no coupling verb between `ultracode` and `xhigh`): "the `--effort ultracode` launch flag (and the Agent SDK `effortLevel: "ultracode"` value) also starts the session at `xhigh`." Wording probe (run on this tree, scratch file): the R1 regex flags "forces `xhigh`", "runs at `xhigh`", "combines `xhigh`", "sets xhigh" lines and passes both the flag-clause line and a line containing "resets" (the verb match requires a non-letter before it).
+Suggested wording of the flag clause: "the `--effort ultracode` launch flag (and the Agent SDK `effortLevel: "ultracode"` value) also starts the session at `xhigh`." The bullet must contain exactly one `xhigh`, and it is this one — AC-001's structural guard (`[R1s]` no line with two `xhigh`, `[R1c]` exactly one line with `xhigh` in the file) plus AC-002's `[R7]` enforce it by counting, not by wording, so no other sentence of the bullet (or file) may mention `xhigh` at all, however it is phrased. The retired verb-list pin is explained in acceptance.md AC-001; the rewording probe and its results are in acceptance.md § Mutant probe.
 
 ### M2 — ko canonical docs, then en/ja/zh derivation
 
 Order within the milestone: ko of all four pages (workflows row, multi-llm comment, ultracode-workflows, commands) -> en -> ja and zh. Per page, edit only the lines in the spec §3 change map. Keep the table row to one line and the code comment to one line. Re-read each edited line after the edit (`completion claims need post-edit readback`).
 
-Workflows-row literals (AC-004): each locale's row carries `v2.1.284`, `/effort ultracode off`, `--effort ultracode`, and `"ultracode": true` (the last with `v2.1.284` on the same line), retains its current-session scope wording, and holds exactly one `xhigh` — inside the `--effort ultracode` clause, after that literal, in the same table cell (so the old leading "xhigh + orchestration" opening must go). The ultracode-workflows pages name `/effort ultracode off` as the off route (REQ-007). The commands pages carry a line with `ultracode` and the locale's toggle word (REQ-008); the ko/en L137 level-list sentence is reworded so `ultracode` is no longer listed among the levels. No page mentions the slider (REQ-011).
+Workflows-row literals (AC-004): each locale's row carries `v2.1.284`, `/effort ultracode off`, `--effort ultracode`, and `"ultracode": true` (the last with `v2.1.284` on the same line), retains its current-session scope wording, and holds exactly one `xhigh` — inside the `--effort ultracode` clause, in one clause with that literal and no `. 。 ; ； , ， 、` between the literal and `xhigh` (so the old leading "xhigh + orchestration" opening must go, and the flag clause is worded without internal commas). The ultracode-workflows pages name `/effort ultracode off` as the off route and lose their `xhigh` effects mention without gaining another (REQ-007; `[U1c]` en/ja/zh `0`, ko `4`). The commands pages carry a line with `ultracode` and the locale's toggle word (REQ-008); the ko/en L137 level-list sentence is reworded so `ultracode` is no longer listed among the levels. No page mentions the slider (REQ-011).
 
 ### M3 — Template mirror (mechanical)
 
