@@ -468,3 +468,19 @@ Develop-facing regression slices (the merge with develop `c50da9c2f`):
 Lane-measured facts (measurer = lane, NOT re-run here): the clean-env full `./internal/cli` run at `623e4b15a` had exactly two top-level FAILs, `TestStopChainEffectParityGolden` and `TestSyncGateLanguageDetectionMatchesScript`, identical on an exported copy of base `f22e2d7ac`; owner cards t1390 / t1402 per the leader's message, not this agent's observation. A full-suite re-run at the final tree is not part of this task.
 
 Gaps: live Codex round trip (live gate env unset, AC-MS-016 is a SKIP); a real `claude` stream backend (tests use sh and re-exec fakes); whole-package `internal/cli` suite at this HEAD; `internal/kanban`, `internal/hook`, `internal/template` suites; the launcher families regex covers launch-related tests only. Residual-risk: a real-session protocol drift (App Server methods, stream-json events) has no signal without the live gate; card children of `moai codex -f lane` stay unmanaged under any switch value (measured earlier, §H); the two pre-existing reds remain red until t1390 / t1402 reach the base.
+
+### E.2 addendum at 3dbb510e7 (AC-MS-018 and the AC-MS-001/007 correction)
+
+Measured at HEAD `3dbb510e7`, clean tree, lane env unset by literal name in the same call as the go command.
+
+| AC | Status | Command | Verbatim result |
+|----|--------|---------|-----------------|
+| AC-MS-018 | PASS | `go test -v ./internal/cli -run '^(TestFactoryManagedRequested\|TestManagedLaunchRequiresOptIn\|TestManagedCodexLaunchRequiresOptIn\|TestManagedSwitchDoesNotReachCodexLaneLoop)$'` | `--- PASS: TestFactoryManagedRequested (0.00s)`; `--- PASS: TestManagedLaunchRequiresOptIn (0.00s)` (subtests `stamps_without_the_switch_reach_the_exec_door`, `the_switch_without_stamps_reaches_the_exec_door`, `switch_and_stamps_divert` all PASS); `--- PASS: TestManagedCodexLaunchRequiresOptIn (0.00s)` (subtests `stamps_in_the_process_env_without_the_switch_reach_the_direct_door`, `the_switch_without_stamps_reaches_the_direct_door`, `switch_and_stamps_divert_with_the_launch_dir` all PASS); `--- PASS: TestManagedSwitchDoesNotReachCodexLaneLoop (3.56s)`; `ok  github.com/modu-ai/moai-adk/internal/cli	4.193s` |
+
+Correction: the AC-MS-001 and AC-MS-007 rows' Given prose is back to the originally audited text. Their tests are owner-level and do not set `MOAI_FACTORY_MANAGED`, so the note in the caaa6a943 matrix about the amended "opt-in active" prose is superseded by this addendum. The activation condition is decided by AC-MS-018, not by those two rows.
+
+Code unchanged since the caaa6a943 measurements (inference from a diff, not a re-run): `git diff --name-only a88f138ad..HEAD` lists `.moai/specs/SPEC-FACTORY-MANAGED-SESSION-001/{acceptance,design,plan,progress,spec}.md` and no `.go` file (`| grep -c '\.go$'` → `0`). a88f138ad is the last commit that touched Go code, so the 17 other AC results from caaa6a943 stand as measured at an unchanged Go tree.
+
+The AC count is 18 now. Older sections still carry the 17-era count: line 7 (§E.1 artifacts `AC 17`), line 299 (§E.4 `b12_self_test_b … live=17 … AC rows 17`) and line 327 (the B12 AC counter row, stdout `17`). They are historical records measured before AC-MS-018 existed and are left untouched.
+
+Gaps: the whole-package `internal/cli` suite at this HEAD was not run (the lane decides); the live Codex round trip and a real `claude` stream backend are unobserved. Residual-risk: unchanged from the caaa6a943 subsection.
