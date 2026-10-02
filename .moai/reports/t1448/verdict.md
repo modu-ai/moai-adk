@@ -47,6 +47,10 @@
 - 수리: `e55aaeb1b`(코드·테스트: 테스트를 결정적으로 만들고 보상 재검증을 큐 잠금 안에서 기록 재독으로 바꿈), `9a5cb0dcb`·`01ccc8b33`(교리·문서 범위 한정).
 - sync-audit 2회차(`sync-audit-iter2.md`, 감사 대상 `01ccc8b33`): 네 차원 88·90·85·85, 조화평균 87.0/100 PASS-WITH-DEBT, 막는 지적 없음. 보고서 자체 판정 줄은 FAIL로 남음 — 필수 교차 모델 게이트 미충족(codex 백엔드 fail, `plan_source` 부재로 `moai verify audit-plan --result-file`의 `convergence_check.ok=false`; MCP 서버 빌드 `d194083fb`가 그 표면보다 오래됨).
 
+### 2회 흡수 부기
+
+판정서 커밋 뒤 로컬 develop에 카드 t1430의 문서 커밋 2건(`22194a0ad`, 병합 `43f5f85a5`; ultracode 문구, 규칙 `dynamic-workflows.md`와 그 거울, docs-site 9쪽, 10파일)이 더 들어왔다. 충돌 없이 흡수해 HEAD `29a4d56d6`이 됐고, 그 트리에서 다시 쟀다: `go build ./...` ok, `go test ./internal/template/... ./internal/guardstate -count=1 -timeout 25m` → `ok internal/template 378.777s`, `ok agentemit 0.699s`, `ok commandemit 0.628s`, `ok guardstate 0.319s`, exit 0. 위 표의 `internal/cli` 측정은 그 흡수 전 HEAD `a501e1b05`에서 한 것이고, 흡수가 건드린 파일은 `internal/cli`와 무관한 문서·규칙 거울뿐이라 `internal/cli` 테스트는 다시 돌리지 않았다(미검증으로 남긴다).
+
 ## 3. 기준선 귀속 (Baseline-attribution)
 
 - 측정한 트리: 카드 브랜치 HEAD `a501e1b05`(병합 후). 병합 기준(공통 조상)은 로컬 `develop` 팁 `1e2151a38` 자체이며, 스텁 크기 비교의 기준 블롭은 그 커밋의 `.claude/rules/moai/workflow/kanban-dispatch.md`다(`git show`로 읽어 28,308 바이트/28,099 글자 확인).
