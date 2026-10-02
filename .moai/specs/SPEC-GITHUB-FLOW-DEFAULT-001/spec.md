@@ -1,7 +1,7 @@
 ---
 id: SPEC-GITHUB-FLOW-DEFAULT-001
 title: "github-flow 기본 개발 흐름 전환 — main 단일 기준·카드 PR 전달·main 태그 릴리스"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-10-02
 updated: 2026-10-02
@@ -21,7 +21,8 @@ tier: L
 | 버전 | 날짜 | 작성 | 변경 |
 |---|---|---|---|
 | 0.1.0 | 2026-10-02 | manager-spec (카드 t1453) | plan-phase 산출물 최초 작성 (Tier L, 5 artifacts) |
-| 0.1.1 | 2026-10-02 | manager-spec (카드 t1453) | plan-audit 1회차(0.74, FAIL) 반영. 미해소 질문 7건을 결정 D-16~D-22 로 기록하고 표지 문자열을 제거. 절체 순서 충돌(AC-016·AC-019·push 트리거)을 D-17·D-25 로 해소. REQ-008·010·013·016·019·020·021·022 문언 정정, M2(d)·M3(f) 범위 삭제, AC-023(런북 내용) 추가로 AC 23개. REQ 는 22개 그대로 |
+| 0.1.1 | 2026-10-02 | manager-spec (카드 t1453) | plan-audit 1회차(0.74, FAIL) 반영. 미해소 질문 7건을 결정 D-16~D-22 로 기록하고 표지 문자열을 제거. 절체 순서 충돌(AC-016·AC-019·push 트리거)을 D-17·D-25 로 해소. REQ-GFD-008·010·013·016·019·020·021·022 문언 정정, M2(d)·M3(f) 범위 삭제, AC-023(런북 내용) 추가로 AC 23개. REQ 는 22개 그대로 |
+| 0.1.2 | 2026-10-02 | manager-spec (카드 t1453) | plan-audit 2회차(0.84, FAIL) 반영. REQ-GFD-002 를 `done`·`sweep` 의 세 층과 세션 종료 정리의 두 층(네트워크 호출 없음)으로 분리(N-04). AC-008 에 `release.yml` 배선 단언과 접미사 없는 태그 동치 시험 추가(N-01). Frozen 줄 분류와 미등재 줄의 일반 편집 취급을 REQ-GFD-013·AC-GFD-013·AC-GFD-017 에 명시(N-03). 스윕 가드의 약한 적중을 허용 목록 외에는 위반으로 승격하고 픽스처 21→25(N-05, D-27). CI 증거를 실행 id 로 고정하거나 Gaps 로 이동(N-07, D-28). 런북 행당 주체 하나(N-02, D-29). 선택 항목 D7~D12 도 반영. REQ 22개·AC 23개 그대로 |
 
 ## §A 배경
 
@@ -33,7 +34,7 @@ tier: L
 
 - **배포 기본값은 이미 github-flow 다.** 배포 템플릿은 세 프로필 모두 `workflow: github-flow` 이고 `worktree_base_branch` 는 비어 있다(원장 E-30, `git-strategy.yaml.tmpl`). 이 저장소가 추적하는 설정만 manual 프로필에서 git-flow 값을 든다(원장 E-08, 이 저장소의 파일: `worktree_base_branch: develop`, `workflow: git-flow`, `develop_branch: develop`).
 - **main 과 develop 은 크게 갈라져 있다.** 두 팁 사이 발산은 `7614 1` 이다(원장 E-22). main 에만 있는 커밋은 하나(`4755c5e50`, PR #1740)이고 develop 에는 그 내용이 없다. develop 이 main 을 흡수하는 병합은 충돌 없이 끝난다(`research.md` §3).
-- **develop 위의 통합은 로컬 병합 창과 리더 일괄 push 로 돌아간다.** 카드마다 PR 이 없고, 원격 CI 는 develop push 마다 한 번 돈다. 이 CI 의 최근 12회는 7회 failure·5회 cancelled 였다(`research.md` §4). 운영자가 정한 절체 선행 조건은 origin/develop 팁의 CI 녹색이다(design D-17).
+- **develop 위의 통합은 로컬 병합 창과 리더 일괄 push 로 돌아간다.** 카드마다 PR 이 없고, 원격 CI 는 develop push 마다 한 번 돈다. 이 CI 의 최근 12회(실행 id 열두 개로 고정, 원장 M-1)는 7회 failure·5회 cancelled 였다(`research.md` §4). 운영자가 정한 절체 선행 조건은 origin/develop 팁의 CI 녹색이다(design D-17).
 - **main 은 보호돼 있다.** PR 필수·force-push 불가·관리자 포함(`enforce_admins`)이고 필수 체크 다섯 개가 `strict: false` 로 걸려 있다. `v*` 태그는 불변 규칙셋으로 삭제도 이동도 막혀 있다.
 
 ### A.3 이 SPEC 의 성격
@@ -100,7 +101,7 @@ tier: L
 
 ### REQ-GFD-002 — squash 병합에 안전한 착지 판정
 
-**When** `moai worktree done`·`moai worktree sweep`·세션 종료 정리가 카드 브랜치의 착지를 판정할 때, 판정은 조상 관계, 병합 기준점 이후 누적 변경의 patch-id 가 통합 목표에 이미 있는 커밋과 일치하는지, 해당 브랜치 PR 의 병합 상태 순서로 시도해야 하고(shall), 어느 것도 확정하지 못하면 트리를 보존해야 한다(shall).
+**When** `moai worktree done`·`moai worktree sweep` 이 카드 브랜치의 착지를 판정할 때, 판정은 조상 관계, 병합 기준점 이후 누적 변경의 patch-id 가 통합 목표에 이미 있는 커밋과 일치하는지, 해당 브랜치 PR 의 병합 상태의 세 층을 이 순서로 시도해야 하고(shall), 어느 것도 확정하지 못하면 트리를 보존해야 한다(shall). **When** 세션 종료 정리가 카드 브랜치의 착지를 판정할 때, 판정은 앞의 두 층(조상 관계, 누적 patch-id)만 시도해야 하고(shall), 네트워크 호출(`gh`)을 하지 않아야 하며(shall not), 두 층이 확정하지 못하면 트리를 보존해 다음 `sweep` 의 세 번째 층이 판정하게 해야 한다(shall).
 
 ### REQ-GFD-003 — 기본값의 리터럴 develop 제거
 
@@ -124,7 +125,7 @@ tier: L
 
 ### REQ-GFD-008 — rc 태그의 출처 검증 규칙
 
-**When** 태그가 prerelease 접미사(`-rc.N`)를 가질 때, 릴리스 출처 검증은 검사 5(CHANGELOG 절)와 검사 6(`system.yaml` 버전)을 건너뛰어야 하고(shall) 그 자리를 채우는 대체 검사는 두지 않아야 하며(shall not), 검사 1~4(주석 태그·트레일러·트레일러 버전 일치·커밋 결속)와 검사 7(main 조상)은 유지해야 한다(shall). 접미사 없는 태그의 7개 검사는 바뀌지 않아야 한다(shall). 이 규칙(R-a)의 문언은 design D-6 에 한 번만 적는다.
+**When** 태그가 prerelease 접미사(`-rc.N`)를 가질 때, 릴리스 출처 검증은 검사 5(CHANGELOG 절)와 검사 6(`system.yaml` 버전)을 건너뛰어야 하고(shall) 그 자리를 채우는 대체 검사는 두지 않아야 하며(shall not), 검사 1~4(주석 태그·트레일러·트레일러 버전 일치·커밋 결속)와 검사 7(main 조상)은 유지해야 한다(shall). 접미사 없는 태그의 7개 검사는 바뀌지 않아야 한다(shall).
 
 ### REQ-GFD-009 — prerelease 표시
 
@@ -144,7 +145,7 @@ tier: L
 
 ### REQ-GFD-013 — Frozen 조항의 정규 개정
 
-**Where** 변경이 zone-registry 에 등재된 `[ZONE:Frozen]` 조항 `CONST-V3R5-027`·`-028` 의 문언을 바꿀 때, 개정은 조항마다 `moai constitution amend --rule <ID> --evidence …` 한 번씩, 정확히 두 번의 실행으로 5단 게이트를 통과해야 하고(shall — 마지막 인간 승인 층은 대화형 Y/N 이므로 운영자가 수행한다), 개정 뒤 `moai constitution validate` 가 종료 코드 0 이며 등재 문언과 `spec-workflow.md` 본문이 일치해야 한다(shall). `worktree-integration.md` 의 Frozen 표지 두 줄은 등재되어 있지 않으므로 일반 편집으로 바꾸되 개정된 `spec-workflow.md` 문언과 같은 방향이어야 한다(shall).
+**Where** 변경이 zone-registry 에 등재된 `[ZONE:Frozen]` 조항 `CONST-V3R5-027`·`-028` 의 문언을 바꿀 때, 개정은 조항마다 `moai constitution amend --rule <ID> --evidence …` 한 번씩, 정확히 두 번의 실행으로 5단 게이트를 통과해야 하고(shall — 마지막 인간 승인 층은 대화형 Y/N 이므로 운영자가 수행한다), 개정 뒤 `moai constitution validate` 가 종료 코드 0 이며 등재 문언과 `spec-workflow.md` 본문이 일치해야 한다(shall). `[ZONE:Frozen]` 표지 줄이 등재되어 있는지는 편집하는 줄마다 `moai constitution list --file <경로>` 로 판정해야 하고(shall), 등재되어 있지 않은 줄 — `worktree-integration.md` 의 표지 두 줄과 `spec-workflow.md` 의 Route A/B 문단 표지 줄·plan 단계 표지 줄 — 은 일반 편집으로 바꾸되 개정된 등재 문언과 같은 방향이어야 하며(shall) 로컬과 템플릿 사본이 같아야 한다(shall).
 
 ### REQ-GFD-014 — 상시로드 증가의 진술과 측정
 
@@ -168,7 +169,7 @@ tier: L
 
 ### REQ-GFD-019 — 배치 경계와 레인 재기동
 
-**While** 병합되지 않았거나 병합됐어도 push 되지 않은 picked 카드, 살아 있는 통합 창·슬롯 보유자, 활성 레인 세션 중 하나라도 남아 있는 동안, 기준 브랜치 절체는 시작되지 않아야 하고(shall not), 절체 절차는 레인 정지·`/clear`·정리, 재기동, 첫 카드 관측의 순서와 단계마다의 실행 주체(카드·리더·운영자) 및 외부 공유 시스템 여부, develop 퇴역 뒤 워크플로 push 트리거 잔존 점검을 담아야 한다(shall). 이 카드 자신(M4·M5 묶음을 런북 2단계에서 마지막으로 병합하는 절체 카드)은 사전 점검의 picked 카드 조건에서 그 병합·push 뒤에 제외되며, 점검은 그 병합 뒤 수렴 병합(런북 4단계) 앞에서 실행된다(design D-25).
+**While** 병합되지 않았거나 병합됐어도 push 되지 않은 picked 카드, 살아 있는 통합 창·슬롯 보유자, 활성 레인 세션 중 하나라도 남아 있는 동안, 기준 브랜치 절체는 시작되지 않아야 하고(shall not), 절체 절차는 레인 정지·`/clear`·정리, 재기동, 첫 카드 관측의 순서와 단계마다의 실행 주체(카드·리더·운영자) 및 외부 공유 시스템 여부, develop 퇴역 뒤 워크플로 push 트리거 잔존 점검을 담아야 한다(shall). 이 카드 자신(M4·M5 묶음을 런북 2단계에서 마지막으로 병합하는 절체 카드)은 사전 점검의 picked 카드 조건에서 그 병합·push 뒤에 제외돼야 하고(shall), 점검은 그 병합 뒤 수렴 병합(런북 4단계) 앞에서 실행돼야 한다(shall, design D-25).
 
 ### REQ-GFD-020 — 외부 공유 시스템 변경의 확인 경계
 
@@ -176,7 +177,7 @@ tier: L
 
 ### REQ-GFD-021 — 스윕 가드의 관측된 실패
 
-**When** develop 기준 서술 스윕 가드가 실행될 때, 가드는 알려진 실패 입력(살아 있는 develop 문장)에서 적색이어야 하고(shall), 폐기 표지 문장에서는 녹색이어야 하며(shall), CJK 인접 표기(`develop에서`)와 접두 표기(`origin/develop`, `develop-based`)를 포착해야 하고(shall), 빈 스윕이 통과로 읽히지 않도록 방문 수가 하위 트리별·전체 바닥값(design D-9 가 수로 정한다) 이상임을 단언해야 한다(shall).
+**When** develop 기준 서술 스윕 가드가 실행될 때, 가드는 알려진 실패 입력(살아 있는 develop 문장 — 분기 말 토큰이 없는 문장 `Work starts from develop.` 도 허용 목록에 없으면 포함)에서 적색이어야 하고(shall), 폐기 표지 문장과 줄 전체 허용 항목에서는 녹색이어야 하며(shall), CJK 인접 표기(`develop에서`)와 접두 표기(`origin/develop`, `develop-based`)를 포착해야 하고(shall), 빈 스윕이 통과로 읽히지 않도록 방문 수가 하위 트리별·전체 바닥값(design D-9 가 수로 정한다) 이상임을 단언해야 한다(shall).
 
 ### REQ-GFD-022 — 병합 큐 판정의 기록과 t1452 조정
 
@@ -207,7 +208,7 @@ tier: L
 
 ## §F 측정 핀
 
-모든 측정은 카드 트리 `4bf547bcad7c155b1e91485921569db709ec3ac2` 와 원격 팁 `284e09c44023598affe486f17701717ca173e6ca`(develop)·`4755c5e506225ba90b7a303c5763fa303c699492`(main)에 핀한다. 원격 팁은 2026-10-02 에 가져온 값이며 움직이는 참조다. 이 SPEC 의 어떤 판정도 팁이 움직인 뒤에 다시 인용하지 않는다 — 인용하려면 다시 측정하고 다시 핀한다. 증거 원장 E-01~E-25 는 위 카드 트리에, 개정 0.1.1 에서 더한 E-26 이후와 측정 행 M-n 은 계획 커밋 `855563dba79da74528e0f01560efe80f1016cc11` 에 핀한다. 두 트리는 SPEC 디렉터리의 6개 파일만 다르다(`acceptance.md` §B 머리말의 관측).
+모든 측정은 카드 트리 `4bf547bcad7c155b1e91485921569db709ec3ac2` 와 원격 팁 `284e09c44023598affe486f17701717ca173e6ca`(develop)·`4755c5e506225ba90b7a303c5763fa303c699492`(main)에 핀한다. 원격 팁은 2026-10-02 에 가져온 값이며 움직이는 참조다. 이 SPEC 의 어떤 판정도 팁이 움직인 뒤에 다시 인용하지 않는다 — 인용하려면 다시 측정하고 다시 핀한다. 증거 원장 E-01~E-25 는 위 카드 트리에, 개정 0.1.1 에서 더한 E-26~E-35 와 측정 행 M-n 은 계획 커밋 `855563dba79da74528e0f01560efe80f1016cc11` 에, 개정 0.1.2 에서 더하거나 다시 잰 E-36 이후와 M-1·M-3·M-6·M-9 는 계획 개정 2 커밋 `6c2277295d9ddeaa92e83c0225910445f83cc1c2` 에 핀한다. 세 트리는 SPEC 디렉터리의 6개 파일만 다르다(`acceptance.md` §B 머리말의 관측).
 
 ---
 

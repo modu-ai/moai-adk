@@ -2,7 +2,7 @@
 
 > 이 문서는 plan-phase 에서 이 SPEC 의 입장이 의지하는 사실을 한곳에 모은다. 각 사실은 **명령, 관측 출력, 측정한 트리**로 귀속된다. 입력 보고서 두 건(`.moai/reports/t1453/m0-measurement.md`, `m0-research-synthesis.md`)에서 가져온 수치는 "인용"으로 표시하고 이 회차에 다시 측정하지 못한 것은 §9 Gaps 에 올린다.
 >
-> 측정 트리: 카드 트리 `4bf547bcad7c155b1e91485921569db709ec3ac2`. 원격 팁은 2026-10-02 에 `git fetch origin develop main` 으로 가져왔고(종료 코드 0) 해석값은 develop `284e09c44023598affe486f17701717ca173e6ca`, main `4755c5e506225ba90b7a303c5763fa303c699492` 다. 원격 팁은 움직이는 참조이므로 아래 수치를 팁이 움직인 뒤 다시 인용하지 않는다. 개정 0.1.1(2026-10-02)에서 다시 잰 값은 계획 커밋 `855563dba79da74528e0f01560efe80f1016cc11` 에서 측정했고 GitHub 쪽 값은 같은 날 `gh` 로 읽은 것이다(원장 M-n).
+> 측정 트리: 카드 트리 `4bf547bcad7c155b1e91485921569db709ec3ac2`. 원격 팁은 2026-10-02 에 `git fetch origin develop main` 으로 가져왔고(종료 코드 0) 해석값은 develop `284e09c44023598affe486f17701717ca173e6ca`, main `4755c5e506225ba90b7a303c5763fa303c699492` 다. 원격 팁은 움직이는 참조이므로 아래 수치를 팁이 움직인 뒤 다시 인용하지 않는다. 개정 0.1.1(2026-10-02)에서 다시 잰 값은 계획 커밋 `855563dba79da74528e0f01560efe80f1016cc11` 에서, 개정 0.1.2 에서 다시 잰 값(M-1·M-3·M-6·M-9, E-36 이후)은 계획 개정 2 커밋 `6c2277295d9ddeaa92e83c0225910445f83cc1c2` 에서 측정했고 GitHub 쪽 값은 같은 날 `gh` 로 읽은 것이다(원장 M-n). GitHub 쪽 값 중 인용하는 것은 모두 실행 id·PR 번호로 고정해 다시 읽은 값뿐이다(design D-28).
 
 ## §1 이 회차에 직접 측정한 것과 그 방법
 
@@ -37,22 +37,52 @@ GitHub 가 7.7천 개 파일·1.07백만 줄 규모(`git diff --shortstat origin
 
 ## §4 CI 사용량
 
-아래 표는 **2026-10-02 의 이 개정 회차에서 다시 측정해 재현된 것**만 담는다. `gh` 목록 응답은 움직이는 데이터이고 창을 고정하지 않은 `--limit` 표본은 같은 명령이 다른 구성을 돌려주는 것이 관측됐다(아래 마지막 항목). 그래서 가능한 곳은 `--created` 로 창을 고정했다. 평균은 모두 평균이며 중앙값은 이 문서·`design.md` 어디에도 쓰지 않는다.
+아래 표는 **2026-10-02 의 이 개정 회차에서 실행 id·PR 번호로 고정해 다시 읽은 것**만 담는다. `gh` 목록 응답(`gh run list`·`gh pr list`)은 움직이는 데이터이고, 같은 명령이 다른 창을 돌려주는 것이 두 회차 연속 관측됐다(아래 "목록 호출 불안정" 항목, design D-28). 그래서 목록 호출의 결과는 인용하지 않고 목록에서 얻은 식별자를 `gh run view <id>`·`gh api graphql` 로 하나씩 다시 읽은 값만 인용한다. 평균은 모두 평균이며 중앙값은 이 문서·`design.md` 어디에도 쓰지 않는다.
 
 | 관측 | 명령 | 결과 |
 |---|---|---|
-| develop push CI 최근 12회 (원장 M-1) | `gh run list --workflow=CI --branch develop --limit 12 --json conclusion,createdAt,startedAt,updatedAt --jq …` | failure 7·cancelled 5·success 0, `createdAt` 2026-10-01T13:38:32Z ~ 2026-10-02T09:27:17Z. failure 7회의 `startedAt`→`updatedAt` 은 1046·1223·1413·1484·1517·1551·1443 초(평균 1382 초). 같은 구성을 이 회차에 세 번 관측 |
-| main push CI, 창 고정 (원장 M-2) | `gh run list --workflow=CI --event push --branch main --created '2026-07-01..2026-10-02' --limit 200 --json conclusion,createdAt,startedAt,updatedAt --jq …` | n=200(한도에 닿았으므로 창 안의 최근 200회), success 146·cancelled 43·failure 10·startup_failure 1, `createdAt` 2026-07-16T21:58:31Z ~ 2026-09-10T01:46:49Z, success 평균 438 초. 같은 결과를 두 번 관측 |
-| 최근 병합 PR 20건의 대상 (원장 M-3) | `gh pr list --state merged --limit 20 --json baseRefName,mergedAt --jq …` | develop 17건·main 3건, `mergedAt` 2026-09-09T20:10:46Z ~ 2026-10-01T16:45:43Z. 두 번 관측 |
+| develop push CI 열두 실행 (원장 M-1, 실행 id 열두 개로 고정) | `gh run view <id> --json databaseId,conclusion,createdAt,startedAt,updatedAt,headSha,workflowName,event,headBranch` 를 열두 id 에 각각 | failure 7·cancelled 5·success 0(전부 `event: push`, `headBranch: develop`, 워크플로 `CI`). `createdAt` 2026-10-01T13:38:32Z ~ 2026-10-02T09:27:17Z. failure 7회의 `startedAt`→`updatedAt` 은 1046·1223·1413·1484·1517·1551·1443 초(평균 1382 초). id 와 값은 아래 §4.1 의 표 |
+| 최근 병합 PR 20건의 대상 (원장 M-3, PR 번호 스무 개로 고정) | `gh api graphql` 한 번(스무 PR 을 번호별 별칭으로 읽음) | develop 17건·main 3건(1695·1702·1740), 스무 건 모두 `MERGED` |
+| main push CI 200건 표본 (원장 M-2 의 1회차 기록) | (인용하지 않는다) | 창을 고정한 목록 호출이었지만 200개 실행을 id 로 고정하지 못했고 감사 회차에 다른 결과와 HTTP 502 를 돌려주어 이 SPEC 의 어떤 결정도 이 수에 기대지 않는다 — §9 Gaps |
 | CI 트리거 | `git grep -n -E "branches: \[main" -- .github/workflows/ci.yml` | `:18 branches: [main, develop]`(push), `:20 branches: [main]`(pull_request) (원장 E-21) |
 
 해석(관측에서 나온 것만):
 
 - `ci.yml` 의 PR 트리거가 main 대상 PR 만 포함하고 최근 병합 PR 이 대부분 develop 대상이므로 카드 PR 이 main 을 향하면 별도 트리거 변경 없이 PR 마다 CI 가 돈다.
 - develop push CI 의 최근 12회에 success 가 없다는 사실은 절체 경계의 전제(녹색 팁)가 된다 — 운영자가 origin/develop 팁 CI 녹색을 선행 조건으로 정했다(design D-17).
-- **1회차 기록에서 뺀 항목**: (1) "PR 이벤트 CI 60회 표본"(success 29·failure 28·cancelled 3, 평균 190 초)은 감사가 같은 명령을 다시 돌렸을 때 다른 값(46/8/6, 평균 470 초)이 나와 재현되지 않으므로 표와 설계의 증거 표에서 뺐다. (2) "main push CI 30회"(success 21·평균 594 초)는 창을 고정하지 않은 `--limit 30` 표본이었고, 이 회차에 같은 명령이 success 7·failure 8·cancelled 15, `createdAt` 2026-07-09 ~ 2026-08-08 이라는 다른 구성을 돌려주었다 — 재현되지 않아 위의 창 고정 표본으로 대체했다. (3) 입력 보고서가 인용한 "CI 1런 평균 1786 초(n=9)"는 어느 표본에서도 같은 선택 기준으로 재현하지 못했다. 이 SPEC 은 그 수치들을 입력으로 쓰지 않는다.
+- **1회차 기록에서 뺀 항목**: (1) "PR 이벤트 CI 60회 표본"(success 29·failure 28·cancelled 3, 평균 190 초)은 감사가 같은 명령을 다시 돌렸을 때 다른 값(46/8/6, 평균 470 초)이 나와 재현되지 않으므로 표와 설계의 증거 표에서 뺐다. (2) "main push CI 30회"(success 21·평균 594 초)는 창을 고정하지 않은 `--limit 30` 표본이었고, 이 회차에 같은 명령이 success 7·failure 8·cancelled 15, `createdAt` 2026-07-09 ~ 2026-08-08 이라는 다른 구성을 돌려주었다 — 재현되지 않아 뺐다(0.1.1 이 대체로 둔 창 고정 200건 표본도 감사 회차에 재현되지 않아 0.1.2 가 뺐다). (3) 입력 보고서가 인용한 "CI 1런 평균 1786 초(n=9)"는 어느 표본에서도 같은 선택 기준으로 재현하지 못했다. 이 SPEC 은 그 수치들을 입력으로 쓰지 않는다.
 - 비용 사실(질적): 지금은 약 `lead_push_threshold`(20)장의 카드가 develop push CI 한 번으로 검증된다. 카드 PR 체제는 카드마다 PR CI 를 한 번 돌리고 병합 뒤 main push CI 가 또 돈다. 청구 분은 측정하지 못했다. 저장소가 공개(`private: false`)이므로 호스티드 러너 분이 청구 대상인지는 GitHub 정책 확인이 필요하며 이 회차에는 확인하지 않았다.
 - `ci.yml` 의 `concurrency` 는 ref 단위로 `cancel-in-progress: true` 다. cancelled 런의 개별 원인은 런별로 확인하지 않았다.
+- **목록 호출 불안정(관측)**: `gh run list --workflow=CI --branch develop --limit 12 --json createdAt --jq '{min:…,max:…,n:length}'` 를 이 개정 회차에 세 번 연속 호출했더니 `createdAt` 최솟값·최댓값이 2026-09-07T09:58:24Z~2026-09-07T18:19:55Z, 2026-10-01T15:13:14Z~2026-10-02T14:54:26Z, 같은 값 한 번 더로 나왔다 — 같은 명령이 서로 다른 창을 돌려주었다. 2회차 감사도 세 번 연속 호출이 2026-09-07·2026-09-29~30·2026-10-01~02 창을 돌려주었다고 보고했다. 원인(캐시·페이지 경계·API 변동)은 모른다. 그래서 이 문서는 목록 호출의 결과를 측정값으로 인용하지 않는다.
+
+### §4.1 develop push CI 적색 집합 (실행 id 고정)
+
+2026-10-02 에 아래 열두 id 를 `gh run view <id> --json databaseId,conclusion,createdAt,startedAt,updatedAt,headSha,workflowName,event,headBranch` 로 하나씩 다시 읽었다. 열두 실행 모두 워크플로 `CI`, `event: push`, `headBranch: develop` 이다. 첫 행의 `headSha` 가 원격 develop 팁 `284e09c44023598affe486f17701717ca173e6ca` 와 같다(이 SPEC 의 develop 팁 핀). `failure` 행의 시간은 `startedAt`→`updatedAt` 초다.
+
+| 실행 id | `createdAt`(UTC) | 결론 | `headSha` 앞 9자 | 초 |
+|---|---|---|---|---|
+| 36989864262 | 2026-10-02 09:27:17 | failure | 284e09c44 | 1046 |
+| 36981574917 | 2026-10-02 08:00:12 | failure | 802a72235 | 1223 |
+| 36969555332 | 2026-10-02 05:34:37 | failure | c50da9c2f | 1413 |
+| 36894416006 | 2026-10-01 16:45:47 | failure | 6789de39b | 1484 |
+| 36892129460 | 2026-10-01 16:27:27 | cancelled | 2bb8829de | |
+| 36890528950 | 2026-10-01 16:14:47 | cancelled | e83aa47df | |
+| 36887673351 | 2026-10-01 15:52:37 | cancelled | 89e3164af | |
+| 36886926130 | 2026-10-01 15:46:49 | cancelled | a301529bb | |
+| 36883300773 | 2026-10-01 15:19:08 | failure | f28cce310 | 1517 |
+| 36882533500 | 2026-10-01 15:13:14 | cancelled | a9f43a6fc | |
+| 36876598542 | 2026-10-01 14:28:27 | failure | a466f5585 | 1551 |
+| 36870179597 | 2026-10-01 13:38:32 | failure | 678ca0c27 | 1443 |
+
+원인은 첫 행(실행 36989864262, 헤드 284e09c44)만 이 회차에 다시 읽었다 — `gh run view 36989864262 --json jobs` 의 실패 잡은 `Lint`·`Build (windows/amd64)`·`Race Test`·`Test (ubuntu-latest)` 넷이고, `--log-failed` 로 읽은 줄은 다음과 같다(스크래치 파일로 받아 `grep` 으로 골랐다).
+
+| 잡 | 읽은 줄 |
+|---|---|
+| Lint | `gofmt violations found (run gofmt -w or make fmt):` 다음 `internal/cli/mcp_claude.go`·`internal/config/slice.go`·`internal/web/codex_panel_test.go` |
+| Build (windows/amd64) | `##[error]vet: internal/cli/worktree/sweep_test.go:1687:9: undefined: parseLsofCWDs` |
+| Test (ubuntu-latest)·Race Test | `workflow_split_test.go:154: ENTRY_ROUTER_LOC_VIOLATION: run.md has 263 LOC (ceiling: 200)` 와 `--- FAIL` 일곱 이름(`TestCodemapsFoldGuardFixtures`·`TestCodemapsFoldPreservationGuard`·`TestCommitIdentityGuard_BuiltinListCoversFixtureEnumeration`·`TestEntryRouterLOCCeiling`·`TestFixturePackagesScrubProcess`·`TestRegisterCanonicalizesCaseVariantCWD`·`TestSyncGateLanguageDetectionMatchesScript`) |
+
+나머지 열한 실행의 원인(로그 줄)과 다섯 cancelled 의 취소 사유는 읽지 않았다 — §9 Gaps. 이 표는 `.moai/reports/t1453/m0-develop-ci-red.md`(gitignored 로컬 보조 자료)의 표를 id 고정으로 다시 읽은 것이며 그 파일은 인용 대상이 아니다.
 
 ## §5 squash 착지 판정 — 격리 저장소 실험
 
@@ -131,13 +161,15 @@ GitHub 가 7.7천 개 파일·1.07백만 줄 규모(`git diff --shortstat origin
 - 도구 거부: `git ls-files` 를 쓴 파이썬 일회성 스크립트가 워크트리 가드에 거부돼, 상시로드 기준선은 `git` 을 이름에 담지 않는 파일 순회 스크립트로 다시 측정했다. 측정값은 거부된 호출에 의존하지 않는다(§10 의 상시로드 기준선).
 - 상시로드 기준선: 이 트리에서 `.claude/rules`+`.claude/output-styles` 의 `.md` 중 선두 frontmatter 에 최상위 `paths:` 가 없는 파일 16개, 합계 285,543 바이트, `paths:` 가 있는 파일 100개. `CLAUDE.md` 15,658·`AGENTS.md` 20,252·`AGENTS.local.md` 38,073 바이트. 순회 스크립트 방식이라 `acceptance.md` 의 RED-now 셀(단일 호출)이 아니라 회귀 방지 기준선이다.
 - **개정 0.1.1 에서 더한 Gaps**:
-  - 창을 고정하지 않은 `gh run list --limit N` 표본은 같은 명령이 다른 구성을 돌려주는 것이 관측됐다(§4). 1회차의 PR 이벤트 표본과 main push 30회 표본은 재현되지 않아 표에서 뺐다. 이 SPEC 의 CI 사용량 근거는 §4 의 재현된 세 행뿐이다.
+  - **`gh run list` 목록 호출은 이 세션에서 불안정한 것이 관측됐다**(§4 "목록 호출 불안정": 같은 명령 세 번 연속 호출이 서로 다른 창을 돌려주었고 감사 회차에도 같은 현상이 있었으며 HTTP 502 한 번과 서로 다른 200건 결과가 있었다). 목록 호출 결과는 측정값으로 인용하지 않는다. 1회차의 PR 이벤트 표본과 main push 30회 표본, 0.1.1 이 대체로 둔 main push 200건 표본(원장 M-2 의 1회차 기록)은 재현되지 않아 뺐다. **main push CI 의 벽시계·성공률은 이 SPEC 에서 미측정이다.** 이 SPEC 의 CI 사용량 근거는 §4 의 id 고정 두 행(열두 실행, 스무 PR)뿐이다.
+  - 열두 실행 중 첫 실행(36989864262)의 실패 원인만 이 회차에 로그 줄까지 다시 읽었다. 나머지 열한 실행의 로그 줄과 다섯 cancelled 실행의 취소 사유는 읽지 않았다.
   - **병합 큐의 후속 측정 항목**(카드 발행은 리더 소관, 이 SPEC 은 카드 id 를 적지 않는다): 호스티드 러너 청구 분, CodeRabbit 한도 이력(3회 표본 "Review completed" 는 인용이며 재측정하지 않았다), 녹색 PR 뒤 적색 main 의 빈도.
   - 이 회차의 도구 거부(verification-claim-integrity §3.1) 둘: (1) 워크트리 가드가 스크래치 프로브를 만드는 복합 셸 한 번(`mkdir` 과 `cat` 과 `go run` 을 이은 호출)을 "too complex" 로 거부했다. 같은 일을 `Write` 도구로 파일을 만든 뒤 `go -C <dir> run .` 한 번으로 다시 했고 프로브 결과는 그 두 번째 경로에서만 왔다. (2) `for` 반복문으로 네 파일의 `status:` 를 훑는 복합 호출을 거부했고 파일마다 단순한 `grep` 으로 다시 했다. 두 거부 모두 인용한 수치는 거부되지 않은 재호출에서 왔다.
-  - 스윕 가드 프로브(원장 M-5)의 소스는 저장소 밖 스크래치에 있고 커밋하지 않았다. 반복 가능한 형태는 AC-GFD-021 의 가드 자체 시험이다.
+  - 스윕 가드 프로브(원장 M-5·M-9)의 소스는 저장소 밖 스크래치에 있고 커밋하지 않았다. 반복 가능한 형태는 AC-GFD-021 의 가드 자체 시험이다. M-9 의 표면 스캔(위반 286·약한 적중 31·표지 면제 9)은 제 재구현이 센 값이다 — 섹션·표지 처리와 펜스 판정이 실제 가드와 다를 수 있어 미래 가드의 값이 아니다.
+  - 이 개정 회차의 도구 거부(verification-claim-integrity §3.1): 워크트리 가드가 스무 PR 을 한 번에 읽는 GraphQL 질의를 셸 변수 반복문으로 조립한 호출을 "runtime 값" 으로 거부했다. 같은 질의를 스크래치 파일에 리터럴로 적어 `sh` 로 실행했고 PR 번호별 값은 그 두 번째 경로에서만 왔다. 로컬 `gh` 가 저장소 밖 작업 디렉터리에서 `failed to determine base repo` 로 실패한 호출 한 번도 있었고 저장소 안에서 다시 실행했다.
   - `moai constitution amend` 는 실행하지 않았고 `--dry-run` 도 실행하지 않았다(`--dry-run` 이 대화형 층을 건너뛰는지 확인하지 못했다).
   - 허용 목록 상한(40)의 근거가 되는 class N 줄 수는 이 회차에 다시 세지 않았다.
-  - 판정 도구 빌드: 설치된 `moai`(v3.2.0-rc.25, 커밋 802a72235)는 이 트리 HEAD 의 엄격한 조상이며 178 커밋 뒤처져 있다(`git merge-base --is-ancestor` 종료 코드 0). `moai constitution validate`·`moai spec lint` 의 인용은 이 트리 HEAD 에서 빌드한 `moai` 를 경로로 호출한 결과이고 설치본은 쓰지 않았다(verification-claim-integrity §2.2).
+  - 판정 도구 빌드: 설치된 `moai`(v3.2.0-rc.25, 커밋 802a72235)는 이 트리 HEAD 의 엄격한 조상이며 178 커밋 뒤처져 있다(`git merge-base --is-ancestor` 종료 코드 0). `moai constitution validate`·`moai spec lint` 의 인용은 이 트리 HEAD 에서 빌드한 `moai` 를 경로로 호출한 결과이고 설치본은 쓰지 않았다(verification-claim-integrity §2.2). 개정 0.1.2 회차의 `moai constitution list`·`moai spec lint` 는 HEAD `6c2277295d9ddeaa92e83c0225910445f83cc1c2` 에서 `go build -o <스크래치>/bin/moai ./cmd/moai` 로 새로 빌드한 바이너리를 경로로 불렀다(종료 코드 0). ldflags 없이 빌드해 `moai version` 이 `v3.1.3`·커밋 `none` 을 찍으므로 빌드 커밋은 바이너리가 아니라 빌드한 트리의 HEAD 로 귀속한다.
 - 이전 회차의 열린 질문은 모두 결정이 되었다 — §11.
 
 ## §10 상시로드 기준선 (REQ-GFD-014)
@@ -149,7 +181,7 @@ GitHub 가 7.7천 개 파일·1.07백만 줄 규모(`git diff --shortstat origin
 1회차에 열려 있던 일곱 질문은 모두 번호 붙은 결정이 되었다. 표는 `plan.md` §I 에 있고 결정의 본문·출처·뒤집기 여부는 `design.md` 의 D-16 ~ D-22 에 있다. 이 문서의 사실이 그 결정을 지지하는 곳은 다음과 같다.
 
 - D-16(rc 규칙 R-a): §8 — `scripts/release.sh` 와 `release.yml` 의 검사 구조.
-- D-17(절체 선행 조건): §4 — develop push CI 12회에 success 가 없다는 관측, 그리고 `.moai/reports/t1453/m0-develop-ci-red.md` 의 적색 원인.
+- D-17(절체 선행 조건): §4·§4.1 — develop push CI 열두 실행에 success 가 없다는 관측과 첫 실행의 적색 원인(실행 id 고정).
 - D-18(수렴 PR 폴백): §3 — 대형 diff 의 PR 가능 여부는 측정하지 못했다(Gap).
 - D-19(t810 흡수): §6.
 - D-20(병합 큐 보류): §2 의 `strict: false` 와 §4.

@@ -2,10 +2,13 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-plan_complete_at: 2026-10-02T12:45:25Z
+plan_complete_at: 2026-10-02T15:10:29Z
 plan_status: audit-ready
-plan_revision: 2
+plan_revision: 3
 plan_revision_1_complete_at: 2026-10-02T12:02:24Z
+plan_revision_2_complete_at: 2026-10-02T12:45:25Z
+
+개정 3(spec 0.1.2, 마지막 감사 회차용)은 plan-audit 2회차(0.84, FAIL, 필수 기준 아홉 개 모두 PASS)의 결함 D1~D6(N-04·N-01·N-03·N-05·N-07·N-02)을 반영했고 선택 D7~D12 도 모두 반영했다. 신호를 적는 조건 — `moai spec lint SPEC-GITHUB-FLOW-DEFAULT-001`(이 트리 HEAD 에서 빌드한 `moai`) 종료 코드 0·`0 error(s), 0 warning(s)`, SPEC 디렉터리 안 표지 문자열 0, REQ 22개·AC 23개 — 은 이 개정 끝에 관측했다. REQ·AC 개수는 늘지 않았다(상한 25·25). 3회차 plan-audit 는 델타 감사(D1~D12 + 회귀 확인 + 순서 동사)로 진행된다.
 
 개정 2(spec 0.1.1)는 plan-audit 1회차(0.74, FAIL, MP-7·MP-9 실패)의 필수 결함 F-01~F-15·F-21 과 권고 F-16~F-19·F-22·F-23 을 반영했고 F-20 은 M3(f) 삭제와 워크플로 이름 정정으로 처분했다. 신호를 적는 조건 — `moai spec lint SPEC-GITHUB-FLOW-DEFAULT-001` 종료 코드 0, SPEC 디렉터리 안 표지 문자열 0 — 은 이 개정 끝에 관측했다. 2회차 plan-audit 는 델타 감사(F 항목 + 회귀 확인)로 진행된다.
 

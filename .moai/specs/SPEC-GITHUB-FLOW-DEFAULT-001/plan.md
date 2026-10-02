@@ -67,7 +67,7 @@ Exit: AC-GFD-002, AC-GFD-004, AC-GFD-005, AC-GFD-006
 
 ### M3 — 릴리스 기구
 
-**범위**: (a) 출처 검증 로직을 `scripts/verify-release-provenance.sh` 로 옮겨 `release.yml` 이 호출(design §D-6 — M3 은 `release.yml`·`.goreleaser.yml`·`scripts/` 를 바꿀 수 있다, 태그 push 에서만 도는 파일이고 접미사 없는 태그의 동작은 같다), (b) rc 규칙 R-a(design §D-6 의 규칙문), (c) `.goreleaser.yml` 의 `release.prerelease: auto`, (d) `scripts/release.sh` 의 detached HEAD 허용과 rc 태그의 CHANGELOG 검증 건너뛰기, (e) 태그 전 매트릭스 확인(옵션 B, 운영자 결정 D-22)을 `--require-matrix-run` 옵션 뒤에 둔다(기본 꺼짐, design §D-24). 켜는 일은 M5 가 한다.
+**범위**: (a) 출처 검증 로직을 `scripts/verify-release-provenance.sh` 로 옮겨 `release.yml` 이 호출(design §D-6 — M3 은 `release.yml`·`.goreleaser.yml`·`scripts/` 를 바꿀 수 있다, 태그 push 에서만 도는 파일이고 접미사 없는 태그의 동작은 같다. `release.yml` 은 인라인 검사 1~7 의 본문을 지우고 `bash scripts/verify-release-provenance.sh "${TAG}"` 한 줄 호출로 바뀌며, 그 배선과 접미사 없는 태그의 동치는 AC-GFD-008 이 스크립트와 함께 판정한다), (b) rc 규칙 R-a(design §D-6 의 규칙문), (c) `.goreleaser.yml` 의 `release.prerelease: auto`, (d) `scripts/release.sh` 의 detached HEAD 허용과 rc 태그의 CHANGELOG 검증 건너뛰기, (e) 태그 전 매트릭스 확인(옵션 B, 운영자 결정 D-22)을 `--require-matrix-run` 옵션 뒤에 둔다(기본 꺼짐, design §D-24). 켜는 일은 M5 가 한다.
 
 - 착수 증거: 원장 E-04·E-05·E-06·E-09·E-31 재실행이 기록과 같다. 입력: 옵션 B 는 운영자 결정으로 확정돼 있다(D-22).
 - 종료 증거: AC-GFD-007·008·009·010.
@@ -82,23 +82,23 @@ Exit: AC-GFD-007, AC-GFD-008, AC-GFD-009, AC-GFD-010
 
 **범위**: `AGENTS.md`·`CLAUDE.md`·`.claude/rules/moai/**`(kanban-dispatch*·main-checkout-branch-guard*·worktree-integration*·spec-workflow·agent-common-protocol*·contract-autonomy 등)·`.claude/agents/moai/*`(manager-git·manager-lead·manager-docs 등 develop 서술이 있는 것)·`.claude/skills/**`·README 4종·docs-site 4로케일·템플릿 사본, Frozen 조항 정규 개정, t810 의 REQ-LBR-001..006 흡수, 스윕 가드 본체. 템플릿 우선 순환으로 로컬과 템플릿을 함께 바꾼다. `make build` 와 임베드 축 확인은 저장소 절차에 따르고 이 카드의 관측이 아니다(acceptance §E).
 
-- 순서: (1) 가드 픽스처 시험(사전 병합 가능) → (2) Frozen 개정 입력(`--before`/`--after`/`--evidence`)과 `--dry-run` 제안을 준비하고 **운영자가 `amend` 를 두 번 실행**(design D-26), 레인은 `validate` 종료 코드 0 과 문언 일치를 검증 → (3) 규칙·에이전트·스킬 갱신(`worktree-integration.md` 의 등재되지 않은 Frozen 표지 두 줄은 일반 편집) → (4) README·docs-site(oss-docs 하네스의 ko 정본→en→ja/zh 순) → (5) 가드 트리 단언 무장 → (6) 상시로드 전후 측정. 편집마다 AC-GFD-015 의 mirror guard 네 시험을 돌린다.
-- 종료 증거: AC-GFD-011·012·013·014·017·021.
+- 순서: (1) 가드 픽스처 시험(사전 병합 가능) → (2) 편집 대상 파일마다 `moai constitution list --file <경로>` 로 `[ZONE:Frozen]` 줄의 등재 여부를 판정해 판정서에 적고(design D-26 보충: `spec-workflow.md` 는 등재 둘 — 027·028 — 과 미등재 표지 줄 셋), Frozen 개정 입력(`--before`/`--after`/`--evidence`)과 `--dry-run` 제안을 준비하고 **운영자가 `amend` 를 두 번 실행**(design D-26), 레인은 `validate` 종료 코드 0 과 문언 일치를 검증 → (3) 규칙·에이전트·스킬 갱신(`worktree-integration.md` 의 등재되지 않은 Frozen 표지 두 줄과 `spec-workflow.md` 의 미등재 표지 줄 둘은 일반 편집 — 개정된 등재 문언과 같은 방향, 로컬·템플릿 사본 동일) → (4) README·docs-site(oss-docs 하네스의 ko 정본→en→ja/zh 순) → (5) 가드 트리 단언 무장 → (6) 상시로드 전후 측정. 편집마다 AC-GFD-015 의 mirror guard 네 시험을 돌린다.
+- 종료 증거: AC-GFD-012·013·014·017·021. **AC-GFD-011(가드 본체의 무장 실행)은 M5 의 종료 증거다** — 가드는 이 저장소의 `git-strategy.yaml` 값(M5 가 바꾼다)으로 무장하고 `AGENTS.local.md`·`.claude/rules/local/**`·`.moai/docs/*doctrine*`(M5 범위)까지 훑으므로, M4 와 M5 가 한 묶음으로 적용된 트리에서만 관측할 수 있다.
 - 계층: CUTOVER-TIME(가드 픽스처 시험만 PRE-CUTOVER-SAFE).
 - 되돌리기: 보류 묶음이라 미병합 시 폐기, 병합 후에는 커밋 되돌리기. Frozen 개정은 되돌리려면 역방향 amend 가 필요하다.
 
-Exit: AC-GFD-011, AC-GFD-012, AC-GFD-013, AC-GFD-014, AC-GFD-017, AC-GFD-021
+Exit: AC-GFD-012, AC-GFD-013, AC-GFD-014, AC-GFD-017, AC-GFD-021
 
 ### M5 — CUTOVER-TIME 설정·CI·로컬 지침 묶음
 
 **범위**: 이 저장소의 `git-strategy.yaml`(워크플로·`develop_branch`·`worktree_base_branch`)·`workflow.yaml`(`deny_commits_on`·`push_develop` 의 값 처분)·`.coderabbit.yaml`·`spec-lint.yml` 의 develop 의존(가져오기와 릴리스 스냅숏 논리)·릴리스 하네스(`hns-release-specialist` 재작성과 `--require-matrix-run` 호출로 M3 의 매트릭스 확인 켜기)·`AGENTS.local.md`·`.claude/rules/local/**`·`.moai/docs/*doctrine*`. **워크플로 push 트리거 목록(ci·codeql·graph-freshness·judgment-first-consistency·lsel-leak-guard·template-neutrality-check·test-install·workflow-parse-guard·docs-i18n-check)은 이 묶음에 넣지 않는다** — develop 팁 CI 가 절체 내내 관측되도록 develop 이 퇴역할 때까지 남기고, 퇴역 뒤 정리 단계에서 뺀다(design D-17·D-13 단계 4).
 
 - 착수 증거: M1·M2·M3 병합 완료, M4 준비 완료.
-- 종료 증거: AC-GFD-016, AC-GFD-011 의 가드가 무장 상태에서 녹색, AC-GFD-015 의 mirror guard 네 시험 초록.
+- 종료 증거: AC-GFD-016, **AC-GFD-011**(M4+M5 묶음에서 무장한 가드 본체가 녹색 — 가드 픽스처 시험 AC-GFD-021 은 M4 종료 증거), AC-GFD-015 의 mirror guard 네 시험 초록.
 - 계층: CUTOVER-TIME. 이 묶음은 develop 이 main 으로 수렴하기 전에 develop 에 병합되는 마지막 CUTOVER-TIME 변경이며(런북 2단계) M4 와 함께 한 묶음으로 병합된다. M6 의 산출물(스크립트·시험·런북)은 기준 브랜치를 바꾸지 않는 새 파일이라 같은 병합이거나 그 앞 병합으로 develop 에 들어간다. 이 카드 자신의 브랜치는 이 병합과 push 뒤에 사전 점검에서 제외된다(design D-25).
 - 순서 제약: `spec-lint.yml` 의 develop 가져오기 제거는 develop 브랜치 삭제보다 앞선다(design §D-13).
 
-Exit: AC-GFD-016, AC-GFD-015
+Exit: AC-GFD-011, AC-GFD-016, AC-GFD-015
 - 되돌리기: 커밋 되돌리기. 설정 값은 되돌리면 git-flow 로 돌아가지만 이미 github-flow 기준으로 만든 카드 PR 은 영향 범위를 점검해야 한다.
 
 ### M6 — 절체 런북과 리허설
@@ -157,7 +157,7 @@ Exit: AC-GFD-018, AC-GFD-019, AC-GFD-020, AC-GFD-022, AC-GFD-023
 | squash 병합 후 로컬 트리가 영원히 정리되지 않는다 | 착지 판정 세 층(AC-GFD-002) |
 | 대형 수렴 PR 이 GitHub 한도에 걸린다 | 하나로 먼저 시도하고 폴백(분할 PR → 보호 일시 완화)을 런북에 두며 선택은 운영자·리더(design D-18) |
 | develop 의 CI 가 적색인 채 절체한다 | 선행 조건으로 origin/develop 팁 CI 녹색을 요구한다(design D-17). 수리 카드는 리더 소관. M5 가 push 트리거를 빼지 않으므로 절체 내내 관측 가능하다 |
-| develop 퇴역 뒤 push 트리거의 `develop` 이 조용히 죽은 설정으로 남는다 | 런북 9단계의 잔존 점검(`git grep -n -w develop -- .github/workflows`)과 CI 런의 전진 정지 확인(AC-GFD-023) |
+| develop 퇴역 뒤 push 트리거의 `develop` 이 조용히 죽은 설정으로 남는다 | 런북 9b 단계의 잔존 점검(`git grep -n -w develop -- .github/workflows`)과 CI 런의 전진 정지 확인(AC-GFD-023) |
 | 불변 태그를 잘못 만든다 | 이 카드는 태그를 만들지 않는다. 게이트는 태그 전에 건다(design §D-7) |
 | 레인이 절체 이전 기준으로 작업하다 낡은 기준에 착지한다 | 절체 전 레인 정지·`/clear`·정리, 절체 후 새 기준에서 재기동하는 절차(design §D-8) |
 
@@ -205,7 +205,7 @@ t1448 은 `kanban-dispatch*.md`·`gtd.md`·`auto-semantics.md`·`manager-todo.md
 | NC-4 | t810 과 t1453 의 흡수 방향 | D-19 — t1453 이 t810 을 흡수 | 리더 결정 | M4 의 AC-GFD-017 범위가 확정됐다 |
 | NC-5 | 병합 큐 후속 측정의 채택 임계 | D-20 — 카드마다 PR, 병합 큐 보류. 측정은 후속 항목(Gaps) | 운영자 결정 | 이 SPEC 은 막히지 않는다 |
 | NC-6 | 와이어 식별자 개명 후속 카드 | D-21 — 리더에게 하는 권고로 `progress.md` §G 에 기록, 카드 id 는 적지 않는다 | 계획 기본값 | 없음(스윕 가드의 별도 차선이 추적) |
-| NC-7 | 필수 체크 `Release PR Multi-OS Gate` 의 처분 | D-22 — 필수 체크에서 뺀다(운영자가 수행), 태그 직전 `workflow_dispatch` | 운영자 결정 | 런북 9단계 |
+| NC-7 | 필수 체크 `Release PR Multi-OS Gate` 의 처분 | D-22 — 필수 체크에서 뺀다(운영자가 수행), 태그 직전 `workflow_dispatch` | 운영자 결정 | 런북 9a 단계 |
 
 ---
 

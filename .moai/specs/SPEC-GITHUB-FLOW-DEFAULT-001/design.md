@@ -44,9 +44,9 @@
 |---|---|---|
 | main 필수 체크 `strict` | 측정 | `false` (`research.md` §2) |
 | 필수 체크 | 측정 | 5개 — Test(ubuntu)·Lint·Build(linux/amd64)·Analyze(Go)·Release PR Multi-OS Gate |
-| CI 벽시계 — develop push | 측정(2026-10-02, 같은 명령 3회 동일) | 최근 12회: failure 7회(1046·1223·1413·1484·1517·1551·1443 초, 평균 1382 초)·cancelled 5회·success 0회. `createdAt` 2026-10-01T13:38:32Z ~ 2026-10-02T09:27:17Z (원장 M-1) |
-| CI 벽시계 — main push | 측정(창을 고정, 같은 명령 2회 동일) | `--created '2026-07-01..2026-10-02' --limit 200` 의 200회: success 146·cancelled 43·failure 10·startup_failure 1, success 평균 438 초. `createdAt` 2026-07-16T21:58:31Z ~ 2026-09-10T01:46:49Z (원장 M-2) |
-| 병합 PR 의 대상 분포 | 측정(2회 동일) | 최근 병합 PR 20건: develop 17·main 3. `mergedAt` 2026-09-09T20:10:46Z ~ 2026-10-01T16:45:43Z (원장 M-3) |
+| CI 벽시계 — develop push | 측정, **실행 id 열두 개로 고정**(2026-10-02, 열두 id 를 `gh run view <id>` 로 하나씩 다시 읽었다 — 목록 호출 `gh run list` 는 재현되지 않아 쓰지 않는다, D-28) | 열두 실행: failure 7회(1046·1223·1413·1484·1517·1551·1443 초, 평균 1382 초)·cancelled 5회·success 0회. `createdAt` 2026-10-01T13:38:32Z ~ 2026-10-02T09:27:17Z (원장 M-1, id 표) |
+| CI 벽시계 — main push | 미측정(재현되지 않아 표에서 뺐다) | 창을 고정한 200건 목록 호출(원장 M-2 의 1회차 기록)은 감사 회차에 다른 결과와 HTTP 502 를 돌려주었고 200개 실행을 id 로 고정하지도 않았다. 이 SPEC 의 어떤 결정도 이 수에 기대지 않는다. `research.md` §9 Gaps 에 올린다 |
+| 병합 PR 의 대상 분포 | 측정, **PR 번호 스무 개로 고정**(2026-10-02, 스무 PR 을 번호별로 다시 읽었다) | 스무 PR: develop 17·main 3(1695·1702·1740). 병합된 PR 의 `baseRefName` 은 병합 뒤 바뀌지 않는다 (원장 M-3, 번호 표) |
 | PR 이벤트 CI 표본 | 재현되지 않아 표에서 뺐다 | 1회차 기록(success 29·failure 28·cancelled 3, 평균 190 초)을 감사가 같은 명령으로 다시 돌리자 다른 값(46/8/6, 평균 470 초)이 나왔다. 창을 고정하지 않은 `--limit` 표본은 움직이는 데이터이며 `research.md` §9 Gaps 에 올린다 |
 | 3-OS 통합 시험 | 측정(파일 읽기) | `ci.yml:392-400` `test-integration` 이 ubuntu·macos·windows 행렬 |
 | 3-OS race 매트릭스 | 측정(파일 읽기) | `release-pr-multi-os.yml` 에서만, `release/*` 헤드 PR 또는 `workflow_dispatch` |
@@ -85,12 +85,12 @@
 
 **채택(위에서 아래로 시도, 확정하면 멈춘다)**
 1. **조상 관계** — `git merge-base --is-ancestor <카드 팁> <통합 ref>`. 병합 커밋 방식과 빨리감기를 구한다.
-2. **누적 patch-id** — 카드 브랜치와 병합 기준점의 누적 diff 를 patch-id 로 만들어, 기준점 이후 통합 ref 의 커밋들의 patch-id 와 비교한다. **비교할 커밋 수의 상한은 500 이다.** 근거: `git rev-list --count --first-parent --since=2026-09-25T00:00:00Z --until=2026-10-02T00:00:00Z origin/develop` 가 `248` 이었고(원장 M-6, 1주 동안 착지한 카드 병합 수), 500 은 그 약 2주분이다. 넘으면 이 층은 "답하지 못함"이고 다음 층으로 간다.
-3. **PR 병합 상태** — `gh` 로 카드 브랜치를 헤드로 하는 PR 을 읽는다. 다음 셋이 모두 참일 때만 착지다: PR 상태가 MERGED, **PR 의 `headRefOid` 가 로컬 카드 팁과 같다**, 병합 커밋(`mergeCommit.oid`)이 통합 ref 의 조상이다. 로컬 팁이 `headRefOid` 와 다르거나 PR 병합 뒤에 로컬 커밋이 더 있으면 착지가 아니라 **보존**이다(병합된 PR 뒤에 연장된 브랜치를 지우면 미병합 작업이 사라진다). `gh` 는 한 번 호출에 **제한 시간 10 초**, 재시도 없이, 시간 초과·비 0 종료·토큰 부재는 모두 "답하지 못함 → 보존"(fail-closed)이다. `worktree sweep` 은 가능하면 병합된 PR 을 `gh pr list --state merged` 한 번으로 일괄 읽어 같은 제한을 적용한다.
+2. **누적 patch-id** — 카드 브랜치와 병합 기준점의 누적 diff 를 patch-id 로 만들어, 기준점 이후 통합 ref 의 커밋들의 patch-id 와 비교한다. **비교할 커밋 수의 상한은 500 이다.** 근거: `git rev-list --count --first-parent --since=2026-09-25T00:00:00Z --until=2026-10-02T00:00:00Z 284e09c44023598affe486f17701717ca173e6ca` 가 `248` 이었고(원장 M-6, 팁 SHA 로 고정한 형태, 1주 동안 착지한 카드 병합 수), 500 은 그 약 2주분이다. 넘으면 이 층은 "답하지 못함"이고 다음 층으로 간다.
+3. **PR 병합 상태** — `gh` 로 카드 브랜치를 헤드로 하는 PR 을 읽는다. 다음 셋이 모두 참일 때만 착지다: PR 상태가 MERGED, **PR 의 `headRefOid` 가 로컬 카드 팁과 같다**, 병합 커밋(`mergeCommit.oid`)이 통합 ref 의 조상이다. 로컬 팁이 `headRefOid` 와 다르거나 PR 병합 뒤에 로컬 커밋이 더 있으면 착지가 아니라 **보존**이다(병합된 PR 뒤에 연장된 브랜치를 지우면 미병합 작업이 사라진다). 병합 커밋이 아직 로컬 통합 ref 에서 도달되지 않는 경우(가져오기 지연)도 **보존**이다 — 이 세 번째 조건만 빠진 층 3 은 AC-GFD-002 의 F9 가 잡는다. `gh` 는 한 번 호출에 **제한 시간 10 초**, 재시도 없이, 시간 초과·비 0 종료·토큰 부재는 모두 "답하지 못함 → 보존"(fail-closed)이다. `worktree sweep` 은 가능하면 병합된 PR 을 `gh pr list --state merged` 한 번으로 일괄 읽어 같은 제한을 적용한다.
 
 어느 층도 확정하지 못하면 보존한다. 이는 `sweep` 이 이미 가진 세 갈래 계약(착지·미착지·답할 수 없음→보존)을 유지한다.
 
-**어느 경로가 어느 층까지 도는가**: `moai worktree done` 과 `moai worktree sweep` 은 세 층을 모두 돈다. **세션 종료 정리는 1·2층까지만 돌고 3층(네트워크)을 돌지 않는다** — 세션 종료 경로는 REQ-WSS-304 가 "No network runs ... shared exit path stays cheap" 로 정한 대로 네트워크를 쓰지 않으며 이 SPEC 이 그 성질을 바꾸지 않는다. 1·2층이 확정하지 못하면 보존하고 그 트리는 다음 `sweep` 의 3층이 판정한다. 이 성질은 양성 시험으로 고정한다(AC-GFD-002: 세션 종료 경로에서 `gh` 호출 0).
+**어느 경로가 어느 층까지 도는가**(REQ-GFD-002 의 두 문장이 이 구분을 그대로 적는다): `moai worktree done` 과 `moai worktree sweep` 은 세 층을 모두 돈다. **세션 종료 정리는 1·2층까지만 돌고 3층(네트워크)을 돌지 않는다** — 세션 종료 경로는 REQ-WSS-304 가 "No network runs ... shared exit path stays cheap" 로 정한 대로 네트워크를 쓰지 않으며 이 SPEC 이 그 성질을 바꾸지 않는다. 1·2층이 확정하지 못하면 보존하고 그 트리는 다음 `sweep` 의 3층이 판정한다. 이 성질은 양성 시험으로 고정한다(AC-GFD-002: 세션 종료 경로에서 `gh` 호출 0).
 
 **기각**
 - *병합 방식을 병합 커밋으로 고정*: 구성된 `merge_method: squash` 를 뒤집는 별도 결정이고 main 이력을 길게 만든다.
@@ -112,6 +112,8 @@
 
 **테스트 가능성**: 인라인 워크플로 셸은 시험할 수 없으므로 출처 검증을 `scripts/verify-release-provenance.sh`(새 파일) 로 옮기고 `release.yml` 이 그것을 호출하게 한다. 이 변경은 `release.yml` 을 건드리지만 그 워크플로는 태그 push 에서만 도는 파일이라 접미사 없는 태그의 동작이 같으므로 PRE-CUTOVER-SAFE 다(AC-GFD-016 의 사전 방향 목록에 `release.yml` 은 없다). 기각: 인라인 시험(불가능), `act` 같은 외부 실행기(새 의존). 시험은 `internal/template` 패키지에서 스크립트를 격리 저장소 픽스처에 대해 실행한다(`release_workflow_pipefail_test.go` 가 같은 패키지에서 `release.yml` 을 읽고 `bash` 를 실행하는 선례).
 
+**배선 계약(AC-GFD-008 이 판정하는 것은 스크립트만이 아니라 출하되는 관문이다)**: 스크립트의 인터페이스는 위치 인자 하나 `scripts/verify-release-provenance.sh <tag>` 이고 저장소 루트에서 도는 읽기 전용 검사 1~7 이다. 네트워크가 필요한 두 `git fetch` 줄(태그와 `origin/main` 가져오기)과 `env: TAG: ${{ github.ref_name }}` 는 워크플로에 남고, 인라인 검사 1~7 의 본문은 지워져 그 자리에 `bash scripts/verify-release-provenance.sh "${TAG}"` 한 줄이 선다. 그래서 (a) 워크플로에 `check 5 (`·`check 6 (` 가 없어야 하고(`git grep` 종료 코드 1), (b) 스크립트 호출이 있어야 하며(`git grep -F` 종료 코드 0), (c) 시험이 워크플로 단계의 `run` 본문에서 호출 줄을 뽑아 시험이 직접 부르는 인자(`<tag>` 하나)와 같은 인자로 같은 픽스처에서 재생해 같은 종료 코드와 같은 판정 줄을 얻어야 한다. **접미사 없는 태그의 동치**는 정식 태그 픽스처 셋((4) 5 없음·(5) 6 틀림·(6) 모두 올바름)이 각자 변경 전 인라인 단계가 찍던 문구(`RELEASE_PROVENANCE_GATE: check N (<이름>)` 의 N·이름과 성공 줄 `all 7 checks passed for <tag> (<commit>)`)와 같은 판정 줄을 내는 것으로 본다 — 기준 문구는 원장 E-06 과 변경 전 파일(`.github/workflows/release.yml` 의 `all 7 checks passed` 줄, 원장 E-44)에서 오고, 변경 전 인라인 단계를 같은 모양의 스크래치 픽스처 셋에서 실행한 판정 줄과 종료 코드는 원장 M-10 에 있다.
+
 **위험**: 이 저장소에는 원격에 없는 로컬 태그(`v3.1.0-rc.0`~`rc.2`, 합성 보고서 인용)가 있어 전체 태그 push 는 불변 태그를 만든다. 런북은 이름 붙인 태그 하나만 push 한다.
 
 ## §D-7 3-OS 매트릭스 게이트
@@ -123,11 +125,11 @@
 | A | main 대상 모든 PR(Go 변경 시)에서 3-OS 매트릭스 | 가장 강하다. 카드마다 3-OS race(레그당 제한 시간 30)를 더해 카드 수에 비례. 필수 체크가 의미를 얻는다 |
 | **B** | 태그 전에 대상 SHA 로 `workflow_dispatch` 매트릭스를 돌리고 `release.sh` 가 그 SHA 의 통과 기록이 없으면 태그를 거부 | 릴리스 시도당 1회. 수동 단계가 하나 늘고 릴리스 사이 main 의 mac/windows race 적색은 보이지 않을 수 있다(3-OS 통합 시험은 CI 마다 돈다) |
 | C | `release.yml` 안, GoReleaser 앞에서 매트릭스 | 자동이지만 태그가 이미 존재한 뒤라 실패하면 태그가 소각된다 — 기각 |
-| D | main push 마다 매트릭스 + `release.sh` 가 태그 대상 SHA 의 녹색을 확인 | 지속 가시성. 병합 카드마다 매트릭스(동시 병합은 ref 단위 취소로 합쳐진다 — main push CI 30회 중 8회가 cancelled) |
+| D | main push 마다 매트릭스 + `release.sh` 가 태그 대상 SHA 의 녹색을 확인 | 지속 가시성. 병합 카드마다 매트릭스(동시 병합은 `ci.yml` 의 ref 단위 `cancel-in-progress: true` 로 합쳐질 수 있다 — 구성 읽기이고 취소 빈도는 측정하지 않았다, `research.md` §9) |
 
 **채택**: B. 출처: 운영자 결정(10-02 밤, 리더 경유). 근거: 되돌릴 수 없는 행위(태그) 직전에만 비싼 검증을 둔다. 태그 불변 규칙셋(`Release tag immutability (v*)`)이 있으므로 게이트는 태그 **앞**에 있다. D 는 업그레이드 경로로 남긴다(B 와 같은 `release.sh` 확인을 그대로 쓴다). **강제는 절체 시점에 켠다** — 현재 git-flow 릴리스는 main 병합 SHA 에 매트릭스를 돌리지 않으므로 지금 켜면 현행 정식 릴리스가 막힌다(M3). 켜는 방법은 D-24 의 `--require-matrix-run` 옵션이다.
 
-**필수 체크 `Release PR Multi-OS Gate`(NC-7 의 해소, D-22)**: 옵션 B 아래서 이 체크는 비릴리스 PR 에서 무동작 성공이므로 main 의 필수 체크 목록에서 **뺀다**(운영자 결정). 이 변경은 외부 공유 시스템의 되돌리기 어려운 변경이라 **운영자가 직접 수행하는 런북 단계**이며 이 카드의 레인은 실행하지 않는다(REQ-GFD-020). 순서: M5 의 스위치 켜기가 병합되고 AC-GFD-010 의 두 스위치 상태 시험이 통과한 뒤(런북 9단계). 체크를 빼면 `release/*` 헤드 PR 경로의 자동 매트릭스는 더 이상 병합을 막지 않는다 — 그 자리를 태그 직전 확인이 대신한다.
+**필수 체크 `Release PR Multi-OS Gate`(NC-7 의 해소, D-22)**: 옵션 B 아래서 이 체크는 비릴리스 PR 에서 무동작 성공이므로 main 의 필수 체크 목록에서 **뺀다**(운영자 결정). 이 변경은 외부 공유 시스템의 되돌리기 어려운 변경이라 **운영자가 직접 수행하는 런북 단계**이며 이 카드의 레인은 실행하지 않는다(REQ-GFD-020). 순서: M5 의 스위치 켜기가 병합되고 AC-GFD-010 의 두 스위치 상태 시험이 통과한 뒤(런북 9a 단계). 체크를 빼면 `release/*` 헤드 PR 경로의 자동 매트릭스는 더 이상 병합을 막지 않는다 — 그 자리를 태그 직전 확인이 대신한다.
 
 **리더가 바꿀 수 있다**: A·D 로 바꿔도 `release.sh` 의 확인 로직은 같다.
 
@@ -145,7 +147,7 @@
 
 ### 절체 순서 (런북 골격)
 
-선행 조건은 운영자 결정(D-17)이다 — 리더가 미푸시 로컬 develop 커밋을 push 하고, 적색 CI 는 리더가 정하는 수리로 녹색이 되고(수리 카드는 이 카드의 범위가 아니다, 측정된 적색 집합은 `.moai/reports/t1453/m0-develop-ci-red.md`), 그 뒤에야 절체가 진행된다. develop 의 push CI 는 절체 내내 계속 돈다(M5 는 push 트리거에서 `develop` 을 빼지 않는다).
+선행 조건은 운영자 결정(D-17)이다 — 리더가 미푸시 로컬 develop 커밋을 push 하고, 적색 CI 는 리더가 정하는 수리로 녹색이 되고(수리 카드는 이 카드의 범위가 아니다, 측정된 적색 집합은 `research.md` §4.1 에 실행 id 와 함께 옮겨 두었다 — `.moai/reports/t1453/m0-develop-ci-red.md` 는 gitignored 로컬 보조 자료라 인용 대상이 아니다), 그 뒤에야 절체가 진행된다. develop 의 push CI 는 절체 내내 계속 돈다(M5 는 push 트리거에서 `develop` 을 빼지 않는다).
 
 | # | 단계 | 주체 | 외부 공유 시스템 |
 |---|---|---|---|
@@ -154,13 +156,15 @@
 | 2 | M4·M5 묶음을 현 경로로 develop 에 마지막으로 병합(M1~M3 는 이미 병합돼 있다)하고 push. develop 팁 CI 를 관측한다(push 트리거가 살아 있으므로 관측 가능) | 리더 | 예(develop push) |
 | 3 | 배치 경계 사전 점검(AC-GFD-019, 2단계 병합·push 뒤): 미푸시 0, 창·슬롯 보유자 없음, 병합·push 되지 않은 picked 카드 없음(이 카드는 2단계 병합 뒤라 제외 — D-25), 활성 레인 세션 없음. 점검 출력이 확인 기록의 일부 | 카드 스크립트, 리더 실행 | 아니오 |
 | 4 | develop 이 `origin/main` 을 흡수하고 push | 리더 | 예(develop push) |
-| 5 | develop→main PR 개설·병합(병합 커밋). 이 PR 의 필수 체크(`pull_request: branches: [main]`, `ci.yml:20`)가 두 번째 CI 증거다 | **운영자·리더** | **예** |
+| 5a | develop→main PR 개설(병합 커밋 방식 지정, 운영자의 확인 기록을 받은 뒤). 이 PR 의 필수 체크(`pull_request: branches: [main]`, `ci.yml:20`)가 두 번째 CI 증거다 | 리더 | 예(PR) |
+| 5b | 필수 체크 통과를 읽고 그 PR 을 병합 커밋으로 병합 | 운영자 | 예(main) |
 | 6 | 트리 항등과 조상 확인 | 리더 | 아니오 |
 | 7 | 레인 재기동: `moai cc -f N` 로 새 세션, 모든 새 카드 트리는 `origin/main` 에서. 3단계가 병합·push 되지 않은 picked 카드 0 을 보증했으므로 이전 기준에서 만든 미착지 카드 브랜치는 없다 | 리더 | 아니오 |
 | 8 | 첫 카드가 PR→CI→병합→착지 판정→sweep 까지 가는지 관측 | 리더 | 예(PR) |
-| 9 | develop 퇴역 단계화(§D-13): 단계 2 에서 `Release PR Multi-OS Gate` 를 필수 체크에서 빼고(D-22), 삭제 뒤에 워크플로 push 트리거의 `develop` 을 정리하고 잔존 점검을 돌린다 | 운영자(체크 제거·develop 보호·삭제), 리더(정리 카드·점검) | 예 |
+| 9a | develop 퇴역 단계화(§D-13)의 운영자 몫: 단계 2 에서 `Release PR Multi-OS Gate` 를 main 필수 체크에서 빼고(D-22), develop 을 보호하고, 조건이 서면 develop 을 삭제 | 운영자 | 예 |
+| 9b | 삭제 뒤 리더의 몫: 워크플로 push 트리거의 `develop` 을 정리하는 카드(main 대상 PR)와 잔존 점검(`git grep -n -w develop -- .github/workflows` 종료 코드 1, `gh run list --workflow=CI --branch develop --limit 3` 의 가장 새 `createdAt` 이 전진하지 않음) | 리더 | 예(PR) |
 
-5 와 9 의 운영자 단계, 0·2·4 의 develop push 는 이 카드가 실행하지 않는 단계다(REQ-GFD-020). 이 표가 런북의 골격이고 M6 의 런북 문서는 같은 순서·같은 두 열(주체, 외부 공유 시스템 여부)을 가진다(AC-GFD-023).
+**행마다 주체는 하나다**(카드·리더·운영자 중 하나 — D-29). 한 단계에 두 주체가 필요하면 접미 번호(`5a`·`5b`)로 행을 나눈다. 5b 와 9a 의 운영자 단계, 0·2·4 의 develop push 는 이 카드가 실행하지 않는 단계다(REQ-GFD-020). 이 표가 런북의 골격이고 M6 의 런북 문서는 같은 순서·같은 두 열(주체, 외부 공유 시스템 여부)과 같은 접미 번호를 가진다(AC-GFD-023).
 
 ## §D-9 스윕 가드의 설계
 
@@ -184,7 +188,7 @@
 
 하위 트리 9번(codemaps 6파일 중 5파일에 `develop` 이 있다)과 10번(`scripts` 54파일 중 4파일에 `develop` 이 있다)은 1회차 감사가 빠진 면으로 지적한 곳이며 이제 범위에 든다. 가드의 방문 수 단언은 **전체 ≥ 1372 이고 하위 트리마다 위 바닥값 이상**이다. 바닥값 숫자는 이 계획 시점의 측정에서 ⌊0.9×수⌋ 로 도출한 참조값이며, 가드 시험 파일의 리터럴은 M4 착수 시 같은 명령으로 다시 센 값으로 갱신한다(그 값과 이 표가 다르면 판정서에 차이를 적는다). 설정 값과 워크플로 트리거는 prose 스윕이 아니라 별도 키 단언(AC-GFD-016)으로 본다. `.moai/reports/**`·`.moai/specs/**` 는 범위 밖이다(역사 기록과 SPEC 본문).
 
-**핵심 패턴(RE2, 뒷보기 없음 — 이 회차 스크래치 프로브로 픽스처 21행과 `AGENTS.md` 를 돌려 관측했다, 원장 M-5)**
+**핵심 패턴(RE2, 뒷보기 없음 — 개정 0.1.2 회차 스크래치 프로브로 픽스처 25행과 표면 1523개 파일을 돌려 관측했다, 원장 M-9. 0.1.1 의 프로브 M-5 는 21행 설계의 기록이다)**
 
 ```
 (?:^|[^A-Za-z0-9_./-])((?:refs/(?:remotes|heads)/)?(?:origin/)?develop)(?:$|[^A-Za-z0-9_-]|-(?:based|branch|tip|line)\b)
@@ -200,20 +204,22 @@
 1. **P-A(강)** — 적중이 `origin/`·`refs/` 접두를 가졌거나, 백틱으로 둘러싸였거나, 펜스 코드 블록 안 줄이다. 위반.
 2. **P-D(강)** — 적중에 CJK 문자(한글·한자·가나)가 바로 이웃한다. 영어 동사 `develop` 은 CJK 와 붙어 쓰이지 않으므로 이웃한 `develop` 은 브랜치 이름이다. 위반. (1회차 설계는 이를 P-B 토큰 목록에만 맡겼고 `분기` 가 목록에 없어 `develop에서 분기한다` 를 `to develop a feature` 와 구별하지 못했다.)
 3. **P-B(강)** — 같은 줄에 브랜치 말 토큰 `branch|브랜치|worktree|워크트리|base|기준|통합|integration|merge|병합|push|분기|fork|check ?out|체크아웃|rebase|리베이스|pull|rev-list` 가 있다. 위반. (`분기`·`fork`·`check out`·`pull` 은 입력 보고서 §5 의 증거 — `develop에서` 와 "Check out develop, pull, delete the local branch" — 에서 더했다.)
-4. 그 밖의 맨 적중은 **약한 적중**이다 — 위반이 아니라 방문 보고에 개수로 남긴다(동사 `develop` 의 거짓 양성을 피한다).
+4. 그 밖의 맨 적중은 **약한 적중**이다 — **허용 목록에 줄 전체로 오르지 않았으면 위반이다**(D-27). 0.1.1 설계는 약한 적중을 "위반이 아니라 개수로만 보고"했고 그 결과 `Work starts from develop.`·`Lane PRs go to develop.`·`Compare with the develop tip.` 같이 분기 말 토큰이 없는 살아 있는 문장이 가드를 통과했다(원장 M-9 의 회피 프로브). 동사 `develop` 의 거짓 양성은 이제 가드가 아니라 허용 항목(`Why` 에 "동사/키워드, 브랜치 아님")이 처리한다.
 
 **P-C(약, 기준선 래칫)**: 토큰 없는 살아 있는 문장 — `integration (worktree|window|branch)`·`통합 (워크트리|브랜치)`·`일괄 push`·`batch.?push`·`commit-dead`·`lead_push_threshold`. 위반이 아니라 절체 묶음이 기록한 개수보다 늘면 실패하고 줄면 보고만 한다(`moai spec lint --baseline` 의 구조를 따른다). **`\bWT-` 는 뺐다** — 카드 브랜치 `WT-<slug>` 는 github-flow 에서도 살아 있는 이름이다(§A 1단계).
 
 **허용(조용한 허용을 막기 위해 모두 좁혔다)**
 - 줄 표지: 같은 줄이 `RETIRED`·`SUPERSEDED`·`폐기`·`은퇴` 중 하나와 **날짜(`20YY-MM-DD`)나 카드·SPEC 식별자(`t1234`·`SPEC-…`)를 함께** 가질 때. `historical`·`legacy` 는 표지로 인정하지 않는다(실측 프로브: `(legacy)` 를 붙인 살아 있는 문장은 위반으로 남는다). 제목 줄이 표지를 가지면 그 효력은 **그 절 자신**, 곧 하위 제목을 포함해 같은 수준이거나 더 상위 수준인 다음 제목 전까지에 한정된다(프로브 F-red-10·F-green-8). 인용 블록은 그 블록 하나에만 효력이 있다.
 - 스탬프: `develop @ <7~40자 hex>` 형태.
-- git-flow 옵션 서술은 **줄 표지가 아니라 파일·줄 단위 허용 항목** `{File, Literal, Why}` 으로만 허용한다. `Literal` 은 **그 파일의 한 줄 전체(앞뒤 공백 제거 뒤 동일)** 여야 하고, 파일에 그런 줄이 없으면 낡은 항목으로 실패한다. 맨 토큰(`develop`)은 줄 전체가 아니므로 거부된다(1회차 설계는 `{File: "AGENTS.md", Literal: "develop"}` 한 항목이 파일 전체를 침묵시키는 변이를 막지 못했다). **허용 항목은 전체 40개 이하**이다. 근거: 입력 보고서 §5 가 문서화된 git-flow 옵션(class N)으로 든 곳은 `delivery.md`·`moai-ref-git-workflow`·`manager-git.md`·`spec-workflow.md:60` 과 CI 샘플 줄 몇 곳이고, 40 은 그 줄 수의 두 배를 넘겨 잡은 여유다(이 회차에 줄 수를 다시 세지는 않았다 — Gap). 상향은 이 문서의 결정 행이 필요하다. `git-flow` 라는 단어가 있는 줄을 일괄 허용하지 않는다.
+- git-flow 옵션 서술은 **줄 표지가 아니라 파일·줄 단위 허용 항목** `{File, Literal, Why}` 으로만 허용한다. `Literal` 은 **그 파일의 한 줄 전체(앞뒤 공백 제거 뒤 동일)** 여야 하고, 파일에 그런 줄이 없으면 낡은 항목으로 실패한다. 맨 토큰(`develop`)은 줄 전체가 아니므로 거부된다(1회차 설계는 `{File: "AGENTS.md", Literal: "develop"}` 한 항목이 파일 전체를 침묵시키는 변이를 막지 못했다). **허용 항목은 전체 40개 이하**이다. 근거: 입력 보고서 §5 가 문서화된 git-flow 옵션(class N)으로 든 곳은 `delivery.md`·`moai-ref-git-workflow`·`manager-git.md`·`spec-workflow.md:60` 과 CI 샘플 줄 몇 곳이고, 40 은 그 줄 수의 두 배를 넘겨 잡은 여유다(이 회차에 줄 수를 다시 세지는 않았다 — Gap). 상향은 이 문서의 결정 행이 필요하다. **이 40개 상한은 약한 적중을 허용하는 항목까지 합친 전체 수다**(D-27 — 상한은 올리지 않았다). 이 회차의 측정(원장 M-9)은 약한 적중 31줄(25개 파일, 로컬·템플릿 사본 쌍 포함)이고 그중 살아 있는 기준 서술(`goal.md` "the leased local develop" 와 사본, `scripts/jev/triage.py` "ancestor of develop" 와 시험 줄, `scripts/ac-baseline/*.sh` "until it absorbs develop")은 허용이 아니라 **문장 교체** 대상이며 동사·키워드·중괄호 목록(`Create and develop foundation SPEC`, `[…, "develop", …]`, `manager-{spec,develop,docs}`) 쪽은 사본 쌍까지 열 줄 안팎이라 git-flow 옵션 서술 줄과 합쳐도 상한 안에 든다는 것은 **예측이지 측정이 아니다**. 합이 40 을 넘으면 허용을 늘리지 않고 문장을 먼저 바꾸며, 그래도 안 되면 결정 행으로 상향한다. `git-flow` 라는 단어가 있는 줄을 일괄 허용하지 않는다.
 - 구조 식별자(`push_develop`·`push-develop`·`local-merge-develop`·`--develop-worktree`)는 위 경계 때문에 본 패턴에서 이미 빠지고, **별도 차선**의 기대 파일 목록으로 추적해 새 파일로 번지면 실패한다(§D-12).
 - 표지가 줄 단위로 면제한 줄 수는 파일별로 방문 보고에 센다(표지 추가로 살아 있는 문장을 덮는 변이는 막지 못하고 개수 증가를 눈에 띄게 할 뿐이다 — Residual-risk, 리뷰 소관).
 
-**무장과 연속 발화**: 가드 본체는 이 저장소의 `git-strategy.yaml` 의 활성 워크플로 값이 `github-flow` 일 때 무장한다. 절체 묶음이 그 값을 바꾸므로 값 변경과 가드 무장이 한 변경이다. 무장 전에는 `t.Skip` 이 아니라 "disarmed" 를 출력하는 별도 시험이 있고, AC-GFD-011·021 은 `--- SKIP` 이 없음을 요구한다. 방문 파일 수 바닥값(전체 1372, 하위 트리마다 위 표의 값)과 하위 트리 집합 동등 단언은 순회가 조용히 줄어드는 것을 잡는다. 가드는 `visited=<N>`, 하위 트리별 방문 수, 약한 적중 수, 표지 면제 줄 수를 출력한다.
+**무장과 연속 발화**: 가드 본체는 이 저장소의 `git-strategy.yaml` 의 활성 워크플로 값이 `github-flow` 일 때 무장한다. 절체 묶음이 그 값을 바꾸므로 값 변경과 가드 무장이 한 변경이다. 무장 전에는 `t.Skip` 이 아니라 "disarmed" 를 출력하는 별도 시험이 있고, AC-GFD-011·021 은 `--- SKIP` 이 없음을 요구한다. 방문 파일 수 바닥값(전체 1372, 하위 트리마다 위 표의 값)과 하위 트리 집합 동등 단언은 순회가 조용히 줄어드는 것을 잡는다. 가드는 `visited=<N>`, 하위 트리별 방문 수, **허용 목록으로 통과한 약한 적중 수와 위반으로 남은 약한 적중 수**, 표지 면제 줄 수를 출력한다. 허용 목록 사용 수가 항목 수보다 적으면(낡은 항목) 가드가 실패한다.
 
-**퇴역 뒤의 연속 발화(별도 점검)**: develop 이 퇴역한 뒤에도 워크플로 push 트리거에 `develop` 이 남으면 그 목록은 조용히 죽은 설정이다(실행되지 않는 점검은 성공과 구별되지 않는다). 런북 9단계의 점검이 이를 잡는다 — `git grep -n -w develop -- .github/workflows` 가 종료 코드 1 이어야 하고(원장 M-7 은 지금 10개 파일이 적중함을 보인다), `gh run list --workflow=CI --branch develop --limit 3` 의 가장 새 `createdAt` 이 더 이상 전진하지 않아야 한다. 이 점검 문구는 런북 문서의 필수 내용이다(AC-GFD-023).
+**남는 한계(Residual-risk, 리뷰 소관)**: 핵심 패턴은 대소문자를 구분한다(`develop` 만). `Develop branch is the integration line.`·`DEVELOP` 는 일치하지 않는다(프로브 M-9: nomatch). 이 트리의 표면에서 `git grep -n -w "Develop"` 가 낸 16줄은 모두 동사·제목·다이어그램 라벨이었다(원장 E-45) — 대소문자 무시 변형을 더하면 `Develop in the Worktree` 같은 동사 줄이 P-B 토큰(`worktree`)에 걸려 거짓 양성이 늘어 허용 항목을 소모하므로 더하지 않고 한계로 기록한다. 또한 H1 제목의 표지는 그 절(= 문서 전체)을 침묵시키고, 날짜를 곁들인 표지를 살아 있는 줄에 붙이는 변이는 막지 못한다(표지 면제 줄 수 보고가 증가를 눈에 띄게 할 뿐이다).
+
+**퇴역 뒤의 연속 발화(별도 점검)**: develop 이 퇴역한 뒤에도 워크플로 push 트리거에 `develop` 이 남으면 그 목록은 조용히 죽은 설정이다(실행되지 않는 점검은 성공과 구별되지 않는다). 런북 9b 단계의 점검이 이를 잡는다 — `git grep -n -w develop -- .github/workflows` 가 종료 코드 1 이어야 하고(원장 M-7 은 지금 10개 파일이 적중함을 보인다), `gh run list --workflow=CI --branch develop --limit 3` 의 가장 새 `createdAt` 이 더 이상 전진하지 않아야 한다. 이 점검 문구는 런북 문서의 필수 내용이다(AC-GFD-023).
 
 **기각**
 - *로케일별 개수 동등 단언*: 현재 트리에서 이미 실패한다 — `moai-sync.md` 의 `develop` 단어 적중이 en 6·ja 5·ko 5·zh 5 이고 분류한 살아 있는 문장은 3/2/2/4 로 보고됐다. 의도를 단언한다.
@@ -222,6 +228,8 @@
 - *Python 식 유니코드 `\w`*: CJK 가 단어 문자로 합쳐져 `develop에서` 를 놓친다. RE2 의 ASCII 클래스를 명시한다.
 - *줄 표지에 `historical`·`legacy` 인정, 날짜·식별자 없는 표지*: 프로브에서 `(legacy)` 한 단어가 살아 있는 문장을 면제하는 변이를 막지 못했다.
 - *`Literal` 이 맨 토큰이어도 허용*: 항목 하나가 파일 전체를 침묵시킨다.
+- *약한 적중을 개수로만 보고(0.1.1 설계) 또는 기준선 래칫으로 묶기*: 보고만 하면 토큰 없는 살아 있는 문장이 영원히 녹색이고, 래칫은 지금의 31줄(`the leased local develop`·`ancestor of develop` 같은 살아 있는 기준 서술 포함)을 기준선으로 굳혀 "늘지만 않으면 통과"로 만든다. 줄마다 허용 사유를 요구하는 쪽이 REQ-GFD-011("살아 있는 문장이 남지 않아야 한다")과 같은 방향이다(D-27).
+- *핵심 패턴의 P-B 토큰에 `from|against|ancestor|absorb|lease|go(es)? to|on` 를 더하기*: `on`·`from` 은 일반 영어 동사구와 겹쳐 거짓 양성이 크고 목록은 다음 회피 문장이 나올 때마다 늘어난다. 토큰을 늘리는 대신 약한 적중 전체를 위반으로 승격해 목록을 닫는다.
 
 ## §D-10 t810 은 흡수한다
 
@@ -263,14 +271,14 @@ oss-docs 하네스 규칙에 따라 ko 정본을 먼저 쓰고 en, 그다음 ja�
 
 `AGENTS.md` 의 5줄(원장 E-07)과 규칙 서술 교체는 대체로 같은 길이의 교체라 순증가가 작을 것으로 예상하지만 이는 예측이지 측정이 아니다. 기준선(16개·285,543 바이트)을 M4 착수 시 다시 재고, 1,000 바이트를 넘는 단일 편집은 `rule-authoring.md` 의 진술(파일 바이트, 비호출 세션이 치르는 비용, `paths:` 로 옮길 수 있는지)을 변경 설명에 담는다. 새 절이 필요하면 `paths:` 범위의 동반 파일에 둔다.
 
-## §D-16 ~ D-26 개정 0.1.1 에서 기록하는 결정
+## §D-16 ~ D-29 개정 0.1.1·0.1.2 에서 기록하는 결정
 
-1회차 plan-audit 의 MP-7 은 미해소 질문 표지 7건(NC-1~NC-7)을 막았다. 아래는 그 7건을 번호 붙은 결정으로 옮기고(D-16~D-22) 감사가 지적한 설계 결함에 대한 결정 넷(D-23~D-26)을 더한 것이다. 각 행은 **출처**(누가 정했나)와 **리더가 뒤집을 수 있는가**를 적는다. 표지 문자열은 `plan.md`·`research.md` 에서 지웠다.
+1회차 plan-audit 의 MP-7 은 미해소 질문 표지 7건(NC-1~NC-7)을 막았다. 아래는 그 7건을 번호 붙은 결정으로 옮기고(D-16~D-22) 감사가 지적한 설계 결함에 대한 결정 넷(D-23~D-26)을 더한 것이다. 개정 0.1.2 는 2회차 감사가 지적한 결함에 대한 결정 셋(D-27~D-29)과 D-26 의 보충(Frozen 줄 전수)을 더한다. 각 행은 **출처**(누가 정했나)와 **리더가 뒤집을 수 있는가**를 적는다. 표지 문자열은 `plan.md`·`research.md` 에서 지웠다.
 
 | ID | 결정 | 출처 | 뒤집기 |
 |---|---|---|---|
 | D-16 | **rc 태그 규칙은 R-a** — 접미사 태그는 `release.yml` 검사 5·6 을 건너뛰고 1~4·7 을 유지한다, 대체 검사 없음. 규칙문은 D-6 한 곳에만 있다(REQ-GFD-008·P6 이 가리킨다) | 계획 기본값(권고) | 리더가 뒤집을 수 있다 |
-| D-17 | **절체 선행 조건은 origin/develop 팁의 CI 녹색이다.** 순서: 리더가 미푸시 로컬 develop 커밋을 push → 적색 CI 수리(수리 카드는 리더의 판단이고 이 카드의 범위가 아니다. 측정된 적색 집합: `.moai/reports/t1453/m0-develop-ci-red.md` — gofmt 3파일, Windows vet `parseLsofCWDs`, `run.md` 263줄이 200줄 상한 초과, codemaps 접힘 가드, 그리고 ubuntu 에서만 나는 실패) → 그 뒤에야 절체. **M5 는 워크플로 push 트리거에서 `develop` 을 빼지 않는다** — develop 팁 CI 가 절체 내내 관측되도록, 빼는 일은 develop 퇴역 뒤의 정리 단계다(D-13 단계 4). 두 번째 증거는 develop→main PR 의 필수 체크(`ci.yml:20`)다 | 운영자 결정(10-02 밤, 리더 경유) | 운영자 소관 |
+| D-17 | **절체 선행 조건은 origin/develop 팁의 CI 녹색이다.** 순서: 리더가 미푸시 로컬 develop 커밋을 push → 적색 CI 수리(수리 카드는 리더의 판단이고 이 카드의 범위가 아니다. 측정된 적색 집합은 `research.md` §4.1 에 있다 — 로컬 보조 자료 `.moai/reports/t1453/m0-develop-ci-red.md` 는 인용 대상이 아니다 — gofmt 3파일, Windows vet `parseLsofCWDs`, `run.md` 263줄이 200줄 상한 초과, codemaps 접힘 가드, 그리고 ubuntu 에서만 나는 실패) → 그 뒤에야 절체. **M5 는 워크플로 push 트리거에서 `develop` 을 빼지 않는다** — develop 팁 CI 가 절체 내내 관측되도록, 빼는 일은 develop 퇴역 뒤의 정리 단계다(D-13 단계 4). 두 번째 증거는 develop→main PR 의 필수 체크(`ci.yml:20`)다 | 운영자 결정(10-02 밤, 리더 경유) | 운영자 소관 |
 | D-18 | **수렴 PR 은 하나로 먼저 시도한다.** 거부되면 분할 PR → 보호 일시 완화 순. 폴백 선택은 절체 시점의 운영자·리더 판단 | 계획 기본값 | 리더가 뒤집을 수 있다 |
 | D-19 | **t1453 이 t810 을 흡수한다.** t810 의 카드·워크트리·`SPEC-LATE-BRANCH-REDESIGN-001` 은 건드리지 않고, t810 의 닫는 처분은 t1453 이 닫힐 때 운영자에게 올린다 | 리더 결정(10-02 밤) | 리더 소관 |
 | D-20 | **카드는 카드마다 PR 로 전달하고 병합 큐는 보류한다.** 청구 분·CodeRabbit 한도 이력·의미 충돌 빈도의 측정은 후속 측정 항목이며 `research.md` §9 Gaps 에 남는다. 그 항목의 카드 발행은 리더에게 하는 권고이고 이 SPEC 에는 카드 id 를 적지 않는다 | 운영자 결정(10-02 밤, 리더 경유) | 운영자 소관 |
@@ -279,7 +287,25 @@ oss-docs 하네스 규칙에 따라 ko 정본을 먼저 쓰고 en, 그다음 ja�
 | D-23 | **계약 모드 에스컬레이션 분류기(`internal/escalation` 의 `pushWhy` 류)는 이 카드가 바꾸지 않는다.** 1회차의 M2(d)를 삭제한다. 그 변경은 새 행동 어휘(기존 `push-develop` 와 같은 와이어 식별자)와 git-flow 비영향 증명이 필요한 별도 변경이라 이 SPEC 에 REQ·AC 가 없다. 1회차 감사가 읽은 `internal/escalation/operational.go:108-126` 에 따르면 `pushWhy` 는 승인된 `develop` 이 아닌 push 에 "pushes <target>" 사유를 돌려주므로, 계약 모드 레인은 PR 전달의 카드 브랜치 push 에서 에스컬레이션을 만나는 것으로 읽힌다(이 회차에 다시 읽지 않았다 — Gap). 후속은 리더에게 권고로 남긴다 | 감사 F-12 반영(제 판단) | 리더 소관 |
 | D-24 | **매트릭스 강제의 스위치는 `scripts/release.sh --require-matrix-run` 옵션이다(기본 꺼짐, 새 설정 키 없음).** 근거: 새 설정 키는 사용자에게 하는 약속이라 정직성 가드가 필요하고(`.moai/docs/config-key-triage-rule.md`) 이 저장소의 `workflow.yaml` 값은 AC-GFD-016 의 사전 방향 목록에 있어 M3 에서 바꿀 수 없다. `release.sh` 의 인자 해석은 `case` 문이고 모르는 `-*` 플래그는 `die` 이므로 새 옵션은 한 분기로 들어간다. 옵션이 없으면 현행 동작이다. 켜는 일은 릴리스 하네스 본문(`hns-release-specialist.md`, 절체 시점 파일)이 옵션을 넘기도록 바꾸는 M5 의 편집이다 | 감사 F-21 반영(제 판단) | 리더가 뒤집을 수 있다 |
 | D-25 | **절체 카드(이 카드) 자신의 면제와 사전 점검의 순서.** 이 카드의 M4·M5 묶음은 런북 2단계에서 현 경로로 마지막에 병합되고 push 된다. 사전 점검(AC-GFD-019)은 그 **뒤**, 수렴 병합(4단계) **앞**인 3단계에서 돌며, 이때 이 카드의 브랜치 팁이 origin/develop 의 조상이면 picked 카드 조건을 자연히 만족한다. 병합 뒤 커밋(예: 증거 hoist)이 있어 조상이 아니면 `--exclude-card <id>` 인자로 명시하고 점검 출력이 그 제외를 이름으로 적는다. 다른 picked 카드는 제외되지 않는다 | 감사 F-03 반영(제 판단) | 리더가 뒤집을 수 있다 |
-| D-26 | **Frozen 조항 개정의 실행 모형.** 등재된 조항은 `CONST-V3R5-027`·`-028` 둘뿐이다(`moai constitution list --file …spec-workflow.md` 가 세 항목 중 이 둘을 낸다. `…worktree-integration.md` 는 `No entries.`). `moai constitution amend` 는 `--rule`·`--before`·`--after`(필수), `--evidence`(Frozen 에서 필수), `--dry-run` 을 받고 5단째 인간 승인은 대화형 Y/N 이다. 그러므로 레인은 개정 입력(`--before`/`--after` 문언과 `--evidence`)과 `--dry-run` 제안을 준비하고, 실제 개정은 **운영자가 두 번 실행**하며, 레인은 그 뒤에 `moai constitution validate` 종료 코드 0 과 등재·본문 문언 일치를 검증한다. `worktree-integration.md:390,401` 의 Frozen 표지 두 줄은 등재되지 않았으므로 일반 편집이다 | 감사 F-06 반영(제 판단) | 리더가 뒤집을 수 있다 |
+| D-26 | **Frozen 조항 개정의 실행 모형.** 등재된 조항은 `CONST-V3R5-027`·`-028` 둘뿐이다(`moai constitution list --file …spec-workflow.md` 가 세 항목 중 이 둘을 낸다. `…worktree-integration.md` 는 `No entries.`). `moai constitution amend` 는 `--rule`·`--before`·`--after`(필수), `--evidence`(Frozen 에서 필수), `--dry-run` 을 받고 5단째 인간 승인은 대화형 Y/N 이다. 그러므로 레인은 개정 입력(`--before`/`--after` 문언과 `--evidence`)과 `--dry-run` 제안을 준비하고, 실제 개정은 **운영자가 두 번 실행**하며, 레인은 그 뒤에 `moai constitution validate` 종료 코드 0 과 등재·본문 문언 일치를 검증한다. 등재 여부는 줄마다 `moai constitution list --file <경로>` 로 판정한다 — 이 SPEC 이 건드리는 `[ZONE:Frozen]` 줄의 전수와 분류는 아래 표(D-26 보충)에 있다. 등재되지 않은 줄(`worktree-integration.md:390,401`, `spec-workflow.md` 의 Route A/B 문단 표지 줄과 plan 단계 표지 줄)은 `amend` 를 쓸 수 없는(`--rule` 은 등재 ID 만 받는다) **일반 편집**이며 개정된 등재 문언과 같은 방향이어야 하고 로컬과 템플릿 사본이 같아야 한다 | 감사 F-06 반영(제 판단), 2회차 N-03 로 보강 | 리더가 뒤집을 수 있다 |
+| D-27 | **스윕 가드의 약한 적중은 허용 목록에 줄 전체로 오르지 않으면 위반이다**(기준선 래칫이 아니다). 허용 목록 전체 상한 40 은 올리지 않는다 — 약한 적중 허용도 같은 40 안에서 센다. 근거: 감사가 같은 알고리즘을 다시 구현해 이 트리 1523개 파일에서 위반 286줄·약한 적중 31줄·표지 면제 9줄을 측정했고(원장 M-9 가 같은 수를 재현했다), 약한 적중에는 `the leased local develop`(`goal.md`)·`ancestor of develop`(`scripts/jev/triage.py`) 같은 살아 있는 기준 서술이 들어 있었으며 `Work starts from develop.`·`Lane PRs go to develop.`·`Compare with the develop tip.` 가 모두 녹색이었다(0.1.1 설계의 구멍). 픽스처는 21→25행(F-red-12·13·14, F-green-10 추가) | 2회차 감사 N-05 반영(제 판단) | 리더가 뒤집을 수 있다 |
+| D-28 | **CI 증거는 변하지 않는 식별자로 고정하거나 Gaps 로 옮긴다.** `gh run list`·`gh pr list` 같은 목록 호출은 같은 명령이 다른 창을 돌려주는 것이 두 회차 연속 관측됐다(감사: 세 번 연속 호출이 2026-09-07·2026-09-29~30·2026-10-01~02 창을 돌려주었다. 이번 회차: 세 번 연속 호출이 2026-09-07 창 한 번과 2026-10-01~02 창 두 번을 돌려주었다 — 같은 명령이 서로 다른 결과를 냈다). 그래서 인용하는 CI 행은 실행 id(`gh run view <id>`)나 PR 번호로 고정해 다시 읽은 값만 쓰고, 고정하지 못한 행(main push 200건 표본, PR 이벤트 표본)은 표에서 빼 `research.md` §9 Gaps 에 올린다. "같은 명령 N회 동일" 문구는 쓰지 않는다 | 2회차 감사 N-07 반영(제 판단) | 리더가 뒤집을 수 있다 |
+| D-29 | **런북의 행마다 실행 주체는 하나다.** 한 단계에 두 주체가 있으면 접미 번호 행으로 나눈다(5→5a 리더·5b 운영자, 9→9a 운영자·9b 리더). 근거: AC-GFD-023 의 형태 시험이 주체 열을 한 값(카드·리더·운영자)으로 파싱하고, 외부 공유 시스템을 바꾸는 운영자 단계가 두 값 셀 안에 묻히면 REQ-GFD-020 의 확인 경계를 읽을 수 없다 | 2회차 감사 N-02 반영(제 판단) | 리더가 뒤집을 수 있다 |
+
+### D-26 보충 — `[ZONE:Frozen]` 줄의 전수와 분류 (측정: 트리 `6c2277295d9ddeaa92e83c0225910445f83cc1c2`, 원장 E-38~E-41)
+
+`git grep -n "ZONE:Frozen" -- <spec-workflow.md>` 는 로컬과 템플릿 사본에서 같은 세 줄(23·49·164)을 냈고, `moai constitution list --file …/spec-workflow.md`(이 트리에서 빌드한 `moai`)는 `CONST-V3R2-001`·`CONST-V3R5-027`·`CONST-V3R5-028` 셋을, 템플릿 사본 경로로는 `No entries.` 를 냈다(레지스트리는 로컬 경로만 안다 — 템플릿 사본은 AC-GFD-015 의 사본 정합 시험이 로컬과 같게 지킨다). 줄 번호는 이 트리의 값이고 편집이 줄 번호를 옮기므로 인용은 문언으로 한다.
+
+| 줄(이 트리) | 문언 | 등재 | 취급 | 이 SPEC 에서 |
+|---|---|---|---|---|
+| 23 | `[ZONE:Frozen] [HARD] Every MoAI SPEC follows the three-phase lifecycle …` (Route A/B 문단, 줄 26 의 불릿 `opens a PR per phase` 가 이 문단 아래에 있다) | **미등재** | 일반 편집 | 두 경로(Route A/B) 서술을 github-flow 경로에 맞춘다(AC-GFD-017: `opens a PR per phase` 0) |
+| 49 | `[ZONE:Frozen] [HARD] Step ordering rules:` (머리줄) | **미등재**(머리줄 자체) | 일반 편집 | 머리줄은 바꿀 필요가 없다 — 그 아래 두 불릿이 등재 clause 다 |
+| 50 | `Step 1 (plan) MUST execute in main checkout on BOTH routes. NO L2/L3 worktree at this step …` | **등재 `CONST-V3R5-027`** | `amend`(운영자) | plan 단계의 워크트리 진입을 허용하도록 개정(AC-GFD-013) |
+| 53 | `Step 4 (cleanup) applies to **Route B only**. It MUST happen ONLY after BOTH run AND sync PRs are merged …` | **등재 `CONST-V3R5-028`** | `amend`(운영자) | 단일 PR 폐기 조건으로 개정(AC-GFD-013) |
+| 164 | `[ZONE:Frozen] [HARD] Execute in main checkout. NO worktree at this step. See § SPEC Phase Discipline (Step 1).` | **미등재** | 일반 편집 | plan 단계 금지 문장을 개정된 027 과 같은 방향으로 바꾼다. **`NO worktree at this step` 가 로컬·템플릿 두 사본에서 0**(AC-GFD-017) |
+| 166 | `Create comprehensive specification using EARS format.` | **등재 `CONST-V3R2-001`**(`zone-registry.md` 의 clause, anchor `#plan-phase`) | 편집하지 않는다 | 164 줄의 편집이 166 줄을 건드리면 `amend` 대상이 된다 — 건드리지 않는다 |
+
+`worktree-integration.md` 는 `moai constitution list --file` 이 `No entries.`(원장 E-33)이므로 그 파일의 `[ZONE:Frozen]` 줄(390·401 포함, 그 밖의 표지 줄은 이 SPEC 이 편집하지 않는다)은 모두 일반 편집이다. **일반 규칙**: M4 가 편집하는 파일마다 같은 `list --file` 를 돌려 등재 여부를 판정서에 적고, 등재되지 않은 `[ZONE:Frozen]` 줄은 `amend` 없이 일반 편집으로 처리하되 개정된 등재 문언과 어긋나지 않게 한다. 미등재 표지 줄을 지켜 주는 장치는 `amend` 가 아니라 AC-GFD-017 의 0-grep 과 AC-GFD-015 의 사본 정합 시험이다.
 
 ---
 
