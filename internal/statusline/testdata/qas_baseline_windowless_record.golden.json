@@ -1,0 +1,13 @@
+{
+  "schema_version": 2,
+  "session_id": "qas-baseline-session",
+  "writer_pid": 4242,
+  "captured_at": "2026-10-02T00:00:00Z",
+  "context_window_size": 200000,
+  "tokens_used": 50000,
+  "raw_pct": 25,
+  "stage": "none",
+  "band": "standard",
+  "model": "Opus 4.8",
+  "effort": "high"
+}

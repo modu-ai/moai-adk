@@ -28,8 +28,12 @@ import (
 // contextUsageSchemaVersion is the on-disk schema version of a session
 // telemetry record. Bumped to 2 by SPEC-SESSION-TELEMETRY-001: the payload
 // gained the session's model and effort. A reader tolerates records at the
-// previous version — the two fields are simply absent (REQ-ST-003).
-const contextUsageSchemaVersion = 2
+// previous version — the two fields are simply absent (REQ-ST-003). Bumped to 3
+// by SPEC-QUOTA-AWARE-SCHEDULING-001: the record gained the optional five-hour
+// and seven-day rate-limit windows, omitted when the stdin supplied none, so a
+// window-less record differs from a version-2 one only in this value
+// (REQ-QAS-002); a version-1 or version-2 record reads as "no windows".
+const contextUsageSchemaVersion = 3
 
 // templateSourceEmbedPath is the path-component marker for the moai-adk-go
 // template embed source tree. The //go:embed all:templates directive in
@@ -111,6 +115,27 @@ type SessionTelemetryRecord struct {
 	// as "not recorded" and never infers a substitute (REQ-ST-003).
 	Model  string `json:"model,omitempty"`
 	Effort string `json:"effort,omitempty"`
+
+	// FiveHour and SevenDay are the Claude rate-limit windows the session's
+	// statusline stdin supplied (SPEC-QUOTA-AWARE-SCHEDULING-001 REQ-QAS-001).
+	// Each is omitted when the stdin did not supply that window, or when the
+	// record predates schema version 3, so a window-less record serializes to
+	// the same bytes as before the fields existed. A reader treats an absent
+	// window as unknown and never infers one.
+	FiveHour *QuotaWindowRecord `json:"five_hour,omitempty"`
+	SevenDay *QuotaWindowRecord `json:"seven_day,omitempty"`
+}
+
+// QuotaWindowRecord is one rate-limit window as the record carries it: the used
+// percentage and the reset time exactly as the statusline stdin supplied them
+// (reset time in Unix epoch seconds, the stdin unit), plus ExhaustedAt — the
+// capture time at which the window was first observed at or above
+// config.QuotaExhaustionPct, kept while the window's reset time is unchanged
+// (REQ-QAS-004). ExhaustedAt is an RFC 3339 time and is omitted while unset.
+type QuotaWindowRecord struct {
+	UsedPercentage float64 `json:"used_percentage"`
+	ResetsAt       int64   `json:"resets_at"`
+	ExhaustedAt    string  `json:"exhausted_at,omitempty"`
 }
 
 // String renders the handoff stage as its on-disk / doctrine label.
@@ -174,6 +199,15 @@ func isTemplateSourceDir(dir string) bool {
 // tree (isTemplateSourceDir — prevents //go:embed all:templates from leaking a
 // runtime artifact into the distributed binary).
 func writeContextUsage(projDir, sessionID string, writerPID int, mem MemoryData, stage handoffStage, model, effort string) {
+	writeContextUsageAt(time.Now(), projDir, sessionID, writerPID, mem, stage, model, effort, nil)
+}
+
+// writeContextUsageAt is writeContextUsage with the clock and the rate-limit
+// windows explicit. now stamps the record's capture time and is what the
+// heartbeat compares the on-disk record against, so a test injects the clock
+// instead of reading the wall clock for a verdict. limits is the statusline
+// stdin's rate_limits object (nil when absent).
+func writeContextUsageAt(now time.Time, projDir, sessionID string, writerPID int, mem MemoryData, stage handoffStage, model, effort string, limits *RateLimitInfo) {
 	if !mem.Available || mem.ContextWindowSize <= 0 || projDir == "" || isTemplateSourceDir(projDir) {
 		return
 	}
@@ -184,13 +218,20 @@ func writeContextUsage(projDir, sessionID string, writerPID int, mem MemoryData,
 		return // key refused (REQ-ST-007); the render still completes
 	}
 
-	next := buildContextUsageRecord(sessionID, writerPID, mem, stage, model, effort)
+	// The on-disk record is read once: the throttle compares against it, and the
+	// first-observed-exhausted time is carried over from it (REQ-QAS-004).
+	existing, err := ReadSessionTelemetry(path)
+	if err != nil {
+		existing = nil
+	}
+	next := buildContextUsageRecord(now, sessionID, writerPID, mem, stage, model, effort, limits, existing)
 
 	// Write-if-changed throttle (REQ-THRESHOLD-012): skip when the semantic
 	// payload is byte-equal to the on-disk record, so render-rate invocations
-	// do not churn the disk.
-	if existing, err := ReadSessionTelemetry(path); err == nil && existing != nil &&
-		sameSemanticPayload(existing, next) {
+	// do not churn the disk. A record that carries a rate-limit window is
+	// additionally rewritten once its capture time is older than the heartbeat
+	// interval (REQ-QAS-003).
+	if existing != nil && sameSemanticPayload(existing, next) && !heartbeatDue(existing, next, now) {
 		return
 	}
 
@@ -215,14 +256,16 @@ func writeContextUsage(projDir, sessionID string, writerPID int, mem MemoryData,
 
 // buildContextUsageRecord assembles the on-disk record from the current usage
 // snapshot. raw_pct is the raw context-window usage (tokens / window), NOT the
-// auto-compact-scaled TokenBudget percentage.
-func buildContextUsageRecord(sessionID string, writerPID int, mem MemoryData, stage handoffStage, model, effort string) *SessionTelemetryRecord {
+// auto-compact-scaled TokenBudget percentage. limits is the stdin rate_limits
+// object and prev the record currently on disk (nil when there is none); only
+// a window the stdin supplied is carried (REQ-QAS-001).
+func buildContextUsageRecord(now time.Time, sessionID string, writerPID int, mem MemoryData, stage handoffStage, model, effort string, limits *RateLimitInfo, prev *SessionTelemetryRecord) *SessionTelemetryRecord {
 	rawPct := float64(mem.TokensUsed) * 100.0 / float64(mem.ContextWindowSize)
-	return &SessionTelemetryRecord{
+	rec := &SessionTelemetryRecord{
 		SchemaVersion:     contextUsageSchemaVersion,
 		SessionID:         sessionID,
 		WriterPID:         writerPID,
-		CapturedAt:        time.Now().Format(time.RFC3339Nano),
+		CapturedAt:        now.Format(time.RFC3339Nano),
 		ContextWindowSize: mem.ContextWindowSize,
 		TokensUsed:        mem.TokensUsed,
 		RawPct:            rawPct,
@@ -231,6 +274,54 @@ func buildContextUsageRecord(sessionID string, writerPID int, mem MemoryData, st
 		Model:             model,
 		Effort:            effort,
 	}
+	if limits != nil {
+		var prevFive, prevSeven *QuotaWindowRecord
+		if prev != nil {
+			prevFive, prevSeven = prev.FiveHour, prev.SevenDay
+		}
+		rec.FiveHour = quotaWindowRecord(limits.FiveHour, prevFive, now)
+		rec.SevenDay = quotaWindowRecord(limits.SevenDay, prevSeven, now)
+	}
+	return rec
+}
+
+// quotaWindowRecord converts one stdin window into its record form, or nil when
+// the stdin did not supply the window. The first-observed-exhausted time
+// (REQ-QAS-004) is the previous record's while that record carried one for the
+// same reset time — it stays until the window rolls or leaves the record — and
+// otherwise the current capture time when the window reads at or above the
+// exhaustion percentage. A reset time that changed while the window still reads
+// exhausted therefore re-observes the time from this capture; a window that
+// left the record in between has no previous window and starts again.
+func quotaWindowRecord(w *RateLimitWindow, prev *QuotaWindowRecord, now time.Time) *QuotaWindowRecord {
+	if w == nil {
+		return nil
+	}
+	rec := &QuotaWindowRecord{UsedPercentage: w.UsedPercentage, ResetsAt: w.ResetsAt}
+	switch {
+	case prev != nil && prev.ResetsAt == w.ResetsAt && prev.ExhaustedAt != "":
+		rec.ExhaustedAt = prev.ExhaustedAt
+	case w.UsedPercentage >= config.QuotaExhaustionPct:
+		rec.ExhaustedAt = now.Format(time.RFC3339Nano)
+	}
+	return rec
+}
+
+// heartbeatDue reports whether a record that carries a rate-limit window must
+// be rewritten although its throttle payload is unchanged: the on-disk capture
+// time is older than config.QuotaHeartbeatInterval, so without the rewrite a
+// steady reading in a live session would age toward stale (REQ-QAS-003). A
+// window-less record never heartbeats; it is throttled exactly as before the
+// windows existed. An unparseable on-disk capture time counts as due.
+func heartbeatDue(existing, next *SessionTelemetryRecord, now time.Time) bool {
+	if next.FiveHour == nil && next.SevenDay == nil {
+		return false
+	}
+	captured, err := time.Parse(time.RFC3339Nano, existing.CapturedAt)
+	if err != nil {
+		return true
+	}
+	return now.Sub(captured) > config.QuotaHeartbeatInterval
 }
 
 // ReadSessionTelemetry reads and parses one session telemetry record. Returns (nil, err) on
@@ -262,11 +353,27 @@ func ReadSessionTelemetry(path string) (*SessionTelemetryRecord, error) {
 // value that is present and wrong until an unrelated context value moved —
 // a state a reader cannot distinguish from a current one, and which
 // REQ-ST-003's "not recorded" path does not cover.
+//
+// Each rate-limit window contributes its presence, its percentage TRUNCATED to
+// an integer (int(), as raw_pct is — not rounded), and its reset time
+// (REQ-QAS-003). A window-less pair contributes nothing, so the window-less
+// payload is exactly the pre-change payload.
 func sameSemanticPayload(a, b *SessionTelemetryRecord) bool {
 	return a.SessionID == b.SessionID &&
 		a.Stage == b.Stage &&
 		a.ContextWindowSize == b.ContextWindowSize &&
 		int(a.RawPct) == int(b.RawPct) &&
 		a.Model == b.Model &&
-		a.Effort == b.Effort
+		a.Effort == b.Effort &&
+		sameQuotaWindow(a.FiveHour, b.FiveHour) &&
+		sameQuotaWindow(a.SevenDay, b.SevenDay)
+}
+
+// sameQuotaWindow compares one window's throttle payload: presence, truncated
+// used percentage, and reset time.
+func sameQuotaWindow(a, b *QuotaWindowRecord) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return int(a.UsedPercentage) == int(b.UsedPercentage) && a.ResetsAt == b.ResetsAt
 }

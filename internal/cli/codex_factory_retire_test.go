@@ -172,7 +172,7 @@ func TestCodexFactoryEntryParsingUsesLaneOnly(t *testing.T) {
 func TestCodexFactorySpawnRegistersPendingLane(t *testing.T) {
 	root := codexLedRun(t, "spawn-run", BackendCodex)
 	t.Setenv(config.EnvMoaiKanbanID, "spawn-run")
-	if _, err := resolveFactoryLaneName(root, "lane-1", false, nil); err != nil {
+	if _, err := resolveFactoryLaneName(root, "lane-1", "", false, nil); err != nil {
 		t.Fatal(err)
 	}
 	env := []string{
@@ -207,7 +207,7 @@ func TestCodexFactorySpawnRegistersPendingLane(t *testing.T) {
 func TestCodexFactorySpawnTransfersLaneClaim(t *testing.T) {
 	root := codexLedRun(t, "claim-run", BackendCodex)
 	t.Setenv(config.EnvMoaiKanbanID, "claim-run")
-	if _, err := resolveFactoryLaneName(root, "lane-1", false, nil); err != nil {
+	if _, err := resolveFactoryLaneName(root, "lane-1", "", false, nil); err != nil {
 		t.Fatal(err)
 	}
 	env := []string{

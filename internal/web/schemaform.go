@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
@@ -178,7 +179,8 @@ type schemaSectionMeta struct {
 	// 부수 표면이 중복 렌더되는 것을 막는 primary-panel 표식이다.
 	Extras bool
 	// NoteKey/Note는 패널 헤더에 1회 렌더되는 주의 문구다 (빈 값이면 미렌더).
-	// 필드마다 반복되는 힌트를 헤더로 승격하는 기존 관례(agentfm-gridnote)와
+	// 필드마다 반복되는 힌트를 헤더로 승격하는 관례(원래 삭제 전 agentfm 표면의
+	// grid-note에서 왔다 — SPEC-WEB-AGENTFM-RESTORE-001이 그 자리를 이어받는다)와
 	// 동일한 자리다 — 한 패널의 모든 필드에 공통으로 걸리는 사실은 필드마다
 	// 되풀이하지 않는다.
 	NoteKey string
@@ -458,7 +460,8 @@ func parseSchemaForm(r *http.Request, current map[string]string) (map[string]str
 }
 
 // applySchemaCurrent는 확장 필드 + read-only 표시 키 + raw view 블록의 디스크
-// 현재 값을 뷰모델에 시드한다.
+// 현재 값과 에이전트 오버라이드 표면의 현재 상태를 뷰모델에 시드한다
+// (SPEC-WEB-AGENTFM-RESTORE-001 M3).
 func (a *app) applySchemaCurrent(view *pageView) error {
 	values, err := a.schemaCurrentValues(a.cfg.ProjectRoot)
 	if err != nil {
@@ -470,6 +473,32 @@ func (a *app) applySchemaCurrent(view *pageView) error {
 	}
 	view.SchemaValues = values
 	view.RawBlocks = blocks
+
+	// Seed the profile selector rendered at the top of the agent-overrides
+	// sub-section. llm.yaml is read directly — this field is deliberately NOT
+	// part of the generic schema (plan §B-6); the save persists to llm.profile
+	// only and never mutates agent frontmatter (REQ-AFR-005).
+	cfg, err := config.NewConfigManager().LoadRaw(a.cfg.ProjectRoot)
+	if err != nil {
+		return err
+	}
+	// Seed the selector with the value the radio set can re-select: the
+	// stored profile mapped onto the selector wire set (F2 — a stored "max"
+	// folded to "high" matched no option). Cell resolution still reads the
+	// folded profile through view.LLM.
+	view.PerfTier, view.PerfTierIsEmpty = agentFMPerfTierSeed(cfg.LLM)
+
+	// Agent roster seeding: a list failure degrades to an empty section — the
+	// page itself must not fail (design §C.1 robustness).
+	if agents, err := a.listAllAgentFMs(a.cfg.ProjectRoot, cfg.LLM); err == nil {
+		view.AgentFMs = agents
+	}
+
+	// Seed the loaded LLM config so the rows resolve each agent's
+	// model/effort through the profile matrix, and preselect the Custom
+	// pseudo-tier when any per-agent override is present.
+	view.LLM = cfg.LLM
+	view.PerfTierCustom = len(cfg.LLM.AgentOverrides) > 0
 	return nil
 }
 

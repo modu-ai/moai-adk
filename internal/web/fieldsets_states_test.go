@@ -11,8 +11,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
+	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
+	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
 )
 
 func tg3Errs(pairs ...string) map[string]string {
@@ -327,4 +330,97 @@ func TestCodexToggleRowCheckedBranches(t *testing.T) {
 			t.Errorf("toggle lost its hidden companion:\n%s", html)
 		}
 	}
+}
+
+// TestAgentFMRowStates pins the agent-overrides row states
+// (SPEC-WEB-AGENTFM-RESTORE-001 M4 — the deletion-era test's re-port): a
+// parsed agent renders both selects with the resolved selection, a
+// haiku-resolved agent disables its effort select, and a parse-failed agent
+// renders the unavailable row instead of editable selects that would submit
+// garbage.
+func TestAgentFMRowStates(t *testing.T) {
+	parsed := renderTempl(t, agentFMRow(agentfmAgentInfo("manager-spec", true), configLLMZero(), nil))
+	for _, want := range []string{`data-agent-row="manager-spec"`, `agentfm.manager-spec.model`, `agentfm.manager-spec.effort`} {
+		if !strings.Contains(parsed, want) {
+			t.Errorf("parsed agent row missing %q:\n%s", want, parsed)
+		}
+	}
+	if strings.Contains(parsed, "disabled") {
+		t.Errorf("a non-haiku agent's effort select rendered disabled:\n%s", parsed)
+	}
+
+	haiku := renderTempl(t, agentFMRow(agentfmAgentInfo("manager-spec", true),
+		configLLMOverride("manager-spec", "haiku", "low"), nil))
+	if !strings.Contains(haiku, "disabled") || !strings.Contains(haiku, `data-haiku-hint`) {
+		t.Errorf("a haiku-resolved agent lost its disabled effort select:\n%s", haiku)
+	}
+
+	failed := renderTempl(t, agentFMRow(agentfmAgentInfo("broken-agent", false), configLLMZero(), nil))
+	if !strings.Contains(failed, "unavailable (frontmatter parse failed)") {
+		t.Errorf("a parse-failed agent lost its unavailable row:\n%s", failed)
+	}
+	if strings.Contains(failed, "<select") {
+		t.Errorf("a parse-failed agent rendered editable selects:\n%s", failed)
+	}
+}
+
+// TestAgentOverridesSubsectionStates covers the sub-section's degraded states:
+// with NO scanned agents the section still renders (title, selector, island —
+// an empty grid, never a page failure), and the perf-tier selector preselects
+// Custom when an override is present vs a named tier otherwise (G3-4).
+func TestAgentOverridesSubsectionStates(t *testing.T) {
+	t.Run("empty roster renders the section", func(t *testing.T) {
+		a, _ := newSchemaTestApp(t)
+		html := renderTempl(t, fieldsetAgentFM(a.newPageView(profile.ProfilePreferences{}, "default")))
+		for _, want := range []string{
+			`data-section="agent-overrides"`,
+			`sec.agentfm.title`,
+			`id="moai-profile-matrix"`,
+		} {
+			if !strings.Contains(html, want) {
+				t.Errorf("empty-roster section lost %q:\n%s", want, html)
+			}
+		}
+		if strings.Contains(html, `data-agent-row=`) {
+			t.Error("an empty roster rendered agent rows")
+		}
+	})
+	t.Run("custom preselects with overrides, named tier without", func(t *testing.T) {
+		a, _ := newSchemaTestApp(t)
+		view := a.newPageView(profile.ProfilePreferences{}, "default")
+		view.LLM = configLLMOverride("manager-todo", "haiku", "low")
+		view.PerfTierCustom = true
+		withOv := renderTempl(t, fieldsetAgentFM(view))
+		if !strings.Contains(withOv, `value="custom" checked`) {
+			t.Error("Custom tier radio not preselected when agent_overrides is non-empty")
+		}
+		if strings.Contains(withOv, `value="medium" checked`) {
+			t.Error("a named tier is checked while Custom should be active (overrides present)")
+		}
+
+		view2 := a.newPageView(profile.ProfilePreferences{}, "default")
+		view2.PerfTier = "medium"
+		without := renderTempl(t, fieldsetAgentFM(view2))
+		if strings.Contains(without, `value="custom" checked`) {
+			t.Error("Custom tier preselected with no overrides present")
+		}
+		if !strings.Contains(without, `value="medium" checked`) {
+			t.Error("named tier (medium) not preselected when no overrides present")
+		}
+	})
+}
+
+// tg3 helpers build the agentfm fixtures without touching disk: agentFMRow
+// reads only the AgentInfo fields and the resolved profile matrix.
+
+func agentfmAgentInfo(name string, parseOK bool) agentfm.AgentInfo {
+	return agentfm.AgentInfo{Name: name, Path: "/agents/" + name + ".md", ParseOK: parseOK}
+}
+
+func configLLMZero() config.LLMConfig { return config.LLMConfig{} }
+
+// configLLMOverride pins one agent's resolved model/effort through the
+// override slot the profile matrix consults first.
+func configLLMOverride(agent, model, effort string) config.LLMConfig {
+	return config.LLMConfig{AgentOverrides: map[string]config.ModelEffort{agent: {Model: model, Effort: effort}}}
 }
