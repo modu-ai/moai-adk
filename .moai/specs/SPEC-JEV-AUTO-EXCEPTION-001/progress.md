@@ -71,7 +71,7 @@ Spawn shape: `general-purpose` carrying the manager-develop role charter for M1,
 - id: OD-4
   date: 2026-10-02
   decision: plan-audit D8 / assumptions A-2 and A-3 — both completed SPECs (SPEC-JEV-CORE-001, SPEC-MANAGER-TODO-001) are amended in place with a HISTORY row and keep status completed; the completed-to-in-progress amendment path is not used
-  decided_by: orchestrator, following the precedent commit 185569ef3 and the audit's own check that moai spec lint and moai spec audit stay clean in that state
+  decided_by: orchestrator, following the precedent commit 185569ef3. Correction recorded after the run: plan-audit iteration 1 observed the UNMODIFIED completed SPECs lint-clean, not the amended state; the post-edit state was first observed at M2, where moai spec lint printed No findings for both SPECs.
 - id: OD-5
   date: 2026-10-02
   decision: assumption A-3 — the jev_ask tool description string (mcp_jev.go:48) and the internal/mcp catalog comment stay unchanged; the --auto ranking calls the client directly, never through handleJevAsk
