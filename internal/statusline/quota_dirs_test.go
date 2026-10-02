@@ -408,7 +408,23 @@ func TestQWR_AC004_UnusableEntriesContributeNothing(t *testing.T) {
 		build(t, func(t *testing.T, root string) { qwrEntry(t, root, "bad", "%%% not a path %%%\n") }, controlPct)
 	})
 	t.Run("gitdir_relative_path", func(t *testing.T) {
-		build(t, func(t *testing.T, root string) { qwrEntry(t, root, "bad", "relative/worktree/.git\n") }, controlPct)
+		// The relative first line names a ".git" file that EXISTS from the process
+		// working directory, with a fresher record (90%) beneath it: only the
+		// absolute-path check keeps that record out, so a reader that accepted a
+		// relative path would return 90 instead of the control's reading.
+		build(t, func(t *testing.T, root string) {
+			cwd := t.TempDir()
+			t.Chdir(cwd)
+			wt := filepath.Join(cwd, "relwt")
+			if err := os.MkdirAll(wt, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(wt, ".git"), []byte("gitdir: elsewhere\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			qasFixture(t, filepath.Join(wt, ".moai", "state"), "sess-rel", now.Add(-10*time.Second), qasWin(90, time.Hour), nil)
+			qwrEntry(t, root, "bad", filepath.Join("relwt", ".git")+"\n")
+		}, controlPct)
 	})
 	t.Run("gitdir_oversized", func(t *testing.T) {
 		build(t, func(t *testing.T, root string) {
@@ -427,7 +443,15 @@ func TestQWR_AC004_UnusableEntriesContributeNothing(t *testing.T) {
 		}, 77)
 	})
 	t.Run("target_missing_pruned", func(t *testing.T) {
-		build(t, func(t *testing.T, root string) { qwrEntry(t, root, "bad", validGitdir(root, "pruned")) }, controlPct)
+		// The worktree directory still holds a fresher record (90%) but its named
+		// ".git" file is gone: only the target-exists check keeps that record out,
+		// so a reader that skipped the check would return 90 instead of the
+		// control's reading.
+		build(t, func(t *testing.T, root string) {
+			pruned := qwrWorktreeDir(root, "pruned")
+			qasFixture(t, filepath.Join(pruned, ".moai", "state"), "sess-pruned", now.Add(-10*time.Second), qasWin(90, time.Hour), nil)
+			qwrEntry(t, root, "bad", validGitdir(root, "pruned"))
+		}, controlPct)
 	})
 	t.Run("record_dir_absent", func(t *testing.T) {
 		build(t, func(t *testing.T, root string) { qwrLink(t, root, "bad", qwrWorktreeDir(root, "bad")) }, controlPct)

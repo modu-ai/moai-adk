@@ -198,8 +198,8 @@ func TestQWR_AC013_MaxScanDirsConfigKey(t *testing.T) {
 	})
 
 	t.Run("cache_schema_bumped", func(t *testing.T) {
-		if configCacheSchemaVersion != 12 {
-			t.Errorf("configCacheSchemaVersion = %d, want 12 — Workflow.QuotaGate gained MaxScanDirs", configCacheSchemaVersion)
+		if configCacheSchemaVersion < 12 {
+			t.Errorf("configCacheSchemaVersion = %d, want at least 12 — the quota-gate scan bound was added at version 12", configCacheSchemaVersion)
 		}
 	})
 }
