@@ -780,11 +780,206 @@ func TestQAS_AC014_AggregatorIsOfflineSpawnFreeAndReadOnly(t *testing.T) {
 	}
 }
 
+// qasAcquireWarningRE is the whole acquire warning: the prefix once, one segment
+// per held window (the lane gate's own segment), then the warn-only tail.
+var qasAcquireWarningRE = regexp.MustCompile(`^quota warning: ` + qasHoldSegment + `(; ` + qasHoldSegment + `)* \(warn-only; the integration window is still taken\)$`)
+
+// qasAcquireOutcome is everything one `moai integration acquire` run produced
+// that AC-QAS-013 compares: both streams, the exit status, and the lock record
+// with its acquisition time removed (the only field that differs between two
+// runs of the same acquire).
+type qasAcquireOutcome struct {
+	stdout, stderr string
+	err            error
+	lock           string
+}
+
+// qasAcquire runs `moai integration acquire` against root with the same holder
+// identity every time, so two roots' outcomes are comparable.
+func qasAcquire(t *testing.T, root string, extra ...string) qasAcquireOutcome {
+	t.Helper()
+	args := append([]string{"acquire", "--session", "sess-qas", "--name", "lane-1", "--branch", "release/v9.9.9"}, extra...)
+	stdout, stderr, err := runIntegrationStreams(t, root, args...)
+	rec, readErr := kanban.ReadIntegrationLock(root)
+	if readErr != nil {
+		t.Fatalf("read lock record: %v", readErr)
+	}
+	if rec != nil {
+		rec.AcquiredAt = ""
+	}
+	raw, marshalErr := json.Marshal(rec)
+	if marshalErr != nil {
+		t.Fatal(marshalErr)
+	}
+	return qasAcquireOutcome{stdout: stdout, stderr: stderr, err: err, lock: string(raw)}
+}
+
+// qasAcquireRoot builds an acquire fixture: a Claude lane, the gate on unless
+// o.gateOff, and one fresh record carrying five (and seven when set).
+func qasAcquireRoot(t *testing.T, backend string, five, seven *statusline.QuotaWindowRecord, o qasFixtureOpts) string {
+	t.Helper()
+	sdClearLaneEnv(t)
+	root, _ := sdMoaiFixture(t)
+	if !o.gateOff {
+		qasEnableGate(t, root)
+	}
+	if five != nil || seven != nil {
+		qasWriteRecord(t, root, "sess-live", fcNow, five, seven)
+	}
+	qasLaneEnv(t, "lane-1", backend)
+	return root
+}
+
+// AC-QAS-013 — `moai integration acquire` warns and never blocks (REQ-QAS-014,
+// DO-7 final: warn-only). The warning is one line on the error stream; the lock
+// record, the exit status, and standard output (the --json object included) are
+// those of a run with the gate disabled.
+func TestQAS_AC013_AcquireWarnsNeverRefuses(t *testing.T) {
+	// control is the same acquire with the gate disabled — the baseline every
+	// pressure case is compared to.
+	control := func(t *testing.T, extra ...string) qasAcquireOutcome {
+		t.Helper()
+		root := qasAcquireRoot(t, kanban.BackendClaude, qasWin(92, qasReset5), nil, qasFixtureOpts{gateOff: true})
+		return qasAcquire(t, root, extra...)
+	}
+	// quotaLines counts the stderr lines that mention quota.
+	quotaLines := func(stderr string) []string {
+		var lines []string
+		for _, l := range strings.Split(strings.TrimRight(stderr, "\n"), "\n") {
+			if strings.Contains(l, "quota") {
+				lines = append(lines, l)
+			}
+		}
+		return lines
+	}
+	// withoutQuota drops the quota lines so the rest of stderr can be compared.
+	withoutQuota := func(stderr string) string {
+		var keep []string
+		for _, l := range strings.Split(stderr, "\n") {
+			if !strings.Contains(l, "quota") {
+				keep = append(keep, l)
+			}
+		}
+		return strings.Join(keep, "\n")
+	}
+	assertUnchanged := func(t *testing.T, got, want qasAcquireOutcome) {
+		t.Helper()
+		if got.err != nil {
+			t.Errorf("acquire failed: %v (a warning must never refuse the window)", got.err)
+		}
+		if got.stdout != want.stdout {
+			t.Errorf("stdout differs from the gate-disabled run:\n got: %q\nwant: %q", got.stdout, want.stdout)
+		}
+		if got.lock != want.lock {
+			t.Errorf("lock record differs from the gate-disabled run:\n got: %s\nwant: %s", got.lock, want.lock)
+		}
+		if withoutQuota(got.stderr) != withoutQuota(want.stderr) {
+			t.Errorf("stderr outside the quota line differs from the gate-disabled run:\n got: %q\nwant: %q", got.stderr, want.stderr)
+		}
+	}
+
+	t.Run("warning_line_names_window_and_reset", func(t *testing.T) {
+		root := qasAcquireRoot(t, kanban.BackendClaude, qasWin(92, qasReset5), nil, qasFixtureOpts{})
+		got := integrationQuotaWarning(root)
+		if !qasAcquireWarningRE.MatchString(got) {
+			t.Fatalf("warning = %q, want a line matching %s", got, qasAcquireWarningRE)
+		}
+		wantReset := time.Unix(qasReset5, 0).UTC().Format(time.RFC3339)
+		if !strings.Contains(got, "five_hour used=92.0%") || !strings.Contains(got, "resets_at="+wantReset) {
+			t.Errorf("warning %q does not name the five_hour window at 92.0%% resetting at %s", got, wantReset)
+		}
+	})
+	t.Run("warns_text_and_never_blocks", func(t *testing.T) {
+		want := control(t)
+		root := qasAcquireRoot(t, kanban.BackendClaude, qasWin(92, qasReset5), nil, qasFixtureOpts{})
+		got := qasAcquire(t, root)
+		lines := quotaLines(got.stderr)
+		if len(lines) != 1 || !qasAcquireWarningRE.MatchString(lines[0]) {
+			t.Fatalf("stderr quota lines = %q, want exactly one matching %s", lines, qasAcquireWarningRE)
+		}
+		if strings.Contains(got.stdout, "quota") {
+			t.Errorf("stdout carries the warning: %q", got.stdout)
+		}
+		assertUnchanged(t, got, want)
+	})
+	t.Run("warns_json_and_never_blocks", func(t *testing.T) {
+		want := control(t, "--json")
+		root := qasAcquireRoot(t, kanban.BackendClaude, qasWin(92, qasReset5), nil, qasFixtureOpts{})
+		got := qasAcquire(t, root, "--json")
+		lines := quotaLines(got.stderr)
+		if len(lines) != 1 || !qasAcquireWarningRE.MatchString(lines[0]) {
+			t.Fatalf("stderr quota lines = %q, want exactly one matching %s", lines, qasAcquireWarningRE)
+		}
+		var obj map[string]any
+		if err := json.Unmarshal([]byte(got.stdout), &obj); err != nil {
+			t.Fatalf("--json stdout is not one parseable object (%v): %q", err, got.stdout)
+		}
+		assertUnchanged(t, got, want)
+	})
+	t.Run("both_windows_one_line", func(t *testing.T) {
+		root := qasAcquireRoot(t, kanban.BackendClaude, qasWin(92, qasReset5), qasWin(96, qasReset7), qasFixtureOpts{})
+		got := qasAcquire(t, root)
+		lines := quotaLines(got.stderr)
+		if len(lines) != 1 || !qasAcquireWarningRE.MatchString(lines[0]) {
+			t.Fatalf("stderr quota lines = %q, want exactly one matching %s", lines, qasAcquireWarningRE)
+		}
+		if !strings.Contains(lines[0], "five_hour") || !strings.Contains(lines[0], "seven_day") {
+			t.Errorf("the one line does not name both held windows: %q", lines[0])
+		}
+	})
+	t.Run("no_line_and_output_unchanged", func(t *testing.T) {
+		cases := []struct {
+			name    string
+			backend string
+			five    *statusline.QuotaWindowRecord
+			gateOff bool
+		}{
+			{"below_threshold", kanban.BackendClaude, qasWin(89.9, qasReset5), false},
+			{"reset", kanban.BackendClaude, qasWin(92, fcNow.Add(-time.Second).Unix()), false},
+			{"unknown_no_record", kanban.BackendClaude, nil, false},
+			{"gate_disabled", kanban.BackendClaude, qasWin(99, qasReset5), true},
+			{"non_claude_glm", kanban.BackendGLM, qasWin(92, qasReset5), false},
+			{"non_claude_gpt", kanban.BackendGPT, qasWin(92, qasReset5), false},
+			{"no_backend", "", qasWin(92, qasReset5), false},
+		}
+		for _, c := range cases {
+			t.Run(c.name, func(t *testing.T) {
+				want := control(t)
+				root := qasAcquireRoot(t, c.backend, c.five, nil, qasFixtureOpts{gateOff: c.gateOff})
+				got := qasAcquire(t, root)
+				if lines := quotaLines(got.stderr); len(lines) != 0 {
+					t.Errorf("stderr carries a quota line: %q", lines)
+				}
+				if got.stderr != want.stderr {
+					t.Errorf("stderr differs from the gate-disabled run:\n got: %q\nwant: %q", got.stderr, want.stderr)
+				}
+				assertUnchanged(t, got, want)
+			})
+		}
+	})
+	t.Run("unreadable_quota_state_falls_through_silently", func(t *testing.T) {
+		want := control(t)
+		root := qasAcquireRoot(t, kanban.BackendClaude, nil, nil, qasFixtureOpts{})
+		dir := filepath.Join(root, ".moai", "state", "context-usage")
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "sess-broken.json"), []byte("{not json"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		got := qasAcquire(t, root)
+		if lines := quotaLines(got.stderr); len(lines) != 0 {
+			t.Errorf("stderr carries a quota line for an unreadable record: %q", lines)
+		}
+		assertUnchanged(t, got, want)
+	})
+}
+
 // AC-QAS-017 — one pressure evaluation that does not look at the caller; the
 // lane gate applies the Claude-caller predicate to its result. M5 adds the
 // status-block and --auto adoption assertions (the status_and_auto_surfaces
-// subtest); the integration-window warning lands with M6 and stays skipped here
-// with an explicit message (acquire_warning), never passed silently.
+// subtest); M6 adds the integration-window warning (the acquire_warning
+// subtest), which applies the same Claude-caller predicate.
 func TestQAS_AC017_SharedPressureEvaluationAndSurfaces(t *testing.T) {
 	setup := func(t *testing.T, five *statusline.QuotaWindowRecord, o qasFixtureOpts) string {
 		t.Helper()
@@ -809,7 +1004,7 @@ func TestQAS_AC017_SharedPressureEvaluationAndSurfaces(t *testing.T) {
 	// --auto line. Neither applies a caller rule, so the lane environment a
 	// caller subtest left set does not matter. The registry carries the
 	// standard lanes so a recommendation has something to name.
-	surfaces := func(t *testing.T, root string, wantPressure bool) {
+	surfaces := func(t *testing.T, root string, wantPressure bool, acquireBackend string) {
 		t.Helper()
 		t.Run("status_and_auto_surfaces", func(t *testing.T) {
 			qasLaneSeam(t)
@@ -827,7 +1022,21 @@ func TestQAS_AC017_SharedPressureEvaluationAndSurfaces(t *testing.T) {
 			}
 		})
 		t.Run("acquire_warning", func(t *testing.T) {
-			t.Skip("the integration-window warning is asserted with M6 (TestQAS_AC013_AcquireWarnsNeverRefuses)")
+			// The warning needs the shared pressure AND a Claude caller; the
+			// caller is named per case, never read back from the environment a
+			// sibling subtest left set.
+			qasLaneEnv(t, "lane-1", acquireBackend)
+			out := qasAcquire(t, root)
+			if out.err != nil {
+				t.Fatalf("acquire failed: %v", out.err)
+			}
+			warned := strings.Contains(out.stderr, "quota")
+			if want := wantPressure && acquireBackend == kanban.BackendClaude; warned != want {
+				t.Errorf("acquire warning printed = %v, want %v (pressure %v, caller %q); stderr: %q", warned, want, wantPressure, acquireBackend, out.stderr)
+			}
+			if strings.Contains(out.stdout, "quota") {
+				t.Errorf("stdout carries quota text: %q", out.stdout)
+			}
 		})
 	}
 
@@ -856,7 +1065,7 @@ func TestQAS_AC017_SharedPressureEvaluationAndSurfaces(t *testing.T) {
 		if !laneHolds(t, root, kanban.BackendClaude) {
 			t.Errorf("the lane gate does not hold a Claude lane at 92%%")
 		}
-		surfaces(t, root, true)
+		surfaces(t, root, true, kanban.BackendClaude)
 	})
 	t.Run("acquire_requires_claude_caller", func(t *testing.T) {
 		root := setup(t, qasWin(92, qasReset5), qasFixtureOpts{})
@@ -866,34 +1075,34 @@ func TestQAS_AC017_SharedPressureEvaluationAndSurfaces(t *testing.T) {
 		if !factoryQuotaEvaluate(root).Pressure() {
 			t.Errorf("the shared function stopped reporting pressure for a non-Claude caller")
 		}
-		surfaces(t, root, true)
+		surfaces(t, root, true, kanban.BackendGLM)
 	})
 	t.Run("at_89_9", func(t *testing.T) {
 		root := setup(t, qasWin(89.9, qasReset5), qasFixtureOpts{})
 		if factoryQuotaEvaluate(root).Pressure() || laneHolds(t, root, kanban.BackendClaude) {
 			t.Errorf("pressure or a hold at 89.9%%")
 		}
-		surfaces(t, root, false)
+		surfaces(t, root, false, kanban.BackendClaude)
 	})
 	t.Run("reset", func(t *testing.T) {
 		root := setup(t, qasWin(92, fcNow.Add(-time.Second).Unix()), qasFixtureOpts{})
 		if factoryQuotaEvaluate(root).Pressure() || laneHolds(t, root, kanban.BackendClaude) {
 			t.Errorf("pressure or a hold on a window whose reset time has passed")
 		}
-		surfaces(t, root, false)
+		surfaces(t, root, false, kanban.BackendClaude)
 	})
 	t.Run("unknown", func(t *testing.T) {
 		root := setup(t, nil, qasFixtureOpts{})
 		if factoryQuotaEvaluate(root).Pressure() || laneHolds(t, root, kanban.BackendClaude) {
 			t.Errorf("pressure or a hold with no reading at all")
 		}
-		surfaces(t, root, false)
+		surfaces(t, root, false, kanban.BackendClaude)
 	})
 	t.Run("gate_disabled", func(t *testing.T) {
 		root := setup(t, qasWin(99, qasReset5), qasFixtureOpts{gateOff: true})
 		if factoryQuotaEvaluate(root).Pressure() || laneHolds(t, root, kanban.BackendClaude) {
 			t.Errorf("pressure or a hold with the gate disabled")
 		}
-		surfaces(t, root, false)
+		surfaces(t, root, false, kanban.BackendClaude)
 	})
 }

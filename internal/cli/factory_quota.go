@@ -165,6 +165,38 @@ func factoryQuotaHoldSegment(w factoryQuotaWindowState) string {
 		w.Name, w.Reading.UsedPercentage, time.Unix(w.Reading.ResetsAt, 0).UTC().Format(time.RFC3339))
 }
 
+// SPEC-QUOTA-AWARE-SCHEDULING-001 M6 (REQ-QAS-014, DO-7 final): the
+// integration-window warning.
+
+// integrationQuotaWarningPrefix begins the warning line.
+const integrationQuotaWarningPrefix = "quota warning: "
+
+// integrationQuotaWarningTail ends it; the tail states that the window is still
+// taken, so a reader cannot take the line for a refusal (DO-7: warn-only).
+const integrationQuotaWarningTail = " (warn-only; the integration window is still taken)"
+
+// integrationQuotaWarning is the line `moai integration acquire` prints on the
+// error stream when a Claude lane takes the window under quota pressure, naming
+// each held window and its reset time with the lane gate's own segment; it is
+// empty when there is nothing to say — a non-Claude caller, a disabled gate, no
+// data, or pressure off — and so is every failure of the quota read, which
+// reads as no pressure (fail open). It calls the one shared evaluation and adds
+// only the caller rule (a Claude lane); it never blocks, refuses, or delays.
+func integrationQuotaWarning(root string) string {
+	if !factoryQuotaClaudeLane() {
+		return ""
+	}
+	held := factoryQuotaEvaluate(root).HeldWindows()
+	if len(held) == 0 {
+		return ""
+	}
+	segments := make([]string, 0, len(held))
+	for _, w := range held {
+		segments = append(segments, factoryQuotaHoldSegment(w))
+	}
+	return integrationQuotaWarningPrefix + strings.Join(segments, "; ") + integrationQuotaWarningTail
+}
+
 // SPEC-QUOTA-AWARE-SCHEDULING-001 M5 (REQ-QAS-013, -019, -020): the read-only
 // quota block of `moai factory status`.
 
