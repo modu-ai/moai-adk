@@ -46,7 +46,7 @@ catalog:
             - name: moai-lane-watchdog
               tier: core
               path: templates/.claude/skills/moai-lane-watchdog/
-              hash: f50089faee6cdf2e33a8d74acb497154db6095757cd3ed017dad6039ffc5a1f7
+              hash: 3a1604ef1336e3a3456f6d53970d5df3796b614b265658d8d4d604911254f490
               version: 1.0.0
             - name: moai-meta-harness
               tier: core
