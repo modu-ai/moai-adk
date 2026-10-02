@@ -395,6 +395,13 @@ func sweepEvaluate(wt git.Worktree, in sweepEvalInputs) sweepVerdict {
 		return v
 	}
 	if !landed {
+		// Ancestry said "no" — the one negative. A squash-merged card is
+		// never an ancestor, so the shared predicate's layers 2-3 get the
+		// last word (landing_predicate.go); nothing confirmed keeps the
+		// verdict exactly as it was.
+		landed, _ = landedBeyondAncestry(wt.Path, wt.Branch, in.base)
+	}
+	if !landed {
 		v.Landed = staleStateNo
 		v.Reason = fmt.Sprintf("cause=%s; branch has commits not in %s", causeNotLanded, in.base)
 		return v

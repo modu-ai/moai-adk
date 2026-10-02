@@ -368,6 +368,13 @@ func originLandingRefusal(branchName, targetPath string) error {
 		return landingRefusalError("ORIGIN_LANDING_UNCONFIRMED", parseErr.Error()+" — disposal refused fail-closed")
 	}
 	if right > 0 {
+		// Layer 1 (ancestry) says the tip is not on the remote base. A
+		// squash-merged card never is, so layers 2 (cumulative patch-id) and 3
+		// (merged PR via gh pr) decide before the refusal stands — the shared
+		// predicate in landing_predicate.go (SPEC-GITHUB-FLOW-DEFAULT-001 D-5).
+		if landed, _ := landedBeyondAncestry(targetPath, branchName, "origin/"+landingBaseBranch); landed {
+			return nil
+		}
 		return landingRefusalError("MERGE_NOT_ON_ORIGIN",
 			fmt.Sprintf("%s carries %d commit(s) not on origin/%s (landing base origin/%s from %s) — disposal refused until the card merge lands on the remote\n"+
 				"  git rev-list --count --left-right origin/%s...%s => %q (%d left-only / %d right-only commits)",
