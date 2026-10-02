@@ -245,7 +245,11 @@ frontmatter_status_transitions:
   plan_acceptance_progress: "not applicable: plan.md and acceptance.md are stateless on the status axis and carry no status field; progress.md carries none"
 mx_tag_validation: "This change adds no @MX tags: comments, SPEC and rule prose, and one Go test file only. git grep -n '@MX' over jev_auto_exception_test.go, internal/jev/jev.go and internal/cli/mcp_jev.go found no tag in the test file and four pre-existing tag lines in the two production files (jev.go:5-6 ANCHOR+REASON, mcp_jev.go:71-72 WARN+REASON), none touched by this SPEC (the diff against the card base is one comment hunk in each file, at jev.go line 27 and mcp_jev.go line 10)."
 docs_site_readme_check: "git grep -n -i -E 'display-only|display only' -- docs-site README.md README.ko.md README.en.md README.ja.md README.zh.md: one hit, docs-site/content/en/guides/mcp-server.md:208 (heading 'Judgment (gated, display-only)'), classified as describing the jev_ask MCP tool, which stays display-only; no edit. README files carry no Jev mention."
-sync_audit: pending            # sync-auditor not yet run
-decision_record_reread: pending   # the sync audit re-reads the plan->run Kickoff decision record of section F.1
+sync_audit: "PASS-WITH-DEBT 87.9/100 (weighted harmonic mean; Functionality 88, Security 95, Craft 88, Consistency 78; no blocking finding); audited_sha 33185fc2c; .moai/reports/t1403/sync-audit.md (gitignored, worktree-local; read by the orchestrator)"
+decision_record_reread: "done by the sync-auditor: the combined plan-artifact hash recomputed at b489d99f0 and at 5f8c6e051 equals e8f219f0...7027; the audit verdict PASS 0.94 confirmed; nothing pushed; the autonomous entry judged legitimate on the section 9.1 criteria"
+sync_audit_debt:
+  F1: "13 user-facing consent lines in 8 files (init wizard, moai web note, docs-site init-wizard page, four locales) still say the capability decides nothing; not matched by the three sweep patterns; pinned user-surface strings; follow-up card needed (leader issues cards)"
+  F2: "autoRankNearDuplicate demotes on near-duplicate findings whatever recorded them, and todo_jev_finding.go records them from a Jev answer: a second route by which a Jev answer steers --auto order, predating this card (t1400 code) and not named by the amended text; follow-up card needed"
+  F3_F8: "optional Low items (mcp_jev.go:10 says One exception while two exist; fallback description omits the readiness demotion; docs-truth.md:43 stale; catalog hash regeneration command unrecorded; CHANGELOG wording) - F8 and the F1/F2 disclosure were applied to CHANGELOG.md after the audit, in the commit following this record"
 ```
 
