@@ -15,7 +15,7 @@
 | AC-ASB-007 | Install and secrets | REQ-ASB-008 | Never auto-install (advise `aside skills install` only); no credentials in outputs |
 | AC-ASB-008 | e2e gating | REQ-ASB-009, REQ-ASB-011 | Explicit-only; excluded when `CI=true` |
 | AC-ASB-009 | Orchestrator execution | REQ-ASB-010 | Orchestrator runs every Aside step; owner and bounded-output carve-outs; skill loaded first |
-| AC-ASB-010 | Silent fallback | REQ-ASB-012 | No Aside-specific output on absence or exclusion; carve-out at both missing-toolchain sites |
+| AC-ASB-010 | Silent fallback | REQ-ASB-012 | No Aside-specific output on absence or exclusion; carve-out at every site that delegates execution or runs the missing-toolchain sequence |
 | AC-ASB-011 | Evidence | REQ-ASB-013 | Screenshot captured through repl, saved under `e2e/`, cited by path |
 | AC-ASB-012 | Parity + build | REQ-ASB-014 | Mirrors identical, hash set exact, Codex TOML regenerated, build targets exit 0 |
 | AC-ASB-013 | Neutrality | REQ-ASB-015 | No ids, SHAs, or dates in any authored template file; template package green |
@@ -47,6 +47,7 @@ The test calls pure checkers (`checkAsideSkill`, `checkAsideE2E`) on the real fi
 | `e2e_silent_fallback_no_aside_message` | e2e.md | `silently`, `no Aside-specific message` | any line mentioning Aside that contains `warn`, `fallback note`, `notify`, or `report that Aside` |
 | `e2e_missing_toolchain_carveout` | e2e.md | the `Missing-toolchain sequence` header line contains `except Aside` | none |
 | `e2e_tool_bypass_line_carveout` | e2e.md | the line containing `missing-toolchain sequence if absent` also contains `except Aside` | none |
+| `e2e_every_site_carved_out` | e2e.md | every line matching the role-based pattern `[Dd]elegate .*(script creation\|test execution\|execution\|recording)\|Phase [234]: e2e-tester\|[Mm]issing[- ]toolchain\|Execution owner\|Bounded output\|toolchain probe/install\|probes the DEFAULT toolchain` contains `except Aside` or `silently`; the enumeration finds at least the 15 baseline lines (an emptied enumeration fails) | any matching line with neither literal |
 | `e2e_no_install_command` | e2e.md | none | any line mentioning Aside together with the install verbs listed above |
 | `e2e_repl_screenshot_evidence` | e2e.md | ``screenshot captured through `aside repl` ``, `e2e/` | none |
 
@@ -79,7 +80,7 @@ Stated limit: the silence check is two-sided but lexical. It proves the text ins
 - **Given** the tree after M2
 - **When** `go test ./internal/template/ -run '^(TestAllSkillsInCatalog|TestCatalogHashCoversSkillSubfiles|TestManifestHashFormat|TestEmbeddedMoaiSkillNames|TestCatalogTierValid|TestCatalogNoDuplicateEntries|TestCatalogReferencesValid|TestWorkflowTriggerCoverage|TestSlimFS_PreservesCoreEntries|TestSlimFS_HidesNonCoreEntries|TestPublishedSkillsNamesMatchTree|TestSkillMirror_SetIsDerivedNotConstant|TestGitignore_IgnoresSkillMirrorOnly)$' -v -count=1`; `grep -n 'user-invocable: false' internal/template/templates/.claude/skills/moai-ref-aside-browser/SKILL.md`; `grep -n -A3 'name: moai-ref-aside-browser' internal/template/catalog.yaml`; and `go test ./internal/template/ -run '^TestAsideSkillPolicyAnchors$' -v -count=1`
 - **Then** every named guard prints `--- PASS` (none selected zero); the skill carries `user-invocable: false`; the catalog entry sits in the `core` tier with `tier: core` and a 64-hex `hash:`; and `--- PASS: TestAsideSkillPolicyAnchors/description_within_listing_cap ` is printed (the cap is measured, not asserted).
-- **Core-tier consequences, measured at baseline (E11)**: the 12 selectors that read the core tier or slim/published surfaces all printed `--- PASS` on the unmodified tree, exit 0. None hard-codes a core or total count: the totals in `catalog_loader_test.go` and `embed_catalog_test.go` are derived from `catalog.yaml`'s own `- name:` lines, and the slim core test's docstring mentions 40 while its body asserts no count. `TestSlimFS_PreservesCoreEntries` now also covers the new entry (the skill reaches slim installs, which is the reason for core). `TestSlimFS_HidesNonCoreEntries` is unaffected because the entry is core.
+- **Core-tier consequences, measured at baseline (E11)**: the 13 selectors named in the command above (core tier, slim, published, mirror) printed 13 `--- PASS` lines on the unmodified tree, exit 0, last line `ok  	github.com/modu-ai/moai-adk/internal/template	0.708s` (E11b; the 12-selector run E11 is a different set and agrees). None hard-codes a core or total count: the totals in `catalog_loader_test.go` and `embed_catalog_test.go` are derived from `catalog.yaml`'s own `- name:` lines, and the slim core test's docstring mentions 40 while its body asserts no count. `TestSlimFS_PreservesCoreEntries` now also covers the new entry (the skill reaches slim installs, which is the reason for core). `TestSlimFS_HidesNonCoreEntries` is unaffected because the entry is core.
 - **RED-now** (E3): `ls internal/template/templates/.claude/skills/moai-ref-aside-browser/SKILL.md` → `No such file or directory`, exit 1. (E6): `grep -c 'moai-ref-aside-browser' internal/template/catalog.yaml` → `0`, exit 1.
 - **Green path**: M2.2, M2.3.
 
@@ -132,18 +133,18 @@ Stated limit: the silence check is two-sided but lexical. It proves the text ins
 
 - **Given** the e2e workflow after M3
 - **When** `go test ./internal/template/ -run '^TestAsideSkillPolicyAnchors$' -v -count=1`
-- **Then** `--- PASS: TestAsideSkillPolicyAnchors/e2e_orchestrator_executes_aside `, `.../e2e_execution_owner_carveout `, and `.../e2e_aside_output_bounded ` print. Bounded output for the orchestrator-run path: verbose `aside repl` output goes to a file under `e2e/.runs/`, the orchestrator's context receives the exit code and a bounded tail, and the screenshot is cited by path, never inlined — the same contract the e2e-tester has at `e2e.md:54`, stated for the orchestrator.
+- **Then** `--- PASS: TestAsideSkillPolicyAnchors/e2e_orchestrator_executes_aside `, `.../e2e_execution_owner_carveout `, `.../e2e_aside_output_bounded `, and `.../e2e_every_site_carved_out ` print (the last covers every site that delegates script creation, execution, or recording to the e2e-tester, not only the `Execution owner` line). Bounded output for the orchestrator-run path: verbose `aside repl` output goes to a file under `e2e/.runs/`, the orchestrator's context receives the exit code and a bounded tail, and the screenshot is cited by path, never inlined — the same contract the e2e-tester has at `e2e.md:54`, stated for the orchestrator.
 - **RED-now** (E4, E13): `grep -c 'except Aside' internal/template/templates/.claude/skills/moai/workflows/e2e.md` → `0`, exit 1.
 - **Mutant probe**: restore the original `Execution owner` line (no carve-out); drop `e2e/.runs/` from the bounded-output line; drop the `Skill(...)` load instruction; each fails its named subtest.
 - **Green path**: M3.1, M3.2.
 
-### AC-ASB-010 — silent fallback and carve-out at both sites (maps REQ-ASB-012)
+### AC-ASB-010 — silent fallback and carve-out at every site (maps REQ-ASB-012)
 
 - **Given** the e2e workflow after M3
-- **When** `go test ./internal/template/ -run '^TestAsideSkillPolicyAnchors$' -v -count=1`
-- **Then** `--- PASS: TestAsideSkillPolicyAnchors/e2e_silent_fallback_no_aside_message `, `.../e2e_missing_toolchain_carveout `, `.../e2e_tool_bypass_line_carveout `, and `.../e2e_no_install_command ` print. What is checkable, exactly: the workflow text instructs silence (`silently`, `no Aside-specific message`), instructs no note, and carries `except Aside` at both the sequence header (`e2e.md:108`) and the `--tool` bypass sentence (`e2e.md:119`); what is not checkable here is what a model emits at run time.
-- **RED-now** (E4, E13): the same `except Aside` count is `0`, exit 1. The unedited bypass sentence at `e2e.md:119` currently instructs the Surface and Install sequence for any `--tool` value, Aside included.
-- **Mutant probes**: restore the original `:119` sentence (this is the case the first iteration's checker could not see); delete the header carve-out; add an Aside line containing `fallback note`; add an Aside install command; each fails its named subtest.
+- **When** `go test ./internal/template/ -run '^TestAsideSkillPolicyAnchors$' -v -count=1`, and `grep -n -E '[Dd]elegate .*(script creation|test execution|execution|recording)|Phase [234]: e2e-tester|[Mm]issing[- ]toolchain|Execution owner|Bounded output|toolchain probe/install|probes the DEFAULT toolchain' internal/template/templates/.claude/skills/moai/workflows/e2e.md`
+- **Then** `--- PASS: TestAsideSkillPolicyAnchors/e2e_silent_fallback_no_aside_message `, `.../e2e_missing_toolchain_carveout `, `.../e2e_tool_bypass_line_carveout `, `.../e2e_every_site_carved_out `, and `.../e2e_no_install_command ` print; the reader grep lists at least the 15 baseline lines and every listed line carries `except Aside` or `silently` (the baseline lines are `:36, :54, :90, :108, :119, :197, :219, :277, :328, :331, :332, :334, :342, :344, :345` and are found by this command, not by remembered numbers). What is checkable, exactly: the workflow text instructs silence (`silently`, `no Aside-specific message`), instructs no note, and no matching site is left unqualified; what is not checkable here is what a model emits at run time.
+- **RED-now** (E4, E13, E16): the same `except Aside` count is `0`, exit 1, while the enumeration prints 15 lines (E16). The unedited sites currently instruct the Surface and Install sequence (`:108`, `:119`, `:342`, `:328`) and delegate script creation, execution, and recording to the e2e-tester (`:197`, `:219`, `:277`, `:331`, `:332`, `:334`, `:344`, `:345`) for any `--tool` value, Aside included.
+- **Mutant probes**: for each matching line in turn, strip its appended `except Aside` parenthetical (this restores that site's original text byte for byte) and expect `e2e_every_site_carved_out` to name that line; the named controls include the Phase 2 and Phase 3 chain lines, the Execution Summary step 4, and the `:119` bypass sentence (the case the first iteration's checker could not see); additionally delete the header carve-out (fails `e2e_missing_toolchain_carveout`), add an Aside line containing `fallback note`, and add an Aside install command; each fails its named subtest. An enumeration that finds fewer than 15 lines also fails.
 - **Green path**: M3.1, M3.2.
 
 ### AC-ASB-011 — screenshot evidence (maps REQ-ASB-013)
@@ -152,7 +153,7 @@ Stated limit: the silence check is two-sided but lexical. It proves the text ins
 - **When** `go test ./internal/template/ -run '^TestAsideSkillPolicyAnchors$' -v -count=1`
 - **Then** `--- PASS: TestAsideSkillPolicyAnchors/e2e_repl_screenshot_evidence ` prints: the workflow names a screenshot captured through `aside repl`, saved under `e2e/` by path and cited by path, without asserting which side writes the bytes.
 - **RED-now**: E4.
-- **Measurement gate**: M3.0 observes how `aside repl` produces a screenshot file; the wording stays at the hedged form unless the observation supports more (unmeasured at plan time, see Gaps).
+- **Measurement gate**: M3.0, run by the orchestrator (never a subagent) and handed to manager-develop as run-prompt input, observes how `aside repl` produces a screenshot file; the wording stays at the hedged form unless the observation supports more (unmeasured at plan time, see Gaps).
 - **Mutant probe**: remove the screenshot sentence; the named subtest must fail.
 - **Green path**: M3.0 to M3.2.
 
@@ -224,10 +225,24 @@ Pin for every entry: tree `4bf547bcad7c155b1e91485921569db709ec3ac2` (worktree t
 | E14 | `grep -c -F 'Five documented-but-disabled' docs-site/content/en/guides/mcp-server.md` (and the ko, ja, zh numeral forms of AC-ASB-014) | `0` each | 1 each |
 | E15 | `grep -n -E 'SPEC-[A-Z]\|t1439\|[0-9]{4}-[0-9]{2}-[0-9]{2}\|\b[0-9a-f]{40}\b\|\b[0-9a-f]{7,8}\b' internal/template/templates/.claude/skills/moai/workflows/e2e.md` | `13:  updated: "2026-07-14"` and `305:  - Log: e2e/.runs/20260101-120000-suite.log (bounded excerpt above; full log at path)` | 0 |
 
+Ledger rows added by the delta revision (same pin, same machine; the commands are shown outside the table so the `|` characters stay literal):
+
+```text
+E11b  go test ./internal/template/ -run '^(TestAllSkillsInCatalog|TestCatalogHashCoversSkillSubfiles|TestManifestHashFormat|TestEmbeddedMoaiSkillNames|TestCatalogTierValid|TestCatalogNoDuplicateEntries|TestCatalogReferencesValid|TestWorkflowTriggerCoverage|TestSlimFS_PreservesCoreEntries|TestSlimFS_HidesNonCoreEntries|TestPublishedSkillsNamesMatchTree|TestSkillMirror_SetIsDerivedNotConstant|TestGitignore_IgnoresSkillMirrorOnly)$' -v -count=1
+      stdout: 13 lines beginning '--- PASS' (counted with grep -c '^--- PASS' -> 13), last line:
+              ok  	github.com/modu-ai/moai-adk/internal/template	0.708s
+      exit: 0
+
+E16   grep -c -E '[Dd]elegate .*(script creation|test execution|execution|recording)|Phase [234]: e2e-tester|[Mm]issing[- ]toolchain|Execution owner|Bounded output|toolchain probe/install|probes the DEFAULT toolchain' internal/template/templates/.claude/skills/moai/workflows/e2e.md
+      stdout: 15
+      exit: 0
+      (the same pattern with -n prints lines 36, 54, 90, 108, 119, 197, 219, 277, 328, 331, 332, 334, 342, 344, 345)
+```
+
 ## Gaps (not observed)
 
 - User-scope run of the documented command against a real user config file (HOME override refused by the guard; covered by the seam test at run time).
-- Whether `aside repl` can persist a screenshot to a path (M3.0 measures it; launching a browser was not done at plan time).
+- Whether `aside repl` can persist a screenshot to a path (M3.0 measures it, run by the orchestrator; launching a browser was not done at plan time). `aside --version` is likewise an orchestrator pre-flight, not a manager-develop step.
 - Behavior of the MCP `exec` tool's permission argument (out of scope, unmeasured).
 - The full `go test ./internal/template/... -count=1`, `make build`, and the docs-site `hugo` build were not run at plan time (the first two write generated artifacts; the last belongs to run phase). Only the 12-selector baseline (E11) was run.
 - Whether a model emits anything about Aside at run time despite the silent-fallback text (lexical check only).

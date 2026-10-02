@@ -34,7 +34,7 @@ Operator verdict:
 
 Label: EVIDENCE-NEEDED
 Authority anchor: (none.)
-Why unresolved: REQ-ASB-013 needs `aside repl` to produce a screenshot file saved under `e2e/`. The mechanism (a path option, returned bytes the orchestrator must write, or a sandbox that blocks writes) was not measured, because measuring it launches a browser in the operator's session. The requirement is worded without saying which side writes the bytes, and `plan.md` M3.0 measures it first.
+Why unresolved: REQ-ASB-013 needs `aside repl` to produce a screenshot file saved under `e2e/`. The mechanism (a path option, returned bytes the orchestrator must write, or a sandbox that blocks writes) was not measured, because measuring it launches a browser in the operator's session. The requirement is worded without saying which side writes the bytes, and `plan.md` M3.0 measures it first — run by the orchestrator, with the operator's browser-launch approval obtained through its question channel, because Q1 forbids any subagent from invoking `aside`; manager-develop receives the observation as run-prompt input.
 Operator verdict:
 
 ### Q6: Should the skill be injected into testing missions through `domain_skills`?

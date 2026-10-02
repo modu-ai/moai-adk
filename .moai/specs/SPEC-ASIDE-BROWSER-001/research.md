@@ -48,7 +48,7 @@
 
 ## 5. Unmeasured at plan time
 
-- Whether `aside repl` can write a screenshot file to a given path (needs a browser launch; deferred to M3.0 with the operator's approval).
+- Whether `aside repl` can write a screenshot file to a given path (needs a browser launch; deferred to M3.0, run by the orchestrator with the operator's approval, since no subagent may invoke `aside`).
 - Behavior of Aside versions other than `1.26.916.1741`.
 - User-scope registration against a real user config (the seam test covers the logic; the guard refused a `HOME` override here).
 - The MCP `exec` tool's argument schema.

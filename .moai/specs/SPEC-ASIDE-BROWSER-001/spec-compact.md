@@ -1,6 +1,6 @@
 # spec-compact — SPEC-ASIDE-BROWSER-001
 
-> Run-phase digest: requirements, acceptance criteria, files, exclusions. Full text: `spec.md`, `acceptance.md`. Tier M, status draft, version 0.2.0, tree `4bf547bcad7c155b1e91485921569db709ec3ac2`. Operator verdicts (2026-10-02): orchestrator-only execution, core skill, completely silent fallback.
+> Run-phase digest: requirements, acceptance criteria, files, exclusions. Full text: `spec.md`, `acceptance.md`. Tier M, status draft, version 0.2.1, tree `4bf547bcad7c155b1e91485921569db709ec3ac2`. Operator verdicts (2026-10-02): orchestrator-only execution, core skill, completely silent fallback.
 
 ## Requirements (GEARS)
 
@@ -13,9 +13,9 @@
 - REQ-ASB-007 (Unwanted): A subagent SHALL NOT invoke Aside (the `aside` CLI in any form, or an Aside MCP tool) under any circumstance; the skill and the e2e-tester definition SHALL each state this, and a subagent whose task needs Aside SHALL return a blocker report.
 - REQ-ASB-008 (Unwanted): The skill SHALL prohibit installing Aside or its skills automatically (only advise the operator to run `aside skills install`) and SHALL prohibit placing credentials, cookies, tokens, or session data in any output, report, commit, or memory entry.
 - REQ-ASB-009 (Capability gate): Where the operator passes `--tool aside` explicitly, the e2e workflow SHALL use Aside through the `aside repl` CLI; Aside SHALL NOT be auto-detected, offered among Phase 0.5 options, or recommended.
-- REQ-ASB-010 (State-driven): While Aside is the active e2e toolchain, the workflow SHALL assign every Aside step to the orchestrator (carved out of the e2e-tester's execution ownership), SHALL instruct it to load the policy skill first, and SHALL keep Aside output bounded in the orchestrator's context.
+- REQ-ASB-010 (State-driven): While Aside is the active e2e toolchain, the workflow SHALL assign every Aside step to the orchestrator (carved out of the e2e-tester's execution ownership at every `e2e.md` site that delegates script creation, execution, or recording to it), SHALL instruct it to load the policy skill first, and SHALL keep Aside output bounded in the orchestrator's context.
 - REQ-ASB-011 (State-driven): While `CI=true`, the e2e workflow SHALL treat Aside as unavailable even when requested and continue on the platform default toolchain.
-- REQ-ASB-012 (Event-driven): When the Aside probe fails or Aside is excluded (`CI=true`, non-web platform), the workflow SHALL continue on the default toolchain with no Aside-specific message, prompt, install attempt, or failure, and the missing-toolchain Surface and Install steps SHALL NOT apply to Aside at either site that instructs them.
+- REQ-ASB-012 (Event-driven): When the Aside probe fails or Aside is excluded (`CI=true`, non-web platform), the workflow SHALL continue on the default toolchain with no Aside-specific message, prompt, install attempt, or failure, and no site in `e2e.md` that runs the missing-toolchain Surface and Install sequence, or delegates test script creation, execution, or recording to the e2e-tester, SHALL apply to Aside.
 - REQ-ASB-013 (State-driven): While Aside is active, journey evidence SHALL be a screenshot captured through `aside repl`, saved under `e2e/` by path and cited by path.
 - REQ-ASB-014 (Ubiquitous): The skill SHALL have a core-tier catalog entry whose hash matches its content; skill and `workflows/e2e.md` SHALL be byte-identical between template and root; the e2e-tester definition SHALL be identical between template and root except its pre-existing divergence; the committed Codex e2e-tester definition SHALL match its emission from source; and the build SHALL succeed.
 - REQ-ASB-015 (Unwanted): Authored template content SHALL NOT carry card ids, SPEC ids, commit SHAs, or dates, and SHALL NOT position any one programming language as primary.
@@ -30,9 +30,9 @@
 - AC-ASB-006 — Same test: `subagent_never_invokes_skill`, `subagent_never_invokes_tester` pass; deleting either sentence fails the subtest. (REQ-ASB-007)
 - AC-ASB-007 — Same test: `no_auto_install_advise_only`, `no_credentials_in_outputs` pass. (REQ-ASB-008)
 - AC-ASB-008 — Same test: `e2e_explicit_only`, `e2e_ci_excluded` pass against `e2e.md`. (REQ-ASB-009, REQ-ASB-011)
-- AC-ASB-009 — Same test: `e2e_orchestrator_executes_aside`, `e2e_execution_owner_carveout`, `e2e_aside_output_bounded` pass. (REQ-ASB-010)
-- AC-ASB-010 — Same test: `e2e_silent_fallback_no_aside_message`, `e2e_missing_toolchain_carveout`, `e2e_tool_bypass_line_carveout`, `e2e_no_install_command` pass; restoring the original `:119` sentence fails. (REQ-ASB-012)
-- AC-ASB-011 — Same test: `e2e_repl_screenshot_evidence` passes; wording pinned to the M3.0 measurement. (REQ-ASB-013)
+- AC-ASB-009 — Same test: `e2e_orchestrator_executes_aside`, `e2e_execution_owner_carveout`, `e2e_aside_output_bounded`, `e2e_every_site_carved_out` pass. (REQ-ASB-010)
+- AC-ASB-010 — Same test: `e2e_silent_fallback_no_aside_message`, `e2e_missing_toolchain_carveout`, `e2e_tool_bypass_line_carveout`, `e2e_every_site_carved_out`, `e2e_no_install_command` pass; restoring any one site's original text (the chain lines, the Execution Summary step, the `:119` sentence) fails. (REQ-ASB-012)
+- AC-ASB-011 — Same test: `e2e_repl_screenshot_evidence` passes; wording pinned to the M3.0 measurement, run by the orchestrator. (REQ-ASB-013)
 - AC-ASB-012 — Given M3, When the `cmp`, diff-count, TOML grep, `make agents-emit-check`, `make build`, and `git diff -U4 -- internal/template/catalog.yaml` commands run, Then mirrors are identical, the e2e-tester pair differs only by its 3 baseline lines, both make targets exit 0, and the changed hash set is exactly `{moai-ref-aside-browser, moai, e2e-tester}`. (REQ-ASB-014)
 - AC-ASB-013 — Given M3, When `go test ./internal/template/... -count=1` and the neutrality grep (with a 40-hex pattern) over each authored template file, Then exit 0, no hits in the skill, e2e-tester, and TOML, and only the two pre-existing hits in `e2e.md`. (REQ-ASB-015)
 - AC-ASB-014 — Given M3, When the command and numeral greps run on the four `guides/mcp-server.md` files and `cd docs-site && hugo --minify --gc` and the parity ratchet run, Then all match and the build is warning-free. (REQ-ASB-001)

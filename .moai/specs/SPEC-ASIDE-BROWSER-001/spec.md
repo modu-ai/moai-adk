@@ -1,7 +1,7 @@
 ---
 id: SPEC-ASIDE-BROWSER-001
 title: "Optional Aside browser-CLI integration — documented optional MCP, thin safety-policy skill, explicit-only orchestrator-run e2e toolchain"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-10-02
 updated: 2026-10-02
@@ -22,6 +22,7 @@ tier: M
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-10-02 | manager-spec | Initial plan-phase authoring for card t1439 (Mods design 6/6, Class C). Measurement baseline: tree `4bf547bcad7c155b1e91485921569db709ec3ac2` (worktree t1439, base develop). Aside CLI `1.26.916.1741` observed locally. |
 | 0.2.0 | 2026-10-02 | manager-spec | Plan-audit iteration 1 (FAIL 0.75, defects D1-D13) revised. Operator verdicts recorded the same day: Q1 orchestrator-only execution (no subagent ever invokes Aside), Q2 core skill tier, Q3 completely silent fallback. REQ-006 split, REQ-010/012 inverted, fallback-note requirement removed, e2e-tester Aside recipe replaced by one prohibition sentence, catalog expectation corrected, t1434 dependency carried into plan.md, checker anchors made literal. Same measurement tree. |
+| 0.2.1 | 2026-10-02 | manager-spec | Delta revision after plan-audit iteration 2 (PASS-WITH-DEBT 0.81), findings N1, N2, N6 only: the Q1 carve-out now reaches every `e2e.md` site by role (REQ-ASB-010, REQ-ASB-012, § 1), development-time `aside` probing is assigned to the orchestrator (§ 3 R-1, A-6), selector count aligned. No requirement added; counts unchanged. |
 
 ## 1. Problem — measured shape
 
@@ -33,7 +34,7 @@ Facts measured on baseline tree `4bf547bcad7c155b1e91485921569db709ec3ac2` (full
 - The template `.mcp.json` ships exactly `moai` and `context7`; `grep -c -i aside` on it returns `0`. The existing guard `TestMCPNeutralityTemplateShape` already fails on any key outside the allowed set (`mcpAllowedActiveKeys`); no test names `aside` explicitly.
 - `aside mcp` exposes two tools: `exec` (browser agent on logged-in sites) and `repl` (Playwright-style JavaScript against open pages, 120 s timeout). `aside exec` takes `--permission ask|guard|full-access` (omitted = Guard; `ask` and `guard` are the same). **`aside repl` has no permission flag at all** — it runs arbitrary page JavaScript in the operator's session — so "read-only" for repl is a discipline the policy must state, not a mode the tool enforces.
 - `aside skills install` installs the aside-browser skill into the operator's coding agents. It modifies the operator's agent configuration, which is why MoAI may only *advise* it.
-- `/moai e2e --tool` is prose-only (`workflows/e2e.md:40`). The workflow names the e2e-tester as execution owner (`e2e.md:36`), bounds output through that agent (`e2e.md:54`), and has two sites that instruct the missing-toolchain Surface and Install sequence (`e2e.md:108-113` and the `--tool` bypass sentence at `e2e.md:119`). Aside needs an explicit carve-out at all of them.
+- `/moai e2e --tool` is prose-only (`workflows/e2e.md:40`). The workflow names the e2e-tester as execution owner (`e2e.md:36`), bounds output through that agent (`e2e.md:54`), and carries many sites that either delegate script creation, execution, or recording to the e2e-tester or instruct the missing-toolchain Surface and Install sequence (for example the Phase 2 and Phase 3 delegation lines, the Agent Chain Summary, the Execution Summary, the sequence header at `:108`, and the `--tool` bypass sentence at `:119`). Aside needs an explicit carve-out at every one of them; `plan.md` M3.2 enumerates them by command (15 lines at baseline) so the list cannot go stale.
 
 ## 2. Requirements (GEARS)
 
@@ -50,9 +51,9 @@ REQ prefix: `REQ-ASB` (Aside Browser). Five modules (R1 documented optional MCP,
 | REQ-ASB-007 | Unwanted | A subagent SHALL NOT invoke Aside (the `aside` CLI in any form, or an Aside MCP tool) under any circumstance; the skill and the e2e-tester definition SHALL each state this prohibition, and a subagent whose task needs Aside SHALL return a blocker report to the orchestrator. |
 | REQ-ASB-008 | Unwanted | The skill SHALL prohibit installing Aside or its skills automatically — the only permitted guidance is to advise the operator to run `aside skills install` themselves — and SHALL prohibit placing credentials, cookies, tokens, or session data from the browser in any output, report, commit, or memory entry. |
 | REQ-ASB-009 | Capability gate | Where the operator passes `--tool aside` explicitly, the e2e workflow SHALL use Aside as the web toolchain through the `aside repl` CLI; Aside SHALL NOT be auto-detected, SHALL NOT appear among the Phase 0.5 selection options, and SHALL NOT be recommended. |
-| REQ-ASB-010 | State-driven | While Aside is the active e2e toolchain, the e2e workflow SHALL assign every Aside step (probe, repl calls, screenshot capture) to the orchestrator, carved out of the e2e-tester's execution ownership, SHALL instruct the orchestrator to load the policy skill before the first Aside step, and SHALL keep Aside output bounded in the orchestrator's context (verbose output redirected to a file, exit code and bounded tail surfaced, path cited). |
+| REQ-ASB-010 | State-driven | While Aside is the active e2e toolchain, the e2e workflow SHALL assign every Aside step (probe, repl calls, screenshot capture) to the orchestrator, carved out of the e2e-tester's execution ownership at every site in `e2e.md` that delegates script creation, execution, or recording to the e2e-tester, SHALL instruct the orchestrator to load the policy skill before the first Aside step, and SHALL keep Aside output bounded in the orchestrator's context (verbose output redirected to a file, exit code and bounded tail surfaced, path cited). |
 | REQ-ASB-011 | State-driven | While `CI=true` is set, the e2e workflow SHALL treat Aside as unavailable even when requested and continue on the platform default toolchain. |
-| REQ-ASB-012 | Event-driven | When the Aside probe (`aside --version`) fails, or Aside is excluded (`CI=true`, or a non-web platform class), the e2e workflow SHALL continue on the platform default toolchain with no Aside-specific message, prompt, install attempt, or failure, and the missing-toolchain Surface and Install steps SHALL NOT apply to Aside at either site that instructs them. |
+| REQ-ASB-012 | Event-driven | When the Aside probe (`aside --version`) fails, or Aside is excluded (`CI=true`, or a non-web platform class), the e2e workflow SHALL continue on the platform default toolchain with no Aside-specific message, prompt, install attempt, or failure, and no site in `e2e.md` that runs the missing-toolchain Surface and Install sequence, or that delegates test script creation, execution, or recording to the e2e-tester, SHALL apply to Aside. |
 | REQ-ASB-013 | State-driven | While Aside is the active e2e toolchain, the journey evidence SHALL be a screenshot captured through `aside repl`, saved under `e2e/` by path and cited by path. |
 | REQ-ASB-014 | Ubiquitous | The skill SHALL have a core-tier catalog entry whose hash matches its content; the skill and `workflows/e2e.md` SHALL be byte-identical between template and root copies; the e2e-tester definition SHALL be identical between template and root except for its pre-existing divergence; the committed Codex e2e-tester definition SHALL match its emission from the e2e-tester source; and the repository build SHALL succeed. |
 | REQ-ASB-015 | Unwanted | Template content authored by this SPEC SHALL NOT carry card ids, SPEC ids, commit SHAs, or dates, and SHALL NOT position any one programming language as primary. |
@@ -68,13 +69,13 @@ The operator (GOOS) sometimes needs an agent to inspect or drive a page that onl
 - **CLI-first, no MCP hard dependency** (`e2e.md:53-56`): the workflow drives Aside through the `aside repl` CLI; the MCP registration is optional documentation and never a prerequisite.
 - **Template-First** (`internal/template/CLAUDE.md`) and development mode `tdd` (`quality.yaml`); the process steps live in `plan.md`.
 - **Resolved by the operator on 2026-10-02** (decision-index Q1, Q2, Q3):
-  - R-1 (was A-2, Q1): Aside is operated by the **orchestrator only**. No subagent, the e2e-tester included, ever invokes `aside` (exec or repl) or an Aside MCP tool. The mechanical anchor is one negative sentence in the e2e-tester definition and the same boundary in the skill.
+  - R-1 (was A-2, Q1): Aside is operated by the **orchestrator only**. No subagent, the e2e-tester included, ever invokes `aside` (exec or repl) or an Aside MCP tool. The mechanical anchor is one negative sentence in the e2e-tester definition and the same boundary in the skill. The rule binds the implementation process too: the `aside --version` pre-flight and the screenshot-persistence measurement are run by the orchestrator (the main session), which hands the observed output to manager-develop as run-prompt input; manager-develop and every other subagent never invoke `aside` (`plan.md` § C, M3.0).
   - R-2 (was A-1, Q3): the fallback is **completely silent**. An absent Aside (or `CI=true`) continues on the default toolchain with no Aside-specific message, note, prompt, install attempt, or failure. The run report names the toolchain actually used in the normal way; that is not an Aside note.
   - R-3 (was A-3, Q2): the skill is a **core** skill. The optional-pack placement was rejected because every non-core catalog entry is hidden from slim installs (measured: `TestSlimFS_HidesNonCoreEntries`), while core `moai` and `e2e-tester` would then name a skill default installs do not ship.
 - **Still-open assumptions** (each a decision-index row, none settled by the operator):
   - A-4 (Q6): the skill is not added to `delegation.yaml` `domain_skills`, so no mission auto-injects it.
   - A-5 (Q7): docs-site scope is `guides/mcp-server.md` in four locales.
-  - A-6 (Q5): `aside repl` can persist a screenshot to a path; unmeasured at plan time, measured first in run phase.
+  - A-6 (Q5): `aside repl` can persist a screenshot to a path; unmeasured at plan time, measured first in run phase by the orchestrator (not by a subagent).
   - A-7: these artifacts are written in English per the card instruction.
   - A-8 (Q8): under `--tool aside` the e2e-tester still performs detection and journey mapping (Phases 0 and 1); the orchestrator runs the Aside steps of Phases 2 and 3 itself.
 
