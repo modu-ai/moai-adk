@@ -3,13 +3,15 @@ package web
 // mcp_audit_surface_test.go — SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 /
 // AC-MCP-021). Verifies the audit selection surfaces in the web console
 // schema, AND that the web console does NOT fork the audit interpreter — it
-// reuses the M3 typed config (config.AuditConfig). It carries no per-agent
-// model/effort resolver at all: subagents inherit the main session's model and
-// effort (SPEC-AGENT-MODEL-INHERIT-001).
+// reuses the M3 typed config (config.AuditConfig). The per-agent resolution
+// sentinels are scoped by SPEC-WEB-AGENTFM-RESTORE-001 to the restored
+// agentfm surface files (TestWebConsole_NoPerAgentModelResolver below); the
+// console still derives nothing of its own — it calls the template resolver.
 
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -70,11 +72,49 @@ func TestWebConsole_AuditNoForkedInterpreter(t *testing.T) {
 	}
 }
 
-// TestWebConsole_NoPerAgentModelResolver verifies the web console neither
-// defines nor calls a per-agent model/effort resolver: the agent-settings tab
-// that consumed one is gone (SPEC-AGENT-MODEL-INHERIT-001 REQ-AMI-011), and no
-// other surface may reintroduce per-agent assignment.
+// agentfmSurfaceFiles are the restored console surface files the four
+// per-agent resolution sentinels are ALLOWED in (SPEC-WEB-AGENTFM-RESTORE-001,
+// plan §D.5 amend row — the blueprint-measured sentinel-bearing surfaces:
+// app.go :3100 patchAgentFM wiring, handlers.go :6488 the template resolver
+// call, schemaform.go :7098/:7115 EffectiveProfile/AgentOverrides reads, and
+// the re-ported agentfm.go which calls template.ResolveAgentModelEffort).
+// The set tracks reality per milestone: M2 allowlists the three surviving
+// files the M3 save path lands in; M3 adds agentfm.go when it re-ports the
+// parse/render helpers that call template.ResolveAgentModelEffort. Every
+// OTHER non-test internal/web file — the generated fieldsets_templ.go
+// included — stays sentinel-free.
+var agentfmSurfaceFiles = map[string]bool{
+	"app.go":        true,
+	"handlers.go":   true,
+	"schemaform.go": true,
+}
+
+// TestWebConsole_NoPerAgentModelResolver verifies the narrowed per-agent
+// resolution contract (SPEC-WEB-AGENTFM-RESTORE-001 plan §D.5, amending the
+// SPEC-AGENT-MODEL-INHERIT-001-era blanket ban). Three clauses:
+//
+//  1. DEFINITION BAN (unconditional, every non-test web file): internal/web
+//     must not DEFINE its own per-agent resolver — the single derivation
+//     lives in template.ResolveAgentModelEffort (REQ-AFR-010 "no second
+//     derivation"). A `func ResolveAgentModelEffort` anywhere in this
+//     package is the fork this clause forbids.
+//  2. REFERENCE BAN outside the restored surface files: the four sentinels
+//     (ResolveAgentModelEffort / ProfileMatrixAgents / EffectiveProfile /
+//     AgentOverrides) may appear ONLY in agentfmSurfaceFiles; every other
+//     non-test file stays sentinel-free.
+//  3. NON-EMPTY EXCLUSION SET: if the allowed set shrinks — a surface file
+//     deleted without the guard being revisited — the guard FAILS rather
+//     than silently passing on a surface that no longer exists.
 func TestWebConsole_NoPerAgentModelResolver(t *testing.T) {
+	if len(agentfmSurfaceFiles) == 0 {
+		t.Fatal("the agentfm surface allowlist is empty — the restored surface files must be named here or the guard is vacuous")
+	}
+	for f := range agentfmSurfaceFiles {
+		if _, err := os.Stat(f); err != nil {
+			t.Errorf("allowed surface file %s is missing from internal/web — revisit this guard before dropping it from the allowlist", f)
+		}
+	}
+
 	files, err := filepath.Glob("*.go")
 	if err != nil {
 		t.Fatalf("glob internal/web *.go: %v", err)
@@ -89,13 +129,29 @@ func TestWebConsole_NoPerAgentModelResolver(t *testing.T) {
 			t.Fatalf("read %s: %v", f, err)
 		}
 		scanned++
+		if strings.Contains(string(data), "func ResolveAgentModelEffort") {
+			t.Errorf("internal/web/%s defines ResolveAgentModelEffort — the web console must not fork the resolver; call template.ResolveAgentModelEffort (single derivation, REQ-AFR-010)", f)
+		}
+		if agentfmSurfaceFiles[f] {
+			continue
+		}
 		for _, sym := range []string{"ResolveAgentModelEffort", "ProfileMatrixAgents", "EffectiveProfile", "AgentOverrides"} {
 			if strings.Contains(string(data), sym) {
-				t.Errorf("internal/web/%s references %s — the web console assigns no per-agent model or effort", f, sym)
+				t.Errorf("internal/web/%s references %s — per-agent resolution sentinels are allowed only in the restored agentfm surface files (%v)", f, sym, surfaceFileNames())
 			}
 		}
 	}
 	if scanned == 0 {
 		t.Fatal("scanned no internal/web source file — the guard read nothing")
 	}
+}
+
+// surfaceFileNames returns the allowlist keys in a stable order for messages.
+func surfaceFileNames() []string {
+	names := make([]string, 0, len(agentfmSurfaceFiles))
+	for f := range agentfmSurfaceFiles {
+		names = append(names, f)
+	}
+	sort.Strings(names)
+	return names
 }

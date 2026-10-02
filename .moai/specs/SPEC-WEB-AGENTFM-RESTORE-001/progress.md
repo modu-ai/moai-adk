@@ -24,3 +24,32 @@
 - 수재 키 seam 실측: 템플릿 llm.yaml에 profile: ""·agent_overrides: {} 재수재 → `ShippedRetiredModelKeys()`가 두 키를 집합에 포함(멤버십=strip 제외) 실측 PASS · performance_tier/profiles/harness_agents는 계속 strip 대상 (TestStripRetiredModelConfig_ReshippedConsoleKeysSurvive — 신설, 실제 임베디드 템플릿 대상 실측).
 - 인벤토리 등록: llm.agent_overrides·llm.profile → internal/config/testdata/shipped_key_inventory.yaml (R) — TestShippedConfigKeysHaveReaders GREEN.
 - 유출 가드 수정: 템플릿 llm.yaml 주석에서 내부 SPEC ID 제거 (TestTemplateNoInternalContentLeak C1-spec-id-prefix 적중 → 재기술 후 GREEN).
+
+### M2 — RED 기선: 락 반전 (M1 커밋 5fbb0ab58 기점 관측)
+
+- **관측-RED 1차 (락 반전, /tmp/t1411-m2-red.txt verbatim)**: `internal/web/agent_overrides_test.go` 신설(구 agent_settings_removed_test.go 반전분) — 첫 실행 exit 1:
+  - `--- FAIL: TestAgentOverridesSubsection` — `GET /settings lacks "data-section=\"agent-overrides\""`, `lacks "sec.agentfm.title"`, `lacks "data-agent-row=\"manager-develop\""`, `lacks "name=\"agentfm.manager-develop.model\""`, (manager-todo 동일 3종), `the parse-failed agent row must render downgraded as agentfm.unavailable` — 렌더가 아직 없음(M4 전).
+  - `--- FAIL: TestPerfTierSave` — `llm.profile = <nil>, want "max" (the selector wire value persists verbatim)` — 저장 경로가 아직 없음(M3 전). custom/empty 보존 서브테스트는 통과(작성자가 없어 자명 — GREEN 시 유의 어설션).
+  - `--- FAIL: TestAgentOverridesSave` — `override equal to the profile default must be cleared: map[manager-develop:...]`, `backfilled override = map[], want {model: sonnet, effort: medium}` — 핀/clear/백필 경로 부재. 원자 거절 서브테스트는 통과(현재 무시되는 제출이 우연히 조건 충족 — M3 GREEN 시 필드 오류 어설션이 유의성을 전환).
+  - `--- PASS: TestAgentFrontmatterUntouched` — §D.5 1행 설계대로 frontmatter 무접촉 절반만 유지(이미 참). 효과 절반은 TestPerfTierSave/TestAgentOverridesSave가 보유.
+- **관측-RED 2차 (mcp_audit_surface 가드, plan §F M2)**: 센티널 운반 프루브 파일(zz_sentinel_probe.go — template.ResolveAgentModelEffort·ProfileMatrixAgents·config LLMConfig.EffectiveProfile 참조)을 internal/web에 두자 기존 `TestWebConsole_NoPerAgentModelResolver`가 RED: `internal/web/zz_sentinel_probe.go references ResolveAgentModelEffort/ProfileMatrixAgents/EffectiveProfile — the web console assigns no per-agent model or effort` — 프루브 삭제 후 축소 계약으로 개정: (1) 정의 금지(`func ResolveAgentModelEffort` 전 파일 금지 — 단일 유도), (2) 4 센티널 참조는 표면 파일(agentfm.go·app.go·handlers.go·schemaform.go)에서만 허용 — M2 시점 실존 3파일만 등록, agentfm.go는 M3 착지 시 등록 확장, (3) 제외 집합 비-공 가드 + 파일 존재 검사. 개정 후 GREEN 실측.
+- 구 absent 테스트 삭제: agent_settings_removed_test.go 파일째 삭제 (TestAgentSettingsTab_IsNotRendered·TestAgentSettingsFields_ArePostedWithoutEffect 소멸 — AC-AFR-012 EV-AFR-012 전제).
+- agent_settings_test.go :51 고아 주석 제거 (§D.5 2행).
+- 코드 주석 정합 (§D.1 cli/template 행): update_model_key_strip.go 사유 문자열("no reader"→"seam 자동 제외" 서술), retired_model_keys.go 헤더, profile_setup_schema_options_test.go :119 고아 주신 갱신. settings/schema.go:80·schema_sections.go:568의 agentfm 서술 주석은 M3(표면 착지 시점)에 갱신 — 복원 전 갱신은 허위 서술이 되므로 순서 유지.
+
+## §E.3 Run-phase Audit-Ready Signal
+
+_<pending run-phase>_
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+_<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+- 입력: tier=M · scope=약 15-20파일(internal/template·config·cli·web + assets) · 도메인=Go/templ/JS/i18n 4종 · 언어 혼합=코드+생성물+마크다운 · 동시성 이점=LOW(coding-heavy) · agent-team 전제=미충족(명시 요청 없음)
+- 모드 평가: direct=미선정(단순 수정 아님) · fanout=미선정(coding-heavy — Anthropic 병렬화 주의) · sweep=미선정(기계적 균일 변환 아님) · agent-team=미선정(명시 요청 없음)
+- Decision: serial
+- 근거: 마일스톤 M1→M2→M3→M4→M5→M5b→M6가 순차 의존(데이터 모델→락 반전→저장→UI→i18n→개정→검증)하는 coding-heavy 재포트 — 단일 구현 에이전트 순차 위임이 기본 선택(Anthropic coding-task 병렬화 경고). M5b는 소유권 매트릭스상 별도 manager-spec 재위임으로 직렬 삽입.
+- Kickoff decision record (2026-10-02, 자율형 — auto-semantics §9.1): plan→run 진입 승인. 증거: 감사 교차(상기 판정 파일 4종, 최종 PASS-delta) + 증거 기준(점수 0.90 ≥ Tier M 0.80·아티팩트 해시 ccac1f555 기준 불변 — iter3-delta 직접 기록) + 운영자 판정 3건 기록(decision-index Q1·Q2·Q3) + 차단 결함 0건. keep-set 해당 없음(환경 불가·운영자 보유·외부 공유 시스템 조작 없음 — 후속 카드 t1421은 리드 큐 발행 완료). 구현 배차는 일반 타입 에이전트(manager-develop 타입 스폰 자체 L1 격리 회피 — t1318 교훈).
+- 역방향 완결: agent_settings_removed_test.go 삭제(TestAgentSettingsTab_IsNotRendered·TestAgentSettingsFields_ArePostedWithoutEffect 소멸), agent_settings_test.go :51 고아 주석 제거, crosssession_test.go 노이즈 키 예시를 현 로스터 이름으로 갱신(어설션 불변 — agentfm.*은 crosssession 키가 아님).
