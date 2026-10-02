@@ -17,7 +17,38 @@ decision record: decided_by=lane-5/orchestrator evidence_refs=.moai/reports/t145
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — PRE-CUTOVER-SAFE base-branch re-point (card t1453)
+
+commits: 9fa6f9bc8 (draft → in-progress), 0b06a57bb (characterization + table RED tests, no production code), 8ebf75fe9 (re-point + fixture precondition seeds). Evidence measured in this run on this tree; test runs executed in the worktree with the lane env scrubbed in one compound call. Raw outputs are machine-local scratch (`/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/b3cb8287-30f2-4d77-ac03-cf5f7e4d4065/scratchpad/m1/`), not citation targets; the deciding lines are copied here.
+
+Sites re-pointed to `config.LoadGitFlowIntegrationConfig(root).IntegrationTarget`: E-01 `worktree/done.go` landing base (`landingBase`), E-02 `worktree/sweep.go` `--base` default (`sweepDefaultBase`, run-time, seam `sweepConfigRoot`), E-28 `factory_card.go` `factoryResolveIntegrationBranch` and `factory_merge.go` merge-ready target, E-29 `codex_review_scope.go` `cardMergeBase` and `goal.go` approve `MergeTarget`. A row with no target is a refusal (done `ORIGIN_LANDING_UNCONFIRMED`, sweep asks for `--base`, card base → tree scope, goal approve refuses); the E-28 readers keep their existing caller fallback / refusal. Decision recorded by the orchestrator: option A (no `develop` fallback).
+
+Left alone: `session_worktree_automerge.go:176,183`, `integration.go:353` (design D-1; guard `TestSessionExitAutoMergeInertUnderGitHubFlow`). Read and not re-pointed: `session_worktree.go:803` ref (→ M2(c)), `scripts/jev/triage.py:27` (env-overridable, no YAML reader; recommendation only), kanban landed-ref chain (already config → origin/HEAD → origin/main; not a literal develop). Follow-up finding, not touched: `internal/contract/projection_mission.go:82 missionMergeTarget = "develop"`.
+
+| Item | Command | Observed | Exit | HEAD |
+|---|---|---|---|---|
+| RED (EXPECTED_RED) | `go test ./internal/cli/ ./internal/cli/worktree/ -run '^(TestDeliveryBaseResolvesFromIntegrationTarget\|TestBaseDefaultsFollowIntegrationTarget)$' -count=1 -v` on 0b06a57bb tree | e.g. `delivery_base_target_test.go:305: MergeTarget = "develop", want "main"`; `base_defaults_test.go:148: sweep must fetch origin/main exactly once, observed [origin/develop]` | 1 | 0b06a57bb |
+| E-01 | `git grep -n "landingBaseBranch = " -- internal/cli/worktree/done.go` | (empty) | 1 | 8ebf75fe9 |
+| E-02 | `git grep -n "\"origin/develop\"" -- internal/cli/worktree/sweep.go` | (empty) | 1 | 8ebf75fe9 |
+| E-28 | `git grep -n "\.DevelopBranch" -- internal/cli/factory_card.go internal/cli/factory_merge.go` | (empty) | 1 | 8ebf75fe9 |
+| E-29 | `git grep -n -o -E 'cardBaseBranch +[=] +"develop"\|MergeTarget: "develop"' -- internal/cli/codex_review_scope.go internal/cli/goal.go` | (empty) | 1 | 8ebf75fe9 |
+| AC-GFD-001/003 tests, cli | chunk selector incl. `TestDeliveryBase\|TestBaseDefaults\|TestSessionExitAutoMerge` | `--- PASS: TestDeliveryBaseGitFlowUnchanged`, `…ResolvesFromIntegrationTarget`, `TestBaseDefaultsGitFlowUnchanged`, `…FollowIntegrationTarget`, `TestSessionExitAutoMergeInertUnderGitHubFlow`; chunk 3: 307 PASS, 1 FAIL (`TestSD_AC018_ParentCheckoutUntouched`, fixed by `add -f`, re-run `--- PASS`) | 1 → 0 | working tree = 8ebf75fe9 content |
+| AC-GFD-003 tests, worktree | `go test ./internal/cli/worktree/ -count=1 -v` (whole package) | `--- PASS: TestBaseDefaultsFollowIntegrationTarget` (21 sub-tests), `…GitFlowUnchanged`; `ok … 166.475s` | 0 | working tree = 8ebf75fe9 content |
+| 14 earlier failures | chunk 1 `-run 'TestCodexReview\|TestTreeScope\|TestProduceCodexReviewReceipt\|TestCard'`; chunk 2 `-run 'TestFR_AC\|TestGoal\|TestAutoMission\|TestGTD\|TestAuthoritativeDispatch\|TestNewAutoMission'` | chunk 1 `ok … 180.461s` 33 PASS (all 12 codex card-scope names PASS); chunk 2 `ok … 279.664s` 66 PASS (both `TestFR_AC025_*`, every goal approve test PASS) | 0 | working tree = 8ebf75fe9 content |
+| Other cli families | chunk 3 (`TestFactory\|TestSD_\|TestMerge\|TestIntegration\|…`), chunk 4/5 (`TestTodo…`, `TestRun…`) | chunk 4: 551 PASS, 0 FAIL, then `panic: test timed out after 15m0s` (selector too broad). Chunk 5 (71 tests unfinished in chunk 4): 69 PASS, 2 FAIL | 1 | working tree |
+| Windows build | `GOOS=windows GOARCH=amd64 go build ./...` | (no output) | 0 | 8ebf75fe9 |
+| Lint | `golangci-lint run --timeout=5m ./internal/cli/worktree/ ./internal/cli/` (v2.1.6 = CI pin) | `0 issues.` | 0 | 8ebf75fe9 |
+| gofmt | `gofmt -l <13 changed files>` | (empty) | 0 | 8ebf75fe9 |
+
+Baseline (pre-change tree 0028671ed): `./internal/cli/worktree` `ok 101.037s` (256 PASS); `./internal/template` `ok 125.393s`; `./internal/guardstate` FAIL, pre-existing: `census_test.go:80: disk\manifest: .github/workflows/workflow-parse-guard.yaml exists on disk with no manifest entry`, `census_test.go:89: declared 19 entries against 20 workflow files` (`TestCensus_SetDifferenceEmptyBothDirections`).
+
+help text: `moai worktree sweep --help` changed. `--base` flag was `Remote integration base the landing check compares against (default diverges from clean --stale's origin/main)` with default `origin/develop`; it is now `Remote integration base the landing check compares against (default: origin/<configured integration target>)` with an empty flag default resolved at run time. Long text now says `The default base is origin/<the configured integration target> — origin/develop under git-flow, origin/main under github-flow; with no target configured the sweep stops and asks for --base.` `moai worktree done --help` step 2 now names `origin/<integration target> (origin/develop under git-flow; …)`.
+
+Gaps (unobserved, not claimed): (1) whole `internal/cli` package result unknown — the full run timed out at 20m and the broad chunk 4 timed out at 15m; families not covered by chunks 1-5 were not run. (2) Chunk 5 failures `TestTodoConcurrentAdd_8Processes` and `TestTodoAddPick_ConcurrentProcesses`: `todo_test.go:527 / :1033: concurrent add … failed: exit status 4`; exit 4 is the helper-process branch `CLAUDE_PROJECT_DIR == ""` (todo_test.go:572), reached before any code M1 touches, so attributed to the environment/harness rather than M1 — NOT re-run on the baseline tree, so this attribution is inferred, not measured. (3) After-change `./internal/guardstate` and `./internal/template` re-measure not run (no further test runs were permitted); baselines above. (4) `mission_surface_baseline.txt` not re-run through `internal/contract` tests; unchanged by construction — no file under `internal/contract` or `internal/mission` is in the diff. (5) No before/after binary pair for the help text: the "before" strings are quoted from the 0b06a57bb source diff, the "after" from a binary built at 8ebf75fe9. (6) `GOOS=windows go vet ./internal/cli/worktree/...` baseline red (`sweep_test.go parseLsofCWDs`) not re-measured. (7) Under this repo's own git-flow config no real `moai worktree sweep`/`done` run was compared; invariance rests on the characterization tests.
+
+Residual risk: legacy fixtures outside the five seeded constructors that read `cardMergeBase`, `goal approve` or the sweep/done base without a config would now see a refusal; none surfaced in the families run.
+
+§E.3 is NOT written: the cli package-level result and the guardstate/template re-measure are unobserved Gaps.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
