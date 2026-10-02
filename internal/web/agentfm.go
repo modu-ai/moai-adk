@@ -515,6 +515,28 @@ func agentGLMReasoning(llm config.LLMConfig, name string) string {
 	return template.ResolveGLMReasoningForModel(llm.GLM.Models.High, name, me.Effort).Name
 }
 
+// agentFMPerfTierSeed resolves the perf-tier radio's seeded value: the raw
+// stored profile mapped onto the selector wire set {max, medium, low}. The
+// canonical read-time fold (NormalizeProfile, max→high) serves matrix-cell
+// resolution, but no selector option carries "high" — the render boundary
+// restores the top wire value so both spellings of the column (the
+// selector's "max", the config-canonical "high") round-trip to a checked
+// radio (F2, sync-audit card t1411). An empty stored profile is the runtime
+// default: seed "" with isEmpty=true (the "(runtime default)" hint). An
+// out-of-set stored value seeds verbatim — no radio matches and validation
+// rejects it on the next save.
+func agentFMPerfTierSeed(llm config.LLMConfig) (seed string, isEmpty bool) {
+	raw := strings.TrimSpace(llm.Profile)
+	if raw == "" {
+		return "", true
+	}
+	folded := llm.EffectiveProfile()
+	if folded == config.ProfileHigh {
+		return template.PerformanceTierMax, false
+	}
+	return folded, false
+}
+
 // profileMatrixData returns the per-profile per-agent {model, effort} matrix
 // for the client-side tier-repopulation handler (G3-3), emitted via
 // templ.JSONScript. Shape: {"<tier>": {"<agent>": {"model": "...", "effort":

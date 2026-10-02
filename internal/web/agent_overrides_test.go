@@ -568,3 +568,100 @@ func TestAgentOverridesSeams(t *testing.T) {
 		t.Fatal("default agent-overrides wiring is nil on a fresh app — the seams were not wired")
 	}
 }
+
+// slicePerfTierRadio extracts the perf-tier radio group's markup: from the
+// first performance_tier radio to the matrix island that follows the group.
+// The whole-page `value="max" checked` assertion is NOT usable here — the GLM
+// effort selects legitimately render `value="max" checked` from their own
+// fixture defaults (measured: 4 such occurrences), so the assertion must be
+// scoped to the radio group.
+func slicePerfTierRadio(t *testing.T, body string) string {
+	t.Helper()
+	start := strings.Index(body, `name="performance_tier"`)
+	if start < 0 {
+		t.Fatal("perf-tier radio group not rendered")
+	}
+	end := strings.Index(body[start:], `id="moai-profile-matrix"`)
+	if end < 0 {
+		t.Fatal("matrix island not rendered after the radio group")
+	}
+	return body[start : start+end]
+}
+
+// TestPerfTierSeedRoundTrip covers the F2 fix (sync-audit, card t1411): the
+// perf-tier radio re-selects what was saved. The selector's wire set is
+// {max, medium, low}; a stored "max" folded by EffectiveProfile to "high"
+// matched no option — the render boundary restores the top wire value so
+// both spellings of the column (the selector's "max", the config-canonical
+// "high") round-trip to a checked max radio.
+func TestPerfTierSeedRoundTrip(t *testing.T) {
+	t.Run("stored max renders a checked max radio", func(t *testing.T) {
+		a, root := seedAgentOverridesProject(t)
+		writeLLMYAML(t, root, "llm:\n  mode: \"\"\n  glm_env_var: GLM_API_KEY\n  profile: \"max\"\n")
+
+		radio := slicePerfTierRadio(t, renderSettingsBody(t, a))
+		if !strings.Contains(radio, `value="max" checked`) {
+			t.Errorf("a stored max must render the max radio checked (the fold must not disconnect the round-trip):\n%s", radio)
+		}
+	})
+	t.Run("stored high renders the same top column", func(t *testing.T) {
+		a, root := seedAgentOverridesProject(t)
+		writeLLMYAML(t, root, "llm:\n  mode: \"\"\n  glm_env_var: GLM_API_KEY\n  profile: \"high\"\n")
+
+		radio := slicePerfTierRadio(t, renderSettingsBody(t, a))
+		if !strings.Contains(radio, `value="max" checked`) {
+			t.Errorf("a stored canonical high is the same column as the max wire value — the radio must show it checked:\n%s", radio)
+		}
+	})
+	t.Run("save max then re-render keeps the radio and the value", func(t *testing.T) {
+		a, root := seedAgentOverridesProject(t)
+		writeLLMYAML(t, root, "llm:\n  mode: \"\"\n  glm_env_var: GLM_API_KEY\n")
+
+		rec := postSave(t, a, agentOverridesForm(map[string]string{"performance_tier": "max"}))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("save status = %d", rec.Code)
+		}
+		// AC-AFR-002: the wire value persists verbatim. Parsed-key
+		// granularity — the upsert splice may spell the scalar without
+		// quotes, which is the same YAML value.
+		llm := llmYAMLMap(t, root)["llm"].(map[string]any)
+		if llm["profile"] != "max" {
+			t.Fatalf("llm.profile = %v, want \"max\" persisted verbatim (AC-AFR-002)", llm["profile"])
+		}
+		radio := slicePerfTierRadio(t, renderSettingsBody(t, a))
+		if !strings.Contains(radio, `value="max" checked`) {
+			t.Errorf("the save→re-render round trip lost the max selection:\n%s", radio)
+		}
+	})
+}
+
+// TestAgentOverridesPersistFailureRollsBack is the F3 repair probe
+// (sync-audit, card t1411): the two llm.yaml writes of steps 7→8
+// (applyPerfTierEdits → patchAgentFM) are one logical persistence unit —
+// REQ-AFR-007 covers persistence errors, so a step-8 failure must not leave
+// step 7's profile write on disk. The probe injects the failure at
+// stepPatchAgentFM and asserts the byte-identical rollback.
+func TestAgentOverridesPersistFailureRollsBack(t *testing.T) {
+	a, root := seedAgentOverridesProject(t)
+	llmSeed := "llm:\n  mode: \"\"\n  glm_env_var: GLM_API_KEY\n"
+	writeLLMYAML(t, root, llmSeed)
+
+	a.patchAgentFM = func(string, map[string]config.ModelEffort, []string) error {
+		return assertErr("patchAgentFM injected failure")
+	}
+
+	rec := postSave(t, a, agentOverridesForm(map[string]string{
+		"performance_tier":               "max",
+		"agentfm.manager-develop.model":  "opus",
+		"agentfm.manager-develop.effort": "xhigh",
+	}))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("save status = %d, want the 200 failure re-render", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "agent override write failed") {
+		t.Error("the re-render must name the failing persistence step")
+	}
+	if got := readSectionFile(t, root, "llm"); got != llmSeed {
+		t.Errorf("step-8 failure left step-7's write on disk — REQ-AFR-007 persistence atomicity:\nseed:\n%s\ndisk:\n%s", llmSeed, got)
+	}
+}

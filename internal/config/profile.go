@@ -14,20 +14,26 @@ package config
 import "strings"
 
 // Profile closed-set values. Named constants per CLAUDE.local.md §14 (no
-// magic strings for the enum). The canonical set is {high, medium, low}; the
-// superseded top-column name "max" stays readable as a normalize-time alias
-// (LegacyProfileMax) so pre-restore configs resolve, but nothing in this
-// repository writes it back — the restored console selector persists its own
-// wire vocabulary verbatim (template.ValidPerformanceTiers, REQ-AFR-003).
+// magic strings for the enum). The top column carries TWO LIVE SPELLINGS:
+// "high" is the config-canonical spelling this package's closed set speaks,
+// and "max" is the restored console selector's wire spelling
+// (template.ValidPerformanceTiers), which the console persists verbatim to
+// llm.profile (AC-AFR-002, REQ-AFR-003). Reads fold max → high via
+// NormalizeProfile so both spellings resolve the same column; display
+// surfaces that address the selector restore the wire spelling at the render
+// boundary (web agentFMPerfTierSeed).
 const (
-	// ProfileHigh is the highest-quality profile column.
+	// ProfileHigh is the highest-quality profile column (the canonical
+	// spelling).
 	ProfileHigh = "high"
 	// ProfileMedium is the balanced default profile column.
 	ProfileMedium = "medium"
 	// ProfileLow is the economical profile column.
 	ProfileLow = "low"
-	// LegacyProfileMax is the superseded name of the top column. It is
-	// accepted as a read-time alias for ProfileHigh and is never written back.
+	// LegacyProfileMax is the selector's wire spelling of the top column —
+	// the same column as ProfileHigh, persisted verbatim by the console
+	// selector (AC-AFR-002) and folded to ProfileHigh on read. The name
+	// records its pre-restore lineage, not a dead value.
 	LegacyProfileMax = "max"
 	// DefaultProfile is the effective profile when llm.profile is absent or
 	// empty: agents resolve the session model/effort (REQ-AFR-002 inheritance
@@ -43,8 +49,9 @@ var validProfiles = map[string]bool{
 }
 
 // NormalizeProfile maps a persisted profile value onto the canonical closed
-// set, translating the superseded top-column name (max -> high). Any other
-// value is returned verbatim so callers can still reject it as out-of-set.
+// set, translating the selector's wire spelling of the top column
+// (max -> high — LegacyProfileMax). Any other value is returned verbatim so
+// callers can still reject it as out-of-set.
 //
 // @MX:ANCHOR: [AUTO] NormalizeProfile — the max->high read-time alias
 // @MX:REASON: [AUTO] fan_in >= 2 (EffectiveProfile + validateProfile + template tier helpers); the sole compatibility bridge for pre-restore configs

@@ -97,10 +97,10 @@ func Registry() []Site {
 			// membership: a catalog change now obliges a translation-key
 			// change in the same breath, which is exactly the coupling the
 			// console's agentdesc rows need.
-			ID:         "i18n-agentdesc-keys",
-			Path:       "internal/web/assets/i18n.js",
-			Axis:       AxisRetainedRoster,
-			Claims:     ClaimMembership,
+			ID:     "i18n-agentdesc-keys",
+			Path:   "internal/web/assets/i18n.js",
+			Axis:   AxisRetainedRoster,
+			Claims: ClaimMembership,
 			Note: "agentdesc.<name> ko/ja/zh keys plus the agent_tiers class " +
 				"keys enumerate the retained roster; asserted whole-file " +
 				"because the names appear only inside these translation keys.",

@@ -570,6 +570,20 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// never written). Runs BEFORE patchAgentFM so an explicit per-agent
 	// override submitted in the same request still wins over the newly-applied
 	// tier's baseline (its comparison already ran against this tier).
+	//
+	// F3 (sync-audit, card t1411): steps 7 and 8 both write llm.yaml — one
+	// logical persistence unit under REQ-AFR-007, which covers persistence
+	// errors. Snapshot before step 7; a step-8 failure rolls step 7's write
+	// back (best-effort) before the error re-render. Step 7 itself is a
+	// single atomic splice (temp+rename), so a step-7 failure needs no
+	// restore — nothing landed.
+	llmSnapshot, llmExisted, snapErr := settings.SnapshotLLMYAML(a.cfg.ProjectRoot)
+	if snapErr != nil {
+		logSaveFailure("snapshotLLMYAML", "could not snapshot llm.yaml before the agent-overrides writes")
+		a.renderErrorPage(w, prefs, selected, devMode, convention,
+			"profile preferences saved, but llm.yaml could not be snapshotted: "+snapErr.Error())
+		return
+	}
 	if err := a.applyPerfTierEdits(a.cfg.ProjectRoot, perfTier); err != nil {
 		logSaveFailure("applyPerfTierEdits", "profile preferences saved, but performance_tier apply failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
@@ -581,9 +595,12 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// block-splice seam). Agent .md frontmatter is NEVER mutated by the
 	// console (REQ-AFR-005).
 	if err := a.patchAgentFM(a.cfg.ProjectRoot, agentPins, agentSubmitted); err != nil {
-		logSaveFailure("patchAgentFM", "settings saved, but agent override write failed")
+		if rerr := settings.RestoreLLMYAML(a.cfg.ProjectRoot, llmSnapshot, llmExisted); rerr != nil {
+			err = fmt.Errorf("%v (llm.yaml ROLLBACK FAILED — the profile write may remain without the overrides: %v)", err, rerr)
+		}
+		logSaveFailure("patchAgentFM", "settings saved, but agent override write failed — llm.yaml rolled back")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
-			"settings saved, but agent override write failed: "+err.Error())
+			"settings saved, but agent override write failed (llm.yaml rolled back): "+err.Error())
 		return
 	}
 

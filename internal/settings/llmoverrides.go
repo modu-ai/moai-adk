@@ -36,6 +36,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/settings/yamlpatch"
+	"gopkg.in/yaml.v3"
 )
 
 // WriteLLMProfile persists the active profile column to llm.profile
@@ -51,13 +52,48 @@ func WriteLLMProfile(projectRoot, profile string) error {
 	})
 }
 
+// llmYAMLPath returns the project's llm.yaml path.
+func llmYAMLPath(projectRoot string) string {
+	return filepath.Join(projectRoot, ".moai", "config", "sections", "llm.yaml")
+}
+
+// SnapshotLLMYAML captures the project's llm.yaml bytes for the two-step
+// agent-overrides write pair (profile splice → overrides block splice): a
+// failure in the SECOND step must roll the FIRST back, since REQ-AFR-007
+// covers persistence errors (F3, sync-audit card t1411). existed=false marks
+// the greenfield case — no file yet — so the restore removes the created
+// file instead of writing an empty one.
+func SnapshotLLMYAML(projectRoot string) (data []byte, existed bool, err error) {
+	data, err = os.ReadFile(llmYAMLPath(projectRoot))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, false, nil
+		}
+		return nil, false, fmt.Errorf("settings: read llm.yaml: %w", err)
+	}
+	return data, true, nil
+}
+
+// RestoreLLMYAML rolls llm.yaml back to a SnapshotLLMYAML capture
+// (best-effort — the caller still reports the original save failure).
+func RestoreLLMYAML(projectRoot string, data []byte, existed bool) error {
+	path := llmYAMLPath(projectRoot)
+	if !existed {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("settings: remove created llm.yaml: %w", err)
+		}
+		return nil
+	}
+	return atomicWriteSection(path, data)
+}
+
 // WriteLLMAgentOverrides persists the FULL desired override map to
 // llm.agent_overrides (REQ-AFR-004): the caller resolves pins/clears against
 // the current state first and passes the final map; an entry absent from the
 // map is absent from the block after the write. When the spliced output is
 // byte-identical to the file the write is skipped entirely.
 func WriteLLMAgentOverrides(projectRoot string, overrides map[string]config.ModelEffort) error {
-	path := filepath.Join(projectRoot, ".moai", "config", "sections", "llm.yaml")
+	path := llmYAMLPath(projectRoot)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -77,6 +113,15 @@ func WriteLLMAgentOverrides(projectRoot string, overrides map[string]config.Mode
 	}
 	if out == string(data) {
 		return nil // byte-identical — no write, mtime untouched
+	}
+	// F1 guard (sync-audit, card t1411): a region computation that corrupts
+	// the document — a duplicated agent_overrides key above all — must fail
+	// HERE, never reach the user's llm.yaml. yaml.v3 rejects duplicate
+	// mapping keys on Unmarshal, so a parse round-trip is the duplicate-key
+	// gate the disk write lacked.
+	var check map[string]any
+	if err := yaml.Unmarshal([]byte(out), &check); err != nil {
+		return fmt.Errorf("settings: llm.agent_overrides splice produced invalid YAML (write refused): %w", err)
 	}
 	return atomicWriteSection(path, []byte(out))
 }
@@ -157,14 +202,26 @@ func spliceAgentOverridesBlock(doc string, overrides map[string]config.ModelEffo
 	// Locate the existing agent_overrides key at child indent and the extent
 	// of its body (key line + every more-indented line, flow brackets
 	// tracked so a multi-line flow mapping stays inside the region).
+	//
+	// F1 (sync-audit, card t1411): blank and comment lines are PART of the
+	// llm block — comments never affect YAML structure and a blank line is
+	// just a separator. Only a zero-indent CONTENT line terminates the scan.
+	// The shipped template llm.yaml carries blank lines between child keys
+	// (lines 4/12/14/24); a loop that broke on the first zero-indent line —
+	// blank included — stopped before the agent_overrides key and took the
+	// absent-key insertion path, writing a duplicate key that made the
+	// document unparseable.
 	keyIdx := -1
 	lastIdx := -1
 	depth := 0
 	for i := rootIdx + 1; i < len(lines); i++ {
 		l := lines[i]
+		if isBlankOrComment(l) {
+			continue // inside the block: neither extends nor terminates it
+		}
 		ind := leadingWSCount(l)
 		if ind == 0 {
-			break // end of the llm block
+			break // zero-indent CONTENT line — end of the llm block
 		}
 		if keyIdx < 0 {
 			if ind == childIndent && childKeyNameOf(l) == "agent_overrides" {
@@ -174,9 +231,10 @@ func spliceAgentOverridesBlock(doc string, overrides map[string]config.ModelEffo
 			}
 			continue
 		}
-		// Inside the block body.
+		// Inside the block body: a blank/comment line neither extends the
+		// region nor ends it — only body-indent content after it can extend.
 		if depth <= 0 && ind <= childIndent {
-			break
+			break // the next child key — the block body is complete
 		}
 		depth = flowDepthOf(l, depth)
 		lastIdx = i

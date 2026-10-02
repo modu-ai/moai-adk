@@ -482,9 +482,11 @@ func (a *app) applySchemaCurrent(view *pageView) error {
 	if err != nil {
 		return err
 	}
-	// The ACTIVE profile after alias folding — a stored "max" displays folded.
-	view.PerfTier = cfg.LLM.EffectiveProfile()
-	view.PerfTierIsEmpty = strings.TrimSpace(cfg.LLM.Profile) == ""
+	// Seed the selector with the value the radio set can re-select: the
+	// stored profile mapped onto the selector wire set (F2 — a stored "max"
+	// folded to "high" matched no option). Cell resolution still reads the
+	// folded profile through view.LLM.
+	view.PerfTier, view.PerfTierIsEmpty = agentFMPerfTierSeed(cfg.LLM)
 
 	// Agent roster seeding: a list failure degrades to an empty section — the
 	// page itself must not fail (design §C.1 robustness).
