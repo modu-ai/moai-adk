@@ -929,6 +929,128 @@ $ golangci-lint run ./internal/cli/   (v2.1.6)            -> 0 issues.
 - `plan.md` M3 and the brief place the interactive lane branch at `codex_factory.go:128-229`; on this tree it lives in `enterCodexFactory` and its siblings (`codex_factory.go`), with the call site in `runCodexLaunch` (`codex_launcher.go:1205` after this milestone's edits). The reachability answer does not depend on the line numbers.
 - The brief lists an empty value as a shape for AC-007; `acceptance.md` AC-007 counts exactly five subtests. The empty value (`-f=`, `--factory=`) is asserted in `TestSD_AC004_CodexOtherFactoryShapesRefused`'s shape list (a loop inside one test, not subtests), so the AC's count of five holds.
 
+### M4 evidence
+
+Recorded by the run-phase implementation worker (cycle_type tdd) for milestone M4 of card t1399 (leader notice and notice strings), branch `WT-launcher-entry-flags`. Start state, re-read before any change: `git rev-parse --short HEAD` printed `2ee6aa770`, `git branch --show-current` printed `WT-launcher-entry-flags`, `git status --short` printed nothing. Output blocks are verbatim excerpts of commands run in this run on this tree; each says what it drops. Full outputs were kept in the session scratchpad (outside the tree).
+
+#### Claim
+
+- The factory leader SessionStart notice states one lane-start sentence (`moai cc -l`, or `moai glm -l` / `moai codex -l`, in a new terminal) in en, ko, ja, zh, carries no lane count, no per-lane launch line, no numbered lane label, no free-slot line; its entry guide names `-f` only (the `-l` entries sit in the lane-start sentence). The notice builder no longer calls `FactoryFreeSlots`; `leaderFreeSlots` and `leaderSlotsNone` are gone from the struct and the four tables; `FactoryFreeSlots` stays in `internal/kanban/factory_slots.go`, caller-less in production (its own two test files still call it).
+- The foreman sentence names the factory foreman in four locales (`factory foreman loop`, `팩토리 포어맨`, `ファクトリーフォアマン`, `工厂工头`) and points at no path. The stale-run rebind hint (four locales) names `moai cc -l`. The factory card legacy-label errors (`internal/cli/factory_card.go`) end `(rejoin with -l)`.
+- Production files changed: `internal/hook/session_start_factory.go`, `session_start_factory_i18n.go`, `session_stale_run.go`; `internal/cli/factory_card.go`; comment-only: `internal/config/defaults.go`, `internal/config/envkeys.go`, `internal/kanban/bootstrap.go`. Beyond the plan's list, two items orphaned by the removal went with it in the same file: the helper `factoryLaunchEntry` (its only caller was the per-lane launch-line loop) and the `root` parameter of `factoryLeaderNotice` (its only reader was the free-slot call; the two test callers were updated).
+- Commit: `8d59545a4` (production, tests, comments; build, vet, gofmt, lint and the net green at that commit), then this record.
+
+#### Evidence
+
+RED first (E8), before any production edit, on HEAD `2ee6aa770` plus the uncommitted test edits. Env unset in the same invocation. Hook tests (10 names: the 5 AC-010 selector tests, the new `TestStaleRunRebindHintNamesLaneEntry`, and four re-pinned neighbours), tool exit 1:
+
+```text
+$ unset <MOAI_KANBAN* and MOAI_FACTORY_* axes> && go test ./internal/hook -run '^(TestFactoryLeadNoticePrintsLaneCommandOnce|TestFactoryLeadNoticeIsLaneCountIndependent|TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide|TestFactoryGuideNamesWorkerJoinInEveryLocale|TestUnbindNoticeRebindLinePresence|TestStaleRunRebindHintNamesLaneEntry|TestFactoryGuideTeachesLaneFormsInEveryLocale|TestFactoryLeadProviderLaneGuidance|TestFactoryLeadNoticeCarriesDispatchDiscipline|TestFactoryLeadNoticeDispatchDisciplineKorean)$' -count=1
+--- FAIL: TestFactoryLeadNoticePrintsLaneCommandOnce (1.84s)
+--- FAIL: TestFactoryLeadNoticeIsLaneCountIndependent (27.61s)
+--- FAIL: TestStaleRunRebindHintNamesLaneEntry (0.00s)
+--- FAIL: TestFactoryLeadProviderLaneGuidance (22.54s)
+--- FAIL: TestFactoryGuideNamesWorkerJoinInEveryLocale (0.00s)
+--- FAIL: TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide (0.53s)
+--- FAIL: TestFactoryLeadNoticeCarriesDispatchDiscipline (0.44s)
+--- FAIL: TestFactoryLeadNoticeDispatchDisciplineKorean (0.47s)
+--- FAIL: TestUnbindNoticeRebindLinePresence (1.23s)
+--- FAIL: TestFactoryGuideTeachesLaneFormsInEveryLocale (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/hook	55.576s
+```
+
+Assertion lines of that run, per-locale counts (4 locales each), from `session_start_factory_lane_entry_test.go`: line 65 `"moai cc -l" appears 0 times, want exactly 1` (and the same for `moai glm -l`, `moai codex -l`), line 70 `notice still teaches the removed form "-f lane"` / `"lane-<n>"` / `"lane-1..lane-"`, line 74 `notice carries a numbered lane label`, line 78 `notice carries a per-lane launch line "moai cc -f lane-1"` (also `lane-2`, `lane-3`), line 110 `notice at 8 lanes differs from the notice at 1 lane`, line 117 `notice under launch provider "glm" differs from the default`. The rendered en notice in the failure message carried `This session dispatches cards to 3 lanes over cross-session messages.` and `Lanes are named lane-1..lane-3, and a lane that joins with `-f lane` takes the next free lane-<n>`.
+
+Card errors (cli), tool exit 1:
+
+```text
+$ go test ./internal/cli -run '^TestFactoryCardLegacyLabelErrorsNameLaneEntry$' -v -count=1
+    factory_card_lane_entry_test.go:29: error does not name the -l rejoin: factory stage: "worker-2" is the legacy lane label; use "lane-2" (rejoin with -f lane)
+    factory_card_lane_entry_test.go:35: error still teaches the removed -f lane form: factory stage: "worker-2" is the legacy lane label; use "lane-2" (rejoin with -f lane)
+    (same two lines for agent-3, worker, agent)
+--- FAIL: TestFactoryCardLegacyLabelErrorsNameLaneEntry (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.368s
+```
+
+RED-7 / RED-7b re-observed on the pre-change tree (`grep -n 'leaderFreeSlots\|FactoryFreeSlots' internal/hook/session_start_factory.go` printed `229:` the `FactoryFreeSlots` call and `240:` the `leaderFreeSlots` use; `grep -n 'launch = append' ...` printed `207:`).
+
+GREEN, AC-010 command, on the tree whose content became `8d59545a4`, tool exit 0, swept 5 top-level tests:
+
+```text
+$ go test ./internal/hook -run '^(TestFactoryLeadNoticePrintsLaneCommandOnce|TestFactoryLeadNoticeIsLaneCountIndependent|TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide|TestFactoryGuideNamesWorkerJoinInEveryLocale|TestUnbindNoticeRebindLinePresence)$' -v -count=1
+--- PASS: TestFactoryLeadNoticePrintsLaneCommandOnce (0.00s)
+--- PASS: TestFactoryLeadNoticeIsLaneCountIndependent (0.00s)
+--- PASS: TestFactoryGuideNamesWorkerJoinInEveryLocale (0.00s)
+--- PASS: TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide (0.00s)
+--- PASS: TestUnbindNoticeRebindLinePresence (2.41s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	3.346s
+```
+
+Notice/stale-run/factory family (selector `Factory|StaleRun|Unbind|RoleNaming|Prescription|Preexisting|LaneSpawn|GatewayGuard`, `-v`, under lease): 52 `--- PASS`, 0 `--- FAIL`, 1 `--- SKIP` (`TestFactoryHookBenchmarkBudget`), `ok github.com/modu-ai/moai-adk/internal/hook 182.338s`.
+
+Net re-run (AC-015 selectors), env unset, tool exit 0 each:
+
+```text
+$ go test ./internal/cli -run '^(TestCCFactoryEntryRecordsFailOpenRunMetadata|TestCCFactoryLaneJoinsDiscoveredLeader|TestGLMFactoryLaneJoinsDiscoveredLeader|TestPrepareKanbanSettingsWritesTransientFile|TestPrepareFactorySettingsWritesTransientFile|TestFactoryNetLeaderLaunch|TestFactoryNetLaneLaunch|TestFactoryNetBlockCap|TestFactoryEntryMatrix|TestFactoryCardLegacyLabelErrorsNameLaneEntry)$' -v -count=1
+--- PASS: TestFactoryCardLegacyLabelErrorsNameLaneEntry (0.00s)
+--- PASS: TestCCFactoryLaneJoinsDiscoveredLeader (6.64s)
+--- PASS: TestGLMFactoryLaneJoinsDiscoveredLeader (5.53s)
+--- PASS: TestFactoryNetLeaderLaunch (2.92s)
+--- PASS: TestFactoryNetLaneLaunch (5.84s)
+--- PASS: TestFactoryNetBlockCap (2.67s)
+--- PASS: TestFactoryEntryMatrix (12.15s)
+--- PASS: TestCCFactoryEntryRecordsFailOpenRunMetadata (0.96s)
+--- PASS: TestPrepareKanbanSettingsWritesTransientFile (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	38.157s
+$ go test ./internal/hook -run '^(TestFactoryNetSessionRecord|TestFactoryNetSessionStartNotices)$' -v -count=1
+--- PASS: TestFactoryNetSessionRecord (0.01s)
+--- PASS: TestFactoryNetSessionStartNotices (1.34s)
+ok  	github.com/modu-ai/moai-adk/internal/hook	2.094s
+$ go test ./internal/discovery -run '^(TestDiscoverLeaderVerifiesLiveLeader|TestDiscoverLeaderDeclinesUnparseableRunID)$' -v -count=1
+--- PASS: TestDiscoverLeaderVerifiesLiveLeader (0.38s)
+--- PASS: TestDiscoverLeaderDeclinesUnparseableRunID (0.19s)
+ok  	github.com/modu-ai/moai-adk/internal/discovery	0.995s
+```
+
+Swept: 8 net tests in cli (the nine PASS lines include the new card-error test; `TestPrepareFactorySettingsWritesTransientFile` is the M7 name and does not exist yet, so the alternation sweeps the old name only), 2 in hook, 2 in discovery. The two hook net tests were not edited (their leader assertions are run id, socket, and the word leader, all still produced).
+
+Removed-field grep, after the change: `grep -rnE 'leaderFreeSlots|leaderSlotsNone' internal cmd --include='*.go' | wc -l` printed `0`; `grep -c 'FactoryFreeSlots' internal/hook/session_start_factory.go` printed `0` (the function remains at `internal/kanban/factory_slots.go:360`, called only from its two test files).
+
+Removed-form sweep of non-test Go (`grep -rnE -e '-f lane|-f N\b|-l <leader>|-f <N>|-f worker|lane-<|-f lane-' internal cmd --include='*.go'`, test files excluded): no line in `internal/hook` teaches a removed form; no `-l <leader>` or `-f <N>` or `-f N` hit anywhere. Remaining hits are `internal/cli/cc.go:87-96` and `glm.go:97-106` (help lines for the `-k` kanban forms, removed at M5a), `internal/cli/kanban.go:53,84` (kanban comments, M5a), and comments that state the refusal or describe the canonical label (`codex_launcher.go:29,770,829`, `factory.go`, `factory_card.go:98,101` where `lane-<n>` names the canonical label, `internal/factorymsg/store.go:399`, `internal/kanban/*`).
+
+Build, vet, format, lint (tool exit 0, empty output): `gofmt -l` over the 14 touched files; `go vet ./internal/hook/ ./internal/cli/ ./internal/config/ ./internal/kanban/`; `go build ./...`; `GOOS=windows GOARCH=amd64 go build ./...`; `golangci-lint run ./internal/hook/ ./internal/config/ ./internal/kanban/` printed `0 issues.` (v2.1.6; `internal/cli` was not linted, one file of it changed).
+
+`git diff --stat 2ee6aa770 8d59545a4`: 14 files, 340 insertions, 267 deletions: `internal/cli/factory_card.go`, `factory_card_lane_entry_test.go` (new), `internal/config/defaults.go`, `envkeys.go`, `internal/hook/role_naming_m3_notice_test.go`, `session_stale_run.go`, `session_start_factory.go`, `session_start_factory_i18n.go`, `session_start_factory_lane_entry_test.go` (new), `session_start_factory_provider_test.go`, `session_start_factory_test.go`, `session_start_factory_worker_test.go`, `stale_run_gate_test.go`, `internal/kanban/bootstrap.go`.
+
+Native-idiom check (the `moai-domain-humanize` skill was loaded; its locale modules `korean.md`, `japanese.md`, `chinese.md` were read for their detection tables and applied BY HAND to the strings authored here; no humanize pass was run as a rewrite, and no change-rate or grade was computed). Strings checked: `leaderManual`, `entryGuide`, the foreman clause of `leaderClasses`, and the stale-run rebind hint, in ko, ja, zh. ko: no `~을 통해` / have-verb / pronoun (A), no connective-comma habit (C-11; the first draft's `~없으니,` comma was removed), verb-centric `실행해 시작하세요`, register matches the neighbouring `합니다/하세요` strings. ja: no `することができます` padding (JA-01; the first draft's `起動することはできない` became `起動できない`), no sentence-head connective (JA-03), loanword `ファクトリーフォアマン` follows the neighbouring `ファクトリー` renderings. zh: no `因此` connector (CN-A; the first draft's `因此要启动泳道，请…` became `需要在新终端中运行…来启动泳道`), no 的-nominalization chain. Terms kept as established loanwords or protocol tokens: `포어맨`, `工头`, `run`, `/loop`, the command lines. The en strings were not checked (the policy is conditional on non-English).
+
+#### Baseline-attribution
+
+- Tree: HEAD `2ee6aa770` for the RED measurements (tests edited, production not yet), the working tree that became `8d59545a4` for the GREEN, net, family, build, vet, lint and grep measurements; the idiom edits to the three `leaderManual` strings came after the first GREEN run, so the AC-010 command and the family run were re-run after them (the AC-010 block and the family count above are the re-runs; the net run and the lint run preceded the idiom edits, which touch string literals only and were followed by gofmt and the two re-runs). The judging build is the Go toolchain compiling this tree. No installed `moai` binary measured anything except the `moai slot` lease commands.
+- Heavy runs ran under `moai slot acquire --resource t1399-run --max-duration 45m`; `moai slot release --resource t1399-run` printed `slot t1399-run released (was 0dcdf2d5-df5c-4da1-8870-24c2a5861303)` after the last heavy run.
+
+#### Gaps
+
+1. The whole `internal/hook` package suite was NOT completed: one foreground run exceeded the 580 s tool timeout and was moved to the background by the harness; it was stopped with TaskStop and produced no result. The family selector above (52 PASS, 0 FAIL, 182 s) replaced it; a regression in a hook test outside that family is unobserved. The whole `internal/cli` suite was not run either (named selectors only).
+2. No mutant probe was run for M4: a notice that prints the count only above one lane, or that keeps the free-slot line behind a condition, is argued to fail `TestFactoryLeadNoticeIsLaneCountIndependent` and `TestFactoryLeadNoticePrintsLaneCommandOnce` (the RED run shows the old shape failing them), not measured on a mutant. The AC-015 mutant (f) (factory notice block removed) was not re-run against the two hook net tests.
+3. `internal/cli` was not linted by `golangci-lint` (one line pair changed in `factory_card.go`); `go vet` and the build cover it.
+4. The stagger sentence of `leaderStagger` still says `free-slot lanes` / `残りの空きスロットのレーン` / `空闲槽位的泳道` (unchanged text); with the free-slot line gone it no longer has a list to refer to, but it names no number and no removed form, and rewording it was outside the plan's M4 list.
+5. A leader whose `MOAI_FACTORY_WORKERS` does not parse to a number of at least 1 still gets no notice (the `lanes < 1` guard is kept, so the count is now only a gate); that behavior is unchanged from before and was not changed.
+6. Worktree-guard refusals (all re-issued as plain commands with the same measurement): (a) a `python3` heredoc rewrite of a test file followed by a `grep` in one command, refused as too complex to verify — the edits were redone with the edit tool (one earlier `python3` heredoc that stood alone was accepted and rewrote one test function); (b) the first full-package run was not refused but moved to the background by the harness (see item 1). No measurement was replaced by reading source.
+7. Plain `git` only; no `git -C` was used. No `--no-verify`, no push.
+
+#### Residual-risk
+
+- The en `leaderManual` and the three translations state the lane-start sentence once; the three `-l` commands are named by the notice and not by any shared constant, so a future change to the entry grammar has to edit the four tables and the stale-run hint together (the tests pin all three commands in every locale and the hint).
+- M2, M3 and M4 now cover the launcher grammar, the Codex entry and every notice string the plan lists; the unit stays unmerged until the lead integrates the three together. Strings that still name `-k` forms (`cc.go`/`glm.go` help, the kanban notice code) belong to M5a/M5b and are untouched.
+- The Korean, Japanese and Chinese wording passed a by-hand catalogue read, not a measured humanize grade; a native reviewer may still prefer other phrasing.
+
+#### Findings (statements the tree contradicts, no SPEC file edited)
+
+- `plan.md` M4 (and design.md §3) say the notice is built from `leaderManual` and `entryGuide` with the count; on this tree `entryGuide` took the count as `%[1]d` and the entry token as `%[2]s`, and `leaderManual` took the count twice — both are now plain text. Design §3's line references (`session_start_factory.go:207,229`, `session_start_factory_i18n.go:139,184,229`, `session_stale_run.go:92,103,114,125`, `factory_card.go:95,98,101`) matched the tree before this milestone.
+- AC-010's command text names `TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide`, `TestFactoryGuideNamesWorkerJoinInEveryLocale` as "re-pinned"; both exist with those names and were re-pinned, and the five-name selector sweeps 5 top-level tests as the criterion states.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
