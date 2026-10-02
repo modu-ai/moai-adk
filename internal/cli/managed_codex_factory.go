@@ -509,7 +509,7 @@ func (s *managedCodexSession) Close() error {
 // without process-global mutation (the entry points pass os.Stdin).
 func runManagedFactoryCodex(bin string, args, env []string, dir string, stdin io.Reader) (err error) {
 	root := launchProjectRoot()
-	runID := launchEnvValue(env, config.EnvMoaiKanbanID)
+	runID := launchEnvValue(env, config.EnvFactoryRunID)
 	if runID == "" {
 		return errors.New("factory managed session requires a factory run id")
 	}

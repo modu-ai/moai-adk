@@ -34,10 +34,10 @@ func rebindEnv(t *testing.T, run, label, backend string) {
 	t.Helper()
 	m3ScrubEnv(t)
 	t.Setenv("MOAI_HOME", t.TempDir())
-	t.Setenv(config.EnvMoaiKanbanID, run)
+	t.Setenv(config.EnvFactoryRunID, run)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "4")
 	t.Setenv(config.EnvMoaiFactoryWorker, label)
-	t.Setenv(config.EnvMoaiKanbanBackend, backend)
+	t.Setenv(config.EnvFactoryBackend, backend)
 	t.Setenv(config.EnvMoaiSessionPID, strconv.Itoa(os.Getpid()))
 	pinFactoryGateBudget(t)
 	prevBind, prevInspect := factoryBindBudget, factoryHookInspectionDeadline

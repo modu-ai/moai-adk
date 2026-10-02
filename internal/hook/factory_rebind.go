@@ -67,7 +67,7 @@ func rebindFactoryLane(ctx context.Context, req laneRebindRequest) (notice, rebo
 	if err != nil {
 		return "factory messaging degraded: " + err.Error(), ""
 	}
-	provider := kanban.RelaunchProviderForBackend(os.Getenv(config.EnvMoaiKanbanBackend))
+	provider := kanban.RelaunchProviderForBackend(os.Getenv(config.EnvFactoryBackend))
 	switch len(active) {
 	case 0:
 		return emitFactoryLaneState(req, "unbound:"+req.envRun, func() string {

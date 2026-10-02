@@ -136,7 +136,7 @@ func TestQAS_AC023b_LaunchersPassTheirBackendToTheClaim(t *testing.T) {
 
 	t.Run("codex_pid_update_preserves_backend", func(t *testing.T) {
 		root := codexLedRun(t, "pid-run", BackendCodex)
-		t.Setenv(config.EnvMoaiKanbanID, "pid-run")
+		t.Setenv(config.EnvFactoryRunID, "pid-run")
 		label, err := resolveFactoryLaneName(root, "lane-1", kanban.BackendGPT, false, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -146,7 +146,7 @@ func TestQAS_AC023b_LaunchersPassTheirBackendToTheClaim(t *testing.T) {
 			t.Fatalf("control: the claimed row recorded backend %q, want %q", before.backend, kanban.BackendGPT)
 		}
 		env := []string{
-			config.EnvMoaiKanbanID + "=pid-run",
+			config.EnvFactoryRunID + "=pid-run",
 			config.EnvMoaiFactoryWorker + "=" + label,
 		}
 		childPID := os.Getpid() + 1000

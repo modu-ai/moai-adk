@@ -12,7 +12,7 @@ import (
 // byte-identical across this SPEC. The golden strings below are the
 // pre-change bytes (tree 802a72235), written out in full so a one-character
 // edit to any locale fails here instead of passing a substring check.
-var kanbanRelaunchGolden = map[string]string{
+var factoryRelaunchGolden = map[string]string{
 	langEnglish: "stale run: this session carries legacy role value %[1]q from a binary before the leader/lane rename — " +
 		"end this session and relaunch it under the current vocabulary",
 	"ko": "stale run: 이 세션은 리더/레인 개칭 이전 바이너리의 레거시 역할 값 %[1]q 을(를) 담고 있습니다 — " +
@@ -23,14 +23,14 @@ var kanbanRelaunchGolden = map[string]string{
 		"请结束本会话，并按现行词汇重新启动。",
 }
 
-func TestKanbanRelaunchProseUnchanged(t *testing.T) {
-	if len(kanbanRelaunchGolden) != 4 {
-		t.Fatalf("golden covers %d locales, want 4", len(kanbanRelaunchGolden))
+func TestFactoryRelaunchProseUnchanged(t *testing.T) {
+	if len(factoryRelaunchGolden) != 4 {
+		t.Fatalf("golden covers %d locales, want 4", len(factoryRelaunchGolden))
 	}
 	// A kanban session: no factory run id, no factory workers stamp.
-	t.Setenv(config.EnvMoaiKanbanID, "")
+	t.Setenv(config.EnvFactoryRunID, "")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "")
-	for lang, golden := range kanbanRelaunchGolden {
+	for lang, golden := range factoryRelaunchGolden {
 		t.Run(lang, func(t *testing.T) {
 			if got := staleRunLocales[lang].roleValueRelaunch; got != golden {
 				t.Errorf("roleValueRelaunch[%s] changed:\n got  %q\n want %q", lang, got, golden)

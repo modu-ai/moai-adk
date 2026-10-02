@@ -127,7 +127,7 @@ func factoryQuotaEvaluate(root string) factoryQuotaEvaluation {
 func factoryQuotaClaudeLane() bool {
 	provider := os.Getenv(config.EnvMoaiLaunchProvider)
 	if provider == "" {
-		provider = os.Getenv(config.EnvMoaiKanbanBackend)
+		provider = os.Getenv(config.EnvFactoryBackend)
 	}
 	return provider == kanban.BackendClaude
 }

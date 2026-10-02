@@ -455,7 +455,7 @@ func runManagedFactoryStreamSession(backend, bin string, args, env []string, std
 	}
 	started = true
 
-	runID := launchEnvValue(env, config.EnvMoaiKanbanID)
+	runID := launchEnvValue(env, config.EnvFactoryRunID)
 	if runID == "" {
 		return errors.New("factory managed session requires a factory run id")
 	}

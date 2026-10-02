@@ -194,7 +194,7 @@ func TestManagedSwitchDoesNotReachCodexLaneLoop(t *testing.T) {
 	t.Chdir(root)
 	sdScrubLauncherEnv(t)
 	managedOptIn(t)
-	t.Setenv(config.EnvMoaiKanbanID, fcRun)
+	t.Setenv(config.EnvFactoryRunID, fcRun)
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 
 	managedCalls, directCalls := 0, 0
@@ -203,7 +203,7 @@ func TestManagedSwitchDoesNotReachCodexLaneLoop(t *testing.T) {
 	codexDirectLaunchFn = func(c *exec.Cmd) error {
 		directCalls++
 		env := sdEnvOf(t, c.Env)
-		sdCodexSessionWork(t, root, env[config.EnvMoaiKanbanCard])
+		sdCodexSessionWork(t, root, env[config.EnvFactoryCard])
 		return nil
 	}
 	managedFactoryCodexLaunchFunc = func(string, []string, []string, string) error { managedCalls++; return nil }

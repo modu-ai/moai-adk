@@ -461,8 +461,8 @@ func TestManagedLaunchPendingRollback(t *testing.T) {
 	// launch-pending row is visible, so the zero assertion below is not an
 	// empty sweep.
 	env := []string{
-		config.EnvMoaiKanbanID + "=" + run,
-		config.EnvMoaiKanbanBackend + "=claude",
+		config.EnvFactoryRunID + "=" + run,
+		config.EnvFactoryBackend + "=claude",
 		config.EnvMoaiFactoryWorker + "=" + kanban.FactoryLaneLabel(1),
 	}
 	pending, err := registerFactoryLaunchPending(context.Background(), root, env, os.Getpid(), start)
@@ -705,8 +705,8 @@ func TestManagedStreamSessionOwnerRuns(t *testing.T) {
 	activateManagedRun(t, root, run)
 	backend := writeManagedFakeBackend(t, `{"type":"result","is_error":false}`)
 	env := []string{
-		config.EnvMoaiKanbanID + "=" + run,
-		config.EnvMoaiKanbanBackend + "=claude",
+		config.EnvFactoryRunID + "=" + run,
+		config.EnvFactoryBackend + "=claude",
 		config.EnvMoaiFactoryWorker + "=" + kanban.FactoryLaneLabel(1),
 	}
 	stdinR, stdinW, err := os.Pipe()

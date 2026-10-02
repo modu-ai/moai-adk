@@ -261,8 +261,8 @@ func TestManagedCodexRegistersBoundPeer(t *testing.T) {
 	logPath := filepath.Join(t.TempDir(), "bind.log")
 	backend := fakeAppServerScript(t)
 	env := []string{
-		config.EnvMoaiKanbanID + "=" + run,
-		config.EnvMoaiKanbanBackend + "=" + BackendCodex,
+		config.EnvFactoryRunID + "=" + run,
+		config.EnvFactoryBackend + "=" + BackendCodex,
 		config.EnvMoaiFactoryWorker + "=" + kanban.FactoryLaneLabel(1),
 		fakeAppServerRoleEnv + "=appserver",
 		fakeAppServerLogEnv + "=" + logPath,
@@ -339,8 +339,8 @@ func TestManagedCodexOwnerUsesLaunchDir(t *testing.T) {
 	logPath := filepath.Join(t.TempDir(), "dir.log")
 	backend := fakeAppServerScript(t)
 	env := []string{
-		config.EnvMoaiKanbanID + "=" + run,
-		config.EnvMoaiKanbanBackend + "=" + BackendCodex,
+		config.EnvFactoryRunID + "=" + run,
+		config.EnvFactoryBackend + "=" + BackendCodex,
 		config.EnvMoaiFactoryWorker + "=" + kanban.FactoryLaneLabel(1),
 		fakeAppServerRoleEnv + "=appserver",
 		fakeAppServerLogEnv + "=" + logPath,
@@ -534,7 +534,7 @@ func TestManagedCodexFailurePaths(t *testing.T) {
 	})
 
 	t.Run("unsupported flag refuses before any broker or child work", func(t *testing.T) {
-		env := []string{config.EnvMoaiKanbanID + "=refused-run"}
+		env := []string{config.EnvFactoryRunID + "=refused-run"}
 		err := runManagedFactoryCodex(backend, []string{backend, "--profile", "p"}, env, "", strings.NewReader(""))
 		if err == nil || !strings.Contains(err.Error(), "--profile") {
 			t.Fatalf("run with an unsupported flag = %v, want a refusal naming --profile", err)
@@ -626,8 +626,8 @@ func TestManagedCodexFactoryBrokerLive(t *testing.T) {
 	t.Setenv("MOAI_HOME", t.TempDir())
 	t.Setenv("CLAUDE_PROJECT_DIR", liveRoot)
 	env := []string{
-		config.EnvMoaiKanbanID + "=" + liveRun,
-		config.EnvMoaiKanbanBackend + "=" + BackendCodex,
+		config.EnvFactoryRunID + "=" + liveRun,
+		config.EnvFactoryBackend + "=" + BackendCodex,
 		config.EnvMoaiFactoryWorker + "=" + kanban.FactoryLaneLabel(1),
 	}
 	stdinR, stdinW, err := os.Pipe()
