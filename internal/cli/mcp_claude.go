@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	claudeAuditToolName      = "claude_audit"
-	claudeBinaryName         = "claude"
-	claudeAuditTransport     = "claude-code-cli"
+	claudeAuditToolName  = "claude_audit"
+	claudeBinaryName     = "claude"
+	claudeAuditTransport = "claude-code-cli"
 	// claudeAuditDefaultModel / claudeAuditDefaultEffort are the audit-path
 	// terminal fallback (SPEC-AGENT-TIER-001 REQ-TIER-004, operator pin
 	// {claude-opus-5-5, high} — SUPERSEDES the t1368 medium effort). Derived
