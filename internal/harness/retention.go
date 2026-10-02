@@ -208,8 +208,17 @@ func (r *Retention) prune(retentionDays int, now time.Time) error {
 	return nil
 }
 
+// logLine is one line that survives a prune. A line that parsed carries its event, which
+// is re-encoded on rewrite; a line that did not parse carries only its text (raw), which
+// is written back verbatim so a damaged line is never lost to a prune.
+type logLine struct {
+	evt Event
+	raw string
+}
+
 // partitionEvents reads log file and classifies kept/stale events based on cutoff.
-func partitionEvents(logPath string, cutoff time.Time) (kept, stale []Event, err error) {
+// A line that fails JSON parsing is kept, in file order, as its original text.
+func partitionEvents(logPath string, cutoff time.Time) (kept []logLine, stale []Event, err error) {
 	f, err := os.Open(logPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -221,19 +230,21 @@ func partitionEvents(logPath string, cutoff time.Time) (kept, stale []Event, err
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+		text := scanner.Text()
+		line := strings.TrimSpace(text)
 		if line == "" {
 			continue
 		}
 		var evt Event
 		if err := json.Unmarshal([]byte(line), &evt); err != nil {
 			// Put parsing failure lines in kept to prevent data loss
+			kept = append(kept, logLine{raw: text})
 			continue
 		}
 		if evt.Timestamp.Before(cutoff) {
 			stale = append(stale, evt)
 		} else {
-			kept = append(kept, evt)
+			kept = append(kept, logLine{evt: evt})
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -298,8 +309,8 @@ func appendToGzip(archivePath string, events []Event) error {
 	return nil
 }
 
-// overwriteWithEvents overwrites log file with only kept events.
-func overwriteWithEvents(logPath string, events []Event) error {
+// overwriteWithEvents overwrites log file with only kept lines.
+func overwriteWithEvents(logPath string, lines []logLine) error {
 	// Write to temporary file first, then atomic replacement
 	dir := filepath.Dir(logPath)
 	tmp, err := os.CreateTemp(dir, "usage-log-*.tmp")
@@ -309,8 +320,16 @@ func overwriteWithEvents(logPath string, events []Event) error {
 	tmpPath := tmp.Name()
 
 	enc := json.NewEncoder(tmp)
-	for _, evt := range events {
-		if err := enc.Encode(evt); err != nil {
+	for _, l := range lines {
+		if l.raw != "" {
+			if _, err := tmp.WriteString(l.raw + "\n"); err != nil {
+				_ = tmp.Close()
+				_ = os.Remove(tmpPath)
+				return fmt.Errorf("임시 파일 쓰기: %w", err)
+			}
+			continue
+		}
+		if err := enc.Encode(l.evt); err != nil {
 			_ = tmp.Close()
 			_ = os.Remove(tmpPath)
 			return fmt.Errorf("임시 파일 인코딩: %w", err)
