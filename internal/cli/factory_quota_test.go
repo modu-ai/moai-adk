@@ -255,6 +255,20 @@ func qasInjectReadings(t *testing.T, readingAt func() float64) {
 	t.Cleanup(func() { factoryQuotaAggregate = prev })
 }
 
+// qasInjectBothWindows is qasInjectReadings for two windows: both are fresh and
+// resetting in the future, at the values the two functions pick.
+func qasInjectBothWindows(t *testing.T, fiveAt, sevenAt func() float64) {
+	t.Helper()
+	prev := factoryQuotaAggregate
+	factoryQuotaAggregate = func(string, time.Time, time.Duration) statusline.QuotaAggregate {
+		return statusline.QuotaAggregate{
+			FiveHour: statusline.QuotaReading{State: statusline.QuotaFresh, UsedPercentage: fiveAt(), ResetsAt: qasReset5, CapturedAt: fcNow},
+			SevenDay: statusline.QuotaReading{State: statusline.QuotaFresh, UsedPercentage: sevenAt(), ResetsAt: qasReset7, CapturedAt: fcNow},
+		}
+	}
+	t.Cleanup(func() { factoryQuotaAggregate = prev })
+}
+
 // AC-QAS-006b — absent or unreadable data fails open: the lane leases exactly
 // as with the gate disabled in each of four fixtures (the cli half of AC-006).
 func TestQAS_AC006b_NextLeasesWhenQuotaDataAbsent(t *testing.T) {
@@ -499,6 +513,28 @@ func TestQAS_AC010_WaitLatchReleasesOnlyBelowMarginOrResetOrUnknown(t *testing.T
 		if fcHasCard(t, root, "t1") {
 			t.Errorf("t1 was leased although 85.0 is not below hold minus margin")
 		}
+	})
+	// Plan debt N8: with both windows held, release means ALL held windows
+	// released. The five-hour window falls below its release point first (84, below
+	// 90 - 5); the seven-day window (hold 95, margin 5) stays held at exactly 90.0
+	// and releases only at 89.9.
+	t.Run("both_windows_release_only_when_all_released", func(t *testing.T) {
+		root, _ := onlyQueued(t)
+		five := []float64{92, 84, 84, 84}
+		seven := []float64{96, 96, 90.0, 89.9}
+		sleeps := qasFakeClock(t, nil, nil)
+		qasInjectBothWindows(t,
+			func() float64 { return five[min(*sleeps, len(five)-1)] },
+			func() float64 { return seven[min(*sleeps, len(seven)-1)] })
+		out, stderr, err := qasRunNext(t, "--wait", "--wait-bound", "1h", "--run", fcRun)
+		if err != nil {
+			t.Fatalf("next --wait: %v (stderr %q)", err, stderr)
+		}
+		qasAssertNotHeld(t, out, stderr)
+		if *sleeps != 3 {
+			t.Errorf("wait slept %d times, want 3 (the seven-day window held through 96 and 90.0 after the five-hour window released)", *sleeps)
+		}
+		assertLeased(t, root)
 	})
 	t.Run("reset_release", func(t *testing.T) {
 		root, _ := onlyQueued(t)
